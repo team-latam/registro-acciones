@@ -60,6 +60,38 @@
     white-space:nowrap;
   }
   .btn-new:hover{ background:var(--celeste-dark); color:#fff; }
+  .header-actions{ display:flex; align-items:center; gap:10px; }
+  .user-badge{ display:flex; align-items:center; gap:8px; }
+  .user-badge img{ width:28px; height:28px; border-radius:50%; border:1.5px solid rgba(255,255,255,0.5); }
+  .user-badge .uname{ font-size:12.5px; font-weight:600; color:#e6f6f8; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .user-badge .btn-signout{ background:rgba(255,255,255,0.12); color:#fff; border:none; padding:6px 12px; border-radius:999px; font-size:11.5px; font-weight:700; cursor:pointer; }
+  .user-badge .btn-signout:hover{ background:rgba(255,255,255,0.22); }
+  #tabSolicitudes .pending-count{ background:var(--danger); color:#fff; border-radius:999px; font-size:10.5px; font-weight:800; padding:1px 6px; margin-left:6px; }
+
+  /* ---------- Auth gate (login / pendiente / rechazado) ---------- */
+  .auth-gate{ max-width:440px; margin:60px auto; text-align:center; }
+  .auth-gate .big{ font-size:44px; margin-bottom:14px; }
+  .auth-gate h2{ margin:0 0 8px 0; color:var(--petroleo); font-size:19px; }
+  .auth-gate p{ color:var(--text-muted); font-size:13.5px; line-height:1.6; margin:0 0 20px 0; }
+  .btn-google{
+    display:inline-flex; align-items:center; gap:10px; background:#fff; color:#3c4043; border:1.5px solid var(--border);
+    padding:12px 22px; border-radius:999px; font-weight:700; font-size:14px; cursor:pointer; box-shadow:var(--shadow);
+  }
+  .btn-google:hover{ border-color:var(--celeste); }
+
+  /* ---------- Solicitudes (admin) ---------- */
+  .request-row{
+    display:flex; align-items:center; gap:12px; background:#fff; border:1px solid var(--border);
+    border-radius:var(--radius-md); padding:12px 16px; margin-bottom:10px;
+  }
+  .request-row img{ width:36px; height:36px; border-radius:50%; }
+  .request-row .rinfo{ flex:1; min-width:0; }
+  .request-row .rname{ font-weight:700; font-size:13.5px; }
+  .request-row .remail{ font-size:12px; color:var(--text-muted); }
+  .request-row .ractions{ display:flex; gap:8px; }
+  .status-pill{ font-size:11px; font-weight:700; padding:3px 10px; border-radius:999px; }
+  .status-pill.approved{ background:#dcfce7; color:#166534; }
+  .status-pill.rejected{ background:#fee2e2; color:#991b1b; }
   nav.tabs{ max-width:1200px; margin:14px auto 0 auto; display:flex; gap:4px; }
   nav.tabs button{
     background:transparent; border:none; color:#bfe9ef; padding:10px 16px;
@@ -266,12 +298,16 @@
           <div class="sub">Memoria histórica · Team LatAm</div>
         </div>
       </div>
-      <button class="btn-new" id="btnNewPost">+ Nuevo posteo</button>
+      <div class="header-actions">
+        <div id="userBadge" class="user-badge"></div>
+        <button class="btn-new" id="btnNewPost" hidden>+ Nuevo posteo</button>
+      </div>
     </div>
-    <nav class="tabs" id="tabs">
+    <nav class="tabs" id="tabs" hidden>
       <button data-view="feed">Feed</button>
       <button data-view="paises">Países</button>
       <button data-view="memoria">Memoria</button>
+      <button data-view="solicitudes" id="tabSolicitudes" hidden>Solicitudes<span id="pendingBadge"></span></button>
     </nav>
   </header>
   <main id="viewRoot"></main>
@@ -307,6 +343,12 @@ const FIREBASE_CONFIG = {
 };
 
 const CONFIG_IS_PLACEHOLDER = FIREBASE_CONFIG.apiKey === "YOUR_API_KEY";
+
+// Único email con permisos de administrador (aprueba/rechaza accesos).
+// Está hardcodeado también dentro de firestore.rules (función isAdmin()):
+// si se cambia acá, hay que cambiarlo también ahí y volver a publicar las
+// reglas, o la persona nueva no va a poder aprobar/rechazar nada.
+const ADMIN_EMAIL = "benny@team-latam.com";
 
 /* ======================================================================
    DATOS FIJOS: zonas, países, capitales (para el mapa)
@@ -523,34 +565,155 @@ const state = {
   leafletMap: null,
 };
 
-const AUTHOR_KEY = "registroAcciones.authorName";
-function getRememberedAuthor(){ try{ return localStorage.getItem(AUTHOR_KEY) || ""; }catch(e){ return ""; } }
-function rememberAuthor(name){ try{ localStorage.setItem(AUTHOR_KEY, name); }catch(e){} }
+/* ======================================================================
+   AUTENTICACIÓN (Google Sign-In + aprobación manual de acceso)
+   ====================================================================== */
+// status: loading | signedOut | pending | rejected | approved | admin
+state.auth = { status: "loading", user: null };
+state.accessRequests = []; // solo se llena para el admin
+
+function isAuthorized(){ return state.auth.status === "approved" || state.auth.status === "admin"; }
+function isAdmin(){ return state.auth.status === "admin"; }
 
 /* ======================================================================
    FIREBASE
    ====================================================================== */
 let db = null;
-let fb = null; // { collection, doc, addDoc, onSnapshot, query, orderBy, collectionGroup, serverTimestamp }
+let fb = null;   // exports de firebase-firestore.js
+let auth = null;
+let authMod = null; // exports de firebase-auth.js
 
 async function initFirebase(){
   if(CONFIG_IS_PLACEHOLDER) return;
   try{
     const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js");
     const firestoreMod = await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js");
+    const authModImport = await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js");
     const app = initializeApp(FIREBASE_CONFIG);
     db = firestoreMod.getFirestore(app);
     fb = firestoreMod;
-    subscribeData();
+    authMod = authModImport;
+    auth = authMod.getAuth(app);
+    authMod.onAuthStateChanged(auth, onAuthChanged);
   }catch(err){
     console.error("Error inicializando Firebase:", err);
     renderFatalError("No se pudo conectar con Firebase. Revisá la configuración (FIREBASE_CONFIG) y la consola del navegador para más detalle.");
   }
 }
 
+async function signIn(){
+  try{
+    await authMod.signInWithPopup(auth, new authMod.GoogleAuthProvider());
+  }catch(err){
+    if(err.code !== "auth/popup-closed-by-user" && err.code !== "auth/cancelled-popup-request"){
+      console.error("Error al iniciar sesión:", err);
+      renderFatalError("No se pudo iniciar sesión con Google: " + err.message);
+    }
+  }
+}
+async function doSignOut(){ try{ await authMod.signOut(auth); }catch(e){ console.error(e); } }
+
+let unsubscribeData = null;
+let unsubscribeRequests = null;
+let unsubAllowlist = null;
+let unsubOwnRequest = null;
+
+function recomputeAuthStatus(){
+  if(state.auth.status === "admin") return;
+  if(state.auth.allowlisted){ state.auth.status = "approved"; return; }
+  state.auth.status = state.auth.requestStatus === "rejected" ? "rejected" : "pending";
+}
+
+async function onAuthChanged(user){
+  if(unsubscribeData){ unsubscribeData(); unsubscribeData = null; }
+  if(unsubscribeRequests){ unsubscribeRequests(); unsubscribeRequests = null; }
+  if(unsubAllowlist){ unsubAllowlist(); unsubAllowlist = null; }
+  if(unsubOwnRequest){ unsubOwnRequest(); unsubOwnRequest = null; }
+  state.posts = []; state.repliesByPost = {}; state.loaded = false; state.accessRequests = [];
+
+  if(!user){
+    state.auth = { status:"signedOut", user:null };
+    render();
+    return;
+  }
+  const profile = { uid:user.uid, email:user.email, displayName:user.displayName || user.email, photoURL:user.photoURL || "" };
+
+  if(profile.email === ADMIN_EMAIL){
+    state.auth = { status:"admin", user:profile };
+    subscribeData();
+    subscribeAccessRequests();
+    render();
+    return;
+  }
+
+  // Mientras se resuelve si está aprobado, no se suscribe a posts/replies
+  // (evita un permission-denied transitorio contra Firestore).
+  state.auth = { status:"loading", user:profile, allowlisted:false, requestStatus:null };
+  render();
+
+  let dataSubscribed = false;
+  unsubAllowlist = fb.onSnapshot(fb.doc(db, "allowlist", profile.email), snap=>{
+    state.auth.allowlisted = snap.exists();
+    recomputeAuthStatus();
+    if(state.auth.allowlisted && !dataSubscribed){ dataSubscribed = true; subscribeData(); }
+    render();
+  }, err=>console.error("Error chequeando allowlist:", err));
+
+  const reqRef = fb.doc(db, "accessRequests", profile.email);
+  unsubOwnRequest = fb.onSnapshot(reqRef, async snap=>{
+    if(!snap.exists()){
+      try{
+        await fb.setDoc(reqRef, {
+          email: profile.email, name: profile.displayName, photoURL: profile.photoURL,
+          status: "pending", requestedAt: fb.serverTimestamp(),
+        });
+      }catch(err){ console.error("Error creando solicitud de acceso:", err); }
+      return; // el propio setDoc va a disparar un nuevo snapshot con exists()=true
+    }
+    state.auth.requestStatus = snap.data().status;
+    recomputeAuthStatus();
+    render();
+  }, err=>{
+    console.error("Error leyendo solicitud de acceso:", err);
+    state.auth.requestStatus = "pending";
+    recomputeAuthStatus();
+    render();
+  });
+}
+
+async function requestAccessAgain(){
+  const email = state.auth.user.email;
+  try{
+    await fb.setDoc(fb.doc(db, "accessRequests", email), {
+      email, name: state.auth.user.displayName, photoURL: state.auth.user.photoURL,
+      status: "pending", requestedAt: fb.serverTimestamp(),
+    });
+    state.auth = { ...state.auth, status:"pending" };
+    render();
+  }catch(err){ console.error(err); }
+}
+
+function subscribeAccessRequests(){
+  const q = fb.query(fb.collection(db,"accessRequests"), fb.orderBy("requestedAt","desc"));
+  unsubscribeRequests = fb.onSnapshot(q, snap=>{
+    state.accessRequests = snap.docs.map(d=>({ id:d.id, ...d.data({serverTimestamps:"estimate"}) }));
+    render();
+  }, err=>console.error("Error leyendo solicitudes:", err));
+}
+async function approveRequest(email){
+  await fb.setDoc(fb.doc(db, "allowlist", email), { email, approvedAt: fb.serverTimestamp(), approvedBy: ADMIN_EMAIL });
+  await fb.updateDoc(fb.doc(db, "accessRequests", email), { status:"approved" });
+}
+async function rejectRequest(email){
+  await fb.updateDoc(fb.doc(db, "accessRequests", email), { status:"rejected" });
+}
+async function revokeAccess(email){
+  await fb.deleteDoc(fb.doc(db, "allowlist", email));
+}
+
 function subscribeData(){
   const postsQ = fb.query(fb.collection(db,"posts"), fb.orderBy("date","desc"));
-  fb.onSnapshot(postsQ, snap=>{
+  const unsubPosts = fb.onSnapshot(postsQ, snap=>{
     state.posts = snap.docs.map(d=>({ id:d.id, ...d.data({serverTimestamps:"estimate"}) }));
     state.loaded = true;
     render();
@@ -560,7 +723,7 @@ function subscribeData(){
   });
 
   const repliesQ = fb.collectionGroup(db,"replies");
-  fb.onSnapshot(repliesQ, snap=>{
+  const unsubReplies = fb.onSnapshot(repliesQ, snap=>{
     const grouped = {};
     snap.docs.forEach(d=>{
       const postId = d.ref.parent.parent.id;
@@ -574,6 +737,8 @@ function subscribeData(){
   }, err=>{
     console.error("Error leyendo respuestas:", err);
   });
+
+  unsubscribeData = ()=>{ unsubPosts(); unsubReplies(); };
 }
 function tsMillis(ts){
   if(!ts) return 0;
@@ -617,24 +782,59 @@ function render(){
   }
 }
 
+const tabsNav = document.getElementById("tabs");
+const userBadgeEl = document.getElementById("userBadge");
+const btnNewPostEl = document.getElementById("btnNewPost");
+const tabSolicitudesEl = document.getElementById("tabSolicitudes");
+
+function renderUserBadge(){
+  const u = state.auth.user;
+  if(!u){ userBadgeEl.innerHTML = ""; return; }
+  userBadgeEl.innerHTML = `
+    ${u.photoURL ? `<img src="${esc(u.photoURL)}" alt="">` : ""}
+    <span class="uname">${esc(u.displayName)}</span>
+    <button class="btn-signout" data-action="sign-out">Salir</button>`;
+}
+
 function doRender(){
-  document.querySelectorAll("#tabs button").forEach(b=>{
+  document.querySelectorAll("#tabs button[data-view]").forEach(b=>{
     b.classList.toggle("active", b.dataset.view === state.view);
   });
 
   let html = "";
   if(CONFIG_IS_PLACEHOLDER){
+    tabsNav.hidden = true; btnNewPostEl.hidden = true; userBadgeEl.innerHTML = "";
     html += `<div class="setup-banner">
       ⚠️ <strong>Falta configurar Firebase.</strong> Esta app todavía no tiene datos compartidos
       porque <code>FIREBASE_CONFIG</code> tiene valores de ejemplo. Abrí <code>index.html</code>,
       completá la configuración con los datos de tu proyecto de Firebase y volvé a publicar el
       archivo. Instrucciones paso a paso en <code>README.md</code>.
     </div>`;
-  } else if(fatalError){
+    viewRoot.innerHTML = html;
+    return;
+  }
+
+  if(fatalError){
     html += `<div class="setup-banner">⚠️ ${esc(fatalError)}</div>`;
   }
 
-  if(!CONFIG_IS_PLACEHOLDER && !fatalError && !state.loaded){
+  renderUserBadge();
+
+  if(!isAuthorized()){
+    tabsNav.hidden = true; btnNewPostEl.hidden = true;
+    html += renderAuthGate();
+    viewRoot.innerHTML = html;
+    return;
+  }
+
+  tabsNav.hidden = false;
+  btnNewPostEl.hidden = false;
+  tabSolicitudesEl.hidden = !isAdmin();
+  const pendingCount = state.accessRequests.filter(r=>r.status==="pending").length;
+  document.getElementById("pendingBadge").innerHTML = (isAdmin() && pendingCount) ? `<span class="pending-count">${pendingCount}</span>` : "";
+  if(!isAdmin() && state.view === "solicitudes") state.view = "feed";
+
+  if(!fatalError && !state.loaded){
     html += `<div class="empty-state"><div class="big">⏳</div>Cargando registro compartido…</div>`;
     viewRoot.innerHTML = html;
     return;
@@ -643,11 +843,73 @@ function doRender(){
   if(state.view === "feed") html += renderFeedView();
   else if(state.view === "paises") html += renderPaisesView();
   else if(state.view === "memoria") html += renderMemoriaView();
+  else if(state.view === "solicitudes") html += renderSolicitudesView();
 
   viewRoot.innerHTML = html;
   afterRenderView();
 
   if(postModalOverlay && !postModalOverlay.hidden) renderComposer();
+}
+
+function renderAuthGate(){
+  const s = state.auth.status;
+  if(s === "loading"){
+    return `<div class="auth-gate"><div class="big">⏳</div><p>Cargando…</p></div>`;
+  }
+  if(s === "signedOut"){
+    return `<div class="auth-gate">
+      <div class="big">🔒</div>
+      <h2>Acceso privado</h2>
+      <p>Este registro es solo para el equipo. Iniciá sesión con tu cuenta de Google para entrar.</p>
+      <button class="btn-google" data-action="google-signin">
+        <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.9c1.7-1.57 2.7-3.88 2.7-6.62z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.9-2.26c-.81.54-1.84.86-3.06.86-2.35 0-4.34-1.59-5.05-3.72H.96v2.33A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.95 10.7A5.4 5.4 0 0 1 3.67 9c0-.59.1-1.17.28-1.7V4.97H.96A9 9 0 0 0 0 9c0 1.45.35 2.83.96 4.03l2.99-2.33z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .96 4.97l2.99 2.33C4.66 5.17 6.65 3.58 9 3.58z"/></svg>
+        Iniciar sesión con Google
+      </button>
+    </div>`;
+  }
+  if(s === "pending"){
+    return `<div class="auth-gate">
+      <div class="big">⏳</div>
+      <h2>Tu acceso está pendiente de aprobación</h2>
+      <p>Le avisamos a <strong>${esc(ADMIN_EMAIL)}</strong> que pediste entrar como <strong>${esc(state.auth.user.email)}</strong>.
+      Cuando lo apruebe vas a poder entrar (no hace falta que hagas nada más, esta pantalla se actualiza sola).</p>
+      <button class="btn-secondary" data-action="sign-out">Cerrar sesión</button>
+    </div>`;
+  }
+  if(s === "rejected"){
+    return `<div class="auth-gate">
+      <div class="big">🚫</div>
+      <h2>Acceso no aprobado</h2>
+      <p>Tu solicitud con <strong>${esc(state.auth.user.email)}</strong> no fue aprobada. Si creés que es un error, contactá a <strong>${esc(ADMIN_EMAIL)}</strong>.</p>
+      <button class="btn-mini" data-action="request-again">Pedir acceso de nuevo</button>
+      <div style="height:10px"></div>
+      <button class="btn-secondary" data-action="sign-out">Cerrar sesión</button>
+    </div>`;
+  }
+  return "";
+}
+
+/* ======================================================================
+   SOLICITUDES (panel admin)
+   ====================================================================== */
+function renderSolicitudesView(){
+  const reqs = state.accessRequests;
+  if(!reqs.length) return `<div class="empty-state"><div class="big">📭</div>No hay solicitudes todavía.</div>`;
+  return reqs.map(r=>{
+    let actions;
+    if(r.status === "approved") actions = `<span class="status-pill approved">Aprobado</span> <button class="btn-mini" data-action="revoke-access" data-email="${esc(r.email)}">Revocar</button>`;
+    else if(r.status === "rejected") actions = `<span class="status-pill rejected">Rechazado</span> <button class="btn-mini" data-action="approve-request" data-email="${esc(r.email)}">Aprobar igual</button>`;
+    else actions = `<button class="btn-mini" data-action="approve-request" data-email="${esc(r.email)}">Aprobar</button>
+      <button class="btn-secondary" data-action="reject-request" data-email="${esc(r.email)}">Rechazar</button>`;
+    return `<div class="request-row">
+      ${r.photoURL ? `<img src="${esc(r.photoURL)}" alt="">` : ""}
+      <div class="rinfo">
+        <div class="rname">${esc(r.name||r.email)}</div>
+        <div class="remail">${esc(r.email)} · pedido ${fmtDateTime(r.requestedAt)}</div>
+      </div>
+      <div class="ractions">${actions}</div>
+    </div>`;
+  }).join("");
 }
 
 function afterRenderView(){
@@ -744,14 +1006,15 @@ const openReplyForms = new Set();
 const replyDrafts = {}; // postId -> draft
 
 function newScopeDraft(){ return { type:"ciudad", country:"", city:"", region:"sur", cityUseCustom:false }; }
+function newReplyDraft(){
+  return { content:"", images:[], links:[], extraScope:false, scopes:[], scopeDraft:newScopeDraft(), scopeError:"" };
+}
 function getReplyDraft(postId){
-  if(!replyDrafts[postId]){
-    replyDrafts[postId] = { author:getRememberedAuthor(), content:"", images:[], links:[], extraScope:false, scopes:[], scopeDraft:newScopeDraft(), scopeError:"" };
-  }
+  if(!replyDrafts[postId]) replyDrafts[postId] = newReplyDraft();
   return replyDrafts[postId];
 }
 function resetReplyDraft(postId){
-  replyDrafts[postId] = { author:getRememberedAuthor(), content:"", images:[], links:[], extraScope:false, scopes:[], scopeDraft:newScopeDraft(), scopeError:"" };
+  replyDrafts[postId] = newReplyDraft();
 }
 
 function renderPostCard(post, replies){
@@ -819,10 +1082,7 @@ function renderReplyForm(postId){
   const d = getReplyDraft(postId);
   return `
     <div class="reply" style="margin-top:12px;background:#fff;border:1.5px solid var(--border);">
-      <div class="field" style="margin-bottom:8px;">
-        <label>Tu nombre</label>
-        <input type="text" data-reply-field="author" data-post-id="${postId}" value="${esc(d.author)}" placeholder="¿Quién responde?">
-      </div>
+      <div class="hint" style="margin-bottom:8px;">Respondés como <strong>${esc(state.auth.user.displayName)}</strong></div>
       <div class="field" style="margin-bottom:8px;">
         <label>Respuesta</label>
         <textarea data-reply-field="content" data-post-id="${postId}" placeholder="Sumá información...">${esc(d.content)}</textarea>
@@ -1046,7 +1306,6 @@ function renderMemoriaView(){
    ====================================================================== */
 function newComposerDraft(){
   return {
-    author: getRememberedAuthor(),
     content: "",
     date: new Date().toISOString().slice(0,10),
     activityType: "rutina",
@@ -1074,10 +1333,7 @@ function closeComposer(){
 function renderComposer(){
   const d = composerDraft;
   postForm.innerHTML = `
-    <div class="field">
-      <label>Tu nombre</label>
-      <input type="text" id="cAuthor" value="${esc(d.author)}" placeholder="¿Quién carga esto?">
-    </div>
+    <div class="hint">Publicás como <strong>${esc(state.auth.user.displayName)}</strong></div>
     <div class="field">
       <label>¿Qué se hizo?</label>
       <textarea id="cContent" placeholder="Contá qué se hizo...">${esc(d.content)}</textarea>
@@ -1162,15 +1418,7 @@ document.querySelectorAll("#tabs button").forEach(btn=>{
     render();
   });
 });
-if(CONFIG_IS_PLACEHOLDER){
-  const btn = document.getElementById("btnNewPost");
-  btn.disabled = true;
-  btn.title = "Configurá Firebase primero (ver banner arriba / README.md)";
-  btn.style.opacity = "0.5";
-  btn.style.cursor = "not-allowed";
-} else {
-  document.getElementById("btnNewPost").addEventListener("click", openComposer);
-}
+btnNewPostEl.addEventListener("click", openComposer);
 document.getElementById("postModalClose").addEventListener("click", closeComposer);
 postModalOverlay.addEventListener("click", e=>{ if(e.target === postModalOverlay) closeComposer(); });
 document.addEventListener("keydown", e=>{
@@ -1250,6 +1498,20 @@ document.addEventListener("click", e=>{
     state.view = "memoria"; state.countryDrill = null; render();
   } else if(action === "memoria-order"){
     state.memoriaOrder = t.dataset.key; render();
+  } else if(action === "google-signin"){
+    signIn();
+  } else if(action === "sign-out"){
+    doSignOut();
+  } else if(action === "request-again"){
+    requestAccessAgain();
+  } else if(action === "approve-request"){
+    approveRequest(t.dataset.email).catch(err=>{ console.error(err); alert("No se pudo aprobar: " + err.message); });
+  } else if(action === "reject-request"){
+    rejectRequest(t.dataset.email).catch(err=>{ console.error(err); alert("No se pudo rechazar: " + err.message); });
+  } else if(action === "revoke-access"){
+    if(confirm(`¿Revocar el acceso de ${t.dataset.email}? Va a dejar de poder ver y cargar posteos.`)){
+      revokeAccess(t.dataset.email).catch(err=>{ console.error(err); alert("No se pudo revocar: " + err.message); });
+    }
   }
 });
 
@@ -1257,10 +1519,8 @@ document.addEventListener("input", e=>{
   const t = e.target;
   if(t.id === "feedSearch" || t.id === "memoriaSearch"){
     state.filters.text = t.value; render();
-  } else if(t.id === "cAuthor"){ composerDraft.author = t.value; }
-  else if(t.id === "cContent"){ composerDraft.content = t.value; }
+  } else if(t.id === "cContent"){ composerDraft.content = t.value; }
   else if(t.id === "cDate"){ composerDraft.date = t.value; }
-  else if(t.dataset.replyField === "author"){ getReplyDraft(t.dataset.postId).author = t.value; }
   else if(t.dataset.replyField === "content"){ getReplyDraft(t.dataset.postId).content = t.value; }
   else if(t.dataset.scopeField === "city"){ getDraftFor(t.dataset.scope, t.dataset.ownerId).scopeDraft.city = t.value; }
   else if(t.dataset.linkField){
@@ -1301,14 +1561,13 @@ postForm.addEventListener("submit", async e=>{
   if(!content){ d.error = "Escribí qué se hizo."; render(); return; }
   if(!d.scopes.length){ d.error = "Agregá al menos un alcance (ciudad, país o región)."; render(); return; }
   if(!d.date){ d.error = "Elegí una fecha."; render(); return; }
-  const author = d.author.trim() || "Anónimo";
   const links = d.links.filter(l=>safeUrl(l.url));
   try{
     await createPost({
       content, date:d.date, activityType:d.activityType, scopes:d.scopes,
-      images:d.images, links, authorName:author,
+      images:d.images, links,
+      authorName: state.auth.user.displayName, authorEmail: state.auth.user.email,
     });
-    rememberAuthor(author);
     closeComposer();
   }catch(err){
     console.error(err);
@@ -1321,14 +1580,13 @@ async function submitReply(postId){
   const d = getReplyDraft(postId);
   const content = d.content.trim();
   if(!content){ d.scopeError = "Escribí una respuesta antes de publicar."; render(); return; }
-  const author = d.author.trim() || "Anónimo";
   const links = d.links.filter(l=>safeUrl(l.url));
   try{
     await createReply(postId, {
-      authorName:author, content, scopes:d.extraScope ? d.scopes : [],
+      authorName: state.auth.user.displayName, authorEmail: state.auth.user.email,
+      content, scopes:d.extraScope ? d.scopes : [],
       images:d.images, links,
     });
-    rememberAuthor(author);
     openReplyForms.delete(postId);
     resetReplyDraft(postId);
     render();
