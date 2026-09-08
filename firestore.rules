@@ -1,0 +1,67 @@
+rules_version = '2';
+
+// Reglas de Firestore para "Registro de Acciones — Team LatAm".
+//
+// La app no tiene login (por diseño, ver prompt original): cualquiera que
+// tenga la URL de la página y el firebaseConfig (que queda visible en el
+// código fuente del HTML, como toda config de cliente de Firebase) puede
+// leer y escribir. Estas reglas no agregan autenticación — eso requeriría
+// sumar Firebase Auth y rehacer el modelo de "nombre libre" que pide el
+// prompt — pero sí validan la FORMA de lo que se escribe, para reducir el
+// impacto de un uso accidental o malintencionado (spam, documentos gigantes,
+// campos con tipos raros que rompan la UI).
+//
+// Si más adelante quieren cerrar más el acceso, las opciones más simples son:
+//   1) Activar Firebase App Check (bloquea bots/scripts, no gente con la URL).
+//   2) Sumar Firebase Auth (login con Google, por ejemplo) y cambiar estas
+//      reglas a `allow read, write: if request.auth != null;`.
+//   3) No publicar la URL/repo públicamente (obscuridad, no es seguridad real).
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isNonEmptyString(v, maxLen) {
+      return v is string && v.size() > 0 && v.size() <= maxLen;
+    }
+
+    // Los campos individuales de cada scope/link no se validan en profundidad
+    // aquí (el lenguaje de reglas no itera listas de mapas cómodamente): se
+    // limitan tamaños de lista y de strings, que es lo que evita abuso real
+    // (documentos gigantes, spam). La forma fina de cada scope la valida el
+    // cliente antes de escribir.
+    function isValidPostBase(d) {
+      return isNonEmptyString(d.content, 5000) &&
+        isNonEmptyString(d.date, 10) &&
+        d.activityType in ['rutina', 'visita', 'curso', 'seminario', 'otro'] &&
+        isNonEmptyString(d.authorName, 120) &&
+        d.scopes is list && d.scopes.size() >= 0 && d.scopes.size() <= 15 &&
+        (d.links == null || (d.links is list && d.links.size() <= 10)) &&
+        (d.images == null || (d.images is list && d.images.size() <= 6)) &&
+        d.createdAt == request.time;
+    }
+
+    match /posts/{postId} {
+      allow read: if true;
+      allow create: if isValidPostBase(request.resource.data) && request.resource.data.scopes.size() >= 1;
+      // Append-only: no se edita ni se borra un posteo publicado (evita
+      // reescribir la memoria histórica; para correcciones, responder en el hilo).
+      allow update, delete: if false;
+
+      match /replies/{replyId} {
+        allow read: if true;
+        allow create: if isNonEmptyString(request.resource.data.content, 3000) &&
+          isNonEmptyString(request.resource.data.authorName, 120) &&
+          (request.resource.data.scopes == null || (request.resource.data.scopes is list && request.resource.data.scopes.size() <= 15)) &&
+          (request.resource.data.links == null || (request.resource.data.links is list && request.resource.data.links.size() <= 10)) &&
+          (request.resource.data.images == null || (request.resource.data.images is list && request.resource.data.images.size() <= 6)) &&
+          request.resource.data.createdAt == request.time;
+        allow update, delete: if false;
+      }
+    }
+
+    // Todo lo demás, cerrado.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
