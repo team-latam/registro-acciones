@@ -1,0 +1,1284 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Registro de Acciones — Team LatAm</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<style>
+  :root{
+    --petroleo:#0d3b3e;
+    --petroleo-dark:#082a2c;
+    --celeste:#4fc7e0;
+    --celeste-dark:#1a9fb8;
+    --bg:#f4f8f8;
+    --card:#ffffff;
+    --text:#0d2a2c;
+    --text-muted:#5c7a7c;
+    --border:#e1edee;
+    --sur:#2563eb;
+    --central:#eab308;
+    --norte:#16a34a;
+    --danger:#dc2626;
+    --shadow: 0 6px 24px rgba(13,59,62,0.08);
+    --radius-lg: 22px;
+    --radius-md: 14px;
+    --radius-sm: 10px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Montserrat',system-ui,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    -webkit-font-smoothing:antialiased;
+  }
+  button, input, select, textarea{ font-family:inherit; }
+  a{ color:var(--celeste-dark); }
+  #app{ min-height:100vh; display:flex; flex-direction:column; }
+
+  /* ---------- Header ---------- */
+  header.topbar{
+    background:linear-gradient(135deg, var(--petroleo), var(--petroleo-dark));
+    color:#fff;
+    padding:18px 20px 0 20px;
+    position:sticky; top:0; z-index:40;
+    box-shadow:0 4px 18px rgba(0,0,0,0.15);
+  }
+  .topbar-inner{ display:flex; align-items:center; justify-content:space-between; gap:12px; max-width:1200px; margin:0 auto; }
+  .brand{ display:flex; align-items:center; gap:10px; }
+  .brand .logo{ font-size:26px; }
+  .brand h1{ font-size:17px; margin:0; font-weight:800; letter-spacing:0.2px; }
+  .brand .sub{ font-size:11px; color:#bfe9ef; font-weight:500; }
+  .btn-new{
+    background:var(--celeste); color:var(--petroleo-dark); border:none;
+    padding:10px 18px; border-radius:999px; font-weight:700; font-size:13.5px;
+    cursor:pointer; box-shadow:0 4px 12px rgba(79,199,224,0.4);
+    white-space:nowrap;
+  }
+  .btn-new:hover{ background:var(--celeste-dark); color:#fff; }
+  nav.tabs{ max-width:1200px; margin:14px auto 0 auto; display:flex; gap:4px; }
+  nav.tabs button{
+    background:transparent; border:none; color:#bfe9ef; padding:10px 16px;
+    font-weight:700; font-size:13.5px; cursor:pointer; border-bottom:3px solid transparent;
+    border-radius:8px 8px 0 0;
+  }
+  nav.tabs button.active{ color:#fff; border-bottom-color:var(--celeste); background:rgba(255,255,255,0.06); }
+
+  main{ flex:1; max-width:1200px; width:100%; margin:0 auto; padding:18px 16px 80px 16px; }
+
+  /* ---------- Setup banner ---------- */
+  .setup-banner{
+    background:#fff7e6; border:1px solid #f3d78b; color:#6b4c00;
+    border-radius:var(--radius-md); padding:16px 18px; margin-bottom:16px; font-size:13.5px; line-height:1.5;
+  }
+  .setup-banner code{ background:#f3e6c4; padding:1px 6px; border-radius:5px; }
+
+  /* ---------- Cards ---------- */
+  .card{
+    background:var(--card); border-radius:var(--radius-lg); box-shadow:var(--shadow);
+    padding:18px; margin-bottom:16px; border:1px solid var(--border);
+  }
+
+  /* ---------- Filter bar ---------- */
+  .filterbar{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:16px; }
+  .filterbar input[type=text]{
+    flex:1 1 220px; padding:11px 14px; border-radius:999px; border:1.5px solid var(--border);
+    font-size:13.5px; background:#fff;
+  }
+  .chip-toggle{
+    display:inline-flex; align-items:center; gap:6px; padding:7px 13px; border-radius:999px;
+    border:1.5px solid var(--border); background:#fff; font-size:12.5px; font-weight:600;
+    cursor:pointer; color:var(--text-muted); user-select:none;
+  }
+  .chip-toggle.active{ background:var(--petroleo); color:#fff; border-color:var(--petroleo); }
+  .chip-toggle .dot{ width:9px; height:9px; border-radius:50%; display:inline-block; }
+  .chipgroup{ display:flex; flex-wrap:wrap; gap:6px; }
+  .filter-clear{ background:none; border:none; color:var(--text-muted); font-size:12px; text-decoration:underline; cursor:pointer; }
+
+  /* ---------- Scope chips ---------- */
+  .scope-chip{
+    display:inline-flex; align-items:center; gap:6px; padding:5px 11px; border-radius:999px;
+    font-size:11.5px; font-weight:700; background:#eef6f6; color:var(--petroleo); border:1px solid var(--border);
+  }
+  .scope-chip .zdot{ width:8px; height:8px; border-radius:50%; }
+  .scope-chip.removable{ padding-right:6px; }
+  .scope-chip .rm{ cursor:pointer; font-weight:800; opacity:0.6; margin-left:2px; }
+  .scope-chip .rm:hover{ opacity:1; }
+
+  .type-badge{
+    display:inline-flex; align-items:center; gap:5px; padding:4px 11px; border-radius:999px;
+    font-size:11px; font-weight:700; background:var(--petroleo); color:#fff;
+  }
+
+  /* ---------- Post card ---------- */
+  .post{ }
+  .post-head{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:10px; flex-wrap:wrap; }
+  .post-meta{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .post-date{ font-size:12px; color:var(--text-muted); font-weight:600; }
+  .post-author{ font-size:12.5px; font-weight:700; color:var(--petroleo); }
+  .post-content{ font-size:14.5px; line-height:1.55; white-space:pre-wrap; margin:8px 0 10px 0; }
+  .post-scopes{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
+  .post-links{ display:flex; flex-direction:column; gap:4px; margin-bottom:10px; }
+  .post-links a{ font-size:12.5px; font-weight:600; }
+  .post-images{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
+  .post-images img{
+    width:92px; height:92px; object-fit:cover; border-radius:var(--radius-sm); cursor:pointer;
+    border:1px solid var(--border);
+  }
+  .post-actions{ display:flex; gap:14px; font-size:12.5px; }
+  .post-actions button{
+    background:none; border:none; color:var(--text-muted); font-weight:700; cursor:pointer; padding:4px 0;
+  }
+  .post-actions button:hover{ color:var(--celeste-dark); }
+
+  .thread{ margin-top:12px; padding-left:16px; border-left:3px solid var(--border); display:flex; flex-direction:column; gap:12px; }
+  .reply{ background:#f8fbfb; border-radius:var(--radius-md); padding:12px 14px; }
+  .reply-head{ display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; margin-bottom:4px; }
+  .reply-author{ font-size:12.5px; font-weight:700; color:var(--petroleo); }
+  .reply-date{ font-size:11px; color:var(--text-muted); }
+  .reply-content{ font-size:13.5px; line-height:1.5; white-space:pre-wrap; }
+  .reply-scopes{ display:flex; flex-wrap:wrap; gap:5px; margin-top:6px; }
+  .reply-images{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .reply-images img{ width:70px; height:70px; object-fit:cover; border-radius:8px; cursor:pointer; border:1px solid var(--border); }
+  .reply-links{ margin-top:6px; display:flex; flex-direction:column; gap:2px; }
+  .reply-links a{ font-size:12px; }
+
+  .empty-state{ text-align:center; padding:50px 20px; color:var(--text-muted); }
+  .empty-state .big{ font-size:36px; margin-bottom:10px; }
+
+  /* ---------- Modal ---------- */
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(8,30,31,0.55); display:flex; align-items:flex-start;
+    justify-content:center; padding:24px 12px; z-index:100; overflow-y:auto;
+  }
+  .modal-overlay[hidden]{ display:none; }
+  .modal{
+    background:#fff; border-radius:var(--radius-lg); width:100%; max-width:640px; padding:22px;
+    box-shadow:0 20px 60px rgba(0,0,0,0.3); margin:auto 0;
+  }
+  .modal h2{ margin:0 0 14px 0; font-size:18px; color:var(--petroleo); }
+  .modal .close{
+    position:absolute; top:14px; right:16px; background:none; border:none; font-size:20px; cursor:pointer; color:var(--text-muted);
+  }
+  .modal-wrap{ position:relative; }
+  .field{ margin-bottom:14px; }
+  .field label{ display:block; font-size:12px; font-weight:700; color:var(--text-muted); margin-bottom:5px; text-transform:uppercase; letter-spacing:0.4px; }
+  .field input[type=text], .field input[type=date], .field textarea, .field select, .field input[type=url]{
+    width:100%; padding:10px 12px; border-radius:var(--radius-sm); border:1.5px solid var(--border); font-size:14px; background:#fbfdfd;
+  }
+  .field textarea{ min-height:90px; resize:vertical; }
+  .row2{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  @media (max-width:520px){ .row2{ grid-template-columns:1fr; } }
+  .type-picker{ display:flex; flex-wrap:wrap; gap:8px; }
+  .type-picker label{ display:inline-flex; }
+  .type-opt{ display:inline-flex; align-items:center; gap:6px; padding:8px 13px; border-radius:999px; border:1.5px solid var(--border); cursor:pointer; font-size:12.5px; font-weight:600; }
+  .type-opt input{ display:none; }
+  .type-opt.checked{ background:var(--petroleo); color:#fff; border-color:var(--petroleo); }
+
+  .scope-builder{ border:1.5px dashed var(--border); border-radius:var(--radius-md); padding:12px; }
+  .scope-builder-add{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px; }
+  .scope-builder-add.has-extra{ grid-template-columns:1fr 1fr 1fr; }
+  @media (max-width:520px){ .scope-builder-add, .scope-builder-add.has-extra{ grid-template-columns:1fr; } }
+  .scope-list{ display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+  .btn-mini{ background:var(--celeste); color:var(--petroleo-dark); border:none; padding:9px 14px; border-radius:var(--radius-sm); font-weight:700; font-size:12.5px; cursor:pointer; }
+  .btn-mini:hover{ background:var(--celeste-dark); color:#fff; }
+
+  .attach-row{ display:flex; gap:8px; margin-bottom:6px; }
+  .attach-row input{ flex:1; }
+  .link-rows{ display:flex; flex-direction:column; gap:6px; margin-bottom:8px; }
+  .btn-text-add{ background:none; border:none; color:var(--celeste-dark); font-weight:700; font-size:12.5px; cursor:pointer; padding:4px 0; }
+  .img-preview-list{ display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+  .img-preview{ position:relative; width:76px; height:76px; }
+  .img-preview img{ width:100%; height:100%; object-fit:cover; border-radius:8px; border:1px solid var(--border); }
+  .img-preview .rm{
+    position:absolute; top:-6px; right:-6px; width:20px; height:20px; border-radius:50%; background:var(--danger);
+    color:#fff; border:none; font-size:12px; cursor:pointer; line-height:20px; text-align:center; padding:0;
+  }
+  .modal-actions{ display:flex; justify-content:flex-end; gap:10px; margin-top:6px; }
+  .btn-secondary{ background:#eef4f4; color:var(--text); border:none; padding:11px 18px; border-radius:999px; font-weight:700; font-size:13.5px; cursor:pointer; }
+  .btn-primary{ background:var(--petroleo); color:#fff; border:none; padding:11px 20px; border-radius:999px; font-weight:700; font-size:13.5px; cursor:pointer; }
+  .btn-primary:disabled{ opacity:0.5; cursor:not-allowed; }
+  .form-error{ color:var(--danger); font-size:12.5px; margin-top:6px; }
+  .hint{ font-size:11.5px; color:var(--text-muted); margin-top:4px; }
+
+  /* ---------- Paises view ---------- */
+  .subview-toggle{ display:inline-flex; background:#eef4f4; border-radius:999px; padding:4px; margin-bottom:16px; }
+  .subview-toggle button{ border:none; background:none; padding:8px 18px; border-radius:999px; font-weight:700; font-size:13px; cursor:pointer; color:var(--text-muted); }
+  .subview-toggle button.active{ background:var(--petroleo); color:#fff; }
+  .country-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:12px; }
+  .country-card{
+    background:#fff; border-radius:var(--radius-md); padding:14px; box-shadow:var(--shadow); cursor:pointer;
+    border:1px solid var(--border); border-left:6px solid var(--petroleo); transition:transform 0.1s;
+  }
+  .country-card:hover{ transform:translateY(-2px); }
+  .country-card .name{ font-weight:800; font-size:14px; margin-bottom:4px; }
+  .country-card .count{ font-size:22px; font-weight:800; color:var(--petroleo); }
+  .country-card .count small{ font-size:11px; font-weight:600; color:var(--text-muted); }
+  .zone-legend{ display:flex; gap:14px; flex-wrap:wrap; margin-bottom:14px; font-size:12px; color:var(--text-muted); font-weight:600; }
+  .zone-legend span{ display:inline-flex; align-items:center; gap:6px; }
+  .zone-legend .dot{ width:11px; height:11px; border-radius:50%; }
+  #map{ height:480px; border-radius:var(--radius-lg); box-shadow:var(--shadow); border:1px solid var(--border); }
+  .breadcrumb{ font-size:12.5px; color:var(--text-muted); margin-bottom:12px; }
+  .breadcrumb a{ cursor:pointer; font-weight:700; }
+  .city-list{ display:flex; flex-direction:column; gap:8px; }
+  .city-row{
+    display:flex; justify-content:space-between; align-items:center; background:#fff; border:1px solid var(--border);
+    border-radius:var(--radius-sm); padding:12px 14px; cursor:pointer;
+  }
+  .city-row:hover{ border-color:var(--celeste); }
+  .city-row .cname{ font-weight:700; font-size:13.5px; }
+  .city-row .ccount{ font-weight:800; color:var(--petroleo); }
+  .leaflet-tooltip.leaflet-marker-num{
+    background:transparent!important; border:none!important; box-shadow:none!important; padding:0!important;
+    color:#fff; font-weight:800; font-size:12px; text-align:center;
+    text-shadow:0 1px 3px rgba(0,0,0,0.65);
+  }
+  .leaflet-tooltip.leaflet-marker-num::before{ display:none; }
+  .map-popup b{ display:block; margin-bottom:4px; }
+  .map-popup .pop-city{ font-size:12px; display:flex; justify-content:space-between; gap:10px; }
+  .map-popup button{ margin-top:8px; }
+
+  /* ---------- Lightbox ---------- */
+  #lightbox{
+    position:fixed; inset:0; background:rgba(0,0,0,0.85); display:none; align-items:center; justify-content:center; z-index:200;
+    cursor:zoom-out; padding:20px;
+  }
+  #lightbox.show{ display:flex; }
+  #lightbox img{ max-width:100%; max-height:100%; border-radius:8px; }
+
+  .sort-toggle{ display:flex; gap:8px; margin-bottom:14px; }
+
+  footer.appfoot{ text-align:center; color:var(--text-muted); font-size:11.5px; padding:20px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="logo">🗺️</span>
+        <div>
+          <h1>Registro de Acciones</h1>
+          <div class="sub">Memoria histórica · Team LatAm</div>
+        </div>
+      </div>
+      <button class="btn-new" id="btnNewPost">+ Nuevo posteo</button>
+    </div>
+    <nav class="tabs" id="tabs">
+      <button data-view="feed">Feed</button>
+      <button data-view="paises">Países</button>
+      <button data-view="memoria">Memoria</button>
+    </nav>
+  </header>
+  <main id="viewRoot"></main>
+  <footer class="appfoot">Registro de Acciones · Team LatAm</footer>
+</div>
+
+<div id="lightbox"><img id="lightboxImg" src="" alt=""></div>
+
+<div class="modal-overlay" id="postModalOverlay" hidden>
+  <div class="modal modal-wrap">
+    <button class="close" id="postModalClose">✕</button>
+    <h2>Nuevo posteo</h2>
+    <form id="postForm"></form>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script type="module">
+/* ======================================================================
+   CONFIGURACIÓN DE FIREBASE
+   Reemplazá estos valores por los de tu proyecto (Firebase Console →
+   Configuración del proyecto → Tus apps → Config del SDK). Ver README.md
+   para el paso a paso completo (crear proyecto, activar Firestore,
+   reglas de seguridad, hosting).
+   ====================================================================== */
+const FIREBASE_CONFIG = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID",
+};
+
+const CONFIG_IS_PLACEHOLDER = FIREBASE_CONFIG.apiKey === "YOUR_API_KEY";
+
+/* ======================================================================
+   DATOS FIJOS: zonas, países, capitales (para el mapa)
+   ====================================================================== */
+const ZONES = {
+  sur:     { key:"sur",     label:"Sur",     color:"#2563eb" },
+  central: { key:"central", label:"Central", color:"#eab308" },
+  norte:   { key:"norte",   label:"Norte",   color:"#16a34a" },
+};
+
+// name, zone, [lat, lng] de la capital (referencia para el mapa)
+const COUNTRIES = [
+  { name:"Argentina", zone:"sur", coord:[-34.6037,-58.3816] },
+  { name:"Chile", zone:"sur", coord:[-33.4489,-70.6693] },
+  { name:"Uruguay", zone:"sur", coord:[-34.9011,-56.1645] },
+  { name:"Paraguay", zone:"sur", coord:[-25.2637,-57.5759] },
+  { name:"Brasil", zone:"central", coord:[-15.7939,-47.8828] },
+  { name:"México", zone:"norte", coord:[19.4326,-99.1332] },
+  { name:"Guatemala", zone:"norte", coord:[14.6349,-90.5069] },
+  { name:"Belice", zone:"norte", coord:[17.1899,-88.4976] },
+  { name:"Honduras", zone:"norte", coord:[14.0723,-87.1921] },
+  { name:"El Salvador", zone:"norte", coord:[13.6929,-89.2182] },
+  { name:"Nicaragua", zone:"norte", coord:[12.1150,-86.2362] },
+  { name:"Costa Rica", zone:"norte", coord:[9.9281,-84.0907] },
+  { name:"Panamá", zone:"norte", coord:[8.9824,-79.5199] },
+  { name:"Colombia", zone:"norte", coord:[4.7110,-74.0721] },
+  { name:"Venezuela", zone:"norte", coord:[10.4806,-66.9036] },
+  { name:"Ecuador", zone:"norte", coord:[-0.1807,-78.4678] },
+  { name:"Perú", zone:"norte", coord:[-12.0464,-77.0428] },
+  { name:"Bolivia", zone:"norte", coord:[-16.4897,-68.1193] },
+  { name:"Guyana", zone:"norte", coord:[6.8013,-58.1551] },
+  { name:"Surinam", zone:"norte", coord:[5.8520,-55.2038] },
+  { name:"Cuba", zone:"norte", coord:[23.1136,-82.3666] },
+  { name:"República Dominicana", zone:"norte", coord:[18.4861,-69.9312] },
+  { name:"Haití", zone:"norte", coord:[18.5944,-72.3074] },
+  { name:"Jamaica", zone:"norte", coord:[18.0179,-76.8099] },
+  { name:"Trinidad y Tobago", zone:"norte", coord:[10.6596,-61.5019] },
+  { name:"Bahamas", zone:"norte", coord:[25.0343,-77.3963] },
+  { name:"Barbados", zone:"norte", coord:[13.1132,-59.5988] },
+  { name:"Puerto Rico", zone:"norte", coord:[18.4655,-66.1057] },
+  { name:"Guadalupe", zone:"norte", coord:[16.2650,-61.5510] },
+  { name:"Martinica", zone:"norte", coord:[14.6161,-61.0588] },
+  { name:"Aruba", zone:"norte", coord:[12.5211,-69.9683] },
+  { name:"Curazao", zone:"norte", coord:[12.1696,-68.9900] },
+  { name:"Bonaire", zone:"norte", coord:[12.1784,-68.2385] },
+  { name:"Islas Caimán", zone:"norte", coord:[19.3133,-81.2546] },
+  { name:"Islas Vírgenes", zone:"norte", coord:[18.3358,-64.8963] },
+  { name:"Santa Lucía", zone:"norte", coord:[13.9094,-60.9789] },
+  { name:"Granada", zone:"norte", coord:[12.0561,-61.7488] },
+  { name:"San Vicente y las Granadinas", zone:"norte", coord:[13.1587,-61.2248] },
+  { name:"Antigua y Barbuda", zone:"norte", coord:[17.1274,-61.8468] },
+  { name:"Dominica", zone:"norte", coord:[15.4150,-61.3710] },
+  { name:"San Cristóbal y Nieves", zone:"norte", coord:[17.3578,-62.7830] },
+  { name:"San Martín / Sint Maarten", zone:"norte", coord:[18.0425,-63.0548] },
+];
+const COUNTRY_BY_NAME = Object.fromEntries(COUNTRIES.map(c=>[c.name,c]));
+const ZONE_COUNTRIES = { sur:[], central:[], norte:[] };
+COUNTRIES.forEach(c=>ZONE_COUNTRIES[c.zone].push(c.name));
+
+const ACTIVITY_TYPES = [
+  { key:"rutina", label:"Rutina", icon:"🔁" },
+  { key:"visita", label:"Visita", icon:"🧳" },
+  { key:"curso", label:"Curso", icon:"📘" },
+  { key:"seminario", label:"Seminario", icon:"🎤" },
+  { key:"otro", label:"Otro", icon:"✨" },
+];
+const ACTIVITY_BY_KEY = Object.fromEntries(ACTIVITY_TYPES.map(t=>[t.key,t]));
+
+/* ======================================================================
+   HELPERS
+   ====================================================================== */
+function esc(s){
+  return String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+function nl2br(s){ return esc(s).replace(/\n/g,"<br>"); }
+function normalize(s){
+  return String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().trim();
+}
+function titleCase(s){
+  return String(s||"").trim().replace(/\s+/g," ").replace(/\w\S*/g, w=>w.charAt(0).toUpperCase()+w.slice(1).toLowerCase());
+}
+function safeUrl(u){
+  try{
+    const url = new URL(String(u).trim());
+    if(["http:","https:","mailto:"].includes(url.protocol)) return url.href;
+  }catch(e){}
+  return null;
+}
+function fmtDate(d){
+  if(!d) return "";
+  const dt = typeof d === "string" ? new Date(d+"T00:00:00") : d;
+  if(isNaN(dt)) return d;
+  return dt.toLocaleDateString("es-AR",{ day:"2-digit", month:"short", year:"numeric" });
+}
+function fmtDateTime(ts){
+  if(!ts) return "";
+  const dt = ts.toDate ? ts.toDate() : new Date(ts);
+  if(isNaN(dt)) return "";
+  return dt.toLocaleDateString("es-AR",{ day:"2-digit", month:"short", year:"numeric" }) + " " +
+         dt.toLocaleTimeString("es-AR",{ hour:"2-digit", minute:"2-digit" });
+}
+function uid(){ return Math.random().toString(36).slice(2,10); }
+
+function zoneOfScope(scope){
+  if(scope.type==="region") return scope.region;
+  const c = COUNTRY_BY_NAME[scope.country];
+  return c ? c.zone : null;
+}
+// ¿esta escala (post o respuesta) afecta al país dado? (directo o vía región)
+function scopeAffectsCountry(scope, countryName){
+  if(scope.type==="pais" || scope.type==="ciudad") return scope.country === countryName;
+  if(scope.type==="region") return ZONE_COUNTRIES[scope.region].includes(countryName);
+  return false;
+}
+function scopeAffectsZone(scope, zoneKey){
+  return zoneOfScope(scope) === zoneKey;
+}
+function scopeAffectsCity(scope, countryName, cityName){
+  return scope.type==="ciudad" && scope.country===countryName && normalize(scope.city)===normalize(cityName);
+}
+function scopeLabel(scope){
+  if(scope.type==="region") return `Región ${ZONES[scope.region].label}`;
+  if(scope.type==="pais") return scope.country;
+  if(scope.type==="ciudad") return `${scope.city}, ${scope.country}`;
+  return "";
+}
+function scopeIcon(scope){
+  return scope.type==="region" ? "🌎" : scope.type==="pais" ? "🏳️" : "📍";
+}
+
+/* Compresión de imágenes: reduce a JPEG, máx 1280px de lado mayor */
+function compressImage(file, maxDim=1280, quality=0.72){
+  return new Promise((resolve,reject)=>{
+    const reader = new FileReader();
+    reader.onerror = ()=>reject(new Error("No se pudo leer la imagen"));
+    reader.onload = ()=>{
+      const img = new Image();
+      img.onerror = ()=>reject(new Error("Imagen inválida"));
+      img.onload = ()=>{
+        let { width, height } = img;
+        if(width > height && width > maxDim){ height = Math.round(height*maxDim/width); width = maxDim; }
+        else if(height > maxDim){ width = Math.round(width*maxDim/height); height = maxDim; }
+        const canvas = document.createElement("canvas");
+        canvas.width = width; canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#fff"; ctx.fillRect(0,0,width,height);
+        ctx.drawImage(img,0,0,width,height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+/* ======================================================================
+   ESTADO GLOBAL
+   ====================================================================== */
+const state = {
+  view: "feed",           // feed | paises | memoria
+  posts: [],               // [{id, ...data, replies:[...]}]
+  repliesByPost: {},        // postId -> [reply,...] (ordenados por fecha)
+  loaded: false,
+  filters: {
+    text: "",
+    types: new Set(),       // activityType keys activos
+    zones: new Set(),       // zone keys activos
+    place: null,            // {kind:'country'|'city'|'zone', country?, city?, zone?}
+  },
+  paisesSubview: "lista",   // lista | mapa
+  countryDrill: null,       // nombre de país (drill a ciudades) en vista Países > Lista
+  memoriaOrder: "asc",      // asc | desc
+  leafletMap: null,
+};
+
+const AUTHOR_KEY = "registroAcciones.authorName";
+function getRememberedAuthor(){ try{ return localStorage.getItem(AUTHOR_KEY) || ""; }catch(e){ return ""; } }
+function rememberAuthor(name){ try{ localStorage.setItem(AUTHOR_KEY, name); }catch(e){} }
+
+/* ======================================================================
+   FIREBASE
+   ====================================================================== */
+let db = null;
+let fb = null; // { collection, doc, addDoc, onSnapshot, query, orderBy, collectionGroup, serverTimestamp }
+
+async function initFirebase(){
+  if(CONFIG_IS_PLACEHOLDER) return;
+  try{
+    const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js");
+    const firestoreMod = await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js");
+    const app = initializeApp(FIREBASE_CONFIG);
+    db = firestoreMod.getFirestore(app);
+    fb = firestoreMod;
+    subscribeData();
+  }catch(err){
+    console.error("Error inicializando Firebase:", err);
+    renderFatalError("No se pudo conectar con Firebase. Revisá la configuración (FIREBASE_CONFIG) y la consola del navegador para más detalle.");
+  }
+}
+
+function subscribeData(){
+  const postsQ = fb.query(fb.collection(db,"posts"), fb.orderBy("date","desc"));
+  fb.onSnapshot(postsQ, snap=>{
+    state.posts = snap.docs.map(d=>({ id:d.id, ...d.data({serverTimestamps:"estimate"}) }));
+    state.loaded = true;
+    render();
+  }, err=>{
+    console.error("Error leyendo posts:", err);
+    renderFatalError("Error leyendo los posteos desde Firestore: " + err.message);
+  });
+
+  const repliesQ = fb.collectionGroup(db,"replies");
+  fb.onSnapshot(repliesQ, snap=>{
+    const grouped = {};
+    snap.docs.forEach(d=>{
+      const postId = d.ref.parent.parent.id;
+      (grouped[postId] = grouped[postId] || []).push({ id:d.id, postId, ...d.data({serverTimestamps:"estimate"}) });
+    });
+    Object.values(grouped).forEach(list=>{
+      list.sort((a,b)=> tsMillis(a.createdAt) - tsMillis(b.createdAt));
+    });
+    state.repliesByPost = grouped;
+    render();
+  }, err=>{
+    console.error("Error leyendo respuestas:", err);
+  });
+}
+function tsMillis(ts){
+  if(!ts) return 0;
+  if(ts.toDate) return ts.toDate().getTime();
+  return new Date(ts).getTime() || 0;
+}
+
+async function createPost(data){
+  const ref = await fb.addDoc(fb.collection(db,"posts"), {
+    ...data,
+    createdAt: fb.serverTimestamp(),
+  });
+  return ref.id;
+}
+async function createReply(postId, data){
+  await fb.addDoc(fb.collection(db, "posts", postId, "replies"), {
+    ...data,
+    createdAt: fb.serverTimestamp(),
+  });
+}
+
+/* ======================================================================
+   RENDER: shell / tabs / filtros
+   ====================================================================== */
+const viewRoot = document.getElementById("viewRoot");
+let fatalError = null;
+function renderFatalError(msg){ fatalError = msg; render(); }
+
+function render(){
+  const active = document.activeElement;
+  const focusId = active && active.id;
+  const selStart = active && typeof active.selectionStart === "number" ? active.selectionStart : null;
+  const selEnd = active && typeof active.selectionEnd === "number" ? active.selectionEnd : null;
+  doRender();
+  if(focusId){
+    const el = document.getElementById(focusId);
+    if(el && el !== active){
+      el.focus();
+      if(selStart != null) try{ el.setSelectionRange(selStart, selEnd); }catch(e){}
+    }
+  }
+}
+
+function doRender(){
+  document.querySelectorAll("#tabs button").forEach(b=>{
+    b.classList.toggle("active", b.dataset.view === state.view);
+  });
+
+  let html = "";
+  if(CONFIG_IS_PLACEHOLDER){
+    html += `<div class="setup-banner">
+      ⚠️ <strong>Falta configurar Firebase.</strong> Esta app todavía no tiene datos compartidos
+      porque <code>FIREBASE_CONFIG</code> tiene valores de ejemplo. Abrí <code>index.html</code>,
+      completá la configuración con los datos de tu proyecto de Firebase y volvé a publicar el
+      archivo. Instrucciones paso a paso en <code>README.md</code>.
+    </div>`;
+  } else if(fatalError){
+    html += `<div class="setup-banner">⚠️ ${esc(fatalError)}</div>`;
+  }
+
+  if(!CONFIG_IS_PLACEHOLDER && !fatalError && !state.loaded){
+    html += `<div class="empty-state"><div class="big">⏳</div>Cargando registro compartido…</div>`;
+    viewRoot.innerHTML = html;
+    return;
+  }
+
+  if(state.view === "feed") html += renderFeedView();
+  else if(state.view === "paises") html += renderPaisesView();
+  else if(state.view === "memoria") html += renderMemoriaView();
+
+  viewRoot.innerHTML = html;
+  afterRenderView();
+
+  if(postModalOverlay && !postModalOverlay.hidden) renderComposer();
+}
+
+function afterRenderView(){
+  if(state.view === "paises" && state.paisesSubview === "mapa" && !CONFIG_IS_PLACEHOLDER){
+    initOrUpdateMap();
+  }
+}
+
+/* ---------- Filtro compartido (Feed / Memoria) ---------- */
+function renderFilterBar(prefix){
+  const typeChips = ACTIVITY_TYPES.map(t=>`
+    <span class="chip-toggle ${state.filters.types.has(t.key)?"active":""}" data-action="toggle-type" data-key="${t.key}">
+      ${t.icon} ${t.label}
+    </span>`).join("");
+  const zoneChips = Object.values(ZONES).map(z=>`
+    <span class="chip-toggle ${state.filters.zones.has(z.key)?"active":""}" data-action="toggle-zone" data-key="${z.key}">
+      <span class="dot" style="background:${z.color}"></span> ${z.label}
+    </span>`).join("");
+  const placeChip = state.filters.place ? `
+    <span class="chip-toggle active" data-action="clear-place">
+      📍 ${esc(placeFilterLabel(state.filters.place))} ✕
+    </span>` : "";
+  const anyFilter = state.filters.text || state.filters.types.size || state.filters.zones.size || state.filters.place;
+  return `
+    <div class="filterbar">
+      <input type="text" id="${prefix}Search" placeholder="Buscar por texto…" value="${esc(state.filters.text)}" data-action="set-text">
+      <div class="chipgroup">${typeChips}</div>
+      <div class="chipgroup">${zoneChips}</div>
+      ${placeChip}
+      ${anyFilter ? `<button class="filter-clear" data-action="clear-filters">Limpiar filtros</button>` : ""}
+    </div>`;
+}
+function placeFilterLabel(place){
+  if(place.kind==="zone") return `Región ${ZONES[place.zone].label}`;
+  if(place.kind==="country") return place.country;
+  if(place.kind==="city") return `${place.city}, ${place.country}`;
+  return "";
+}
+
+function matchesTextFilter(text, record){
+  if(!text) return true;
+  const n = normalize(text);
+  return normalize(record.content||"").includes(n) || normalize(record.authorName||"").includes(n);
+}
+function matchesPlaceOrZoneFilter(record){
+  const f = state.filters;
+  const scopes = record.scopes || [];
+  if(f.zones.size && !scopes.some(sc=>zoneOfScope(sc) && f.zones.has(zoneOfScope(sc)))) return false;
+  if(f.place){
+    const ok = scopes.some(sc=>{
+      if(f.place.kind==="zone") return scopeAffectsZone(sc, f.place.zone);
+      if(f.place.kind==="country") return scopeAffectsCountry(sc, f.place.country);
+      if(f.place.kind==="city") return scopeAffectsCity(sc, f.place.country, f.place.city);
+      return false;
+    });
+    if(!ok) return false;
+  }
+  return true;
+}
+
+// Devuelve los posts visibles según filtros, cada uno con sus replies ordenadas
+function getVisiblePosts(){
+  const f = state.filters;
+  return state.posts
+    .filter(p=> !f.types.size || f.types.has(p.activityType))
+    .filter(p=>{
+      const replies = state.repliesByPost[p.id] || [];
+      const postMatchesText = matchesTextFilter(f.text, p) || replies.some(r=>matchesTextFilter(f.text, r));
+      if(!postMatchesText) return false;
+      if(!f.zones.size && !f.place) return true;
+      const postMatchesPZ = matchesPlaceOrZoneFilter(p) || replies.some(r=>matchesPlaceOrZoneFilter(r));
+      return postMatchesPZ;
+    })
+    .map(p=>({ post:p, replies: state.repliesByPost[p.id] || [] }));
+}
+
+/* ======================================================================
+   RENDER: Feed
+   ====================================================================== */
+function renderFeedView(){
+  const items = getVisiblePosts();
+  return `
+    ${renderFilterBar("feed")}
+    ${items.length ? items.map(({post,replies})=>renderPostCard(post,replies)).join("") :
+      `<div class="empty-state"><div class="big">🗒️</div>Todavía no hay posteos${anyActiveFilter()?" que coincidan con el filtro":""}.<br>Usá "+ Nuevo posteo" para sumar el primero.</div>`}
+  `;
+}
+function anyActiveFilter(){
+  const f = state.filters;
+  return !!(f.text || f.types.size || f.zones.size || f.place);
+}
+
+const openReplyForms = new Set();
+const replyDrafts = {}; // postId -> draft
+
+function newScopeDraft(){ return { type:"ciudad", country:"", city:"", region:"sur" }; }
+function getReplyDraft(postId){
+  if(!replyDrafts[postId]){
+    replyDrafts[postId] = { author:getRememberedAuthor(), content:"", images:[], links:[], extraScope:false, scopes:[], scopeDraft:newScopeDraft(), scopeError:"" };
+  }
+  return replyDrafts[postId];
+}
+function resetReplyDraft(postId){
+  replyDrafts[postId] = { author:getRememberedAuthor(), content:"", images:[], links:[], extraScope:false, scopes:[], scopeDraft:newScopeDraft(), scopeError:"" };
+}
+
+function renderPostCard(post, replies){
+  const type = ACTIVITY_BY_KEY[post.activityType] || ACTIVITY_TYPES[4];
+  const scopesHtml = (post.scopes||[]).map(sc=>renderScopeChip(sc)).join("");
+  const linksHtml = (post.links||[]).filter(l=>safeUrl(l.url)).map(l=>
+    `<a href="${esc(safeUrl(l.url))}" target="_blank" rel="noopener noreferrer">🔗 ${esc(l.label||l.url)}</a>`).join("");
+  const imagesHtml = (post.images||[]).map(src=>
+    `<img src="${src}" data-action="open-lightbox" data-src="${src}">`).join("");
+  const replyOpen = openReplyForms.has(post.id);
+  return `
+    <article class="card post" data-post-id="${post.id}">
+      <div class="post-head">
+        <div class="post-meta">
+          <span class="type-badge">${type.icon} ${type.label}</span>
+          <span class="post-date">${fmtDate(post.date)}</span>
+        </div>
+        <span class="post-author">${esc(post.authorName||"Anónimo")}</span>
+      </div>
+      <div class="post-content">${nl2br(post.content)}</div>
+      ${scopesHtml ? `<div class="post-scopes">${scopesHtml}</div>` : ""}
+      ${linksHtml ? `<div class="post-links">${linksHtml}</div>` : ""}
+      ${imagesHtml ? `<div class="post-images">${imagesHtml}</div>` : ""}
+      <div class="post-actions">
+        <button data-action="toggle-reply" data-post-id="${post.id}">💬 Responder${replies.length?` (${replies.length})`:""}</button>
+      </div>
+      ${renderThread(post, replies)}
+      ${replyOpen ? renderReplyForm(post.id) : ""}
+    </article>`;
+}
+
+function renderScopeChip(sc, removable, idx, ownerId){
+  const zone = zoneOfScope(sc);
+  const color = zone ? ZONES[zone].color : "#999";
+  return `<span class="scope-chip ${removable?"removable":""}">
+      <span class="zdot" style="background:${color}"></span>${scopeIcon(sc)} ${esc(scopeLabel(sc))}
+      ${removable ? `<span class="rm" data-action="${removable}" data-idx="${idx}" data-owner-id="${esc(ownerId)}">✕</span>` : ""}
+    </span>`;
+}
+
+function renderThread(post, replies){
+  if(!replies.length) return "";
+  return `<div class="thread">${replies.map(r=>renderReply(r)).join("")}</div>`;
+}
+function renderReply(r){
+  const scopesHtml = (r.scopes||[]).map(sc=>renderScopeChip(sc)).join("");
+  const linksHtml = (r.links||[]).filter(l=>safeUrl(l.url)).map(l=>
+    `<a href="${esc(safeUrl(l.url))}" target="_blank" rel="noopener noreferrer">🔗 ${esc(l.label||l.url)}</a>`).join("");
+  const imagesHtml = (r.images||[]).map(src=>
+    `<img src="${src}" data-action="open-lightbox" data-src="${src}">`).join("");
+  return `
+    <div class="reply">
+      <div class="reply-head">
+        <span class="reply-author">${esc(r.authorName||"Anónimo")}</span>
+        <span class="reply-date">${fmtDateTime(r.createdAt)}</span>
+      </div>
+      <div class="reply-content">${nl2br(r.content)}</div>
+      ${scopesHtml ? `<div class="reply-scopes">${scopesHtml}</div>` : ""}
+      ${linksHtml ? `<div class="reply-links">${linksHtml}</div>` : ""}
+      ${imagesHtml ? `<div class="reply-images">${imagesHtml}</div>` : ""}
+    </div>`;
+}
+
+function renderReplyForm(postId){
+  const d = getReplyDraft(postId);
+  return `
+    <div class="reply" style="margin-top:12px;background:#fff;border:1.5px solid var(--border);">
+      <div class="field" style="margin-bottom:8px;">
+        <label>Tu nombre</label>
+        <input type="text" data-reply-field="author" data-post-id="${postId}" value="${esc(d.author)}" placeholder="¿Quién responde?">
+      </div>
+      <div class="field" style="margin-bottom:8px;">
+        <label>Respuesta</label>
+        <textarea data-reply-field="content" data-post-id="${postId}" placeholder="Sumá información...">${esc(d.content)}</textarea>
+      </div>
+      <div class="field" style="margin-bottom:8px;">
+        <label><input type="checkbox" data-action="toggle-reply-extra-scope" data-post-id="${postId}" ${d.extraScope?"checked":""}> Esta respuesta también afectó a otro lugar</label>
+      </div>
+      ${d.extraScope ? renderScopeBuilder("reply", postId, d) : ""}
+      <div class="field" style="margin-bottom:8px;">
+        <label>Adjuntar imágenes</label>
+        <input type="file" accept="image/*" multiple data-action="reply-images" data-post-id="${postId}">
+        ${d.images.length ? `<div class="img-preview-list">${d.images.map((src,i)=>`
+          <div class="img-preview"><img src="${src}"><button type="button" class="rm" data-action="reply-rm-image" data-post-id="${postId}" data-idx="${i}">✕</button></div>`).join("")}</div>` : ""}
+      </div>
+      <div class="field" style="margin-bottom:4px;">
+        <label>Links (Drive, video, PDF...)</label>
+        ${renderLinkRows("reply", postId, d.links)}
+        <button type="button" class="btn-text-add" data-action="reply-add-link" data-post-id="${postId}">+ Agregar link</button>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-secondary" data-action="cancel-reply" data-post-id="${postId}">Cancelar</button>
+        <button class="btn-primary" data-action="submit-reply" data-post-id="${postId}">Publicar respuesta</button>
+      </div>
+    </div>`;
+}
+
+function renderLinkRows(scope, ownerId, links){
+  if(!links.length) return "";
+  return `<div class="link-rows">${links.map((l,i)=>`
+    <div class="attach-row">
+      <input type="text" placeholder="Etiqueta" data-link-field="label" data-scope="${scope}" data-owner-id="${ownerId}" data-idx="${i}" value="${esc(l.label)}">
+      <input type="url" placeholder="https://..." data-link-field="url" data-scope="${scope}" data-owner-id="${ownerId}" data-idx="${i}" value="${esc(l.url)}">
+      <button type="button" class="btn-mini" data-action="rm-link" data-scope="${scope}" data-owner-id="${ownerId}" data-idx="${i}">✕</button>
+    </div>`).join("")}</div>`;
+}
+
+function renderScopeBuilder(scope, ownerId, draft){
+  const sd = draft.scopeDraft;
+  let extra = "";
+  if(sd.type === "region"){
+    extra = `<select data-scope-field="region" data-scope="${scope}" data-owner-id="${ownerId}">
+        ${Object.values(ZONES).map(z=>`<option value="${z.key}" ${sd.region===z.key?"selected":""}>${z.label}</option>`).join("")}
+      </select>`;
+  } else if(sd.type === "pais"){
+    extra = `<select data-scope-field="country" data-scope="${scope}" data-owner-id="${ownerId}">
+        <option value="">Elegir país…</option>${groupedCountryOptions(sd.country)}
+      </select>`;
+  } else {
+    extra = `<select data-scope-field="country" data-scope="${scope}" data-owner-id="${ownerId}">
+        <option value="">Elegir país…</option>${groupedCountryOptions(sd.country)}
+      </select>
+      <input type="text" placeholder="Ciudad" data-scope-field="city" data-scope="${scope}" data-owner-id="${ownerId}" value="${esc(sd.city)}">`;
+  }
+  return `
+    <div class="scope-builder" style="margin-bottom:8px;">
+      <div class="scope-builder-add ${sd.type==='ciudad'?'has-extra':''}">
+        <select data-scope-field="type" data-scope="${scope}" data-owner-id="${ownerId}">
+          <option value="ciudad" ${sd.type==="ciudad"?"selected":""}>Ciudad específica</option>
+          <option value="pais" ${sd.type==="pais"?"selected":""}>País completo</option>
+          <option value="region" ${sd.type==="region"?"selected":""}>Región completa</option>
+        </select>
+        ${extra}
+      </div>
+      <button type="button" class="btn-mini" data-action="add-scope" data-scope="${scope}" data-owner-id="${ownerId}">+ Agregar alcance</button>
+      ${draft.scopeError ? `<div class="form-error">${esc(draft.scopeError)}</div>` : ""}
+      <div class="scope-list">${draft.scopes.map((sc,i)=>renderScopeChip(sc, `rm-scope-${scope}`, i, ownerId)).join("")}</div>
+    </div>`;
+}
+function groupedCountryOptions(selected){
+  return Object.values(ZONES).map(z=>`
+    <optgroup label="${z.label}">
+      ${ZONE_COUNTRIES[z.key].map(name=>`<option value="${esc(name)}" ${selected===name?"selected":""}>${esc(name)}</option>`).join("")}
+    </optgroup>`).join("");
+}
+
+/* ======================================================================
+   AGREGACIÓN POR LUGAR (posts + alcance sumado desde respuestas)
+   ====================================================================== */
+function computePlaceCounts(){
+  const byCountry = {};
+  COUNTRIES.forEach(c=>{ byCountry[c.name] = { total:0, general:0, cities:{} }; });
+  function ingest(scopes){
+    (scopes||[]).forEach(sc=>{
+      if(sc.type==="pais" && byCountry[sc.country]){
+        byCountry[sc.country].total++; byCountry[sc.country].general++;
+      } else if(sc.type==="ciudad" && byCountry[sc.country]){
+        const city = titleCase(sc.city);
+        byCountry[sc.country].total++;
+        byCountry[sc.country].cities[city] = (byCountry[sc.country].cities[city]||0)+1;
+      } else if(sc.type==="region" && ZONE_COUNTRIES[sc.region]){
+        ZONE_COUNTRIES[sc.region].forEach(name=>{ byCountry[name].total++; byCountry[name].general++; });
+      }
+    });
+  }
+  state.posts.forEach(p=>{
+    ingest(p.scopes);
+    (state.repliesByPost[p.id]||[]).forEach(r=>ingest(r.scopes));
+  });
+  return byCountry;
+}
+
+/* ======================================================================
+   RENDER: Países
+   ====================================================================== */
+function renderZoneLegend(){
+  return `<div class="zone-legend">${Object.values(ZONES).map(z=>
+    `<span><span class="dot" style="background:${z.color}"></span>${z.label}</span>`).join("")}</div>`;
+}
+
+function renderPaisesView(){
+  const sub = state.paisesSubview;
+  const toggle = `
+    <div class="subview-toggle">
+      <button data-action="paises-subview" data-key="lista" class="${sub==="lista"?"active":""}">Lista</button>
+      <button data-action="paises-subview" data-key="mapa" class="${sub==="mapa"?"active":""}">Mapa</button>
+    </div>`;
+  if(CONFIG_IS_PLACEHOLDER) return toggle + `<div class="empty-state">Configurá Firebase para ver datos.</div>`;
+
+  const counts = computePlaceCounts();
+  if(sub === "mapa"){
+    return `${toggle}${renderZoneLegend()}<div id="map"></div>`;
+  }
+  if(state.countryDrill && byCountryExists(state.countryDrill)){
+    return toggle + renderZoneLegend() + renderCountryDrill(state.countryDrill, counts[state.countryDrill]);
+  }
+  const sorted = COUNTRIES.slice().sort((a,b)=> counts[b.name].total - counts[a.name].total || a.name.localeCompare(b.name));
+  const cards = sorted.map(c=>{
+    const cnt = counts[c.name].total;
+    return `<div class="country-card" style="border-left-color:${ZONES[c.zone].color}" data-action="drill-country" data-country="${esc(c.name)}">
+      <div class="name">${esc(c.name)}</div>
+      <div class="count">${cnt}<small> registro${cnt===1?"":"s"}</small></div>
+    </div>`;
+  }).join("");
+  return `${toggle}${renderZoneLegend()}<div class="country-grid">${cards}</div>`;
+}
+function byCountryExists(name){ return !!COUNTRY_BY_NAME[name]; }
+
+function renderCountryDrill(countryName, data){
+  const rows = [];
+  if(data.general){
+    rows.push({ label:"General / todo el país", count:data.general, city:null });
+  }
+  Object.entries(data.cities).sort((a,b)=>b[1]-a[1]).forEach(([city,count])=>{
+    rows.push({ label:city, count, city });
+  });
+  const rowsHtml = rows.length ? rows.map(r=>`
+      <div class="city-row" data-action="${r.city?"goto-city":"goto-country"}" data-country="${esc(countryName)}" ${r.city?`data-city="${esc(r.city)}"`:""}>
+        <span class="cname">${esc(r.label)}</span>
+        <span class="ccount">${r.count}</span>
+      </div>`).join("") :
+    `<div class="empty-state">Todavía no hay registros para ${esc(countryName)}.</div>`;
+  return `
+    <div class="breadcrumb"><a data-action="drill-clear">← Países</a> / ${esc(countryName)}</div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <h2 style="margin:0;font-size:16px;">${esc(countryName)}</h2>
+        <button class="btn-mini" data-action="goto-country" data-country="${esc(countryName)}">Ver memoria completa →</button>
+      </div>
+      <div class="city-list">${rowsHtml}</div>
+    </div>`;
+}
+
+function initOrUpdateMap(){
+  if(state.leafletMap){ state.leafletMap.remove(); state.leafletMap = null; }
+  const mapEl = document.getElementById("map");
+  if(!mapEl || !window.L) return;
+  const map = L.map("map", { scrollWheelZoom:false }).setView([-15, -65], 3);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom: 12,
+  }).addTo(map);
+  const counts = computePlaceCounts();
+  COUNTRIES.forEach(c=>{
+    const cnt = counts[c.name].total;
+    const color = ZONES[c.zone].color;
+    const radius = 14 + Math.sqrt(cnt) * 6;
+    const marker = L.circleMarker(c.coord, {
+      radius, color:"#fff", weight:2, fillColor:color, fillOpacity: cnt>0 ? 0.85 : 0.35,
+    }).addTo(map);
+    const topCities = Object.entries(counts[c.name].cities).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    const popupHtml = `<div class="map-popup"><b>${esc(c.name)} — ${cnt} registro${cnt===1?"":"s"}</b>
+      ${topCities.map(([city,n])=>`<div class="pop-city"><span>${esc(city)}</span><span>${n}</span></div>`).join("")}
+      <button class="btn-mini" data-action="goto-country" data-country="${esc(c.name)}">Ver memoria →</button></div>`;
+    marker.bindPopup(popupHtml);
+    marker.bindTooltip(String(cnt), { permanent:true, direction:"center", className:"leaflet-marker-num", opacity:1 });
+  });
+  state.leafletMap = map;
+}
+
+/* ======================================================================
+   RENDER: Memoria
+   ====================================================================== */
+function renderMemoriaView(){
+  let items = getVisiblePosts();
+  if(state.memoriaOrder === "asc") items = items.slice().reverse();
+  return `
+    ${renderFilterBar("memoria")}
+    <div class="sort-toggle">
+      <span class="chip-toggle ${state.memoriaOrder==="asc"?"active":""}" data-action="memoria-order" data-key="asc">Más antiguo primero</span>
+      <span class="chip-toggle ${state.memoriaOrder==="desc"?"active":""}" data-action="memoria-order" data-key="desc">Más reciente primero</span>
+    </div>
+    ${items.length ? items.map(({post,replies})=>renderPostCard(post,replies)).join("") :
+      `<div class="empty-state"><div class="big">📖</div>Todavía no hay memoria registrada${anyActiveFilter()?" para este filtro":""}.</div>`}
+  `;
+}
+
+/* ======================================================================
+   COMPOSER: Nuevo posteo (modal)
+   ====================================================================== */
+function newComposerDraft(){
+  return {
+    author: getRememberedAuthor(),
+    content: "",
+    date: new Date().toISOString().slice(0,10),
+    activityType: "rutina",
+    scopes: [],
+    scopeDraft: newScopeDraft(),
+    scopeError: "",
+    images: [],
+    links: [],
+    error: "",
+  };
+}
+let composerDraft = newComposerDraft();
+
+const postModalOverlay = document.getElementById("postModalOverlay");
+const postForm = document.getElementById("postForm");
+
+function openComposer(){
+  composerDraft = newComposerDraft();
+  postModalOverlay.hidden = false;
+  renderComposer();
+}
+function closeComposer(){
+  postModalOverlay.hidden = true;
+}
+function renderComposer(){
+  const d = composerDraft;
+  postForm.innerHTML = `
+    <div class="field">
+      <label>Tu nombre</label>
+      <input type="text" id="cAuthor" value="${esc(d.author)}" placeholder="¿Quién carga esto?">
+    </div>
+    <div class="field">
+      <label>¿Qué se hizo?</label>
+      <textarea id="cContent" placeholder="Contá qué se hizo...">${esc(d.content)}</textarea>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>Fecha</label>
+        <input type="date" id="cDate" value="${esc(d.date)}">
+      </div>
+      <div class="field">
+        <label>Tipo de actividad</label>
+        <div class="type-picker">
+          ${ACTIVITY_TYPES.map(t=>`
+            <label class="type-opt ${d.activityType===t.key?"checked":""}">
+              <input type="radio" name="cType" value="${t.key}" ${d.activityType===t.key?"checked":""}> ${t.icon} ${t.label}
+            </label>`).join("")}
+        </div>
+      </div>
+    </div>
+    <div class="field">
+      <label>Alcance (lugares que afecta) *</label>
+      ${renderScopeBuilder("post", "new", d)}
+    </div>
+    <div class="field">
+      <label>Imágenes</label>
+      <input type="file" id="cImages" accept="image/*" multiple>
+      <div class="hint">Se comprimen automáticamente antes de guardarse. Máximo 6 por posteo.</div>
+      ${d.images.length ? `<div class="img-preview-list">${d.images.map((src,i)=>`
+        <div class="img-preview"><img src="${src}"><button type="button" class="rm" data-action="post-rm-image" data-idx="${i}">✕</button></div>`).join("")}</div>` : ""}
+    </div>
+    <div class="field">
+      <label>Links (Drive, video, PDF, Word, Excel…)</label>
+      ${renderLinkRows("post", "new", d.links)}
+      <button type="button" class="btn-text-add" data-action="post-add-link">+ Agregar link</button>
+    </div>
+    ${d.error ? `<div class="form-error">${esc(d.error)}</div>` : ""}
+    <div class="modal-actions">
+      <button type="button" class="btn-secondary" id="cCancel">Cancelar</button>
+      <button type="submit" class="btn-primary">Publicar</button>
+    </div>
+  `;
+}
+
+function getDraftFor(scope, ownerId){ return scope==="post" ? composerDraft : getReplyDraft(ownerId); }
+
+function commitScope(scope, ownerId){
+  const draft = getDraftFor(scope, ownerId);
+  const sd = draft.scopeDraft;
+  let newScope = null;
+  if(sd.type === "region"){
+    newScope = { type:"region", region: sd.region };
+  } else if(sd.type === "pais"){
+    if(!sd.country){ draft.scopeError = "Elegí un país."; render(); return; }
+    newScope = { type:"pais", country: sd.country };
+  } else {
+    if(!sd.country || !sd.city.trim()){ draft.scopeError = "Elegí un país y escribí una ciudad."; render(); return; }
+    newScope = { type:"ciudad", country: sd.country, city: titleCase(sd.city) };
+  }
+  draft.scopes.push(newScope);
+  draft.scopeDraft = newScopeDraft();
+  draft.scopeError = "";
+  render();
+}
+
+/* ======================================================================
+   LIGHTBOX
+   ====================================================================== */
+const lightbox = document.getElementById("lightbox");
+const lightboxImg = document.getElementById("lightboxImg");
+function openLightbox(src){ lightboxImg.src = src; lightbox.classList.add("show"); }
+function closeLightbox(){ lightbox.classList.remove("show"); lightboxImg.src = ""; }
+lightbox.addEventListener("click", closeLightbox);
+
+/* ======================================================================
+   EVENTOS
+   ====================================================================== */
+document.querySelectorAll("#tabs button").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    state.view = btn.dataset.view;
+    state.countryDrill = null;
+    render();
+  });
+});
+if(CONFIG_IS_PLACEHOLDER){
+  const btn = document.getElementById("btnNewPost");
+  btn.disabled = true;
+  btn.title = "Configurá Firebase primero (ver banner arriba / README.md)";
+  btn.style.opacity = "0.5";
+  btn.style.cursor = "not-allowed";
+} else {
+  document.getElementById("btnNewPost").addEventListener("click", openComposer);
+}
+document.getElementById("postModalClose").addEventListener("click", closeComposer);
+postModalOverlay.addEventListener("click", e=>{ if(e.target === postModalOverlay) closeComposer(); });
+document.addEventListener("keydown", e=>{
+  if(e.key === "Escape"){ closeComposer(); closeLightbox(); }
+});
+
+async function handleImageFiles(fileList, targetArray, max=6){
+  const files = Array.from(fileList).slice(0, Math.max(0, max - targetArray.length));
+  for(const file of files){
+    try{
+      const dataUrl = await compressImage(file);
+      targetArray.push(dataUrl);
+    }catch(err){ console.error("Error comprimiendo imagen:", err); }
+  }
+  render();
+}
+
+document.addEventListener("click", e=>{
+  const t = e.target.closest("[data-action]");
+  if(!t) return;
+  const action = t.dataset.action;
+  const postId = t.dataset.postId;
+
+  if(action === "toggle-type"){
+    const key = t.dataset.key;
+    state.filters.types.has(key) ? state.filters.types.delete(key) : state.filters.types.add(key);
+    render();
+  } else if(action === "toggle-zone"){
+    const key = t.dataset.key;
+    state.filters.zones.has(key) ? state.filters.zones.delete(key) : state.filters.zones.add(key);
+    render();
+  } else if(action === "clear-place"){
+    state.filters.place = null; render();
+  } else if(action === "clear-filters"){
+    state.filters = { text:"", types:new Set(), zones:new Set(), place:null }; render();
+  } else if(action === "open-lightbox"){
+    openLightbox(t.dataset.src);
+  } else if(action === "toggle-reply"){
+    openReplyForms.has(postId) ? openReplyForms.delete(postId) : openReplyForms.add(postId);
+    render();
+  } else if(action === "cancel-reply"){
+    openReplyForms.delete(postId); render();
+  } else if(action === "toggle-reply-extra-scope"){
+    // manejado en 'change'
+  } else if(action === "reply-add-link"){
+    getReplyDraft(postId).links.push({ label:"", url:"" }); render();
+  } else if(action === "post-add-link"){
+    composerDraft.links.push({ label:"", url:"" }); render();
+  } else if(action === "rm-link"){
+    const scope = t.dataset.scope, ownerId = t.dataset.ownerId, idx = Number(t.dataset.idx);
+    getDraftFor(scope, ownerId).links.splice(idx,1); render();
+  } else if(action === "reply-rm-image"){
+    getReplyDraft(postId).images.splice(Number(t.dataset.idx),1); render();
+  } else if(action === "post-rm-image"){
+    composerDraft.images.splice(Number(t.dataset.idx),1); render();
+  } else if(action === "add-scope"){
+    commitScope(t.dataset.scope, t.dataset.ownerId);
+  } else if(action && action.startsWith("rm-scope-")){
+    const scope = action.replace("rm-scope-",""); const ownerId = t.dataset.ownerId; const idx = Number(t.dataset.idx);
+    getDraftFor(scope, ownerId).scopes.splice(idx,1); render();
+  } else if(action === "submit-reply"){
+    submitReply(postId);
+  } else if(action === "paises-subview"){
+    state.paisesSubview = t.dataset.key; state.countryDrill = null; render();
+  } else if(action === "drill-country"){
+    state.countryDrill = t.dataset.country; render();
+  } else if(action === "drill-clear"){
+    state.countryDrill = null; render();
+  } else if(action === "goto-country"){
+    state.filters.place = { kind:"country", country:t.dataset.country };
+    state.view = "memoria"; state.countryDrill = null; render();
+  } else if(action === "goto-city"){
+    state.filters.place = { kind:"city", country:t.dataset.country, city:t.dataset.city };
+    state.view = "memoria"; state.countryDrill = null; render();
+  } else if(action === "memoria-order"){
+    state.memoriaOrder = t.dataset.key; render();
+  }
+});
+
+document.addEventListener("input", e=>{
+  const t = e.target;
+  if(t.id === "feedSearch" || t.id === "memoriaSearch"){
+    state.filters.text = t.value; render();
+  } else if(t.id === "cAuthor"){ composerDraft.author = t.value; }
+  else if(t.id === "cContent"){ composerDraft.content = t.value; }
+  else if(t.id === "cDate"){ composerDraft.date = t.value; }
+  else if(t.dataset.replyField === "author"){ getReplyDraft(t.dataset.postId).author = t.value; }
+  else if(t.dataset.replyField === "content"){ getReplyDraft(t.dataset.postId).content = t.value; }
+  else if(t.dataset.scopeField === "city"){ getDraftFor(t.dataset.scope, t.dataset.ownerId).scopeDraft.city = t.value; }
+  else if(t.dataset.linkField){
+    const draft = getDraftFor(t.dataset.scope, t.dataset.ownerId);
+    draft.links[Number(t.dataset.idx)][t.dataset.linkField] = t.value;
+  }
+});
+
+document.addEventListener("change", e=>{
+  const t = e.target;
+  if(t.name === "cType"){ composerDraft.activityType = t.value; render(); }
+  else if(t.dataset.scopeField === "type"){ getDraftFor(t.dataset.scope, t.dataset.ownerId).scopeDraft.type = t.value; render(); }
+  else if(t.dataset.scopeField === "country"){ getDraftFor(t.dataset.scope, t.dataset.ownerId).scopeDraft.country = t.value; }
+  else if(t.dataset.scopeField === "region"){ getDraftFor(t.dataset.scope, t.dataset.ownerId).scopeDraft.region = t.value; }
+  else if(t.id === "cImages"){ handleImageFiles(t.files, composerDraft.images); }
+  else if(t.dataset.action === "reply-images"){ handleImageFiles(t.files, getReplyDraft(t.dataset.postId).images); }
+  else if(t.dataset.action === "toggle-reply-extra-scope"){
+    getReplyDraft(t.dataset.postId).extraScope = t.checked; render();
+  }
+});
+
+document.addEventListener("click", e=>{ if(e.target.id === "cCancel") closeComposer(); });
+
+postForm.addEventListener("submit", async e=>{
+  e.preventDefault();
+  const d = composerDraft;
+  d.error = "";
+  const content = d.content.trim();
+  if(!content){ d.error = "Escribí qué se hizo."; render(); return; }
+  if(!d.scopes.length){ d.error = "Agregá al menos un alcance (ciudad, país o región)."; render(); return; }
+  if(!d.date){ d.error = "Elegí una fecha."; render(); return; }
+  const author = d.author.trim() || "Anónimo";
+  const links = d.links.filter(l=>safeUrl(l.url));
+  try{
+    await createPost({
+      content, date:d.date, activityType:d.activityType, scopes:d.scopes,
+      images:d.images, links, authorName:author,
+    });
+    rememberAuthor(author);
+    closeComposer();
+  }catch(err){
+    console.error(err);
+    d.error = "No se pudo publicar: " + err.message;
+    render();
+  }
+});
+
+async function submitReply(postId){
+  const d = getReplyDraft(postId);
+  const content = d.content.trim();
+  if(!content){ d.scopeError = "Escribí una respuesta antes de publicar."; render(); return; }
+  const author = d.author.trim() || "Anónimo";
+  const links = d.links.filter(l=>safeUrl(l.url));
+  try{
+    await createReply(postId, {
+      authorName:author, content, scopes:d.extraScope ? d.scopes : [],
+      images:d.images, links,
+    });
+    rememberAuthor(author);
+    openReplyForms.delete(postId);
+    resetReplyDraft(postId);
+    render();
+  }catch(err){
+    console.error(err);
+    d.scopeError = "No se pudo publicar la respuesta: " + err.message;
+    render();
+  }
+}
+
+/* ======================================================================
+   BOOT
+   ====================================================================== */
+render();
+initFirebase();
+</script>
+</body>
+</html>
+
