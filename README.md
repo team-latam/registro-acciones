@@ -113,6 +113,18 @@ La zona de un alcance se calcula siempre a partir del país (o directamente
 del campo `region` cuando el alcance es "región completa") — nunca se
 carga a mano.
 
+### Ciudades sugeridas (`CITY_PRESETS`)
+
+Al elegir "Ciudad específica" con un país que tiene ciudades conocidas, el
+selector ofrece una lista en vez de texto libre (con opción "Otra ciudad
+(escribir)…" para sumar una que no esté). Esa lista sale del directorio de
+instituciones de **Directorio Chabad LatAm** (city + coordenadas reales),
+para evitar variantes tipo "Buenos Aires" / "CABA" / "Bs As" que romperían
+los conteos agregados por lugar. Países sin presencia institucional
+conocida (o países nuevos para el equipo) siguen aceptando cualquier ciudad
+como texto libre. Si suman presencia en un país nuevo, se puede ampliar
+`CITY_PRESETS` en `index.html` a mano.
+
 ### Agregación "país afectado por una respuesta"
 
 Cuando una respuesta suma un alcance adicional (por ejemplo, un curso en
