@@ -38,27 +38,42 @@ a mano).
    **Reglas**, pegá el contenido de [`firestore.rules`](./firestore.rules)
    de este repo y publicá. (Si usás la CLI de Firebase: `firebase deploy
    --only firestore:rules`.)
+7. Activá el login con Google: **Compilación → Authentication → Comenzar**
+   (o "Sign-in method" si ya la activaste antes) → método **Google** →
+   Habilitar → elegí un email de soporte → Guardar.
 
-Sin este paso, la app muestra un aviso de "Falta configurar Firebase" y no
-guarda nada — es un aviso esperado, no un error de la app.
+Sin el paso 5, la app muestra un aviso de "Falta configurar Firebase" y no
+guarda nada. Sin el paso 7, cualquiera que inicie sesión se queda trabado
+en "Cargando…" porque Firebase rechaza el login.
 
-### Sobre la seguridad (importante)
+### Acceso privado (login + aprobación manual)
 
-Esta herramienta **no tiene login** (así se pidió: nombre libre por ahora,
-pensado para engancharse a un sistema de usuarios más adelante). Eso
-significa que cualquiera que tenga la URL de la página puede leer y escribir
-en la base compartida — el `firebaseConfig` no es secreto, pero tampoco hay
-una barrera de autenticación. Las reglas en `firestore.rules` validan la
-forma de los datos (tamaños de texto, cantidad de adjuntos, campos
-requeridos) para evitar abuso accidental, pero no reemplazan un login. Si
-más adelante quieren cerrar más el acceso, las opciones más simples son:
+La app **no es pública**: para entrar hay que iniciar sesión con una cuenta
+de Google, y la primera vez que alguien lo hace queda "pendiente de
+aprobación" hasta que el administrador lo apruebe desde la propia app
+(pestaña **Solicitudes**, visible solo para el admin).
 
-- **Firebase App Check**: bloquea llamadas que no vengan de la página real
-  (bots/scripts), sin pedirle nada a los usuarios.
-- **Firebase Auth**: agregar login (por ejemplo con cuenta de Google) y
-  cambiar las reglas a `allow read, write: if request.auth != null;`.
-- No hacer público el link/repositorio (obscuridad — no es seguridad real,
-  pero reduce exposición mientras no haya algo mejor).
+- El único email con permisos de administrador está fijo en dos lugares que
+  tienen que coincidir: la constante `ADMIN_EMAIL` en `index.html` y la
+  función `isAdmin()` en `firestore.rules`. Hoy es `benny@team-latam.com`.
+  Para cambiarlo (o agregar un segundo admin) hay que editar ambos archivos
+  y volver a publicar las reglas.
+- No hay roles intermedios: todo el que está aprobado ve y carga todo por
+  igual — el admin solo se diferencia en que además ve la pestaña
+  Solicitudes y puede aprobar/rechazar/revocar accesos.
+- El nombre que se muestra en cada posteo/respuesta ya no es un campo de
+  texto libre: se toma automáticamente del nombre de la cuenta de Google
+  con la que se inició sesión.
+- Revocar acceso (botón "Revocar" en Solicitudes) borra a esa persona de la
+  lista de aprobados — dejará de poder leer y cargar, pero **no borra** lo
+  que ya haya publicado (la memoria histórica queda intacta).
+- El `firebaseConfig` (`apiKey`, `projectId`, etc.) sigue sin ser secreto —
+  eso es así por diseño en cualquier app web de Firebase — pero ya no
+  alcanza por sí solo para entrar: hace falta estar en la lista de
+  aprobados. Igualmente, si el repositorio es público, cualquiera puede ver
+  ese dato (y el código en general); si prefieren ocultarlo también,
+  pueden poner el repo en privado desde Settings → General → Danger Zone
+  → Change visibility en GitHub.
 
 ## 2. Publicar el archivo
 
@@ -83,7 +98,8 @@ posts/{postId}
   content: string
   date: "YYYY-MM-DD"        (fecha de la actividad, no de carga)
   activityType: "rutina" | "visita" | "curso" | "seminario" | "otro"
-  authorName: string
+  authorName: string         (nombre de Google de quien publicó)
+  authorEmail: string        (email de Google de quien publicó)
   scopes: [{ type:"ciudad", country, city } | { type:"pais", country } | { type:"region", region:"sur"|"central"|"norte" }, ...]
   images: ["data:image/jpeg;base64,...", ...]   (comprimidas en el navegador)
   links: [{ label, url }, ...]
@@ -92,10 +108,17 @@ posts/{postId}
 posts/{postId}/replies/{replyId}
   content: string
   authorName: string
+  authorEmail: string
   scopes: [...]              (alcance adicional opcional, mismo formato)
   images: [...]
   links: [...]
   createdAt: Timestamp (servidor)
+
+allowlist/{email}            (el documento EXISTE = esa persona tiene acceso; el contenido no importa)
+  email, approvedAt, approvedBy
+
+accessRequests/{email}       (una solicitud de acceso por persona; el id es su propio email)
+  email, name, photoURL, status: "pending"|"approved"|"rejected", requestedAt
 ```
 
 Los posteos son **append-only** (no se editan ni se borran desde la UI ni
@@ -148,8 +171,6 @@ Países → Lista, al hacer click en un país.
   (`Alcance: ciudad|país|región | valor(es)` en la primera línea de la
   descripción del evento) todavía no está implementada — hay que sumar un
   backend liviano en Google Apps Script cuando se retome.
-- **Login real**: hoy el nombre de quien publica es un campo de texto libre
-  (se recuerda el último usado en `localStorage` de cada navegador, sólo
-  como comodidad). El modelo de datos ya deja `authorName` como string
-  suelto para poder reemplazarlo más adelante por un ID de usuario real sin
-  rehacer la estructura.
+- **Roles**: hoy todo aprobado tiene los mismos permisos (leer + publicar).
+  Si más adelante hace falta un rol intermedio (por ejemplo, alguien que
+  solo lee), hay que sumarlo a mano en `firestore.rules` y en la UI.
