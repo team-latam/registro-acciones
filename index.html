@@ -8,6 +8,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" crossorigin="">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" crossorigin="">
 <style>
   :root{
     --petroleo:#0d3b3e;
@@ -362,12 +364,25 @@
   .city-row:hover{ border-color:var(--celeste); }
   .city-row .cname{ font-weight:700; font-size:13.5px; }
   .city-row .ccount{ font-weight:800; color:var(--petroleo); }
-  .leaflet-tooltip.leaflet-marker-num{
-    background:transparent!important; border:none!important; box-shadow:none!important; padding:0!important;
-    color:#fff; font-weight:800; font-size:12px; text-align:center;
-    text-shadow:0 1px 3px rgba(0,0,0,0.65);
+  /* Círculos del mapa: SIEMPRE el mismo tamaño (el número adentro es lo
+     que cambia, no el círculo) — antes el radio crecía con la cantidad de
+     registros y con muchos países cercanos terminaba en un amasijo de
+     círculos superpuestos de tamaños random. En vez de eso, los países
+     cercanos entre sí se agrupan en un solo círculo "cluster" al alejar
+     el zoom (con la cantidad de países agrupados en el número), y se
+     van separando en sus círculos individuales a medida que se acerca
+     el zoom — ver leaflet.markercluster en initOrUpdateMap().
+  */
+  .map-country-marker-wrap, .map-cluster-wrap{ background:transparent!important; border:none!important; }
+  .map-country-marker{
+    width:100%; height:100%; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    color:#fff; font-weight:800; font-size:12px; border:2px solid #fff; box-shadow:0 2px 8px rgba(0,0,0,0.28);
   }
-  .leaflet-tooltip.leaflet-marker-num::before{ display:none; }
+  .map-cluster{
+    width:100%; height:100%; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    background:var(--petroleo); color:#fff; font-weight:800; font-size:13px; border:3px solid #fff;
+    box-shadow:0 3px 10px rgba(0,0,0,0.32);
+  }
   .map-popup b{ display:block; margin-bottom:4px; }
   .map-popup .pop-city{ font-size:12px; display:flex; justify-content:space-between; gap:10px; }
   .map-popup button{ margin-top:8px; }
@@ -430,6 +445,7 @@
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" crossorigin=""></script>
 <script type="module">
 /* ======================================================================
    CONFIGURACIÓN DE FIREBASE
@@ -2131,6 +2147,8 @@ function renderCountryDrill(countryName, data){
     </div>`;
 }
 
+const MAP_MARKER_SIZE = 40; // diámetro fijo, en px, de TODOS los círculos de país (no varía con la cantidad)
+
 function initOrUpdateMap(){
   if(state.leafletMap){ state.leafletMap.remove(); state.leafletMap = null; }
   const mapEl = document.getElementById("map");
@@ -2140,22 +2158,43 @@ function initOrUpdateMap(){
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     maxZoom: 12,
   }).addTo(map);
+
+  // Agrupa países cercanos en un solo círculo "cluster" cuando el zoom
+  // está alejado (evita el amasijo de círculos superpuestos con muchos
+  // países vecinos, como toda Centroamérica junta); al acercar el zoom
+  // se van separando en sus círculos individuales.
+  const clusterGroup = window.L.markerClusterGroup({
+    maxClusterRadius: 50,
+    showCoverageOnHover: false,
+    spiderfyOnMaxZoom: true,
+    iconCreateFunction: cluster => L.divIcon({
+      html: `<div class="map-cluster">${cluster.getChildCount()}</div>`,
+      className: "map-cluster-wrap",
+      iconSize: [MAP_MARKER_SIZE, MAP_MARKER_SIZE],
+    }),
+  });
+
   const counts = computePlaceCounts();
   const visibleCountries = visiblePaisesCountries();
   visibleCountries.forEach(c=>{
     const cnt = counts[c.name].total;
     const color = ZONES[c.zone].color;
-    const radius = Math.min(12 + Math.sqrt(cnt) * 4, 40);
-    const marker = L.circleMarker(c.coord, {
-      radius, color:"#fff", weight:2, fillColor:color, fillOpacity: cnt>0 ? 0.85 : 0.35,
-    }).addTo(map);
+    const marker = L.marker(c.coord, {
+      icon: L.divIcon({
+        html: `<div class="map-country-marker" style="background:${color};opacity:${cnt>0 ? 0.9 : 0.45}">${cnt}</div>`,
+        className: "map-country-marker-wrap",
+        iconSize: [MAP_MARKER_SIZE, MAP_MARKER_SIZE],
+      }),
+    });
     const topCities = Object.entries(counts[c.name].cities).sort((a,b)=>b[1]-a[1]).slice(0,5);
     const popupHtml = `<div class="map-popup"><b>${esc(c.name)} — ${cnt} registro${cnt===1?"":"s"}</b>
       ${topCities.map(([city,n])=>`<div class="pop-city"><span>${esc(city)}</span><span>${n}</span></div>`).join("")}
       <button class="btn-mini" data-action="goto-country" data-country="${esc(c.name)}">Ver memoria →</button></div>`;
     marker.bindPopup(popupHtml);
-    marker.bindTooltip(String(cnt), { permanent:true, direction:"center", className:"leaflet-marker-num", opacity:1 });
+    clusterGroup.addLayer(marker);
   });
+  map.addLayer(clusterGroup);
+
   if(state.paisesZoneFilter.size && visibleCountries.length){
     map.fitBounds(visibleCountries.map(c=>c.coord), { padding:[30,30] });
   }
