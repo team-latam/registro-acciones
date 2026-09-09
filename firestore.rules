@@ -71,6 +71,12 @@ service cloud.firestore {
         isNonEmptyString(d.endDate, 10) &&
         isOptionalString(d.get('organizer', null), 140) &&
         isOptionalString(d.get('location', null), 200) &&
+        // Hora de inicio/fin (HH:MM, opcional): un evento sin hora es
+        // "todo el día" (ver allDay en index.html) — el mínimo/máximo de
+        // que la de fin sea posterior a la de inicio lo valida el cliente,
+        // acá solo se chequea el formato para no guardar cualquier cosa.
+        (d.get('startTime', null) == null || (d.startTime is string && d.startTime.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$'))) &&
+        (d.get('endTime', null) == null || (d.endTime is string && d.endTime.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$'))) &&
         d.activityType in ['rutina', 'visita', 'curso', 'seminario', 'congreso', 'virtual', 'otro'] &&
         isNonEmptyString(d.authorName, 120) &&
         isOptionalString(d.get('authorEmail', null), 200) &&
