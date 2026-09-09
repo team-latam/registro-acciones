@@ -229,7 +229,8 @@
   }
 
   /* ---------- Post card ---------- */
-  .post{ }
+  .post{ transition:background-color .8s ease; }
+  .post.mention-highlight{ background:#fff3cd; }
   .post-head{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:10px; flex-wrap:wrap; }
   .post-meta{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
   .post-date{ font-size:12px; color:var(--text-muted); font-weight:600; }
@@ -399,13 +400,43 @@
   .place-picker input{ width:100%; border:1.5px solid var(--border); border-radius:999px; padding:9px 14px; font-size:13px; background:#fff; box-sizing:border-box; }
   .mention-anchor{ position:relative; flex:1; }
 
-  /* Avatar con indicador de @menciones sin ver (ver getUnseenMentionCount) */
-  .avatar-btn{ position:relative; }
+  /* Punto rojo de @menciones sin ver (ver getUnseenMentionCount), hoy
+     colgado de la campanita en vez del avatar. */
   .mention-dot{
     position:absolute; top:-2px; right:-2px; min-width:16px; height:16px; padding:0 3px; border-radius:999px;
     background:var(--danger); color:#fff; font-size:9.5px; font-weight:800; display:flex; align-items:center;
     justify-content:center; border:2px solid var(--petroleo-dark);
   }
+
+  /* Campanita de @menciones, entre "+ Nuevo posteo" y el avatar: mismo
+     look circular que el avatar-btn, con un desplegable corto (últimas 4
+     nomás) de las menciones más recientes en vez de un historial largo. */
+  .mentions-bell-wrap{ position:relative; }
+  .bell-btn{
+    position:relative; width:36px; height:36px; padding:0; border-radius:50%; cursor:pointer;
+    background:rgba(255,255,255,0.14); border:2px solid rgba(255,255,255,0.55); font-size:16px;
+    display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:border-color .15s;
+  }
+  .bell-btn:hover, .bell-btn.open{ border-color:#fff; }
+  .mentions-menu{
+    position:absolute; top:calc(100% + 12px); right:0; width:280px;
+    background:var(--card); color:var(--text); border-radius:var(--radius-md);
+    box-shadow:0 14px 36px rgba(8,42,44,0.28); padding:10px; z-index:60; text-align:left;
+  }
+  .mentions-menu::before{
+    content:""; position:absolute; top:-6px; right:13px; width:12px; height:12px;
+    background:var(--card); transform:rotate(45deg); border-radius:2px;
+  }
+  .mentions-menu-title{ font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.4px; color:var(--text-muted); padding:4px 8px 8px; }
+  .mention-item{
+    display:flex; flex-direction:column; gap:2px; width:100%; text-align:left; background:none; border:none;
+    padding:8px; border-radius:var(--radius-sm); cursor:pointer;
+  }
+  .mention-item:hover{ background:#f2f6f6; }
+  .mention-item .mi-author{ font-size:12.5px; font-weight:700; color:var(--petroleo-dark); }
+  .mention-item .mi-content{ font-size:12px; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .mention-item .mi-date{ font-size:10.5px; color:var(--text-muted); }
+  .mentions-empty{ padding:12px 8px; font-size:12.5px; color:var(--text-muted); text-align:center; }
   .modal-actions{ display:flex; justify-content:flex-end; gap:10px; margin-top:6px; }
   .btn-secondary{ background:#eef4f4; color:var(--text); border:none; padding:11px 18px; border-radius:999px; font-weight:700; font-size:13.5px; cursor:pointer; }
   .btn-primary{ background:var(--petroleo); color:#fff; border:none; padding:11px 20px; border-radius:999px; font-weight:700; font-size:13.5px; cursor:pointer; }
@@ -499,6 +530,7 @@
       <div class="header-actions">
         <button class="btn-sync" id="btnSyncCalendar" hidden>🔄 Actualizar desde Calendar</button>
         <button class="btn-new" id="btnNewPost" hidden>+ Nuevo posteo</button>
+        <div id="mentionsBell" class="mentions-bell-wrap"></div>
         <div id="userBadge" class="user-badge"></div>
       </div>
     </div>
@@ -774,6 +806,28 @@ function getUnseenMentionCount(){
     });
   });
   return count;
+}
+// Las últimas N menciones (posteos o respuestas) a la persona logueada,
+// para el desplegable de la campanita — no hace falta separar vistas de
+// no vistas acá, es solo un "últimas menciones" corto.
+function getRecentMentions(limit=4){
+  const email = state.auth.user && state.auth.user.email;
+  if(!email) return [];
+  const items = [];
+  state.posts.forEach(p=>{
+    if(mentionsInclude(p.mentions, email)){
+      items.push({ postId:p.id, replyId:null, authorName:p.authorName, content:p.content, createdAt:p.createdAt });
+    }
+  });
+  Object.entries(state.repliesByPost).forEach(([postId, list])=>{
+    list.forEach(r=>{
+      if(mentionsInclude(r.mentions, email)){
+        items.push({ postId, replyId:r.id, authorName:r.authorName, content:r.content, createdAt:r.createdAt });
+      }
+    });
+  });
+  items.sort((a,b)=> tsToMillis(b.createdAt) - tsToMillis(a.createdAt));
+  return items.slice(0, limit);
 }
 
 function zoneOfScope(scope){
@@ -1423,6 +1477,7 @@ async function onAuthChanged(user){
   openThreads.clear();
   openNestedReplyForms.clear();
   userMenuOpen = false;
+  mentionsMenuOpen = false;
   postModalOverlay.hidden = true;
   state.filters = { text:"", types:new Set(), zones:new Set(), place:null };
 
@@ -1813,6 +1868,7 @@ function render(){
 
 const tabsNav = document.getElementById("tabs");
 const userBadgeEl = document.getElementById("userBadge");
+const mentionsBellEl = document.getElementById("mentionsBell");
 const btnNewPostEl = document.getElementById("btnNewPost");
 const btnSyncCalendarEl = document.getElementById("btnSyncCalendar");
 const tabSolicitudesEl = document.getElementById("tabSolicitudes");
@@ -1843,10 +1899,8 @@ function renderUserBadge(){
     ? `<img class="um-avatar" src="${esc(u.photoURL)}" alt="">`
     : `<div class="um-avatar-fallback">${initial}</div>`;
   const role = USER_ROLE_LABELS[state.auth.status] || USER_ROLE_LABELS.approved;
-  const mentionCount = getUnseenMentionCount();
   userBadgeEl.innerHTML = `
     <button class="avatar-btn${userMenuOpen ? " open" : ""}" data-action="toggle-user-menu" title="${esc(u.displayName)}" aria-label="Cuenta">${avatar}</button>
-    ${mentionCount ? `<span class="mention-dot" title="${mentionCount} mención${mentionCount===1?"":"es"} nueva${mentionCount===1?"":"s"}">${mentionCount > 9 ? "9+" : mentionCount}</span>` : ""}
     ${userMenuOpen ? `
       <div class="user-menu">
         ${menuAvatar}
@@ -1857,6 +1911,34 @@ function renderUserBadge(){
       </div>` : ""}`;
 }
 
+// Campanita de @menciones, entre "+ Nuevo posteo" y el avatar: muestra
+// las últimas 4 nomás (no un historial completo) y cada una lleva
+// directo al posteo (o a la respuesta, dentro de su hilo) — ver la
+// acción "goto-mention".
+let mentionsMenuOpen = false;
+function renderMentionsBell(){
+  if(!state.auth.user){ mentionsBellEl.innerHTML = ""; mentionsMenuOpen = false; return; }
+  const count = getUnseenMentionCount();
+  mentionsBellEl.innerHTML = `
+    <button class="bell-btn${mentionsMenuOpen ? " open" : ""}" data-action="toggle-mentions-menu" aria-label="Menciones">🔔</button>
+    ${count ? `<span class="mention-dot" title="${count} mención${count===1?"":"es"} nueva${count===1?"":"s"}">${count > 9 ? "9+" : count}</span>` : ""}
+    ${mentionsMenuOpen ? `
+      <div class="mentions-menu">
+        <div class="mentions-menu-title">Menciones</div>
+        ${renderMentionsMenuItems()}
+      </div>` : ""}`;
+}
+function renderMentionsMenuItems(){
+  const recent = getRecentMentions(4);
+  if(!recent.length) return `<div class="mentions-empty">Todavía no te mencionaron.</div>`;
+  return recent.map(m=>`
+    <button type="button" class="mention-item" data-action="goto-mention" data-post-id="${esc(m.postId)}" ${m.replyId ? `data-reply-id="${esc(m.replyId)}"` : ""}>
+      <span class="mi-author">${esc(m.authorName||"Alguien")}</span>
+      <span class="mi-content">${esc((m.content||"").slice(0,80))}</span>
+      <span class="mi-date">${fmtDateTime(m.createdAt)}</span>
+    </button>`).join("");
+}
+
 function doRender(){
   document.querySelectorAll("#tabs button[data-view]").forEach(b=>{
     b.classList.toggle("active", b.dataset.view === state.view);
@@ -1864,7 +1946,7 @@ function doRender(){
 
   let html = "";
   if(CONFIG_IS_PLACEHOLDER){
-    tabsNav.classList.add("tabs-hidden"); btnNewPostEl.hidden = true; btnSyncCalendarEl.hidden = true; userBadgeEl.innerHTML = "";
+    tabsNav.classList.add("tabs-hidden"); btnNewPostEl.hidden = true; btnSyncCalendarEl.hidden = true; userBadgeEl.innerHTML = ""; mentionsBellEl.innerHTML = "";
     html += `<div class="setup-banner">
       ⚠️ <strong>Falta configurar Firebase.</strong> Esta app todavía no tiene datos compartidos
       porque <code>FIREBASE_CONFIG</code> tiene valores de ejemplo. Abrí <code>index.html</code>,
@@ -1880,6 +1962,7 @@ function doRender(){
   }
 
   renderUserBadge();
+  renderMentionsBell();
 
   if(!isAuthorized()){
     tabsNav.classList.add("tabs-hidden"); btnNewPostEl.hidden = true; btnSyncCalendarEl.hidden = true;
@@ -2260,6 +2343,25 @@ function renderPostCard(post, replies){
     </article>`;
 }
 function getPostById(id){ return state.posts.find(p=>p.id===id); }
+
+// Ir directo al posteo (o, si la mención estaba en una respuesta, al
+// posteo con su hilo ya desplegado) desde el desplegable de la
+// campanita — limpia filtros que pudieran estar tapándolo y resalta la
+// tarjeta un momento para que sea fácil de encontrar en el Feed.
+function gotoMention(postId, replyId){
+  state.view = "feed";
+  state.countryDrill = null;
+  state.filters = { text:"", types:new Set(), zones:new Set(), place:null };
+  if(replyId) openThreads.add(postId);
+  render();
+  requestAnimationFrame(()=>{
+    const el = document.querySelector(`.post[data-post-id="${CSS.escape(postId)}"]`);
+    if(!el) return;
+    el.scrollIntoView({ behavior:"smooth", block:"center" });
+    el.classList.add("mention-highlight");
+    setTimeout(()=>el.classList.remove("mention-highlight"), 2000);
+  });
+}
 
 function renderScopeChip(sc, removable, idx, ownerId){
   const zone = zoneOfScope(sc);
@@ -2998,6 +3100,9 @@ document.addEventListener("click", e=>{
   if(userMenuOpen && !e.target.closest("#userBadge")){
     userMenuOpen = false; render();
   }
+  if(mentionsMenuOpen && !e.target.closest("#mentionsBell")){
+    mentionsMenuOpen = false; render();
+  }
 
   const t = e.target.closest("[data-action]");
   if(!t) return;
@@ -3115,8 +3220,14 @@ document.addEventListener("click", e=>{
     signIn();
   } else if(action === "toggle-user-menu"){
     userMenuOpen = !userMenuOpen;
-    if(userMenuOpen) markMentionsSeen();
     render();
+  } else if(action === "toggle-mentions-menu"){
+    mentionsMenuOpen = !mentionsMenuOpen;
+    if(mentionsMenuOpen) markMentionsSeen();
+    render();
+  } else if(action === "goto-mention"){
+    mentionsMenuOpen = false;
+    gotoMention(t.dataset.postId, t.dataset.replyId || null);
   } else if(action === "sign-out"){
     userMenuOpen = false;
     doSignOut();
