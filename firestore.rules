@@ -77,6 +77,13 @@ service cloud.firestore {
         d.scopes is list && d.scopes.size() >= 0 && d.scopes.size() <= 15 &&
         (d.get('links', null) == null || (d.links is list && d.links.size() <= 10)) &&
         (d.get('images', null) == null || (d.images is list && d.images.size() <= 6)) &&
+        // Adjuntos chicos (PDF/audio) embebidos como antes las imágenes,
+        // sin pasar por Firebase Storage: como no se comprimen, se limita
+        // la cantidad acá (el tamaño en bytes lo limita el cliente antes
+        // de subir, ver MAX_ATTACHMENT_FILE_BYTES en index.html).
+        (d.get('files', null) == null || (d.files is list && d.files.size() <= 2)) &&
+        // @menciones: emails de a quién se etiquetó con @ en el texto.
+        (d.get('mentions', null) == null || (d.mentions is list && d.mentions.size() <= 10)) &&
         (d.get('cancelled', null) == null || d.cancelled is bool) &&
         isOptionalString(d.get('calendarEventId', null), 200) &&
         isOptionalString(d.get('lastEditedBy', null), 120) &&
@@ -94,7 +101,10 @@ service cloud.firestore {
 
     function isValidPostUpdate(d) {
       return isValidPostBase(d) &&
-        d.scopes.size() >= 1 &&
+        // El alcance mínimo de 1 solo se exige para Evento — Rutina es una
+        // entrada rápida del día a día donde el lugar es opcional (se
+        // agrega con el buscador de lugar del composer, si se quiere).
+        (d.activityType == 'rutina' || d.scopes.size() >= 1) &&
         d.authorEmail == resource.data.authorEmail &&
         d.authorName == resource.data.authorName &&
         d.createdAt == resource.data.createdAt;
@@ -106,6 +116,8 @@ service cloud.firestore {
         (d.get('scopes', null) == null || (d.scopes is list && d.scopes.size() <= 15)) &&
         (d.get('links', null) == null || (d.links is list && d.links.size() <= 10)) &&
         (d.get('images', null) == null || (d.images is list && d.images.size() <= 6)) &&
+        (d.get('files', null) == null || (d.files is list && d.files.size() <= 2)) &&
+        (d.get('mentions', null) == null || (d.mentions is list && d.mentions.size() <= 10)) &&
         (d.get('system', null) == null || d.system is bool) &&
         isOptionalString(d.get('icon', null), 8) &&
         isOptionalString(d.get('replyToId', null), 200) &&
@@ -163,14 +175,16 @@ service cloud.firestore {
       }
     }
 
-    // Lista de emails aprobados. El documento existe = tiene acceso; el
-    // contenido del documento no importa. Solo el admin la modifica; cada
-    // usuario puede leer únicamente su propio documento (para saber si ya
-    // fue aprobado).
+    // Lista de aprobados: el documento existe = tiene acceso. Solo el admin
+    // la modifica. Cualquier aprobado puede LEER LA LISTA COMPLETA (no solo
+    // su propio documento) para poder etiquetar a otros con @ — el
+    // documento de cada uno solo tiene email/name/nickname/approvedAt, no
+    // datos sensibles.
     match /allowlist/{email} {
       allow get: if isAdmin();
       allow get: if request.auth != null && request.auth.token.email == email;
       allow list: if isAdmin();
+      allow list: if isApproved();
       allow write: if isAdmin();
     }
 
