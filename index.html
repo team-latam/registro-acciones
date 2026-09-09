@@ -96,6 +96,7 @@
   .status-pill.approved{ background:#dcfce7; color:#166534; }
   .status-pill.rejected{ background:#fee2e2; color:#991b1b; }
   nav.tabs{ max-width:1200px; margin:14px auto 0 auto; display:flex; gap:4px; }
+  nav.tabs[hidden]{ display:none; }
   nav.tabs button{
     background:transparent; border:none; color:#bfe9ef; padding:10px 16px;
     font-weight:700; font-size:13.5px; cursor:pointer; border-bottom:3px solid transparent;
@@ -111,6 +112,8 @@
     border-radius:var(--radius-md); padding:16px 18px; margin-bottom:16px; font-size:13.5px; line-height:1.5;
   }
   .setup-banner code{ background:#f3e6c4; padding:1px 6px; border-radius:5px; }
+  .calendar-notice{ transition:opacity 0.4s ease; opacity:1; }
+  .calendar-notice.fading{ opacity:0; }
 
   /* ---------- Cards ---------- */
   .card{
@@ -982,12 +985,26 @@ async function applyCalendarEventToPosts(ev){
   });
 }
 
+// Muestra el aviso de abajo del header y lo hace desaparecer solo, con un
+// fundido, a los pocos segundos (el botón "Cerrar" lo saca al toque).
+let calendarNoticeTimer = null;
+function showCalendarNotice(notice){
+  clearTimeout(calendarNoticeTimer);
+  state.calendarNotice = notice;
+  render();
+  calendarNoticeTimer = setTimeout(()=>{
+    state.calendarNotice = { ...notice, fading:true };
+    render();
+    calendarNoticeTimer = setTimeout(()=>{ state.calendarNotice = null; render(); }, 400);
+  }, 4000);
+}
+
 async function syncFromCalendar(opts){
   const silent = !!(opts && opts.silent);
   if(silent && !hasCalendarToken()) return;
   const token = await ensureCalendarToken();
   if(!token){
-    if(!silent){ state.calendarNotice = { ok:false, message:"No se pudo autorizar el acceso a Calendar para sincronizar." }; render(); }
+    if(!silent){ showCalendarNotice({ ok:false, message:"No se pudo autorizar el acceso a Calendar para sincronizar." }); }
     return;
   }
   if(!silent){ state.calendarSyncing = true; render(); }
@@ -999,10 +1016,10 @@ async function syncFromCalendar(opts){
       await applyCalendarEventToPosts(ev);
     }
     if(result.nextSyncToken) await setSyncMeta({ syncToken: result.nextSyncToken });
-    if(!silent){ state.calendarNotice = { ok:true, message:`Sincronizado con Calendar (${(result.events||[]).length} cambio(s) revisado(s)).` }; }
+    if(!silent){ showCalendarNotice({ ok:true, message:`Sincronizado con Calendar (${(result.events||[]).length} cambio(s) revisado(s)).` }); }
   }catch(err){
     console.error("Error sincronizando desde Calendar:", err);
-    if(!silent){ state.calendarNotice = { ok:false, message:"No se pudo sincronizar con Calendar: " + err.message }; }
+    if(!silent){ showCalendarNotice({ ok:false, message:"No se pudo sincronizar con Calendar: " + err.message }); }
   }finally{
     if(!silent){ state.calendarSyncing = false; render(); }
   }
@@ -1258,10 +1275,9 @@ async function cancelPost(post){
     } else {
       calResult = { ok:true }; // nunca había sincronizado (era Rutina), no hay nada que borrar
     }
-    state.calendarNotice = calResult.ok
+    showCalendarNotice(calResult.ok
       ? { ok:true, message:`Se canceló "${post.title}".` }
-      : { ok:false, message:`Se canceló "${post.title}" en la app, pero no se pudo sacar del Calendar (${calResult.reason}).` };
-    render();
+      : { ok:false, message:`Se canceló "${post.title}" en la app, pero no se pudo sacar del Calendar (${calResult.reason}).` });
   }catch(err){
     console.error(err);
     alert("No se pudo cancelar: " + err.message);
@@ -1338,7 +1354,7 @@ function doRender(){
 
   if(state.calendarNotice){
     const n = state.calendarNotice;
-    html += `<div class="setup-banner" style="${n.ok ? "background:#dcfce7;border-color:#86efac;color:#166534;" : ""}">
+    html += `<div class="setup-banner calendar-notice${n.fading ? " fading" : ""}" style="${n.ok ? "background:#dcfce7;border-color:#86efac;color:#166534;" : ""}">
       ${n.ok ? "📅" : "⚠️"} ${esc(n.message)}
       <button class="filter-clear" data-action="dismiss-calendar-notice" style="margin-left:10px;">Cerrar</button>
     </div>`;
@@ -2090,6 +2106,7 @@ document.addEventListener("click", e=>{
     state.filters.place = { kind:"city", country:t.dataset.country, city:t.dataset.city };
     state.view = "memoria"; state.countryDrill = null; render();
   } else if(action === "dismiss-calendar-notice"){
+    clearTimeout(calendarNoticeTimer);
     state.calendarNotice = null; render();
   } else if(action === "memoria-order"){
     state.memoriaOrder = t.dataset.key; render();
@@ -2102,18 +2119,16 @@ document.addEventListener("click", e=>{
   } else if(action === "approve-request"){
     const email = t.dataset.email;
     approveRequest(email).then(()=>shareCalendarWith(email)).then(res=>{
-      state.calendarNotice = res.ok
+      showCalendarNotice(res.ok
         ? { ok:true, message:`${email} ya puede usar la app y cargar eventos al Calendar compartido de LatAm.` }
-        : { ok:false, message:`${email} ya puede usar la app, pero no se pudo compartirle el Calendar automáticamente (${res.reason}). Puede que ADMIN_EMAIL no sea el dueño del calendario "LatAm" — o compartíselo a mano desde Google Calendar.` };
-      render();
+        : { ok:false, message:`${email} ya puede usar la app, pero no se pudo compartirle el Calendar automáticamente (${res.reason}). Puede que ADMIN_EMAIL no sea el dueño del calendario "LatAm" — o compartíselo a mano desde Google Calendar.` });
     }).catch(err=>{ console.error(err); alert("No se pudo aprobar: " + err.message); });
   } else if(action === "share-calendar"){
     const email = t.dataset.email;
     shareCalendarWith(email).then(res=>{
-      state.calendarNotice = res.ok
+      showCalendarNotice(res.ok
         ? { ok:true, message:`Se compartió el Calendar con ${email}.` }
-        : { ok:false, message:`No se pudo compartir el Calendar con ${email} (${res.reason}).` };
-      render();
+        : { ok:false, message:`No se pudo compartir el Calendar con ${email} (${res.reason}).` });
     }).catch(err=>{ console.error(err); alert("No se pudo compartir: " + err.message); });
   } else if(action === "reject-request"){
     rejectRequest(t.dataset.email).catch(err=>{ console.error(err); alert("No se pudo rechazar: " + err.message); });
@@ -2121,10 +2136,9 @@ document.addEventListener("click", e=>{
     const email = t.dataset.email;
     if(confirm(`¿Revocar el acceso de ${email}? Va a dejar de poder ver y cargar posteos, y se le va a sacar el acceso al Calendar compartido de LatAm.`)){
       revokeAccess(email).then(()=>unshareCalendarWith(email)).then(res=>{
-        state.calendarNotice = res.ok
+        showCalendarNotice(res.ok
           ? { ok:true, message:`Se revocó el acceso de ${email} (app y Calendar).` }
-          : { ok:false, message:`Se revocó el acceso a la app, pero no se pudo sacarlo del Calendar automáticamente (${res.reason}). Sacalo a mano si hace falta.` };
-        render();
+          : { ok:false, message:`Se revocó el acceso a la app, pero no se pudo sacarlo del Calendar automáticamente (${res.reason}). Sacalo a mano si hace falta.` });
       }).catch(err=>{ console.error(err); alert("No se pudo revocar: " + err.message); });
     }
   }
@@ -2201,14 +2215,12 @@ postForm.addEventListener("submit", async e=>{
       const original = d.editingPost;
       closeComposer();
       updatePostAndSync(postId, original, postData).then(res=>{
-        state.calendarNotice = res.ok
+        showCalendarNotice(res.ok
           ? { ok:true, message:"Se guardaron los cambios (y el Calendar, si correspondía)." }
-          : { ok:false, message:"Se guardaron los cambios, pero no se pudo actualizar el Calendar (" + res.reason + ")." };
-        render();
+          : { ok:false, message:"Se guardaron los cambios, pero no se pudo actualizar el Calendar (" + res.reason + ")." });
       }).catch(err=>{
         console.error("Error guardando la edición:", err);
-        state.calendarNotice = { ok:false, message:"No se pudo guardar la edición: " + err.message };
-        render();
+        showCalendarNotice({ ok:false, message:"No se pudo guardar la edición: " + err.message });
       });
     } else {
       const postId = await createPost(postData);
@@ -2216,10 +2228,9 @@ postForm.addEventListener("submit", async e=>{
       if(CALENDAR_SYNC_TYPES.has(postData.activityType)){
         syncToCalendar(postData).then(res=>{
           if(res.ok && res.eventId) updatePostDoc(postId, { calendarEventId: res.eventId }).catch(()=>{});
-          state.calendarNotice = res.ok
+          showCalendarNotice(res.ok
             ? { ok:true, message:"Se sumó también al Calendar compartido de LatAm." }
-            : { ok:false, message:"El posteo se guardó, pero no se pudo sumar al Calendar (" + res.reason + ")." };
-          render();
+            : { ok:false, message:"El posteo se guardó, pero no se pudo sumar al Calendar (" + res.reason + ")." });
         });
       }
     }
