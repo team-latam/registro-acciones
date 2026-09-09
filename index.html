@@ -1617,7 +1617,7 @@ const replyDrafts = {}; // postId -> draft
 const openNestedReplyForms = new Set(); // replyIds con su mini-formulario de "responder a esto" abierto
 const nestedReplyDrafts = {}; // replyId -> { content }
 function getNestedReplyDraft(replyId){
-  if(!nestedReplyDrafts[replyId]) nestedReplyDrafts[replyId] = { content:"" };
+  if(!nestedReplyDrafts[replyId]) nestedReplyDrafts[replyId] = { content:"", images:[], links:[] };
   return nestedReplyDrafts[replyId];
 }
 
@@ -1733,6 +1733,17 @@ function renderNestedReplyForm(postId, replyId){
   return `
     <div class="reply-nested-form">
       <textarea data-nested-reply-field="content" data-reply-id="${replyId}" placeholder="Responder...">${esc(d.content)}</textarea>
+      <div class="field" style="margin-top:8px;margin-bottom:6px;">
+        <label>Adjuntar imágenes</label>
+        <input type="file" accept="image/*" multiple data-action="nested-reply-images" data-reply-id="${replyId}">
+        ${d.images.length ? `<div class="img-preview-list">${d.images.map((src,i)=>`
+          <div class="img-preview"><img src="${src}"><button type="button" class="rm" data-action="nested-reply-rm-image" data-reply-id="${replyId}" data-idx="${i}">✕</button></div>`).join("")}</div>` : ""}
+      </div>
+      <div class="field" style="margin-bottom:4px;">
+        <label>Links (Drive, video, PDF...)</label>
+        ${renderLinkRows("nested-reply", replyId, d.links)}
+        <button type="button" class="btn-text-add" data-action="nested-reply-add-link" data-reply-id="${replyId}">+ Agregar link</button>
+      </div>
       <div class="modal-actions" style="margin-top:6px;">
         <button class="btn-secondary" data-action="cancel-nested-reply" data-reply-id="${replyId}">Cancelar</button>
         <button class="btn-primary" data-action="submit-nested-reply" data-post-id="${postId}" data-reply-id="${replyId}">Responder</button>
@@ -2098,7 +2109,11 @@ function renderComposer(){
   `;
 }
 
-function getDraftFor(scope, ownerId){ return scope==="post" ? composerDraft : getReplyDraft(ownerId); }
+function getDraftFor(scope, ownerId){
+  if(scope==="post") return composerDraft;
+  if(scope==="nested-reply") return getNestedReplyDraft(ownerId);
+  return getReplyDraft(ownerId);
+}
 
 function commitScope(scope, ownerId){
   const draft = getDraftFor(scope, ownerId);
@@ -2209,6 +2224,8 @@ document.addEventListener("click", e=>{
     // manejado en 'change'
   } else if(action === "reply-add-link"){
     getReplyDraft(postId).links.push({ label:"", url:"" }); render();
+  } else if(action === "nested-reply-add-link"){
+    getNestedReplyDraft(t.dataset.replyId).links.push({ label:"", url:"" }); render();
   } else if(action === "post-add-link"){
     composerDraft.links.push({ label:"", url:"" }); render();
   } else if(action === "rm-link"){
@@ -2216,6 +2233,8 @@ document.addEventListener("click", e=>{
     getDraftFor(scope, ownerId).links.splice(idx,1); render();
   } else if(action === "reply-rm-image"){
     getReplyDraft(postId).images.splice(Number(t.dataset.idx),1); render();
+  } else if(action === "nested-reply-rm-image"){
+    getNestedReplyDraft(t.dataset.replyId).images.splice(Number(t.dataset.idx),1); render();
   } else if(action === "post-rm-image"){
     composerDraft.images.splice(Number(t.dataset.idx),1); render();
   } else if(action === "use-city-preset"){
@@ -2325,6 +2344,7 @@ document.addEventListener("change", e=>{
   }
   else if(t.id === "cImages"){ handleImageFiles(t.files, composerDraft.images); }
   else if(t.dataset.action === "reply-images"){ handleImageFiles(t.files, getReplyDraft(t.dataset.postId).images); }
+  else if(t.dataset.action === "nested-reply-images"){ handleImageFiles(t.files, getNestedReplyDraft(t.dataset.replyId).images); }
   else if(t.dataset.action === "toggle-reply-extra-scope"){
     getReplyDraft(t.dataset.postId).extraScope = t.checked; render();
   }
@@ -2413,10 +2433,11 @@ async function submitNestedReply(postId, replyId){
   if(!content) return;
   const parent = (state.repliesByPost[postId]||[]).find(r=>r.id===replyId);
   const replyToId = parent?.replyToId || replyId;
+  const links = d.links.filter(l=>safeUrl(l.url));
   try{
     await createReply(postId, {
       authorName: state.auth.user.displayName, authorEmail: state.auth.user.email,
-      content, scopes:[], images:[], links:[], replyToId,
+      content, scopes:[], images:d.images, links, replyToId,
     });
     openNestedReplyForms.delete(replyId);
     delete nestedReplyDrafts[replyId];
