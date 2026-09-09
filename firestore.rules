@@ -51,18 +51,40 @@ service cloud.firestore {
         isOptionalString(d.location, 200) &&
         d.activityType in ['rutina', 'visita', 'curso', 'seminario', 'congreso', 'otro'] &&
         isNonEmptyString(d.authorName, 120) &&
+        isOptionalString(d.authorEmail, 200) &&
         d.scopes is list && d.scopes.size() >= 0 && d.scopes.size() <= 15 &&
         (d.links == null || (d.links is list && d.links.size() <= 10)) &&
         (d.images == null || (d.images is list && d.images.size() <= 6)) &&
-        d.createdAt == request.time;
+        (d.cancelled == null || d.cancelled is bool) &&
+        isOptionalString(d.calendarEventId, 200) &&
+        isOptionalString(d.lastEditedBy, 120) &&
+        (d.lastEditedAt == null || d.lastEditedAt is timestamp);
+    }
+
+    // Quién puede editar un posteo YA EXISTENTE (se evalúa sobre
+    // resource.data, el estado ANTES del cambio, nunca sobre lo que
+    // alguien intenta escribir): el propio autor siempre puede, y
+    // cualquier persona aprobada puede editar los que no son Rutina
+    // (son eventos compartidos del equipo, no una entrada personal).
+    function canEditPost(existing) {
+      return canUse() &&
+        (existing.authorEmail == request.auth.token.email || existing.activityType != 'rutina');
     }
 
     match /posts/{postId} {
       allow read: if canUse();
-      allow create: if canUse() && isValidPostBase(request.resource.data) && request.resource.data.scopes.size() >= 1;
-      // Append-only: no se edita ni se borra un posteo publicado (evita
-      // reescribir la memoria histórica; para correcciones, responder en el hilo).
-      allow update, delete: if false;
+      allow create: if canUse() && isValidPostBase(request.resource.data) &&
+        request.resource.data.scopes.size() >= 1 &&
+        request.resource.data.createdAt == request.time;
+      // Edición: no se puede tocar de quién es ni cuándo se creó
+      // originalmente — solo el contenido puede cambiar.
+      allow update: if canEditPost(resource.data) &&
+        isValidPostBase(request.resource.data) &&
+        request.resource.data.scopes.size() >= 1 &&
+        request.resource.data.authorEmail == resource.data.authorEmail &&
+        request.resource.data.authorName == resource.data.authorName &&
+        request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if false;
 
       match /replies/{replyId} {
         allow read: if canUse();
@@ -72,6 +94,8 @@ service cloud.firestore {
           (request.resource.data.scopes == null || (request.resource.data.scopes is list && request.resource.data.scopes.size() <= 15)) &&
           (request.resource.data.links == null || (request.resource.data.links is list && request.resource.data.links.size() <= 10)) &&
           (request.resource.data.images == null || (request.resource.data.images is list && request.resource.data.images.size() <= 6)) &&
+          (request.resource.data.system == null || request.resource.data.system is bool) &&
+          isOptionalString(request.resource.data.icon, 8) &&
           request.resource.data.createdAt == request.time;
         allow update, delete: if false;
       }
