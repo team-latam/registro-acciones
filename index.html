@@ -1659,12 +1659,17 @@ document.addEventListener("click", e=>{
   } else if(action === "request-again"){
     requestAccessAgain();
   } else if(action === "approve-request"){
-    approveRequest(t.dataset.email).catch(err=>{ console.error(err); alert("No se pudo aprobar: " + err.message); });
+    const email = t.dataset.email;
+    approveRequest(email).then(()=>{
+      state.calendarNotice = { ok:true, message:`${email} ya puede usar la app. Si también necesita cargar eventos al calendario "LatAm", acordate de compartírselo aparte desde Google Calendar (permiso "Hacer cambios en eventos").` };
+      render();
+    }).catch(err=>{ console.error(err); alert("No se pudo aprobar: " + err.message); });
   } else if(action === "reject-request"){
     rejectRequest(t.dataset.email).catch(err=>{ console.error(err); alert("No se pudo rechazar: " + err.message); });
   } else if(action === "revoke-access"){
-    if(confirm(`¿Revocar el acceso de ${t.dataset.email}? Va a dejar de poder ver y cargar posteos.`)){
-      revokeAccess(t.dataset.email).catch(err=>{ console.error(err); alert("No se pudo revocar: " + err.message); });
+    const email = t.dataset.email;
+    if(confirm(`¿Revocar el acceso de ${email}? Va a dejar de poder ver y cargar posteos.\n\nOjo: esto NO le saca el acceso al calendario "LatAm" compartido de Google Calendar — si también tenía permiso de edición ahí, hay que sacarlo a mano desde la configuración del calendario (Compartir con determinadas personas → eliminarlo).`)){
+      revokeAccess(email).catch(err=>{ console.error(err); alert("No se pudo revocar: " + err.message); });
     }
   }
 });
