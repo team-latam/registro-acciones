@@ -84,17 +84,38 @@
 
   /* ---------- Solicitudes (admin) ---------- */
   .request-row{
-    display:flex; align-items:center; gap:12px; background:#fff; border:1px solid var(--border);
-    border-radius:var(--radius-md); padding:12px 16px; margin-bottom:10px;
+    display:flex; align-items:center; gap:14px; background:#fff; border:1px solid var(--border);
+    border-radius:var(--radius-md); padding:14px 18px; margin-bottom:10px; box-shadow:var(--shadow);
   }
-  .request-row img{ width:36px; height:36px; border-radius:50%; }
+  .request-row img{ width:40px; height:40px; border-radius:50%; flex:none; }
+  .avatar-fallback{
+    width:40px; height:40px; border-radius:50%; flex:none; background:var(--petroleo); color:#fff;
+    display:flex; align-items:center; justify-content:center; font-weight:700; font-size:15px;
+  }
   .request-row .rinfo{ flex:1; min-width:0; }
-  .request-row .rname{ font-weight:700; font-size:13.5px; }
-  .request-row .remail{ font-size:12px; color:var(--text-muted); }
-  .request-row .ractions{ display:flex; gap:8px; }
-  .status-pill{ font-size:11px; font-weight:700; padding:3px 10px; border-radius:999px; }
+  .request-row .rname{ font-weight:700; font-size:14px; }
+  .request-row .remail{ font-size:12px; color:var(--text-muted); margin-top:1px; }
+  .request-row .ractions{ display:flex; align-items:center; gap:4px; flex:none; }
+  .status-pill{
+    display:inline-flex; align-items:center; gap:5px; font-size:11.5px; font-weight:700;
+    padding:5px 12px; border-radius:999px; margin-right:6px;
+  }
+  .status-pill::before{ content:""; width:6px; height:6px; border-radius:50%; background:currentColor; }
   .status-pill.approved{ background:#dcfce7; color:#166534; }
   .status-pill.rejected{ background:#fee2e2; color:#991b1b; }
+  .btn-ghost{ background:none; border:none; padding:9px 14px; border-radius:999px; font-weight:700; font-size:12.5px; cursor:pointer; color:var(--petroleo); white-space:nowrap; }
+  .btn-ghost:hover{ background:#eef4f4; }
+  .btn-ghost.danger{ color:var(--danger); }
+  .btn-ghost.danger:hover{ background:#fdeceb; }
+  .ractions-sep{ width:1px; height:20px; background:var(--border); margin:0 6px; }
+
+  /* ---------- Auditoría (admin) ---------- */
+  .audit-list{ background:#fff; border:1px solid var(--border); border-radius:var(--radius-md); overflow:hidden; box-shadow:var(--shadow); }
+  .audit-row{ display:flex; align-items:center; gap:12px; padding:11px 18px; }
+  .audit-row + .audit-row{ border-top:1px solid var(--border); }
+  .audit-icon{ font-size:16px; flex:none; }
+  .audit-text{ flex:1; font-size:13px; }
+  .audit-date{ font-size:11.5px; color:var(--text-muted); flex:none; white-space:nowrap; }
   nav.tabs{ max-width:1200px; margin:14px auto 0 auto; display:flex; gap:4px; }
   nav.tabs.tabs-hidden{ visibility:hidden; pointer-events:none; }
   nav.tabs button{
@@ -346,6 +367,7 @@
       <button data-view="paises">Países</button>
       <button data-view="memoria">Memoria</button>
       <button data-view="solicitudes" id="tabSolicitudes" hidden>Solicitudes<span id="pendingBadge"></span></button>
+      <button data-view="auditoria" id="tabAuditoria" hidden>Auditoría</button>
     </nav>
   </header>
   <main id="viewRoot"></main>
@@ -624,6 +646,7 @@ const state = {
 // status: loading | signedOut | pending | rejected | approved | admin
 state.auth = { status: "loading", user: null };
 state.accessRequests = []; // solo se llena para el admin
+state.auditLog = []; // solo se llena para el admin
 
 function isAuthorized(){ return state.auth.status === "approved" || state.auth.status === "admin"; }
 function isAdmin(){ return state.auth.status === "admin"; }
@@ -670,6 +693,7 @@ async function signIn(){
 async function doSignOut(){
   calendarAccessToken = null; calendarTokenExpiry = 0;
   stopCalendarAutoSync();
+  auditLoginLoggedThisSession = false;
   try{ sessionStorage.removeItem(CALENDAR_TOKEN_STORAGE_KEY); }catch(e){}
   try{ await authMod.signOut(auth); }catch(e){ console.error(e); }
 }
@@ -776,6 +800,7 @@ async function shareCalendarWith(email){
       const body = await res.json().catch(()=>({}));
       throw new Error(body.error?.message || res.statusText);
     }
+    logAudit("calendar_shared", { targetEmail: email });
     return { ok:true };
   }catch(err){
     console.error("Error compartiendo el Calendar:", err);
@@ -796,6 +821,7 @@ async function unshareCalendarWith(email){
       const body = await res.json().catch(()=>({}));
       throw new Error(body.error?.message || res.statusText);
     }
+    logAudit("calendar_unshared", { targetEmail: email });
     return { ok:true };
   }catch(err){
     console.error("Error sacando del Calendar:", err);
@@ -1108,10 +1134,33 @@ function stopCalendarAutoSync(){
   calendarSyncInterval = null;
 }
 
+// Registro de auditoría: eventos de acceso/administración (no de contenido
+// de posteos). Como el login es 100% con cuenta de Google, no hay
+// "contraseña" que registrar acá — se loguean inicio de sesión, pedidos de
+// acceso, aprobar/rechazar/revocar, y compartir/sacar del Calendar. Falla
+// en silencio (nunca debe bloquear la acción real que se está auditando).
+async function logAudit(type, opts){
+  const actorEmail = opts?.actorEmail || state.auth.user?.email;
+  const actorName = opts?.actorName || state.auth.user?.displayName;
+  if(!actorEmail || !actorName) return;
+  try{
+    await fb.addDoc(fb.collection(db,"auditLog"), {
+      type, actorEmail, actorName,
+      targetEmail: opts?.targetEmail || null,
+      detail: opts?.detail || null,
+      createdAt: fb.serverTimestamp(),
+    });
+  }catch(err){ console.error("Error escribiendo auditoría:", err); }
+}
+// Un solo registro de "login" por sesión de navegador (no uno por cada
+// re-render/recarga silenciosa de la sesión de Firebase).
+let auditLoginLoggedThisSession = false;
+
 let unsubscribeData = null;
 let unsubscribeRequests = null;
 let unsubAllowlist = null;
 let unsubOwnRequest = null;
+let unsubAuditLog = null;
 
 function recomputeAuthStatus(){
   if(state.auth.status === "admin") return;
@@ -1124,7 +1173,8 @@ async function onAuthChanged(user){
   if(unsubscribeRequests){ unsubscribeRequests(); unsubscribeRequests = null; }
   if(unsubAllowlist){ unsubAllowlist(); unsubAllowlist = null; }
   if(unsubOwnRequest){ unsubOwnRequest(); unsubOwnRequest = null; }
-  state.posts = []; state.repliesByPost = {}; state.loaded = false; state.accessRequests = [];
+  if(unsubAuditLog){ unsubAuditLog(); unsubAuditLog = null; }
+  state.posts = []; state.repliesByPost = {}; state.loaded = false; state.accessRequests = []; state.auditLog = [];
 
   if(!user){
     state.auth = { status:"signedOut", user:null };
@@ -1136,10 +1186,16 @@ async function onAuthChanged(user){
     console.log("[diagnóstico] email en user.email:", user.email, "| email en el token (lo que ven las reglas):", tok.claims.email);
   }).catch(()=>{});
 
+  if(!auditLoginLoggedThisSession){
+    auditLoginLoggedThisSession = true;
+    logAudit("login", { actorEmail: profile.email, actorName: profile.displayName });
+  }
+
   if(profile.email === ADMIN_EMAIL){
     state.auth = { status:"admin", user:profile };
     subscribeData();
     subscribeAccessRequests();
+    subscribeAuditLog();
     render();
     return;
   }
@@ -1165,6 +1221,7 @@ async function onAuthChanged(user){
           email: profile.email, name: profile.displayName, photoURL: profile.photoURL,
           status: "pending", requestedAt: fb.serverTimestamp(),
         });
+        logAudit("access_requested", { actorEmail: profile.email, actorName: profile.displayName });
       }catch(err){ console.error("Error creando solicitud de acceso:", err); }
       return; // el propio setDoc va a disparar un nuevo snapshot con exists()=true
     }
@@ -1187,6 +1244,7 @@ async function requestAccessAgain(){
       status: "pending", requestedAt: fb.serverTimestamp(),
     });
     state.auth = { ...state.auth, status:"pending" };
+    logAudit("access_requested", { detail:"pidió de nuevo tras un rechazo" });
     render();
   }catch(err){ console.error(err); }
 }
@@ -1198,15 +1256,25 @@ function subscribeAccessRequests(){
     render();
   }, err=>console.error("Error leyendo solicitudes:", err));
 }
+function subscribeAuditLog(){
+  const q = fb.query(fb.collection(db,"auditLog"), fb.orderBy("createdAt","desc"));
+  unsubAuditLog = fb.onSnapshot(q, snap=>{
+    state.auditLog = snap.docs.map(d=>({ id:d.id, ...d.data({serverTimestamps:"estimate"}) }));
+    render();
+  }, err=>console.error("Error leyendo auditoría:", err));
+}
 async function approveRequest(email){
   await fb.setDoc(fb.doc(db, "allowlist", email), { email, approvedAt: fb.serverTimestamp(), approvedBy: ADMIN_EMAIL });
   await fb.updateDoc(fb.doc(db, "accessRequests", email), { status:"approved" });
+  logAudit("access_approved", { targetEmail: email });
 }
 async function rejectRequest(email){
   await fb.updateDoc(fb.doc(db, "accessRequests", email), { status:"rejected" });
+  logAudit("access_rejected", { targetEmail: email });
 }
 async function revokeAccess(email){
   await fb.deleteDoc(fb.doc(db, "allowlist", email));
+  logAudit("access_revoked", { targetEmail: email });
 }
 
 // Las respuestas se escuchan posteo por posteo (subcolección normal),
@@ -1400,6 +1468,7 @@ const userBadgeEl = document.getElementById("userBadge");
 const btnNewPostEl = document.getElementById("btnNewPost");
 const btnSyncCalendarEl = document.getElementById("btnSyncCalendar");
 const tabSolicitudesEl = document.getElementById("tabSolicitudes");
+const tabAuditoriaEl = document.getElementById("tabAuditoria");
 const calendarToastEl = document.getElementById("calendarToast");
 const calendarToastTextEl = document.getElementById("calendarToastText");
 
@@ -1448,9 +1517,10 @@ function doRender(){
   btnSyncCalendarEl.hidden = false;
   btnSyncCalendarEl.disabled = state.calendarSyncing === true;
   tabSolicitudesEl.hidden = !isAdmin();
+  tabAuditoriaEl.hidden = !isAdmin();
   const pendingCount = state.accessRequests.filter(r=>r.status==="pending").length;
   document.getElementById("pendingBadge").innerHTML = (isAdmin() && pendingCount) ? `<span class="pending-count">${pendingCount}</span>` : "";
-  if(!isAdmin() && state.view === "solicitudes") state.view = "feed";
+  if(!isAdmin() && (state.view === "solicitudes" || state.view === "auditoria")) state.view = "feed";
 
   if(!fatalError && !state.loaded){
     html += `<div class="empty-state"><div class="big">⏳</div>Cargando registro compartido…</div>`;
@@ -1462,6 +1532,7 @@ function doRender(){
   else if(state.view === "paises") html += renderPaisesView();
   else if(state.view === "memoria") html += renderMemoriaView();
   else if(state.view === "solicitudes") html += renderSolicitudesView();
+  else if(state.view === "auditoria") html += renderAuditoriaView();
 
   viewRoot.innerHTML = html;
   afterRenderView();
@@ -1515,12 +1586,16 @@ function renderSolicitudesView(){
   if(!reqs.length) return `<div class="empty-state"><div class="big">📭</div>No hay solicitudes todavía.</div>`;
   return reqs.map(r=>{
     let actions;
-    if(r.status === "approved") actions = `<span class="status-pill approved">Aprobado</span> <button class="btn-mini" data-action="share-calendar" data-email="${esc(r.email)}">Compartir Calendar</button> <button class="btn-secondary" data-action="revoke-access" data-email="${esc(r.email)}">Revocar</button>`;
-    else if(r.status === "rejected") actions = `<span class="status-pill rejected">Rechazado</span> <button class="btn-mini" data-action="approve-request" data-email="${esc(r.email)}">Aprobar igual</button>`;
-    else actions = `<button class="btn-mini" data-action="approve-request" data-email="${esc(r.email)}">Aprobar</button>
-      <button class="btn-secondary" data-action="reject-request" data-email="${esc(r.email)}">Rechazar</button>`;
+    if(r.status === "approved") actions = `<span class="status-pill approved">Aprobado</span>
+      <button class="btn-ghost" data-action="share-calendar" data-email="${esc(r.email)}">🔄 Compartir Calendar</button>
+      <span class="ractions-sep"></span>
+      <button class="btn-ghost danger" data-action="revoke-access" data-email="${esc(r.email)}">Revocar acceso</button>`;
+    else if(r.status === "rejected") actions = `<span class="status-pill rejected">Rechazado</span>
+      <button class="btn-primary" data-action="approve-request" data-email="${esc(r.email)}">Aprobar igual</button>`;
+    else actions = `<button class="btn-secondary" data-action="reject-request" data-email="${esc(r.email)}">Rechazar</button>
+      <button class="btn-primary" data-action="approve-request" data-email="${esc(r.email)}">Aprobar</button>`;
     return `<div class="request-row">
-      ${r.photoURL ? `<img src="${esc(r.photoURL)}" alt="">` : ""}
+      ${r.photoURL ? `<img src="${esc(r.photoURL)}" alt="">` : `<div class="avatar-fallback">${esc((r.name||r.email||"?")[0].toUpperCase())}</div>`}
       <div class="rinfo">
         <div class="rname">${esc(r.name||r.email)}</div>
         <div class="remail">${esc(r.email)} · pedido ${fmtDateTime(r.requestedAt)}</div>
@@ -1528,6 +1603,33 @@ function renderSolicitudesView(){
       <div class="ractions">${actions}</div>
     </div>`;
   }).join("");
+}
+
+/* ======================================================================
+   AUDITORÍA (panel admin) — accesos y cambios administrativos (quién
+   entró, a quién se aprobó/rechazó/revocó, a quién se compartió el
+   Calendar). No es un registro de los posteos ni su contenido.
+   ====================================================================== */
+const AUDIT_LABELS = {
+  login: { icon:"🔓", text: e => `${e.actorName} inició sesión.` },
+  access_requested: { icon:"📝", text: e => `${e.actorName} pidió acceso${e.detail ? ` (${e.detail})` : ""}.` },
+  access_approved: { icon:"✅", text: e => `${e.actorName} aprobó el acceso de ${e.targetEmail}.` },
+  access_rejected: { icon:"🚫", text: e => `${e.actorName} rechazó el acceso de ${e.targetEmail}.` },
+  access_revoked: { icon:"⛔", text: e => `${e.actorName} revocó el acceso de ${e.targetEmail}.` },
+  calendar_shared: { icon:"📅", text: e => `${e.actorName} compartió el Calendar con ${e.targetEmail}.` },
+  calendar_unshared: { icon:"📅", text: e => `${e.actorName} sacó a ${e.targetEmail} del Calendar.` },
+};
+function renderAuditoriaView(){
+  const entries = state.auditLog;
+  if(!entries.length) return `<div class="empty-state"><div class="big">🗂️</div>Todavía no hay actividad registrada.</div>`;
+  return `<div class="audit-list">${entries.map(e=>{
+    const info = AUDIT_LABELS[e.type] || { icon:"•", text: e2 => `${e2.actorName}: ${e2.type}` };
+    return `<div class="audit-row">
+      <span class="audit-icon">${info.icon}</span>
+      <div class="audit-text">${esc(info.text(e))}</div>
+      <span class="audit-date">${fmtDateTime(e.createdAt)}</span>
+    </div>`;
+  }).join("")}</div>`;
 }
 
 function afterRenderView(){

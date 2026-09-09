@@ -205,6 +205,29 @@ service cloud.firestore {
       allow write: if isApproved() && isValidSyncMeta(request.resource.data);
     }
 
+    // Auditoría: accesos e inicios de sesión, aprobar/rechazar/revocar,
+    // compartir/sacar del Calendar. NO es sobre el contenido de los
+    // posteos. Solo el admin puede LEER el registro (es información
+    // sobre personas, no algo para mostrarle a cualquier aprobado). Pero
+    // cualquiera logueado puede CREAR una entrada, siempre y cuando sea
+    // sobre sí mismo como actor (actorEmail == su propio email) — así se
+    // puede registrar el login o el pedido de acceso de alguien que
+    // todavía no está aprobado, sin necesitar isApproved() acá.
+    function isValidAuditEntry(d) {
+      return d.type in ['login', 'access_requested', 'access_approved', 'access_rejected', 'access_revoked', 'calendar_shared', 'calendar_unshared'] &&
+        isNonEmptyString(d.actorEmail, 200) &&
+        isNonEmptyString(d.actorName, 120) &&
+        isOptionalString(d.get('targetEmail', null), 200) &&
+        isOptionalString(d.get('detail', null), 300) &&
+        d.actorEmail == request.auth.token.email &&
+        d.createdAt == request.time;
+    }
+    match /auditLog/{entryId} {
+      allow read: if isAdmin();
+      allow create: if request.auth != null && isValidAuditEntry(request.resource.data);
+      allow update, delete: if false;
+    }
+
     // Todo lo demás, cerrado.
     match /{document=**} {
       allow read, write: if false;
