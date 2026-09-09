@@ -913,6 +913,14 @@ function calendarEventDates(ev){
   return { startDate:null, endDate:null };
 }
 
+// El "summary" que la app manda a Calendar lleva el prefijo "Tipo: " (ver
+// buildCalendarEvent) — para leer el título real hay que sacarlo, si está.
+function extractTitleFromSummary(summary, activityType){
+  const prefix = `${ACTIVITY_BY_KEY[activityType]?.label || ""}: `;
+  const s = summary || "";
+  return s.startsWith(prefix) ? s.slice(prefix.length) : s;
+}
+
 async function applyCalendarEventToPosts(ev){
   const existing = state.posts.find(p => p.calendarEventId === ev.id);
 
@@ -932,19 +940,24 @@ async function applyCalendarEventToPosts(ev){
   const location = ev.location || "";
 
   if(existing){
-    const changed = existing.startDate !== startDate || existing.endDate !== endDate || (existing.location||"") !== location;
+    const newTitle = extractTitleFromSummary(ev.summary, existing.activityType).trim();
+    const titleChanged = !!newTitle && newTitle !== existing.title;
+    const changed = existing.startDate !== startDate || existing.endDate !== endDate || (existing.location||"") !== location || titleChanged;
     if(!changed) return;
     const parts = [];
+    if(titleChanged) parts.push(`título ("${existing.title}" → "${newTitle}")`);
     if(existing.startDate !== startDate || existing.endDate !== endDate){
       const oldLabel = (existing.endDate||existing.startDate) !== existing.startDate ? `${fmtDate(existing.startDate)}–${fmtDate(existing.endDate)}` : fmtDate(existing.startDate);
       const newLabel = endDate !== startDate ? `${fmtDate(startDate)}–${fmtDate(endDate)}` : fmtDate(startDate);
       parts.push(`fecha (${oldLabel} → ${newLabel})`);
     }
     if((existing.location||"") !== location) parts.push(`lugar${location ? ` (ahora: ${location})` : " (se quitó)"}`);
-    await updatePostDoc(existing.id, {
+    const patch = {
       startDate, endDate, date:startDate, location,
       lastEditedAt: fb.serverTimestamp(), lastEditedBy:"Google Calendar",
-    });
+    };
+    if(titleChanged) patch.title = newTitle;
+    await updatePostDoc(existing.id, patch);
     await createReply(existing.id, {
       authorName:"Google Calendar", content:`Se actualizó desde Google Calendar: ${parts.join(", ")}.`,
       system:true, icon:"📅", scopes:[], images:[], links:[],
