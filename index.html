@@ -1655,7 +1655,7 @@ function renderAuthGate(){
     return `<div class="auth-gate">
       <div class="big">⏳</div>
       <h2>Tu acceso está pendiente de aprobación</h2>
-      <p>Le avisamos a <strong>${esc(ADMIN_EMAIL)}</strong> que pediste entrar como <strong>${esc(state.auth.user.email)}</strong>.
+      <p>Le avisamos al <strong>Administrador</strong> que pediste entrar como <strong>${esc(state.auth.user.email)}</strong>.
       Cuando lo apruebe vas a poder entrar (no hace falta que hagas nada más, esta pantalla se actualiza sola).</p>
       <button class="btn-secondary" data-action="sign-out">Cerrar sesión</button>
     </div>`;
@@ -1664,7 +1664,7 @@ function renderAuthGate(){
     return `<div class="auth-gate">
       <div class="big">🚫</div>
       <h2>Acceso no aprobado</h2>
-      <p>Tu solicitud con <strong>${esc(state.auth.user.email)}</strong> no fue aprobada. Si creés que es un error, contactá a <strong>${esc(ADMIN_EMAIL)}</strong>.</p>
+      <p>Tu solicitud con <strong>${esc(state.auth.user.email)}</strong> no fue aprobada. Si creés que es un error, contactá al <strong>Administrador</strong>.</p>
       <button class="btn-mini" data-action="request-again">Pedir acceso de nuevo</button>
       <div style="height:10px"></div>
       <button class="btn-secondary" data-action="sign-out">Cerrar sesión</button>
