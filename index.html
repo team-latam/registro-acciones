@@ -112,8 +112,17 @@
     border-radius:var(--radius-md); padding:16px 18px; margin-bottom:16px; font-size:13.5px; line-height:1.5;
   }
   .setup-banner code{ background:#f3e6c4; padding:1px 6px; border-radius:5px; }
-  .calendar-notice{ transition:opacity 0.4s ease; opacity:1; }
-  .calendar-notice.fading{ opacity:0; }
+  /* Flota encima del contenido (no empuja nada) y se desvanece sola. */
+  .calendar-notice{
+    position:fixed; left:50%; bottom:24px; z-index:70; max-width:min(560px, calc(100vw - 32px));
+    transform:translate(-50%, 0); background:#fff7e6; border:1px solid #f3d78b; color:#6b4c00;
+    border-radius:var(--radius-md); padding:14px 18px; font-size:13.5px; line-height:1.5;
+    box-shadow:0 8px 28px rgba(0,0,0,0.18);
+    transition:opacity 0.4s ease, transform 0.4s ease; opacity:1;
+  }
+  .calendar-notice.notice-ok{ background:#dcfce7; border-color:#86efac; color:#166534; }
+  .calendar-notice.fading{ opacity:0; transform:translate(-50%, 8px); }
+  .calendar-notice[hidden]{ display:none; }
 
   /* ---------- Cards ---------- */
   .card{
@@ -321,6 +330,11 @@
   </header>
   <main id="viewRoot"></main>
   <footer class="appfoot">Registro de Acciones · Team LatAm</footer>
+</div>
+
+<div class="calendar-notice" id="calendarToast" hidden>
+  <span id="calendarToastText"></span>
+  <button class="filter-clear" data-action="dismiss-calendar-notice">Cerrar</button>
 </div>
 
 <div id="lightbox"><img id="lightboxImg" src="" alt=""></div>
@@ -581,7 +595,6 @@ const state = {
   paisesZoneFilter: new Set(), // keys de zona (sur/central/norte) para filtrar Países (Lista y Mapa); vacío = todas
   memoriaOrder: "asc",      // asc | desc
   leafletMap: null,
-  calendarNotice: null,     // {ok, message} — aviso post-sincronización con Calendar
   calendarSyncing: false,   // true mientras se está pidiendo/aplicando cambios desde Calendar
 };
 
@@ -1014,20 +1027,24 @@ async function applyCalendarEventToPosts(ev){
   });
 }
 
-// Muestra el aviso de abajo del header y lo hace desaparecer solo, con un
-// fundido, a los pocos segundos (el botón "Cerrar" lo saca al toque). Los
-// de error NO se auto-ocultan: hay que poder leerlos con calma y que no
-// desaparezcan antes de anotar qué decían.
+// Muestra el aviso como un toast flotante (no ocupa espacio ni empuja el
+// contenido) y lo hace desaparecer solo, con un fundido, a los pocos
+// segundos (el botón "Cerrar" lo saca al toque). Los de error NO se
+// auto-ocultan: hay que poder leerlos con calma y que no desaparezcan
+// antes de anotar qué decían. Se maneja por DOM directo (no vía
+// state+render) para no depender del ciclo de re-render de la vista, que
+// recrearía el elemento en cada tecla tipeada y cortaría la animación.
 let calendarNoticeTimer = null;
 function showCalendarNotice(notice){
   clearTimeout(calendarNoticeTimer);
-  state.calendarNotice = notice;
-  render();
+  calendarToastTextEl.textContent = `${notice.ok ? "📅" : "⚠️"} ${notice.message}`;
+  calendarToastEl.classList.toggle("notice-ok", !!notice.ok);
+  calendarToastEl.classList.remove("fading");
+  calendarToastEl.hidden = false;
   if(!notice.ok) return;
   calendarNoticeTimer = setTimeout(()=>{
-    state.calendarNotice = { ...notice, fading:true };
-    render();
-    calendarNoticeTimer = setTimeout(()=>{ state.calendarNotice = null; render(); }, 400);
+    calendarToastEl.classList.add("fading");
+    calendarNoticeTimer = setTimeout(()=>{ calendarToastEl.hidden = true; }, 400);
   }, 4000);
 }
 
@@ -1354,6 +1371,8 @@ const userBadgeEl = document.getElementById("userBadge");
 const btnNewPostEl = document.getElementById("btnNewPost");
 const btnSyncCalendarEl = document.getElementById("btnSyncCalendar");
 const tabSolicitudesEl = document.getElementById("tabSolicitudes");
+const calendarToastEl = document.getElementById("calendarToast");
+const calendarToastTextEl = document.getElementById("calendarToastText");
 
 function renderUserBadge(){
   const u = state.auth.user;
@@ -1393,14 +1412,6 @@ function doRender(){
     html += renderAuthGate();
     viewRoot.innerHTML = html;
     return;
-  }
-
-  if(state.calendarNotice){
-    const n = state.calendarNotice;
-    html += `<div class="setup-banner calendar-notice${n.fading ? " fading" : ""}" style="${n.ok ? "background:#dcfce7;border-color:#86efac;color:#166534;" : ""}">
-      ${n.ok ? "📅" : "⚠️"} ${esc(n.message)}
-      <button class="filter-clear" data-action="dismiss-calendar-notice" style="margin-left:10px;">Cerrar</button>
-    </div>`;
   }
 
   tabsNav.classList.remove("tabs-hidden");
@@ -2169,7 +2180,8 @@ document.addEventListener("click", e=>{
     state.view = "memoria"; state.countryDrill = null; render();
   } else if(action === "dismiss-calendar-notice"){
     clearTimeout(calendarNoticeTimer);
-    state.calendarNotice = null; render();
+    calendarToastEl.hidden = true;
+    calendarToastEl.classList.remove("fading");
   } else if(action === "memoria-order"){
     state.memoriaOrder = t.dataset.key; render();
   } else if(action === "google-signin"){
