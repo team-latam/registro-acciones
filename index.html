@@ -353,7 +353,14 @@
   .zone-legend{ display:flex; gap:14px; flex-wrap:wrap; margin-bottom:14px; font-size:12px; color:var(--text-muted); font-weight:600; }
   .zone-legend span{ display:inline-flex; align-items:center; gap:6px; }
   .zone-legend .dot{ width:11px; height:11px; border-radius:50%; }
-  #map{ height:480px; border-radius:var(--radius-lg); box-shadow:var(--shadow); border:1px solid var(--border); }
+  /* position+z-index EXPLÍCITOS acá (no solo el position:relative que ya
+     pone leaflet.css) para que el mapa cree su propio contexto de
+     apilamiento: sin esto, los controles/paneles internos de Leaflet
+     (z-index 400 a 1000) "se escapan" del mapa y terminan dibujándose
+     por ENCIMA de cosas de la página que están más abajo en el HTML,
+     como el menú desplegable del avatar en el header — pasaba porque el
+     header solo tiene z-index:40, muy por debajo de esos 400-1000. */
+  #map{ height:480px; border-radius:var(--radius-lg); box-shadow:var(--shadow); border:1px solid var(--border); position:relative; z-index:0; }
   .breadcrumb{ font-size:12.5px; color:var(--text-muted); margin-bottom:12px; }
   .breadcrumb a{ cursor:pointer; font-weight:700; }
   .city-list{ display:flex; flex-direction:column; gap:8px; }
