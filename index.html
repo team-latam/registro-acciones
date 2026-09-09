@@ -103,6 +103,7 @@
   }
   .user-menu .um-role.role-admin{ background:var(--petroleo); color:#fff; }
   .user-menu .um-role.role-member{ background:var(--bg); color:var(--text-muted); border:1px solid var(--border); }
+  .user-menu .um-role.role-pending{ background:var(--danger); color:#fff; }
   .user-menu .um-email{ font-size:12px; color:var(--text-muted); margin:6px 0 14px; word-break:break-all; }
   .user-menu .um-signout{
     width:100%; background:var(--bg); border:1px solid var(--border); color:var(--petroleo-dark);
@@ -1556,6 +1557,15 @@ const calendarToastTextEl = document.getElementById("calendarToastText");
 // estado de UI efímero, no hace falta que sobreviva a nada.
 let userMenuOpen = false;
 
+// Etiqueta de rol que se ve en el menú del avatar, según state.auth.status
+// (ver más abajo dónde se asigna: admin/approved/pending/rejected).
+const USER_ROLE_LABELS = {
+  admin: { text: "Admin", cls: "role-admin" },
+  approved: { text: "Miembro", cls: "role-member" },
+  pending: { text: "Pendiente", cls: "role-pending" },
+  rejected: { text: "Rechazado", cls: "role-pending" },
+};
+
 function renderUserBadge(){
   const u = state.auth.user;
   if(!u){ userBadgeEl.innerHTML = ""; userMenuOpen = false; return; }
@@ -1564,13 +1574,14 @@ function renderUserBadge(){
   const menuAvatar = u.photoURL
     ? `<img class="um-avatar" src="${esc(u.photoURL)}" alt="">`
     : `<div class="um-avatar-fallback">${initial}</div>`;
+  const role = USER_ROLE_LABELS[state.auth.status] || USER_ROLE_LABELS.approved;
   userBadgeEl.innerHTML = `
     <button class="avatar-btn${userMenuOpen ? " open" : ""}" data-action="toggle-user-menu" title="${esc(u.displayName)}" aria-label="Cuenta">${avatar}</button>
     ${userMenuOpen ? `
       <div class="user-menu">
         ${menuAvatar}
         <div class="um-name">${esc(u.displayName)}</div>
-        <div class="um-role ${isAdmin() ? "role-admin" : "role-member"}">${isAdmin() ? "Admin" : "Miembro"}</div>
+        <div class="um-role ${role.cls}">${role.text}</div>
         <div class="um-email">${esc(u.email)}</div>
         <button class="um-signout" data-action="sign-out">Cerrar sesión</button>
       </div>` : ""}`;
