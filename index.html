@@ -396,6 +396,11 @@
     display:flex; align-items:center; justify-content:center; background:var(--petroleo); color:#fff;
     font-size:10px; font-weight:800;
   }
+  /* @Nickname dentro de un posteo/respuesta ya publicado (ver
+     highlightMentions()) — mismo celeste de la app, no el verde de
+     WhatsApp, pero con la misma idea de resaltar la mención del resto
+     del texto. */
+  .mention-tag{ color:var(--celeste-dark); background:rgba(79,199,224,0.16); border-radius:4px; padding:0 3px; font-weight:700; }
   .place-picker{ position:relative; margin-top:8px; }
   .place-picker input{ width:100%; border:1.5px solid var(--border); border-radius:999px; padding:9px 14px; font-size:13px; background:#fff; box-sizing:border-box; }
   .mention-anchor{ position:relative; flex:1; }
@@ -730,7 +735,19 @@ const ACTIVITY_BY_KEY = Object.fromEntries(ACTIVITY_TYPES.map(t=>[t.key,t]));
 function esc(s){
   return String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 }
-function nl2br(s){ return esc(s).replace(/\n/g,"<br>"); }
+// Resalta "@Nickname" (o "@all") dentro de un texto YA ESCAPADO — nunca
+// antes de esc(), para no abrir una vía de XSS con contenido que alguien
+// escribió. Solo resalta nicknames que existen de verdad en state.roster,
+// para no marcar un "@algo" cualquiera que alguien haya tipeado suelto.
+function highlightMentions(escapedText){
+  const names = [...new Set(state.roster.map(u=>u.nickname).concat(["all"]))]
+    .sort((a,b)=>b.length-a.length)
+    .map(n=>n.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"));
+  if(!names.length) return escapedText;
+  const re = new RegExp(`@(${names.join("|")})\\b`, "g");
+  return escapedText.replace(re, m => `<span class="mention-tag">${m}</span>`);
+}
+function nl2br(s){ return highlightMentions(esc(s)).replace(/\n/g,"<br>"); }
 function normalize(s){
   return String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().trim();
 }
@@ -1498,6 +1515,7 @@ async function onAuthChanged(user){
 
   if(profile.email === ADMIN_EMAIL){
     state.auth = { status:"admin", user:profile };
+    ensureAdminInRoster(profile);
     subscribeData();
     subscribeAccessRequests();
     subscribeAuditLog();
@@ -1629,6 +1647,28 @@ function makeNickname(displayName, existingNicknames){
   let n = 2;
   while(existingNicknames.has(base + n)) n++;
   return base + n;
+}
+// El admin no pasa por accessRequests/allowlist para tener acceso (su
+// permiso viene de ADMIN_EMAIL hardcodeado en las reglas), así que sin
+// esto NUNCA aparecía en state.roster (que sale de la colección
+// allowlist) — nadie podía etiquetarlo con @ aunque estuviera bien
+// aprobado de hecho. Se asegura, una vez por login, de que también
+// tenga su propio documento en allowlist con nickname, como cualquier
+// otro aprobado (no cambia nada de cómo se calculan sus permisos).
+async function ensureAdminInRoster(profile){
+  try{
+    const ref = fb.doc(db, "allowlist", profile.email);
+    const snap = await fb.getDoc(ref);
+    if(snap.exists() && snap.data().nickname) return;
+    const rosterSnap = await fb.getDocs(fb.collection(db,"allowlist"));
+    const existingNicknames = new Set(rosterSnap.docs.map(d=>d.data().nickname).filter(Boolean));
+    const nickname = makeNickname(profile.displayName, existingNicknames);
+    await fb.setDoc(ref, {
+      email: profile.email, name: profile.displayName, nickname, photoURL: profile.photoURL || null,
+      approvedAt: (snap.exists() && snap.data().approvedAt) || fb.serverTimestamp(),
+      approvedBy: profile.email,
+    }, { merge: true });
+  }catch(err){ console.error("No se pudo sumar al admin al equipo (roster de @menciones):", err); }
 }
 async function approveRequest(email){
   const reqSnap = await fb.getDoc(fb.doc(db, "accessRequests", email));
