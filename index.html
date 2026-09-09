@@ -2029,6 +2029,10 @@ postForm.addEventListener("submit", async e=>{
           ? { ok:true, message:"Se guardaron los cambios (y el Calendar, si correspondía)." }
           : { ok:false, message:"Se guardaron los cambios, pero no se pudo actualizar el Calendar (" + res.reason + ")." };
         render();
+      }).catch(err=>{
+        console.error("Error guardando la edición:", err);
+        state.calendarNotice = { ok:false, message:"No se pudo guardar la edición: " + err.message };
+        render();
       });
     } else {
       const postId = await createPost(postData);
