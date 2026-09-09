@@ -1735,10 +1735,25 @@ function renderFatalError(msg){ fatalError = msg; render(); }
 // con scroll interno — se recalcula en cada tecleo (ver el input handler)
 // y también acá, porque cada render() reconstruye el elemento de cero
 // (innerHTML) y pierde cualquier alto que se le haya puesto a mano.
+//
+// Leer scrollHeight fuerza un reflow sincrónico de TODA la página (no
+// solo de este elemento) — si se hace directo en cada tecla, con un
+// Feed largo esto se sentía como que la caja "se trababa" y dejaba de
+// responder al escribir rápido o mantener apretada una tecla. Se
+// posterga al próximo frame (y se cancela el anterior si todavía no
+// corrió) para que el navegador nunca acumule más de un reflow pendiente
+// por elemento, sin importar cuántas teclas entren de golpe.
+const autoGrowFrames = new WeakMap();
 function autoGrowTextarea(el){
   if(!el) return;
-  el.style.height = "auto";
-  el.style.height = el.scrollHeight + "px";
+  const pending = autoGrowFrames.get(el);
+  if(pending) cancelAnimationFrame(pending);
+  const frame = requestAnimationFrame(()=>{
+    el.style.height = "auto";
+    el.style.height = el.scrollHeight + "px";
+    autoGrowFrames.delete(el);
+  });
+  autoGrowFrames.set(el, frame);
 }
 
 function render(){
