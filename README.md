@@ -206,7 +206,7 @@ esquemático), pero los círculos se ubican en la **capital** de cada país
 que no está configurado). El detalle por ciudad se ve en la vista
 Países → Lista, al hacer click en un país.
 
-### Sincronización con Google Calendar (Feed → Calendar)
+### Sincronización con Google Calendar (Feed ↔ Calendar)
 
 Cada posteo de tipo Visita/Curso/Seminario/Congreso/Otro (todo menos
 **Rutina**) se suma automáticamente como evento de día completo al
@@ -248,16 +248,48 @@ quien publica para crear el evento.
   posteo **igual se guarda** en el Feed — el Calendar es un agregado, nunca
   bloquea la memoria histórica. Aparece un aviso abajo del header avisando
   si se pudo sumar o no.
-- La descripción del evento arranca con la línea `Alcance: tipo | valor`
-  (misma convención pensada en el diseño original para una futura lectura
-  Calendar → Feed), por si más adelante se retoma esa dirección inversa.
+- La descripción del evento arranca con la línea `Alcance: tipo | valor`.
+
+#### Calendar → Feed (la dirección inversa)
+
+Si alguien edita, cancela/borra o crea un evento **directamente en Google
+Calendar**, sin pasar por la app, eso también se refleja en los posteos:
+
+- **Edición** (cambia fecha o lugar de un evento ya vinculado a un
+  posteo): se actualiza el posteo y queda una respuesta automática en el
+  hilo, igual que si lo hubiera editado una persona.
+- **Cancelación/borrado** de un evento vinculado: el posteo queda marcado
+  como cancelado (no se borra), con su respuesta automática en el hilo.
+- **Creación** de un evento nuevo en Calendar que no vino de la app: se
+  crea un posteo simple a partir de él (título, fechas, lugar, quién
+  organiza si Calendar lo tiene) con tipo **"Otro"** y alcance **"Toda
+  LatAm y el Caribe"** por default — cualquier persona aprobada puede
+  después editarlo desde la app para afinar el tipo real de actividad y
+  el alcance correcto.
+
+Cómo funciona, en criollo: la app le pregunta a Google "¿qué cambió desde
+la última vez?" (usando un "sync token" que Calendar entrega y que se
+guarda en el documento `meta/calendarSync` de Firestore) en vez de releer
+todo el calendario cada vez. No hay servidor propio corriendo esto todo
+el tiempo — se dispara solo (a) una vez por sesión, apenas alguien
+aprobado abre la app y ya tiene un token de Calendar en memoria (por
+ejemplo, porque recién inició sesión), y (b) a mano con el botón
+**"🔄 Actualizar desde Calendar"** que aparece junto a "+ Nuevo posteo".
+Es decir: es una sincronización "al abrir/al pedirla", no en tiempo real
+al segundo — si nadie abre la app ni toca el botón, un cambio hecho en
+Calendar puede tardar en aparecer. Si más adelante hace falta que sea
+instantáneo, la alternativa es un webhook de Calendar corriendo en una
+Cloud Function propia (requiere plan de pago Blaze de Firebase y más
+piezas de infraestructura) — se dejó afuera a propósito por ahora, para
+no sumar esa complejidad sin necesidad.
+
+Los eventos recurrentes de Calendar no se "expanden" en instancias
+individuales (para no generar un aluvión de posteos por cada repetición):
+una serie recurrente cuenta como un solo evento. No debería ser un
+problema real, ya que cada acción del equipo tiene sus propias fechas.
 
 ## 4. Qué falta / decisiones pendientes
 
-- **Lectura Calendar → Feed**: seguir en pausa. La idea original era que
-  eventos ya cargados directamente en el Calendar (sin pasar por esta app)
-  también alimenten el Feed — hoy la sincronización solo va en el sentido
-  Feed → Calendar.
 - **Roles**: hoy todo aprobado tiene los mismos permisos (leer + publicar).
   Si más adelante hace falta un rol intermedio (por ejemplo, alguien que
   solo lee), hay que sumarlo a mano en `firestore.rules` y en la UI.
