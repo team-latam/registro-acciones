@@ -636,6 +636,7 @@ async function signIn(){
 async function doSignOut(){
   calendarAccessToken = null; calendarTokenExpiry = 0;
   calendarSyncAttemptedThisSession = false;
+  try{ sessionStorage.removeItem(CALENDAR_TOKEN_STORAGE_KEY); }catch(e){}
   try{ await authMod.signOut(auth); }catch(e){ console.error(e); }
 }
 
@@ -648,14 +649,31 @@ async function doSignOut(){
 // sesión).
 const CALENDAR_ID = "ahf2jnkbng1tblmk7uioolc9ko@group.calendar.google.com";
 
+// El token de Calendar se guarda también en sessionStorage (dura hasta
+// cerrar la pestaña, no queda en el disco) para sobrevivir a un F5 — sin
+// esto, cada recarga de página forzaba un popup de Google nuevo para
+// cualquier acción que tocara Calendar, aunque la sesión de Firebase
+// siguiera activa. Si sessionStorage no está disponible (modo privado,
+// etc.) simplemente no persiste y se pide el popup como antes.
+const CALENDAR_TOKEN_STORAGE_KEY = "calendarToken";
 let calendarAccessToken = null;
 let calendarTokenExpiry = 0;
+try{
+  const saved = JSON.parse(sessionStorage.getItem(CALENDAR_TOKEN_STORAGE_KEY) || "null");
+  if(saved && saved.token && saved.expiry > Date.now()){
+    calendarAccessToken = saved.token;
+    calendarTokenExpiry = saved.expiry;
+  }
+}catch(e){}
 
 function storeCalendarCredential(result){
   const cred = authMod.GoogleAuthProvider.credentialFromResult(result);
   if(cred && cred.accessToken){
     calendarAccessToken = cred.accessToken;
     calendarTokenExpiry = Date.now() + 55*60*1000; // los access tokens de Google duran ~1h
+    try{
+      sessionStorage.setItem(CALENDAR_TOKEN_STORAGE_KEY, JSON.stringify({ token: calendarAccessToken, expiry: calendarTokenExpiry }));
+    }catch(e){}
   }
 }
 
