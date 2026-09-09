@@ -60,6 +60,9 @@
     white-space:nowrap;
   }
   .btn-new:hover{ background:var(--celeste-dark); color:#fff; }
+  .btn-sync{ background:rgba(255,255,255,0.14); color:#fff; border:none; padding:9px 16px; border-radius:999px; font-weight:700; font-size:12.5px; cursor:pointer; white-space:nowrap; }
+  .btn-sync:hover{ background:rgba(255,255,255,0.24); }
+  .btn-sync:disabled{ opacity:0.5; cursor:not-allowed; }
   .header-actions{ display:flex; align-items:center; gap:10px; }
   .user-badge{ display:flex; align-items:center; gap:8px; }
   .user-badge img{ width:28px; height:28px; border-radius:50%; border:1.5px solid rgba(255,255,255,0.5); }
@@ -302,6 +305,7 @@
       </div>
       <div class="header-actions">
         <div id="userBadge" class="user-badge"></div>
+        <button class="btn-sync" id="btnSyncCalendar" hidden>🔄 Actualizar desde Calendar</button>
         <button class="btn-new" id="btnNewPost" hidden>+ Nuevo posteo</button>
       </div>
     </div>
@@ -574,6 +578,7 @@ const state = {
   memoriaOrder: "asc",      // asc | desc
   leafletMap: null,
   calendarNotice: null,     // {ok, message} — aviso post-sincronización con Calendar
+  calendarSyncing: false,   // true mientras se está pidiendo/aplicando cambios desde Calendar
 };
 
 /* ======================================================================
@@ -627,6 +632,7 @@ async function signIn(){
 }
 async function doSignOut(){
   calendarAccessToken = null; calendarTokenExpiry = 0;
+  calendarSyncAttemptedThisSession = false;
   try{ await authMod.signOut(auth); }catch(e){ console.error(e); }
 }
 
@@ -843,6 +849,152 @@ async function findCalendarEventId(post){
   }
 }
 
+/* ======================================================================
+   SINCRONIZACIÓN CALENDAR → APP (Calendar compartido → posteos)
+   ======================================================================
+   Si alguien edita, cancela/borra o crea un evento directamente en
+   Google Calendar (sin pasar por la app), esto lo refleja en los
+   posteos de Firestore. Usa el "sync token" que da la API de Calendar
+   para pedir solo lo que cambió desde la última vez (se guarda en
+   meta/calendarSync), no todo el calendario entero cada vez.
+
+   Se dispara solo: (a) una vez por sesión, apenas cargan los posteos,
+   PERO solo si ya hay un token de Calendar en memoria (o sea, sin pedir
+   un login-popup extra a alguien que nunca tocó Calendar), y (b) a mano
+   con el botón "Actualizar desde Calendar". No hace falta ninguna regla
+   nueva de Firestore para posts/replies: quien corre la sincronización
+   ya es un usuario aprobado de la app, así que sus escrituras pasan por
+   las mismas reglas de siempre.
+
+   Nota: los eventos recurrentes NO se expanden (no se usa singleEvents),
+   así que una serie recurrente cuenta como un solo evento/posteo. No es
+   el caso de uso de este calendario (cada acción tiene sus propias
+   fechas), así que se deja así por simplicidad.
+*/
+let calendarSyncAttemptedThisSession = false;
+function hasCalendarToken(){ return !!(calendarAccessToken && Date.now() < calendarTokenExpiry); }
+
+async function getSyncMeta(){
+  const snap = await fb.getDoc(fb.doc(db, "meta", "calendarSync"));
+  return snap.exists() ? snap.data() : null;
+}
+async function setSyncMeta(patch){
+  await fb.setDoc(fb.doc(db, "meta", "calendarSync"), { ...patch, lastSyncedAt: fb.serverTimestamp() }, { merge:true });
+}
+
+async function fetchCalendarChanges(token, syncToken){
+  let pageToken = null, nextSyncToken = null;
+  const events = [];
+  do{
+    const params = new URLSearchParams({ maxResults:"250", showDeleted:"true" });
+    if(syncToken) params.set("syncToken", syncToken);
+    else params.set("timeMin", new Date(Date.now() - 90*24*60*60*1000).toISOString());
+    if(pageToken) params.set("pageToken", pageToken);
+    const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events?${params}`, {
+      headers: { "Authorization": `Bearer ${token}` },
+    });
+    if(res.status === 410) return { needsFullResync:true };
+    const body = await res.json();
+    if(!res.ok) throw new Error(body.error?.message || res.statusText);
+    events.push(...(body.items||[]));
+    pageToken = body.nextPageToken || null;
+    if(body.nextSyncToken) nextSyncToken = body.nextSyncToken;
+  }while(pageToken);
+  return { events, nextSyncToken };
+}
+
+// A partir de un evento de Calendar, calcula startDate/endDate en el
+// mismo formato que usa la app (YYYY-MM-DD, fin inclusive). Los eventos
+// de "todo el día" que arma esta misma app tienen el fin exclusivo
+// (+1 día, ver buildCalendarEvent) así que hay que deshacer eso acá.
+function calendarEventDates(ev){
+  if(ev.start?.date) return { startDate: ev.start.date, endDate: addDaysISO(ev.end?.date || ev.start.date, -1) };
+  if(ev.start?.dateTime) return { startDate: ev.start.dateTime.slice(0,10), endDate: (ev.end?.dateTime || ev.start.dateTime).slice(0,10) };
+  return { startDate:null, endDate:null };
+}
+
+async function applyCalendarEventToPosts(ev){
+  const existing = state.posts.find(p => p.calendarEventId === ev.id);
+
+  if(ev.status === "cancelled"){
+    if(existing && !existing.cancelled){
+      await updatePostDoc(existing.id, { cancelled:true, lastEditedAt: fb.serverTimestamp(), lastEditedBy:"Google Calendar" });
+      await createReply(existing.id, {
+        authorName:"Google Calendar", content:"Este evento se canceló o se borró directamente en Google Calendar.",
+        system:true, icon:"📅", scopes:[], images:[], links:[],
+      });
+    }
+    return;
+  }
+
+  const { startDate, endDate } = calendarEventDates(ev);
+  if(!startDate) return;
+  const location = ev.location || "";
+
+  if(existing){
+    const changed = existing.startDate !== startDate || existing.endDate !== endDate || (existing.location||"") !== location;
+    if(!changed) return;
+    const parts = [];
+    if(existing.startDate !== startDate || existing.endDate !== endDate){
+      const oldLabel = (existing.endDate||existing.startDate) !== existing.startDate ? `${fmtDate(existing.startDate)}–${fmtDate(existing.endDate)}` : fmtDate(existing.startDate);
+      const newLabel = endDate !== startDate ? `${fmtDate(startDate)}–${fmtDate(endDate)}` : fmtDate(startDate);
+      parts.push(`fecha (${oldLabel} → ${newLabel})`);
+    }
+    if((existing.location||"") !== location) parts.push(`lugar${location ? ` (ahora: ${location})` : " (se quitó)"}`);
+    await updatePostDoc(existing.id, {
+      startDate, endDate, date:startDate, location,
+      lastEditedAt: fb.serverTimestamp(), lastEditedBy:"Google Calendar",
+    });
+    await createReply(existing.id, {
+      authorName:"Google Calendar", content:`Se actualizó desde Google Calendar: ${parts.join(", ")}.`,
+      system:true, icon:"📅", scopes:[], images:[], links:[],
+    });
+    return;
+  }
+
+  // Evento nuevo creado directo en Calendar (no vino de la app): se suma
+  // como posteo simple, con alcance "Toda LatAm y el Caribe" y tipo
+  // "Otro" por default — se afina después editándolo desde la app.
+  await createPost({
+    title: ev.summary || "(Sin título)",
+    content: ev.description || "Creado automáticamente desde Google Calendar.",
+    startDate, endDate, date:startDate,
+    organizer: ev.organizer?.displayName || ev.organizer?.email || "",
+    location,
+    activityType: "otro",
+    scopes: [{ type:"todo" }],
+    images: [], links: [],
+    authorName: "Google Calendar", authorEmail: "",
+    calendarEventId: ev.id,
+  });
+}
+
+async function syncFromCalendar(opts){
+  const silent = !!(opts && opts.silent);
+  if(silent && !hasCalendarToken()) return;
+  const token = await ensureCalendarToken();
+  if(!token){
+    if(!silent){ state.calendarNotice = { ok:false, message:"No se pudo autorizar el acceso a Calendar para sincronizar." }; render(); }
+    return;
+  }
+  if(!silent){ state.calendarSyncing = true; render(); }
+  try{
+    const meta = await getSyncMeta();
+    let result = await fetchCalendarChanges(token, meta?.syncToken || null);
+    if(result.needsFullResync) result = await fetchCalendarChanges(token, null);
+    for(const ev of result.events || []){
+      await applyCalendarEventToPosts(ev);
+    }
+    if(result.nextSyncToken) await setSyncMeta({ syncToken: result.nextSyncToken });
+    if(!silent){ state.calendarNotice = { ok:true, message:`Sincronizado con Calendar (${(result.events||[]).length} cambio(s) revisado(s)).` }; }
+  }catch(err){
+    console.error("Error sincronizando desde Calendar:", err);
+    if(!silent){ state.calendarNotice = { ok:false, message:"No se pudo sincronizar con Calendar: " + err.message }; }
+  }finally{
+    if(!silent){ state.calendarSyncing = false; render(); }
+  }
+}
+
 let unsubscribeData = null;
 let unsubscribeRequests = null;
 let unsubAllowlist = null;
@@ -950,6 +1102,10 @@ function subscribeData(){
     state.posts = snap.docs.map(d=>({ id:d.id, ...d.data({serverTimestamps:"estimate"}) }));
     state.loaded = true;
     render();
+    if(!calendarSyncAttemptedThisSession){
+      calendarSyncAttemptedThisSession = true;
+      syncFromCalendar({ silent:true });
+    }
   }, err=>{
     console.error("Error leyendo posts:", err);
     renderFatalError("Error leyendo los posteos desde Firestore: " + err.message);
@@ -1124,6 +1280,7 @@ function render(){
 const tabsNav = document.getElementById("tabs");
 const userBadgeEl = document.getElementById("userBadge");
 const btnNewPostEl = document.getElementById("btnNewPost");
+const btnSyncCalendarEl = document.getElementById("btnSyncCalendar");
 const tabSolicitudesEl = document.getElementById("tabSolicitudes");
 
 function renderUserBadge(){
@@ -1142,7 +1299,7 @@ function doRender(){
 
   let html = "";
   if(CONFIG_IS_PLACEHOLDER){
-    tabsNav.hidden = true; btnNewPostEl.hidden = true; userBadgeEl.innerHTML = "";
+    tabsNav.hidden = true; btnNewPostEl.hidden = true; btnSyncCalendarEl.hidden = true; userBadgeEl.innerHTML = "";
     html += `<div class="setup-banner">
       ⚠️ <strong>Falta configurar Firebase.</strong> Esta app todavía no tiene datos compartidos
       porque <code>FIREBASE_CONFIG</code> tiene valores de ejemplo. Abrí <code>index.html</code>,
@@ -1160,7 +1317,7 @@ function doRender(){
   renderUserBadge();
 
   if(!isAuthorized()){
-    tabsNav.hidden = true; btnNewPostEl.hidden = true;
+    tabsNav.hidden = true; btnNewPostEl.hidden = true; btnSyncCalendarEl.hidden = true;
     html += renderAuthGate();
     viewRoot.innerHTML = html;
     return;
@@ -1176,6 +1333,8 @@ function doRender(){
 
   tabsNav.hidden = false;
   btnNewPostEl.hidden = false;
+  btnSyncCalendarEl.hidden = false;
+  btnSyncCalendarEl.disabled = state.calendarSyncing === true;
   tabSolicitudesEl.hidden = !isAdmin();
   const pendingCount = state.accessRequests.filter(r=>r.status==="pending").length;
   document.getElementById("pendingBadge").innerHTML = (isAdmin() && pendingCount) ? `<span class="pending-count">${pendingCount}</span>` : "";
@@ -1833,6 +1992,7 @@ document.querySelectorAll("#tabs button").forEach(btn=>{
   });
 });
 btnNewPostEl.addEventListener("click", openComposer);
+btnSyncCalendarEl.addEventListener("click", ()=> syncFromCalendar({ silent:false }));
 document.getElementById("postModalClose").addEventListener("click", closeComposer);
 postModalOverlay.addEventListener("click", e=>{ if(e.target === postModalOverlay) closeComposer(); });
 document.addEventListener("keydown", e=>{
