@@ -301,15 +301,18 @@ sí. **Escribir** en Calendar (crear/editar/cancelar desde la app) sigue
 requiriendo el login de la persona que lo hace, igual que siempre.
 
 No hay servidor propio corriendo esto todo el tiempo — se dispara solo
-(a) una vez por sesión, apenas alguien aprobado abre la app, y (b) a mano
-con el botón **"🔄 Actualizar desde Calendar"** que aparece junto a
-"+ Nuevo posteo". Es decir: es una sincronización "al abrir/al pedirla",
-no en tiempo real al segundo — si nadie abre la app ni toca el botón, un
-cambio hecho en Calendar puede tardar en aparecer. Si más adelante hace
-falta que sea instantáneo, la alternativa es un webhook de Calendar
-corriendo en una Cloud Function propia (requiere plan de pago Blaze de
-Firebase y más piezas de infraestructura) — se dejó afuera a propósito
-por ahora, para no sumar esa complejidad sin necesidad.
+mientras alguien aprobado tiene la app abierta en el navegador: apenas
+carga (una vez) y después sola cada **30 segundos** mientras la pestaña
+siga abierta, además de a mano con el botón **"🔄 Actualizar desde
+Calendar"** (por si alguien quiere forzar un chequeo ya mismo, o nadie
+tiene la app abierta en ese momento). Es decir: sigue sin ser en tiempo
+real al segundo — si nadie tiene la app abierta, un cambio hecho en
+Calendar recién se refleja cuando alguien la vuelve a abrir. Si más
+adelante hace falta que sea instantáneo incluso con la app cerrada, la
+alternativa es un webhook de Calendar corriendo en una Cloud Function
+propia (requiere plan de pago Blaze de Firebase y más piezas de
+infraestructura) — se dejó afuera a propósito por ahora, para no sumar
+esa complejidad sin necesidad.
 
 Los eventos recurrentes de Calendar no se "expanden" en instancias
 individuales (para no generar un aluvión de posteos por cada repetición):

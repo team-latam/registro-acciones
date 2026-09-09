@@ -636,7 +636,7 @@ async function signIn(){
 }
 async function doSignOut(){
   calendarAccessToken = null; calendarTokenExpiry = 0;
-  calendarSyncAttemptedThisSession = false;
+  stopCalendarAutoSync();
   try{ sessionStorage.removeItem(CALENDAR_TOKEN_STORAGE_KEY); }catch(e){}
   try{ await authMod.signOut(auth); }catch(e){ console.error(e); }
 }
@@ -902,7 +902,6 @@ async function findCalendarEventId(post){
    el caso de uso de este calendario (cada acción tiene sus propias
    fechas), así que se deja así por simplicidad.
 */
-let calendarSyncAttemptedThisSession = false;
 
 async function getSyncMeta(){
   const snap = await fb.getDoc(fb.doc(db, "meta", "calendarSync"));
@@ -1032,10 +1031,13 @@ function showCalendarNotice(notice){
   }, 4000);
 }
 
+let calendarSyncInFlight = false;
 async function syncFromCalendar(opts){
   const silent = !!(opts && opts.silent);
   // Lee con la clave de API: no hace falta ningún login ni token de
   // usuario, así que esto nunca dispara un popup de Google.
+  if(calendarSyncInFlight) return; // evita superponer sincronizaciones (ej. el intervalo de 30s con una anterior que todavía no terminó)
+  calendarSyncInFlight = true;
   if(!silent){ state.calendarSyncing = true; render(); }
   try{
     const meta = await getSyncMeta();
@@ -1050,8 +1052,23 @@ async function syncFromCalendar(opts){
     console.error("Error sincronizando desde Calendar:", err);
     if(!silent){ showCalendarNotice({ ok:false, message:"No se pudo sincronizar con Calendar: " + err.message }); }
   }finally{
+    calendarSyncInFlight = false;
     if(!silent){ state.calendarSyncing = false; render(); }
   }
+}
+
+// Sincroniza sola cada 30s mientras la app esté abierta y con sesión
+// (además del botón manual, que sigue estando). Se arranca una sola vez
+// por sesión y se para al cerrar sesión.
+let calendarSyncInterval = null;
+function startCalendarAutoSync(){
+  if(calendarSyncInterval) return;
+  syncFromCalendar({ silent:true });
+  calendarSyncInterval = setInterval(()=> syncFromCalendar({ silent:true }), 30000);
+}
+function stopCalendarAutoSync(){
+  clearInterval(calendarSyncInterval);
+  calendarSyncInterval = null;
 }
 
 let unsubscribeData = null;
@@ -1161,10 +1178,7 @@ function subscribeData(){
     state.posts = snap.docs.map(d=>({ id:d.id, ...d.data({serverTimestamps:"estimate"}) }));
     state.loaded = true;
     render();
-    if(!calendarSyncAttemptedThisSession){
-      calendarSyncAttemptedThisSession = true;
-      syncFromCalendar({ silent:true });
-    }
+    startCalendarAutoSync();
   }, err=>{
     console.error("Error leyendo posts:", err);
     renderFatalError("Error leyendo los posteos desde Firestore: " + err.message);
