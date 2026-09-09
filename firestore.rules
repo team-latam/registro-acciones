@@ -20,6 +20,13 @@ rules_version = '2';
 // para el admin, cuando se combinaban así. La solución que sí funciona
 // de forma confiable es declarar líneas "allow" SEPARADAS para cada
 // caso: Firestore las combina como "o" de todos modos, sin ese problema.
+//
+// Las respuestas ("replies") se leen posteo por posteo (subcolección
+// normal), NUNCA con una consulta collectionGroup: se detectó que esas
+// consultas devuelven "Missing or insufficient permissions" en este
+// proyecto sin importar la regla (se probó hasta con "if true" y seguía
+// fallando) — no se identificó la causa exacta, así que del lado de la
+// app se evita ese tipo de consulta en vez de seguir insistiendo acá.
 
 service cloud.firestore {
   match /databases/{database}/documents {
