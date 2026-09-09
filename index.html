@@ -1189,11 +1189,36 @@ async function revokeAccess(email){
   await fb.deleteDoc(fb.doc(db, "allowlist", email));
 }
 
+// Las respuestas se escuchan posteo por posteo (subcolección normal),
+// nunca con una consulta collectionGroup — ver el comentario grande en
+// firestore.rules sobre por qué (esas consultas dan "Missing or
+// insufficient permissions" en este proyecto sin importar la regla).
+let repliesUnsubs = {}; // postId -> función para dejar de escuchar
+function syncReplyListeners(){
+  const currentIds = new Set(state.posts.map(p=>p.id));
+  Object.keys(repliesUnsubs).forEach(postId=>{
+    if(!currentIds.has(postId)){
+      repliesUnsubs[postId]();
+      delete repliesUnsubs[postId];
+      delete state.repliesByPost[postId];
+    }
+  });
+  currentIds.forEach(postId=>{
+    if(repliesUnsubs[postId]) return;
+    const repliesQ = fb.query(fb.collection(db,"posts",postId,"replies"), fb.orderBy("createdAt","asc"));
+    repliesUnsubs[postId] = fb.onSnapshot(repliesQ, snap=>{
+      state.repliesByPost[postId] = snap.docs.map(d=>({ id:d.id, postId, ...d.data({serverTimestamps:"estimate"}) }));
+      render();
+    }, err=>console.error(`Error leyendo respuestas de ${postId}:`, err));
+  });
+}
+
 function subscribeData(){
   const postsQ = fb.query(fb.collection(db,"posts"), fb.orderBy("date","desc"));
   const unsubPosts = fb.onSnapshot(postsQ, snap=>{
     state.posts = snap.docs.map(d=>({ id:d.id, ...d.data({serverTimestamps:"estimate"}) }));
     state.loaded = true;
+    syncReplyListeners();
     render();
     startCalendarAutoSync();
   }, err=>{
@@ -1201,28 +1226,12 @@ function subscribeData(){
     renderFatalError("Error leyendo los posteos desde Firestore: " + err.message);
   });
 
-  const repliesQ = fb.collectionGroup(db,"replies");
-  const unsubReplies = fb.onSnapshot(repliesQ, snap=>{
-    const grouped = {};
-    snap.docs.forEach(d=>{
-      const postId = d.ref.parent.parent.id;
-      (grouped[postId] = grouped[postId] || []).push({ id:d.id, postId, ...d.data({serverTimestamps:"estimate"}) });
-    });
-    Object.values(grouped).forEach(list=>{
-      list.sort((a,b)=> tsMillis(a.createdAt) - tsMillis(b.createdAt));
-    });
-    state.repliesByPost = grouped;
-    render();
-  }, err=>{
-    console.error("Error leyendo respuestas:", err);
-  });
-
-  unsubscribeData = ()=>{ unsubPosts(); unsubReplies(); };
-}
-function tsMillis(ts){
-  if(!ts) return 0;
-  if(ts.toDate) return ts.toDate().getTime();
-  return new Date(ts).getTime() || 0;
+  unsubscribeData = ()=>{
+    unsubPosts();
+    Object.values(repliesUnsubs).forEach(fn=>fn());
+    repliesUnsubs = {};
+    state.repliesByPost = {};
+  };
 }
 
 async function createPost(data){
