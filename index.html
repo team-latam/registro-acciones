@@ -375,6 +375,14 @@
   }
   .autocomplete-option:hover{ background:#f2f6f6; }
   .autocomplete-empty{ padding:9px 14px; font-size:12.5px; color:var(--text-muted); }
+  /* Fila de @mención: compacta, con avatar chico — más angosta que un
+     .autocomplete-option de texto plano (place-picker). */
+  .autocomplete-option.mention-option{ display:flex; align-items:center; gap:8px; padding:5px 12px; font-weight:600; }
+  .mention-avatar{ width:20px; height:20px; border-radius:50%; object-fit:cover; flex-shrink:0; }
+  .mention-avatar.mention-avatar-fallback{
+    display:flex; align-items:center; justify-content:center; background:var(--petroleo); color:#fff;
+    font-size:10px; font-weight:800;
+  }
   .place-picker{ position:relative; margin-top:8px; }
   .place-picker input{ width:100%; border:1.5px solid var(--border); border-radius:999px; padding:9px 14px; font-size:13px; background:#fff; box-sizing:border-box; }
   .mention-anchor{ position:relative; flex:1; }
@@ -724,17 +732,22 @@ function getMentionsSeenAt(){
 function markMentionsSeen(){
   try{ localStorage.setItem(MENTIONS_SEEN_KEY, String(Date.now())); }catch(e){}
 }
+// "@all" (ver renderMentionSuggestions) cuenta como mención para
+// cualquiera, no solo para un email puntual.
+function mentionsInclude(mentions, email){
+  return (mentions||[]).includes(email) || (mentions||[]).includes("all");
+}
 function getUnseenMentionCount(){
   const email = state.auth.user && state.auth.user.email;
   if(!email) return 0;
   const seenAt = getMentionsSeenAt();
   let count = 0;
   state.posts.forEach(p=>{
-    if((p.mentions||[]).includes(email) && tsToMillis(p.createdAt) > seenAt) count++;
+    if(mentionsInclude(p.mentions, email) && tsToMillis(p.createdAt) > seenAt) count++;
   });
   Object.values(state.repliesByPost).forEach(list=>{
     list.forEach(r=>{
-      if((r.mentions||[]).includes(email) && tsToMillis(r.createdAt) > seenAt) count++;
+      if(mentionsInclude(r.mentions, email) && tsToMillis(r.createdAt) > seenAt) count++;
     });
   });
   return count;
@@ -1470,7 +1483,7 @@ function subscribeRoster(){
   unsubRoster = fb.onSnapshot(q, snap=>{
     state.roster = snap.docs.map(d=>{
       const data = d.data();
-      return { email: d.id, nickname: data.nickname || nicknameFallback(d.id) };
+      return { email: d.id, nickname: data.nickname || nicknameFallback(d.id), photoURL: data.photoURL || null };
     });
     render();
   }, err=>console.error("Error leyendo el equipo:", err));
@@ -1497,11 +1510,15 @@ function makeNickname(displayName, existingNicknames){
 }
 async function approveRequest(email){
   const reqSnap = await fb.getDoc(fb.doc(db, "accessRequests", email));
-  const name = (reqSnap.exists() && reqSnap.data().name) || email;
+  const reqData = reqSnap.exists() ? reqSnap.data() : {};
+  const name = reqData.name || email;
   const rosterSnap = await fb.getDocs(fb.collection(db,"allowlist"));
   const existingNicknames = new Set(rosterSnap.docs.map(d=>d.data().nickname).filter(Boolean));
   const nickname = makeNickname(name, existingNicknames);
-  await fb.setDoc(fb.doc(db, "allowlist", email), { email, name, nickname, approvedAt: fb.serverTimestamp(), approvedBy: ADMIN_EMAIL });
+  await fb.setDoc(fb.doc(db, "allowlist", email), {
+    email, name, nickname, photoURL: reqData.photoURL || null,
+    approvedAt: fb.serverTimestamp(), approvedBy: ADMIN_EMAIL,
+  });
   await fb.updateDoc(fb.doc(db, "accessRequests", email), { status:"approved" });
   logAudit("access_approved", { targetEmail: email });
 }
@@ -2771,13 +2788,22 @@ function updateMentionState(draft, textarea){
   if(match){ draft.mentionQuery = match[1]; draft.mentionCaret = caret; }
   else { draft.mentionQuery = null; }
 }
+// "@all" es una mención especial (no es un email real): pick-mention la
+// inserta como cualquier otra, y se guarda literalmente "all" en el
+// array `mentions` — getUnseenMentionCount() la cuenta como mención para
+// TODOS, no hace falta tratarla distinto en ningún otro lado.
 function renderMentionSuggestions(draft, scope, ownerId, textareaId){
   if(draft.mentionQuery == null) return "";
   const q = draft.mentionQuery.toLowerCase();
-  const matches = state.roster.filter(u => u.nickname.toLowerCase().startsWith(q)).slice(0, 6);
+  const allOption = "all".startsWith(q) ? [{ email:"all", nickname:"all", isAll:true }] : [];
+  const matches = allOption.concat(state.roster.filter(u => u.nickname.toLowerCase().startsWith(q))).slice(0, 6);
   if(!matches.length) return `<div class="autocomplete-list"><div class="autocomplete-empty">Sin coincidencias</div></div>`;
-  return `<div class="autocomplete-list">${matches.map(u=>`
-    <button type="button" class="autocomplete-option" data-action="pick-mention" data-scope="${scope}" data-owner-id="${ownerId}" data-textarea-id="${textareaId}" data-nickname="${esc(u.nickname)}" data-email="${esc(u.email)}">@${esc(u.nickname)}</button>`).join("")}</div>`;
+  return `<div class="autocomplete-list">${matches.map(u=>{
+    const avatar = u.isAll ? `<span class="mention-avatar mention-avatar-fallback">👥</span>`
+      : u.photoURL ? `<img class="mention-avatar" src="${esc(u.photoURL)}" alt="">`
+      : `<span class="mention-avatar mention-avatar-fallback">${esc(u.nickname[0].toUpperCase())}</span>`;
+    return `<button type="button" class="autocomplete-option mention-option" data-action="pick-mention" data-scope="${scope}" data-owner-id="${ownerId}" data-textarea-id="${textareaId}" data-nickname="${esc(u.nickname)}" data-email="${esc(u.email)}">${avatar}<span>@${esc(u.nickname)}</span></button>`;
+  }).join("")}</div>`;
 }
 
 document.addEventListener("click", e=>{
