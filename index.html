@@ -227,6 +227,10 @@
     display:inline-flex; align-items:center; gap:5px; padding:4px 11px; border-radius:999px;
     font-size:11px; font-weight:700; background:var(--petroleo); color:#fff;
   }
+  /* Insignia de posteo "destacado" en el Feed (ver computeFeedOrder):
+     mismo pill que type-badge, con el celeste de la app en vez del
+     petroleo por defecto para que resalte sin salirse de la paleta. */
+  .type-badge.featured-badge{ background:var(--celeste); color:var(--petroleo-dark); }
 
   /* ---------- Post card ---------- */
   .post{ transition:background-color .8s ease; }
@@ -404,6 +408,32 @@
   .place-picker{ position:relative; margin-top:8px; }
   .place-picker input{ width:100%; border:1.5px solid var(--border); border-radius:999px; padding:9px 14px; font-size:13px; background:#fff; box-sizing:border-box; }
   .mention-anchor{ position:relative; flex:1; }
+
+  /* Resalte de @mención EN VIVO mientras se escribe (no solo en lo ya
+     publicado): un <div> detrás del textarea, con el mismo texto pasado
+     por highlightMentions(), que solo pinta el fondo celeste detrás de
+     "@Nickname" — el texto en sí (negro) lo sigue mostrando el textarea
+     real, que queda transparente arriba. Nunca se le pone padding extra
+     al span de la mención acá adentro: correría el punto donde el texto
+     ajusta renglón respecto del textarea real y quedaría desalineado. */
+  .mention-highlight-backdrop{
+    position:absolute; top:0; left:0; right:0; bottom:0; margin:0; overflow:hidden; pointer-events:none;
+    color:transparent; white-space:pre-wrap; word-wrap:break-word; word-break:break-word;
+    font-family:inherit; box-sizing:border-box;
+  }
+  .mention-highlight-backdrop .mention-tag{ padding:0; font-weight:inherit; color:transparent; background:rgba(79,199,224,0.32); }
+  .field .mention-highlight-backdrop{
+    padding:10px 12px; border:1.5px solid transparent; border-radius:var(--radius-sm);
+    font-size:14px; background:#fbfdfd;
+  }
+  .field textarea.mention-input{ position:relative; z-index:1; background:transparent; }
+  .quick-composer .mention-highlight-backdrop{ padding:8px 0; font-size:15px; line-height:1.4; }
+  .quick-composer textarea.mention-input{ position:relative; z-index:1; }
+  .reply-nested-form .mention-highlight-backdrop{
+    padding:8px 10px; border:1.5px solid transparent; border-radius:var(--radius-sm);
+    font-size:13px; background:#fff;
+  }
+  .reply-nested-form textarea.mention-input{ position:relative; z-index:1; background:transparent; }
 
   /* Punto rojo de @menciones sin ver (ver getUnseenMentionCount), hoy
      colgado de la campanita en vez del avatar. */
@@ -2234,12 +2264,43 @@ function getVisiblePosts(){
 /* ======================================================================
    RENDER: Feed
    ====================================================================== */
+// Orden del Feed (a pedido): 1) lo recién publicado siempre primero,
+// 2) hasta 2 "destacados" (comentarios + me gusta, solo si es reciente,
+// para que un posteo viejo con mucho engagement no vuelva a subir),
+// 3) el resto como ya estaba, por fecha. Esto es SOLO para el Feed —
+// Memoria sigue usando getVisiblePosts() tal cual, con su propio orden
+// cronológico controlable por el usuario.
+const FEED_FEATURED_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+const FEED_FEATURED_MAX = 2;
+function computeFeedOrder(items){
+  if(items.length <= 1) return items.map(it=>({ ...it, featured:false }));
+  const mostRecent = items.reduce((a,b)=> tsToMillis(b.post.createdAt) > tsToMillis(a.post.createdAt) ? b : a);
+  const pool = items.filter(it=>it.post.id !== mostRecent.post.id);
+  const now = Date.now();
+  const featured = pool
+    .map(it=>({
+      it,
+      score: it.replies.length + it.replies.reduce((s,r)=>s + ((r.likedBy||[]).length), 0),
+      age: now - tsToMillis(it.post.createdAt),
+    }))
+    .filter(x=> x.score > 0 && x.age <= FEED_FEATURED_WINDOW_MS)
+    .sort((a,b)=> b.score - a.score)
+    .slice(0, FEED_FEATURED_MAX)
+    .map(x=>x.it);
+  const featuredIds = new Set(featured.map(it=>it.post.id));
+  const rest = pool.filter(it=>!featuredIds.has(it.post.id));
+  return [
+    { ...mostRecent, featured:false },
+    ...featured.map(it=>({ ...it, featured:true })),
+    ...rest.map(it=>({ ...it, featured:false })),
+  ];
+}
 function renderFeedView(){
-  const items = getVisiblePosts();
+  const items = computeFeedOrder(getVisiblePosts());
   return `
     ${renderRutinaComposer()}
     ${renderFilterBar("feed")}
-    ${items.length ? items.map(({post,replies})=>renderPostCard(post,replies)).join("") :
+    ${items.length ? items.map(({post,replies,featured})=>renderPostCard(post,replies,featured)).join("") :
       `<div class="empty-state"><div class="big">🗒️</div>Todavía no hay posteos${anyActiveFilter()?" que coincidan con el filtro":""}.<br>Usá "+ Nuevo posteo" para sumar el primero.</div>`}
   `;
 }
@@ -2279,7 +2340,8 @@ function renderRutinaComposer(){
       <div class="quick-composer-row">
         ${renderMiniAvatar(state.auth.user)}
         <div class="mention-anchor">
-          <textarea id="rutinaContent" class="autogrow" data-mention-scope="rutina" data-mention-owner="new" placeholder="¿Qué hiciste hoy?" rows="1">${esc(d.content)}</textarea>
+          <div class="mention-highlight-backdrop" id="rutinaContent-hl" aria-hidden="true">${highlightMentions(esc(d.content))}</div>
+          <textarea id="rutinaContent" class="autogrow mention-input" data-mention-scope="rutina" data-mention-owner="new" placeholder="¿Qué hiciste hoy?" rows="1">${esc(d.content)}</textarea>
           ${renderMentionSuggestions(d, "rutina", "new", "rutinaContent")}
         </div>
       </div>
@@ -2357,7 +2419,7 @@ function resetReplyDraft(postId){
   replyDrafts[postId] = newReplyDraft();
 }
 
-function renderPostCard(post, replies){
+function renderPostCard(post, replies, featured){
   const type = ACTIVITY_BY_KEY[post.activityType] || ACTIVITY_BY_KEY.otro;
   const scopesHtml = (post.scopes||[]).map(sc=>renderScopeChip(sc)).join("");
   const linksHtml = (post.links||[]).filter(l=>safeUrl(l.url)).map(l=>
@@ -2379,6 +2441,7 @@ function renderPostCard(post, replies){
       <div class="post-head">
         <div class="post-meta">
           <span class="type-badge">${type.icon} ${type.label}</span>
+          ${featured ? `<span class="type-badge featured-badge">⭐ Destacado</span>` : ""}
           <span class="post-date">${dateLabel}</span>
           ${post.cancelled ? `<span class="type-badge" style="background:var(--danger);">🚫 Cancelado</span>` : ""}
         </div>
@@ -2479,7 +2542,8 @@ function renderNestedReplyForm(postId, replyId){
   return `
     <div class="reply-nested-form">
       <div class="mention-anchor">
-        <textarea id="${textareaId}" data-nested-reply-field="content" data-reply-id="${replyId}" data-mention-scope="nested-reply" data-mention-owner="${replyId}" placeholder="Responder... (@ para mencionar a alguien)">${esc(d.content)}</textarea>
+        <div class="mention-highlight-backdrop" id="${textareaId}-hl" aria-hidden="true">${highlightMentions(esc(d.content))}</div>
+        <textarea id="${textareaId}" class="mention-input" data-nested-reply-field="content" data-reply-id="${replyId}" data-mention-scope="nested-reply" data-mention-owner="${replyId}" placeholder="Responder... (@ para mencionar a alguien)">${esc(d.content)}</textarea>
         ${renderMentionSuggestions(d, "nested-reply", replyId, textareaId)}
       </div>
       <input type="file" id="nestedReplyImages-${replyId}" accept="image/*" multiple hidden data-action="nested-reply-images" data-reply-id="${replyId}">
@@ -2511,7 +2575,8 @@ function renderReplyForm(postId){
       <div class="field" style="margin-bottom:8px;">
         <label>Respuesta</label>
         <div class="mention-anchor">
-          <textarea id="${textareaId}" data-reply-field="content" data-post-id="${postId}" data-mention-scope="reply" data-mention-owner="${postId}" placeholder="Sumá información... (@ para mencionar a alguien)">${esc(d.content)}</textarea>
+          <div class="mention-highlight-backdrop" id="${textareaId}-hl" aria-hidden="true">${highlightMentions(esc(d.content))}</div>
+          <textarea id="${textareaId}" class="mention-input" data-reply-field="content" data-post-id="${postId}" data-mention-scope="reply" data-mention-owner="${postId}" placeholder="Sumá información... (@ para mencionar a alguien)">${esc(d.content)}</textarea>
           ${renderMentionSuggestions(d, "reply", postId, textareaId)}
         </div>
       </div>
@@ -2851,7 +2916,8 @@ function renderComposer(){
     <div class="field">
       <label>Comentarios</label>
       <div class="mention-anchor">
-        <textarea id="cContent" data-mention-scope="post" data-mention-owner="new" placeholder="Contá qué se hizo (o qué va a pasar)... usá @ para mencionar a alguien">${esc(d.content)}</textarea>
+        <div class="mention-highlight-backdrop" id="cContent-hl" aria-hidden="true">${highlightMentions(esc(d.content))}</div>
+        <textarea id="cContent" class="mention-input" data-mention-scope="post" data-mention-owner="new" placeholder="Contá qué se hizo (o qué va a pasar)... usá @ para mencionar a alguien">${esc(d.content)}</textarea>
         ${renderMentionSuggestions(d, "post", "new", "cContent")}
       </div>
     </div>
@@ -3052,6 +3118,17 @@ function selectPlaceMatch(scope, ownerId, match){
     draft.placeHighlight = 0;
   }
   render();
+}
+
+// Actualiza el resalte EN VIVO (ver .mention-highlight-backdrop) en cada
+// tecleo, leyendo directo del DOM (no del draft) para no depender de un
+// render() completo — igual que autoGrowTextarea, esto se llama en cada
+// tecla sin esperar a que cambie la @mención en curso.
+function syncMentionBackdrop(textarea){
+  const bd = document.getElementById(textarea.id + "-hl");
+  if(!bd) return;
+  bd.innerHTML = highlightMentions(esc(textarea.value));
+  bd.scrollTop = textarea.scrollTop;
 }
 
 // Detecta si justo antes del cursor hay un "@palabra" sin terminar, para
@@ -3320,8 +3397,21 @@ document.addEventListener("click", e=>{
   }
 });
 
+// El scroll de un textarea (al crecer más allá de max-height, o al mover
+// el cursor con flechas fuera de lo visible) no dispara "input" — sin
+// este listener en capture (scroll no burbujea) el resalte de fondo se
+// desalinearía verticalmente del texto real apenas apareciera scroll.
+document.addEventListener("scroll", e=>{
+  const t = e.target;
+  if(t.dataset && t.dataset.mentionScope){
+    const bd = document.getElementById(t.id + "-hl");
+    if(bd) bd.scrollTop = t.scrollTop;
+  }
+}, true);
+
 document.addEventListener("input", e=>{
   const t = e.target;
+  if(t.dataset.mentionScope) syncMentionBackdrop(t);
   if(t.id === "feedSearch" || t.id === "memoriaSearch"){
     state.filters.text = t.value; render();
   } else if(t.id === "cTitle"){ composerDraft.title = t.value; }
