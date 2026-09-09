@@ -1013,12 +1013,15 @@ async function applyCalendarEventToPosts(ev){
 }
 
 // Muestra el aviso de abajo del header y lo hace desaparecer solo, con un
-// fundido, a los pocos segundos (el botón "Cerrar" lo saca al toque).
+// fundido, a los pocos segundos (el botón "Cerrar" lo saca al toque). Los
+// de error NO se auto-ocultan: hay que poder leerlos con calma y que no
+// desaparezcan antes de anotar qué decían.
 let calendarNoticeTimer = null;
 function showCalendarNotice(notice){
   clearTimeout(calendarNoticeTimer);
   state.calendarNotice = notice;
   render();
+  if(!notice.ok) return;
   calendarNoticeTimer = setTimeout(()=>{
     state.calendarNotice = { ...notice, fading:true };
     render();
