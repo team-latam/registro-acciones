@@ -373,7 +373,7 @@
     display:block; width:100%; text-align:left; background:none; border:none; padding:9px 14px; font-size:13px;
     cursor:pointer; color:var(--text);
   }
-  .autocomplete-option:hover{ background:#f2f6f6; }
+  .autocomplete-option:hover, .autocomplete-option.active{ background:#f2f6f6; }
   .autocomplete-empty{ padding:9px 14px; font-size:12.5px; color:var(--text-muted); }
   /* Fila de @mención: compacta, con avatar chico — más angosta que un
      .autocomplete-option de texto plano (place-picker). */
@@ -2081,13 +2081,13 @@ function renderRutinaComposer(){
       <div class="quick-composer-row">
         ${renderMiniAvatar(state.auth.user)}
         <div class="mention-anchor">
-          <textarea id="rutinaContent" class="autogrow" placeholder="¿Qué hiciste hoy?" rows="1">${esc(d.content)}</textarea>
+          <textarea id="rutinaContent" class="autogrow" data-mention-scope="rutina" data-mention-owner="new" placeholder="¿Qué hiciste hoy?" rows="1">${esc(d.content)}</textarea>
           ${renderMentionSuggestions(d, "rutina", "new", "rutinaContent")}
         </div>
       </div>
       <div class="place-picker">
         <input type="text" id="rutinaPlaceQuery" placeholder="📍 Agregar lugar (país, ciudad, región)..." autocomplete="off" value="${esc(d.placeQuery)}">
-        ${d.placeQuery ? renderPlaceSuggestions(d.placeQuery, "rutina", "new") : ""}
+        ${d.placeQuery ? renderPlaceSuggestions(d, "rutina", "new") : ""}
       </div>
       ${d.scopes.length ? `<div class="post-scopes" style="margin-top:8px;">${d.scopes.map((sc,i)=>renderScopeChip(sc, "rm-scope-rutina", i, "new")).join("")}</div>` : ""}
       <input type="file" id="rutinaImages" accept="image/*" multiple hidden data-action="rutina-images">
@@ -2262,7 +2262,7 @@ function renderNestedReplyForm(postId, replyId){
   return `
     <div class="reply-nested-form">
       <div class="mention-anchor">
-        <textarea id="${textareaId}" data-nested-reply-field="content" data-reply-id="${replyId}" placeholder="Responder... (@ para mencionar a alguien)">${esc(d.content)}</textarea>
+        <textarea id="${textareaId}" data-nested-reply-field="content" data-reply-id="${replyId}" data-mention-scope="nested-reply" data-mention-owner="${replyId}" placeholder="Responder... (@ para mencionar a alguien)">${esc(d.content)}</textarea>
         ${renderMentionSuggestions(d, "nested-reply", replyId, textareaId)}
       </div>
       <input type="file" id="nestedReplyImages-${replyId}" accept="image/*" multiple hidden data-action="nested-reply-images" data-reply-id="${replyId}">
@@ -2294,7 +2294,7 @@ function renderReplyForm(postId){
       <div class="field" style="margin-bottom:8px;">
         <label>Respuesta</label>
         <div class="mention-anchor">
-          <textarea id="${textareaId}" data-reply-field="content" data-post-id="${postId}" placeholder="Sumá información... (@ para mencionar a alguien)">${esc(d.content)}</textarea>
+          <textarea id="${textareaId}" data-reply-field="content" data-post-id="${postId}" data-mention-scope="reply" data-mention-owner="${postId}" placeholder="Sumá información... (@ para mencionar a alguien)">${esc(d.content)}</textarea>
           ${renderMentionSuggestions(d, "reply", postId, textareaId)}
         </div>
       </div>
@@ -2635,7 +2635,7 @@ function renderComposer(){
     <div class="field">
       <label>Comentarios</label>
       <div class="mention-anchor">
-        <textarea id="cContent" placeholder="Contá qué se hizo (o qué va a pasar)... usá @ para mencionar a alguien">${esc(d.content)}</textarea>
+        <textarea id="cContent" data-mention-scope="post" data-mention-owner="new" placeholder="Contá qué se hizo (o qué va a pasar)... usá @ para mencionar a alguien">${esc(d.content)}</textarea>
         ${renderMentionSuggestions(d, "post", "new", "cContent")}
       </div>
     </div>
@@ -2811,44 +2811,134 @@ function renderPostedFiles(files){
 // Autocompletar "lugar" (composer de Rutina) y "@menciones" (cualquier
 // textarea de contenido): dos listas desplegables chiquitas con el mismo
 // look (.autocomplete-list/.autocomplete-option), una sobre PLACE_INDEX y
-// otra sobre state.roster.
-function renderPlaceSuggestions(query, scope, ownerId){
-  const q = query.trim().toLowerCase();
-  if(!q) return "";
-  const matches = PLACE_INDEX.filter(it => it.label.toLowerCase().includes(q)).slice(0, 8);
-  if(!matches.length) return `<div class="autocomplete-list"><div class="autocomplete-empty">Sin resultados</div></div>`;
-  return `<div class="autocomplete-list">${matches.map(it=>`
-    <button type="button" class="autocomplete-option" data-action="pick-place" data-scope="${scope}" data-owner-id="${ownerId}" data-place-idx="${PLACE_INDEX.indexOf(it)}">${it.icon} ${esc(it.label)}</button>`).join("")}</div>`;
+// otra sobre state.roster. Ambas se pueden recorrer con las flechas del
+// teclado y confirmar con Tab/Enter (ver el keydown handler más abajo);
+// getPlaceMatches/getMentionMatches se comparten entre el render y el
+// manejo de teclado para que siempre miren exactamente la misma lista.
+function getPlaceMatches(query){
+  const q = (query||"").trim().toLowerCase();
+  if(!q) return [];
+  return PLACE_INDEX.filter(it => it.label.toLowerCase().includes(q)).slice(0, 8);
 }
+function renderPlaceSuggestions(draft, scope, ownerId){
+  const matches = getPlaceMatches(draft.placeQuery);
+  if(!draft.placeQuery.trim()) return "";
+  if(!matches.length) return `<div class="autocomplete-list"><div class="autocomplete-empty">Sin resultados</div></div>`;
+  return `<div class="autocomplete-list">${matches.map((it,i)=>`
+    <button type="button" class="autocomplete-option${i===draft.placeHighlight?" active":""}" data-action="pick-place" data-scope="${scope}" data-owner-id="${ownerId}" data-place-idx="${PLACE_INDEX.indexOf(it)}">${it.icon} ${esc(it.label)}</button>`).join("")}</div>`;
+}
+function selectPlaceMatch(scope, ownerId, match){
+  const draft = getDraftFor(scope, ownerId);
+  if(match){
+    const exists = draft.scopes.some(sc => JSON.stringify(sc) === JSON.stringify(match.scope));
+    if(!exists) draft.scopes.push(match.scope);
+    draft.placeQuery = "";
+    draft.placeHighlight = 0;
+  }
+  render();
+}
+
 // Detecta si justo antes del cursor hay un "@palabra" sin terminar, para
 // mostrar (o no) el desplegable de menciones. Se llama en cada tecleo.
 function updateMentionState(draft, textarea){
   const caret = textarea.selectionStart;
   const uptoCaret = textarea.value.slice(0, caret);
   const match = uptoCaret.match(/(?:^|\s)@(\w*)$/);
-  if(match){ draft.mentionQuery = match[1]; draft.mentionCaret = caret; }
+  if(match){
+    if(draft.mentionQuery !== match[1]) draft.mentionHighlight = 0;
+    draft.mentionQuery = match[1]; draft.mentionCaret = caret;
+  }
   else { draft.mentionQuery = null; }
 }
 // "@all" es una mención especial (no es un email real): pick-mention la
 // inserta como cualquier otra, y se guarda literalmente "all" en el
 // array `mentions` — getUnseenMentionCount() la cuenta como mención para
 // TODOS, no hace falta tratarla distinto en ningún otro lado.
-function renderMentionSuggestions(draft, scope, ownerId, textareaId){
-  if(draft.mentionQuery == null) return "";
+function getMentionMatches(draft){
+  if(draft.mentionQuery == null) return [];
   const q = draft.mentionQuery.toLowerCase();
   const allOption = "all".startsWith(q) ? [{ email:"all", nickname:"all", isAll:true }] : [];
   const myEmail = state.auth.user && state.auth.user.email;
-  const matches = allOption.concat(state.roster.filter(u =>
+  return allOption.concat(state.roster.filter(u =>
     u.email !== myEmail && u.nickname.toLowerCase().startsWith(q)
   )).slice(0, 6);
+}
+function renderMentionSuggestions(draft, scope, ownerId, textareaId){
+  if(draft.mentionQuery == null) return "";
+  const matches = getMentionMatches(draft);
   if(!matches.length) return `<div class="autocomplete-list"><div class="autocomplete-empty">Sin coincidencias</div></div>`;
-  return `<div class="autocomplete-list">${matches.map(u=>{
+  return `<div class="autocomplete-list">${matches.map((u,i)=>{
     const avatar = u.isAll ? `<span class="mention-avatar mention-avatar-fallback">👥</span>`
       : u.photoURL ? `<img class="mention-avatar" src="${esc(u.photoURL)}" alt="">`
       : `<span class="mention-avatar mention-avatar-fallback">${esc(u.nickname[0].toUpperCase())}</span>`;
-    return `<button type="button" class="autocomplete-option mention-option" data-action="pick-mention" data-scope="${scope}" data-owner-id="${ownerId}" data-textarea-id="${textareaId}" data-nickname="${esc(u.nickname)}" data-email="${esc(u.email)}">${avatar}<span>@${esc(u.nickname)}</span></button>`;
+    return `<button type="button" class="autocomplete-option mention-option${i===draft.mentionHighlight?" active":""}" data-action="pick-mention" data-scope="${scope}" data-owner-id="${ownerId}" data-textarea-id="${textareaId}" data-nickname="${esc(u.nickname)}" data-email="${esc(u.email)}">${avatar}<span>@${esc(u.nickname)}</span></button>`;
   }).join("")}</div>`;
 }
+function selectMentionMatch(scope, ownerId, textareaId, match){
+  if(!match) return;
+  const draft = getDraftFor(scope, ownerId);
+  const caret = draft.mentionCaret != null ? draft.mentionCaret : draft.content.length;
+  const before = draft.content.slice(0, caret).replace(/@(\w*)$/, "");
+  const after = draft.content.slice(caret);
+  const insText = "@" + match.nickname + " ";
+  draft.content = before + insText + after;
+  if(!draft.mentions.includes(match.email)) draft.mentions.push(match.email);
+  draft.mentionQuery = null;
+  draft.mentionHighlight = 0;
+  const newCaret = before.length + insText.length;
+  render();
+  // El foco/cursor no se restaura solo acá (no fue un evento de la
+  // textarea): se reposiciona a mano justo después de la mención.
+  const el = document.getElementById(textareaId);
+  if(el){ el.focus(); el.setSelectionRange(newCaret, newCaret); autoGrowTextarea(el); }
+}
+
+// Navegar los desplegables de lugar/@mención con flechas arriba/abajo, y
+// confirmar la opción resaltada con Tab o Enter (Escape los cierra sin
+// elegir nada) — en vez de depender solo del mouse.
+document.addEventListener("keydown", e=>{
+  const t = e.target;
+  if(t.id === "rutinaPlaceQuery"){
+    const draft = rutinaDraft;
+    const matches = getPlaceMatches(draft.placeQuery);
+    if(!matches.length) return;
+    if(e.key === "ArrowDown"){
+      e.preventDefault();
+      draft.placeHighlight = (draft.placeHighlight + 1) % matches.length;
+      render();
+    } else if(e.key === "ArrowUp"){
+      e.preventDefault();
+      draft.placeHighlight = (draft.placeHighlight - 1 + matches.length) % matches.length;
+      render();
+    } else if(e.key === "Tab" || e.key === "Enter"){
+      e.preventDefault();
+      selectPlaceMatch("rutina", "new", matches[draft.placeHighlight]);
+    } else if(e.key === "Escape"){
+      draft.placeQuery = ""; draft.placeHighlight = 0; render();
+    }
+    return;
+  }
+  if(t.dataset.mentionScope){
+    const draft = getDraftFor(t.dataset.mentionScope, t.dataset.mentionOwner);
+    if(draft.mentionQuery == null) return;
+    const matches = getMentionMatches(draft);
+    if(!matches.length) return;
+    if(e.key === "ArrowDown"){
+      e.preventDefault();
+      draft.mentionHighlight = (draft.mentionHighlight + 1) % matches.length;
+      render();
+    } else if(e.key === "ArrowUp"){
+      e.preventDefault();
+      draft.mentionHighlight = (draft.mentionHighlight - 1 + matches.length) % matches.length;
+      render();
+    } else if(e.key === "Tab" || e.key === "Enter"){
+      e.preventDefault();
+      selectMentionMatch(t.dataset.mentionScope, t.dataset.mentionOwner, t.id, matches[draft.mentionHighlight]);
+    } else if(e.key === "Escape"){
+      draft.mentionQuery = null; draft.mentionHighlight = 0; render();
+    }
+  }
+});
 
 document.addEventListener("click", e=>{
   if(userMenuOpen && !e.target.closest("#userBadge")){
@@ -2931,31 +3021,9 @@ document.addEventListener("click", e=>{
   } else if(action === "submit-rutina"){
     submitRutina();
   } else if(action === "pick-place"){
-    const place = PLACE_INDEX[Number(t.dataset.placeIdx)];
-    const draft = getDraftFor(t.dataset.scope, t.dataset.ownerId);
-    if(place){
-      const exists = draft.scopes.some(sc => JSON.stringify(sc) === JSON.stringify(place.scope));
-      if(!exists) draft.scopes.push(place.scope);
-      draft.placeQuery = "";
-    }
-    render();
+    selectPlaceMatch(t.dataset.scope, t.dataset.ownerId, PLACE_INDEX[Number(t.dataset.placeIdx)]);
   } else if(action === "pick-mention"){
-    const draft = getDraftFor(t.dataset.scope, t.dataset.ownerId);
-    const nickname = t.dataset.nickname, email = t.dataset.email;
-    const caret = draft.mentionCaret != null ? draft.mentionCaret : draft.content.length;
-    const before = draft.content.slice(0, caret).replace(/@(\w*)$/, "");
-    const after = draft.content.slice(caret);
-    const insText = "@" + nickname + " ";
-    draft.content = before + insText + after;
-    if(!draft.mentions.includes(email)) draft.mentions.push(email);
-    draft.mentionQuery = null;
-    const newCaret = before.length + insText.length;
-    render();
-    // El foco/cursor no se restaura solo acá (fue un click en la
-    // sugerencia, no un evento de la textarea): se reposiciona a mano
-    // justo después de la mención insertada.
-    const el = document.getElementById(t.dataset.textareaId);
-    if(el){ el.focus(); el.setSelectionRange(newCaret, newCaret); }
+    selectMentionMatch(t.dataset.scope, t.dataset.ownerId, t.dataset.textareaId, { nickname:t.dataset.nickname, email:t.dataset.email });
   } else if(action === "use-city-preset"){
     const sd = getDraftFor(t.dataset.scope, t.dataset.ownerId).scopeDraft;
     sd.cityUseCustom = false; sd.city = ""; render();
@@ -3056,7 +3124,7 @@ document.addEventListener("input", e=>{
     updateMentionState(rutinaDraft, t);
     if(prevQuery !== rutinaDraft.mentionQuery) render();
   }
-  else if(t.id === "rutinaPlaceQuery"){ rutinaDraft.placeQuery = t.value; render(); }
+  else if(t.id === "rutinaPlaceQuery"){ rutinaDraft.placeQuery = t.value; rutinaDraft.placeHighlight = 0; render(); }
   else if(t.dataset.replyField === "content"){
     const draft = getReplyDraft(t.dataset.postId);
     draft.content = t.value;
