@@ -738,11 +738,22 @@ function tsToMillis(ts){
 // última vez que la persona abrió el menú del avatar, y se cuenta cuántas
 // menciones a su email son más nuevas que eso.
 const MENTIONS_SEEN_KEY = "mentionsSeenAt";
+// Guardado por email (no una sola clave global): si dos cuentas distintas
+// comparten el mismo navegador, "ya vistas" de una no debe ocultar (ni
+// inventar) menciones nuevas para la otra.
+function mentionsSeenKey(){
+  const email = state.auth.user && state.auth.user.email;
+  return email ? `${MENTIONS_SEEN_KEY}:${email}` : null;
+}
 function getMentionsSeenAt(){
-  try{ return Number(localStorage.getItem(MENTIONS_SEEN_KEY)) || 0; }catch(e){ return 0; }
+  const key = mentionsSeenKey();
+  if(!key) return 0;
+  try{ return Number(localStorage.getItem(key)) || 0; }catch(e){ return 0; }
 }
 function markMentionsSeen(){
-  try{ localStorage.setItem(MENTIONS_SEEN_KEY, String(Date.now())); }catch(e){}
+  const key = mentionsSeenKey();
+  if(!key) return;
+  try{ localStorage.setItem(key, String(Date.now())); }catch(e){}
 }
 // "@all" (ver renderMentionSuggestions) cuenta como mención para
 // cualquiera, no solo para un email puntual.
@@ -1398,6 +1409,22 @@ async function onAuthChanged(user){
   if(unsubAuditLog){ unsubAuditLog(); unsubAuditLog = null; }
   if(unsubRoster){ unsubRoster(); unsubRoster = null; }
   state.posts = []; state.repliesByPost = {}; state.loaded = false; state.accessRequests = []; state.auditLog = []; state.roster = [];
+  // Borradores sin publicar (posteo nuevo/edición, Rutina, respuestas) y
+  // paneles abiertos son estado de UI en memoria, no de Firestore — sin
+  // esto, lo que alguien estaba escribiendo le quedaba visible a la
+  // SIGUIENTE persona que iniciara sesión en la misma pestaña (cerrar
+  // sesión no recarga la página). Se limpia en CUALQUIER cambio de
+  // sesión: cerrar sesión, o pasar de una cuenta a otra.
+  composerDraft = newComposerDraft();
+  rutinaDraft = newRutinaDraft();
+  Object.keys(replyDrafts).forEach(k => delete replyDrafts[k]);
+  Object.keys(nestedReplyDrafts).forEach(k => delete nestedReplyDrafts[k]);
+  openReplyForms.clear();
+  openThreads.clear();
+  openNestedReplyForms.clear();
+  userMenuOpen = false;
+  postModalOverlay.hidden = true;
+  state.filters = { text:"", types:new Set(), zones:new Set(), place:null };
 
   if(!user){
     state.auth = { status:"signedOut", user:null };
