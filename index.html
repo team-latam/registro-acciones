@@ -578,6 +578,7 @@ const state = {
   },
   paisesSubview: "lista",   // lista | mapa
   countryDrill: null,       // nombre de país (drill a ciudades) en vista Países > Lista
+  paisesZoneFilter: null,   // key de zona (sur/central/norte) para filtrar Países (Lista y Mapa), o null = todas
   memoriaOrder: "asc",      // asc | desc
   leafletMap: null,
   calendarNotice: null,     // {ok, message} — aviso post-sincronización con Calendar
@@ -996,8 +997,10 @@ async function applyCalendarEventToPosts(ev){
   }
 
   // Evento nuevo creado directo en Calendar (no vino de la app): se suma
-  // como posteo simple, con alcance "Toda LatAm y el Caribe" y tipo
-  // "Otro" por default — se afina después editándolo desde la app.
+  // como posteo simple, tipo "Otro" y SIN alcance (no "Toda LatAm y el
+  // Caribe" — eso sumaría a los 32 países en los conteos de Países/Mapa
+  // antes de que alguien lo revise). Queda marcado como "sin definir" en
+  // la tarjeta hasta que alguien lo edite y le ponga el lugar real.
   await createPost({
     title: ev.summary || "(Sin título)",
     content: ev.description || "Creado automáticamente desde Google Calendar.",
@@ -1005,7 +1008,7 @@ async function applyCalendarEventToPosts(ev){
     organizer: ev.organizer?.displayName || ev.organizer?.email || "",
     location,
     activityType: "otro",
-    scopes: [{ type:"todo" }],
+    scopes: [],
     images: [], links: [],
     authorName: "Google Calendar", authorEmail: "",
     calendarEventId: ev.id,
@@ -1611,7 +1614,8 @@ function renderPostCard(post, replies){
       ${post.title ? `<h3 style="margin:6px 0 0 0;font-size:16px;color:var(--petroleo);${post.cancelled?"text-decoration:line-through;opacity:0.7;":""}">${esc(post.title)}</h3>` : ""}
       ${metaBits.length ? `<div class="hint" style="margin-top:4px;">${metaBits.join(" · ")}</div>` : ""}
       <div class="post-content">${nl2br(post.content)}</div>
-      ${scopesHtml ? `<div class="post-scopes">${scopesHtml}</div>` : ""}
+      ${scopesHtml ? `<div class="post-scopes">${scopesHtml}</div>` :
+        `<div class="hint" style="color:var(--danger);">⚠️ Sin alcance definido — editalo para asignarle un país/ciudad.</div>`}
       ${linksHtml ? `<div class="post-links">${linksHtml}</div>` : ""}
       ${imagesHtml ? `<div class="post-images">${imagesHtml}</div>` : ""}
       ${post.lastEditedBy ? `<div class="hint">Editado por ${esc(post.lastEditedBy)}</div>` : ""}
@@ -1784,9 +1788,14 @@ function computePlaceCounts(){
 /* ======================================================================
    RENDER: Países
    ====================================================================== */
+// Clickeable: filtra Países (Lista y Mapa) por zona. Click de nuevo sobre
+// la misma zona activa la saca (vuelve a mostrar todas).
 function renderZoneLegend(){
+  const active = state.paisesZoneFilter;
   return `<div class="zone-legend">${Object.values(ZONES).map(z=>
-    `<span><span class="dot" style="background:${z.color}"></span>${z.label}</span>`).join("")}</div>`;
+    `<span class="chip-toggle${active===z.key?" active":""}" data-action="toggle-paises-zone" data-key="${z.key}">
+      <span class="dot" style="background:${z.color}"></span>${z.label}${active===z.key?" ✕":""}
+    </span>`).join("")}</div>`;
 }
 
 function renderPaisesView(){
@@ -1805,7 +1814,8 @@ function renderPaisesView(){
   if(state.countryDrill && byCountryExists(state.countryDrill)){
     return toggle + renderZoneLegend() + renderCountryDrill(state.countryDrill, counts[state.countryDrill]);
   }
-  const sorted = COUNTRIES.slice().sort((a,b)=> counts[b.name].total - counts[a.name].total || a.name.localeCompare(b.name));
+  const visibleCountries = state.paisesZoneFilter ? COUNTRIES.filter(c=>c.zone===state.paisesZoneFilter) : COUNTRIES;
+  const sorted = visibleCountries.slice().sort((a,b)=> counts[b.name].total - counts[a.name].total || a.name.localeCompare(b.name));
   const cards = sorted.map(c=>{
     const cnt = counts[c.name].total;
     return `<div class="country-card" style="border-left-color:${ZONES[c.zone].color}" data-action="drill-country" data-country="${esc(c.name)}">
@@ -1852,10 +1862,11 @@ function initOrUpdateMap(){
     maxZoom: 12,
   }).addTo(map);
   const counts = computePlaceCounts();
-  COUNTRIES.forEach(c=>{
+  const visibleCountries = state.paisesZoneFilter ? COUNTRIES.filter(c=>c.zone===state.paisesZoneFilter) : COUNTRIES;
+  visibleCountries.forEach(c=>{
     const cnt = counts[c.name].total;
     const color = ZONES[c.zone].color;
-    const radius = 14 + Math.sqrt(cnt) * 6;
+    const radius = Math.min(12 + Math.sqrt(cnt) * 4, 40);
     const marker = L.circleMarker(c.coord, {
       radius, color:"#fff", weight:2, fillColor:color, fillOpacity: cnt>0 ? 0.85 : 0.35,
     }).addTo(map);
@@ -1866,6 +1877,9 @@ function initOrUpdateMap(){
     marker.bindPopup(popupHtml);
     marker.bindTooltip(String(cnt), { permanent:true, direction:"center", className:"leaflet-marker-num", opacity:1 });
   });
+  if(state.paisesZoneFilter && visibleCountries.length){
+    map.fitBounds(visibleCountries.map(c=>c.coord), { padding:[30,30] });
+  }
   state.leafletMap = map;
 }
 
@@ -2121,6 +2135,11 @@ document.addEventListener("click", e=>{
     submitReply(postId);
   } else if(action === "paises-subview"){
     state.paisesSubview = t.dataset.key; state.countryDrill = null; render();
+  } else if(action === "toggle-paises-zone"){
+    const key = t.dataset.key;
+    state.paisesZoneFilter = state.paisesZoneFilter === key ? null : key;
+    state.countryDrill = null;
+    render();
   } else if(action === "drill-country"){
     state.countryDrill = t.dataset.country; render();
   } else if(action === "drill-clear"){
