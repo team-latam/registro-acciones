@@ -124,6 +124,8 @@ posts/{postId}/replies/{replyId}
   createdAt: Timestamp (servidor)
   system: bool               (opcional — true en las respuestas automáticas de edición/cancelación)
   icon: string                (opcional — emoji que acompaña una respuesta de sistema, ej. "✏️")
+  replyToId: string | null    (opcional — id de OTRA respuesta del mismo posteo a la que le contesta; un solo nivel de anidamiento)
+  likedBy: [string, ...]      (opcional — emails de quienes le dieron "me gusta"; único campo editable después de creada)
 
 allowlist/{email}            (el documento EXISTE = esa persona tiene acceso; el contenido no importa)
   email, approvedAt, approvedBy

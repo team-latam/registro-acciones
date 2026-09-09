@@ -195,6 +195,13 @@
   .reply-images img{ width:70px; height:70px; object-fit:cover; border-radius:8px; cursor:pointer; border:1px solid var(--border); }
   .reply-links{ margin-top:6px; display:flex; flex-direction:column; gap:2px; }
   .reply-links a{ font-size:12px; }
+  .reply-actions{ display:flex; gap:14px; margin-top:8px; }
+  .reply-actions button{ background:none; border:none; padding:0; font-size:12px; font-weight:700; color:var(--text-muted); cursor:pointer; }
+  .reply-actions button:hover{ color:var(--petroleo); }
+  .reply-actions button.liked{ color:var(--celeste-dark); }
+  .reply-children{ margin-top:10px; margin-left:18px; padding-left:12px; border-left:2px solid var(--border); display:flex; flex-direction:column; gap:10px; }
+  .reply-nested-form{ margin-top:8px; }
+  .reply-nested-form textarea{ width:100%; min-height:60px; padding:8px 10px; border-radius:var(--radius-sm); border:1.5px solid var(--border); font-size:13px; font-family:inherit; }
 
   .empty-state{ text-align:center; padding:50px 20px; color:var(--text-muted); }
   .empty-state .big{ font-size:36px; margin-bottom:10px; }
@@ -1607,6 +1614,12 @@ function anyActiveFilter(){
 const openReplyForms = new Set();
 const openThreads = new Set(); // postIds con el hilo de comentarios desplegado
 const replyDrafts = {}; // postId -> draft
+const openNestedReplyForms = new Set(); // replyIds con su mini-formulario de "responder a esto" abierto
+const nestedReplyDrafts = {}; // replyId -> { content }
+function getNestedReplyDraft(replyId){
+  if(!nestedReplyDrafts[replyId]) nestedReplyDrafts[replyId] = { content:"" };
+  return nestedReplyDrafts[replyId];
+}
 
 function newScopeDraft(){ return { type:"ciudad", country:"", city:"", region:"sur", cityUseCustom:false }; }
 function newReplyDraft(){
@@ -1676,9 +1689,17 @@ function renderScopeChip(sc, removable, idx, ownerId){
     </span>`;
 }
 
+// Un solo nivel de anidamiento: responder a una respuesta ya anidada la
+// cuelga del mismo padre en vez de seguir apilando (ver submitNestedReply).
 function renderThread(post, replies){
   if(!replies.length) return "";
-  return `<div class="thread">${replies.map(r=>renderReply(r)).join("")}</div>`;
+  const topLevel = replies.filter(r=>!r.replyToId);
+  const childrenOf = id => replies.filter(r=>r.replyToId === id);
+  const renderOne = r => {
+    const children = childrenOf(r.id);
+    return `${renderReply(r)}${children.length ? `<div class="reply-children">${children.map(renderOne).join("")}</div>` : ""}`;
+  };
+  return `<div class="thread">${topLevel.map(renderOne).join("")}</div>`;
 }
 function renderReply(r){
   const scopesHtml = (r.scopes||[]).map(sc=>renderScopeChip(sc)).join("");
@@ -1686,6 +1707,9 @@ function renderReply(r){
     `<a href="${esc(safeUrl(l.url))}" target="_blank" rel="noopener noreferrer">🔗 ${esc(l.label||l.url)}</a>`).join("");
   const imagesHtml = (r.images||[]).map(src=>
     `<img src="${src}" data-action="open-lightbox" data-src="${src}">`).join("");
+  const likedBy = r.likedBy || [];
+  const liked = isAuthorized() && likedBy.includes(state.auth.user.email);
+  const nestedOpen = openNestedReplyForms.has(r.id);
   return `
     <div class="reply ${r.system?"reply-system":""}">
       <div class="reply-head">
@@ -1696,6 +1720,23 @@ function renderReply(r){
       ${scopesHtml ? `<div class="reply-scopes">${scopesHtml}</div>` : ""}
       ${linksHtml ? `<div class="reply-links">${linksHtml}</div>` : ""}
       ${imagesHtml ? `<div class="reply-images">${imagesHtml}</div>` : ""}
+      ${!r.system ? `
+      <div class="reply-actions">
+        <button data-action="toggle-like" data-post-id="${r.postId}" data-reply-id="${r.id}" class="${liked?"liked":""}">${liked?"👍":"🤍"} Me gusta${likedBy.length?` (${likedBy.length})`:""}</button>
+        <button data-action="toggle-nested-reply" data-reply-id="${r.id}">↩ Responder</button>
+      </div>` : ""}
+      ${nestedOpen ? renderNestedReplyForm(r.postId, r.id) : ""}
+    </div>`;
+}
+function renderNestedReplyForm(postId, replyId){
+  const d = getNestedReplyDraft(replyId);
+  return `
+    <div class="reply-nested-form">
+      <textarea data-nested-reply-field="content" data-reply-id="${replyId}" placeholder="Responder...">${esc(d.content)}</textarea>
+      <div class="modal-actions" style="margin-top:6px;">
+        <button class="btn-secondary" data-action="cancel-nested-reply" data-reply-id="${replyId}">Cancelar</button>
+        <button class="btn-primary" data-action="submit-nested-reply" data-post-id="${postId}" data-reply-id="${replyId}">Responder</button>
+      </div>
     </div>`;
 }
 
@@ -2154,6 +2195,16 @@ document.addEventListener("click", e=>{
     if(post) cancelPost(post);
   } else if(action === "cancel-reply"){
     openReplyForms.delete(postId); render();
+  } else if(action === "toggle-like"){
+    toggleReplyLike(postId, t.dataset.replyId);
+  } else if(action === "toggle-nested-reply"){
+    const replyId = t.dataset.replyId;
+    openNestedReplyForms.has(replyId) ? openNestedReplyForms.delete(replyId) : openNestedReplyForms.add(replyId);
+    render();
+  } else if(action === "cancel-nested-reply"){
+    openNestedReplyForms.delete(t.dataset.replyId); render();
+  } else if(action === "submit-nested-reply"){
+    submitNestedReply(t.dataset.postId, t.dataset.replyId);
   } else if(action === "toggle-reply-extra-scope"){
     // manejado en 'change'
   } else if(action === "reply-add-link"){
@@ -2243,6 +2294,7 @@ document.addEventListener("input", e=>{
   else if(t.id === "cOrganizer"){ composerDraft.organizer = t.value; }
   else if(t.id === "cLocation"){ composerDraft.location = t.value; }
   else if(t.dataset.replyField === "content"){ getReplyDraft(t.dataset.postId).content = t.value; }
+  else if(t.dataset.nestedReplyField === "content"){ getNestedReplyDraft(t.dataset.replyId).content = t.value; }
   else if(t.dataset.scopeField === "city"){ getDraftFor(t.dataset.scope, t.dataset.ownerId).scopeDraft.city = t.value; }
   else if(t.dataset.linkField){
     const draft = getDraftFor(t.dataset.scope, t.dataset.ownerId);
@@ -2349,6 +2401,43 @@ async function submitReply(postId){
     console.error(err);
     d.scopeError = "No se pudo publicar la respuesta: " + err.message;
     render();
+  }
+}
+
+// Responder a una respuesta puntual. Un solo nivel de anidamiento: si la
+// respuesta a la que le contestás ya era, a su vez, una respuesta anidada,
+// la nueva se cuelga del MISMO padre (no se van apilando niveles).
+async function submitNestedReply(postId, replyId){
+  const d = getNestedReplyDraft(replyId);
+  const content = d.content.trim();
+  if(!content) return;
+  const parent = (state.repliesByPost[postId]||[]).find(r=>r.id===replyId);
+  const replyToId = parent?.replyToId || replyId;
+  try{
+    await createReply(postId, {
+      authorName: state.auth.user.displayName, authorEmail: state.auth.user.email,
+      content, scopes:[], images:[], links:[], replyToId,
+    });
+    openNestedReplyForms.delete(replyId);
+    delete nestedReplyDrafts[replyId];
+    render();
+  }catch(err){
+    console.error(err);
+    alert("No se pudo publicar la respuesta: " + err.message);
+  }
+}
+
+async function toggleReplyLike(postId, replyId){
+  const email = state.auth.user.email;
+  const reply = (state.repliesByPost[postId]||[]).find(r=>r.id===replyId);
+  if(!reply) return;
+  const liked = (reply.likedBy||[]).includes(email);
+  try{
+    await fb.updateDoc(fb.doc(db,"posts",postId,"replies",replyId), {
+      likedBy: liked ? fb.arrayRemove(email) : fb.arrayUnion(email),
+    });
+  }catch(err){
+    console.error("Error al dar me gusta:", err);
   }
 }
 
