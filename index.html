@@ -818,6 +818,31 @@ async function deleteCalendarEvent(eventId){
   }
 }
 
+// Para posteos que quedaron sin `calendarEventId` guardado (creados antes
+// de esta función, o si falló la sincronización original): busca en el
+// Calendar un evento que coincida por título exacto y fecha, para poder
+// adoptarlo en vez de fallar o crear uno duplicado. Solo lo toma si hay
+// UNA sola coincidencia clara — ante cualquier ambigüedad, no adivina.
+async function findCalendarEventId(post){
+  const token = await ensureCalendarToken();
+  if(!token) return null;
+  try{
+    const timeMin = `${post.startDate}T00:00:00Z`;
+    const timeMax = `${addDaysISO(post.endDate || post.startDate, 2)}T00:00:00Z`;
+    const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events` +
+      `?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}&singleEvents=true&q=${encodeURIComponent(post.title)}`;
+    const res = await fetch(url, { headers: { "Authorization": `Bearer ${token}` } });
+    if(!res.ok) return null;
+    const body = await res.json();
+    const expectedSummary = `${ACTIVITY_BY_KEY[post.activityType]?.label || "Actividad"}: ${post.title}`;
+    const matches = (body.items||[]).filter(ev => ev.summary === expectedSummary && ev.status !== "cancelled");
+    return matches.length === 1 ? matches[0].id : null;
+  }catch(err){
+    console.error("Error buscando el evento existente en Calendar:", err);
+    return null;
+  }
+}
+
 let unsubscribeData = null;
 let unsubscribeRequests = null;
 let unsubAllowlist = null;
@@ -1015,16 +1040,24 @@ async function updatePostAndSync(postId, original, newData){
   }
 
   const willSync = CALENDAR_SYNC_TYPES.has(newData.activityType);
+  let eventId = original.calendarEventId;
+  if(!eventId && CALENDAR_SYNC_TYPES.has(original.activityType)){
+    // Posteo viejo sin el vínculo guardado: buscar el evento existente por
+    // título/fecha originales antes de resignarse o crear uno duplicado.
+    eventId = await findCalendarEventId(original);
+    if(eventId) await updatePostDoc(postId, { calendarEventId: eventId }).catch(()=>{});
+  }
+
   let calResult = { ok:true };
-  if(original.calendarEventId && willSync){
-    calResult = await updateCalendarEvent(original.calendarEventId, newData);
-    if(calResult.ok && calResult.eventId !== original.calendarEventId){
+  if(eventId && willSync){
+    calResult = await updateCalendarEvent(eventId, newData);
+    if(calResult.ok && calResult.eventId !== eventId){
       await updatePostDoc(postId, { calendarEventId: calResult.eventId }).catch(()=>{});
     }
-  } else if(original.calendarEventId && !willSync){
-    calResult = await deleteCalendarEvent(original.calendarEventId);
+  } else if(eventId && !willSync){
+    calResult = await deleteCalendarEvent(eventId);
     if(calResult.ok) await updatePostDoc(postId, { calendarEventId: null }).catch(()=>{});
-  } else if(!original.calendarEventId && willSync){
+  } else if(!eventId && willSync){
     calResult = await syncToCalendar(newData);
     if(calResult.ok && calResult.eventId) await updatePostDoc(postId, { calendarEventId: calResult.eventId }).catch(()=>{});
   }
@@ -1040,11 +1073,16 @@ async function cancelPost(post){
       content: `🚫 ${state.auth.user.displayName} canceló este evento.`, system:true, icon:"🚫",
       scopes:[], images:[], links:[],
     });
+    let eventId = post.calendarEventId;
+    if(!eventId && CALENDAR_SYNC_TYPES.has(post.activityType)){
+      eventId = await findCalendarEventId(post);
+      if(eventId) await updatePostDoc(post.id, { calendarEventId: eventId }).catch(()=>{});
+    }
     let calResult;
-    if(post.calendarEventId){
-      calResult = await deleteCalendarEvent(post.calendarEventId);
+    if(eventId){
+      calResult = await deleteCalendarEvent(eventId);
     } else if(CALENDAR_SYNC_TYPES.has(post.activityType)){
-      calResult = { ok:false, reason:"este posteo no tiene un evento de Calendar vinculado (se creó antes de esta función, o falló al sincronizarse) — si corresponde, borralo a mano en el Calendar" };
+      calResult = { ok:false, reason:"no se encontró un evento de Calendar que coincida (puede que ya se haya borrado a mano, o el título cambió demasiado) — revisalo a mano si hace falta" };
     } else {
       calResult = { ok:true }; // nunca había sincronizado (era Rutina), no hay nada que borrar
     }
