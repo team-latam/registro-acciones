@@ -71,7 +71,7 @@ service cloud.firestore {
         isNonEmptyString(d.endDate, 10) &&
         isOptionalString(d.get('organizer', null), 140) &&
         isOptionalString(d.get('location', null), 200) &&
-        d.activityType in ['rutina', 'visita', 'curso', 'seminario', 'congreso', 'otro'] &&
+        d.activityType in ['rutina', 'visita', 'curso', 'seminario', 'congreso', 'virtual', 'otro'] &&
         isNonEmptyString(d.authorName, 120) &&
         isOptionalString(d.get('authorEmail', null), 200) &&
         d.scopes is list && d.scopes.size() >= 0 && d.scopes.size() <= 15 &&

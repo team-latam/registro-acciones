@@ -306,6 +306,19 @@
   .btn-mini{ background:var(--celeste); color:var(--petroleo-dark); border:none; padding:9px 14px; border-radius:var(--radius-sm); font-weight:700; font-size:12.5px; cursor:pointer; }
   .btn-mini:hover{ background:var(--celeste-dark); color:#fff; }
 
+  /* Composer de Rutina, arriba del Feed, estilo "¿Qué está pasando?" de X:
+     avatar + texto libre + adjuntos + publicar, mucho más liviano que el
+     modal de Evento (sin título, fechas, organiza ni dónde). */
+  .quick-composer-row{ display:flex; gap:12px; align-items:flex-start; }
+  .qc-avatar{ width:40px; height:40px; border-radius:50%; object-fit:cover; flex-shrink:0; display:block; }
+  .qc-avatar.qc-avatar-fallback{ display:flex; align-items:center; justify-content:center; background:var(--petroleo); color:#fff; font-weight:800; font-size:15px; }
+  .quick-composer textarea{
+    flex:1; border:none; resize:none; font-family:inherit; font-size:15px; line-height:1.4;
+    padding:8px 0; min-height:44px; background:transparent;
+  }
+  .quick-composer textarea:focus{ outline:none; }
+  .quick-composer .btn-new:disabled{ opacity:0.45; cursor:not-allowed; box-shadow:none; }
+
   .attach-toolbar{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
   label.btn-attach, button.btn-attach{
     display:inline-flex; align-items:center; gap:6px; background:#eef4f4; color:var(--text);
@@ -585,10 +598,15 @@ const ACTIVITY_TYPES = [
   { key:"curso", label:"Curso", icon:"📘" },
   { key:"seminario", label:"Seminario", icon:"🎤" },
   { key:"congreso", label:"Congreso", icon:"🏛️" },
+  { key:"virtual", label:"Virtual", icon:"💻" },
   { key:"otro", label:"Otro", icon:"✨" },
 ];
+// Tipos elegibles al crear un Evento nuevo: todos menos Rutina, que ahora
+// tiene su propio composer liviano arriba del Feed (ver renderRutinaComposer
+// / submitRutina) en vez de compartir el formulario grande de Evento.
+const EVENTO_TYPES = ACTIVITY_TYPES.filter(t => t.key !== "rutina");
 // Estos tipos se sincronizan solos al Calendar compartido; Rutina nunca.
-const CALENDAR_SYNC_TYPES = new Set(["visita","curso","seminario","congreso","otro"]);
+const CALENDAR_SYNC_TYPES = new Set(["visita","curso","seminario","congreso","virtual","otro"]);
 const ACTIVITY_BY_KEY = Object.fromEntries(ACTIVITY_TYPES.map(t=>[t.key,t]));
 
 /* ======================================================================
@@ -1824,6 +1842,7 @@ function getVisiblePosts(){
 function renderFeedView(){
   const items = getVisiblePosts();
   return `
+    ${renderRutinaComposer()}
     ${renderFilterBar("feed")}
     ${items.length ? items.map(({post,replies})=>renderPostCard(post,replies)).join("") :
       `<div class="empty-state"><div class="big">🗒️</div>Todavía no hay posteos${anyActiveFilter()?" que coincidan con el filtro":""}.<br>Usá "+ Nuevo posteo" para sumar el primero.</div>`}
@@ -1832,6 +1851,77 @@ function renderFeedView(){
 function anyActiveFilter(){
   const f = state.filters;
   return !!(f.text || f.types.size || f.zones.size || f.place);
+}
+
+/* ======================================================================
+   COMPOSER: Rutina (barra liviana arriba del Feed, estilo "¿Qué está
+   pasando?" de X) — a diferencia del modal de Evento, NO pide título,
+   fechas, organiza, dónde ni alcance: es una entrada rápida del día a
+   día. Usa el mismo posts/{postId} de siempre (activityType:"rutina"),
+   solo que el título/fechas se completan solos del lado del cliente.
+   ====================================================================== */
+function newRutinaDraft(){
+  return { content:"", images:[], links:[], error:"" };
+}
+let rutinaDraft = newRutinaDraft();
+
+function renderMiniAvatar(u){
+  const initial = esc((u.displayName || u.email || "?")[0].toUpperCase());
+  return u.photoURL
+    ? `<img class="qc-avatar" src="${esc(u.photoURL)}" alt="">`
+    : `<div class="qc-avatar qc-avatar-fallback">${initial}</div>`;
+}
+
+function renderRutinaComposer(){
+  const d = rutinaDraft;
+  return `
+    <div class="card quick-composer">
+      <div class="quick-composer-row">
+        ${renderMiniAvatar(state.auth.user)}
+        <textarea id="rutinaContent" placeholder="¿Qué hiciste hoy?" rows="2">${esc(d.content)}</textarea>
+      </div>
+      <input type="file" id="rutinaImages" accept="image/*" multiple hidden data-action="rutina-images">
+      ${d.images.length ? `<div class="img-preview-list">${d.images.map((src,i)=>`
+        <div class="img-preview"><img src="${src}"><button type="button" class="rm" data-action="rutina-rm-image" data-idx="${i}">✕</button></div>`).join("")}</div>` : ""}
+      ${d.links.length ? `<div class="attach-panel">${renderLinkRows("rutina", "new", d.links)}</div>` : ""}
+      ${d.error ? `<div class="form-error">${esc(d.error)}</div>` : ""}
+      <div class="reply-form-footer">
+        <div class="attach-toolbar">
+          <label class="btn-attach" for="rutinaImages">📎 Imagen</label>
+          <button type="button" class="btn-attach" data-action="rutina-add-link">🔗 Link</button>
+        </div>
+        <button type="button" class="btn-new" id="rutinaPublish" data-action="submit-rutina" ${d.content.trim() ? "" : "disabled"}>Publicar</button>
+      </div>
+    </div>`;
+}
+
+async function submitRutina(){
+  const d = rutinaDraft;
+  d.error = "";
+  const content = d.content.trim();
+  if(!content){ d.error = "Escribí algo antes de publicar."; render(); return; }
+  const links = d.links.filter(l=>safeUrl(l.url));
+  const today = new Date().toISOString().slice(0,10);
+  // title/fechas no tienen sentido para una rutina, pero el esquema de
+  // posts los pide siempre — se completan solos y no se muestran en la
+  // tarjeta (ver renderPostCard) para no repetir el contenido dos veces.
+  const title = content.length > 140 ? content.slice(0,137).trimEnd() + "…" : content;
+  const postData = {
+    title, content, startDate:today, endDate:today, date:today,
+    organizer:"", location:"",
+    activityType:"rutina", scopes:[],
+    images:d.images, links,
+    authorName: state.auth.user.displayName, authorEmail: state.auth.user.email,
+  };
+  try{
+    await createPost(postData);
+    rutinaDraft = newRutinaDraft();
+    render();
+  }catch(err){
+    console.error(err);
+    d.error = "No se pudo publicar: " + err.message;
+    render();
+  }
 }
 
 const openReplyForms = new Set();
@@ -1883,11 +1973,11 @@ function renderPostCard(post, replies){
         </div>
         <span class="post-author">${esc(post.authorName||"Anónimo")}</span>
       </div>
-      ${post.title ? `<h3 style="margin:6px 0 0 0;font-size:16px;color:var(--petroleo);${post.cancelled?"text-decoration:line-through;opacity:0.7;":""}">${esc(post.title)}</h3>` : ""}
+      ${post.title && post.activityType !== "rutina" ? `<h3 style="margin:6px 0 0 0;font-size:16px;color:var(--petroleo);${post.cancelled?"text-decoration:line-through;opacity:0.7;":""}">${esc(post.title)}</h3>` : ""}
       ${metaBits.length ? `<div class="hint" style="margin-top:4px;">${metaBits.join(" · ")}</div>` : ""}
       <div class="post-content">${nl2br(post.content)}</div>
       ${scopesHtml ? `<div class="post-scopes">${scopesHtml}</div>` :
-        `<div class="hint" style="color:var(--danger);">⚠️ Sin alcance definido — editalo para asignarle un país/ciudad.</div>`}
+        (post.activityType !== "rutina" ? `<div class="hint" style="color:var(--danger);">⚠️ Sin alcance definido — editalo para asignarle un país/ciudad.</div>` : "")}
       ${linksHtml ? `<div class="post-links">${linksHtml}</div>` : ""}
       ${imagesHtml ? `<div class="post-images">${imagesHtml}</div>` : ""}
       ${post.lastEditedBy ? `<div class="hint">Editado por ${esc(post.lastEditedBy)}</div>` : ""}
@@ -2259,7 +2349,7 @@ function newComposerDraft(){
     endDate: today,
     organizer: "",
     location: "",
-    activityType: "rutina",
+    activityType: EVENTO_TYPES[0].key,
     scopes: [],
     scopeDraft: newScopeDraft(),
     scopeError: "",
@@ -2333,7 +2423,7 @@ function renderComposer(){
     <div class="field">
       <label>Tipo de actividad</label>
       <div class="type-picker">
-        ${ACTIVITY_TYPES.map(t=>`
+        ${(d.editingPost && d.editingPost.activityType === "rutina" ? ACTIVITY_TYPES : EVENTO_TYPES).map(t=>`
           <label class="type-opt ${d.activityType===t.key?"checked":""}">
             <input type="radio" name="cType" value="${t.key}" ${d.activityType===t.key?"checked":""}> ${t.icon} ${t.label}
           </label>`).join("")}
@@ -2366,6 +2456,7 @@ function renderComposer(){
 
 function getDraftFor(scope, ownerId){
   if(scope==="post") return composerDraft;
+  if(scope==="rutina") return rutinaDraft;
   if(scope==="nested-reply") return getNestedReplyDraft(ownerId);
   return getReplyDraft(ownerId);
 }
@@ -2487,6 +2578,8 @@ document.addEventListener("click", e=>{
     getNestedReplyDraft(t.dataset.replyId).links.push({ label:"", url:"" }); render();
   } else if(action === "post-add-link"){
     composerDraft.links.push({ label:"", url:"" }); render();
+  } else if(action === "rutina-add-link"){
+    rutinaDraft.links.push({ label:"", url:"" }); render();
   } else if(action === "rm-link"){
     const scope = t.dataset.scope, ownerId = t.dataset.ownerId, idx = Number(t.dataset.idx);
     getDraftFor(scope, ownerId).links.splice(idx,1); render();
@@ -2496,6 +2589,10 @@ document.addEventListener("click", e=>{
     getNestedReplyDraft(t.dataset.replyId).images.splice(Number(t.dataset.idx),1); render();
   } else if(action === "post-rm-image"){
     composerDraft.images.splice(Number(t.dataset.idx),1); render();
+  } else if(action === "rutina-rm-image"){
+    rutinaDraft.images.splice(Number(t.dataset.idx),1); render();
+  } else if(action === "submit-rutina"){
+    submitRutina();
   } else if(action === "use-city-preset"){
     const sd = getDraftFor(t.dataset.scope, t.dataset.ownerId).scopeDraft;
     sd.cityUseCustom = false; sd.city = ""; render();
@@ -2574,6 +2671,13 @@ document.addEventListener("input", e=>{
   else if(t.id === "cContent"){ composerDraft.content = t.value; }
   else if(t.id === "cOrganizer"){ composerDraft.organizer = t.value; }
   else if(t.id === "cLocation"){ composerDraft.location = t.value; }
+  else if(t.id === "rutinaContent"){
+    rutinaDraft.content = t.value;
+    // Solo habilita/deshabilita el botón Publicar al tipear — evita un
+    // render() completo (y perder el foco/cursor) en cada letra.
+    const btn = document.getElementById("rutinaPublish");
+    if(btn) btn.disabled = !t.value.trim();
+  }
   else if(t.dataset.replyField === "content"){ getReplyDraft(t.dataset.postId).content = t.value; }
   else if(t.dataset.nestedReplyField === "content"){ getNestedReplyDraft(t.dataset.replyId).content = t.value; }
   else if(t.dataset.scopeField === "city"){ getDraftFor(t.dataset.scope, t.dataset.ownerId).scopeDraft.city = t.value; }
@@ -2605,6 +2709,7 @@ document.addEventListener("change", e=>{
     render();
   }
   else if(t.id === "cImages"){ handleImageFiles(t.files, composerDraft.images); }
+  else if(t.dataset.action === "rutina-images"){ handleImageFiles(t.files, rutinaDraft.images); }
   else if(t.dataset.action === "reply-images"){ handleImageFiles(t.files, getReplyDraft(t.dataset.postId).images); }
   else if(t.dataset.action === "nested-reply-images"){ handleImageFiles(t.files, getNestedReplyDraft(t.dataset.replyId).images); }
   else if(t.dataset.action === "toggle-reply-extra-scope"){
