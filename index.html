@@ -253,6 +253,7 @@
     background:none; border:none; color:var(--text-muted); font-weight:700; cursor:pointer; padding:4px 0;
   }
   .post-actions button:hover{ color:var(--celeste-dark); }
+  .post-actions button.liked{ color:var(--celeste-dark); }
 
   .thread{ margin-top:12px; padding-left:16px; border-left:3px solid var(--border); display:flex; flex-direction:column; gap:12px; }
   .reply{ background:#f8fbfb; border-radius:var(--radius-md); padding:12px 14px; }
@@ -2280,7 +2281,7 @@ function computeFeedOrder(items){
   const featured = pool
     .map(it=>({
       it,
-      score: it.replies.length + it.replies.reduce((s,r)=>s + ((r.likedBy||[]).length), 0),
+      score: it.replies.length + (it.post.likedBy||[]).length + it.replies.reduce((s,r)=>s + ((r.likedBy||[]).length), 0),
       age: now - tsToMillis(it.post.createdAt),
     }))
     .filter(x=> x.score > 0 && x.age <= FEED_FEATURED_WINDOW_MS)
@@ -2436,6 +2437,8 @@ function renderPostCard(post, replies, featured){
   if(post.location) metaBits.push(`📍 ${esc(post.location)}`);
   const editable = canEditPost(post);
   const canCancel = editable && post.activityType !== "rutina" && !post.cancelled;
+  const postLikedBy = post.likedBy || [];
+  const postLiked = isAuthorized() && postLikedBy.includes(state.auth.user.email);
   return `
     <article class="card post ${post.cancelled?"post-cancelled":""}" data-post-id="${post.id}">
       <div class="post-head">
@@ -2457,6 +2460,7 @@ function renderPostCard(post, replies, featured){
       ${renderPostedFiles(post.files)}
       ${post.lastEditedBy ? `<div class="hint">Editado por ${esc(post.lastEditedBy)}</div>` : ""}
       <div class="post-actions">
+        <button data-action="toggle-like" data-post-id="${post.id}" class="${postLiked?"liked":""}">${postLiked?"👍":"🤍"} Me gusta${postLikedBy.length?` (${postLikedBy.length})`:""}</button>
         <button data-action="toggle-reply" data-post-id="${post.id}">💬 Responder</button>
         ${replies.length ? `<button data-action="toggle-thread" data-post-id="${post.id}">${threadOpen ? "▲ Ocultar" : "▼ Ver"} ${replies.length} comentario${replies.length===1?"":"s"}</button>` : ""}
         ${editable ? `<button data-action="edit-post" data-post-id="${post.id}">✏️ Editar</button>` : ""}
@@ -3275,7 +3279,7 @@ document.addEventListener("click", e=>{
   } else if(action === "cancel-reply"){
     openReplyForms.delete(postId); render();
   } else if(action === "toggle-like"){
-    toggleReplyLike(postId, t.dataset.replyId);
+    t.dataset.replyId ? toggleReplyLike(postId, t.dataset.replyId) : togglePostLike(postId);
   } else if(action === "toggle-nested-reply"){
     const replyId = t.dataset.replyId;
     openNestedReplyForms.has(replyId) ? openNestedReplyForms.delete(replyId) : openNestedReplyForms.add(replyId);
@@ -3589,6 +3593,20 @@ async function submitNestedReply(postId, replyId){
   }catch(err){
     console.error(err);
     alert("No se pudo publicar la respuesta: " + err.message);
+  }
+}
+
+async function togglePostLike(postId){
+  const email = state.auth.user.email;
+  const post = getPostById(postId);
+  if(!post) return;
+  const liked = (post.likedBy||[]).includes(email);
+  try{
+    await fb.updateDoc(fb.doc(db,"posts",postId), {
+      likedBy: liked ? fb.arrayRemove(email) : fb.arrayUnion(email),
+    });
+  }catch(err){
+    console.error("Error al dar me gusta:", err);
   }
 }
 

@@ -158,6 +158,13 @@ service cloud.firestore {
       allow update: if isAdmin() && isAuthorOrNonRoutine(resource.data) && isValidPostUpdate(request.resource.data);
       allow update: if isApproved() && isAuthorOrNonRoutine(resource.data) && isValidPostUpdate(request.resource.data);
 
+      // "Me gusta" en el posteo en sí (no solo en las respuestas): igual
+      // que en replies, cualquier persona aprobada puede tocar SOLO su
+      // propio email dentro de likedBy, sin importar quién sea el autor
+      // ni si es Rutina o Evento.
+      allow update: if isAdmin() && isValidLikeToggle(request.resource.data);
+      allow update: if isApproved() && isValidLikeToggle(request.resource.data);
+
       allow delete: if false;
 
       match /replies/{replyId} {
