@@ -27,7 +27,13 @@ service cloud.firestore {
       return request.auth != null &&
         exists(/databases/$(database)/documents/allowlist/$(request.auth.token.email));
     }
-    function canUse() { return isAdmin() || isApproved(); }
+    // Ternario en vez de "||": así, si isAdmin() ya es true, NUNCA se llega
+    // a evaluar isApproved() (que hace un exists()). Con "||" el motor de
+    // reglas puede evaluar los dos lados igual (para poder tolerar que uno
+    // falle), y eso puede pegarle al límite de lecturas por consulta en
+    // colecciones grandes -- el admin quedaría bloqueado por una cuenta
+    // regresiva que ni siquiera necesita.
+    function canUse() { return isAdmin() ? true : isApproved(); }
 
     function isNonEmptyString(v, maxLen) {
       return v is string && v.size() > 0 && v.size() <= maxLen;
