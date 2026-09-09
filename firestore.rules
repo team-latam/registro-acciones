@@ -108,10 +108,14 @@ service cloud.firestore {
       allow read: if isAdmin();
       allow read: if isApproved();
 
+      // El alcance mínimo de 1 lo exige el formulario del lado del
+      // cliente, no esta regla: un posteo importado automáticamente desde
+      // Google Calendar puede crearse sin alcance ("sin definir") para no
+      // ensuciar los conteos de Países/Mapa hasta que alguien lo edite.
       allow create: if isAdmin() && isValidPostBase(request.resource.data) &&
-        request.resource.data.scopes.size() >= 1 && request.resource.data.createdAt == request.time;
+        request.resource.data.createdAt == request.time;
       allow create: if isApproved() && isValidPostBase(request.resource.data) &&
-        request.resource.data.scopes.size() >= 1 && request.resource.data.createdAt == request.time;
+        request.resource.data.createdAt == request.time;
 
       // Edición: no se puede tocar de quién es ni cuándo se creó
       // originalmente — solo el contenido puede cambiar.
