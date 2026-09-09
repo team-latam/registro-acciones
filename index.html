@@ -169,6 +169,8 @@
 
   .thread{ margin-top:12px; padding-left:16px; border-left:3px solid var(--border); display:flex; flex-direction:column; gap:12px; }
   .reply{ background:#f8fbfb; border-radius:var(--radius-md); padding:12px 14px; }
+  .reply-system{ background:#fdf9ee; border:1px dashed #ecdcae; }
+  .post-cancelled{ opacity:0.85; }
   .reply-head{ display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; margin-bottom:4px; }
   .reply-author{ font-size:12.5px; font-weight:700; color:var(--petroleo); }
   .reply-date{ font-size:11px; color:var(--text-muted); }
@@ -319,7 +321,7 @@
 <div class="modal-overlay" id="postModalOverlay" hidden>
   <div class="modal modal-wrap">
     <button class="close" id="postModalClose">✕</button>
-    <h2>Nuevo posteo</h2>
+    <h2 id="postModalTitle">Nuevo posteo</h2>
     <form id="postForm"></form>
   </div>
 </div>
@@ -766,13 +768,52 @@ async function syncToCalendar(postData){
       headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
       body: JSON.stringify(buildCalendarEvent(postData)),
     });
+    const body = await res.json().catch(()=>({}));
+    if(!res.ok) throw new Error(body.error?.message || res.statusText);
+    return { ok:true, eventId: body.id };
+  }catch(err){
+    console.error("Error sincronizando con Calendar:", err);
+    return { ok:false, reason: err.message };
+  }
+}
+
+async function updateCalendarEvent(eventId, postData){
+  const token = await ensureCalendarToken();
+  if(!token) return { ok:false, reason:"no se pudo autorizar el acceso a Calendar" };
+  try{
+    const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events/${encodeURIComponent(eventId)}`, {
+      method: "PATCH",
+      headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify(buildCalendarEvent(postData)),
+    });
     if(!res.ok){
+      const body = await res.json().catch(()=>({}));
+      // El evento pudo haberse borrado a mano en Calendar: si no existe más, tratarlo como éxito de creación en vez de fallar en silencio.
+      if(res.status === 404 || res.status === 410) return syncToCalendar(postData);
+      throw new Error(body.error?.message || res.statusText);
+    }
+    return { ok:true, eventId };
+  }catch(err){
+    console.error("Error actualizando el evento en Calendar:", err);
+    return { ok:false, reason: err.message };
+  }
+}
+
+async function deleteCalendarEvent(eventId){
+  const token = await ensureCalendarToken();
+  if(!token) return { ok:false, reason:"no se pudo autorizar el acceso a Calendar" };
+  try{
+    const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events/${encodeURIComponent(eventId)}`, {
+      method: "DELETE",
+      headers: { "Authorization": `Bearer ${token}` },
+    });
+    if(!res.ok && res.status !== 404 && res.status !== 410){
       const body = await res.json().catch(()=>({}));
       throw new Error(body.error?.message || res.statusText);
     }
     return { ok:true };
   }catch(err){
-    console.error("Error sincronizando con Calendar:", err);
+    console.error("Error borrando el evento de Calendar:", err);
     return { ok:false, reason: err.message };
   }
 }
@@ -922,6 +963,93 @@ async function createReply(postId, data){
     ...data,
     createdAt: fb.serverTimestamp(),
   });
+}
+async function updatePostDoc(postId, patch){
+  await fb.updateDoc(fb.doc(db, "posts", postId), patch);
+}
+
+function canEditPost(post){
+  if(!isAuthorized()) return false;
+  return post.authorEmail === state.auth.user.email || post.activityType !== "rutina";
+}
+
+// Compara el posteo original con los datos nuevos y arma un resumen en
+// español para dejarlo como respuesta automática en el hilo.
+function buildEditSummary(original, next){
+  const parts = [];
+  if(original.title !== next.title) parts.push(`título ("${original.title}" → "${next.title}")`);
+  const oldStart = original.startDate, oldEnd = original.endDate || oldStart;
+  if(oldStart !== next.startDate || oldEnd !== next.endDate){
+    const oldLabel = oldEnd !== oldStart ? `${fmtDate(oldStart)}–${fmtDate(oldEnd)}` : fmtDate(oldStart);
+    const newLabel = next.endDate !== next.startDate ? `${fmtDate(next.startDate)}–${fmtDate(next.endDate)}` : fmtDate(next.startDate);
+    parts.push(`fecha (${oldLabel} → ${newLabel})`);
+  }
+  if((original.location||"") !== (next.location||"")) parts.push(`lugar${next.location ? ` (ahora: ${next.location})` : " (se quitó)"}`);
+  if((original.organizer||"") !== (next.organizer||"")) parts.push(`quién organiza${next.organizer ? ` (ahora: ${next.organizer})` : " (se quitó)"}`);
+  if(original.activityType !== next.activityType) parts.push(`tipo de actividad (${ACTIVITY_BY_KEY[original.activityType]?.label} → ${ACTIVITY_BY_KEY[next.activityType]?.label})`);
+  if(original.content !== next.content) parts.push("comentarios");
+  if(JSON.stringify(original.scopes||[]) !== JSON.stringify(next.scopes||[])) parts.push("alcance");
+  if(!parts.length) return null;
+  return `✏️ ${state.auth.user.displayName} editó este posteo: ${parts.join(", ")}.`;
+}
+
+// Actualiza el posteo, deja constancia en el hilo, y mantiene el mismo
+// evento de Calendar en vez de duplicarlo (lo crea si antes no existía,
+// lo actualiza si ya existía, o lo borra si dejó de ser un tipo que
+// sincroniza).
+async function updatePostAndSync(postId, original, newData){
+  const patch = {
+    title:newData.title, content:newData.content, startDate:newData.startDate, endDate:newData.endDate,
+    date:newData.startDate, organizer:newData.organizer, location:newData.location,
+    activityType:newData.activityType, scopes:newData.scopes, images:newData.images, links:newData.links,
+    lastEditedAt: fb.serverTimestamp(), lastEditedBy: state.auth.user.displayName,
+  };
+  await updatePostDoc(postId, patch);
+
+  const summary = buildEditSummary(original, newData);
+  if(summary){
+    await createReply(postId, {
+      authorName: state.auth.user.displayName, authorEmail: state.auth.user.email,
+      content: summary, system:true, icon:"✏️", scopes:[], images:[], links:[],
+    });
+  }
+
+  const willSync = CALENDAR_SYNC_TYPES.has(newData.activityType);
+  let calResult = { ok:true };
+  if(original.calendarEventId && willSync){
+    calResult = await updateCalendarEvent(original.calendarEventId, newData);
+    if(calResult.ok && calResult.eventId !== original.calendarEventId){
+      await updatePostDoc(postId, { calendarEventId: calResult.eventId }).catch(()=>{});
+    }
+  } else if(original.calendarEventId && !willSync){
+    calResult = await deleteCalendarEvent(original.calendarEventId);
+    if(calResult.ok) await updatePostDoc(postId, { calendarEventId: null }).catch(()=>{});
+  } else if(!original.calendarEventId && willSync){
+    calResult = await syncToCalendar(newData);
+    if(calResult.ok && calResult.eventId) await updatePostDoc(postId, { calendarEventId: calResult.eventId }).catch(()=>{});
+  }
+  return calResult;
+}
+
+async function cancelPost(post){
+  if(!confirm(`¿Cancelar "${post.title}"? Queda marcado como cancelado (no se borra) y se avisa en el hilo.`)) return;
+  try{
+    await updatePostDoc(post.id, { cancelled:true, lastEditedAt: fb.serverTimestamp(), lastEditedBy: state.auth.user.displayName });
+    await createReply(post.id, {
+      authorName: state.auth.user.displayName, authorEmail: state.auth.user.email,
+      content: `🚫 ${state.auth.user.displayName} canceló este evento.`, system:true, icon:"🚫",
+      scopes:[], images:[], links:[],
+    });
+    let calResult = { ok:true };
+    if(post.calendarEventId) calResult = await deleteCalendarEvent(post.calendarEventId);
+    state.calendarNotice = calResult.ok
+      ? { ok:true, message:`Se canceló "${post.title}".` }
+      : { ok:false, message:`Se canceló "${post.title}" en la app, pero no se pudo sacar del Calendar (${calResult.reason}).` };
+    render();
+  }catch(err){
+    console.error(err);
+    alert("No se pudo cancelar: " + err.message);
+  }
 }
 
 /* ======================================================================
@@ -1207,28 +1335,35 @@ function renderPostCard(post, replies){
   const metaBits = [];
   if(post.organizer) metaBits.push(`👤 Organiza: ${esc(post.organizer)}`);
   if(post.location) metaBits.push(`📍 ${esc(post.location)}`);
+  const editable = canEditPost(post);
+  const canCancel = editable && post.activityType !== "rutina" && !post.cancelled;
   return `
-    <article class="card post" data-post-id="${post.id}">
+    <article class="card post ${post.cancelled?"post-cancelled":""}" data-post-id="${post.id}">
       <div class="post-head">
         <div class="post-meta">
           <span class="type-badge">${type.icon} ${type.label}</span>
           <span class="post-date">${dateLabel}</span>
+          ${post.cancelled ? `<span class="type-badge" style="background:var(--danger);">🚫 Cancelado</span>` : ""}
         </div>
         <span class="post-author">${esc(post.authorName||"Anónimo")}</span>
       </div>
-      ${post.title ? `<h3 style="margin:6px 0 0 0;font-size:16px;color:var(--petroleo);">${esc(post.title)}</h3>` : ""}
+      ${post.title ? `<h3 style="margin:6px 0 0 0;font-size:16px;color:var(--petroleo);${post.cancelled?"text-decoration:line-through;opacity:0.7;":""}">${esc(post.title)}</h3>` : ""}
       ${metaBits.length ? `<div class="hint" style="margin-top:4px;">${metaBits.join(" · ")}</div>` : ""}
       <div class="post-content">${nl2br(post.content)}</div>
       ${scopesHtml ? `<div class="post-scopes">${scopesHtml}</div>` : ""}
       ${linksHtml ? `<div class="post-links">${linksHtml}</div>` : ""}
       ${imagesHtml ? `<div class="post-images">${imagesHtml}</div>` : ""}
+      ${post.lastEditedBy ? `<div class="hint">Editado por ${esc(post.lastEditedBy)}</div>` : ""}
       <div class="post-actions">
         <button data-action="toggle-reply" data-post-id="${post.id}">💬 Responder${replies.length?` (${replies.length})`:""}</button>
+        ${editable ? `<button data-action="edit-post" data-post-id="${post.id}">✏️ Editar</button>` : ""}
+        ${canCancel ? `<button data-action="cancel-post" data-post-id="${post.id}">🚫 Cancelar evento</button>` : ""}
       </div>
       ${renderThread(post, replies)}
       ${replyOpen ? renderReplyForm(post.id) : ""}
     </article>`;
 }
+function getPostById(id){ return state.posts.find(p=>p.id===id); }
 
 function renderScopeChip(sc, removable, idx, ownerId){
   const zone = zoneOfScope(sc);
@@ -1250,9 +1385,9 @@ function renderReply(r){
   const imagesHtml = (r.images||[]).map(src=>
     `<img src="${src}" data-action="open-lightbox" data-src="${src}">`).join("");
   return `
-    <div class="reply">
+    <div class="reply ${r.system?"reply-system":""}">
       <div class="reply-head">
-        <span class="reply-author">${esc(r.authorName||"Anónimo")}</span>
+        <span class="reply-author">${r.system ? `${esc(r.icon||"🔔")} ` : ""}${esc(r.authorName||"Anónimo")}</span>
         <span class="reply-date">${fmtDateTime(r.createdAt)}</span>
       </div>
       <div class="reply-content">${nl2br(r.content)}</div>
@@ -1509,15 +1644,32 @@ function newComposerDraft(){
     images: [],
     links: [],
     error: "",
+    editingPost: null,
   };
 }
 let composerDraft = newComposerDraft();
 
 const postModalOverlay = document.getElementById("postModalOverlay");
 const postForm = document.getElementById("postForm");
+const postModalTitle = document.getElementById("postModalTitle");
 
 function openComposer(){
   composerDraft = newComposerDraft();
+  postModalTitle.textContent = "Nuevo posteo";
+  postModalOverlay.hidden = false;
+  renderComposer();
+}
+function openEditComposer(post){
+  composerDraft = {
+    title: post.title || "", content: post.content || "",
+    startDate: post.startDate || post.date, endDate: post.endDate || post.startDate || post.date,
+    organizer: post.organizer || "", location: post.location || "",
+    activityType: post.activityType, scopes: (post.scopes||[]).map(sc=>({...sc})),
+    scopeDraft: newScopeDraft(), scopeError: "",
+    images: [...(post.images||[])], links: (post.links||[]).map(l=>({...l})),
+    error: "", editingPost: post,
+  };
+  postModalTitle.textContent = "Editar posteo";
   postModalOverlay.hidden = false;
   renderComposer();
 }
@@ -1527,7 +1679,7 @@ function closeComposer(){
 function renderComposer(){
   const d = composerDraft;
   postForm.innerHTML = `
-    <div class="hint">Publicás como <strong>${esc(state.auth.user.displayName)}</strong></div>
+    <div class="hint">${d.editingPost ? `Editás como <strong>${esc(state.auth.user.displayName)}</strong> (el posteo original sigue figurando de ${esc(d.editingPost.authorName)})` : `Publicás como <strong>${esc(state.auth.user.displayName)}</strong>`}</div>
     <div class="field">
       <label>Título</label>
       <input type="text" id="cTitle" maxlength="140" placeholder="Ej: Curso de Transition" value="${esc(d.title)}">
@@ -1585,7 +1737,7 @@ function renderComposer(){
     ${d.error ? `<div class="form-error">${esc(d.error)}</div>` : ""}
     <div class="modal-actions">
       <button type="button" class="btn-secondary" id="cCancel">Cancelar</button>
-      <button type="submit" class="btn-primary">Publicar</button>
+      <button type="submit" class="btn-primary">${d.editingPost ? "Guardar cambios" : "Publicar"}</button>
     </div>
   `;
 }
@@ -1674,6 +1826,12 @@ document.addEventListener("click", e=>{
   } else if(action === "toggle-reply"){
     openReplyForms.has(postId) ? openReplyForms.delete(postId) : openReplyForms.add(postId);
     render();
+  } else if(action === "edit-post"){
+    const post = getPostById(postId);
+    if(post) openEditComposer(post);
+  } else if(action === "cancel-post"){
+    const post = getPostById(postId);
+    if(post) cancelPost(post);
   } else if(action === "cancel-reply"){
     openReplyForms.delete(postId); render();
   } else if(action === "toggle-reply-extra-scope"){
@@ -1818,15 +1976,28 @@ postForm.addEventListener("submit", async e=>{
     authorName: state.auth.user.displayName, authorEmail: state.auth.user.email,
   };
   try{
-    await createPost(postData);
-    closeComposer();
-    if(CALENDAR_SYNC_TYPES.has(postData.activityType)){
-      syncToCalendar(postData).then(res=>{
+    if(d.editingPost){
+      const postId = d.editingPost.id;
+      const original = d.editingPost;
+      closeComposer();
+      updatePostAndSync(postId, original, postData).then(res=>{
         state.calendarNotice = res.ok
-          ? { ok:true, message:"Se sumó también al Calendar compartido de LatAm." }
-          : { ok:false, message:"El posteo se guardó, pero no se pudo sumar al Calendar (" + res.reason + ")." };
+          ? { ok:true, message:"Se guardaron los cambios (y el Calendar, si correspondía)." }
+          : { ok:false, message:"Se guardaron los cambios, pero no se pudo actualizar el Calendar (" + res.reason + ")." };
         render();
       });
+    } else {
+      const postId = await createPost(postData);
+      closeComposer();
+      if(CALENDAR_SYNC_TYPES.has(postData.activityType)){
+        syncToCalendar(postData).then(res=>{
+          if(res.ok && res.eventId) updatePostDoc(postId, { calendarEventId: res.eventId }).catch(()=>{});
+          state.calendarNotice = res.ok
+            ? { ok:true, message:"Se sumó también al Calendar compartido de LatAm." }
+            : { ok:false, message:"El posteo se guardó, pero no se pudo sumar al Calendar (" + res.reason + ")." };
+          render();
+        });
+      }
     }
   }catch(err){
     console.error(err);

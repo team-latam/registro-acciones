@@ -108,7 +108,11 @@ posts/{postId}
   scopes: [{ type:"ciudad", country, city } | { type:"pais", country } | { type:"region", region:"sur"|"central"|"norte" } | { type:"todo" }, ...]
   images: ["data:image/jpeg;base64,...", ...]   (comprimidas en el navegador)
   links: [{ label, url }, ...]
-  createdAt: Timestamp (servidor)
+  createdAt: Timestamp (servidor, nunca cambia)
+  calendarEventId: string | null   (id del evento en Calendar, para poder actualizarlo/borrarlo en vez de duplicarlo)
+  cancelled: bool                  (opcional — true si se canceló el evento)
+  lastEditedAt: Timestamp          (opcional — última edición)
+  lastEditedBy: string             (opcional — nombre de quien hizo la última edición)
 
 posts/{postId}/replies/{replyId}
   content: string
@@ -118,6 +122,8 @@ posts/{postId}/replies/{replyId}
   images: [...]
   links: [...]
   createdAt: Timestamp (servidor)
+  system: bool               (opcional — true en las respuestas automáticas de edición/cancelación)
+  icon: string                (opcional — emoji que acompaña una respuesta de sistema, ej. "✏️")
 
 allowlist/{email}            (el documento EXISTE = esa persona tiene acceso; el contenido no importa)
   email, approvedAt, approvedBy
@@ -126,9 +132,38 @@ accessRequests/{email}       (una solicitud de acceso por persona; el id es su p
   email, name, photoURL, status: "pending"|"approved"|"rejected", requestedAt
 ```
 
-Los posteos son **append-only** (no se editan ni se borran desde la UI ni
-lo permiten las reglas) — si algo cambió, se aclara en una respuesta del
-hilo, como pide el prompt original.
+### Editar y cancelar posteos
+
+Los posteos ya NO son estrictamente append-only (cambio deliberado sobre
+el diseño original): se pueden editar, con estas reglas de permiso
+(en `canEditPost()` de `index.html` y `canEditPost()` de `firestore.rules`
+— tienen que decir lo mismo):
+
+- El **autor** siempre puede editar su propio posteo.
+- Cualquier persona aprobada puede editar un posteo que **no** sea Rutina
+  (Visita/Curso/Seminario/Congreso/Otro) — son eventos del equipo, no una
+  entrada personal, así que cualquiera puede corregir una fecha o un lugar.
+- Una **Rutina** solo la edita quien la publicó.
+- Nunca se puede editar de quién es (`authorName`/`authorEmail`) ni cuándo
+  se creó originalmente (`createdAt`) — eso lo protegen las reglas.
+
+Cada edición dispara automáticamente una respuesta en el hilo resumiendo
+qué cambió (título, fechas, lugar, quién organiza, tipo, comentarios o
+alcance), firmada por quien editó — así la memoria histórica conserva el
+rastro del cambio. Esas respuestas se distinguen con un ícono (✏️ edición,
+🚫 cancelación) y fondo distinto, pero por lo demás se ven como cualquier
+respuesta del hilo.
+
+**Cancelar** (botón aparte de "Editar", mismos permisos) no borra el
+posteo: lo marca visiblemente como "🚫 Cancelado" en el Feed/Memoria,
+dispara la respuesta automática, y borra el evento correspondiente del
+Calendar compartido (si lo tenía).
+
+Si el posteo sincroniza con Calendar, editar sus fechas/título/lugar
+**actualiza el mismo evento** (usando el `calendarEventId` guardado al
+crearlo) en vez de crear uno duplicado; si el tipo de actividad cambia a
+Rutina, el evento se borra del Calendar; si pasa de Rutina a un tipo que
+sincroniza, se crea recién en ese momento.
 
 ### Zonas (fijas, no editables desde la UI)
 
