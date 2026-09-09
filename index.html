@@ -668,6 +668,69 @@ async function ensureCalendarToken(){
   }
 }
 
+// Sólo la usa el admin: pide además el permiso para administrar a quién
+// está compartido el calendario (compartir/sacar gente), para poder
+// automatizar el alta y baja de acceso al aprobar/revocar en "Solicitudes".
+// Requiere que ADMIN_EMAIL sea DUEÑO del calendario (no solo editor) —
+// Google exige ese nivel para poder compartirlo en nombre de otra persona.
+let calendarAclScopeGranted = false;
+async function ensureCalendarAclToken(){
+  if(calendarAclScopeGranted && calendarAccessToken && Date.now() < calendarTokenExpiry) return calendarAccessToken;
+  try{
+    const provider = new authMod.GoogleAuthProvider();
+    provider.addScope("https://www.googleapis.com/auth/calendar.events");
+    provider.addScope("https://www.googleapis.com/auth/calendar.acls");
+    provider.setCustomParameters({ login_hint: state.auth.user.email });
+    const result = await authMod.signInWithPopup(auth, provider);
+    storeCalendarCredential(result);
+    calendarAclScopeGranted = true;
+    return calendarAccessToken;
+  }catch(err){
+    console.error("No se pudo obtener acceso para compartir/sacar del Calendar:", err);
+    return null;
+  }
+}
+
+async function shareCalendarWith(email){
+  const token = await ensureCalendarAclToken();
+  if(!token) return { ok:false, reason:"no se pudo autorizar el permiso para compartir el Calendar" };
+  try{
+    const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/acl`, {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ role: "writer", scope: { type: "user", value: email } }),
+    });
+    if(!res.ok){
+      const body = await res.json().catch(()=>({}));
+      throw new Error(body.error?.message || res.statusText);
+    }
+    return { ok:true };
+  }catch(err){
+    console.error("Error compartiendo el Calendar:", err);
+    return { ok:false, reason: err.message };
+  }
+}
+
+async function unshareCalendarWith(email){
+  const token = await ensureCalendarAclToken();
+  if(!token) return { ok:false, reason:"no se pudo autorizar el permiso para sacar del Calendar" };
+  try{
+    const ruleId = `user:${email}`;
+    const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/acl/${encodeURIComponent(ruleId)}`, {
+      method: "DELETE",
+      headers: { "Authorization": `Bearer ${token}` },
+    });
+    if(!res.ok && res.status !== 404){
+      const body = await res.json().catch(()=>({}));
+      throw new Error(body.error?.message || res.statusText);
+    }
+    return { ok:true };
+  }catch(err){
+    console.error("Error sacando del Calendar:", err);
+    return { ok:false, reason: err.message };
+  }
+}
+
 function addDaysISO(dateStr, days){
   const dt = new Date(dateStr + "T00:00:00");
   dt.setDate(dt.getDate() + days);
@@ -1660,16 +1723,23 @@ document.addEventListener("click", e=>{
     requestAccessAgain();
   } else if(action === "approve-request"){
     const email = t.dataset.email;
-    approveRequest(email).then(()=>{
-      state.calendarNotice = { ok:true, message:`${email} ya puede usar la app. Si también necesita cargar eventos al calendario "LatAm", acordate de compartírselo aparte desde Google Calendar (permiso "Hacer cambios en eventos").` };
+    approveRequest(email).then(()=>shareCalendarWith(email)).then(res=>{
+      state.calendarNotice = res.ok
+        ? { ok:true, message:`${email} ya puede usar la app y cargar eventos al Calendar compartido de LatAm.` }
+        : { ok:false, message:`${email} ya puede usar la app, pero no se pudo compartirle el Calendar automáticamente (${res.reason}). Puede que ADMIN_EMAIL no sea el dueño del calendario "LatAm" — o compartíselo a mano desde Google Calendar.` };
       render();
     }).catch(err=>{ console.error(err); alert("No se pudo aprobar: " + err.message); });
   } else if(action === "reject-request"){
     rejectRequest(t.dataset.email).catch(err=>{ console.error(err); alert("No se pudo rechazar: " + err.message); });
   } else if(action === "revoke-access"){
     const email = t.dataset.email;
-    if(confirm(`¿Revocar el acceso de ${email}? Va a dejar de poder ver y cargar posteos.\n\nOjo: esto NO le saca el acceso al calendario "LatAm" compartido de Google Calendar — si también tenía permiso de edición ahí, hay que sacarlo a mano desde la configuración del calendario (Compartir con determinadas personas → eliminarlo).`)){
-      revokeAccess(email).catch(err=>{ console.error(err); alert("No se pudo revocar: " + err.message); });
+    if(confirm(`¿Revocar el acceso de ${email}? Va a dejar de poder ver y cargar posteos, y se le va a sacar el acceso al Calendar compartido de LatAm.`)){
+      revokeAccess(email).then(()=>unshareCalendarWith(email)).then(res=>{
+        state.calendarNotice = res.ok
+          ? { ok:true, message:`Se revocó el acceso de ${email} (app y Calendar).` }
+          : { ok:false, message:`Se revocó el acceso a la app, pero no se pudo sacarlo del Calendar automáticamente (${res.reason}). Sacalo a mano si hace falta.` };
+        render();
+      }).catch(err=>{ console.error(err); alert("No se pudo revocar: " + err.message); });
     }
   }
 });

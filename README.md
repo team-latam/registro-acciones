@@ -176,17 +176,26 @@ Países → Lista, al hacer click en un país.
 Cada posteo de tipo Visita/Curso/Seminario/Congreso/Otro (todo menos
 **Rutina**) se suma automáticamente como evento de día completo al
 calendario compartido de LatAm — el ID vive en la constante `CALENDAR_ID`
-de `index.html`. No hay backend propio: se usa el token de Google del
-propio usuario que publica (por eso hace falta que TODO el que carga
-eventos tenga permiso de "Hacer cambios en eventos" en ese calendario,
-compartido a mano desde Google Calendar — la app no puede hacer eso por
-sí sola, son dos sistemas separados).
+de `index.html`. No hay backend propio: se usa el token de Google de
+quien publica para crear el evento.
 
-- **Mantené sincronizadas dos listas por separado**: la de aprobados en
-  la app (pestaña Solicitudes) y la de "compartido con" del calendario
-  "LatAm" en Google Calendar. La app te lo recuerda con un aviso cada vez
-  que aprobás o revocás a alguien, pero el paso en sí (agregar/sacar del
-  calendario) es manual, en la configuración del calendario, no en la app.
+- **Compartir el calendario es automático**: cuando el admin aprueba a
+  alguien en la pestaña Solicitudes, la app usa el propio permiso del
+  admin sobre el calendario para agregar a esa persona con acceso de
+  edición — nadie tiene que ir a la configuración de Google Calendar a
+  mano. Al revocar a alguien pasa lo mismo al revés: se lo saca del
+  calendario en el mismo paso.
+- **Esto requiere que `ADMIN_EMAIL` sea el DUEÑO del calendario "LatAm"**
+  (no alcanza con tener permiso de edición) — Google solo deja
+  administrar quién tiene acceso a alguien con ese nivel. Si al aprobar
+  aparece un aviso de que no se pudo compartir el Calendar, lo más
+  probable es que el admin no sea el dueño; en ese caso hay que
+  transferirle la propiedad del calendario desde Google Calendar
+  (Configuración del calendario → "Transferir la propiedad"), o compartir
+  a esa persona a mano como respaldo.
+- La primera vez que el admin aprueba o revoca a alguien, Google puede
+  pedir un login extra (para el permiso de administrar quién tiene acceso
+  al calendario) — es normal, solo pasa una vez por sesión.
 - Al iniciar sesión con Google, la app pide también el permiso de
   `calendar.events` (además del básico de perfil/email). Google puede
   mostrar la pantalla **"Google no verificó esta app"** al pedir ese
