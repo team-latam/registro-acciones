@@ -1040,8 +1040,14 @@ async function cancelPost(post){
       content: `🚫 ${state.auth.user.displayName} canceló este evento.`, system:true, icon:"🚫",
       scopes:[], images:[], links:[],
     });
-    let calResult = { ok:true };
-    if(post.calendarEventId) calResult = await deleteCalendarEvent(post.calendarEventId);
+    let calResult;
+    if(post.calendarEventId){
+      calResult = await deleteCalendarEvent(post.calendarEventId);
+    } else if(CALENDAR_SYNC_TYPES.has(post.activityType)){
+      calResult = { ok:false, reason:"este posteo no tiene un evento de Calendar vinculado (se creó antes de esta función, o falló al sincronizarse) — si corresponde, borralo a mano en el Calendar" };
+    } else {
+      calResult = { ok:true }; // nunca había sincronizado (era Rutina), no hay nada que borrar
+    }
     state.calendarNotice = calResult.ok
       ? { ok:true, message:`Se canceló "${post.title}".` }
       : { ok:false, message:`Se canceló "${post.title}" en la app, pero no se pudo sacar del Calendar (${calResult.reason}).` };
