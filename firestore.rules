@@ -108,7 +108,24 @@ service cloud.firestore {
         (d.get('images', null) == null || (d.images is list && d.images.size() <= 6)) &&
         (d.get('system', null) == null || d.system is bool) &&
         isOptionalString(d.get('icon', null), 8) &&
+        isOptionalString(d.get('replyToId', null), 200) &&
         d.createdAt == request.time;
+    }
+
+    // "Me gusta" en una respuesta: la única edición permitida sobre una
+    // respuesta ya creada. d es el documento COMPLETO después del cambio
+    // (request.resource.data); solo puede tocar el campo likedBy, y nada
+    // más que agregar o sacar el propio email de quien hace el pedido —
+    // no se puede tocar el "me gusta" de otra persona ni ningún otro campo.
+    function isValidLikeToggle(d) {
+      let before = resource.data.get('likedBy', []);
+      let email = request.auth.token.email;
+      return d.diff(resource.data).affectedKeys().hasOnly(['likedBy']) &&
+        d.likedBy is list && d.likedBy.size() <= 1000 &&
+        (
+          (!(email in before) && email in d.likedBy && d.likedBy.size() == before.size() + 1) ||
+          (email in before && !(email in d.likedBy) && d.likedBy.size() == before.size() - 1)
+        );
     }
 
     match /posts/{postId} {
@@ -138,7 +155,11 @@ service cloud.firestore {
         allow create: if isAdmin() && isValidReplyCreate(request.resource.data);
         allow create: if isApproved() && isValidReplyCreate(request.resource.data);
 
-        allow update, delete: if false;
+        // Única edición permitida: dar/sacar tu propio "me gusta".
+        allow update: if isAdmin() && isValidLikeToggle(request.resource.data);
+        allow update: if isApproved() && isValidLikeToggle(request.resource.data);
+
+        allow delete: if false;
       }
     }
 
