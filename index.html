@@ -380,7 +380,7 @@
   }
   .map-cluster{
     width:100%; height:100%; border-radius:50%; display:flex; align-items:center; justify-content:center;
-    background:var(--celeste-dark); color:#fff; font-weight:800; font-size:13px; border:3px solid #fff;
+    background:var(--petroleo); color:#fff; font-weight:800; font-size:13px; border:3px solid #fff;
     box-shadow:0 3px 10px rgba(0,0,0,0.32);
   }
   .map-popup b{ display:block; margin-bottom:4px; }
@@ -2162,16 +2162,25 @@ function initOrUpdateMap(){
   // Agrupa países cercanos en un solo círculo "cluster" cuando el zoom
   // está alejado (evita el amasijo de círculos superpuestos con muchos
   // países vecinos, como toda Centroamérica junta); al acercar el zoom
-  // se van separando en sus círculos individuales.
+  // se van separando en sus círculos individuales. El cluster toma el
+  // color de la zona (Sur/Central/Norte) más común entre los países que
+  // agrupa, en vez de un color propio — son los mismos 3 colores de
+  // siempre, nunca uno nuevo.
   const clusterGroup = window.L.markerClusterGroup({
     maxClusterRadius: 50,
     showCoverageOnHover: false,
     spiderfyOnMaxZoom: true,
-    iconCreateFunction: cluster => L.divIcon({
-      html: `<div class="map-cluster">${cluster.getChildCount()}</div>`,
-      className: "map-cluster-wrap",
-      iconSize: [MAP_MARKER_SIZE, MAP_MARKER_SIZE],
-    }),
+    iconCreateFunction: cluster => {
+      const zoneCounts = {};
+      cluster.getAllChildMarkers().forEach(m=>{ zoneCounts[m.zoneKey] = (zoneCounts[m.zoneKey]||0) + 1; });
+      const topZone = Object.keys(zoneCounts).reduce((a,b)=> zoneCounts[b] > (zoneCounts[a]||0) ? b : a, null);
+      const color = topZone ? ZONES[topZone].color : "var(--petroleo)";
+      return L.divIcon({
+        html: `<div class="map-cluster" style="background:${color}">${cluster.getChildCount()}</div>`,
+        className: "map-cluster-wrap",
+        iconSize: [MAP_MARKER_SIZE, MAP_MARKER_SIZE],
+      });
+    },
   });
 
   const counts = computePlaceCounts();
@@ -2186,6 +2195,7 @@ function initOrUpdateMap(){
         iconSize: [MAP_MARKER_SIZE, MAP_MARKER_SIZE],
       }),
     });
+    marker.zoneKey = c.zone;
     const topCities = Object.entries(counts[c.name].cities).sort((a,b)=>b[1]-a[1]).slice(0,5);
     const popupHtml = `<div class="map-popup"><b>${esc(c.name)} — ${cnt} registro${cnt===1?"":"s"}</b>
       ${topCities.map(([city,n])=>`<div class="pop-city"><span>${esc(city)}</span><span>${n}</span></div>`).join("")}
