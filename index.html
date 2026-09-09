@@ -32,6 +32,10 @@
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
+  /* Si el navegador necesita hacer scroll solo (ej. para mantener a la
+     vista el cursor mientras crece el textarea de Rutina), que lo haga
+     suave en vez de un salto brusco de golpe. */
+  html{scroll-behavior:smooth;}
   body{
     font-family:'Montserrat',system-ui,sans-serif;
     background:var(--bg);
@@ -314,7 +318,8 @@
   .qc-avatar.qc-avatar-fallback{ display:flex; align-items:center; justify-content:center; background:var(--petroleo); color:#fff; font-weight:800; font-size:15px; }
   .quick-composer textarea{
     flex:1; border:none; resize:none; overflow-y:auto; font-family:inherit; font-size:15px; line-height:1.4;
-    padding:8px 0; min-height:44px; max-height:50vh; background:transparent;
+    padding:8px 0; min-height:44px; max-height:180px; background:transparent;
+    transition:height .12s ease-out;
   }
   .quick-composer textarea:focus{ outline:none; }
   .quick-composer .btn-new:disabled{ opacity:0.45; cursor:not-allowed; box-shadow:none; }
