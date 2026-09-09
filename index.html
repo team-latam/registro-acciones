@@ -96,7 +96,7 @@
   .status-pill.approved{ background:#dcfce7; color:#166534; }
   .status-pill.rejected{ background:#fee2e2; color:#991b1b; }
   nav.tabs{ max-width:1200px; margin:14px auto 0 auto; display:flex; gap:4px; }
-  nav.tabs[hidden]{ display:none; }
+  nav.tabs.tabs-hidden{ visibility:hidden; pointer-events:none; }
   nav.tabs button{
     background:transparent; border:none; color:#bfe9ef; padding:10px 16px;
     font-weight:700; font-size:13.5px; cursor:pointer; border-bottom:3px solid transparent;
@@ -312,7 +312,7 @@
         <button class="btn-new" id="btnNewPost" hidden>+ Nuevo posteo</button>
       </div>
     </div>
-    <nav class="tabs" id="tabs" hidden>
+    <nav class="tabs tabs-hidden" id="tabs">
       <button data-view="feed">Feed</button>
       <button data-view="paises">Países</button>
       <button data-view="memoria">Memoria</button>
@@ -643,11 +643,20 @@ async function doSignOut(){
 /* ======================================================================
    SINCRONIZACIÓN CON GOOGLE CALENDAR (Feed → Calendar compartido de LatAm)
    ====================================================================== */
-// ID del calendario compartido al que se suman los eventos (no es secreto:
-// solo permite VER el calendario si es público; escribir requiere el
-// access token de alguien con permiso de edición, que se pide al iniciar
-// sesión).
+// ID del calendario compartido al que se suman los eventos. Escribir
+// (crear/editar/cancelar un posteo que sincroniza) requiere el access
+// token de la persona que lo hace, con permiso de edición — se pide al
+// iniciar sesión, igual que antes.
 const CALENDAR_ID = "ahf2jnkbng1tblmk7uioolc9ko@group.calendar.google.com";
+
+// Clave de API de Google Cloud, SOLO para LEER el calendario (sincronizar
+// Calendar → app) sin depender del login de cada persona ni mostrar
+// ningún popup. Requiere que el calendario esté configurado como público
+// para lectura (Google Calendar → Configuración de este calendario →
+// "Acceso de disponibilidad" → "Hacer disponible al público") y que esta
+// clave esté restringida en Google Cloud Console a la Calendar API y al
+// dominio de esta página — ver README. Nunca se usa para escribir.
+const CALENDAR_API_KEY = "TU_CLAVE_DE_API_DE_GOOGLE_CLOUD";
 
 // El token de Calendar se guarda también en sessionStorage (dura hasta
 // cerrar la pestaña, no queda en el disco) para sobrevivir a un F5 — sin
@@ -893,7 +902,6 @@ async function findCalendarEventId(post){
    fechas), así que se deja así por simplicidad.
 */
 let calendarSyncAttemptedThisSession = false;
-function hasCalendarToken(){ return !!(calendarAccessToken && Date.now() < calendarTokenExpiry); }
 
 async function getSyncMeta(){
   const snap = await fb.getDoc(fb.doc(db, "meta", "calendarSync"));
@@ -903,17 +911,18 @@ async function setSyncMeta(patch){
   await fb.setDoc(fb.doc(db, "meta", "calendarSync"), { ...patch, lastSyncedAt: fb.serverTimestamp() }, { merge:true });
 }
 
-async function fetchCalendarChanges(token, syncToken){
+// Lee eventos con la clave de API (no el login de nadie) — el calendario
+// tiene que estar configurado como público para lectura en Google
+// Calendar. Nunca escribe nada: solo se usa para detectar cambios.
+async function fetchCalendarChanges(syncToken){
   let pageToken = null, nextSyncToken = null;
   const events = [];
   do{
-    const params = new URLSearchParams({ maxResults:"250", showDeleted:"true" });
+    const params = new URLSearchParams({ key:CALENDAR_API_KEY, maxResults:"250", showDeleted:"true" });
     if(syncToken) params.set("syncToken", syncToken);
     else params.set("timeMin", new Date(Date.now() - 90*24*60*60*1000).toISOString());
     if(pageToken) params.set("pageToken", pageToken);
-    const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events?${params}`, {
-      headers: { "Authorization": `Bearer ${token}` },
-    });
+    const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events?${params}`);
     if(res.status === 410) return { needsFullResync:true };
     const body = await res.json();
     if(!res.ok) throw new Error(body.error?.message || res.statusText);
@@ -1019,17 +1028,13 @@ function showCalendarNotice(notice){
 
 async function syncFromCalendar(opts){
   const silent = !!(opts && opts.silent);
-  if(silent && !hasCalendarToken()) return;
-  const token = await ensureCalendarToken();
-  if(!token){
-    if(!silent){ showCalendarNotice({ ok:false, message:"No se pudo autorizar el acceso a Calendar para sincronizar." }); }
-    return;
-  }
+  // Lee con la clave de API: no hace falta ningún login ni token de
+  // usuario, así que esto nunca dispara un popup de Google.
   if(!silent){ state.calendarSyncing = true; render(); }
   try{
     const meta = await getSyncMeta();
-    let result = await fetchCalendarChanges(token, meta?.syncToken || null);
-    if(result.needsFullResync) result = await fetchCalendarChanges(token, null);
+    let result = await fetchCalendarChanges(meta?.syncToken || null);
+    if(result.needsFullResync) result = await fetchCalendarChanges(null);
     for(const ev of result.events || []){
       await applyCalendarEventToPosts(ev);
     }
@@ -1346,7 +1351,7 @@ function doRender(){
 
   let html = "";
   if(CONFIG_IS_PLACEHOLDER){
-    tabsNav.hidden = true; btnNewPostEl.hidden = true; btnSyncCalendarEl.hidden = true; userBadgeEl.innerHTML = "";
+    tabsNav.classList.add("tabs-hidden"); btnNewPostEl.hidden = true; btnSyncCalendarEl.hidden = true; userBadgeEl.innerHTML = "";
     html += `<div class="setup-banner">
       ⚠️ <strong>Falta configurar Firebase.</strong> Esta app todavía no tiene datos compartidos
       porque <code>FIREBASE_CONFIG</code> tiene valores de ejemplo. Abrí <code>index.html</code>,
@@ -1364,7 +1369,7 @@ function doRender(){
   renderUserBadge();
 
   if(!isAuthorized()){
-    tabsNav.hidden = true; btnNewPostEl.hidden = true; btnSyncCalendarEl.hidden = true;
+    tabsNav.classList.add("tabs-hidden"); btnNewPostEl.hidden = true; btnSyncCalendarEl.hidden = true;
     html += renderAuthGate();
     viewRoot.innerHTML = html;
     return;
@@ -1378,7 +1383,7 @@ function doRender(){
     </div>`;
   }
 
-  tabsNav.hidden = false;
+  tabsNav.classList.remove("tabs-hidden");
   btnNewPostEl.hidden = false;
   btnSyncCalendarEl.hidden = false;
   btnSyncCalendarEl.disabled = state.calendarSyncing === true;

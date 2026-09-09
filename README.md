@@ -239,11 +239,14 @@ quien publica para crear el evento.
   [nombre del proyecto] (no seguro)**. No es un error ni un problema de
   seguridad real: solo significa que Google todavía no revisó
   manualmente esta app (revisión pensada para apps públicas masivas).
-- El token de Calendar dura ~1 hora y **no sobrevive** a recargar la
-  página (a diferencia de la sesión de Firebase, que sí persiste). Si
-  hace falta y no hay uno vigente, la app vuelve a pedir el login de
-  Google automáticamente antes de crear el evento — normalmente un click
-  rápido, no un login completo de nuevo.
+- El token de Calendar (el que se usa para **escribir** — crear/editar/
+  cancelar) dura ~1 hora, y se guarda en `sessionStorage` para sobrevivir
+  a recargar la página dentro de la misma pestaña (se pierde si se cierra
+  la pestaña, si vence, o al cerrar sesión). Si hace falta y no hay uno
+  vigente, la app vuelve a pedir el login de Google automáticamente antes
+  de escribir en Calendar — normalmente un click rápido, no un login
+  completo de nuevo. La **lectura** (sincronizar Calendar → Feed) no usa
+  este token — ver más abajo.
 - Si falla la sincronización (permiso denegado, sin conexión, etc.) el
   posteo **igual se guarda** en el Feed — el Calendar es un agregado, nunca
   bloquea la memoria histórica. Aparece un aviso abajo del header avisando
@@ -270,18 +273,43 @@ Calendar**, sin pasar por la app, eso también se refleja en los posteos:
 Cómo funciona, en criollo: la app le pregunta a Google "¿qué cambió desde
 la última vez?" (usando un "sync token" que Calendar entrega y que se
 guarda en el documento `meta/calendarSync` de Firestore) en vez de releer
-todo el calendario cada vez. No hay servidor propio corriendo esto todo
-el tiempo — se dispara solo (a) una vez por sesión, apenas alguien
-aprobado abre la app y ya tiene un token de Calendar en memoria (por
-ejemplo, porque recién inició sesión), y (b) a mano con el botón
-**"🔄 Actualizar desde Calendar"** que aparece junto a "+ Nuevo posteo".
-Es decir: es una sincronización "al abrir/al pedirla", no en tiempo real
-al segundo — si nadie abre la app ni toca el botón, un cambio hecho en
-Calendar puede tardar en aparecer. Si más adelante hace falta que sea
-instantáneo, la alternativa es un webhook de Calendar corriendo en una
-Cloud Function propia (requiere plan de pago Blaze de Firebase y más
-piezas de infraestructura) — se dejó afuera a propósito por ahora, para
-no sumar esa complejidad sin necesidad.
+todo el calendario cada vez. Esta lectura usa una **clave de API de
+Google Cloud** (constante `CALENDAR_API_KEY` en `index.html`), no el
+login de la persona — así nunca aparece un popup de Google solo por
+mirar si cambió algo. Eso sí, tiene una condición: el calendario "LatAm"
+tiene que estar configurado como **público para lectura**:
+
+1. Google Calendar → configuración del calendario "LatAm" → "Acceso de
+   disponibilidad" → tildar **"Hacer disponible al público"** (alcanza
+   con "Ver solo la disponibilidad (ocultar detalles)" desactivado, o sea
+   que se vean los detalles, no solo si está libre/ocupado).
+2. Google Cloud Console → el mismo proyecto de Firebase → "Credenciales"
+   → "Crear credenciales" → "Clave de API".
+3. Restringirla (recomendado): "Restricciones de API" → solo **Calendar
+   API**; "Restricciones de aplicación" → "Referentes HTTP" → agregar
+   `https://team-latam.github.io/*`.
+4. Pegar esa clave en `CALENDAR_API_KEY` en `index.html` y volver a
+   publicar.
+
+**Trade-off a tener en cuenta**: con esto, cualquiera que tenga el ID del
+calendario (visible en el código fuente, que es público en GitHub) y una
+clave de API propia podría leer los eventos de "LatAm" sin ser parte del
+equipo ni loguearse en la app — es el precio de sacar el popup para la
+lectura. Los datos de la app (Firestore: posteos, hilos, quién tiene
+acceso) siguen 100% privados, esto solo afecta al Calendar de Google en
+sí. **Escribir** en Calendar (crear/editar/cancelar desde la app) sigue
+requiriendo el login de la persona que lo hace, igual que siempre.
+
+No hay servidor propio corriendo esto todo el tiempo — se dispara solo
+(a) una vez por sesión, apenas alguien aprobado abre la app, y (b) a mano
+con el botón **"🔄 Actualizar desde Calendar"** que aparece junto a
+"+ Nuevo posteo". Es decir: es una sincronización "al abrir/al pedirla",
+no en tiempo real al segundo — si nadie abre la app ni toca el botón, un
+cambio hecho en Calendar puede tardar en aparecer. Si más adelante hace
+falta que sea instantáneo, la alternativa es un webhook de Calendar
+corriendo en una Cloud Function propia (requiere plan de pago Blaze de
+Firebase y más piezas de infraestructura) — se dejó afuera a propósito
+por ahora, para no sumar esa complejidad sin necesidad.
 
 Los eventos recurrentes de Calendar no se "expanden" en instancias
 individuales (para no generar un aluvión de posteos por cada repetición):
