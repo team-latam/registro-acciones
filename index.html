@@ -103,7 +103,8 @@
   }
   .user-menu .um-role.role-admin{ background:var(--petroleo); color:#fff; }
   .user-menu .um-role.role-member{ background:var(--bg); color:var(--text-muted); border:1px solid var(--border); }
-  .user-menu .um-role.role-pending{ background:var(--danger); color:#fff; }
+  .user-menu .um-role.role-pending{ background:#fff7e6; color:#6b4c00; }
+  .user-menu .um-role.role-rejected{ background:#fee2e2; color:#991b1b; }
   .user-menu .um-email{ font-size:12px; color:var(--text-muted); margin:6px 0 14px; word-break:break-all; }
   .user-menu .um-signout{
     width:100%; background:var(--bg); border:1px solid var(--border); color:var(--petroleo-dark);
@@ -1563,7 +1564,7 @@ const USER_ROLE_LABELS = {
   admin: { text: "Admin", cls: "role-admin" },
   approved: { text: "Miembro", cls: "role-member" },
   pending: { text: "Pendiente", cls: "role-pending" },
-  rejected: { text: "Rechazado", cls: "role-pending" },
+  rejected: { text: "Rechazado", cls: "role-rejected" },
 };
 
 function renderUserBadge(){
