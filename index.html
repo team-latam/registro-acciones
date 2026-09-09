@@ -243,18 +243,15 @@
   .btn-mini{ background:var(--celeste); color:var(--petroleo-dark); border:none; padding:9px 14px; border-radius:var(--radius-sm); font-weight:700; font-size:12.5px; cursor:pointer; }
   .btn-mini:hover{ background:var(--celeste-dark); color:#fff; }
 
-  .attach-toolbar{ display:flex; gap:8px; flex-wrap:wrap; }
-  .field label.btn-attach{
+  .attach-toolbar{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  label.btn-attach, button.btn-attach{
     display:inline-flex; align-items:center; gap:6px; background:#eef4f4; color:var(--text);
-    border:none; padding:8px 15px; border-radius:999px; font-weight:700; font-size:12.5px; cursor:pointer;
+    border:none; padding:11px 18px; border-radius:999px; font-weight:700; font-size:13.5px; cursor:pointer;
     text-transform:none; letter-spacing:normal; margin-bottom:0;
-  }
-  button.btn-attach{
-    display:inline-flex; align-items:center; gap:6px; background:#eef4f4; color:var(--text);
-    border:none; padding:8px 15px; border-radius:999px; font-weight:700; font-size:12.5px; cursor:pointer;
   }
   .btn-attach:hover{ background:#e2eded; }
   .attach-panel{ margin-top:10px; }
+  .reply-form-footer{ display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-top:8px; }
   .attach-row{
     display:flex; gap:8px; align-items:center; margin-bottom:6px;
     background:#f8fbfb; border:1px solid var(--border); border-radius:var(--radius-sm); padding:6px;
@@ -1749,19 +1746,19 @@ function renderNestedReplyForm(postId, replyId){
   return `
     <div class="reply-nested-form">
       <textarea data-nested-reply-field="content" data-reply-id="${replyId}" placeholder="Responder...">${esc(d.content)}</textarea>
-      <div class="field" style="margin-top:8px;margin-bottom:4px;">
+      <input type="file" id="nestedReplyImages-${replyId}" accept="image/*" multiple hidden data-action="nested-reply-images" data-reply-id="${replyId}">
+      ${d.images.length ? `<div class="img-preview-list">${d.images.map((src,i)=>`
+        <div class="img-preview"><img src="${src}"><button type="button" class="rm" data-action="nested-reply-rm-image" data-reply-id="${replyId}" data-idx="${i}">✕</button></div>`).join("")}</div>` : ""}
+      ${d.links.length ? `<div class="attach-panel">${renderLinkRows("nested-reply", replyId, d.links)}</div>` : ""}
+      <div class="reply-form-footer">
         <div class="attach-toolbar">
           <label class="btn-attach" for="nestedReplyImages-${replyId}">📎 Imagen</label>
           <button type="button" class="btn-attach" data-action="nested-reply-add-link" data-reply-id="${replyId}">🔗 Link</button>
         </div>
-        <input type="file" id="nestedReplyImages-${replyId}" accept="image/*" multiple hidden data-action="nested-reply-images" data-reply-id="${replyId}">
-        ${d.images.length ? `<div class="img-preview-list">${d.images.map((src,i)=>`
-          <div class="img-preview"><img src="${src}"><button type="button" class="rm" data-action="nested-reply-rm-image" data-reply-id="${replyId}" data-idx="${i}">✕</button></div>`).join("")}</div>` : ""}
-        ${d.links.length ? `<div class="attach-panel">${renderLinkRows("nested-reply", replyId, d.links)}</div>` : ""}
-      </div>
-      <div class="modal-actions" style="margin-top:6px;">
-        <button class="btn-secondary" data-action="cancel-nested-reply" data-reply-id="${replyId}">Cancelar</button>
-        <button class="btn-primary" data-action="submit-nested-reply" data-post-id="${postId}" data-reply-id="${replyId}">Responder</button>
+        <div class="modal-actions" style="margin:0;">
+          <button class="btn-secondary" data-action="cancel-nested-reply" data-reply-id="${replyId}">Cancelar</button>
+          <button class="btn-primary" data-action="submit-nested-reply" data-post-id="${postId}" data-reply-id="${replyId}">Responder</button>
+        </div>
       </div>
     </div>`;
 }
@@ -1779,20 +1776,19 @@ function renderReplyForm(postId){
         <label><input type="checkbox" data-action="toggle-reply-extra-scope" data-post-id="${postId}" ${d.extraScope?"checked":""}> Esta respuesta también afectó a otro lugar</label>
       </div>
       ${d.extraScope ? renderScopeBuilder("reply", postId, d) : ""}
-      <div class="field" style="margin-bottom:8px;">
-        <label>Adjuntos</label>
+      <input type="file" id="replyImages-${postId}" accept="image/*" multiple hidden data-action="reply-images" data-post-id="${postId}">
+      ${d.images.length ? `<div class="img-preview-list">${d.images.map((src,i)=>`
+        <div class="img-preview"><img src="${src}"><button type="button" class="rm" data-action="reply-rm-image" data-post-id="${postId}" data-idx="${i}">✕</button></div>`).join("")}</div>` : ""}
+      ${d.links.length ? `<div class="attach-panel">${renderLinkRows("reply", postId, d.links)}</div>` : ""}
+      <div class="reply-form-footer">
         <div class="attach-toolbar">
           <label class="btn-attach" for="replyImages-${postId}">📎 Imagen</label>
           <button type="button" class="btn-attach" data-action="reply-add-link" data-post-id="${postId}">🔗 Link</button>
         </div>
-        <input type="file" id="replyImages-${postId}" accept="image/*" multiple hidden data-action="reply-images" data-post-id="${postId}">
-        ${d.images.length ? `<div class="img-preview-list">${d.images.map((src,i)=>`
-          <div class="img-preview"><img src="${src}"><button type="button" class="rm" data-action="reply-rm-image" data-post-id="${postId}" data-idx="${i}">✕</button></div>`).join("")}</div>` : ""}
-        ${d.links.length ? `<div class="attach-panel">${renderLinkRows("reply", postId, d.links)}</div>` : ""}
-      </div>
-      <div class="modal-actions">
-        <button class="btn-secondary" data-action="cancel-reply" data-post-id="${postId}">Cancelar</button>
-        <button class="btn-primary" data-action="submit-reply" data-post-id="${postId}">Publicar respuesta</button>
+        <div class="modal-actions" style="margin:0;">
+          <button class="btn-secondary" data-action="cancel-reply" data-post-id="${postId}">Cancelar</button>
+          <button class="btn-primary" data-action="submit-reply" data-post-id="${postId}">Publicar respuesta</button>
+        </div>
       </div>
     </div>`;
 }
