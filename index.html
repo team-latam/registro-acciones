@@ -1481,26 +1481,54 @@ function subscribeAuditLog(){
 function subscribeRoster(){
   const q = fb.query(fb.collection(db,"allowlist"), fb.orderBy("approvedAt","asc"));
   unsubRoster = fb.onSnapshot(q, snap=>{
+    const missingNickname = [];
     state.roster = snap.docs.map(d=>{
       const data = d.data();
+      if(!data.nickname) missingNickname.push(d.id);
       return { email: d.id, nickname: data.nickname || nicknameFallback(d.id), photoURL: data.photoURL || null };
     });
     render();
+    // Accesos aprobados de ANTES de que existiera "nickname" no lo tienen
+    // guardado — el admin (único que puede leer accessRequests de
+    // cualquiera) lo completa solo, una vez, con el nombre real de Google
+    // en vez del feo fallback armado desde el email.
+    if(isAdmin() && missingNickname.length) backfillNicknames(missingNickname);
   }, err=>console.error("Error leyendo el equipo:", err));
 }
+async function backfillNicknames(emails){
+  const existingNicknames = new Set(state.roster.map(u=>u.nickname).filter(Boolean));
+  for(const email of emails){
+    try{
+      const reqSnap = await fb.getDoc(fb.doc(db, "accessRequests", email));
+      const name = (reqSnap.exists() && reqSnap.data().name) || email;
+      const nickname = makeNickname(name, existingNicknames);
+      existingNicknames.add(nickname);
+      await fb.updateDoc(fb.doc(db, "allowlist", email), { name, nickname });
+    }catch(err){ console.error("No se pudo completar el nickname de " + email + ":", err); }
+  }
+}
+// Primera "palabra" usable de un nombre o de un email (si no es un
+// nombre real, se recorta antes del @ y se separan puntos/guiones) —
+// para "Ari Krengel" da "Ari"; para "cursoslatam.argentina@gmail.com"
+// da "Cursoslatam" en vez de "Cursoslatam.argentina@gmail.com".
+function firstWordFrom(text){
+  const base = (text||"").includes("@") && !(text||"").includes(" ") ? text.split("@")[0] : text;
+  const cleaned = (base||"").replace(/[._-]+/g, " ").trim();
+  const first = cleaned.split(/\s+/)[0] || "Usuario";
+  return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
+}
 // Los que ya estaban aprobados de antes de que existiera "nickname" no
-// tienen ese campo en su documento — se les arma uno a partir del email,
-// solo para mostrar (no se guarda en ningún lado).
+// tienen ese campo en su documento — se les arma uno de reserva a partir
+// del email, solo para mostrar mientras backfillNicknames() no corrió
+// (no se guarda en ningún lado desde acá).
 function nicknameFallback(email){
-  const local = (email||"").split("@")[0] || "Usuario";
-  return local.charAt(0).toUpperCase() + local.slice(1);
+  return firstWordFrom(email);
 }
 // Arma un @nickname corto a partir del nombre de Google, evitando
 // choques con los que ya existen (ej. dos "Benny" en el equipo).
 function makeNickname(displayName, existingNicknames){
   const parts = (displayName||"").trim().split(/\s+/).filter(Boolean);
-  const first = parts[0] || "Usuario";
-  const base = first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
+  const base = firstWordFrom(parts[0] || displayName);
   if(!existingNicknames.has(base)) return base;
   const lastInitial = parts.length > 1 ? parts[1].charAt(0).toUpperCase() : "";
   if(lastInitial && !existingNicknames.has(base + lastInitial)) return base + lastInitial;
@@ -2796,7 +2824,10 @@ function renderMentionSuggestions(draft, scope, ownerId, textareaId){
   if(draft.mentionQuery == null) return "";
   const q = draft.mentionQuery.toLowerCase();
   const allOption = "all".startsWith(q) ? [{ email:"all", nickname:"all", isAll:true }] : [];
-  const matches = allOption.concat(state.roster.filter(u => u.nickname.toLowerCase().startsWith(q))).slice(0, 6);
+  const myEmail = state.auth.user && state.auth.user.email;
+  const matches = allOption.concat(state.roster.filter(u =>
+    u.email !== myEmail && u.nickname.toLowerCase().startsWith(q)
+  )).slice(0, 6);
   if(!matches.length) return `<div class="autocomplete-list"><div class="autocomplete-empty">Sin coincidencias</div></div>`;
   return `<div class="autocomplete-list">${matches.map(u=>{
     const avatar = u.isAll ? `<span class="mention-avatar mention-avatar-fallback">👥</span>`
