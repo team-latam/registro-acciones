@@ -64,11 +64,43 @@
   .btn-sync:hover{ background:rgba(255,255,255,0.24); }
   .btn-sync:disabled{ opacity:0.5; cursor:not-allowed; }
   .header-actions{ display:flex; align-items:center; gap:10px; }
-  .user-badge{ display:flex; align-items:center; gap:8px; }
-  .user-badge img{ width:28px; height:28px; border-radius:50%; border:1.5px solid rgba(255,255,255,0.5); }
-  .user-badge .uname{ font-size:12.5px; font-weight:600; color:#e6f6f8; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .user-badge .btn-signout{ background:rgba(255,255,255,0.12); color:#fff; border:none; padding:6px 12px; border-radius:999px; font-size:11.5px; font-weight:700; cursor:pointer; }
-  .user-badge .btn-signout:hover{ background:rgba(255,255,255,0.22); }
+
+  /* Avatar circular en el header: al apretarlo despliega un menú tipo
+     Google con nombre/email y cerrar sesión, en vez de mostrar el email
+     entero pegado al lado del botón todo el tiempo. */
+  .user-badge{ position:relative; }
+  .avatar-btn{
+    width:36px; height:36px; padding:0; border-radius:50%; cursor:pointer;
+    background:rgba(255,255,255,0.14); border:2px solid rgba(255,255,255,0.55);
+    display:flex; align-items:center; justify-content:center; overflow:hidden;
+    flex-shrink:0; transition:border-color .15s;
+  }
+  .avatar-btn:hover, .avatar-btn.open{ border-color:#fff; }
+  .avatar-btn img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .avatar-btn .avatar-fallback-badge{ color:#fff; font-weight:800; font-size:14px; }
+
+  .user-menu{
+    position:absolute; top:calc(100% + 12px); right:0; width:250px;
+    background:var(--card); color:var(--text); border-radius:var(--radius-md);
+    box-shadow:0 14px 36px rgba(8,42,44,0.28); padding:18px 16px 14px;
+    text-align:center; z-index:60;
+  }
+  .user-menu::before{
+    content:""; position:absolute; top:-6px; right:13px; width:12px; height:12px;
+    background:var(--card); transform:rotate(45deg); border-radius:2px;
+  }
+  .user-menu .um-avatar, .user-menu .um-avatar-fallback{
+    width:60px; height:60px; border-radius:50%; margin:0 auto 10px; display:flex;
+    align-items:center; justify-content:center; object-fit:cover;
+  }
+  .user-menu .um-avatar-fallback{ background:var(--petroleo); color:#fff; font-weight:800; font-size:22px; }
+  .user-menu .um-name{ font-size:14.5px; font-weight:700; color:var(--petroleo-dark); line-height:1.3; }
+  .user-menu .um-email{ font-size:12px; color:var(--text-muted); margin:2px 0 14px; word-break:break-all; }
+  .user-menu .um-signout{
+    width:100%; background:var(--bg); border:1px solid var(--border); color:var(--petroleo-dark);
+    padding:9px; border-radius:999px; font-weight:700; font-size:13px; cursor:pointer;
+  }
+  .user-menu .um-signout:hover{ background:#eaf3f3; }
   #tabSolicitudes .pending-count{ background:var(--danger); color:#fff; border-radius:999px; font-size:10.5px; font-weight:800; padding:1px 6px; margin-left:6px; }
 
   /* ---------- Auth gate (login / pendiente / rechazado) ---------- */
@@ -1488,13 +1520,28 @@ const tabAuditoriaEl = document.getElementById("tabAuditoria");
 const calendarToastEl = document.getElementById("calendarToast");
 const calendarToastTextEl = document.getElementById("calendarToastText");
 
+// Si el menú del avatar está abierto (nombre/email + cerrar sesión). Vive
+// fuera de `state` a propósito, como openThreads/openReplyForms: es puro
+// estado de UI efímero, no hace falta que sobreviva a nada.
+let userMenuOpen = false;
+
 function renderUserBadge(){
   const u = state.auth.user;
-  if(!u){ userBadgeEl.innerHTML = ""; return; }
+  if(!u){ userBadgeEl.innerHTML = ""; userMenuOpen = false; return; }
+  const initial = esc((u.displayName || u.email || "?")[0].toUpperCase());
+  const avatar = u.photoURL ? `<img src="${esc(u.photoURL)}" alt="">` : `<span class="avatar-fallback-badge">${initial}</span>`;
+  const menuAvatar = u.photoURL
+    ? `<img class="um-avatar" src="${esc(u.photoURL)}" alt="">`
+    : `<div class="um-avatar-fallback">${initial}</div>`;
   userBadgeEl.innerHTML = `
-    ${u.photoURL ? `<img src="${esc(u.photoURL)}" alt="">` : ""}
-    <span class="uname" title="${esc(u.email)}">${esc(u.displayName)} (${esc(u.email)})</span>
-    <button class="btn-signout" data-action="sign-out">Salir</button>`;
+    <button class="avatar-btn${userMenuOpen ? " open" : ""}" data-action="toggle-user-menu" title="${esc(u.displayName)}" aria-label="Cuenta">${avatar}</button>
+    ${userMenuOpen ? `
+      <div class="user-menu">
+        ${menuAvatar}
+        <div class="um-name">${esc(u.displayName)}</div>
+        <div class="um-email">${esc(u.email)}</div>
+        <button class="um-signout" data-action="sign-out">Cerrar sesión</button>
+      </div>` : ""}`;
 }
 
 function doRender(){
@@ -2306,6 +2353,10 @@ async function handleImageFiles(fileList, targetArray, max=6){
 }
 
 document.addEventListener("click", e=>{
+  if(userMenuOpen && !e.target.closest("#userBadge")){
+    userMenuOpen = false; render();
+  }
+
   const t = e.target.closest("[data-action]");
   if(!t) return;
   const action = t.dataset.action;
@@ -2402,7 +2453,10 @@ document.addEventListener("click", e=>{
     state.memoriaOrder = t.dataset.key; render();
   } else if(action === "google-signin"){
     signIn();
+  } else if(action === "toggle-user-menu"){
+    userMenuOpen = !userMenuOpen; render();
   } else if(action === "sign-out"){
+    userMenuOpen = false;
     doSignOut();
   } else if(action === "request-again"){
     requestAccessAgain();
