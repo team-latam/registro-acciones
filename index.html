@@ -867,6 +867,9 @@ async function onAuthChanged(user){
     return;
   }
   const profile = { uid:user.uid, email:user.email, displayName:user.displayName || user.email, photoURL:user.photoURL || "" };
+  user.getIdTokenResult().then(tok=>{
+    console.log("[diagnóstico] email en user.email:", user.email, "| email en el token (lo que ven las reglas):", tok.claims.email);
+  }).catch(()=>{});
 
   if(profile.email === ADMIN_EMAIL){
     state.auth = { status:"admin", user:profile };
@@ -1128,7 +1131,7 @@ function renderUserBadge(){
   if(!u){ userBadgeEl.innerHTML = ""; return; }
   userBadgeEl.innerHTML = `
     ${u.photoURL ? `<img src="${esc(u.photoURL)}" alt="">` : ""}
-    <span class="uname">${esc(u.displayName)}</span>
+    <span class="uname" title="${esc(u.email)}">${esc(u.displayName)} (${esc(u.email)})</span>
     <button class="btn-signout" data-action="sign-out">Salir</button>`;
 }
 
