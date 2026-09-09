@@ -809,6 +809,27 @@ function markMentionsSeen(){
 function mentionsInclude(mentions, email){
   return (mentions||[]).includes(email) || (mentions||[]).includes("all");
 }
+// El array `mentions` que se guarda con el posteo/respuesta se arma
+// SIEMPRE a partir del texto final, justo antes de publicar — nunca de
+// un array que se va acumulando mientras se escribe (ver
+// selectMentionMatch): si alguien elegía una mención del desplegable y
+// después borraba o cambiaba ese "@Nombre" del texto a mano, ese array
+// acumulado quedaba con una mención "fantasma" que ya no estaba escrita
+// en ningún lado, y esa persona recibía notificaciones de algo que en
+// realidad no la mencionaba. Recalcular desde el texto lo hace imposible.
+function extractMentionsFromContent(content){
+  const byNickname = {};
+  state.roster.forEach(u=>{ byNickname[u.nickname.toLowerCase()] = u.email; });
+  const found = new Set();
+  const re = /@(\w+)/g;
+  let m;
+  while((m = re.exec(content||""))){
+    const nick = m[1].toLowerCase();
+    if(nick === "all") found.add("all");
+    else if(byNickname[nick]) found.add(byNickname[nick]);
+  }
+  return [...found];
+}
 function getUnseenMentionCount(){
   const email = state.auth.user && state.auth.user.email;
   if(!email) return 0;
@@ -2238,7 +2259,7 @@ function newRutinaDraft(){
   return {
     content:"", images:[], links:[], files:[],
     scopes:[], placeQuery:"", placeHighlight:0,
-    mentions:[], mentionQuery:null, mentionCaret:0, mentionHighlight:0,
+    mentionQuery:null, mentionCaret:0, mentionHighlight:0,
     error:"",
   };
 }
@@ -2300,7 +2321,7 @@ async function submitRutina(){
     title, content, startDate:today, endDate:today, date:today,
     organizer:"", location:"",
     activityType:"rutina", scopes:d.scopes,
-    images:d.images, links, files:d.files, mentions:d.mentions,
+    images:d.images, links, files:d.files, mentions:extractMentionsFromContent(content),
     authorName: state.auth.user.displayName, authorEmail: state.auth.user.email,
   };
   try{
@@ -2320,13 +2341,13 @@ const replyDrafts = {}; // postId -> draft
 const openNestedReplyForms = new Set(); // replyIds con su mini-formulario de "responder a esto" abierto
 const nestedReplyDrafts = {}; // replyId -> { content }
 function getNestedReplyDraft(replyId){
-  if(!nestedReplyDrafts[replyId]) nestedReplyDrafts[replyId] = { content:"", images:[], links:[], files:[], mentions:[], mentionQuery:null, mentionCaret:0, mentionHighlight:0 };
+  if(!nestedReplyDrafts[replyId]) nestedReplyDrafts[replyId] = { content:"", images:[], links:[], files:[], mentionQuery:null, mentionCaret:0, mentionHighlight:0 };
   return nestedReplyDrafts[replyId];
 }
 
 function newScopeDraft(){ return { type:"ciudad", country:"", city:"", region:"sur", cityUseCustom:false }; }
 function newReplyDraft(){
-  return { content:"", images:[], links:[], files:[], mentions:[], mentionQuery:null, mentionCaret:0, mentionHighlight:0, extraScope:false, scopes:[], scopeDraft:newScopeDraft(), scopeError:"" };
+  return { content:"", images:[], links:[], files:[], mentionQuery:null, mentionCaret:0, mentionHighlight:0, extraScope:false, scopes:[], scopeDraft:newScopeDraft(), scopeError:"" };
 }
 function getReplyDraft(postId){
   if(!replyDrafts[postId]) replyDrafts[postId] = newReplyDraft();
@@ -2781,7 +2802,6 @@ function newComposerDraft(){
     images: [],
     links: [],
     files: [],
-    mentions: [],
     mentionQuery: null,
     mentionCaret: 0,
     mentionHighlight: 0,
@@ -2810,7 +2830,7 @@ function openEditComposer(post){
     scopeDraft: newScopeDraft(), scopeError: "",
     images: [...(post.images||[])], links: (post.links||[]).map(l=>({...l})),
     files: (post.files||[]).map(f=>({...f})),
-    mentions: [...(post.mentions||[])], mentionQuery: null, mentionCaret: 0, mentionHighlight: 0,
+    mentionQuery: null, mentionCaret: 0, mentionHighlight: 0,
     error: "", editingPost: post,
   };
   postModalTitle.textContent = "Editar posteo";
@@ -3078,7 +3098,6 @@ function selectMentionMatch(scope, ownerId, textareaId, match){
   const after = draft.content.slice(caret);
   const insText = "@" + match.nickname + " ";
   draft.content = before + insText + after;
-  if(!draft.mentions.includes(match.email)) draft.mentions.push(match.email);
   draft.mentionQuery = null;
   draft.mentionHighlight = 0;
   const newCaret = before.length + insText.length;
@@ -3403,7 +3422,7 @@ postForm.addEventListener("submit", async e=>{
     title, content, startDate:d.startDate, endDate:d.endDate, date:d.startDate,
     organizer: d.organizer.trim(), location: d.location.trim(),
     activityType:d.activityType, scopes:d.scopes,
-    images:d.images, links, files:d.files, mentions:d.mentions,
+    images:d.images, links, files:d.files, mentions:extractMentionsFromContent(content),
     authorName: state.auth.user.displayName, authorEmail: state.auth.user.email,
   };
   try{
@@ -3447,7 +3466,7 @@ async function submitReply(postId){
     await createReply(postId, {
       authorName: state.auth.user.displayName, authorEmail: state.auth.user.email,
       content, scopes:d.extraScope ? d.scopes : [],
-      images:d.images, links, files:d.files, mentions:d.mentions,
+      images:d.images, links, files:d.files, mentions:extractMentionsFromContent(content),
     });
     openReplyForms.delete(postId);
     resetReplyDraft(postId);
@@ -3472,7 +3491,7 @@ async function submitNestedReply(postId, replyId){
   try{
     await createReply(postId, {
       authorName: state.auth.user.displayName, authorEmail: state.auth.user.email,
-      content, scopes:[], images:d.images, links, files:d.files, mentions:d.mentions, replyToId,
+      content, scopes:[], images:d.images, links, files:d.files, mentions:extractMentionsFromContent(content), replyToId,
     });
     openNestedReplyForms.delete(replyId);
     delete nestedReplyDrafts[replyId];
