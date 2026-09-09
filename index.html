@@ -302,6 +302,37 @@
   .field textarea{ min-height:90px; resize:vertical; }
   .row2{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
   @media (max-width:520px){ .row2{ grid-template-columns:1fr; } }
+
+  /* Composer de Evento inspirado en Google Calendar (no un calco): título
+     grande sin caja + filas con icono a la izquierda (🕐 cuándo, 📍 dónde,
+     👤 quién organiza) en vez de todo agrupado en cajas ".field" iguales. */
+  .field-title-plain{ margin-bottom:6px; }
+  /* Especificidad reforzada a propósito: ".field input[type=text]" (más
+     arriba) también matchea este input por estar dentro de un .field, y
+     sin esto ganaba esa regla de caja gris en vez de la línea simple de
+     abajo estilo Calendar. */
+  .field.field-title-plain input.title-input-plain{
+    width:100%; border:none; border-bottom:1.5px solid var(--border); background:transparent;
+    padding:8px 2px; font-size:20px; font-weight:700; color:var(--petroleo-dark);
+  }
+  .field.field-title-plain input.title-input-plain:focus{ outline:none; border-bottom-color:var(--celeste); }
+  .field-icon-row{ display:flex; align-items:flex-start; gap:12px; margin-bottom:14px; }
+  .field-icon{ flex:none; width:20px; text-align:center; font-size:15px; line-height:2.2; color:var(--text-muted); }
+  .field-icon-body{ flex:1; min-width:0; }
+  .field-icon-input{
+    flex:1; min-width:0; padding:10px 12px; border-radius:var(--radius-sm); border:1.5px solid var(--border);
+    font-size:14px; background:#fbfdfd;
+  }
+  .allday-toggle{ display:flex; align-items:center; gap:6px; font-size:13px; font-weight:600; color:var(--text); margin-bottom:8px; cursor:pointer; }
+  .dt-row{ display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  .dt-row:last-child{ margin-bottom:0; }
+  .dt-row input[type=date], .dt-row input[type=time]{
+    flex:1; min-width:0; padding:9px 10px; border-radius:var(--radius-sm); border:1.5px solid var(--border);
+    font-size:13.5px; background:#fbfdfd;
+  }
+  .dt-sep{ color:var(--text-muted); font-size:13px; flex:none; }
+  @media (max-width:480px){ .field-icon-row{ gap:8px; } .field-icon{ width:16px; font-size:13px; } }
+
   .type-picker{ display:flex; flex-wrap:wrap; gap:8px; }
   .type-picker label{ display:inline-flex; }
   .type-opt{ display:inline-flex; align-items:center; gap:6px; padding:8px 13px; border-radius:999px; border:1.5px solid var(--border); cursor:pointer; font-size:12.5px; font-weight:600; }
@@ -444,7 +475,7 @@
     justify-content:center; border:2px solid var(--petroleo-dark);
   }
 
-  /* Campanita de @menciones, entre "+ Nuevo posteo" y el avatar: mismo
+  /* Campanita de @menciones, entre "+ Nuevo evento" y el avatar: mismo
      look circular que el avatar-btn, con un desplegable corto (últimas 4
      nomás) de las menciones más recientes en vez de un historial largo. */
   .mentions-bell-wrap{ position:relative; }
@@ -565,7 +596,7 @@
       </div>
       <div class="header-actions">
         <button class="btn-sync" id="btnSyncCalendar" hidden>🔄 Actualizar desde Calendar</button>
-        <button class="btn-new" id="btnNewPost" hidden>+ Nuevo posteo</button>
+        <button class="btn-new" id="btnNewPost" hidden>+ Nuevo evento</button>
         <div id="mentionsBell" class="mentions-bell-wrap"></div>
         <div id="userBadge" class="user-badge"></div>
       </div>
@@ -592,7 +623,7 @@
 <div class="modal-overlay" id="postModalOverlay" hidden>
   <div class="modal modal-wrap">
     <button class="close" id="postModalClose">✕</button>
-    <h2 id="postModalTitle">Nuevo posteo</h2>
+    <h2 id="postModalTitle">Nuevo evento</h2>
     <form id="postForm"></form>
   </div>
 </div>
@@ -1201,12 +1232,18 @@ function buildCalendarEvent(postData){
   ];
   if(postData.organizer) descLines.push("", `Organiza: ${postData.organizer}`);
   descLines.push("", `Cargado por ${postData.authorName} en Registro de Acciones.`);
+  // Con hora (startTime/endTime cargados): evento puntual, dateTime +
+  // timeZone del navegador de quien lo carga (Calendar API lo exige junto
+  // a dateTime). Sin hora: como antes, evento de "todo el día" con date
+  // (el fin es exclusivo, por eso el +1 día).
+  const hasTime = !!(postData.startTime && postData.endTime);
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   return {
     summary: `${ACTIVITY_BY_KEY[postData.activityType]?.label || "Actividad"}: ${postData.title}`,
     location: postData.location || undefined,
     description: descLines.join("\n"),
-    start: { date: postData.startDate },
-    end: { date: addDaysISO(postData.endDate, 1) }, // el fin de un evento de todo el día es exclusivo
+    start: hasTime ? { dateTime: `${postData.startDate}T${postData.startTime}:00`, timeZone } : { date: postData.startDate },
+    end: hasTime ? { dateTime: `${postData.endDate}T${postData.endTime}:00`, timeZone } : { date: addDaysISO(postData.endDate, 1) },
   };
 }
 
@@ -1352,9 +1389,12 @@ async function fetchCalendarChanges(syncToken){
 // de "todo el día" que arma esta misma app tienen el fin exclusivo
 // (+1 día, ver buildCalendarEvent) así que hay que deshacer eso acá.
 function calendarEventDates(ev){
-  if(ev.start?.date) return { startDate: ev.start.date, endDate: addDaysISO(ev.end?.date || ev.start.date, -1) };
-  if(ev.start?.dateTime) return { startDate: ev.start.dateTime.slice(0,10), endDate: (ev.end?.dateTime || ev.start.dateTime).slice(0,10) };
-  return { startDate:null, endDate:null };
+  if(ev.start?.date) return { startDate: ev.start.date, endDate: addDaysISO(ev.end?.date || ev.start.date, -1), startTime:"", endTime:"" };
+  if(ev.start?.dateTime) return {
+    startDate: ev.start.dateTime.slice(0,10), endDate: (ev.end?.dateTime || ev.start.dateTime).slice(0,10),
+    startTime: ev.start.dateTime.slice(11,16), endTime: (ev.end?.dateTime || ev.start.dateTime).slice(11,16),
+  };
+  return { startDate:null, endDate:null, startTime:"", endTime:"" };
 }
 
 // El "summary" que la app manda a Calendar lleva el prefijo "Tipo: " (ver
@@ -1379,25 +1419,26 @@ async function applyCalendarEventToPosts(ev){
     return;
   }
 
-  const { startDate, endDate } = calendarEventDates(ev);
+  const { startDate, endDate, startTime, endTime } = calendarEventDates(ev);
   if(!startDate) return;
   const location = ev.location || "";
 
   if(existing){
     const newTitle = extractTitleFromSummary(ev.summary, existing.activityType).trim();
     const titleChanged = !!newTitle && newTitle !== existing.title;
-    const changed = existing.startDate !== startDate || existing.endDate !== endDate || (existing.location||"") !== location || titleChanged;
+    const timeChanged = (existing.startTime||"") !== startTime || (existing.endTime||"") !== endTime;
+    const changed = existing.startDate !== startDate || existing.endDate !== endDate || timeChanged || (existing.location||"") !== location || titleChanged;
     if(!changed) return;
     const parts = [];
     if(titleChanged) parts.push(`título ("${existing.title}" → "${newTitle}")`);
-    if(existing.startDate !== startDate || existing.endDate !== endDate){
+    if(existing.startDate !== startDate || existing.endDate !== endDate || timeChanged){
       const oldLabel = (existing.endDate||existing.startDate) !== existing.startDate ? `${fmtDate(existing.startDate)}–${fmtDate(existing.endDate)}` : fmtDate(existing.startDate);
       const newLabel = endDate !== startDate ? `${fmtDate(startDate)}–${fmtDate(endDate)}` : fmtDate(startDate);
       parts.push(`fecha (${oldLabel} → ${newLabel})`);
     }
     if((existing.location||"") !== location) parts.push(`lugar${location ? ` (ahora: ${location})` : " (se quitó)"}`);
     const patch = {
-      startDate, endDate, date:startDate, location,
+      startDate, endDate, date:startDate, startTime, endTime, location,
       lastEditedAt: fb.serverTimestamp(), lastEditedBy:"Google Calendar",
     };
     if(titleChanged) patch.title = newTitle;
@@ -1417,7 +1458,7 @@ async function applyCalendarEventToPosts(ev){
   await createPost({
     title: ev.summary || "(Sin título)",
     content: ev.description || "Creado automáticamente desde Google Calendar.",
-    startDate, endDate, date:startDate,
+    startDate, endDate, date:startDate, startTime, endTime,
     organizer: ev.organizer?.displayName || ev.organizer?.email || "",
     location,
     activityType: "otro",
@@ -1818,7 +1859,8 @@ function buildEditSummary(original, next){
   const parts = [];
   if(original.title !== next.title) parts.push(`título ("${original.title}" → "${next.title}")`);
   const oldStart = original.startDate, oldEnd = original.endDate || oldStart;
-  if(oldStart !== next.startDate || oldEnd !== next.endDate){
+  const timeChanged = (original.startTime||"") !== (next.startTime||"") || (original.endTime||"") !== (next.endTime||"");
+  if(oldStart !== next.startDate || oldEnd !== next.endDate || timeChanged){
     const oldLabel = oldEnd !== oldStart ? `${fmtDate(oldStart)}–${fmtDate(oldEnd)}` : fmtDate(oldStart);
     const newLabel = next.endDate !== next.startDate ? `${fmtDate(next.startDate)}–${fmtDate(next.endDate)}` : fmtDate(next.startDate);
     parts.push(`fecha (${oldLabel} → ${newLabel})`);
@@ -1839,7 +1881,8 @@ function buildEditSummary(original, next){
 async function updatePostAndSync(postId, original, newData){
   const patch = {
     title:newData.title, content:newData.content, startDate:newData.startDate, endDate:newData.endDate,
-    date:newData.startDate, organizer:newData.organizer, location:newData.location,
+    date:newData.startDate, startTime:newData.startTime||"", endTime:newData.endTime||"",
+    organizer:newData.organizer, location:newData.location,
     activityType:newData.activityType, scopes:newData.scopes, images:newData.images, links:newData.links,
     lastEditedAt: fb.serverTimestamp(), lastEditedBy: state.auth.user.displayName,
   };
@@ -2003,7 +2046,7 @@ function renderUserBadge(){
       </div>` : ""}`;
 }
 
-// Campanita de @menciones, entre "+ Nuevo posteo" y el avatar: muestra
+// Campanita de @menciones, entre "+ Nuevo evento" y el avatar: muestra
 // las últimas 4 nomás (no un historial completo) y cada una lleva
 // directo al posteo (o a la respuesta, dentro de su hilo) — ver la
 // acción "goto-mention".
@@ -2302,7 +2345,7 @@ function renderFeedView(){
     ${renderRutinaComposer()}
     ${renderFilterBar("feed")}
     ${items.length ? items.map(({post,replies,featured})=>renderPostCard(post,replies,featured)).join("") :
-      `<div class="empty-state"><div class="big">🗒️</div>Todavía no hay posteos${anyActiveFilter()?" que coincidan con el filtro":""}.<br>Usá "+ Nuevo posteo" para sumar el primero.</div>`}
+      `<div class="empty-state"><div class="big">🗒️</div>Todavía no hay posteos${anyActiveFilter()?" que coincidan con el filtro":""}.<br>Usá "+ Nuevo evento" para sumar el primero.</div>`}
   `;
 }
 function anyActiveFilter(){
@@ -2431,7 +2474,8 @@ function renderPostCard(post, replies, featured){
   const threadOpen = openThreads.has(post.id);
   const startDate = post.startDate || post.date;
   const endDate = post.endDate || startDate;
-  const dateLabel = endDate && endDate !== startDate ? `${fmtDate(startDate)} – ${fmtDate(endDate)}` : fmtDate(startDate);
+  const timeLabel = post.startTime && post.endTime ? ` · ${post.startTime}–${post.endTime}` : "";
+  const dateLabel = (endDate && endDate !== startDate ? `${fmtDate(startDate)} – ${fmtDate(endDate)}` : fmtDate(startDate)) + timeLabel;
   const metaBits = [];
   if(post.organizer) metaBits.push(`👤 Organiza: ${esc(post.organizer)}`);
   if(post.location) metaBits.push(`📍 ${esc(post.location)}`);
@@ -2853,7 +2897,7 @@ function renderMemoriaView(){
 }
 
 /* ======================================================================
-   COMPOSER: Nuevo posteo (modal)
+   COMPOSER: Nuevo evento (modal)
    ====================================================================== */
 function newComposerDraft(){
   const today = new Date().toISOString().slice(0,10);
@@ -2862,6 +2906,9 @@ function newComposerDraft(){
     content: "",
     startDate: today,
     endDate: today,
+    allDay: true,
+    startTime: "",
+    endTime: "",
     organizer: "",
     location: "",
     activityType: EVENTO_TYPES[0].key,
@@ -2886,7 +2933,7 @@ const postModalTitle = document.getElementById("postModalTitle");
 
 function openComposer(){
   composerDraft = newComposerDraft();
-  postModalTitle.textContent = "Nuevo posteo";
+  postModalTitle.textContent = "Nuevo evento";
   postModalOverlay.hidden = false;
   renderComposer();
 }
@@ -2894,6 +2941,11 @@ function openEditComposer(post){
   composerDraft = {
     title: post.title || "", content: post.content || "",
     startDate: post.startDate || post.date, endDate: post.endDate || post.startDate || post.date,
+    // Un evento viejo, de antes de sumar horario, no tiene startTime/endTime
+    // guardados — se lo trata como "todo el día" (allDay:true) hasta que
+    // alguien le ponga hora explícitamente.
+    allDay: !(post.startTime && post.endTime),
+    startTime: post.startTime || "", endTime: post.endTime || "",
     organizer: post.organizer || "", location: post.location || "",
     activityType: post.activityType, scopes: (post.scopes||[]).map(sc=>({...sc})),
     scopeDraft: newScopeDraft(), scopeError: "",
@@ -2902,7 +2954,7 @@ function openEditComposer(post){
     mentionQuery: null, mentionCaret: 0, mentionHighlight: 0,
     error: "", editingPost: post,
   };
-  postModalTitle.textContent = "Editar posteo";
+  postModalTitle.textContent = post.activityType === "rutina" ? "Editar rutina" : "Editar evento";
   postModalOverlay.hidden = false;
   renderComposer();
 }
@@ -2913,9 +2965,33 @@ function renderComposer(){
   const d = composerDraft;
   postForm.innerHTML = `
     <div class="hint">${d.editingPost ? `Editás como <strong>${esc(state.auth.user.displayName)}</strong> (el posteo original sigue figurando de ${esc(d.editingPost.authorName)})` : `Publicás como <strong>${esc(state.auth.user.displayName)}</strong>`}</div>
-    <div class="field">
-      <label>Título</label>
-      <input type="text" id="cTitle" maxlength="140" placeholder="Ej: Curso de Transition" value="${esc(d.title)}">
+    <div class="field field-title-plain">
+      <input type="text" id="cTitle" maxlength="140" class="title-input-plain" placeholder="Agregar título" value="${esc(d.title)}">
+    </div>
+    <div class="field-icon-row">
+      <span class="field-icon">🕐</span>
+      <div class="field-icon-body">
+        <label class="allday-toggle"><input type="checkbox" id="cAllDay" ${d.allDay?"checked":""}> Todo el día</label>
+        <div class="dt-row">
+          <input type="date" id="cStartDate" value="${esc(d.startDate)}">
+          <span class="dt-sep">→</span>
+          <input type="date" id="cEndDate" value="${esc(d.endDate)}">
+        </div>
+        ${!d.allDay ? `
+        <div class="dt-row">
+          <input type="time" id="cStartTime" value="${esc(d.startTime)}">
+          <span class="dt-sep">→</span>
+          <input type="time" id="cEndTime" value="${esc(d.endTime)}">
+        </div>` : ""}
+      </div>
+    </div>
+    <div class="field-icon-row">
+      <span class="field-icon">📍</span>
+      <input type="text" id="cLocation" maxlength="200" class="field-icon-input" placeholder="Dónde (opcional): salón, dirección, link..." value="${esc(d.location)}">
+    </div>
+    <div class="field-icon-row">
+      <span class="field-icon">👤</span>
+      <input type="text" id="cOrganizer" maxlength="140" class="field-icon-input" placeholder="¿Quién organiza? (opcional)" value="${esc(d.organizer)}">
     </div>
     <div class="field">
       <label>Comentarios</label>
@@ -2923,26 +2999,6 @@ function renderComposer(){
         <div class="mention-highlight-backdrop" id="cContent-hl" aria-hidden="true">${highlightMentions(esc(d.content))}</div>
         <textarea id="cContent" class="mention-input" data-mention-scope="post" data-mention-owner="new" placeholder="Contá qué se hizo (o qué va a pasar)... usá @ para mencionar a alguien">${esc(d.content)}</textarea>
         ${renderMentionSuggestions(d, "post", "new", "cContent")}
-      </div>
-    </div>
-    <div class="row2">
-      <div class="field">
-        <label>Fecha de inicio</label>
-        <input type="date" id="cStartDate" value="${esc(d.startDate)}">
-      </div>
-      <div class="field">
-        <label>Fecha de fin</label>
-        <input type="date" id="cEndDate" value="${esc(d.endDate)}">
-      </div>
-    </div>
-    <div class="row2">
-      <div class="field">
-        <label>Organiza (opcional)</label>
-        <input type="text" id="cOrganizer" maxlength="140" placeholder="¿Quién organiza?" value="${esc(d.organizer)}">
-      </div>
-      <div class="field">
-        <label>Dónde (opcional)</label>
-        <input type="text" id="cLocation" maxlength="200" placeholder="Salón, dirección, link..." value="${esc(d.location)}">
       </div>
     </div>
     <div class="field">
@@ -3473,6 +3529,13 @@ document.addEventListener("change", e=>{
     render();
   }
   else if(t.id === "cEndDate"){ composerDraft.endDate = t.value; render(); }
+  else if(t.id === "cAllDay"){
+    composerDraft.allDay = t.checked;
+    if(t.checked){ composerDraft.startTime = ""; composerDraft.endTime = ""; }
+    render();
+  }
+  else if(t.id === "cStartTime"){ composerDraft.startTime = t.value; render(); }
+  else if(t.id === "cEndTime"){ composerDraft.endTime = t.value; render(); }
   else if(t.dataset.scopeField === "type"){ getDraftFor(t.dataset.scope, t.dataset.ownerId).scopeDraft.type = t.value; render(); }
   else if(t.dataset.scopeField === "country"){
     const sd = getDraftFor(t.dataset.scope, t.dataset.ownerId).scopeDraft;
@@ -3511,9 +3574,14 @@ postForm.addEventListener("submit", async e=>{
   if(!d.scopes.length){ d.error = "Agregá al menos un alcance (ciudad, país, región o toda LatAm)."; render(); return; }
   if(!d.startDate){ d.error = "Elegí una fecha de inicio."; render(); return; }
   if(d.endDate < d.startDate){ d.error = "La fecha de fin no puede ser anterior a la de inicio."; render(); return; }
+  if(!d.allDay){
+    if(!d.startTime || !d.endTime){ d.error = "Elegí hora de inicio y de fin, o marcá \"Todo el día\"."; render(); return; }
+    if(d.startDate === d.endDate && d.endTime <= d.startTime){ d.error = "La hora de fin tiene que ser posterior a la de inicio."; render(); return; }
+  }
   const links = d.links.filter(l=>safeUrl(l.url));
   const postData = {
     title, content, startDate:d.startDate, endDate:d.endDate, date:d.startDate,
+    startTime: d.allDay ? "" : d.startTime, endTime: d.allDay ? "" : d.endTime,
     organizer: d.organizer.trim(), location: d.location.trim(),
     activityType:d.activityType, scopes:d.scopes,
     images:d.images, links, files:d.files, mentions:extractMentionsFromContent(content),

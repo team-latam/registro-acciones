@@ -100,6 +100,8 @@ posts/{postId}
   date: "YYYY-MM-DD"         (= startDate; se mantiene por compatibilidad con posteos viejos y con el orderBy de Firestore)
   startDate: "YYYY-MM-DD"
   endDate: "YYYY-MM-DD"      (= startDate si el evento dura un solo día)
+  startTime: "HH:MM"         (opcional — vacío/ausente = "todo el día"; si se carga, endTime también)
+  endTime: "HH:MM"           (opcional — tiene que ser posterior a startTime cuando startDate == endDate)
   organizer: string          (opcional — quién organiza, puede ser distinto de quien carga)
   location: string           (opcional — lugar/salón/dirección concreta)
   activityType: "rutina" | "visita" | "curso" | "seminario" | "congreso" | "virtual" | "otro"
