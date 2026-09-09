@@ -454,8 +454,11 @@ const ACTIVITY_TYPES = [
   { key:"visita", label:"Visita", icon:"🧳" },
   { key:"curso", label:"Curso", icon:"📘" },
   { key:"seminario", label:"Seminario", icon:"🎤" },
+  { key:"congreso", label:"Congreso", icon:"🏛️" },
   { key:"otro", label:"Otro", icon:"✨" },
 ];
+// Estos tipos se sincronizan solos al Calendar compartido; Rutina nunca.
+const CALENDAR_SYNC_TYPES = new Set(["visita","curso","seminario","congreso","otro"]);
 const ACTIVITY_BY_KEY = Object.fromEntries(ACTIVITY_TYPES.map(t=>[t.key,t]));
 
 /* ======================================================================
@@ -498,25 +501,30 @@ function zoneOfScope(scope){
   const c = COUNTRY_BY_NAME[scope.country];
   return c ? c.zone : null;
 }
-// ¿esta escala (post o respuesta) afecta al país dado? (directo o vía región)
+// ¿esta escala (post o respuesta) afecta al país dado? (directo, vía región, o "toda LatAm")
 function scopeAffectsCountry(scope, countryName){
+  if(scope.type==="todo") return true;
   if(scope.type==="pais" || scope.type==="ciudad") return scope.country === countryName;
   if(scope.type==="region") return ZONE_COUNTRIES[scope.region].includes(countryName);
   return false;
 }
 function scopeAffectsZone(scope, zoneKey){
+  if(scope.type==="todo") return true;
   return zoneOfScope(scope) === zoneKey;
 }
 function scopeAffectsCity(scope, countryName, cityName){
+  if(scope.type==="todo") return true;
   return scope.type==="ciudad" && scope.country===countryName && normalize(scope.city)===normalize(cityName);
 }
 function scopeLabel(scope){
+  if(scope.type==="todo") return "Toda LatAm y el Caribe";
   if(scope.type==="region") return `Región ${ZONES[scope.region].label}`;
   if(scope.type==="pais") return scope.country;
   if(scope.type==="ciudad") return `${scope.city}, ${scope.country}`;
   return "";
 }
 function scopeIcon(scope){
+  if(scope.type==="todo") return "🌐";
   return scope.type==="region" ? "🌎" : scope.type==="pais" ? "🏳️" : "📍";
 }
 
@@ -563,6 +571,7 @@ const state = {
   countryDrill: null,       // nombre de país (drill a ciudades) en vista Países > Lista
   memoriaOrder: "asc",      // asc | desc
   leafletMap: null,
+  calendarNotice: null,     // {ok, message} — aviso post-sincronización con Calendar
 };
 
 /* ======================================================================
@@ -603,7 +612,10 @@ async function initFirebase(){
 
 async function signIn(){
   try{
-    await authMod.signInWithPopup(auth, new authMod.GoogleAuthProvider());
+    const provider = new authMod.GoogleAuthProvider();
+    provider.addScope("https://www.googleapis.com/auth/calendar.events");
+    const result = await authMod.signInWithPopup(auth, provider);
+    storeCalendarCredential(result);
   }catch(err){
     if(err.code !== "auth/popup-closed-by-user" && err.code !== "auth/cancelled-popup-request"){
       console.error("Error al iniciar sesión:", err);
@@ -611,7 +623,96 @@ async function signIn(){
     }
   }
 }
-async function doSignOut(){ try{ await authMod.signOut(auth); }catch(e){ console.error(e); } }
+async function doSignOut(){
+  calendarAccessToken = null; calendarTokenExpiry = 0;
+  try{ await authMod.signOut(auth); }catch(e){ console.error(e); }
+}
+
+/* ======================================================================
+   SINCRONIZACIÓN CON GOOGLE CALENDAR (Feed → Calendar compartido de LatAm)
+   ====================================================================== */
+// ID del calendario compartido al que se suman los eventos (no es secreto:
+// solo permite VER el calendario si es público; escribir requiere el
+// access token de alguien con permiso de edición, que se pide al iniciar
+// sesión).
+const CALENDAR_ID = "ahf2jnkbng1tblmk7uioolc9ko@group.calendar.google.com";
+
+let calendarAccessToken = null;
+let calendarTokenExpiry = 0;
+
+function storeCalendarCredential(result){
+  const cred = authMod.GoogleAuthProvider.credentialFromResult(result);
+  if(cred && cred.accessToken){
+    calendarAccessToken = cred.accessToken;
+    calendarTokenExpiry = Date.now() + 55*60*1000; // los access tokens de Google duran ~1h
+  }
+}
+
+// Se asegura de tener un token de Calendar vigente. Si no lo tiene (por
+// ejemplo, la sesión de Firebase se restauró silenciosamente al recargar
+// la página, lo que NO trae un access token nuevo), vuelve a pedir el
+// login con Google — normalmente un click rápido, ya con la cuenta
+// pre-seleccionada, no un login completo de nuevo.
+async function ensureCalendarToken(){
+  if(calendarAccessToken && Date.now() < calendarTokenExpiry) return calendarAccessToken;
+  try{
+    const provider = new authMod.GoogleAuthProvider();
+    provider.addScope("https://www.googleapis.com/auth/calendar.events");
+    provider.setCustomParameters({ login_hint: state.auth.user.email });
+    const result = await authMod.signInWithPopup(auth, provider);
+    storeCalendarCredential(result);
+    return calendarAccessToken;
+  }catch(err){
+    console.error("No se pudo obtener acceso a Calendar:", err);
+    return null;
+  }
+}
+
+function addDaysISO(dateStr, days){
+  const dt = new Date(dateStr + "T00:00:00");
+  dt.setDate(dt.getDate() + days);
+  return dt.toISOString().slice(0,10);
+}
+
+function buildCalendarEvent(postData){
+  const sc = postData.scopes[0];
+  const alcanceTipo = !sc ? "" : sc.type === "todo" ? "todo" : sc.type;
+  const alcanceValor = (postData.scopes||[]).map(scopeLabel).join(" + ") || "Sin alcance definido";
+  const descLines = [
+    `Alcance: ${alcanceTipo} | ${alcanceValor}`,
+    "",
+    postData.content,
+  ];
+  if(postData.organizer) descLines.push("", `Organiza: ${postData.organizer}`);
+  descLines.push("", `Cargado por ${postData.authorName} en Registro de Acciones.`);
+  return {
+    summary: `${ACTIVITY_BY_KEY[postData.activityType]?.label || "Actividad"}: ${postData.title}`,
+    location: postData.location || undefined,
+    description: descLines.join("\n"),
+    start: { date: postData.startDate },
+    end: { date: addDaysISO(postData.endDate, 1) }, // el fin de un evento de todo el día es exclusivo
+  };
+}
+
+async function syncToCalendar(postData){
+  const token = await ensureCalendarToken();
+  if(!token) return { ok:false, reason:"no se pudo autorizar el acceso a Calendar" };
+  try{
+    const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events`, {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify(buildCalendarEvent(postData)),
+    });
+    if(!res.ok){
+      const body = await res.json().catch(()=>({}));
+      throw new Error(body.error?.message || res.statusText);
+    }
+    return { ok:true };
+  }catch(err){
+    console.error("Error sincronizando con Calendar:", err);
+    return { ok:false, reason: err.message };
+  }
+}
 
 let unsubscribeData = null;
 let unsubscribeRequests = null;
@@ -827,6 +928,14 @@ function doRender(){
     return;
   }
 
+  if(state.calendarNotice){
+    const n = state.calendarNotice;
+    html += `<div class="setup-banner" style="${n.ok ? "background:#dcfce7;border-color:#86efac;color:#166534;" : ""}">
+      ${n.ok ? "📅" : "⚠️"} ${esc(n.message)}
+      <button class="filter-clear" data-action="dismiss-calendar-notice" style="margin-left:10px;">Cerrar</button>
+    </div>`;
+  }
+
   tabsNav.hidden = false;
   btnNewPostEl.hidden = false;
   tabSolicitudesEl.hidden = !isAdmin();
@@ -952,7 +1061,11 @@ function placeFilterLabel(place){
 function matchesTextFilter(text, record){
   if(!text) return true;
   const n = normalize(text);
-  return normalize(record.content||"").includes(n) || normalize(record.authorName||"").includes(n);
+  return normalize(record.title||"").includes(n) ||
+    normalize(record.content||"").includes(n) ||
+    normalize(record.authorName||"").includes(n) ||
+    normalize(record.organizer||"").includes(n) ||
+    normalize(record.location||"").includes(n);
 }
 function matchesPlaceOrZoneFilter(record){
   const f = state.filters;
@@ -1018,22 +1131,30 @@ function resetReplyDraft(postId){
 }
 
 function renderPostCard(post, replies){
-  const type = ACTIVITY_BY_KEY[post.activityType] || ACTIVITY_TYPES[4];
+  const type = ACTIVITY_BY_KEY[post.activityType] || ACTIVITY_BY_KEY.otro;
   const scopesHtml = (post.scopes||[]).map(sc=>renderScopeChip(sc)).join("");
   const linksHtml = (post.links||[]).filter(l=>safeUrl(l.url)).map(l=>
     `<a href="${esc(safeUrl(l.url))}" target="_blank" rel="noopener noreferrer">🔗 ${esc(l.label||l.url)}</a>`).join("");
   const imagesHtml = (post.images||[]).map(src=>
     `<img src="${src}" data-action="open-lightbox" data-src="${src}">`).join("");
   const replyOpen = openReplyForms.has(post.id);
+  const startDate = post.startDate || post.date;
+  const endDate = post.endDate || startDate;
+  const dateLabel = endDate && endDate !== startDate ? `${fmtDate(startDate)} – ${fmtDate(endDate)}` : fmtDate(startDate);
+  const metaBits = [];
+  if(post.organizer) metaBits.push(`👤 Organiza: ${esc(post.organizer)}`);
+  if(post.location) metaBits.push(`📍 ${esc(post.location)}`);
   return `
     <article class="card post" data-post-id="${post.id}">
       <div class="post-head">
         <div class="post-meta">
           <span class="type-badge">${type.icon} ${type.label}</span>
-          <span class="post-date">${fmtDate(post.date)}</span>
+          <span class="post-date">${dateLabel}</span>
         </div>
         <span class="post-author">${esc(post.authorName||"Anónimo")}</span>
       </div>
+      ${post.title ? `<h3 style="margin:6px 0 0 0;font-size:16px;color:var(--petroleo);">${esc(post.title)}</h3>` : ""}
+      ${metaBits.length ? `<div class="hint" style="margin-top:4px;">${metaBits.join(" · ")}</div>` : ""}
       <div class="post-content">${nl2br(post.content)}</div>
       ${scopesHtml ? `<div class="post-scopes">${scopesHtml}</div>` : ""}
       ${linksHtml ? `<div class="post-links">${linksHtml}</div>` : ""}
@@ -1130,6 +1251,8 @@ function renderScopeBuilder(scope, ownerId, draft){
     extra = `<select data-scope-field="country" data-scope="${scope}" data-owner-id="${ownerId}">
         <option value="">Elegir país…</option>${groupedCountryOptions(sd.country)}
       </select>`;
+  } else if(sd.type === "todo"){
+    extra = "";
   } else {
     const presets = CITY_PRESETS[sd.country];
     let cityField;
@@ -1155,6 +1278,7 @@ function renderScopeBuilder(scope, ownerId, draft){
           <option value="ciudad" ${sd.type==="ciudad"?"selected":""}>Ciudad específica</option>
           <option value="pais" ${sd.type==="pais"?"selected":""}>País completo</option>
           <option value="region" ${sd.type==="region"?"selected":""}>Región completa</option>
+          <option value="todo" ${sd.type==="todo"?"selected":""}>Toda LatAm y el Caribe</option>
         </select>
         ${extra}
       </div>
@@ -1186,6 +1310,8 @@ function computePlaceCounts(){
         byCountry[sc.country].cities[city] = (byCountry[sc.country].cities[city]||0)+1;
       } else if(sc.type==="region" && ZONE_COUNTRIES[sc.region]){
         ZONE_COUNTRIES[sc.region].forEach(name=>{ byCountry[name].total++; byCountry[name].general++; });
+      } else if(sc.type==="todo"){
+        COUNTRIES.forEach(c=>{ byCountry[c.name].total++; byCountry[c.name].general++; });
       }
     });
   }
@@ -1305,9 +1431,14 @@ function renderMemoriaView(){
    COMPOSER: Nuevo posteo (modal)
    ====================================================================== */
 function newComposerDraft(){
+  const today = new Date().toISOString().slice(0,10);
   return {
+    title: "",
     content: "",
-    date: new Date().toISOString().slice(0,10),
+    startDate: today,
+    endDate: today,
+    organizer: "",
+    location: "",
     activityType: "rutina",
     scopes: [],
     scopeDraft: newScopeDraft(),
@@ -1335,23 +1466,42 @@ function renderComposer(){
   postForm.innerHTML = `
     <div class="hint">Publicás como <strong>${esc(state.auth.user.displayName)}</strong></div>
     <div class="field">
-      <label>¿Qué se hizo?</label>
-      <textarea id="cContent" placeholder="Contá qué se hizo...">${esc(d.content)}</textarea>
+      <label>Título</label>
+      <input type="text" id="cTitle" maxlength="140" placeholder="Ej: Curso de Transition" value="${esc(d.title)}">
+    </div>
+    <div class="field">
+      <label>Comentarios</label>
+      <textarea id="cContent" placeholder="Contá qué se hizo (o qué va a pasar)...">${esc(d.content)}</textarea>
     </div>
     <div class="row2">
       <div class="field">
-        <label>Fecha</label>
-        <input type="date" id="cDate" value="${esc(d.date)}">
+        <label>Fecha de inicio</label>
+        <input type="date" id="cStartDate" value="${esc(d.startDate)}">
       </div>
       <div class="field">
-        <label>Tipo de actividad</label>
-        <div class="type-picker">
-          ${ACTIVITY_TYPES.map(t=>`
-            <label class="type-opt ${d.activityType===t.key?"checked":""}">
-              <input type="radio" name="cType" value="${t.key}" ${d.activityType===t.key?"checked":""}> ${t.icon} ${t.label}
-            </label>`).join("")}
-        </div>
+        <label>Fecha de fin</label>
+        <input type="date" id="cEndDate" value="${esc(d.endDate)}">
       </div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>Organiza (opcional)</label>
+        <input type="text" id="cOrganizer" maxlength="140" placeholder="¿Quién organiza?" value="${esc(d.organizer)}">
+      </div>
+      <div class="field">
+        <label>Dónde (opcional)</label>
+        <input type="text" id="cLocation" maxlength="200" placeholder="Salón, dirección, link..." value="${esc(d.location)}">
+      </div>
+    </div>
+    <div class="field">
+      <label>Tipo de actividad</label>
+      <div class="type-picker">
+        ${ACTIVITY_TYPES.map(t=>`
+          <label class="type-opt ${d.activityType===t.key?"checked":""}">
+            <input type="radio" name="cType" value="${t.key}" ${d.activityType===t.key?"checked":""}> ${t.icon} ${t.label}
+          </label>`).join("")}
+      </div>
+      ${CALENDAR_SYNC_TYPES.has(d.activityType) ? `<div class="hint">📅 Se suma solo al Calendar compartido de LatAm.</div>` : `<div class="hint">Las rutinas no se suman al Calendar.</div>`}
     </div>
     <div class="field">
       <label>Alcance (lugares que afecta) *</label>
@@ -1383,7 +1533,9 @@ function commitScope(scope, ownerId){
   const draft = getDraftFor(scope, ownerId);
   const sd = draft.scopeDraft;
   let newScope = null;
-  if(sd.type === "region"){
+  if(sd.type === "todo"){
+    newScope = { type:"todo" };
+  } else if(sd.type === "region"){
     newScope = { type:"region", region: sd.region };
   } else if(sd.type === "pais"){
     if(!sd.country){ draft.scopeError = "Elegí un país."; render(); return; }
@@ -1496,6 +1648,8 @@ document.addEventListener("click", e=>{
   } else if(action === "goto-city"){
     state.filters.place = { kind:"city", country:t.dataset.country, city:t.dataset.city };
     state.view = "memoria"; state.countryDrill = null; render();
+  } else if(action === "dismiss-calendar-notice"){
+    state.calendarNotice = null; render();
   } else if(action === "memoria-order"){
     state.memoriaOrder = t.dataset.key; render();
   } else if(action === "google-signin"){
@@ -1519,8 +1673,10 @@ document.addEventListener("input", e=>{
   const t = e.target;
   if(t.id === "feedSearch" || t.id === "memoriaSearch"){
     state.filters.text = t.value; render();
-  } else if(t.id === "cContent"){ composerDraft.content = t.value; }
-  else if(t.id === "cDate"){ composerDraft.date = t.value; }
+  } else if(t.id === "cTitle"){ composerDraft.title = t.value; }
+  else if(t.id === "cContent"){ composerDraft.content = t.value; }
+  else if(t.id === "cOrganizer"){ composerDraft.organizer = t.value; }
+  else if(t.id === "cLocation"){ composerDraft.location = t.value; }
   else if(t.dataset.replyField === "content"){ getReplyDraft(t.dataset.postId).content = t.value; }
   else if(t.dataset.scopeField === "city"){ getDraftFor(t.dataset.scope, t.dataset.ownerId).scopeDraft.city = t.value; }
   else if(t.dataset.linkField){
@@ -1532,6 +1688,12 @@ document.addEventListener("input", e=>{
 document.addEventListener("change", e=>{
   const t = e.target;
   if(t.name === "cType"){ composerDraft.activityType = t.value; render(); }
+  else if(t.id === "cStartDate"){
+    composerDraft.startDate = t.value;
+    if(composerDraft.endDate < t.value) composerDraft.endDate = t.value;
+    render();
+  }
+  else if(t.id === "cEndDate"){ composerDraft.endDate = t.value; render(); }
   else if(t.dataset.scopeField === "type"){ getDraftFor(t.dataset.scope, t.dataset.ownerId).scopeDraft.type = t.value; render(); }
   else if(t.dataset.scopeField === "country"){
     const sd = getDraftFor(t.dataset.scope, t.dataset.ownerId).scopeDraft;
@@ -1557,18 +1719,32 @@ postForm.addEventListener("submit", async e=>{
   e.preventDefault();
   const d = composerDraft;
   d.error = "";
+  const title = d.title.trim();
   const content = d.content.trim();
-  if(!content){ d.error = "Escribí qué se hizo."; render(); return; }
-  if(!d.scopes.length){ d.error = "Agregá al menos un alcance (ciudad, país o región)."; render(); return; }
-  if(!d.date){ d.error = "Elegí una fecha."; render(); return; }
+  if(!title){ d.error = "Escribí un título."; render(); return; }
+  if(!content){ d.error = "Contá algo en comentarios."; render(); return; }
+  if(!d.scopes.length){ d.error = "Agregá al menos un alcance (ciudad, país, región o toda LatAm)."; render(); return; }
+  if(!d.startDate){ d.error = "Elegí una fecha de inicio."; render(); return; }
+  if(d.endDate < d.startDate){ d.error = "La fecha de fin no puede ser anterior a la de inicio."; render(); return; }
   const links = d.links.filter(l=>safeUrl(l.url));
+  const postData = {
+    title, content, startDate:d.startDate, endDate:d.endDate, date:d.startDate,
+    organizer: d.organizer.trim(), location: d.location.trim(),
+    activityType:d.activityType, scopes:d.scopes,
+    images:d.images, links,
+    authorName: state.auth.user.displayName, authorEmail: state.auth.user.email,
+  };
   try{
-    await createPost({
-      content, date:d.date, activityType:d.activityType, scopes:d.scopes,
-      images:d.images, links,
-      authorName: state.auth.user.displayName, authorEmail: state.auth.user.email,
-    });
+    await createPost(postData);
     closeComposer();
+    if(CALENDAR_SYNC_TYPES.has(postData.activityType)){
+      syncToCalendar(postData).then(res=>{
+        state.calendarNotice = res.ok
+          ? { ok:true, message:"Se sumó también al Calendar compartido de LatAm." }
+          : { ok:false, message:"El posteo se guardó, pero no se pudo sumar al Calendar (" + res.reason + ")." };
+        render();
+      });
+    }
   }catch(err){
     console.error(err);
     d.error = "No se pudo publicar: " + err.message;

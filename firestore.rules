@@ -32,6 +32,9 @@ service cloud.firestore {
     function isNonEmptyString(v, maxLen) {
       return v is string && v.size() > 0 && v.size() <= maxLen;
     }
+    function isOptionalString(v, maxLen) {
+      return v == null || (v is string && v.size() <= maxLen);
+    }
 
     // Los campos individuales de cada scope/link no se validan en profundidad
     // aquí (el lenguaje de reglas no itera listas de mapas cómodamente): se
@@ -39,9 +42,14 @@ service cloud.firestore {
     // (documentos gigantes, spam). La forma fina de cada scope la valida el
     // cliente antes de escribir.
     function isValidPostBase(d) {
-      return isNonEmptyString(d.content, 5000) &&
+      return isNonEmptyString(d.title, 140) &&
+        isNonEmptyString(d.content, 5000) &&
         isNonEmptyString(d.date, 10) &&
-        d.activityType in ['rutina', 'visita', 'curso', 'seminario', 'otro'] &&
+        isNonEmptyString(d.startDate, 10) &&
+        isNonEmptyString(d.endDate, 10) &&
+        isOptionalString(d.organizer, 140) &&
+        isOptionalString(d.location, 200) &&
+        d.activityType in ['rutina', 'visita', 'curso', 'seminario', 'congreso', 'otro'] &&
         isNonEmptyString(d.authorName, 120) &&
         d.scopes is list && d.scopes.size() >= 0 && d.scopes.size() <= 15 &&
         (d.links == null || (d.links is list && d.links.size() <= 10)) &&

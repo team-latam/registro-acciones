@@ -95,12 +95,17 @@ Es un archivo estático, así que sirve cualquier hosting simple:
 
 ```
 posts/{postId}
-  content: string
-  date: "YYYY-MM-DD"        (fecha de la actividad, no de carga)
-  activityType: "rutina" | "visita" | "curso" | "seminario" | "otro"
+  title: string              (título corto, ej: "Curso de Transition")
+  content: string            (comentarios / descripción libre)
+  date: "YYYY-MM-DD"         (= startDate; se mantiene por compatibilidad con posteos viejos y con el orderBy de Firestore)
+  startDate: "YYYY-MM-DD"
+  endDate: "YYYY-MM-DD"      (= startDate si el evento dura un solo día)
+  organizer: string          (opcional — quién organiza, puede ser distinto de quien carga)
+  location: string           (opcional — lugar/salón/dirección concreta)
+  activityType: "rutina" | "visita" | "curso" | "seminario" | "congreso" | "otro"
   authorName: string         (nombre de Google de quien publicó)
   authorEmail: string        (email de Google de quien publicó)
-  scopes: [{ type:"ciudad", country, city } | { type:"pais", country } | { type:"region", region:"sur"|"central"|"norte" }, ...]
+  scopes: [{ type:"ciudad", country, city } | { type:"pais", country } | { type:"region", region:"sur"|"central"|"norte" } | { type:"todo" }, ...]
   images: ["data:image/jpeg;base64,...", ...]   (comprimidas en el navegador)
   links: [{ label, url }, ...]
   createdAt: Timestamp (servidor)
@@ -134,7 +139,9 @@ hilo, como pide el prompt original.
 
 La zona de un alcance se calcula siempre a partir del país (o directamente
 del campo `region` cuando el alcance es "región completa") — nunca se
-carga a mano.
+carga a mano. El cuarto tipo de alcance, **"Toda LatAm y el Caribe"**
+(`{type:"todo"}`), afecta a las tres zonas y a todos los países al mismo
+tiempo (por ejemplo, un anuncio general del equipo).
 
 ### Ciudades sugeridas (`CITY_PRESETS`)
 
@@ -164,13 +171,42 @@ esquemático), pero los círculos se ubican en la **capital** de cada país
 que no está configurado). El detalle por ciudad se ve en la vista
 Países → Lista, al hacer click en un país.
 
+### Sincronización con Google Calendar (Feed → Calendar)
+
+Cada posteo de tipo Visita/Curso/Seminario/Congreso/Otro (todo menos
+**Rutina**) se suma automáticamente como evento de día completo al
+calendario compartido de LatAm — el ID vive en la constante `CALENDAR_ID`
+de `index.html`. No hay backend propio: se usa el token de Google del
+propio usuario que publica (por eso hace falta que TODO el que carga
+eventos tenga permiso de "Hacer cambios en eventos" en ese calendario).
+
+- Al iniciar sesión con Google, la app pide también el permiso de
+  `calendar.events` (además del básico de perfil/email). Google puede
+  mostrar la pantalla **"Google no verificó esta app"** al pedir ese
+  permiso — es normal en apps internas chicas que no pasaron la revisión
+  formal de Google; para seguir hay que tocar **Avanzado → Ir a
+  [nombre del proyecto] (no seguro)**. No es un error ni un problema de
+  seguridad real: solo significa que Google todavía no revisó
+  manualmente esta app (revisión pensada para apps públicas masivas).
+- El token de Calendar dura ~1 hora y **no sobrevive** a recargar la
+  página (a diferencia de la sesión de Firebase, que sí persiste). Si
+  hace falta y no hay uno vigente, la app vuelve a pedir el login de
+  Google automáticamente antes de crear el evento — normalmente un click
+  rápido, no un login completo de nuevo.
+- Si falla la sincronización (permiso denegado, sin conexión, etc.) el
+  posteo **igual se guarda** en el Feed — el Calendar es un agregado, nunca
+  bloquea la memoria histórica. Aparece un aviso abajo del header avisando
+  si se pudo sumar o no.
+- La descripción del evento arranca con la línea `Alcance: tipo | valor`
+  (misma convención pensada en el diseño original para una futura lectura
+  Calendar → Feed), por si más adelante se retoma esa dirección inversa.
+
 ## 4. Qué falta / decisiones pendientes
 
-- **Integración con Google Calendar** (Calendar → Feed): queda en pausa,
-  tal como se definió en el prompt original. La convención pensada
-  (`Alcance: ciudad|país|región | valor(es)` en la primera línea de la
-  descripción del evento) todavía no está implementada — hay que sumar un
-  backend liviano en Google Apps Script cuando se retome.
+- **Lectura Calendar → Feed**: seguir en pausa. La idea original era que
+  eventos ya cargados directamente en el Calendar (sin pasar por esta app)
+  también alimenten el Feed — hoy la sincronización solo va en el sentido
+  Feed → Calendar.
 - **Roles**: hoy todo aprobado tiene los mismos permisos (leer + publicar).
   Si más adelante hace falta un rol intermedio (por ejemplo, alguien que
   solo lee), hay que sumarlo a mano en `firestore.rules` y en la UI.
