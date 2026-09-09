@@ -729,7 +729,7 @@ COUNTRIES.forEach(c=>ZONE_COUNTRIES[c.zone].push(c.name));
 // usan Evento y las respuestas (renderScopeBuilder), solo con una UI de
 // autocompletar en vez del selector paso a paso.
 function buildPlaceIndex(){
-  const items = [{ label:"Toda LatAm y el Caribe", icon:"🌎", scope:{ type:"todo" } }];
+  const items = [{ label:"Toda LatAm", icon:"🌎", scope:{ type:"todo" } }];
   Object.values(ZONES).forEach(z=>{
     items.push({ label:`Región: ${z.label}`, icon:"🌎", scope:{ type:"region", region:z.key } });
   });
@@ -920,7 +920,7 @@ function scopeAffectsCity(scope, countryName, cityName){
   return scope.type==="ciudad" && scope.country===countryName && normalize(scope.city)===normalize(cityName);
 }
 function scopeLabel(scope){
-  if(scope.type==="todo") return "Toda LatAm y el Caribe";
+  if(scope.type==="todo") return "Toda LatAm";
   if(scope.type==="region") return `Región ${ZONES[scope.region].label}`;
   if(scope.type==="pais") return scope.country;
   if(scope.type==="ciudad") return `${scope.city}, ${scope.country}`;
@@ -1410,10 +1410,10 @@ async function applyCalendarEventToPosts(ev){
   }
 
   // Evento nuevo creado directo en Calendar (no vino de la app): se suma
-  // como posteo simple, tipo "Otro" y SIN alcance (no "Toda LatAm y el
-  // Caribe" — eso sumaría a los 32 países en los conteos de Países/Mapa
-  // antes de que alguien lo revise). Queda marcado como "sin definir" en
-  // la tarjeta hasta que alguien lo edite y le ponga el lugar real.
+  // como posteo simple, tipo "Otro" y SIN alcance (no "Toda LatAm" —
+  // eso sumaría a los 32 países en los conteos de Países/Mapa antes de
+  // que alguien lo revise). Queda marcado como "sin definir" en la
+  // tarjeta hasta que alguien lo edite y le ponga el lugar real.
   await createPost({
     title: ev.summary || "(Sin título)",
     content: ev.description || "Creado automáticamente desde Google Calendar.",
@@ -2656,7 +2656,7 @@ function renderScopeBuilder(scope, ownerId, draft){
           <option value="ciudad" ${sd.type==="ciudad"?"selected":""}>Ciudad específica</option>
           <option value="pais" ${sd.type==="pais"?"selected":""}>País completo</option>
           <option value="region" ${sd.type==="region"?"selected":""}>Región completa</option>
-          <option value="todo" ${sd.type==="todo"?"selected":""}>Toda LatAm y el Caribe</option>
+          <option value="todo" ${sd.type==="todo"?"selected":""}>Toda LatAm</option>
         </select>
         ${extra}
       </div>

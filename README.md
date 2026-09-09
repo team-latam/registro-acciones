@@ -2,7 +2,7 @@
 
 Herramienta web de un solo archivo (`index.html`) para llevar la memoria
 histórica de las acciones del equipo (rutinas, visitas, cursos, seminarios,
-etc.) en cada ciudad/país/región de LatAm y el Caribe. Feed tipo posteo +
+etc.) en cada ciudad/país/región de LatAm. Feed tipo posteo +
 hilo de respuestas, vista agregada por país (lista y mapa), y una vista
 "Memoria" de lectura cronológica.
 
@@ -240,12 +240,12 @@ otro con el mismo) y queda guardado en su documento de `allowlist`.
 
 - **Sur** (azul): Argentina, Chile, Uruguay, Paraguay.
 - **Central** (amarillo): Brasil.
-- **Norte** (verde): el resto de los países/territorios de LatAm y el Caribe
+- **Norte** (verde): el resto de los países/territorios de LatAm
   (lista completa en la constante `COUNTRIES` de `index.html`).
 
 La zona de un alcance se calcula siempre a partir del país (o directamente
 del campo `region` cuando el alcance es "región completa") — nunca se
-carga a mano. El cuarto tipo de alcance, **"Toda LatAm y el Caribe"**
+carga a mano. El cuarto tipo de alcance, **"Toda LatAm"**
 (`{type:"todo"}`), afecta a las tres zonas y a todos los países al mismo
 tiempo (por ejemplo, un anuncio general del equipo).
 
@@ -336,10 +336,11 @@ Calendar**, sin pasar por la app, eso también se refleja en los posteos:
   como cancelado (no se borra), con su respuesta automática en el hilo.
 - **Creación** de un evento nuevo en Calendar que no vino de la app: se
   crea un posteo simple a partir de él (título, fechas, lugar, quién
-  organiza si Calendar lo tiene) con tipo **"Otro"** y alcance **"Toda
-  LatAm y el Caribe"** por default — cualquier persona aprobada puede
-  después editarlo desde la app para afinar el tipo real de actividad y
-  el alcance correcto.
+  organiza si Calendar lo tiene) con tipo **"Otro"** y **sin alcance
+  definido** por default (no se le asume "Toda LatAm" para no sumarlo a
+  los 32 países en los conteos de Países/Mapa antes de tiempo) —
+  cualquier persona aprobada puede después editarlo desde la app para
+  afinar el tipo real de actividad y el alcance correcto.
 
 Cómo funciona, en criollo: la app le pregunta a Google "¿qué cambió desde
 la última vez?" (usando un "sync token" que Calendar entrega y que se
