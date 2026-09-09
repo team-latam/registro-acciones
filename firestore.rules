@@ -47,24 +47,33 @@ service cloud.firestore {
     // limitan tamaños de lista y de strings, que es lo que evita abuso real
     // (documentos gigantes, spam). La forma fina de cada scope la valida el
     // cliente antes de escribir.
+    // OJO: usar SIEMPRE d.get('campo', null) para cualquier campo que pueda
+    // no existir en el documento (en vez de d.campo directo). Acceder con
+    // "." a una clave ausente hace que el motor de reglas tire un error de
+    // evaluación (no un simple "null"), y eso rechaza el request entero con
+    // el mismo "Missing or insufficient permissions" aunque el usuario y el
+    // resto de las condiciones estén bien. campos como cancelled,
+    // calendarEventId, lastEditedBy y lastEditedAt no se guardan al crear
+    // un posteo (recién aparecen en la primera edición/cancelación), así
+    // que con acceso directo esto rompía todas las ediciones.
     function isValidPostBase(d) {
       return isNonEmptyString(d.title, 140) &&
         isNonEmptyString(d.content, 5000) &&
         isNonEmptyString(d.date, 10) &&
         isNonEmptyString(d.startDate, 10) &&
         isNonEmptyString(d.endDate, 10) &&
-        isOptionalString(d.organizer, 140) &&
-        isOptionalString(d.location, 200) &&
+        isOptionalString(d.get('organizer', null), 140) &&
+        isOptionalString(d.get('location', null), 200) &&
         d.activityType in ['rutina', 'visita', 'curso', 'seminario', 'congreso', 'otro'] &&
         isNonEmptyString(d.authorName, 120) &&
-        isOptionalString(d.authorEmail, 200) &&
+        isOptionalString(d.get('authorEmail', null), 200) &&
         d.scopes is list && d.scopes.size() >= 0 && d.scopes.size() <= 15 &&
-        (d.links == null || (d.links is list && d.links.size() <= 10)) &&
-        (d.images == null || (d.images is list && d.images.size() <= 6)) &&
-        (d.cancelled == null || d.cancelled is bool) &&
-        isOptionalString(d.calendarEventId, 200) &&
-        isOptionalString(d.lastEditedBy, 120) &&
-        (d.lastEditedAt == null || d.lastEditedAt is timestamp);
+        (d.get('links', null) == null || (d.links is list && d.links.size() <= 10)) &&
+        (d.get('images', null) == null || (d.images is list && d.images.size() <= 6)) &&
+        (d.get('cancelled', null) == null || d.cancelled is bool) &&
+        isOptionalString(d.get('calendarEventId', null), 200) &&
+        isOptionalString(d.get('lastEditedBy', null), 120) &&
+        (d.get('lastEditedAt', null) == null || d.lastEditedAt is timestamp);
     }
 
     // Quién puede editar un posteo YA EXISTENTE (se evalúa sobre
@@ -87,11 +96,11 @@ service cloud.firestore {
     function isValidReplyCreate(d) {
       return isNonEmptyString(d.content, 3000) &&
         isNonEmptyString(d.authorName, 120) &&
-        (d.scopes == null || (d.scopes is list && d.scopes.size() <= 15)) &&
-        (d.links == null || (d.links is list && d.links.size() <= 10)) &&
-        (d.images == null || (d.images is list && d.images.size() <= 6)) &&
-        (d.system == null || d.system is bool) &&
-        isOptionalString(d.icon, 8) &&
+        (d.get('scopes', null) == null || (d.scopes is list && d.scopes.size() <= 15)) &&
+        (d.get('links', null) == null || (d.links is list && d.links.size() <= 10)) &&
+        (d.get('images', null) == null || (d.images is list && d.images.size() <= 6)) &&
+        (d.get('system', null) == null || d.system is bool) &&
+        isOptionalString(d.get('icon', null), 8) &&
         d.createdAt == request.time;
     }
 
