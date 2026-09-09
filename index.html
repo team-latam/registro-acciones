@@ -578,7 +578,7 @@ const state = {
   },
   paisesSubview: "lista",   // lista | mapa
   countryDrill: null,       // nombre de país (drill a ciudades) en vista Países > Lista
-  paisesZoneFilter: null,   // key de zona (sur/central/norte) para filtrar Países (Lista y Mapa), o null = todas
+  paisesZoneFilter: new Set(), // keys de zona (sur/central/norte) para filtrar Países (Lista y Mapa); vacío = todas
   memoriaOrder: "asc",      // asc | desc
   leafletMap: null,
   calendarNotice: null,     // {ok, message} — aviso post-sincronización con Calendar
@@ -1788,14 +1788,18 @@ function computePlaceCounts(){
 /* ======================================================================
    RENDER: Países
    ====================================================================== */
-// Clickeable: filtra Países (Lista y Mapa) por zona. Click de nuevo sobre
-// la misma zona activa la saca (vuelve a mostrar todas).
+// Clickeable, multi-selección: filtra Países (Lista y Mapa) por una o
+// varias zonas a la vez (ej. Central + Norte). Click de nuevo sobre una
+// zona activa la saca; si no queda ninguna tildada, se ven todas.
 function renderZoneLegend(){
   const active = state.paisesZoneFilter;
   return `<div class="zone-legend">${Object.values(ZONES).map(z=>
-    `<span class="chip-toggle${active===z.key?" active":""}" data-action="toggle-paises-zone" data-key="${z.key}">
-      <span class="dot" style="background:${z.color}"></span>${z.label}${active===z.key?" ✕":""}
+    `<span class="chip-toggle${active.has(z.key)?" active":""}" data-action="toggle-paises-zone" data-key="${z.key}">
+      <span class="dot" style="background:${z.color}"></span>${z.label}${active.has(z.key)?" ✕":""}
     </span>`).join("")}</div>`;
+}
+function visiblePaisesCountries(){
+  return state.paisesZoneFilter.size ? COUNTRIES.filter(c=>state.paisesZoneFilter.has(c.zone)) : COUNTRIES;
 }
 
 function renderPaisesView(){
@@ -1814,8 +1818,7 @@ function renderPaisesView(){
   if(state.countryDrill && byCountryExists(state.countryDrill)){
     return toggle + renderZoneLegend() + renderCountryDrill(state.countryDrill, counts[state.countryDrill]);
   }
-  const visibleCountries = state.paisesZoneFilter ? COUNTRIES.filter(c=>c.zone===state.paisesZoneFilter) : COUNTRIES;
-  const sorted = visibleCountries.slice().sort((a,b)=> counts[b.name].total - counts[a.name].total || a.name.localeCompare(b.name));
+  const sorted = visiblePaisesCountries().slice().sort((a,b)=> counts[b.name].total - counts[a.name].total || a.name.localeCompare(b.name));
   const cards = sorted.map(c=>{
     const cnt = counts[c.name].total;
     return `<div class="country-card" style="border-left-color:${ZONES[c.zone].color}" data-action="drill-country" data-country="${esc(c.name)}">
@@ -1862,7 +1865,7 @@ function initOrUpdateMap(){
     maxZoom: 12,
   }).addTo(map);
   const counts = computePlaceCounts();
-  const visibleCountries = state.paisesZoneFilter ? COUNTRIES.filter(c=>c.zone===state.paisesZoneFilter) : COUNTRIES;
+  const visibleCountries = visiblePaisesCountries();
   visibleCountries.forEach(c=>{
     const cnt = counts[c.name].total;
     const color = ZONES[c.zone].color;
@@ -1877,7 +1880,7 @@ function initOrUpdateMap(){
     marker.bindPopup(popupHtml);
     marker.bindTooltip(String(cnt), { permanent:true, direction:"center", className:"leaflet-marker-num", opacity:1 });
   });
-  if(state.paisesZoneFilter && visibleCountries.length){
+  if(state.paisesZoneFilter.size && visibleCountries.length){
     map.fitBounds(visibleCountries.map(c=>c.coord), { padding:[30,30] });
   }
   state.leafletMap = map;
@@ -2137,7 +2140,7 @@ document.addEventListener("click", e=>{
     state.paisesSubview = t.dataset.key; state.countryDrill = null; render();
   } else if(action === "toggle-paises-zone"){
     const key = t.dataset.key;
-    state.paisesZoneFilter = state.paisesZoneFilter === key ? null : key;
+    state.paisesZoneFilter.has(key) ? state.paisesZoneFilter.delete(key) : state.paisesZoneFilter.add(key);
     state.countryDrill = null;
     render();
   } else if(action === "drill-country"){
