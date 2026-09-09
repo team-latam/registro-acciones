@@ -13,6 +13,13 @@ rules_version = '2';
 // entra al panel "Solicitudes" de la propia app y aprueba o rechaza →
 // aprobar escribe un documento en "allowlist" → recién ahí esa persona
 // puede leer y escribir posts/replies.
+//
+// IMPORTANTE (encontrado con mucho debugging): NUNCA combinar isAdmin()
+// con isApproved() (que usa exists()) dentro de una misma expresión con
+// "||" o "?:" — el motor de reglas terminaba rechazando TODO, incluso
+// para el admin, cuando se combinaban así. La solución que sí funciona
+// de forma confiable es declarar líneas "allow" SEPARADAS para cada
+// caso: Firestore las combina como "o" de todos modos, sin ese problema.
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -27,13 +34,6 @@ service cloud.firestore {
       return request.auth != null &&
         exists(/databases/$(database)/documents/allowlist/$(request.auth.token.email));
     }
-    // Ternario en vez de "||": así, si isAdmin() ya es true, NUNCA se llega
-    // a evaluar isApproved() (que hace un exists()). Con "||" el motor de
-    // reglas puede evaluar los dos lados igual (para poder tolerar que uno
-    // falle), y eso puede pegarle al límite de lecturas por consulta en
-    // colecciones grandes -- el admin quedaría bloqueado por una cuenta
-    // regresiva que ni siquiera necesita.
-    function canUse() { return isAdmin() ? true : isApproved(); }
 
     function isNonEmptyString(v, maxLen) {
       return v is string && v.size() > 0 && v.size() <= maxLen;
@@ -72,37 +72,52 @@ service cloud.firestore {
     // alguien intenta escribir): el propio autor siempre puede, y
     // cualquier persona aprobada puede editar los que no son Rutina
     // (son eventos compartidos del equipo, no una entrada personal).
-    function canEditPost(existing) {
-      return canUse() &&
-        (existing.authorEmail == request.auth.token.email || existing.activityType != 'rutina');
+    function isAuthorOrNonRoutine(existing) {
+      return existing.authorEmail == request.auth.token.email || existing.activityType != 'rutina';
+    }
+
+    function isValidPostUpdate(d) {
+      return isValidPostBase(d) &&
+        d.scopes.size() >= 1 &&
+        d.authorEmail == resource.data.authorEmail &&
+        d.authorName == resource.data.authorName &&
+        d.createdAt == resource.data.createdAt;
+    }
+
+    function isValidReplyCreate(d) {
+      return isNonEmptyString(d.content, 3000) &&
+        isNonEmptyString(d.authorName, 120) &&
+        (d.scopes == null || (d.scopes is list && d.scopes.size() <= 15)) &&
+        (d.links == null || (d.links is list && d.links.size() <= 10)) &&
+        (d.images == null || (d.images is list && d.images.size() <= 6)) &&
+        (d.system == null || d.system is bool) &&
+        isOptionalString(d.icon, 8) &&
+        d.createdAt == request.time;
     }
 
     match /posts/{postId} {
-      allow read: if canUse();
-      allow create: if canUse() && isValidPostBase(request.resource.data) &&
-        request.resource.data.scopes.size() >= 1 &&
-        request.resource.data.createdAt == request.time;
+      allow read: if isAdmin();
+      allow read: if isApproved();
+
+      allow create: if isAdmin() && isValidPostBase(request.resource.data) &&
+        request.resource.data.scopes.size() >= 1 && request.resource.data.createdAt == request.time;
+      allow create: if isApproved() && isValidPostBase(request.resource.data) &&
+        request.resource.data.scopes.size() >= 1 && request.resource.data.createdAt == request.time;
+
       // Edición: no se puede tocar de quién es ni cuándo se creó
       // originalmente — solo el contenido puede cambiar.
-      allow update: if canEditPost(resource.data) &&
-        isValidPostBase(request.resource.data) &&
-        request.resource.data.scopes.size() >= 1 &&
-        request.resource.data.authorEmail == resource.data.authorEmail &&
-        request.resource.data.authorName == resource.data.authorName &&
-        request.resource.data.createdAt == resource.data.createdAt;
+      allow update: if isAdmin() && isAuthorOrNonRoutine(resource.data) && isValidPostUpdate(request.resource.data);
+      allow update: if isApproved() && isAuthorOrNonRoutine(resource.data) && isValidPostUpdate(request.resource.data);
+
       allow delete: if false;
 
       match /replies/{replyId} {
-        allow read: if canUse();
-        allow create: if canUse() &&
-          isNonEmptyString(request.resource.data.content, 3000) &&
-          isNonEmptyString(request.resource.data.authorName, 120) &&
-          (request.resource.data.scopes == null || (request.resource.data.scopes is list && request.resource.data.scopes.size() <= 15)) &&
-          (request.resource.data.links == null || (request.resource.data.links is list && request.resource.data.links.size() <= 10)) &&
-          (request.resource.data.images == null || (request.resource.data.images is list && request.resource.data.images.size() <= 6)) &&
-          (request.resource.data.system == null || request.resource.data.system is bool) &&
-          isOptionalString(request.resource.data.icon, 8) &&
-          request.resource.data.createdAt == request.time;
+        allow read: if isAdmin();
+        allow read: if isApproved();
+
+        allow create: if isAdmin() && isValidReplyCreate(request.resource.data);
+        allow create: if isApproved() && isValidReplyCreate(request.resource.data);
+
         allow update, delete: if false;
       }
     }
@@ -112,7 +127,8 @@ service cloud.firestore {
     // usuario puede leer únicamente su propio documento (para saber si ya
     // fue aprobado).
     match /allowlist/{email} {
-      allow get: if isAdmin() || (request.auth != null && request.auth.token.email == email);
+      allow get: if isAdmin();
+      allow get: if request.auth != null && request.auth.token.email == email;
       allow list: if isAdmin();
       allow write: if isAdmin();
     }
@@ -120,15 +136,16 @@ service cloud.firestore {
     // Solicitudes de acceso: cualquiera logueado puede crear/leer/reintentar
     // LA SUYA; el admin ve y decide todas.
     match /accessRequests/{email} {
-      allow get: if isAdmin() || (request.auth != null && request.auth.token.email == email);
+      allow get: if isAdmin();
+      allow get: if request.auth != null && request.auth.token.email == email;
       allow list: if isAdmin();
       allow create: if request.auth != null && request.auth.token.email == email &&
         request.resource.data.email == email && request.resource.data.status == 'pending';
       // El dueño puede "pedir de nuevo" (volver a poner su propia solicitud
       // en pending); solo el admin puede aprobar o rechazar.
-      allow update: if isAdmin() ||
-        (request.auth != null && request.auth.token.email == email &&
-         request.resource.data.email == email && request.resource.data.status == 'pending');
+      allow update: if isAdmin();
+      allow update: if request.auth != null && request.auth.token.email == email &&
+        request.resource.data.email == email && request.resource.data.status == 'pending';
       allow delete: if isAdmin();
     }
 
