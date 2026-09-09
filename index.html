@@ -313,8 +313,8 @@
   .qc-avatar{ width:40px; height:40px; border-radius:50%; object-fit:cover; flex-shrink:0; display:block; }
   .qc-avatar.qc-avatar-fallback{ display:flex; align-items:center; justify-content:center; background:var(--petroleo); color:#fff; font-weight:800; font-size:15px; }
   .quick-composer textarea{
-    flex:1; border:none; resize:none; font-family:inherit; font-size:15px; line-height:1.4;
-    padding:8px 0; min-height:44px; background:transparent;
+    flex:1; border:none; resize:none; overflow-y:auto; font-family:inherit; font-size:15px; line-height:1.4;
+    padding:8px 0; min-height:44px; max-height:50vh; background:transparent;
   }
   .quick-composer textarea:focus{ outline:none; }
   .quick-composer .btn-new:disabled{ opacity:0.45; cursor:not-allowed; box-shadow:none; }
@@ -1730,6 +1730,17 @@ const viewRoot = document.getElementById("viewRoot");
 let fatalError = null;
 function renderFatalError(msg){ fatalError = msg; render(); }
 
+// Textareas marcadas con la clase "autogrow" (por ahora, la de Rutina)
+// crecen solas con el contenido en vez de quedar en una caja chica fija
+// con scroll interno — se recalcula en cada tecleo (ver el input handler)
+// y también acá, porque cada render() reconstruye el elemento de cero
+// (innerHTML) y pierde cualquier alto que se le haya puesto a mano.
+function autoGrowTextarea(el){
+  if(!el) return;
+  el.style.height = "auto";
+  el.style.height = el.scrollHeight + "px";
+}
+
 function render(){
   const active = document.activeElement;
   const focusId = active && active.id;
@@ -1743,6 +1754,7 @@ function render(){
       if(selStart != null) try{ el.setSelectionRange(selStart, selEnd); }catch(e){}
     }
   }
+  document.querySelectorAll("textarea.autogrow").forEach(autoGrowTextarea);
 }
 
 const tabsNav = document.getElementById("tabs");
@@ -2048,8 +2060,8 @@ function anyActiveFilter(){
 function newRutinaDraft(){
   return {
     content:"", images:[], links:[], files:[],
-    scopes:[], placeQuery:"",
-    mentions:[], mentionQuery:null, mentionCaret:0,
+    scopes:[], placeQuery:"", placeHighlight:0,
+    mentions:[], mentionQuery:null, mentionCaret:0, mentionHighlight:0,
     error:"",
   };
 }
@@ -2069,7 +2081,7 @@ function renderRutinaComposer(){
       <div class="quick-composer-row">
         ${renderMiniAvatar(state.auth.user)}
         <div class="mention-anchor">
-          <textarea id="rutinaContent" placeholder="¿Qué hiciste hoy?" rows="2">${esc(d.content)}</textarea>
+          <textarea id="rutinaContent" class="autogrow" placeholder="¿Qué hiciste hoy?" rows="1">${esc(d.content)}</textarea>
           ${renderMentionSuggestions(d, "rutina", "new", "rutinaContent")}
         </div>
       </div>
@@ -2131,13 +2143,13 @@ const replyDrafts = {}; // postId -> draft
 const openNestedReplyForms = new Set(); // replyIds con su mini-formulario de "responder a esto" abierto
 const nestedReplyDrafts = {}; // replyId -> { content }
 function getNestedReplyDraft(replyId){
-  if(!nestedReplyDrafts[replyId]) nestedReplyDrafts[replyId] = { content:"", images:[], links:[], files:[], mentions:[], mentionQuery:null, mentionCaret:0 };
+  if(!nestedReplyDrafts[replyId]) nestedReplyDrafts[replyId] = { content:"", images:[], links:[], files:[], mentions:[], mentionQuery:null, mentionCaret:0, mentionHighlight:0 };
   return nestedReplyDrafts[replyId];
 }
 
 function newScopeDraft(){ return { type:"ciudad", country:"", city:"", region:"sur", cityUseCustom:false }; }
 function newReplyDraft(){
-  return { content:"", images:[], links:[], files:[], mentions:[], mentionQuery:null, mentionCaret:0, extraScope:false, scopes:[], scopeDraft:newScopeDraft(), scopeError:"" };
+  return { content:"", images:[], links:[], files:[], mentions:[], mentionQuery:null, mentionCaret:0, mentionHighlight:0, extraScope:false, scopes:[], scopeDraft:newScopeDraft(), scopeError:"" };
 }
 function getReplyDraft(postId){
   if(!replyDrafts[postId]) replyDrafts[postId] = newReplyDraft();
@@ -2576,6 +2588,7 @@ function newComposerDraft(){
     mentions: [],
     mentionQuery: null,
     mentionCaret: 0,
+    mentionHighlight: 0,
     error: "",
     editingPost: null,
   };
@@ -2601,7 +2614,7 @@ function openEditComposer(post){
     scopeDraft: newScopeDraft(), scopeError: "",
     images: [...(post.images||[])], links: (post.links||[]).map(l=>({...l})),
     files: (post.files||[]).map(f=>({...f})),
-    mentions: [...(post.mentions||[])], mentionQuery: null, mentionCaret: 0,
+    mentions: [...(post.mentions||[])], mentionQuery: null, mentionCaret: 0, mentionHighlight: 0,
     error: "", editingPost: post,
   };
   postModalTitle.textContent = "Editar posteo";
@@ -3033,7 +3046,10 @@ document.addEventListener("input", e=>{
     // Solo habilita/deshabilita el botón Publicar al tipear — evita un
     // render() completo (y perder el foco/cursor) en cada letra, salvo
     // que se esté escribiendo una @mención (ahí sí hace falta re-renderizar
-    // para mostrar/actualizar el desplegable de sugerencias).
+    // para mostrar/actualizar el desplegable de sugerencias). El alto sí
+    // se ajusta siempre, tecla por tecla, para que la caja crezca con el
+    // texto en vez de quedar chica con scroll interno.
+    autoGrowTextarea(t);
     const btn = document.getElementById("rutinaPublish");
     if(btn) btn.disabled = !t.value.trim();
     const prevQuery = rutinaDraft.mentionQuery;
