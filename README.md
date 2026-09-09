@@ -321,9 +321,9 @@ individuales (para no generar un aluvión de posteos por cada repetición):
 una serie recurrente cuenta como un solo evento. No debería ser un
 problema real, ya que cada acción del equipo tiene sus propias fechas.
 
-### Auditoría (solo admin)
+### Actividad (solo admin)
 
-Pestaña "Auditoría", visible solo para `ADMIN_EMAIL`: un registro de
+Pestaña "Actividad", visible solo para `ADMIN_EMAIL`: un registro de
 eventos de **acceso y administración** (colección `auditLog`), no del
 contenido de los posteos. Como el login es 100% con cuenta de Google, no
 existe "cambio de contraseña" que registrar; en su lugar queda

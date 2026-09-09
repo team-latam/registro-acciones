@@ -109,7 +109,7 @@
   .btn-ghost.danger:hover{ background:#fdeceb; }
   .ractions-sep{ width:1px; height:20px; background:var(--border); margin:0 6px; }
 
-  /* ---------- Auditoría (admin) ---------- */
+  /* ---------- Actividad / registro de auditoría (admin) ---------- */
   .audit-list{ background:#fff; border:1px solid var(--border); border-radius:var(--radius-md); overflow:hidden; box-shadow:var(--shadow); }
   .audit-row{ display:flex; align-items:center; gap:12px; padding:11px 18px; }
   .audit-row + .audit-row{ border-top:1px solid var(--border); }
@@ -367,7 +367,7 @@
       <button data-view="paises">Países</button>
       <button data-view="memoria">Memoria</button>
       <button data-view="solicitudes" id="tabSolicitudes" hidden>Solicitudes<span id="pendingBadge"></span></button>
-      <button data-view="auditoria" id="tabAuditoria" hidden>Auditoría</button>
+      <button data-view="auditoria" id="tabAuditoria" hidden>Actividad</button>
     </nav>
   </header>
   <main id="viewRoot"></main>
@@ -691,7 +691,7 @@ async function signIn(){
   }
 }
 async function doSignOut(){
-  calendarAccessToken = null; calendarTokenExpiry = 0;
+  calendarAccessToken = null; calendarTokenExpiry = 0; calendarAclScopeGranted = false;
   stopCalendarAutoSync();
   auditLoginLoggedThisSession = false;
   try{ sessionStorage.removeItem(CALENDAR_TOKEN_STORAGE_KEY); }catch(e){}
@@ -725,21 +725,28 @@ const CALENDAR_API_KEY = "AIzaSyBLsB3SxSuEOyiPyCIYHa0yOcPiTs5KfwI";
 const CALENDAR_TOKEN_STORAGE_KEY = "calendarToken";
 let calendarAccessToken = null;
 let calendarTokenExpiry = 0;
+// Si ya se concedió el permiso extra para compartir/sacar gente del
+// Calendar (ver ensureCalendarAclToken más abajo), se guarda también acá
+// (y en sessionStorage) para no volver a pedir el popup de Google en cada
+// recarga de página mientras el token siga vigente.
+let calendarAclScopeGranted = false;
 try{
   const saved = JSON.parse(sessionStorage.getItem(CALENDAR_TOKEN_STORAGE_KEY) || "null");
   if(saved && saved.token && saved.expiry > Date.now()){
     calendarAccessToken = saved.token;
     calendarTokenExpiry = saved.expiry;
+    if(saved.aclScope) calendarAclScopeGranted = true;
   }
 }catch(e){}
 
-function storeCalendarCredential(result){
+function storeCalendarCredential(result, opts={}){
   const cred = authMod.GoogleAuthProvider.credentialFromResult(result);
   if(cred && cred.accessToken){
     calendarAccessToken = cred.accessToken;
     calendarTokenExpiry = Date.now() + 55*60*1000; // los access tokens de Google duran ~1h
+    if(opts.aclScope) calendarAclScopeGranted = true;
     try{
-      sessionStorage.setItem(CALENDAR_TOKEN_STORAGE_KEY, JSON.stringify({ token: calendarAccessToken, expiry: calendarTokenExpiry }));
+      sessionStorage.setItem(CALENDAR_TOKEN_STORAGE_KEY, JSON.stringify({ token: calendarAccessToken, expiry: calendarTokenExpiry, aclScope: calendarAclScopeGranted }));
     }catch(e){}
   }
 }
@@ -749,14 +756,22 @@ function storeCalendarCredential(result){
 // la página, lo que NO trae un access token nuevo), vuelve a pedir el
 // login con Google — normalmente un click rápido, ya con la cuenta
 // pre-seleccionada, no un login completo de nuevo.
+// Si quien está logueado es el admin, se pide de una vez también el
+// permiso de compartir/sacar gente del Calendar (ver ensureCalendarAclToken)
+// junto con el de eventos, en el MISMO popup — así el admin ve como mucho
+// UN popup de Google por sesión (al crear/editar el primer posteo, o al
+// aprobar/compartir el primer acceso, lo que ocurra primero) en vez de uno
+// para cada tipo de acción.
 async function ensureCalendarToken(){
   if(calendarAccessToken && Date.now() < calendarTokenExpiry) return calendarAccessToken;
   try{
+    const isAdminUser = state.auth.user && state.auth.user.email === ADMIN_EMAIL;
     const provider = new authMod.GoogleAuthProvider();
     provider.addScope("https://www.googleapis.com/auth/calendar.events");
+    if(isAdminUser) provider.addScope("https://www.googleapis.com/auth/calendar.acls");
     provider.setCustomParameters({ login_hint: state.auth.user.email });
     const result = await authMod.signInWithPopup(auth, provider);
-    storeCalendarCredential(result);
+    storeCalendarCredential(result, { aclScope: isAdminUser });
     return calendarAccessToken;
   }catch(err){
     console.error("No se pudo obtener acceso a Calendar:", err);
@@ -769,7 +784,9 @@ async function ensureCalendarToken(){
 // automatizar el alta y baja de acceso al aprobar/revocar en "Solicitudes".
 // Requiere que ADMIN_EMAIL sea DUEÑO del calendario (no solo editor) —
 // Google exige ese nivel para poder compartirlo en nombre de otra persona.
-let calendarAclScopeGranted = false;
+// calendarAclScopeGranted (declarado más arriba, junto con el token) queda
+// en true una vez concedido, y se guarda en sessionStorage junto con el
+// token para no volver a pedir el popup en cada recarga de página.
 async function ensureCalendarAclToken(){
   if(calendarAclScopeGranted && calendarAccessToken && Date.now() < calendarTokenExpiry) return calendarAccessToken;
   try{
@@ -778,8 +795,7 @@ async function ensureCalendarAclToken(){
     provider.addScope("https://www.googleapis.com/auth/calendar.acls");
     provider.setCustomParameters({ login_hint: state.auth.user.email });
     const result = await authMod.signInWithPopup(auth, provider);
-    storeCalendarCredential(result);
-    calendarAclScopeGranted = true;
+    storeCalendarCredential(result, { aclScope: true });
     return calendarAccessToken;
   }catch(err){
     console.error("No se pudo obtener acceso para compartir/sacar del Calendar:", err);
@@ -1606,9 +1622,10 @@ function renderSolicitudesView(){
 }
 
 /* ======================================================================
-   AUDITORÍA (panel admin) — accesos y cambios administrativos (quién
-   entró, a quién se aprobó/rechazó/revocó, a quién se compartió el
-   Calendar). No es un registro de los posteos ni su contenido.
+   ACTIVIDAD / registro de auditoría (panel admin, pestaña "Actividad")
+   — accesos y cambios administrativos (quién entró, a quién se aprobó/
+   rechazó/revocó, a quién se compartió el Calendar). No es un registro
+   de los posteos ni su contenido.
    ====================================================================== */
 const AUDIT_LABELS = {
   login: { icon:"🔓", text: e => `${e.actorName} inició sesión.` },
