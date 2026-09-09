@@ -1069,7 +1069,7 @@ function renderSolicitudesView(){
   if(!reqs.length) return `<div class="empty-state"><div class="big">📭</div>No hay solicitudes todavía.</div>`;
   return reqs.map(r=>{
     let actions;
-    if(r.status === "approved") actions = `<span class="status-pill approved">Aprobado</span> <button class="btn-mini" data-action="revoke-access" data-email="${esc(r.email)}">Revocar</button>`;
+    if(r.status === "approved") actions = `<span class="status-pill approved">Aprobado</span> <button class="btn-mini" data-action="share-calendar" data-email="${esc(r.email)}">Compartir Calendar</button> <button class="btn-secondary" data-action="revoke-access" data-email="${esc(r.email)}">Revocar</button>`;
     else if(r.status === "rejected") actions = `<span class="status-pill rejected">Rechazado</span> <button class="btn-mini" data-action="approve-request" data-email="${esc(r.email)}">Aprobar igual</button>`;
     else actions = `<button class="btn-mini" data-action="approve-request" data-email="${esc(r.email)}">Aprobar</button>
       <button class="btn-secondary" data-action="reject-request" data-email="${esc(r.email)}">Rechazar</button>`;
@@ -1729,6 +1729,14 @@ document.addEventListener("click", e=>{
         : { ok:false, message:`${email} ya puede usar la app, pero no se pudo compartirle el Calendar automáticamente (${res.reason}). Puede que ADMIN_EMAIL no sea el dueño del calendario "LatAm" — o compartíselo a mano desde Google Calendar.` };
       render();
     }).catch(err=>{ console.error(err); alert("No se pudo aprobar: " + err.message); });
+  } else if(action === "share-calendar"){
+    const email = t.dataset.email;
+    shareCalendarWith(email).then(res=>{
+      state.calendarNotice = res.ok
+        ? { ok:true, message:`Se compartió el Calendar con ${email}.` }
+        : { ok:false, message:`No se pudo compartir el Calendar con ${email} (${res.reason}).` };
+      render();
+    }).catch(err=>{ console.error(err); alert("No se pudo compartir: " + err.message); });
   } else if(action === "reject-request"){
     rejectRequest(t.dataset.email).catch(err=>{ console.error(err); alert("No se pudo rechazar: " + err.message); });
   } else if(action === "revoke-access"){
