@@ -102,12 +102,15 @@ posts/{postId}
   endDate: "YYYY-MM-DD"      (= startDate si el evento dura un solo día)
   organizer: string          (opcional — quién organiza, puede ser distinto de quien carga)
   location: string           (opcional — lugar/salón/dirección concreta)
-  activityType: "rutina" | "visita" | "curso" | "seminario" | "congreso" | "otro"
+  activityType: "rutina" | "visita" | "curso" | "seminario" | "congreso" | "virtual" | "otro"
   authorName: string         (nombre de Google de quien publicó)
   authorEmail: string        (email de Google de quien publicó)
   scopes: [{ type:"ciudad", country, city } | { type:"pais", country } | { type:"region", region:"sur"|"central"|"norte" } | { type:"todo" }, ...]
+                             (Evento: mínimo 1. Rutina: opcional, se agrega con el buscador de lugar del composer)
   images: ["data:image/jpeg;base64,...", ...]   (comprimidas en el navegador)
+  files: [{ name, mime, kind:"pdf"|"audio", dataUrl }, ...]  (opcional — PDF/audio chicos, sin comprimir, máx. 2)
   links: [{ label, url }, ...]
+  mentions: [string, ...]    (opcional — emails de a quién se etiquetó con @ en el texto)
   createdAt: Timestamp (servidor, nunca cambia)
   calendarEventId: string | null   (id del evento en Calendar, para poder actualizarlo/borrarlo en vez de duplicarlo)
   cancelled: bool                  (opcional — true si se canceló el evento)
@@ -120,15 +123,21 @@ posts/{postId}/replies/{replyId}
   authorEmail: string
   scopes: [...]              (alcance adicional opcional, mismo formato)
   images: [...]
+  files: [...]               (mismo formato que en posts)
   links: [...]
+  mentions: [...]            (mismo formato que en posts)
   createdAt: Timestamp (servidor)
   system: bool               (opcional — true en las respuestas automáticas de edición/cancelación)
   icon: string                (opcional — emoji que acompaña una respuesta de sistema, ej. "✏️")
   replyToId: string | null    (opcional — id de OTRA respuesta del mismo posteo a la que le contesta; un solo nivel de anidamiento)
   likedBy: [string, ...]      (opcional — emails de quienes le dieron "me gusta"; único campo editable después de creada)
 
-allowlist/{email}            (el documento EXISTE = esa persona tiene acceso; el contenido no importa)
-  email, approvedAt, approvedBy
+allowlist/{email}            (el documento EXISTE = esa persona tiene acceso)
+  email, name, nickname, approvedAt, approvedBy
+                             (name/nickname: nombre de Google y @nickname corto armado al aprobar,
+                             para el autocompletado de @menciones — accesos aprobados de antes de
+                             que existiera este campo no lo tienen, y se les arma un nickname de
+                             reserva a partir del email solo para mostrar, sin guardarlo)
 
 accessRequests/{email}       (una solicitud de acceso por persona; el id es su propio email)
   email, name, photoURL, status: "pending"|"approved"|"rejected", requestedAt
@@ -166,6 +175,66 @@ Si el posteo sincroniza con Calendar, editar sus fechas/título/lugar
 crearlo) en vez de crear uno duplicado; si el tipo de actividad cambia a
 Rutina, el evento se borra del Calendar; si pasa de Rutina a un tipo que
 sincroniza, se crea recién en ese momento.
+
+### Rutina: composer liviano estilo "¿Qué está pasando?"
+
+Aparte del modal grande de Evento (Visita/Curso/Seminario/Congreso/Virtual/
+Otro), hay una barra fija arriba del Feed —inspirada en el compositor de
+X— para cargar una **Rutina**: solo pide texto; título y fechas se
+completan solos del lado del cliente (`submitRutina()` en `index.html`) y
+no se muestran en la tarjeta para no repetir el contenido dos veces.
+Rutina y Evento comparten el mismo `posts/{postId}`, así que aparecen
+mezclados en el mismo Feed — se distinguen por el badge de tipo
+("🔁 Rutina"). A diferencia de Evento, el alcance (lugar) es **opcional**
+en Rutina, y no sincroniza con Calendar.
+
+El buscador de lugar del composer de Rutina (📍, en forma de chip) es un
+autocompletar simple sobre `PLACE_INDEX` — un índice plano armado una sola
+vez con "Toda LatAm", cada región, cada país y cada ciudad de
+`CITY_PRESETS` — y agrega el mismo objeto `scope` que ya usa Evento/
+respuestas, solo que sin el selector paso a paso.
+
+### Adjuntos: imágenes, PDF/audio chicos, y links
+
+- **Imágenes**: se comprimen en el navegador (JPEG, máx. 1280px de lado),
+  hasta 6 por posteo/respuesta.
+- **PDF y audio**: se adjuntan de verdad (embebidos como `data:` URL en el
+  documento, igual que las imágenes) pero SIN comprimir, así que hay un
+  tope de tamaño chico por archivo (`MAX_ATTACHMENT_FILE_BYTES`, 150KB) y
+  de cantidad (`MAX_ATTACHMENT_FILES`, 2) — Firestore permite ~1MB por
+  documento entero y el base64 pesa ~33% más que el archivo original, hay
+  que dejar margen para el resto del posteo. Pasarse del tamaño muestra un
+  aviso pidiendo usar un link en su lugar.
+- **Video**: siempre por link (Drive, YouTube, etc.) — casi nunca entra
+  comprimido bajo el límite de 1MB de Firestore, así que no vale la pena
+  tratar de embeberlo como a las imágenes/PDF/audio.
+- No hay Firebase Storage ni plan pago (Blaze) en este proyecto — decisión
+  deliberada para mantenerlo gratis; todo lo que no entra chico va por
+  link.
+
+### @Menciones
+
+Escribir `@` en cualquier comentario/respuesta (Evento, Rutina, respuesta
+o respuesta anidada) despliega un autocompletar sobre `state.roster` (la
+lista de aprobados, con su `nickname`) — al elegir uno, se inserta
+"@Nickname " en el texto y se guarda su email en el array `mentions` del
+posteo/respuesta.
+
+No hay notificaciones push ni email (eso requeriría Cloud Functions y
+pasar a plan pago Blaze, que este proyecto evita a propósito): en su
+lugar, el avatar del header muestra un punto rojo con la cantidad de
+menciones nuevas (`getUnseenMentionCount()`), calculada comparando la
+fecha de creación contra la última vez que la persona abrió el menú del
+avatar (`localStorage`, por dispositivo — no sincroniza entre aparatos).
+Abrir el menú marca todo como visto.
+
+Como cualquier aprobado necesita ver nombres/nicknames del resto del
+equipo para poder etiquetarlos, `allowlist` (antes solo legible por el
+admin en su totalidad) ahora permite `list` a cualquier aprobado — cada
+documento solo tiene email/nombre/nickname/fecha de aprobación, nada
+sensible. El `nickname` se arma una sola vez al aprobar a alguien
+(`makeNickname()`, primer nombre de Google, con desempate si ya existe
+otro con el mismo) y queda guardado en su documento de `allowlist`.
 
 ### Zonas (fijas, no editables desde la UI)
 
@@ -210,7 +279,7 @@ Países → Lista, al hacer click en un país.
 
 ### Sincronización con Google Calendar (Feed ↔ Calendar)
 
-Cada posteo de tipo Visita/Curso/Seminario/Congreso/Otro (todo menos
+Cada posteo de tipo Visita/Curso/Seminario/Congreso/Virtual/Otro (todo menos
 **Rutina**) se suma automáticamente como evento de día completo al
 calendario compartido de LatAm — el ID vive en la constante `CALENDAR_ID`
 de `index.html`. No hay backend propio: se usa el token de Google de

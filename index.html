@@ -72,7 +72,7 @@
      entero pegado al lado del botón todo el tiempo. */
   .user-badge{ position:relative; }
   .avatar-btn{
-    width:36px; height:36px; padding:0; border-radius:50%; cursor:pointer;
+    position:relative; width:36px; height:36px; padding:0; border-radius:50%; cursor:pointer;
     background:rgba(255,255,255,0.14); border:2px solid rgba(255,255,255,0.55);
     display:flex; align-items:center; justify-content:center; overflow:hidden;
     flex-shrink:0; transition:border-color .15s;
@@ -333,6 +333,8 @@
     background:#f8fbfb; border:1px solid var(--border); border-radius:var(--radius-sm); padding:6px;
   }
   .attach-row input{ flex:1; border:1.5px solid var(--border); border-radius:8px; padding:7px 9px; font-size:13px; background:#fff; }
+  .attach-row input[data-link-field="label"]{ flex:0 1 90px; }
+  .attach-row input[data-link-field="url"]{ flex:2 1 auto; }
   .attach-row .btn-mini{ flex:none; }
   .link-rows{ display:flex; flex-direction:column; gap:6px; margin-bottom:8px; }
   .btn-text-add{ background:none; border:none; color:var(--celeste-dark); font-weight:700; font-size:12.5px; cursor:pointer; padding:4px 0; }
@@ -342,6 +344,47 @@
   .img-preview .rm{
     position:absolute; top:-6px; right:-6px; width:20px; height:20px; border-radius:50%; background:var(--danger);
     color:#fff; border:none; font-size:12px; cursor:pointer; line-height:20px; text-align:center; padding:0;
+  }
+
+  /* Adjuntos genéricos (PDF/audio chicos, ver MAX_ATTACHMENT_FILE_BYTES):
+     mismo look que los chips de imagen, pero sin miniatura. */
+  .file-preview-list{ display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+  .file-chip{
+    display:inline-flex; align-items:center; gap:6px; background:#eef4f4; border:1px solid var(--border);
+    border-radius:999px; padding:6px 8px 6px 12px; font-size:12.5px; font-weight:600; max-width:220px;
+  }
+  .file-chip .fname{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .file-chip .rm{
+    width:18px; height:18px; border-radius:50%; background:var(--danger); color:#fff; border:none;
+    font-size:11px; cursor:pointer; line-height:18px; text-align:center; padding:0; flex-shrink:0;
+  }
+  .post-files{ display:flex; flex-direction:column; gap:6px; margin-bottom:10px; }
+  .post-file-audio{ display:flex; align-items:center; gap:8px; }
+  .post-file-audio audio{ height:32px; max-width:260px; }
+  .post-file-audio .fname, .post-file-link{ font-size:12.5px; font-weight:600; color:var(--petroleo); }
+
+  /* Autocompletado genérico (lugar y @menciones): lista angosta debajo
+     del input/textarea que la dispara. */
+  .autocomplete-list{
+    position:absolute; top:calc(100% + 4px); left:0; right:0; background:#fff; border:1px solid var(--border);
+    border-radius:var(--radius-sm); box-shadow:var(--shadow); z-index:8; max-height:220px; overflow-y:auto;
+  }
+  .autocomplete-option{
+    display:block; width:100%; text-align:left; background:none; border:none; padding:9px 14px; font-size:13px;
+    cursor:pointer; color:var(--text);
+  }
+  .autocomplete-option:hover{ background:#f2f6f6; }
+  .autocomplete-empty{ padding:9px 14px; font-size:12.5px; color:var(--text-muted); }
+  .place-picker{ position:relative; margin-top:8px; }
+  .place-picker input{ width:100%; border:1.5px solid var(--border); border-radius:999px; padding:9px 14px; font-size:13px; background:#fff; box-sizing:border-box; }
+  .mention-anchor{ position:relative; flex:1; }
+
+  /* Avatar con indicador de @menciones sin ver (ver getUnseenMentionCount) */
+  .avatar-btn{ position:relative; }
+  .mention-dot{
+    position:absolute; top:-2px; right:-2px; min-width:16px; height:16px; padding:0 3px; border-radius:999px;
+    background:var(--danger); color:#fff; font-size:9.5px; font-weight:800; display:flex; align-items:center;
+    justify-content:center; border:2px solid var(--petroleo-dark);
   }
   .modal-actions{ display:flex; justify-content:flex-end; gap:10px; margin-top:6px; }
   .btn-secondary{ background:#eef4f4; color:var(--text); border:none; padding:11px 18px; border-radius:999px; font-weight:700; font-size:13.5px; cursor:pointer; }
@@ -592,6 +635,26 @@ const COUNTRY_BY_NAME = Object.fromEntries(COUNTRIES.map(c=>[c.name,c]));
 const ZONE_COUNTRIES = { sur:[], central:[], norte:[] };
 COUNTRIES.forEach(c=>ZONE_COUNTRIES[c.zone].push(c.name));
 
+// Índice plano de "lugares" elegibles (Toda LatAm, cada región, cada país,
+// cada ciudad con presencia conocida) para el buscador de lugar en forma
+// de chip del composer de Rutina — reusa el mismo modelo de "scope" que ya
+// usan Evento y las respuestas (renderScopeBuilder), solo con una UI de
+// autocompletar en vez del selector paso a paso.
+function buildPlaceIndex(){
+  const items = [{ label:"Toda LatAm y el Caribe", icon:"🌎", scope:{ type:"todo" } }];
+  Object.values(ZONES).forEach(z=>{
+    items.push({ label:`Región: ${z.label}`, icon:"🌎", scope:{ type:"region", region:z.key } });
+  });
+  COUNTRIES.forEach(c=>{
+    items.push({ label:c.name, icon:"🏳️", scope:{ type:"pais", country:c.name } });
+    (CITY_PRESETS[c.name]||[]).forEach(city=>{
+      items.push({ label:`${city.name}, ${c.name}`, icon:"📍", scope:{ type:"ciudad", country:c.name, city:city.name } });
+    });
+  });
+  return items;
+}
+const PLACE_INDEX = buildPlaceIndex();
+
 const ACTIVITY_TYPES = [
   { key:"rutina", label:"Rutina", icon:"🔁" },
   { key:"visita", label:"Visita", icon:"🧳" },
@@ -643,6 +706,39 @@ function fmtDateTime(ts){
          dt.toLocaleTimeString("es-AR",{ hour:"2-digit", minute:"2-digit" });
 }
 function uid(){ return Math.random().toString(36).slice(2,10); }
+function tsToMillis(ts){
+  if(!ts) return 0;
+  const dt = ts.toDate ? ts.toDate() : new Date(ts);
+  return isNaN(dt) ? 0 : dt.getTime();
+}
+
+// "Notificaciones" de @menciones: sin backend pago (Cloud Functions/Blaze),
+// solo un indicador dentro de la app. Se guarda en localStorage (por
+// dispositivo/navegador, no sincroniza entre aparatos) cuándo fue la
+// última vez que la persona abrió el menú del avatar, y se cuenta cuántas
+// menciones a su email son más nuevas que eso.
+const MENTIONS_SEEN_KEY = "mentionsSeenAt";
+function getMentionsSeenAt(){
+  try{ return Number(localStorage.getItem(MENTIONS_SEEN_KEY)) || 0; }catch(e){ return 0; }
+}
+function markMentionsSeen(){
+  try{ localStorage.setItem(MENTIONS_SEEN_KEY, String(Date.now())); }catch(e){}
+}
+function getUnseenMentionCount(){
+  const email = state.auth.user && state.auth.user.email;
+  if(!email) return 0;
+  const seenAt = getMentionsSeenAt();
+  let count = 0;
+  state.posts.forEach(p=>{
+    if((p.mentions||[]).includes(email) && tsToMillis(p.createdAt) > seenAt) count++;
+  });
+  Object.values(state.repliesByPost).forEach(list=>{
+    list.forEach(r=>{
+      if((r.mentions||[]).includes(email) && tsToMillis(r.createdAt) > seenAt) count++;
+    });
+  });
+  return count;
+}
 
 function zoneOfScope(scope){
   if(scope.type==="region") return scope.region;
@@ -730,6 +826,7 @@ const state = {
 state.auth = { status: "loading", user: null };
 state.accessRequests = []; // solo se llena para el admin
 state.auditLog = []; // solo se llena para el admin
+state.roster = []; // [{email, nickname}] — todo aprobado, para autocompletar @menciones
 
 function isAuthorized(){ return state.auth.status === "approved" || state.auth.status === "admin"; }
 function isAdmin(){ return state.auth.status === "admin"; }
@@ -1260,6 +1357,7 @@ let unsubscribeRequests = null;
 let unsubAllowlist = null;
 let unsubOwnRequest = null;
 let unsubAuditLog = null;
+let unsubRoster = null;
 
 function recomputeAuthStatus(){
   if(state.auth.status === "admin") return;
@@ -1273,7 +1371,8 @@ async function onAuthChanged(user){
   if(unsubAllowlist){ unsubAllowlist(); unsubAllowlist = null; }
   if(unsubOwnRequest){ unsubOwnRequest(); unsubOwnRequest = null; }
   if(unsubAuditLog){ unsubAuditLog(); unsubAuditLog = null; }
-  state.posts = []; state.repliesByPost = {}; state.loaded = false; state.accessRequests = []; state.auditLog = [];
+  if(unsubRoster){ unsubRoster(); unsubRoster = null; }
+  state.posts = []; state.repliesByPost = {}; state.loaded = false; state.accessRequests = []; state.auditLog = []; state.roster = [];
 
   if(!user){
     state.auth = { status:"signedOut", user:null };
@@ -1295,6 +1394,7 @@ async function onAuthChanged(user){
     subscribeData();
     subscribeAccessRequests();
     subscribeAuditLog();
+    subscribeRoster();
     render();
     return;
   }
@@ -1308,7 +1408,7 @@ async function onAuthChanged(user){
   unsubAllowlist = fb.onSnapshot(fb.doc(db, "allowlist", profile.email), snap=>{
     state.auth.allowlisted = snap.exists();
     recomputeAuthStatus();
-    if(state.auth.allowlisted && !dataSubscribed){ dataSubscribed = true; subscribeData(); }
+    if(state.auth.allowlisted && !dataSubscribed){ dataSubscribed = true; subscribeData(); subscribeRoster(); }
     render();
   }, err=>console.error("Error chequeando allowlist:", err));
 
@@ -1362,8 +1462,46 @@ function subscribeAuditLog(){
     render();
   }, err=>console.error("Error leyendo auditoría:", err));
 }
+// Lista de nombre/email de todo aprobado, para autocompletar @menciones.
+// Cualquier aprobado puede LEER esto (no solo el admin) — ver el cambio
+// correspondiente en firestore.rules (allowlist: allow list).
+function subscribeRoster(){
+  const q = fb.query(fb.collection(db,"allowlist"), fb.orderBy("approvedAt","asc"));
+  unsubRoster = fb.onSnapshot(q, snap=>{
+    state.roster = snap.docs.map(d=>{
+      const data = d.data();
+      return { email: d.id, nickname: data.nickname || nicknameFallback(d.id) };
+    });
+    render();
+  }, err=>console.error("Error leyendo el equipo:", err));
+}
+// Los que ya estaban aprobados de antes de que existiera "nickname" no
+// tienen ese campo en su documento — se les arma uno a partir del email,
+// solo para mostrar (no se guarda en ningún lado).
+function nicknameFallback(email){
+  const local = (email||"").split("@")[0] || "Usuario";
+  return local.charAt(0).toUpperCase() + local.slice(1);
+}
+// Arma un @nickname corto a partir del nombre de Google, evitando
+// choques con los que ya existen (ej. dos "Benny" en el equipo).
+function makeNickname(displayName, existingNicknames){
+  const parts = (displayName||"").trim().split(/\s+/).filter(Boolean);
+  const first = parts[0] || "Usuario";
+  const base = first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
+  if(!existingNicknames.has(base)) return base;
+  const lastInitial = parts.length > 1 ? parts[1].charAt(0).toUpperCase() : "";
+  if(lastInitial && !existingNicknames.has(base + lastInitial)) return base + lastInitial;
+  let n = 2;
+  while(existingNicknames.has(base + n)) n++;
+  return base + n;
+}
 async function approveRequest(email){
-  await fb.setDoc(fb.doc(db, "allowlist", email), { email, approvedAt: fb.serverTimestamp(), approvedBy: ADMIN_EMAIL });
+  const reqSnap = await fb.getDoc(fb.doc(db, "accessRequests", email));
+  const name = (reqSnap.exists() && reqSnap.data().name) || email;
+  const rosterSnap = await fb.getDocs(fb.collection(db,"allowlist"));
+  const existingNicknames = new Set(rosterSnap.docs.map(d=>d.data().nickname).filter(Boolean));
+  const nickname = makeNickname(name, existingNicknames);
+  await fb.setDoc(fb.doc(db, "allowlist", email), { email, name, nickname, approvedAt: fb.serverTimestamp(), approvedBy: ADMIN_EMAIL });
   await fb.updateDoc(fb.doc(db, "accessRequests", email), { status:"approved" });
   logAudit("access_approved", { targetEmail: email });
 }
@@ -1594,8 +1732,10 @@ function renderUserBadge(){
     ? `<img class="um-avatar" src="${esc(u.photoURL)}" alt="">`
     : `<div class="um-avatar-fallback">${initial}</div>`;
   const role = USER_ROLE_LABELS[state.auth.status] || USER_ROLE_LABELS.approved;
+  const mentionCount = getUnseenMentionCount();
   userBadgeEl.innerHTML = `
     <button class="avatar-btn${userMenuOpen ? " open" : ""}" data-action="toggle-user-menu" title="${esc(u.displayName)}" aria-label="Cuenta">${avatar}</button>
+    ${mentionCount ? `<span class="mention-dot" title="${mentionCount} mención${mentionCount===1?"":"es"} nueva${mentionCount===1?"":"s"}">${mentionCount > 9 ? "9+" : mentionCount}</span>` : ""}
     ${userMenuOpen ? `
       <div class="user-menu">
         ${menuAvatar}
@@ -1861,7 +2001,12 @@ function anyActiveFilter(){
    solo que el título/fechas se completan solos del lado del cliente.
    ====================================================================== */
 function newRutinaDraft(){
-  return { content:"", images:[], links:[], error:"" };
+  return {
+    content:"", images:[], links:[], files:[],
+    scopes:[], placeQuery:"",
+    mentions:[], mentionQuery:null, mentionCaret:0,
+    error:"",
+  };
 }
 let rutinaDraft = newRutinaDraft();
 
@@ -1878,16 +2023,27 @@ function renderRutinaComposer(){
     <div class="card quick-composer">
       <div class="quick-composer-row">
         ${renderMiniAvatar(state.auth.user)}
-        <textarea id="rutinaContent" placeholder="¿Qué hiciste hoy?" rows="2">${esc(d.content)}</textarea>
+        <div class="mention-anchor">
+          <textarea id="rutinaContent" placeholder="¿Qué hiciste hoy?" rows="2">${esc(d.content)}</textarea>
+          ${renderMentionSuggestions(d, "rutina", "new", "rutinaContent")}
+        </div>
       </div>
+      <div class="place-picker">
+        <input type="text" id="rutinaPlaceQuery" placeholder="📍 Agregar lugar (país, ciudad, región)..." autocomplete="off" value="${esc(d.placeQuery)}">
+        ${d.placeQuery ? renderPlaceSuggestions(d.placeQuery, "rutina", "new") : ""}
+      </div>
+      ${d.scopes.length ? `<div class="post-scopes" style="margin-top:8px;">${d.scopes.map((sc,i)=>renderScopeChip(sc, "rm-scope-rutina", i, "new")).join("")}</div>` : ""}
       <input type="file" id="rutinaImages" accept="image/*" multiple hidden data-action="rutina-images">
+      <input type="file" id="rutinaFiles" accept="application/pdf,audio/*" multiple hidden data-action="rutina-files">
       ${d.images.length ? `<div class="img-preview-list">${d.images.map((src,i)=>`
         <div class="img-preview"><img src="${src}"><button type="button" class="rm" data-action="rutina-rm-image" data-idx="${i}">✕</button></div>`).join("")}</div>` : ""}
+      ${renderFileChips(d.files, "rutina-rm-file")}
       ${d.links.length ? `<div class="attach-panel">${renderLinkRows("rutina", "new", d.links)}</div>` : ""}
       ${d.error ? `<div class="form-error">${esc(d.error)}</div>` : ""}
       <div class="reply-form-footer">
         <div class="attach-toolbar">
           <label class="btn-attach" for="rutinaImages">📎 Imagen</label>
+          <label class="btn-attach" for="rutinaFiles">📄 PDF/Audio</label>
           <button type="button" class="btn-attach" data-action="rutina-add-link">🔗 Link</button>
         </div>
         <button type="button" class="btn-new" id="rutinaPublish" data-action="submit-rutina" ${d.content.trim() ? "" : "disabled"}>Publicar</button>
@@ -1909,8 +2065,8 @@ async function submitRutina(){
   const postData = {
     title, content, startDate:today, endDate:today, date:today,
     organizer:"", location:"",
-    activityType:"rutina", scopes:[],
-    images:d.images, links,
+    activityType:"rutina", scopes:d.scopes,
+    images:d.images, links, files:d.files, mentions:d.mentions,
     authorName: state.auth.user.displayName, authorEmail: state.auth.user.email,
   };
   try{
@@ -1930,13 +2086,13 @@ const replyDrafts = {}; // postId -> draft
 const openNestedReplyForms = new Set(); // replyIds con su mini-formulario de "responder a esto" abierto
 const nestedReplyDrafts = {}; // replyId -> { content }
 function getNestedReplyDraft(replyId){
-  if(!nestedReplyDrafts[replyId]) nestedReplyDrafts[replyId] = { content:"", images:[], links:[] };
+  if(!nestedReplyDrafts[replyId]) nestedReplyDrafts[replyId] = { content:"", images:[], links:[], files:[], mentions:[], mentionQuery:null, mentionCaret:0 };
   return nestedReplyDrafts[replyId];
 }
 
 function newScopeDraft(){ return { type:"ciudad", country:"", city:"", region:"sur", cityUseCustom:false }; }
 function newReplyDraft(){
-  return { content:"", images:[], links:[], extraScope:false, scopes:[], scopeDraft:newScopeDraft(), scopeError:"" };
+  return { content:"", images:[], links:[], files:[], mentions:[], mentionQuery:null, mentionCaret:0, extraScope:false, scopes:[], scopeDraft:newScopeDraft(), scopeError:"" };
 }
 function getReplyDraft(postId){
   if(!replyDrafts[postId]) replyDrafts[postId] = newReplyDraft();
@@ -1980,6 +2136,7 @@ function renderPostCard(post, replies){
         (post.activityType !== "rutina" ? `<div class="hint" style="color:var(--danger);">⚠️ Sin alcance definido — editalo para asignarle un país/ciudad.</div>` : "")}
       ${linksHtml ? `<div class="post-links">${linksHtml}</div>` : ""}
       ${imagesHtml ? `<div class="post-images">${imagesHtml}</div>` : ""}
+      ${renderPostedFiles(post.files)}
       ${post.lastEditedBy ? `<div class="hint">Editado por ${esc(post.lastEditedBy)}</div>` : ""}
       <div class="post-actions">
         <button data-action="toggle-reply" data-post-id="${post.id}">💬 Responder</button>
@@ -2033,6 +2190,7 @@ function renderReply(r){
       ${scopesHtml ? `<div class="reply-scopes">${scopesHtml}</div>` : ""}
       ${linksHtml ? `<div class="reply-links">${linksHtml}</div>` : ""}
       ${imagesHtml ? `<div class="reply-images">${imagesHtml}</div>` : ""}
+      ${renderPostedFiles(r.files)}
       ${!r.system ? `
       <div class="reply-actions">
         <button data-action="toggle-like" data-post-id="${r.postId}" data-reply-id="${r.id}" class="${liked?"liked":""}">${liked?"👍":"🤍"} Me gusta${likedBy.length?` (${likedBy.length})`:""}</button>
@@ -2043,16 +2201,23 @@ function renderReply(r){
 }
 function renderNestedReplyForm(postId, replyId){
   const d = getNestedReplyDraft(replyId);
+  const textareaId = `nestedReplyContent-${replyId}`;
   return `
     <div class="reply-nested-form">
-      <textarea data-nested-reply-field="content" data-reply-id="${replyId}" placeholder="Responder...">${esc(d.content)}</textarea>
+      <div class="mention-anchor">
+        <textarea id="${textareaId}" data-nested-reply-field="content" data-reply-id="${replyId}" placeholder="Responder... (@ para mencionar a alguien)">${esc(d.content)}</textarea>
+        ${renderMentionSuggestions(d, "nested-reply", replyId, textareaId)}
+      </div>
       <input type="file" id="nestedReplyImages-${replyId}" accept="image/*" multiple hidden data-action="nested-reply-images" data-reply-id="${replyId}">
+      <input type="file" id="nestedReplyFiles-${replyId}" accept="application/pdf,audio/*" multiple hidden data-action="nested-reply-files" data-reply-id="${replyId}">
       ${d.images.length ? `<div class="img-preview-list">${d.images.map((src,i)=>`
         <div class="img-preview"><img src="${src}"><button type="button" class="rm" data-action="nested-reply-rm-image" data-reply-id="${replyId}" data-idx="${i}">✕</button></div>`).join("")}</div>` : ""}
+      ${renderFileChips(d.files, "nested-reply-rm-file", `data-reply-id="${replyId}"`)}
       ${d.links.length ? `<div class="attach-panel">${renderLinkRows("nested-reply", replyId, d.links)}</div>` : ""}
       <div class="reply-form-footer">
         <div class="attach-toolbar">
           <label class="btn-attach" for="nestedReplyImages-${replyId}">📎 Imagen</label>
+          <label class="btn-attach" for="nestedReplyFiles-${replyId}">📄 PDF/Audio</label>
           <button type="button" class="btn-attach" data-action="nested-reply-add-link" data-reply-id="${replyId}">🔗 Link</button>
         </div>
         <div class="modal-actions" style="margin:0;">
@@ -2065,24 +2230,31 @@ function renderNestedReplyForm(postId, replyId){
 
 function renderReplyForm(postId){
   const d = getReplyDraft(postId);
+  const textareaId = `replyContent-${postId}`;
   return `
     <div class="reply" style="margin-top:12px;background:#fff;border:1.5px solid var(--border);">
       <div class="hint" style="margin-bottom:8px;">Respondés como <strong>${esc(state.auth.user.displayName)}</strong></div>
       <div class="field" style="margin-bottom:8px;">
         <label>Respuesta</label>
-        <textarea data-reply-field="content" data-post-id="${postId}" placeholder="Sumá información...">${esc(d.content)}</textarea>
+        <div class="mention-anchor">
+          <textarea id="${textareaId}" data-reply-field="content" data-post-id="${postId}" placeholder="Sumá información... (@ para mencionar a alguien)">${esc(d.content)}</textarea>
+          ${renderMentionSuggestions(d, "reply", postId, textareaId)}
+        </div>
       </div>
       <div class="field" style="margin-bottom:8px;">
         <label><input type="checkbox" data-action="toggle-reply-extra-scope" data-post-id="${postId}" ${d.extraScope?"checked":""}> Esta respuesta también afectó a otro lugar</label>
       </div>
       ${d.extraScope ? renderScopeBuilder("reply", postId, d) : ""}
       <input type="file" id="replyImages-${postId}" accept="image/*" multiple hidden data-action="reply-images" data-post-id="${postId}">
+      <input type="file" id="replyFiles-${postId}" accept="application/pdf,audio/*" multiple hidden data-action="reply-files" data-post-id="${postId}">
       ${d.images.length ? `<div class="img-preview-list">${d.images.map((src,i)=>`
         <div class="img-preview"><img src="${src}"><button type="button" class="rm" data-action="reply-rm-image" data-post-id="${postId}" data-idx="${i}">✕</button></div>`).join("")}</div>` : ""}
+      ${renderFileChips(d.files, "reply-rm-file", `data-post-id="${postId}"`)}
       ${d.links.length ? `<div class="attach-panel">${renderLinkRows("reply", postId, d.links)}</div>` : ""}
       <div class="reply-form-footer">
         <div class="attach-toolbar">
           <label class="btn-attach" for="replyImages-${postId}">📎 Imagen</label>
+          <label class="btn-attach" for="replyFiles-${postId}">📄 PDF/Audio</label>
           <button type="button" class="btn-attach" data-action="reply-add-link" data-post-id="${postId}">🔗 Link</button>
         </div>
         <div class="modal-actions" style="margin:0;">
@@ -2355,6 +2527,10 @@ function newComposerDraft(){
     scopeError: "",
     images: [],
     links: [],
+    files: [],
+    mentions: [],
+    mentionQuery: null,
+    mentionCaret: 0,
     error: "",
     editingPost: null,
   };
@@ -2379,6 +2555,8 @@ function openEditComposer(post){
     activityType: post.activityType, scopes: (post.scopes||[]).map(sc=>({...sc})),
     scopeDraft: newScopeDraft(), scopeError: "",
     images: [...(post.images||[])], links: (post.links||[]).map(l=>({...l})),
+    files: (post.files||[]).map(f=>({...f})),
+    mentions: [...(post.mentions||[])], mentionQuery: null, mentionCaret: 0,
     error: "", editingPost: post,
   };
   postModalTitle.textContent = "Editar posteo";
@@ -2398,7 +2576,10 @@ function renderComposer(){
     </div>
     <div class="field">
       <label>Comentarios</label>
-      <textarea id="cContent" placeholder="Contá qué se hizo (o qué va a pasar)...">${esc(d.content)}</textarea>
+      <div class="mention-anchor">
+        <textarea id="cContent" placeholder="Contá qué se hizo (o qué va a pasar)... usá @ para mencionar a alguien">${esc(d.content)}</textarea>
+        ${renderMentionSuggestions(d, "post", "new", "cContent")}
+      </div>
     </div>
     <div class="row2">
       <div class="field">
@@ -2438,13 +2619,16 @@ function renderComposer(){
       <label>Adjuntos</label>
       <div class="attach-toolbar">
         <label class="btn-attach" for="cImages">📎 Imagen</label>
+        <label class="btn-attach" for="cFiles">📄 PDF/Audio</label>
         <button type="button" class="btn-attach" data-action="post-add-link">🔗 Link</button>
       </div>
       <input type="file" id="cImages" accept="image/*" multiple hidden>
+      <input type="file" id="cFiles" accept="application/pdf,audio/*" multiple hidden>
       ${d.images.length ? `<div class="img-preview-list">${d.images.map((src,i)=>`
         <div class="img-preview"><img src="${src}"><button type="button" class="rm" data-action="post-rm-image" data-idx="${i}">✕</button></div>`).join("")}</div>` : ""}
+      ${renderFileChips(d.files, "post-rm-file")}
       ${d.links.length ? `<div class="attach-panel">${renderLinkRows("post", "new", d.links)}</div>` : ""}
-      <div class="hint">Imágenes: se comprimen solas, máximo 6. Para video, PDF, Word, Excel: pegá un link (Drive, YouTube, etc.).</div>
+      <div class="hint">Imágenes: se comprimen solas, máximo 6. PDF/audio: hasta ${MAX_ATTACHMENT_FILES} archivos chicos (≤${(MAX_ATTACHMENT_FILE_BYTES/1024).toFixed(0)}KB c/u). Para video o archivos más grandes: pegá un link (Drive, YouTube, etc.).</div>
     </div>
     ${d.error ? `<div class="form-error">${esc(d.error)}</div>` : ""}
     <div class="modal-actions">
@@ -2521,6 +2705,81 @@ async function handleImageFiles(fileList, targetArray, max=6){
   render();
 }
 
+// Adjuntos genéricos chicos (PDF, audio): a diferencia de las imágenes no
+// se comprimen (no tiene sentido para un PDF/audio), así que se limita
+// directamente el tamaño del archivo y la cantidad — Firestore permite
+// ~1MB por documento entero, y el base64 pesa ~33% más que el archivo
+// original, así que hay que dejar margen para el resto del posteo.
+const MAX_ATTACHMENT_FILES = 2;
+const MAX_ATTACHMENT_FILE_BYTES = 150 * 1024;
+function readFileAsDataUrl(file){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onerror = ()=>reject(new Error("No se pudo leer el archivo"));
+    reader.onload = ()=>resolve(reader.result);
+    reader.readAsDataURL(file);
+  });
+}
+async function handleFileAttachments(fileList, targetArray){
+  const files = Array.from(fileList).slice(0, Math.max(0, MAX_ATTACHMENT_FILES - targetArray.length));
+  for(const file of files){
+    if(file.size > MAX_ATTACHMENT_FILE_BYTES){
+      alert(`"${file.name}" pesa ${(file.size/1024).toFixed(0)}KB, más del máximo de ${(MAX_ATTACHMENT_FILE_BYTES/1024).toFixed(0)}KB para adjuntar acá. Para archivos más grandes, subilo a Drive (o similar) y pegá el link.`);
+      continue;
+    }
+    try{
+      const dataUrl = await readFileAsDataUrl(file);
+      targetArray.push({ name:file.name, mime:file.type, kind: file.type.startsWith("audio/") ? "audio" : "pdf", dataUrl });
+    }catch(err){ console.error("Error leyendo archivo:", err); }
+  }
+  render();
+}
+function renderFileChips(files, rmAction, extraAttrs=""){
+  if(!files || !files.length) return "";
+  return `<div class="file-preview-list">${files.map((f,i)=>`
+    <div class="file-chip">${f.kind==="audio"?"🎤":"📄"} <span class="fname">${esc(f.name)}</span>
+      <button type="button" class="rm" data-action="${rmAction}" data-idx="${i}" ${extraAttrs}>✕</button></div>`).join("")}</div>`;
+}
+// Archivos YA publicados en un posteo/respuesta (a diferencia de
+// renderFileChips, que es para los que todavía se están por mandar).
+function renderPostedFiles(files){
+  if(!files || !files.length) return "";
+  return `<div class="post-files">${files.map(f => f.kind === "audio"
+    ? `<div class="post-file-audio"><audio controls src="${f.dataUrl}"></audio><span class="fname">${esc(f.name)}</span></div>`
+    : `<a class="post-file-link" href="${f.dataUrl}" download="${esc(f.name)}" target="_blank" rel="noopener noreferrer">📄 ${esc(f.name)}</a>`
+  ).join("")}</div>`;
+}
+
+// Autocompletar "lugar" (composer de Rutina) y "@menciones" (cualquier
+// textarea de contenido): dos listas desplegables chiquitas con el mismo
+// look (.autocomplete-list/.autocomplete-option), una sobre PLACE_INDEX y
+// otra sobre state.roster.
+function renderPlaceSuggestions(query, scope, ownerId){
+  const q = query.trim().toLowerCase();
+  if(!q) return "";
+  const matches = PLACE_INDEX.filter(it => it.label.toLowerCase().includes(q)).slice(0, 8);
+  if(!matches.length) return `<div class="autocomplete-list"><div class="autocomplete-empty">Sin resultados</div></div>`;
+  return `<div class="autocomplete-list">${matches.map(it=>`
+    <button type="button" class="autocomplete-option" data-action="pick-place" data-scope="${scope}" data-owner-id="${ownerId}" data-place-idx="${PLACE_INDEX.indexOf(it)}">${it.icon} ${esc(it.label)}</button>`).join("")}</div>`;
+}
+// Detecta si justo antes del cursor hay un "@palabra" sin terminar, para
+// mostrar (o no) el desplegable de menciones. Se llama en cada tecleo.
+function updateMentionState(draft, textarea){
+  const caret = textarea.selectionStart;
+  const uptoCaret = textarea.value.slice(0, caret);
+  const match = uptoCaret.match(/(?:^|\s)@(\w*)$/);
+  if(match){ draft.mentionQuery = match[1]; draft.mentionCaret = caret; }
+  else { draft.mentionQuery = null; }
+}
+function renderMentionSuggestions(draft, scope, ownerId, textareaId){
+  if(draft.mentionQuery == null) return "";
+  const q = draft.mentionQuery.toLowerCase();
+  const matches = state.roster.filter(u => u.nickname.toLowerCase().startsWith(q)).slice(0, 6);
+  if(!matches.length) return `<div class="autocomplete-list"><div class="autocomplete-empty">Sin coincidencias</div></div>`;
+  return `<div class="autocomplete-list">${matches.map(u=>`
+    <button type="button" class="autocomplete-option" data-action="pick-mention" data-scope="${scope}" data-owner-id="${ownerId}" data-textarea-id="${textareaId}" data-nickname="${esc(u.nickname)}" data-email="${esc(u.email)}">@${esc(u.nickname)}</button>`).join("")}</div>`;
+}
+
 document.addEventListener("click", e=>{
   if(userMenuOpen && !e.target.closest("#userBadge")){
     userMenuOpen = false; render();
@@ -2591,8 +2850,42 @@ document.addEventListener("click", e=>{
     composerDraft.images.splice(Number(t.dataset.idx),1); render();
   } else if(action === "rutina-rm-image"){
     rutinaDraft.images.splice(Number(t.dataset.idx),1); render();
+  } else if(action === "post-rm-file"){
+    composerDraft.files.splice(Number(t.dataset.idx),1); render();
+  } else if(action === "reply-rm-file"){
+    getReplyDraft(postId).files.splice(Number(t.dataset.idx),1); render();
+  } else if(action === "nested-reply-rm-file"){
+    getNestedReplyDraft(t.dataset.replyId).files.splice(Number(t.dataset.idx),1); render();
+  } else if(action === "rutina-rm-file"){
+    rutinaDraft.files.splice(Number(t.dataset.idx),1); render();
   } else if(action === "submit-rutina"){
     submitRutina();
+  } else if(action === "pick-place"){
+    const place = PLACE_INDEX[Number(t.dataset.placeIdx)];
+    const draft = getDraftFor(t.dataset.scope, t.dataset.ownerId);
+    if(place){
+      const exists = draft.scopes.some(sc => JSON.stringify(sc) === JSON.stringify(place.scope));
+      if(!exists) draft.scopes.push(place.scope);
+      draft.placeQuery = "";
+    }
+    render();
+  } else if(action === "pick-mention"){
+    const draft = getDraftFor(t.dataset.scope, t.dataset.ownerId);
+    const nickname = t.dataset.nickname, email = t.dataset.email;
+    const caret = draft.mentionCaret != null ? draft.mentionCaret : draft.content.length;
+    const before = draft.content.slice(0, caret).replace(/@(\w*)$/, "");
+    const after = draft.content.slice(caret);
+    const insText = "@" + nickname + " ";
+    draft.content = before + insText + after;
+    if(!draft.mentions.includes(email)) draft.mentions.push(email);
+    draft.mentionQuery = null;
+    const newCaret = before.length + insText.length;
+    render();
+    // El foco/cursor no se restaura solo acá (fue un click en la
+    // sugerencia, no un evento de la textarea): se reposiciona a mano
+    // justo después de la mención insertada.
+    const el = document.getElementById(t.dataset.textareaId);
+    if(el){ el.focus(); el.setSelectionRange(newCaret, newCaret); }
   } else if(action === "use-city-preset"){
     const sd = getDraftFor(t.dataset.scope, t.dataset.ownerId).scopeDraft;
     sd.cityUseCustom = false; sd.city = ""; render();
@@ -2629,7 +2922,9 @@ document.addEventListener("click", e=>{
   } else if(action === "google-signin"){
     signIn();
   } else if(action === "toggle-user-menu"){
-    userMenuOpen = !userMenuOpen; render();
+    userMenuOpen = !userMenuOpen;
+    if(userMenuOpen) markMentionsSeen();
+    render();
   } else if(action === "sign-out"){
     userMenuOpen = false;
     doSignOut();
@@ -2668,18 +2963,41 @@ document.addEventListener("input", e=>{
   if(t.id === "feedSearch" || t.id === "memoriaSearch"){
     state.filters.text = t.value; render();
   } else if(t.id === "cTitle"){ composerDraft.title = t.value; }
-  else if(t.id === "cContent"){ composerDraft.content = t.value; }
+  else if(t.id === "cContent"){
+    composerDraft.content = t.value;
+    const prevQuery = composerDraft.mentionQuery;
+    updateMentionState(composerDraft, t);
+    if(prevQuery !== composerDraft.mentionQuery) render();
+  }
   else if(t.id === "cOrganizer"){ composerDraft.organizer = t.value; }
   else if(t.id === "cLocation"){ composerDraft.location = t.value; }
   else if(t.id === "rutinaContent"){
     rutinaDraft.content = t.value;
     // Solo habilita/deshabilita el botón Publicar al tipear — evita un
-    // render() completo (y perder el foco/cursor) en cada letra.
+    // render() completo (y perder el foco/cursor) en cada letra, salvo
+    // que se esté escribiendo una @mención (ahí sí hace falta re-renderizar
+    // para mostrar/actualizar el desplegable de sugerencias).
     const btn = document.getElementById("rutinaPublish");
     if(btn) btn.disabled = !t.value.trim();
+    const prevQuery = rutinaDraft.mentionQuery;
+    updateMentionState(rutinaDraft, t);
+    if(prevQuery !== rutinaDraft.mentionQuery) render();
   }
-  else if(t.dataset.replyField === "content"){ getReplyDraft(t.dataset.postId).content = t.value; }
-  else if(t.dataset.nestedReplyField === "content"){ getNestedReplyDraft(t.dataset.replyId).content = t.value; }
+  else if(t.id === "rutinaPlaceQuery"){ rutinaDraft.placeQuery = t.value; render(); }
+  else if(t.dataset.replyField === "content"){
+    const draft = getReplyDraft(t.dataset.postId);
+    draft.content = t.value;
+    const prevQuery = draft.mentionQuery;
+    updateMentionState(draft, t);
+    if(prevQuery !== draft.mentionQuery) render();
+  }
+  else if(t.dataset.nestedReplyField === "content"){
+    const draft = getNestedReplyDraft(t.dataset.replyId);
+    draft.content = t.value;
+    const prevQuery = draft.mentionQuery;
+    updateMentionState(draft, t);
+    if(prevQuery !== draft.mentionQuery) render();
+  }
   else if(t.dataset.scopeField === "city"){ getDraftFor(t.dataset.scope, t.dataset.ownerId).scopeDraft.city = t.value; }
   else if(t.dataset.linkField){
     const draft = getDraftFor(t.dataset.scope, t.dataset.ownerId);
@@ -2712,6 +3030,10 @@ document.addEventListener("change", e=>{
   else if(t.dataset.action === "rutina-images"){ handleImageFiles(t.files, rutinaDraft.images); }
   else if(t.dataset.action === "reply-images"){ handleImageFiles(t.files, getReplyDraft(t.dataset.postId).images); }
   else if(t.dataset.action === "nested-reply-images"){ handleImageFiles(t.files, getNestedReplyDraft(t.dataset.replyId).images); }
+  else if(t.id === "cFiles"){ handleFileAttachments(t.files, composerDraft.files); }
+  else if(t.dataset.action === "rutina-files"){ handleFileAttachments(t.files, rutinaDraft.files); }
+  else if(t.dataset.action === "reply-files"){ handleFileAttachments(t.files, getReplyDraft(t.dataset.postId).files); }
+  else if(t.dataset.action === "nested-reply-files"){ handleFileAttachments(t.files, getNestedReplyDraft(t.dataset.replyId).files); }
   else if(t.dataset.action === "toggle-reply-extra-scope"){
     getReplyDraft(t.dataset.postId).extraScope = t.checked; render();
   }
@@ -2735,7 +3057,7 @@ postForm.addEventListener("submit", async e=>{
     title, content, startDate:d.startDate, endDate:d.endDate, date:d.startDate,
     organizer: d.organizer.trim(), location: d.location.trim(),
     activityType:d.activityType, scopes:d.scopes,
-    images:d.images, links,
+    images:d.images, links, files:d.files, mentions:d.mentions,
     authorName: state.auth.user.displayName, authorEmail: state.auth.user.email,
   };
   try{
@@ -2779,7 +3101,7 @@ async function submitReply(postId){
     await createReply(postId, {
       authorName: state.auth.user.displayName, authorEmail: state.auth.user.email,
       content, scopes:d.extraScope ? d.scopes : [],
-      images:d.images, links,
+      images:d.images, links, files:d.files, mentions:d.mentions,
     });
     openReplyForms.delete(postId);
     resetReplyDraft(postId);
@@ -2804,7 +3126,7 @@ async function submitNestedReply(postId, replyId){
   try{
     await createReply(postId, {
       authorName: state.auth.user.displayName, authorEmail: state.auth.user.email,
-      content, scopes:[], images:d.images, links, replyToId,
+      content, scopes:[], images:d.images, links, files:d.files, mentions:d.mentions, replyToId,
     });
     openNestedReplyForms.delete(replyId);
     delete nestedReplyDrafts[replyId];
