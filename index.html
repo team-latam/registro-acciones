@@ -1605,6 +1605,7 @@ function anyActiveFilter(){
 }
 
 const openReplyForms = new Set();
+const openThreads = new Set(); // postIds con el hilo de comentarios desplegado
 const replyDrafts = {}; // postId -> draft
 
 function newScopeDraft(){ return { type:"ciudad", country:"", city:"", region:"sur", cityUseCustom:false }; }
@@ -1627,6 +1628,7 @@ function renderPostCard(post, replies){
   const imagesHtml = (post.images||[]).map(src=>
     `<img src="${src}" data-action="open-lightbox" data-src="${src}">`).join("");
   const replyOpen = openReplyForms.has(post.id);
+  const threadOpen = openThreads.has(post.id);
   const startDate = post.startDate || post.date;
   const endDate = post.endDate || startDate;
   const dateLabel = endDate && endDate !== startDate ? `${fmtDate(startDate)} – ${fmtDate(endDate)}` : fmtDate(startDate);
@@ -1654,11 +1656,12 @@ function renderPostCard(post, replies){
       ${imagesHtml ? `<div class="post-images">${imagesHtml}</div>` : ""}
       ${post.lastEditedBy ? `<div class="hint">Editado por ${esc(post.lastEditedBy)}</div>` : ""}
       <div class="post-actions">
-        <button data-action="toggle-reply" data-post-id="${post.id}">💬 Responder${replies.length?` (${replies.length})`:""}</button>
+        <button data-action="toggle-reply" data-post-id="${post.id}">💬 Responder</button>
+        ${replies.length ? `<button data-action="toggle-thread" data-post-id="${post.id}">${threadOpen ? "▲ Ocultar" : "▼ Ver"} ${replies.length} comentario${replies.length===1?"":"s"}</button>` : ""}
         ${editable ? `<button data-action="edit-post" data-post-id="${post.id}">✏️ Editar</button>` : ""}
         ${canCancel ? `<button data-action="cancel-post" data-post-id="${post.id}">🚫 Cancelar evento</button>` : ""}
       </div>
-      ${renderThread(post, replies)}
+      ${threadOpen ? renderThread(post, replies) : ""}
       ${replyOpen ? renderReplyForm(post.id) : ""}
     </article>`;
 }
@@ -2137,7 +2140,11 @@ document.addEventListener("click", e=>{
   } else if(action === "open-lightbox"){
     openLightbox(t.dataset.src);
   } else if(action === "toggle-reply"){
-    openReplyForms.has(postId) ? openReplyForms.delete(postId) : openReplyForms.add(postId);
+    if(openReplyForms.has(postId)){ openReplyForms.delete(postId); }
+    else{ openReplyForms.add(postId); openThreads.add(postId); }
+    render();
+  } else if(action === "toggle-thread"){
+    openThreads.has(postId) ? openThreads.delete(postId) : openThreads.add(postId);
     render();
   } else if(action === "edit-post"){
     const post = getPostById(postId);
