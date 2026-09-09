@@ -321,6 +321,23 @@ individuales (para no generar un aluvión de posteos por cada repetición):
 una serie recurrente cuenta como un solo evento. No debería ser un
 problema real, ya que cada acción del equipo tiene sus propias fechas.
 
+### Auditoría (solo admin)
+
+Pestaña "Auditoría", visible solo para `ADMIN_EMAIL`: un registro de
+eventos de **acceso y administración** (colección `auditLog`), no del
+contenido de los posteos. Como el login es 100% con cuenta de Google, no
+existe "cambio de contraseña" que registrar; en su lugar queda
+constancia de:
+
+- Inicio de sesión (una vez por sesión de navegador, no en cada recarga).
+- Pedido de acceso (primera vez, o "pedir de nuevo" tras un rechazo).
+- Aprobar / rechazar / revocar acceso.
+- Compartir / sacar a alguien del Calendar compartido.
+
+Cualquier persona logueada puede **crear** una entrada, pero solo sobre
+sí misma como actor (así queda registro del login incluso de alguien que
+todavía no está aprobado); **leer** el registro es exclusivo del admin.
+
 ## 4. Qué falta / decisiones pendientes
 
 - **Roles**: hoy todo aprobado tiene los mismos permisos (leer + publicar).
