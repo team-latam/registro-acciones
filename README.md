@@ -178,8 +178,15 @@ Cada posteo de tipo Visita/Curso/Seminario/Congreso/Otro (todo menos
 calendario compartido de LatAm — el ID vive en la constante `CALENDAR_ID`
 de `index.html`. No hay backend propio: se usa el token de Google del
 propio usuario que publica (por eso hace falta que TODO el que carga
-eventos tenga permiso de "Hacer cambios en eventos" en ese calendario).
+eventos tenga permiso de "Hacer cambios en eventos" en ese calendario,
+compartido a mano desde Google Calendar — la app no puede hacer eso por
+sí sola, son dos sistemas separados).
 
+- **Mantené sincronizadas dos listas por separado**: la de aprobados en
+  la app (pestaña Solicitudes) y la de "compartido con" del calendario
+  "LatAm" en Google Calendar. La app te lo recuerda con un aviso cada vez
+  que aprobás o revocás a alguien, pero el paso en sí (agregar/sacar del
+  calendario) es manual, en la configuración del calendario, no en la app.
 - Al iniciar sesión con Google, la app pide también el permiso de
   `calendar.events` (además del básico de perfil/email). Google puede
   mostrar la pantalla **"Google no verificó esta app"** al pedir ese
