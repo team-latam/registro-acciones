@@ -169,17 +169,48 @@
      varias columnas en vez de una fila entera por país — con 43 países
      una lista de una sola columna ocupaba una pantalla entera de alto. */
   /* Ancho tope: sin esto, en pantallas grandes ocupaba los 1200px de
-     "main" — las filas de zona quedaban como barras finitas y
-     desproporcionadas, y la grilla de países armaba 6+ columnas
-     apretadísimas. Como panel de configuración, se lee mejor angosto. */
-  .preferencias-view{ max-width:760px; }
+     "main" y quedaba desproporcionado. 980px (no 760px) porque la
+     sección Zonas necesita lugar para 2-3 columnas de países por fila. */
+  .preferencias-view{ max-width:980px; }
+  /* Zonas v3: cada zona es una sección apilada de ancho completo (no
+     columnas lado a lado, eso se probó y no gustó — ver charla) con una
+     cabecera de color y sus países debajo en filas grandes, en vez de
+     una lista aparte de países con selects sueltos. */
+  .zone-section{ border-radius:var(--radius-lg); overflow:hidden; box-shadow:var(--shadow); background:#fff; }
+  .zone-section + .zone-section{ margin-top:14px; }
+  .zone-bar{ display:flex; align-items:center; gap:12px; padding:14px 18px; }
+  .zone-swatch{
+    width:20px; height:20px; border-radius:6px; flex:none; cursor:pointer; display:block;
+    position:relative; overflow:hidden;
+  }
+  .zone-swatch:hover{ box-shadow:0 0 0 3px rgba(0,0,0,0.08); }
+  .zone-swatch input[type=color]{ position:absolute; inset:0; width:100%; height:100%; padding:0; border:none; cursor:pointer; opacity:0; }
+  .zone-name{
+    font-size:16px; font-weight:800; color:var(--petroleo-dark); border:none; background:transparent;
+    font-family:inherit; padding:2px 0; border-bottom:1.5px solid transparent; flex:1; min-width:0;
+  }
+  .zone-name:hover, .zone-name:focus{ outline:none; border-bottom-color:var(--border); }
+  .zone-rm{
+    width:24px; height:24px; border-radius:50%; border:none; background:transparent; color:var(--text-muted);
+    font-size:13px; cursor:pointer; flex:none; line-height:24px; text-align:center; padding:0;
+  }
+  .zone-rm:hover:not(:disabled){ background:#fdeceb; color:var(--danger); }
+  .zone-rm:disabled{ opacity:0.25; cursor:not-allowed; }
+  .zone-countries{ display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); border-top:1px solid var(--border); }
+  .zone-countries:empty{ display:none; }
+  .country-row{ display:flex; align-items:center; gap:10px; padding:12px 18px; border-top:1px solid var(--border); border-right:1px solid var(--border); }
+  .country-name{ flex:1; min-width:0; font-size:14px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .country-row select{
+    border:1.5px solid var(--border); background:var(--bg); color:var(--text); font-family:inherit;
+    font-size:12px; font-weight:700; border-radius:999px; padding:6px 12px; cursor:pointer; flex:none;
+  }
+  @media (max-width:520px){ .zone-countries{ grid-template-columns:1fr; } .country-row{ border-right:none; } }
   .pref-subnav{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:16px; }
   .tipo-icon-input{
     width:38px; flex:none; border:1px solid var(--border); border-radius:6px; padding:3px 4px;
     font-size:15px; text-align:center; background:#fff;
   }
   .tipo-sync-toggle{ display:flex; align-items:center; gap:4px; font-size:11px; color:var(--text-muted); flex:none; white-space:nowrap; cursor:pointer; }
-  .zonas-h3{ font-size:13px; color:var(--petroleo); margin:16px 0 6px; text-transform:uppercase; letter-spacing:0.3px; }
   .zone-edit-list{
     display:flex; flex-direction:column; border:1px solid var(--border); border-radius:var(--radius-sm); overflow:hidden;
   }
@@ -2442,41 +2473,40 @@ function renderZonasSection(){
         Estas zonas y colores se usan en todo el Registro (mapa de Países, filtros del Feed/Memoria, chips de alcance).
         Cambiar la zona de un país acá se aplica también a los posteos ya cargados — no hace falta editarlos uno por uno.
       </div>
-      <h3 class="zonas-h3">Zonas</h3>
-      <div class="zone-edit-list">
-        ${d.zoneOrder.map(key=>{
-          const z = d.zones[key];
-          const count = countByZone[key] || 0;
-          return `<div class="zone-edit-row">
-            <input type="color" data-action="zonas-color" data-key="${key}" value="${esc(z.color)}">
-            <input type="text" class="zone-label-input" data-action="zonas-label" data-key="${key}" value="${esc(z.label)}" maxlength="30">
+      ${d.zoneOrder.map(key=>{
+        const z = d.zones[key];
+        const count = countByZone[key] || 0;
+        // Alfabético (con acentos bien ordenados) adentro de cada zona,
+        // para poder ubicar un país a ojo en vez de buscarlo en el orden
+        // en que se cargó originalmente.
+        const countries = Object.keys(d.countryZones)
+          .filter(name=>d.countryZones[name]===key)
+          .sort((a,b)=>a.localeCompare(b,"es"));
+        return `<div class="zone-section">
+          <div class="zone-bar" style="background:${esc(z.color)}14;">
+            <label class="zone-swatch" style="background:${esc(z.color)}" title="Cambiar color">
+              <input type="color" data-action="zonas-color" data-key="${key}" value="${esc(z.color)}">
+            </label>
+            <input type="text" class="zone-name" data-action="zonas-label" data-key="${key}" value="${esc(z.label)}" maxlength="30">
             <span class="zone-count">${count} país${count===1?"":"es"}</span>
-            <button type="button" class="rm" data-action="zonas-remove-zone" data-key="${key}" ${count>0?"disabled title=\"Reasigná primero los países de esta zona\"":"title=\"Eliminar zona\""}>✕</button>
-          </div>`;
-        }).join("")}
-      </div>
+            <button type="button" class="zone-rm" data-action="zonas-remove-zone" data-key="${key}" ${count>0?"disabled title=\"Reasigná primero los países de esta zona\"":"title=\"Eliminar zona\""}>✕</button>
+          </div>
+          <div class="zone-countries">
+            ${countries.map(name=>`
+              <div class="country-row">
+                <span class="country-name" title="${esc(name)}">${esc(name)}</span>
+                <select data-action="zonas-country-zone" data-country="${esc(name)}">
+                  ${d.zoneOrder.map(k2=>`<option value="${k2}" ${key===k2?"selected":""}>${esc(d.zones[k2].label)}</option>`).join("")}
+                </select>
+              </div>`).join("")}
+          </div>
+        </div>`;
+      }).join("")}
       <div class="zone-add-row">
         <input type="text" id="zonasNewZoneLabel" placeholder="Nombre de la zona nueva (ej: Caribe)" maxlength="30" value="${esc(d.newZoneLabel)}">
         <button type="button" class="btn-mini" data-action="zonas-add-zone">+ Agregar zona</button>
       </div>
       ${d.error ? `<div class="form-error">${esc(d.error)}</div>` : ""}
-
-      <h3 class="zonas-h3">Países</h3>
-      <div class="hint" style="margin-bottom:10px;">A qué zona pertenece cada país — define su color en el mapa y en qué filtro de región aparece.</div>
-      <div class="country-zone-list">
-        ${COUNTRIES.map(c=>{
-          const zoneKey = d.countryZones[c.name];
-          const color = (d.zones[zoneKey]||{}).color || "#999";
-          return `<div class="country-zone-row">
-            <span class="zdot" style="background:${esc(color)}"></span>
-            <span class="cz-name" title="${esc(c.name)}">${esc(c.name)}</span>
-            <select data-action="zonas-country-zone" data-country="${esc(c.name)}">
-              ${d.zoneOrder.map(key=>`<option value="${key}" ${zoneKey===key?"selected":""}>${esc(d.zones[key].label)}</option>`).join("")}
-            </select>
-          </div>`;
-        }).join("")}
-      </div>
-
       <div class="modal-actions" style="margin-top:16px;">
         <button type="button" class="btn-secondary" data-action="zonas-reset">Descartar cambios</button>
         <button type="button" class="btn-primary" data-action="zonas-save" ${d.saving?"disabled":""}>${d.saving?"Guardando…":"Guardar cambios"}</button>
