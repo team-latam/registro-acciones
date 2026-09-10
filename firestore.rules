@@ -289,9 +289,13 @@ service cloud.firestore {
         isNonEmptyString(d.actorName, 120) &&
         isOptionalString(d.get('targetEmail', null), 200) &&
         isOptionalString(d.get('detail', null), 300) &&
-        // Resumen corto de navegador/SO (ver deviceLabel en index.html),
-        // no la IP — se saca del user-agent en el cliente, sin backend.
+        // Resumen corto de navegador/SO (ver deviceLabel en index.html) —
+        // se saca del user-agent en el cliente, sin backend.
         isOptionalString(d.get('device', null), 60) &&
+        // IP pública (ver fetchPublicIp en index.html, pedida a un
+        // servicio externo ya que no hay backend propio); 45 alcanza para
+        // IPv4 y para la representación más larga de IPv6.
+        isOptionalString(d.get('ip', null), 45) &&
         d.actorEmail == request.auth.token.email &&
         d.createdAt == request.time;
     }
