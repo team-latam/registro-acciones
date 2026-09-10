@@ -168,6 +168,11 @@
      línea cada una (sin tarjeta propia) y los países en una grilla de
      varias columnas en vez de una fila entera por país — con 43 países
      una lista de una sola columna ocupaba una pantalla entera de alto. */
+  /* Ancho tope: sin esto, en pantallas grandes ocupaba los 1200px de
+     "main" — las filas de zona quedaban como barras finitas y
+     desproporcionadas, y la grilla de países armaba 6+ columnas
+     apretadísimas. Como panel de configuración, se lee mejor angosto. */
+  .zonas-view{ max-width:760px; }
   .zonas-h3{ font-size:13px; color:var(--petroleo); margin:16px 0 6px; text-transform:uppercase; letter-spacing:0.3px; }
   .zone-edit-list{
     display:flex; flex-direction:column; border:1px solid var(--border); border-radius:var(--radius-sm); overflow:hidden;
@@ -190,15 +195,15 @@
   .zone-add-row{ display:flex; gap:8px; margin-top:6px; }
   .zone-add-row input{ flex:1; border:1.5px solid var(--border); border-radius:8px; padding:7px 10px; font-size:13px; }
   .country-zone-list{
-    display:grid; grid-template-columns:repeat(auto-fill, minmax(190px, 1fr)); gap:1px;
+    display:grid; grid-template-columns:repeat(auto-fill, minmax(230px, 1fr)); gap:1px;
     background:var(--border); border:1px solid var(--border); border-radius:var(--radius-sm);
-    overflow:hidden; max-height:360px; overflow-y:auto;
+    overflow:hidden; max-height:400px; overflow-y:auto;
   }
-  .country-zone-row{ display:flex; align-items:center; gap:6px; background:#fff; padding:5px 8px; }
+  .country-zone-row{ display:flex; align-items:center; gap:8px; background:#fff; padding:7px 10px; }
   .country-zone-row .zdot{ width:8px; height:8px; border-radius:50%; flex:none; }
-  .cz-name{ flex:1; min-width:0; font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .cz-name{ flex:1; min-width:0; font-size:12.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .country-zone-row select{
-    flex:none; max-width:88px; border:1px solid var(--border); border-radius:6px; padding:3px 4px; font-size:11px; background:#fbfdfd;
+    flex:none; width:100px; border:1px solid var(--border); border-radius:6px; padding:4px 5px; font-size:11.5px; background:#fbfdfd;
   }
   nav.tabs{ max-width:1200px; margin:14px auto 0 auto; display:flex; gap:4px; }
   nav.tabs.tabs-hidden{ visibility:hidden; pointer-events:none; }
@@ -2385,7 +2390,7 @@ function renderZonasView(){
           const color = (d.zones[zoneKey]||{}).color || "#999";
           return `<div class="country-zone-row">
             <span class="zdot" style="background:${esc(color)}"></span>
-            <span class="cz-name">${esc(c.name)}</span>
+            <span class="cz-name" title="${esc(c.name)}">${esc(c.name)}</span>
             <select data-action="zonas-country-zone" data-country="${esc(c.name)}">
               ${d.zoneOrder.map(key=>`<option value="${key}" ${zoneKey===key?"selected":""}>${esc(d.zones[key].label)}</option>`).join("")}
             </select>
