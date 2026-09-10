@@ -288,12 +288,17 @@
   .modal{
     background:#fff; border-radius:var(--radius-lg); width:100%; max-width:640px; padding:22px;
     box-shadow:0 20px 60px rgba(0,0,0,0.3); margin:auto 0;
+    /* Altura tope: que el modal no siga creciendo con cada campo nuevo
+       (Tipo de actividad, Adjuntos, error, botones) — a partir de acá
+       scrollea SOLO el formulario, con el título siempre visible arriba. */
+    max-height:min(720px, 88vh); display:flex; flex-direction:column;
   }
-  .modal h2{ margin:0 0 14px 0; font-size:18px; color:var(--petroleo); }
+  .modal h2{ margin:0 0 14px 0; font-size:18px; color:var(--petroleo); flex:none; }
   .modal .close{
     position:absolute; top:14px; right:16px; background:none; border:none; font-size:20px; cursor:pointer; color:var(--text-muted);
   }
   .modal-wrap{ position:relative; }
+  #postForm{ overflow-y:auto; flex:1; min-height:0; padding-right:4px; margin-right:-4px; }
   .field{ margin-bottom:14px; }
   .field label{ display:block; font-size:12px; font-weight:700; color:var(--text-muted); margin-bottom:5px; text-transform:uppercase; letter-spacing:0.4px; }
   .field input[type=text], .field input[type=date], .field textarea, .field select, .field input[type=url]{
