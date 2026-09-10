@@ -215,22 +215,26 @@
   .setting-text{ flex:1 1 180px; min-width:0; }
   .setting-label{ font-size:14px; font-weight:700; color:var(--petroleo-dark); }
   .setting-sub{ font-size:12px; color:var(--text-muted); margin-top:2px; }
-  .setting-control{ flex:none; display:flex; align-items:center; gap:6px; }
+  /* Ancho fijo común: sin esto, la caja con unidad (KB) quedaba más
+     ancha que las otras dos (el input + el sufijo "KB" suman más que
+     un input solo) — con .setting-control-unit compartiendo la misma
+     clase .setting-control, las tres cajas de Adjuntos miden lo mismo. */
+  .setting-control{ flex:none; display:flex; align-items:center; gap:6px; width:96px; }
   .setting-control input[type=number]{
-    width:72px; border:1.5px solid var(--border); border-radius:8px; padding:8px 10px; font-size:14px;
+    width:100%; border:1.5px solid var(--border); border-radius:8px; padding:8px 10px; font-size:14px;
     font-weight:700; text-align:center; background:var(--bg); font-family:inherit;
   }
   /* La fila con unidad (KB) se ve como UNA caja, no un input + texto
-     suelto al lado — mismo alto/borde que las otras dos filas de
+     suelto al lado — mismo alto/borde/ancho que las otras dos filas de
      Adjuntos, con la unidad adentro a modo de sufijo. */
   .setting-control-unit{
     border:1.5px solid var(--border); border-radius:8px; overflow:hidden; background:var(--bg); gap:0;
   }
   .setting-control-unit input[type=number]{
-    width:68px; border:none; border-radius:0; background:transparent; padding:8px 4px 8px 10px; text-align:right;
+    flex:1; width:auto; min-width:0; border:none; border-radius:0; background:transparent; padding:8px 4px 8px 10px; text-align:right;
   }
   .setting-unit{
-    font-size:12px; font-weight:700; color:var(--text-muted); padding:8px 10px 8px 4px;
+    flex:none; font-size:12px; font-weight:700; color:var(--text-muted); padding:8px 10px 8px 4px;
   }
   .pref-subnav{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:16px; }
   .tipo-icon-input{
