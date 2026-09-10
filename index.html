@@ -2971,7 +2971,7 @@ function closeComposer(){
 function renderComposer(){
   const d = composerDraft;
   postForm.innerHTML = `
-    <div class="hint">${d.editingPost ? `Editás como <strong>${esc(state.auth.user.displayName)}</strong> (el posteo original sigue figurando de ${esc(d.editingPost.authorName)})` : `Publicás como <strong>${esc(state.auth.user.displayName)}</strong>`}</div>
+    ${d.editingPost ? `<div class="hint">Editás como <strong>${esc(state.auth.user.displayName)}</strong> (el posteo original sigue figurando de ${esc(d.editingPost.authorName)})</div>` : ""}
     <div class="field field-title-plain">
       <input type="text" id="cTitle" maxlength="140" class="title-input-plain" placeholder="Agregar título" value="${esc(d.title)}">
     </div>
@@ -3022,7 +3022,6 @@ function renderComposer(){
             <input type="radio" name="cType" value="${t.key}" ${d.activityType===t.key?"checked":""}> ${t.icon} ${t.label}
           </label>`).join("")}
       </div>
-      ${CALENDAR_SYNC_TYPES.has(d.activityType) ? `<div class="hint">📅 Se suma solo al Calendar compartido de LatAm.</div>` : `<div class="hint">Las rutinas no se suman al Calendar.</div>`}
     </div>
     <div class="field">
       <label>Adjuntos</label>
