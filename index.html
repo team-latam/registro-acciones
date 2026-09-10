@@ -1551,12 +1551,12 @@ async function fetchCalendarChanges(syncToken){
 // de "todo el día" que arma esta misma app tienen el fin exclusivo
 // (+1 día, ver buildCalendarEvent) así que hay que deshacer eso acá.
 function calendarEventDates(ev){
-  if(ev.start?.date) return { startDate: ev.start.date, endDate: addDaysISO(ev.end?.date || ev.start.date, -1), startTime:"", endTime:"" };
+  if(ev.start?.date) return { startDate: ev.start.date, endDate: addDaysISO(ev.end?.date || ev.start.date, -1), startTime:null, endTime:null };
   if(ev.start?.dateTime) return {
     startDate: ev.start.dateTime.slice(0,10), endDate: (ev.end?.dateTime || ev.start.dateTime).slice(0,10),
     startTime: ev.start.dateTime.slice(11,16), endTime: (ev.end?.dateTime || ev.start.dateTime).slice(11,16),
   };
-  return { startDate:null, endDate:null, startTime:"", endTime:"" };
+  return { startDate:null, endDate:null, startTime:null, endTime:null };
 }
 
 // El "summary" que la app manda a Calendar lleva el prefijo "Tipo: " (ver
@@ -1588,7 +1588,7 @@ async function applyCalendarEventToPosts(ev){
   if(existing){
     const newTitle = extractTitleFromSummary(ev.summary, existing.activityType).trim();
     const titleChanged = !!newTitle && newTitle !== existing.title;
-    const timeChanged = (existing.startTime||"") !== startTime || (existing.endTime||"") !== endTime;
+    const timeChanged = (existing.startTime||"") !== (startTime||"") || (existing.endTime||"") !== (endTime||"");
     const changed = existing.startDate !== startDate || existing.endDate !== endDate || timeChanged || (existing.location||"") !== location || titleChanged;
     if(!changed) return;
     const parts = [];
@@ -2155,7 +2155,7 @@ function buildEditSummary(original, next){
 async function updatePostAndSync(postId, original, newData){
   const patch = {
     title:newData.title, content:newData.content, startDate:newData.startDate, endDate:newData.endDate,
-    date:newData.startDate, startTime:newData.startTime||"", endTime:newData.endTime||"",
+    date:newData.startDate, startTime:newData.startTime||null, endTime:newData.endTime||null,
     participants:newData.participants,
     activityType:newData.activityType, scopes:newData.scopes, images:newData.images, links:newData.links,
     lastEditedAt: fb.serverTimestamp(), lastEditedBy: state.auth.user.displayName,
@@ -4372,7 +4372,7 @@ postForm.addEventListener("submit", async e=>{
   const links = d.links.filter(l=>safeUrl(l.url));
   const postData = {
     title, content, startDate:d.startDate, endDate:d.endDate, date:d.startDate,
-    startTime: d.allDay ? "" : d.startTime, endTime: d.allDay ? "" : d.endTime,
+    startTime: d.allDay ? null : d.startTime, endTime: d.allDay ? null : d.endTime,
     participants: d.participants,
     activityType:d.activityType, scopes:d.scopes,
     images:d.images, links, files:d.files, mentions:extractMentionsFromContent(content),
