@@ -205,6 +205,22 @@
     font-size:12px; font-weight:700; border-radius:999px; padding:6px 12px; cursor:pointer; flex:none;
   }
   @media (max-width:520px){ .zone-countries{ grid-template-columns:1fr; } .country-row{ border-right:none; } }
+  /* Filas de configuración genéricas (ícono + texto + control), usadas
+     hoy en Adjuntos — mismo lenguaje visual que .zone-section/.country-row
+     en vez de labels sueltos arriba de inputs. */
+  .settings-card{ background:#fff; border-radius:var(--radius-lg); box-shadow:var(--shadow); overflow:hidden; }
+  .setting-row{ display:flex; align-items:center; gap:14px; padding:14px 18px; flex-wrap:wrap; }
+  .setting-row + .setting-row{ border-top:1px solid var(--border); }
+  .setting-icon{ font-size:19px; flex:none; width:26px; text-align:center; }
+  .setting-text{ flex:1 1 180px; min-width:0; }
+  .setting-label{ font-size:14px; font-weight:700; color:var(--petroleo-dark); }
+  .setting-sub{ font-size:12px; color:var(--text-muted); margin-top:2px; }
+  .setting-control{ flex:none; display:flex; align-items:center; gap:6px; }
+  .setting-control input[type=number]{
+    width:72px; border:1.5px solid var(--border); border-radius:8px; padding:8px 10px; font-size:14px;
+    font-weight:700; text-align:center; background:var(--bg); font-family:inherit;
+  }
+  .setting-unit{ font-size:12px; font-weight:700; color:var(--text-muted); }
   .pref-subnav{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:16px; }
   .tipo-icon-input{
     width:38px; flex:none; border:1px solid var(--border); border-radius:6px; padding:3px 4px;
@@ -214,12 +230,16 @@
   .zone-edit-list{
     display:flex; flex-direction:column; border:1px solid var(--border); border-radius:var(--radius-sm); overflow:hidden;
   }
-  .zone-edit-row{ display:flex; align-items:center; gap:8px; padding:5px 8px; background:#fff; }
+  .zone-edit-row{ display:flex; align-items:center; gap:8px; padding:8px; background:#fff; flex-wrap:wrap; row-gap:6px; }
   .zone-edit-row + .zone-edit-row{ border-top:1px solid var(--border); }
   .zone-edit-row:hover{ background:#f8fbfb; }
   .zone-edit-row input[type=color]{ width:20px; height:20px; padding:0; border:none; border-radius:5px; cursor:pointer; flex:none; }
   .zone-label-input{
-    flex:1; min-width:0; border:1px solid transparent; border-radius:6px; padding:3px 6px; font-size:13px;
+    /* flex-basis 90px (no 0%) para que, si no entra todo en una línea,
+       el input pase a la línea siguiente entero en vez de achicarse
+       hasta un ancho casi invisible (se veía como un hueco vacío antes
+       del checkbox "Calendar" en pantallas angostas). */
+    flex:1 1 90px; min-width:90px; border:1px solid transparent; border-radius:6px; padding:3px 6px; font-size:13px;
     font-weight:600; background:transparent;
   }
   .zone-label-input:hover, .zone-label-input:focus{ border-color:var(--border); background:#fff; outline:none; }
@@ -2639,12 +2659,40 @@ function renderAdjuntosSection(){
   const d = getAdjuntosDraft();
   return `
       <div class="hint" style="margin-bottom:16px;">Límites de archivos que se pueden adjuntar a un posteo (Evento, Rutina o respuesta).</div>
-      <div class="row2">
-        <div class="field"><label>Máximo de imágenes</label><input type="number" id="adjMaxImages" min="1" max="6" value="${d.maxImages}"></div>
-        <div class="field"><label>Máximo de PDF/audio</label><input type="number" id="adjMaxFiles" min="1" max="2" value="${d.maxFiles}"></div>
+      <div class="settings-card">
+        <div class="setting-row">
+          <span class="setting-icon">🖼️</span>
+          <div class="setting-text">
+            <div class="setting-label">Máximo de imágenes</div>
+            <div class="setting-sub">Por posteo — tope duro: ${HARD_MAX_IMAGES}</div>
+          </div>
+          <div class="setting-control">
+            <input type="number" id="adjMaxImages" min="1" max="${HARD_MAX_IMAGES}" value="${d.maxImages}">
+          </div>
+        </div>
+        <div class="setting-row">
+          <span class="setting-icon">📄</span>
+          <div class="setting-text">
+            <div class="setting-label">Máximo de PDF/audio</div>
+            <div class="setting-sub">Por posteo — tope duro: ${HARD_MAX_ATTACHMENT_FILES}</div>
+          </div>
+          <div class="setting-control">
+            <input type="number" id="adjMaxFiles" min="1" max="${HARD_MAX_ATTACHMENT_FILES}" value="${d.maxFiles}">
+          </div>
+        </div>
+        <div class="setting-row">
+          <span class="setting-icon">⚖️</span>
+          <div class="setting-text">
+            <div class="setting-label">Tamaño máximo por archivo</div>
+            <div class="setting-sub">Para cada PDF/audio adjunto</div>
+          </div>
+          <div class="setting-control">
+            <input type="number" id="adjMaxFileKB" min="50" max="500" value="${d.maxFileKB}">
+            <span class="setting-unit">KB</span>
+          </div>
+        </div>
       </div>
-      <div class="field"><label>Tamaño máximo por PDF/audio (KB)</label><input type="number" id="adjMaxFileKB" min="50" max="500" value="${d.maxFileKB}"></div>
-      <div class="hint">Los topes duros son 6 imágenes y 2 archivos (también los exige Firestore) — acá se puede achicar, no agrandar más que eso.</div>
+      <div class="hint" style="margin-top:12px;">Los topes duros también los exige Firestore — acá se puede achicar, no agrandar más que eso.</div>
       ${d.error ? `<div class="form-error">${esc(d.error)}</div>` : ""}
       <div class="modal-actions" style="margin-top:16px;">
         <button type="button" class="btn-secondary" data-action="adjuntos-reset">Descartar cambios</button>
