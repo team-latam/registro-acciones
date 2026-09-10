@@ -2925,6 +2925,7 @@ function newComposerDraft(){
     images: [],
     links: [],
     files: [],
+    attachOpen: false,
     mentionQuery: null,
     mentionCaret: 0,
     mentionHighlight: 0,
@@ -2957,7 +2958,7 @@ function openEditComposer(post){
     activityType: post.activityType, scopes: (post.scopes||[]).map(sc=>({...sc})),
     placeQuery: "", placeHighlight: 0,
     images: [...(post.images||[])], links: (post.links||[]).map(l=>({...l})),
-    files: (post.files||[]).map(f=>({...f})),
+    files: (post.files||[]).map(f=>({...f})), attachOpen: false,
     mentionQuery: null, mentionCaret: 0, mentionHighlight: 0,
     error: "", editingPost: post,
   };
@@ -3024,19 +3025,23 @@ function renderComposer(){
       </div>
     </div>
     <div class="field">
-      <label>Adjuntos</label>
-      <div class="attach-toolbar">
-        <label class="btn-attach" for="cImages">📎 Imagen</label>
-        <label class="btn-attach" for="cFiles">📄 PDF/Audio</label>
-        <button type="button" class="btn-attach" data-action="post-add-link">🔗 Link</button>
-      </div>
       <input type="file" id="cImages" accept="image/*" multiple hidden>
       <input type="file" id="cFiles" accept="application/pdf,audio/*" multiple hidden>
-      ${d.images.length ? `<div class="img-preview-list">${d.images.map((src,i)=>`
-        <div class="img-preview"><img src="${src}"><button type="button" class="rm" data-action="post-rm-image" data-idx="${i}">✕</button></div>`).join("")}</div>` : ""}
-      ${renderFileChips(d.files, "post-rm-file")}
-      ${d.links.length ? `<div class="attach-panel">${renderLinkRows("post", "new", d.links)}</div>` : ""}
-      <div class="hint">Imágenes: se comprimen solas, máximo 6. PDF/audio: hasta ${MAX_ATTACHMENT_FILES} archivos chicos (≤${(MAX_ATTACHMENT_FILE_BYTES/1024).toFixed(0)}KB c/u). Para video o archivos más grandes: pegá un link (Drive, YouTube, etc.).</div>
+      ${(d.attachOpen || d.images.length || d.files.length || d.links.length) ? `
+        <label>Adjuntos</label>
+        <div class="attach-toolbar">
+          <label class="btn-attach" for="cImages">📎 Imagen</label>
+          <label class="btn-attach" for="cFiles">📄 PDF/Audio</label>
+          <button type="button" class="btn-attach" data-action="post-add-link">🔗 Link</button>
+        </div>
+        ${d.images.length ? `<div class="img-preview-list">${d.images.map((src,i)=>`
+          <div class="img-preview"><img src="${src}"><button type="button" class="rm" data-action="post-rm-image" data-idx="${i}">✕</button></div>`).join("")}</div>` : ""}
+        ${renderFileChips(d.files, "post-rm-file")}
+        ${d.links.length ? `<div class="attach-panel">${renderLinkRows("post", "new", d.links)}</div>` : ""}
+        <div class="hint">Imágenes: se comprimen solas, máximo 6. PDF/audio: hasta ${MAX_ATTACHMENT_FILES} archivos chicos (≤${(MAX_ATTACHMENT_FILE_BYTES/1024).toFixed(0)}KB c/u). Para video o archivos más grandes: pegá un link (Drive, YouTube, etc.).</div>
+      ` : `
+        <button type="button" class="btn-text-add" data-action="toggle-post-attach">📎 Agregar imagen, PDF/audio o link</button>
+      `}
     </div>
     ${d.error ? `<div class="form-error">${esc(d.error)}</div>` : ""}
     <div class="modal-actions">
@@ -3360,6 +3365,8 @@ document.addEventListener("click", e=>{
     getNestedReplyDraft(t.dataset.replyId).links.push({ label:"", url:"" }); render();
   } else if(action === "post-add-link"){
     composerDraft.links.push({ label:"", url:"" }); render();
+  } else if(action === "toggle-post-attach"){
+    composerDraft.attachOpen = true; render();
   } else if(action === "rutina-add-link"){
     rutinaDraft.links.push({ label:"", url:"" }); render();
   } else if(action === "rm-link"){
