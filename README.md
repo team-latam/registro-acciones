@@ -102,7 +102,9 @@ posts/{postId}
   endDate: "YYYY-MM-DD"      (= startDate si el evento dura un solo día)
   startTime: "HH:MM"         (opcional — vacío/ausente = "todo el día"; si se carga, endTime también)
   endTime: "HH:MM"           (opcional — tiene que ser posterior a startTime cuando startDate == endDate)
-  organizer: string          (opcional — quién organiza, puede ser distinto de quien carga)
+  organizer: string          (legado — texto libre de "quién organiza", solo en posteos viejos; los nuevos usan `participants`)
+  participants: [{ email, name }, ...]  (opcional, máx. 10 — participantes taggeados: gente del roster o un email suelto de
+                             alguien externo. Se suman como invitados de verdad al evento de Calendar, ver `attendees` más abajo)
   location: string           (opcional — lugar/salón/dirección concreta)
   activityType: "rutina" | "visita" | "curso" | "seminario" | "congreso" | "virtual" | "otro"
   authorName: string         (nombre de Google de quien publicó)
@@ -161,7 +163,7 @@ el diseño original): se pueden editar, con estas reglas de permiso
   se creó originalmente (`createdAt`) — eso lo protegen las reglas.
 
 Cada edición dispara automáticamente una respuesta en el hilo resumiendo
-qué cambió (título, fechas, lugar, quién organiza, tipo, comentarios o
+qué cambió (título, fechas, lugar, participantes, tipo, comentarios o
 alcance), firmada por quien editó — así la memoria histórica conserva el
 rastro del cambio. Esas respuestas se distinguen con un ícono (✏️ edición,
 🚫 cancelación) y fondo distinto, pero por lo demás se ven como cualquier
@@ -354,6 +356,11 @@ quien publica para crear el evento.
   bloquea la memoria histórica. Aparece un aviso abajo del header avisando
   si se pudo sumar o no.
 - La descripción del evento arranca con la línea `Alcance: tipo | valor`.
+- Los **participantes** taggeados en el posteo (campo 👥 del composer) se
+  mandan como `attendees` del evento de Calendar, con `sendUpdates=all` —
+  Google les manda la invitación por mail de verdad, no es solo texto en la
+  descripción. No hace falta ningún permiso extra de Google para esto: ya
+  alcanza con el scope `calendar.events` de más arriba.
 
 #### Calendar → Feed (la dirección inversa)
 
