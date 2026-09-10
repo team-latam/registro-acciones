@@ -160,26 +160,29 @@
   .ractions-sep{ width:1px; height:20px; background:var(--border); margin:0 6px; }
 
   /* ---------- Actividad / registro de auditoría (admin) ---------- */
-  /* Ancho tope a propósito (igual que .preferencias-view): sin esto, en
-     pantallas anchas el texto (corto: "Fulano inició sesión.") deja un
-     hueco enorme antes de llegar a dispositivo/IP/fecha, que quedan
-     pegados contra el borde derecho en vez de cerca del centro de la fila. */
-  .auditoria-view{ max-width:900px; }
+  /* Mismo ancho que el resto de los paneles admin (Solicitudes, etc.) —
+     nada de achicar la tarjeta acá. Las 3 columnas (Dispositivo/IP/Fecha)
+     se distinguen con un encabezado propio (.audit-columns-header), no
+     angostando la tarjeta. */
   .audit-list{ background:#fff; border:1px solid var(--border); border-radius:var(--radius-md); overflow:hidden; box-shadow:var(--shadow); }
-  .audit-row{ display:flex; align-items:center; gap:12px; padding:11px 18px; }
-  .audit-row + .audit-row{ border-top:1px solid var(--border); }
+  /* Encabezado de columnas: mismos anchos/gap/padding que .audit-row para
+     que "Dispositivo"/"IP"/"Fecha" queden justo arriba de sus columnas. */
+  .audit-columns-header{
+    display:flex; align-items:center; gap:12px; padding:0 18px 8px;
+    font-size:10.5px; font-weight:800; letter-spacing:0.4px; text-transform:uppercase; color:var(--text-muted);
+  }
+  .audit-columns-header .achs-spacer{ flex:none; width:16px; }
+  .audit-columns-header .achs-text{ flex:1; }
   .audit-icon{ font-size:16px; flex:none; }
-  /* max-width (no solo flex:1) a propósito: así el texto no "reserva"
-     todo el ancho libre de la fila — dispositivo/IP/fecha arrancan
-     siempre a una distancia fija y consistente, en vez de correrse según
-     cuánto texto haya y el ancho de pantalla de quien lo mira. */
-  .audit-text{ flex:1 1 auto; max-width:420px; min-width:0; font-size:13px; }
+  .audit-text{ flex:1; min-width:0; font-size:13px; }
   /* Ancho fijo (no solo white-space:nowrap) a propósito: así la columna
      queda alineada entre filas sin importar si dice "Chrome · Windows" o
-     "Safari · iOS" — el texto de al lado es lo que se acomoda. */
+     "Safari · iOS" — el texto de al lado (flex:1) es lo que se acomoda. */
   .audit-device{ font-size:11.5px; color:var(--text-muted); flex:none; width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .audit-ip{ font-size:11.5px; color:var(--text-muted); flex:none; width:100px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .audit-date{ font-size:11.5px; color:var(--text-muted); flex:none; white-space:nowrap; }
+  .audit-ip{ font-size:11.5px; color:var(--text-muted); flex:none; width:110px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .audit-date{ font-size:11.5px; color:var(--text-muted); flex:none; width:190px; text-align:right; white-space:nowrap; }
+  .audit-row{ display:flex; align-items:center; gap:12px; padding:11px 18px; }
+  .audit-row + .audit-row{ border-top:1px solid var(--border); }
   .audit-more{ text-align:center; margin-top:14px; }
   .audit-filters{ margin-bottom:14px; }
   .audit-filters input{
@@ -2668,9 +2671,16 @@ function renderAuditoriaView(){
   const filtered = entries.filter(matchesAuditFilters);
   const visible = filtered.slice(0, auditVisibleCount);
   const remaining = filtered.length - visible.length;
+  const header = `<div class="audit-columns-header">
+      <span class="achs-spacer"></span>
+      <span class="achs-text"></span>
+      <span class="audit-device">Dispositivo</span>
+      <span class="audit-ip">IP</span>
+      <span class="audit-date">Fecha</span>
+    </div>`;
   const list = !filtered.length
     ? `<div class="empty-state"><div class="big">🔎</div>Ningún registro coincide con el filtro.</div>`
-    : `<div class="audit-list">${visible.map(e=>{
+    : `${header}<div class="audit-list">${visible.map(e=>{
         const info = AUDIT_LABELS[e.type] || { icon:"•", text: e2 => `${e2.actorName}: ${e2.type}` };
         return `<div class="audit-row">
           <span class="audit-icon">${info.icon}</span>
@@ -2681,7 +2691,7 @@ function renderAuditoriaView(){
         </div>`;
       }).join("")}</div>
       ${remaining > 0 ? `<div class="audit-more"><button type="button" class="btn-secondary" data-action="audit-load-more">Ver ${Math.min(30, remaining)} más (quedan ${remaining})</button></div>` : ""}`;
-  return `<div class="auditoria-view">${renderAuditFilters()}${list}</div>`;
+  return renderAuditFilters() + list;
 }
 
 /* ======================================================================
