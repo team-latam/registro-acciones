@@ -248,6 +248,28 @@ service cloud.firestore {
       allow write: if isAdmin() && isValidTerritoryConfig(request.resource.data);
     }
 
+    // Resto del panel admin "Preferencias" (Tipos de actividad, Lugares,
+    // Calendar, Adjuntos — ver applyPreferencesConfig en index.html): un
+    // solo doc con un campo por sección, cada sección se guarda con
+    // merge así que esta validación corre sobre el documento COMPLETO
+    // después del merge, no solo sobre lo que cambió. Todos los
+    // aprobados lo LEEN (afecta a todo el mundo: tipos disponibles,
+    // sugerencias de lugar, a qué Calendar se sincroniza, límites de
+    // adjuntos), pero solo el admin lo escribe.
+    function isValidPreferences(d) {
+      return (d.get('activityTypes', null) == null || d.activityTypes is list) &&
+        (d.get('extraCities', null) == null || d.extraCities is map) &&
+        isOptionalString(d.get('calendarId', null), 200) &&
+        (d.get('maxImages', null) == null || d.maxImages is int) &&
+        (d.get('maxAttachmentFiles', null) == null || d.maxAttachmentFiles is int) &&
+        (d.get('maxAttachmentFileBytes', null) == null || d.maxAttachmentFileBytes is int);
+    }
+    match /meta/preferences {
+      allow read: if isAdmin();
+      allow read: if isApproved();
+      allow write: if isAdmin() && isValidPreferences(request.resource.data);
+    }
+
     // Auditoría: accesos e inicios de sesión, aprobar/rechazar/revocar,
     // compartir/sacar del Calendar. NO es sobre el contenido de los
     // posteos. Solo el admin puede LEER el registro (es información
