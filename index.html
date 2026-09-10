@@ -459,6 +459,10 @@
   }
   .autocomplete-option:hover, .autocomplete-option.active{ background:#f2f6f6; }
   .autocomplete-empty{ padding:9px 14px; font-size:12.5px; color:var(--text-muted); }
+  /* Opción "sumar como lugar nuevo" (ver getPlaceMatches): mismo look que
+     una sugerencia normal, con el celeste de la app para diferenciarla de
+     un lugar ya conocido. */
+  .autocomplete-option-new{ color:var(--celeste-dark); font-weight:700; }
   /* Fila de @mención: compacta, con avatar chico — más angosta que un
      .autocomplete-option de texto plano (place-picker). */
   .autocomplete-option.mention-option{ display:flex; align-items:center; gap:8px; padding:5px 12px; font-weight:600; }
@@ -3322,14 +3326,34 @@ function renderPostedFiles(files){
 function getPlaceMatches(query){
   const q = (query||"").trim().toLowerCase();
   if(!q) return [];
-  return PLACE_INDEX.filter(it => it.label.toLowerCase().includes(q)).slice(0, 8);
+  const matches = PLACE_INDEX.filter(it => it.label.toLowerCase().includes(q)).slice(0, 8);
+  if(matches.length) return matches;
+  // Sin resultados: si escribieron "Ciudad, País" y el país ya existe (los
+  // 43 países ya están todos cargados, nunca hace falta sumar uno), se
+  // ofrece sumar esa ciudad como lugar nuevo. No hace falta coordenada
+  // propia para esto — el mapa de Países solo marca por país (ver
+  // initOrUpdateMap), nunca por ciudad, así que esto ya funciona igual
+  // que un preset en todo lo demás (filtros, conteos, chips). Si más
+  // adelante el equipo arranca presencia real ahí, el admin la puede
+  // sumar a CITY_PRESETS con el nombre prolijo (ver README).
+  const parts = (query||"").split(",");
+  if(parts.length >= 2){
+    const cityPart = parts.slice(0,-1).join(",").trim();
+    const countryPart = parts[parts.length-1].trim();
+    const country = COUNTRIES.find(c => normalize(c.name) === normalize(countryPart));
+    if(cityPart && country){
+      const city = titleCase(cityPart);
+      return [{ label: `Usar "${city}, ${country.name}" (lugar nuevo)`, icon:"➕", scope:{type:"ciudad", country:country.name, city}, isNew:true }];
+    }
+  }
+  return [];
 }
 function renderPlaceSuggestions(draft, scope, ownerId){
   const matches = getPlaceMatches(draft.placeQuery);
   if(!draft.placeQuery.trim()) return "";
-  if(!matches.length) return `<div class="autocomplete-list"><div class="autocomplete-empty">Sin resultados</div></div>`;
+  if(!matches.length) return `<div class="autocomplete-list"><div class="autocomplete-empty">Sin resultados. Para sumar un lugar nuevo, escribí "Ciudad, País".</div></div>`;
   return `<div class="autocomplete-list">${matches.map((it,i)=>`
-    <button type="button" class="autocomplete-option${i===draft.placeHighlight?" active":""}" data-action="pick-place" data-scope="${scope}" data-owner-id="${ownerId}" data-place-idx="${PLACE_INDEX.indexOf(it)}">${it.icon} ${esc(it.label)}</button>`).join("")}</div>`;
+    <button type="button" class="autocomplete-option${it.isNew?" autocomplete-option-new":""}${i===draft.placeHighlight?" active":""}" data-action="pick-place" data-scope="${scope}" data-owner-id="${ownerId}" data-match-idx="${i}">${it.icon} ${esc(it.label)}</button>`).join("")}</div>`;
 }
 function selectPlaceMatch(scope, ownerId, match){
   const draft = getDraftFor(scope, ownerId);
@@ -3540,7 +3564,9 @@ document.addEventListener("click", e=>{
   } else if(action === "submit-rutina"){
     submitRutina();
   } else if(action === "pick-place"){
-    selectPlaceMatch(t.dataset.scope, t.dataset.ownerId, PLACE_INDEX[Number(t.dataset.placeIdx)]);
+    const draft = getDraftFor(t.dataset.scope, t.dataset.ownerId);
+    const matches = getPlaceMatches(draft.placeQuery);
+    selectPlaceMatch(t.dataset.scope, t.dataset.ownerId, matches[Number(t.dataset.matchIdx)]);
   } else if(action === "pick-mention"){
     selectMentionMatch(t.dataset.scope, t.dataset.ownerId, t.dataset.textareaId, { nickname:t.dataset.nickname, email:t.dataset.email });
   } else if(action === "use-city-preset"){
