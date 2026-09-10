@@ -165,7 +165,10 @@
   .audit-row + .audit-row{ border-top:1px solid var(--border); }
   .audit-icon{ font-size:16px; flex:none; }
   .audit-text{ flex:1; font-size:13px; }
+  .audit-device{ font-size:11.5px; color:var(--text-muted); flex:none; white-space:nowrap; }
   .audit-date{ font-size:11.5px; color:var(--text-muted); flex:none; white-space:nowrap; }
+  .audit-more{ text-align:center; margin-top:14px; }
+  @media (max-width:560px){ .audit-device{ display:none; } }
 
   /* ---------- Zonas (panel admin) ----------
      Versión compacta (v2): las zonas van en una lista angosta de una sola
@@ -1771,6 +1774,28 @@ function stopCalendarAutoSync(){
 // "contraseña" que registrar acá — se loguean inicio de sesión, pedidos de
 // acceso, aprobar/rechazar/revocar, y compartir/sacar del Calendar. Falla
 // en silencio (nunca debe bloquear la acción real que se está auditando).
+// Resumen corto de navegador + sistema operativo (ej. "Chrome · Windows",
+// "Safari · iPhone") a partir de navigator.userAgent, sin llamar a ningún
+// servicio externo — a diferencia de la IP, no suma latencia ni depende
+// de un tercero, y para un equipo remoto sin IP fija dice más ("¿esto lo
+// hice yo desde el celu, o es raro?") que una dirección casi siempre
+// compartida por el router de casa o una VPN corporativa.
+function deviceLabel(){
+  const ua = navigator.userAgent || "";
+  let browser = "Navegador";
+  if(/Edg\//.test(ua)) browser = "Edge";
+  else if(/OPR\//.test(ua)) browser = "Opera";
+  else if(/Firefox\//.test(ua)) browser = "Firefox";
+  else if(/Chrome\//.test(ua)) browser = "Chrome";
+  else if(/Safari\//.test(ua)) browser = "Safari";
+  let os = "";
+  if(/iPhone|iPad|iPod/.test(ua)) os = "iOS";
+  else if(/Android/.test(ua)) os = "Android";
+  else if(/Windows/.test(ua)) os = "Windows";
+  else if(/Mac OS X/.test(ua)) os = "Mac";
+  else if(/Linux/.test(ua)) os = "Linux";
+  return os ? `${browser} · ${os}` : browser;
+}
 async function logAudit(type, opts){
   const actorEmail = opts?.actorEmail || state.auth.user?.email;
   const actorName = opts?.actorName || state.auth.user?.displayName;
@@ -1780,6 +1805,7 @@ async function logAudit(type, opts){
       type, actorEmail, actorName,
       targetEmail: opts?.targetEmail || null,
       detail: opts?.detail || null,
+      device: deviceLabel(),
       createdAt: fb.serverTimestamp(),
     });
   }catch(err){ console.error("Error escribiendo auditoría:", err); }
@@ -2565,17 +2591,26 @@ const AUDIT_LABELS = {
   calendar_shared: { icon:"📅", text: e => `${e.actorName} compartió el Calendar con ${e.targetEmail}.` },
   calendar_unshared: { icon:"📅", text: e => `${e.actorName} sacó a ${e.targetEmail} del Calendar.` },
 };
+// Paginado de a 30 (ver botón "Ver más" más abajo) en vez de mostrar toda
+// la lista de una — con meses de uso esto puede ser larguísimo. Vive
+// afuera de `state` a propósito, como openReplyForms/userMenuOpen: es
+// puro estado de UI efímero (se resetea solo al recargar la página).
+let auditVisibleCount = 30;
 function renderAuditoriaView(){
   const entries = state.auditLog;
   if(!entries.length) return `<div class="empty-state"><div class="big">🗂️</div>Todavía no hay actividad registrada.</div>`;
-  return `<div class="audit-list">${entries.map(e=>{
+  const visible = entries.slice(0, auditVisibleCount);
+  const remaining = entries.length - visible.length;
+  return `<div class="audit-list">${visible.map(e=>{
     const info = AUDIT_LABELS[e.type] || { icon:"•", text: e2 => `${e2.actorName}: ${e2.type}` };
     return `<div class="audit-row">
       <span class="audit-icon">${info.icon}</span>
       <div class="audit-text">${esc(info.text(e))}</div>
+      <span class="audit-device">${esc(e.device || "")}</span>
       <span class="audit-date">${fmtDateTime(e.createdAt)}</span>
     </div>`;
-  }).join("")}</div>`;
+  }).join("")}</div>
+  ${remaining > 0 ? `<div class="audit-more"><button type="button" class="btn-secondary" data-action="audit-load-more">Ver ${Math.min(30, remaining)} más (quedan ${remaining})</button></div>` : ""}`;
 }
 
 /* ======================================================================
@@ -4057,6 +4092,8 @@ document.addEventListener("click", e=>{
     state.filters.place = null; render();
   } else if(action === "clear-filters"){
     state.filters = { text:"", types:new Set(), zones:new Set(), place:null }; render();
+  } else if(action === "audit-load-more"){
+    auditVisibleCount += 30; render();
   } else if(action === "open-lightbox"){
     openLightbox(t.dataset.src);
   } else if(action === "toggle-reply"){

@@ -289,6 +289,9 @@ service cloud.firestore {
         isNonEmptyString(d.actorName, 120) &&
         isOptionalString(d.get('targetEmail', null), 200) &&
         isOptionalString(d.get('detail', null), 300) &&
+        // Resumen corto de navegador/SO (ver deviceLabel en index.html),
+        // no la IP — se saca del user-agent en el cliente, sin backend.
+        isOptionalString(d.get('device', null), 60) &&
         d.actorEmail == request.auth.token.email &&
         d.createdAt == request.time;
     }
