@@ -165,9 +165,17 @@
   .audit-row + .audit-row{ border-top:1px solid var(--border); }
   .audit-icon{ font-size:16px; flex:none; }
   .audit-text{ flex:1; font-size:13px; }
-  .audit-device{ font-size:11.5px; color:var(--text-muted); flex:none; white-space:nowrap; }
+  /* Ancho fijo (no solo white-space:nowrap) a propósito: así la columna
+     queda alineada entre filas sin importar si dice "Chrome · Windows" o
+     "Safari · iOS" — el texto de al lado (flex:1) es lo que se acomoda. */
+  .audit-device{ font-size:11.5px; color:var(--text-muted); flex:none; width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .audit-date{ font-size:11.5px; color:var(--text-muted); flex:none; white-space:nowrap; }
   .audit-more{ text-align:center; margin-top:14px; }
+  .audit-filters{ margin-bottom:14px; }
+  .audit-filters input{
+    width:100%; box-sizing:border-box; padding:9px 14px; border-radius:999px; border:1.5px solid var(--border);
+    font-size:13px; background:#fff; margin-bottom:10px;
+  }
   @media (max-width:560px){ .audit-device{ display:none; } }
 
   /* ---------- Zonas (panel admin) ----------
@@ -1165,6 +1173,10 @@ const state = {
   memoriaOrder: "asc",      // asc | desc
   leafletMap: null,
   calendarSyncing: false,   // true mientras se está pidiendo/aplicando cambios desde Calendar
+  auditFilters: {
+    text: "",              // busca en actorName/actorEmail/targetEmail
+    types: new Set(),      // tipos de AUDIT_LABELS activos (vacío = todos)
+  },
 };
 
 /* ======================================================================
@@ -2583,34 +2595,63 @@ function renderSolicitudesView(){
    de los posteos ni su contenido.
    ====================================================================== */
 const AUDIT_LABELS = {
-  login: { icon:"🔓", text: e => `${e.actorName} inició sesión.` },
-  access_requested: { icon:"📝", text: e => `${e.actorName} pidió acceso${e.detail ? ` (${e.detail})` : ""}.` },
-  access_approved: { icon:"✅", text: e => `${e.actorName} aprobó el acceso de ${e.targetEmail}.` },
-  access_rejected: { icon:"🚫", text: e => `${e.actorName} rechazó el acceso de ${e.targetEmail}.` },
-  access_revoked: { icon:"⛔", text: e => `${e.actorName} revocó el acceso de ${e.targetEmail}.` },
-  calendar_shared: { icon:"📅", text: e => `${e.actorName} compartió el Calendar con ${e.targetEmail}.` },
-  calendar_unshared: { icon:"📅", text: e => `${e.actorName} sacó a ${e.targetEmail} del Calendar.` },
+  login: { icon:"🔓", filterLabel:"Login", text: e => `${e.actorName} inició sesión.` },
+  access_requested: { icon:"📝", filterLabel:"Pidió acceso", text: e => `${e.actorName} pidió acceso${e.detail ? ` (${e.detail})` : ""}.` },
+  access_approved: { icon:"✅", filterLabel:"Aprobó", text: e => `${e.actorName} aprobó el acceso de ${e.targetEmail}.` },
+  access_rejected: { icon:"🚫", filterLabel:"Rechazó", text: e => `${e.actorName} rechazó el acceso de ${e.targetEmail}.` },
+  access_revoked: { icon:"⛔", filterLabel:"Revocó", text: e => `${e.actorName} revocó el acceso de ${e.targetEmail}.` },
+  calendar_shared: { icon:"📅", filterLabel:"Compartió Calendar", text: e => `${e.actorName} compartió el Calendar con ${e.targetEmail}.` },
+  calendar_unshared: { icon:"📅", filterLabel:"Sacó del Calendar", text: e => `${e.actorName} sacó a ${e.targetEmail} del Calendar.` },
 };
 // Paginado de a 30 (ver botón "Ver más" más abajo) en vez de mostrar toda
 // la lista de una — con meses de uso esto puede ser larguísimo. Vive
 // afuera de `state` a propósito, como openReplyForms/userMenuOpen: es
 // puro estado de UI efímero (se resetea solo al recargar la página).
 let auditVisibleCount = 30;
+// Chips de tipo + buscador por persona (ver state.auditFilters): igual
+// que en el Feed, "sin nada tildado" = mostrar todos los tipos.
+function matchesAuditFilters(e){
+  const f = state.auditFilters;
+  if(f.types.size && !f.types.has(e.type)) return false;
+  if(f.text){
+    const n = normalize(f.text);
+    const haystack = normalize(`${e.actorName||""} ${e.actorEmail||""} ${e.targetEmail||""}`);
+    if(!haystack.includes(n)) return false;
+  }
+  return true;
+}
+function renderAuditFilters(){
+  const f = state.auditFilters;
+  const anyFilter = f.text || f.types.size;
+  return `
+    <div class="audit-filters">
+      <input type="text" id="auditSearch" placeholder="Buscar por persona (nombre o email)..." value="${esc(f.text)}">
+      <div class="chipgroup">
+        ${Object.entries(AUDIT_LABELS).map(([key,info])=>`
+          <button type="button" class="chip-toggle${f.types.has(key)?" active":""}" data-action="audit-toggle-type" data-key="${key}">${info.icon} ${info.filterLabel}</button>`).join("")}
+        ${anyFilter ? `<button type="button" class="filter-clear" data-action="audit-clear-filters">Limpiar filtros</button>` : ""}
+      </div>
+    </div>`;
+}
 function renderAuditoriaView(){
   const entries = state.auditLog;
   if(!entries.length) return `<div class="empty-state"><div class="big">🗂️</div>Todavía no hay actividad registrada.</div>`;
-  const visible = entries.slice(0, auditVisibleCount);
-  const remaining = entries.length - visible.length;
-  return `<div class="audit-list">${visible.map(e=>{
-    const info = AUDIT_LABELS[e.type] || { icon:"•", text: e2 => `${e2.actorName}: ${e2.type}` };
-    return `<div class="audit-row">
-      <span class="audit-icon">${info.icon}</span>
-      <div class="audit-text">${esc(info.text(e))}</div>
-      <span class="audit-device">${esc(e.device || "")}</span>
-      <span class="audit-date">${fmtDateTime(e.createdAt)}</span>
-    </div>`;
-  }).join("")}</div>
-  ${remaining > 0 ? `<div class="audit-more"><button type="button" class="btn-secondary" data-action="audit-load-more">Ver ${Math.min(30, remaining)} más (quedan ${remaining})</button></div>` : ""}`;
+  const filtered = entries.filter(matchesAuditFilters);
+  const visible = filtered.slice(0, auditVisibleCount);
+  const remaining = filtered.length - visible.length;
+  const list = !filtered.length
+    ? `<div class="empty-state"><div class="big">🔎</div>Ningún registro coincide con el filtro.</div>`
+    : `<div class="audit-list">${visible.map(e=>{
+        const info = AUDIT_LABELS[e.type] || { icon:"•", text: e2 => `${e2.actorName}: ${e2.type}` };
+        return `<div class="audit-row">
+          <span class="audit-icon">${info.icon}</span>
+          <div class="audit-text">${esc(info.text(e))}</div>
+          <span class="audit-device">${esc(e.device || "")}</span>
+          <span class="audit-date">${fmtDateTime(e.createdAt)}</span>
+        </div>`;
+      }).join("")}</div>
+      ${remaining > 0 ? `<div class="audit-more"><button type="button" class="btn-secondary" data-action="audit-load-more">Ver ${Math.min(30, remaining)} más (quedan ${remaining})</button></div>` : ""}`;
+  return renderAuditFilters() + list;
 }
 
 /* ======================================================================
@@ -4094,6 +4135,12 @@ document.addEventListener("click", e=>{
     state.filters = { text:"", types:new Set(), zones:new Set(), place:null }; render();
   } else if(action === "audit-load-more"){
     auditVisibleCount += 30; render();
+  } else if(action === "audit-toggle-type"){
+    const key = t.dataset.key;
+    state.auditFilters.types.has(key) ? state.auditFilters.types.delete(key) : state.auditFilters.types.add(key);
+    auditVisibleCount = 30; render();
+  } else if(action === "audit-clear-filters"){
+    state.auditFilters = { text:"", types:new Set() }; auditVisibleCount = 30; render();
   } else if(action === "open-lightbox"){
     openLightbox(t.dataset.src);
   } else if(action === "toggle-reply"){
@@ -4350,6 +4397,8 @@ document.addEventListener("input", e=>{
   if(t.dataset.mentionScope) syncMentionBackdrop(t);
   if(t.id === "feedSearch" || t.id === "memoriaSearch"){
     state.filters.text = t.value; render();
+  } else if(t.id === "auditSearch"){
+    state.auditFilters.text = t.value; auditVisibleCount = 30; render();
   } else if(t.id === "cTitle"){ composerDraft.title = t.value; }
   else if(t.id === "cContent"){
     composerDraft.content = t.value;
