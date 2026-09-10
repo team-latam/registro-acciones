@@ -362,16 +362,16 @@ quien publica para crear el evento.
   cancelar) dura ~1 hora, y se guarda en `sessionStorage` para sobrevivir
   a recargar la página dentro de la misma pestaña (se pierde si se cierra
   la pestaña, si vence, o al cerrar sesión). Si hace falta y no hay uno
-  vigente, primero se intenta renovarlo en segundo plano con Google
-  Identity Services (`requestSilentCalendarToken` en `index.html`, usa
-  `GOOGLE_OAUTH_CLIENT_ID` — Google Cloud Console → Credenciales → mismo
-  Client ID que usa Firebase Auth por debajo): si la persona sigue con
-  sesión de Google activa en el navegador y ya concedió el permiso antes,
-  esto suele resolver con una ventanita que se abre y se cierra sola en
-  una fracción de segundo, sin interrumpir. Solo si eso no funciona
-  (ventana privada, cookies de terceros bloqueadas, permiso revocado) cae
-  al popup completo de siempre. La **lectura** (sincronizar Calendar →
-  Feed) no usa este token — ver más abajo.
+  vigente, la app vuelve a pedir el login de Google automáticamente antes
+  de escribir en Calendar — normalmente un click rápido, no un login
+  completo de nuevo. (Se probó renovarlo en segundo plano con Google
+  Identity Services antes de este popup, para evitar interrumpir — se
+  sacó porque requiere agregar a mano el origen de esta página a
+  "Authorized JavaScript origins" del Client ID en Google Cloud Console,
+  y sin eso el intento silencioso queda trabado mostrando una pantalla de
+  error de Google en vez de resolverse solo. Mejor un popup confiable que
+  uno silencioso que a veces se rompe.) La **lectura** (sincronizar
+  Calendar → Feed) no usa este token — ver más abajo.
 - Si falla la sincronización (permiso denegado, sin conexión, etc.) el
   posteo **igual se guarda** en el Feed — el Calendar es un agregado, nunca
   bloquea la memoria histórica. Aparece un aviso abajo del header avisando
