@@ -10,10 +10,6 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" crossorigin="">
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" crossorigin="">
-<!-- Google Identity Services: solo para renovar el token de Calendar en
-     segundo plano sin popup visible (ver requestSilentCalendarToken en el
-     script principal) — el login en sí sigue siendo 100% Firebase Auth. -->
-<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
   :root{
     --petroleo:#0d3b3e;
@@ -1308,12 +1304,6 @@ let CALENDAR_ID = "ahf2jnkbng1tblmk7uioolc9ko@group.calendar.google.com";
 // dominio de esta página — ver README. Nunca se usa para escribir.
 const CALENDAR_API_KEY = "AIzaSyBLsB3SxSuEOyiPyCIYHa0yOcPiTs5KfwI";
 
-// Client ID de OAuth (Google Cloud Console → Credenciales), el mismo que
-// usa Firebase Auth por debajo para el login con Google. Se usa acá SOLO
-// para pedir un token de Calendar renovado en segundo plano, sin el popup
-// visible de signInWithPopup — ver requestSilentCalendarToken más abajo.
-const GOOGLE_OAUTH_CLIENT_ID = "40280679854-p7k34tcc5elfc50ioplt94lacn3oj6do.apps.googleusercontent.com";
-
 // El token de Calendar se guarda también en sessionStorage (dura hasta
 // cerrar la pestaña, no queda en el disco) para sobrevivir a un F5 — sin
 // esto, cada recarga de página forzaba un popup de Google nuevo para
@@ -1348,85 +1338,31 @@ function storeCalendarCredential(result, opts={}){
     }catch(e){}
   }
 }
-// Mismo que storeCalendarCredential, pero para un token que vino de Google
-// Identity Services (ver requestSilentCalendarToken) en vez de un
-// resultado de signInWithPopup — la forma del token es distinta pero el
-// resultado (guardarlo en memoria + sessionStorage) es el mismo.
-function storeCalendarCredentialFromGis(tokenResponse, opts={}){
-  if(tokenResponse && tokenResponse.access_token){
-    calendarAccessToken = tokenResponse.access_token;
-    calendarTokenExpiry = Date.now() + (Number(tokenResponse.expires_in) || 3300) * 1000 - 5*60*1000;
-    if(opts.aclScope) calendarAclScopeGranted = true;
-    try{
-      sessionStorage.setItem(CALENDAR_TOKEN_STORAGE_KEY, JSON.stringify({ token: calendarAccessToken, expiry: calendarTokenExpiry, aclScope: calendarAclScopeGranted }));
-    }catch(e){}
-  }
-}
-
-function waitForGis(){
-  return new Promise((resolve, reject)=>{
-    if(window.google?.accounts?.oauth2) return resolve();
-    let tries = 0;
-    const check = setInterval(()=>{
-      tries++;
-      if(window.google?.accounts?.oauth2){ clearInterval(check); resolve(); }
-      else if(tries > 20){ clearInterval(check); reject(new Error("Google Identity Services no cargó")); } // ~5s
-    }, 250);
-  });
-}
-// Intenta renovar el token de Calendar CON Google Identity Services (gsi/
-// client, cargado en el <head>) en vez del popup completo de
-// signInWithPopup: si la persona ya concedió el permiso antes y sigue con
-// sesión activa de Google en el navegador, esto suele resolver con una
-// ventanita que se abre y se cierra sola en una fracción de segundo (o
-// directo sin ninguna ventana), en vez del popup de "elegí tu cuenta" de
-// siempre. Si el navegador bloquea eso (ventana privada, cookies de
-// terceros bloqueadas, permiso revocado) o la librería no cargó, se
-// resuelve con null y quien llama cae al popup de siempre — nunca se
-// queda trabado esperando.
-function requestSilentCalendarToken(scopes){
-  return new Promise(async (resolve)=>{
-    try{ await waitForGis(); }catch(e){ return resolve(null); }
-    let settled = false;
-    const finish = (value)=>{ if(settled) return; settled = true; clearTimeout(timeout); resolve(value); };
-    const timeout = setTimeout(()=>finish(null), 6000);
-    try{
-      const tokenClient = window.google.accounts.oauth2.initTokenClient({
-        client_id: GOOGLE_OAUTH_CLIENT_ID,
-        scope: scopes.join(" "),
-        hint: state.auth.user?.email,
-        callback: (resp)=>finish(resp && resp.access_token ? resp : null),
-        error_callback: ()=>finish(null),
-      });
-      tokenClient.requestAccessToken({ prompt: "" });
-    }catch(e){ finish(null); }
-  });
-}
-
 // Se asegura de tener un token de Calendar vigente. Si no lo tiene (por
 // ejemplo, la sesión de Firebase se restauró silenciosamente al recargar
-// la página, lo que NO trae un access token nuevo), primero intenta
-// renovarlo en segundo plano (ver requestSilentCalendarToken) y solo si
-// eso no funciona, vuelve a pedir el login con Google — normalmente un
-// click rápido, ya con la cuenta pre-seleccionada, no un login completo
-// de nuevo.
+// la página, lo que NO trae un access token nuevo), vuelve a pedir el
+// login con Google — normalmente un click rápido, ya con la cuenta
+// pre-seleccionada, no un login completo de nuevo.
+// (Se probó renovarlo en segundo plano con Google Identity Services antes
+// de este popup, para evitar interrumpir — se sacó porque requiere que
+// el origen de esta página esté agregado a mano en "Authorized JavaScript
+// origins" del Client ID en Google Cloud Console, y sin eso el intento
+// silencioso queda trabado mostrando una pantalla de error de Google en
+// vez de resolverse solo. Mejor un popup confiable que uno silencioso que
+// a veces se rompe.)
 // Si quien está logueado es el admin, se pide de una vez también el
 // permiso de compartir/sacar gente del Calendar (ver ensureCalendarAclToken)
-// junto con el de eventos — así el admin ve como mucho UN popup de Google
-// por sesión (al crear/editar el primer posteo, o al aprobar/compartir el
-// primer acceso, lo que ocurra primero) en vez de uno para cada acción.
+// junto con el de eventos, en el MISMO popup — así el admin ve como mucho
+// UN popup de Google por sesión (al crear/editar el primer posteo, o al
+// aprobar/compartir el primer acceso, lo que ocurra primero) en vez de uno
+// para cada tipo de acción.
 async function ensureCalendarToken(){
   if(calendarAccessToken && Date.now() < calendarTokenExpiry) return calendarAccessToken;
-  const isAdminUser = state.auth.user && state.auth.user.email === ADMIN_EMAIL;
-  const scopes = ["https://www.googleapis.com/auth/calendar.events"];
-  if(isAdminUser) scopes.push("https://www.googleapis.com/auth/calendar.acls");
-
-  const silent = await requestSilentCalendarToken(scopes);
-  if(silent){ storeCalendarCredentialFromGis(silent, { aclScope: isAdminUser }); return calendarAccessToken; }
-
   try{
+    const isAdminUser = state.auth.user && state.auth.user.email === ADMIN_EMAIL;
     const provider = new authMod.GoogleAuthProvider();
-    scopes.forEach(s=>provider.addScope(s));
+    provider.addScope("https://www.googleapis.com/auth/calendar.events");
+    if(isAdminUser) provider.addScope("https://www.googleapis.com/auth/calendar.acls");
     provider.setCustomParameters({ login_hint: state.auth.user.email });
     const result = await authMod.signInWithPopup(auth, provider);
     storeCalendarCredential(result, { aclScope: isAdminUser });
@@ -1447,14 +1383,10 @@ async function ensureCalendarToken(){
 // token para no volver a pedir el popup en cada recarga de página.
 async function ensureCalendarAclToken(){
   if(calendarAclScopeGranted && calendarAccessToken && Date.now() < calendarTokenExpiry) return calendarAccessToken;
-  const scopes = ["https://www.googleapis.com/auth/calendar.events", "https://www.googleapis.com/auth/calendar.acls"];
-
-  const silent = await requestSilentCalendarToken(scopes);
-  if(silent){ storeCalendarCredentialFromGis(silent, { aclScope:true }); return calendarAccessToken; }
-
   try{
     const provider = new authMod.GoogleAuthProvider();
-    scopes.forEach(s=>provider.addScope(s));
+    provider.addScope("https://www.googleapis.com/auth/calendar.events");
+    provider.addScope("https://www.googleapis.com/auth/calendar.acls");
     provider.setCustomParameters({ login_hint: state.auth.user.email });
     const result = await authMod.signInWithPopup(auth, provider);
     storeCalendarCredential(result, { aclScope: true });
