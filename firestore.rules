@@ -225,11 +225,27 @@ service cloud.firestore {
       return isOptionalString(d.get('syncToken', null), 2000) &&
         (d.get('lastSyncedAt', null) == null || d.lastSyncedAt is timestamp);
     }
-    match /meta/{docId} {
+    match /meta/calendarSync {
       allow read: if isAdmin();
       allow read: if isApproved();
       allow write: if isAdmin() && isValidSyncMeta(request.resource.data);
       allow write: if isApproved() && isValidSyncMeta(request.resource.data);
+    }
+
+    // Config de zonas/países del panel admin "Zonas" (ver
+    // applyTerritoryConfig en index.html): a qué zona pertenece cada país
+    // y el nombre/color de cada zona. Todos los aprobados lo LEEN (define
+    // el color del mapa y los filtros de región para todo el mundo), pero
+    // solo el admin lo puede escribir — reasignar un país de zona o
+    // sumar una zona nueva es una decisión administrativa, no algo que
+    // cualquiera deba poder tocar.
+    function isValidTerritoryConfig(d) {
+      return d.zones is map && d.countryZones is map;
+    }
+    match /meta/territoryConfig {
+      allow read: if isAdmin();
+      allow read: if isApproved();
+      allow write: if isAdmin() && isValidTerritoryConfig(request.resource.data);
     }
 
     // Auditoría: accesos e inicios de sesión, aprobar/rechazar/revocar,

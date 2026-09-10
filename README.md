@@ -238,17 +238,24 @@ sensible. El `nickname` se arma una sola vez al aprobar a alguien
 (`makeNickname()`, primer nombre de Google, con desempate si ya existe
 otro con el mismo) y queda guardado en su documento de `allowlist`.
 
-### Zonas (fijas, no editables desde la UI)
+### Zonas (por defecto, editables por el admin en la pestaña "Zonas")
 
 - **Sur** (azul): Argentina, Chile, Uruguay, Paraguay.
 - **Central** (amarillo): Brasil.
 - **Norte** (verde): el resto de los países/territorios de LatAm
   (lista completa en la constante `COUNTRIES` de `index.html`).
 
-La zona de un alcance se calcula siempre a partir del país (o directamente
-del campo `region` cuando el alcance es "región completa") — nunca se
-carga a mano. El cuarto tipo de alcance, **"Toda LatAm"**
-(`{type:"todo"}`), afecta a las tres zonas y a todos los países al mismo
+Estos son los defaults hardcodeados con los que arranca la app. El admin
+puede reasignar la zona de cualquier país, cambiar el nombre/color de una
+zona, o sumar una zona nueva (ej. "Caribe") desde la pestaña **Zonas**
+(solo admin) — se guarda en `meta/territoryConfig` y se aplica al toque a
+todo el mundo (mapa, filtros, chips), incluidos los posteos ya cargados,
+porque la zona de un alcance se calcula siempre a partir del país (o
+directamente del campo `region` cuando el alcance es "región completa"),
+nunca se guarda dentro del posteo. El territorio en sí (los países y sus
+coordenadas para el mapa) no se edita desde ahí — eso sigue siendo la
+constante `COUNTRIES` en el código. El cuarto tipo de alcance, **"Toda
+LatAm"** (`{type:"todo"}`), afecta a todas las zonas y países al mismo
 tiempo (por ejemplo, un anuncio general del equipo).
 
 ### Ciudades sugeridas (`CITY_PRESETS`)
