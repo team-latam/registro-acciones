@@ -160,36 +160,50 @@
   .ractions-sep{ width:1px; height:20px; background:var(--border); margin:0 6px; }
 
   /* ---------- Actividad / registro de auditoría (admin) ---------- */
-  /* Mismo ancho que el resto de los paneles admin (Solicitudes, etc.) —
-     nada de achicar la tarjeta acá. Las 3 columnas (Dispositivo/IP/Fecha)
-     se distinguen con un encabezado propio (.audit-columns-header), no
-     angostando la tarjeta. */
+  /* Tabla de verdad con CSS Grid: las 4 columnas (Acción/Dispositivo/IP/
+     Fecha) se reparten TODO el ancho de la tarjeta en proporción (2fr/1fr/
+     1fr/1fr) en vez de ser anchos fijos angostos pegados contra el borde
+     derecho — así Dispositivo e IP quedan hacia la mitad de la fila, con
+     aire entre columnas, no apretados contra Fecha. El mismo
+     grid-template-columns en el header y en cada fila es lo que hace que
+     encabezado y datos queden alineados verticalmente como columnas.
+     display:none en mobile (ver media query) saca Dispositivo/IP del
+     flujo del grid entero, así que ahí queda otro grid-template-columns
+     más corto (3 en vez de 5) para que lo que sigue visible no se
+     desalinee. */
   .audit-list{ background:#fff; border:1px solid var(--border); border-radius:var(--radius-md); overflow:hidden; box-shadow:var(--shadow); }
-  /* Encabezado de columnas: mismos anchos/gap/padding que .audit-row para
-     que "Dispositivo"/"IP"/"Fecha" queden justo arriba de sus columnas. */
-  .audit-columns-header{
-    display:flex; align-items:center; gap:12px; padding:0 18px 8px;
+  .audit-columns-header, .audit-row{
+    display:grid; grid-template-columns: 26px minmax(220px,2fr) 1fr 1fr 1fr;
+    align-items:center; gap:12px;
+  }
+  .audit-columns-header{ padding:0 18px 8px; }
+  .audit-row{ padding:11px 18px; }
+  .audit-row + .audit-row{ border-top:1px solid var(--border); }
+  .audit-icon{ font-size:16px; }
+  .audit-text{ font-size:13px; min-width:0; }
+  .audit-device, .audit-ip{
+    font-size:11.5px; color:var(--text-muted); min-width:0;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .audit-date{ font-size:11.5px; color:var(--text-muted); text-align:right; white-space:nowrap; }
+  /* Encabezados-botón (ordenan al click, ver sortAuditEntries): mismo
+     look que el texto de columna que tenían antes, sin pinta de botón. */
+  .ach-sort{
+    background:none; border:none; padding:0; margin:0; font:inherit; cursor:pointer; text-align:left; min-width:0;
     font-size:10.5px; font-weight:800; letter-spacing:0.4px; text-transform:uppercase; color:var(--text-muted);
   }
-  .audit-columns-header .achs-spacer{ flex:none; width:16px; }
-  .audit-columns-header .achs-text{ flex:1; }
-  .audit-icon{ font-size:16px; flex:none; }
-  .audit-text{ flex:1; min-width:0; font-size:13px; }
-  /* Ancho fijo (no solo white-space:nowrap) a propósito: así la columna
-     queda alineada entre filas sin importar si dice "Chrome · Windows" o
-     "Safari · iOS" — el texto de al lado (flex:1) es lo que se acomoda. */
-  .audit-device{ font-size:11.5px; color:var(--text-muted); flex:none; width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .audit-ip{ font-size:11.5px; color:var(--text-muted); flex:none; width:110px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .audit-date{ font-size:11.5px; color:var(--text-muted); flex:none; width:190px; text-align:right; white-space:nowrap; }
-  .audit-row{ display:flex; align-items:center; gap:12px; padding:11px 18px; }
-  .audit-row + .audit-row{ border-top:1px solid var(--border); }
+  .ach-sort:hover{ color:var(--petroleo); }
+  .ach-date{ text-align:right; }
   .audit-more{ text-align:center; margin-top:14px; }
   .audit-filters{ margin-bottom:14px; }
   .audit-filters input{
     width:100%; box-sizing:border-box; padding:9px 14px; border-radius:999px; border:1.5px solid var(--border);
     font-size:13px; background:#fff; margin-bottom:10px;
   }
-  @media (max-width:700px){ .audit-device, .audit-ip{ display:none; } }
+  @media (max-width:760px){
+    .audit-columns-header, .audit-row{ grid-template-columns: 22px minmax(140px,1fr) 1fr; }
+    .audit-device, .audit-ip, .ach-device, .ach-ip{ display:none; }
+  }
 
   /* ---------- Zonas (panel admin) ----------
      Versión compacta (v2): las zonas van en una lista angosta de una sola
@@ -2640,6 +2654,33 @@ const AUDIT_LABELS = {
 // afuera de `state` a propósito, como openReplyForms/userMenuOpen: es
 // puro estado de UI efímero (se resetea solo al recargar la página).
 let auditVisibleCount = 30;
+// Orden de la tabla (click en un header, ver renderAuditColumnsHeader):
+// bien simple, un solo criterio a la vez. Por defecto más nuevo primero,
+// que es como ya venían las entradas desde Firestore.
+let auditSort = { key: "date", dir: "desc" };
+function auditSortValue(e, key){
+  if(key === "date") return tsToMillis(e.createdAt) || 0;
+  if(key === "device") return normalize(e.device);
+  if(key === "ip") return normalize(e.ip);
+  if(key === "action"){
+    const info = AUDIT_LABELS[e.type];
+    return normalize(info ? info.text(e) : e.type);
+  }
+  return "";
+}
+function sortAuditEntries(list){
+  const { key, dir } = auditSort;
+  const sign = dir === "asc" ? 1 : -1;
+  return [...list].sort((a,b)=>{
+    const va = auditSortValue(a,key), vb = auditSortValue(b,key);
+    if(va < vb) return -1 * sign;
+    if(va > vb) return 1 * sign;
+    return 0;
+  });
+}
+function auditSortArrow(key){
+  return auditSort.key === key ? (auditSort.dir === "asc" ? " ▲" : " ▼") : "";
+}
 // Chips de tipo + buscador por persona (ver state.auditFilters): igual
 // que en el Feed, "sin nada tildado" = mostrar todos los tipos.
 function matchesAuditFilters(e){
@@ -2665,22 +2706,24 @@ function renderAuditFilters(){
       </div>
     </div>`;
 }
+function renderAuditColumnsHeader(){
+  return `<div class="audit-columns-header">
+      <span></span>
+      <button type="button" class="ach-sort ach-action" data-action="audit-sort" data-key="action">Acción${auditSortArrow("action")}</button>
+      <button type="button" class="ach-sort ach-device" data-action="audit-sort" data-key="device">Dispositivo${auditSortArrow("device")}</button>
+      <button type="button" class="ach-sort ach-ip" data-action="audit-sort" data-key="ip">IP${auditSortArrow("ip")}</button>
+      <button type="button" class="ach-sort ach-date" data-action="audit-sort" data-key="date">Fecha${auditSortArrow("date")}</button>
+    </div>`;
+}
 function renderAuditoriaView(){
   const entries = state.auditLog;
   if(!entries.length) return `<div class="empty-state"><div class="big">🗂️</div>Todavía no hay actividad registrada.</div>`;
-  const filtered = entries.filter(matchesAuditFilters);
+  const filtered = sortAuditEntries(entries.filter(matchesAuditFilters));
   const visible = filtered.slice(0, auditVisibleCount);
   const remaining = filtered.length - visible.length;
-  const header = `<div class="audit-columns-header">
-      <span class="achs-spacer"></span>
-      <span class="achs-text"></span>
-      <span class="audit-device">Dispositivo</span>
-      <span class="audit-ip">IP</span>
-      <span class="audit-date">Fecha</span>
-    </div>`;
   const list = !filtered.length
     ? `<div class="empty-state"><div class="big">🔎</div>Ningún registro coincide con el filtro.</div>`
-    : `${header}<div class="audit-list">${visible.map(e=>{
+    : `${renderAuditColumnsHeader()}<div class="audit-list">${visible.map(e=>{
         const info = AUDIT_LABELS[e.type] || { icon:"•", text: e2 => `${e2.actorName}: ${e2.type}` };
         return `<div class="audit-row">
           <span class="audit-icon">${info.icon}</span>
@@ -4181,6 +4224,11 @@ document.addEventListener("click", e=>{
     auditVisibleCount = 30; render();
   } else if(action === "audit-clear-filters"){
     state.auditFilters = { text:"", types:new Set() }; auditVisibleCount = 30; render();
+  } else if(action === "audit-sort"){
+    const key = t.dataset.key;
+    if(auditSort.key === key) auditSort.dir = auditSort.dir === "asc" ? "desc" : "asc";
+    else auditSort = { key, dir: key === "date" ? "desc" : "asc" };
+    auditVisibleCount = 30; render();
   } else if(action === "open-lightbox"){
     openLightbox(t.dataset.src);
   } else if(action === "toggle-reply"){
