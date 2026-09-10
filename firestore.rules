@@ -70,6 +70,11 @@ service cloud.firestore {
         isNonEmptyString(d.startDate, 10) &&
         isNonEmptyString(d.endDate, 10) &&
         isOptionalString(d.get('organizer', null), 140) &&
+        // Participantes taggeados (reemplaza a 'organizer' de a poco, ver
+        // renderParticipantsField en index.html): lista de {email, name}.
+        // Los campos internos de cada uno no se validan en profundidad acá
+        // (mismo motivo que 'scopes'/'mentions'), solo el tamaño de la lista.
+        (d.get('participants', null) == null || (d.participants is list && d.participants.size() <= 10)) &&
         isOptionalString(d.get('location', null), 200) &&
         // Hora de inicio/fin (HH:MM, opcional): un evento sin hora es
         // "todo el día" (ver allDay en index.html) — el mínimo/máximo de

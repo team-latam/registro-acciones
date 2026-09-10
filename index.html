@@ -348,6 +348,17 @@
   .scope-chip .rm{ cursor:pointer; font-weight:800; opacity:0.6; margin-left:2px; }
   .scope-chip .rm:hover{ opacity:1; }
 
+  /* ---------- Participantes (chip-input, ver renderParticipantsField) ---------- */
+  .participants-field{ flex:1; min-width:0; position:relative; }
+  .participants-row{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px; }
+  .participant-chip{
+    display:inline-flex; align-items:center; gap:6px; padding:5px 10px; border-radius:999px;
+    font-size:11.5px; font-weight:700; background:rgba(79,199,224,0.16); color:var(--celeste-dark); border:1px solid var(--border);
+  }
+  .participant-chip .rm{ cursor:pointer; font-weight:800; opacity:0.6; margin-left:2px; }
+  .participant-chip .rm:hover{ opacity:1; }
+  .participant-chip-avatar{ width:16px; height:16px; border-radius:50%; object-fit:cover; flex-shrink:0; }
+
   .type-badge{
     display:inline-flex; align-items:center; gap:5px; padding:4px 11px; border-radius:999px;
     font-size:11px; font-weight:700; background:var(--petroleo); color:#fff;
@@ -435,7 +446,7 @@
 
   /* Composer de Evento inspirado en Google Calendar (no un calco): título
      grande sin caja + filas con icono a la izquierda (🕐 cuándo, 📍 dónde,
-     👤 quién organiza) en vez de todo agrupado en cajas ".field" iguales. */
+     👥 participantes) en vez de todo agrupado en cajas ".field" iguales. */
   .field-title-plain{ margin-bottom:6px; }
   /* Especificidad reforzada a propósito: ".field input[type=text]" (más
      arriba) también matchea este input por estar dentro de un .field, y
@@ -1374,7 +1385,9 @@ function buildCalendarEvent(postData){
     "",
     postData.content,
   ];
-  if(postData.organizer) descLines.push("", `Organiza: ${postData.organizer}`);
+  const participants = postData.participants||[];
+  if(participants.length) descLines.push("", `Participantes: ${participantsLabel(participants)}`);
+  else if(postData.organizer) descLines.push("", `Organiza: ${postData.organizer}`);
   descLines.push("", `Cargado por ${postData.authorName} en Registro de Acciones.`);
   // Con hora (startTime/endTime cargados): evento puntual, dateTime +
   // timeZone del navegador de quien lo carga (Calendar API lo exige junto
@@ -1388,6 +1401,11 @@ function buildCalendarEvent(postData){
     description: descLines.join("\n"),
     start: hasTime ? { dateTime: `${postData.startDate}T${postData.startTime}:00`, timeZone } : { date: postData.startDate },
     end: hasTime ? { dateTime: `${postData.endDate}T${postData.endTime}:00`, timeZone } : { date: addDaysISO(postData.endDate, 1) },
+    // Los participantes taggeados en el posteo se suman como invitados de
+    // verdad del evento (Google les manda la invitación por mail gracias a
+    // sendUpdates=all en el fetch, ver syncToCalendar/updateCalendarEvent):
+    // no alcanza con que figuren en la descripción como texto.
+    attendees: participants.map(p => ({ email:p.email, displayName: p.name && p.name !== p.email ? p.name : undefined })),
   };
 }
 
@@ -1395,7 +1413,7 @@ async function syncToCalendar(postData){
   const token = await ensureCalendarToken();
   if(!token) return { ok:false, reason:"no se pudo autorizar el acceso a Calendar" };
   try{
-    const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events`, {
+    const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events?sendUpdates=all`, {
       method: "POST",
       headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
       body: JSON.stringify(buildCalendarEvent(postData)),
@@ -1413,7 +1431,7 @@ async function updateCalendarEvent(eventId, postData){
   const token = await ensureCalendarToken();
   if(!token) return { ok:false, reason:"no se pudo autorizar el acceso a Calendar" };
   try{
-    const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events/${encodeURIComponent(eventId)}`, {
+    const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events/${encodeURIComponent(eventId)}?sendUpdates=all`, {
       method: "PATCH",
       headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
       body: JSON.stringify(buildCalendarEvent(postData)),
@@ -2104,6 +2122,10 @@ function canEditPost(post){
   return post.authorEmail === state.auth.user.email || post.activityType !== "rutina";
 }
 
+function participantsLabel(participants){
+  return (participants||[]).map(p=>p.name||p.email).join(", ");
+}
+
 // Compara el posteo original con los datos nuevos y arma un resumen en
 // español para dejarlo como respuesta automática en el hilo.
 function buildEditSummary(original, next){
@@ -2116,7 +2138,9 @@ function buildEditSummary(original, next){
     const newLabel = next.endDate !== next.startDate ? `${fmtDate(next.startDate)}–${fmtDate(next.endDate)}` : fmtDate(next.startDate);
     parts.push(`fecha (${oldLabel} → ${newLabel})`);
   }
-  if((original.organizer||"") !== (next.organizer||"")) parts.push(`quién organiza${next.organizer ? ` (ahora: ${next.organizer})` : " (se quitó)"}`);
+  const oldParticipants = participantsLabel(original.participants) || (original.organizer||"");
+  const newParticipants = participantsLabel(next.participants);
+  if(oldParticipants !== newParticipants) parts.push(`participantes${newParticipants ? ` (ahora: ${newParticipants})` : " (se quitaron)"}`);
   if(original.activityType !== next.activityType) parts.push(`tipo de actividad (${ACTIVITY_BY_KEY[original.activityType]?.label} → ${ACTIVITY_BY_KEY[next.activityType]?.label})`);
   if(original.content !== next.content) parts.push("comentarios");
   if(JSON.stringify(original.scopes||[]) !== JSON.stringify(next.scopes||[])) parts.push("lugar");
@@ -2132,7 +2156,7 @@ async function updatePostAndSync(postId, original, newData){
   const patch = {
     title:newData.title, content:newData.content, startDate:newData.startDate, endDate:newData.endDate,
     date:newData.startDate, startTime:newData.startTime||"", endTime:newData.endTime||"",
-    organizer:newData.organizer,
+    participants:newData.participants,
     activityType:newData.activityType, scopes:newData.scopes, images:newData.images, links:newData.links,
     lastEditedAt: fb.serverTimestamp(), lastEditedBy: state.auth.user.displayName,
   };
@@ -2794,7 +2818,7 @@ function matchesTextFilter(text, record){
   return normalize(record.title||"").includes(n) ||
     normalize(record.content||"").includes(n) ||
     normalize(record.authorName||"").includes(n) ||
-    normalize(record.organizer||"").includes(n) ||
+    normalize(participantsLabel(record.participants) || record.organizer||"").includes(n) ||
     normalize(record.location||"").includes(n);
 }
 function matchesPlaceOrZoneFilter(record){
@@ -2949,7 +2973,7 @@ async function submitRutina(){
   const title = content.length > 140 ? content.slice(0,137).trimEnd() + "…" : content;
   const postData = {
     title, content, startDate:today, endDate:today, date:today,
-    organizer:"", location:"",
+    location:"",
     activityType:"rutina", scopes:d.scopes,
     images:d.images, links, files:d.files, mentions:extractMentionsFromContent(content),
     authorName: state.auth.user.displayName, authorEmail: state.auth.user.email,
@@ -3001,7 +3025,8 @@ function renderPostCard(post, replies, featured){
   const timeLabel = post.startTime && post.endTime ? ` · ${post.startTime}–${post.endTime}` : "";
   const dateLabel = (endDate && endDate !== startDate ? `${fmtDate(startDate)} – ${fmtDate(endDate)}` : fmtDate(startDate)) + timeLabel;
   const metaBits = [];
-  if(post.organizer) metaBits.push(`👤 Organiza: ${esc(post.organizer)}`);
+  if(post.participants && post.participants.length) metaBits.push(`👥 Participantes: ${esc(participantsLabel(post.participants))}`);
+  else if(post.organizer) metaBits.push(`👤 Organiza: ${esc(post.organizer)}`);
   if(post.location) metaBits.push(`📍 ${esc(post.location)}`);
   const editable = canEditPost(post);
   const canCancel = editable && post.activityType !== "rutina" && !post.cancelled;
@@ -3433,7 +3458,9 @@ function newComposerDraft(){
     allDay: true,
     startTime: "",
     endTime: "",
-    organizer: "",
+    participants: [],
+    participantQuery: "",
+    participantHighlight: 0,
     activityType: EVENTO_TYPES[0].key,
     scopes: [],
     placeQuery: "",
@@ -3470,7 +3497,9 @@ function openEditComposer(post){
     // alguien le ponga hora explícitamente.
     allDay: !(post.startTime && post.endTime),
     startTime: post.startTime || "", endTime: post.endTime || "",
-    organizer: post.organizer || "",
+    participants: (post.participants||[]).map(p=>({...p})),
+    participantQuery: "", participantHighlight: 0,
+    legacyOrganizer: (!post.participants || !post.participants.length) ? (post.organizer || "") : "",
     activityType: post.activityType, scopes: (post.scopes||[]).map(sc=>({...sc})),
     placeQuery: "", placeHighlight: 0,
     images: [...(post.images||[])], links: (post.links||[]).map(l=>({...l})),
@@ -3520,8 +3549,8 @@ function renderComposer(){
       </div>
     </div>
     <div class="field-icon-row">
-      <span class="field-icon">👤</span>
-      <input type="text" id="cOrganizer" maxlength="140" class="field-icon-input" placeholder="¿Quién organiza? (opcional)" value="${esc(d.organizer)}">
+      <span class="field-icon">👥</span>
+      ${renderParticipantsField(d)}
     </div>
     <div class="field">
       <label>Comentarios</label>
@@ -3804,6 +3833,64 @@ function selectMentionMatch(scope, ownerId, textareaId, match){
   if(el){ el.focus(); el.setSelectionRange(newCaret, newCaret); autoGrowTextarea(el); }
 }
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Participantes del composer principal (único lugar donde se usa, por
+// eso trabaja directo sobre composerDraft en vez del patrón genérico
+// getDraftFor/scope/ownerId que usan @menciones y lugar): gente del
+// roster por nickname o email, más la opción de sumar un email suelto
+// (alguien externo, o sin cuenta todavía) si lo tipeado ya es un email
+// válido y todavía no fue agregado.
+function getParticipantMatches(draft){
+  const raw = (draft.participantQuery||"").trim();
+  const q = raw.toLowerCase();
+  if(!q) return [];
+  const already = new Set(draft.participants.map(p=>p.email.toLowerCase()));
+  const matches = state.roster.filter(u =>
+    !already.has(u.email.toLowerCase()) &&
+    (u.nickname.toLowerCase().includes(q) || u.email.toLowerCase().includes(q))
+  ).slice(0, 6).map(u => ({ email:u.email, name:u.nickname, photoURL:u.photoURL }));
+  if(EMAIL_RE.test(raw) && !already.has(q) && !matches.some(m=>m.email.toLowerCase()===q)){
+    matches.push({ email:raw, name:raw, isLoose:true });
+  }
+  return matches;
+}
+function renderParticipantsField(draft){
+  return `
+    <div class="participants-field">
+      ${draft.participants.length ? `<div class="participants-row">${draft.participants.map((p,i)=>renderParticipantChip(p,i)).join("")}</div>` : ""}
+      <input type="text" id="cParticipantQuery" class="field-icon-input" placeholder="Sumar participante (nombre o email)..." autocomplete="off" value="${esc(draft.participantQuery)}">
+      ${draft.participantQuery ? renderParticipantSuggestions(draft) : ""}
+      ${draft.legacyOrganizer ? `<div class="hint" style="margin-top:4px;">Antes decía "Organiza: ${esc(draft.legacyOrganizer)}" — se reemplaza al guardar por lo que sumes acá.</div>` : ""}
+    </div>`;
+}
+function renderParticipantChip(p, idx){
+  const avatar = p.photoURL ? `<img class="participant-chip-avatar" src="${esc(p.photoURL)}" alt="">` : "";
+  return `<span class="participant-chip">${avatar}${esc(p.name || p.email)}<span class="rm" data-action="rm-participant" data-idx="${idx}">✕</span></span>`;
+}
+function renderParticipantSuggestions(draft){
+  const matches = getParticipantMatches(draft);
+  if(!matches.length) return `<div class="autocomplete-list"><div class="autocomplete-empty">Sin coincidencias. Escribí un email completo para sumar a alguien de afuera.</div></div>`;
+  return `<div class="autocomplete-list">${matches.map((m,i)=>{
+    const avatar = m.isLoose ? `<span class="mention-avatar mention-avatar-fallback">✉️</span>`
+      : m.photoURL ? `<img class="mention-avatar" src="${esc(m.photoURL)}" alt="">`
+      : `<span class="mention-avatar mention-avatar-fallback">${esc((m.name||m.email)[0].toUpperCase())}</span>`;
+    const label = m.isLoose ? `Sumar "${esc(m.email)}" como invitado` : `${esc(m.name)} <span style="color:var(--text-muted); font-weight:500;">${esc(m.email)}</span>`;
+    return `<button type="button" class="autocomplete-option mention-option${i===draft.participantHighlight?" active":""}" data-action="pick-participant" data-match-idx="${i}">${avatar}<span>${label}</span></button>`;
+  }).join("")}</div>`;
+}
+function selectParticipantMatch(match){
+  if(!match) return;
+  const draft = composerDraft;
+  if(!draft.participants.some(p=>p.email.toLowerCase()===match.email.toLowerCase())){
+    draft.participants.push({ email: match.email, name: match.name || match.email });
+  }
+  draft.participantQuery = ""; draft.participantHighlight = 0;
+  render();
+  const el = document.getElementById("cParticipantQuery");
+  if(el) el.focus();
+}
+
 // Navegar los desplegables de lugar/@mención con flechas arriba/abajo, y
 // confirmar la opción resaltada con Tab o Enter (Escape los cierra sin
 // elegir nada) — en vez de depender solo del mouse.
@@ -3847,6 +3934,26 @@ document.addEventListener("keydown", e=>{
       selectMentionMatch(t.dataset.mentionScope, t.dataset.mentionOwner, t.id, matches[draft.mentionHighlight]);
     } else if(e.key === "Escape"){
       draft.mentionQuery = null; draft.mentionHighlight = 0; render();
+    }
+    return;
+  }
+  if(t.id === "cParticipantQuery"){
+    const draft = composerDraft;
+    const matches = getParticipantMatches(draft);
+    if(!matches.length) return;
+    if(e.key === "ArrowDown"){
+      e.preventDefault();
+      draft.participantHighlight = (draft.participantHighlight + 1) % matches.length;
+      render();
+    } else if(e.key === "ArrowUp"){
+      e.preventDefault();
+      draft.participantHighlight = (draft.participantHighlight - 1 + matches.length) % matches.length;
+      render();
+    } else if(e.key === "Tab" || e.key === "Enter"){
+      e.preventDefault();
+      selectParticipantMatch(matches[draft.participantHighlight]);
+    } else if(e.key === "Escape"){
+      draft.participantQuery = ""; draft.participantHighlight = 0; render();
     }
   }
 });
@@ -3942,6 +4049,10 @@ document.addEventListener("click", e=>{
     selectPlaceMatch(t.dataset.scope, t.dataset.ownerId, matches[Number(t.dataset.matchIdx)]);
   } else if(action === "pick-mention"){
     selectMentionMatch(t.dataset.scope, t.dataset.ownerId, t.dataset.textareaId, { nickname:t.dataset.nickname, email:t.dataset.email });
+  } else if(action === "pick-participant"){
+    selectParticipantMatch(getParticipantMatches(composerDraft)[Number(t.dataset.matchIdx)]);
+  } else if(action === "rm-participant"){
+    composerDraft.participants.splice(Number(t.dataset.idx), 1); render();
   } else if(action === "use-city-preset"){
     const sd = getDraftFor(t.dataset.scope, t.dataset.ownerId).scopeDraft;
     sd.cityUseCustom = false; sd.city = ""; render();
@@ -4135,7 +4246,9 @@ document.addEventListener("input", e=>{
     updateMentionState(composerDraft, t);
     if(prevQuery !== composerDraft.mentionQuery) render();
   }
-  else if(t.id === "cOrganizer"){ composerDraft.organizer = t.value; }
+  else if(t.id === "cParticipantQuery"){
+    composerDraft.participantQuery = t.value; composerDraft.participantHighlight = 0; render();
+  }
   else if(t.dataset.placeScope){
     const draft = getDraftFor(t.dataset.placeScope, t.dataset.placeOwner);
     draft.placeQuery = t.value; draft.placeHighlight = 0; render();
@@ -4260,7 +4373,7 @@ postForm.addEventListener("submit", async e=>{
   const postData = {
     title, content, startDate:d.startDate, endDate:d.endDate, date:d.startDate,
     startTime: d.allDay ? "" : d.startTime, endTime: d.allDay ? "" : d.endTime,
-    organizer: d.organizer.trim(),
+    participants: d.participants,
     activityType:d.activityType, scopes:d.scopes,
     images:d.images, links, files:d.files, mentions:extractMentionsFromContent(content),
     authorName: state.auth.user.displayName, authorEmail: state.auth.user.email,
