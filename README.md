@@ -64,9 +64,21 @@ aprobación" hasta que el administrador lo apruebe desde la propia app
 - El nombre que se muestra en cada posteo/respuesta ya no es un campo de
   texto libre: se toma automáticamente del nombre de la cuenta de Google
   con la que se inició sesión.
-- Revocar acceso (botón "Revocar" en Solicitudes) borra a esa persona de la
+- La pestaña Solicitudes tiene dos secciones (ver `renderAccesoView` en
+  `index.html`): **Usuarios** (quién tiene acceso *ahora mismo*, sacado en
+  vivo de `allowlist` — nombre, desde cuándo, quién lo aprobó, si ya tiene
+  el Calendar compartido, y una categoría de actividad de los últimos 3
+  meses: 🟢 Activo/🟡 Ocasional/⚪ Inactivo según cuántos posteos cargó,
+  ver `ACTIVITY_TIERS`) y **Solicitudes** (la cola de pedidos por decidir,
+  con las rechazadas aparte por si hay que revertir alguna).
+- Revocar acceso (botón "Revocar" en Usuarios) borra a esa persona de la
   lista de aprobados — dejará de poder leer y cargar, pero **no borra** lo
-  que ya haya publicado (la memoria histórica queda intacta).
+  que ya haya publicado (la memoria histórica queda intacta). También
+  marca su solicitud original como rechazada, así si vuelve a intentar
+  entrar le aparece la pantalla de "acceso no aprobado" con un "Pedir
+  acceso de nuevo" que funciona de verdad (antes de este cambio, quedaba
+  en un limbo: ni aparecía de nuevo en la cola de Solicitudes ni el admin
+  se enteraba).
 - El `firebaseConfig` (`apiKey`, `projectId`, etc.) sigue sin ser secreto —
   eso es así por diseño en cualquier app web de Firebase — pero ya no
   alcanza por sí solo para entrar: hace falta estar en la lista de
@@ -142,6 +154,9 @@ allowlist/{email}            (el documento EXISTE = esa persona tiene acceso)
                              para el autocompletado de @menciones — accesos aprobados de antes de
                              que existiera este campo no lo tienen, y se les arma un nickname de
                              reserva a partir del email solo para mostrar, sin guardarlo)
+  calendarShared: bool       (opcional — si ya se le compartió el Calendar de LatAm; lo pone en
+                             true shareCalendarWith() al compartir con éxito, para mostrar un ✅
+                             real en Usuarios en vez de ofrecer siempre a ciegas el mismo botón)
 
 accessRequests/{email}       (una solicitud de acceso por persona; el id es su propio email)
   email, name, photoURL, status: "pending"|"approved"|"rejected", requestedAt

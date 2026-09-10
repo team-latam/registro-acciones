@@ -129,7 +129,14 @@
   }
   .btn-google:hover{ border-color:var(--celeste); }
 
-  /* ---------- Solicitudes (admin) ---------- */
+  /* ---------- Acceso: Usuarios / Solicitudes (admin) ---------- */
+  .users-toolbar{ display:flex; flex-wrap:wrap; align-items:center; gap:10px 14px; margin-bottom:14px; }
+  .users-toolbar input{
+    flex:1 1 220px; min-width:0; box-sizing:border-box; padding:9px 14px; border-radius:999px;
+    border:1.5px solid var(--border); font-size:13px; background:#fff;
+  }
+  .users-toolbar .chipgroup{ align-items:center; }
+  .sort-label{ font-size:11.5px; font-weight:700; color:var(--text-muted); }
   .request-row{
     display:flex; align-items:center; gap:14px; background:#fff; border:1px solid var(--border);
     border-radius:var(--radius-md); padding:14px 18px; margin-bottom:10px; box-shadow:var(--shadow);
@@ -1216,6 +1223,8 @@ const state = {
     text: "",              // busca en actorName/actorEmail/targetEmail
     types: new Set(),      // tipos de AUDIT_LABELS activos (vacío = todos)
   },
+  solicitudesSection: "usuarios", // usuarios | pendientes — ver renderAccesoView
+  usuariosFilters: { text: "", sort: "name" }, // sort: name | approvedAt | activity
 };
 
 /* ======================================================================
@@ -1470,6 +1479,10 @@ async function shareCalendarWith(email){
       throw new Error(body.error?.message || res.statusText);
     }
     logAudit("calendar_shared", { targetEmail: email });
+    // Se guarda para poder mostrar un ✅ real en Usuarios en vez de
+    // ofrecer siempre a ciegas el mismo botón "Compartir Calendar" sin
+    // saber si la persona ya lo tiene compartido o no.
+    fb.updateDoc(fb.doc(db,"allowlist",email), { calendarShared:true }).catch(()=>{});
     return { ok:true };
   }catch(err){
     console.error("Error compartiendo el Calendar:", err);
@@ -2033,7 +2046,11 @@ function subscribeRoster(){
     state.roster = snap.docs.map(d=>{
       const data = d.data();
       if(!data.nickname) missingNickname.push(d.id);
-      return { email: d.id, nickname: data.nickname || nicknameFallback(d.id), photoURL: data.photoURL || null };
+      return {
+        email: d.id, nickname: data.nickname || nicknameFallback(d.id), photoURL: data.photoURL || null,
+        name: data.name || null, approvedAt: data.approvedAt || null, approvedBy: data.approvedBy || null,
+        calendarShared: data.calendarShared === true,
+      };
     });
     render();
     // Accesos aprobados de ANTES de que existiera "nickname" no lo tienen
@@ -2222,6 +2239,14 @@ async function rejectRequest(email){
 }
 async function revokeAccess(email){
   await fb.deleteDoc(fb.doc(db, "allowlist", email));
+  // La solicitud original queda marcada como "rejected" (no solo se borra
+  // el acceso real) para que, si esa persona intenta entrar de nuevo, la
+  // pantalla de "acceso no aprobado" con el botón "Pedir acceso de nuevo"
+  // funcione de verdad — antes de este cambio, quedaba con status
+  // "approved" viejo, lo que hacía que recomputeAuthStatus() la mandara a
+  // "pending" sin haber mandado ningún pedido nuevo (quedaba en un limbo,
+  // sin aparecer en la cola de Solicitudes y sin que vos te enteraras).
+  try{ await fb.updateDoc(fb.doc(db, "accessRequests", email), { status:"rejected" }); }catch(e){}
   logAudit("access_revoked", { targetEmail: email });
 }
 
@@ -2568,7 +2593,7 @@ function doRender(){
   if(state.view === "feed") html += renderFeedView();
   else if(state.view === "paises") html += renderPaisesView();
   else if(state.view === "memoria") html += renderMemoriaView();
-  else if(state.view === "solicitudes") html += renderSolicitudesView();
+  else if(state.view === "solicitudes") html += renderAccesoView();
   else if(state.view === "auditoria") html += renderAuditoriaView();
   else if(state.view === "preferencias") html += renderPreferenciasView();
 
@@ -2617,30 +2642,124 @@ function renderAuthGate(){
 }
 
 /* ======================================================================
-   SOLICITUDES (panel admin)
+   ACCESO (panel admin, pestaña "Solicitudes") — dos secciones:
+   "Usuarios" (quién tiene acceso YA, sacado de allowlist/state.roster en
+   vivo) y "Solicitudes" (la cola de pedidos por decidir, sacada de
+   accessRequests). Antes era una sola lista con accessRequests como
+   única fuente, lo que hacía que alguien revocado siguiera apareciendo
+   como "Aprobado" — revocar solo tocaba allowlist, nunca el status de la
+   solicitud vieja. Ver revokeAccess() para el arreglo de fondo.
    ====================================================================== */
-function renderSolicitudesView(){
-  const reqs = state.accessRequests;
-  if(!reqs.length) return `<div class="empty-state"><div class="big">📭</div>No hay solicitudes todavía.</div>`;
-  return reqs.map(r=>{
-    let actions;
-    if(r.status === "approved") actions = `<span class="status-pill approved">Aprobado</span>
-      <button class="btn-ghost" data-action="share-calendar" data-email="${esc(r.email)}">🔄 Compartir Calendar</button>
-      <span class="ractions-sep"></span>
-      <button class="btn-ghost danger" data-action="revoke-access" data-email="${esc(r.email)}">Revocar acceso</button>`;
-    else if(r.status === "rejected") actions = `<span class="status-pill rejected">Rechazado</span>
-      <button class="btn-primary" data-action="approve-request" data-email="${esc(r.email)}">Aprobar igual</button>`;
-    else actions = `<button class="btn-secondary" data-action="reject-request" data-email="${esc(r.email)}">Rechazar</button>
-      <button class="btn-primary" data-action="approve-request" data-email="${esc(r.email)}">Aprobar</button>`;
+// "Actividad" de cada persona en Usuarios: en vez de mostrar la cantidad
+// cruda de posteos (poco intuitivo: ¿5 es mucho? ¿poco?), se clasifica en
+// 3 categorías simples según cuántos posteos (Evento o Rutina, cualquiera)
+// publicó en los últimos ~3 meses. Los cortes (5 y 1) son un punto de
+// partida razonable, no una ciencia exacta — fáciles de ajustar acá si
+// con el uso real del equipo conviene otro número.
+const ACTIVITY_WINDOW_MS = 90 * 24 * 60 * 60 * 1000; // "últimos 3 meses" ≈ 90 días corridos
+const ACTIVITY_TIERS = [
+  { key:"activo", label:"Activo", icon:"🟢", min:5 },
+  { key:"ocasional", label:"Ocasional", icon:"🟡", min:1 },
+  { key:"inactivo", label:"Inactivo", icon:"⚪", min:0 },
+];
+function countRecentPosts(email){
+  const since = Date.now() - ACTIVITY_WINDOW_MS;
+  return state.posts.filter(p => p.authorEmail === email && tsToMillis(p.createdAt) >= since).length;
+}
+function activityTierFor(count){
+  return ACTIVITY_TIERS.find(t => count >= t.min);
+}
+// Login más reciente de cada persona: se saca de Actividad (auditLog),
+// que el admin ya tiene cargado — no hace falta una consulta aparte.
+function lastLoginByEmail(){
+  const map = {};
+  state.auditLog.forEach(e=>{
+    if(e.type !== "login" || !e.actorEmail) return;
+    const t = tsToMillis(e.createdAt) || 0;
+    if(!map[e.actorEmail] || t > map[e.actorEmail]) map[e.actorEmail] = t;
+  });
+  return map;
+}
+
+function renderAccesoSubnav(){
+  const pendingCount = state.accessRequests.filter(r=>r.status==="pending").length;
+  return `<div class="pref-subnav">
+    <button type="button" class="chip-toggle${state.solicitudesSection==="usuarios"?" active":""}" data-action="acceso-section" data-key="usuarios">Usuarios (${state.roster.length})</button>
+    <button type="button" class="chip-toggle${state.solicitudesSection==="pendientes"?" active":""}" data-action="acceso-section" data-key="pendientes">Solicitudes${pendingCount ? ` (${pendingCount})` : ""}</button>
+  </div>`;
+}
+
+function renderUsuariosSection(){
+  const f = state.usuariosFilters;
+  const logins = lastLoginByEmail();
+  let users = state.roster.map(u => ({ ...u, postCount: countRecentPosts(u.email), lastLogin: logins[u.email] || 0 }));
+  if(f.text){
+    const n = normalize(f.text);
+    users = users.filter(u => normalize(u.name || u.nickname || "").includes(n) || normalize(u.email).includes(n));
+  }
+  users = users.slice().sort((a,b)=>{
+    if(f.sort === "approvedAt") return (tsToMillis(a.approvedAt)||0) - (tsToMillis(b.approvedAt)||0);
+    if(f.sort === "activity") return b.postCount - a.postCount;
+    return (a.name||a.nickname||"").localeCompare(b.name||b.nickname||"", "es");
+  });
+  const toolbar = `<div class="users-toolbar">
+    <input type="text" id="usuariosSearch" placeholder="Buscar por nombre o email..." value="${esc(f.text)}">
+    <div class="chipgroup">
+      <span class="sort-label">Ordenar por:</span>
+      <button type="button" class="chip-toggle${f.sort==="name"?" active":""}" data-action="usuarios-sort" data-key="name">Nombre</button>
+      <button type="button" class="chip-toggle${f.sort==="approvedAt"?" active":""}" data-action="usuarios-sort" data-key="approvedAt">Fecha de alta</button>
+      <button type="button" class="chip-toggle${f.sort==="activity"?" active":""}" data-action="usuarios-sort" data-key="activity">Actividad</button>
+    </div>
+  </div>`;
+  if(!users.length) return toolbar + `<div class="empty-state"><div class="big">🔎</div>Nadie coincide con la búsqueda.</div>`;
+  return toolbar + users.map(u=>{
+    const tier = activityTierFor(u.postCount);
+    const isAdminUser = u.email === ADMIN_EMAIL;
     return `<div class="request-row">
+      ${u.photoURL ? `<img src="${esc(u.photoURL)}" alt="">` : `<div class="avatar-fallback">${esc((u.name||u.nickname||"?")[0].toUpperCase())}</div>`}
+      <div class="rinfo">
+        <div class="rname">${esc(u.name || u.nickname)}${isAdminUser ? ` <span class="status-pill approved">Admin</span>` : ""}</div>
+        <div class="remail">${esc(u.email)} · acceso desde ${u.approvedAt ? fmtDateTime(u.approvedAt) : "siempre"}${u.approvedBy ? ` (aprobó ${esc(u.approvedBy)})` : ""}</div>
+        <div class="remail">${tier.icon} ${tier.label} (${u.postCount} posteo${u.postCount===1?"":"s"} en 3 meses) · último login: ${u.lastLogin ? fmtDateTime(u.lastLogin) : "sin registro"}</div>
+      </div>
+      <div class="ractions">
+        ${u.calendarShared
+          ? `<span class="status-pill approved">✅ Calendar</span>`
+          : `<button class="btn-ghost" data-action="share-calendar" data-email="${esc(u.email)}">Compartir Calendar</button>`}
+        ${isAdminUser ? "" : `<span class="ractions-sep"></span><button class="btn-ghost danger" data-action="revoke-access" data-email="${esc(u.email)}">Revocar acceso</button>`}
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function renderSolicitudesQueueSection(){
+  const pending = state.accessRequests.filter(r=>r.status==="pending");
+  const rejected = state.accessRequests.filter(r=>r.status==="rejected");
+  const renderRow = (r, actionsHtml) => `<div class="request-row">
       ${r.photoURL ? `<img src="${esc(r.photoURL)}" alt="">` : `<div class="avatar-fallback">${esc((r.name||r.email||"?")[0].toUpperCase())}</div>`}
       <div class="rinfo">
         <div class="rname">${esc(r.name||r.email)}</div>
         <div class="remail">${esc(r.email)} · pedido ${fmtDateTime(r.requestedAt)}</div>
       </div>
-      <div class="ractions">${actions}</div>
+      <div class="ractions">${actionsHtml}</div>
     </div>`;
-  }).join("");
+  const pendingHtml = pending.length
+    ? pending.map(r => renderRow(r, `
+        <button class="btn-secondary" data-action="reject-request" data-email="${esc(r.email)}">Rechazar</button>
+        <button class="btn-primary" data-action="approve-request" data-email="${esc(r.email)}">Aprobar</button>`)).join("")
+    : `<div class="empty-state"><div class="big">📭</div>No hay solicitudes pendientes.</div>`;
+  const rejectedHtml = rejected.length ? `
+    <div class="rejected-section">
+      <div class="hint" style="margin:18px 0 10px;">Rechazadas (incluye accesos revocados) — quedan acá por si hay que revertir.</div>
+      ${rejected.map(r => renderRow(r, `
+        <span class="status-pill rejected">Rechazado</span>
+        <button class="btn-primary" data-action="approve-request" data-email="${esc(r.email)}">Aprobar igual</button>`)).join("")}
+    </div>` : "";
+  return pendingHtml + rejectedHtml;
+}
+
+function renderAccesoView(){
+  return renderAccesoSubnav() + (state.solicitudesSection === "pendientes" ? renderSolicitudesQueueSection() : renderUsuariosSection());
 }
 
 /* ======================================================================
@@ -4240,6 +4359,10 @@ document.addEventListener("click", e=>{
     if(auditSort.key === key) auditSort.dir = auditSort.dir === "asc" ? "desc" : "asc";
     else auditSort = { key, dir: key === "date" ? "desc" : "asc" };
     auditVisibleCount = 30; render();
+  } else if(action === "acceso-section"){
+    state.solicitudesSection = t.dataset.key; render();
+  } else if(action === "usuarios-sort"){
+    state.usuariosFilters.sort = t.dataset.key; render();
   } else if(action === "open-lightbox"){
     openLightbox(t.dataset.src);
   } else if(action === "toggle-reply"){
@@ -4500,6 +4623,8 @@ document.addEventListener("input", e=>{
     state.filters.text = t.value; render();
   } else if(t.id === "auditSearch"){
     state.auditFilters.text = t.value; auditVisibleCount = 30; render();
+  } else if(t.id === "usuariosSearch"){
+    state.usuariosFilters.text = t.value; render();
   } else if(t.id === "cTitle"){ composerDraft.title = t.value; }
   else if(t.id === "cContent"){
     composerDraft.content = t.value;
