@@ -160,14 +160,23 @@
   .ractions-sep{ width:1px; height:20px; background:var(--border); margin:0 6px; }
 
   /* ---------- Actividad / registro de auditoría (admin) ---------- */
+  /* Ancho tope a propósito (igual que .preferencias-view): sin esto, en
+     pantallas anchas el texto (corto: "Fulano inició sesión.") deja un
+     hueco enorme antes de llegar a dispositivo/IP/fecha, que quedan
+     pegados contra el borde derecho en vez de cerca del centro de la fila. */
+  .auditoria-view{ max-width:900px; }
   .audit-list{ background:#fff; border:1px solid var(--border); border-radius:var(--radius-md); overflow:hidden; box-shadow:var(--shadow); }
   .audit-row{ display:flex; align-items:center; gap:12px; padding:11px 18px; }
   .audit-row + .audit-row{ border-top:1px solid var(--border); }
   .audit-icon{ font-size:16px; flex:none; }
-  .audit-text{ flex:1; font-size:13px; }
+  /* max-width (no solo flex:1) a propósito: así el texto no "reserva"
+     todo el ancho libre de la fila — dispositivo/IP/fecha arrancan
+     siempre a una distancia fija y consistente, en vez de correrse según
+     cuánto texto haya y el ancho de pantalla de quien lo mira. */
+  .audit-text{ flex:1 1 auto; max-width:420px; min-width:0; font-size:13px; }
   /* Ancho fijo (no solo white-space:nowrap) a propósito: así la columna
      queda alineada entre filas sin importar si dice "Chrome · Windows" o
-     "Safari · iOS" — el texto de al lado (flex:1) es lo que se acomoda. */
+     "Safari · iOS" — el texto de al lado es lo que se acomoda. */
   .audit-device{ font-size:11.5px; color:var(--text-muted); flex:none; width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .audit-ip{ font-size:11.5px; color:var(--text-muted); flex:none; width:100px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .audit-date{ font-size:11.5px; color:var(--text-muted); flex:none; white-space:nowrap; }
@@ -2672,7 +2681,7 @@ function renderAuditoriaView(){
         </div>`;
       }).join("")}</div>
       ${remaining > 0 ? `<div class="audit-more"><button type="button" class="btn-secondary" data-action="audit-load-more">Ver ${Math.min(30, remaining)} más (quedan ${remaining})</button></div>` : ""}`;
-  return renderAuditFilters() + list;
+  return `<div class="auditoria-view">${renderAuditFilters()}${list}</div>`;
 }
 
 /* ======================================================================
