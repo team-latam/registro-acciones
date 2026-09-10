@@ -169,6 +169,7 @@
      queda alineada entre filas sin importar si dice "Chrome · Windows" o
      "Safari · iOS" — el texto de al lado (flex:1) es lo que se acomoda. */
   .audit-device{ font-size:11.5px; color:var(--text-muted); flex:none; width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .audit-ip{ font-size:11.5px; color:var(--text-muted); flex:none; width:100px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .audit-date{ font-size:11.5px; color:var(--text-muted); flex:none; white-space:nowrap; }
   .audit-more{ text-align:center; margin-top:14px; }
   .audit-filters{ margin-bottom:14px; }
@@ -176,7 +177,7 @@
     width:100%; box-sizing:border-box; padding:9px 14px; border-radius:999px; border:1.5px solid var(--border);
     font-size:13px; background:#fff; margin-bottom:10px;
   }
-  @media (max-width:560px){ .audit-device{ display:none; } }
+  @media (max-width:700px){ .audit-device, .audit-ip{ display:none; } }
 
   /* ---------- Zonas (panel admin) ----------
      Versión compacta (v2): las zonas van en una lista angosta de una sola
@@ -1808,16 +1809,35 @@ function deviceLabel(){
   else if(/Linux/.test(ua)) os = "Linux";
   return os ? `${browser} · ${os}` : browser;
 }
+// IP pública de quien hace la acción: como esta app no tiene backend
+// propio, no hay forma de leerla del lado del servidor — se le pide a
+// un servicio externo gratuito y sin API key (ipify) desde el propio
+// navegador. Si falla (sin conexión, el servicio está caído, un
+// adblocker lo frena) se resuelve con null y el resto de logAudit sigue
+// como si nada: nunca bloquea ni rompe el registro de auditoría.
+async function fetchPublicIp(){
+  try{
+    const ctrl = new AbortController();
+    const timeout = setTimeout(()=>ctrl.abort(), 3000);
+    const res = await fetch("https://api.ipify.org?format=json", { signal: ctrl.signal });
+    clearTimeout(timeout);
+    if(!res.ok) return null;
+    const data = await res.json();
+    return data.ip || null;
+  }catch(e){ return null; }
+}
 async function logAudit(type, opts){
   const actorEmail = opts?.actorEmail || state.auth.user?.email;
   const actorName = opts?.actorName || state.auth.user?.displayName;
   if(!actorEmail || !actorName) return;
   try{
+    const ip = await fetchPublicIp();
     await fb.addDoc(fb.collection(db,"auditLog"), {
       type, actorEmail, actorName,
       targetEmail: opts?.targetEmail || null,
       detail: opts?.detail || null,
       device: deviceLabel(),
+      ip,
       createdAt: fb.serverTimestamp(),
     });
   }catch(err){ console.error("Error escribiendo auditoría:", err); }
@@ -2647,6 +2667,7 @@ function renderAuditoriaView(){
           <span class="audit-icon">${info.icon}</span>
           <div class="audit-text">${esc(info.text(e))}</div>
           <span class="audit-device">${esc(e.device || "")}</span>
+          <span class="audit-ip">${esc(e.ip || "")}</span>
           <span class="audit-date">${fmtDateTime(e.createdAt)}</span>
         </div>`;
       }).join("")}</div>
