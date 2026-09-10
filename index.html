@@ -210,10 +210,10 @@
      línea cada una (sin tarjeta propia) y los países en una grilla de
      varias columnas en vez de una fila entera por país — con 43 países
      una lista de una sola columna ocupaba una pantalla entera de alto. */
-  /* Ancho tope: sin esto, en pantallas grandes ocupaba los 1200px de
-     "main" y quedaba desproporcionado. 980px (no 760px) porque la
-     sección Zonas necesita lugar para 2-3 columnas de países por fila. */
-  .preferencias-view{ max-width:980px; }
+  /* Mismo ancho que el resto de las pestañas (Solicitudes, Actividad,
+     etc.) — usa los 1200px de "main" sin achicarse. La grilla de países
+     de Zonas es auto-fill (ver .zone-countries) así que se acomoda sola
+     a lo ancho que le toque, sin quedar desproporcionada. */
   /* Zonas v3: cada zona es una sección apilada de ancho completo (no
      columnas lado a lado, eso se probó y no gustó — ver charla) con una
      cabecera de color y sus países debajo en filas grandes, en vez de
