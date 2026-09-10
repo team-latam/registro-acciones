@@ -331,6 +331,10 @@
     font-size:13.5px; background:#fbfdfd;
   }
   .dt-sep{ color:var(--text-muted); font-size:13px; flex:none; }
+  /* El buscador de lugar (mismo que Rutina) metido adentro de una fila
+     con ícono: sin el margin-top de ".place-picker" (pensado para ir
+     debajo de otra cosa), acá es el único contenido de la fila. */
+  .place-picker-inline{ margin-top:0; }
   @media (max-width:480px){ .field-icon-row{ gap:8px; } .field-icon{ width:16px; font-size:13px; } }
 
   .type-picker{ display:flex; flex-wrap:wrap; gap:8px; }
@@ -1865,11 +1869,10 @@ function buildEditSummary(original, next){
     const newLabel = next.endDate !== next.startDate ? `${fmtDate(next.startDate)}–${fmtDate(next.endDate)}` : fmtDate(next.startDate);
     parts.push(`fecha (${oldLabel} → ${newLabel})`);
   }
-  if((original.location||"") !== (next.location||"")) parts.push(`lugar${next.location ? ` (ahora: ${next.location})` : " (se quitó)"}`);
   if((original.organizer||"") !== (next.organizer||"")) parts.push(`quién organiza${next.organizer ? ` (ahora: ${next.organizer})` : " (se quitó)"}`);
   if(original.activityType !== next.activityType) parts.push(`tipo de actividad (${ACTIVITY_BY_KEY[original.activityType]?.label} → ${ACTIVITY_BY_KEY[next.activityType]?.label})`);
   if(original.content !== next.content) parts.push("comentarios");
-  if(JSON.stringify(original.scopes||[]) !== JSON.stringify(next.scopes||[])) parts.push("alcance");
+  if(JSON.stringify(original.scopes||[]) !== JSON.stringify(next.scopes||[])) parts.push("lugar");
   if(!parts.length) return null;
   return `✏️ ${state.auth.user.displayName} editó este posteo: ${parts.join(", ")}.`;
 }
@@ -1882,7 +1885,7 @@ async function updatePostAndSync(postId, original, newData){
   const patch = {
     title:newData.title, content:newData.content, startDate:newData.startDate, endDate:newData.endDate,
     date:newData.startDate, startTime:newData.startTime||"", endTime:newData.endTime||"",
-    organizer:newData.organizer, location:newData.location,
+    organizer:newData.organizer,
     activityType:newData.activityType, scopes:newData.scopes, images:newData.images, links:newData.links,
     lastEditedAt: fb.serverTimestamp(), lastEditedBy: state.auth.user.displayName,
   };
@@ -2390,7 +2393,7 @@ function renderRutinaComposer(){
         </div>
       </div>
       <div class="place-picker">
-        <input type="text" id="rutinaPlaceQuery" placeholder="📍 Agregar lugar (país, ciudad, región)..." autocomplete="off" value="${esc(d.placeQuery)}">
+        <input type="text" id="rutinaPlaceQuery" data-place-scope="rutina" data-place-owner="new" placeholder="📍 Agregar lugar (país, ciudad, región)..." autocomplete="off" value="${esc(d.placeQuery)}">
         ${d.placeQuery ? renderPlaceSuggestions(d, "rutina", "new") : ""}
       </div>
       ${d.scopes.length ? `<div class="post-scopes" style="margin-top:8px;">${d.scopes.map((sc,i)=>renderScopeChip(sc, "rm-scope-rutina", i, "new")).join("")}</div>` : ""}
@@ -2910,11 +2913,10 @@ function newComposerDraft(){
     startTime: "",
     endTime: "",
     organizer: "",
-    location: "",
     activityType: EVENTO_TYPES[0].key,
     scopes: [],
-    scopeDraft: newScopeDraft(),
-    scopeError: "",
+    placeQuery: "",
+    placeHighlight: 0,
     images: [],
     links: [],
     files: [],
@@ -2946,9 +2948,9 @@ function openEditComposer(post){
     // alguien le ponga hora explícitamente.
     allDay: !(post.startTime && post.endTime),
     startTime: post.startTime || "", endTime: post.endTime || "",
-    organizer: post.organizer || "", location: post.location || "",
+    organizer: post.organizer || "",
     activityType: post.activityType, scopes: (post.scopes||[]).map(sc=>({...sc})),
-    scopeDraft: newScopeDraft(), scopeError: "",
+    placeQuery: "", placeHighlight: 0,
     images: [...(post.images||[])], links: (post.links||[]).map(l=>({...l})),
     files: (post.files||[]).map(f=>({...f})),
     mentionQuery: null, mentionCaret: 0, mentionHighlight: 0,
@@ -2987,7 +2989,13 @@ function renderComposer(){
     </div>
     <div class="field-icon-row">
       <span class="field-icon">📍</span>
-      <input type="text" id="cLocation" maxlength="200" class="field-icon-input" placeholder="Dónde (opcional): salón, dirección, link..." value="${esc(d.location)}">
+      <div class="field-icon-body">
+        <div class="place-picker place-picker-inline">
+          <input type="text" id="cPlaceQuery" data-place-scope="post" data-place-owner="new" placeholder="Agregar lugar (país, ciudad, región)..." autocomplete="off" value="${esc(d.placeQuery)}">
+          ${d.placeQuery ? renderPlaceSuggestions(d, "post", "new") : ""}
+        </div>
+        ${d.scopes.length ? `<div class="post-scopes" style="margin-top:8px;">${d.scopes.map((sc,i)=>renderScopeChip(sc, "rm-scope-post", i, "new")).join("")}</div>` : ""}
+      </div>
     </div>
     <div class="field-icon-row">
       <span class="field-icon">👤</span>
@@ -3010,10 +3018,6 @@ function renderComposer(){
           </label>`).join("")}
       </div>
       ${CALENDAR_SYNC_TYPES.has(d.activityType) ? `<div class="hint">📅 Se suma solo al Calendar compartido de LatAm.</div>` : `<div class="hint">Las rutinas no se suman al Calendar.</div>`}
-    </div>
-    <div class="field">
-      <label>Alcance (lugares que afecta) *</label>
-      ${renderScopeBuilder("post", "new", d)}
     </div>
     <div class="field">
       <label>Adjuntos</label>
@@ -3250,8 +3254,8 @@ function selectMentionMatch(scope, ownerId, textareaId, match){
 // elegir nada) — en vez de depender solo del mouse.
 document.addEventListener("keydown", e=>{
   const t = e.target;
-  if(t.id === "rutinaPlaceQuery"){
-    const draft = rutinaDraft;
+  if(t.dataset.placeScope){
+    const draft = getDraftFor(t.dataset.placeScope, t.dataset.placeOwner);
     const matches = getPlaceMatches(draft.placeQuery);
     if(!matches.length) return;
     if(e.key === "ArrowDown"){
@@ -3264,7 +3268,7 @@ document.addEventListener("keydown", e=>{
       render();
     } else if(e.key === "Tab" || e.key === "Enter"){
       e.preventDefault();
-      selectPlaceMatch("rutina", "new", matches[draft.placeHighlight]);
+      selectPlaceMatch(t.dataset.placeScope, t.dataset.placeOwner, matches[draft.placeHighlight]);
     } else if(e.key === "Escape"){
       draft.placeQuery = ""; draft.placeHighlight = 0; render();
     }
@@ -3482,7 +3486,10 @@ document.addEventListener("input", e=>{
     if(prevQuery !== composerDraft.mentionQuery) render();
   }
   else if(t.id === "cOrganizer"){ composerDraft.organizer = t.value; }
-  else if(t.id === "cLocation"){ composerDraft.location = t.value; }
+  else if(t.dataset.placeScope){
+    const draft = getDraftFor(t.dataset.placeScope, t.dataset.placeOwner);
+    draft.placeQuery = t.value; draft.placeHighlight = 0; render();
+  }
   else if(t.id === "rutinaContent"){
     rutinaDraft.content = t.value;
     // Solo habilita/deshabilita el botón Publicar al tipear — evita un
@@ -3498,7 +3505,6 @@ document.addEventListener("input", e=>{
     updateMentionState(rutinaDraft, t);
     if(prevQuery !== rutinaDraft.mentionQuery) render();
   }
-  else if(t.id === "rutinaPlaceQuery"){ rutinaDraft.placeQuery = t.value; rutinaDraft.placeHighlight = 0; render(); }
   else if(t.dataset.replyField === "content"){
     const draft = getReplyDraft(t.dataset.postId);
     draft.content = t.value;
@@ -3571,7 +3577,7 @@ postForm.addEventListener("submit", async e=>{
   const content = d.content.trim();
   if(!title){ d.error = "Escribí un título."; render(); return; }
   if(!content){ d.error = "Contá algo en comentarios."; render(); return; }
-  if(!d.scopes.length){ d.error = "Agregá al menos un alcance (ciudad, país, región o toda LatAm)."; render(); return; }
+  if(!d.scopes.length){ d.error = "Agregá al menos un lugar (país, ciudad, región o toda LatAm)."; render(); return; }
   if(!d.startDate){ d.error = "Elegí una fecha de inicio."; render(); return; }
   if(d.endDate < d.startDate){ d.error = "La fecha de fin no puede ser anterior a la de inicio."; render(); return; }
   if(!d.allDay){
@@ -3582,7 +3588,7 @@ postForm.addEventListener("submit", async e=>{
   const postData = {
     title, content, startDate:d.startDate, endDate:d.endDate, date:d.startDate,
     startTime: d.allDay ? "" : d.startTime, endTime: d.allDay ? "" : d.endTime,
-    organizer: d.organizer.trim(), location: d.location.trim(),
+    organizer: d.organizer.trim(),
     activityType:d.activityType, scopes:d.scopes,
     images:d.images, links, files:d.files, mentions:extractMentionsFromContent(content),
     authorName: state.auth.user.displayName, authorEmail: state.auth.user.email,
