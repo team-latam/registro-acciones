@@ -238,25 +238,47 @@ sensible. El `nickname` se arma una sola vez al aprobar a alguien
 (`makeNickname()`, primer nombre de Google, con desempate si ya existe
 otro con el mismo) y queda guardado en su documento de `allowlist`.
 
-### Zonas (por defecto, editables por el admin en la pestaña "Zonas")
+### Preferencias (panel admin)
 
-- **Sur** (azul): Argentina, Chile, Uruguay, Paraguay.
-- **Central** (amarillo): Brasil.
-- **Norte** (verde): el resto de los países/territorios de LatAm
-  (lista completa en la constante `COUNTRIES` de `index.html`).
+Pestaña **Preferencias** (solo admin), con una sub-navegación de 5
+secciones para las cosas que antes solo se podían cambiar editando
+código. Todas se guardan en Firestore (`meta/territoryConfig` para
+Zonas, `meta/preferences` — un campo por sección, con `merge:true` — para
+el resto) y se leen para **todos los aprobados** apenas inician sesión
+(no solo el admin), porque afectan lo que ve todo el mundo: colores del
+mapa, tipos de actividad disponibles, sugerencias del buscador de lugar,
+a qué Calendar se sincroniza, límites de adjuntos.
 
-Estos son los defaults hardcodeados con los que arranca la app. El admin
-puede reasignar la zona de cualquier país, cambiar el nombre/color de una
-zona, o sumar una zona nueva (ej. "Caribe") desde la pestaña **Zonas**
-(solo admin) — se guarda en `meta/territoryConfig` y se aplica al toque a
-todo el mundo (mapa, filtros, chips), incluidos los posteos ya cargados,
-porque la zona de un alcance se calcula siempre a partir del país (o
-directamente del campo `region` cuando el alcance es "región completa"),
-nunca se guarda dentro del posteo. El territorio en sí (los países y sus
-coordenadas para el mapa) no se edita desde ahí — eso sigue siendo la
-constante `COUNTRIES` en el código. El cuarto tipo de alcance, **"Toda
-LatAm"** (`{type:"todo"}`), afecta a todas las zonas y países al mismo
-tiempo (por ejemplo, un anuncio general del equipo).
+- **Zonas** — a qué zona pertenece cada país (ej. Paraguay de Sur a
+  Central) y el nombre/color de cada zona, incluso sumar una zona nueva
+  (ej. "Caribe"). Los defaults hardcodeados con los que arranca la app:
+  **Sur** (azul: Argentina, Chile, Uruguay, Paraguay), **Central**
+  (amarillo: Brasil), **Norte** (verde: el resto — lista completa en la
+  constante `COUNTRIES`). Cambiar una zona se aplica al toque a todo lo
+  ya cargado, porque la zona de un alcance se calcula siempre a partir
+  del país (o del campo `region` si el alcance es "región completa"),
+  nunca se guarda dentro del posteo. El territorio en sí (los países y
+  sus coordenadas) no se edita desde acá, sigue siendo la constante
+  `COUNTRIES` en el código. El cuarto tipo de alcance, **"Toda LatAm"**
+  (`{type:"todo"}`), afecta a todas las zonas y países al mismo tiempo.
+- **Tipos de actividad** — renombrar/cambiar el ícono de un tipo de
+  Evento existente, agregar uno nuevo, o borrar uno que no tenga
+  posteos cargados (Rutina queda afuera, tiene su propio composer y
+  nunca se edita acá). También si un tipo se sincroniza solo con el
+  Calendar compartido o no.
+- **Lugares** — ciudades que el equipo fue escribiendo a mano en el
+  buscador de lugar (cuando no encuentra una ciudad, ofrece sumarla
+  como lugar nuevo escribiendo "Ciudad, País") y todavía no están en la
+  lista oficial `CITY_PRESETS`; se pueden sumar ahí para que aparezcan
+  como sugerencia para todo el mundo en vez de que cada uno la
+  reescriba de cero.
+- **Calendar** — a qué calendario de Google (`CALENDAR_ID`) se
+  sincronizan los Eventos. Cambiarlo no mueve lo que ya está en el
+  calendario viejo, solo afecta a los nuevos/editados de ahí en más.
+- **Adjuntos** — límites de cantidad/tamaño de archivos que se pueden
+  adjuntar a un posteo. Son topes *ajustables hacia abajo* de los topes
+  duros del código (6 imágenes, 2 archivos), que además exige
+  Firestore — no se pueden agrandar más allá de eso desde acá.
 
 ### Ciudades sugeridas (`CITY_PRESETS`)
 

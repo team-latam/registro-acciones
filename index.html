@@ -172,7 +172,13 @@
      "main" — las filas de zona quedaban como barras finitas y
      desproporcionadas, y la grilla de países armaba 6+ columnas
      apretadísimas. Como panel de configuración, se lee mejor angosto. */
-  .zonas-view{ max-width:760px; }
+  .preferencias-view{ max-width:760px; }
+  .pref-subnav{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:16px; }
+  .tipo-icon-input{
+    width:38px; flex:none; border:1px solid var(--border); border-radius:6px; padding:3px 4px;
+    font-size:15px; text-align:center; background:#fff;
+  }
+  .tipo-sync-toggle{ display:flex; align-items:center; gap:4px; font-size:11px; color:var(--text-muted); flex:none; white-space:nowrap; cursor:pointer; }
   .zonas-h3{ font-size:13px; color:var(--petroleo); margin:16px 0 6px; text-transform:uppercase; letter-spacing:0.3px; }
   .zone-edit-list{
     display:flex; flex-direction:column; border:1px solid var(--border); border-radius:var(--radius-sm); overflow:hidden;
@@ -663,7 +669,7 @@
       <button data-view="memoria">Memoria</button>
       <button data-view="solicitudes" id="tabSolicitudes" hidden>Solicitudes<span id="pendingBadge"></span></button>
       <button data-view="auditoria" id="tabAuditoria" hidden>Actividad</button>
-      <button data-view="zonas" id="tabZonas" hidden>Zonas</button>
+      <button data-view="preferencias" id="tabPreferencias" hidden>Preferencias</button>
     </nav>
   </header>
   <main id="viewRoot"></main>
@@ -1059,6 +1065,7 @@ const state = {
     place: null,            // {kind:'country'|'city'|'zone', country?, city?, zone?}
   },
   paisesSubview: "lista",   // lista | mapa
+  preferenciasSection: "zonas", // zonas | tipos | lugares | calendar | adjuntos
   countryDrill: null,       // nombre de país (drill a ciudades) en vista Países > Lista
   paisesZoneFilter: new Set(), // keys de zona (sur/central/norte) para filtrar Países (Lista y Mapa); vacío = todas
   memoriaOrder: "asc",      // asc | desc
@@ -1132,7 +1139,11 @@ async function doSignOut(){
 // (crear/editar/cancelar un posteo que sincroniza) requiere el access
 // token de la persona que lo hace, con permiso de edición — se pide al
 // iniciar sesión, igual que antes.
-const CALENDAR_ID = "ahf2jnkbng1tblmk7uioolc9ko@group.calendar.google.com";
+// "let" a propósito (no "const"): editable desde Preferencias > Calendar
+// (ver applyCalendarIdConfig) — todo lo que arma URLs de la API de
+// Calendar lee esta variable por nombre en cada llamada, así que
+// reasignarla alcanza sin tocar ningún otro lado.
+let CALENDAR_ID = "ahf2jnkbng1tblmk7uioolc9ko@group.calendar.google.com";
 
 // Clave de API de Google Cloud, SOLO para LEER el calendario (sincronizar
 // Calendar → app) sin depender del login de cada persona ni mostrar
@@ -1616,6 +1627,7 @@ let unsubOwnRequest = null;
 let unsubAuditLog = null;
 let unsubRoster = null;
 let unsubTerritoryConfig = null;
+let unsubPreferences = null;
 
 function recomputeAuthStatus(){
   if(state.auth.status === "admin") return;
@@ -1631,6 +1643,7 @@ async function onAuthChanged(user){
   if(unsubAuditLog){ unsubAuditLog(); unsubAuditLog = null; }
   if(unsubRoster){ unsubRoster(); unsubRoster = null; }
   if(unsubTerritoryConfig){ unsubTerritoryConfig(); unsubTerritoryConfig = null; }
+  if(unsubPreferences){ unsubPreferences(); unsubPreferences = null; }
   state.posts = []; state.repliesByPost = {}; state.loaded = false; state.accessRequests = []; state.auditLog = []; state.roster = [];
   // Borradores sin publicar (posteo nuevo/edición, Rutina, respuestas) y
   // paneles abiertos son estado de UI en memoria, no de Firestore — sin
@@ -1641,6 +1654,10 @@ async function onAuthChanged(user){
   composerDraft = newComposerDraft();
   rutinaDraft = newRutinaDraft();
   zonasDraft = null;
+  tiposDraft = null;
+  calendarDraft = null;
+  adjuntosDraft = null;
+  state.preferenciasSection = "zonas";
   Object.keys(replyDrafts).forEach(k => delete replyDrafts[k]);
   Object.keys(nestedReplyDrafts).forEach(k => delete nestedReplyDrafts[k]);
   openReplyForms.clear();
@@ -1674,6 +1691,7 @@ async function onAuthChanged(user){
     subscribeAuditLog();
     subscribeRoster();
     subscribeTerritoryConfig();
+    subscribePreferences();
     render();
     return;
   }
@@ -1687,7 +1705,7 @@ async function onAuthChanged(user){
   unsubAllowlist = fb.onSnapshot(fb.doc(db, "allowlist", profile.email), snap=>{
     state.auth.allowlisted = snap.exists();
     recomputeAuthStatus();
-    if(state.auth.allowlisted && !dataSubscribed){ dataSubscribed = true; subscribeData(); subscribeRoster(); subscribeTerritoryConfig(); }
+    if(state.auth.allowlisted && !dataSubscribed){ dataSubscribed = true; subscribeData(); subscribeRoster(); subscribeTerritoryConfig(); subscribePreferences(); }
     render();
   }, err=>console.error("Error chequeando allowlist:", err));
 
@@ -1805,6 +1823,68 @@ function applyTerritoryConfig(cfg){
 }
 async function saveTerritoryConfig(zones, countryZones){
   await fb.setDoc(fb.doc(db,"meta","territoryConfig"), { zones, countryZones });
+}
+
+// Resto de Preferencias (Tipos de actividad, Lugares, Calendar, Adjuntos):
+// un solo doc meta/preferences, un campo por sección — cada sección
+// guarda el suyo con merge:true para no pisar los otros al guardar.
+function subscribePreferences(){
+  unsubPreferences = fb.onSnapshot(fb.doc(db,"meta","preferences"), snap=>{
+    applyPreferencesConfig(snap.exists() ? snap.data() : null);
+    render();
+  }, err=>console.error("Error leyendo preferencias:", err));
+}
+function applyPreferencesConfig(cfg){
+  applyActivityTypesConfig(cfg && cfg.activityTypes);
+  applyExtraCitiesConfig(cfg && cfg.extraCities);
+  applyCalendarIdConfig(cfg && cfg.calendarId);
+  applyAttachmentLimitsConfig(cfg);
+}
+// Se mutan EVENTO_TYPES/ACTIVITY_TYPES/ACTIVITY_BY_KEY/CALENDAR_SYNC_TYPES
+// en el lugar (mismo motivo que ZONES/COUNTRIES): todo el resto del
+// código ya los referencia directo por nombre.
+function applyActivityTypesConfig(types){
+  if(!types || !types.length) return;
+  EVENTO_TYPES.length = 0;
+  types.forEach(t=>{ EVENTO_TYPES.push({ key:t.key, label:t.label, icon:t.icon }); });
+  ACTIVITY_TYPES.length = 0;
+  ACTIVITY_TYPES.push({ key:"rutina", label:"Rutina", icon:"🔁" });
+  EVENTO_TYPES.forEach(t=>ACTIVITY_TYPES.push(t));
+  Object.keys(ACTIVITY_BY_KEY).forEach(k=>delete ACTIVITY_BY_KEY[k]);
+  ACTIVITY_TYPES.forEach(t=>{ ACTIVITY_BY_KEY[t.key] = t; });
+  CALENDAR_SYNC_TYPES.clear();
+  types.forEach(t=>{ if(t.calendarSync) CALENDAR_SYNC_TYPES.add(t.key); });
+}
+// Espejo de lo último leído de Firestore (no de CITY_PRESETS, que ya
+// incluye tanto lo hardcodeado como lo promovido): hace falta para poder
+// sumar una ciudad más sin perder las que ya se habían promovido antes.
+let extraCitiesConfig = {};
+function applyExtraCitiesConfig(extraCities){
+  extraCitiesConfig = extraCities || {};
+  Object.entries(extraCitiesConfig).forEach(([country, cities])=>{
+    const presets = CITY_PRESETS[country] || (CITY_PRESETS[country] = []);
+    (cities||[]).forEach(name=>{
+      if(!presets.some(p=>normalize(p.name)===normalize(name))) presets.push({ name, coord:null });
+    });
+  });
+  PLACE_INDEX.length = 0;
+  PLACE_INDEX.push(...buildPlaceIndex());
+}
+async function promoteCustomCity(country, city){
+  const next = {};
+  Object.keys(extraCitiesConfig).forEach(k=>{ next[k] = [...extraCitiesConfig[k]]; });
+  if(!next[country]) next[country] = [];
+  if(!next[country].some(n=>normalize(n)===normalize(city))) next[country].push(city);
+  await fb.setDoc(fb.doc(db,"meta","preferences"), { extraCities: next }, { merge:true });
+}
+function applyCalendarIdConfig(calendarId){
+  if(calendarId) CALENDAR_ID = calendarId;
+}
+function applyAttachmentLimitsConfig(cfg){
+  if(!cfg) return;
+  if(cfg.maxImages) MAX_IMAGES = Math.min(HARD_MAX_IMAGES, Math.max(1, cfg.maxImages));
+  if(cfg.maxAttachmentFiles) MAX_ATTACHMENT_FILES = Math.min(HARD_MAX_ATTACHMENT_FILES, Math.max(1, cfg.maxAttachmentFiles));
+  if(cfg.maxAttachmentFileBytes) MAX_ATTACHMENT_FILE_BYTES = Math.max(1024, cfg.maxAttachmentFileBytes);
 }
 
 // Primera "palabra" usable de un nombre o de un email (si no es un
@@ -2102,7 +2182,7 @@ const btnNewPostEl = document.getElementById("btnNewPost");
 const btnSyncCalendarEl = document.getElementById("btnSyncCalendar");
 const tabSolicitudesEl = document.getElementById("tabSolicitudes");
 const tabAuditoriaEl = document.getElementById("tabAuditoria");
-const tabZonasEl = document.getElementById("tabZonas");
+const tabPreferenciasEl = document.getElementById("tabPreferencias");
 const calendarToastEl = document.getElementById("calendarToast");
 const calendarToastTextEl = document.getElementById("calendarToastText");
 
@@ -2207,10 +2287,10 @@ function doRender(){
   btnSyncCalendarEl.disabled = state.calendarSyncing === true;
   tabSolicitudesEl.hidden = !isAdmin();
   tabAuditoriaEl.hidden = !isAdmin();
-  tabZonasEl.hidden = !isAdmin();
+  tabPreferenciasEl.hidden = !isAdmin();
   const pendingCount = state.accessRequests.filter(r=>r.status==="pending").length;
   document.getElementById("pendingBadge").innerHTML = (isAdmin() && pendingCount) ? `<span class="pending-count">${pendingCount}</span>` : "";
-  if(!isAdmin() && (state.view === "solicitudes" || state.view === "auditoria" || state.view === "zonas")) state.view = "feed";
+  if(!isAdmin() && (state.view === "solicitudes" || state.view === "auditoria" || state.view === "preferencias")) state.view = "feed";
 
   if(!fatalError && !state.loaded){
     html += `<div class="empty-state"><div class="big">⏳</div>Cargando registro compartido…</div>`;
@@ -2223,7 +2303,7 @@ function doRender(){
   else if(state.view === "memoria") html += renderMemoriaView();
   else if(state.view === "solicitudes") html += renderSolicitudesView();
   else if(state.view === "auditoria") html += renderAuditoriaView();
-  else if(state.view === "zonas") html += renderZonasView();
+  else if(state.view === "preferencias") html += renderPreferenciasView();
 
   viewRoot.innerHTML = html;
   afterRenderView();
@@ -2325,10 +2405,10 @@ function renderAuditoriaView(){
 }
 
 /* ======================================================================
-   ZONAS (panel admin, pestaña "Zonas") — reasignar la zona de un país
-   (ej: Paraguay de Sur a Central) o el color/nombre de una zona, incluso
-   sumar una zona nueva (ej: "Caribe") si algún día hace falta. El
-   territorio en sí (los 43 países ya cargados) no se toca desde acá,
+   PREFERENCIAS (panel admin) — sección "Zonas": reasignar la zona de un
+   país (ej: Paraguay de Sur a Central) o el color/nombre de una zona,
+   incluso sumar una zona nueva (ej: "Caribe") si algún día hace falta.
+   El territorio en sí (los 43 países ya cargados) no se toca desde acá,
    solo a qué zona pertenece cada uno — ver applyTerritoryConfig().
    ====================================================================== */
 function newZonasDraft(){
@@ -2343,22 +2423,21 @@ function getZonasDraft(){
   if(!zonasDraft) zonasDraft = newZonasDraft();
   return zonasDraft;
 }
-// Clave estable (sin tildes/espacios) para una zona nueva, sin chocar con
-// las que ya existen — ej. "Caribe" -> "caribe", y si ya existiera,
-// "caribe2".
-function slugifyZoneKey(label, existingKeys){
-  const base = normalize(label).replace(/[^a-z0-9]+/g,"") || "zona";
+// Clave estable (sin tildes/espacios) para un item nuevo (zona o tipo de
+// actividad), sin chocar con las que ya existen — ej. "Caribe" ->
+// "caribe", y si ya existiera, "caribe2".
+function slugifyKey(label, existingKeys){
+  const base = normalize(label).replace(/[^a-z0-9]+/g,"") || "item";
   let key = base, i = 2;
   while(existingKeys.includes(key)){ key = base + i; i++; }
   return key;
 }
-function renderZonasView(){
+function renderZonasSection(){
   const d = getZonasDraft();
   const countByZone = {};
   d.zoneOrder.forEach(k=>countByZone[k]=0);
   Object.values(d.countryZones).forEach(z=>{ if(countByZone[z]!=null) countByZone[z]++; });
   return `
-    <div class="zonas-view">
       <div class="hint" style="margin-bottom:16px;">
         Estas zonas y colores se usan en todo el Registro (mapa de Países, filtros del Feed/Memoria, chips de alcance).
         Cambiar la zona de un país acá se aplica también a los posteos ya cargados — no hace falta editarlos uno por uno.
@@ -2401,7 +2480,169 @@ function renderZonasView(){
       <div class="modal-actions" style="margin-top:16px;">
         <button type="button" class="btn-secondary" data-action="zonas-reset">Descartar cambios</button>
         <button type="button" class="btn-primary" data-action="zonas-save" ${d.saving?"disabled":""}>${d.saving?"Guardando…":"Guardar cambios"}</button>
+      </div>`;
+}
+
+/* ----- Preferencias: sección "Tipos de actividad" -----
+   Los tipos de Evento (Rutina queda afuera: tiene su propio composer y
+   nunca se sincroniza con Calendar, no tiene sentido editarla acá). */
+function newTiposDraft(){
+  const types = EVENTO_TYPES.map(t=>({ key:t.key, label:t.label, icon:t.icon, calendarSync: CALENDAR_SYNC_TYPES.has(t.key) }));
+  return { types, newLabel:"", newIcon:"", error:"", saving:false };
+}
+let tiposDraft = null;
+function getTiposDraft(){
+  if(!tiposDraft) tiposDraft = newTiposDraft();
+  return tiposDraft;
+}
+function countPostsByType(key){
+  return state.posts.filter(p=>p.activityType===key).length;
+}
+function renderTiposSection(){
+  const d = getTiposDraft();
+  return `
+      <div class="hint" style="margin-bottom:16px;">
+        Tipos de actividad disponibles al cargar un Evento nuevo (Rutina es aparte, no se edita acá). Los que tienen tildado
+        "Calendar" se suman solos al Calendar compartido de LatAm; los que no, quedan solo en el Registro.
       </div>
+      <div class="zone-edit-list">
+        ${d.types.map(t=>{
+          const count = countPostsByType(t.key);
+          return `<div class="zone-edit-row">
+            <input type="text" class="tipo-icon-input" data-action="tipos-icon" data-key="${t.key}" value="${esc(t.icon)}" maxlength="4">
+            <input type="text" class="zone-label-input" data-action="tipos-label" data-key="${t.key}" value="${esc(t.label)}" maxlength="30">
+            <label class="tipo-sync-toggle"><input type="checkbox" data-action="tipos-sync" data-key="${t.key}" ${t.calendarSync?"checked":""}> Calendar</label>
+            <span class="zone-count">${count} posteo${count===1?"":"s"}</span>
+            <button type="button" class="rm" data-action="tipos-remove" data-key="${t.key}" ${count>0?"disabled title=\"Hay posteos con este tipo\"":"title=\"Eliminar\""}>✕</button>
+          </div>`;
+        }).join("")}
+      </div>
+      <div class="zone-add-row">
+        <input type="text" id="tiposNewIcon" placeholder="Ícono" maxlength="4" value="${esc(d.newIcon)}" style="max-width:64px;flex:none;">
+        <input type="text" id="tiposNewLabel" placeholder="Nombre del tipo nuevo (ej: Taller)" maxlength="30" value="${esc(d.newLabel)}">
+        <button type="button" class="btn-mini" data-action="tipos-add">+ Agregar tipo</button>
+      </div>
+      ${d.error ? `<div class="form-error">${esc(d.error)}</div>` : ""}
+      <div class="modal-actions" style="margin-top:16px;">
+        <button type="button" class="btn-secondary" data-action="tipos-reset">Descartar cambios</button>
+        <button type="button" class="btn-primary" data-action="tipos-save" ${d.saving?"disabled":""}>${d.saving?"Guardando…":"Guardar cambios"}</button>
+      </div>`;
+}
+
+/* ----- Preferencias: sección "Lugares" -----
+   Ciudades que el equipo fue escribiendo a mano (ver getPlaceMatches,
+   "Usar ... (lugar nuevo)") y todavía no están en la lista oficial
+   CITY_PRESETS — acá se revisan y, si corresponde, se suman como
+   sugerencia del buscador para todo el mundo. */
+function getCustomCityUsage(){
+  const usage = {};
+  const scan = scopes => (scopes||[]).forEach(sc=>{
+    if(sc.type !== "ciudad") return;
+    const presets = CITY_PRESETS[sc.country] || [];
+    if(presets.some(p=>normalize(p.name)===normalize(sc.city))) return;
+    const key = sc.country + "|||" + sc.city;
+    if(!usage[key]) usage[key] = { country:sc.country, city:sc.city, count:0 };
+    usage[key].count++;
+  });
+  state.posts.forEach(p=>{
+    scan(p.scopes);
+    (state.repliesByPost[p.id]||[]).forEach(r=>scan(r.scopes));
+  });
+  return Object.values(usage).sort((a,b)=> b.count - a.count);
+}
+function renderLugaresSection(){
+  const items = getCustomCityUsage();
+  return `
+      <div class="hint" style="margin-bottom:16px;">
+        Ciudades que el equipo fue cargando y todavía no están en la lista oficial. Sumarlas acá hace que aparezcan como
+        sugerencia del buscador de lugar para todo el mundo, en vez de que cada uno la escriba de cero cada vez.
+      </div>
+      ${!items.length ? `<div class="empty-state"><div class="big">📍</div>No hay ciudades nuevas pendientes de revisar.</div>` : `
+      <div class="country-zone-list" style="grid-template-columns:1fr;">
+        ${items.map(it=>`
+          <div class="country-zone-row">
+            <span class="cz-name" style="flex:2;" title="${esc(it.city)}, ${esc(it.country)}">${esc(it.city)}, ${esc(it.country)}</span>
+            <span class="zone-count">${it.count} posteo${it.count===1?"":"s"}</span>
+            <button type="button" class="btn-mini" data-action="lugares-promote" data-country="${esc(it.country)}" data-city="${esc(it.city)}">+ Sumar a la lista oficial</button>
+          </div>`).join("")}
+      </div>`}`;
+}
+
+/* ----- Preferencias: sección "Calendar" ----- */
+function newCalendarDraft(){ return { calendarId: CALENDAR_ID, error:"", saving:false }; }
+let calendarDraft = null;
+function getCalendarDraft(){
+  if(!calendarDraft) calendarDraft = newCalendarDraft();
+  return calendarDraft;
+}
+function renderCalendarSection(){
+  const d = getCalendarDraft();
+  return `
+      <div class="hint" style="margin-bottom:16px;">
+        A qué calendario de Google se sincronizan los Eventos (las Rutinas nunca se sincronizan). Cambiarlo no mueve los eventos
+        que ya están en el calendario viejo — de acá en más, los nuevos y los que se editen van al que pongas.
+      </div>
+      <div class="field">
+        <label>ID del calendario</label>
+        <input type="text" id="calendarIdInput" value="${esc(d.calendarId)}" placeholder="xxxx@group.calendar.google.com">
+      </div>
+      ${d.error ? `<div class="form-error">${esc(d.error)}</div>` : ""}
+      <div class="modal-actions" style="margin-top:16px;">
+        <button type="button" class="btn-secondary" data-action="calendar-reset">Descartar cambios</button>
+        <button type="button" class="btn-primary" data-action="calendar-save" ${d.saving?"disabled":""}>${d.saving?"Guardando…":"Guardar cambios"}</button>
+      </div>`;
+}
+
+/* ----- Preferencias: sección "Adjuntos" ----- */
+function newAdjuntosDraft(){
+  return {
+    maxImages: MAX_IMAGES, maxFiles: MAX_ATTACHMENT_FILES,
+    maxFileKB: Math.round(MAX_ATTACHMENT_FILE_BYTES/1024), error:"", saving:false,
+  };
+}
+let adjuntosDraft = null;
+function getAdjuntosDraft(){
+  if(!adjuntosDraft) adjuntosDraft = newAdjuntosDraft();
+  return adjuntosDraft;
+}
+function renderAdjuntosSection(){
+  const d = getAdjuntosDraft();
+  return `
+      <div class="hint" style="margin-bottom:16px;">Límites de archivos que se pueden adjuntar a un posteo (Evento, Rutina o respuesta).</div>
+      <div class="row2">
+        <div class="field"><label>Máximo de imágenes</label><input type="number" id="adjMaxImages" min="1" max="6" value="${d.maxImages}"></div>
+        <div class="field"><label>Máximo de PDF/audio</label><input type="number" id="adjMaxFiles" min="1" max="2" value="${d.maxFiles}"></div>
+      </div>
+      <div class="field"><label>Tamaño máximo por PDF/audio (KB)</label><input type="number" id="adjMaxFileKB" min="50" max="500" value="${d.maxFileKB}"></div>
+      <div class="hint">Los topes duros son 6 imágenes y 2 archivos (también los exige Firestore) — acá se puede achicar, no agrandar más que eso.</div>
+      ${d.error ? `<div class="form-error">${esc(d.error)}</div>` : ""}
+      <div class="modal-actions" style="margin-top:16px;">
+        <button type="button" class="btn-secondary" data-action="adjuntos-reset">Descartar cambios</button>
+        <button type="button" class="btn-primary" data-action="adjuntos-save" ${d.saving?"disabled":""}>${d.saving?"Guardando…":"Guardar cambios"}</button>
+      </div>`;
+}
+
+/* ----- Preferencias: shell + sub-navegación ----- */
+const PREFERENCIAS_SECTIONS = [
+  { key:"zonas", label:"Zonas" },
+  { key:"tipos", label:"Tipos de actividad" },
+  { key:"lugares", label:"Lugares" },
+  { key:"calendar", label:"Calendar" },
+  { key:"adjuntos", label:"Adjuntos" },
+];
+function renderPreferenciasView(){
+  const sec = state.preferenciasSection;
+  const body = sec==="tipos" ? renderTiposSection()
+    : sec==="lugares" ? renderLugaresSection()
+    : sec==="calendar" ? renderCalendarSection()
+    : sec==="adjuntos" ? renderAdjuntosSection()
+    : renderZonasSection();
+  return `
+    <div class="preferencias-view">
+      <div class="pref-subnav">
+        ${PREFERENCIAS_SECTIONS.map(s=>`<button type="button" class="chip-toggle${sec===s.key?" active":""}" data-action="pref-section" data-key="${s.key}">${s.label}</button>`).join("")}
+      </div>
+      ${body}
     </div>`;
 }
 
@@ -3208,7 +3449,7 @@ function renderComposer(){
           <div class="img-preview"><img src="${src}"><button type="button" class="rm" data-action="post-rm-image" data-idx="${i}">✕</button></div>`).join("")}</div>` : ""}
         ${renderFileChips(d.files, "post-rm-file")}
         ${d.links.length ? `<div class="attach-panel">${renderLinkRows("post", "new", d.links)}</div>` : ""}
-        <div class="hint">Imágenes: se comprimen solas, máximo 6. PDF/audio: hasta ${MAX_ATTACHMENT_FILES} archivos chicos (≤${(MAX_ATTACHMENT_FILE_BYTES/1024).toFixed(0)}KB c/u). Para video o archivos más grandes: pegá un link (Drive, YouTube, etc.).</div>
+        <div class="hint">Imágenes: se comprimen solas, máximo ${MAX_IMAGES}. PDF/audio: hasta ${MAX_ATTACHMENT_FILES} archivos chicos (≤${(MAX_ATTACHMENT_FILE_BYTES/1024).toFixed(0)}KB c/u). Para video o archivos más grandes: pegá un link (Drive, YouTube, etc.).</div>
       ` : `
         <button type="button" class="btn-text-add" data-action="toggle-post-attach">📎 Agregar imagen, PDF/audio o link</button>
       `}
@@ -3277,7 +3518,12 @@ document.addEventListener("keydown", e=>{
   if(e.key === "Escape"){ closeComposer(); closeLightbox(); }
 });
 
-async function handleImageFiles(fileList, targetArray, max=6){
+// Tope duro absoluto de imágenes: MAX_IMAGES (editable desde Preferencias
+// > Adjuntos) puede achicarlo, nunca agrandarlo más allá de esto — Firestore
+// también lo exige (ver isValidPostBase en firestore.rules).
+const HARD_MAX_IMAGES = 6;
+let MAX_IMAGES = HARD_MAX_IMAGES;
+async function handleImageFiles(fileList, targetArray, max=MAX_IMAGES){
   const files = Array.from(fileList).slice(0, Math.max(0, max - targetArray.length));
   for(const file of files){
     try{
@@ -3293,8 +3539,13 @@ async function handleImageFiles(fileList, targetArray, max=6){
 // directamente el tamaño del archivo y la cantidad — Firestore permite
 // ~1MB por documento entero, y el base64 pesa ~33% más que el archivo
 // original, así que hay que dejar margen para el resto del posteo.
-const MAX_ATTACHMENT_FILES = 2;
-const MAX_ATTACHMENT_FILE_BYTES = 150 * 1024;
+// Topes duros absolutos: los de Preferencias > Adjuntos pueden achicarlos,
+// nunca agrandarlos más allá de esto — Firestore también los exige (ver
+// isValidPostBase en firestore.rules, que valida contra el tope duro, no
+// contra estas variables editables).
+const HARD_MAX_ATTACHMENT_FILES = 2;
+let MAX_ATTACHMENT_FILES = HARD_MAX_ATTACHMENT_FILES;
+let MAX_ATTACHMENT_FILE_BYTES = 150 * 1024;
 function readFileAsDataUrl(file){
   return new Promise((resolve, reject)=>{
     const reader = new FileReader();
@@ -3674,7 +3925,7 @@ document.addEventListener("click", e=>{
     const d = getZonasDraft();
     const label = d.newZoneLabel.trim();
     if(!label){ d.error = "Escribí un nombre para la zona nueva."; render(); return; }
-    const key = slugifyZoneKey(label, d.zoneOrder);
+    const key = slugifyKey(label, d.zoneOrder);
     d.zones[key] = { label, color:"#64748b" };
     d.zoneOrder.push(key);
     d.newZoneLabel = "";
@@ -3687,6 +3938,66 @@ document.addEventListener("click", e=>{
     const d = getZonasDraft();
     d.saving = true; d.error = ""; render();
     saveTerritoryConfig(d.zones, d.countryZones).then(()=>{
+      d.saving = false; render();
+    }).catch(err=>{
+      console.error(err);
+      d.saving = false; d.error = "No se pudo guardar: " + err.message; render();
+    });
+  } else if(action === "pref-section"){
+    state.preferenciasSection = t.dataset.key; render();
+  } else if(action === "tipos-remove"){
+    const d = getTiposDraft();
+    const key = t.dataset.key;
+    if(countPostsByType(key) > 0){ d.error = "Hay posteos con este tipo — no se puede eliminar."; render(); return; }
+    d.types = d.types.filter(x=>x.key!==key);
+    d.error = "";
+    render();
+  } else if(action === "tipos-add"){
+    const d = getTiposDraft();
+    const label = d.newLabel.trim();
+    if(!label){ d.error = "Escribí un nombre para el tipo nuevo."; render(); return; }
+    const key = slugifyKey(label, d.types.map(x=>x.key));
+    d.types.push({ key, label, icon: d.newIcon.trim() || "✨", calendarSync:true });
+    d.newLabel = ""; d.newIcon = ""; d.error = "";
+    render();
+  } else if(action === "tipos-reset"){
+    tiposDraft = null; render();
+  } else if(action === "tipos-save"){
+    const d = getTiposDraft();
+    if(!d.types.length){ d.error = "Tiene que quedar al menos un tipo de actividad."; render(); return; }
+    d.saving = true; d.error = ""; render();
+    fb.setDoc(fb.doc(db,"meta","preferences"), { activityTypes: d.types }, { merge:true }).then(()=>{
+      d.saving = false; render();
+    }).catch(err=>{
+      console.error(err);
+      d.saving = false; d.error = "No se pudo guardar: " + err.message; render();
+    });
+  } else if(action === "lugares-promote"){
+    promoteCustomCity(t.dataset.country, t.dataset.city).then(render).catch(err=>{
+      console.error(err); alert("No se pudo sumar el lugar: " + err.message);
+    });
+  } else if(action === "calendar-reset"){
+    calendarDraft = null; render();
+  } else if(action === "calendar-save"){
+    const d = getCalendarDraft();
+    const id = d.calendarId.trim();
+    if(!id){ d.error = "Escribí el ID del calendario."; render(); return; }
+    d.saving = true; d.error = ""; render();
+    fb.setDoc(fb.doc(db,"meta","preferences"), { calendarId: id }, { merge:true }).then(()=>{
+      d.saving = false; render();
+    }).catch(err=>{
+      console.error(err);
+      d.saving = false; d.error = "No se pudo guardar: " + err.message; render();
+    });
+  } else if(action === "adjuntos-reset"){
+    adjuntosDraft = null; render();
+  } else if(action === "adjuntos-save"){
+    const d = getAdjuntosDraft();
+    d.saving = true; d.error = ""; render();
+    const maxImages = Math.min(HARD_MAX_IMAGES, Math.max(1, Number(d.maxImages) || HARD_MAX_IMAGES));
+    const maxAttachmentFiles = Math.min(HARD_MAX_ATTACHMENT_FILES, Math.max(1, Number(d.maxFiles) || HARD_MAX_ATTACHMENT_FILES));
+    const maxAttachmentFileBytes = Math.max(1024, (Number(d.maxFileKB) || 150) * 1024);
+    fb.setDoc(fb.doc(db,"meta","preferences"), { maxImages, maxAttachmentFiles, maxAttachmentFileBytes }, { merge:true }).then(()=>{
       d.saving = false; render();
     }).catch(err=>{
       console.error(err);
@@ -3760,6 +4071,20 @@ document.addEventListener("input", e=>{
   }
   else if(t.dataset.action === "zonas-label"){ getZonasDraft().zones[t.dataset.key].label = t.value; }
   else if(t.id === "zonasNewZoneLabel"){ getZonasDraft().newZoneLabel = t.value; }
+  else if(t.dataset.action === "tipos-icon"){
+    const type = getTiposDraft().types.find(x=>x.key===t.dataset.key);
+    if(type) type.icon = t.value;
+  }
+  else if(t.dataset.action === "tipos-label"){
+    const type = getTiposDraft().types.find(x=>x.key===t.dataset.key);
+    if(type) type.label = t.value;
+  }
+  else if(t.id === "tiposNewIcon"){ getTiposDraft().newIcon = t.value; }
+  else if(t.id === "tiposNewLabel"){ getTiposDraft().newLabel = t.value; }
+  else if(t.id === "calendarIdInput"){ getCalendarDraft().calendarId = t.value; }
+  else if(t.id === "adjMaxImages"){ getAdjuntosDraft().maxImages = t.value; }
+  else if(t.id === "adjMaxFiles"){ getAdjuntosDraft().maxFiles = t.value; }
+  else if(t.id === "adjMaxFileKB"){ getAdjuntosDraft().maxFileKB = t.value; }
 });
 
 document.addEventListener("change", e=>{
@@ -3803,6 +4128,10 @@ document.addEventListener("change", e=>{
   }
   else if(t.dataset.action === "zonas-color"){ getZonasDraft().zones[t.dataset.key].color = t.value; render(); }
   else if(t.dataset.action === "zonas-country-zone"){ getZonasDraft().countryZones[t.dataset.country] = t.value; render(); }
+  else if(t.dataset.action === "tipos-sync"){
+    const type = getTiposDraft().types.find(x=>x.key===t.dataset.key);
+    if(type) type.calendarSync = t.checked;
+  }
 });
 
 document.addEventListener("click", e=>{ if(e.target.id === "cCancel") closeComposer(); });
