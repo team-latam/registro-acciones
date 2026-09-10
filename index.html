@@ -811,7 +811,7 @@
       <button data-view="feed">Feed</button>
       <button data-view="paises">Países</button>
       <button data-view="memoria">Memoria</button>
-      <button data-view="solicitudes" id="tabSolicitudes" hidden>Solicitudes<span id="pendingBadge"></span></button>
+      <button data-view="solicitudes" id="tabSolicitudes" hidden>Usuarios<span id="pendingBadge"></span></button>
       <button data-view="auditoria" id="tabAuditoria" hidden>Actividad</button>
       <button data-view="preferencias" id="tabPreferencias" hidden>Preferencias</button>
     </nav>
@@ -2651,8 +2651,7 @@ function renderUsuariosSection(){
       ${u.photoURL ? `<img src="${esc(u.photoURL)}" alt="">` : `<div class="avatar-fallback">${esc((u.name||u.nickname||"?")[0].toUpperCase())}</div>`}
       <div class="rinfo">
         <div class="rname">${esc(u.name || u.nickname)}${isAdminUser ? ` <span class="status-pill approved">Admin</span>` : ""}</div>
-        <div class="remail">${esc(u.email)} · acceso desde ${u.approvedAt ? fmtDateTime(u.approvedAt) : "siempre"}${u.approvedBy ? ` (aprobó ${esc(u.approvedBy)})` : ""}</div>
-        <div class="remail">${tier.icon} ${tier.label} (${u.postCount} posteo${u.postCount===1?"":"s"} en 3 meses) · último login: ${u.lastLogin ? fmtDateTime(u.lastLogin) : "sin registro"}</div>
+        <div class="remail">${esc(u.email)} · ${tier.icon} ${tier.label} · Último login: ${u.lastLogin ? fmtDateTime(u.lastLogin) : "sin registro"}</div>
       </div>
       <div class="ractions">
         ${u.calendarShared
