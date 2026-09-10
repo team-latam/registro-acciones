@@ -162,6 +162,32 @@
   .audit-icon{ font-size:16px; flex:none; }
   .audit-text{ flex:1; font-size:13px; }
   .audit-date{ font-size:11.5px; color:var(--text-muted); flex:none; white-space:nowrap; }
+
+  /* ---------- Zonas (panel admin) ---------- */
+  .zonas-h3{ font-size:14px; color:var(--petroleo); margin:18px 0 8px; }
+  .zone-edit-list{ display:flex; flex-direction:column; gap:6px; }
+  .zone-edit-row{
+    display:flex; align-items:center; gap:10px; background:#fff; border:1px solid var(--border);
+    border-radius:var(--radius-sm); padding:8px 10px;
+  }
+  .zone-edit-row input[type=color]{ width:30px; height:30px; padding:0; border:none; border-radius:6px; cursor:pointer; flex:none; }
+  .zone-label-input{ flex:1; border:1.5px solid var(--border); border-radius:8px; padding:7px 9px; font-size:13.5px; font-weight:600; }
+  .zone-count{ font-size:11.5px; color:var(--text-muted); flex:none; white-space:nowrap; }
+  .zone-edit-row .rm{
+    width:22px; height:22px; border-radius:50%; background:var(--danger); color:#fff; border:none;
+    font-size:12px; cursor:pointer; line-height:22px; text-align:center; padding:0; flex-shrink:0;
+  }
+  .zone-edit-row .rm:disabled{ background:var(--border); color:var(--text-muted); cursor:not-allowed; }
+  .zone-add-row{ display:flex; gap:8px; margin-top:8px; }
+  .zone-add-row input{ flex:1; border:1.5px solid var(--border); border-radius:8px; padding:9px 12px; font-size:13.5px; }
+  .country-zone-list{
+    display:flex; flex-direction:column; gap:1px; background:var(--border); border-radius:var(--radius-md);
+    overflow:hidden; border:1px solid var(--border); max-height:420px; overflow-y:auto;
+  }
+  .country-zone-row{ display:flex; align-items:center; gap:10px; background:#fff; padding:9px 14px; }
+  .country-zone-row .zdot{ width:9px; height:9px; border-radius:50%; flex:none; }
+  .cz-name{ flex:1; font-size:13.5px; }
+  .country-zone-row select{ border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; font-size:13px; background:#fbfdfd; }
   nav.tabs{ max-width:1200px; margin:14px auto 0 auto; display:flex; gap:4px; }
   nav.tabs.tabs-hidden{ visibility:hidden; pointer-events:none; }
   nav.tabs button{
@@ -616,6 +642,7 @@
       <button data-view="memoria">Memoria</button>
       <button data-view="solicitudes" id="tabSolicitudes" hidden>Solicitudes<span id="pendingBadge"></span></button>
       <button data-view="auditoria" id="tabAuditoria" hidden>Actividad</button>
+      <button data-view="zonas" id="tabZonas" hidden>Zonas</button>
     </nav>
   </header>
   <main id="viewRoot"></main>
@@ -1567,6 +1594,7 @@ let unsubAllowlist = null;
 let unsubOwnRequest = null;
 let unsubAuditLog = null;
 let unsubRoster = null;
+let unsubTerritoryConfig = null;
 
 function recomputeAuthStatus(){
   if(state.auth.status === "admin") return;
@@ -1581,6 +1609,7 @@ async function onAuthChanged(user){
   if(unsubOwnRequest){ unsubOwnRequest(); unsubOwnRequest = null; }
   if(unsubAuditLog){ unsubAuditLog(); unsubAuditLog = null; }
   if(unsubRoster){ unsubRoster(); unsubRoster = null; }
+  if(unsubTerritoryConfig){ unsubTerritoryConfig(); unsubTerritoryConfig = null; }
   state.posts = []; state.repliesByPost = {}; state.loaded = false; state.accessRequests = []; state.auditLog = []; state.roster = [];
   // Borradores sin publicar (posteo nuevo/edición, Rutina, respuestas) y
   // paneles abiertos son estado de UI en memoria, no de Firestore — sin
@@ -1590,6 +1619,7 @@ async function onAuthChanged(user){
   // sesión: cerrar sesión, o pasar de una cuenta a otra.
   composerDraft = newComposerDraft();
   rutinaDraft = newRutinaDraft();
+  zonasDraft = null;
   Object.keys(replyDrafts).forEach(k => delete replyDrafts[k]);
   Object.keys(nestedReplyDrafts).forEach(k => delete nestedReplyDrafts[k]);
   openReplyForms.clear();
@@ -1622,6 +1652,7 @@ async function onAuthChanged(user){
     subscribeAccessRequests();
     subscribeAuditLog();
     subscribeRoster();
+    subscribeTerritoryConfig();
     render();
     return;
   }
@@ -1635,7 +1666,7 @@ async function onAuthChanged(user){
   unsubAllowlist = fb.onSnapshot(fb.doc(db, "allowlist", profile.email), snap=>{
     state.auth.allowlisted = snap.exists();
     recomputeAuthStatus();
-    if(state.auth.allowlisted && !dataSubscribed){ dataSubscribed = true; subscribeData(); subscribeRoster(); }
+    if(state.auth.allowlisted && !dataSubscribed){ dataSubscribed = true; subscribeData(); subscribeRoster(); subscribeTerritoryConfig(); }
     render();
   }, err=>console.error("Error chequeando allowlist:", err));
 
@@ -1721,6 +1752,40 @@ async function backfillNicknames(emails){
     }catch(err){ console.error("No se pudo completar el nickname de " + email + ":", err); }
   }
 }
+// Config de zonas/países editable por el admin (ver renderZonasView): si
+// existe meta/territoryConfig, reemplaza los defaults hardcodeados de
+// ZONES/COUNTRIES[].zone. Se leen para TODOS los aprobados (no solo el
+// admin) porque afecta colores del mapa y filtros de todo el mundo.
+function subscribeTerritoryConfig(){
+  unsubTerritoryConfig = fb.onSnapshot(fb.doc(db,"meta","territoryConfig"), snap=>{
+    applyTerritoryConfig(snap.exists() ? snap.data() : null);
+    render();
+  }, err=>console.error("Error leyendo la configuración de zonas:", err));
+}
+// Se MUTAN los mismos objetos/arrays (ZONES, cada país, ZONE_COUNTRIES,
+// PLACE_INDEX) en vez de reasignar las const: todo el resto del código ya
+// guarda referencias directas a ellos (ZONES[key], COUNTRY_BY_NAME, los
+// filtros de zona, el mapa) y reasignar los dejaría mirando la versión
+// vieja. Sin doc todavía (nadie guardó nunca desde el panel), no hace
+// nada y quedan los defaults de siempre.
+function applyTerritoryConfig(cfg){
+  if(!cfg || !cfg.zones) return;
+  Object.keys(ZONES).forEach(k=>delete ZONES[k]);
+  Object.entries(cfg.zones).forEach(([key,z])=>{ ZONES[key] = { key, label:z.label, color:z.color }; });
+  COUNTRIES.forEach(c=>{
+    const zone = (cfg.countryZones||{})[c.name];
+    if(zone && ZONES[zone]) c.zone = zone;
+  });
+  Object.keys(ZONE_COUNTRIES).forEach(k=>delete ZONE_COUNTRIES[k]);
+  Object.keys(ZONES).forEach(k=>{ ZONE_COUNTRIES[k] = []; });
+  COUNTRIES.forEach(c=>{ (ZONE_COUNTRIES[c.zone] = ZONE_COUNTRIES[c.zone] || []).push(c.name); });
+  PLACE_INDEX.length = 0;
+  PLACE_INDEX.push(...buildPlaceIndex());
+}
+async function saveTerritoryConfig(zones, countryZones){
+  await fb.setDoc(fb.doc(db,"meta","territoryConfig"), { zones, countryZones });
+}
+
 // Primera "palabra" usable de un nombre o de un email (si no es un
 // nombre real, se recorta antes del @ y se separan puntos/guiones) —
 // para "Ari Krengel" da "Ari"; para "cursoslatam.argentina@gmail.com"
@@ -2016,6 +2081,7 @@ const btnNewPostEl = document.getElementById("btnNewPost");
 const btnSyncCalendarEl = document.getElementById("btnSyncCalendar");
 const tabSolicitudesEl = document.getElementById("tabSolicitudes");
 const tabAuditoriaEl = document.getElementById("tabAuditoria");
+const tabZonasEl = document.getElementById("tabZonas");
 const calendarToastEl = document.getElementById("calendarToast");
 const calendarToastTextEl = document.getElementById("calendarToastText");
 
@@ -2120,9 +2186,10 @@ function doRender(){
   btnSyncCalendarEl.disabled = state.calendarSyncing === true;
   tabSolicitudesEl.hidden = !isAdmin();
   tabAuditoriaEl.hidden = !isAdmin();
+  tabZonasEl.hidden = !isAdmin();
   const pendingCount = state.accessRequests.filter(r=>r.status==="pending").length;
   document.getElementById("pendingBadge").innerHTML = (isAdmin() && pendingCount) ? `<span class="pending-count">${pendingCount}</span>` : "";
-  if(!isAdmin() && (state.view === "solicitudes" || state.view === "auditoria")) state.view = "feed";
+  if(!isAdmin() && (state.view === "solicitudes" || state.view === "auditoria" || state.view === "zonas")) state.view = "feed";
 
   if(!fatalError && !state.loaded){
     html += `<div class="empty-state"><div class="big">⏳</div>Cargando registro compartido…</div>`;
@@ -2135,6 +2202,7 @@ function doRender(){
   else if(state.view === "memoria") html += renderMemoriaView();
   else if(state.view === "solicitudes") html += renderSolicitudesView();
   else if(state.view === "auditoria") html += renderAuditoriaView();
+  else if(state.view === "zonas") html += renderZonasView();
 
   viewRoot.innerHTML = html;
   afterRenderView();
@@ -2233,6 +2301,87 @@ function renderAuditoriaView(){
       <span class="audit-date">${fmtDateTime(e.createdAt)}</span>
     </div>`;
   }).join("")}</div>`;
+}
+
+/* ======================================================================
+   ZONAS (panel admin, pestaña "Zonas") — reasignar la zona de un país
+   (ej: Paraguay de Sur a Central) o el color/nombre de una zona, incluso
+   sumar una zona nueva (ej: "Caribe") si algún día hace falta. El
+   territorio en sí (los 43 países ya cargados) no se toca desde acá,
+   solo a qué zona pertenece cada uno — ver applyTerritoryConfig().
+   ====================================================================== */
+function newZonasDraft(){
+  const zones = {}; const zoneOrder = [];
+  Object.values(ZONES).forEach(z=>{ zones[z.key] = { label:z.label, color:z.color }; zoneOrder.push(z.key); });
+  const countryZones = {};
+  COUNTRIES.forEach(c=>{ countryZones[c.name] = c.zone; });
+  return { zones, zoneOrder, countryZones, newZoneLabel:"", error:"", saving:false };
+}
+let zonasDraft = null;
+function getZonasDraft(){
+  if(!zonasDraft) zonasDraft = newZonasDraft();
+  return zonasDraft;
+}
+// Clave estable (sin tildes/espacios) para una zona nueva, sin chocar con
+// las que ya existen — ej. "Caribe" -> "caribe", y si ya existiera,
+// "caribe2".
+function slugifyZoneKey(label, existingKeys){
+  const base = normalize(label).replace(/[^a-z0-9]+/g,"") || "zona";
+  let key = base, i = 2;
+  while(existingKeys.includes(key)){ key = base + i; i++; }
+  return key;
+}
+function renderZonasView(){
+  const d = getZonasDraft();
+  const countByZone = {};
+  d.zoneOrder.forEach(k=>countByZone[k]=0);
+  Object.values(d.countryZones).forEach(z=>{ if(countByZone[z]!=null) countByZone[z]++; });
+  return `
+    <div class="zonas-view">
+      <div class="hint" style="margin-bottom:16px;">
+        Estas zonas y colores se usan en todo el Registro (mapa de Países, filtros del Feed/Memoria, chips de alcance).
+        Cambiar la zona de un país acá se aplica también a los posteos ya cargados — no hace falta editarlos uno por uno.
+      </div>
+      <h3 class="zonas-h3">Zonas</h3>
+      <div class="zone-edit-list">
+        ${d.zoneOrder.map(key=>{
+          const z = d.zones[key];
+          const count = countByZone[key] || 0;
+          return `<div class="zone-edit-row">
+            <input type="color" data-action="zonas-color" data-key="${key}" value="${esc(z.color)}">
+            <input type="text" class="zone-label-input" data-action="zonas-label" data-key="${key}" value="${esc(z.label)}" maxlength="30">
+            <span class="zone-count">${count} país${count===1?"":"es"}</span>
+            <button type="button" class="rm" data-action="zonas-remove-zone" data-key="${key}" ${count>0?"disabled title=\"Reasigná primero los países de esta zona\"":"title=\"Eliminar zona\""}>✕</button>
+          </div>`;
+        }).join("")}
+      </div>
+      <div class="zone-add-row">
+        <input type="text" id="zonasNewZoneLabel" placeholder="Nombre de la zona nueva (ej: Caribe)" maxlength="30" value="${esc(d.newZoneLabel)}">
+        <button type="button" class="btn-mini" data-action="zonas-add-zone">+ Agregar zona</button>
+      </div>
+      ${d.error ? `<div class="form-error">${esc(d.error)}</div>` : ""}
+
+      <h3 class="zonas-h3">Países</h3>
+      <div class="hint" style="margin-bottom:10px;">A qué zona pertenece cada país — define su color en el mapa y en qué filtro de región aparece.</div>
+      <div class="country-zone-list">
+        ${COUNTRIES.map(c=>{
+          const zoneKey = d.countryZones[c.name];
+          const color = (d.zones[zoneKey]||{}).color || "#999";
+          return `<div class="country-zone-row">
+            <span class="zdot" style="background:${esc(color)}"></span>
+            <span class="cz-name">${esc(c.name)}</span>
+            <select data-action="zonas-country-zone" data-country="${esc(c.name)}">
+              ${d.zoneOrder.map(key=>`<option value="${key}" ${zoneKey===key?"selected":""}>${esc(d.zones[key].label)}</option>`).join("")}
+            </select>
+          </div>`;
+        }).join("")}
+      </div>
+
+      <div class="modal-actions" style="margin-top:16px;">
+        <button type="button" class="btn-secondary" data-action="zonas-reset">Descartar cambios</button>
+        <button type="button" class="btn-primary" data-action="zonas-save" ${d.saving?"disabled":""}>${d.saving?"Guardando…":"Guardar cambios"}</button>
+      </div>
+    </div>`;
 }
 
 function afterRenderView(){
@@ -3469,6 +3618,37 @@ document.addEventListener("click", e=>{
           : { ok:false, message:`Se revocó el acceso a la app, pero no se pudo sacarlo del Calendar automáticamente (${res.reason}). Sacalo a mano si hace falta.` });
       }).catch(err=>{ console.error(err); alert("No se pudo revocar: " + err.message); });
     }
+  } else if(action === "zonas-remove-zone"){
+    const d = getZonasDraft();
+    const key = t.dataset.key;
+    const inUse = Object.values(d.countryZones).some(z=>z===key);
+    if(inUse){ d.error = "Reasigná primero los países que están en esta zona."; render(); return; }
+    delete d.zones[key];
+    d.zoneOrder = d.zoneOrder.filter(k=>k!==key);
+    d.error = "";
+    render();
+  } else if(action === "zonas-add-zone"){
+    const d = getZonasDraft();
+    const label = d.newZoneLabel.trim();
+    if(!label){ d.error = "Escribí un nombre para la zona nueva."; render(); return; }
+    const key = slugifyZoneKey(label, d.zoneOrder);
+    d.zones[key] = { label, color:"#64748b" };
+    d.zoneOrder.push(key);
+    d.newZoneLabel = "";
+    d.error = "";
+    render();
+  } else if(action === "zonas-reset"){
+    zonasDraft = null;
+    render();
+  } else if(action === "zonas-save"){
+    const d = getZonasDraft();
+    d.saving = true; d.error = ""; render();
+    saveTerritoryConfig(d.zones, d.countryZones).then(()=>{
+      d.saving = false; render();
+    }).catch(err=>{
+      console.error(err);
+      d.saving = false; d.error = "No se pudo guardar: " + err.message; render();
+    });
   }
 });
 
@@ -3535,6 +3715,8 @@ document.addEventListener("input", e=>{
     const draft = getDraftFor(t.dataset.scope, t.dataset.ownerId);
     draft.links[Number(t.dataset.idx)][t.dataset.linkField] = t.value;
   }
+  else if(t.dataset.action === "zonas-label"){ getZonasDraft().zones[t.dataset.key].label = t.value; }
+  else if(t.id === "zonasNewZoneLabel"){ getZonasDraft().newZoneLabel = t.value; }
 });
 
 document.addEventListener("change", e=>{
@@ -3576,6 +3758,8 @@ document.addEventListener("change", e=>{
   else if(t.dataset.action === "toggle-reply-extra-scope"){
     getReplyDraft(t.dataset.postId).extraScope = t.checked; render();
   }
+  else if(t.dataset.action === "zonas-color"){ getZonasDraft().zones[t.dataset.key].color = t.value; render(); }
+  else if(t.dataset.action === "zonas-country-zone"){ getZonasDraft().countryZones[t.dataset.country] = t.value; render(); }
 });
 
 document.addEventListener("click", e=>{ if(e.target.id === "cCancel") closeComposer(); });
