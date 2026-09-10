@@ -70,9 +70,6 @@
     white-space:nowrap;
   }
   .btn-new:hover{ background:var(--celeste-dark); color:#fff; }
-  .btn-sync{ background:rgba(255,255,255,0.14); color:#fff; border:none; padding:9px 16px; border-radius:999px; font-weight:700; font-size:12.5px; cursor:pointer; white-space:nowrap; }
-  .btn-sync:hover{ background:rgba(255,255,255,0.24); }
-  .btn-sync:disabled{ opacity:0.5; cursor:not-allowed; }
   .header-actions{ display:flex; align-items:center; gap:10px; }
 
   /* Avatar circular en el header: al apretarlo despliega un menú tipo
@@ -769,7 +766,23 @@
   #lightbox.show{ display:flex; }
   #lightbox img{ max-width:100%; max-height:100%; border-radius:8px; }
 
-  .sort-toggle{ display:flex; gap:8px; margin-bottom:14px; }
+  /* "Actualizar desde Calendar" vive acá (Memoria) en vez del header
+     global — pedido explícito: al extremo derecho de esta fila, opuesto
+     al toggle de orden. flex-wrap para que en mobile baje debajo del
+     toggle en vez de aplastarse. */
+  .sort-toggle{ display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; margin-bottom:14px; }
+  .sort-toggle-group{ display:flex; gap:8px; }
+  /* Fondo claro a propósito (antes vivía en el header oscuro, donde
+     tenía blanco translúcido sobre petróleo — acá sobre --bg quedaría
+     invisible). Mismo alto/radio que .chip-toggle de al lado para que
+     la fila se vea pareja. */
+  .btn-sync{
+    display:inline-flex; align-items:center; gap:6px; background:#fff; color:var(--celeste-dark);
+    border:1.5px solid var(--border); padding:7px 14px; border-radius:999px; font-weight:700;
+    font-size:12.5px; cursor:pointer; white-space:nowrap;
+  }
+  .btn-sync:hover{ border-color:var(--celeste); background:#eafbfd; }
+  .btn-sync:disabled{ opacity:0.5; cursor:not-allowed; }
 
   footer.appfoot{ text-align:center; color:var(--text-muted); font-size:11.5px; padding:20px; }
 </style>
@@ -786,7 +799,6 @@
         </div>
       </div>
       <div class="header-actions">
-        <button class="btn-sync" id="btnSyncCalendar" hidden>🔄 Actualizar desde Calendar</button>
         <button class="btn-new" id="btnNewPost" hidden>+ Nuevo evento</button>
         <div id="mentionsBell" class="mentions-bell-wrap"></div>
         <div id="userBadge" class="user-badge"></div>
@@ -2437,7 +2449,6 @@ const tabsNav = document.getElementById("tabs");
 const userBadgeEl = document.getElementById("userBadge");
 const mentionsBellEl = document.getElementById("mentionsBell");
 const btnNewPostEl = document.getElementById("btnNewPost");
-const btnSyncCalendarEl = document.getElementById("btnSyncCalendar");
 const tabSolicitudesEl = document.getElementById("tabSolicitudes");
 const tabAuditoriaEl = document.getElementById("tabAuditoria");
 const tabPreferenciasEl = document.getElementById("tabPreferencias");
@@ -2514,7 +2525,7 @@ function doRender(){
 
   let html = "";
   if(CONFIG_IS_PLACEHOLDER){
-    tabsNav.classList.add("tabs-hidden"); btnNewPostEl.hidden = true; btnSyncCalendarEl.hidden = true; userBadgeEl.innerHTML = ""; mentionsBellEl.innerHTML = "";
+    tabsNav.classList.add("tabs-hidden"); btnNewPostEl.hidden = true; userBadgeEl.innerHTML = ""; mentionsBellEl.innerHTML = "";
     html += `<div class="setup-banner">
       ⚠️ <strong>Falta configurar Firebase.</strong> Esta app todavía no tiene datos compartidos
       porque <code>FIREBASE_CONFIG</code> tiene valores de ejemplo. Abrí <code>index.html</code>,
@@ -2533,7 +2544,7 @@ function doRender(){
   renderMentionsBell();
 
   if(!isAuthorized()){
-    tabsNav.classList.add("tabs-hidden"); btnNewPostEl.hidden = true; btnSyncCalendarEl.hidden = true;
+    tabsNav.classList.add("tabs-hidden"); btnNewPostEl.hidden = true;
     html += renderAuthGate();
     viewRoot.innerHTML = html;
     return;
@@ -2541,8 +2552,6 @@ function doRender(){
 
   tabsNav.classList.remove("tabs-hidden");
   btnNewPostEl.hidden = false;
-  btnSyncCalendarEl.hidden = false;
-  btnSyncCalendarEl.disabled = state.calendarSyncing === true;
   tabSolicitudesEl.hidden = !isAdmin();
   tabAuditoriaEl.hidden = !isAdmin();
   tabPreferenciasEl.hidden = !isAdmin();
@@ -3670,8 +3679,11 @@ function renderMemoriaView(){
   return `
     ${renderFilterBar("memoria")}
     <div class="sort-toggle">
-      <span class="chip-toggle ${state.memoriaOrder==="asc"?"active":""}" data-action="memoria-order" data-key="asc">Más antiguo primero</span>
-      <span class="chip-toggle ${state.memoriaOrder==="desc"?"active":""}" data-action="memoria-order" data-key="desc">Más reciente primero</span>
+      <div class="sort-toggle-group">
+        <span class="chip-toggle ${state.memoriaOrder==="asc"?"active":""}" data-action="memoria-order" data-key="asc">Más antiguo primero</span>
+        <span class="chip-toggle ${state.memoriaOrder==="desc"?"active":""}" data-action="memoria-order" data-key="desc">Más reciente primero</span>
+      </div>
+      ${isAuthorized() ? `<button type="button" class="btn-sync" data-action="sync-calendar" ${state.calendarSyncing?"disabled":""}>🔄 Actualizar desde Calendar</button>` : ""}
     </div>
     ${items.length ? items.map(({post,replies})=>renderPostCard(post,replies)).join("") :
       `<div class="empty-state"><div class="big">📖</div>Todavía no hay memoria registrada${anyActiveFilter()?" para este filtro":""}.</div>`}
@@ -3878,7 +3890,6 @@ document.querySelectorAll("#tabs button").forEach(btn=>{
   });
 });
 btnNewPostEl.addEventListener("click", openComposer);
-btnSyncCalendarEl.addEventListener("click", ()=> syncFromCalendar({ silent:false }));
 document.getElementById("postModalClose").addEventListener("click", closeComposer);
 postModalOverlay.addEventListener("click", e=>{ if(e.target === postModalOverlay) closeComposer(); });
 document.addEventListener("keydown", e=>{
@@ -4332,6 +4343,8 @@ document.addEventListener("click", e=>{
     calendarToastEl.classList.remove("fading");
   } else if(action === "memoria-order"){
     state.memoriaOrder = t.dataset.key; render();
+  } else if(action === "sync-calendar"){
+    syncFromCalendar({ silent:false });
   } else if(action === "google-signin"){
     signIn();
   } else if(action === "toggle-user-menu"){
