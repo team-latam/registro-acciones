@@ -220,30 +220,51 @@
     width:72px; border:1.5px solid var(--border); border-radius:8px; padding:8px 10px; font-size:14px;
     font-weight:700; text-align:center; background:var(--bg); font-family:inherit;
   }
-  .setting-unit{ font-size:12px; font-weight:700; color:var(--text-muted); }
+  /* La fila con unidad (KB) se ve como UNA caja, no un input + texto
+     suelto al lado — mismo alto/borde que las otras dos filas de
+     Adjuntos, con la unidad adentro a modo de sufijo. */
+  .setting-control-unit{
+    border:1.5px solid var(--border); border-radius:8px; overflow:hidden; background:var(--bg); gap:0;
+  }
+  .setting-control-unit input[type=number]{
+    width:68px; border:none; border-radius:0; background:transparent; padding:8px 4px 8px 10px; text-align:right;
+  }
+  .setting-unit{
+    font-size:12px; font-weight:700; color:var(--text-muted); padding:8px 10px 8px 4px;
+  }
   .pref-subnav{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:16px; }
   .tipo-icon-input{
     width:38px; flex:none; border:1px solid var(--border); border-radius:6px; padding:3px 4px;
     font-size:15px; text-align:center; background:#fff;
   }
-  .tipo-sync-toggle{ display:flex; align-items:center; gap:4px; font-size:11px; color:var(--text-muted); flex:none; white-space:nowrap; cursor:pointer; }
+  /* Fila de Tipos con grilla de 3 columnas (ícono | nombre | bloque de la
+     derecha) en vez de flexbox: con flex, el input del nombre (flex:1)
+     se comía el espacio sobrante distinto en cada fila según cuánto
+     texto tuviera el contador de posteos al lado ("0 posteos" vs "42
+     posteos"), y el checkbox terminaba arrancando en un x distinto por
+     fila — nada quedaba alineado. Con columnas fijas, la 3ra columna
+     (checkbox+Calendar+contador+borrar, ver .tipo-meta) siempre mide lo
+     mismo, así que arranca exactamente en el mismo lugar en toda fila. */
+  .tipo-sync-toggle{ display:flex; align-items:center; gap:4px; font-size:11px; color:var(--text-muted); width:72px; white-space:nowrap; cursor:pointer; }
   .zone-edit-list{
     display:flex; flex-direction:column; border:1px solid var(--border); border-radius:var(--radius-sm); overflow:hidden;
   }
-  .zone-edit-row{ display:flex; align-items:center; gap:8px; padding:8px; background:#fff; flex-wrap:wrap; row-gap:6px; }
+  .zone-edit-row{ display:grid; grid-template-columns:38px minmax(0,1fr) auto; align-items:center; gap:8px; padding:8px; background:#fff; }
   .zone-edit-row + .zone-edit-row{ border-top:1px solid var(--border); }
   .zone-edit-row:hover{ background:#f8fbfb; }
-  .zone-edit-row input[type=color]{ width:20px; height:20px; padding:0; border:none; border-radius:5px; cursor:pointer; flex:none; }
+  .zone-edit-row input[type=color]{ width:20px; height:20px; padding:0; border:none; border-radius:5px; cursor:pointer; }
   .zone-label-input{
-    /* flex-basis 90px (no 0%) para que, si no entra todo en una línea,
-       el input pase a la línea siguiente entero en vez de achicarse
-       hasta un ancho casi invisible (se veía como un hueco vacío antes
-       del checkbox "Calendar" en pantallas angostas). */
-    flex:1 1 90px; min-width:90px; border:1px solid transparent; border-radius:6px; padding:3px 6px; font-size:13px;
+    min-width:0; border:1px solid transparent; border-radius:6px; padding:3px 6px; font-size:13px;
     font-weight:600; background:transparent;
   }
   .zone-label-input:hover, .zone-label-input:focus{ border-color:var(--border); background:#fff; outline:none; }
   .zone-count{ font-size:11px; color:var(--text-muted); flex:none; white-space:nowrap; }
+  .tipo-meta{ display:flex; align-items:center; gap:10px; justify-self:end; }
+  .tipo-meta .zone-count{ width:66px; text-align:right; }
+  @media (max-width:420px){
+    .zone-edit-row{ grid-template-columns:38px 1fr; }
+    .tipo-meta{ grid-column:1 / -1; justify-self:stretch; justify-content:flex-start; }
+  }
   .zone-edit-row .rm{
     width:18px; height:18px; border-radius:50%; background:var(--danger); color:#fff; border:none;
     font-size:10px; cursor:pointer; line-height:18px; text-align:center; padding:0; flex-shrink:0;
@@ -2561,9 +2582,11 @@ function renderTiposSection(){
           return `<div class="zone-edit-row">
             <input type="text" class="tipo-icon-input" data-action="tipos-icon" data-key="${t.key}" value="${esc(t.icon)}" maxlength="4">
             <input type="text" class="zone-label-input" data-action="tipos-label" data-key="${t.key}" value="${esc(t.label)}" maxlength="30">
-            <label class="tipo-sync-toggle"><input type="checkbox" data-action="tipos-sync" data-key="${t.key}" ${t.calendarSync?"checked":""}> Calendar</label>
-            <span class="zone-count">${count} posteo${count===1?"":"s"}</span>
-            <button type="button" class="rm" data-action="tipos-remove" data-key="${t.key}" ${count>0?"disabled title=\"Hay posteos con este tipo\"":"title=\"Eliminar\""}>✕</button>
+            <div class="tipo-meta">
+              <label class="tipo-sync-toggle"><input type="checkbox" data-action="tipos-sync" data-key="${t.key}" ${t.calendarSync?"checked":""}> Calendar</label>
+              <span class="zone-count">${count} posteo${count===1?"":"s"}</span>
+              <button type="button" class="rm" data-action="tipos-remove" data-key="${t.key}" ${count>0?"disabled title=\"Hay posteos con este tipo\"":"title=\"Eliminar\""}>✕</button>
+            </div>
           </div>`;
         }).join("")}
       </div>
@@ -2686,7 +2709,7 @@ function renderAdjuntosSection(){
             <div class="setting-label">Tamaño máximo por archivo</div>
             <div class="setting-sub">Para cada PDF/audio adjunto</div>
           </div>
-          <div class="setting-control">
+          <div class="setting-control setting-control-unit">
             <input type="number" id="adjMaxFileKB" min="50" max="500" value="${d.maxFileKB}">
             <span class="setting-unit">KB</span>
           </div>
