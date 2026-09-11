@@ -21,12 +21,15 @@ rules_version = '2';
 // de forma confiable es declarar líneas "allow" SEPARADAS para cada
 // caso: Firestore las combina como "o" de todos modos, sin ese problema.
 //
-// Las respuestas ("replies") se leen posteo por posteo (subcolección
-// normal), NUNCA con una consulta collectionGroup: se detectó que esas
-// consultas devuelven "Missing or insufficient permissions" en este
-// proyecto sin importar la regla (se probó hasta con "if true" y seguía
-// fallando) — no se identificó la causa exacta, así que del lado de la
-// app se evita ese tipo de consulta en vez de seguir insistiendo acá.
+// Las respuestas ("replies") se leen con UNA consulta collectionGroup
+// para todos los posteos (ver subscribeRepliesGroup en index.html) — con
+// N listeners, uno por posteo, la cantidad crecía sin tope. Una consulta
+// collectionGroup NO la cubre la regla anidada en /posts/{postId}/replies:
+// necesita su propio `match /{path=**}/replies/{replyId}` (abajo). Eso es
+// lo que faltaba cuando "hasta con `if true` seguía fallando" — el `if
+// true` estaba en el match anidado, que no aplica a collection groups.
+// La app conserva el modo posteo por posteo como respaldo automático si
+// esta regla no está publicada todavía (permission-denied → fallback).
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -305,6 +308,14 @@ service cloud.firestore {
 
         allow delete: if false;
       }
+    }
+
+    // Lectura de respuestas como collection group (todas las subcolecciones
+    // "replies" de una vez). Solo lectura: crear/likear siguen yendo por
+    // la ruta anidada de arriba, que es la que valida el contenido.
+    match /{path=**}/replies/{replyId} {
+      allow read: if isAdmin();
+      allow read: if isApproved();
     }
 
     // Lista de aprobados: el documento existe = tiene acceso. Solo el admin

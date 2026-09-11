@@ -820,6 +820,24 @@ muerto). Lo que cambió y conviene tener presente al tocar el código:
   fallen; si el listener de `allowlist` falla se muestra el motivo (no un
   "pendiente" eterno). El roster no usa `orderBy("approvedAt")` porque
   Firestore excluye los docs sin ese campo.
+- **Respuestas con una sola consulta**: `subscribeReplies()` lee las
+  respuestas de todos los posteos con un `collectionGroup("replies")` en
+  vez de un listener por posteo (que crecían sin tope). Necesita el
+  `match /{path=**}/replies/{replyId}` de `firestore.rules` — la regla
+  anidada en `/posts/{postId}/replies` NO cubre consultas de grupo, y eso
+  era lo que faltaba cuando "hasta con `if true` seguía fallando". Si
+  las reglas publicadas todavía no lo tienen, Firestore contesta
+  permission-denied y el cliente pasa solo al modo posteo por posteo.
+- **Marcas de "visto"** (popup y campanita del Calendar, @menciones)
+  guardan la hora DEL DATO (la invitación, la mención más nueva), no
+  `Date.now()`: con el reloj del dispositivo atrasado, un "ahora" local
+  quedaba antes que el dato y el popup volvía a aparecer en loop.
+- **Foco**: `render()` vuelve a encontrar el elemento con foco por id o,
+  si no tiene, por tag + sus `data-*` (`focusSelectorOf()`): las filas de
+  link y los selects del alcance no tienen id y un render de fondo sacaba
+  a la persona del campo. Los modales (Evento, invitación al Calendar,
+  tutorial) tienen `role="dialog"`, reciben el foco al abrir, lo devuelven
+  al cerrar, ciclan el Tab adentro y se cierran con Escape.
 - **Rendimiento**: los listeners de respuestas juntan sus renders en uno
   por frame (`scheduleRender()`); Feed y Memoria muestran de a 30 con
   "Ver más"; el mapa se crea una vez y conserva zoom/posición entre
