@@ -1471,7 +1471,7 @@ function scopeIcon(scope){
 function compressImage(file, maxDim=1280, quality=0.72){
   return new Promise((resolve,reject)=>{
     const reader = new FileReader();
-    reader.onerror = ()=>reject(new Error("No se pudo leer la imagen"));
+    reader.onerror = ()=>reject(new Error(t("No se pudo leer la imagen","Couldn't read the image","Não foi possível ler a imagem","לא ניתן היה לקרוא את התמונה")));
     reader.onload = ()=>{
       const img = new Image();
       img.onerror = ()=>reject(new Error("Imagen inválida"));
@@ -1555,7 +1555,12 @@ async function initFirebase(){
     authMod.onAuthStateChanged(auth, onAuthChanged);
   }catch(err){
     console.error("Error inicializando Firebase:", err);
-    renderFatalError("No se pudo conectar con Firebase. Revisá la configuración (FIREBASE_CONFIG) y la consola del navegador para más detalle.");
+    renderFatalError(t(
+      "No se pudo conectar con Firebase. Revisá la configuración (FIREBASE_CONFIG) y la consola del navegador para más detalle.",
+      "Couldn't connect to Firebase. Check the configuration (FIREBASE_CONFIG) and the browser console for more detail.",
+      "Não foi possível conectar ao Firebase. Revise a configuração (FIREBASE_CONFIG) e o console do navegador para mais detalhes.",
+      ".לא ניתן היה להתחבר ל-Firebase. בדוק/י את ההגדרות (FIREBASE_CONFIG) ואת קונסולת הדפדפן לפרטים נוספים"
+    ));
   }
 }
 
@@ -1568,7 +1573,7 @@ async function signIn(){
   }catch(err){
     if(err.code !== "auth/popup-closed-by-user" && err.code !== "auth/cancelled-popup-request"){
       console.error("Error al iniciar sesión:", err);
-      renderFatalError("No se pudo iniciar sesión con Google: " + err.message);
+      renderFatalError(t("No se pudo iniciar sesión con Google: {msg}","Couldn't sign in with Google: {msg}","Não foi possível entrar com o Google: {msg}","{msg} :ההתחברות עם Google נכשלה",{msg:err.message}));
     }
   }
 }
@@ -1765,16 +1770,16 @@ function addDaysISO(dateStr, days){
 function buildCalendarEvent(postData){
   const sc = postData.scopes[0];
   const alcanceTipo = !sc ? "" : sc.type === "todo" ? "todo" : sc.type;
-  const alcanceValor = (postData.scopes||[]).map(scopeLabel).join(" + ") || "Sin definir";
+  const alcanceValor = (postData.scopes||[]).map(scopeLabel).join(" + ") || t("Sin definir","Not set","Não definido","לא הוגדר");
   const descLines = [
-    `Dónde: ${alcanceTipo} | ${alcanceValor}`,
+    `${t("Dónde","Where","Onde","איפה")}: ${alcanceTipo} | ${alcanceValor}`,
     "",
     postData.content,
   ];
   const participants = postData.participants||[];
-  if(participants.length) descLines.push("", `Participantes: ${participantsLabel(participants)}`);
-  else if(postData.organizer) descLines.push("", `Creado por: ${postData.organizer}`);
-  descLines.push("", `Cargado por ${postData.authorName} en Registro de Acciones.`);
+  if(participants.length) descLines.push("", `${t("Participantes","Participants","Participantes","משתתפים")}: ${participantsLabel(participants)}`);
+  else if(postData.organizer) descLines.push("", `${t("Creado por","Created by","Criado por","נוצר על ידי")}: ${postData.organizer}`);
+  descLines.push("", t("Cargado por {n} en Registro de Acciones.","Added by {n} in the Action Log.","Adicionado por {n} no Registro de Ações.","{n} נוסף על ידי ביומן הפעילויות.",{n:postData.authorName}));
   // Con hora (startTime/endTime cargados): evento puntual, dateTime +
   // timeZone del navegador de quien lo carga (Calendar API lo exige junto
   // a dateTime). Sin hora: como antes, evento de "todo el día" con date
@@ -1960,7 +1965,12 @@ async function applyCalendarEventToPosts(ev){
     if(existing && !existing.cancelled){
       await updatePostDoc(existing.id, { cancelled:true, lastEditedAt: fb.serverTimestamp(), lastEditedBy:"Google Calendar" });
       await createReply(existing.id, {
-        authorName:"Google Calendar", content:"Este evento se canceló o se borró directamente en Google Calendar.",
+        authorName:"Google Calendar", content:t(
+          "Este evento se canceló o se borró directamente en Google Calendar.",
+          "This event was cancelled or deleted directly in Google Calendar.",
+          "Este evento foi cancelado ou apagado diretamente no Google Calendar.",
+          ".האירוע הזה בוטל או נמחק ישירות ב-Google Calendar"
+        ),
         system:true, icon:"📅", scopes:[], images:[], links:[],
       });
     }
@@ -1978,13 +1988,15 @@ async function applyCalendarEventToPosts(ev){
     const changed = existing.startDate !== startDate || existing.endDate !== endDate || timeChanged || (existing.location||"") !== location || titleChanged;
     if(!changed) return;
     const parts = [];
-    if(titleChanged) parts.push(`título ("${existing.title}" → "${newTitle}")`);
+    if(titleChanged) parts.push(t(`título ("{old}" → "{new}")`,`title ("{old}" → "{new}")`,`título ("{old}" → "{new}")`,`("{new}" ← "{old}") כותרת`,{old:existing.title,new:newTitle}));
     if(existing.startDate !== startDate || existing.endDate !== endDate || timeChanged){
       const oldLabel = (existing.endDate||existing.startDate) !== existing.startDate ? `${fmtDate(existing.startDate)}–${fmtDate(existing.endDate)}` : fmtDate(existing.startDate);
       const newLabel = endDate !== startDate ? `${fmtDate(startDate)}–${fmtDate(endDate)}` : fmtDate(startDate);
-      parts.push(`fecha (${oldLabel} → ${newLabel})`);
+      parts.push(t("fecha ({old} → {new})","date ({old} → {new})","data ({old} → {new})","({new} ← {old}) תאריך",{old:oldLabel,new:newLabel}));
     }
-    if((existing.location||"") !== location) parts.push(`lugar${location ? ` (ahora: ${location})` : " (se quitó)"}`);
+    if((existing.location||"") !== location) parts.push(location
+      ? t("lugar (ahora: {loc})","place (now: {loc})","lugar (agora: {loc})","({loc} :מקום (כעת",{loc:location})
+      : t("lugar (se quitó)","place (removed)","lugar (removido)","(מקום (הוסר"));
     const patch = {
       startDate, endDate, date:startDate, startTime, endTime, location,
       lastEditedAt: fb.serverTimestamp(), lastEditedBy:"Google Calendar",
@@ -1992,7 +2004,7 @@ async function applyCalendarEventToPosts(ev){
     if(titleChanged) patch.title = newTitle;
     await updatePostDoc(existing.id, patch);
     await createReply(existing.id, {
-      authorName:"Google Calendar", content:`Se actualizó desde Google Calendar: ${parts.join(", ")}.`,
+      authorName:"Google Calendar", content: t("Se actualizó desde Google Calendar: {changes}.","Updated from Google Calendar: {changes}.","Foi atualizado a partir do Google Calendar: {changes}.","{changes} :עודכן מ-Google Calendar",{changes:parts.join(", ")}),
       system:true, icon:"📅", scopes:[], images:[], links:[],
     });
     return;
@@ -2054,10 +2066,10 @@ async function syncFromCalendar(opts){
       await applyCalendarEventToPosts(ev);
     }
     if(result.nextSyncToken) await setSyncMeta({ syncToken: result.nextSyncToken });
-    if(!silent){ showCalendarNotice({ ok:true, message:`Sincronizado con Calendar (${(result.events||[]).length} cambio(s) revisado(s)).` }); }
+    if(!silent){ showCalendarNotice({ ok:true, message: t("Sincronizado con Calendar ({n} cambio(s) revisado(s)).","Synced with Calendar ({n} change(s) reviewed).","Sincronizado com o Calendar ({n} alteração(ões) revisada(s)).","({n} סונכרן עם היומן (נבדקו {n} שינויים.",{n:(result.events||[]).length}) }); }
   }catch(err){
     console.error("Error sincronizando desde Calendar:", err);
-    if(!silent){ showCalendarNotice({ ok:false, message:"No se pudo sincronizar con Calendar: " + err.message }); }
+    if(!silent){ showCalendarNotice({ ok:false, message:t("No se pudo sincronizar con Calendar: {msg}","Couldn't sync with Calendar: {msg}","Não foi possível sincronizar com o Calendar: {msg}","{msg} :הסנכרון עם היומן נכשל",{msg:err.message}) }); }
   }finally{
     calendarSyncInFlight = false;
     if(!silent){ state.calendarSyncing = false; render(); }
@@ -2091,7 +2103,7 @@ function stopCalendarAutoSync(){
 // compartida por el router de casa o una VPN corporativa.
 function deviceLabel(){
   const ua = navigator.userAgent || "";
-  let browser = "Navegador";
+  let browser = t("Navegador","Browser","Navegador","דפדפן");
   if(/Edg\//.test(ua)) browser = "Edge";
   else if(/OPR\//.test(ua)) browser = "Opera";
   else if(/Firefox\//.test(ua)) browser = "Firefox";
@@ -2262,7 +2274,7 @@ async function requestAccessAgain(){
       status: "pending", requestedAt: fb.serverTimestamp(),
     });
     state.auth = { ...state.auth, status:"pending" };
-    logAudit("access_requested", { detail:"pidió de nuevo tras un rechazo" });
+    logAudit("access_requested", { detail:t("pidió de nuevo tras un rechazo","requested again after a rejection","pediu de novo após uma rejeição","ביקש/ה שוב אחרי דחייה") });
     render();
   }catch(err){ console.error(err); }
 }
@@ -2573,22 +2585,27 @@ function participantsLabel(participants){
 // español para dejarlo como respuesta automática en el hilo.
 function buildEditSummary(original, next){
   const parts = [];
-  if(original.title !== next.title) parts.push(`título ("${original.title}" → "${next.title}")`);
+  if(original.title !== next.title) parts.push(t(`título ("{old}" → "{new}")`,`title ("{old}" → "{new}")`,`título ("{old}" → "{new}")`,`("{new}" ← "{old}") כותרת`,{old:original.title,new:next.title}));
   const oldStart = original.startDate, oldEnd = original.endDate || oldStart;
   const timeChanged = (original.startTime||"") !== (next.startTime||"") || (original.endTime||"") !== (next.endTime||"");
   if(oldStart !== next.startDate || oldEnd !== next.endDate || timeChanged){
     const oldLabel = oldEnd !== oldStart ? `${fmtDate(oldStart)}–${fmtDate(oldEnd)}` : fmtDate(oldStart);
     const newLabel = next.endDate !== next.startDate ? `${fmtDate(next.startDate)}–${fmtDate(next.endDate)}` : fmtDate(next.startDate);
-    parts.push(`fecha (${oldLabel} → ${newLabel})`);
+    parts.push(t("fecha ({old} → {new})","date ({old} → {new})","data ({old} → {new})","({new} ← {old}) תאריך",{old:oldLabel,new:newLabel}));
   }
   const oldParticipants = participantsLabel(original.participants) || (original.organizer||"");
   const newParticipants = participantsLabel(next.participants);
-  if(oldParticipants !== newParticipants) parts.push(`participantes${newParticipants ? ` (ahora: ${newParticipants})` : " (se quitaron)"}`);
-  if(original.activityType !== next.activityType) parts.push(`tipo de actividad (${ACTIVITY_BY_KEY[original.activityType]?.label} → ${ACTIVITY_BY_KEY[next.activityType]?.label})`);
-  if(original.content !== next.content) parts.push("comentarios");
-  if(JSON.stringify(original.scopes||[]) !== JSON.stringify(next.scopes||[])) parts.push("lugar");
+  if(oldParticipants !== newParticipants) parts.push(newParticipants
+    ? t("participantes (ahora: {p})","participants (now: {p})","participantes (agora: {p})","({p} :משתתפים (כעת",{p:newParticipants})
+    : t("participantes (se quitaron)","participants (removed)","participantes (removidos)","(משתתפים (הוסרו"));
+  if(original.activityType !== next.activityType) parts.push(t(
+    "tipo de actividad ({old} → {new})","activity type ({old} → {new})","tipo de atividade ({old} → {new})","({new} ← {old}) סוג פעילות",
+    {old:ACTIVITY_BY_KEY[original.activityType]?.label, new:ACTIVITY_BY_KEY[next.activityType]?.label}
+  ));
+  if(original.content !== next.content) parts.push(t("comentarios","comments","comentários","הערות"));
+  if(JSON.stringify(original.scopes||[]) !== JSON.stringify(next.scopes||[])) parts.push(t("lugar","place","lugar","מקום"));
   if(!parts.length) return null;
-  return `✏️ ${state.auth.user.displayName} editó este posteo: ${parts.join(", ")}.`;
+  return t("✏️ {n} editó este posteo: {changes}.","✏️ {n} edited this post: {changes}.","✏️ {n} editou esta postagem: {changes}.","✏️ {n} ערך/ה פוסט זה: {changes}.",{n:state.auth.user.displayName, changes:parts.join(", ")});
 }
 
 // Actualiza el posteo, deja constancia en el hilo, y mantiene el mismo
@@ -2782,15 +2799,30 @@ function myNickname(){
 function validateNicknameDraft(raw){
   const value = (raw||"").trim();
   if(!NICKNAME_FORMAT_RE.test(value)){
-    return { ok:false, error:"Solo letras, números y guion bajo, sin espacios ni tildes (2 a 20 caracteres)." };
+    return { ok:false, error:t(
+      "Solo letras, números y guion bajo, sin espacios ni tildes (2 a 20 caracteres).",
+      "Only letters, numbers and underscore, no spaces or accents (2 to 20 characters).",
+      "Só letras, números e underline, sem espaços ou acentos (2 a 20 caracteres).",
+      "(אותיות, ספרות וקו תחתון בלבד, ללא רווחים (2 עד 20 תווים"
+    ) };
   }
   if(value.toLowerCase() === "all"){
-    return { ok:false, error:`"all" está reservado para @all (mencionar a todo el equipo).` };
+    return { ok:false, error:t(
+      `"all" está reservado para @all (mencionar a todo el equipo).`,
+      `"all" is reserved for @all (mentioning the whole team).`,
+      `"all" é reservado para @all (mencionar toda a equipe).`,
+      `"all" שמור עבור @all (אזכור של כל הצוות).`
+    ) };
   }
   const myEmail = state.auth.user.email;
   const taken = state.roster.some(u => u.email !== myEmail && u.nickname && u.nickname.toLowerCase() === value.toLowerCase());
   if(taken){
-    return { ok:false, error:"Ya hay alguien del equipo usando ese @nickname — probá con otro." };
+    return { ok:false, error:t(
+      "Ya hay alguien del equipo usando ese @nickname — probá con otro.",
+      "Someone on the team already has that @nickname — try another one.",
+      "Já tem alguém da equipe usando esse @nickname — tente outro.",
+      "כבר יש מישהו בצוות שמשתמש בכינוי הזה — נסה/י אחר."
+    ) };
   }
   return { ok:true, value };
 }
@@ -2804,7 +2836,7 @@ async function saveNicknameEdit(){
     render();
   }catch(err){
     console.error("No se pudo guardar el nickname:", err);
-    nicknameError = "No se pudo guardar. Probá de nuevo.";
+    nicknameError = t("No se pudo guardar. Probá de nuevo.","Couldn't save. Try again.","Não foi possível salvar. Tente de novo.",".לא ניתן היה לשמור. נסה/י שוב");
     render();
   }
 }
@@ -3083,7 +3115,7 @@ function doRender(){
   if(!isAdmin() && (state.view === "solicitudes" || state.view === "auditoria" || state.view === "preferencias")) state.view = "feed";
 
   if(!fatalError && !state.loaded){
-    html += `<div class="empty-state"><div class="big">⏳</div>Cargando registro compartido…</div>`;
+    html += `<div class="empty-state"><div class="big">⏳</div>${t("Cargando registro compartido…","Loading shared log…","Carregando registro compartilhado…","...טוען יומן משותף")}</div>`;
     viewRoot.innerHTML = html;
     return;
   }
