@@ -232,7 +232,6 @@
   .um-segmented button.active{ background:var(--card); color:var(--ink-strong); box-shadow:0 1px 3px rgba(0,0,0,0.12); }
   .um-lang{ margin:0 0 8px; }
   .um-theme{ margin:0 0 12px; }
-  .um-lang-hint{ font-size:10.5px; color:var(--text-muted); text-align:center; margin:-4px 0 10px; }
   .um-nickname-form{ margin:-4px 0 14px; text-align:left; }
   .um-nickname-form input{
     width:100%; box-sizing:border-box; border:1.5px solid var(--border); border-radius:999px;
@@ -2729,9 +2728,10 @@ async function saveNicknameEdit(){
 // Idioma de la interfaz: por ahora solo GUARDA la preferencia (mismo
 // criterio que el tema — por dispositivo, en localStorage) y muestra el
 // selector. Todavía no hay ningún texto traducido: toda la app sigue en
-// español elija lo que elija la persona, así que se lo decimos en vez de
-// dejar que parezca roto. Cuando se arme la traducción real, esto pasa a
-// aplicarse (ver LANGS y el TODO más abajo).
+// español elija lo que elija la persona (se probó un aviso de "todavía
+// no hay traducción" debajo del selector y se sacó — quedaba mejor
+// limpio). Cuando se arme la traducción real, esto pasa a aplicarse (ver
+// LANGS y el TODO más abajo).
 const LANGS = [
   { key: "es", label: "ES", name: "Español" },
   { key: "en", label: "EN", name: "English" },
@@ -2808,7 +2808,6 @@ function renderUserBadge(){
         <div class="um-segmented um-lang" role="group" aria-label="Idioma">
           ${LANGS.map(l=>`<button type="button" class="${lang===l.key?"active":""}" data-action="set-lang" data-lang="${l.key}" aria-pressed="${lang===l.key}" title="${esc(l.name)}">${l.label}</button>`).join("")}
         </div>
-        ${lang !== "es" ? `<div class="um-lang-hint">🌐 Por ahora solo hay texto en español</div>` : ""}
         <div class="um-segmented um-theme" role="group" aria-label="Tono de la página">
           <button type="button" class="${theme === "light" ? "active" : ""}" data-action="set-theme" data-theme="light" aria-pressed="${theme === "light"}">☀️ Claro</button>
           <button type="button" class="${theme === "dark" ? "active" : ""}" data-action="set-theme" data-theme="dark" aria-pressed="${theme === "dark"}">🌙 Oscuro</button>
