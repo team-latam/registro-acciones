@@ -1541,6 +1541,28 @@ refreshActivityTypeLabels();
 function esc(s){
   return String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 }
+// Espejo de los topes de firestore.rules (isValidPostBase/isValidReplyCreate).
+// Se chequean acá con un mensaje claro ANTES de escribir: si no, el
+// undécimo @ o el decimosexto lugar fallaban con un "Missing or
+// insufficient permissions" pelado después de armar todo el posteo.
+const MAX_SCOPES = 15, MAX_LINKS = 10, MAX_PARTICIPANTS = 10, MAX_MENTIONS = 10;
+const MAX_POST_CONTENT = 5000, MAX_REPLY_CONTENT = 3000;
+function tooManyMentionsMsg(){
+  return t("Máximo {n} personas mencionadas con @ por texto.","At most {n} people mentioned with @ per text.","No máximo {n} pessoas mencionadas com @ por texto.","לכל היותר {n} אנשים מאוזכרים ב-@ בכל טקסט.",{n:MAX_MENTIONS});
+}
+// Los borradores del composer/rutina muestran `error` al pie; los de
+// respuesta solo tienen `scopeError`.
+function setDraftError(draft, msg){
+  if("error" in draft) draft.error = msg; else draft.scopeError = msg;
+}
+function addLinkRow(draft){
+  if(draft.links.length >= MAX_LINKS){
+    setDraftError(draft, t("Máximo {n} links por texto.","At most {n} links per text.","No máximo {n} links por texto.","לכל היותר {n} קישורים לכל טקסט.",{n:MAX_LINKS}));
+  } else {
+    draft.links.push({ label:"", url:"" });
+  }
+  render();
+}
 // Resalta "@Nickname" (o "@all") dentro de un texto YA ESCAPADO — nunca
 // antes de esc(), para no abrir una vía de XSS con contenido que alguien
 // escribió. Solo resalta nicknames que existen de verdad en state.roster,
@@ -4332,7 +4354,7 @@ function renderRutinaComposer(){
         ${renderMiniAvatar(state.auth.user)}
         <div class="mention-anchor">
           <div class="mention-highlight-backdrop" id="rutinaContent-hl" aria-hidden="true">${highlightMentions(esc(d.content))}</div>
-          <textarea id="rutinaContent" class="autogrow mention-input" data-mention-scope="rutina" data-mention-owner="new" placeholder="${esc(t("¿Qué hiciste hoy?","What did you do today?","O que você fez hoje?","?מה עשית היום"))}" rows="1">${esc(d.content)}</textarea>
+          <textarea id="rutinaContent" class="autogrow mention-input" maxlength="${MAX_POST_CONTENT}" data-mention-scope="rutina" data-mention-owner="new" placeholder="${esc(t("¿Qué hiciste hoy?","What did you do today?","O que você fez hoje?","?מה עשית היום"))}" rows="1">${esc(d.content)}</textarea>
           ${renderMentionSuggestions(d, "rutina", "new", "rutinaContent")}
         </div>
       </div>
@@ -4354,17 +4376,20 @@ function renderRutinaComposer(){
           <label class="btn-attach" for="rutinaFiles">📄 PDF/${t("Audio","Audio","Áudio","אודיו")}</label>
           <button type="button" class="btn-attach" data-action="rutina-add-link">🔗 Link</button>
         </div>
-        <button type="button" class="btn-new" id="rutinaPublish" data-action="submit-rutina" ${d.content.trim() ? "" : "disabled"}>${t("Publicar","Post","Publicar","פרסום")}</button>
+        <button type="button" class="btn-new" id="rutinaPublish" data-action="submit-rutina" ${d.content.trim() && !d.submitting ? "" : "disabled"}>${d.submitting ? t("Publicando…","Posting…","Publicando…","...מפרסם") : t("Publicar","Post","Publicar","פרסום")}</button>
       </div>
     </div>`;
 }
 
 async function submitRutina(){
   const d = rutinaDraft;
+  if(d.submitting) return;
   d.error = "";
   const content = d.content.trim();
   if(!content){ d.error = t("Escribí algo antes de publicar.","Write something before posting.","Escreva algo antes de publicar.","כתוב/כתבי משהו לפני הפרסום."); render(); return; }
   const links = d.links.filter(l=>safeUrl(l.url));
+  const mentions = extractMentionsFromContent(content);
+  if(mentions.length > MAX_MENTIONS){ d.error = tooManyMentionsMsg(); render(); return; }
   const today = todayISO();
   // title/fechas no tienen sentido para una rutina, pero el esquema de
   // posts los pide siempre — se completan solos y no se muestran en la
@@ -4374,15 +4399,17 @@ async function submitRutina(){
     title, content, startDate:today, endDate:today, date:today,
     location:"",
     activityType:"rutina", scopes:d.scopes,
-    images:d.images, links, files:d.files, mentions:extractMentionsFromContent(content),
+    images:d.images, links, files:d.files, mentions,
     authorName: state.auth.user.displayName, authorEmail: state.auth.user.email,
   };
+  d.submitting = true; render();
   try{
     await createPost(postData);
     rutinaDraft = newRutinaDraft();
     render();
   }catch(err){
     console.error(err);
+    d.submitting = false;
     d.error = t("No se pudo publicar: {msg}","Couldn't publish: {msg}","Não foi possível publicar: {msg}","{msg} :הפרסום נכשל",{msg:err.message});
     render();
   }
@@ -4554,7 +4581,7 @@ function renderNestedReplyForm(postId, replyId){
     <div class="reply-nested-form">
       <div class="mention-anchor">
         <div class="mention-highlight-backdrop" id="${textareaId}-hl" aria-hidden="true">${highlightMentions(esc(d.content))}</div>
-        <textarea id="${textareaId}" class="mention-input" data-nested-reply-field="content" data-reply-id="${replyId}" data-mention-scope="nested-reply" data-mention-owner="${replyId}" placeholder="${esc(t("Responder... (@ para mencionar a alguien)","Reply... (@ to mention someone)","Responder... (@ para mencionar alguém)","(כדי לאזכר מישהו @) ...הגב/י"))}">${esc(d.content)}</textarea>
+        <textarea id="${textareaId}" class="mention-input" maxlength="${MAX_REPLY_CONTENT}" data-nested-reply-field="content" data-reply-id="${replyId}" data-mention-scope="nested-reply" data-mention-owner="${replyId}" placeholder="${esc(t("Responder... (@ para mencionar a alguien)","Reply... (@ to mention someone)","Responder... (@ para mencionar alguém)","(כדי לאזכר מישהו @) ...הגב/י"))}">${esc(d.content)}</textarea>
         ${renderMentionSuggestions(d, "nested-reply", replyId, textareaId)}
       </div>
       <input type="file" id="nestedReplyImages-${replyId}" accept="image/*" multiple hidden data-action="nested-reply-images" data-reply-id="${replyId}">
@@ -4571,7 +4598,7 @@ function renderNestedReplyForm(postId, replyId){
         </div>
         <div class="modal-actions" style="margin:0;">
           <button class="btn-secondary" data-action="cancel-nested-reply" data-reply-id="${replyId}">${t("Cancelar","Cancel","Cancelar","ביטול")}</button>
-          <button class="btn-primary" data-action="submit-nested-reply" data-post-id="${postId}" data-reply-id="${replyId}">${t("Responder","Reply","Responder","תגובה")}</button>
+          <button class="btn-primary" data-action="submit-nested-reply" data-post-id="${postId}" data-reply-id="${replyId}" ${d.submitting ? "disabled" : ""}>${d.submitting ? t("Publicando…","Posting…","Publicando…","...מפרסם") : t("Responder","Reply","Responder","תגובה")}</button>
         </div>
       </div>
     </div>`;
@@ -4591,7 +4618,7 @@ function renderReplyForm(postId){
         <label>${t("Respuesta","Reply","Resposta","תגובה")}</label>
         <div class="mention-anchor">
           <div class="mention-highlight-backdrop" id="${textareaId}-hl" aria-hidden="true">${highlightMentions(esc(d.content))}</div>
-          <textarea id="${textareaId}" class="mention-input" data-reply-field="content" data-post-id="${postId}" data-mention-scope="reply" data-mention-owner="${postId}" placeholder="${esc(t("Sumá información... (@ para mencionar a alguien)","Add information... (@ to mention someone)","Some informações... (@ para mencionar alguém)","(כדי לאזכר מישהו @) ...הוסף/הוסיפי מידע"))}">${esc(d.content)}</textarea>
+          <textarea id="${textareaId}" class="mention-input" maxlength="${MAX_REPLY_CONTENT}" data-reply-field="content" data-post-id="${postId}" data-mention-scope="reply" data-mention-owner="${postId}" placeholder="${esc(t("Sumá información... (@ para mencionar a alguien)","Add information... (@ to mention someone)","Some informações... (@ para mencionar alguém)","(כדי לאזכר מישהו @) ...הוסף/הוסיפי מידע"))}">${esc(d.content)}</textarea>
           ${renderMentionSuggestions(d, "reply", postId, textareaId)}
         </div>
       </div>
@@ -4614,7 +4641,7 @@ function renderReplyForm(postId){
         </div>
         <div class="modal-actions" style="margin:0;">
           <button class="btn-secondary" data-action="cancel-reply" data-post-id="${postId}">${t("Cancelar","Cancel","Cancelar","ביטול")}</button>
-          <button class="btn-primary" data-action="submit-reply" data-post-id="${postId}">${t("Publicar respuesta","Post reply","Publicar resposta","פרסום תגובה")}</button>
+          <button class="btn-primary" data-action="submit-reply" data-post-id="${postId}" ${d.submitting ? "disabled" : ""}>${d.submitting ? t("Publicando…","Posting…","Publicando…","...מפרסם") : t("Publicar respuesta","Post reply","Publicar resposta","פרסום תגובה")}</button>
         </div>
       </div>
     </div>`;
@@ -5089,6 +5116,7 @@ window.addEventListener("scroll", ()=>{ if(!tourLayer.hidden) renderTourStep(); 
 
 function openComposer(){
   composerDraft = newComposerDraft();
+  composerSnapshot = snapshotComposer();
   postModalTitle.textContent = t("Nuevo evento","New event","Novo evento","אירוע חדש");
   postModalOverlay.hidden = false;
   renderComposer();
@@ -5112,11 +5140,35 @@ function openEditComposer(post){
     mentionQuery: null, mentionCaret: 0, mentionHighlight: 0,
     error: "", editingPost: post,
   };
+  composerSnapshot = snapshotComposer();
   postModalTitle.textContent = post.activityType === "rutina"
     ? t("Editar rutina","Edit routine","Editar rotina","עריכת שגרה")
     : t("Editar evento","Edit event","Editar evento","עריכת אירוע");
   postModalOverlay.hidden = false;
   renderComposer();
+}
+// Foto del borrador al abrir el modal, para saber al cerrarlo si hay algo
+// sin guardar. Solo los campos que la persona escribe (no los transitorios
+// de autocompletar/menciones), y de las imágenes solo tamaño + cola, que
+// alcanza para detectar un cambio sin serializar megabytes de base64.
+let composerSnapshot = "";
+function snapshotComposer(){
+  const d = composerDraft;
+  return JSON.stringify({
+    title:d.title, content:d.content, startDate:d.startDate, endDate:d.endDate, allDay:d.allDay,
+    startTime:d.startTime, endTime:d.endTime, participants:d.participants, activityType:d.activityType,
+    scopes:d.scopes, links:d.links, files:(d.files||[]).map(f=>f.name+":"+(f.dataUrl||"").length),
+    images:(d.images||[]).map(s=>s.length+":"+s.slice(-16)),
+  });
+}
+function composerIsDirty(){ return snapshotComposer() !== composerSnapshot; }
+// Cerrar por ✕, Cancelar, click afuera o Escape: si hay cambios sin
+// guardar, pregunta. Antes cualquiera de esos (un Escape para cerrar el
+// desplegable de lugar, un click en el fondo) tiraba el borrador entero.
+function requestCloseComposer(){
+  if(postModalOverlay.hidden) return;
+  if(composerIsDirty() && !confirm(t("Hay cambios sin guardar. ¿Descartarlos?","There are unsaved changes. Discard them?","Há alterações não salvas. Descartá-las?","יש שינויים שלא נשמרו. לבטל אותם?"))) return;
+  closeComposer();
 }
 function closeComposer(){
   postModalOverlay.hidden = true;
@@ -5169,7 +5221,7 @@ function renderComposer(){
       <label>${t("Comentarios","Comments","Comentários","הערות")}</label>
       <div class="mention-anchor">
         <div class="mention-highlight-backdrop" id="cContent-hl" aria-hidden="true">${highlightMentions(esc(d.content))}</div>
-        <textarea id="cContent" class="mention-input" data-mention-scope="post" data-mention-owner="new" placeholder="${esc(t("Contá qué se hizo (o qué va a pasar)... usá @ para mencionar a alguien","Tell what happened (or what's coming up)... use @ to mention someone","Conte o que foi feito (ou o que vai acontecer)... use @ para mencionar alguém","(כדי לאזכר מישהו @ השתמש/י ב) ...ספר/י מה נעשה (או מה עומד לקרות"))}">${esc(d.content)}</textarea>
+        <textarea id="cContent" class="mention-input" maxlength="${MAX_POST_CONTENT}" data-mention-scope="post" data-mention-owner="new" placeholder="${esc(t("Contá qué se hizo (o qué va a pasar)... usá @ para mencionar a alguien","Tell what happened (or what's coming up)... use @ to mention someone","Conte o que foi feito (ou o que vai acontecer)... use @ para mencionar alguém","(כדי לאזכר מישהו @ השתמש/י ב) ...ספר/י מה נעשה (או מה עומד לקרות"))}">${esc(d.content)}</textarea>
         ${renderMentionSuggestions(d, "post", "new", "cContent")}
       </div>
     </div>
@@ -5210,7 +5262,7 @@ function renderComposer(){
     ${d.error ? `<div class="form-error">${esc(d.error)}</div>` : ""}
     <div class="modal-actions">
       <button type="button" class="btn-secondary" id="cCancel">${t("Cancelar","Cancel","Cancelar","ביטול")}</button>
-      <button type="submit" class="btn-primary">${d.editingPost ? t("Guardar cambios","Save changes","Salvar alterações","שמירת השינויים") : t("Publicar","Post","Publicar","פרסום")}</button>
+      <button type="submit" class="btn-primary" ${d.submitting ? "disabled" : ""}>${d.submitting ? t("Guardando…","Saving…","Salvando…","...שומר") : d.editingPost ? t("Guardar cambios","Save changes","Salvar alterações","שמירת השינויים") : t("Publicar","Post","Publicar","פרסום")}</button>
     </div>
   `;
 }
@@ -5238,6 +5290,7 @@ function commitScope(scope, ownerId){
     const fromPreset = hasOwn(CITY_PRESETS, sd.country) && !sd.cityUseCustom;
     newScope = { type:"ciudad", country: sd.country, city: fromPreset ? sd.city.trim() : titleCase(sd.city) };
   }
+  if(draft.scopes.length >= MAX_SCOPES){ draft.scopeError = t("Máximo {n} lugares por posteo.","At most {n} places per post.","No máximo {n} lugares por postagem.","לכל היותר {n} מקומות לכל פוסט.",{n:MAX_SCOPES}); render(); return; }
   draft.scopes.push(newScope);
   draft.scopeDraft = newScopeDraft();
   draft.scopeError = "";
@@ -5264,10 +5317,25 @@ document.querySelectorAll("#tabs button").forEach(btn=>{
   });
 });
 btnNewPostEl.addEventListener("click", openComposer);
-document.getElementById("postModalClose").addEventListener("click", closeComposer);
-postModalOverlay.addEventListener("click", e=>{ if(e.target === postModalOverlay) closeComposer(); });
+document.getElementById("postModalClose").addEventListener("click", requestCloseComposer);
+postModalOverlay.addEventListener("click", e=>{ if(e.target === postModalOverlay) requestCloseComposer(); });
 document.addEventListener("keydown", e=>{
-  if(e.key === "Escape"){ closeComposer(); closeLightbox(); }
+  if(e.key !== "Escape") return;
+  // Un Escape por vez, de adentro hacia afuera: primero el lightbox; si
+  // hay un desplegable abierto en el composer (lugar, @mención,
+  // participante), lo cierra su propio manejador y el modal se queda.
+  if(lightbox.classList.contains("show")){ closeLightbox(); return; }
+  if(postModalOverlay.hidden) return;
+  const d = composerDraft;
+  if(d.placeQuery || d.mentionQuery != null || d.participantQuery) return;
+  requestCloseComposer();
+});
+// Enter en un input de texto del modal (título, participante, lugar,
+// link) no publica: el envío implícito del <form> hacía que un Enter en
+// el título disparara "Publicar" con el resto a medio completar. Los
+// desplegables siguen usando Enter para elegir (su manejador corre igual).
+postForm.addEventListener("keydown", e=>{
+  if(e.key === "Enter" && e.target.tagName === "INPUT" && !["checkbox","radio"].includes(e.target.type)) e.preventDefault();
 });
 
 // Tope duro absoluto de imágenes: MAX_IMAGES (editable desde Preferencias
@@ -5395,6 +5463,10 @@ function selectPlaceMatch(scope, ownerId, match){
   const draft = getDraftFor(scope, ownerId);
   if(match){
     const exists = draft.scopes.some(sc => JSON.stringify(sc) === JSON.stringify(match.scope));
+    if(!exists && draft.scopes.length >= MAX_SCOPES){
+      setDraftError(draft, t("Máximo {n} lugares por posteo.","At most {n} places per post.","No máximo {n} lugares por postagem.","לכל היותר {n} מקומות לכל פוסט.",{n:MAX_SCOPES}));
+      render(); return;
+    }
     if(!exists) draft.scopes.push(match.scope);
     draft.placeQuery = "";
     draft.placeHighlight = 0;
@@ -5523,6 +5595,10 @@ function selectParticipantMatch(match){
   if(!match) return;
   const draft = composerDraft;
   if(!draft.participants.some(p=>p.email.toLowerCase()===match.email.toLowerCase())){
+    if(draft.participants.length >= MAX_PARTICIPANTS){
+      draft.error = t("Máximo {n} participantes por evento.","At most {n} participants per event.","No máximo {n} participantes por evento.","לכל היותר {n} משתתפים לכל אירוע.",{n:MAX_PARTICIPANTS});
+      render(); return;
+    }
     draft.participants.push({ email: match.email, name: match.name || match.email });
   }
   draft.participantQuery = ""; draft.participantHighlight = 0;
@@ -5536,6 +5612,7 @@ function selectParticipantMatch(match){
 // elegir nada) — en vez de depender solo del mouse.
 document.addEventListener("keydown", e=>{
   const el = e.target;
+  if(!el || !el.dataset) return; // teclas con target document/window (no un elemento)
   if(el.dataset.placeScope){
     const draft = getDraftFor(el.dataset.placeScope, el.dataset.placeOwner);
     const matches = getPlaceMatches(draft.placeQuery);
@@ -5687,15 +5764,15 @@ document.addEventListener("click", e=>{
   } else if(action === "toggle-reply-extra-scope"){
     // manejado en 'change'
   } else if(action === "reply-add-link"){
-    getReplyDraft(postId).links.push({ label:"", url:"" }); render();
+    addLinkRow(getReplyDraft(postId));
   } else if(action === "nested-reply-add-link"){
-    getNestedReplyDraft(el.dataset.replyId).links.push({ label:"", url:"" }); render();
+    addLinkRow(getNestedReplyDraft(el.dataset.replyId));
   } else if(action === "post-add-link"){
-    composerDraft.links.push({ label:"", url:"" }); render();
+    addLinkRow(composerDraft);
   } else if(action === "toggle-post-attach"){
     composerDraft.attachOpen = true; render();
   } else if(action === "rutina-add-link"){
-    rutinaDraft.links.push({ label:"", url:"" }); render();
+    addLinkRow(rutinaDraft);
   } else if(action === "rm-link"){
     const scope = el.dataset.scope, ownerId = el.dataset.ownerId, idx = Number(el.dataset.idx);
     getDraftFor(scope, ownerId).links.splice(idx,1); render();
@@ -6103,11 +6180,12 @@ document.addEventListener("change", e=>{
   }
 });
 
-document.addEventListener("click", e=>{ if(e.target.id === "cCancel") closeComposer(); });
+document.addEventListener("click", e=>{ if(e.target.id === "cCancel") requestCloseComposer(); });
 
 postForm.addEventListener("submit", async e=>{
   e.preventDefault();
   const d = composerDraft;
+  if(d.submitting) return; // doble click / doble Enter mientras se guarda
   d.error = "";
   const title = d.title.trim();
   const content = d.content.trim();
@@ -6121,14 +6199,17 @@ postForm.addEventListener("submit", async e=>{
     if(d.startDate === d.endDate && d.endTime <= d.startTime){ d.error = t("La hora de fin tiene que ser posterior a la de inicio.","The end time has to be after the start time.","A hora de término tem que ser depois da de início.",".שעת הסיום חייבת להיות אחרי שעת ההתחלה"); render(); return; }
   }
   const links = d.links.filter(l=>safeUrl(l.url));
+  const mentions = extractMentionsFromContent(content);
+  if(mentions.length > MAX_MENTIONS){ d.error = tooManyMentionsMsg(); render(); return; }
   const postData = {
     title, content, startDate:d.startDate, endDate:d.endDate, date:d.startDate,
     startTime: d.allDay ? null : d.startTime, endTime: d.allDay ? null : d.endTime,
     participants: d.participants,
     activityType:d.activityType, scopes:d.scopes,
-    images:d.images, links, files:d.files, mentions:extractMentionsFromContent(content),
+    images:d.images, links, files:d.files, mentions,
     authorName: state.auth.user.displayName, authorEmail: state.auth.user.email,
   };
+  d.submitting = true; render();
   try{
     if(d.editingPost){
       const postId = d.editingPost.id;
@@ -6156,6 +6237,7 @@ postForm.addEventListener("submit", async e=>{
     }
   }catch(err){
     console.error(err);
+    d.submitting = false;
     d.error = t("No se pudo publicar: {msg}","Couldn't publish: {msg}","Não foi possível publicar: {msg}","{msg} :הפרסום נכשל",{msg:err.message});
     render();
   }
@@ -6163,20 +6245,25 @@ postForm.addEventListener("submit", async e=>{
 
 async function submitReply(postId){
   const d = getReplyDraft(postId);
+  if(d.submitting) return;
   const content = d.content.trim();
   if(!content){ d.scopeError = t("Escribí una respuesta antes de publicar.","Write a reply before posting.","Escreva uma resposta antes de publicar.",".כתוב/כתבי תגובה לפני הפרסום"); render(); return; }
   const links = d.links.filter(l=>safeUrl(l.url));
+  const mentions = extractMentionsFromContent(content);
+  if(mentions.length > MAX_MENTIONS){ d.scopeError = tooManyMentionsMsg(); render(); return; }
+  d.submitting = true; d.scopeError = ""; render();
   try{
     await createReply(postId, {
       authorName: state.auth.user.displayName, authorEmail: state.auth.user.email,
       content, scopes:d.extraScope ? d.scopes : [],
-      images:d.images, links, files:d.files, mentions:extractMentionsFromContent(content),
+      images:d.images, links, files:d.files, mentions,
     });
     openReplyForms.delete(postId);
     resetReplyDraft(postId);
     render();
   }catch(err){
     console.error(err);
+    d.submitting = false;
     d.scopeError = t("No se pudo publicar la respuesta: {msg}","Couldn't post the reply: {msg}","Não foi possível publicar a resposta: {msg}","{msg} :פרסום התגובה נכשל",{msg:err.message});
     render();
   }
@@ -6187,21 +6274,26 @@ async function submitReply(postId){
 // la nueva se cuelga del MISMO padre (no se van apilando niveles).
 async function submitNestedReply(postId, replyId){
   const d = getNestedReplyDraft(replyId);
+  if(d.submitting) return;
   const content = d.content.trim();
   if(!content) return;
   const parent = (state.repliesByPost[postId]||[]).find(r=>r.id===replyId);
   const replyToId = parent?.replyToId || replyId;
   const links = d.links.filter(l=>safeUrl(l.url));
+  const mentions = extractMentionsFromContent(content);
+  if(mentions.length > MAX_MENTIONS){ alert(tooManyMentionsMsg()); return; }
+  d.submitting = true; render();
   try{
     await createReply(postId, {
       authorName: state.auth.user.displayName, authorEmail: state.auth.user.email,
-      content, scopes:[], images:d.images, links, files:d.files, mentions:extractMentionsFromContent(content), replyToId,
+      content, scopes:[], images:d.images, links, files:d.files, mentions, replyToId,
     });
     openNestedReplyForms.delete(replyId);
     delete nestedReplyDrafts[replyId];
     render();
   }catch(err){
     console.error(err);
+    d.submitting = false; render();
     alert(t("No se pudo publicar la respuesta: {msg}","Couldn't post the reply: {msg}","Não foi possível publicar a resposta: {msg}","{msg} :פרסום התגובה נכשל",{msg:err.message}));
   }
 }
