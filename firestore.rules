@@ -68,6 +68,25 @@ service cloud.firestore {
         d.nickname is string && d.nickname.matches('^[A-Za-z0-9_]{2,20}$');
     }
 
+    // Mismo patrón acotado que el nickname, para que cada persona pueda
+    // anotar que ya vio el tutorial de bienvenida: SOLO el campo
+    // tourSeenAt de su propio documento, y solo con la hora del servidor
+    // (request.time es lo que vale un serverTimestamp()), así nadie se
+    // inventa una fecha ni aprovecha la puerta para tocar otra cosa.
+    // d.get(...) en vez de d.tourSeenAt por la regla de oro de este
+    // archivo: el campo puede no existir (nadie lo tiene hasta que cierra
+    // el tutorial) y el acceso con punto a una clave ausente tira error
+    // de evaluación, que rechaza el request entero.
+    // (Nota para quien pruebe con el emulador: al denegar un update por
+    // hasOnly, el emulador SIEMPRE imprime "evaluation error" en el
+    // detalle del rechazo, con punto o con get, y hasta con valores
+    // literales. Es cómo reporta la denegación, no un problema de esta
+    // función — se verificó caso por caso.)
+    function isValidTourSeenEdit(d) {
+      return d.diff(resource.data).affectedKeys().hasOnly(['tourSeenAt']) &&
+        d.get('tourSeenAt', null) == request.time;
+    }
+
     // Los campos individuales de cada scope/link no se validan en profundidad
     // aquí (el lenguaje de reglas no itera listas de mapas cómodamente): se
     // limitan tamaños de lista y de strings, que es lo que evita abuso real
@@ -225,6 +244,8 @@ service cloud.firestore {
       allow write: if isAdmin();
       allow update: if request.auth != null && request.auth.token.email == email &&
         isValidNicknameEdit(request.resource.data);
+      allow update: if request.auth != null && request.auth.token.email == email &&
+        isValidTourSeenEdit(request.resource.data);
     }
 
     // Solicitudes de acceso: cualquiera logueado puede crear/leer/reintentar

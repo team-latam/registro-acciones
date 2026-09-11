@@ -536,18 +536,36 @@ oscuras de OSM son de menor calidad).
 
 ### Tutorial de bienvenida
 
-Un modal de tres pantallas (`TOUR_SLIDES`) que se abre solo la primera
-vez que entra alguien ya aprobado, y que después queda a mano en el menú
-del avatar ("❔ Cómo funciona"). Explica lo mínimo para entender la app:
-publicar eventos, la memoria por lugar/fecha, y la sincronización con el
-Calendar. La idea es que se entienda para qué sirve en treinta segundos
-— la documentación completa es este README, no el tutorial.
+Un recorrido de tres paradas (`TOUR_STEPS`) que **señala las partes
+reales de la pantalla** — el botón de publicar, las pestañas, la
+campanita — con el resto atenuado, en vez de explicar la app en abstracto
+desde un cartel centrado. Se abre solo la primera vez que entra alguien
+ya aprobado, y después queda a mano en el menú del avatar ("❔ Cómo
+funciona"). La idea es que se entienda qué es esto en treinta segundos;
+la documentación completa es este README, no el tutorial.
 
-Que ya se vio se marca en `localStorage` (`ra_tour_seen_v1`). Si se
-agregan o cambian pantallas y conviene que todos lo vuelvan a ver, hay
-que subir `TOUR_VERSION`. Tiene prioridad sobre el aviso del Calendar
-compartido: mientras el tutorial está abierto ese popup no aparece, y se
-muestra recién cuando se cierra.
+Cómo está hecho (`renderTourStep`): el elemento señalado no se recorta ni
+se mueve, se lo ilumina con una sombra gigante alrededor
+(`box-shadow: 0 0 0 9999px`) sobre un recuadro posicionado encima con
+`getBoundingClientRect()`. La capa entera come los clics, así que
+mientras el recorrido está abierto no se toca la app por atrás. Si un
+objetivo no está en pantalla, esa parada se saltea sola en vez de dibujar
+un globo apuntando a la nada. Los tres objetivos viven en el header, que
+es `sticky`, por eso no hace falta seguir el scroll (sí se reposiciona al
+cambiar el tamaño de la ventana).
+
+Que ya se vio se marca **por cuenta, no por dispositivo**: en el campo
+`tourSeenAt` del documento de `allowlist`, así una cuenta nueva lo ve la
+primera vez que entra y no le reaparece aunque después cambie de máquina.
+Eso necesita la regla `isValidTourSeenEdit` en `firestore.rules` (cada
+persona puede escribir SOLO ese campo, y solo con la hora del servidor).
+Si esa escritura falla — típicamente porque las reglas todavía no se
+publicaron en Firebase — cae a `localStorage` (`ra_tour_seen`) para no
+quedar mostrándolo en bucle en cada carga.
+
+Tiene prioridad sobre el aviso del Calendar compartido: mientras el
+recorrido está abierto ese popup no aparece, y se muestra recién cuando
+se cierra.
 
 ## 4. Qué falta / decisiones pendientes
 

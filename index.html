@@ -188,16 +188,37 @@
   .um-nickname{ display:flex; align-items:center; justify-content:center; gap:6px; margin:-4px 0 14px; font-size:12.5px; font-weight:700; color:var(--celeste-dark); }
   .um-nickname-edit{ background:none; border:none; cursor:pointer; font-size:12px; padding:2px; opacity:0.7; }
   .um-nickname-edit:hover{ opacity:1; }
-  /* ---------- Tutorial de bienvenida (ver renderTour) ---------- */
-  .tour-modal{ max-width:430px; text-align:center; padding:26px 24px 20px; }
-  .tour-art{ font-size:52px; line-height:1; margin:4px 0 16px; }
-  .tour-title{ font-size:18px; font-weight:800; color:var(--ink); margin:0 0 10px; }
-  .tour-text{ font-size:13.5px; line-height:1.65; color:var(--text-muted); margin:0 auto 20px; max-width:340px; }
-  .tour-dots{ display:flex; justify-content:center; align-items:center; gap:7px; margin-bottom:18px; }
-  .tour-dots i{ width:7px; height:7px; border-radius:50%; background:var(--border); transition:width .2s ease, background-color .2s ease; }
-  .tour-dots i.active{ width:20px; border-radius:999px; background:var(--celeste-dark); }
-  .tour-actions{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
-  .tour-skip{ background:none; border:none; color:var(--text-muted); font-size:12.5px; font-weight:700; cursor:pointer; padding:8px 4px; }
+  /* ---------- Tutorial guiado (ver renderTourStep) ----------
+     La capa tapa toda la pantalla y come los clics (por eso NO lleva
+     pointer-events:none): mientras el recorrido está abierto no se toca
+     la app por atrás. El "agujero" que ilumina el elemento señalado no
+     es un recorte real sino una sombra gigante alrededor — así el
+     elemento se ve nítido sin tener que duplicarlo ni moverlo. */
+  .tour-layer{ position:fixed; inset:0; z-index:110; }
+  .tour-layer[hidden]{ display:none; }
+  .tour-hole{
+    position:fixed; border-radius:14px; pointer-events:none;
+    box-shadow:0 0 0 9999px rgba(6,26,28,0.74);
+    transition:top .22s ease, left .22s ease, width .22s ease, height .22s ease;
+  }
+  .tour-callout{
+    position:fixed; background:var(--card); border-radius:var(--radius-md);
+    padding:15px 17px 13px; box-shadow:0 18px 44px rgba(0,0,0,0.38);
+  }
+  .tour-callout::before{
+    content:""; position:absolute; left:var(--arrow, 24px); width:14px; height:14px;
+    background:var(--card); transform:rotate(45deg);
+  }
+  .tour-callout.below::before{ top:-7px; }
+  .tour-callout.above::before{ bottom:-7px; }
+  .tour-ttl{ font-size:14.5px; font-weight:800; color:var(--ink); margin-bottom:6px; }
+  .tour-txt{ font-size:12.5px; line-height:1.6; color:var(--text-muted); margin:0 0 13px; }
+  .tour-foot{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  .tour-btns{ display:flex; align-items:center; gap:4px; }
+  .tour-dots{ display:flex; align-items:center; gap:6px; }
+  .tour-dots i{ width:6px; height:6px; border-radius:50%; background:var(--border); transition:width .2s ease, background-color .2s ease; }
+  .tour-dots i.active{ width:18px; border-radius:999px; background:var(--celeste-dark); }
+  .tour-skip{ background:none; border:none; color:var(--text-muted); font-size:12px; font-weight:700; cursor:pointer; padding:8px 6px; }
   .tour-skip:hover{ color:var(--ink); }
   .um-tour{
     width:100%; background:none; border:none; color:var(--text-muted); font-size:12px;
@@ -974,9 +995,7 @@
   </div>
 </div>
 
-<div class="modal-overlay" id="tourOverlay" hidden>
-  <div class="modal tour-modal" id="tourModal"></div>
-</div>
+<div class="tour-layer" id="tourLayer" hidden></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" crossorigin=""></script>
@@ -4095,7 +4114,7 @@ const postModalTitle = document.getElementById("postModalTitle");
 const calendarInviteOverlay = document.getElementById("calendarInviteOverlay");
 function maybeShowCalendarInviteOverlay(){
   if(!isAuthorized() || !shouldShowCalendarInvitePopup()){ return; }
-  if(!tourOverlay.hidden) return; // el tutorial va primero; este aparece al cerrarlo
+  if(!tourLayer.hidden) return; // el tutorial va primero; este aparece al cerrarlo
   if(!calendarInviteOverlay.hidden) return; // ya está abierto, no lo reabras encima
   document.getElementById("calendarInviteEmailSpan").textContent = state.auth.user.email;
   calendarInviteOverlay.hidden = false;
@@ -4107,71 +4126,111 @@ function dismissCalendarInviteOverlay(){
 }
 calendarInviteOverlay.addEventListener("click", e=>{ if(e.target === calendarInviteOverlay) dismissCalendarInviteOverlay(); });
 
-// Tutorial de bienvenida: se abre solo la primera vez que alguien
-// aprobado entra, y después queda a mano en el menú del avatar. Son tres
-// pantallas y nada más — la idea es que se entienda para qué sirve la
-// app en treinta segundos, no documentarla entera (para eso está el
-// README). Si se agregan pantallas, subir TOUR_VERSION para que se lo
-// vuelva a mostrar a todos.
-const TOUR_VERSION = 1;
-const TOUR_SEEN_KEY = "ra_tour_seen_v" + TOUR_VERSION;
-const TOUR_SLIDES = [
+// Tutorial de bienvenida: en vez de un cartel centrado que explica la
+// app en abstracto, va señalando las partes reales de la pantalla (el
+// botón de publicar, las pestañas, la campanita) con el resto atenuado.
+// Son tres paradas y nada más: que se entienda qué es esto en treinta
+// segundos, no documentarlo entero — para eso está el README.
+//
+// Se muestra una vez por CUENTA, no por dispositivo: queda anotado en
+// tourSeenAt del documento de allowlist, así una cuenta nueva lo ve la
+// primera vez que entra y no le reaparece aunque después cambie de
+// máquina. Si esa escritura falla (típicamente porque las reglas nuevas
+// todavía no se publicaron en Firebase) cae a localStorage, para no
+// quedar mostrándolo en bucle en cada carga.
+const TOUR_FALLBACK_KEY = "ra_tour_seen";
+const TOUR_STEPS = [
   {
-    art: "📝",
-    title: "Contá lo que hace el equipo",
-    text: "Con “+ Nuevo evento” cargás una visita, un curso, un seminario o una rutina: con su fecha, el país o la ciudad y quiénes participaron. Queda en el Feed y cualquiera puede responder abajo.",
+    target: "#btnNewPost",
+    title: "Todo empieza acá",
+    text: "Cada visita, curso, seminario o rutina se carga desde este botón: con su fecha, el país o la ciudad y quiénes participaron. Si además le ponés horario, el evento se sincroniza solo con el Google Calendar compartido del equipo.",
   },
   {
-    art: "🗺️",
-    title: "La memoria, por lugar y por fecha",
-    text: "En Países ves el mapa y cuánto se hizo en cada ciudad; en Memoria, todo en orden cronológico. Es lo que te sirve antes de viajar: saber qué pasó ahí antes que vos.",
+    target: "#tabs",
+    title: "La memoria del equipo",
+    text: "El Feed es lo último que pasó. En Países lo ves en un mapa, con el detalle de cada ciudad; en Memoria, todo en orden cronológico. Eso es lo que sirve antes de viajar: saber qué se hizo ahí antes que vos.",
   },
   {
-    art: "📅",
-    title: "Se sincroniza con el Calendar",
-    text: "Lo que publicás como evento aparece solo en el Google Calendar compartido de LatAm, y a quienes sumes como participantes les llega la invitación.",
+    target: "#mentionsBell",
+    title: "Tus novedades",
+    text: "Acá te avisamos cuando alguien te menciona con @ en un posteo, o cuando te compartimos el Calendar de LatAm. Al lado, en tu avatar, cambiás tu @nickname, elegís el tono claro u oscuro y podés volver a ver este recorrido.",
   },
 ];
-const tourOverlay = document.getElementById("tourOverlay");
-const tourModal = document.getElementById("tourModal");
+const tourLayer = document.getElementById("tourLayer");
 let tourStep = 0;
 
 function hasSeenTour(){
-  try{ return localStorage.getItem(TOUR_SEEN_KEY) === "1"; }
-  catch(e){ return true; } // sin localStorage no hay forma de recordarlo: mejor no molestar en cada carga
+  const me = myRosterEntry();
+  if(me && me.tourSeenAt) return true;
+  try{ return localStorage.getItem(TOUR_FALLBACK_KEY) === "1"; }
+  catch(e){ return true; } // sin localStorage no hay dónde recordarlo: mejor no insistir en cada carga
 }
 function markTourSeen(){
-  try{ localStorage.setItem(TOUR_SEEN_KEY, "1"); }catch(e){ /* no se puede recordar, paciencia */ }
+  const email = state.auth.user && state.auth.user.email;
+  if(email){
+    fb.updateDoc(fb.doc(db, "allowlist", email), { tourSeenAt: fb.serverTimestamp() }).catch(()=>{});
+  }
+  // También local: la escritura de arriba es asíncrona y el render que
+  // viene enseguida no puede esperarla.
+  try{ localStorage.setItem(TOUR_FALLBACK_KEY, "1"); }catch(e){ /* paciencia */ }
 }
-function renderTour(){
-  const slide = TOUR_SLIDES[tourStep];
-  const isLast = tourStep === TOUR_SLIDES.length - 1;
-  tourModal.innerHTML = `
-    <div class="tour-art">${slide.art}</div>
-    <div class="tour-title">${esc(slide.title)}</div>
-    <p class="tour-text">${esc(slide.text)}</p>
-    <div class="tour-dots">${TOUR_SLIDES.map((_, i)=>`<i class="${i === tourStep ? "active" : ""}"></i>`).join("")}</div>
-    <div class="tour-actions">
-      <button type="button" class="tour-skip" data-action="close-tour">${isLast ? "" : "Saltar"}</button>
-      <button type="button" class="btn-primary" data-action="${isLast ? "close-tour" : "tour-next"}">${isLast ? "Empezar" : "Siguiente"}</button>
+function renderTourStep(){
+  const step = TOUR_STEPS[tourStep];
+  const el = step && document.querySelector(step.target);
+  const r = el && el.getBoundingClientRect();
+  // Si el elemento señalado no está en pantalla (o quedó oculto), seguí
+  // de largo en vez de dibujar un globo apuntando a la nada.
+  if(!r || !r.width || !r.height){
+    if(tourStep < TOUR_STEPS.length - 1){ tourStep++; renderTourStep(); }
+    else closeTour();
+    return;
+  }
+  const isLast = tourStep === TOUR_STEPS.length - 1;
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const pad = 8;
+  const holeTop = Math.max(r.top - pad, 4);
+  const holeLeft = Math.max(r.left - pad, 4);
+  const holeW = r.width + pad * 2, holeH = r.height + pad * 2;
+
+  const calloutW = Math.min(320, vw - 24);
+  const below = holeTop + holeH + 200 < vh;
+  const calloutLeft = Math.max(12, Math.min(r.left + r.width / 2 - calloutW / 2, vw - calloutW - 12));
+  const arrowLeft = Math.max(16, Math.min(r.left + r.width / 2 - calloutLeft - 7, calloutW - 30));
+  const vertical = below ? `top:${holeTop + holeH + 12}px` : `bottom:${vh - holeTop + 12}px`;
+
+  tourLayer.innerHTML = `
+    <div class="tour-hole" style="top:${holeTop}px; left:${holeLeft}px; width:${holeW}px; height:${holeH}px;"></div>
+    <div class="tour-callout ${below ? "below" : "above"}" style="left:${calloutLeft}px; width:${calloutW}px; ${vertical}; --arrow:${arrowLeft}px;">
+      <div class="tour-ttl">${esc(step.title)}</div>
+      <p class="tour-txt">${esc(step.text)}</p>
+      <div class="tour-foot">
+        <div class="tour-dots">${TOUR_STEPS.map((_, i)=>`<i class="${i === tourStep ? "active" : ""}"></i>`).join("")}</div>
+        <div class="tour-btns">
+          ${isLast ? "" : `<button type="button" class="tour-skip" data-action="close-tour">Saltar</button>`}
+          <button type="button" class="btn-mini" data-action="${isLast ? "close-tour" : "tour-next"}">${isLast ? "Listo" : "Siguiente"}</button>
+        </div>
+      </div>
     </div>`;
 }
 function openTour(){
   tourStep = 0;
-  renderTour();
-  tourOverlay.hidden = false;
+  window.scrollTo({ top:0, behavior:"auto" }); // los objetivos viven en el header
+  tourLayer.hidden = false;
+  renderTourStep();
 }
 function closeTour(){
   markTourSeen();
-  tourOverlay.hidden = true;
+  tourLayer.hidden = true;
+  tourLayer.innerHTML = "";
   render(); // deja paso al aviso del Calendar si corresponde
 }
 function maybeShowTour(){
   if(!isAuthorized() || hasSeenTour()) return;
-  if(!tourOverlay.hidden || !postModalOverlay.hidden) return;
+  if(!tourLayer.hidden || !postModalOverlay.hidden) return;
   openTour();
 }
-tourOverlay.addEventListener("click", e=>{ if(e.target === tourOverlay) closeTour(); });
+tourLayer.addEventListener("click", e=>{ if(e.target === tourLayer) closeTour(); });
+window.addEventListener("resize", ()=>{ if(!tourLayer.hidden) renderTourStep(); });
 
 function openComposer(){
   composerDraft = newComposerDraft();
@@ -4807,8 +4866,8 @@ document.addEventListener("click", e=>{
     nicknameEditing = false; nicknameError = null;
     render();
   } else if(action === "tour-next"){
-    tourStep = Math.min(tourStep + 1, TOUR_SLIDES.length - 1);
-    renderTour();
+    tourStep = Math.min(tourStep + 1, TOUR_STEPS.length - 1);
+    renderTourStep();
   } else if(action === "close-tour"){
     closeTour();
   } else if(action === "open-tour"){
