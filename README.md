@@ -108,6 +108,27 @@ aprobación" hasta que el administrador lo apruebe desde la propia app
   ese dato (y el código en general); si prefieren ocultarlo también,
   pueden poner el repo en privado desde Settings → General → Danger Zone
   → Change visibility en GitHub.
+- **Las reglas exigen login con Google y email verificado**
+  (`signedIn()` en `firestore.rules`: `email_verified == true` y
+  `sign_in_provider == 'google.com'`). Todo el modelo de acceso descansa
+  en `request.auth.token.email`; si en la consola de Firebase se
+  habilitara otro proveedor que deje elegir el email sin verificarlo
+  (Email/Password, por ejemplo), cualquiera podría presentarse como el
+  admin. Por eso, además de esa regla, **en Authentication → Sign-in
+  method tiene que estar habilitado solo Google**.
+- **Lo que escribe cada uno va firmado con su propio token**: un posteo o
+  una respuesta tienen que llevar el `authorEmail` de quien la crea (las
+  reglas lo comparan con el token), los "me gusta" solo pueden agregar o
+  sacar el propio email (la lista entera se compara contra "la de antes
+  ± yo"), y cada documento solo puede tener las claves que la app usa
+  (`keys().hasOnly()` al crear, `affectedKeys().hasOnly()` al editar).
+  Quien no es admin solo puede registrar en `auditLog` su propio login o
+  su propio pedido de acceso. La única excepción, y es deliberada: los
+  mensajes firmados "Google Calendar" (el posteo que importa un evento
+  creado directo en Calendar y la respuesta de sistema del sync) no
+  tienen una persona detrás, así que un aprobado podría fabricarlos —
+  sin backend no hay forma de distinguirlos. Lo importante es que ya no
+  se puede firmar como **otra persona real**.
 
 ## 2. Publicar el archivo
 
@@ -399,14 +420,20 @@ quien publica para crear el evento.
 - La primera vez que el admin aprueba o revoca a alguien, Google puede
   pedir un login extra (para el permiso de administrar quién tiene acceso
   al calendario) — es normal, solo pasa una vez por sesión.
-- Al iniciar sesión con Google, la app pide también el permiso de
-  `calendar.events` (además del básico de perfil/email). Google puede
-  mostrar la pantalla **"Google no verificó esta app"** al pedir ese
-  permiso — es normal en apps internas chicas que no pasaron la revisión
-  formal de Google; para seguir hay que tocar **Avanzado → Ir a
-  [nombre del proyecto] (no seguro)**. No es un error ni un problema de
-  seguridad real: solo significa que Google todavía no revisó
-  manualmente esta app (revisión pensada para apps públicas masivas).
+- El login con Google pide SOLO identidad (perfil/email). El permiso de
+  `calendar.events` se pide recién la primera vez que hace falta escribir
+  en Calendar (crear/editar/cancelar un evento, compartir el calendario)
+  — un popup extra de Google, una vez por sesión (~1 h). Se eligió así a
+  propósito: ese scope es sobre **todos** los calendarios de la persona,
+  no solo el compartido, y quien solo lee la app no tiene por qué
+  concederlo (ni dejar un token con ese alcance en `sessionStorage`).
+  Google puede mostrar la pantalla **"Google no verificó esta app"** al
+  pedir ese permiso — es normal en apps internas chicas que no pasaron
+  la revisión formal de Google; para seguir hay que tocar **Avanzado →
+  Ir a [nombre del proyecto] (no seguro)**. No es un error ni un
+  problema de seguridad real: solo significa que Google todavía no
+  revisó manualmente esta app (revisión pensada para apps públicas
+  masivas).
 - El token de Calendar (el que se usa para **escribir** — crear/editar/
   cancelar) dura ~1 hora, y se guarda en `sessionStorage` para sobrevivir
   a recargar la página dentro de la misma pestaña (se pierde si se cierra
@@ -738,8 +765,91 @@ Tiene prioridad sobre el aviso del Calendar compartido: mientras el
 recorrido está abierto ese popup no aparece, y se muestra recién cuando
 se cierra.
 
+### Revisión de código (septiembre 2026): decisiones que hay que conocer
+
+Se hizo una pasada completa (seguridad del cliente, reglas, bugs, código
+muerto). Lo que cambió y conviene tener presente al tocar el código:
+
+- **Todo `src`/`href` que viene de datos pasa por un validador**:
+  `safeImageSrc()` (solo `data:image/...;base64,` con cuerpo base64 puro),
+  `safeFileDataUrl()` (PDF/audio/octet-stream), `safeUrl()` (http/https/
+  mailto; acepta "www.algo.com/x" sin esquema y le pone https) y
+  `safeColor()` (`#rrggbb`, para los colores de zona que van a un
+  `style=""`). Las reglas solo chequean que `images`/`files` sean listas,
+  no qué tienen adentro — un documento escrito a mano contra Firestore
+  podía meter un `" onerror="..."` que corría en el navegador de todos.
+  Labels/iconos de tipos y zonas (config del admin) también van con
+  `esc()`. Regla general: **nada que venga de Firestore o de Calendar se
+  interpola sin `esc()` o sin uno de esos validadores.**
+- **Fechas**: `todayISO()` da "hoy" en hora local (`toISOString()` es
+  UTC: a las 22:00 de Buenos Aires ya es mañana) y `addDaysISO()` hace la
+  aritmética enteramente en UTC (mezclar medianoche local con
+  `toISOString()` daba el día anterior al este de Greenwich — en Israel,
+  `addDaysISO(x, 1) === x`).
+- **Lookups con claves que vienen de datos** (`byCountry[sc.country]`,
+  `CITY_PRESETS[country]`, `byNickname[nick]`, los diccionarios de
+  labels) usan `Object.create(null)` o `hasOwn()`: un scope con country
+  `"__proto__"` escribía en `Object.prototype`, y un `@constructor` en un
+  texto metía la función `Object` en `mentions` y Firestore rechazaba el
+  posteo entero. `canonicalCityName()` devuelve el nombre del preset si
+  coincide sin tildes/mayúsculas (antes `titleCase()` convertía "Ciudad
+  de México" en "Ciudad De México" y no matcheaba nada).
+- **Zonas/tipos borrados por el admin** con posteos que todavía los
+  referencian: `scopeLabel()`, `renderScopeChip()`, `renderPostCard()`
+  tienen fallbacks (no hay `try/catch` en `render()` — un `TypeError` ahí
+  congelaba la página entera), y no se puede borrar una zona con posteos
+  apuntando a ella.
+- **Composer**: cerrar con cambios sin guardar pregunta; Escape cierra
+  de adentro hacia afuera (lightbox → desplegable → modal); Enter en un
+  input no publica; hay un flag `submitting` que evita el doble envío
+  (los posteos no se pueden borrar); los topes de las reglas (15 lugares,
+  10 links, 10 participantes, 10 @menciones, 5000/3000 caracteres) se
+  chequean antes de escribir, con mensaje.
+- **Calendar**: los eventos que crea la app llevan
+  `extendedProperties.private.raActivityType` (la KEY del tipo, no el
+  label, que cambia con el idioma) y `raPostId`; `extractTitleFromSummary`
+  y `findCalendarEventId` reconocen el prefijo "Tipo: " en cualquiera de
+  los labels conocidos. Los posteos importados desde Calendar usan un id
+  de documento derivado del id del evento (`cal_<id>`) y se crean en una
+  transacción: el poll de 30 s corre en todos los navegadores abiertos y
+  dos podían importar el mismo evento. Un evento cancelado no se
+  resucita al editar el posteo. Cambiar el ID del calendario resetea el
+  `syncToken`. El loop del sync tolera un evento que falle (los demás se
+  aplican y el token avanza).
+- **Sesión**: revocar a alguien online corta sus listeners antes de que
+  fallen; si el listener de `allowlist` falla se muestra el motivo (no un
+  "pendiente" eterno). El roster no usa `orderBy("approvedAt")` porque
+  Firestore excluye los docs sin ese campo.
+- **Rendimiento**: los listeners de respuestas juntan sus renders en uno
+  por frame (`scheduleRender()`); Feed y Memoria muestran de a 30 con
+  "Ver más"; el mapa se crea una vez y conserva zoom/posición entre
+  renders (se vuelve a enchufar su contenedor y solo se rehacen los
+  marcadores si cambió algo); la regex de @menciones y los conteos por
+  persona se memoizan por versión de roster/posts; Actividad baja como
+  mucho 1000 entradas.
+- **Se dejó a propósito**: el banner de `CONFIG_IS_PLACEHOLDER` (hoy es
+  siempre `false`, pero es el camino de arranque para un fork nuevo) y
+  los chequeos `isAuthorized()` redundantes dentro de vistas que ya están
+  detrás del gate (defensa barata).
+
 ## 4. Qué falta / decisiones pendientes
 
 - **Roles**: hoy todo aprobado tiene los mismos permisos (leer + publicar).
   Si más adelante hace falta un rol intermedio (por ejemplo, alguien que
   solo lee), hay que sumarlo a mano en `firestore.rules` y en la UI.
+- **SRI en tres assets de unpkg**: `leaflet.markercluster.js` y sus dos
+  CSS (`MarkerCluster.css`, `MarkerCluster.Default.css`) se cargan sin
+  `integrity=` (los de Leaflet sí lo tienen). Desde el entorno donde se
+  hizo la revisión no se pudo descargar unpkg para calcular los hashes;
+  se calculan con `curl -sSL <url> | openssl dgst -sha256 -binary |
+  base64` y se pegan como `integrity="sha256-..."`.
+- **CSP**: no hay `Content-Security-Policy`. Una que limite `script-src` a
+  self + unpkg + gstatic y `connect-src` a googleapis/firestore/ipify/
+  mymemory reduciría mucho el impacto de cualquier XSS futuro, pero hay
+  que probarla en producción (los popups de login de Google y las
+  teselas del mapa son fáciles de romper con una CSP mal armada).
+- **Privacidad de terceros**: la traducción bajo demanda manda el texto
+  del posteo a MyMemory en el query string (memoria de traducción
+  pública + logs), y el login manda la IP de cada persona a ipify para
+  la auditoría. Son decisiones asumidas por no tener backend; conviene
+  que el equipo lo sepa.
