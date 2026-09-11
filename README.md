@@ -537,12 +537,25 @@ oscuras de OSM son de menor calidad).
 ### Tutorial de bienvenida
 
 Un recorrido de tres paradas (`TOUR_STEPS`) que **señala las partes
-reales de la pantalla** — el botón de publicar, las pestañas, la
-campanita — con el resto atenuado, en vez de explicar la app en abstracto
-desde un cartel centrado. Se abre solo la primera vez que entra alguien
-ya aprobado, y después queda a mano en el menú del avatar ("❔ Cómo
-funciona"). La idea es que se entienda qué es esto en treinta segundos;
-la documentación completa es este README, no el tutorial.
+reales de la pantalla** — el composer de Rutina ("¿Qué hiciste hoy?"),
+el botón de eventos, las pestañas — con el resto atenuado, en vez de
+explicar la app en abstracto desde un cartel centrado. Los textos son
+cortos y concretos a propósito: que la persona sepa qué es cada cosa y
+salga a probarla, no leer un manual (para eso está este README).
+
+**Solo lo ven las cuentas nuevas, una vez**: la primera vez que entra
+alguien aprobado a partir de `TOUR_ELIGIBLE_FROM` (11/9/2026). Quien ya
+venía usando la app no lo ve nunca. Se usa la fecha de aprobación porque
+es el único dato propio que una cuenta común puede leer para saber si es
+nueva — los logins están en Actividad (`auditLog`), que solo lee el
+admin. Después queda a mano para cualquiera en el menú del avatar
+("❔ Cómo funciona").
+
+Como la primera parada es el composer de Rutina, que solo existe en el
+Feed, `openTour()` lleva primero a esa pestaña, y `maybeShowTour()` se
+llama al final de `doRender()`, con la vista ya dibujada (si corriera
+antes, el composer todavía no estaría en el DOM y esa parada se
+saltearía sola).
 
 Cómo está hecho (`renderTourStep`): el elemento señalado no se recorta ni
 se mueve, se lo ilumina con una sombra gigante alrededor
