@@ -552,6 +552,7 @@
   .post-author{ font-size:12.5px; font-weight:700; color:var(--ink); }
   .post-content{ font-size:14.5px; line-height:1.55; white-space:pre-wrap; margin:8px 0 10px 0; }
   .post-scopes{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
+  .post-scopes-head{ margin:0 0 0 auto; justify-content:flex-end; }
   .post-links{ display:flex; flex-direction:column; gap:4px; margin-bottom:10px; }
   .post-links a{ font-size:12.5px; font-weight:600; }
   .post-images{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
@@ -3650,6 +3651,7 @@ function renderPostCard(post, replies, featured){
   const metaBits = [];
   if(post.participants && post.participants.length) metaBits.push(`👥 Participantes: ${esc(participantsLabel(post.participants))}`);
   else if(post.organizer) metaBits.push(`👤 Organiza: ${esc(post.organizer)}`);
+  if(post.location) metaBits.push(`📍 ${esc(post.location)}`);
   const editable = canEditPost(post);
   const canCancel = editable && post.activityType !== "rutina" && !post.cancelled;
   const postLikedBy = post.likedBy || [];
@@ -3663,13 +3665,12 @@ function renderPostCard(post, replies, featured){
           <span class="post-date">${dateLabel}</span>
           ${post.cancelled ? `<span class="type-badge" style="background:var(--danger);">🚫 Cancelado</span>` : ""}
         </div>
-        ${post.location ? `<span class="post-author" title="Dónde">📍 ${esc(post.location)}</span>` : ""}
+        ${scopesHtml ? `<div class="post-scopes post-scopes-head">${scopesHtml}</div>` : ""}
       </div>
       ${post.title && post.activityType !== "rutina" ? `<h3 style="margin:6px 0 0 0;font-size:16px;color:var(--ink);${post.cancelled?"text-decoration:line-through;opacity:0.7;":""}">${esc(post.title)}</h3>` : ""}
       ${metaBits.length ? `<div class="hint" style="margin-top:4px;">${metaBits.join(" · ")}</div>` : ""}
       <div class="post-content">${nl2br(post.content)}</div>
-      ${scopesHtml ? `<div class="post-scopes">${scopesHtml}</div>` :
-        (post.activityType !== "rutina" ? `<div class="hint" style="color:var(--danger);">⚠️ Sin alcance definido — editalo para asignarle un país/ciudad.</div>` : "")}
+      ${!scopesHtml && post.activityType !== "rutina" ? `<div class="hint" style="color:var(--danger);">⚠️ Sin alcance definido — editalo para asignarle un país/ciudad.</div>` : ""}
       ${linksHtml ? `<div class="post-links">${linksHtml}</div>` : ""}
       ${imagesHtml ? `<div class="post-images">${imagesHtml}</div>` : ""}
       ${renderPostedFiles(post.files)}
