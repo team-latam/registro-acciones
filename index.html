@@ -2210,6 +2210,7 @@ function subscribeRoster(){
         email: d.id, nickname: data.nickname || nicknameFallback(d.id), photoURL: data.photoURL || null,
         name: data.name || null, approvedAt: data.approvedAt || null, approvedBy: data.approvedBy || null,
         calendarShared: data.calendarShared === true, calendarInviteSentAt: data.calendarInviteSentAt || null,
+        tourSeenAt: data.tourSeenAt || null,
       };
     });
     render();
@@ -2822,8 +2823,6 @@ function doRender(){
 
   renderUserBadge();
   renderMentionsBell();
-  maybeShowTour();
-  maybeShowCalendarInviteOverlay();
 
   if(!isAuthorized()){
     tabsNav.classList.add("tabs-hidden"); btnNewPostEl.hidden = true;
@@ -2856,6 +2855,13 @@ function doRender(){
 
   viewRoot.innerHTML = html;
   afterRenderView();
+
+  // Recién acá, con la vista ya dibujada: la primera parada del
+  // tutorial señala el composer de Rutina, que hasta esta línea no
+  // existe en el DOM. El tutorial va antes que el aviso del Calendar
+  // para no apilar dos carteles en el primer ingreso.
+  maybeShowTour();
+  maybeShowCalendarInviteOverlay();
 
   if(postModalOverlay && !postModalOverlay.hidden) renderComposer();
 }
@@ -4127,38 +4133,48 @@ function dismissCalendarInviteOverlay(){
 calendarInviteOverlay.addEventListener("click", e=>{ if(e.target === calendarInviteOverlay) dismissCalendarInviteOverlay(); });
 
 // Tutorial de bienvenida: en vez de un cartel centrado que explica la
-// app en abstracto, va señalando las partes reales de la pantalla (el
-// botón de publicar, las pestañas, la campanita) con el resto atenuado.
-// Son tres paradas y nada más: que se entienda qué es esto en treinta
-// segundos, no documentarlo entero — para eso está el README.
+// app en abstracto, va señalando las partes reales de la pantalla con el
+// resto atenuado. Tres paradas, textos cortos y concretos a propósito:
+// la idea es que la persona sepa qué es cada cosa y salga a probarla,
+// no leer un manual — para eso está el README.
 //
-// Se muestra una vez por CUENTA, no por dispositivo: queda anotado en
-// tourSeenAt del documento de allowlist, así una cuenta nueva lo ve la
-// primera vez que entra y no le reaparece aunque después cambie de
-// máquina. Si esa escritura falla (típicamente porque las reglas nuevas
-// todavía no se publicaron en Firebase) cae a localStorage, para no
-// quedar mostrándolo en bucle en cada carga.
+// Aparece SOLO para cuentas nuevas, una vez: la primera vez que entra
+// alguien aprobado a partir de TOUR_ELIGIBLE_FROM. Quien ya venía usando
+// la app de antes no lo ve nunca (no hay forma de "contar logins" desde
+// una cuenta común — eso vive en Actividad, que solo lee el admin — así
+// que la fecha de aprobación es el único dato propio que dice si la
+// cuenta es nueva). Que ya lo vio queda anotado en tourSeenAt del
+// documento de allowlist, por cuenta y no por dispositivo, así no le
+// reaparece aunque cambie de máquina; si esa escritura falla (reglas
+// todavía sin publicar en Firebase) cae a localStorage para no quedar
+// mostrándolo en bucle.
+const TOUR_ELIGIBLE_FROM = Date.UTC(2026, 8, 11); // cuentas aprobadas desde el 11/9/2026
 const TOUR_FALLBACK_KEY = "ra_tour_seen";
 const TOUR_STEPS = [
   {
+    target: ".quick-composer",
+    title: "¿Qué hiciste hoy?",
+    text: "Contá tu día en una línea. Podés sumarle lugar, foto, PDF o link. Sale al Feed al instante.",
+  },
+  {
     target: "#btnNewPost",
-    title: "Todo empieza acá",
-    text: "Cada visita, curso, seminario o rutina se carga desde este botón: con su fecha, el país o la ciudad y quiénes participaron. Si además le ponés horario, el evento se sincroniza solo con el Google Calendar compartido del equipo.",
+    title: "Eventos",
+    text: "Visitas, cursos, seminarios y congresos, con fecha y participantes. Van solos al Calendar del equipo.",
   },
   {
     target: "#tabs",
-    title: "La memoria del equipo",
-    text: "El Feed es lo último que pasó. En Países lo ves en un mapa, con el detalle de cada ciudad; en Memoria, todo en orden cronológico. Eso es lo que sirve antes de viajar: saber qué se hizo ahí antes que vos.",
-  },
-  {
-    target: "#mentionsBell",
-    title: "Tus novedades",
-    text: "Acá te avisamos cuando alguien te menciona con @ en un posteo, o cuando te compartimos el Calendar de LatAm. Al lado, en tu avatar, cambiás tu @nickname, elegís el tono claro u oscuro y podés volver a ver este recorrido.",
+    title: "Las tres vistas",
+    text: "Feed: lo último. Países: el mapa. Memoria: todo, por fecha.",
   },
 ];
 const tourLayer = document.getElementById("tourLayer");
 let tourStep = 0;
 
+function isNewAccountForTour(){
+  const me = myRosterEntry();
+  const approved = me && tsToMillis(me.approvedAt);
+  return !!approved && approved >= TOUR_ELIGIBLE_FROM;
+}
 function hasSeenTour(){
   const me = myRosterEntry();
   if(me && me.tourSeenAt) return true;
@@ -4214,7 +4230,10 @@ function renderTourStep(){
 }
 function openTour(){
   tourStep = 0;
-  window.scrollTo({ top:0, behavior:"auto" }); // los objetivos viven en el header
+  // La primera parada es el composer de Rutina, que solo existe en el
+  // Feed: si la persona está en otra pestaña, primero la llevamos ahí.
+  if(state.view !== "feed"){ state.view = "feed"; render(); }
+  window.scrollTo({ top:0, behavior:"auto" });
   tourLayer.hidden = false;
   renderTourStep();
 }
@@ -4225,12 +4244,15 @@ function closeTour(){
   render(); // deja paso al aviso del Calendar si corresponde
 }
 function maybeShowTour(){
-  if(!isAuthorized() || hasSeenTour()) return;
+  if(!isAuthorized() || !isNewAccountForTour() || hasSeenTour()) return;
   if(!tourLayer.hidden || !postModalOverlay.hidden) return;
   openTour();
 }
 tourLayer.addEventListener("click", e=>{ if(e.target === tourLayer) closeTour(); });
 window.addEventListener("resize", ()=>{ if(!tourLayer.hidden) renderTourStep(); });
+// La parada del composer vive en el contenido que scrollea (las otras
+// dos, en el header sticky): si la página se mueve, el agujero la sigue.
+window.addEventListener("scroll", ()=>{ if(!tourLayer.hidden) renderTourStep(); }, { passive:true });
 
 function openComposer(){
   composerDraft = newComposerDraft();
