@@ -968,6 +968,31 @@
   }
   #lightbox.show{ display:flex; }
   #lightbox img{ max-width:100%; max-height:100%; border-radius:8px; }
+  .lightbox-nav{
+    position:absolute; top:50%; transform:translateY(-50%); background:rgba(255,255,255,0.12); color:#fff;
+    border:none; border-radius:50%; width:44px; height:44px; font-size:26px; line-height:1; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .lightbox-nav:hover{ background:rgba(255,255,255,0.22); }
+  .lightbox-nav[hidden]{ display:none; }
+  .lightbox-prev{ inset-inline-start:16px; }
+  .lightbox-next{ inset-inline-end:16px; }
+  .lightbox-counter{
+    position:absolute; bottom:16px; left:50%; transform:translateX(-50%); color:#fff; font-size:12.5px;
+    background:rgba(0,0,0,0.5); padding:3px 10px; border-radius:999px;
+  }
+  .lightbox-counter[hidden]{ display:none; }
+
+  /* ---------- Paginador del visor de PDF (Prev/Siguiente entre los
+     adjuntos previsualizables del mismo posteo/respuesta) ---------- */
+  .file-preview-pager{ display:flex; align-items:center; justify-content:center; gap:14px; margin:-4px 0 10px; flex:none; }
+  .file-preview-pager[hidden]{ display:none; }
+  .file-preview-pager button{
+    background:none; border:1.5px solid var(--border); border-radius:50%; width:30px; height:30px; font-size:17px;
+    line-height:1; cursor:pointer; color:var(--ink); display:flex; align-items:center; justify-content:center;
+  }
+  .file-preview-pager button:hover{ background:var(--surface-soft); }
+  #filePreviewCounter{ font-size:12px; color:var(--text-muted); font-weight:700; min-width:42px; text-align:center; }
 
   /* ---------- Vista previa de adjuntos (PDF) ---------- */
   #filePreviewFrame{
@@ -1031,12 +1056,22 @@
   <button class="filter-clear" data-action="dismiss-calendar-notice">Cerrar</button>
 </div>
 
-<div id="lightbox"><img id="lightboxImg" src="" alt=""></div>
+<div id="lightbox" role="dialog" aria-modal="true" tabindex="-1">
+  <button type="button" id="lightboxPrev" class="lightbox-nav lightbox-prev" aria-label="Anterior" hidden>‹</button>
+  <img id="lightboxImg" src="" alt="">
+  <button type="button" id="lightboxNext" class="lightbox-nav lightbox-next" aria-label="Siguiente" hidden>›</button>
+  <span id="lightboxCounter" class="lightbox-counter" hidden></span>
+</div>
 
 <div class="modal-overlay" id="filePreviewOverlay" hidden>
   <div class="modal modal-wrap" style="max-width:820px;" role="dialog" aria-modal="true" aria-labelledby="filePreviewTitle">
     <button class="close" id="filePreviewClose" aria-label="Cerrar">✕</button>
     <h2 id="filePreviewTitle"></h2>
+    <div class="file-preview-pager" id="filePreviewPager" hidden>
+      <button type="button" id="filePreviewPrev" aria-label="Anterior">‹</button>
+      <span id="filePreviewCounter"></span>
+      <button type="button" id="filePreviewNext" aria-label="Siguiente">›</button>
+    </div>
     <iframe id="filePreviewFrame" title=""></iframe>
     <div class="modal-actions">
       <a id="filePreviewDownload" class="btn-secondary" download>⬇ Descargar</a>
@@ -3565,6 +3600,17 @@ function applyStaticI18n(){
   if(filePreviewCloseBtn) filePreviewCloseBtn.setAttribute("aria-label", closeLabel);
   const filePreviewDownloadBtn = document.getElementById("filePreviewDownload");
   if(filePreviewDownloadBtn) filePreviewDownloadBtn.textContent = "⬇ " + t("Descargar", "Download", "Baixar", "הורדה");
+
+  const prevLabel = t("Anterior", "Previous", "Anterior", "הקודם");
+  const nextLabel = t("Siguiente", "Next", "Próximo", "הבא");
+  ["lightboxPrev", "filePreviewPrev"].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.setAttribute("aria-label", prevLabel);
+  });
+  ["lightboxNext", "filePreviewNext"].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.setAttribute("aria-label", nextLabel);
+  });
 }
 applyStaticI18n();
 
@@ -4713,20 +4759,27 @@ function resetReplyDraft(postId){
 
 // Alcances, links e imágenes de un posteo o una respuesta (misma forma
 // en los dos): un solo lugar para el escapado y la validación de src/href.
-function renderAttachments(item){
+// owner identifica de quién son estas imágenes/archivos ({postId} o
+// {postId, replyId} si es una respuesta) — así el visor de imágenes/PDF
+// puede reconstruir la lista COMPLETA (para el Prev/Siguiente) en vez de
+// tener que embeber cada data: URL dos veces en el HTML.
+function ownerAttrs(owner){
+  return `data-post-id="${esc(owner.postId)}"${owner.replyId ? ` data-reply-id="${esc(owner.replyId)}"` : ""}`;
+}
+function renderAttachments(item, owner){
   return {
     scopesHtml: (item.scopes||[]).map(sc=>renderScopeChip(sc)).join(""),
     linksHtml: (item.links||[]).filter(l=>safeUrl(l.url)).map(l=>
       `<a href="${esc(safeUrl(l.url))}" target="_blank" rel="noopener noreferrer">🔗 ${esc(l.label||l.url)}</a>`).join(""),
-    imagesHtml: (item.images||[]).map(safeImageSrc).filter(Boolean).map(src=>
-      `<img src="${src}" data-action="open-lightbox" data-src="${src}">`).join(""),
+    imagesHtml: (item.images||[]).map(safeImageSrc).filter(Boolean).map((src,idx)=>
+      `<img src="${src}" data-action="open-lightbox" ${ownerAttrs(owner)} data-idx="${idx}">`).join(""),
   };
 }
 function renderPostCard(post, replies, featured){
   // El último fallback es por si el admin borró "otro" desde Configuración
   // (o el tipo del posteo) — un tipo desconocido no puede tirar el render.
   const type = ACTIVITY_BY_KEY[post.activityType] || ACTIVITY_BY_KEY.otro || { key:post.activityType, icon:"✨", label:String(post.activityType||"") };
-  const { scopesHtml, linksHtml, imagesHtml } = renderAttachments(post);
+  const { scopesHtml, linksHtml, imagesHtml } = renderAttachments(post, {postId: post.id});
   const replyOpen = openReplyForms.has(post.id);
   const threadOpen = openThreads.has(post.id);
   const startDate = post.startDate || post.date;
@@ -4776,7 +4829,7 @@ function renderPostCard(post, replies, featured){
       ${!scopesHtml && post.activityType !== "rutina" ? `<div class="hint" style="color:var(--danger);">⚠️ ${t("Sin Dónde definido — editalo para asignarle un país/ciudad.","No Where set — edit it to assign a country/city.","Sem Onde definido — edite para atribuir um país/cidade.",".לא הוגדר \"איפה\" — ערוך/כי כדי להקצות מדינה/עיר")}</div>` : ""}
       ${linksHtml ? `<div class="post-links">${linksHtml}</div>` : ""}
       ${imagesHtml ? `<div class="post-images">${imagesHtml}</div>` : ""}
-      ${renderPostedFiles(post.files)}
+      ${renderPostedFiles(post.files, {postId: post.id})}
       <div class="post-actions">
         <button data-action="toggle-like" data-post-id="${post.id}" class="${postLiked?"liked":""}">${postLiked?"👍":"🤍"} ${t("Me gusta","Like","Curtir","לייק")}${postLikedBy.length?` (${postLikedBy.length})`:""}</button>
         <button data-action="toggle-reply" data-post-id="${post.id}">💬 ${t("Responder","Reply","Responder","תגובה")}</button>
@@ -4833,7 +4886,7 @@ function renderThread(replies){
   return `<div class="thread">${topLevel.map(renderOne).join("")}</div>`;
 }
 function renderReply(r){
-  const { scopesHtml, linksHtml, imagesHtml } = renderAttachments(r);
+  const { scopesHtml, linksHtml, imagesHtml } = renderAttachments(r, {postId: r.postId, replyId: r.id});
   const likedBy = r.likedBy || [];
   const liked = isAuthorized() && likedBy.includes(state.auth.user.email);
   const nestedOpen = openNestedReplyForms.has(r.id);
@@ -4849,7 +4902,7 @@ function renderReply(r){
       ${scopesHtml ? `<div class="reply-scopes">${scopesHtml}</div>` : ""}
       ${linksHtml ? `<div class="reply-links">${linksHtml}</div>` : ""}
       ${imagesHtml ? `<div class="reply-images">${imagesHtml}</div>` : ""}
-      ${renderPostedFiles(r.files)}
+      ${renderPostedFiles(r.files, {postId: r.postId, replyId: r.id})}
       ${!r.system ? `
       <div class="reply-actions">
         <button data-action="toggle-like" data-post-id="${r.postId}" data-reply-id="${r.id}" class="${liked?"liked":""}">${liked?"👍":"🤍"} ${t("Me gusta","Like","Curtir","לייק")}${likedBy.length?` (${likedBy.length})`:""}</button>
@@ -5635,41 +5688,128 @@ function commitScope(scope, ownerId){
 /* ======================================================================
    LIGHTBOX
    ====================================================================== */
+// Quién es el dueño (posteo o respuesta) de un adjunto — se usa para
+// volver a buscar la lista COMPLETA de imágenes/archivos al abrir el
+// visor, en vez de embeber esa lista entera en cada data-*: con la
+// identidad alcanza, y de paso el visor queda al día si algo cambió
+// mientras estaba abierto (llega un snapshot nuevo).
+function attachmentOwner(postId, replyId){
+  if(replyId) return (state.repliesByPost[postId] || []).find(r => r.id === replyId);
+  return getPostById(postId);
+}
+
 const lightbox = document.getElementById("lightbox");
 const lightboxImg = document.getElementById("lightboxImg");
-function openLightbox(src){ lightboxImg.src = src; lightbox.classList.add("show"); }
-function closeLightbox(){ lightbox.classList.remove("show"); lightboxImg.src = ""; }
+const lightboxPrev = document.getElementById("lightboxPrev");
+const lightboxNext = document.getElementById("lightboxNext");
+const lightboxCounter = document.getElementById("lightboxCounter");
+let lightboxItems = [];
+let lightboxIndex = 0;
+let lightboxReturnFocus = null;
+// items: array de src (data: URLs ya validadas) de TODAS las imágenes
+// del mismo posteo/respuesta — index, cuál se clickeó para abrir.
+function openLightbox(items, index){
+  lightboxItems = items || [];
+  lightboxIndex = Math.min(Math.max(index||0, 0), Math.max(lightboxItems.length-1, 0));
+  renderLightboxFrame();
+  lightboxReturnFocus = document.activeElement;
+  lightbox.classList.add("show");
+  // Con más de una imagen, arranca el foco en "Siguiente" (primer control
+  // útil); con una sola no hay nada que enfocar salvo el propio diálogo.
+  (lightboxItems.length > 1 ? lightboxNext : lightbox).focus();
+}
+function renderLightboxFrame(){
+  lightboxImg.src = lightboxItems[lightboxIndex] || "";
+  const multi = lightboxItems.length > 1;
+  lightboxPrev.hidden = lightboxNext.hidden = lightboxCounter.hidden = !multi;
+  if(multi){
+    // ‹ › SÍ los invierte solo dir="rtl" (son puntuación, a diferencia de
+    // ←/→) pero se elige el glyph a mano igual, mismo criterio que el
+    // resto de las flechas de navegación de la app — más previsible que
+    // confiar en el bidi mirroring para dos caracteres sueltos.
+    lightboxPrev.textContent = isRTL() ? "›" : "‹";
+    lightboxNext.textContent = isRTL() ? "‹" : "›";
+    lightboxCounter.textContent = `${lightboxIndex+1} / ${lightboxItems.length}`;
+  }
+}
+function lightboxStep(delta){
+  if(lightboxItems.length < 2) return;
+  lightboxIndex = (lightboxIndex + delta + lightboxItems.length) % lightboxItems.length;
+  renderLightboxFrame();
+}
+function closeLightbox(){
+  lightbox.classList.remove("show");
+  lightboxImg.src = "";
+  lightboxItems = [];
+  if(lightboxReturnFocus && typeof lightboxReturnFocus.focus === "function") lightboxReturnFocus.focus();
+  lightboxReturnFocus = null;
+}
 lightbox.addEventListener("click", closeLightbox);
+lightboxPrev.addEventListener("click", e=>{ e.stopPropagation(); lightboxStep(-1); });
+lightboxNext.addEventListener("click", e=>{ e.stopPropagation(); lightboxStep(1); });
+lightboxCounter.addEventListener("click", e=>e.stopPropagation());
 
 // Vista previa de un PDF ya adjuntado (imágenes usan el lightbox de
 // arriba; audio ya se "previsualiza" solo, con el <audio controls> de la
-// propia tarjeta). Antes el link bajaba el archivo directo
-// (download="..."), sin forma de mirarlo primero — esto lo abre en un
-// <iframe> adentro de un modal, con el visor de PDF nativo del
-// navegador, y un botón aparte para quien sí lo quiera guardar.
+// propia tarjeta, y no entra acá). Antes el link bajaba el archivo
+// directo (download="..."), sin forma de mirarlo primero — esto lo abre
+// en un <iframe> adentro de un modal, con el visor de PDF nativo del
+// navegador, con Prev/Siguiente entre los demás PDF del mismo posteo o
+// respuesta si hay más de uno, y un botón aparte para quien sí lo quiera
+// guardar.
 const filePreviewOverlay = document.getElementById("filePreviewOverlay");
 const filePreviewFrame = document.getElementById("filePreviewFrame");
 const filePreviewTitle = document.getElementById("filePreviewTitle");
 const filePreviewDownload = document.getElementById("filePreviewDownload");
+const filePreviewPager = document.getElementById("filePreviewPager");
+const filePreviewPrev = document.getElementById("filePreviewPrev");
+const filePreviewNext = document.getElementById("filePreviewNext");
+const filePreviewCounter = document.getElementById("filePreviewCounter");
 let filePreviewReturnFocus = null;
-function openFilePreview(dataUrl, name){
-  filePreviewTitle.textContent = name;
-  filePreviewFrame.src = dataUrl;
-  filePreviewFrame.title = name;
-  filePreviewDownload.href = dataUrl;
-  filePreviewDownload.download = name || "archivo.pdf";
+let filePreviewItems = [];
+let filePreviewIndex = 0;
+// items: array de {name, dataUrl} de los PDF previsualizables del mismo
+// posteo/respuesta (el audio no participa: no abre este visor).
+function openFilePreview(items, index){
+  filePreviewItems = items || [];
+  filePreviewIndex = Math.min(Math.max(index||0, 0), Math.max(filePreviewItems.length-1, 0));
+  renderFilePreviewFrame();
   filePreviewReturnFocus = document.activeElement;
   filePreviewOverlay.hidden = false;
   document.getElementById("filePreviewClose").focus();
 }
+function renderFilePreviewFrame(){
+  const item = filePreviewItems[filePreviewIndex];
+  if(!item) return;
+  filePreviewTitle.textContent = item.name;
+  filePreviewFrame.src = item.dataUrl;
+  filePreviewFrame.title = item.name;
+  filePreviewDownload.href = item.dataUrl;
+  filePreviewDownload.download = item.name || "archivo.pdf";
+  const multi = filePreviewItems.length > 1;
+  filePreviewPager.hidden = !multi;
+  if(multi){
+    filePreviewPrev.textContent = isRTL() ? "›" : "‹";
+    filePreviewNext.textContent = isRTL() ? "‹" : "›";
+    filePreviewCounter.textContent = `${filePreviewIndex+1} / ${filePreviewItems.length}`;
+  }
+}
+function filePreviewStep(delta){
+  if(filePreviewItems.length < 2) return;
+  filePreviewIndex = (filePreviewIndex + delta + filePreviewItems.length) % filePreviewItems.length;
+  renderFilePreviewFrame();
+}
 function closeFilePreview(){
   filePreviewOverlay.hidden = true;
   filePreviewFrame.src = ""; // no queda el PDF cargado en memoria mientras el modal está cerrado
+  filePreviewItems = [];
   if(filePreviewReturnFocus && typeof filePreviewReturnFocus.focus === "function") filePreviewReturnFocus.focus();
   filePreviewReturnFocus = null;
 }
 document.getElementById("filePreviewClose").addEventListener("click", closeFilePreview);
 filePreviewOverlay.addEventListener("click", e=>{ if(e.target === filePreviewOverlay) closeFilePreview(); });
+filePreviewPrev.addEventListener("click", ()=>filePreviewStep(-1));
+filePreviewNext.addEventListener("click", ()=>filePreviewStep(1));
 
 /* ======================================================================
    EVENTOS
@@ -5685,6 +5825,16 @@ btnNewPostEl.addEventListener("click", openComposer);
 document.getElementById("postModalClose").addEventListener("click", requestCloseComposer);
 postModalOverlay.addEventListener("click", e=>{ if(e.target === postModalOverlay) requestCloseComposer(); });
 document.addEventListener("keydown", e=>{
+  // ← → para moverse entre imágenes o PDF del mismo posteo/respuesta
+  // mientras el visor está abierto (si solo hay uno, step() no hace
+  // nada). No interfiere con nada más: solo corre si uno de los dos
+  // visores está realmente abierto.
+  if(e.key === "ArrowLeft" || e.key === "ArrowRight"){
+    const delta = (e.key === "ArrowRight") !== isRTL() ? 1 : -1; // en RTL, → va al anterior
+    if(lightbox.classList.contains("show")){ e.preventDefault(); lightboxStep(delta); return; }
+    if(!filePreviewOverlay.hidden){ e.preventDefault(); filePreviewStep(delta); return; }
+    return;
+  }
   if(e.key !== "Escape") return;
   // Un Escape por vez, de adentro hacia afuera: primero el lightbox; si
   // hay un desplegable abierto en el composer (lugar, @mención,
@@ -5722,6 +5872,7 @@ trapTabWithin(postModalOverlay);
 trapTabWithin(calendarInviteOverlay);
 trapTabWithin(tourLayer);
 trapTabWithin(filePreviewOverlay);
+trapTabWithin(lightbox);
 
 // Tope duro absoluto de imágenes: MAX_IMAGES (editable desde Preferencias
 // > Adjuntos) puede achicarlo, nunca agrandarlo más allá de esto — Firestore
@@ -5791,14 +5942,17 @@ function renderFileChips(files, rmAction, extraAttrs=""){
 }
 // Archivos YA publicados en un posteo/respuesta (a diferencia de
 // renderFileChips, que es para los que todavía se están por mandar).
-function renderPostedFiles(files){
+function renderPostedFiles(files, owner){
   if(!files || !files.length) return "";
+  // Índice DENTRO de los previsualizables (sin contar audio, que no abre
+  // el visor) — tiene que coincidir con la lista que arma
+  // attachmentOwner()+filtro en el manejador de "open-file-preview".
+  const previewable = files.filter(f => f && f.kind !== "audio" && safeFileDataUrl(f.dataUrl));
   return `<div class="post-files">${files.map(f => {
     const dataUrl = safeFileDataUrl(f && f.dataUrl);
     if(!dataUrl) return "";
-    return f.kind === "audio"
-      ? `<div class="post-file-audio"><audio controls src="${dataUrl}"></audio><span class="fname">${esc(f.name)}</span></div>`
-      : `<button type="button" class="post-file-link" data-action="open-file-preview" data-url="${esc(dataUrl)}" data-name="${esc(f.name)}">📄 ${esc(f.name)}</button>`;
+    if(f.kind === "audio") return `<div class="post-file-audio"><audio controls src="${dataUrl}"></audio><span class="fname">${esc(f.name)}</span></div>`;
+    return `<button type="button" class="post-file-link" data-action="open-file-preview" ${ownerAttrs(owner)} data-idx="${previewable.indexOf(f)}">📄 ${esc(f.name)}</button>`;
   }).join("")}</div>`;
 }
 
@@ -6123,9 +6277,14 @@ document.addEventListener("click", e=>{
   } else if(action === "usuarios-sort"){
     state.usuariosFilters.sort = el.dataset.key; render();
   } else if(action === "open-lightbox"){
-    openLightbox(el.dataset.src);
+    const owner = attachmentOwner(el.dataset.postId, el.dataset.replyId);
+    const images = owner ? (owner.images||[]).map(safeImageSrc).filter(Boolean) : [];
+    openLightbox(images, Number(el.dataset.idx)||0);
   } else if(action === "open-file-preview"){
-    openFilePreview(el.dataset.url, el.dataset.name);
+    const owner = attachmentOwner(el.dataset.postId, el.dataset.replyId);
+    const previewable = owner ? (owner.files||[]).filter(f=>f && f.kind !== "audio")
+      .map(f=>({ name:f.name, dataUrl:safeFileDataUrl(f.dataUrl) })).filter(f=>f.dataUrl) : [];
+    openFilePreview(previewable, Number(el.dataset.idx)||0);
   } else if(action === "toggle-reply"){
     if(openReplyForms.has(postId)){ openReplyForms.delete(postId); }
     else{ openReplyForms.add(postId); openThreads.add(postId); }
