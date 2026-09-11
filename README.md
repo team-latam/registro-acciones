@@ -66,11 +66,26 @@ aprobación" hasta que el administrador lo apruebe desde la propia app
   con la que se inició sesión.
 - La pestaña Solicitudes tiene dos secciones (ver `renderAccesoView` en
   `index.html`): **Usuarios** (quién tiene acceso *ahora mismo*, sacado en
-  vivo de `allowlist` — nombre, desde cuándo, quién lo aprobó, si ya tiene
-  el Calendar compartido, y una categoría de actividad de los últimos 3
-  meses: 🟢 Activo/🟡 Ocasional/⚪ Inactivo según cuántos posteos cargó,
-  ver `ACTIVITY_TIERS`) y **Solicitudes** (la cola de pedidos por decidir,
-  con las rechazadas aparte por si hay que revertir alguna).
+  vivo de `allowlist` — cada fila muestra email, una categoría de actividad
+  de los últimos 3 meses (🟢 Activo/🟡 Ocasional/⚪ Inactivo según cuántos
+  posteos cargó, ver `ACTIVITY_TIERS`) y el último login) y **Solicitudes**
+  (la cola de pedidos por decidir, con las rechazadas aparte por si hay que
+  revertir alguna).
+- Compartir el Calendar (ACL `calendars.acl.insert`) no da acceso
+  automático: Google le manda a esa persona un mail de invitación que
+  tiene que aceptar a mano ("Unirse al calendario compartido"). Por eso el
+  estado en Usuarios dice "✅ Invitación enviada" (no "Calendar" a secas —
+  sería falso prometer que ya lo tiene activo) y al lado hay un botón
+  "Reenviar invitación" (`resendCalendarInvite()`: saca el ACL y lo vuelve
+  a insertar, porque Google no manda un mail nuevo si el ACL ya existía).
+  Cada compartir/reenvío guarda `calendarInviteSentAt` en el `allowlist` de
+  esa persona. Con eso, la próxima vez que esa persona entre a la app le
+  aparece un popup recordándole revisar el correo y aceptar la invitación,
+  y la campanita de notificaciones muestra una novedad extra hasta que lo
+  cierre — todo llevado con una marca de "visto" en `localStorage` (igual
+  que las @menciones, ver `MENTIONS_SEEN_KEY`), porque un usuario normal no
+  puede escribir en su propio doc de `allowlist` para guardarlo del lado
+  del servidor.
 - Revocar acceso (botón "Revocar" en Usuarios) borra a esa persona de la
   lista de aprobados — dejará de poder leer y cargar, pero **no borra** lo
   que ya haya publicado (la memoria histórica queda intacta). También
@@ -156,7 +171,15 @@ allowlist/{email}            (el documento EXISTE = esa persona tiene acceso)
                              reserva a partir del email solo para mostrar, sin guardarlo)
   calendarShared: bool       (opcional — si ya se le compartió el Calendar de LatAm; lo pone en
                              true shareCalendarWith() al compartir con éxito, para mostrar un ✅
-                             real en Usuarios en vez de ofrecer siempre a ciegas el mismo botón)
+                             real en Usuarios en vez de ofrecer siempre a ciegas el mismo botón.
+                             OJO: significa "se le mandó la invitación", no "ya la aceptó" — el
+                             ACL de Calendar no tiene un campo de estado de aceptación)
+  calendarInviteSentAt: Timestamp (servidor)
+                             (opcional — cuándo se compartió/reenvió el Calendar por última vez;
+                             lo pisa shareCalendarWith() en cada compartir o reenvío. Sirve para el
+                             popup + novedad de campanita que le recuerda a esa persona aceptar la
+                             invitación la próxima vez que entre, ver maybeShowCalendarInviteOverlay()
+                             y hasUnseenCalendarInvite())
 
 accessRequests/{email}       (una solicitud de acceso por persona; el id es su propio email)
   email, name, photoURL, status: "pending"|"approved"|"rejected", requestedAt

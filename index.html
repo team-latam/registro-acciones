@@ -835,6 +835,21 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="calendarInviteOverlay" hidden>
+  <div class="modal" style="max-width:420px; text-align:center;">
+    <div style="font-size:34px; margin-bottom:6px;">📅</div>
+    <h2 style="text-align:center;">Te compartimos el Calendar de LatAm</h2>
+    <p class="hint" style="font-size:13.5px; line-height:1.6; text-align:center;">
+      Te llegó un mail de Google a <strong id="calendarInviteEmailSpan"></strong> para unirte al
+      calendario compartido "LatAm". Aceptalo desde ahí — así vas a ver los eventos también en tu
+      Google Calendar personal, no solo acá.
+    </p>
+    <div class="modal-actions" style="justify-content:center; margin-top:16px;">
+      <button type="button" class="btn-primary" data-action="dismiss-calendar-invite">Entendido</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" crossorigin=""></script>
 <script type="module">
@@ -1072,6 +1087,37 @@ function markMentionsSeen(){
   const key = mentionsSeenKey();
   if(!key) return;
   try{ localStorage.setItem(key, String(Date.now())); }catch(e){}
+}
+
+// Aviso de "revisá tu correo, te compartimos el Calendar": mismo patrón
+// que "vistas" de @menciones (localStorage, por dispositivo), comparando
+// contra calendarInviteSentAt (que shareCalendarWith pisa en cada envío o
+// reenvío) — así cada persona ve el aviso una vez por invitación nueva,
+// sin backend ni tener que escribir en su propio documento de allowlist
+// (que solo el admin puede escribir).
+const CALENDAR_INVITE_SEEN_KEY = "calendarInviteSeenAt";
+function calendarInviteSeenKey(){
+  const email = state.auth.user && state.auth.user.email;
+  return email ? `${CALENDAR_INVITE_SEEN_KEY}:${email}` : null;
+}
+function getCalendarInviteSeenAt(){
+  const key = calendarInviteSeenKey();
+  if(!key) return 0;
+  try{ return Number(localStorage.getItem(key)) || 0; }catch(e){ return 0; }
+}
+function markCalendarInviteSeen(){
+  const key = calendarInviteSeenKey();
+  if(!key) return;
+  try{ localStorage.setItem(key, String(Date.now())); }catch(e){}
+}
+function myRosterEntry(){
+  const email = state.auth.user && state.auth.user.email;
+  return email ? state.roster.find(u=>u.email===email) : null;
+}
+function hasUnseenCalendarInvite(){
+  const me = myRosterEntry();
+  if(!me || !me.calendarInviteSentAt) return false;
+  return tsToMillis(me.calendarInviteSentAt) > getCalendarInviteSeenAt();
 }
 // "@all" (ver renderMentionSuggestions) cuenta como mención para
 // cualquiera, no solo para un email puntual.
@@ -1413,13 +1459,27 @@ async function shareCalendarWith(email){
     logAudit("calendar_shared", { targetEmail: email });
     // Se guarda para poder mostrar un ✅ real en Usuarios en vez de
     // ofrecer siempre a ciegas el mismo botón "Compartir Calendar" sin
-    // saber si la persona ya lo tiene compartido o no.
-    fb.updateDoc(fb.doc(db,"allowlist",email), { calendarShared:true }).catch(()=>{});
+    // saber si la persona ya lo tiene compartido o no. calendarInviteSentAt
+    // se pisa en CADA envío (primera vez o reenvío) — es lo que compara el
+    // propio navegador de esa persona (ver hasUnseenCalendarInvite) para
+    // saber si hay que mostrarle de nuevo el aviso de "revisá tu correo".
+    fb.updateDoc(fb.doc(db,"allowlist",email), { calendarShared:true, calendarInviteSentAt: fb.serverTimestamp() }).catch(()=>{});
     return { ok:true };
   }catch(err){
     console.error("Error compartiendo el Calendar:", err);
     return { ok:false, reason: err.message };
   }
+}
+
+// Reenviar la invitación: Google no manda un mail nuevo si el permiso ya
+// existe (insertar el mismo scope de nuevo no cambia nada desde su
+// perspectiva), así que para forzar un mail de invitación fresco hay que
+// sacarlo y volver a compartírselo de cero — el resultado final es
+// idéntico (mismo permiso, writer), solo cambia que Google lo trata como
+// un compartir nuevo y manda el aviso de nuevo.
+async function resendCalendarInvite(email){
+  await unshareCalendarWith(email).catch(()=>{});
+  return shareCalendarWith(email);
 }
 
 async function unshareCalendarWith(email){
@@ -1981,7 +2041,7 @@ function subscribeRoster(){
       return {
         email: d.id, nickname: data.nickname || nicknameFallback(d.id), photoURL: data.photoURL || null,
         name: data.name || null, approvedAt: data.approvedAt || null, approvedBy: data.approvedBy || null,
-        calendarShared: data.calendarShared === true,
+        calendarShared: data.calendarShared === true, calendarInviteSentAt: data.calendarInviteSentAt || null,
       };
     });
     render();
@@ -2454,20 +2514,29 @@ function renderUserBadge(){
 let mentionsMenuOpen = false;
 function renderMentionsBell(){
   if(!state.auth.user){ mentionsBellEl.innerHTML = ""; mentionsMenuOpen = false; return; }
-  const count = getUnseenMentionCount();
+  const mentionCount = getUnseenMentionCount();
+  const hasInvite = hasUnseenCalendarInvite();
+  const count = mentionCount + (hasInvite ? 1 : 0);
   mentionsBellEl.innerHTML = `
-    <button class="bell-btn${mentionsMenuOpen ? " open" : ""}" data-action="toggle-mentions-menu" aria-label="Menciones">🔔</button>
-    ${count ? `<span class="mention-dot" title="${count} mención${count===1?"":"es"} nueva${count===1?"":"s"}">${count > 9 ? "9+" : count}</span>` : ""}
+    <button class="bell-btn${mentionsMenuOpen ? " open" : ""}" data-action="toggle-mentions-menu" aria-label="Notificaciones">🔔</button>
+    ${count ? `<span class="mention-dot" title="${count} novedad${count===1?"":"es"}">${count > 9 ? "9+" : count}</span>` : ""}
     ${mentionsMenuOpen ? `
       <div class="mentions-menu">
-        <div class="mentions-menu-title">Menciones</div>
-        ${renderMentionsMenuItems()}
+        <div class="mentions-menu-title">Novedades</div>
+        ${renderMentionsMenuItems(hasInvite)}
       </div>` : ""}`;
 }
-function renderMentionsMenuItems(){
+function renderMentionsMenuItems(hasInvite){
   const recent = getRecentMentions(4);
-  if(!recent.length) return `<div class="mentions-empty">Todavía no te mencionaron.</div>`;
-  return recent.map(m=>`
+  const me = hasInvite ? myRosterEntry() : null;
+  const inviteItem = hasInvite ? `
+    <button type="button" class="mention-item" data-action="goto-calendar-invite">
+      <span class="mi-author">📅 Calendar de LatAm</span>
+      <span class="mi-content">Te compartimos el calendario — revisá tu correo para aceptar la invitación.</span>
+      <span class="mi-date">${fmtDateTime(me && me.calendarInviteSentAt)}</span>
+    </button>` : "";
+  if(!recent.length && !inviteItem) return `<div class="mentions-empty">Todavía no te mencionaron.</div>`;
+  return inviteItem + recent.map(m=>`
     <button type="button" class="mention-item" data-action="goto-mention" data-post-id="${esc(m.postId)}" ${m.replyId ? `data-reply-id="${esc(m.replyId)}"` : ""}>
       <span class="mi-author">${esc(m.authorName||"Alguien")}</span>
       <span class="mi-content">${esc((m.content||"").slice(0,80))}</span>
@@ -2499,6 +2568,7 @@ function doRender(){
 
   renderUserBadge();
   renderMentionsBell();
+  maybeShowCalendarInviteOverlay();
 
   if(!isAuthorized()){
     tabsNav.classList.add("tabs-hidden"); btnNewPostEl.hidden = true;
@@ -2655,7 +2725,7 @@ function renderUsuariosSection(){
       </div>
       <div class="ractions">
         ${u.calendarShared
-          ? `<span class="status-pill approved">✅ Calendar</span>`
+          ? `<span class="status-pill approved">✅ Invitación enviada</span><span class="ractions-sep"></span><button class="btn-ghost" data-action="resend-calendar-invite" data-email="${esc(u.email)}">Reenviar invitación</button>`
           : `<button class="btn-ghost" data-action="share-calendar" data-email="${esc(u.email)}">Compartir Calendar</button>`}
         ${isAdminUser ? "" : `<span class="ractions-sep"></span><button class="btn-ghost danger" data-action="revoke-access" data-email="${esc(u.email)}">Revocar acceso</button>`}
       </div>
@@ -3777,6 +3847,24 @@ const postModalOverlay = document.getElementById("postModalOverlay");
 const postForm = document.getElementById("postForm");
 const postModalTitle = document.getElementById("postModalTitle");
 
+// Aviso de "revisá tu correo" (ver hasUnseenCalendarInvite): se muestra
+// solo (no hace falta que la persona haga nada para que aparezca) apenas
+// su propio roster trae un calendarInviteSentAt que todavía no vio —
+// llamado desde doRender() en cada render mientras esté sin ver.
+const calendarInviteOverlay = document.getElementById("calendarInviteOverlay");
+function maybeShowCalendarInviteOverlay(){
+  if(!isAuthorized() || !hasUnseenCalendarInvite()){ return; }
+  if(!calendarInviteOverlay.hidden) return; // ya está abierto, no lo reabras encima
+  document.getElementById("calendarInviteEmailSpan").textContent = state.auth.user.email;
+  calendarInviteOverlay.hidden = false;
+}
+function dismissCalendarInviteOverlay(){
+  markCalendarInviteSeen();
+  calendarInviteOverlay.hidden = true;
+  render();
+}
+calendarInviteOverlay.addEventListener("click", e=>{ if(e.target === calendarInviteOverlay) dismissCalendarInviteOverlay(); });
+
 function openComposer(){
   composerDraft = newComposerDraft();
   postModalTitle.textContent = "Nuevo evento";
@@ -4411,6 +4499,23 @@ document.addEventListener("click", e=>{
   } else if(action === "goto-mention"){
     mentionsMenuOpen = false;
     gotoMention(t.dataset.postId, t.dataset.replyId || null);
+  } else if(action === "goto-calendar-invite"){
+    mentionsMenuOpen = false;
+    const me = myRosterEntry();
+    if(me){
+      document.getElementById("calendarInviteEmailSpan").textContent = state.auth.user.email;
+      calendarInviteOverlay.hidden = false;
+    }
+    render();
+  } else if(action === "dismiss-calendar-invite"){
+    dismissCalendarInviteOverlay();
+  } else if(action === "resend-calendar-invite"){
+    const email = t.dataset.email;
+    resendCalendarInvite(email).then(res=>{
+      showCalendarNotice(res.ok
+        ? { ok:true, message:`Se reenvió la invitación del Calendar a ${email}.` }
+        : { ok:false, message:`No se pudo reenviar la invitación a ${email} (${res.reason}).` });
+    }).catch(err=>{ console.error(err); alert("No se pudo reenviar la invitación: " + err.message); });
   } else if(action === "sign-out"){
     userMenuOpen = false;
     doSignOut();
