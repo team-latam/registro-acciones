@@ -1642,12 +1642,22 @@ function fmtDate(d){
   if(isNaN(dt)) return d;
   return dt.toLocaleDateString(dateLocale(),{ day:"2-digit", month:"short", year:"numeric" });
 }
+// Solo la hora (HH:MM) de un timestamp de Firestore — se usa en la
+// tarjeta de posteo para distinguir el orden entre varios del mismo día
+// (la fecha del posteo puede ser la del evento, no la de creación; en
+// una Rutina son siempre "hoy" para todos, así que sin la hora no había
+// forma de saber cuál se cargó primero).
+function fmtTime(ts){
+  if(!ts) return "";
+  const dt = ts.toDate ? ts.toDate() : new Date(ts);
+  if(isNaN(dt)) return "";
+  return dt.toLocaleTimeString(dateLocale(),{ hour:"2-digit", minute:"2-digit" });
+}
 function fmtDateTime(ts){
   if(!ts) return "";
   const dt = ts.toDate ? ts.toDate() : new Date(ts);
   if(isNaN(dt)) return "";
-  return dt.toLocaleDateString(dateLocale(),{ day:"2-digit", month:"short", year:"numeric" }) + " " +
-         dt.toLocaleTimeString(dateLocale(),{ hour:"2-digit", minute:"2-digit" });
+  return dt.toLocaleDateString(dateLocale(),{ day:"2-digit", month:"short", year:"numeric" }) + " " + fmtTime(ts);
 }
 function uid(){ return Math.random().toString(36).slice(2,10); }
 function tsToMillis(ts){
@@ -1726,6 +1736,16 @@ function myRosterEntry(){
   const email = state.auth.user && state.auth.user.email;
   return email ? state.roster.find(u=>u.email===email) : null;
 }
+// Cómo mostrar a quién escribió algo: @nickname si el email pertenece a
+// alguien aprobado hoy (es el mismo handle que ya se usa en @menciones,
+// no el nombre completo de la cuenta de Google) — si no hay match
+// (mensajes "Google Calendar" del sync, participantes/organizador que no
+// son cuentas de la app, alguien que ya no está aprobado), se muestra el
+// nombre tal cual venía.
+function authorLabel(email, fallbackName){
+  const entry = email && state.roster.find(u=>u.email===email);
+  return entry ? "@" + entry.nickname : (fallbackName || "");
+}
 function shouldShowCalendarInvitePopup(){
   const me = myRosterEntry();
   if(!me || !me.calendarInviteSentAt) return false;
@@ -1791,13 +1811,13 @@ function getRecentMentions(limit=4){
   const items = [];
   state.posts.forEach(p=>{
     if(mentionsInclude(p.mentions, email)){
-      items.push({ postId:p.id, replyId:null, authorName:p.authorName, content:p.content, createdAt:p.createdAt });
+      items.push({ postId:p.id, replyId:null, authorName:p.authorName, authorEmail:p.authorEmail, content:p.content, createdAt:p.createdAt });
     }
   });
   Object.entries(state.repliesByPost).forEach(([postId, list])=>{
     list.forEach(r=>{
       if(mentionsInclude(r.mentions, email)){
-        items.push({ postId, replyId:r.id, authorName:r.authorName, content:r.content, createdAt:r.createdAt });
+        items.push({ postId, replyId:r.id, authorName:r.authorName, authorEmail:r.authorEmail, content:r.content, createdAt:r.createdAt });
       }
     });
   });
@@ -3723,7 +3743,7 @@ function renderMentionsMenuItems(hasInvite){
   if(!recent.length && !inviteItem) return `<div class="mentions-empty">${t("Todavía no te mencionaron.","No one has mentioned you yet.","Ainda não te mencionaram.","עדיין לא אזכרו אותך.")}</div>`;
   return inviteItem + recent.map(m=>`
     <button type="button" class="mention-item" data-action="goto-mention" data-post-id="${esc(m.postId)}" ${m.replyId ? `data-reply-id="${esc(m.replyId)}"` : ""}>
-      <span class="mi-author">${esc(m.authorName || t("Alguien","Someone","Alguém","מישהו/י"))}</span>
+      <span class="mi-author">${esc(authorLabel(m.authorEmail, m.authorName) || t("Alguien","Someone","Alguém","מישהו/י"))}</span>
       <span class="mi-content">${esc((m.content||"").slice(0,80))}</span>
       <span class="mi-date">${fmtDateTime(m.createdAt)}</span>
     </button>`).join("");
@@ -4688,9 +4708,16 @@ function renderPostCard(post, replies, featured){
   // Quién lo cargó. En los eventos importados del Calendar el authorName
   // es "Google Calendar" (poco útil) y el organizador real está en
   // organizer, el campo viejo que reemplazaron los participantes — por
-  // eso ese tiene prioridad cuando existe.
-  const creador = post.organizer || post.authorName;
+  // eso ese tiene prioridad cuando existe (y no tiene @nickname: es texto
+  // libre de alguien que no necesariamente es cuenta de la app).
+  const creador = post.organizer || authorLabel(post.authorEmail, post.authorName);
   const creadoPor = creador ? ` · ${t("Creado por","Created by","Criado por","נוצר על ידי")}: ${esc(creador)}` : "";
+  // Hora en que se CARGÓ el posteo (createdAt), no la del evento: para
+  // Rutina, o cualquier evento sin horario propio, la fecha sola no
+  // alcanza para saber cuál se publicó primero en un mismo día — todas
+  // las rutinas de hoy tienen la misma fecha.
+  const createdTime = fmtTime(post.createdAt);
+  const createdTimeLabel = createdTime && !timeLabel ? ` · 🕐 ${createdTime}` : "";
   if(post.location) metaBits.push(`📍 ${esc(post.location)}`);
   const editable = canEditPost(post);
   const canCancel = editable && post.activityType !== "rutina" && !post.cancelled;
@@ -4707,7 +4734,7 @@ function renderPostCard(post, replies, featured){
         <div class="post-meta">
           <span class="type-badge">${esc(type.icon)} ${esc(type.label)}</span>
           ${featured ? `<span class="type-badge featured-badge">⭐ ${t("Destacado","Featured","Destaque","מומלץ")}</span>` : ""}
-          <span class="post-date">${dateLabel}${creadoPor}</span>
+          <span class="post-date">${dateLabel}${createdTimeLabel}${creadoPor}</span>
           ${post.cancelled ? `<span class="type-badge" style="background:var(--danger);">🚫 ${t("Cancelado","Cancelled","Cancelado","בוטל")}</span>` : ""}
         </div>
         ${scopesHtml ? `<div class="post-scopes post-scopes-head">${scopesHtml}</div>` : ""}
@@ -4784,7 +4811,7 @@ function renderReply(r){
   return `
     <div class="reply ${r.system?"reply-system":""}">
       <div class="reply-head">
-        <span class="reply-author">${r.system ? `${esc(r.icon||"🔔")} ` : ""}${esc(r.authorName || t("Anónimo","Anonymous","Anônimo","אנונימי"))}</span>
+        <span class="reply-author">${r.system ? `${esc(r.icon||"🔔")} ` : ""}${esc(authorLabel(r.authorEmail, r.authorName) || t("Anónimo","Anonymous","Anônimo","אנונימי"))}</span>
         <span class="reply-date">${fmtDateTime(r.createdAt)}</span>
       </div>
       <div class="reply-content">${nl2br(tr.displayContent)}</div>
