@@ -4550,7 +4550,7 @@ window.addEventListener("scroll", ()=>{ if(!tourLayer.hidden) renderTourStep(); 
 
 function openComposer(){
   composerDraft = newComposerDraft();
-  postModalTitle.textContent = "Nuevo evento";
+  postModalTitle.textContent = t("Nuevo evento","New event","Novo evento","אירוע חדש");
   postModalOverlay.hidden = false;
   renderComposer();
 }
@@ -4573,7 +4573,9 @@ function openEditComposer(post){
     mentionQuery: null, mentionCaret: 0, mentionHighlight: 0,
     error: "", editingPost: post,
   };
-  postModalTitle.textContent = post.activityType === "rutina" ? "Editar rutina" : "Editar evento";
+  postModalTitle.textContent = post.activityType === "rutina"
+    ? t("Editar rutina","Edit routine","Editar rotina","עריכת שגרה")
+    : t("Editar evento","Edit event","Editar evento","עריכת אירוע");
   postModalOverlay.hidden = false;
   renderComposer();
 }
@@ -4583,14 +4585,20 @@ function closeComposer(){
 function renderComposer(){
   const d = composerDraft;
   postForm.innerHTML = `
-    ${d.editingPost ? `<div class="hint">Editás como <strong>${esc(state.auth.user.displayName)}</strong> (el posteo original sigue figurando de ${esc(d.editingPost.authorName)})</div>` : ""}
+    ${d.editingPost ? `<div class="hint">${t(
+      `Editás como <strong>{me}</strong> (el posteo original sigue figurando de {author})`,
+      `Editing as <strong>{me}</strong> (the original post still shows as {author}'s)`,
+      `Editando como <strong>{me}</strong> (a postagem original continua constando de {author})`,
+      `<strong>{me}</strong> עורך/ת בתור (הפוסט המקורי עדיין מוצג בתור של {author})`,
+      { me: esc(state.auth.user.displayName), author: esc(d.editingPost.authorName) }
+    )}</div>` : ""}
     <div class="field field-title-plain">
-      <input type="text" id="cTitle" maxlength="140" class="title-input-plain" placeholder="Agregar título" value="${esc(d.title)}">
+      <input type="text" id="cTitle" maxlength="140" class="title-input-plain" placeholder="${esc(t("Agregar título","Add title","Adicionar título","הוספת כותרת"))}" value="${esc(d.title)}">
     </div>
     <div class="field-icon-row">
       <span class="field-icon">🕐</span>
       <div class="field-icon-body">
-        <label class="allday-toggle"><input type="checkbox" id="cAllDay" ${d.allDay?"checked":""}> Todo el día</label>
+        <label class="allday-toggle"><input type="checkbox" id="cAllDay" ${d.allDay?"checked":""}> ${t("Todo el día","All day","O dia todo","כל היום")}</label>
         <div class="dt-row">
           <input type="date" id="cStartDate" value="${esc(d.startDate)}">
           <span class="dt-sep">→</span>
@@ -4608,7 +4616,7 @@ function renderComposer(){
       <span class="field-icon">📍</span>
       <div class="field-icon-body">
         <div class="place-picker place-picker-inline">
-          <input type="text" id="cPlaceQuery" data-place-scope="post" data-place-owner="new" placeholder="Dónde (país, ciudad, región)..." autocomplete="off" value="${esc(d.placeQuery)}">
+          <input type="text" id="cPlaceQuery" data-place-scope="post" data-place-owner="new" placeholder="${esc(t("Dónde (país, ciudad, región)...","Where (country, city, region)...","Onde (país, cidade, região)...","(מדינה, עיר, אזור) איפה..."))}" autocomplete="off" value="${esc(d.placeQuery)}">
           ${d.placeQuery ? renderPlaceSuggestions(d, "post", "new") : ""}
         </div>
         ${d.scopes.length ? `<div class="post-scopes" style="margin-top:8px;">${d.scopes.map((sc,i)=>renderScopeChip(sc, "rm-scope-post", i, "new")).join("")}</div>` : ""}
@@ -4619,19 +4627,19 @@ function renderComposer(){
       ${renderParticipantsField(d)}
     </div>
     <div class="field">
-      <label>Comentarios</label>
+      <label>${t("Comentarios","Comments","Comentários","הערות")}</label>
       <div class="mention-anchor">
         <div class="mention-highlight-backdrop" id="cContent-hl" aria-hidden="true">${highlightMentions(esc(d.content))}</div>
-        <textarea id="cContent" class="mention-input" data-mention-scope="post" data-mention-owner="new" placeholder="Contá qué se hizo (o qué va a pasar)... usá @ para mencionar a alguien">${esc(d.content)}</textarea>
+        <textarea id="cContent" class="mention-input" data-mention-scope="post" data-mention-owner="new" placeholder="${esc(t("Contá qué se hizo (o qué va a pasar)... usá @ para mencionar a alguien","Tell what happened (or what's coming up)... use @ to mention someone","Conte o que foi feito (ou o que vai acontecer)... use @ para mencionar alguém","(כדי לאזכר מישהו @ השתמש/י ב) ...ספר/י מה נעשה (או מה עומד לקרות"))}">${esc(d.content)}</textarea>
         ${renderMentionSuggestions(d, "post", "new", "cContent")}
       </div>
     </div>
     <div class="field">
-      <label>Tipo de actividad</label>
+      <label>${t("Tipo de actividad","Activity type","Tipo de atividade","סוג פעילות")}</label>
       <div class="type-picker">
-        ${(d.editingPost && d.editingPost.activityType === "rutina" ? ACTIVITY_TYPES : EVENTO_TYPES).map(t=>`
-          <label class="type-opt ${d.activityType===t.key?"checked":""}">
-            <input type="radio" name="cType" value="${t.key}" ${d.activityType===t.key?"checked":""}> ${t.icon} ${t.label}
+        ${(d.editingPost && d.editingPost.activityType === "rutina" ? ACTIVITY_TYPES : EVENTO_TYPES).map(ty=>`
+          <label class="type-opt ${d.activityType===ty.key?"checked":""}">
+            <input type="radio" name="cType" value="${ty.key}" ${d.activityType===ty.key?"checked":""}> ${ty.icon} ${ty.label}
           </label>`).join("")}
       </div>
     </div>
@@ -4639,25 +4647,31 @@ function renderComposer(){
       <input type="file" id="cImages" accept="image/*" multiple hidden>
       <input type="file" id="cFiles" accept="application/pdf,audio/*" multiple hidden>
       ${(d.attachOpen || d.images.length || d.files.length || d.links.length) ? `
-        <label>Adjuntos</label>
+        <label>${t("Adjuntos","Attachments","Anexos","קבצים מצורפים")}</label>
         <div class="attach-toolbar">
-          <label class="btn-attach" for="cImages">📎 Imagen</label>
-          <label class="btn-attach" for="cFiles">📄 PDF/Audio</label>
+          <label class="btn-attach" for="cImages">📎 ${t("Imagen","Image","Imagem","תמונה")}</label>
+          <label class="btn-attach" for="cFiles">📄 PDF/${t("Audio","Audio","Áudio","אודיו")}</label>
           <button type="button" class="btn-attach" data-action="post-add-link">🔗 Link</button>
         </div>
         ${d.images.length ? `<div class="img-preview-list">${d.images.map((src,i)=>`
           <div class="img-preview"><img src="${src}"><button type="button" class="rm" data-action="post-rm-image" data-idx="${i}">✕</button></div>`).join("")}</div>` : ""}
         ${renderFileChips(d.files, "post-rm-file")}
         ${d.links.length ? `<div class="attach-panel">${renderLinkRows("post", "new", d.links)}</div>` : ""}
-        <div class="hint">Imágenes: se comprimen solas, máximo ${MAX_IMAGES}. PDF/audio: hasta ${MAX_ATTACHMENT_FILES} archivos chicos (≤${(MAX_ATTACHMENT_FILE_BYTES/1024).toFixed(0)}KB c/u). Para video o archivos más grandes: pegá un link (Drive, YouTube, etc.).</div>
+        <div class="hint">${t(
+          `Imágenes: se comprimen solas, máximo {maxImg}. PDF/audio: hasta {maxFiles} archivos chicos (≤{maxKB}KB c/u). Para video o archivos más grandes: pegá un link (Drive, YouTube, etc.).`,
+          `Images: compressed automatically, up to {maxImg}. PDF/audio: up to {maxFiles} small files (≤{maxKB}KB each). For video or bigger files: paste a link (Drive, YouTube, etc.).`,
+          `Imagens: são comprimidas sozinhas, máximo {maxImg}. PDF/áudio: até {maxFiles} arquivos pequenos (≤{maxKB}KB cada). Para vídeo ou arquivos maiores: cole um link (Drive, YouTube, etc.).`,
+          `תמונות: נדחסות לבד, עד {maxImg}. PDF/אודיו: עד {maxFiles} קבצים קטנים (עד {maxKB}KB כל אחד). לווידאו או קבצים גדולים יותר: הדבק/הדביקי קישור (Drive, YouTube וכו').`,
+          { maxImg: MAX_IMAGES, maxFiles: MAX_ATTACHMENT_FILES, maxKB: (MAX_ATTACHMENT_FILE_BYTES/1024).toFixed(0) }
+        )}</div>
       ` : `
-        <button type="button" class="btn-text-add" data-action="toggle-post-attach">📎 Agregar imagen, PDF/audio o link</button>
+        <button type="button" class="btn-text-add" data-action="toggle-post-attach">📎 ${t("Agregar imagen, PDF/audio o link","Add image, PDF/audio or link","Adicionar imagem, PDF/áudio ou link","הוספת תמונה, PDF/אודיו או קישור")}</button>
       `}
     </div>
     ${d.error ? `<div class="form-error">${esc(d.error)}</div>` : ""}
     <div class="modal-actions">
-      <button type="button" class="btn-secondary" id="cCancel">Cancelar</button>
-      <button type="submit" class="btn-primary">${d.editingPost ? "Guardar cambios" : "Publicar"}</button>
+      <button type="button" class="btn-secondary" id="cCancel">${t("Cancelar","Cancel","Cancelar","ביטול")}</button>
+      <button type="submit" class="btn-primary">${d.editingPost ? t("Guardar cambios","Save changes","Salvar alterações","שמירת השינויים") : t("Publicar","Post","Publicar","פרסום")}</button>
     </div>
   `;
 }
@@ -4678,10 +4692,10 @@ function commitScope(scope, ownerId){
   } else if(sd.type === "region"){
     newScope = { type:"region", region: sd.region };
   } else if(sd.type === "pais"){
-    if(!sd.country){ draft.scopeError = "Elegí un país."; render(); return; }
+    if(!sd.country){ draft.scopeError = t("Elegí un país.","Choose a country.","Escolha um país.",".בחר/י מדינה"); render(); return; }
     newScope = { type:"pais", country: sd.country };
   } else {
-    if(!sd.country || !sd.city.trim()){ draft.scopeError = "Elegí un país y escribí una ciudad."; render(); return; }
+    if(!sd.country || !sd.city.trim()){ draft.scopeError = t("Elegí un país y escribí una ciudad.","Choose a country and type a city.","Escolha um país e digite uma cidade.",".בחר/י מדינה והקלד/י עיר"); render(); return; }
     const fromPreset = CITY_PRESETS[sd.country] && !sd.cityUseCustom;
     newScope = { type:"ciudad", country: sd.country, city: fromPreset ? sd.city.trim() : titleCase(sd.city) };
   }
@@ -4748,7 +4762,7 @@ let MAX_ATTACHMENT_FILE_BYTES = 150 * 1024;
 function readFileAsDataUrl(file){
   return new Promise((resolve, reject)=>{
     const reader = new FileReader();
-    reader.onerror = ()=>reject(new Error("No se pudo leer el archivo"));
+    reader.onerror = ()=>reject(new Error(t("No se pudo leer el archivo","Couldn't read the file","Não foi possível ler o arquivo","לא ניתן היה לקרוא את הקובץ")));
     reader.onload = ()=>resolve(reader.result);
     reader.readAsDataURL(file);
   });
@@ -4757,7 +4771,13 @@ async function handleFileAttachments(fileList, targetArray){
   const files = Array.from(fileList).slice(0, Math.max(0, MAX_ATTACHMENT_FILES - targetArray.length));
   for(const file of files){
     if(file.size > MAX_ATTACHMENT_FILE_BYTES){
-      alert(`"${file.name}" pesa ${(file.size/1024).toFixed(0)}KB, más del máximo de ${(MAX_ATTACHMENT_FILE_BYTES/1024).toFixed(0)}KB para adjuntar acá. Para archivos más grandes, subilo a Drive (o similar) y pegá el link.`);
+      alert(t(
+        `"{name}" pesa {size}KB, más del máximo de {max}KB para adjuntar acá. Para archivos más grandes, subilo a Drive (o similar) y pegá el link.`,
+        `"{name}" is {size}KB, over the {max}KB max for attaching here. For bigger files, upload it to Drive (or similar) and paste the link.`,
+        `"{name}" pesa {size}KB, mais do que o máximo de {max}KB para anexar aqui. Para arquivos maiores, suba para o Drive (ou similar) e cole o link.`,
+        `"{name}" שוקל {size}KB, מעל המקסימום של {max}KB לצירוף כאן. לקבצים גדולים יותר, העלה/י ל-Drive (או דומה) והדבק/הדביקי את הקישור.`,
+        { name: file.name, size: (file.size/1024).toFixed(0), max: (MAX_ATTACHMENT_FILE_BYTES/1024).toFixed(0) }
+      ));
       continue;
     }
     try{
