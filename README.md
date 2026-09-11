@@ -523,8 +523,9 @@ HE (`LANGS` en `index.html`, junto a `currentLang`/`setLang`). Por ahora
 **solo guarda la preferencia** en `localStorage` (`ra_lang`, mismo
 criterio que el tema: por dispositivo, no por cuenta) — no existe
 todavía ningún texto traducido, así que elegir otro idioma no cambia
-nada en la app salvo un aviso propio ("🌐 Por ahora solo hay texto en
-español") para no dar la sensación de que algo se rompió.
+nada en la app por ahora (se probó un aviso de "todavía no hay
+traducción" debajo del selector y se sacó por pedido del usuario:
+quedaba mejor limpio).
 
 Se adelantó el lugar en el menú a propósito, antes de construir la
 traducción real, para no tener que rediseñar el menú de cuenta después.
