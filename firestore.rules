@@ -49,6 +49,25 @@ service cloud.firestore {
       return v == null || (v is string && v.size() <= maxLen);
     }
 
+    // Cambio de @nickname por la propia persona (ver renderUserBadge /
+    // "Editar tu @nickname" en index.html): solo puede tocar el campo
+    // nickname de SU PROPIO documento, y solo con un valor con forma de
+    // nickname (letras/números ASCII/guion bajo, sin espacios ni "@", 2 a
+    // 20 caracteres) — nunca puede tocar name/approvedAt/approvedBy/
+    // calendarShared/etc. Se restringe a ASCII a propósito (nada de
+    // \p{L}/acentos) aunque el nickname AUTOGENERADO en el alta sí puede
+    // tener tildes/ñ: se probó con el emulador y las clases Unicode acá
+    // tiraban error de evaluación en varios casos (denegaba igual, pero
+    // por el motivo equivocado) — mejor evitar esa incertidumbre en
+    // producción. Unicidad y la palabra reservada "all" (usada para @all)
+    // se controlan del lado del cliente antes de escribir, porque el
+    // lenguaje de reglas no compara bien contra el resto de la colección
+    // ni pasa strings a minúsculas de forma confiable.
+    function isValidNicknameEdit(d) {
+      return d.diff(resource.data).affectedKeys().hasOnly(['nickname']) &&
+        d.nickname is string && d.nickname.matches('^[A-Za-z0-9_]{2,20}$');
+    }
+
     // Los campos individuales de cada scope/link no se validan en profundidad
     // aquí (el lenguaje de reglas no itera listas de mapas cómodamente): se
     // limitan tamaños de lista y de strings, que es lo que evita abuso real
@@ -204,6 +223,8 @@ service cloud.firestore {
       allow list: if isAdmin();
       allow list: if isApproved();
       allow write: if isAdmin();
+      allow update: if request.auth != null && request.auth.token.email == email &&
+        isValidNicknameEdit(request.resource.data);
     }
 
     // Solicitudes de acceso: cualquiera logueado puede crear/leer/reintentar

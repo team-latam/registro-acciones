@@ -107,6 +107,15 @@
   .user-menu .um-role.role-pending{ background:#fff7e6; color:#6b4c00; }
   .user-menu .um-role.role-rejected{ background:#fee2e2; color:#991b1b; }
   .user-menu .um-email{ font-size:12px; color:var(--text-muted); margin:6px 0 14px; word-break:break-all; }
+  .um-nickname{ display:flex; align-items:center; justify-content:center; gap:6px; margin:-4px 0 14px; font-size:12.5px; font-weight:700; color:var(--celeste-dark); }
+  .um-nickname-edit{ background:none; border:none; cursor:pointer; font-size:12px; padding:2px; opacity:0.7; }
+  .um-nickname-edit:hover{ opacity:1; }
+  .um-nickname-form{ margin:-4px 0 14px; text-align:left; }
+  .um-nickname-form input{
+    width:100%; box-sizing:border-box; border:1.5px solid var(--border); border-radius:999px;
+    padding:8px 14px; font-size:13px; text-align:center;
+  }
+  .um-nickname-form .modal-actions .btn-secondary, .um-nickname-form .modal-actions .btn-primary{ padding:8px 16px; font-size:12.5px; }
   .user-menu .um-signout{
     width:100%; background:var(--bg); border:1px solid var(--border); color:var(--petroleo-dark);
     padding:9px; border-radius:999px; font-weight:700; font-size:13px; cursor:pointer;
@@ -2519,6 +2528,51 @@ const USER_ROLE_LABELS = {
   rejected: { text: "Rechazado", cls: "role-rejected" },
 };
 
+// Edición del propio @nickname desde el menú del avatar (ver
+// firestore.rules: cada uno puede tocar SOLO el campo nickname de su
+// propio documento en allowlist, con forma de nickname — nada de
+// espacios/@/tildes, 2 a 20 caracteres). Unicidad y la palabra reservada
+// "all" se controlan acá, del lado del cliente, antes de escribir.
+let nicknameEditing = false;
+let nicknameDraft = "";
+let nicknameError = null;
+const NICKNAME_FORMAT_RE = /^[A-Za-z0-9_]{2,20}$/;
+function myNickname(){
+  const u = state.auth.user;
+  if(!u) return "";
+  const me = state.roster.find(r=>r.email===u.email);
+  return me ? me.nickname : nicknameFallback(u.email);
+}
+function validateNicknameDraft(raw){
+  const value = (raw||"").trim();
+  if(!NICKNAME_FORMAT_RE.test(value)){
+    return { ok:false, error:"Solo letras, números y guion bajo, sin espacios ni tildes (2 a 20 caracteres)." };
+  }
+  if(value.toLowerCase() === "all"){
+    return { ok:false, error:`"all" está reservado para @all (mencionar a todo el equipo).` };
+  }
+  const myEmail = state.auth.user.email;
+  const taken = state.roster.some(u => u.email !== myEmail && u.nickname && u.nickname.toLowerCase() === value.toLowerCase());
+  if(taken){
+    return { ok:false, error:"Ya hay alguien del equipo usando ese @nickname — probá con otro." };
+  }
+  return { ok:true, value };
+}
+async function saveNicknameEdit(){
+  const check = validateNicknameDraft(nicknameDraft);
+  if(!check.ok){ nicknameError = check.error; render(); return; }
+  const email = state.auth.user.email;
+  try{
+    await fb.updateDoc(fb.doc(db,"allowlist",email), { nickname: check.value });
+    nicknameEditing = false; nicknameError = null;
+    render();
+  }catch(err){
+    console.error("No se pudo guardar el nickname:", err);
+    nicknameError = "No se pudo guardar. Probá de nuevo.";
+    render();
+  }
+}
+
 function renderUserBadge(){
   const u = state.auth.user;
   if(!u){ userBadgeEl.innerHTML = ""; userMenuOpen = false; return; }
@@ -2528,6 +2582,23 @@ function renderUserBadge(){
     ? `<img class="um-avatar" src="${esc(u.photoURL)}" alt="">`
     : `<div class="um-avatar-fallback">${initial}</div>`;
   const role = USER_ROLE_LABELS[state.auth.status] || USER_ROLE_LABELS.approved;
+  // Solo alguien con allowlist propio (admin/approved) puede editar su
+  // nickname — pendiente/rechazado todavía no tiene ese documento, así
+  // que ni se les ofrece (guardar fallaría contra un doc inexistente).
+  const canEditNickname = isAuthorized();
+  const nicknameBlock = !canEditNickname ? "" : nicknameEditing ? `
+    <div class="um-nickname-form">
+      <input type="text" id="nicknameInput" value="${esc(nicknameDraft)}" maxlength="20" placeholder="tu-nickname" autocomplete="off">
+      ${nicknameError ? `<div class="form-error">${esc(nicknameError)}</div>` : ""}
+      <div class="modal-actions" style="justify-content:center; margin-top:8px;">
+        <button type="button" class="btn-secondary" data-action="cancel-edit-nickname">Cancelar</button>
+        <button type="button" class="btn-primary" data-action="save-nickname">Guardar</button>
+      </div>
+    </div>` : `
+    <div class="um-nickname">
+      <span>@${esc(myNickname())}</span>
+      <button type="button" class="um-nickname-edit" data-action="edit-nickname" title="Editar tu @nickname" aria-label="Editar tu @nickname">✏️</button>
+    </div>`;
   userBadgeEl.innerHTML = `
     <button class="avatar-btn${userMenuOpen ? " open" : ""}" data-action="toggle-user-menu" title="${esc(u.displayName)}" aria-label="Cuenta">${avatar}</button>
     ${userMenuOpen ? `
@@ -2536,6 +2607,7 @@ function renderUserBadge(){
         <div class="um-name">${esc(u.displayName)}</div>
         <div class="um-role ${role.cls}">${role.text}</div>
         <div class="um-email">${esc(u.email)}</div>
+        ${nicknameBlock}
         <button class="um-signout" data-action="sign-out">Cerrar sesión</button>
       </div>` : ""}`;
 }
@@ -4360,6 +4432,11 @@ document.addEventListener("keydown", e=>{
     }
     return;
   }
+  if(t.id === "nicknameInput"){
+    if(e.key === "Enter"){ e.preventDefault(); saveNicknameEdit(); }
+    else if(e.key === "Escape"){ nicknameEditing = false; nicknameError = null; render(); }
+    return;
+  }
   if(t.id === "cParticipantQuery"){
     const draft = composerDraft;
     const matches = getParticipantMatches(draft);
@@ -4383,7 +4460,7 @@ document.addEventListener("keydown", e=>{
 
 document.addEventListener("click", e=>{
   if(userMenuOpen && !e.target.closest("#userBadge")){
-    userMenuOpen = false; render();
+    userMenuOpen = false; nicknameEditing = false; nicknameError = null; render();
   }
   if(mentionsMenuOpen && !e.target.closest("#mentionsBell")){
     mentionsMenuOpen = false; render();
@@ -4532,7 +4609,20 @@ document.addEventListener("click", e=>{
     signIn();
   } else if(action === "toggle-user-menu"){
     userMenuOpen = !userMenuOpen;
+    nicknameEditing = false; nicknameError = null;
     render();
+  } else if(action === "edit-nickname"){
+    nicknameEditing = true;
+    nicknameDraft = myNickname();
+    nicknameError = null;
+    render();
+    const input = document.getElementById("nicknameInput");
+    if(input){ input.focus(); input.select(); }
+  } else if(action === "cancel-edit-nickname"){
+    nicknameEditing = false; nicknameError = null;
+    render();
+  } else if(action === "save-nickname"){
+    saveNicknameEdit();
   } else if(action === "toggle-mentions-menu"){
     mentionsMenuOpen = !mentionsMenuOpen;
     if(mentionsMenuOpen) markMentionsSeen();
@@ -4705,6 +4795,8 @@ document.addEventListener("input", e=>{
     state.auditFilters.text = t.value; auditVisibleCount = 30; render();
   } else if(t.id === "usuariosSearch"){
     state.usuariosFilters.text = t.value; render();
+  } else if(t.id === "nicknameInput"){
+    nicknameDraft = t.value; nicknameError = null; render();
   } else if(t.id === "cTitle"){ composerDraft.title = t.value; }
   else if(t.id === "cContent"){
     composerDraft.content = t.value;

@@ -175,7 +175,16 @@ allowlist/{email}            (el documento EXISTE = esa persona tiene acceso)
                              (name/nickname: nombre de Google y @nickname corto armado al aprobar,
                              para el autocompletado de @menciones — accesos aprobados de antes de
                              que existiera este campo no lo tienen, y se les arma un nickname de
-                             reserva a partir del email solo para mostrar, sin guardarlo)
+                             reserva a partir del email solo para mostrar, sin guardarlo.
+                             CADA PERSONA puede cambiar SU PROPIO nickname más adelante, desde el
+                             menú del avatar ("✏️ Editar tu @nickname" en renderUserBadge) — es la
+                             única excepción a "solo el admin escribe en allowlist": firestore.rules
+                             deja que el dueño del doc toque nada más que el campo nickname, y
+                             encima solo con forma válida (isValidNicknameEdit: 2-20 caracteres,
+                             letras/números ASCII/guion bajo, sin espacios ni "@"). Unicidad y la
+                             palabra reservada "all" se controlan en el cliente antes de escribir
+                             — ver validateNicknameDraft() — porque las reglas no comparan bien
+                             contra el resto de la colección)
   calendarShared: bool       (opcional — si ya se le compartió el Calendar de LatAm; lo pone en
                              true shareCalendarWith() al compartir con éxito, para mostrar un ✅
                              real en Usuarios en vez de ofrecer siempre a ciegas el mismo botón.
@@ -186,7 +195,7 @@ allowlist/{email}            (el documento EXISTE = esa persona tiene acceso)
                              lo pisa shareCalendarWith() en cada compartir o reenvío. Sirve para el
                              popup + novedad de campanita que le recuerda a esa persona aceptar la
                              invitación la próxima vez que entre, ver maybeShowCalendarInviteOverlay()
-                             y hasUnseenCalendarInvite())
+                             / shouldShowCalendarInvitePopup() y hasActiveCalendarInviteNotice())
 
 accessRequests/{email}       (una solicitud de acceso por persona; el id es su propio email)
   email, name, photoURL, status: "pending"|"approved"|"rejected", requestedAt
