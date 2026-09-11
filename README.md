@@ -506,6 +506,49 @@ Cualquier persona logueada puede **crear** una entrada, pero solo sobre
 sí misma como actor (así queda registro del login incluso de alguien que
 todavía no está aprobado); **leer** el registro es exclusivo del admin.
 
+### Modo claro / oscuro
+
+Toda la paleta vive en variables CSS en `:root` (claro, el default) y el
+bloque `html[data-theme="dark"]` las redefine. **Cualquier color nuevo
+tiene que salir de una variable**, no hardcodeado: si no, se va a quedar
+clavado en su tono claro cuando la página pase a oscuro.
+
+Dos roles que parecen el mismo color pero no lo son, y por eso tienen
+variables separadas:
+
+- `--petroleo` / `--petroleo-dark`: el petroleo como **fondo** (header,
+  botones primarios, badges). En oscuro se aclara un poco, porque el tono
+  original quedaba indistinguible del fondo de la página.
+- `--ink` / `--ink-strong`: el mismo petroleo pero como **color de
+  texto** (títulos, nombres de autor, números). En oscuro va para el lado
+  contrario: pasa a ser un tono claro.
+
+La elección se guarda en `localStorage` (`ra_theme`), es decir **por
+dispositivo y no por cuenta**: la misma persona puede querer oscuro en el
+celular de noche y claro en la compu. Se aplica desde un `<script>`
+suelto en el `<head>`, antes del CSS, a propósito: el script del módulo
+corre recién después de pintar la página, así que si se aplicara desde
+ahí se vería un destello blanco en cada carga.
+
+El mapa de la vista Países sigue con las imágenes claras de OpenStreetMap
+en los dos modos (es lo que hacen casi todas las apps, y las alternativas
+oscuras de OSM son de menor calidad).
+
+### Tutorial de bienvenida
+
+Un modal de tres pantallas (`TOUR_SLIDES`) que se abre solo la primera
+vez que entra alguien ya aprobado, y que después queda a mano en el menú
+del avatar ("❔ Cómo funciona"). Explica lo mínimo para entender la app:
+publicar eventos, la memoria por lugar/fecha, y la sincronización con el
+Calendar. La idea es que se entienda para qué sirve en treinta segundos
+— la documentación completa es este README, no el tutorial.
+
+Que ya se vio se marca en `localStorage` (`ra_tour_seen_v1`). Si se
+agregan o cambian pantallas y conviene que todos lo vuelvan a ver, hay
+que subir `TOUR_VERSION`. Tiene prioridad sobre el aviso del Calendar
+compartido: mientras el tutorial está abierto ese popup no aparece, y se
+muestra recién cuando se cierra.
+
 ## 4. Qué falta / decisiones pendientes
 
 - **Roles**: hoy todo aprobado tiene los mismos permisos (leer + publicar).
