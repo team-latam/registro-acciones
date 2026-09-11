@@ -516,6 +516,22 @@ Cualquier persona logueada puede **crear** una entrada, pero solo sobre
 sí misma como actor (así queda registro del login incluso de alguien que
 todavía no está aprobado); **leer** el registro es exclusivo del admin.
 
+### Idioma (solo el selector, todavía sin traducir)
+
+En el menú del avatar, arriba de Claro/Oscuro, hay un selector ES/EN/PT/
+HE (`LANGS` en `index.html`, junto a `currentLang`/`setLang`). Por ahora
+**solo guarda la preferencia** en `localStorage` (`ra_lang`, mismo
+criterio que el tema: por dispositivo, no por cuenta) — no existe
+todavía ningún texto traducido, así que elegir otro idioma no cambia
+nada en la app salvo un aviso propio ("🌐 Por ahora solo hay texto en
+español") para no dar la sensación de que algo se rompió.
+
+Se adelantó el lugar en el menú a propósito, antes de construir la
+traducción real, para no tener que rediseñar el menú de cuenta después.
+Cuando se arme el diccionario de textos, `setLang` es donde va a aplicar
+el idioma de verdad (queda un TODO ahí mismo) — y hebreo, al ser RTL, va
+a necesitar además `dir="rtl"` en el `<html>`, que hoy no está.
+
 ### Modo claro / oscuro
 
 Toda la paleta vive en variables CSS en `:root` (claro, el default) y el
