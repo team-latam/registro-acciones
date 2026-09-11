@@ -3650,7 +3650,6 @@ function renderPostCard(post, replies, featured){
   const metaBits = [];
   if(post.participants && post.participants.length) metaBits.push(`👥 Participantes: ${esc(participantsLabel(post.participants))}`);
   else if(post.organizer) metaBits.push(`👤 Organiza: ${esc(post.organizer)}`);
-  if(post.location) metaBits.push(`📍 ${esc(post.location)}`);
   const editable = canEditPost(post);
   const canCancel = editable && post.activityType !== "rutina" && !post.cancelled;
   const postLikedBy = post.likedBy || [];
@@ -3664,7 +3663,7 @@ function renderPostCard(post, replies, featured){
           <span class="post-date">${dateLabel}</span>
           ${post.cancelled ? `<span class="type-badge" style="background:var(--danger);">🚫 Cancelado</span>` : ""}
         </div>
-        <span class="post-author">${esc(post.authorName||"Anónimo")}</span>
+        ${post.location ? `<span class="post-author" title="Dónde">📍 ${esc(post.location)}</span>` : ""}
       </div>
       ${post.title && post.activityType !== "rutina" ? `<h3 style="margin:6px 0 0 0;font-size:16px;color:var(--ink);${post.cancelled?"text-decoration:line-through;opacity:0.7;":""}">${esc(post.title)}</h3>` : ""}
       ${metaBits.length ? `<div class="hint" style="margin-top:4px;">${metaBits.join(" · ")}</div>` : ""}
