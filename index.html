@@ -695,6 +695,18 @@
   .mention-item .mi-content{ font-size:12px; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .mention-item .mi-date{ font-size:10.5px; color:var(--text-muted); }
   .mentions-empty{ padding:12px 8px; font-size:12.5px; color:var(--text-muted); text-align:center; }
+  /* El aviso de Calendar en la campanita NO se apaga solo con abrirlo (a
+     diferencia de una @mención): necesita el botón "Ya la acepté" de acá
+     abajo, aparte, porque no hay forma de saber si la persona aceptó de
+     verdad la invitación de Google. */
+  .calendar-invite-item{ padding:2px; border-radius:var(--radius-sm); background:#fbfefe; border:1px solid var(--border); }
+  .calendar-invite-item .mention-item{ padding-bottom:2px; }
+  .calendar-invite-item .mention-item:hover{ background:none; }
+  .ci-dismiss{
+    display:block; margin:0 0 4px auto; background:none; border:none; cursor:pointer;
+    font-size:11px; font-weight:700; color:var(--celeste-dark); padding:4px 8px;
+  }
+  .ci-dismiss:hover{ text-decoration:underline; }
   .modal-actions{ display:flex; justify-content:flex-end; gap:10px; margin-top:6px; }
   .btn-secondary{ background:#eef4f4; color:var(--text); border:none; padding:11px 18px; border-radius:999px; font-weight:700; font-size:13.5px; cursor:pointer; }
   .btn-primary{ background:var(--petroleo); color:#fff; border:none; padding:11px 20px; border-radius:999px; font-weight:700; font-size:13.5px; cursor:pointer; }
@@ -1089,35 +1101,55 @@ function markMentionsSeen(){
   try{ localStorage.setItem(key, String(Date.now())); }catch(e){}
 }
 
-// Aviso de "revisá tu correo, te compartimos el Calendar": mismo patrón
-// que "vistas" de @menciones (localStorage, por dispositivo), comparando
+// Aviso de "revisá tu correo, te compartimos el Calendar": localStorage
+// por dispositivo (mismo patrón que las "vistas" de @menciones), comparado
 // contra calendarInviteSentAt (que shareCalendarWith pisa en cada envío o
-// reenvío) — así cada persona ve el aviso una vez por invitación nueva,
-// sin backend ni tener que escribir en su propio documento de allowlist
-// (que solo el admin puede escribir).
-const CALENDAR_INVITE_SEEN_KEY = "calendarInviteSeenAt";
-function calendarInviteSeenKey(){
+// reenvío) — sin backend ni tener que escribir en el propio documento de
+// allowlist (que solo el admin puede escribir).
+//
+// Son DOS estados separados a propósito, porque el ACL de Calendar no
+// avisa cuándo la persona lo acepta de verdad:
+// - "popup visto": solo evita que el modal se imponga de nuevo en cada
+//   entrada. Cerrarlo con "Entendido" alcanza para esto.
+// - "novedad de campanita": el recordatorio real de "todavía tenés que
+//   aceptar" — antes se apagaba junto con el popup (bug reportado: cerrar
+//   el aviso inicial lo hacía desaparecer de la campanita también, sin
+//   que la persona hubiera aceptado nada), así que ahora necesita una
+//   acción explícita y separada ("Ya la acepté" en la campanita) para
+//   apagarse. Un reenvío de invitación vuelve a activar ambos, porque
+//   calendarInviteSentAt cambia y queda de nuevo por delante de las dos
+//   marcas de "visto".
+const CALENDAR_INVITE_POPUP_SEEN_KEY = "calendarInvitePopupSeenAt";
+const CALENDAR_INVITE_BELL_DISMISSED_KEY = "calendarInviteBellDismissedAt";
+function calendarInviteStorageKey(prefix){
   const email = state.auth.user && state.auth.user.email;
-  return email ? `${CALENDAR_INVITE_SEEN_KEY}:${email}` : null;
+  return email ? `${prefix}:${email}` : null;
 }
-function getCalendarInviteSeenAt(){
-  const key = calendarInviteSeenKey();
+function getCalendarInviteStorageTs(prefix){
+  const key = calendarInviteStorageKey(prefix);
   if(!key) return 0;
   try{ return Number(localStorage.getItem(key)) || 0; }catch(e){ return 0; }
 }
-function markCalendarInviteSeen(){
-  const key = calendarInviteSeenKey();
+function markCalendarInviteStorageTs(prefix){
+  const key = calendarInviteStorageKey(prefix);
   if(!key) return;
   try{ localStorage.setItem(key, String(Date.now())); }catch(e){}
 }
+function markCalendarInvitePopupSeen(){ markCalendarInviteStorageTs(CALENDAR_INVITE_POPUP_SEEN_KEY); }
+function markCalendarInviteBellDismissed(){ markCalendarInviteStorageTs(CALENDAR_INVITE_BELL_DISMISSED_KEY); }
 function myRosterEntry(){
   const email = state.auth.user && state.auth.user.email;
   return email ? state.roster.find(u=>u.email===email) : null;
 }
-function hasUnseenCalendarInvite(){
+function shouldShowCalendarInvitePopup(){
   const me = myRosterEntry();
   if(!me || !me.calendarInviteSentAt) return false;
-  return tsToMillis(me.calendarInviteSentAt) > getCalendarInviteSeenAt();
+  return tsToMillis(me.calendarInviteSentAt) > getCalendarInviteStorageTs(CALENDAR_INVITE_POPUP_SEEN_KEY);
+}
+function hasActiveCalendarInviteNotice(){
+  const me = myRosterEntry();
+  if(!me || !me.calendarInviteSentAt) return false;
+  return tsToMillis(me.calendarInviteSentAt) > getCalendarInviteStorageTs(CALENDAR_INVITE_BELL_DISMISSED_KEY);
 }
 // "@all" (ver renderMentionSuggestions) cuenta como mención para
 // cualquiera, no solo para un email puntual.
@@ -1461,8 +1493,9 @@ async function shareCalendarWith(email){
     // ofrecer siempre a ciegas el mismo botón "Compartir Calendar" sin
     // saber si la persona ya lo tiene compartido o no. calendarInviteSentAt
     // se pisa en CADA envío (primera vez o reenvío) — es lo que compara el
-    // propio navegador de esa persona (ver hasUnseenCalendarInvite) para
-    // saber si hay que mostrarle de nuevo el aviso de "revisá tu correo".
+    // propio navegador de esa persona (ver shouldShowCalendarInvitePopup y
+    // hasActiveCalendarInviteNotice) para saber si hay que mostrarle de
+    // nuevo el popup y/o la novedad de "revisá tu correo".
     fb.updateDoc(fb.doc(db,"allowlist",email), { calendarShared:true, calendarInviteSentAt: fb.serverTimestamp() }).catch(()=>{});
     return { ok:true };
   }catch(err){
@@ -2515,7 +2548,7 @@ let mentionsMenuOpen = false;
 function renderMentionsBell(){
   if(!state.auth.user){ mentionsBellEl.innerHTML = ""; mentionsMenuOpen = false; return; }
   const mentionCount = getUnseenMentionCount();
-  const hasInvite = hasUnseenCalendarInvite();
+  const hasInvite = hasActiveCalendarInviteNotice();
   const count = mentionCount + (hasInvite ? 1 : 0);
   mentionsBellEl.innerHTML = `
     <button class="bell-btn${mentionsMenuOpen ? " open" : ""}" data-action="toggle-mentions-menu" aria-label="Notificaciones">🔔</button>
@@ -2530,11 +2563,14 @@ function renderMentionsMenuItems(hasInvite){
   const recent = getRecentMentions(4);
   const me = hasInvite ? myRosterEntry() : null;
   const inviteItem = hasInvite ? `
-    <button type="button" class="mention-item" data-action="goto-calendar-invite">
-      <span class="mi-author">📅 Calendar de LatAm</span>
-      <span class="mi-content">Te compartimos el calendario — revisá tu correo para aceptar la invitación.</span>
-      <span class="mi-date">${fmtDateTime(me && me.calendarInviteSentAt)}</span>
-    </button>` : "";
+    <div class="calendar-invite-item">
+      <button type="button" class="mention-item" data-action="goto-calendar-invite">
+        <span class="mi-author">📅 Calendar de LatAm</span>
+        <span class="mi-content">Te compartimos el calendario — revisá tu correo para aceptar la invitación.</span>
+        <span class="mi-date">${fmtDateTime(me && me.calendarInviteSentAt)}</span>
+      </button>
+      <button type="button" class="ci-dismiss" data-action="dismiss-calendar-invite-notice">Ya la acepté ✕</button>
+    </div>` : "";
   if(!recent.length && !inviteItem) return `<div class="mentions-empty">Todavía no te mencionaron.</div>`;
   return inviteItem + recent.map(m=>`
     <button type="button" class="mention-item" data-action="goto-mention" data-post-id="${esc(m.postId)}" ${m.replyId ? `data-reply-id="${esc(m.replyId)}"` : ""}>
@@ -3847,19 +3883,24 @@ const postModalOverlay = document.getElementById("postModalOverlay");
 const postForm = document.getElementById("postForm");
 const postModalTitle = document.getElementById("postModalTitle");
 
-// Aviso de "revisá tu correo" (ver hasUnseenCalendarInvite): se muestra
-// solo (no hace falta que la persona haga nada para que aparezca) apenas
-// su propio roster trae un calendarInviteSentAt que todavía no vio —
-// llamado desde doRender() en cada render mientras esté sin ver.
+// Aviso de "revisá tu correo" (ver shouldShowCalendarInvitePopup): se
+// muestra solo (no hace falta que la persona haga nada para que aparezca)
+// apenas su propio roster trae un calendarInviteSentAt que ese popup
+// todavía no vio — llamado desde doRender() en cada render. Cerrarlo con
+// "Entendido" NO apaga la novedad de la campanita (ver
+// markCalendarInviteBellDismissed): son dos avisos separados porque no
+// hay forma de confirmar que la persona ya aceptó la invitación de
+// verdad, así que la campanita se queda hasta que ella misma diga "Ya la
+// acepté".
 const calendarInviteOverlay = document.getElementById("calendarInviteOverlay");
 function maybeShowCalendarInviteOverlay(){
-  if(!isAuthorized() || !hasUnseenCalendarInvite()){ return; }
+  if(!isAuthorized() || !shouldShowCalendarInvitePopup()){ return; }
   if(!calendarInviteOverlay.hidden) return; // ya está abierto, no lo reabras encima
   document.getElementById("calendarInviteEmailSpan").textContent = state.auth.user.email;
   calendarInviteOverlay.hidden = false;
 }
 function dismissCalendarInviteOverlay(){
-  markCalendarInviteSeen();
+  markCalendarInvitePopupSeen();
   calendarInviteOverlay.hidden = true;
   render();
 }
@@ -4509,6 +4550,9 @@ document.addEventListener("click", e=>{
     render();
   } else if(action === "dismiss-calendar-invite"){
     dismissCalendarInviteOverlay();
+  } else if(action === "dismiss-calendar-invite-notice"){
+    markCalendarInviteBellDismissed();
+    render();
   } else if(action === "resend-calendar-invite"){
     const email = t.dataset.email;
     resendCalendarInvite(email).then(res=>{
