@@ -21,6 +21,18 @@
       document.documentElement.dataset.theme = savedTheme;
     }
   }catch(e){ /* localStorage bloqueado (modo incógnito, etc.): queda en claro */ }
+  // Mismo motivo que el tema: si dir="rtl" se aplicara recién en el
+  // script del módulo, se vería la página armada en LTR y "saltando" a
+  // RTL un instante después. lang/dir del <html> se fijan acá, antes de
+  // pintar; el resto del idioma (todo el texto) lo aplica applyStaticI18n()
+  // y render() una vez que el módulo carga.
+  try{
+    var savedLang = localStorage.getItem("ra_lang");
+    if(["es","en","pt","he"].includes(savedLang)){
+      document.documentElement.lang = savedLang;
+      document.documentElement.dir = savedLang === "he" ? "rtl" : "ltr";
+    }
+  }catch(e){ /* sin localStorage, se queda en español/LTR */ }
 </script>
 <style>
   /* Paleta clara (la de siempre). Toda la app se pinta con estas
@@ -161,13 +173,13 @@
   .avatar-btn .avatar-fallback-badge{ color:#fff; font-weight:800; font-size:14px; }
 
   .user-menu{
-    position:absolute; top:calc(100% + 12px); right:0; width:250px;
+    position:absolute; top:calc(100% + 12px); inset-inline-end:0; width:250px;
     background:var(--card); color:var(--text); border-radius:var(--radius-md);
     box-shadow:0 14px 36px rgba(8,42,44,0.28); padding:18px 16px 14px;
     text-align:center; z-index:60;
   }
   .user-menu::before{
-    content:""; position:absolute; top:-6px; right:13px; width:12px; height:12px;
+    content:""; position:absolute; top:-6px; inset-inline-end:13px; width:12px; height:12px;
     background:var(--card); transform:rotate(45deg); border-radius:2px;
   }
   .user-menu .um-avatar, .user-menu .um-avatar-fallback{
@@ -232,7 +244,7 @@
   .um-segmented button.active{ background:var(--card); color:var(--ink-strong); box-shadow:0 1px 3px rgba(0,0,0,0.12); }
   .um-lang{ margin:0 0 8px; }
   .um-theme{ margin:0 0 12px; }
-  .um-nickname-form{ margin:-4px 0 14px; text-align:left; }
+  .um-nickname-form{ margin:-4px 0 14px; text-align:start; }
   .um-nickname-form input{
     width:100%; box-sizing:border-box; border:1.5px solid var(--border); border-radius:999px;
     padding:8px 14px; font-size:13px; text-align:center;
@@ -243,7 +255,7 @@
     padding:9px; border-radius:999px; font-weight:700; font-size:13px; cursor:pointer;
   }
   .user-menu .um-signout:hover{ background:var(--surface-hover); }
-  #tabSolicitudes .pending-count{ background:var(--danger); color:#fff; border-radius:999px; font-size:10.5px; font-weight:800; padding:1px 6px; margin-left:6px; }
+  #tabSolicitudes .pending-count{ background:var(--danger); color:#fff; border-radius:999px; font-size:10.5px; font-weight:800; padding:1px 6px; margin-inline-start:6px; }
 
   /* ---------- Auth gate (login / pendiente / rechazado) ---------- */
   .auth-gate{ max-width:440px; margin:60px auto; text-align:center; }
@@ -279,7 +291,7 @@
   .request-row .ractions{ display:flex; align-items:center; gap:4px; flex:none; }
   .status-pill{
     display:inline-flex; align-items:center; gap:5px; font-size:11.5px; font-weight:700;
-    padding:5px 12px; border-radius:999px; margin-right:6px;
+    padding:5px 12px; border-radius:999px; margin-inline-end:6px;
   }
   .status-pill::before{ content:""; width:6px; height:6px; border-radius:50%; background:currentColor; }
   .status-pill.approved{ background:var(--ok-bg); color:var(--ok-text); }
@@ -316,15 +328,15 @@
     font-size:11.5px; color:var(--text-muted); min-width:0;
     overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
   }
-  .audit-date{ font-size:11.5px; color:var(--text-muted); text-align:right; white-space:nowrap; }
+  .audit-date{ font-size:11.5px; color:var(--text-muted); text-align:end; white-space:nowrap; }
   /* Encabezados-botón (ordenan al click, ver sortAuditEntries): mismo
      look que el texto de columna que tenían antes, sin pinta de botón. */
   .ach-sort{
-    background:none; border:none; padding:0; margin:0; font:inherit; cursor:pointer; text-align:left; min-width:0;
+    background:none; border:none; padding:0; margin:0; font:inherit; cursor:pointer; text-align:start; min-width:0;
     font-size:10.5px; font-weight:800; letter-spacing:0.4px; text-transform:uppercase; color:var(--text-muted);
   }
   .ach-sort:hover{ color:var(--ink); }
-  .ach-date{ text-align:right; }
+  .ach-date{ text-align:end; }
   .audit-more{ text-align:center; margin-top:14px; }
   .audit-filters{ margin-bottom:14px; }
   .audit-filters input{
@@ -371,13 +383,13 @@
   .zone-rm:disabled{ opacity:0.25; cursor:not-allowed; }
   .zone-countries{ display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); border-top:1px solid var(--border); }
   .zone-countries:empty{ display:none; }
-  .country-row{ display:flex; align-items:center; gap:10px; padding:12px 18px; border-top:1px solid var(--border); border-right:1px solid var(--border); }
+  .country-row{ display:flex; align-items:center; gap:10px; padding:12px 18px; border-top:1px solid var(--border); border-inline-end:1px solid var(--border); }
   .country-name{ flex:1; min-width:0; font-size:14px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .country-row select{
     border:1.5px solid var(--border); background:var(--bg); color:var(--text); font-family:inherit;
     font-size:12px; font-weight:700; border-radius:999px; padding:6px 12px; cursor:pointer; flex:none;
   }
-  @media (max-width:520px){ .zone-countries{ grid-template-columns:1fr; } .country-row{ border-right:none; } }
+  @media (max-width:520px){ .zone-countries{ grid-template-columns:1fr; } .country-row{ border-inline-end:none; } }
   /* Filas de configuración genéricas (ícono + texto + control), usadas
      hoy en Adjuntos — mismo lenguaje visual que .zone-section/.country-row
      en vez de labels sueltos arriba de inputs. */
@@ -404,10 +416,12 @@
     border:1.5px solid var(--border); border-radius:8px; overflow:hidden; background:var(--bg); gap:0;
   }
   .setting-control-unit input[type=number]{
-    flex:1; width:auto; min-width:0; border:none; border-radius:0; background:transparent; padding:8px 4px 8px 10px; text-align:right;
+    flex:1; width:auto; min-width:0; border:none; border-radius:0; background:transparent;
+    padding-block:8px; padding-inline:10px 4px; text-align:end;
   }
   .setting-unit{
-    flex:none; font-size:12px; font-weight:700; color:var(--text-muted); padding:8px 10px 8px 4px;
+    flex:none; font-size:12px; font-weight:700; color:var(--text-muted);
+    padding-block:8px; padding-inline:4px 10px;
   }
   .pref-subnav{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:16px; }
   .tipo-icon-input{
@@ -437,7 +451,7 @@
   .zone-label-input:hover, .zone-label-input:focus{ border-color:var(--border); background:var(--card); outline:none; }
   .zone-count{ font-size:11px; color:var(--text-muted); flex:none; white-space:nowrap; }
   .tipo-meta{ display:flex; align-items:center; gap:10px; justify-self:end; }
-  .tipo-meta .zone-count{ width:66px; text-align:right; }
+  .tipo-meta .zone-count{ width:66px; text-align:end; }
   @media (max-width:420px){
     .zone-edit-row{ grid-template-columns:38px 1fr; }
     .tipo-meta{ grid-column:1 / -1; justify-self:stretch; justify-content:flex-start; }
@@ -522,16 +536,23 @@
   .filter-dropdown-chevron{ font-size:9px; transition:transform .18s ease; }
   .filter-dropdown-btn.open .filter-dropdown-chevron{ transform:rotate(180deg); }
   .filter-dropdown-panel{
-    position:absolute; top:calc(100% + 8px); left:0; z-index:55; width:min(320px, 88vw);
+    position:absolute; top:calc(100% + 8px); inset-inline-start:0; z-index:55; width:min(320px, 88vw);
     background:var(--card); border-radius:var(--radius-md); box-shadow:0 14px 36px rgba(8,42,44,0.28);
     padding:10px; display:flex; flex-wrap:wrap; gap:6px;
     transform-origin:top left;
     animation:filterDropdownPop .2s cubic-bezier(.34,1.56,.64,1);
   }
-  /* El de Zonas va segundo en la barra: si se abriera pegado a la
-     izquierda como el de Actividades, en pantallas angostas se saldría
-     por el borde derecho. Se cuelga del lado derecho de su botón. */
-  .zone-filter .filter-dropdown-panel{ left:auto; right:0; transform-origin:top right; }
+  /* El de Zonas va segundo en la barra: si se abriera pegado al lado de
+     inicio como el de Actividades, en pantallas angostas se saldría por
+     el otro borde. Se cuelga del lado de cierre de su botón. */
+  .zone-filter .filter-dropdown-panel{ inset-inline-start:auto; inset-inline-end:0; transform-origin:top right; }
+  /* transform-origin no tiene equivalente lógico en CSS (solo acepta
+     top/left/right físicos) — se corrige a mano para RTL, donde
+     inset-inline-start:0 ancla el panel de Actividades al borde DERECHO
+     físico (y el de Zonas, al izquierdo): la animación tiene que nacer
+     del mismo borde donde el panel queda pegado, o se ve rara. */
+  html[dir="rtl"] .type-filter .filter-dropdown-panel{ transform-origin:top right; }
+  html[dir="rtl"] .zone-filter .filter-dropdown-panel{ transform-origin:top left; }
   @keyframes filterDropdownPop{
     from{ opacity:0; transform:scale(.85) translateY(-6px); }
     to{ opacity:1; transform:scale(1) translateY(0); }
@@ -543,8 +564,8 @@
     font-size:11.5px; font-weight:700; background:var(--chip-bg); color:var(--ink); border:1px solid var(--border);
   }
   .scope-chip .zdot{ width:8px; height:8px; border-radius:50%; }
-  .scope-chip.removable{ padding-right:6px; }
-  .scope-chip .rm{ cursor:pointer; font-weight:800; opacity:0.6; margin-left:2px; }
+  .scope-chip.removable{ padding-inline-end:6px; }
+  .scope-chip .rm{ cursor:pointer; font-weight:800; opacity:0.6; margin-inline-start:2px; }
   .scope-chip .rm:hover{ opacity:1; }
 
   /* ---------- Participantes (chip-input, ver renderParticipantsField) ---------- */
@@ -554,7 +575,7 @@
     display:inline-flex; align-items:center; gap:6px; padding:5px 10px; border-radius:999px;
     font-size:11.5px; font-weight:700; background:rgba(79,199,224,0.16); color:var(--celeste-dark); border:1px solid var(--border);
   }
-  .participant-chip .rm{ cursor:pointer; font-weight:800; opacity:0.6; margin-left:2px; }
+  .participant-chip .rm{ cursor:pointer; font-weight:800; opacity:0.6; margin-inline-start:2px; }
   .participant-chip .rm:hover{ opacity:1; }
   .participant-chip-avatar{ width:16px; height:16px; border-radius:50%; object-fit:cover; flex-shrink:0; }
 
@@ -591,7 +612,7 @@
   .post-actions button:hover{ color:var(--celeste-dark); }
   .post-actions button.liked{ color:var(--celeste-dark); }
 
-  .thread{ margin-top:12px; padding-left:16px; border-left:3px solid var(--border); display:flex; flex-direction:column; gap:12px; }
+  .thread{ margin-top:12px; padding-inline-start:16px; border-inline-start:3px solid var(--border); display:flex; flex-direction:column; gap:12px; }
   .reply{ background:var(--surface-sunken); border-radius:var(--radius-md); padding:12px 14px; }
   .reply-system{ background:var(--system-bg); border:1px dashed var(--system-border); }
   .post-cancelled{ opacity:0.85; }
@@ -608,7 +629,7 @@
   .reply-actions button{ background:none; border:none; padding:0; font-size:12px; font-weight:700; color:var(--text-muted); cursor:pointer; }
   .reply-actions button:hover{ color:var(--ink); }
   .reply-actions button.liked{ color:var(--celeste-dark); }
-  .reply-children{ margin-top:10px; margin-left:18px; padding-left:12px; border-left:2px solid var(--border); display:flex; flex-direction:column; gap:10px; }
+  .reply-children{ margin-top:10px; margin-inline-start:18px; padding-inline-start:12px; border-inline-start:2px solid var(--border); display:flex; flex-direction:column; gap:10px; }
   .reply-nested-form{ margin-top:8px; }
   .reply-nested-form textarea{ width:100%; min-height:60px; padding:8px 10px; border-radius:var(--radius-sm); border:1.5px solid var(--border); font-size:13px; font-family:inherit; }
 
@@ -631,10 +652,10 @@
   }
   .modal h2{ margin:0 0 14px 0; font-size:18px; color:var(--ink); flex:none; }
   .modal .close{
-    position:absolute; top:14px; right:16px; background:none; border:none; font-size:20px; cursor:pointer; color:var(--text-muted);
+    position:absolute; top:14px; inset-inline-end:16px; background:none; border:none; font-size:20px; cursor:pointer; color:var(--text-muted);
   }
   .modal-wrap{ position:relative; }
-  #postForm{ overflow-y:auto; flex:1; min-height:0; padding-right:4px; margin-right:-4px; }
+  #postForm{ overflow-y:auto; flex:1; min-height:0; padding-inline-end:4px; margin-inline-end:-4px; }
   .field{ margin-bottom:14px; }
   .field label{ display:block; font-size:12px; font-weight:700; color:var(--text-muted); margin-bottom:5px; text-transform:uppercase; letter-spacing:0.4px; }
   .field input[type=text], .field input[type=date], .field textarea, .field select, .field input[type=url]{
@@ -736,7 +757,7 @@
   .img-preview{ position:relative; width:76px; height:76px; }
   .img-preview img{ width:100%; height:100%; object-fit:cover; border-radius:8px; border:1px solid var(--border); }
   .img-preview .rm{
-    position:absolute; top:-6px; right:-6px; width:20px; height:20px; border-radius:50%; background:var(--danger);
+    position:absolute; top:-6px; inset-inline-end:-6px; width:20px; height:20px; border-radius:50%; background:var(--danger);
     color:#fff; border:none; font-size:12px; cursor:pointer; line-height:20px; text-align:center; padding:0;
   }
 
@@ -764,7 +785,7 @@
     border-radius:var(--radius-sm); box-shadow:var(--shadow); z-index:8; max-height:220px; overflow-y:auto;
   }
   .autocomplete-option{
-    display:block; width:100%; text-align:left; background:none; border:none; padding:9px 14px; font-size:13px;
+    display:block; width:100%; text-align:start; background:none; border:none; padding:9px 14px; font-size:13px;
     cursor:pointer; color:var(--text);
   }
   .autocomplete-option:hover, .autocomplete-option.active{ background:var(--surface-hover); }
@@ -819,7 +840,7 @@
   /* Punto rojo de @menciones sin ver (ver getUnseenMentionCount), hoy
      colgado de la campanita en vez del avatar. */
   .mention-dot{
-    position:absolute; top:-2px; right:-2px; min-width:16px; height:16px; padding:0 3px; border-radius:999px;
+    position:absolute; top:-2px; inset-inline-end:-2px; min-width:16px; height:16px; padding:0 3px; border-radius:999px;
     background:var(--danger); color:#fff; font-size:9.5px; font-weight:800; display:flex; align-items:center;
     justify-content:center; border:2px solid var(--petroleo-dark);
   }
@@ -835,17 +856,17 @@
   }
   .bell-btn:hover, .bell-btn.open{ border-color:#fff; }
   .mentions-menu{
-    position:absolute; top:calc(100% + 12px); right:0; width:280px;
+    position:absolute; top:calc(100% + 12px); inset-inline-end:0; width:280px;
     background:var(--card); color:var(--text); border-radius:var(--radius-md);
-    box-shadow:0 14px 36px rgba(8,42,44,0.28); padding:10px; z-index:60; text-align:left;
+    box-shadow:0 14px 36px rgba(8,42,44,0.28); padding:10px; z-index:60; text-align:start;
   }
   .mentions-menu::before{
-    content:""; position:absolute; top:-6px; right:13px; width:12px; height:12px;
+    content:""; position:absolute; top:-6px; inset-inline-end:13px; width:12px; height:12px;
     background:var(--card); transform:rotate(45deg); border-radius:2px;
   }
   .mentions-menu-title{ font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.4px; color:var(--text-muted); padding:4px 8px 8px; }
   .mention-item{
-    display:flex; flex-direction:column; gap:2px; width:100%; text-align:left; background:none; border:none;
+    display:flex; flex-direction:column; gap:2px; width:100%; text-align:start; background:none; border:none;
     padding:8px; border-radius:var(--radius-sm); cursor:pointer;
   }
   .mention-item:hover{ background:var(--surface-hover); }
@@ -881,7 +902,7 @@
   .country-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:12px; }
   .country-card{
     background:var(--card); border-radius:var(--radius-md); padding:14px; box-shadow:var(--shadow); cursor:pointer;
-    border:1px solid var(--border); border-left:6px solid var(--petroleo); transition:transform 0.1s;
+    border:1px solid var(--border); border-inline-start:6px solid var(--petroleo); transition:transform 0.1s;
   }
   .country-card:hover{ transform:translateY(-2px); }
   .country-card .name{ font-weight:800; font-size:14px; margin-bottom:4px; }
@@ -2673,12 +2694,17 @@ let userMenuOpen = false;
 
 // Etiqueta de rol que se ve en el menú del avatar, según state.auth.status
 // (ver más abajo dónde se asigna: admin/approved/pending/rejected).
-const USER_ROLE_LABELS = {
-  admin: { text: "Admin", cls: "role-admin" },
-  approved: { text: "Miembro", cls: "role-member" },
-  pending: { text: "Pendiente", cls: "role-pending" },
-  rejected: { text: "Rechazado", cls: "role-rejected" },
-};
+// Función y no objeto fijo, porque el texto depende del idioma actual en
+// cada render (un objeto literal se arma una sola vez al cargar la app).
+function userRoleLabel(status){
+  const labels = {
+    admin: { text: t("Admin","Admin","Admin","מנהל/ת"), cls: "role-admin" },
+    approved: { text: t("Miembro","Member","Membro","חבר/ה"), cls: "role-member" },
+    pending: { text: t("Pendiente","Pending","Pendente","ממתין/ה"), cls: "role-pending" },
+    rejected: { text: t("Rechazado","Rejected","Recusado","נדחה/תה"), cls: "role-rejected" },
+  };
+  return labels[status] || labels.approved;
+}
 
 // Edición del propio @nickname desde el menú del avatar (ver
 // firestore.rules: cada uno puede tocar SOLO el campo nickname de su
@@ -2725,13 +2751,22 @@ async function saveNicknameEdit(){
   }
 }
 
-// Idioma de la interfaz: por ahora solo GUARDA la preferencia (mismo
-// criterio que el tema — por dispositivo, en localStorage) y muestra el
-// selector. Todavía no hay ningún texto traducido: toda la app sigue en
-// español elija lo que elija la persona (se probó un aviso de "todavía
-// no hay traducción" debajo del selector y se sacó — quedaba mejor
-// limpio). Cuando se arme la traducción real, esto pasa a aplicarse (ver
-// LANGS y el TODO más abajo).
+// ---------- Idioma / traducción ----------
+// Preferencia por dispositivo (mismo criterio que el tema, en
+// localStorage), no por cuenta: la misma persona puede querer la app en
+// otro idioma en un celular prestado sin que eso le cambie el idioma en
+// el suyo.
+//
+// t(es, en, pt, he, vars?) es el helper que se usa AL LADO de cada texto
+// (no en un diccionario aparte): se eligió así a propósito para que la
+// traducción de cada string se revise junto a su original, en el mismo
+// diff, en vez de tener que saltar a un archivo de claves separado donde
+// es fácil que una traducción quede huérfana o desincronizada. vars es
+// un objeto opcional para textos con datos adentro, con placeholders
+// {así}: t("Editado por {n}", "Edited by {n}", ..., {n: nombre}).
+// Los cuatro idiomas son OBLIGATORIOS en cada llamado (sin default en
+// "" que se olvide de traducir silenciosamente); si un llamado no los
+// tiene los cuatro es un bug, no un string sin traducir a propósito.
 const LANGS = [
   { key: "es", label: "ES", name: "Español" },
   { key: "en", label: "EN", name: "English" },
@@ -2745,14 +2780,99 @@ function currentLang(){
   }catch(e){ /* sin localStorage, se queda en español */ }
   return "es";
 }
+function isRTL(){ return currentLang() === "he"; }
+function t(es, en, pt, he, vars){
+  const table = { es, en, pt, he };
+  let str = table[currentLang()];
+  if(str == null) str = es; // red de seguridad: nunca dejar un hueco en blanco
+  if(vars) for(const k in vars) str = str.split("{"+k+"}").join(vars[k]);
+  return str;
+}
 function setLang(lang){
   if(!LANGS.some(l=>l.key===lang)) return;
   try{ localStorage.setItem("ra_lang", lang); }catch(e){ /* no se puede recordar, pero no rompe nada */ }
-  // TODO(i18n): cuando exista el diccionario de textos, acá va a aplicar
-  // el idioma de verdad (y el data-dir="rtl" del <html> para hebreo).
-  // Hasta entonces esto solo guarda la preferencia para no perderla.
+  document.documentElement.lang = lang;
+  document.documentElement.dir = lang === "he" ? "rtl" : "ltr";
+  applyStaticI18n();
   render();
 }
+
+// Traduce el "cascarón" fijo de la página: lo que vive en el HTML de
+// afuera de #app/#viewRoot y que por eso NUNCA pasa por render()/
+// doRender() (header, pestañas, footer, el brindis del Calendar). Todo
+// lo demás (el 99% de la app) se traduce solo con cada render() normal,
+// porque ya reconstruye su innerHTML desde cero en cada pasada.
+function applyStaticI18n(){
+  document.title = t(
+    "Registro de Acciones — Team LatAm", "Action Log — Team LatAm",
+    "Registro de Ações — Team LatAm", "יומן הפעילויות — Team LatAm"
+  );
+  const brandH1 = document.querySelector(".brand h1");
+  if(brandH1) brandH1.textContent = t("Registro de Acciones", "Action Log", "Registro de Ações", "יומן הפעילויות");
+  const brandSub = document.querySelector(".brand .sub");
+  if(brandSub) brandSub.textContent = t(
+    "Memoria histórica · Team LatAm", "Historical record · Team LatAm",
+    "Memória histórica · Team LatAm", "זיכרון היסטורי · Team LatAm"
+  );
+
+  const tabLabels = {
+    feed: t("Feed", "Feed", "Feed", "פיד"),
+    paises: t("Países", "Countries", "Países", "מדינות"),
+    memoria: t("Memoria", "Memory", "Memória", "זיכרון"),
+    auditoria: t("Actividad", "Activity", "Atividade", "פעילות"),
+    solicitudes: t("Usuarios", "Users", "Usuários", "משתמשים"),
+    preferencias: t("Configuración", "Settings", "Configurações", "הגדרות"),
+  };
+  document.querySelectorAll("#tabs button[data-view]").forEach(btn=>{
+    const label = tabLabels[btn.dataset.view];
+    if(!label) return;
+    // "Usuarios" lleva adentro <span id="pendingBadge"> con el conteo de
+    // solicitudes — se preserva en vez de perderlo con un textContent liso.
+    const badge = btn.querySelector("#pendingBadge");
+    btn.textContent = label;
+    if(badge) btn.appendChild(badge);
+  });
+
+  const btnNewPost = document.getElementById("btnNewPost");
+  if(btnNewPost) btnNewPost.textContent = "+ " + t("Nuevo evento", "New event", "Novo evento", "אירוע חדש");
+
+  const footer = document.querySelector("footer.appfoot");
+  if(footer) footer.textContent = t(
+    "Registro de Acciones · Team LatAm", "Action Log · Team LatAm",
+    "Registro de Ações · Team LatAm", "יומן הפעילויות · Team LatAm"
+  );
+
+  const closeToastBtn = document.querySelector('#calendarToast [data-action="dismiss-calendar-notice"]');
+  if(closeToastBtn) closeToastBtn.textContent = t("Cerrar", "Close", "Fechar", "סגור");
+
+  const inviteOverlay = document.getElementById("calendarInviteOverlay");
+  if(inviteOverlay){
+    const h2 = inviteOverlay.querySelector("h2");
+    if(h2) h2.textContent = t(
+      "Te compartimos el Calendar de LatAm", "We shared the LatAm Calendar with you",
+      "Compartilhamos o Calendar da LatAm com você", "שיתפנו איתך את יומן LatAm המשותף"
+    );
+    const p = inviteOverlay.querySelector("p.hint");
+    if(p){
+      // El email va en un <strong id="calendarInviteEmailSpan"> propio
+      // (mismo id de siempre) para que maybeShowCalendarInviteOverlay()
+      // lo siga encontrando y actualizando por su cuenta cuando el popup
+      // se abre de verdad — acá solo se arma el texto alrededor.
+      const email = state.auth && state.auth.user ? state.auth.user.email : "";
+      const emailHtml = `<strong id="calendarInviteEmailSpan">${esc(email)}</strong>`;
+      p.innerHTML = t(
+        `Te llegó un mail de Google a {email} para unirte al calendario compartido "LatAm". Aceptalo desde ahí — así vas a ver los eventos también en tu Google Calendar personal, no solo acá.`,
+        `You got an email from Google at {email} inviting you to join the shared "LatAm" calendar. Accept it from there — that way you'll also see the events in your own Google Calendar, not just here.`,
+        `Você recebeu um e-mail do Google em {email} para entrar no calendário compartilhado "LatAm". Aceite por lá — assim você também vai ver os eventos no seu Google Calendar pessoal, não só aqui.`,
+        `קיבלת הודעת דוא"ל מגוגל בכתובת {email} להצטרפות ליומן המשותף "LatAm". אשר/י אותה משם — כך תוכל/י לראות את האירועים גם ב-Google Calendar האישי שלך, לא רק כאן.`,
+        { email: emailHtml }
+      );
+    }
+    const btn = inviteOverlay.querySelector('[data-action="dismiss-calendar-invite"]');
+    if(btn) btn.textContent = t("Entendido", "Got it", "Entendi", "הבנתי");
+  }
+}
+applyStaticI18n();
 
 // Claro/oscuro. La preferencia es por dispositivo (localStorage), no por
 // usuario en Firestore: es una cuestión de cómo se ve la pantalla donde
@@ -2776,7 +2896,7 @@ function renderUserBadge(){
   const menuAvatar = u.photoURL
     ? `<img class="um-avatar" src="${esc(u.photoURL)}" alt="">`
     : `<div class="um-avatar-fallback">${initial}</div>`;
-  const role = USER_ROLE_LABELS[state.auth.status] || USER_ROLE_LABELS.approved;
+  const role = userRoleLabel(state.auth.status);
   // Solo alguien con allowlist propio (admin/approved) puede editar su
   // nickname — pendiente/rechazado todavía no tiene ese documento, así
   // que ni se les ofrece (guardar fallaría contra un doc inexistente).
@@ -2785,19 +2905,19 @@ function renderUserBadge(){
   const lang = currentLang();
   const nicknameBlock = !canEditNickname ? "" : nicknameEditing ? `
     <div class="um-nickname-form">
-      <input type="text" id="nicknameInput" value="${esc(nicknameDraft)}" maxlength="20" placeholder="tu-nickname" autocomplete="off">
+      <input type="text" id="nicknameInput" value="${esc(nicknameDraft)}" maxlength="20" placeholder="${esc(t("tu-nickname","your-nickname","seu-nickname","הכינוי-שלך"))}" autocomplete="off">
       ${nicknameError ? `<div class="form-error">${esc(nicknameError)}</div>` : ""}
       <div class="modal-actions" style="justify-content:center; margin-top:8px;">
-        <button type="button" class="btn-secondary" data-action="cancel-edit-nickname">Cancelar</button>
-        <button type="button" class="btn-primary" data-action="save-nickname">Guardar</button>
+        <button type="button" class="btn-secondary" data-action="cancel-edit-nickname">${t("Cancelar","Cancel","Cancelar","ביטול")}</button>
+        <button type="button" class="btn-primary" data-action="save-nickname">${t("Guardar","Save","Salvar","שמירה")}</button>
       </div>
     </div>` : `
     <div class="um-nickname">
       <span>@${esc(myNickname())}</span>
-      <button type="button" class="um-nickname-edit" data-action="edit-nickname" title="Editar tu @nickname" aria-label="Editar tu @nickname">✏️</button>
+      <button type="button" class="um-nickname-edit" data-action="edit-nickname" title="${esc(t("Editar tu @nickname","Edit your @nickname","Editar seu @nickname","עריכת ה-@nickname שלך"))}" aria-label="${esc(t("Editar tu @nickname","Edit your @nickname","Editar seu @nickname","עריכת ה-@nickname שלך"))}">✏️</button>
     </div>`;
   userBadgeEl.innerHTML = `
-    <button class="avatar-btn${userMenuOpen ? " open" : ""}" data-action="toggle-user-menu" title="${esc(u.displayName)}" aria-label="Cuenta">${avatar}</button>
+    <button class="avatar-btn${userMenuOpen ? " open" : ""}" data-action="toggle-user-menu" title="${esc(u.displayName)}" aria-label="${esc(t("Cuenta","Account","Conta","חשבון"))}">${avatar}</button>
     ${userMenuOpen ? `
       <div class="user-menu">
         ${menuAvatar}
@@ -2805,14 +2925,14 @@ function renderUserBadge(){
         <div class="um-email">${esc(u.email)}</div>
         <div class="um-role ${role.cls}">${role.text}</div>
         ${nicknameBlock}
-        <div class="um-segmented um-lang" role="group" aria-label="Idioma">
+        <div class="um-segmented um-lang" role="group" aria-label="${esc(t("Idioma","Language","Idioma","שפה"))}">
           ${LANGS.map(l=>`<button type="button" class="${lang===l.key?"active":""}" data-action="set-lang" data-lang="${l.key}" aria-pressed="${lang===l.key}" title="${esc(l.name)}">${l.label}</button>`).join("")}
         </div>
-        <div class="um-segmented um-theme" role="group" aria-label="Tono de la página">
-          <button type="button" class="${theme === "light" ? "active" : ""}" data-action="set-theme" data-theme="light" aria-pressed="${theme === "light"}">☀️ Claro</button>
-          <button type="button" class="${theme === "dark" ? "active" : ""}" data-action="set-theme" data-theme="dark" aria-pressed="${theme === "dark"}">🌙 Oscuro</button>
+        <div class="um-segmented um-theme" role="group" aria-label="${esc(t("Tono de la página","Page tone","Tom da página","גוון העמוד"))}">
+          <button type="button" class="${theme === "light" ? "active" : ""}" data-action="set-theme" data-theme="light" aria-pressed="${theme === "light"}">☀️ ${t("Claro","Light","Claro","בהיר")}</button>
+          <button type="button" class="${theme === "dark" ? "active" : ""}" data-action="set-theme" data-theme="dark" aria-pressed="${theme === "dark"}">🌙 ${t("Oscuro","Dark","Escuro","כהה")}</button>
         </div>
-        <button class="um-signout" data-action="sign-out">Cerrar sesión</button>
+        <button class="um-signout" data-action="sign-out">${t("Cerrar sesión","Sign out","Sair","התנתקות")}</button>
       </div>` : ""}`;
 }
 
@@ -2826,12 +2946,15 @@ function renderMentionsBell(){
   const mentionCount = getUnseenMentionCount();
   const hasInvite = hasActiveCalendarInviteNotice();
   const count = mentionCount + (hasInvite ? 1 : 0);
+  const countLabel = count === 1
+    ? t("1 novedad", "1 update", "1 novidade", "עדכון אחד")
+    : t("{n} novedades", "{n} updates", "{n} novidades", "{n} עדכונים", { n: count });
   mentionsBellEl.innerHTML = `
-    <button class="bell-btn${mentionsMenuOpen ? " open" : ""}" data-action="toggle-mentions-menu" aria-label="Notificaciones">🔔</button>
-    ${count ? `<span class="mention-dot" title="${count} novedad${count===1?"":"es"}">${count > 9 ? "9+" : count}</span>` : ""}
+    <button class="bell-btn${mentionsMenuOpen ? " open" : ""}" data-action="toggle-mentions-menu" aria-label="${esc(t("Notificaciones","Notifications","Notificações","התראות"))}">🔔</button>
+    ${count ? `<span class="mention-dot" title="${esc(countLabel)}">${count > 9 ? "9+" : count}</span>` : ""}
     ${mentionsMenuOpen ? `
       <div class="mentions-menu">
-        <div class="mentions-menu-title">Novedades</div>
+        <div class="mentions-menu-title">${t("Novedades","Updates","Novidades","עדכונים")}</div>
         ${renderMentionsMenuItems(hasInvite)}
       </div>` : ""}`;
 }
@@ -2841,16 +2964,16 @@ function renderMentionsMenuItems(hasInvite){
   const inviteItem = hasInvite ? `
     <div class="calendar-invite-item">
       <button type="button" class="mention-item" data-action="goto-calendar-invite">
-        <span class="mi-author">📅 Calendar de LatAm</span>
-        <span class="mi-content">Te compartimos el calendario — revisá tu correo para aceptar la invitación.</span>
+        <span class="mi-author">📅 ${t("Calendar de LatAm","LatAm Calendar","Calendar da LatAm","היומן של LatAm")}</span>
+        <span class="mi-content">${t("Te compartimos el calendario — revisá tu correo para aceptar la invitación.","We shared the calendar with you — check your email to accept the invite.","Compartilhamos o calendário com você — confira seu e-mail para aceitar o convite.","שיתפנו איתך את היומן — בדוק/י את המייל שלך כדי לאשר את ההזמנה.")}</span>
         <span class="mi-date">${fmtDateTime(me && me.calendarInviteSentAt)}</span>
       </button>
-      <button type="button" class="ci-dismiss" data-action="dismiss-calendar-invite-notice">Ya la acepté ✕</button>
+      <button type="button" class="ci-dismiss" data-action="dismiss-calendar-invite-notice">${t("Ya la acepté ✕","Already accepted ✕","Já aceitei ✕","כבר אישרתי ✕")}</button>
     </div>` : "";
-  if(!recent.length && !inviteItem) return `<div class="mentions-empty">Todavía no te mencionaron.</div>`;
+  if(!recent.length && !inviteItem) return `<div class="mentions-empty">${t("Todavía no te mencionaron.","No one has mentioned you yet.","Ainda não te mencionaram.","עדיין לא אזכרו אותך.")}</div>`;
   return inviteItem + recent.map(m=>`
     <button type="button" class="mention-item" data-action="goto-mention" data-post-id="${esc(m.postId)}" ${m.replyId ? `data-reply-id="${esc(m.replyId)}"` : ""}>
-      <span class="mi-author">${esc(m.authorName||"Alguien")}</span>
+      <span class="mi-author">${esc(m.authorName || t("Alguien","Someone","Alguém","מישהו/י"))}</span>
       <span class="mi-content">${esc((m.content||"").slice(0,80))}</span>
       <span class="mi-date">${fmtDateTime(m.createdAt)}</span>
     </button>`).join("");
@@ -2865,10 +2988,12 @@ function doRender(){
   if(CONFIG_IS_PLACEHOLDER){
     tabsNav.classList.add("tabs-hidden"); btnNewPostEl.hidden = true; userBadgeEl.innerHTML = ""; mentionsBellEl.innerHTML = "";
     html += `<div class="setup-banner">
-      ⚠️ <strong>Falta configurar Firebase.</strong> Esta app todavía no tiene datos compartidos
-      porque <code>FIREBASE_CONFIG</code> tiene valores de ejemplo. Abrí <code>index.html</code>,
-      completá la configuración con los datos de tu proyecto de Firebase y volvé a publicar el
-      archivo. Instrucciones paso a paso en <code>README.md</code>.
+      ⚠️ <strong>${t("Falta configurar Firebase.","Firebase isn't configured yet.","Falta configurar o Firebase.",".עדיין צריך להגדיר את Firebase")}</strong> ${t(
+        `Esta app todavía no tiene datos compartidos porque <code>FIREBASE_CONFIG</code> tiene valores de ejemplo. Abrí <code>index.html</code>, completá la configuración con los datos de tu proyecto de Firebase y volvé a publicar el archivo. Instrucciones paso a paso en <code>README.md</code>.`,
+        `This app doesn't have shared data yet because <code>FIREBASE_CONFIG</code> still has placeholder values. Open <code>index.html</code>, fill in your Firebase project's settings and republish the file. Step-by-step instructions in <code>README.md</code>.`,
+        `Este app ainda não tem dados compartilhados porque <code>FIREBASE_CONFIG</code> tem valores de exemplo. Abra o <code>index.html</code>, preencha a configuração com os dados do seu projeto do Firebase e publique o arquivo de novo. Instruções passo a passo no <code>README.md</code>.`,
+        `לאפליקציה הזו עדיין אין נתונים משותפים כי ל-<code>FIREBASE_CONFIG</code> יש ערכי דוגמה. פתח/י את <code>index.html</code>, מלא/י את ההגדרות עם הפרטים של פרויקט ה-Firebase שלך ופרסמ/י מחדש את הקובץ. הוראות שלב-אחר-שלב ב-<code>README.md</code>.`
+      )}
     </div>`;
     viewRoot.innerHTML = html;
     return;
