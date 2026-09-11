@@ -1924,10 +1924,14 @@ async function initFirebase(){
 
 async function signIn(){
   try{
+    // Solo identidad. El permiso de Calendar (calendar.events, que es
+    // sobre TODOS los calendarios de la persona, no solo el compartido)
+    // se pide recién la primera vez que hace falta (ver
+    // ensureCalendarToken): quien solo lee nunca lo concede, y el token
+    // no queda en sessionStorage sin motivo. El token que devuelve este
+    // popup no sirve para Calendar, así que no se guarda.
     const provider = new authMod.GoogleAuthProvider();
-    provider.addScope("https://www.googleapis.com/auth/calendar.events");
-    const result = await authMod.signInWithPopup(auth, provider);
-    storeCalendarCredential(result);
+    await authMod.signInWithPopup(auth, provider);
   }catch(err){
     if(err.code !== "auth/popup-closed-by-user" && err.code !== "auth/cancelled-popup-request"){
       console.error("Error al iniciar sesión:", err);
@@ -2129,7 +2133,7 @@ function addDaysISO(dateStr, days){
   return dt.toISOString().slice(0,10);
 }
 
-function buildCalendarEvent(postData){
+function buildCalendarEvent(postData, postId){
   const sc = postData.scopes[0];
   const alcanceTipo = !sc ? "" : sc.type === "todo" ? "todo" : sc.type;
   const alcanceValor = (postData.scopes||[]).map(scopeLabel).join(" + ") || t("Sin definir","Not set","Não definido","לא הוגדר");
@@ -2159,17 +2163,34 @@ function buildCalendarEvent(postData){
     // sendUpdates=all en el fetch, ver syncToCalendar/updateCalendarEvent):
     // no alcanza con que figuren en la descripción como texto.
     attendees: participants.map(p => ({ email:p.email, displayName: p.name && p.name !== p.email ? p.name : undefined })),
+    // Datos propios de la app pegados al evento: la KEY del tipo (no el
+    // label, que cambia con el idioma o si el admin lo renombra) y el id
+    // del posteo. Es lo que usan extractTitleFromSummary/findCalendarEventId
+    // para reconocer el evento sin depender del texto del summary.
+    extendedProperties: { private: { raActivityType: postData.activityType, ...(postId ? { raPostId: postId } : {}) } },
   };
 }
+// Todas las formas conocidas del prefijo "Tipo: " de un summary: el label
+// actual (que puede ser el del admin), las 4 traducciones de fábrica y el
+// fallback "Actividad" — un evento creado con la app en inglés tiene que
+// reconocerse igual desde una sesión en español.
+function activityLabelVariants(activityType){
+  const out = new Set(["Actividad"]);
+  const cur = ACTIVITY_BY_KEY[activityType]?.label;
+  if(cur) out.add(cur);
+  const def = hasOwn(DEFAULT_ACTIVITY_LABELS, activityType) ? DEFAULT_ACTIVITY_LABELS[activityType] : null;
+  if(def) Object.values(def).forEach(l=>{ if(l) out.add(l); });
+  return [...out];
+}
 
-async function syncToCalendar(postData){
+async function syncToCalendar(postData, postId){
   const token = await ensureCalendarToken();
   if(!token) return { ok:false, reason:t("no se pudo autorizar el acceso a Calendar","couldn't authorize access to Calendar","não foi possível autorizar o acesso ao Calendar","לא ניתן היה לאשר את הגישה ליומן") };
   try{
     const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events?sendUpdates=all`, {
       method: "POST",
       headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify(buildCalendarEvent(postData)),
+      body: JSON.stringify(buildCalendarEvent(postData, postId)),
     });
     const body = await res.json().catch(()=>({}));
     if(!res.ok) throw new Error(body.error?.message || res.statusText);
@@ -2180,19 +2201,19 @@ async function syncToCalendar(postData){
   }
 }
 
-async function updateCalendarEvent(eventId, postData){
+async function updateCalendarEvent(eventId, postData, postId){
   const token = await ensureCalendarToken();
   if(!token) return { ok:false, reason:t("no se pudo autorizar el acceso a Calendar","couldn't authorize access to Calendar","não foi possível autorizar o acesso ao Calendar","לא ניתן היה לאשר את הגישה ליומן") };
   try{
     const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events/${encodeURIComponent(eventId)}?sendUpdates=all`, {
       method: "PATCH",
       headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify(buildCalendarEvent(postData)),
+      body: JSON.stringify(buildCalendarEvent(postData, postId)),
     });
     if(!res.ok){
       const body = await res.json().catch(()=>({}));
       // El evento pudo haberse borrado a mano en Calendar: si no existe más, tratarlo como éxito de creación en vez de fallar en silencio.
-      if(res.status === 404 || res.status === 410) return syncToCalendar(postData);
+      if(res.status === 404 || res.status === 410) return syncToCalendar(postData, postId);
       throw new Error(body.error?.message || res.statusText);
     }
     return { ok:true, eventId };
@@ -2237,8 +2258,14 @@ async function findCalendarEventId(post){
     const res = await fetch(url, { headers: { "Authorization": `Bearer ${token}` } });
     if(!res.ok) return null;
     const body = await res.json();
-    const expectedSummary = `${ACTIVITY_BY_KEY[post.activityType]?.label || "Actividad"}: ${post.title}`;
-    const matches = (body.items||[]).filter(ev => ev.summary === expectedSummary && ev.status !== "cancelled");
+    const live = (body.items||[]).filter(ev => ev.status !== "cancelled");
+    // Primero por el id del posteo pegado al evento (eventos creados a
+    // partir de esta versión); si no, por summary en cualquiera de los
+    // idiomas/labels conocidos del tipo.
+    const byId = live.filter(ev => ev.extendedProperties?.private?.raPostId === post.id);
+    if(byId.length === 1) return byId[0].id;
+    const expected = new Set(activityLabelVariants(post.activityType).map(l => `${l}: ${post.title}`));
+    const matches = live.filter(ev => expected.has(ev.summary));
     return matches.length === 1 ? matches[0].id : null;
   }catch(err){
     console.error("Error buscando el evento existente en Calendar:", err);
@@ -2291,6 +2318,9 @@ async function fetchCalendarChanges(syncToken){
     const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events?${params}`);
     if(res.status === 410) return { needsFullResync:true };
     const body = await res.json();
+    // 410 es "token vencido"; un token de OTRO calendario (cambió el ID en
+    // Configuración) vuelve como 400 "Invalid sync token" — mismo remedio.
+    if(res.status === 400 && syncToken && /sync ?token/i.test(body.error?.message || "")) return { needsFullResync:true };
     if(!res.ok) throw new Error(body.error?.message || res.statusText);
     events.push(...(body.items||[]));
     pageToken = body.nextPageToken || null;
@@ -2315,9 +2345,33 @@ function calendarEventDates(ev){
 // El "summary" que la app manda a Calendar lleva el prefijo "Tipo: " (ver
 // buildCalendarEvent) — para leer el título real hay que sacarlo, si está.
 function extractTitleFromSummary(summary, activityType){
-  const prefix = `${ACTIVITY_BY_KEY[activityType]?.label || ""}: `;
   const s = summary || "";
-  return s.startsWith(prefix) ? s.slice(prefix.length) : s;
+  // Antes solo se sacaba el label ACTUAL: con la app en otro idioma (o el
+  // tipo renombrado), "Visita: Reunión" no matcheaba "Visit: " y el
+  // título del posteo quedaba con el prefijo pegado, más una respuesta
+  // falsa de "se actualizó desde Calendar".
+  for(const label of activityLabelVariants(activityType)){
+    const prefix = `${label}: `;
+    if(s.startsWith(prefix)) return s.slice(prefix.length);
+  }
+  return s;
+}
+
+// Los posteos importados desde Calendar usan un id de documento derivado
+// del id del evento, y se crean dentro de una transacción que primero
+// mira si ya existe: el poll de 30 s corre en TODOS los navegadores
+// abiertos, y dos que veían el mismo evento nuevo con ~1 s de diferencia
+// lo creaban los dos (con addDoc, ids distintos → dos posteos iguales).
+function importedPostDocId(eventId){
+  return "cal_" + String(eventId).replace(/[^A-Za-z0-9_-]/g, "").slice(0, 59);
+}
+async function createImportedPost(ev, data){
+  const ref = fb.doc(db, "posts", importedPostDocId(ev.id));
+  await fb.runTransaction(db, async tx => {
+    const snap = await tx.get(ref);
+    if(snap.exists()) return;
+    tx.set(ref, { ...data, createdAt: fb.serverTimestamp() });
+  });
 }
 
 async function applyCalendarEventToPosts(ev){
@@ -2380,7 +2434,23 @@ async function applyCalendarEventToPosts(ev){
   // eso sumaría a los 32 países en los conteos de Países/Mapa antes de
   // que alguien lo revise). Queda marcado como "sin definir" en la
   // tarjeta hasta que alguien lo edite y le ponga el lugar real.
-  await createPost({
+  // Antes de importar como posteo nuevo: ¿es un evento que la app ya creó
+  // pero cuyo vínculo (calendarEventId) no se llegó a guardar? Se busca
+  // por el id de posteo pegado al evento, o por título+fecha+tipo en
+  // cualquiera de los idiomas del label. Si aparece, se vincula en vez de
+  // duplicar — los posteos no se pueden borrar después.
+  const raPostId = ev.extendedProperties?.private?.raPostId;
+  const summary = String(ev.summary || "");
+  const orphan = state.posts.find(p => !p.calendarEventId && !p.cancelled && (
+    (raPostId && p.id === raPostId) ||
+    (p.startDate === startDate && CALENDAR_SYNC_TYPES.has(p.activityType) &&
+      activityLabelVariants(p.activityType).some(l => `${l}: ${p.title}` === summary))
+  ));
+  if(orphan){
+    await updatePostDoc(orphan.id, { calendarEventId: ev.id });
+    return;
+  }
+  await createImportedPost(ev, {
     title: String(ev.summary || t("(Sin título)","(Untitled)","(Sem título)","(ללא כותרת)")).slice(0, 140),
     content: String(ev.description || t("Creado automáticamente desde Google Calendar.","Automatically created from Google Calendar.","Criado automaticamente a partir do Google Calendar.",".נוצר אוטומטית מ-Google Calendar")).slice(0, 5000),
     startDate, endDate, date:startDate, startTime, endTime,
@@ -2546,6 +2616,11 @@ function recomputeAuthStatus(){
 }
 
 async function onAuthChanged(user){
+  // El poll de Calendar solo se paraba en doSignOut(): un cierre de
+  // sesión desde otra pestaña o un token vencido lo dejaba pegándole a
+  // Google y a Firestore (con permiso denegado) cada 30 s. Si la cuenta
+  // sigue aprobada, el snapshot de posts lo vuelve a arrancar.
+  stopCalendarAutoSync();
   if(unsubscribeData){ unsubscribeData(); unsubscribeData = null; }
   if(unsubscribeRequests){ unsubscribeRequests(); unsubscribeRequests = null; }
   if(unsubAllowlist){ unsubAllowlist(); unsubAllowlist = null; }
@@ -2986,6 +3061,11 @@ function buildEditSummary(original, next){
 // lo actualiza si ya existía, o lo borra si dejó de ser un tipo que
 // sincroniza).
 async function updatePostAndSync(postId, original, newData){
+  // Un evento cancelado ya no tiene evento en Calendar (se borró al
+  // cancelar): editarlo actualiza solo el posteo. Sin este corte,
+  // updateCalendarEvent daba 404 y "recreaba" el evento — con
+  // invitaciones nuevas para todos — de algo que el equipo canceló.
+  const skipCalendar = !!original.cancelled;
   const patch = {
     title:newData.title, content:newData.content, startDate:newData.startDate, endDate:newData.endDate,
     date:newData.startDate, startTime:newData.startTime||null, endTime:newData.endTime||null,
@@ -3004,6 +3084,7 @@ async function updatePostAndSync(postId, original, newData){
     });
   }
 
+  if(skipCalendar) return { ok:true };
   const willSync = CALENDAR_SYNC_TYPES.has(newData.activityType);
   let eventId = original.calendarEventId;
   if(!eventId && CALENDAR_SYNC_TYPES.has(original.activityType)){
@@ -3015,7 +3096,7 @@ async function updatePostAndSync(postId, original, newData){
 
   let calResult = { ok:true };
   if(eventId && willSync){
-    calResult = await updateCalendarEvent(eventId, newData);
+    calResult = await updateCalendarEvent(eventId, newData, postId);
     if(calResult.ok && calResult.eventId !== eventId){
       await updatePostDoc(postId, { calendarEventId: calResult.eventId }).catch(()=>{});
     }
@@ -3023,7 +3104,7 @@ async function updatePostAndSync(postId, original, newData){
     calResult = await deleteCalendarEvent(eventId);
     if(calResult.ok) await updatePostDoc(postId, { calendarEventId: null }).catch(()=>{});
   } else if(!eventId && willSync){
-    calResult = await syncToCalendar(newData);
+    calResult = await syncToCalendar(newData, postId);
     if(calResult.ok && calResult.eventId) await updatePostDoc(postId, { calendarEventId: calResult.eventId }).catch(()=>{});
   }
   return calResult;
@@ -3052,6 +3133,9 @@ async function cancelPost(post){
     let calResult;
     if(eventId){
       calResult = await deleteCalendarEvent(eventId);
+      // Sin el vínculo, una edición posterior del posteo cancelado no
+      // intenta tocar (ni recrear) un evento que ya no existe.
+      if(calResult.ok) await updatePostDoc(post.id, { calendarEventId: null }).catch(()=>{});
     } else if(CALENDAR_SYNC_TYPES.has(post.activityType)){
       calResult = { ok:false, reason:t(
         "no se encontró un evento de Calendar que coincida (puede que ya se haya borrado a mano, o el título cambió demasiado) — revisalo a mano si hace falta",
@@ -3350,7 +3434,13 @@ const translationsShown = new Set(); // keys mostrando la traducción ahora (en 
 async function fetchTranslation(text, targetLang){
   if(!text || !text.trim()) return "";
   const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=es|${targetLang}`;
-  const res = await fetch(url);
+  // Con tope de tiempo (como fetchPublicIp): si el servicio no contesta,
+  // el botón quedaba en "Traduciendo…" deshabilitado para siempre.
+  const ctrl = new AbortController();
+  const timer = setTimeout(()=>ctrl.abort(), 10000);
+  let res;
+  try{ res = await fetch(url, { signal: ctrl.signal }); }
+  finally{ clearTimeout(timer); }
   if(!res.ok) throw new Error("HTTP " + res.status);
   const data = await res.json();
   const translated = data && data.responseData && data.responseData.translatedText;
@@ -3392,6 +3482,10 @@ async function toggleContentTranslation(scope, id, title, content){
   }catch(err){
     console.error("Error traduciendo contenido:", err);
     contentTranslations[key] = { lang, loading:false, error:true };
+    // Que el próximo click vuelva a intentar, no que "muestre" un error
+    // como si fuera la traducción. (Se hace acá y no en el render: un
+    // render de fondo — llega una respuesta — borraba el mensaje.)
+    translationsShown.delete(key);
   }
   render();
 }
@@ -3409,9 +3503,10 @@ function withContentTranslation(scope, id, title, content){
   if(currentLang() !== "es"){
     if(showTranslated && entry && entry.loading){
       toggleHtml = `<button type="button" class="translate-toggle" disabled>🌐 ${t("Traduciendo…","Translating…","Traduzindo…","...מתרגם")}</button>`;
-    } else if(showTranslated && entry && entry.error){
+    } else if(entry && entry.error && entry.lang === currentLang()){
+      // El error queda visible (sobrevive a renders de fondo) hasta que
+      // la persona reintenta o cambia de idioma.
       toggleHtml = `<button type="button" class="translate-toggle" data-action="toggle-translation" data-scope="${scope}" data-id="${esc(id)}" data-title="${esc(title||"")}" data-content="${esc(content)}">⚠️ ${t("No se pudo traducir. Reintentar","Couldn't translate. Retry","Não foi possível traduzir. Tentar de novo","לא ניתן היה לתרגם. ניסיון חוזר")}</button>`;
-      translationsShown.delete(key); // que el próximo click vuelva a intentar, no que se quede "mostrando" un error
     } else if(showTranslated && entry && !entry.loading && !entry.error){
       displayTitle = title ? entry.title : title;
       displayContent = entry.content;
@@ -6021,7 +6116,12 @@ document.addEventListener("click", e=>{
     const id = d.calendarId.trim();
     if(!id){ d.error = t("Escribí el ID del calendario.","Type the calendar ID.","Escreva o ID do calendário.",".הקלד/י את מזהה היומן"); render(); return; }
     d.saving = true; d.error = ""; render();
-    fb.setDoc(fb.doc(db,"meta","preferences"), { calendarId: id }, { merge:true }).then(()=>{
+    // El syncToken es de UN calendario: con el ID nuevo, el token viejo
+    // devuelve 400 "Invalid sync token" (no 410) y el sync quedaba muerto
+    // hasta que alguien lo borrara a mano. Se resetea junto con el ID.
+    fb.setDoc(fb.doc(db,"meta","preferences"), { calendarId: id }, { merge:true })
+      .then(()=> id !== CALENDAR_ID ? setSyncMeta({ syncToken: null }) : null)
+      .then(()=>{
       d.saving = false; render();
     }).catch(err=>{
       console.error(err);
@@ -6227,8 +6327,14 @@ postForm.addEventListener("submit", async e=>{
       const postId = await createPost(postData);
       closeComposer();
       if(CALENDAR_SYNC_TYPES.has(postData.activityType)){
-        syncToCalendar(postData).then(res=>{
-          if(res.ok && res.eventId) updatePostDoc(postId, { calendarEventId: res.eventId }).catch(()=>{});
+        syncToCalendar(postData, postId).then(res=>{
+          // Si el vínculo no se guarda, el sync de vuelta (Calendar → app)
+          // no reconoce el evento y lo importa como posteo nuevo: se avisa
+          // en vez de tragarse el error.
+          if(res.ok && res.eventId) updatePostDoc(postId, { calendarEventId: res.eventId }).catch(err=>{
+            console.error("No se pudo guardar el vínculo con el evento de Calendar:", err);
+            showCalendarNotice({ ok:false, message:t("El evento se creó en Calendar pero no se pudo vincular al posteo ({msg}). Editá el posteo una vez para re-vincularlo.","The event was created in Calendar but couldn't be linked to the post ({msg}). Edit the post once to re-link it.","O evento foi criado no Calendar mas não foi possível vinculá-lo à postagem ({msg}). Edite a postagem uma vez para vinculá-lo de novo.","האירוע נוצר ביומן אך לא ניתן היה לקשר אותו לפוסט ({msg}). ערוך/ערכי את הפוסט פעם אחת כדי לקשר מחדש.",{msg:err.message}) });
+          });
           showCalendarNotice(res.ok
             ? { ok:true, message:t("Se sumó también al Calendar compartido de LatAm.","It was also added to LatAm's shared Calendar.","Também foi somado ao Calendar compartilhado da LatAm.","הוא נוסף גם ליומן המשותף של LatAm.") }
             : { ok:false, message:t("El posteo se guardó, pero no se pudo sumar al Calendar ({reason}).","The post was saved, but it couldn't be added to the Calendar ({reason}).","A postagem foi salva, mas não foi possível somar ao Calendar ({reason}).","הפוסט נשמר, אך לא ניתן היה להוסיפו ליומן ({reason}).",{reason:res.reason}) });
