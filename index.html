@@ -1697,7 +1697,7 @@ async function ensureCalendarAclToken(){
 
 async function shareCalendarWith(email){
   const token = await ensureCalendarAclToken();
-  if(!token) return { ok:false, reason:"no se pudo autorizar el permiso para compartir el Calendar" };
+  if(!token) return { ok:false, reason:t("no se pudo autorizar el permiso para compartir el Calendar","couldn't authorize permission to share the Calendar","não foi possível autorizar a permissão para compartilhar o Calendar","לא ניתן היה לאשר את ההרשאה לשיתוף היומן") };
   try{
     const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/acl`, {
       method: "POST",
@@ -1737,7 +1737,7 @@ async function resendCalendarInvite(email){
 
 async function unshareCalendarWith(email){
   const token = await ensureCalendarAclToken();
-  if(!token) return { ok:false, reason:"no se pudo autorizar el permiso para sacar del Calendar" };
+  if(!token) return { ok:false, reason:t("no se pudo autorizar el permiso para sacar del Calendar","couldn't authorize permission to remove from the Calendar","não foi possível autorizar a permissão para tirar do Calendar","לא ניתן היה לאשר את ההרשאה להסרה מהיומן") };
   try{
     const ruleId = `user:${email}`;
     const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/acl/${encodeURIComponent(ruleId)}`, {
@@ -1797,7 +1797,7 @@ function buildCalendarEvent(postData){
 
 async function syncToCalendar(postData){
   const token = await ensureCalendarToken();
-  if(!token) return { ok:false, reason:"no se pudo autorizar el acceso a Calendar" };
+  if(!token) return { ok:false, reason:t("no se pudo autorizar el acceso a Calendar","couldn't authorize access to Calendar","não foi possível autorizar o acesso ao Calendar","לא ניתן היה לאשר את הגישה ליומן") };
   try{
     const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events?sendUpdates=all`, {
       method: "POST",
@@ -1815,7 +1815,7 @@ async function syncToCalendar(postData){
 
 async function updateCalendarEvent(eventId, postData){
   const token = await ensureCalendarToken();
-  if(!token) return { ok:false, reason:"no se pudo autorizar el acceso a Calendar" };
+  if(!token) return { ok:false, reason:t("no se pudo autorizar el acceso a Calendar","couldn't authorize access to Calendar","não foi possível autorizar o acesso ao Calendar","לא ניתן היה לאשר את הגישה ליומן") };
   try{
     const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events/${encodeURIComponent(eventId)}?sendUpdates=all`, {
       method: "PATCH",
@@ -1837,7 +1837,7 @@ async function updateCalendarEvent(eventId, postData){
 
 async function deleteCalendarEvent(eventId){
   const token = await ensureCalendarToken();
-  if(!token) return { ok:false, reason:"no se pudo autorizar el acceso a Calendar" };
+  if(!token) return { ok:false, reason:t("no se pudo autorizar el acceso a Calendar","couldn't authorize access to Calendar","não foi possível autorizar o acesso ao Calendar","לא ניתן היה לאשר את הגישה ליומן") };
   try{
     const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events/${encodeURIComponent(eventId)}`, {
       method: "DELETE",
@@ -2639,12 +2639,18 @@ async function updatePostAndSync(postId, original, newData){
 }
 
 async function cancelPost(post){
-  if(!confirm(`¿Cancelar "${post.title}"? Queda marcado como cancelado (no se borra) y se avisa en el hilo.`)) return;
+  if(!confirm(t(
+    `¿Cancelar "{title}"? Queda marcado como cancelado (no se borra) y se avisa en el hilo.`,
+    `Cancel "{title}"? It's marked as cancelled (not deleted) and it's announced in the thread.`,
+    `Cancelar "{title}"? Fica marcado como cancelado (não é apagado) e se avisa no tópico.`,
+    `לבטל את "{title}"? הוא יסומן כמבוטל (לא יימחק) ותישלח הודעה בשרשור.`,
+    { title: post.title }
+  ))) return;
   try{
     await updatePostDoc(post.id, { cancelled:true, lastEditedAt: fb.serverTimestamp(), lastEditedBy: state.auth.user.displayName });
     await createReply(post.id, {
       authorName: state.auth.user.displayName, authorEmail: state.auth.user.email,
-      content: `🚫 ${state.auth.user.displayName} canceló este evento.`, system:true, icon:"🚫",
+      content: t("🚫 {n} canceló este evento.","🚫 {n} cancelled this event.","🚫 {n} cancelou este evento.","🚫 {n} ביטל/ה את האירוע הזה.",{n:state.auth.user.displayName}), system:true, icon:"🚫",
       scopes:[], images:[], links:[],
     });
     let eventId = post.calendarEventId;
@@ -2656,16 +2662,27 @@ async function cancelPost(post){
     if(eventId){
       calResult = await deleteCalendarEvent(eventId);
     } else if(CALENDAR_SYNC_TYPES.has(post.activityType)){
-      calResult = { ok:false, reason:"no se encontró un evento de Calendar que coincida (puede que ya se haya borrado a mano, o el título cambió demasiado) — revisalo a mano si hace falta" };
+      calResult = { ok:false, reason:t(
+        "no se encontró un evento de Calendar que coincida (puede que ya se haya borrado a mano, o el título cambió demasiado) — revisalo a mano si hace falta",
+        "no matching Calendar event was found (it may have already been deleted by hand, or the title changed too much) — check it manually if needed",
+        "não foi encontrado um evento do Calendar que coincida (pode já ter sido apagado manualmente, ou o título mudou demais) — revise manualmente se for preciso",
+        "לא נמצא אירוע תואם ביומן (אולי הוא כבר נמחק ידנית, או שהכותרת השתנתה יותר מדי) — בדוק/י ידנית במידת הצורך"
+      ) };
     } else {
       calResult = { ok:true }; // nunca había sincronizado (era Rutina), no hay nada que borrar
     }
     showCalendarNotice(calResult.ok
-      ? { ok:true, message:`Se canceló "${post.title}".` }
-      : { ok:false, message:`Se canceló "${post.title}" en la app, pero no se pudo sacar del Calendar (${calResult.reason}).` });
+      ? { ok:true, message: t(`Se canceló "{title}".`,`"{title}" was cancelled.`,`"{title}" foi cancelado.`,`בוטל "{title}".`,{title:post.title}) }
+      : { ok:false, message: t(
+          `Se canceló "{title}" en la app, pero no se pudo sacar del Calendar ({reason}).`,
+          `"{title}" was cancelled in the app, but it couldn't be removed from the Calendar ({reason}).`,
+          `"{title}" foi cancelado no app, mas não foi possível tirar do Calendar ({reason}).`,
+          `בוטל "{title}" באפליקציה, אך לא ניתן היה להסירו מהיומן ({reason}).`,
+          { title: post.title, reason: calResult.reason }
+        ) });
   }catch(err){
     console.error(err);
-    alert("No se pudo cancelar: " + err.message);
+    alert(t("No se pudo cancelar: {msg}","Couldn't cancel: {msg}","Não foi possível cancelar: {msg}","{msg} :הביטול נכשל",{msg:err.message}));
   }
 }
 
@@ -3178,8 +3195,8 @@ function lastLoginByEmail(){
   const map = {};
   state.auditLog.forEach(e=>{
     if(e.type !== "login" || !e.actorEmail) return;
-    const t = tsToMillis(e.createdAt) || 0;
-    if(!map[e.actorEmail] || t > map[e.actorEmail]) map[e.actorEmail] = t;
+    const ts = tsToMillis(e.createdAt) || 0;
+    if(!map[e.actorEmail] || ts > map[e.actorEmail]) map[e.actorEmail] = ts;
   });
   return map;
 }
@@ -5029,9 +5046,9 @@ function selectParticipantMatch(match){
 // confirmar la opción resaltada con Tab o Enter (Escape los cierra sin
 // elegir nada) — en vez de depender solo del mouse.
 document.addEventListener("keydown", e=>{
-  const t = e.target;
-  if(t.dataset.placeScope){
-    const draft = getDraftFor(t.dataset.placeScope, t.dataset.placeOwner);
+  const el = e.target;
+  if(el.dataset.placeScope){
+    const draft = getDraftFor(el.dataset.placeScope, el.dataset.placeOwner);
     const matches = getPlaceMatches(draft.placeQuery);
     if(!matches.length) return;
     if(e.key === "ArrowDown"){
@@ -5044,14 +5061,14 @@ document.addEventListener("keydown", e=>{
       render();
     } else if(e.key === "Tab" || e.key === "Enter"){
       e.preventDefault();
-      selectPlaceMatch(t.dataset.placeScope, t.dataset.placeOwner, matches[draft.placeHighlight]);
+      selectPlaceMatch(el.dataset.placeScope, el.dataset.placeOwner, matches[draft.placeHighlight]);
     } else if(e.key === "Escape"){
       draft.placeQuery = ""; draft.placeHighlight = 0; render();
     }
     return;
   }
-  if(t.dataset.mentionScope){
-    const draft = getDraftFor(t.dataset.mentionScope, t.dataset.mentionOwner);
+  if(el.dataset.mentionScope){
+    const draft = getDraftFor(el.dataset.mentionScope, el.dataset.mentionOwner);
     if(draft.mentionQuery == null) return;
     const matches = getMentionMatches(draft);
     if(!matches.length) return;
@@ -5065,18 +5082,18 @@ document.addEventListener("keydown", e=>{
       render();
     } else if(e.key === "Tab" || e.key === "Enter"){
       e.preventDefault();
-      selectMentionMatch(t.dataset.mentionScope, t.dataset.mentionOwner, t.id, matches[draft.mentionHighlight]);
+      selectMentionMatch(el.dataset.mentionScope, el.dataset.mentionOwner, el.id, matches[draft.mentionHighlight]);
     } else if(e.key === "Escape"){
       draft.mentionQuery = null; draft.mentionHighlight = 0; render();
     }
     return;
   }
-  if(t.id === "nicknameInput"){
+  if(el.id === "nicknameInput"){
     if(e.key === "Enter"){ e.preventDefault(); saveNicknameEdit(); }
     else if(e.key === "Escape"){ nicknameEditing = false; nicknameError = null; render(); }
     return;
   }
-  if(t.id === "cParticipantQuery"){
+  if(el.id === "cParticipantQuery"){
     const draft = composerDraft;
     const matches = getParticipantMatches(draft);
     if(!matches.length) return;
@@ -5111,10 +5128,10 @@ document.addEventListener("click", e=>{
     zoneFilterOpen = false; render();
   }
 
-  const t = e.target.closest("[data-action]");
-  if(!t) return;
-  const action = t.dataset.action;
-  const postId = t.dataset.postId;
+  const el = e.target.closest("[data-action]");
+  if(!el) return;
+  const action = el.dataset.action;
+  const postId = el.dataset.postId;
 
   if(action === "toggle-type-filter"){
     typeFilterOpen = !typeFilterOpen;
@@ -5123,11 +5140,11 @@ document.addEventListener("click", e=>{
     zoneFilterOpen = !zoneFilterOpen;
     render();
   } else if(action === "toggle-type"){
-    const key = t.dataset.key;
+    const key = el.dataset.key;
     state.filters.types.has(key) ? state.filters.types.delete(key) : state.filters.types.add(key);
     render();
   } else if(action === "toggle-zone"){
-    const key = t.dataset.key;
+    const key = el.dataset.key;
     state.filters.zones.has(key) ? state.filters.zones.delete(key) : state.filters.zones.add(key);
     render();
   } else if(action === "clear-place"){
@@ -5137,22 +5154,22 @@ document.addEventListener("click", e=>{
   } else if(action === "audit-load-more"){
     auditVisibleCount += 30; render();
   } else if(action === "audit-toggle-type"){
-    const key = t.dataset.key;
+    const key = el.dataset.key;
     state.auditFilters.types.has(key) ? state.auditFilters.types.delete(key) : state.auditFilters.types.add(key);
     auditVisibleCount = 30; render();
   } else if(action === "audit-clear-filters"){
     state.auditFilters = { text:"", types:new Set() }; auditVisibleCount = 30; render();
   } else if(action === "audit-sort"){
-    const key = t.dataset.key;
+    const key = el.dataset.key;
     if(auditSort.key === key) auditSort.dir = auditSort.dir === "asc" ? "desc" : "asc";
     else auditSort = { key, dir: key === "date" ? "desc" : "asc" };
     auditVisibleCount = 30; render();
   } else if(action === "acceso-section"){
-    state.solicitudesSection = t.dataset.key; render();
+    state.solicitudesSection = el.dataset.key; render();
   } else if(action === "usuarios-sort"){
-    state.usuariosFilters.sort = t.dataset.key; render();
+    state.usuariosFilters.sort = el.dataset.key; render();
   } else if(action === "open-lightbox"){
-    openLightbox(t.dataset.src);
+    openLightbox(el.dataset.src);
   } else if(action === "toggle-reply"){
     if(openReplyForms.has(postId)){ openReplyForms.delete(postId); }
     else{ openReplyForms.add(postId); openThreads.add(postId); }
@@ -5169,21 +5186,21 @@ document.addEventListener("click", e=>{
   } else if(action === "cancel-reply"){
     openReplyForms.delete(postId); render();
   } else if(action === "toggle-like"){
-    t.dataset.replyId ? toggleReplyLike(postId, t.dataset.replyId) : togglePostLike(postId);
+    el.dataset.replyId ? toggleReplyLike(postId, el.dataset.replyId) : togglePostLike(postId);
   } else if(action === "toggle-nested-reply"){
-    const replyId = t.dataset.replyId;
+    const replyId = el.dataset.replyId;
     openNestedReplyForms.has(replyId) ? openNestedReplyForms.delete(replyId) : openNestedReplyForms.add(replyId);
     render();
   } else if(action === "cancel-nested-reply"){
-    openNestedReplyForms.delete(t.dataset.replyId); render();
+    openNestedReplyForms.delete(el.dataset.replyId); render();
   } else if(action === "submit-nested-reply"){
-    submitNestedReply(t.dataset.postId, t.dataset.replyId);
+    submitNestedReply(el.dataset.postId, el.dataset.replyId);
   } else if(action === "toggle-reply-extra-scope"){
     // manejado en 'change'
   } else if(action === "reply-add-link"){
     getReplyDraft(postId).links.push({ label:"", url:"" }); render();
   } else if(action === "nested-reply-add-link"){
-    getNestedReplyDraft(t.dataset.replyId).links.push({ label:"", url:"" }); render();
+    getNestedReplyDraft(el.dataset.replyId).links.push({ label:"", url:"" }); render();
   } else if(action === "post-add-link"){
     composerDraft.links.push({ label:"", url:"" }); render();
   } else if(action === "toggle-post-attach"){
@@ -5191,69 +5208,69 @@ document.addEventListener("click", e=>{
   } else if(action === "rutina-add-link"){
     rutinaDraft.links.push({ label:"", url:"" }); render();
   } else if(action === "rm-link"){
-    const scope = t.dataset.scope, ownerId = t.dataset.ownerId, idx = Number(t.dataset.idx);
+    const scope = el.dataset.scope, ownerId = el.dataset.ownerId, idx = Number(el.dataset.idx);
     getDraftFor(scope, ownerId).links.splice(idx,1); render();
   } else if(action === "reply-rm-image"){
-    getReplyDraft(postId).images.splice(Number(t.dataset.idx),1); render();
+    getReplyDraft(postId).images.splice(Number(el.dataset.idx),1); render();
   } else if(action === "nested-reply-rm-image"){
-    getNestedReplyDraft(t.dataset.replyId).images.splice(Number(t.dataset.idx),1); render();
+    getNestedReplyDraft(el.dataset.replyId).images.splice(Number(el.dataset.idx),1); render();
   } else if(action === "post-rm-image"){
-    composerDraft.images.splice(Number(t.dataset.idx),1); render();
+    composerDraft.images.splice(Number(el.dataset.idx),1); render();
   } else if(action === "rutina-rm-image"){
-    rutinaDraft.images.splice(Number(t.dataset.idx),1); render();
+    rutinaDraft.images.splice(Number(el.dataset.idx),1); render();
   } else if(action === "post-rm-file"){
-    composerDraft.files.splice(Number(t.dataset.idx),1); render();
+    composerDraft.files.splice(Number(el.dataset.idx),1); render();
   } else if(action === "reply-rm-file"){
-    getReplyDraft(postId).files.splice(Number(t.dataset.idx),1); render();
+    getReplyDraft(postId).files.splice(Number(el.dataset.idx),1); render();
   } else if(action === "nested-reply-rm-file"){
-    getNestedReplyDraft(t.dataset.replyId).files.splice(Number(t.dataset.idx),1); render();
+    getNestedReplyDraft(el.dataset.replyId).files.splice(Number(el.dataset.idx),1); render();
   } else if(action === "rutina-rm-file"){
-    rutinaDraft.files.splice(Number(t.dataset.idx),1); render();
+    rutinaDraft.files.splice(Number(el.dataset.idx),1); render();
   } else if(action === "submit-rutina"){
     submitRutina();
   } else if(action === "pick-place"){
-    const draft = getDraftFor(t.dataset.scope, t.dataset.ownerId);
+    const draft = getDraftFor(el.dataset.scope, el.dataset.ownerId);
     const matches = getPlaceMatches(draft.placeQuery);
-    selectPlaceMatch(t.dataset.scope, t.dataset.ownerId, matches[Number(t.dataset.matchIdx)]);
+    selectPlaceMatch(el.dataset.scope, el.dataset.ownerId, matches[Number(el.dataset.matchIdx)]);
   } else if(action === "pick-mention"){
-    selectMentionMatch(t.dataset.scope, t.dataset.ownerId, t.dataset.textareaId, { nickname:t.dataset.nickname, email:t.dataset.email });
+    selectMentionMatch(el.dataset.scope, el.dataset.ownerId, el.dataset.textareaId, { nickname:el.dataset.nickname, email:el.dataset.email });
   } else if(action === "pick-participant"){
-    selectParticipantMatch(getParticipantMatches(composerDraft)[Number(t.dataset.matchIdx)]);
+    selectParticipantMatch(getParticipantMatches(composerDraft)[Number(el.dataset.matchIdx)]);
   } else if(action === "rm-participant"){
-    composerDraft.participants.splice(Number(t.dataset.idx), 1); render();
+    composerDraft.participants.splice(Number(el.dataset.idx), 1); render();
   } else if(action === "use-city-preset"){
-    const sd = getDraftFor(t.dataset.scope, t.dataset.ownerId).scopeDraft;
+    const sd = getDraftFor(el.dataset.scope, el.dataset.ownerId).scopeDraft;
     sd.cityUseCustom = false; sd.city = ""; render();
   } else if(action === "add-scope"){
-    commitScope(t.dataset.scope, t.dataset.ownerId);
+    commitScope(el.dataset.scope, el.dataset.ownerId);
   } else if(action && action.startsWith("rm-scope-")){
-    const scope = action.replace("rm-scope-",""); const ownerId = t.dataset.ownerId; const idx = Number(t.dataset.idx);
+    const scope = action.replace("rm-scope-",""); const ownerId = el.dataset.ownerId; const idx = Number(el.dataset.idx);
     getDraftFor(scope, ownerId).scopes.splice(idx,1); render();
   } else if(action === "submit-reply"){
     submitReply(postId);
   } else if(action === "paises-subview"){
-    state.paisesSubview = t.dataset.key; state.countryDrill = null; render();
+    state.paisesSubview = el.dataset.key; state.countryDrill = null; render();
   } else if(action === "toggle-paises-zone"){
-    const key = t.dataset.key;
+    const key = el.dataset.key;
     state.paisesZoneFilter.has(key) ? state.paisesZoneFilter.delete(key) : state.paisesZoneFilter.add(key);
     state.countryDrill = null;
     render();
   } else if(action === "drill-country"){
-    state.countryDrill = t.dataset.country; render();
+    state.countryDrill = el.dataset.country; render();
   } else if(action === "drill-clear"){
     state.countryDrill = null; render();
   } else if(action === "goto-country"){
-    state.filters.place = { kind:"country", country:t.dataset.country };
+    state.filters.place = { kind:"country", country:el.dataset.country };
     state.view = "memoria"; state.countryDrill = null; render();
   } else if(action === "goto-city"){
-    state.filters.place = { kind:"city", country:t.dataset.country, city:t.dataset.city };
+    state.filters.place = { kind:"city", country:el.dataset.country, city:el.dataset.city };
     state.view = "memoria"; state.countryDrill = null; render();
   } else if(action === "dismiss-calendar-notice"){
     clearTimeout(calendarNoticeTimer);
     calendarToastEl.hidden = true;
     calendarToastEl.classList.remove("fading");
   } else if(action === "memoria-order"){
-    state.memoriaOrder = t.dataset.key; render();
+    state.memoriaOrder = el.dataset.key; render();
   } else if(action === "sync-calendar"){
     syncFromCalendar({ silent:false });
   } else if(action === "google-signin"){
@@ -5268,9 +5285,9 @@ document.addEventListener("click", e=>{
   } else if(action === "close-tour"){
     closeTour();
   } else if(action === "set-theme"){
-    setTheme(t.dataset.theme === "dark" ? "dark" : "light");
+    setTheme(el.dataset.theme === "dark" ? "dark" : "light");
   } else if(action === "set-lang"){
-    setLang(t.dataset.lang);
+    setLang(el.dataset.lang);
   } else if(action === "edit-nickname"){
     nicknameEditing = true;
     nicknameDraft = myNickname();
@@ -5289,7 +5306,7 @@ document.addEventListener("click", e=>{
     render();
   } else if(action === "goto-mention"){
     mentionsMenuOpen = false;
-    gotoMention(t.dataset.postId, t.dataset.replyId || null);
+    gotoMention(el.dataset.postId, el.dataset.replyId || null);
   } else if(action === "goto-calendar-invite"){
     mentionsMenuOpen = false;
     const me = myRosterEntry();
@@ -5304,47 +5321,65 @@ document.addEventListener("click", e=>{
     markCalendarInviteBellDismissed();
     render();
   } else if(action === "resend-calendar-invite"){
-    const email = t.dataset.email;
+    const email = el.dataset.email;
     resendCalendarInvite(email).then(res=>{
       showCalendarNotice(res.ok
-        ? { ok:true, message:`Se reenvió la invitación del Calendar a ${email}.` }
-        : { ok:false, message:`No se pudo reenviar la invitación a ${email} (${res.reason}).` });
-    }).catch(err=>{ console.error(err); alert("No se pudo reenviar la invitación: " + err.message); });
+        ? { ok:true, message: t("Se reenvió la invitación del Calendar a {email}.","The Calendar invite was resent to {email}.","O convite do Calendar foi reenviado para {email}.","הזמנת היומן נשלחה מחדש אל {email}.",{email}) }
+        : { ok:false, message: t("No se pudo reenviar la invitación a {email} ({reason}).","Couldn't resend the invite to {email} ({reason}).","Não foi possível reenviar o convite para {email} ({reason}).","לא ניתן היה לשלוח מחדש את ההזמנה אל {email} ({reason}).",{email,reason:res.reason}) });
+    }).catch(err=>{ console.error(err); alert(t("No se pudo reenviar la invitación: {msg}","Couldn't resend the invite: {msg}","Não foi possível reenviar o convite: {msg}","{msg} :לא ניתן היה לשלוח מחדש את ההזמנה",{msg:err.message})); });
   } else if(action === "sign-out"){
     userMenuOpen = false;
     doSignOut();
   } else if(action === "request-again"){
     requestAccessAgain();
   } else if(action === "approve-request"){
-    const email = t.dataset.email;
+    const email = el.dataset.email;
     approveRequest(email).then(()=>shareCalendarWith(email)).then(res=>{
       showCalendarNotice(res.ok
-        ? { ok:true, message:`${email} ya puede usar la app y cargar eventos al Calendar compartido de LatAm.` }
-        : { ok:false, message:`${email} ya puede usar la app, pero no se pudo compartirle el Calendar automáticamente (${res.reason}). Puede que ADMIN_EMAIL no sea el dueño del calendario "LatAm" — o compartíselo a mano desde Google Calendar.` });
-    }).catch(err=>{ console.error(err); alert("No se pudo aprobar: " + err.message); });
+        ? { ok:true, message: t("{email} ya puede usar la app y cargar eventos al Calendar compartido de LatAm.","{email} can now use the app and add events to LatAm's shared Calendar.","{email} já pode usar o app e adicionar eventos ao Calendar compartilhado da LatAm.","{email} יכול/ה כעת להשתמש באפליקציה ולהוסיף אירועים ליומן המשותף של LatAm.",{email}) }
+        : { ok:false, message: t(
+            `{email} ya puede usar la app, pero no se pudo compartirle el Calendar automáticamente ({reason}). Puede que ADMIN_EMAIL no sea el dueño del calendario "LatAm" — o compartíselo a mano desde Google Calendar.`,
+            `{email} can now use the app, but the Calendar couldn't be shared automatically ({reason}). ADMIN_EMAIL might not own the "LatAm" calendar — or share it by hand from Google Calendar.`,
+            `{email} já pode usar o app, mas não foi possível compartilhar o Calendar automaticamente ({reason}). Pode ser que ADMIN_EMAIL não seja o dono do calendário "LatAm" — ou compartilhe manualmente pelo Google Calendar.`,
+            `{email} יכול/ה כעת להשתמש באפליקציה, אך לא ניתן היה לשתף איתו/ה את היומן אוטומטית ({reason}). ייתכן ש-ADMIN_EMAIL אינו הבעלים של יומן "LatAm" — או שתף/י אותו ידנית מ-Google Calendar.`,
+            {email, reason: res.reason}
+          ) });
+    }).catch(err=>{ console.error(err); alert(t("No se pudo aprobar: {msg}","Couldn't approve: {msg}","Não foi possível aprovar: {msg}","{msg} :האישור נכשל",{msg:err.message})); });
   } else if(action === "share-calendar"){
-    const email = t.dataset.email;
+    const email = el.dataset.email;
     shareCalendarWith(email).then(res=>{
       showCalendarNotice(res.ok
-        ? { ok:true, message:`Se compartió el Calendar con ${email}.` }
-        : { ok:false, message:`No se pudo compartir el Calendar con ${email} (${res.reason}).` });
-    }).catch(err=>{ console.error(err); alert("No se pudo compartir: " + err.message); });
+        ? { ok:true, message: t("Se compartió el Calendar con {email}.","The Calendar was shared with {email}.","O Calendar foi compartilhado com {email}.","היומן שותף עם {email}.",{email}) }
+        : { ok:false, message: t("No se pudo compartir el Calendar con {email} ({reason}).","Couldn't share the Calendar with {email} ({reason}).","Não foi possível compartilhar o Calendar com {email} ({reason}).","לא ניתן היה לשתף את היומן עם {email} ({reason}).",{email,reason:res.reason}) });
+    }).catch(err=>{ console.error(err); alert(t("No se pudo compartir: {msg}","Couldn't share: {msg}","Não foi possível compartilhar: {msg}","{msg} :השיתוף נכשל",{msg:err.message})); });
   } else if(action === "reject-request"){
-    rejectRequest(t.dataset.email).catch(err=>{ console.error(err); alert("No se pudo rechazar: " + err.message); });
+    rejectRequest(el.dataset.email).catch(err=>{ console.error(err); alert(t("No se pudo rechazar: {msg}","Couldn't reject: {msg}","Não foi possível rejeitar: {msg}","{msg} :הדחייה נכשלה",{msg:err.message})); });
   } else if(action === "revoke-access"){
-    const email = t.dataset.email;
-    if(confirm(`¿Revocar el acceso de ${email}? Va a dejar de poder ver y cargar posteos, y se le va a sacar el acceso al Calendar compartido de LatAm.`)){
+    const email = el.dataset.email;
+    if(confirm(t(
+      `¿Revocar el acceso de {email}? Va a dejar de poder ver y cargar posteos, y se le va a sacar el acceso al Calendar compartido de LatAm.`,
+      `Revoke {email}'s access? They'll no longer be able to see or post, and their access to LatAm's shared Calendar will be removed.`,
+      `Revogar o acesso de {email}? Ele(a) vai deixar de poder ver e postar, e o acesso ao Calendar compartilhado da LatAm vai ser removido.`,
+      `?{email} לבטל את הגישה של. הוא/היא לא יוכלו יותר לראות או לפרסם, והגישה ליומן המשותף של LatAm תוסר`,
+      { email }
+    ))){
       revokeAccess(email).then(()=>unshareCalendarWith(email)).then(res=>{
         showCalendarNotice(res.ok
-          ? { ok:true, message:`Se revocó el acceso de ${email} (app y Calendar).` }
-          : { ok:false, message:`Se revocó el acceso a la app, pero no se pudo sacarlo del Calendar automáticamente (${res.reason}). Sacalo a mano si hace falta.` });
-      }).catch(err=>{ console.error(err); alert("No se pudo revocar: " + err.message); });
+          ? { ok:true, message: t("Se revocó el acceso de {email} (app y Calendar).","{email}'s access was revoked (app and Calendar).","O acesso de {email} foi revogado (app e Calendar).","הגישה של {email} בוטלה (אפליקציה ויומן).",{email}) }
+          : { ok:false, message: t(
+              "Se revocó el acceso a la app, pero no se pudo sacarlo del Calendar automáticamente ({reason}). Sacalo a mano si hace falta.",
+              "Access to the app was revoked, but they couldn't be removed from the Calendar automatically ({reason}). Remove them by hand if needed.",
+              "O acesso ao app foi revogado, mas não foi possível tirá-lo do Calendar automaticamente ({reason}). Tire manualmente se for preciso.",
+              "הגישה לאפליקציה בוטלה, אך לא ניתן היה להסיר אותו/ה מהיומן אוטומטית ({reason}). הסר/הסירי ידנית במידת הצורך.",
+              { reason: res.reason }
+            ) });
+      }).catch(err=>{ console.error(err); alert(t("No se pudo revocar: {msg}","Couldn't revoke: {msg}","Não foi possível revogar: {msg}","{msg} :הביטול נכשל",{msg:err.message})); });
     }
   } else if(action === "zonas-remove-zone"){
     const d = getZonasDraft();
-    const key = t.dataset.key;
+    const key = el.dataset.key;
     const inUse = Object.values(d.countryZones).some(z=>z===key);
-    if(inUse){ d.error = "Reasigná primero los países que están en esta zona."; render(); return; }
+    if(inUse){ d.error = t("Reasigná primero los países que están en esta zona.","First reassign the countries in this zone.","Reatribua primeiro os países desta zona.",".קודם הקצה/י מחדש את המדינות באזור הזה"); render(); return; }
     delete d.zones[key];
     d.zoneOrder = d.zoneOrder.filter(k=>k!==key);
     d.error = "";
@@ -5352,7 +5387,7 @@ document.addEventListener("click", e=>{
   } else if(action === "zonas-add-zone"){
     const d = getZonasDraft();
     const label = d.newZoneLabel.trim();
-    if(!label){ d.error = "Escribí un nombre para la zona nueva."; render(); return; }
+    if(!label){ d.error = t("Escribí un nombre para la zona nueva.","Type a name for the new zone.","Escreva um nome para a zona nova.",".הקלד/י שם לאזור החדש"); render(); return; }
     const key = slugifyKey(label, d.zoneOrder);
     d.zones[key] = { label, color:"#64748b" };
     d.zoneOrder.push(key);
@@ -5369,21 +5404,21 @@ document.addEventListener("click", e=>{
       d.saving = false; render();
     }).catch(err=>{
       console.error(err);
-      d.saving = false; d.error = "No se pudo guardar: " + err.message; render();
+      d.saving = false; d.error = t("No se pudo guardar: {msg}","Couldn't save: {msg}","Não foi possível salvar: {msg}","{msg} :השמירה נכשלה",{msg:err.message}); render();
     });
   } else if(action === "pref-section"){
-    state.preferenciasSection = t.dataset.key; render();
+    state.preferenciasSection = el.dataset.key; render();
   } else if(action === "tipos-remove"){
     const d = getTiposDraft();
-    const key = t.dataset.key;
-    if(countPostsByType(key) > 0){ d.error = "Hay posteos con este tipo — no se puede eliminar."; render(); return; }
+    const key = el.dataset.key;
+    if(countPostsByType(key) > 0){ d.error = t("Hay posteos con este tipo — no se puede eliminar.","There are posts with this type — it can't be deleted.","Há postagens com este tipo — não é possível excluir.","יש פוסטים עם הסוג הזה — לא ניתן למחוק."); render(); return; }
     d.types = d.types.filter(x=>x.key!==key);
     d.error = "";
     render();
   } else if(action === "tipos-add"){
     const d = getTiposDraft();
     const label = d.newLabel.trim();
-    if(!label){ d.error = "Escribí un nombre para el tipo nuevo."; render(); return; }
+    if(!label){ d.error = t("Escribí un nombre para el tipo nuevo.","Type a name for the new type.","Escreva um nome para o tipo novo.",".הקלד/י שם לסוג החדש"); render(); return; }
     const key = slugifyKey(label, d.types.map(x=>x.key));
     d.types.push({ key, label, icon: d.newIcon.trim() || "✨", calendarSync:true });
     d.newLabel = ""; d.newIcon = ""; d.error = "";
@@ -5392,30 +5427,30 @@ document.addEventListener("click", e=>{
     tiposDraft = null; render();
   } else if(action === "tipos-save"){
     const d = getTiposDraft();
-    if(!d.types.length){ d.error = "Tiene que quedar al menos un tipo de actividad."; render(); return; }
+    if(!d.types.length){ d.error = t("Tiene que quedar al menos un tipo de actividad.","At least one activity type has to remain.","Tem que sobrar pelo menos um tipo de atividade.",".חייב להישאר לפחות סוג פעילות אחד"); render(); return; }
     d.saving = true; d.error = ""; render();
     fb.setDoc(fb.doc(db,"meta","preferences"), { activityTypes: d.types }, { merge:true }).then(()=>{
       d.saving = false; render();
     }).catch(err=>{
       console.error(err);
-      d.saving = false; d.error = "No se pudo guardar: " + err.message; render();
+      d.saving = false; d.error = t("No se pudo guardar: {msg}","Couldn't save: {msg}","Não foi possível salvar: {msg}","{msg} :השמירה נכשלה",{msg:err.message}); render();
     });
   } else if(action === "lugares-promote"){
-    promoteCustomCity(t.dataset.country, t.dataset.city).then(render).catch(err=>{
-      console.error(err); alert("No se pudo sumar el lugar: " + err.message);
+    promoteCustomCity(el.dataset.country, el.dataset.city).then(render).catch(err=>{
+      console.error(err); alert(t("No se pudo sumar el lugar: {msg}","Couldn't add the place: {msg}","Não foi possível somar o lugar: {msg}","{msg} :לא ניתן היה להוסיף את המקום",{msg:err.message}));
     });
   } else if(action === "calendar-reset"){
     calendarDraft = null; render();
   } else if(action === "calendar-save"){
     const d = getCalendarDraft();
     const id = d.calendarId.trim();
-    if(!id){ d.error = "Escribí el ID del calendario."; render(); return; }
+    if(!id){ d.error = t("Escribí el ID del calendario.","Type the calendar ID.","Escreva o ID do calendário.",".הקלד/י את מזהה היומן"); render(); return; }
     d.saving = true; d.error = ""; render();
     fb.setDoc(fb.doc(db,"meta","preferences"), { calendarId: id }, { merge:true }).then(()=>{
       d.saving = false; render();
     }).catch(err=>{
       console.error(err);
-      d.saving = false; d.error = "No se pudo guardar: " + err.message; render();
+      d.saving = false; d.error = t("No se pudo guardar: {msg}","Couldn't save: {msg}","Não foi possível salvar: {msg}","{msg} :השמירה נכשלה",{msg:err.message}); render();
     });
   } else if(action === "adjuntos-reset"){
     adjuntosDraft = null; render();
@@ -5429,7 +5464,7 @@ document.addEventListener("click", e=>{
       d.saving = false; render();
     }).catch(err=>{
       console.error(err);
-      d.saving = false; d.error = "No se pudo guardar: " + err.message; render();
+      d.saving = false; d.error = t("No se pudo guardar: {msg}","Couldn't save: {msg}","Não foi possível salvar: {msg}","{msg} :השמירה נכשלה",{msg:err.message}); render();
     });
   }
 });
@@ -5439,134 +5474,134 @@ document.addEventListener("click", e=>{
 // este listener en capture (scroll no burbujea) el resalte de fondo se
 // desalinearía verticalmente del texto real apenas apareciera scroll.
 document.addEventListener("scroll", e=>{
-  const t = e.target;
-  if(t.dataset && t.dataset.mentionScope){
-    const bd = document.getElementById(t.id + "-hl");
-    if(bd) bd.scrollTop = t.scrollTop;
+  const el = e.target;
+  if(el.dataset && el.dataset.mentionScope){
+    const bd = document.getElementById(el.id + "-hl");
+    if(bd) bd.scrollTop = el.scrollTop;
   }
 }, true);
 
 document.addEventListener("input", e=>{
-  const t = e.target;
-  if(t.dataset.mentionScope) syncMentionBackdrop(t);
-  if(t.id === "feedSearch" || t.id === "memoriaSearch"){
-    state.filters.text = t.value; render();
-  } else if(t.id === "auditSearch"){
-    state.auditFilters.text = t.value; auditVisibleCount = 30; render();
-  } else if(t.id === "usuariosSearch"){
-    state.usuariosFilters.text = t.value; render();
-  } else if(t.id === "nicknameInput"){
-    nicknameDraft = t.value; nicknameError = null; render();
-  } else if(t.id === "cTitle"){ composerDraft.title = t.value; }
-  else if(t.id === "cContent"){
-    composerDraft.content = t.value;
+  const el = e.target;
+  if(el.dataset.mentionScope) syncMentionBackdrop(el);
+  if(el.id === "feedSearch" || el.id === "memoriaSearch"){
+    state.filters.text = el.value; render();
+  } else if(el.id === "auditSearch"){
+    state.auditFilters.text = el.value; auditVisibleCount = 30; render();
+  } else if(el.id === "usuariosSearch"){
+    state.usuariosFilters.text = el.value; render();
+  } else if(el.id === "nicknameInput"){
+    nicknameDraft = el.value; nicknameError = null; render();
+  } else if(el.id === "cTitle"){ composerDraft.title = el.value; }
+  else if(el.id === "cContent"){
+    composerDraft.content = el.value;
     const prevQuery = composerDraft.mentionQuery;
-    updateMentionState(composerDraft, t);
+    updateMentionState(composerDraft, el);
     if(prevQuery !== composerDraft.mentionQuery) render();
   }
-  else if(t.id === "cParticipantQuery"){
-    composerDraft.participantQuery = t.value; composerDraft.participantHighlight = 0; render();
+  else if(el.id === "cParticipantQuery"){
+    composerDraft.participantQuery = el.value; composerDraft.participantHighlight = 0; render();
   }
-  else if(t.dataset.placeScope){
-    const draft = getDraftFor(t.dataset.placeScope, t.dataset.placeOwner);
-    draft.placeQuery = t.value; draft.placeHighlight = 0; render();
+  else if(el.dataset.placeScope){
+    const draft = getDraftFor(el.dataset.placeScope, el.dataset.placeOwner);
+    draft.placeQuery = el.value; draft.placeHighlight = 0; render();
   }
-  else if(t.id === "rutinaContent"){
-    rutinaDraft.content = t.value;
+  else if(el.id === "rutinaContent"){
+    rutinaDraft.content = el.value;
     // Solo habilita/deshabilita el botón Publicar al tipear — evita un
     // render() completo (y perder el foco/cursor) en cada letra, salvo
     // que se esté escribiendo una @mención (ahí sí hace falta re-renderizar
     // para mostrar/actualizar el desplegable de sugerencias). El alto sí
     // se ajusta siempre, tecla por tecla, para que la caja crezca con el
     // texto en vez de quedar chica con scroll interno.
-    autoGrowTextarea(t);
+    autoGrowTextarea(el);
     const btn = document.getElementById("rutinaPublish");
-    if(btn) btn.disabled = !t.value.trim();
+    if(btn) btn.disabled = !el.value.trim();
     const prevQuery = rutinaDraft.mentionQuery;
-    updateMentionState(rutinaDraft, t);
+    updateMentionState(rutinaDraft, el);
     if(prevQuery !== rutinaDraft.mentionQuery) render();
   }
-  else if(t.dataset.replyField === "content"){
-    const draft = getReplyDraft(t.dataset.postId);
-    draft.content = t.value;
+  else if(el.dataset.replyField === "content"){
+    const draft = getReplyDraft(el.dataset.postId);
+    draft.content = el.value;
     const prevQuery = draft.mentionQuery;
-    updateMentionState(draft, t);
+    updateMentionState(draft, el);
     if(prevQuery !== draft.mentionQuery) render();
   }
-  else if(t.dataset.nestedReplyField === "content"){
-    const draft = getNestedReplyDraft(t.dataset.replyId);
-    draft.content = t.value;
+  else if(el.dataset.nestedReplyField === "content"){
+    const draft = getNestedReplyDraft(el.dataset.replyId);
+    draft.content = el.value;
     const prevQuery = draft.mentionQuery;
-    updateMentionState(draft, t);
+    updateMentionState(draft, el);
     if(prevQuery !== draft.mentionQuery) render();
   }
-  else if(t.dataset.scopeField === "city"){ getDraftFor(t.dataset.scope, t.dataset.ownerId).scopeDraft.city = t.value; }
-  else if(t.dataset.linkField){
-    const draft = getDraftFor(t.dataset.scope, t.dataset.ownerId);
-    draft.links[Number(t.dataset.idx)][t.dataset.linkField] = t.value;
+  else if(el.dataset.scopeField === "city"){ getDraftFor(el.dataset.scope, el.dataset.ownerId).scopeDraft.city = el.value; }
+  else if(el.dataset.linkField){
+    const draft = getDraftFor(el.dataset.scope, el.dataset.ownerId);
+    draft.links[Number(el.dataset.idx)][el.dataset.linkField] = el.value;
   }
-  else if(t.dataset.action === "zonas-label"){ getZonasDraft().zones[t.dataset.key].label = t.value; }
-  else if(t.id === "zonasNewZoneLabel"){ getZonasDraft().newZoneLabel = t.value; }
-  else if(t.dataset.action === "tipos-icon"){
-    const type = getTiposDraft().types.find(x=>x.key===t.dataset.key);
-    if(type) type.icon = t.value;
+  else if(el.dataset.action === "zonas-label"){ getZonasDraft().zones[el.dataset.key].label = el.value; }
+  else if(el.id === "zonasNewZoneLabel"){ getZonasDraft().newZoneLabel = el.value; }
+  else if(el.dataset.action === "tipos-icon"){
+    const type = getTiposDraft().types.find(x=>x.key===el.dataset.key);
+    if(type) type.icon = el.value;
   }
-  else if(t.dataset.action === "tipos-label"){
-    const type = getTiposDraft().types.find(x=>x.key===t.dataset.key);
-    if(type) type.label = t.value;
+  else if(el.dataset.action === "tipos-label"){
+    const type = getTiposDraft().types.find(x=>x.key===el.dataset.key);
+    if(type) type.label = el.value;
   }
-  else if(t.id === "tiposNewIcon"){ getTiposDraft().newIcon = t.value; }
-  else if(t.id === "tiposNewLabel"){ getTiposDraft().newLabel = t.value; }
-  else if(t.id === "calendarIdInput"){ getCalendarDraft().calendarId = t.value; }
-  else if(t.id === "adjMaxImages"){ getAdjuntosDraft().maxImages = t.value; }
-  else if(t.id === "adjMaxFiles"){ getAdjuntosDraft().maxFiles = t.value; }
-  else if(t.id === "adjMaxFileKB"){ getAdjuntosDraft().maxFileKB = t.value; }
+  else if(el.id === "tiposNewIcon"){ getTiposDraft().newIcon = el.value; }
+  else if(el.id === "tiposNewLabel"){ getTiposDraft().newLabel = el.value; }
+  else if(el.id === "calendarIdInput"){ getCalendarDraft().calendarId = el.value; }
+  else if(el.id === "adjMaxImages"){ getAdjuntosDraft().maxImages = el.value; }
+  else if(el.id === "adjMaxFiles"){ getAdjuntosDraft().maxFiles = el.value; }
+  else if(el.id === "adjMaxFileKB"){ getAdjuntosDraft().maxFileKB = el.value; }
 });
 
 document.addEventListener("change", e=>{
-  const t = e.target;
-  if(t.name === "cType"){ composerDraft.activityType = t.value; render(); }
-  else if(t.id === "cStartDate"){
-    composerDraft.startDate = t.value;
-    if(composerDraft.endDate < t.value) composerDraft.endDate = t.value;
+  const el = e.target;
+  if(el.name === "cType"){ composerDraft.activityType = el.value; render(); }
+  else if(el.id === "cStartDate"){
+    composerDraft.startDate = el.value;
+    if(composerDraft.endDate < el.value) composerDraft.endDate = el.value;
     render();
   }
-  else if(t.id === "cEndDate"){ composerDraft.endDate = t.value; render(); }
-  else if(t.id === "cAllDay"){
-    composerDraft.allDay = t.checked;
-    if(t.checked){ composerDraft.startTime = ""; composerDraft.endTime = ""; }
+  else if(el.id === "cEndDate"){ composerDraft.endDate = el.value; render(); }
+  else if(el.id === "cAllDay"){
+    composerDraft.allDay = el.checked;
+    if(el.checked){ composerDraft.startTime = ""; composerDraft.endTime = ""; }
     render();
   }
-  else if(t.id === "cStartTime"){ composerDraft.startTime = t.value; render(); }
-  else if(t.id === "cEndTime"){ composerDraft.endTime = t.value; render(); }
-  else if(t.dataset.scopeField === "type"){ getDraftFor(t.dataset.scope, t.dataset.ownerId).scopeDraft.type = t.value; render(); }
-  else if(t.dataset.scopeField === "country"){
-    const sd = getDraftFor(t.dataset.scope, t.dataset.ownerId).scopeDraft;
-    sd.country = t.value; sd.city = ""; sd.cityUseCustom = false; render();
+  else if(el.id === "cStartTime"){ composerDraft.startTime = el.value; render(); }
+  else if(el.id === "cEndTime"){ composerDraft.endTime = el.value; render(); }
+  else if(el.dataset.scopeField === "type"){ getDraftFor(el.dataset.scope, el.dataset.ownerId).scopeDraft.type = el.value; render(); }
+  else if(el.dataset.scopeField === "country"){
+    const sd = getDraftFor(el.dataset.scope, el.dataset.ownerId).scopeDraft;
+    sd.country = el.value; sd.city = ""; sd.cityUseCustom = false; render();
   }
-  else if(t.dataset.scopeField === "region"){ getDraftFor(t.dataset.scope, t.dataset.ownerId).scopeDraft.region = t.value; }
-  else if(t.dataset.scopeField === "citySelect"){
-    const sd = getDraftFor(t.dataset.scope, t.dataset.ownerId).scopeDraft;
-    if(t.value === "__other__"){ sd.cityUseCustom = true; sd.city = ""; }
-    else { sd.city = t.value; sd.cityUseCustom = false; }
+  else if(el.dataset.scopeField === "region"){ getDraftFor(el.dataset.scope, el.dataset.ownerId).scopeDraft.region = el.value; }
+  else if(el.dataset.scopeField === "citySelect"){
+    const sd = getDraftFor(el.dataset.scope, el.dataset.ownerId).scopeDraft;
+    if(el.value === "__other__"){ sd.cityUseCustom = true; sd.city = ""; }
+    else { sd.city = el.value; sd.cityUseCustom = false; }
     render();
   }
-  else if(t.id === "cImages"){ handleImageFiles(t.files, composerDraft.images); }
-  else if(t.dataset.action === "rutina-images"){ handleImageFiles(t.files, rutinaDraft.images); }
-  else if(t.dataset.action === "reply-images"){ handleImageFiles(t.files, getReplyDraft(t.dataset.postId).images); }
-  else if(t.dataset.action === "nested-reply-images"){ handleImageFiles(t.files, getNestedReplyDraft(t.dataset.replyId).images); }
-  else if(t.id === "cFiles"){ handleFileAttachments(t.files, composerDraft.files); }
-  else if(t.dataset.action === "rutina-files"){ handleFileAttachments(t.files, rutinaDraft.files); }
-  else if(t.dataset.action === "reply-files"){ handleFileAttachments(t.files, getReplyDraft(t.dataset.postId).files); }
-  else if(t.dataset.action === "nested-reply-files"){ handleFileAttachments(t.files, getNestedReplyDraft(t.dataset.replyId).files); }
-  else if(t.dataset.action === "toggle-reply-extra-scope"){
-    getReplyDraft(t.dataset.postId).extraScope = t.checked; render();
+  else if(el.id === "cImages"){ handleImageFiles(el.files, composerDraft.images); }
+  else if(el.dataset.action === "rutina-images"){ handleImageFiles(el.files, rutinaDraft.images); }
+  else if(el.dataset.action === "reply-images"){ handleImageFiles(el.files, getReplyDraft(el.dataset.postId).images); }
+  else if(el.dataset.action === "nested-reply-images"){ handleImageFiles(el.files, getNestedReplyDraft(el.dataset.replyId).images); }
+  else if(el.id === "cFiles"){ handleFileAttachments(el.files, composerDraft.files); }
+  else if(el.dataset.action === "rutina-files"){ handleFileAttachments(el.files, rutinaDraft.files); }
+  else if(el.dataset.action === "reply-files"){ handleFileAttachments(el.files, getReplyDraft(el.dataset.postId).files); }
+  else if(el.dataset.action === "nested-reply-files"){ handleFileAttachments(el.files, getNestedReplyDraft(el.dataset.replyId).files); }
+  else if(el.dataset.action === "toggle-reply-extra-scope"){
+    getReplyDraft(el.dataset.postId).extraScope = el.checked; render();
   }
-  else if(t.dataset.action === "zonas-color"){ getZonasDraft().zones[t.dataset.key].color = t.value; render(); }
-  else if(t.dataset.action === "zonas-country-zone"){ getZonasDraft().countryZones[t.dataset.country] = t.value; render(); }
-  else if(t.dataset.action === "tipos-sync"){
-    const type = getTiposDraft().types.find(x=>x.key===t.dataset.key);
-    if(type) type.calendarSync = t.checked;
+  else if(el.dataset.action === "zonas-color"){ getZonasDraft().zones[el.dataset.key].color = el.value; render(); }
+  else if(el.dataset.action === "zonas-country-zone"){ getZonasDraft().countryZones[el.dataset.country] = el.value; render(); }
+  else if(el.dataset.action === "tipos-sync"){
+    const type = getTiposDraft().types.find(x=>x.key===el.dataset.key);
+    if(type) type.calendarSync = el.checked;
   }
 });
 
@@ -5578,14 +5613,14 @@ postForm.addEventListener("submit", async e=>{
   d.error = "";
   const title = d.title.trim();
   const content = d.content.trim();
-  if(!title){ d.error = "Escribí un título."; render(); return; }
-  if(!content){ d.error = "Contá algo en comentarios."; render(); return; }
-  if(!d.scopes.length){ d.error = "Agregá al menos un lugar (país, ciudad, región o toda LatAm)."; render(); return; }
-  if(!d.startDate){ d.error = "Elegí una fecha de inicio."; render(); return; }
-  if(d.endDate < d.startDate){ d.error = "La fecha de fin no puede ser anterior a la de inicio."; render(); return; }
+  if(!title){ d.error = t("Escribí un título.","Type a title.","Escreva um título.",".הקלד/י כותרת"); render(); return; }
+  if(!content){ d.error = t("Contá algo en comentarios.","Write something in comments.","Conte algo em comentários.",".ספר/י משהו בהערות"); render(); return; }
+  if(!d.scopes.length){ d.error = t("Agregá al menos un lugar (país, ciudad, región o toda LatAm).","Add at least one place (country, city, region or all of LatAm).","Adicione pelo menos um lugar (país, cidade, região ou toda a LatAm).",".הוסף/הוסיפי לפחות מקום אחד (מדינה, עיר, אזור או כל LatAm)"); render(); return; }
+  if(!d.startDate){ d.error = t("Elegí una fecha de inicio.","Choose a start date.","Escolha uma data de início.",".בחר/י תאריך התחלה"); render(); return; }
+  if(d.endDate < d.startDate){ d.error = t("La fecha de fin no puede ser anterior a la de inicio.","The end date can't be before the start date.","A data de término não pode ser anterior à de início.",".תאריך הסיום לא יכול להיות לפני תאריך ההתחלה"); render(); return; }
   if(!d.allDay){
-    if(!d.startTime || !d.endTime){ d.error = "Elegí hora de inicio y de fin, o marcá \"Todo el día\"."; render(); return; }
-    if(d.startDate === d.endDate && d.endTime <= d.startTime){ d.error = "La hora de fin tiene que ser posterior a la de inicio."; render(); return; }
+    if(!d.startTime || !d.endTime){ d.error = t('Elegí hora de inicio y de fin, o marcá "Todo el día".','Choose a start and end time, or check "All day".','Escolha hora de início e término, ou marque "O dia todo".','.בחר/י שעת התחלה וסיום, או סמן/י "כל היום"'); render(); return; }
+    if(d.startDate === d.endDate && d.endTime <= d.startTime){ d.error = t("La hora de fin tiene que ser posterior a la de inicio.","The end time has to be after the start time.","A hora de término tem que ser depois da de início.",".שעת הסיום חייבת להיות אחרי שעת ההתחלה"); render(); return; }
   }
   const links = d.links.filter(l=>safeUrl(l.url));
   const postData = {
@@ -5603,11 +5638,11 @@ postForm.addEventListener("submit", async e=>{
       closeComposer();
       updatePostAndSync(postId, original, postData).then(res=>{
         showCalendarNotice(res.ok
-          ? { ok:true, message:"Se guardaron los cambios (y el Calendar, si correspondía)." }
-          : { ok:false, message:"Se guardaron los cambios, pero no se pudo actualizar el Calendar (" + res.reason + ")." });
+          ? { ok:true, message:t("Se guardaron los cambios (y el Calendar, si correspondía).","Changes were saved (and the Calendar, if applicable).","As alterações foram salvas (e o Calendar, se aplicável).","(השינויים נשמרו (והיומן, אם רלוונטי).") }
+          : { ok:false, message:t("Se guardaron los cambios, pero no se pudo actualizar el Calendar ({reason}).","Changes were saved, but the Calendar couldn't be updated ({reason}).","As alterações foram salvas, mas não foi possível atualizar o Calendar ({reason}).","השינויים נשמרו, אך לא ניתן היה לעדכן את היומן ({reason}).",{reason:res.reason}) });
       }).catch(err=>{
         console.error("Error guardando la edición:", err);
-        showCalendarNotice({ ok:false, message:"No se pudo guardar la edición: " + err.message });
+        showCalendarNotice({ ok:false, message:t("No se pudo guardar la edición: {msg}","Couldn't save the edit: {msg}","Não foi possível salvar a edição: {msg}","{msg} :לא ניתן היה לשמור את העריכה",{msg:err.message}) });
       });
     } else {
       const postId = await createPost(postData);
@@ -5616,14 +5651,14 @@ postForm.addEventListener("submit", async e=>{
         syncToCalendar(postData).then(res=>{
           if(res.ok && res.eventId) updatePostDoc(postId, { calendarEventId: res.eventId }).catch(()=>{});
           showCalendarNotice(res.ok
-            ? { ok:true, message:"Se sumó también al Calendar compartido de LatAm." }
-            : { ok:false, message:"El posteo se guardó, pero no se pudo sumar al Calendar (" + res.reason + ")." });
+            ? { ok:true, message:t("Se sumó también al Calendar compartido de LatAm.","It was also added to LatAm's shared Calendar.","Também foi somado ao Calendar compartilhado da LatAm.","הוא נוסף גם ליומן המשותף של LatAm.") }
+            : { ok:false, message:t("El posteo se guardó, pero no se pudo sumar al Calendar ({reason}).","The post was saved, but it couldn't be added to the Calendar ({reason}).","A postagem foi salva, mas não foi possível somar ao Calendar ({reason}).","הפוסט נשמר, אך לא ניתן היה להוסיפו ליומן ({reason}).",{reason:res.reason}) });
         });
       }
     }
   }catch(err){
     console.error(err);
-    d.error = "No se pudo publicar: " + err.message;
+    d.error = t("No se pudo publicar: {msg}","Couldn't publish: {msg}","Não foi possível publicar: {msg}","{msg} :הפרסום נכשל",{msg:err.message});
     render();
   }
 });
@@ -5631,7 +5666,7 @@ postForm.addEventListener("submit", async e=>{
 async function submitReply(postId){
   const d = getReplyDraft(postId);
   const content = d.content.trim();
-  if(!content){ d.scopeError = "Escribí una respuesta antes de publicar."; render(); return; }
+  if(!content){ d.scopeError = t("Escribí una respuesta antes de publicar.","Write a reply before posting.","Escreva uma resposta antes de publicar.",".כתוב/כתבי תגובה לפני הפרסום"); render(); return; }
   const links = d.links.filter(l=>safeUrl(l.url));
   try{
     await createReply(postId, {
@@ -5644,7 +5679,7 @@ async function submitReply(postId){
     render();
   }catch(err){
     console.error(err);
-    d.scopeError = "No se pudo publicar la respuesta: " + err.message;
+    d.scopeError = t("No se pudo publicar la respuesta: {msg}","Couldn't post the reply: {msg}","Não foi possível publicar a resposta: {msg}","{msg} :פרסום התגובה נכשל",{msg:err.message});
     render();
   }
 }
@@ -5669,7 +5704,7 @@ async function submitNestedReply(postId, replyId){
     render();
   }catch(err){
     console.error(err);
-    alert("No se pudo publicar la respuesta: " + err.message);
+    alert(t("No se pudo publicar la respuesta: {msg}","Couldn't post the reply: {msg}","Não foi possível publicar a resposta: {msg}","{msg} :פרסום התגובה נכשל",{msg:err.message}));
   }
 }
 
