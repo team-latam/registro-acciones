@@ -516,22 +516,97 @@ Cualquier persona logueada puede **crear** una entrada, pero solo sobre
 sí misma como actor (así queda registro del login incluso de alguien que
 todavía no está aprobado); **leer** el registro es exclusivo del admin.
 
-### Idioma (solo el selector, todavía sin traducir)
+### Idioma (ES / EN / PT / HE)
 
-En el menú del avatar, arriba de Claro/Oscuro, hay un selector ES/EN/PT/
-HE (`LANGS` en `index.html`, junto a `currentLang`/`setLang`). Por ahora
-**solo guarda la preferencia** en `localStorage` (`ra_lang`, mismo
-criterio que el tema: por dispositivo, no por cuenta) — no existe
-todavía ningún texto traducido, así que elegir otro idioma no cambia
-nada en la app por ahora (se probó un aviso de "todavía no hay
-traducción" debajo del selector y se sacó por pedido del usuario:
-quedaba mejor limpio).
+Selector en el menú del avatar, arriba de Claro/Oscuro (`LANGS` en
+`index.html`). La preferencia se guarda en `localStorage` (`ra_lang`,
+mismo criterio que el tema: por dispositivo, no por cuenta) y se aplica
+de verdad: toda la interfaz se traduce, y hebreo cambia además el
+sentido de lectura de la página (RTL).
 
-Se adelantó el lugar en el menú a propósito, antes de construir la
-traducción real, para no tener que rediseñar el menú de cuenta después.
-Cuando se arme el diccionario de textos, `setLang` es donde va a aplicar
-el idioma de verdad (queda un TODO ahí mismo) — y hebreo, al ser RTL, va
-a necesitar además `dir="rtl"` en el `<html>`, que hoy no está.
+**El helper `t(es, en, pt, he, vars?)`.** No hay un diccionario de
+textos aparte — cada string se traduce AL LADO de su original, en el
+mismo lugar donde se usa: `t("Guardar", "Save", "Salvar", "שמירה")`.
+Se eligió así a propósito: la traducción de cada texto se revisa junto
+al original en el mismo diff, en vez de tener que saltar a un archivo
+de claves separado donde es fácil que una traducción quede huérfana o
+desincronizada del texto real. Para textos con datos adentro, `vars` es
+un objeto con placeholders `{así}`:
+`t("Editado por {n}", "Edited by {n}", ..., ..., {n: nombre})`. Los
+cuatro idiomas son obligatorios en cada llamado — no hay un valor por
+defecto que se olvide de traducir en silencio.
+
+`currentLang()`/`isRTL()` leen el idioma actual; `setLang(lang)` lo
+guarda, fija `lang`/`dir` en el `<html>`, y llama a `applyStaticI18n()` +
+`render()`. El script suelto del `<head>` (el mismo que evita el flash
+del tema) también fija `lang`/`dir` ahí, antes de pintar — si se
+aplicara recién en el módulo, se vería la página armada en LTR
+"saltando" a RTL un instante después.
+
+**`applyStaticI18n()`** traduce el "cascarón" fijo del HTML —header,
+pestañas, footer, el aviso del Calendar compartido— que vive afuera de
+`#viewRoot` y por eso NUNCA pasa por `render()`/`doRender()`. Todo lo
+demás (el 99% de la app) se traduce solo, porque cada `render()` ya
+reconstruye su `innerHTML` desde cero en cada pasada — ahí alcanza con
+que el string use `t()`.
+
+**Objetos con label fijo → funciones.** Varios objetos vivían como
+`const` evaluados una sola vez al cargar el módulo (`USER_ROLE_LABELS`,
+`ACTIVITY_TIERS`, `TOUR_STEPS`, `AUDIT_LABELS`, `PREFERENCIAS_SECTIONS`).
+Un label ahí adentro con `t()` se hubiera traducido una vez, al arrancar
+la página, y quedado congelado en ese idioma para siempre. Se
+convirtieron en funciones (`userRoleLabel()`, `activityTiers()`,
+`tourSteps()`, `auditLabels()`, `preferenciasSections()`) que arman el
+objeto de nuevo en cada llamado, así el label sale siempre con el idioma
+actual.
+
+**Qué NO se traduce, a propósito.** `ACTIVITY_TYPES`, `ZONES` y los
+nombres de país/ciudad (`COUNTRIES`/`CITY_PRESETS`) son datos editables
+por el admin desde Configuración, no texto fijo de la interfaz — no se
+pueden traducir contra un diccionario porque el admin puede haber
+escrito cualquier cosa ahí. Para los 7 tipos y las 3 zonas DE FÁBRICA
+(las que trae la app antes de que el admin toque nada), sí hay traducción:
+`refreshActivityTypeLabels()`/`refreshZoneLabels()` re-etiquetan una
+entrada SOLO si su label actual coincide con alguna de las 4 traducciones
+conocidas para esa key — en cuanto el admin escribe otra cosa, se
+respeta tal cual y deja de tocarse. Los nombres de país/ciudad quedan en
+español siempre — es un volumen de trabajo aparte (30+ países × 4
+idiomas, más todas las ciudades) que se puede encarar después si hace
+falta.
+
+**RTL de verdad, no maquillaje.** Se auditó cada declaración de CSS
+direccional del archivo (`margin`/`padding`/`border` con `-left`/
+`-right`, `text-align:left/right`, posiciones `left`/`right` de menús y
+dropdowns) y se convirtió a su equivalente lógico (`margin-inline-start`,
+`text-align:end`, `inset-inline-end`, etc.), que el navegador invierte
+solo con `dir="rtl"` — sin flexbox `row-reverse` ni reglas duplicadas
+por idioma. Dos excepciones, documentadas en el propio CSS: el globo del
+tutorial (su posición la calcula JS con `getBoundingClientRect()`, que
+ya devuelve coordenadas físicas correctas después de que el navegador
+aplicó RTL — convertir esa regla a lógica lo habría roto) y un par de
+overlays simétricos (`left:0;right:0`) donde no hay nada que invertir.
+`transform-origin` no tiene equivalente lógico en CSS (el spec solo
+acepta `top`/`left`/`right` físicos): se corrige a mano con un bloque
+`html[dir="rtl"]` puntual para la animación de los desplegables de
+filtro.
+
+**Las flechas (← →) no se invierten solas.** A diferencia de los
+paréntesis u otra puntuación que Unicode sí "espeja" en contextos
+bidireccionales, una flecha es un símbolo de glifo fijo — `dir="rtl"` no
+le toca el dibujo. Cada lugar que usa una flecha de navegación o de
+rango (breadcrumb de Países, "Elegir de la lista", popup del mapa,
+separador entre fecha/hora de inicio y fin) elige el caracter con
+`isRTL() ? "←" : "→"` (o viceversa) en vez de tenerlo fijo.
+
+**Una colisión de nombres que hubo que resolver primero.** Los cinco
+manejadores de eventos delegados (`click`/`change`/`input`/`keydown`/
+`scroll`) usaban `const t = e.target...` para el elemento clickeado o
+tocado — el mismo nombre corto que el helper de traducción. Llamar a
+`t(...)` adentro de esos manejadores habría intentado invocar un
+`<button>`/`<input>` como si fuera función. Se renombró esa variable a
+`el` en los cinco (y un `const t` suelto en `lastLoginByEmail()`, a
+`ts`) antes de poder traducir nada de lo que vive ahí adentro
+(confirmaciones, validación de formularios, mensajes de error).
 
 ### Modo claro / oscuro
 
