@@ -10,7 +10,29 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" crossorigin="">
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" crossorigin="">
+<script>
+  // Va acá, suelto y antes del CSS, a propósito: el script del módulo se
+  // ejecuta recién después de pintar la página, así que si dejáramos esto
+  // allá el modo oscuro se aplicaría con la página ya dibujada y se vería
+  // un flash blanco en cada carga.
+  try{
+    var savedTheme = localStorage.getItem("ra_theme");
+    if(savedTheme === "dark" || savedTheme === "light"){
+      document.documentElement.dataset.theme = savedTheme;
+    }
+  }catch(e){ /* localStorage bloqueado (modo incógnito, etc.): queda en claro */ }
+</script>
 <style>
+  /* Paleta clara (la de siempre). Toda la app se pinta con estas
+     variables — el modo oscuro más abajo sólo las redefine, así que
+     cualquier color nuevo tiene que salir de acá y no hardcodeado,
+     o no va a cambiar de tono al pasar a oscuro.
+
+     Ojo con la diferencia entre --petroleo y --ink: --petroleo es el
+     FONDO de marca (header, botones primarios) y --ink es el TEXTO que
+     en claro usa ese mismo petroleo. Son dos roles distintos que en
+     oscuro van para lados opuestos (el fondo sigue oscuro, el texto
+     pasa a ser claro), por eso no pueden compartir variable. */
   :root{
     --petroleo:#0d3b3e;
     --petroleo-dark:#082a2c;
@@ -21,6 +43,26 @@
     --text:#0d2a2c;
     --text-muted:#5c7a7c;
     --border:#e1edee;
+    --ink:#0d3b3e;
+    --ink-strong:#082a2c;
+    --surface-soft:#fbfdfd;
+    --surface-sunken:#f8fbfb;
+    --surface-alt:#eef4f4;
+    --surface-hover:#e2eded;
+    --chip-bg:#eef6f6;
+    --celeste-soft:#eafbfd;
+    --warn-bg:#fff7e6;
+    --warn-border:#f3d78b;
+    --warn-text:#6b4c00;
+    --danger-bg:#fee2e2;
+    --danger-soft:#fdeceb;
+    --danger-text:#991b1b;
+    --ok-bg:#dcfce7;
+    --ok-border:#86efac;
+    --ok-text:#166534;
+    --highlight-bg:#fff3cd;
+    --system-bg:#fdf9ee;
+    --system-border:#ecdcae;
     --sur:#2563eb;
     --central:#eab308;
     --norte:#16a34a;
@@ -29,6 +71,42 @@
     --radius-lg: 22px;
     --radius-md: 14px;
     --radius-sm: 10px;
+  }
+  /* Modo oscuro: se activa con data-theme="dark" en el <html> (ver
+     setTheme()). El petroleo del header se aclara un toque porque el
+     original quedaba casi indistinguible del fondo oscuro. */
+  html[data-theme="dark"]{
+    --petroleo:#14494e;
+    --petroleo-dark:#0e3a3e;
+    --celeste-dark:#6fd8ec;
+    --bg:#0a1719;
+    --card:#102b2e;
+    --text:#e6f2f2;
+    --text-muted:#8faeb0;
+    --border:#1d4045;
+    --ink:#c6e4e6;
+    --ink-strong:#e9f6f6;
+    --surface-soft:#0d2326;
+    --surface-sunken:#0c2023;
+    --surface-alt:#17383c;
+    --surface-hover:#20474c;
+    --chip-bg:#17383c;
+    --celeste-soft:#123338;
+    --warn-bg:#3a2f14;
+    --warn-border:#6b5520;
+    --warn-text:#f0d9a0;
+    --danger-bg:#3d1d1d;
+    --danger-soft:#3d1d1d;
+    --danger-text:#f7b4b4;
+    --ok-bg:#11331f;
+    --ok-border:#2a6b40;
+    --ok-text:#9ae6b4;
+    --highlight-bg:#3d3416;
+    --system-bg:#241f12;
+    --system-border:#4a3f22;
+    --danger:#ef4444;
+    --shadow: 0 6px 24px rgba(0,0,0,0.45);
+    color-scheme: dark;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
@@ -97,19 +175,44 @@
     align-items:center; justify-content:center; object-fit:cover;
   }
   .user-menu .um-avatar-fallback{ background:var(--petroleo); color:#fff; font-weight:800; font-size:22px; }
-  .user-menu .um-name{ font-size:14.5px; font-weight:700; color:var(--petroleo-dark); line-height:1.3; }
+  .user-menu .um-name{ font-size:14.5px; font-weight:700; color:var(--ink-strong); line-height:1.3; }
   .user-menu .um-role{
     display:inline-block; font-size:10px; font-weight:800; letter-spacing:0.3px; text-transform:uppercase;
     padding:2px 10px; border-radius:999px; margin:0 0 14px;
   }
   .user-menu .um-role.role-admin{ background:var(--petroleo); color:#fff; }
   .user-menu .um-role.role-member{ background:var(--bg); color:var(--text-muted); border:1px solid var(--border); }
-  .user-menu .um-role.role-pending{ background:#fff7e6; color:#6b4c00; }
-  .user-menu .um-role.role-rejected{ background:#fee2e2; color:#991b1b; }
+  .user-menu .um-role.role-pending{ background:var(--warn-bg); color:var(--warn-text); }
+  .user-menu .um-role.role-rejected{ background:var(--danger-bg); color:var(--danger-text); }
   .user-menu .um-email{ font-size:12px; color:var(--text-muted); margin:4px 0 6px; word-break:break-all; }
   .um-nickname{ display:flex; align-items:center; justify-content:center; gap:6px; margin:-4px 0 14px; font-size:12.5px; font-weight:700; color:var(--celeste-dark); }
   .um-nickname-edit{ background:none; border:none; cursor:pointer; font-size:12px; padding:2px; opacity:0.7; }
   .um-nickname-edit:hover{ opacity:1; }
+  /* ---------- Tutorial de bienvenida (ver renderTour) ---------- */
+  .tour-modal{ max-width:430px; text-align:center; padding:26px 24px 20px; }
+  .tour-art{ font-size:52px; line-height:1; margin:4px 0 16px; }
+  .tour-title{ font-size:18px; font-weight:800; color:var(--ink); margin:0 0 10px; }
+  .tour-text{ font-size:13.5px; line-height:1.65; color:var(--text-muted); margin:0 auto 20px; max-width:340px; }
+  .tour-dots{ display:flex; justify-content:center; align-items:center; gap:7px; margin-bottom:18px; }
+  .tour-dots i{ width:7px; height:7px; border-radius:50%; background:var(--border); transition:width .2s ease, background-color .2s ease; }
+  .tour-dots i.active{ width:20px; border-radius:999px; background:var(--celeste-dark); }
+  .tour-actions{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .tour-skip{ background:none; border:none; color:var(--text-muted); font-size:12.5px; font-weight:700; cursor:pointer; padding:8px 4px; }
+  .tour-skip:hover{ color:var(--ink); }
+  .um-tour{
+    width:100%; background:none; border:none; color:var(--text-muted); font-size:12px;
+    font-weight:700; cursor:pointer; padding:8px 0 0; margin-top:2px;
+  }
+  .um-tour:hover{ color:var(--ink); }
+  .um-theme{
+    display:flex; gap:4px; background:var(--surface-alt); border-radius:999px;
+    padding:3px; margin:0 0 12px;
+  }
+  .um-theme button{
+    flex:1; border:none; background:none; border-radius:999px; padding:7px 4px;
+    font-size:11.5px; font-weight:700; color:var(--text-muted); cursor:pointer; white-space:nowrap;
+  }
+  .um-theme button.active{ background:var(--card); color:var(--ink-strong); box-shadow:0 1px 3px rgba(0,0,0,0.12); }
   .um-nickname-form{ margin:-4px 0 14px; text-align:left; }
   .um-nickname-form input{
     width:100%; box-sizing:border-box; border:1.5px solid var(--border); border-radius:999px;
@@ -117,16 +220,16 @@
   }
   .um-nickname-form .modal-actions .btn-secondary, .um-nickname-form .modal-actions .btn-primary{ padding:8px 16px; font-size:12.5px; }
   .user-menu .um-signout{
-    width:100%; background:var(--bg); border:1px solid var(--border); color:var(--petroleo-dark);
+    width:100%; background:var(--surface-alt); border:1px solid var(--border); color:var(--ink-strong);
     padding:9px; border-radius:999px; font-weight:700; font-size:13px; cursor:pointer;
   }
-  .user-menu .um-signout:hover{ background:#eaf3f3; }
+  .user-menu .um-signout:hover{ background:var(--surface-hover); }
   #tabSolicitudes .pending-count{ background:var(--danger); color:#fff; border-radius:999px; font-size:10.5px; font-weight:800; padding:1px 6px; margin-left:6px; }
 
   /* ---------- Auth gate (login / pendiente / rechazado) ---------- */
   .auth-gate{ max-width:440px; margin:60px auto; text-align:center; }
   .auth-gate .big{ font-size:44px; margin-bottom:14px; }
-  .auth-gate h2{ margin:0 0 8px 0; color:var(--petroleo); font-size:19px; }
+  .auth-gate h2{ margin:0 0 8px 0; color:var(--ink); font-size:19px; }
   .auth-gate p{ color:var(--text-muted); font-size:13.5px; line-height:1.6; margin:0 0 20px 0; }
   .btn-google{
     display:inline-flex; align-items:center; gap:10px; background:#fff; color:#3c4043; border:1.5px solid var(--border);
@@ -138,12 +241,12 @@
   .users-toolbar{ display:flex; flex-wrap:wrap; align-items:center; gap:10px 14px; margin-bottom:14px; }
   .users-toolbar input{
     flex:1 1 220px; min-width:0; box-sizing:border-box; padding:9px 14px; border-radius:999px;
-    border:1.5px solid var(--border); font-size:13px; background:#fff;
+    border:1.5px solid var(--border); font-size:13px; background:var(--card);
   }
   .users-toolbar .chipgroup{ align-items:center; }
   .sort-label{ font-size:11.5px; font-weight:700; color:var(--text-muted); }
   .request-row{
-    display:flex; align-items:center; gap:14px; background:#fff; border:1px solid var(--border);
+    display:flex; align-items:center; gap:14px; background:var(--card); border:1px solid var(--border);
     border-radius:var(--radius-md); padding:14px 18px; margin-bottom:10px; box-shadow:var(--shadow);
   }
   .request-row img{ width:40px; height:40px; border-radius:50%; flex:none; }
@@ -160,12 +263,12 @@
     padding:5px 12px; border-radius:999px; margin-right:6px;
   }
   .status-pill::before{ content:""; width:6px; height:6px; border-radius:50%; background:currentColor; }
-  .status-pill.approved{ background:#dcfce7; color:#166534; }
-  .status-pill.rejected{ background:#fee2e2; color:#991b1b; }
-  .btn-ghost{ background:none; border:none; padding:9px 14px; border-radius:999px; font-weight:700; font-size:12.5px; cursor:pointer; color:var(--petroleo); white-space:nowrap; }
-  .btn-ghost:hover{ background:#eef4f4; }
+  .status-pill.approved{ background:var(--ok-bg); color:var(--ok-text); }
+  .status-pill.rejected{ background:var(--danger-bg); color:var(--danger-text); }
+  .btn-ghost{ background:none; border:none; padding:9px 14px; border-radius:999px; font-weight:700; font-size:12.5px; cursor:pointer; color:var(--ink); white-space:nowrap; }
+  .btn-ghost:hover{ background:var(--surface-alt); }
   .btn-ghost.danger{ color:var(--danger); }
-  .btn-ghost.danger:hover{ background:#fdeceb; }
+  .btn-ghost.danger:hover{ background:var(--danger-soft); }
   .ractions-sep{ width:1px; height:20px; background:var(--border); margin:0 6px; }
 
   /* ---------- Actividad / registro de auditoría (admin) ---------- */
@@ -180,7 +283,7 @@
      flujo del grid entero, así que ahí queda otro grid-template-columns
      más corto (3 en vez de 5) para que lo que sigue visible no se
      desalinee. */
-  .audit-list{ background:#fff; border:1px solid var(--border); border-radius:var(--radius-md); overflow:hidden; box-shadow:var(--shadow); }
+  .audit-list{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md); overflow:hidden; box-shadow:var(--shadow); }
   .audit-columns-header, .audit-row{
     display:grid; grid-template-columns: 26px minmax(220px,2fr) 1fr 1fr 1fr;
     align-items:center; gap:12px;
@@ -201,13 +304,13 @@
     background:none; border:none; padding:0; margin:0; font:inherit; cursor:pointer; text-align:left; min-width:0;
     font-size:10.5px; font-weight:800; letter-spacing:0.4px; text-transform:uppercase; color:var(--text-muted);
   }
-  .ach-sort:hover{ color:var(--petroleo); }
+  .ach-sort:hover{ color:var(--ink); }
   .ach-date{ text-align:right; }
   .audit-more{ text-align:center; margin-top:14px; }
   .audit-filters{ margin-bottom:14px; }
   .audit-filters input{
     width:100%; box-sizing:border-box; padding:9px 14px; border-radius:999px; border:1.5px solid var(--border);
-    font-size:13px; background:#fff; margin-bottom:10px;
+    font-size:13px; background:var(--card); margin-bottom:10px;
   }
   @media (max-width:760px){
     .audit-columns-header, .audit-row{ grid-template-columns: 22px minmax(140px,1fr) 1fr; }
@@ -227,7 +330,7 @@
      columnas lado a lado, eso se probó y no gustó — ver charla) con una
      cabecera de color y sus países debajo en filas grandes, en vez de
      una lista aparte de países con selects sueltos. */
-  .zone-section{ border-radius:var(--radius-lg); overflow:hidden; box-shadow:var(--shadow); background:#fff; }
+  .zone-section{ border-radius:var(--radius-lg); overflow:hidden; box-shadow:var(--shadow); background:var(--card); }
   .zone-section + .zone-section{ margin-top:14px; }
   .zone-bar{ display:flex; align-items:center; gap:12px; padding:14px 18px; }
   .zone-swatch{
@@ -237,7 +340,7 @@
   .zone-swatch:hover{ box-shadow:0 0 0 3px rgba(0,0,0,0.08); }
   .zone-swatch input[type=color]{ position:absolute; inset:0; width:100%; height:100%; padding:0; border:none; cursor:pointer; opacity:0; }
   .zone-name{
-    font-size:16px; font-weight:800; color:var(--petroleo-dark); border:none; background:transparent;
+    font-size:16px; font-weight:800; color:var(--ink-strong); border:none; background:transparent;
     font-family:inherit; padding:2px 0; border-bottom:1.5px solid transparent; flex:1; min-width:0;
   }
   .zone-name:hover, .zone-name:focus{ outline:none; border-bottom-color:var(--border); }
@@ -245,7 +348,7 @@
     width:24px; height:24px; border-radius:50%; border:none; background:transparent; color:var(--text-muted);
     font-size:13px; cursor:pointer; flex:none; line-height:24px; text-align:center; padding:0;
   }
-  .zone-rm:hover:not(:disabled){ background:#fdeceb; color:var(--danger); }
+  .zone-rm:hover:not(:disabled){ background:var(--danger-soft); color:var(--danger); }
   .zone-rm:disabled{ opacity:0.25; cursor:not-allowed; }
   .zone-countries{ display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); border-top:1px solid var(--border); }
   .zone-countries:empty{ display:none; }
@@ -259,12 +362,12 @@
   /* Filas de configuración genéricas (ícono + texto + control), usadas
      hoy en Adjuntos — mismo lenguaje visual que .zone-section/.country-row
      en vez de labels sueltos arriba de inputs. */
-  .settings-card{ background:#fff; border-radius:var(--radius-lg); box-shadow:var(--shadow); overflow:hidden; }
+  .settings-card{ background:var(--card); border-radius:var(--radius-lg); box-shadow:var(--shadow); overflow:hidden; }
   .setting-row{ display:flex; align-items:center; gap:14px; padding:14px 18px; flex-wrap:wrap; }
   .setting-row + .setting-row{ border-top:1px solid var(--border); }
   .setting-icon{ font-size:19px; flex:none; width:26px; text-align:center; }
   .setting-text{ flex:1 1 180px; min-width:0; }
-  .setting-label{ font-size:14px; font-weight:700; color:var(--petroleo-dark); }
+  .setting-label{ font-size:14px; font-weight:700; color:var(--ink-strong); }
   .setting-sub{ font-size:12px; color:var(--text-muted); margin-top:2px; }
   /* Ancho fijo común: sin esto, la caja con unidad (KB) quedaba más
      ancha que las otras dos (el input + el sufijo "KB" suman más que
@@ -290,7 +393,7 @@
   .pref-subnav{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:16px; }
   .tipo-icon-input{
     width:38px; flex:none; border:1px solid var(--border); border-radius:6px; padding:3px 4px;
-    font-size:15px; text-align:center; background:#fff;
+    font-size:15px; text-align:center; background:var(--card);
   }
   /* Fila de Tipos con grilla de 3 columnas (ícono | nombre | bloque de la
      derecha) en vez de flexbox: con flex, el input del nombre (flex:1)
@@ -304,15 +407,15 @@
   .zone-edit-list{
     display:flex; flex-direction:column; border:1px solid var(--border); border-radius:var(--radius-sm); overflow:hidden;
   }
-  .zone-edit-row{ display:grid; grid-template-columns:38px minmax(0,1fr) auto; align-items:center; gap:8px; padding:8px; background:#fff; }
+  .zone-edit-row{ display:grid; grid-template-columns:38px minmax(0,1fr) auto; align-items:center; gap:8px; padding:8px; background:var(--card); }
   .zone-edit-row + .zone-edit-row{ border-top:1px solid var(--border); }
-  .zone-edit-row:hover{ background:#f8fbfb; }
+  .zone-edit-row:hover{ background:var(--surface-sunken); }
   .zone-edit-row input[type=color]{ width:20px; height:20px; padding:0; border:none; border-radius:5px; cursor:pointer; }
   .zone-label-input{
     min-width:0; border:1px solid transparent; border-radius:6px; padding:3px 6px; font-size:13px;
     font-weight:600; background:transparent;
   }
-  .zone-label-input:hover, .zone-label-input:focus{ border-color:var(--border); background:#fff; outline:none; }
+  .zone-label-input:hover, .zone-label-input:focus{ border-color:var(--border); background:var(--card); outline:none; }
   .zone-count{ font-size:11px; color:var(--text-muted); flex:none; white-space:nowrap; }
   .tipo-meta{ display:flex; align-items:center; gap:10px; justify-self:end; }
   .tipo-meta .zone-count{ width:66px; text-align:right; }
@@ -332,11 +435,11 @@
     background:var(--border); border:1px solid var(--border); border-radius:var(--radius-sm);
     overflow:hidden; max-height:400px; overflow-y:auto;
   }
-  .country-zone-row{ display:flex; align-items:center; gap:8px; background:#fff; padding:7px 10px; }
+  .country-zone-row{ display:flex; align-items:center; gap:8px; background:var(--card); padding:7px 10px; }
   .country-zone-row .zdot{ width:8px; height:8px; border-radius:50%; flex:none; }
   .cz-name{ flex:1; min-width:0; font-size:12.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .country-zone-row select{
-    flex:none; width:100px; border:1px solid var(--border); border-radius:6px; padding:4px 5px; font-size:11.5px; background:#fbfdfd;
+    flex:none; width:100px; border:1px solid var(--border); border-radius:6px; padding:4px 5px; font-size:11.5px; background:var(--surface-soft);
   }
   nav.tabs{ max-width:1200px; margin:14px auto 0 auto; display:flex; gap:4px; }
   nav.tabs.tabs-hidden{ visibility:hidden; pointer-events:none; }
@@ -351,19 +454,19 @@
 
   /* ---------- Setup banner ---------- */
   .setup-banner{
-    background:#fff7e6; border:1px solid #f3d78b; color:#6b4c00;
+    background:var(--warn-bg); border:1px solid var(--warn-border); color:var(--warn-text);
     border-radius:var(--radius-md); padding:16px 18px; margin-bottom:16px; font-size:13.5px; line-height:1.5;
   }
-  .setup-banner code{ background:#f3e6c4; padding:1px 6px; border-radius:5px; }
+  .setup-banner code{ background:var(--warn-border); padding:1px 6px; border-radius:5px; }
   /* Flota encima del contenido (no empuja nada) y se desvanece sola. */
   .calendar-notice{
     position:fixed; left:50%; bottom:24px; z-index:70; max-width:min(560px, calc(100vw - 32px));
-    transform:translate(-50%, 0); background:#fff7e6; border:1px solid #f3d78b; color:#6b4c00;
+    transform:translate(-50%, 0); background:var(--warn-bg); border:1px solid var(--warn-border); color:var(--warn-text);
     border-radius:var(--radius-md); padding:14px 18px; font-size:13.5px; line-height:1.5;
     box-shadow:0 8px 28px rgba(0,0,0,0.18);
     transition:opacity 0.4s ease, transform 0.4s ease; opacity:1;
   }
-  .calendar-notice.notice-ok{ background:#dcfce7; border-color:#86efac; color:#166534; }
+  .calendar-notice.notice-ok{ background:var(--ok-bg); border-color:var(--ok-border); color:var(--ok-text); }
   .calendar-notice.fading{ opacity:0; transform:translate(-50%, 8px); }
   .calendar-notice[hidden]{ display:none; }
 
@@ -377,11 +480,11 @@
   .filterbar{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:16px; }
   .filterbar input[type=text]{
     flex:1 1 220px; padding:11px 14px; border-radius:999px; border:1.5px solid var(--border);
-    font-size:13.5px; background:#fff;
+    font-size:13.5px; background:var(--card);
   }
   .chip-toggle{
     display:inline-flex; align-items:center; gap:6px; padding:7px 13px; border-radius:999px;
-    border:1.5px solid var(--border); background:#fff; font-size:12.5px; font-weight:600;
+    border:1.5px solid var(--border); background:var(--card); font-size:12.5px; font-weight:600;
     cursor:pointer; color:var(--text-muted); user-select:none;
   }
   .chip-toggle.active{ background:var(--petroleo); color:#fff; border-color:var(--petroleo); }
@@ -392,7 +495,7 @@
   /* ---------- Scope chips ---------- */
   .scope-chip{
     display:inline-flex; align-items:center; gap:6px; padding:5px 11px; border-radius:999px;
-    font-size:11.5px; font-weight:700; background:#eef6f6; color:var(--petroleo); border:1px solid var(--border);
+    font-size:11.5px; font-weight:700; background:var(--chip-bg); color:var(--ink); border:1px solid var(--border);
   }
   .scope-chip .zdot{ width:8px; height:8px; border-radius:50%; }
   .scope-chip.removable{ padding-right:6px; }
@@ -421,11 +524,11 @@
 
   /* ---------- Post card ---------- */
   .post{ transition:background-color .8s ease; }
-  .post.mention-highlight{ background:#fff3cd; }
+  .post.mention-highlight{ background:var(--highlight-bg); }
   .post-head{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:10px; flex-wrap:wrap; }
   .post-meta{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
   .post-date{ font-size:12px; color:var(--text-muted); font-weight:600; }
-  .post-author{ font-size:12.5px; font-weight:700; color:var(--petroleo); }
+  .post-author{ font-size:12.5px; font-weight:700; color:var(--ink); }
   .post-content{ font-size:14.5px; line-height:1.55; white-space:pre-wrap; margin:8px 0 10px 0; }
   .post-scopes{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
   .post-links{ display:flex; flex-direction:column; gap:4px; margin-bottom:10px; }
@@ -443,11 +546,11 @@
   .post-actions button.liked{ color:var(--celeste-dark); }
 
   .thread{ margin-top:12px; padding-left:16px; border-left:3px solid var(--border); display:flex; flex-direction:column; gap:12px; }
-  .reply{ background:#f8fbfb; border-radius:var(--radius-md); padding:12px 14px; }
-  .reply-system{ background:#fdf9ee; border:1px dashed #ecdcae; }
+  .reply{ background:var(--surface-sunken); border-radius:var(--radius-md); padding:12px 14px; }
+  .reply-system{ background:var(--system-bg); border:1px dashed var(--system-border); }
   .post-cancelled{ opacity:0.85; }
   .reply-head{ display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; margin-bottom:4px; }
-  .reply-author{ font-size:12.5px; font-weight:700; color:var(--petroleo); }
+  .reply-author{ font-size:12.5px; font-weight:700; color:var(--ink); }
   .reply-date{ font-size:11px; color:var(--text-muted); }
   .reply-content{ font-size:13.5px; line-height:1.5; white-space:pre-wrap; }
   .reply-scopes{ display:flex; flex-wrap:wrap; gap:5px; margin-top:6px; }
@@ -457,7 +560,7 @@
   .reply-links a{ font-size:12px; }
   .reply-actions{ display:flex; gap:14px; margin-top:8px; }
   .reply-actions button{ background:none; border:none; padding:0; font-size:12px; font-weight:700; color:var(--text-muted); cursor:pointer; }
-  .reply-actions button:hover{ color:var(--petroleo); }
+  .reply-actions button:hover{ color:var(--ink); }
   .reply-actions button.liked{ color:var(--celeste-dark); }
   .reply-children{ margin-top:10px; margin-left:18px; padding-left:12px; border-left:2px solid var(--border); display:flex; flex-direction:column; gap:10px; }
   .reply-nested-form{ margin-top:8px; }
@@ -473,14 +576,14 @@
   }
   .modal-overlay[hidden]{ display:none; }
   .modal{
-    background:#fff; border-radius:var(--radius-lg); width:100%; max-width:640px; padding:22px;
+    background:var(--card); border-radius:var(--radius-lg); width:100%; max-width:640px; padding:22px;
     box-shadow:0 20px 60px rgba(0,0,0,0.3); margin:auto 0;
     /* Altura tope: que el modal no siga creciendo con cada campo nuevo
        (Tipo de actividad, Adjuntos, error, botones) — a partir de acá
        scrollea SOLO el formulario, con el título siempre visible arriba. */
     max-height:min(720px, 88vh); display:flex; flex-direction:column;
   }
-  .modal h2{ margin:0 0 14px 0; font-size:18px; color:var(--petroleo); flex:none; }
+  .modal h2{ margin:0 0 14px 0; font-size:18px; color:var(--ink); flex:none; }
   .modal .close{
     position:absolute; top:14px; right:16px; background:none; border:none; font-size:20px; cursor:pointer; color:var(--text-muted);
   }
@@ -489,7 +592,7 @@
   .field{ margin-bottom:14px; }
   .field label{ display:block; font-size:12px; font-weight:700; color:var(--text-muted); margin-bottom:5px; text-transform:uppercase; letter-spacing:0.4px; }
   .field input[type=text], .field input[type=date], .field textarea, .field select, .field input[type=url]{
-    width:100%; padding:10px 12px; border-radius:var(--radius-sm); border:1.5px solid var(--border); font-size:14px; background:#fbfdfd;
+    width:100%; padding:10px 12px; border-radius:var(--radius-sm); border:1.5px solid var(--border); font-size:14px; background:var(--surface-soft);
   }
   .field textarea{ min-height:90px; resize:vertical; }
   .row2{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
@@ -505,7 +608,7 @@
      abajo estilo Calendar. */
   .field.field-title-plain input.title-input-plain{
     width:100%; border:none; border-bottom:1.5px solid var(--border); background:transparent;
-    padding:8px 2px; font-size:20px; font-weight:700; color:var(--petroleo-dark);
+    padding:8px 2px; font-size:20px; font-weight:700; color:var(--ink-strong);
   }
   .field.field-title-plain input.title-input-plain:focus{ outline:none; border-bottom-color:var(--celeste); }
   .field-icon-row{ display:flex; align-items:flex-start; gap:12px; margin-bottom:14px; }
@@ -513,14 +616,14 @@
   .field-icon-body{ flex:1; min-width:0; }
   .field-icon-input{
     flex:1; min-width:0; padding:10px 12px; border-radius:var(--radius-sm); border:1.5px solid var(--border);
-    font-size:14px; background:#fbfdfd;
+    font-size:14px; background:var(--surface-soft);
   }
   .allday-toggle{ display:flex; align-items:center; gap:6px; font-size:13px; font-weight:600; color:var(--text); margin-bottom:8px; cursor:pointer; }
   .dt-row{ display:flex; align-items:center; gap:8px; margin-bottom:8px; }
   .dt-row:last-child{ margin-bottom:0; }
   .dt-row input[type=date], .dt-row input[type=time]{
     flex:1; min-width:0; padding:9px 10px; border-radius:var(--radius-sm); border:1.5px solid var(--border);
-    font-size:13.5px; background:#fbfdfd;
+    font-size:13.5px; background:var(--surface-soft);
   }
   .dt-sep{ color:var(--text-muted); font-size:13px; flex:none; }
   /* El buscador de lugar (mismo que Rutina) metido adentro de una fila
@@ -566,18 +669,18 @@
 
   .attach-toolbar{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
   label.btn-attach, button.btn-attach{
-    display:inline-flex; align-items:center; gap:6px; background:#eef4f4; color:var(--text);
+    display:inline-flex; align-items:center; gap:6px; background:var(--surface-alt); color:var(--text);
     border:none; padding:11px 18px; border-radius:999px; font-weight:700; font-size:13.5px; cursor:pointer;
     text-transform:none; letter-spacing:normal; margin-bottom:0;
   }
-  .btn-attach:hover{ background:#e2eded; }
+  .btn-attach:hover{ background:var(--surface-hover); }
   .attach-panel{ margin-top:10px; }
   .reply-form-footer{ display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-top:8px; }
   .attach-row{
     display:flex; gap:8px; align-items:center; margin-bottom:6px;
-    background:#f8fbfb; border:1px solid var(--border); border-radius:var(--radius-sm); padding:6px;
+    background:var(--surface-sunken); border:1px solid var(--border); border-radius:var(--radius-sm); padding:6px;
   }
-  .attach-row input{ flex:1; border:1.5px solid var(--border); border-radius:8px; padding:7px 9px; font-size:13px; background:#fff; }
+  .attach-row input{ flex:1; border:1.5px solid var(--border); border-radius:8px; padding:7px 9px; font-size:13px; background:var(--card); }
   .attach-row input[data-link-field="label"]{ flex:0 1 90px; }
   .attach-row input[data-link-field="url"]{ flex:2 1 auto; }
   .attach-row .btn-mini{ flex:none; }
@@ -595,7 +698,7 @@
      mismo look que los chips de imagen, pero sin miniatura. */
   .file-preview-list{ display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
   .file-chip{
-    display:inline-flex; align-items:center; gap:6px; background:#eef4f4; border:1px solid var(--border);
+    display:inline-flex; align-items:center; gap:6px; background:var(--surface-alt); border:1px solid var(--border);
     border-radius:999px; padding:6px 8px 6px 12px; font-size:12.5px; font-weight:600; max-width:220px;
   }
   .file-chip .fname{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -606,19 +709,19 @@
   .post-files{ display:flex; flex-direction:column; gap:6px; margin-bottom:10px; }
   .post-file-audio{ display:flex; align-items:center; gap:8px; }
   .post-file-audio audio{ height:32px; max-width:260px; }
-  .post-file-audio .fname, .post-file-link{ font-size:12.5px; font-weight:600; color:var(--petroleo); }
+  .post-file-audio .fname, .post-file-link{ font-size:12.5px; font-weight:600; color:var(--ink); }
 
   /* Autocompletado genérico (lugar y @menciones): lista angosta debajo
      del input/textarea que la dispara. */
   .autocomplete-list{
-    position:absolute; top:calc(100% + 4px); left:0; right:0; background:#fff; border:1px solid var(--border);
+    position:absolute; top:calc(100% + 4px); left:0; right:0; background:var(--card); border:1px solid var(--border);
     border-radius:var(--radius-sm); box-shadow:var(--shadow); z-index:8; max-height:220px; overflow-y:auto;
   }
   .autocomplete-option{
     display:block; width:100%; text-align:left; background:none; border:none; padding:9px 14px; font-size:13px;
     cursor:pointer; color:var(--text);
   }
-  .autocomplete-option:hover, .autocomplete-option.active{ background:#f2f6f6; }
+  .autocomplete-option:hover, .autocomplete-option.active{ background:var(--surface-hover); }
   .autocomplete-empty{ padding:9px 14px; font-size:12.5px; color:var(--text-muted); }
   /* Opción "sumar como lugar nuevo" (ver getPlaceMatches): mismo look que
      una sugerencia normal, con el celeste de la app para diferenciarla de
@@ -638,7 +741,7 @@
      del texto. */
   .mention-tag{ color:var(--celeste-dark); background:rgba(79,199,224,0.16); border-radius:4px; padding:0 3px; font-weight:700; }
   .place-picker{ position:relative; margin-top:8px; }
-  .place-picker input{ width:100%; border:1.5px solid var(--border); border-radius:999px; padding:9px 14px; font-size:13px; background:#fff; box-sizing:border-box; }
+  .place-picker input{ width:100%; border:1.5px solid var(--border); border-radius:999px; padding:9px 14px; font-size:13px; background:var(--card); box-sizing:border-box; }
   .mention-anchor{ position:relative; flex:1; }
 
   /* Resalte de @mención EN VIVO mientras se escribe (no solo en lo ya
@@ -656,14 +759,14 @@
   .mention-highlight-backdrop .mention-tag{ padding:0; font-weight:inherit; color:transparent; background:rgba(79,199,224,0.32); }
   .field .mention-highlight-backdrop{
     padding:10px 12px; border:1.5px solid transparent; border-radius:var(--radius-sm);
-    font-size:14px; background:#fbfdfd;
+    font-size:14px; background:var(--surface-soft);
   }
   .field textarea.mention-input{ position:relative; z-index:1; background:transparent; }
   .quick-composer .mention-highlight-backdrop{ padding:8px 0; font-size:15px; line-height:1.4; }
   .quick-composer textarea.mention-input{ position:relative; z-index:1; }
   .reply-nested-form .mention-highlight-backdrop{
     padding:8px 10px; border:1.5px solid transparent; border-radius:var(--radius-sm);
-    font-size:13px; background:#fff;
+    font-size:13px; background:var(--card);
   }
   .reply-nested-form textarea.mention-input{ position:relative; z-index:1; background:transparent; }
 
@@ -699,8 +802,8 @@
     display:flex; flex-direction:column; gap:2px; width:100%; text-align:left; background:none; border:none;
     padding:8px; border-radius:var(--radius-sm); cursor:pointer;
   }
-  .mention-item:hover{ background:#f2f6f6; }
-  .mention-item .mi-author{ font-size:12.5px; font-weight:700; color:var(--petroleo-dark); }
+  .mention-item:hover{ background:var(--surface-hover); }
+  .mention-item .mi-author{ font-size:12.5px; font-weight:700; color:var(--ink-strong); }
   .mention-item .mi-content{ font-size:12px; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .mention-item .mi-date{ font-size:10.5px; color:var(--text-muted); }
   .mentions-empty{ padding:12px 8px; font-size:12.5px; color:var(--text-muted); text-align:center; }
@@ -708,7 +811,7 @@
      diferencia de una @mención): necesita el botón "Ya la acepté" de acá
      abajo, aparte, porque no hay forma de saber si la persona aceptó de
      verdad la invitación de Google. */
-  .calendar-invite-item{ padding:2px; border-radius:var(--radius-sm); background:#fbfefe; border:1px solid var(--border); }
+  .calendar-invite-item{ padding:2px; border-radius:var(--radius-sm); background:var(--surface-soft); border:1px solid var(--border); }
   .calendar-invite-item .mention-item{ padding-bottom:2px; }
   .calendar-invite-item .mention-item:hover{ background:none; }
   .ci-dismiss{
@@ -717,26 +820,26 @@
   }
   .ci-dismiss:hover{ text-decoration:underline; }
   .modal-actions{ display:flex; justify-content:flex-end; gap:10px; margin-top:6px; }
-  .btn-secondary{ background:#eef4f4; color:var(--text); border:none; padding:11px 18px; border-radius:999px; font-weight:700; font-size:13.5px; cursor:pointer; }
+  .btn-secondary{ background:var(--surface-alt); color:var(--text); border:none; padding:11px 18px; border-radius:999px; font-weight:700; font-size:13.5px; cursor:pointer; }
   .btn-primary{ background:var(--petroleo); color:#fff; border:none; padding:11px 20px; border-radius:999px; font-weight:700; font-size:13.5px; cursor:pointer; }
   .btn-primary:disabled{ opacity:0.5; cursor:not-allowed; }
   .form-error{ color:var(--danger); font-size:12.5px; margin-top:6px; }
   .hint{ font-size:11.5px; color:var(--text-muted); margin-top:4px; }
 
   /* ---------- Paises view ---------- */
-  .subview-toggle{ display:inline-flex; background:#eef4f4; border-radius:999px; padding:4px; margin-bottom:16px; }
+  .subview-toggle{ display:inline-flex; background:var(--surface-alt); border-radius:999px; padding:4px; margin-bottom:16px; }
   .subview-toggle button{ border:none; background:none; padding:8px 18px; border-radius:999px; font-weight:700; font-size:13px; cursor:pointer; color:var(--text-muted); }
   .subview-toggle button.active{ background:var(--petroleo); color:#fff; }
   .paises-toolbar{ display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:16px; }
   .paises-toolbar .subview-toggle, .paises-toolbar .zone-legend{ margin-bottom:0; }
   .country-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:12px; }
   .country-card{
-    background:#fff; border-radius:var(--radius-md); padding:14px; box-shadow:var(--shadow); cursor:pointer;
+    background:var(--card); border-radius:var(--radius-md); padding:14px; box-shadow:var(--shadow); cursor:pointer;
     border:1px solid var(--border); border-left:6px solid var(--petroleo); transition:transform 0.1s;
   }
   .country-card:hover{ transform:translateY(-2px); }
   .country-card .name{ font-weight:800; font-size:14px; margin-bottom:4px; }
-  .country-card .count{ font-size:22px; font-weight:800; color:var(--petroleo); }
+  .country-card .count{ font-size:22px; font-weight:800; color:var(--ink); }
   .country-card .count small{ font-size:11px; font-weight:600; color:var(--text-muted); }
   .zone-legend{ display:flex; gap:14px; flex-wrap:wrap; margin-bottom:14px; font-size:12px; color:var(--text-muted); font-weight:600; }
   .zone-legend span{ display:inline-flex; align-items:center; gap:6px; }
@@ -753,12 +856,12 @@
   .breadcrumb a{ cursor:pointer; font-weight:700; }
   .city-list{ display:flex; flex-direction:column; gap:8px; }
   .city-row{
-    display:flex; justify-content:space-between; align-items:center; background:#fff; border:1px solid var(--border);
+    display:flex; justify-content:space-between; align-items:center; background:var(--card); border:1px solid var(--border);
     border-radius:var(--radius-sm); padding:12px 14px; cursor:pointer;
   }
   .city-row:hover{ border-color:var(--celeste); }
   .city-row .cname{ font-weight:700; font-size:13.5px; }
-  .city-row .ccount{ font-weight:800; color:var(--petroleo); }
+  .city-row .ccount{ font-weight:800; color:var(--ink); }
   /* Círculos del mapa: SIEMPRE el mismo tamaño (el número adentro es lo
      que cambia, no el círculo) — antes el radio crecía con la cantidad de
      registros y con muchos países cercanos terminaba en un amasijo de
@@ -801,11 +904,11 @@
      invisible). Mismo alto/radio que .chip-toggle de al lado para que
      la fila se vea pareja. */
   .btn-sync{
-    display:inline-flex; align-items:center; gap:6px; background:#fff; color:var(--celeste-dark);
+    display:inline-flex; align-items:center; gap:6px; background:var(--card); color:var(--celeste-dark);
     border:1.5px solid var(--border); padding:7px 14px; border-radius:999px; font-weight:700;
     font-size:12.5px; cursor:pointer; white-space:nowrap;
   }
-  .btn-sync:hover{ border-color:var(--celeste); background:#eafbfd; }
+  .btn-sync:hover{ border-color:var(--celeste); background:var(--celeste-soft); }
   .btn-sync:disabled{ opacity:0.5; cursor:not-allowed; }
 
   footer.appfoot{ text-align:center; color:var(--text-muted); font-size:11.5px; padding:20px; }
@@ -869,6 +972,10 @@
       <button type="button" class="btn-primary" data-action="dismiss-calendar-invite">Entendido</button>
     </div>
   </div>
+</div>
+
+<div class="modal-overlay" id="tourOverlay" hidden>
+  <div class="modal tour-modal" id="tourModal"></div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
@@ -2573,6 +2680,20 @@ async function saveNicknameEdit(){
   }
 }
 
+// Claro/oscuro. La preferencia es por dispositivo (localStorage), no por
+// usuario en Firestore: es una cuestión de cómo se ve la pantalla donde
+// estás, no de quién sos — la misma persona puede querer oscuro en el
+// celular de noche y claro en la compu de la oficina.
+function currentTheme(){
+  return document.documentElement.dataset.theme === "dark" ? "dark" : "light";
+}
+function setTheme(theme){
+  if(theme === "dark") document.documentElement.dataset.theme = "dark";
+  else delete document.documentElement.dataset.theme;
+  try{ localStorage.setItem("ra_theme", theme); }catch(e){ /* sin localStorage no se recuerda, pero igual aplica */ }
+  render();
+}
+
 function renderUserBadge(){
   const u = state.auth.user;
   if(!u){ userBadgeEl.innerHTML = ""; userMenuOpen = false; return; }
@@ -2586,6 +2707,7 @@ function renderUserBadge(){
   // nickname — pendiente/rechazado todavía no tiene ese documento, así
   // que ni se les ofrece (guardar fallaría contra un doc inexistente).
   const canEditNickname = isAuthorized();
+  const theme = currentTheme();
   const nicknameBlock = !canEditNickname ? "" : nicknameEditing ? `
     <div class="um-nickname-form">
       <input type="text" id="nicknameInput" value="${esc(nicknameDraft)}" maxlength="20" placeholder="tu-nickname" autocomplete="off">
@@ -2608,7 +2730,12 @@ function renderUserBadge(){
         <div class="um-email">${esc(u.email)}</div>
         <div class="um-role ${role.cls}">${role.text}</div>
         ${nicknameBlock}
+        <div class="um-theme" role="group" aria-label="Tono de la página">
+          <button type="button" class="${theme === "light" ? "active" : ""}" data-action="set-theme" data-theme="light" aria-pressed="${theme === "light"}">☀️ Claro</button>
+          <button type="button" class="${theme === "dark" ? "active" : ""}" data-action="set-theme" data-theme="dark" aria-pressed="${theme === "dark"}">🌙 Oscuro</button>
+        </div>
         <button class="um-signout" data-action="sign-out">Cerrar sesión</button>
+        ${canEditNickname ? `<button type="button" class="um-tour" data-action="open-tour">❔ Cómo funciona</button>` : ""}
       </div>` : ""}`;
 }
 
@@ -2676,6 +2803,7 @@ function doRender(){
 
   renderUserBadge();
   renderMentionsBell();
+  maybeShowTour();
   maybeShowCalendarInviteOverlay();
 
   if(!isAuthorized()){
@@ -3513,7 +3641,7 @@ function renderPostCard(post, replies, featured){
         </div>
         <span class="post-author">${esc(post.authorName||"Anónimo")}</span>
       </div>
-      ${post.title && post.activityType !== "rutina" ? `<h3 style="margin:6px 0 0 0;font-size:16px;color:var(--petroleo);${post.cancelled?"text-decoration:line-through;opacity:0.7;":""}">${esc(post.title)}</h3>` : ""}
+      ${post.title && post.activityType !== "rutina" ? `<h3 style="margin:6px 0 0 0;font-size:16px;color:var(--ink);${post.cancelled?"text-decoration:line-through;opacity:0.7;":""}">${esc(post.title)}</h3>` : ""}
       ${metaBits.length ? `<div class="hint" style="margin-top:4px;">${metaBits.join(" · ")}</div>` : ""}
       <div class="post-content">${nl2br(post.content)}</div>
       ${scopesHtml ? `<div class="post-scopes">${scopesHtml}</div>` :
@@ -3637,7 +3765,7 @@ function renderReplyForm(postId){
   const d = getReplyDraft(postId);
   const textareaId = `replyContent-${postId}`;
   return `
-    <div class="reply" style="margin-top:12px;background:#fff;border:1.5px solid var(--border);">
+    <div class="reply" style="margin-top:12px;background:var(--card);border:1.5px solid var(--border);">
       <div class="hint" style="margin-bottom:8px;">Respondés como <strong>${esc(state.auth.user.displayName)}</strong></div>
       <div class="field" style="margin-bottom:8px;">
         <label>Respuesta</label>
@@ -3967,6 +4095,7 @@ const postModalTitle = document.getElementById("postModalTitle");
 const calendarInviteOverlay = document.getElementById("calendarInviteOverlay");
 function maybeShowCalendarInviteOverlay(){
   if(!isAuthorized() || !shouldShowCalendarInvitePopup()){ return; }
+  if(!tourOverlay.hidden) return; // el tutorial va primero; este aparece al cerrarlo
   if(!calendarInviteOverlay.hidden) return; // ya está abierto, no lo reabras encima
   document.getElementById("calendarInviteEmailSpan").textContent = state.auth.user.email;
   calendarInviteOverlay.hidden = false;
@@ -3977,6 +4106,72 @@ function dismissCalendarInviteOverlay(){
   render();
 }
 calendarInviteOverlay.addEventListener("click", e=>{ if(e.target === calendarInviteOverlay) dismissCalendarInviteOverlay(); });
+
+// Tutorial de bienvenida: se abre solo la primera vez que alguien
+// aprobado entra, y después queda a mano en el menú del avatar. Son tres
+// pantallas y nada más — la idea es que se entienda para qué sirve la
+// app en treinta segundos, no documentarla entera (para eso está el
+// README). Si se agregan pantallas, subir TOUR_VERSION para que se lo
+// vuelva a mostrar a todos.
+const TOUR_VERSION = 1;
+const TOUR_SEEN_KEY = "ra_tour_seen_v" + TOUR_VERSION;
+const TOUR_SLIDES = [
+  {
+    art: "📝",
+    title: "Contá lo que hace el equipo",
+    text: "Con “+ Nuevo evento” cargás una visita, un curso, un seminario o una rutina: con su fecha, el país o la ciudad y quiénes participaron. Queda en el Feed y cualquiera puede responder abajo.",
+  },
+  {
+    art: "🗺️",
+    title: "La memoria, por lugar y por fecha",
+    text: "En Países ves el mapa y cuánto se hizo en cada ciudad; en Memoria, todo en orden cronológico. Es lo que te sirve antes de viajar: saber qué pasó ahí antes que vos.",
+  },
+  {
+    art: "📅",
+    title: "Se sincroniza con el Calendar",
+    text: "Lo que publicás como evento aparece solo en el Google Calendar compartido de LatAm, y a quienes sumes como participantes les llega la invitación.",
+  },
+];
+const tourOverlay = document.getElementById("tourOverlay");
+const tourModal = document.getElementById("tourModal");
+let tourStep = 0;
+
+function hasSeenTour(){
+  try{ return localStorage.getItem(TOUR_SEEN_KEY) === "1"; }
+  catch(e){ return true; } // sin localStorage no hay forma de recordarlo: mejor no molestar en cada carga
+}
+function markTourSeen(){
+  try{ localStorage.setItem(TOUR_SEEN_KEY, "1"); }catch(e){ /* no se puede recordar, paciencia */ }
+}
+function renderTour(){
+  const slide = TOUR_SLIDES[tourStep];
+  const isLast = tourStep === TOUR_SLIDES.length - 1;
+  tourModal.innerHTML = `
+    <div class="tour-art">${slide.art}</div>
+    <div class="tour-title">${esc(slide.title)}</div>
+    <p class="tour-text">${esc(slide.text)}</p>
+    <div class="tour-dots">${TOUR_SLIDES.map((_, i)=>`<i class="${i === tourStep ? "active" : ""}"></i>`).join("")}</div>
+    <div class="tour-actions">
+      <button type="button" class="tour-skip" data-action="close-tour">${isLast ? "" : "Saltar"}</button>
+      <button type="button" class="btn-primary" data-action="${isLast ? "close-tour" : "tour-next"}">${isLast ? "Empezar" : "Siguiente"}</button>
+    </div>`;
+}
+function openTour(){
+  tourStep = 0;
+  renderTour();
+  tourOverlay.hidden = false;
+}
+function closeTour(){
+  markTourSeen();
+  tourOverlay.hidden = true;
+  render(); // deja paso al aviso del Calendar si corresponde
+}
+function maybeShowTour(){
+  if(!isAuthorized() || hasSeenTour()) return;
+  if(!tourOverlay.hidden || !postModalOverlay.hidden) return;
+  openTour();
+}
+tourOverlay.addEventListener("click", e=>{ if(e.target === tourOverlay) closeTour(); });
 
 function openComposer(){
   composerDraft = newComposerDraft();
@@ -4611,6 +4806,17 @@ document.addEventListener("click", e=>{
     userMenuOpen = !userMenuOpen;
     nicknameEditing = false; nicknameError = null;
     render();
+  } else if(action === "tour-next"){
+    tourStep = Math.min(tourStep + 1, TOUR_SLIDES.length - 1);
+    renderTour();
+  } else if(action === "close-tour"){
+    closeTour();
+  } else if(action === "open-tour"){
+    userMenuOpen = false;
+    render();
+    openTour();
+  } else if(action === "set-theme"){
+    setTheme(t.dataset.theme === "dark" ? "dark" : "light");
   } else if(action === "edit-nickname"){
     nicknameEditing = true;
     nicknameDraft = myNickname();
