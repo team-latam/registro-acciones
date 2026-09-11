@@ -1305,6 +1305,145 @@ function countryLabel(name){
   const row = DEFAULT_COUNTRY_LABELS[name];
   return row ? row[currentLang()] : name;
 }
+// Mismo criterio que DEFAULT_COUNTRY_LABELS/countryLabel, pero anidado por
+// país porque el nombre de ciudad NO es único entre países ("San Pedro"
+// existe en Belice y en Guatemala, "La Paz" en Bolivia y México) — hace
+// falta la key del país para desambiguar. cityLabel() también es solo
+// para MOSTRAR: el identificador real sigue siendo CITY_PRESETS[country]
+// [i].name en español (se guarda así en cada scope de Firestore, viaja en
+// data-city, y es lo que compara scopeAffectsCity()).
+const DEFAULT_CITY_LABELS = {
+  "Argentina": {
+    "Avellaneda": { es:"Avellaneda", en:"Avellaneda", pt:"Avellaneda", he:"אבייאנדה" },
+    "Bahia Blanca": { es:"Bahia Blanca", en:"Bahia Blanca", pt:"Bahia Blanca", he:"באהיה בלנקה" },
+    "Bariloche": { es:"Bariloche", en:"Bariloche", pt:"Bariloche", he:"ברילוצ'ה" },
+    "Buenos Aires (CABA)": { es:"Buenos Aires (CABA)", en:"Buenos Aires (CABA)", pt:"Buenos Aires (CABA)", he:"בואנוס איירס (קאבה)" },
+    "Concordia": { es:"Concordia", en:"Concordia", pt:"Concórdia", he:"קונקורדיה" },
+    "Cordoba": { es:"Cordoba", en:"Cordoba", pt:"Córdoba", he:"קורדובה" },
+    "La Plata": { es:"La Plata", en:"La Plata", pt:"La Plata", he:"לה פלאטה" },
+    "Mar Del Plata": { es:"Mar Del Plata", en:"Mar del Plata", pt:"Mar del Plata", he:"מאר דל פלאטה" },
+    "Martinez": { es:"Martinez", en:"Martinez", pt:"Martínez", he:"מרטינס" },
+    "Mendoza": { es:"Mendoza", en:"Mendoza", pt:"Mendoza", he:"מנדוסה" },
+    "Moron": { es:"Moron", en:"Moron", pt:"Morón", he:"מורון" },
+    "Nordelta": { es:"Nordelta", en:"Nordelta", pt:"Nordelta", he:"נורדלטה" },
+    "Ramos Mejia": { es:"Ramos Mejia", en:"Ramos Mejia", pt:"Ramos Mejía", he:"ראמוס מחיה" },
+    "Resistencia": { es:"Resistencia", en:"Resistencia", pt:"Resistência", he:"רסיסטנסיה" },
+    "Rosario": { es:"Rosario", en:"Rosario", pt:"Rosário", he:"רוסאריו" },
+    "Salta": { es:"Salta", en:"Salta", pt:"Salta", he:"סלטה" },
+    "San Fernando": { es:"San Fernando", en:"San Fernando", pt:"San Fernando", he:"סן פרננדו" },
+    "Tigre": { es:"Tigre", en:"Tigre", pt:"Tigre", he:"טיגרה" },
+    "Tucuman": { es:"Tucuman", en:"Tucuman", pt:"Tucumán", he:"טוקומן" },
+    "Vicente Lopez": { es:"Vicente Lopez", en:"Vicente Lopez", pt:"Vicente López", he:"ויסנטה לופס" },
+    "Yerba Buena": { es:"Yerba Buena", en:"Yerba Buena", pt:"Yerba Buena", he:"ירבה בואנה" },
+  },
+  "Aruba": { "Aruba": { es:"Aruba", en:"Aruba", pt:"Aruba", he:"ארובה" } },
+  "Bahamas": { "Nassau": { es:"Nassau", en:"Nassau", pt:"Nassau", he:"נאסו" } },
+  "Barbados": { "Barbados": { es:"Barbados", en:"Barbados", pt:"Barbados", he:"ברבדוס" } },
+  "Belice": { "San Pedro": { es:"San Pedro", en:"San Pedro", pt:"San Pedro", he:"סן פדרו" } },
+  "Bermudas": { "Bermuda": { es:"Bermuda", en:"Bermuda", pt:"Bermuda", he:"ברמודה" } },
+  "Bolivia": { "La Paz": { es:"La Paz", en:"La Paz", pt:"La Paz", he:"לה פאס" } },
+  "Brasil": {
+    "Belem": { es:"Belem", en:"Belem", pt:"Belém", he:"בלם" },
+    "Belo Horizonte": { es:"Belo Horizonte", en:"Belo Horizonte", pt:"Belo Horizonte", he:"בלו הוריזונטה" },
+    "Brasilia": { es:"Brasilia", en:"Brasilia", pt:"Brasília", he:"ברזיליה" },
+    "Curitiba": { es:"Curitiba", en:"Curitiba", pt:"Curitiba", he:"קוריטיבה" },
+    "Itacare": { es:"Itacare", en:"Itacare", pt:"Itacaré", he:"איטקארה" },
+    "Manaus": { es:"Manaus", en:"Manaus", pt:"Manaus", he:"מנאוס" },
+    "Morro De Sp": { es:"Morro De Sp", en:"Morro de São Paulo", pt:"Morro de São Paulo", he:"מורו דה סאו פאולו" },
+    "Petropolis": { es:"Petropolis", en:"Petropolis", pt:"Petrópolis", he:"פטרופוליס" },
+    "Porto Alegre": { es:"Porto Alegre", en:"Porto Alegre", pt:"Porto Alegre", he:"פורטו אלגרה" },
+    "Recife": { es:"Recife", en:"Recife", pt:"Recife", he:"רסיפה" },
+    "Rio De Janeiro": { es:"Rio De Janeiro", en:"Rio de Janeiro", pt:"Rio de Janeiro", he:"ריו דה ז'ניירו" },
+    "Salvador": { es:"Salvador", en:"Salvador", pt:"Salvador", he:"סלוודור" },
+    "Sao Paulo": { es:"Sao Paulo", en:"São Paulo", pt:"São Paulo", he:"סאו פאולו" },
+  },
+  "Chile": {
+    "Pucon": { es:"Pucon", en:"Pucon", pt:"Pucón", he:"פוקון" },
+    "Santiago": { es:"Santiago", en:"Santiago", pt:"Santiago", he:"סנטיאגו" },
+  },
+  "Colombia": {
+    "Barranquilla": { es:"Barranquilla", en:"Barranquilla", pt:"Barranquilla", he:"בארנקייה" },
+    "Bogota": { es:"Bogota", en:"Bogota", pt:"Bogotá", he:"בוגוטה" },
+    "Cali": { es:"Cali", en:"Cali", pt:"Cali", he:"קאלי" },
+    "Cartagena": { es:"Cartagena", en:"Cartagena", pt:"Cartagena", he:"קרטחנה" },
+    "Medellin": { es:"Medellin", en:"Medellin", pt:"Medellín", he:"מדיין" },
+    "Salento": { es:"Salento", en:"Salento", pt:"Salento", he:"סלנטו" },
+    "San Andres": { es:"San Andres", en:"San Andres", pt:"San Andrés", he:"סן אנדרס" },
+  },
+  "Costa Rica": {
+    "Jacó": { es:"Jacó", en:"Jaco", pt:"Jacó", he:"חאקו" },
+    "La Fortuna": { es:"La Fortuna", en:"La Fortuna", pt:"La Fortuna", he:"לה פורטונה" },
+    "San Jose": { es:"San Jose", en:"San Jose", pt:"San José", he:"סן חוזה" },
+    "Santa Teresa": { es:"Santa Teresa", en:"Santa Teresa", pt:"Santa Teresa", he:"סנטה טרזה" },
+    "Tamarindo": { es:"Tamarindo", en:"Tamarindo", pt:"Tamarindo", he:"טמרינדו" },
+  },
+  "Curazao": { "Curacao": { es:"Curacao", en:"Curaçao", pt:"Curaçao", he:"קוראסאו" } },
+  "Ecuador": {
+    "Guayaquil": { es:"Guayaquil", en:"Guayaquil", pt:"Guayaquil", he:"גואיאקיל" },
+    "Montañita": { es:"Montañita", en:"Montanita", pt:"Montanita", he:"מונטניטה" },
+    "Quito": { es:"Quito", en:"Quito", pt:"Quito", he:"קיטו" },
+  },
+  "El Salvador": { "El Salvador": { es:"El Salvador", en:"El Salvador", pt:"El Salvador", he:"אל סלוודור" } },
+  "Granada": { "Grenada": { es:"Grenada", en:"Grenada", pt:"Grenada", he:"גרנדה" } },
+  "Guatemala": {
+    "Antigua": { es:"Antigua", en:"Antigua", pt:"Antígua", he:"אנטיגואה" },
+    "Ciudad de Guatemala": { es:"Ciudad de Guatemala", en:"Guatemala City", pt:"Cidade da Guatemala", he:"עיר גואטמלה" },
+    "San Pedro": { es:"San Pedro", en:"San Pedro", pt:"San Pedro", he:"סן פדרו" },
+  },
+  "Honduras": { "Roatan": { es:"Roatan", en:"Roatan", pt:"Roatán", he:"רואטן" } },
+  "Islas Caimán": { "Grand Cayman": { es:"Grand Cayman", en:"Grand Cayman", pt:"Grand Cayman", he:"גרנד קיימן" } },
+  "Jamaica": { "Montego Bay": { es:"Montego Bay", en:"Montego Bay", pt:"Montego Bay", he:"מונטגו ביי" } },
+  "Martinica": { "Martinica": { es:"Martinica", en:"Martinique", pt:"Martinica", he:"מרטיניק" } },
+  "México": {
+    "Bacalar": { es:"Bacalar", en:"Bacalar", pt:"Bacalar", he:"בקלר" },
+    "Cabo San Lucas": { es:"Cabo San Lucas", en:"Cabo San Lucas", pt:"Cabo San Lucas", he:"קאבו סן לוקאס" },
+    "Cancun": { es:"Cancun", en:"Cancun", pt:"Cancún", he:"קנקון" },
+    "Chapala": { es:"Chapala", en:"Chapala", pt:"Chapala", he:"צ'אפלה" },
+    "Chiapas": { es:"Chiapas", en:"Chiapas", pt:"Chiapas", he:"צ'יאפאס" },
+    "Ciudad de México": { es:"Ciudad de México", en:"Mexico City", pt:"Cidade do México", he:"מקסיקו סיטי" },
+    "Cozumel": { es:"Cozumel", en:"Cozumel", pt:"Cozumel", he:"קוסומל" },
+    "Guadalajara": { es:"Guadalajara", en:"Guadalajara", pt:"Guadalajara", he:"גוודלחרה" },
+    "Hollbox": { es:"Hollbox", en:"Hollbox", pt:"Hollbox", he:"הולבוקס" },
+    "Isla Mujeres": { es:"Isla Mujeres", en:"Isla Mujeres", pt:"Isla Mujeres", he:"איסלה מוחרס" },
+    "La Paz": { es:"La Paz", en:"La Paz", pt:"La Paz", he:"לה פאס" },
+    "Merida": { es:"Merida", en:"Merida", pt:"Mérida", he:"מרידה" },
+    "Playa Del Carmen": { es:"Playa Del Carmen", en:"Playa del Carmen", pt:"Playa del Carmen", he:"פלאיה דל כרמן" },
+    "Puerto Escondido": { es:"Puerto Escondido", en:"Puerto Escondido", pt:"Puerto Escondido", he:"פוארטו אסקונדידו" },
+    "Puerto Vallarta": { es:"Puerto Vallarta", en:"Puerto Vallarta", pt:"Puerto Vallarta", he:"פוארטו ויארטה" },
+    "San Miguel De Allende": { es:"San Miguel De Allende", en:"San Miguel de Allende", pt:"San Miguel de Allende", he:"סן מיגל דה איינדה" },
+    "Tulum": { es:"Tulum", en:"Tulum", pt:"Tulum", he:"טולום" },
+  },
+  "Nicaragua": { "San Juan Del Sur": { es:"San Juan Del Sur", en:"San Juan del Sur", pt:"San Juan del Sur", he:"סן חואן דל סור" } },
+  "Panamá": {
+    "Bocas Del Toro": { es:"Bocas Del Toro", en:"Bocas del Toro", pt:"Bocas del Toro", he:"בוקאס דל טורו" },
+    "Boquete": { es:"Boquete", en:"Boquete", pt:"Boquete", he:"בוקטה" },
+    "Ciudad de Panamá": { es:"Ciudad de Panamá", en:"Panama City", pt:"Cidade do Panamá", he:"פנמה סיטי" },
+    "Playa Venao": { es:"Playa Venao", en:"Playa Venao", pt:"Playa Venao", he:"פלאיה בנאו" },
+  },
+  "Paraguay": { "Asuncion": { es:"Asuncion", en:"Asuncion", pt:"Assunção", he:"אסונסיון" } },
+  "Perú": {
+    "Cuzco": { es:"Cuzco", en:"Cuzco", pt:"Cuzco", he:"קוסקו" },
+    "Lima": { es:"Lima", en:"Lima", pt:"Lima", he:"לימה" },
+    "Pisac": { es:"Pisac", en:"Pisac", pt:"Pisac", he:"פיסאק" },
+  },
+  "República Dominicana": {
+    "Puerto Plata": { es:"Puerto Plata", en:"Puerto Plata", pt:"Puerto Plata", he:"פוארטו פלאטה" },
+    "Santo Domingo": { es:"Santo Domingo", en:"Santo Domingo", pt:"Santo Domingo", he:"סנטו דומינגו" },
+  },
+  "San Bartolomé (St. Barth)": { "Gustavia": { es:"Gustavia", en:"Gustavia", pt:"Gustavia", he:"גוסטביה" } },
+  "San Martín / Sint Maarten": { "St. Martin": { es:"St. Martin", en:"St. Martin", pt:"St. Martin", he:"סנט מארטן" } },
+  "Santa Lucía": { "Rodney Bay": { es:"Rodney Bay", en:"Rodney Bay", pt:"Rodney Bay", he:"רודני ביי" } },
+  "Turcas y Caicos": { "Providenciales": { es:"Providenciales", en:"Providenciales", pt:"Providenciales", he:"פרוווידנסיאלס" } },
+  "Uruguay": {
+    "Montevideo": { es:"Montevideo", en:"Montevideo", pt:"Montevidéu", he:"מונטווידאו" },
+    "Punta Del Este": { es:"Punta Del Este", en:"Punta del Este", pt:"Punta del Este", he:"פונטה דל אסטה" },
+  },
+  "Venezuela": { "Caracas": { es:"Caracas", en:"Caracas", pt:"Caracas", he:"קראקס" } },
+};
+function cityLabel(country, city){
+  const row = DEFAULT_CITY_LABELS[country] && DEFAULT_CITY_LABELS[country][city];
+  return row ? row[currentLang()] : city;
+}
 const COUNTRY_BY_NAME = Object.fromEntries(COUNTRIES.map(c=>[c.name,c]));
 const ZONE_COUNTRIES = { sur:[], central:[], norte:[] };
 COUNTRIES.forEach(c=>ZONE_COUNTRIES[c.zone].push(c.name));
@@ -1322,7 +1461,7 @@ function buildPlaceIndex(){
   COUNTRIES.forEach(c=>{
     items.push({ label:countryLabel(c.name), icon:"🏳️", scope:{ type:"pais", country:c.name } });
     (CITY_PRESETS[c.name]||[]).forEach(city=>{
-      items.push({ label:`${city.name}, ${countryLabel(c.name)}`, icon:"📍", scope:{ type:"ciudad", country:c.name, city:city.name } });
+      items.push({ label:`${cityLabel(c.name, city.name)}, ${countryLabel(c.name)}`, icon:"📍", scope:{ type:"ciudad", country:c.name, city:city.name } });
     });
   });
   return items;
@@ -1584,7 +1723,7 @@ function scopeLabel(scope){
   if(scope.type==="todo") return t("Toda LatAm","All of LatAm","Toda a LatAm","כל LatAm");
   if(scope.type==="region") return t("Región {z}","{z} region","Região {z}","אזור {z}",{z:ZONES[scope.region].label});
   if(scope.type==="pais") return countryLabel(scope.country);
-  if(scope.type==="ciudad") return `${scope.city}, ${countryLabel(scope.country)}`;
+  if(scope.type==="ciudad") return `${cityLabel(scope.country, scope.city)}, ${countryLabel(scope.country)}`;
   return "";
 }
 function scopeIcon(scope){
@@ -3788,7 +3927,7 @@ function renderLugaresSection(){
       <div class="country-zone-list" style="grid-template-columns:1fr;">
         ${items.map(it=>`
           <div class="country-zone-row">
-            <span class="cz-name" style="flex:2;" title="${esc(it.city)}, ${esc(it.country)}">${esc(it.city)}, ${esc(it.country)}</span>
+            <span class="cz-name" style="flex:2;" title="${esc(it.city)}, ${esc(countryLabel(it.country))}">${esc(it.city)}, ${esc(countryLabel(it.country))}</span>
             <span class="zone-count">${it.count === 1 ? t("1 posteo","1 post","1 postagem","פוסט אחד") : t("{n} posteos","{n} posts","{n} postagens","{n} פוסטים",{n:it.count})}</span>
             <button type="button" class="btn-mini" data-action="lugares-promote" data-country="${esc(it.country)}" data-city="${esc(it.city)}">+ ${t("Sumar a la lista oficial","Add to the official list","Somar à lista oficial","הוספה לרשימה הרשמית")}</button>
           </div>`).join("")}
@@ -3962,8 +4101,8 @@ function renderFilterBar(prefix){
 }
 function placeFilterLabel(place){
   if(place.kind==="zone") return t("Región {z}","{z} region","Região {z}","אזור {z}",{z:ZONES[place.zone].label});
-  if(place.kind==="country") return place.country;
-  if(place.kind==="city") return `${place.city}, ${place.country}`;
+  if(place.kind==="country") return countryLabel(place.country);
+  if(place.kind==="city") return `${cityLabel(place.country, place.city)}, ${countryLabel(place.country)}`;
   return "";
 }
 
@@ -4403,7 +4542,7 @@ function renderScopeBuilder(scope, ownerId, draft){
     if(presets && !sd.cityUseCustom){
       cityField = `<select data-scope-field="citySelect" data-scope="${scope}" data-owner-id="${ownerId}">
           <option value="">${esc(t("Elegir ciudad…","Choose city…","Escolher cidade…","...בחירת עיר"))}</option>
-          ${presets.map(c=>`<option value="${esc(c.name)}" ${sd.city===c.name?"selected":""}>${esc(c.name)}</option>`).join("")}
+          ${presets.map(c=>`<option value="${esc(c.name)}" ${sd.city===c.name?"selected":""}>${esc(cityLabel(sd.country, c.name))}</option>`).join("")}
           <option value="__other__">${esc(t("Otra ciudad (escribir)…","Other city (type it)…","Outra cidade (digitar)…","(הקלדה) עיר אחרת..."))}</option>
         </select>`;
     } else {
@@ -4523,7 +4662,7 @@ function renderCountryDrill(countryName, data){
     rows.push({ label:t("General / todo el país","General / whole country","Geral / todo o país","כללי / כל המדינה"), count:data.general, city:null });
   }
   Object.entries(data.cities).sort((a,b)=>b[1]-a[1]).forEach(([city,count])=>{
-    rows.push({ label:city, count, city });
+    rows.push({ label:cityLabel(countryName, city), count, city });
   });
   const rowsHtml = rows.length ? rows.map(r=>`
       <div class="city-row" data-action="${r.city?"goto-city":"goto-country"}" data-country="${esc(countryName)}" ${r.city?`data-city="${esc(r.city)}"`:""}>

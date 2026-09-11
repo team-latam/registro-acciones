@@ -571,20 +571,30 @@ coincide con alguna de las 4 traducciones conocidas para esa key — en
 cuanto el admin escribe otra cosa, se respeta tal cual y deja de
 tocarse.
 
-**Nombres de país (`countryLabel()`).** A diferencia de tipos/zonas, los
-países NO son editables por el admin (son fijos en el código, en
-`COUNTRIES`) — así que alcanza con una tabla derecha,
-`DEFAULT_COUNTRY_LABELS`, sin el mecanismo de "respetar si ya lo
-tocaron". `countryLabel(name)` es solo para MOSTRAR: el identificador
-real (el que se guarda en cada scope de Firestore, la key de
-`CITY_PRESETS`/`COUNTRY_BY_NAME`/`ZONE_COUNTRIES`, y el que viaja en
-`data-country` de cada botón) sigue siendo siempre el nombre en español
-— cambiarlo por idioma rompería la carga de posteos viejos y cualquier
-comparación/matching contra esos datos. Las ciudades (`CITY_PRESETS`)
-quedan en español siempre — se decidió no traducir ~90 nombres de
-localidades poco conocidas (la transliteración al hebreo en particular
-no daba valor para el esfuerzo) — se puede encarar después si hace
-falta.
+**Nombres de país y ciudad (`countryLabel()`/`cityLabel()`).** A
+diferencia de tipos/zonas, los países y ciudades NO son editables por
+el admin (son fijos en el código, en `COUNTRIES`/`CITY_PRESETS`) — así
+que alcanza con tablas derechas, `DEFAULT_COUNTRY_LABELS`/
+`DEFAULT_CITY_LABELS`, sin el mecanismo de "respetar si ya lo tocaron".
+Las dos son solo para MOSTRAR: el identificador real (el que se guarda
+en cada scope de Firestore, la key de `CITY_PRESETS`/`COUNTRY_BY_NAME`/
+`ZONE_COUNTRIES`, y el que viaja en `data-country`/`data-city` de cada
+botón) sigue siendo siempre el nombre en español — cambiarlo por idioma
+rompería la carga de posteos viejos y cualquier comparación/matching
+contra esos datos.
+
+`DEFAULT_CITY_LABELS` está anidado por país (`{ "Argentina": { "Cordoba":
+{es,en,pt,he}, ... }, ... }`), no es un diccionario plano de 102 nombres
+— el nombre de ciudad no es único entre países ("San Pedro" existe en
+Belice y en Guatemala, "La Paz" en Bolivia y en México), así que
+`cityLabel(country, city)` necesita las dos claves para desambiguar. La
+traducción al inglés/portugués es mayormente el mismo nombre (son
+topónimos, no vocabulario) salvo un puñado de ciudades con nombre
+anglicizado/lusitanizado conocido ("Ciudad de México" → "Mexico City" /
+"Cidade do México", "São Paulo" con su acentuación real en vez de la
+versión sin tildes que usa el dato interno). La transliteración al
+hebreo, como con los países, no la revisó nadie nativo — es una primera
+pasada razonable, no una garantía de exactitud dialectal.
 
 **Contenido libre (posteos/respuestas): traducción bajo demanda.** Lo
 de arriba traduce el "cascarón" de la interfaz, pero el contenido que
