@@ -1541,18 +1541,23 @@ function safeUrl(u){
   }catch(e){}
   return null;
 }
+// Locale para toLocaleDateString/toLocaleTimeString según el idioma activo
+// (si no, quedaban siempre en "es-AR" — fecha en español aunque el resto
+// de la interfaz ya esté en EN/PT/HE).
+const DATE_LOCALES = { es:"es-AR", en:"en-US", pt:"pt-BR", he:"he-IL" };
+function dateLocale(){ return DATE_LOCALES[currentLang()] || "es-AR"; }
 function fmtDate(d){
   if(!d) return "";
   const dt = typeof d === "string" ? new Date(d+"T00:00:00") : d;
   if(isNaN(dt)) return d;
-  return dt.toLocaleDateString("es-AR",{ day:"2-digit", month:"short", year:"numeric" });
+  return dt.toLocaleDateString(dateLocale(),{ day:"2-digit", month:"short", year:"numeric" });
 }
 function fmtDateTime(ts){
   if(!ts) return "";
   const dt = ts.toDate ? ts.toDate() : new Date(ts);
   if(isNaN(dt)) return "";
-  return dt.toLocaleDateString("es-AR",{ day:"2-digit", month:"short", year:"numeric" }) + " " +
-         dt.toLocaleTimeString("es-AR",{ hour:"2-digit", minute:"2-digit" });
+  return dt.toLocaleDateString(dateLocale(),{ day:"2-digit", month:"short", year:"numeric" }) + " " +
+         dt.toLocaleTimeString(dateLocale(),{ hour:"2-digit", minute:"2-digit" });
 }
 function uid(){ return Math.random().toString(36).slice(2,10); }
 function tsToMillis(ts){
@@ -2280,8 +2285,8 @@ async function applyCalendarEventToPosts(ev){
   // que alguien lo revise). Queda marcado como "sin definir" en la
   // tarjeta hasta que alguien lo edite y le ponga el lugar real.
   await createPost({
-    title: ev.summary || "(Sin título)",
-    content: ev.description || "Creado automáticamente desde Google Calendar.",
+    title: ev.summary || t("(Sin título)","(Untitled)","(Sem título)","(ללא כותרת)"),
+    content: ev.description || t("Creado automáticamente desde Google Calendar.","Automatically created from Google Calendar.","Criado automaticamente a partir do Google Calendar.",".נוצר אוטומטית מ-Google Calendar"),
     startDate, endDate, date:startDate, startTime, endTime,
     organizer: ev.organizer?.displayName || ev.organizer?.email || "",
     location,
@@ -2808,7 +2813,7 @@ function subscribeData(){
     startCalendarAutoSync();
   }, err=>{
     console.error("Error leyendo posts:", err);
-    renderFatalError("Error leyendo los posteos desde Firestore: " + err.message);
+    renderFatalError(t("Error leyendo los posteos desde Firestore: {msg}","Error reading posts from Firestore: {msg}","Erro ao ler os posteios do Firestore: {msg}","{msg} :שגיאה בקריאת הפוסטים מ-Firestore",{msg:err.message}));
   });
 
   unsubscribeData = ()=>{
@@ -3124,6 +3129,20 @@ function setLang(lang){
   PLACE_INDEX.length = 0;
   PLACE_INDEX.push(...buildPlaceIndex());
   applyStaticI18n();
+  // El título del modal de Evento (postModalTitle) vive afuera de
+  // #viewRoot, igual que el resto del cascarón — pero a diferencia de
+  // ese cascarón fijo, su texto depende de en qué modo esté el composer
+  // (nuevo/editar evento/editar rutina), así que applyStaticI18n() no lo
+  // puede cubrir con un string fijo. Si el modal está abierto justo
+  // cuando cambia el idioma, se reescribe acá con el mismo criterio que
+  // openComposer()/openEditComposer().
+  if(postModalOverlay && !postModalOverlay.hidden && composerDraft){
+    postModalTitle.textContent = composerDraft.editingPost
+      ? (composerDraft.editingPost.activityType === "rutina"
+          ? t("Editar rutina","Edit routine","Editar rotina","עריכת שגרה")
+          : t("Editar evento","Edit event","Editar evento","עריכת אירוע"))
+      : t("Nuevo evento","New event","Novo evento","אירוע חדש");
+  }
   render();
 }
 
