@@ -3187,8 +3187,8 @@ function lastLoginByEmail(){
 function renderAccesoSubnav(){
   const pendingCount = state.accessRequests.filter(r=>r.status==="pending").length;
   return `<div class="pref-subnav">
-    <button type="button" class="chip-toggle${state.solicitudesSection==="usuarios"?" active":""}" data-action="acceso-section" data-key="usuarios">Usuarios (${state.roster.length})</button>
-    <button type="button" class="chip-toggle${state.solicitudesSection==="pendientes"?" active":""}" data-action="acceso-section" data-key="pendientes">Solicitudes${pendingCount ? ` (${pendingCount})` : ""}</button>
+    <button type="button" class="chip-toggle${state.solicitudesSection==="usuarios"?" active":""}" data-action="acceso-section" data-key="usuarios">${t("Usuarios","Users","Usuários","משתמשים")} (${state.roster.length})</button>
+    <button type="button" class="chip-toggle${state.solicitudesSection==="pendientes"?" active":""}" data-action="acceso-section" data-key="pendientes">${t("Solicitudes","Requests","Solicitações","בקשות")}${pendingCount ? ` (${pendingCount})` : ""}</button>
   </div>`;
 }
 
@@ -3206,15 +3206,15 @@ function renderUsuariosSection(){
     return (a.name||a.nickname||"").localeCompare(b.name||b.nickname||"", "es");
   });
   const toolbar = `<div class="users-toolbar">
-    <input type="text" id="usuariosSearch" placeholder="Buscar por nombre o email..." value="${esc(f.text)}">
+    <input type="text" id="usuariosSearch" placeholder="${esc(t("Buscar por nombre o email...","Search by name or email...","Buscar por nome ou email...","...חיפוש לפי שם או אימייל"))}" value="${esc(f.text)}">
     <div class="chipgroup">
-      <span class="sort-label">Ordenar por:</span>
-      <button type="button" class="chip-toggle${f.sort==="name"?" active":""}" data-action="usuarios-sort" data-key="name">Nombre</button>
-      <button type="button" class="chip-toggle${f.sort==="approvedAt"?" active":""}" data-action="usuarios-sort" data-key="approvedAt">Fecha de alta</button>
-      <button type="button" class="chip-toggle${f.sort==="activity"?" active":""}" data-action="usuarios-sort" data-key="activity">Actividad</button>
+      <span class="sort-label">${t("Ordenar por:","Sort by:","Ordenar por:",":מיון לפי")}</span>
+      <button type="button" class="chip-toggle${f.sort==="name"?" active":""}" data-action="usuarios-sort" data-key="name">${t("Nombre","Name","Nome","שם")}</button>
+      <button type="button" class="chip-toggle${f.sort==="approvedAt"?" active":""}" data-action="usuarios-sort" data-key="approvedAt">${t("Fecha de alta","Date joined","Data de entrada","תאריך הצטרפות")}</button>
+      <button type="button" class="chip-toggle${f.sort==="activity"?" active":""}" data-action="usuarios-sort" data-key="activity">${t("Actividad","Activity","Atividade","פעילות")}</button>
     </div>
   </div>`;
-  if(!users.length) return toolbar + `<div class="empty-state"><div class="big">🔎</div>Nadie coincide con la búsqueda.</div>`;
+  if(!users.length) return toolbar + `<div class="empty-state"><div class="big">🔎</div>${t("Nadie coincide con la búsqueda.","No one matches the search.","Ninguém coincide com a busca.","אף אחד לא תואם לחיפוש.")}</div>`;
   return toolbar + users.map(u=>{
     const tier = activityTierFor(u.postCount);
     const isAdminUser = u.email === ADMIN_EMAIL;
@@ -3222,13 +3222,13 @@ function renderUsuariosSection(){
       ${u.photoURL ? `<img src="${esc(u.photoURL)}" alt="">` : `<div class="avatar-fallback">${esc((u.name||u.nickname||"?")[0].toUpperCase())}</div>`}
       <div class="rinfo">
         <div class="rname">${esc(u.name || u.nickname)}${isAdminUser ? ` <span class="status-pill approved">Admin</span>` : ""}</div>
-        <div class="remail">${esc(u.email)} · ${tier.icon} ${tier.label} · Último login: ${u.lastLogin ? fmtDateTime(u.lastLogin) : "sin registro"}</div>
+        <div class="remail">${esc(u.email)} · ${tier.icon} ${tier.label} · ${t("Último login: {v}","Last login: {v}","Último login: {v}","{v} :כניסה אחרונה",{v: u.lastLogin ? fmtDateTime(u.lastLogin) : t("sin registro","no record","sem registro","ללא רישום")})}</div>
       </div>
       <div class="ractions">
         ${u.calendarShared
-          ? `<span class="status-pill approved">✅ Invitación enviada</span><span class="ractions-sep"></span><button class="btn-ghost" data-action="resend-calendar-invite" data-email="${esc(u.email)}">Reenviar invitación</button>`
-          : `<button class="btn-ghost" data-action="share-calendar" data-email="${esc(u.email)}">Compartir Calendar</button>`}
-        ${isAdminUser ? "" : `<span class="ractions-sep"></span><button class="btn-ghost danger" data-action="revoke-access" data-email="${esc(u.email)}">Revocar acceso</button>`}
+          ? `<span class="status-pill approved">✅ ${t("Invitación enviada","Invite sent","Convite enviado","הזמנה נשלחה")}</span><span class="ractions-sep"></span><button class="btn-ghost" data-action="resend-calendar-invite" data-email="${esc(u.email)}">${t("Reenviar invitación","Resend invite","Reenviar convite","שליחה חוזרת של ההזמנה")}</button>`
+          : `<button class="btn-ghost" data-action="share-calendar" data-email="${esc(u.email)}">${t("Compartir Calendar","Share Calendar","Compartilhar Calendar","שיתוף היומן")}</button>`}
+        ${isAdminUser ? "" : `<span class="ractions-sep"></span><button class="btn-ghost danger" data-action="revoke-access" data-email="${esc(u.email)}">${t("Revocar acceso","Revoke access","Revogar acesso","ביטול גישה")}</button>`}
       </div>
     </div>`;
   }).join("");
@@ -3241,21 +3241,21 @@ function renderSolicitudesQueueSection(){
       ${r.photoURL ? `<img src="${esc(r.photoURL)}" alt="">` : `<div class="avatar-fallback">${esc((r.name||r.email||"?")[0].toUpperCase())}</div>`}
       <div class="rinfo">
         <div class="rname">${esc(r.name||r.email)}</div>
-        <div class="remail">${esc(r.email)} · pedido ${fmtDateTime(r.requestedAt)}</div>
+        <div class="remail">${esc(r.email)} · ${t("pedido {v}","requested {v}","pedido {v}","{v} התבקש",{v:fmtDateTime(r.requestedAt)})}</div>
       </div>
       <div class="ractions">${actionsHtml}</div>
     </div>`;
   const pendingHtml = pending.length
     ? pending.map(r => renderRow(r, `
-        <button class="btn-secondary" data-action="reject-request" data-email="${esc(r.email)}">Rechazar</button>
-        <button class="btn-primary" data-action="approve-request" data-email="${esc(r.email)}">Aprobar</button>`)).join("")
-    : `<div class="empty-state"><div class="big">📭</div>No hay solicitudes pendientes.</div>`;
+        <button class="btn-secondary" data-action="reject-request" data-email="${esc(r.email)}">${t("Rechazar","Reject","Rejeitar","דחייה")}</button>
+        <button class="btn-primary" data-action="approve-request" data-email="${esc(r.email)}">${t("Aprobar","Approve","Aprovar","אישור")}</button>`)).join("")
+    : `<div class="empty-state"><div class="big">📭</div>${t("No hay solicitudes pendientes.","There are no pending requests.","Não há solicitações pendentes.","אין בקשות ממתינות.")}</div>`;
   const rejectedHtml = rejected.length ? `
     <div class="rejected-section">
-      <div class="hint" style="margin:18px 0 10px;">Rechazadas (incluye accesos revocados) — quedan acá por si hay que revertir.</div>
+      <div class="hint" style="margin:18px 0 10px;">${t("Rechazadas (incluye accesos revocados) — quedan acá por si hay que revertir.","Rejected (includes revoked access) — kept here in case it needs to be reverted.","Rejeitadas (inclui acessos revogados) — ficam aqui caso seja preciso reverter.","נדחו (כולל גישות שבוטלו) — נשארות כאן למקרה שיהיה צורך לבטל.")}</div>
       ${rejected.map(r => renderRow(r, `
-        <span class="status-pill rejected">Rechazado</span>
-        <button class="btn-primary" data-action="approve-request" data-email="${esc(r.email)}">Aprobar igual</button>`)).join("")}
+        <span class="status-pill rejected">${t("Rechazado","Rejected","Recusado","נדחה")}</span>
+        <button class="btn-primary" data-action="approve-request" data-email="${esc(r.email)}">${t("Aprobar igual","Approve anyway","Aprovar mesmo assim","אישור בכל זאת")}</button>`)).join("")}
     </div>` : "";
   return pendingHtml + rejectedHtml;
 }
@@ -3270,15 +3270,23 @@ function renderAccesoView(){
    rechazó/revocó, a quién se compartió el Calendar). No es un registro
    de los posteos ni su contenido.
    ====================================================================== */
-const AUDIT_LABELS = {
-  login: { icon:"🔓", filterLabel:"Login", text: e => `${e.actorName} inició sesión.` },
-  access_requested: { icon:"📝", filterLabel:"Pidió acceso", text: e => `${e.actorName} pidió acceso${e.detail ? ` (${e.detail})` : ""}.` },
-  access_approved: { icon:"✅", filterLabel:"Aprobó", text: e => `${e.actorName} aprobó el acceso de ${e.targetEmail}.` },
-  access_rejected: { icon:"🚫", filterLabel:"Rechazó", text: e => `${e.actorName} rechazó el acceso de ${e.targetEmail}.` },
-  access_revoked: { icon:"⛔", filterLabel:"Revocó", text: e => `${e.actorName} revocó el acceso de ${e.targetEmail}.` },
-  calendar_shared: { icon:"📅", filterLabel:"Compartió Calendar", text: e => `${e.actorName} compartió el Calendar con ${e.targetEmail}.` },
-  calendar_unshared: { icon:"📅", filterLabel:"Sacó del Calendar", text: e => `${e.actorName} sacó a ${e.targetEmail} del Calendar.` },
-};
+// Función y no objeto fijo (mismo motivo que userRoleLabel/activityTiers):
+// filterLabel depende del idioma actual. Los "text" ya eran funciones de
+// antes (se llaman con el evento en cada render), así que esos strings
+// ya se re-evaluaban solos — alcanzaba con traducirlos por dentro.
+function auditLabels(){
+  return {
+    login: { icon:"🔓", filterLabel:t("Login","Login","Login","כניסה"), text: e => t("{n} inició sesión.","{n} signed in.","{n} entrou.","{n} התחבר/ה.",{n:e.actorName}) },
+    access_requested: { icon:"📝", filterLabel:t("Pidió acceso","Requested access","Pediu acesso","ביקש/ה גישה"), text: e => e.detail
+      ? t("{n} pidió acceso ({d}).","{n} requested access ({d}).","{n} pediu acesso ({d}).","{n} ביקש/ה גישה ({d}).",{n:e.actorName,d:e.detail})
+      : t("{n} pidió acceso.","{n} requested access.","{n} pediu acesso.","{n} ביקש/ה גישה.",{n:e.actorName}) },
+    access_approved: { icon:"✅", filterLabel:t("Aprobó","Approved","Aprovou","אישר/ה"), text: e => t("{n} aprobó el acceso de {target}.","{n} approved {target}'s access.","{n} aprovou o acesso de {target}.","{n} אישר/ה את הגישה של {target}.",{n:e.actorName,target:e.targetEmail}) },
+    access_rejected: { icon:"🚫", filterLabel:t("Rechazó","Rejected","Rejeitou","דחה/תה"), text: e => t("{n} rechazó el acceso de {target}.","{n} rejected {target}'s access.","{n} rejeitou o acesso de {target}.","{n} דחה/תה את הגישה של {target}.",{n:e.actorName,target:e.targetEmail}) },
+    access_revoked: { icon:"⛔", filterLabel:t("Revocó","Revoked","Revogou","ביטל/ה"), text: e => t("{n} revocó el acceso de {target}.","{n} revoked {target}'s access.","{n} revogou o acesso de {target}.","{n} ביטל/ה את הגישה של {target}.",{n:e.actorName,target:e.targetEmail}) },
+    calendar_shared: { icon:"📅", filterLabel:t("Compartió Calendar","Shared Calendar","Compartilhou Calendar","שיתף/ה יומן"), text: e => t("{n} compartió el Calendar con {target}.","{n} shared the Calendar with {target}.","{n} compartilhou o Calendar com {target}.","{n} שיתף/ה את היומן עם {target}.",{n:e.actorName,target:e.targetEmail}) },
+    calendar_unshared: { icon:"📅", filterLabel:t("Sacó del Calendar","Removed from Calendar","Tirou do Calendar","הסיר/ה מהיומן"), text: e => t("{n} sacó a {target} del Calendar.","{n} removed {target} from the Calendar.","{n} tirou {target} do Calendar.","{n} הסיר/ה את {target} מהיומן.",{n:e.actorName,target:e.targetEmail}) },
+  };
+}
 // Paginado de a 30 (ver botón "Ver más" más abajo) en vez de mostrar toda
 // la lista de una — con meses de uso esto puede ser larguísimo. Vive
 // afuera de `state` a propósito, como openReplyForms/userMenuOpen: es
@@ -3293,7 +3301,7 @@ function auditSortValue(e, key){
   if(key === "device") return normalize(e.device);
   if(key === "ip") return normalize(e.ip);
   if(key === "action"){
-    const info = AUDIT_LABELS[e.type];
+    const info = auditLabels()[e.type];
     return normalize(info ? info.text(e) : e.type);
   }
   return "";
@@ -3328,33 +3336,33 @@ function renderAuditFilters(){
   const anyFilter = f.text || f.types.size;
   return `
     <div class="audit-filters">
-      <input type="text" id="auditSearch" placeholder="Buscar por persona (nombre o email)..." value="${esc(f.text)}">
+      <input type="text" id="auditSearch" placeholder="${esc(t("Buscar por persona (nombre o email)...","Search by person (name or email)...","Buscar por pessoa (nome ou email)...","...חיפוש לפי אדם (שם או אימייל"))}" value="${esc(f.text)}">
       <div class="chipgroup">
-        ${Object.entries(AUDIT_LABELS).map(([key,info])=>`
+        ${Object.entries(auditLabels()).map(([key,info])=>`
           <button type="button" class="chip-toggle${f.types.has(key)?" active":""}" data-action="audit-toggle-type" data-key="${key}">${info.icon} ${info.filterLabel}</button>`).join("")}
-        ${anyFilter ? `<button type="button" class="filter-clear" data-action="audit-clear-filters">Limpiar filtros</button>` : ""}
+        ${anyFilter ? `<button type="button" class="filter-clear" data-action="audit-clear-filters">${t("Limpiar filtros","Clear filters","Limpar filtros","ניקוי מסננים")}</button>` : ""}
       </div>
     </div>`;
 }
 function renderAuditColumnsHeader(){
   return `<div class="audit-columns-header">
       <span></span>
-      <button type="button" class="ach-sort ach-action" data-action="audit-sort" data-key="action">Acción${auditSortArrow("action")}</button>
-      <button type="button" class="ach-sort ach-device" data-action="audit-sort" data-key="device">Dispositivo${auditSortArrow("device")}</button>
+      <button type="button" class="ach-sort ach-action" data-action="audit-sort" data-key="action">${t("Acción","Action","Ação","פעולה")}${auditSortArrow("action")}</button>
+      <button type="button" class="ach-sort ach-device" data-action="audit-sort" data-key="device">${t("Dispositivo","Device","Dispositivo","מכשיר")}${auditSortArrow("device")}</button>
       <button type="button" class="ach-sort ach-ip" data-action="audit-sort" data-key="ip">IP${auditSortArrow("ip")}</button>
-      <button type="button" class="ach-sort ach-date" data-action="audit-sort" data-key="date">Fecha${auditSortArrow("date")}</button>
+      <button type="button" class="ach-sort ach-date" data-action="audit-sort" data-key="date">${t("Fecha","Date","Data","תאריך")}${auditSortArrow("date")}</button>
     </div>`;
 }
 function renderAuditoriaView(){
   const entries = state.auditLog;
-  if(!entries.length) return `<div class="empty-state"><div class="big">🗂️</div>Todavía no hay actividad registrada.</div>`;
+  if(!entries.length) return `<div class="empty-state"><div class="big">🗂️</div>${t("Todavía no hay actividad registrada.","No activity recorded yet.","Ainda não há atividade registrada.","עדיין אין פעילות רשומה.")}</div>`;
   const filtered = sortAuditEntries(entries.filter(matchesAuditFilters));
   const visible = filtered.slice(0, auditVisibleCount);
   const remaining = filtered.length - visible.length;
   const list = !filtered.length
-    ? `<div class="empty-state"><div class="big">🔎</div>Ningún registro coincide con el filtro.</div>`
+    ? `<div class="empty-state"><div class="big">🔎</div>${t("Ningún registro coincide con el filtro.","No record matches the filter.","Nenhum registro coincide com o filtro.","אף רשומה לא תואמת למסנן.")}</div>`
     : `${renderAuditColumnsHeader()}<div class="audit-list">${visible.map(e=>{
-        const info = AUDIT_LABELS[e.type] || { icon:"•", text: e2 => `${e2.actorName}: ${e2.type}` };
+        const info = auditLabels()[e.type] || { icon:"•", text: e2 => `${e2.actorName}: ${e2.type}` };
         return `<div class="audit-row">
           <span class="audit-icon">${info.icon}</span>
           <div class="audit-text">${esc(info.text(e))}</div>
@@ -3363,7 +3371,7 @@ function renderAuditoriaView(){
           <span class="audit-date">${fmtDateTime(e.createdAt)}</span>
         </div>`;
       }).join("")}</div>
-      ${remaining > 0 ? `<div class="audit-more"><button type="button" class="btn-secondary" data-action="audit-load-more">Ver ${Math.min(30, remaining)} más (quedan ${remaining})</button></div>` : ""}`;
+      ${remaining > 0 ? `<div class="audit-more"><button type="button" class="btn-secondary" data-action="audit-load-more">${t("Ver {n} más (quedan {r})","See {n} more ({r} left)","Ver mais {n} (restam {r})","{r} נשארו) עוד {n} הצגת)",{n:Math.min(30,remaining), r:remaining})}</button></div>` : ""}`;
   return renderAuditFilters() + list;
 }
 
@@ -4864,7 +4872,8 @@ function getPlaceMatches(query){
     const country = COUNTRIES.find(c => normalize(c.name) === normalize(countryPart));
     if(cityPart && country){
       const city = titleCase(cityPart);
-      return [{ label: `Usar "${city}, ${country.name}" (lugar nuevo)`, icon:"➕", scope:{type:"ciudad", country:country.name, city}, isNew:true }];
+      const label = t(`Usar "{place}" (lugar nuevo)`,`Use "{place}" (new place)`,`Usar "{place}" (lugar novo)`,`(מקום חדש) "{place}" שימוש ב-`,{place:`${city}, ${country.name}`});
+      return [{ label, icon:"➕", scope:{type:"ciudad", country:country.name, city}, isNew:true }];
     }
   }
   return [];
@@ -4872,7 +4881,7 @@ function getPlaceMatches(query){
 function renderPlaceSuggestions(draft, scope, ownerId){
   const matches = getPlaceMatches(draft.placeQuery);
   if(!draft.placeQuery.trim()) return "";
-  if(!matches.length) return `<div class="autocomplete-list"><div class="autocomplete-empty">Sin resultados. Para sumar un lugar nuevo, escribí "Ciudad, País".</div></div>`;
+  if(!matches.length) return `<div class="autocomplete-list"><div class="autocomplete-empty">${t('Sin resultados. Para sumar un lugar nuevo, escribí "Ciudad, País".','No results. To add a new place, type "City, Country".','Sem resultados. Para somar um lugar novo, escreva "Cidade, País".','.אין תוצאות. כדי להוסיף מקום חדש, הקלד/י "עיר, מדינה"')}</div></div>`;
   return `<div class="autocomplete-list">${matches.map((it,i)=>`
     <button type="button" class="autocomplete-option${it.isNew?" autocomplete-option-new":""}${i===draft.placeHighlight?" active":""}" data-action="pick-place" data-scope="${scope}" data-owner-id="${ownerId}" data-match-idx="${i}">${it.icon} ${esc(it.label)}</button>`).join("")}</div>`;
 }
@@ -4926,7 +4935,7 @@ function getMentionMatches(draft){
 function renderMentionSuggestions(draft, scope, ownerId, textareaId){
   if(draft.mentionQuery == null) return "";
   const matches = getMentionMatches(draft);
-  if(!matches.length) return `<div class="autocomplete-list"><div class="autocomplete-empty">Sin coincidencias</div></div>`;
+  if(!matches.length) return `<div class="autocomplete-list"><div class="autocomplete-empty">${t("Sin coincidencias","No matches","Sem coincidências","אין התאמות")}</div></div>`;
   return `<div class="autocomplete-list">${matches.map((u,i)=>{
     const avatar = u.isAll ? `<span class="mention-avatar mention-avatar-fallback">👥</span>`
       : u.photoURL ? `<img class="mention-avatar" src="${esc(u.photoURL)}" alt="">`
@@ -4978,9 +4987,15 @@ function renderParticipantsField(draft){
   return `
     <div class="participants-field">
       ${draft.participants.length ? `<div class="participants-row">${draft.participants.map((p,i)=>renderParticipantChip(p,i)).join("")}</div>` : ""}
-      <input type="text" id="cParticipantQuery" class="field-icon-input" placeholder="Sumar participante (nombre o email)..." autocomplete="off" value="${esc(draft.participantQuery)}">
+      <input type="text" id="cParticipantQuery" class="field-icon-input" placeholder="${esc(t("Sumar participante (nombre o email)...","Add participant (name or email)...","Somar participante (nome ou email)...","(הוספת משתתף/ת (שם או אימייל..."))}" autocomplete="off" value="${esc(draft.participantQuery)}">
       ${draft.participantQuery ? renderParticipantSuggestions(draft) : ""}
-      ${draft.legacyOrganizer ? `<div class="hint" style="margin-top:4px;">Antes decía "Creado por: ${esc(draft.legacyOrganizer)}" — se reemplaza al guardar por lo que sumes acá.</div>` : ""}
+      ${draft.legacyOrganizer ? `<div class="hint" style="margin-top:4px;">${t(
+        `Antes decía "Creado por: {name}" — se reemplaza al guardar por lo que sumes acá.`,
+        `It used to say "Created by: {name}" — it gets replaced when you save by whoever you add here.`,
+        `Antes dizia "Criado por: {name}" — é substituído ao salvar pelo que você somar aqui.`,
+        `.{name} :קודם היה כתוב "נוצר על ידי" — זה יוחלף בשמירה במה שתוסיף/י כאן`,
+        { name: esc(draft.legacyOrganizer) }
+      )}</div>` : ""}
     </div>`;
 }
 function renderParticipantChip(p, idx){
@@ -4989,12 +5004,12 @@ function renderParticipantChip(p, idx){
 }
 function renderParticipantSuggestions(draft){
   const matches = getParticipantMatches(draft);
-  if(!matches.length) return `<div class="autocomplete-list"><div class="autocomplete-empty">Sin coincidencias. Escribí un email completo para sumar a alguien de afuera.</div></div>`;
+  if(!matches.length) return `<div class="autocomplete-list"><div class="autocomplete-empty">${t("Sin coincidencias. Escribí un email completo para sumar a alguien de afuera.","No matches. Type a full email to add someone from outside.","Sem coincidências. Escreva um email completo para somar alguém de fora.",".אין התאמות. הקלד/י אימייל מלא כדי להוסיף מישהו מבחוץ")}</div></div>`;
   return `<div class="autocomplete-list">${matches.map((m,i)=>{
     const avatar = m.isLoose ? `<span class="mention-avatar mention-avatar-fallback">✉️</span>`
       : m.photoURL ? `<img class="mention-avatar" src="${esc(m.photoURL)}" alt="">`
       : `<span class="mention-avatar mention-avatar-fallback">${esc((m.name||m.email)[0].toUpperCase())}</span>`;
-    const label = m.isLoose ? `Sumar "${esc(m.email)}" como invitado` : `${esc(m.name)} <span style="color:var(--text-muted); font-weight:500;">${esc(m.email)}</span>`;
+    const label = m.isLoose ? t(`Sumar "{email}" como invitado`,`Add "{email}" as a guest`,`Somar "{email}" como convidado`,`הוספת "{email}" כאורח/ת`,{email:esc(m.email)}) : `${esc(m.name)} <span style="color:var(--text-muted); font-weight:500;">${esc(m.email)}</span>`;
     return `<button type="button" class="autocomplete-option mention-option${i===draft.participantHighlight?" active":""}" data-action="pick-participant" data-match-idx="${i}">${avatar}<span>${label}</span></button>`;
   }).join("")}</div>`;
 }
