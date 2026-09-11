@@ -781,6 +781,11 @@
   .post-file-audio{ display:flex; align-items:center; gap:8px; }
   .post-file-audio audio{ height:32px; max-width:260px; }
   .post-file-audio .fname, .post-file-link{ font-size:12.5px; font-weight:600; color:var(--ink); }
+  /* .post-file-link es un <button> (abre la vista previa, no navega) con
+     pinta de link de texto — sin esto quedaba con el chrome de botón del
+     navegador (fondo, borde, fuente distinta). */
+  button.post-file-link{ background:none; border:none; padding:0; font-family:inherit; cursor:pointer; text-align:start; text-decoration:underline; text-decoration-color:transparent; }
+  button.post-file-link:hover{ text-decoration-color:currentColor; }
 
   /* Autocompletado genérico (lugar y @menciones): lista angosta debajo
      del input/textarea que la dispara. */
@@ -964,6 +969,12 @@
   #lightbox.show{ display:flex; }
   #lightbox img{ max-width:100%; max-height:100%; border-radius:8px; }
 
+  /* ---------- Vista previa de adjuntos (PDF) ---------- */
+  #filePreviewFrame{
+    width:100%; height:70vh; border:0; border-radius:var(--radius-sm); background:var(--surface-soft);
+  }
+  #filePreviewTitle{ padding-inline-end:28px; overflow-wrap:anywhere; }
+
   /* "Actualizar desde Calendar" vive acá (Memoria) en vez del header
      global — pedido explícito: al extremo derecho de esta fila, opuesto
      al toggle de orden. flex-wrap para que en mobile baje debajo del
@@ -1021,6 +1032,17 @@
 </div>
 
 <div id="lightbox"><img id="lightboxImg" src="" alt=""></div>
+
+<div class="modal-overlay" id="filePreviewOverlay" hidden>
+  <div class="modal modal-wrap" style="max-width:820px;" role="dialog" aria-modal="true" aria-labelledby="filePreviewTitle">
+    <button class="close" id="filePreviewClose" aria-label="Cerrar">✕</button>
+    <h2 id="filePreviewTitle"></h2>
+    <iframe id="filePreviewFrame" title=""></iframe>
+    <div class="modal-actions">
+      <a id="filePreviewDownload" class="btn-secondary" download>⬇ Descargar</a>
+    </div>
+  </div>
+</div>
 
 <div class="modal-overlay" id="postModalOverlay" hidden>
   <div class="modal modal-wrap" role="dialog" aria-modal="true" aria-labelledby="postModalTitle">
@@ -3535,6 +3557,14 @@ function applyStaticI18n(){
     const btn = inviteOverlay.querySelector('[data-action="dismiss-calendar-invite"]');
     if(btn) btn.textContent = t("Entendido", "Got it", "Entendi", "הבנתי");
   }
+
+  const closeLabel = t("Cerrar", "Close", "Fechar", "סגירה");
+  const postModalCloseBtn = document.getElementById("postModalClose");
+  if(postModalCloseBtn) postModalCloseBtn.setAttribute("aria-label", closeLabel);
+  const filePreviewCloseBtn = document.getElementById("filePreviewClose");
+  if(filePreviewCloseBtn) filePreviewCloseBtn.setAttribute("aria-label", closeLabel);
+  const filePreviewDownloadBtn = document.getElementById("filePreviewDownload");
+  if(filePreviewDownloadBtn) filePreviewDownloadBtn.textContent = "⬇ " + t("Descargar", "Download", "Baixar", "הורדה");
 }
 applyStaticI18n();
 
@@ -5611,6 +5641,36 @@ function openLightbox(src){ lightboxImg.src = src; lightbox.classList.add("show"
 function closeLightbox(){ lightbox.classList.remove("show"); lightboxImg.src = ""; }
 lightbox.addEventListener("click", closeLightbox);
 
+// Vista previa de un PDF ya adjuntado (imágenes usan el lightbox de
+// arriba; audio ya se "previsualiza" solo, con el <audio controls> de la
+// propia tarjeta). Antes el link bajaba el archivo directo
+// (download="..."), sin forma de mirarlo primero — esto lo abre en un
+// <iframe> adentro de un modal, con el visor de PDF nativo del
+// navegador, y un botón aparte para quien sí lo quiera guardar.
+const filePreviewOverlay = document.getElementById("filePreviewOverlay");
+const filePreviewFrame = document.getElementById("filePreviewFrame");
+const filePreviewTitle = document.getElementById("filePreviewTitle");
+const filePreviewDownload = document.getElementById("filePreviewDownload");
+let filePreviewReturnFocus = null;
+function openFilePreview(dataUrl, name){
+  filePreviewTitle.textContent = name;
+  filePreviewFrame.src = dataUrl;
+  filePreviewFrame.title = name;
+  filePreviewDownload.href = dataUrl;
+  filePreviewDownload.download = name || "archivo.pdf";
+  filePreviewReturnFocus = document.activeElement;
+  filePreviewOverlay.hidden = false;
+  document.getElementById("filePreviewClose").focus();
+}
+function closeFilePreview(){
+  filePreviewOverlay.hidden = true;
+  filePreviewFrame.src = ""; // no queda el PDF cargado en memoria mientras el modal está cerrado
+  if(filePreviewReturnFocus && typeof filePreviewReturnFocus.focus === "function") filePreviewReturnFocus.focus();
+  filePreviewReturnFocus = null;
+}
+document.getElementById("filePreviewClose").addEventListener("click", closeFilePreview);
+filePreviewOverlay.addEventListener("click", e=>{ if(e.target === filePreviewOverlay) closeFilePreview(); });
+
 /* ======================================================================
    EVENTOS
    ====================================================================== */
@@ -5630,6 +5690,7 @@ document.addEventListener("keydown", e=>{
   // hay un desplegable abierto en el composer (lugar, @mención,
   // participante), lo cierra su propio manejador y el modal se queda.
   if(lightbox.classList.contains("show")){ closeLightbox(); return; }
+  if(!filePreviewOverlay.hidden){ closeFilePreview(); return; }
   if(!tourLayer.hidden){ closeTour(); return; }
   if(!calendarInviteOverlay.hidden){ dismissCalendarInviteOverlay(); return; }
   if(postModalOverlay.hidden) return;
@@ -5660,6 +5721,7 @@ function trapTabWithin(overlayEl){
 trapTabWithin(postModalOverlay);
 trapTabWithin(calendarInviteOverlay);
 trapTabWithin(tourLayer);
+trapTabWithin(filePreviewOverlay);
 
 // Tope duro absoluto de imágenes: MAX_IMAGES (editable desde Preferencias
 // > Adjuntos) puede achicarlo, nunca agrandarlo más allá de esto — Firestore
@@ -5736,7 +5798,7 @@ function renderPostedFiles(files){
     if(!dataUrl) return "";
     return f.kind === "audio"
       ? `<div class="post-file-audio"><audio controls src="${dataUrl}"></audio><span class="fname">${esc(f.name)}</span></div>`
-      : `<a class="post-file-link" href="${dataUrl}" download="${esc(f.name)}" target="_blank" rel="noopener noreferrer">📄 ${esc(f.name)}</a>`;
+      : `<button type="button" class="post-file-link" data-action="open-file-preview" data-url="${esc(dataUrl)}" data-name="${esc(f.name)}">📄 ${esc(f.name)}</button>`;
   }).join("")}</div>`;
 }
 
@@ -6062,6 +6124,8 @@ document.addEventListener("click", e=>{
     state.usuariosFilters.sort = el.dataset.key; render();
   } else if(action === "open-lightbox"){
     openLightbox(el.dataset.src);
+  } else if(action === "open-file-preview"){
+    openFilePreview(el.dataset.url, el.dataset.name);
   } else if(action === "toggle-reply"){
     if(openReplyForms.has(postId)){ openReplyForms.delete(postId); }
     else{ openReplyForms.add(postId); openThreads.add(postId); }
