@@ -81,11 +81,18 @@ aprobación" hasta que el administrador lo apruebe desde la propia app
   Cada compartir/reenvío guarda `calendarInviteSentAt` en el `allowlist` de
   esa persona. Con eso, la próxima vez que esa persona entre a la app le
   aparece un popup recordándole revisar el correo y aceptar la invitación,
-  y la campanita de notificaciones muestra una novedad extra hasta que lo
-  cierre — todo llevado con una marca de "visto" en `localStorage` (igual
-  que las @menciones, ver `MENTIONS_SEEN_KEY`), porque un usuario normal no
-  puede escribir en su propio doc de `allowlist` para guardarlo del lado
-  del servidor.
+  más una novedad extra en la campanita de notificaciones — todo llevado
+  con marcas de "visto" en `localStorage` (igual que las @menciones, ver
+  `MENTIONS_SEEN_KEY`), porque un usuario normal no puede escribir en su
+  propio doc de `allowlist` para guardarlo del lado del servidor.
+  OJO: son DOS marcas separadas, no una — cerrar el popup con "Entendido"
+  (`markCalendarInvitePopupSeen()`) solo evita que se imponga de nuevo en
+  cada entrada, pero NO apaga la novedad de la campanita: como el ACL de
+  Calendar no avisa cuándo la persona acepta de verdad, ese recordatorio
+  se queda ahí hasta que la persona lo apague a mano con "Ya la acepté"
+  (`markCalendarInviteBellDismissed()`, ver `hasActiveCalendarInviteNotice`)
+  — antes las dos cosas compartían una sola marca y cerrar el popup
+  apagaba también la campanita sin que la persona hubiera aceptado nada.
 - Revocar acceso (botón "Revocar" en Usuarios) borra a esa persona de la
   lista de aprobados — dejará de poder leer y cargar, pero **no borra** lo
   que ya haya publicado (la memoria histórica queda intacta). También
