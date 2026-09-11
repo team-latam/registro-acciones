@@ -1681,15 +1681,15 @@ function addDaysISO(dateStr, days){
 function buildCalendarEvent(postData){
   const sc = postData.scopes[0];
   const alcanceTipo = !sc ? "" : sc.type === "todo" ? "todo" : sc.type;
-  const alcanceValor = (postData.scopes||[]).map(scopeLabel).join(" + ") || "Sin alcance definido";
+  const alcanceValor = (postData.scopes||[]).map(scopeLabel).join(" + ") || "Sin definir";
   const descLines = [
-    `Alcance: ${alcanceTipo} | ${alcanceValor}`,
+    `Dónde: ${alcanceTipo} | ${alcanceValor}`,
     "",
     postData.content,
   ];
   const participants = postData.participants||[];
   if(participants.length) descLines.push("", `Participantes: ${participantsLabel(participants)}`);
-  else if(postData.organizer) descLines.push("", `Organiza: ${postData.organizer}`);
+  else if(postData.organizer) descLines.push("", `Creado por: ${postData.organizer}`);
   descLines.push("", `Cargado por ${postData.authorName} en Registro de Acciones.`);
   // Con hora (startTime/endTime cargados): evento puntual, dateTime +
   // timeZone del navegador de quien lo carga (Calendar API lo exige junto
@@ -3163,7 +3163,7 @@ function renderZonasSection(){
   Object.values(d.countryZones).forEach(z=>{ if(countByZone[z]!=null) countByZone[z]++; });
   return `
       <div class="hint" style="margin-bottom:16px;">
-        Estas zonas y colores se usan en todo el Registro (mapa de Países, filtros del Feed/Memoria, chips de alcance).
+        Estas zonas y colores se usan en todo el Registro (mapa de Países, filtros del Feed/Memoria, chips de Dónde).
         Cambiar la zona de un país acá se aplica también a los posteos ya cargados — no hace falta editarlos uno por uno.
       </div>
       ${d.zoneOrder.map(key=>{
@@ -3562,7 +3562,7 @@ function renderRutinaComposer(){
         </div>
       </div>
       <div class="place-picker">
-        <input type="text" id="rutinaPlaceQuery" data-place-scope="rutina" data-place-owner="new" placeholder="📍 Agregar lugar (país, ciudad, región)..." autocomplete="off" value="${esc(d.placeQuery)}">
+        <input type="text" id="rutinaPlaceQuery" data-place-scope="rutina" data-place-owner="new" placeholder="📍 Dónde (país, ciudad, región)..." autocomplete="off" value="${esc(d.placeQuery)}">
         ${d.placeQuery ? renderPlaceSuggestions(d, "rutina", "new") : ""}
       </div>
       ${d.scopes.length ? `<div class="post-scopes" style="margin-top:8px;">${d.scopes.map((sc,i)=>renderScopeChip(sc, "rm-scope-rutina", i, "new")).join("")}</div>` : ""}
@@ -3650,7 +3650,7 @@ function renderPostCard(post, replies, featured){
   const dateLabel = (endDate && endDate !== startDate ? `${fmtDate(startDate)} – ${fmtDate(endDate)}` : fmtDate(startDate)) + timeLabel;
   const metaBits = [];
   if(post.participants && post.participants.length) metaBits.push(`👥 Participantes: ${esc(participantsLabel(post.participants))}`);
-  else if(post.organizer) metaBits.push(`👤 Organiza: ${esc(post.organizer)}`);
+  else if(post.organizer) metaBits.push(`✍️ Creado por: ${esc(post.organizer)}`);
   if(post.location) metaBits.push(`📍 ${esc(post.location)}`);
   const editable = canEditPost(post);
   const canCancel = editable && post.activityType !== "rutina" && !post.cancelled;
@@ -3670,7 +3670,7 @@ function renderPostCard(post, replies, featured){
       ${post.title && post.activityType !== "rutina" ? `<h3 style="margin:6px 0 0 0;font-size:16px;color:var(--ink);${post.cancelled?"text-decoration:line-through;opacity:0.7;":""}">${esc(post.title)}</h3>` : ""}
       ${metaBits.length ? `<div class="hint" style="margin-top:4px;">${metaBits.join(" · ")}</div>` : ""}
       <div class="post-content">${nl2br(post.content)}</div>
-      ${!scopesHtml && post.activityType !== "rutina" ? `<div class="hint" style="color:var(--danger);">⚠️ Sin alcance definido — editalo para asignarle un país/ciudad.</div>` : ""}
+      ${!scopesHtml && post.activityType !== "rutina" ? `<div class="hint" style="color:var(--danger);">⚠️ Sin Dónde definido — editalo para asignarle un país/ciudad.</div>` : ""}
       ${linksHtml ? `<div class="post-links">${linksHtml}</div>` : ""}
       ${imagesHtml ? `<div class="post-images">${imagesHtml}</div>` : ""}
       ${renderPostedFiles(post.files)}
@@ -3876,7 +3876,7 @@ function renderScopeBuilder(scope, ownerId, draft){
         </select>
         ${extra}
       </div>
-      <button type="button" class="btn-mini" data-action="add-scope" data-scope="${scope}" data-owner-id="${ownerId}">+ Agregar alcance</button>
+      <button type="button" class="btn-mini" data-action="add-scope" data-scope="${scope}" data-owner-id="${ownerId}">+ Agregar dónde</button>
       ${draft.scopeError ? `<div class="form-error">${esc(draft.scopeError)}</div>` : ""}
       <div class="scope-list">${draft.scopes.map((sc,i)=>renderScopeChip(sc, `rm-scope-${scope}`, i, ownerId)).join("")}</div>
     </div>`;
@@ -4314,7 +4314,7 @@ function renderComposer(){
       <span class="field-icon">📍</span>
       <div class="field-icon-body">
         <div class="place-picker place-picker-inline">
-          <input type="text" id="cPlaceQuery" data-place-scope="post" data-place-owner="new" placeholder="Agregar lugar (país, ciudad, región)..." autocomplete="off" value="${esc(d.placeQuery)}">
+          <input type="text" id="cPlaceQuery" data-place-scope="post" data-place-owner="new" placeholder="Dónde (país, ciudad, región)..." autocomplete="off" value="${esc(d.placeQuery)}">
           ${d.placeQuery ? renderPlaceSuggestions(d, "post", "new") : ""}
         </div>
         ${d.scopes.length ? `<div class="post-scopes" style="margin-top:8px;">${d.scopes.map((sc,i)=>renderScopeChip(sc, "rm-scope-post", i, "new")).join("")}</div>` : ""}
@@ -4632,7 +4632,7 @@ function renderParticipantsField(draft){
       ${draft.participants.length ? `<div class="participants-row">${draft.participants.map((p,i)=>renderParticipantChip(p,i)).join("")}</div>` : ""}
       <input type="text" id="cParticipantQuery" class="field-icon-input" placeholder="Sumar participante (nombre o email)..." autocomplete="off" value="${esc(draft.participantQuery)}">
       ${draft.participantQuery ? renderParticipantSuggestions(draft) : ""}
-      ${draft.legacyOrganizer ? `<div class="hint" style="margin-top:4px;">Antes decía "Organiza: ${esc(draft.legacyOrganizer)}" — se reemplaza al guardar por lo que sumes acá.</div>` : ""}
+      ${draft.legacyOrganizer ? `<div class="hint" style="margin-top:4px;">Antes decía "Creado por: ${esc(draft.legacyOrganizer)}" — se reemplaza al guardar por lo que sumes acá.</div>` : ""}
     </div>`;
 }
 function renderParticipantChip(p, idx){

@@ -127,6 +127,14 @@ Es un archivo estático, así que sirve cualquier hosting simple:
 
 ### Modelo de datos (Firestore)
 
+> **Glosario:** lo que en el código, en Firestore y en este README se
+> llama "alcance" / `scopes` (país, ciudad, región o "Toda LatAm" al que
+> pertenece un posteo), en la pantalla se llama **"Dónde"** desde
+> septiembre de 2026. Es la misma cosa; se renombró solo el texto que ve
+> la gente, para no tocar el modelo de datos. No confundir con
+> `location`, el campo de texto libre del lugar puntual (un hotel, una
+> dirección), que se muestra con 📍 debajo del título.
+
 ```
 posts/{postId}
   title: string              (título corto, ej: "Curso de Transition")
