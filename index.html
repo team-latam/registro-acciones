@@ -3679,7 +3679,6 @@ function renderPostCard(post, replies, featured){
       ${linksHtml ? `<div class="post-links">${linksHtml}</div>` : ""}
       ${imagesHtml ? `<div class="post-images">${imagesHtml}</div>` : ""}
       ${renderPostedFiles(post.files)}
-      ${post.lastEditedBy ? `<div class="hint">Editado por ${esc(post.lastEditedBy)}</div>` : ""}
       <div class="post-actions">
         <button data-action="toggle-like" data-post-id="${post.id}" class="${postLiked?"liked":""}">${postLiked?"👍":"🤍"} Me gusta${postLikedBy.length?` (${postLikedBy.length})`:""}</button>
         <button data-action="toggle-reply" data-post-id="${post.id}">💬 Responder</button>
