@@ -513,23 +513,28 @@
   .chipgroup{ display:flex; flex-wrap:wrap; gap:6px; }
   .filter-clear{ background:none; border:none; color:var(--text-muted); font-size:12px; text-decoration:underline; cursor:pointer; }
 
-  /* ---------- Desplegable "Actividades" del filtro (ver renderFilterBar) ---------- */
-  .type-filter{ position:relative; }
-  .type-filter-btn{ border:1.5px solid var(--border); }
-  .type-filter-count{
+  /* ---------- Desplegables "Actividades" / "Zonas" del filtro (ver
+     renderFilterBar): mismas clases genéricas para los dos. ---------- */
+  .filter-dropdown{ position:relative; }
+  .filter-dropdown-btn{ border:1.5px solid var(--border); }
+  .filter-dropdown-count{
     background:var(--celeste-dark); color:#fff; border-radius:999px; font-size:10px;
     font-weight:800; padding:1px 6px; line-height:1.4;
   }
-  .type-filter-chevron{ font-size:9px; transition:transform .18s ease; }
-  .type-filter-btn.open .type-filter-chevron{ transform:rotate(180deg); }
-  .type-filter-panel{
+  .filter-dropdown-chevron{ font-size:9px; transition:transform .18s ease; }
+  .filter-dropdown-btn.open .filter-dropdown-chevron{ transform:rotate(180deg); }
+  .filter-dropdown-panel{
     position:absolute; top:calc(100% + 8px); left:0; z-index:55; width:min(320px, 88vw);
     background:var(--card); border-radius:var(--radius-md); box-shadow:0 14px 36px rgba(8,42,44,0.28);
     padding:10px; display:flex; flex-wrap:wrap; gap:6px;
     transform-origin:top left;
-    animation:typeFilterPop .2s cubic-bezier(.34,1.56,.64,1);
+    animation:filterDropdownPop .2s cubic-bezier(.34,1.56,.64,1);
   }
-  @keyframes typeFilterPop{
+  /* El de Zonas va segundo en la barra: si se abriera pegado a la
+     izquierda como el de Actividades, en pantallas angostas se saldría
+     por el borde derecho. Se cuelga del lado derecho de su botón. */
+  .zone-filter .filter-dropdown-panel{ left:auto; right:0; transform-origin:top right; }
+  @keyframes filterDropdownPop{
     from{ opacity:0; transform:scale(.85) translateY(-6px); }
     to{ opacity:1; transform:scale(1) translateY(0); }
   }
@@ -3427,16 +3432,18 @@ function afterRenderView(){
 }
 
 /* ---------- Filtro compartido (Feed / Memoria) ---------- */
-// El filtro por tipo de actividad (Rutina/Visita/Curso/...) vive plegado
-// bajo un desplegable "Actividades" en vez de siete chips sueltos en la
-// barra: son los que más lugar ocupaban y los que menos se tocan a la
-// vez (se filtra por uno o dos tipos, no por los siete). El estado de
-// abierto/cerrado es global (no por prefix/vista) a propósito: Feed y
+// El filtro por tipo de actividad (Rutina/Visita/Curso/...) y el de zona
+// (Norte/Central/Sur) viven plegados bajo sendos desplegables en vez de
+// diez chips sueltos en la barra: son los que más lugar ocupaban y los
+// que menos se tocan de a varios a la vez. El estado de abierto/cerrado
+// de cada uno es global (no por prefix/vista) a propósito: Feed y
 // Memoria nunca están montadas las dos a la vez, así que no hace falta
 // una variable por cada una.
 let typeFilterOpen = false;
+let zoneFilterOpen = false;
 function renderFilterBar(prefix){
   const activeTypes = state.filters.types.size;
+  const activeZones = state.filters.zones.size;
   const typeChips = ACTIVITY_TYPES.map(t=>`
     <span class="chip-toggle ${state.filters.types.has(t.key)?"active":""}" data-action="toggle-type" data-key="${t.key}">
       ${t.icon} ${t.label}
@@ -3453,14 +3460,20 @@ function renderFilterBar(prefix){
   return `
     <div class="filterbar">
       <input type="text" id="${prefix}Search" placeholder="Buscar por texto…" value="${esc(state.filters.text)}" data-action="set-text">
-      <div class="type-filter">
-        <button type="button" class="chip-toggle type-filter-btn ${activeTypes ? "active" : ""} ${typeFilterOpen ? "open" : ""}" data-action="toggle-type-filter">
-          🗂️ Actividades${activeTypes ? `<span class="type-filter-count">${activeTypes}</span>` : ""}
-          <span class="type-filter-chevron">▾</span>
+      <div class="filter-dropdown type-filter">
+        <button type="button" class="chip-toggle filter-dropdown-btn ${activeTypes ? "active" : ""} ${typeFilterOpen ? "open" : ""}" data-action="toggle-type-filter">
+          🗂️ Actividades${activeTypes ? `<span class="filter-dropdown-count">${activeTypes}</span>` : ""}
+          <span class="filter-dropdown-chevron">▾</span>
         </button>
-        ${typeFilterOpen ? `<div class="type-filter-panel">${typeChips}</div>` : ""}
+        ${typeFilterOpen ? `<div class="filter-dropdown-panel">${typeChips}</div>` : ""}
       </div>
-      <div class="chipgroup">${zoneChips}</div>
+      <div class="filter-dropdown zone-filter">
+        <button type="button" class="chip-toggle filter-dropdown-btn ${activeZones ? "active" : ""} ${zoneFilterOpen ? "open" : ""}" data-action="toggle-zone-filter">
+          🌎 Zonas${activeZones ? `<span class="filter-dropdown-count">${activeZones}</span>` : ""}
+          <span class="filter-dropdown-chevron">▾</span>
+        </button>
+        ${zoneFilterOpen ? `<div class="filter-dropdown-panel">${zoneChips}</div>` : ""}
+      </div>
       ${placeChip}
       ${anyFilter ? `<button class="filter-clear" data-action="clear-filters">Limpiar filtros</button>` : ""}
     </div>`;
@@ -4784,6 +4797,9 @@ document.addEventListener("click", e=>{
   if(typeFilterOpen && !e.target.closest(".type-filter")){
     typeFilterOpen = false; render();
   }
+  if(zoneFilterOpen && !e.target.closest(".zone-filter")){
+    zoneFilterOpen = false; render();
+  }
 
   const t = e.target.closest("[data-action]");
   if(!t) return;
@@ -4792,6 +4808,9 @@ document.addEventListener("click", e=>{
 
   if(action === "toggle-type-filter"){
     typeFilterOpen = !typeFilterOpen;
+    render();
+  } else if(action === "toggle-zone-filter"){
+    zoneFilterOpen = !zoneFilterOpen;
     render();
   } else if(action === "toggle-type"){
     const key = t.dataset.key;
