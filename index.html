@@ -1023,17 +1023,17 @@
 <div id="lightbox"><img id="lightboxImg" src="" alt=""></div>
 
 <div class="modal-overlay" id="postModalOverlay" hidden>
-  <div class="modal modal-wrap">
-    <button class="close" id="postModalClose">✕</button>
+  <div class="modal modal-wrap" role="dialog" aria-modal="true" aria-labelledby="postModalTitle">
+    <button class="close" id="postModalClose" aria-label="Cerrar">✕</button>
     <h2 id="postModalTitle">Nuevo evento</h2>
     <form id="postForm"></form>
   </div>
 </div>
 
 <div class="modal-overlay" id="calendarInviteOverlay" hidden>
-  <div class="modal" style="max-width:420px; text-align:center;">
+  <div class="modal" style="max-width:420px; text-align:center;" role="dialog" aria-modal="true" aria-labelledby="calendarInviteTitle">
     <div style="font-size:34px; margin-bottom:6px;">📅</div>
-    <h2 style="text-align:center;">Te compartimos el Calendar de LatAm</h2>
+    <h2 id="calendarInviteTitle" style="text-align:center;">Te compartimos el Calendar de LatAm</h2>
     <p class="hint" style="font-size:13.5px; line-height:1.6; text-align:center;">
       Te llegó un mail de Google a <strong id="calendarInviteEmailSpan"></strong> para unirte al
       calendario compartido "LatAm". Aceptalo desde ahí — así vas a ver los eventos también en tu
@@ -1045,7 +1045,7 @@
   </div>
 </div>
 
-<div class="tour-layer" id="tourLayer" hidden></div>
+<div class="tour-layer" id="tourLayer" role="dialog" aria-modal="true" hidden></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" crossorigin=""></script>
@@ -1668,7 +1668,17 @@ const MENTIONS_SEEN_KEY = "mentionsSeenAt";
 // Mismo mecanismo que las marcas del Calendar (ver perUserStorageKey más
 // abajo): clave por email en localStorage con la hora en que se vio.
 function getMentionsSeenAt(){ return getPerUserTs(MENTIONS_SEEN_KEY); }
-function markMentionsSeen(){ markPerUserTs(MENTIONS_SEEN_KEY); }
+// Se guarda la hora de la mención MÁS NUEVA que hay ahora (hora del
+// servidor), no la del reloj local — ver markPerUserTs.
+function markMentionsSeen(){
+  const email = state.auth.user && state.auth.user.email;
+  let latest = 0;
+  if(email){
+    state.posts.forEach(p=>{ if(mentionsInclude(p.mentions, email)) latest = Math.max(latest, tsToMillis(p.createdAt)); });
+    Object.values(state.repliesByPost).forEach(list=>list.forEach(r=>{ if(mentionsInclude(r.mentions, email)) latest = Math.max(latest, tsToMillis(r.createdAt)); }));
+  }
+  markPerUserTs(MENTIONS_SEEN_KEY, latest || Date.now());
+}
 
 // Aviso de "revisá tu correo, te compartimos el Calendar": localStorage
 // por dispositivo (mismo patrón que las "vistas" de @menciones), comparado
@@ -1699,13 +1709,19 @@ function getPerUserTs(prefix){
   if(!key) return 0;
   try{ return Number(localStorage.getItem(key)) || 0; }catch(e){ return 0; }
 }
-function markPerUserTs(prefix){
+// `value` es el timestamp DEL DATO que se marca como visto (la hora de la
+// invitación, la mención más nueva), no Date.now(): la comparación es
+// contra horas del servidor, y con el reloj del dispositivo atrasado un
+// "ahora" local quedaba antes que el dato y el popup/la campanita
+// volvían a aparecer en loop.
+function markPerUserTs(prefix, value){
   const key = perUserStorageKey(prefix);
   if(!key) return;
-  try{ localStorage.setItem(key, String(Date.now())); }catch(e){}
+  try{ localStorage.setItem(key, String(value || Date.now())); }catch(e){}
 }
-function markCalendarInvitePopupSeen(){ markPerUserTs(CALENDAR_INVITE_POPUP_SEEN_KEY); }
-function markCalendarInviteBellDismissed(){ markPerUserTs(CALENDAR_INVITE_BELL_DISMISSED_KEY); }
+function myCalendarInviteTs(){ return tsToMillis(myRosterEntry()?.calendarInviteSentAt) || Date.now(); }
+function markCalendarInvitePopupSeen(){ markPerUserTs(CALENDAR_INVITE_POPUP_SEEN_KEY, myCalendarInviteTs()); }
+function markCalendarInviteBellDismissed(){ markPerUserTs(CALENDAR_INVITE_BELL_DISMISSED_KEY, myCalendarInviteTs()); }
 function myRosterEntry(){
   const email = state.auth.user && state.auth.user.email;
   return email ? state.roster.find(u=>u.email===email) : null;
@@ -3007,6 +3023,40 @@ function syncReplyListeners(){
   });
 }
 
+// Lectura de respuestas. Modo "group": UNA consulta collectionGroup para
+// las respuestas de todos los posteos (necesita el match
+// /{path=**}/replies de firestore.rules). Modo "perPost": un listener por
+// posteo (syncReplyListeners, el modo original) — la cantidad de
+// listeners crecía con la cantidad de posteos, sin tope. Se arranca en
+// group; si las reglas publicadas todavía no tienen ese match, Firestore
+// contesta permission-denied y se pasa a perPost solo, sin que nadie
+// note nada.
+let repliesMode = "group";
+let unsubRepliesGroup = null;
+function subscribeReplies(){
+  if(repliesMode === "perPost"){ syncReplyListeners(); return; }
+  if(unsubRepliesGroup) return;
+  unsubRepliesGroup = fb.onSnapshot(fb.collectionGroup(db, "replies"), snap=>{
+    const byPost = Object.create(null);
+    snap.docs.forEach(d=>{
+      const postId = d.ref.parent.parent.id;
+      (byPost[postId] = byPost[postId] || []).push({ id:d.id, postId, ...d.data({serverTimestamps:"estimate"}) });
+    });
+    // Sin orderBy en la consulta (un collectionGroup con orderBy pide un
+    // índice de grupo aparte): se ordena acá, más antigua primero.
+    Object.values(byPost).forEach(list=>list.sort((a,b)=> tsToMillis(a.createdAt) - tsToMillis(b.createdAt)));
+    state.repliesByPost = byPost;
+    scheduleRender();
+  }, err=>{
+    console.error("Error leyendo respuestas (collectionGroup):", err);
+    if(unsubRepliesGroup){ unsubRepliesGroup(); unsubRepliesGroup = null; }
+    if(err && err.code === "permission-denied"){
+      repliesMode = "perPost";
+      syncReplyListeners();
+    }
+  });
+}
+
 function subscribeData(){
   // Sin orderBy("date") en la consulta: (1) Firestore excluye los docs
   // que no tienen el campo — un posteo viejo sin `date` era invisible sin
@@ -3017,7 +3067,7 @@ function subscribeData(){
     state.posts = snap.docs.map(d=>({ id:d.id, ...d.data({serverTimestamps:"estimate"}) }))
       .sort((a,b)=> String(b.date||"").localeCompare(String(a.date||"")) || (tsToMillis(b.createdAt) - tsToMillis(a.createdAt)));
     state.loaded = true;
-    syncReplyListeners();
+    subscribeReplies();
     render();
     startCalendarAutoSync();
   }, err=>{
@@ -3027,6 +3077,7 @@ function subscribeData(){
 
   unsubscribeData = ()=>{
     unsubPosts();
+    if(unsubRepliesGroup){ unsubRepliesGroup(); unsubRepliesGroup = null; }
     Object.values(repliesUnsubs).forEach(fn=>fn());
     repliesUnsubs = {};
     state.repliesByPost = {};
@@ -3224,14 +3275,28 @@ function autoGrowTextarea(el){
   autoGrowFrames.set(el, frame);
 }
 
+// Cómo volver a encontrar el elemento con foco después de reconstruir el
+// DOM: por id si tiene, y si no por tag + todos sus data-* (las filas de
+// link, los selects del alcance y los inputs de Zonas/Tipos no tienen id
+// pero sí data-scope/data-owner-id/data-idx/data-key que los identifican).
+// Sin esto, cualquier render de fondo — llega una respuesta — sacaba a
+// la persona del campo en el que estaba escribiendo.
+function focusSelectorOf(el){
+  if(!el || el === document.body) return null;
+  if(el.id) return "#" + CSS.escape(el.id);
+  const attrs = [...el.attributes].filter(a=>a.name.startsWith("data-"));
+  if(!attrs.length) return null;
+  return el.tagName.toLowerCase() + attrs.map(a=>`[${a.name}="${CSS.escape(a.value)}"]`).join("");
+}
 function render(){
   const active = document.activeElement;
-  const focusId = active && active.id;
+  const focusSel = focusSelectorOf(active);
   const selStart = active && typeof active.selectionStart === "number" ? active.selectionStart : null;
   const selEnd = active && typeof active.selectionEnd === "number" ? active.selectionEnd : null;
   doRender();
-  if(focusId){
-    const el = document.getElementById(focusId);
+  if(focusSel){
+    let el = null;
+    try{ el = document.querySelector(focusSel); }catch(e){}
     if(el && el !== active){
       el.focus();
       if(selStart != null) try{ el.setSelectionRange(selStart, selEnd); }catch(e){}
@@ -5152,11 +5217,16 @@ function maybeShowCalendarInviteOverlay(){
   if(!tourLayer.hidden) return; // el tutorial va primero; este aparece al cerrarlo
   if(!calendarInviteOverlay.hidden) return; // ya está abierto, no lo reabras encima
   document.getElementById("calendarInviteEmailSpan").textContent = state.auth.user.email;
+  inviteReturnFocus = document.activeElement;
   calendarInviteOverlay.hidden = false;
+  calendarInviteOverlay.querySelector("button")?.focus();
 }
+let inviteReturnFocus = null;
 function dismissCalendarInviteOverlay(){
   markCalendarInvitePopupSeen();
   calendarInviteOverlay.hidden = true;
+  if(inviteReturnFocus && typeof inviteReturnFocus.focus === "function") inviteReturnFocus.focus();
+  inviteReturnFocus = null;
   render();
 }
 calendarInviteOverlay.addEventListener("click", e=>{ if(e.target === calendarInviteOverlay) dismissCalendarInviteOverlay(); });
@@ -5283,13 +5353,18 @@ function openTour(){
   // Feed: si la persona está en otra pestaña, primero la llevamos ahí.
   if(state.view !== "feed"){ state.view = "feed"; render(); }
   window.scrollTo({ top:0, behavior:"auto" });
+  tourReturnFocus = document.activeElement;
   tourLayer.hidden = false;
   renderTourStep();
+  tourLayer.querySelector("button")?.focus();
 }
+let tourReturnFocus = null;
 function closeTour(){
   markTourSeen();
   tourLayer.hidden = true;
   tourLayer.innerHTML = "";
+  if(tourReturnFocus && typeof tourReturnFocus.focus === "function") tourReturnFocus.focus();
+  tourReturnFocus = null;
   render(); // deja paso al aviso del Calendar si corresponde
 }
 function maybeShowTour(){
@@ -5309,6 +5384,17 @@ function openComposer(){
   postModalTitle.textContent = t("Nuevo evento","New event","Novo evento","אירוע חדש");
   postModalOverlay.hidden = false;
   renderComposer();
+  focusIntoComposer();
+}
+// Al abrir, el foco entra al modal (primer campo); al cerrar, vuelve a
+// donde estaba (el botón "+ Nuevo evento" o el "Editar" de la tarjeta).
+// Sin esto, el teclado y los lectores de pantalla se quedaban detrás
+// del modal.
+let composerReturnFocus = null;
+function focusIntoComposer(){
+  composerReturnFocus = document.activeElement;
+  const first = postForm.querySelector("#cTitle") || postForm.querySelector("input, textarea, select, button");
+  if(first) first.focus();
 }
 function openEditComposer(post){
   composerDraft = {
@@ -5335,6 +5421,7 @@ function openEditComposer(post){
     : t("Editar evento","Edit event","Editar evento","עריכת אירוע");
   postModalOverlay.hidden = false;
   renderComposer();
+  focusIntoComposer();
 }
 // Foto del borrador al abrir el modal, para saber al cerrarlo si hay algo
 // sin guardar. Solo los campos que la persona escribe (no los transitorios
@@ -5361,6 +5448,8 @@ function requestCloseComposer(){
 }
 function closeComposer(){
   postModalOverlay.hidden = true;
+  if(composerReturnFocus && typeof composerReturnFocus.focus === "function") composerReturnFocus.focus();
+  composerReturnFocus = null;
 }
 function renderComposer(){
   const d = composerDraft;
@@ -5514,6 +5603,8 @@ document.addEventListener("keydown", e=>{
   // hay un desplegable abierto en el composer (lugar, @mención,
   // participante), lo cierra su propio manejador y el modal se queda.
   if(lightbox.classList.contains("show")){ closeLightbox(); return; }
+  if(!tourLayer.hidden){ closeTour(); return; }
+  if(!calendarInviteOverlay.hidden){ dismissCalendarInviteOverlay(); return; }
   if(postModalOverlay.hidden) return;
   const d = composerDraft;
   if(d.placeQuery || d.mentionQuery != null || d.participantQuery) return;
@@ -5526,6 +5617,22 @@ document.addEventListener("keydown", e=>{
 postForm.addEventListener("keydown", e=>{
   if(e.key === "Enter" && e.target.tagName === "INPUT" && !["checkbox","radio"].includes(e.target.type)) e.preventDefault();
 });
+// Tab dentro de un modal abierto cicla entre sus propios controles en
+// vez de irse a la página de atrás (que está tapada).
+function trapTabWithin(overlayEl){
+  overlayEl.addEventListener("keydown", e=>{
+    if(e.key !== "Tab") return;
+    const focusables = [...overlayEl.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')]
+      .filter(el=>!el.disabled && !el.hidden && el.offsetParent !== null);
+    if(!focusables.length) return;
+    const first = focusables[0], last = focusables[focusables.length-1];
+    if(e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
+    else if(!e.shiftKey && document.activeElement === last){ e.preventDefault(); first.focus(); }
+  });
+}
+trapTabWithin(postModalOverlay);
+trapTabWithin(calendarInviteOverlay);
+trapTabWithin(tourLayer);
 
 // Tope duro absoluto de imágenes: MAX_IMAGES (editable desde Preferencias
 // > Adjuntos) puede achicarlo, nunca agrandarlo más allá de esto — Firestore
