@@ -1302,7 +1302,7 @@ const DEFAULT_COUNTRY_LABELS = {
   "Turcas y Caicos": { es:"Turcas y Caicos", en:"Turks and Caicos", pt:"Ilhas Turcas e Caicos", he:"איי טורקס וקייקוס" },
 };
 function countryLabel(name){
-  const row = DEFAULT_COUNTRY_LABELS[name];
+  const row = hasOwn(DEFAULT_COUNTRY_LABELS, name) ? DEFAULT_COUNTRY_LABELS[name] : null;
   return row ? row[currentLang()] : name;
 }
 // Mismo criterio que DEFAULT_COUNTRY_LABELS/countryLabel, pero anidado por
@@ -1441,8 +1441,24 @@ const DEFAULT_CITY_LABELS = {
   "Venezuela": { "Caracas": { es:"Caracas", en:"Caracas", pt:"Caracas", he:"קראקס" } },
 };
 function cityLabel(country, city){
-  const row = DEFAULT_CITY_LABELS[country] && DEFAULT_CITY_LABELS[country][city];
+  const byCity = hasOwn(DEFAULT_CITY_LABELS, country) ? DEFAULT_CITY_LABELS[country] : null;
+  const row = byCity && hasOwn(byCity, city) ? byCity[city] : null;
   return row ? row[currentLang()] : city;
+}
+// Lookups con claves que vienen de Firestore (país/ciudad de un scope):
+// con `obj[key]` a secas, "__proto__"/"constructor" devuelven cosas
+// heredadas de Object.prototype en vez de undefined.
+function hasOwn(obj, key){ return Object.prototype.hasOwnProperty.call(obj, key); }
+function cityPresetsFor(country){ return hasOwn(CITY_PRESETS, country) ? CITY_PRESETS[country] : []; }
+// El nombre "oficial" de una ciudad para agrupar/mostrar: si coincide con
+// un preset (sin importar tildes/mayúsculas), el del preset tal cual —
+// titleCase() convertía "Ciudad de México" en "Ciudad De México", que
+// después no matcheaba ni la key de CITY_PRESETS ni la de cityLabel().
+// Las ciudades escritas a mano (sin preset) sí se normalizan con titleCase.
+function canonicalCityName(country, city){
+  const n = normalize(city);
+  const preset = cityPresetsFor(country).find(p=>normalize(p.name)===n);
+  return preset ? preset.name : titleCase(city);
 }
 const COUNTRY_BY_NAME = Object.fromEntries(COUNTRIES.map(c=>[c.name,c]));
 const ZONE_COUNTRIES = { sur:[], central:[], norte:[] };
@@ -1463,6 +1479,16 @@ function buildPlaceIndex(){
     (CITY_PRESETS[c.name]||[]).forEach(city=>{
       items.push({ label:`${cityLabel(c.name, city.name)}, ${countryLabel(c.name)}`, icon:"📍", scope:{ type:"ciudad", country:c.name, city:city.name } });
     });
+  });
+  // norm: el label sin tildes ni mayúsculas, precalculado una vez acá para
+  // que getPlaceMatches no lo recalcule por cada item en cada tecla. En
+  // hebreo el label no lleva el nombre en español, así que se suma también
+  // el nombre crudo del país/ciudad: escribir "peru" con la app en hebreo
+  // tiene que encontrar פרו igual.
+  items.forEach(it=>{
+    const raw = it.scope.type==="pais" ? it.scope.country
+      : it.scope.type==="ciudad" ? `${it.scope.city}, ${it.scope.country}` : "";
+    it.norm = normalize(it.label) + (raw ? " " + normalize(raw) : "");
   });
   return items;
 }
@@ -1524,8 +1550,11 @@ function highlightMentions(escapedText){
     .sort((a,b)=>b.length-a.length)
     .map(n=>n.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"));
   if(!names.length) return escapedText;
-  const re = new RegExp(`@(${names.join("|")})\\b`, "g");
-  return escapedText.replace(re, m => `<span class="mention-tag">${m}</span>`);
+  // Límite a la izquierda también: "juan@pedro.com" no es una mención a
+  // @pedro (mismo criterio que extractMentionsFromContent, que es lo que
+  // decide a quién se le avisa — si no, se resaltaba algo que no notifica).
+  const re = new RegExp(`(^|[^\\w@])@(${names.join("|")})\\b`, "g");
+  return escapedText.replace(re, (m, pre, name) => `${pre}<span class="mention-tag">@${name}</span>`);
 }
 function nl2br(s){ return highlightMentions(esc(s)).replace(/\n/g,"<br>"); }
 function normalize(s){
@@ -1541,11 +1570,42 @@ function safeUrl(u){
   }catch(e){}
   return null;
 }
+// Imágenes y adjuntos embebidos: solo data: URLs con cuerpo base64 puro.
+// Las imágenes SIEMPRE se generan acá adentro (compressImage →
+// canvas.toDataURL) y los adjuntos con FileReader, así que cualquier
+// otra forma es un documento escrito a mano contra Firestore — las
+// reglas solo chequean que `images`/`files` sean listas, no qué tienen.
+// Devuelven "" si no pasa: no se pinta nada, y nunca llega a un atributo
+// un string que pueda cerrarlo (el charset validado no incluye comillas,
+// < > ni espacios, por eso no hace falta esc() encima).
+const IMAGE_DATA_URL_RE = /^data:image\/(?:png|jpe?g|gif|webp);base64,[A-Za-z0-9+/=]+$/;
+function safeImageSrc(src){
+  return typeof src === "string" && IMAGE_DATA_URL_RE.test(src) ? src : "";
+}
+// application/octet-stream: lo que pone FileReader cuando el archivo no
+// tiene MIME (pasa con algunos PDF en Android); no puede ejecutar nada.
+const FILE_DATA_URL_RE = /^data:(?:application\/pdf|application\/octet-stream|audio\/[A-Za-z0-9.+-]+);base64,[A-Za-z0-9+/=]+$/;
+function safeFileDataUrl(u){
+  return typeof u === "string" && FILE_DATA_URL_RE.test(u) ? u : "";
+}
+// Colores de zona: vienen de la config del admin en Firestore y van
+// derecho a un style="" — se aceptan solo #rrggbb (que es lo único que
+// produce el <input type="color">), cualquier otra cosa cae al gris.
+function safeColor(c){
+  return typeof c === "string" && /^#[0-9a-fA-F]{6}$/.test(c) ? c : "#999999";
+}
 // Locale para toLocaleDateString/toLocaleTimeString según el idioma activo
 // (si no, quedaban siempre en "es-AR" — fecha en español aunque el resto
 // de la interfaz ya esté en EN/PT/HE).
 const DATE_LOCALES = { es:"es-AR", en:"en-US", pt:"pt-BR", he:"he-IL" };
 function dateLocale(){ return DATE_LOCALES[currentLang()] || "es-AR"; }
+// "Hoy" en la fecha LOCAL de quien postea. new Date().toISOString() da la
+// fecha UTC: a las 22:00 de Buenos Aires ya es mañana en UTC, y toda
+// rutina posteada de noche quedaba fechada al día siguiente.
+function todayISO(){
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
 function fmtDate(d){
   if(!d) return "";
   const dt = typeof d === "string" ? new Date(d+"T00:00:00") : d;
@@ -1654,10 +1714,15 @@ function mentionsInclude(mentions, email){
 // en ningún lado, y esa persona recibía notificaciones de algo que en
 // realidad no la mencionaba. Recalcular desde el texto lo hace imposible.
 function extractMentionsFromContent(content){
-  const byNickname = {};
-  state.roster.forEach(u=>{ byNickname[u.nickname.toLowerCase()] = u.email; });
+  // Object.create(null): sin prototipo, así "@constructor" o "@toString"
+  // no encuentran una función heredada y la meten en `mentions` (Firestore
+  // rechaza el documento entero por ese valor).
+  const byNickname = Object.create(null);
+  state.roster.forEach(u=>{ if(u.nickname) byNickname[u.nickname.toLowerCase()] = u.email; });
   const found = new Set();
-  const re = /@(\w+)/g;
+  // Con un límite a la izquierda: "juan@pedro.com" o "sitio.com/@ari" no
+  // son menciones (el dropdown ya usaba (?:^|\s)@ — acá faltaba).
+  const re = /(?:^|[^\w@])@(\w+)/g;
   let m;
   while((m = re.exec(content||""))){
     const nick = m[1].toLowerCase();
@@ -1713,7 +1778,7 @@ function zoneOfScope(scope){
 function scopeAffectsCountry(scope, countryName){
   if(scope.type==="todo") return true;
   if(scope.type==="pais" || scope.type==="ciudad") return scope.country === countryName;
-  if(scope.type==="region") return ZONE_COUNTRIES[scope.region].includes(countryName);
+  if(scope.type==="region") return (ZONE_COUNTRIES[scope.region] || []).includes(countryName);
   return false;
 }
 function scopeAffectsZone(scope, zoneKey){
@@ -1726,7 +1791,9 @@ function scopeAffectsCity(scope, countryName, cityName){
 }
 function scopeLabel(scope){
   if(scope.type==="todo") return t("Toda LatAm","All of LatAm","Toda a LatAm","כל LatAm");
-  if(scope.type==="region") return t("Región {z}","{z} region","Região {z}","אזור {z}",{z:ZONES[scope.region].label});
+  // Zona borrada por el admin con posteos que todavía apuntan a ella: se
+  // muestra la key cruda en vez de tirar TypeError y congelar el render.
+  if(scope.type==="region") return t("Región {z}","{z} region","Região {z}","אזור {z}",{z:ZONES[scope.region]?.label || scope.region});
   if(scope.type==="pais") return countryLabel(scope.country);
   if(scope.type==="ciudad") return `${cityLabel(scope.country, scope.city)}, ${countryLabel(scope.country)}`;
   return "";
@@ -2030,9 +2097,13 @@ async function unshareCalendarWith(email){
   }
 }
 
+// Aritmética de fechas YYYY-MM-DD enteramente en UTC: mezclar medianoche
+// LOCAL (new Date("...T00:00:00")) con toISOString() (UTC) devolvía el
+// día anterior para cualquiera al este de Greenwich — en Israel,
+// addDaysISO(x, 1) daba x, y Calendar rechazaba los eventos de un día.
 function addDaysISO(dateStr, days){
-  const dt = new Date(dateStr + "T00:00:00");
-  dt.setDate(dt.getDate() + days);
+  const dt = new Date(dateStr + "T00:00:00Z");
+  dt.setUTCDate(dt.getUTCDate() + days);
   return dt.toISOString().slice(0,10);
 }
 
@@ -2248,10 +2319,13 @@ async function applyCalendarEventToPosts(ev){
 
   const { startDate, endDate, startTime, endTime } = calendarEventDates(ev);
   if(!startDate) return;
-  const location = ev.location || "";
+  // Los mismos topes que exigen las reglas (title 140, content 5000,
+  // location 200, organizer 140): lo que viene de Calendar no pasa por
+  // el formulario, así que se recorta acá o Firestore rechaza el evento.
+  const location = String(ev.location || "").slice(0, 200);
 
   if(existing){
-    const newTitle = extractTitleFromSummary(ev.summary, existing.activityType).trim();
+    const newTitle = extractTitleFromSummary(ev.summary, existing.activityType).trim().slice(0, 140);
     const titleChanged = !!newTitle && newTitle !== existing.title;
     const timeChanged = (existing.startTime||"") !== (startTime||"") || (existing.endTime||"") !== (endTime||"");
     const changed = existing.startDate !== startDate || existing.endDate !== endDate || timeChanged || (existing.location||"") !== location || titleChanged;
@@ -2285,10 +2359,10 @@ async function applyCalendarEventToPosts(ev){
   // que alguien lo revise). Queda marcado como "sin definir" en la
   // tarjeta hasta que alguien lo edite y le ponga el lugar real.
   await createPost({
-    title: ev.summary || t("(Sin título)","(Untitled)","(Sem título)","(ללא כותרת)"),
-    content: ev.description || t("Creado automáticamente desde Google Calendar.","Automatically created from Google Calendar.","Criado automaticamente a partir do Google Calendar.",".נוצר אוטומטית מ-Google Calendar"),
+    title: String(ev.summary || t("(Sin título)","(Untitled)","(Sem título)","(ללא כותרת)")).slice(0, 140),
+    content: String(ev.description || t("Creado automáticamente desde Google Calendar.","Automatically created from Google Calendar.","Criado automaticamente a partir do Google Calendar.",".נוצר אוטומטית מ-Google Calendar")).slice(0, 5000),
     startDate, endDate, date:startDate, startTime, endTime,
-    organizer: ev.organizer?.displayName || ev.organizer?.email || "",
+    organizer: String(ev.organizer?.displayName || ev.organizer?.email || "").slice(0, 140),
     location,
     activityType: "otro",
     scopes: [],
@@ -2331,10 +2405,21 @@ async function syncFromCalendar(opts){
     const meta = await getSyncMeta();
     let result = await fetchCalendarChanges(meta?.syncToken || null);
     if(result.needsFullResync) result = await fetchCalendarChanges(null);
+    // Cada evento por separado: si uno falla (un posteo importado que las
+    // reglas no dejan actualizar, un título más largo que el máximo, lo
+    // que sea), los demás se aplican igual y el syncToken avanza. Sin
+    // esto, un solo evento malo trababa el mismo lote para siempre, en
+    // cada navegador, cada 30 segundos.
+    let failed = 0;
     for(const ev of result.events || []){
-      await applyCalendarEventToPosts(ev);
+      try{ await applyCalendarEventToPosts(ev); }
+      catch(err){ failed++; console.error("Error aplicando evento de Calendar", ev && ev.id, err); }
     }
     if(result.nextSyncToken) await setSyncMeta({ syncToken: result.nextSyncToken });
+    if(failed && !silent){
+      showCalendarNotice({ ok:false, message:t("{n} evento(s) de Calendar no se pudieron aplicar (ver consola).","{n} Calendar event(s) couldn't be applied (see console).","{n} evento(s) do Calendar não puderam ser aplicados (ver console).","{n} אירועים מהיומן לא הוחלו (ראה/י קונסולה).",{n:failed}) });
+      return;
+    }
     if(!silent){ showCalendarNotice({ ok:true, message: t("Sincronizado con Calendar ({n} cambio(s) revisado(s)).","Synced with Calendar ({n} change(s) reviewed).","Sincronizado com o Calendar ({n} alteração(ões) revisada(s)).","({n} סונכרן עם היומן (נבדקו {n} שינויים.",{n:(result.events||[]).length}) }); }
   }catch(err){
     console.error("Error sincronizando desde Calendar:", err);
@@ -2477,9 +2562,6 @@ async function onAuthChanged(user){
     return;
   }
   const profile = { uid:user.uid, email:user.email, displayName:user.displayName || user.email, photoURL:user.photoURL || "" };
-  user.getIdTokenResult().then(tok=>{
-    console.log("[diagnóstico] email en user.email:", user.email, "| email en el token (lo que ven las reglas):", tok.claims.email);
-  }).catch(()=>{});
 
   if(!auditLoginLoggedThisSession){
     auditLoginLoggedThisSession = true;
@@ -2887,6 +2969,7 @@ async function updatePostAndSync(postId, original, newData){
     date:newData.startDate, startTime:newData.startTime||null, endTime:newData.endTime||null,
     participants:newData.participants,
     activityType:newData.activityType, scopes:newData.scopes, images:newData.images, links:newData.links,
+    files:newData.files, mentions:newData.mentions,
     lastEditedAt: fb.serverTimestamp(), lastEditedBy: state.auth.user.displayName,
   };
   await updatePostDoc(postId, patch);
@@ -3828,11 +3911,11 @@ function renderZonasSection(){
           .filter(name=>d.countryZones[name]===key)
           .sort((a,b)=>a.localeCompare(b,"es"));
         return `<div class="zone-section">
-          <div class="zone-bar" style="background:${esc(z.color)}14;">
-            <label class="zone-swatch" style="background:${esc(z.color)}" title="${esc(t("Cambiar color","Change color","Trocar cor","שינוי צבע"))}">
-              <input type="color" data-action="zonas-color" data-key="${key}" value="${esc(z.color)}">
+          <div class="zone-bar" style="background:${safeColor(z.color)}14;">
+            <label class="zone-swatch" style="background:${safeColor(z.color)}" title="${esc(t("Cambiar color","Change color","Trocar cor","שינוי צבע"))}">
+              <input type="color" data-action="zonas-color" data-key="${esc(key)}" value="${safeColor(z.color)}">
             </label>
-            <input type="text" class="zone-name" data-action="zonas-label" data-key="${key}" value="${esc(z.label)}" maxlength="30">
+            <input type="text" class="zone-name" data-action="zonas-label" data-key="${esc(key)}" value="${esc(z.label)}" maxlength="30">
             <span class="zone-count">${count === 1 ? t("1 país","1 country","1 país","מדינה אחת") : t("{n} países","{n} countries","{n} países","{n} מדינות",{n:count})}</span>
             <button type="button" class="zone-rm" data-action="zonas-remove-zone" data-key="${key}" ${count>0?`disabled title="${esc(t("Reasigná primero los países de esta zona","First reassign this zone's countries","Reatribua primeiro os países desta zona",".קודם הקצה/י מחדש את המדינות של אזור זה"))}"`:`title="${esc(t("Eliminar zona","Delete zone","Excluir zona","מחיקת אזור"))}"`}>✕</button>
           </div>
@@ -3888,8 +3971,8 @@ function renderTiposSection(){
         ${d.types.map(ty=>{
           const count = countPostsByType(ty.key);
           return `<div class="zone-edit-row">
-            <input type="text" class="tipo-icon-input" data-action="tipos-icon" data-key="${ty.key}" value="${esc(ty.icon)}" maxlength="4">
-            <input type="text" class="zone-label-input" data-action="tipos-label" data-key="${ty.key}" value="${esc(ty.label)}" maxlength="30">
+            <input type="text" class="tipo-icon-input" data-action="tipos-icon" data-key="${esc(ty.key)}" value="${esc(ty.icon)}" maxlength="4">
+            <input type="text" class="zone-label-input" data-action="tipos-label" data-key="${esc(ty.key)}" value="${esc(ty.label)}" maxlength="30">
             <div class="tipo-meta">
               <label class="tipo-sync-toggle"><input type="checkbox" data-action="tipos-sync" data-key="${ty.key}" ${ty.calendarSync?"checked":""}> Calendar</label>
               <span class="zone-count">${count === 1 ? t("1 posteo","1 post","1 postagem","פוסט אחד") : t("{n} posteos","{n} posts","{n} postagens","{n} פוסטים",{n:count})}</span>
@@ -3916,10 +3999,10 @@ function renderTiposSection(){
    CITY_PRESETS — acá se revisan y, si corresponde, se suman como
    sugerencia del buscador para todo el mundo. */
 function getCustomCityUsage(){
-  const usage = {};
+  const usage = Object.create(null);
   const scan = scopes => (scopes||[]).forEach(sc=>{
     if(sc.type !== "ciudad") return;
-    const presets = CITY_PRESETS[sc.country] || [];
+    const presets = cityPresetsFor(sc.country);
     if(presets.some(p=>normalize(p.name)===normalize(sc.city))) return;
     const key = sc.country + "|||" + sc.city;
     if(!usage[key]) usage[key] = { country:sc.country, city:sc.city, count:0 };
@@ -4085,12 +4168,12 @@ function renderFilterBar(prefix){
   const activeTypes = state.filters.types.size;
   const activeZones = state.filters.zones.size;
   const typeChips = ACTIVITY_TYPES.map(ty=>`
-    <span class="chip-toggle ${state.filters.types.has(ty.key)?"active":""}" data-action="toggle-type" data-key="${ty.key}">
-      ${ty.icon} ${ty.label}
+    <span class="chip-toggle ${state.filters.types.has(ty.key)?"active":""}" data-action="toggle-type" data-key="${esc(ty.key)}">
+      ${esc(ty.icon)} ${esc(ty.label)}
     </span>`).join("");
   const zoneChips = Object.values(ZONES).map(z=>`
-    <span class="chip-toggle ${state.filters.zones.has(z.key)?"active":""}" data-action="toggle-zone" data-key="${z.key}">
-      <span class="dot" style="background:${z.color}"></span> ${z.label}
+    <span class="chip-toggle ${state.filters.zones.has(z.key)?"active":""}" data-action="toggle-zone" data-key="${esc(z.key)}">
+      <span class="dot" style="background:${safeColor(z.color)}"></span> ${esc(z.label)}
     </span>`).join("");
   const placeChip = state.filters.place ? `
     <span class="chip-toggle active" data-action="clear-place">
@@ -4119,7 +4202,7 @@ function renderFilterBar(prefix){
     </div>`;
 }
 function placeFilterLabel(place){
-  if(place.kind==="zone") return t("Región {z}","{z} region","Região {z}","אזור {z}",{z:ZONES[place.zone].label});
+  if(place.kind==="zone") return t("Región {z}","{z} region","Região {z}","אזור {z}",{z:ZONES[place.zone]?.label || place.zone});
   if(place.kind==="country") return countryLabel(place.country);
   if(place.kind==="city") return `${cityLabel(place.country, place.city)}, ${countryLabel(place.country)}`;
   return "";
@@ -4261,7 +4344,7 @@ function renderRutinaComposer(){
       <input type="file" id="rutinaImages" accept="image/*" multiple hidden data-action="rutina-images">
       <input type="file" id="rutinaFiles" accept="application/pdf,audio/*" multiple hidden data-action="rutina-files">
       ${d.images.length ? `<div class="img-preview-list">${d.images.map((src,i)=>`
-        <div class="img-preview"><img src="${src}"><button type="button" class="rm" data-action="rutina-rm-image" data-idx="${i}">✕</button></div>`).join("")}</div>` : ""}
+        <div class="img-preview"><img src="${safeImageSrc(src)}"><button type="button" class="rm" data-action="rutina-rm-image" data-idx="${i}">✕</button></div>`).join("")}</div>` : ""}
       ${renderFileChips(d.files, "rutina-rm-file")}
       ${d.links.length ? `<div class="attach-panel">${renderLinkRows("rutina", "new", d.links)}</div>` : ""}
       ${d.error ? `<div class="form-error">${esc(d.error)}</div>` : ""}
@@ -4282,7 +4365,7 @@ async function submitRutina(){
   const content = d.content.trim();
   if(!content){ d.error = t("Escribí algo antes de publicar.","Write something before posting.","Escreva algo antes de publicar.","כתוב/כתבי משהו לפני הפרסום."); render(); return; }
   const links = d.links.filter(l=>safeUrl(l.url));
-  const today = new Date().toISOString().slice(0,10);
+  const today = todayISO();
   // title/fechas no tienen sentido para una rutina, pero el esquema de
   // posts los pide siempre — se completan solos y no se muestran en la
   // tarjeta (ver renderPostCard) para no repetir el contenido dos veces.
@@ -4328,11 +4411,13 @@ function resetReplyDraft(postId){
 }
 
 function renderPostCard(post, replies, featured){
-  const type = ACTIVITY_BY_KEY[post.activityType] || ACTIVITY_BY_KEY.otro;
+  // El último fallback es por si el admin borró "otro" desde Configuración
+  // (o el tipo del posteo) — un tipo desconocido no puede tirar el render.
+  const type = ACTIVITY_BY_KEY[post.activityType] || ACTIVITY_BY_KEY.otro || { key:post.activityType, icon:"✨", label:String(post.activityType||"") };
   const scopesHtml = (post.scopes||[]).map(sc=>renderScopeChip(sc)).join("");
   const linksHtml = (post.links||[]).filter(l=>safeUrl(l.url)).map(l=>
     `<a href="${esc(safeUrl(l.url))}" target="_blank" rel="noopener noreferrer">🔗 ${esc(l.label||l.url)}</a>`).join("");
-  const imagesHtml = (post.images||[]).map(src=>
+  const imagesHtml = (post.images||[]).map(safeImageSrc).filter(Boolean).map(src=>
     `<img src="${src}" data-action="open-lightbox" data-src="${src}">`).join("");
   const replyOpen = openReplyForms.has(post.id);
   const threadOpen = openThreads.has(post.id);
@@ -4362,7 +4447,7 @@ function renderPostCard(post, replies, featured){
     <article class="card post ${post.cancelled?"post-cancelled":""}" data-post-id="${post.id}">
       <div class="post-head">
         <div class="post-meta">
-          <span class="type-badge">${type.icon} ${type.label}</span>
+          <span class="type-badge">${esc(type.icon)} ${esc(type.label)}</span>
           ${featured ? `<span class="type-badge featured-badge">⭐ ${t("Destacado","Featured","Destaque","מומלץ")}</span>` : ""}
           <span class="post-date">${dateLabel}${creadoPor}</span>
           ${post.cancelled ? `<span class="type-badge" style="background:var(--danger);">🚫 ${t("Cancelado","Cancelled","Cancelado","בוטל")}</span>` : ""}
@@ -4411,7 +4496,9 @@ function gotoMention(postId, replyId){
 
 function renderScopeChip(sc, removable, idx, ownerId){
   const zone = zoneOfScope(sc);
-  const color = zone ? ZONES[zone].color : "#999";
+  // ZONES[zone] puede no existir si el admin borró la zona y quedaron
+  // posteos apuntando a ella — no puede tirar el render entero por eso.
+  const color = zone && ZONES[zone] ? safeColor(ZONES[zone].color) : "#999999";
   return `<span class="scope-chip ${removable?"removable":""}">
       <span class="zdot" style="background:${color}"></span>${scopeIcon(sc)} ${esc(scopeLabel(sc))}
       ${removable ? `<span class="rm" data-action="${removable}" data-idx="${idx}" data-owner-id="${esc(ownerId)}">✕</span>` : ""}
@@ -4434,7 +4521,7 @@ function renderReply(r){
   const scopesHtml = (r.scopes||[]).map(sc=>renderScopeChip(sc)).join("");
   const linksHtml = (r.links||[]).filter(l=>safeUrl(l.url)).map(l=>
     `<a href="${esc(safeUrl(l.url))}" target="_blank" rel="noopener noreferrer">🔗 ${esc(l.label||l.url)}</a>`).join("");
-  const imagesHtml = (r.images||[]).map(src=>
+  const imagesHtml = (r.images||[]).map(safeImageSrc).filter(Boolean).map(src=>
     `<img src="${src}" data-action="open-lightbox" data-src="${src}">`).join("");
   const likedBy = r.likedBy || [];
   const liked = isAuthorized() && likedBy.includes(state.auth.user.email);
@@ -4473,7 +4560,7 @@ function renderNestedReplyForm(postId, replyId){
       <input type="file" id="nestedReplyImages-${replyId}" accept="image/*" multiple hidden data-action="nested-reply-images" data-reply-id="${replyId}">
       <input type="file" id="nestedReplyFiles-${replyId}" accept="application/pdf,audio/*" multiple hidden data-action="nested-reply-files" data-reply-id="${replyId}">
       ${d.images.length ? `<div class="img-preview-list">${d.images.map((src,i)=>`
-        <div class="img-preview"><img src="${src}"><button type="button" class="rm" data-action="nested-reply-rm-image" data-reply-id="${replyId}" data-idx="${i}">✕</button></div>`).join("")}</div>` : ""}
+        <div class="img-preview"><img src="${safeImageSrc(src)}"><button type="button" class="rm" data-action="nested-reply-rm-image" data-reply-id="${replyId}" data-idx="${i}">✕</button></div>`).join("")}</div>` : ""}
       ${renderFileChips(d.files, "nested-reply-rm-file", `data-reply-id="${replyId}"`)}
       ${d.links.length ? `<div class="attach-panel">${renderLinkRows("nested-reply", replyId, d.links)}</div>` : ""}
       <div class="reply-form-footer">
@@ -4512,10 +4599,11 @@ function renderReplyForm(postId){
         <label><input type="checkbox" data-action="toggle-reply-extra-scope" data-post-id="${postId}" ${d.extraScope?"checked":""}> ${t("Esta respuesta también afectó a otro lugar","This reply also involved another place","Esta resposta também envolveu outro lugar","התגובה הזו נגעה גם למקום אחר")}</label>
       </div>
       ${d.extraScope ? renderScopeBuilder("reply", postId, d) : ""}
+      ${!d.extraScope && d.scopeError ? `<div class="form-error">${esc(d.scopeError)}</div>` : ""}
       <input type="file" id="replyImages-${postId}" accept="image/*" multiple hidden data-action="reply-images" data-post-id="${postId}">
       <input type="file" id="replyFiles-${postId}" accept="application/pdf,audio/*" multiple hidden data-action="reply-files" data-post-id="${postId}">
       ${d.images.length ? `<div class="img-preview-list">${d.images.map((src,i)=>`
-        <div class="img-preview"><img src="${src}"><button type="button" class="rm" data-action="reply-rm-image" data-post-id="${postId}" data-idx="${i}">✕</button></div>`).join("")}</div>` : ""}
+        <div class="img-preview"><img src="${safeImageSrc(src)}"><button type="button" class="rm" data-action="reply-rm-image" data-post-id="${postId}" data-idx="${i}">✕</button></div>`).join("")}</div>` : ""}
       ${renderFileChips(d.files, "reply-rm-file", `data-post-id="${postId}"`)}
       ${d.links.length ? `<div class="attach-panel">${renderLinkRows("reply", postId, d.links)}</div>` : ""}
       <div class="reply-form-footer">
@@ -4547,7 +4635,7 @@ function renderScopeBuilder(scope, ownerId, draft){
   let extra = "";
   if(sd.type === "region"){
     extra = `<select data-scope-field="region" data-scope="${scope}" data-owner-id="${ownerId}">
-        ${Object.values(ZONES).map(z=>`<option value="${z.key}" ${sd.region===z.key?"selected":""}>${z.label}</option>`).join("")}
+        ${Object.values(ZONES).map(z=>`<option value="${esc(z.key)}" ${sd.region===z.key?"selected":""}>${esc(z.label)}</option>`).join("")}
       </select>`;
   } else if(sd.type === "pais"){
     extra = `<select data-scope-field="country" data-scope="${scope}" data-owner-id="${ownerId}">
@@ -4556,7 +4644,7 @@ function renderScopeBuilder(scope, ownerId, draft){
   } else if(sd.type === "todo"){
     extra = "";
   } else {
-    const presets = CITY_PRESETS[sd.country];
+    const presets = hasOwn(CITY_PRESETS, sd.country) ? CITY_PRESETS[sd.country] : null;
     let cityField;
     if(presets && !sd.cityUseCustom){
       cityField = `<select data-scope-field="citySelect" data-scope="${scope}" data-owner-id="${ownerId}">
@@ -4591,7 +4679,7 @@ function renderScopeBuilder(scope, ownerId, draft){
 }
 function groupedCountryOptions(selected){
   return Object.values(ZONES).map(z=>`
-    <optgroup label="${z.label}">
+    <optgroup label="${esc(z.label)}">
       ${ZONE_COUNTRIES[z.key].map(name=>`<option value="${esc(name)}" ${selected===name?"selected":""}>${esc(countryLabel(name))}</option>`).join("")}
     </optgroup>`).join("");
 }
@@ -4600,14 +4688,17 @@ function groupedCountryOptions(selected){
    AGREGACIÓN POR LUGAR (posts + alcance sumado desde respuestas)
    ====================================================================== */
 function computePlaceCounts(){
-  const byCountry = {};
-  COUNTRIES.forEach(c=>{ byCountry[c.name] = { total:0, general:0, cities:{} }; });
+  // Object.create(null) en los dos niveles: `country`/`city` vienen de
+  // scopes guardados en Firestore (las reglas no validan su forma), y un
+  // "__proto__" ahí adentro no puede terminar escribiendo en Object.prototype.
+  const byCountry = Object.create(null);
+  COUNTRIES.forEach(c=>{ byCountry[c.name] = { total:0, general:0, cities:Object.create(null) }; });
   function ingest(scopes){
     (scopes||[]).forEach(sc=>{
       if(sc.type==="pais" && byCountry[sc.country]){
         byCountry[sc.country].total++; byCountry[sc.country].general++;
       } else if(sc.type==="ciudad" && byCountry[sc.country]){
-        const city = titleCase(sc.city);
+        const city = canonicalCityName(sc.country, sc.city);
         byCountry[sc.country].total++;
         byCountry[sc.country].cities[city] = (byCountry[sc.country].cities[city]||0)+1;
       } else if(sc.type==="region" && ZONE_COUNTRIES[sc.region]){
@@ -4633,8 +4724,8 @@ function computePlaceCounts(){
 function renderZoneLegend(){
   const active = state.paisesZoneFilter;
   return `<div class="zone-legend">${Object.values(ZONES).map(z=>
-    `<span class="chip-toggle${active.has(z.key)?" active":""}" data-action="toggle-paises-zone" data-key="${z.key}">
-      <span class="dot" style="background:${z.color}"></span>${z.label}${active.has(z.key)?" ✕":""}
+    `<span class="chip-toggle${active.has(z.key)?" active":""}" data-action="toggle-paises-zone" data-key="${esc(z.key)}">
+      <span class="dot" style="background:${safeColor(z.color)}"></span>${esc(z.label)}${active.has(z.key)?" ✕":""}
     </span>`).join("")}</div>`;
 }
 function visiblePaisesCountries(){
@@ -4666,7 +4757,7 @@ function renderPaisesView(){
     // que en RTL quede del lado correcto) — pisarlo acá con la propiedad
     // física vieja lo dejaba sin color en RTL (el navegador ya no pinta
     // border-left ahí, solo border-right).
-    return `<div class="country-card" style="border-inline-start-color:${ZONES[c.zone].color}" data-action="drill-country" data-country="${esc(c.name)}">
+    return `<div class="country-card" style="border-inline-start-color:${safeColor(ZONES[c.zone]?.color)}" data-action="drill-country" data-country="${esc(c.name)}">
       <div class="name">${esc(countryLabel(c.name))}</div>
       <div class="count">${cnt}<small> ${cnt === 1 ? t("registro","record","registro","רשומה") : t("registros","records","registros","רשומות")}</small></div>
     </div>`;
@@ -4745,7 +4836,7 @@ function initOrUpdateMap(){
   const visibleCountries = visiblePaisesCountries();
   visibleCountries.forEach(c=>{
     const cnt = counts[c.name].total;
-    const color = ZONES[c.zone].color;
+    const color = safeColor(ZONES[c.zone]?.color);
     const marker = L.marker(c.coord, {
       icon: L.divIcon({
         html: `<div class="map-country-marker" style="background:${color};opacity:${cnt>0 ? 0.9 : 0.45}">${cnt}</div>`,
@@ -4797,7 +4888,7 @@ function renderMemoriaView(){
    COMPOSER: Nuevo evento (modal)
    ====================================================================== */
 function newComposerDraft(){
-  const today = new Date().toISOString().slice(0,10);
+  const today = todayISO();
   return {
     title: "",
     content: "",
@@ -5087,7 +5178,7 @@ function renderComposer(){
       <div class="type-picker">
         ${(d.editingPost && d.editingPost.activityType === "rutina" ? ACTIVITY_TYPES : EVENTO_TYPES).map(ty=>`
           <label class="type-opt ${d.activityType===ty.key?"checked":""}">
-            <input type="radio" name="cType" value="${ty.key}" ${d.activityType===ty.key?"checked":""}> ${ty.icon} ${ty.label}
+            <input type="radio" name="cType" value="${esc(ty.key)}" ${d.activityType===ty.key?"checked":""}> ${esc(ty.icon)} ${esc(ty.label)}
           </label>`).join("")}
       </div>
     </div>
@@ -5102,7 +5193,7 @@ function renderComposer(){
           <button type="button" class="btn-attach" data-action="post-add-link">🔗 Link</button>
         </div>
         ${d.images.length ? `<div class="img-preview-list">${d.images.map((src,i)=>`
-          <div class="img-preview"><img src="${src}"><button type="button" class="rm" data-action="post-rm-image" data-idx="${i}">✕</button></div>`).join("")}</div>` : ""}
+          <div class="img-preview"><img src="${safeImageSrc(src)}"><button type="button" class="rm" data-action="post-rm-image" data-idx="${i}">✕</button></div>`).join("")}</div>` : ""}
         ${renderFileChips(d.files, "post-rm-file")}
         ${d.links.length ? `<div class="attach-panel">${renderLinkRows("post", "new", d.links)}</div>` : ""}
         <div class="hint">${t(
@@ -5144,7 +5235,7 @@ function commitScope(scope, ownerId){
     newScope = { type:"pais", country: sd.country };
   } else {
     if(!sd.country || !sd.city.trim()){ draft.scopeError = t("Elegí un país y escribí una ciudad.","Choose a country and type a city.","Escolha um país e digite uma cidade.",".בחר/י מדינה והקלד/י עיר"); render(); return; }
-    const fromPreset = CITY_PRESETS[sd.country] && !sd.cityUseCustom;
+    const fromPreset = hasOwn(CITY_PRESETS, sd.country) && !sd.cityUseCustom;
     newScope = { type:"ciudad", country: sd.country, city: fromPreset ? sd.city.trim() : titleCase(sd.city) };
   }
   draft.scopes.push(newScope);
@@ -5245,10 +5336,13 @@ function renderFileChips(files, rmAction, extraAttrs=""){
 // renderFileChips, que es para los que todavía se están por mandar).
 function renderPostedFiles(files){
   if(!files || !files.length) return "";
-  return `<div class="post-files">${files.map(f => f.kind === "audio"
-    ? `<div class="post-file-audio"><audio controls src="${f.dataUrl}"></audio><span class="fname">${esc(f.name)}</span></div>`
-    : `<a class="post-file-link" href="${f.dataUrl}" download="${esc(f.name)}" target="_blank" rel="noopener noreferrer">📄 ${esc(f.name)}</a>`
-  ).join("")}</div>`;
+  return `<div class="post-files">${files.map(f => {
+    const dataUrl = safeFileDataUrl(f && f.dataUrl);
+    if(!dataUrl) return "";
+    return f.kind === "audio"
+      ? `<div class="post-file-audio"><audio controls src="${dataUrl}"></audio><span class="fname">${esc(f.name)}</span></div>`
+      : `<a class="post-file-link" href="${dataUrl}" download="${esc(f.name)}" target="_blank" rel="noopener noreferrer">📄 ${esc(f.name)}</a>`;
+  }).join("")}</div>`;
 }
 
 // Autocompletar "lugar" (composer de Rutina) y "@menciones" (cualquier
@@ -5259,9 +5353,11 @@ function renderPostedFiles(files){
 // getPlaceMatches/getMentionMatches se comparten entre el render y el
 // manejo de teclado para que siempre miren exactamente la misma lista.
 function getPlaceMatches(query){
-  const q = (query||"").trim().toLowerCase();
+  // normalize() de los dos lados: "peru", "mexico", "cordoba", "sao paulo"
+  // tienen que encontrar "Perú"/"México"/"Córdoba"/"São Paulo".
+  const q = normalize(query);
   if(!q) return [];
-  const matches = PLACE_INDEX.filter(it => it.label.toLowerCase().includes(q)).slice(0, 8);
+  const matches = PLACE_INDEX.filter(it => it.norm.includes(q)).slice(0, 8);
   if(matches.length) return matches;
   // Sin resultados: si escribieron "Ciudad, País" y el país ya existe (los
   // 43 países ya están todos cargados, nunca hace falta sumar uno), se
@@ -5771,6 +5867,13 @@ document.addEventListener("click", e=>{
     const key = el.dataset.key;
     const inUse = Object.values(d.countryZones).some(z=>z===key);
     if(inUse){ d.error = t("Reasigná primero los países que están en esta zona.","First reassign the countries in this zone.","Reatribua primeiro os países desta zona.",".קודם הקצה/י מחדש את המדינות באזור הזה"); render(); return; }
+    // Aunque no le queden países, puede haber posteos/respuestas con
+    // alcance "Región X" apuntando a esta zona: sin la zona, ese alcance
+    // quedaría mostrando la key cruda para siempre.
+    const usedByPosts = state.posts.some(p =>
+      (p.scopes||[]).some(sc=>sc.type==="region" && sc.region===key) ||
+      (state.repliesByPost[p.id]||[]).some(r=>(r.scopes||[]).some(sc=>sc.type==="region" && sc.region===key)));
+    if(usedByPosts){ d.error = t("Hay posteos con alcance en esta zona; no se puede borrar.","There are posts scoped to this zone; it can't be deleted.","Há postagens com alcance nesta zona; não dá para excluí-la.",".יש פוסטים שמשויכים לאזור הזה; אי אפשר למחוק אותו"); render(); return; }
     delete d.zones[key];
     d.zoneOrder = d.zoneOrder.filter(k=>k!==key);
     d.error = "";
