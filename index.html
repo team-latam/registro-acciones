@@ -1456,8 +1456,8 @@ function scopeAffectsCity(scope, countryName, cityName){
   return scope.type==="ciudad" && scope.country===countryName && normalize(scope.city)===normalize(cityName);
 }
 function scopeLabel(scope){
-  if(scope.type==="todo") return "Toda LatAm";
-  if(scope.type==="region") return `Región ${ZONES[scope.region].label}`;
+  if(scope.type==="todo") return t("Toda LatAm","All of LatAm","Toda a LatAm","כל LatAm");
+  if(scope.type==="region") return t("Región {z}","{z} region","Região {z}","אזור {z}",{z:ZONES[scope.region].label});
   if(scope.type==="pais") return scope.country;
   if(scope.type==="ciudad") return `${scope.city}, ${scope.country}`;
   return "";
@@ -3675,9 +3675,9 @@ let zoneFilterOpen = false;
 function renderFilterBar(prefix){
   const activeTypes = state.filters.types.size;
   const activeZones = state.filters.zones.size;
-  const typeChips = ACTIVITY_TYPES.map(t=>`
-    <span class="chip-toggle ${state.filters.types.has(t.key)?"active":""}" data-action="toggle-type" data-key="${t.key}">
-      ${t.icon} ${t.label}
+  const typeChips = ACTIVITY_TYPES.map(ty=>`
+    <span class="chip-toggle ${state.filters.types.has(ty.key)?"active":""}" data-action="toggle-type" data-key="${ty.key}">
+      ${ty.icon} ${ty.label}
     </span>`).join("");
   const zoneChips = Object.values(ZONES).map(z=>`
     <span class="chip-toggle ${state.filters.zones.has(z.key)?"active":""}" data-action="toggle-zone" data-key="${z.key}">
@@ -3690,27 +3690,27 @@ function renderFilterBar(prefix){
   const anyFilter = state.filters.text || state.filters.types.size || state.filters.zones.size || state.filters.place;
   return `
     <div class="filterbar">
-      <input type="text" id="${prefix}Search" placeholder="Buscar por texto…" value="${esc(state.filters.text)}" data-action="set-text">
+      <input type="text" id="${prefix}Search" placeholder="${esc(t("Buscar por texto…","Search by text…","Buscar por texto…","...חיפוש לפי טקסט"))}" value="${esc(state.filters.text)}" data-action="set-text">
       <div class="filter-dropdown type-filter">
         <button type="button" class="chip-toggle filter-dropdown-btn ${activeTypes ? "active" : ""} ${typeFilterOpen ? "open" : ""}" data-action="toggle-type-filter">
-          🗂️ Actividades${activeTypes ? `<span class="filter-dropdown-count">${activeTypes}</span>` : ""}
+          🗂️ ${t("Actividades","Activities","Atividades","פעילויות")}${activeTypes ? `<span class="filter-dropdown-count">${activeTypes}</span>` : ""}
           <span class="filter-dropdown-chevron">▾</span>
         </button>
         ${typeFilterOpen ? `<div class="filter-dropdown-panel">${typeChips}</div>` : ""}
       </div>
       <div class="filter-dropdown zone-filter">
         <button type="button" class="chip-toggle filter-dropdown-btn ${activeZones ? "active" : ""} ${zoneFilterOpen ? "open" : ""}" data-action="toggle-zone-filter">
-          🌎 Zonas${activeZones ? `<span class="filter-dropdown-count">${activeZones}</span>` : ""}
+          🌎 ${t("Zonas","Zones","Zonas","אזורים")}${activeZones ? `<span class="filter-dropdown-count">${activeZones}</span>` : ""}
           <span class="filter-dropdown-chevron">▾</span>
         </button>
         ${zoneFilterOpen ? `<div class="filter-dropdown-panel">${zoneChips}</div>` : ""}
       </div>
       ${placeChip}
-      ${anyFilter ? `<button class="filter-clear" data-action="clear-filters">Limpiar filtros</button>` : ""}
+      ${anyFilter ? `<button class="filter-clear" data-action="clear-filters">${t("Limpiar filtros","Clear filters","Limpar filtros","ניקוי מסננים")}</button>` : ""}
     </div>`;
 }
 function placeFilterLabel(place){
-  if(place.kind==="zone") return `Región ${ZONES[place.zone].label}`;
+  if(place.kind==="zone") return t("Región {z}","{z} region","Região {z}","אזור {z}",{z:ZONES[place.zone].label});
   if(place.kind==="country") return place.country;
   if(place.kind==="city") return `${place.city}, ${place.country}`;
   return "";
@@ -3797,7 +3797,10 @@ function renderFeedView(){
     ${renderRutinaComposer()}
     ${renderFilterBar("feed")}
     ${items.length ? items.map(({post,replies,featured})=>renderPostCard(post,replies,featured)).join("") :
-      `<div class="empty-state"><div class="big">🗒️</div>Todavía no hay posteos${anyActiveFilter()?" que coincidan con el filtro":""}.<br>Usá "+ Nuevo evento" para sumar el primero.</div>`}
+      `<div class="empty-state"><div class="big">🗒️</div>${anyActiveFilter()
+        ? t("Todavía no hay posteos que coincidan con el filtro.","No posts match the filter yet.","Ainda não há postagens que coincidam com o filtro.","עדיין אין פוסטים שתואמים למסנן.")
+        : t("Todavía no hay posteos.","There are no posts yet.","Ainda não há postagens.","עדיין אין פוסטים.")
+      }<br>${t('Usá "+ Nuevo evento" para sumar el primero.','Use "+ New event" to add the first one.','Use "+ Novo evento" para somar o primeiro.','.כדי להוסיף את הראשון "+ אירוע חדש" השתמש/י ב')}</div>`}
   `;
 }
 function anyActiveFilter(){
@@ -3837,12 +3840,12 @@ function renderRutinaComposer(){
         ${renderMiniAvatar(state.auth.user)}
         <div class="mention-anchor">
           <div class="mention-highlight-backdrop" id="rutinaContent-hl" aria-hidden="true">${highlightMentions(esc(d.content))}</div>
-          <textarea id="rutinaContent" class="autogrow mention-input" data-mention-scope="rutina" data-mention-owner="new" placeholder="¿Qué hiciste hoy?" rows="1">${esc(d.content)}</textarea>
+          <textarea id="rutinaContent" class="autogrow mention-input" data-mention-scope="rutina" data-mention-owner="new" placeholder="${esc(t("¿Qué hiciste hoy?","What did you do today?","O que você fez hoje?","?מה עשית היום"))}" rows="1">${esc(d.content)}</textarea>
           ${renderMentionSuggestions(d, "rutina", "new", "rutinaContent")}
         </div>
       </div>
       <div class="place-picker">
-        <input type="text" id="rutinaPlaceQuery" data-place-scope="rutina" data-place-owner="new" placeholder="📍 Dónde (país, ciudad, región)..." autocomplete="off" value="${esc(d.placeQuery)}">
+        <input type="text" id="rutinaPlaceQuery" data-place-scope="rutina" data-place-owner="new" placeholder="📍 ${esc(t("Dónde (país, ciudad, región)...","Where (country, city, region)...","Onde (país, cidade, região)...","(מדינה, עיר, אזור) איפה..."))}" autocomplete="off" value="${esc(d.placeQuery)}">
         ${d.placeQuery ? renderPlaceSuggestions(d, "rutina", "new") : ""}
       </div>
       ${d.scopes.length ? `<div class="post-scopes" style="margin-top:8px;">${d.scopes.map((sc,i)=>renderScopeChip(sc, "rm-scope-rutina", i, "new")).join("")}</div>` : ""}
@@ -3855,11 +3858,11 @@ function renderRutinaComposer(){
       ${d.error ? `<div class="form-error">${esc(d.error)}</div>` : ""}
       <div class="reply-form-footer">
         <div class="attach-toolbar">
-          <label class="btn-attach" for="rutinaImages">📎 Imagen</label>
-          <label class="btn-attach" for="rutinaFiles">📄 PDF/Audio</label>
+          <label class="btn-attach" for="rutinaImages">📎 ${t("Imagen","Image","Imagem","תמונה")}</label>
+          <label class="btn-attach" for="rutinaFiles">📄 PDF/${t("Audio","Audio","Áudio","אודיו")}</label>
           <button type="button" class="btn-attach" data-action="rutina-add-link">🔗 Link</button>
         </div>
-        <button type="button" class="btn-new" id="rutinaPublish" data-action="submit-rutina" ${d.content.trim() ? "" : "disabled"}>Publicar</button>
+        <button type="button" class="btn-new" id="rutinaPublish" data-action="submit-rutina" ${d.content.trim() ? "" : "disabled"}>${t("Publicar","Post","Publicar","פרסום")}</button>
       </div>
     </div>`;
 }
@@ -3868,7 +3871,7 @@ async function submitRutina(){
   const d = rutinaDraft;
   d.error = "";
   const content = d.content.trim();
-  if(!content){ d.error = "Escribí algo antes de publicar."; render(); return; }
+  if(!content){ d.error = t("Escribí algo antes de publicar.","Write something before posting.","Escreva algo antes de publicar.","כתוב/כתבי משהו לפני הפרסום."); render(); return; }
   const links = d.links.filter(l=>safeUrl(l.url));
   const today = new Date().toISOString().slice(0,10);
   // title/fechas no tienen sentido para una rutina, pero el esquema de
@@ -3888,7 +3891,7 @@ async function submitRutina(){
     render();
   }catch(err){
     console.error(err);
-    d.error = "No se pudo publicar: " + err.message;
+    d.error = t("No se pudo publicar: {msg}","Couldn't publish: {msg}","Não foi possível publicar: {msg}","{msg} :הפרסום נכשל",{msg:err.message});
     render();
   }
 }
@@ -3929,42 +3932,45 @@ function renderPostCard(post, replies, featured){
   const timeLabel = post.startTime && post.endTime ? ` · ${post.startTime}–${post.endTime}` : "";
   const dateLabel = (endDate && endDate !== startDate ? `${fmtDate(startDate)} – ${fmtDate(endDate)}` : fmtDate(startDate)) + timeLabel;
   const metaBits = [];
-  if(post.participants && post.participants.length) metaBits.push(`👥 Participantes: ${esc(participantsLabel(post.participants))}`);
+  if(post.participants && post.participants.length) metaBits.push(`👥 ${t("Participantes","Participants","Participantes","משתתפים")}: ${esc(participantsLabel(post.participants))}`);
   // Quién lo cargó. En los eventos importados del Calendar el authorName
   // es "Google Calendar" (poco útil) y el organizador real está en
   // organizer, el campo viejo que reemplazaron los participantes — por
   // eso ese tiene prioridad cuando existe.
   const creador = post.organizer || post.authorName;
-  const creadoPor = creador ? ` · Creado por: ${esc(creador)}` : "";
+  const creadoPor = creador ? ` · ${t("Creado por","Created by","Criado por","נוצר על ידי")}: ${esc(creador)}` : "";
   if(post.location) metaBits.push(`📍 ${esc(post.location)}`);
   const editable = canEditPost(post);
   const canCancel = editable && post.activityType !== "rutina" && !post.cancelled;
   const postLikedBy = post.likedBy || [];
   const postLiked = isAuthorized() && postLikedBy.includes(state.auth.user.email);
+  const commentsLabel = replies.length === 1
+    ? t("1 comentario","1 comment","1 comentário","תגובה אחת")
+    : t("{n} comentarios","{n} comments","{n} comentários","{n} תגובות",{n:replies.length});
   return `
     <article class="card post ${post.cancelled?"post-cancelled":""}" data-post-id="${post.id}">
       <div class="post-head">
         <div class="post-meta">
           <span class="type-badge">${type.icon} ${type.label}</span>
-          ${featured ? `<span class="type-badge featured-badge">⭐ Destacado</span>` : ""}
+          ${featured ? `<span class="type-badge featured-badge">⭐ ${t("Destacado","Featured","Destaque","מומלץ")}</span>` : ""}
           <span class="post-date">${dateLabel}${creadoPor}</span>
-          ${post.cancelled ? `<span class="type-badge" style="background:var(--danger);">🚫 Cancelado</span>` : ""}
+          ${post.cancelled ? `<span class="type-badge" style="background:var(--danger);">🚫 ${t("Cancelado","Cancelled","Cancelado","בוטל")}</span>` : ""}
         </div>
         ${scopesHtml ? `<div class="post-scopes post-scopes-head">${scopesHtml}</div>` : ""}
       </div>
       ${post.title && post.activityType !== "rutina" ? `<h3 style="margin:6px 0 0 0;font-size:16px;color:var(--ink);${post.cancelled?"text-decoration:line-through;opacity:0.7;":""}">${esc(post.title)}</h3>` : ""}
       ${metaBits.length ? `<div class="hint" style="margin-top:4px;">${metaBits.join(" · ")}</div>` : ""}
       <div class="post-content">${nl2br(post.content)}</div>
-      ${!scopesHtml && post.activityType !== "rutina" ? `<div class="hint" style="color:var(--danger);">⚠️ Sin Dónde definido — editalo para asignarle un país/ciudad.</div>` : ""}
+      ${!scopesHtml && post.activityType !== "rutina" ? `<div class="hint" style="color:var(--danger);">⚠️ ${t("Sin Dónde definido — editalo para asignarle un país/ciudad.","No Where set — edit it to assign a country/city.","Sem Onde definido — edite para atribuir um país/cidade.",".לא הוגדר \"איפה\" — ערוך/כי כדי להקצות מדינה/עיר")}</div>` : ""}
       ${linksHtml ? `<div class="post-links">${linksHtml}</div>` : ""}
       ${imagesHtml ? `<div class="post-images">${imagesHtml}</div>` : ""}
       ${renderPostedFiles(post.files)}
       <div class="post-actions">
-        <button data-action="toggle-like" data-post-id="${post.id}" class="${postLiked?"liked":""}">${postLiked?"👍":"🤍"} Me gusta${postLikedBy.length?` (${postLikedBy.length})`:""}</button>
-        <button data-action="toggle-reply" data-post-id="${post.id}">💬 Responder</button>
-        ${replies.length ? `<button data-action="toggle-thread" data-post-id="${post.id}">${threadOpen ? "▲ Ocultar" : "▼ Ver"} ${replies.length} comentario${replies.length===1?"":"s"}</button>` : ""}
-        ${editable ? `<button data-action="edit-post" data-post-id="${post.id}">✏️ Editar</button>` : ""}
-        ${canCancel ? `<button data-action="cancel-post" data-post-id="${post.id}">🚫 Cancelar evento</button>` : ""}
+        <button data-action="toggle-like" data-post-id="${post.id}" class="${postLiked?"liked":""}">${postLiked?"👍":"🤍"} ${t("Me gusta","Like","Curtir","לייק")}${postLikedBy.length?` (${postLikedBy.length})`:""}</button>
+        <button data-action="toggle-reply" data-post-id="${post.id}">💬 ${t("Responder","Reply","Responder","תגובה")}</button>
+        ${replies.length ? `<button data-action="toggle-thread" data-post-id="${post.id}">${threadOpen ? "▲ " + t("Ocultar","Hide","Ocultar","הסתרה") : "▼ " + t("Ver","View","Ver","הצגה")} ${commentsLabel}</button>` : ""}
+        ${editable ? `<button data-action="edit-post" data-post-id="${post.id}">✏️ ${t("Editar","Edit","Editar","עריכה")}</button>` : ""}
+        ${canCancel ? `<button data-action="cancel-post" data-post-id="${post.id}">🚫 ${t("Cancelar evento","Cancel event","Cancelar evento","ביטול האירוע")}</button>` : ""}
       </div>
       ${threadOpen ? renderThread(post, replies) : ""}
       ${replyOpen ? renderReplyForm(post.id) : ""}
@@ -4024,7 +4030,7 @@ function renderReply(r){
   return `
     <div class="reply ${r.system?"reply-system":""}">
       <div class="reply-head">
-        <span class="reply-author">${r.system ? `${esc(r.icon||"🔔")} ` : ""}${esc(r.authorName||"Anónimo")}</span>
+        <span class="reply-author">${r.system ? `${esc(r.icon||"🔔")} ` : ""}${esc(r.authorName || t("Anónimo","Anonymous","Anônimo","אנונימי"))}</span>
         <span class="reply-date">${fmtDateTime(r.createdAt)}</span>
       </div>
       <div class="reply-content">${nl2br(r.content)}</div>
@@ -4034,8 +4040,8 @@ function renderReply(r){
       ${renderPostedFiles(r.files)}
       ${!r.system ? `
       <div class="reply-actions">
-        <button data-action="toggle-like" data-post-id="${r.postId}" data-reply-id="${r.id}" class="${liked?"liked":""}">${liked?"👍":"🤍"} Me gusta${likedBy.length?` (${likedBy.length})`:""}</button>
-        <button data-action="toggle-nested-reply" data-reply-id="${r.id}">↩ Responder</button>
+        <button data-action="toggle-like" data-post-id="${r.postId}" data-reply-id="${r.id}" class="${liked?"liked":""}">${liked?"👍":"🤍"} ${t("Me gusta","Like","Curtir","לייק")}${likedBy.length?` (${likedBy.length})`:""}</button>
+        <button data-action="toggle-nested-reply" data-reply-id="${r.id}">↩ ${t("Responder","Reply","Responder","תגובה")}</button>
       </div>` : ""}
       ${nestedOpen ? renderNestedReplyForm(r.postId, r.id) : ""}
     </div>`;
@@ -4047,7 +4053,7 @@ function renderNestedReplyForm(postId, replyId){
     <div class="reply-nested-form">
       <div class="mention-anchor">
         <div class="mention-highlight-backdrop" id="${textareaId}-hl" aria-hidden="true">${highlightMentions(esc(d.content))}</div>
-        <textarea id="${textareaId}" class="mention-input" data-nested-reply-field="content" data-reply-id="${replyId}" data-mention-scope="nested-reply" data-mention-owner="${replyId}" placeholder="Responder... (@ para mencionar a alguien)">${esc(d.content)}</textarea>
+        <textarea id="${textareaId}" class="mention-input" data-nested-reply-field="content" data-reply-id="${replyId}" data-mention-scope="nested-reply" data-mention-owner="${replyId}" placeholder="${esc(t("Responder... (@ para mencionar a alguien)","Reply... (@ to mention someone)","Responder... (@ para mencionar alguém)","(כדי לאזכר מישהו @) ...הגב/י"))}">${esc(d.content)}</textarea>
         ${renderMentionSuggestions(d, "nested-reply", replyId, textareaId)}
       </div>
       <input type="file" id="nestedReplyImages-${replyId}" accept="image/*" multiple hidden data-action="nested-reply-images" data-reply-id="${replyId}">
@@ -4058,13 +4064,13 @@ function renderNestedReplyForm(postId, replyId){
       ${d.links.length ? `<div class="attach-panel">${renderLinkRows("nested-reply", replyId, d.links)}</div>` : ""}
       <div class="reply-form-footer">
         <div class="attach-toolbar">
-          <label class="btn-attach" for="nestedReplyImages-${replyId}">📎 Imagen</label>
-          <label class="btn-attach" for="nestedReplyFiles-${replyId}">📄 PDF/Audio</label>
+          <label class="btn-attach" for="nestedReplyImages-${replyId}">📎 ${t("Imagen","Image","Imagem","תמונה")}</label>
+          <label class="btn-attach" for="nestedReplyFiles-${replyId}">📄 PDF/${t("Audio","Audio","Áudio","אודיו")}</label>
           <button type="button" class="btn-attach" data-action="nested-reply-add-link" data-reply-id="${replyId}">🔗 Link</button>
         </div>
         <div class="modal-actions" style="margin:0;">
-          <button class="btn-secondary" data-action="cancel-nested-reply" data-reply-id="${replyId}">Cancelar</button>
-          <button class="btn-primary" data-action="submit-nested-reply" data-post-id="${postId}" data-reply-id="${replyId}">Responder</button>
+          <button class="btn-secondary" data-action="cancel-nested-reply" data-reply-id="${replyId}">${t("Cancelar","Cancel","Cancelar","ביטול")}</button>
+          <button class="btn-primary" data-action="submit-nested-reply" data-post-id="${postId}" data-reply-id="${replyId}">${t("Responder","Reply","Responder","תגובה")}</button>
         </div>
       </div>
     </div>`;
@@ -4075,17 +4081,21 @@ function renderReplyForm(postId){
   const textareaId = `replyContent-${postId}`;
   return `
     <div class="reply" style="margin-top:12px;background:var(--card);border:1.5px solid var(--border);">
-      <div class="hint" style="margin-bottom:8px;">Respondés como <strong>${esc(state.auth.user.displayName)}</strong></div>
+      <div class="hint" style="margin-bottom:8px;">${t(
+        `Respondés como <strong>{name}</strong>`, `Replying as <strong>{name}</strong>`,
+        `Respondendo como <strong>{name}</strong>`, `<strong>{name}</strong> משיב/ה בתור`,
+        { name: esc(state.auth.user.displayName) }
+      )}</div>
       <div class="field" style="margin-bottom:8px;">
-        <label>Respuesta</label>
+        <label>${t("Respuesta","Reply","Resposta","תגובה")}</label>
         <div class="mention-anchor">
           <div class="mention-highlight-backdrop" id="${textareaId}-hl" aria-hidden="true">${highlightMentions(esc(d.content))}</div>
-          <textarea id="${textareaId}" class="mention-input" data-reply-field="content" data-post-id="${postId}" data-mention-scope="reply" data-mention-owner="${postId}" placeholder="Sumá información... (@ para mencionar a alguien)">${esc(d.content)}</textarea>
+          <textarea id="${textareaId}" class="mention-input" data-reply-field="content" data-post-id="${postId}" data-mention-scope="reply" data-mention-owner="${postId}" placeholder="${esc(t("Sumá información... (@ para mencionar a alguien)","Add information... (@ to mention someone)","Some informações... (@ para mencionar alguém)","(כדי לאזכר מישהו @) ...הוסף/הוסיפי מידע"))}">${esc(d.content)}</textarea>
           ${renderMentionSuggestions(d, "reply", postId, textareaId)}
         </div>
       </div>
       <div class="field" style="margin-bottom:8px;">
-        <label><input type="checkbox" data-action="toggle-reply-extra-scope" data-post-id="${postId}" ${d.extraScope?"checked":""}> Esta respuesta también afectó a otro lugar</label>
+        <label><input type="checkbox" data-action="toggle-reply-extra-scope" data-post-id="${postId}" ${d.extraScope?"checked":""}> ${t("Esta respuesta también afectó a otro lugar","This reply also involved another place","Esta resposta também envolveu outro lugar","התגובה הזו נגעה גם למקום אחר")}</label>
       </div>
       ${d.extraScope ? renderScopeBuilder("reply", postId, d) : ""}
       <input type="file" id="replyImages-${postId}" accept="image/*" multiple hidden data-action="reply-images" data-post-id="${postId}">
@@ -4096,13 +4106,13 @@ function renderReplyForm(postId){
       ${d.links.length ? `<div class="attach-panel">${renderLinkRows("reply", postId, d.links)}</div>` : ""}
       <div class="reply-form-footer">
         <div class="attach-toolbar">
-          <label class="btn-attach" for="replyImages-${postId}">📎 Imagen</label>
-          <label class="btn-attach" for="replyFiles-${postId}">📄 PDF/Audio</label>
+          <label class="btn-attach" for="replyImages-${postId}">📎 ${t("Imagen","Image","Imagem","תמונה")}</label>
+          <label class="btn-attach" for="replyFiles-${postId}">📄 PDF/${t("Audio","Audio","Áudio","אודיו")}</label>
           <button type="button" class="btn-attach" data-action="reply-add-link" data-post-id="${postId}">🔗 Link</button>
         </div>
         <div class="modal-actions" style="margin:0;">
-          <button class="btn-secondary" data-action="cancel-reply" data-post-id="${postId}">Cancelar</button>
-          <button class="btn-primary" data-action="submit-reply" data-post-id="${postId}">Publicar respuesta</button>
+          <button class="btn-secondary" data-action="cancel-reply" data-post-id="${postId}">${t("Cancelar","Cancel","Cancelar","ביטול")}</button>
+          <button class="btn-primary" data-action="submit-reply" data-post-id="${postId}">${t("Publicar respuesta","Post reply","Publicar resposta","פרסום תגובה")}</button>
         </div>
       </div>
     </div>`;
@@ -4112,7 +4122,7 @@ function renderLinkRows(scope, ownerId, links){
   if(!links.length) return "";
   return `<div class="link-rows">${links.map((l,i)=>`
     <div class="attach-row">
-      <input type="text" placeholder="Etiqueta" data-link-field="label" data-scope="${scope}" data-owner-id="${ownerId}" data-idx="${i}" value="${esc(l.label)}">
+      <input type="text" placeholder="${esc(t("Etiqueta","Label","Etiqueta","תווית"))}" data-link-field="label" data-scope="${scope}" data-owner-id="${ownerId}" data-idx="${i}" value="${esc(l.label)}">
       <input type="url" placeholder="https://..." data-link-field="url" data-scope="${scope}" data-owner-id="${ownerId}" data-idx="${i}" value="${esc(l.url)}">
       <button type="button" class="btn-mini" data-action="rm-link" data-scope="${scope}" data-owner-id="${ownerId}" data-idx="${i}">✕</button>
     </div>`).join("")}</div>`;
@@ -4127,7 +4137,7 @@ function renderScopeBuilder(scope, ownerId, draft){
       </select>`;
   } else if(sd.type === "pais"){
     extra = `<select data-scope-field="country" data-scope="${scope}" data-owner-id="${ownerId}">
-        <option value="">Elegir país…</option>${groupedCountryOptions(sd.country)}
+        <option value="">${esc(t("Elegir país…","Choose country…","Escolher país…","...בחירת מדינה"))}</option>${groupedCountryOptions(sd.country)}
       </select>`;
   } else if(sd.type === "todo"){
     extra = "";
@@ -4136,16 +4146,16 @@ function renderScopeBuilder(scope, ownerId, draft){
     let cityField;
     if(presets && !sd.cityUseCustom){
       cityField = `<select data-scope-field="citySelect" data-scope="${scope}" data-owner-id="${ownerId}">
-          <option value="">Elegir ciudad…</option>
+          <option value="">${esc(t("Elegir ciudad…","Choose city…","Escolher cidade…","...בחירת עיר"))}</option>
           ${presets.map(c=>`<option value="${esc(c.name)}" ${sd.city===c.name?"selected":""}>${esc(c.name)}</option>`).join("")}
-          <option value="__other__">Otra ciudad (escribir)…</option>
+          <option value="__other__">${esc(t("Otra ciudad (escribir)…","Other city (type it)…","Outra cidade (digitar)…","(הקלדה) עיר אחרת..."))}</option>
         </select>`;
     } else {
-      cityField = `<input type="text" placeholder="Ciudad" data-scope-field="city" data-scope="${scope}" data-owner-id="${ownerId}" value="${esc(sd.city)}">
-        ${presets ? `<button type="button" class="btn-text-add" data-action="use-city-preset" data-scope="${scope}" data-owner-id="${ownerId}">← Elegir de la lista</button>` : ""}`;
+      cityField = `<input type="text" placeholder="${esc(t("Ciudad","City","Cidade","עיר"))}" data-scope-field="city" data-scope="${scope}" data-owner-id="${ownerId}" value="${esc(sd.city)}">
+        ${presets ? `<button type="button" class="btn-text-add" data-action="use-city-preset" data-scope="${scope}" data-owner-id="${ownerId}">← ${t("Elegir de la lista","Choose from the list","Escolher da lista","בחירה מהרשימה")}</button>` : ""}`;
     }
     extra = `<select data-scope-field="country" data-scope="${scope}" data-owner-id="${ownerId}">
-        <option value="">Elegir país…</option>${groupedCountryOptions(sd.country)}
+        <option value="">${esc(t("Elegir país…","Choose country…","Escolher país…","...בחירת מדינה"))}</option>${groupedCountryOptions(sd.country)}
       </select>
       ${cityField}`;
   }
@@ -4153,14 +4163,14 @@ function renderScopeBuilder(scope, ownerId, draft){
     <div class="scope-builder" style="margin-bottom:8px;">
       <div class="scope-builder-add ${sd.type==='ciudad'?'has-extra':''}">
         <select data-scope-field="type" data-scope="${scope}" data-owner-id="${ownerId}">
-          <option value="ciudad" ${sd.type==="ciudad"?"selected":""}>Ciudad específica</option>
-          <option value="pais" ${sd.type==="pais"?"selected":""}>País completo</option>
-          <option value="region" ${sd.type==="region"?"selected":""}>Región completa</option>
-          <option value="todo" ${sd.type==="todo"?"selected":""}>Toda LatAm</option>
+          <option value="ciudad" ${sd.type==="ciudad"?"selected":""}>${t("Ciudad específica","Specific city","Cidade específica","עיר ספציפית")}</option>
+          <option value="pais" ${sd.type==="pais"?"selected":""}>${t("País completo","Whole country","País inteiro","מדינה שלמה")}</option>
+          <option value="region" ${sd.type==="region"?"selected":""}>${t("Región completa","Whole region","Região inteira","אזור שלם")}</option>
+          <option value="todo" ${sd.type==="todo"?"selected":""}>${t("Toda LatAm","All of LatAm","Toda a LatAm","כל LatAm")}</option>
         </select>
         ${extra}
       </div>
-      <button type="button" class="btn-mini" data-action="add-scope" data-scope="${scope}" data-owner-id="${ownerId}">+ Agregar dónde</button>
+      <button type="button" class="btn-mini" data-action="add-scope" data-scope="${scope}" data-owner-id="${ownerId}">+ ${t("Agregar dónde","Add where","Adicionar onde","הוספת מקום")}</button>
       ${draft.scopeError ? `<div class="form-error">${esc(draft.scopeError)}</div>` : ""}
       <div class="scope-list">${draft.scopes.map((sc,i)=>renderScopeChip(sc, `rm-scope-${scope}`, i, ownerId)).join("")}</div>
     </div>`;
