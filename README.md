@@ -560,19 +560,63 @@ convirtieron en funciones (`userRoleLabel()`, `activityTiers()`,
 objeto de nuevo en cada llamado, así el label sale siempre con el idioma
 actual.
 
-**Qué NO se traduce, a propósito.** `ACTIVITY_TYPES`, `ZONES` y los
-nombres de país/ciudad (`COUNTRIES`/`CITY_PRESETS`) son datos editables
-por el admin desde Configuración, no texto fijo de la interfaz — no se
-pueden traducir contra un diccionario porque el admin puede haber
-escrito cualquier cosa ahí. Para los 7 tipos y las 3 zonas DE FÁBRICA
-(las que trae la app antes de que el admin toque nada), sí hay traducción:
-`refreshActivityTypeLabels()`/`refreshZoneLabels()` re-etiquetan una
-entrada SOLO si su label actual coincide con alguna de las 4 traducciones
-conocidas para esa key — en cuanto el admin escribe otra cosa, se
-respeta tal cual y deja de tocarse. Los nombres de país/ciudad quedan en
-español siempre — es un volumen de trabajo aparte (30+ países × 4
-idiomas, más todas las ciudades) que se puede encarar después si hace
+**`ACTIVITY_TYPES`/`ZONES`: editables por el admin, con traducción
+"de fábrica".** Son datos editables desde Configuración, no texto fijo
+de la interfaz — no se pueden traducir contra un diccionario a ciegas
+porque el admin puede haber escrito cualquier cosa ahí. Para los 7 tipos
+y las 3 zonas DE FÁBRICA (las que trae la app antes de que el admin
+toque nada), sí hay traducción: `refreshActivityTypeLabels()`/
+`refreshZoneLabels()` re-etiquetan una entrada SOLO si su label actual
+coincide con alguna de las 4 traducciones conocidas para esa key — en
+cuanto el admin escribe otra cosa, se respeta tal cual y deja de
+tocarse.
+
+**Nombres de país (`countryLabel()`).** A diferencia de tipos/zonas, los
+países NO son editables por el admin (son fijos en el código, en
+`COUNTRIES`) — así que alcanza con una tabla derecha,
+`DEFAULT_COUNTRY_LABELS`, sin el mecanismo de "respetar si ya lo
+tocaron". `countryLabel(name)` es solo para MOSTRAR: el identificador
+real (el que se guarda en cada scope de Firestore, la key de
+`CITY_PRESETS`/`COUNTRY_BY_NAME`/`ZONE_COUNTRIES`, y el que viaja en
+`data-country` de cada botón) sigue siendo siempre el nombre en español
+— cambiarlo por idioma rompería la carga de posteos viejos y cualquier
+comparación/matching contra esos datos. Las ciudades (`CITY_PRESETS`)
+quedan en español siempre — se decidió no traducir ~90 nombres de
+localidades poco conocidas (la transliteración al hebreo en particular
+no daba valor para el esfuerzo) — se puede encarar después si hace
 falta.
+
+**Contenido libre (posteos/respuestas): traducción bajo demanda.** Lo
+de arriba traduce el "cascarón" de la interfaz, pero el contenido que
+escribe cada quien (título y texto de un posteo, el texto de una
+respuesta) no se puede pre-traducir — no está en el código, lo tipea la
+gente. Para eso hay un botón discreto "🌐 Ver traducción" debajo de cada
+posteo/respuesta (solo visible cuando el idioma activo no es español,
+que es en el que se escribe todo el contenido) que pide la traducción a
+[MyMemory](https://mymemory.translated.net/doc/spec.php) — un traductor
+gratuito, sin API key, con CORS habilitado — el mismo criterio que ya se
+usaba para `fetchPublicIp()` contra ipify.org: sin backend propio, la
+llamada sale directo del navegador de quien mira. Puntos importantes:
+
+- **Nunca es automático.** Se pide solo al hacer click, nunca al
+  renderizar — el tier gratuito de MyMemory tiene cupo diario limitado
+  (típicamente 5000 palabras/día por IP), y traducir de arriba todos los
+  posteos de un feed lo agotaría enseguida sin que nadie lo haya pedido.
+- **Se cachea en memoria** por `${scope}:${id}` (`contentTranslations`)
+  — volver a "Ver original" y después a "Ver traducción" no vuelve a
+  pedir nada mientras el idioma no cambie; `translationsShown` guarda
+  solo cuáles items están mostrando la traducción ahora mismo.
+- Si falla (cupo agotado, sin red), el botón pasa a "⚠️ No se pudo
+  traducir. Reintentar" — el reintento manda de nuevo el texto original
+  (`data-title`/`data-content` en el propio botón), no depende de que
+  haya quedado nada en caché.
+- La caché es por pestaña/carga de página únicamente (vive en una
+  variable JS, no en `localStorage`) — a propósito: es contenido de
+  terceros, no hace falta persistirlo.
+- Es la única parte del sistema de idiomas que hace una llamada de red
+  en tiempo real — todo lo demás (interfaz, tipos/zonas/países) es
+  traducción pre-armada en el propio código, sin depender de que un
+  servicio externo esté arriba.
 
 **RTL de verdad, no maquillaje.** Se auditó cada declaración de CSS
 direccional del archivo (`margin`/`padding`/`border` con `-left`/

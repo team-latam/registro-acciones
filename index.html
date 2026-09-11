@@ -612,6 +612,18 @@
   .post-actions button:hover{ color:var(--celeste-dark); }
   .post-actions button.liked{ color:var(--celeste-dark); }
 
+  /* "Ver traducción"/"Ver original" del contenido (ver withContentTranslation):
+     texto libre que cada quien escribe, no se puede traducir de antemano
+     como el resto de la interfaz — se pide bajo demanda a un traductor
+     externo gratuito. Chico y discreto a propósito, no es una acción
+     principal como Me gusta/Responder. */
+  .translate-toggle{
+    display:inline-block; background:none; border:none; color:var(--text-muted); font-size:11.5px;
+    font-weight:700; cursor:pointer; padding:4px 0; margin-top:2px;
+  }
+  .translate-toggle:hover{ color:var(--celeste-dark); }
+  .translate-toggle:disabled{ cursor:default; opacity:0.7; }
+
   .thread{ margin-top:12px; padding-inline-start:16px; border-inline-start:3px solid var(--border); display:flex; flex-direction:column; gap:12px; }
   .reply{ background:var(--surface-sunken); border-radius:var(--radius-md); padding:12px 14px; }
   .reply-system{ background:var(--system-bg); border:1px dashed var(--system-border); }
@@ -1070,6 +1082,59 @@ const CONFIG_IS_PLACEHOLDER = FIREBASE_CONFIG.apiKey === "YOUR_API_KEY";
 // reglas, o la persona nueva no va a poder aprobar/rechazar nada.
 const ADMIN_EMAIL = "benny@team-latam.com";
 
+// ---------- Idioma / traducción: primitivas (van ACÁ, antes de
+// ZONES/COUNTRIES/ACTIVITY_TYPES, a propósito) ----------
+// Preferencia por dispositivo (mismo criterio que el tema, en
+// localStorage), no por cuenta: la misma persona puede querer la app en
+// otro idioma en un celular prestado sin que eso le cambie el idioma en
+// el suyo.
+//
+// t(es, en, pt, he, vars?) es el helper que se usa AL LADO de cada texto
+// (no en un diccionario aparte): se eligió así a propósito para que la
+// traducción de cada string se revise junto a su original, en el mismo
+// diff, en vez de tener que saltar a un archivo de claves separado donde
+// es fácil que una traducción quede huérfana o desincronizada. vars es
+// un objeto opcional para textos con datos adentro, con placeholders
+// {así}: t("Editado por {n}", "Edited by {n}", ..., {n: nombre}).
+// Los cuatro idiomas son OBLIGATORIOS en cada llamado (sin default en
+// "" que se olvide de traducir silenciosamente); si un llamado no los
+// tiene los cuatro es un bug, no un string sin traducir a propósito.
+//
+// OJO con la posición de este bloque: ZONES/COUNTRIES/ACTIVITY_TYPES lo
+// usan apenas carga el módulo (refreshZoneLabels()/refreshActivityType
+// Labels()/buildPlaceIndex() corren en la misma pasada, no recién al
+// tocar el selector) — si LANGS/currentLang/t vivieran más abajo en el
+// archivo (como en un borrador anterior de esto), esas llamadas
+// pisarían un `const LANGS` que todavía no se inicializó. currentLang()
+// tiene un try/catch que iba a tragarse ese ReferenceError en silencio
+// (pensado para "sin localStorage"), así que no se hubiera visto como
+// error — pero el idioma guardado no se habría aplicado bien en la
+// primera pasada, solo recién al cambiar de idioma a mano. setLang() y
+// applyStaticI18n() sí se quedan más abajo, después de declarar `state`
+// (que usan) — esas dos recién se llaman por un click o después de que
+// todo el resto del módulo ya cargó, así que su posición no importa.
+const LANGS = [
+  { key: "es", label: "ES", name: "Español" },
+  { key: "en", label: "EN", name: "English" },
+  { key: "pt", label: "PT", name: "Português" },
+  { key: "he", label: "HE", name: "עברית" },
+];
+function currentLang(){
+  try{
+    const saved = localStorage.getItem("ra_lang");
+    if(LANGS.some(l=>l.key===saved)) return saved;
+  }catch(e){ /* sin localStorage, se queda en español */ }
+  return "es";
+}
+function isRTL(){ return currentLang() === "he"; }
+function t(es, en, pt, he, vars){
+  const table = { es, en, pt, he };
+  let str = table[currentLang()];
+  if(str == null) str = es; // red de seguridad: nunca dejar un hueco en blanco
+  if(vars) for(const k in vars) str = str.split("{"+k+"}").join(vars[k]);
+  return str;
+}
+
 /* ======================================================================
    DATOS FIJOS: zonas, países, capitales (para el mapa)
    ====================================================================== */
@@ -1180,6 +1245,66 @@ const CITY_PRESETS = {
   "Uruguay": [{name:"Montevideo", coord:[-34.9011,-56.1645]}, {name:"Punta Del Este", coord:[-34.9670,-54.9508]}],
   "Venezuela": [{name:"Caracas", coord:[10.4806,-66.9036]}],
 };
+// Traducción de los NOMBRES visibles de país. A diferencia de ACTIVITY_TYPES/
+// ZONES, los países no son editables por el admin — son fijos en el código —
+// así que acá alcanza con una tabla derecha, sin el mecanismo de "respetar
+// si el admin ya escribió otra cosa". OJO: countryLabel() es solo para
+// MOSTRAR. El identificador real (el que se guarda en Firestore dentro de
+// cada scope, el que se usa como key de CITY_PRESETS/COUNTRY_BY_NAME/
+// ZONE_COUNTRIES, y el que viaja en data-country de cada botón) sigue
+// siendo SIEMPRE el nombre en español (c.name) — cambiarlo por idioma
+// rompería la carga de posteos viejos y toda comparación/matching.
+const DEFAULT_COUNTRY_LABELS = {
+  "Argentina": { es:"Argentina", en:"Argentina", pt:"Argentina", he:"ארגנטינה" },
+  "Chile": { es:"Chile", en:"Chile", pt:"Chile", he:"צ'ילה" },
+  "Uruguay": { es:"Uruguay", en:"Uruguay", pt:"Uruguai", he:"אורוגוואי" },
+  "Paraguay": { es:"Paraguay", en:"Paraguay", pt:"Paraguai", he:"פרגוואי" },
+  "Brasil": { es:"Brasil", en:"Brazil", pt:"Brasil", he:"ברזיל" },
+  "México": { es:"México", en:"Mexico", pt:"México", he:"מקסיקו" },
+  "Guatemala": { es:"Guatemala", en:"Guatemala", pt:"Guatemala", he:"גואטמלה" },
+  "Belice": { es:"Belice", en:"Belize", pt:"Belize", he:"בליז" },
+  "Honduras": { es:"Honduras", en:"Honduras", pt:"Honduras", he:"הונדורס" },
+  "El Salvador": { es:"El Salvador", en:"El Salvador", pt:"El Salvador", he:"אל סלוודור" },
+  "Nicaragua": { es:"Nicaragua", en:"Nicaragua", pt:"Nicarágua", he:"ניקרגואה" },
+  "Costa Rica": { es:"Costa Rica", en:"Costa Rica", pt:"Costa Rica", he:"קוסטה ריקה" },
+  "Panamá": { es:"Panamá", en:"Panama", pt:"Panamá", he:"פנמה" },
+  "Colombia": { es:"Colombia", en:"Colombia", pt:"Colômbia", he:"קולומביה" },
+  "Venezuela": { es:"Venezuela", en:"Venezuela", pt:"Venezuela", he:"ונצואלה" },
+  "Ecuador": { es:"Ecuador", en:"Ecuador", pt:"Equador", he:"אקוודור" },
+  "Perú": { es:"Perú", en:"Peru", pt:"Peru", he:"פרו" },
+  "Bolivia": { es:"Bolivia", en:"Bolivia", pt:"Bolívia", he:"בוליביה" },
+  "Guyana": { es:"Guyana", en:"Guyana", pt:"Guiana", he:"גיאנה" },
+  "Surinam": { es:"Surinam", en:"Suriname", pt:"Suriname", he:"סורינאם" },
+  "Cuba": { es:"Cuba", en:"Cuba", pt:"Cuba", he:"קובה" },
+  "República Dominicana": { es:"República Dominicana", en:"Dominican Republic", pt:"República Dominicana", he:"הרפובליקה הדומיניקנית" },
+  "Haití": { es:"Haití", en:"Haiti", pt:"Haiti", he:"האיטי" },
+  "Jamaica": { es:"Jamaica", en:"Jamaica", pt:"Jamaica", he:"ג'מייקה" },
+  "Trinidad y Tobago": { es:"Trinidad y Tobago", en:"Trinidad and Tobago", pt:"Trinidad e Tobago", he:"טרינידד וטובגו" },
+  "Bahamas": { es:"Bahamas", en:"Bahamas", pt:"Bahamas", he:"איי בהאמה" },
+  "Barbados": { es:"Barbados", en:"Barbados", pt:"Barbados", he:"ברבדוס" },
+  "Puerto Rico": { es:"Puerto Rico", en:"Puerto Rico", pt:"Porto Rico", he:"פוארטו ריקו" },
+  "Guadalupe": { es:"Guadalupe", en:"Guadeloupe", pt:"Guadalupe", he:"גוואדלופ" },
+  "Martinica": { es:"Martinica", en:"Martinique", pt:"Martinica", he:"מרטיניק" },
+  "Aruba": { es:"Aruba", en:"Aruba", pt:"Aruba", he:"ארובה" },
+  "Curazao": { es:"Curazao", en:"Curaçao", pt:"Curaçao", he:"קוראסאו" },
+  "Bonaire": { es:"Bonaire", en:"Bonaire", pt:"Bonaire", he:"בונייר" },
+  "Islas Caimán": { es:"Islas Caimán", en:"Cayman Islands", pt:"Ilhas Cayman", he:"איי קיימן" },
+  "Islas Vírgenes": { es:"Islas Vírgenes", en:"Virgin Islands", pt:"Ilhas Virgens", he:"איי הבתולה" },
+  "Santa Lucía": { es:"Santa Lucía", en:"Saint Lucia", pt:"Santa Lúcia", he:"סנט לוסיה" },
+  "Granada": { es:"Granada", en:"Grenada", pt:"Granada", he:"גרנדה" },
+  "San Vicente y las Granadinas": { es:"San Vicente y las Granadinas", en:"Saint Vincent and the Grenadines", pt:"São Vicente e Granadinas", he:"סנט וינסנט והגרנדינים" },
+  "Antigua y Barbuda": { es:"Antigua y Barbuda", en:"Antigua and Barbuda", pt:"Antígua e Barbuda", he:"אנטיגואה וברבודה" },
+  "Dominica": { es:"Dominica", en:"Dominica", pt:"Dominica", he:"דומיניקה" },
+  "San Cristóbal y Nieves": { es:"San Cristóbal y Nieves", en:"Saint Kitts and Nevis", pt:"São Cristóvão e Névis", he:"סנט קיטס ונוויס" },
+  "San Martín / Sint Maarten": { es:"San Martín / Sint Maarten", en:"Saint Martin / Sint Maarten", pt:"São Martinho / Sint Maarten", he:"סן מארטן / סינט מארטן" },
+  "Bermudas": { es:"Bermudas", en:"Bermuda", pt:"Bermudas", he:"ברמודה" },
+  "San Bartolomé (St. Barth)": { es:"San Bartolomé (St. Barth)", en:"Saint Barthélemy (St. Barth)", pt:"São Bartolomeu (St. Barth)", he:"סן ברתלמי (סן בארת)" },
+  "Turcas y Caicos": { es:"Turcas y Caicos", en:"Turks and Caicos", pt:"Ilhas Turcas e Caicos", he:"איי טורקס וקייקוס" },
+};
+function countryLabel(name){
+  const row = DEFAULT_COUNTRY_LABELS[name];
+  return row ? row[currentLang()] : name;
+}
 const COUNTRY_BY_NAME = Object.fromEntries(COUNTRIES.map(c=>[c.name,c]));
 const ZONE_COUNTRIES = { sur:[], central:[], norte:[] };
 COUNTRIES.forEach(c=>ZONE_COUNTRIES[c.zone].push(c.name));
@@ -1190,14 +1315,14 @@ COUNTRIES.forEach(c=>ZONE_COUNTRIES[c.zone].push(c.name));
 // usan Evento y las respuestas (renderScopeBuilder), solo con una UI de
 // autocompletar en vez del selector paso a paso.
 function buildPlaceIndex(){
-  const items = [{ label:"Toda LatAm", icon:"🌎", scope:{ type:"todo" } }];
+  const items = [{ label:t("Toda LatAm","All of LatAm","Toda a LatAm","כל LatAm"), icon:"🌎", scope:{ type:"todo" } }];
   Object.values(ZONES).forEach(z=>{
-    items.push({ label:`Región: ${z.label}`, icon:"🌎", scope:{ type:"region", region:z.key } });
+    items.push({ label:t("Región: {z}","Region: {z}","Região: {z}","אזור: {z}",{z:z.label}), icon:"🌎", scope:{ type:"region", region:z.key } });
   });
   COUNTRIES.forEach(c=>{
-    items.push({ label:c.name, icon:"🏳️", scope:{ type:"pais", country:c.name } });
+    items.push({ label:countryLabel(c.name), icon:"🏳️", scope:{ type:"pais", country:c.name } });
     (CITY_PRESETS[c.name]||[]).forEach(city=>{
-      items.push({ label:`${city.name}, ${c.name}`, icon:"📍", scope:{ type:"ciudad", country:c.name, city:city.name } });
+      items.push({ label:`${city.name}, ${countryLabel(c.name)}`, icon:"📍", scope:{ type:"ciudad", country:c.name, city:city.name } });
     });
   });
   return items;
@@ -1458,8 +1583,8 @@ function scopeAffectsCity(scope, countryName, cityName){
 function scopeLabel(scope){
   if(scope.type==="todo") return t("Toda LatAm","All of LatAm","Toda a LatAm","כל LatAm");
   if(scope.type==="region") return t("Región {z}","{z} region","Região {z}","אזור {z}",{z:ZONES[scope.region].label});
-  if(scope.type==="pais") return scope.country;
-  if(scope.type==="ciudad") return `${scope.city}, ${scope.country}`;
+  if(scope.type==="pais") return countryLabel(scope.country);
+  if(scope.type==="ciudad") return `${scope.city}, ${countryLabel(scope.country)}`;
   return "";
 }
 function scopeIcon(scope){
@@ -2841,43 +2966,11 @@ async function saveNicknameEdit(){
   }
 }
 
-// ---------- Idioma / traducción ----------
-// Preferencia por dispositivo (mismo criterio que el tema, en
-// localStorage), no por cuenta: la misma persona puede querer la app en
-// otro idioma en un celular prestado sin que eso le cambie el idioma en
-// el suyo.
-//
-// t(es, en, pt, he, vars?) es el helper que se usa AL LADO de cada texto
-// (no en un diccionario aparte): se eligió así a propósito para que la
-// traducción de cada string se revise junto a su original, en el mismo
-// diff, en vez de tener que saltar a un archivo de claves separado donde
-// es fácil que una traducción quede huérfana o desincronizada. vars es
-// un objeto opcional para textos con datos adentro, con placeholders
-// {así}: t("Editado por {n}", "Edited by {n}", ..., {n: nombre}).
-// Los cuatro idiomas son OBLIGATORIOS en cada llamado (sin default en
-// "" que se olvide de traducir silenciosamente); si un llamado no los
-// tiene los cuatro es un bug, no un string sin traducir a propósito.
-const LANGS = [
-  { key: "es", label: "ES", name: "Español" },
-  { key: "en", label: "EN", name: "English" },
-  { key: "pt", label: "PT", name: "Português" },
-  { key: "he", label: "HE", name: "עברית" },
-];
-function currentLang(){
-  try{
-    const saved = localStorage.getItem("ra_lang");
-    if(LANGS.some(l=>l.key===saved)) return saved;
-  }catch(e){ /* sin localStorage, se queda en español */ }
-  return "es";
-}
-function isRTL(){ return currentLang() === "he"; }
-function t(es, en, pt, he, vars){
-  const table = { es, en, pt, he };
-  let str = table[currentLang()];
-  if(str == null) str = es; // red de seguridad: nunca dejar un hueco en blanco
-  if(vars) for(const k in vars) str = str.split("{"+k+"}").join(vars[k]);
-  return str;
-}
+// ---------- Idioma / traducción (setLang/applyStaticI18n siguen más
+// abajo, después de state — LANGS/currentLang/isRTL/t se definen ACÁ
+// ARRIBA a propósito: ZONES/COUNTRIES/ACTIVITY_TYPES los usan apenas
+// carga el módulo, para pintar bien el idioma guardado desde el primer
+// render, no recién cuando alguien toca el selector). ---------------
 function setLang(lang){
   if(!LANGS.some(l=>l.key===lang)) return;
   try{ localStorage.setItem("ra_lang", lang); }catch(e){ /* no se puede recordar, pero no rompe nada */ }
@@ -2885,6 +2978,12 @@ function setLang(lang){
   document.documentElement.dir = lang === "he" ? "rtl" : "ltr";
   refreshActivityTypeLabels();
   refreshZoneLabels();
+  // PLACE_INDEX (autocompletar de lugar) tiene labels armados con
+  // countryLabel()/t() adentro — hay que rearmarlo, no alcanza con que
+  // esas funciones lean el idioma nuevo, porque el array ya quedó
+  // construido con los strings viejos.
+  PLACE_INDEX.length = 0;
+  PLACE_INDEX.push(...buildPlaceIndex());
   applyStaticI18n();
   render();
 }
@@ -2965,6 +3064,101 @@ function applyStaticI18n(){
   }
 }
 applyStaticI18n();
+
+// ---------- Traducción bajo demanda del CONTENIDO de posteos/respuestas ----------
+// Todo lo de arriba es texto FIJO de la interfaz, que se puede traducir
+// de antemano porque ya se sabe cuáles son las opciones. El título y el
+// contenido de un posteo (o una respuesta) es texto libre que cada
+// persona escribe en el momento — no hay diccionario posible para eso.
+// Para poder leerlo en otro idioma hace falta un traductor automático de
+// verdad, y como esta app no tiene backend propio (ver README), se pide
+// a un servicio gratuito desde el propio navegador (MyMemory: sin API
+// key, con CORS habilitado — mismo criterio que fetchPublicIp con
+// ipify). Tiene un límite diario de uso compartido entre quienes usan la
+// red desde la misma IP — pensado para traducciones ocasionales bajo
+// pedido, no para traducir todo el Feed solo. Por eso NUNCA es
+// automático: cada posteo pide su traducción individual, una sola vez
+// (después queda en caché), solo cuando alguien aprieta "Ver
+// traducción" — y solo se ofrece cuando el idioma de la app no es
+// español (traducir español→español no tendría sentido).
+const contentTranslations = {}; // key `${scope}:${id}` -> { lang, title?, content, error }
+const translationsShown = new Set(); // keys mostrando la traducción ahora (en vez del original)
+
+async function fetchTranslation(text, targetLang){
+  if(!text || !text.trim()) return "";
+  const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=es|${targetLang}`;
+  const res = await fetch(url);
+  if(!res.ok) throw new Error("HTTP " + res.status);
+  const data = await res.json();
+  const translated = data && data.responseData && data.responseData.translatedText;
+  // responseStatus puede venir como número (200) o como string ("200")
+  // según el día — se compara como string de los dos lados para no
+  // fallar por eso.
+  if(!translated || String(data.responseStatus) !== "200"){
+    throw new Error((data && data.responseDetails) || "sin traducción");
+  }
+  return translated;
+}
+
+function translationKey(scope, id){ return `${scope}:${id}`; }
+
+// title es opcional (las respuestas no tienen); content siempre.
+async function toggleContentTranslation(scope, id, title, content){
+  const key = translationKey(scope, id);
+  if(translationsShown.has(key)){
+    translationsShown.delete(key); // "Ver original": no hace falta re-pedir nada
+    render();
+    return;
+  }
+  const lang = currentLang();
+  const cached = contentTranslations[key];
+  if(cached && cached.lang === lang && !cached.error){
+    translationsShown.add(key);
+    render();
+    return;
+  }
+  contentTranslations[key] = { lang, loading:true };
+  translationsShown.add(key);
+  render();
+  try{
+    const [tTitle, tContent] = await Promise.all([
+      title ? fetchTranslation(title, lang) : Promise.resolve(""),
+      fetchTranslation(content, lang),
+    ]);
+    contentTranslations[key] = { lang, title:tTitle, content:tContent, loading:false };
+  }catch(err){
+    console.error("Error traduciendo contenido:", err);
+    contentTranslations[key] = { lang, loading:false, error:true };
+  }
+  render();
+}
+
+// Arma el pie con el link "Ver traducción"/"Ver original" y devuelve
+// también el título/contenido a mostrar (traducidos si corresponde) —
+// se usa igual en renderPostCard y en renderReply.
+function withContentTranslation(scope, id, title, content){
+  const key = translationKey(scope, id);
+  const showTranslated = translationsShown.has(key);
+  const entry = contentTranslations[key];
+  let displayTitle = title, displayContent = content, toggleHtml = "";
+  // Si la app está en español no hay nada que ofrecer: es el idioma en
+  // el que se escribe todo el contenido.
+  if(currentLang() !== "es"){
+    if(showTranslated && entry && entry.loading){
+      toggleHtml = `<button type="button" class="translate-toggle" disabled>🌐 ${t("Traduciendo…","Translating…","Traduzindo…","...מתרגם")}</button>`;
+    } else if(showTranslated && entry && entry.error){
+      toggleHtml = `<button type="button" class="translate-toggle" data-action="toggle-translation" data-scope="${scope}" data-id="${esc(id)}" data-title="${esc(title||"")}" data-content="${esc(content)}">⚠️ ${t("No se pudo traducir. Reintentar","Couldn't translate. Retry","Não foi possível traduzir. Tentar de novo","לא ניתן היה לתרגם. ניסיון חוזר")}</button>`;
+      translationsShown.delete(key); // que el próximo click vuelva a intentar, no que se quede "mostrando" un error
+    } else if(showTranslated && entry && !entry.loading && !entry.error){
+      displayTitle = title ? entry.title : title;
+      displayContent = entry.content;
+      toggleHtml = `<button type="button" class="translate-toggle" data-action="toggle-translation" data-scope="${scope}" data-id="${esc(id)}">↩️ ${t("Ver original","See original","Ver original","הצגת המקור")}</button>`;
+    } else {
+      toggleHtml = `<button type="button" class="translate-toggle" data-action="toggle-translation" data-scope="${scope}" data-id="${esc(id)}" data-title="${esc(title||"")}" data-content="${esc(content)}">🌐 ${t("Ver traducción","See translation","Ver tradução","הצגת התרגום")}</button>`;
+    }
+  }
+  return { displayTitle, displayContent, toggleHtml };
+}
 
 // Claro/oscuro. La preferencia es por dispositivo (localStorage), no por
 // usuario en Firestore: es una cuestión de cómo se ve la pantalla donde
@@ -3487,7 +3681,7 @@ function renderZonasSection(){
           <div class="zone-countries">
             ${countries.map(name=>`
               <div class="country-row">
-                <span class="country-name" title="${esc(name)}">${esc(name)}</span>
+                <span class="country-name" title="${esc(countryLabel(name))}">${esc(countryLabel(name))}</span>
                 <select data-action="zonas-country-zone" data-country="${esc(name)}">
                   ${d.zoneOrder.map(k2=>`<option value="${k2}" ${key===k2?"selected":""}>${esc(d.zones[k2].label)}</option>`).join("")}
                 </select>
@@ -4004,6 +4198,8 @@ function renderPostCard(post, replies, featured){
   const commentsLabel = replies.length === 1
     ? t("1 comentario","1 comment","1 comentário","תגובה אחת")
     : t("{n} comentarios","{n} comments","{n} comentários","{n} תגובות",{n:replies.length});
+  const showTitle = post.title && post.activityType !== "rutina";
+  const tr = withContentTranslation("post", post.id, showTitle ? post.title : "", post.content);
   return `
     <article class="card post ${post.cancelled?"post-cancelled":""}" data-post-id="${post.id}">
       <div class="post-head">
@@ -4015,9 +4211,10 @@ function renderPostCard(post, replies, featured){
         </div>
         ${scopesHtml ? `<div class="post-scopes post-scopes-head">${scopesHtml}</div>` : ""}
       </div>
-      ${post.title && post.activityType !== "rutina" ? `<h3 style="margin:6px 0 0 0;font-size:16px;color:var(--ink);${post.cancelled?"text-decoration:line-through;opacity:0.7;":""}">${esc(post.title)}</h3>` : ""}
+      ${showTitle ? `<h3 style="margin:6px 0 0 0;font-size:16px;color:var(--ink);${post.cancelled?"text-decoration:line-through;opacity:0.7;":""}">${esc(tr.displayTitle)}</h3>` : ""}
       ${metaBits.length ? `<div class="hint" style="margin-top:4px;">${metaBits.join(" · ")}</div>` : ""}
-      <div class="post-content">${nl2br(post.content)}</div>
+      <div class="post-content">${nl2br(tr.displayContent)}</div>
+      ${tr.toggleHtml}
       ${!scopesHtml && post.activityType !== "rutina" ? `<div class="hint" style="color:var(--danger);">⚠️ ${t("Sin Dónde definido — editalo para asignarle un país/ciudad.","No Where set — edit it to assign a country/city.","Sem Onde definido — edite para atribuir um país/cidade.",".לא הוגדר \"איפה\" — ערוך/כי כדי להקצות מדינה/עיר")}</div>` : ""}
       ${linksHtml ? `<div class="post-links">${linksHtml}</div>` : ""}
       ${imagesHtml ? `<div class="post-images">${imagesHtml}</div>` : ""}
@@ -4084,13 +4281,15 @@ function renderReply(r){
   const likedBy = r.likedBy || [];
   const liked = isAuthorized() && likedBy.includes(state.auth.user.email);
   const nestedOpen = openNestedReplyForms.has(r.id);
+  const tr = withContentTranslation("reply", r.id, "", r.content);
   return `
     <div class="reply ${r.system?"reply-system":""}">
       <div class="reply-head">
         <span class="reply-author">${r.system ? `${esc(r.icon||"🔔")} ` : ""}${esc(r.authorName || t("Anónimo","Anonymous","Anônimo","אנונימי"))}</span>
         <span class="reply-date">${fmtDateTime(r.createdAt)}</span>
       </div>
-      <div class="reply-content">${nl2br(r.content)}</div>
+      <div class="reply-content">${nl2br(tr.displayContent)}</div>
+      ${tr.toggleHtml}
       ${scopesHtml ? `<div class="reply-scopes">${scopesHtml}</div>` : ""}
       ${linksHtml ? `<div class="reply-links">${linksHtml}</div>` : ""}
       ${imagesHtml ? `<div class="reply-images">${imagesHtml}</div>` : ""}
@@ -4235,7 +4434,7 @@ function renderScopeBuilder(scope, ownerId, draft){
 function groupedCountryOptions(selected){
   return Object.values(ZONES).map(z=>`
     <optgroup label="${z.label}">
-      ${ZONE_COUNTRIES[z.key].map(name=>`<option value="${esc(name)}" ${selected===name?"selected":""}>${esc(name)}</option>`).join("")}
+      ${ZONE_COUNTRIES[z.key].map(name=>`<option value="${esc(name)}" ${selected===name?"selected":""}>${esc(countryLabel(name))}</option>`).join("")}
     </optgroup>`).join("");
 }
 
@@ -4310,7 +4509,7 @@ function renderPaisesView(){
     // física vieja lo dejaba sin color en RTL (el navegador ya no pinta
     // border-left ahí, solo border-right).
     return `<div class="country-card" style="border-inline-start-color:${ZONES[c.zone].color}" data-action="drill-country" data-country="${esc(c.name)}">
-      <div class="name">${esc(c.name)}</div>
+      <div class="name">${esc(countryLabel(c.name))}</div>
       <div class="count">${cnt}<small> ${cnt === 1 ? t("registro","record","registro","רשומה") : t("registros","records","registros","רשומות")}</small></div>
     </div>`;
   }).join("");
@@ -4331,17 +4530,17 @@ function renderCountryDrill(countryName, data){
         <span class="cname">${esc(r.label)}</span>
         <span class="ccount">${r.count}</span>
       </div>`).join("") :
-    `<div class="empty-state">${t("Todavía no hay registros para {country}.","There are no records for {country} yet.","Ainda não há registros para {country}.","עדיין אין רשומות עבור {country}.",{country:esc(countryName)})}</div>`;
+    `<div class="empty-state">${t("Todavía no hay registros para {country}.","There are no records for {country} yet.","Ainda não há registros para {country}.","עדיין אין רשומות עבור {country}.",{country:esc(countryLabel(countryName))})}</div>`;
   // La flecha de "volver"/"ver más" no se invierte sola con dir="rtl" (no
   // es de los caracteres que Unicode "espeja" automáticamente en bidi,
   // a diferencia de los paréntesis) — se elige a mano según el idioma.
   const backArrow = isRTL() ? "→" : "←";
   const fwdArrow = isRTL() ? "←" : "→";
   return `
-    <div class="breadcrumb"><a data-action="drill-clear">${backArrow} ${t("Países","Countries","Países","מדינות")}</a> / ${esc(countryName)}</div>
+    <div class="breadcrumb"><a data-action="drill-clear">${backArrow} ${t("Países","Countries","Países","מדינות")}</a> / ${esc(countryLabel(countryName))}</div>
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-        <h2 style="margin:0;font-size:16px;">${esc(countryName)}</h2>
+        <h2 style="margin:0;font-size:16px;">${esc(countryLabel(countryName))}</h2>
         <button class="btn-mini" data-action="goto-country" data-country="${esc(countryName)}">${t("Ver memoria completa {a}","See full memory {a}","Ver memória completa {a}","צפייה בזיכרון המלא {a}",{a:fwdArrow})}</button>
       </div>
       <div class="city-list">${rowsHtml}</div>
@@ -4399,7 +4598,7 @@ function initOrUpdateMap(){
     marker.zoneKey = c.zone;
     const topCities = Object.entries(counts[c.name].cities).sort((a,b)=>b[1]-a[1]).slice(0,5);
     const cntLabel = cnt === 1 ? t("1 registro","1 record","1 registro","רשומה אחת") : t("{n} registros","{n} records","{n} registros","{n} רשומות",{n:cnt});
-    const popupHtml = `<div class="map-popup"><b>${esc(c.name)} — ${cntLabel}</b>
+    const popupHtml = `<div class="map-popup"><b>${esc(countryLabel(c.name))} — ${cntLabel}</b>
       ${topCities.map(([city,n])=>`<div class="pop-city"><span>${esc(city)}</span><span>${n}</span></div>`).join("")}
       <button class="btn-mini" data-action="goto-country" data-country="${esc(c.name)}">${t("Ver memoria {a}","See memory {a}","Ver memória {a}","צפייה בזיכרון {a}",{a:isRTL()?"←":"→"})}</button></div>`;
     marker.bindPopup(popupHtml);
@@ -4921,7 +5120,7 @@ function getPlaceMatches(query){
     const country = COUNTRIES.find(c => normalize(c.name) === normalize(countryPart));
     if(cityPart && country){
       const city = titleCase(cityPart);
-      const label = t(`Usar "{place}" (lugar nuevo)`,`Use "{place}" (new place)`,`Usar "{place}" (lugar novo)`,`(מקום חדש) "{place}" שימוש ב-`,{place:`${city}, ${country.name}`});
+      const label = t(`Usar "{place}" (lugar nuevo)`,`Use "{place}" (new place)`,`Usar "{place}" (lugar novo)`,`(מקום חדש) "{place}" שימוש ב-`,{place:`${city}, ${countryLabel(country.name)}`});
       return [{ label, icon:"➕", scope:{type:"ciudad", country:country.name, city}, isNew:true }];
     }
   }
@@ -5320,6 +5519,8 @@ document.addEventListener("click", e=>{
     setTheme(el.dataset.theme === "dark" ? "dark" : "light");
   } else if(action === "set-lang"){
     setLang(el.dataset.lang);
+  } else if(action === "toggle-translation"){
+    toggleContentTranslation(el.dataset.scope, el.dataset.id, el.dataset.title, el.dataset.content);
   } else if(action === "edit-nickname"){
     nicknameEditing = true;
     nicknameDraft = myNickname();
