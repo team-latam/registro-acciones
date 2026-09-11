@@ -302,9 +302,11 @@ sensible. El `nickname` se arma una sola vez al aprobar a alguien
 (`makeNickname()`, primer nombre de Google, con desempate si ya existe
 otro con el mismo) y queda guardado en su documento de `allowlist`.
 
-### Preferencias (panel admin)
+### Configuración (panel admin)
 
-Pestaña **Preferencias** (solo admin), con una sub-navegación de 5
+Pestaña **Configuración** (solo admin; por dentro sigue siendo
+`preferencias` en el código, Firestore y este README — se renombró solo
+el texto que ve la gente), con una sub-navegación de 5
 secciones para las cosas que antes solo se podían cambiar editando
 código. Todas se guardan en Firestore (`meta/territoryConfig` para
 Zonas, `meta/preferences` — un campo por sección, con `merge:true` — para
