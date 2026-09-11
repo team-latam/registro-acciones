@@ -2776,7 +2776,7 @@ function applyAttachmentLimitsConfig(cfg){
   if(!cfg) return;
   if(cfg.maxImages) MAX_IMAGES = Math.min(HARD_MAX_IMAGES, Math.max(1, cfg.maxImages));
   if(cfg.maxAttachmentFiles) MAX_ATTACHMENT_FILES = Math.min(HARD_MAX_ATTACHMENT_FILES, Math.max(1, cfg.maxAttachmentFiles));
-  if(cfg.maxAttachmentFileBytes) MAX_ATTACHMENT_FILE_BYTES = Math.max(1024, cfg.maxAttachmentFileBytes);
+  if(cfg.maxAttachmentFileBytes) MAX_ATTACHMENT_FILE_BYTES = Math.min(HARD_MAX_ATTACHMENT_FILE_BYTES, Math.max(1024, cfg.maxAttachmentFileBytes));
 }
 
 // Primera "palabra" usable de un nombre o de un email (si no es un
@@ -5297,6 +5297,10 @@ async function handleImageFiles(fileList, targetArray, max=MAX_IMAGES){
 // contra estas variables editables).
 const HARD_MAX_ATTACHMENT_FILES = 2;
 let MAX_ATTACHMENT_FILES = HARD_MAX_ATTACHMENT_FILES;
+// Tope duro por adjunto (mismo valor que isValidPreferences en
+// firestore.rules): sin techo, 2 adjuntos + 6 imágenes pasaban el límite
+// de 1 MiB por documento y la escritura fallaba con un error opaco.
+const HARD_MAX_ATTACHMENT_FILE_BYTES = 500 * 1024;
 let MAX_ATTACHMENT_FILE_BYTES = 150 * 1024;
 function readFileAsDataUrl(file){
   return new Promise((resolve, reject)=>{
@@ -5953,7 +5957,7 @@ document.addEventListener("click", e=>{
     d.saving = true; d.error = ""; render();
     const maxImages = Math.min(HARD_MAX_IMAGES, Math.max(1, Number(d.maxImages) || HARD_MAX_IMAGES));
     const maxAttachmentFiles = Math.min(HARD_MAX_ATTACHMENT_FILES, Math.max(1, Number(d.maxFiles) || HARD_MAX_ATTACHMENT_FILES));
-    const maxAttachmentFileBytes = Math.max(1024, (Number(d.maxFileKB) || 150) * 1024);
+    const maxAttachmentFileBytes = Math.min(HARD_MAX_ATTACHMENT_FILE_BYTES, Math.max(1024, (Number(d.maxFileKB) || 150) * 1024));
     fb.setDoc(fb.doc(db,"meta","preferences"), { maxImages, maxAttachmentFiles, maxAttachmentFileBytes }, { merge:true }).then(()=>{
       d.saving = false; render();
     }).catch(err=>{
