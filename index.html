@@ -3650,8 +3650,12 @@ function renderPostCard(post, replies, featured){
   const dateLabel = (endDate && endDate !== startDate ? `${fmtDate(startDate)} – ${fmtDate(endDate)}` : fmtDate(startDate)) + timeLabel;
   const metaBits = [];
   if(post.participants && post.participants.length) metaBits.push(`👥 Participantes: ${esc(participantsLabel(post.participants))}`);
-  const creadoPor = !(post.participants && post.participants.length) && post.organizer
-    ? ` · Creado por: ${esc(post.organizer)}` : "";
+  // Quién lo cargó. En los eventos importados del Calendar el authorName
+  // es "Google Calendar" (poco útil) y el organizador real está en
+  // organizer, el campo viejo que reemplazaron los participantes — por
+  // eso ese tiene prioridad cuando existe.
+  const creador = post.organizer || post.authorName;
+  const creadoPor = creador ? ` · Creado por: ${esc(creador)}` : "";
   if(post.location) metaBits.push(`📍 ${esc(post.location)}`);
   const editable = canEditPost(post);
   const canCancel = editable && post.activityType !== "rutina" && !post.cancelled;
