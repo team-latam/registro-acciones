@@ -2621,6 +2621,7 @@ async function onAuthChanged(user){
   // Google y a Firestore (con permiso denegado) cada 30 s. Si la cuenta
   // sigue aprobada, el snapshot de posts lo vuelve a arrancar.
   stopCalendarAutoSync();
+  fatalError = null; // un error de la sesión anterior no tiene por qué seguir en pantalla
   if(unsubscribeData){ unsubscribeData(); unsubscribeData = null; }
   if(unsubscribeRequests){ unsubscribeRequests(); unsubscribeRequests = null; }
   if(unsubAllowlist){ unsubAllowlist(); unsubAllowlist = null; }
@@ -2684,12 +2685,36 @@ async function onAuthChanged(user){
   render();
 
   let dataSubscribed = false;
+  const teardownApprovedData = ()=>{
+    if(unsubscribeData){ unsubscribeData(); unsubscribeData = null; }
+    if(unsubRoster){ unsubRoster(); unsubRoster = null; }
+    if(unsubTerritoryConfig){ unsubTerritoryConfig(); unsubTerritoryConfig = null; }
+    if(unsubPreferences){ unsubPreferences(); unsubPreferences = null; }
+    stopCalendarAutoSync();
+    state.posts = []; state.repliesByPost = {}; state.loaded = false; state.roster = [];
+    dataSubscribed = false;
+  };
   unsubAllowlist = fb.onSnapshot(fb.doc(db, "allowlist", profile.email), snap=>{
     state.auth.allowlisted = snap.exists();
     recomputeAuthStatus();
-    if(state.auth.allowlisted && !dataSubscribed){ dataSubscribed = true; subscribeData(); subscribeRoster(); subscribeTerritoryConfig(); subscribePreferences(); }
+    if(state.auth.allowlisted && !dataSubscribed){
+      dataSubscribed = true; fatalError = null;
+      subscribeData(); subscribeRoster(); subscribeTerritoryConfig(); subscribePreferences();
+    } else if(!state.auth.allowlisted && dataSubscribed){
+      // Revocación con la persona online: se cortan los listeners ANTES
+      // de que fallen con permiso denegado. Antes quedaban corriendo, el
+      // primer error pegaba un banner fatal, y al re-aprobarla
+      // dataSubscribed seguía en true — no volvía a suscribir nada hasta
+      // recargar la página.
+      teardownApprovedData(); fatalError = null;
+    }
     render();
-  }, err=>console.error("Error chequeando allowlist:", err));
+  }, err=>{
+    // Sin esto el estado quedaba en "pendiente de aprobación" para
+    // siempre, sin decir por qué, aunque la persona estuviera aprobada.
+    console.error("Error chequeando allowlist:", err);
+    renderFatalError(t("No se pudo verificar tu acceso ({msg}). Recargá la página; si sigue pasando, avisale al administrador.","Couldn't verify your access ({msg}). Reload the page; if it keeps happening, let the admin know.","Não foi possível verificar seu acesso ({msg}). Recarregue a página; se continuar, avise o administrador.","לא ניתן היה לאמת את הגישה שלך ({msg}). טען/י מחדש את הדף; אם זה נמשך, פנה/י למנהל/ת.",{msg:err.message}));
+  });
 
   const reqRef = fb.doc(db, "accessRequests", profile.email);
   unsubOwnRequest = fb.onSnapshot(reqRef, async snap=>{
@@ -2745,8 +2770,11 @@ function subscribeAuditLog(){
 // Cualquier aprobado puede LEER esto (no solo el admin) — ver el cambio
 // correspondiente en firestore.rules (allowlist: allow list).
 function subscribeRoster(){
-  const q = fb.query(fb.collection(db,"allowlist"), fb.orderBy("approvedAt","asc"));
-  unsubRoster = fb.onSnapshot(q, snap=>{
+  // Sin orderBy("approvedAt"): Firestore EXCLUYE de la consulta los
+  // documentos que no tienen ese campo, y esa persona desaparecía del
+  // roster (no se la podía @mencionar, myRosterEntry() daba null). Se
+  // ordena acá, con los que no tienen fecha al principio.
+  unsubRoster = fb.onSnapshot(fb.collection(db,"allowlist"), snap=>{
     const missingNickname = [];
     state.roster = snap.docs.map(d=>{
       const data = d.data();
@@ -2757,7 +2785,7 @@ function subscribeRoster(){
         calendarShared: data.calendarShared === true, calendarInviteSentAt: data.calendarInviteSentAt || null,
         tourSeenAt: data.tourSeenAt || null,
       };
-    });
+    }).sort((a,b)=> tsToMillis(a.approvedAt) - tsToMillis(b.approvedAt));
     render();
     // Accesos aprobados de ANTES de que existiera "nickname" no lo tienen
     // guardado — el admin (único que puede leer accessRequests de
