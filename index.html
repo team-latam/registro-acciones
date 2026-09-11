@@ -4152,7 +4152,7 @@ function renderScopeBuilder(scope, ownerId, draft){
         </select>`;
     } else {
       cityField = `<input type="text" placeholder="${esc(t("Ciudad","City","Cidade","עיר"))}" data-scope-field="city" data-scope="${scope}" data-owner-id="${ownerId}" value="${esc(sd.city)}">
-        ${presets ? `<button type="button" class="btn-text-add" data-action="use-city-preset" data-scope="${scope}" data-owner-id="${ownerId}">← ${t("Elegir de la lista","Choose from the list","Escolher da lista","בחירה מהרשימה")}</button>` : ""}`;
+        ${presets ? `<button type="button" class="btn-text-add" data-action="use-city-preset" data-scope="${scope}" data-owner-id="${ownerId}">${isRTL()?"→":"←"} ${t("Elegir de la lista","Choose from the list","Escolher da lista","בחירה מהרשימה")}</button>` : ""}`;
     }
     extra = `<select data-scope-field="country" data-scope="${scope}" data-owner-id="${ownerId}">
         <option value="">${esc(t("Elegir país…","Choose country…","Escolher país…","...בחירת מדינה"))}</option>${groupedCountryOptions(sd.country)}
@@ -4231,10 +4231,10 @@ function renderPaisesView(){
   const sub = state.paisesSubview;
   const toggle = `
     <div class="subview-toggle">
-      <button data-action="paises-subview" data-key="lista" class="${sub==="lista"?"active":""}">Lista</button>
-      <button data-action="paises-subview" data-key="mapa" class="${sub==="mapa"?"active":""}">Mapa</button>
+      <button data-action="paises-subview" data-key="lista" class="${sub==="lista"?"active":""}">${t("Lista","List","Lista","רשימה")}</button>
+      <button data-action="paises-subview" data-key="mapa" class="${sub==="mapa"?"active":""}">${t("Mapa","Map","Mapa","מפה")}</button>
     </div>`;
-  if(CONFIG_IS_PLACEHOLDER) return toggle + `<div class="empty-state">Configurá Firebase para ver datos.</div>`;
+  if(CONFIG_IS_PLACEHOLDER) return toggle + `<div class="empty-state">${t("Configurá Firebase para ver datos.","Set up Firebase to see data.","Configure o Firebase para ver dados.",".הגדר/י את Firebase כדי לראות נתונים")}</div>`;
 
   const counts = computePlaceCounts();
   const toolbar = `<div class="paises-toolbar">${toggle}${renderZoneLegend()}</div>`;
@@ -4247,9 +4247,14 @@ function renderPaisesView(){
   const sorted = visiblePaisesCountries().slice().sort((a,b)=> counts[b.name].total - counts[a.name].total || a.name.localeCompare(b.name));
   const cards = sorted.map(c=>{
     const cnt = counts[c.name].total;
-    return `<div class="country-card" style="border-left-color:${ZONES[c.zone].color}" data-action="drill-country" data-country="${esc(c.name)}">
+    // border-inline-start-color, no border-left-color: la clase .country-card
+    // fija el ancho/estilo del borde con border-inline-start (ver CSS, para
+    // que en RTL quede del lado correcto) — pisarlo acá con la propiedad
+    // física vieja lo dejaba sin color en RTL (el navegador ya no pinta
+    // border-left ahí, solo border-right).
+    return `<div class="country-card" style="border-inline-start-color:${ZONES[c.zone].color}" data-action="drill-country" data-country="${esc(c.name)}">
       <div class="name">${esc(c.name)}</div>
-      <div class="count">${cnt}<small> registro${cnt===1?"":"s"}</small></div>
+      <div class="count">${cnt}<small> ${cnt === 1 ? t("registro","record","registro","רשומה") : t("registros","records","registros","רשומות")}</small></div>
     </div>`;
   }).join("");
   return `${toolbar}<div class="country-grid">${cards}</div>`;
@@ -4259,7 +4264,7 @@ function byCountryExists(name){ return !!COUNTRY_BY_NAME[name]; }
 function renderCountryDrill(countryName, data){
   const rows = [];
   if(data.general){
-    rows.push({ label:"General / todo el país", count:data.general, city:null });
+    rows.push({ label:t("General / todo el país","General / whole country","Geral / todo o país","כללי / כל המדינה"), count:data.general, city:null });
   }
   Object.entries(data.cities).sort((a,b)=>b[1]-a[1]).forEach(([city,count])=>{
     rows.push({ label:city, count, city });
@@ -4269,13 +4274,18 @@ function renderCountryDrill(countryName, data){
         <span class="cname">${esc(r.label)}</span>
         <span class="ccount">${r.count}</span>
       </div>`).join("") :
-    `<div class="empty-state">Todavía no hay registros para ${esc(countryName)}.</div>`;
+    `<div class="empty-state">${t("Todavía no hay registros para {country}.","There are no records for {country} yet.","Ainda não há registros para {country}.","עדיין אין רשומות עבור {country}.",{country:esc(countryName)})}</div>`;
+  // La flecha de "volver"/"ver más" no se invierte sola con dir="rtl" (no
+  // es de los caracteres que Unicode "espeja" automáticamente en bidi,
+  // a diferencia de los paréntesis) — se elige a mano según el idioma.
+  const backArrow = isRTL() ? "→" : "←";
+  const fwdArrow = isRTL() ? "←" : "→";
   return `
-    <div class="breadcrumb"><a data-action="drill-clear">← Países</a> / ${esc(countryName)}</div>
+    <div class="breadcrumb"><a data-action="drill-clear">${backArrow} ${t("Países","Countries","Países","מדינות")}</a> / ${esc(countryName)}</div>
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
         <h2 style="margin:0;font-size:16px;">${esc(countryName)}</h2>
-        <button class="btn-mini" data-action="goto-country" data-country="${esc(countryName)}">Ver memoria completa →</button>
+        <button class="btn-mini" data-action="goto-country" data-country="${esc(countryName)}">${t("Ver memoria completa {a}","See full memory {a}","Ver memória completa {a}","צפייה בזיכרון המלא {a}",{a:fwdArrow})}</button>
       </div>
       <div class="city-list">${rowsHtml}</div>
     </div>`;
@@ -4331,9 +4341,10 @@ function initOrUpdateMap(){
     });
     marker.zoneKey = c.zone;
     const topCities = Object.entries(counts[c.name].cities).sort((a,b)=>b[1]-a[1]).slice(0,5);
-    const popupHtml = `<div class="map-popup"><b>${esc(c.name)} — ${cnt} registro${cnt===1?"":"s"}</b>
+    const cntLabel = cnt === 1 ? t("1 registro","1 record","1 registro","רשומה אחת") : t("{n} registros","{n} records","{n} registros","{n} רשומות",{n:cnt});
+    const popupHtml = `<div class="map-popup"><b>${esc(c.name)} — ${cntLabel}</b>
       ${topCities.map(([city,n])=>`<div class="pop-city"><span>${esc(city)}</span><span>${n}</span></div>`).join("")}
-      <button class="btn-mini" data-action="goto-country" data-country="${esc(c.name)}">Ver memoria →</button></div>`;
+      <button class="btn-mini" data-action="goto-country" data-country="${esc(c.name)}">${t("Ver memoria {a}","See memory {a}","Ver memória {a}","צפייה בזיכרון {a}",{a:isRTL()?"←":"→"})}</button></div>`;
     marker.bindPopup(popupHtml);
     clusterGroup.addLayer(marker);
   });
@@ -4355,13 +4366,16 @@ function renderMemoriaView(){
     ${renderFilterBar("memoria")}
     <div class="sort-toggle">
       <div class="sort-toggle-group">
-        <span class="chip-toggle ${state.memoriaOrder==="asc"?"active":""}" data-action="memoria-order" data-key="asc">Más antiguo primero</span>
-        <span class="chip-toggle ${state.memoriaOrder==="desc"?"active":""}" data-action="memoria-order" data-key="desc">Más reciente primero</span>
+        <span class="chip-toggle ${state.memoriaOrder==="asc"?"active":""}" data-action="memoria-order" data-key="asc">${t("Más antiguo primero","Oldest first","Mais antigo primeiro","הישן ביותר קודם")}</span>
+        <span class="chip-toggle ${state.memoriaOrder==="desc"?"active":""}" data-action="memoria-order" data-key="desc">${t("Más reciente primero","Newest first","Mais recente primeiro","החדש ביותר קודם")}</span>
       </div>
-      ${isAuthorized() ? `<button type="button" class="btn-sync" data-action="sync-calendar" ${state.calendarSyncing?"disabled":""}>🔄 Actualizar desde Calendar</button>` : ""}
+      ${isAuthorized() ? `<button type="button" class="btn-sync" data-action="sync-calendar" ${state.calendarSyncing?"disabled":""}>🔄 ${t("Actualizar desde Calendar","Refresh from Calendar","Atualizar a partir do Calendar","עדכון מהיומן")}</button>` : ""}
     </div>
     ${items.length ? items.map(({post,replies})=>renderPostCard(post,replies)).join("") :
-      `<div class="empty-state"><div class="big">📖</div>Todavía no hay memoria registrada${anyActiveFilter()?" para este filtro":""}.</div>`}
+      `<div class="empty-state"><div class="big">📖</div>${anyActiveFilter()
+        ? t("Todavía no hay memoria registrada para este filtro.","There's no recorded memory for this filter yet.","Ainda não há memória registrada para este filtro.","עדיין אין זיכרון רשום עבור מסנן זה.")
+        : t("Todavía no hay memoria registrada.","There's no recorded memory yet.","Ainda não há memória registrada.","עדיין אין זיכרון רשום.")
+      }</div>`}
   `;
 }
 
@@ -4444,23 +4458,42 @@ calendarInviteOverlay.addEventListener("click", e=>{ if(e.target === calendarInv
 // mostrándolo en bucle.
 const TOUR_ELIGIBLE_FROM = Date.UTC(2026, 8, 11); // cuentas aprobadas desde el 11/9/2026
 const TOUR_FALLBACK_KEY = "ra_tour_seen";
-const TOUR_STEPS = [
-  {
-    target: ".quick-composer",
-    title: "¿Qué hiciste hoy?",
-    text: "Contá tu día en una línea. Podés sumarle lugar, foto, PDF o link. Sale al Feed al instante.",
-  },
-  {
-    target: "#btnNewPost",
-    title: "Eventos",
-    text: "Visitas, cursos, seminarios y congresos, con fecha y participantes. Van sincronizados al Calendar de Team LatAm.",
-  },
-  {
-    target: "#tabs",
-    title: "Las tres vistas",
-    text: "Feed: lo último; Países: información por destino; Memoria: toda la información, por fecha.",
-  },
-];
+// Función y no array fijo: el título/texto depende del idioma actual en
+// cada render (mismo motivo que userRoleLabel/activityTiers).
+function tourSteps(){
+  return [
+    {
+      target: ".quick-composer",
+      title: t("¿Qué hiciste hoy?","What did you do today?","O que você fez hoje?","?מה עשית היום"),
+      text: t(
+        "Contá tu día en una línea. Podés sumarle lugar, foto, PDF o link. Sale al Feed al instante.",
+        "Tell your day in one line. You can add a place, photo, PDF or link. It goes straight to the Feed.",
+        "Conte seu dia em uma linha. Você pode somar lugar, foto, PDF ou link. Sai no Feed na hora.",
+        "ספר/י על היום שלך בשורה אחת. אפשר להוסיף מקום, תמונה, PDF או קישור. זה עולה לפיד מיד."
+      ),
+    },
+    {
+      target: "#btnNewPost",
+      title: t("Eventos","Events","Eventos","אירועים"),
+      text: t(
+        "Visitas, cursos, seminarios y congresos, con fecha y participantes. Van sincronizados al Calendar de Team LatAm.",
+        "Visits, courses, seminars and congresses, with date and participants. They sync to Team LatAm's Calendar.",
+        "Visitas, cursos, seminários e congressos, com data e participantes. Vão sincronizados ao Calendar do Team LatAm.",
+        "ביקורים, קורסים, סמינרים וכנסים, עם תאריך ומשתתפים. הם מסונכרנים ליומן של Team LatAm."
+      ),
+    },
+    {
+      target: "#tabs",
+      title: t("Las tres vistas","The three views","As três vistas","שלושת התצוגות"),
+      text: t(
+        "Feed: lo último; Países: información por destino; Memoria: toda la información, por fecha.",
+        "Feed: the latest; Countries: information by destination; Memory: everything, by date.",
+        "Feed: o mais recente; Países: informação por destino; Memória: toda a informação, por data.",
+        "פיד: העדכני ביותר; מדינות: מידע לפי יעד; זיכרון: כל המידע, לפי תאריך."
+      ),
+    },
+  ];
+}
 const tourLayer = document.getElementById("tourLayer");
 let tourStep = 0;
 
@@ -4485,17 +4518,18 @@ function markTourSeen(){
   try{ localStorage.setItem(TOUR_FALLBACK_KEY, "1"); }catch(e){ /* paciencia */ }
 }
 function renderTourStep(){
-  const step = TOUR_STEPS[tourStep];
+  const steps = tourSteps();
+  const step = steps[tourStep];
   const el = step && document.querySelector(step.target);
   const r = el && el.getBoundingClientRect();
   // Si el elemento señalado no está en pantalla (o quedó oculto), seguí
   // de largo en vez de dibujar un globo apuntando a la nada.
   if(!r || !r.width || !r.height){
-    if(tourStep < TOUR_STEPS.length - 1){ tourStep++; renderTourStep(); }
+    if(tourStep < steps.length - 1){ tourStep++; renderTourStep(); }
     else closeTour();
     return;
   }
-  const isLast = tourStep === TOUR_STEPS.length - 1;
+  const isLast = tourStep === steps.length - 1;
   const vw = window.innerWidth, vh = window.innerHeight;
   const pad = 8;
   const holeTop = Math.max(r.top - pad, 4);
@@ -4514,10 +4548,10 @@ function renderTourStep(){
       <div class="tour-ttl">${esc(step.title)}</div>
       <p class="tour-txt">${esc(step.text)}</p>
       <div class="tour-foot">
-        <div class="tour-dots">${TOUR_STEPS.map((_, i)=>`<i class="${i === tourStep ? "active" : ""}"></i>`).join("")}</div>
+        <div class="tour-dots">${steps.map((_, i)=>`<i class="${i === tourStep ? "active" : ""}"></i>`).join("")}</div>
         <div class="tour-btns">
-          ${isLast ? "" : `<button type="button" class="tour-skip" data-action="close-tour">Saltar</button>`}
-          <button type="button" class="btn-mini" data-action="${isLast ? "close-tour" : "tour-next"}">${isLast ? "Listo" : "Siguiente"}</button>
+          ${isLast ? "" : `<button type="button" class="tour-skip" data-action="close-tour">${t("Saltar","Skip","Pular","דילוג")}</button>`}
+          <button type="button" class="btn-mini" data-action="${isLast ? "close-tour" : "tour-next"}">${isLast ? t("Listo","Done","Pronto","סיום") : t("Siguiente","Next","Próximo","הבא")}</button>
         </div>
       </div>
     </div>`;
@@ -4601,13 +4635,13 @@ function renderComposer(){
         <label class="allday-toggle"><input type="checkbox" id="cAllDay" ${d.allDay?"checked":""}> ${t("Todo el día","All day","O dia todo","כל היום")}</label>
         <div class="dt-row">
           <input type="date" id="cStartDate" value="${esc(d.startDate)}">
-          <span class="dt-sep">→</span>
+          <span class="dt-sep">${isRTL()?"←":"→"}</span>
           <input type="date" id="cEndDate" value="${esc(d.endDate)}">
         </div>
         ${!d.allDay ? `
         <div class="dt-row">
           <input type="time" id="cStartTime" value="${esc(d.startTime)}">
-          <span class="dt-sep">→</span>
+          <span class="dt-sep">${isRTL()?"←":"→"}</span>
           <input type="time" id="cEndTime" value="${esc(d.endTime)}">
         </div>` : ""}
       </div>
@@ -5214,7 +5248,7 @@ document.addEventListener("click", e=>{
     nicknameEditing = false; nicknameError = null;
     render();
   } else if(action === "tour-next"){
-    tourStep = Math.min(tourStep + 1, TOUR_STEPS.length - 1);
+    tourStep = Math.min(tourStep + 1, tourSteps().length - 1);
     renderTourStep();
   } else if(action === "close-tour"){
     closeTour();
