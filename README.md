@@ -553,13 +553,15 @@ explicar la app en abstracto desde un cartel centrado. Los textos son
 cortos y concretos a propósito: que la persona sepa qué es cada cosa y
 salga a probarla, no leer un manual (para eso está este README).
 
-**Solo lo ven las cuentas nuevas, una vez**: la primera vez que entra
-alguien aprobado a partir de `TOUR_ELIGIBLE_FROM` (11/9/2026). Quien ya
-venía usando la app no lo ve nunca. Se usa la fecha de aprobación porque
-es el único dato propio que una cuenta común puede leer para saber si es
-nueva — los logins están en Actividad (`auditLog`), que solo lee el
-admin. Después queda a mano para cualquiera en el menú del avatar
-("❔ Cómo funciona").
+**Solo lo ven las cuentas nuevas, una vez, y no hay forma de reabrirlo a
+mano**: la primera vez que entra alguien aprobado a partir de
+`TOUR_ELIGIBLE_FROM` (11/9/2026). Quien ya venía usando la app no lo ve
+nunca. Se usa la fecha de aprobación porque es el único dato propio que
+una cuenta común puede leer para saber si es nueva — los logins están en
+Actividad (`auditLog`), que solo lee el admin. (Hasta el 11/9/2026 hubo
+un botón "❔ Cómo funciona" en el menú del avatar para volver a verlo
+cuando se quisiera; se sacó para dejar ese lugar libre — ahí va a ir el
+selector de idioma.)
 
 Como la primera parada es el composer de Rutina, que solo existe en el
 Feed, `openTour()` lleva primero a esa pestaña, y `maybeShowTour()` se

@@ -220,11 +220,6 @@
   .tour-dots i.active{ width:18px; border-radius:999px; background:var(--celeste-dark); }
   .tour-skip{ background:none; border:none; color:var(--text-muted); font-size:12px; font-weight:700; cursor:pointer; padding:8px 6px; }
   .tour-skip:hover{ color:var(--ink); }
-  .um-tour{
-    width:100%; background:none; border:none; color:var(--text-muted); font-size:12px;
-    font-weight:700; cursor:pointer; padding:8px 0 0; margin-top:2px;
-  }
-  .um-tour:hover{ color:var(--ink); }
   .um-theme{
     display:flex; gap:4px; background:var(--surface-alt); border-radius:999px;
     padding:3px; margin:0 0 12px;
@@ -2782,7 +2777,6 @@ function renderUserBadge(){
           <button type="button" class="${theme === "dark" ? "active" : ""}" data-action="set-theme" data-theme="dark" aria-pressed="${theme === "dark"}">🌙 Oscuro</button>
         </div>
         <button class="um-signout" data-action="sign-out">Cerrar sesión</button>
-        ${canEditNickname ? `<button type="button" class="um-tour" data-action="open-tour">❔ Cómo funciona</button>` : ""}
       </div>` : ""}`;
 }
 
@@ -4957,10 +4951,6 @@ document.addEventListener("click", e=>{
     renderTourStep();
   } else if(action === "close-tour"){
     closeTour();
-  } else if(action === "open-tour"){
-    userMenuOpen = false;
-    render();
-    openTour();
   } else if(action === "set-theme"){
     setTheme(t.dataset.theme === "dark" ? "dark" : "light");
   } else if(action === "edit-nickname"){
