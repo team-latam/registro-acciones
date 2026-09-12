@@ -384,7 +384,7 @@ como texto libre. Si suman presencia en un país nuevo, se puede ampliar
 Cuando una respuesta suma un alcance adicional (por ejemplo, un curso en
 Buenos Aires donde alguien responde que también vino gente de Montevideo),
 ese alcance se lee tanto en los filtros de Feed/Memoria como en los conteos
-de la vista Países — aunque el posteo original "viva" en otro lugar. Ver
+de la vista Vistas — aunque el posteo original "viva" en otro lugar. Ver
 `getVisiblePosts()` y `computePlaceCounts()` en `index.html`.
 
 ### Por qué el mapa no usa imágenes satelitales "pesadas"
@@ -393,7 +393,45 @@ La vista Mapa usa Leaflet + capas de OpenStreetMap reales (no es un mapa
 esquemático), pero los círculos se ubican en la **capital** de cada país
 (no hay geocoding de ciudades exactas sin un servicio externo de geocoding,
 que no está configurado). El detalle por ciudad se ve en la vista
-Países → Lista, al hacer click en un país.
+Vistas → Lista, al hacer click en un país.
+
+### Calendario (vista propia, no un embed de Google)
+
+La pestaña **Calendario** dibuja los eventos sobre `state.posts`, lo que ya
+está en memoria — no pide nada por red ni depende de que la persona esté
+logueada en el navegador con la cuenta de Google que tiene el calendario
+compartido.
+
+Se evaluó incrustar el calendario de Google en un `<iframe>` (el embed
+oficial, `mode=MONTH/WEEK/DAY`), que eran diez líneas contra unas
+cuatrocientas. Se descartó porque pierde lo que hace útil al Registro:
+clickear un evento abriría Google Calendar en vez del posteo con sus
+respuestas, adjuntos y participantes; no se puede clickear un día para
+crear; y el iframe no hereda el modo oscuro, el idioma ni el RTL. Como el
+sync bidireccional ya deja todos los eventos en `state.posts`, la vista
+propia sale "gratis" en datos. **El sync con Google Calendar no cambió**:
+quien prefiera usar Google Calendar lo sigue teniendo igual.
+
+Seis vistas, con los mismos atajos de teclado que Google Calendar
+(D/W/M/Y/A/X, más T para "Hoy"; las letras no se traducen, igual que hace
+Google). Día, 4 días y Semana son **la misma grilla horaria** con distinta
+cantidad de columnas (`renderCalendarioGrid` recibe la lista de días) —
+solo Semana se alinea al domingo. Los eventos que se pisan en el mismo día
+se reparten el ancho de la columna (`layoutTimedEvents`).
+
+La banda de **"todo el día"** de Semana/Día no es un detalle: la mayoría de
+los eventos de este Registro no tiene horario propio, así que es la parte
+más poblada de esas vistas.
+
+Dos cosas a tener en cuenta al tocar esto:
+
+- **Las Rutinas no entran.** El filtro reusa `CALENDAR_SYNC_TYPES`, la misma
+  constante que decide qué se publica en el Calendar compartido, en vez de
+  mantener una segunda lista de tipos que se despegue de aquella.
+- **Toda la aritmética de fechas es UTC** (`isoDate`, `addDaysISO`, y
+  `toLocaleDateString` con `timeZone:"UTC"`). Mezclarla con medianoche local
+  corre un día para cualquiera al este de Greenwich — el mismo bug que ya
+  documenta `addDaysISO`.
 
 ### Sincronización con Google Calendar (Feed ↔ Calendar)
 
@@ -473,7 +511,7 @@ Calendar**, sin pasar por la app, eso también se refleja en los posteos:
   crea un posteo simple a partir de él (título, fechas, lugar, quién
   organiza si Calendar lo tiene) con tipo **"Otro"** y **sin alcance
   definido** por default (no se le asume "Toda LatAm" para no sumarlo a
-  los 32 países en los conteos de Países/Mapa antes de tiempo) —
+  los 32 países en los conteos de Vistas/Mapa antes de tiempo) —
   cualquier persona aprobada puede después editarlo desde la app para
   afinar el tipo real de actividad y el alcance correcto.
 
@@ -675,7 +713,7 @@ filtro.
 paréntesis u otra puntuación que Unicode sí "espeja" en contextos
 bidireccionales, una flecha es un símbolo de glifo fijo — `dir="rtl"` no
 le toca el dibujo. Cada lugar que usa una flecha de navegación o de
-rango (breadcrumb de Países, "Elegir de la lista", popup del mapa,
+rango (breadcrumb de Vistas, "Elegir de la lista", popup del mapa,
 separador entre fecha/hora de inicio y fin) elige el caracter con
 `isRTL() ? "←" : "→"` (o viceversa) en vez de tenerlo fijo.
 
@@ -713,7 +751,7 @@ suelto en el `<head>`, antes del CSS, a propósito: el script del módulo
 corre recién después de pintar la página, así que si se aplicara desde
 ahí se vería un destello blanco en cada carga.
 
-El mapa de la vista Países sigue con las imágenes claras de OpenStreetMap
+El mapa de la vista Vistas sigue con las imágenes claras de OpenStreetMap
 en los dos modos (es lo que hacen casi todas las apps, y las alternativas
 oscuras de OSM son de menor calidad).
 

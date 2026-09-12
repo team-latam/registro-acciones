@@ -957,6 +957,44 @@
      en es/pt ("septiembre de 2026"), y un text-transform:capitalize dejaba
      "Septiembre De 2026", con el "de" capitalizado de más. */
   .cal-title::first-letter{ text-transform:uppercase; }
+  /* Selector de vista: lista vertical, a diferencia de los desplegables de
+     filtro (que son una nube de chips) — de ahí el flex-direction y el
+     nowrap que pisan a .filter-dropdown-panel. */
+  .cal-view-panel{ width:min(240px, 80vw); flex-direction:column; flex-wrap:nowrap; gap:1px; padding:6px; }
+  html[dir="rtl"] .cal-view-filter .filter-dropdown-panel{ transform-origin:top right; }
+  .cal-view-item{
+    display:flex; align-items:center; justify-content:space-between; gap:16px; width:100%;
+    border:none; background:none; cursor:pointer; padding:9px 12px; border-radius:8px;
+    font-size:13.5px; font-weight:600; color:var(--text); text-align:start;
+  }
+  .cal-view-item:hover{ background:var(--surface-alt); }
+  .cal-view-item.active{ background:var(--celeste-soft); color:var(--ink-strong); font-weight:800; }
+  .cal-view-item kbd{ font-family:inherit; font-size:11px; font-weight:700; color:var(--text-muted); }
+  .cal-year{ display:grid; grid-template-columns:repeat(auto-fill, minmax(190px,1fr)); gap:14px; }
+  .year-month{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md); box-shadow:var(--shadow); padding:10px; }
+  .year-month-name{
+    display:block; width:100%; border:none; background:none; cursor:pointer; text-align:start;
+    padding:0 0 6px; font-size:13px; font-weight:800; color:var(--ink-strong); text-transform:capitalize;
+  }
+  .year-month-name:hover{ color:var(--celeste-dark); }
+  .year-dows, .year-days{ display:grid; grid-template-columns:repeat(7,1fr); gap:1px; }
+  .year-dows span{ padding-bottom:2px; text-align:center; font-size:9.5px; font-weight:800; color:var(--text-muted); text-transform:uppercase; }
+  .ymd{
+    aspect-ratio:1; display:flex; align-items:center; justify-content:center; padding:0;
+    border:none; background:none; border-radius:50%; font-size:10.5px; font-weight:600; color:var(--text); cursor:pointer;
+  }
+  .ymd.empty{ visibility:hidden; }
+  .ymd:hover{ background:var(--surface-alt); }
+  .ymd.has{ background:var(--celeste-soft); color:var(--ink-strong); font-weight:800; }
+  .ymd.today{ background:var(--celeste-dark); color:#fff; font-weight:800; }
+  .cal-agenda{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow); overflow:hidden; }
+  .agenda-day{ display:flex; gap:12px; padding:10px 14px; border-bottom:1px solid var(--border); }
+  .agenda-day:last-child{ border-bottom:none; }
+  .agenda-day.today{ background:var(--celeste-soft); }
+  .agenda-date{ flex:none; width:46px; text-align:center; }
+  .ad-dow{ display:block; font-size:10.5px; font-weight:800; color:var(--text-muted); text-transform:uppercase; }
+  .ad-num{ display:block; font-size:19px; font-weight:800; color:var(--ink-strong); }
+  .agenda-events{ flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center; gap:4px; }
   .cal-month{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow); overflow:hidden; }
   .cal-heads, .cal-cells{ display:grid; grid-template-columns:repeat(7, minmax(0,1fr)); }
   .cal-head{ padding:9px 6px; text-align:center; font-size:11.5px; font-weight:800; color:var(--text-muted); text-transform:uppercase; border-bottom:1px solid var(--border); }
@@ -5514,14 +5552,36 @@ function calendarioChip(p, iso){
     </button>`;
 }
 
+// Las vistas del Calendario, con los mismos atajos de teclado que Google
+// Calendar (D/W/M/Y/A/X). Las letras NO se traducen, igual que hace
+// Google: quien ya usa el Calendar compartido no tiene que aprender otro
+// juego de teclas al cambiar el idioma de la app.
+function calendarioViews(){
+  return [
+    { key:"dia",    sc:"D", label:t("Día","Day","Dia","יום") },
+    { key:"semana", sc:"W", label:t("Semana","Week","Semana","שבוע") },
+    { key:"mes",    sc:"M", label:t("Mes","Month","Mês","חודש") },
+    { key:"anio",   sc:"Y", label:t("Año","Year","Ano","שנה") },
+    { key:"agenda", sc:"A", label:t("Agenda","Schedule","Agenda","סדר יום") },
+    { key:"4dias",  sc:"X", label:t("4 días","4 days","4 dias","4 ימים") },
+  ];
+}
+let calViewMenuOpen = false;
+
 function renderCalendarioView(){
-  const sub = state.calendarioSubview;
+  const views = calendarioViews();
+  const sub = views.some(v=>v.key === state.calendarioSubview) ? state.calendarioSubview : "mes";
   const anchor = calendarioAnchor();
+  const current = views.find(v=>v.key === sub);
   const toggle = `
-    <div class="subview-toggle">
-      <button data-action="cal-subview" data-key="mes" class="${sub==="mes"?"active":""}">${t("Mes","Month","Mês","חודש")}</button>
-      <button data-action="cal-subview" data-key="semana" class="${sub==="semana"?"active":""}">${t("Semana","Week","Semana","שבוע")}</button>
-      <button data-action="cal-subview" data-key="dia" class="${sub==="dia"?"active":""}">${t("Día","Day","Dia","יום")}</button>
+    <div class="filter-dropdown cal-view-filter">
+      <button type="button" class="chip-toggle filter-dropdown-btn${calViewMenuOpen?" open":""}" data-action="toggle-cal-view" aria-haspopup="true" aria-expanded="${calViewMenuOpen}">
+        ${esc(current.label)}<span class="filter-dropdown-chevron">▾</span>
+      </button>
+      ${calViewMenuOpen ? `<div class="filter-dropdown-panel cal-view-panel">${views.map(v=>`
+          <button type="button" class="cal-view-item${v.key===sub?" active":""}" data-action="cal-subview" data-key="${v.key}">
+            <span>${esc(v.label)}</span><kbd>${v.sc}</kbd>
+          </button>`).join("")}</div>` : ""}
     </div>`;
   const nav = `
     <div class="cal-nav">
@@ -5535,15 +5595,83 @@ function renderCalendarioView(){
     return toolbar + `<div class="empty-state">${t("Configurá Firebase para ver datos.","Set up Firebase to see data.","Configure o Firebase para ver dados.",".הגדר/י את Firebase כדי לראות נתונים")}</div>`;
   }
   if(sub === "mes") return toolbar + renderCalendarioMes(anchor);
-  const days = sub === "dia" ? [anchor] : Array.from({length:7}, (_,i)=> addDaysISO(weekStartISO(anchor), i));
-  return toolbar + renderCalendarioGrid(days);
+  if(sub === "anio") return toolbar + renderCalendarioAnio(anchor);
+  if(sub === "agenda") return toolbar + renderCalendarioAgenda(anchor);
+  // Día, 4 días y Semana son la MISMA grilla horaria con distinta cantidad
+  // de columnas; solo Semana se alinea al domingo (las otras dos arrancan
+  // en el día parado, como hace Google).
+  const n = sub === "dia" ? 1 : sub === "4dias" ? 4 : 7;
+  const start = sub === "semana" ? weekStartISO(anchor) : anchor;
+  return toolbar + renderCalendarioGrid(Array.from({length:n}, (_,i)=> addDaysISO(start, i)));
 }
 
 function calendarioTitle(sub, anchor){
-  if(sub === "mes") return fmtISO(anchor, { month:"long", year:"numeric" });
+  if(sub === "anio") return fmtISO(anchor, { year:"numeric" });
+  if(sub === "mes" || sub === "agenda") return fmtISO(anchor, { month:"long", year:"numeric" });
   if(sub === "dia") return fmtISO(anchor, { weekday:"long", day:"numeric", month:"long", year:"numeric" });
-  const a = weekStartISO(anchor), b = addDaysISO(a, 6);
+  const n = sub === "4dias" ? 4 : 7;
+  const a = sub === "semana" ? weekStartISO(anchor) : anchor;
+  const b = addDaysISO(a, n - 1);
   return `${fmtISO(a,{day:"numeric",month:"short"})} – ${fmtISO(b,{day:"numeric",month:"short",year:"numeric"})}`;
+}
+// Cuánto se mueve cada ‹ ›: una unidad de lo que la vista muestra.
+function calendarioStep(sub, anchor, step){
+  if(sub === "mes" || sub === "agenda") return addMonthsISO(anchor, step);
+  if(sub === "anio") return addMonthsISO(anchor, step * 12);
+  if(sub === "semana") return addDaysISO(anchor, step * 7);
+  if(sub === "4dias") return addDaysISO(anchor, step * 4);
+  return addDaysISO(anchor, step);
+}
+
+// Vista Año: doce mini-meses, con los días que tienen algo marcados. Es
+// para ubicarse de un vistazo ("¿cuándo fue el congreso?"), no para leer
+// los eventos: clickear un día abre ese día, y el nombre del mes abre el
+// mes entero.
+function renderCalendarioAnio(anchor){
+  const year = anchor.slice(0,4);
+  const byDate = calendarioEventsByDate(`${year}-01-01`, `${year}-12-31`);
+  const today = todayISO();
+  const dows = weekdayNames("narrow");
+  const months = Array.from({length:12}, (_,mi)=>{
+    const first = `${year}-${String(mi+1).padStart(2,"0")}-01`;
+    const gridStart = addDaysISO(first, -isoDow(first));
+    const month = first.slice(0,7);
+    const cells = Array.from({length:42}, (_,i)=>{
+      const iso = addDaysISO(gridStart, i);
+      if(iso.slice(0,7) !== month) return `<span class="ymd empty"></span>`;
+      const n = (byDate[iso] || []).length;
+      const label = n === 1 ? t("1 evento","1 event","1 evento","אירוע אחד") : t("{n} eventos","{n} events","{n} eventos","{n} אירועים",{n});
+      return `<button type="button" class="ymd${n?" has":""}${iso===today?" today":""}" data-action="cal-open-day" data-date="${iso}"${n?` title="${esc(label)}"`:""}>${Number(iso.slice(8,10))}</button>`;
+    }).join("");
+    return `<div class="year-month">
+        <button type="button" class="year-month-name" data-action="cal-open-month" data-date="${first}">${esc(fmtISO(first,{month:"long"}))}</button>
+        <div class="year-dows">${dows.map(d=>`<span>${esc(d)}</span>`).join("")}</div>
+        <div class="year-days">${cells}</div>
+      </div>`;
+  }).join("");
+  return `<div class="cal-year">${months}</div>`;
+}
+
+// Vista Agenda: los eventos del mes como lista corrida, sin grilla. Es la
+// más legible cuando hay pocos eventos repartidos en el mes, donde la
+// vista Mes queda casi vacía.
+function renderCalendarioAgenda(anchor){
+  const from = anchor.slice(0,8) + "01";
+  const to = addDaysISO(addMonthsISO(from, 1), -1);
+  const byDate = calendarioEventsByDate(from, to);
+  const days = Object.keys(byDate).sort();
+  if(!days.length){
+    return `<div class="empty-state"><div class="big">📅</div>${t("No hay eventos en este mes.","There are no events this month.","Não há eventos neste mês.",".אין אירועים בחודש הזה")}</div>`;
+  }
+  const today = todayISO();
+  return `<div class="cal-agenda">${days.map(iso=>`
+      <div class="agenda-day${iso===today?" today":""}">
+        <div class="agenda-date">
+          <span class="ad-dow">${esc(fmtISO(iso,{weekday:"short"}))}</span>
+          <span class="ad-num">${Number(iso.slice(8,10))}</span>
+        </div>
+        <div class="agenda-events">${byDate[iso].map(p=>calendarioChip(p, iso)).join("")}</div>
+      </div>`).join("")}</div>`;
 }
 
 // Siempre 6 semanas (42 celdas), aunque el mes entre en 5: así la grilla
@@ -6321,10 +6449,32 @@ document.addEventListener("keydown", e=>{
   if(!userProfileOverlay.hidden){ closeUserProfile(); return; }
   if(!tourLayer.hidden){ closeTour(); return; }
   if(!calendarInviteOverlay.hidden){ dismissCalendarInviteOverlay(); return; }
+  if(calViewMenuOpen){ calViewMenuOpen = false; render(); return; }
   if(postModalOverlay.hidden) return;
   const d = composerDraft;
   if(d.placeQuery || d.mentionQuery != null || d.participantQuery) return;
   requestCloseComposer();
+});
+// Atajos de una tecla del Calendario (D/W/M/Y/A/X para las vistas, T para
+// "Hoy"), como en Google Calendar. Solo corren parado en el Calendario y
+// con las manos fuera de un campo de texto: sin ese guard, escribir
+// "Día 3" en el título de un evento cambiaría la vista de atrás.
+const CAL_SHORTCUTS = { d:"dia", w:"semana", m:"mes", y:"anio", a:"agenda", x:"4dias" };
+document.addEventListener("keydown", e=>{
+  if(state.view !== "calendario") return;
+  if(e.ctrlKey || e.metaKey || e.altKey) return;
+  const el = e.target;
+  if(el && (el.isContentEditable || ["INPUT","TEXTAREA","SELECT"].includes(el.tagName))) return;
+  if(!postModalOverlay.hidden || !filePreviewOverlay.hidden || !userProfileOverlay.hidden) return;
+  if(!tourLayer.hidden || !calendarInviteOverlay.hidden || lightbox.classList.contains("show")) return;
+  const key = e.key.toLowerCase();
+  if(key === "t"){ e.preventDefault(); state.calendarioAnchor = todayISO(); calViewMenuOpen = false; render(); return; }
+  const view = CAL_SHORTCUTS[key];
+  if(!view) return;
+  e.preventDefault();
+  state.calendarioSubview = view;
+  calViewMenuOpen = false;
+  render();
 });
 // Enter en un input de texto del modal (título, participante, lugar,
 // link) no publica: el envío implícito del <form> hacía que un Enter en
@@ -6714,6 +6864,9 @@ document.addEventListener("click", e=>{
   if(zoneFilterOpen && !e.target.closest(".zone-filter")){
     zoneFilterOpen = false; render();
   }
+  if(calViewMenuOpen && !e.target.closest(".cal-view-filter")){
+    calViewMenuOpen = false; render();
+  }
 
   const el = e.target.closest("[data-action]");
   if(!el) return;
@@ -6857,19 +7010,19 @@ document.addEventListener("click", e=>{
     memoriaVisibleCount += PAGE_SIZE; render();
   } else if(action === "paises-subview"){
     state.paisesSubview = el.dataset.key; state.countryDrill = null; render();
+  } else if(action === "toggle-cal-view"){
+    calViewMenuOpen = !calViewMenuOpen; render();
   } else if(action === "cal-subview"){
-    state.calendarioSubview = el.dataset.key; render();
+    state.calendarioSubview = el.dataset.key; calViewMenuOpen = false; render();
   } else if(action === "cal-today"){
     state.calendarioAnchor = todayISO(); render();
   } else if(action === "cal-step"){
-    const step = Number(el.dataset.step) || 0;
-    const anchor = calendarioAnchor();
-    state.calendarioAnchor = state.calendarioSubview === "mes" ? addMonthsISO(anchor, step)
-      : state.calendarioSubview === "semana" ? addDaysISO(anchor, step * 7)
-      : addDaysISO(anchor, step);
+    state.calendarioAnchor = calendarioStep(state.calendarioSubview, calendarioAnchor(), Number(el.dataset.step) || 0);
     render();
   } else if(action === "cal-open-day"){
     state.calendarioAnchor = el.dataset.date; state.calendarioSubview = "dia"; render();
+  } else if(action === "cal-open-month"){
+    state.calendarioAnchor = el.dataset.date; state.calendarioSubview = "mes"; render();
   } else if(action === "cal-open"){
     gotoMention(postId);
   } else if(action === "cal-new"){
