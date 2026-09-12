@@ -433,6 +433,62 @@ Dos cosas a tener en cuenta al tocar esto:
   corre un día para cualquiera al este de Greenwich — el mismo bug que ya
   documenta `addDaysISO`.
 
+### Ex integrantes (`formerMembers/{email}`)
+
+Al revocar un acceso se borra `allowlist/{email}`, y ahí vivía el
+`@nickname` — el único lugar. Antes de borrarlo se guarda una copia en
+`formerMembers/{email}` (nombre, nickname, foto, desde/hasta cuándo estuvo).
+Sin eso, **todos los posteos y respuestas de esa persona pasaban a mostrar
+el nombre crudo de su cuenta de Google**, sin `@nickname` ni perfil
+clickeable, y las @menciones que le habían hecho quedaban como texto muerto.
+
+La colección **no da acceso a nada**: `isApproved()` sigue mirando
+únicamente si existe el documento en `allowlist`. La lee cualquier
+aprobado, por el mismo motivo que el roster (resolver el `@nickname` de un
+autor); la escribe solo el admin.
+
+`memberByEmail()` / `memberByNick()` son la única resolución de identidad:
+buscan primero entre los activos y después entre los ex. Usarlas siempre en
+vez de repetir `state.roster.find(...)`, o los ex integrantes vuelven a
+desaparecer de a un lugar por vez.
+
+Quien vuelve al equipo recupera **su** `@nickname` de antes (si nadie lo
+ocupó): darle uno nuevo partiría su historia en dos personas distintas.
+
+<h4 id="nickname-quemado">Decisión: un @nickname usado queda quemado para siempre</h4>
+
+**Estado: decidido, revisable.** `takenNicknames()` une los nicknames en uso
+hoy con los de quienes ya no están, y la usan los cuatro lugares que asignan
+o validan uno (auto-alta al aprobar, alta del admin, backfill, y la edición
+del propio nickname). O sea: **el `@nickname` de alguien que se fue no se le
+puede dar a nadie más.**
+
+Se evaluó permitir "liberarlo" y se descartó por ahora. La evidencia, medida
+sobre el comportamiento real (no deducida):
+
+| Qué | Si se libera y otro lo toma | ¿Se reatribuye? |
+| --- | --- | --- |
+| Autoría del posteo | Pasa de "Creado por @ana" a "Creado por Ana Gómez" (texto plano) | **No** |
+| `@ana` escrito en el TEXTO de un posteo viejo | Abre el perfil de la persona nueva | **Sí** |
+| Notificación de esa mención | Sigue apuntando a la original | **No** |
+
+La autoría y las notificaciones están atadas al **email**, que es único y no
+se recicla. Pero el texto del posteo guarda literalmente la cadena `"@ana"`:
+no hay email ahí, así que se resuelve contra quien tenga ese nickname **hoy**.
+Un "gracias @ana por la ayuda" escrito hace dos años terminaría linkeando a
+otra persona.
+
+El daño está acotado (solo los posteos que mencionan por texto, no los que
+esa persona escribió) pero es silencioso y no tiene arreglo posterior. Contra
+eso, el costo de quemarlos es bajo: son nombres cortos y hay combinaciones de
+sobra.
+
+**Si alguna vez hace falta revisarlo**, la variante intermedia ya pensada es:
+liberar el nickname **y además** dejar de linkear las menciones viejas a esa
+cadena (quedarían en gris, sin link). Se pierde el link, pero nadie queda mal
+atribuido. Haría falta una lista de nicknames "retirados" que
+`highlightMentions` consulte antes de linkear.
+
 ### Configuración personal (`userPrefs/{email}`)
 
 La solapa **Configuración** es de cada persona; la de admin se llama
@@ -943,6 +999,11 @@ muerto). Lo que cambió y conviene tener presente al tocar el código:
 
 ## 4. Qué falta / decisiones pendientes
 
+- **Reciclar `@nickname` de ex integrantes**: hoy quedan quemados para
+  siempre, a propósito — ver
+  [la decisión y su evidencia](#nickname-quemado). Está marcada como
+  revisable: si alguna vez el equipo necesita reusar un nombre, ahí está
+  medido qué se rompe y cuál es la variante intermedia.
 - **Roles**: hoy todo aprobado tiene los mismos permisos (leer + publicar).
   Si más adelante hace falta un rol intermedio (por ejemplo, alguien que
   solo lee), hay que sumarlo a mano en `firestore.rules` y en la UI.
