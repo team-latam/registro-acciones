@@ -3369,6 +3369,22 @@ async function onAuthChanged(user){
       return; // el propio setDoc va a disparar un nuevo snapshot con exists()=true
     }
     state.auth.requestStatus = snap.data().status;
+    // "Limbo": la solicitud quedó en approved pero la persona NO está en el
+    // allowlist (le borraron el documento a mano, o una aprobación quedó a
+    // medias). Veía "pendiente de aprobación" para siempre y el admin no la
+    // veía en ninguna cola, porque esa cola filtra status == "pending".
+    // Se repara sola: se vuelve a poner la solicitud en pending, que es
+    // justo lo que las reglas permiten hacer sobre la propia solicitud.
+    if(state.auth.requestStatus !== "pending" && state.auth.requestStatus !== "rejected" && !state.auth.allowlisted){
+      try{
+        await fb.setDoc(reqRef, {
+          email: profile.email, name: profile.displayName, photoURL: profile.photoURL,
+          status: "pending", requestedAt: fb.serverTimestamp(),
+        });
+        logAudit("access_requested", { actorEmail: profile.email, actorName: profile.displayName });
+      }catch(err){ console.error("No se pudo reactivar la solicitud:", err); }
+      return; // el propio setDoc dispara otro snapshot, ya con status pending
+    }
     recomputeAuthStatus();
     render();
   }, err=>{
@@ -4729,7 +4745,15 @@ function renderUsuariosSection(){
 }
 
 function renderSolicitudesQueueSection(){
-  const pending = state.accessRequests.filter(r=>r.status==="pending");
+  // La cola no filtra solo por status == "pending": también entra quien
+  // quedó en "limbo" (solicitud en approved pero sin documento en el
+  // allowlist). Esa persona ve "pendiente de aprobación" en su pantalla, y
+  // antes acá no figuraba en ningún lado. La app intenta repararlo sola
+  // (ver el listener de la propia solicitud), pero si eso falla — sin red,
+  // reglas viejas — al menos el admin la ve y puede aprobarla.
+  const conAcceso = new Set(state.roster.map(u=>u.email));
+  const pending = state.accessRequests.filter(r=>
+    r.status === "pending" || (r.status !== "rejected" && !conAcceso.has(r.email)));
   // "Rechazadas" mezclaba dos cosas muy distintas: alguien a quien nunca se
   // le dio acceso, y alguien que SÍ estuvo en el equipo y se fue. Se
   // separan: quien tiene registro de ex integrante va a su propia lista,
@@ -4747,7 +4771,7 @@ function renderSolicitudesQueueSection(){
       <div class="ractions">${actionsHtml}</div>
     </div>`;
   const pendingHtml = pending.length
-    ? pending.map(r => renderRow(r, `
+    ? pending.map(r => renderRow(r, `${r.status !== "pending" ? `<span class="status-pill rejected" title="${esc(t("Figura como aprobada pero no tiene acceso: probablemente le borraron el documento del allowlist a mano.","Marked as approved but has no access: their allowlist document was probably deleted by hand.","Consta como aprovada mas não tem acesso: provavelmente apagaram o documento do allowlist à mão.","מסומן כמאושר אך ללא גישה: כנראה שמחקו את המסמך מה-allowlist ידנית."))}">${t("Sin acceso","No access","Sem acesso","ללא גישה")}</span>` : ""}
         <button class="btn-secondary" data-action="reject-request" data-email="${esc(r.email)}">${t("Rechazar","Reject","Rejeitar","דחייה")}</button>
         <button class="btn-primary" data-action="approve-request" data-email="${esc(r.email)}">${t("Aprobar","Approve","Aprovar","אישור")}</button>`)).join("")
     : `<div class="empty-state"><div class="big">📭</div>${t("No hay solicitudes pendientes.","There are no pending requests.","Não há solicitações pendentes.","אין בקשות ממתינות.")}</div>`;
