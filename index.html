@@ -6141,7 +6141,7 @@ function initOrUpdateMap(){
    ====================================================================== */
 const HOLIDAY_CAL = {
   "Argentina":"es.ar", "Chile":"es.cl", "Uruguay":"es.uy", "Paraguay":"es.py",
-  "Brasil":"pt.br", "México":"es.mx", "Guatemala":"es.gt", "Belice":"en.bz",
+  "Brasil":"pt.brazilian", "México":"es.mexican", "Guatemala":"es.gt", "Belice":"en.bz",
   "Honduras":"es.hn", "El Salvador":"es.sv", "Nicaragua":"es.ni", "Costa Rica":"es.cr",
   "Panamá":"es.pa", "Colombia":"es.co", "Venezuela":"es.ve", "Ecuador":"es.ec",
   "Perú":"es.pe", "Bolivia":"es.bo", "Guyana":"en.gy", "Surinam":"nl.sr",
@@ -6150,9 +6150,15 @@ const HOLIDAY_CAL = {
   "Aruba":"nl.aw", "Curazao":"nl.cw", "Islas Caimán":"en.ky", "Santa Lucía":"en.lc",
   "Granada":"en.gd", "San Vicente y las Granadinas":"en.vc", "Antigua y Barbuda":"en.ag",
   "Dominica":"en.dm", "San Cristóbal y Nieves":"en.kn", "Bermudas":"en.bm",
-  "Turcas y Caicos":"en.tc", "Israel":"iw.il",
+  "Turcas y Caicos":"en.tc", "Israel":"iw.jewish",
 };
 const JEWISH_CAL = "en.judaism";
+// Ojo: la mayoría de los calendarios de Google usan "{idioma}.{código ISO}",
+// pero tres son históricos y NO siguen esa regla — con el ISO devuelven 404
+// y el país queda sin feriados en silencio: Brasil es "pt.brazilian" (no
+// "pt.br"), México "es.mexican" (no "es.mx") e Israel "iw.jewish" (no
+// "iw.il"). Antes de agregar un país nuevo hay que probar el id contra la
+// API, porque el fallo no se nota: el calendario dibuja igual, vacío.
 function holidayCalendarId(key){ return `${key}#holiday@group.v.calendar.google.com`; }
 // Países que Google tiene y que además están en el Registro. Los del
 // listado que Google no publica (territorios chicos) simplemente no
@@ -6195,7 +6201,10 @@ async function ensureHolidays(){
       });
       render();
     }catch(err){
-      // Sin feriados se sigue: el calendario no depende de esto.
+      // Sin feriados se sigue: el calendario no depende de esto. Pero se
+      // libera la marca para poder reintentar: si no, un error de red
+      // puntual dejaba ese país sin feriados por el resto de la sesión.
+      holidayFetched.delete(tag);
       console.warn("No se pudieron traer los feriados de", key, err.message);
     }
   }
@@ -6207,6 +6216,13 @@ function holidaysOn(iso){
   if(prefs().holidayMode === "off") return [];
   const wanted = new Set(holidayCalendarsWanted());
   return (holidaysByDate[iso] || []).filter(h => wanted.has(h.key));
+}
+// El fondo del día lo pintan SOLO los feriados de país: es el "hoy no se
+// trabaja". Las festividades judías se muestran con su nombre y su color,
+// pero no tiñen la celda — si no, con el switch prendido y ningún país
+// elegido el mes entero aparecía marcado sin que nadie tenga franco.
+function holidayTintOn(iso){
+  return holidaysOn(iso).some(h => h.key !== JEWISH_CAL);
 }
 // Cada feriado se pinta según de dónde viene: país o festividad judía.
 function holidayColorOf(h){
@@ -6800,9 +6816,12 @@ function renderCalendarioMes(anchor){
       // Marca sutil: el nombre del feriado al lado del número, en chico.
       // Va en la celda y no en la grilla de barras porque ahí arriba no
       // compite con ningún evento.
-      const hol = asEvent ? [] : holidaysOn(iso);
+      // El feriado de país va primero: si el día tiene los dos, el nombre
+      // que se ve es el que define si se trabaja o no.
+      const hol = (asEvent ? [] : holidaysOn(iso))
+        .slice().sort((a,b)=> (a.key===JEWISH_CAL?1:0) - (b.key===JEWISH_CAL?1:0));
       return `
-        <div class="cal-cell${iso.slice(0,7)!==month?" other":""}${iso===today?" today":""}${hol.length?" holiday":""}${pastClass(iso)}"${calendarioNewAttrs(iso)}>
+        <div class="cal-cell${iso.slice(0,7)!==month?" other":""}${iso===today?" today":""}${!asEvent&&holidayTintOn(iso)?" holiday":""}${pastClass(iso)}"${calendarioNewAttrs(iso)}>
           <div class="cal-dayhead">
             <span class="cal-daynum">${Number(iso.slice(8,10))}</span>
             ${hol.length ? `<span class="cal-holiday" style="color:${holidayColorOf(hol[0])}" title="${esc(hol.map(h=>h.name).join(" · "))}">${esc(hol[0].name)}</span>` : ""}
