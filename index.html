@@ -1064,12 +1064,36 @@
   /* 7 columnas, o 5 con los fines de semana apagados. Van como clase y no
      como variable CSS porque nth-child() no acepta var() y hace falta para
      sacarle el borde a la última columna de cada fila. */
-  .cal-heads, .cal-cells{ display:grid; }
-  .cal-heads.cols-7, .cal-cells.cols-7{ grid-template-columns:repeat(7, minmax(0,1fr)); }
-  .cal-heads.cols-5, .cal-cells.cols-5{ grid-template-columns:repeat(5, minmax(0,1fr)); }
+  .cal-heads, .cal-week-cells, .cal-week-bars{ display:grid; }
+  .cal-heads.cols-7, .cols-7 .cal-week-cells, .cols-7 .cal-week-bars{ grid-template-columns:repeat(7, minmax(0,1fr)); }
+  .cal-heads.cols-5, .cols-5 .cal-week-cells, .cols-5 .cal-week-bars{ grid-template-columns:repeat(5, minmax(0,1fr)); }
+  /* Una semana = dos capas superpuestas: abajo las celdas (bordes, número
+     del día, click para crear) y encima la grilla de barras. Hace falta
+     que estén separadas porque un evento de varios días cruza columnas y
+     no puede vivir adentro de una celda. */
+  .cal-week{ position:relative; }
+  .cal-week-bars{
+    position:absolute; inset-block-start:25px; inset-inline:0; inset-block-end:2px;
+    grid-auto-rows:19px; row-gap:2px; padding:0 3px; pointer-events:none;
+  }
+  .cal-week-bars > *{ pointer-events:auto; min-width:0; }
+  .cal-bar{
+    display:flex; align-items:center; gap:4px; overflow:hidden; cursor:pointer; text-align:start;
+    background:var(--surface-alt); color:var(--text); border:none; border-radius:6px;
+    padding:0 6px; font-size:11.5px; font-weight:600; line-height:19px; white-space:nowrap;
+  }
+  .cal-bar:hover{ filter:brightness(0.94); }
+  .cal-bar.span{ font-weight:700; }
+  /* Punta cuadrada del lado por el que el evento sigue fuera de la semana. */
+  .cal-bar.cont-start{ border-start-start-radius:0; border-end-start-radius:0; }
+  .cal-bar.cont-end{ border-start-end-radius:0; border-end-end-radius:0; }
+  .cal-bar.cancelled{ text-decoration:line-through; opacity:0.6; }
+  .cal-bar .cal-dot{ width:7px; height:7px; border-radius:50%; flex:none; }
+  .cal-bar .cal-txt{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; }
+  .cal-bar b{ font-weight:800; }
   .cal-head{ padding:9px 6px; text-align:center; font-size:11.5px; font-weight:800; color:var(--text-muted); text-transform:uppercase; border-bottom:1px solid var(--border); }
-  .cal-cell{ min-height:104px; padding:5px 5px 7px; display:flex; flex-direction:column; gap:3px; border-inline-end:1px solid var(--border); border-bottom:1px solid var(--border); }
-  .cal-cells.cols-7 .cal-cell:nth-child(7n), .cal-cells.cols-5 .cal-cell:nth-child(5n){ border-inline-end:none; }
+  .cal-cell{ min-height:112px; padding:5px 5px 7px; display:flex; flex-direction:column; gap:3px; border-inline-end:1px solid var(--border); border-bottom:1px solid var(--border); }
+  .cols-7 .cal-cell:nth-child(7n), .cols-5 .cal-cell:nth-child(5n){ border-inline-end:none; }
   .cal-past{ opacity:0.5; }
   .cal-cell.other{ background:var(--surface-alt); }
   .cal-cell.other .cal-daynum{ opacity:0.45; }
@@ -1121,7 +1145,9 @@
   .cal-block.cancelled{ text-decoration:line-through; opacity:0.6; }
   .cal-block b{ font-weight:800; }
   @media (max-width:640px){
-    .cal-cell{ min-height:72px; padding:3px; }
+    .cal-cell{ min-height:92px; padding:3px; }
+    .cal-week-bars{ inset-block-start:22px; grid-auto-rows:16px; padding:0 2px; }
+    .cal-bar{ font-size:10px; line-height:16px; padding:0 4px; }
     .cal-gutter{ width:44px; }
     .cal-chip{ font-size:10.5px; padding:2px 4px; }
     .cal-title{ font-size:13.5px; }
@@ -5946,6 +5972,104 @@ function renderCalendarioAgenda(anchor){
 
 // Siempre 6 semanas (42 celdas), aunque el mes entre en 5: así la grilla
 // no cambia de alto al pasar de mes y el contenido no salta.
+// Cuántos carriles de eventos entran en una celda del Mes antes de cortar
+// con un "+N". Tiene que ir de la mano del min-height de .cal-cell.
+const MES_MAX_LANES = 4;
+
+// Blanco o tinta oscura según qué tan claro sea el color de la zona: las
+// barras llenas de eventos de varios días llevan el color de fondo, y con
+// una zona clara el texto blanco quedaba ilegible.
+function readableOn(hex){
+  const m = /^#?([0-9a-f]{6})$/i.exec(String(hex||""));
+  if(!m) return "#ffffff";
+  const n = parseInt(m[1], 16);
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  return (0.2126*r + 0.7152*g + 0.0722*b) > 150 ? "#08292b" : "#ffffff";
+}
+
+// Reparte los eventos de UNA semana en carriles. Un evento de varios días
+// ocupa un tramo de columnas contiguas y entra en el primer carril donde
+// no se pise con otro; los que no entran en maxLanes se cuentan por día
+// para el "+N" de esa celda. Es lo que permite dibujar el evento como UNA
+// barra continua en vez de repetir el mismo chip en cada día.
+function layoutWeekBars(weekDays, byDate, maxLanes){
+  const cols = weekDays.length;
+  const spans = new Map();
+  weekDays.forEach((iso, i)=>{
+    (byDate[iso] || []).forEach(p=>{
+      const cur = spans.get(p.id);
+      if(cur) cur.to = i;
+      else spans.set(p.id, { post:p, from:i, to:i });
+    });
+  });
+  const items = [...spans.values()].sort((a,b)=>
+    a.from - b.from || (b.to - b.from) - (a.to - a.from) || calendarioCompare(a.post, b.post));
+  const lanes = [];
+  const placed = [], overflow = new Array(cols).fill(0);
+  items.forEach(it=>{
+    let lane = -1;
+    for(let l = 0; l < maxLanes; l++){
+      if(!lanes[l]) lanes[l] = new Array(cols).fill(false);
+      let free = true;
+      for(let c = it.from; c <= it.to; c++){ if(lanes[l][c]){ free = false; break; } }
+      if(free){
+        for(let c = it.from; c <= it.to; c++) lanes[l][c] = true;
+        lane = l;
+        break;
+      }
+    }
+    if(lane < 0){
+      for(let c = it.from; c <= it.to; c++) overflow[c]++;
+      return;
+    }
+    it.lane = lane;
+    placed.push(it);
+  });
+  // El "+N" ocupa el ÚLTIMO carril de su columna, no una fila extra debajo:
+  // esa fila se salía del alto de la semana y terminaba tapada por las
+  // celdas de la semana siguiente. Así que toda barra que haya quedado en
+  // el último carril de una columna con desborde se saca y se suma al
+  // contador — y como sacarla puede generar desborde en otras columnas, se
+  // repite hasta que no haya más que mover.
+  const lastLane = maxLanes - 1;
+  for(let pass = 0; pass < maxLanes * cols; pass++){
+    const idx = placed.findIndex(it => it.lane === lastLane && overflowsIn(overflow, it));
+    if(idx < 0) break;
+    const it = placed.splice(idx, 1)[0];
+    for(let c = it.from; c <= it.to; c++) overflow[c]++;
+  }
+  return { placed, overflow };
+}
+function overflowsIn(overflow, it){
+  for(let c = it.from; c <= it.to; c++) if(overflow[c]) return true;
+  return false;
+}
+
+function calendarioBar(it, weekDays){
+  const p = it.post;
+  const color = calendarioColor(p);
+  const type = ACTIVITY_BY_KEY[p.activityType] || { icon:"✨" };
+  const label = calendarioLabel(p);
+  const startIso = p.startDate || p.date;
+  const endIso = p.endDate && p.endDate >= startIso ? p.endDate : startIso;
+  // Barra llena según dure el EVENTO, no según cuánto se vea en ESTA
+  // semana: el tramo que cae solo en el sábado es la cola del mismo
+  // evento y tiene que verse igual, no como un chip suelto de un día.
+  const multi = endIso > startIso;
+  // Punta cuadrada del lado por donde el evento sigue fuera de esta semana.
+  const contStart = startIso < weekDays[it.from];
+  const contEnd = endIso > weekDays[it.to];
+  const time = p.startTime && startIso === weekDays[it.from] ? `<b>${esc(p.startTime)}</b> ` : "";
+  const style = multi
+    ? `background:${color};color:${readableOn(color)};`
+    : "";
+  return `<button type="button" class="cal-bar${multi?" span":""}${p.cancelled?" cancelled":""}${pastClass(weekDays[it.from])}${contStart?" cont-start":""}${contEnd?" cont-end":""}"
+      style="grid-column:${it.from+1} / span ${it.to - it.from + 1};grid-row:${it.lane+1};${style}"
+      data-action="cal-open" data-post-id="${esc(p.id)}" title="${esc(label)}">
+      ${multi ? "" : `<span class="cal-dot" style="background:${color}"></span>`}<span class="cal-txt">${type.icon} ${time}${esc(label)}</span>
+    </button>`;
+}
+
 function renderCalendarioMes(anchor){
   const first = anchor.slice(0,8) + "01";
   const gridStart = weekStartISO(first);
@@ -5959,19 +6083,27 @@ function renderCalendarioMes(anchor){
   // arranque de semana y el apagado de fines de semana sin recalcular nada
   // ni poder desincronizarse de las celdas de abajo.
   const heads = days.slice(0, cols).map(iso=>`<div class="cal-head">${esc(fmtISO(iso,{weekday:"short"}))}</div>`).join("");
-  const cells = days.map(iso=>{
-    const evs = byDate[iso] || [];
-    const shown = evs.slice(0, 3);
-    const rest = evs.length - shown.length;
-    return `<div class="cal-cell${iso.slice(0,7)!==month?" other":""}${iso===today?" today":""}${pastClass(iso)}"${calendarioNewAttrs(iso)}>
-        <div class="cal-daynum">${Number(iso.slice(8,10))}</div>
-        ${shown.map(p=>calendarioChip(p, iso)).join("")}
-        ${rest > 0 ? `<button type="button" class="cal-more" data-action="cal-open-day" data-date="${iso}">+${rest} ${t("más","more","mais","נוספים")}</button>` : ""}
+  const weeks = Array.from({length:6}, (_,w)=>{
+    const weekDays = days.slice(w*cols, (w+1)*cols);
+    const { placed, overflow } = layoutWeekBars(weekDays, byDate, MES_MAX_LANES);
+    const cells = weekDays.map(iso=>`
+        <div class="cal-cell${iso.slice(0,7)!==month?" other":""}${iso===today?" today":""}${pastClass(iso)}"${calendarioNewAttrs(iso)}>
+          <div class="cal-daynum">${Number(iso.slice(8,10))}</div>
+        </div>`).join("");
+    const bars = placed.map(it=> calendarioBar(it, weekDays)).join("");
+    // El "+N" va en el carril siguiente al último: solo hay desborde
+    // cuando los maxLanes carriles ya están ocupados en esa columna.
+    const more = overflow.map((n,i)=> n
+      ? `<button type="button" class="cal-more" style="grid-column:${i+1};grid-row:${MES_MAX_LANES}" data-action="cal-open-day" data-date="${weekDays[i]}">+${n} ${t("más","more","mais","נוספים")}</button>`
+      : "").join("");
+    return `<div class="cal-week">
+        <div class="cal-week-cells">${cells}</div>
+        <div class="cal-week-bars">${bars}${more}</div>
       </div>`;
   }).join("");
   return `<div class="cal-month">
       <div class="cal-heads cols-${cols}">${heads}</div>
-      <div class="cal-cells cols-${cols}">${cells}</div>
+      <div class="cal-weeks cols-${cols}">${weeks}</div>
     </div>`;
 }
 
