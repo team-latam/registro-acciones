@@ -37,6 +37,14 @@ mano en Firebase Console → Firestore → Reglas, lo pruebe en el Simulador y
 haga clic en "Publicar". Avisarle explícitamente cada vez que el archivo
 cambie.
 
+**Cómo entregárselo (siempre, sin que lo pida):** cuando el archivo cambie,
+pegar el **contenido completo en un bloque de código en el chat**, listo
+para seleccionar y copiar de una. **No** mandarlo como archivo adjunto: eso
+lo obliga a abrirlo, copiar y pegar, que es un paso de más para algo que
+hace seguido. Va entero aunque el cambio sea de tres líneas — las reglas se
+publican reemplazando todo el archivo, no por partes. Después del bloque,
+decirle en una línea qué bloques son los nuevos.
+
 ## Verificación antes de cada commit
 
 1. Extraer el contenido del `<script type="module">` de `index.html` a un
