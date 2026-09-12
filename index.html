@@ -1107,7 +1107,17 @@
   .cal-cell.other .cal-daynum{ opacity:0.45; }
   .cal-cell[data-action]{ cursor:pointer; }
   .cal-cell[data-action]:hover{ background:var(--celeste-soft); }
-  .cal-daynum{ align-self:flex-start; min-width:22px; padding:2px 0; text-align:center; font-size:12px; font-weight:800; color:var(--ink-strong); }
+  .cal-dayhead{ display:flex; align-items:center; gap:5px; min-width:0; }
+  .cal-daynum{ flex:none; min-width:22px; padding:2px 0; text-align:center; font-size:12px; font-weight:800; color:var(--ink-strong); }
+  /* Feriado en modo "marca en el día": al lado del número y en chico, para
+     no comerle lugar a los eventos de abajo. */
+  .cal-holiday{
+    flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    font-size:10px; font-weight:700; color:var(--celeste-dark);
+  }
+  .cal-cell.holiday{ background:var(--celeste-soft); }
+  .cal-cell.other.holiday{ background:var(--surface-alt); }
+  .cal-bar.holiday{ background:transparent; color:var(--celeste-dark); font-weight:700; cursor:default; }
   .cal-cell.today .cal-daynum{ background:var(--celeste-dark); color:#fff; border-radius:999px; }
   .cal-chip{
     display:flex; align-items:center; gap:4px; width:100%; text-align:start; border:none; cursor:pointer;
@@ -4976,6 +4986,7 @@ function afterRenderView(){
   if(state.view === "paises" && state.paisesSubview === "mapa" && !CONFIG_IS_PLACEHOLDER){
     initOrUpdateMap();
   }
+  if(state.view === "calendario") ensureHolidays();
   if(state.view === "calendario" && state.calendarioSubview !== "mes"){
     const body = document.getElementById("calGridBody");
     if(body){
@@ -5755,6 +5766,89 @@ function initOrUpdateMap(){
 }
 
 /* ======================================================================
+   FERIADOS (calendarios públicos de Google)
+   ======================================================================
+   Google publica un calendario de feriados por país y uno de festividades
+   judías, y son PÚBLICOS: se leen con la misma API key que ya usa el sync
+   (CALENDAR_API_KEY), sin login ni permisos. Por eso no hay ninguna tabla
+   de fechas en este repo: una tabla propia habría que cargarla y
+   mantenerla año a año, y las festividades judías además necesitan el
+   calendario hebreo.
+
+   Si la red falla (o la key deja de servir) no pasa nada: el mes se
+   dibuja igual, sin feriados. Nunca rompe el calendario.
+   ====================================================================== */
+const HOLIDAY_CAL = {
+  "Argentina":"es.ar", "Chile":"es.cl", "Uruguay":"es.uy", "Paraguay":"es.py",
+  "Brasil":"pt.br", "México":"es.mx", "Guatemala":"es.gt", "Belice":"en.bz",
+  "Honduras":"es.hn", "El Salvador":"es.sv", "Nicaragua":"es.ni", "Costa Rica":"es.cr",
+  "Panamá":"es.pa", "Colombia":"es.co", "Venezuela":"es.ve", "Ecuador":"es.ec",
+  "Perú":"es.pe", "Bolivia":"es.bo", "Guyana":"en.gy", "Surinam":"nl.sr",
+  "Cuba":"es.cu", "República Dominicana":"es.do", "Haití":"fr.ht", "Jamaica":"en.jm",
+  "Trinidad y Tobago":"en.tt", "Bahamas":"en.bs", "Barbados":"en.bb", "Puerto Rico":"es.pr",
+  "Aruba":"nl.aw", "Curazao":"nl.cw", "Islas Caimán":"en.ky", "Santa Lucía":"en.lc",
+  "Granada":"en.gd", "San Vicente y las Granadinas":"en.vc", "Antigua y Barbuda":"en.ag",
+  "Dominica":"en.dm", "San Cristóbal y Nieves":"en.kn", "Bermudas":"en.bm",
+  "Turcas y Caicos":"en.tc", "Israel":"iw.il",
+};
+const JEWISH_CAL = "en.judaism";
+function holidayCalendarId(key){ return `${key}#holiday@group.v.calendar.google.com`; }
+// Países que Google tiene y que además están en el Registro. Los del
+// listado que Google no publica (territorios chicos) simplemente no
+// aparecen como opción, en vez de ofrecer algo que después no trae nada.
+function holidayCountryOptions(){
+  return COUNTRIES.filter(c => HOLIDAY_CAL[c.name]).map(c => ({ key:c.name, label:countryLabel(c.name) }));
+}
+
+// fecha ISO -> [{name, key}]. Se completa de a un calendario por vez y el
+// render se dispara cuando llega cada uno.
+let holidaysByDate = {};
+const holidayFetched = new Set();
+function holidayCalendarsWanted(){
+  const p = prefs();
+  if(p.holidayMode === "off") return [];
+  const keys = (p.holidayCountries || []).map(name => HOLIDAY_CAL[name]).filter(Boolean);
+  if(p.holidayJewish) keys.push(JEWISH_CAL);
+  return [...new Set(keys)];
+}
+async function ensureHolidays(){
+  if(CONFIG_IS_PLACEHOLDER) return;
+  const year = Number(calendarioAnchor().slice(0,4));
+  const wanted = holidayCalendarsWanted();
+  for(const key of wanted){
+    const tag = `${key}:${year}`;
+    if(holidayFetched.has(tag)) continue;
+    holidayFetched.add(tag);   // se marca ANTES del fetch: si falla, no se reintenta en cada render
+    try{
+      const params = new URLSearchParams({
+        key: CALENDAR_API_KEY, singleEvents:"true", maxResults:"250",
+        timeMin: `${year-1}-12-01T00:00:00Z`, timeMax: `${year+1}-02-01T00:00:00Z`,
+      });
+      const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(holidayCalendarId(key))}/events?${params}`);
+      if(!res.ok) throw new Error(`HTTP ${res.status}`);
+      const body = await res.json();
+      (body.items||[]).forEach(ev=>{
+        const date = ev.start && ev.start.date;
+        if(!date || !ev.summary) return;
+        (holidaysByDate[date] = holidaysByDate[date] || []).push({ name: ev.summary, key });
+      });
+      render();
+    }catch(err){
+      // Sin feriados se sigue: el calendario no depende de esto.
+      console.warn("No se pudieron traer los feriados de", key, err.message);
+    }
+  }
+}
+// Se filtra por los calendarios activos AHORA (y no se borra lo ya
+// bajado): apagar un país lo saca de la vista al instante, y volver a
+// prenderlo no vuelve a pedir nada.
+function holidaysOn(iso){
+  if(prefs().holidayMode === "off") return [];
+  const wanted = new Set(holidayCalendarsWanted());
+  return (holidaysByDate[iso] || []).filter(h => wanted.has(h.key));
+}
+
+/* ======================================================================
    RENDER: Configuración (de cada persona, no del equipo)
    ======================================================================
    Ojo con el nombre: la solapa "Administrar" (solo admin) configura cosas
@@ -5767,6 +5861,7 @@ function configSections(){
   return [
     { key:"calendario", label:t("Calendario","Calendar","Calendário","יומן") },
     { key:"notificaciones", label:t("Notificaciones","Notifications","Notificações","התראות") },
+    { key:"feriados", label:t("Feriados","Holidays","Feriados","חגים") },
   ];
 }
 // Cuánto antes avisar. 0 = no avisar, y apaga la sección entera.
@@ -5783,7 +5878,9 @@ function notifyLeadOptions(){
 function renderConfiguracionView(){
   const secs = configSections();
   const sec = secs.some(s=>s.key === state.configSection) ? state.configSection : secs[0].key;
-  const body = sec === "notificaciones" ? renderConfigNotificacionesSection() : renderConfigCalendarioSection();
+  const body = sec === "notificaciones" ? renderConfigNotificacionesSection()
+    : sec === "feriados" ? renderConfigFeriadosSection()
+    : renderConfigCalendarioSection();
   return `
     <div class="preferencias-view">
       ${secs.length > 1 ? `<div class="pref-subnav">${secs.map(s=>`
@@ -5845,6 +5942,39 @@ function prefChips(prefKey, items, active){
   return `<div class="pref-chips">${items.map(it=>`
       <span class="chip-toggle${active.includes(it.key)?" active":""}" data-action="pref-toggle-list" data-pref="${prefKey}" data-key="${esc(it.key)}">${it.icon ? it.icon + " " : ""}${esc(it.label)}</span>`).join("")}
     </div>`;
+}
+function renderConfigFeriadosSection(){
+  const p = prefs();
+  const modes = [
+    { v:"sutil",  label:t("Marca en el día","Mark on the day","Marca no dia","סימון ביום") },
+    { v:"evento", label:t("Como un evento más","As another event","Como mais um evento","כאירוע נוסף") },
+    { v:"off",    label:t("No mostrar","Don't show","Não mostrar","לא להציג") },
+  ];
+  const modeSel = `<select data-pref="holidayMode">
+      ${modes.map(m=>`<option value="${m.v}" ${(p.holidayMode||"sutil")===m.v?"selected":""}>${esc(m.label)}</option>`).join("")}
+    </select>`;
+  return `
+      <div class="hint" style="margin-bottom:16px;">${t(
+        "Los feriados salen de los calendarios públicos de Google, así que se actualizan solos y no hay ninguna lista que mantener acá. Si Google no responde, el calendario se dibuja igual, sin feriados.",
+        "Holidays come from Google's public calendars, so they update on their own and there's no list to maintain here. If Google doesn't answer, the calendar still renders, just without holidays.",
+        "Os feriados saem dos calendários públicos do Google, então se atualizam sozinhos e não há lista para manter aqui. Se o Google não responder, o calendário é desenhado igual, sem feriados.",
+        "החגים מגיעים מהיומנים הציבוריים של גוגל, כך שהם מתעדכנים לבד ואין רשימה לתחזק כאן. אם גוגל לא עונה, היומן מוצג כרגיל, בלי חגים."
+      )}</div>
+      <div class="settings-card">
+        ${prefRow("🎌", t("Cómo mostrarlos","How to show them","Como mostrá-los","איך להציג אותם"),
+          t("\"Marca en el día\" los pone en chico junto al número, sin competir con los eventos.","\"Mark on the day\" puts them small next to the number, without competing with events.","\"Marca no dia\" os coloca pequenos ao lado do número, sem competir com os eventos.","\"סימון ביום\" מציב אותם קטן ליד המספר, בלי להתחרות באירועים."),
+          modeSel)}
+        ${prefRow("✡️", t("Festividades judías","Jewish holidays","Festividades judaicas","חגים יהודיים"),
+          t("Rosh Hashaná, Pésaj, Januca y el resto del calendario hebreo.","Rosh Hashanah, Passover, Hanukkah and the rest of the Hebrew calendar.","Rosh Hashaná, Pessach, Chanucá e o resto do calendário hebraico.","ראש השנה, פסח, חנוכה ושאר הלוח העברי."),
+          prefSwitch("holidayJewish", !!p.holidayJewish))}
+      </div>
+      <div class="settings-card" style="margin-top:16px;">
+        <div class="setting-row" style="display:block;">
+          <div class="setting-label">${t("Feriados de estos países","Holidays from these countries","Feriados destes países","חגים מהמדינות האלה")}</div>
+          <div class="setting-sub" style="margin-bottom:10px;">${t("Elegí los que te interesen. Sin ninguno marcado no se muestra ningún feriado de país.","Pick the ones you care about. With none selected, no country holidays are shown.","Escolha os que te interessam. Sem nenhum marcado, não se mostra nenhum feriado de país.","בחר/י את אלה שמעניינים אותך. אם לא נבחר אף אחד, לא יוצגו חגי מדינה.")}</div>
+          ${prefChips("holidayCountries", holidayCountryOptions(), p.holidayCountries || [])}
+        </div>
+      </div>`;
 }
 function renderConfigNotificacionesSection(){
   const p = prefs();
@@ -6166,7 +6296,7 @@ function readableOn(hex){
 // no se pise con otro; los que no entran en maxLanes se cuentan por día
 // para el "+N" de esa celda. Es lo que permite dibujar el evento como UNA
 // barra continua en vez de repetir el mismo chip en cada día.
-function layoutWeekBars(weekDays, byDate, maxLanes){
+function layoutWeekBars(weekDays, byDate, maxLanes, extras){
   const cols = weekDays.length;
   const spans = new Map();
   weekDays.forEach((iso, i)=>{
@@ -6176,8 +6306,11 @@ function layoutWeekBars(weekDays, byDate, maxLanes){
       else spans.set(p.id, { post:p, from:i, to:i });
     });
   });
-  const items = [...spans.values()].sort((a,b)=>
-    a.from - b.from || (b.to - b.from) - (a.to - a.from) || calendarioCompare(a.post, b.post));
+  // Los feriados (si se muestran "como un evento más") van primero, así se
+  // quedan con el carril de arriba y no bailan de fila según qué eventos
+  // haya esa semana.
+  const items = (extras || []).concat([...spans.values()].sort((a,b)=>
+    a.from - b.from || (b.to - b.from) - (a.to - a.from) || calendarioCompare(a.post, b.post)));
   const lanes = [];
   const placed = [], overflow = new Array(cols).fill(0);
   items.forEach(it=>{
@@ -6220,6 +6353,11 @@ function overflowsIn(overflow, it){
 }
 
 function calendarioBar(it, weekDays){
+  if(it.holiday){
+    return `<span class="cal-bar holiday" style="grid-column:${it.from+1} / span 1;grid-row:${it.lane+1}" title="${esc(it.holiday)}">
+        <span class="cal-txt">🎌 ${esc(it.holiday)}</span>
+      </span>`;
+  }
   const p = it.post;
   const color = calendarioColor(p);
   const type = ACTIVITY_BY_KEY[p.activityType] || { icon:"✨" };
@@ -6259,11 +6397,24 @@ function renderCalendarioMes(anchor){
   const heads = days.slice(0, cols).map(iso=>`<div class="cal-head">${esc(fmtISO(iso,{weekday:"short"}))}</div>`).join("");
   const weeks = Array.from({length:6}, (_,w)=>{
     const weekDays = days.slice(w*cols, (w+1)*cols);
-    const { placed, overflow } = layoutWeekBars(weekDays, byDate, MES_MAX_LANES);
-    const cells = weekDays.map(iso=>`
-        <div class="cal-cell${iso.slice(0,7)!==month?" other":""}${iso===today?" today":""}${pastClass(iso)}"${calendarioNewAttrs(iso)}>
-          <div class="cal-daynum">${Number(iso.slice(8,10))}</div>
-        </div>`).join("");
+    const asEvent = prefs().holidayMode === "evento";
+    const extras = asEvent
+      ? weekDays.flatMap((iso,i)=> holidaysOn(iso).map(h=>({ holiday:h.name, from:i, to:i })))
+      : [];
+    const { placed, overflow } = layoutWeekBars(weekDays, byDate, MES_MAX_LANES, extras);
+    const cells = weekDays.map(iso=>{
+      // Marca sutil: el nombre del feriado al lado del número, en chico.
+      // Va en la celda y no en la grilla de barras porque ahí arriba no
+      // compite con ningún evento.
+      const hol = asEvent ? [] : holidaysOn(iso);
+      return `
+        <div class="cal-cell${iso.slice(0,7)!==month?" other":""}${iso===today?" today":""}${hol.length?" holiday":""}${pastClass(iso)}"${calendarioNewAttrs(iso)}>
+          <div class="cal-dayhead">
+            <span class="cal-daynum">${Number(iso.slice(8,10))}</span>
+            ${hol.length ? `<span class="cal-holiday" title="${esc(hol.map(h=>h.name).join(" · "))}">${esc(hol[0].name)}</span>` : ""}
+          </div>
+        </div>`;
+    }).join("");
     const bars = placed.map(it=> calendarioBar(it, weekDays)).join("");
     // El "+N" va en el carril siguiente al último: solo hay desborde
     // cuando los maxLanes carriles ya están ocupados en esa columna.
