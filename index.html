@@ -440,6 +440,26 @@
      un input solo) — con .setting-control-unit compartiendo la misma
      clase .setting-control, las tres cajas de Adjuntos miden lo mismo. */
   .setting-control{ flex:none; display:flex; align-items:center; gap:6px; width:96px; }
+  /* Los controles de Configuración (personal) son selects con texto, no
+     números de dos dígitos: necesitan más aire que los de Adjuntos. */
+  .setting-control-wide{ width:auto; min-width:96px; justify-content:flex-end; }
+  .setting-control-wide select{
+    border:1.5px solid var(--border); background:var(--card); color:var(--text);
+    border-radius:999px; padding:8px 14px; font-size:13px; font-weight:700; cursor:pointer;
+  }
+  .pref-switch{ position:relative; display:inline-block; width:46px; height:26px; flex:none; cursor:pointer; }
+  .pref-switch input{ position:absolute; opacity:0; width:0; height:0; }
+  .pref-slider{
+    position:absolute; inset:0; background:var(--border); border-radius:999px; transition:background .18s ease;
+  }
+  .pref-slider::before{
+    content:""; position:absolute; width:20px; height:20px; inset-block-start:3px; inset-inline-start:3px;
+    background:#fff; border-radius:50%; transition:transform .18s ease; box-shadow:0 1px 3px rgba(0,0,0,.3);
+  }
+  .pref-switch input:checked + .pref-slider{ background:var(--celeste-dark); }
+  .pref-switch input:checked + .pref-slider::before{ transform:translateX(20px); }
+  html[dir="rtl"] .pref-switch input:checked + .pref-slider::before{ transform:translateX(-20px); }
+  .pref-switch input:focus-visible + .pref-slider{ outline:2px solid var(--celeste); outline-offset:2px; }
   .setting-control input[type=number]{
     width:100%; border:1.5px solid var(--border); border-radius:8px; padding:8px 10px; font-size:14px;
     font-weight:700; text-align:center; background:var(--bg); font-family:inherit;
@@ -1041,10 +1061,16 @@
   .ad-num{ display:block; font-size:19px; font-weight:800; color:var(--ink-strong); }
   .agenda-events{ flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center; gap:4px; }
   .cal-month{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow); overflow:hidden; }
-  .cal-heads, .cal-cells{ display:grid; grid-template-columns:repeat(7, minmax(0,1fr)); }
+  /* 7 columnas, o 5 con los fines de semana apagados. Van como clase y no
+     como variable CSS porque nth-child() no acepta var() y hace falta para
+     sacarle el borde a la última columna de cada fila. */
+  .cal-heads, .cal-cells{ display:grid; }
+  .cal-heads.cols-7, .cal-cells.cols-7{ grid-template-columns:repeat(7, minmax(0,1fr)); }
+  .cal-heads.cols-5, .cal-cells.cols-5{ grid-template-columns:repeat(5, minmax(0,1fr)); }
   .cal-head{ padding:9px 6px; text-align:center; font-size:11.5px; font-weight:800; color:var(--text-muted); text-transform:uppercase; border-bottom:1px solid var(--border); }
   .cal-cell{ min-height:104px; padding:5px 5px 7px; display:flex; flex-direction:column; gap:3px; border-inline-end:1px solid var(--border); border-bottom:1px solid var(--border); }
-  .cal-cell:nth-child(7n){ border-inline-end:none; }
+  .cal-cells.cols-7 .cal-cell:nth-child(7n), .cal-cells.cols-5 .cal-cell:nth-child(5n){ border-inline-end:none; }
+  .cal-past{ opacity:0.5; }
   .cal-cell.other{ background:var(--surface-alt); }
   .cal-cell.other .cal-daynum{ opacity:0.45; }
   .cal-cell[data-action]{ cursor:pointer; }
@@ -1230,9 +1256,10 @@
       <button data-view="paises">Vistas</button>
       <button data-view="calendario">Calendario</button>
       <button data-view="memoria">Memoria</button>
+      <button data-view="configuracion">Configuración</button>
       <button data-view="auditoria" id="tabAuditoria" hidden>Actividad</button>
       <button data-view="solicitudes" id="tabSolicitudes" hidden>Usuarios<span id="pendingBadge"></span></button>
-      <button data-view="preferencias" id="tabPreferencias" hidden>Configuración</button>
+      <button data-view="preferencias" id="tabPreferencias" hidden>Administrar</button>
     </nav>
   </header>
   <main id="viewRoot"></main>
@@ -2193,6 +2220,8 @@ const state = {
     place: null,            // {kind:'country'|'city'|'zone', country?, city?, zone?}
   },
   paisesSubview: "lista",   // lista | mapa
+  configSection: "calendario", // sección abierta en la solapa Configuración
+  prefs: null,              // preferencias de ESTA persona; se llena abajo con DEFAULT_PREFS
   calendarioSubview: "mes", // mes | semana | dia
   calendarioAnchor: null,   // YYYY-MM-DD sobre el que está parado el Calendario; null = hoy
   preferenciasSection: "zonas", // zonas | tipos | lugares | calendar | adjuntos
@@ -2217,6 +2246,40 @@ state.auth = { status: "loading", user: null };
 state.accessRequests = []; // solo se llena para el admin
 state.auditLog = []; // solo se llena para el admin
 state.roster = []; // [{email, nickname}] — todo aprobado, para autocompletar @menciones
+
+/* ======================================================================
+   PREFERENCIAS PERSONALES (userPrefs/{email})
+   ======================================================================
+   Van en su PROPIA colección y no adentro de allowlist/{email}: ese doc lo
+   lee entero todo el equipo (state.roster, con onSnapshot), así que meter
+   ahí la configuración de cada uno haría que todos se bajen las
+   preferencias de todos en cada cambio del roster, y las dejaría a la
+   vista de cualquier aprobado. userPrefs/{email} lo lee y lo escribe
+   únicamente su dueño (ver firestore.rules).
+
+   Las listas vacías significan "todos/todas" a propósito: así el caso por
+   defecto no guarda nada y el documento arranca (y se queda) mínimo.
+   ====================================================================== */
+const DEFAULT_PREFS = {
+  // Calendario
+  weekStart: 0,            // 0 domingo | 1 lunes
+  showWeekends: true,
+  customDays: 4,           // cuántos días muestra la vista "N días"
+  dimPast: false,
+  // Feriados
+  holidayMode: "sutil",    // sutil | evento | off
+  holidayCountries: [],
+  holidayJewish: false,
+  // Notificaciones
+  notifyTypes: [],         // vacío = todos los tipos
+  notifyLead: 1440,        // minutos antes del evento
+  notifyOnlyMine: false,
+  notifyZones: [],         // vacío = todas las zonas
+  notifyReplies: true,
+  calendarReminders: false,
+};
+state.prefs = { ...DEFAULT_PREFS };
+function prefs(){ return state.prefs || DEFAULT_PREFS; }
 
 function isAuthorized(){ return state.auth.status === "approved" || state.auth.status === "admin"; }
 function isAdmin(){ return state.auth.status === "admin"; }
@@ -2938,6 +3001,7 @@ let unsubAuditLog = null;
 let unsubRoster = null;
 let unsubTerritoryConfig = null;
 let unsubPreferences = null;
+let unsubUserPrefs = null;
 
 function recomputeAuthStatus(){
   if(state.auth.status === "admin") return;
@@ -3020,8 +3084,10 @@ async function onAuthChanged(user){
     if(unsubRoster){ unsubRoster(); unsubRoster = null; }
     if(unsubTerritoryConfig){ unsubTerritoryConfig(); unsubTerritoryConfig = null; }
     if(unsubPreferences){ unsubPreferences(); unsubPreferences = null; }
+    if(unsubUserPrefs){ unsubUserPrefs(); unsubUserPrefs = null; }
     stopCalendarAutoSync();
     state.posts = []; state.repliesByPost = {}; state.loaded = false; state.roster = [];
+    state.prefs = { ...DEFAULT_PREFS };
     dataSubscribed = false;
   };
   unsubAllowlist = fb.onSnapshot(fb.doc(db, "allowlist", profile.email), snap=>{
@@ -3029,7 +3095,7 @@ async function onAuthChanged(user){
     recomputeAuthStatus();
     if(state.auth.allowlisted && !dataSubscribed){
       dataSubscribed = true; fatalError = null;
-      subscribeData(); subscribeRoster(); subscribeTerritoryConfig(); subscribePreferences();
+      subscribeData(); subscribeRoster(); subscribeTerritoryConfig(); subscribePreferences(); subscribeUserPrefs();
     } else if(!state.auth.allowlisted && dataSubscribed){
       // Revocación con la persona online: se cortan los listeners ANTES
       // de que fallen con permiso denegado. Antes quedaban corriendo, el
@@ -3182,6 +3248,28 @@ function subscribePreferences(){
     applyPreferencesConfig(snap.exists() ? snap.data() : null);
     render();
   }, err=>console.error("Error leyendo preferencias:", err));
+}
+
+// Preferencias de la persona logueada. Se escuchan (y no se leen una sola
+// vez) para que cambiarlas en la compu se vea en el celular sin recargar.
+function subscribeUserPrefs(){
+  const email = state.auth.user && state.auth.user.email;
+  if(!email) return;
+  unsubUserPrefs = fb.onSnapshot(fb.doc(db,"userPrefs",email), snap=>{
+    state.prefs = { ...DEFAULT_PREFS, ...(snap.exists() ? snap.data() : null) };
+    render();
+  }, err=>console.error("Error leyendo preferencias personales:", err));
+}
+// Se aplica en pantalla al toque y recién después se guarda: el onSnapshot
+// confirma (o corrige) cuando vuelve del servidor, y mientras tanto el
+// control no queda "pegado" esperando la ida y vuelta a Firestore.
+function savePrefs(patch){
+  state.prefs = { ...prefs(), ...patch };
+  render();
+  const email = state.auth.user && state.auth.user.email;
+  if(!email || !db) return;
+  fb.setDoc(fb.doc(db,"userPrefs",email), patch, { merge:true })
+    .catch(err=>console.error("Error guardando preferencias:", err));
 }
 function applyPreferencesConfig(cfg){
   applyActivityTypesConfig(cfg && cfg.activityTypes);
@@ -3791,9 +3879,10 @@ function applyStaticI18n(){
     paises: t("Vistas", "Views", "Vistas", "תצוגות"),
     calendario: t("Calendario", "Calendar", "Calendário", "יומן"),
     memoria: t("Memoria", "Memory", "Memória", "זיכרון"),
+    configuracion: t("Configuración", "Settings", "Configurações", "הגדרות"),
     auditoria: t("Actividad", "Activity", "Atividade", "פעילות"),
     solicitudes: t("Usuarios", "Users", "Usuários", "משתמשים"),
-    preferencias: t("Configuración", "Settings", "Configurações", "הגדרות"),
+    preferencias: t("Administrar", "Manage", "Administrar", "ניהול"),
   };
   document.querySelectorAll("#tabs button[data-view]").forEach(btn=>{
     const label = tabLabels[btn.dataset.view];
@@ -4135,6 +4224,7 @@ function doRender(){
   else if(state.view === "paises") html += renderPaisesView();
   else if(state.view === "calendario") html += renderCalendarioView();
   else if(state.view === "memoria") html += renderMemoriaView();
+  else if(state.view === "configuracion") html += renderConfiguracionView();
   else if(state.view === "solicitudes") html += renderAccesoView();
   else if(state.view === "auditoria") html += renderAuditoriaView();
   else if(state.view === "preferencias") html += renderPreferenciasView();
@@ -5526,6 +5616,81 @@ function initOrUpdateMap(){
 }
 
 /* ======================================================================
+   RENDER: Configuración (de cada persona, no del equipo)
+   ======================================================================
+   Ojo con el nombre: la solapa "Administrar" (solo admin) configura cosas
+   del EQUIPO — zonas, tipos, lugares, Calendar, adjuntos — y vive en
+   meta/preferences. Esta configura lo de UNA persona y vive en
+   userPrefs/{email}. Cada control lleva data-pref="<clave>" y lo guarda el
+   manejador genérico de "change", en vez de una rama por opción.
+   ====================================================================== */
+function configSections(){
+  return [
+    { key:"calendario", label:t("Calendario","Calendar","Calendário","יומן") },
+  ];
+}
+function renderConfiguracionView(){
+  const secs = configSections();
+  const sec = secs.some(s=>s.key === state.configSection) ? state.configSection : secs[0].key;
+  const body = renderConfigCalendarioSection();
+  return `
+    <div class="preferencias-view">
+      ${secs.length > 1 ? `<div class="pref-subnav">${secs.map(s=>`
+        <button type="button" class="chip-toggle${sec===s.key?" active":""}" data-action="config-section" data-key="${s.key}">${esc(s.label)}</button>`).join("")}</div>` : ""}
+      ${body}
+    </div>`;
+}
+function prefSwitch(key, on){
+  return `<label class="pref-switch"><input type="checkbox" data-pref="${key}" ${on?"checked":""}><span class="pref-slider"></span></label>`;
+}
+function prefRow(icon, label, sub, control){
+  return `<div class="setting-row">
+      <span class="setting-icon">${icon}</span>
+      <div class="setting-text">
+        <div class="setting-label">${esc(label)}</div>
+        ${sub ? `<div class="setting-sub">${esc(sub)}</div>` : ""}
+      </div>
+      <div class="setting-control setting-control-wide">${control}</div>
+    </div>`;
+}
+function renderConfigCalendarioSection(){
+  const p = prefs();
+  // Los nombres de los días salen del navegador con dos fechas fijas
+  // conocidas (1970-01-04 fue domingo), para no hardcodear una lista por
+  // idioma que después se despegue de dateLocale().
+  const domingo = fmtISO("1970-01-04", { weekday:"long" });
+  const lunes = fmtISO("1970-01-05", { weekday:"long" });
+  const weekStartSel = `<select data-pref="weekStart" data-pref-num="1">
+      <option value="0" ${p.weekStart===1?"":"selected"}>${esc(domingo)}</option>
+      <option value="1" ${p.weekStart===1?"selected":""}>${esc(lunes)}</option>
+    </select>`;
+  const daysSel = `<select data-pref="customDays" data-pref-num="1">
+      ${[2,3,4,5,6,7].map(n=>`<option value="${n}" ${p.customDays===n?"selected":""}>${n} ${esc(t("días","days","dias","ימים"))}</option>`).join("")}
+    </select>`;
+  return `
+      <div class="hint" style="margin-bottom:16px;">${t(
+        "Estas opciones son tuyas: no cambian lo que ven los demás, y te siguen a cualquier dispositivo donde entres con tu cuenta.",
+        "These options are yours: they don't change what others see, and they follow you to any device you sign in from.",
+        "Estas opções são suas: não mudam o que os outros veem, e te acompanham em qualquer dispositivo onde você entrar.",
+        "האפשרויות האלה שלך: הן לא משנות את מה שאחרים רואים, והן מלוות אותך בכל מכשיר שבו תיכנס/י עם החשבון שלך."
+      )}</div>
+      <div class="settings-card">
+        ${prefRow("📅", t("Comenzar la semana el","Start the week on","Começar a semana em","תחילת השבוע ביום"),
+          t("Afecta Semana, Mes y los mini-meses de la vista Año.","Affects Week, Month and the mini-months in the Year view.","Afeta Semana, Mês e os mini-meses da vista Ano.","משפיע על שבוע, חודש והחודשים הקטנים בתצוגת שנה."),
+          weekStartSel)}
+        ${prefRow("🗓️", t("Mostrar fines de semana","Show weekends","Mostrar fins de semana","הצגת סופי שבוע"),
+          t("Al apagarlo, sábado y domingo se esconden en Semana y Mes.","When off, Saturday and Sunday are hidden in Week and Month.","Ao desligar, sábado e domingo se escondem em Semana e Mês.","בכיבוי, שבת וראשון מוסתרים בשבוע ובחודש."),
+          prefSwitch("showWeekends", p.showWeekends !== false))}
+        ${prefRow("🔢", t("Vista personalizada","Custom view","Vista personalizada","תצוגה מותאמת"),
+          t("Cuántos días muestra esa opción del selector de vista.","How many days that option in the view selector shows.","Quantos dias mostra essa opção do seletor de vista.","כמה ימים מציגה האפשרות הזו בבורר התצוגה."),
+          daysSel)}
+        ${prefRow("🌙", t("Atenuar eventos pasados","Dim past events","Esmaecer eventos passados","עמעום אירועים שעברו"),
+          t("Los eventos anteriores a hoy se ven más tenues, para que resalte lo que viene.","Events before today look fainter, so what's coming stands out.","Os eventos anteriores a hoje ficam mais tênues, para destacar o que vem.","אירועים שלפני היום נראים דהויים, כדי שיבלוט מה שמגיע."),
+          prefSwitch("dimPast", !!p.dimPast))}
+      </div>`;
+}
+
+/* ======================================================================
    RENDER: Calendario
    ======================================================================
    Vista propia sobre state.posts, no un <iframe> de Google Calendar. Los
@@ -5566,12 +5731,30 @@ function addMonthsISO(iso, n){
   return d.toISOString().slice(0,10);
 }
 function calendarioAnchor(){ return state.calendarioAnchor || todayISO(); }
-function weekStartISO(iso){ return addDaysISO(iso, -isoDow(iso)); }
+// Arranque de semana configurable (0 domingo, 1 lunes): cuántos días hay
+// que retroceder desde iso hasta el comienzo de SU semana.
+function weekStartISO(iso){
+  const ws = prefs().weekStart === 1 ? 1 : 0;
+  return addDaysISO(iso, -(((isoDow(iso) - ws) + 7) % 7));
+}
+// Con los fines de semana apagados, sábado y domingo salen de la grilla.
+function calendarioVisibleDays(days){
+  if(prefs().showWeekends !== false) return days;
+  return days.filter(iso=>{ const d = isoDow(iso); return d !== 0 && d !== 6; });
+}
+// Cuántos días muestra la vista "N días" (configurable, 2 a 7).
+function customDaysCount(){
+  const n = Number(prefs().customDays);
+  return n >= 2 && n <= 7 ? n : 4;
+}
+// Para atenuar lo que ya pasó, si la persona lo pidió.
+function pastClass(iso){ return prefs().dimPast && iso < todayISO() ? " cal-past" : ""; }
 // 1970-01-04 fue domingo: sirve de base fija para sacar los nombres de
 // los días ya traducidos por el navegador, sin hardcodear una lista por
 // idioma (y sin que se desincronice de dateLocale()).
 function weekdayNames(fmt){
-  return Array.from({length:7}, (_,i)=> fmtISO(addDaysISO("1970-01-04", i), { weekday:fmt }));
+  const base = addDaysISO("1970-01-04", prefs().weekStart === 1 ? 1 : 0);
+  return Array.from({length:7}, (_,i)=> fmtISO(addDaysISO(base, i), { weekday:fmt }));
 }
 
 // Mapa fecha ISO -> eventos de ese día, ya recortado a la ventana que se
@@ -5621,7 +5804,7 @@ function calendarioChip(p, iso){
   // La hora solo en el día en que arranca: en los días del medio de un
   // evento de varios días no significa nada.
   const time = p.startTime && (p.startDate || p.date) === iso ? `<b>${esc(p.startTime)}</b> ` : "";
-  return `<button type="button" class="cal-chip${p.cancelled?" cancelled":""}" data-action="cal-open" data-post-id="${esc(p.id)}" title="${esc(label)}">
+  return `<button type="button" class="cal-chip${p.cancelled?" cancelled":""}${pastClass(iso)}" data-action="cal-open" data-post-id="${esc(p.id)}" title="${esc(label)}">
       <span class="cal-dot" style="background:${calendarioColor(p)}"></span><span class="cal-txt">${type.icon} ${time}${esc(label)}</span>
     </button>`;
 }
@@ -5637,7 +5820,7 @@ function calendarioViews(){
     { key:"mes",    sc:"M", label:t("Mes","Month","Mês","חודש") },
     { key:"anio",   sc:"Y", label:t("Año","Year","Ano","שנה") },
     { key:"agenda", sc:"A", label:t("Agenda","Schedule","Agenda","סדר יום") },
-    { key:"4dias",  sc:"X", label:t("4 días","4 days","4 dias","4 ימים") },
+    { key:"4dias",  sc:"X", label:t("{n} días","{n} days","{n} dias","{n} ימים",{n:customDaysCount()}) },
   ];
 }
 let calViewMenuOpen = false;
@@ -5680,16 +5863,23 @@ function renderCalendarioView(){
   // Día, 4 días y Semana son la MISMA grilla horaria con distinta cantidad
   // de columnas; solo Semana se alinea al domingo (las otras dos arrancan
   // en el día parado, como hace Google).
-  const n = sub === "dia" ? 1 : sub === "4dias" ? 4 : 7;
+  const n = sub === "dia" ? 1 : sub === "4dias" ? customDaysCount() : 7;
   const start = sub === "semana" ? weekStartISO(anchor) : anchor;
-  return toolbar + renderCalendarioGrid(Array.from({length:n}, (_,i)=> addDaysISO(start, i)));
+  let days = Array.from({length:n}, (_,i)=> addDaysISO(start, i));
+  if(sub !== "dia"){
+    // Si la ventana entera cae en fin de semana, se muestra igual: mejor
+    // eso que una grilla sin ninguna columna.
+    const visible = calendarioVisibleDays(days);
+    if(visible.length) days = visible;
+  }
+  return toolbar + renderCalendarioGrid(days);
 }
 
 function calendarioTitle(sub, anchor){
   if(sub === "anio") return fmtISO(anchor, { year:"numeric" });
   if(sub === "mes" || sub === "agenda") return fmtISO(anchor, { month:"long", year:"numeric" });
   if(sub === "dia") return fmtISO(anchor, { weekday:"long", day:"numeric", month:"long", year:"numeric" });
-  const n = sub === "4dias" ? 4 : 7;
+  const n = sub === "4dias" ? customDaysCount() : 7;
   const a = sub === "semana" ? weekStartISO(anchor) : anchor;
   const b = addDaysISO(a, n - 1);
   return `${fmtISO(a,{day:"numeric",month:"short"})} – ${fmtISO(b,{day:"numeric",month:"short",year:"numeric"})}`;
@@ -5699,7 +5889,7 @@ function calendarioStep(sub, anchor, step){
   if(sub === "mes" || sub === "agenda") return addMonthsISO(anchor, step);
   if(sub === "anio") return addMonthsISO(anchor, step * 12);
   if(sub === "semana") return addDaysISO(anchor, step * 7);
-  if(sub === "4dias") return addDaysISO(anchor, step * 4);
+  if(sub === "4dias") return addDaysISO(anchor, step * customDaysCount());
   return addDaysISO(anchor, step);
 }
 
@@ -5714,7 +5904,7 @@ function renderCalendarioAnio(anchor){
   const dows = weekdayNames("narrow");
   const months = Array.from({length:12}, (_,mi)=>{
     const first = `${year}-${String(mi+1).padStart(2,"0")}-01`;
-    const gridStart = addDaysISO(first, -isoDow(first));
+    const gridStart = weekStartISO(first);
     const month = first.slice(0,7);
     const cells = Array.from({length:42}, (_,i)=>{
       const iso = addDaysISO(gridStart, i);
@@ -5758,26 +5948,30 @@ function renderCalendarioAgenda(anchor){
 // no cambia de alto al pasar de mes y el contenido no salta.
 function renderCalendarioMes(anchor){
   const first = anchor.slice(0,8) + "01";
-  const gridStart = addDaysISO(first, -isoDow(first));
-  const gridEnd = addDaysISO(gridStart, 41);
-  const byDate = calendarioEventsByDate(gridStart, gridEnd);
+  const gridStart = weekStartISO(first);
+  const all = Array.from({length:42}, (_,i)=> addDaysISO(gridStart, i));
+  const days = calendarioVisibleDays(all);
+  const cols = days.length / 6;   // 7, o 5 con los fines de semana apagados
+  const byDate = calendarioEventsByDate(gridStart, all[41]);
   const month = first.slice(0,7);
   const today = todayISO();
-  const heads = weekdayNames("short").map(n=>`<div class="cal-head">${esc(n)}</div>`).join("");
-  const cells = Array.from({length:42}, (_,i)=>{
-    const iso = addDaysISO(gridStart, i);
+  // Los encabezados salen de la primera fila YA filtrada: así respetan el
+  // arranque de semana y el apagado de fines de semana sin recalcular nada
+  // ni poder desincronizarse de las celdas de abajo.
+  const heads = days.slice(0, cols).map(iso=>`<div class="cal-head">${esc(fmtISO(iso,{weekday:"short"}))}</div>`).join("");
+  const cells = days.map(iso=>{
     const evs = byDate[iso] || [];
     const shown = evs.slice(0, 3);
     const rest = evs.length - shown.length;
-    return `<div class="cal-cell${iso.slice(0,7)!==month?" other":""}${iso===today?" today":""}"${calendarioNewAttrs(iso)}>
+    return `<div class="cal-cell${iso.slice(0,7)!==month?" other":""}${iso===today?" today":""}${pastClass(iso)}"${calendarioNewAttrs(iso)}>
         <div class="cal-daynum">${Number(iso.slice(8,10))}</div>
         ${shown.map(p=>calendarioChip(p, iso)).join("")}
         ${rest > 0 ? `<button type="button" class="cal-more" data-action="cal-open-day" data-date="${iso}">+${rest} ${t("más","more","mais","נוספים")}</button>` : ""}
       </div>`;
   }).join("");
   return `<div class="cal-month">
-      <div class="cal-heads">${heads}</div>
-      <div class="cal-cells">${cells}</div>
+      <div class="cal-heads cols-${cols}">${heads}</div>
+      <div class="cal-cells cols-${cols}">${cells}</div>
     </div>`;
 }
 
@@ -5814,7 +6008,7 @@ function calendarioBlock(it){
   const top = (it.from / 1440) * 100;
   const height = Math.max(1.7, ((it.to - it.from) / 1440) * 100);
   const width = 100 / it.cols;
-  return `<button type="button" class="cal-block${p.cancelled?" cancelled":""}" data-action="cal-open" data-post-id="${esc(p.id)}"
+  return `<button type="button" class="cal-block${p.cancelled?" cancelled":""}${pastClass(it.iso)}" data-action="cal-open" data-post-id="${esc(p.id)}"
       style="top:${top}%;height:${height}%;inset-inline-start:${it.col*width}%;width:${width}%;border-inline-start-color:${calendarioColor(p)}">
       <b>${esc(p.startTime)}</b> ${esc(calendarioLabel(p))}
     </button>`;
@@ -5839,7 +6033,7 @@ function renderCalendarioGrid(days){
   const cols = days.map(iso=>{
     const timed = (byDate[iso]||[]).filter(p=>p.startTime);
     const slots = Array.from({length:24}, (_,h)=>`<div class="cal-slot"${calendarioNewAttrs(iso,h)}></div>`).join("");
-    return `<div class="cal-gcol">${slots}${layoutTimedEvents(timed).map(calendarioBlock).join("")}</div>`;
+    return `<div class="cal-gcol">${slots}${layoutTimedEvents(timed).map(it=>calendarioBlock({ ...it, iso })).join("")}</div>`;
   }).join("");
   return `<div class="cal-grid" style="--cal-cols:${days.length}">
       <div class="cal-grid-row cal-grid-head"><div class="cal-gutter"></div><div class="cal-grid-cols">${heads}</div></div>
@@ -7115,6 +7309,8 @@ document.addEventListener("click", e=>{
     memoriaVisibleCount += PAGE_SIZE; render();
   } else if(action === "paises-subview"){
     state.paisesSubview = el.dataset.key; state.countryDrill = null; render();
+  } else if(action === "config-section"){
+    state.configSection = el.dataset.key; render();
   } else if(action === "toggle-fab"){
     setFab(!fabOpen);
   } else if(action === "new-evento"){
@@ -7467,6 +7663,16 @@ document.addEventListener("input", e=>{
 
 document.addEventListener("change", e=>{
   const el = e.target;
+  // Cualquier control con data-pref guarda esa clave de las preferencias
+  // personales. data-pref-num marca los que son número (los <select>
+  // devuelven siempre string).
+  if(el.dataset && el.dataset.pref){
+    const val = el.type === "checkbox" ? el.checked
+      : el.dataset.prefNum ? Number(el.value)
+      : el.value;
+    savePrefs({ [el.dataset.pref]: val });
+    return;
+  }
   if(el.name === "cType"){ composerDraft.activityType = el.value; render(); }
   else if(el.id === "cStartDate"){
     composerDraft.startDate = el.value;
