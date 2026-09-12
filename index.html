@@ -421,6 +421,17 @@
   }
   .zone-swatch:hover{ box-shadow:0 0 0 3px rgba(0,0,0,0.08); }
   .zone-swatch input[type=color]{ position:absolute; inset:0; width:100%; height:100%; padding:0; border:none; cursor:pointer; opacity:0; }
+  /* Muestra + hexadecimal escribible. El campo va siempre en LTR aunque la
+     página esté en hebreo: "#b89ef0" no es texto, es un código. */
+  .color-control{ display:flex; align-items:center; gap:8px; flex:none; }
+  .color-hex{
+    width:84px; flex:none; direction:ltr; text-align:center; text-transform:lowercase;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:12.5px;
+    padding:5px 6px; border:1px solid var(--border); border-radius:var(--radius-sm);
+    background:var(--card); color:var(--ink-strong);
+  }
+  .color-hex:hover{ border-color:var(--celeste-dark); }
+  .color-hex:focus{ outline:none; border-color:var(--celeste-dark); box-shadow:0 0 0 3px var(--celeste-soft); }
   .zone-name{
     font-size:16px; font-weight:800; color:var(--ink-strong); border:none; background:transparent;
     font-family:inherit; padding:2px 0; border-bottom:1.5px solid transparent; flex:1; min-width:0;
@@ -2002,6 +2013,33 @@ function safeFileDataUrl(u){
 // produce el <input type="color">), cualquier otra cosa cae al gris.
 function safeColor(c){
   return typeof c === "string" && /^#[0-9a-fA-F]{6}$/.test(c) ? c : "#999999";
+}
+// Acepta lo que la gente realmente escribe: con o sin "#", en mayúsculas o
+// minúsculas, y la forma corta de 3 dígitos (#f0a -> #ff00aa). Devuelve
+// siempre #rrggbb en minúscula, o null si no hay forma de leerlo como
+// color — nunca un valor a medias que después rompa un style="".
+function normalizeHex(raw){
+  const v = String(raw||"").trim().replace(/^#/, "");
+  if(/^[0-9a-fA-F]{3}$/.test(v)) return ("#" + v.split("").map(c=>c+c).join("")).toLowerCase();
+  if(/^[0-9a-fA-F]{6}$/.test(v)) return ("#" + v).toLowerCase();
+  return null;
+}
+// Control de color único para toda la app: la muestra (que abre el
+// selector nativo del sistema) más el hexadecimal escribible al lado.
+// Sin el campo de texto no hay forma de pegar un color de marca exacto ni
+// de copiar el que ya está puesto — había que acertarlo a ojo en el
+// degradé. Los dos comparten el mismo data-* de destino; el de texto se
+// distingue con data-color-hex y se normaliza antes de guardarse.
+function colorControl(value, attrs, ariaLabel){
+  const hex = safeColor(value);
+  return `<div class="color-control">
+      <label class="zone-swatch" style="background:${hex}" title="${esc(t("Cambiar color","Change color","Trocar cor","שינוי צבע"))}">
+        <input type="color" ${attrs} value="${hex}" aria-label="${esc(ariaLabel)}">
+      </label>
+      <input type="text" class="color-hex" dir="ltr" spellcheck="false" autocapitalize="off"
+             ${attrs} data-color-hex value="${hex}" maxlength="7" size="7"
+             aria-label="${esc(t("Código hexadecimal de {x}","Hex code for {x}","Código hexadecimal de {x}","קוד הקסדצימלי של {x}",{x:ariaLabel}))}">
+    </div>`;
 }
 function hexToRgb(c){
   const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(String(c||""));
@@ -5083,9 +5121,8 @@ function renderZonasSection(){
           .sort((a,b)=>a.localeCompare(b,"es"));
         return `<div class="zone-section">
           <div class="zone-bar" style="background:${safeColor(z.color)}14;">
-            <label class="zone-swatch" style="background:${safeColor(z.color)}" title="${esc(t("Cambiar color","Change color","Trocar cor","שינוי צבע"))}">
-              <input type="color" data-action="zonas-color" data-key="${esc(key)}" value="${safeColor(z.color)}">
-            </label>
+            ${colorControl(z.color, `data-action="zonas-color" data-key="${esc(key)}"`,
+                           t("la zona {z}","the {z} zone","a zona {z}","אזור {z}",{z:z.label}))}
             <input type="text" class="zone-name" data-action="zonas-label" data-key="${esc(key)}" value="${esc(z.label)}" maxlength="30">
             <span class="zone-count">${count === 1 ? t("1 país","1 country","1 país","מדינה אחת") : t("{n} países","{n} countries","{n} países","{n} מדינות",{n:count})}</span>
             <button type="button" class="zone-rm" data-action="zonas-remove-zone" data-key="${key}" ${count>0?`disabled title="${esc(t("Reasigná primero los países de esta zona","First reassign this zone's countries","Reatribua primeiro os países desta zona",".קודם הקצה/י מחדש את המדינות של אזור זה"))}"`:`title="${esc(t("Eliminar zona","Delete zone","Excluir zona","מחיקת אזור"))}"`}>✕</button>
@@ -6164,7 +6201,12 @@ function holidayCalendarId(key){ return `${key}#holiday@group.v.calendar.google.
 // listado que Google no publica (territorios chicos) simplemente no
 // aparecen como opción, en vez de ofrecer algo que después no trae nada.
 function holidayCountryOptions(){
-  return COUNTRIES.filter(c => HOLIDAY_CAL[c.name]).map(c => ({ key:c.name, label:countryLabel(c.name) }));
+  // Alfabético por el nombre que se VE (no por la clave interna): en
+  // hebreo o inglés el orden tiene que seguir siendo el del idioma que
+  // está mirando la persona, si no la lista parece desordenada.
+  return COUNTRIES.filter(c => HOLIDAY_CAL[c.name])
+    .map(c => ({ key:c.name, label:countryLabel(c.name) }))
+    .sort((a,b) => a.label.localeCompare(b.label, currentLang()));
 }
 
 // fecha ISO -> [{name, key}]. Se completa de a un calendario por vez y el
@@ -6291,9 +6333,7 @@ function prefColorRow(prefKey, icon, label, sub){
         ${warn}
       </div>
       <div class="setting-control setting-control-wide">
-        <label class="zone-swatch" style="background:${value}" title="${esc(t("Cambiar color","Change color","Trocar cor","שינוי צבע"))}">
-          <input type="color" data-pref="${prefKey}" value="${value}" aria-label="${esc(label)}">
-        </label>
+        ${colorControl(value, `data-pref="${prefKey}"`, label)}
       </div>
     </div>`;
 }
@@ -8557,6 +8597,25 @@ document.addEventListener("input", e=>{
 
 document.addEventListener("change", e=>{
   const el = e.target;
+  // El campo de hexadecimal lleva el MISMO data-* que la muestra de color
+  // que tiene al lado, así que alcanza con normalizar el valor acá y
+  // dejarlo seguir por la rama que le corresponda: no hay un segundo
+  // camino que mantener sincronizado. Si lo escrito no es un color, se
+  // avisa y se vuelve a pintar con el valor guardado — no se guarda basura.
+  if(el.dataset && el.dataset.colorHex !== undefined){
+    const hex = normalizeHex(el.value);
+    if(!hex){
+      showCalendarNotice({ ok:false, message: t(
+        "«{v}» no es un color. Va en hexadecimal: #RRGGBB (por ejemplo #b89ef0).",
+        "\u201c{v}\u201d isn't a colour. It goes in hex: #RRGGBB (for example #b89ef0).",
+        "«{v}» não é uma cor. Vai em hexadecimal: #RRGGBB (por exemplo #b89ef0).",
+        "\u00ab{v}\u00bb אינו צבע. הפורמט הוא הקסדצימלי: ‎#RRGGBB (למשל ‎#b89ef0).",
+        { v: el.value.trim() }) });
+      render();
+      return;
+    }
+    el.value = hex;
+  }
   // Cualquier control con data-pref guarda esa clave de las preferencias
   // personales. data-pref-num marca los que son número (los <select>
   // devuelven siempre string).
@@ -8565,7 +8624,7 @@ document.addEventListener("change", e=>{
       : el.dataset.prefNum ? Number(el.value)
       : el.value;
     savePrefs({ [el.dataset.pref]: val });
-    if(el.type === "color"){
+    if(el.type === "color" || el.dataset.colorHex !== undefined){
       const clash = similarColorTo(val, el.dataset.pref);
       if(clash){
         showCalendarNotice({ ok:false, message: t(
