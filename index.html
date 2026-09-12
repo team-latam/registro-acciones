@@ -137,6 +137,22 @@
   #app{ min-height:100vh; display:flex; flex-direction:column; }
 
   /* ---------- Header ---------- */
+  /* El composer de Rutina se pega DEBAJO del header (que también es
+     sticky), así que necesita saber cuánto mide: --header-h lo escribe
+     syncHeaderHeight() en cada render y al cambiar el tamaño de pantalla,
+     porque el header cambia de alto cuando las solapas se van a dos
+     líneas. Un valor fijo acá se rompía en mobile. */
+  .quick-composer{
+    position:sticky; top:var(--header-h, 110px); z-index:30;
+    /* Sombra más marcada que la de una tarjeta común: al quedar fijo, el
+       feed le pasa por debajo y sin esto los dos blancos se confundían. */
+    box-shadow:0 6px 18px rgba(8,42,44,0.16);
+  }
+  /* En reposo, una sola línea. Se despliega al enfocarlo o si ya hay algo
+     cargado (.active). No se toca el display de cada parte: se las oculta
+     solo en reposo, y cada una vuelve a su display propio al desplegarse. */
+  .quick-composer:not(.active):not(:focus-within) .place-picker,
+  .quick-composer:not(.active):not(:focus-within) .reply-form-footer{ display:none; }
   header.topbar{
     background:linear-gradient(135deg, var(--petroleo), var(--petroleo-dark));
     color:#fff;
@@ -1120,7 +1136,9 @@
      elegido competiría con los chips de los eventos de ese mismo día. */
   .cal-cell.holiday{ background:var(--surface-alt); }
   .cal-bar.holiday{ background:transparent; font-weight:700; cursor:default; }
-  .pref-color{ width:46px; height:32px; padding:2px; border:1.5px solid var(--border); border-radius:8px; background:var(--card); cursor:pointer; }
+  /* Un poco más grande que el de la lista de zonas: acá es el control
+     principal de la fila, no un detalle al costado de un nombre. */
+  .setting-control-wide .zone-swatch{ width:30px; height:30px; border-radius:8px; }
   .pref-color-warn{ margin-top:6px; font-size:11.5px; font-weight:700; color:var(--danger); }
   .cal-cell.today .cal-daynum{ background:var(--celeste-dark); color:#fff; border-radius:999px; }
   .cal-chip{
@@ -5294,7 +5312,18 @@ function renderPreferenciasView(){
 // innerHTML entero, y volver a saltar a las 7 cada vez que llega una
 // respuesta sacaría a la persona de donde estaba mirando.
 let calGridScroll = null;
+// Alto real del header sticky, para que el composer de Rutina se pegue justo
+// abajo. Se recalcula en cada render y al cambiar el tamaño: el header crece
+// cuando las solapas pasan a dos líneas, y con un valor fijo el composer
+// quedaba tapado o flotando.
+function syncHeaderHeight(){
+  const header = document.querySelector("header.topbar");
+  if(!header) return;
+  document.documentElement.style.setProperty("--header-h", header.offsetHeight + "px");
+}
+window.addEventListener("resize", syncHeaderHeight);
 function afterRenderView(){
+  syncHeaderHeight();
   if(state.view === "paises" && state.paisesSubview === "mapa" && !CONFIG_IS_PLACEHOLDER){
     initOrUpdateMap();
   }
@@ -5494,8 +5523,16 @@ function renderMiniAvatar(u){
 
 function renderRutinaComposer(){
   const d = rutinaDraft;
+  // El composer queda fijo arriba del Feed, así que en reposo se muestra en
+  // una sola línea: si dejara siempre a la vista el lugar, los adjuntos y
+  // "Publicar", se comería un tercio de la pantalla mientras se scrollea.
+  // Se despliega al enfocarlo (CSS :focus-within) o cuando ya tiene algo
+  // cargado — incluida una imagen o un lugar sin texto, que si no
+  // desaparecerían de la vista.
+  const activo = !!(d.content.trim() || d.placeQuery || d.scopes.length ||
+    d.images.length || d.files.length || d.links.length || d.error);
   return `
-    <div class="card quick-composer">
+    <div class="card quick-composer${activo ? " active" : ""}">
       <div class="quick-composer-row">
         ${renderMiniAvatar(state.auth.user)}
         <div class="mention-anchor">
@@ -6226,7 +6263,9 @@ function prefColorRow(prefKey, icon, label, sub){
         ${warn}
       </div>
       <div class="setting-control setting-control-wide">
-        <input type="color" class="pref-color" data-pref="${prefKey}" value="${value}" aria-label="${esc(label)}">
+        <label class="zone-swatch" style="background:${value}" title="${esc(t("Cambiar color","Change color","Trocar cor","שינוי צבע"))}">
+          <input type="color" data-pref="${prefKey}" value="${value}" aria-label="${esc(label)}">
+        </label>
       </div>
     </div>`;
 }
@@ -8438,6 +8477,12 @@ document.addEventListener("input", e=>{
     autoGrowTextarea(el);
     const btn = document.getElementById("rutinaPublish");
     if(btn) btn.disabled = !el.value.trim();
+    // Igual que el botón: se toca la clase a mano en vez de re-renderizar,
+    // para que el composer quede desplegado si hay texto aunque después se
+    // saque el foco. Sin esto, escribir algo y clickear afuera lo plegaba
+    // con el texto adentro, escondiendo "Publicar".
+    const qc = el.closest(".quick-composer");
+    if(qc) qc.classList.toggle("active", !!el.value.trim());
     const prevQuery = rutinaDraft.mentionQuery;
     updateMentionState(rutinaDraft, el);
     if(prevQuery !== rutinaDraft.mentionQuery) render();
