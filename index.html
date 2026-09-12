@@ -4873,7 +4873,7 @@ function renderPostCard(post, replies, featured){
   // eso ese tiene prioridad cuando existe (y no tiene @nickname: es texto
   // libre de alguien que no necesariamente es cuenta de la app).
   const creadorHtml = post.organizer ? esc(post.organizer) : authorLabelHtml(post.authorEmail, post.authorName);
-  const creadoPor = creadorHtml ? ` · ${t("Creado por","Created by","Criado por","נוצר על ידי")}: ${creadorHtml}` : "";
+  const creadoPor = creadorHtml ? ` · ${t("Creado por","Created by","Criado por","נוצר על ידי")} ${creadorHtml}` : "";
   // Hora en que se CARGÓ el posteo (createdAt), no la del evento: para
   // Rutina, o cualquier evento sin horario propio, la fecha sola no
   // alcanza para saber cuál se publicó primero en un mismo día — todas
