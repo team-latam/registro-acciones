@@ -1115,9 +1115,13 @@
     flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
     font-size:10px; font-weight:700; color:var(--celeste-dark);
   }
-  .cal-cell.holiday{ background:var(--celeste-soft); }
-  .cal-cell.other.holiday{ background:var(--surface-alt); }
-  .cal-bar.holiday{ background:transparent; color:var(--celeste-dark); font-weight:700; cursor:default; }
+  /* El fondo del día feriado queda neutro: el color lo lleva el nombre, que
+     es lo que hay que poder distinguir de un vistazo. Un fondo del color
+     elegido competiría con los chips de los eventos de ese mismo día. */
+  .cal-cell.holiday{ background:var(--surface-alt); }
+  .cal-bar.holiday{ background:transparent; font-weight:700; cursor:default; }
+  .pref-color{ width:46px; height:32px; padding:2px; border:1.5px solid var(--border); border-radius:8px; background:var(--card); cursor:pointer; }
+  .pref-color-warn{ margin-top:6px; font-size:11.5px; font-weight:700; color:var(--danger); }
   .cal-cell.today .cal-daynum{ background:var(--celeste-dark); color:#fff; border-radius:999px; }
   .cal-chip{
     display:flex; align-items:center; gap:4px; width:100%; text-align:start; border:none; cursor:pointer;
@@ -1981,6 +1985,48 @@ function safeFileDataUrl(u){
 function safeColor(c){
   return typeof c === "string" && /^#[0-9a-fA-F]{6}$/.test(c) ? c : "#999999";
 }
+function hexToRgb(c){
+  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(String(c||""));
+  return m ? [parseInt(m[1],16), parseInt(m[2],16), parseInt(m[3],16)] : null;
+}
+// Distancia "redmean": una aproximación barata y conocida a cómo percibe el
+// ojo la diferencia entre dos colores — pondera el verde y ajusta rojo/azul
+// según qué tan claro sea el par. Restar RGB a secas dice que #FF0000 y
+// #00FF00 están igual de lejos que dos grises que nadie distingue; esto no.
+// No vale la pena meter una librería de color para comparar dos campos.
+function colorDistance(a, b){
+  const pa = hexToRgb(a), pb = hexToRgb(b);
+  if(!pa || !pb) return Infinity;
+  const rm = (pa[0] + pb[0]) / 2;
+  const dr = pa[0]-pb[0], dg = pa[1]-pb[1], db = pa[2]-pb[2];
+  return Math.sqrt((2 + rm/256)*dr*dr + 4*dg*dg + (2 + (255-rm)/256)*db*db);
+}
+// Umbral elegido a ojo sobre un máximo de ~765: por debajo de esto, dos
+// chips chicos en una celda del calendario se confunden.
+const COLOR_TOO_CLOSE = 60;
+// Los colores que YA significan algo en la app: las zonas (que definen el
+// color de cada evento) y el otro color de feriados.
+function usedColors(exceptPref){
+  const out = Object.values(ZONES).map(z=>({
+    color: safeColor(z.color),
+    label: t("la zona {z}","the {z} zone","a zona {z}","אזור {z}",{z:z.label}),
+  }));
+  if(exceptPref !== "holidayColor"){
+    out.push({ color: safeColor(prefs().holidayColor), label: t("los feriados de país","country holidays","os feriados de país","חגי המדינה") });
+  }
+  if(exceptPref !== "holidayJewishColor"){
+    out.push({ color: safeColor(prefs().holidayJewishColor), label: t("las festividades judías","Jewish holidays","as festividades judaicas","החגים היהודיים") });
+  }
+  return out;
+}
+function similarColorTo(hex, exceptPref){
+  let best = null;
+  usedColors(exceptPref).forEach(c=>{
+    const d = colorDistance(hex, c.color);
+    if(d < COLOR_TOO_CLOSE && (!best || d < best.d)) best = { ...c, d };
+  });
+  return best;
+}
 // Locale para toLocaleDateString/toLocaleTimeString según el idioma activo
 // (si no, quedaban siempre en "es-AR" — fecha en español aunque el resto
 // de la interfaz ya esté en EN/PT/HE).
@@ -2416,6 +2462,10 @@ const DEFAULT_PREFS = {
   holidayMode: "sutil",    // sutil | evento | off
   holidayCountries: [],
   holidayJewish: false,
+  // Colores por separado: un feriado de país y una festividad judía pueden
+  // caer el mismo día, y si se ven iguales no se distinguen.
+  holidayColor: "#6b7a8f",
+  holidayJewishColor: "#7c5cbf",
   // Notificaciones
   notifyTypes: [],         // vacío = todos los tipos
   notifyLead: 1440,        // minutos antes del evento
@@ -6109,6 +6159,10 @@ function holidaysOn(iso){
   const wanted = new Set(holidayCalendarsWanted());
   return (holidaysByDate[iso] || []).filter(h => wanted.has(h.key));
 }
+// Cada feriado se pinta según de dónde viene: país o festividad judía.
+function holidayColorOf(h){
+  return safeColor(h.key === JEWISH_CAL ? prefs().holidayJewishColor : prefs().holidayColor);
+}
 
 /* ======================================================================
    RENDER: Configuración (de cada persona, no del equipo)
@@ -6152,6 +6206,29 @@ function renderConfiguracionView(){
 }
 function prefSwitch(key, on){
   return `<label class="pref-switch"><input type="checkbox" data-pref="${key}" ${on?"checked":""}><span class="pref-slider"></span></label>`;
+}
+// Fila de color, con el aviso de parecido pegado abajo: el toast del momento
+// se va solo, y si la persona no lo llega a leer el problema queda igual.
+function prefColorRow(prefKey, icon, label, sub){
+  const value = safeColor(prefs()[prefKey]);
+  const clash = similarColorTo(value, prefKey);
+  const warn = clash ? `<div class="pref-color-warn">⚠️ ${t(
+    "Se parece mucho al color de {x} — van a costar de distinguir en el calendario.",
+    "Very close to the colour of {x} — they'll be hard to tell apart on the calendar.",
+    "Muito parecido com a cor de {x} — vão ser difíceis de distinguir no calendário.",
+    "דומה מאוד לצבע של {x} — יהיה קשה להבחין ביניהם ביומן.",
+    { x: clash.label })}</div>` : "";
+  return `<div class="setting-row">
+      <span class="setting-icon">${icon}</span>
+      <div class="setting-text">
+        <div class="setting-label">${esc(label)}</div>
+        ${sub ? `<div class="setting-sub">${esc(sub)}</div>` : ""}
+        ${warn}
+      </div>
+      <div class="setting-control setting-control-wide">
+        <input type="color" class="pref-color" data-pref="${prefKey}" value="${value}" aria-label="${esc(label)}">
+      </div>
+    </div>`;
 }
 function prefRow(icon, label, sub, control){
   return `<div class="setting-row">
@@ -6226,6 +6303,10 @@ function renderConfigFeriadosSection(){
         ${prefRow("🎌", t("Cómo mostrarlos","How to show them","Como mostrá-los","איך להציג אותם"),
           t("\"Marca en el día\" los pone en chico junto al número, sin competir con los eventos.","\"Mark on the day\" puts them small next to the number, without competing with events.","\"Marca no dia\" os coloca pequenos ao lado do número, sem competir com os eventos.","\"סימון ביום\" מציב אותם קטן ליד המספר, בלי להתחרות באירועים."),
           modeSel)}
+        ${prefColorRow("holidayColor", "🏳️", t("Color de los feriados de país","Country holiday colour","Cor dos feriados de país","צבע חגי המדינה"),
+          t("Con qué color se marcan en el calendario.","What colour marks them on the calendar.","Com que cor são marcados no calendário.","באיזה צבע הם מסומנים ביומן."))}
+        ${prefColorRow("holidayJewishColor", "✡️", t("Color de las festividades judías","Jewish holiday colour","Cor das festividades judaicas","צבע החגים היהודיים"),
+          t("Conviene que sea distinto al de país: pueden caer el mismo día.","Best if it differs from the country one: they can fall on the same day.","Convém que seja diferente do de país: podem cair no mesmo dia.","כדאי שיהיה שונה מזה של המדינה: הם יכולים ליפול באותו יום."))}
         ${prefRow("✡️", t("Festividades judías","Jewish holidays","Festividades judaicas","חגים יהודיים"),
           t("Rosh Hashaná, Pésaj, Januca y el resto del calendario hebreo.","Rosh Hashanah, Passover, Hanukkah and the rest of the Hebrew calendar.","Rosh Hashaná, Pessach, Chanucá e o resto do calendário hebraico.","ראש השנה, פסח, חנוכה ושאר הלוח העברי."),
           prefSwitch("holidayJewish", !!p.holidayJewish))}
@@ -6616,8 +6697,8 @@ function overflowsIn(overflow, it){
 
 function calendarioBar(it, weekDays){
   if(it.holiday){
-    return `<span class="cal-bar holiday" style="grid-column:${it.from+1} / span 1;grid-row:${it.lane+1}" title="${esc(it.holiday)}">
-        <span class="cal-txt">🎌 ${esc(it.holiday)}</span>
+    return `<span class="cal-bar holiday" style="grid-column:${it.from+1} / span 1;grid-row:${it.lane+1};color:${it.holidayColor}" title="${esc(it.holiday)}">
+        <span class="cal-dot" style="background:${it.holidayColor}"></span><span class="cal-txt">${esc(it.holiday)}</span>
       </span>`;
   }
   const p = it.post;
@@ -6661,7 +6742,7 @@ function renderCalendarioMes(anchor){
     const weekDays = days.slice(w*cols, (w+1)*cols);
     const asEvent = prefs().holidayMode === "evento";
     const extras = asEvent
-      ? weekDays.flatMap((iso,i)=> holidaysOn(iso).map(h=>({ holiday:h.name, from:i, to:i })))
+      ? weekDays.flatMap((iso,i)=> holidaysOn(iso).map(h=>({ holiday:h.name, holidayColor:holidayColorOf(h), from:i, to:i })))
       : [];
     const { placed, overflow } = layoutWeekBars(weekDays, byDate, MES_MAX_LANES, extras);
     const cells = weekDays.map(iso=>{
@@ -6673,7 +6754,7 @@ function renderCalendarioMes(anchor){
         <div class="cal-cell${iso.slice(0,7)!==month?" other":""}${iso===today?" today":""}${hol.length?" holiday":""}${pastClass(iso)}"${calendarioNewAttrs(iso)}>
           <div class="cal-dayhead">
             <span class="cal-daynum">${Number(iso.slice(8,10))}</span>
-            ${hol.length ? `<span class="cal-holiday" title="${esc(hol.map(h=>h.name).join(" · "))}">${esc(hol[0].name)}</span>` : ""}
+            ${hol.length ? `<span class="cal-holiday" style="color:${holidayColorOf(hol[0])}" title="${esc(hol.map(h=>h.name).join(" · "))}">${esc(hol[0].name)}</span>` : ""}
           </div>
         </div>`;
     }).join("");
@@ -8408,6 +8489,17 @@ document.addEventListener("change", e=>{
       : el.dataset.prefNum ? Number(el.value)
       : el.value;
     savePrefs({ [el.dataset.pref]: val });
+    if(el.type === "color"){
+      const clash = similarColorTo(val, el.dataset.pref);
+      if(clash){
+        showCalendarNotice({ ok:false, message: t(
+          "Ese color se parece mucho al de {x}. Si querés distinguirlos de un vistazo en el calendario, elegí otro.",
+          "That colour is very close to {x}'s. To tell them apart at a glance on the calendar, pick another one.",
+          "Essa cor é muito parecida com a de {x}. Para distingui-las de relance no calendário, escolha outra.",
+          "הצבע הזה דומה מאוד לזה של {x}. כדי להבחין ביניהם במבט חטוף ביומן, בחר/י אחר.",
+          { x: clash.label }) });
+      }
+    }
     return;
   }
   if(el.name === "cType"){ composerDraft.activityType = el.value; render(); }

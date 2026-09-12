@@ -380,6 +380,7 @@ service cloud.firestore {
     function isValidUserPrefs(d) {
       return d.keys().hasOnly(['weekStart', 'showWeekends', 'customDays', 'dimPast',
           'holidayMode', 'holidayCountries', 'holidayJewish',
+          'holidayColor', 'holidayJewishColor',
           'notifyTypes', 'notifyLead', 'notifyOnlyMine', 'notifyZones',
           'notifyReplies', 'calendarReminders']) &&
         (d.get('weekStart', 0) is int) &&
@@ -389,6 +390,9 @@ service cloud.firestore {
         (d.get('holidayMode', 'sutil') is string) &&
         (d.get('holidayCountries', []) is list) &&
         (d.get('holidayJewish', false) is bool) &&
+        // Color en hex de 6 dígitos: es lo que escribe un <input type="color">.
+        (d.get('holidayColor', '#000000') is string && d.holidayColor.matches('^#[0-9a-fA-F]{6}$')) &&
+        (d.get('holidayJewishColor', '#000000') is string && d.holidayJewishColor.matches('^#[0-9a-fA-F]{6}$')) &&
         (d.get('notifyTypes', []) is list) &&
         (d.get('notifyLead', 0) is int) &&
         (d.get('notifyOnlyMine', false) is bool) &&
