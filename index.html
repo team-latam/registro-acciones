@@ -158,6 +158,41 @@
   .btn-new:hover{ background:var(--celeste-dark); color:#fff; }
   .header-actions{ display:flex; align-items:center; gap:10px; }
 
+  /* Botón flotante de crear, en todas las solapas. Queda debajo de los
+     modales (z-100) y del aviso del Calendar (z-70), y arriba del header
+     sticky (z-40). El "+" rotado 45° es la "×" de cerrar, sin cambiar el
+     contenido del botón. */
+  .fab-wrap{
+    position:fixed; inset-block-end:24px; inset-inline-end:24px; z-index:65;
+    display:flex; flex-direction:column; align-items:flex-end; gap:10px;
+  }
+  .fab-main{
+    width:56px; height:56px; border-radius:50%; border:none; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    background:var(--celeste); color:var(--petroleo-dark); font-size:30px; line-height:1;
+    box-shadow:0 6px 20px rgba(8,42,44,0.28); transition:transform .18s ease, background .18s ease;
+  }
+  .fab-main:hover{ background:var(--celeste-dark); color:#fff; }
+  .fab-wrap.open .fab-main{ transform:rotate(45deg); }
+  .fab-actions{
+    display:flex; flex-direction:column; align-items:flex-end; gap:10px;
+    opacity:0; transform:translateY(10px); pointer-events:none;
+    transition:opacity .16s ease, transform .16s ease;
+  }
+  .fab-wrap.open .fab-actions{ opacity:1; transform:none; pointer-events:auto; }
+  .fab-action{
+    display:inline-flex; align-items:center; gap:10px; cursor:pointer; white-space:nowrap;
+    background:var(--celeste-soft); color:var(--ink-strong); border:1px solid var(--border);
+    border-radius:999px; padding:9px 15px; font-size:13.5px; font-weight:700;
+    box-shadow:0 4px 14px rgba(8,42,44,0.18);
+  }
+  .fab-action:hover{ background:var(--celeste); color:var(--petroleo-dark); }
+  .fab-ico{ font-size:16px; }
+  @media (max-width:640px){
+    .fab-wrap{ inset-block-end:16px; inset-inline-end:16px; }
+    .fab-main{ width:50px; height:50px; font-size:27px; }
+  }
+
   /* Avatar circular en el header: al apretarlo despliega un menú tipo
      Google con nombre/email y cerrar sesión, en vez de mostrar el email
      entero pegado al lado del botón todo el tiempo. */
@@ -947,6 +982,7 @@
   .city-row .ccount{ font-weight:800; color:var(--ink); }
 
   /* ---------- Calendario view ---------- */
+  .cal-toolbar-end{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
   .cal-nav{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
   /* "Hoy", las flechas y el selector de vista comparten la misma píldora:
      son los tres controles de la misma barra y antes el selector usaba el
@@ -1185,7 +1221,6 @@
         </div>
       </div>
       <div class="header-actions">
-        <button class="btn-new" id="btnNewPost" hidden>+ Nuevo evento</button>
         <div id="mentionsBell" class="mentions-bell-wrap"></div>
         <div id="userBadge" class="user-badge"></div>
       </div>
@@ -1202,6 +1237,21 @@
   </header>
   <main id="viewRoot"></main>
   <footer class="appfoot">Registro de Acciones · Team LatAm</footer>
+  <!-- Botón flotante para crear, disponible en TODAS las solapas (antes
+       "+ Nuevo evento" vivía en el header y solo creaba eventos, sin
+       atajo a la Rutina fuera del Feed). Se despliega en las dos formas
+       de postear que tiene la app. -->
+  <div class="fab-wrap" id="fab" hidden>
+    <div class="fab-actions">
+      <button type="button" class="fab-action" data-action="new-rutina">
+        <span class="fab-ico" aria-hidden="true">📝</span><span class="fab-label" id="fabRutinaLabel">Nueva rutina</span>
+      </button>
+      <button type="button" class="fab-action" data-action="new-evento">
+        <span class="fab-ico" aria-hidden="true">📅</span><span class="fab-label" id="fabEventoLabel">Nuevo evento</span>
+      </button>
+    </div>
+    <button type="button" class="fab-main" id="fabMain" data-action="toggle-fab" aria-haspopup="true" aria-expanded="false" aria-label="Crear"><span aria-hidden="true">+</span></button>
+  </div>
 </div>
 
 <div class="calendar-notice" id="calendarToast" hidden>
@@ -3591,7 +3641,8 @@ function scheduleRender(){
 const tabsNav = document.getElementById("tabs");
 const userBadgeEl = document.getElementById("userBadge");
 const mentionsBellEl = document.getElementById("mentionsBell");
-const btnNewPostEl = document.getElementById("btnNewPost");
+const fabEl = document.getElementById("fab");
+const fabMainEl = document.getElementById("fabMain");
 const tabSolicitudesEl = document.getElementById("tabSolicitudes");
 const tabAuditoriaEl = document.getElementById("tabAuditoria");
 const tabPreferenciasEl = document.getElementById("tabPreferencias");
@@ -3754,8 +3805,11 @@ function applyStaticI18n(){
     if(badge) btn.appendChild(badge);
   });
 
-  const btnNewPost = document.getElementById("btnNewPost");
-  if(btnNewPost) btnNewPost.textContent = "+ " + t("Nuevo evento", "New event", "Novo evento", "אירוע חדש");
+  const fabEvento = document.getElementById("fabEventoLabel");
+  if(fabEvento) fabEvento.textContent = t("Nuevo evento", "New event", "Novo evento", "אירוע חדש");
+  const fabRutina = document.getElementById("fabRutinaLabel");
+  if(fabRutina) fabRutina.textContent = t("Nueva rutina", "New routine", "Nova rotina", "שגרה חדשה");
+  if(fabMainEl) fabMainEl.setAttribute("aria-label", t("Crear", "Create", "Criar", "יצירה"));
 
   const footer = document.querySelector("footer.appfoot");
   if(footer) footer.textContent = t(
@@ -4035,7 +4089,7 @@ function doRender(){
 
   let html = "";
   if(CONFIG_IS_PLACEHOLDER){
-    tabsNav.classList.add("tabs-hidden"); btnNewPostEl.hidden = true; userBadgeEl.innerHTML = ""; mentionsBellEl.innerHTML = "";
+    tabsNav.classList.add("tabs-hidden"); closeFab(); fabEl.hidden = true; userBadgeEl.innerHTML = ""; mentionsBellEl.innerHTML = "";
     html += `<div class="setup-banner">
       ⚠️ <strong>${t("Falta configurar Firebase.","Firebase isn't configured yet.","Falta configurar o Firebase.",".עדיין צריך להגדיר את Firebase")}</strong> ${t(
         `Esta app todavía no tiene datos compartidos porque <code>FIREBASE_CONFIG</code> tiene valores de ejemplo. Abrí <code>index.html</code>, completá la configuración con los datos de tu proyecto de Firebase y volvé a publicar el archivo. Instrucciones paso a paso en <code>README.md</code>.`,
@@ -4056,14 +4110,14 @@ function doRender(){
   renderMentionsBell();
 
   if(!isAuthorized()){
-    tabsNav.classList.add("tabs-hidden"); btnNewPostEl.hidden = true;
+    tabsNav.classList.add("tabs-hidden"); closeFab(); fabEl.hidden = true;
     html += renderAuthGate();
     viewRoot.innerHTML = html;
     return;
   }
 
   tabsNav.classList.remove("tabs-hidden");
-  btnNewPostEl.hidden = false;
+  fabEl.hidden = false;
   tabSolicitudesEl.hidden = !isAdmin();
   tabAuditoriaEl.hidden = !isAdmin();
   tabPreferenciasEl.hidden = !isAdmin();
@@ -5610,9 +5664,12 @@ function renderCalendarioView(){
       <button type="button" class="cal-arrow" data-action="cal-step" data-step="1" aria-label="${esc(t("Siguiente","Next","Próximo","הבא"))}">${isRTL()?"‹":"›"}</button>
       <span class="cal-title">${esc(calendarioTitle(sub, anchor))}</span>
     </div>`;
-  // Navegación a la izquierda ("Hoy ‹ › septiembre de 2026") y el selector
-  // de vista a la derecha, como en Google Calendar.
-  const toolbar = `<div class="paises-toolbar">${nav}${toggle}</div>`;
+  // Navegación a la izquierda ("Hoy ‹ › septiembre de 2026"); del lado
+  // derecho, "+ Nuevo evento" pegado al selector de vista.
+  const newBtn = isAuthorized()
+    ? `<button type="button" class="btn-new" data-action="new-evento">+ ${esc(t("Nuevo evento","New event","Novo evento","אירוע חדש"))}</button>`
+    : "";
+  const toolbar = `<div class="paises-toolbar">${nav}<div class="cal-toolbar-end">${newBtn}${toggle}</div></div>`;
   if(CONFIG_IS_PLACEHOLDER){
     return toolbar + `<div class="empty-state">${t("Configurá Firebase para ver datos.","Set up Firebase to see data.","Configure o Firebase para ver dados.",".הגדר/י את Firebase כדי לראות נתונים")}</div>`;
   }
@@ -5913,13 +5970,13 @@ function tourSteps(){
       ),
     },
     {
-      target: "#btnNewPost",
-      title: t("Eventos","Events","Eventos","אירועים"),
+      target: "#fab",
+      title: t("Crear","Create","Criar","יצירה"),
       text: t(
-        "Visitas, cursos, seminarios y congresos, con fecha y participantes. Van sincronizados al Calendar de Team LatAm.",
-        "Visits, courses, seminars and congresses, with date and participants. They sync to Team LatAm's Calendar.",
-        "Visitas, cursos, seminários e congressos, com data e participantes. Vão sincronizados ao Calendar do Team LatAm.",
-        "ביקורים, קורסים, סמינרים וכנסים, עם תאריך ומשתתפים. הם מסונכרנים ליומן של Team LatAm."
+        "El + está en todas las solapas. Desde acá cargás un Evento —visita, curso, seminario o congreso, con fecha y participantes, sincronizado al Calendar de Team LatAm— o una Rutina.",
+        "The + is on every tab. From here you add an Event —visit, course, seminar or congress, with date and participants, synced to Team LatAm's Calendar— or a Routine.",
+        "O + está em todas as abas. Daqui você carrega um Evento —visita, curso, seminário ou congresso, com data e participantes, sincronizado ao Calendar do Team LatAm— ou uma Rotina.",
+        "ה-+ נמצא בכל הלשוניות. מכאן מוסיפים אירוע — ביקור, קורס, סמינר או כנס, עם תאריך ומשתתפים, מסונכרן ליומן של Team LatAm — או שגרה."
       ),
     },
     {
@@ -6035,6 +6092,30 @@ function openComposer(){
   renderComposer();
   focusIntoComposer();
 }
+// Botón flotante de crear: se despliega en las dos formas de postear que
+// tiene la app — Evento (el modal con fecha, lugar y participantes) y
+// Rutina (la línea rápida de arriba del Feed). Vive fuera de #viewRoot,
+// así que se abre y cierra con una clase en vez de pasar por render().
+let fabOpen = false;
+function setFab(open){
+  fabOpen = open && !fabEl.hidden;
+  fabEl.classList.toggle("open", fabOpen);
+  fabMainEl.setAttribute("aria-expanded", String(fabOpen));
+}
+function closeFab(){ setFab(false); }
+// La Rutina no tiene modal propio: su composer es la primera cosa del
+// Feed, así que desde otra solapa hay que ir al Feed antes de enfocarlo.
+function startRutina(){
+  closeFab();
+  if(state.view !== "feed"){ state.view = "feed"; render(); }
+  requestAnimationFrame(()=>{
+    const ta = document.getElementById("rutinaContent");
+    if(!ta) return;
+    ta.scrollIntoView({ behavior:"smooth", block:"center" });
+    ta.focus();
+  });
+}
+
 // Nuevo evento desde el Calendario: la fecha (y la hora, si se clickeó
 // una franja horaria de Semana/Día) vienen puestas.
 function openComposerOnDate(iso, hour){
@@ -6448,7 +6529,6 @@ document.querySelectorAll("#tabs button").forEach(btn=>{
     render();
   });
 });
-btnNewPostEl.addEventListener("click", openComposer);
 document.getElementById("postModalClose").addEventListener("click", requestCloseComposer);
 postModalOverlay.addEventListener("click", e=>{ if(e.target === postModalOverlay) requestCloseComposer(); });
 document.addEventListener("keydown", e=>{
@@ -6471,6 +6551,7 @@ document.addEventListener("keydown", e=>{
   if(!userProfileOverlay.hidden){ closeUserProfile(); return; }
   if(!tourLayer.hidden){ closeTour(); return; }
   if(!calendarInviteOverlay.hidden){ dismissCalendarInviteOverlay(); return; }
+  if(fabOpen){ closeFab(); fabMainEl.focus(); return; }
   if(calViewMenuOpen){ calViewMenuOpen = false; render(); return; }
   if(postModalOverlay.hidden) return;
   const d = composerDraft;
@@ -6889,6 +6970,7 @@ document.addEventListener("click", e=>{
   if(calViewMenuOpen && !e.target.closest(".cal-view-filter")){
     calViewMenuOpen = false; render();
   }
+  if(fabOpen && !e.target.closest("#fab")) closeFab();
 
   const el = e.target.closest("[data-action]");
   if(!el) return;
@@ -7032,6 +7114,12 @@ document.addEventListener("click", e=>{
     memoriaVisibleCount += PAGE_SIZE; render();
   } else if(action === "paises-subview"){
     state.paisesSubview = el.dataset.key; state.countryDrill = null; render();
+  } else if(action === "toggle-fab"){
+    setFab(!fabOpen);
+  } else if(action === "new-evento"){
+    closeFab(); openComposer();
+  } else if(action === "new-rutina"){
+    startRutina();
   } else if(action === "toggle-cal-view"){
     calViewMenuOpen = !calViewMenuOpen; render();
   } else if(action === "cal-subview"){
