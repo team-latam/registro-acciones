@@ -338,6 +338,44 @@ service cloud.firestore {
       allow update: if isSelf(email) && isValidTourSeenEdit(request.resource.data);
     }
 
+    // Preferencias personales (solapa "Configuración"): arranque de semana,
+    // fines de semana, vista de N días, atenuar lo pasado, feriados y
+    // notificaciones. Una colección aparte y NO un campo más de
+    // allowlist/{email}, porque ese documento lo lee entero todo el equipo
+    // (para las @menciones): acá cada uno lee y escribe SOLO el suyo, así
+    // la configuración de cada persona no queda a la vista de los demás ni
+    // viaja en cada snapshot del roster.
+    //
+    // Se validan las claves (hasOnly) y el tipo de cada una, con el mismo
+    // criterio que el resto del archivo: no alcanza con que sea "su" doc,
+    // porque si no cualquiera podría dejar ~1 MiB de campos arbitrarios en
+    // su propio documento. Los valores fuera de rango no se validan uno por
+    // uno a propósito (un customDays de 99 solo se rompe a sí mismo, y el
+    // cliente ya lo acota al leerlo).
+    function isValidUserPrefs(d) {
+      return d.keys().hasOnly(['weekStart', 'showWeekends', 'customDays', 'dimPast',
+          'holidayMode', 'holidayCountries', 'holidayJewish',
+          'notifyTypes', 'notifyLead', 'notifyOnlyMine', 'notifyZones',
+          'notifyReplies', 'calendarReminders']) &&
+        (d.get('weekStart', 0) is int) &&
+        (d.get('showWeekends', true) is bool) &&
+        (d.get('customDays', 4) is int) &&
+        (d.get('dimPast', false) is bool) &&
+        (d.get('holidayMode', 'sutil') is string) &&
+        (d.get('holidayCountries', []) is list) &&
+        (d.get('holidayJewish', false) is bool) &&
+        (d.get('notifyTypes', []) is list) &&
+        (d.get('notifyLead', 0) is int) &&
+        (d.get('notifyOnlyMine', false) is bool) &&
+        (d.get('notifyZones', []) is list) &&
+        (d.get('notifyReplies', true) is bool) &&
+        (d.get('calendarReminders', false) is bool);
+    }
+    match /userPrefs/{email} {
+      allow read: if isSelf(email);
+      allow write: if isSelf(email) && isApproved() && isValidUserPrefs(request.resource.data);
+    }
+
     // Solicitudes de acceso: cualquiera logueado puede crear/leer/reintentar
     // LA SUYA; el admin ve y decide todas. La forma es exactamente la que
     // escribe la app (ver requestAccessAgain / onAuthChanged en index.html):
