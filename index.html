@@ -447,6 +447,14 @@
     border:1.5px solid var(--border); background:var(--card); color:var(--text);
     border-radius:999px; padding:8px 14px; font-size:13px; font-weight:700; cursor:pointer;
   }
+  .pref-chips{ display:flex; flex-wrap:wrap; gap:7px; }
+  /* Encabezados que separan las tres fuentes de la campanita (lo que se
+     viene, respuestas, menciones): sin esto era una lista sola y no se
+     entendía por qué aparecía cada cosa. */
+  .bell-section{
+    padding:9px 14px 4px; font-size:10.5px; font-weight:800; letter-spacing:0.4px;
+    text-transform:uppercase; color:var(--text-muted);
+  }
   .pref-switch{ position:relative; display:inline-block; width:46px; height:26px; flex:none; cursor:pointer; }
   .pref-switch input{ position:absolute; opacity:0; width:0; height:0; }
   .pref-slider{
@@ -2002,12 +2010,18 @@ function tsToMillis(ts){
 // última vez que la persona abrió el menú del avatar, y se cuenta cuántas
 // menciones a su email son más nuevas que eso.
 const MENTIONS_SEEN_KEY = "mentionsSeenAt";
+const REPLIES_SEEN_KEY = "repliesSeenAt";
 // Guardado por email (no una sola clave global): si dos cuentas distintas
 // comparten el mismo navegador, "ya vistas" de una no debe ocultar (ni
 // inventar) menciones nuevas para la otra.
 // Mismo mecanismo que las marcas del Calendar (ver perUserStorageKey más
 // abajo): clave por email en localStorage con la hora en que se vio.
 function getMentionsSeenAt(){ return getPerUserTs(MENTIONS_SEEN_KEY); }
+function getRepliesSeenAt(){ return getPerUserTs(REPLIES_SEEN_KEY); }
+function markRepliesSeen(){
+  const latest = getRecentReplies(1).reduce((max,r)=> Math.max(max, tsToMillis(r.createdAt)), 0);
+  markPerUserTs(REPLIES_SEEN_KEY, latest || Date.now());
+}
 // Se guarda la hora de la mención MÁS NUEVA que hay ahora (hora del
 // servidor), no la del reloj local — ver markPerUserTs.
 function markMentionsSeen(){
@@ -2156,6 +2170,69 @@ function getUnseenMentionCount(){
 // Las últimas N menciones (posteos o respuestas) a la persona logueada,
 // para el desplegable de la campanita — no hace falta separar vistas de
 // no vistas acá, es solo un "últimas menciones" corto.
+/* ---------- Notificaciones (campanita) ----------
+   Dos fuentes además de las @menciones: los eventos que se vienen dentro
+   de la ventana que cada uno configuró, y las respuestas nuevas a los
+   posteos propios. Todo se calcula sobre state.posts/state.repliesByPost,
+   que ya están en memoria — no hay nada agendado ni ningún temporizador:
+   sin backend, la campanita solo puede mostrar lo que hay AHORA, cada vez
+   que se abre la app. Por eso existe además la opción de escribirle el
+   recordatorio al evento en Google Calendar (ver buildCalendarEvent). */
+function eventStartMs(post){
+  const d = post.startDate || post.date;
+  if(!d) return Infinity;
+  // Sin horario propio, el evento "arranca" a las 00:00 locales de su día.
+  const dt = new Date(`${d}T${post.startTime || "00:00"}:00`);
+  return isNaN(dt) ? Infinity : dt.getTime();
+}
+function isMineOrParticipant(post, email){
+  if(!email) return false;
+  if(String(post.authorEmail||"").toLowerCase() === email) return true;
+  return (post.participants||[]).some(pa => String(pa.email||"").toLowerCase() === email);
+}
+function postZoneKeys(post){
+  return (post.scopes||[]).map(sc => zoneOfScope(sc)).filter(Boolean);
+}
+function upcomingEvents(){
+  const p = prefs();
+  const lead = Number(p.notifyLead) || 0;
+  if(!lead) return [];
+  const now = Date.now();
+  const until = now + lead * 60000;
+  const email = String(state.auth.user && state.auth.user.email || "").toLowerCase();
+  const types = p.notifyTypes || [], zones = p.notifyZones || [];
+  return calendarioPosts()
+    .filter(post=>{
+      if(post.cancelled) return false;
+      if(types.length && !types.includes(post.activityType)) return false;
+      if(p.notifyOnlyMine && !isMineOrParticipant(post, email)) return false;
+      if(zones.length && !postZoneKeys(post).some(z => zones.includes(z))) return false;
+      const start = eventStartMs(post);
+      return start >= now && start <= until;
+    })
+    .sort((a,b)=> eventStartMs(a) - eventStartMs(b));
+}
+// Respuestas de OTROS en posteos míos, de la más nueva a la más vieja.
+function getRecentReplies(limit=4){
+  if(!prefs().notifyReplies) return [];
+  const email = String(state.auth.user && state.auth.user.email || "").toLowerCase();
+  if(!email) return [];
+  const out = [];
+  state.posts.forEach(post=>{
+    if(String(post.authorEmail||"").toLowerCase() !== email) return;
+    (state.repliesByPost[post.id] || []).forEach(r=>{
+      if(r.system) return;
+      if(String(r.authorEmail||"").toLowerCase() === email) return;
+      out.push({ postId:post.id, replyId:r.id, authorName:r.authorName, authorEmail:r.authorEmail, content:r.content, createdAt:r.createdAt });
+    });
+  });
+  return out.sort((a,b)=> tsToMillis(b.createdAt) - tsToMillis(a.createdAt)).slice(0, limit);
+}
+function getUnseenReplyCount(){
+  const seenAt = getRepliesSeenAt();
+  return getRecentReplies(50).filter(r => tsToMillis(r.createdAt) > seenAt).length;
+}
+
 function getRecentMentions(limit=4){
   const email = state.auth.user && state.auth.user.email;
   if(!email) return [];
@@ -2587,6 +2664,15 @@ function buildCalendarEvent(postData, postId){
     // del posteo. Es lo que usan extractTitleFromSummary/findCalendarEventId
     // para reconocer el evento sin depender del texto del summary.
     extendedProperties: { private: { raActivityType: postData.activityType, ...(postId ? { raPostId: postId } : {}) } },
+    // Recordatorio de Google, si quien carga el evento lo pidió en su
+    // Configuración. OJO: en un calendario compartido este override vale
+    // para quien lo escribe (el organizador), no para cada persona que
+    // tiene el calendario compartido — cada una define los suyos en su
+    // propio Google Calendar. Por eso la campanita de la app sigue siendo
+    // la capa que ve todo el equipo.
+    ...(prefs().calendarReminders && Number(prefs().notifyLead) > 0
+      ? { reminders: { useDefault:false, overrides:[{ method:"popup", minutes: Math.min(40320, Number(prefs().notifyLead)) }] } }
+      : {}),
   };
 }
 // Todas las formas conocidas del prefijo "Tipo: " de un summary: el label
@@ -4162,7 +4248,8 @@ function renderMentionsBell(){
   if(!state.auth.user){ mentionsBellEl.innerHTML = ""; mentionsMenuOpen = false; return; }
   const mentionCount = getUnseenMentionCount();
   const hasInvite = hasActiveCalendarInviteNotice();
-  const count = mentionCount + (hasInvite ? 1 : 0);
+  const upcoming = upcomingEvents();
+  const count = mentionCount + (hasInvite ? 1 : 0) + upcoming.length + getUnseenReplyCount();
   const countLabel = count === 1
     ? t("1 novedad", "1 update", "1 novidade", "עדכון אחד")
     : t("{n} novedades", "{n} updates", "{n} novidades", "{n} עדכונים", { n: count });
@@ -4172,11 +4259,33 @@ function renderMentionsBell(){
     ${mentionsMenuOpen ? `
       <div class="mentions-menu">
         <div class="mentions-menu-title">${t("Novedades","Updates","Novidades","עדכונים")}</div>
-        ${renderMentionsMenuItems(hasInvite)}
+        ${renderMentionsMenuItems(hasInvite, upcoming)}
       </div>` : ""}`;
 }
-function renderMentionsMenuItems(hasInvite){
+function renderMentionsMenuItems(hasInvite, upcoming){
   const recent = getRecentMentions(4);
+  const replies = getRecentReplies(3);
+  // Lo que se viene va primero: es lo único con fecha de vencimiento.
+  const upcomingItems = (upcoming || []).length ? `
+    <div class="bell-section">${t("Próximos eventos","Upcoming events","Próximos eventos","אירועים קרובים")}</div>
+    ${upcoming.slice(0,4).map(p=>{
+      const type = ACTIVITY_BY_KEY[p.activityType] || { icon:"✨" };
+      const when = p.startTime
+        ? `${fmtISO(p.startDate || p.date, { weekday:"short", day:"numeric", month:"short" })} · ${esc(p.startTime)}`
+        : fmtISO(p.startDate || p.date, { weekday:"short", day:"numeric", month:"short" });
+      return `<button type="button" class="mention-item" data-action="goto-mention" data-post-id="${esc(p.id)}">
+          <span class="mi-author">${type.icon} ${esc(calendarioLabel(p))}</span>
+          <span class="mi-date">${esc(when)}</span>
+        </button>`;
+    }).join("")}` : "";
+  const replyItems = replies.length ? `
+    <div class="bell-section">${t("Respuestas a tus posteos","Replies to your posts","Respostas às suas postagens","תגובות לפוסטים שלך")}</div>
+    ${replies.map(r=>`
+      <button type="button" class="mention-item" data-action="goto-mention" data-post-id="${esc(r.postId)}" data-reply-id="${esc(r.replyId)}">
+        <span class="mi-author">${authorLabelHtml(r.authorEmail, r.authorName) || t("Alguien","Someone","Alguém","מישהו/י")}</span>
+        <span class="mi-content">${esc(String(r.content||"").slice(0,90))}</span>
+        <span class="mi-date">${fmtDateTime(r.createdAt)}</span>
+      </button>`).join("")}` : "";
   const me = hasInvite ? myRosterEntry() : null;
   const inviteItem = hasInvite ? `
     <div class="calendar-invite-item">
@@ -4187,8 +4296,12 @@ function renderMentionsMenuItems(hasInvite){
       </button>
       <button type="button" class="ci-dismiss" data-action="dismiss-calendar-invite-notice">${t("Ya la acepté ✕","Already accepted ✕","Já aceitei ✕","כבר אישרתי ✕")}</button>
     </div>` : "";
-  if(!recent.length && !inviteItem) return `<div class="mentions-empty">${t("Todavía no te mencionaron.","No one has mentioned you yet.","Ainda não te mencionaram.","עדיין לא אזכרו אותך.")}</div>`;
-  return inviteItem + recent.map(m=>`
+  if(!recent.length && !inviteItem && !upcomingItems && !replyItems){
+    return `<div class="mentions-empty">${t("Todavía no te mencionaron.","No one has mentioned you yet.","Ainda não te mencionaram.","עדיין לא אזכרו אותך.")}</div>`;
+  }
+  const mentionItems = recent.length ? `
+    <div class="bell-section">${t("Menciones","Mentions","Menções","אזכורים")}</div>` : "";
+  return inviteItem + upcomingItems + replyItems + mentionItems + recent.map(m=>`
     <button type="button" class="mention-item" data-action="goto-mention" data-post-id="${esc(m.postId)}" ${m.replyId ? `data-reply-id="${esc(m.replyId)}"` : ""}>
       <span class="mi-author">${authorLabelHtml(m.authorEmail, m.authorName) || t("Alguien","Someone","Alguém","מישהו/י")}</span>
       <span class="mi-content">${esc((m.content||"").slice(0,80))}</span>
@@ -5653,12 +5766,24 @@ function initOrUpdateMap(){
 function configSections(){
   return [
     { key:"calendario", label:t("Calendario","Calendar","Calendário","יומן") },
+    { key:"notificaciones", label:t("Notificaciones","Notifications","Notificações","התראות") },
+  ];
+}
+// Cuánto antes avisar. 0 = no avisar, y apaga la sección entera.
+function notifyLeadOptions(){
+  return [
+    { v:0,     label:t("No avisar","Don't notify","Não avisar","לא להתריע") },
+    { v:10,    label:t("10 minutos antes","10 minutes before","10 minutos antes","10 דקות לפני") },
+    { v:60,    label:t("1 hora antes","1 hour before","1 hora antes","שעה לפני") },
+    { v:1440,  label:t("1 día antes","1 day before","1 dia antes","יום לפני") },
+    { v:2880,  label:t("2 días antes","2 days before","2 dias antes","יומיים לפני") },
+    { v:10080, label:t("1 semana antes","1 week before","1 semana antes","שבוע לפני") },
   ];
 }
 function renderConfiguracionView(){
   const secs = configSections();
   const sec = secs.some(s=>s.key === state.configSection) ? state.configSection : secs[0].key;
-  const body = renderConfigCalendarioSection();
+  const body = sec === "notificaciones" ? renderConfigNotificacionesSection() : renderConfigCalendarioSection();
   return `
     <div class="preferencias-view">
       ${secs.length > 1 ? `<div class="pref-subnav">${secs.map(s=>`
@@ -5713,6 +5838,55 @@ function renderConfigCalendarioSection(){
         ${prefRow("🌙", t("Atenuar eventos pasados","Dim past events","Esmaecer eventos passados","עמעום אירועים שעברו"),
           t("Los eventos anteriores a hoy se ven más tenues, para que resalte lo que viene.","Events before today look fainter, so what's coming stands out.","Os eventos anteriores a hoje ficam mais tênues, para destacar o que vem.","אירועים שלפני היום נראים דהויים, כדי שיבלוט מה שמגיע."),
           prefSwitch("dimPast", !!p.dimPast))}
+      </div>`;
+}
+
+function prefChips(prefKey, items, active){
+  return `<div class="pref-chips">${items.map(it=>`
+      <span class="chip-toggle${active.includes(it.key)?" active":""}" data-action="pref-toggle-list" data-pref="${prefKey}" data-key="${esc(it.key)}">${it.icon ? it.icon + " " : ""}${esc(it.label)}</span>`).join("")}
+    </div>`;
+}
+function renderConfigNotificacionesSection(){
+  const p = prefs();
+  const lead = Number(p.notifyLead) || 0;
+  const leadSel = `<select data-pref="notifyLead" data-pref-num="1">
+      ${notifyLeadOptions().map(o=>`<option value="${o.v}" ${lead===o.v?"selected":""}>${esc(o.label)}</option>`).join("")}
+    </select>`;
+  const types = EVENTO_TYPES.map(ty=>({ key:ty.key, label:ty.label, icon:ty.icon }));
+  const zones = Object.values(ZONES).map(z=>({ key:z.key, label:z.label, icon:"" }));
+  const sel = p.notifyTypes || [], selZ = p.notifyZones || [];
+  return `
+      <div class="hint" style="margin-bottom:16px;">${t(
+        "La campanita te muestra lo que se viene cada vez que entrás a la app. Como el Registro no tiene servidor propio, no puede avisarte con la app cerrada: para eso está la última opción, que le pide el recordatorio a Google Calendar.",
+        "The bell shows what's coming every time you open the app. Since the Log has no server of its own, it can't reach you with the app closed: that's what the last option is for — it asks Google Calendar to remind you.",
+        "O sino mostra o que vem cada vez que você entra no app. Como o Registro não tem servidor próprio, não pode avisar com o app fechado: para isso está a última opção, que pede o lembrete ao Google Calendar.",
+        "הפעמון מציג מה מתקרב בכל כניסה לאפליקציה. מכיוון שליומן אין שרת משלו, הוא לא יכול להתריע כשהאפליקציה סגורה: בשביל זה יש את האפשרות האחרונה, שמבקשת את התזכורת מ-Google Calendar."
+      )}</div>
+      <div class="settings-card">
+        ${prefRow("⏰", t("Avisarme","Notify me","Avisar-me","להתריע"),
+          t("Un evento aparece en la campanita cuando falta esto o menos para que empiece.","An event shows up in the bell when it's this close to starting.","Um evento aparece no sino quando falta isso ou menos para começar.","אירוע מופיע בפעמון כשנותר זה או פחות עד תחילתו."),
+          leadSel)}
+        ${prefRow("👥", t("Solo donde participo","Only where I take part","Somente onde participo","רק איפה שאני משתתף/ת"),
+          t("Avisar únicamente de los eventos que creé yo o donde estoy entre los participantes.","Only notify about events I created or where I'm listed as a participant.","Avisar somente dos eventos que criei ou onde estou entre os participantes.","להתריע רק על אירועים שיצרתי או שאני ברשימת המשתתפים."),
+          prefSwitch("notifyOnlyMine", !!p.notifyOnlyMine))}
+        ${prefRow("💬", t("Respuestas a mis posteos","Replies to my posts","Respostas às minhas postagens","תגובות לפוסטים שלי"),
+          t("Sumar a la campanita las respuestas nuevas de otros en posteos míos.","Add other people's new replies on my posts to the bell.","Somar ao sino as respostas novas de outros nas minhas postagens.","להוסיף לפעמון תגובות חדשות של אחרים לפוסטים שלי."),
+          prefSwitch("notifyReplies", p.notifyReplies !== false))}
+        ${prefRow("📆", t("Recordatorio en Google Calendar","Reminder in Google Calendar","Lembrete no Google Calendar","תזכורת ב-Google Calendar"),
+          t("Al crear o editar un evento, pedirle a Google que te recuerde con la misma antelación de arriba. Es lo único que te llega con la app cerrada, y aplica a los eventos que cargues vos.","When you create or edit an event, ask Google to remind you with the same lead time above. It's the only thing that reaches you with the app closed, and it applies to the events you add.","Ao criar ou editar um evento, pedir ao Google que te lembre com a mesma antecedência acima. É o único que chega com o app fechado, e vale para os eventos que você carregar.","ביצירה או עריכה של אירוע, לבקש מגוגל להזכיר לך באותו טווח זמן. זה הדבר היחיד שמגיע כשהאפליקציה סגורה, והוא חל על האירועים שאת/ה מוסיף/ה."),
+          prefSwitch("calendarReminders", !!p.calendarReminders))}
+      </div>
+      <div class="settings-card" style="margin-top:16px;">
+        <div class="setting-row" style="display:block;">
+          <div class="setting-label">${t("Tipos de evento","Event types","Tipos de evento","סוגי אירוע")}</div>
+          <div class="setting-sub" style="margin-bottom:10px;">${t("Sin ninguno marcado, avisa de todos.","With none selected, it notifies about all of them.","Sem nenhum marcado, avisa de todos.","אם לא נבחר אף אחד, מתריע על כולם.")}</div>
+          ${prefChips("notifyTypes", types, sel)}
+        </div>
+        <div class="setting-row" style="display:block;">
+          <div class="setting-label">${t("Zonas","Zones","Zonas","אזורים")}</div>
+          <div class="setting-sub" style="margin-bottom:10px;">${t("Sin ninguna marcada, avisa de todas.","With none selected, it notifies about all of them.","Sem nenhuma marcada, avisa de todas.","אם לא נבחר אף אחד, מתריע על כולם.")}</div>
+          ${prefChips("notifyZones", zones, selZ)}
+        </div>
       </div>`;
 }
 
@@ -7441,6 +7615,10 @@ document.addEventListener("click", e=>{
     memoriaVisibleCount += PAGE_SIZE; render();
   } else if(action === "paises-subview"){
     state.paisesSubview = el.dataset.key; state.countryDrill = null; render();
+  } else if(action === "pref-toggle-list"){
+    const key = el.dataset.key, prefKey = el.dataset.pref;
+    const cur = prefs()[prefKey] || [];
+    savePrefs({ [prefKey]: cur.includes(key) ? cur.filter(k=>k!==key) : [...cur, key] });
   } else if(action === "config-section"){
     state.configSection = el.dataset.key; render();
   } else if(action === "toggle-fab"){
@@ -7520,7 +7698,7 @@ document.addEventListener("click", e=>{
     saveNicknameEdit();
   } else if(action === "toggle-mentions-menu"){
     mentionsMenuOpen = !mentionsMenuOpen;
-    if(mentionsMenuOpen) markMentionsSeen();
+    if(mentionsMenuOpen){ markMentionsSeen(); markRepliesSeen(); }
     render();
   } else if(action === "goto-mention"){
     mentionsMenuOpen = false;
