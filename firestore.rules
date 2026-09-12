@@ -338,6 +338,31 @@ service cloud.firestore {
       allow update: if isSelf(email) && isValidTourSeenEdit(request.resource.data);
     }
 
+    // Ex integrantes: quién estuvo en el equipo y ya no está. Se escribe al
+    // revocar el acceso, ANTES de borrar su documento de allowlist, porque
+    // el @nickname vive únicamente ahí: sin esta copia se pierde para
+    // siempre y todos los posteos viejos de esa persona quedan con el
+    // nombre crudo de Google, sin @nickname y sin perfil.
+    //
+    // Lo lee cualquier aprobado, igual que el roster y por el mismo motivo
+    // (resolver el @nickname de quien escribió algo); lo escribe solo el
+    // admin. No da acceso a nada: isApproved() sigue mirando únicamente si
+    // existe el documento en allowlist.
+    function isValidFormerMember(d) {
+      return d.keys().hasOnly(['email', 'name', 'nickname', 'photoURL', 'approvedAt', 'revokedAt']) &&
+        d.email is string && d.name is string &&
+        d.nickname is string && d.nickname.matches('^[a-z0-9_]{0,20}$') &&
+        (d.get('photoURL', null) == null || d.photoURL is string) &&
+        d.revokedAt == request.time;
+    }
+    match /formerMembers/{email} {
+      allow get: if isApproved();
+      allow list: if isApproved();
+      allow create: if isAdmin() && isValidFormerMember(request.resource.data);
+      allow update: if isAdmin() && isValidFormerMember(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
     // Preferencias personales (solapa "Configuración"): arranque de semana,
     // fines de semana, vista de N días, atenuar lo pasado, feriados y
     // notificaciones. Una colección aparte y NO un campo más de

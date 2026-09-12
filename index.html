@@ -1237,6 +1237,10 @@
   .up-name{ font-size:15px; font-weight:800; color:var(--ink-strong); line-height:1.3; }
   .up-nick{ font-size:12.5px; font-weight:700; color:var(--celeste-dark); }
   .up-email{ font-size:12.5px; color:var(--text-muted); word-break:break-word; margin-top:2px; }
+  .up-former{ display:inline-block; margin-top:3px; padding:2px 8px; border-radius:999px; background:var(--surface-alt); color:var(--text-muted); font-size:11px; font-weight:700; }
+  /* La @mención de alguien que ya no está sigue siendo clickeable, pero en
+     gris: se distingue de un integrante activo sin desaparecer del texto. */
+  .mention-tag.former{ color:var(--text-muted); }
   .up-rows{ display:flex; flex-direction:column; gap:7px; padding:12px; background:var(--surface-soft); border-radius:var(--radius-sm); margin-bottom:14px; }
   .up-row{ display:flex; justify-content:space-between; gap:10px; font-size:13px; }
   .up-row .up-label{ color:var(--text-muted); font-weight:700; flex:none; }
@@ -1902,8 +1906,12 @@ function addLinkRow(draft){
 // render como antes.
 let mentionRegexCache = { roster:null, re:null };
 function mentionRegex(){
-  if(mentionRegexCache.roster === state.roster) return mentionRegexCache.re;
-  const names = [...new Set(state.roster.map(u=>u.nickname).filter(Boolean).concat(["all"]))]
+  // La caché mira las dos listas: un ex integrante que vuelve (o que se va)
+  // cambia qué @nickname hay que reconocer.
+  if(mentionRegexCache.roster === state.roster && mentionRegexCache.former === state.formerMembers) return mentionRegexCache.re;
+  // Los ex integrantes entran igual: una @mención escrita hace un año
+  // tiene que seguir viéndose como mención, aunque esa persona ya no esté.
+  const names = [...new Set(state.roster.concat(state.formerMembers).map(u=>u.nickname).filter(Boolean).concat(["all"]))]
     .sort((a,b)=>b.length-a.length)
     .map(n=>n.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"));
   // Límite a la izquierda también: "juan@pedro.com" no es una mención a
@@ -1912,7 +1920,7 @@ function mentionRegex(){
   // "i": para que "@Benny" (viejo, de antes de que los nicknames se
   // guardaran en minúscula) siga reconociéndose igual que "@benny".
   const re = new RegExp(`(^|[^\\w@])@(${names.join("|")})\\b`, "gi");
-  mentionRegexCache = { roster: state.roster, re };
+  mentionRegexCache = { roster: state.roster, former: state.formerMembers, re };
   return re;
 }
 // Siempre en minúscula al mostrarlo, sin importar cómo esté guardado el
@@ -1923,7 +1931,8 @@ function mentionRegex(){
 function highlightMentions(escapedText){
   return escapedText.replace(mentionRegex(), (m, pre, name) => {
     const nick = name.toLowerCase();
-    return `${pre}<span class="mention-tag" data-action="show-user-profile" data-nick="${esc(nick)}">@${esc(nick)}</span>`;
+    const who = memberByNick(nick);
+    return `${pre}<span class="mention-tag${who && who.former ? " former" : ""}" data-action="show-user-profile" data-nick="${esc(nick)}">@${esc(nick)}</span>`;
   });
 }
 function nl2br(s){ return highlightMentions(esc(s)).replace(/\n/g,"<br>"); }
@@ -2090,6 +2099,23 @@ function myRosterEntry(){
   const email = state.auth.user && state.auth.user.email;
   return email ? state.roster.find(u=>u.email===email) : null;
 }
+// Identidad de alguien por email: primero entre los que están hoy, y si no
+// entre los que estuvieron. La entrada de un ex integrante viene marcada
+// con former:true para poder mostrarlo como tal donde haga falta.
+function memberByEmail(email){
+  if(!email) return null;
+  const active = state.roster.find(u=>u.email===email);
+  if(active) return active;
+  const former = state.formerMembers.find(u=>u.email===email);
+  return former ? { ...former, former:true } : null;
+}
+function memberByNick(nick){
+  const n = String(nick||"").toLowerCase();
+  const active = state.roster.find(u=>String(u.nickname||"").toLowerCase()===n);
+  if(active) return active;
+  const former = state.formerMembers.find(u=>String(u.nickname||"").toLowerCase()===n);
+  return former ? { ...former, former:true } : null;
+}
 // Cómo mostrar a quién escribió algo: @nickname si el email pertenece a
 // alguien aprobado hoy (es el mismo handle que ya se usa en @menciones,
 // no el nombre completo de la cuenta de Google) — si no hay match
@@ -2097,7 +2123,7 @@ function myRosterEntry(){
 // son cuentas de la app, alguien que ya no está aprobado), se muestra el
 // nombre tal cual venía.
 function authorLabel(email, fallbackName){
-  const entry = email && state.roster.find(u=>u.email===email);
+  const entry = memberByEmail(email);
   return entry ? "@" + entry.nickname.toLowerCase() : (fallbackName || "");
 }
 // Mismo authorLabel() de arriba pero en HTML: si el email resolvió a
@@ -2105,10 +2131,10 @@ function authorLabel(email, fallbackName){
 // popup de perfil que un @mención dentro del texto (ver
 // highlightMentions). Si no hay match, texto escapado nomás.
 function authorLabelHtml(email, fallbackName){
-  const entry = email && state.roster.find(u=>u.email===email);
+  const entry = memberByEmail(email);
   if(!entry) return esc(fallbackName || "");
   const nick = entry.nickname.toLowerCase();
-  return `<span class="mention-tag" data-action="show-user-profile" data-nick="${esc(nick)}">@${esc(nick)}</span>`;
+  return `<span class="mention-tag${entry.former?" former":""}" data-action="show-user-profile" data-nick="${esc(nick)}">@${esc(nick)}</span>`;
 }
 // Mismo criterio para la lista de participantes tageados en un Evento:
 // el nombre de cada uno que resuelva a una cuenta de la app (por email)
@@ -2116,7 +2142,7 @@ function authorLabelHtml(email, fallbackName){
 // la app) se quedan como texto, igual que antes.
 function participantsHtml(participants){
   return (participants||[]).map(p=>{
-    const entry = p.email && state.roster.find(u=>u.email===p.email);
+    const entry = memberByEmail(p.email);
     if(!entry) return esc(p.name || p.email);
     return `<span class="person-link" data-action="show-user-profile" data-nick="${esc(entry.nickname.toLowerCase())}">${esc(p.name || p.email)}</span>`;
   }).join(", ");
@@ -2359,6 +2385,13 @@ state.auth = { status: "loading", user: null };
 state.accessRequests = []; // solo se llena para el admin
 state.auditLog = []; // solo se llena para el admin
 state.roster = []; // [{email, nickname}] — todo aprobado, para autocompletar @menciones
+// Quiénes ESTUVIERON en el equipo y ya no están. Se guarda al revocar el
+// acceso, porque el @nickname vive únicamente en allowlist/{email} y ahí se
+// borra: sin esto, todos los posteos viejos de esa persona pasaban a
+// mostrar el nombre crudo de Google y dejaban de ser clickeables. En una
+// app que se llama "Memoria histórica", perder quién escribió qué es un
+// agujero, no un detalle.
+state.formerMembers = []; // [{email, name, nickname, photoURL, approvedAt, revokedAt}]
 
 /* ======================================================================
    PREFERENCIAS PERSONALES (userPrefs/{email})
@@ -3124,6 +3157,7 @@ let unsubRoster = null;
 let unsubTerritoryConfig = null;
 let unsubPreferences = null;
 let unsubUserPrefs = null;
+let unsubFormerMembers = null;
 
 function recomputeAuthStatus(){
   if(state.auth.status === "admin") return;
@@ -3207,9 +3241,10 @@ async function onAuthChanged(user){
     if(unsubTerritoryConfig){ unsubTerritoryConfig(); unsubTerritoryConfig = null; }
     if(unsubPreferences){ unsubPreferences(); unsubPreferences = null; }
     if(unsubUserPrefs){ unsubUserPrefs(); unsubUserPrefs = null; }
+    if(unsubFormerMembers){ unsubFormerMembers(); unsubFormerMembers = null; }
     stopCalendarAutoSync();
     state.posts = []; state.repliesByPost = {}; state.loaded = false; state.roster = [];
-    state.prefs = { ...DEFAULT_PREFS };
+    state.prefs = { ...DEFAULT_PREFS }; state.formerMembers = [];
     dataSubscribed = false;
   };
   unsubAllowlist = fb.onSnapshot(fb.doc(db, "allowlist", profile.email), snap=>{
@@ -3217,7 +3252,7 @@ async function onAuthChanged(user){
     recomputeAuthStatus();
     if(state.auth.allowlisted && !dataSubscribed){
       dataSubscribed = true; fatalError = null;
-      subscribeData(); subscribeRoster(); subscribeTerritoryConfig(); subscribePreferences(); subscribeUserPrefs();
+      subscribeData(); subscribeRoster(); subscribeTerritoryConfig(); subscribePreferences(); subscribeUserPrefs(); subscribeFormerMembers();
     } else if(!state.auth.allowlisted && dataSubscribed){
       // Revocación con la persona online: se cortan los listeners ANTES
       // de que fallen con permiso denegado. Antes quedaban corriendo, el
@@ -3290,6 +3325,14 @@ function subscribeAuditLog(){
 // Lista de nombre/email de todo aprobado, para autocompletar @menciones.
 // Cualquier aprobado puede LEER esto (no solo el admin) — ver el cambio
 // correspondiente en firestore.rules (allowlist: allow list).
+// Ex integrantes: lo lee cualquier aprobado, igual que el roster y por el
+// mismo motivo — resolver el @nickname de quien escribió algo.
+function subscribeFormerMembers(){
+  unsubFormerMembers = fb.onSnapshot(fb.collection(db,"formerMembers"), snap=>{
+    state.formerMembers = snap.docs.map(d=>({ email:d.id, ...d.data() }));
+    render();
+  }, err=>console.error("Error leyendo ex integrantes:", err));
+}
 function subscribeRoster(){
   // Sin orderBy("approvedAt"): Firestore EXCLUYE de la consulta los
   // documentos que no tienen ese campo, y esa persona desaparecía del
@@ -3506,12 +3549,21 @@ async function approveRequest(email){
   const name = reqData.name || email;
   const rosterSnap = await fb.getDocs(fb.collection(db,"allowlist"));
   const existingNicknames = new Set(rosterSnap.docs.map(d=>d.data().nickname).filter(Boolean));
-  const nickname = makeNickname(name, existingNicknames);
+  // Si vuelve alguien que ya estuvo, se le devuelve SU @nickname de antes
+  // (si nadie lo ocupó mientras tanto): sus posteos viejos lo siguen
+  // usando, y darle uno nuevo partiría su historia en dos personas.
+  const former = state.formerMembers.find(u=>u.email===email);
+  const nickname = former && former.nickname && !existingNicknames.has(former.nickname)
+    ? former.nickname
+    : makeNickname(name, existingNicknames);
   await fb.setDoc(fb.doc(db, "allowlist", email), {
     email, name, nickname, photoURL: reqData.photoURL || null,
     approvedAt: fb.serverTimestamp(), approvedBy: ADMIN_EMAIL,
   });
   await fb.updateDoc(fb.doc(db, "accessRequests", email), { status:"approved" });
+  // Ya no es "ex": vuelve a estar en el roster y el registro histórico
+  // dejaría duplicada su identidad en memberByEmail.
+  try{ await fb.deleteDoc(fb.doc(db, "formerMembers", email)); }catch(e){}
   logAudit("access_approved", { targetEmail: email });
 }
 async function rejectRequest(email){
@@ -3519,6 +3571,22 @@ async function rejectRequest(email){
   logAudit("access_rejected", { targetEmail: email });
 }
 async function revokeAccess(email){
+  // Primero se guarda quién era (nombre, @nickname, foto, desde cuándo) y
+  // recién después se borra su acceso: el nickname vive SOLO en el
+  // documento de allowlist, así que si se borra antes se pierde para
+  // siempre y todos sus posteos viejos quedan con el nombre crudo de
+  // Google, sin @nickname y sin perfil.
+  try{
+    const snap = await fb.getDoc(fb.doc(db, "allowlist", email));
+    if(snap.exists()){
+      const d = snap.data();
+      await fb.setDoc(fb.doc(db, "formerMembers", email), {
+        email, name: d.name || email, nickname: d.nickname || "",
+        photoURL: d.photoURL || null, approvedAt: d.approvedAt || null,
+        revokedAt: fb.serverTimestamp(),
+      });
+    }
+  }catch(err){ console.error("No se pudo guardar el registro de ex integrante:", err); }
   await fb.deleteDoc(fb.doc(db, "allowlist", email));
   // La solicitud original queda marcada como "rejected" (no solo se borra
   // el acceso real) para que, si esa persona intenta entrar de nuevo, la
@@ -4548,7 +4616,14 @@ function renderUsuariosSection(){
 
 function renderSolicitudesQueueSection(){
   const pending = state.accessRequests.filter(r=>r.status==="pending");
-  const rejected = state.accessRequests.filter(r=>r.status==="rejected");
+  // "Rechazadas" mezclaba dos cosas muy distintas: alguien a quien nunca se
+  // le dio acceso, y alguien que SÍ estuvo en el equipo y se fue. Se
+  // separan: quien tiene registro de ex integrante va a su propia lista,
+  // con su @nickname y desde/hasta cuándo estuvo.
+  const formerEmails = new Set(state.formerMembers.map(u=>u.email));
+  const rejected = state.accessRequests.filter(r=>r.status==="rejected" && !formerEmails.has(r.email));
+  const formers = state.formerMembers.slice()
+    .sort((a,b)=> tsToMillis(b.revokedAt) - tsToMillis(a.revokedAt));
   const renderRow = (r, actionsHtml) => `<div class="request-row">
       ${r.photoURL ? `<img src="${esc(r.photoURL)}" alt="">` : `<div class="avatar-fallback">${esc((r.name||r.email||"?")[0].toUpperCase())}</div>`}
       <div class="rinfo">
@@ -4569,7 +4644,30 @@ function renderSolicitudesQueueSection(){
         <span class="status-pill rejected">${t("Rechazado","Rejected","Recusado","נדחה")}</span>
         <button class="btn-primary" data-action="approve-request" data-email="${esc(r.email)}">${t("Aprobar igual","Approve anyway","Aprovar mesmo assim","אישור בכל זאת")}</button>`)).join("")}
     </div>` : "";
-  return pendingHtml + rejectedHtml;
+  const formersHtml = formers.length ? `
+    <div class="rejected-section">
+      <div class="hint" style="margin:18px 0 10px;">${t(
+        "Ex integrantes — estuvieron en el equipo y ya no. Sus posteos siguen firmados con su @nickname; si vuelven, lo recuperan.",
+        "Former members — they were on the team and no longer are. Their posts keep their @nickname; if they come back, they get it back.",
+        "Ex-integrantes — estiveram na equipe e já não estão. Suas postagens seguem assinadas com seu @nickname; se voltarem, o recuperam.",
+        "חברים לשעבר — היו בצוות וכבר לא. הפוסטים שלהם נשארים חתומים ב-@nickname שלהם; אם יחזרו, יקבלו אותו בחזרה."
+      )}</div>
+      ${formers.map(u=>`<div class="request-row">
+          ${u.photoURL ? `<img src="${esc(u.photoURL)}" alt="">` : `<div class="avatar-fallback">${esc((u.name||u.email||"?")[0].toUpperCase())}</div>`}
+          <div class="rinfo">
+            <div class="rname">${esc(u.name||u.email)} · <span class="up-nick">@${esc(String(u.nickname||"").toLowerCase())}</span></div>
+            <div class="remail">${esc(u.email)} · ${t("estuvo del {a} al {b}","member from {a} to {b}","esteve de {a} a {b}","היה/תה מ-{a} עד {b}",{a:fmtDateTime(u.approvedAt)||"—", b:fmtDateTime(u.revokedAt)||"—"})}</div>
+            <div class="remail">${(()=>{ const n = state.posts.filter(p=>p.authorEmail===u.email).length;
+              return n === 1 ? t("Dejó 1 posteo","Left 1 post","Deixou 1 postagem","השאיר/ה פוסט אחד")
+                             : t("Dejó {n} posteos","Left {n} posts","Deixou {n} postagens","השאיר/ה {n} פוסטים",{n}); })()}</div>
+          </div>
+          <div class="ractions">
+            <button class="btn-ghost" data-action="show-user-profile" data-nick="${esc(String(u.nickname||"").toLowerCase())}">${t("Ver perfil","View profile","Ver perfil","צפייה בפרופיל")}</button>
+            <button class="btn-primary" data-action="approve-request" data-email="${esc(u.email)}">${t("Volver a dar acceso","Grant access again","Dar acesso de novo","להעניק גישה שוב")}</button>
+          </div>
+        </div>`).join("")}
+    </div>` : "";
+  return pendingHtml + formersHtml + rejectedHtml;
 }
 
 function renderAccesoView(){
@@ -7114,7 +7212,7 @@ const userProfileBody = document.getElementById("userProfileBody");
 let userProfileEmail = null;
 let userProfileReturnFocus = null;
 function renderUserProfile(){
-  const entry = state.roster.find(u => u.email === userProfileEmail);
+  const entry = memberByEmail(userProfileEmail);
   if(!entry){ closeUserProfile(); return; } // ya no está aprobado / se fue mientras estaba abierto
   const displayName = entry.name || entry.nickname;
   const avatarHtml = entry.photoURL
@@ -7140,6 +7238,7 @@ function renderUserProfile(){
       ${avatarHtml}
       <div class="up-head-text">
         <div class="up-name" id="userProfileNameLabel">${esc(displayName)} · <span class="up-nick">@${esc(entry.nickname.toLowerCase())}</span></div>
+        ${entry.former ? `<div class="up-former">${t("Ex integrante · hasta {d}","Former member · until {d}","Ex-integrante · até {d}","חבר/ה לשעבר · עד {d}",{d:fmtDateTime(entry.revokedAt) || "—"})}</div>` : ""}
         <div class="up-email">${esc(entry.email)}</div>
       </div>
     </div>
@@ -7154,8 +7253,8 @@ function renderUserProfile(){
   `;
 }
 function openUserProfile(email){
-  const entry = state.roster.find(u => u.email === email);
-  if(!entry) return; // el @mention quedó de alguien que ya no está aprobado
+  const entry = memberByEmail(email);
+  if(!entry) return; // ni activo ni ex integrante: no hay a quién mostrar
   userProfileEmail = email;
   renderUserProfile();
   userProfileReturnFocus = document.activeElement;
@@ -7676,7 +7775,7 @@ document.addEventListener("click", e=>{
   } else if(action === "show-user-profile"){
     const nick = (el.dataset.nick || "").toLowerCase();
     if(nick && nick !== "all"){
-      const entry = state.roster.find(u => u.nickname && u.nickname.toLowerCase() === nick);
+      const entry = memberByNick(nick);
       if(entry) openUserProfile(entry.email);
     }
   } else if(action === "goto-post-from-profile"){
