@@ -945,6 +945,72 @@
   .city-row:hover{ border-color:var(--celeste); }
   .city-row .cname{ font-weight:700; font-size:13.5px; }
   .city-row .ccount{ font-weight:800; color:var(--ink); }
+
+  /* ---------- Calendario view ---------- */
+  .cal-nav{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .cal-nav button{ border:1px solid var(--border); background:var(--card); color:var(--text); border-radius:999px; cursor:pointer; font-weight:700; }
+  .cal-nav button:hover{ border-color:var(--celeste); }
+  .cal-today{ padding:7px 16px; font-size:12.5px; }
+  .cal-arrow{ width:32px; height:32px; font-size:17px; line-height:1; padding:0; }
+  .cal-title{ font-weight:800; font-size:15px; color:var(--ink-strong); }
+  /* Solo la primera letra: toLocaleDateString devuelve el mes en minúscula
+     en es/pt ("septiembre de 2026"), y un text-transform:capitalize dejaba
+     "Septiembre De 2026", con el "de" capitalizado de más. */
+  .cal-title::first-letter{ text-transform:uppercase; }
+  .cal-month{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow); overflow:hidden; }
+  .cal-heads, .cal-cells{ display:grid; grid-template-columns:repeat(7, minmax(0,1fr)); }
+  .cal-head{ padding:9px 6px; text-align:center; font-size:11.5px; font-weight:800; color:var(--text-muted); text-transform:uppercase; border-bottom:1px solid var(--border); }
+  .cal-cell{ min-height:104px; padding:5px 5px 7px; display:flex; flex-direction:column; gap:3px; border-inline-end:1px solid var(--border); border-bottom:1px solid var(--border); }
+  .cal-cell:nth-child(7n){ border-inline-end:none; }
+  .cal-cell.other{ background:var(--surface-alt); }
+  .cal-cell.other .cal-daynum{ opacity:0.45; }
+  .cal-cell[data-action]{ cursor:pointer; }
+  .cal-cell[data-action]:hover{ background:var(--celeste-soft); }
+  .cal-daynum{ align-self:flex-start; min-width:22px; padding:2px 0; text-align:center; font-size:12px; font-weight:800; color:var(--ink-strong); }
+  .cal-cell.today .cal-daynum{ background:var(--celeste-dark); color:#fff; border-radius:999px; }
+  .cal-chip{
+    display:flex; align-items:center; gap:4px; width:100%; text-align:start; border:none; cursor:pointer;
+    background:var(--surface-alt); color:var(--text); border-radius:6px; padding:3px 6px; font-size:11.5px; font-weight:600;
+  }
+  .cal-chip:hover{ background:var(--celeste-soft); }
+  .cal-chip.cancelled{ text-decoration:line-through; opacity:0.6; }
+  .cal-chip .cal-dot{ width:7px; height:7px; border-radius:50%; flex:none; }
+  /* min-width:0 para que el ellipsis funcione adentro de un flex item */
+  .cal-chip .cal-txt{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .cal-chip b{ font-weight:800; }
+  .cal-more{ border:none; background:none; color:var(--text-muted); font-size:11px; font-weight:700; cursor:pointer; text-align:start; padding:1px 6px; }
+  .cal-more:hover{ color:var(--celeste-dark); }
+  .cal-grid{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow); overflow:hidden; }
+  .cal-grid-row{ display:flex; border-bottom:1px solid var(--border); }
+  .cal-grid-cols{ flex:1; min-width:0; display:grid; grid-template-columns:repeat(var(--cal-cols), minmax(0,1fr)); }
+  .cal-gutter{ width:62px; flex:none; padding:4px 6px; text-align:end; font-size:10.5px; font-weight:700; color:var(--text-muted); }
+  .cal-gcol-head{ padding:8px 4px; text-align:center; border-inline-start:1px solid var(--border); }
+  .cal-gcol-head .dow{ display:block; font-size:11px; font-weight:800; color:var(--text-muted); text-transform:uppercase; }
+  .cal-gcol-head .dnum{ display:block; font-size:18px; font-weight:800; color:var(--ink-strong); }
+  .cal-gcol-head.today .dnum{ color:var(--celeste-dark); }
+  .cal-gcol-allday{ min-height:38px; padding:4px; display:flex; flex-direction:column; gap:3px; border-inline-start:1px solid var(--border); }
+  .cal-gcol-allday[data-action]{ cursor:pointer; }
+  .cal-gcol-allday[data-action]:hover{ background:var(--celeste-soft); }
+  .cal-grid-body{ display:flex; max-height:560px; overflow-y:auto; }
+  .cal-hours{ padding:0; }
+  .cal-hour-label{ height:44px; padding-block-start:3px; padding-inline-end:6px; }
+  .cal-gcol{ position:relative; border-inline-start:1px solid var(--border); }
+  .cal-slot{ height:44px; border-bottom:1px solid var(--border); }
+  .cal-slot[data-action]{ cursor:pointer; }
+  .cal-slot[data-action]:hover{ background:var(--celeste-soft); }
+  .cal-block{
+    position:absolute; overflow:hidden; cursor:pointer; text-align:start; line-height:1.25;
+    background:var(--celeste-soft); color:var(--ink-strong); border:1px solid var(--border);
+    border-inline-start:3px solid var(--celeste); border-radius:5px; padding:2px 5px; font-size:11.5px; font-weight:600;
+  }
+  .cal-block.cancelled{ text-decoration:line-through; opacity:0.6; }
+  .cal-block b{ font-weight:800; }
+  @media (max-width:640px){
+    .cal-cell{ min-height:72px; padding:3px; }
+    .cal-gutter{ width:44px; }
+    .cal-chip{ font-size:10.5px; padding:2px 4px; }
+    .cal-title{ font-size:13.5px; }
+  }
   /* Círculos del mapa: SIEMPRE el mismo tamaño (el número adentro es lo
      que cambia, no el círculo) — antes el radio crecía con la cantidad de
      registros y con muchos países cercanos terminaba en un amasijo de
@@ -1073,7 +1139,8 @@
     </div>
     <nav class="tabs tabs-hidden" id="tabs">
       <button data-view="feed">Feed</button>
-      <button data-view="paises">Países</button>
+      <button data-view="paises">Vistas</button>
+      <button data-view="calendario">Calendario</button>
       <button data-view="memoria">Memoria</button>
       <button data-view="auditoria" id="tabAuditoria" hidden>Actividad</button>
       <button data-view="solicitudes" id="tabSolicitudes" hidden>Usuarios<span id="pendingBadge"></span></button>
@@ -2023,6 +2090,8 @@ const state = {
     place: null,            // {kind:'country'|'city'|'zone', country?, city?, zone?}
   },
   paisesSubview: "lista",   // lista | mapa
+  calendarioSubview: "mes", // mes | semana | dia
+  calendarioAnchor: null,   // YYYY-MM-DD sobre el que está parado el Calendario; null = hoy
   preferenciasSection: "zonas", // zonas | tipos | lugares | calendar | adjuntos
   countryDrill: null,       // nombre de país (drill a ciudades) en vista Países > Lista
   paisesZoneFilter: new Set(), // keys de zona (sur/central/norte) para filtrar Países (Lista y Mapa); vacío = todas
@@ -3615,7 +3684,8 @@ function applyStaticI18n(){
 
   const tabLabels = {
     feed: t("Feed", "Feed", "Feed", "פיד"),
-    paises: t("Países", "Countries", "Países", "מדינות"),
+    paises: t("Vistas", "Views", "Vistas", "תצוגות"),
+    calendario: t("Calendario", "Calendar", "Calendário", "יומן"),
     memoria: t("Memoria", "Memory", "Memória", "זיכרון"),
     auditoria: t("Actividad", "Activity", "Atividade", "פעילות"),
     solicitudes: t("Usuarios", "Users", "Usuários", "משתמשים"),
@@ -3956,6 +4026,7 @@ function doRender(){
 
   if(state.view === "feed") html += renderFeedView();
   else if(state.view === "paises") html += renderPaisesView();
+  else if(state.view === "calendario") html += renderCalendarioView();
   else if(state.view === "memoria") html += renderMemoriaView();
   else if(state.view === "solicitudes") html += renderAccesoView();
   else if(state.view === "auditoria") html += renderAuditoriaView();
@@ -4560,9 +4631,21 @@ function renderPreferenciasView(){
     </div>`;
 }
 
+// La grilla horaria arranca mostrando la mañana (07:00) en vez de la
+// medianoche, pero NO se reposiciona en cada render: doRender() rehace el
+// innerHTML entero, y volver a saltar a las 7 cada vez que llega una
+// respuesta sacaría a la persona de donde estaba mirando.
+let calGridScroll = null;
 function afterRenderView(){
   if(state.view === "paises" && state.paisesSubview === "mapa" && !CONFIG_IS_PLACEHOLDER){
     initOrUpdateMap();
+  }
+  if(state.view === "calendario" && state.calendarioSubview !== "mes"){
+    const body = document.getElementById("calGridBody");
+    if(body){
+      body.scrollTop = calGridScroll == null ? Math.round(body.scrollHeight * 7 / 24) : calGridScroll;
+      body.addEventListener("scroll", ()=>{ calGridScroll = body.scrollTop; }, { passive:true });
+    }
   }
 }
 
@@ -5331,6 +5414,233 @@ function initOrUpdateMap(){
 }
 
 /* ======================================================================
+   RENDER: Calendario
+   ======================================================================
+   Vista propia sobre state.posts, no un <iframe> de Google Calendar. Los
+   eventos YA están en memoria: el sync bidireccional con el Calendar
+   compartido (syncToCalendar / syncFromCalendar) los mantiene al día en
+   las dos direcciones, así que no hace falta pedir nada por red acá. A
+   cambio, clickear un evento abre el posteo completo —con sus
+   respuestas, adjuntos y participantes— y clickear un día vacío abre el
+   composer con esa fecha puesta; dos cosas que el embed de Google no
+   puede hacer, además de heredar el modo oscuro, el idioma y el RTL.
+
+   Toda la aritmética de fechas de acá es UTC (isoDate + addDaysISO, y
+   toLocaleDateString con timeZone:"UTC"): mezclar medianoche LOCAL con
+   UTC corre un día para cualquiera al este de Greenwich — el mismo bug
+   que ya documenta addDaysISO.
+   ====================================================================== */
+
+// Rutina NO entra al Calendario: no es un evento con fecha y horario
+// propios sino la bitácora del día a día (tiene su composer liviano
+// arriba del Feed). Es exactamente el mismo criterio que decide qué se
+// publica en el Calendar compartido, así que se reusa esa constante en
+// vez de mantener dos listas de tipos en paralelo que se despeguen.
+function calendarioPosts(){
+  return state.posts.filter(p => CALENDAR_SYNC_TYPES.has(p.activityType) && (p.startDate || p.date));
+}
+function isoDate(iso){ return new Date(iso + "T00:00:00Z"); }
+function fmtISO(iso, opts){ return isoDate(iso).toLocaleDateString(dateLocale(), { ...opts, timeZone:"UTC" }); }
+function isoDow(iso){ return isoDate(iso).getUTCDay(); }
+function addMonthsISO(iso, n){
+  const d = isoDate(iso);
+  const day = d.getUTCDate();
+  // Al día 1 antes de mover el mes: sin esto, "31 de enero" + 1 mes cae
+  // en marzo (febrero no tiene 31) en vez de en el último día de febrero.
+  d.setUTCDate(1);
+  d.setUTCMonth(d.getUTCMonth() + n);
+  const lastDay = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
+  d.setUTCDate(Math.min(day, lastDay));
+  return d.toISOString().slice(0,10);
+}
+function calendarioAnchor(){ return state.calendarioAnchor || todayISO(); }
+function weekStartISO(iso){ return addDaysISO(iso, -isoDow(iso)); }
+// 1970-01-04 fue domingo: sirve de base fija para sacar los nombres de
+// los días ya traducidos por el navegador, sin hardcodear una lista por
+// idioma (y sin que se desincronice de dateLocale()).
+function weekdayNames(fmt){
+  return Array.from({length:7}, (_,i)=> fmtISO(addDaysISO("1970-01-04", i), { weekday:fmt }));
+}
+
+// Mapa fecha ISO -> eventos de ese día, ya recortado a la ventana que se
+// está dibujando. Un evento de varios días aparece en cada uno de sus
+// días; el recorte a [fromISO, toISO] evita iterar rangos largos.
+function calendarioEventsByDate(fromISO, toISO){
+  const byDate = {};
+  calendarioPosts().forEach(p=>{
+    const start = p.startDate || p.date;
+    const end = p.endDate && p.endDate >= start ? p.endDate : start;
+    let d = start < fromISO ? fromISO : start;
+    const last = end > toISO ? toISO : end;
+    while(d <= last){
+      (byDate[d] = byDate[d] || []).push(p);
+      d = addDaysISO(d, 1);
+    }
+  });
+  Object.values(byDate).forEach(list => list.sort(calendarioCompare));
+  return byDate;
+}
+// "Todo el día" primero, después por hora de inicio.
+function calendarioCompare(a, b){
+  const ta = a.startTime || "", tb = b.startTime || "";
+  if(!ta && tb) return -1;
+  if(ta && !tb) return 1;
+  if(ta !== tb) return ta < tb ? -1 : 1;
+  return String(a.title||"").localeCompare(String(b.title||""));
+}
+function calendarioLabel(p){
+  return p.title || String(p.content||"").slice(0,60) || t("Sin título","Untitled","Sem título","ללא כותרת");
+}
+function calendarioColor(p){
+  const sc = (p.scopes||[])[0];
+  const zone = sc ? zoneOfScope(sc) : null;
+  return zone && ZONES[zone] ? safeColor(ZONES[zone].color) : "#4fc7e0";
+}
+// data-action="cal-new" solo para quien puede postear: sin esto, alguien
+// pendiente de aprobación abriría un composer que después no puede guardar.
+function calendarioNewAttrs(iso, hour){
+  if(!isAuthorized()) return "";
+  const title = esc(t("Nuevo evento","New event","Novo evento","אירוע חדש"));
+  return ` data-action="cal-new" data-date="${iso}"${hour != null ? ` data-hour="${hour}"` : ""} title="${title}"`;
+}
+function calendarioChip(p, iso){
+  const type = ACTIVITY_BY_KEY[p.activityType] || { icon:"✨" };
+  const label = calendarioLabel(p);
+  // La hora solo en el día en que arranca: en los días del medio de un
+  // evento de varios días no significa nada.
+  const time = p.startTime && (p.startDate || p.date) === iso ? `<b>${esc(p.startTime)}</b> ` : "";
+  return `<button type="button" class="cal-chip${p.cancelled?" cancelled":""}" data-action="cal-open" data-post-id="${esc(p.id)}" title="${esc(label)}">
+      <span class="cal-dot" style="background:${calendarioColor(p)}"></span><span class="cal-txt">${type.icon} ${time}${esc(label)}</span>
+    </button>`;
+}
+
+function renderCalendarioView(){
+  const sub = state.calendarioSubview;
+  const anchor = calendarioAnchor();
+  const toggle = `
+    <div class="subview-toggle">
+      <button data-action="cal-subview" data-key="mes" class="${sub==="mes"?"active":""}">${t("Mes","Month","Mês","חודש")}</button>
+      <button data-action="cal-subview" data-key="semana" class="${sub==="semana"?"active":""}">${t("Semana","Week","Semana","שבוע")}</button>
+      <button data-action="cal-subview" data-key="dia" class="${sub==="dia"?"active":""}">${t("Día","Day","Dia","יום")}</button>
+    </div>`;
+  const nav = `
+    <div class="cal-nav">
+      <button type="button" class="cal-today" data-action="cal-today">${t("Hoy","Today","Hoje","היום")}</button>
+      <button type="button" class="cal-arrow" data-action="cal-step" data-step="-1" aria-label="${esc(t("Anterior","Previous","Anterior","הקודם"))}">${isRTL()?"›":"‹"}</button>
+      <button type="button" class="cal-arrow" data-action="cal-step" data-step="1" aria-label="${esc(t("Siguiente","Next","Próximo","הבא"))}">${isRTL()?"‹":"›"}</button>
+      <span class="cal-title">${esc(calendarioTitle(sub, anchor))}</span>
+    </div>`;
+  const toolbar = `<div class="paises-toolbar">${toggle}${nav}</div>`;
+  if(CONFIG_IS_PLACEHOLDER){
+    return toolbar + `<div class="empty-state">${t("Configurá Firebase para ver datos.","Set up Firebase to see data.","Configure o Firebase para ver dados.",".הגדר/י את Firebase כדי לראות נתונים")}</div>`;
+  }
+  if(sub === "mes") return toolbar + renderCalendarioMes(anchor);
+  const days = sub === "dia" ? [anchor] : Array.from({length:7}, (_,i)=> addDaysISO(weekStartISO(anchor), i));
+  return toolbar + renderCalendarioGrid(days);
+}
+
+function calendarioTitle(sub, anchor){
+  if(sub === "mes") return fmtISO(anchor, { month:"long", year:"numeric" });
+  if(sub === "dia") return fmtISO(anchor, { weekday:"long", day:"numeric", month:"long", year:"numeric" });
+  const a = weekStartISO(anchor), b = addDaysISO(a, 6);
+  return `${fmtISO(a,{day:"numeric",month:"short"})} – ${fmtISO(b,{day:"numeric",month:"short",year:"numeric"})}`;
+}
+
+// Siempre 6 semanas (42 celdas), aunque el mes entre en 5: así la grilla
+// no cambia de alto al pasar de mes y el contenido no salta.
+function renderCalendarioMes(anchor){
+  const first = anchor.slice(0,8) + "01";
+  const gridStart = addDaysISO(first, -isoDow(first));
+  const gridEnd = addDaysISO(gridStart, 41);
+  const byDate = calendarioEventsByDate(gridStart, gridEnd);
+  const month = first.slice(0,7);
+  const today = todayISO();
+  const heads = weekdayNames("short").map(n=>`<div class="cal-head">${esc(n)}</div>`).join("");
+  const cells = Array.from({length:42}, (_,i)=>{
+    const iso = addDaysISO(gridStart, i);
+    const evs = byDate[iso] || [];
+    const shown = evs.slice(0, 3);
+    const rest = evs.length - shown.length;
+    return `<div class="cal-cell${iso.slice(0,7)!==month?" other":""}${iso===today?" today":""}"${calendarioNewAttrs(iso)}>
+        <div class="cal-daynum">${Number(iso.slice(8,10))}</div>
+        ${shown.map(p=>calendarioChip(p, iso)).join("")}
+        ${rest > 0 ? `<button type="button" class="cal-more" data-action="cal-open-day" data-date="${iso}">+${rest} ${t("más","more","mais","נוספים")}</button>` : ""}
+      </div>`;
+  }).join("");
+  return `<div class="cal-month">
+      <div class="cal-heads">${heads}</div>
+      <div class="cal-cells">${cells}</div>
+    </div>`;
+}
+
+function minutesOf(hhmm){
+  const m = /^(\d{1,2}):(\d{2})$/.exec(hhmm || "");
+  if(!m) return 0;
+  return Math.min(24*60, Number(m[1])*60 + Number(m[2]));
+}
+// Los eventos que se pisan en el mismo día se reparten el ancho de la
+// columna en vez de dibujarse uno encima del otro. Un grupo se corta
+// cuando aparece uno que arranca después de que terminaron TODOS los
+// anteriores del grupo.
+function layoutTimedEvents(list){
+  const items = list.map(p=>{
+    const from = minutesOf(p.startTime);
+    return { post:p, from, to: Math.max(minutesOf(p.endTime) , from + 30) };
+  }).sort((a,b)=> a.from - b.from || a.to - b.to);
+  const out = [];
+  let group = [], groupEnd = -1;
+  const flush = ()=>{
+    group.forEach((it,i)=>{ it.col = i; it.cols = group.length; out.push(it); });
+    group = [];
+  };
+  items.forEach(it=>{
+    if(group.length && it.from >= groupEnd){ flush(); groupEnd = -1; }
+    group.push(it);
+    groupEnd = Math.max(groupEnd, it.to);
+  });
+  flush();
+  return out;
+}
+function calendarioBlock(it){
+  const p = it.post;
+  const top = (it.from / 1440) * 100;
+  const height = Math.max(1.7, ((it.to - it.from) / 1440) * 100);
+  const width = 100 / it.cols;
+  return `<button type="button" class="cal-block${p.cancelled?" cancelled":""}" data-action="cal-open" data-post-id="${esc(p.id)}"
+      style="top:${top}%;height:${height}%;inset-inline-start:${it.col*width}%;width:${width}%;border-inline-start-color:${calendarioColor(p)}">
+      <b>${esc(p.startTime)}</b> ${esc(calendarioLabel(p))}
+    </button>`;
+}
+
+function renderCalendarioGrid(days){
+  const byDate = calendarioEventsByDate(days[0], days[days.length-1]);
+  const today = todayISO();
+  const heads = days.map(iso=>`
+      <div class="cal-gcol-head${iso===today?" today":""}">
+        <span class="dow">${esc(fmtISO(iso,{weekday:"short"}))}</span>
+        <span class="dnum">${Number(iso.slice(8,10))}</span>
+      </div>`).join("");
+  // La banda de "todo el día" NO es un detalle en esta app: la mayoría de
+  // los eventos (y todos los de varios días) no tienen horario propio, así
+  // que es la parte más poblada de la vista de Semana/Día.
+  const allDay = days.map(iso=>{
+    const evs = (byDate[iso]||[]).filter(p=>!p.startTime);
+    return `<div class="cal-gcol-allday"${calendarioNewAttrs(iso)}>${evs.map(p=>calendarioChip(p, iso)).join("")}</div>`;
+  }).join("");
+  const hours = Array.from({length:24}, (_,h)=>`<div class="cal-hour-label"><span>${String(h).padStart(2,"0")}:00</span></div>`).join("");
+  const cols = days.map(iso=>{
+    const timed = (byDate[iso]||[]).filter(p=>p.startTime);
+    const slots = Array.from({length:24}, (_,h)=>`<div class="cal-slot"${calendarioNewAttrs(iso,h)}></div>`).join("");
+    return `<div class="cal-gcol">${slots}${layoutTimedEvents(timed).map(calendarioBlock).join("")}</div>`;
+  }).join("");
+  return `<div class="cal-grid" style="--cal-cols:${days.length}">
+      <div class="cal-grid-row cal-grid-head"><div class="cal-gutter"></div><div class="cal-grid-cols">${heads}</div></div>
+      <div class="cal-grid-row cal-grid-allday"><div class="cal-gutter">${esc(t("Todo el día","All day","Dia todo","כל היום"))}</div><div class="cal-grid-cols">${allDay}</div></div>
+      <div class="cal-grid-body" id="calGridBody"><div class="cal-gutter cal-hours">${hours}</div><div class="cal-grid-cols">${cols}</div></div>
+    </div>`;
+}
+
+/* ======================================================================
    RENDER: Memoria
    ====================================================================== */
 function renderMemoriaView(){
@@ -5464,12 +5774,12 @@ function tourSteps(){
     },
     {
       target: "#tabs",
-      title: t("Las tres vistas","The three views","As três vistas","שלושת התצוגות"),
+      title: t("Las cuatro vistas","The four views","As quatro vistas","ארבע התצוגות"),
       text: t(
-        "Feed: lo último; Países: información por destino; Memoria: toda la información, por fecha.",
-        "Feed: the latest; Countries: information by destination; Memory: everything, by date.",
-        "Feed: o mais recente; Países: informação por destino; Memória: toda a informação, por data.",
-        "פיד: העדכני ביותר; מדינות: מידע לפי יעד; זיכרון: כל המידע, לפי תאריך."
+        "Feed: lo último; Vistas: información por destino; Calendario: los eventos por fecha, mes a mes; Memoria: toda la información, por fecha.",
+        "Feed: the latest; Views: information by destination; Calendar: events by date, month by month; Memory: everything, by date.",
+        "Feed: o mais recente; Vistas: informação por destino; Calendário: os eventos por data, mês a mês; Memória: toda a informação, por data.",
+        "פיד: העדכני ביותר; תצוגות: מידע לפי יעד; יומן: האירועים לפי תאריך, חודש אחר חודש; זיכרון: כל המידע, לפי תאריך."
       ),
     },
   ];
@@ -5574,6 +5884,25 @@ function openComposer(){
   postModalOverlay.hidden = false;
   renderComposer();
   focusIntoComposer();
+}
+// Nuevo evento desde el Calendario: la fecha (y la hora, si se clickeó
+// una franja horaria de Semana/Día) vienen puestas.
+function openComposerOnDate(iso, hour){
+  if(!isAuthorized() || !iso) return;
+  openComposer();
+  composerDraft.startDate = iso;
+  composerDraft.endDate = iso;
+  if(hour != null && hour !== ""){
+    const h = Number(hour);
+    composerDraft.allDay = false;
+    composerDraft.startTime = `${String(h).padStart(2,"0")}:00`;
+    composerDraft.endTime = h >= 23 ? "23:59" : `${String(h+1).padStart(2,"0")}:00`;
+  }
+  // El snapshot se rehace DESPUÉS de precargar: si no, el guard de
+  // "¿descartar borrador?" lee la fecha precargada como algo que escribió
+  // la persona y pregunta al cerrar un formulario que nadie tocó.
+  composerSnapshot = snapshotComposer();
+  renderComposer();
 }
 // Al abrir, el foco entra al modal (primer campo); al cerrar, vuelve a
 // donde estaba (el botón "+ Nuevo evento" o el "Editar" de la tarjeta).
@@ -6528,6 +6857,23 @@ document.addEventListener("click", e=>{
     memoriaVisibleCount += PAGE_SIZE; render();
   } else if(action === "paises-subview"){
     state.paisesSubview = el.dataset.key; state.countryDrill = null; render();
+  } else if(action === "cal-subview"){
+    state.calendarioSubview = el.dataset.key; render();
+  } else if(action === "cal-today"){
+    state.calendarioAnchor = todayISO(); render();
+  } else if(action === "cal-step"){
+    const step = Number(el.dataset.step) || 0;
+    const anchor = calendarioAnchor();
+    state.calendarioAnchor = state.calendarioSubview === "mes" ? addMonthsISO(anchor, step)
+      : state.calendarioSubview === "semana" ? addDaysISO(anchor, step * 7)
+      : addDaysISO(anchor, step);
+    render();
+  } else if(action === "cal-open-day"){
+    state.calendarioAnchor = el.dataset.date; state.calendarioSubview = "dia"; render();
+  } else if(action === "cal-open"){
+    gotoMention(postId);
+  } else if(action === "cal-new"){
+    openComposerOnDate(el.dataset.date, el.dataset.hour);
   } else if(action === "toggle-paises-zone"){
     const key = el.dataset.key;
     state.paisesZoneFilter.has(key) ? state.paisesZoneFilter.delete(key) : state.paisesZoneFilter.add(key);
