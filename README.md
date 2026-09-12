@@ -433,6 +433,24 @@ Dos cosas a tener en cuenta al tocar esto:
   corre un día para cualquiera al este de Greenwich — el mismo bug que ya
   documenta `addDaysISO`.
 
+### Popups de Google: solo en botones que dicen "Calendar"
+
+Leer el Calendar va con `CALENDAR_API_KEY` (calendarios públicos, sin
+login). **Escribir** —crear un evento, compartir el calendario con alguien,
+sacarlo— necesita OAuth, y sin backend eso significa un popup de Google.
+No hay forma de evitarlo: una cuenta de servicio necesitaría servidor.
+
+Por eso aprobar y revocar acceso **no tocan el Calendar**. Antes lo hacían,
+y aparecía una ventana de Google de la nada al apretar un botón rojo que
+hablaba de la app. El popup queda reservado para los dos botones que
+anuncian lo que hacen: **"Compartir Calendar"** (ficha de Usuarios) y
+**"Sacar del Calendar"** (ficha de Ex integrantes).
+
+**Consecuencia a tener presente**: revocar el acceso a la app NO saca a esa
+persona del calendario compartido. El `confirm` de revocar lo dice, y el
+aviso posterior recuerda dónde hacerlo. Si esto alguna vez se automatiza de
+nuevo, vuelve el popup — no hay término medio.
+
 ### Ex integrantes (`formerMembers/{email}`)
 
 Al revocar un acceso se borra `allowlist/{email}`, y ahí vivía el

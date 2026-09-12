@@ -4690,6 +4690,7 @@ function renderSolicitudesQueueSection(){
           </div>
           <div class="ractions">
             <button class="btn-ghost" data-action="show-user-profile" data-nick="${esc(String(u.nickname||"").toLowerCase())}">${t("Ver perfil","View profile","Ver perfil","צפייה בפרופיל")}</button>
+            <button class="btn-ghost danger" data-action="unshare-calendar" data-email="${esc(u.email)}">${t("Sacar del Calendar","Remove from Calendar","Tirar do Calendar","הסרה מהיומן")}</button>
             <button class="btn-primary" data-action="approve-request" data-email="${esc(u.email)}">${t("Volver a dar acceso","Grant access again","Dar acesso de novo","להעניק גישה שוב")}</button>
           </div>
         </div>`).join("")}
@@ -8007,17 +8008,25 @@ document.addEventListener("click", e=>{
     requestAccessAgain();
   } else if(action === "approve-request"){
     const email = el.dataset.email;
-    approveRequest(email).then(()=>shareCalendarWith(email)).then(res=>{
-      showCalendarNotice(res.ok
-        ? { ok:true, message: t("{email} ya puede usar la app y cargar eventos al Calendar compartido de LatAm.","{email} can now use the app and add events to LatAm's shared Calendar.","{email} já pode usar o app e adicionar eventos ao Calendar compartilhado da LatAm.","{email} יכול/ה כעת להשתמש באפליקציה ולהוסיף אירועים ליומן המשותף של LatAm.",{email}) }
-        : { ok:false, message: t(
-            `{email} ya puede usar la app, pero no se pudo compartirle el Calendar automáticamente ({reason}). Puede que ADMIN_EMAIL no sea el dueño del calendario "LatAm" — o compartíselo a mano desde Google Calendar.`,
-            `{email} can now use the app, but the Calendar couldn't be shared automatically ({reason}). ADMIN_EMAIL might not own the "LatAm" calendar — or share it by hand from Google Calendar.`,
-            `{email} já pode usar o app, mas não foi possível compartilhar o Calendar automaticamente ({reason}). Pode ser que ADMIN_EMAIL não seja o dono do calendário "LatAm" — ou compartilhe manualmente pelo Google Calendar.`,
-            `{email} יכול/ה כעת להשתמש באפליקציה, אך לא ניתן היה לשתף איתו/ה את היומן אוטומטית ({reason}). ייתכן ש-ADMIN_EMAIL אינו הבעלים של יומן "LatAm" — או שתף/י אותו ידנית מ-Google Calendar.`,
-            {email, reason: res.reason}
-          ) });
+    // Mismo criterio que al revocar: aprobar da acceso a la app y nada
+    // más. Compartir el Calendar es una escritura en Google (popup de
+    // OAuth) y se hace con el botón "Compartir Calendar" de la ficha,
+    // cuando el admin quiera y sabiendo que va a aparecer.
+    approveRequest(email).then(()=>{
+      showCalendarNotice({ ok:true, message: t(
+        `{email} ya puede usar la app. Para que además cargue eventos al Calendar compartido, usá "Compartir Calendar" en su ficha de Usuarios.`,
+        `{email} can now use the app. To also let them add events to the shared Calendar, use "Share Calendar" on their row under Users.`,
+        `{email} já pode usar o app. Para que também adicione eventos ao Calendar compartilhado, use "Compartilhar Calendar" na ficha em Usuários.`,
+        `{email} יכול/ה כעת להשתמש באפליקציה. כדי שגם יוסיף/תוסיף אירועים ליומן המשותף, השתמש/י ב"שיתוף היומן" בכרטיס שלו/ה במשתמשים.`,
+        { email }) });
     }).catch(err=>{ console.error(err); alert(t("No se pudo aprobar: {msg}","Couldn't approve: {msg}","Não foi possível aprovar: {msg}","{msg} :האישור נכשל",{msg:err.message})); });
+  } else if(action === "unshare-calendar"){
+    const email = el.dataset.email;
+    unshareCalendarWith(email).then(res=>{
+      showCalendarNotice(res.ok
+        ? { ok:true, message: t("Se sacó a {email} del Calendar compartido.","{email} was removed from the shared Calendar.","{email} foi tirado do Calendar compartilhado.","{email} הוסר/ה מהיומן המשותף.",{email}) }
+        : { ok:false, message: t("No se pudo sacar a {email} del Calendar ({reason}).","Couldn't remove {email} from the Calendar ({reason}).","Não foi possível tirar {email} do Calendar ({reason}).","לא ניתן היה להסיר את {email} מהיומן ({reason}).",{email,reason:res.reason}) });
+    }).catch(err=>{ console.error(err); alert(t("No se pudo sacar del Calendar: {msg}","Couldn't remove from the Calendar: {msg}","Não foi possível tirar do Calendar: {msg}","{msg} :ההסרה מהיומן נכשלה",{msg:err.message})); });
   } else if(action === "share-calendar"){
     const email = el.dataset.email;
     shareCalendarWith(email).then(res=>{
@@ -8029,23 +8038,26 @@ document.addEventListener("click", e=>{
     rejectRequest(el.dataset.email).catch(err=>{ console.error(err); alert(t("No se pudo rechazar: {msg}","Couldn't reject: {msg}","Não foi possível rejeitar: {msg}","{msg} :הדחייה נכשלה",{msg:err.message})); });
   } else if(action === "revoke-access"){
     const email = el.dataset.email;
+    // Revocar NO toca el Calendar: sacar a alguien de los compartidos es
+    // una ESCRITURA en Google y, sin backend, eso obliga a un popup de
+    // OAuth. El popup queda reservado para los botones que dicen
+    // "Calendar" — acá sería una ventana de Google apareciendo de la nada
+    // al apretar un botón rojo que habla de la app. El acceso al
+    // calendario se saca aparte, desde la ficha del ex integrante.
     if(confirm(t(
-      `¿Revocar el acceso de {email}? Va a dejar de poder ver y cargar posteos, y se le va a sacar el acceso al Calendar compartido de LatAm.`,
-      `Revoke {email}'s access? They'll no longer be able to see or post, and their access to LatAm's shared Calendar will be removed.`,
-      `Revogar o acesso de {email}? Ele(a) vai deixar de poder ver e postar, e o acesso ao Calendar compartilhado da LatAm vai ser removido.`,
-      `?{email} לבטל את הגישה של. הוא/היא לא יוכלו יותר לראות או לפרסם, והגישה ליומן המשותף של LatAm תוסר`,
+      `¿Revocar el acceso de {email}? Va a dejar de poder ver y cargar posteos.\n\nOJO: el acceso al Calendar compartido NO se saca acá — lo sacás con "Sacar del Calendar", en Solicitudes > Ex integrantes.`,
+      `Revoke {email}'s access? They'll no longer be able to see or post.\n\nHEADS UP: access to the shared Calendar is NOT removed here — remove it with "Remove from Calendar", under Requests > Former members.`,
+      `Revogar o acesso de {email}? Ele(a) vai deixar de poder ver e postar.\n\nATENÇÃO: o acesso ao Calendar compartilhado NÃO é removido aqui — remova com "Tirar do Calendar", em Solicitações > Ex-integrantes.`,
+      `?{email} לבטל את הגישה של. הוא/היא לא יוכלו יותר לראות או לפרסם.\n\nשים/י לב: הגישה ליומן המשותף לא מוסרת כאן — הסר/י אותה דרך "הסרה מהיומן", בבקשות > חברים לשעבר.`,
       { email }
     ))){
-      revokeAccess(email).then(()=>unshareCalendarWith(email)).then(res=>{
-        showCalendarNotice(res.ok
-          ? { ok:true, message: t("Se revocó el acceso de {email} (app y Calendar).","{email}'s access was revoked (app and Calendar).","O acesso de {email} foi revogado (app e Calendar).","הגישה של {email} בוטלה (אפליקציה ויומן).",{email}) }
-          : { ok:false, message: t(
-              "Se revocó el acceso a la app, pero no se pudo sacarlo del Calendar automáticamente ({reason}). Sacalo a mano si hace falta.",
-              "Access to the app was revoked, but they couldn't be removed from the Calendar automatically ({reason}). Remove them by hand if needed.",
-              "O acesso ao app foi revogado, mas não foi possível tirá-lo do Calendar automaticamente ({reason}). Tire manualmente se for preciso.",
-              "הגישה לאפליקציה בוטלה, אך לא ניתן היה להסיר אותו/ה מהיומן אוטומטית ({reason}). הסר/הסירי ידנית במידת הצורך.",
-              { reason: res.reason }
-            ) });
+      revokeAccess(email).then(()=>{
+        showCalendarNotice({ ok:true, message: t(
+          `Se revocó el acceso de {email} a la app. Todavía tiene el Calendar compartido: sacalo desde Solicitudes > Ex integrantes.`,
+          `{email}'s access to the app was revoked. They still have the shared Calendar: remove it under Requests > Former members.`,
+          `O acesso de {email} ao app foi revogado. Ainda tem o Calendar compartilhado: tire em Solicitações > Ex-integrantes.`,
+          `הגישה של {email} לאפליקציה בוטלה. היומן המשותף עדיין אצלו/ה: הסר/י דרך בקשות > חברים לשעבר.`,
+          { email }) });
       }).catch(err=>{ console.error(err); alert(t("No se pudo revocar: {msg}","Couldn't revoke: {msg}","Não foi possível revogar: {msg}","{msg} :הביטול נכשל",{msg:err.message})); });
     }
   } else if(action === "zonas-remove-zone"){
