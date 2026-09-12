@@ -2731,9 +2731,34 @@ async function resendCalendarInvite(email){
 async function unshareCalendarWith(email, opts={}){
   const token = await ensureCalendarAclToken(opts);
   if(!token) return { ok:false, reason:t("no se pudo autorizar el permiso para sacar del Calendar","couldn't authorize permission to remove from the Calendar","não foi possível autorizar a permissão para tirar do Calendar","לא ניתן היה לאשר את ההרשאה להסרה מהיומן") };
+  const ruleId = `user:${email}`;
+  const aclUrl = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/acl/${encodeURIComponent(ruleId)}`;
+  // Nunca tocar al DUEÑO del calendario. Google no deja quitarle el rol por
+  // la API, y si algún día lo dejara sería peor todavía: el calendario del
+  // equipo quedaría sin dueño, y recuperarlo no es trivial. Se consulta el
+  // rol real en vez de hardcodear un email — la propiedad del calendario no
+  // tiene por qué coincidir con ADMIN_EMAIL (de hecho hoy NO coincide), y
+  // así esto sigue valiendo si la propiedad cambia de manos.
   try{
-    const ruleId = `user:${email}`;
-    const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/acl/${encodeURIComponent(ruleId)}`, {
+    const check = await fetch(aclUrl, { headers: { "Authorization": `Bearer ${token}` } });
+    if(check.ok){
+      const rule = await check.json();
+      if(rule && rule.role === "owner"){
+        return { ok:false, reason:t(
+          "es dueño/a del calendario — sacarlo/a de ahí dejaría al calendario del equipo sin dueño",
+          "they own the calendar — removing them would leave the team calendar without an owner",
+          "é dono(a) do calendário — tirá-lo(a) deixaria o calendário da equipe sem dono",
+          "הוא/היא הבעלים של היומן — הסרתו/ה תשאיר את יומן הצוות בלי בעלים") };
+      }
+    }
+  }catch(err){
+    // Si no se pudo consultar el rol, se sigue: el DELETE de abajo va a
+    // fallar solo si Google lo rechaza. No se bloquea una baja legítima
+    // por no haber podido chequear.
+    console.warn("No se pudo verificar el rol en el Calendar:", err);
+  }
+  try{
+    const res = await fetch(aclUrl, {
       method: "DELETE",
       headers: { "Authorization": `Bearer ${token}` },
     });
