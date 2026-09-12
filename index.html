@@ -948,9 +948,15 @@
 
   /* ---------- Calendario view ---------- */
   .cal-nav{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-  .cal-nav button{ border:1px solid var(--border); background:var(--card); color:var(--text); border-radius:999px; cursor:pointer; font-weight:700; }
-  .cal-nav button:hover{ border-color:var(--celeste); }
-  .cal-today{ padding:7px 16px; font-size:12.5px; }
+  /* "Hoy", las flechas y el selector de vista comparten la misma píldora:
+     son los tres controles de la misma barra y antes el selector usaba el
+     estilo de los chips de filtro, que desentonaba al lado de "Hoy". */
+  .cal-nav button, .cal-pill{
+    display:inline-flex; align-items:center; justify-content:center; gap:7px;
+    border:1px solid var(--border); background:var(--card); color:var(--text);
+    border-radius:999px; cursor:pointer; font-weight:700; padding:7px 16px; font-size:12.5px;
+  }
+  .cal-nav button:hover, .cal-pill:hover{ border-color:var(--celeste); }
   .cal-arrow{ width:32px; height:32px; font-size:17px; line-height:1; padding:0; }
   .cal-title{ font-weight:800; font-size:15px; color:var(--ink-strong); }
   /* Solo la primera letra: toLocaleDateString devuelve el mes en minúscula
@@ -961,7 +967,10 @@
      filtro (que son una nube de chips) — de ahí el flex-direction y el
      nowrap que pisan a .filter-dropdown-panel. */
   .cal-view-panel{ width:min(240px, 80vw); flex-direction:column; flex-wrap:nowrap; gap:1px; padding:6px; }
-  html[dir="rtl"] .cal-view-filter .filter-dropdown-panel{ transform-origin:top right; }
+  /* El selector vive en el extremo de cierre de la barra: el panel se
+     cuelga de ese mismo borde, o en pantallas angostas se saldría. */
+  .cal-view-filter .filter-dropdown-panel{ inset-inline-start:auto; inset-inline-end:0; transform-origin:top right; }
+  html[dir="rtl"] .cal-view-filter .filter-dropdown-panel{ transform-origin:top left; }
   .cal-view-item{
     display:flex; align-items:center; justify-content:space-between; gap:16px; width:100%;
     border:none; background:none; cursor:pointer; padding:9px 12px; border-radius:8px;
@@ -1020,6 +1029,12 @@
   .cal-more:hover{ color:var(--celeste-dark); }
   .cal-grid{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow); overflow:hidden; }
   .cal-grid-row{ display:flex; border-bottom:1px solid var(--border); }
+  /* El área horaria scrollea y el encabezado no: sin este espaciador, la
+     barra de scroll le come ~15px de ancho SOLO a las columnas de abajo y
+     quedan corridas respecto de los días del encabezado. El ancho real de
+     la barra se mide en afterRenderView (da 0 donde la scrollbar se
+     superpone en vez de ocupar lugar, como en Mac). */
+  .cal-grid-head::after, .cal-grid-allday::after{ content:""; flex:none; width:var(--cal-sbw, 0px); }
   .cal-grid-cols{ flex:1; min-width:0; display:grid; grid-template-columns:repeat(var(--cal-cols), minmax(0,1fr)); }
   .cal-gutter{ width:62px; flex:none; padding:4px 6px; text-align:end; font-size:10.5px; font-weight:700; color:var(--text-muted); }
   .cal-gcol-head{ padding:8px 4px; text-align:center; border-inline-start:1px solid var(--border); }
@@ -4683,6 +4698,11 @@ function afterRenderView(){
     if(body){
       body.scrollTop = calGridScroll == null ? Math.round(body.scrollHeight * 7 / 24) : calGridScroll;
       body.addEventListener("scroll", ()=>{ calGridScroll = body.scrollTop; }, { passive:true });
+      // Ancho real de la barra de scroll, para que el encabezado y la banda
+      // de "todo el día" reserven el mismo lugar y las columnas no queden
+      // corridas (ver .cal-grid-head::after en el CSS).
+      const grid = body.closest(".cal-grid");
+      if(grid) grid.style.setProperty("--cal-sbw", (body.offsetWidth - body.clientWidth) + "px");
     }
   }
 }
@@ -5355,7 +5375,7 @@ function renderCountryDrill(countryName, data){
   const backArrow = isRTL() ? "→" : "←";
   const fwdArrow = isRTL() ? "←" : "→";
   return `
-    <div class="breadcrumb"><a data-action="drill-clear">${backArrow} ${t("Países","Countries","Países","מדינות")}</a> / ${esc(countryLabel(countryName))}</div>
+    <div class="breadcrumb"><a data-action="drill-clear">${backArrow} ${t("Vistas","Views","Vistas","תצוגות")}</a> / ${esc(countryLabel(countryName))}</div>
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
         <h2 style="margin:0;font-size:16px;">${esc(countryLabel(countryName))}</h2>
@@ -5575,7 +5595,7 @@ function renderCalendarioView(){
   const current = views.find(v=>v.key === sub);
   const toggle = `
     <div class="filter-dropdown cal-view-filter">
-      <button type="button" class="chip-toggle filter-dropdown-btn${calViewMenuOpen?" open":""}" data-action="toggle-cal-view" aria-haspopup="true" aria-expanded="${calViewMenuOpen}">
+      <button type="button" class="cal-pill filter-dropdown-btn${calViewMenuOpen?" open":""}" data-action="toggle-cal-view" aria-haspopup="true" aria-expanded="${calViewMenuOpen}">
         ${esc(current.label)}<span class="filter-dropdown-chevron">▾</span>
       </button>
       ${calViewMenuOpen ? `<div class="filter-dropdown-panel cal-view-panel">${views.map(v=>`
@@ -5590,7 +5610,9 @@ function renderCalendarioView(){
       <button type="button" class="cal-arrow" data-action="cal-step" data-step="1" aria-label="${esc(t("Siguiente","Next","Próximo","הבא"))}">${isRTL()?"‹":"›"}</button>
       <span class="cal-title">${esc(calendarioTitle(sub, anchor))}</span>
     </div>`;
-  const toolbar = `<div class="paises-toolbar">${toggle}${nav}</div>`;
+  // Navegación a la izquierda ("Hoy ‹ › septiembre de 2026") y el selector
+  // de vista a la derecha, como en Google Calendar.
+  const toolbar = `<div class="paises-toolbar">${nav}${toggle}</div>`;
   if(CONFIG_IS_PLACEHOLDER){
     return toolbar + `<div class="empty-state">${t("Configurá Firebase para ver datos.","Set up Firebase to see data.","Configure o Firebase para ver dados.",".הגדר/י את Firebase כדי לראות נתונים")}</div>`;
   }
