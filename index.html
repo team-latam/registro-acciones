@@ -815,7 +815,7 @@
      highlightMentions()) — mismo celeste de la app, no el verde de
      WhatsApp, pero con la misma idea de resaltar la mención del resto
      del texto. */
-  .mention-tag{ font-weight:700; cursor:pointer; }
+  .mention-tag{ color:var(--celeste-dark); font-weight:700; cursor:pointer; }
   .mention-tag:hover{ text-decoration:underline; }
   /* Nombre de un participante clickeable (👥 Participantes: ...) — a
      diferencia de .mention-tag (para el "@nickname" propiamente dicho),
@@ -1008,8 +1008,10 @@
     display:flex; align-items:center; justify-content:center; background:var(--petroleo); color:#fff;
     font-weight:800; font-size:22px;
   }
+  .up-head-text{ min-width:0; }
   .up-name{ font-size:15px; font-weight:800; color:var(--ink-strong); line-height:1.3; }
   .up-nick{ font-size:12.5px; font-weight:700; color:var(--celeste-dark); }
+  .up-email{ font-size:12.5px; color:var(--text-muted); word-break:break-word; margin-top:2px; }
   .up-rows{ display:flex; flex-direction:column; gap:7px; padding:12px; background:var(--surface-soft); border-radius:var(--radius-sm); margin-bottom:14px; }
   .up-row{ display:flex; justify-content:space-between; gap:10px; font-size:13px; }
   .up-row .up-label{ color:var(--text-muted); font-weight:700; flex:none; }
@@ -5924,10 +5926,12 @@ function renderUserProfile(){
   userProfileBody.innerHTML = `
     <div class="up-head">
       ${avatarHtml}
-      <div class="up-name" id="userProfileNameLabel">${esc(displayName)} <span class="up-nick">· @${esc(entry.nickname.toLowerCase())}</span></div>
+      <div class="up-head-text">
+        <div class="up-name" id="userProfileNameLabel">${esc(displayName)} · <span class="up-nick">@${esc(entry.nickname.toLowerCase())}</span></div>
+        <div class="up-email">${esc(entry.email)}</div>
+      </div>
     </div>
     <div class="up-rows">
-      <div class="up-row"><span class="up-label">${t("Correo","Email","E-mail","דוא\"ל")}</span><span>${esc(entry.email)}</span></div>
       <div class="up-row"><span class="up-label">${t("Se unió","Joined","Entrou","הצטרף/ה")}</span><span>${entry.approvedAt ? fmtDateTime(entry.approvedAt) : "—"}</span></div>
       <div class="up-row"><span class="up-label">${t("Actividad","Activity","Atividade","פעילות")}</span><span>${tier.icon} ${esc(tier.label)}</span></div>
     </div>
