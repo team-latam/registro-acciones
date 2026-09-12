@@ -433,6 +433,59 @@ Dos cosas a tener en cuenta al tocar esto:
   corre un día para cualquiera al este de Greenwich — el mismo bug que ya
   documenta `addDaysISO`.
 
+### Configuración personal (`userPrefs/{email}`)
+
+La solapa **Configuración** es de cada persona; la de admin se llama
+**Administrar** y configura el equipo (`meta/preferences`). No confundirlas.
+
+Las preferencias viven en una colección propia, `userPrefs/{email}`, y **no**
+como un campo más de `allowlist/{email}`. El motivo es concreto: ese
+documento lo lee entero todo el equipo con un `onSnapshot` (hace falta para
+las @menciones), así que meter ahí la configuración de cada uno haría que
+todos se bajen las preferencias de todos en cada cambio del roster, y las
+dejaría a la vista de cualquier aprobado. En `userPrefs/{email}` cada uno
+lee y escribe solo el suyo.
+
+Cada control lleva `data-pref="<clave>"` y lo guarda **un solo** manejador
+genérico de `change` (más `data-action="pref-toggle-list"` para las listas
+multi-selección), en vez de una rama por opción. El cambio se aplica en
+pantalla al toque y el `onSnapshot` confirma después.
+
+Cualquier clave nueva hay que sumarla al `hasOnly` de `isValidUserPrefs` en
+`firestore.rules` **y volver a publicar las reglas a mano**.
+
+### Notificaciones: qué puede y qué no
+
+Sin backend no hay push. La campanita solo puede mostrar lo que hay **ahora**,
+cada vez que alguien abre la app: no hay nada agendado ni ningún temporizador
+corriendo. Muestra tres cosas, separadas por sección: los eventos que
+arrancan dentro de la ventana configurada, las respuestas nuevas en posteos
+propios, y las @menciones de siempre.
+
+La única capa que alcanza a alguien con la app cerrada es el recordatorio
+que se le escribe al evento en Google Calendar (`reminders.overrides` en
+`buildCalendarEvent`, si la persona lo activó). **Ojo con el alcance**: en un
+calendario compartido ese override vale para quien escribe el evento, no
+para cada persona que lo tiene compartido — cada una define los suyos en su
+propio Google Calendar. Por eso la campanita sigue siendo la capa que ve
+todo el equipo.
+
+### Feriados
+
+Salen de los **calendarios públicos de Google** (uno por país, más el de
+festividades judías), leídos con la misma `CALENDAR_API_KEY` del sync: son
+públicos, no piden login. Por eso no hay ninguna tabla de fechas en el repo
+— mantenerla año a año sería trabajo puro, y las festividades judías además
+necesitan el calendario hebreo.
+
+`HOLIDAY_CAL` mapea nombre de país → prefijo del calendario de Google. Los
+países del Registro que Google no publica (territorios chicos) simplemente
+no aparecen como opción, en vez de ofrecer algo que después no trae nada.
+
+Si la red falla, el calendario se dibuja igual, sin feriados: nunca rompe la
+vista. Cada calendario se pide una vez por año mostrado y se marca como
+pedido **antes** del `fetch`, así un error no se reintenta en cada render.
+
 ### Sincronización con Google Calendar (Feed ↔ Calendar)
 
 Cada posteo de tipo Visita/Curso/Seminario/Congreso/Virtual/Otro (todo menos
