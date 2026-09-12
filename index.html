@@ -815,7 +815,14 @@
      highlightMentions()) — mismo celeste de la app, no el verde de
      WhatsApp, pero con la misma idea de resaltar la mención del resto
      del texto. */
-  .mention-tag{ color:var(--celeste-dark); background:rgba(79,199,224,0.16); border-radius:4px; padding:0 3px; font-weight:700; }
+  .mention-tag{ font-weight:700; cursor:pointer; }
+  .mention-tag:hover{ text-decoration:underline; }
+  /* Nombre de un participante clickeable (👥 Participantes: ...) — a
+     diferencia de .mention-tag (para el "@nickname" propiamente dicho),
+     acá se sigue mostrando el nombre de la persona, solo con un afecto
+     de link sutil en vez del resaltado en píldora. */
+  .person-link{ cursor:pointer; text-decoration:underline; text-decoration-color:transparent; }
+  .person-link:hover{ text-decoration-color:currentColor; color:var(--celeste-dark); }
   .place-picker{ position:relative; margin-top:8px; }
   .place-picker input{ width:100%; border:1.5px solid var(--border); border-radius:999px; padding:9px 14px; font-size:13px; background:var(--card); box-sizing:border-box; }
   .mention-anchor{ position:relative; flex:1; }
@@ -995,7 +1002,7 @@
   #filePreviewCounter{ font-size:12px; color:var(--text-muted); font-weight:700; min-width:42px; text-align:center; }
 
   /* ---------- Popup de perfil (al clickear un @mención) ---------- */
-  .up-head{ display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+  .up-head{ display:flex; align-items:center; gap:12px; margin-bottom:14px; padding-inline-end:24px; }
   .up-avatar{ width:52px; height:52px; border-radius:50%; object-fit:cover; flex:none; }
   .up-avatar.up-avatar-fallback{
     display:flex; align-items:center; justify-content:center; background:var(--petroleo); color:#fff;
@@ -1104,9 +1111,8 @@
 </div>
 
 <div class="modal-overlay" id="userProfileOverlay" hidden>
-  <div class="modal modal-wrap" style="max-width:400px;" role="dialog" aria-modal="true" aria-labelledby="userProfileTitle">
+  <div class="modal modal-wrap" style="max-width:340px;" role="dialog" aria-modal="true" aria-labelledby="userProfileNameLabel">
     <button class="close" id="userProfileClose" aria-label="Cerrar">✕</button>
-    <h2 id="userProfileTitle" style="padding-inline-end:28px;"></h2>
     <div id="userProfileBody"></div>
   </div>
 </div>
@@ -1844,6 +1850,27 @@ function myRosterEntry(){
 function authorLabel(email, fallbackName){
   const entry = email && state.roster.find(u=>u.email===email);
   return entry ? "@" + entry.nickname.toLowerCase() : (fallbackName || "");
+}
+// Mismo authorLabel() de arriba pero en HTML: si el email resolvió a
+// alguien del roster, el "@nickname" queda clickeable — abre el mismo
+// popup de perfil que un @mención dentro del texto (ver
+// highlightMentions). Si no hay match, texto escapado nomás.
+function authorLabelHtml(email, fallbackName){
+  const entry = email && state.roster.find(u=>u.email===email);
+  if(!entry) return esc(fallbackName || "");
+  const nick = entry.nickname.toLowerCase();
+  return `<span class="mention-tag" data-action="show-user-profile" data-nick="${esc(nick)}">@${esc(nick)}</span>`;
+}
+// Mismo criterio para la lista de participantes tageados en un Evento:
+// el nombre de cada uno que resuelva a una cuenta de la app (por email)
+// queda clickeable — los invitados sumados a mano (que no son cuenta de
+// la app) se quedan como texto, igual que antes.
+function participantsHtml(participants){
+  return (participants||[]).map(p=>{
+    const entry = p.email && state.roster.find(u=>u.email===p.email);
+    if(!entry) return esc(p.name || p.email);
+    return `<span class="person-link" data-action="show-user-profile" data-nick="${esc(entry.nickname.toLowerCase())}">${esc(p.name || p.email)}</span>`;
+  }).join(", ");
 }
 function shouldShowCalendarInvitePopup(){
   const me = myRosterEntry();
@@ -3869,7 +3896,7 @@ function renderMentionsMenuItems(hasInvite){
   if(!recent.length && !inviteItem) return `<div class="mentions-empty">${t("Todavía no te mencionaron.","No one has mentioned you yet.","Ainda não te mencionaram.","עדיין לא אזכרו אותך.")}</div>`;
   return inviteItem + recent.map(m=>`
     <button type="button" class="mention-item" data-action="goto-mention" data-post-id="${esc(m.postId)}" ${m.replyId ? `data-reply-id="${esc(m.replyId)}"` : ""}>
-      <span class="mi-author">${esc(authorLabel(m.authorEmail, m.authorName) || t("Alguien","Someone","Alguém","מישהו/י"))}</span>
+      <span class="mi-author">${authorLabelHtml(m.authorEmail, m.authorName) || t("Alguien","Someone","Alguém","מישהו/י")}</span>
       <span class="mi-content">${esc((m.content||"").slice(0,80))}</span>
       <span class="mi-date">${fmtDateTime(m.createdAt)}</span>
     </button>`).join("");
@@ -4837,14 +4864,14 @@ function renderPostCard(post, replies, featured){
   const timeLabel = post.startTime && post.endTime ? ` · ${post.startTime}–${post.endTime}` : "";
   const dateLabel = (endDate && endDate !== startDate ? `${fmtDate(startDate)} – ${fmtDate(endDate)}` : fmtDate(startDate)) + timeLabel;
   const metaBits = [];
-  if(post.participants && post.participants.length) metaBits.push(`👥 ${t("Participantes","Participants","Participantes","משתתפים")}: ${esc(participantsLabel(post.participants))}`);
+  if(post.participants && post.participants.length) metaBits.push(`👥 ${t("Participantes","Participants","Participantes","משתתפים")}: ${participantsHtml(post.participants)}`);
   // Quién lo cargó. En los eventos importados del Calendar el authorName
   // es "Google Calendar" (poco útil) y el organizador real está en
   // organizer, el campo viejo que reemplazaron los participantes — por
   // eso ese tiene prioridad cuando existe (y no tiene @nickname: es texto
   // libre de alguien que no necesariamente es cuenta de la app).
-  const creador = post.organizer || authorLabel(post.authorEmail, post.authorName);
-  const creadoPor = creador ? ` · ${t("Creado por","Created by","Criado por","נוצר על ידי")}: ${esc(creador)}` : "";
+  const creadorHtml = post.organizer ? esc(post.organizer) : authorLabelHtml(post.authorEmail, post.authorName);
+  const creadoPor = creadorHtml ? ` · ${t("Creado por","Created by","Criado por","נוצר על ידי")}: ${creadorHtml}` : "";
   // Hora en que se CARGÓ el posteo (createdAt), no la del evento: para
   // Rutina, o cualquier evento sin horario propio, la fecha sola no
   // alcanza para saber cuál se publicó primero en un mismo día — todas
@@ -4944,7 +4971,7 @@ function renderReply(r){
   return `
     <div class="reply ${r.system?"reply-system":""}">
       <div class="reply-head">
-        <span class="reply-author">${r.system ? `${esc(r.icon||"🔔")} ` : ""}${esc(authorLabel(r.authorEmail, r.authorName) || t("Anónimo","Anonymous","Anônimo","אנונימי"))}</span>
+        <span class="reply-author">${r.system ? `${esc(r.icon||"🔔")} ` : ""}${authorLabelHtml(r.authorEmail, r.authorName) || t("Anónimo","Anonymous","Anônimo","אנונימי")}</span>
         <span class="reply-date">${fmtDateTime(r.createdAt)}</span>
       </div>
       <div class="reply-content">${nl2br(tr.displayContent)}</div>
@@ -5869,7 +5896,6 @@ filePreviewNext.addEventListener("click", ()=>filePreviewStep(1));
 // aprobado ya puede leer entero — no es un dato nuevo, solo se muestra
 // junto en un solo lugar.
 const userProfileOverlay = document.getElementById("userProfileOverlay");
-const userProfileTitle = document.getElementById("userProfileTitle");
 const userProfileBody = document.getElementById("userProfileBody");
 let userProfileEmail = null;
 let userProfileReturnFocus = null;
@@ -5877,7 +5903,6 @@ function renderUserProfile(){
   const entry = state.roster.find(u => u.email === userProfileEmail);
   if(!entry){ closeUserProfile(); return; } // ya no está aprobado / se fue mientras estaba abierto
   const displayName = entry.name || entry.nickname;
-  userProfileTitle.textContent = displayName;
   const avatarHtml = entry.photoURL
     ? `<img class="up-avatar" src="${esc(entry.photoURL)}" alt="">`
     : `<div class="up-avatar up-avatar-fallback">${esc(displayName[0].toUpperCase())}</div>`;
@@ -5899,10 +5924,7 @@ function renderUserProfile(){
   userProfileBody.innerHTML = `
     <div class="up-head">
       ${avatarHtml}
-      <div>
-        <div class="up-name">${esc(displayName)}</div>
-        <div class="up-nick">@${esc(entry.nickname.toLowerCase())}</div>
-      </div>
+      <div class="up-name" id="userProfileNameLabel">${esc(displayName)} <span class="up-nick">· @${esc(entry.nickname.toLowerCase())}</span></div>
     </div>
     <div class="up-rows">
       <div class="up-row"><span class="up-label">${t("Correo","Email","E-mail","דוא\"ל")}</span><span>${esc(entry.email)}</span></div>
