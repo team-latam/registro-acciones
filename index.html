@@ -3630,7 +3630,19 @@ function savePrefs(patch){
   const email = state.auth.user && state.auth.user.email;
   if(!email || !db) return;
   fb.setDoc(fb.doc(db,"userPrefs",email), patch, { merge:true })
-    .catch(err=>console.error("Error guardando preferencias:", err));
+    .catch(err=>{
+      // Si el servidor rechaza, el SDK revierte el cambio local y el
+      // switch "vuelve solo" sin decir nada — parece que la app está rota.
+      // Mejor decir qué pasó: lo más probable es que falte publicar las
+      // reglas después de agregar una preferencia nueva.
+      console.error("Error guardando preferencias:", err);
+      showCalendarNotice({ ok:false, message: t(
+        "No se pudo guardar tu configuración ({m}). Si se agregó una opción nueva, puede que falte publicar las reglas de Firestore.",
+        "Couldn't save your settings ({m}). If a new option was just added, the Firestore rules may still need publishing.",
+        "Não foi possível salvar sua configuração ({m}). Se uma opção nova foi adicionada, pode faltar publicar as regras do Firestore.",
+        "לא ניתן היה לשמור את ההגדרות שלך ({m}). אם נוספה אפשרות חדשה, ייתכן שצריך לפרסם את כללי Firestore.",
+        { m: err.code || err.message }) });
+    });
 }
 function applyPreferencesConfig(cfg){
   applyActivityTypesConfig(cfg && cfg.activityTypes);
