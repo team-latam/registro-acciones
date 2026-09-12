@@ -2302,7 +2302,7 @@ function buildCalendarEvent(postData, postId){
   ];
   const participants = postData.participants||[];
   if(participants.length) descLines.push("", `${t("Participantes","Participants","Participantes","משתתפים")}: ${participantsLabel(participants)}`);
-  else if(postData.organizer) descLines.push("", `${t("Creado por","Created by","Criado por","נוצר על ידי")}: ${postData.organizer}`);
+  else if(postData.organizer) descLines.push("", `${t("Creado por","Created by","Criado por","נוצר על ידי")} ${postData.organizer}`);
   descLines.push("", t("Cargado por {n} en Registro de Acciones.","Added by {n} in the Action Log.","Adicionado por {n} no Registro de Ações.","{n} נוסף על ידי ביומן הפעילויות.",{n:postData.authorName}));
   // Con hora (startTime/endTime cargados): evento puntual, dateTime +
   // timeZone del navegador de quien lo carga (Calendar API lo exige junto
