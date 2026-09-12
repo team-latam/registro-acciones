@@ -7,7 +7,7 @@ Google Calendar. Ver `README.md` para las decisiones de arquitectura.
 
 ## Ramas — LEER ANTES DE EMPEZAR
 
-**La rama de producción es `claude/new-session-37plo3`.** Es la rama default
+**La rama de producción es `main`.** Es la rama default
 del repo y la ÚNICA conectada al deploy: cada push ahí dispara el workflow
 "pages build and deployment" de GitHub Pages y publica el sitio. Un push a
 cualquier otra rama NO despliega nada.
@@ -17,16 +17,16 @@ eso no se puede desactivar. Para que no se acumulen ramas sueltas:
 
 1. Trabajar normalmente en la rama de la sesión.
 2. **Al terminar cada tanda de cambios**, hacer fast-forward de esa rama
-   hacia `claude/new-session-37plo3` y pushear ahí:
+   hacia `main` y pushear ahí:
    ```
-   git push origin <rama-de-sesion>:claude/new-session-37plo3
+   git push origin <rama-de-sesion>:main
    ```
    Recién ahí los cambios salen a producción.
 3. Avisarle al usuario que puede borrar la rama de sesión desde
    https://github.com/team-latam/registro-acciones/branches
 
 Si la sesión arranca desde una rama que ya quedó atrás respecto de
-`claude/new-session-37plo3`, traerse primero los commits nuevos (merge o
+`main`, traerse primero los commits nuevos (merge o
 rebase) antes de trabajar.
 
 ## firestore.rules
