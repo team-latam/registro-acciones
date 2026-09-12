@@ -5665,11 +5665,12 @@ function renderCalendarioView(){
       <span class="cal-title">${esc(calendarioTitle(sub, anchor))}</span>
     </div>`;
   // Navegación a la izquierda ("Hoy ‹ › septiembre de 2026"); del lado
-  // derecho, "+ Nuevo evento" pegado al selector de vista.
+  // derecho, el selector de vista y después "+ Nuevo evento", que queda
+  // contra el borde.
   const newBtn = isAuthorized()
     ? `<button type="button" class="btn-new" data-action="new-evento">+ ${esc(t("Nuevo evento","New event","Novo evento","אירוע חדש"))}</button>`
     : "";
-  const toolbar = `<div class="paises-toolbar">${nav}<div class="cal-toolbar-end">${newBtn}${toggle}</div></div>`;
+  const toolbar = `<div class="paises-toolbar">${nav}<div class="cal-toolbar-end">${toggle}${newBtn}</div></div>`;
   if(CONFIG_IS_PLACEHOLDER){
     return toolbar + `<div class="empty-state">${t("Configurá Firebase para ver datos.","Set up Firebase to see data.","Configure o Firebase para ver dados.",".הגדר/י את Firebase כדי לראות נתונים")}</div>`;
   }
