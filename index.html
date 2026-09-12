@@ -994,6 +994,30 @@
   .file-preview-pager button:hover{ background:var(--surface-soft); }
   #filePreviewCounter{ font-size:12px; color:var(--text-muted); font-weight:700; min-width:42px; text-align:center; }
 
+  /* ---------- Popup de perfil (al clickear un @mención) ---------- */
+  .up-head{ display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+  .up-avatar{ width:52px; height:52px; border-radius:50%; object-fit:cover; flex:none; }
+  .up-avatar.up-avatar-fallback{
+    display:flex; align-items:center; justify-content:center; background:var(--petroleo); color:#fff;
+    font-weight:800; font-size:22px;
+  }
+  .up-name{ font-size:15px; font-weight:800; color:var(--ink-strong); line-height:1.3; }
+  .up-nick{ font-size:12.5px; font-weight:700; color:var(--celeste-dark); }
+  .up-rows{ display:flex; flex-direction:column; gap:7px; padding:12px; background:var(--surface-soft); border-radius:var(--radius-sm); margin-bottom:14px; }
+  .up-row{ display:flex; justify-content:space-between; gap:10px; font-size:13px; }
+  .up-row .up-label{ color:var(--text-muted); font-weight:700; flex:none; }
+  .up-row span:last-child{ text-align:end; word-break:break-word; }
+  .up-posts-title{ font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.4px; color:var(--text-muted); margin-bottom:6px; }
+  .up-post-row{
+    display:flex; align-items:center; gap:8px; width:100%; text-align:start; background:none; border:none;
+    border-top:1px solid var(--border); padding:8px 0; cursor:pointer; font-family:inherit;
+  }
+  .up-post-row:first-child{ border-top:none; }
+  .up-post-row:hover{ background:var(--surface-soft); }
+  .up-post-type{ flex:none; }
+  .up-post-text{ flex:1; min-width:0; font-size:12.5px; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .up-post-date{ flex:none; font-size:11px; color:var(--text-muted); }
+
   /* ---------- Vista previa de adjuntos (PDF) ---------- */
   #filePreviewFrame{
     width:100%; height:70vh; border:0; border-radius:var(--radius-sm); background:var(--surface-soft);
@@ -1076,6 +1100,14 @@
     <div class="modal-actions">
       <a id="filePreviewDownload" class="btn-secondary" download>⬇ Descargar</a>
     </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="userProfileOverlay" hidden>
+  <div class="modal modal-wrap" style="max-width:400px;" role="dialog" aria-modal="true" aria-labelledby="userProfileTitle">
+    <button class="close" id="userProfileClose" aria-label="Cerrar">✕</button>
+    <h2 id="userProfileTitle" style="padding-inline-end:28px;"></h2>
+    <div id="userProfileBody"></div>
   </div>
 </div>
 
@@ -1628,12 +1660,22 @@ function mentionRegex(){
   // Límite a la izquierda también: "juan@pedro.com" no es una mención a
   // @pedro (mismo criterio que extractMentionsFromContent, que es lo que
   // decide a quién se le avisa — si no, se resaltaba algo que no notifica).
-  const re = new RegExp(`(^|[^\\w@])@(${names.join("|")})\\b`, "g");
+  // "i": para que "@Benny" (viejo, de antes de que los nicknames se
+  // guardaran en minúscula) siga reconociéndose igual que "@benny".
+  const re = new RegExp(`(^|[^\\w@])@(${names.join("|")})\\b`, "gi");
   mentionRegexCache = { roster: state.roster, re };
   return re;
 }
+// Siempre en minúscula al mostrarlo, sin importar cómo esté guardado el
+// nickname (nicknames viejos, de antes de este cambio, podían tener
+// mayúsculas) ni cómo lo haya tipeado quien escribió la mención — no es
+// @all el único caso especial, por eso no hay lookup de roster acá
+// adentro, solo el texto.
 function highlightMentions(escapedText){
-  return escapedText.replace(mentionRegex(), (m, pre, name) => `${pre}<span class="mention-tag">@${name}</span>`);
+  return escapedText.replace(mentionRegex(), (m, pre, name) => {
+    const nick = name.toLowerCase();
+    return `${pre}<span class="mention-tag" data-action="show-user-profile" data-nick="${esc(nick)}">@${esc(nick)}</span>`;
+  });
 }
 function nl2br(s){ return highlightMentions(esc(s)).replace(/\n/g,"<br>"); }
 function normalize(s){
@@ -1801,7 +1843,7 @@ function myRosterEntry(){
 // nombre tal cual venía.
 function authorLabel(email, fallbackName){
   const entry = email && state.roster.find(u=>u.email===email);
-  return entry ? "@" + entry.nickname : (fallbackName || "");
+  return entry ? "@" + entry.nickname.toLowerCase() : (fallbackName || "");
 }
 function shouldShowCalendarInvitePopup(){
   const me = myRosterEntry();
@@ -3001,8 +3043,10 @@ function applyAttachmentLimitsConfig(cfg){
 function firstWordFrom(text){
   const base = (text||"").includes("@") && !(text||"").includes(" ") ? text.split("@")[0] : text;
   const cleaned = (base||"").replace(/[._-]+/g, " ").trim();
-  const first = cleaned.split(/\s+/)[0] || "Usuario";
-  return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
+  const first = cleaned.split(/\s+/)[0] || "usuario";
+  // Los @nickname siempre van en minúscula (ver NICKNAME_FORMAT_RE) — acá
+  // se arma tanto el nickname de reserva como la base para el autogenerado.
+  return first.toLowerCase();
 }
 // Los que ya estaban aprobados de antes de que existiera "nickname" no
 // tienen ese campo en su documento — se les arma uno de reserva a partir
@@ -3017,7 +3061,7 @@ function makeNickname(displayName, existingNicknames){
   const parts = (displayName||"").trim().split(/\s+/).filter(Boolean);
   const base = firstWordFrom(parts[0] || displayName);
   if(!existingNicknames.has(base)) return base;
-  const lastInitial = parts.length > 1 ? parts[1].charAt(0).toUpperCase() : "";
+  const lastInitial = parts.length > 1 ? parts[1].charAt(0).toLowerCase() : "";
   if(lastInitial && !existingNicknames.has(base + lastInitial)) return base + lastInitial;
   let n = 2;
   while(existingNicknames.has(base + n)) n++;
@@ -3430,15 +3474,19 @@ function userRoleLabel(status){
 let nicknameEditing = false;
 let nicknameDraft = "";
 let nicknameError = null;
-const NICKNAME_FORMAT_RE = /^[A-Za-z0-9_]{2,20}$/;
+// Solo minúsculas: los nicknames viejos podían tener mayúsculas (antes
+// de este cambio), pero cualquiera nuevo o reeditado ya se guarda en
+// minúscula — ver firstWordFrom/highlightMentions, que además lo
+// muestran en minúscula sin importar cómo haya quedado guardado.
+const NICKNAME_FORMAT_RE = /^[a-z0-9_]{2,20}$/;
 function myNickname(){
   const u = state.auth.user;
   if(!u) return "";
   const me = state.roster.find(r=>r.email===u.email);
-  return me ? me.nickname : nicknameFallback(u.email);
+  return (me ? me.nickname : nicknameFallback(u.email)).toLowerCase();
 }
 function validateNicknameDraft(raw){
-  const value = (raw||"").trim();
+  const value = (raw||"").trim().toLowerCase();
   if(!NICKNAME_FORMAT_RE.test(value)){
     return { ok:false, error:t(
       "Solo letras, números y guion bajo, sin espacios ni tildes (2 a 20 caracteres).",
@@ -3598,6 +3646,8 @@ function applyStaticI18n(){
   if(postModalCloseBtn) postModalCloseBtn.setAttribute("aria-label", closeLabel);
   const filePreviewCloseBtn = document.getElementById("filePreviewClose");
   if(filePreviewCloseBtn) filePreviewCloseBtn.setAttribute("aria-label", closeLabel);
+  const userProfileCloseBtn = document.getElementById("userProfileClose");
+  if(userProfileCloseBtn) userProfileCloseBtn.setAttribute("aria-label", closeLabel);
   const filePreviewDownloadBtn = document.getElementById("filePreviewDownload");
   if(filePreviewDownloadBtn) filePreviewDownloadBtn.textContent = "⬇ " + t("Descargar", "Download", "Baixar", "הורדה");
 
@@ -5811,6 +5861,78 @@ filePreviewOverlay.addEventListener("click", e=>{ if(e.target === filePreviewOve
 filePreviewPrev.addEventListener("click", ()=>filePreviewStep(-1));
 filePreviewNext.addEventListener("click", ()=>filePreviewStep(1));
 
+// Popup de perfil: se abre al clickear un "@nickname" DENTRO del texto de
+// un posteo o respuesta (ver highlightMentions) — nombre y apellido,
+// @nickname, correo, cuándo se aprobó y su actividad de los últimos 3
+// meses (mismo criterio que el panel Usuarios), más sus últimos 3
+// posteos. Todo sale de state.roster/state.posts, que cualquier
+// aprobado ya puede leer entero — no es un dato nuevo, solo se muestra
+// junto en un solo lugar.
+const userProfileOverlay = document.getElementById("userProfileOverlay");
+const userProfileTitle = document.getElementById("userProfileTitle");
+const userProfileBody = document.getElementById("userProfileBody");
+let userProfileEmail = null;
+let userProfileReturnFocus = null;
+function renderUserProfile(){
+  const entry = state.roster.find(u => u.email === userProfileEmail);
+  if(!entry){ closeUserProfile(); return; } // ya no está aprobado / se fue mientras estaba abierto
+  const displayName = entry.name || entry.nickname;
+  userProfileTitle.textContent = displayName;
+  const avatarHtml = entry.photoURL
+    ? `<img class="up-avatar" src="${esc(entry.photoURL)}" alt="">`
+    : `<div class="up-avatar up-avatar-fallback">${esc(displayName[0].toUpperCase())}</div>`;
+  const tier = activityTierFor(countRecentPosts(entry.email));
+  const myPosts = state.posts.filter(p => p.authorEmail === entry.email)
+    .sort((a,b) => tsToMillis(b.createdAt) - tsToMillis(a.createdAt))
+    .slice(0, 3);
+  const postsHtml = myPosts.length
+    ? myPosts.map(p => {
+        const type = ACTIVITY_BY_KEY[p.activityType] || { icon:"📌" };
+        const snippet = (p.title || p.content || "").replace(/\s+/g," ").trim().slice(0, 60);
+        return `<button type="button" class="up-post-row" data-action="goto-post-from-profile" data-post-id="${esc(p.id)}">
+          <span class="up-post-type">${esc(type.icon)}</span>
+          <span class="up-post-text">${esc(snippet)}</span>
+          <span class="up-post-date">${fmtDate(p.startDate || p.date)}</span>
+        </button>`;
+      }).join("")
+    : `<div class="hint">${t("Todavía no publicó nada.","Hasn't posted anything yet.","Ainda não publicou nada.","עדיין לא פרסם/ה כלום.")}</div>`;
+  userProfileBody.innerHTML = `
+    <div class="up-head">
+      ${avatarHtml}
+      <div>
+        <div class="up-name">${esc(displayName)}</div>
+        <div class="up-nick">@${esc(entry.nickname.toLowerCase())}</div>
+      </div>
+    </div>
+    <div class="up-rows">
+      <div class="up-row"><span class="up-label">${t("Correo","Email","E-mail","דוא\"ל")}</span><span>${esc(entry.email)}</span></div>
+      <div class="up-row"><span class="up-label">${t("Se unió","Joined","Entrou","הצטרף/ה")}</span><span>${entry.approvedAt ? fmtDateTime(entry.approvedAt) : "—"}</span></div>
+      <div class="up-row"><span class="up-label">${t("Actividad","Activity","Atividade","פעילות")}</span><span>${tier.icon} ${esc(tier.label)}</span></div>
+    </div>
+    <div class="up-posts">
+      <div class="up-posts-title">${t("Últimos posteos","Recent posts","Postagens recentes","פוסטים אחרונים")}</div>
+      ${postsHtml}
+    </div>
+  `;
+}
+function openUserProfile(email){
+  const entry = state.roster.find(u => u.email === email);
+  if(!entry) return; // el @mention quedó de alguien que ya no está aprobado
+  userProfileEmail = email;
+  renderUserProfile();
+  userProfileReturnFocus = document.activeElement;
+  userProfileOverlay.hidden = false;
+  document.getElementById("userProfileClose").focus();
+}
+function closeUserProfile(){
+  userProfileOverlay.hidden = true;
+  userProfileEmail = null;
+  if(userProfileReturnFocus && typeof userProfileReturnFocus.focus === "function") userProfileReturnFocus.focus();
+  userProfileReturnFocus = null;
+}
+document.getElementById("userProfileClose").addEventListener("click", closeUserProfile);
+userProfileOverlay.addEventListener("click", e=>{ if(e.target === userProfileOverlay) closeUserProfile(); });
+
 /* ======================================================================
    EVENTOS
    ====================================================================== */
@@ -5841,6 +5963,7 @@ document.addEventListener("keydown", e=>{
   // participante), lo cierra su propio manejador y el modal se queda.
   if(lightbox.classList.contains("show")){ closeLightbox(); return; }
   if(!filePreviewOverlay.hidden){ closeFilePreview(); return; }
+  if(!userProfileOverlay.hidden){ closeUserProfile(); return; }
   if(!tourLayer.hidden){ closeTour(); return; }
   if(!calendarInviteOverlay.hidden){ dismissCalendarInviteOverlay(); return; }
   if(postModalOverlay.hidden) return;
@@ -5873,6 +5996,7 @@ trapTabWithin(calendarInviteOverlay);
 trapTabWithin(tourLayer);
 trapTabWithin(filePreviewOverlay);
 trapTabWithin(lightbox);
+trapTabWithin(userProfileOverlay);
 
 // Tope duro absoluto de imágenes: MAX_IMAGES (editable desde Preferencias
 // > Adjuntos) puede achicarlo, nunca agrandarlo más allá de esto — Firestore
@@ -6057,7 +6181,7 @@ function renderMentionSuggestions(draft, scope, ownerId, textareaId){
     const avatar = u.isAll ? `<span class="mention-avatar mention-avatar-fallback">👥</span>`
       : u.photoURL ? `<img class="mention-avatar" src="${esc(u.photoURL)}" alt="">`
       : `<span class="mention-avatar mention-avatar-fallback">${esc(u.nickname[0].toUpperCase())}</span>`;
-    return `<button type="button" class="autocomplete-option mention-option${i===draft.mentionHighlight?" active":""}" data-action="pick-mention" data-scope="${scope}" data-owner-id="${ownerId}" data-textarea-id="${textareaId}" data-nickname="${esc(u.nickname)}" data-email="${esc(u.email)}">${avatar}<span>@${esc(u.nickname)}</span></button>`;
+    return `<button type="button" class="autocomplete-option mention-option${i===draft.mentionHighlight?" active":""}" data-action="pick-mention" data-scope="${scope}" data-owner-id="${ownerId}" data-textarea-id="${textareaId}" data-nickname="${esc(u.nickname.toLowerCase())}" data-email="${esc(u.email)}">${avatar}<span>@${esc(u.nickname.toLowerCase())}</span></button>`;
   }).join("")}</div>`;
 }
 function selectMentionMatch(scope, ownerId, textareaId, match){
@@ -6066,7 +6190,7 @@ function selectMentionMatch(scope, ownerId, textareaId, match){
   const caret = draft.mentionCaret != null ? draft.mentionCaret : draft.content.length;
   const before = draft.content.slice(0, caret).replace(/@(\w*)$/, "");
   const after = draft.content.slice(caret);
-  const insText = "@" + match.nickname + " ";
+  const insText = "@" + match.nickname.toLowerCase() + " ";
   draft.content = before + insText + after;
   draft.mentionQuery = null;
   draft.mentionHighlight = 0;
@@ -6285,6 +6409,15 @@ document.addEventListener("click", e=>{
     const previewable = owner ? (owner.files||[]).filter(f=>f && f.kind !== "audio")
       .map(f=>({ name:f.name, dataUrl:safeFileDataUrl(f.dataUrl) })).filter(f=>f.dataUrl) : [];
     openFilePreview(previewable, Number(el.dataset.idx)||0);
+  } else if(action === "show-user-profile"){
+    const nick = (el.dataset.nick || "").toLowerCase();
+    if(nick && nick !== "all"){
+      const entry = state.roster.find(u => u.nickname && u.nickname.toLowerCase() === nick);
+      if(entry) openUserProfile(entry.email);
+    }
+  } else if(action === "goto-post-from-profile"){
+    closeUserProfile();
+    gotoMention(el.dataset.postId, null);
   } else if(action === "toggle-reply"){
     if(openReplyForms.has(postId)){ openReplyForms.delete(postId); }
     else{ openReplyForms.add(postId); openThreads.add(postId); }
