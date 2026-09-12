@@ -39,11 +39,18 @@ cambie.
 
 **Cómo entregárselo (siempre, sin que lo pida):** cuando el archivo cambie,
 pegar el **contenido completo en un bloque de código en el chat**, listo
-para seleccionar y copiar de una. **No** mandarlo como archivo adjunto: eso
-lo obliga a abrirlo, copiar y pegar, que es un paso de más para algo que
-hace seguido. Va entero aunque el cambio sea de tres líneas — las reglas se
-publican reemplazando todo el archivo, no por partes. Después del bloque,
-decirle en una línea qué bloques son los nuevos.
+para seleccionar y copiar de una.
+
+Tres cosas que no son negociables, porque ya se pidieron:
+
+1. **Entero, siempre.** Nunca un fragmento, ni "solo la función que
+   cambió", ni ofrecer el fragmento como alternativa. Aunque el cambio sea
+   de dos líneas: las reglas se publican reemplazando TODO el archivo, y un
+   fragmento obliga a buscar dónde va.
+2. **Pegado en el chat, no adjunto.** Un adjunto lo obliga a abrirlo,
+   seleccionar y copiar — un paso de más para algo que hace seguido.
+3. Después del bloque, **una línea** diciendo qué bloques son los nuevos
+   respecto de lo último que publicó.
 
 ## Verificación antes de cada commit
 
