@@ -433,23 +433,42 @@ Dos cosas a tener en cuenta al tocar esto:
   corre un día para cualquiera al este de Greenwich — el mismo bug que ya
   documenta `addDaysISO`.
 
-### Popups de Google: solo en botones que dicen "Calendar"
+### Popups de Google: token silencioso con GIS, y popup solo donde se anuncia
 
 Leer el Calendar va con `CALENDAR_API_KEY` (calendarios públicos, sin
-login). **Escribir** —crear un evento, compartir el calendario con alguien,
-sacarlo— necesita OAuth, y sin backend eso significa un popup de Google.
-No hay forma de evitarlo: una cuenta de servicio necesitaría servidor.
+login). **Escribir** —crear un evento, compartir el calendario, sacar a
+alguien— necesita OAuth. El `signInWithPopup` de Firebase SIEMPRE abre
+ventana; **Google Identity Services no**: `requestAccessToken({prompt:""})`
+devuelve un token en silencio si esa cuenta ya dio el consentimiento.
 
-Por eso aprobar y revocar acceso **no tocan el Calendar**. Antes lo hacían,
-y aparecía una ventana de Google de la nada al apretar un botón rojo que
-hablaba de la app. El popup queda reservado para los dos botones que
-anuncian lo que hacen: **"Compartir Calendar"** (ficha de Usuarios) y
-**"Sacar del Calendar"** (ficha de Ex integrantes).
+Entonces: **una sola pantalla de consentimiento** (la primera vez, por el
+popup de los botones de Calendar) y de ahí en más nada de ventanas.
 
-**Consecuencia a tener presente**: revocar el acceso a la app NO saca a esa
-persona del calendario compartido. El `confirm` de revocar lo dice, y el
-aviso posterior recuerda dónde hacerlo. Si esto alguna vez se automatiza de
-nuevo, vuelve el popup — no hay término medio.
+Esto ya se intentó y se revirtió una vez (commit *"Revertir la renovación
+silenciosa del token de Calendar (GIS)"*). No falló por GIS: el origen de
+GitHub Pages no estaba en **Authorized JavaScript origins** del Client ID, y
+el intento silencioso quedaba **trabado** mostrando `Error 400:
+origin_mismatch`, bloqueando acciones reales. Dos cosas cambian ahora:
+
+1. `https://team-latam.github.io` está autorizado en el Client ID
+   (Cloud Console → Credenciales → OAuth 2.0 Client ID del proyecto).
+   **Si alguna vez cambia el dominio donde se publica, hay que agregarlo
+   ahí o vuelve el `origin_mismatch`.**
+2. El intento silencioso tiene **timeout de 4 s y cae al popup ante
+   cualquier error**. Esa era la falla de fondo: quedarse colgado en vez de
+   seguir de largo. Probado cortando el script de GIS: responde en
+   milisegundos, sin abrir nada y sin romper la página.
+
+**`silentOnly`**: aprobar y revocar pasan `{silentOnly:true}` a
+`shareCalendarWith`/`unshareCalendarWith` — si el token no sale en silencio
+(la primera vez, antes del consentimiento) **no abren popup**: hacen lo suyo
+y el aviso dice que se termine con el botón de Calendar. El popup queda solo
+para **"Compartir Calendar"** (ficha de Usuarios) y **"Sacar del Calendar"**
+(ficha de Ex integrantes), que es donde se anuncia lo que va a pasar.
+
+El `GOOGLE_OAUTH_CLIENT_ID` es público por diseño y va en el código. El
+**client secret NO se usa nunca** en una app de navegador: si algo lo pide
+para el front, está mal.
 
 ### Ex integrantes (`formerMembers/{email}`)
 
