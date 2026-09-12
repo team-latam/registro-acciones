@@ -367,6 +367,30 @@ a qué Calendar se sincroniza, límites de adjuntos.
   duros del código (6 imágenes, 2 archivos), que además exige
   Firestore — no se pueden agrandar más allá de eso desde acá.
 
+#### El control de color (`colorControl()`)
+
+Donde se elige un color — el de cada zona en Configuración > Zonas y los
+dos de feriados en la pestaña personal — va el mismo control: la muestra
+(que abre el selector nativo del sistema) **más el hexadecimal escribible
+al lado**. Sin el campo de texto no había forma de pegar un color de marca
+exacto ni de copiar el que ya está puesto: había que acertarlo a ojo en el
+degradé del selector del sistema operativo.
+
+Los dos inputs comparten el mismo `data-*` de destino (`data-pref="..."` o
+`data-action="zonas-color" data-key="..."`); el de texto se distingue con
+`data-color-hex` y se normaliza en el handler de `change` **antes** de que
+corra la rama que guarda. Así no hay dos caminos de guardado que mantener
+sincronizados: la rama de abajo recibe el `el.value` ya normalizado, sin
+enterarse de cuál de los dos lo produjo.
+
+`normalizeHex()` acepta lo que la gente realmente escribe — con o sin `#`,
+mayúsculas o minúsculas, y la forma corta de 3 dígitos (`#f0a` →
+`#ff00aa`) — y devuelve siempre `#rrggbb` en minúscula, o `null`. Si no se
+puede leer como color se avisa y se vuelve a pintar con el valor guardado:
+nunca se guarda un valor a medias que después rompa un `style=""`. El aviso
+de "este color se parece mucho al de X" también salta escribiendo el hex,
+no solo moviendo el selector.
+
 ### Ciudades sugeridas (`CITY_PRESETS`)
 
 Al elegir "Ciudad específica" con un país que tiene ciudades conocidas, el
@@ -574,6 +598,10 @@ necesitan el calendario hebreo.
 `HOLIDAY_CAL` mapea nombre de país → prefijo del calendario de Google. Los
 países del Registro que Google no publica (territorios chicos) simplemente
 no aparecen como opción, en vez de ofrecer algo que después no trae nada.
+La lista de chips se ordena alfabéticamente **por el nombre que se ve**
+(`localeCompare` con el idioma activo), no por la clave interna: en inglés
+o hebreo el orden tiene que seguir siendo el del idioma que está mirando la
+persona, si no la lista parece desordenada.
 
 **Ojo con los prefijos.** Casi todos son `{idioma}.{código ISO}`
 (`es.ar`, `es.co`, `en.jm`…), pero tres son históricos y no siguen esa
