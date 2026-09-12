@@ -3359,7 +3359,7 @@ function subscribeRoster(){
   }, err=>console.error("Error leyendo el equipo:", err));
 }
 async function backfillNicknames(emails){
-  const existingNicknames = new Set(state.roster.map(u=>u.nickname).filter(Boolean));
+  const existingNicknames = await takenNicknames(null);
   for(const email of emails){
     try{
       const reqSnap = await fb.getDoc(fb.doc(db, "accessRequests", email));
@@ -3511,6 +3511,25 @@ function nicknameFallback(email){
 }
 // Arma un @nickname corto a partir del nombre de Google, evitando
 // choques con los que ya existen (ej. dos "Benny" en el equipo).
+// Un @nickname está "quemado" si lo usa alguien HOY o lo usó alguien que ya
+// no está: los posteos viejos de esa persona lo siguen mostrando, así que
+// dárselo a otro haría que su historia quede firmada por otro ser humano
+// (y clickear su @nickname abriría el perfil equivocado). Se lee del
+// servidor y no de state.roster porque esto corre también al aprobar o al
+// entrar el admin, antes de que los listeners estén listos.
+async function takenNicknames(exceptEmail){
+  const taken = new Set();
+  const add = (email, nick)=>{ if(nick && email !== exceptEmail) taken.add(String(nick).toLowerCase()); };
+  const [roster, formers] = await Promise.all([
+    fb.getDocs(fb.collection(db,"allowlist")),
+    // Si las reglas de formerMembers todavía no están publicadas, se sigue
+    // con los activos nomás en vez de romper el alta.
+    fb.getDocs(fb.collection(db,"formerMembers")).catch(()=>({ docs:[] })),
+  ]);
+  roster.docs.forEach(d=> add(d.id, d.data().nickname));
+  formers.docs.forEach(d=> add(d.id, d.data().nickname));
+  return taken;
+}
 function makeNickname(displayName, existingNicknames){
   const parts = (displayName||"").trim().split(/\s+/).filter(Boolean);
   const base = firstWordFrom(parts[0] || displayName);
@@ -3533,9 +3552,7 @@ async function ensureAdminInRoster(profile){
     const ref = fb.doc(db, "allowlist", profile.email);
     const snap = await fb.getDoc(ref);
     if(snap.exists() && snap.data().nickname) return;
-    const rosterSnap = await fb.getDocs(fb.collection(db,"allowlist"));
-    const existingNicknames = new Set(rosterSnap.docs.map(d=>d.data().nickname).filter(Boolean));
-    const nickname = makeNickname(profile.displayName, existingNicknames);
+    const nickname = makeNickname(profile.displayName, await takenNicknames(profile.email));
     await fb.setDoc(ref, {
       email: profile.email, name: profile.displayName, nickname, photoURL: profile.photoURL || null,
       approvedAt: (snap.exists() && snap.data().approvedAt) || fb.serverTimestamp(),
@@ -3547,15 +3564,14 @@ async function approveRequest(email){
   const reqSnap = await fb.getDoc(fb.doc(db, "accessRequests", email));
   const reqData = reqSnap.exists() ? reqSnap.data() : {};
   const name = reqData.name || email;
-  const rosterSnap = await fb.getDocs(fb.collection(db,"allowlist"));
-  const existingNicknames = new Set(rosterSnap.docs.map(d=>d.data().nickname).filter(Boolean));
-  // Si vuelve alguien que ya estuvo, se le devuelve SU @nickname de antes
-  // (si nadie lo ocupó mientras tanto): sus posteos viejos lo siguen
-  // usando, y darle uno nuevo partiría su historia en dos personas.
+  // Se excluye el propio email: si vuelve alguien que ya estuvo, su viejo
+  // @nickname no cuenta como ocupado y se lo puede recuperar. Darle uno
+  // nuevo partiría su historia en dos personas distintas.
+  const taken = await takenNicknames(email);
   const former = state.formerMembers.find(u=>u.email===email);
-  const nickname = former && former.nickname && !existingNicknames.has(former.nickname)
+  const nickname = former && former.nickname && !taken.has(String(former.nickname).toLowerCase())
     ? former.nickname
-    : makeNickname(name, existingNicknames);
+    : makeNickname(name, taken);
   await fb.setDoc(fb.doc(db, "allowlist", email), {
     email, name, nickname, photoURL: reqData.photoURL || null,
     approvedAt: fb.serverTimestamp(), approvedBy: ADMIN_EMAIL,
@@ -3984,13 +4000,24 @@ function validateNicknameDraft(raw){
     ) };
   }
   const myEmail = state.auth.user.email;
-  const taken = state.roster.some(u => u.email !== myEmail && u.nickname && u.nickname.toLowerCase() === value.toLowerCase());
+  const taken = state.roster.some(u => u.email !== myEmail && u.nickname && u.nickname.toLowerCase() === value);
   if(taken){
     return { ok:false, error:t(
       "Ya hay alguien del equipo usando ese @nickname — probá con otro.",
       "Someone on the team already has that @nickname — try another one.",
       "Já tem alguém da equipe usando esse @nickname — tente outro.",
       "כבר יש מישהו בצוות שמשתמש בכינוי הזה — נסה/י אחר."
+    ) };
+  }
+  // Los de quienes ya no están también están ocupados: sus posteos viejos
+  // siguen firmados con ese @nickname, y reusarlo se los atribuiría a otro.
+  const wasTaken = state.formerMembers.some(u => u.email !== myEmail && u.nickname && u.nickname.toLowerCase() === value);
+  if(wasTaken){
+    return { ok:false, error:t(
+      "Ese @nickname lo usó alguien que ya no está en el equipo, y sus posteos lo siguen mostrando — elegí otro para que no queden firmados a tu nombre.",
+      "That @nickname belonged to someone who's no longer on the team, and their posts still show it — pick another one so they don't end up signed with your name.",
+      "Esse @nickname era de alguém que já não está na equipe, e suas postagens ainda o mostram — escolha outro para que não fiquem assinadas em seu nome.",
+      "הכינוי הזה היה של מישהו שכבר לא בצוות, והפוסטים שלו עדיין מציגים אותו — בחר/י אחר כדי שלא ייחתמו בשמך."
     ) };
   }
   return { ok:true, value };
