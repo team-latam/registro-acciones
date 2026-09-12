@@ -575,9 +575,35 @@ necesitan el calendario hebreo.
 países del Registro que Google no publica (territorios chicos) simplemente
 no aparecen como opción, en vez de ofrecer algo que después no trae nada.
 
+**Ojo con los prefijos.** Casi todos son `{idioma}.{código ISO}`
+(`es.ar`, `es.co`, `en.jm`…), pero tres son históricos y no siguen esa
+regla: **Brasil** es `pt.brazilian` (no `pt.br`), **México** es
+`es.mexican` (no `es.mx`) e **Israel** es `iw.jewish` (no `iw.il`). Con el
+ISO la API devuelve 404 y el país queda sin feriados **en silencio** — el
+calendario dibuja igual, vacío, así que el error no se nota mirando. Antes
+de agregar un país nuevo hay que probar el id contra la API:
+
+```
+curl -H "Referer: https://team-latam.github.io/registro-acciones/" \
+  "https://www.googleapis.com/calendar/v3/calendars/es.ar%23holiday%40group.v.calendar.google.com/events?key=<CALENDAR_API_KEY>&maxResults=1"
+```
+
+(La `CALENDAR_API_KEY` está restringida por *referer*, por eso el header;
+sin él Google responde 403 aunque el id sea correcto.)
+
 Si la red falla, el calendario se dibuja igual, sin feriados: nunca rompe la
-vista. Cada calendario se pide una vez por año mostrado y se marca como
-pedido **antes** del `fetch`, así un error no se reintenta en cada render.
+vista. Cada calendario se pide una vez por año mostrado; si el pedido falla
+se libera la marca para poder reintentar cuando se vuelve a la vista, así un
+corte de red puntual no deja ese país sin feriados por el resto de la
+sesión.
+
+**Qué pinta el día y qué no.** En el modo "marca en el día", el fondo de la
+celda lo tiñen **solo los feriados de país**: ese tinte significa "hoy no se
+trabaja". Las festividades judías se muestran con su nombre y su color, pero
+no pintan la celda — si no, con el switch prendido y ningún país elegido el
+mes entero aparecía marcado sin que nadie tenga franco. Si un día tiene los
+dos, el nombre que se ve es el del país (el que define si hay franco) y el
+`title` lista los dos.
 
 ### Sincronización con Google Calendar (Feed ↔ Calendar)
 
