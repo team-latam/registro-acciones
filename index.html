@@ -1101,6 +1101,11 @@
   .country-card .name{ font-weight:800; font-size:14px; margin-bottom:4px; }
   .country-card .count{ font-size:22px; font-weight:800; color:var(--ink); }
   .country-card .count small{ font-size:11px; font-weight:600; color:var(--text-muted); }
+  /* "+1 de Región Norte · +3 de toda LatAm" debajo del número: lo que
+     aplica sin haber pasado ahí. La región en el color de su zona. */
+  .country-card .cross-line{ display:flex; flex-wrap:wrap; gap:2px 10px; font-size:11.5px; font-weight:600; color:var(--text-muted); margin-top:3px; }
+  .country-card.quiet .count{ color:var(--text-muted); }
+  .map-popup .cross-line{ display:flex; flex-wrap:wrap; gap:2px 10px; font-size:11px; font-weight:600; color:var(--text-muted); margin-top:4px; }
   .zone-legend{ display:flex; gap:14px; flex-wrap:wrap; margin-bottom:14px; font-size:12px; color:var(--text-muted); font-weight:600; }
   .zone-legend span{ display:inline-flex; align-items:center; gap:6px; }
   .zone-legend .dot{ width:11px; height:11px; border-radius:50%; }
@@ -1122,6 +1127,27 @@
   .city-row:hover{ border-color:var(--celeste); }
   .city-row .cname{ font-weight:700; font-size:13.5px; }
   .city-row .ccount{ font-weight:800; color:var(--ink); }
+  /* Filas de lo macro en la pantalla del país: punteadas, al final. */
+  .city-row.cross{ border-style:dashed; background:var(--surface-alt); color:var(--text-muted); }
+  .city-row.cross .cname{ font-weight:600; display:flex; flex-direction:column; gap:1px; }
+  .city-row.cross .cname small{ font-size:10.5px; font-weight:500; color:var(--text-muted); }
+  .city-row.cross .ccount{ color:var(--text-muted); }
+  .city-row.cross.zone{ border-color:var(--cross); background:color-mix(in srgb, var(--cross) 8%, var(--card)); }
+  .city-row.cross.zone .cname > span:first-child{ color:var(--cross); font-weight:700; }
+  /* Selector "Solo acá / + Región / + Toda LatAm" del Feed y la Memoria
+     con un lugar filtrado. */
+  .place-seg{ display:flex; gap:4px; background:var(--card); border:1px solid var(--border); border-radius:999px; padding:4px; margin:-6px 0 16px; max-width:560px; }
+  .place-seg-btn{
+    flex:1; min-width:0; border:none; background:transparent; font-family:inherit; font-size:12px; font-weight:700; color:var(--text-muted);
+    padding:8px 8px; border-radius:999px; cursor:pointer; white-space:nowrap; display:inline-flex; align-items:center; justify-content:center; gap:5px;
+  }
+  .place-seg-btn b{ font-weight:800; }
+  .place-seg-btn.active{ background:var(--petroleo); color:#fff; }
+  .place-seg-btn:focus-visible{ outline:2px solid var(--celeste-dark); outline-offset:2px; }
+  @media (max-width:640px){ .place-seg-btn{ font-size:11px; padding:8px 4px; gap:3px; } }
+  /* Posteo que aplica al lugar filtrado sin haber pasado ahí. */
+  .post.post-cross{ border:1px dashed var(--cross-color, var(--border)); box-shadow:none; background:var(--surface-soft); }
+  .post.post-cross-region{ background:color-mix(in srgb, var(--cross-color) 5%, var(--card)); }
 
   /* ---------- Calendario view ---------- */
   .cal-toolbar-end{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
@@ -2655,6 +2681,58 @@ function scopeAffectsCountry(scope, countryName){
 function scopeAffectsCity(scope, countryName, cityName){
   if(scope.type==="todo") return true;
   return scope.type==="ciudad" && scope.country===countryName && normalize(scope.city)===normalize(cityName);
+}
+// ---------------------------------------------------------------------
+// Tres niveles de relación entre un posteo y un lugar (README, "Lo propio
+// y lo de LatAm"): "own" = pasó AHÍ (el país o una de sus ciudades),
+// "region" = macro de su zona, "latam" = macro de todo el equipo. Antes
+// los tres pesaban igual: un posteo "Toda LatAm" sumaba +1 a los 43
+// países y se mezclaba en la memoria de cada uno como si hubiera pasado
+// ahí — y con muchos de esos, lo propio de un lugar chico quedaba tapado.
+// Ahora los conteos, la pantalla del país y la memoria filtrada los
+// distinguen; lo transversal no se borra, se pliega.
+// ---------------------------------------------------------------------
+const PLACE_LEVELS = ["own", "region", "latam"];
+function scopeLevelFor(sc, place){
+  if(!sc || !place) return null;
+  if(sc.type === "todo") return "latam";
+  if(sc.type === "region") return (ZONE_COUNTRIES[sc.region] || []).includes(place.country) ? "region" : null;
+  if(place.kind === "country") return (sc.type === "pais" || sc.type === "ciudad") && sc.country === place.country ? "own" : null;
+  if(place.kind === "city") return sc.type === "ciudad" && sc.country === place.country && normalize(sc.city) === normalize(place.city) ? "own" : null;
+  return null;
+}
+// El nivel MÁS cercano con el que un conjunto de alcances toca al lugar
+// (un posteo con alcance "Toda LatAm" Y "Islas Caimán" es propio de
+// Caimán); null si no lo toca por ningún lado.
+function recordLevelFor(scopes, place){
+  let best = null;
+  (scopes||[]).forEach(sc=>{
+    const l = scopeLevelFor(sc, place);
+    if(l && (best === null || PLACE_LEVELS.indexOf(l) < PLACE_LEVELS.indexOf(best))) best = l;
+  });
+  return best;
+}
+// Igual, pero sumando los alcances extra de las respuestas ("país
+// afectado por una respuesta", ver getVisiblePosts).
+function postLevelFor(post, place){
+  const all = [...(post.scopes||[])];
+  (state.repliesByPost[post.id]||[]).forEach(r=> all.push(...(r.scopes||[])));
+  return recordLevelFor(all, place);
+}
+// Hasta qué nivel se muestra la memoria filtrada por lugar: 0 solo lo
+// propio, 1 + la región, 2 + toda LatAm. Cada nivel incluye al anterior
+// (ver LatAm sin la región no tiene sentido). Va en localStorage y no en
+// userPrefs a propósito: es cómo se MIRA, no una configuración, y así no
+// hace falta tocar las reglas. Arranca en 0: la queja era el ruido.
+const PLACE_LEVEL_KEY = "ra_place_level";
+function placeLevel(){
+  try{ const v = Number(localStorage.getItem(PLACE_LEVEL_KEY)); return v === 1 || v === 2 ? v : 0; }catch(e){ return 0; }
+}
+function setPlaceLevel(n){ try{ localStorage.setItem(PLACE_LEVEL_KEY, String(n)); }catch(e){} }
+function zoneOfCountry(name){ const c = COUNTRY_BY_NAME[name]; return c ? c.zone : null; }
+function regionLabel(zoneKey){
+  const z = ZONES[zoneKey];
+  return t("Región {z}","{z} region","Região {z}","אזור {z}",{ z: z ? z.label : String(zoneKey||"") });
 }
 function scopeLabel(scope){
   if(scope.type==="todo") return t("Toda LatAm","All of LatAm","Toda a LatAm","כל LatAm");
@@ -5834,6 +5912,40 @@ function renderFilterBar(prefix){
       ${anyFilter ? `<button class="filter-clear" data-action="clear-filters">${t("Limpiar filtros","Clear filters","Limpar filtros","ניקוי מסננים")}</button>` : ""}
     </div>`;
 }
+// Cuántos posteos tocan al lugar filtrado en cada nivel, con los demás
+// filtros (texto, tipo, zona) ya aplicados, para que los números del
+// selector coincidan con lo que se lista.
+function placeLevelCounts(){
+  const f = state.filters;
+  const out = { own:0, region:0, latam:0 };
+  if(!f.place) return out;
+  state.posts.forEach(p=>{
+    if(f.types.size && !f.types.has(p.activityType)) return;
+    const replies = state.repliesByPost[p.id] || [];
+    if(!(matchesTextFilter(f.text, p) || replies.some(r=>matchesTextFilter(f.text, r)))) return;
+    if(f.zones.size && ![p, ...replies].some(r=>(r.scopes||[]).some(sc=>zoneOfScope(sc) && f.zones.has(zoneOfScope(sc))))) return;
+    const l = postLevelFor(p, f.place);
+    if(l) out[l]++;
+  });
+  return out;
+}
+// "Solo acá 1 · + Región Norte 1 · + Toda LatAm 3": tres posiciones,
+// cada una incluye a la anterior. Solo aparece con un lugar filtrado.
+function renderPlaceLevelSeg(){
+  const place = state.filters.place;
+  if(!place) return "";
+  const c = placeLevelCounts();
+  const lvl = placeLevel();
+  const zk = zoneOfCountry(place.country);
+  const zcolor = safeColor(ZONES[zk]?.color);
+  const btn = (n, label, count, extra="") =>
+    `<button type="button" class="place-seg-btn${lvl===n?" active":""}" role="radio" aria-checked="${lvl===n}" data-action="place-level" data-level="${n}">${extra}<span>${label}</span><b>${count}</b></button>`;
+  return `<div class="place-seg" role="radiogroup" aria-label="${esc(t("Qué incluir","What to include","O que incluir","מה לכלול"))}">
+    ${btn(0, esc(t("Solo acá","Only here","Só aqui","רק כאן")), c.own)}
+    ${btn(1, "+ " + esc(regionLabel(zk)), c.region, `<span class="dot" style="background:${zcolor}"></span>`)}
+    ${btn(2, "+ " + esc(t("Toda LatAm","All of LatAm","Toda a LatAm","כל LatAm")), c.latam)}
+  </div>`;
+}
 function placeFilterLabel(place){
   if(place.kind==="country") return countryLabel(place.country);
   if(place.kind==="city") return `${cityLabel(place.country, place.city)}, ${countryLabel(place.country)}`;
@@ -5854,12 +5966,11 @@ function matchesPlaceOrZoneFilter(record){
   const scopes = record.scopes || [];
   if(f.zones.size && !scopes.some(sc=>zoneOfScope(sc) && f.zones.has(zoneOfScope(sc)))) return false;
   if(f.place){
-    const ok = scopes.some(sc=>{
-      if(f.place.kind==="country") return scopeAffectsCountry(sc, f.place.country);
-      if(f.place.kind==="city") return scopeAffectsCity(sc, f.place.country, f.place.city);
-      return false;
-    });
-    if(!ok) return false;
+    // Solo entra lo que toca al lugar hasta el nivel elegido (ver
+    // placeLevel): con 0, un posteo "Toda LatAm" no aparece en la
+    // memoria de Islas Caimán aunque, estrictamente, la afecte.
+    const level = recordLevelFor(scopes, f.place);
+    if(level === null || PLACE_LEVELS.indexOf(level) > placeLevel()) return false;
   }
   return true;
 }
@@ -5929,7 +6040,7 @@ function renderFeedView(){
   const items = all.slice(0, feedVisibleCount);
   return `
     ${renderRutinaComposer()}
-    ${renderFilterBar("feed")}
+    ${renderFilterBar("feed")}${renderPlaceLevelSeg()}
     ${items.length ? items.map(({post,replies,featured})=>renderPostCard(post,replies,featured)).join("") + renderLoadMore("feed-load-more", all.length - items.length) :
       `<div class="empty-state"><div class="big">🗒️</div>${anyActiveFilter()
         ? t("Todavía no hay posteos que coincidan con el filtro.","No posts match the filter yet.","Ainda não há postagens que coincidam com o filtro.","עדיין אין פוסטים שתואמים למסנן.")
@@ -6119,8 +6230,14 @@ function renderPostCard(post, replies, featured){
     : t("{n} comentarios","{n} comments","{n} comentários","{n} תגובות",{n:replies.length});
   const showTitle = post.title && post.activityType !== "rutina";
   const tr = withContentTranslation("post", post.id, showTitle ? post.title : "", post.content);
+  // Con un lugar filtrado, lo que aplica pero no pasó AHÍ se marca con
+  // borde punteado (la región en el color de su zona), para que se
+  // distinga de un vistazo de lo propio.
+  const rel = state.filters.place ? postLevelFor(post, state.filters.place) : null;
+  const crossClass = rel && rel !== "own" ? ` post-cross post-cross-${rel}` : "";
+  const crossStyle = rel === "region" ? ` style="--cross-color:${safeColor(ZONES[zoneOfCountry(state.filters.place.country)]?.color)}"` : "";
   return `
-    <article class="card post ${post.cancelled?"post-cancelled":""}" data-post-id="${post.id}">
+    <article class="card post ${post.cancelled?"post-cancelled":""}${crossClass}"${crossStyle} data-post-id="${post.id}">
       <div class="post-head">
         <div class="post-meta">
           <span class="type-badge">${esc(type.icon)} ${esc(type.label)}</span>
@@ -6368,25 +6485,38 @@ function computePlaceCounts(){
   // scopes guardados en Firestore (las reglas no validan su forma), y un
   // "__proto__" ahí adentro no puede terminar escribiendo en Object.prototype.
   const byCountry = Object.create(null);
-  COUNTRIES.forEach(c=>{ byCountry[c.name] = { total:0, general:0, cities:Object.create(null) }; });
+  // own = pasó ahí (país o ciudad); region/latam = macro que también
+  // aplica. total sigue siendo la suma, por compatibilidad; general es
+  // solo lo propio "de todo el país" (antes metía también lo regional y
+  // lo de LatAm, y por eso Islas Caimán mostraba 3 sin nada propio).
+  COUNTRIES.forEach(c=>{ byCountry[c.name] = { total:0, own:0, general:0, region:0, latam:0, cities:Object.create(null) }; });
+  // general y cities se cuentan por ALCANCE (como siempre: una respuesta
+  // que suma una ciudad, suma esa ciudad).
   function ingest(scopes){
     (scopes||[]).forEach(sc=>{
       if(sc.type==="pais" && byCountry[sc.country]){
-        byCountry[sc.country].total++; byCountry[sc.country].general++;
+        byCountry[sc.country].general++;
       } else if(sc.type==="ciudad" && byCountry[sc.country]){
         const city = canonicalCityName(sc.country, sc.city);
-        byCountry[sc.country].total++;
         byCountry[sc.country].cities[city] = (byCountry[sc.country].cities[city]||0)+1;
-      } else if(sc.type==="region" && ZONE_COUNTRIES[sc.region]){
-        ZONE_COUNTRIES[sc.region].forEach(name=>{ byCountry[name].total++; byCountry[name].general++; });
-      } else if(sc.type==="todo"){
-        COUNTRIES.forEach(c=>{ byCountry[c.name].total++; byCountry[c.name].general++; });
       }
     });
   }
   state.posts.forEach(p=>{
+    const replies = state.repliesByPost[p.id] || [];
     ingest(p.scopes);
-    (state.repliesByPost[p.id]||[]).forEach(r=>ingest(r.scopes));
+    replies.forEach(r=>ingest(r.scopes));
+    // own/region/latam se cuentan UNA vez por posteo, por su nivel más
+    // cercano a cada país — el mismo criterio del selector de la
+    // Memoria, para que los números coincidan. Contando por alcance, un
+    // posteo "Toda LatAm" con sede en Islas Caimán sumaba en Caimán dos
+    // veces: como propio y como LatAm.
+    const all = [...(p.scopes||[])];
+    replies.forEach(r=> all.push(...(r.scopes||[])));
+    COUNTRIES.forEach(c=>{
+      const l = recordLevelFor(all, { kind:"country", country:c.name });
+      if(l){ byCountry[c.name][l]++; byCountry[c.name].total++; }
+    });
   });
   placeCountsCache = byCountry;
   return byCountry;
@@ -6426,22 +6556,37 @@ function renderPaisesView(){
   if(state.countryDrill && byCountryExists(state.countryDrill)){
     return toolbar + renderCountryDrill(state.countryDrill, counts[state.countryDrill]);
   }
-  const sorted = visiblePaisesCountries().slice().sort((a,b)=> counts[b.name].total - counts[a.name].total || a.name.localeCompare(b.name));
+  // Orden por lo PROPIO: antes ordenaba por total y, como lo de LatAm
+  // suma igual en todos, el orden era casi alfabético.
+  const sorted = visiblePaisesCountries().slice().sort((a,b)=> counts[b.name].own - counts[a.name].own || counts[b.name].total - counts[a.name].total || a.name.localeCompare(b.name));
   const cards = sorted.map(c=>{
-    const cnt = counts[c.name].total;
+    const d = counts[c.name];
+    const cnt = d.own;
+    const quiet = cnt === 0 && (d.region || d.latam);
     // border-inline-start-color, no border-left-color: la clase .country-card
     // fija el ancho/estilo del borde con border-inline-start (ver CSS, para
     // que en RTL quede del lado correcto) — pisarlo acá con la propiedad
     // física vieja lo dejaba sin color en RTL (el navegador ya no pinta
     // border-left ahí, solo border-right).
-    return `<div class="country-card" style="border-inline-start-color:${safeColor(ZONES[c.zone]?.color)}" data-action="drill-country" data-country="${esc(c.name)}">
+    const unit = quiet ? t("propios","own","próprios","משלה") : cnt === 1 ? t("registro","record","registro","רשומה") : t("registros","records","registros","רשומות");
+    return `<div class="country-card${quiet?" quiet":""}" style="border-inline-start-color:${safeColor(ZONES[c.zone]?.color)}" data-action="drill-country" data-country="${esc(c.name)}">
       <div class="name">${esc(countryLabel(c.name))}</div>
-      <div class="count">${cnt}<small> ${cnt === 1 ? t("registro","record","registro","רשומה") : t("registros","records","registros","רשומות")}</small></div>
+      <div class="count">${cnt}<small> ${unit}</small></div>
+      ${crossLine(c.name, d)}
     </div>`;
   }).join("");
   return `${toolbar}<div class="country-grid">${cards}</div>`;
 }
 function byCountryExists(name){ return !!COUNTRY_BY_NAME[name]; }
+// "+1 de Región Norte · +3 de toda LatAm": lo que aplica al lugar sin
+// haber pasado ahí. La región en el color de su zona, LatAm en gris.
+function crossLine(countryName, d){
+  const parts = [];
+  const zk = zoneOfCountry(countryName);
+  if(d.region) parts.push(`<span class="cross-zone" style="color:${safeColor(ZONES[zk]?.color)}">+${d.region} ${t("de {z}","from {z}","de {z}","מ{z}",{ z: esc(regionLabel(zk)) })}</span>`);
+  if(d.latam) parts.push(`<span class="cross-latam">+${d.latam} ${t("de toda LatAm","from all of LatAm","de toda a LatAm","מכל LatAm")}</span>`);
+  return parts.length ? `<div class="cross-line">${parts.join("")}</div>` : "";
+}
 
 function renderCountryDrill(countryName, data){
   const rows = [];
@@ -6451,11 +6596,27 @@ function renderCountryDrill(countryName, data){
   Object.entries(data.cities).sort((a,b)=>b[1]-a[1]).forEach(([city,count])=>{
     rows.push({ label:cityLabel(countryName, city), count, city });
   });
-  const rowsHtml = rows.length ? rows.map(r=>`
+  // Lo macro va en filas aparte, al final, con borde punteado: la región
+  // en el color de su zona y LatAm en gris. Llevan a la memoria ya
+  // filtrada en ese nivel (data-level → setPlaceLevel).
+  const zk = zoneOfCountry(countryName);
+  const zcolor = safeColor(ZONES[zk]?.color);
+  const crossRows = [];
+  if(data.region) crossRows.push(`
+      <div class="city-row cross zone" style="--cross:${zcolor}" data-action="goto-country" data-country="${esc(countryName)}" data-level="1">
+        <span class="cname"><span><span class="dot" style="background:${zcolor}"></span> ${esc(regionLabel(zk))}</span><small>${t("lo macro de la zona","the zone-wide items","o macro da zona","המאקרו של האזור")}</small></span>
+        <span class="ccount">${data.region}</span>
+      </div>`);
+  if(data.latam) crossRows.push(`
+      <div class="city-row cross" data-action="goto-country" data-country="${esc(countryName)}" data-level="2">
+        <span class="cname"><span>${t("Toda LatAm","All of LatAm","Toda a LatAm","כל LatAm")}</span><small>${t("lo macro de todo el equipo","the team-wide items","o macro de toda a equipe","המאקרו של כל הצוות")}</small></span>
+        <span class="ccount">${data.latam}</span>
+      </div>`);
+  const rowsHtml = (rows.length || crossRows.length) ? rows.map(r=>`
       <div class="city-row" data-action="${r.city?"goto-city":"goto-country"}" data-country="${esc(countryName)}" ${r.city?`data-city="${esc(r.city)}"`:""}>
         <span class="cname">${esc(r.label)}</span>
         <span class="ccount">${r.count}</span>
-      </div>`).join("") :
+      </div>`).join("") + crossRows.join("") :
     `<div class="empty-state">${t("Todavía no hay registros para {country}.","There are no records for {country} yet.","Ainda não há registros para {country}.","עדיין אין רשומות עבור {country}.",{country:esc(countryLabel(countryName))})}</div>`;
   // La flecha de "volver"/"ver más" no se invierte sola con dir="rtl" (no
   // es de los caracteres que Unicode "espeja" automáticamente en bidi,
@@ -6530,12 +6691,14 @@ function initOrUpdateMap(){
   const visibleCountries = visiblePaisesCountries();
   // Firma barata de lo que se dibuja (países visibles, conteos, ciudades
   // del popup e idioma): si no cambió, no se toca nada.
-  const sig = currentLang() + "|" + visibleCountries.map(c => c.name + ":" + counts[c.name].total + ":" + Object.entries(counts[c.name].cities).map(([k,v])=>k+"="+v).join(",")).join(";");
+  const sig = currentLang() + "|" + visibleCountries.map(c => c.name + ":" + counts[c.name].own + "/" + counts[c.name].region + "/" + counts[c.name].latam + ":" + Object.entries(counts[c.name].cities).map(([k,v])=>k+"="+v).join(",")).join(";");
   if(sig === mapMarkersSig) return;
   mapMarkersSig = sig;
   mapClusterGroup.clearLayers();
   visibleCountries.forEach(c=>{
-    const cnt = counts[c.name].total;
+    // El número del círculo es lo PROPIO: con el total, los 43 círculos
+    // compartían la misma base de LatAm y no se distinguía nada.
+    const cnt = counts[c.name].own;
     const color = safeColor(ZONES[c.zone]?.color);
     const marker = L.marker(c.coord, {
       icon: L.divIcon({
@@ -6549,6 +6712,7 @@ function initOrUpdateMap(){
     const cntLabel = cnt === 1 ? t("1 registro","1 record","1 registro","רשומה אחת") : t("{n} registros","{n} records","{n} registros","{n} רשומות",{n:cnt});
     const popupHtml = `<div class="map-popup"><b>${esc(countryLabel(c.name))} — ${cntLabel}</b>
       ${topCities.map(([city,n])=>`<div class="pop-city"><span>${esc(city)}</span><span>${n}</span></div>`).join("")}
+      ${crossLine(c.name, counts[c.name])}
       <button class="btn-mini" data-action="goto-country" data-country="${esc(c.name)}">${t("Ver memoria {a}","See memory {a}","Ver memória {a}","צפייה בזיכרון {a}",{a:isRTL()?"←":"→"})}</button></div>`;
     marker.bindPopup(popupHtml);
     mapClusterGroup.addLayer(marker);
@@ -7401,7 +7565,7 @@ function renderMemoriaView(){
   if(state.memoriaOrder === "asc") all = all.slice().reverse();
   const items = all.slice(0, memoriaVisibleCount);
   return `
-    ${renderFilterBar("memoria")}
+    ${renderFilterBar("memoria")}${renderPlaceLevelSeg()}
     <div class="sort-toggle">
       <div class="sort-toggle-group">
         <span class="chip-toggle ${state.memoriaOrder==="asc"?"active":""}" data-action="memoria-order" data-key="asc">${t("Más antiguo primero","Oldest first","Mais antigo primeiro","הישן ביותר קודם")}</span>
@@ -8850,10 +9014,13 @@ document.addEventListener("click", e=>{
     state.countryDrill = null; render();
   } else if(action === "goto-country"){
     state.filters.place = { kind:"country", country:el.dataset.country };
+    if(el.dataset.level) setPlaceLevel(Number(el.dataset.level)); // las filas "Región"/"Toda LatAm" abren en su nivel
     state.view = "memoria"; state.countryDrill = null; render();
   } else if(action === "goto-city"){
     state.filters.place = { kind:"city", country:el.dataset.country, city:el.dataset.city };
     state.view = "memoria"; state.countryDrill = null; render();
+  } else if(action === "place-level"){
+    setPlaceLevel(Number(el.dataset.level)); render();
   } else if(action === "dismiss-calendar-notice"){
     clearTimeout(calendarNoticeTimer);
     calendarToastEl.hidden = true;
