@@ -1310,6 +1310,21 @@ escritorio el foco va al HEX al abrir; en táctil no (misma regla que los
 formularios). Cualquier cambio re-renderiza y por lo tanto cierra el
 panel: elegir un color es un gesto de una vez.
 
+### "↑ N publicaciones nuevas" (como en X)
+
+Cuando llegan posteos de otras personas mientras uno está scrolleado en
+el Feed, o parado en otra solapa, aparece una píldora flotante centrada
+debajo del header (y debajo del cajón de Rutina, que es sticky):
+"↑ 3 publicaciones nuevas". Tocarla sube al principio (y lleva al Feed
+si se estaba en otra solapa) y la limpia; subir a mano también la
+limpia. Mecánica (`noteIncomingPosts`, llamada desde el snapshot de
+posts): se guarda el conjunto de ids ya vistos; lo que no estaba y no es
+propio cuenta como nuevo, salvo que la persona esté mirando el principio
+del Feed (ahí lo ve aparecer y no hace falta avisar). Los propios no
+cuentan: uno acaba de publicarlo. La primera carga marca todo como
+visto. Mismo celeste fijo que las flechas; `updateNewPostsPill()` corre
+en cada render y en cada scroll.
+
 ### "Ver más": de a 15, sin moverte
 
 Feed y Memoria pintan 15 tarjetas al entrar (`PAGE_SIZE`) y cada "Ver

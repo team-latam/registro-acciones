@@ -231,6 +231,21 @@
   }
   .scroll-top.show{ opacity:1; transform:none; }
   .scroll-top:hover{ background:#8fe3f2; }
+  /* "↑ N publicaciones nuevas": píldora flotante arriba del Feed cuando
+     llegan posteos de otros mientras la persona está scrolleada (o en otra
+     solapa). Mismo celeste fijo que la flecha de subir; tocarla sube. */
+  .new-posts-pill{
+    position:fixed; left:50%; transform:translate(-50%, -8px); z-index:66;
+    display:flex; align-items:center; gap:8px; padding:9px 16px; border:none; border-radius:999px;
+    background:#6fd8ec; color:#082a2c; font-family:inherit; font-size:13px; font-weight:800; cursor:pointer;
+    box-shadow:0 6px 18px rgba(8,42,44,0.3); opacity:0; transition:opacity .18s ease, transform .18s ease, background .16s ease;
+    white-space:nowrap; max-width:calc(100vw - 32px);
+  }
+  .new-posts-pill.show{ opacity:1; transform:translate(-50%, 0); }
+  .new-posts-pill:hover{ background:#8fe3f2; }
+  .new-posts-pill:focus-visible{ outline:3px solid rgba(8,42,44,.35); outline-offset:2px; }
+  .new-posts-pill[hidden]{ display:none; }
+  .new-posts-pill svg{ width:16px; height:16px; }
   @media (max-width:640px){
     .fab-wrap{ inset-block-end:16px; inset-inline-end:16px; }
     .fab-main{ width:50px; height:50px; font-size:27px; }
@@ -1659,6 +1674,7 @@
        del menú (invisibles pero ocupando lugar), y la flecha habría
        quedado flotando lejos. Cuando el menú se abre, la flecha se
        esconde para dejarle el lugar. -->
+  <button type="button" class="new-posts-pill" id="newPostsPill" data-action="new-posts-jump" hidden aria-live="polite"></button>
   <button type="button" class="scroll-top" id="scrollTop" data-action="scroll-top" aria-label="Subir" hidden>
     <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M6 14l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
   </button>
@@ -4537,9 +4553,11 @@ function subscribeData(){
   // documento (aleatorio), así que las rutinas de hoy salían en cualquier
   // orden. Se ordena acá: fecha desc y, dentro del día, creación desc.
   const unsubPosts = fb.onSnapshot(fb.collection(db,"posts"), snap=>{
+    const prevLoaded = state.loaded;
     state.posts = snap.docs.map(d=>({ id:d.id, ...d.data({serverTimestamps:"estimate"}) }))
       .sort((a,b)=> String(b.date||"").localeCompare(String(a.date||"")) || (tsToMillis(b.createdAt) - tsToMillis(a.createdAt)));
     state.loaded = true;
+    noteIncomingPosts(prevLoaded);
     subscribeReplies();
     render();
     startCalendarAutoSync();
@@ -4776,6 +4794,7 @@ function render(){
     }
   }
   document.querySelectorAll("textarea.autogrow").forEach(autoGrowTextarea);
+  updateNewPostsPill(); // la píldora depende de la vista y del scroll
 }
 // Para los listeners de Firestore que llegan en ráfaga (uno por posteo al
 // cargar las respuestas): junta todos los pedidos de un mismo frame en UN
@@ -8278,6 +8297,60 @@ function scrollToTop(){
   const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   window.scrollTo({ top:0, behavior: reduce ? "auto" : "smooth" });
 }
+// ---- "↑ N publicaciones nuevas" (como en X) ----
+// Se guardan los ids ya vistos; en cada snapshot, lo que no estaba y no es
+// propio cuenta como nuevo SI la persona no está mirando el principio del
+// Feed (scrolleada, o en otra solapa). Si está arriba del Feed lo ve
+// aparecer solo y no hace falta avisar. Los propios no cuentan: uno acaba
+// de publicarlo. La píldora se muestra solo parada en el Feed; la cuenta
+// se acumula igual en otras solapas y aparece al volver.
+const newPostsPillEl = document.getElementById("newPostsPill");
+const NEW_POSTS_NEAR_TOP = 120;
+let seenPostIds = null;
+let pendingNewPosts = 0;
+function atFeedTop(){ return state.view === "feed" && window.scrollY <= NEW_POSTS_NEAR_TOP; }
+function noteIncomingPosts(prevLoaded){
+  const ids = new Set(state.posts.map(p=>p.id));
+  if(!prevLoaded || !seenPostIds){ seenPostIds = ids; return; } // primera carga: todo "visto"
+  const me = state.auth.user && state.auth.user.email;
+  let fresh = 0;
+  state.posts.forEach(p=>{ if(!seenPostIds.has(p.id) && p.authorEmail !== me) fresh++; });
+  if(atFeedTop()){ seenPostIds = ids; pendingNewPosts = 0; updateNewPostsPill(); return; }
+  if(fresh){ pendingNewPosts += fresh; }
+  seenPostIds = ids;
+  updateNewPostsPill();
+}
+function updateNewPostsPill(){
+  if(!newPostsPillEl) return;
+  const show = pendingNewPosts > 0 && state.view === "feed" && window.scrollY > NEW_POSTS_NEAR_TOP;
+  if(show){
+    const n = pendingNewPosts;
+    newPostsPillEl.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5m0 0l-6 6m6-6l6 6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>${esc(n === 1
+      ? t("1 publicación nueva","1 new post","1 publicação nova","פרסום חדש אחד")
+      : t("{n} publicaciones nuevas","{n} new posts","{n} publicações novas","{n} פרסומים חדשים",{n}))}`;
+    // Debajo del header fijo y, si está, del cajón de Rutina (que es
+    // sticky justo debajo del header): que no lo tape.
+    const head = document.querySelector("header.topbar");
+    const composer = document.querySelector("#viewRoot .quick-composer");
+    let base = head ? head.getBoundingClientRect().bottom : 0;
+    if(composer){ const cr = composer.getBoundingClientRect(); if(cr.bottom > base && cr.top <= base + 2) base = cr.bottom; }
+    newPostsPillEl.style.top = (base + 12) + "px";
+    if(newPostsPillEl.hidden){ newPostsPillEl.hidden = false; requestAnimationFrame(()=> newPostsPillEl.classList.add("show")); }
+  } else if(!newPostsPillEl.hidden){
+    newPostsPillEl.classList.remove("show");
+    newPostsPillEl.hidden = true;
+  }
+  // Ya vio el principio del Feed: no hay nada pendiente.
+  if(atFeedTop() && pendingNewPosts){ pendingNewPosts = 0; if(state.posts.length) seenPostIds = new Set(state.posts.map(p=>p.id)); newPostsPillEl.hidden = true; newPostsPillEl.classList.remove("show"); }
+}
+function jumpToNewPosts(){
+  pendingNewPosts = 0;
+  seenPostIds = new Set(state.posts.map(p=>p.id));
+  newPostsPillEl.classList.remove("show"); newPostsPillEl.hidden = true;
+  if(state.view !== "feed"){ state.view = "feed"; feedVisibleCount = PAGE_SIZE; render(); }
+  scrollToTop();
+}
+window.addEventListener("scroll", updateNewPostsPill, { passive:true });
 function closeFab(){ setFab(false); }
 // La Rutina no tiene modal propio: su composer es la primera cosa del
 // Feed, así que desde otra solapa hay que ir al Feed antes de enfocarlo.
@@ -9433,6 +9506,8 @@ document.addEventListener("click", e=>{
     savePrefs({ [prefKey]: cur.includes(key) ? cur.filter(k=>k!==key) : [...cur, key] });
   } else if(action === "config-section"){
     state.configSection = el.dataset.key; render();
+  } else if(action === "new-posts-jump"){
+    jumpToNewPosts();
   } else if(action === "scroll-top"){
     scrollToTop();
   } else if(action === "toggle-fab"){
