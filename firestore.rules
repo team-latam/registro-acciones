@@ -379,6 +379,7 @@ service cloud.firestore {
     // cliente ya lo acota al leerlo).
     function isValidUserPrefs(d) {
       return d.keys().hasOnly(['weekStart', 'showWeekends', 'customDays', 'dimPast',
+          'dateFormat', 'timeFormat',
           'holidayMode', 'holidayCountries', 'holidayJewish',
           'holidayColor', 'holidayJewishColor',
           'notifyTypes', 'notifyLead', 'notifyOnlyMine', 'notifyZones',
@@ -387,6 +388,11 @@ service cloud.firestore {
         (d.get('showWeekends', true) is bool) &&
         (d.get('customDays', 4) is int) &&
         (d.get('dimPast', false) is bool) &&
+        // Formato de fecha/hora: solo los valores que ofrece el selector.
+        // Se listan en vez de aceptar cualquier string porque van derecho
+        // a un switch de la app.
+        (d.get('dateFormat', 'auto') in ['auto', 'dmy', 'mdy', 'ymd']) &&
+        (d.get('timeFormat', 'auto') in ['auto', '24', '12']) &&
         (d.get('holidayMode', 'sutil') is string) &&
         (d.get('holidayCountries', []) is list) &&
         (d.get('holidayJewish', false) is bool) &&

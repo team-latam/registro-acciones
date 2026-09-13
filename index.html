@@ -2141,11 +2141,60 @@ function todayISO(){
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 }
+// ---------------------------------------------------------------------
+// Formato de fecha y hora, elegible en Configuración > Calendario.
+// "auto" es lo que dicta el idioma activo — el comportamiento que tenía
+// la app antes de que esto existiera, y el default.
+//
+// Por qué es una preferencia y no se deduce del idioma: el equipo es de
+// LatAm pero trabaja con gente en EE.UU. e Israel, y cada uno lee su
+// fecha como la lee. Alguien puede querer la app en español y las fechas
+// en 12/31/2026, o en hebreo con horario de 24 h.
+// ---------------------------------------------------------------------
+const DATE_FORMATS = ["auto","dmy","mdy","ymd"];
+const TIME_FORMATS = ["24","12","auto"];
+function dateFormatPref(){ const v = prefs().dateFormat; return DATE_FORMATS.includes(v) ? v : "auto"; }
+function timeFormatPref(){ const v = prefs().timeFormat; return TIME_FORMATS.includes(v) ? v : "24"; }
+// ¿Se muestra am/pm? En "auto" se le pregunta a Intl qué hace el idioma
+// activo, en vez de mantener una tabla idioma → 12/24 que se despegue.
+function uses12h(){
+  const v = timeFormatPref();
+  if(v === "12") return true;
+  if(v === "24") return false;
+  try{
+    return new Intl.DateTimeFormat(dateLocale(), { hour:"numeric" }).resolvedOptions().hour12 === true;
+  }catch(e){ return false; }
+}
+function pad2(n){ return String(n).padStart(2,"0"); }
 function fmtDate(d){
   if(!d) return "";
   const dt = typeof d === "string" ? new Date(d+"T00:00:00") : d;
   if(isNaN(dt)) return d;
-  return dt.toLocaleDateString(dateLocale(),{ day:"2-digit", month:"short", year:"numeric" });
+  const y = dt.getFullYear(), m = pad2(dt.getMonth()+1), day = pad2(dt.getDate());
+  switch(dateFormatPref()){
+    case "ymd": return `${y}-${m}-${day}`;
+    case "dmy": return `${day}/${m}/${y}`;
+    case "mdy": return `${m}/${day}/${y}`;
+    default:    return dt.toLocaleDateString(dateLocale(),{ day:"2-digit", month:"short", year:"numeric" });
+  }
+}
+// Las horas de los eventos se guardan como "HH:MM" de 24 h (es lo que da
+// <input type="time">, y así viajan a Calendar). Para MOSTRARLAS hay que
+// pasarlas por acá: sin esto el calendario quedaba siempre en 24 h aunque
+// la persona prefiera am/pm. Lo guardado no cambia nunca.
+function fmtHHMM(hhmm){
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm||""));
+  if(!m) return String(hhmm||"");
+  const h = Number(m[1]), min = Number(m[2]);
+  if(h > 23 || min > 59) return String(hhmm);
+  if(!uses12h()) return `${pad2(h)}:${m[2]}`;
+  return new Date(2000,0,1,h,min).toLocaleTimeString(dateLocale(), { hour:"numeric", minute:"2-digit", hour12:true });
+}
+// Etiqueta de la columna de horas de Semana/Día: en 12 h va sin ":00"
+// ("1 p. m."), que es lo que hace Google y ocupa menos en la canaleta.
+function fmtHourLabel(h){
+  if(!uses12h()) return `${pad2(h)}:00`;
+  return new Date(2000,0,1,h,0).toLocaleTimeString(dateLocale(), { hour:"numeric", hour12:true });
 }
 // Solo la hora (HH:MM) de un timestamp de Firestore — se usa en la
 // tarjeta de posteo para distinguir el orden entre varios del mismo día
@@ -2156,13 +2205,14 @@ function fmtTime(ts){
   if(!ts) return "";
   const dt = ts.toDate ? ts.toDate() : new Date(ts);
   if(isNaN(dt)) return "";
-  return dt.toLocaleTimeString(dateLocale(),{ hour:"2-digit", minute:"2-digit" });
+  const h12 = uses12h();
+  return dt.toLocaleTimeString(dateLocale(),{ hour: h12 ? "numeric" : "2-digit", minute:"2-digit", hour12:h12 });
 }
 function fmtDateTime(ts){
   if(!ts) return "";
   const dt = ts.toDate ? ts.toDate() : new Date(ts);
   if(isNaN(dt)) return "";
-  return dt.toLocaleDateString(dateLocale(),{ day:"2-digit", month:"short", year:"numeric" }) + " " + fmtTime(ts);
+  return fmtDate(dt) + " " + fmtTime(ts);
 }
 function uid(){ return Math.random().toString(36).slice(2,10); }
 function tsToMillis(ts){
@@ -2560,6 +2610,14 @@ const DEFAULT_PREFS = {
   showWeekends: true,
   customDays: 4,           // cuántos días muestra la vista "N días"
   dimPast: false,
+  dateFormat: "auto",      // auto (según el idioma) | dmy | mdy | ymd
+  // El default es 24 h, no "auto": el Calendario SIEMPRE mostró los
+  // horarios crudos ("13:00"), y con "auto" Intl considera que es-AR es de
+  // 12 h, así que todo el equipo se habría despertado con el calendario en
+  // am/pm sin pedirlo. De paso queda parejo con las tarjetas del Feed, que
+  // sí venían en 12 h para quien lo tiene en español: la misma hora se
+  // escribía de dos formas distintas en la misma pantalla.
+  timeFormat: "24",        // 24 | 12 | auto (según el idioma)
   // Feriados
   holidayMode: "sutil",    // sutil | evento | off
   holidayCountries: [],
@@ -4722,7 +4780,7 @@ function renderMentionsMenuItems(hasInvite, upcoming){
     ${upcoming.slice(0,4).map(p=>{
       const type = ACTIVITY_BY_KEY[p.activityType] || { icon:"✨" };
       const when = p.startTime
-        ? `${fmtISO(p.startDate || p.date, { weekday:"short", day:"numeric", month:"short" })} · ${esc(p.startTime)}`
+        ? `${fmtISO(p.startDate || p.date, { weekday:"short", day:"numeric", month:"short" })} · ${esc(fmtHHMM(p.startTime))}`
         : fmtISO(p.startDate || p.date, { weekday:"short", day:"numeric", month:"short" });
       return `<button type="button" class="mention-item" data-action="goto-mention" data-post-id="${esc(p.id)}">
           <span class="mi-author">${type.icon} ${esc(calendarioLabel(p))}</span>
@@ -5798,7 +5856,7 @@ function renderPostCard(post, replies, featured){
   const threadOpen = openThreads.has(post.id);
   const startDate = post.startDate || post.date;
   const endDate = post.endDate || startDate;
-  const timeLabel = post.startTime && post.endTime ? ` · ${post.startTime}–${post.endTime}` : "";
+  const timeLabel = post.startTime && post.endTime ? ` · ${fmtHHMM(post.startTime)}–${fmtHHMM(post.endTime)}` : "";
   const dateLabel = (endDate && endDate !== startDate ? `${fmtDate(startDate)} – ${fmtDate(endDate)}` : fmtDate(startDate)) + timeLabel;
   const metaBits = [];
   if(post.participants && post.participants.length) metaBits.push(`👥 ${t("Participantes","Participants","Participantes","משתתפים")}: ${participantsHtml(post.participants)}`);
@@ -6449,6 +6507,22 @@ function prefRow(icon, label, sub, control){
       <div class="setting-control setting-control-wide">${control}</div>
     </div>`;
 }
+// Muestra de cómo queda una fecha/hora con cada formato, sin tocar las
+// preferencias guardadas: se calcula con las mismas funciones que dibujan
+// la app, pasándoles el formato a la fuerza.
+function withPrefOverride(patch, fn){
+  const saved = state.prefs;
+  state.prefs = { ...prefs(), ...patch };
+  try{ return fn(); } finally{ state.prefs = saved; }
+}
+function sampleDate(iso, f){
+  const muestra = withPrefOverride({ dateFormat:f }, ()=>fmtDate(iso));
+  return f === "auto" ? `${t("Según el idioma","Follow the language","Conforme o idioma","לפי השפה")} (${muestra})` : muestra;
+}
+function sampleTime(f){
+  const muestra = withPrefOverride({ timeFormat:f }, ()=>fmtHHMM("13:00"));
+  return f === "auto" ? `${t("Según el idioma","Follow the language","Conforme o idioma","לפי השפה")} (${muestra})` : muestra;
+}
 function renderConfigCalendarioSection(){
   const p = prefs();
   // Los nombres de los días salen del navegador con dos fechas fijas
@@ -6462,6 +6536,16 @@ function renderConfigCalendarioSection(){
     </select>`;
   const daysSel = `<select data-pref="customDays" data-pref-num="1">
       ${[2,3,4,5,6,7].map(n=>`<option value="${n}" ${p.customDays===n?"selected":""}>${n} ${esc(t("días","days","dias","ימים"))}</option>`).join("")}
+    </select>`;
+  // Cada opción se muestra con una fecha/hora de ejemplo REAL, calculada
+  // con el mismo código que después dibuja la app: así lo que se elige es
+  // exactamente lo que se va a ver, sin tener que descifrar "dd/mm/aaaa".
+  const hoy = todayISO();
+  const dateFmtSel = `<select data-pref="dateFormat">
+      ${DATE_FORMATS.map(f=>`<option value="${f}" ${dateFormatPref()===f?"selected":""}>${esc(sampleDate(hoy, f))}</option>`).join("")}
+    </select>`;
+  const timeFmtSel = `<select data-pref="timeFormat">
+      ${TIME_FORMATS.map(f=>`<option value="${f}" ${timeFormatPref()===f?"selected":""}>${esc(sampleTime(f))}</option>`).join("")}
     </select>`;
   return `
       <div class="hint" style="margin-bottom:16px;">${t(
@@ -6480,6 +6564,12 @@ function renderConfigCalendarioSection(){
         ${prefRow("🔢", t("Vista personalizada","Custom view","Vista personalizada","תצוגה מותאמת"),
           t("Cuántos días muestra esa opción del selector de vista.","How many days that option in the view selector shows.","Quantos dias mostra essa opção do seletor de vista.","כמה ימים מציגה האפשרות הזו בבורר התצוגה."),
           daysSel)}
+        ${prefRow("📆", t("Formato de fecha","Date format","Formato de data","תבנית תאריך"),
+          t("Cómo se escriben las fechas en todo el Registro.","How dates are written across the whole Log.","Como as datas são escritas em todo o Registro.","איך נכתבים התאריכים בכל היומן."),
+          dateFmtSel)}
+        ${prefRow("🕐", t("Formato de hora","Time format","Formato de hora","תבנית שעה"),
+          t("Afecta los horarios de los eventos y la columna de horas.","Affects event times and the hours column.","Afeta os horários dos eventos e a coluna de horas.","משפיע על שעות האירועים ועל עמודת השעות."),
+          timeFmtSel)}
         ${prefRow("🌙", t("Atenuar eventos pasados","Dim past events","Esmaecer eventos passados","עמעום אירועים שעברו"),
           t("Los eventos anteriores a hoy se ven más tenues, para que resalte lo que viene.","Events before today look fainter, so what's coming stands out.","Os eventos anteriores a hoje ficam mais tênues, para destacar o que vem.","אירועים שלפני היום נראים דהויים, כדי שיבלוט מה שמגיע."),
           prefSwitch("dimPast", !!p.dimPast))}
@@ -6685,7 +6775,7 @@ function calendarioChip(p, iso){
   const label = calendarioLabel(p);
   // La hora solo en el día en que arranca: en los días del medio de un
   // evento de varios días no significa nada.
-  const time = p.startTime && (p.startDate || p.date) === iso ? `<b>${esc(p.startTime)}</b> ` : "";
+  const time = p.startTime && (p.startDate || p.date) === iso ? `<b>${esc(fmtHHMM(p.startTime))}</b> ` : "";
   return `<button type="button" class="cal-chip${p.cancelled?" cancelled":""}${pastClass(iso)}" data-action="cal-open" data-post-id="${esc(p.id)}" title="${esc(label)}">
       <span class="cal-dot" style="background:${calendarioColor(p)}"></span><span class="cal-txt">${type.icon} ${time}${esc(label)}</span>
     </button>`;
@@ -6923,7 +7013,7 @@ function calendarioBar(it, weekDays){
   // Punta cuadrada del lado por donde el evento sigue fuera de esta semana.
   const contStart = startIso < weekDays[it.from];
   const contEnd = endIso > weekDays[it.to];
-  const time = p.startTime && startIso === weekDays[it.from] ? `<b>${esc(p.startTime)}</b> ` : "";
+  const time = p.startTime && startIso === weekDays[it.from] ? `<b>${esc(fmtHHMM(p.startTime))}</b> ` : "";
   const style = multi
     ? `background:${color};color:${readableOn(color)};`
     : "";
@@ -7022,7 +7112,7 @@ function calendarioBlock(it){
   const width = 100 / it.cols;
   return `<button type="button" class="cal-block${p.cancelled?" cancelled":""}${pastClass(it.iso)}" data-action="cal-open" data-post-id="${esc(p.id)}"
       style="top:${top}%;height:${height}%;inset-inline-start:${it.col*width}%;width:${width}%;border-inline-start-color:${calendarioColor(p)}">
-      <b>${esc(p.startTime)}</b> ${esc(calendarioLabel(p))}
+      <b>${esc(fmtHHMM(p.startTime))}</b> ${esc(calendarioLabel(p))}
     </button>`;
 }
 
@@ -7041,7 +7131,7 @@ function renderCalendarioGrid(days){
     const evs = (byDate[iso]||[]).filter(p=>!p.startTime);
     return `<div class="cal-gcol-allday"${calendarioNewAttrs(iso)}>${evs.map(p=>calendarioChip(p, iso)).join("")}</div>`;
   }).join("");
-  const hours = Array.from({length:24}, (_,h)=>`<div class="cal-hour-label"><span>${String(h).padStart(2,"0")}:00</span></div>`).join("");
+  const hours = Array.from({length:24}, (_,h)=>`<div class="cal-hour-label"><span>${esc(fmtHourLabel(h))}</span></div>`).join("");
   const cols = days.map(iso=>{
     const timed = (byDate[iso]||[]).filter(p=>p.startTime);
     const slots = Array.from({length:24}, (_,h)=>`<div class="cal-slot"${calendarioNewAttrs(iso,h)}></div>`).join("");
@@ -7762,7 +7852,7 @@ function renderEventCard(){
   const endDate = post.endDate || startDate;
   const dateLabel = eventDateRange(startDate, endDate);
   const timeLabel = post.startTime && post.endTime
-    ? `${post.startTime}–${post.endTime}`
+    ? `${fmtHHMM(post.startTime)}–${fmtHHMM(post.endTime)}`
     : t("Todo el día","All day","O dia todo","כל היום");
   const { scopesHtml } = renderAttachments(post, { postId: post.id });
   // Mismo criterio que la tarjeta del Feed: en los eventos importados del
