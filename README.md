@@ -475,6 +475,19 @@ calculada con el mismo código que dibuja la app (`sampleDate()` /
 `sampleTime()`, que fuerzan el formato con `withPrefOverride()` sin tocar
 lo guardado). Se elige viendo el resultado, no descifrando "dd/mm/aaaa".
 
+La opción "auto" es la excepción: su etiqueta NO lleva el ejemplo. Un
+`<select>` se estira hasta su opción más larga, y "Según el idioma (12 de
+sept de 2026)" no entraba — se cortaba con "…", que es peor que no
+mostrarlo. El resultado de lo que está elegido va en el **renglón de abajo
+de la fila** ("Ahora: 12 de sept de 2026."), donde hay lugar de sobra y
+además se ve siempre, no solo cuando la opción elegida es una concreta.
+
+Por lo mismo, `.setting-control-wide` tiene **ancho fijo compartido** por
+todas las filas: con el ancho automático cada select medía distinto (el de
+hora, por su opción más larga, quedaba enorme al lado de "4 días") y la
+columna de la derecha era un serrucho. Abajo de 520px la fila se apila y el
+control pasa a ocupar el ancho completo.
+
 **El default de hora es `"24"`, no `"auto"`, y eso es a propósito.** El
 Calendario siempre mostró los horarios crudos (`13:00`), y `Intl` considera
 que `es-AR` es de 12 h — con "auto" todo el equipo se habría despertado con

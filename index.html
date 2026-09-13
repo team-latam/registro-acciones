@@ -468,11 +468,23 @@
      clase .setting-control, las tres cajas de Adjuntos miden lo mismo. */
   .setting-control{ flex:none; display:flex; align-items:center; gap:6px; width:96px; }
   /* Los controles de Configuración (personal) son selects con texto, no
-     números de dos dígitos: necesitan más aire que los de Adjuntos. */
-  .setting-control-wide{ width:auto; min-width:96px; justify-content:flex-end; }
+     números de dos dígitos: necesitan más aire que los de Adjuntos.
+     Ancho FIJO y compartido por todas las filas: un <select> se estira
+     hasta su opción más larga, así que "Formato de hora" (cuya opción
+     más larga es "Según el idioma (1:00 p. m.)") quedaba enorme al lado
+     de "4 días", y la columna de la derecha era un serrucho. Con el
+     ancho fijo las cajas se alinean; la opción larga se recorta con "…"
+     y se lee entera al desplegar. */
+  .setting-control-wide{ width:200px; min-width:0; justify-content:flex-end; }
   .setting-control-wide select{
     border:1.5px solid var(--border); background:var(--card); color:var(--text);
     border-radius:999px; padding:8px 14px; font-size:13px; font-weight:700; cursor:pointer;
+    width:100%; min-width:0; text-overflow:ellipsis;
+  }
+  /* En pantallas angostas la fila se apila (flex-wrap): ahí el control
+     ocupa el ancho completo en vez de quedar colgado a la derecha. */
+  @media (max-width:520px){
+    .setting-control-wide{ width:100%; justify-content:flex-start; }
   }
   .pref-chips{ display:flex; flex-wrap:wrap; gap:7px; }
   /* Encabezados que separan las tres fuentes de la campanita (lo que se
@@ -6515,13 +6527,26 @@ function withPrefOverride(patch, fn){
   state.prefs = { ...prefs(), ...patch };
   try{ return fn(); } finally{ state.prefs = saved; }
 }
+// El ejemplo de la opción "auto" NO va en su etiqueta: "Según el idioma
+// (12 de sept de 2026)" no entra en el select y se cortaba con "…", que
+// es peor que no mostrarlo. El resultado de lo que está elegido va en el
+// renglón de abajo de la fila, donde hay lugar de sobra y además se ve
+// SIEMPRE, no solo cuando la opción elegida es una de las concretas.
 function sampleDate(iso, f){
-  const muestra = withPrefOverride({ dateFormat:f }, ()=>fmtDate(iso));
-  return f === "auto" ? `${t("Según el idioma","Follow the language","Conforme o idioma","לפי השפה")} (${muestra})` : muestra;
+  return f === "auto"
+    ? t("Según el idioma","Follow the language","Conforme o idioma","לפי השפה")
+    : withPrefOverride({ dateFormat:f }, ()=>fmtDate(iso));
 }
 function sampleTime(f){
-  const muestra = withPrefOverride({ timeFormat:f }, ()=>fmtHHMM("13:00"));
-  return f === "auto" ? `${t("Según el idioma","Follow the language","Conforme o idioma","לפי השפה")} (${muestra})` : muestra;
+  return f === "auto"
+    ? t("Según el idioma","Follow the language","Conforme o idioma","לפי השפה")
+    : withPrefOverride({ timeFormat:f }, ()=>fmtHHMM("13:00"));
+}
+function ahoraAsi(x){
+  // Sin el punto final si el valor ya trae uno: en español "1:00 p. m."
+  // termina en punto y quedaba "Ahora: 1:00 p. m..".
+  const punto = /\.$/.test(x) ? "" : ".";
+  return " " + t("Ahora: {x}{p}","Now: {x}{p}","Agora: {x}{p}","כעת: {x}{p}", { x, p:punto });
 }
 function renderConfigCalendarioSection(){
   const p = prefs();
@@ -6565,10 +6590,10 @@ function renderConfigCalendarioSection(){
           t("Cuántos días muestra esa opción del selector de vista.","How many days that option in the view selector shows.","Quantos dias mostra essa opção do seletor de vista.","כמה ימים מציגה האפשרות הזו בבורר התצוגה."),
           daysSel)}
         ${prefRow("📆", t("Formato de fecha","Date format","Formato de data","תבנית תאריך"),
-          t("Cómo se escriben las fechas en todo el Registro.","How dates are written across the whole Log.","Como as datas são escritas em todo o Registro.","איך נכתבים התאריכים בכל היומן."),
+          t("Cómo se escriben las fechas en todo el Registro.","How dates are written across the whole Log.","Como as datas são escritas em todo o Registro.","איך נכתבים התאריכים בכל היומן.") + ahoraAsi(fmtDate(hoy)),
           dateFmtSel)}
         ${prefRow("🕐", t("Formato de hora","Time format","Formato de hora","תבנית שעה"),
-          t("Afecta los horarios de los eventos y la columna de horas.","Affects event times and the hours column.","Afeta os horários dos eventos e a coluna de horas.","משפיע על שעות האירועים ועל עמודת השעות."),
+          t("Afecta los horarios de los eventos y la columna de horas.","Affects event times and the hours column.","Afeta os horários dos eventos e a coluna de horas.","משפיע על שעות האירועים ועל עמודת השעות.") + ahoraAsi(fmtHHMM("13:00")),
           timeFmtSel)}
         ${prefRow("🌙", t("Atenuar eventos pasados","Dim past events","Esmaecer eventos passados","עמעום אירועים שעברו"),
           t("Los eventos anteriores a hoy se ven más tenues, para que resalte lo que viene.","Events before today look fainter, so what's coming stands out.","Os eventos anteriores a hoje ficam mais tênues, para destacar o que vem.","אירועים שלפני היום נראים דהויים, כדי שיבלוט מה שמגיע."),
