@@ -726,11 +726,12 @@ pueden todo lo que el admin fijo: aprobar/rechazar/revocar, compartir el
 Calendar, Zonas, Preferencias, leer la auditoría, y **cambiar el rol de
 cualquiera** desde Usuarios (un `<select>` por fila, `changeRole()` en
 `index.html`) — con dos límites que están en las reglas, no solo en la UI:
-el documento de `ADMIN_EMAIL` no se puede tocar ni borrar, y el rol
-escrito tiene que ser uno de los tres. Bajarse a uno mismo de admin pide
-confirmación (después no hay forma de volver por cuenta propia). Cada
-cambio deja una entrada `role_changed` en la auditoría, con el rol nuevo
-en `detail`.
+el documento de `ADMIN_EMAIL` no se puede tocar ni borrar, el rol
+escrito tiene que ser uno de los tres, y **nadie se cambia su propio rol**
+(`keepsOwnRole` en las reglas; la fila propia en Usuarios no tiene
+selector): que lo haga otro admin, así nadie se baja por error ni se
+escala solo. Cada cambio deja una entrada `role_changed` en la auditoría,
+con el rol nuevo en `detail`.
 
 En `index.html`: `state.auth.status` toma `admin`/`approved`/`observer`
 según el rol del snapshot de `allowlist` (`recomputeAuthStatus`), y las
@@ -1267,6 +1268,16 @@ interlineado; y las barras del calendario mensual a 18px son lo que cabe en
 una celda de un mes en un celular (Google usa puntos ahí).
 
 `layout.mjs` en el scratchpad de la sesión cubre estas reglas una por una.
+
+### Flechas de navegación: una sola familia
+
+Las flechas circulares de la app (subir, anterior/siguiente en el visor
+de imágenes y en el paginador de PDF) son el mismo botón: celeste fijo
+`#6fd8ec` con un chevron oscuro en SVG (`chevronHtml()` en `index.html`),
+igual en modo claro y oscuro. El sentido se elige a mano según el idioma
+(en RTL "siguiente" apunta a la izquierda), como el resto de las flechas.
+Las ‹ › de texto del calendario son otra cosa: son controles chicos de
+la barra, no botones flotantes.
 
 ### Modo claro / oscuro
 
