@@ -457,7 +457,11 @@ Dónde se aplica:
   países). "+40 de toda LatAm" es el mismo número en las 43 tarjetas, así
   que va **una sola vez, al pie de la grilla** (`latamFootnote()`); en el
   popup del mapa y en la pantalla del país sí aparece, porque ahí se mira
-  un solo lugar. Un país con `own` 0 y algo macro dice "0 propios". La lista va en orden
+  un solo lugar. Ese pie tiene un botón **"Verlos →"** (`goto-latam`)
+  que abre la Memoria con el "lugar" `{ kind:"latam" }`: solo lo que tiene
+  alcance "Toda LatAm", sin país ni ciudad de por medio (`scopeLevelFor`
+  lo trata como `own`, así no aparece el selector de niveles ni la
+  etiqueta cruzada en las tarjetas). Un país con `own` 0 y algo macro dice "0 propios". La lista va en orden
   **alfabético** por el nombre que se ve (a pedido): con 43 países, para
   ubicar uno a ojo sirve más el orden fijo que un ranking, y el número ya
   está en la tarjeta.
