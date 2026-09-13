@@ -1293,6 +1293,13 @@
      tamaño de siempre de los modales chicos. Cada dato es una fila con
      su ícono a la izquierda (como la tarjeta de Google Calendar), así se
      barre de un vistazo sin etiquetas repetidas. */
+  /* Un escalón por DEBAJO del resto de los overlays (que están en 100):
+     desde la tarjeta se puede clickear un participante, y su ficha tiene
+     que abrirse ADELANTE, no atrás. Todos los .modal-overlay comparten
+     z-index, así que sin esto mandaba el orden del DOM y ganaba la
+     tarjeta. La tarjeta nunca se abre encima de otro modal, así que
+     bajarla no tapa nada. */
+  #eventCardOverlay{ z-index:99; }
   .event-card{ position:relative; max-width:420px; max-height:min(620px, 86vh); }
   .ev-head{ display:flex; align-items:flex-start; gap:11px; padding-inline-end:26px; flex:none; }
   .ev-dot{ width:14px; height:14px; border-radius:4px; flex:none; margin-top:5px; }
@@ -2929,6 +2936,23 @@ function addDaysISO(dateStr, days){
   return dt.toISOString().slice(0,10);
 }
 
+// "Tipo: Título", salvo que el título YA arranque con ese prefijo. Los
+// posteos importados antes de que el import limpiara el prefijo quedaron
+// con él pegado al título; sin este guard, cada sincronización les suma
+// otro ("Visita: Visita: Visita: …"). No arregla el título guardado —eso
+// se edita a mano—, pero corta el crecimiento.
+function calendarSummary(postData){
+  const label = ACTIVITY_BY_KEY[postData.activityType]?.label || "Actividad";
+  const title = String(postData.title || "");
+  return title.startsWith(`${label}: `) ? title : `${label}: ${title}`;
+}
+// ¿Ese summary de Calendar es el de este posteo? Contempla el prefijo en
+// cualquiera de los idiomas del label, y también el caso sin prefijo —
+// que es lo que escribe calendarSummary() cuando el título ya lo trae.
+function summaryMatchesPost(summary, p){
+  if(p.title === summary) return true;
+  return activityLabelVariants(p.activityType).some(l => `${l}: ${p.title}` === summary);
+}
 function buildCalendarEvent(postData, postId){
   const sc = postData.scopes[0];
   const alcanceTipo = !sc ? "" : sc.type === "todo" ? "todo" : sc.type;
@@ -2949,7 +2973,7 @@ function buildCalendarEvent(postData, postId){
   const hasTime = !!(postData.startTime && postData.endTime);
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   return {
-    summary: `${ACTIVITY_BY_KEY[postData.activityType]?.label || "Actividad"}: ${postData.title}`,
+    summary: calendarSummary(postData),
     location: postData.location || undefined,
     description: descLines.join("\n"),
     start: hasTime ? { dateTime: `${postData.startDate}T${postData.startTime}:00`, timeZone } : { date: postData.startDate },
@@ -3162,6 +3186,42 @@ function extractTitleFromSummary(summary, activityType){
   return s;
 }
 
+// De un evento de Calendar a (tipo, título) del posteo.
+//
+// El summary que escribe la app lleva el prefijo "Tipo: " (ver
+// buildCalendarEvent). Al importar un evento que NO está vinculado a
+// ningún posteo, ese prefijo se guardaba como parte del título: el
+// posteo quedaba llamándose "Visita: Quintana Roo". Y como al editarlo
+// la app vuelve a anteponer el tipo al sincronizar, en Calendar terminaba
+// como "Visita: Visita: Quintana Roo" — y crecía un prefijo por vuelta.
+//
+// Se resuelve en dos pasos, de lo más confiable a lo menos:
+//   1. extendedProperties.raActivityType, que la app pega a cada evento
+//      que crea. Es la KEY del tipo, no cambia con el idioma ni si el
+//      admin renombra el tipo.
+//   2. Si no está (evento escrito a mano en Calendar), el prefijo del
+//      texto: alguien que titula "Curso: Kashrut" está diciendo el tipo,
+//      así que se importa como Curso en vez de como "Otro".
+// Sin ninguna de las dos, queda "otro" y el título entero, como antes.
+function importedTypeAndTitle(ev){
+  const summary = String(ev.summary || "");
+  const raType = ev.extendedProperties?.private?.raActivityType;
+  if(raType && CALENDAR_SYNC_TYPES.has(raType)){
+    return { activityType: raType, title: extractTitleFromSummary(summary, raType) };
+  }
+  for(const key of Object.keys(ACTIVITY_BY_KEY)){
+    if(!CALENDAR_SYNC_TYPES.has(key) || key === "otro") continue;
+    for(const label of activityLabelVariants(key)){
+      if(label === "Actividad") continue; // el fallback genérico no dice el tipo
+      if(summary.startsWith(`${label}: `)) return { activityType: key, title: summary.slice(label.length + 2) };
+    }
+  }
+  // "Actividad: X" sí se limpia, pero sin tipo: es el fallback de un tipo
+  // que el admin borró, no dice cuál era.
+  if(summary.startsWith("Actividad: ")) return { activityType:"otro", title: summary.slice(11) };
+  return { activityType:"otro", title: summary };
+}
+
 // Los posteos importados desde Calendar usan un id de documento derivado
 // del id del evento, y se crean dentro de una transacción que primero
 // mira si ya existe: el poll de 30 s corre en TODOS los navegadores
@@ -3249,19 +3309,20 @@ async function applyCalendarEventToPosts(ev){
   const orphan = state.posts.find(p => !p.calendarEventId && !p.cancelled && (
     (raPostId && p.id === raPostId) ||
     (p.startDate === startDate && CALENDAR_SYNC_TYPES.has(p.activityType) &&
-      activityLabelVariants(p.activityType).some(l => `${l}: ${p.title}` === summary))
+      summaryMatchesPost(summary, p))
   ));
   if(orphan){
     await updatePostDoc(orphan.id, { calendarEventId: ev.id });
     return;
   }
+  const { activityType, title } = importedTypeAndTitle(ev);
   await createImportedPost(ev, {
-    title: String(ev.summary || t("(Sin título)","(Untitled)","(Sem título)","(ללא כותרת)")).slice(0, 140),
+    title: (title || t("(Sin título)","(Untitled)","(Sem título)","(ללא כותרת)")).slice(0, 140),
     content: String(ev.description || t("Creado automáticamente desde Google Calendar.","Automatically created from Google Calendar.","Criado automaticamente a partir do Google Calendar.",".נוצר אוטומטית מ-Google Calendar")).slice(0, 5000),
     startDate, endDate, date:startDate, startTime, endTime,
     organizer: String(ev.organizer?.displayName || ev.organizer?.email || "").slice(0, 140),
     location,
-    activityType: "otro",
+    activityType,
     scopes: [],
     images: [], links: [],
     authorName: "Google Calendar", authorEmail: "",
