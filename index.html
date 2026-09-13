@@ -1127,6 +1127,8 @@
     background:var(--card); font-size:12.5px; color:var(--text-muted); line-height:1.5;
   }
   .latam-footnote b{ color:var(--ink); }
+  .latam-footnote-btn{ margin-inline-start:6px; font-weight:700; }
+  .latam-footnote-hint{ display:block; margin-top:4px; font-size:12px; opacity:.85; }
   .zone-legend{ display:flex; gap:14px; flex-wrap:wrap; margin-bottom:14px; font-size:12px; color:var(--text-muted); font-weight:600; }
   .zone-legend span{ display:inline-flex; align-items:center; gap:6px; }
   .zone-legend .dot{ width:11px; height:11px; border-radius:50%; }
@@ -2719,6 +2721,9 @@ function scopeAffectsCity(scope, countryName, cityName){
 const PLACE_LEVELS = ["own", "region", "latam"];
 function scopeLevelFor(sc, place){
   if(!sc || !place) return null;
+  // "Toda LatAm" como lugar en sí (desde el pie de Vistas): lo propio es
+  // justamente lo transversal, y nada más lo toca.
+  if(place.kind === "latam") return sc.type === "todo" ? "own" : null;
   if(sc.type === "todo") return "latam";
   if(sc.type === "region") return (ZONE_COUNTRIES[sc.region] || []).includes(place.country) ? "region" : null;
   if(place.kind === "country") return (sc.type === "pais" || sc.type === "ciudad") && sc.country === place.country ? "own" : null;
@@ -6051,7 +6056,7 @@ function placeLevelCounts(){
 // cada una incluye a la anterior. Solo aparece con un lugar filtrado.
 function renderPlaceLevelSeg(){
   const place = state.filters.place;
-  if(!place) return "";
+  if(!place || place.kind === "latam") return "";
   const c = placeLevelCounts();
   const lvl = placeLevel();
   const zk = zoneOfCountry(place.country);
@@ -6065,6 +6070,7 @@ function renderPlaceLevelSeg(){
   </div>`;
 }
 function placeFilterLabel(place){
+  if(place.kind==="latam") return t("Toda LatAm","All of LatAm","Toda a LatAm","כל LatAm");
   if(place.kind==="country") return countryLabel(place.country);
   if(place.kind==="city") return `${cityLabel(place.country, place.city)}, ${countryLabel(place.country)}`;
   return "";
@@ -6723,7 +6729,8 @@ function latamFootnote(){
   return `<div class="latam-footnote">🌎 ${n === 1
     ? t("Además, <b>1 posteo de toda LatAm</b> aplica a todos los países.","Also, <b>1 LatAm-wide post</b> applies to every country.","Além disso, <b>1 postagem de toda a LatAm</b> se aplica a todos os países.","בנוסף, <b>פוסט אחד של כל LatAm</b> חל על כל המדינות.")
     : t("Además, <b>{n} posteos de toda LatAm</b> aplican a todos los países.","Also, <b>{n} LatAm-wide posts</b> apply to every country.","Além disso, <b>{n} postagens de toda a LatAm</b> se aplicam a todos os países.","בנוסף, <b>{n} פוסטים של כל LatAm</b> חלים על כל המדינות.",{n})}
-    ${t("Para verlos en un lugar, abrilo y elegí «+ Toda LatAm».","To see them for a place, open it and pick “+ All of LatAm”.","Para vê-los num lugar, abra-o e escolha «+ Toda a LatAm».","כדי לראות אותם במקום מסוים, פתחו אותו ובחרו «+ כל LatAm».")}</div>`;
+    <button type="button" class="btn-text-add latam-footnote-btn" data-action="goto-latam">${t("Verlos","See them","Vê-los","להציג אותם")} ${isRTL() ? "←" : "→"}</button>
+    <span class="latam-footnote-hint">${t("O, dentro de un lugar, elegí «+ Toda LatAm».","Or, inside a place, pick “+ All of LatAm”.","Ou, dentro de um lugar, escolha «+ Toda a LatAm».","או, בתוך מקום, בחרו «+ כל LatAm».")}</span></div>`;
 }
 
 function renderCountryDrill(countryName, data){
@@ -9200,6 +9207,11 @@ document.addEventListener("click", e=>{
   } else if(action === "goto-country"){
     state.filters.place = { kind:"country", country:el.dataset.country };
     if(el.dataset.level) setPlaceLevel(Number(el.dataset.level)); // las filas "Región"/"Toda LatAm" abren en su nivel
+    state.view = "memoria"; state.countryDrill = null; render();
+  } else if(action === "goto-latam"){
+    // Del pie de Vistas: la memoria de lo que es de toda LatAm, sin país
+    // ni ciudad de por medio (ver scopeLevelFor con kind "latam").
+    state.filters.place = { kind:"latam" };
     state.view = "memoria"; state.countryDrill = null; render();
   } else if(action === "goto-city"){
     state.filters.place = { kind:"city", country:el.dataset.country, city:el.dataset.city };
