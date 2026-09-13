@@ -1099,6 +1099,18 @@ scrolleaba de costado**. Lo que quedó, y por qué:
   apaisada es ancha y también levanta teclado en pantalla. En escritorio
   el foco sigue yendo al campo, que ahí es lo cómodo.
 
+- **Flecha "volver arriba"** (`#scrollTop`), justo encima del +: aparece
+  con un fundido cuando la página está scrolleada más de 320px y se
+  esconde con el menú del + abierto (sus acciones ocupan ese lugar). Es
+  un elemento fijo aparte de `.fab-wrap`, no un hijo: las acciones del
+  menú están arriba del + ocupando lugar aunque no se vean, y la flecha
+  habría quedado flotando lejos. Por lo mismo `.fab-wrap` tiene
+  `pointer-events:none` — esa zona vacía tapaba a la flecha y se comía
+  sus clicks — y solo el + y las acciones abiertas los reciben. `[hidden]`
+  se saca antes del fundido de entrada y se vuelve a poner al terminar el
+  de salida, así con la flecha invisible no hay un botón fantasma
+  recibiendo toques. Respeta `prefers-reduced-motion`.
+
 Lo que se dejó como está, con motivo: los `@nickname` y nombres dentro del
 texto son links en línea de 14px de alto — hacerlos más altos rompería el
 interlineado; y las barras del calendario mensual a 18px son lo que cabe en

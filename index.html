@@ -181,8 +181,14 @@
   .fab-wrap{
     position:fixed; inset-block-end:24px; inset-inline-end:24px; z-index:65;
     display:flex; flex-direction:column; align-items:flex-end; gap:10px;
+    /* El contenedor no recibe clicks: las acciones del menú están arriba
+       del + ocupando lugar aunque no se vean, y esa zona vacía tapaba a
+       la flecha de "subir" que vive ahí. Solo el + y las acciones
+       abiertas vuelven a recibirlos. */
+    pointer-events:none;
   }
   .fab-main{
+    pointer-events:auto;
     width:56px; height:56px; border-radius:50%; border:none; cursor:pointer;
     display:flex; align-items:center; justify-content:center;
     background:var(--celeste); color:var(--petroleo-dark); font-size:30px; line-height:1;
@@ -204,9 +210,28 @@
   }
   .fab-action:hover{ background:var(--celeste); color:var(--petroleo-dark); }
   .fab-ico{ font-size:16px; }
+  /* Encima del +: 24 (margen) + 56 (el +) + 10 (separación) = 90 desde
+     abajo; centrada con él (56 − 40 = 16, la mitad de cada lado). Entra y
+     sale con un fundido; con [hidden] no ocupa lugar ni recibe clicks. */
+  .scroll-top{
+    position:fixed; inset-block-end:90px; inset-inline-end:32px; z-index:65;
+    width:40px; height:40px; border-radius:50%; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    /* Círculo oscuro con el chevron claro, como el ejemplo que mandó el
+       usuario, en el petróleo de la marca (mismo tono que "Publicar"). */
+    background:var(--petroleo); color:#fff; border:none;
+    box-shadow:0 4px 14px rgba(8,42,44,0.28);
+    opacity:0; transform:translateY(6px); transition:opacity .16s ease, transform .16s ease, background .16s ease;
+  }
+  .scroll-top.show{ opacity:1; transform:none; }
+  .scroll-top:hover{ background:var(--petroleo-dark); }
+  html[data-theme="dark"] .scroll-top{ background:var(--celeste-dark); color:var(--petroleo-dark); }
+  html[data-theme="dark"] .scroll-top:hover{ background:var(--celeste); }
   @media (max-width:640px){
     .fab-wrap{ inset-block-end:16px; inset-inline-end:16px; }
     .fab-main{ width:50px; height:50px; font-size:27px; }
+    /* 16 + 50 + 10 = 76; centrada: (50 − 40) / 2 = 5 → 16 + 5 = 21 */
+    .scroll-top{ inset-block-end:76px; inset-inline-end:21px; }
   }
 
   /* Avatar circular en el header: al apretarlo despliega un menú tipo
@@ -1501,6 +1526,15 @@
        "+ Nuevo evento" vivía en el header y solo creaba eventos, sin
        atajo a la Rutina fuera del Feed). Se despliega en las dos formas
        de postear que tiene la app. -->
+  <!-- Flecha para volver arriba: aparece solo cuando hay scroll hacia
+       abajo y vive justo encima del +. Es un elemento fijo aparte del
+       FAB, no un hijo de .fab-wrap: ahí arriba del + están las acciones
+       del menú (invisibles pero ocupando lugar), y la flecha habría
+       quedado flotando lejos. Cuando el menú se abre, la flecha se
+       esconde para dejarle el lugar. -->
+  <button type="button" class="scroll-top" id="scrollTop" data-action="scroll-top" aria-label="Subir" hidden>
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M6 14l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
   <div class="fab-wrap" id="fab" hidden>
     <div class="fab-actions">
       <button type="button" class="fab-action" data-action="new-rutina">
@@ -4633,6 +4667,11 @@ function applyStaticI18n(){
   const fabRutina = document.getElementById("fabRutinaLabel");
   if(fabRutina) fabRutina.textContent = t("Nueva rutina", "New routine", "Nova rotina", "שגרה חדשה");
   if(fabMainEl) fabMainEl.setAttribute("aria-label", t("Crear", "Create", "Criar", "יצירה"));
+  const scrollTopBtn = document.getElementById("scrollTop");
+  if(scrollTopBtn){
+    const l = t("Volver arriba", "Back to top", "Voltar ao topo", "חזרה למעלה");
+    scrollTopBtn.setAttribute("aria-label", l); scrollTopBtn.setAttribute("title", l);
+  }
 
   const footer = document.querySelector("footer.appfoot");
   if(footer) footer.textContent = t(
@@ -5699,6 +5738,7 @@ function afterRenderView(){
   syncHeaderHeight();
   syncTabsScroll();
   fitDropdownPanels();
+  updateScrollTop();
   if(state.view === "paises" && state.paisesSubview === "mapa" && !CONFIG_IS_PLACEHOLDER){
     initOrUpdateMap();
   }
@@ -7601,6 +7641,35 @@ function setFab(open){
   fabOpen = open && !fabEl.hidden;
   fabEl.classList.toggle("open", fabOpen);
   fabMainEl.setAttribute("aria-expanded", String(fabOpen));
+  updateScrollTop();
+}
+// Flecha "subir": se ve cuando la página está scrolleada más de una
+// pantalla chica hacia abajo, y nunca con el menú del + abierto (sus
+// acciones ocupan ese lugar). [hidden] se saca antes del fundido de
+// entrada y se vuelve a poner al terminar el de salida, así con la
+// flecha invisible no hay un botón fantasma recibiendo toques.
+const scrollTopEl = document.getElementById("scrollTop");
+const SCROLL_TOP_AFTER = 320;
+let scrollTopHideTimer = null;
+function updateScrollTop(){
+  if(!scrollTopEl) return;
+  const show = window.scrollY > SCROLL_TOP_AFTER && !fabOpen;
+  if(show){
+    clearTimeout(scrollTopHideTimer);
+    scrollTopEl.hidden = false;
+    // el frame siguiente, para que la transición de opacidad corra
+    requestAnimationFrame(()=> scrollTopEl.classList.add("show"));
+  } else if(scrollTopEl.classList.contains("show")){
+    scrollTopEl.classList.remove("show");
+    clearTimeout(scrollTopHideTimer);
+    scrollTopHideTimer = setTimeout(()=>{ scrollTopEl.hidden = true; }, 180);
+  }
+}
+window.addEventListener("scroll", updateScrollTop, { passive:true });
+window.addEventListener("resize", updateScrollTop);
+function scrollToTop(){
+  const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  window.scrollTo({ top:0, behavior: reduce ? "auto" : "smooth" });
 }
 function closeFab(){ setFab(false); }
 // La Rutina no tiene modal propio: su composer es la primera cosa del
@@ -8733,6 +8802,8 @@ document.addEventListener("click", e=>{
     savePrefs({ [prefKey]: cur.includes(key) ? cur.filter(k=>k!==key) : [...cur, key] });
   } else if(action === "config-section"){
     state.configSection = el.dataset.key; render();
+  } else if(action === "scroll-top"){
+    scrollToTop();
   } else if(action === "toggle-fab"){
     setFab(!fabOpen);
   } else if(action === "new-evento"){
