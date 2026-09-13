@@ -1310,6 +1310,18 @@ escritorio el foco va al HEX al abrir; en táctil no (misma regla que los
 formularios). Cualquier cambio re-renderiza y por lo tanto cierra el
 panel: elegir un color es un gesto de una vez.
 
+### "Ver más": de a 15, sin moverte
+
+Feed y Memoria pintan 15 tarjetas al entrar (`PAGE_SIZE`) y cada "Ver
+más" suma 15 (`PAGE_STEP`), sin números en el botón. Al tocarlo la
+persona **se queda donde estaba** y las tarjetas nuevas aparecen abajo
+para seguir scrolleando. El detalle que lo rompía: `render()` devuelve el
+foco al elemento que lo tenía, buscándolo por selector, y después del
+render ese selector es el NUEVO botón "Ver más", al final de la lista;
+el navegador scrolleaba hasta él y la persona aterrizaba debajo de las 15
+nuevas. Por eso el handler hace `blur()` antes de renderizar, fija el
+scroll a mano y le da el foco (sin desplazar) a la primera tarjeta nueva.
+
 ### Feed unificado (en prueba, por persona)
 
 Feed y Memoria muestran los mismos posteos con dos preguntas encima:
