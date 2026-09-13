@@ -1289,6 +1289,38 @@
   .up-post-text{ flex:1; min-width:0; font-size:12.5px; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .up-post-date{ flex:none; font-size:11px; color:var(--text-muted); }
 
+  /* Tarjeta del evento: lo básico de un evento del Calendario, en el
+     tamaño de siempre de los modales chicos. Cada dato es una fila con
+     su ícono a la izquierda (como la tarjeta de Google Calendar), así se
+     barre de un vistazo sin etiquetas repetidas. */
+  .event-card{ position:relative; max-width:420px; max-height:min(620px, 86vh); }
+  .ev-head{ display:flex; align-items:flex-start; gap:11px; padding-inline-end:26px; flex:none; }
+  .ev-dot{ width:14px; height:14px; border-radius:4px; flex:none; margin-top:5px; }
+  .ev-head-text{ min-width:0; }
+  .ev-title{ margin:0; font-size:19px; line-height:1.25; font-weight:800; color:var(--ink-strong); overflow-wrap:anywhere; }
+  .ev-when{ font-size:13px; color:var(--text-muted); margin-top:3px; }
+  .ev-badges{ display:flex; flex-wrap:wrap; gap:6px; margin-top:12px; flex:none; }
+  .ev-badges:empty{ display:none; }
+  .ev-rows{ display:flex; flex-direction:column; gap:11px; margin-top:14px; overflow-y:auto; flex:1; min-height:0; }
+  .ev-rows:empty{ display:none; }
+  .ev-row{ display:flex; align-items:flex-start; gap:10px; font-size:13.5px; color:var(--ink); }
+  .ev-icon{ flex:none; width:18px; text-align:center; line-height:1.5; }
+  .ev-val{ min-width:0; flex:1; overflow-wrap:anywhere; }
+  .ev-val .post-scopes{ display:flex; flex-wrap:wrap; gap:5px; margin:0; }
+  .ev-text{ white-space:normal; color:var(--text); }
+  .ev-actions{
+    display:flex; flex-wrap:wrap; gap:8px; margin-top:16px; padding-top:14px;
+    border-top:1px solid var(--border); flex:none;
+  }
+  /* El botón principal es el .btn-primary de toda la app (mismo color en
+     claro y oscuro que "Publicar"): acá no se inventa otro. */
+  .ev-actions .btn-primary{ flex:1; }
+  .ev-actions button:not(.btn-primary){
+    font-family:inherit; font-size:13.5px; font-weight:700; cursor:pointer; padding:11px 16px;
+    border-radius:999px; border:1px solid var(--border); background:var(--card); color:var(--ink);
+  }
+  .ev-actions button:not(.btn-primary):hover{ background:var(--surface-hover); }
+
   /* ---------- Vista previa de adjuntos (PDF) ---------- */
   #filePreviewFrame{
     width:100%; height:70vh; border:0; border-radius:var(--radius-sm); background:var(--surface-soft);
@@ -1394,6 +1426,13 @@
   <div class="modal modal-wrap" style="max-width:340px;" role="dialog" aria-modal="true" aria-labelledby="userProfileNameLabel">
     <button class="close" id="userProfileClose" aria-label="Cerrar">✕</button>
     <div id="userProfileBody"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="eventCardOverlay" hidden>
+  <div class="modal event-card" role="dialog" aria-modal="true" aria-labelledby="eventCardTitle">
+    <button class="close" id="eventCardClose" aria-label="Cerrar">✕</button>
+    <div id="eventCardBody"></div>
   </div>
 </div>
 
@@ -4730,6 +4769,8 @@ function doRender(){
   maybeShowCalendarInviteOverlay();
 
   if(postModalOverlay && !postModalOverlay.hidden) renderComposer();
+  if(eventCardOverlay && !eventCardOverlay.hidden) renderEventCard();
+  if(userProfileOverlay && !userProfileOverlay.hidden) renderUserProfile();
 }
 
 function renderAuthGate(){
@@ -7626,6 +7667,102 @@ document.getElementById("userProfileClose").addEventListener("click", closeUserP
 userProfileOverlay.addEventListener("click", e=>{ if(e.target === userProfileOverlay) closeUserProfile(); });
 
 /* ======================================================================
+   TARJETA DEL EVENTO (click en el Calendario)
+   Tocar un evento del Calendario abría el Feed y scrolleaba hasta el
+   posteo: se perdía el mes que se estaba mirando para ver cuatro datos.
+   Ahora abre esta tarjeta — lo básico, sin salir del calendario — y desde
+   ahí un botón lleva a la historia completa (con comentarios, adjuntos y
+   el hilo) para quien la quiera.
+
+   Se guarda el ID, no el posteo: si mientras está abierta alguien lo
+   edita o lo cancela, el próximo render() la redibuja con lo nuevo, y si
+   lo borran se cierra sola en vez de mostrar algo que ya no existe.
+   ====================================================================== */
+const eventCardOverlay = document.getElementById("eventCardOverlay");
+const eventCardBody = document.getElementById("eventCardBody");
+let eventCardPostId = null;
+let eventCardReturnFocus = null;
+// "19 – 27 de septiembre de 2026" en vez de repetir mes y año dos veces,
+// como muestra Google Calendar. Solo se compacta si caen en el mismo mes:
+// cruzando meses hace falta el mes en las dos puntas para que se entienda.
+function eventDateRange(startIso, endIso){
+  if(!endIso || endIso === startIso) return fmtDate(startIso);
+  if(startIso.slice(0,7) === endIso.slice(0,7)){
+    const dia = fmtISO(startIso, { day:"numeric" });
+    return `${dia} – ${fmtDate(endIso)}`;
+  }
+  return `${fmtDate(startIso)} – ${fmtDate(endIso)}`;
+}
+function renderEventCard(){
+  const post = getPostById(eventCardPostId);
+  if(!post){ closeEventCard(); return; }
+  const type = ACTIVITY_BY_KEY[post.activityType] || ACTIVITY_BY_KEY.otro || { icon:"✨", label:String(post.activityType||"") };
+  const startDate = post.startDate || post.date;
+  const endDate = post.endDate || startDate;
+  const dateLabel = eventDateRange(startDate, endDate);
+  const timeLabel = post.startTime && post.endTime
+    ? `${post.startTime}–${post.endTime}`
+    : t("Todo el día","All day","O dia todo","כל היום");
+  const { scopesHtml } = renderAttachments(post, { postId: post.id });
+  // Mismo criterio que la tarjeta del Feed: en los eventos importados del
+  // Calendar el authorName es "Google Calendar" y el organizador real
+  // está en organizer.
+  const creadorHtml = post.organizer ? esc(post.organizer) : authorLabelHtml(post.authorEmail, post.authorName);
+  const tr = withContentTranslation("post", post.id, "", post.content);
+  const rows = [];
+  // El chip de alcance ya trae su propio 📍 adentro: repetirlo en la fila
+  // dejaba dos pines pegados. El pin queda para la ubicación libre.
+  if(scopesHtml) rows.push({ icon:"🌎", html:`<div class="post-scopes">${scopesHtml}</div>` });
+  if(post.location) rows.push({ icon:"📍", html:esc(post.location) });
+  if(post.participants && post.participants.length){
+    rows.push({ icon:"👥", html:participantsHtml(post.participants) });
+  }
+  if(tr.displayContent && tr.displayContent.trim()){
+    rows.push({ icon:"📝", html:`<div class="ev-text">${nl2br(tr.displayContent)}</div>` });
+  }
+  if(creadorHtml){
+    rows.push({ icon:"👤", html:`${t("Creado por","Created by","Criado por","נוצר על ידי")} ${creadorHtml}` });
+  }
+  eventCardBody.innerHTML = `
+    <div class="ev-head">
+      <span class="ev-dot" style="background:${calendarioColor(post)}"></span>
+      <div class="ev-head-text">
+        <h2 class="ev-title" id="eventCardTitle"${post.cancelled?' style="text-decoration:line-through;opacity:0.7;"':""}>${esc(calendarioLabel(post))}</h2>
+        <div class="ev-when">${esc(dateLabel)} · ${esc(timeLabel)}</div>
+      </div>
+    </div>
+    <div class="ev-badges">
+      <span class="type-badge">${esc(type.icon)} ${esc(type.label)}</span>
+      ${post.cancelled ? `<span class="type-badge" style="background:var(--danger);">🚫 ${t("Cancelado","Cancelled","Cancelado","בוטל")}</span>` : ""}
+    </div>
+    <div class="ev-rows">
+      ${rows.map(r=>`<div class="ev-row"><span class="ev-icon">${r.icon}</span><div class="ev-val">${r.html}</div></div>`).join("")}
+    </div>
+    <div class="ev-actions">
+      <button type="button" class="btn-primary" data-action="event-card-goto" data-post-id="${esc(post.id)}">
+        ${t("Ver la historia completa","See the full story","Ver a história completa","לצפייה בסיפור המלא")} ${isRTL() ? "←" : "→"}
+      </button>
+      ${canEditPost(post) ? `<button type="button" data-action="event-card-edit" data-post-id="${esc(post.id)}">✏️ ${t("Editar","Edit","Editar","עריכה")}</button>` : ""}
+    </div>`;
+}
+function openEventCard(postId){
+  if(!getPostById(postId)) return;
+  eventCardPostId = postId;
+  renderEventCard();
+  eventCardReturnFocus = document.activeElement;
+  eventCardOverlay.hidden = false;
+  document.getElementById("eventCardClose").focus();
+}
+function closeEventCard(){
+  eventCardOverlay.hidden = true;
+  eventCardPostId = null;
+  if(eventCardReturnFocus && typeof eventCardReturnFocus.focus === "function") eventCardReturnFocus.focus();
+  eventCardReturnFocus = null;
+}
+document.getElementById("eventCardClose").addEventListener("click", closeEventCard);
+eventCardOverlay.addEventListener("click", e=>{ if(e.target === eventCardOverlay) closeEventCard(); });
+
+/* ======================================================================
    EVENTOS
    ====================================================================== */
 document.querySelectorAll("#tabs button").forEach(btn=>{
@@ -7655,6 +7792,7 @@ document.addEventListener("keydown", e=>{
   if(lightbox.classList.contains("show")){ closeLightbox(); return; }
   if(!filePreviewOverlay.hidden){ closeFilePreview(); return; }
   if(!userProfileOverlay.hidden){ closeUserProfile(); return; }
+  if(!eventCardOverlay.hidden){ closeEventCard(); return; }
   if(!tourLayer.hidden){ closeTour(); return; }
   if(!calendarInviteOverlay.hidden){ dismissCalendarInviteOverlay(); return; }
   if(fabOpen){ closeFab(); fabMainEl.focus(); return; }
@@ -7675,6 +7813,7 @@ document.addEventListener("keydown", e=>{
   const el = e.target;
   if(el && (el.isContentEditable || ["INPUT","TEXTAREA","SELECT"].includes(el.tagName))) return;
   if(!postModalOverlay.hidden || !filePreviewOverlay.hidden || !userProfileOverlay.hidden) return;
+  if(!eventCardOverlay.hidden) return;
   if(!tourLayer.hidden || !calendarInviteOverlay.hidden || lightbox.classList.contains("show")) return;
   const key = e.key.toLowerCase();
   if(key === "t"){ e.preventDefault(); state.calendarioAnchor = todayISO(); calViewMenuOpen = false; render(); return; }
@@ -8246,7 +8385,13 @@ document.addEventListener("click", e=>{
   } else if(action === "cal-open-month"){
     state.calendarioAnchor = el.dataset.date; state.calendarioSubview = "mes"; render();
   } else if(action === "cal-open"){
-    gotoMention(postId);
+    openEventCard(postId);
+  } else if(action === "event-card-goto"){
+    closeEventCard(); gotoMention(el.dataset.postId);
+  } else if(action === "event-card-edit"){
+    const post = getPostById(el.dataset.postId);
+    closeEventCard();
+    if(post) openEditComposer(post);
   } else if(action === "cal-new"){
     openComposerOnDate(el.dataset.date, el.dataset.hour);
   } else if(action === "toggle-paises-zone"){

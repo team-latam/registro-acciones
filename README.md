@@ -457,6 +457,33 @@ Dos cosas a tener en cuenta al tocar esto:
   corre un día para cualquiera al este de Greenwich — el mismo bug que ya
   documenta `addDaysISO`.
 
+#### Click en un evento: la tarjeta, no el Feed
+
+Clickear un evento **abre una tarjeta** con lo básico —título, rango de
+fechas y horario, alcance, participantes, el comentario y quién lo cargó—
+sin salir del calendario, y recién desde ahí un botón lleva a la **historia
+completa** (el posteo en el Feed, con comentarios, adjuntos y el hilo).
+
+Antes el click hacía `gotoMention()` directo: se perdía el mes que se
+estaba mirando para ver cuatro datos, y volver costaba dos pasos. La
+tarjeta es el mismo gesto que hace Google Calendar y deja el calendario
+intacto atrás.
+
+Detalles que importan al tocarla:
+
+- **Guarda el ID, no el posteo.** `render()` la redibuja
+  (`renderEventCard()`), así que si alguien lo edita o lo cancela mientras
+  está abierta se actualiza sola, y si lo borran se cierra en vez de
+  mostrar algo que ya no existe.
+- **Los atajos de una tecla del Calendario (D/W/M/…) no corren con la
+  tarjeta abierta.** Sin ese guard, tocar una letra cambiaba la vista de
+  atrás sin que se vea.
+- El rango se compacta cuando las dos puntas caen en el mismo mes
+  (`eventDateRange()`): "19 – 27 de septiembre de 2026", no el mes y el año
+  repetidos dos veces. Cruzando meses van los dos completos.
+- El chip de alcance ya trae su propio 📍 adentro, por eso la fila usa 🌎:
+  si no, quedaban dos pines pegados.
+
 ### Popups de Google: token silencioso con GIS, y popup solo donde se anuncia
 
 Leer el Calendar va con `CALENDAR_API_KEY` (calendarios públicos, sin
