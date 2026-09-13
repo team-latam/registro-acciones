@@ -1404,12 +1404,16 @@
   }
   #lightbox.show{ display:flex; }
   #lightbox img{ max-width:100%; max-height:100%; border-radius:8px; }
+  /* Mismo botón que la flecha de "subir" (.scroll-top): celeste fijo con
+     el chevron oscuro, igual en los dos temas. Antes eran dos ‹ › en un
+     círculo translúcido que no se parecían a ninguna otra flecha de la app. */
   .lightbox-nav{
-    position:absolute; top:50%; transform:translateY(-50%); background:rgba(255,255,255,0.12); color:#fff;
-    border:none; border-radius:50%; width:44px; height:44px; font-size:26px; line-height:1; cursor:pointer;
+    position:absolute; top:50%; transform:translateY(-50%); background:#6fd8ec; color:#082a2c;
+    border:none; border-radius:50%; width:44px; height:44px; cursor:pointer;
     display:flex; align-items:center; justify-content:center;
+    box-shadow:0 4px 14px rgba(8,42,44,0.28); transition:background .16s ease;
   }
-  .lightbox-nav:hover{ background:rgba(255,255,255,0.22); }
+  .lightbox-nav:hover{ background:#8fe3f2; }
   .lightbox-nav[hidden]{ display:none; }
   .lightbox-prev{ inset-inline-start:16px; }
   .lightbox-next{ inset-inline-end:16px; }
@@ -1424,10 +1428,12 @@
   .file-preview-pager{ display:flex; align-items:center; justify-content:center; gap:14px; margin:-4px 0 10px; flex:none; }
   .file-preview-pager[hidden]{ display:none; }
   .file-preview-pager button{
-    background:none; border:1.5px solid var(--border); border-radius:50%; width:30px; height:30px; font-size:17px;
-    line-height:1; cursor:pointer; color:var(--ink); display:flex; align-items:center; justify-content:center;
+    background:#6fd8ec; border:none; border-radius:50%; width:32px; height:32px;
+    cursor:pointer; color:#082a2c; display:flex; align-items:center; justify-content:center;
+    box-shadow:0 2px 8px rgba(8,42,44,0.22); transition:background .16s ease;
   }
-  .file-preview-pager button:hover{ background:var(--surface-soft); }
+  .file-preview-pager button svg{ width:18px; height:18px; }
+  .file-preview-pager button:hover{ background:#8fe3f2; }
   #filePreviewCounter{ font-size:12px; color:var(--text-muted); font-weight:700; min-width:42px; text-align:center; }
 
   /* ---------- Popup de perfil (al clickear un @mención) ---------- */
@@ -1613,9 +1619,9 @@
 </div>
 
 <div id="lightbox" role="dialog" aria-modal="true" tabindex="-1">
-  <button type="button" id="lightboxPrev" class="lightbox-nav lightbox-prev" aria-label="Anterior" hidden>‹</button>
+  <button type="button" id="lightboxPrev" class="lightbox-nav lightbox-prev" aria-label="Anterior" hidden></button>
   <img id="lightboxImg" src="" alt="">
-  <button type="button" id="lightboxNext" class="lightbox-nav lightbox-next" aria-label="Siguiente" hidden>›</button>
+  <button type="button" id="lightboxNext" class="lightbox-nav lightbox-next" aria-label="Siguiente" hidden></button>
   <span id="lightboxCounter" class="lightbox-counter" hidden></span>
 </div>
 
@@ -1624,9 +1630,9 @@
     <button class="close" id="filePreviewClose" aria-label="Cerrar">✕</button>
     <h2 id="filePreviewTitle"></h2>
     <div class="file-preview-pager" id="filePreviewPager" hidden>
-      <button type="button" id="filePreviewPrev" aria-label="Anterior">‹</button>
+      <button type="button" id="filePreviewPrev" aria-label="Anterior"></button>
       <span id="filePreviewCounter"></span>
-      <button type="button" id="filePreviewNext" aria-label="Siguiente">›</button>
+      <button type="button" id="filePreviewNext" aria-label="Siguiente"></button>
     </div>
     <iframe id="filePreviewFrame" title=""></iframe>
     <div class="modal-actions">
@@ -4319,20 +4325,13 @@ async function approveRequest(email){
   try{ await fb.deleteDoc(fb.doc(db, "formerMembers", email)); }catch(e){}
   logAudit("access_approved", { targetEmail: email });
 }
-// Cambio de rol desde Usuarios. ADMIN_EMAIL queda afuera (también en las
-// reglas). Bajarse a uno mismo de admin pide confirmación: después no hay
-// forma de volver por cuenta propia.
+// Cambio de rol desde Usuarios. ADMIN_EMAIL queda afuera, y uno mismo
+// también (las dos cosas también en las reglas): el propio rol lo cambia
+// otro admin. Así nadie se baja por error ni se escala solo.
 async function changeRole(email, role){
-  if(email === ADMIN_EMAIL || !ROLES.includes(role)) { render(); return; }
   const me = state.auth.user && state.auth.user.email;
-  if(email === me && role !== "admin"){
-    const seguir = confirm(t(
-      "Vas a dejar de ser administrador. Después no vas a poder volver a serlo por tu cuenta: tendría que hacerlo otro administrador. ¿Seguir?",
-      "You're about to stop being an administrator. Afterwards you won't be able to make yourself one again: another administrator would have to. Continue?",
-      "Você vai deixar de ser administrador. Depois não vai poder voltar a sê-lo por conta própria: outro administrador teria que fazê-lo. Continuar?",
-      "את/ה עומד/ת להפסיק להיות מנהל/ת. אחר כך לא תוכל/י להחזיר זאת בעצמך: מנהל/ת אחר/ת יצטרך לעשות זאת. להמשיך?"));
-    if(!seguir){ render(); return; }
-  }
+  // Ni el admin fijo ni uno mismo (las reglas lo rechazan igual).
+  if(email === ADMIN_EMAIL || email === me || !ROLES.includes(role)) { render(); return; }
   try{
     const wasShared = !!(state.roster.find(u=>u.email===email) || {}).calendarShared;
     await fb.updateDoc(fb.doc(db, "allowlist", email), { role });
@@ -5418,7 +5417,10 @@ function renderUsuariosSection(){
     const role = isAdminUser ? "admin" : (u.role || "member");
     const rolePill = role === "admin" ? ` <span class="status-pill approved">${esc(t("Admin","Admin","Admin","מנהל/ת"))}</span>`
       : role === "observer" ? ` <span class="status-pill observer">👁️ ${esc(t("Observador","Observer","Observador","משקיף/ה"))}</span>` : "";
-    const roleSelect = isAdminUser ? "" : `<select class="role-select" data-action="set-role" data-email="${esc(u.email)}" aria-label="${esc(t("Rol de {n}","Role of {n}","Papel de {n}","תפקיד של {n}",{n:u.name||u.email}))}">
+    // Tampoco se puede tocar el propio rol (reglas incluidas): que otro
+    // admin lo haga. Evita quedarse sin admins o escalarse a uno mismo.
+    const isMe = u.email === (state.auth.user && state.auth.user.email);
+    const roleSelect = (isAdminUser || isMe) ? "" : `<select class="role-select" data-action="set-role" data-email="${esc(u.email)}" aria-label="${esc(t("Rol de {n}","Role of {n}","Papel de {n}","תפקיד של {n}",{n:u.name||u.email}))}">
           ${ROLES.map(r=>`<option value="${r}" ${role===r?"selected":""}>${esc(roleLabel(r))}</option>`).join("")}
         </select><span class="ractions-sep"></span>`;
     return `<div class="request-row">
@@ -8322,6 +8324,14 @@ function attachmentOwner(postId, replyId){
 
 const lightbox = document.getElementById("lightbox");
 const lightboxImg = document.getElementById("lightboxImg");
+// Chevron ‹ › con el mismo trazo que la flecha de "subir" (#scrollTop).
+// "prev" apunta al inicio de lectura: a la izquierda en LTR, a la
+// derecha en RTL — se elige a mano, igual que el resto de las flechas.
+function chevronHtml(dir){
+  const left = (dir === "prev") !== isRTL();
+  const d = left ? "M15 6l-6 6 6 6" : "M9 6l6 6-6 6";
+  return `<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="${d}" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+}
 const lightboxPrev = document.getElementById("lightboxPrev");
 const lightboxNext = document.getElementById("lightboxNext");
 const lightboxCounter = document.getElementById("lightboxCounter");
@@ -8349,8 +8359,8 @@ function renderLightboxFrame(){
     // ←/→) pero se elige el glyph a mano igual, mismo criterio que el
     // resto de las flechas de navegación de la app — más previsible que
     // confiar en el bidi mirroring para dos caracteres sueltos.
-    lightboxPrev.textContent = isRTL() ? "›" : "‹";
-    lightboxNext.textContent = isRTL() ? "‹" : "›";
+    lightboxPrev.innerHTML = chevronHtml("prev");
+    lightboxNext.innerHTML = chevronHtml("next");
     lightboxCounter.textContent = `${lightboxIndex+1} / ${lightboxItems.length}`;
   }
 }
@@ -8411,8 +8421,8 @@ function renderFilePreviewFrame(){
   const multi = filePreviewItems.length > 1;
   filePreviewPager.hidden = !multi;
   if(multi){
-    filePreviewPrev.textContent = isRTL() ? "›" : "‹";
-    filePreviewNext.textContent = isRTL() ? "‹" : "›";
+    filePreviewPrev.innerHTML = chevronHtml("prev");
+    filePreviewNext.innerHTML = chevronHtml("next");
     filePreviewCounter.textContent = `${filePreviewIndex+1} / ${filePreviewItems.length}`;
   }
 }

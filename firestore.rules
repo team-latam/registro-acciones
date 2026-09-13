@@ -354,12 +354,19 @@ service cloud.firestore {
     // datos sensibles.
     //
     // Los administradores por rol (role == 'admin') también la escriben —
-    // aprobar, cambiar el rol de alguien, revocar — con dos límites que el
-    // admin fijo no tiene: el documento del admin fijo NO se toca (nadie
-    // lo puede degradar ni sacar, ni siquiera otro admin) y el rol que
-    // se escribe tiene que ser uno de los tres conocidos.
+    // aprobar, cambiar el rol de alguien, revocar — con tres límites que
+    // el admin fijo no tiene: el documento del admin fijo NO se toca
+    // (nadie lo puede degradar ni sacar, ni siquiera otro admin), el rol
+    // que se escribe tiene que ser uno de los tres conocidos, y el PROPIO
+    // rol no se cambia (que lo haga otro admin): así nadie se baja por
+    // error ni se escala solo. Otros campos del propio doc (calendarShared
+    // al compartirse el Calendar) sí pueden cambiar.
     function isValidRole(d) {
       return d.get('role', 'member') in ['admin', 'member', 'observer'];
+    }
+    function keepsOwnRole(email) {
+      return email != request.auth.token.email ||
+        request.resource.data.get('role', 'member') == resource.data.get('role', 'member');
     }
     match /allowlist/{email} {
       allow get: if isAdmin();
@@ -368,8 +375,8 @@ service cloud.firestore {
       allow list: if isApproved();
       allow write: if isAdmin();
       allow create: if isRoleAdmin() && email != "benny@team-latam.com" && isValidRole(request.resource.data);
-      allow update: if isRoleAdmin() && email != "benny@team-latam.com" && isValidRole(request.resource.data);
-      allow delete: if isRoleAdmin() && email != "benny@team-latam.com";
+      allow update: if isRoleAdmin() && email != "benny@team-latam.com" && isValidRole(request.resource.data) && keepsOwnRole(email);
+      allow delete: if isRoleAdmin() && email != "benny@team-latam.com" && email != request.auth.token.email;
       allow update: if isSelf(email) && isValidNicknameEdit(request.resource.data);
       allow update: if isSelf(email) && isValidTourSeenEdit(request.resource.data);
     }
