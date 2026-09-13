@@ -7612,7 +7612,7 @@ function startRutina(){
     const ta = document.getElementById("rutinaContent");
     if(!ta) return;
     ta.scrollIntoView({ behavior:"smooth", block:"center" });
-    ta.focus();
+    if(!isTouchDevice()) ta.focus(); // en el celular: a la vista, sin teclado (ver isTouchDevice)
   });
 }
 
@@ -7640,9 +7640,23 @@ function openComposerOnDate(iso, hour){
 // Sin esto, el teclado y los lectores de pantalla se quedaban detrás
 // del modal.
 let composerReturnFocus = null;
+// En un celular, enfocar un campo de texto al abrir un formulario levanta
+// el teclado y tapa medio modal: el pedido es que el formulario aparezca
+// limpio y que el campo se toque cuando se quiera escribir. Se decide por
+// tipo de puntero y no por ancho de pantalla: una tablet apaisada es ancha
+// y también levanta un teclado en pantalla. En escritorio, foco al campo
+// como siempre — ahí escribir de una es lo cómodo.
+function isTouchDevice(){
+  try{ return window.matchMedia("(hover: none) and (pointer: coarse)").matches; }catch(e){ return false; }
+}
 function focusIntoComposer(){
   composerReturnFocus = document.activeElement;
-  const first = postForm.querySelector("#cTitle") || postForm.querySelector("input, textarea, select, button");
+  // El foco igual ENTRA al modal (a la ✕): es lo que hace que Escape lo
+  // cierre y que el lector de pantalla lo anuncie. Solo se evita que caiga
+  // en un campo de texto.
+  const first = isTouchDevice()
+    ? document.getElementById("postModalClose")
+    : (postForm.querySelector("#cTitle") || postForm.querySelector("input, textarea, select, button"));
   if(first) first.focus();
 }
 function openEditComposer(post){
@@ -8794,7 +8808,7 @@ document.addEventListener("click", e=>{
     nicknameError = null;
     render();
     const input = document.getElementById("nicknameInput");
-    if(input){ input.focus(); input.select(); }
+    if(input && !isTouchDevice()){ input.focus(); input.select(); }
   } else if(action === "cancel-edit-nickname"){
     nicknameEditing = false; nicknameError = null;
     render();
