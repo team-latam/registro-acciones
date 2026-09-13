@@ -710,6 +710,17 @@ posteos con me gusta ve el conteo como texto. Todo eso son gates
 lo que exigen las escrituras de posts/replies/likes/`meta/calendarSync`.
 Sus preferencias personales (`userPrefs`) sí las puede guardar.
 
+**Tampoco recibe el Calendar.** Compartirlo da permiso de escritura
+(`writer`) sobre el calendario del equipo, y sería una puerta lateral para
+cargar eventos que la app y las reglas le niegan. Por eso: su fila en
+Usuarios no ofrece "Compartir Calendar" ni "Reenviar invitación" (dice
+"Sin Calendar", o "Sacar del Calendar" si lo tenía de antes),
+`shareCalendarWith()` se niega si el roster dice que es observador, al
+pasar a alguien a observador se lo saca del Calendar en el mismo acto
+(`changeRole`, en silencio si el token sale solo), y su navegador no
+arranca la sincronización automática Calendar → app
+(`startCalendarAutoSync` exige `canWrite()`).
+
 Los admins por rol (`role == 'admin'`, `isRoleAdmin()` en las reglas)
 pueden todo lo que el admin fijo: aprobar/rechazar/revocar, compartir el
 Calendar, Zonas, Preferencias, leer la auditoría, y **cambiar el rol de

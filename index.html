@@ -187,6 +187,9 @@
        abiertas vuelven a recibirlos. */
     pointer-events:none;
   }
+  /* Sin esto, display:flex de la clase le ganaba al atributo hidden y el
+     + seguía a la vista para el observador (y en las pantallas de login). */
+  .fab-wrap[hidden]{ display:none; }
   .fab-main{
     pointer-events:auto;
     width:56px; height:56px; border-radius:50%; border:none; cursor:pointer;
@@ -1128,7 +1131,6 @@
   }
   .latam-footnote b{ color:var(--ink); }
   .latam-footnote-btn{ margin-inline-start:6px; font-weight:700; }
-  .latam-footnote-hint{ display:block; margin-top:4px; font-size:12px; opacity:.85; }
   .zone-legend{ display:flex; gap:14px; flex-wrap:wrap; margin-bottom:14px; font-size:12px; color:var(--text-muted); font-weight:600; }
   .zone-legend span{ display:inline-flex; align-items:center; gap:6px; }
   .zone-legend .dot{ width:11px; height:11px; border-radius:50%; }
@@ -1470,6 +1472,10 @@
      bajarla no tapa nada. */
   #eventCardOverlay{ z-index:99; }
   .event-card{ position:relative; max-width:420px; max-height:min(620px, 86vh); }
+  /* El cuerpo es el hijo flex del modal: si no es columna con min-height:0,
+     .ev-rows nunca llega a scrollear y un texto largo (una invitación de
+     Zoom entera, por ejemplo) se sale por abajo de la ficha. */
+  #eventCardBody{ display:flex; flex-direction:column; flex:1; min-height:0; }
   .ev-head{ display:flex; align-items:flex-start; gap:11px; padding-inline-end:26px; flex:none; }
   .ev-dot{ width:14px; height:14px; border-radius:4px; flex:none; margin-top:5px; }
   .ev-head-text{ min-width:0; }
@@ -3175,7 +3181,16 @@ async function ensureCalendarAclToken(opts={}){
   }
 }
 
+// El rol vive en el roster (allowlist): un observador nunca recibe el
+// Calendar, porque compartirlo da permiso de ESCRITURA (writer) sobre el
+// calendario del equipo — sería una puerta lateral para cargar eventos
+// que la app y las reglas le niegan.
+function isObserverEmail(email){
+  const u = state.roster.find(x=>x.email===email);
+  return !!(u && u.role === "observer");
+}
 async function shareCalendarWith(email, opts={}){
+  if(isObserverEmail(email)) return { ok:false, reason:t("es observador/a: no se le comparte el Calendar","they're an observer: the Calendar isn't shared with them","é observador(a): o Calendar não é compartilhado","משקיף/ה: היומן לא משותף איתו/ה") };
   const token = await ensureCalendarAclToken(opts);
   if(!token) return { ok:false, reason:t("no se pudo autorizar el permiso para compartir el Calendar","couldn't authorize permission to share the Calendar","não foi possível autorizar a permissão para compartilhar o Calendar","לא ניתן היה לאשר את ההרשאה לשיתוף היומן") };
   try{
@@ -3254,6 +3269,10 @@ async function unshareCalendarWith(email, opts={}){
       throw new Error(body.error?.message || res.statusText);
     }
     logAudit("calendar_unshared", { targetEmail: email });
+    // Si sigue en allowlist (cambio de rol, o "Sacar del Calendar" desde
+    // Usuarios), su fila deja de decir "Invitación enviada". Si ya fue
+    // revocado el doc no existe y esto falla en silencio, que es lo esperado.
+    try{ fb.updateDoc(fb.doc(db,"allowlist",email), { calendarShared:false }).catch(()=>{}); }catch(e){}
     return { ok:true };
   }catch(err){
     console.error("Error sacando del Calendar:", err);
@@ -3729,6 +3748,9 @@ async function syncFromCalendar(opts){
 let calendarSyncInterval = null;
 function startCalendarAutoSync(){
   if(calendarSyncInterval) return;
+  // El observador no escribe posteos ni el sync token: sin esto su
+  // navegador intentaba importar cada 30 s y fallaba contra las reglas.
+  if(!canWrite()) return;
   syncFromCalendar({ silent:true });
   calendarSyncInterval = setInterval(()=> syncFromCalendar({ silent:true }), 30000);
 }
@@ -4312,8 +4334,19 @@ async function changeRole(email, role){
     if(!seguir){ render(); return; }
   }
   try{
+    const wasShared = !!(state.roster.find(u=>u.email===email) || {}).calendarShared;
     await fb.updateDoc(fb.doc(db, "allowlist", email), { role });
     logAudit("role_changed", { targetEmail: email, detail: role });
+    // Observador = solo lectura también en el Calendar: si lo tenía
+    // compartido (writer), se lo saca. Mismo criterio que al revocar: en
+    // silencio si el token sale solo; si no, queda el botón "Sacar del
+    // Calendar" en su fila, que sí puede abrir el consentimiento.
+    if(role === "observer" && wasShared){
+      const res = await unshareCalendarWith(email, { silentOnly:true });
+      showCalendarNotice(res.ok
+        ? { ok:true, message: t("{email} ahora es observador/a y se lo/a sacó del Calendar compartido.","{email} is now an observer and was removed from the shared Calendar.","{email} agora é observador(a) e foi tirado(a) do Calendar compartilhado.","{email} כעת משקיף/ה והוסר/ה מהיומן המשותף.",{email}) }
+        : { ok:false, message: t("{email} ahora es observador/a, pero todavía tiene el Calendar compartido: usá «Sacar del Calendar» en su fila.","{email} is now an observer but still has the Calendar shared: use “Remove from Calendar” on their row.","{email} agora é observador(a), mas ainda tem o Calendar compartilhado: use «Tirar do Calendar» na ficha.","{email} כעת משקיף/ה אך היומן עדיין משותף איתו/ה: השתמש/י ב«הסרה מהיומן» בשורה שלו/ה.",{email}) });
+    }
   }catch(err){
     console.error("No se pudo cambiar el rol:", err);
     showCalendarNotice({ ok:false, message: t("No se pudo cambiar el rol ({m}). Si las reglas de Firestore son viejas, hay que publicarlas.","Couldn't change the role ({m}). If the Firestore rules are outdated, they need publishing.","Não foi possível mudar o papel ({m}). Se as regras do Firestore forem antigas, é preciso publicá-las.","לא ניתן היה לשנות את התפקיד ({m}). אם כללי Firestore ישנים, יש לפרסם אותם.",{m:err.code||err.message}) });
@@ -5396,7 +5429,13 @@ function renderUsuariosSection(){
       </div>
       <div class="ractions">
         ${roleSelect}
-        ${u.calendarShared
+        ${role === "observer"
+          // Observador: nunca se le ofrece compartir (sería permiso de
+          // escritura en el Calendar). Si lo tenía de antes, solo sacarlo.
+          ? (u.calendarShared
+              ? `<button class="btn-ghost danger" data-action="unshare-calendar" data-email="${esc(u.email)}">${t("Sacar del Calendar","Remove from Calendar","Tirar do Calendar","הסרה מהיומן")}</button>`
+              : `<span class="status-pill observer">${t("Sin Calendar","No Calendar","Sem Calendar","ללא יומן")}</span>`)
+          : u.calendarShared
           ? `<span class="status-pill approved">✅ ${t("Invitación enviada","Invite sent","Convite enviado","הזמנה נשלחה")}</span><span class="ractions-sep"></span><button class="btn-ghost" data-action="resend-calendar-invite" data-email="${esc(u.email)}">${t("Reenviar invitación","Resend invite","Reenviar convite","שליחה חוזרת של ההזמנה")}</button>`
           : `<button class="btn-ghost" data-action="share-calendar" data-email="${esc(u.email)}">${t("Compartir Calendar","Share Calendar","Compartilhar Calendar","שיתוף היומן")}</button>`}
         ${isAdminUser ? "" : `<span class="ractions-sep"></span><button class="btn-ghost danger" data-action="revoke-access" data-email="${esc(u.email)}">${t("Revocar acceso","Revoke access","Revogar acesso","ביטול גישה")}</button>`}
@@ -6729,8 +6768,7 @@ function latamFootnote(){
   return `<div class="latam-footnote">🌎 ${n === 1
     ? t("Además, <b>1 posteo de toda LatAm</b> aplica a todos los países.","Also, <b>1 LatAm-wide post</b> applies to every country.","Além disso, <b>1 postagem de toda a LatAm</b> se aplica a todos os países.","בנוסף, <b>פוסט אחד של כל LatAm</b> חל על כל המדינות.")
     : t("Además, <b>{n} posteos de toda LatAm</b> aplican a todos los países.","Also, <b>{n} LatAm-wide posts</b> apply to every country.","Além disso, <b>{n} postagens de toda a LatAm</b> se aplicam a todos os países.","בנוסף, <b>{n} פוסטים של כל LatAm</b> חלים על כל המדינות.",{n})}
-    <button type="button" class="btn-text-add latam-footnote-btn" data-action="goto-latam">${t("Verlos","See them","Vê-los","להציג אותם")} ${isRTL() ? "←" : "→"}</button>
-    <span class="latam-footnote-hint">${t("O, dentro de un lugar, elegí «+ Toda LatAm».","Or, inside a place, pick “+ All of LatAm”.","Ou, dentro de um lugar, escolha «+ Toda a LatAm».","או, בתוך מקום, בחרו «+ כל LatAm».")}</span></div>`;
+    <button type="button" class="btn-text-add latam-footnote-btn" data-action="goto-latam">${t("Verlos","See them","Vê-los","להציג אותם")} ${isRTL() ? "←" : "→"}</button></div>`;
 }
 
 function renderCountryDrill(countryName, data){
