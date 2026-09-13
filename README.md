@@ -451,8 +451,11 @@ tapado. Lo transversal sigue siendo parte de la historia de cada lugar —
 Dónde se aplica:
 
 - **Vistas › Lista y Mapa**: el número grande (y el círculo) es `own`;
-  debajo, `crossLine()`: "+1 de Región Norte · +3 de toda LatAm". Un país
-  con `own` 0 y algo macro dice "0 propios". La lista va en orden
+  debajo, `crossLine()`: "+1 de Región Norte" (solo lo que varía entre
+  países). "+40 de toda LatAm" es el mismo número en las 43 tarjetas, así
+  que va **una sola vez, al pie de la grilla** (`latamFootnote()`); en el
+  popup del mapa y en la pantalla del país sí aparece, porque ahí se mira
+  un solo lugar. Un país con `own` 0 y algo macro dice "0 propios". La lista va en orden
   **alfabético** por el nombre que se ve (a pedido): con 43 países, para
   ubicar uno a ojo sirve más el orden fijo que un ranking, y el número ya
   está en la tarjeta.
@@ -464,10 +467,11 @@ Dónde se aplica:
   (`renderPlaceLevelSeg`, con los conteos ya pasados por los otros
   filtros). Cada nivel incluye al anterior: ver LatAm sin la región no
   tiene sentido. Lo que entra por región o LatAm lleva `.post-cross` (borde
-  punteado, la región en su color). El nivel elegido vive en
-  **localStorage** (`ra_place_level`), no en `userPrefs`: es cómo se mira,
-  no una configuración, y así no hubo que tocar las reglas. Arranca en 0,
-  que era la queja.
+  punteado, la región en su color). El nivel elegido es una **preferencia personal**
+  (`userPrefs.placeLevel`, también en Configuración › Calendario como "Al
+  abrir un lugar, incluir"): primero vivió en localStorage, pero eso lo
+  hacía distinto en el celular y en la computadora. El selector y la fila
+  de Configuración cambian el mismo valor. Arranca en 0, que era la queja.
 
 Lo que define el nivel es **cómo se cargó el alcance**, no cuántos países
 toca: cinco países del Caribe marcados uno por uno son `own` en cada uno
