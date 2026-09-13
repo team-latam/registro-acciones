@@ -1028,6 +1028,73 @@ tocado — el mismo nombre corto que el helper de traducción. Llamar a
 `ts`) antes de poder traducir nada de lo que vive ahí adentro
 (confirmaciones, validación de formularios, mensajes de error).
 
+### Mobile: las reglas que sostienen el layout en un celular
+
+Auditoría de septiembre 2026 (34 pantallas × escritorio/mobile × claro/
+oscuro × hebreo, con chequeos automáticos de desborde, elementos fuera de
+pantalla, texto que no corta y zonas tocables). En escritorio no había
+defectos; en mobile había siete, y el más grave era que **la página entera
+scrolleaba de costado**. Lo que quedó, y por qué:
+
+- **La barra de pestañas es su propio scroller** (`nav.tabs` con
+  `overflow-x:auto` y la barra oculta). Las 5 pestañas (8 para el admin)
+  no entran en 400px; antes ensanchaban el documento a ~900px, "Memoria"
+  quedaba cortada y Configuración/Usuarios/Administrar fuera de vista.
+  `syncTabsScroll()` trae la pestaña activa a la vista en cada render
+  (con `scrollLeft +=`, no `scrollIntoView`, que puede mover la página en
+  vertical) y `updateTabsFade()` pone un degradé en la punta por la que
+  sigue habiendo pestañas. Los lados son **físicos** (`more-left` /
+  `more-right`) porque en hebreo lo que sobra queda a la izquierda.
+- **La grilla horaria (Semana/Día/N días) tiene ancho mínimo por columna
+  en angosto** (`--cal-colw:104px`, solo bajo 640px) y scrollea de costado
+  dentro de su tarjeta, como el calendario de Google en el celular. Con 7
+  columnas en 330px cada una medía 46px: los eventos eran solo el ícono y
+  dos solapados una tira de 14px. Las filas de encabezado y "todo el día"
+  son `overflow-x:hidden` y las mueve `afterRenderView()` a la par del
+  cuerpo (si no, los días quedan corridos respecto de las columnas); la
+  columna de horas es `position:sticky` y queda fija. La posición
+  horizontal se recuerda en `calGridScrollX` para que un re-render no
+  vuelva al domingo. En escritorio `--cal-colw` no está definido y todo
+  sigue igual que antes.
+- **Las filas de Usuarios/Solicitudes/Ex integrantes se parten en dos**
+  bajo 640px: avatar + datos arriba, acciones abajo alineadas al final.
+  Los botones tienen ancho fijo y aplastaban el nombre a una palabra por
+  línea, con "Revocar acceso" fuera de la pantalla.
+- **`overflow-wrap:anywhere`** en el texto de las tarjetas (contenido,
+  título, respuestas, links). Una URL pegada no cortaba y se salía de la
+  tarjeta. Es `anywhere` y no `break-word` porque el segundo no achica el
+  ancho mínimo del elemento, y dentro de un flex/grid la caja seguía
+  creciendo igual.
+- **`.post-actions` y `.reply-actions` envuelven** (`flex-wrap`), con
+  `white-space:nowrap` en los botones: con "Cancelar evento" son cinco y
+  no entran; sin envolver, el último se salía y los otros partían su
+  texto ("Me / gusta").
+- **`fitDropdownPanels()`** corre con `translate` cualquier desplegable
+  que se salga de la pantalla (selector de vista del Calendario, filtro de
+  Zonas del Feed). Mide con la animación de apertura apagada: arranca en
+  `scale(.85)` y medir el primer cuadro daba una caja más chica que la
+  real. Es `translate` y no `transform` porque la animación ya usa
+  transform y lo pisaría.
+- **Aire abajo para el botón flotante**: `main` tiene 112px de padding
+  inferior (el FAB ocupa 80). Con 80 justos, el último elemento de cada
+  página ("Guardar cambios", la última fila del calendario) quedaba
+  exactamente debajo del +. Mientras se scrollea por el medio el FAB tapa
+  lo que tenga debajo, como cualquier botón flotante; lo que no puede
+  pasar es que algo quede inalcanzable, y al llegar al final ya no queda.
+- **Mínimos tocables** en un bloque `@media (max-width:640px)` **al final
+  de la hoja**, a propósito: son reglas de la misma especificidad que las
+  base y en CSS gana la última — puestas antes, las base las pisaban.
+  Botones de texto del posteo ≥36px (medían 14: solo la línea), ✕ de los
+  modales 40×40, barras del mes 18px (con la celda a 104 para que entren
+  los 4 carriles), inputs de Administrar con padding vertical.
+
+Lo que se dejó como está, con motivo: los `@nickname` y nombres dentro del
+texto son links en línea de 14px de alto — hacerlos más altos rompería el
+interlineado; y las barras del calendario mensual a 18px son lo que cabe en
+una celda de un mes en un celular (Google usa puntos ahí).
+
+`layout.mjs` en el scratchpad de la sesión cubre estas reglas una por una.
+
 ### Modo claro / oscuro
 
 Toda la paleta vive en variables CSS en `:root` (claro, el default) y el

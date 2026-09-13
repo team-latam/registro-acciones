@@ -348,6 +348,18 @@
   .status-pill.approved{ background:var(--ok-bg); color:var(--ok-text); }
   .status-pill.rejected{ background:var(--danger-bg); color:var(--danger-text); }
   .btn-ghost{ background:none; border:none; padding:9px 14px; border-radius:999px; font-weight:700; font-size:12.5px; cursor:pointer; color:var(--ink); white-space:nowrap; }
+  /* En angosto los botones de acción (Compartir Calendar · Revocar
+     acceso · …) tienen ancho fijo y aplastaban la columna del nombre a
+     una palabra por línea, con el último botón fuera de la pantalla. La
+     fila se parte en dos: avatar + datos arriba, acciones en su propia
+     línea abajo, alineadas al final. */
+  @media (max-width:640px){
+    .request-row{ flex-wrap:wrap; gap:10px 12px; padding:12px 14px; }
+    .request-row .rinfo{ flex:1 1 0; min-width:0; }
+    .request-row .ractions{ flex:1 1 100%; justify-content:flex-end; flex-wrap:wrap; gap:4px 2px; }
+    .request-row .ractions-sep{ display:none; }
+    .request-row .status-pill{ margin-inline-end:0; }
+  }
   .btn-ghost:hover{ background:var(--surface-alt); }
   .btn-ghost.danger{ color:var(--danger); }
   .btn-ghost.danger:hover{ background:var(--danger-soft); }
@@ -571,16 +583,44 @@
   }
   .country-zone-row{ display:flex; align-items:center; gap:8px; background:var(--card); padding:7px 10px; }
   .cz-name{ flex:1; min-width:0; font-size:12.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  nav.tabs{ max-width:1200px; margin:14px auto 0 auto; display:flex; gap:4px; }
+  /* En un celular las 5 (u 8, para el admin) pestañas no entran en el
+     ancho. Antes ensanchaban el DOCUMENTO entero: la página completa
+     scrolleaba de costado, "Memoria" quedaba cortada y Configuración /
+     Usuarios / Administrar directamente fuera de vista. Ahora el <nav>
+     scrollea SOLO, sin barra visible, y el resto de la página no se
+     entera. La pestaña activa se trae a la vista en syncTabsScroll(). */
+  nav.tabs{
+    max-width:1200px; margin:14px auto 0 auto; display:flex; gap:4px;
+    overflow-x:auto; overflow-y:hidden; scrollbar-width:none; -ms-overflow-style:none;
+    -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain;
+  }
+  nav.tabs::-webkit-scrollbar{ display:none; }
   nav.tabs.tabs-hidden{ visibility:hidden; pointer-events:none; }
+  /* Degradé en la punta por la que sigue habiendo pestañas (las clases las
+     pone updateTabsFade()): una pestaña cortada a la mitad ya sugiere que
+     hay más, pero el fundido lo hace obvio sin ocupar lugar. Son lados
+     FÍSICOS (izquierda/derecha), no lógicos: en hebreo la barra empieza
+     por la derecha y lo que sobra queda a la izquierda, y el cálculo en
+     JS mira dónde quedaron los botones de verdad. */
+  nav.tabs.more-right{ -webkit-mask-image:linear-gradient(to right, #000 calc(100% - 40px), transparent); mask-image:linear-gradient(to right, #000 calc(100% - 40px), transparent); }
+  nav.tabs.more-left{ -webkit-mask-image:linear-gradient(to left, #000 calc(100% - 40px), transparent); mask-image:linear-gradient(to left, #000 calc(100% - 40px), transparent); }
+  nav.tabs.more-left.more-right{ -webkit-mask-image:linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 40px), transparent); mask-image:linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 40px), transparent); }
   nav.tabs button{
     background:transparent; border:none; color:#bfe9ef; padding:10px 16px;
     font-weight:700; font-size:13.5px; cursor:pointer; border-bottom:3px solid transparent;
-    border-radius:8px 8px 0 0;
+    border-radius:8px 8px 0 0; flex:none; white-space:nowrap;
   }
   nav.tabs button.active{ color:#fff; border-bottom-color:var(--celeste); background:rgba(255,255,255,0.06); }
 
-  main{ flex:1; max-width:1200px; width:100%; margin:0 auto; padding:18px 16px 80px 16px; }
+  /* El padding de abajo es el AIRE para el botón flotante (+): el FAB
+     ocupa 80px desde el borde inferior en escritorio (56 de botón + 24 de
+     margen), y con 80px justos, al final de cualquier página el último
+     elemento —"Guardar cambios" de Administrar, la última fila del
+     calendario— quedaba exactamente debajo del botón. Con 112 hay 30px
+     de luz. Mientras se scrollea por el medio el FAB tapa lo que tenga
+     debajo, como cualquier botón flotante; lo que no puede pasar es que
+     algo quede INALCANZABLE, y con esto, al llegar al final, no queda. */
+  main{ flex:1; max-width:1200px; width:100%; margin:0 auto; padding:18px 16px 112px 16px; }
 
   /* ---------- Setup banner ---------- */
   .setup-banner{
@@ -692,6 +732,11 @@
   .post-meta{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
   .post-date{ font-size:12px; color:var(--text-muted); font-weight:600; }
   .post-content{ font-size:14.5px; line-height:1.55; white-space:pre-wrap; margin:8px 0 10px 0; }
+  /* Una URL pegada o una palabra sin espacios no cortaba y se salía de la
+     tarjeta (en mobile, 740px de texto en una caja de 330). "anywhere"
+     y no "break-word": el segundo no achica el ancho mínimo del
+     elemento, así que dentro de un flex/grid la caja seguía creciendo. */
+  .post-content, .reply-content, .post h3, .post-links a, .reply-links a, .post .hint, .post-date{ overflow-wrap:anywhere; }
   .post-scopes{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
   .post-scopes-head{ margin:0 0 0 auto; justify-content:flex-end; }
   .post-links{ display:flex; flex-direction:column; gap:4px; margin-bottom:10px; }
@@ -701,9 +746,13 @@
     width:92px; height:92px; object-fit:cover; border-radius:var(--radius-sm); cursor:pointer;
     border:1px solid var(--border);
   }
-  .post-actions{ display:flex; gap:14px; font-size:12.5px; }
+  /* flex-wrap: con "Cancelar evento" son cinco acciones y en 330px no
+     entran; sin envolver, la última se salía de la tarjeta y las otras
+     partían su texto ("Me / gusta") al achicarse. */
+  .post-actions{ display:flex; gap:2px 14px; font-size:12.5px; flex-wrap:wrap; }
   .post-actions button{
     background:none; border:none; color:var(--text-muted); font-weight:700; cursor:pointer; padding:4px 0;
+    white-space:nowrap;
   }
   .post-actions button:hover{ color:var(--celeste-dark); }
   .post-actions button.liked{ color:var(--celeste-dark); }
@@ -733,8 +782,8 @@
   .reply-images img{ width:70px; height:70px; object-fit:cover; border-radius:8px; cursor:pointer; border:1px solid var(--border); }
   .reply-links{ margin-top:6px; display:flex; flex-direction:column; gap:2px; }
   .reply-links a{ font-size:12px; }
-  .reply-actions{ display:flex; gap:14px; margin-top:8px; }
-  .reply-actions button{ background:none; border:none; padding:0; font-size:12px; font-weight:700; color:var(--text-muted); cursor:pointer; }
+  .reply-actions{ display:flex; gap:2px 14px; margin-top:8px; flex-wrap:wrap; }
+  .reply-actions button{ background:none; border:none; padding:0; font-size:12px; font-weight:700; color:var(--text-muted); cursor:pointer; white-space:nowrap; }
   .reply-actions button:hover{ color:var(--ink); }
   .reply-actions button.liked{ color:var(--celeste-dark); }
   .reply-children{ margin-top:10px; margin-inline-start:18px; padding-inline-start:12px; border-inline-start:2px solid var(--border); display:flex; flex-direction:column; gap:10px; }
@@ -1074,6 +1123,14 @@
      cuelga de ese mismo borde, o en pantallas angostas se saldría. */
   .cal-view-filter .filter-dropdown-panel{ inset-inline-start:auto; inset-inline-end:0; transform-origin:top right; }
   html[dir="rtl"] .cal-view-filter .filter-dropdown-panel{ transform-origin:top left; }
+  /* Si un desplegable se sale de la pantalla, fitDropdownPanels() lo
+     corre con `translate` los píxeles justos. En el celular pasaba con
+     dos: el menú de vistas del Calendario (la barra envuelve y "Mes ▾"
+     pasa a ser lo primero de la segunda línea, y el panel colgado del
+     borde de cierre se abría 120px fuera por la izquierda) y el filtro
+     de Zonas del Feed (320px de panel desde un botón que está en el
+     medio: se salía 87px por la derecha). Es `translate` y no
+     `transform`: la animación de apertura ya usa transform y lo pisaría. */
   .cal-view-item{
     display:flex; align-items:center; justify-content:space-between; gap:16px; width:100%;
     border:none; background:none; cursor:pointer; padding:9px 12px; border-radius:8px;
@@ -1177,15 +1234,31 @@
   .cal-more{ border:none; background:none; color:var(--text-muted); font-size:11px; font-weight:700; cursor:pointer; text-align:start; padding:1px 6px; }
   .cal-more:hover{ color:var(--celeste-dark); }
   .cal-grid{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow); overflow:hidden; }
-  .cal-grid-row{ display:flex; border-bottom:1px solid var(--border); }
+  /* overflow-x:hidden en las filas de encabezado y "todo el día": no
+     scrollean solas, las mueve el JS a la par del cuerpo (ver
+     afterRenderView). Solo importa en angosto, cuando las columnas
+     tienen ancho mínimo (--cal-colw) y la grilla es más ancha que la
+     tarjeta. */
+  .cal-grid-row{ display:flex; border-bottom:1px solid var(--border); overflow-x:hidden; }
   /* El área horaria scrollea y el encabezado no: sin este espaciador, la
      barra de scroll le come ~15px de ancho SOLO a las columnas de abajo y
      quedan corridas respecto de los días del encabezado. El ancho real de
      la barra se mide en afterRenderView (da 0 donde la scrollbar se
      superpone en vez de ocupar lugar, como en Mac). */
   .cal-grid-head::after, .cal-grid-allday::after{ content:""; flex:none; width:var(--cal-sbw, 0px); }
-  .cal-grid-cols{ flex:1; min-width:0; display:grid; grid-template-columns:repeat(var(--cal-cols), minmax(0,1fr)); }
-  .cal-gutter{ width:62px; flex:none; padding:4px 6px; text-align:end; font-size:10.5px; font-weight:700; color:var(--text-muted); }
+  /* --cal-colw: ancho mínimo de cada columna de día. En escritorio no
+     está definido (0) y las 7 columnas se reparten el ancho como siempre.
+     En un celular, 7 columnas en 330px daban 46px cada una: los eventos
+     quedaban reducidos al ícono y dos eventos solapados a una tira de
+     14px. Con 104px por columna la grilla se vuelve más ancha que la
+     tarjeta y scrollea de costado — como el calendario de Google en el
+     celular — con la columna de horas fija. */
+  .cal-grid-cols{ flex:1; min-width:calc(var(--cal-cols) * var(--cal-colw, 0px)); display:grid; grid-template-columns:repeat(var(--cal-cols), minmax(0,1fr)); }
+  .cal-gutter{
+    width:62px; flex:none; padding:4px 6px; text-align:end; font-size:10.5px; font-weight:700; color:var(--text-muted);
+    /* Fija al scrollear de costado: la referencia de la hora no se va. */
+    position:sticky; inset-inline-start:0; z-index:2; background:var(--card);
+  }
   .cal-gcol-head{ padding:8px 4px; text-align:center; border-inline-start:1px solid var(--border); }
   .cal-gcol-head .dow{ display:block; font-size:11px; font-weight:800; color:var(--text-muted); text-transform:uppercase; }
   .cal-gcol-head .dnum{ display:block; font-size:18px; font-weight:800; color:var(--ink-strong); }
@@ -1193,7 +1266,7 @@
   .cal-gcol-allday{ min-height:38px; padding:4px; display:flex; flex-direction:column; gap:3px; border-inline-start:1px solid var(--border); }
   .cal-gcol-allday[data-action]{ cursor:pointer; }
   .cal-gcol-allday[data-action]:hover{ background:var(--celeste-soft); }
-  .cal-grid-body{ display:flex; max-height:560px; overflow-y:auto; }
+  .cal-grid-body{ display:flex; max-height:560px; overflow:auto; }
   .cal-hours{ padding:0; }
   .cal-hour-label{ height:44px; padding-block-start:3px; padding-inline-end:6px; }
   .cal-gcol{ position:relative; border-inline-start:1px solid var(--border); }
@@ -1208,12 +1281,18 @@
   .cal-block.cancelled{ text-decoration:line-through; opacity:0.6; }
   .cal-block b{ font-weight:800; }
   @media (max-width:640px){
-    .cal-cell{ min-height:92px; padding:3px; }
-    .cal-week-bars{ inset-block-start:22px; grid-auto-rows:16px; padding:0 2px; }
-    .cal-bar{ font-size:10px; line-height:16px; padding:0 4px; }
+    /* 22 de cabecera + 4 carriles de 18 con 2 de separación + 2 = 102:
+       con 92 y carriles de 16 el cuarto carril ya se pasaba 2px. Los 18px
+       son también por el dedo: 16 era muy poco para acertarle a una barra. */
+    .cal-cell{ min-height:104px; padding:3px; }
+    .cal-week-bars{ inset-block-start:22px; grid-auto-rows:18px; padding:0 2px; }
+    .cal-bar{ font-size:10px; line-height:18px; padding:0 4px; }
     .cal-gutter{ width:44px; }
-    .cal-chip{ font-size:10.5px; padding:2px 4px; }
+    .cal-chip{ font-size:10.5px; padding:4px 5px; }
+    .agenda-events .cal-chip{ padding:7px 8px; }
+    .cal-more{ padding:3px 6px; }
     .cal-title{ font-size:13.5px; }
+    .cal-grid{ --cal-colw:104px; }
   }
   /* Círculos del mapa: SIEMPRE el mismo tamaño (el número adentro es lo
      que cambia, no el círculo) — antes el radio crecía con la cantidad de
@@ -1365,6 +1444,28 @@
   .btn-sync:disabled{ opacity:0.5; cursor:not-allowed; }
 
   footer.appfoot{ text-align:center; color:var(--text-muted); font-size:11.5px; padding:20px; }
+  /* ===== Mínimos tocables con el dedo (mobile) =====
+     Va al FINAL de la hoja a propósito: son reglas de la misma
+     especificidad que las base (.post-actions button, .year-month-name,
+     .modal .close…) y en CSS gana la última — puestas antes, las base las
+     pisaban y no aplicaban. Los botones de texto del posteo medían 14px
+     de alto (solo la línea, sin padding); la ✕ de los modales 26; el
+     lápiz del @nickname 18; los inputs de Administrar 23. Nada de esto
+     cambia el aspecto en escritorio, donde el mouse acierta igual. */
+  @media (max-width:640px){
+    .post-actions button{ padding:9px 0; min-height:36px; }
+    .reply-actions button{ padding:7px 0; min-height:32px; }
+    .translate-toggle{ padding:6px 0; min-height:30px; }
+    .modal .close{ width:40px; height:40px; top:8px; inset-inline-end:8px; display:flex; align-items:center; justify-content:center; }
+    .breadcrumb a{ display:inline-block; padding:7px 0; }
+    .year-month-name{ padding:7px 0 8px; }
+    .um-nickname-edit{ padding:8px; font-size:14px; }
+    .zone-rm{ width:32px; height:32px; line-height:32px; }
+    .zone-edit-row .rm{ width:28px; height:28px; line-height:28px; font-size:12px; }
+    .zone-bar .zone-swatch{ width:28px; height:28px; border-radius:8px; }
+    .zone-name, .color-hex, .tipo-icon-input, .zone-label-input{ padding-block:7px; }
+    input[type=checkbox][data-action]{ width:20px; min-width:20px; height:20px; }
+  }
 </style>
 </head>
 <body>
@@ -5533,6 +5634,7 @@ function renderPreferenciasView(){
 // innerHTML entero, y volver a saltar a las 7 cada vez que llega una
 // respuesta sacaría a la persona de donde estaba mirando.
 let calGridScroll = null;
+let calGridScrollX = null; // posición horizontal de la grilla en angosto (ver afterRenderView); null = todavía no se movió
 // Alto real del header sticky, para que el composer de Rutina se pegue justo
 // abajo. Se recalcula en cada render y al cambiar el tamaño: el header crece
 // cuando las solapas pasan a dos líneas, y con un valor fijo el composer
@@ -5543,8 +5645,60 @@ function syncHeaderHeight(){
   document.documentElement.style.setProperty("--header-h", header.offsetHeight + "px");
 }
 window.addEventListener("resize", syncHeaderHeight);
+// Pestañas en pantallas angostas (ver nav.tabs en el CSS): traer la activa
+// a la vista —si no, cambiar de solapa desde la campanita o el menú dejaba
+// la barra mostrando otras— y marcar por qué lado sigue habiendo pestañas.
+// scrollLeft con += y no con scrollIntoView: el segundo puede mover la
+// página entera en vertical, y acá solo tiene que moverse la barra.
+function syncTabsScroll(){
+  const nav = tabsNav;
+  if(!nav) return;
+  const active = nav.querySelector("button.active");
+  if(active){
+    const nr = nav.getBoundingClientRect(), r = active.getBoundingClientRect();
+    if(r.left < nr.left) nav.scrollLeft += r.left - nr.left - 12;
+    else if(r.right > nr.right) nav.scrollLeft += r.right - nr.right + 12;
+  }
+  updateTabsFade();
+}
+function updateTabsFade(){
+  const nav = tabsNav;
+  if(!nav) return;
+  const btns = [...nav.querySelectorAll("button")].filter(b=>!b.hidden);
+  if(!btns.length) return;
+  const nr = nav.getBoundingClientRect();
+  const left = Math.min(...btns.map(b=>b.getBoundingClientRect().left));
+  const right = Math.max(...btns.map(b=>b.getBoundingClientRect().right));
+  nav.classList.toggle("more-left", left < nr.left - 1);
+  nav.classList.toggle("more-right", right > nr.right + 1);
+}
+tabsNav.addEventListener("scroll", updateTabsFade, { passive:true });
+window.addEventListener("resize", updateTabsFade);
+
+// Cualquier desplegable (filtros de Actividades/Zonas, selector de vista
+// del Calendario) que quede fuera de la pantalla se corre lo justo para
+// que entre, con 8px de margen. Corre en el mismo tick que el innerHTML,
+// antes de pintar, así que no hay parpadeo. Se mide con la animación de
+// apertura apagada: arranca en scale(.85) y medirla en su primer cuadro
+// daba una caja más chica que la real — con eso el filtro de Zonas
+// "entraba" en la cuenta y seguía saliéndose en la pantalla.
+function fitDropdownPanels(){
+  const m = 8, vw = document.documentElement.clientWidth;
+  document.querySelectorAll(".filter-dropdown-panel").forEach(panel=>{
+    panel.style.translate = "";
+    panel.style.animation = "none";
+    const r = panel.getBoundingClientRect();
+    panel.style.animation = "";
+    let shift = 0;
+    if(r.right > vw - m) shift = (vw - m) - r.right;
+    if(r.left + shift < m) shift = m - r.left;
+    if(shift) panel.style.translate = `${Math.round(shift)}px 0`;
+  });
+}
 function afterRenderView(){
   syncHeaderHeight();
+  syncTabsScroll();
+  fitDropdownPanels();
   if(state.view === "paises" && state.paisesSubview === "mapa" && !CONFIG_IS_PLACEHOLDER){
     initOrUpdateMap();
   }
@@ -5553,12 +5707,36 @@ function afterRenderView(){
     const body = document.getElementById("calGridBody");
     if(body){
       body.scrollTop = calGridScroll == null ? Math.round(body.scrollHeight * 7 / 24) : calGridScroll;
-      body.addEventListener("scroll", ()=>{ calGridScroll = body.scrollTop; }, { passive:true });
       // Ancho real de la barra de scroll, para que el encabezado y la banda
       // de "todo el día" reserven el mismo lugar y las columnas no queden
       // corridas (ver .cal-grid-head::after en el CSS).
       const grid = body.closest(".cal-grid");
       if(grid) grid.style.setProperty("--cal-sbw", (body.offsetWidth - body.clientWidth) + "px");
+      // En angosto la grilla es más ancha que la tarjeta y el cuerpo
+      // scrollea de costado (ver --cal-colw): el encabezado y la banda de
+      // "todo el día" tienen que seguirlo, si no los días quedan corridos
+      // respecto de las columnas. Se recuerda también la posición
+      // horizontal, para que un re-render no vuelva al domingo.
+      const rows = grid ? [...grid.querySelectorAll(".cal-grid-row")] : [];
+      const followX = ()=>{ rows.forEach(r=>{ r.scrollLeft = body.scrollLeft; }); };
+      if(calGridScrollX != null){
+        body.scrollLeft = calGridScrollX;
+      } else {
+        // Primera vez: si la semana es la actual, arrancar mostrando HOY y
+        // no el domingo — en un celular solo entran 3 columnas, y abrir el
+        // calendario para ver "qué hay hoy" y tener que scrollear hasta el
+        // sábado era lo primero que molestaba. La columna de horas es
+        // sticky y tapa el margen izquierdo, por eso se descuenta su ancho.
+        const today = grid ? grid.querySelector(".cal-gcol-head.today") : null;
+        const gutter = grid ? grid.querySelector(".cal-grid-head .cal-gutter") : null;
+        if(today && gutter){
+          const br = body.getBoundingClientRect(), tr = today.getBoundingClientRect(), gw = gutter.getBoundingClientRect().width;
+          if(tr.right > br.right) body.scrollLeft += tr.right - br.right;
+          else if(tr.left < br.left + gw) body.scrollLeft -= (br.left + gw) - tr.left;
+        }
+      }
+      followX();
+      body.addEventListener("scroll", ()=>{ calGridScroll = body.scrollTop; calGridScrollX = body.scrollLeft; followX(); }, { passive:true });
     }
   }
 }
