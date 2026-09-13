@@ -1101,6 +1101,21 @@
   .btn-primary{ background:var(--petroleo); color:#fff; border:none; padding:11px 20px; border-radius:999px; font-weight:700; font-size:13.5px; cursor:pointer; }
   .btn-primary:disabled{ opacity:0.5; cursor:not-allowed; }
   .form-error{ color:var(--danger); font-size:12.5px; margin-top:6px; }
+  /* Campo "importante" (ID del calendario): bloqueado hasta que se pida
+     editarlo, y guardar un cambio real exige escribir una palabra al azar. */
+  .locked-field{ display:flex; gap:8px; align-items:center; }
+  .locked-field input{ flex:1; min-width:0; }
+  .locked-field input[readonly]{ background:var(--surface-alt); color:var(--text-muted); cursor:not-allowed; }
+  .btn-unlock{ flex:none; white-space:nowrap; }
+  .confirm-box{
+    margin-top:14px; padding:12px 14px; border:1px solid var(--danger); border-radius:var(--radius-sm);
+    background:color-mix(in srgb, var(--danger) 8%, var(--card)); font-size:13px; color:var(--ink); line-height:1.5;
+  }
+  .confirm-box b{ font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:15px; letter-spacing:.5px; color:var(--danger); }
+  .confirm-box input{
+    display:block; margin-top:8px; width:100%; max-width:260px; padding:10px 12px; font-size:14px;
+    border-radius:var(--radius-sm); border:1.5px solid var(--danger); background:var(--card); color:var(--ink);
+  }
   .hint{ font-size:11.5px; color:var(--text-muted); margin-top:4px; }
 
   /* ---------- Paises view ---------- */
@@ -5724,6 +5739,24 @@ function getTiposDraft(){
 function countPostsByType(key){
   return state.posts.filter(p=>p.activityType===key).length;
 }
+// "Por qué acá figuran 42 en total si hay 46": la cuenta de arriba es
+// solo por tipo de Evento. Las Rutinas van aparte, y puede haber posteos
+// con un tipo que se borró. Se dice abajo de la lista, con números.
+function tiposFootnote(d){
+  const keys = new Set(d.types.map(x=>x.key));
+  const rutinas = countPostsByType("rutina");
+  const huerfanos = state.posts.filter(p=> p.activityType !== "rutina" && !keys.has(p.activityType));
+  const parts = [];
+  parts.push(t("{n} posteos en total.","{n} posts in total.","{n} postagens no total.","{n} פוסטים בסך הכול.",{n:state.posts.length}));
+  if(rutinas) parts.push(rutinas === 1
+    ? t("1 es Rutina (no se cuenta acá).","1 is a Routine (not counted here).","1 é Rotina (não conta aqui).","1 הוא שגרה (לא נספר כאן).")
+    : t("{n} son Rutinas (no se cuentan acá).","{n} are Routines (not counted here).","{n} são Rotinas (não contam aqui).","{n} הם שגרות (לא נספרים כאן).",{n:rutinas}));
+  if(huerfanos.length){
+    const raw = [...new Set(huerfanos.map(p=>String(p.activityType||"—")))].join(", ");
+    parts.push(t("{n} tienen un tipo que ya no existe ({k}): editalos para asignarles uno.","{n} have a type that no longer exists ({k}): edit them to assign one.","{n} têm um tipo que já não existe ({k}): edite-os para atribuir um.","ל-{n} יש סוג שכבר לא קיים ({k}): ערכו אותם כדי להקצות סוג.",{n:huerfanos.length, k:esc(raw)}));
+  }
+  return `<div class="hint" style="margin-top:10px;">${parts.join(" ")}</div>`;
+}
 function renderTiposSection(){
   const d = getTiposDraft();
   return `
@@ -5749,7 +5782,8 @@ function renderTiposSection(){
           </div>`;
         }).join("")}
       </div>
-      <div class="zone-add-row">
+      ${tiposFootnote(d)}
+      <div class="zone-add-row" style="margin-top:18px;">
         <input type="text" id="tiposNewIcon" placeholder="${esc(t("Ícono","Icon","Ícone","סמל"))}" maxlength="4" value="${esc(d.newIcon)}" style="max-width:64px;flex:none;">
         <input type="text" id="tiposNewLabel" placeholder="${esc(t("Nombre del tipo nuevo (ej: Taller)","Name of the new type (e.g. Workshop)","Nome do tipo novo (ex: Oficina)","שם הסוג החדש (למשל: סדנה)"))}" maxlength="30" value="${esc(d.newLabel)}">
         <button type="button" class="btn-mini" data-action="tipos-add">+ ${t("Agregar tipo","Add type","Adicionar tipo","הוספת סוג")}</button>
@@ -5805,7 +5839,22 @@ function renderLugaresSection(){
 }
 
 /* ----- Preferencias: sección "Calendar" ----- */
-function newCalendarDraft(){ return { calendarId: CALENDAR_ID, error:"", saving:false }; }
+// El ID arranca BLOQUEADO (solo lectura) y guardar un cambio real pide
+// escribir una palabra al azar que da el sistema: cambiar el calendario
+// es de las pocas cosas de la app que pueden hacer daño de verdad (los
+// eventos nuevos pasan a otro calendario y el sync token se resetea), y
+// un click de más no tiene que alcanzar.
+const CONFIRM_WORDS = {
+  es: ["torta","nube","faro","llave","piano","limón","cometa","brújula","sandía","tambor"],
+  en: ["cake","cloud","lighthouse","key","piano","lemon","kite","compass","melon","drum"],
+  pt: ["bolo","nuvem","farol","chave","piano","limão","pipa","bússola","melancia","tambor"],
+  he: ["עוגה","ענן","מגדלור","מפתח","פסנתר","לימון","עפיפון","מצפן","אבטיח","תוף"],
+};
+function randomConfirmWord(){
+  const list = CONFIRM_WORDS[currentLang()] || CONFIRM_WORDS.es;
+  return list[Math.floor(Math.random() * list.length)];
+}
+function newCalendarDraft(){ return { calendarId: CALENDAR_ID, error:"", saving:false, locked:true, confirmWord:null, typed:"" }; }
 let calendarDraft = null;
 function getCalendarDraft(){
   if(!calendarDraft) calendarDraft = newCalendarDraft();
@@ -5824,13 +5873,23 @@ function renderCalendarSection(){
       </div>
       <div class="field">
         <label>${t("ID del calendario","Calendar ID","ID do calendário","מזהה היומן")}</label>
-        <input type="text" id="calendarIdInput" value="${esc(d.calendarId)}" placeholder="xxxx@group.calendar.google.com">
+        <div class="locked-field">
+          <input type="text" id="calendarIdInput" value="${esc(d.calendarId)}" placeholder="xxxx@group.calendar.google.com" ${d.locked ? "readonly" : ""} aria-describedby="calendarIdHint">
+          ${d.locked ? `<button type="button" class="btn-secondary btn-unlock" data-action="calendar-unlock">🔒 ${t("Desbloquear","Unlock","Desbloquear","שחרור נעילה")}</button>` : ""}
+        </div>
+        <div class="hint" id="calendarIdHint">${d.locked
+          ? t("Bloqueado para evitar cambios por error. Desbloquealo solo si de verdad hay que cambiar de calendario.","Locked to prevent accidental changes. Unlock it only if the calendar really has to change.","Bloqueado para evitar mudanças por engano. Desbloqueie só se realmente for preciso trocar de calendário.","נעול כדי למנוע שינויים בטעות. שחרר/י רק אם באמת צריך להחליף יומן.")
+          : t("⚠️ Cuidado: los eventos nuevos y los editados van a ir al calendario que quede acá.","⚠️ Careful: new and edited events will go to whatever calendar ends up here.","⚠️ Cuidado: os eventos novos e editados vão para o calendário que ficar aqui.","⚠️ זהירות: אירועים חדשים ונערכים יעברו ליומן שיישאר כאן.")}</div>
       </div>
+      ${d.confirmWord ? `<div class="confirm-box" role="alert">
+        ${t("Vas a cambiar el calendario del equipo. Para confirmar, escribí la palabra","You're about to change the team calendar. To confirm, type the word","Você vai trocar o calendário da equipe. Para confirmar, escreva a palavra","את/ה עומד/ת להחליף את יומן הצוות. לאישור, הקלד/י את המילה")} <b>${esc(d.confirmWord)}</b>
+        <input type="text" id="calendarConfirmInput" value="${esc(d.typed)}" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="${esc(t("Palabra de confirmación","Confirmation word","Palavra de confirmação","מילת אישור"))}">
+      </div>` : ""}
       ${d.error ? `<div class="form-error">${esc(d.error)}</div>` : ""}
-      <div class="modal-actions" style="margin-top:16px;">
+      ${d.locked ? "" : `<div class="modal-actions" style="margin-top:16px;">
         <button type="button" class="btn-secondary" data-action="calendar-reset">${t("Descartar cambios","Discard changes","Descartar alterações","ביטול השינויים")}</button>
-        <button type="button" class="btn-primary" data-action="calendar-save" ${d.saving?"disabled":""}>${d.saving ? t("Guardando…","Saving…","Salvando…","...שומר") : t("Guardar cambios","Save changes","Salvar alterações","שמירת השינויים")}</button>
-      </div>`;
+        <button type="button" class="btn-primary" data-action="calendar-save" ${d.saving || (d.confirmWord && d.typed.trim().toLowerCase() !== d.confirmWord.toLowerCase()) ? "disabled" : ""}>${d.saving ? t("Guardando…","Saving…","Salvando…","...שומר") : d.confirmWord ? t("Confirmar y guardar","Confirm and save","Confirmar e salvar","אישור ושמירה") : t("Guardar cambios","Save changes","Salvar alterações","שמירת השינויים")}</button>
+      </div>`}`;
 }
 
 /* ----- Preferencias: sección "Adjuntos" ----- */
@@ -9442,6 +9501,17 @@ document.addEventListener("click", e=>{
     const d = getTiposDraft();
     const label = d.newLabel.trim();
     if(!label){ d.error = t("Escribí un nombre para el tipo nuevo.","Type a name for the new type.","Escreva um nome para o tipo novo.",".הקלד/י שם לסוג החדש"); render(); return; }
+    // Ni un tipo que ya existe (mismo nombre, sin importar mayúsculas ni
+    // acentos) ni "Rutina", que es aparte y no se edita acá.
+    const norm = normalize(label);
+    const rutinaNames = Object.values(DEFAULT_ACTIVITY_LABELS.rutina).map(normalize);
+    if(rutinaNames.includes(norm) || norm === "rutina"){
+      d.error = t("Rutina es un tipo aparte y no se puede agregar acá.","Routine is a separate type and can't be added here.","Rotina é um tipo à parte e não pode ser adicionado aqui.","שגרה היא סוג נפרד ואי אפשר להוסיף אותה כאן."); render(); return;
+    }
+    const dup = d.types.find(x=> normalize(x.label) === norm || x.key === norm);
+    if(dup){
+      d.error = t("Ya existe el tipo «{n}».","The type “{n}” already exists.","O tipo «{n}» já existe.","הסוג «{n}» כבר קיים.",{n:dup.label}); render(); return;
+    }
     const key = slugifyKey(label, d.types.map(x=>x.key));
     d.types.push({ key, label, icon: d.newIcon.trim() || "✨", calendarSync:true });
     d.newLabel = ""; d.newIcon = ""; d.error = "";
@@ -9451,6 +9521,16 @@ document.addEventListener("click", e=>{
   } else if(action === "tipos-save"){
     const d = getTiposDraft();
     if(!d.types.length){ d.error = t("Tiene que quedar al menos un tipo de actividad.","At least one activity type has to remain.","Tem que sobrar pelo menos um tipo de atividade.",".חייב להישאר לפחות סוג פעילות אחד"); render(); return; }
+    // Mismo control que al agregar, pero sobre los renombres: dos tipos
+    // con el mismo nombre, o uno llamado "Rutina", no se guardan.
+    const seen = new Set(); const rutinaNames = Object.values(DEFAULT_ACTIVITY_LABELS.rutina).map(normalize);
+    for(const ty of d.types){
+      const n = normalize(ty.label);
+      if(!n){ d.error = t("Hay un tipo sin nombre.","There's a type without a name.","Há um tipo sem nome.","יש סוג ללא שם."); render(); return; }
+      if(rutinaNames.includes(n) || n === "rutina"){ d.error = t("Ningún tipo puede llamarse Rutina: es aparte.","No type can be called Routine: it's separate.","Nenhum tipo pode se chamar Rotina: é à parte.","אף סוג לא יכול להיקרא שגרה: היא נפרדת."); render(); return; }
+      if(seen.has(n)){ d.error = t("Hay dos tipos con el nombre «{n}».","There are two types named “{n}”.","Há dois tipos com o nome «{n}».","יש שני סוגים בשם «{n}».",{n:ty.label}); render(); return; }
+      seen.add(n);
+    }
     d.saving = true; d.error = ""; render();
     fb.setDoc(fb.doc(db,"meta","preferences"), { activityTypes: d.types }, { merge:true }).then(()=>{
       d.saving = false; render();
@@ -9462,12 +9542,28 @@ document.addEventListener("click", e=>{
     promoteCustomCity(el.dataset.country, el.dataset.city).then(render).catch(err=>{
       console.error(err); alert(t("No se pudo sumar el lugar: {msg}","Couldn't add the place: {msg}","Não foi possível somar o lugar: {msg}","{msg} :לא ניתן היה להוסיף את המקום",{msg:err.message}));
     });
+  } else if(action === "calendar-unlock"){
+    const d = getCalendarDraft();
+    d.locked = false; render();
+    const inp = document.getElementById("calendarIdInput");
+    if(inp && !isTouchDevice()){ inp.focus(); inp.select(); }
   } else if(action === "calendar-reset"){
-    calendarDraft = null; render();
+    calendarDraft = null; render(); // vuelve bloqueado
   } else if(action === "calendar-save"){
     const d = getCalendarDraft();
     const id = d.calendarId.trim();
     if(!id){ d.error = t("Escribí el ID del calendario.","Type the calendar ID.","Escreva o ID do calendário.",".הקלד/י את מזהה היומן"); render(); return; }
+    // Sin cambio real no hay nada que confirmar: se vuelve a bloquear.
+    if(id === CALENDAR_ID){ calendarDraft = null; render(); return; }
+    // Primer click: se pide la palabra. Segundo click (con la palabra
+    // bien escrita, si no el botón está deshabilitado): se guarda.
+    if(!d.confirmWord){
+      d.confirmWord = randomConfirmWord(); d.typed = ""; d.error = ""; render();
+      const inp = document.getElementById("calendarConfirmInput");
+      if(inp && !isTouchDevice()) inp.focus();
+      return;
+    }
+    if(d.typed.trim().toLowerCase() !== d.confirmWord.toLowerCase()){ render(); return; }
     d.saving = true; d.error = ""; render();
     // El syncToken es de UN calendario: con el ID nuevo, el token viejo
     // devuelve 400 "Invalid sync token" (no 410) y el sync quedaba muerto
@@ -9475,7 +9571,10 @@ document.addEventListener("click", e=>{
     fb.setDoc(fb.doc(db,"meta","preferences"), { calendarId: id }, { merge:true })
       .then(()=> id !== CALENDAR_ID ? setSyncMeta({ syncToken: null }) : null)
       .then(()=>{
-      d.saving = false; render();
+      // Guardado: el campo vuelve a quedar bloqueado con el ID nuevo
+      // (el snapshot de preferences ya actualizó CALENDAR_ID).
+      calendarDraft = null; render();
+      showCalendarNotice({ ok:true, message: t("Calendario cambiado. Los eventos nuevos van a ir ahí.","Calendar changed. New events will go there.","Calendário trocado. Os eventos novos vão para lá.","היומן הוחלף. אירועים חדשים יעברו לשם.") });
     }).catch(err=>{
       console.error(err);
       d.saving = false; d.error = t("No se pudo guardar: {msg}","Couldn't save: {msg}","Não foi possível salvar: {msg}","{msg} :השמירה נכשלה",{msg:err.message}); render();
@@ -9591,7 +9690,14 @@ document.addEventListener("input", e=>{
   }
   else if(el.id === "tiposNewIcon"){ getTiposDraft().newIcon = el.value; }
   else if(el.id === "tiposNewLabel"){ getTiposDraft().newLabel = el.value; }
-  else if(el.id === "calendarIdInput"){ getCalendarDraft().calendarId = el.value; }
+  else if(el.id === "calendarIdInput"){ const d = getCalendarDraft(); if(!d.locked){ d.calendarId = el.value; if(d.confirmWord){ d.confirmWord = null; d.typed = ""; render(); const inp = document.getElementById("calendarIdInput"); if(inp){ inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); } } } }
+  else if(el.id === "calendarConfirmInput"){
+    // Solo se re-renderiza cuando cambia si el botón debe habilitarse,
+    // para no perder el foco a cada tecla.
+    const d = getCalendarDraft(); const before = d.typed.trim().toLowerCase() === (d.confirmWord||"").toLowerCase();
+    d.typed = el.value; const after = d.typed.trim().toLowerCase() === (d.confirmWord||"").toLowerCase();
+    if(before !== after){ render(); const inp = document.getElementById("calendarConfirmInput"); if(inp){ inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); } }
+  }
   else if(el.id === "adjMaxImages"){ getAdjuntosDraft().maxImages = el.value; }
   else if(el.id === "adjMaxFiles"){ getAdjuntosDraft().maxFiles = el.value; }
   else if(el.id === "adjMaxFileKB"){ getAdjuntosDraft().maxFileKB = el.value; }
