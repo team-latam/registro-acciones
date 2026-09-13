@@ -483,6 +483,38 @@ Detalles que importan al tocarla:
   repetidos dos veces. Cruzando meses van los dos completos.
 - El chip de alcance ya trae su propio 📍 adentro, por eso la fila usa 🌎:
   si no, quedaban dos pines pegados.
+- **`#eventCardOverlay` va en `z-index:99`, un escalón por debajo del resto
+  de los overlays.** Desde la tarjeta se puede clickear un participante, y
+  su ficha tiene que abrirse adelante. Todos los `.modal-overlay` comparten
+  `z-index:100`, así que sin eso mandaba el orden del DOM y ganaba la
+  tarjeta (que se agregó después). La tarjeta nunca se abre encima de otro
+  modal, así que bajarla no tapa nada.
+
+#### El prefijo "Tipo: " del summary (y el bug de "Visita: Visita: …")
+
+La app manda a Calendar el summary como `"Tipo: Título"`
+(`calendarSummary()`), y al leer de vuelta lo saca
+(`extractTitleFromSummary()`). El problema estaba en el camino de
+**importación**: un evento de Calendar que no queda vinculado a ningún
+posteo se guardaba con `ev.summary` **crudo**, prefijo incluido. El posteo
+pasaba a llamarse "Visita: Quintana Roo", y como al sincronizarlo la app
+vuelve a anteponer el tipo, en Calendar terminaba "Visita: Visita: Quintana
+Roo" — **un prefijo más por vuelta**.
+
+Se arregla en las dos puntas:
+
+- `importedTypeAndTitle(ev)` saca el prefijo al importar, y de paso deduce
+  el tipo: primero por `extendedProperties.private.raActivityType` (la KEY
+  que la app pega a cada evento que crea, inmune al idioma y a que el admin
+  renombre el tipo — se escribía desde siempre y no la leía nadie), y si no
+  está, por el texto del prefijo. Un evento escrito a mano en Calendar como
+  "Curso: Kashrut" entra ahora como Curso, no como "Otro".
+- `calendarSummary()` no antepone el prefijo si el título **ya** arranca con
+  él. No repara los títulos que quedaron mal guardados —eso se edita a
+  mano— pero corta el crecimiento.
+
+`summaryMatchesPost()` contempla las dos formas (con y sin prefijo) para
+que el emparejado de eventos huérfanos siga funcionando en los dos casos.
 
 ### Popups de Google: token silencioso con GIS, y popup solo donde se anuncia
 
