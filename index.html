@@ -478,12 +478,39 @@
   .zone-swatch input[type=color]{ position:absolute; inset:0; width:100%; height:100%; padding:0; border:none; cursor:pointer; opacity:0; }
   /* Muestra + hexadecimal escribible. El campo va siempre en LTR aunque la
      página esté en hebreo: "#b89ef0" no es texto, es un código. */
-  .color-control{ display:flex; align-items:center; gap:8px; flex:none; }
+  /* La paleta y el RGB son el selector nativo del navegador, y ahí no se
+     puede meter nada. Lo que sí: el HEX ya no es una cajita suelta al lado
+     del color, sino que vive en un panel que se abre al tocar la muestra,
+     junto con el botón que abre la paleta. */
+  .color-control{ position:relative; display:flex; align-items:center; flex:none; }
+  .color-btn{
+    display:flex; align-items:center; gap:7px; padding:3px 8px 3px 3px; border:1px solid var(--border);
+    border-radius:999px; background:var(--card); cursor:pointer; font-family:inherit; color:var(--ink);
+  }
+  .color-btn:hover, .color-control.open .color-btn{ border-color:var(--celeste-dark); }
+  .color-btn:focus-visible{ outline:none; box-shadow:0 0 0 3px var(--celeste-soft); }
+  .color-btn .zone-swatch{ cursor:pointer; }
+  .color-btn-hex{ font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:12px; direction:ltr; }
+  .color-pop{
+    position:absolute; top:calc(100% + 6px); inset-inline-start:0; z-index:40; min-width:240px;
+    background:var(--card); border:1px solid var(--border); border-radius:var(--radius-sm);
+    box-shadow:0 12px 32px rgba(0,0,0,0.18); padding:10px; display:flex; flex-direction:column; gap:8px;
+  }
+  .color-pop[hidden]{ display:none; }
+  .color-pop-native{
+    display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:var(--radius-sm);
+    border:1px solid var(--border); background:var(--surface-soft); cursor:pointer; font-size:13px; font-weight:700;
+    color:var(--ink); position:relative; overflow:hidden; white-space:nowrap;
+  }
+  .color-pop-native:hover{ border-color:var(--celeste-dark); }
+  .color-pop-native input[type=color]{ position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer; border:none; padding:0; }
+  .color-pop-native .zone-swatch{ width:18px; height:18px; }
+  .color-pop-hex{ display:flex; align-items:center; gap:8px; font-size:11.5px; font-weight:700; color:var(--text-muted); letter-spacing:.4px; }
   .color-hex{
-    width:84px; flex:none; direction:ltr; text-align:center; text-transform:lowercase;
-    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:12.5px;
-    padding:5px 6px; border:1px solid var(--border); border-radius:var(--radius-sm);
-    background:var(--card); color:var(--ink-strong);
+    flex:1; min-width:0; direction:ltr; text-align:center; text-transform:lowercase;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:13px;
+    padding:7px 8px; border:1px solid var(--border); border-radius:var(--radius-sm);
+    background:var(--surface-soft); color:var(--ink-strong);
   }
   .color-hex:hover{ border-color:var(--celeste-dark); }
   .color-hex:focus{ outline:none; border-color:var(--celeste-dark); box-shadow:0 0 0 3px var(--celeste-soft); }
@@ -2317,13 +2344,31 @@ function normalizeHex(raw){
 function colorControl(value, attrs, ariaLabel){
   const hex = safeColor(value);
   return `<div class="color-control">
-      <label class="zone-swatch" style="background:${hex}" title="${esc(t("Cambiar color","Change color","Trocar cor","שינוי צבע"))}">
-        <input type="color" ${attrs} value="${hex}" aria-label="${esc(ariaLabel)}">
-      </label>
-      <input type="text" class="color-hex" dir="ltr" spellcheck="false" autocapitalize="off"
-             ${attrs} data-color-hex value="${hex}" maxlength="7" size="7"
-             aria-label="${esc(t("Código hexadecimal de {x}","Hex code for {x}","Código hexadecimal de {x}","קוד הקסדצימלי של {x}",{x:ariaLabel}))}">
+      <button type="button" class="color-btn" data-action="color-open" aria-haspopup="dialog" aria-expanded="false"
+              aria-label="${esc(t("Cambiar color de {x}","Change color of {x}","Trocar cor de {x}","שינוי צבע של {x}",{x:ariaLabel}))}">
+        <span class="zone-swatch" style="background:${hex}"></span><span class="color-btn-hex">${hex}</span>
+      </button>
+      <div class="color-pop" hidden role="dialog" aria-label="${esc(ariaLabel)}">
+        <label class="color-pop-native">
+          <span class="zone-swatch" style="background:${hex}"></span>
+          <span>🎨 ${t("Elegir en la paleta","Pick from the palette","Escolher na paleta","בחירה מהפלטה")}</span>
+          <input type="color" ${attrs} value="${hex}" aria-label="${esc(ariaLabel)}">
+        </label>
+        <label class="color-pop-hex"><span>HEX</span>
+          <input type="text" class="color-hex" dir="ltr" spellcheck="false" autocapitalize="off"
+                 ${attrs} data-color-hex value="${hex}" maxlength="7" size="7"
+                 aria-label="${esc(t("Código hexadecimal de {x}","Hex code for {x}","Código hexadecimal de {x}","קוד הקסדצימלי של {x}",{x:ariaLabel}))}">
+        </label>
+      </div>
     </div>`;
+}
+function closeColorPops(except){
+  document.querySelectorAll(".color-control.open").forEach(c=>{
+    if(c === except) return;
+    c.classList.remove("open");
+    const pop = c.querySelector(".color-pop"); if(pop) pop.hidden = true;
+    const btn = c.querySelector(".color-btn"); if(btn) btn.setAttribute("aria-expanded","false");
+  });
 }
 function hexToRgb(c){
   const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(String(c||""));
@@ -8702,6 +8747,7 @@ document.addEventListener("keydown", e=>{
   // Un Escape por vez, de adentro hacia afuera: primero el lightbox; si
   // hay un desplegable abierto en el composer (lugar, @mención,
   // participante), lo cierra su propio manejador y el modal se queda.
+  if(document.querySelector(".color-control.open")){ closeColorPops(); return; }
   if(lightbox.classList.contains("show")){ closeLightbox(); return; }
   if(!filePreviewOverlay.hidden){ closeFilePreview(); return; }
   if(!userProfileOverlay.hidden){ closeUserProfile(); return; }
@@ -9113,6 +9159,7 @@ document.addEventListener("keydown", e=>{
 });
 
 document.addEventListener("click", e=>{
+  if(!e.target.closest(".color-control")) closeColorPops();
   if(userMenuOpen && !e.target.closest("#userBadge")){
     userMenuOpen = false; nicknameEditing = false; nicknameError = null; render();
   }
@@ -9549,6 +9596,14 @@ document.addEventListener("click", e=>{
     promoteCustomCity(el.dataset.country, el.dataset.city).then(render).catch(err=>{
       console.error(err); alert(t("No se pudo sumar el lugar: {msg}","Couldn't add the place: {msg}","Não foi possível somar o lugar: {msg}","{msg} :לא ניתן היה להוסיף את המקום",{msg:err.message}));
     });
+  } else if(action === "color-open"){
+    const c = el.closest(".color-control");
+    const abrir = !c.classList.contains("open");
+    closeColorPops(c);
+    c.classList.toggle("open", abrir);
+    c.querySelector(".color-pop").hidden = !abrir;
+    el.setAttribute("aria-expanded", String(abrir));
+    if(abrir && !isTouchDevice()){ const hx = c.querySelector(".color-hex"); if(hx){ hx.focus(); hx.select(); } }
   } else if(action === "calendar-unlock"){
     const d = getCalendarDraft();
     d.locked = false; render();

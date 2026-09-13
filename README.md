@@ -1294,6 +1294,19 @@ aparte, no se cuentan por tipo) y cuántos tienen un tipo que ya no
 existe: la suma de las filas no es el total del Registro, y eso ya
 generó la pregunta "¿por qué figuran 42 si hay 46?".
 
+### Color: la muestra abre un panel con la paleta y el HEX
+
+La paleta y el RGB son el selector nativo del navegador (`<input
+type="color">`) y ahí no se puede meter nada. Por eso el HEX no es una
+cajita suelta al lado del color: la muestra es un botón (`.color-btn`,
+con el hex escrito al lado) que abre un panel (`.color-pop`) con dos
+cosas: "Elegir en la paleta", que abre el selector nativo, y el campo
+HEX. `colorControl()` arma todo; `closeColorPops()` cierra; se cierra con
+Escape (primero en la cadena), con un click afuera, o al abrir otro. En
+escritorio el foco va al HEX al abrir; en táctil no (misma regla que los
+formularios). Cualquier cambio re-renderiza y por lo tanto cierra el
+panel: elegir un color es un gesto de una vez.
+
 ### Flechas de navegación: una sola familia
 
 Las flechas circulares de la app (subir, anterior/siguiente en el visor
