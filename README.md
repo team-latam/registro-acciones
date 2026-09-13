@@ -1310,6 +1310,16 @@ escritorio el foco va al HEX al abrir; en táctil no (misma regla que los
 formularios). Cualquier cambio re-renderiza y por lo tanto cierra el
 panel: elegir un color es un gesto de una vez.
 
+### "Publicado hace 17 min por @benny"
+
+La línea de cada tarjeta ya no dice "🕐 22:37 · Creado por @benny" (una
+hora sin día no dice mucho) sino "· Publicado hace 17 min por @benny",
+con `timeAgo(createdAt)`: recién / hace N min / hace N horas (hasta 24)
+/ hace N días / meses / años. Al pasar por arriba, el `title` muestra
+el día y la hora exactos (`fmtDateTime`). Las etiquetas envejecen: un
+`setInterval` de un minuto las refresca en el lugar por `data-ts`, sin
+re-renderizar. Sin `createdAt` (posteos muy viejos) queda "Creado por".
+
 ### Orden "Reciente": por momento de publicación, con o sin destacados
 
 Antes solo el ÚLTIMO publicado subía arriba y el resto iba por fecha del
