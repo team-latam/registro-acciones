@@ -5729,7 +5729,7 @@ function renderAuditoriaView(){
           <span class="audit-date">${fmtDateTime(e.createdAt)}</span>
         </div>`;
       }).join("")}</div>
-      ${remaining > 0 ? `<div class="audit-more"><button type="button" class="btn-secondary" data-action="audit-load-more">${t("Ver {n} más (quedan {r})","See {n} more ({r} left)","Ver mais {n} (restam {r})","{r} נשארו) עוד {n} הצגת)",{n:Math.min(30,remaining), r:remaining})}</button></div>` : ""}`;
+      ${remaining > 0 ? `<div class="audit-more"><button type="button" class="btn-secondary" data-action="audit-load-more">${t("Ver más","See more","Ver mais","הצגת עוד")}</button></div>` : ""}`;
   return renderAuditFilters() + list;
 }
 
@@ -6344,11 +6344,14 @@ function computeFeedOrder(items){
 // patrón que Actividad): cada render reconstruye el innerHTML entero, con
 // todas las imágenes base64 adentro — pintar cientos de posteos por cada
 // tecla del buscador o cada respuesta que llega no escala.
-const PAGE_SIZE = 30;
+const PAGE_SIZE = 30;      // cuántas tarjetas se pintan al entrar
+const PAGE_STEP = 15;      // cuántas suma cada "Ver más" (a pedido: de a 15)
 let feedVisibleCount = PAGE_SIZE, memoriaVisibleCount = PAGE_SIZE;
 let searchRenderTimer = null;
 function renderLoadMore(action, remaining){
-  return remaining > 0 ? `<div class="audit-more"><button type="button" class="btn-secondary" data-action="${action}">${t("Ver {n} más (quedan {r})","See {n} more ({r} left)","Ver mais {n} (restam {r})","{r} נשארו) עוד {n} הצגת)",{n:Math.min(PAGE_SIZE,remaining), r:remaining})}</button></div>` : "";
+  // Solo "Ver más", sin números (a pedido): el conteo de lo que queda
+  // era ruido. Quien quiere todo, sigue apretando.
+  return remaining > 0 ? `<div class="audit-more"><button type="button" class="btn-secondary" data-action="${action}">${t("Ver más","See more","Ver mais","הצגת עוד")}</button></div>` : "";
 }
 // Interruptor Reciente / Cronológico (+ dirección) del Feed unificado.
 function renderFeedOrderBar(){
@@ -9405,9 +9408,9 @@ document.addEventListener("click", e=>{
   } else if(action === "submit-reply"){
     submitReply(postId);
   } else if(action === "feed-load-more"){
-    feedVisibleCount += PAGE_SIZE; render();
+    feedVisibleCount += PAGE_STEP; render();
   } else if(action === "memoria-load-more"){
-    memoriaVisibleCount += PAGE_SIZE; render();
+    memoriaVisibleCount += PAGE_STEP; render();
   } else if(action === "paises-subview"){
     state.paisesSubview = el.dataset.key; state.countryDrill = null; render();
   } else if(action === "pref-toggle-list"){
