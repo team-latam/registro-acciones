@@ -1665,10 +1665,10 @@
   <div class="fab-wrap" id="fab" hidden>
     <div class="fab-actions">
       <button type="button" class="fab-action" data-action="new-rutina">
-        <span class="fab-ico" aria-hidden="true">📝</span><span class="fab-label" id="fabRutinaLabel">Nueva rutina</span>
+        <span class="fab-ico" aria-hidden="true">📝</span><span class="fab-label" id="fabRutinaLabel">Nuevo posteo</span>
       </button>
       <button type="button" class="fab-action" data-action="new-evento">
-        <span class="fab-ico" aria-hidden="true">📅</span><span class="fab-label" id="fabEventoLabel">Nuevo posteo</span>
+        <span class="fab-ico" aria-hidden="true">📅</span><span class="fab-label" id="fabEventoLabel">Nuevo evento</span>
       </button>
     </div>
     <button type="button" class="fab-main" id="fabMain" data-action="toggle-fab" aria-haspopup="true" aria-expanded="false" aria-label="Crear"><span aria-hidden="true">+</span></button>
@@ -1720,7 +1720,7 @@
 <div class="modal-overlay" id="postModalOverlay" hidden>
   <div class="modal modal-wrap" role="dialog" aria-modal="true" aria-labelledby="postModalTitle">
     <button class="close" id="postModalClose" aria-label="Cerrar">✕</button>
-    <h2 id="postModalTitle">Nuevo posteo</h2>
+    <h2 id="postModalTitle">Nuevo evento</h2>
     <form id="postForm"></form>
   </div>
 </div>
@@ -4940,7 +4940,7 @@ function setLang(lang){
       ? (composerDraft.editingPost.activityType === "rutina"
           ? t("Editar rutina","Edit routine","Editar rotina","עריכת שגרה")
           : t("Editar evento","Edit event","Editar evento","עריכת אירוע"))
-      : t("Nuevo posteo","New post","Nova postagem","פוסט חדש");
+      : t("Nuevo evento","New event","Novo evento","אירוע חדש");
   }
   render();
 }
@@ -4984,9 +4984,9 @@ function applyStaticI18n(){
   });
 
   const fabEvento = document.getElementById("fabEventoLabel");
-  if(fabEvento) fabEvento.textContent = t("Nuevo posteo", "New post", "Nova postagem", "פוסט חדש");
+  if(fabEvento) fabEvento.textContent = t("Nuevo evento", "New event", "Novo evento", "אירוע חדש");
   const fabRutina = document.getElementById("fabRutinaLabel");
-  if(fabRutina) fabRutina.textContent = t("Nueva rutina", "New routine", "Nova rotina", "שגרה חדשה");
+  if(fabRutina) fabRutina.textContent = t("Nuevo posteo", "New post", "Nova postagem", "פוסט חדש");
   if(fabMainEl) fabMainEl.setAttribute("aria-label", t("Crear", "Create", "Criar", "יצירה"));
   const scrollTopBtn = document.getElementById("scrollTop");
   if(scrollTopBtn){
@@ -6395,7 +6395,7 @@ function renderFeedView(){
       `<div class="empty-state"><div class="big">🗒️</div>${anyActiveFilter()
         ? t("Todavía no hay posteos que coincidan con el filtro.","No posts match the filter yet.","Ainda não há postagens que coincidam com o filtro.","עדיין אין פוסטים שתואמים למסנן.")
         : t("Todavía no hay posteos.","There are no posts yet.","Ainda não há postagens.","עדיין אין פוסטים.")
-      }<br>${t('Usá "+ Nuevo posteo" para sumar el primero.','Use "+ New post" to add the first one.','Use "+ Nova postagem" para somar a primeira.','.כדי להוסיף את הראשון "+ פוסט חדש" השתמש/י ב')}</div>`}
+      }<br>${t('Usá "+ Nuevo evento" para sumar el primero.','Use "+ New event" to add the first one.','Use "+ Novo evento" para somar o primeiro.','.כדי להוסיף את הראשון "+ אירוע חדש" השתמש/י ב')}</div>`}
   `;
 }
 function anyActiveFilter(){
@@ -7617,7 +7617,7 @@ function calendarioColor(p){
 // pendiente de aprobación abriría un composer que después no puede guardar.
 function calendarioNewAttrs(iso, hour){
   if(!canWrite()) return "";
-  const title = esc(t("Nuevo posteo","New post","Nova postagem","פוסט חדש"));
+  const title = esc(t("Nuevo evento","New event","Novo evento","אירוע חדש"));
   return ` data-action="cal-new" data-date="${iso}"${hour != null ? ` data-hour="${hour}"` : ""} title="${title}"`;
 }
 function calendarioChip(p, iso){
@@ -7673,7 +7673,7 @@ function renderCalendarioView(){
   // derecho, el selector de vista y después "+ Nuevo evento", que queda
   // contra el borde.
   const newBtn = canWrite()
-    ? `<button type="button" class="btn-new" data-action="new-evento">+ ${esc(t("Nuevo posteo","New post","Nova postagem","פוסט חדש"))}</button>`
+    ? `<button type="button" class="btn-new" data-action="new-evento">+ ${esc(t("Nuevo evento","New event","Novo evento","אירוע חדש"))}</button>`
     : "";
   const toolbar = `<div class="paises-toolbar">${nav}<div class="cal-toolbar-end">${toggle}${newBtn}</div></div>`;
   if(CONFIG_IS_PLACEHOLDER){
@@ -8234,7 +8234,7 @@ window.addEventListener("scroll", ()=>{ if(!tourLayer.hidden) renderTourStep(); 
 function openComposer(){
   composerDraft = newComposerDraft();
   composerSnapshot = snapshotComposer();
-  postModalTitle.textContent = t("Nuevo posteo","New post","Nova postagem","פוסט חדש");
+  postModalTitle.textContent = t("Nuevo evento","New event","Novo evento","אירוע חדש");
   postModalOverlay.hidden = false;
   renderComposer();
   focusIntoComposer();
