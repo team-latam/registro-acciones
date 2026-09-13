@@ -824,6 +824,7 @@
   .post.mention-highlight{ background:var(--highlight-bg); }
   .post-head{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:10px; flex-wrap:wrap; }
   .post-meta{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .post-ago{ text-decoration:underline dotted; text-underline-offset:3px; cursor:help; }
   .post-date{ font-size:12px; color:var(--text-muted); font-weight:600; }
   .post-content{ font-size:14.5px; line-height:1.55; white-space:pre-wrap; margin:8px 0 10px 0; }
   /* Una URL pegada o una palabra sin espacios no cortaba y se salía de la
@@ -2523,6 +2524,30 @@ function fmtTime(ts){
   const h12 = uses12h();
   return dt.toLocaleTimeString(dateLocale(),{ hour: h12 ? "numeric" : "2-digit", minute:"2-digit", hour12:h12 });
 }
+// "hace 5 min" / "hace 3 h" / "hace 2 días" / "hace 3 meses" / "hace 1 año":
+// cuánto pasó desde que se PUBLICÓ (createdAt). El detalle exacto (día y
+// hora) va en el title, al pasar por arriba.
+function timeAgo(ts){
+  const ms = tsToMillis(ts);
+  if(!ms) return "";
+  const diff = Math.max(0, Date.now() - ms);
+  const min = Math.floor(diff / 60000);
+  if(min < 1) return t("recién","just now","agora mesmo","הרגע");
+  if(min < 60) return min === 1 ? t("hace 1 minuto","1 minute ago","há 1 minuto","לפני דקה") : t("hace {n} min","{n} min ago","há {n} min","לפני {n} דק׳",{n:min});
+  const h = Math.floor(min / 60);
+  if(h < 24) return h === 1 ? t("hace 1 hora","1 hour ago","há 1 hora","לפני שעה") : t("hace {n} horas","{n} hours ago","há {n} horas","לפני {n} שעות",{n:h});
+  const d = Math.floor(h / 24);
+  if(d < 30) return d === 1 ? t("hace 1 día","1 day ago","há 1 dia","לפני יום") : t("hace {n} días","{n} days ago","há {n} dias","לפני {n} ימים",{n:d});
+  const mo = Math.floor(d / 30);
+  if(mo < 12) return mo === 1 ? t("hace 1 mes","1 month ago","há 1 mês","לפני חודש") : t("hace {n} meses","{n} months ago","há {n} meses","לפני {n} חודשים",{n:mo});
+  const y = Math.floor(d / 365);
+  return y <= 1 ? t("hace 1 año","1 year ago","há 1 ano","לפני שנה") : t("hace {n} años","{n} years ago","há {n} anos","לפני {n} שנים",{n:y});
+}
+// Las etiquetas "hace X" envejecen: se refrescan solas cada minuto, en
+// el lugar, sin re-renderizar nada (data-ts lleva el instante).
+setInterval(()=>{
+  document.querySelectorAll(".post-ago[data-ts]").forEach(el=>{ el.textContent = timeAgo(Number(el.dataset.ts)); });
+}, 60000);
 function fmtDateTime(ts){
   if(!ts) return "";
   const dt = ts.toDate ? ts.toDate() : new Date(ts);
@@ -6591,13 +6616,16 @@ function renderPostCard(post, replies, featured){
   // eso ese tiene prioridad cuando existe (y no tiene @nickname: es texto
   // libre de alguien que no necesariamente es cuenta de la app).
   const creadorHtml = post.organizer ? esc(post.organizer) : authorLabelHtml(post.authorEmail, post.authorName);
-  const creadoPor = creadorHtml ? ` · ${t("Creado por","Created by","Criado por","נוצר על ידי")} ${creadorHtml}` : "";
-  // Hora en que se CARGÓ el posteo (createdAt), no la del evento: para
-  // Rutina, o cualquier evento sin horario propio, la fecha sola no
-  // alcanza para saber cuál se publicó primero en un mismo día — todas
-  // las rutinas de hoy tienen la misma fecha.
-  const createdTime = fmtTime(post.createdAt);
-  const createdTimeLabel = createdTime && !timeLabel ? ` · 🕐 ${createdTime}` : "";
+  // "Publicado hace 5 min por @benny": cuánto pasó desde que se CARGÓ
+  // (createdAt), con el día y la hora exactos al pasar por arriba. Antes
+  // era "🕐 22:37 · Creado por @benny", que no decía de qué día era esa
+  // hora. Sin createdAt (posteos muy viejos) queda "Creado por".
+  const agoMs = tsToMillis(post.createdAt);
+  const publicado = agoMs
+    ? ` · ${t("Publicado","Posted","Publicado","פורסם")} <span class="post-ago" data-ts="${agoMs}" title="${esc(fmtDateTime(post.createdAt))}">${esc(timeAgo(post.createdAt))}</span>${creadorHtml ? ` ${t("por","by","por","על ידי")} ${creadorHtml}` : ""}`
+    : (creadorHtml ? ` · ${t("Creado por","Created by","Criado por","נוצר על ידי")} ${creadorHtml}` : "");
+  const creadoPor = publicado;
+  const createdTimeLabel = "";
   if(post.location) metaBits.push(`📍 ${esc(post.location)}`);
   const editable = canEditPost(post);
   const canCancel = editable && post.activityType !== "rutina" && !post.cancelled;
