@@ -1310,6 +1310,40 @@ escritorio el foco va al HEX al abrir; en táctil no (misma regla que los
 formularios). Cualquier cambio re-renderiza y por lo tanto cierra el
 panel: elegir un color es un gesto de una vez.
 
+### Feed unificado (en prueba, por persona)
+
+Feed y Memoria muestran los mismos posteos con dos preguntas encima:
+"qué está pasando" y "qué pasó". La propuesta (mockup en la sesión de
+septiembre 2026) es una sola solapa Feed con un interruptor de orden y
+los filtros de la Memoria a la vista. Para poder probarla con datos
+reales sin cambiarle nada a nadie, vive detrás de una **preferencia
+personal**: Configuración › Feed › "Feed unificado (en prueba)"
+(`userPrefs.unifiedFeed`, apagada por defecto).
+
+Con la opción prendida:
+
+- La solapa **Memoria se esconde** (`tabMemoriaEl.hidden`) y cualquier
+  camino que llegue a `state.view === "memoria"` cae en el Feed
+  (`doRender`, antes de marcar la solapa activa).
+- El Feed muestra, debajo de los filtros, el interruptor **Reciente ·
+  Cronológico** (`renderFeedOrderBar`). Reciente es el orden de siempre
+  (`computeFeedOrder`: lo nuevo y hasta dos destacados arriba) y trae el
+  cajón de Rutina; Cronológico ordena por fecha del evento con dirección
+  elegible y trae "Actualizar desde Calendar", sin cajón. La elección se
+  guarda por persona en `userPrefs.feedOrder` (`reciente | desc | asc`) y
+  también se cambia desde Configuración › Feed.
+- **Abrir un lugar** (Vistas, mapa, pie de LatAm; `placeView()`) lleva
+  al Feed en vez de a la Memoria, **siempre en cronológico** mientras el
+  chip 📍 esté puesto (`feedOrder()` fuerza `desc` si la preferencia es
+  Reciente; el botón Reciente queda deshabilitado con el motivo), con el
+  selector "Solo acá / + Región / + Toda LatAm" de siempre. Sacar el chip
+  vuelve al orden elegido; la preferencia no se toca.
+
+Apagada, todo queda exactamente como antes: Feed reciente + Memoria.
+Si la prueba convence, el paso siguiente es hacerla el único modo y
+sacar la solapa Memoria y `renderMemoriaView`; si no, se borra la
+preferencia y la sección de Configuración.
+
 ### Flechas de navegación: una sola familia
 
 Las flechas circulares de la app (subir, anterior/siguiente en el visor

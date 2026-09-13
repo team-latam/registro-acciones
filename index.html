@@ -1137,6 +1137,17 @@
   .btn-primary{ background:var(--petroleo); color:#fff; border:none; padding:11px 20px; border-radius:999px; font-weight:700; font-size:13.5px; cursor:pointer; }
   .btn-primary:disabled{ opacity:0.5; cursor:not-allowed; }
   .form-error{ color:var(--danger); font-size:12.5px; margin-top:6px; }
+  /* Feed unificado: interruptor Reciente / Cronológico */
+  .feed-order{ flex-wrap:wrap; gap:10px; }
+  .feed-order-seg{ display:inline-flex; background:var(--surface-alt); border-radius:999px; padding:3px; gap:2px; }
+  .feed-order-btn{
+    font-family:inherit; font-size:12.5px; font-weight:700; padding:7px 13px; border-radius:999px; border:none;
+    background:transparent; color:var(--text-muted); cursor:pointer;
+  }
+  .feed-order-btn.active{ background:var(--card); color:var(--ink-strong); box-shadow:0 1px 4px rgba(0,0,0,.14); }
+  .feed-order-btn:disabled{ opacity:.45; cursor:not-allowed; }
+  .feed-order-btn:focus-visible{ outline:2px solid var(--celeste-dark); outline-offset:1px; }
+  .feed-order-hint{ font-size:12px; color:var(--text-muted); font-weight:600; }
   /* Campo "importante" (ID del calendario): bloqueado hasta que se pida
      editarlo, y guardar un cambio real exige escribir una palabra al azar. */
   .locked-field{ display:flex; gap:8px; align-items:center; }
@@ -1629,7 +1640,7 @@
       <button data-view="feed">Feed</button>
       <button data-view="paises">Vistas</button>
       <button data-view="calendario">Calendario</button>
-      <button data-view="memoria">Memoria</button>
+      <button data-view="memoria" id="tabMemoria">Memoria</button>
       <button data-view="configuracion">Configuración</button>
       <button data-view="auditoria" id="tabAuditoria" hidden>Actividad</button>
       <button data-view="solicitudes" id="tabSolicitudes" hidden>Usuarios<span id="pendingBadge"></span></button>
@@ -2957,6 +2968,11 @@ const DEFAULT_PREFS = {
   dimPast: false,
   dateFormat: "auto",      // auto (según el idioma) | dmy | mdy | ymd
   placeLevel: 0,           // al abrir un lugar: 0 solo lo propio | 1 + la región | 2 + toda LatAm
+  // Feed unificado (en prueba, por persona): una sola solapa Feed con el
+  // interruptor Reciente / Cronológico y los filtros de la Memoria; la
+  // solapa Memoria se esconde. Apagado = Feed + Memoria como siempre.
+  unifiedFeed: false,
+  feedOrder: "reciente",   // reciente | desc | asc (solo con unifiedFeed)
   // El default es 24 h, no "auto": el Calendario SIEMPRE mostró los
   // horarios crudos ("13:00"), y con "auto" Intl considera que es-AR es de
   // 12 h, así que todo el equipo se habría despertado con el calendario en
@@ -4781,6 +4797,20 @@ const fabMainEl = document.getElementById("fabMain");
 const tabSolicitudesEl = document.getElementById("tabSolicitudes");
 const tabAuditoriaEl = document.getElementById("tabAuditoria");
 const tabPreferenciasEl = document.getElementById("tabPreferencias");
+const tabMemoriaEl = document.getElementById("tabMemoria");
+function unifiedFeed(){ return !!prefs().unifiedFeed; }
+// A dónde se abre un lugar: al Feed unificado si está prendido, si no a
+// la Memoria de siempre.
+function placeView(){ return unifiedFeed() ? "feed" : "memoria"; }
+// Orden efectivo del Feed unificado. Con un lugar abierto (desde Vistas,
+// el mapa o el pie de LatAm) se lee en orden: la historia de un lugar no
+// se mezcla con destacados.
+function feedOrder(){
+  const o = prefs().feedOrder;
+  const v = o === "asc" || o === "desc" ? o : "reciente";
+  if(state.filters.place && v === "reciente") return "desc";
+  return v;
+}
 const calendarToastEl = document.getElementById("calendarToast");
 const calendarToastTextEl = document.getElementById("calendarToastText");
 
@@ -5263,6 +5293,9 @@ function renderMentionsMenuItems(hasInvite, upcoming){
 
 function doRender(){
   placeCountsCache = null;
+  // Con el Feed unificado la solapa Memoria no existe: cualquier camino
+  // que llegue ahí (un atajo viejo, un enlace) cae en el Feed.
+  if(isAuthorized() && unifiedFeed() && state.view === "memoria") state.view = "feed";
   document.querySelectorAll("#tabs button[data-view]").forEach(b=>{
     b.classList.toggle("active", b.dataset.view === state.view);
   });
@@ -5298,6 +5331,7 @@ function doRender(){
 
   tabsNav.classList.remove("tabs-hidden");
   fabEl.hidden = !canWrite(); // el observador no crea nada
+  tabMemoriaEl.hidden = unifiedFeed();
   if(isObserver()) html += renderObserverBanner();
   tabSolicitudesEl.hidden = !isAdmin();
   tabAuditoriaEl.hidden = !isAdmin();
@@ -6316,12 +6350,44 @@ let searchRenderTimer = null;
 function renderLoadMore(action, remaining){
   return remaining > 0 ? `<div class="audit-more"><button type="button" class="btn-secondary" data-action="${action}">${t("Ver {n} más (quedan {r})","See {n} more ({r} left)","Ver mais {n} (restam {r})","{r} נשארו) עוד {n} הצגת)",{n:Math.min(PAGE_SIZE,remaining), r:remaining})}</button></div>` : "";
 }
+// Interruptor Reciente / Cronológico (+ dirección) del Feed unificado.
+function renderFeedOrderBar(){
+  const order = feedOrder();
+  const crono = order !== "reciente";
+  const placeOpen = !!state.filters.place;
+  const lastDir = prefs().feedOrder === "asc" ? "asc" : "desc";
+  return `
+    <div class="sort-toggle feed-order">
+      <div class="feed-order-seg" role="radiogroup" aria-label="${esc(t("Orden","Order","Ordem","סדר"))}">
+        <button type="button" class="feed-order-btn${!crono?" active":""}" role="radio" aria-checked="${!crono}" data-action="feed-order" data-key="reciente"
+          ${placeOpen ? `disabled title="${esc(t("Con un lugar abierto se lee en orden","With a place open it's read in order","Com um lugar aberto lê-se em ordem","כשמקום פתוח קוראים לפי סדר"))}"` : ""}>${t("Reciente","Recent","Recente","אחרונים")}</button>
+        <button type="button" class="feed-order-btn${crono?" active":""}" role="radio" aria-checked="${crono}" data-action="feed-order" data-key="${lastDir}">${t("Cronológico","Chronological","Cronológico","כרונולוגי")}</button>
+      </div>
+      ${crono ? `<div class="sort-toggle-group">
+        <span class="chip-toggle ${order==="desc"?"active":""}" data-action="feed-order" data-key="desc">${t("Más reciente primero","Newest first","Mais recente primeiro","החדש ביותר קודם")}</span>
+        <span class="chip-toggle ${order==="asc"?"active":""}" data-action="feed-order" data-key="asc">${t("Más antiguo primero","Oldest first","Mais antigo primeiro","הישן ביותר קודם")}</span>
+      </div>` : `<span class="feed-order-hint">${t("Lo nuevo y lo destacado arriba","New and featured on top","O novo e o destacado em cima","החדש והמודגש למעלה")}</span>`}
+      ${crono && canWrite() ? `<button type="button" class="btn-sync" data-action="sync-calendar" ${state.calendarSyncing?"disabled":""}>🔄 ${t("Actualizar desde Calendar","Refresh from Calendar","Atualizar a partir do Calendar","עדכון מהיומן")}</button>` : ""}
+    </div>`;
+}
 function renderFeedView(){
-  const all = computeFeedOrder(getVisiblePosts());
+  const unified = unifiedFeed();
+  const order = unified ? feedOrder() : "reciente";
+  let all = getVisiblePosts();
+  if(order === "reciente") all = computeFeedOrder(all);
+  else {
+    // Orden explícito por fecha del evento (y creación como desempate), el
+    // mismo criterio del snapshot de posts, para no depender de cómo
+    // llegaron; en asc se invierte entero.
+    all = all.map(it=>({ ...it, featured:false }))
+      .sort((a,b)=> String(b.post.date||"").localeCompare(String(a.post.date||"")) || (tsToMillis(b.post.createdAt) - tsToMillis(a.post.createdAt)));
+    if(order === "asc") all.reverse();
+  }
   const items = all.slice(0, feedVisibleCount);
   return `
-    ${canWrite() ? renderRutinaComposer() : ""}
+    ${canWrite() && order === "reciente" ? renderRutinaComposer() : ""}
     ${renderFilterBar("feed")}${renderPlaceLevelSeg()}
+    ${unified ? renderFeedOrderBar() : ""}
     ${items.length ? items.map(({post,replies,featured})=>renderPostCard(post,replies,featured)).join("") + renderLoadMore("feed-load-more", all.length - items.length) :
       `<div class="empty-state"><div class="big">🗒️</div>${anyActiveFilter()
         ? t("Todavía no hay posteos que coincidan con el filtro.","No posts match the filter yet.","Ainda não há postagens que coincidam com o filtro.","עדיין אין פוסטים שתואמים למסנן.")
@@ -7183,6 +7249,7 @@ function holidayColorOf(h){
    ====================================================================== */
 function configSections(){
   return [
+    { key:"feed", label:t("Feed","Feed","Feed","פיד") },
     { key:"calendario", label:t("Calendario","Calendar","Calendário","יומן") },
     { key:"notificaciones", label:t("Notificaciones","Notifications","Notificações","התראות") },
     { key:"feriados", label:t("Feriados","Holidays","Feriados","חגים") },
@@ -7204,6 +7271,7 @@ function renderConfiguracionView(){
   const sec = secs.some(s=>s.key === state.configSection) ? state.configSection : secs[0].key;
   const body = sec === "notificaciones" ? renderConfigNotificacionesSection()
     : sec === "feriados" ? renderConfigFeriadosSection()
+    : sec === "feed" ? renderConfigFeedSection()
     : renderConfigCalendarioSection();
   return `
     <div class="preferencias-view">
@@ -7211,6 +7279,24 @@ function renderConfiguracionView(){
         <button type="button" class="chip-toggle${sec===s.key?" active":""}" data-action="config-section" data-key="${s.key}">${esc(s.label)}</button>`).join("")}</div>` : ""}
       ${body}
     </div>`;
+}
+// Sección Feed de Configuración: la prueba del Feed unificado, por persona.
+function renderConfigFeedSection(){
+  const p = prefs();
+  const on = !!p.unifiedFeed;
+  return `
+      <div class="settings-card">
+        ${prefRow("📰", t("Feed unificado (en prueba)","Unified feed (trial)","Feed unificado (em teste)","פיד מאוחד (ניסיון)"),
+          t("Una sola solapa Feed con el interruptor Reciente / Cronológico y los filtros de la Memoria. La solapa Memoria se esconde mientras esté prendido; apagalo y vuelve todo como antes.","A single Feed tab with the Recent / Chronological switch and the Memory filters. The Memory tab hides while this is on; turn it off and everything is back as before.","Uma única aba Feed com o interruptor Recente / Cronológico e os filtros da Memória. A aba Memória fica escondida enquanto estiver ligado; desligue e tudo volta como antes.","לשונית פיד אחת עם מתג אחרונים / כרונולוגי ומסנני הזיכרון. לשונית הזיכרון מוסתרת כל עוד זה דולק; כבו וחוזר הכול כמו קודם."),
+          prefSwitch("unifiedFeed", on))}
+        ${on ? prefRow("↕️", t("Orden del Feed","Feed order","Ordem do Feed","סדר הפיד"),
+          t("Se recuerda por persona y se puede cambiar al momento desde el Feed. Al abrir un lugar se lee siempre en orden.","Remembered per person and changeable on the spot from the Feed. Opening a place always reads in order.","Lembrado por pessoa e mudável na hora a partir do Feed. Ao abrir um lugar lê-se sempre em ordem.","נשמר לכל אדם וניתן לשינוי מיידי מהפיד. בפתיחת מקום קוראים תמיד לפי סדר."),
+          `<select data-pref="feedOrder">
+            <option value="reciente" ${p.feedOrder!=="asc"&&p.feedOrder!=="desc"?"selected":""}>${esc(t("Reciente (nuevo y destacado arriba)","Recent (new and featured on top)","Recente (novo e destacado em cima)","אחרונים (חדש ומודגש למעלה)"))}</option>
+            <option value="desc" ${p.feedOrder==="desc"?"selected":""}>${esc(t("Cronológico, más reciente primero","Chronological, newest first","Cronológico, mais recente primeiro","כרונולוגי, החדש קודם"))}</option>
+            <option value="asc" ${p.feedOrder==="asc"?"selected":""}>${esc(t("Cronológico, más antiguo primero","Chronological, oldest first","Cronológico, mais antigo primeiro","כרונולוגי, הישן קודם"))}</option>
+          </select>`) : ""}
+      </div>`;
 }
 function prefSwitch(key, on){
   return `<label class="pref-switch"><input type="checkbox" data-pref="${key}" ${on?"checked":""}><span class="pref-slider"></span></label>`;
@@ -9373,15 +9459,18 @@ document.addEventListener("click", e=>{
   } else if(action === "goto-country"){
     state.filters.place = { kind:"country", country:el.dataset.country };
     if(el.dataset.level) setPlaceLevel(Number(el.dataset.level)); // las filas "Región"/"Toda LatAm" abren en su nivel
-    state.view = "memoria"; state.countryDrill = null; render();
+    state.view = placeView(); state.countryDrill = null; render();
   } else if(action === "goto-latam"){
     // Del pie de Vistas: la memoria de lo que es de toda LatAm, sin país
     // ni ciudad de por medio (ver scopeLevelFor con kind "latam").
     state.filters.place = { kind:"latam" };
-    state.view = "memoria"; state.countryDrill = null; render();
+    state.view = placeView(); state.countryDrill = null; render();
   } else if(action === "goto-city"){
     state.filters.place = { kind:"city", country:el.dataset.country, city:el.dataset.city };
-    state.view = "memoria"; state.countryDrill = null; render();
+    state.view = placeView(); state.countryDrill = null; render();
+  } else if(action === "feed-order"){
+    feedVisibleCount = PAGE_SIZE;
+    savePrefs({ feedOrder: el.dataset.key }); // savePrefs re-renderiza
   } else if(action === "place-level"){
     setPlaceLevel(Number(el.dataset.level)); // savePrefs ya re-renderiza
   } else if(action === "dismiss-calendar-notice"){
