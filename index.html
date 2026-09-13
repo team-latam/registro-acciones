@@ -217,16 +217,17 @@
     position:fixed; inset-block-end:90px; inset-inline-end:32px; z-index:65;
     width:40px; height:40px; border-radius:50%; cursor:pointer;
     display:flex; align-items:center; justify-content:center;
-    /* Círculo oscuro con el chevron claro, como el ejemplo que mandó el
-       usuario, en el petróleo de la marca (mismo tono que "Publicar"). */
-    background:var(--petroleo); color:#fff; border:none;
+    /* Celeste con el chevron oscuro, igual en modo claro y oscuro: el
+       usuario eligió esta versión (era la del modo oscuro) y pidió que
+       no cambie con el tema. Colores fijos a propósito, no variables:
+       --celeste-dark cambia entre temas y la flecha tiene que ser
+       siempre la misma. */
+    background:#6fd8ec; color:#082a2c; border:none;
     box-shadow:0 4px 14px rgba(8,42,44,0.28);
     opacity:0; transform:translateY(6px); transition:opacity .16s ease, transform .16s ease, background .16s ease;
   }
   .scroll-top.show{ opacity:1; transform:none; }
-  .scroll-top:hover{ background:var(--petroleo-dark); }
-  html[data-theme="dark"] .scroll-top{ background:var(--celeste-dark); color:var(--petroleo-dark); }
-  html[data-theme="dark"] .scroll-top:hover{ background:var(--celeste); }
+  .scroll-top:hover{ background:#8fe3f2; }
   @media (max-width:640px){
     .fab-wrap{ inset-block-end:16px; inset-inline-end:16px; }
     .fab-main{ width:50px; height:50px; font-size:27px; }
