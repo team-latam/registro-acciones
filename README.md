@@ -457,6 +457,35 @@ Dos cosas a tener en cuenta al tocar esto:
   corre un día para cualquiera al este de Greenwich — el mismo bug que ya
   documenta `addDaysISO`.
 
+#### Formato de fecha y hora (Configuración > Calendario)
+
+Dos preferencias personales, `dateFormat` y `timeFormat`, que definen cómo
+se ESCRIBEN las fechas y horas en todo el Registro. **Lo guardado no cambia
+nunca**: los horarios siguen siendo `"HH:MM"` de 24 h (lo que da
+`<input type="time">` y lo que viaja a Calendar); esto es solo la capa de
+presentación, en `fmtDate()`, `fmtTime()`, `fmtHHMM()` y `fmtHourLabel()`.
+
+Es una preferencia y no se deduce del idioma porque el equipo es de LatAm
+pero trabaja con gente en EE.UU. e Israel, y cada uno lee su fecha como la
+lee: alguien puede querer la app en español y las fechas en `12/31/2026`, o
+en hebreo con horario de 24 h.
+
+Cada opción del selector se muestra con una **fecha/hora de ejemplo real**,
+calculada con el mismo código que dibuja la app (`sampleDate()` /
+`sampleTime()`, que fuerzan el formato con `withPrefOverride()` sin tocar
+lo guardado). Se elige viendo el resultado, no descifrando "dd/mm/aaaa".
+
+**El default de hora es `"24"`, no `"auto"`, y eso es a propósito.** El
+Calendario siempre mostró los horarios crudos (`13:00`), y `Intl` considera
+que `es-AR` es de 12 h — con "auto" todo el equipo se habría despertado con
+el calendario en am/pm sin pedirlo. De paso queda parejo con las tarjetas
+del Feed, que sí venían en 12 h para quien tiene la app en español: la
+misma hora se escribía de dos formas distintas en la misma pantalla.
+`dateFormat` sí arranca en `"auto"`, que es exactamente lo que hacía antes.
+
+`uses12h()` resuelve "auto" preguntándole a `Intl` qué hace el idioma
+activo, en vez de mantener una tabla idioma → 12/24 que se despegue.
+
 #### Click en un evento: la tarjeta, no el Feed
 
 Clickear un evento **abre una tarjeta** con lo básico —título, rango de
