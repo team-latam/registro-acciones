@@ -1301,7 +1301,10 @@ type="color">`) y ahí no se puede meter nada. Por eso el HEX no es una
 cajita suelta al lado del color: la muestra es un botón (`.color-btn`,
 con el hex escrito al lado) que abre un panel (`.color-pop`) con dos
 cosas: "Elegir en la paleta", que abre el selector nativo, y el campo
-HEX. `colorControl()` arma todo; `closeColorPops()` cierra; se cierra con
+HEX. El panel es `position:fixed` (ubicado por JS desde el botón, sin
+salirse de la pantalla) porque las tarjetas de Zonas y Configuración
+recortan lo que sobresale con `overflow:hidden`; por eso también se
+cierra al hacer scroll. El botón muestra solo el color, sin el hex. `colorControl()` arma todo; `closeColorPops()` cierra; se cierra con
 Escape (primero en la cadena), con un click afuera, o al abrir otro. En
 escritorio el foco va al HEX al abrir; en táctil no (misma regla que los
 formularios). Cualquier cambio re-renderiza y por lo tanto cierra el
