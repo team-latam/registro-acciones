@@ -25,6 +25,15 @@ eso no se puede desactivar. Para que no se acumulen ramas sueltas:
 3. Avisarle al usuario que puede borrar la rama de sesión desde
    https://github.com/team-latam/registro-acciones/branches
 
+**Pushear a `main` de una, sin preguntar.** El usuario lo pidió explícito:
+al terminar una tanda de cambios, el push a `main` va directo — nada de
+"commiteo local y te mando capturas para que mires antes", nada de "¿lo
+pusheo?". La única excepción es un cambio muy, muy grande (una
+reestructuración de varias vistas, algo que cambie cómo se usa la app);
+ahí sí avisar antes. Si él quiere revisar algo antes de que salga, lo va a
+aclarar en el pedido. Un stop hook del repo también reclama los commits
+sin pushear: obedecerlo.
+
 Si la sesión arranca desde una rama que ya quedó atrás respecto de
 `main`, traerse primero los commits nuevos (merge o
 rebase) antes de trabajar.
