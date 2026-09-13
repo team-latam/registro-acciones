@@ -1467,6 +1467,15 @@ muerto). Lo que cambió y conviene tener presente al tocar el código:
 
 ## 4. Qué falta / decisiones pendientes
 
+- **Varios calendarios de Google: evaluado y descartado** (septiembre
+  2026). Se propuso "Agregar otro calendario" en Administrar › Calendar.
+  Es un cambio grande: el `calendarEventId` de cada posteo, el sync
+  token de Calendar → app y el permiso que se comparte a cada persona
+  son todos de UN calendario, y pasarían a ser N. El usuario decidió no
+  hacerlo: cada calendario extra multiplica los puntos de falla de la
+  sincronización, que ya es la parte más delicada de la app. No volver a
+  proponerlo salvo pedido explícito.
+
 - **Reciclar `@nickname` de ex integrantes**: hoy quedan quemados para
   siempre, a propósito — ver
   [la decisión y su evidencia](#nickname-quemado). Está marcada como
