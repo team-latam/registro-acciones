@@ -1088,6 +1088,17 @@ scrolleaba de costado**. Lo que quedó, y por qué:
   modales 40×40, barras del mes 18px (con la celda a 104 para que entren
   los 4 carriles), inputs de Administrar con padding vertical.
 
+- **Sin foco automático en campos de texto en pantallas táctiles**
+  (`isTouchDevice()`: `(hover: none) and (pointer: coarse)`). Al abrir el
+  modal de evento, el composer de Rutina desde el botón + o la edición
+  del @nickname, en el celular el foco iba a un campo de texto, saltaba el
+  teclado y tapaba medio formulario. Ahora el formulario aparece limpio y
+  el campo se toca cuando se quiere escribir. El foco igual ENTRA al modal
+  (a la ✕): es lo que hace que Escape lo cierre y que el lector de pantalla
+  lo anuncie. Se decide por tipo de puntero y no por ancho: una tablet
+  apaisada es ancha y también levanta teclado en pantalla. En escritorio
+  el foco sigue yendo al campo, que ahí es lo cómodo.
+
 Lo que se dejó como está, con motivo: los `@nickname` y nombres dentro del
 texto son links en línea de 14px de alto — hacerlos más altos rompería el
 interlineado; y las barras del calendario mensual a 18px son lo que cabe en
