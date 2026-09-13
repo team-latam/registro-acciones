@@ -428,6 +428,52 @@ Y "Hollbox" (la isla es Holbox) también está mal escrito, pero es
 identificador de posteos ya cargados: no se toca sin corregir esos
 posteos primero.
 
+### Lo propio y lo de LatAm: tres niveles por lugar
+
+Un posteo puede tocar a un lugar de tres maneras, y desde septiembre 2026
+la app las distingue en todos lados (`scopeLevelFor` / `recordLevelFor` /
+`postLevelFor` en `index.html`):
+
+| Nivel | Qué es | Cómo se ve |
+|---|---|---|
+| `own` | pasó **ahí** (alcance país o una de sus ciudades) | número grande, tarjeta normal |
+| `region` | macro de su zona (alcance "Región Norte/Central/Sur") | color de la zona, borde punteado |
+| `latam` | macro de todo el equipo (alcance "Toda LatAm") | gris, borde punteado |
+
+Por qué: antes los tres pesaban igual. Un "Toda LatAm" sumaba +1 a los 43
+países y se intercalaba en la memoria de cada uno como si hubiera pasado
+ahí; con muchos de esos, Islas Caimán mostraba "3 registros" sin que
+hubiera pasado nada en Caimán, y lo propio de un lugar chico quedaba
+tapado. Lo transversal sigue siendo parte de la historia de cada lugar —
+**no se borra, se pliega**.
+
+Dónde se aplica:
+
+- **Vistas › Lista y Mapa**: el número grande (y el círculo) es `own`;
+  debajo, `crossLine()`: "+1 de Región Norte · +3 de toda LatAm". Un país
+  con `own` 0 y algo macro dice "0 propios". El orden de la lista es por
+  `own` (antes, por total, era casi alfabético porque LatAm sumaba igual
+  en todos).
+- **Vistas › país**: después de las ciudades, dos filas punteadas ("Región
+  Norte" en su color, "Toda LatAm" en gris) que abren la memoria ya
+  filtrada en ese nivel.
+- **Feed y Memoria con un lugar filtrado**: un selector de tres
+  posiciones, "Solo acá N · + Región Norte N · + Toda LatAm N"
+  (`renderPlaceLevelSeg`, con los conteos ya pasados por los otros
+  filtros). Cada nivel incluye al anterior: ver LatAm sin la región no
+  tiene sentido. Lo que entra por región o LatAm lleva `.post-cross` (borde
+  punteado, la región en su color). El nivel elegido vive en
+  **localStorage** (`ra_place_level`), no en `userPrefs`: es cómo se mira,
+  no una configuración, y así no hubo que tocar las reglas. Arranca en 0,
+  que era la queja.
+
+Lo que define el nivel es **cómo se cargó el alcance**, no cuántos países
+toca: cinco países del Caribe marcados uno por uno son `own` en cada uno
+(y está bien: lo hicieron ahí); "Región Norte" es `region`. Un posteo con
+alcance "Toda LatAm" **y** "Islas Caimán" es `own` de Caimán (gana el más
+cercano). En `computePlaceCounts`, `general` pasó a ser solo lo propio de
+"todo el país"; antes metía también lo regional y lo de LatAm.
+
 ### Agregación "país afectado por una respuesta"
 
 Cuando una respuesta suma un alcance adicional (por ejemplo, un curso en
