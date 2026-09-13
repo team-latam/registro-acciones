@@ -850,6 +850,7 @@
     white-space:nowrap;
   }
   .post-actions button:hover{ color:var(--celeste-dark); }
+  .post-actions button.danger, .reply-actions button.danger{ color:var(--danger); }
   .post-actions button.liked{ color:var(--celeste-dark); }
 
   /* "Ver traducción"/"Ver original" del contenido (ver withContentTranslation):
@@ -3052,6 +3053,9 @@ function prefs(){ return state.prefs || DEFAULT_PREFS; }
 // documento de allowlist.
 function isAuthorized(){ return state.auth.status === "approved" || state.auth.status === "admin" || state.auth.status === "observer"; }
 function isAdmin(){ return state.auth.status === "admin"; }
+// Solo el admin fijo (ADMIN_EMAIL), no los admins por rol: es quien puede
+// BORRAR posteos y respuestas del Feed de verdad, sin dejar marca.
+function isFixedAdmin(){ return !!(state.auth.user && state.auth.user.email === ADMIN_EMAIL); }
 function isObserver(){ return state.auth.status === "observer"; }
 function canWrite(){ return state.auth.status === "approved" || state.auth.status === "admin"; }
 const ROLES = ["member", "admin", "observer"];
@@ -4722,6 +4726,40 @@ async function updatePostAndSync(postId, original, newData){
   return calResult;
 }
 
+// Borrado DE VERDAD, solo para el admin fijo (las reglas lo exigen con
+// isAdmin()): se van el posteo y todas sus respuestas, sin marca, sin
+// entrada en la auditoría y sin aviso en ningún hilo. Si el posteo estaba
+// en el Calendar, también se intenta borrar el evento: si quedara, una
+// reimportación completa lo traería de vuelta como posteo nuevo.
+async function deletePostHard(post){
+  const replies = state.repliesByPost[post.id] || [];
+  const nombre = post.title || String(post.content||"").slice(0, 60);
+  if(!confirm(t(
+    `¿Borrar "{title}" del todo? Se van el posteo y sus {n} respuesta(s). No queda ninguna marca y no se puede deshacer.`,
+    `Delete "{title}" for good? The post and its {n} repl(y/ies) go away. No trace is left and it can't be undone.`,
+    `Apagar "{title}" de vez? Vão-se a postagem e suas {n} resposta(s). Não fica nenhuma marca e não dá para desfazer.`,
+    `למחוק את "{title}" לצמיתות? הפוסט ו-{n} התגובות שלו יימחקו. לא יישאר סימן ואי אפשר לבטל.`,
+    { title: nombre, n: replies.length }
+  ))) return;
+  try{
+    for(const r of replies){ await fb.deleteDoc(fb.doc(db, "posts", post.id, "replies", r.id)); }
+    await fb.deleteDoc(fb.doc(db, "posts", post.id));
+    let calMsg = "";
+    if(post.calendarEventId){
+      const res = await deleteCalendarEvent(post.calendarEventId);
+      if(!res.ok) calMsg = " " + t("Ojo: no se pudo borrar el evento del Calendar ({r}); si se reimporta el historial, volvería.","Heads up: the Calendar event couldn't be deleted ({r}); a history reimport would bring it back.","Atenção: não foi possível apagar o evento do Calendar ({r}); uma reimportação do histórico o traria de volta.","שימו לב: לא ניתן היה למחוק את אירוע היומן ({r}); ייבוא מחדש של ההיסטוריה יחזיר אותו.",{r:res.reason});
+    }
+    showCalendarNotice({ ok:!calMsg, message: t("Borrado.","Deleted.","Apagado.","נמחק.") + calMsg });
+  }catch(err){
+    console.error("No se pudo borrar:", err);
+    showCalendarNotice({ ok:false, message: t("No se pudo borrar ({m}). Si las reglas de Firestore son viejas, hay que publicarlas.","Couldn't delete ({m}). If the Firestore rules are outdated, they need publishing.","Não foi possível apagar ({m}). Se as regras do Firestore forem antigas, é preciso publicá-las.","לא ניתן היה למחוק ({m}). אם כללי Firestore ישנים, יש לפרסם אותם.",{m:err.code||err.message}) });
+  }
+}
+async function deleteReplyHard(postId, replyId){
+  if(!confirm(t("¿Borrar esta respuesta del todo? No queda marca y no se puede deshacer.","Delete this reply for good? No trace is left and it can't be undone.","Apagar esta resposta de vez? Não fica marca e não dá para desfazer.","למחוק את התגובה לצמיתות? לא יישאר סימן ואי אפשר לבטל."))) return;
+  try{ await fb.deleteDoc(fb.doc(db, "posts", postId, "replies", replyId)); }
+  catch(err){ console.error("No se pudo borrar la respuesta:", err); showCalendarNotice({ ok:false, message: t("No se pudo borrar ({m}).","Couldn't delete ({m}).","Não foi possível apagar ({m}).","לא ניתן היה למחוק ({m}).",{m:err.code||err.message}) }); }
+}
 async function cancelPost(post){
   if(!confirm(t(
     `¿Cancelar "{title}"? Queda marcado como cancelado (no se borra) y se avisa en el hilo.`,
@@ -6706,6 +6744,7 @@ function renderPostCard(post, replies, featured){
         ${replies.length ? `<button data-action="toggle-thread" data-post-id="${post.id}">${threadOpen ? "▲ " + t("Ocultar","Hide","Ocultar","הסתרה") : "▼ " + t("Ver","View","Ver","הצגה")} ${commentsLabel}</button>` : ""}
         ${editable ? `<button data-action="edit-post" data-post-id="${post.id}">✏️ ${t("Editar","Edit","Editar","עריכה")}</button>` : ""}
         ${canCancel ? `<button data-action="cancel-post" data-post-id="${post.id}">🚫 ${t("Cancelar evento","Cancel event","Cancelar evento","ביטול האירוע")}</button>` : ""}
+        ${isFixedAdmin() ? `<button class="danger" data-action="delete-post" data-post-id="${post.id}">🗑️ ${t("Borrar","Delete","Apagar","מחיקה")}</button>` : ""}
       </div>
       ${threadOpen ? renderThread(replies) : ""}
       ${replyOpen ? renderReplyForm(post.id) : ""}
@@ -6773,10 +6812,11 @@ function renderReply(r){
       ${linksHtml ? `<div class="reply-links">${linksHtml}</div>` : ""}
       ${imagesHtml ? `<div class="reply-images">${imagesHtml}</div>` : ""}
       ${renderPostedFiles(r.files, {postId: r.postId, replyId: r.id})}
-      ${!r.system && canWrite() ? `
+      ${(!r.system && canWrite()) || isFixedAdmin() ? `
       <div class="reply-actions">
-        <button data-action="toggle-like" data-post-id="${r.postId}" data-reply-id="${r.id}" class="${liked?"liked":""}">${liked?"👍":"🤍"} ${t("Me gusta","Like","Curtir","לייק")}${likedBy.length?` (${likedBy.length})`:""}</button>
-        <button data-action="toggle-nested-reply" data-reply-id="${r.id}">↩ ${t("Responder","Reply","Responder","תגובה")}</button>
+        ${!r.system && canWrite() ? `<button data-action="toggle-like" data-post-id="${r.postId}" data-reply-id="${r.id}" class="${liked?"liked":""}">${liked?"👍":"🤍"} ${t("Me gusta","Like","Curtir","לייק")}${likedBy.length?` (${likedBy.length})`:""}</button>
+        <button data-action="toggle-nested-reply" data-reply-id="${r.id}">↩ ${t("Responder","Reply","Responder","תגובה")}</button>` : ""}
+        ${isFixedAdmin() ? `<button class="danger" data-action="delete-reply" data-post-id="${r.postId}" data-reply-id="${r.id}">🗑️ ${t("Borrar","Delete","Apagar","מחיקה")}</button>` : ""}
       </div>` : ""}
       ${nestedOpen ? renderNestedReplyForm(r.postId, r.id) : ""}
     </div>`;
@@ -9494,6 +9534,11 @@ document.addEventListener("click", e=>{
   } else if(action === "cancel-post"){
     const post = getPostById(postId);
     if(post) cancelPost(post);
+  } else if(action === "delete-post"){
+    const post = getPostById(postId);
+    if(post && isFixedAdmin()) deletePostHard(post);
+  } else if(action === "delete-reply"){
+    if(isFixedAdmin()) deleteReplyHard(postId, el.dataset.replyId);
   } else if(action === "cancel-reply"){
     openReplyForms.delete(postId); render();
   } else if(action === "toggle-like"){

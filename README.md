@@ -689,6 +689,20 @@ El `GOOGLE_OAUTH_CLIENT_ID` es público por diseño y va en el código. El
 **client secret NO se usa nunca** en una app de navegador: si algo lo pide
 para el front, está mal.
 
+### Borrar de verdad (solo el admin fijo)
+
+El admin fijo (`ADMIN_EMAIL`, `isFixedAdmin()` en la app, `isAdmin()` en
+las reglas) tiene en cada posteo y en cada respuesta un botón rojo
+"🗑️ Borrar" que borra **de verdad**: el documento del posteo y toda su
+subcolección de respuestas (`deletePostHard`), o la respuesta sola
+(`deleteReplyHard`). Sin marca, sin entrada en la auditoría, sin aviso en
+ningún hilo; solo un `confirm()` antes. Los admins por rol NO lo tienen
+(a propósito: `isRoleAdmin` no aparece en los `allow delete`); el resto
+del equipo sigue con "Cancelar evento", que deja marca. Si el posteo
+estaba en el Calendar también se borra el evento (`deleteCalendarEvent`);
+si eso falla, se avisa, porque una reimportación del historial lo
+traería de vuelta como posteo nuevo.
+
 ### Roles
 
 Tres roles, guardados en `allowlist/{email}.role` (ausente = `member`, que
