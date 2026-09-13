@@ -6556,9 +6556,11 @@ function renderPaisesView(){
   if(state.countryDrill && byCountryExists(state.countryDrill)){
     return toolbar + renderCountryDrill(state.countryDrill, counts[state.countryDrill]);
   }
-  // Orden por lo PROPIO: antes ordenaba por total y, como lo de LatAm
-  // suma igual en todos, el orden era casi alfabético.
-  const sorted = visiblePaisesCountries().slice().sort((a,b)=> counts[b.name].own - counts[a.name].own || counts[b.name].total - counts[a.name].total || a.name.localeCompare(b.name));
+  // Alfabético por el nombre que se VE (a pedido): con 43 países, para
+  // ubicar uno a ojo sirve más el orden fijo que el ranking por cantidad
+  // — el número ya está en la tarjeta. En hebreo o inglés se ordena en
+  // ese idioma, no por la clave interna en español.
+  const sorted = visiblePaisesCountries().slice().sort((a,b)=> countryLabel(a.name).localeCompare(countryLabel(b.name), currentLang()));
   const cards = sorted.map(c=>{
     const d = counts[c.name];
     const cnt = d.own;
