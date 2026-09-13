@@ -6344,8 +6344,8 @@ function computeFeedOrder(items){
 // patrón que Actividad): cada render reconstruye el innerHTML entero, con
 // todas las imágenes base64 adentro — pintar cientos de posteos por cada
 // tecla del buscador o cada respuesta que llega no escala.
-const PAGE_SIZE = 30;      // cuántas tarjetas se pintan al entrar
-const PAGE_STEP = 15;      // cuántas suma cada "Ver más" (a pedido: de a 15)
+const PAGE_SIZE = 15;      // cuántas tarjetas se pintan al entrar (a pedido: 15)
+const PAGE_STEP = 15;      // cuántas suma cada "Ver más" (de a 15)
 let feedVisibleCount = PAGE_SIZE, memoriaVisibleCount = PAGE_SIZE;
 let searchRenderTimer = null;
 function renderLoadMore(action, remaining){
@@ -9407,10 +9407,24 @@ document.addEventListener("click", e=>{
     getDraftFor(scope, ownerId).scopes.splice(idx,1); render();
   } else if(action === "submit-reply"){
     submitReply(postId);
-  } else if(action === "feed-load-more"){
-    feedVisibleCount += PAGE_STEP; render();
-  } else if(action === "memoria-load-more"){
-    memoriaVisibleCount += PAGE_STEP; render();
+  } else if(action === "feed-load-more" || action === "memoria-load-more"){
+    // Se queda donde estaba: el botón se reemplaza por las 15 tarjetas
+    // nuevas, que quedan abajo para seguir scrolleando. Se fija el scroll
+    // a mano por si el navegador lo mueve al reconstruir la lista, y el
+    // foco va a la primera tarjeta nueva (sin desplazar la vista) para
+    // que Tab siga desde ahí.
+    const y = window.scrollY;
+    const before = document.querySelectorAll("#viewRoot article.post").length;
+    // Sin este blur, render() le devolvía el foco al botón "Ver más"...
+    // que después del render es el NUEVO botón, al final de la lista: el
+    // navegador scrolleaba hasta él y la persona aterrizaba abajo de las
+    // 15 tarjetas nuevas en vez de arriba.
+    el.blur();
+    if(action === "feed-load-more") feedVisibleCount += PAGE_STEP; else memoriaVisibleCount += PAGE_STEP;
+    render();
+    window.scrollTo({ top:y, behavior:"auto" });
+    const first = document.querySelectorAll("#viewRoot article.post")[before];
+    if(first){ first.setAttribute("tabindex","-1"); try{ first.focus({ preventScroll:true }); }catch(e){ first.focus(); } }
   } else if(action === "paises-subview"){
     state.paisesSubview = el.dataset.key; state.countryDrill = null; render();
   } else if(action === "pref-toggle-list"){
