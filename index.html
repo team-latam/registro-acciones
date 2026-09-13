@@ -1356,6 +1356,9 @@
      el zoom — ver leaflet.markercluster en initOrUpdateMap().
   */
   .map-country-marker-wrap, .map-cluster-wrap{ background:transparent!important; border:none!important; }
+  /* Círculo de ciudad: mismo color de zona, con un anillo blanco más
+     fino y una sombra menor, para que se lea como "detalle" del país. */
+  .map-city-marker{ border-width:1.5px !important; font-size:11.5px !important; transform:scale(0.82); }
   .map-country-marker{
     width:100%; height:100%; border-radius:50%; display:flex; align-items:center; justify-content:center;
     color:#fff; font-weight:800; font-size:12px; border:2px solid #fff; box-shadow:0 2px 8px rgba(0,0,0,0.28);
@@ -1819,7 +1822,7 @@ const CITY_PRESETS = {
   "Islas Caimán": [{name:"George Town", coord:[19.2866,-81.3744]}, {name:"Grand Cayman", coord:[19.3133,-81.2546]}],
   "Jamaica": [{name:"Montego Bay", coord:[18.4762,-77.8939]}],
   "Martinica": [{name:"Martinica", coord:[14.6161,-61.0588]}],
-  "México": [{name:"Bacalar", coord:[18.6786,-88.3961]}, {name:"Cabo San Lucas", coord:[22.8905,-109.9167]}, {name:"Cancun", coord:[21.1619,-86.8515]}, {name:"Chapala", coord:[20.2986,-103.1997]}, {name:"Chiapas", coord:[16.7516,-93.1029]}, {name:"Ciudad de México", coord:[19.4326,-99.1332]}, {name:"Cozumel", coord:[20.5083,-86.9458]}, {name:"Cuernavaca", coord:[18.9242,-99.2216]}, {name:"Guadalajara", coord:[20.6597,-103.3496]}, {name:"Hollbox", coord:[21.5211,-87.3798]}, {name:"Isla Mujeres", coord:[21.2331,-86.7310]}, {name:"La Paz", coord:[24.1426,-110.3128]}, {name:"Merida", coord:[20.9674,-89.5926]}, {name:"Playa Del Carmen", coord:[20.6296,-87.0739]}, {name:"Puerto Escondido", coord:[15.8720,-97.0767]}, {name:"Puerto Vallarta", coord:[20.6534,-105.2253]}, {name:"Quintana Roo", coord:[18.5036,-88.3054]}, {name:"San Miguel De Allende", coord:[20.9153,-100.7436]}, {name:"Tulum", coord:[20.2114,-87.4654]}],
+  "México": [{name:"Bacalar", coord:[18.6786,-88.3961]}, {name:"Cabo San Lucas", coord:[22.8905,-109.9167]}, {name:"Cancun", coord:[21.1619,-86.8515]}, {name:"Chapala", coord:[20.2986,-103.1997]}, {name:"Chiapas", coord:[16.7516,-93.1029]}, {name:"Ciudad de México", coord:[19.4326,-99.1332]}, {name:"Cozumel", coord:[20.5083,-86.9458]}, {name:"Cuernavaca", coord:[18.9242,-99.2216]}, {name:"Guadalajara", coord:[20.6597,-103.3496]}, {name:"Holbox", coord:[21.5211,-87.3798]}, {name:"Isla Mujeres", coord:[21.2331,-86.7310]}, {name:"La Paz", coord:[24.1426,-110.3128]}, {name:"Merida", coord:[20.9674,-89.5926]}, {name:"Playa Del Carmen", coord:[20.6296,-87.0739]}, {name:"Puerto Escondido", coord:[15.8720,-97.0767]}, {name:"Puerto Vallarta", coord:[20.6534,-105.2253]}, {name:"Quintana Roo", coord:[18.5036,-88.3054]}, {name:"San Miguel De Allende", coord:[20.9153,-100.7436]}, {name:"Tulum", coord:[20.2114,-87.4654]}],
   "Nicaragua": [{name:"San Juan Del Sur", coord:[11.2529,-85.8703]}],
   "Panamá": [{name:"Bocas Del Toro", coord:[9.3400,-82.2417]}, {name:"Boquete", coord:[8.7833,-82.4333]}, {name:"Ciudad de Panamá", coord:[8.9824,-79.5199]}, {name:"Playa Venao", coord:[7.4167,-80.1833]}],
   "Paraguay": [{name:"Asuncion", coord:[-25.2637,-57.5759]}],
@@ -1994,7 +1997,7 @@ const DEFAULT_CITY_LABELS = {
     "Cozumel": { es:"Cozumel", en:"Cozumel", pt:"Cozumel", he:"קוסומל" },
     "Cuernavaca": { es:"Cuernavaca", en:"Cuernavaca", pt:"Cuernavaca", he:"קוארנבקה" },
     "Guadalajara": { es:"Guadalajara", en:"Guadalajara", pt:"Guadalajara", he:"גוודלחרה" },
-    "Hollbox": { es:"Hollbox", en:"Hollbox", pt:"Hollbox", he:"הולבוקס" },
+    "Holbox": { es:"Holbox", en:"Holbox", pt:"Holbox", he:"הולבוקס" },
     "Isla Mujeres": { es:"Isla Mujeres", en:"Isla Mujeres", pt:"Isla Mujeres", he:"איסלה מוחרס" },
     "La Paz": { es:"La Paz", en:"La Paz", pt:"La Paz", he:"לה פאס" },
     "Merida": { es:"Merida", en:"Merida", pt:"Mérida", he:"מרידה" },
@@ -6636,7 +6639,51 @@ function renderCountryDrill(countryName, data){
     </div>`;
 }
 
-const MAP_MARKER_SIZE = 40; // diámetro fijo, en px, de TODOS los círculos de país (no varía con la cantidad)
+const MAP_MARKER_SIZE = 40; // diámetro fijo, en px, de TODOS los círculos (no varía con la cantidad)
+
+// Qué círculos dibuja el mapa. Función pura (sin Leaflet) para poder
+// probarla sin red: el sandbox no llega a unpkg.
+//
+// Desde que las ciudades tienen coordenada, el mapa baja a ciudad: un
+// círculo por ciudad con registros, más uno en la capital para lo cargado
+// como "todo el país". Alejando el zoom, markercluster los junta y el
+// número es la suma (ver iconCreateFunction); acercando, se separan.
+// Un país sin nada propio conserva su círculo tenue con 0 en la capital:
+// dice "el equipo está acá aunque todavía no pasó nada", y da lugar al
+// popup con lo regional/LatAm. Una ciudad promovida desde Firestore sin
+// coordenada cae en la capital de su país.
+function mapMarkerSpecs(counts, countries){
+  const specs = [];
+  const seeMemory = t("Ver memoria {a}","See memory {a}","Ver memória {a}","צפייה בזיכרון {a}",{a:isRTL()?"←":"→"});
+  const nLabel = n => n === 1 ? t("1 registro","1 record","1 registro","רשומה אחת") : t("{n} registros","{n} records","{n} registros","{n} רשומות",{n});
+  countries.forEach(c=>{
+    const d = counts[c.name];
+    const color = safeColor(ZONES[c.zone]?.color);
+    const cities = Object.entries(d.cities).sort((a,b)=>b[1]-a[1]);
+    if(d.own === 0){
+      specs.push({ kind:"country", coord:c.coord, count:0, zone:c.zone, color, country:c.name,
+        popup:`<div class="map-popup"><b>${esc(countryLabel(c.name))} — ${nLabel(0)}</b>
+          ${crossLine(c.name, d)}
+          <button class="btn-mini" data-action="goto-country" data-country="${esc(c.name)}">${seeMemory}</button></div>` });
+      return;
+    }
+    if(d.general > 0){
+      specs.push({ kind:"country", coord:c.coord, count:d.general, zone:c.zone, color, country:c.name,
+        popup:`<div class="map-popup"><b>${esc(countryLabel(c.name))} — ${nLabel(d.general)}</b>
+          <div class="pop-city"><span>${esc(t("General / todo el país","General / whole country","Geral / todo o país","כללי / כל המדינה"))}</span></div>
+          ${crossLine(c.name, d)}
+          <button class="btn-mini" data-action="goto-country" data-country="${esc(c.name)}">${seeMemory}</button></div>` });
+    }
+    cities.forEach(([city, n])=>{
+      const preset = cityPresetsFor(c.name).find(p=>normalize(p.name)===normalize(city));
+      const coord = preset && preset.coord ? preset.coord : c.coord;
+      specs.push({ kind:"city", coord, count:n, zone:c.zone, color, country:c.name, city,
+        popup:`<div class="map-popup"><b>${esc(cityLabel(c.name, city))}, ${esc(countryLabel(c.name))} — ${nLabel(n)}</b>
+          <button class="btn-mini" data-action="goto-city" data-country="${esc(c.name)}" data-city="${esc(city)}">${seeMemory}</button></div>` });
+    });
+  });
+  return specs;
+}
 
 // El mapa se crea UNA vez y sobrevive a los renders: cada render
 // reconstruye #viewRoot (y con él el <div id="map">), así que acá se
@@ -6676,8 +6723,13 @@ function initOrUpdateMap(){
       cluster.getAllChildMarkers().forEach(m=>{ zoneCounts[m.zoneKey] = (zoneCounts[m.zoneKey]||0) + 1; });
       const topZone = Object.keys(zoneCounts).reduce((a,b)=> zoneCounts[b] > (zoneCounts[a]||0) ? b : a, null);
       const color = topZone && ZONES[topZone] ? safeColor(ZONES[topZone].color) : "var(--petroleo)";
+      // El número del cluster es la SUMA de registros de lo que agrupa,
+      // no la cantidad de marcadores: desde que el mapa baja a ciudades,
+      // un país con tres ciudades activas son tres marcadores, y contar
+      // marcadores diría "3" donde hay, por ejemplo, 11 registros.
+      const total = cluster.getAllChildMarkers().reduce((n,m)=> n + (m.count||0), 0);
       return L.divIcon({
-        html: `<div class="map-cluster" style="background:${color}">${cluster.getChildCount()}</div>`,
+        html: `<div class="map-cluster" style="background:${color}">${total}</div>`,
         className: "map-cluster-wrap",
         iconSize: [MAP_MARKER_SIZE, MAP_MARKER_SIZE],
       });
@@ -6697,26 +6749,17 @@ function initOrUpdateMap(){
   if(sig === mapMarkersSig) return;
   mapMarkersSig = sig;
   mapClusterGroup.clearLayers();
-  visibleCountries.forEach(c=>{
-    // El número del círculo es lo PROPIO: con el total, los 43 círculos
-    // compartían la misma base de LatAm y no se distinguía nada.
-    const cnt = counts[c.name].own;
-    const color = safeColor(ZONES[c.zone]?.color);
-    const marker = L.marker(c.coord, {
+  mapMarkerSpecs(counts, visibleCountries).forEach(spec=>{
+    const marker = L.marker(spec.coord, {
       icon: L.divIcon({
-        html: `<div class="map-country-marker" style="background:${color};opacity:${cnt>0 ? 0.9 : 0.45}">${cnt}</div>`,
+        html: `<div class="map-country-marker${spec.kind==="city"?" map-city-marker":""}" style="background:${spec.color};opacity:${spec.count>0 ? 0.9 : 0.45}">${spec.count}</div>`,
         className: "map-country-marker-wrap",
         iconSize: [MAP_MARKER_SIZE, MAP_MARKER_SIZE],
       }),
     });
-    marker.zoneKey = c.zone;
-    const topCities = Object.entries(counts[c.name].cities).sort((a,b)=>b[1]-a[1]).slice(0,5);
-    const cntLabel = cnt === 1 ? t("1 registro","1 record","1 registro","רשומה אחת") : t("{n} registros","{n} records","{n} registros","{n} רשומות",{n:cnt});
-    const popupHtml = `<div class="map-popup"><b>${esc(countryLabel(c.name))} — ${cntLabel}</b>
-      ${topCities.map(([city,n])=>`<div class="pop-city"><span>${esc(city)}</span><span>${n}</span></div>`).join("")}
-      ${crossLine(c.name, counts[c.name])}
-      <button class="btn-mini" data-action="goto-country" data-country="${esc(c.name)}">${t("Ver memoria {a}","See memory {a}","Ver memória {a}","צפייה בזיכרון {a}",{a:isRTL()?"←":"→"})}</button></div>`;
-    marker.bindPopup(popupHtml);
+    marker.zoneKey = spec.zone;
+    marker.count = spec.count;
+    marker.bindPopup(spec.popup);
     mapClusterGroup.addLayer(marker);
   });
 

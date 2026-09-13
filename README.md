@@ -424,9 +424,10 @@ conocer:
 Ojo con `coord`: hoy el mapa de Vistas marca **por país** (la capital,
 ver `initOrUpdateMap`), así que la coordenada de ciudad no se dibuja en
 ningún lado todavía. Se guarda igual para cuando el mapa baje a ciudades.
-Y "Hollbox" (la isla es Holbox) también está mal escrito, pero es
-identificador de posteos ya cargados: no se toca sin corregir esos
-posteos primero.
+"Hollbox" (la isla es Holbox) se corrigió en el código en septiembre 2026;
+como el nombre es el identificador, los posteos que decían "Hollbox" los
+corrige el admin a mano (aparecen en Administrar > Lugares como ciudad
+no oficial hasta que se editan).
 
 ### Lo propio y lo de LatAm: tres niveles por lugar
 
@@ -483,13 +484,24 @@ ese alcance se lee tanto en los filtros de Feed/Memoria como en los conteos
 de la vista Vistas — aunque el posteo original "viva" en otro lugar. Ver
 `getVisiblePosts()` y `computePlaceCounts()` en `index.html`.
 
-### Por qué el mapa no usa imágenes satelitales "pesadas"
+### El mapa: por país de lejos, por ciudad de cerca
 
 La vista Mapa usa Leaflet + capas de OpenStreetMap reales (no es un mapa
-esquemático), pero los círculos se ubican en la **capital** de cada país
-(no hay geocoding de ciudades exactas sin un servicio externo de geocoding,
-que no está configurado). El detalle por ciudad se ve en la vista
-Vistas → Lista, al hacer click en un país.
+esquemático). Desde septiembre 2026 **baja a ciudad**: un círculo por
+ciudad con registros (en su coordenada de `CITY_PRESETS`) más uno en la
+capital para lo cargado como "todo el país". Alejando el zoom,
+markercluster los junta y el número del cluster es la **suma de
+registros** de lo que agrupa (no la cantidad de marcadores — un país con
+tres ciudades activas son tres marcadores, y contar marcadores decía "3"
+donde había 11). Acercando, se separan en ciudades. `mapMarkerSpecs()` es
+la función pura que decide qué círculos van: se prueba sin Leaflet, porque
+el sandbox no llega a unpkg.
+
+Un país sin nada propio conserva su círculo tenue con 0 en la capital:
+dice "el equipo está acá aunque todavía no pasó nada" y da lugar al popup
+con lo regional/LatAm. Una ciudad promovida desde Firestore sin coordenada
+cae en la capital de su país. El número de cada círculo es lo **propio**
+(ver "Lo propio y lo de LatAm").
 
 ### Calendario (vista propia, no un embed de Google)
 
