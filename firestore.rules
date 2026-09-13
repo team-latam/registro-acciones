@@ -425,7 +425,7 @@ service cloud.firestore {
     // cliente ya lo acota al leerlo).
     function isValidUserPrefs(d) {
       return d.keys().hasOnly(['weekStart', 'showWeekends', 'customDays', 'dimPast',
-          'dateFormat', 'timeFormat', 'placeLevel',
+          'dateFormat', 'timeFormat', 'placeLevel', 'unifiedFeed', 'feedOrder',
           'holidayMode', 'holidayCountries', 'holidayJewish',
           'holidayColor', 'holidayJewishColor',
           'notifyTypes', 'notifyLead', 'notifyOnlyMine', 'notifyZones',
@@ -441,6 +441,9 @@ service cloud.firestore {
         (d.get('timeFormat', 'auto') in ['auto', '24', '12']) &&
         // Al abrir un lugar: 0 solo lo propio, 1 + la región, 2 + toda LatAm.
         (d.get('placeLevel', 0) in [0, 1, 2]) &&
+        // Feed unificado (prueba por persona) y su orden.
+        (d.get('unifiedFeed', false) is bool) &&
+        (d.get('feedOrder', 'reciente') in ['reciente', 'desc', 'asc']) &&
         (d.get('holidayMode', 'sutil') is string) &&
         (d.get('holidayCountries', []) is list) &&
         (d.get('holidayJewish', false) is bool) &&
