@@ -618,7 +618,13 @@
   }
   .zone-edit-row .rm:disabled{ background:var(--border); color:var(--text-muted); cursor:not-allowed; }
   .zone-add-row{ display:flex; gap:8px; margin-top:6px; }
-  .zone-add-row input{ flex:1; border:1.5px solid var(--border); border-radius:8px; padding:7px 10px; font-size:13px; }
+  /* Mismo aspecto que los campos de formulario del resto de Administrar
+     (el ID del calendario, por ejemplo): antes no tenía fondo propio y en
+     modo oscuro salía en otro gris. */
+  .zone-add-row input{
+    flex:1; border:1.5px solid var(--border); border-radius:var(--radius-sm); padding:10px 12px; font-size:14px;
+    background:var(--surface-soft); color:var(--ink);
+  }
   .country-zone-list{
     display:grid; grid-template-columns:repeat(auto-fill, minmax(230px, 1fr)); gap:1px;
     background:var(--border); border:1px solid var(--border); border-radius:var(--radius-sm);
