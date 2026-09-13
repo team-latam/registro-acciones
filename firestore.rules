@@ -322,7 +322,9 @@ service cloud.firestore {
       allow update: if isAdmin() && isValidLikeToggle(request.resource.data);
       allow update: if canWrite() && isValidLikeToggle(request.resource.data);
 
-      allow delete: if false;
+      // Borrar de verdad (sin marca): SOLO el admin fijo. Los admins por
+      // rol no (isRoleAdmin no aparece acá a propósito); el resto cancela.
+      allow delete: if isAdmin();
 
       match /replies/{replyId} {
         allow read: if isAdmin();
@@ -335,7 +337,8 @@ service cloud.firestore {
         allow update: if isAdmin() && isValidLikeToggle(request.resource.data);
         allow update: if canWrite() && isValidLikeToggle(request.resource.data);
 
-        allow delete: if false;
+        // Idem: solo el admin fijo borra respuestas.
+        allow delete: if isAdmin();
       }
     }
 
