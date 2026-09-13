@@ -5755,7 +5755,8 @@ function tiposFootnote(d){
     const raw = [...new Set(huerfanos.map(p=>String(p.activityType||"—")))].join(", ");
     parts.push(t("{n} tienen un tipo que ya no existe ({k}): editalos para asignarles uno.","{n} have a type that no longer exists ({k}): edit them to assign one.","{n} têm um tipo que já não existe ({k}): edite-os para atribuir um.","ל-{n} יש סוג שכבר לא קיים ({k}): ערכו אותם כדי להקצות סוג.",{n:huerfanos.length, k:esc(raw)}));
   }
-  return `<div class="hint" style="margin-top:10px;">${parts.join(" ")}</div>`;
+  // A la derecha, debajo de la columna de los conteos (a pedido).
+  return `<div class="hint" style="margin-top:10px;text-align:end;">${parts.join(" ")}</div>`;
 }
 function renderTiposSection(){
   const d = getTiposDraft();
