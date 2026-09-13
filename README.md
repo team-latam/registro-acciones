@@ -1284,6 +1284,30 @@ Tocar el ID después de que apareció la palabra la cancela: hay que
 volver a pedirla. Todo vive en `calendarDraft` (`locked`, `confirmWord`,
 `typed`) y en las acciones `calendar-unlock` / `calendar-save`.
 
+### Administrar › Calendar: importar el historial completo
+
+La primera sincronización Calendar → app tenía un tope fijo de **90
+días** en el código (`timeMin = hoy − 90`), y después el sync token solo
+trae cambios posteriores: todo lo anterior a mediados de junio de 2026
+nunca había entrado y el token nunca vuelve a mirar para atrás. Ahora:
+
+- **"Importar desde"** (`meta/preferences.calendarImportFrom`,
+  `CALENDAR_IMPORT_FROM`): la fecha desde la que se lee el calendario
+  en una lectura completa. Vacío = **todo el historial** (sin `timeMin`).
+  Se guarda con "Guardar fecha", sin palabra.
+- **"Reimportar historial"**: borra el sync token
+  (`setSyncMeta({syncToken:null})`) y corre `syncFromCalendar` de una,
+  que así lee entero desde esa fecha. Lo que ya está no se duplica (se
+  reconoce por `calendarEventId`), pero cada evento que falte entra como
+  posteo nuevo "Creado automáticamente desde Google Calendar", sin lugar
+  definido; por eso pide la palabra de confirmación, como el cambio de
+  ID (`confirmMode: "reimport"` en `calendarDraft`, para no mezclarse
+  con la confirmación del ID).
+
+Pendiente a propósito: las series **recurrentes** siguen sin expandirse
+(sin `singleEvents`): una serie es un solo posteo. Si el equipo las usa,
+hay que decidir si cada repetición debe ser un posteo.
+
 ### Administrar › Tipos: sin repetidos, sin "Rutina", y la cuenta explicada
 
 Agregar o renombrar un tipo con un nombre que ya existe (sin distinguir

@@ -543,6 +543,9 @@ service cloud.firestore {
       return (d.get('activityTypes', null) == null || d.activityTypes is list) &&
         (d.get('extraCities', null) == null || d.extraCities is map) &&
         isOptionalString(d.get('calendarId', null), 200) &&
+        // Desde cuándo se importa el historial del Calendar (YYYY-MM-DD o
+        // vacío/null = todo).
+        isOptionalString(d.get('calendarImportFrom', null), 10) &&
         (d.get('maxImages', null) == null || d.maxImages is int) &&
         (d.get('maxAttachmentFiles', null) == null || d.maxAttachmentFiles is int) &&
         // Tope duro de 500 KB por adjunto (mismo HARD_MAX_ATTACHMENT_FILE_BYTES

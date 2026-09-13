@@ -3634,7 +3634,9 @@ async function fetchCalendarChanges(syncToken){
   do{
     const params = new URLSearchParams({ key:CALENDAR_API_KEY, maxResults:"250", showDeleted:"true" });
     if(syncToken) params.set("syncToken", syncToken);
-    else params.set("timeMin", new Date(Date.now() - 90*24*60*60*1000).toISOString());
+    // Sincronización completa: desde la fecha configurada, o TODO el
+    // historial si no hay fecha (antes: solo los últimos 90 días).
+    else if(CALENDAR_IMPORT_FROM) params.set("timeMin", `${CALENDAR_IMPORT_FROM}T00:00:00Z`);
     if(pageToken) params.set("pageToken", pageToken);
     const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events?${params}`);
     if(res.status === 410) return { needsFullResync:true };
@@ -4315,6 +4317,7 @@ function applyPreferencesConfig(cfg){
   applyActivityTypesConfig(cfg && cfg.activityTypes);
   applyExtraCitiesConfig(cfg && cfg.extraCities);
   applyCalendarIdConfig(cfg && cfg.calendarId);
+  applyCalendarImportFromConfig(cfg && cfg.calendarImportFrom);
   applyAttachmentLimitsConfig(cfg);
 }
 // Se mutan EVENTO_TYPES/ACTIVITY_TYPES/ACTIVITY_BY_KEY/CALENDAR_SYNC_TYPES
@@ -4357,6 +4360,14 @@ async function promoteCustomCity(country, city){
 }
 function applyCalendarIdConfig(calendarId){
   if(calendarId) CALENDAR_ID = calendarId;
+}
+// Desde qué fecha se importa el historial del Calendar en una
+// sincronización completa (sin token). Vacío = TODO el historial. Antes
+// era un tope fijo de 90 días escrito en el código: todo lo anterior a
+// mediados de junio de 2026 nunca había entrado.
+let CALENDAR_IMPORT_FROM = "";
+function applyCalendarImportFromConfig(v){
+  CALENDAR_IMPORT_FROM = /^\d{4}-\d{2}-\d{2}$/.test(String(v||"")) ? v : "";
 }
 function applyAttachmentLimitsConfig(cfg){
   if(!cfg) return;
@@ -5993,7 +6004,7 @@ function randomConfirmWord(){
   const list = CONFIRM_WORDS[currentLang()] || CONFIRM_WORDS.es;
   return list[Math.floor(Math.random() * list.length)];
 }
-function newCalendarDraft(){ return { calendarId: CALENDAR_ID, error:"", saving:false, locked:true, confirmWord:null, typed:"" }; }
+function newCalendarDraft(){ return { calendarId: CALENDAR_ID, error:"", saving:false, locked:true, confirmWord:null, confirmMode:null, typed:"", importFrom: CALENDAR_IMPORT_FROM, importSaving:false, reimporting:false }; }
 let calendarDraft = null;
 function getCalendarDraft(){
   if(!calendarDraft) calendarDraft = newCalendarDraft();
@@ -6020,15 +6031,43 @@ function renderCalendarSection(){
           ? t("Bloqueado para evitar cambios por error. Desbloquealo solo si de verdad hay que cambiar de calendario.","Locked to prevent accidental changes. Unlock it only if the calendar really has to change.","Bloqueado para evitar mudanças por engano. Desbloqueie só se realmente for preciso trocar de calendário.","נעול כדי למנוע שינויים בטעות. שחרר/י רק אם באמת צריך להחליף יומן.")
           : t("⚠️ Cuidado: los eventos nuevos y los editados van a ir al calendario que quede acá.","⚠️ Careful: new and edited events will go to whatever calendar ends up here.","⚠️ Cuidado: os eventos novos e editados vão para o calendário que ficar aqui.","⚠️ זהירות: אירועים חדשים ונערכים יעברו ליומן שיישאר כאן.")}</div>
       </div>
-      ${d.confirmWord ? `<div class="confirm-box" role="alert">
+      ${d.confirmWord && d.confirmMode !== "reimport" ? `<div class="confirm-box" role="alert">
         ${t("Vas a cambiar el calendario del equipo. Para confirmar, escribí la palabra","You're about to change the team calendar. To confirm, type the word","Você vai trocar o calendário da equipe. Para confirmar, escreva a palavra","את/ה עומד/ת להחליף את יומן הצוות. לאישור, הקלד/י את המילה")} <b>${esc(d.confirmWord)}</b>
         <input type="text" id="calendarConfirmInput" value="${esc(d.typed)}" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="${esc(t("Palabra de confirmación","Confirmation word","Palavra de confirmação","מילת אישור"))}">
       </div>` : ""}
       ${d.error ? `<div class="form-error">${esc(d.error)}</div>` : ""}
+      ${renderCalendarImportBlock(d)}
       ${d.locked ? "" : `<div class="modal-actions" style="margin-top:16px;">
         <button type="button" class="btn-secondary" data-action="calendar-reset">${t("Descartar cambios","Discard changes","Descartar alterações","ביטול השינויים")}</button>
         <button type="button" class="btn-primary" data-action="calendar-save" ${d.saving || (d.confirmWord && d.typed.trim().toLowerCase() !== d.confirmWord.toLowerCase()) ? "disabled" : ""}>${d.saving ? t("Guardando…","Saving…","Salvando…","...שומר") : d.confirmWord ? t("Confirmar y guardar","Confirm and save","Confirmar e salvar","אישור ושמירה") : t("Guardar cambios","Save changes","Salvar alterações","שמירת השינויים")}</button>
       </div>`}`;
+}
+
+// Historial: desde cuándo importar y el botón para reimportar. La
+// reimportación borra el token de cambios y vuelve a leer el calendario
+// entero desde esa fecha; lo que ya existe no se duplica (se reconoce por
+// calendarEventId), pero cada evento que falte entra como posteo nuevo,
+// así que pide la palabra como el cambio de ID.
+function renderCalendarImportBlock(d){
+  const dirty = (d.importFrom || "") !== (CALENDAR_IMPORT_FROM || "");
+  return `
+      <div class="field" style="margin-top:22px;">
+        <label>${t("Importar desde","Import from","Importar desde","ייבוא מתאריך")}</label>
+        <div class="locked-field">
+          <input type="date" id="calendarImportFromInput" value="${esc(d.importFrom||"")}" max="${todayISO()}" style="flex:0 1 220px;">
+          ${dirty ? `<button type="button" class="btn-secondary" data-action="calendar-importfrom-save" ${d.importSaving?"disabled":""}>${d.importSaving ? t("Guardando…","Saving…","Salvando…","...שומר") : t("Guardar fecha","Save date","Salvar data","שמירת תאריך")}</button>` : ""}
+          <button type="button" class="btn-secondary" data-action="calendar-reimport" ${d.reimporting||state.calendarSyncing?"disabled":""}>🔄 ${d.reimporting ? t("Reimportando…","Reimporting…","Reimportando…","...מייבא מחדש") : t("Reimportar historial","Reimport history","Reimportar histórico","ייבוא מחדש של ההיסטוריה")}</button>
+        </div>
+        <div class="hint">${t("Desde qué fecha se traen los eventos del Calendar cuando se lee entero. Vacío = todo el historial. Los que ya están no se duplican.","From which date Calendar events are fetched on a full read. Empty = the whole history. Existing ones aren't duplicated.","A partir de que data os eventos do Calendar são trazidos numa leitura completa. Vazio = todo o histórico. Os que já existem não se duplicam.","מאיזה תאריך מובאים אירועי היומן בקריאה מלאה. ריק = כל ההיסטוריה. הקיימים לא משוכפלים.")}</div>
+      </div>
+      ${d.confirmWord && d.confirmMode === "reimport" ? `<div class="confirm-box" role="alert">
+        ${t("Vas a releer el Calendar entero: cada evento que falte entra como posteo nuevo. Para confirmar, escribí la palabra","You're about to re-read the whole Calendar: every missing event comes in as a new post. To confirm, type the word","Você vai reler o Calendar inteiro: cada evento que falte entra como postagem nova. Para confirmar, escreva a palavra","את/ה עומד/ת לקרוא מחדש את כל היומן: כל אירוע חסר ייכנס כפוסט חדש. לאישור, הקלד/י את המילה")} <b>${esc(d.confirmWord)}</b>
+        <input type="text" id="calendarConfirmInput" value="${esc(d.typed)}" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="${esc(t("Palabra de confirmación","Confirmation word","Palavra de confirmação","מילת אישור"))}">
+        <div class="modal-actions" style="margin-top:10px;">
+          <button type="button" class="btn-secondary" data-action="calendar-reimport-cancel">${t("Cancelar","Cancel","Cancelar","ביטול")}</button>
+          <button type="button" class="btn-primary" data-action="calendar-reimport" ${d.typed.trim().toLowerCase() !== d.confirmWord.toLowerCase() ? "disabled" : ""}>${t("Confirmar y reimportar","Confirm and reimport","Confirmar e reimportar","אישור וייבוא מחדש")}</button>
+        </div>
+      </div>` : ""}`;
 }
 
 /* ----- Preferencias: sección "Adjuntos" ----- */
@@ -9849,8 +9888,34 @@ document.addEventListener("click", e=>{
     if(inp && !isTouchDevice()){ inp.focus(); inp.select(); }
   } else if(action === "calendar-reset"){
     calendarDraft = null; render(); // vuelve bloqueado
+  } else if(action === "calendar-importfrom-save"){
+    const d = getCalendarDraft();
+    const v = (d.importFrom || "").trim();
+    if(v && !/^\d{4}-\d{2}-\d{2}$/.test(v)){ d.error = t("Fecha inválida.","Invalid date.","Data inválida.","תאריך לא תקין."); render(); return; }
+    d.importSaving = true; d.error = ""; render();
+    fb.setDoc(fb.doc(db,"meta","preferences"), { calendarImportFrom: v || null }, { merge:true }).then(()=>{
+      d.importSaving = false; render();
+      showCalendarNotice({ ok:true, message: v ? t("Se importa desde el {d}. Para traer lo anterior que falte, usá «Reimportar historial».","Importing from {d}. To bring in anything missing before that, use “Reimport history”.","Importa-se desde {d}. Para trazer o que falte de antes, use «Reimportar histórico».","מייבאים מ-{d}. כדי להביא מה שחסר, השתמש/י ב«ייבוא מחדש של ההיסטוריה».",{d:fmtDate(v)}) : t("Se importa todo el historial. Para traer lo que falte, usá «Reimportar historial».","Importing the whole history. To bring in what's missing, use “Reimport history”.","Importa-se todo o histórico. Para trazer o que falte, use «Reimportar histórico».","מייבאים את כל ההיסטוריה. כדי להביא מה שחסר, השתמש/י ב«ייבוא מחדש של ההיסטוריה».") });
+    }).catch(err=>{ d.importSaving = false; d.error = t("No se pudo guardar: {msg}","Couldn't save: {msg}","Não foi possível salvar: {msg}","{msg} :השמירה נכשלה",{msg:err.message}); render(); });
+  } else if(action === "calendar-reimport-cancel"){
+    const d = getCalendarDraft(); d.confirmWord = null; d.confirmMode = null; d.typed = ""; render();
+  } else if(action === "calendar-reimport"){
+    const d = getCalendarDraft();
+    if(!d.confirmWord || d.confirmMode !== "reimport"){
+      d.confirmWord = randomConfirmWord(); d.confirmMode = "reimport"; d.typed = ""; d.error = ""; render();
+      const inp = document.getElementById("calendarConfirmInput");
+      if(inp && !isTouchDevice()) inp.focus();
+      return;
+    }
+    if(d.typed.trim().toLowerCase() !== d.confirmWord.toLowerCase()){ render(); return; }
+    d.reimporting = true; d.confirmWord = null; d.confirmMode = null; d.typed = ""; render();
+    // Sin token, la próxima lectura es completa desde CALENDAR_IMPORT_FROM.
+    setSyncMeta({ syncToken: null }).then(()=> syncFromCalendar({ silent:false })).then(()=>{
+      d.reimporting = false; render();
+    }).catch(err=>{ d.reimporting = false; d.error = t("No se pudo reimportar: {msg}","Couldn't reimport: {msg}","Não foi possível reimportar: {msg}","{msg} :הייבוא מחדש נכשל",{msg:err.message}); render(); });
   } else if(action === "calendar-save"){
     const d = getCalendarDraft();
+    if(d.confirmMode === "reimport"){ d.confirmWord = null; d.confirmMode = null; d.typed = ""; }
     const id = d.calendarId.trim();
     if(!id){ d.error = t("Escribí el ID del calendario.","Type the calendar ID.","Escreva o ID do calendário.",".הקלד/י את מזהה היומן"); render(); return; }
     // Sin cambio real no hay nada que confirmar: se vuelve a bloquear.
@@ -9858,7 +9923,7 @@ document.addEventListener("click", e=>{
     // Primer click: se pide la palabra. Segundo click (con la palabra
     // bien escrita, si no el botón está deshabilitado): se guarda.
     if(!d.confirmWord){
-      d.confirmWord = randomConfirmWord(); d.typed = ""; d.error = ""; render();
+      d.confirmWord = randomConfirmWord(); d.confirmMode = "id"; d.typed = ""; d.error = ""; render();
       const inp = document.getElementById("calendarConfirmInput");
       if(inp && !isTouchDevice()) inp.focus();
       return;
@@ -9991,6 +10056,7 @@ document.addEventListener("input", e=>{
   else if(el.id === "tiposNewIcon"){ getTiposDraft().newIcon = el.value; }
   else if(el.id === "tiposNewLabel"){ getTiposDraft().newLabel = el.value; }
   else if(el.id === "calendarIdInput"){ const d = getCalendarDraft(); if(!d.locked){ d.calendarId = el.value; if(d.confirmWord){ d.confirmWord = null; d.typed = ""; render(); const inp = document.getElementById("calendarIdInput"); if(inp){ inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); } } } }
+  else if(el.id === "calendarImportFromInput"){ getCalendarDraft().importFrom = el.value; render(); }
   else if(el.id === "calendarConfirmInput"){
     // Solo se re-renderiza cuando cambia si el botón debe habilitarse,
     // para no perder el foco a cada tecla.
