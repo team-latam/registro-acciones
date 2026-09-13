@@ -53,14 +53,16 @@ de Google, y la primera vez que alguien lo hace queda "pendiente de
 aprobación" hasta que el administrador lo apruebe desde la propia app
 (pestaña **Solicitudes**, visible solo para el admin).
 
-- El único email con permisos de administrador está fijo en dos lugares que
+- Hay un email con permisos de administrador **fijo** en dos lugares que
   tienen que coincidir: la constante `ADMIN_EMAIL` en `index.html` y la
   función `isAdmin()` en `firestore.rules`. Hoy es `benny@team-latam.com`.
-  Para cambiarlo (o agregar un segundo admin) hay que editar ambos archivos
-  y volver a publicar las reglas.
-- No hay roles intermedios: todo el que está aprobado ve y carga todo por
-  igual — el admin solo se diferencia en que además ve la pestaña
-  Solicitudes y puede aprobar/rechazar/revocar accesos.
+  Ese admin no depende de ningún documento: es admin con o sin `allowlist`,
+  y nadie (ni otro admin) puede cambiarle el rol ni revocarle el acceso.
+  A propósito **no se lo señala como "dueño" u "owner" en ningún lado**:
+  para el resto del equipo es un admin más; solo que su fila en Usuarios no
+  tiene selector de rol ni botón de revocar.
+- Los demás roles viven en el campo `role` de `allowlist/{email}` — ver
+  [Roles](#roles) más abajo.
 - El nombre que se muestra en cada posteo/respuesta ya no es un campo de
   texto libre: se toma automáticamente del nombre de la cuenta de Google
   con la que se inició sesión.
@@ -683,6 +685,51 @@ El `GOOGLE_OAUTH_CLIENT_ID` es público por diseño y va en el código. El
 **client secret NO se usa nunca** en una app de navegador: si algo lo pide
 para el front, está mal.
 
+### Roles
+
+Tres roles, guardados en `allowlist/{email}.role` (ausente = `member`, que
+es lo que tienen todos los aprobados de antes de que existiera el campo):
+
+| Rol | Ve | Escribe | Administra |
+|---|---|---|---|
+| `admin` | todo | todo | sí: Usuarios, Actividad, Administrar |
+| `member` | todo | posteos, respuestas, me gusta, sus preferencias | no |
+| `observer` (Observador) | todo | **solo sus preferencias** | no |
+
+El observador es para quien tiene que mirar (dirección, alguien de otra
+área) sin cargar nada: no ve el `+`, ni "Nuevo evento", ni los botones de
+me gusta/responder/editar, ni "Actualizar desde Calendar"; en su lugar ve
+una franja arriba que le dice que está en modo observador, y en los
+posteos con me gusta ve el conteo como texto. Todo eso son gates
+`canWrite()` en `index.html`, pero **la barrera real está en
+`firestore.rules`**: `canWrite()` ahí es "aprobado y no observador", y es
+lo que exigen las escrituras de posts/replies/likes/`meta/calendarSync`.
+Sus preferencias personales (`userPrefs`) sí las puede guardar.
+
+Los admins por rol (`role == 'admin'`, `isRoleAdmin()` en las reglas)
+pueden todo lo que el admin fijo: aprobar/rechazar/revocar, compartir el
+Calendar, Zonas, Preferencias, leer la auditoría, y **cambiar el rol de
+cualquiera** desde Usuarios (un `<select>` por fila, `changeRole()` en
+`index.html`) — con dos límites que están en las reglas, no solo en la UI:
+el documento de `ADMIN_EMAIL` no se puede tocar ni borrar, y el rol
+escrito tiene que ser uno de los tres. Bajarse a uno mismo de admin pide
+confirmación (después no hay forma de volver por cuenta propia). Cada
+cambio deja una entrada `role_changed` en la auditoría, con el rol nuevo
+en `detail`.
+
+En `index.html`: `state.auth.status` toma `admin`/`approved`/`observer`
+según el rol del snapshot de `allowlist` (`recomputeAuthStatus`), y las
+suscripciones que solo tienen sentido con admin (solicitudes, auditoría)
+se prenden y apagan con ese estado (`syncAdminSubs`): un admin degradado
+con la sesión abierta deja de recibirlas sin esperar un permiso denegado.
+`isAuthorized()` (puede entrar) ≠ `canWrite()` (puede publicar) ≠
+`isAdmin()` (administra).
+
+Detalle de reglas: `isRoleAdmin()` y `canWrite()` usan `get()` sobre el
+propio documento de `allowlist`, y siguen la regla de oro de este repo:
+líneas `allow` **separadas** para `isAdmin()` (el fijo) y para
+`isRoleAdmin()`, nunca las dos en una misma expresión.
+
 ### Ex integrantes (`formerMembers/{email}`)
 
 Al revocar un acceso se borra `allowlist/{email}`, y ahí vivía el
@@ -695,7 +742,7 @@ clickeable, y las @menciones que le habían hecho quedaban como texto muerto.
 La colección **no da acceso a nada**: `isApproved()` sigue mirando
 únicamente si existe el documento en `allowlist`. La lee cualquier
 aprobado, por el mismo motivo que el roster (resolver el `@nickname` de un
-autor); la escribe solo el admin.
+autor); la escriben solo los admins.
 
 `memberByEmail()` / `memberByNick()` son la única resolución de identidad:
 buscan primero entre los activos y después entre los ex. Usarlas siempre en
@@ -1374,9 +1421,6 @@ muerto). Lo que cambió y conviene tener presente al tocar el código:
   [la decisión y su evidencia](#nickname-quemado). Está marcada como
   revisable: si alguna vez el equipo necesita reusar un nombre, ahí está
   medido qué se rompe y cuál es la variante intermedia.
-- **Roles**: hoy todo aprobado tiene los mismos permisos (leer + publicar).
-  Si más adelante hace falta un rol intermedio (por ejemplo, alguien que
-  solo lee), hay que sumarlo a mano en `firestore.rules` y en la UI.
 - **SRI en tres assets de unpkg**: `leaflet.markercluster.js` y sus dos
   CSS (`MarkerCluster.css`, `MarkerCluster.Default.css`) se cargan sin
   `integrity=` (los de Leaflet sí lo tienen). Desde el entorno donde se
