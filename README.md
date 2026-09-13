@@ -1269,6 +1269,31 @@ una celda de un mes en un celular (Google usa puntos ahí).
 
 `layout.mjs` en el scratchpad de la sesión cubre estas reglas una por una.
 
+### Administrar › Calendar: el ID está bloqueado y cambiarlo pide una palabra
+
+Cambiar el calendario es de las pocas cosas de la app que pueden hacer
+daño de verdad (los eventos nuevos pasan a otro calendario y el sync
+token se resetea), y un click de más no tiene que alcanzar. Por eso el
+campo arranca **bloqueado** (solo lectura, botón "Desbloquear"), y al
+guardar un cambio real aparece una caja roja que pide escribir una
+**palabra al azar** que da el sistema (`CONFIRM_WORDS`, una lista por
+idioma; "torta", "nube", "faro"...). El botón pasa a "Confirmar y
+guardar" y solo se habilita con la palabra bien escrita (sin distinguir
+mayúsculas). Guardar sin cambio real, o "Descartar", vuelve a bloquear.
+Tocar el ID después de que apareció la palabra la cancela: hay que
+volver a pedirla. Todo vive en `calendarDraft` (`locked`, `confirmWord`,
+`typed`) y en las acciones `calendar-unlock` / `calendar-save`.
+
+### Administrar › Tipos: sin repetidos, sin "Rutina", y la cuenta explicada
+
+Agregar o renombrar un tipo con un nombre que ya existe (sin distinguir
+mayúsculas ni acentos, `normalize()`) o llamado "Rutina" en cualquier
+idioma se rechaza con un mensaje, al agregar y al guardar. Debajo de la
+lista hay una línea con el total de posteos, cuántos son Rutinas (van
+aparte, no se cuentan por tipo) y cuántos tienen un tipo que ya no
+existe: la suma de las filas no es el total del Registro, y eso ya
+generó la pregunta "¿por qué figuran 42 si hay 46?".
+
 ### Flechas de navegación: una sola familia
 
 Las flechas circulares de la app (subir, anterior/siguiente en el visor
