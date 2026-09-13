@@ -2989,6 +2989,10 @@ const DEFAULT_PREFS = {
   // solapa Memoria se esconde. Apagado = Feed + Memoria como siempre.
   unifiedFeed: false,
   feedOrder: "reciente",   // reciente | desc | asc (solo con unifiedFeed)
+  // "Reciente" intercala hasta 2 destacados (con comentarios o me gusta,
+  // de la última semana) después del más nuevo. Apagado: solo por
+  // momento de publicación, sin excepciones.
+  feedFeatured: true,
   // El default es 24 h, no "auto": el Calendario SIEMPRE mostró los
   // horarios crudos ("13:00"), y con "auto" Intl considera que es-AR es de
   // 12 h, así que todo el equipo se habría despertado con el calendario en
@@ -6337,9 +6341,14 @@ function getVisiblePosts(){
 const FEED_FEATURED_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 const FEED_FEATURED_MAX = 2;
 function computeFeedOrder(items){
-  if(items.length <= 1) return items.map(it=>({ ...it, featured:false }));
-  const mostRecent = items.reduce((a,b)=> tsToMillis(b.post.createdAt) > tsToMillis(a.post.createdAt) ? b : a);
-  const pool = items.filter(it=>it.post.id !== mostRecent.post.id);
+  // Orden base: por momento de PUBLICACIÓN, lo más nuevo arriba. Antes
+  // solo el último publicado subía y el resto iba por fecha del evento:
+  // tres rutinas cargadas seguidas quedaban una arriba y dos perdidas
+  // abajo de los eventos futuros. Para "por fecha" está el Cronológico.
+  const byCreated = items.slice().sort((a,b)=> tsToMillis(b.post.createdAt) - tsToMillis(a.post.createdAt));
+  if(byCreated.length <= 1 || !prefs().feedFeatured) return byCreated.map(it=>({ ...it, featured:false }));
+  const mostRecent = byCreated[0];
+  const pool = byCreated.slice(1);
   const now = Date.now();
   const featured = pool
     .map(it=>({
@@ -6388,7 +6397,7 @@ function renderFeedOrderBar(){
       ${crono ? `<div class="sort-toggle-group">
         <span class="chip-toggle ${order==="desc"?"active":""}" data-action="feed-order" data-key="desc">${t("Más reciente primero","Newest first","Mais recente primeiro","החדש ביותר קודם")}</span>
         <span class="chip-toggle ${order==="asc"?"active":""}" data-action="feed-order" data-key="asc">${t("Más antiguo primero","Oldest first","Mais antigo primeiro","הישן ביותר קודם")}</span>
-      </div>` : `<span class="feed-order-hint">${t("Lo nuevo y lo destacado arriba","New and featured on top","O novo e o destacado em cima","החדש והמודגש למעלה")}</span>`}
+      </div>` : `<span class="feed-order-hint">${prefs().feedFeatured !== false ? t("Lo nuevo arriba, con destacados","Newest on top, with featured","O novo em cima, com destaques","החדש למעלה, עם מודגשים") : t("Lo nuevo arriba","Newest on top","O novo em cima","החדש למעלה")}</span>`}
       ${crono && canWrite() ? `<button type="button" class="btn-sync" data-action="sync-calendar" ${state.calendarSyncing?"disabled":""}>🔄 ${t("Actualizar desde Calendar","Refresh from Calendar","Atualizar a partir do Calendar","עדכון מהיומן")}</button>` : ""}
     </div>`;
 }
@@ -7311,10 +7320,13 @@ function renderConfigFeedSection(){
         ${prefRow("📰", t("Feed unificado (en prueba)","Unified feed (trial)","Feed unificado (em teste)","פיד מאוחד (ניסיון)"),
           t("Una sola solapa Feed con el interruptor Reciente / Cronológico y los filtros de la Memoria. La solapa Memoria se esconde mientras esté prendido; apagalo y vuelve todo como antes.","A single Feed tab with the Recent / Chronological switch and the Memory filters. The Memory tab hides while this is on; turn it off and everything is back as before.","Uma única aba Feed com o interruptor Recente / Cronológico e os filtros da Memória. A aba Memória fica escondida enquanto estiver ligado; desligue e tudo volta como antes.","לשונית פיד אחת עם מתג אחרונים / כרונולוגי ומסנני הזיכרון. לשונית הזיכרון מוסתרת כל עוד זה דולק; כבו וחוזר הכול כמו קודם."),
           prefSwitch("unifiedFeed", on))}
+        ${prefRow("⭐", t("Intercalar destacados en Reciente","Mix featured posts into Recent","Intercalar destaques em Recente","שילוב מודגשים באחרונים"),
+          t("Después del más nuevo, hasta dos posteos de la última semana con comentarios o me gusta. Apagado: solo por momento de publicación, sin excepciones.","After the newest one, up to two posts from the last week with comments or likes. Off: strictly by publication time, no exceptions.","Depois do mais novo, até duas postagens da última semana com comentários ou curtidas. Desligado: só por momento de publicação, sem exceções.","אחרי החדש ביותר, עד שני פוסטים מהשבוע האחרון עם תגובות או לייקים. כבוי: רק לפי זמן הפרסום, בלי יוצאים מן הכלל."),
+          prefSwitch("feedFeatured", p.feedFeatured !== false))}
         ${on ? prefRow("↕️", t("Orden del Feed","Feed order","Ordem do Feed","סדר הפיד"),
           t("Se recuerda por persona y se puede cambiar al momento desde el Feed. Al abrir un lugar se lee siempre en orden.","Remembered per person and changeable on the spot from the Feed. Opening a place always reads in order.","Lembrado por pessoa e mudável na hora a partir do Feed. Ao abrir um lugar lê-se sempre em ordem.","נשמר לכל אדם וניתן לשינוי מיידי מהפיד. בפתיחת מקום קוראים תמיד לפי סדר."),
           `<select data-pref="feedOrder">
-            <option value="reciente" ${p.feedOrder!=="asc"&&p.feedOrder!=="desc"?"selected":""}>${esc(t("Reciente (nuevo y destacado arriba)","Recent (new and featured on top)","Recente (novo e destacado em cima)","אחרונים (חדש ומודגש למעלה)"))}</option>
+            <option value="reciente" ${p.feedOrder!=="asc"&&p.feedOrder!=="desc"?"selected":""}>${esc(t("Reciente (por momento de publicación)","Recent (by publication time)","Recente (por momento de publicação)","אחרונים (לפי זמן פרסום)"))}</option>
             <option value="desc" ${p.feedOrder==="desc"?"selected":""}>${esc(t("Cronológico, más reciente primero","Chronological, newest first","Cronológico, mais recente primeiro","כרונולוגי, החדש קודם"))}</option>
             <option value="asc" ${p.feedOrder==="asc"?"selected":""}>${esc(t("Cronológico, más antiguo primero","Chronological, oldest first","Cronológico, mais antigo primeiro","כרונולוגי, הישן קודם"))}</option>
           </select>`) : ""}
