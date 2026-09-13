@@ -451,9 +451,10 @@ Dónde se aplica:
 
 - **Vistas › Lista y Mapa**: el número grande (y el círculo) es `own`;
   debajo, `crossLine()`: "+1 de Región Norte · +3 de toda LatAm". Un país
-  con `own` 0 y algo macro dice "0 propios". El orden de la lista es por
-  `own` (antes, por total, era casi alfabético porque LatAm sumaba igual
-  en todos).
+  con `own` 0 y algo macro dice "0 propios". La lista va en orden
+  **alfabético** por el nombre que se ve (a pedido): con 43 países, para
+  ubicar uno a ojo sirve más el orden fijo que un ranking, y el número ya
+  está en la tarjeta.
 - **Vistas › país**: después de las ciudades, dos filas punteadas ("Región
   Norte" en su color, "Toda LatAm" en gris) que abren la memoria ya
   filtrada en ese nivel.
