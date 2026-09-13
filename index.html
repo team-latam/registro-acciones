@@ -1106,6 +1106,13 @@
   .country-card .cross-line{ display:flex; flex-wrap:wrap; gap:2px 10px; font-size:11.5px; font-weight:600; color:var(--text-muted); margin-top:3px; }
   .country-card.quiet .count{ color:var(--text-muted); }
   .map-popup .cross-line{ display:flex; flex-wrap:wrap; gap:2px 10px; font-size:11px; font-weight:600; color:var(--text-muted); margin-top:4px; }
+  /* "Además, 40 posteos de toda LatAm aplican a todos los países": una
+     sola vez, al pie de la grilla de Vistas, en vez de en cada tarjeta. */
+  .latam-footnote{
+    margin-top:14px; padding:10px 14px; border:1px dashed var(--border); border-radius:var(--radius-sm);
+    background:var(--card); font-size:12.5px; color:var(--text-muted); line-height:1.5;
+  }
+  .latam-footnote b{ color:var(--ink); }
   .zone-legend{ display:flex; gap:14px; flex-wrap:wrap; margin-bottom:14px; font-size:12px; color:var(--text-muted); font-weight:600; }
   .zone-legend span{ display:inline-flex; align-items:center; gap:6px; }
   .zone-legend .dot{ width:11px; height:11px; border-radius:50%; }
@@ -2724,14 +2731,16 @@ function postLevelFor(post, place){
 }
 // Hasta qué nivel se muestra la memoria filtrada por lugar: 0 solo lo
 // propio, 1 + la región, 2 + toda LatAm. Cada nivel incluye al anterior
-// (ver LatAm sin la región no tiene sentido). Va en localStorage y no en
-// userPrefs a propósito: es cómo se MIRA, no una configuración, y así no
-// hace falta tocar las reglas. Arranca en 0: la queja era el ruido.
-const PLACE_LEVEL_KEY = "ra_place_level";
+// (ver LatAm sin la región no tiene sentido). Es una preferencia
+// PERSONAL (userPrefs.placeLevel): primero vivió en localStorage, pero
+// eso la hacía distinta en el celular y en la computadora, y el usuario
+// pidió que fuera suya. El selector de la Memoria y la fila de
+// Configuración cambian el mismo valor. Arranca en 0: la queja era el ruido.
 function placeLevel(){
-  try{ const v = Number(localStorage.getItem(PLACE_LEVEL_KEY)); return v === 1 || v === 2 ? v : 0; }catch(e){ return 0; }
+  const v = Number(prefs().placeLevel);
+  return v === 1 || v === 2 ? v : 0;
 }
-function setPlaceLevel(n){ try{ localStorage.setItem(PLACE_LEVEL_KEY, String(n)); }catch(e){} }
+function setPlaceLevel(n){ savePrefs({ placeLevel: n === 1 || n === 2 ? n : 0 }); }
 function zoneOfCountry(name){ const c = COUNTRY_BY_NAME[name]; return c ? c.zone : null; }
 function regionLabel(zoneKey){
   const z = ZONES[zoneKey];
@@ -2845,6 +2854,7 @@ const DEFAULT_PREFS = {
   customDays: 4,           // cuántos días muestra la vista "N días"
   dimPast: false,
   dateFormat: "auto",      // auto (según el idioma) | dmy | mdy | ymd
+  placeLevel: 0,           // al abrir un lugar: 0 solo lo propio | 1 + la región | 2 + toda LatAm
   // El default es 24 h, no "auto": el Calendario SIEMPRE mostró los
   // horarios crudos ("13:00"), y con "auto" Intl considera que es-AR es de
   // 12 h, así que todo el equipo se habría despertado con el calendario en
@@ -6577,20 +6587,38 @@ function renderPaisesView(){
     return `<div class="country-card${quiet?" quiet":""}" style="border-inline-start-color:${safeColor(ZONES[c.zone]?.color)}" data-action="drill-country" data-country="${esc(c.name)}">
       <div class="name">${esc(countryLabel(c.name))}</div>
       <div class="count">${cnt}<small> ${unit}</small></div>
-      ${crossLine(c.name, d)}
+      ${crossLine(c.name, d, false)}
     </div>`;
   }).join("");
-  return `${toolbar}<div class="country-grid">${cards}</div>`;
+  return `${toolbar}<div class="country-grid">${cards}</div>${latamFootnote()}`;
 }
 function byCountryExists(name){ return !!COUNTRY_BY_NAME[name]; }
 // "+1 de Región Norte · +3 de toda LatAm": lo que aplica al lugar sin
 // haber pasado ahí. La región en el color de su zona, LatAm en gris.
-function crossLine(countryName, d){
+// withLatam=false en las tarjetas de la lista: "+40 de toda LatAm" es el
+// mismo número en las 43 tarjetas (LatAm aplica a todos por definición) y
+// repetirlo no informa nada — va una sola vez, al pie de la grilla (ver
+// latamFootnote). En el popup del mapa y en la pantalla del país sí va,
+// porque ahí se mira un solo lugar.
+function crossLine(countryName, d, withLatam = true){
   const parts = [];
   const zk = zoneOfCountry(countryName);
   if(d.region) parts.push(`<span class="cross-zone" style="color:${safeColor(ZONES[zk]?.color)}">+${d.region} ${t("de {z}","from {z}","de {z}","מ{z}",{ z: esc(regionLabel(zk)) })}</span>`);
-  if(d.latam) parts.push(`<span class="cross-latam">+${d.latam} ${t("de toda LatAm","from all of LatAm","de toda a LatAm","מכל LatAm")}</span>`);
+  if(withLatam && d.latam) parts.push(`<span class="cross-latam">+${d.latam} ${t("de toda LatAm","from all of LatAm","de toda a LatAm","מכל LatAm")}</span>`);
   return parts.length ? `<div class="cross-line">${parts.join("")}</div>` : "";
+}
+// Cuántos posteos tienen alcance "Toda LatAm" (por posteo, no por país).
+function latamPostCount(){
+  return state.posts.filter(p => (p.scopes||[]).some(sc => sc.type === "todo")
+    || (state.repliesByPost[p.id]||[]).some(r => (r.scopes||[]).some(sc => sc.type === "todo"))).length;
+}
+function latamFootnote(){
+  const n = latamPostCount();
+  if(!n) return "";
+  return `<div class="latam-footnote">🌎 ${n === 1
+    ? t("Además, <b>1 posteo de toda LatAm</b> aplica a todos los países.","Also, <b>1 LatAm-wide post</b> applies to every country.","Além disso, <b>1 postagem de toda a LatAm</b> se aplica a todos os países.","בנוסף, <b>פוסט אחד של כל LatAm</b> חל על כל המדינות.")
+    : t("Además, <b>{n} posteos de toda LatAm</b> aplican a todos los países.","Also, <b>{n} LatAm-wide posts</b> apply to every country.","Além disso, <b>{n} postagens de toda a LatAm</b> se aplicam a todos os países.","בנוסף, <b>{n} פוסטים של כל LatAm</b> חלים על כל המדינות.",{n})}
+    ${t("Para verlos en un lugar, abrilo y elegí «+ Toda LatAm».","To see them for a place, open it and pick “+ All of LatAm”.","Para vê-los num lugar, abra-o e escolha «+ Toda a LatAm».","כדי לראות אותם במקום מסוים, פתחו אותו ובחרו «+ כל LatAm».")}</div>`;
 }
 
 function renderCountryDrill(countryName, data){
@@ -7031,6 +7059,13 @@ function renderConfigCalendarioSection(){
         ${prefRow("🌙", t("Atenuar eventos pasados","Dim past events","Esmaecer eventos passados","עמעום אירועים שעברו"),
           t("Los eventos anteriores a hoy se ven más tenues, para que resalte lo que viene.","Events before today look fainter, so what's coming stands out.","Os eventos anteriores a hoje ficam mais tênues, para destacar o que vem.","אירועים שלפני היום נראים דהויים, כדי שיבלוט מה שמגיע."),
           prefSwitch("dimPast", !!p.dimPast))}
+        ${prefRow("🌎", t("Al abrir un lugar, incluir","When opening a place, include","Ao abrir um lugar, incluir","בפתיחת מקום, לכלול"),
+          t("Lo que pasó ahí siempre se ve. Esto define si además se suma lo macro de la región y de toda LatAm. Se puede cambiar al momento desde el selector de la Memoria.","What happened there always shows. This sets whether the region-wide and LatAm-wide items are added too. You can change it on the spot from the Memory selector.","O que aconteceu ali sempre aparece. Isto define se também entra o macro da região e de toda a LatAm. Pode ser trocado na hora no seletor da Memória.","מה שקרה שם תמיד מוצג. זה קובע אם להוסיף גם את המאקרו של האזור ושל כל LatAm. אפשר לשנות במקום מבורר הזיכרון."),
+          `<select data-pref="placeLevel" data-pref-num="1">
+            <option value="0" ${placeLevel()===0?"selected":""}>${esc(t("Solo lo propio","Only its own","Só o próprio","רק מה ששלו"))}</option>
+            <option value="1" ${placeLevel()===1?"selected":""}>${esc(t("+ lo de su región","+ its region's","+ o da sua região","+ של האזור שלו"))}</option>
+            <option value="2" ${placeLevel()===2?"selected":""}>${esc(t("+ lo de toda LatAm","+ all of LatAm's","+ o de toda a LatAm","+ של כל LatAm"))}</option>
+          </select>`)}
       </div>`;
 }
 
@@ -9065,7 +9100,7 @@ document.addEventListener("click", e=>{
     state.filters.place = { kind:"city", country:el.dataset.country, city:el.dataset.city };
     state.view = "memoria"; state.countryDrill = null; render();
   } else if(action === "place-level"){
-    setPlaceLevel(Number(el.dataset.level)); render();
+    setPlaceLevel(Number(el.dataset.level)); // savePrefs ya re-renderiza
   } else if(action === "dismiss-calendar-notice"){
     clearTimeout(calendarNoticeTimer);
     calendarToastEl.hidden = true;
