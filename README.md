@@ -403,6 +403,31 @@ conocida (o países nuevos para el equipo) siguen aceptando cualquier ciudad
 como texto libre. Si suman presencia en un país nuevo, se puede ampliar
 `CITY_PRESETS` en `index.html` a mano.
 
+Incorporadas en septiembre 2026 desde lo que el equipo había cargado a
+mano (`extraCities` en Firestore): **George Town** (Islas Caimán),
+**Quintana Roo** y **Cuernavaca** (México). Dos decisiones que conviene
+conocer:
+
+- **"Quintana Roo" es un estado, no una ciudad**, y quedó como entrada
+  del estado con la coordenada de su capital (Chetumal) — mismo criterio
+  que ya tenía "Chiapas". Se eligió no reemplazarlo por una ciudad para
+  que los posteos que ya lo usan sigan matcheando (el nombre es el
+  identificador, ver arriba).
+- **"Cuerna Vaca" estaba mal escrito** en Firestore; en el código entró
+  como "Cuernavaca". Como el nombre es el identificador, los posteos
+  viejos que dicen "Cuerna Vaca" NO matchean solos: el admin los corrige
+  a mano (decisión suya, en vez de un mapa de alias en el código), y hay
+  que borrar "Cuerna Vaca" de `extraCities` en Firestore — si no,
+  `applyExtraCitiesConfig()` lo vuelve a sumar como preset sin
+  coordenada y aparece dos veces en el buscador.
+
+Ojo con `coord`: hoy el mapa de Vistas marca **por país** (la capital,
+ver `initOrUpdateMap`), así que la coordenada de ciudad no se dibuja en
+ningún lado todavía. Se guarda igual para cuando el mapa baje a ciudades.
+Y "Hollbox" (la isla es Holbox) también está mal escrito, pero es
+identificador de posteos ya cargados: no se toca sin corregir esos
+posteos primero.
+
 ### Agregación "país afectado por una respuesta"
 
 Cuando una respuesta suma un alcance adicional (por ejemplo, un curso en
