@@ -1310,6 +1310,18 @@ escritorio el foco va al HEX al abrir; en táctil no (misma regla que los
 formularios). Cualquier cambio re-renderiza y por lo tanto cierra el
 panel: elegir un color es un gesto de una vez.
 
+### Orden "Reciente": por momento de publicación, con o sin destacados
+
+Antes solo el ÚLTIMO publicado subía arriba y el resto iba por fecha del
+evento: tres rutinas cargadas seguidas quedaban una arriba y dos
+perdidas debajo de los eventos futuros importados del Calendar. Ahora
+`computeFeedOrder` ordena por `createdAt` desc (lo más nuevo arriba, sin
+excepciones) y, si la persona lo tiene prendido, intercala después del
+primero hasta dos **destacados** (`feedFeatured`, Configuración › Feed,
+prendido por defecto): posteos de la última semana con comentarios o me
+gusta. Apagado, es estrictamente cronología de publicación. Para "por
+fecha del evento" está el Cronológico del Feed unificado (o la Memoria).
+
 ### "↑ N publicaciones nuevas" (como en X)
 
 Cuando llegan posteos de otras personas mientras uno está scrolleado en
