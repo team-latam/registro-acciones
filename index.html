@@ -272,6 +272,20 @@
   .user-menu .um-role.role-admin{ background:var(--petroleo); color:#fff; }
   .user-menu .um-role.role-member{ background:var(--bg); color:var(--text-muted); border:1px solid var(--border); }
   .user-menu .um-role.role-pending{ background:var(--warn-bg); color:var(--warn-text); }
+  .user-menu .um-role.role-observer{ background:var(--celeste-soft); color:var(--celeste-dark); border:1px solid var(--border); }
+  /* Aviso fijo arriba de cada vista para quien entra como observador. */
+  .observer-banner{
+    display:flex; align-items:center; gap:10px; margin-bottom:14px; padding:10px 14px;
+    background:var(--celeste-soft); color:var(--ink); border:1px solid var(--border); border-radius:var(--radius-sm);
+    font-size:12.5px; font-weight:600;
+  }
+  .post-likes-ro{ font-size:12.5px; font-weight:700; color:var(--text-muted); }
+  /* Selector de rol en la fila de cada usuario (Usuarios). */
+  .role-select{
+    border:1.5px solid var(--border); background:var(--card); color:var(--text); border-radius:999px;
+    padding:7px 12px; font-size:12.5px; font-weight:700; font-family:inherit; cursor:pointer;
+  }
+  .status-pill.observer{ background:var(--celeste-soft); color:var(--celeste-dark); }
   .user-menu .um-role.role-rejected{ background:var(--danger-bg); color:var(--danger-text); }
   .user-menu .um-email{ font-size:12px; color:var(--text-muted); margin:4px 0 6px; word-break:break-all; }
   .um-nickname{ display:flex; align-items:center; justify-content:center; gap:6px; margin:-4px 0 14px; font-size:12.5px; font-weight:700; color:var(--celeste-dark); }
@@ -2881,8 +2895,22 @@ const DEFAULT_PREFS = {
 state.prefs = { ...DEFAULT_PREFS };
 function prefs(){ return state.prefs || DEFAULT_PREFS; }
 
-function isAuthorized(){ return state.auth.status === "approved" || state.auth.status === "admin"; }
+// Tres roles con acceso (README, "Roles"): admin, integrante ("approved")
+// y observador. isAuthorized() = puede ENTRAR y ver; canWrite() = puede
+// publicar, responder, dar me gusta y editar. El observador entra, ve
+// todo y no toca nada. El admin es ADMIN_EMAIL (fijo en el código y en
+// las reglas, no se puede sacar) o cualquiera con role "admin" en su
+// documento de allowlist.
+function isAuthorized(){ return state.auth.status === "approved" || state.auth.status === "admin" || state.auth.status === "observer"; }
 function isAdmin(){ return state.auth.status === "admin"; }
+function isObserver(){ return state.auth.status === "observer"; }
+function canWrite(){ return state.auth.status === "approved" || state.auth.status === "admin"; }
+const ROLES = ["member", "admin", "observer"];
+function roleLabel(role){
+  return role === "admin" ? t("Administrador","Administrator","Administrador","מנהל/ת")
+    : role === "observer" ? t("Observador","Observer","Observador","משקיף/ה")
+    : t("Integrante","Member","Integrante","חבר/ה");
+}
 
 /* ======================================================================
    FIREBASE
@@ -3090,7 +3118,7 @@ function storeCalendarCredential(result, opts={}){
 // para cada tipo de acción.
 async function ensureCalendarToken(){
   if(calendarAccessToken && Date.now() < calendarTokenExpiry) return calendarAccessToken;
-  const isAdminUser = state.auth.user && state.auth.user.email === ADMIN_EMAIL;
+  const isAdminUser = isAdmin();
   const scopes = ["https://www.googleapis.com/auth/calendar.events"];
   if(isAdminUser) scopes.push("https://www.googleapis.com/auth/calendar.acls");
   const silent = await requestSilentCalendarToken(scopes);
@@ -3780,8 +3808,16 @@ let unsubUserPrefs = null;
 let unsubFormerMembers = null;
 
 function recomputeAuthStatus(){
-  if(state.auth.status === "admin") return;
-  if(state.auth.allowlisted){ state.auth.status = "approved"; return; }
+  // ADMIN_EMAIL es admin siempre, con o sin documento en allowlist. Para
+  // el resto manda el campo role de su documento (ausente = integrante),
+  // que llega por el snapshot de allowlist: si le cambian el rol con la
+  // sesión abierta, esto se recalcula solo.
+  if(state.auth.user && state.auth.user.email === ADMIN_EMAIL){ state.auth.status = "admin"; return; }
+  if(state.auth.allowlisted){
+    const role = state.auth.role;
+    state.auth.status = role === "admin" ? "admin" : role === "observer" ? "observer" : "approved";
+    return;
+  }
   state.auth.status = state.auth.requestStatus === "rejected" ? "rejected" : "pending";
 }
 
@@ -3837,7 +3873,7 @@ async function onAuthChanged(user){
   }
 
   if(profile.email === ADMIN_EMAIL){
-    state.auth = { status:"admin", user:profile };
+    state.auth = { status:"admin", user:profile, allowlisted:true, role:"admin" };
     ensureAdminInRoster(profile);
     subscribeData();
     subscribeAccessRequests();
@@ -3845,16 +3881,38 @@ async function onAuthChanged(user){
     subscribeRoster();
     subscribeTerritoryConfig();
     subscribePreferences();
+    // Antes faltaban estas dos: el admin fijo nunca cargaba sus
+    // preferencias personales (formato de fecha, nivel de lugar...) ni la
+    // lista de ex-miembros, aunque sí tenía permiso para leerlas.
+    subscribeUserPrefs();
+    subscribeFormerMembers();
     render();
     return;
   }
 
   // Mientras se resuelve si está aprobado, no se suscribe a posts/replies
   // (evita un permission-denied transitorio contra Firestore).
-  state.auth = { status:"loading", user:profile, allowlisted:false, requestStatus:null };
+  state.auth = { status:"loading", user:profile, allowlisted:false, requestStatus:null, role:null };
   render();
 
   let dataSubscribed = false;
+  // Suscripciones que solo tienen sentido (y permiso) con rol admin:
+  // solicitudes de acceso y auditoría. Se prenden y apagan según el rol
+  // que diga el snapshot de allowlist, así un admin degradado con la
+  // sesión abierta deja de recibir eso sin esperar a que falle con
+  // permiso denegado.
+  let adminSubscribed = false;
+  const syncAdminSubs = ()=>{
+    if(state.auth.status === "admin" && !adminSubscribed){
+      adminSubscribed = true; subscribeAccessRequests(); subscribeAuditLog();
+    } else if(state.auth.status !== "admin" && adminSubscribed){
+      adminSubscribed = false;
+      if(unsubscribeRequests){ unsubscribeRequests(); unsubscribeRequests = null; }
+      if(unsubAuditLog){ unsubAuditLog(); unsubAuditLog = null; }
+      state.accessRequests = []; state.auditLog = [];
+      if(["solicitudes","auditoria","preferencias"].includes(state.view)) state.view = "feed";
+    }
+  };
   const teardownApprovedData = ()=>{
     if(unsubscribeData){ unsubscribeData(); unsubscribeData = null; }
     if(unsubRoster){ unsubRoster(); unsubRoster = null; }
@@ -3866,10 +3924,13 @@ async function onAuthChanged(user){
     state.posts = []; state.repliesByPost = {}; state.loaded = false; state.roster = [];
     state.prefs = { ...DEFAULT_PREFS }; state.formerMembers = [];
     dataSubscribed = false;
+    if(adminSubscribed){ adminSubscribed = false; if(unsubscribeRequests){ unsubscribeRequests(); unsubscribeRequests = null; } if(unsubAuditLog){ unsubAuditLog(); unsubAuditLog = null; } state.accessRequests = []; state.auditLog = []; }
   };
   unsubAllowlist = fb.onSnapshot(fb.doc(db, "allowlist", profile.email), snap=>{
     state.auth.allowlisted = snap.exists();
+    state.auth.role = snap.exists() ? (snap.data().role || "member") : null;
     recomputeAuthStatus();
+    syncAdminSubs();
     if(state.auth.allowlisted && !dataSubscribed){
       dataSubscribed = true; fatalError = null;
       subscribeData(); subscribeRoster(); subscribeTerritoryConfig(); subscribePreferences(); subscribeUserPrefs(); subscribeFormerMembers();
@@ -3984,6 +4045,7 @@ function subscribeRoster(){
         name: data.name || null, approvedAt: data.approvedAt || null, approvedBy: data.approvedBy || null,
         calendarShared: data.calendarShared === true, calendarInviteSentAt: data.calendarInviteSentAt || null,
         tourSeenAt: data.tourSeenAt || null,
+        role: ROLES.includes(data.role) ? data.role : "member",
       };
     }).sort((a,b)=> tsToMillis(a.approvedAt) - tsToMillis(b.approvedAt));
     render();
@@ -4221,14 +4283,37 @@ async function approveRequest(email){
     ? former.nickname
     : makeNickname(name, taken);
   await fb.setDoc(fb.doc(db, "allowlist", email), {
-    email, name, nickname, photoURL: reqData.photoURL || null,
-    approvedAt: fb.serverTimestamp(), approvedBy: ADMIN_EMAIL,
+    email, name, nickname, photoURL: reqData.photoURL || null, role: "member",
+    approvedAt: fb.serverTimestamp(), approvedBy: (state.auth.user && state.auth.user.email) || ADMIN_EMAIL,
   });
   await fb.updateDoc(fb.doc(db, "accessRequests", email), { status:"approved" });
   // Ya no es "ex": vuelve a estar en el roster y el registro histórico
   // dejaría duplicada su identidad en memberByEmail.
   try{ await fb.deleteDoc(fb.doc(db, "formerMembers", email)); }catch(e){}
   logAudit("access_approved", { targetEmail: email });
+}
+// Cambio de rol desde Usuarios. ADMIN_EMAIL queda afuera (también en las
+// reglas). Bajarse a uno mismo de admin pide confirmación: después no hay
+// forma de volver por cuenta propia.
+async function changeRole(email, role){
+  if(email === ADMIN_EMAIL || !ROLES.includes(role)) { render(); return; }
+  const me = state.auth.user && state.auth.user.email;
+  if(email === me && role !== "admin"){
+    const seguir = confirm(t(
+      "Vas a dejar de ser administrador. Después no vas a poder volver a serlo por tu cuenta: tendría que hacerlo otro administrador. ¿Seguir?",
+      "You're about to stop being an administrator. Afterwards you won't be able to make yourself one again: another administrator would have to. Continue?",
+      "Você vai deixar de ser administrador. Depois não vai poder voltar a sê-lo por conta própria: outro administrador teria que fazê-lo. Continuar?",
+      "את/ה עומד/ת להפסיק להיות מנהל/ת. אחר כך לא תוכל/י להחזיר זאת בעצמך: מנהל/ת אחר/ת יצטרך לעשות זאת. להמשיך?"));
+    if(!seguir){ render(); return; }
+  }
+  try{
+    await fb.updateDoc(fb.doc(db, "allowlist", email), { role });
+    logAudit("role_changed", { targetEmail: email, detail: role });
+  }catch(err){
+    console.error("No se pudo cambiar el rol:", err);
+    showCalendarNotice({ ok:false, message: t("No se pudo cambiar el rol ({m}). Si las reglas de Firestore son viejas, hay que publicarlas.","Couldn't change the role ({m}). If the Firestore rules are outdated, they need publishing.","Não foi possível mudar o papel ({m}). Se as regras do Firestore forem antigas, é preciso publicá-las.","לא ניתן היה לשנות את התפקיד ({m}). אם כללי Firestore ישנים, יש לפרסם אותם.",{m:err.code||err.message}) });
+    render();
+  }
 }
 async function rejectRequest(email){
   await fb.updateDoc(fb.doc(db, "accessRequests", email), { status:"rejected" });
@@ -4366,7 +4451,7 @@ async function updatePostDoc(postId, patch){
 }
 
 function canEditPost(post){
-  if(!isAuthorized()) return false;
+  if(!canWrite()) return false;
   return post.authorEmail === state.auth.user.email || post.activityType !== "rutina";
 }
 
@@ -4604,6 +4689,7 @@ function userRoleLabel(status){
   const labels = {
     admin: { text: t("Admin","Admin","Admin","מנהל/ת"), cls: "role-admin" },
     approved: { text: t("Miembro","Member","Membro","חבר/ה"), cls: "role-member" },
+    observer: { text: t("Observador","Observer","Observador","משקיף/ה"), cls: "role-observer" },
     pending: { text: t("Pendiente","Pending","Pendente","ממתין/ה"), cls: "role-pending" },
     rejected: { text: t("Rechazado","Rejected","Recusado","נדחה/תה"), cls: "role-rejected" },
   };
@@ -5103,7 +5189,8 @@ function doRender(){
   }
 
   tabsNav.classList.remove("tabs-hidden");
-  fabEl.hidden = false;
+  fabEl.hidden = !canWrite(); // el observador no crea nada
+  if(isObserver()) html += renderObserverBanner();
   tabSolicitudesEl.hidden = !isAdmin();
   tabAuditoriaEl.hidden = !isAdmin();
   tabPreferenciasEl.hidden = !isAdmin();
@@ -5141,6 +5228,13 @@ function doRender(){
   if(userProfileOverlay && !userProfileOverlay.hidden) renderUserProfile();
 }
 
+function renderObserverBanner(){
+  return `<div class="observer-banner" role="status">👁️ ${t(
+    "Entrás como observador: ves todo el Registro, pero no podés publicar, responder ni editar.",
+    "You're in as an observer: you can see the whole Log, but not post, reply or edit.",
+    "Você entra como observador: vê todo o Registro, mas não pode publicar, responder nem editar.",
+    "נכנסת כמשקיף/ה: רואים את כל היומן, אך לא ניתן לפרסם, להגיב או לערוך.")}</div>`;
+}
 function renderAuthGate(){
   const s = state.auth.status;
   if(s === "loading"){
@@ -5280,13 +5374,23 @@ function renderUsuariosSection(){
   return toolbar + users.map(u=>{
     const tier = activityTierFor(u.postCount);
     const isAdminUser = u.email === ADMIN_EMAIL;
+    // El rol de ADMIN_EMAIL no se toca desde acá (ni desde las reglas), y
+    // a propósito NO se lo señala como "dueño" ni nada parecido: para el
+    // resto del equipo es un admin más. Solo que su fila no tiene selector.
+    const role = isAdminUser ? "admin" : (u.role || "member");
+    const rolePill = role === "admin" ? ` <span class="status-pill approved">${esc(t("Admin","Admin","Admin","מנהל/ת"))}</span>`
+      : role === "observer" ? ` <span class="status-pill observer">👁️ ${esc(t("Observador","Observer","Observador","משקיף/ה"))}</span>` : "";
+    const roleSelect = isAdminUser ? "" : `<select class="role-select" data-action="set-role" data-email="${esc(u.email)}" aria-label="${esc(t("Rol de {n}","Role of {n}","Papel de {n}","תפקיד של {n}",{n:u.name||u.email}))}">
+          ${ROLES.map(r=>`<option value="${r}" ${role===r?"selected":""}>${esc(roleLabel(r))}</option>`).join("")}
+        </select><span class="ractions-sep"></span>`;
     return `<div class="request-row">
       ${u.photoURL ? `<img src="${esc(u.photoURL)}" alt="">` : `<div class="avatar-fallback">${esc((u.name||u.nickname||"?")[0].toUpperCase())}</div>`}
       <div class="rinfo">
-        <div class="rname">${esc(u.name || u.nickname)}${isAdminUser ? ` <span class="status-pill approved">Admin</span>` : ""}</div>
+        <div class="rname">${esc(u.name || u.nickname)}${rolePill}</div>
         <div class="remail">${esc(u.email)} · ${tier.icon} ${tier.label} · ${t("Último login: {v}","Last login: {v}","Último login: {v}","{v} :כניסה אחרונה",{v: u.lastLogin ? fmtDateTime(u.lastLogin) : t("sin registro","no record","sem registro","ללא רישום")})}</div>
       </div>
       <div class="ractions">
+        ${roleSelect}
         ${u.calendarShared
           ? `<span class="status-pill approved">✅ ${t("Invitación enviada","Invite sent","Convite enviado","הזמנה נשלחה")}</span><span class="ractions-sep"></span><button class="btn-ghost" data-action="resend-calendar-invite" data-email="${esc(u.email)}">${t("Reenviar invitación","Resend invite","Reenviar convite","שליחה חוזרת של ההזמנה")}</button>`
           : `<button class="btn-ghost" data-action="share-calendar" data-email="${esc(u.email)}">${t("Compartir Calendar","Share Calendar","Compartilhar Calendar","שיתוף היומן")}</button>`}
@@ -5383,6 +5487,7 @@ function auditLabels(){
       : t("{n} pidió acceso.","{n} requested access.","{n} pediu acesso.","{n} ביקש/ה גישה.",{n:e.actorName}) },
     access_approved: { icon:"✅", filterLabel:t("Aprobó","Approved","Aprovou","אישר/ה"), text: e => t("{n} aprobó el acceso de {target}.","{n} approved {target}'s access.","{n} aprovou o acesso de {target}.","{n} אישר/ה את הגישה של {target}.",{n:e.actorName,target:e.targetEmail}) },
     access_rejected: { icon:"🚫", filterLabel:t("Rechazó","Rejected","Rejeitou","דחה/תה"), text: e => t("{n} rechazó el acceso de {target}.","{n} rejected {target}'s access.","{n} rejeitou o acesso de {target}.","{n} דחה/תה את הגישה של {target}.",{n:e.actorName,target:e.targetEmail}) },
+    role_changed: { icon:"🎚️", filterLabel:t("Cambió rol","Changed role","Mudou papel","שינה/תה תפקיד"), text: e => t("{n} cambió el rol de {target} a {role}.","{n} changed {target}'s role to {role}.","{n} mudou o papel de {target} para {role}.","{n} שינה/תה את התפקיד של {target} ל-{role}.",{n:e.actorName,target:e.targetEmail,role:roleLabel(e.detail)}) },
     access_revoked: { icon:"⛔", filterLabel:t("Revocó","Revoked","Revogou","ביטל/ה"), text: e => t("{n} revocó el acceso de {target}.","{n} revoked {target}'s access.","{n} revogou o acesso de {target}.","{n} ביטל/ה את הגישה של {target}.",{n:e.actorName,target:e.targetEmail}) },
     calendar_shared: { icon:"📅", filterLabel:t("Compartió Calendar","Shared Calendar","Compartilhou Calendar","שיתף/ה יומן"), text: e => t("{n} compartió el Calendar con {target}.","{n} shared the Calendar with {target}.","{n} compartilhou o Calendar com {target}.","{n} שיתף/ה את היומן עם {target}.",{n:e.actorName,target:e.targetEmail}) },
     calendar_unshared: { icon:"📅", filterLabel:t("Sacó del Calendar","Removed from Calendar","Tirou do Calendar","הסיר/ה מהיומן"), text: e => t("{n} sacó a {target} del Calendar.","{n} removed {target} from the Calendar.","{n} tirou {target} do Calendar.","{n} הסיר/ה את {target} מהיומן.",{n:e.actorName,target:e.targetEmail}) },
@@ -6052,7 +6157,7 @@ function renderFeedView(){
   const all = computeFeedOrder(getVisiblePosts());
   const items = all.slice(0, feedVisibleCount);
   return `
-    ${renderRutinaComposer()}
+    ${canWrite() ? renderRutinaComposer() : ""}
     ${renderFilterBar("feed")}${renderPlaceLevelSeg()}
     ${items.length ? items.map(({post,replies,featured})=>renderPostCard(post,replies,featured)).join("") + renderLoadMore("feed-load-more", all.length - items.length) :
       `<div class="empty-state"><div class="big">🗒️</div>${anyActiveFilter()
@@ -6237,7 +6342,7 @@ function renderPostCard(post, replies, featured){
   const editable = canEditPost(post);
   const canCancel = editable && post.activityType !== "rutina" && !post.cancelled;
   const postLikedBy = post.likedBy || [];
-  const postLiked = isAuthorized() && postLikedBy.includes(state.auth.user.email);
+  const postLiked = canWrite() && postLikedBy.includes(state.auth.user.email);
   const commentsLabel = replies.length === 1
     ? t("1 comentario","1 comment","1 comentário","תגובה אחת")
     : t("{n} comentarios","{n} comments","{n} comentários","{n} תגובות",{n:replies.length});
@@ -6269,8 +6374,8 @@ function renderPostCard(post, replies, featured){
       ${imagesHtml ? `<div class="post-images">${imagesHtml}</div>` : ""}
       ${renderPostedFiles(post.files, {postId: post.id})}
       <div class="post-actions">
-        <button data-action="toggle-like" data-post-id="${post.id}" class="${postLiked?"liked":""}">${postLiked?"👍":"🤍"} ${t("Me gusta","Like","Curtir","לייק")}${postLikedBy.length?` (${postLikedBy.length})`:""}</button>
-        <button data-action="toggle-reply" data-post-id="${post.id}">💬 ${t("Responder","Reply","Responder","תגובה")}</button>
+        ${canWrite() ? `<button data-action="toggle-like" data-post-id="${post.id}" class="${postLiked?"liked":""}">${postLiked?"👍":"🤍"} ${t("Me gusta","Like","Curtir","לייק")}${postLikedBy.length?` (${postLikedBy.length})`:""}</button>
+        <button data-action="toggle-reply" data-post-id="${post.id}">💬 ${t("Responder","Reply","Responder","תגובה")}</button>` : (postLikedBy.length ? `<span class="post-likes-ro">👍 ${postLikedBy.length}</span>` : "")}
         ${replies.length ? `<button data-action="toggle-thread" data-post-id="${post.id}">${threadOpen ? "▲ " + t("Ocultar","Hide","Ocultar","הסתרה") : "▼ " + t("Ver","View","Ver","הצגה")} ${commentsLabel}</button>` : ""}
         ${editable ? `<button data-action="edit-post" data-post-id="${post.id}">✏️ ${t("Editar","Edit","Editar","עריכה")}</button>` : ""}
         ${canCancel ? `<button data-action="cancel-post" data-post-id="${post.id}">🚫 ${t("Cancelar evento","Cancel event","Cancelar evento","ביטול האירוע")}</button>` : ""}
@@ -6326,7 +6431,7 @@ function renderThread(replies){
 function renderReply(r){
   const { scopesHtml, linksHtml, imagesHtml } = renderAttachments(r, {postId: r.postId, replyId: r.id});
   const likedBy = r.likedBy || [];
-  const liked = isAuthorized() && likedBy.includes(state.auth.user.email);
+  const liked = canWrite() && likedBy.includes(state.auth.user.email);
   const nestedOpen = openNestedReplyForms.has(r.id);
   const tr = withContentTranslation("reply", r.id, "", r.content);
   return `
@@ -6341,7 +6446,7 @@ function renderReply(r){
       ${linksHtml ? `<div class="reply-links">${linksHtml}</div>` : ""}
       ${imagesHtml ? `<div class="reply-images">${imagesHtml}</div>` : ""}
       ${renderPostedFiles(r.files, {postId: r.postId, replyId: r.id})}
-      ${!r.system ? `
+      ${!r.system && canWrite() ? `
       <div class="reply-actions">
         <button data-action="toggle-like" data-post-id="${r.postId}" data-reply-id="${r.id}" class="${liked?"liked":""}">${liked?"👍":"🤍"} ${t("Me gusta","Like","Curtir","לייק")}${likedBy.length?` (${likedBy.length})`:""}</button>
         <button data-action="toggle-nested-reply" data-reply-id="${r.id}">↩ ${t("Responder","Reply","Responder","תגובה")}</button>
@@ -7259,7 +7364,7 @@ function calendarioColor(p){
 // data-action="cal-new" solo para quien puede postear: sin esto, alguien
 // pendiente de aprobación abriría un composer que después no puede guardar.
 function calendarioNewAttrs(iso, hour){
-  if(!isAuthorized()) return "";
+  if(!canWrite()) return "";
   const title = esc(t("Nuevo evento","New event","Novo evento","אירוע חדש"));
   return ` data-action="cal-new" data-date="${iso}"${hour != null ? ` data-hour="${hour}"` : ""} title="${title}"`;
 }
@@ -7315,7 +7420,7 @@ function renderCalendarioView(){
   // Navegación a la izquierda ("Hoy ‹ › septiembre de 2026"); del lado
   // derecho, el selector de vista y después "+ Nuevo evento", que queda
   // contra el borde.
-  const newBtn = isAuthorized()
+  const newBtn = canWrite()
     ? `<button type="button" class="btn-new" data-action="new-evento">+ ${esc(t("Nuevo evento","New event","Novo evento","אירוע חדש"))}</button>`
     : "";
   const toolbar = `<div class="paises-toolbar">${nav}<div class="cal-toolbar-end">${toggle}${newBtn}</div></div>`;
@@ -7651,7 +7756,7 @@ function renderMemoriaView(){
         <span class="chip-toggle ${state.memoriaOrder==="asc"?"active":""}" data-action="memoria-order" data-key="asc">${t("Más antiguo primero","Oldest first","Mais antigo primeiro","הישן ביותר קודם")}</span>
         <span class="chip-toggle ${state.memoriaOrder==="desc"?"active":""}" data-action="memoria-order" data-key="desc">${t("Más reciente primero","Newest first","Mais recente primeiro","החדש ביותר קודם")}</span>
       </div>
-      ${isAuthorized() ? `<button type="button" class="btn-sync" data-action="sync-calendar" ${state.calendarSyncing?"disabled":""}>🔄 ${t("Actualizar desde Calendar","Refresh from Calendar","Atualizar a partir do Calendar","עדכון מהיומן")}</button>` : ""}
+      ${canWrite() ? `<button type="button" class="btn-sync" data-action="sync-calendar" ${state.calendarSyncing?"disabled":""}>🔄 ${t("Actualizar desde Calendar","Refresh from Calendar","Atualizar a partir do Calendar","עדכון מהיומן")}</button>` : ""}
     </div>
     ${items.length ? items.map(({post,replies})=>renderPostCard(post,replies)).join("") + renderLoadMore("memoria-load-more", all.length - items.length) :
       `<div class="empty-state"><div class="big">📖</div>${anyActiveFilter()
@@ -7938,7 +8043,7 @@ function startRutina(){
 // Nuevo evento desde el Calendario: la fecha (y la hora, si se clickeó
 // una franja horaria de Semana/Día) vienen puestas.
 function openComposerOnDate(iso, hour){
-  if(!isAuthorized() || !iso) return;
+  if(!canWrite() || !iso) return;
   openComposer();
   composerDraft.startDate = iso;
   composerDraft.endDate = iso;
@@ -9512,6 +9617,7 @@ document.addEventListener("change", e=>{
     getReplyDraft(el.dataset.postId).extraScope = el.checked; render();
   }
   else if(el.dataset.action === "zonas-color"){ getZonasDraft().zones[el.dataset.key].color = el.value; render(); }
+  else if(el.dataset.action === "set-role"){ changeRole(el.dataset.email, el.value); }
   else if(el.dataset.action === "zonas-country-zone"){ getZonasDraft().countryZones[el.dataset.country] = el.value; render(); }
   else if(el.dataset.action === "tipos-sync"){
     const type = getTiposDraft().types.find(x=>x.key===el.dataset.key);
