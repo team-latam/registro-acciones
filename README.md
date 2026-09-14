@@ -279,6 +279,46 @@ crearlo) en vez de crear uno duplicado; si el tipo de actividad cambia a
 Rutina, el evento se borra del Calendar; si pasa de Rutina a un tipo que
 sincroniza, se crea recién en ese momento.
 
+#### Bug: editar cualquier cosa de un posteo viejo podía fallar entero
+
+Reportado por el usuario: tocar solo la fecha de un evento tiraba "No se
+pudo guardar la edición: Missing or insufficient permissions." — ni
+siquiera algo relacionado con lo que se estaba editando.
+
+La causa: `isValidPostBase(d)` en `firestore.rules` (la Tarea de
+seguridad de esta sesión que sumó validación por elemento a las 5 listas
+"de adjuntos" — `images`/`files`/`links`/`participants`/`mentions`, más
+`editors`) revalida el DOCUMENTO ENTERO en cada edición, no solo lo que
+cambió. Cualquier posteo con un elemento en alguna de esas listas
+guardado ANTES de que existiera esa validación (por ejemplo una imagen
+guardada como URL simple, de antes de que la app embebiera todo en
+base64) quedaba con esa lista "grandfatheada": inválida para el
+validador nuevo, pero nunca vuelta a escribir desde entonces. Editar
+CUALQUIER otro campo de ese posteo —aunque fuera solo la fecha—
+revalidaba esa lista vieja de paso, y la rechazaba entera.
+
+El arreglo (`isValidPostAttachmentsForUpdate` en `firestore.rules`, que
+reemplaza a `isValidPostBase` en `isValidPostUpdate`): cada una de esas
+6 listas pasa si es válida per se, **o si quedó exactamente igual que
+antes del cambio** — mismo criterio que ya usaba `scopes` en la misma
+función (un posteo importado sin alcance definido podía seguir
+guardándose sin alcance). Sin tocar una lista, no hace falta que cumpla
+la forma nueva; tocarla si la sigue exigiendo. `isValidPostBase` (la
+versión estricta, sin ese escape) se queda tal cual para **crear**
+posteos, donde todo el documento es nuevo y tiene que cumplir desde
+cero.
+
+Al armar la reproducción de este bug (`rulesupdate.mjs`) apareció un
+segundo hallazgo, distinto y no arreglado (queda documentado, no es lo
+que reportó el usuario): un link con una URL con forma inválida cae en
+un `<input type="url">` del composer, y ahí la validación NATIVA del
+navegador bloquea el `submit` del formulario ENTERO antes de que llegue
+a JavaScript — sin el toast de error propio de la app, solo el globo
+nativo del navegador, fácil de no notar. Un posteo viejo con un link así
+guardado no se puede editar desde el composer hasta corregir o sacar
+ese link a mano (por ejemplo, editando el documento directo en la
+consola de Firebase).
+
 ### Rutina: composer liviano estilo "¿Qué está pasando?"
 
 Aparte del modal grande de Evento (Visita/Curso/Seminario/Congreso/Virtual/
@@ -1053,11 +1093,12 @@ dos, el nombre que se ve es el del país (el que define si hay franco) y el
 #### El botón "🗂️ Capas": hitos + feriados, mostrar/ocultar cada uno
 
 Un solo botón "🗂️ Capas" en el toolbar de Calendario despliega un panel
-con tres switches — ◆ Hitos, 🏳️ Locales y ✡️ Judíos — que prenden o
-apagan cada capa **en la vista**, sin tocar qué está configurado en
-Configuración > Feriados. Es lo que se quiere prender y apagar mientras
-se está mirando la grilla, no una decisión que amerite ir a
-Configuración.
+titulado **"Configuración de Capas"** (a pedido, para que quede claro
+qué es lo que se está tocando ahí adentro) con tres switches — ◆ Hitos,
+🏳️ Locales y ✡️ Judíos — que prenden o apagan cada capa **en la
+vista**, sin tocar qué está configurado en Configuración > Feriados. Es
+lo que se quiere prender y apagar mientras se está mirando la grilla,
+no una decisión que amerite ir a Configuración.
 
 Es un desplegable (`calLayersMenuOpen`, mismo patrón `filter-dropdown`
 que el selector de vista `cal-view-filter` o los filtros de

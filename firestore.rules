@@ -227,16 +227,16 @@ service cloud.firestore {
     // calendarEventId, lastEditedBy y lastEditedAt no se guardan al crear
     // un posteo (recién aparecen en la primera edición/cancelación), así
     // que con acceso directo esto rompía todas las ediciones.
-    function isValidPostBase(d) {
+    // Todos los campos que NO son las 5 listas con validación por
+    // elemento (participants/links/images/files/mentions, más editors) —
+    // se comparten sin cambios entre crear y editar.
+    function isValidPostScalars(d) {
       return isNonEmptyString(d.title, 140) &&
         isNonEmptyString(d.content, 5000) &&
         isValidDateStr(d.date) &&
         isValidDateStr(d.startDate) &&
         isValidDateStr(d.endDate) &&
         isOptionalString(d.get('organizer', null), 140) &&
-        // Participantes taggeados (reemplaza a 'organizer' de a poco, ver
-        // renderParticipantsField en index.html): lista de {email, name}.
-        (d.get('participants', null) == null || (d.participants is list && isValidParticipantList(d.participants))) &&
         isOptionalString(d.get('location', null), 200) &&
         // Hora de inicio/fin (HH:MM, opcional): un evento sin hora es
         // "todo el día" (ver allDay en index.html) — el mínimo/máximo de
@@ -252,6 +252,31 @@ service cloud.firestore {
         isNonEmptyString(d.authorName, 120) &&
         isOptionalString(d.get('authorEmail', null), 200) &&
         d.scopes is list && d.scopes.size() >= 0 && d.scopes.size() <= 15 &&
+        (d.get('cancelled', null) == null || d.cancelled is bool) &&
+        // Proyecto: hitos (fecha, responsables, tildado). El contenido
+        // fino de cada hito no se valida elemento por elemento a
+        // propósito (desenrollar 40 índices sería puro ruido acá); a esa
+        // escala el tope de ~1 MiB por documento de Firestore ya achica
+        // el abuso real.
+        (d.get('isProject', null) == null || d.isProject is bool) &&
+        (d.get('milestones', null) == null || (d.milestones is list && d.milestones.size() <= 40)) &&
+        isOptionalString(d.get('projectNotes', null), 2000) &&
+        // Dado por completado: queda en solo lectura hasta "Volver a editar".
+        (d.get('projectStatus', null) == null || d.projectStatus in ['open', 'done']) &&
+        isOptionalString(d.get('projectDoneBy', null), 200) &&
+        (d.get('projectDoneAt', null) == null || d.projectDoneAt is timestamp) &&
+        isOptionalString(d.get('calendarEventId', null), 200) &&
+        isOptionalString(d.get('lastEditedBy', null), 120) &&
+        (d.get('lastEditedAt', null) == null || d.lastEditedAt is timestamp);
+    }
+    // Las 5 listas con validación por elemento (más editors), en su
+    // versión ESTRICTA — usada al CREAR, donde todo el documento es
+    // nuevo y tiene que cumplir desde cero.
+    function isValidPostAttachments(d) {
+      return
+        // Participantes taggeados (reemplaza a 'organizer' de a poco, ver
+        // renderParticipantsField en index.html): lista de {email, name}.
+        (d.get('participants', null) == null || (d.participants is list && isValidParticipantList(d.participants))) &&
         (d.get('links', null) == null || (d.links is list && isValidLinkList(d.links))) &&
         // Imágenes: cada elemento tiene que ser de verdad un data URL de
         // imagen (mismo regex que safeImageSrc() en index.html) — antes
@@ -265,23 +290,38 @@ service cloud.firestore {
         (d.get('files', null) == null || (d.files is list && isValidFileList(d.files))) &&
         // @menciones: emails de a quién se etiquetó con @ en el texto.
         (d.get('mentions', null) == null || (d.mentions is list && isValidEmailList(d.mentions, 10))) &&
-        (d.get('cancelled', null) == null || d.cancelled is bool) &&
-        // Proyecto: hitos (fecha, responsables, tildado) y editores. El
-        // contenido fino de cada hito no se valida elemento por elemento
-        // a propósito (desenrollar 40 índices sería puro ruido acá); a
-        // esa escala el tope de ~1 MiB por documento de Firestore ya
-        // achica el abuso real. `editors` sí, porque son solo 20 strings.
-        (d.get('isProject', null) == null || d.isProject is bool) &&
-        (d.get('milestones', null) == null || (d.milestones is list && d.milestones.size() <= 40)) &&
-        (d.get('editors', null) == null || (d.editors is list && isValidEmailList(d.editors, 20))) &&
-        isOptionalString(d.get('projectNotes', null), 2000) &&
-        // Dado por completado: queda en solo lectura hasta "Volver a editar".
-        (d.get('projectStatus', null) == null || d.projectStatus in ['open', 'done']) &&
-        isOptionalString(d.get('projectDoneBy', null), 200) &&
-        (d.get('projectDoneAt', null) == null || d.projectDoneAt is timestamp) &&
-        isOptionalString(d.get('calendarEventId', null), 200) &&
-        isOptionalString(d.get('lastEditedBy', null), 120) &&
-        (d.get('lastEditedAt', null) == null || d.lastEditedAt is timestamp);
+        (d.get('editors', null) == null || (d.editors is list && isValidEmailList(d.editors, 20)));
+    }
+    // Misma validación, pero para EDITAR: cada lista pasa si es válida
+    // per se, O SI QUEDÓ EXACTAMENTE IGUAL que antes de este cambio. Sin
+    // este "o quedó igual", cualquier edición de un posteo viejo —
+    // aunque sea solo la fecha — revalidaba TODO el documento, y un
+    // solo elemento grandfatheado de antes de que estos validadores por
+    // elemento existieran (un link, una imagen, un participante con una
+    // forma ya no aceptada) tumbaba la edición entera con "Missing or
+    // insufficient permissions", sin ninguna pista de qué campo era. Es
+    // el mismo criterio que ya usa `scopes` más abajo en
+    // isValidPostUpdate — acá se extiende a las otras cinco listas.
+    function isValidPostAttachmentsForUpdate(d) {
+      return
+        (d.get('participants', null) == resource.data.get('participants', null) ||
+          d.get('participants', null) == null || (d.participants is list && isValidParticipantList(d.participants))) &&
+        (d.get('links', null) == resource.data.get('links', null) ||
+          d.get('links', null) == null || (d.links is list && isValidLinkList(d.links))) &&
+        (d.get('images', null) == resource.data.get('images', null) ||
+          d.get('images', null) == null || (d.images is list && isValidImageList(d.images))) &&
+        (d.get('files', null) == resource.data.get('files', null) ||
+          d.get('files', null) == null || (d.files is list && isValidFileList(d.files))) &&
+        (d.get('mentions', null) == resource.data.get('mentions', null) ||
+          d.get('mentions', null) == null || (d.mentions is list && isValidEmailList(d.mentions, 10))) &&
+        (d.get('editors', null) == resource.data.get('editors', null) ||
+          d.get('editors', null) == null || (d.editors is list && isValidEmailList(d.editors, 20)));
+    }
+    function isValidPostBase(d) {
+      return isValidPostScalars(d) && isValidPostAttachments(d);
+    }
+    function isValidPostBaseForUpdate(d) {
+      return isValidPostScalars(d) && isValidPostAttachmentsForUpdate(d);
     }
 
     // Quién puede editar un posteo YA EXISTENTE (se evalúa sobre
@@ -320,7 +360,7 @@ service cloud.firestore {
     }
 
     function isValidPostUpdate(d) {
-      return isValidPostBase(d) &&
+      return isValidPostBaseForUpdate(d) &&
         // Solo pueden cambiar los campos de contenido: nunca de quién es,
         // cuándo se creó, ni likedBy (eso va por isValidLikeToggle).
         d.diff(resource.data).affectedKeys().hasOnly(['title', 'content', 'date', 'startDate', 'endDate',
