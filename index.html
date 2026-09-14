@@ -883,6 +883,9 @@
   .pd-log-head{ display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; margin-bottom:6px; }
   .pd-log .thread{ margin-top:8px; }
   .project-panel.preview{ background:var(--card); }
+  .pj-done-badge{ display:inline-flex; align-items:center; gap:4px; font-size:11.5px; font-weight:800; color:#15803d; background:color-mix(in srgb, #16a34a 14%, var(--card)); border-radius:999px; padding:2px 9px; }
+  .project-panel.done{ opacity:.92; }
+  .pj-done-hint{ margin-top:8px; }
   .pj-manage{ margin-top:12px; display:flex; justify-content:flex-end; }
   .project-panel{ margin-top:12px; padding:12px 14px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--surface-soft); }
   .pj-head{ font-size:13px; color:var(--ink); }
@@ -2861,7 +2864,7 @@ function upcomingEvents(){
   const types = p.notifyTypes || [], zones = p.notifyZones || [];
   // Los hitos pendientes de proyecto avisan igual que un evento; con
   // "solo donde participo", los míos son los que tienen mi responsable.
-  const hitos = allMilestoneItems().filter(it=> !it.milestone.done && (!p.notifyOnlyMine || String(it.milestone.owner||"").toLowerCase() === email || isMineOrParticipant(it.post, email)));
+  const hitos = allMilestoneItems({ skipDone:true }).filter(it=> !it.milestone.done && (!p.notifyOnlyMine || String(it.milestone.owner||"").toLowerCase() === email || isMineOrParticipant(it.post, email)));
   return calendarioPosts().concat(hitos)
     .filter(post=>{
       if(post.cancelled) return false;
@@ -4743,7 +4746,17 @@ function postMilestones(post){
   if(list.length && list.every(m=> Number.isFinite(m.order))) return list.sort((a,b)=> a.order - b.order);
   return list.sort((a,b)=> String(a.date||"").localeCompare(String(b.date||"")) || String(a.label||"").localeCompare(String(b.label||"")));
 }
-function canManageProject(post){ return post.activityType !== "rutina" && canEditPost(post); }
+// Un proyecto dado por completado queda en solo lectura (aunque tenga
+// hitos pendientes: puede que el evento ya pasó y se cierra igual). Para
+// tocarlo hay que "Volver a editar", que pide confirmación y lo reabre.
+function projectDone(post){ return post.projectStatus === "done"; }
+function canManageProject(post){ return post.activityType !== "rutina" && !projectDone(post) && canEditPost(post); }
+function canCloseProject(post){ return post.activityType !== "rutina" && canEditPost(post); }
+async function setProjectStatus(post, done){
+  const me = state.auth.user.email;
+  try{ await updatePostDoc(post.id, done ? { projectStatus:"done", projectDoneBy:me, projectDoneAt: fb.serverTimestamp() } : { projectStatus:"open", projectDoneBy:null, projectDoneAt:null }); }
+  catch(err){ console.error(err); showCalendarNotice({ ok:false, message: t("No se pudo guardar ({m}). Si las reglas de Firestore son viejas, hay que publicarlas.","Couldn't save ({m}). If the Firestore rules are outdated, they need publishing.","Não foi possível salvar ({m}). Se as regras do Firestore forem antigas, é preciso publicá-las.","לא ניתן היה לשמור ({m}). אם כללי Firestore ישנים, יש לפרסם אותם.",{m:err.code||err.message}) }); }
+}
 // done | overdue | today | upcoming
 function milestoneStatus(m){
   if(m.done) return "done";
@@ -4808,7 +4821,7 @@ function renderProyectosView(){
   const open = projectOpen ? getPostById(projectOpen) : null;
   if(open && open.isProject) return renderProjectDetail(open);
   projectOpen = null;
-  const list = projectPosts().sort((a,b)=> projectSortKey(a).localeCompare(projectSortKey(b)));
+  const list = projectPosts().sort((a,b)=> (projectDone(a) ? 1 : 0) - (projectDone(b) ? 1 : 0) || projectSortKey(a).localeCompare(projectSortKey(b)));
   if(!list.length){
     return `<div class="empty-state"><div class="big">📋</div>${t("Todavía no hay proyectos.","There are no projects yet.","Ainda não há projetos.","עדיין אין פרויקטים.")}<br>${t("En cualquier Evento del Feed, tocá «Crear como proyecto» para armarle su línea de tiempo de hitos.","On any Event in the Feed, tap “Create as project” to build its milestone timeline.","Em qualquer Evento do Feed, toque em «Criar como projeto» para montar sua linha do tempo de marcos.","בכל אירוע בפיד, לחצו על «יצירה כפרויקט» כדי לבנות את ציר הזמן של אבני הדרך שלו.")}</div>`;
   }
@@ -4820,7 +4833,7 @@ function renderProyectosView(){
     const pct = ms.length ? Math.round(done / ms.length * 100) : 0;
     return `<button type="button" class="project-card${p.cancelled?" cancelled":""}" data-action="project-open" data-post-id="${p.id}">
       <div class="pc-top"><span class="type-badge">${esc(type.icon)} ${esc(type.label)}</span><span class="pc-dates">${esc(fmtDate(start))}${end!==start?` – ${esc(fmtDate(end))}`:""}</span></div>
-      <div class="pc-title">${esc(calendarioLabel(p))}</div>
+      <div class="pc-title">${esc(calendarioLabel(p))}${projectDone(p) ? ` <span class="pj-done-badge">✅ ${t("Completado","Completed","Concluído","הושלם")}</span>` : ""}</div>
       <div class="pc-bar"><span style="width:${pct}%"></span></div>
       <div class="pc-meta">${ms.length ? t("{d} de {n} hitos","{d} of {n} milestones","{d} de {n} marcos","{d} מתוך {n} אבני דרך",{d:done,n:ms.length}) : t("Sin hitos todavía","No milestones yet","Sem marcos ainda","עדיין אין אבני דרך")}${overdue ? ` · <span class="pc-overdue">${overdue === 1 ? t("1 vencido","1 overdue","1 vencido","1 באיחור") : t("{n} vencidos","{n} overdue","{n} vencidos","{n} באיחור",{n:overdue})}</span>` : ""}</div>
       ${next ? `<div class="pc-next">${t("Próximo","Next","Próximo","הבא")}: <b>${esc(next.label)}</b> · ${esc(fmtDate(next.date))}${next.owner ? " " + ownerChip(next.owner) : ""}</div>` : ""}
@@ -4855,8 +4868,12 @@ function renderProjectDetail(post){
         <div class="post-actions">
           <button data-action="goto-mention" data-post-id="${post.id}">💬 ${t("Ver en el Feed","See in the Feed","Ver no Feed","הצגה בפיד")}</button>
           ${canEditPost(post) ? `<button data-action="edit-post" data-post-id="${post.id}">✏️ ${t("Editar evento","Edit event","Editar evento","עריכת האירוע")}</button>` : ""}
+          ${canCloseProject(post) ? (projectDone(post)
+            ? `<button data-action="project-reopen" data-post-id="${post.id}">✏️ ${t("Volver a editar","Edit again","Voltar a editar","עריכה מחדש")}</button>`
+            : `<button data-action="project-close" data-post-id="${post.id}">✅ ${t("Dar por completado","Mark as completed","Dar por concluído","סימון כהושלם")}</button>`) : ""}
           ${manage ? `<button class="danger" data-action="project-remove" data-post-id="${post.id}">🗑️ ${t("Quitar proyecto","Remove project","Remover projeto","הסרת הפרויקט")}</button>` : ""}
         </div>
+        ${projectDone(post) ? `<div class="hint pj-done-hint">${t("Proyecto completado: los hitos quedan en solo lectura; la bitácora sigue abierta. Para cambiar hitos, «Volver a editar».","Project completed: milestones are read-only; the log stays open. To change milestones, “Edit again”.","Projeto concluído: os marcos ficam em somente leitura; o diário continua aberto. Para mudar marcos, «Voltar a editar».","הפרויקט הושלם: אבני הדרך לקריאה בלבד; היומן נשאר פתוח. לשינוי אבני דרך, «עריכה מחדש».")}</div>` : ""}
       </div>
       ${renderProjectPanel(post)}
       ${renderProjectLog(post)}
@@ -4885,9 +4902,9 @@ function milestoneItem(post, m){
     title:`◆ ${m.label} · ${calendarioLabel(post)}`, cancelled:post.cancelled, authorEmail:post.authorEmail, participants:post.participants };
 }
 function realPostId(id){ return String(id||"").split("#m:")[0]; }
-function allMilestoneItems(){
+function allMilestoneItems(opts={}){
   const out = [];
-  state.posts.forEach(p=>{ if(p.cancelled) return; postMilestones(p).forEach(m=> out.push(milestoneItem(p, m))); });
+  state.posts.forEach(p=>{ if(p.cancelled) return; if(opts.skipDone && projectDone(p)) return; postMilestones(p).forEach(m=> out.push(milestoneItem(p, m))); });
   return out;
 }
 const openProjects = new Set();
@@ -5057,8 +5074,9 @@ function renderProjectPanel(post, opts={}){
       ${manage ? renderPersonPicker(`ed:${post.id}`, "+ " + t("Sumar editor…","Add editor…","Adicionar editor…","…הוספת עורך/ת"), [post.authorEmail, ...editors]) : ""}
     </div>`;
   const manageBtn = preview ? `<div class="pj-manage"><button type="button" class="btn-primary" data-action="project-manage" data-post-id="${post.id}">${canManageProject(post) ? t("Gestionar proyecto","Manage project","Gerenciar projeto","ניהול הפרויקט") : t("Abrir en Proyectos","Open in Projects","Abrir em Projetos","פתיחה בפרויקטים")} ${isRTL() ? "←" : "→"}</button></div>` : "";
-  return `<div class="project-panel${preview ? " preview" : ""}" data-post-id="${post.id}">
-      <div class="pj-head">📋 <b>${t("Proyecto","Project","Projeto","פרויקט")}</b> · ${head}</div>
+  const doneBadge = projectDone(post) ? ` <span class="pj-done-badge">✅ ${t("Completado","Completed","Concluído","הושלם")}${post.projectDoneAt ? " · " + esc(fmtDate(post.projectDoneAt)) : ""}${post.projectDoneBy ? " · " + ownerChip(post.projectDoneBy) : ""}</span>` : "";
+  return `<div class="project-panel${preview ? " preview" : ""}${projectDone(post) ? " done" : ""}" data-post-id="${post.id}">
+      <div class="pj-head">📋 <b>${t("Proyecto","Project","Projeto","פרויקט")}</b>${doneBadge} · ${head}</div>
       ${timeline}
       ${rows ? `<ul class="pj-list">${rows}</ul>` : `<div class="hint" style="margin-top:8px;">${t("Sin hitos todavía.","No milestones yet.","Sem marcos ainda.","עדיין אין אבני דרך.")}</div>`}
       ${addForm}
@@ -9986,6 +10004,18 @@ document.addEventListener("click", e=>{
     if(post && canManageProject(post) && !post.isProject) createProject(post);
   } else if(action === "project-manage" || action === "project-open"){
     projectOpen = postId; state.view = "proyectos"; render(); scrollToTop();
+  } else if(action === "project-close"){
+    const post = getPostById(postId);
+    if(!post || !canCloseProject(post)) return;
+    const pend = postMilestones(post).filter(m=>!m.done).length;
+    const msg = pend
+      ? t("¿Dar por completado \"{t}\"? Quedan {n} hito(s) sin tildar; quedan así. El proyecto pasa a solo lectura.","Mark \"{t}\" as completed? {n} milestone(s) remain unticked; they stay that way. The project becomes read-only.","Dar por concluído \"{t}\"? Restam {n} marco(s) sem marcar; ficam assim. O projeto passa a somente leitura.","לסמן את \"{t}\" כהושלם? נותרו {n} אבני דרך לא מסומנות; הן נשארות כך. הפרויקט עובר לקריאה בלבד.",{t:calendarioLabel(post), n:pend})
+      : t("¿Dar por completado \"{t}\"? El proyecto pasa a solo lectura.","Mark \"{t}\" as completed? The project becomes read-only.","Dar por concluído \"{t}\"? O projeto passa a somente leitura.","לסמן את \"{t}\" כהושלם? הפרויקט עובר לקריאה בלבד.",{t:calendarioLabel(post)});
+    if(confirm(msg)) setProjectStatus(post, true);
+  } else if(action === "project-reopen"){
+    const post = getPostById(postId);
+    if(!post || !canCloseProject(post)) return;
+    if(confirm(t("Este proyecto está dado por completado. ¿Seguir editándolo? Vuelve a quedar abierto y lo que cambies se guarda.","This project is marked as completed. Keep editing it? It reopens and your changes get saved.","Este projeto está dado por concluído. Continuar editando? Volta a ficar aberto e o que mudar é salvo.","הפרויקט הזה מסומן כהושלם. להמשיך לערוך? הוא ייפתח מחדש והשינויים יישמרו."))) setProjectStatus(post, false);
   } else if(action === "project-back"){
     projectOpen = null; render();
   } else if(action === "project-remove"){

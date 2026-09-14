@@ -197,6 +197,10 @@ service cloud.firestore {
         (d.get('milestones', null) == null || (d.milestones is list && d.milestones.size() <= 40)) &&
         (d.get('editors', null) == null || (d.editors is list && d.editors.size() <= 20)) &&
         isOptionalString(d.get('projectNotes', null), 2000) &&
+        // Dado por completado: queda en solo lectura hasta "Volver a editar".
+        (d.get('projectStatus', null) == null || d.projectStatus in ['open', 'done']) &&
+        isOptionalString(d.get('projectDoneBy', null), 200) &&
+        (d.get('projectDoneAt', null) == null || d.projectDoneAt is timestamp) &&
         isOptionalString(d.get('calendarEventId', null), 200) &&
         isOptionalString(d.get('lastEditedBy', null), 120) &&
         (d.get('lastEditedAt', null) == null || d.lastEditedAt is timestamp);
@@ -231,7 +235,7 @@ service cloud.firestore {
     function hasOnlyPostKeys(d) {
       return d.keys().hasOnly(['title', 'content', 'date', 'startDate', 'endDate', 'startTime', 'endTime',
         'organizer', 'participants', 'location', 'activityType', 'authorName', 'authorEmail',
-        'scopes', 'links', 'images', 'files', 'mentions', 'calendarEventId', 'createdAt', 'isProject', 'milestones', 'editors', 'projectNotes']);
+        'scopes', 'links', 'images', 'files', 'mentions', 'calendarEventId', 'createdAt', 'isProject', 'milestones', 'editors', 'projectNotes', 'projectStatus', 'projectDoneBy', 'projectDoneAt']);
     }
     function isValidPostCreate(d) {
       return isValidPostBase(d) && hasOnlyPostKeys(d) && isPostAuthorOk(d) && d.createdAt == request.time;
@@ -244,7 +248,7 @@ service cloud.firestore {
         d.diff(resource.data).affectedKeys().hasOnly(['title', 'content', 'date', 'startDate', 'endDate',
           'startTime', 'endTime', 'organizer', 'participants', 'location', 'activityType', 'scopes',
           'links', 'images', 'files', 'mentions', 'cancelled', 'calendarEventId', 'lastEditedAt', 'lastEditedBy',
-          'isProject', 'milestones', 'editors', 'projectNotes']) &&
+          'isProject', 'milestones', 'editors', 'projectNotes', 'projectStatus', 'projectDoneBy', 'projectDoneAt']) &&
         // El alcance mínimo de 1 solo se exige para Evento — Rutina es una
         // entrada rápida del día a día donde el lugar es opcional (se
         // agrega con el buscador de lugar del composer, si se quiere).
