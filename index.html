@@ -880,8 +880,8 @@
   .pc-next{ font-size:12.5px; color:var(--ink); }
   .project-detail{ display:flex; flex-direction:column; gap:14px; }
   .pd-head .pd-title{ margin:6px 0 8px; font-size:20px; color:var(--ink-strong); }
-  .pd-notes .setting-label{ margin-bottom:6px; }
-  .pd-notes-input{ width:100%; font-family:inherit; font-size:13.5px; padding:10px 12px; border-radius:var(--radius-sm); border:1.5px solid var(--border); background:var(--surface-soft); color:var(--ink); resize:vertical; }
+  .pd-log-head{ display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; margin-bottom:6px; }
+  .pd-log .thread{ margin-top:8px; }
   .project-panel.preview{ background:var(--card); }
   .pj-manage{ margin-top:12px; display:flex; justify-content:flex-end; }
   .project-panel{ margin-top:12px; padding:12px 14px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--surface-soft); }
@@ -4827,6 +4827,19 @@ function renderProyectosView(){
     </button>`;
   }).join("")}</div>`;
 }
+// Bitácora del proyecto: el MISMO hilo de respuestas del posteo (con
+// adjuntos, links, imágenes, @menciones y me gusta), siempre desplegado
+// y con el formulario abierto. Lo que se publica acá aparece también en
+// el hilo del evento en el Feed, y al revés: es una sola conversación.
+function renderProjectLog(post){
+  const replies = state.repliesByPost[post.id] || [];
+  const n = replies.filter(r=>!r.system).length;
+  return `<div class="card pd-log">
+      <div class="pd-log-head"><span class="setting-label">📝 ${t("Bitácora del proyecto","Project log","Diário do projeto","יומן הפרויקט")}</span><span class="hint">${n === 1 ? t("1 publicación","1 post","1 publicação","פרסום אחד") : t("{n} publicaciones","{n} posts","{n} publicações","{n} פרסומים",{n})} · ${t("es el mismo hilo que se ve en el Feed","same thread as in the Feed","é o mesmo tópico que aparece no Feed","אותו שרשור כמו בפיד")}</span></div>
+      ${replies.length ? renderThread(replies) : `<div class="hint" style="margin:8px 0;">${t("Todavía no hay publicaciones. Contá avances, adjuntá el reporte, dejá acuerdos y contactos.","No posts yet. Share progress, attach the report, leave agreements and contacts.","Ainda não há publicações. Conte avanços, anexe o relatório, deixe acordos e contatos.","עדיין אין פרסומים. שתפו התקדמות, צרפו את הדוח, השאירו הסכמות ואנשי קשר.")}</div>`}
+      ${canWrite() ? renderReplyForm(post.id) : ""}
+    </div>`;
+}
 function renderProjectDetail(post){
   const type = ACTIVITY_BY_KEY[post.activityType] || { icon:"✨", label:post.activityType };
   const start = post.startDate || post.date, end = post.endDate && post.endDate >= start ? post.endDate : start;
@@ -4846,13 +4859,7 @@ function renderProjectDetail(post){
         </div>
       </div>
       ${renderProjectPanel(post)}
-      <div class="card pd-notes">
-        <div class="setting-label">${t("Notas del proyecto","Project notes","Notas do projeto","הערות הפרויקט")}</div>
-        ${manage
-          ? `<textarea class="pd-notes-input" data-project-notes="${post.id}" maxlength="2000" rows="4" placeholder="${esc(t("Acuerdos, contactos, pendientes que no son hitos…","Agreements, contacts, to-dos that aren't milestones…","Acordos, contatos, pendências que não são marcos…","…הסכמות, אנשי קשר, משימות שאינן אבני דרך"))}">${esc(post.projectNotes||"")}</textarea>
-             <div class="hint">${t("Se guarda solo al salir del campo.","Saves by itself when you leave the field.","Salva sozinho ao sair do campo.","נשמר לבד ביציאה מהשדה.")}</div>`
-          : `<div class="post-content">${post.projectNotes ? nl2br(post.projectNotes) : `<span class="hint">${t("Sin notas.","No notes.","Sem notas.","אין הערות.")}</span>`}</div>`}
-      </div>
+      ${renderProjectLog(post)}
     </div>`;
 }
 // Guarda la lista entera: es corta (tope 40 en las reglas) y así el
@@ -10698,7 +10705,6 @@ document.addEventListener("change", e=>{
     }
   }
   else if(el.dataset.msNew){ const d = projectDraft(el.dataset.postId); d[el.dataset.msNew] = el.value; }
-  else if(el.dataset.projectNotes){ const post = getPostById(el.dataset.projectNotes); if(post && canManageProject(post)) saveProjectNotes(post, el.value); }
   else if(el.dataset.action === "ms-editor-add"){
     const post = getPostById(el.dataset.postId);
     if(post && canManageProject(post) && el.value && !postEditors(post).includes(el.value)) saveEditors(post, postEditors(post).concat([el.value]));
