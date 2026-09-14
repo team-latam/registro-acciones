@@ -713,6 +713,14 @@ sus hitos (`canEditPost` los incluye). Los hitos se guardan como lista
 entera en cada cambio (`saveMilestones`), así el documento queda
 consistente en una escritura.
 
+Responsables y editores se eligen **escribiendo** (`renderPersonPicker`,
+misma idea que los participantes del formulario: sugiere por @nickname,
+nombre o email; flechas, Enter/Tab elige, Escape limpia; la clave dice
+para qué es: `own:<post>:<hito>`, `new:<post>`, `ed:<post>`). Los hitos se
+pueden **mover** con ▲▼: al mover, cada hito recibe `order` y la lista
+(y la línea de tiempo) pasan a seguir ese orden en vez de la fecha
+(`postMilestones`); el evento se intercala por fecha.
+
 Los hitos entran también en el **Calendario** y en la **campanita**
 como ítems de un día (o rango) con ◆ y el nombre del evento
 (`milestoneItem`, `allMilestoneItems`): mismo objeto que un posteo para

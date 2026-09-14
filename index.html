@@ -900,6 +900,18 @@
   .pj-when input[type=date]{ font-family:inherit; font-size:11.5px; border:1px solid var(--border); border-radius:6px; padding:2px 4px; background:var(--surface-soft); color:var(--ink); }
   .pj-owner-sel, .pj-editor-add, .pj-add select{ font-family:inherit; font-size:12px; border:1px solid var(--border); border-radius:999px; padding:4px 8px; background:var(--card); color:var(--ink); max-width:160px; }
   .pj-doneby{ font-size:11px; color:var(--text-muted); }
+  .pp{ position:relative; display:inline-block; }
+  .pp-input{ font-family:inherit; font-size:12px; border:1px solid var(--border); border-radius:999px; padding:4px 10px; background:var(--card); color:var(--ink); width:150px; }
+  .pp-input:focus{ outline:none; border-color:var(--celeste-dark); }
+  .pp-list{ position:absolute; top:calc(100% + 4px); inset-inline-start:0; z-index:50; min-width:230px; }
+  .pp-list small{ color:var(--text-muted); font-weight:500; margin-inline-start:6px; }
+  .pj-owner-wrap{ display:inline-flex; align-items:center; gap:2px; }
+  .pj-owner-clear{ background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:11px; padding:0 2px; }
+  .pj-owner-clear:hover{ color:var(--danger); }
+  .pj-move{ display:inline-flex; flex-direction:column; gap:0; }
+  .pj-move button{ background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:9px; line-height:1; padding:1px 4px; }
+  .pj-move button:hover:not(:disabled){ color:var(--celeste-dark); }
+  .pj-move button:disabled{ opacity:.3; cursor:default; }
   .pj-row .rm{ background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:14px; padding:2px 6px; }
   .pj-row .rm:hover{ color:var(--danger); }
   .pj-add{ display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-top:10px; }
@@ -4702,9 +4714,12 @@ function canEditPost(post){
    una ayuda que se edita, no una plantilla administrada.
    ====================================================================== */
 function postEditors(post){ return Array.isArray(post.editors) ? post.editors : []; }
+// Orden: por fecha, salvo que se hayan movido a mano (entonces todos
+// tienen `order` y manda eso). Mover un hito fija el orden de toda la lista.
 function postMilestones(post){
-  return (Array.isArray(post.milestones) ? post.milestones : []).slice()
-    .sort((a,b)=> String(a.date||"").localeCompare(String(b.date||"")) || String(a.label||"").localeCompare(String(b.label||"")));
+  const list = (Array.isArray(post.milestones) ? post.milestones : []).slice();
+  if(list.length && list.every(m=> Number.isFinite(m.order))) return list.sort((a,b)=> a.order - b.order);
+  return list.sort((a,b)=> String(a.date||"").localeCompare(String(b.date||"")) || String(a.label||"").localeCompare(String(b.label||"")));
 }
 function canManageProject(post){ return post.activityType !== "rutina" && canEditPost(post); }
 // done | overdue | today | upcoming
@@ -4770,6 +4785,36 @@ function allMilestoneItems(){
 const openProjects = new Set();
 const projectDrafts = {};
 function projectDraft(postId){ return projectDrafts[postId] || (projectDrafts[postId] = { label:"", date:"", owner:"" }); }
+// Elegir personas ESCRIBIENDO (como los participantes del formulario):
+// un campo de texto que sugiere gente del roster por @nickname, nombre o
+// email. La clave dice para qué es: "own:<post>:<hito>" (responsable de
+// un hito), "new:<post>" (responsable del hito que se está agregando),
+// "ed:<post>" (sumar editor).
+const personQueries = {};
+function ppState(key){ return personQueries[key] || (personQueries[key] = { q:"", hi:0 }); }
+function ppMatches(key, exclude){
+  const q = ppState(key).q.trim().toLowerCase();
+  if(!q) return [];
+  const ex = new Set((exclude||[]).filter(Boolean).map(e=>String(e).toLowerCase()));
+  return state.roster.filter(u=> !ex.has(String(u.email).toLowerCase()) &&
+    (String(u.nickname||"").toLowerCase().includes(q) || String(u.name||"").toLowerCase().includes(q) || String(u.email).toLowerCase().includes(q))).slice(0, 6);
+}
+function renderPersonPicker(key, placeholder, exclude){
+  const st = ppState(key);
+  const open = !!st.q.trim();
+  const matches = open ? ppMatches(key, exclude) : [];
+  return `<span class="pp"><input type="text" id="pp-${esc(key)}" class="pp-input" data-pp-key="${esc(key)}" placeholder="${esc(placeholder)}" autocomplete="off" autocapitalize="off" value="${esc(st.q)}">
+    ${open ? `<div class="autocomplete-list pp-list">${matches.length ? matches.map((u,i)=>`<button type="button" class="autocomplete-option mention-option${i===st.hi?" active":""}" data-action="pp-pick" data-pp-key="${esc(key)}" data-email="${esc(u.email)}">@${esc(String(u.nickname||"").toLowerCase()||u.email)} <small>${esc(u.name||"")}</small></button>`).join("") : `<div class="autocomplete-empty">${t("Sin coincidencias","No matches","Sem coincidências","אין התאמות")}</div>`}</div>` : ""}</span>`;
+}
+function ppApply(key, email){
+  const [kind, postId, msId] = key.split(":");
+  const post = getPostById(postId);
+  personQueries[key] = { q:"", hi:0 };
+  if(!post || !canManageProject(post)){ render(); return; }
+  if(kind === "own") saveMilestones(post, postMilestones(post).map(m=> m.id === msId ? { ...m, owner: email } : m));
+  else if(kind === "new"){ projectDraft(postId).owner = email; render(); }
+  else if(kind === "ed"){ if(email !== post.authorEmail && !postEditors(post).includes(email)) saveEditors(post, postEditors(post).concat([email])); else render(); }
+}
 function ownerChip(email){
   if(!email) return "";
   const mem = memberByEmail(email);
@@ -4797,8 +4842,11 @@ function renderProjectPanel(post){
   let timeline = "";
   const evStart = post.startDate || post.date, evEnd = post.endDate && post.endDate >= evStart ? post.endDate : evStart;
   if(list.length){
-    const pts = [...list.map(m=>({ m, iso:m.date })), { ev:true, iso:evStart }]
-      .sort((a,b)=> a.iso.localeCompare(b.iso) || (a.ev ? 1 : 0) - (b.ev ? 1 : 0));
+    // El evento se intercala por fecha; los hitos van en el orden de la
+    // lista (el manual, si se movieron).
+    const pts = list.map(m=>({ m, iso:m.date }));
+    let evAt = pts.findIndex(x=> x.iso > evStart); if(evAt < 0) evAt = pts.length;
+    pts.splice(evAt, 0, { ev:true, iso:evStart });
     const n = pts.length;
     const pad = 6, span = 100 - 2*pad;
     const posOf = i => n === 1 ? 50 : pad + (i / (n - 1)) * span;
@@ -4822,7 +4870,7 @@ function renderProjectPanel(post){
       }).join("")}
     </div>`;
   }
-  const rows = list.map(m=>{
+  const rows = list.map((m, idx)=>{
     const st = milestoneStatus(m);
     const stLabel = st==="done" ? t("cumplido","done","cumprido","הושלם") : st==="overdue" ? t("vencido","overdue","vencido","באיחור") : st==="today" ? t("hoy","today","hoje","היום") : "";
     const when = `${esc(fmtDate(m.date))}${m.endDate && m.endDate > m.date ? ` – ${esc(fmtDate(m.endDate))}` : ""}`;
@@ -4838,8 +4886,13 @@ function renderProjectPanel(post){
           ${stLabel?`<i>${esc(stLabel)}</i>`:""}
         </span>
       </span>
-      <select class="pj-owner-sel" data-ms-field="owner" data-post-id="${post.id}" data-ms-id="${esc(m.id)}" aria-label="${esc(t("Responsable","Owner","Responsável","אחראי/ת"))}">${ownerOptions(m.owner||"")}</select>
+      ${m.owner ? `<span class="pj-owner-wrap">${ownerChip(m.owner)}<button type="button" class="pj-owner-clear" data-action="ms-owner-clear" data-post-id="${post.id}" data-ms-id="${esc(m.id)}" aria-label="${esc(t("Quitar responsable","Remove owner","Remover responsável","הסרת אחראי/ת"))}">✕</button></span>`
+               : renderPersonPicker(`own:${post.id}:${m.id}`, t("Responsable…","Owner…","Responsável…","…אחראי/ת"), [])}
       ${doneBy}
+      <span class="pj-move">
+        <button type="button" data-action="ms-move" data-dir="-1" data-post-id="${post.id}" data-ms-id="${esc(m.id)}" ${idx===0?"disabled":""} aria-label="${esc(t("Subir","Move up","Subir","להעלות"))}">▲</button>
+        <button type="button" data-action="ms-move" data-dir="1" data-post-id="${post.id}" data-ms-id="${esc(m.id)}" ${idx===list.length-1?"disabled":""} aria-label="${esc(t("Bajar","Move down","Descer","להוריד"))}">▼</button>
+      </span>
       <button type="button" class="rm" data-action="ms-remove" data-post-id="${post.id}" data-ms-id="${esc(m.id)}" title="${esc(t("Quitar hito","Remove milestone","Remover marco","הסרת אבן דרך"))}">✕</button>
     </li>`;
   }).join("");
@@ -4848,7 +4901,7 @@ function renderProjectPanel(post){
     <div class="pj-add">
       <input type="text" data-ms-new="label" data-post-id="${post.id}" placeholder="${esc(t("Hito nuevo (ej: Enviar invitaciones)","New milestone (e.g. Send invitations)","Marco novo (ex: Enviar convites)","אבן דרך חדשה (למשל: שליחת הזמנות)"))}" value="${esc(d.label)}" maxlength="120">
       <input type="date" data-ms-new="date" data-post-id="${post.id}" value="${esc(d.date)}">
-      <select data-ms-new="owner" data-post-id="${post.id}">${ownerOptions(d.owner)}</select>
+      ${d.owner ? `<span class="pj-owner-wrap">${ownerChip(d.owner)}<button type="button" class="pj-owner-clear" data-action="ms-new-owner-clear" data-post-id="${post.id}" aria-label="✕">✕</button></span>` : renderPersonPicker(`new:${post.id}`, t("Responsable…","Owner…","Responsável…","…אחראי/ת"), [])}
       <button type="button" class="btn-mini" data-action="ms-add" data-post-id="${post.id}">+ ${t("Agregar hito","Add milestone","Adicionar marco","הוספת אבן דרך")}</button>
       ${!list.length ? `<button type="button" class="btn-text-add" data-action="ms-suggest" data-post-id="${post.id}">✨ ${t("Sugerir hitos típicos","Suggest typical milestones","Sugerir marcos típicos","הצעת אבני דרך טיפוסיות")}</button>` : ""}
     </div>` : "";
@@ -4857,10 +4910,7 @@ function renderProjectPanel(post){
       <span class="pj-editors-lbl">${t("Editores","Editors","Editores","עורכים")}:</span>
       ${ownerChip(post.authorEmail)}
       ${editors.map(e=>`<span class="pj-editor-chip">${ownerChip(e)}${manage ? `<button type="button" data-action="ms-editor-remove" data-post-id="${post.id}" data-email="${esc(e)}" aria-label="${esc(t("Quitar editor","Remove editor","Remover editor","הסרת עורך/ת"))}">✕</button>` : ""}</span>`).join("")}
-      ${manage ? `<select class="pj-editor-add" data-action="ms-editor-add" data-post-id="${post.id}" aria-label="${esc(t("Sumar editor","Add editor","Adicionar editor","הוספת עורך/ת"))}">
-        <option value="">+ ${esc(t("Sumar editor","Add editor","Adicionar editor","הוספת עורך/ת"))}</option>
-        ${state.roster.filter(u=>u.email!==post.authorEmail && !editors.includes(u.email)).map(u=>`<option value="${esc(u.email)}">@${esc(String(u.nickname||"").toLowerCase()||u.name||u.email)}</option>`).join("")}
-      </select>` : ""}
+      ${manage ? renderPersonPicker(`ed:${post.id}`, "+ " + t("Sumar editor…","Add editor…","Adicionar editor…","…הוספת עורך/ת"), [post.authorEmail, ...editors]) : ""}
     </div>`;
   return `<div class="project-panel" data-post-id="${post.id}">
       <div class="pj-head">📋 <b>${t("Proyecto","Project","Projeto","פרויקט")}</b> · ${head}</div>
@@ -9675,6 +9725,19 @@ document.addEventListener("keydown", e=>{
       draft.participantQuery = ""; draft.participantHighlight = 0; render();
     }
   }
+  // Buscador de personas del proyecto (responsables, editores): flechas,
+  // Enter/Tab elige, Escape limpia.
+  if(e.target && e.target.dataset && e.target.dataset.ppKey){
+    const key = e.target.dataset.ppKey, st = ppState(key);
+    const [kind, postId] = key.split(":"); const post = getPostById(postId);
+    const exclude = kind === "ed" && post ? [post.authorEmail, ...postEditors(post)] : [];
+    const matches = ppMatches(key, exclude);
+    if(e.key === "Escape"){ st.q = ""; st.hi = 0; render(); return; }
+    if(!matches.length) return;
+    if(e.key === "ArrowDown"){ e.preventDefault(); st.hi = (st.hi + 1) % matches.length; render(); }
+    else if(e.key === "ArrowUp"){ e.preventDefault(); st.hi = (st.hi - 1 + matches.length) % matches.length; render(); }
+    else if(e.key === "Enter" || e.key === "Tab"){ e.preventDefault(); ppApply(key, matches[st.hi].email); }
+  }
 });
 
 document.addEventListener("click", e=>{
@@ -9782,6 +9845,23 @@ document.addEventListener("click", e=>{
   } else if(action === "ms-remove"){
     const post = getPostById(postId);
     if(post && canManageProject(post)) saveMilestones(post, postMilestones(post).filter(m=>m.id !== el.dataset.msId));
+  } else if(action === "pp-pick"){
+    ppApply(el.dataset.ppKey, el.dataset.email);
+  } else if(action === "ms-owner-clear"){
+    const post = getPostById(postId);
+    if(post && canManageProject(post)) saveMilestones(post, postMilestones(post).map(m=> m.id === el.dataset.msId ? { ...m, owner:null } : m));
+  } else if(action === "ms-new-owner-clear"){
+    projectDraft(postId).owner = ""; render();
+  } else if(action === "ms-move"){
+    const post = getPostById(postId);
+    if(post && canManageProject(post)){
+      const list = postMilestones(post);
+      const i = list.findIndex(m=>m.id === el.dataset.msId), j = i + Number(el.dataset.dir);
+      if(i >= 0 && j >= 0 && j < list.length){
+        [list[i], list[j]] = [list[j], list[i]];
+        saveMilestones(post, list.map((m, k)=> ({ ...m, order:k })));
+      }
+    }
   } else if(action === "ms-editor-remove"){
     const post = getPostById(postId);
     if(post && canManageProject(post)) saveEditors(post, postEditors(post).filter(e=>e !== el.dataset.email));
@@ -10294,6 +10374,9 @@ document.addEventListener("input", e=>{
   }
   else if(el.id === "cParticipantQuery"){
     composerDraft.participantQuery = el.value; composerDraft.participantHighlight = 0; render();
+  }
+  else if(el.dataset && el.dataset.ppKey){
+    const st = ppState(el.dataset.ppKey); st.q = el.value; st.hi = 0; render();
   }
   else if(el.dataset.placeScope){
     const draft = getDraftFor(el.dataset.placeScope, el.dataset.placeOwner);
