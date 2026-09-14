@@ -866,6 +866,24 @@
   .translate-toggle:disabled{ cursor:default; opacity:0.7; }
 
   /* ---------- Proyecto (hitos dentro de un Evento) ---------- */
+  .projects-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:14px; }
+  .project-card{ text-align:start; font-family:inherit; background:var(--card); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow); padding:14px 16px; cursor:pointer; display:flex; flex-direction:column; gap:8px; color:var(--ink); }
+  .project-card:hover{ border-color:var(--celeste-dark); }
+  .project-card.cancelled{ opacity:.6; }
+  .pc-top{ display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; }
+  .pc-dates{ font-size:12px; color:var(--text-muted); font-weight:600; }
+  .pc-title{ font-weight:800; font-size:15px; color:var(--ink-strong); }
+  .pc-bar{ height:6px; border-radius:999px; background:var(--surface-alt); overflow:hidden; }
+  .pc-bar span{ display:block; height:100%; background:#16a34a; border-radius:999px; }
+  .pc-meta{ font-size:12px; color:var(--text-muted); font-weight:600; }
+  .pc-overdue{ color:var(--danger); }
+  .pc-next{ font-size:12.5px; color:var(--ink); }
+  .project-detail{ display:flex; flex-direction:column; gap:14px; }
+  .pd-head .pd-title{ margin:6px 0 8px; font-size:20px; color:var(--ink-strong); }
+  .pd-notes .setting-label{ margin-bottom:6px; }
+  .pd-notes-input{ width:100%; font-family:inherit; font-size:13.5px; padding:10px 12px; border-radius:var(--radius-sm); border:1.5px solid var(--border); background:var(--surface-soft); color:var(--ink); resize:vertical; }
+  .project-panel.preview{ background:var(--card); }
+  .pj-manage{ margin-top:12px; display:flex; justify-content:flex-end; }
   .project-panel{ margin-top:12px; padding:12px 14px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--surface-soft); }
   .pj-head{ font-size:13px; color:var(--ink); }
   .pj-head b{ color:var(--ink-strong); }
@@ -908,10 +926,13 @@
   .pj-owner-wrap{ display:inline-flex; align-items:center; gap:2px; }
   .pj-owner-clear{ background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:11px; padding:0 2px; }
   .pj-owner-clear:hover{ color:var(--danger); }
-  .pj-move{ display:inline-flex; flex-direction:column; gap:0; }
-  .pj-move button{ background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:9px; line-height:1; padding:1px 4px; }
-  .pj-move button:hover:not(:disabled){ color:var(--celeste-dark); }
-  .pj-move button:disabled{ opacity:.3; cursor:default; }
+  /* Manija de arrastre (⋮⋮), sutil como la de Google: gris, más
+     visible al pasar, y toda la fila se levanta mientras se arrastra. */
+  .pj-grip{ display:inline-flex; align-items:center; color:var(--text-muted); opacity:.45; cursor:grab; touch-action:none; padding:4px 2px; flex:none; }
+  .pj-grip svg{ fill:currentColor; }
+  .pj-row:hover .pj-grip{ opacity:.9; }
+  .pj-row.dragging{ opacity:.85; box-shadow:0 8px 24px rgba(0,0,0,.18); border-color:var(--celeste-dark); cursor:grabbing; position:relative; z-index:2; }
+  .pj-row.dragging .pj-grip{ cursor:grabbing; }
   .pj-row .rm{ background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:14px; padding:2px 6px; }
   .pj-row .rm:hover{ color:var(--danger); }
   .pj-add{ display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-top:10px; }
@@ -1718,6 +1739,7 @@
       <button data-view="feed">Feed</button>
       <button data-view="paises">Vistas</button>
       <button data-view="calendario">Calendario</button>
+      <button data-view="proyectos">Proyectos</button>
       <button data-view="memoria" id="tabMemoria">Memoria</button>
       <button data-view="configuracion">Configuración</button>
       <button data-view="auditoria" id="tabAuditoria" hidden>Actividad</button>
@@ -4754,6 +4776,85 @@ function suggestMilestones(post){
     return m;
   });
 }
+// ---- Solapa Proyectos: lista de eventos-proyecto y ficha de gestión ----
+let projectOpen = null; // id del posteo abierto en la solapa
+function projectPosts(){ return state.posts.filter(p=> p.isProject && p.activityType !== "rutina"); }
+function nextMilestone(post){ return postMilestones(post).find(m=>!m.done) || null; }
+function projectSortKey(post){ const n = nextMilestone(post); return n ? n.date : (post.startDate || post.date || "9999"); }
+async function createProject(post){
+  try{
+    await updatePostDoc(post.id, { isProject:true, milestones: Array.isArray(post.milestones) ? post.milestones : [] });
+    projectOpen = post.id; state.view = "proyectos"; render(); scrollToTop();
+  }catch(err){
+    console.error("No se pudo crear el proyecto:", err);
+    showCalendarNotice({ ok:false, message: t("No se pudo crear el proyecto ({m}). Si las reglas de Firestore son viejas, hay que publicarlas.","Couldn't create the project ({m}). If the Firestore rules are outdated, they need publishing.","Não foi possível criar o projeto ({m}). Se as regras do Firestore forem antigas, é preciso publicá-las.","לא ניתן היה ליצור את הפרויקט ({m}). אם כללי Firestore ישנים, יש לפרסם אותם.",{m:err.code||err.message}) });
+  }
+}
+// Deshacer: el evento vuelve a ser un evento limpio (se van hitos,
+// editores y notas). Pide confirmación porque no hay vuelta atrás.
+async function removeProject(post){
+  const n = postMilestones(post).length;
+  if(!confirm(t("¿Quitar el proyecto de \"{t}\"? El evento queda como estaba; se pierden sus {n} hito(s), editores y notas.","Remove the project from \"{t}\"? The event stays as it was; its {n} milestone(s), editors and notes are lost.","Remover o projeto de \"{t}\"? O evento fica como estava; perdem-se seus {n} marco(s), editores e notas.","להסיר את הפרויקט מ-\"{t}\"? האירוע נשאר כפי שהיה; {n} אבני הדרך, העורכים וההערות יאבדו.",{t:calendarioLabel(post), n}))) return;
+  try{
+    await updatePostDoc(post.id, { isProject:false, milestones:[], editors:[], projectNotes:"" });
+    projectOpen = null; openProjects.delete(post.id); render();
+  }catch(err){ console.error(err); showCalendarNotice({ ok:false, message: t("No se pudo quitar ({m}).","Couldn't remove ({m}).","Não foi possível remover ({m}).","לא ניתן היה להסיר ({m}).",{m:err.code||err.message}) }); }
+}
+async function saveProjectNotes(post, text){
+  try{ await updatePostDoc(post.id, { projectNotes: String(text||"").slice(0, 2000) }); }
+  catch(err){ console.error(err); showCalendarNotice({ ok:false, message: t("No se pudieron guardar las notas ({m}).","Couldn't save the notes ({m}).","Não foi possível salvar as notas ({m}).","לא ניתן היה לשמור את ההערות ({m}).",{m:err.code||err.message}) }); }
+}
+function renderProyectosView(){
+  const open = projectOpen ? getPostById(projectOpen) : null;
+  if(open && open.isProject) return renderProjectDetail(open);
+  projectOpen = null;
+  const list = projectPosts().sort((a,b)=> projectSortKey(a).localeCompare(projectSortKey(b)));
+  if(!list.length){
+    return `<div class="empty-state"><div class="big">📋</div>${t("Todavía no hay proyectos.","There are no projects yet.","Ainda não há projetos.","עדיין אין פרויקטים.")}<br>${t("En cualquier Evento del Feed, tocá «Crear como proyecto» para armarle su línea de tiempo de hitos.","On any Event in the Feed, tap “Create as project” to build its milestone timeline.","Em qualquer Evento do Feed, toque em «Criar como projeto» para montar sua linha do tempo de marcos.","בכל אירוע בפיד, לחצו על «יצירה כפרויקט» כדי לבנות את ציר הזמן של אבני הדרך שלו.")}</div>`;
+  }
+  return `<div class="projects-grid">${list.map(p=>{
+    const ms = postMilestones(p), done = ms.filter(m=>m.done).length, overdue = ms.filter(m=>milestoneStatus(m)==="overdue").length;
+    const next = nextMilestone(p);
+    const type = ACTIVITY_BY_KEY[p.activityType] || { icon:"✨", label:p.activityType };
+    const start = p.startDate || p.date, end = p.endDate && p.endDate >= start ? p.endDate : start;
+    const pct = ms.length ? Math.round(done / ms.length * 100) : 0;
+    return `<button type="button" class="project-card${p.cancelled?" cancelled":""}" data-action="project-open" data-post-id="${p.id}">
+      <div class="pc-top"><span class="type-badge">${esc(type.icon)} ${esc(type.label)}</span><span class="pc-dates">${esc(fmtDate(start))}${end!==start?` – ${esc(fmtDate(end))}`:""}</span></div>
+      <div class="pc-title">${esc(calendarioLabel(p))}</div>
+      <div class="pc-bar"><span style="width:${pct}%"></span></div>
+      <div class="pc-meta">${ms.length ? t("{d} de {n} hitos","{d} of {n} milestones","{d} de {n} marcos","{d} מתוך {n} אבני דרך",{d:done,n:ms.length}) : t("Sin hitos todavía","No milestones yet","Sem marcos ainda","עדיין אין אבני דרך")}${overdue ? ` · <span class="pc-overdue">${overdue === 1 ? t("1 vencido","1 overdue","1 vencido","1 באיחור") : t("{n} vencidos","{n} overdue","{n} vencidos","{n} באיחור",{n:overdue})}</span>` : ""}</div>
+      ${next ? `<div class="pc-next">${t("Próximo","Next","Próximo","הבא")}: <b>${esc(next.label)}</b> · ${esc(fmtDate(next.date))}${next.owner ? " " + ownerChip(next.owner) : ""}</div>` : ""}
+    </button>`;
+  }).join("")}</div>`;
+}
+function renderProjectDetail(post){
+  const type = ACTIVITY_BY_KEY[post.activityType] || { icon:"✨", label:post.activityType };
+  const start = post.startDate || post.date, end = post.endDate && post.endDate >= start ? post.endDate : start;
+  const manage = canManageProject(post);
+  const { scopesHtml } = renderAttachments(post, { postId: post.id });
+  return `<div class="project-detail">
+      <button type="button" class="btn-text-add" data-action="project-back">${isRTL() ? "→" : "←"} ${t("Todos los proyectos","All projects","Todos os projetos","כל הפרויקטים")}</button>
+      <div class="card pd-head">
+        <div class="post-meta"><span class="type-badge">${esc(type.icon)} ${esc(type.label)}</span><span class="post-date">${esc(fmtDate(start))}${end!==start?` – ${esc(fmtDate(end))}`:""} · ${t("Creado por","Created by","Criado por","נוצר על ידי")} ${authorLabelHtml(post.authorEmail, post.authorName)}</span></div>
+        <h2 class="pd-title">${esc(calendarioLabel(post))}</h2>
+        ${scopesHtml ? `<div class="post-scopes">${scopesHtml}</div>` : ""}
+        ${post.content ? `<div class="post-content">${nl2br(String(post.content).slice(0,600))}</div>` : ""}
+        <div class="post-actions">
+          <button data-action="goto-mention" data-post-id="${post.id}">💬 ${t("Ver en el Feed","See in the Feed","Ver no Feed","הצגה בפיד")}</button>
+          ${canEditPost(post) ? `<button data-action="edit-post" data-post-id="${post.id}">✏️ ${t("Editar evento","Edit event","Editar evento","עריכת האירוע")}</button>` : ""}
+          ${manage ? `<button class="danger" data-action="project-remove" data-post-id="${post.id}">🗑️ ${t("Quitar proyecto","Remove project","Remover projeto","הסרת הפרויקט")}</button>` : ""}
+        </div>
+      </div>
+      ${renderProjectPanel(post)}
+      <div class="card pd-notes">
+        <div class="setting-label">${t("Notas del proyecto","Project notes","Notas do projeto","הערות הפרויקט")}</div>
+        ${manage
+          ? `<textarea class="pd-notes-input" data-project-notes="${post.id}" maxlength="2000" rows="4" placeholder="${esc(t("Acuerdos, contactos, pendientes que no son hitos…","Agreements, contacts, to-dos that aren't milestones…","Acordos, contatos, pendências que não são marcos…","…הסכמות, אנשי קשר, משימות שאינן אבני דרך"))}">${esc(post.projectNotes||"")}</textarea>
+             <div class="hint">${t("Se guarda solo al salir del campo.","Saves by itself when you leave the field.","Salva sozinho ao sair do campo.","נשמר לבד ביציאה מהשדה.")}</div>`
+          : `<div class="post-content">${post.projectNotes ? nl2br(post.projectNotes) : `<span class="hint">${t("Sin notas.","No notes.","Sem notas.","אין הערות.")}</span>`}</div>`}
+      </div>
+    </div>`;
+}
 // Guarda la lista entera: es corta (tope 40 en las reglas) y así el
 // documento queda consistente en una sola escritura.
 async function saveMilestones(post, list){
@@ -4806,6 +4907,44 @@ function renderPersonPicker(key, placeholder, exclude){
   return `<span class="pp"><input type="text" id="pp-${esc(key)}" class="pp-input" data-pp-key="${esc(key)}" placeholder="${esc(placeholder)}" autocomplete="off" autocapitalize="off" value="${esc(st.q)}">
     ${open ? `<div class="autocomplete-list pp-list">${matches.length ? matches.map((u,i)=>`<button type="button" class="autocomplete-option mention-option${i===st.hi?" active":""}" data-action="pp-pick" data-pp-key="${esc(key)}" data-email="${esc(u.email)}">@${esc(String(u.nickname||"").toLowerCase()||u.email)} <small>${esc(u.name||"")}</small></button>`).join("") : `<div class="autocomplete-empty">${t("Sin coincidencias","No matches","Sem coincidências","אין התאמות")}</div>`}</div>` : ""}</span>`;
 }
+// Reordenar arrastrando de la manija (⋮⋮), con mouse o dedo: mientras se
+// arrastra, la fila se mueve en el DOM debajo del puntero; al soltar, el
+// orden que quedó se guarda como `order` de cada hito.
+function reorderMilestones(post, orderedIds){
+  const byId = new Map(postMilestones(post).map(m=>[m.id, m]));
+  const list = orderedIds.map(id=>byId.get(id)).filter(Boolean);
+  if(list.length !== byId.size) return;
+  saveMilestones(post, list.map((m, k)=> ({ ...m, order:k })));
+}
+document.addEventListener("pointerdown", e=>{
+  const grip = e.target.closest && e.target.closest("[data-pj-grip]");
+  if(!grip) return;
+  const row = grip.closest(".pj-row"), ul = row && row.parentElement;
+  const post = getPostById(grip.dataset.postId);
+  if(!row || !ul || !post || !canManageProject(post)) return;
+  e.preventDefault();
+  row.classList.add("dragging");
+  const move = ev=>{
+    const rows = [...ul.querySelectorAll(".pj-row")].filter(r=>r !== row);
+    const y = ev.clientY;
+    const after = rows.find(r=>{ const b = r.getBoundingClientRect(); return y < b.top + b.height / 2; });
+    if(after) ul.insertBefore(row, after); else ul.appendChild(row);
+  };
+  const up = ()=>{
+    document.removeEventListener("pointermove", move);
+    document.removeEventListener("pointerup", up);
+    document.removeEventListener("pointercancel", up);
+    row.classList.remove("dragging");
+    const ids = [...ul.querySelectorAll(".pj-row")].map(r=>r.dataset.msId);
+    const before = postMilestones(post).map(m=>m.id);
+    if(ids.join() !== before.join()) reorderMilestones(post, ids); else render();
+  };
+  // En el documento, no en la manija: con la captura del puntero sobre
+  // la manija, Chromium la soltaba al mover la fila en el DOM.
+  document.addEventListener("pointermove", move);
+  document.addEventListener("pointerup", up);
+  document.addEventListener("pointercancel", up);
+});
 function ppApply(key, email){
   const [kind, postId, msId] = key.split(":");
   const post = getPostById(postId);
@@ -4825,9 +4964,10 @@ function ownerOptions(selected){
     .map(u=>`<option value="${esc(u.email)}" ${u.email===selected?"selected":""}>@${esc(String(u.nickname||"").toLowerCase() || u.name || u.email)}</option>`).join("");
   return `<option value="" ${!selected?"selected":""}>${esc(t("Sin responsable","No owner","Sem responsável","ללא אחראי/ת"))}</option>${opts}`;
 }
-function renderProjectPanel(post){
+function renderProjectPanel(post, opts={}){
   const list = postMilestones(post);
-  const manage = canManageProject(post);
+  const preview = !!opts.preview;
+  const manage = !preview && canManageProject(post);
   const done = list.filter(m=>m.done).length;
   const next = list.find(m=>!m.done);
   const today = todayISO();
@@ -4870,13 +5010,14 @@ function renderProjectPanel(post){
       }).join("")}
     </div>`;
   }
-  const rows = list.map((m, idx)=>{
+  const rows = list.map(m=>{
     const st = milestoneStatus(m);
     const stLabel = st==="done" ? t("cumplido","done","cumprido","הושלם") : st==="overdue" ? t("vencido","overdue","vencido","באיחור") : st==="today" ? t("hoy","today","hoje","היום") : "";
     const when = `${esc(fmtDate(m.date))}${m.endDate && m.endDate > m.date ? ` – ${esc(fmtDate(m.endDate))}` : ""}`;
     const doneBy = m.done && m.doneBy ? `<span class="pj-doneby">${t("por","by","por","על ידי")} ${ownerChip(m.doneBy)}${m.doneAt ? " · " + esc(fmtDate(m.doneAt)) : ""}</span>` : "";
     if(!manage) return `<li class="pj-row ${st}"><span class="pj-check ro">${m.done?"✓":""}</span><span class="pj-main"><span class="pj-label">${esc(m.label)}</span><span class="pj-when">${when}${stLabel?` · <i>${esc(stLabel)}</i>`:""}</span></span>${ownerChip(m.owner)}${doneBy}</li>`;
-    return `<li class="pj-row ${st}">
+    return `<li class="pj-row ${st}" data-ms-id="${esc(m.id)}">
+      <span class="pj-grip" data-pj-grip data-post-id="${post.id}" title="${esc(t("Arrastrá para reordenar","Drag to reorder","Arraste para reordenar","גרירה לסידור מחדש"))}" aria-hidden="true"><svg viewBox="0 0 10 16" width="10" height="16"><circle cx="3" cy="3" r="1.4"/><circle cx="7" cy="3" r="1.4"/><circle cx="3" cy="8" r="1.4"/><circle cx="7" cy="8" r="1.4"/><circle cx="3" cy="13" r="1.4"/><circle cx="7" cy="13" r="1.4"/></svg></span>
       <input type="checkbox" class="pj-check" data-action="ms-done" data-post-id="${post.id}" data-ms-id="${esc(m.id)}" ${m.done?"checked":""} aria-label="${esc(t("Cumplido","Done","Cumprido","הושלם"))}">
       <span class="pj-main">
         <input type="text" class="pj-label-input" data-ms-field="label" data-post-id="${post.id}" data-ms-id="${esc(m.id)}" value="${esc(m.label)}" maxlength="120">
@@ -4889,10 +5030,6 @@ function renderProjectPanel(post){
       ${m.owner ? `<span class="pj-owner-wrap">${ownerChip(m.owner)}<button type="button" class="pj-owner-clear" data-action="ms-owner-clear" data-post-id="${post.id}" data-ms-id="${esc(m.id)}" aria-label="${esc(t("Quitar responsable","Remove owner","Remover responsável","הסרת אחראי/ת"))}">✕</button></span>`
                : renderPersonPicker(`own:${post.id}:${m.id}`, t("Responsable…","Owner…","Responsável…","…אחראי/ת"), [])}
       ${doneBy}
-      <span class="pj-move">
-        <button type="button" data-action="ms-move" data-dir="-1" data-post-id="${post.id}" data-ms-id="${esc(m.id)}" ${idx===0?"disabled":""} aria-label="${esc(t("Subir","Move up","Subir","להעלות"))}">▲</button>
-        <button type="button" data-action="ms-move" data-dir="1" data-post-id="${post.id}" data-ms-id="${esc(m.id)}" ${idx===list.length-1?"disabled":""} aria-label="${esc(t("Bajar","Move down","Descer","להוריד"))}">▼</button>
-      </span>
       <button type="button" class="rm" data-action="ms-remove" data-post-id="${post.id}" data-ms-id="${esc(m.id)}" title="${esc(t("Quitar hito","Remove milestone","Remover marco","הסרת אבן דרך"))}">✕</button>
     </li>`;
   }).join("");
@@ -4912,12 +5049,14 @@ function renderProjectPanel(post){
       ${editors.map(e=>`<span class="pj-editor-chip">${ownerChip(e)}${manage ? `<button type="button" data-action="ms-editor-remove" data-post-id="${post.id}" data-email="${esc(e)}" aria-label="${esc(t("Quitar editor","Remove editor","Remover editor","הסרת עורך/ת"))}">✕</button>` : ""}</span>`).join("")}
       ${manage ? renderPersonPicker(`ed:${post.id}`, "+ " + t("Sumar editor…","Add editor…","Adicionar editor…","…הוספת עורך/ת"), [post.authorEmail, ...editors]) : ""}
     </div>`;
-  return `<div class="project-panel" data-post-id="${post.id}">
+  const manageBtn = preview ? `<div class="pj-manage"><button type="button" class="btn-primary" data-action="project-manage" data-post-id="${post.id}">${canManageProject(post) ? t("Gestionar proyecto","Manage project","Gerenciar projeto","ניהול הפרויקט") : t("Abrir en Proyectos","Open in Projects","Abrir em Projetos","פתיחה בפרויקטים")} ${isRTL() ? "←" : "→"}</button></div>` : "";
+  return `<div class="project-panel${preview ? " preview" : ""}" data-post-id="${post.id}">
       <div class="pj-head">📋 <b>${t("Proyecto","Project","Projeto","פרויקט")}</b> · ${head}</div>
       ${timeline}
-      ${rows ? `<ul class="pj-list">${rows}</ul>` : ""}
+      ${rows ? `<ul class="pj-list">${rows}</ul>` : `<div class="hint" style="margin-top:8px;">${t("Sin hitos todavía.","No milestones yet.","Sem marcos ainda.","עדיין אין אבני דרך.")}</div>`}
       ${addForm}
-      ${editorsRow}
+      ${preview ? "" : editorsRow}
+      ${manageBtn}
     </div>`;
 }
 
@@ -5345,6 +5484,7 @@ function applyStaticI18n(){
     paises: t("Vistas", "Views", "Vistas", "תצוגות"),
     calendario: t("Calendario", "Calendar", "Calendário", "יומן"),
     memoria: t("Memoria", "Memory", "Memória", "זיכרון"),
+    proyectos: t("Proyectos", "Projects", "Projetos", "פרויקטים"),
     configuracion: t("Configuración", "Settings", "Configurações", "הגדרות"),
     auditoria: t("Actividad", "Activity", "Atividade", "פעילות"),
     solicitudes: t("Usuarios", "Users", "Usuários", "משתמשים"),
@@ -5727,6 +5867,7 @@ function doRender(){
   else if(state.view === "paises") html += renderPaisesView();
   else if(state.view === "calendario") html += renderCalendarioView();
   else if(state.view === "memoria") html += renderMemoriaView();
+  else if(state.view === "proyectos") html += renderProyectosView();
   else if(state.view === "configuracion") html += renderConfiguracionView();
   else if(state.view === "solicitudes") html += renderAccesoView();
   else if(state.view === "auditoria") html += renderAuditoriaView();
@@ -7022,12 +7163,14 @@ function renderPostCard(post, replies, featured){
         ${canWrite() ? `<button data-action="toggle-like" data-post-id="${post.id}" class="${postLiked?"liked":""}">${postLiked?"👍":"🤍"} ${t("Me gusta","Like","Curtir","לייק")}${postLikedBy.length?` (${postLikedBy.length})`:""}</button>
         <button data-action="toggle-reply" data-post-id="${post.id}">💬 ${t("Responder","Reply","Responder","תגובה")}</button>` : (postLikedBy.length ? `<span class="post-likes-ro">👍 ${postLikedBy.length}</span>` : "")}
         ${replies.length ? `<button data-action="toggle-thread" data-post-id="${post.id}">${threadOpen ? "▲ " + t("Ocultar","Hide","Ocultar","הסתרה") : "▼ " + t("Ver","View","Ver","הצגה")} ${commentsLabel}</button>` : ""}
-        ${post.activityType !== "rutina" ? `<button data-action="toggle-project" data-post-id="${post.id}" class="${openProjects.has(post.id)?"active":""}">📋 ${openProjects.has(post.id) ? t("Ocultar proyecto","Hide project","Ocultar projeto","הסתרת פרויקט") : t("Ver como proyecto","View as project","Ver como projeto","הצגה כפרויקט")}${postMilestones(post).length ? ` (${postMilestones(post).filter(m=>m.done).length}/${postMilestones(post).length})` : ""}</button>` : ""}
+        ${post.isProject
+          ? `<button data-action="toggle-project" data-post-id="${post.id}" class="${openProjects.has(post.id)?"active":""}">📋 ${openProjects.has(post.id) ? t("Ocultar proyecto","Hide project","Ocultar projeto","הסתרת פרויקט") : t("Ver proyecto","View project","Ver projeto","הצגת פרויקט")}${postMilestones(post).length ? ` (${postMilestones(post).filter(m=>m.done).length}/${postMilestones(post).length})` : ""}</button>`
+          : (post.activityType !== "rutina" && canManageProject(post) ? `<button data-action="project-create" data-post-id="${post.id}">📋 ${t("Crear como proyecto","Create as project","Criar como projeto","יצירה כפרויקט")}</button>` : "")}
         ${editable ? `<button data-action="edit-post" data-post-id="${post.id}">✏️ ${t("Editar","Edit","Editar","עריכה")}</button>` : ""}
         ${canCancel ? `<button data-action="cancel-post" data-post-id="${post.id}">🚫 ${t("Cancelar evento","Cancel event","Cancelar evento","ביטול האירוע")}</button>` : ""}
         ${isFixedAdmin() ? `<button class="danger" data-action="delete-post" data-post-id="${post.id}">🗑️ ${t("Borrar","Delete","Apagar","מחיקה")}</button>` : ""}
       </div>
-      ${openProjects.has(post.id) ? renderProjectPanel(post) : ""}
+      ${post.isProject && openProjects.has(post.id) ? renderProjectPanel(post, { preview:true }) : ""}
       ${threadOpen ? renderThread(replies) : ""}
       ${replyOpen ? renderReplyForm(post.id) : ""}
     </article>`;
@@ -9830,6 +9973,16 @@ document.addEventListener("click", e=>{
   } else if(action === "cancel-post"){
     const post = getPostById(postId);
     if(post) cancelPost(post);
+  } else if(action === "project-create"){
+    const post = getPostById(postId);
+    if(post && canManageProject(post) && !post.isProject) createProject(post);
+  } else if(action === "project-manage" || action === "project-open"){
+    projectOpen = postId; state.view = "proyectos"; render(); scrollToTop();
+  } else if(action === "project-back"){
+    projectOpen = null; render();
+  } else if(action === "project-remove"){
+    const post = getPostById(postId);
+    if(post && canManageProject(post)) removeProject(post);
   } else if(action === "toggle-project"){
     openProjects.has(postId) ? openProjects.delete(postId) : openProjects.add(postId); render();
   } else if(action === "ms-suggest"){
@@ -9852,16 +10005,6 @@ document.addEventListener("click", e=>{
     if(post && canManageProject(post)) saveMilestones(post, postMilestones(post).map(m=> m.id === el.dataset.msId ? { ...m, owner:null } : m));
   } else if(action === "ms-new-owner-clear"){
     projectDraft(postId).owner = ""; render();
-  } else if(action === "ms-move"){
-    const post = getPostById(postId);
-    if(post && canManageProject(post)){
-      const list = postMilestones(post);
-      const i = list.findIndex(m=>m.id === el.dataset.msId), j = i + Number(el.dataset.dir);
-      if(i >= 0 && j >= 0 && j < list.length){
-        [list[i], list[j]] = [list[j], list[i]];
-        saveMilestones(post, list.map((m, k)=> ({ ...m, order:k })));
-      }
-    }
   } else if(action === "ms-editor-remove"){
     const post = getPostById(postId);
     if(post && canManageProject(post)) saveEditors(post, postEditors(post).filter(e=>e !== el.dataset.email));
@@ -10555,6 +10698,7 @@ document.addEventListener("change", e=>{
     }
   }
   else if(el.dataset.msNew){ const d = projectDraft(el.dataset.postId); d[el.dataset.msNew] = el.value; }
+  else if(el.dataset.projectNotes){ const post = getPostById(el.dataset.projectNotes); if(post && canManageProject(post)) saveProjectNotes(post, el.value); }
   else if(el.dataset.action === "ms-editor-add"){
     const post = getPostById(el.dataset.postId);
     if(post && canManageProject(post) && el.value && !postEditors(post).includes(el.value)) saveEditors(post, postEditors(post).concat([el.value]));

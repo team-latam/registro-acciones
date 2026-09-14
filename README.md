@@ -689,10 +689,22 @@ El `GOOGLE_OAUTH_CLIENT_ID` es público por diseño y va en el código. El
 **client secret NO se usa nunca** en una app de navegador: si algo lo pide
 para el front, está mal.
 
-### Proyecto: hitos dentro de un Evento
+### Proyecto: hitos dentro de un Evento, y la solapa Proyectos
 
-Cualquier Evento (no Rutina) se puede "Ver como proyecto" desde su
-tarjeta: un panel con la lista de **hitos** (nombre, fecha, fin
+Cualquier Evento (no Rutina) se puede convertir en proyecto desde su
+tarjeta con **"Crear como proyecto"** (`isProject: true` en el posteo):
+eso lleva a la solapa **Proyectos**, a la ficha de ese proyecto, donde
+se gestiona todo (`renderProjectDetail`). Un evento que ya es proyecto
+muestra en la tarjeta **"Ver proyecto (n/m)"**: una vista previa de solo
+lectura (línea de tiempo + lista) con "Gestionar proyecto →" que abre la
+ficha. La solapa lista los proyectos como tarjetas con progreso, próximo
+hito y vencidos (`renderProyectosView`, ordenadas por el próximo hito;
+`projectOpen` recuerda la ficha abierta). En la ficha: "Ver en el Feed",
+"Editar evento", **"Quitar proyecto"** (vuelve a evento limpio: borra
+hitos, editores y notas, con confirmación) y **notas** del proyecto
+(`projectNotes`, se guardan al salir del campo).
+
+La ficha tiene el panel con la lista de **hitos** (nombre, fecha, fin
 opcional, responsable, tildado con quién y cuándo) y, en escritorio, una
 línea de tiempo como la de referencia del equipo: puntos a distancia
 pareja en orden de fecha (no proporcional al tiempo, que apilaba las
@@ -717,7 +729,9 @@ Responsables y editores se eligen **escribiendo** (`renderPersonPicker`,
 misma idea que los participantes del formulario: sugiere por @nickname,
 nombre o email; flechas, Enter/Tab elige, Escape limpia; la clave dice
 para qué es: `own:<post>:<hito>`, `new:<post>`, `ed:<post>`). Los hitos se
-pueden **mover** con ▲▼: al mover, cada hito recibe `order` y la lista
+pueden **mover arrastrando** de la manija ⋮⋮ que hay antes del
+checkbox (pointer events en el documento, mouse o dedo; la fila se mueve
+en el DOM mientras se arrastra y al soltar se guarda): cada hito recibe `order` y la lista
 (y la línea de tiempo) pasan a seguir ese orden en vez de la fecha
 (`postMilestones`); el evento se intercala por fecha.
 
