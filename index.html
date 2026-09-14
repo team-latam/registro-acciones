@@ -4835,8 +4835,8 @@ function renderProjectLog(post){
   const replies = state.repliesByPost[post.id] || [];
   const n = replies.filter(r=>!r.system).length;
   return `<div class="card pd-log">
-      <div class="pd-log-head"><span class="setting-label">📝 ${t("Bitácora del proyecto","Project log","Diário do projeto","יומן הפרויקט")}</span><span class="hint">${n === 1 ? t("1 publicación","1 post","1 publicação","פרסום אחד") : t("{n} publicaciones","{n} posts","{n} publicações","{n} פרסומים",{n})} · ${t("es el mismo hilo que se ve en el Feed","same thread as in the Feed","é o mesmo tópico que aparece no Feed","אותו שרשור כמו בפיד")}</span></div>
-      ${replies.length ? renderThread(replies) : `<div class="hint" style="margin:8px 0;">${t("Todavía no hay publicaciones. Contá avances, adjuntá el reporte, dejá acuerdos y contactos.","No posts yet. Share progress, attach the report, leave agreements and contacts.","Ainda não há publicações. Conte avanços, anexe o relatório, deixe acordos e contatos.","עדיין אין פרסומים. שתפו התקדמות, צרפו את הדוח, השאירו הסכמות ואנשי קשר.")}</div>`}
+      <div class="pd-log-head"><span class="setting-label">📝 ${t("Bitácora del proyecto","Project log","Diário do projeto","יומן הפרויקט")}</span><span class="hint">${n === 1 ? t("1 publicación","1 post","1 publicação","פרסום אחד") : t("{n} publicaciones","{n} posts","{n} publicações","{n} פרסומים",{n})}</span></div>
+      ${replies.length ? renderThread(replies) : ""}
       ${canWrite() ? renderReplyForm(post.id) : ""}
     </div>`;
 }
