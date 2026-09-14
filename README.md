@@ -720,7 +720,7 @@ pero la app ya no lo usa.
 **Dar por completado** (`projectStatus: "done"`, con `projectDoneBy` y
 `projectDoneAt`): cualquier editor puede cerrar el proyecto aunque
 queden hitos sin tildar (el evento ya pasó y se cierra igual; el
-`confirm()` dice cuántos quedan). Cerrado, los hitos, editores y la
+`appConfirm()` propio dice cuántos quedan). Cerrado, los hitos, editores y la
 manija de arrastre quedan en solo lectura (`canManageProject` exige que
 no esté cerrado), no aparece "Quitar proyecto", sus hitos pendientes
 dejan de avisar en la campanita (`allMilestoneItems({skipDone})`; en el
@@ -785,7 +785,13 @@ lo que dibujan, con id compuesto `postId#m:hitoId` para no confundirse
 con el evento en los carriles de la grilla; `realPostId()` vuelve al
 posteo real al abrirlo (la ficha que se abre es la del evento padre).
 Con "Solo donde participo", avisan los hitos en los que soy responsable o
-cuyo evento es mío.
+cuyo evento es mío. Se pueden **ocultar del Calendario** con el botón
+"◆ Hitos" de su propia barra (al lado del selector de vista): apaga
+`calendarShowMilestones` (`userPrefs`, prendido por default) y
+`calendarioEventsByDate` deja de sumarlos; no afecta a la campanita, que
+sigue avisando igual. Es un botón en la barra, no una opción escondida en
+Configuración, porque es algo que se prende y apaga mientras se está
+mirando la grilla.
 
 ### Borrar de verdad (solo el admin fijo)
 
@@ -794,7 +800,8 @@ las reglas) tiene en cada posteo y en cada respuesta un botón rojo
 "🗑️ Borrar" que borra **de verdad**: el documento del posteo y toda su
 subcolección de respuestas (`deletePostHard`), o la respuesta sola
 (`deleteReplyHard`). Sin marca, sin entrada en la auditoría, sin aviso en
-ningún hilo; solo un `confirm()` antes. Los admins por rol NO lo tienen
+ningún hilo; solo un `appConfirm()` (el modal propio, no el del
+navegador) antes. Los admins por rol NO lo tienen
 (a propósito: `isRoleAdmin` no aparece en los `allow delete`); el resto
 del equipo sigue con "Cancelar evento", que deja marca. Si el posteo
 estaba en el Calendar también se borra el evento (`deleteCalendarEvent`);
@@ -1538,6 +1545,25 @@ igual en modo claro y oscuro. El sentido se elige a mano según el idioma
 (en RTL "siguiente" apunta a la izquierda), como el resto de las flechas.
 Las ‹ › de texto del calendario son otra cosa: son controles chicos de
 la barra, no botones flotantes.
+
+### Confirmaciones y avisos: un modal propio, no el del navegador
+
+`confirm()`/`alert()` nativos rompen la estética (la barra gris
+"team-latam.github.io dice" del navegador) y no se pueden traducir ni
+estilizar. Un solo overlay (`#confirmOverlay`) los reemplaza a todos:
+`appConfirm(mensaje, opts)` devuelve una Promise (`true`/`false`, con
+Cancelar/Aceptar) y `appAlert(mensaje, opts)` un solo botón. Mismo
+`<div class="modal">`, mismo foco atrapado (`trapTabWithin`) y devuelto
+al trigger al cerrar, y el mismo Escape que cualquier otro modal — de
+hecho va primero en su cadena de prioridad, porque puede aparecer
+encima de cualquier otra cosa (el composer, una ficha). `opts.danger`
+pinta el botón de aceptar en rojo (borrar, quitar proyecto, revocar
+acceso); `opts.okLabel`/`cancelLabel` lo aclaran cuando "Aceptar" es
+ambiguo (cancelar un evento ya usa "Cancelar" para el botón de NO
+hacerlo). Como toda función async, cada `confirm()`/`alert()` viejo pasó
+a `await appConfirm(...)`/`await appAlert(...)`, así que las funciones
+que los usan son `async` (o, si ya corrían dentro del dispatcher
+delegado de clicks, este pasó a `async` también).
 
 ### Modo claro / oscuro
 
