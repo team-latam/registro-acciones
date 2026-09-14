@@ -7074,7 +7074,7 @@ function getNestedReplyDraft(replyId){
 
 function newScopeDraft(){ return { type:"ciudad", country:"", city:"", region:"sur", cityUseCustom:false }; }
 function newReplyDraft(){
-  return { content:"", images:[], links:[], files:[], mentionQuery:null, mentionCaret:0, mentionHighlight:0, extraScope:false, scopes:[], scopeDraft:newScopeDraft(), scopeError:"" };
+  return { content:"", images:[], links:[], files:[], mentionQuery:null, mentionCaret:0, mentionHighlight:0, scopes:[], placeQuery:"", placeHighlight:0, scopeDraft:newScopeDraft(), scopeError:"" };
 }
 function getReplyDraft(postId){
   if(!replyDrafts[postId]) replyDrafts[postId] = newReplyDraft();
@@ -7301,11 +7301,12 @@ function renderReplyForm(postId){
           ${renderMentionSuggestions(d, "reply", postId, textareaId)}
         </div>
       </div>
-      <div class="field" style="margin-bottom:8px;">
-        <label><input type="checkbox" data-action="toggle-reply-extra-scope" data-post-id="${postId}" ${d.extraScope?"checked":""}> ${t("Esta respuesta también afectó a otro lugar","This reply also involved another place","Esta resposta também envolveu outro lugar","התגובה הזו נגעה גם למקום אחר")}</label>
+      <div class="place-picker place-picker-inline" style="margin-bottom:8px;">
+        <input type="text" id="replyPlaceQuery-${postId}" data-place-scope="reply" data-place-owner="${postId}" placeholder="📍 ${esc(t("¿Afectó a otro lugar? (país, ciudad, región)...","Did it involve another place? (country, city, region)...","Envolveu outro lugar? (país, cidade, região)...","(מדינה, עיר, אזור) ?נגע למקום אחר..."))}" autocomplete="off" value="${esc(d.placeQuery||"")}">
+        ${d.placeQuery ? renderPlaceSuggestions(d, "reply", postId) : ""}
       </div>
-      ${d.extraScope ? renderScopeBuilder("reply", postId, d) : ""}
-      ${!d.extraScope && d.scopeError ? `<div class="form-error">${esc(d.scopeError)}</div>` : ""}
+      ${d.scopes.length ? `<div class="post-scopes" style="margin-top:-2px;margin-bottom:8px;">${d.scopes.map((sc,i)=>renderScopeChip(sc, "rm-scope-reply", i, postId)).join("")}</div>` : ""}
+      ${d.scopeError ? `<div class="form-error">${esc(d.scopeError)}</div>` : ""}
       <input type="file" id="replyImages-${postId}" accept="image/*" multiple hidden data-action="reply-images" data-post-id="${postId}">
       <input type="file" id="replyFiles-${postId}" accept="application/pdf,audio/*" multiple hidden data-action="reply-files" data-post-id="${postId}">
       ${d.images.length ? `<div class="img-preview-list">${d.images.map((src,i)=>`
@@ -10032,8 +10033,6 @@ document.addEventListener("click", e=>{
     openNestedReplyForms.delete(el.dataset.replyId); render();
   } else if(action === "submit-nested-reply"){
     submitNestedReply(el.dataset.postId, el.dataset.replyId);
-  } else if(action === "toggle-reply-extra-scope"){
-    // manejado en 'change'
   } else if(action === "reply-add-link"){
     addLinkRow(getReplyDraft(postId));
   } else if(action === "nested-reply-add-link"){
@@ -10674,9 +10673,6 @@ document.addEventListener("change", e=>{
   else if(el.dataset.action === "rutina-files"){ handleFileAttachments(el.files, rutinaDraft.files); }
   else if(el.dataset.action === "reply-files"){ handleFileAttachments(el.files, getReplyDraft(el.dataset.postId).files); }
   else if(el.dataset.action === "nested-reply-files"){ handleFileAttachments(el.files, getNestedReplyDraft(el.dataset.replyId).files); }
-  else if(el.dataset.action === "toggle-reply-extra-scope"){
-    getReplyDraft(el.dataset.postId).extraScope = el.checked; render();
-  }
   else if(el.dataset.action === "zonas-color"){ getZonasDraft().zones[el.dataset.key].color = el.value; render(); }
   else if(el.dataset.action === "set-role"){ changeRole(el.dataset.email, el.value); }
   else if(el.dataset.action === "ms-done"){
@@ -10797,7 +10793,7 @@ async function submitReply(postId){
   try{
     await createReply(postId, {
       authorName: state.auth.user.displayName, authorEmail: state.auth.user.email,
-      content, scopes:d.extraScope ? d.scopes : [],
+      content, scopes:d.scopes,
       images:d.images, links, files:d.files, mentions,
     });
     openReplyForms.delete(postId);
