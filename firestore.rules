@@ -193,8 +193,10 @@ service cloud.firestore {
         // Proyecto: hitos (fecha, responsable, tildado) y editores. Listas
         // cortas, dentro del mismo documento; el contenido fino lo arma el
         // cliente (mismo criterio que scopes/links).
+        (d.get('isProject', null) == null || d.isProject is bool) &&
         (d.get('milestones', null) == null || (d.milestones is list && d.milestones.size() <= 40)) &&
         (d.get('editors', null) == null || (d.editors is list && d.editors.size() <= 20)) &&
+        isOptionalString(d.get('projectNotes', null), 2000) &&
         isOptionalString(d.get('calendarEventId', null), 200) &&
         isOptionalString(d.get('lastEditedBy', null), 120) &&
         (d.get('lastEditedAt', null) == null || d.lastEditedAt is timestamp);
@@ -229,7 +231,7 @@ service cloud.firestore {
     function hasOnlyPostKeys(d) {
       return d.keys().hasOnly(['title', 'content', 'date', 'startDate', 'endDate', 'startTime', 'endTime',
         'organizer', 'participants', 'location', 'activityType', 'authorName', 'authorEmail',
-        'scopes', 'links', 'images', 'files', 'mentions', 'calendarEventId', 'createdAt', 'milestones', 'editors']);
+        'scopes', 'links', 'images', 'files', 'mentions', 'calendarEventId', 'createdAt', 'isProject', 'milestones', 'editors', 'projectNotes']);
     }
     function isValidPostCreate(d) {
       return isValidPostBase(d) && hasOnlyPostKeys(d) && isPostAuthorOk(d) && d.createdAt == request.time;
@@ -242,7 +244,7 @@ service cloud.firestore {
         d.diff(resource.data).affectedKeys().hasOnly(['title', 'content', 'date', 'startDate', 'endDate',
           'startTime', 'endTime', 'organizer', 'participants', 'location', 'activityType', 'scopes',
           'links', 'images', 'files', 'mentions', 'cancelled', 'calendarEventId', 'lastEditedAt', 'lastEditedBy',
-          'milestones', 'editors']) &&
+          'isProject', 'milestones', 'editors', 'projectNotes']) &&
         // El alcance mínimo de 1 solo se exige para Evento — Rutina es una
         // entrada rápida del día a día donde el lugar es opcional (se
         // agrega con el buscador de lugar del composer, si se quiere).
