@@ -1050,40 +1050,50 @@ mes entero aparecía marcado sin que nadie tenga franco. Si un día tiene los
 dos, el nombre que se ve es el del país (el que define si hay franco) y el
 `title` lista los dos.
 
-#### Mostrar/ocultar cada capa desde el propio Calendario
+#### El botón "🗂️ Capas": hitos + feriados, mostrar/ocultar cada uno
 
-Un botón "🎌 N feriados activados" en el toolbar de Calendario (junto a
-"◆ Hitos") despliega un panel con dos switches — 🏳️ Locales y
-✡️ Judíos — que prenden o apagan cada capa **en la vista**, sin tocar
-qué está configurado en Configuración > Feriados. Mismo criterio que el
-toggle de hitos: es algo que se quiere prender y apagar mientras se está
-mirando la grilla, no una decisión que amerite ir a Configuración.
+Un solo botón "🗂️ Capas" en el toolbar de Calendario despliega un panel
+con tres switches — ◆ Hitos, 🏳️ Locales y ✡️ Judíos — que prenden o
+apagan cada capa **en la vista**, sin tocar qué está configurado en
+Configuración > Feriados. Es lo que se quiere prender y apagar mientras
+se está mirando la grilla, no una decisión que amerite ir a
+Configuración.
 
-Es un desplegable (`calHolidaysMenuOpen`, mismo patrón `filter-dropdown`
+Es un desplegable (`calLayersMenuOpen`, mismo patrón `filter-dropdown`
 que el selector de vista `cal-view-filter` o los filtros de
 Actividades/Zonas del Feed — cierra solo al clickear afuera o con
-Escape) y no dos pills sueltos en el toolbar a propósito: con dos pills
-más ahí, a 1280px de ancho (un escritorio común) la barra ya no entraba
-en una sola línea y "+ Nuevo evento" dejaba de quedar contra el borde
-derecho — `fab.mjs`/`layout.mjs` lo agarraron. Un botón que se abre
-"hacia adentro" es también, literalmente, lo que se pidió.
+Escape), no varios pills sueltos en el toolbar: se probó así primero
+(un pill por capa) y a 1280px de ancho (un escritorio común) la barra ya
+no entraba en una sola línea. Hitos vivía antes como pill suelto y se
+sumó adentro del mismo panel por el mismo motivo — "dentro de un botón"
+es también, literalmente, lo que se pidió para los feriados.
 
-La distinción importa: `holidayMode`/`holidayCountries`/`holidayJewish`
-deciden **qué se pide** a Google (y si se pide algo en absoluto);
-`calendarShowHolidaysLocal`/`calendarShowHolidaysJewish` (dos prefs
-nuevas, default `true`) deciden si esa capa, ya **conseguida**, se
-dibuja ahora. Apagar el switch no re-pide nada al volver a prenderlo —
-es puramente un filtro sobre `holidaysByDate`, en `holidaysOn()`.
+La distinción importa para las dos capas de feriados:
+`holidayMode`/`holidayCountries`/`holidayJewish` deciden **qué se pide**
+a Google (y si se pide algo en absoluto); `calendarShowHolidaysLocal`/
+`calendarShowHolidaysJewish` (dos prefs nuevas, default `true`) deciden
+si esa capa, ya **conseguida**, se dibuja ahora. Apagar el switch no
+re-pide nada al volver a prenderlo — es puramente un filtro sobre
+`holidaysByDate`, en `holidaysOn()`. Hitos no tiene esa distinción (no
+hay nada que "pedir" aparte, ya viven en `state.posts`), así que su
+switch nunca se deshabilita.
 
-**Un switch sin nada que mostrar queda deshabilitado**, no clickeable: si
-`holidayMode` está en "apagados", o el país no tiene ningún calendario
-elegido, o las festividades judías están apagadas, tocarlo no haría
-nada — mejor no ofrecerlo (mismo patrón `disabled` + `title` que usa el
-resto de la app, por ejemplo al no dejar borrar una zona con países
-asignados). Vuelve a habilitarse solo cuando hay algo configurado para
-esa capa; el panel también trae un link corto a Configuración >
-Feriados para cuando lo que hace falta es activar algo, no solo
-mostrarlo/ocultarlo.
+**Un switch de feriado sin nada que mostrar queda deshabilitado**, no
+clickeable: si `holidayMode` está en "apagados", o el país no tiene
+ningún calendario elegido, o las festividades judías están apagadas,
+tocarlo no haría nada — mejor no ofrecerlo (mismo patrón `disabled` +
+`title` que usa el resto de la app, por ejemplo al no dejar borrar una
+zona con países asignados). Vuelve a habilitarse solo cuando hay algo
+configurado para esa capa; el panel también trae un link corto a
+Configuración > Feriados para cuando lo que hace falta es activar algo,
+no solo mostrarlo/ocultarlo.
+
+**Ya no hay un "+ Nuevo evento" en el toolbar de Calendario**: hacía lo
+mismo que ya ofrece el "+" (FAB) en todas las vistas, tenerlo dos veces
+ahí era redundante — se sacó a pedido. Y el botón que sincroniza con
+Calendar pasó a llamarse simplemente **"Actualizar"** (antes "Actualizar
+desde Calendar"), tanto en el Feed como en Calendario: mismo botón, un
+nombre más corto y consistente entre las dos vistas.
 
 ### Sincronización con Google Calendar (Feed ↔ Calendar)
 
@@ -1154,9 +1164,30 @@ quien publica para crear el evento.
 Si alguien edita, cancela/borra o crea un evento **directamente en Google
 Calendar**, sin pasar por la app, eso también se refleja en los posteos:
 
-- **Edición** (cambia fecha o lugar de un evento ya vinculado a un
-  posteo): se actualiza el posteo y queda una respuesta automática en el
-  hilo, igual que si lo hubiera editado una persona.
+- **Edición** (cambia título, fecha, horario o lugar de un evento ya
+  vinculado a un posteo): se actualiza el posteo y queda una respuesta
+  automática en el hilo, igual que si lo hubiera editado una persona.
+  Esto depende por completo de que el posteo tenga guardado el
+  `calendarEventId` del evento — es el único dato que conecta "este
+  posteo" con "ese evento de Calendar" — así que si esa escritura puntual
+  falla en algún momento (crear el posteo, editarlo, cancelarlo — son
+  cuatro puntos distintos donde se guarda/actualiza ese campo, ver
+  `saveCalendarLinkOrWarn` en `index.html`), el posteo queda "sin
+  vínculo": el próximo cambio hecho directo en Calendar ya no lo
+  reconoce y, en vez de actualizarlo, **crea un posteo nuevo** (o, si el
+  vínculo tampoco se puede reconstruir por título+fecha, no hace nada
+  visible). Antes esas cuatro escrituras fallaban con un `.catch(()=>{})`
+  silencioso — nada avisaba que el vínculo se había perdido, y el
+  síntoma años después era "edité algo en Calendar, el botón Actualizar
+  dio ✅ verde, pero nada cambió en la app". Ahora cualquier falla ahí
+  muestra un aviso ("el vínculo con el evento de Calendar no se pudo
+  actualizar... editá el posteo una vez para reintentar") en vez de
+  desaparecer. De paso, el aviso de "Sincronizado con Calendar" ahora
+  distingue cuántos eventos se **aplicaron de verdad** de cuántos se
+  revisaron sin necesitar ningún cambio — antes decía "N revisados" sin
+  importar si se aplicó algo o no, y un evento que no encontraba su
+  posteo (por el vínculo perdido) pasaba de largo con el mismo aviso
+  verde que uno que sí se aplicó.
 - **Cancelación/borrado** de un evento vinculado: el posteo queda marcado
   como cancelado (no se borra), con su respuesta automática en el hilo.
 - **Creación** de un evento nuevo en Calendar que no vino de la app: se
