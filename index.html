@@ -2118,7 +2118,7 @@ function countryLabel(name){
 // falta la key del país para desambiguar. cityLabel() también es solo
 // para MOSTRAR: el identificador real sigue siendo CITY_PRESETS[country]
 // [i].name en español (se guarda así en cada scope de Firestore, viaja en
-// data-city, y es lo que compara scopeAffectsCity()).
+// data-city, y es lo que compara scopeLevelFor() al resolver un alcance).
 const DEFAULT_CITY_LABELS = {
   "Argentina": {
     "Avellaneda": { es:"Avellaneda", en:"Avellaneda", pt:"Avellaneda", he:"אבייאנדה" },
@@ -2858,8 +2858,14 @@ function getUnseenMentionCount(){
 function eventStartMs(post){
   const d = post.startDate || post.date;
   if(!d) return Infinity;
-  // Sin horario propio, el evento "arranca" a las 00:00 locales de su día.
-  const dt = new Date(`${d}T${post.startTime || "00:00"}:00`);
+  // UTC explícito ("Z"), como el resto de las fechas de la app (ver
+  // isoDate/addDaysISO): sin la "Z", new Date() interpreta "HH:MM" con el
+  // huso del navegador de QUIEN MIRA, así que la ventana de aviso
+  // (notifyLead) podía calcular un instante real distinto para el mismo
+  // evento según quién la corriera — con equipo en husos tan distintos
+  // como Argentina e Israel, eso desincroniza la campanita entre personas
+  // sin que la hora mostrada ("13:00" para las dos) lo delate.
+  const dt = new Date(`${d}T${post.startTime || "00:00"}:00Z`);
   return isNaN(dt) ? Infinity : dt.getTime();
 }
 function isMineOrParticipant(post, email){
@@ -2937,17 +2943,6 @@ function zoneOfScope(scope){
   if(scope.type==="region") return scope.region;
   const c = COUNTRY_BY_NAME[scope.country];
   return c ? c.zone : null;
-}
-// ¿esta escala (post o respuesta) afecta al país dado? (directo, vía región, o "toda LatAm")
-function scopeAffectsCountry(scope, countryName){
-  if(scope.type==="todo") return true;
-  if(scope.type==="pais" || scope.type==="ciudad") return scope.country === countryName;
-  if(scope.type==="region") return (ZONE_COUNTRIES[scope.region] || []).includes(countryName);
-  return false;
-}
-function scopeAffectsCity(scope, countryName, cityName){
-  if(scope.type==="todo") return true;
-  return scope.type==="ciudad" && scope.country===countryName && normalize(scope.city)===normalize(cityName);
 }
 // ---------------------------------------------------------------------
 // Tres niveles de relación entre un posteo y un lugar (README, "Lo propio
@@ -4280,7 +4275,10 @@ async function requestAccessAgain(){
     state.auth = { ...state.auth, status:"pending" };
     logAudit("access_requested", { detail:t("pidió de nuevo tras un rechazo","requested again after a rejection","pediu de novo após uma rejeição","ביקש/ה שוב אחרי דחייה") });
     render();
-  }catch(err){ console.error(err); }
+  }catch(err){
+    console.error(err);
+    appAlert(t("No se pudo enviar el pedido de nuevo ({m}).","Couldn't send the request again ({m}).","Não foi possível enviar o pedido de novo ({m}).","לא ניתן היה לשלוח את הבקשה שוב ({m}).",{m:err.code||err.message}));
+  }
 }
 
 function subscribeAccessRequests(){
@@ -4619,17 +4617,20 @@ async function revokeAccess(email){
   // documento de allowlist, así que si se borra antes se pierde para
   // siempre y todos sus posteos viejos quedan con el nombre crudo de
   // Google, sin @nickname y sin perfil.
-  try{
-    const snap = await fb.getDoc(fb.doc(db, "allowlist", email));
-    if(snap.exists()){
-      const d = snap.data();
-      await fb.setDoc(fb.doc(db, "formerMembers", email), {
-        email, name: d.name || email, nickname: d.nickname || "",
-        photoURL: d.photoURL || null, approvedAt: d.approvedAt || null,
-        revokedAt: fb.serverTimestamp(),
-      });
-    }
-  }catch(err){ console.error("No se pudo guardar el registro de ex integrante:", err); }
+  // Sin el try/catch de antes: si getDoc/setDoc fallan acá, el error se
+  // propaga y deleteDoc() de abajo NUNCA corre — antes se tragaba el
+  // error (solo console.error) y borraba el acceso igual, perdiendo el
+  // nickname para siempre sin que nadie se enterara. El catch de quien
+  // llama a revokeAccess() ya le avisa a la persona que revoca.
+  const snap = await fb.getDoc(fb.doc(db, "allowlist", email));
+  if(snap.exists()){
+    const d = snap.data();
+    await fb.setDoc(fb.doc(db, "formerMembers", email), {
+      email, name: d.name || email, nickname: d.nickname || "",
+      photoURL: d.photoURL || null, approvedAt: d.approvedAt || null,
+      revokedAt: fb.serverTimestamp(),
+    });
+  }
   await fb.deleteDoc(fb.doc(db, "allowlist", email));
   // La solicitud original queda marcada como "rejected" (no solo se borra
   // el acceso real) para que, si esa persona intenta entrar de nuevo, la
@@ -4638,7 +4639,10 @@ async function revokeAccess(email){
   // "approved" viejo, lo que hacía que recomputeAuthStatus() la mandara a
   // "pending" sin haber mandado ningún pedido nuevo (quedaba en un limbo,
   // sin aparecer en la cola de Solicitudes y sin que vos te enteraras).
-  try{ await fb.updateDoc(fb.doc(db, "accessRequests", email), { status:"rejected" }); }catch(e){}
+  // Best-effort: el acceso real ya se revocó arriba: si esto falla no
+  // hace falta abortar nada, pero antes ni quedaba loggeado.
+  try{ await fb.updateDoc(fb.doc(db, "accessRequests", email), { status:"rejected" }); }
+  catch(e){ console.error("No se pudo marcar la solicitud como rechazada:", e); }
   logAudit("access_revoked", { targetEmail: email });
 }
 
@@ -4845,10 +4849,6 @@ async function removeProject(post){
     await updatePostDoc(post.id, { isProject:false, milestones:[], editors:[], projectNotes:"" });
     projectOpen = null; openProjects.delete(post.id); render();
   }catch(err){ console.error(err); showCalendarNotice({ ok:false, message: t("No se pudo quitar ({m}).","Couldn't remove ({m}).","Não foi possível remover ({m}).","לא ניתן היה להסיר ({m}).",{m:err.code||err.message}) }); }
-}
-async function saveProjectNotes(post, text){
-  try{ await updatePostDoc(post.id, { projectNotes: String(text||"").slice(0, 2000) }); }
-  catch(err){ console.error(err); showCalendarNotice({ ok:false, message: t("No se pudieron guardar las notas ({m}).","Couldn't save the notes ({m}).","Não foi possível salvar as notas ({m}).","לא ניתן היה לשמור את ההערות ({m}).",{m:err.code||err.message}) }); }
 }
 function renderProyectosView(){
   const open = projectOpen ? getPostById(projectOpen) : null;
@@ -5182,7 +5182,7 @@ async function updatePostAndSync(postId, original, newData){
   const patch = {
     title:newData.title, content:newData.content, startDate:newData.startDate, endDate:newData.endDate,
     date:newData.startDate, startTime:newData.startTime||null, endTime:newData.endTime||null,
-    participants:newData.participants,
+    participants:newData.participants, location:newData.location||null,
     activityType:newData.activityType, scopes:newData.scopes, images:newData.images, links:newData.links,
     files:newData.files, mentions:newData.mentions,
     lastEditedAt: fb.serverTimestamp(), lastEditedBy: state.auth.user.displayName,
@@ -5239,7 +5239,7 @@ async function deletePostHard(post){
     { title: nombre, n: replies.length }
   ), { danger:true, okLabel: t("Borrar","Delete","Apagar","מחיקה") }))) return;
   try{
-    for(const r of replies){ await fb.deleteDoc(fb.doc(db, "posts", post.id, "replies", r.id)); }
+    await Promise.all(replies.map(r=> fb.deleteDoc(fb.doc(db, "posts", post.id, "replies", r.id))));
     await fb.deleteDoc(fb.doc(db, "posts", post.id));
     let calMsg = "";
     if(post.calendarEventId){
@@ -5632,6 +5632,8 @@ function applyStaticI18n(){
   if(filePreviewCloseBtn) filePreviewCloseBtn.setAttribute("aria-label", closeLabel);
   const userProfileCloseBtn = document.getElementById("userProfileClose");
   if(userProfileCloseBtn) userProfileCloseBtn.setAttribute("aria-label", closeLabel);
+  const eventCardCloseBtn = document.getElementById("eventCardClose");
+  if(eventCardCloseBtn) eventCardCloseBtn.setAttribute("aria-label", closeLabel);
   const filePreviewDownloadBtn = document.getElementById("filePreviewDownload");
   if(filePreviewDownloadBtn) filePreviewDownloadBtn.textContent = "⬇ " + t("Descargar", "Download", "Baixar", "הורדה");
 
@@ -8684,6 +8686,7 @@ function newComposerDraft(){
     scopes: [],
     placeQuery: "",
     placeHighlight: 0,
+    location: "",
     images: [],
     links: [],
     files: [],
@@ -9090,6 +9093,7 @@ function openEditComposer(post){
     legacyOrganizer: (!post.participants || !post.participants.length) ? (post.organizer || "") : "",
     activityType: post.activityType, scopes: (post.scopes||[]).map(sc=>({...sc})),
     placeQuery: "", placeHighlight: 0,
+    location: post.location || "",
     images: [...(post.images||[])], links: (post.links||[]).map(l=>({...l})),
     files: (post.files||[]).map(f=>({...f})), attachOpen: false,
     mentionQuery: null, mentionCaret: 0, mentionHighlight: 0,
@@ -9114,7 +9118,7 @@ function snapshotComposer(){
     title:d.title, content:d.content, startDate:d.startDate, endDate:d.endDate, allDay:d.allDay,
     startTime:d.startTime, endTime:d.endTime, participants:d.participants, activityType:d.activityType,
     scopes:d.scopes, links:d.links, files:(d.files||[]).map(f=>f.name+":"+(f.dataUrl||"").length),
-    images:(d.images||[]).map(s=>s.length+":"+s.slice(-16)),
+    images:(d.images||[]).map(s=>s.length+":"+s.slice(-16)), location:d.location,
   });
 }
 function composerIsDirty(){ return snapshotComposer() !== composerSnapshot; }
@@ -9169,6 +9173,7 @@ function renderComposer(){
           ${d.placeQuery ? renderPlaceSuggestions(d, "post", "new") : ""}
         </div>
         ${d.scopes.length ? `<div class="post-scopes" style="margin-top:8px;">${d.scopes.map((sc,i)=>renderScopeChip(sc, "rm-scope-post", i, "new")).join("")}</div>` : ""}
+        <input type="text" id="cLocation" class="location-input" maxlength="200" placeholder="${esc(t("Lugar puntual (opcional): hotel, salón, dirección…","Specific venue (optional): hotel, hall, address…","Local pontual (opcional): hotel, salão, endereço…","(מלון, אולם, כתובת) :(מיקום מדויק (אופציונלי"))}" value="${esc(d.location||"")}">
       </div>
     </div>
     <div class="field-icon-row">
@@ -9219,7 +9224,7 @@ function renderComposer(){
     </div>
     ${d.error ? `<div class="form-error">${esc(d.error)}</div>` : ""}
     <div class="modal-actions">
-      <button type="button" class="btn-secondary" id="cCancel">${t("Cancelar","Cancel","Cancelar","ביטול")}</button>
+      <button type="button" class="btn-secondary" data-action="cancel-composer">${t("Cancelar","Cancel","Cancelar","ביטול")}</button>
       <button type="submit" class="btn-primary" ${d.submitting ? "disabled" : ""}>${d.submitting ? t("Guardando…","Saving…","Salvando…","...שומר") : d.editingPost ? t("Guardar cambios","Save changes","Salvar alterações","שמירת השינויים") : t("Publicar","Post","Publicar","פרסום")}</button>
     </div>
   `;
@@ -9647,6 +9652,7 @@ trapTabWithin(filePreviewOverlay);
 trapTabWithin(lightbox);
 trapTabWithin(userProfileOverlay);
 trapTabWithin(confirmOverlay);
+trapTabWithin(eventCardOverlay);
 
 // Tope duro absoluto de imágenes: MAX_IMAGES (editable desde Preferencias
 // > Adjuntos) puede achicarlo, nunca agrandarlo más allá de esto — Firestore
@@ -9659,7 +9665,10 @@ async function handleImageFiles(fileList, targetArray, max=MAX_IMAGES){
     try{
       const dataUrl = await compressImage(file);
       targetArray.push(dataUrl);
-    }catch(err){ console.error("Error comprimiendo imagen:", err); }
+    }catch(err){
+      console.error("Error comprimiendo imagen:", err);
+      await appAlert(t("No se pudo adjuntar \"{name}\" ({m}).","Couldn't attach \"{name}\" ({m}).","Não foi possível anexar \"{name}\" ({m}).","לא ניתן היה לצרף את \"{name}\" ({m}).",{name:file.name, m:err.message}));
+    }
   }
   render();
 }
@@ -9704,7 +9713,10 @@ async function handleFileAttachments(fileList, targetArray){
     try{
       const dataUrl = await readFileAsDataUrl(file);
       targetArray.push({ name:file.name, mime:file.type, kind: file.type.startsWith("audio/") ? "audio" : "pdf", dataUrl });
-    }catch(err){ console.error("Error leyendo archivo:", err); }
+    }catch(err){
+      console.error("Error leyendo archivo:", err);
+      await appAlert(t("No se pudo adjuntar \"{name}\" ({m}).","Couldn't attach \"{name}\" ({m}).","Não foi possível anexar \"{name}\" ({m}).","לא ניתן היה לצרף את \"{name}\" ({m}).",{name:file.name, m:err.message}));
+    }
   }
   render();
 }
@@ -10034,7 +10046,9 @@ document.addEventListener("click", async e=>{
   const action = el.dataset.action;
   const postId = el.dataset.postId;
 
-  if(action === "toggle-type-filter"){
+  if(action === "cancel-composer"){
+    requestCloseComposer();
+  } else if(action === "toggle-type-filter"){
     typeFilterOpen = !typeFilterOpen;
     render();
   } else if(action === "toggle-zone-filter"){
@@ -10643,6 +10657,7 @@ document.addEventListener("input", e=>{
   } else if(el.id === "nicknameInput"){
     nicknameDraft = el.value; nicknameError = null; render();
   } else if(el.id === "cTitle"){ composerDraft.title = el.value; }
+  else if(el.id === "cLocation"){ composerDraft.location = el.value; }
   else if(el.id === "cContent"){
     composerDraft.content = el.value;
     const prevQuery = composerDraft.mentionQuery;
@@ -10838,7 +10853,6 @@ document.addEventListener("change", e=>{
   }
 });
 
-document.addEventListener("click", e=>{ if(e.target.id === "cCancel") requestCloseComposer(); });
 
 postForm.addEventListener("submit", async e=>{
   e.preventDefault();
@@ -10862,7 +10876,7 @@ postForm.addEventListener("submit", async e=>{
   const postData = {
     title, content, startDate:d.startDate, endDate:d.endDate, date:d.startDate,
     startTime: d.allDay ? null : d.startTime, endTime: d.allDay ? null : d.endTime,
-    participants: d.participants,
+    participants: d.participants, location: d.location.trim() || null,
     activityType:d.activityType, scopes:d.scopes,
     images:d.images, links, files:d.files, mentions,
     authorName: state.auth.user.displayName, authorEmail: state.auth.user.email,
@@ -10973,6 +10987,7 @@ async function togglePostLike(postId){
     });
   }catch(err){
     console.error("Error al dar me gusta:", err);
+    appAlert(t("No se pudo registrar el me gusta ({m}).","Couldn't register the like ({m}).","Não foi possível registrar o like ({m}).","לא ניתן היה לרשום את הלייק ({m}).",{m:err.code||err.message}));
   }
 }
 
@@ -10987,6 +11002,7 @@ async function toggleReplyLike(postId, replyId){
     });
   }catch(err){
     console.error("Error al dar me gusta:", err);
+    appAlert(t("No se pudo registrar el me gusta ({m}).","Couldn't register the like ({m}).","Não foi possível registrar o like ({m}).","לא ניתן היה לרשום את הלייק ({m}).",{m:err.code||err.message}));
   }
 }
 
