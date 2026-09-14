@@ -519,7 +519,7 @@ service cloud.firestore {
     function isValidUserPrefs(d) {
       return d.keys().hasOnly(['weekStart', 'showWeekends', 'customDays', 'dimPast',
           'dateFormat', 'timeFormat', 'placeLevel', 'unifiedFeed', 'feedOrder', 'feedFeatured',
-          'calendarShowMilestones',
+          'calendarShowMilestones', 'calendarShowHolidaysLocal', 'calendarShowHolidaysJewish',
           'holidayMode', 'holidayCountries', 'holidayJewish',
           'holidayColor', 'holidayJewishColor',
           'notifyTypes', 'notifyLead', 'notifyOnlyMine', 'notifyZones',
@@ -540,6 +540,8 @@ service cloud.firestore {
         (d.get('feedOrder', 'reciente') in ['reciente', 'desc', 'asc']) &&
         (d.get('feedFeatured', true) is bool) &&
         (d.get('calendarShowMilestones', true) is bool) &&
+        (d.get('calendarShowHolidaysLocal', true) is bool) &&
+        (d.get('calendarShowHolidaysJewish', true) is bool) &&
         (d.get('holidayMode', 'sutil') is string) &&
         (d.get('holidayCountries', []) is list) &&
         (d.get('holidayJewish', false) is bool) &&
