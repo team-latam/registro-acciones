@@ -717,6 +717,19 @@ acá aparece también en el hilo del evento en el Feed (una sola
 conversación). `projectNotes` quedó en las reglas por compatibilidad,
 pero la app ya no lo usa.
 
+**Dar por completado** (`projectStatus: "done"`, con `projectDoneBy` y
+`projectDoneAt`): cualquier editor puede cerrar el proyecto aunque
+queden hitos sin tildar (el evento ya pasó y se cierra igual; el
+`confirm()` dice cuántos quedan). Cerrado, los hitos, editores y la
+manija de arrastre quedan en solo lectura (`canManageProject` exige que
+no esté cerrado), no aparece "Quitar proyecto", sus hitos pendientes
+dejan de avisar en la campanita (`allMilestoneItems({skipDone})`; en el
+Calendario siguen) y en la lista va al final con la insignia ✅.
+**"Volver a editar"** pide confirmación y lo reabre; recién ahí lo que
+se cambia se guarda. La **bitácora** sigue abierta para cualquier
+miembro, cerrado o no: es el hilo del posteo y usa el permiso de
+responder (`canWrite`), no el de editor del proyecto.
+
 La ficha tiene el panel con la lista de **hitos** (nombre, fecha, fin
 opcional, responsable, tildado con quién y cuándo) y, en escritorio, una
 línea de tiempo como la de referencia del equipo: puntos a distancia
