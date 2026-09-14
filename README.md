@@ -95,6 +95,20 @@ aprobación" hasta que el administrador lo apruebe desde la propia app
   (`markCalendarInviteBellDismissed()`, ver `hasActiveCalendarInviteNotice`)
   — antes las dos cosas compartían una sola marca y cerrar el popup
   apagaba también la campanita sin que la persona hubiera aceptado nada.
+- Compartir o sacar gente del Calendar (`shareCalendarWith`/
+  `unshareCalendarWith`) exige que la cuenta admin que lo hace sea DUEÑA
+  del calendario, no alcanza con ser editora — algo que antes solo se
+  descubría cuando el intento ya había fallado, con el mensaje genérico
+  que devuelve Google. Ahora se chequea el rol de la propia cuenta admin
+  contra el calendario ANTES de intentarlo (`checkAdminOwnsCalendar`,
+  `warnIfAdminMightNotOwnCalendar`) y, si no figura como dueña, se avisa
+  con un motivo concreto antes de seguir — pero no bloquea del todo: deja
+  elegir "Intentar igual" por si el chequeo se equivoca. Se pregunta una
+  sola vez por sesión (una vez aceptado, no vuelve a interrumpir en cada
+  compartir/sacar/reenviar). Si el chequeo en sí no se pudo hacer (sin
+  conexión, por ejemplo) no se advierte de más: se deja intentar directo,
+  mismo criterio que ya usaba `unshareCalendarWith` para no bloquear una
+  baja legítima por no haber podido confirmar un rol.
 - Revocar acceso (botón "Revocar" en Usuarios) borra a esa persona de la
   lista de aprobados — dejará de poder leer y cargar, pero **no borra** lo
   que ya haya publicado (la memoria histórica queda intacta). También
@@ -554,6 +568,14 @@ La banda de **"todo el día"** de Semana/Día no es un detalle: la mayoría de
 los eventos de este Registro no tiene horario propio, así que es la parte
 más poblada de esas vistas.
 
+El toolbar tiene su propio botón "🔄 Actualizar desde Calendar"
+(`sync-calendar`, mismo que el del Feed) — antes solo estaba ahí, y
+alguien que vive en el Calendario tenía que irse a otra vista para
+refrescar. También un pill "🎌 N feriados activados" (o "Sin feriados
+activados"/"Feriados: apagados") que lleva directo a Configuración >
+Feriados: antes esa configuración solo se descubría entrando a
+Configuración a ciegas, sin ninguna pista de si había algo prendido.
+
 Dos cosas a tener en cuenta al tocar esto:
 
 - **Las Rutinas no entran.** El filtro reusa `CALENDAR_SYNC_TYPES`, la misma
@@ -638,6 +660,25 @@ Detalles que importan al tocarla:
   `z-index:100`, así que sin eso mandaba el orden del DOM y ganaba la
   tarjeta (que se agregó después). La tarjeta nunca se abre encima de otro
   modal, así que bajarla no tapa nada.
+
+#### Clickear un hito de proyecto: va al proyecto, no a la tarjeta genérica
+
+Un hito (◆) es, para el Calendario y la campanita, un ítem con id
+compuesto (`postId#m:msId`, ver `milestoneItem`/`realPostId`) — mismo
+posteo, pero apunta a UN hito puntual. Clickearlo **antes** caía en la
+tarjeta genérica del evento de arriba (perdía cuál hito era, porque
+`realPostId()` descarta esa parte) o, desde la campanita, ni eso: el id
+compuesto no coincidía con ningún posteo del Feed y `gotoMention()` no
+hacía nada.
+
+Ahora los dos caminos (`cal-open` en el Calendario, `goto-mention` en la
+campanita/"Próximos eventos") pasan por `openProjectMilestone()`: abre
+directo la solapa **Proyectos** con ese proyecto expandido, hace scroll
+hasta la fila del hito y la resalta 2 segundos (misma clase
+`.mention-highlight` que ya usaba `gotoMention` para un posteo del Feed).
+Si el proyecto tenía la lista de hitos plegada, se despliega sola. Un
+hito de un posteo que por algún motivo no es (o dejó de ser) proyecto cae
+en la tarjeta genérica, como antes.
 
 #### El prefijo "Tipo: " del summary (y el bug de "Visita: Visita: …")
 
@@ -1621,12 +1662,26 @@ oscuras de OSM son de menor calidad).
 
 ### Tutorial de bienvenida
 
-Un recorrido de tres paradas (`TOUR_STEPS`) que **señala las partes
-reales de la pantalla** — el composer de Rutina ("¿Qué hiciste hoy?"),
-el botón de eventos, las pestañas — con el resto atenuado, en vez de
-explicar la app en abstracto desde un cartel centrado. Los textos son
-cortos y concretos a propósito: que la persona sepa qué es cada cosa y
-salga a probarla, no leer un manual (para eso está este README).
+Un recorrido que **señala las partes reales de la pantalla** — el
+composer de Rutina ("¿Qué hiciste hoy?"), el botón de crear, cada
+pestaña por separado — con el resto atenuado, en vez de explicar la app
+en abstracto desde un cartel centrado. Los textos son cortos y
+concretos a propósito: que la persona sepa qué es cada cosa y salga a
+probarla, no leer un manual (para eso está este README).
+
+`tourSteps()` arma dos recorridos distintos según el rol (`canWrite()`),
+en vez de un único recorrido genérico que se degradaba mal para
+Observador (los pasos de escritura no encontraban su target en su
+pantalla y se saltaban todos, dejando un recorrido de un solo paso). Con
+permiso de escribir son 5 paradas: el composer, el botón `+` (`#fab`), y
+después una por pestaña (Vistas, Calendario, Proyectos). Observador tiene
+su propio recorrido de 4 paradas: una que explica el rol ("tu cuenta ve
+todo, sin publicar", señalando la pestaña activa) y las mismas tres
+paradas por pestaña. Esas tres últimas viven en `tabTourSteps()`,
+compartida por los dos recorridos — así no queda ninguna pestaña sin
+mencionar (pasó con Proyectos, agregada después y ausente del único paso
+"acá están las vistas" que había antes) sin tener que tocar dos listas
+cada vez que se suma o saca una solapa.
 
 **Solo lo ven las cuentas nuevas, una vez, y no hay forma de reabrirlo a
 mano**: la primera vez que entra alguien aprobado a partir de
@@ -1650,9 +1705,9 @@ se mueve, se lo ilumina con una sombra gigante alrededor
 `getBoundingClientRect()`. La capa entera come los clics, así que
 mientras el recorrido está abierto no se toca la app por atrás. Si un
 objetivo no está en pantalla, esa parada se saltea sola en vez de dibujar
-un globo apuntando a la nada. Los tres objetivos viven en el header, que
-es `sticky`, por eso no hace falta seguir el scroll (sí se reposiciona al
-cambiar el tamaño de la ventana).
+un globo apuntando a la nada. Los objetivos de `tabTourSteps()` viven en
+el header, que es `sticky`, por eso no hace falta seguir el scroll (sí se
+reposiciona al cambiar el tamaño de la ventana).
 
 Que ya se vio se marca **por cuenta, no por dispositivo**: en el campo
 `tourSeenAt` del documento de `allowlist`, así una cuenta nueva lo ve la
