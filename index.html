@@ -2876,10 +2876,12 @@ function isMineOrParticipant(post, email){
 function postZoneKeys(post){
   return (post.scopes||[]).map(sc => zoneOfScope(sc)).filter(Boolean);
 }
+let upcomingEventsCache = null;
 function upcomingEvents(){
+  if(upcomingEventsCache) return upcomingEventsCache;
   const p = prefs();
   const lead = Number(p.notifyLead) || 0;
-  if(!lead) return [];
+  if(!lead) return upcomingEventsCache = [];
   const now = Date.now();
   const until = now + lead * 60000;
   const email = String(state.auth.user && state.auth.user.email || "").toLowerCase();
@@ -2887,7 +2889,7 @@ function upcomingEvents(){
   // Los hitos pendientes de proyecto avisan igual que un evento; con
   // "solo donde participo", los míos son los que tienen mi responsable.
   const hitos = allMilestoneItems({ skipDone:true }).filter(it=> !it.milestone.done && (!p.notifyOnlyMine || msOwners(it.milestone).some(o=> String(o).toLowerCase() === email) || isMineOrParticipant(it.post, email)));
-  return calendarioPosts().concat(hitos)
+  const list = calendarioPosts().concat(hitos)
     .filter(post=>{
       if(post.cancelled) return false;
       if(types.length && !types.includes(post.activityType)) return false;
@@ -2897,46 +2899,59 @@ function upcomingEvents(){
       return start >= now && start <= until;
     })
     .sort((a,b)=> eventStartMs(a) - eventStartMs(b));
+  return upcomingEventsCache = list;
 }
-// Respuestas de OTROS en posteos míos, de la más nueva a la más vieja.
+// Respuestas de OTROS en posteos míos, de la más nueva a la más vieja. Se
+// llama con límites distintos según quién pregunta (1, 3, 4, 50) — se
+// cachea la lista COMPLETA sin recortar, y cada llamado hace el slice()
+// (barato) sobre lo ya cacheado en vez de repetir el recorrido entero.
+let recentRepliesCache = null;
 function getRecentReplies(limit=4){
   if(!prefs().notifyReplies) return [];
   const email = String(state.auth.user && state.auth.user.email || "").toLowerCase();
   if(!email) return [];
-  const out = [];
-  state.posts.forEach(post=>{
-    if(String(post.authorEmail||"").toLowerCase() !== email) return;
-    (state.repliesByPost[post.id] || []).forEach(r=>{
-      if(r.system) return;
-      if(String(r.authorEmail||"").toLowerCase() === email) return;
-      out.push({ postId:post.id, replyId:r.id, authorName:r.authorName, authorEmail:r.authorEmail, content:r.content, createdAt:r.createdAt });
+  if(!recentRepliesCache){
+    const out = [];
+    state.posts.forEach(post=>{
+      if(String(post.authorEmail||"").toLowerCase() !== email) return;
+      (state.repliesByPost[post.id] || []).forEach(r=>{
+        if(r.system) return;
+        if(String(r.authorEmail||"").toLowerCase() === email) return;
+        out.push({ postId:post.id, replyId:r.id, authorName:r.authorName, authorEmail:r.authorEmail, content:r.content, createdAt:r.createdAt });
+      });
     });
-  });
-  return out.sort((a,b)=> tsToMillis(b.createdAt) - tsToMillis(a.createdAt)).slice(0, limit);
+    recentRepliesCache = out.sort((a,b)=> tsToMillis(b.createdAt) - tsToMillis(a.createdAt));
+  }
+  return recentRepliesCache.slice(0, limit);
 }
 function getUnseenReplyCount(){
   const seenAt = getRepliesSeenAt();
   return getRecentReplies(50).filter(r => tsToMillis(r.createdAt) > seenAt).length;
 }
 
+// Mismo criterio que getRecentReplies: se cachea la lista completa, cada
+// llamado (limit distinto según quién pregunta) solo recorta.
+let recentMentionsCache = null;
 function getRecentMentions(limit=4){
   const email = state.auth.user && state.auth.user.email;
   if(!email) return [];
-  const items = [];
-  state.posts.forEach(p=>{
-    if(mentionsInclude(p.mentions, email)){
-      items.push({ postId:p.id, replyId:null, authorName:p.authorName, authorEmail:p.authorEmail, content:p.content, createdAt:p.createdAt });
-    }
-  });
-  Object.entries(state.repliesByPost).forEach(([postId, list])=>{
-    list.forEach(r=>{
-      if(mentionsInclude(r.mentions, email)){
-        items.push({ postId, replyId:r.id, authorName:r.authorName, authorEmail:r.authorEmail, content:r.content, createdAt:r.createdAt });
+  if(!recentMentionsCache){
+    const items = [];
+    state.posts.forEach(p=>{
+      if(mentionsInclude(p.mentions, email)){
+        items.push({ postId:p.id, replyId:null, authorName:p.authorName, authorEmail:p.authorEmail, content:p.content, createdAt:p.createdAt });
       }
     });
-  });
-  items.sort((a,b)=> tsToMillis(b.createdAt) - tsToMillis(a.createdAt));
-  return items.slice(0, limit);
+    Object.entries(state.repliesByPost).forEach(([postId, list])=>{
+      list.forEach(r=>{
+        if(mentionsInclude(r.mentions, email)){
+          items.push({ postId, replyId:r.id, authorName:r.authorName, authorEmail:r.authorEmail, content:r.content, createdAt:r.createdAt });
+        }
+      });
+    });
+    recentMentionsCache = items.sort((a,b)=> tsToMillis(b.createdAt) - tsToMillis(a.createdAt));
+  }
+  return recentMentionsCache.slice(0, limit);
 }
 
 function zoneOfScope(scope){
@@ -5909,6 +5924,10 @@ function renderMentionsMenuItems(hasInvite, upcoming){
 
 function doRender(){
   placeCountsCache = null;
+  // Mismo criterio: recorren TODOS los posteos/respuestas y se llamaban de
+  // cero en cada render (hasta por cada tecla de un buscador). Se cachean
+  // acá y se invalidan al principio de cada doRender(), como los lugares.
+  upcomingEventsCache = null; recentRepliesCache = null; recentMentionsCache = null;
   // Con el Feed unificado la solapa Memoria no existe: cualquier camino
   // que llegue ahí (un atajo viejo, un enlace) cae en el Feed.
   if(isAuthorized() && unifiedFeed() && state.view === "memoria") state.view = "feed";
@@ -9957,48 +9976,57 @@ function selectParticipantMatch(match){
 // Navegar los desplegables de lugar/@mención con flechas arriba/abajo, y
 // confirmar la opción resaltada con Tab o Enter (Escape los cierra sin
 // elegir nada) — en vez de depender solo del mouse.
+// Manejo de teclado común a los 4 "autocompletar por escritura" del
+// archivo (lugar, @mención, participante del composer, responsables/
+// editores de hitos): flechas mueve el resaltado, Tab/Enter elige,
+// Escape limpia — cada uno solo aporta cómo leer/guardar SU estado.
+// `escapeAlways` preserva una diferencia real que ya tenían entre sí:
+// en lugar/mención/participante, Escape no hace nada si no hay
+// coincidencias (se corta antes, junto con las flechas); en el buscador
+// de personas de hitos, Escape limpia el campo aunque no haya ninguna.
+function handleAutocompleteKeydown(e, { getMatches, getHighlight, setHighlight, onSelect, onClear, escapeAlways }){
+  if(escapeAlways && e.key === "Escape"){ onClear(); render(); return; }
+  const matches = getMatches();
+  if(!matches.length) return;
+  if(e.key === "ArrowDown"){
+    e.preventDefault();
+    setHighlight((getHighlight() + 1) % matches.length);
+    render();
+  } else if(e.key === "ArrowUp"){
+    e.preventDefault();
+    setHighlight((getHighlight() - 1 + matches.length) % matches.length);
+    render();
+  } else if(e.key === "Tab" || e.key === "Enter"){
+    e.preventDefault();
+    onSelect(matches[getHighlight()]);
+  } else if(e.key === "Escape"){
+    onClear(); render();
+  }
+}
 document.addEventListener("keydown", e=>{
   const el = e.target;
   if(!el || !el.dataset) return; // teclas con target document/window (no un elemento)
   if(el.dataset.placeScope){
     const draft = getDraftFor(el.dataset.placeScope, el.dataset.placeOwner);
-    const matches = getPlaceMatches(draft.placeQuery);
-    if(!matches.length) return;
-    if(e.key === "ArrowDown"){
-      e.preventDefault();
-      draft.placeHighlight = (draft.placeHighlight + 1) % matches.length;
-      render();
-    } else if(e.key === "ArrowUp"){
-      e.preventDefault();
-      draft.placeHighlight = (draft.placeHighlight - 1 + matches.length) % matches.length;
-      render();
-    } else if(e.key === "Tab" || e.key === "Enter"){
-      e.preventDefault();
-      selectPlaceMatch(el.dataset.placeScope, el.dataset.placeOwner, matches[draft.placeHighlight]);
-    } else if(e.key === "Escape"){
-      draft.placeQuery = ""; draft.placeHighlight = 0; render();
-    }
+    handleAutocompleteKeydown(e, {
+      getMatches: () => getPlaceMatches(draft.placeQuery),
+      getHighlight: () => draft.placeHighlight,
+      setHighlight: v => { draft.placeHighlight = v; },
+      onSelect: m => selectPlaceMatch(el.dataset.placeScope, el.dataset.placeOwner, m),
+      onClear: () => { draft.placeQuery = ""; draft.placeHighlight = 0; },
+    });
     return;
   }
   if(el.dataset.mentionScope){
     const draft = getDraftFor(el.dataset.mentionScope, el.dataset.mentionOwner);
     if(draft.mentionQuery == null) return;
-    const matches = getMentionMatches(draft);
-    if(!matches.length) return;
-    if(e.key === "ArrowDown"){
-      e.preventDefault();
-      draft.mentionHighlight = (draft.mentionHighlight + 1) % matches.length;
-      render();
-    } else if(e.key === "ArrowUp"){
-      e.preventDefault();
-      draft.mentionHighlight = (draft.mentionHighlight - 1 + matches.length) % matches.length;
-      render();
-    } else if(e.key === "Tab" || e.key === "Enter"){
-      e.preventDefault();
-      selectMentionMatch(el.dataset.mentionScope, el.dataset.mentionOwner, el.id, matches[draft.mentionHighlight]);
-    } else if(e.key === "Escape"){
-      draft.mentionQuery = null; draft.mentionHighlight = 0; render();
-    }
+    handleAutocompleteKeydown(e, {
+      getMatches: () => getMentionMatches(draft),
+      getHighlight: () => draft.mentionHighlight,
+      setHighlight: v => { draft.mentionHighlight = v; },
+      onSelect: m => selectMentionMatch(el.dataset.mentionScope, el.dataset.mentionOwner, el.id, m),
+      onClear: () => { draft.mentionQuery = null; draft.mentionHighlight = 0; },
+    });
     return;
   }
   if(el.id === "nicknameInput"){
@@ -10008,36 +10036,28 @@ document.addEventListener("keydown", e=>{
   }
   if(el.id === "cParticipantQuery"){
     const draft = composerDraft;
-    const matches = getParticipantMatches(draft);
-    if(!matches.length) return;
-    if(e.key === "ArrowDown"){
-      e.preventDefault();
-      draft.participantHighlight = (draft.participantHighlight + 1) % matches.length;
-      render();
-    } else if(e.key === "ArrowUp"){
-      e.preventDefault();
-      draft.participantHighlight = (draft.participantHighlight - 1 + matches.length) % matches.length;
-      render();
-    } else if(e.key === "Tab" || e.key === "Enter"){
-      e.preventDefault();
-      selectParticipantMatch(matches[draft.participantHighlight]);
-    } else if(e.key === "Escape"){
-      draft.participantQuery = ""; draft.participantHighlight = 0; render();
-    }
+    handleAutocompleteKeydown(e, {
+      getMatches: () => getParticipantMatches(draft),
+      getHighlight: () => draft.participantHighlight,
+      setHighlight: v => { draft.participantHighlight = v; },
+      onSelect: m => selectParticipantMatch(m),
+      onClear: () => { draft.participantQuery = ""; draft.participantHighlight = 0; },
+    });
   }
   if(e.key === "Enter" && e.target && e.target.dataset && e.target.dataset.msNew === "label"){ e.preventDefault(); addMilestoneFromDraft(e.target.dataset.postId); return; }
-  // Buscador de personas del proyecto (responsables, editores): flechas,
-  // Enter/Tab elige, Escape limpia.
+  // Buscador de personas del proyecto (responsables, editores).
   if(e.target && e.target.dataset && e.target.dataset.ppKey){
     const key = e.target.dataset.ppKey, st = ppState(key);
     const [kind, postId] = key.split(":"); const post = getPostById(postId);
     const exclude = kind === "ed" && post ? [post.authorEmail, ...postEditors(post)] : [];
-    const matches = ppMatches(key, exclude);
-    if(e.key === "Escape"){ st.q = ""; st.hi = 0; render(); return; }
-    if(!matches.length) return;
-    if(e.key === "ArrowDown"){ e.preventDefault(); st.hi = (st.hi + 1) % matches.length; render(); }
-    else if(e.key === "ArrowUp"){ e.preventDefault(); st.hi = (st.hi - 1 + matches.length) % matches.length; render(); }
-    else if(e.key === "Enter" || e.key === "Tab"){ e.preventDefault(); ppApply(key, matches[st.hi].email); }
+    handleAutocompleteKeydown(e, {
+      getMatches: () => ppMatches(key, exclude),
+      getHighlight: () => st.hi,
+      setHighlight: v => { st.hi = v; },
+      onSelect: m => ppApply(key, m.email),
+      onClear: () => { st.q = ""; st.hi = 0; },
+      escapeAlways: true,
+    });
   }
 });
 
@@ -10065,80 +10085,113 @@ document.addEventListener("click", async e=>{
   const action = el.dataset.action;
   const postId = el.dataset.postId;
 
-  if(action === "cancel-composer"){
+    // Tabla de acciones del dispatcher delegado (un solo listener de
+  // click en document, `data-action` en el HTML): antes era una cadena
+  // de 136 `else if` — misma idea (una función por action), pero
+  // buscar/agregar una es indexar el objeto en vez de leer la cadena
+  // entera. Cada handler recibe (el, e, action, postId), los mismos
+  // datos que ya se leían al principio del listener.
+  const CLICK_ACTIONS = {
+    "cancel-composer": async (el, e, action, postId) => {
     requestCloseComposer();
-  } else if(action === "toggle-type-filter"){
+  },
+    "toggle-type-filter": async (el, e, action, postId) => {
     typeFilterOpen = !typeFilterOpen;
     render();
-  } else if(action === "toggle-zone-filter"){
+  },
+    "toggle-zone-filter": async (el, e, action, postId) => {
     zoneFilterOpen = !zoneFilterOpen;
     render();
-  } else if(action === "toggle-type"){
+  },
+    "toggle-type": async (el, e, action, postId) => {
     const key = el.dataset.key;
     state.filters.types.has(key) ? state.filters.types.delete(key) : state.filters.types.add(key);
     render();
-  } else if(action === "toggle-zone"){
+  },
+    "toggle-zone": async (el, e, action, postId) => {
     const key = el.dataset.key;
     state.filters.zones.has(key) ? state.filters.zones.delete(key) : state.filters.zones.add(key);
     render();
-  } else if(action === "clear-place"){
+  },
+    "clear-place": async (el, e, action, postId) => {
     state.filters.place = null; render();
-  } else if(action === "clear-filters"){
+  },
+    "clear-filters": async (el, e, action, postId) => {
     state.filters = { text:"", types:new Set(), zones:new Set(), place:null }; render();
-  } else if(action === "audit-load-more"){
+  },
+    "audit-load-more": async (el, e, action, postId) => {
     auditVisibleCount += 30; render();
-  } else if(action === "audit-toggle-type"){
+  },
+    "audit-toggle-type": async (el, e, action, postId) => {
     const key = el.dataset.key;
     state.auditFilters.types.has(key) ? state.auditFilters.types.delete(key) : state.auditFilters.types.add(key);
     auditVisibleCount = 30; render();
-  } else if(action === "audit-clear-filters"){
+  },
+    "audit-clear-filters": async (el, e, action, postId) => {
     state.auditFilters = { text:"", types:new Set() }; auditVisibleCount = 30; render();
-  } else if(action === "audit-sort"){
+  },
+    "audit-sort": async (el, e, action, postId) => {
     const key = el.dataset.key;
     if(auditSort.key === key) auditSort.dir = auditSort.dir === "asc" ? "desc" : "asc";
     else auditSort = { key, dir: key === "date" ? "desc" : "asc" };
     auditVisibleCount = 30; render();
-  } else if(action === "acceso-section"){
+  },
+    "acceso-section": async (el, e, action, postId) => {
     state.solicitudesSection = el.dataset.key; render();
-  } else if(action === "usuarios-sort"){
+  },
+    "usuarios-sort": async (el, e, action, postId) => {
     state.usuariosFilters.sort = el.dataset.key; render();
-  } else if(action === "open-lightbox"){
+  },
+    "open-lightbox": async (el, e, action, postId) => {
     const owner = attachmentOwner(el.dataset.postId, el.dataset.replyId);
     const images = owner ? (owner.images||[]).map(safeImageSrc).filter(Boolean) : [];
     openLightbox(images, Number(el.dataset.idx)||0);
-  } else if(action === "open-file-preview"){
+  },
+    "open-file-preview": async (el, e, action, postId) => {
     const owner = attachmentOwner(el.dataset.postId, el.dataset.replyId);
     const previewable = owner ? (owner.files||[]).filter(f=>f && f.kind !== "audio")
       .map(f=>({ name:f.name, dataUrl:safeFileDataUrl(f.dataUrl) })).filter(f=>f.dataUrl) : [];
     openFilePreview(previewable, Number(el.dataset.idx)||0);
-  } else if(action === "show-user-profile"){
+  },
+    "show-user-profile": async (el, e, action, postId) => {
     const nick = (el.dataset.nick || "").toLowerCase();
     if(nick && nick !== "all"){
       const entry = memberByNick(nick);
       if(entry) openUserProfile(entry.email);
     }
-  } else if(action === "goto-post-from-profile"){
+  },
+    "goto-post-from-profile": async (el, e, action, postId) => {
     closeUserProfile();
     gotoMention(el.dataset.postId, null);
-  } else if(action === "toggle-reply"){
+  },
+    "toggle-reply": async (el, e, action, postId) => {
     if(openReplyForms.has(postId)){ openReplyForms.delete(postId); }
     else{ openReplyForms.add(postId); openThreads.add(postId); }
     render();
-  } else if(action === "toggle-thread"){
+  },
+    "toggle-thread": async (el, e, action, postId) => {
     openThreads.has(postId) ? openThreads.delete(postId) : openThreads.add(postId);
     render();
-  } else if(action === "edit-post"){
+  },
+    "edit-post": async (el, e, action, postId) => {
     const post = getPostById(postId);
     if(post) openEditComposer(post);
-  } else if(action === "cancel-post"){
+  },
+    "cancel-post": async (el, e, action, postId) => {
     const post = getPostById(postId);
     if(post) cancelPost(post);
-  } else if(action === "project-create"){
+  },
+    "project-create": async (el, e, action, postId) => {
     const post = getPostById(postId);
     if(post && canManageProject(post) && !post.isProject) createProject(post);
-  } else if(action === "project-manage" || action === "project-open"){
+  },
+    "project-manage": async (el, e, action, postId) => {
     projectOpen = postId; state.view = "proyectos"; render(); scrollToTop();
-  } else if(action === "project-close"){
+  },
+    "project-open": async (el, e, action, postId) => {
+    projectOpen = postId; state.view = "proyectos"; render(); scrollToTop();
+  },
+    "project-close": async (el, e, action, postId) => {
     const post = getPostById(postId);
     if(!post || !canCloseProject(post)) return;
     const pend = postMilestones(post).filter(m=>!m.done).length;
@@ -10146,104 +10199,142 @@ document.addEventListener("click", async e=>{
       ? t("¿Dar por completado \"{t}\"? Quedan {n} hito(s) sin tildar; quedan así. El proyecto pasa a solo lectura.","Mark \"{t}\" as completed? {n} milestone(s) remain unticked; they stay that way. The project becomes read-only.","Dar por concluído \"{t}\"? Restam {n} marco(s) sem marcar; ficam assim. O projeto passa a somente leitura.","לסמן את \"{t}\" כהושלם? נותרו {n} אבני דרך לא מסומנות; הן נשארות כך. הפרויקט עובר לקריאה בלבד.",{t:calendarioLabel(post), n:pend})
       : t("¿Dar por completado \"{t}\"? El proyecto pasa a solo lectura.","Mark \"{t}\" as completed? The project becomes read-only.","Dar por concluído \"{t}\"? O projeto passa a somente leitura.","לסמן את \"{t}\" כהושלם? הפרויקט עובר לקריאה בלבד.",{t:calendarioLabel(post)});
     if(await appConfirm(msg, { okLabel: t("Dar por completado","Mark as completed","Dar por concluído","סימון כהושלם") })) setProjectStatus(post, true);
-  } else if(action === "project-reopen"){
+  },
+    "project-reopen": async (el, e, action, postId) => {
     const post = getPostById(postId);
     if(!post || !canCloseProject(post)) return;
     if(await appConfirm(t("Este proyecto está dado por completado. ¿Seguir editándolo? Vuelve a quedar abierto y lo que cambies se guarda.","This project is marked as completed. Keep editing it? It reopens and your changes get saved.","Este projeto está dado por concluído. Continuar editando? Volta a ficar aberto e o que mudar é salvo.","הפרויקט הזה מסומן כהושלם. להמשיך לערוך? הוא ייפתח מחדש והשינויים יישמרו."), { okLabel: t("Volver a editar","Edit again","Voltar a editar","עריכה מחדש") })) setProjectStatus(post, false);
-  } else if(action === "project-back"){
+  },
+    "project-back": async (el, e, action, postId) => {
     projectOpen = null; render();
-  } else if(action === "project-remove"){
+  },
+    "project-remove": async (el, e, action, postId) => {
     const post = getPostById(postId);
     if(post && canManageProject(post)) removeProject(post);
-  } else if(action === "toggle-project"){
+  },
+    "toggle-project": async (el, e, action, postId) => {
     openProjects.has(postId) ? openProjects.delete(postId) : openProjects.add(postId); render();
-  } else if(action === "ms-suggest"){
+  },
+    "ms-suggest": async (el, e, action, postId) => {
     const post = getPostById(postId);
     if(post && canManageProject(post)) saveMilestones(post, suggestMilestones(post));
-  } else if(action === "ms-add"){
+  },
+    "ms-add": async (el, e, action, postId) => {
     addMilestoneFromDraft(postId);
-  } else if(action === "toggle-ms-list"){
+  },
+    "toggle-ms-list": async (el, e, action, postId) => {
     collapsedMilestones.has(postId) ? collapsedMilestones.delete(postId) : collapsedMilestones.add(postId); render();
-  } else if(action === "ms-remove"){
+  },
+    "ms-remove": async (el, e, action, postId) => {
     const post = getPostById(postId);
     if(post && canManageProject(post)) saveMilestones(post, postMilestones(post).filter(m=>m.id !== el.dataset.msId));
-  } else if(action === "pp-pick"){
+  },
+    "pp-pick": async (el, e, action, postId) => {
     ppApply(el.dataset.ppKey, el.dataset.email);
-  } else if(action === "ms-owner-remove"){
+  },
+    "ms-owner-remove": async (el, e, action, postId) => {
     const post = getPostById(postId);
     if(post && canManageProject(post)) saveMilestones(post, postMilestones(post).map(m=> m.id === el.dataset.msId ? withOwners(m, msOwners(m).filter(o=> o !== el.dataset.email)) : m));
-  } else if(action === "ms-editor-remove"){
+  },
+    "ms-editor-remove": async (el, e, action, postId) => {
     const post = getPostById(postId);
     if(post && canManageProject(post)) saveEditors(post, postEditors(post).filter(e=>e !== el.dataset.email));
-  } else if(action === "delete-post"){
+  },
+    "delete-post": async (el, e, action, postId) => {
     const post = getPostById(postId);
     if(post && isFixedAdmin()) deletePostHard(post);
-  } else if(action === "delete-reply"){
+  },
+    "delete-reply": async (el, e, action, postId) => {
     if(isFixedAdmin()) deleteReplyHard(postId, el.dataset.replyId);
-  } else if(action === "cancel-reply"){
+  },
+    "cancel-reply": async (el, e, action, postId) => {
     openReplyForms.delete(postId); render();
-  } else if(action === "toggle-like"){
+  },
+    "toggle-like": async (el, e, action, postId) => {
     el.dataset.replyId ? toggleReplyLike(postId, el.dataset.replyId) : togglePostLike(postId);
-  } else if(action === "toggle-nested-reply"){
+  },
+    "toggle-nested-reply": async (el, e, action, postId) => {
     const replyId = el.dataset.replyId;
     openNestedReplyForms.has(replyId) ? openNestedReplyForms.delete(replyId) : openNestedReplyForms.add(replyId);
     render();
-  } else if(action === "cancel-nested-reply"){
+  },
+    "cancel-nested-reply": async (el, e, action, postId) => {
     openNestedReplyForms.delete(el.dataset.replyId); render();
-  } else if(action === "submit-nested-reply"){
+  },
+    "submit-nested-reply": async (el, e, action, postId) => {
     submitNestedReply(el.dataset.postId, el.dataset.replyId);
-  } else if(action === "reply-add-link"){
+  },
+    "reply-add-link": async (el, e, action, postId) => {
     addLinkRow(getReplyDraft(postId));
-  } else if(action === "nested-reply-add-link"){
+  },
+    "nested-reply-add-link": async (el, e, action, postId) => {
     addLinkRow(getNestedReplyDraft(el.dataset.replyId));
-  } else if(action === "post-add-link"){
+  },
+    "post-add-link": async (el, e, action, postId) => {
     addLinkRow(composerDraft);
-  } else if(action === "toggle-post-attach"){
+  },
+    "toggle-post-attach": async (el, e, action, postId) => {
     composerDraft.attachOpen = true; render();
-  } else if(action === "rutina-add-link"){
+  },
+    "rutina-add-link": async (el, e, action, postId) => {
     addLinkRow(rutinaDraft);
-  } else if(action === "rm-link"){
+  },
+    "rm-link": async (el, e, action, postId) => {
     const scope = el.dataset.scope, ownerId = el.dataset.ownerId, idx = Number(el.dataset.idx);
     getDraftFor(scope, ownerId).links.splice(idx,1); render();
-  } else if(action === "reply-rm-image"){
+  },
+    "reply-rm-image": async (el, e, action, postId) => {
     getReplyDraft(postId).images.splice(Number(el.dataset.idx),1); render();
-  } else if(action === "nested-reply-rm-image"){
+  },
+    "nested-reply-rm-image": async (el, e, action, postId) => {
     getNestedReplyDraft(el.dataset.replyId).images.splice(Number(el.dataset.idx),1); render();
-  } else if(action === "post-rm-image"){
+  },
+    "post-rm-image": async (el, e, action, postId) => {
     composerDraft.images.splice(Number(el.dataset.idx),1); render();
-  } else if(action === "rutina-rm-image"){
+  },
+    "rutina-rm-image": async (el, e, action, postId) => {
     rutinaDraft.images.splice(Number(el.dataset.idx),1); render();
-  } else if(action === "post-rm-file"){
+  },
+    "post-rm-file": async (el, e, action, postId) => {
     composerDraft.files.splice(Number(el.dataset.idx),1); render();
-  } else if(action === "reply-rm-file"){
+  },
+    "reply-rm-file": async (el, e, action, postId) => {
     getReplyDraft(postId).files.splice(Number(el.dataset.idx),1); render();
-  } else if(action === "nested-reply-rm-file"){
+  },
+    "nested-reply-rm-file": async (el, e, action, postId) => {
     getNestedReplyDraft(el.dataset.replyId).files.splice(Number(el.dataset.idx),1); render();
-  } else if(action === "rutina-rm-file"){
+  },
+    "rutina-rm-file": async (el, e, action, postId) => {
     rutinaDraft.files.splice(Number(el.dataset.idx),1); render();
-  } else if(action === "submit-rutina"){
+  },
+    "submit-rutina": async (el, e, action, postId) => {
     submitRutina();
-  } else if(action === "pick-place"){
+  },
+    "pick-place": async (el, e, action, postId) => {
     const draft = getDraftFor(el.dataset.scope, el.dataset.ownerId);
     const matches = getPlaceMatches(draft.placeQuery);
     selectPlaceMatch(el.dataset.scope, el.dataset.ownerId, matches[Number(el.dataset.matchIdx)]);
-  } else if(action === "pick-mention"){
+  },
+    "pick-mention": async (el, e, action, postId) => {
     selectMentionMatch(el.dataset.scope, el.dataset.ownerId, el.dataset.textareaId, { nickname:el.dataset.nickname, email:el.dataset.email });
-  } else if(action === "pick-participant"){
+  },
+    "pick-participant": async (el, e, action, postId) => {
     selectParticipantMatch(getParticipantMatches(composerDraft)[Number(el.dataset.matchIdx)]);
-  } else if(action === "rm-participant"){
+  },
+    "rm-participant": async (el, e, action, postId) => {
     composerDraft.participants.splice(Number(el.dataset.idx), 1); render();
-  } else if(action === "use-city-preset"){
+  },
+    "use-city-preset": async (el, e, action, postId) => {
     const sd = getDraftFor(el.dataset.scope, el.dataset.ownerId).scopeDraft;
     sd.cityUseCustom = false; sd.city = ""; render();
-  } else if(action === "add-scope"){
+  },
+    "add-scope": async (el, e, action, postId) => {
     commitScope(el.dataset.scope, el.dataset.ownerId);
-  } else if(action && action.startsWith("rm-scope-")){
-    const scope = action.replace("rm-scope-",""); const ownerId = el.dataset.ownerId; const idx = Number(el.dataset.idx);
-    getDraftFor(scope, ownerId).scopes.splice(idx,1); render();
-  } else if(action === "submit-reply"){
+  },
+    "submit-reply": async (el, e, action, postId) => {
     submitReply(postId);
-  } else if(action === "feed-load-more" || action === "memoria-load-more"){
+  },
+    "feed-load-more": async (el, e, action, postId) => {
     // Se queda donde estaba: el botón se reemplaza por las 15 tarjetas
     // nuevas, que quedan abajo para seguir scrolleando. Se fija el scroll
     // a mano por si el navegador lo mueve al reconstruir la lista, y el
@@ -10261,120 +10352,182 @@ document.addEventListener("click", async e=>{
     window.scrollTo({ top:y, behavior:"auto" });
     const first = document.querySelectorAll("#viewRoot article.post")[before];
     if(first){ first.setAttribute("tabindex","-1"); try{ first.focus({ preventScroll:true }); }catch(e){ first.focus(); } }
-  } else if(action === "paises-subview"){
+  },
+    "memoria-load-more": async (el, e, action, postId) => {
+    // Se queda donde estaba: el botón se reemplaza por las 15 tarjetas
+    // nuevas, que quedan abajo para seguir scrolleando. Se fija el scroll
+    // a mano por si el navegador lo mueve al reconstruir la lista, y el
+    // foco va a la primera tarjeta nueva (sin desplazar la vista) para
+    // que Tab siga desde ahí.
+    const y = window.scrollY;
+    const before = document.querySelectorAll("#viewRoot article.post").length;
+    // Sin este blur, render() le devolvía el foco al botón "Ver más"...
+    // que después del render es el NUEVO botón, al final de la lista: el
+    // navegador scrolleaba hasta él y la persona aterrizaba abajo de las
+    // 15 tarjetas nuevas en vez de arriba.
+    el.blur();
+    if(action === "feed-load-more") feedVisibleCount += PAGE_STEP; else memoriaVisibleCount += PAGE_STEP;
+    render();
+    window.scrollTo({ top:y, behavior:"auto" });
+    const first = document.querySelectorAll("#viewRoot article.post")[before];
+    if(first){ first.setAttribute("tabindex","-1"); try{ first.focus({ preventScroll:true }); }catch(e){ first.focus(); } }
+  },
+    "paises-subview": async (el, e, action, postId) => {
     state.paisesSubview = el.dataset.key; state.countryDrill = null; render();
-  } else if(action === "pref-toggle-list"){
+  },
+    "pref-toggle-list": async (el, e, action, postId) => {
     const key = el.dataset.key, prefKey = el.dataset.pref;
     const cur = prefs()[prefKey] || [];
     savePrefs({ [prefKey]: cur.includes(key) ? cur.filter(k=>k!==key) : [...cur, key] });
-  } else if(action === "config-section"){
+  },
+    "config-section": async (el, e, action, postId) => {
     state.configSection = el.dataset.key; render();
-  } else if(action === "new-posts-jump"){
+  },
+    "new-posts-jump": async (el, e, action, postId) => {
     jumpToNewPosts();
-  } else if(action === "scroll-top"){
+  },
+    "scroll-top": async (el, e, action, postId) => {
     scrollToTop();
-  } else if(action === "toggle-fab"){
+  },
+    "toggle-fab": async (el, e, action, postId) => {
     setFab(!fabOpen);
-  } else if(action === "new-evento"){
+  },
+    "new-evento": async (el, e, action, postId) => {
     closeFab(); openComposer();
-  } else if(action === "new-rutina"){
+  },
+    "new-rutina": async (el, e, action, postId) => {
     startRutina();
-  } else if(action === "toggle-cal-milestones"){
+  },
+    "toggle-cal-milestones": async (el, e, action, postId) => {
     savePrefs({ calendarShowMilestones: prefs().calendarShowMilestones === false });
-  } else if(action === "toggle-cal-view"){
+  },
+    "toggle-cal-view": async (el, e, action, postId) => {
     calViewMenuOpen = !calViewMenuOpen; render();
-  } else if(action === "cal-subview"){
+  },
+    "cal-subview": async (el, e, action, postId) => {
     state.calendarioSubview = el.dataset.key; calViewMenuOpen = false; render();
-  } else if(action === "cal-today"){
+  },
+    "cal-today": async (el, e, action, postId) => {
     state.calendarioAnchor = todayISO(); render();
-  } else if(action === "cal-step"){
+  },
+    "cal-step": async (el, e, action, postId) => {
     state.calendarioAnchor = calendarioStep(state.calendarioSubview, calendarioAnchor(), Number(el.dataset.step) || 0);
     render();
-  } else if(action === "cal-open-day"){
+  },
+    "cal-open-day": async (el, e, action, postId) => {
     state.calendarioAnchor = el.dataset.date; state.calendarioSubview = "dia"; render();
-  } else if(action === "cal-open-month"){
+  },
+    "cal-open-month": async (el, e, action, postId) => {
     state.calendarioAnchor = el.dataset.date; state.calendarioSubview = "mes"; render();
-  } else if(action === "cal-open"){
+  },
+    "cal-open": async (el, e, action, postId) => {
     openEventCard(realPostId(postId));
-  } else if(action === "event-card-goto"){
+  },
+    "event-card-goto": async (el, e, action, postId) => {
     closeEventCard(); gotoMention(el.dataset.postId);
-  } else if(action === "event-card-edit"){
+  },
+    "event-card-edit": async (el, e, action, postId) => {
     const post = getPostById(el.dataset.postId);
     closeEventCard();
     if(post) openEditComposer(post);
-  } else if(action === "cal-new"){
+  },
+    "cal-new": async (el, e, action, postId) => {
     openComposerOnDate(el.dataset.date, el.dataset.hour);
-  } else if(action === "toggle-paises-zone"){
+  },
+    "toggle-paises-zone": async (el, e, action, postId) => {
     const key = el.dataset.key;
     state.paisesZoneFilter.has(key) ? state.paisesZoneFilter.delete(key) : state.paisesZoneFilter.add(key);
     state.countryDrill = null;
     render();
-  } else if(action === "drill-country"){
+  },
+    "drill-country": async (el, e, action, postId) => {
     state.countryDrill = el.dataset.country; render();
-  } else if(action === "drill-clear"){
+  },
+    "drill-clear": async (el, e, action, postId) => {
     state.countryDrill = null; render();
-  } else if(action === "goto-country"){
+  },
+    "goto-country": async (el, e, action, postId) => {
     state.filters.place = { kind:"country", country:el.dataset.country };
     if(el.dataset.level) setPlaceLevel(Number(el.dataset.level)); // las filas "Región"/"Toda LatAm" abren en su nivel
     state.view = placeView(); state.countryDrill = null; render();
-  } else if(action === "goto-latam"){
+  },
+    "goto-latam": async (el, e, action, postId) => {
     // Del pie de Vistas: la memoria de lo que es de toda LatAm, sin país
     // ni ciudad de por medio (ver scopeLevelFor con kind "latam").
     state.filters.place = { kind:"latam" };
     state.view = placeView(); state.countryDrill = null; render();
-  } else if(action === "goto-city"){
+  },
+    "goto-city": async (el, e, action, postId) => {
     state.filters.place = { kind:"city", country:el.dataset.country, city:el.dataset.city };
     state.view = placeView(); state.countryDrill = null; render();
-  } else if(action === "feed-order"){
+  },
+    "feed-order": async (el, e, action, postId) => {
     feedVisibleCount = PAGE_SIZE;
     savePrefs({ feedOrder: el.dataset.key }); // savePrefs re-renderiza
-  } else if(action === "place-level"){
+  },
+    "place-level": async (el, e, action, postId) => {
     setPlaceLevel(Number(el.dataset.level)); // savePrefs ya re-renderiza
-  } else if(action === "dismiss-calendar-notice"){
+  },
+    "dismiss-calendar-notice": async (el, e, action, postId) => {
     clearTimeout(calendarNoticeTimer);
     calendarToastEl.hidden = true;
     calendarToastEl.classList.remove("fading");
-  } else if(action === "memoria-order"){
+  },
+    "memoria-order": async (el, e, action, postId) => {
     state.memoriaOrder = el.dataset.key; render();
-  } else if(action === "sync-calendar"){
+  },
+    "sync-calendar": async (el, e, action, postId) => {
     syncFromCalendar({ silent:false });
-  } else if(action === "google-signin"){
+  },
+    "google-signin": async (el, e, action, postId) => {
     signIn();
-  } else if(action === "toggle-user-menu"){
+  },
+    "toggle-user-menu": async (el, e, action, postId) => {
     userMenuOpen = !userMenuOpen;
     nicknameEditing = false; nicknameError = null;
     render();
-  } else if(action === "tour-next"){
+  },
+    "tour-next": async (el, e, action, postId) => {
     tourStep = Math.min(tourStep + 1, tourSteps().length - 1);
     renderTourStep();
-  } else if(action === "close-tour"){
+  },
+    "close-tour": async (el, e, action, postId) => {
     closeTour();
-  } else if(action === "set-theme"){
+  },
+    "set-theme": async (el, e, action, postId) => {
     setTheme(el.dataset.theme === "dark" ? "dark" : "light");
-  } else if(action === "set-lang"){
+  },
+    "set-lang": async (el, e, action, postId) => {
     setLang(el.dataset.lang);
-  } else if(action === "toggle-translation"){
+  },
+    "toggle-translation": async (el, e, action, postId) => {
     toggleContentTranslation(el.dataset.scope, el.dataset.id, el.dataset.title, el.dataset.content);
-  } else if(action === "edit-nickname"){
+  },
+    "edit-nickname": async (el, e, action, postId) => {
     nicknameEditing = true;
     nicknameDraft = myNickname();
     nicknameError = null;
     render();
     const input = document.getElementById("nicknameInput");
     if(input && !isTouchDevice()){ input.focus(); input.select(); }
-  } else if(action === "cancel-edit-nickname"){
+  },
+    "cancel-edit-nickname": async (el, e, action, postId) => {
     nicknameEditing = false; nicknameError = null;
     render();
-  } else if(action === "save-nickname"){
+  },
+    "save-nickname": async (el, e, action, postId) => {
     saveNicknameEdit();
-  } else if(action === "toggle-mentions-menu"){
+  },
+    "toggle-mentions-menu": async (el, e, action, postId) => {
     mentionsMenuOpen = !mentionsMenuOpen;
     if(mentionsMenuOpen){ markMentionsSeen(); markRepliesSeen(); }
     render();
-  } else if(action === "goto-mention"){
+  },
+    "goto-mention": async (el, e, action, postId) => {
     mentionsMenuOpen = false;
     gotoMention(realPostId(el.dataset.postId), el.dataset.replyId || null);
-  } else if(action === "goto-calendar-invite"){
+  },
+    "goto-calendar-invite": async (el, e, action, postId) => {
     mentionsMenuOpen = false;
     const me = myRosterEntry();
     if(me){
@@ -10382,24 +10535,30 @@ document.addEventListener("click", async e=>{
       calendarInviteOverlay.hidden = false;
     }
     render();
-  } else if(action === "dismiss-calendar-invite"){
+  },
+    "dismiss-calendar-invite": async (el, e, action, postId) => {
     dismissCalendarInviteOverlay();
-  } else if(action === "dismiss-calendar-invite-notice"){
+  },
+    "dismiss-calendar-invite-notice": async (el, e, action, postId) => {
     markCalendarInviteBellDismissed();
     render();
-  } else if(action === "resend-calendar-invite"){
+  },
+    "resend-calendar-invite": async (el, e, action, postId) => {
     const email = el.dataset.email;
     resendCalendarInvite(email).then(res=>{
       showCalendarNotice(res.ok
         ? { ok:true, message: t("Se reenvió la invitación del Calendar a {email}.","The Calendar invite was resent to {email}.","O convite do Calendar foi reenviado para {email}.","הזמנת היומן נשלחה מחדש אל {email}.",{email}) }
         : { ok:false, message: t("No se pudo reenviar la invitación a {email} ({reason}).","Couldn't resend the invite to {email} ({reason}).","Não foi possível reenviar o convite para {email} ({reason}).","לא ניתן היה לשלוח מחדש את ההזמנה אל {email} ({reason}).",{email,reason:res.reason}) });
     }).catch(err=>{ console.error(err); appAlert(t("No se pudo reenviar la invitación: {msg}","Couldn't resend the invite: {msg}","Não foi possível reenviar o convite: {msg}","{msg} :לא ניתן היה לשלוח מחדש את ההזמנה",{msg:err.message})); });
-  } else if(action === "sign-out"){
+  },
+    "sign-out": async (el, e, action, postId) => {
     userMenuOpen = false;
     doSignOut();
-  } else if(action === "request-again"){
+  },
+    "request-again": async (el, e, action, postId) => {
     requestAccessAgain();
-  } else if(action === "approve-request"){
+  },
+    "approve-request": async (el, e, action, postId) => {
     const email = el.dataset.email;
     // Mismo criterio que al revocar: se comparte el Calendar solo si el
     // token sale en silencio; si no, queda para el botón "Compartir
@@ -10414,23 +10573,27 @@ document.addEventListener("click", async e=>{
             `{email} יכול/ה כעת להשתמש באפליקציה. כדי לשתף גם את היומן, השתמש/י ב"שיתוף היומן" בכרטיס שלו/ה במשתמשים.`,
             { email }) });
     }).catch(err=>{ console.error(err); appAlert(t("No se pudo aprobar: {msg}","Couldn't approve: {msg}","Não foi possível aprovar: {msg}","{msg} :האישור נכשל",{msg:err.message})); });
-  } else if(action === "unshare-calendar"){
+  },
+    "unshare-calendar": async (el, e, action, postId) => {
     const email = el.dataset.email;
     unshareCalendarWith(email).then(res=>{
       showCalendarNotice(res.ok
         ? { ok:true, message: t("Se sacó a {email} del Calendar compartido.","{email} was removed from the shared Calendar.","{email} foi tirado do Calendar compartilhado.","{email} הוסר/ה מהיומן המשותף.",{email}) }
         : { ok:false, message: t("No se pudo sacar a {email} del Calendar ({reason}).","Couldn't remove {email} from the Calendar ({reason}).","Não foi possível tirar {email} do Calendar ({reason}).","לא ניתן היה להסיר את {email} מהיומן ({reason}).",{email,reason:res.reason}) });
     }).catch(err=>{ console.error(err); appAlert(t("No se pudo sacar del Calendar: {msg}","Couldn't remove from the Calendar: {msg}","Não foi possível tirar do Calendar: {msg}","{msg} :ההסרה מהיומן נכשלה",{msg:err.message})); });
-  } else if(action === "share-calendar"){
+  },
+    "share-calendar": async (el, e, action, postId) => {
     const email = el.dataset.email;
     shareCalendarWith(email).then(res=>{
       showCalendarNotice(res.ok
         ? { ok:true, message: t("Se compartió el Calendar con {email}.","The Calendar was shared with {email}.","O Calendar foi compartilhado com {email}.","היומן שותף עם {email}.",{email}) }
         : { ok:false, message: t("No se pudo compartir el Calendar con {email} ({reason}).","Couldn't share the Calendar with {email} ({reason}).","Não foi possível compartilhar o Calendar com {email} ({reason}).","לא ניתן היה לשתף את היומן עם {email} ({reason}).",{email,reason:res.reason}) });
     }).catch(err=>{ console.error(err); appAlert(t("No se pudo compartir: {msg}","Couldn't share: {msg}","Não foi possível compartilhar: {msg}","{msg} :השיתוף נכשל",{msg:err.message})); });
-  } else if(action === "reject-request"){
+  },
+    "reject-request": async (el, e, action, postId) => {
     rejectRequest(el.dataset.email).catch(err=>{ console.error(err); appAlert(t("No se pudo rechazar: {msg}","Couldn't reject: {msg}","Não foi possível rejeitar: {msg}","{msg} :הדחייה נכשלה",{msg:err.message})); });
-  } else if(action === "revoke-access"){
+  },
+    "revoke-access": async (el, e, action, postId) => {
     const email = el.dataset.email;
     // Un solo botón saca app + Calendar, pero el Calendar SOLO si el token
     // sale en silencio (silentOnly). Si no sale — la primera vez, antes de
@@ -10455,7 +10618,8 @@ document.addEventListener("click", async e=>{
               { email }) });
       }).catch(err=>{ console.error(err); appAlert(t("No se pudo revocar: {msg}","Couldn't revoke: {msg}","Não foi possível revogar: {msg}","{msg} :הביטול נכשל",{msg:err.message})); });
     }
-  } else if(action === "zonas-remove-zone"){
+  },
+    "zonas-remove-zone": async (el, e, action, postId) => {
     const d = getZonasDraft();
     const key = el.dataset.key;
     const inUse = Object.values(d.countryZones).some(z=>z===key);
@@ -10471,7 +10635,8 @@ document.addEventListener("click", async e=>{
     d.zoneOrder = d.zoneOrder.filter(k=>k!==key);
     d.error = "";
     render();
-  } else if(action === "zonas-add-zone"){
+  },
+    "zonas-add-zone": async (el, e, action, postId) => {
     const d = getZonasDraft();
     const label = d.newZoneLabel.trim();
     if(!label){ d.error = t("Escribí un nombre para la zona nueva.","Type a name for the new zone.","Escreva um nome para a zona nova.",".הקלד/י שם לאזור החדש"); render(); return; }
@@ -10481,10 +10646,12 @@ document.addEventListener("click", async e=>{
     d.newZoneLabel = "";
     d.error = "";
     render();
-  } else if(action === "zonas-reset"){
+  },
+    "zonas-reset": async (el, e, action, postId) => {
     zonasDraft = null;
     render();
-  } else if(action === "zonas-save"){
+  },
+    "zonas-save": async (el, e, action, postId) => {
     const d = getZonasDraft();
     d.saving = true; d.error = ""; render();
     saveTerritoryConfig(d.zones, d.countryZones).then(()=>{
@@ -10493,16 +10660,19 @@ document.addEventListener("click", async e=>{
       console.error(err);
       d.saving = false; d.error = t("No se pudo guardar: {msg}","Couldn't save: {msg}","Não foi possível salvar: {msg}","{msg} :השמירה נכשלה",{msg:err.message}); render();
     });
-  } else if(action === "pref-section"){
+  },
+    "pref-section": async (el, e, action, postId) => {
     state.preferenciasSection = el.dataset.key; render();
-  } else if(action === "tipos-remove"){
+  },
+    "tipos-remove": async (el, e, action, postId) => {
     const d = getTiposDraft();
     const key = el.dataset.key;
     if(countPostsByType(key) > 0){ d.error = t("Hay posteos con este tipo — no se puede eliminar.","There are posts with this type — it can't be deleted.","Há postagens com este tipo — não é possível excluir.","יש פוסטים עם הסוג הזה — לא ניתן למחוק."); render(); return; }
     d.types = d.types.filter(x=>x.key!==key);
     d.error = "";
     render();
-  } else if(action === "tipos-add"){
+  },
+    "tipos-add": async (el, e, action, postId) => {
     const d = getTiposDraft();
     const label = d.newLabel.trim();
     if(!label){ d.error = t("Escribí un nombre para el tipo nuevo.","Type a name for the new type.","Escreva um nome para o tipo novo.",".הקלד/י שם לסוג החדש"); render(); return; }
@@ -10521,9 +10691,11 @@ document.addEventListener("click", async e=>{
     d.types.push({ key, label, icon: d.newIcon.trim() || "✨", calendarSync:true });
     d.newLabel = ""; d.newIcon = ""; d.error = "";
     render();
-  } else if(action === "tipos-reset"){
+  },
+    "tipos-reset": async (el, e, action, postId) => {
     tiposDraft = null; render();
-  } else if(action === "tipos-save"){
+  },
+    "tipos-save": async (el, e, action, postId) => {
     const d = getTiposDraft();
     if(!d.types.length){ d.error = t("Tiene que quedar al menos un tipo de actividad.","At least one activity type has to remain.","Tem que sobrar pelo menos um tipo de atividade.",".חייב להישאר לפחות סוג פעילות אחד"); render(); return; }
     // Mismo control que al agregar, pero sobre los renombres: dos tipos
@@ -10543,11 +10715,13 @@ document.addEventListener("click", async e=>{
       console.error(err);
       d.saving = false; d.error = t("No se pudo guardar: {msg}","Couldn't save: {msg}","Não foi possível salvar: {msg}","{msg} :השמירה נכשלה",{msg:err.message}); render();
     });
-  } else if(action === "lugares-promote"){
+  },
+    "lugares-promote": async (el, e, action, postId) => {
     promoteCustomCity(el.dataset.country, el.dataset.city).then(render).catch(err=>{
       console.error(err); appAlert(t("No se pudo sumar el lugar: {msg}","Couldn't add the place: {msg}","Não foi possível somar o lugar: {msg}","{msg} :לא ניתן היה להוסיף את המקום",{msg:err.message}));
     });
-  } else if(action === "color-open"){
+  },
+    "color-open": async (el, e, action, postId) => {
     const c = el.closest(".color-control");
     const abrir = !c.classList.contains("open");
     closeColorPops(c);
@@ -10567,14 +10741,17 @@ document.addEventListener("click", async e=>{
       pop.style.left = left + "px"; pop.style.top = top + "px";
     }
     if(abrir && !isTouchDevice()){ const hx = c.querySelector(".color-hex"); if(hx){ hx.focus(); hx.select(); } }
-  } else if(action === "calendar-unlock"){
+  },
+    "calendar-unlock": async (el, e, action, postId) => {
     const d = getCalendarDraft();
     d.locked = false; render();
     const inp = document.getElementById("calendarIdInput");
     if(inp && !isTouchDevice()){ inp.focus(); inp.select(); }
-  } else if(action === "calendar-reset"){
+  },
+    "calendar-reset": async (el, e, action, postId) => {
     calendarDraft = null; render(); // vuelve bloqueado
-  } else if(action === "calendar-importfrom-save"){
+  },
+    "calendar-importfrom-save": async (el, e, action, postId) => {
     const d = getCalendarDraft();
     const v = (d.importFrom || "").trim();
     if(v && !/^\d{4}-\d{2}-\d{2}$/.test(v)){ d.error = t("Fecha inválida.","Invalid date.","Data inválida.","תאריך לא תקין."); render(); return; }
@@ -10583,9 +10760,11 @@ document.addEventListener("click", async e=>{
       d.importSaving = false; render();
       showCalendarNotice({ ok:true, message: v ? t("Se importa desde el {d}. Para traer lo anterior que falte, usá «Reimportar historial».","Importing from {d}. To bring in anything missing before that, use “Reimport history”.","Importa-se desde {d}. Para trazer o que falte de antes, use «Reimportar histórico».","מייבאים מ-{d}. כדי להביא מה שחסר, השתמש/י ב«ייבוא מחדש של ההיסטוריה».",{d:fmtDate(v)}) : t("Se importa todo el historial. Para traer lo que falte, usá «Reimportar historial».","Importing the whole history. To bring in what's missing, use “Reimport history”.","Importa-se todo o histórico. Para trazer o que falte, use «Reimportar histórico».","מייבאים את כל ההיסטוריה. כדי להביא מה שחסר, השתמש/י ב«ייבוא מחדש של ההיסטוריה».") });
     }).catch(err=>{ d.importSaving = false; d.error = t("No se pudo guardar: {msg}","Couldn't save: {msg}","Não foi possível salvar: {msg}","{msg} :השמירה נכשלה",{msg:err.message}); render(); });
-  } else if(action === "calendar-reimport-cancel"){
+  },
+    "calendar-reimport-cancel": async (el, e, action, postId) => {
     const d = getCalendarDraft(); d.confirmWord = null; d.confirmMode = null; d.typed = ""; render();
-  } else if(action === "calendar-reimport"){
+  },
+    "calendar-reimport": async (el, e, action, postId) => {
     const d = getCalendarDraft();
     if(!d.confirmWord || d.confirmMode !== "reimport"){
       d.confirmWord = randomConfirmWord(); d.confirmMode = "reimport"; d.typed = ""; d.error = ""; render();
@@ -10599,7 +10778,8 @@ document.addEventListener("click", async e=>{
     setSyncMeta({ syncToken: null }).then(()=> syncFromCalendar({ silent:false })).then(()=>{
       d.reimporting = false; render();
     }).catch(err=>{ d.reimporting = false; d.error = t("No se pudo reimportar: {msg}","Couldn't reimport: {msg}","Não foi possível reimportar: {msg}","{msg} :הייבוא מחדש נכשל",{msg:err.message}); render(); });
-  } else if(action === "calendar-save"){
+  },
+    "calendar-save": async (el, e, action, postId) => {
     const d = getCalendarDraft();
     if(d.confirmMode === "reimport"){ d.confirmWord = null; d.confirmMode = null; d.typed = ""; }
     const id = d.calendarId.trim();
@@ -10630,9 +10810,11 @@ document.addEventListener("click", async e=>{
       console.error(err);
       d.saving = false; d.error = t("No se pudo guardar: {msg}","Couldn't save: {msg}","Não foi possível salvar: {msg}","{msg} :השמירה נכשלה",{msg:err.message}); render();
     });
-  } else if(action === "adjuntos-reset"){
+  },
+    "adjuntos-reset": async (el, e, action, postId) => {
     adjuntosDraft = null; render();
-  } else if(action === "adjuntos-save"){
+  },
+    "adjuntos-save": async (el, e, action, postId) => {
     const d = getAdjuntosDraft();
     d.saving = true; d.error = ""; render();
     const maxImages = Math.min(HARD_MAX_IMAGES, Math.max(1, Number(d.maxImages) || HARD_MAX_IMAGES));
@@ -10644,7 +10826,19 @@ document.addEventListener("click", async e=>{
       console.error(err);
       d.saving = false; d.error = t("No se pudo guardar: {msg}","Couldn't save: {msg}","Não foi possível salvar: {msg}","{msg} :השמירה נכשלה",{msg:err.message}); render();
     });
+  },
+  };
+  // Único caso de la tabla de arriba que no es un match exacto: quitar un
+  // alcance ("rm-scope-post"/"rm-scope-rutina"/"rm-scope-reply"/...) es un
+  // PREFIJO de action, no un valor fijo, así que no puede vivir como clave
+  // de CLICK_ACTIONS — se resuelve antes, igual que en la cadena vieja.
+  if(action && action.startsWith("rm-scope-")){
+    const scope = action.replace("rm-scope-",""); const ownerId = el.dataset.ownerId; const idx = Number(el.dataset.idx);
+    getDraftFor(scope, ownerId).scopes.splice(idx,1); render();
+    return;
   }
+  const handler = CLICK_ACTIONS[action];
+  if (handler) await handler(el, e, action, postId);
 });
 
 // El scroll de un textarea (al crecer más allá de max-height, o al mover
