@@ -701,8 +701,13 @@ ficha. La solapa lista los proyectos como tarjetas con progreso, próximo
 hito y vencidos (`renderProyectosView`, ordenadas por el próximo hito;
 `projectOpen` recuerda la ficha abierta). En la ficha: "Ver en el Feed",
 "Editar evento", **"Quitar proyecto"** (vuelve a evento limpio: borra
-hitos, editores y notas, con confirmación) y **notas** del proyecto
-(`projectNotes`, se guardan al salir del campo).
+hitos, editores y bitácora, con confirmación) y la **bitácora del
+proyecto** (`renderProjectLog`): es el MISMO hilo de respuestas del
+posteo, siempre desplegado y con el formulario abierto, así se publican
+avances con adjuntos, links, imágenes y @menciones, y lo que se escribe
+acá aparece también en el hilo del evento en el Feed (una sola
+conversación). `projectNotes` quedó en las reglas por compatibilidad,
+pero la app ya no lo usa.
 
 La ficha tiene el panel con la lista de **hitos** (nombre, fecha, fin
 opcional, responsable, tildado con quién y cuándo) y, en escritorio, una
