@@ -865,6 +865,55 @@
   .translate-toggle:hover{ color:var(--celeste-dark); }
   .translate-toggle:disabled{ cursor:default; opacity:0.7; }
 
+  /* ---------- Proyecto (hitos dentro de un Evento) ---------- */
+  .project-panel{ margin-top:12px; padding:12px 14px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--surface-soft); }
+  .pj-head{ font-size:13px; color:var(--ink); }
+  .pj-head b{ color:var(--ink-strong); }
+  .pj-owner{ display:inline-block; font-size:11.5px; font-weight:700; color:var(--celeste-dark); background:var(--celeste-soft); border-radius:999px; padding:1px 8px; }
+  .pj-timeline{ position:relative; height:150px; margin:14px 12px 6px; }
+  .pj-line{ position:absolute; left:6%; right:6%; top:50%; height:3px; background:var(--ink); border-radius:2px; opacity:.8; }
+  .pj-today{ position:absolute; top:calc(50% - 16px); width:2px; height:32px; background:var(--celeste-dark); transform:translateX(-1px); opacity:.7; }
+  .pj-pt{ position:absolute; top:50%; transform:translate(-50%, -50%); }
+  .pj-dot{ display:flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:50%; border:3px solid #5b7db1; background:#f1d16a; font-size:11px; font-weight:800; color:#fff; box-sizing:border-box; }
+  .pj-dot.done{ background:#16a34a; border-color:#15803d; }
+  .pj-dot.overdue{ background:var(--danger); border-color:var(--danger); }
+  .pj-dot.today{ background:var(--celeste); border-color:var(--celeste-dark); }
+  .pj-dot.ev{ background:var(--petroleo); border-color:var(--petroleo-dark); width:24px; height:24px; }
+  .pj-lbl{ position:absolute; left:50%; transform:translateX(-50%); width:120px; text-align:center; font-size:10.5px; line-height:1.25; color:var(--ink); }
+  .pj-lbl b{ display:block; font-size:10.5px; color:#5b7db1; margin-bottom:2px; }
+  .pj-lbl.above{ bottom:calc(50% + 16px); }
+  .pj-lbl.below{ top:calc(50% + 16px); }
+  .pj-pt.ev .pj-lbl b{ color:var(--petroleo-dark); }
+  .pj-list{ list-style:none; margin:10px 0 0; padding:0; display:flex; flex-direction:column; gap:6px; }
+  .pj-row{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:6px 8px; border-radius:8px; background:var(--card); border:1px solid var(--border); }
+  .pj-row.done .pj-label, .pj-row.done .pj-label-input{ text-decoration:line-through; color:var(--text-muted); }
+  .pj-row.overdue{ border-color:color-mix(in srgb, var(--danger) 50%, var(--border)); }
+  .pj-row.overdue .pj-when i{ color:var(--danger); font-weight:700; }
+  .pj-row.today .pj-when i{ color:var(--celeste-dark); font-weight:700; }
+  .pj-check{ width:18px; height:18px; flex:none; accent-color:#16a34a; }
+  .pj-check.ro{ display:inline-flex; align-items:center; justify-content:center; border:1.5px solid var(--border); border-radius:4px; font-size:12px; color:#16a34a; font-weight:800; }
+  .pj-main{ flex:1 1 220px; min-width:0; display:flex; flex-direction:column; gap:2px; }
+  .pj-label{ font-weight:700; font-size:13px; color:var(--ink); }
+  .pj-label-input{ font-family:inherit; font-weight:700; font-size:13px; color:var(--ink); background:transparent; border:1px solid transparent; border-radius:6px; padding:2px 4px; min-width:0; }
+  .pj-label-input:hover, .pj-label-input:focus{ border-color:var(--border); background:var(--surface-soft); outline:none; }
+  .pj-when{ font-size:11.5px; color:var(--text-muted); display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+  .pj-when input[type=date]{ font-family:inherit; font-size:11.5px; border:1px solid var(--border); border-radius:6px; padding:2px 4px; background:var(--surface-soft); color:var(--ink); }
+  .pj-owner-sel, .pj-editor-add, .pj-add select{ font-family:inherit; font-size:12px; border:1px solid var(--border); border-radius:999px; padding:4px 8px; background:var(--card); color:var(--ink); max-width:160px; }
+  .pj-doneby{ font-size:11px; color:var(--text-muted); }
+  .pj-row .rm{ background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:14px; padding:2px 6px; }
+  .pj-row .rm:hover{ color:var(--danger); }
+  .pj-add{ display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-top:10px; }
+  .pj-add input[type=text]{ flex:1 1 200px; min-width:0; font-family:inherit; font-size:13px; border:1.5px solid var(--border); border-radius:8px; padding:7px 10px; background:var(--card); color:var(--ink); }
+  .pj-add input[type=date]{ font-family:inherit; font-size:12.5px; border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; background:var(--card); color:var(--ink); }
+  .pj-editors{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:10px; font-size:12px; color:var(--text-muted); }
+  .pj-editors-lbl{ font-weight:700; }
+  .pj-editor-chip{ display:inline-flex; align-items:center; gap:2px; }
+  .pj-editor-chip button{ background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:11px; padding:0 2px; }
+  .pj-editor-chip button:hover{ color:var(--danger); }
+  .post-actions button.active{ color:var(--celeste-dark); }
+  .cal-chip.hito .cal-txt, .cal-bar.hito .cal-txt{ font-style:italic; }
+  .cal-bar.hito{ border:1px dashed currentColor; background:transparent !important; }
+  @media (max-width:640px){ .pj-timeline{ display:none; } }
   .thread{ margin-top:12px; padding-inline-start:16px; border-inline-start:3px solid var(--border); display:flex; flex-direction:column; gap:12px; }
   .reply{ background:var(--surface-sunken); border-radius:var(--radius-md); padding:12px 14px; }
   .reply-system{ background:var(--system-bg); border:1px dashed var(--system-border); }
@@ -2776,11 +2825,14 @@ function upcomingEvents(){
   const until = now + lead * 60000;
   const email = String(state.auth.user && state.auth.user.email || "").toLowerCase();
   const types = p.notifyTypes || [], zones = p.notifyZones || [];
-  return calendarioPosts()
+  // Los hitos pendientes de proyecto avisan igual que un evento; con
+  // "solo donde participo", los míos son los que tienen mi responsable.
+  const hitos = allMilestoneItems().filter(it=> !it.milestone.done && (!p.notifyOnlyMine || String(it.milestone.owner||"").toLowerCase() === email || isMineOrParticipant(it.post, email)));
+  return calendarioPosts().concat(hitos)
     .filter(post=>{
       if(post.cancelled) return false;
       if(types.length && !types.includes(post.activityType)) return false;
-      if(p.notifyOnlyMine && !isMineOrParticipant(post, email)) return false;
+      if(!post.hito && p.notifyOnlyMine && !isMineOrParticipant(post, email)) return false;
       if(zones.length && !postZoneKeys(post).some(z => zones.includes(z))) return false;
       const start = eventStartMs(post);
       return start >= now && start <= until;
@@ -4638,7 +4690,185 @@ async function updatePostDoc(postId, patch){
 
 function canEditPost(post){
   if(!canWrite()) return false;
-  return post.authorEmail === state.auth.user.email || post.activityType !== "rutina";
+  return post.authorEmail === state.auth.user.email || post.activityType !== "rutina" || postEditors(post).includes(state.auth.user.email);
+}
+
+/* ======================================================================
+   PROYECTO: cualquier Evento (no Rutina) se puede ver como proyecto, con
+   hitos (fecha, responsable, tildado) y editores. Todo vive adentro del
+   documento del posteo (milestones[], editors[]); no hay colección nueva.
+   Quien puede editar el posteo maneja el proyecto; el creador suma
+   editores para que otros lo manejen también. Los hitos sugeridos son
+   una ayuda que se edita, no una plantilla administrada.
+   ====================================================================== */
+function postEditors(post){ return Array.isArray(post.editors) ? post.editors : []; }
+function postMilestones(post){
+  return (Array.isArray(post.milestones) ? post.milestones : []).slice()
+    .sort((a,b)=> String(a.date||"").localeCompare(String(b.date||"")) || String(a.label||"").localeCompare(String(b.label||"")));
+}
+function canManageProject(post){ return post.activityType !== "rutina" && canEditPost(post); }
+// done | overdue | today | upcoming
+function milestoneStatus(m){
+  if(m.done) return "done";
+  const today = todayISO();
+  const last = m.endDate && m.endDate >= m.date ? m.endDate : m.date;
+  if(last < today) return "overdue";
+  if(m.date <= today && today <= last) return "today";
+  return "upcoming";
+}
+// Hitos típicos de un curso/seminario/congreso, en días relativos a la
+// fecha de inicio del evento (los de la línea de tiempo de referencia del
+// equipo). El evento en sí no es un hito: ya es el posteo.
+const SUGGESTED_MILESTONES = [
+  { off:-62, label:()=>t("Apertura de registro","Registration opens","Abertura de inscrições","פתיחת הרשמה") },
+  { off:-47, label:()=>t("Cierre de registro","Registration closes","Encerramento de inscrições","סגירת הרשמה") },
+  { off:-46, label:()=>t("Confirmación de participantes","Participant confirmation","Confirmação de participantes","אישור משתתפים") },
+  { off:-46, offEnd:-31, label:()=>t("Compra de tickets","Ticket purchase","Compra de passagens","רכישת כרטיסים") },
+  { off:-14, label:()=>t("Preparación de participantes (e-learning e información médica)","Participant preparation (e-learning and medical info)","Preparação de participantes (e-learning e informação médica)","הכנת משתתפים (למידה מקוונת ומידע רפואי)") },
+  { off:-8,  label:()=>t("Kick off con participantes","Kick-off with participants","Kick-off com participantes","קיק-אוף עם המשתתפים") },
+  { off:-1,  label:()=>t("Arribo de participantes","Participants arrive","Chegada de participantes","הגעת משתתפים") },
+  { off:10, fromEnd:true, label:()=>t("Reporte final","Final report","Relatório final","דוח סופי") },
+];
+function suggestMilestones(post){
+  const start = post.startDate || post.date;
+  const end = post.endDate && post.endDate >= start ? post.endDate : start;
+  return SUGGESTED_MILESTONES.map(sm=>{
+    const base = sm.fromEnd ? end : start;
+    const m = { id: uid(), label: sm.label(), date: addDaysISO(base, sm.off), owner:null, done:false };
+    if(sm.offEnd != null) m.endDate = addDaysISO(base, sm.offEnd);
+    return m;
+  });
+}
+// Guarda la lista entera: es corta (tope 40 en las reglas) y así el
+// documento queda consistente en una sola escritura.
+async function saveMilestones(post, list){
+  try{ await updatePostDoc(post.id, { milestones: list }); }
+  catch(err){
+    console.error("No se pudo guardar el proyecto:", err);
+    showCalendarNotice({ ok:false, message: t("No se pudo guardar el proyecto ({m}). Si las reglas de Firestore son viejas, hay que publicarlas.","Couldn't save the project ({m}). If the Firestore rules are outdated, they need publishing.","Não foi possível salvar o projeto ({m}). Se as regras do Firestore forem antigas, é preciso publicá-las.","לא ניתן היה לשמור את הפרויקט ({m}). אם כללי Firestore ישנים, יש לפרסם אותם.",{m:err.code||err.message}) });
+  }
+}
+async function saveEditors(post, list){
+  try{ await updatePostDoc(post.id, { editors: list }); }
+  catch(err){ console.error("No se pudo guardar los editores:", err); showCalendarNotice({ ok:false, message: t("No se pudo guardar ({m}).","Couldn't save ({m}).","Não foi possível salvar ({m}).","לא ניתן היה לשמור ({m}).",{m:err.code||err.message}) }); }
+}
+// Un hito como ítem del Calendario y de la campanita: mismo objeto que un
+// posteo para lo que dibujan (fecha, título, color por zona), con id
+// compuesto para no confundirse con el evento en los carriles de la
+// grilla. realPostId() vuelve al posteo real al abrirlo.
+function milestoneItem(post, m){
+  return { id:`${post.id}#m:${m.id}`, hito:true, post, milestone:m, activityType:post.activityType, scopes:post.scopes,
+    startDate:m.date, date:m.date, endDate:(m.endDate && m.endDate >= m.date) ? m.endDate : m.date, startTime:null, endTime:null,
+    title:`◆ ${m.label} · ${calendarioLabel(post)}`, cancelled:post.cancelled, authorEmail:post.authorEmail, participants:post.participants };
+}
+function realPostId(id){ return String(id||"").split("#m:")[0]; }
+function allMilestoneItems(){
+  const out = [];
+  state.posts.forEach(p=>{ if(p.cancelled) return; postMilestones(p).forEach(m=> out.push(milestoneItem(p, m))); });
+  return out;
+}
+const openProjects = new Set();
+const projectDrafts = {};
+function projectDraft(postId){ return projectDrafts[postId] || (projectDrafts[postId] = { label:"", date:"", owner:"" }); }
+function ownerChip(email){
+  if(!email) return "";
+  const mem = memberByEmail(email);
+  return `<span class="pj-owner">@${esc(mem && mem.nickname ? String(mem.nickname).toLowerCase() : String(email).split("@")[0])}</span>`;
+}
+function ownerOptions(selected){
+  const opts = state.roster.slice().sort((a,b)=> String(a.nickname||a.name||"").localeCompare(String(b.nickname||b.name||"")))
+    .map(u=>`<option value="${esc(u.email)}" ${u.email===selected?"selected":""}>@${esc(String(u.nickname||"").toLowerCase() || u.name || u.email)}</option>`).join("");
+  return `<option value="" ${!selected?"selected":""}>${esc(t("Sin responsable","No owner","Sem responsável","ללא אחראי/ת"))}</option>${opts}`;
+}
+function renderProjectPanel(post){
+  const list = postMilestones(post);
+  const manage = canManageProject(post);
+  const done = list.filter(m=>m.done).length;
+  const next = list.find(m=>!m.done);
+  const today = todayISO();
+  const head = list.length
+    ? `${t("{d} de {n} hitos","{d} of {n} milestones","{d} de {n} marcos","{d} מתוך {n} אבני דרך",{d:done, n:list.length})}${next ? ` · ${t("próximo","next","próximo","הבא")}: <b>${esc(next.label)}</b>, ${esc(fmtDate(next.date))}${next.owner ? " " + ownerChip(next.owner) : ""}` : ` · ${t("todo cumplido","all done","tudo cumprido","הכול הושלם")} ✅`}`
+    : t("Este evento todavía no tiene hitos.","This event has no milestones yet.","Este evento ainda não tem marcos.","לאירוע הזה עדיין אין אבני דרך.");
+  // Línea de tiempo horizontal (escritorio), como la de referencia del
+  // equipo: los puntos van a distancia PAREJA en orden de fecha, no en
+  // proporción al tiempo — con cuatro hitos en la misma semana y dos
+  // meses hasta el curso, la escala real apilaba las etiquetas una sobre
+  // otra. La marca de "hoy" se interpola entre los dos puntos vecinos.
+  let timeline = "";
+  const evStart = post.startDate || post.date, evEnd = post.endDate && post.endDate >= evStart ? post.endDate : evStart;
+  if(list.length){
+    const pts = [...list.map(m=>({ m, iso:m.date })), { ev:true, iso:evStart }]
+      .sort((a,b)=> a.iso.localeCompare(b.iso) || (a.ev ? 1 : 0) - (b.ev ? 1 : 0));
+    const n = pts.length;
+    const pad = 6, span = 100 - 2*pad;
+    const posOf = i => n === 1 ? 50 : pad + (i / (n - 1)) * span;
+    let todayPct;
+    if(today <= pts[0].iso) todayPct = Math.max(0, posOf(0) - 3);
+    else if(today >= pts[n-1].iso) todayPct = Math.min(100, posOf(n-1) + 3);
+    else {
+      let k = 0; while(k < n-1 && pts[k+1].iso <= today) k++;
+      const a = isoDate(pts[k].iso).getTime(), b = isoDate(pts[k+1].iso).getTime(), tms = isoDate(today).getTime();
+      const f = b > a ? (tms - a) / (b - a) : 0.5;
+      todayPct = posOf(k) + f * (posOf(k+1) - posOf(k));
+    }
+    timeline = `<div class="pj-timeline" aria-hidden="true">
+      <div class="pj-line"></div>
+      <div class="pj-today" style="left:${todayPct.toFixed(1)}%" title="${esc(t("Hoy","Today","Hoje","היום"))}"></div>
+      ${pts.map((x,i)=>{
+        const left = posOf(i).toFixed(1);
+        if(x.ev) return `<div class="pj-pt ev" style="left:${left}%"><span class="pj-dot ev"></span><span class="pj-lbl ${i%2?"below":"above"}"><b>${esc(fmtISO(evStart,{day:"numeric",month:"short"}))}${evEnd!==evStart?` – ${esc(fmtISO(evEnd,{day:"numeric",month:"short"}))}`:""}</b>${esc(calendarioLabel(post))}</span></div>`;
+        const st = milestoneStatus(x.m);
+        return `<div class="pj-pt ${st}" style="left:${left}%"><span class="pj-dot ${st}">${st==="done"?"✓":""}</span><span class="pj-lbl ${i%2?"below":"above"}"><b>${esc(fmtISO(x.iso,{day:"numeric",month:"short"}))}${x.m.endDate&&x.m.endDate>x.m.date?` – ${esc(fmtISO(x.m.endDate,{day:"numeric",month:"short"}))}`:""}</b>${esc(x.m.label)}</span></div>`;
+      }).join("")}
+    </div>`;
+  }
+  const rows = list.map(m=>{
+    const st = milestoneStatus(m);
+    const stLabel = st==="done" ? t("cumplido","done","cumprido","הושלם") : st==="overdue" ? t("vencido","overdue","vencido","באיחור") : st==="today" ? t("hoy","today","hoje","היום") : "";
+    const when = `${esc(fmtDate(m.date))}${m.endDate && m.endDate > m.date ? ` – ${esc(fmtDate(m.endDate))}` : ""}`;
+    const doneBy = m.done && m.doneBy ? `<span class="pj-doneby">${t("por","by","por","על ידי")} ${ownerChip(m.doneBy)}${m.doneAt ? " · " + esc(fmtDate(m.doneAt)) : ""}</span>` : "";
+    if(!manage) return `<li class="pj-row ${st}"><span class="pj-check ro">${m.done?"✓":""}</span><span class="pj-main"><span class="pj-label">${esc(m.label)}</span><span class="pj-when">${when}${stLabel?` · <i>${esc(stLabel)}</i>`:""}</span></span>${ownerChip(m.owner)}${doneBy}</li>`;
+    return `<li class="pj-row ${st}">
+      <input type="checkbox" class="pj-check" data-action="ms-done" data-post-id="${post.id}" data-ms-id="${esc(m.id)}" ${m.done?"checked":""} aria-label="${esc(t("Cumplido","Done","Cumprido","הושלם"))}">
+      <span class="pj-main">
+        <input type="text" class="pj-label-input" data-ms-field="label" data-post-id="${post.id}" data-ms-id="${esc(m.id)}" value="${esc(m.label)}" maxlength="120">
+        <span class="pj-when">
+          <input type="date" data-ms-field="date" data-post-id="${post.id}" data-ms-id="${esc(m.id)}" value="${esc(m.date)}">
+          <input type="date" data-ms-field="endDate" data-post-id="${post.id}" data-ms-id="${esc(m.id)}" value="${esc(m.endDate||"")}" title="${esc(t("Fin (opcional)","End (optional)","Fim (opcional)","סיום (אופציונלי)"))}">
+          ${stLabel?`<i>${esc(stLabel)}</i>`:""}
+        </span>
+      </span>
+      <select class="pj-owner-sel" data-ms-field="owner" data-post-id="${post.id}" data-ms-id="${esc(m.id)}" aria-label="${esc(t("Responsable","Owner","Responsável","אחראי/ת"))}">${ownerOptions(m.owner||"")}</select>
+      ${doneBy}
+      <button type="button" class="rm" data-action="ms-remove" data-post-id="${post.id}" data-ms-id="${esc(m.id)}" title="${esc(t("Quitar hito","Remove milestone","Remover marco","הסרת אבן דרך"))}">✕</button>
+    </li>`;
+  }).join("");
+  const d = projectDraft(post.id);
+  const addForm = manage ? `
+    <div class="pj-add">
+      <input type="text" data-ms-new="label" data-post-id="${post.id}" placeholder="${esc(t("Hito nuevo (ej: Enviar invitaciones)","New milestone (e.g. Send invitations)","Marco novo (ex: Enviar convites)","אבן דרך חדשה (למשל: שליחת הזמנות)"))}" value="${esc(d.label)}" maxlength="120">
+      <input type="date" data-ms-new="date" data-post-id="${post.id}" value="${esc(d.date)}">
+      <select data-ms-new="owner" data-post-id="${post.id}">${ownerOptions(d.owner)}</select>
+      <button type="button" class="btn-mini" data-action="ms-add" data-post-id="${post.id}">+ ${t("Agregar hito","Add milestone","Adicionar marco","הוספת אבן דרך")}</button>
+      ${!list.length ? `<button type="button" class="btn-text-add" data-action="ms-suggest" data-post-id="${post.id}">✨ ${t("Sugerir hitos típicos","Suggest typical milestones","Sugerir marcos típicos","הצעת אבני דרך טיפוסיות")}</button>` : ""}
+    </div>` : "";
+  const editors = postEditors(post);
+  const editorsRow = `<div class="pj-editors">
+      <span class="pj-editors-lbl">${t("Editores","Editors","Editores","עורכים")}:</span>
+      ${ownerChip(post.authorEmail)}
+      ${editors.map(e=>`<span class="pj-editor-chip">${ownerChip(e)}${manage ? `<button type="button" data-action="ms-editor-remove" data-post-id="${post.id}" data-email="${esc(e)}" aria-label="${esc(t("Quitar editor","Remove editor","Remover editor","הסרת עורך/ת"))}">✕</button>` : ""}</span>`).join("")}
+      ${manage ? `<select class="pj-editor-add" data-action="ms-editor-add" data-post-id="${post.id}" aria-label="${esc(t("Sumar editor","Add editor","Adicionar editor","הוספת עורך/ת"))}">
+        <option value="">+ ${esc(t("Sumar editor","Add editor","Adicionar editor","הוספת עורך/ת"))}</option>
+        ${state.roster.filter(u=>u.email!==post.authorEmail && !editors.includes(u.email)).map(u=>`<option value="${esc(u.email)}">@${esc(String(u.nickname||"").toLowerCase()||u.name||u.email)}</option>`).join("")}
+      </select>` : ""}
+    </div>`;
+  return `<div class="project-panel" data-post-id="${post.id}">
+      <div class="pj-head">📋 <b>${t("Proyecto","Project","Projeto","פרויקט")}</b> · ${head}</div>
+      ${timeline}
+      ${rows ? `<ul class="pj-list">${rows}</ul>` : ""}
+      ${addForm}
+      ${editorsRow}
+    </div>`;
 }
 
 function participantsLabel(participants){
@@ -6742,10 +6972,12 @@ function renderPostCard(post, replies, featured){
         ${canWrite() ? `<button data-action="toggle-like" data-post-id="${post.id}" class="${postLiked?"liked":""}">${postLiked?"👍":"🤍"} ${t("Me gusta","Like","Curtir","לייק")}${postLikedBy.length?` (${postLikedBy.length})`:""}</button>
         <button data-action="toggle-reply" data-post-id="${post.id}">💬 ${t("Responder","Reply","Responder","תגובה")}</button>` : (postLikedBy.length ? `<span class="post-likes-ro">👍 ${postLikedBy.length}</span>` : "")}
         ${replies.length ? `<button data-action="toggle-thread" data-post-id="${post.id}">${threadOpen ? "▲ " + t("Ocultar","Hide","Ocultar","הסתרה") : "▼ " + t("Ver","View","Ver","הצגה")} ${commentsLabel}</button>` : ""}
+        ${post.activityType !== "rutina" ? `<button data-action="toggle-project" data-post-id="${post.id}" class="${openProjects.has(post.id)?"active":""}">📋 ${openProjects.has(post.id) ? t("Ocultar proyecto","Hide project","Ocultar projeto","הסתרת פרויקט") : t("Ver como proyecto","View as project","Ver como projeto","הצגה כפרויקט")}${postMilestones(post).length ? ` (${postMilestones(post).filter(m=>m.done).length}/${postMilestones(post).length})` : ""}</button>` : ""}
         ${editable ? `<button data-action="edit-post" data-post-id="${post.id}">✏️ ${t("Editar","Edit","Editar","עריכה")}</button>` : ""}
         ${canCancel ? `<button data-action="cancel-post" data-post-id="${post.id}">🚫 ${t("Cancelar evento","Cancel event","Cancelar evento","ביטול האירוע")}</button>` : ""}
         ${isFixedAdmin() ? `<button class="danger" data-action="delete-post" data-post-id="${post.id}">🗑️ ${t("Borrar","Delete","Apagar","מחיקה")}</button>` : ""}
       </div>
+      ${openProjects.has(post.id) ? renderProjectPanel(post) : ""}
       ${threadOpen ? renderThread(replies) : ""}
       ${replyOpen ? renderReplyForm(post.id) : ""}
     </article>`;
@@ -7722,7 +7954,8 @@ function weekdayNames(fmt){
 // días; el recorte a [fromISO, toISO] evita iterar rangos largos.
 function calendarioEventsByDate(fromISO, toISO){
   const byDate = {};
-  calendarioPosts().forEach(p=>{
+  // Los hitos de proyecto entran como ítems de un día (o rango), con ◆.
+  calendarioPosts().concat(allMilestoneItems()).forEach(p=>{
     const start = p.startDate || p.date;
     const end = p.endDate && p.endDate >= start ? p.endDate : start;
     let d = start < fromISO ? fromISO : start;
@@ -7764,7 +7997,7 @@ function calendarioChip(p, iso){
   // La hora solo en el día en que arranca: en los días del medio de un
   // evento de varios días no significa nada.
   const time = p.startTime && (p.startDate || p.date) === iso ? `<b>${esc(fmtHHMM(p.startTime))}</b> ` : "";
-  return `<button type="button" class="cal-chip${p.cancelled?" cancelled":""}${pastClass(iso)}" data-action="cal-open" data-post-id="${esc(p.id)}" title="${esc(label)}">
+  return `<button type="button" class="cal-chip${p.cancelled?" cancelled":""}${p.hito?" hito":""}${pastClass(iso)}" data-action="cal-open" data-post-id="${esc(p.id)}" title="${esc(label)}">
       <span class="cal-dot" style="background:${calendarioColor(p)}"></span><span class="cal-txt">${type.icon} ${time}${esc(label)}</span>
     </button>`;
 }
@@ -8005,7 +8238,7 @@ function calendarioBar(it, weekDays){
   const style = multi
     ? `background:${color};color:${readableOn(color)};`
     : "";
-  return `<button type="button" class="cal-bar${multi?" span":""}${p.cancelled?" cancelled":""}${pastClass(weekDays[it.from])}${contStart?" cont-start":""}${contEnd?" cont-end":""}"
+  return `<button type="button" class="cal-bar${multi?" span":""}${p.cancelled?" cancelled":""}${p.hito?" hito":""}${pastClass(weekDays[it.from])}${contStart?" cont-start":""}${contEnd?" cont-end":""}"
       style="grid-column:${it.from+1} / span ${it.to - it.from + 1};grid-row:${it.lane+1};${style}"
       data-action="cal-open" data-post-id="${esc(p.id)}" title="${esc(label)}">
       ${multi ? "" : `<span class="cal-dot" style="background:${color}"></span>`}<span class="cal-txt">${type.icon} ${time}${esc(label)}</span>
@@ -9534,6 +9767,24 @@ document.addEventListener("click", e=>{
   } else if(action === "cancel-post"){
     const post = getPostById(postId);
     if(post) cancelPost(post);
+  } else if(action === "toggle-project"){
+    openProjects.has(postId) ? openProjects.delete(postId) : openProjects.add(postId); render();
+  } else if(action === "ms-suggest"){
+    const post = getPostById(postId);
+    if(post && canManageProject(post)) saveMilestones(post, suggestMilestones(post));
+  } else if(action === "ms-add"){
+    const post = getPostById(postId); const d = projectDraft(postId);
+    if(!post || !canManageProject(post)) return;
+    if(!d.label.trim() || !d.date){ showCalendarNotice({ ok:false, message: t("El hito necesita nombre y fecha.","The milestone needs a name and a date.","O marco precisa de nome e data.","אבן הדרך צריכה שם ותאריך.") }); return; }
+    const list = postMilestones(post).concat([{ id: uid(), label: d.label.trim(), date: d.date, owner: d.owner || null, done:false }]);
+    projectDrafts[postId] = { label:"", date:"", owner:"" };
+    saveMilestones(post, list);
+  } else if(action === "ms-remove"){
+    const post = getPostById(postId);
+    if(post && canManageProject(post)) saveMilestones(post, postMilestones(post).filter(m=>m.id !== el.dataset.msId));
+  } else if(action === "ms-editor-remove"){
+    const post = getPostById(postId);
+    if(post && canManageProject(post)) saveEditors(post, postEditors(post).filter(e=>e !== el.dataset.email));
   } else if(action === "delete-post"){
     const post = getPostById(postId);
     if(post && isFixedAdmin()) deletePostHard(post);
@@ -9654,7 +9905,7 @@ document.addEventListener("click", e=>{
   } else if(action === "cal-open-month"){
     state.calendarioAnchor = el.dataset.date; state.calendarioSubview = "mes"; render();
   } else if(action === "cal-open"){
-    openEventCard(postId);
+    openEventCard(realPostId(postId));
   } else if(action === "event-card-goto"){
     closeEventCard(); gotoMention(el.dataset.postId);
   } else if(action === "event-card-edit"){
@@ -9732,7 +9983,7 @@ document.addEventListener("click", e=>{
     render();
   } else if(action === "goto-mention"){
     mentionsMenuOpen = false;
-    gotoMention(el.dataset.postId, el.dataset.replyId || null);
+    gotoMention(realPostId(el.dataset.postId), el.dataset.replyId || null);
   } else if(action === "goto-calendar-invite"){
     mentionsMenuOpen = false;
     const me = myRosterEntry();
@@ -10195,6 +10446,36 @@ document.addEventListener("change", e=>{
   }
   else if(el.dataset.action === "zonas-color"){ getZonasDraft().zones[el.dataset.key].color = el.value; render(); }
   else if(el.dataset.action === "set-role"){ changeRole(el.dataset.email, el.value); }
+  else if(el.dataset.action === "ms-done"){
+    const post = getPostById(el.dataset.postId);
+    if(post && canManageProject(post)){
+      const me = state.auth.user.email;
+      saveMilestones(post, postMilestones(post).map(m=> m.id === el.dataset.msId ? { ...m, done: el.checked, doneBy: el.checked ? me : null, doneAt: el.checked ? todayISO() : null } : m));
+    }
+  }
+  else if(el.dataset.msField){
+    const post = getPostById(el.dataset.postId);
+    if(post && canManageProject(post)){
+      const f = el.dataset.msField; let v = el.value;
+      if(f === "label" && !v.trim()){ render(); return; }
+      if(f === "date" && !/^\d{4}-\d{2}-\d{2}$/.test(v)){ render(); return; }
+      if(f === "endDate" && v && !/^\d{4}-\d{2}-\d{2}$/.test(v)){ render(); return; }
+      saveMilestones(post, postMilestones(post).map(m=>{
+        if(m.id !== el.dataset.msId) return m;
+        const n = { ...m };
+        if(f === "label") n.label = v.trim();
+        else if(f === "date") n.date = v;
+        else if(f === "endDate"){ if(v) n.endDate = v; else delete n.endDate; }
+        else if(f === "owner") n.owner = v || null;
+        return n;
+      }));
+    }
+  }
+  else if(el.dataset.msNew){ const d = projectDraft(el.dataset.postId); d[el.dataset.msNew] = el.value; }
+  else if(el.dataset.action === "ms-editor-add"){
+    const post = getPostById(el.dataset.postId);
+    if(post && canManageProject(post) && el.value && !postEditors(post).includes(el.value)) saveEditors(post, postEditors(post).concat([el.value]));
+  }
   else if(el.dataset.action === "zonas-country-zone"){ getZonasDraft().countryZones[el.dataset.country] = el.value; render(); }
   else if(el.dataset.action === "tipos-sync"){
     const type = getTiposDraft().types.find(x=>x.key===el.dataset.key);

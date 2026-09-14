@@ -689,6 +689,39 @@ El `GOOGLE_OAUTH_CLIENT_ID` es público por diseño y va en el código. El
 **client secret NO se usa nunca** en una app de navegador: si algo lo pide
 para el front, está mal.
 
+### Proyecto: hitos dentro de un Evento
+
+Cualquier Evento (no Rutina) se puede "Ver como proyecto" desde su
+tarjeta: un panel con la lista de **hitos** (nombre, fecha, fin
+opcional, responsable, tildado con quién y cuándo) y, en escritorio, una
+línea de tiempo como la de referencia del equipo: puntos a distancia
+pareja en orden de fecha (no proporcional al tiempo, que apilaba las
+etiquetas cuando hay cuatro hitos en una semana y dos meses hasta el
+curso), etiquetas alternadas arriba/abajo, colores por estado (cumplido
+verde, vencido rojo, hoy celeste, pendiente amarillo, el evento en
+petróleo) y una marca de "hoy" interpolada entre sus dos vecinos. En el
+celular queda solo la lista.
+
+Todo vive en el documento del posteo: `milestones[]` (tope 40) y
+`editors[]` (tope 20). No hay colección nueva ni plantillas en
+Administrar: "Sugerir hitos típicos" (`SUGGESTED_MILESTONES`, días
+relativos al inicio del evento; el reporte final, al fin) carga una lista
+base que se edita como cualquier otra. Quien puede editar el posteo
+maneja el proyecto (`canManageProject`); además el creador suma
+**editores** (`editors`), que pasan a poder editar el posteo y manejar
+sus hitos (`canEditPost` los incluye). Los hitos se guardan como lista
+entera en cada cambio (`saveMilestones`), así el documento queda
+consistente en una escritura.
+
+Los hitos entran también en el **Calendario** y en la **campanita**
+como ítems de un día (o rango) con ◆ y el nombre del evento
+(`milestoneItem`, `allMilestoneItems`): mismo objeto que un posteo para
+lo que dibujan, con id compuesto `postId#m:hitoId` para no confundirse
+con el evento en los carriles de la grilla; `realPostId()` vuelve al
+posteo real al abrirlo (la ficha que se abre es la del evento padre).
+Con "Solo donde participo", avisan los hitos cuyo responsable soy yo o
+cuyo evento es mío.
+
 ### Borrar de verdad (solo el admin fijo)
 
 El admin fijo (`ADMIN_EMAIL`, `isFixedAdmin()` en la app, `isAdmin()` en
