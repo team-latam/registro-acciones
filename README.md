@@ -486,6 +486,14 @@ alcance "Toda LatAm" **y** "Islas Caimán" es `own` de Caimán (gana el más
 cercano). En `computePlaceCounts`, `general` pasó a ser solo lo propio de
 "todo el país"; antes metía también lo regional y lo de LatAm.
 
+### El lugar de una respuesta se elige como en el Evento
+
+El formulario de respuesta ya no tiene la casilla "Esta respuesta también
+afectó a otro lugar" con sus tres selectores (tipo, país, ciudad): tiene
+el mismo buscador de lugar del Evento y la Rutina (`data-place-scope="reply"`,
+`renderPlaceSuggestions`, chips con ✕), y la respuesta se guarda con los
+chips que queden (`d.scopes`, vacío si no se eligió nada).
+
 ### Agregación "país afectado por una respuesta"
 
 Cuando una respuesta suma un alcance adicional (por ejemplo, un curso en
