@@ -919,14 +919,16 @@
   .pj-label-input:hover, .pj-label-input:focus{ border-color:var(--border); background:var(--surface-soft); outline:none; }
   .pj-when{ font-size:11.5px; color:var(--text-muted); display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
   .pj-when input[type=date]{ font-family:inherit; font-size:11.5px; border:1px solid var(--border); border-radius:6px; padding:2px 4px; background:var(--surface-soft); color:var(--ink); }
-  .pj-owner-sel, .pj-editor-add, .pj-add select{ font-family:inherit; font-size:12px; border:1px solid var(--border); border-radius:999px; padding:4px 8px; background:var(--card); color:var(--ink); max-width:160px; }
   .pj-doneby{ font-size:11px; color:var(--text-muted); }
   .pp{ position:relative; display:inline-block; }
   .pp-input{ font-family:inherit; font-size:12px; border:1px solid var(--border); border-radius:999px; padding:4px 10px; background:var(--card); color:var(--ink); width:150px; }
   .pp-input:focus{ outline:none; border-color:var(--celeste-dark); }
   .pp-list{ position:absolute; top:calc(100% + 4px); inset-inline-start:0; z-index:50; min-width:230px; }
   .pp-list small{ color:var(--text-muted); font-weight:500; margin-inline-start:6px; }
+  .pj-owners{ display:inline-flex; align-items:center; gap:4px; flex-wrap:wrap; }
   .pj-owner-wrap{ display:inline-flex; align-items:center; gap:2px; }
+  .pj-list-bar{ margin-top:8px; display:flex; justify-content:flex-end; }
+  .pd-head .pj-editors{ margin-top:8px; }
   .pj-owner-clear{ background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:11px; padding:0 2px; }
   .pj-owner-clear:hover{ color:var(--danger); }
   /* Manija de arrastre (⋮⋮), sutil como la de Google: gris, más
@@ -2864,7 +2866,7 @@ function upcomingEvents(){
   const types = p.notifyTypes || [], zones = p.notifyZones || [];
   // Los hitos pendientes de proyecto avisan igual que un evento; con
   // "solo donde participo", los míos son los que tienen mi responsable.
-  const hitos = allMilestoneItems({ skipDone:true }).filter(it=> !it.milestone.done && (!p.notifyOnlyMine || String(it.milestone.owner||"").toLowerCase() === email || isMineOrParticipant(it.post, email)));
+  const hitos = allMilestoneItems({ skipDone:true }).filter(it=> !it.milestone.done && (!p.notifyOnlyMine || msOwners(it.milestone).some(o=> String(o).toLowerCase() === email) || isMineOrParticipant(it.post, email)));
   return calendarioPosts().concat(hitos)
     .filter(post=>{
       if(post.cancelled) return false;
@@ -4739,13 +4741,23 @@ function canEditPost(post){
    una ayuda que se edita, no una plantilla administrada.
    ====================================================================== */
 function postEditors(post){ return Array.isArray(post.editors) ? post.editors : []; }
-// Orden: por fecha, salvo que se hayan movido a mano (entonces todos
-// tienen `order` y manda eso). Mover un hito fija el orden de toda la lista.
+// Orden de la LISTA: por fecha (los sin fecha al final), salvo que se
+// hayan movido a mano (entonces todos tienen `order` y manda eso). Mover
+// un hito es una comodidad para leer la lista; la línea de tiempo NO lo
+// sigue: va siempre por fecha (milestonesByDate).
 function postMilestones(post){
   const list = (Array.isArray(post.milestones) ? post.milestones : []).slice();
   if(list.length && list.every(m=> Number.isFinite(m.order))) return list.sort((a,b)=> a.order - b.order);
-  return list.sort((a,b)=> String(a.date||"").localeCompare(String(b.date||"")) || String(a.label||"").localeCompare(String(b.label||"")));
+  return list.sort((a,b)=> String(a.date||"9999").localeCompare(String(b.date||"9999")) || String(a.label||"").localeCompare(String(b.label||"")));
 }
+// Solo los hitos con fecha, en orden de fecha: lo que dibuja la línea de
+// tiempo, va al Calendario y decide el "próximo".
+function milestonesByDate(post){
+  return postMilestones(post).filter(m=>m.date).sort((a,b)=> String(a.date).localeCompare(String(b.date)) || String(a.label||"").localeCompare(String(b.label||"")));
+}
+// Responsables: lista (`owners`); los hitos viejos tienen `owner` suelto.
+function msOwners(m){ return Array.isArray(m.owners) ? m.owners.filter(Boolean) : (m.owner ? [m.owner] : []); }
+function withOwners(m, owners){ const n = { ...m, owners }; delete n.owner; return n; }
 // Un proyecto dado por completado queda en solo lectura (aunque tenga
 // hitos pendientes: puede que el evento ya pasó y se cierra igual). Para
 // tocarlo hay que "Volver a editar", que pide confirmación y lo reabre.
@@ -4760,6 +4772,7 @@ async function setProjectStatus(post, done){
 // done | overdue | today | upcoming
 function milestoneStatus(m){
   if(m.done) return "done";
+  if(!m.date) return "upcoming"; // sin fecha todavía: ni vencido ni hoy
   const today = todayISO();
   const last = m.endDate && m.endDate >= m.date ? m.endDate : m.date;
   if(last < today) return "overdue";
@@ -4784,7 +4797,7 @@ function suggestMilestones(post){
   const end = post.endDate && post.endDate >= start ? post.endDate : start;
   return SUGGESTED_MILESTONES.map(sm=>{
     const base = sm.fromEnd ? end : start;
-    const m = { id: uid(), label: sm.label(), date: addDaysISO(base, sm.off), owner:null, done:false };
+    const m = { id: uid(), label: sm.label(), date: addDaysISO(base, sm.off), owners:[], done:false };
     if(sm.offEnd != null) m.endDate = addDaysISO(base, sm.offEnd);
     return m;
   });
@@ -4792,8 +4805,9 @@ function suggestMilestones(post){
 // ---- Solapa Proyectos: lista de eventos-proyecto y ficha de gestión ----
 let projectOpen = null; // id del posteo abierto en la solapa
 function projectPosts(){ return state.posts.filter(p=> p.isProject && p.activityType !== "rutina"); }
-function nextMilestone(post){ return postMilestones(post).find(m=>!m.done) || null; }
-function projectSortKey(post){ const n = nextMilestone(post); return n ? n.date : (post.startDate || post.date || "9999"); }
+// El próximo pendiente por fecha; si ninguno tiene fecha, el primero de la lista.
+function nextMilestone(post){ return milestonesByDate(post).find(m=>!m.done) || postMilestones(post).find(m=>!m.done) || null; }
+function projectSortKey(post){ const n = nextMilestone(post); return (n && n.date) || post.startDate || post.date || "9999"; }
 async function createProject(post){
   try{
     await updatePostDoc(post.id, { isProject:true, milestones: Array.isArray(post.milestones) ? post.milestones : [] });
@@ -4836,7 +4850,7 @@ function renderProyectosView(){
       <div class="pc-title">${esc(calendarioLabel(p))}${projectDone(p) ? ` <span class="pj-done-badge">✅ ${t("Completado","Completed","Concluído","הושלם")}</span>` : ""}</div>
       <div class="pc-bar"><span style="width:${pct}%"></span></div>
       <div class="pc-meta">${ms.length ? t("{d} de {n} hitos","{d} of {n} milestones","{d} de {n} marcos","{d} מתוך {n} אבני דרך",{d:done,n:ms.length}) : t("Sin hitos todavía","No milestones yet","Sem marcos ainda","עדיין אין אבני דרך")}${overdue ? ` · <span class="pc-overdue">${overdue === 1 ? t("1 vencido","1 overdue","1 vencido","1 באיחור") : t("{n} vencidos","{n} overdue","{n} vencidos","{n} באיחור",{n:overdue})}</span>` : ""}</div>
-      ${next ? `<div class="pc-next">${t("Próximo","Next","Próximo","הבא")}: <b>${esc(next.label)}</b> · ${esc(fmtDate(next.date))}${next.owner ? " " + ownerChip(next.owner) : ""}</div>` : ""}
+      ${next ? `<div class="pc-next">${t("Próximo","Next","Próximo","הבא")}: <b>${esc(next.label)}</b>${next.date ? " · " + esc(fmtDate(next.date)) : ""}${ownerChips(msOwners(next))}</div>` : ""}
     </button>`;
   }).join("")}</div>`;
 }
@@ -4865,6 +4879,7 @@ function renderProjectDetail(post){
         <h2 class="pd-title">${esc(calendarioLabel(post))}</h2>
         ${scopesHtml ? `<div class="post-scopes">${scopesHtml}</div>` : ""}
         ${post.content ? `<div class="post-content">${nl2br(String(post.content).slice(0,600))}</div>` : ""}
+        ${renderProjectEditors(post)}
         <div class="post-actions">
           <button data-action="goto-mention" data-post-id="${post.id}">💬 ${t("Ver en el Feed","See in the Feed","Ver no Feed","הצגה בפיד")}</button>
           ${canEditPost(post) ? `<button data-action="edit-post" data-post-id="${post.id}">✏️ ${t("Editar evento","Edit event","Editar evento","עריכת האירוע")}</button>` : ""}
@@ -4904,17 +4919,18 @@ function milestoneItem(post, m){
 function realPostId(id){ return String(id||"").split("#m:")[0]; }
 function allMilestoneItems(opts={}){
   const out = [];
-  state.posts.forEach(p=>{ if(p.cancelled) return; if(opts.skipDone && projectDone(p)) return; postMilestones(p).forEach(m=> out.push(milestoneItem(p, m))); });
+  state.posts.forEach(p=>{ if(p.cancelled) return; if(opts.skipDone && projectDone(p)) return; milestonesByDate(p).forEach(m=> out.push(milestoneItem(p, m))); });
   return out;
 }
 const openProjects = new Set();
+// Listas de hitos plegadas (por posteo), para ver solo la línea de tiempo.
+const collapsedMilestones = new Set();
 const projectDrafts = {};
-function projectDraft(postId){ return projectDrafts[postId] || (projectDrafts[postId] = { label:"", date:"", owner:"" }); }
+function projectDraft(postId){ return projectDrafts[postId] || (projectDrafts[postId] = { label:"" }); }
 // Elegir personas ESCRIBIENDO (como los participantes del formulario):
 // un campo de texto que sugiere gente del roster por @nickname, nombre o
-// email. La clave dice para qué es: "own:<post>:<hito>" (responsable de
-// un hito), "new:<post>" (responsable del hito que se está agregando),
-// "ed:<post>" (sumar editor).
+// email. La clave dice para qué es: "own:<post>:<hito>" (sumar
+// responsable a un hito), "ed:<post>" (sumar editor).
 const personQueries = {};
 function ppState(key){ return personQueries[key] || (personQueries[key] = { q:"", hi:0 }); }
 function ppMatches(key, exclude){
@@ -4934,6 +4950,18 @@ function renderPersonPicker(key, placeholder, exclude){
 // Reordenar arrastrando de la manija (⋮⋮), con mouse o dedo: mientras se
 // arrastra, la fila se mueve en el DOM debajo del puntero; al soltar, el
 // orden que quedó se guarda como `order` de cada hito.
+// Alta con el título solo: fecha, fin y responsables se editan después
+// en la fila. Si la lista ya tiene orden manual, el nuevo va al final.
+function addMilestoneFromDraft(postId){
+  const post = getPostById(postId); const d = projectDraft(postId);
+  if(!post || !canManageProject(post)) return;
+  if(!d.label.trim()){ showCalendarNotice({ ok:false, message: t("Escribí el nombre del hito.","Type the milestone name.","Escreva o nome do marco.","הקלד/י את שם אבן הדרך.") }); return; }
+  const cur = postMilestones(post);
+  const n = { id: uid(), label: d.label.trim(), date:"", owners:[], done:false };
+  if(cur.length && cur.every(m=> Number.isFinite(m.order))) n.order = cur.length;
+  projectDrafts[postId] = { label:"" };
+  saveMilestones(post, cur.concat([n]));
+}
 function reorderMilestones(post, orderedIds){
   const byId = new Map(postMilestones(post).map(m=>[m.id, m]));
   const list = orderedIds.map(id=>byId.get(id)).filter(Boolean);
@@ -4974,8 +5002,7 @@ function ppApply(key, email){
   const post = getPostById(postId);
   personQueries[key] = { q:"", hi:0 };
   if(!post || !canManageProject(post)){ render(); return; }
-  if(kind === "own") saveMilestones(post, postMilestones(post).map(m=> m.id === msId ? { ...m, owner: email } : m));
-  else if(kind === "new"){ projectDraft(postId).owner = email; render(); }
+  if(kind === "own") saveMilestones(post, postMilestones(post).map(m=> m.id === msId && !msOwners(m).includes(email) ? withOwners(m, msOwners(m).concat([email])) : m));
   else if(kind === "ed"){ if(email !== post.authorEmail && !postEditors(post).includes(email)) saveEditors(post, postEditors(post).concat([email])); else render(); }
 }
 function ownerChip(email){
@@ -4983,20 +5010,28 @@ function ownerChip(email){
   const mem = memberByEmail(email);
   return `<span class="pj-owner">@${esc(mem && mem.nickname ? String(mem.nickname).toLowerCase() : String(email).split("@")[0])}</span>`;
 }
-function ownerOptions(selected){
-  const opts = state.roster.slice().sort((a,b)=> String(a.nickname||a.name||"").localeCompare(String(b.nickname||b.name||"")))
-    .map(u=>`<option value="${esc(u.email)}" ${u.email===selected?"selected":""}>@${esc(String(u.nickname||"").toLowerCase() || u.name || u.email)}</option>`).join("");
-  return `<option value="" ${!selected?"selected":""}>${esc(t("Sin responsable","No owner","Sem responsável","ללא אחראי/ת"))}</option>${opts}`;
+function ownerChips(emails){ return emails.length ? " " + emails.map(ownerChip).join(" ") : ""; }
+// Editores del proyecto: van en la cabecera de la ficha, junto a quién lo
+// creó (es "quiénes lo manejan", no un dato de los hitos).
+function renderProjectEditors(post){
+  const manage = canManageProject(post);
+  const editors = postEditors(post);
+  return `<div class="pj-editors">
+      <span class="pj-editors-lbl">${t("Editores","Editors","Editores","עורכים")}:</span>
+      ${ownerChip(post.authorEmail)}
+      ${editors.map(e=>`<span class="pj-editor-chip">${ownerChip(e)}${manage ? `<button type="button" data-action="ms-editor-remove" data-post-id="${post.id}" data-email="${esc(e)}" aria-label="${esc(t("Quitar editor","Remove editor","Remover editor","הסרת עורך/ת"))}">✕</button>` : ""}</span>`).join("")}
+      ${manage ? renderPersonPicker(`ed:${post.id}`, "+ " + t("Sumar editor…","Add editor…","Adicionar editor…","…הוספת עורך/ת"), [post.authorEmail, ...editors]) : ""}
+    </div>`;
 }
 function renderProjectPanel(post, opts={}){
   const list = postMilestones(post);
   const preview = !!opts.preview;
   const manage = !preview && canManageProject(post);
   const done = list.filter(m=>m.done).length;
-  const next = list.find(m=>!m.done);
+  const next = nextMilestone(post);
   const today = todayISO();
   const head = list.length
-    ? `${t("{d} de {n} hitos","{d} of {n} milestones","{d} de {n} marcos","{d} מתוך {n} אבני דרך",{d:done, n:list.length})}${next ? ` · ${t("próximo","next","próximo","הבא")}: <b>${esc(next.label)}</b>, ${esc(fmtDate(next.date))}${next.owner ? " " + ownerChip(next.owner) : ""}` : ` · ${t("todo cumplido","all done","tudo cumprido","הכול הושלם")} ✅`}`
+    ? `${t("{d} de {n} hitos","{d} of {n} milestones","{d} de {n} marcos","{d} מתוך {n} אבני דרך",{d:done, n:list.length})}${next ? ` · ${t("próximo","next","próximo","הבא")}: <b>${esc(next.label)}</b>${next.date ? ", " + esc(fmtDate(next.date)) : ""}${ownerChips(msOwners(next))}` : ` · ${t("todo cumplido","all done","tudo cumprido","הכול הושלם")} ✅`}`
     : t("Este evento todavía no tiene hitos.","This event has no milestones yet.","Este evento ainda não tem marcos.","לאירוע הזה עדיין אין אבני דרך.");
   // Línea de tiempo horizontal (escritorio), como la de referencia del
   // equipo: los puntos van a distancia PAREJA en orden de fecha, no en
@@ -5005,10 +5040,12 @@ function renderProjectPanel(post, opts={}){
   // otra. La marca de "hoy" se interpola entre los dos puntos vecinos.
   let timeline = "";
   const evStart = post.startDate || post.date, evEnd = post.endDate && post.endDate >= evStart ? post.endDate : evStart;
-  if(list.length){
-    // El evento se intercala por fecha; los hitos van en el orden de la
-    // lista (el manual, si se movieron).
-    const pts = list.map(m=>({ m, iso:m.date }));
+  const dated = milestonesByDate(post);
+  if(dated.length){
+    // Siempre por fecha: mover un hito en la lista no cambia la línea de
+    // tiempo, solo cambiarle la fecha. Los sin fecha no aparecen todavía.
+    // El evento se intercala por fecha.
+    const pts = dated.map(m=>({ m, iso:m.date }));
     let evAt = pts.findIndex(x=> x.iso > evStart); if(evAt < 0) evAt = pts.length;
     pts.splice(evAt, 0, { ev:true, iso:evStart });
     const n = pts.length;
@@ -5037,9 +5074,10 @@ function renderProjectPanel(post, opts={}){
   const rows = list.map(m=>{
     const st = milestoneStatus(m);
     const stLabel = st==="done" ? t("cumplido","done","cumprido","הושלם") : st==="overdue" ? t("vencido","overdue","vencido","באיחור") : st==="today" ? t("hoy","today","hoje","היום") : "";
-    const when = `${esc(fmtDate(m.date))}${m.endDate && m.endDate > m.date ? ` – ${esc(fmtDate(m.endDate))}` : ""}`;
+    const when = m.date ? `${esc(fmtDate(m.date))}${m.endDate && m.endDate > m.date ? ` – ${esc(fmtDate(m.endDate))}` : ""}` : `<i>${esc(t("sin fecha","no date","sem data","ללא תאריך"))}</i>`;
+    const owners = msOwners(m);
     const doneBy = m.done && m.doneBy ? `<span class="pj-doneby">${t("por","by","por","על ידי")} ${ownerChip(m.doneBy)}${m.doneAt ? " · " + esc(fmtDate(m.doneAt)) : ""}</span>` : "";
-    if(!manage) return `<li class="pj-row ${st}"><span class="pj-check ro">${m.done?"✓":""}</span><span class="pj-main"><span class="pj-label">${esc(m.label)}</span><span class="pj-when">${when}${stLabel?` · <i>${esc(stLabel)}</i>`:""}</span></span>${ownerChip(m.owner)}${doneBy}</li>`;
+    if(!manage) return `<li class="pj-row ${st}"><span class="pj-check ro">${m.done?"✓":""}</span><span class="pj-main"><span class="pj-label">${esc(m.label)}</span><span class="pj-when">${when}${stLabel?` · <i>${esc(stLabel)}</i>`:""}</span></span><span class="pj-owners">${owners.map(ownerChip).join("")}</span>${doneBy}</li>`;
     return `<li class="pj-row ${st}" data-ms-id="${esc(m.id)}">
       <span class="pj-grip" data-pj-grip data-post-id="${post.id}" title="${esc(t("Arrastrá para reordenar","Drag to reorder","Arraste para reordenar","גרירה לסידור מחדש"))}" aria-hidden="true"><svg viewBox="0 0 10 16" width="10" height="16"><circle cx="3" cy="3" r="1.4"/><circle cx="7" cy="3" r="1.4"/><circle cx="3" cy="8" r="1.4"/><circle cx="7" cy="8" r="1.4"/><circle cx="3" cy="13" r="1.4"/><circle cx="7" cy="13" r="1.4"/></svg></span>
       <input type="checkbox" class="pj-check" data-action="ms-done" data-post-id="${post.id}" data-ms-id="${esc(m.id)}" ${m.done?"checked":""} aria-label="${esc(t("Cumplido","Done","Cumprido","הושלם"))}">
@@ -5051,8 +5089,7 @@ function renderProjectPanel(post, opts={}){
           ${stLabel?`<i>${esc(stLabel)}</i>`:""}
         </span>
       </span>
-      ${m.owner ? `<span class="pj-owner-wrap">${ownerChip(m.owner)}<button type="button" class="pj-owner-clear" data-action="ms-owner-clear" data-post-id="${post.id}" data-ms-id="${esc(m.id)}" aria-label="${esc(t("Quitar responsable","Remove owner","Remover responsável","הסרת אחראי/ת"))}">✕</button></span>`
-               : renderPersonPicker(`own:${post.id}:${m.id}`, t("Responsable…","Owner…","Responsável…","…אחראי/ת"), [])}
+      <span class="pj-owners">${owners.map(o=>`<span class="pj-owner-wrap">${ownerChip(o)}<button type="button" class="pj-owner-clear" data-action="ms-owner-remove" data-post-id="${post.id}" data-ms-id="${esc(m.id)}" data-email="${esc(o)}" aria-label="${esc(t("Quitar responsable","Remove owner","Remover responsável","הסרת אחראי/ת"))}">✕</button></span>`).join("")}${renderPersonPicker(`own:${post.id}:${m.id}`, "+ " + t("Responsable…","Owner…","Responsável…","…אחראי/ת"), owners)}</span>
       ${doneBy}
       <button type="button" class="rm" data-action="ms-remove" data-post-id="${post.id}" data-ms-id="${esc(m.id)}" title="${esc(t("Quitar hito","Remove milestone","Remover marco","הסרת אבן דרך"))}">✕</button>
     </li>`;
@@ -5060,27 +5097,24 @@ function renderProjectPanel(post, opts={}){
   const d = projectDraft(post.id);
   const addForm = manage ? `
     <div class="pj-add">
-      <input type="text" data-ms-new="label" data-post-id="${post.id}" placeholder="${esc(t("Hito nuevo (ej: Enviar invitaciones)","New milestone (e.g. Send invitations)","Marco novo (ex: Enviar convites)","אבן דרך חדשה (למשל: שליחת הזמנות)"))}" value="${esc(d.label)}" maxlength="120">
-      <input type="date" data-ms-new="date" data-post-id="${post.id}" value="${esc(d.date)}">
-      ${d.owner ? `<span class="pj-owner-wrap">${ownerChip(d.owner)}<button type="button" class="pj-owner-clear" data-action="ms-new-owner-clear" data-post-id="${post.id}" aria-label="✕">✕</button></span>` : renderPersonPicker(`new:${post.id}`, t("Responsable…","Owner…","Responsável…","…אחראי/ת"), [])}
+      <input type="text" data-ms-new="label" data-post-id="${post.id}" placeholder="${esc(t("Hito nuevo (ej: Enviar invitaciones)","New milestone (e.g. Send invitations)","Marco novo (ex: Enviar convites)","אבן דרך חדשה (למשל: שליחת הזמנות)"))}" value="${esc(d.label)}" maxlength="120" aria-label="${esc(t("Hito nuevo","New milestone","Marco novo","אבן דרך חדשה"))}">
       <button type="button" class="btn-mini" data-action="ms-add" data-post-id="${post.id}">+ ${t("Agregar hito","Add milestone","Adicionar marco","הוספת אבן דרך")}</button>
       ${!list.length ? `<button type="button" class="btn-text-add" data-action="ms-suggest" data-post-id="${post.id}">✨ ${t("Sugerir hitos típicos","Suggest typical milestones","Sugerir marcos típicos","הצעת אבני דרך טיפוסיות")}</button>` : ""}
     </div>` : "";
-  const editors = postEditors(post);
-  const editorsRow = `<div class="pj-editors">
-      <span class="pj-editors-lbl">${t("Editores","Editors","Editores","עורכים")}:</span>
-      ${ownerChip(post.authorEmail)}
-      ${editors.map(e=>`<span class="pj-editor-chip">${ownerChip(e)}${manage ? `<button type="button" data-action="ms-editor-remove" data-post-id="${post.id}" data-email="${esc(e)}" aria-label="${esc(t("Quitar editor","Remove editor","Remover editor","הסרת עורך/ת"))}">✕</button>` : ""}</span>`).join("")}
-      ${manage ? renderPersonPicker(`ed:${post.id}`, "+ " + t("Sumar editor…","Add editor…","Adicionar editor…","…הוספת עורך/ת"), [post.authorEmail, ...editors]) : ""}
-    </div>`;
+  // La lista (con el formulario de alta) se pliega para ver solo la
+  // línea de tiempo; el estado es por posteo y arranca desplegada.
+  const collapsed = collapsedMilestones.has(post.id);
+  const listBar = (list.length || manage) ? `<div class="pj-list-bar"><button type="button" class="btn-text-add" data-action="toggle-ms-list" data-post-id="${post.id}" aria-expanded="${collapsed ? "false" : "true"}">${collapsed
+      ? `${t("Ver hitos","Show milestones","Ver marcos","הצגת אבני דרך")} (${list.length}) ▾`
+      : `${t("Ocultar hitos","Hide milestones","Ocultar marcos","הסתרת אבני דרך")} ▴`}</button></div>` : "";
   const manageBtn = preview ? `<div class="pj-manage"><button type="button" class="btn-primary" data-action="project-manage" data-post-id="${post.id}">${canManageProject(post) ? t("Gestionar proyecto","Manage project","Gerenciar projeto","ניהול הפרויקט") : t("Abrir en Proyectos","Open in Projects","Abrir em Projetos","פתיחה בפרויקטים")} ${isRTL() ? "←" : "→"}</button></div>` : "";
   const doneBadge = projectDone(post) ? ` <span class="pj-done-badge">✅ ${t("Completado","Completed","Concluído","הושלם")}${post.projectDoneAt ? " · " + esc(fmtDate(post.projectDoneAt)) : ""}${post.projectDoneBy ? " · " + ownerChip(post.projectDoneBy) : ""}</span>` : "";
   return `<div class="project-panel${preview ? " preview" : ""}${projectDone(post) ? " done" : ""}" data-post-id="${post.id}">
       <div class="pj-head">📋 <b>${t("Proyecto","Project","Projeto","פרויקט")}</b>${doneBadge} · ${head}</div>
       ${timeline}
-      ${rows ? `<ul class="pj-list">${rows}</ul>` : `<div class="hint" style="margin-top:8px;">${t("Sin hitos todavía.","No milestones yet.","Sem marcos ainda.","עדיין אין אבני דרך.")}</div>`}
-      ${addForm}
-      ${preview ? "" : editorsRow}
+      ${listBar}
+      ${collapsed ? "" : `${rows ? `<ul class="pj-list">${rows}</ul>` : `<div class="hint" style="margin-top:8px;">${t("Sin hitos todavía.","No milestones yet.","Sem marcos ainda.","עדיין אין אבני דרך.")}</div>`}
+      ${addForm}`}
       ${manageBtn}
     </div>`;
 }
@@ -9894,6 +9928,7 @@ document.addEventListener("keydown", e=>{
       draft.participantQuery = ""; draft.participantHighlight = 0; render();
     }
   }
+  if(e.key === "Enter" && e.target && e.target.dataset && e.target.dataset.msNew === "label"){ e.preventDefault(); addMilestoneFromDraft(e.target.dataset.postId); return; }
   // Buscador de personas del proyecto (responsables, editores): flechas,
   // Enter/Tab elige, Escape limpia.
   if(e.target && e.target.dataset && e.target.dataset.ppKey){
@@ -10027,22 +10062,17 @@ document.addEventListener("click", e=>{
     const post = getPostById(postId);
     if(post && canManageProject(post)) saveMilestones(post, suggestMilestones(post));
   } else if(action === "ms-add"){
-    const post = getPostById(postId); const d = projectDraft(postId);
-    if(!post || !canManageProject(post)) return;
-    if(!d.label.trim() || !d.date){ showCalendarNotice({ ok:false, message: t("El hito necesita nombre y fecha.","The milestone needs a name and a date.","O marco precisa de nome e data.","אבן הדרך צריכה שם ותאריך.") }); return; }
-    const list = postMilestones(post).concat([{ id: uid(), label: d.label.trim(), date: d.date, owner: d.owner || null, done:false }]);
-    projectDrafts[postId] = { label:"", date:"", owner:"" };
-    saveMilestones(post, list);
+    addMilestoneFromDraft(postId);
+  } else if(action === "toggle-ms-list"){
+    collapsedMilestones.has(postId) ? collapsedMilestones.delete(postId) : collapsedMilestones.add(postId); render();
   } else if(action === "ms-remove"){
     const post = getPostById(postId);
     if(post && canManageProject(post)) saveMilestones(post, postMilestones(post).filter(m=>m.id !== el.dataset.msId));
   } else if(action === "pp-pick"){
     ppApply(el.dataset.ppKey, el.dataset.email);
-  } else if(action === "ms-owner-clear"){
+  } else if(action === "ms-owner-remove"){
     const post = getPostById(postId);
-    if(post && canManageProject(post)) saveMilestones(post, postMilestones(post).map(m=> m.id === el.dataset.msId ? { ...m, owner:null } : m));
-  } else if(action === "ms-new-owner-clear"){
-    projectDraft(postId).owner = ""; render();
+    if(post && canManageProject(post)) saveMilestones(post, postMilestones(post).map(m=> m.id === el.dataset.msId ? withOwners(m, msOwners(m).filter(o=> o !== el.dataset.email)) : m));
   } else if(action === "ms-editor-remove"){
     const post = getPostById(postId);
     if(post && canManageProject(post)) saveEditors(post, postEditors(post).filter(e=>e !== el.dataset.email));
@@ -10554,6 +10584,9 @@ document.addEventListener("input", e=>{
   else if(el.id === "cParticipantQuery"){
     composerDraft.participantQuery = el.value; composerDraft.participantHighlight = 0; render();
   }
+  // El título del hito nuevo se toma al escribir, así Enter lo agrega sin
+  // esperar al "change" (que recién llega al salir del campo).
+  else if(el.dataset && el.dataset.msNew === "label"){ projectDraft(el.dataset.postId).label = el.value; }
   else if(el.dataset && el.dataset.ppKey){
     const st = ppState(el.dataset.ppKey); st.q = el.value; st.hi = 0; render();
   }
@@ -10717,24 +10750,19 @@ document.addEventListener("change", e=>{
     if(post && canManageProject(post)){
       const f = el.dataset.msField; let v = el.value;
       if(f === "label" && !v.trim()){ render(); return; }
-      if(f === "date" && !/^\d{4}-\d{2}-\d{2}$/.test(v)){ render(); return; }
+      if(f === "date" && v && !/^\d{4}-\d{2}-\d{2}$/.test(v)){ render(); return; }
       if(f === "endDate" && v && !/^\d{4}-\d{2}-\d{2}$/.test(v)){ render(); return; }
       saveMilestones(post, postMilestones(post).map(m=>{
         if(m.id !== el.dataset.msId) return m;
         const n = { ...m };
         if(f === "label") n.label = v.trim();
-        else if(f === "date") n.date = v;
+        else if(f === "date"){ n.date = v; if(!v) delete n.endDate; }
         else if(f === "endDate"){ if(v) n.endDate = v; else delete n.endDate; }
-        else if(f === "owner") n.owner = v || null;
         return n;
       }));
     }
   }
   else if(el.dataset.msNew){ const d = projectDraft(el.dataset.postId); d[el.dataset.msNew] = el.value; }
-  else if(el.dataset.action === "ms-editor-add"){
-    const post = getPostById(el.dataset.postId);
-    if(post && canManageProject(post) && el.value && !postEditors(post).includes(el.value)) saveEditors(post, postEditors(post).concat([el.value]));
-  }
   else if(el.dataset.action === "zonas-country-zone"){ getZonasDraft().countryZones[el.dataset.country] = el.value; render(); }
   else if(el.dataset.action === "tipos-sync"){
     const type = getTiposDraft().types.find(x=>x.key===el.dataset.key);

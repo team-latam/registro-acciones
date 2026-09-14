@@ -751,15 +751,32 @@ sus hitos (`canEditPost` los incluye). Los hitos se guardan como lista
 entera en cada cambio (`saveMilestones`), así el documento queda
 consistente en una escritura.
 
+Un hito nuevo se agrega **solo con el título** (Enter o "+ Agregar
+hito"); nace sin fecha ni responsables y eso se completa después en la
+fila. Un hito sin fecha vive en la lista (al final, marcado "sin fecha",
+nunca "vencido") pero no entra a la línea de tiempo, al Calendario ni a
+la campanita hasta que la tenga (`milestonesByDate`).
+
 Responsables y editores se eligen **escribiendo** (`renderPersonPicker`,
 misma idea que los participantes del formulario: sugiere por @nickname,
 nombre o email; flechas, Enter/Tab elige, Escape limpia; la clave dice
-para qué es: `own:<post>:<hito>`, `new:<post>`, `ed:<post>`). Los hitos se
-pueden **mover arrastrando** de la manija ⋮⋮ que hay antes del
-checkbox (pointer events en el documento, mouse o dedo; la fila se mueve
-en el DOM mientras se arrastra y al soltar se guarda): cada hito recibe `order` y la lista
-(y la línea de tiempo) pasan a seguir ese orden en vez de la fecha
-(`postMilestones`); el evento se intercala por fecha.
+para qué es: `own:<post>:<hito>`, `ed:<post>`). Un hito puede tener
+**varios responsables**: se guardan en `owners[]` y se ven como chips
+con ✕, y el buscador queda siempre a mano para sumar otro (`msOwners`
+lee también el `owner` suelto de los hitos viejos; al tocar uno se
+migra a `owners`). Los editores del proyecto van en la **cabecera de la
+ficha**, junto a "Creado por" (`renderProjectEditors`): son quiénes lo
+manejan, no un dato de los hitos.
+
+Los hitos se pueden **mover arrastrando** de la manija ⋮⋮ que hay antes
+del checkbox (pointer events en el documento, mouse o dedo; la fila se
+mueve en el DOM mientras se arrastra y al soltar se guarda): cada hito
+recibe `order` y la lista pasa a seguir ese orden (`postMilestones`).
+Es una comodidad para leer la lista, nada más: **la línea de tiempo va
+siempre por fecha** y solo cambia si cambia una fecha; el evento se
+intercala por fecha. La lista (con el alta) se **pliega** con "Ocultar
+hitos ▴ / Ver hitos (n) ▾" para dejar la línea de tiempo sola; el estado
+es por posteo y por sesión (`collapsedMilestones`).
 
 Los hitos entran también en el **Calendario** y en la **campanita**
 como ítems de un día (o rango) con ◆ y el nombre del evento
@@ -767,7 +784,7 @@ como ítems de un día (o rango) con ◆ y el nombre del evento
 lo que dibujan, con id compuesto `postId#m:hitoId` para no confundirse
 con el evento en los carriles de la grilla; `realPostId()` vuelve al
 posteo real al abrirlo (la ficha que se abre es la del evento padre).
-Con "Solo donde participo", avisan los hitos cuyo responsable soy yo o
+Con "Solo donde participo", avisan los hitos en los que soy responsable o
 cuyo evento es mío.
 
 ### Borrar de verdad (solo el admin fijo)
