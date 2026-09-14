@@ -4058,14 +4058,33 @@ async function logAudit(type, opts){
   if(!actorEmail || !actorName) return;
   try{
     const ip = await fetchPublicIp();
-    await fb.addDoc(fb.collection(db,"auditLog"), {
+    const data = {
       type, actorEmail, actorName,
       targetEmail: opts?.targetEmail || null,
       detail: opts?.detail || null,
       device: deviceLabel(),
       ip,
       createdAt: fb.serverTimestamp(),
-    });
+    };
+    // "login"/"access_requested" los puede escribir CUALQUIER cuenta de
+    // Google, aprobada o no (ver el comentario de isValidAuditEntry en
+    // firestore.rules) — es a propósito, para poder registrar el login o
+    // el pedido de acceso de alguien que todavía no está en la
+    // allowlist. Sin más freno, alguien podía escribir infinitos
+    // documentos acá desde la consola del navegador y agotar la cuota
+    // gratis de Firestore para todo el equipo por un día. Con un id fijo
+    // por cuenta+tipo+día (en vez de uno al azar), el segundo intento
+    // del mismo día cae en "allow update: if false" (ya existe en las
+    // reglas) y se rechaza solo, sin crear un documento nuevo. El resto
+    // de los tipos (aprobar/rechazar/revocar/rol/Calendar) los escribe
+    // solo un admin desde su panel, y cada uno es una acción real que sí
+    // merece su propio documento — esos siguen con id al azar.
+    if(type === "login" || type === "access_requested"){
+      const dayId = `${actorEmail}_${type}_${todayISO()}`.replace(/[^A-Za-z0-9_.@-]/g, "_");
+      await fb.setDoc(fb.doc(db,"auditLog", dayId), data);
+    } else {
+      await fb.addDoc(fb.collection(db,"auditLog"), data);
+    }
   }catch(err){ console.error("Error escribiendo auditoría:", err); }
 }
 // Un solo registro de "login" por sesión de navegador (no uno por cada

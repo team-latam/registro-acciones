@@ -96,6 +96,80 @@ service cloud.firestore {
       return v == null || (v is string && v.size() <= maxLen);
     }
 
+    // Validación POR ELEMENTO de las listas cortas (imágenes, adjuntos,
+    // links, participantes, editores, menciones): antes solo se limitaba
+    // la CANTIDAD de la lista (d.images.size() <= 6), nunca la forma o el
+    // peso de cada elemento — alguien con permiso normal de escritura,
+    // llamando directo al SDK sin pasar por el composer, podía meter
+    // "imágenes" que en realidad eran texto de relleno en base64, o un
+    // link de cientos de KB. El lenguaje de reglas de Firestore no tiene
+    // forma de iterar una lista (no hay .map()/.every()/loops), así que
+    // el patrón es "si el índice cae afuera de la lista, no hay nada que
+    // validar ahí" + un llamado por índice hasta el tope de cada lista —
+    // por eso NO se hace lo mismo con milestones (tope 40) ni con scopes
+    // (tope 15): desenrollar 40 llamados por campo sería puro ruido, y a
+    // esa escala el tope de ~1 MiB por documento de Firestore ya achica
+    // solo el abuso real.
+    function isValidImageAt(list, i) {
+      return i >= list.size() || (
+        list[i] is string &&
+        list[i].matches('^data:image/(png|jpe?g|gif|webp);base64,[A-Za-z0-9+/=]+$')
+      );
+    }
+    function isValidFileAt(list, i) {
+      return i >= list.size() || (
+        list[i].get('name', '') is string && list[i].get('name', '').size() <= 200 &&
+        list[i].get('dataUrl', '') is string &&
+        list[i].get('dataUrl', '').matches('^data:(application/pdf|application/octet-stream|audio/[A-Za-z0-9.+-]+);base64,[A-Za-z0-9+/=]+$')
+      );
+    }
+    function isValidLinkAt(list, i) {
+      return i >= list.size() || (
+        list[i].get('label', '') is string && list[i].get('label', '').size() <= 200 &&
+        list[i].get('url', '') is string && list[i].get('url', '').size() <= 2000
+      );
+    }
+    function isValidParticipantAt(list, i) {
+      return i >= list.size() || (
+        list[i].get('email', '') is string && list[i].get('email', '').size() <= 200 &&
+        list[i].get('name', '') is string && list[i].get('name', '').size() <= 120
+      );
+    }
+    // Listas simples de emails (editors de un posteo, mentions de un
+    // posteo o respuesta): mismo criterio, un string acotado por índice.
+    function isValidEmailAt(list, i) {
+      return i >= list.size() || (list[i] is string && list[i].size() <= 200);
+    }
+    function isValidImageList(list) {
+      return list.size() <= 6 &&
+        isValidImageAt(list,0) && isValidImageAt(list,1) && isValidImageAt(list,2) &&
+        isValidImageAt(list,3) && isValidImageAt(list,4) && isValidImageAt(list,5);
+    }
+    function isValidFileList(list) {
+      return list.size() <= 2 && isValidFileAt(list,0) && isValidFileAt(list,1);
+    }
+    function isValidLinkList(list) {
+      return list.size() <= 10 &&
+        isValidLinkAt(list,0) && isValidLinkAt(list,1) && isValidLinkAt(list,2) && isValidLinkAt(list,3) &&
+        isValidLinkAt(list,4) && isValidLinkAt(list,5) && isValidLinkAt(list,6) && isValidLinkAt(list,7) &&
+        isValidLinkAt(list,8) && isValidLinkAt(list,9);
+    }
+    function isValidParticipantList(list) {
+      return list.size() <= 10 &&
+        isValidParticipantAt(list,0) && isValidParticipantAt(list,1) && isValidParticipantAt(list,2) &&
+        isValidParticipantAt(list,3) && isValidParticipantAt(list,4) && isValidParticipantAt(list,5) &&
+        isValidParticipantAt(list,6) && isValidParticipantAt(list,7) && isValidParticipantAt(list,8) &&
+        isValidParticipantAt(list,9);
+    }
+    function isValidEmailList(list, max) {
+      return list.size() <= max &&
+        isValidEmailAt(list,0) && isValidEmailAt(list,1) && isValidEmailAt(list,2) && isValidEmailAt(list,3) &&
+        isValidEmailAt(list,4) && isValidEmailAt(list,5) && isValidEmailAt(list,6) && isValidEmailAt(list,7) &&
+        isValidEmailAt(list,8) && isValidEmailAt(list,9) && isValidEmailAt(list,10) && isValidEmailAt(list,11) &&
+        isValidEmailAt(list,12) && isValidEmailAt(list,13) && isValidEmailAt(list,14) && isValidEmailAt(list,15) &&
+        isValidEmailAt(list,16) && isValidEmailAt(list,17) && isValidEmailAt(list,18) && isValidEmailAt(list,19);
+    }
+
     // Cambio de @nickname por la propia persona (ver renderUserBadge /
     // "Editar tu @nickname" en index.html): solo puede tocar el campo
     // nickname de SU PROPIO documento, y solo con un valor con forma de
@@ -162,9 +236,7 @@ service cloud.firestore {
         isOptionalString(d.get('organizer', null), 140) &&
         // Participantes taggeados (reemplaza a 'organizer' de a poco, ver
         // renderParticipantsField en index.html): lista de {email, name}.
-        // Los campos internos de cada uno no se validan en profundidad acá
-        // (mismo motivo que 'scopes'/'mentions'), solo el tamaño de la lista.
-        (d.get('participants', null) == null || (d.participants is list && d.participants.size() <= 10)) &&
+        (d.get('participants', null) == null || (d.participants is list && isValidParticipantList(d.participants))) &&
         isOptionalString(d.get('location', null), 200) &&
         // Hora de inicio/fin (HH:MM, opcional): un evento sin hora es
         // "todo el día" (ver allDay en index.html) — el mínimo/máximo de
@@ -180,22 +252,28 @@ service cloud.firestore {
         isNonEmptyString(d.authorName, 120) &&
         isOptionalString(d.get('authorEmail', null), 200) &&
         d.scopes is list && d.scopes.size() >= 0 && d.scopes.size() <= 15 &&
-        (d.get('links', null) == null || (d.links is list && d.links.size() <= 10)) &&
-        (d.get('images', null) == null || (d.images is list && d.images.size() <= 6)) &&
+        (d.get('links', null) == null || (d.links is list && isValidLinkList(d.links))) &&
+        // Imágenes: cada elemento tiene que ser de verdad un data URL de
+        // imagen (mismo regex que safeImageSrc() en index.html) — antes
+        // solo se contaba la cantidad, así que cualquier string pasaba.
+        (d.get('images', null) == null || (d.images is list && isValidImageList(d.images))) &&
         // Adjuntos chicos (PDF/audio) embebidos como antes las imágenes,
-        // sin pasar por Firebase Storage: como no se comprimen, se limita
-        // la cantidad acá (el tamaño en bytes lo limita el cliente antes
-        // de subir, ver MAX_ATTACHMENT_FILE_BYTES en index.html).
-        (d.get('files', null) == null || (d.files is list && d.files.size() <= 2)) &&
+        // sin pasar por Firebase Storage: mismo criterio, cada elemento
+        // valida contra el regex de safeFileDataUrl() en index.html (el
+        // tamaño en bytes de cada uno lo limita el cliente antes de
+        // subir, ver MAX_ATTACHMENT_FILE_BYTES).
+        (d.get('files', null) == null || (d.files is list && isValidFileList(d.files))) &&
         // @menciones: emails de a quién se etiquetó con @ en el texto.
-        (d.get('mentions', null) == null || (d.mentions is list && d.mentions.size() <= 10)) &&
+        (d.get('mentions', null) == null || (d.mentions is list && isValidEmailList(d.mentions, 10))) &&
         (d.get('cancelled', null) == null || d.cancelled is bool) &&
-        // Proyecto: hitos (fecha, responsable, tildado) y editores. Listas
-        // cortas, dentro del mismo documento; el contenido fino lo arma el
-        // cliente (mismo criterio que scopes/links).
+        // Proyecto: hitos (fecha, responsables, tildado) y editores. El
+        // contenido fino de cada hito no se valida elemento por elemento
+        // a propósito (desenrollar 40 índices sería puro ruido acá); a
+        // esa escala el tope de ~1 MiB por documento de Firestore ya
+        // achica el abuso real. `editors` sí, porque son solo 20 strings.
         (d.get('isProject', null) == null || d.isProject is bool) &&
         (d.get('milestones', null) == null || (d.milestones is list && d.milestones.size() <= 40)) &&
-        (d.get('editors', null) == null || (d.editors is list && d.editors.size() <= 20)) &&
+        (d.get('editors', null) == null || (d.editors is list && isValidEmailList(d.editors, 20))) &&
         isOptionalString(d.get('projectNotes', null), 2000) &&
         // Dado por completado: queda en solo lectura hasta "Volver a editar".
         (d.get('projectStatus', null) == null || d.projectStatus in ['open', 'done']) &&
@@ -278,10 +356,10 @@ service cloud.firestore {
         d.keys().hasOnly(['content', 'authorName', 'authorEmail', 'scopes', 'images', 'links', 'files',
           'mentions', 'replyToId', 'system', 'icon', 'createdAt']) &&
         (d.get('scopes', null) == null || (d.scopes is list && d.scopes.size() <= 15)) &&
-        (d.get('links', null) == null || (d.links is list && d.links.size() <= 10)) &&
-        (d.get('images', null) == null || (d.images is list && d.images.size() <= 6)) &&
-        (d.get('files', null) == null || (d.files is list && d.files.size() <= 2)) &&
-        (d.get('mentions', null) == null || (d.mentions is list && d.mentions.size() <= 10)) &&
+        (d.get('links', null) == null || (d.links is list && isValidLinkList(d.links))) &&
+        (d.get('images', null) == null || (d.images is list && isValidImageList(d.images))) &&
+        (d.get('files', null) == null || (d.files is list && isValidFileList(d.files))) &&
+        (d.get('mentions', null) == null || (d.mentions is list && isValidEmailList(d.mentions, 10))) &&
         (d.get('system', null) == null || d.system is bool) &&
         isOptionalString(d.get('icon', null), 8) &&
         isOptionalString(d.get('replyToId', null), 200) &&
@@ -616,6 +694,18 @@ service cloud.firestore {
       allow create: if signedIn() && isValidAuditEntry(request.resource.data) &&
         request.resource.data.type in ['login', 'access_requested'] &&
         request.resource.data.get('targetEmail', null) == null;
+      // Sin isApproved() en la línea de arriba (a propósito, ver el
+      // comentario de isValidAuditEntry), cualquier cuenta de Google
+      // podría escribir documentos de auditoría sin límite — Firestore no
+      // tiene rate limiting propio en las reglas. El freno real es
+      // logAudit() en index.html: para "login"/"access_requested" usa un
+      // id fijo por cuenta+tipo+día (en vez de un id al azar), así que el
+      // segundo intento del mismo día cae en esta misma línea de abajo
+      // ("allow update: if false") y se rechaza solo, sin crear un
+      // documento nuevo — acota el abuso a un puñado de cuentas de Google
+      // distintas, no a un loop infinito desde una sola. La mitigación
+      // completa (bloquear también eso) es Firebase App Check, que se
+      // activa desde la consola de Firebase — ver README.
       allow update, delete: if false;
     }
 
