@@ -319,9 +319,14 @@ Abrir el menú marca todo como visto.
 
 Como cualquier aprobado necesita ver nombres/nicknames del resto del
 equipo para poder etiquetarlos, `allowlist` (antes solo legible por el
-admin en su totalidad) ahora permite `list` a cualquier aprobado — cada
-documento solo tiene email/nombre/nickname/fecha de aprobación, nada
-sensible. El `nickname` se arma una sola vez al aprobar a alguien
+admin en su totalidad) ahora permite `list` a cualquier aprobado —
+Firestore no tiene seguridad a nivel de campo, así que ese `list` trae
+el documento entero de cada persona: email, nombre, nickname, fecha de
+aprobación, y también su **rol** (`role`) y el estado de Calendar
+compartido (`calendarShared`, `calendarInviteSentAt`). Nada de eso es
+un dato sensible en sí mismo (no hay tokens ni contraseñas), pero vale
+saber que cualquier aprobado —incluidos los observadores— puede ver
+quién es admin. El `nickname` se arma una sola vez al aprobar a alguien
 (`makeNickname()`, primer nombre de Google, con desempate si ya existe
 otro con el mismo) y queda guardado en su documento de `allowlist`.
 
@@ -1753,8 +1758,24 @@ muerto). Lo que cambió y conviene tener presente al tocar el código:
   mymemory reduciría mucho el impacto de cualquier XSS futuro, pero hay
   que probarla en producción (los popups de login de Google y las
   teselas del mapa son fáciles de romper con una CSP mal armada).
-- **Privacidad de terceros**: la traducción bajo demanda manda el texto
-  del posteo a MyMemory en el query string (memoria de traducción
-  pública + logs), y el login manda la IP de cada persona a ipify para
-  la auditoría. Son decisiones asumidas por no tener backend; conviene
-  que el equipo lo sepa.
+- **Privacidad de terceros**: la traducción bajo demanda manda a
+  MyMemory, en el query string, el texto de lo que se está traduciendo
+  — un posteo **o una respuesta** (el botón "🌐 Ver traducción" existe
+  en los dos); y el login manda la IP de cada persona a ipify para la
+  auditoría. Son decisiones asumidas por no tener backend; conviene que
+  el equipo lo sepa.
+- **Firebase App Check** (recomendado, no activado): `auditLog` y
+  `accessRequests` aceptan `create` de cualquier cuenta de Google
+  logueada, aprobada o no — es a propósito, para poder registrar el
+  login o el pedido de acceso de alguien que todavía no está en la
+  allowlist (ver el comentario de `isValidAuditEntry` en
+  `firestore.rules`). Eso deja una puerta abierta a que alguien agote la
+  cuota gratis de Firestore escribiendo documentos sin límite desde la
+  consola del navegador. `logAudit()` ya lo achica bastante (usa un id
+  fijo por cuenta+tipo+día para "login"/"access_requested", así que el
+  segundo intento del mismo día se rechaza solo — ver el comentario en
+  `index.html`), pero la mitigación completa es
+  [Firebase App Check](https://firebase.google.com/docs/app-check): se
+  activa desde Firebase Console → App Check, sin tocar código (el SDK
+  de la app ya soporta agregarlo con el proveedor reCAPTCHA v3 o
+  reCAPTCHA Enterprise). Queda para cuando el equipo lo decida.
