@@ -814,10 +814,6 @@
     display:inline-flex; align-items:center; gap:5px; padding:4px 11px; border-radius:999px;
     font-size:11px; font-weight:700; background:var(--petroleo); color:#fff;
   }
-  /* Insignia de posteo "destacado" en el Feed (ver computeFeedOrder):
-     mismo pill que type-badge, con el celeste de la app en vez del
-     petroleo por defecto para que resalte sin salirse de la paleta. */
-  .type-badge.featured-badge{ background:var(--celeste); color:var(--petroleo-dark); }
 
   /* ---------- Post card ---------- */
   .post{ transition:background-color .8s ease; }
@@ -1749,7 +1745,6 @@
       <button data-view="paises">Vistas</button>
       <button data-view="calendario">Calendario</button>
       <button data-view="proyectos">Proyectos</button>
-      <button data-view="memoria" id="tabMemoria">Memoria</button>
       <button data-view="configuracion">Configuración</button>
       <button data-view="auditoria" id="tabAuditoria" hidden>Actividad</button>
       <button data-view="solicitudes" id="tabSolicitudes" hidden>Usuarios<span id="pendingBadge"></span></button>
@@ -3077,7 +3072,6 @@ const state = {
   preferenciasSection: "zonas", // zonas | tipos | lugares | calendar | adjuntos
   countryDrill: null,       // nombre de país (drill a ciudades) en vista Países > Lista
   paisesZoneFilter: new Set(), // keys de zona (sur/central/norte) para filtrar Países (Lista y Mapa); vacío = todas
-  memoriaOrder: "asc",      // asc | desc
   leafletMap: null,
   calendarSyncing: false,   // true mientras se está pidiendo/aplicando cambios desde Calendar
   auditFilters: {
@@ -3130,15 +3124,10 @@ const DEFAULT_PREFS = {
   // del propio Calendario, no escondido en Configuración, porque es algo
   // que se quiere prender y apagar mientras se está mirando la grilla.
   calendarShowMilestones: true,
-  // Feed unificado (en prueba, por persona): una sola solapa Feed con el
-  // interruptor Reciente / Cronológico y los filtros de la Memoria; la
-  // solapa Memoria se esconde. Apagado = Feed + Memoria como siempre.
-  unifiedFeed: false,
-  feedOrder: "reciente",   // reciente | desc | asc (solo con unifiedFeed)
-  // "Reciente" intercala hasta 2 destacados (con comentarios o me gusta,
-  // de la última semana) después del más nuevo. Apagado: solo por
-  // momento de publicación, sin excepciones.
-  feedFeatured: true,
+  // Orden del Feed: por fecha del evento, más reciente primero salvo que
+  // se elija lo contrario (se recuerda por persona). Hubo una versión
+  // "Reciente" con destacados intercalados — se sacó, ver el README.
+  feedOrder: "desc",       // desc | asc
   // El default es 24 h, no "auto": el Calendario SIEMPRE mostró los
   // horarios crudos ("13:00"), y con "auto" Intl considera que es-AR es de
   // 12 h, así que todo el equipo se habría despertado con el calendario en
@@ -5425,20 +5414,9 @@ const fabMainEl = document.getElementById("fabMain");
 const tabSolicitudesEl = document.getElementById("tabSolicitudes");
 const tabAuditoriaEl = document.getElementById("tabAuditoria");
 const tabPreferenciasEl = document.getElementById("tabPreferencias");
-const tabMemoriaEl = document.getElementById("tabMemoria");
-function unifiedFeed(){ return !!prefs().unifiedFeed; }
-// A dónde se abre un lugar: al Feed unificado si está prendido, si no a
-// la Memoria de siempre.
-function placeView(){ return unifiedFeed() ? "feed" : "memoria"; }
-// Orden efectivo del Feed unificado. Con un lugar abierto (desde Vistas,
-// el mapa o el pie de LatAm) se lee en orden: la historia de un lugar no
-// se mezcla con destacados.
-function feedOrder(){
-  const o = prefs().feedOrder;
-  const v = o === "asc" || o === "desc" ? o : "reciente";
-  if(state.filters.place && v === "reciente") return "desc";
-  return v;
-}
+// Orden del Feed: por fecha del evento, más reciente primero salvo que
+// la persona elija lo contrario.
+function feedOrder(){ return prefs().feedOrder === "asc" ? "asc" : "desc"; }
 const calendarToastEl = document.getElementById("calendarToast");
 const calendarToastTextEl = document.getElementById("calendarToastText");
 
@@ -5928,9 +5906,10 @@ function doRender(){
   // cero en cada render (hasta por cada tecla de un buscador). Se cachean
   // acá y se invalidan al principio de cada doRender(), como los lugares.
   upcomingEventsCache = null; recentRepliesCache = null; recentMentionsCache = null;
-  // Con el Feed unificado la solapa Memoria no existe: cualquier camino
-  // que llegue ahí (un atajo viejo, un enlace) cae en el Feed.
-  if(isAuthorized() && unifiedFeed() && state.view === "memoria") state.view = "feed";
+  // La solapa Memoria ya no existe (se unificó con el Feed, ver README):
+  // cualquier camino que llegue ahí (un atajo viejo, un enlace guardado)
+  // cae en el Feed.
+  if(isAuthorized() && state.view === "memoria") state.view = "feed";
   document.querySelectorAll("#tabs button[data-view]").forEach(b=>{
     b.classList.toggle("active", b.dataset.view === state.view);
   });
@@ -5966,7 +5945,6 @@ function doRender(){
 
   tabsNav.classList.remove("tabs-hidden");
   fabEl.hidden = !canWrite(); // el observador no crea nada
-  tabMemoriaEl.hidden = unifiedFeed();
   if(isObserver()) html += renderObserverBanner();
   tabSolicitudesEl.hidden = !isAdmin();
   tabAuditoriaEl.hidden = !isAdmin();
@@ -5984,7 +5962,6 @@ function doRender(){
   if(state.view === "feed") html += renderFeedView();
   else if(state.view === "paises") html += renderPaisesView();
   else if(state.view === "calendario") html += renderCalendarioView();
-  else if(state.view === "memoria") html += renderMemoriaView();
   else if(state.view === "proyectos") html += renderProyectosView();
   else if(state.view === "configuracion") html += renderConfiguracionView();
   else if(state.view === "solicitudes") html += renderAccesoView();
@@ -6973,49 +6950,13 @@ function getVisiblePosts(){
 /* ======================================================================
    RENDER: Feed
    ====================================================================== */
-// Orden del Feed (a pedido): 1) lo recién publicado siempre primero,
-// 2) hasta 2 "destacados" (comentarios + me gusta, solo si es reciente,
-// para que un posteo viejo con mucho engagement no vuelva a subir),
-// 3) el resto como ya estaba, por fecha. Esto es SOLO para el Feed —
-// Memoria sigue usando getVisiblePosts() tal cual, con su propio orden
-// cronológico controlable por el usuario.
-const FEED_FEATURED_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
-const FEED_FEATURED_MAX = 2;
-function computeFeedOrder(items){
-  // Orden base: por momento de PUBLICACIÓN, lo más nuevo arriba. Antes
-  // solo el último publicado subía y el resto iba por fecha del evento:
-  // tres rutinas cargadas seguidas quedaban una arriba y dos perdidas
-  // abajo de los eventos futuros. Para "por fecha" está el Cronológico.
-  const byCreated = items.slice().sort((a,b)=> tsToMillis(b.post.createdAt) - tsToMillis(a.post.createdAt));
-  if(byCreated.length <= 1 || !prefs().feedFeatured) return byCreated.map(it=>({ ...it, featured:false }));
-  const mostRecent = byCreated[0];
-  const pool = byCreated.slice(1);
-  const now = Date.now();
-  const featured = pool
-    .map(it=>({
-      it,
-      score: it.replies.length + (it.post.likedBy||[]).length + it.replies.reduce((s,r)=>s + ((r.likedBy||[]).length), 0),
-      age: now - tsToMillis(it.post.createdAt),
-    }))
-    .filter(x=> x.score > 0 && x.age <= FEED_FEATURED_WINDOW_MS)
-    .sort((a,b)=> b.score - a.score)
-    .slice(0, FEED_FEATURED_MAX)
-    .map(x=>x.it);
-  const featuredIds = new Set(featured.map(it=>it.post.id));
-  const rest = pool.filter(it=>!featuredIds.has(it.post.id));
-  return [
-    { ...mostRecent, featured:false },
-    ...featured.map(it=>({ ...it, featured:true })),
-    ...rest.map(it=>({ ...it, featured:false })),
-  ];
-}
-// Feed y Memoria muestran de a PAGE_SIZE tarjetas con "Ver más" (mismo
-// patrón que Actividad): cada render reconstruye el innerHTML entero, con
-// todas las imágenes base64 adentro — pintar cientos de posteos por cada
-// tecla del buscador o cada respuesta que llega no escala.
+// El Feed muestra de a PAGE_SIZE tarjetas con "Ver más" (mismo patrón
+// que Actividad): cada render reconstruye el innerHTML entero, con todas
+// las imágenes base64 adentro — pintar cientos de posteos por cada tecla
+// del buscador o cada respuesta que llega no escala.
 const PAGE_SIZE = 15;      // cuántas tarjetas se pintan al entrar (a pedido: 15)
 const PAGE_STEP = 15;      // cuántas suma cada "Ver más" (de a 15)
-let feedVisibleCount = PAGE_SIZE, memoriaVisibleCount = PAGE_SIZE;
+let feedVisibleCount = PAGE_SIZE;
 let searchRenderTimer = null;
 function renderLoadMore(action, remaining){
   // Solo "Ver más", sin números (a pedido): el conteo de lo que queda
@@ -7023,44 +6964,35 @@ function renderLoadMore(action, remaining){
   return remaining > 0 ? `<div class="audit-more"><button type="button" class="btn-secondary" data-action="${action}">${t("Ver más","See more","Ver mais","הצגת עוד")}</button></div>` : "";
 }
 // Interruptor Reciente / Cronológico (+ dirección) del Feed unificado.
+// Interruptor de orden del Feed: más reciente / más antiguo primero, por
+// fecha del evento (createdAt como desempate). Reemplaza a la versión
+// con "Reciente" (destacados intercalados) — ver README, sección Feed.
 function renderFeedOrderBar(){
   const order = feedOrder();
-  const crono = order !== "reciente";
-  const placeOpen = !!state.filters.place;
-  const lastDir = prefs().feedOrder === "asc" ? "asc" : "desc";
   return `
     <div class="sort-toggle feed-order">
-      <div class="feed-order-seg" role="radiogroup" aria-label="${esc(t("Orden","Order","Ordem","סדר"))}">
-        <button type="button" class="feed-order-btn${!crono?" active":""}" role="radio" aria-checked="${!crono}" data-action="feed-order" data-key="reciente"
-          ${placeOpen ? `disabled title="${esc(t("Con un lugar abierto se lee en orden","With a place open it's read in order","Com um lugar aberto lê-se em ordem","כשמקום פתוח קוראים לפי סדר"))}"` : ""}>${t("Reciente","Recent","Recente","אחרונים")}</button>
-        <button type="button" class="feed-order-btn${crono?" active":""}" role="radio" aria-checked="${crono}" data-action="feed-order" data-key="${lastDir}">${t("Cronológico","Chronological","Cronológico","כרונולוגי")}</button>
-      </div>
-      ${crono ? `<div class="sort-toggle-group">
+      <div class="sort-toggle-group">
         <span class="chip-toggle ${order==="desc"?"active":""}" data-action="feed-order" data-key="desc">${t("Más reciente primero","Newest first","Mais recente primeiro","החדש ביותר קודם")}</span>
         <span class="chip-toggle ${order==="asc"?"active":""}" data-action="feed-order" data-key="asc">${t("Más antiguo primero","Oldest first","Mais antigo primeiro","הישן ביותר קודם")}</span>
-      </div>` : `<span class="feed-order-hint">${prefs().feedFeatured !== false ? t("Lo nuevo arriba, con destacados","Newest on top, with featured","O novo em cima, com destaques","החדש למעלה, עם מודגשים") : t("Lo nuevo arriba","Newest on top","O novo em cima","החדש למעלה")}</span>`}
-      ${crono && canWrite() ? `<button type="button" class="btn-sync" data-action="sync-calendar" ${state.calendarSyncing?"disabled":""}>🔄 ${t("Actualizar desde Calendar","Refresh from Calendar","Atualizar a partir do Calendar","עדכון מהיומן")}</button>` : ""}
+      </div>
+      ${canWrite() ? `<button type="button" class="btn-sync" data-action="sync-calendar" ${state.calendarSyncing?"disabled":""}>🔄 ${t("Actualizar desde Calendar","Refresh from Calendar","Atualizar a partir do Calendar","עדכון מהיומן")}</button>` : ""}
     </div>`;
 }
 function renderFeedView(){
-  const unified = unifiedFeed();
-  const order = unified ? feedOrder() : "reciente";
-  let all = getVisiblePosts();
-  if(order === "reciente") all = computeFeedOrder(all);
-  else {
-    // Orden explícito por fecha del evento (y creación como desempate), el
-    // mismo criterio del snapshot de posts, para no depender de cómo
-    // llegaron; en asc se invierte entero.
-    all = all.map(it=>({ ...it, featured:false }))
-      .sort((a,b)=> String(b.post.date||"").localeCompare(String(a.post.date||"")) || (tsToMillis(b.post.createdAt) - tsToMillis(a.post.createdAt)));
-    if(order === "asc") all.reverse();
-  }
+  const order = feedOrder();
+  // Por fecha del evento (createdAt como desempate, el mismo criterio de
+  // siempre para no depender de cómo llegaron los posteos); en asc se
+  // invierte entero. El composer de Rutina va SIEMPRE arriba, sin
+  // importar el orden — antes desaparecía en modo Cronológico.
+  const all = getVisiblePosts()
+    .sort((a,b)=> String(b.post.date||"").localeCompare(String(a.post.date||"")) || (tsToMillis(b.post.createdAt) - tsToMillis(a.post.createdAt)));
+  if(order === "asc") all.reverse();
   const items = all.slice(0, feedVisibleCount);
   return `
-    ${canWrite() && order === "reciente" ? renderRutinaComposer() : ""}
+    ${canWrite() ? renderRutinaComposer() : ""}
     ${renderFilterBar("feed")}${renderPlaceLevelSeg()}
-    ${unified ? renderFeedOrderBar() : ""}
-    ${items.length ? items.map(({post,replies,featured})=>renderPostCard(post,replies,featured)).join("") + renderLoadMore("feed-load-more", all.length - items.length) :
+    ${renderFeedOrderBar()}
+    ${items.length ? items.map(({post,replies})=>renderPostCard(post,replies)).join("") + renderLoadMore("feed-load-more", all.length - items.length) :
       `<div class="empty-state"><div class="big">🗒️</div>${anyActiveFilter()
         ? t("Todavía no hay posteos que coincidan con el filtro.","No posts match the filter yet.","Ainda não há postagens que coincidam com o filtro.","עדיין אין פוסטים שתואמים למסנן.")
         : t("Todavía no hay posteos.","There are no posts yet.","Ainda não há postagens.","עדיין אין פוסטים.")
@@ -7213,7 +7145,7 @@ function renderAttachments(item, owner){
       `<img src="${src}" data-action="open-lightbox" ${ownerAttrs(owner)} data-idx="${idx}">`).join(""),
   };
 }
-function renderPostCard(post, replies, featured){
+function renderPostCard(post, replies){
   // El último fallback es por si el admin borró "otro" desde Configuración
   // (o el tipo del posteo) — un tipo desconocido no puede tirar el render.
   const type = ACTIVITY_BY_KEY[post.activityType] || ACTIVITY_BY_KEY.otro || { key:post.activityType, icon:"✨", label:String(post.activityType||"") };
@@ -7263,7 +7195,6 @@ function renderPostCard(post, replies, featured){
       <div class="post-head">
         <div class="post-meta">
           <span class="type-badge">${esc(type.icon)} ${esc(type.label)}</span>
-          ${featured ? `<span class="type-badge featured-badge">⭐ ${t("Destacado","Featured","Destaque","מומלץ")}</span>` : ""}
           <span class="post-date">${dateLabel}${createdTimeLabel}${creadoPor}</span>
           ${post.cancelled ? `<span class="type-badge" style="background:var(--danger);">🚫 ${t("Cancelado","Cancelled","Cancelado","בוטל")}</span>` : ""}
         </div>
@@ -7677,7 +7608,7 @@ function renderCountryDrill(countryName, data){
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
         <h2 style="margin:0;font-size:16px;">${esc(countryLabel(countryName))}</h2>
-        <button class="btn-mini" data-action="goto-country" data-country="${esc(countryName)}">${t("Ver memoria completa {a}","See full memory {a}","Ver memória completa {a}","צפייה בזיכרון המלא {a}",{a:fwdArrow})}</button>
+        <button class="btn-mini" data-action="goto-country" data-country="${esc(countryName)}">${t("Ver historial completo {a}","See full history {a}","Ver histórico completo {a}","צפייה בהיסטוריה המלאה {a}",{a:fwdArrow})}</button>
       </div>
       <div class="city-list">${rowsHtml}</div>
     </div>`;
@@ -7698,7 +7629,7 @@ const MAP_MARKER_SIZE = 40; // diámetro fijo, en px, de TODOS los círculos (no
 // coordenada cae en la capital de su país.
 function mapMarkerSpecs(counts, countries){
   const specs = [];
-  const seeMemory = t("Ver memoria {a}","See memory {a}","Ver memória {a}","צפייה בזיכרון {a}",{a:isRTL()?"←":"→"});
+  const seeMemory = t("Ver historial {a}","See history {a}","Ver histórico {a}","צפייה בהיסטוריה {a}",{a:isRTL()?"←":"→"});
   const nLabel = n => n === 1 ? t("1 registro","1 record","1 registro","רשומה אחת") : t("{n} registros","{n} records","{n} registros","{n} רשומות",{n});
   countries.forEach(c=>{
     const d = counts[c.name];
@@ -7931,7 +7862,6 @@ function holidayColorOf(h){
    ====================================================================== */
 function configSections(){
   return [
-    { key:"feed", label:t("Feed","Feed","Feed","פיד") },
     { key:"calendario", label:t("Calendario","Calendar","Calendário","יומן") },
     { key:"notificaciones", label:t("Notificaciones","Notifications","Notificações","התראות") },
     { key:"feriados", label:t("Feriados","Holidays","Feriados","חגים") },
@@ -7953,7 +7883,6 @@ function renderConfiguracionView(){
   const sec = secs.some(s=>s.key === state.configSection) ? state.configSection : secs[0].key;
   const body = sec === "notificaciones" ? renderConfigNotificacionesSection()
     : sec === "feriados" ? renderConfigFeriadosSection()
-    : sec === "feed" ? renderConfigFeedSection()
     : renderConfigCalendarioSection();
   return `
     <div class="preferencias-view">
@@ -7961,27 +7890,6 @@ function renderConfiguracionView(){
         <button type="button" class="chip-toggle${sec===s.key?" active":""}" data-action="config-section" data-key="${s.key}">${esc(s.label)}</button>`).join("")}</div>` : ""}
       ${body}
     </div>`;
-}
-// Sección Feed de Configuración: la prueba del Feed unificado, por persona.
-function renderConfigFeedSection(){
-  const p = prefs();
-  const on = !!p.unifiedFeed;
-  return `
-      <div class="settings-card">
-        ${prefRow("📰", t("Feed unificado (en prueba)","Unified feed (trial)","Feed unificado (em teste)","פיד מאוחד (ניסיון)"),
-          t("Una sola solapa Feed con el interruptor Reciente / Cronológico y los filtros de la Memoria. La solapa Memoria se esconde mientras esté prendido; apagalo y vuelve todo como antes.","A single Feed tab with the Recent / Chronological switch and the Memory filters. The Memory tab hides while this is on; turn it off and everything is back as before.","Uma única aba Feed com o interruptor Recente / Cronológico e os filtros da Memória. A aba Memória fica escondida enquanto estiver ligado; desligue e tudo volta como antes.","לשונית פיד אחת עם מתג אחרונים / כרונולוגי ומסנני הזיכרון. לשונית הזיכרון מוסתרת כל עוד זה דולק; כבו וחוזר הכול כמו קודם."),
-          prefSwitch("unifiedFeed", on))}
-        ${prefRow("⭐", t("Intercalar destacados en Reciente","Mix featured posts into Recent","Intercalar destaques em Recente","שילוב מודגשים באחרונים"),
-          t("Después del más nuevo, hasta dos posteos de la última semana con comentarios o me gusta. Apagado: solo por momento de publicación, sin excepciones.","After the newest one, up to two posts from the last week with comments or likes. Off: strictly by publication time, no exceptions.","Depois do mais novo, até duas postagens da última semana com comentários ou curtidas. Desligado: só por momento de publicação, sem exceções.","אחרי החדש ביותר, עד שני פוסטים מהשבוע האחרון עם תגובות או לייקים. כבוי: רק לפי זמן הפרסום, בלי יוצאים מן הכלל."),
-          prefSwitch("feedFeatured", p.feedFeatured !== false))}
-        ${on ? prefRow("↕️", t("Orden del Feed","Feed order","Ordem do Feed","סדר הפיד"),
-          t("Se recuerda por persona y se puede cambiar al momento desde el Feed. Al abrir un lugar se lee siempre en orden.","Remembered per person and changeable on the spot from the Feed. Opening a place always reads in order.","Lembrado por pessoa e mudável na hora a partir do Feed. Ao abrir um lugar lê-se sempre em ordem.","נשמר לכל אדם וניתן לשינוי מיידי מהפיד. בפתיחת מקום קוראים תמיד לפי סדר."),
-          `<select data-pref="feedOrder">
-            <option value="reciente" ${p.feedOrder!=="asc"&&p.feedOrder!=="desc"?"selected":""}>${esc(t("Reciente (por momento de publicación)","Recent (by publication time)","Recente (por momento de publicação)","אחרונים (לפי זמן פרסום)"))}</option>
-            <option value="desc" ${p.feedOrder==="desc"?"selected":""}>${esc(t("Cronológico, más reciente primero","Chronological, newest first","Cronológico, mais recente primeiro","כרונולוגי, החדש קודם"))}</option>
-            <option value="asc" ${p.feedOrder==="asc"?"selected":""}>${esc(t("Cronológico, más antiguo primero","Chronological, oldest first","Cronológico, mais antigo primeiro","כרונולוגי, הישן קודם"))}</option>
-          </select>`) : ""}
-      </div>`;
 }
 function prefSwitch(key, on){
   return `<label class="pref-switch"><input type="checkbox" data-pref="${key}" ${on?"checked":""}><span class="pref-slider"></span></label>`;
@@ -8680,29 +8588,6 @@ function renderCalendarioGrid(days){
     </div>`;
 }
 
-/* ======================================================================
-   RENDER: Memoria
-   ====================================================================== */
-function renderMemoriaView(){
-  let all = getVisiblePosts();
-  if(state.memoriaOrder === "asc") all = all.slice().reverse();
-  const items = all.slice(0, memoriaVisibleCount);
-  return `
-    ${renderFilterBar("memoria")}${renderPlaceLevelSeg()}
-    <div class="sort-toggle">
-      <div class="sort-toggle-group">
-        <span class="chip-toggle ${state.memoriaOrder==="asc"?"active":""}" data-action="memoria-order" data-key="asc">${t("Más antiguo primero","Oldest first","Mais antigo primeiro","הישן ביותר קודם")}</span>
-        <span class="chip-toggle ${state.memoriaOrder==="desc"?"active":""}" data-action="memoria-order" data-key="desc">${t("Más reciente primero","Newest first","Mais recente primeiro","החדש ביותר קודם")}</span>
-      </div>
-      ${canWrite() ? `<button type="button" class="btn-sync" data-action="sync-calendar" ${state.calendarSyncing?"disabled":""}>🔄 ${t("Actualizar desde Calendar","Refresh from Calendar","Atualizar a partir do Calendar","עדכון מהיומן")}</button>` : ""}
-    </div>
-    ${items.length ? items.map(({post,replies})=>renderPostCard(post,replies)).join("") + renderLoadMore("memoria-load-more", all.length - items.length) :
-      `<div class="empty-state"><div class="big">📖</div>${anyActiveFilter()
-        ? t("Todavía no hay memoria registrada para este filtro.","There's no recorded memory for this filter yet.","Ainda não há memória registrada para este filtro.","עדיין אין זיכרון רשום עבור מסנן זה.")
-        : t("Todavía no hay memoria registrada.","There's no recorded memory yet.","Ainda não há memória registrada.","עדיין אין זיכרון רשום.")
-      }</div>`}
-  `;
-}
 
 /* ======================================================================
    COMPOSER: Nuevo evento (modal)
@@ -10347,26 +10232,7 @@ document.addEventListener("click", async e=>{
     // navegador scrolleaba hasta él y la persona aterrizaba abajo de las
     // 15 tarjetas nuevas en vez de arriba.
     el.blur();
-    if(action === "feed-load-more") feedVisibleCount += PAGE_STEP; else memoriaVisibleCount += PAGE_STEP;
-    render();
-    window.scrollTo({ top:y, behavior:"auto" });
-    const first = document.querySelectorAll("#viewRoot article.post")[before];
-    if(first){ first.setAttribute("tabindex","-1"); try{ first.focus({ preventScroll:true }); }catch(e){ first.focus(); } }
-  },
-    "memoria-load-more": async (el, e, action, postId) => {
-    // Se queda donde estaba: el botón se reemplaza por las 15 tarjetas
-    // nuevas, que quedan abajo para seguir scrolleando. Se fija el scroll
-    // a mano por si el navegador lo mueve al reconstruir la lista, y el
-    // foco va a la primera tarjeta nueva (sin desplazar la vista) para
-    // que Tab siga desde ahí.
-    const y = window.scrollY;
-    const before = document.querySelectorAll("#viewRoot article.post").length;
-    // Sin este blur, render() le devolvía el foco al botón "Ver más"...
-    // que después del render es el NUEVO botón, al final de la lista: el
-    // navegador scrolleaba hasta él y la persona aterrizaba abajo de las
-    // 15 tarjetas nuevas en vez de arriba.
-    el.blur();
-    if(action === "feed-load-more") feedVisibleCount += PAGE_STEP; else memoriaVisibleCount += PAGE_STEP;
+    feedVisibleCount += PAGE_STEP;
     render();
     window.scrollTo({ top:y, behavior:"auto" });
     const first = document.querySelectorAll("#viewRoot article.post")[before];
@@ -10449,17 +10315,17 @@ document.addEventListener("click", async e=>{
     "goto-country": async (el, e, action, postId) => {
     state.filters.place = { kind:"country", country:el.dataset.country };
     if(el.dataset.level) setPlaceLevel(Number(el.dataset.level)); // las filas "Región"/"Toda LatAm" abren en su nivel
-    state.view = placeView(); state.countryDrill = null; render();
+    state.view = "feed"; state.countryDrill = null; render();
   },
     "goto-latam": async (el, e, action, postId) => {
-    // Del pie de Vistas: la memoria de lo que es de toda LatAm, sin país
-    // ni ciudad de por medio (ver scopeLevelFor con kind "latam").
+    // Del pie de Vistas: lo que es de toda LatAm, sin país ni ciudad de
+    // por medio (ver scopeLevelFor con kind "latam").
     state.filters.place = { kind:"latam" };
-    state.view = placeView(); state.countryDrill = null; render();
+    state.view = "feed"; state.countryDrill = null; render();
   },
     "goto-city": async (el, e, action, postId) => {
     state.filters.place = { kind:"city", country:el.dataset.country, city:el.dataset.city };
-    state.view = placeView(); state.countryDrill = null; render();
+    state.view = "feed"; state.countryDrill = null; render();
   },
     "feed-order": async (el, e, action, postId) => {
     feedVisibleCount = PAGE_SIZE;
@@ -10472,9 +10338,6 @@ document.addEventListener("click", async e=>{
     clearTimeout(calendarNoticeTimer);
     calendarToastEl.hidden = true;
     calendarToastEl.classList.remove("fading");
-  },
-    "memoria-order": async (el, e, action, postId) => {
-    state.memoriaOrder = el.dataset.key; render();
   },
     "sync-calendar": async (el, e, action, postId) => {
     syncFromCalendar({ silent:false });
@@ -10860,7 +10723,7 @@ document.addEventListener("input", e=>{
     // Con un respiro de 150 ms: el feed entero se reconstruye por cada
     // tecla, y tipear rápido encolaba un render por letra.
     state.filters.text = el.value;
-    feedVisibleCount = PAGE_SIZE; memoriaVisibleCount = PAGE_SIZE;
+    feedVisibleCount = PAGE_SIZE;
     clearTimeout(searchRenderTimer);
     searchRenderTimer = setTimeout(render, 150);
   } else if(el.id === "auditSearch"){

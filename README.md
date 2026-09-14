@@ -2,9 +2,9 @@
 
 Herramienta web de un solo archivo (`index.html`) para llevar la memoria
 histórica de las acciones del equipo (rutinas, visitas, cursos, seminarios,
-etc.) en cada ciudad/país/región de LatAm. Feed tipo posteo +
-hilo de respuestas, vista agregada por país (lista y mapa), y una vista
-"Memoria" de lectura cronológica.
+etc.) en cada ciudad/país/región de LatAm. Feed tipo posteo + hilo de
+respuestas, con orden cronológico elegible, y vista agregada por país
+(lista y mapa).
 
 No requiere build ni instalación de dependencias: es HTML/CSS/JS plano que
 se sirve como archivo estático. La persistencia es compartida entre todo el
@@ -255,7 +255,7 @@ rastro del cambio. Esas respuestas se distinguen con un ícono (✏️ edición,
 respuesta del hilo.
 
 **Cancelar** (botón aparte de "Editar", mismos permisos) no borra el
-posteo: lo marca visiblemente como "🚫 Cancelado" en el Feed/Memoria,
+posteo: lo marca visiblemente como "🚫 Cancelado" en el Feed,
 dispara la respuesta automática, y borra el evento correspondiente del
 Calendar compartido (si lo tenía).
 
@@ -463,7 +463,7 @@ Dónde se aplica:
   que va **una sola vez, al pie de la grilla** (`latamFootnote()`); en el
   popup del mapa y en la pantalla del país sí aparece, porque ahí se mira
   un solo lugar. Ese pie tiene un botón **"Verlos →"** (`goto-latam`)
-  que abre la Memoria con el "lugar" `{ kind:"latam" }`: solo lo que tiene
+  que abre el Feed con el "lugar" `{ kind:"latam" }`: solo lo que tiene
   alcance "Toda LatAm", sin país ni ciudad de por medio (`scopeLevelFor`
   lo trata como `own`, así no aparece el selector de niveles ni la
   etiqueta cruzada en las tarjetas). Un país con `own` 0 y algo macro dice "0 propios". La lista va en orden
@@ -471,9 +471,9 @@ Dónde se aplica:
   ubicar uno a ojo sirve más el orden fijo que un ranking, y el número ya
   está en la tarjeta.
 - **Vistas › país**: después de las ciudades, dos filas punteadas ("Región
-  Norte" en su color, "Toda LatAm" en gris) que abren la memoria ya
-  filtrada en ese nivel.
-- **Feed y Memoria con un lugar filtrado**: un selector de tres
+  Norte" en su color, "Toda LatAm" en gris) que abren el Feed ya
+  filtrado en ese nivel.
+- **El Feed con un lugar filtrado**: un selector de tres
   posiciones, "Solo acá N · + Región Norte N · + Toda LatAm N"
   (`renderPlaceLevelSeg`, con los conteos ya pasados por los otros
   filtros). Cada nivel incluye al anterior: ver LatAm sin la región no
@@ -503,7 +503,7 @@ chips que queden (`d.scopes`, vacío si no se eligió nada).
 
 Cuando una respuesta suma un alcance adicional (por ejemplo, un curso en
 Buenos Aires donde alguien responde que también vino gente de Montevideo),
-ese alcance se lee tanto en los filtros de Feed/Memoria como en los conteos
+ese alcance se lee tanto en los filtros del Feed como en los conteos
 de la vista Vistas — aunque el posteo original "viva" en otro lugar. Ver
 `getVisiblePosts()` y `computePlaceCounts()` en `index.html`.
 
@@ -1313,8 +1313,8 @@ scrolleaba de costado**. Lo que quedó, y por qué:
 
 - **La barra de pestañas es su propio scroller** (`nav.tabs` con
   `overflow-x:auto` y la barra oculta). Las 5 pestañas (8 para el admin)
-  no entran en 400px; antes ensanchaban el documento a ~900px, "Memoria"
-  quedaba cortada y Configuración/Usuarios/Administrar fuera de vista.
+  no entran en 400px; antes ensanchaban el documento a ~900px,
+  "Configuración" quedaba cortada y Usuarios/Administrar fuera de vista.
   `syncTabsScroll()` trae la pestaña activa a la vista en cada render
   (con `scrollLeft +=`, no `scrollIntoView`, que puede mover la página en
   vertical) y `updateTabsFade()` pone un degradé en la punta por la que
@@ -1468,17 +1468,24 @@ el día y la hora exactos (`fmtDateTime`). Las etiquetas envejecen: un
 `setInterval` de un minuto las refresca en el lugar por `data-ts`, sin
 re-renderizar. Sin `createdAt` (posteos muy viejos) queda "Creado por".
 
-### Orden "Reciente": por momento de publicación, con o sin destacados
+### El Feed: una sola solapa, orden simple, el cajón siempre a mano
 
-Antes solo el ÚLTIMO publicado subía arriba y el resto iba por fecha del
-evento: tres rutinas cargadas seguidas quedaban una arriba y dos
-perdidas debajo de los eventos futuros importados del Calendar. Ahora
-`computeFeedOrder` ordena por `createdAt` desc (lo más nuevo arriba, sin
-excepciones) y, si la persona lo tiene prendido, intercala después del
-primero hasta dos **destacados** (`feedFeatured`, Configuración › Feed,
-prendido por defecto): posteos de la última semana con comentarios o me
-gusta. Apagado, es estrictamente cronología de publicación. Para "por
-fecha del evento" está el Cronológico del Feed unificado (o la Memoria).
+El Feed es la única forma de ver los posteos (ver más abajo, "Memoria y
+el Feed con destacados", sobre la solapa que había antes de esto).
+Muestra los posteos por **fecha del evento** (`startDate`/`date`,
+`createdAt` como desempate para no depender de en qué orden llegaron),
+con un interruptor de dos opciones — "Más reciente primero" / "Más
+antiguo primero" (`renderFeedOrderBar`, se guarda por persona en
+`userPrefs.feedOrder`: `desc` o `asc`) — y "🔄 Actualizar desde Calendar"
+siempre a mano para quien puede escribir. El cajón de Rutina
+(`renderRutinaComposer`) va **siempre arriba**, sin importar el orden
+elegido: es lo primero que se pidió al retirar el modo anterior, donde
+cambiar el orden lo hacía desaparecer.
+
+No hay ningún "algoritmo" de por medio: el orden es transparente y
+predecible, siempre por la misma regla, sin excepciones ni posteos que
+suban de lugar por tener comentarios o "me gusta" (eso existió y se
+sacó, ver más abajo).
 
 ### "↑ N publicaciones nuevas" (como en X)
 
@@ -1497,8 +1504,8 @@ en cada render y en cada scroll.
 
 ### "Ver más": de a 15, sin moverte
 
-Feed y Memoria pintan 15 tarjetas al entrar (`PAGE_SIZE`) y cada "Ver
-más" suma 15 (`PAGE_STEP`), sin números en el botón. Al tocarlo la
+El Feed pinta 15 tarjetas al entrar (`PAGE_SIZE`) y cada "Ver más" suma
+15 (`PAGE_STEP`), sin números en el botón. Al tocarlo la
 persona **se queda donde estaba** y las tarjetas nuevas aparecen abajo
 para seguir scrolleando. El detalle que lo rompía: `render()` devuelve el
 foco al elemento que lo tenía, buscándolo por selector, y después del
@@ -1507,39 +1514,53 @@ el navegador scrolleaba hasta él y la persona aterrizaba debajo de las 15
 nuevas. Por eso el handler hace `blur()` antes de renderizar, fija el
 scroll a mano y le da el foco (sin desplazar) a la primera tarjeta nueva.
 
-### Feed unificado (en prueba, por persona)
+### Memoria y el Feed con destacados (retirado, septiembre 2026)
 
-Feed y Memoria muestran los mismos posteos con dos preguntas encima:
-"qué está pasando" y "qué pasó". La propuesta (mockup en la sesión de
-septiembre 2026) es una sola solapa Feed con un interruptor de orden y
-los filtros de la Memoria a la vista. Para poder probarla con datos
-reales sin cambiarle nada a nadie, vive detrás de una **preferencia
-personal**: Configuración › Feed › "Feed unificado (en prueba)"
-(`userPrefs.unifiedFeed`, apagada por defecto).
+Hasta acá hubo dos solapas que mostraban los mismos posteos con dos
+preguntas encima: Feed ("qué está pasando", cajón de Rutina siempre
+arriba, orden "Reciente") y Memoria ("qué pasó", cronológico puro, sin
+cajón). Se probó unificarlas: una preferencia personal
+(`userPrefs.unifiedFeed`, apagada por defecto) escondía la solapa
+Memoria y el Feed pasaba a tener un interruptor **Reciente ·
+Cronológico** (`renderFeedOrderBar`) — Reciente seguía intercalando
+hasta dos **destacados** después del más nuevo (`computeFeedOrder`,
+`userPrefs.feedFeatured`: posteos de la última semana con comentarios o
+"me gusta"), y Cronológico ordenaba por fecha del evento con dirección
+elegible.
 
-Con la opción prendida:
+El dueño del producto la evaluó y decidió **sacarla entera**, por dos
+motivos concretos:
 
-- La solapa **Memoria se esconde** (`tabMemoriaEl.hidden`) y cualquier
-  camino que llegue a `state.view === "memoria"` cae en el Feed
-  (`doRender`, antes de marcar la solapa activa).
-- El Feed muestra, debajo de los filtros, el interruptor **Reciente ·
-  Cronológico** (`renderFeedOrderBar`). Reciente es el orden de siempre
-  (`computeFeedOrder`: lo nuevo y hasta dos destacados arriba) y trae el
-  cajón de Rutina; Cronológico ordena por fecha del evento con dirección
-  elegible y trae "Actualizar desde Calendar", sin cajón. La elección se
-  guarda por persona en `userPrefs.feedOrder` (`reciente | desc | asc`) y
-  también se cambia desde Configuración › Feed.
-- **Abrir un lugar** (Vistas, mapa, pie de LatAm; `placeView()`) lleva
-  al Feed en vez de a la Memoria, **siempre en cronológico** mientras el
-  chip 📍 esté puesto (`feedOrder()` fuerza `desc` si la preferencia es
-  Reciente; el botón Reciente queda deshabilitado con el motivo), con el
-  selector "Solo acá / + Región / + Toda LatAm" de siempre. Sacar el chip
-  vuelve al orden elegido; la preferencia no se toca.
+1. **El algoritmo de "Reciente" no daba confianza.** Que un posteo
+   subiera de lugar por tener comentarios o "me gusta" —aunque fuera
+   predecible en el código— se sentía como una caja negra desde la
+   propia app: no había forma de saber, mirando el Feed, por qué algo
+   estaba en tal posición.
+2. **El cajón de Rutina desaparecía en Cronológico.** `renderFeedView`
+   solo lo mostraba con `order === "reciente"` — quien quería leer en
+   orden (lo que Memoria ofrecía a propósito) perdía la posibilidad de
+   cargar la rutina del día sin volver a Reciente. Un defecto de diseño
+   real, no solo una molestia.
 
-Apagada, todo queda exactamente como antes: Feed reciente + Memoria.
-Si la prueba convence, el paso siguiente es hacerla el único modo y
-sacar la solapa Memoria y `renderMemoriaView`; si no, se borra la
-preferencia y la sección de Configuración.
+En vez de eso, el Feed quedó como se describe arriba: una sola solapa,
+un orden simple sin excepciones, con el cajón siempre visible sin
+importar el orden elegido — la parte de Memoria que valía la pena
+(leer en orden) y la parte del Feed que valía la pena (cargar sin
+buscar la solapa correcta), sin la parte que generaba desconfianza.
+
+**Costo de sacarlo:** bajo. `renderMemoriaView`, `computeFeedOrder`,
+`placeView()`/`unifiedFeed()` y las preferencias `feedFeatured`/
+`unifiedFeed` se borraron del código; `feedOrder` quedó con dos valores
+(`desc | asc`) en vez de tres. `firestore.rules` sigue aceptando
+`unifiedFeed`/`feedFeatured` y el valor viejo `feedOrder: "reciente"`
+si algún documento ya guardado los tuviera (nadie los vuelve a escribir,
+pero rechazar un documento existente rompería el guardado de cualquier
+otra preferencia de esa persona).
+
+Queda **revisable**: si en algún momento se quiere retomar la idea de
+"Reciente" con destacados, esta sección documenta exactamente cómo
+funcionaba y por qué se sacó, para no arrancar de cero ni repetir el
+mismo defecto del cajón.
 
 ### Flechas de navegación: una sola familia
 
@@ -1720,7 +1741,7 @@ muerto). Lo que cambió y conviene tener presente al tocar el código:
   tutorial) tienen `role="dialog"`, reciben el foco al abrir, lo devuelven
   al cerrar, ciclan el Tab adentro y se cierran con Escape.
 - **Rendimiento**: los listeners de respuestas juntan sus renders en uno
-  por frame (`scheduleRender()`); Feed y Memoria muestran de a 30 con
+  por frame (`scheduleRender()`); el Feed muestra de a 15 con
   "Ver más"; el mapa se crea una vez y conserva zoom/posición entre
   renders (se vuelve a enchufar su contenedor y solo se rehacen los
   marcadores si cambió algo); la regex de @menciones y los conteos por
