@@ -1384,13 +1384,14 @@
   .cal-view-item:hover{ background:var(--surface-alt); }
   .cal-view-item.active{ background:var(--celeste-soft); color:var(--ink-strong); font-weight:800; }
   .cal-view-item kbd{ font-family:inherit; font-size:11px; font-weight:700; color:var(--text-muted); }
-  /* Panel de "🎌 feriados": los dos pills de capa (mismo .cal-pill que en
-     el toolbar, así se ven igual estén sueltos o adentro del panel) uno
-     debajo del otro, y el link a la Configuración completa al final. */
-  .cal-holidays-panel{ width:min(220px, 80vw); flex-direction:column; flex-wrap:nowrap; align-items:stretch; gap:6px; padding:10px; }
-  .cal-holidays-panel .cal-pill{ justify-content:flex-start; }
-  .cal-holidays-filter .filter-dropdown-panel{ inset-inline-start:auto; inset-inline-end:0; transform-origin:top right; }
-  html[dir="rtl"] .cal-holidays-filter .filter-dropdown-panel{ transform-origin:top left; }
+  /* Panel de "🗂️ Capas": Hitos + los dos pills de feriados (mismo
+     .cal-pill que antes andaba suelto en el toolbar, así se ven igual
+     estén sueltos o adentro del panel) uno debajo del otro, y el link a
+     la Configuración completa al final. */
+  .cal-layers-panel{ width:min(220px, 80vw); flex-direction:column; flex-wrap:nowrap; align-items:stretch; gap:6px; padding:10px; }
+  .cal-layers-panel .cal-pill{ justify-content:flex-start; }
+  .cal-layers-filter .filter-dropdown-panel{ inset-inline-start:auto; inset-inline-end:0; transform-origin:top right; }
+  html[dir="rtl"] .cal-layers-filter .filter-dropdown-panel{ transform-origin:top left; }
   .cal-holidays-config-link{
     border:none; background:none; cursor:pointer; padding:6px 4px 2px; text-align:start;
     font-size:12px; font-weight:700; color:var(--celeste-dark);
@@ -1695,7 +1696,7 @@
   }
   #filePreviewTitle{ padding-inline-end:28px; overflow-wrap:anywhere; }
 
-  /* "Actualizar desde Calendar" vive acá (Feed) en vez del header
+  /* "Actualizar" (sincronizar con Calendar) vive acá (Feed) en vez del header
      global — pedido explícito: al extremo derecho de esta fila, opuesto
      al toggle de orden. flex-wrap para que en mobile baje debajo del
      toggle en vez de aplastarse. También se repite en el toolbar de
@@ -3785,7 +3786,7 @@ async function findCalendarEventId(post){
    Se dispara solo: (a) una vez por sesión, apenas cargan los posteos,
    PERO solo si ya hay un token de Calendar en memoria (o sea, sin pedir
    un login-popup extra a alguien que nunca tocó Calendar), y (b) a mano
-   con el botón "Actualizar desde Calendar". No hace falta ninguna regla
+   con el botón "Actualizar". No hace falta ninguna regla
    nueva de Firestore para posts/replies: quien corre la sincronización
    ya es un usuario aprobado de la app, así que sus escrituras pasan por
    las mismas reglas de siempre.
@@ -3912,6 +3913,14 @@ async function createImportedPost(ev, data){
   });
 }
 
+// Devuelve si REALMENTE aplicó un cambio (true) o si el evento se revisó
+// y no hacía falta tocar nada (false) — syncFromCalendar usa esto para
+// que el aviso de "sincronizado" diga la verdad: antes contaba cuántos
+// eventos se REVISARON, no cuántos se aplicaron, así que un evento
+// editado en Calendar cuyo posteo no se encontró (por ejemplo porque
+// calendarEventId nunca se guardó, ver saveCalendarLinkOrWarn) terminaba
+// en el mismo "Sincronizado ✅" que si sí se hubiera aplicado — no había
+// forma de notar, desde el aviso, que algo se estaba quedando afuera.
 async function applyCalendarEventToPosts(ev){
   const existing = state.posts.find(p => p.calendarEventId === ev.id);
 
@@ -3927,12 +3936,13 @@ async function applyCalendarEventToPosts(ev){
         ),
         system:true, icon:"📅", scopes:[], images:[], links:[],
       });
+      return true;
     }
-    return;
+    return false;
   }
 
   const { startDate, endDate, startTime, endTime } = calendarEventDates(ev);
-  if(!startDate) return;
+  if(!startDate) return false;
   // Los mismos topes que exigen las reglas (title 140, content 5000,
   // location 200, organizer 140): lo que viene de Calendar no pasa por
   // el formulario, así que se recorta acá o Firestore rechaza el evento.
@@ -3943,7 +3953,7 @@ async function applyCalendarEventToPosts(ev){
     const titleChanged = !!newTitle && newTitle !== existing.title;
     const timeChanged = (existing.startTime||"") !== (startTime||"") || (existing.endTime||"") !== (endTime||"");
     const changed = existing.startDate !== startDate || existing.endDate !== endDate || timeChanged || (existing.location||"") !== location || titleChanged;
-    if(!changed) return;
+    if(!changed) return false;
     const parts = [];
     if(titleChanged) parts.push(t(`título ("{old}" → "{new}")`,`title ("{old}" → "{new}")`,`título ("{old}" → "{new}")`,`("{new}" ← "{old}") כותרת`,{old:existing.title,new:newTitle}));
     if(existing.startDate !== startDate || existing.endDate !== endDate || timeChanged){
@@ -3964,7 +3974,7 @@ async function applyCalendarEventToPosts(ev){
       authorName:"Google Calendar", content: t("Se actualizó desde Google Calendar: {changes}.","Updated from Google Calendar: {changes}.","Foi atualizado a partir do Google Calendar: {changes}.","{changes} :עודכן מ-Google Calendar",{changes:parts.join(", ")}),
       system:true, icon:"📅", scopes:[], images:[], links:[],
     });
-    return;
+    return true;
   }
 
   // Evento nuevo creado directo en Calendar (no vino de la app): se suma
@@ -3977,6 +3987,14 @@ async function applyCalendarEventToPosts(ev){
   // por el id de posteo pegado al evento, o por título+fecha+tipo en
   // cualquiera de los idiomas del label. Si aparece, se vincula en vez de
   // duplicar — los posteos no se pueden borrar después.
+  //
+  // OJO: el matcheo por título+fecha compara contra la fecha NUEVA del
+  // evento (startDate, la que llegó de Calendar) — si lo que cambió en
+  // Calendar fue justo la fecha de un evento cuyo vínculo se había
+  // perdido, esta condición no lo encuentra (la fecha guardada del
+  // posteo es la vieja) y termina creando un posteo duplicado en vez de
+  // actualizar el original. Guardar el vínculo de forma confiable
+  // (saveCalendarLinkOrWarn) es lo que evita llegar a este caso.
   const raPostId = ev.extendedProperties?.private?.raPostId;
   const summary = String(ev.summary || "");
   const orphan = state.posts.find(p => !p.calendarEventId && !p.cancelled && (
@@ -3986,7 +4004,7 @@ async function applyCalendarEventToPosts(ev){
   ));
   if(orphan){
     await updatePostDoc(orphan.id, { calendarEventId: ev.id });
-    return;
+    return true;
   }
   const { activityType, title } = importedTypeAndTitle(ev);
   await createImportedPost(ev, {
@@ -4001,6 +4019,7 @@ async function applyCalendarEventToPosts(ev){
     authorName: "Google Calendar", authorEmail: "",
     calendarEventId: ev.id,
   });
+  return true;
 }
 
 // Muestra el aviso como un toast flotante (no ocupa espacio ni empuja el
@@ -4041,9 +4060,16 @@ async function syncFromCalendar(opts){
     // que sea), los demás se aplican igual y el syncToken avanza. Sin
     // esto, un solo evento malo trababa el mismo lote para siempre, en
     // cada navegador, cada 30 segundos.
-    let failed = 0;
+    // applied cuenta cuántos de los eventos revisados realmente movieron
+    // algo (ver el `return true/false` de applyCalendarEventToPosts): el
+    // aviso decía "revisados" pero SONABA a "aplicados" — un evento
+    // editado en Calendar cuyo posteo no se encontró (por ejemplo porque
+    // el vínculo calendarEventId nunca se guardó) pasaba de largo en
+    // silencio y el aviso decía "Sincronizado" igual, sin ninguna forma
+    // de notar que ese evento en particular no tocó nada.
+    let failed = 0, applied = 0;
     for(const ev of result.events || []){
-      try{ await applyCalendarEventToPosts(ev); }
+      try{ if(await applyCalendarEventToPosts(ev)) applied++; }
       catch(err){ failed++; console.error("Error aplicando evento de Calendar", ev && ev.id, err); }
     }
     if(result.nextSyncToken) await setSyncMeta({ syncToken: result.nextSyncToken });
@@ -4051,7 +4077,11 @@ async function syncFromCalendar(opts){
       showCalendarNotice({ ok:false, message:t("{n} evento(s) de Calendar no se pudieron aplicar (ver consola).","{n} Calendar event(s) couldn't be applied (see console).","{n} evento(s) do Calendar não puderam ser aplicados (ver console).","{n} אירועים מהיומן לא הוחלו (ראה/י קונסולה).",{n:failed}) });
       return;
     }
-    if(!silent){ showCalendarNotice({ ok:true, message: t("Sincronizado con Calendar ({n} cambio(s) revisado(s)).","Synced with Calendar ({n} change(s) reviewed).","Sincronizado com o Calendar ({n} alteração(ões) revisada(s)).","({n} סונכרן עם היומן (נבדקו {n} שינויים.",{n:(result.events||[]).length}) }); }
+    const reviewed = (result.events||[]).length;
+    if(!silent){ showCalendarNotice({ ok:true, message: applied
+      ? t("Sincronizado con Calendar: {a} de {n} evento(s) revisado(s) se aplicaron.","Synced with Calendar: {a} of {n} reviewed event(s) were applied.","Sincronizado com o Calendar: {a} de {n} evento(s) revisado(s) foram aplicados.","{n} מתוך {a} :סונכרן עם היומן אירועים שנבדקו הוחלו.",{a:applied,n:reviewed})
+      : t("Sincronizado con Calendar: {n} evento(s) revisado(s), sin cambios para aplicar.","Synced with Calendar: {n} event(s) reviewed, nothing to apply.","Sincronizado com o Calendar: {n} evento(s) revisado(s), nada para aplicar.","{n} :סונכרן עם היומן אירועים שנבדקו, אין מה להחיל.",{n:reviewed})
+    }); }
   }catch(err){
     console.error("Error sincronizando desde Calendar:", err);
     if(!silent){ showCalendarNotice({ ok:false, message:t("No se pudo sincronizar con Calendar: {msg}","Couldn't sync with Calendar: {msg}","Não foi possível sincronizar com o Calendar: {msg}","{msg} :הסנכרון עם היומן נכשל",{msg:err.message}) }); }
@@ -5280,6 +5310,33 @@ function buildEditSummary(original, next){
   return t("✏️ {n} editó este posteo: {changes}.","✏️ {n} edited this post: {changes}.","✏️ {n} editou esta postagem: {changes}.","✏️ {n} ערך/ה פוסט זה: {changes}.",{n:state.auth.user.displayName, changes:parts.join(", ")});
 }
 
+// Guardar calendarEventId después de crear/editar/borrar el evento de
+// Calendar: si ESTA escritura puntual falla, el posteo y/o el evento de
+// Calendar ya quedaron bien guardados, pero el vínculo entre los dos se
+// pierde — y sin vínculo, la próxima sincronización Calendar → app (ver
+// applyCalendarEventToPosts) no reconoce ese evento como "ya existente":
+// lo trata como uno nuevo y crea un posteo duplicado en vez de actualizar
+// el original. Antes esto se silenciaba con .catch(()=>{}) sin aviso
+// (salvo al recién crear el posteo, que sí avisaba) — quien edita algo en
+// Calendar después ve un "Sincronizado" en verde igual, porque la lectura
+// funcionó, pero el cambio nunca encuentra el posteo correcto. Avisar acá
+// hace visible ese desacople apenas pasa, no recién cuando alguien nota
+// que algo no se actualizó. Editar el posteo una vez reintenta encontrar
+// el vínculo (ver findCalendarEventId más abajo).
+async function saveCalendarLinkOrWarn(postId, patch){
+  try{ await updatePostDoc(postId, patch); }
+  catch(err){
+    console.error("No se pudo guardar el vínculo con el evento de Calendar:", err);
+    showCalendarNotice({ ok:false, message:t(
+      "Se guardó, pero el vínculo con el evento de Calendar no se pudo actualizar ({msg}). Editá el posteo una vez para reintentar.",
+      "Saved, but the link to the Calendar event couldn't be updated ({msg}). Edit the post once to retry.",
+      "Foi salvo, mas o vínculo com o evento do Calendar não pôde ser atualizado ({msg}). Edite a postagem uma vez para tentar de novo.",
+      "נשמר, אך לא ניתן היה לעדכן את הקישור לאירוע ביומן ({msg}). ערכ/י את הפוסט פעם אחת כדי לנסות שוב.",
+      {msg:err.message}
+    ) });
+  }
+}
+
 // Actualiza el posteo, deja constancia en el hilo, y mantiene el mismo
 // evento de Calendar en vez de duplicarlo (lo crea si antes no existía,
 // lo actualiza si ya existía, o lo borra si dejó de ser un tipo que
@@ -5315,21 +5372,21 @@ async function updatePostAndSync(postId, original, newData){
     // Posteo viejo sin el vínculo guardado: buscar el evento existente por
     // título/fecha originales antes de resignarse o crear uno duplicado.
     eventId = await findCalendarEventId(original);
-    if(eventId) await updatePostDoc(postId, { calendarEventId: eventId }).catch(()=>{});
+    if(eventId) await saveCalendarLinkOrWarn(postId, { calendarEventId: eventId });
   }
 
   let calResult = { ok:true };
   if(eventId && willSync){
     calResult = await updateCalendarEvent(eventId, newData, postId);
     if(calResult.ok && calResult.eventId !== eventId){
-      await updatePostDoc(postId, { calendarEventId: calResult.eventId }).catch(()=>{});
+      await saveCalendarLinkOrWarn(postId, { calendarEventId: calResult.eventId });
     }
   } else if(eventId && !willSync){
     calResult = await deleteCalendarEvent(eventId);
-    if(calResult.ok) await updatePostDoc(postId, { calendarEventId: null }).catch(()=>{});
+    if(calResult.ok) await saveCalendarLinkOrWarn(postId, { calendarEventId: null });
   } else if(!eventId && willSync){
     calResult = await syncToCalendar(newData, postId);
-    if(calResult.ok && calResult.eventId) await updatePostDoc(postId, { calendarEventId: calResult.eventId }).catch(()=>{});
+    if(calResult.ok && calResult.eventId) await saveCalendarLinkOrWarn(postId, { calendarEventId: calResult.eventId });
   }
   return calResult;
 }
@@ -5386,14 +5443,14 @@ async function cancelPost(post){
     let eventId = post.calendarEventId;
     if(!eventId && CALENDAR_SYNC_TYPES.has(post.activityType)){
       eventId = await findCalendarEventId(post);
-      if(eventId) await updatePostDoc(post.id, { calendarEventId: eventId }).catch(()=>{});
+      if(eventId) await saveCalendarLinkOrWarn(post.id, { calendarEventId: eventId });
     }
     let calResult;
     if(eventId){
       calResult = await deleteCalendarEvent(eventId);
       // Sin el vínculo, una edición posterior del posteo cancelado no
       // intenta tocar (ni recrear) un evento que ya no existe.
-      if(calResult.ok) await updatePostDoc(post.id, { calendarEventId: null }).catch(()=>{});
+      if(calResult.ok) await saveCalendarLinkOrWarn(post.id, { calendarEventId: null });
     } else if(CALENDAR_SYNC_TYPES.has(post.activityType)){
       calResult = { ok:false, reason:t(
         "no se encontró un evento de Calendar que coincida (puede que ya se haya borrado a mano, o el título cambió demasiado) — revisalo a mano si hace falta",
@@ -7063,7 +7120,7 @@ function renderFeedOrderBar(){
         <span class="chip-toggle ${order==="desc"?"active":""}" data-action="feed-order" data-key="desc">${t("Más reciente primero","Newest first","Mais recente primeiro","החדש ביותר קודם")}</span>
         <span class="chip-toggle ${order==="asc"?"active":""}" data-action="feed-order" data-key="asc">${t("Más antiguo primero","Oldest first","Mais antigo primeiro","הישן ביותר קודם")}</span>
       </div>
-      ${canWrite() ? `<button type="button" class="btn-sync" data-action="sync-calendar" ${state.calendarSyncing?"disabled":""}>🔄 ${t("Actualizar desde Calendar","Refresh from Calendar","Atualizar a partir do Calendar","עדכון מהיומן")}</button>` : ""}
+      ${canWrite() ? `<button type="button" class="btn-sync" data-action="sync-calendar" ${state.calendarSyncing?"disabled":""}>🔄 ${t("Actualizar","Refresh","Atualizar","עדכון")}</button>` : ""}
     </div>`;
 }
 function renderFeedView(){
@@ -8335,21 +8392,7 @@ function calendarioViews(){
   ];
 }
 let calViewMenuOpen = false;
-let calHolidaysMenuOpen = false;
-
-// Antes había que entrar a Configuración para enterarse de si había
-// feriados activados o no ("¿por qué no aparece ninguno?"/"¿estará
-// activado esto?"): un pill en el propio toolbar del Calendario, que
-// lleva directo a esa sección.
-function holidayHintLabel(){
-  const p = prefs();
-  if((p.holidayMode||"sutil") === "off") return t("Feriados: apagados","Holidays: off","Feriados: desligados","חגים: כבוי");
-  const n = (p.holidayCountries||[]).length + (p.holidayJewish ? 1 : 0);
-  if(!n) return t("Sin feriados activados","No holidays turned on","Sem feriados ativados","אין חגים מופעלים");
-  return n === 1
-    ? t("1 feriado activado","1 holiday turned on","1 feriado ativado","חג אחד מופעל")
-    : t("{n} feriados activados","{n} holidays turned on","{n} feriados ativados","{n} חגים מופעלים",{n});
-}
+let calLayersMenuOpen = false;
 // Mismo pill que "◆ Hitos", pero para cada capa de feriados por
 // separado (país / festividades judías): kind decide qué pref lee/
 // escribe (calendarShowHolidaysLocal|Jewish) y qué hace falta tener
@@ -8385,22 +8428,25 @@ function renderCalendarioView(){
   const anchor = calendarioAnchor();
   const current = views.find(v=>v.key === sub);
   const showMs = prefs().calendarShowMilestones !== false;
+  // Mismo pill que antes, pero ahora vive ADENTRO del panel de Capas
+  // (justify-content:flex-start via .cal-layers-panel .cal-pill), no
+  // suelto en el toolbar.
   const msToggle = `<button type="button" class="cal-pill${showMs?" active":""}" data-action="toggle-cal-milestones" aria-pressed="${showMs}" title="${esc(t("Mostrar u ocultar los hitos de los proyectos en el Calendario","Show or hide project milestones in the Calendar","Mostrar ou ocultar os marcos dos projetos no Calendário","הצגה או הסתרה של אבני דרך של פרויקטים ביומן"))}">◆ ${t("Hitos","Milestones","Marcos","אבני דרך")}</button>`;
-  // Un solo botón que despliega las dos capas (mismo patrón que el
-  // selector de vista, cal-view-filter): dos pills sueltos en el toolbar
-  // — uno por capa — dejaban la barra demasiado cargada y hacían que "+
-  // Nuevo evento" ya no quedara contra el borde derecho a un ancho de
-  // escritorio normal. "Dentro de un botón" es también, literalmente, lo
-  // que se pidió.
-  const holidayMenu = `
-    <div class="filter-dropdown cal-holidays-filter">
-      <button type="button" class="cal-pill filter-dropdown-btn${calHolidaysMenuOpen?" open":""}" data-action="toggle-cal-holidays-menu" aria-haspopup="true" aria-expanded="${calHolidaysMenuOpen}">
-        🎌 ${esc(holidayHintLabel())}<span class="filter-dropdown-chevron">▾</span>
+  // Un solo botón "Capas" que despliega hitos + las dos capas de
+  // feriados (mismo patrón que el selector de vista, cal-view-filter):
+  // pills sueltos en el toolbar dejaban la barra demasiado cargada.
+  // "Dentro de un botón" es también, literalmente, lo que se pidió para
+  // los feriados, y por el mismo motivo entra hitos.
+  const layersMenu = `
+    <div class="filter-dropdown cal-layers-filter">
+      <button type="button" class="cal-pill filter-dropdown-btn${calLayersMenuOpen?" open":""}" data-action="toggle-cal-layers-menu" aria-haspopup="true" aria-expanded="${calLayersMenuOpen}">
+        🗂️ ${t("Capas","Layers","Camadas","שכבות")}<span class="filter-dropdown-chevron">▾</span>
       </button>
-      ${calHolidaysMenuOpen ? `<div class="filter-dropdown-panel cal-holidays-panel">
+      ${calLayersMenuOpen ? `<div class="filter-dropdown-panel cal-layers-panel">
+          ${msToggle}
           ${holidayLayerToggle("local")}
           ${holidayLayerToggle("jewish")}
-          <button type="button" class="cal-holidays-config-link" data-action="goto-config-feriados">${t("Configurar en Ajustes","Configure in Settings","Configurar em Ajustes","הגדרה באפשרויות")} ${isRTL()?"←":"→"}</button>
+          <button type="button" class="cal-holidays-config-link" data-action="goto-config-feriados">${t("Configurar feriados en Ajustes","Configure holidays in Settings","Configurar feriados em Ajustes","הגדרת חגים באפשרויות")} ${isRTL()?"←":"→"}</button>
         </div>` : ""}
     </div>`;
   const toggle = `
@@ -8421,17 +8467,15 @@ function renderCalendarioView(){
       <span class="cal-title">${esc(calendarioTitle(sub, anchor))}</span>
     </div>`;
   // Navegación a la izquierda ("Hoy ‹ › septiembre de 2026"); del lado
-  // derecho, el selector de vista y después "+ Nuevo evento", que queda
-  // contra el borde.
-  const newBtn = canWrite()
-    ? `<button type="button" class="btn-new" data-action="new-evento">+ ${esc(t("Nuevo evento","New event","Novo evento","אירוע חדש"))}</button>`
-    : "";
+  // derecho, Capas, el selector de vista y "Actualizar". Ya no hay un
+  // "+ Nuevo evento" acá: es lo mismo que ya ofrece el "+" (FAB) en
+  // todas las vistas, tenerlo dos veces en Calendario era redundante.
   // Mismo botón que en el Feed (renderFeedOrderBar): quien vive en esta
   // vista no debería tener que ir a otra para refrescar desde Calendar.
   const syncBtn = canWrite()
-    ? `<button type="button" class="btn-sync" data-action="sync-calendar" ${state.calendarSyncing?"disabled":""}>🔄 ${t("Actualizar desde Calendar","Refresh from Calendar","Atualizar a partir do Calendar","עדכון מהיומן")}</button>`
+    ? `<button type="button" class="btn-sync" data-action="sync-calendar" ${state.calendarSyncing?"disabled":""}>🔄 ${t("Actualizar","Refresh","Atualizar","עדכון")}</button>`
     : "";
-  const toolbar = `<div class="paises-toolbar">${nav}<div class="cal-toolbar-end">${msToggle}${holidayMenu}${toggle}${syncBtn}${newBtn}</div></div>`;
+  const toolbar = `<div class="paises-toolbar">${nav}<div class="cal-toolbar-end">${layersMenu}${toggle}${syncBtn}</div></div>`;
   if(CONFIG_IS_PLACEHOLDER){
     return toolbar + `<div class="empty-state">${t("Configurá Firebase para ver datos.","Set up Firebase to see data.","Configure o Firebase para ver dados.",".הגדר/י את Firebase כדי לראות נתונים")}</div>`;
   }
@@ -9711,7 +9755,7 @@ document.addEventListener("keydown", e=>{
   if(!calendarInviteOverlay.hidden){ dismissCalendarInviteOverlay(); return; }
   if(fabOpen){ closeFab(); fabMainEl.focus(); return; }
   if(calViewMenuOpen){ calViewMenuOpen = false; render(); return; }
-  if(calHolidaysMenuOpen){ calHolidaysMenuOpen = false; render(); return; }
+  if(calLayersMenuOpen){ calLayersMenuOpen = false; render(); return; }
   if(postModalOverlay.hidden) return;
   const d = composerDraft;
   if(d.placeQuery || d.mentionQuery != null || d.participantQuery) return;
@@ -10154,8 +10198,8 @@ document.addEventListener("click", async e=>{
   if(calViewMenuOpen && !e.target.closest(".cal-view-filter")){
     calViewMenuOpen = false; render();
   }
-  if(calHolidaysMenuOpen && !e.target.closest(".cal-holidays-filter")){
-    calHolidaysMenuOpen = false; render();
+  if(calLayersMenuOpen && !e.target.closest(".cal-layers-filter")){
+    calLayersMenuOpen = false; render();
   }
   if(fabOpen && !e.target.closest("#fab")) closeFab();
 
@@ -10444,7 +10488,7 @@ document.addEventListener("click", async e=>{
     state.configSection = el.dataset.key; render();
   },
     "goto-config-feriados": async (el, e, action, postId) => {
-    calHolidaysMenuOpen = false;
+    calLayersMenuOpen = false;
     state.view = "configuracion"; state.configSection = "feriados"; render(); scrollToTop();
   },
     "new-posts-jump": async (el, e, action, postId) => {
@@ -10465,8 +10509,8 @@ document.addEventListener("click", async e=>{
     "toggle-cal-milestones": async (el, e, action, postId) => {
     savePrefs({ calendarShowMilestones: prefs().calendarShowMilestones === false });
   },
-    "toggle-cal-holidays-menu": async (el, e, action, postId) => {
-    calHolidaysMenuOpen = !calHolidaysMenuOpen; render();
+    "toggle-cal-layers-menu": async (el, e, action, postId) => {
+    calLayersMenuOpen = !calLayersMenuOpen; render();
   },
     "toggle-cal-holidays": async (el, e, action, postId) => {
     const key = el.dataset.kind === "jewish" ? "calendarShowHolidaysJewish" : "calendarShowHolidaysLocal";
