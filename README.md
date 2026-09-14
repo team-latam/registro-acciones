@@ -1050,6 +1050,41 @@ mes entero aparecía marcado sin que nadie tenga franco. Si un día tiene los
 dos, el nombre que se ve es el del país (el que define si hay franco) y el
 `title` lista los dos.
 
+#### Mostrar/ocultar cada capa desde el propio Calendario
+
+Un botón "🎌 N feriados activados" en el toolbar de Calendario (junto a
+"◆ Hitos") despliega un panel con dos switches — 🏳️ Locales y
+✡️ Judíos — que prenden o apagan cada capa **en la vista**, sin tocar
+qué está configurado en Configuración > Feriados. Mismo criterio que el
+toggle de hitos: es algo que se quiere prender y apagar mientras se está
+mirando la grilla, no una decisión que amerite ir a Configuración.
+
+Es un desplegable (`calHolidaysMenuOpen`, mismo patrón `filter-dropdown`
+que el selector de vista `cal-view-filter` o los filtros de
+Actividades/Zonas del Feed — cierra solo al clickear afuera o con
+Escape) y no dos pills sueltos en el toolbar a propósito: con dos pills
+más ahí, a 1280px de ancho (un escritorio común) la barra ya no entraba
+en una sola línea y "+ Nuevo evento" dejaba de quedar contra el borde
+derecho — `fab.mjs`/`layout.mjs` lo agarraron. Un botón que se abre
+"hacia adentro" es también, literalmente, lo que se pidió.
+
+La distinción importa: `holidayMode`/`holidayCountries`/`holidayJewish`
+deciden **qué se pide** a Google (y si se pide algo en absoluto);
+`calendarShowHolidaysLocal`/`calendarShowHolidaysJewish` (dos prefs
+nuevas, default `true`) deciden si esa capa, ya **conseguida**, se
+dibuja ahora. Apagar el switch no re-pide nada al volver a prenderlo —
+es puramente un filtro sobre `holidaysByDate`, en `holidaysOn()`.
+
+**Un switch sin nada que mostrar queda deshabilitado**, no clickeable: si
+`holidayMode` está en "apagados", o el país no tiene ningún calendario
+elegido, o las festividades judías están apagadas, tocarlo no haría
+nada — mejor no ofrecerlo (mismo patrón `disabled` + `title` que usa el
+resto de la app, por ejemplo al no dejar borrar una zona con países
+asignados). Vuelve a habilitarse solo cuando hay algo configurado para
+esa capa; el panel también trae un link corto a Configuración >
+Feriados para cuando lo que hace falta es activar algo, no solo
+mostrarlo/ocultarlo.
+
 ### Sincronización con Google Calendar (Feed ↔ Calendar)
 
 Cada posteo de tipo Visita/Curso/Seminario/Congreso/Virtual/Otro (todo menos

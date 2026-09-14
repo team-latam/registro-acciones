@@ -1352,6 +1352,8 @@
   .cal-nav button:hover, .cal-pill:hover{ border-color:var(--celeste); }
   .cal-pill.active{ background:var(--petroleo); color:#fff; border-color:var(--petroleo); }
   .cal-pill.active:hover{ border-color:var(--petroleo); }
+  .cal-pill:disabled{ opacity:0.4; cursor:not-allowed; }
+  .cal-pill:disabled:hover{ border-color:var(--border); }
   .cal-arrow{ width:32px; height:32px; font-size:17px; line-height:1; padding:0; }
   .cal-title{ font-weight:800; font-size:15px; color:var(--ink-strong); }
   /* Solo la primera letra: toLocaleDateString devuelve el mes en minúscula
@@ -1382,6 +1384,18 @@
   .cal-view-item:hover{ background:var(--surface-alt); }
   .cal-view-item.active{ background:var(--celeste-soft); color:var(--ink-strong); font-weight:800; }
   .cal-view-item kbd{ font-family:inherit; font-size:11px; font-weight:700; color:var(--text-muted); }
+  /* Panel de "🎌 feriados": los dos pills de capa (mismo .cal-pill que en
+     el toolbar, así se ven igual estén sueltos o adentro del panel) uno
+     debajo del otro, y el link a la Configuración completa al final. */
+  .cal-holidays-panel{ width:min(220px, 80vw); flex-direction:column; flex-wrap:nowrap; align-items:stretch; gap:6px; padding:10px; }
+  .cal-holidays-panel .cal-pill{ justify-content:flex-start; }
+  .cal-holidays-filter .filter-dropdown-panel{ inset-inline-start:auto; inset-inline-end:0; transform-origin:top right; }
+  html[dir="rtl"] .cal-holidays-filter .filter-dropdown-panel{ transform-origin:top left; }
+  .cal-holidays-config-link{
+    border:none; background:none; cursor:pointer; padding:6px 4px 2px; text-align:start;
+    font-size:12px; font-weight:700; color:var(--celeste-dark);
+  }
+  .cal-holidays-config-link:hover{ text-decoration:underline; }
   .cal-year{ display:grid; grid-template-columns:repeat(auto-fill, minmax(190px,1fr)); gap:14px; }
   .year-month{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md); box-shadow:var(--shadow); padding:10px; }
   .year-month-name{
@@ -3141,6 +3155,12 @@ const DEFAULT_PREFS = {
   holidayMode: "sutil",    // sutil | evento | off
   holidayCountries: [],
   holidayJewish: false,
+  // Mostrar/ocultar cada capa en el propio Calendario (mismo criterio que
+  // calendarShowMilestones): NO tocan qué está configurado en holidayMode/
+  // holidayCountries/holidayJewish, solo si esa capa ya activada se
+  // DIBUJA ahora mismo. Ver los pills junto a "◆ Hitos" en el toolbar.
+  calendarShowHolidaysLocal: true,
+  calendarShowHolidaysJewish: true,
   // Colores por separado: un feriado de país y una festividad judía pueden
   // caer el mismo día, y si se ven iguales no se distinguen.
   holidayColor: "#6b7a8f",
@@ -7903,10 +7923,18 @@ async function ensureHolidays(){
 // Se filtra por los calendarios activos AHORA (y no se borra lo ya
 // bajado): apagar un país lo saca de la vista al instante, y volver a
 // prenderlo no vuelve a pedir nada.
+//
+// Dos filtros en cadena, que responden a cosas distintas: `wanted` es lo
+// que está CONFIGURADO en Configuración > Feriados (qué calendarios se
+// piden); calendarShowHolidaysLocal/Jewish es si esa capa, ya
+// configurada, se DIBUJA ahora en el Calendario (los pills junto a "◆
+// Hitos"). Apagar el pill no toca la configuración ni re-pide nada.
 function holidaysOn(iso){
-  if(prefs().holidayMode === "off") return [];
+  const p = prefs();
+  if(p.holidayMode === "off") return [];
   const wanted = new Set(holidayCalendarsWanted());
-  return (holidaysByDate[iso] || []).filter(h => wanted.has(h.key));
+  return (holidaysByDate[iso] || []).filter(h => wanted.has(h.key) &&
+    (h.key === JEWISH_CAL ? p.calendarShowHolidaysJewish !== false : p.calendarShowHolidaysLocal !== false));
 }
 // El fondo del día lo pintan SOLO los feriados de país: es el "hoy no se
 // trabaja". Las festividades judías se muestran con su nombre y su color,
@@ -8307,6 +8335,7 @@ function calendarioViews(){
   ];
 }
 let calViewMenuOpen = false;
+let calHolidaysMenuOpen = false;
 
 // Antes había que entrar a Configuración para enterarse de si había
 // feriados activados o no ("¿por qué no aparece ninguno?"/"¿estará
@@ -8321,6 +8350,35 @@ function holidayHintLabel(){
     ? t("1 feriado activado","1 holiday turned on","1 feriado ativado","חג אחד מופעל")
     : t("{n} feriados activados","{n} holidays turned on","{n} feriados ativados","{n} חגים מופעלים",{n});
 }
+// Mismo pill que "◆ Hitos", pero para cada capa de feriados por
+// separado (país / festividades judías): kind decide qué pref lee/
+// escribe (calendarShowHolidaysLocal|Jewish) y qué hace falta tener
+// CONFIGURADO en holidayMode/holidayCountries/holidayJewish para que
+// mostrar/ocultar tenga sentido. Sin eso configurado, no hay nada que
+// esta capa pueda mostrar — el pill queda deshabilitado (mismo patrón
+// `disabled` + title explicando por qué que usa el resto de la app, ver
+// zonas-remove-zone/calendar-reimport) en vez de dejar tocar un
+// interruptor que no hace nada.
+function holidayLayerToggle(kind){
+  const p = prefs();
+  const off = (p.holidayMode||"sutil") === "off";
+  const configured = kind === "jewish" ? !!p.holidayJewish : (p.holidayCountries||[]).length > 0;
+  const prefKey = kind === "jewish" ? "calendarShowHolidaysJewish" : "calendarShowHolidaysLocal";
+  const icon = kind === "jewish" ? "✡️" : "🏳️";
+  const label = kind === "jewish"
+    ? t("Judíos","Jewish","Judaicos","יהודיים")
+    : t("Locales","Local","Locais","מקומיים");
+  if(off || !configured){
+    const why = off
+      ? t("No hay ningún feriado activado (Feriados: apagados en Configuración).","No holidays are turned on (Holidays: off in Settings).","Nenhum feriado está ativado (Feriados: desligados em Configurações).","אין חגים מופעלים (חגים: כבוי בהגדרות).")
+      : kind === "jewish"
+        ? t("Las festividades judías están apagadas en Configuración > Feriados.","Jewish holidays are off in Settings > Holidays.","As festividades judaicas estão desligadas em Configurações > Feriados.","החגים היהודיים כבויים בהגדרות > חגים.")
+        : t("No hay ningún país elegido en Configuración > Feriados.","No country is picked in Settings > Holidays.","Nenhum país está escolhido em Configurações > Feriados.","לא נבחרה אף מדינה בהגדרות > חגים.");
+    return `<button type="button" class="cal-pill" data-action="toggle-cal-holidays" data-kind="${kind}" disabled title="${esc(why)}">${icon} ${esc(label)}</button>`;
+  }
+  const shown = p[prefKey] !== false;
+  return `<button type="button" class="cal-pill${shown?" active":""}" data-action="toggle-cal-holidays" data-kind="${kind}" aria-pressed="${shown}" title="${esc(t("Mostrar u ocultar esta capa en el Calendario","Show or hide this layer in the Calendar","Mostrar ou ocultar esta camada no Calendário","הצגה או הסתרה של השכבה הזו ביומן"))}">${icon} ${esc(label)}</button>`;
+}
 function renderCalendarioView(){
   const views = calendarioViews();
   const sub = views.some(v=>v.key === state.calendarioSubview) ? state.calendarioSubview : "mes";
@@ -8328,7 +8386,23 @@ function renderCalendarioView(){
   const current = views.find(v=>v.key === sub);
   const showMs = prefs().calendarShowMilestones !== false;
   const msToggle = `<button type="button" class="cal-pill${showMs?" active":""}" data-action="toggle-cal-milestones" aria-pressed="${showMs}" title="${esc(t("Mostrar u ocultar los hitos de los proyectos en el Calendario","Show or hide project milestones in the Calendar","Mostrar ou ocultar os marcos dos projetos no Calendário","הצגה או הסתרה של אבני דרך של פרויקטים ביומן"))}">◆ ${t("Hitos","Milestones","Marcos","אבני דרך")}</button>`;
-  const holidayHint = `<button type="button" class="cal-pill" data-action="goto-config-feriados" title="${esc(t("Ir a la configuración de feriados","Go to holiday settings","Ir para a configuração de feriados","מעבר להגדרות החגים"))}">🎌 ${esc(holidayHintLabel())}</button>`;
+  // Un solo botón que despliega las dos capas (mismo patrón que el
+  // selector de vista, cal-view-filter): dos pills sueltos en el toolbar
+  // — uno por capa — dejaban la barra demasiado cargada y hacían que "+
+  // Nuevo evento" ya no quedara contra el borde derecho a un ancho de
+  // escritorio normal. "Dentro de un botón" es también, literalmente, lo
+  // que se pidió.
+  const holidayMenu = `
+    <div class="filter-dropdown cal-holidays-filter">
+      <button type="button" class="cal-pill filter-dropdown-btn${calHolidaysMenuOpen?" open":""}" data-action="toggle-cal-holidays-menu" aria-haspopup="true" aria-expanded="${calHolidaysMenuOpen}">
+        🎌 ${esc(holidayHintLabel())}<span class="filter-dropdown-chevron">▾</span>
+      </button>
+      ${calHolidaysMenuOpen ? `<div class="filter-dropdown-panel cal-holidays-panel">
+          ${holidayLayerToggle("local")}
+          ${holidayLayerToggle("jewish")}
+          <button type="button" class="cal-holidays-config-link" data-action="goto-config-feriados">${t("Configurar en Ajustes","Configure in Settings","Configurar em Ajustes","הגדרה באפשרויות")} ${isRTL()?"←":"→"}</button>
+        </div>` : ""}
+    </div>`;
   const toggle = `
     <div class="filter-dropdown cal-view-filter">
       <button type="button" class="cal-pill filter-dropdown-btn${calViewMenuOpen?" open":""}" data-action="toggle-cal-view" aria-haspopup="true" aria-expanded="${calViewMenuOpen}">
@@ -8357,7 +8431,7 @@ function renderCalendarioView(){
   const syncBtn = canWrite()
     ? `<button type="button" class="btn-sync" data-action="sync-calendar" ${state.calendarSyncing?"disabled":""}>🔄 ${t("Actualizar desde Calendar","Refresh from Calendar","Atualizar a partir do Calendar","עדכון מהיומן")}</button>`
     : "";
-  const toolbar = `<div class="paises-toolbar">${nav}<div class="cal-toolbar-end">${msToggle}${holidayHint}${toggle}${syncBtn}${newBtn}</div></div>`;
+  const toolbar = `<div class="paises-toolbar">${nav}<div class="cal-toolbar-end">${msToggle}${holidayMenu}${toggle}${syncBtn}${newBtn}</div></div>`;
   if(CONFIG_IS_PLACEHOLDER){
     return toolbar + `<div class="empty-state">${t("Configurá Firebase para ver datos.","Set up Firebase to see data.","Configure o Firebase para ver dados.",".הגדר/י את Firebase כדי לראות נתונים")}</div>`;
   }
@@ -9637,6 +9711,7 @@ document.addEventListener("keydown", e=>{
   if(!calendarInviteOverlay.hidden){ dismissCalendarInviteOverlay(); return; }
   if(fabOpen){ closeFab(); fabMainEl.focus(); return; }
   if(calViewMenuOpen){ calViewMenuOpen = false; render(); return; }
+  if(calHolidaysMenuOpen){ calHolidaysMenuOpen = false; render(); return; }
   if(postModalOverlay.hidden) return;
   const d = composerDraft;
   if(d.placeQuery || d.mentionQuery != null || d.participantQuery) return;
@@ -10079,6 +10154,9 @@ document.addEventListener("click", async e=>{
   if(calViewMenuOpen && !e.target.closest(".cal-view-filter")){
     calViewMenuOpen = false; render();
   }
+  if(calHolidaysMenuOpen && !e.target.closest(".cal-holidays-filter")){
+    calHolidaysMenuOpen = false; render();
+  }
   if(fabOpen && !e.target.closest("#fab")) closeFab();
 
   const el = e.target.closest("[data-action]");
@@ -10366,6 +10444,7 @@ document.addEventListener("click", async e=>{
     state.configSection = el.dataset.key; render();
   },
     "goto-config-feriados": async (el, e, action, postId) => {
+    calHolidaysMenuOpen = false;
     state.view = "configuracion"; state.configSection = "feriados"; render(); scrollToTop();
   },
     "new-posts-jump": async (el, e, action, postId) => {
@@ -10385,6 +10464,13 @@ document.addEventListener("click", async e=>{
   },
     "toggle-cal-milestones": async (el, e, action, postId) => {
     savePrefs({ calendarShowMilestones: prefs().calendarShowMilestones === false });
+  },
+    "toggle-cal-holidays-menu": async (el, e, action, postId) => {
+    calHolidaysMenuOpen = !calHolidaysMenuOpen; render();
+  },
+    "toggle-cal-holidays": async (el, e, action, postId) => {
+    const key = el.dataset.kind === "jewish" ? "calendarShowHolidaysJewish" : "calendarShowHolidaysLocal";
+    savePrefs({ [key]: prefs()[key] === false });
   },
     "toggle-cal-view": async (el, e, action, postId) => {
     calViewMenuOpen = !calViewMenuOpen; render();
