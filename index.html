@@ -1663,6 +1663,10 @@
      bajarla no tapa nada. */
   #eventCardOverlay{ z-index:99; }
   .event-card{ position:relative; max-width:420px; max-height:min(620px, 86vh); }
+  /* En celulares angostos, el padding fijo de .modal (22px) le come al
+     contenido justo lo que le falta a los 3 botones de .ev-actions para
+     entrar en una sola fila — se achica solo acá, no en el modal grande. */
+  @media (max-width:480px){ .event-card{ padding:14px; } }
   /* El cuerpo es el hijo flex del modal: si no es columna con min-height:0,
      .ev-rows nunca llega a scrollear y un texto largo (una invitación de
      Zoom entera, por ejemplo) se sale por abajo de la ficha. */
@@ -1682,19 +1686,22 @@
   .ev-val .post-scopes{ display:flex; flex-wrap:wrap; gap:5px; margin:0; }
   .ev-text{ white-space:normal; color:var(--text); }
   .ev-actions{
-    display:flex; flex-wrap:wrap; gap:8px; margin-top:16px; padding-top:14px;
+    display:flex; flex-wrap:wrap; gap:5px; margin-top:16px; padding-top:14px;
     border-top:1px solid var(--border); flex:none;
   }
   /* El botón principal es el .btn-primary de toda la app (mismo color en
-     claro y oscuro que "Publicar"): acá no se inventa otro. */
+     claro y oscuro que "Publicar"), pero acá con tamaño propio: con los 3
+     botones (desde que se sumó el de proyecto) el de toda la app no
+     entraba en una sola línea. white-space:nowrap para que si en un
+     celular chico igual no entran, floaters de tarjeta entera a otra fila
+     (flex-wrap) en vez de partir el texto de uno en varias líneas. */
+  .ev-actions button{
+    white-space:nowrap; font-family:inherit; font-size:11.5px; font-weight:700; cursor:pointer;
+    padding:8px 10px; border-radius:999px;
+  }
   .ev-actions .btn-primary{ flex:1; }
-  /* Con 3 botones (desde que se sumó el de proyecto) el primario podía
-     angostarse más que su texto y partirlo en varias líneas en vez de que
-     flex-wrap lo baje entero a otra fila — que es lo que se busca. */
-  .ev-actions button{ white-space:nowrap; }
   .ev-actions button:not(.btn-primary){
-    font-family:inherit; font-size:13.5px; font-weight:700; cursor:pointer; padding:11px 16px;
-    border-radius:999px; border:1px solid var(--border); background:var(--card); color:var(--ink);
+    border:1px solid var(--border); background:var(--card); color:var(--ink);
   }
   .ev-actions button:not(.btn-primary):hover{ background:var(--surface-hover); }
 
@@ -5004,7 +5011,7 @@ function renderProyectosView(){
   projectOpen = null;
   const list = projectPosts().sort((a,b)=> (projectDone(a) ? 1 : 0) - (projectDone(b) ? 1 : 0) || projectSortKey(a).localeCompare(projectSortKey(b)));
   if(!list.length){
-    return `<div class="empty-state"><div class="big">📋</div>${t("Todavía no hay proyectos.","There are no projects yet.","Ainda não há projetos.","עדיין אין פרויקטים.")}<br>${t("En cualquier Evento del Feed, tocá «Crear como proyecto» para armarle su línea de tiempo de hitos.","On any Event in the Feed, tap “Create as project” to build its milestone timeline.","Em qualquer Evento do Feed, toque em «Criar como projeto» para montar sua linha do tempo de marcos.","בכל אירוע בפיד, לחצו על «יצירה כפרויקט» כדי לבנות את ציר הזמן של אבני הדרך שלו.")}</div>`;
+    return `<div class="empty-state"><div class="big">📋</div>${t("Todavía no hay proyectos.","There are no projects yet.","Ainda não há projetos.","עדיין אין פרויקטים.")}<br>${t("En cualquier Evento del Feed, tocá «Crear proyecto» para armarle su línea de tiempo de hitos.","On any Event in the Feed, tap “Create project” to build its milestone timeline.","Em qualquer Evento do Feed, toque em «Criar projeto» para montar sua linha do tempo de marcos.","בכל אירוע בפיד, לחצו על «יצירת פרויקט» כדי לבנות את ציר הזמן של אבני הדרך שלו.")}</div>`;
   }
   return `<div class="projects-grid">${list.map(p=>{
     const ms = postMilestones(p), done = ms.filter(m=>m.done).length, overdue = ms.filter(m=>milestoneStatus(m)==="overdue").length;
@@ -7393,7 +7400,7 @@ function renderPostCard(post, replies){
         ${replies.length ? `<button data-action="toggle-thread" data-post-id="${post.id}">${threadOpen ? "▲ " + t("Ocultar","Hide","Ocultar","הסתרה") : "▼ " + t("Ver","View","Ver","הצגה")} ${commentsLabel}</button>` : ""}
         ${post.isProject
           ? `<button data-action="toggle-project" data-post-id="${post.id}" class="${openProjects.has(post.id)?"active":""}">📋 ${openProjects.has(post.id) ? t("Ocultar proyecto","Hide project","Ocultar projeto","הסתרת פרויקט") : t("Ver proyecto","View project","Ver projeto","הצגת פרויקט")}${postMilestones(post).length ? ` (${postMilestones(post).filter(m=>m.done).length}/${postMilestones(post).length})` : ""}</button>`
-          : (post.activityType !== "rutina" && canManageProject(post) ? `<button data-action="project-create" data-post-id="${post.id}">📋 ${t("Crear como proyecto","Create as project","Criar como projeto","יצירה כפרויקט")}</button>` : "")}
+          : (post.activityType !== "rutina" && canManageProject(post) ? `<button data-action="project-create" data-post-id="${post.id}">📋 ${t("Crear proyecto","Create project","Criar projeto","יצירת פרויקט")}</button>` : "")}
         ${editable ? `<button data-action="edit-post" data-post-id="${post.id}">✏️ ${t("Editar","Edit","Editar","עריכה")}</button>` : ""}
         ${canCancel ? `<button data-action="cancel-post" data-post-id="${post.id}">🚫 ${t("Cancelar evento","Cancel event","Cancelar evento","ביטול האירוע")}</button>` : ""}
         ${isFixedAdmin() ? `<button class="danger" data-action="delete-post" data-post-id="${post.id}">🗑️ ${t("Borrar","Delete","Apagar","מחיקה")}</button>` : ""}
@@ -9750,7 +9757,7 @@ function renderEventCard(){
       </button>
       ${post.isProject
         ? `<button type="button" data-action="event-card-project" data-post-id="${esc(post.id)}">📋 ${t("Ver proyecto","View project","Ver projeto","הצגת פרויקט")}</button>`
-        : (post.activityType !== "rutina" && canManageProject(post) ? `<button type="button" data-action="event-card-project" data-post-id="${esc(post.id)}">📋 ${t("Crear como proyecto","Create as project","Criar como projeto","יצירה כפרויקט")}</button>` : "")}
+        : (post.activityType !== "rutina" && canManageProject(post) ? `<button type="button" data-action="event-card-project" data-post-id="${esc(post.id)}">📋 ${t("Crear proyecto","Create project","Criar projeto","יצירת פרויקט")}</button>` : "")}
       ${canEditPost(post) ? `<button type="button" data-action="event-card-edit" data-post-id="${esc(post.id)}">✏️ ${t("Editar","Edit","Editar","עריכה")}</button>` : ""}
     </div>`;
 }
