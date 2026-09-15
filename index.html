@@ -7215,7 +7215,7 @@ function renderRutinaComposer(){
         </div>
       </div>
       <div class="place-picker">
-        <input type="text" id="rutinaPlaceQuery" data-place-scope="rutina" data-place-owner="new" placeholder="📍 ${esc(t("Dónde (país, ciudad, región)...","Where (country, city, region)...","Onde (país, cidade, região)...","(מדינה, עיר, אזור) איפה..."))}" autocomplete="off" value="${esc(d.placeQuery)}">
+        <input type="text" id="rutinaPlaceQuery" data-place-scope="rutina" data-place-owner="new" placeholder="📍 ${esc(t("¿A qué alcanza? (país, ciudad, región)...","What does this reach? (country, city, region)...","O que isso alcança? (país, cidade, região)...","(מדינה, עיר, אזור) ?למי זה נוגע..."))}" autocomplete="off" value="${esc(d.placeQuery)}">
         ${d.placeQuery ? renderPlaceSuggestions(d, "rutina", "new") : ""}
       </div>
       ${d.scopes.length ? `<div class="post-scopes" style="margin-top:8px;">${d.scopes.map((sc,i)=>renderScopeChip(sc, "rm-scope-rutina", i, "new")).join("")}</div>` : ""}
@@ -9347,12 +9347,12 @@ function renderComposer(){
     <div class="field-icon-row">
       <span class="field-icon">📍</span>
       <div class="field-icon-body">
+        <input type="text" id="cLocation" class="location-input" maxlength="200" style="margin-bottom:8px;" placeholder="${esc(t("Dónde ocurre (opcional): ciudad, hotel, dirección…","Where it happens (optional): city, hotel, address…","Onde acontece (opcional): cidade, hotel, endereço…","(עיר, מלון, כתובת) :(איפה זה קורה (אופציונלי"))}" value="${esc(d.location||"")}">
         <div class="place-picker place-picker-inline">
-          <input type="text" id="cPlaceQuery" data-place-scope="post" data-place-owner="new" placeholder="${esc(t("Dónde (país, ciudad, región)...","Where (country, city, region)...","Onde (país, cidade, região)...","(מדינה, עיר, אזור) איפה..."))}" autocomplete="off" value="${esc(d.placeQuery)}">
+          <input type="text" id="cPlaceQuery" data-place-scope="post" data-place-owner="new" placeholder="${esc(t("¿A qué alcanza? (país, ciudad, región)...","What does this reach? (country, city, region)...","O que isso alcança? (país, cidade, região)...","(מדינה, עיר, אזור) ?למי זה נוגע..."))}" autocomplete="off" value="${esc(d.placeQuery)}">
           ${d.placeQuery ? renderPlaceSuggestions(d, "post", "new") : ""}
         </div>
         ${d.scopes.length ? `<div class="post-scopes" style="margin-top:8px;">${d.scopes.map((sc,i)=>renderScopeChip(sc, "rm-scope-post", i, "new")).join("")}</div>` : ""}
-        <input type="text" id="cLocation" class="location-input" maxlength="200" placeholder="${esc(t("Lugar puntual (opcional): hotel, salón, dirección…","Specific venue (optional): hotel, hall, address…","Local pontual (opcional): hotel, salão, endereço…","(מלון, אולם, כתובת) :(מיקום מדויק (אופציונלי"))}" value="${esc(d.location||"")}">
       </div>
     </div>
     <div class="field-icon-row">
