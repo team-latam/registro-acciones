@@ -949,8 +949,10 @@
   }
   .occ-chip:hover, .occ-picker.open .occ-chip{ color:var(--celeste-dark); text-decoration-color:var(--celeste-dark); }
   .occ-chip .occ-chev{ font-size:9px; opacity:.7; }
+  /* 129 y no 130: el selector de fecha de "Pasar a otro día" vive ADENTRO
+     de este popup y tiene que quedar por encima. */
   .occ-pop{
-    position:fixed; z-index:130; width:240px; background:var(--card); border:1px solid var(--border);
+    position:fixed; z-index:129; width:258px; background:var(--card); border:1px solid var(--border);
     border-radius:var(--radius-md); box-shadow:var(--shadow); padding:8px; font-size:12.5px;
   }
   .occ-pop[hidden]{ display:none; }
@@ -978,6 +980,23 @@
     font-size:10px; font-weight:700; color:var(--celeste-dark); text-transform:uppercase; letter-spacing:.05em;
   }
   .occ-today-sep::after{ content:""; flex:1; height:1px; background:var(--border); }
+  /* Una fecha suspendida sigue en la lista (si no, no habría forma de
+     volver a activarla) pero se lee tachada. */
+  .occ-date.off .occ-when{ text-decoration:line-through; opacity:.6; }
+  .occ-tag.occ-off{ color:var(--danger); }
+  /* Pie: lo que se le puede hacer a la fecha elegida. Separado de la
+     lista a propósito — en cada fila serían tres botones por renglón. */
+  .occ-foot{ border-top:1px solid var(--border); margin-top:6px; padding-top:7px; }
+  .occ-foot-head{ font-size:11px; font-weight:700; color:var(--text-muted); padding:0 6px 6px 6px; }
+  .occ-foot-btns{ display:flex; flex-wrap:wrap; gap:5px; }
+  .occ-act{
+    flex:none; display:inline-flex; align-items:center; gap:5px; font-family:inherit; font-size:11.5px;
+    font-weight:600; cursor:pointer; padding:5px 9px; border-radius:999px;
+    border:1px solid var(--border); background:var(--surface-soft); color:var(--ink);
+  }
+  .occ-act:hover{ border-color:var(--celeste-dark); }
+  .occ-act.danger{ color:var(--danger-text); }
+  .occ-act.danger:hover{ border-color:var(--danger); background:var(--danger-bg); }
 
   /* ---------- Selector de fecha propio (hitos): reemplaza al
      <input type=date> nativo, mismo criterio que .color-pop (fixed +
@@ -4055,6 +4074,145 @@ async function updateCalendarEvent(eventId, postData, postId){
   }
 }
 
+// —— Correr o suspender UNA fecha de una serie ————————————————————————
+// Google Calendar guarda estas dos cosas como "excepciones" de la serie:
+// una instancia con su propio horario, o una instancia cancelada. Para
+// tocarla hay que pedirle a Google CUÁL instancia es la de ese día
+// (endpoint /instances) en vez de armar el id a mano: el id de una
+// instancia con hora es "<molde>_<fechaYhoraUTC>", y armarlo bien exige
+// saber la zona horaria del calendario — pedirlo es más corto y no falla.
+async function findCalendarInstance(masterEventId, fechaISO){
+  const token = await ensureCalendarToken();
+  if(!token) return null;
+  try{
+    const params = new URLSearchParams({
+      timeMin: `${fechaISO}T00:00:00Z`,
+      // Una ventana de 48 h para los dos lados: con hora, el día UTC de la
+      // instancia puede no ser el mismo día local.
+      timeMax: `${addDaysISO(fechaISO, 2)}T00:00:00Z`,
+      maxResults: "10", showDeleted: "true",
+    });
+    const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events/${encodeURIComponent(masterEventId)}/instances?${params}`, {
+      headers: { "Authorization": `Bearer ${token}` },
+    });
+    if(!res.ok) return null;
+    const body = await res.json().catch(()=>({}));
+    const items = Array.isArray(body.items) ? body.items : [];
+    // La que ARRANCA ese día según su fecha original: comparar contra
+    // start alcanzaría solo mientras la instancia no se haya movido antes.
+    return items.find(ev=>{
+      const orig = ev.originalStartTime && (ev.originalStartTime.date || ev.originalStartTime.dateTime);
+      const arranque = ev.start && (ev.start.date || ev.start.dateTime);
+      return String(orig || arranque || "").slice(0, 10) === fechaISO;
+    }) || null;
+  }catch(err){
+    console.error("Error buscando la repetición en Calendar:", err);
+    return null;
+  }
+}
+// Mueve o cancela esa instancia en Google. Devuelve {ok} — si no se pudo,
+// quien llama avisa: el cambio ya quedó guardado en la app, y lo que
+// falta es que lo vea el resto del equipo en el Calendar compartido.
+async function patchCalendarInstance(post, fechaISO, patch){
+  if(!post.calendarEventId) return { ok:true, skipped:true };
+  const inst = await findCalendarInstance(post.calendarEventId, fechaISO);
+  if(!inst) return { ok:false, reason:t("no se encontró esa fecha en Google Calendar","that date wasn't found in Google Calendar","essa data não foi encontrada no Google Calendar","התאריך הזה לא נמצא ב-Google Calendar") };
+  const token = await ensureCalendarToken();
+  if(!token) return { ok:false, reason:t("no se pudo autorizar el acceso a Calendar","couldn't authorize access to Calendar","não foi possível autorizar o acesso ao Calendar","לא ניתן היה לאשר את הגישה ליומן") };
+  try{
+    const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events/${encodeURIComponent(inst.id)}?sendUpdates=all`, {
+      method: "PATCH",
+      headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    });
+    if(!res.ok){
+      const body = await res.json().catch(()=>({}));
+      throw new Error(body.error?.message || res.statusText);
+    }
+    return { ok:true };
+  }catch(err){
+    console.error("Error actualizando la repetición en Calendar:", err);
+    return { ok:false, reason: err.message };
+  }
+}
+// El start/end que hay que mandarle a Google para correr la instancia al
+// día nuevo, respetando si el evento tiene hora o es de todo el día. Con
+// hora se manda el mismo horario del molde, corrido de día; sin hora, el
+// formato "date" (y el fin, exclusivo, un día después, como pide la API).
+function calendarInstanceDates(post, instancia, nuevoISO){
+  const arranque = instancia.start || {};
+  if(arranque.date){
+    const largo = instancia.end && instancia.end.date
+      ? Math.max(1, Math.round((isoDate(instancia.end.date) - isoDate(arranque.date)) / 86400000)) : 1;
+    return { start:{ date:nuevoISO }, end:{ date: addDaysISO(nuevoISO, largo) } };
+  }
+  const tz = arranque.timeZone || undefined;
+  const hora = iso => String(iso).slice(10); // "T15:00:00-03:00"
+  const finISO = (instancia.end && instancia.end.dateTime) || arranque.dateTime;
+  const diasLargo = Math.round((isoDate(String(finISO).slice(0,10)) - isoDate(String(arranque.dateTime).slice(0,10))) / 86400000);
+  return {
+    start: { dateTime: nuevoISO + hora(arranque.dateTime), ...(tz ? { timeZone:tz } : {}) },
+    end: { dateTime: addDaysISO(nuevoISO, diasLargo) + hora(finISO), ...(tz ? { timeZone:tz } : {}) },
+  };
+}
+// Guarda en el posteo que esa fecha se corre a otra. La clave es siempre
+// la fecha ORIGINAL: así los comentarios de ese día siguen encontrándola
+// aunque se vuelva a correr, y volver atrás es borrar la entrada.
+async function moveOccurrence(postId, origenISO, destinoISO){
+  const post = getPostById(postId);
+  if(!post || !canEditPost(post)) return;
+  if(!isISODate(origenISO) || !isISODate(destinoISO)) return;
+  const moves = recurrenceMoves(post);
+  if((moves[origenISO] || origenISO) === destinoISO) return;
+  // Correrla de vuelta a su día original es sacar la excepción, no
+  // guardar "5 de octubre → 5 de octubre".
+  const nuevos = { ...moves };
+  if(destinoISO === origenISO) delete nuevos[origenISO];
+  else nuevos[origenISO] = destinoISO;
+  if(Object.keys(nuevos).length > MAX_OCC_MOVES){
+    await appAlert(t("Ya hay {n} fechas corridas en este evento. Sacá alguna antes de correr otra.","This event already has {n} moved dates. Undo one before moving another.","Este evento já tem {n} datas movidas. Desfaça uma antes de mover outra.","{n} תאריכים כבר הוזזו באירוע הזה. בטל/י אחד לפני הזזת נוסף",{n:MAX_OCC_MOVES}));
+    return;
+  }
+  await updatePostDoc(postId, { recurrenceMoves: nuevos, lastEditedAt: fb.serverTimestamp(), lastEditedBy: state.auth.user.displayName });
+  await createReply(postId, {
+    authorName: state.auth.user.displayName, authorEmail: state.auth.user.email,
+    content: destinoISO === origenISO
+      ? t("Vuelve a su día de siempre: {d}.","Back to its usual day: {d}.","Volta ao seu dia de sempre: {d}.",".{d} :חוזר ליום הרגיל שלו",{d:fmtDate(origenISO)})
+      : t("Esta vez no se hace el {a}: pasa al {b}.","This time it's not on {a}: moved to {b}.","Desta vez não é no {a}: passa para {b}.","{b}-עובר ל :{a}-הפעם לא מתקיים ב",{a:fmtDate(origenISO),b:fmtDate(destinoISO)}),
+    system:true, icon:"📅", scopes:[], images:[], links:[], occ: origenISO,
+  });
+  // Y que lo vea el resto del equipo en el Calendar compartido.
+  const inst = post.calendarEventId ? await findCalendarInstance(post.calendarEventId, origenISO) : null;
+  if(inst){
+    const r = await patchCalendarInstance(post, origenISO, calendarInstanceDates(post, inst, destinoISO));
+    if(!r.ok) showCalendarNotice({ ok:false, message:t("La fecha se cambió acá, pero no en Google Calendar: {msg}","The date changed here, but not in Google Calendar: {msg}","A data mudou aqui, mas não no Google Calendar: {msg}","{msg} :התאריך השתנה כאן, אך לא ב-Google Calendar",{msg:r.reason||""}) });
+  }
+  render();
+}
+// "Este lunes no se hace": la fecha se anota en recurrenceSkip (lo mismo
+// que escribe la sincronización cuando la cancelan del lado de Google) y
+// el Calendario deja de dibujarla. Los comentarios de ese día NO se
+// borran: quedan ahí para cuando se vuelva a activar.
+async function setOccurrenceSkipped(postId, iso, skipped){
+  const post = getPostById(postId);
+  if(!post || !canEditPost(post) || !isISODate(iso)) return;
+  const actual = Array.isArray(post.recurrenceSkip) ? post.recurrenceSkip : [];
+  const ya = actual.includes(iso);
+  if(ya === skipped) return;
+  const nuevo = skipped ? actual.concat([iso]).slice(-200) : actual.filter(d=>d !== iso);
+  await updatePostDoc(postId, { recurrenceSkip: nuevo, lastEditedAt: fb.serverTimestamp(), lastEditedBy: state.auth.user.displayName });
+  await createReply(postId, {
+    authorName: state.auth.user.displayName, authorEmail: state.auth.user.email,
+    content: skipped
+      ? t("El {d} no se hace.","Not happening on {d}.","No dia {d} não acontece.",".{d}-לא מתקיים ב",{d:fmtDate(occurrenceDateOf(post, iso))})
+      : t("El {d} vuelve a hacerse.","Happening again on {d}.","No dia {d} volta a acontecer.",".{d}-מתקיים שוב ב",{d:fmtDate(occurrenceDateOf(post, iso))}),
+    system:true, icon:skipped ? "🚫" : "✅", scopes:[], images:[], links:[], occ: iso,
+  });
+  const r = await patchCalendarInstance(post, iso, { status: skipped ? "cancelled" : "confirmed" });
+  if(!r.ok && !r.skipped) showCalendarNotice({ ok:false, message:t("Se guardó acá, pero no se pudo actualizar Google Calendar: {msg}","Saved here, but Google Calendar couldn't be updated: {msg}","Foi salvo aqui, mas não foi possível atualizar o Google Calendar: {msg}","{msg} :נשמר כאן, אך לא ניתן היה לעדכן את Google Calendar",{msg:r.reason||""}) });
+  render();
+}
+
 async function deleteCalendarEvent(eventId){
   const token = await ensureCalendarToken();
   if(!token) return { ok:false, reason:t("no se pudo autorizar el acceso a Calendar","couldn't authorize access to Calendar","não foi possível autorizar o acesso ao Calendar","לא ניתן היה לאשר את הגישה ליומן") };
@@ -4252,6 +4410,15 @@ async function createImportedPost(ev, data){
 // calendarEventId nunca se guardó, ver saveCalendarLinkOrWarn) terminaba
 // en el mismo "Sincronizado ✅" que si sí se hubiera aplicado — no había
 // forma de notar, desde el aviso, que algo se estaba quedando afuera.
+// De qué fecha de la serie es esta excepción. Google le da a cada una un
+// id "<idDelMolde>_<fechaOriginalUTC>"; originalStartTime dice lo mismo y
+// queda como respaldo por si el id no viene con esa forma.
+function originalOccurrenceISO(ev){
+  if(!ev || !ev.recurringEventId) return null;
+  return rruleDateToISO(String(ev.id||"").slice(String(ev.recurringEventId).length + 1)) ||
+    (ev.originalStartTime && rruleDateToISO(String(ev.originalStartTime.date || ev.originalStartTime.dateTime||"").replace(/-/g,""))) ||
+    null;
+}
 async function applyCalendarEventToPosts(ev){
   const existing = state.posts.find(p => p.calendarEventId === ev.id);
 
@@ -4263,8 +4430,7 @@ async function applyCalendarEventToPosts(ev){
     // que es lo mismo que mira recurrenceSkipDates.
     if(!existing && ev.recurringEventId){
       const master = state.posts.find(p => p.calendarEventId === ev.recurringEventId);
-      const skipISO = rruleDateToISO(String(ev.id||"").slice(String(ev.recurringEventId).length + 1)) ||
-        (ev.originalStartTime && rruleDateToISO(String(ev.originalStartTime.date || ev.originalStartTime.dateTime||"").replace(/-/g,"")));
+      const skipISO = originalOccurrenceISO(ev);
       if(master && skipISO && !(master.recurrenceSkip||[]).includes(skipISO)){
         await updatePostDoc(master.id, { recurrenceSkip: (master.recurrenceSkip||[]).concat([skipISO]).slice(-200) });
         return true;
@@ -4355,6 +4521,35 @@ async function applyCalendarEventToPosts(ev){
   // posteo es la vieja) y termina creando un posteo duplicado en vez de
   // actualizar el original. Guardar el vínculo de forma confiable
   // (saveCalendarLinkOrWarn) es lo que evita llegar a este caso.
+  // ¿Es una repetición suelta que se corrió de día en Calendar? Se anota
+  // en el molde (recurrenceMoves) y NO nace como posteo aparte: así los
+  // comentarios de ese día siguen colgando de la serie, igual que cuando
+  // se corre desde acá. Si lo que cambió NO fue la fecha (el título de un
+  // solo día, por ejemplo) se sigue como antes — nace su propio posteo,
+  // que es el único lugar donde eso se puede guardar, y recurrenceSkipDates
+  // hace que el molde deje de dibujar ese día para no mostrarlo dos veces.
+  if(ev.recurringEventId){
+    const master = state.posts.find(p => p.calendarEventId === ev.recurringEventId);
+    const origISO = originalOccurrenceISO(ev);
+    if(master && origISO){
+      const moves = recurrenceMoves(master);
+      const actual = moves[origISO] || origISO;
+      if(actual === startDate) return false; // ya está donde dice Calendar
+      const nuevos = { ...moves };
+      if(startDate === origISO) delete nuevos[origISO];
+      else nuevos[origISO] = startDate;
+      if(Object.keys(nuevos).length > MAX_OCC_MOVES) return false;
+      await updatePostDoc(master.id, { recurrenceMoves: nuevos, lastEditedAt: fb.serverTimestamp(), lastEditedBy:"Google Calendar" });
+      await createReply(master.id, {
+        authorName:"Google Calendar", content: startDate === origISO
+          ? t("Vuelve a su día de siempre: {d}.","Back to its usual day: {d}.","Volta ao seu dia de sempre: {d}.",".{d} :חוזר ליום הרגיל שלו",{d:fmtDate(origISO)})
+          : t("Esta vez no se hace el {a}: pasa al {b}.","This time it's not on {a}: moved to {b}.","Desta vez não é no {a}: passa para {b}.","{b}-עובר ל :{a}-הפעם לא מתקיים ב",{a:fmtDate(origISO),b:fmtDate(startDate)}),
+        system:true, icon:"📅", scopes:[], images:[], links:[], occ: origISO,
+      });
+      return true;
+    }
+  }
+
   const raPostId = ev.extendedProperties?.private?.raPostId;
   const summary = String(ev.summary || "");
   const orphan = state.posts.find(p => !p.calendarEventId && !p.cancelled && (
@@ -4507,6 +4702,10 @@ let calendarSyncInterval = null;
 // Fallas seguidas del sync automático (ver el catch de syncFromCalendar).
 // A 30 s por intento, 5 seguidas son ~2 min y medio: ya no es un bache de
 // red, es algo roto de verdad.
+// Tope de fechas corridas por serie: las reglas de Firestore lo exigen
+// (un map sin techo en un documento que lee todo el equipo), y a esta
+// altura correr 60 fechas de una misma serie ya es otra serie.
+const MAX_OCC_MOVES = 60;
 const CALENDAR_SYNC_FAIL_STREAK = 5;
 let calendarSyncFailStreak = 0, calendarSyncFailWarned = false;
 function startCalendarAutoSync(){
@@ -5411,6 +5610,17 @@ const DATE_FIELD_SPECS = {
     allowClear: () => true,
     // No tiene sentido importar "desde el futuro".
     max: () => todayISO(),
+  },
+  // Correr UNA fecha de una serie a otro día ("este lunes lo hacemos el
+  // miércoles"). ds.occ es la fecha ORIGINAL, que es la identidad de la
+  // repetición y no cambia por más que se corra.
+  "occ-move": {
+    dfId: (ds) => `occ:${ds.postId}:${ds.occ}`,
+    canEdit: (ds) => { const post = getPostById(ds.postId); return !!post && canEditPost(post); },
+    get: (ds) => { const post = getPostById(ds.postId); return post ? occurrenceDateOf(post, ds.occ) : null; },
+    set: (ds, iso) => { closeDateFields(); closeOccPops(); moveOccurrence(ds.postId, ds.occ, iso); },
+    allowClear: () => false,
+    fallbackView: (ds) => ds.occ,
   },
 };
 function dateFieldSpec(kind){ return DATE_FIELD_SPECS[kind]; }
@@ -8033,11 +8243,14 @@ function renderPostCard(post, replies){
   const occ = occurrenceOf(post);
   replies = repliesForOccurrence(replies, occ);
   const baseStart = post.startDate || post.date;
-  const startDate = occ || baseStart;
+  // `occ` es la fecha ORIGINAL de la repetición (la identidad, la que
+  // llevan los comentarios); occurrenceDateOf dice en qué día pasa de
+  // verdad, que puede ser otro si esa fecha se corrió.
+  const startDate = occ ? occurrenceDateOf(post, occ) : baseStart;
   // La repetición dura lo mismo que la original, así que el final se
   // corre los mismos días que se corrió el arranque.
   const spanDays = post.endDate && post.endDate > baseStart ? Math.round((isoDate(post.endDate) - isoDate(baseStart)) / 86400000) : 0;
-  const endDate = occ ? (spanDays ? addDaysISO(occ, spanDays) : occ) : (post.endDate || startDate);
+  const endDate = occ ? (spanDays ? addDaysISO(startDate, spanDays) : startDate) : (post.endDate || startDate);
   const timeLabel = post.startTime && post.endTime ? ` · ${fmtHHMM(post.startTime)}–${fmtHHMM(post.endTime)}` : "";
   const dateLabel = (endDate && endDate !== startDate ? `${fmtDate(startDate)} – ${fmtDate(endDate)}` : fmtDate(startDate))
     + timeLabel + renderOccurrencePicker(post, occ);
@@ -9266,11 +9479,30 @@ function recurrenceLabel(post){
 // los que escribe la sincronización con Calendar cuando cambia la regla.
 const OCC_BACK_MONTHS = 18, OCC_FWD_MONTHS = 12;
 function isRecurring(post){ return !!(post && parseRecurrence(post.recurrence)); }
-// Las fechas de la serie en una ventana alrededor de hoy: no tiene
-// sentido listar en el selector una reunión semanal desde 2015. Se
-// descartan las canceladas y las que ya tienen su propia tarjeta, igual
-// que en el Calendario.
-function postOccurrenceDates(post){
+// Una fecha corrida a otro día ("este lunes lo hacemos el miércoles").
+// La CLAVE es siempre la fecha original de la serie, no la nueva: esa es
+// la identidad de la repetición, la que llevan pegada los comentarios, y
+// la única que no se mueve si después se vuelve a correr.
+function recurrenceMoves(post){
+  const raw = post && post.recurrenceMoves;
+  if(!raw || typeof raw !== "object") return {};
+  const out = {};
+  Object.keys(raw).forEach(k=>{
+    if(isISODate(k) && isISODate(raw[k])) out[k] = raw[k];
+  });
+  return out;
+}
+function isISODate(v){ return typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v); }
+// Dónde cae realmente una repetición: la fecha corrida, si se corrió.
+function occurrenceDateOf(post, iso){
+  return recurrenceMoves(post)[iso] || iso;
+}
+// Todas las fechas de la serie en una ventana alrededor de hoy (no tiene
+// sentido listar una reunión semanal desde 2015), CON las canceladas y
+// las corridas marcadas — el selector las tiene que mostrar para poder
+// deshacerlas. `iso` es la fecha original (la identidad); `date`, el día
+// en que pasa de verdad.
+function postOccurrenceList(post){
   const start = post.startDate || post.date;
   if(!start) return [];
   const hoy = todayISO();
@@ -9278,7 +9510,13 @@ function postOccurrenceDates(post){
   const all = expandRecurrence(start, post.recurrence, from < start ? start : from, to);
   if(!all) return [];
   const skip = recurrenceSkipDates(post);
-  return all.filter(iso => !skip.has(iso));
+  const moves = recurrenceMoves(post);
+  return all.map(iso => ({ iso, date: moves[iso] || iso, moved: !!moves[iso], skipped: skip.has(iso) }));
+}
+// Solo las que se hacen, por su fecha original: es lo que usan el orden
+// del Feed y la fecha por omisión de la tarjeta.
+function postOccurrenceDates(post){
+  return postOccurrenceList(post).filter(o=>!o.skipped).map(o=>o.iso);
 }
 // Cuál de todas mostrar cuando la persona todavía no eligió: la más
 // cercana a hoy, para adelante o para atrás. Justo después de la reunión
@@ -9303,10 +9541,17 @@ function nearestOccurrence(dates){
 const occView = {}; // postId -> fecha ISO elegida a mano
 function occurrenceOf(post){
   if(!isRecurring(post)) return null;
-  const dates = postOccurrenceDates(post);
-  if(!dates.length) return null;
+  const list = postOccurrenceList(post).filter(o=>!o.skipped);
+  if(!list.length) return null;
+  // Se compara contra la lista ENTERA (no solo las que se hacen) para que
+  // se pueda pararse en una suspendida a mano: es la única forma de
+  // volver a activarla desde el selector.
   const picked = occView[post.id];
-  return picked && dates.includes(picked) ? picked : nearestOccurrence(dates);
+  if(picked && postOccurrenceList(post).some(o=>o.iso === picked)) return picked;
+  // La más cercana se mide por el día en que PASA, no por la fecha
+  // original: un lunes corrido al miércoles está cerca el miércoles.
+  const cerca = nearestOccurrence(list.map(o=>o.date));
+  return (list.find(o=>o.date === cerca) || list[0]).iso;
 }
 // Los comentarios que le tocan a la fecha que se está mirando: los suyos
 // más los de la serie. Un posteo que no se repite los muestra todos, sin
@@ -9353,9 +9598,11 @@ function renderOccurrencePicker(post, occ){
   if(!label) return "";
   // Sin fechas expandibles (una regla que no sabemos expandir) queda el
   // texto de siempre, sin botón: no hay nada que elegir.
-  const dates = occ ? postOccurrenceDates(post) : [];
-  if(!dates.length) return ` · 🔁 ${esc(label)}`;
+  const list = occ ? postOccurrenceList(post) : [];
+  if(!list.length) return ` · 🔁 ${esc(label)}`;
   const abierto = occPopOpen === post.id;
+  const actual = list.find(o=>o.iso === occ) || null;
+  const puedeEditar = canEditPost(post);
   const all = state.repliesByPost[post.id] || [];
   const countFor = iso => all.filter(r => r.occ === iso).length;
   const hoy = todayISO();
@@ -9363,23 +9610,47 @@ function renderOccurrencePicker(post, occ){
   // La lista solo se arma con el popup abierto: una serie semanal son ~78
   // fechas y el Feed dibuja muchas tarjetas — armarlas todas en cada
   // render era llenar el DOM de botones que nadie mira.
-  const rows = !abierto ? "" : dates.map(iso=>{
-    const n = countFor(iso);
-    const sep = !sepPuesto && iso >= hoy ? (sepPuesto = true, `<div class="occ-today-sep">${t("Próximas","Upcoming","Próximas","הבאות")}</div>`) : "";
-    return sep + `<button type="button" class="occ-date${iso === occ ? " current" : ""}${iso < hoy ? " past" : ""}"
-        data-action="occ-pick" data-post-id="${esc(post.id)}" data-occ="${iso}"${iso === occ ? ' aria-current="true"' : ""}>
-        <span class="occ-when">${esc(occDateLabel(iso))}</span>
-        ${iso === hoy ? `<span class="occ-tag">${t("hoy","today","hoje","היום")}</span>` : ""}
+  const rows = !abierto ? "" : list.map(o=>{
+    const n = countFor(o.iso);
+    const sep = !sepPuesto && o.date >= hoy ? (sepPuesto = true, `<div class="occ-today-sep">${t("Próximas","Upcoming","Próximas","הבאות")}</div>`) : "";
+    // Lo que se lee es el día en que PASA; si se corrió, al lado va de
+    // dónde vino, que si no la fecha aparecía cambiada sin explicación.
+    const desde = o.moved ? `<span class="occ-tag" title="${esc(t("Se corrió de su día original","Moved from its original day","Foi movido do seu dia original","הוזז מהיום המקורי"))}">↪ ${esc(occDateLabel(o.iso))}</span>` : "";
+    const suspendida = o.skipped ? `<span class="occ-tag occ-off">${t("no se hace","not happening","não acontece","לא מתקיים")}</span>` : "";
+    return sep + `<button type="button" class="occ-date${o.iso === occ ? " current" : ""}${o.date < hoy ? " past" : ""}${o.skipped ? " off" : ""}"
+        data-action="occ-pick" data-post-id="${esc(post.id)}" data-occ="${o.iso}"${o.iso === occ ? ' aria-current="true"' : ""}>
+        <span class="occ-when">${esc(occDateLabel(o.date))}</span>
+        ${o.date === hoy && !o.skipped ? `<span class="occ-tag">${t("hoy","today","hoje","היום")}</span>` : ""}
+        ${desde}${suspendida}
         ${n ? `<span class="occ-count">💬 ${n}</span>` : ""}
       </button>`;
   }).join("");
+  // Las acciones de la fecha elegida van al pie, no en cada fila: en la
+  // fila serían tres botones por renglón (setenta y pico en la lista) y
+  // en el teléfono no habría manera de acertarle a ninguno.
+  const pie = !abierto || !puedeEditar || !actual ? "" : `
+    <div class="occ-foot">
+      <div class="occ-foot-head">${esc(occDateLabel(actual.date))}</div>
+      <div class="occ-foot-btns">
+        ${actual.skipped
+          ? `<button type="button" class="occ-act" data-action="occ-unskip" data-post-id="${esc(post.id)}" data-occ="${actual.iso}">✅ ${t("Volver a hacerlo","Bring it back","Voltar a acontecer","להחזיר")}</button>`
+          : `<span class="date-field">
+              <button type="button" class="occ-act date-trigger" data-action="date-open" data-df-kind="occ-move" data-df-id="occ:${esc(post.id)}:${actual.iso}" data-post-id="${esc(post.id)}" data-occ="${actual.iso}" aria-haspopup="dialog" aria-expanded="false">📅 ${t("Pasar a otro día","Move to another day","Passar para outro dia","להעביר ליום אחר")}</button>
+              <div class="date-pop" hidden role="dialog" aria-label="${esc(t("Pasar a otro día","Move to another day","Passar para outro dia","להעביר ליום אחר"))}"></div>
+            </span>
+            <button type="button" class="occ-act danger" data-action="occ-skip" data-post-id="${esc(post.id)}" data-occ="${actual.iso}">🚫 ${t("No se hace","Not happening","Não acontece","לא מתקיים")}</button>`}
+        ${actual.moved && !actual.skipped
+          ? `<button type="button" class="occ-act" data-action="occ-unmove" data-post-id="${esc(post.id)}" data-occ="${actual.iso}">↩️ ${t("Volver al {d}","Back to {d}","Voltar ao {d}","{d}-לחזור ל",{d:occDateLabel(actual.iso)})}</button>`
+          : ""}
+      </div>
+    </div>`;
   return ` · <span class="occ-picker">
       <button type="button" class="occ-chip" data-action="occ-toggle" data-post-id="${esc(post.id)}"
-        aria-expanded="false" aria-haspopup="dialog"
+        aria-expanded="${abierto ? "true" : "false"}" aria-haspopup="dialog"
         title="${esc(t("Elegí qué fecha de la serie ver","Choose which date of the series to view","Escolha qual data da série ver","בחר/י איזה תאריך מהסדרה להציג"))}">🔁 ${esc(label)}<span class="occ-chev">▾</span></button>
       <div class="occ-pop" role="dialog" aria-label="${esc(t("Fechas de la serie","Dates in the series","Datas da série","תאריכי הסדרה"))}" hidden>
         ${abierto ? `<div class="occ-pop-head">${t("Fechas de la serie","Dates in the series","Datas da série","תאריכי הסדרה")}</div>
-        <div class="occ-list">${rows}</div>` : ""}
+        <div class="occ-list">${rows}</div>${pie}` : ""}
       </div>
     </span>`;
 }
@@ -9402,18 +9673,24 @@ function calendarioEventsByDate(fromISO, toISO){
   calendarioPosts().concat(prefs().calendarShowMilestones === false ? [] : allMilestoneItems()).forEach(p=>{
     const start = p.startDate || p.date;
     const end = p.endDate && p.endDate >= start ? p.endDate : start;
-    const repeats = expandRecurrence(start, p.recurrence, fromISO, toISO);
+    // Un mes de más en cada punta: una fecha corrida a otro día
+    // (recurrenceMoves) puede caer adentro de la ventana aunque la
+    // original quede afuera. pushRange recorta igual lo que sobra.
+    const repeats = expandRecurrence(start, p.recurrence, addDaysISO(fromISO, -31), addDaysISO(toISO, 31));
     if(!repeats){ pushRange(p, start, end); return; }
     // Cada repetición dura lo mismo que la original y se dibuja como una
     // copia con SUS fechas (el chip muestra la hora solo el día en que
     // arranca, ver calendarioChip). El id sigue siendo el del posteo
-    // único: tocar cualquier repetición abre la misma tarjeta.
+    // único: tocar cualquier repetición abre la misma tarjeta, y occId
+    // dice CUÁL de todas se tocó.
     const lenDays = Math.round((isoDate(end) - isoDate(start)) / 86400000);
     const skip = recurrenceSkipDates(p);
-    repeats.forEach(occStart=>{
-      if(skip.has(occStart)) return;
+    const moves = recurrenceMoves(p);
+    repeats.forEach(occId=>{
+      if(skip.has(occId)) return;
+      const occStart = moves[occId] || occId;
       const occEnd = lenDays > 0 ? addDaysISO(occStart, lenDays) : occStart;
-      pushRange({ ...p, startDate:occStart, endDate:occEnd, date:occStart }, occStart, occEnd);
+      pushRange({ ...p, startDate:occStart, endDate:occEnd, date:occStart, occId }, occStart, occEnd);
     });
   });
   Object.values(byDate).forEach(list => list.sort(calendarioCompare));
@@ -9446,7 +9723,11 @@ function calendarioNewAttrs(iso, hour){
 // una copia por fecha (todas con el mismo id de posteo), así que sin esto
 // tocar el lunes 22 abría la tarjeta parada en el lunes 15.
 function occAttr(p){
-  return isRecurring(p) && (p.startDate || p.date) ? ` data-occ="${esc(p.startDate || p.date)}"` : "";
+  // La fecha ORIGINAL de la repetición (occId), no el día en que se
+  // dibuja: si esa fecha se corrió a otro día, la identidad — y lo que
+  // buscan los comentarios — sigue siendo la original.
+  const id = p.occId || (isRecurring(p) ? (p.startDate || p.date) : null);
+  return id ? ` data-occ="${esc(id)}"` : "";
 }
 function calendarioChip(p, iso){
   const type = ACTIVITY_BY_KEY[p.activityType] || { icon:"✨" };
@@ -11577,7 +11858,7 @@ document.addEventListener("click", async e=>{
     if(!abrir){ closeDateFields(); return; }
     const kind = el.dataset.dfKind;
     const spec = dateFieldSpec(kind);
-    const ds = { postId, msId: el.dataset.msId, field: el.dataset.field };
+    const ds = { postId, msId: el.dataset.msId, field: el.dataset.field, occ: el.dataset.occ };
     if(!spec.canEdit(ds)) return;
     closeDateFields();
     const viewMonth = spec.get(ds) || (spec.fallbackView && spec.fallbackView(ds)) || todayISO();
@@ -11811,8 +12092,31 @@ document.addEventListener("click", async e=>{
   },
     "occ-pick": async (el, e, action, postId) => {
     occView[el.dataset.postId] = el.dataset.occ;
-    closeOccPops();
+    // No se cierra: elegir una fecha es, casi siempre, el paso previo a
+    // hacerle algo — y el pie del popup es justo lo que cambia al elegir.
     render();
+  },
+    "occ-skip": async (el, e, action, postId) => {
+    const post = getPostById(el.dataset.postId);
+    const iso = el.dataset.occ;
+    if(!post) return;
+    const ok = await appConfirm(t(
+      "¿El {d} no se hace? Queda fuera del Calendario (también del compartido), pero los comentarios de ese día no se borran.",
+      "Not happening on {d}? It comes off the Calendar (the shared one too), but that day's comments aren't deleted.",
+      "No dia {d} não acontece? Sai do Calendário (também do compartilhado), mas os comentários desse dia não são apagados.",
+      ".לא מתקיים ב-{d}? יורד מהיומן (גם מהמשותף), אך התגובות של אותו יום לא נמחקות",
+      { d: fmtDate(occurrenceDateOf(post, iso)) }));
+    if(!ok) return;
+    closeOccPops();
+    await setOccurrenceSkipped(post.id, iso, true);
+  },
+    "occ-unskip": async (el, e, action, postId) => {
+    closeOccPops();
+    await setOccurrenceSkipped(el.dataset.postId, el.dataset.occ, false);
+  },
+    "occ-unmove": async (el, e, action, postId) => {
+    closeOccPops();
+    await moveOccurrence(el.dataset.postId, el.dataset.occ, el.dataset.occ);
   },
     "cal-open": async (el, e, action, postId) => {
     if(String(postId).includes("#m:")) openProjectMilestone(postId);

@@ -267,6 +267,13 @@ service cloud.firestore {
         // cancelaron en Calendar, para no dibujarlas.
         (d.get('recurrence', null) == null || (d.recurrence is list && d.recurrence.size() <= 10)) &&
         (d.get('recurrenceSkip', null) == null || (d.recurrenceSkip is list && d.recurrenceSkip.size() <= 200)) &&
+        // Fechas corridas a otro día: { fechaOriginal: fechaNueva }. La
+        // clave es SIEMPRE la fecha original de la serie — es la identidad
+        // de esa repetición, la que llevan pegada los comentarios (`occ`).
+        // El tope va contra MAX_OCC_MOVES en index.html; el contenido de
+        // cada par lo valida el cliente (el lenguaje de reglas no recorre
+        // las claves de un map, igual que no recorre listas).
+        (d.get('recurrenceMoves', null) == null || (d.recurrenceMoves is map && d.recurrenceMoves.keys().size() <= 60)) &&
         isOptionalString(d.get('projectNotes', null), 2000) &&
         // Dado por completado: queda en solo lectura hasta "Volver a editar".
         (d.get('projectStatus', null) == null || d.projectStatus in ['open', 'done']) &&
@@ -361,7 +368,7 @@ service cloud.firestore {
       return d.keys().hasOnly(['title', 'content', 'date', 'startDate', 'endDate', 'startTime', 'endTime',
         'organizer', 'participants', 'location', 'activityType', 'authorName', 'authorEmail',
         'scopes', 'links', 'images', 'files', 'mentions', 'calendarEventId', 'createdAt', 'isProject', 'milestones', 'editors', 'projectNotes', 'projectStatus', 'projectDoneBy', 'projectDoneAt',
-        'recurrence', 'recurrenceSkip']);
+        'recurrence', 'recurrenceSkip', 'recurrenceMoves']);
     }
     function isValidPostCreate(d) {
       return isValidPostBase(d) && hasOnlyPostKeys(d) && isPostAuthorOk(d) && d.createdAt == request.time;
@@ -375,7 +382,7 @@ service cloud.firestore {
           'startTime', 'endTime', 'organizer', 'participants', 'location', 'activityType', 'scopes',
           'links', 'images', 'files', 'mentions', 'cancelled', 'calendarEventId', 'lastEditedAt', 'lastEditedBy',
           'isProject', 'milestones', 'editors', 'projectNotes', 'projectStatus', 'projectDoneBy', 'projectDoneAt',
-          'recurrence', 'recurrenceSkip']) &&
+          'recurrence', 'recurrenceSkip', 'recurrenceMoves']) &&
         // El alcance mínimo de 1 solo se exige para Evento — Rutina es una
         // entrada rápida del día a día donde el lugar es opcional (se
         // agrega con el buscador de lugar del composer, si se quiere).
