@@ -611,7 +611,8 @@ service cloud.firestore {
     function isValidUserPrefs(d) {
       return d.keys().hasOnly(['weekStart', 'showWeekends', 'customDays', 'dimPast',
           'dateFormat', 'timeFormat', 'placeLevel', 'unifiedFeed', 'feedOrder', 'feedFeatured',
-          'calendarShowMilestones', 'calendarShowHolidaysLocal', 'calendarShowHolidaysJewish',
+          'calendarShowMilestones', 'calendarHideDoneMilestones', 'milestoneDueSoonDays',
+          'calendarShowHolidaysLocal', 'calendarShowHolidaysJewish',
           'holidayMode', 'holidayCountries', 'holidayJewish',
           'holidayColor', 'holidayJewishColor',
           'notifyTypes', 'notifyLead', 'notifyOnlyMine', 'notifyZones',
@@ -632,6 +633,12 @@ service cloud.firestore {
         (d.get('feedOrder', 'reciente') in ['reciente', 'desc', 'asc']) &&
         (d.get('feedFeatured', true) is bool) &&
         (d.get('calendarShowMilestones', true) is bool) &&
+        // Esconder del Calendario los hitos ya tildados, y con cuántos días
+        // de anticipación un hito pasa a "Por vencer" (ver
+        // milestoneDueSoonDays en index.html). El valor exacto lo acota el
+        // cliente contra su lista de opciones; acá solo se pide el tipo.
+        (d.get('calendarHideDoneMilestones', false) is bool) &&
+        (d.get('milestoneDueSoonDays', 5) is int) &&
         (d.get('calendarShowHolidaysLocal', true) is bool) &&
         (d.get('calendarShowHolidaysJewish', true) is bool) &&
         (d.get('holidayMode', 'sutil') is string) &&
