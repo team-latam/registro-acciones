@@ -931,6 +931,51 @@
   .pj-when{ font-size:11.5px; color:var(--text-muted); }
   .pj-doneby{ font-size:11px; color:var(--text-muted); margin-inline-start:auto; }
 
+  /* ---------- Cada cuánto se repite (composer) ----------
+     Una sola línea en el formulario; todo lo demás vive adentro del
+     popup. Mismo criterio fixed + bounding rect que .date-pop, que acá
+     además hace falta porque el formulario del modal scrollea. ---------- */
+  .recur-row{ margin-top:8px; }
+  .recur-field{ position:relative; display:inline-flex; }
+  .recur-trigger{
+    display:inline-flex; align-items:center; gap:6px; font-family:inherit; font-size:12.5px;
+    font-weight:600; cursor:pointer; padding:5px 11px; border-radius:999px;
+    border:1px dashed var(--border); background:transparent; color:var(--text-muted);
+  }
+  .recur-trigger:hover, .recur-field.open .recur-trigger{ border-color:var(--celeste-dark); color:var(--celeste-dark); }
+  /* Con una repetición puesta deja de ser un botón "vacío": línea llena y
+     color de tinta, para que se note de un vistazo que el evento se repite. */
+  .recur-trigger.on{ border-style:solid; border-color:var(--celeste-dark); background:var(--celeste-soft); color:var(--petroleo); }
+  .recur-pop{
+    position:fixed; z-index:129; width:268px; background:var(--card); border:1px solid var(--border);
+    border-radius:var(--radius-md); box-shadow:var(--shadow); padding:11px; font-size:12.5px;
+  }
+  .recur-pop[hidden]{ display:none; }
+  .recur-sect + .recur-sect{ margin-top:11px; padding-top:10px; border-top:1px solid var(--border); }
+  .recur-lbl{
+    font-size:10.5px; font-weight:700; color:var(--text-muted); text-transform:uppercase;
+    letter-spacing:.05em; margin-bottom:7px;
+  }
+  .recur-opts{ display:flex; flex-wrap:wrap; gap:5px; }
+  .recur-opt{
+    flex:none; font-family:inherit; font-size:11.5px; font-weight:600; cursor:pointer;
+    padding:5px 10px; border-radius:999px; border:1px solid var(--border);
+    background:var(--surface-soft); color:var(--ink);
+  }
+  .recur-opt:hover{ border-color:var(--celeste-dark); }
+  .recur-opt.sel{ background:var(--celeste-dark); border-color:var(--celeste-dark); color:#fff; }
+  /* Los días de la semana: redondos y todos del mismo ancho, que es lo
+     que los hace legibles con una sola letra. */
+  .recur-dows{ display:flex; gap:4px; }
+  .recur-dow{
+    flex:1; min-width:0; aspect-ratio:1; max-width:32px; font-family:inherit; font-size:11.5px;
+    font-weight:700; cursor:pointer; border-radius:50%; border:1px solid var(--border);
+    background:var(--surface-soft); color:var(--ink); text-transform:uppercase;
+    display:flex; align-items:center; justify-content:center; padding:0;
+  }
+  .recur-dow:hover{ border-color:var(--celeste-dark); }
+  .recur-dow.sel{ background:var(--celeste-dark); border-color:var(--celeste-dark); color:#fff; }
+
   /* ---------- Selector de fecha de un evento que se repite ----------
      El texto "🔁 se repite todas las semanas" que ya estaba en la tarjeta
      ahora es el botón: apretándolo se elige QUÉ fecha de la serie está
@@ -2703,6 +2748,7 @@ window.addEventListener("scroll", ()=>{ if(document.querySelector(".date-field.o
 window.addEventListener("resize", ()=>{ if(document.querySelector(".date-field.open")) closeDateFields(); });
 window.addEventListener("scroll", ()=>{ if(document.querySelector(".occ-picker.open")) closeOccPops(); }, { passive:true });
 window.addEventListener("resize", ()=>{ if(document.querySelector(".occ-picker.open")) closeOccPops(); });
+window.addEventListener("resize", ()=>{ if(document.querySelector(".recur-field.open")) closeRecurPop(); });
 function closeColorPops(except){
   document.querySelectorAll(".color-control.open").forEach(c=>{
     if(c === except) return;
@@ -4000,6 +4046,11 @@ function buildCalendarEvent(postData, postId){
     description: descLines.join("\n"),
     start: hasTime ? { dateTime: `${postData.startDate}T${postData.startTime}:00`, timeZone } : { date: postData.startDate },
     end: hasTime ? { dateTime: `${postData.endDate}T${postData.endTime}:00`, timeZone } : { date: addDaysISO(postData.endDate, 1) },
+    // Cada cuánto se repite, en el mismo RRULE que usa Google. Va SIEMPRE
+    // (aunque sea null) para que sacarle la repetición a un evento
+    // también llegue: con undefined, un PATCH deja el campo como estaba y
+    // el evento se seguía repitiendo en el Calendar compartido.
+    recurrence: Array.isArray(postData.recurrence) && postData.recurrence.length ? postData.recurrence : null,
     // Los participantes taggeados en el posteo se suman como invitados de
     // verdad del evento (Google les manda la invitación por mail gracias a
     // sendUpdates=all en el fetch, ver syncToCalendar/updateCalendarEvent):
@@ -5588,7 +5639,18 @@ const DATE_FIELD_SPECS = {
     get: () => composerDraft.startDate || null,
     // Mismo efecto que el <input type=date> que reemplaza: si el fin queda
     // antes del nuevo inicio, se corre junto.
-    set: (ds, iso) => { composerDraft.startDate = iso; if(composerDraft.endDate < iso) composerDraft.endDate = iso; render(); },
+    set: (ds, iso) => {
+      composerDraft.startDate = iso;
+      if(composerDraft.endDate < iso) composerDraft.endDate = iso;
+      // Si los días de la repetición todavía son los que se pusieron
+      // solos, siguen a la fecha. Sin esto, elegir "cada semana" un lunes
+      // y después mover el evento al miércoles dejaba una regla que decía
+      // "los lunes" — y la primera repetición ni siquiera caía el día del
+      // evento. En cuanto alguien toca los días a mano, manda su elección.
+      const r = composerDraft.recur;
+      if(r && r.byDayAuto) composerDraft.recur = { ...r, byDay:[isoDow(iso)] };
+      render();
+    },
     allowClear: () => false,
   },
   "composer-end": {
@@ -5610,6 +5672,17 @@ const DATE_FIELD_SPECS = {
     allowClear: () => true,
     // No tiene sentido importar "desde el futuro".
     max: () => todayISO(),
+  },
+  // Hasta cuándo se repite (editor del composer). Sin fecha = siempre.
+  "recur-until": {
+    dfId: () => "recur:until",
+    canEdit: () => true,
+    get: () => composerDraft.recur && composerDraft.recur.until || null,
+    set: (ds, iso) => { composerDraft.recur = { ...composerDraft.recur, until: iso || "" }; closeDateFields(); render(); },
+    allowClear: () => true,
+    // Antes de la primera fecha no habría ni una sola repetición.
+    min: () => composerDraft.startDate || null,
+    fallbackView: () => composerDraft.startDate || null,
   },
   // Correr UNA fecha de una serie a otro día ("este lunes lo hacemos el
   // miércoles"). ds.occ es la fecha ORIGINAL, que es la identidad de la
@@ -6201,6 +6274,9 @@ function buildEditSummary(original, next){
   ));
   if(original.content !== next.content) parts.push(t("comentarios","comments","comentários","הערות"));
   if(JSON.stringify(original.scopes||[]) !== JSON.stringify(next.scopes||[])) parts.push(t("lugar","place","lugar","מקום"));
+  if(JSON.stringify(original.recurrence || null) !== JSON.stringify(next.recurrence || null)) parts.push(next.recurrence
+    ? t("repetición ({r})","repetition ({r})","repetição ({r})","({r}) חזרה",{r:recurrenceLabel({ recurrence:next.recurrence })})
+    : t("dejó de repetirse","no longer repeats","deixou de se repetir","הפסיק לחזור"));
   if(!parts.length) return null;
   return t("✏️ {n} editó este posteo: {changes}.","✏️ {n} edited this post: {changes}.","✏️ {n} editou esta postagem: {changes}.","✏️ {n} ערך/ה פוסט זה: {changes}.",{n:state.auth.user.displayName, changes:parts.join(", ")});
 }
@@ -6248,8 +6324,17 @@ async function updatePostAndSync(postId, original, newData){
     participants:newData.participants, location:newData.location||null,
     activityType:newData.activityType, scopes:newData.scopes, images:newData.images, links:newData.links,
     files:newData.files, mentions:newData.mentions,
+    recurrence: newData.recurrence || null,
     lastEditedAt: fb.serverTimestamp(), lastEditedBy: state.auth.user.displayName,
   };
+  // Si cambió CÓMO se repite, las fechas suspendidas y corridas eran de
+  // la regla vieja: con otra regla dejan de tener sentido y esconderían o
+  // moverían días que ahora son otros (mismo criterio que la
+  // sincronización desde Calendar, ver applyCalendarEventToPosts).
+  if(JSON.stringify(original.recurrence || null) !== JSON.stringify(newData.recurrence || null)){
+    if(original.recurrenceSkip && original.recurrenceSkip.length) patch.recurrenceSkip = [];
+    if(original.recurrenceMoves && Object.keys(original.recurrenceMoves).length) patch.recurrenceMoves = {};
+  }
   await updatePostDoc(postId, patch);
 
   const summary = buildEditSummary(original, newData);
@@ -6431,6 +6516,7 @@ function render(){
   // snapshot de Firestore dispara este mismo render().
   syncDateFieldOpenState();
   syncOccPopState();
+  syncRecurPopState();
   if(focusSel){
     let el = null;
     try{ el = document.querySelector(focusSel); }catch(e){}
@@ -9655,6 +9741,171 @@ function renderOccurrencePicker(post, occ){
     </span>`;
 }
 
+// —— Armar la repetición desde la app ————————————————————————————————
+// Hasta acá la regla solo podía venir de Google Calendar. Esto la deja
+// armar desde el composer, en criollo ("cada 2 semanas, los lunes, hasta
+// el 30 de junio"), y la traduce a RRULE, que es lo que entiende
+// Calendar y lo que ya sabe leer expandRecurrence.
+//
+// A propósito NO se ofrecen todas las variantes del estándar (el "segundo
+// martes de cada mes" y compañía): son las que parseRecurrence no sabe
+// expandir, así que ofrecerlas sería prometer algo que después el
+// Calendario no dibuja.
+const RRULE_DOW_NAMES = ["SU","MO","TU","WE","TH","FR","SA"];
+const RECUR_PRESETS = [
+  { key:"none",     label: () => t("No se repite","Doesn't repeat","Não se repete","לא חוזר") },
+  { key:"daily",    freq:"DAILY",   interval:1, label: () => t("Todos los días","Every day","Todos os dias","כל יום") },
+  { key:"weekly",   freq:"WEEKLY",  interval:1, label: () => t("Cada semana","Every week","Toda semana","כל שבוע") },
+  { key:"biweekly", freq:"WEEKLY",  interval:2, label: () => t("Cada 2 semanas","Every 2 weeks","A cada 2 semanas","כל שבועיים") },
+  { key:"monthly",  freq:"MONTHLY", interval:1, label: () => t("Cada mes","Every month","Todo mês","כל חודש") },
+  { key:"yearly",   freq:"YEARLY",  interval:1, label: () => t("Cada año","Every year","Todo ano","כל שנה") },
+];
+function recurPreset(key){ return RECUR_PRESETS.find(p=>p.key === key) || RECUR_PRESETS[0]; }
+// Lo que viene guardado (o de Calendar) traído al vocabulario del editor.
+// Una regla que el editor no sabe representar devuelve key "otra": ahí el
+// editor no la toca, solo ofrece dejarla como está o sacarla — pisarla
+// con una aproximación sería romperle la serie a quien la armó en Google.
+function recurDraftFrom(lines, startISO){
+  const parsed = parseRecurrence(lines);
+  const vacio = { key:"none", byDay:[isoDow(startISO || todayISO())], byDayAuto:true, until:"" };
+  const tieneRegla = Array.isArray(lines) && lines.some(l=>/^RRULE[:;]/i.test(String(l||"").trim()));
+  if(!parsed) return tieneRegla ? { ...vacio, key:"otra" } : vacio;
+  const { freq, interval, byDay, until, count } = parsed.rule;
+  // COUNT ("10 veces") no lo ofrece el editor, pero tampoco se puede
+  // perder sin cambiarle el significado a la serie: cuenta como "otra".
+  if(count) return { ...vacio, key:"otra" };
+  const preset = RECUR_PRESETS.find(p=>p.freq === freq && p.interval === interval);
+  if(!preset) return { ...vacio, key:"otra" };
+  return {
+    key: preset.key,
+    byDay: byDay && byDay.length ? byDay.slice() : [isoDow(startISO || todayISO())],
+    // Los días de una regla ya guardada los eligió alguien: no se pisan
+    // solos si después se cambia la fecha del evento.
+    byDayAuto: !(byDay && byDay.length),
+    until: until || "",
+  };
+}
+// Y la vuelta: del editor a las líneas que se guardan y se le mandan a
+// Google. UNTIL va en UTC con hora de cierre del día, que es la forma que
+// devuelve Calendar y la que rruleDateToISO ya sabe leer.
+function recurLinesFrom(draft, startISO){
+  if(!draft || draft.key === "none") return null;
+  const preset = recurPreset(draft.key);
+  if(!preset.freq) return null;
+  const partes = [`FREQ=${preset.freq}`];
+  if(preset.interval > 1) partes.push(`INTERVAL=${preset.interval}`);
+  if(preset.freq === "WEEKLY"){
+    const dias = (draft.byDay && draft.byDay.length ? draft.byDay : [isoDow(startISO || todayISO())])
+      .slice().sort((a,b)=>a-b).map(d=>RRULE_DOW_NAMES[d]);
+    partes.push(`BYDAY=${dias.join(",")}`);
+  }
+  if(draft.until) partes.push(`UNTIL=${draft.until.replace(/-/g,"")}T235959Z`);
+  return [`RRULE:${partes.join(";")}`];
+}
+// El texto del botón del composer: "Cada 2 semanas, los lunes y miércoles".
+function recurSummary(draft, startISO){
+  if(!draft || draft.key === "none") return t("No se repite","Doesn't repeat","Não se repete","לא חוזר");
+  if(draft.key === "otra") return t("Repetición armada en Google Calendar","Repetition set in Google Calendar","Repetição feita no Google Calendar","חזרה שהוגדרה ב-Google Calendar");
+  const preset = recurPreset(draft.key);
+  let txt = preset.label();
+  if(preset.freq === "WEEKLY"){
+    const dias = (draft.byDay && draft.byDay.length ? draft.byDay : [isoDow(startISO || todayISO())]).slice().sort((a,b)=>a-b);
+    txt += `, ${t("los","on","nas","בימי")} ${listToText(dias.map(d=>dowName(d)))}`;
+  }
+  // La fecha de corte en formato corto (31/12/2026): con "31 de diciembre
+  // de 2026" el botón del composer se iba a dos renglones.
+  if(draft.until) txt += `, ${t("hasta {d}","until {d}","até {d}","{d} עד",{d:fmtTypedDate(draft.until)})}`;
+  return txt;
+}
+// "lunes", "miércoles"… en el idioma de la sesión, sin tabla propia: se
+// le pide a Intl el nombre de un domingo conocido más N días.
+function dowName(dow){
+  return fmtISO(addDaysISO("2026-01-04", dow), { weekday:"long" }); // 2026-01-04 es domingo
+}
+function dowShort(dow){
+  return fmtISO(addDaysISO("2026-01-04", dow), { weekday:"narrow" });
+}
+// "lunes y miércoles" / "lunes, miércoles y viernes"
+function listToText(items){
+  if(items.length <= 1) return items[0] || "";
+  return items.slice(0,-1).join(", ") + ` ${t("y","and","e","-ו")} ` + items[items.length-1];
+}
+
+// El control del composer: una sola línea ("🔁 No se repite") que abre
+// todo lo demás. Es a propósito lo único que se suma al formulario — el
+// resto vive adentro del popup y no le tapa el lugar a lo básico.
+let recurPopOpen = false;
+function closeRecurPop(){
+  document.querySelectorAll(".recur-field.open").forEach(f=>{
+    f.classList.remove("open");
+    const pop = f.querySelector(".recur-pop"); if(pop) pop.hidden = true;
+    const btn = f.querySelector(".recur-trigger"); if(btn) btn.setAttribute("aria-expanded","false");
+  });
+  recurPopOpen = false;
+}
+// Igual que syncDateFieldOpenState/syncOccPopState: render() rehace el
+// formulario de cero y hay que reabrir y reposicionar contra el botón nuevo.
+function syncRecurPopState(){
+  if(!recurPopOpen) return;
+  const btn = document.querySelector(".recur-trigger");
+  if(!btn){ recurPopOpen = false; return; }
+  const wrap = btn.closest(".recur-field");
+  wrap.classList.add("open");
+  btn.setAttribute("aria-expanded","true");
+  const pop = wrap.querySelector(".recur-pop");
+  pop.hidden = false;
+  positionDatePop(btn, pop);
+}
+function renderRecurrenceField(d){
+  // Una rutina es una entrada del día a día, no un evento con agenda: no
+  // tiene sentido repetirla (y tampoco va al Calendar compartido).
+  if(d.activityType === "rutina") return "";
+  const r = d.recur || { key:"none", byDay:[isoDow(d.startDate)], until:"" };
+  const puesta = r.key !== "none";
+  const semanal = recurPreset(r.key).freq === "WEEKLY";
+  const dias = r.byDay && r.byDay.length ? r.byDay : [isoDow(d.startDate)];
+  // El orden de los días arranca donde arranca la semana de cada persona.
+  const inicioSemana = Number(prefs().weekStart) === 1 ? 1 : 0;
+  const ordenDias = [0,1,2,3,4,5,6].map(i => (i + inicioSemana) % 7);
+  return `
+    <div class="recur-row">
+      <span class="recur-field">
+        <button type="button" class="recur-trigger ${puesta ? "on" : ""}" data-action="recur-open"
+          aria-haspopup="dialog" aria-expanded="${recurPopOpen ? "true" : "false"}">🔁 ${esc(recurSummary(r, d.startDate))}<span class="occ-chev">▾</span></button>
+        <div class="recur-pop" role="dialog" aria-label="${esc(t("Cada cuánto se repite","How often it repeats","De quanto em quanto tempo se repete","כל כמה זמן חוזר"))}" hidden>
+          ${!recurPopOpen ? "" : `
+          <div class="recur-sect">
+            <div class="recur-lbl">${t("Cada cuánto","How often","De quanto em quanto","כל כמה זמן")}</div>
+            <div class="recur-opts">
+              ${RECUR_PRESETS.map(p=>`<button type="button" class="recur-opt ${r.key===p.key?"sel":""}" data-action="recur-preset" data-key="${p.key}">${esc(p.label())}</button>`).join("")}
+            </div>
+            ${r.key === "otra" ? `<div class="hint" style="margin-top:6px;">${t(
+              "Esta repetición se armó en Google Calendar y es más específica que lo que se puede elegir acá. Si tocás una opción, se reemplaza.",
+              "This repetition was set in Google Calendar and is more specific than what can be chosen here. Picking an option replaces it.",
+              "Esta repetição foi feita no Google Calendar e é mais específica do que o que dá para escolher aqui. Se tocar numa opção, é substituída.",
+              ".החזרה הזו הוגדרה ב-Google Calendar והיא ספציפית יותר ממה שאפשר לבחור כאן. בחירה באפשרות תחליף אותה")}</div>` : ""}
+          </div>
+          ${semanal ? `
+          <div class="recur-sect">
+            <div class="recur-lbl">${t("Qué días","Which days","Quais dias","אילו ימים")}</div>
+            <div class="recur-dows">
+              ${ordenDias.map(dw=>`<button type="button" class="recur-dow ${dias.includes(dw)?"sel":""}" data-action="recur-dow" data-dow="${dw}"
+                  aria-pressed="${dias.includes(dw)?"true":"false"}" title="${esc(dowName(dw))}">${esc(dowShort(dw))}</button>`).join("")}
+            </div>
+          </div>` : ""}
+          ${puesta && r.key !== "otra" ? `
+          <div class="recur-sect">
+            <div class="recur-lbl">${t("Hasta cuándo","Until when","Até quando","עד מתי")}</div>
+            <span class="date-field">
+              <button type="button" class="date-trigger ${r.until ? "" : "empty"}" data-action="date-open" data-df-kind="recur-until" data-df-id="recur:until" aria-haspopup="dialog" aria-expanded="false"><span class="cal-ic" aria-hidden="true">📅</span>${r.until ? esc(fmtTypedDate(r.until)) : esc(t("siempre","always","sempre","תמיד"))}</button>
+              <div class="date-pop" hidden role="dialog" aria-label="${esc(t("Hasta cuándo se repite","Until when it repeats","Até quando se repete","עד מתי חוזר"))}"></div>
+            </span>
+          </div>` : ""}`}
+        </div>
+      </span>
+    </div>`;
+}
+
 // Mapa fecha ISO -> eventos de ese día, ya recortado a la ventana que se
 // está dibujando. Un evento de varios días aparece en cada uno de sus
 // días; el recorte a [fromISO, toISO] evita iterar rangos largos.
@@ -10190,6 +10441,12 @@ function newComposerDraft(){
     mentionCaret: 0,
     mentionHighlight: 0,
     error: "",
+    // Cómo se repite, en el vocabulario del editor (ver recurDraftFrom).
+    // `recurrence` guarda las líneas ORIGINALES: si la regla vino de
+    // Google y es más específica de lo que el editor sabe mostrar
+    // (key "otra"), se guardan tal cual en vez de aproximarlas.
+    recur: { key:"none", byDay:[isoDow(today)], byDayAuto:true, until:"" },
+    recurrence: null,
     editingPost: null,
   };
 }
@@ -10620,6 +10877,8 @@ function openEditComposer(post){
     images: [...(post.images||[])], links: (post.links||[]).map(l=>({...l})),
     files: (post.files||[]).map(f=>({...f})), attachOpen: false,
     mentionQuery: null, mentionCaret: 0, mentionHighlight: 0,
+    recur: recurDraftFrom(post.recurrence, post.startDate || post.date),
+    recurrence: Array.isArray(post.recurrence) ? [...post.recurrence] : null,
     error: "", editingPost: post,
   };
   composerSnapshot = snapshotComposer();
@@ -10642,6 +10901,7 @@ function snapshotComposer(){
     startTime:d.startTime, endTime:d.endTime, participants:d.participants, activityType:d.activityType,
     scopes:d.scopes, links:d.links, files:(d.files||[]).map(f=>f.name+":"+(f.dataUrl||"").length),
     images:(d.images||[]).map(s=>s.length+":"+s.slice(-16)), location:d.location,
+    recur:d.recur,
   });
 }
 function composerIsDirty(){ return snapshotComposer() !== composerSnapshot; }
@@ -10692,6 +10952,7 @@ function renderComposer(){
           <span class="dt-sep">${isRTL()?"←":"→"}</span>
           <input type="text" inputmode="${uses12h() ? "text" : "numeric"}" autocomplete="off" class="dt-time-input" id="cEndTime" data-time-field="end" placeholder="${esc(typedTimePlaceholder())}" aria-label="${esc(t("Hora de fin","End time","Hora de fim","שעת סיום"))}" value="${esc(fmtTypedTime(d.endTime))}">
         </div>` : ""}
+        ${renderRecurrenceField(d)}
       </div>
     </div>
     <div class="field-icon-row">
@@ -11140,6 +11401,7 @@ document.addEventListener("keydown", e=>{
   if(document.querySelector(".color-control.open")){ closeColorPops(); return; }
   if(document.querySelector(".date-field.open")){ closeDateFields(); return; }
   if(document.querySelector(".occ-picker.open")){ closeOccPops(); return; }
+  if(document.querySelector(".recur-field.open")){ closeRecurPop(); return; }
   if(lightbox.classList.contains("show")){ closeLightbox(); return; }
   if(!filePreviewOverlay.hidden){ closeFilePreview(); return; }
   if(!userProfileOverlay.hidden){ closeUserProfile(); return; }
@@ -11666,6 +11928,7 @@ document.addEventListener("click", async e=>{
   if(!e.target.closest(".color-control")) closeColorPops();
   if(!e.target.closest(".date-field")) closeDateFields();
   if(!e.target.closest(".occ-picker")) closeOccPops();
+  if(!e.target.closest(".recur-field")) closeRecurPop();
   if(userMenuOpen && !e.target.closest("#userBadge")){
     userMenuOpen = false; nicknameEditing = false; nicknameError = null; render();
   }
@@ -12075,6 +12338,35 @@ document.addEventListener("click", async e=>{
   },
     "cal-open-month": async (el, e, action, postId) => {
     state.calendarioAnchor = el.dataset.date; state.calendarioSubview = "mes"; render();
+  },
+    "recur-open": async (el, e, action, postId) => {
+    const abrir = !recurPopOpen;
+    closeRecurPop();
+    recurPopOpen = abrir;
+    // render() es el que arma el contenido (solo se arma abierto) y el
+    // que, vía syncRecurPopState, lo muestra y lo posiciona.
+    render();
+  },
+    "recur-preset": async (el, e, action, postId) => {
+    const key = el.dataset.key;
+    const r = composerDraft.recur || {};
+    // Al pasar a semanal por primera vez, los días arrancan con el de la
+    // fecha del evento: "cada semana" sin día elegido no quiere decir nada.
+    const byDay = r.byDay && r.byDay.length ? r.byDay : [isoDow(composerDraft.startDate)];
+    composerDraft.recur = { key, byDay, until: key === "none" ? "" : (r.until || "") };
+    render();
+  },
+    "recur-dow": async (el, e, action, postId) => {
+    const dow = Number(el.dataset.dow);
+    const r = composerDraft.recur || {};
+    const actuales = r.byDay && r.byDay.length ? r.byDay : [isoDow(composerDraft.startDate)];
+    // Nunca dejar cero días: una semanal sin ningún día no se repite
+    // nunca, y el botón parecería roto en vez de decir eso.
+    const nuevos = actuales.includes(dow)
+      ? (actuales.length > 1 ? actuales.filter(d=>d !== dow) : actuales)
+      : actuales.concat([dow]);
+    composerDraft.recur = { ...r, byDay: nuevos, byDayAuto: false };
+    render();
   },
     "occ-toggle": async (el, e, action, postId) => {
     const id = el.dataset.postId;
@@ -12818,6 +13110,10 @@ postForm.addEventListener("submit", async e=>{
     participants: d.participants, location: d.location.trim() || null,
     activityType:d.activityType, scopes:d.scopes,
     images:d.images, links, files:d.files, mentions,
+    // Una regla que el editor no sabe representar se guarda tal cual vino
+    // (key "otra"): aproximarla sería romperle la serie a quien la armó
+    // en Google Calendar.
+    recurrence: d.recur && d.recur.key === "otra" ? (d.recurrence || null) : recurLinesFrom(d.recur, d.startDate),
     authorName: state.auth.user.displayName, authorEmail: state.auth.user.email,
   };
   d.submitting = true; render();
