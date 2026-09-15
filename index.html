@@ -1688,6 +1688,10 @@
   /* El botón principal es el .btn-primary de toda la app (mismo color en
      claro y oscuro que "Publicar"): acá no se inventa otro. */
   .ev-actions .btn-primary{ flex:1; }
+  /* Con 3 botones (desde que se sumó el de proyecto) el primario podía
+     angostarse más que su texto y partirlo en varias líneas en vez de que
+     flex-wrap lo baje entero a otra fila — que es lo que se busca. */
+  .ev-actions button{ white-space:nowrap; }
   .ev-actions button:not(.btn-primary){
     font-family:inherit; font-size:13.5px; font-weight:700; cursor:pointer; padding:11px 16px;
     border-radius:999px; border:1px solid var(--border); background:var(--card); color:var(--ink);
@@ -9742,8 +9746,11 @@ function renderEventCard(){
     </div>
     <div class="ev-actions">
       <button type="button" class="btn-primary" data-action="event-card-goto" data-post-id="${esc(post.id)}">
-        ${t("Ver la historia completa","See the full story","Ver a história completa","לצפייה בסיפור המלא")} ${isRTL() ? "←" : "→"}
+        ${t("Ver historia","View history","Ver histórico","היסטוריה")} ${isRTL() ? "←" : "→"}
       </button>
+      ${post.isProject
+        ? `<button type="button" data-action="event-card-project" data-post-id="${esc(post.id)}">📋 ${t("Ver proyecto","View project","Ver projeto","הצגת פרויקט")}</button>`
+        : (post.activityType !== "rutina" && canManageProject(post) ? `<button type="button" data-action="event-card-project" data-post-id="${esc(post.id)}">📋 ${t("Crear como proyecto","Create as project","Criar como projeto","יצירה כפרויקט")}</button>` : "")}
       ${canEditPost(post) ? `<button type="button" data-action="event-card-edit" data-post-id="${esc(post.id)}">✏️ ${t("Editar","Edit","Editar","עריכה")}</button>` : ""}
     </div>`;
 }
@@ -10658,6 +10665,15 @@ document.addEventListener("click", async e=>{
     const post = getPostById(el.dataset.postId);
     closeEventCard();
     if(post) openEditComposer(post);
+  },
+    "event-card-project": async (el, e, action, postId) => {
+    const post = getPostById(el.dataset.postId);
+    if(!post) return;
+    closeEventCard();
+    // Mismo botón para las dos puntas, como en la tarjeta del Feed:
+    // createProject ya deja projectOpen/state.view listos y navega solo.
+    if(post.isProject){ projectOpen = post.id; state.view = "proyectos"; render(); scrollToTop(); }
+    else if(canManageProject(post)) createProject(post);
   },
     "cal-new": async (el, e, action, postId) => {
     openComposerOnDate(el.dataset.date, el.dataset.hour);
