@@ -403,8 +403,17 @@
     padding:5px 12px; border-radius:999px; margin-inline-end:6px;
   }
   .status-pill::before{ content:""; width:6px; height:6px; border-radius:50%; background:currentColor; }
-  .status-pill.approved{ background:var(--ok-bg); color:var(--ok-text); }
-  .status-pill.rejected{ background:var(--danger-bg); color:var(--danger-text); }
+  .status-pill.approved, .status-pill.done{ background:var(--ok-bg); color:var(--ok-text); }
+  .status-pill.rejected, .status-pill.overdue{ background:var(--danger-bg); color:var(--danger-text); }
+  /* Estados del hito de proyecto (ver milestoneStatusLabel): mismos
+     tokens semánticos que ya usa este componente para aprobar/rechazar,
+     nada nuevo. "pending" acá es "todavía falta", no tiene relación con
+     el "pendiente" de aprobación de la allowlist. */
+  .status-pill.soon{ background:var(--warn-bg); color:var(--warn-text); }
+  .status-pill.today{ background:var(--celeste-soft); color:var(--celeste-dark); }
+  .status-pill.pending{ background:var(--surface-hover); color:var(--text-muted); }
+  button.status-pill{ font-family:inherit; border:none; cursor:pointer; }
+  button.status-pill:hover{ filter:brightness(0.95); }
   .btn-ghost{ background:none; border:none; padding:9px 14px; border-radius:999px; font-weight:700; font-size:12.5px; cursor:pointer; color:var(--ink); white-space:nowrap; }
   /* En angosto los botones de acción (Compartir Calendar · Revocar
      acceso · …) tienen ancho fijo y aplastaban la columna del nombre a
@@ -895,6 +904,7 @@
   .pj-dot.done{ background:#16a34a; border-color:#15803d; }
   .pj-dot.overdue{ background:var(--danger); border-color:var(--danger); }
   .pj-dot.today{ background:var(--celeste); border-color:var(--celeste-dark); }
+  .pj-dot.soon{ background:var(--warn-border); border-color:var(--warn-text); }
   .pj-dot.ev{ background:var(--petroleo); border-color:var(--petroleo-dark); width:24px; height:24px; }
   .pj-lbl{ position:absolute; left:50%; transform:translateX(-50%); width:120px; text-align:center; font-size:10.5px; line-height:1.25; color:var(--ink); }
   .pj-lbl b{ display:block; font-size:10.5px; color:#5b7db1; margin-bottom:2px; }
@@ -905,10 +915,8 @@
   .pj-row{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:6px 8px; border-radius:8px; background:var(--card); border:1px solid var(--border); }
   .pj-row.done .pj-label, .pj-row.done .pj-label-input{ text-decoration:line-through; color:var(--text-muted); }
   .pj-row.overdue{ border-color:color-mix(in srgb, var(--danger) 50%, var(--border)); }
-  .pj-row.overdue .pj-when i{ color:var(--danger); font-weight:700; }
-  .pj-row.today .pj-when i{ color:var(--celeste-dark); font-weight:700; }
-  .pj-check{ width:18px; height:18px; flex:none; accent-color:#16a34a; }
-  .pj-check.ro{ display:inline-flex; align-items:center; justify-content:center; border:1.5px solid var(--border); border-radius:4px; font-size:12px; color:#16a34a; font-weight:800; }
+  .pj-row.soon{ border-color:color-mix(in srgb, var(--warn-border) 70%, var(--border)); }
+  .pj-row.today{ border-color:color-mix(in srgb, var(--celeste-dark) 40%, var(--border)); }
   .pj-main{ flex:1 1 220px; min-width:0; display:flex; flex-direction:column; gap:2px; }
   .pj-label{ font-weight:700; font-size:13px; color:var(--ink); }
   .pj-label-input{ font-family:inherit; font-weight:700; font-size:13px; color:var(--ink); background:transparent; border:1px solid transparent; border-radius:6px; padding:2px 4px; min-width:0; }
@@ -4947,7 +4955,8 @@ async function setProjectStatus(post, done){
   try{ await updatePostDoc(post.id, done ? { projectStatus:"done", projectDoneBy:me, projectDoneAt: fb.serverTimestamp() } : { projectStatus:"open", projectDoneBy:null, projectDoneAt:null }); }
   catch(err){ console.error(err); showCalendarNotice({ ok:false, message: t("No se pudo guardar ({m}). Si las reglas de Firestore son viejas, hay que publicarlas.","Couldn't save ({m}). If the Firestore rules are outdated, they need publishing.","Não foi possível salvar ({m}). Se as regras do Firestore forem antigas, é preciso publicá-las.","לא ניתן היה לשמור ({m}). אם כללי Firestore ישנים, יש לפרסם אותם.",{m:err.code||err.message}) }); }
 }
-// done | overdue | today | upcoming
+// done | overdue | today | soon | upcoming
+const MILESTONE_DUE_SOON_DAYS = 5;
 function milestoneStatus(m){
   if(m.done) return "done";
   if(!m.date) return "upcoming"; // sin fecha todavía: ni vencido ni hoy
@@ -4955,7 +4964,18 @@ function milestoneStatus(m){
   const last = m.endDate && m.endDate >= m.date ? m.endDate : m.date;
   if(last < today) return "overdue";
   if(m.date <= today && today <= last) return "today";
+  if(m.date <= addDaysISO(today, MILESTONE_DUE_SOON_DAYS)) return "soon";
   return "upcoming";
+}
+// Misma pastilla clickeable en las dos vistas (ver renderProjectPanel):
+// en la de gestión, tocarla alterna cumplido (data-action="ms-done"); en
+// la de solo lectura, el mismo look pero sin acción — nomás para mostrar.
+function milestoneStatusLabel(st){
+  return st==="done" ? t("Cumplido","Done","Cumprido","הושלם")
+    : st==="overdue" ? t("Vencido","Overdue","Vencido","באיחור")
+    : st==="today" ? t("Hoy","Today","Hoje","היום")
+    : st==="soon" ? t("Por vencer","Due soon","A vencer","בקרוב יפוג")
+    : t("Pendiente","Pending","Pendente","ממתין");
 }
 // Hitos típicos de un curso/seminario/congreso, en días relativos a la
 // fecha de inicio del evento (los de la línea de tiempo de referencia del
@@ -5269,24 +5289,22 @@ function renderProjectPanel(post, opts={}){
   }
   const rows = list.map(m=>{
     const st = milestoneStatus(m);
-    const stLabel = st==="done" ? t("cumplido","done","cumprido","הושלם") : st==="overdue" ? t("vencido","overdue","vencido","באיחור") : st==="today" ? t("hoy","today","hoje","היום") : "";
     const when = m.date ? `${esc(fmtDate(m.date))}${m.endDate && m.endDate > m.date ? ` – ${esc(fmtDate(m.endDate))}` : ""}` : `<i>${esc(t("sin fecha","no date","sem data","ללא תאריך"))}</i>`;
     const owners = msOwners(m);
     const doneBy = m.done && m.doneBy ? `<span class="pj-doneby">${t("por","by","por","על ידי")} ${ownerChip(m.doneBy)}${m.doneAt ? " · " + esc(fmtDate(m.doneAt)) : ""}</span>` : "";
-    if(!manage) return `<li class="pj-row ${st}" data-ms-id="${esc(m.id)}"><span class="pj-check ro">${m.done?"✓":""}</span><span class="pj-main"><span class="pj-label">${esc(m.label)}</span><span class="pj-when">${when}${stLabel?` · <i>${esc(stLabel)}</i>`:""}</span></span><span class="pj-owners">${owners.map(ownerChip).join("")}</span>${doneBy}</li>`;
+    if(!manage) return `<li class="pj-row ${st}" data-ms-id="${esc(m.id)}"><span class="pj-main"><span class="pj-label">${esc(m.label)}</span><span class="pj-when">${when}</span></span><span class="pj-owners">${owners.map(ownerChip).join("")}</span>${doneBy}<span class="status-pill ${st}">${esc(milestoneStatusLabel(st))}</span></li>`;
     return `<li class="pj-row ${st}" data-ms-id="${esc(m.id)}">
       <span class="pj-grip" data-pj-grip data-post-id="${post.id}" title="${esc(t("Arrastrá para reordenar","Drag to reorder","Arraste para reordenar","גרירה לסידור מחדש"))}" aria-hidden="true"><svg viewBox="0 0 10 16" width="10" height="16"><circle cx="3" cy="3" r="1.4"/><circle cx="7" cy="3" r="1.4"/><circle cx="3" cy="8" r="1.4"/><circle cx="7" cy="8" r="1.4"/><circle cx="3" cy="13" r="1.4"/><circle cx="7" cy="13" r="1.4"/></svg></span>
-      <input type="checkbox" class="pj-check" data-action="ms-done" data-post-id="${post.id}" data-ms-id="${esc(m.id)}" ${m.done?"checked":""} aria-label="${esc(t("Cumplido","Done","Cumprido","הושלם"))}">
       <span class="pj-main">
         <input type="text" class="pj-label-input" data-ms-field="label" data-post-id="${post.id}" data-ms-id="${esc(m.id)}" value="${esc(m.label)}" maxlength="120">
         <span class="pj-when">
           <input type="date" data-ms-field="date" data-post-id="${post.id}" data-ms-id="${esc(m.id)}" value="${esc(m.date)}">
           <input type="date" data-ms-field="endDate" data-post-id="${post.id}" data-ms-id="${esc(m.id)}" value="${esc(m.endDate||"")}" title="${esc(t("Fin (opcional)","End (optional)","Fim (opcional)","סיום (אופציונלי)"))}">
-          ${stLabel?`<i>${esc(stLabel)}</i>`:""}
         </span>
       </span>
       <span class="pj-owners">${owners.map(o=>`<span class="pj-owner-wrap">${ownerChip(o)}<button type="button" class="pj-owner-clear" data-action="ms-owner-remove" data-post-id="${post.id}" data-ms-id="${esc(m.id)}" data-email="${esc(o)}" aria-label="${esc(t("Quitar responsable","Remove owner","Remover responsável","הסרת אחראי/ת"))}">✕</button></span>`).join("")}${renderPersonPicker(`own:${post.id}:${m.id}`, "+ " + t("Responsable…","Owner…","Responsável…","…אחראי/ת"), owners)}</span>
       ${doneBy}
+      <button type="button" class="status-pill ${st}" data-action="ms-done" data-post-id="${post.id}" data-ms-id="${esc(m.id)}">${esc(milestoneStatusLabel(st))}</button>
       <button type="button" class="rm" data-action="ms-remove" data-post-id="${post.id}" data-ms-id="${esc(m.id)}" title="${esc(t("Quitar hito","Remove milestone","Remover marco","הסרת אבן דרך"))}">✕</button>
     </li>`;
   }).join("");
@@ -10475,6 +10493,16 @@ document.addEventListener("click", async e=>{
     const post = getPostById(postId);
     if(post && canManageProject(post)) saveMilestones(post, postMilestones(post).filter(m=>m.id !== el.dataset.msId));
   },
+    "ms-done": async (el, e, action, postId) => {
+    const post = getPostById(postId);
+    if(!post || !canManageProject(post)) return;
+    const me = state.auth.user.email;
+    saveMilestones(post, postMilestones(post).map(m=>{
+      if(m.id !== el.dataset.msId) return m;
+      const done = !m.done;
+      return { ...m, done, doneBy: done ? me : null, doneAt: done ? todayISO() : null };
+    }));
+  },
     "pp-pick": async (el, e, action, postId) => {
     ppApply(el.dataset.ppKey, el.dataset.email);
   },
@@ -11282,13 +11310,6 @@ document.addEventListener("change", e=>{
   else if(el.dataset.action === "nested-reply-files"){ handleFileAttachments(el.files, getNestedReplyDraft(el.dataset.replyId).files); }
   else if(el.dataset.action === "zonas-color"){ getZonasDraft().zones[el.dataset.key].color = el.value; render(); }
   else if(el.dataset.action === "set-role"){ changeRole(el.dataset.email, el.value); }
-  else if(el.dataset.action === "ms-done"){
-    const post = getPostById(el.dataset.postId);
-    if(post && canManageProject(post)){
-      const me = state.auth.user.email;
-      saveMilestones(post, postMilestones(post).map(m=> m.id === el.dataset.msId ? { ...m, done: el.checked, doneBy: el.checked ? me : null, doneAt: el.checked ? todayISO() : null } : m));
-    }
-  }
   else if(el.dataset.msField){
     const post = getPostById(el.dataset.postId);
     if(post && canManageProject(post)){
