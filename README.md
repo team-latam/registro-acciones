@@ -1239,6 +1239,31 @@ Calendar**, sin pasar por la app, eso también se refleja en los posteos:
   cualquier persona aprobada puede después editarlo desde la app para
   afinar el tipo real de actividad y el alcance correcto.
 
+#### Bug: un evento que fallaba al importarse quedaba sin forma de diagnosticarlo ni de reintentarlo
+
+Reportado con un caso real: se creó un evento nuevo en Calendar ("Belice"),
+`syncFromCalendar` lo detectó pero no lo pudo aplicar — el aviso decía
+genéricamente "1 evento de Calendar no se pudo aplicar (ver consola)". Dos
+problemas, ambos en `index.html`:
+
+1. El motivo real del error (`err.message`) solo se mandaba a
+   `console.error`, nunca al aviso — si nadie llegaba a mirar la consola en
+   el momento (como pasó acá), la causa se perdía para siempre.
+2. `syncFromCalendar` guardaba el `syncToken` nuevo (`setSyncMeta`) ANTES
+   de fijarse si algo había fallado, así que el evento que no se pudo
+   aplicar quedaba marcado como "revisado" para siempre: el próximo click
+   en Actualizar ya no lo volvía a traer, y el síntoma era "toqué
+   Actualizar de nuevo y no pasó nada" — exactamente lo reportado.
+
+Arreglado: el aviso de error ahora muestra el mensaje real (`{n} evento(s)
+de Calendar no se pudieron aplicar: {msg}. Se van a reintentar la próxima
+vez que actualices.`) y el `syncToken` **no se guarda** si `failed > 0` —
+el próximo Actualizar vuelve a traer el mismo lote de eventos. Reaplicar
+los que sí habían funcionado no duplica nada: `createImportedPost` es
+idempotente por el id de documento (`cal_<eventId>`), y el resto de las
+ramas de `applyCalendarEventToPosts` solo escribe si detecta un cambio
+real.
+
 Cómo funciona, en criollo: la app le pregunta a Google "¿qué cambió desde
 la última vez?" (usando un "sync token" que Calendar entrega y que se
 guarda en el documento `meta/calendarSync` de Firestore) en vez de releer
