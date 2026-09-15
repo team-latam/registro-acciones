@@ -953,7 +953,13 @@
   }
   .date-pop[hidden]{ display:none; }
   .dp-typed-row{ margin-bottom:8px; }
-  .dp-date-input{
+  /* Selectores reforzados (.date-pop .xxx .yyy, 3 clases) a propósito: el
+     popup puede caer dentro de un ".field" (ej. "Importar desde" en
+     Configuración > Calendario), y ".field input[type=text]"/".field
+     select" tienen más especificidad que una sola clase — sin este refuerzo
+     el ambiente del formulario le pisaba el ancho/tamaño a estos controles
+     (el mes quedaba colapsado y el año se estiraba a lo ancho). */
+  .date-pop .dp-typed-row .dp-date-input{
     width:100%; font-family:inherit; font-size:12.5px; font-weight:700; color:var(--ink);
     background:var(--surface-soft); border:1px solid var(--border); border-radius:8px;
     padding:6px 9px; text-align:center; letter-spacing:.02em;
@@ -975,12 +981,12 @@
   }
   .dp-nav button:hover{ background:var(--surface-hover); }
   .dp-my{ display:flex; gap:4px; flex:1; min-width:0; justify-content:center; }
-  .dp-month-select, .dp-year-select{
+  .date-pop .dp-my .dp-month-select, .date-pop .dp-my .dp-year-select{
     font-family:inherit; font-weight:700; color:var(--ink); background:var(--card);
     border:1px solid var(--border); border-radius:8px; padding:4px 3px; cursor:pointer;
   }
-  .dp-month-select{ flex:1 1 auto; min-width:0; font-size:11px; }
-  .dp-year-select{ flex:none; width:58px; font-size:11px; }
+  .date-pop .dp-my .dp-month-select{ flex:1 1 auto; min-width:0; width:auto; font-size:11px; }
+  .date-pop .dp-my .dp-year-select{ flex:none; width:58px; font-size:11px; }
   .dp-month-select:hover, .dp-year-select:hover{ border-color:var(--celeste-dark); }
   .dp-grid{ display:grid; grid-template-columns:repeat(7, 1fr); gap:2px; }
   .dp-dow{ text-align:center; font-size:10px; font-weight:700; color:var(--text-muted); padding:2px 0 4px; text-transform:uppercase; }
@@ -1108,10 +1114,21 @@
   .allday-toggle{ display:flex; align-items:center; gap:6px; font-size:13px; font-weight:600; color:var(--text); margin-bottom:8px; cursor:pointer; }
   .dt-row{ display:flex; align-items:center; gap:8px; margin-bottom:8px; }
   .dt-row:last-child{ margin-bottom:0; }
+  /* Mismo pill que .date-trigger justo arriba en el mismo .field-icon-body
+     (fondo, borde, radio, tipografía): antes era el <input type=time> con
+     su caja gris por defecto, que desentonaba al lado de la fecha ya
+     rediseñada. El reloj propio del navegador (los segmentos hh:mm y su
+     selección) sigue siendo nativo — eso no se puede tocar por CSS sin
+     armar un selector propio — pero el marco alrededor ahora es el mismo. */
   .dt-row input[type=time]{
-    flex:1; min-width:0; padding:9px 10px; border-radius:var(--radius-sm); border:1.5px solid var(--border);
-    font-size:13.5px; background:var(--surface-soft);
+    flex:1; min-width:0; text-align:center; cursor:pointer;
+    font-family:inherit; font-weight:600; font-size:12.5px; letter-spacing:.02em;
+    padding:5px 10px; border-radius:999px; border:1px solid var(--border);
+    background:var(--surface-soft); color:var(--ink);
   }
+  .dt-row input[type=time]:hover{ border-color:var(--celeste-dark); }
+  .dt-row input[type=time]:focus{ outline:none; border-color:var(--celeste-dark); background:var(--card); }
+  .dt-row input[type=time]::-webkit-calendar-picker-indicator{ cursor:pointer; opacity:.75; }
   .dt-row .date-field{ flex:1; min-width:0; }
   .dt-row .date-trigger{ width:100%; justify-content:center; }
   .dt-sep{ color:var(--text-muted); font-size:13px; flex:none; }
