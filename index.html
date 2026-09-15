@@ -4945,9 +4945,9 @@ async function logAudit(type, opts){
     // merece su propio documento — esos siguen con id al azar.
     if(type === "login" || type === "access_requested"){
       const dayId = `${actorEmail}_${type}_${todayISO()}`.replace(/[^A-Za-z0-9_.@-]/g, "_");
-      await fb.setDoc(fb.doc(db,"auditLog", dayId), data);
+      await store.auditLog.addOnce(dayId, data);
     } else {
-      await fb.addDoc(fb.collection(db,"auditLog"), data);
+      await store.auditLog.add(data);
     }
   }catch(err){ console.error("Error escribiendo auditoría:", err); }
 }
@@ -5109,19 +5109,19 @@ async function onAuthChanged(user){
     renderFatalError(t("No se pudo verificar tu acceso ({msg}). Recargá la página; si sigue pasando, avisale al administrador.","Couldn't verify your access ({msg}). Reload the page; if it keeps happening, let the admin know.","Não foi possível verificar seu acesso ({msg}). Recarregue a página; se continuar, avise o administrador.","לא ניתן היה לאמת את הגישה שלך ({msg}). טען/י מחדש את הדף; אם זה נמשך, פנה/י למנהל/ת.",{msg:err.message}));
   });
 
-  const reqRef = fb.doc(db, "accessRequests", profile.email);
-  unsubOwnRequest = fb.onSnapshot(reqRef, async snap=>{
-    if(!snap.exists()){
+  const pedirDeNuevo = () => store.accessRequests.save(profile.email, {
+    email: profile.email, name: profile.displayName, photoURL: profile.photoURL,
+    status: "pending",
+  });
+  unsubOwnRequest = store.accessRequests.watchOwn(profile.email, async req=>{
+    if(!req){
       try{
-        await fb.setDoc(reqRef, {
-          email: profile.email, name: profile.displayName, photoURL: profile.photoURL,
-          status: "pending", requestedAt: fb.serverTimestamp(),
-        });
+        await pedirDeNuevo();
         logAudit("access_requested", { actorEmail: profile.email, actorName: profile.displayName });
       }catch(err){ console.error("Error creando solicitud de acceso:", err); }
-      return; // el propio setDoc va a disparar un nuevo snapshot con exists()=true
+      return; // el propio guardado va a disparar otro aviso, ya con la solicitud
     }
-    state.auth.requestStatus = snap.data().status;
+    state.auth.requestStatus = req.status;
     // "Limbo": la solicitud quedó en approved pero la persona NO está en el
     // allowlist (le borraron el documento a mano, o una aprobación quedó a
     // medias). Veía "pendiente de aprobación" para siempre y el admin no la
@@ -5130,13 +5130,10 @@ async function onAuthChanged(user){
     // justo lo que las reglas permiten hacer sobre la propia solicitud.
     if(state.auth.requestStatus !== "pending" && state.auth.requestStatus !== "rejected" && !state.auth.allowlisted){
       try{
-        await fb.setDoc(reqRef, {
-          email: profile.email, name: profile.displayName, photoURL: profile.photoURL,
-          status: "pending", requestedAt: fb.serverTimestamp(),
-        });
+        await pedirDeNuevo();
         logAudit("access_requested", { actorEmail: profile.email, actorName: profile.displayName });
       }catch(err){ console.error("No se pudo reactivar la solicitud:", err); }
-      return; // el propio setDoc dispara otro snapshot, ya con status pending
+      return; // el propio guardado dispara otro aviso, ya con status pending
     }
     recomputeAuthStatus();
     render();
@@ -5151,9 +5148,9 @@ async function onAuthChanged(user){
 async function requestAccessAgain(){
   const email = state.auth.user.email;
   try{
-    await fb.setDoc(fb.doc(db, "accessRequests", email), {
+    await store.accessRequests.save(email, {
       email, name: state.auth.user.displayName, photoURL: state.auth.user.photoURL,
-      status: "pending", requestedAt: fb.serverTimestamp(),
+      status: "pending",
     });
     state.auth = { ...state.auth, status:"pending" };
     logAudit("access_requested", { detail:t("pidió de nuevo tras un rechazo","requested again after a rejection","pediu de novo após uma rejeição","ביקש/ה שוב אחרי דחייה") });
@@ -5165,19 +5162,14 @@ async function requestAccessAgain(){
 }
 
 function subscribeAccessRequests(){
-  const q = fb.query(fb.collection(db,"accessRequests"), fb.orderBy("requestedAt","desc"));
-  unsubscribeRequests = fb.onSnapshot(q, snap=>{
-    state.accessRequests = snap.docs.map(d=>({ id:d.id, ...d.data({serverTimestamps:"estimate"}) }));
+  unsubscribeRequests = store.accessRequests.subscribe(lista=>{
+    state.accessRequests = lista;
     render();
   }, err=>console.error("Error leyendo solicitudes:", err));
 }
 function subscribeAuditLog(){
-  // Con tope: la colección solo crece (un login por sesión por persona,
-  // para siempre, y nadie puede borrar) y sin limit() el panel bajaba
-  // TODO en cada login del admin.
-  const q = fb.query(fb.collection(db,"auditLog"), fb.orderBy("createdAt","desc"), fb.limit(1000));
-  unsubAuditLog = fb.onSnapshot(q, snap=>{
-    state.auditLog = snap.docs.map(d=>({ id:d.id, ...d.data({serverTimestamps:"estimate"}) }));
+  unsubAuditLog = store.auditLog.subscribeRecent(1000, lista=>{
+    state.auditLog = lista;
     render();
   }, err=>console.error("Error leyendo auditoría:", err));
 }
@@ -5209,6 +5201,62 @@ function subscribeAuditLog(){
    está bien mientras dure el proceso.
    ====================================================================== */
 const firebaseStore = {
+  // ---- Solicitudes de acceso ----
+  accessRequests: {
+    subscribe(alCambiar, alFallar){
+      const q = fb.query(fb.collection(db, "accessRequests"), fb.orderBy("requestedAt", "desc"));
+      return fb.onSnapshot(q,
+        snap => alCambiar(snap.docs.map(d=>({ id:d.id, ...d.data({serverTimestamps:"estimate"}) }))),
+        alFallar);
+    },
+    // La propia solicitud, que se mira de a una: entrega el documento o
+    // null si todavía no existe. Lo que hay que HACER con eso (crearla,
+    // repararla si quedó en limbo) es decisión de quien llama, no de la
+    // capa — ver subscribeOwnRequest.
+    watchOwn(email, alCambiar, alFallar){
+      return fb.onSnapshot(fb.doc(db, "accessRequests", email),
+        snap => alCambiar(snap.exists() ? { id:snap.id, ...snap.data() } : null),
+        alFallar);
+    },
+    async get(email){
+      const snap = await fb.getDoc(fb.doc(db, "accessRequests", email));
+      return snap.exists() ? { id:snap.id, ...snap.data() } : null;
+    },
+    // La hora del pedido la pone el servidor, igual que en ex integrantes:
+    // es la que decide el orden de la cola del admin.
+    async save(email, datos){
+      await fb.setDoc(fb.doc(db, "accessRequests", email), { ...datos, requestedAt: fb.serverTimestamp() });
+    },
+    async setStatus(email, status){
+      await fb.updateDoc(fb.doc(db, "accessRequests", email), { status });
+    },
+  },
+
+  // ---- Auditoría ----
+  auditLog: {
+    // Con tope: la colección solo crece (un login por sesión por persona,
+    // para siempre, y nadie puede borrar) y sin límite el panel bajaba
+    // TODO en cada login del admin.
+    subscribeRecent(tope, alCambiar, alFallar){
+      const q = fb.query(fb.collection(db, "auditLog"), fb.orderBy("createdAt", "desc"), fb.limit(tope));
+      return fb.onSnapshot(q,
+        snap => alCambiar(snap.docs.map(d=>({ id:d.id, ...d.data({serverTimestamps:"estimate"}) }))),
+        alFallar);
+    },
+    async add(datos){
+      await fb.addDoc(fb.collection(db, "auditLog"), datos);
+    },
+    // "Escribir solo si no existe todavía": es lo que hace que un login
+    // deje UNA entrada por día y no una por recarga. En Firestore se
+    // logra escribiendo con un id fijo — el segundo intento cae en el
+    // "allow update: if false" de las reglas y se rechaza solo, sin
+    // crear nada. Lo que importa es la intención, no el mecanismo: otra
+    // base lo resuelve a su manera.
+    async addOnce(id, datos){
+      await fb.setDoc(fb.doc(db, "auditLog", id), datos);
+    },
+  },
+
   formerMembers: {
     subscribe(alCambiar, alFallar){
       return fb.onSnapshot(fb.collection(db, "formerMembers"),
@@ -5273,8 +5321,8 @@ async function backfillNicknames(emails){
   const existingNicknames = await takenNicknames(null);
   for(const email of emails){
     try{
-      const reqSnap = await fb.getDoc(fb.doc(db, "accessRequests", email));
-      const name = (reqSnap.exists() && reqSnap.data().name) || email;
+      const req = await store.accessRequests.get(email);
+      const name = (req && req.name) || email;
       const nickname = makeNickname(name, existingNicknames);
       existingNicknames.add(nickname);
       await fb.updateDoc(fb.doc(db, "allowlist", email), { name, nickname });
@@ -5493,8 +5541,8 @@ async function ensureAdminInRoster(profile){
   }catch(err){ console.error("No se pudo sumar al admin al equipo (roster de @menciones):", err); }
 }
 async function approveRequest(email){
-  const reqSnap = await fb.getDoc(fb.doc(db, "accessRequests", email));
-  const reqData = reqSnap.exists() ? reqSnap.data() : {};
+  const req = await store.accessRequests.get(email);
+  const reqData = req || {};
   const name = reqData.name || email;
   // Se excluye el propio email: si vuelve alguien que ya estuvo, su viejo
   // @nickname no cuenta como ocupado y se lo puede recuperar. Darle uno
@@ -5508,7 +5556,7 @@ async function approveRequest(email){
     email, name, nickname, photoURL: reqData.photoURL || null, role: "member",
     approvedAt: fb.serverTimestamp(), approvedBy: (state.auth.user && state.auth.user.email) || ADMIN_EMAIL,
   });
-  await fb.updateDoc(fb.doc(db, "accessRequests", email), { status:"approved" });
+  await store.accessRequests.setStatus(email, "approved");
   // Ya no es "ex": vuelve a estar en el roster y el registro histórico
   // dejaría duplicada su identidad en memberByEmail.
   try{ await store.formerMembers.remove(email); }catch(e){}
@@ -5542,7 +5590,7 @@ async function changeRole(email, role){
   }
 }
 async function rejectRequest(email){
-  await fb.updateDoc(fb.doc(db, "accessRequests", email), { status:"rejected" });
+  await store.accessRequests.setStatus(email, "rejected");
   logAudit("access_rejected", { targetEmail: email });
 }
 async function revokeAccess(email){
@@ -5574,7 +5622,7 @@ async function revokeAccess(email){
   // sin aparecer en la cola de Solicitudes y sin que vos te enteraras).
   // Best-effort: el acceso real ya se revocó arriba: si esto falla no
   // hace falta abortar nada, pero antes ni quedaba loggeado.
-  try{ await fb.updateDoc(fb.doc(db, "accessRequests", email), { status:"rejected" }); }
+  try{ await store.accessRequests.setStatus(email, "rejected"); }
   catch(e){ console.error("No se pudo marcar la solicitud como rechazada:", e); }
   logAudit("access_revoked", { targetEmail: email });
 }
