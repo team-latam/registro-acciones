@@ -935,8 +935,7 @@
      Una sola línea en el formulario; todo lo demás vive adentro del
      popup. Mismo criterio fixed + bounding rect que .date-pop, que acá
      además hace falta porque el formulario del modal scrollea. ---------- */
-  .recur-row{ margin-top:8px; }
-  .recur-field{ position:relative; display:inline-flex; }
+  .recur-field{ position:relative; display:inline-flex; min-width:0; }
   .recur-trigger{
     display:inline-flex; align-items:center; gap:6px; font-family:inherit; font-size:12.5px;
     font-weight:600; cursor:pointer; padding:5px 11px; border-radius:999px;
@@ -1245,6 +1244,19 @@
   .dt-time-input.invalid{ animation:dp-shake .32s ease; border-color:var(--danger); background:var(--danger-bg); color:var(--danger-text); }
   .dt-row .date-field{ flex:1; min-width:0; }
   .dt-row .date-trigger{ width:100%; justify-content:center; }
+  /* Va en la MISMA fila que las dos fechas. Las fechas nunca bajan de lo
+     que mide "📅 09/12/2026"; el botón se queda con el resto y se recorta
+     con puntos suspensivos (el texto entero queda en el title y adentro
+     del popup). Si en la línea no le quedan ni 120px, envuelve y baja
+     entero, que en un teléfono se lee mejor que un chip cortado al medio. */
+  .dt-row{ flex-wrap:wrap; }
+  /* 112px es lo que mide "📅 09/12/2026" con su relleno (medido, no
+     estimado): por debajo de eso el texto se salía de la píldora. */
+  .dt-row .date-field{ flex:0 1 auto; min-width:112px; }
+  .dt-row .date-trigger{ white-space:nowrap; }
+  .dt-row .recur-field{ flex:1 1 120px; max-width:100%; }
+  .dt-row .recur-trigger{ width:100%; overflow:hidden; }
+  .dt-row .recur-trigger .recur-txt{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .dt-sep{ color:var(--text-muted); font-size:13px; flex:none; }
   /* El buscador de lugar (mismo que Rutina) metido adentro de una fila
      con ícono: sin el margin-top de ".place-picker" (pensado para ir
@@ -9803,7 +9815,11 @@ function recurLinesFrom(draft, startISO){
   return [`RRULE:${partes.join(";")}`];
 }
 // El texto del botón del composer: "Cada 2 semanas, los lunes y miércoles".
-function recurSummary(draft, startISO){
+// `corto` es lo que se lee en el botón, que comparte la fila con las dos
+// fechas: ahí NO va el "hasta ...", que es lo que más lo alarga y ya se
+// ve adentro del popup. La versión larga va en el title, al pasar por
+// arriba.
+function recurSummary(draft, startISO, corto){
   if(!draft || draft.key === "none") return t("No se repite","Doesn't repeat","Não se repete","לא חוזר");
   if(draft.key === "otra") return t("Repetición armada en Google Calendar","Repetition set in Google Calendar","Repetição feita no Google Calendar","חזרה שהוגדרה ב-Google Calendar");
   const preset = recurPreset(draft.key);
@@ -9814,7 +9830,7 @@ function recurSummary(draft, startISO){
   }
   // La fecha de corte en formato corto (31/12/2026): con "31 de diciembre
   // de 2026" el botón del composer se iba a dos renglones.
-  if(draft.until) txt += `, ${t("hasta {d}","until {d}","até {d}","{d} עד",{d:fmtTypedDate(draft.until)})}`;
+  if(draft.until && !corto) txt += `, ${t("hasta {d}","until {d}","até {d}","{d} עד",{d:fmtTypedDate(draft.until)})}`;
   return txt;
 }
 // "lunes", "miércoles"… en el idioma de la sesión, sin tabla propia: se
@@ -9868,10 +9884,10 @@ function renderRecurrenceField(d){
   const inicioSemana = Number(prefs().weekStart) === 1 ? 1 : 0;
   const ordenDias = [0,1,2,3,4,5,6].map(i => (i + inicioSemana) % 7);
   return `
-    <div class="recur-row">
       <span class="recur-field">
         <button type="button" class="recur-trigger ${puesta ? "on" : ""}" data-action="recur-open"
-          aria-haspopup="dialog" aria-expanded="${recurPopOpen ? "true" : "false"}">🔁 ${esc(recurSummary(r, d.startDate))}<span class="occ-chev">▾</span></button>
+          aria-haspopup="dialog" aria-expanded="${recurPopOpen ? "true" : "false"}"
+          title="${esc(recurSummary(r, d.startDate))}">🔁 <span class="recur-txt">${esc(recurSummary(r, d.startDate, true))}</span><span class="occ-chev">▾</span></button>
         <div class="recur-pop" role="dialog" aria-label="${esc(t("Cada cuánto se repite","How often it repeats","De quanto em quanto tempo se repete","כל כמה זמן חוזר"))}" hidden>
           ${!recurPopOpen ? "" : `
           <div class="recur-sect">
@@ -9902,8 +9918,7 @@ function renderRecurrenceField(d){
             </span>
           </div>` : ""}`}
         </div>
-      </span>
-    </div>`;
+      </span>`;
 }
 
 // Mapa fecha ISO -> eventos de ese día, ya recortado a la ventana que se
@@ -10945,6 +10960,7 @@ function renderComposer(){
             <button type="button" class="date-trigger" data-action="date-open" data-df-kind="composer-end" data-df-id="composer:end" aria-haspopup="dialog" aria-expanded="false"><span class="cal-ic" aria-hidden="true">📅</span>${esc(fmtTypedDate(d.endDate))}</button>
             <div class="date-pop" hidden role="dialog" aria-label="${esc(t("Fecha de fin","End date","Data de fim","תאריך סיום"))}"></div>
           </span>
+          ${renderRecurrenceField(d)}
         </div>
         ${!d.allDay ? `
         <div class="dt-row">
@@ -10952,7 +10968,6 @@ function renderComposer(){
           <span class="dt-sep">${isRTL()?"←":"→"}</span>
           <input type="text" inputmode="${uses12h() ? "text" : "numeric"}" autocomplete="off" class="dt-time-input" id="cEndTime" data-time-field="end" placeholder="${esc(typedTimePlaceholder())}" aria-label="${esc(t("Hora de fin","End time","Hora de fim","שעת סיום"))}" value="${esc(fmtTypedTime(d.endTime))}">
         </div>` : ""}
-        ${renderRecurrenceField(d)}
       </div>
     </div>
     <div class="field-icon-row">
