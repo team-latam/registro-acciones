@@ -430,6 +430,17 @@
   .btn-ghost:hover{ background:var(--surface-alt); }
   .btn-ghost.danger{ color:var(--danger); }
   .btn-ghost.danger:hover{ background:var(--danger-soft); }
+  /* "Sacar de la lista" de un ex integrante: una ✕ chica al final de la
+     fila. A propósito NO es un botón más (la fila ya tiene tres): se ve
+     como un cierre, apagada hasta que se le pasa por arriba. */
+  .row-x{
+    flex:none; width:26px; height:26px; margin-inline-start:2px; padding:0;
+    display:flex; align-items:center; justify-content:center;
+    font-family:inherit; font-size:12px; line-height:1; cursor:pointer;
+    background:none; border:none; border-radius:50%; color:var(--text-muted);
+  }
+  .row-x:hover{ background:var(--danger-bg); color:var(--danger); }
+  .row-x:disabled{ opacity:.4; cursor:not-allowed; }
   .ractions-sep{ width:1px; height:20px; background:var(--border); margin:0 6px; }
 
   /* ---------- Actividad / registro de auditoría (admin) ---------- */
@@ -3162,6 +3173,17 @@ function markMentionsSeen(){
 //   marcas de "visto".
 const CALENDAR_INVITE_POPUP_SEEN_KEY = "calendarInvitePopupSeenAt";
 const CALENDAR_INVITE_BELL_DISMISSED_KEY = "calendarInviteBellDismissedAt";
+// El globito de la campanita cuenta SOLO lo que todavía no se abrió. Para
+// las menciones y las respuestas alcanza con una hora ("lo más nuevo que
+// lo que ya viste"), pero lo que se viene no sirve por hora: un evento no
+// es "nuevo", está ahí hasta que empieza. Se guardan los IDS ya vistos y
+// se cuenta lo que no está en esa lista. La lista se reescribe con lo que
+// hay en ese momento, así que lo que ya pasó se cae solo.
+const UPCOMING_SEEN_KEY = "upcomingSeenIds";
+// Lo mismo para la invitación al Calendar: deja de sumar al globito
+// apenas se abre la campanita, pero SIGUE adentro con su "Ya la acepté"
+// — es una tarea pendiente, no una novedad que se lee y se olvida.
+const CALENDAR_INVITE_SEEN_KEY = "calendarInviteBellSeenAt";
 function perUserStorageKey(prefix){
   const email = state.auth.user && state.auth.user.email;
   return email ? `${prefix}:${email}` : null;
@@ -3170,6 +3192,20 @@ function getPerUserTs(prefix){
   const key = perUserStorageKey(prefix);
   if(!key) return 0;
   try{ return Number(localStorage.getItem(key)) || 0; }catch(e){ return 0; }
+}
+// Mismo mecanismo, pero para una lista de ids en vez de una hora.
+function markPerUserIds(prefix, ids){
+  const key = perUserStorageKey(prefix);
+  if(!key) return;
+  try{ localStorage.setItem(key, JSON.stringify(ids)); }catch(e){}
+}
+function getPerUserIds(prefix){
+  const key = perUserStorageKey(prefix);
+  if(!key) return new Set();
+  try{
+    const raw = JSON.parse(localStorage.getItem(key) || "[]");
+    return new Set(Array.isArray(raw) ? raw : []);
+  }catch(e){ return new Set(); }
 }
 // `value` es el timestamp DEL DATO que se marca como visto (la hora de la
 // invitación, la mención más nueva), no Date.now(): la comparación es
@@ -3376,6 +3412,22 @@ function getUnseenReplyCount(){
   const seenAt = getRepliesSeenAt();
   return getRecentReplies(50).filter(r => tsToMillis(r.createdAt) > seenAt).length;
 }
+// Lo que se viene, sin lo que ya se vio al abrir la campanita. Sigue
+// apareciendo ADENTRO del menú (es lo que hay que ir a mirar); lo único
+// que cambia es que deja de sumar al globito de afuera.
+function getUnseenUpcomingCount(){
+  const vistos = getPerUserIds(UPCOMING_SEEN_KEY);
+  return upcomingEvents().filter(p => !vistos.has(p.id)).length;
+}
+// Se guarda exactamente lo que hay AHORA: lo que ya pasó desaparece solo
+// de la lista guardada, sin necesidad de limpiarla aparte.
+function markUpcomingSeen(){
+  markPerUserIds(UPCOMING_SEEN_KEY, upcomingEvents().map(p=>p.id));
+}
+function hasUnseenCalendarInvite(){
+  return hasActiveCalendarInviteNotice() && myCalendarInviteTs() > getPerUserTs(CALENDAR_INVITE_SEEN_KEY);
+}
+function markCalendarInviteSeen(){ markPerUserTs(CALENDAR_INVITE_SEEN_KEY, myCalendarInviteTs()); }
 
 // Mismo criterio que getRecentReplies: se cachea la lista completa, cada
 // llamado (limit distinto según quién pregunta) solo recorta.
@@ -7044,10 +7096,13 @@ function renderUserBadge(){
 let mentionsMenuOpen = false;
 function renderMentionsBell(){
   if(!state.auth.user){ mentionsBellEl.innerHTML = ""; mentionsMenuOpen = false; return; }
-  const mentionCount = getUnseenMentionCount();
   const hasInvite = hasActiveCalendarInviteNotice();
   const upcoming = upcomingEvents();
-  const count = mentionCount + (hasInvite ? 1 : 0) + upcoming.length + getUnseenReplyCount();
+  // El globito cuenta SOLO lo que todavía no se abrió; el menú de abajo
+  // sigue mostrando todo. Antes "lo que se viene" sumaba siempre, así que
+  // el número no bajaba a cero por más que se abriera la campanita.
+  const count = getUnseenMentionCount() + getUnseenReplyCount()
+    + getUnseenUpcomingCount() + (hasUnseenCalendarInvite() ? 1 : 0);
   const countLabel = count === 1
     ? t("1 novedad", "1 update", "1 novidade", "עדכון אחד")
     : t("{n} novedades", "{n} updates", "{n} novidades", "{n} עדכונים", { n: count });
@@ -7436,6 +7491,9 @@ function renderSolicitudesQueueSection(){
             <button class="btn-ghost" data-action="show-user-profile" data-nick="${esc(String(u.nickname||"").toLowerCase())}">${t("Ver perfil","View profile","Ver perfil","צפייה בפרופיל")}</button>
             <button class="btn-ghost danger" data-action="unshare-calendar" data-email="${esc(u.email)}">${t("Sacar del Calendar","Remove from Calendar","Tirar do Calendar","הסרה מהיומן")}</button>
             <button class="btn-primary" data-action="approve-request" data-email="${esc(u.email)}" ${savingRoster.has(u.email) ? "disabled" : ""}>${t("Volver a dar acceso","Grant access again","Dar acesso de novo","להעניק גישה שוב")}</button>
+            <button type="button" class="row-x" data-action="delete-former-member" data-email="${esc(u.email)}" ${savingRoster.has(u.email) ? "disabled" : ""}
+              aria-label="${esc(t("Borrar de la lista","Remove from the list","Apagar da lista","מחיקה מהרשימה"))}"
+              title="${esc(t("Borrar de la lista para siempre","Remove from the list for good","Apagar da lista para sempre","מחיקה מהרשימה לתמיד"))}">✕</button>
           </div>
         </div>`).join("")}
     </div>` : "";
@@ -12716,7 +12774,7 @@ document.addEventListener("click", async e=>{
   },
     "toggle-mentions-menu": async (el, e, action, postId) => {
     mentionsMenuOpen = !mentionsMenuOpen;
-    if(mentionsMenuOpen){ markMentionsSeen(); markRepliesSeen(); }
+    if(mentionsMenuOpen){ markMentionsSeen(); markRepliesSeen(); markUpcomingSeen(); markCalendarInviteSeen(); }
     render();
   },
     "goto-mention": async (el, e, action, postId) => {
@@ -12791,6 +12849,40 @@ document.addEventListener("click", async e=>{
     const email = el.dataset.email;
     await withRosterGuard(email, ()=>
     rejectRequest(email).catch(err=>{ console.error(err); appAlert(t("No se pudo rechazar: {msg}","Couldn't reject: {msg}","Não foi possível rejeitar: {msg}","{msg} :הדחייה נכשלה",{msg:err.message})); }));
+  },
+    "delete-former-member": async (el, e, action, postId) => {
+    const email = el.dataset.email;
+    const u = state.formerMembers.find(x=>x.email === email);
+    if(!u) return;
+    const posteos = state.posts.filter(p=>p.authorEmail === email).length;
+    // Se avisa lo que de verdad se pierde: el @nickname vive SOLO en este
+    // registro (ver revokeAccess), así que borrarlo deja los posteos
+    // viejos de esa persona firmados con el nombre crudo de Google, sin
+    // perfil y sin que sus @menciones resuelvan. No se borra nada de lo
+    // que escribió, y volver a darle acceso lo revive con un nickname nuevo.
+    const aviso = posteos
+      ? t("Dejó {n} posteos: van a quedar firmados con su nombre de Google, sin @{nick} ni perfil.",
+          "They left {n} posts: those will be signed with their Google name, without @{nick} or a profile.",
+          "Deixou {n} postagens: vão ficar assinadas com o nome do Google, sem @{nick} nem perfil.",
+          ".{n} פוסטים שהשאיר/ה ייחתמו בשם מ-Google, בלי @{nick} ובלי פרופיל",
+          { n:posteos, nick:String(u.nickname||"").toLowerCase() })
+      : t("No dejó posteos.","They left no posts.","Não deixou postagens.",".לא השאיר/ה פוסטים");
+    const ok = await appConfirm(
+      t("¿Borrar a {email} de la lista de ex integrantes? Es para siempre. {aviso}",
+        "Remove {email} from the former members list? This is permanent. {aviso}",
+        "Apagar {email} da lista de ex-integrantes? É para sempre. {aviso}",
+        "?{email} למחוק את מהרשימה של חברים לשעבר. זה לתמיד. {aviso}",
+        { email, aviso }),
+      { danger:true, okLabel: t("Borrar","Remove","Apagar","מחיקה") });
+    if(!ok) return;
+    await withRosterGuard(email, async ()=>{
+      try{
+        await fb.deleteDoc(fb.doc(db, "formerMembers", email));
+      }catch(err){
+        console.error(err);
+        await appAlert(t("No se pudo borrar: {msg}","Couldn't remove: {msg}","Não foi possível apagar: {msg}","{msg} :המחיקה נכשלה",{msg:err.message}));
+      }
+    });
   },
     "revoke-access": async (el, e, action, postId) => {
     const email = el.dataset.email;
