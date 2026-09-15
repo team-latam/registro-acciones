@@ -7148,15 +7148,20 @@ function renderFeedOrderBar(){
       ${canWrite() ? `<button type="button" class="btn-sync" data-action="sync-calendar" ${state.calendarSyncing?"disabled":""}>🔄 ${t("Actualizar","Refresh","Atualizar","עדכון")}</button>` : ""}
     </div>`;
 }
-function renderFeedView(){
-  const order = feedOrder();
-  // Por fecha del evento (createdAt como desempate, el mismo criterio de
-  // siempre para no depender de cómo llegaron los posteos); en asc se
-  // invierte entero. El composer de Rutina va SIEMPRE arriba, sin
-  // importar el orden — antes desaparecía en modo Cronológico.
+// Por fecha del evento (createdAt como desempate, el mismo criterio de
+// siempre para no depender de cómo llegaron los posteos); en asc se
+// invierte entero. Factorizado de renderFeedView para que gotoMention
+// pueda ubicar un posteo en este mismo orden (ver ahí por qué).
+function sortedFeedPosts(){
   const all = getVisiblePosts()
     .sort((a,b)=> String(b.post.date||"").localeCompare(String(a.post.date||"")) || (tsToMillis(b.post.createdAt) - tsToMillis(a.post.createdAt)));
-  if(order === "asc") all.reverse();
+  if(feedOrder() === "asc") all.reverse();
+  return all;
+}
+function renderFeedView(){
+  // El composer de Rutina va SIEMPRE arriba, sin importar el orden — antes
+  // desaparecía en modo Cronológico.
+  const all = sortedFeedPosts();
   const items = all.slice(0, feedVisibleCount);
   return `
     ${canWrite() ? renderRutinaComposer() : ""}
@@ -7406,6 +7411,12 @@ function gotoMention(postId, replyId){
   state.countryDrill = null;
   state.filters = { text:"", types:new Set(), zones:new Set(), place:null };
   if(replyId) openThreads.add(postId);
+  // El Feed solo pinta feedVisibleCount tarjetas (PAGE_SIZE, "Ver más" de a
+  // PAGE_STEP): si el posteo queda más atrás en el orden actual, el
+  // querySelector de abajo nunca lo iba a encontrar y el salto quedaba
+  // mudo (sin scroll, sin aviso). Se adelanta el corte para que exista.
+  const idx = sortedFeedPosts().findIndex(({post})=>post.id===postId);
+  if(idx >= feedVisibleCount) feedVisibleCount = Math.ceil((idx+1)/PAGE_STEP)*PAGE_STEP;
   render();
   requestAnimationFrame(()=>{
     const el = document.querySelector(`.post[data-post-id="${CSS.escape(postId)}"]`);
