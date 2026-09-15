@@ -4068,13 +4068,34 @@ async function syncFromCalendar(opts){
     // silencio y el aviso decía "Sincronizado" igual, sin ninguna forma
     // de notar que ese evento en particular no tocó nada.
     let failed = 0, applied = 0;
+    const failedMessages = [];
     for(const ev of result.events || []){
       try{ if(await applyCalendarEventToPosts(ev)) applied++; }
-      catch(err){ failed++; console.error("Error aplicando evento de Calendar", ev && ev.id, err); }
+      catch(err){
+        failed++;
+        failedMessages.push(err.message || String(err));
+        console.error("Error aplicando evento de Calendar", ev && ev.id, err);
+      }
     }
-    if(result.nextSyncToken) await setSyncMeta({ syncToken: result.nextSyncToken });
+    // Si algún evento falló, el syncToken NO se guarda: antes se guardaba
+    // igual, así que el evento fallido quedaba "revisado" para siempre y
+    // volver a tocar Actualizar no lo intentaba de nuevo (el reporte del
+    // evento "Belice": el primer intento avisaba del error, pero los
+    // siguientes clics en Actualizar no hacían nada porque el token ya
+    // había avanzado). No guardar el token hace que el próximo Actualizar
+    // vuelva a traer el mismo lote — reaplicar los eventos que sí
+    // funcionaron no duplica nada: createImportedPost es idempotente por
+    // el id de documento, y el resto de las ramas solo escribe si algo
+    // cambió.
+    if(!failed && result.nextSyncToken) await setSyncMeta({ syncToken: result.nextSyncToken });
     if(failed && !silent){
-      showCalendarNotice({ ok:false, message:t("{n} evento(s) de Calendar no se pudieron aplicar (ver consola).","{n} Calendar event(s) couldn't be applied (see console).","{n} evento(s) do Calendar não puderam ser aplicados (ver console).","{n} אירועים מהיומן לא הוחלו (ראה/י קונסולה).",{n:failed}) });
+      showCalendarNotice({ ok:false, message:t(
+        "{n} evento(s) de Calendar no se pudieron aplicar: {msg}. Se van a reintentar la próxima vez que actualices.",
+        "{n} Calendar event(s) couldn't be applied: {msg}. They'll be retried next time you refresh.",
+        "{n} evento(s) do Calendar não puderam ser aplicados: {msg}. Serão tentados novamente na próxima atualização.",
+        "{msg} :{n} אירועים מהיומן לא הוחלו. ננסה שוב בפעם הבאה שתעדכן/י",
+        {n:failed, msg:failedMessages.join("; ").slice(0, 300)}
+      ) });
       return;
     }
     const reviewed = (result.events||[]).length;
