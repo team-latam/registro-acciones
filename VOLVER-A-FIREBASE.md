@@ -11,9 +11,11 @@ apagado pero entero, hasta que pasen meses de que Supabase ande bien.
 
 ## Las dos cosas que te dejan volver
 
-**1. El código.** El historial de Git tiene una marca llamada `firebase-v1`
-en el último `index.html` que funciona 100% con Firebase. Esa marca no se
-mueve nunca.
+**1. El código.** Hay una rama en GitHub llamada **`firebase-v1`** con el
+último `index.html` que funciona 100% con Firebase. Esa rama no se toca
+nunca, y no se borra aunque GitHub la muestre como "sin usar":
+
+https://github.com/team-latam/registro-acciones/tree/firebase-v1
 
 **2. Los datos.** El botón de copia de seguridad, en
 **Administrar → Preferencias → Copia de seguridad**. Baja todo lo que hay
@@ -44,13 +46,14 @@ paralelo un tiempo: mientras estén las dos, volver no cuesta nada.
 
 ### Si todavía nadie usó Supabase
 
-Pedile a Claude: **"volvé el código a la marca `firebase-v1`"**. Listo. Tu
+Pedile a Claude: **"volvé el código a la rama `firebase-v1`"**. Listo. Tu
 app queda exactamente como el día que empezamos.
 
 Si querés hacerlo vos, es un comando:
 
 ```
-git checkout firebase-v1 -- index.html firestore.rules
+git checkout origin/firebase-v1 -- index.html firestore.rules
+git commit -m "Vuelta a Firebase"
 git push origin HEAD:main
 ```
 
@@ -74,7 +77,8 @@ la versión que sale de ahí.
 - **No borres el proyecto de Firebase.** Aunque parezca que ya no se usa.
 - **No saques las reglas publicadas.** Si las reemplazás por las de un
   proyecto nuevo, volver se complica.
-- **No borres la marca `firebase-v1`** del historial.
+- **No borres la rama `firebase-v1`.** Cuando limpies ramas viejas en
+  GitHub, esa se queda.
 - **No tires el archivo de la copia de seguridad.** Es tu red.
 
 ---
@@ -85,7 +89,7 @@ Antes de cada etapa de la migración, chequeá estas tres:
 
 - [ ] Tengo una copia de seguridad **completa** bajada hace poco, guardada
       fuera de la computadora.
-- [ ] La marca `firebase-v1` sigue en el historial.
+- [ ] La rama `firebase-v1` sigue en GitHub.
 - [ ] El proyecto de Firebase sigue existiendo, con sus reglas publicadas.
 
 Si las tres están, podés volver. Si falta alguna, paralo y arreglá eso
