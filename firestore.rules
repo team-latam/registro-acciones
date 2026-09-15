@@ -501,14 +501,45 @@ service cloud.firestore {
       return email != request.auth.token.email ||
         request.resource.data.get('role', 'member') == resource.data.get('role', 'member');
     }
+    // Cuarto límite para los admin por rol: qué CAMPOS pueden tocar. Antes
+    // esta regla validaba solo el `role` y dejaba escribir cualquier otra
+    // cosa en el documento de otra persona — un admin comprometido podía
+    // reescribirle el @nickname (rompiendo las @menciones de todos sus
+    // posteos viejos) o inventarse un approvedAt. La lista es exactamente
+    // lo que la app escribe: role (cambio de rol), calendarShared +
+    // calendarInviteSentAt (compartir/sacar del Calendar), name + nickname
+    // (backfill de @nicknames) y el juego completo del alta (approveRequest
+    // hace un setDoc entero). tourSeenAt entra porque ese setDoc del alta
+    // pisa el documento y borraría el campo si la persona ya lo tenía.
+    // El admin fijo no pasa por acá: su "allow write" de arriba es libre.
+    function rosterFields() {
+      return ['email', 'name', 'nickname', 'photoURL', 'role',
+              'approvedAt', 'approvedBy', 'calendarShared', 'calendarInviteSentAt', 'tourSeenAt'];
+    }
+    // Sin regex de charset a propósito: el @nickname que genera el alta
+    // puede traer tildes/ñ (ver isValidNicknameEdit), así que acá solo se
+    // controla tipo y largo — alcanza para cerrar la puerta a un valor
+    // gigante o de otro tipo, sin arriesgar rechazar un alta legítima.
+    // d.get(...) y no d.campo: la regla de oro de este archivo es que el
+    // acceso con punto a una clave ausente tira error de evaluación.
+    function isSaneRosterText(d) {
+      return d.get('nickname', '') is string && d.get('nickname', '').size() <= 40 &&
+        d.get('name', '') is string && d.get('name', '').size() <= 120;
+    }
+    function isRosterCreate(d) {
+      return d.keys().hasOnly(rosterFields()) && isSaneRosterText(d);
+    }
+    function isRosterUpdate(d) {
+      return d.diff(resource.data).affectedKeys().hasOnly(rosterFields()) && isSaneRosterText(d);
+    }
     match /allowlist/{email} {
       allow get: if isAdmin();
       allow get: if isSelf(email);
       allow list: if isAdmin();
       allow list: if isApproved();
       allow write: if isAdmin();
-      allow create: if isRoleAdmin() && email != "benny@team-latam.com" && isValidRole(request.resource.data);
-      allow update: if isRoleAdmin() && email != "benny@team-latam.com" && isValidRole(request.resource.data) && keepsOwnRole(email);
+      allow create: if isRoleAdmin() && email != "benny@team-latam.com" && isValidRole(request.resource.data) && isRosterCreate(request.resource.data);
+      allow update: if isRoleAdmin() && email != "benny@team-latam.com" && isValidRole(request.resource.data) && keepsOwnRole(email) && isRosterUpdate(request.resource.data);
       allow delete: if isRoleAdmin() && email != "benny@team-latam.com" && email != request.auth.token.email;
       allow update: if isSelf(email) && isValidNicknameEdit(request.resource.data);
       allow update: if isSelf(email) && isValidTourSeenEdit(request.resource.data);
