@@ -931,6 +931,54 @@
   .pj-when{ font-size:11.5px; color:var(--text-muted); }
   .pj-doneby{ font-size:11px; color:var(--text-muted); margin-inline-start:auto; }
 
+  /* ---------- Selector de fecha de un evento que se repite ----------
+     El texto "🔁 se repite todas las semanas" que ya estaba en la tarjeta
+     ahora es el botón: apretándolo se elige QUÉ fecha de la serie está
+     mirando la tarjeta. No se suma nada nuevo a la vista de siempre —
+     aparece solo en los eventos que se repiten, y lo demás queda oculto
+     adentro del popup. Mismo criterio que .date-pop/.color-pop: fixed y
+     reposicionado por bounding rect, para no quedar recortado adentro de
+     la tarjeta. ---------- */
+  .occ-picker{ position:relative; display:inline-flex; }
+  .occ-chip{
+    font-family:inherit; font-size:inherit; color:inherit; cursor:pointer;
+    display:inline-flex; align-items:center; gap:4px;
+    background:none; border:none; padding:0 2px; border-radius:6px;
+    text-decoration:underline; text-decoration-style:dotted; text-underline-offset:3px;
+    text-decoration-color:var(--text-muted);
+  }
+  .occ-chip:hover, .occ-picker.open .occ-chip{ color:var(--celeste-dark); text-decoration-color:var(--celeste-dark); }
+  .occ-chip .occ-chev{ font-size:9px; opacity:.7; }
+  .occ-pop{
+    position:fixed; z-index:130; width:240px; background:var(--card); border:1px solid var(--border);
+    border-radius:var(--radius-md); box-shadow:var(--shadow); padding:8px; font-size:12.5px;
+  }
+  .occ-pop[hidden]{ display:none; }
+  .occ-pop-head{
+    font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase;
+    letter-spacing:.04em; padding:2px 6px 8px 6px;
+  }
+  .occ-list{ display:flex; flex-direction:column; gap:1px; max-height:270px; overflow-y:auto; }
+  .occ-date{
+    display:flex; align-items:center; gap:8px; width:100%; text-align:start;
+    font-family:inherit; font-size:12.5px; color:var(--ink); cursor:pointer;
+    background:none; border:1px solid transparent; border-radius:8px; padding:6px 8px;
+  }
+  .occ-date:hover{ background:var(--surface-hover); }
+  .occ-date.current{ background:var(--celeste-soft); border-color:var(--celeste-dark); font-weight:700; }
+  .occ-date.past{ color:var(--text-muted); }
+  .occ-date.current.past{ color:var(--ink); }
+  .occ-when{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .occ-tag{ flex:none; font-size:10.5px; font-weight:700; color:var(--celeste-dark); }
+  .occ-count{ flex:none; font-size:11px; color:var(--text-muted); }
+  /* Separador "hoy": una línea fina entre lo que pasó y lo que viene, para
+     poder ubicarse sin leer todas las fechas. */
+  .occ-today-sep{
+    display:flex; align-items:center; gap:6px; padding:5px 8px 3px 8px;
+    font-size:10px; font-weight:700; color:var(--celeste-dark); text-transform:uppercase; letter-spacing:.05em;
+  }
+  .occ-today-sep::after{ content:""; flex:1; height:1px; background:var(--border); }
+
   /* ---------- Selector de fecha propio (hitos): reemplaza al
      <input type=date> nativo, mismo criterio que .color-pop (fixed +
      reposicionado por bounding rect, para no quedar recortado dentro de
@@ -2634,6 +2682,8 @@ window.addEventListener("scroll", ()=>{ if(document.querySelector(".color-contro
 window.addEventListener("resize", ()=>{ if(document.querySelector(".color-control.open")) closeColorPops(); });
 window.addEventListener("scroll", ()=>{ if(document.querySelector(".date-field.open")) closeDateFields(); }, { passive:true });
 window.addEventListener("resize", ()=>{ if(document.querySelector(".date-field.open")) closeDateFields(); });
+window.addEventListener("scroll", ()=>{ if(document.querySelector(".occ-picker.open")) closeOccPops(); }, { passive:true });
+window.addEventListener("resize", ()=>{ if(document.querySelector(".occ-picker.open")) closeOccPops(); });
 function closeColorPops(except){
   document.querySelectorAll(".color-control.open").forEach(c=>{
     if(c === except) return;
@@ -6170,6 +6220,7 @@ function render(){
   // (saveMilestones) se vea reflejado en el popup: llega por acá cuando el
   // snapshot de Firestore dispara este mismo render().
   syncDateFieldOpenState();
+  syncOccPopState();
   if(focusSel){
     let el = null;
     try{ el = document.querySelector(focusSel); }catch(e){}
@@ -7795,8 +7846,14 @@ function renderFeedOrderBar(){
 // invierte entero. Factorizado de renderFeedView para que gotoMention
 // pueda ubicar un posteo en este mismo orden (ver ahí por qué).
 function sortedFeedPosts(){
-  const all = getVisiblePosts()
-    .sort((a,b)=> String(b.post.date||"").localeCompare(String(a.post.date||"")) || (tsToMillis(b.post.createdAt) - tsToMillis(a.post.createdAt)));
+  // Un evento que se repite se ordena por la fecha que está MOSTRANDO la
+  // tarjeta, no por la del molde: si no, la reunión semanal que arrancó
+  // en 2024 vivía para siempre en el fondo del Feed, justo la que más se
+  // mira. La fecha se calcula una vez por posteo y no adentro del
+  // comparador, que se llama muchas más veces.
+  const all = getVisiblePosts().map(it=>({ it, key: occurrenceOf(it.post) || String(it.post.date||"") }))
+    .sort((a,b)=> b.key.localeCompare(a.key) || (tsToMillis(b.it.post.createdAt) - tsToMillis(a.it.post.createdAt)))
+    .map(x=>x.it);
   if(feedOrder() === "asc") all.reverse();
   return all;
 }
@@ -7969,16 +8026,21 @@ function renderPostCard(post, replies){
   const { scopesHtml, linksHtml, imagesHtml } = renderAttachments(post, {postId: post.id});
   const replyOpen = openReplyForms.has(post.id);
   const threadOpen = openThreads.has(post.id);
-  const startDate = post.startDate || post.date;
-  const endDate = post.endDate || startDate;
+  // Un evento que se repite muestra UNA fecha por vez (ver occurrenceOf):
+  // la tarjeta se para en esa fecha y muestra SUS comentarios, así "las
+  // conclusiones del lunes 15" no aparecen también el lunes 22. Un posteo
+  // que no se repite devuelve null acá y todo queda igual que siempre.
+  const occ = occurrenceOf(post);
+  replies = repliesForOccurrence(replies, occ);
+  const baseStart = post.startDate || post.date;
+  const startDate = occ || baseStart;
+  // La repetición dura lo mismo que la original, así que el final se
+  // corre los mismos días que se corrió el arranque.
+  const spanDays = post.endDate && post.endDate > baseStart ? Math.round((isoDate(post.endDate) - isoDate(baseStart)) / 86400000) : 0;
+  const endDate = occ ? (spanDays ? addDaysISO(occ, spanDays) : occ) : (post.endDate || startDate);
   const timeLabel = post.startTime && post.endTime ? ` · ${fmtHHMM(post.startTime)}–${fmtHHMM(post.endTime)}` : "";
-  // Los eventos que se repiten entran como UN posteo (ver
-  // expandRecurrence): el Calendario los dibuja en cada fecha, pero acá
-  // hay una sola tarjeta — este "🔁 se repite todas las semanas" es lo que
-  // explica por qué, en vez de parecer que pasa una vez sola.
-  const repeatLabel = recurrenceLabel(post);
   const dateLabel = (endDate && endDate !== startDate ? `${fmtDate(startDate)} – ${fmtDate(endDate)}` : fmtDate(startDate))
-    + timeLabel + (repeatLabel ? ` · 🔁 ${repeatLabel}` : "");
+    + timeLabel + renderOccurrencePicker(post, occ);
   const metaBits = [];
   if(post.participants && post.participants.length) metaBits.push(`👥 ${t("Participantes","Participants","Participantes","משתתפים")}: ${participantsHtml(post.participants)}`);
   // Quién lo cargó. En los eventos importados del Calendar el authorName
@@ -8058,7 +8120,14 @@ function gotoMention(postId, replyId){
   state.view = "feed";
   state.countryDrill = null;
   state.filters = { text:"", types:new Set(), zones:new Set(), place:null };
-  if(replyId) openThreads.add(postId);
+  if(replyId){
+    openThreads.add(postId);
+    // Si el comentario es de una fecha puntual de una serie que se repite,
+    // hay que parar la tarjeta EN esa fecha: si no, se abría el hilo en
+    // otra fecha y el comentario al que se venía no estaba por ningún lado.
+    const r = (state.repliesByPost[postId]||[]).find(x=>x.id===replyId);
+    if(r && r.occ) occView[postId] = r.occ;
+  }
   // El Feed solo pinta feedVisibleCount tarjetas (PAGE_SIZE, "Ver más" de a
   // PAGE_STEP): si el posteo queda más atrás en el orden actual, el
   // querySelector de abajo nunca lo iba a encontrar y el salto quedaba
@@ -9161,7 +9230,14 @@ function recurrenceSkipDates(post){
 // que explica por qué hay una sola tarjeta de algo que pasa muchas veces.
 function recurrenceLabel(post){
   const parsed = parseRecurrence(post.recurrence);
-  if(!parsed) return "";
+  if(!parsed){
+    // Una regla que sabemos que existe pero no sabemos expandir (el
+    // "segundo martes de cada mes" y compañía, ver parseRecurrence): no
+    // se puede decir cada cuánto, pero callar que se repite es peor —
+    // la tarjeta parecía un evento de una sola vez.
+    const tieneRegla = Array.isArray(post.recurrence) && post.recurrence.some(l=>/^RRULE[:;]/i.test(String(l||"").trim()));
+    return tieneRegla ? t("se repite","repeats","repete-se","חוזר") : "";
+  }
   const { freq, interval } = parsed.rule;
   if(interval > 1){
     return freq === "DAILY" ? t("se repite cada {n} días","repeats every {n} days","repete-se a cada {n} dias","חוזר כל {n} ימים",{n:interval})
@@ -9173,6 +9249,139 @@ function recurrenceLabel(post){
     : freq === "WEEKLY" ? t("se repite todas las semanas","repeats every week","repete-se todas as semanas","חוזר בכל שבוע")
     : freq === "MONTHLY" ? t("se repite todos los meses","repeats every month","repete-se todos os meses","חוזר בכל חודש")
     : t("se repite todos los años","repeats every year","repete-se todos os anos","חוזר בכל שנה");
+}
+
+// —— Cada fecha de una serie, con vida propia ————————————————————————
+// Un evento que se repite sigue siendo UN solo posteo (ver
+// expandRecurrence): no se crea un documento por repetición, porque una
+// reunión semanal de dos años serían 104 documentos, con sus 104
+// sincronizaciones y sin manera de mapear los comentarios viejos.
+//
+// Lo que sí tiene vida propia es cada FECHA: "las conclusiones del lunes
+// 15" no tienen por qué aparecer el lunes 22. Eso se logra guardando la
+// fecha en cada comentario (campo `occ` de la respuesta) y parando la
+// tarjeta en una fecha por vez. Nada se crea de antemano: una fecha
+// existe recién cuando alguien le escribe algo. Los comentarios SIN
+// `occ` son de la serie entera — los de antes de que esto existiera y
+// los que escribe la sincronización con Calendar cuando cambia la regla.
+const OCC_BACK_MONTHS = 18, OCC_FWD_MONTHS = 12;
+function isRecurring(post){ return !!(post && parseRecurrence(post.recurrence)); }
+// Las fechas de la serie en una ventana alrededor de hoy: no tiene
+// sentido listar en el selector una reunión semanal desde 2015. Se
+// descartan las canceladas y las que ya tienen su propia tarjeta, igual
+// que en el Calendario.
+function postOccurrenceDates(post){
+  const start = post.startDate || post.date;
+  if(!start) return [];
+  const hoy = todayISO();
+  const from = addMonthsISO(hoy, -OCC_BACK_MONTHS), to = addMonthsISO(hoy, OCC_FWD_MONTHS);
+  const all = expandRecurrence(start, post.recurrence, from < start ? start : from, to);
+  if(!all) return [];
+  const skip = recurrenceSkipDates(post);
+  return all.filter(iso => !skip.has(iso));
+}
+// Cuál de todas mostrar cuando la persona todavía no eligió: la más
+// cercana a hoy, para adelante o para atrás. Justo después de la reunión
+// del lunes, la tarjeta se para en ESE lunes — que es cuando uno quiere
+// escribir las conclusiones — y recién cuando el próximo queda más cerca
+// se corre sola. Empate: la que viene.
+function nearestOccurrence(dates){
+  if(!dates.length) return null;
+  const hoy = todayISO();
+  const dist = iso => Math.abs(Math.round((isoDate(iso) - isoDate(hoy)) / 86400000));
+  let best = dates[0];
+  for(const iso of dates){
+    const d = dist(iso), b = dist(best);
+    if(d < b || (d === b && iso > best)) best = iso;
+  }
+  return best;
+}
+// La fecha en la que está parada la tarjeta de este posteo. `occView`
+// guarda lo que eligió la persona a mano; se valida contra las fechas
+// reales porque la regla puede haber cambiado desde Calendar mientras
+// tanto (y ahí la elegida ya no existe).
+const occView = {}; // postId -> fecha ISO elegida a mano
+function occurrenceOf(post){
+  if(!isRecurring(post)) return null;
+  const dates = postOccurrenceDates(post);
+  if(!dates.length) return null;
+  const picked = occView[post.id];
+  return picked && dates.includes(picked) ? picked : nearestOccurrence(dates);
+}
+// Los comentarios que le tocan a la fecha que se está mirando: los suyos
+// más los de la serie. Un posteo que no se repite los muestra todos, sin
+// cambiar nada de lo de antes.
+function repliesForOccurrence(replies, occ){
+  if(!occ) return replies;
+  return replies.filter(r => !r.occ || r.occ === occ);
+}
+
+// Qué escribe el chip de la tarjeta y qué lista el popup. El chip NO
+// repite la fecha (esa ya está al lado, en .post-date): dice cada cuánto
+// se repite, que es lo que ya decía antes como texto suelto — la
+// novedad es que ahora se puede apretar.
+let occPopOpen = null; // postId con el popup de fechas abierto
+function closeOccPops(){
+  document.querySelectorAll(".occ-picker.open").forEach(f=>{
+    f.classList.remove("open");
+    const pop = f.querySelector(".occ-pop"); if(pop) pop.hidden = true;
+    const btn = f.querySelector(".occ-chip"); if(btn) btn.setAttribute("aria-expanded","false");
+  });
+  occPopOpen = null;
+}
+// Igual que syncDateFieldOpenState: render() reconstruye la tarjeta de
+// cero, así que el popup abierto perdió su clase .open y hay que
+// reabrirlo y reposicionarlo contra el chip nuevo.
+function syncOccPopState(){
+  if(!occPopOpen) return;
+  const chip = document.querySelector(`.occ-chip[data-post-id="${CSS.escape(occPopOpen)}"]`);
+  if(!chip){ occPopOpen = null; return; }
+  const wrap = chip.closest(".occ-picker");
+  wrap.classList.add("open");
+  chip.setAttribute("aria-expanded","true");
+  const pop = wrap.querySelector(".occ-pop");
+  pop.hidden = false;
+  positionDatePop(chip, pop);
+}
+function occDateLabel(iso){
+  const sameYear = iso.slice(0,4) === todayISO().slice(0,4);
+  return fmtISO(iso, sameYear ? { weekday:"short", day:"numeric", month:"short" }
+    : { weekday:"short", day:"numeric", month:"short", year:"numeric" });
+}
+function renderOccurrencePicker(post, occ){
+  const label = recurrenceLabel(post);
+  if(!label) return "";
+  // Sin fechas expandibles (una regla que no sabemos expandir) queda el
+  // texto de siempre, sin botón: no hay nada que elegir.
+  const dates = occ ? postOccurrenceDates(post) : [];
+  if(!dates.length) return ` · 🔁 ${esc(label)}`;
+  const abierto = occPopOpen === post.id;
+  const all = state.repliesByPost[post.id] || [];
+  const countFor = iso => all.filter(r => r.occ === iso).length;
+  const hoy = todayISO();
+  let sepPuesto = false;
+  // La lista solo se arma con el popup abierto: una serie semanal son ~78
+  // fechas y el Feed dibuja muchas tarjetas — armarlas todas en cada
+  // render era llenar el DOM de botones que nadie mira.
+  const rows = !abierto ? "" : dates.map(iso=>{
+    const n = countFor(iso);
+    const sep = !sepPuesto && iso >= hoy ? (sepPuesto = true, `<div class="occ-today-sep">${t("Próximas","Upcoming","Próximas","הבאות")}</div>`) : "";
+    return sep + `<button type="button" class="occ-date${iso === occ ? " current" : ""}${iso < hoy ? " past" : ""}"
+        data-action="occ-pick" data-post-id="${esc(post.id)}" data-occ="${iso}"${iso === occ ? ' aria-current="true"' : ""}>
+        <span class="occ-when">${esc(occDateLabel(iso))}</span>
+        ${iso === hoy ? `<span class="occ-tag">${t("hoy","today","hoje","היום")}</span>` : ""}
+        ${n ? `<span class="occ-count">💬 ${n}</span>` : ""}
+      </button>`;
+  }).join("");
+  return ` · <span class="occ-picker">
+      <button type="button" class="occ-chip" data-action="occ-toggle" data-post-id="${esc(post.id)}"
+        aria-expanded="false" aria-haspopup="dialog"
+        title="${esc(t("Elegí qué fecha de la serie ver","Choose which date of the series to view","Escolha qual data da série ver","בחר/י איזה תאריך מהסדרה להציג"))}">🔁 ${esc(label)}<span class="occ-chev">▾</span></button>
+      <div class="occ-pop" role="dialog" aria-label="${esc(t("Fechas de la serie","Dates in the series","Datas da série","תאריכי הסדרה"))}" hidden>
+        ${abierto ? `<div class="occ-pop-head">${t("Fechas de la serie","Dates in the series","Datas da série","תאריכי הסדרה")}</div>
+        <div class="occ-list">${rows}</div>` : ""}
+      </div>
+    </span>`;
 }
 
 // Mapa fecha ISO -> eventos de ese día, ya recortado a la ventana que se
@@ -9233,13 +9442,19 @@ function calendarioNewAttrs(iso, hour){
   const title = esc(t("Nuevo evento","New event","Novo evento","אירוע חדש"));
   return ` data-action="cal-new" data-date="${iso}"${hour != null ? ` data-hour="${hour}"` : ""} title="${title}"`;
 }
+// Cuál de las repeticiones es este chip. calendarioEventsByDate dibuja
+// una copia por fecha (todas con el mismo id de posteo), así que sin esto
+// tocar el lunes 22 abría la tarjeta parada en el lunes 15.
+function occAttr(p){
+  return isRecurring(p) && (p.startDate || p.date) ? ` data-occ="${esc(p.startDate || p.date)}"` : "";
+}
 function calendarioChip(p, iso){
   const type = ACTIVITY_BY_KEY[p.activityType] || { icon:"✨" };
   const label = calendarioLabel(p);
   // La hora solo en el día en que arranca: en los días del medio de un
   // evento de varios días no significa nada.
   const time = p.startTime && (p.startDate || p.date) === iso ? `<b>${esc(fmtHHMM(p.startTime))}</b> ` : "";
-  return `<button type="button" class="cal-chip${p.cancelled?" cancelled":""}${p.hito?" hito":""}${pastClass(iso)}" data-action="cal-open" data-post-id="${esc(p.id)}" title="${esc(label)}">
+  return `<button type="button" class="cal-chip${p.cancelled?" cancelled":""}${p.hito?" hito":""}${pastClass(iso)}" data-action="cal-open" data-post-id="${esc(p.id)}"${occAttr(p)} title="${esc(label)}">
       <span class="cal-dot" style="background:${calendarioColor(p)}"></span><span class="cal-txt">${type.icon} ${time}${esc(label)}</span>
     </button>`;
 }
@@ -9537,7 +9752,7 @@ function calendarioBar(it, weekDays){
     : "";
   return `<button type="button" class="cal-bar${multi?" span":""}${p.cancelled?" cancelled":""}${p.hito?" hito":""}${pastClass(weekDays[it.from])}${contStart?" cont-start":""}${contEnd?" cont-end":""}"
       style="grid-column:${it.from+1} / span ${it.to - it.from + 1};grid-row:${it.lane+1};${style}"
-      data-action="cal-open" data-post-id="${esc(p.id)}" title="${esc(label)}">
+      data-action="cal-open" data-post-id="${esc(p.id)}"${occAttr(p)} title="${esc(label)}">
       ${multi ? "" : `<span class="cal-dot" style="background:${color}"></span>`}<span class="cal-txt">${type.icon} ${time}${esc(label)}</span>
     </button>`;
 }
@@ -9628,7 +9843,7 @@ function calendarioBlock(it){
   const top = (it.from / 1440) * 100;
   const height = Math.max(1.7, ((it.to - it.from) / 1440) * 100);
   const width = 100 / it.cols;
-  return `<button type="button" class="cal-block${p.cancelled?" cancelled":""}${pastClass(it.iso)}" data-action="cal-open" data-post-id="${esc(p.id)}"
+  return `<button type="button" class="cal-block${p.cancelled?" cancelled":""}${pastClass(it.iso)}" data-action="cal-open" data-post-id="${esc(p.id)}"${occAttr(p)}
       style="top:${top}%;height:${height}%;inset-inline-start:${it.col*width}%;width:${width}%;border-inline-start-color:${calendarioColor(p)}">
       <b>${esc(fmtHHMM(p.startTime))}</b> ${esc(calendarioLabel(p))}
     </button>`;
@@ -10520,6 +10735,7 @@ userProfileOverlay.addEventListener("click", e=>{ if(e.target === userProfileOve
 const eventCardOverlay = document.getElementById("eventCardOverlay");
 const eventCardBody = document.getElementById("eventCardBody");
 let eventCardPostId = null;
+let eventCardOcc = null; // qué repetición se tocó en el Calendario
 let eventCardReturnFocus = null;
 // "19 – 27 de septiembre de 2026" en vez de repetir mes y año dos veces,
 // como muestra Google Calendar. Solo se compacta si caen en el mismo mes:
@@ -10536,8 +10752,13 @@ function renderEventCard(){
   const post = getPostById(eventCardPostId);
   if(!post){ closeEventCard(); return; }
   const type = ACTIVITY_BY_KEY[post.activityType] || ACTIVITY_BY_KEY.otro || { icon:"✨", label:String(post.activityType||"") };
-  const startDate = post.startDate || post.date;
-  const endDate = post.endDate || startDate;
+  // La repetición que se tocó en el Calendario, no la fecha del molde:
+  // abrir el lunes 22 tiene que decir "lunes 22".
+  const baseStart = post.startDate || post.date;
+  const startDate = eventCardOcc || baseStart;
+  const spanDays = post.endDate && post.endDate > baseStart ? Math.round((isoDate(post.endDate) - isoDate(baseStart)) / 86400000) : 0;
+  const endDate = eventCardOcc ? (spanDays ? addDaysISO(eventCardOcc, spanDays) : eventCardOcc) : (post.endDate || startDate);
+  const repeatLabel = recurrenceLabel(post);
   const dateLabel = eventDateRange(startDate, endDate);
   const timeLabel = post.startTime && post.endTime
     ? `${fmtHHMM(post.startTime)}–${fmtHHMM(post.endTime)}`
@@ -10567,7 +10788,7 @@ function renderEventCard(){
       <span class="ev-dot" style="background:${calendarioColor(post)}"></span>
       <div class="ev-head-text">
         <h2 class="ev-title" id="eventCardTitle"${post.cancelled?' style="text-decoration:line-through;opacity:0.7;"':""}>${esc(calendarioLabel(post))}</h2>
-        <div class="ev-when">${esc(dateLabel)} · ${esc(timeLabel)}</div>
+        <div class="ev-when">${esc(dateLabel)} · ${esc(timeLabel)}${repeatLabel ? ` · 🔁 ${esc(repeatLabel)}` : ""}</div>
       </div>
     </div>
     <div class="ev-badges">
@@ -10587,9 +10808,10 @@ function renderEventCard(){
       ${canEditPost(post) ? `<button type="button" data-action="event-card-edit" data-post-id="${esc(post.id)}">✏️ ${t("Editar","Edit","Editar","עריכה")}</button>` : ""}
     </div>`;
 }
-function openEventCard(postId){
+function openEventCard(postId, occ){
   if(!getPostById(postId)) return;
   eventCardPostId = postId;
+  eventCardOcc = occ || null;
   renderEventCard();
   eventCardReturnFocus = document.activeElement;
   eventCardOverlay.hidden = false;
@@ -10598,6 +10820,7 @@ function openEventCard(postId){
 function closeEventCard(){
   eventCardOverlay.hidden = true;
   eventCardPostId = null;
+  eventCardOcc = null;
   if(eventCardReturnFocus && typeof eventCardReturnFocus.focus === "function") eventCardReturnFocus.focus();
   eventCardReturnFocus = null;
 }
@@ -10635,6 +10858,7 @@ document.addEventListener("keydown", e=>{
   if(!confirmOverlay.hidden){ closeConfirmDialog(false); return; }
   if(document.querySelector(".color-control.open")){ closeColorPops(); return; }
   if(document.querySelector(".date-field.open")){ closeDateFields(); return; }
+  if(document.querySelector(".occ-picker.open")){ closeOccPops(); return; }
   if(lightbox.classList.contains("show")){ closeLightbox(); return; }
   if(!filePreviewOverlay.hidden){ closeFilePreview(); return; }
   if(!userProfileOverlay.hidden){ closeUserProfile(); return; }
@@ -11160,6 +11384,7 @@ document.addEventListener("focusin", e=>{
 document.addEventListener("click", async e=>{
   if(!e.target.closest(".color-control")) closeColorPops();
   if(!e.target.closest(".date-field")) closeDateFields();
+  if(!e.target.closest(".occ-picker")) closeOccPops();
   if(userMenuOpen && !e.target.closest("#userBadge")){
     userMenuOpen = false; nicknameEditing = false; nicknameError = null; render();
   }
@@ -11570,12 +11795,35 @@ document.addEventListener("click", async e=>{
     "cal-open-month": async (el, e, action, postId) => {
     state.calendarioAnchor = el.dataset.date; state.calendarioSubview = "mes"; render();
   },
+    "occ-toggle": async (el, e, action, postId) => {
+    const id = el.dataset.postId;
+    const abrir = occPopOpen !== id;
+    closeOccPops();
+    occPopOpen = abrir ? id : null;
+    // render() es el que arma la lista de fechas (solo se arma abierta) y
+    // el que, vía syncOccPopState, la muestra y la posiciona.
+    render();
+    if(!abrir) return;
+    // La fecha elegida al centro: en una serie larga queda en el medio de
+    // la lista, y abrir el popup la dejaba fuera de vista.
+    const cur = document.querySelector(`.occ-pop .occ-date.current`);
+    if(cur) cur.scrollIntoView({ block:"center" });
+  },
+    "occ-pick": async (el, e, action, postId) => {
+    occView[el.dataset.postId] = el.dataset.occ;
+    closeOccPops();
+    render();
+  },
     "cal-open": async (el, e, action, postId) => {
     if(String(postId).includes("#m:")) openProjectMilestone(postId);
-    else openEventCard(postId);
+    else openEventCard(postId, el.dataset.occ);
   },
     "event-card-goto": async (el, e, action, postId) => {
-    closeEventCard(); gotoMention(el.dataset.postId);
+    // Con la fecha de la repetición que se tocó en el Calendario, para
+    // que la tarjeta del Feed se pare en ESE día y no en el de la serie.
+    const id = el.dataset.postId, occ = eventCardOcc;
+    if(occ) occView[id] = occ;
+    closeEventCard(); gotoMention(id);
   },
     "event-card-edit": async (el, e, action, postId) => {
     const post = getPostById(el.dataset.postId);
@@ -12318,10 +12566,16 @@ async function submitReply(postId){
   if(mentions.length > MAX_MENTIONS){ d.scopeError = tooManyMentionsMsg(); render(); return; }
   d.submitting = true; d.scopeError = ""; render();
   try{
+    // La fecha que está mirando la tarjeta, si es un evento que se
+    // repite: así "las conclusiones del lunes 15" quedan pegadas al lunes
+    // 15 y no aparecen el lunes 22. En todo lo demás va sin `occ`, que es
+    // lo que hace que un comentario común se siga viendo siempre.
+    const occ = occurrenceOf(getPostById(postId) || {});
     await createReply(postId, {
       authorName: state.auth.user.displayName, authorEmail: state.auth.user.email,
       content, scopes:d.scopes,
       images:d.images, links, files:d.files, mentions,
+      ...(occ ? { occ } : {}),
     });
     openReplyForms.delete(postId);
     resetReplyDraft(postId);
@@ -12347,6 +12601,10 @@ async function submitNestedReply(postId, replyId){
   if(!content){ d.scopeError = t("Escribí una respuesta antes de publicar.","Write a reply before posting.","Escreva uma resposta antes de publicar.",".כתוב/כתבי תגובה לפני הפרסום"); render(); return; }
   const parent = (state.repliesByPost[postId]||[]).find(r=>r.id===replyId);
   const replyToId = parent?.replyToId || replyId;
+  // Una respuesta anidada hereda la fecha de aquella a la que le contesta
+  // (y no la que está mirando la tarjeta): si no, al cambiar de fecha la
+  // hija se quedaría visible con la madre escondida, o al revés.
+  const parentOcc = ((state.repliesByPost[postId]||[]).find(r=>r.id===replyToId) || parent || {}).occ || null;
   const links = d.links.filter(l=>safeUrl(l.url));
   const mentions = extractMentionsFromContent(content);
   if(mentions.length > MAX_MENTIONS){ d.scopeError = tooManyMentionsMsg(); render(); return; }
@@ -12355,6 +12613,7 @@ async function submitNestedReply(postId, replyId){
     await createReply(postId, {
       authorName: state.auth.user.displayName, authorEmail: state.auth.user.email,
       content, scopes:[], images:d.images, links, files:d.files, mentions, replyToId,
+      ...(parentOcc ? { occ: parentOcc } : {}),
     });
     openNestedReplyForms.delete(replyId);
     delete nestedReplyDrafts[replyId];

@@ -403,7 +403,12 @@ service cloud.firestore {
         isOptionalString(d.get('authorEmail', null), 200) &&
         isReplyAuthorOk(d) &&
         d.keys().hasOnly(['content', 'authorName', 'authorEmail', 'scopes', 'images', 'links', 'files',
-          'mentions', 'replyToId', 'system', 'icon', 'createdAt']) &&
+          'mentions', 'replyToId', 'system', 'icon', 'occ', 'createdAt']) &&
+        // A qué fecha de una serie que se repite pertenece este comentario
+        // (ver occurrenceOf en index.html). Sin `occ` es un comentario de
+        // la serie entera, que es lo que son todos los de antes de que
+        // esto existiera y los que escribe la sincronización con Calendar.
+        (d.get('occ', null) == null || isValidDateStr(d.occ)) &&
         (d.get('scopes', null) == null || (d.scopes is list && d.scopes.size() <= 15)) &&
         (d.get('links', null) == null || (d.links is list && isValidLinkList(d.links))) &&
         (d.get('images', null) == null || (d.images is list && isValidImageList(d.images))) &&
