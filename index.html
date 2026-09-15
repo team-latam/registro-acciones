@@ -1031,6 +1031,10 @@
      con ícono: sin el margin-top de ".place-picker" (pensado para ir
      debajo de otra cosa), acá es el único contenido de la fila. */
   .place-picker.place-picker-inline{ margin-top:0; }
+  /* Ancla para el desplegable de sugerencias de "Dónde ocurre" (ver
+     renderLocationSuggestions): mismo .autocomplete-list de lugar/mención,
+     posicionado contra este wrapper en vez de contra .field-icon-body. */
+  .location-field{ position:relative; }
   @media (max-width:480px){ .field-icon-row{ gap:8px; } .field-icon{ width:16px; font-size:13px; } }
 
   .type-picker{ display:flex; flex-wrap:wrap; gap:8px; }
@@ -8838,6 +8842,8 @@ function newComposerDraft(){
     placeQuery: "",
     placeHighlight: 0,
     location: "",
+    locationSuggestions: null,
+    locationHighlight: 0,
     images: [],
     links: [],
     files: [],
@@ -9272,7 +9278,7 @@ function openEditComposer(post){
     legacyOrganizer: (!post.participants || !post.participants.length) ? (post.organizer || "") : "",
     activityType: post.activityType, scopes: (post.scopes||[]).map(sc=>({...sc})),
     placeQuery: "", placeHighlight: 0,
-    location: post.location || "",
+    location: post.location || "", locationSuggestions: null, locationHighlight: 0,
     images: [...(post.images||[])], links: (post.links||[]).map(l=>({...l})),
     files: (post.files||[]).map(f=>({...f})), attachOpen: false,
     mentionQuery: null, mentionCaret: 0, mentionHighlight: 0,
@@ -9347,7 +9353,10 @@ function renderComposer(){
     <div class="field-icon-row">
       <span class="field-icon">📍</span>
       <div class="field-icon-body">
-        <input type="text" id="cLocation" class="field-icon-input" maxlength="200" placeholder="${esc(t("Dónde ocurre (opcional): ciudad, hotel, dirección…","Where it happens (optional): city, hotel, address…","Onde acontece (opcional): cidade, hotel, endereço…","(עיר, מלון, כתובת) :(איפה זה קורה (אופציונלי"))}" value="${esc(d.location||"")}">
+        <div class="location-field">
+          <input type="text" id="cLocation" class="field-icon-input" maxlength="200" autocomplete="off" placeholder="${esc(t("Dónde ocurre (opcional): ciudad, hotel, dirección…","Where it happens (optional): city, hotel, address…","Onde acontece (opcional): cidade, hotel, endereço…","(עיר, מלון, כתובת) :(איפה זה קורה (אופציונלי"))}" value="${esc(d.location||"")}">
+          ${renderLocationSuggestions(d)}
+        </div>
       </div>
     </div>
     <div class="field-icon-row">
@@ -9984,6 +9993,53 @@ function selectPlaceMatch(scope, ownerId, match){
   render();
 }
 
+// Autocompletar de "Dónde ocurre" contra Nominatim (OpenStreetMap): sin
+// key ni costo, a cambio de una política de uso que pide como máximo
+// ~1 request/seg (ver operations.osmfoundation.org/policies/nominatim) —
+// de ahí el debounce de 500ms y el mínimo de 3 caracteres antes de salir a
+// buscar. locationSuggestions es null hasta la primera búsqueda (no
+// muestra el desplegable); [] es "buscó y no encontró nada". Si la
+// consulta falla (sin red, CORS, lo que sea) se traga el error y listo:
+// el campo sigue siendo texto libre, nunca bloquea guardar el posteo.
+function scheduleLocationSearch(draft){
+  clearTimeout(draft.locationSearchTimer);
+  const q = (draft.location||"").trim();
+  if(q.length < 3){
+    if(draft.locationSuggestions !== null){ draft.locationSuggestions = null; render(); }
+    return;
+  }
+  draft.locationSearchTimer = setTimeout(()=>fetchLocationSuggestions(draft, q), 500);
+}
+async function fetchLocationSuggestions(draft, query){
+  draft.locationSearchSeq = (draft.locationSearchSeq||0) + 1;
+  const seq = draft.locationSearchSeq;
+  const lang = currentLang()==="he" ? "he,en" : currentLang();
+  let results = [];
+  try{
+    const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&accept-language=${encodeURIComponent(lang)}&q=${encodeURIComponent(query)}`;
+    const res = await fetch(url);
+    if(res.ok) results = await res.json();
+  }catch(e){ results = []; }
+  if(draft.locationSearchSeq !== seq) return; // llegó una búsqueda más nueva mientras esperábamos ésta
+  draft.locationSuggestions = results.map(r=>({ label: String(r.display_name||"").slice(0,200) }));
+  draft.locationHighlight = 0;
+  render();
+}
+function renderLocationSuggestions(draft){
+  if(draft.locationSuggestions == null) return "";
+  if(!draft.locationSuggestions.length) return `<div class="autocomplete-list"><div class="autocomplete-empty">${t("Sin resultados. Podés escribirlo igual: se guarda como texto.","No results. You can still type it in: it saves as plain text.","Sem resultados. Pode escrever assim mesmo: salva como texto.",".אין תוצאות. אפשר להקליד בכל זאת: זה נשמר כטקסט")}</div></div>`;
+  return `<div class="autocomplete-list">${draft.locationSuggestions.map((it,i)=>`
+    <button type="button" class="autocomplete-option${i===draft.locationHighlight?" active":""}" data-action="pick-location" data-match-idx="${i}">📍 ${esc(it.label)}</button>`).join("")}
+    <div class="autocomplete-empty">${t("Direcciones de OpenStreetMap","Addresses from OpenStreetMap","Endereços do OpenStreetMap","(מ-OpenStreetMap (כתובות")}</div></div>`;
+}
+function selectLocationMatch(match){
+  if(!match) return;
+  composerDraft.location = match.label;
+  composerDraft.locationSuggestions = null;
+  composerDraft.locationHighlight = 0;
+  render();
+}
+
 // Actualiza el resalte EN VIVO (ver .mention-highlight-backdrop) en cada
 // tecleo, leyendo directo del DOM (no del draft) para no depender de un
 // render() completo — igual que autoGrowTextarea, esto se llama en cada
@@ -10123,14 +10179,15 @@ function selectParticipantMatch(match){
 // Navegar los desplegables de lugar/@mención con flechas arriba/abajo, y
 // confirmar la opción resaltada con Tab o Enter (Escape los cierra sin
 // elegir nada) — en vez de depender solo del mouse.
-// Manejo de teclado común a los 4 "autocompletar por escritura" del
+// Manejo de teclado común a los 5 "autocompletar por escritura" del
 // archivo (lugar, @mención, participante del composer, responsables/
-// editores de hitos): flechas mueve el resaltado, Tab/Enter elige,
-// Escape limpia — cada uno solo aporta cómo leer/guardar SU estado.
+// editores de hitos, dónde ocurre): flechas mueve el resaltado, Tab/Enter
+// elige, Escape limpia — cada uno solo aporta cómo leer/guardar SU estado.
 // `escapeAlways` preserva una diferencia real que ya tenían entre sí:
 // en lugar/mención/participante, Escape no hace nada si no hay
 // coincidencias (se corta antes, junto con las flechas); en el buscador
-// de personas de hitos, Escape limpia el campo aunque no haya ninguna.
+// de personas de hitos y en dónde-ocurre, Escape limpia/cierra aunque no
+// haya ninguna.
 function handleAutocompleteKeydown(e, { getMatches, getHighlight, setHighlight, onSelect, onClear, escapeAlways }){
   if(escapeAlways && e.key === "Escape"){ onClear(); render(); return; }
   const matches = getMatches();
@@ -10189,6 +10246,20 @@ document.addEventListener("keydown", e=>{
       setHighlight: v => { draft.participantHighlight = v; },
       onSelect: m => selectParticipantMatch(m),
       onClear: () => { draft.participantQuery = ""; draft.participantHighlight = 0; },
+    });
+  }
+  if(el.id === "cLocation"){
+    const draft = composerDraft;
+    handleAutocompleteKeydown(e, {
+      getMatches: () => draft.locationSuggestions || [],
+      getHighlight: () => draft.locationHighlight,
+      setHighlight: v => { draft.locationHighlight = v; },
+      onSelect: m => selectLocationMatch(m),
+      // A diferencia de lugar/mención/participante, acá Escape NO vacía el
+      // campo: location es el texto real que se guarda, no una búsqueda
+      // aparte — solo cierra el desplegable de sugerencias.
+      onClear: () => { draft.locationSuggestions = null; },
+      escapeAlways: true,
     });
   }
   if(e.key === "Enter" && e.target && e.target.dataset && e.target.dataset.msNew === "label"){ e.preventDefault(); addMilestoneFromDraft(e.target.dataset.postId); return; }
@@ -10470,6 +10541,9 @@ document.addEventListener("click", async e=>{
   },
     "pick-participant": async (el, e, action, postId) => {
     selectParticipantMatch(getParticipantMatches(composerDraft)[Number(el.dataset.matchIdx)]);
+  },
+    "pick-location": async (el, e, action, postId) => {
+    selectLocationMatch((composerDraft.locationSuggestions||[])[Number(el.dataset.matchIdx)]);
   },
     "rm-participant": async (el, e, action, postId) => {
     composerDraft.participants.splice(Number(el.dataset.idx), 1); render();
@@ -11010,7 +11084,7 @@ document.addEventListener("input", e=>{
   } else if(el.id === "nicknameInput"){
     nicknameDraft = el.value; nicknameError = null; render();
   } else if(el.id === "cTitle"){ composerDraft.title = el.value; }
-  else if(el.id === "cLocation"){ composerDraft.location = el.value; }
+  else if(el.id === "cLocation"){ composerDraft.location = el.value; scheduleLocationSearch(composerDraft); }
   else if(el.id === "cContent"){
     composerDraft.content = el.value;
     const prevQuery = composerDraft.mentionQuery;
