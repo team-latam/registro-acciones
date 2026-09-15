@@ -912,18 +912,94 @@
   .pj-lbl.below{ top:calc(50% + 16px); }
   .pj-pt.ev .pj-lbl b{ color:var(--petroleo-dark); }
   .pj-list{ list-style:none; margin:10px 0 0; padding:0; display:flex; flex-direction:column; gap:6px; }
-  .pj-row{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:6px 8px; border-radius:8px; background:var(--card); border:1px solid var(--border); }
+  /* Dos líneas fijas por hito en vez de un flex-wrap que corta donde
+     puede: con fecha de fin + responsable + "por fulano" a la vez, el
+     wrap dejaba "+ Responsable..." solo, repetido, en cada fila. */
+  .pj-row{ display:flex; flex-direction:column; gap:6px; padding:7px 8px; border-radius:8px; background:var(--card); border:1px solid var(--border); }
   .pj-row.done .pj-label, .pj-row.done .pj-label-input{ text-decoration:line-through; color:var(--text-muted); }
   .pj-row.overdue{ border-color:color-mix(in srgb, var(--danger) 50%, var(--border)); }
   .pj-row.soon{ border-color:color-mix(in srgb, var(--warn-border) 70%, var(--border)); }
   .pj-row.today{ border-color:color-mix(in srgb, var(--celeste-dark) 40%, var(--border)); }
-  .pj-main{ flex:1 1 220px; min-width:0; display:flex; flex-direction:column; gap:2px; }
-  .pj-label{ font-weight:700; font-size:13px; color:var(--ink); }
-  .pj-label-input{ font-family:inherit; font-weight:700; font-size:13px; color:var(--ink); background:transparent; border:1px solid transparent; border-radius:6px; padding:2px 4px; min-width:0; }
+  .pj-top{ display:flex; align-items:center; gap:8px; }
+  .pj-bottom{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+  /* Alinea la línea de abajo bajo el título — pero solo si arriba hay un
+     grip (gestión): en solo lectura el título arranca en el borde. */
+  .pj-row:has(.pj-grip) .pj-bottom{ padding-inline-start:26px; }
+  .pj-label{ flex:1; min-width:0; font-weight:700; font-size:13px; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .pj-label-input{ flex:1; min-width:0; font-family:inherit; font-weight:700; font-size:13px; color:var(--ink); background:transparent; border:1px solid transparent; border-radius:6px; padding:2px 4px; text-overflow:ellipsis; }
   .pj-label-input:hover, .pj-label-input:focus{ border-color:var(--border); background:var(--surface-soft); outline:none; }
-  .pj-when{ font-size:11.5px; color:var(--text-muted); display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
-  .pj-when input[type=date]{ font-family:inherit; font-size:11.5px; border:1px solid var(--border); border-radius:6px; padding:2px 4px; background:var(--surface-soft); color:var(--ink); }
-  .pj-doneby{ font-size:11px; color:var(--text-muted); }
+  .pj-when{ font-size:11.5px; color:var(--text-muted); }
+  .pj-doneby{ font-size:11px; color:var(--text-muted); margin-inline-start:auto; }
+
+  /* ---------- Selector de fecha propio (hitos): reemplaza al
+     <input type=date> nativo, mismo criterio que .color-pop (fixed +
+     reposicionado por bounding rect, para no quedar recortado dentro de
+     una tarjeta con overflow) y mismo open/close por clase que
+     closeColorPops/.color-control.open. ---------- */
+  .date-field{ position:relative; display:inline-flex; }
+  .date-sep{ color:var(--text-muted); font-size:11px; flex:none; }
+  .date-trigger{
+    flex:none; display:inline-flex; align-items:center; gap:5px; font-family:inherit; font-size:11.5px;
+    font-weight:600; cursor:pointer; padding:5px 10px 5px 8px; border-radius:999px;
+    border:1px solid var(--border); background:var(--surface-soft); color:var(--ink);
+  }
+  .date-trigger:hover, .date-field.open .date-trigger{ border-color:var(--celeste-dark); }
+  .date-field.open .date-trigger{ background:var(--celeste-soft); }
+  .date-trigger.empty{ color:var(--text-muted); font-style:italic; }
+  .date-trigger .cal-ic{ font-size:11px; opacity:.75; }
+  .date-pop{
+    position:fixed; z-index:130; width:266px; background:var(--card); border:1px solid var(--border);
+    border-radius:var(--radius-md); box-shadow:var(--shadow); padding:12px; font-size:12.5px;
+  }
+  .date-pop[hidden]{ display:none; }
+  .dp-typed-row{ margin-bottom:8px; }
+  .dp-date-input{
+    width:100%; font-family:inherit; font-size:12.5px; font-weight:700; color:var(--ink);
+    background:var(--surface-soft); border:1px solid var(--border); border-radius:8px;
+    padding:6px 9px; text-align:center; letter-spacing:.02em;
+  }
+  .dp-date-input::placeholder{ color:var(--text-muted); font-weight:600; opacity:.8; }
+  .dp-date-input:focus{ outline:none; border-color:var(--celeste-dark); background:var(--card); }
+  .dp-date-input.invalid{
+    animation:dp-shake .32s ease; border-color:var(--danger); background:var(--danger-bg); color:var(--danger-text);
+  }
+  @keyframes dp-shake{
+    10%,90%{ transform:translateX(-1px); } 20%,80%{ transform:translateX(2px); }
+    30%,50%,70%{ transform:translateX(-4px); } 40%,60%{ transform:translateX(4px); }
+  }
+  .dp-head{ display:flex; align-items:center; justify-content:space-between; gap:4px; margin-bottom:8px; }
+  .dp-nav{ display:flex; gap:2px; flex:none; }
+  .dp-nav button{
+    width:26px; height:26px; border-radius:8px; border:1px solid var(--border); background:var(--card);
+    color:var(--ink); cursor:pointer; font-size:13px; display:flex; align-items:center; justify-content:center;
+  }
+  .dp-nav button:hover{ background:var(--surface-hover); }
+  .dp-my{ display:flex; gap:4px; flex:1; min-width:0; justify-content:center; }
+  .dp-month-select, .dp-year-select{
+    font-family:inherit; font-weight:700; color:var(--ink); background:var(--card);
+    border:1px solid var(--border); border-radius:8px; padding:4px 3px; cursor:pointer;
+  }
+  .dp-month-select{ flex:1 1 auto; min-width:0; font-size:11px; }
+  .dp-year-select{ flex:none; width:58px; font-size:11px; }
+  .dp-month-select:hover, .dp-year-select:hover{ border-color:var(--celeste-dark); }
+  .dp-grid{ display:grid; grid-template-columns:repeat(7, 1fr); gap:2px; }
+  .dp-dow{ text-align:center; font-size:10px; font-weight:700; color:var(--text-muted); padding:2px 0 4px; text-transform:uppercase; }
+  .dp-day{
+    aspect-ratio:1; border:none; background:none; border-radius:8px; font-family:inherit; font-size:12px;
+    color:var(--ink); cursor:pointer; display:flex; align-items:center; justify-content:center;
+  }
+  .dp-day:hover{ background:var(--surface-hover); }
+  .dp-day.out{ color:var(--text-muted); opacity:.4; }
+  .dp-day.today{ box-shadow:inset 0 0 0 1.5px var(--celeste-dark); font-weight:700; }
+  .dp-day.selected{ background:var(--petroleo); color:#fff; font-weight:800; }
+  .dp-foot{ display:flex; justify-content:space-between; margin-top:10px; padding-top:8px; border-top:1px solid var(--border); }
+  .dp-foot button{
+    font-family:inherit; font-size:11px; font-weight:700; cursor:pointer; background:none; border:none;
+    color:var(--celeste-dark); padding:4px 2px;
+  }
+  .dp-foot button:hover{ text-decoration:underline; }
+  .dp-foot .dp-clear{ color:var(--text-muted); }
+
   .pp{ position:relative; display:inline-block; }
   .pp-input{ font-family:inherit; font-size:12px; border:1px solid var(--border); border-radius:999px; padding:4px 10px; background:var(--card); color:var(--ink); width:150px; }
   .pp-input:focus{ outline:none; border-color:var(--celeste-dark); }
@@ -2533,6 +2609,8 @@ function colorControl(value, attrs, ariaLabel){
 }
 window.addEventListener("scroll", ()=>{ if(document.querySelector(".color-control.open")) closeColorPops(); }, { passive:true });
 window.addEventListener("resize", ()=>{ if(document.querySelector(".color-control.open")) closeColorPops(); });
+window.addEventListener("scroll", ()=>{ if(document.querySelector(".date-field.open")) closeDateFields(); }, { passive:true });
+window.addEventListener("resize", ()=>{ if(document.querySelector(".date-field.open")) closeDateFields(); });
 function closeColorPops(except){
   document.querySelectorAll(".color-control.open").forEach(c=>{
     if(c === except) return;
@@ -2631,6 +2709,61 @@ function fmtDate(d){
     case "mdy": return `${m}/${day}/${y}`;
     default:    return dt.toLocaleDateString(dateLocale(),{ day:"2-digit", month:"short", year:"numeric" });
   }
+}
+// ---------------------------------------------------------------------
+// Entrada tipeada de fecha (selector de hitos, ver renderDatePop): "auto"
+// (nombre de mes por idioma, ej "12 sept 2026") no es algo que se pueda
+// tipear de forma confiable, así que ahí se tipea en dmy — los otros tres
+// formatos sí son numéricos y se tipean tal cual están configurados.
+function typedDateOrder(){
+  const f = dateFormatPref();
+  return f === "mdy" || f === "ymd" ? f : "dmy";
+}
+function typedDatePlaceholder(){
+  const ord = typedDateOrder();
+  return ord === "mdy" ? "mm/dd/aaaa" : ord === "ymd" ? "aaaa-mm-dd" : "dd/mm/aaaa";
+}
+function fmtTypedDate(iso){
+  if(!iso) return "";
+  const [y,m,d] = iso.split("-");
+  const ord = typedDateOrder();
+  return ord === "mdy" ? `${m}/${d}/${y}` : ord === "ymd" ? `${y}-${m}-${d}` : `${d}/${m}/${y}`;
+}
+function daysInMonthUTC(y, m){ return new Date(Date.UTC(y, m, 0)).getUTCDate(); } // m: 1-12
+// Parseo tolerante para lo tipeado en el popup del selector de fecha:
+// separador libre (/, -, ., espacio) o sin separador (8 dígitos corridos),
+// año opcional en dmy/mdy (usa fallbackYear), año de 1-2 dígitos se
+// interpreta como 20YY, y valida día/mes/bisiesto de verdad en vez de
+// dejar que Date "corrija" un 31/02 a marzo. Nunca tira: ante cualquier
+// duda devuelve null y quien llama decide qué hacer (ver commitTypedDate).
+function parseTypedDate(raw, fallbackYear){
+  if(typeof raw !== "string") return null;
+  const s = raw.trim();
+  if(!s) return null;
+  const ord = typedDateOrder();
+  let day, month, year;
+  if(ord === "ymd"){
+    const m = s.match(/^(\d{4})(\d{2})(\d{2})$/) || s.match(/^(\d{4})[\/\-.\s](\d{1,2})[\/\-.\s](\d{1,2})$/);
+    if(!m) return null;
+    year = Number(m[1]); month = Number(m[2]); day = Number(m[3]);
+  } else {
+    const m = s.match(/^(\d{2})(\d{2})(\d{4})$/) || s.match(/^(\d{1,2})[\/\-.\s](\d{1,2})(?:[\/\-.\s](\d{1,4}))?$/);
+    if(!m) return null;
+    const first = Number(m[1]), second = Number(m[2]);
+    day = ord === "mdy" ? second : first;
+    month = ord === "mdy" ? first : second;
+    if(m[3] !== undefined){
+      const yStr = m[3];
+      if(yStr.length <= 2) year = 2000 + Number(yStr);
+      else if(yStr.length === 4) year = Number(yStr);
+      else return null; // año de 3 dígitos: ambiguo, mejor rechazar que adivinar
+    } else year = fallbackYear;
+  }
+  if(!Number.isInteger(day) || !Number.isInteger(month) || !Number.isInteger(year)) return null;
+  if(month < 1 || month > 12) return null;
+  if(year < 1900 || year > 2999) return null;
+  if(day < 1 || day > daysInMonthUTC(year, month)) return null;
+  return `${year}-${String(month).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
 }
 // Las horas de los eventos se guardan como "HH:MM" de 24 h (es lo que da
 // <input type="time">, y así viajan a Calendar). Para MOSTRARLAS hay que
@@ -4977,6 +5110,163 @@ function milestoneStatusLabel(st){
     : st==="soon" ? t("Por vencer","Due soon","A vencer","בקרוב יפוג")
     : t("Pendiente","Pending","Pendente","ממתין");
 }
+// ---------------------------------------------------------------------
+// Selector de fecha propio para los hitos (reemplaza <input type=date>):
+// mismo criterio de .color-pop (fixed + closeXPops(except) + una clase
+// .open en el contenedor), pero con entrada tipeada además del calendario.
+// Un solo campo puede estar abierto a la vez — guardado acá, no por hito,
+// porque cerrar todos los demás al abrir uno es el mismo comportamiento
+// que ya tiene el selector de color.
+// ---------------------------------------------------------------------
+let dateFieldOpen = null; // { postId, msId, field, viewMonth }
+function closeDateFields(except){
+  document.querySelectorAll(".date-field.open").forEach(f=>{
+    if(f === except) return;
+    f.classList.remove("open");
+    const pop = f.querySelector(".date-pop"); if(pop) pop.hidden = true;
+    const btn = f.querySelector(".date-trigger"); if(btn) btn.setAttribute("aria-expanded","false");
+  });
+  dateFieldOpen = null;
+}
+function positionDatePop(trigger, pop){
+  const b = trigger.getBoundingClientRect();
+  const w = pop.offsetWidth, h = pop.offsetHeight, m = 8;
+  let left = isRTL() ? b.right - w : b.left;
+  left = Math.max(m, Math.min(left, window.innerWidth - w - m));
+  let top = b.bottom + 6;
+  if(top + h > window.innerHeight - m) top = Math.max(m, b.top - 6 - h);
+  pop.style.left = left + "px"; pop.style.top = top + "px";
+}
+function dateFieldMonthOptionsHtml(selectedMonth){
+  return Array.from({length:12}, (_,i)=>{
+    const label = fmtISO(`2024-${String(i+1).padStart(2,"0")}-01`, { month:"long" });
+    const cap = label.charAt(0).toUpperCase() + label.slice(1);
+    const val = i+1;
+    return `<option value="${val}"${val===selectedMonth?" selected":""}>${esc(cap)}</option>`;
+  }).join("");
+}
+function dateFieldYearOptionsHtml(selectedYear){
+  // Rango base: año actual ±6. Si el hito ya tiene una fecha fuera de ese
+  // rango, se lo suma igual — nunca queremos un <select> que no pueda
+  // representar el valor que se está mostrando.
+  const thisYear = Number(todayISO().slice(0,4));
+  let low = thisYear - 6, high = thisYear + 6;
+  if(selectedYear < low) low = selectedYear;
+  if(selectedYear > high) high = selectedYear;
+  let opts = "";
+  for(let y=low; y<=high; y++) opts += `<option value="${y}"${y===selectedYear?" selected":""}>${y}</option>`;
+  return opts;
+}
+function renderDatePop(pop){
+  const { postId, msId, field, viewMonth } = dateFieldOpen;
+  const post = getPostById(postId);
+  const m = post && postMilestones(post).find(x=>x.id===msId);
+  if(!post || !m){ closeDateFields(); return; }
+  const value = m[field];
+  const gridStart = weekStartISO(viewMonth.slice(0,8) + "01");
+  const cells = Array.from({length:42}, (_,i)=> addDaysISO(gridStart, i));
+  const curMonth = viewMonth.slice(0,7);
+  const viewYear = Number(curMonth.slice(0,4));
+  const viewMonthNum = Number(curMonth.slice(5,7));
+  const monthLabel = fmtISO(viewMonth, { month:"long", year:"numeric" });
+  const monthLabelCap = monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1);
+  const today = todayISO();
+  const dow = weekdayNames("short");
+  pop.innerHTML = `
+    <div class="dp-typed-row">
+      <input type="text" class="dp-date-input" inputmode="numeric" autocomplete="off"
+        placeholder="${esc(typedDatePlaceholder())}" aria-label="${esc(t("Escribir fecha","Type a date","Escrever data","הקלדת תאריך"))}" value="${esc(fmtTypedDate(value))}">
+    </div>
+    <div class="dp-head">
+      <div class="dp-nav"><button type="button" data-action="dp-nav" data-post-id="${post.id}" data-nav="-1" aria-label="${esc(t("Mes anterior","Previous month","Mês anterior","החודש הקודם"))}">‹</button></div>
+      <div class="dp-my" role="group" aria-label="${esc(monthLabelCap)}">
+        <select class="dp-month-select" data-action="dp-my-change" data-post-id="${post.id}" data-dp="month" aria-label="${esc(t("Mes","Month","Mês","חודש"))}">${dateFieldMonthOptionsHtml(viewMonthNum)}</select>
+        <select class="dp-year-select" data-action="dp-my-change" data-post-id="${post.id}" data-dp="year" aria-label="${esc(t("Año","Year","Ano","שנה"))}">${dateFieldYearOptionsHtml(viewYear)}</select>
+      </div>
+      <div class="dp-nav"><button type="button" data-action="dp-nav" data-post-id="${post.id}" data-nav="1" aria-label="${esc(t("Mes siguiente","Next month","Mês seguinte","החודש הבא"))}">›</button></div>
+    </div>
+    <div class="dp-grid">
+      ${dow.map(d=>`<div class="dp-dow">${esc(d)}</div>`).join("")}
+      ${cells.map(c=>{
+        const out = c.slice(0,7) !== curMonth;
+        const isToday = c === today;
+        const isSel = c === value;
+        return `<button type="button" class="dp-day ${out?"out":""} ${isToday?"today":""} ${isSel?"selected":""}" data-action="dp-pick" data-post-id="${post.id}" data-pick="${c}">${Number(c.slice(8,10))}</button>`;
+      }).join("")}
+    </div>
+    <div class="dp-foot">
+      <button type="button" data-action="dp-today" data-post-id="${post.id}">${esc(t("Hoy","Today","Hoje","היום"))}</button>
+      ${field === "endDate" ? `<button type="button" class="dp-clear" data-action="dp-clear" data-post-id="${post.id}">${esc(t("Sin fecha","No date","Sem data","ללא תאריך"))}</button>` : ""}
+    </div>`;
+}
+function syncDateFieldOpenState(){
+  // Después de confirmar un tipeo el popup sigue abierto pero render()
+  // (el de afuera) reconstruyó toda la fila — incluido el .date-field, que
+  // perdió la clase .open y contra el que hay que reposicionar el popup
+  // por si el ancho del texto del trigger cambió.
+  if(!dateFieldOpen) return;
+  const { postId, msId, field } = dateFieldOpen;
+  const trigger = document.querySelector(
+    `.date-trigger[data-post-id="${CSS.escape(postId)}"][data-ms-id="${CSS.escape(msId)}"][data-field="${CSS.escape(field)}"]`
+  );
+  if(!trigger) return;
+  const wrap = trigger.closest(".date-field");
+  wrap.classList.add("open");
+  trigger.setAttribute("aria-expanded","true");
+  const pop = wrap.querySelector(".date-pop");
+  pop.hidden = false;
+  renderDatePop(pop);
+  positionDatePop(trigger, pop);
+}
+function flashInvalidDateInput(input){
+  input.classList.remove("invalid");
+  void input.offsetWidth; // fuerza reflow para poder re-disparar la animación en tipeos seguidos
+  input.classList.add("invalid");
+  setTimeout(()=>{ input.classList.remove("invalid"); }, 350);
+}
+// Confirma lo tipeado en el input de fecha del popup. Se llama tanto al
+// perder foco como al apretar Enter: vacío revierte en la fecha de inicio
+// (siempre hace falta una) pero BORRA la de fin (opcional, mismo resultado
+// que "Sin fecha"); texto no parseable sacude+flashea en rojo y vuelve al
+// último valor válido; un valor nuevo válido actualiza el hito, salta el
+// calendario a ese mes y re-renderiza todo sin cerrar el popup.
+function commitTypedDate(input){
+  if(!dateFieldOpen) return;
+  const { postId, msId, field } = dateFieldOpen;
+  const post = getPostById(postId);
+  if(!post || !canManageProject(post)) return;
+  const m = postMilestones(post).find(x=>x.id===msId);
+  if(!m) return;
+  const currentValue = m[field];
+  const trimmed = input.value.trim();
+  if(!trimmed){
+    if(field === "endDate" && currentValue != null){
+      // No hace falta releer el post para reflejar esto: saveMilestones
+      // guarda en Firestore y el snapshot va a disparar un render() que
+      // (con el enganche de syncDateFieldOpenState en render()) va a
+      // redibujar el popup solo, ya con el dato guardado — no antes, porque
+      // hasta entonces getPostById devuelve el valor viejo.
+      saveMilestones(post, postMilestones(post).map(x=> x.id===msId ? { ...x, endDate:null } : x));
+      return;
+    }
+    input.value = fmtTypedDate(currentValue);
+    return;
+  }
+  const fallbackYear = Number(dateFieldOpen.viewMonth.slice(0,4));
+  const iso = parseTypedDate(trimmed, fallbackYear);
+  if(!iso){
+    flashInvalidDateInput(input);
+    input.value = fmtTypedDate(currentValue);
+    return;
+  }
+  // Formatea ya mismo (feedback instantáneo) y guarda; la grilla del
+  // calendario se pone al día sola cuando llegue el snapshot de Firestore
+  // con el nuevo valor — leerlo de una en state.posts acá daría el viejo.
+  input.value = fmtTypedDate(iso);
+  if(iso === currentValue) return;
+  dateFieldOpen.viewMonth = iso;
+  saveMilestones(post, postMilestones(post).map(x=> x.id===msId ? { ...x, [field]:iso } : x));
+}
 // Hitos típicos de un curso/seminario/congreso, en días relativos a la
 // fecha de inicio del evento (los de la línea de tiempo de referencia del
 // equipo). El evento en sí no es un hito: ya es el posteo.
@@ -5289,23 +5579,46 @@ function renderProjectPanel(post, opts={}){
   }
   const rows = list.map(m=>{
     const st = milestoneStatus(m);
-    const when = m.date ? `${esc(fmtDate(m.date))}${m.endDate && m.endDate > m.date ? ` – ${esc(fmtDate(m.endDate))}` : ""}` : `<i>${esc(t("sin fecha","no date","sem data","ללא תאריך"))}</i>`;
     const owners = msOwners(m);
     const doneBy = m.done && m.doneBy ? `<span class="pj-doneby">${t("por","by","por","על ידי")} ${ownerChip(m.doneBy)}${m.doneAt ? " · " + esc(fmtDate(m.doneAt)) : ""}</span>` : "";
-    if(!manage) return `<li class="pj-row ${st}" data-ms-id="${esc(m.id)}"><span class="pj-main"><span class="pj-label">${esc(m.label)}</span><span class="pj-when">${when}</span></span><span class="pj-owners">${owners.map(ownerChip).join("")}</span>${doneBy}<span class="status-pill ${st}">${esc(milestoneStatusLabel(st))}</span></li>`;
+    if(!manage){
+      const when = m.date ? `<span class="pj-when">${esc(fmtDate(m.date))}${m.endDate && m.endDate > m.date ? ` – ${esc(fmtDate(m.endDate))}` : ""}</span>` : `<span class="pj-when"><i>${esc(t("sin fecha","no date","sem data","ללא תאריך"))}</i></span>`;
+      return `<li class="pj-row ${st}" data-ms-id="${esc(m.id)}">
+        <div class="pj-top">
+          <span class="pj-label">${esc(m.label)}</span>
+          <span class="status-pill ${st}">${esc(milestoneStatusLabel(st))}</span>
+        </div>
+        <div class="pj-bottom">
+          ${when}
+          <span class="pj-owners">${owners.map(ownerChip).join("")}</span>
+          ${doneBy}
+        </div>
+      </li>`;
+    }
+    // Botón + popup vacío (el popup se llena recién al abrirse, ver
+    // renderDatePop) — mismo criterio que .color-control/.color-pop.
+    const dateTrigger = (field, value) => {
+      const empty = field === "endDate" && !value;
+      const label = value ? esc(fmtTypedDate(value)) : esc(t("sin fecha de fin","no end date","sem data de fim","ללא תאריך סיום"));
+      return `<span class="date-field">
+        <button type="button" class="date-trigger ${empty ? "empty" : ""}" data-action="date-open" data-post-id="${post.id}" data-ms-id="${esc(m.id)}" data-field="${field}" aria-haspopup="dialog" aria-expanded="false"><span class="cal-ic" aria-hidden="true">📅</span>${label}</button>
+        <div class="date-pop" hidden role="dialog" aria-label="${esc(field === "date" ? t("Fecha de inicio","Start date","Data de início","תאריך התחלה") : t("Fecha de fin","End date","Data de fim","תאריך סיום"))}"></div>
+      </span>`;
+    };
     return `<li class="pj-row ${st}" data-ms-id="${esc(m.id)}">
-      <span class="pj-grip" data-pj-grip data-post-id="${post.id}" title="${esc(t("Arrastrá para reordenar","Drag to reorder","Arraste para reordenar","גרירה לסידור מחדש"))}" aria-hidden="true"><svg viewBox="0 0 10 16" width="10" height="16"><circle cx="3" cy="3" r="1.4"/><circle cx="7" cy="3" r="1.4"/><circle cx="3" cy="8" r="1.4"/><circle cx="7" cy="8" r="1.4"/><circle cx="3" cy="13" r="1.4"/><circle cx="7" cy="13" r="1.4"/></svg></span>
-      <span class="pj-main">
+      <div class="pj-top">
+        <span class="pj-grip" data-pj-grip data-post-id="${post.id}" title="${esc(t("Arrastrá para reordenar","Drag to reorder","Arraste para reordenar","גרירה לסידור מחדש"))}" aria-hidden="true"><svg viewBox="0 0 10 16" width="10" height="16"><circle cx="3" cy="3" r="1.4"/><circle cx="7" cy="3" r="1.4"/><circle cx="3" cy="8" r="1.4"/><circle cx="7" cy="8" r="1.4"/><circle cx="3" cy="13" r="1.4"/><circle cx="7" cy="13" r="1.4"/></svg></span>
         <input type="text" class="pj-label-input" data-ms-field="label" data-post-id="${post.id}" data-ms-id="${esc(m.id)}" value="${esc(m.label)}" maxlength="120">
-        <span class="pj-when">
-          <input type="date" data-ms-field="date" data-post-id="${post.id}" data-ms-id="${esc(m.id)}" value="${esc(m.date)}">
-          <input type="date" data-ms-field="endDate" data-post-id="${post.id}" data-ms-id="${esc(m.id)}" value="${esc(m.endDate||"")}" title="${esc(t("Fin (opcional)","End (optional)","Fim (opcional)","סיום (אופציונלי)"))}">
-        </span>
-      </span>
-      <span class="pj-owners">${owners.map(o=>`<span class="pj-owner-wrap">${ownerChip(o)}<button type="button" class="pj-owner-clear" data-action="ms-owner-remove" data-post-id="${post.id}" data-ms-id="${esc(m.id)}" data-email="${esc(o)}" aria-label="${esc(t("Quitar responsable","Remove owner","Remover responsável","הסרת אחראי/ת"))}">✕</button></span>`).join("")}${renderPersonPicker(`own:${post.id}:${m.id}`, "+ " + t("Responsable…","Owner…","Responsável…","…אחראי/ת"), owners)}</span>
-      ${doneBy}
-      <button type="button" class="status-pill ${st}" data-action="ms-done" data-post-id="${post.id}" data-ms-id="${esc(m.id)}">${esc(milestoneStatusLabel(st))}</button>
-      <button type="button" class="rm" data-action="ms-remove" data-post-id="${post.id}" data-ms-id="${esc(m.id)}" title="${esc(t("Quitar hito","Remove milestone","Remover marco","הסרת אבן דרך"))}">✕</button>
+        <button type="button" class="status-pill ${st}" data-action="ms-done" data-post-id="${post.id}" data-ms-id="${esc(m.id)}">${esc(milestoneStatusLabel(st))}</button>
+        <button type="button" class="rm" data-action="ms-remove" data-post-id="${post.id}" data-ms-id="${esc(m.id)}" title="${esc(t("Quitar hito","Remove milestone","Remover marco","הסרת אבן דרך"))}">✕</button>
+      </div>
+      <div class="pj-bottom">
+        ${dateTrigger("date", m.date)}
+        <span class="date-sep">${isRTL() ? "←" : "→"}</span>
+        ${dateTrigger("endDate", m.endDate)}
+        <span class="pj-owners">${owners.map(o=>`<span class="pj-owner-wrap">${ownerChip(o)}<button type="button" class="pj-owner-clear" data-action="ms-owner-remove" data-post-id="${post.id}" data-ms-id="${esc(m.id)}" data-email="${esc(o)}" aria-label="${esc(t("Quitar responsable","Remove owner","Remover responsável","הסרת אחראי/ת"))}">✕</button></span>`).join("")}${renderPersonPicker(`own:${post.id}:${m.id}`, "+ " + t("Responsable…","Owner…","Responsável…","…אחראי/ת"), owners)}</span>
+        ${doneBy}
+      </div>
     </li>`;
   }).join("");
   const d = projectDraft(post.id);
@@ -5582,6 +5895,13 @@ function render(){
   const selStart = active && typeof active.selectionStart === "number" ? active.selectionStart : null;
   const selEnd = active && typeof active.selectionEnd === "number" ? active.selectionEnd : null;
   doRender();
+  // Igual que el foco: doRender() reconstruye la fila del hito de cero, así
+  // que el selector de fecha que estaba abierto (si hay uno) perdió su
+  // clase .open y su popup quedó vacío/oculto — hay que reabrirlo contra el
+  // trigger nuevo. Esto es también lo que hace que un guardado async
+  // (saveMilestones) se vea reflejado en el popup: llega por acá cuando el
+  // snapshot de Firestore dispara este mismo render().
+  syncDateFieldOpenState();
   if(focusSel){
     let el = null;
     try{ el = document.querySelector(focusSel); }catch(e){}
@@ -9826,6 +10146,7 @@ document.addEventListener("keydown", e=>{
   // @mención, participante), lo cierra su propio manejador y el modal se queda.
   if(!confirmOverlay.hidden){ closeConfirmDialog(false); return; }
   if(document.querySelector(".color-control.open")){ closeColorPops(); return; }
+  if(document.querySelector(".date-field.open")){ closeDateFields(); return; }
   if(lightbox.classList.contains("show")){ closeLightbox(); return; }
   if(!filePreviewOverlay.hidden){ closeFilePreview(); return; }
   if(!userProfileOverlay.hidden){ closeUserProfile(); return; }
@@ -10306,6 +10627,7 @@ document.addEventListener("keydown", e=>{
     });
   }
   if(e.key === "Enter" && e.target && e.target.dataset && e.target.dataset.msNew === "label"){ e.preventDefault(); addMilestoneFromDraft(e.target.dataset.postId); return; }
+  if(e.key === "Enter" && e.target.classList && e.target.classList.contains("dp-date-input")){ e.preventDefault(); commitTypedDate(e.target); return; }
   // Buscador de personas del proyecto (responsables, editores).
   if(e.target && e.target.dataset && e.target.dataset.ppKey){
     const key = e.target.dataset.ppKey, st = ppState(key);
@@ -10321,9 +10643,27 @@ document.addEventListener("keydown", e=>{
     });
   }
 });
+// blur no burbujea: hace falta capturarlo en el document para enterarse
+// cuando el input tipeado de fecha pierde el foco (click afuera, Tab, click
+// en un día/select del propio popup) y confirmar ahí lo tipeado.
+document.addEventListener("blur", e=>{
+  if(e.target && e.target.classList && e.target.classList.contains("dp-date-input")) commitTypedDate(e.target);
+}, true);
+// Tab (o cualquier otro salto de foco) hacia afuera del popup y de su
+// propio trigger lo cierra — sin esto quedaba abierto y huérfano en
+// pantalla al tabular hacia el siguiente campo. blur ya corrió antes
+// (confirma lo tipeado); acá solo se decide si cerrar o no.
+document.addEventListener("focusin", e=>{
+  if(!dateFieldOpen) return;
+  if(e.target.closest(".date-pop")) return;
+  const t = e.target.closest(".date-trigger");
+  if(t && t.dataset.msId === dateFieldOpen.msId && t.dataset.field === dateFieldOpen.field) return;
+  closeDateFields();
+});
 
 document.addEventListener("click", async e=>{
   if(!e.target.closest(".color-control")) closeColorPops();
+  if(!e.target.closest(".date-field")) closeDateFields();
   if(userMenuOpen && !e.target.closest("#userBadge")){
     userMenuOpen = false; nicknameEditing = false; nicknameError = null; render();
   }
@@ -10509,6 +10849,52 @@ document.addEventListener("click", async e=>{
     "ms-owner-remove": async (el, e, action, postId) => {
     const post = getPostById(postId);
     if(post && canManageProject(post)) saveMilestones(post, postMilestones(post).map(m=> m.id === el.dataset.msId ? withOwners(m, msOwners(m).filter(o=> o !== el.dataset.email)) : m));
+  },
+    "date-open": async (el, e, action, postId) => {
+    const wrap = el.closest(".date-field");
+    const abrir = !wrap.classList.contains("open");
+    if(!abrir){ closeDateFields(); return; }
+    const post = getPostById(postId);
+    if(!post || !canManageProject(post)) return;
+    const msId = el.dataset.msId, field = el.dataset.field;
+    const m = postMilestones(post).find(x=>x.id===msId);
+    if(!m) return;
+    closeDateFields();
+    dateFieldOpen = { postId, msId, field, viewMonth: m[field] || m.date || todayISO() };
+    wrap.classList.add("open");
+    el.setAttribute("aria-expanded","true");
+    const pop = wrap.querySelector(".date-pop");
+    pop.hidden = false;
+    renderDatePop(pop);
+    positionDatePop(el, pop);
+    if(!isTouchDevice()){ const inp = pop.querySelector(".dp-date-input"); if(inp){ inp.focus(); inp.select(); } }
+  },
+    "dp-nav": async (el, e, action, postId) => {
+    if(!dateFieldOpen) return;
+    dateFieldOpen.viewMonth = addMonthsISO(dateFieldOpen.viewMonth, Number(el.dataset.nav));
+    syncDateFieldOpenState();
+  },
+    "dp-today": async (el, e, action, postId) => {
+    if(!dateFieldOpen) return;
+    dateFieldOpen.viewMonth = todayISO();
+    syncDateFieldOpenState();
+  },
+    "dp-pick": async (el, e, action, postId) => {
+    if(!dateFieldOpen) return;
+    const { msId, field } = dateFieldOpen;
+    const post = getPostById(postId);
+    if(!post || !canManageProject(post)) return;
+    const iso = el.dataset.pick;
+    saveMilestones(post, postMilestones(post).map(x=> x.id===msId ? { ...x, [field]:iso } : x));
+    closeDateFields();
+  },
+    "dp-clear": async (el, e, action, postId) => {
+    if(!dateFieldOpen || dateFieldOpen.field !== "endDate") return;
+    const { msId } = dateFieldOpen;
+    const post = getPostById(postId);
+    if(!post || !canManageProject(post)) return;
+    saveMilestones(post, postMilestones(post).map(x=> x.id===msId ? { ...x, endDate:null } : x));
+    closeDateFields();
   },
     "ms-editor-remove": async (el, e, action, postId) => {
     const post = getPostById(postId);
@@ -11309,22 +11695,21 @@ document.addEventListener("change", e=>{
   else if(el.dataset.action === "reply-files"){ handleFileAttachments(el.files, getReplyDraft(el.dataset.postId).files); }
   else if(el.dataset.action === "nested-reply-files"){ handleFileAttachments(el.files, getNestedReplyDraft(el.dataset.replyId).files); }
   else if(el.dataset.action === "zonas-color"){ getZonasDraft().zones[el.dataset.key].color = el.value; render(); }
+  else if(el.dataset.action === "dp-my-change"){
+    if(!dateFieldOpen) return;
+    const [curYear, curMonth] = dateFieldOpen.viewMonth.slice(0,7).split("-").map(Number);
+    const newYear = el.dataset.dp === "year" ? Number(el.value) : curYear;
+    const newMonth = el.dataset.dp === "month" ? Number(el.value) : curMonth;
+    dateFieldOpen.viewMonth = `${newYear}-${String(newMonth).padStart(2,"0")}-01`;
+    syncDateFieldOpenState();
+  }
   else if(el.dataset.action === "set-role"){ changeRole(el.dataset.email, el.value); }
-  else if(el.dataset.msField){
+  else if(el.dataset.msField === "label"){
     const post = getPostById(el.dataset.postId);
     if(post && canManageProject(post)){
-      const f = el.dataset.msField; let v = el.value;
-      if(f === "label" && !v.trim()){ render(); return; }
-      if(f === "date" && v && !/^\d{4}-\d{2}-\d{2}$/.test(v)){ render(); return; }
-      if(f === "endDate" && v && !/^\d{4}-\d{2}-\d{2}$/.test(v)){ render(); return; }
-      saveMilestones(post, postMilestones(post).map(m=>{
-        if(m.id !== el.dataset.msId) return m;
-        const n = { ...m };
-        if(f === "label") n.label = v.trim();
-        else if(f === "date"){ n.date = v; if(!v) delete n.endDate; }
-        else if(f === "endDate"){ if(v) n.endDate = v; else delete n.endDate; }
-        return n;
-      }));
+      const v = el.value;
+      if(!v.trim()){ render(); return; }
+      saveMilestones(post, postMilestones(post).map(m=> m.id === el.dataset.msId ? { ...m, label: v.trim() } : m));
     }
   }
   else if(el.dataset.msNew){ const d = projectDraft(el.dataset.postId); d[el.dataset.msNew] = el.value; }
