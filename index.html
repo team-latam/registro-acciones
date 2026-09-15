@@ -1945,6 +1945,17 @@
     border:1px solid var(--border); background:var(--card); color:var(--ink);
   }
   .ev-actions button:not(.btn-primary):hover{ background:var(--surface-hover); }
+  /* La tarjeta de un feriado tiene solo dos botones y los dos pesan lo
+     mismo: se reparten la fila en partes iguales, mismo alto y mismo
+     ancho. El :not(.btn-primary) de arriba les da el borde; el flex de
+     acá le gana al ".btn-primary{flex:1}" porque va después y tiene más
+     especificidad. Solos (un observador ve uno solo) ocupan la fila. */
+  .ev-actions-even button{ flex:1 1 0; min-width:0; }
+  /* El borde de 1px va también en el principal, transparente: con
+     flex-basis:0 el navegador reparte el espacio SIN contar borde ni
+     relleno, así que el que tenía borde terminaba 2px más ancho que el
+     que no. Medido: 186,5 contra 184,5. */
+  .ev-actions-even .btn-primary{ border:1px solid transparent; }
 
   /* ---------- Vista previa de adjuntos (PDF) ---------- */
   #filePreviewFrame{
@@ -11435,9 +11446,9 @@ function renderHolidayCard(){
         ${otros.map(({x,i})=>`<button type="button" class="ev-holiday-link" data-action="cal-open-holiday" data-date="${iso}" data-hi="${i}">${esc(x.name)}</button>`).join(" · ")}
       </div></div>` : ""}
     </div>
-    <div class="ev-actions">
-      ${canWrite() ? `<button type="button" class="btn-primary" data-action="holiday-new-event" data-date="${iso}">➕ ${t("Cargar un evento este día","Add an event on this day","Carregar um evento neste dia","הוספת אירוע ביום זה")}</button>` : ""}
-      <button type="button" data-action="goto-config-feriados">⚙️ ${t("Feriados en Configuración","Holidays in Settings","Feriados em Configurações","חגים בהגדרות")}</button>
+    <div class="ev-actions ev-actions-even">
+      <button type="button" data-action="goto-config-feriados">⚙️ ${t("Ver Configuración","View Settings","Ver Configurações","הצגת הגדרות")}</button>
+      ${canWrite() ? `<button type="button" class="btn-primary" data-action="holiday-new-event" data-date="${iso}">➕ ${t("Cargar evento","Add event","Carregar evento","הוספת אירוע")}</button>` : ""}
     </div>`;
 }
 function openHolidayCard(iso, idx){
