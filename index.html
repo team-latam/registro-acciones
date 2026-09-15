@@ -12406,6 +12406,18 @@ document.addEventListener("click", async e=>{
   },
     "goto-config-feriados": async (el, e, action, postId) => {
     calLayersMenuOpen = false;
+    // Si se llegó desde la tarjeta de un feriado, se cierra: si no, queda
+    // tapando justo la sección a la que acaba de llevar. El foco NO vuelve
+    // al botón que la abrió (está adentro de la tarjeta que se cierra):
+    // se va arriba, con la vista nueva.
+    if(!eventCardOverlay.hidden){
+      eventCardReturnFocus = null;
+      // Sacarle el foco al botón a mano: al ocultar la tarjeta el foco se
+      // quedaba en un botón que ya no se ve, y el primer Tab en la sección
+      // nueva arrancaba desde ahí adentro.
+      if(document.activeElement && document.activeElement.blur) document.activeElement.blur();
+      closeEventCard();
+    }
     state.view = "configuracion"; state.configSection = "feriados"; render(); scrollToTop();
   },
     "new-posts-jump": async (el, e, action, postId) => {
