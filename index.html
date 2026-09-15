@@ -4206,6 +4206,21 @@ async function applyCalendarEventToPosts(ev){
   const existing = state.posts.find(p => p.calendarEventId === ev.id);
 
   if(ev.status === "cancelled"){
+    // Una repetición suelta que se canceló en Calendar (el resto de la
+    // serie sigue viva): no hay posteo propio que cancelar — se anota la
+    // fecha en el molde para que el Calendario no la dibuje. La fecha
+    // original sale del id de la excepción ("<idDelMolde>_<fechaUTC>"),
+    // que es lo mismo que mira recurrenceSkipDates.
+    if(!existing && ev.recurringEventId){
+      const master = state.posts.find(p => p.calendarEventId === ev.recurringEventId);
+      const skipISO = rruleDateToISO(String(ev.id||"").slice(String(ev.recurringEventId).length + 1)) ||
+        (ev.originalStartTime && rruleDateToISO(String(ev.originalStartTime.date || ev.originalStartTime.dateTime||"").replace(/-/g,"")));
+      if(master && skipISO && !(master.recurrenceSkip||[]).includes(skipISO)){
+        await updatePostDoc(master.id, { recurrenceSkip: (master.recurrenceSkip||[]).concat([skipISO]).slice(-200) });
+        return true;
+      }
+      return false;
+    }
     if(existing && !existing.cancelled){
       await updatePostDoc(existing.id, { cancelled:true, lastEditedAt: fb.serverTimestamp(), lastEditedBy:"Google Calendar" });
       await createReply(existing.id, {
@@ -4233,7 +4248,12 @@ async function applyCalendarEventToPosts(ev){
     const newTitle = extractTitleFromSummary(ev.summary, existing.activityType).trim().slice(0, 140);
     const titleChanged = !!newTitle && newTitle !== existing.title;
     const timeChanged = (existing.startTime||"") !== (startTime||"") || (existing.endTime||"") !== (endTime||"");
-    const changed = existing.startDate !== startDate || existing.endDate !== endDate || timeChanged || (existing.location||"") !== location || titleChanged;
+    // La regla de repetición también puede cambiar en Calendar (de semanal
+    // a quincenal, o dejar de repetirse): se compara serializada porque es
+    // una lista de strings.
+    const newRecurrence = Array.isArray(ev.recurrence) ? ev.recurrence.slice(0, 10).map(r=>String(r).slice(0, 500)) : null;
+    const recurrenceChanged = JSON.stringify(existing.recurrence || null) !== JSON.stringify(newRecurrence);
+    const changed = existing.startDate !== startDate || existing.endDate !== endDate || timeChanged || (existing.location||"") !== location || titleChanged || recurrenceChanged;
     if(!changed) return false;
     const parts = [];
     if(titleChanged) parts.push(t(`título ("{old}" → "{new}")`,`title ("{old}" → "{new}")`,`título ("{old}" → "{new}")`,`("{new}" ← "{old}") כותרת`,{old:existing.title,new:newTitle}));
@@ -4250,6 +4270,15 @@ async function applyCalendarEventToPosts(ev){
       lastEditedAt: fb.serverTimestamp(), lastEditedBy:"Google Calendar",
     };
     if(titleChanged) patch.title = newTitle;
+    if(recurrenceChanged){
+      patch.recurrence = newRecurrence;
+      // Las fechas salteadas eran de la regla vieja: con otra regla dejan
+      // de tener sentido y esconderían días que ahora sí existen.
+      if(existing.recurrenceSkip && existing.recurrenceSkip.length) patch.recurrenceSkip = [];
+      parts.push(newRecurrence
+        ? t("repetición ({r})","repetition ({r})","repetição ({r})","({r}) חזרה",{r:recurrenceLabel({ recurrence:newRecurrence }) || t("cambió","changed","mudou","השתנתה")})
+        : t("dejó de repetirse","no longer repeats","deixou de se repetir","הפסיק לחזור"));
+    }
     await updatePostDoc(existing.id, patch);
     await createReply(existing.id, {
       authorName:"Google Calendar", content: t("Se actualizó desde Google Calendar: {changes}.","Updated from Google Calendar: {changes}.","Foi atualizado a partir do Google Calendar: {changes}.","{changes} :עודכן מ-Google Calendar",{changes:parts.join(", ")}),
@@ -4299,6 +4328,12 @@ async function applyCalendarEventToPosts(ev){
     images: [], links: [],
     authorName: "Google Calendar", authorEmail: "",
     calendarEventId: ev.id,
+    // Regla de repetición tal cual la manda Google, para expandirla al
+    // dibujar el Calendario (ver expandRecurrence). Un solo posteo por
+    // serie: no se crea uno por cada repetición.
+    ...(Array.isArray(ev.recurrence) && ev.recurrence.length
+      ? { recurrence: ev.recurrence.slice(0, 10).map(r=>String(r).slice(0, 500)) }
+      : {}),
   });
   return true;
 }
@@ -7937,7 +7972,13 @@ function renderPostCard(post, replies){
   const startDate = post.startDate || post.date;
   const endDate = post.endDate || startDate;
   const timeLabel = post.startTime && post.endTime ? ` · ${fmtHHMM(post.startTime)}–${fmtHHMM(post.endTime)}` : "";
-  const dateLabel = (endDate && endDate !== startDate ? `${fmtDate(startDate)} – ${fmtDate(endDate)}` : fmtDate(startDate)) + timeLabel;
+  // Los eventos que se repiten entran como UN posteo (ver
+  // expandRecurrence): el Calendario los dibuja en cada fecha, pero acá
+  // hay una sola tarjeta — este "🔁 se repite todas las semanas" es lo que
+  // explica por qué, en vez de parecer que pasa una vez sola.
+  const repeatLabel = recurrenceLabel(post);
+  const dateLabel = (endDate && endDate !== startDate ? `${fmtDate(startDate)} – ${fmtDate(endDate)}` : fmtDate(startDate))
+    + timeLabel + (repeatLabel ? ` · 🔁 ${repeatLabel}` : "");
   const metaBits = [];
   if(post.participants && post.participants.length) metaBits.push(`👥 ${t("Participantes","Participants","Participantes","משתתפים")}: ${participantsHtml(post.participants)}`);
   // Quién lo cargó. En los eventos importados del Calendar el authorName
@@ -8967,22 +9008,204 @@ function weekdayNames(fmt){
   return Array.from({length:7}, (_,i)=> fmtISO(addDaysISO(base, i), { weekday:fmt }));
 }
 
+/* ======================================================================
+   EVENTOS QUE SE REPITEN (Google Calendar)
+
+   El sync pide los eventos SIN singleEvents (ver fetchCalendarChanges), o
+   sea que una serie que se repite llega como UN solo evento: el "molde",
+   con su regla en ev.recurrence (["RRULE:FREQ=WEEKLY;BYDAY=TU", ...]).
+   Se guarda esa regla tal cual en el posteo y se expande ACÁ, al dibujar
+   — nunca en la base. Un posteo por serie: un solo lugar para los
+   comentarios y el proyecto, el Feed no se llena de tarjetas repetidas, y
+   el Calendario igual la muestra cada día que corresponde.
+
+   Se banca lo que usa Google en la práctica: FREQ diaria/semanal/mensual/
+   anual, INTERVAL, BYDAY (para las semanales), y el corte por COUNT o por
+   UNTIL. Una regla más rara que eso (BYSETPOS, BYMONTHDAY…) no se expande:
+   el evento se muestra una sola vez, como antes, en vez de inventar fechas
+   equivocadas.
+   ====================================================================== */
+const RRULE_DOW = { SU:0, MO:1, TU:2, WE:3, TH:4, FR:5, SA:6 };
+const RRULE_MAX_STEPS = 4000; // freno duro: ninguna regla real necesita más
+// "20261216" o "20261216T180000Z" -> "2026-12-16" (solo la parte de fecha).
+function rruleDateToISO(v){
+  const m = /^(\d{4})(\d{2})(\d{2})/.exec(String(v||"").trim());
+  return m ? `${m[1]}-${m[2]}-${m[3]}` : null;
+}
+function parseRecurrence(lines){
+  if(!Array.isArray(lines) || !lines.length) return null;
+  let rule = null;
+  const exdates = [];
+  for(const raw of lines){
+    const line = String(raw||"").trim();
+    if(/^RRULE[:;]/i.test(line)){
+      const parts = {};
+      line.replace(/^RRULE:/i, "").split(";").forEach(kv=>{
+        const [k, v] = kv.split("=");
+        if(k && v) parts[k.toUpperCase().trim()] = v.trim();
+      });
+      const freq = String(parts.FREQ||"").toUpperCase();
+      if(!["DAILY","WEEKLY","MONTHLY","YEARLY"].includes(freq)) return null;
+      // Cualquier cosa que no sepamos expandir bien: mejor no expandir
+      // nada que dibujar fechas que no existen.
+      if(parts.BYSETPOS || parts.BYMONTHDAY || parts.BYMONTH || parts.BYYEARDAY || parts.BYWEEKNO) return null;
+      const interval = Math.max(1, Math.min(999, Number(parts.INTERVAL || 1) || 1));
+      const byDay = String(parts.BYDAY||"").split(",")
+        // El "2TU" (el segundo martes del mes) no se banca: se ignora el
+        // número y quedaría mal, así que se descarta la regla entera.
+        .map(d=>d.trim().toUpperCase()).filter(Boolean);
+      if(byDay.some(d=> !(d in RRULE_DOW))) return null;
+      rule = {
+        freq, interval,
+        byDay: byDay.map(d=>RRULE_DOW[d]),
+        count: parts.COUNT ? Number(parts.COUNT) : null,
+        until: parts.UNTIL ? rruleDateToISO(parts.UNTIL) : null,
+      };
+    } else if(/^EXDATE/i.test(line)){
+      // EXDATE;TZID=America/Argentina/Buenos_Aires:20261216T150000
+      const afterColon = line.slice(line.indexOf(":") + 1);
+      afterColon.split(",").forEach(v=>{ const iso = rruleDateToISO(v); if(iso) exdates.push(iso); });
+    }
+  }
+  return rule ? { rule, exdates } : null;
+}
+// Fechas de inicio de cada repetición dentro de [fromISO, toISO]. Devuelve
+// null si la regla no se puede expandir (el que llama muestra el evento
+// una sola vez, como antes).
+function expandRecurrence(startISO, lines, fromISO, toISO){
+  const parsed = parseRecurrence(lines);
+  if(!parsed) return null;
+  const { freq, interval, byDay, count, until } = parsed.rule;
+  const skip = new Set(parsed.exdates);
+  const out = [];
+  let emitted = 0;
+  const pushIfVisible = iso => {
+    if(iso > toISO) return false;
+    if(iso >= fromISO && !skip.has(iso)) out.push(iso);
+    return true;
+  };
+  // Cada repetición se calcula SIEMPRE desde la fecha original (start + n
+  // pasos), nunca encadenando desde la anterior: encadenando, una mensual
+  // que arranca un 31 perdía el día para siempre al pasar por febrero
+  // (31 ene → 28 feb → 28 mar → 28 abr, en vez de 31 / 28 / 31 / 30).
+  const nth = n => freq === "DAILY" ? addDaysISO(startISO, n * interval)
+    : freq === "WEEKLY" ? addDaysISO(startISO, n * 7 * interval)
+    : freq === "MONTHLY" ? addMonthsISO(startISO, n * interval)
+    : addMonthsISO(startISO, n * 12 * interval);
+  const daysBetween = (a, b) => Math.round((isoDate(b) - isoDate(a)) / 86400000);
+  const monthsBetween = (a, b) =>
+    (Number(b.slice(0,4)) - Number(a.slice(0,4))) * 12 + (Number(b.slice(5,7)) - Number(a.slice(5,7)));
+  if(freq === "WEEKLY" && byDay.length){
+    const days = byDay.slice().sort((a,b)=>a-b);
+    // Se arranca en el domingo de la semana del inicio y se avanza de a
+    // INTERVAL semanas, emitiendo los días pedidos de cada una.
+    const firstWeek = addDaysISO(startISO, -isoDow(startISO));
+    // Con COUNT hay que contarlas todas desde el principio; sin COUNT se
+    // salta derecho a la semana de la ventana visible (si no, una serie de
+    // hace diez años se comía todas las vueltas del freno antes de llegar).
+    let w = 0;
+    if(!count && fromISO > firstWeek){
+      w = Math.max(0, Math.floor(daysBetween(firstWeek, fromISO) / (7 * interval)));
+    }
+    for(let i=0; i<RRULE_MAX_STEPS; i++, w++){
+      const weekStart = addDaysISO(firstWeek, w * 7 * interval);
+      if(weekStart > toISO) break;
+      for(const d of days){
+        const iso = addDaysISO(weekStart, d);
+        if(iso < startISO) continue;
+        if(until && iso > until) return out;
+        if(count && emitted >= count) return out;
+        emitted++;
+        if(!pushIfVisible(iso)) return out;
+      }
+    }
+    return out;
+  }
+  let n = 0;
+  if(!count && fromISO > startISO){
+    const raw = freq === "DAILY" ? daysBetween(startISO, fromISO) / interval
+      : freq === "WEEKLY" ? daysBetween(startISO, fromISO) / (7 * interval)
+      : freq === "MONTHLY" ? monthsBetween(startISO, fromISO) / interval
+      : monthsBetween(startISO, fromISO) / (12 * interval);
+    n = Math.max(0, Math.floor(raw));
+  }
+  for(let i=0; i<RRULE_MAX_STEPS; i++, n++){
+    const iso = nth(n);
+    if(until && iso > until) break;
+    if(count && emitted >= count) break;
+    emitted++;
+    if(!pushIfVisible(iso)) break;
+  }
+  return out;
+}
+// Qué fechas de la serie NO hay que dibujar: las que Google marcó como
+// canceladas (recurrenceSkip, ver applyCalendarEventToPosts) y las que
+// tienen su propia tarjeta porque se editaron sueltas en Calendar. A esas
+// excepciones Google les da un id "<idDelMolde>_<fechaOriginalUTC>", así
+// que la fecha original se saca del propio id, sin guardar nada extra.
+function recurrenceSkipDates(post){
+  const skip = new Set(Array.isArray(post.recurrenceSkip) ? post.recurrenceSkip : []);
+  const masterId = post.calendarEventId;
+  if(masterId){
+    const prefix = masterId + "_";
+    state.posts.forEach(p=>{
+      if(p.id === post.id || !p.calendarEventId) return;
+      if(!p.calendarEventId.startsWith(prefix)) return;
+      const iso = rruleDateToISO(p.calendarEventId.slice(prefix.length));
+      if(iso) skip.add(iso);
+    });
+  }
+  return skip;
+}
+// Texto corto para la tarjeta del Feed ("se repite todas las semanas"),
+// que explica por qué hay una sola tarjeta de algo que pasa muchas veces.
+function recurrenceLabel(post){
+  const parsed = parseRecurrence(post.recurrence);
+  if(!parsed) return "";
+  const { freq, interval } = parsed.rule;
+  if(interval > 1){
+    return freq === "DAILY" ? t("se repite cada {n} días","repeats every {n} days","repete-se a cada {n} dias","חוזר כל {n} ימים",{n:interval})
+      : freq === "WEEKLY" ? t("se repite cada {n} semanas","repeats every {n} weeks","repete-se a cada {n} semanas","חוזר כל {n} שבועות",{n:interval})
+      : freq === "MONTHLY" ? t("se repite cada {n} meses","repeats every {n} months","repete-se a cada {n} meses","חוזר כל {n} חודשים",{n:interval})
+      : t("se repite cada {n} años","repeats every {n} years","repete-se a cada {n} anos","חוזר כל {n} שנים",{n:interval});
+  }
+  return freq === "DAILY" ? t("se repite todos los días","repeats every day","repete-se todos os dias","חוזר בכל יום")
+    : freq === "WEEKLY" ? t("se repite todas las semanas","repeats every week","repete-se todas as semanas","חוזר בכל שבוע")
+    : freq === "MONTHLY" ? t("se repite todos los meses","repeats every month","repete-se todos os meses","חוזר בכל חודש")
+    : t("se repite todos los años","repeats every year","repete-se todos os anos","חוזר בכל שנה");
+}
+
 // Mapa fecha ISO -> eventos de ese día, ya recortado a la ventana que se
 // está dibujando. Un evento de varios días aparece en cada uno de sus
 // días; el recorte a [fromISO, toISO] evita iterar rangos largos.
 function calendarioEventsByDate(fromISO, toISO){
   const byDate = {};
-  // Los hitos de proyecto entran como ítems de un día (o rango), con ◆,
-  // salvo que la persona los haya apagado en la barra del Calendario.
-  calendarioPosts().concat(prefs().calendarShowMilestones === false ? [] : allMilestoneItems()).forEach(p=>{
-    const start = p.startDate || p.date;
-    const end = p.endDate && p.endDate >= start ? p.endDate : start;
+  const pushRange = (p, start, end) => {
     let d = start < fromISO ? fromISO : start;
     const last = end > toISO ? toISO : end;
     while(d <= last){
       (byDate[d] = byDate[d] || []).push(p);
       d = addDaysISO(d, 1);
     }
+  };
+  // Los hitos de proyecto entran como ítems de un día (o rango), con ◆,
+  // salvo que la persona los haya apagado en la barra del Calendario.
+  calendarioPosts().concat(prefs().calendarShowMilestones === false ? [] : allMilestoneItems()).forEach(p=>{
+    const start = p.startDate || p.date;
+    const end = p.endDate && p.endDate >= start ? p.endDate : start;
+    const repeats = expandRecurrence(start, p.recurrence, fromISO, toISO);
+    if(!repeats){ pushRange(p, start, end); return; }
+    // Cada repetición dura lo mismo que la original y se dibuja como una
+    // copia con SUS fechas (el chip muestra la hora solo el día en que
+    // arranca, ver calendarioChip). El id sigue siendo el del posteo
+    // único: tocar cualquier repetición abre la misma tarjeta.
+    const lenDays = Math.round((isoDate(end) - isoDate(start)) / 86400000);
+    const skip = recurrenceSkipDates(p);
+    repeats.forEach(occStart=>{
+      if(skip.has(occStart)) return;
+      const occEnd = lenDays > 0 ? addDaysISO(occStart, lenDays) : occStart;
+      pushRange({ ...p, startDate:occStart, endDate:occEnd, date:occStart }, occStart, occEnd);
+    });
   });
   Object.values(byDate).forEach(list => list.sort(calendarioCompare));
   return byDate;
