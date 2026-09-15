@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prueba de login — Supabase</title>
+<!--
+  PÁGINA DE PRUEBA. No es la app y no toca ningún dato del equipo.
+  Existe para contestar dos preguntas, en este orden:
+    1. ¿El login con Google contra Supabase funciona?
+    2. ¿La base está bien cerrada, o quedó abierta de par en par?
+  La segunda importa tanto como la primera: las tablas se crearon con RLS
+  prendido y SIN políticas, o sea que Supabase tiene que RECHAZAR toda
+  escritura. Si acá dijera que escribió, sería una alarma, no un éxito.
+
+  Se puede borrar este archivo cuando la migración termine.
+-->
+<style>
+  :root{
+    --fondo:#f6f7f9; --papel:#fff; --texto:#1b1d21; --suave:#6b7280;
+    --linea:#e3e6ea; --acento:#2f6f4f; --ok:#137a4a; --mal:#b3261e; --aviso:#8a5a00;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --fondo:#15171a; --papel:#1e2125; --texto:#e8eaed; --suave:#9aa0a6;
+      --linea:#32363c; --acento:#6dbb92; --ok:#6dbb92; --mal:#f2857c; --aviso:#e0b357;
+    }
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0; padding:24px 16px 64px; background:var(--fondo); color:var(--texto);
+    font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  main{ max-width:620px; margin:0 auto; }
+  h1{ font-size:1.35rem; margin:0 0 4px; }
+  .sub{ color:var(--suave); margin:0 0 24px; font-size:.92rem; }
+  .tarjeta{
+    background:var(--papel); border:1px solid var(--linea); border-radius:12px;
+    padding:20px; margin-bottom:16px;
+  }
+  .tarjeta h2{ font-size:.78rem; text-transform:uppercase; letter-spacing:.06em;
+    color:var(--suave); margin:0 0 14px; font-weight:600; }
+  button{
+    font:inherit; font-weight:600; padding:11px 18px; border-radius:9px; cursor:pointer;
+    border:1px solid var(--acento); background:var(--acento); color:#fff;
+  }
+  button.secundario{ background:transparent; color:var(--texto); border-color:var(--linea); }
+  button[disabled]{ opacity:.5; cursor:default; }
+  dl{ margin:0; display:grid; grid-template-columns:auto 1fr; gap:8px 16px; font-size:.94rem; }
+  dt{ color:var(--suave); }
+  dd{ margin:0; word-break:break-all; }
+  .resultado{ margin-top:14px; padding:12px 14px; border-radius:9px; font-size:.94rem;
+    border:1px solid var(--linea); background:var(--fondo); white-space:pre-wrap; }
+  .ok{ color:var(--ok); } .mal{ color:var(--mal); } .aviso{ color:var(--aviso); }
+  .nota{ font-size:.86rem; color:var(--suave); margin-top:12px; }
+  code{ font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.88em; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Prueba de login — Supabase</h1>
+  <p class="sub">
+    Esta página <strong>no es la app</strong> y no toca ningún dato del equipo.
+    Sirve para comprobar dos cosas: que se puede entrar con Google, y que la
+    base todavía está cerrada con llave.
+  </p>
+
+  <div class="tarjeta">
+    <h2>1 · Entrar</h2>
+    <div id="zonaLogin"></div>
+  </div>
+
+  <div class="tarjeta">
+    <h2>2 · ¿La base está cerrada?</h2>
+    <p style="margin:0 0 14px;font-size:.94rem;">
+      Las tablas se crearon con la llave puesta y sin permisos todavía. Esta
+      prueba intenta escribir una fila: <strong>lo correcto es que Supabase la
+      rechace</strong>. Si dijera que escribió, habría que frenar todo.
+    </p>
+    <button id="btnCerrada" class="secundario" disabled>Probar</button>
+    <div id="resultadoCerrada"></div>
+    <p class="nota" id="notaCerrada">Se habilita después de entrar.</p>
+  </div>
+</main>
+
+<script type="module">
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+
+// Estas dos son públicas a propósito, igual que las de Firebase en la app:
+// viajan al navegador de cualquiera que entre. Lo que protege los datos no es
+// esconderlas, son las políticas de la base (que todavía no existen: por eso
+// la prueba de abajo tiene que fallar).
+const SUPABASE_URL = "https://benonmzlgdjkhzauamrz.supabase.co";
+const SUPABASE_KEY = "sb_publishable_Y9rfOHOQJ1fbSKcRltQiZQ_TRErHBsB";
+
+const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const zonaLogin = document.getElementById("zonaLogin");
+const btnCerrada = document.getElementById("btnCerrada");
+const resultadoCerrada = document.getElementById("resultadoCerrada");
+const notaCerrada = document.getElementById("notaCerrada");
+
+function esc(s){ return String(s).replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c])); }
+
+function pintar(sesion){
+  if(!sesion){
+    zonaLogin.innerHTML = `<button id="btnEntrar">Entrar con Google</button>
+      <p class="nota">Te va a llevar a Google y volver acá.</p>`;
+    document.getElementById("btnEntrar").onclick = entrar;
+    btnCerrada.disabled = true;
+    notaCerrada.hidden = false;
+    return;
+  }
+  const u = sesion.user;
+  zonaLogin.innerHTML = `
+    <p class="ok" style="margin:0 0 14px;font-weight:600;">✅ Entraste.</p>
+    <dl>
+      <dt>Correo</dt><dd>${esc(u.email || "—")}</dd>
+      <dt>Nombre</dt><dd>${esc((u.user_metadata && u.user_metadata.full_name) || "—")}</dd>
+      <dt>Identificador</dt><dd><code>${esc(u.id)}</code></dd>
+    </dl>
+    <p class="nota">
+      El identificador es de Supabase y la app no lo usa para nada: todo
+      (autoría, @menciones, permisos) va por el correo. Por eso cambiar de
+      login no mueve ni un dato.
+    </p>
+    <p style="margin:16px 0 0;"><button id="btnSalir" class="secundario">Salir</button></p>`;
+  document.getElementById("btnSalir").onclick = async ()=>{ await sb.auth.signOut(); };
+  btnCerrada.disabled = false;
+  notaCerrada.hidden = true;
+}
+
+async function entrar(){
+  const { error } = await sb.auth.signInWithOAuth({
+    provider: "google",
+    options: { redirectTo: location.href.split("#")[0].split("?")[0] },
+  });
+  if(error){
+    zonaLogin.innerHTML = `<p class="mal">No se pudo arrancar el login: ${esc(error.message)}</p>`;
+  }
+}
+
+btnCerrada.onclick = async ()=>{
+  btnCerrada.disabled = true;
+  resultadoCerrada.innerHTML = `<div class="resultado">Probando…</div>`;
+  // app_config es la tabla más inocua que hay: si esto ESCRIBIERA, se borra la
+  // fila y se frena la migración hasta entender por qué.
+  const { error } = await sb.from("app_config")
+    .insert({ key: "prueba_de_que_esta_cerrada", value: {} });
+  if(error){
+    resultadoCerrada.innerHTML =
+      `<div class="resultado ok">✅ Rechazado, que es lo correcto.\n\nSupabase contestó: ${esc(error.message)}</div>`;
+  } else {
+    resultadoCerrada.innerHTML =
+      `<div class="resultado mal">⚠️ ESCRIBIÓ. La base quedó abierta: cualquiera con la dirección de esta página podría escribirle.\n\nFrená acá y avisá antes de seguir.</div>`;
+  }
+  btnCerrada.disabled = false;
+};
+
+// Supabase deja la sesión en la dirección al volver de Google y la guarda solo.
+const { data } = await sb.auth.getSession();
+pintar(data.session);
+sb.auth.onAuthStateChange((_evento, sesion)=> pintar(sesion));
+</script>
+</body>
+</html>
