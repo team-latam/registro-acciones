@@ -992,6 +992,8 @@
   .dp-day.out{ color:var(--text-muted); opacity:.4; }
   .dp-day.today{ box-shadow:inset 0 0 0 1.5px var(--celeste-dark); font-weight:700; }
   .dp-day.selected{ background:var(--petroleo); color:#fff; font-weight:800; }
+  .dp-day:disabled{ color:var(--text-muted); opacity:.3; cursor:not-allowed; }
+  .dp-day:disabled:hover{ background:none; }
   .dp-foot{ display:flex; justify-content:space-between; margin-top:10px; padding-top:8px; border-top:1px solid var(--border); }
   .dp-foot button{
     font-family:inherit; font-size:11px; font-weight:700; cursor:pointer; background:none; border:none;
@@ -1078,7 +1080,7 @@
   #postForm{ overflow-y:auto; flex:1; min-height:0; padding-inline-end:4px; margin-inline-end:-4px; }
   .field{ margin-bottom:14px; }
   .field label{ display:block; font-size:12px; font-weight:700; color:var(--text-muted); margin-bottom:5px; text-transform:uppercase; letter-spacing:0.4px; }
-  .field input[type=text], .field input[type=date], .field textarea, .field select, .field input[type=url]{
+  .field input[type=text], .field textarea, .field select, .field input[type=url]{
     width:100%; padding:10px 12px; border-radius:var(--radius-sm); border:1.5px solid var(--border); font-size:14px; background:var(--surface-soft);
   }
   .field textarea{ min-height:90px; resize:vertical; }
@@ -1106,10 +1108,12 @@
   .allday-toggle{ display:flex; align-items:center; gap:6px; font-size:13px; font-weight:600; color:var(--text); margin-bottom:8px; cursor:pointer; }
   .dt-row{ display:flex; align-items:center; gap:8px; margin-bottom:8px; }
   .dt-row:last-child{ margin-bottom:0; }
-  .dt-row input[type=date], .dt-row input[type=time]{
+  .dt-row input[type=time]{
     flex:1; min-width:0; padding:9px 10px; border-radius:var(--radius-sm); border:1.5px solid var(--border);
     font-size:13.5px; background:var(--surface-soft);
   }
+  .dt-row .date-field{ flex:1; min-width:0; }
+  .dt-row .date-trigger{ width:100%; justify-content:center; }
   .dt-sep{ color:var(--text-muted); font-size:13px; flex:none; }
   /* El buscador de lugar (mismo que Rutina) metido adentro de una fila
      con ícono: sin el margin-top de ".place-picker" (pensado para ir
@@ -5111,14 +5115,56 @@ function milestoneStatusLabel(st){
     : t("Pendiente","Pending","Pendente","ממתין");
 }
 // ---------------------------------------------------------------------
-// Selector de fecha propio para los hitos (reemplaza <input type=date>):
+// Selector de fecha propio (reemplaza todo <input type=date> del sitio):
 // mismo criterio de .color-pop (fixed + closeXPops(except) + una clase
 // .open en el contenedor), pero con entrada tipeada además del calendario.
-// Un solo campo puede estar abierto a la vez — guardado acá, no por hito,
+// Un solo campo puede estar abierto a la vez — guardado acá, no por campo,
 // porque cerrar todos los demás al abrir uno es el mismo comportamiento
 // que ya tiene el selector de color.
+//
+// Un mismo popup sirve para los hitos (guardan en Firestore), las fechas
+// del composer y el "importar desde" del Calendario (guardan en un draft
+// local): cada "kind" resuelve leer/escribir/validar contra lo suyo, el
+// popup en sí no sabe ni le importa de dónde sale el valor.
 // ---------------------------------------------------------------------
-let dateFieldOpen = null; // { postId, msId, field, viewMonth }
+let dateFieldOpen = null; // { kind, ds, viewMonth } — ds: lo mínimo para identificar el campo (ver cada spec)
+const DATE_FIELD_SPECS = {
+  milestone: {
+    dfId: (ds) => `ms:${ds.postId}:${ds.msId}:${ds.field}`,
+    canEdit: (ds) => { const post = getPostById(ds.postId); return !!post && canManageProject(post); },
+    get: (ds) => { const post = getPostById(ds.postId); const m = post && postMilestones(post).find(x=>x.id===ds.msId); return m ? m[ds.field] : null; },
+    set: (ds, iso) => { const post = getPostById(ds.postId); if(!post) return; saveMilestones(post, postMilestones(post).map(x=> x.id===ds.msId ? { ...x, [ds.field]:iso } : x)); },
+    allowClear: (ds) => ds.field === "endDate",
+    fallbackView: (ds) => { const post = getPostById(ds.postId); const m = post && postMilestones(post).find(x=>x.id===ds.msId); return (m && m.date) || null; },
+  },
+  "composer-start": {
+    dfId: () => "composer:start",
+    canEdit: () => true,
+    get: () => composerDraft.startDate || null,
+    // Mismo efecto que el <input type=date> que reemplaza: si el fin queda
+    // antes del nuevo inicio, se corre junto.
+    set: (ds, iso) => { composerDraft.startDate = iso; if(composerDraft.endDate < iso) composerDraft.endDate = iso; render(); },
+    allowClear: () => false,
+  },
+  "composer-end": {
+    dfId: () => "composer:end",
+    canEdit: () => true,
+    get: () => composerDraft.endDate || null,
+    set: (ds, iso) => { composerDraft.endDate = iso; render(); },
+    allowClear: () => false,
+    fallbackView: () => composerDraft.startDate || null,
+  },
+  "calendar-import": {
+    dfId: () => "calendar-import",
+    canEdit: () => true,
+    get: () => getCalendarDraft().importFrom || null,
+    set: (ds, iso) => { getCalendarDraft().importFrom = iso; render(); },
+    allowClear: () => true,
+    // No tiene sentido importar "desde el futuro".
+    max: () => todayISO(),
+  },
+};
+function dateFieldSpec(kind){ return DATE_FIELD_SPECS[kind]; }
 function closeDateFields(except){
   document.querySelectorAll(".date-field.open").forEach(f=>{
     if(f === except) return;
@@ -5158,11 +5204,11 @@ function dateFieldYearOptionsHtml(selectedYear){
   return opts;
 }
 function renderDatePop(pop){
-  const { postId, msId, field, viewMonth } = dateFieldOpen;
-  const post = getPostById(postId);
-  const m = post && postMilestones(post).find(x=>x.id===msId);
-  if(!post || !m){ closeDateFields(); return; }
-  const value = m[field];
+  const { kind, ds, viewMonth } = dateFieldOpen;
+  const spec = dateFieldSpec(kind);
+  const value = spec.get(ds);
+  const maxIso = spec.max ? spec.max(ds) : null;
+  const minIso = spec.min ? spec.min(ds) : null;
   const gridStart = weekStartISO(viewMonth.slice(0,8) + "01");
   const cells = Array.from({length:42}, (_,i)=> addDaysISO(gridStart, i));
   const curMonth = viewMonth.slice(0,7);
@@ -5178,12 +5224,12 @@ function renderDatePop(pop){
         placeholder="${esc(typedDatePlaceholder())}" aria-label="${esc(t("Escribir fecha","Type a date","Escrever data","הקלדת תאריך"))}" value="${esc(fmtTypedDate(value))}">
     </div>
     <div class="dp-head">
-      <div class="dp-nav"><button type="button" data-action="dp-nav" data-post-id="${post.id}" data-nav="-1" aria-label="${esc(t("Mes anterior","Previous month","Mês anterior","החודש הקודם"))}">‹</button></div>
+      <div class="dp-nav"><button type="button" data-action="dp-nav" data-nav="-1" aria-label="${esc(t("Mes anterior","Previous month","Mês anterior","החודש הקודם"))}">‹</button></div>
       <div class="dp-my" role="group" aria-label="${esc(monthLabelCap)}">
-        <select class="dp-month-select" data-action="dp-my-change" data-post-id="${post.id}" data-dp="month" aria-label="${esc(t("Mes","Month","Mês","חודש"))}">${dateFieldMonthOptionsHtml(viewMonthNum)}</select>
-        <select class="dp-year-select" data-action="dp-my-change" data-post-id="${post.id}" data-dp="year" aria-label="${esc(t("Año","Year","Ano","שנה"))}">${dateFieldYearOptionsHtml(viewYear)}</select>
+        <select class="dp-month-select" data-action="dp-my-change" data-dp="month" aria-label="${esc(t("Mes","Month","Mês","חודש"))}">${dateFieldMonthOptionsHtml(viewMonthNum)}</select>
+        <select class="dp-year-select" data-action="dp-my-change" data-dp="year" aria-label="${esc(t("Año","Year","Ano","שנה"))}">${dateFieldYearOptionsHtml(viewYear)}</select>
       </div>
-      <div class="dp-nav"><button type="button" data-action="dp-nav" data-post-id="${post.id}" data-nav="1" aria-label="${esc(t("Mes siguiente","Next month","Mês seguinte","החודש הבא"))}">›</button></div>
+      <div class="dp-nav"><button type="button" data-action="dp-nav" data-nav="1" aria-label="${esc(t("Mes siguiente","Next month","Mês seguinte","החודש הבא"))}">›</button></div>
     </div>
     <div class="dp-grid">
       ${dow.map(d=>`<div class="dp-dow">${esc(d)}</div>`).join("")}
@@ -5191,12 +5237,13 @@ function renderDatePop(pop){
         const out = c.slice(0,7) !== curMonth;
         const isToday = c === today;
         const isSel = c === value;
-        return `<button type="button" class="dp-day ${out?"out":""} ${isToday?"today":""} ${isSel?"selected":""}" data-action="dp-pick" data-post-id="${post.id}" data-pick="${c}">${Number(c.slice(8,10))}</button>`;
+        const disabled = (maxIso && c > maxIso) || (minIso && c < minIso);
+        return `<button type="button" class="dp-day ${out?"out":""} ${isToday?"today":""} ${isSel?"selected":""}" ${disabled?"disabled":""} data-action="dp-pick" data-pick="${c}">${Number(c.slice(8,10))}</button>`;
       }).join("")}
     </div>
     <div class="dp-foot">
-      <button type="button" data-action="dp-today" data-post-id="${post.id}">${esc(t("Hoy","Today","Hoje","היום"))}</button>
-      ${field === "endDate" ? `<button type="button" class="dp-clear" data-action="dp-clear" data-post-id="${post.id}">${esc(t("Sin fecha","No date","Sem data","ללא תאריך"))}</button>` : ""}
+      <button type="button" data-action="dp-today">${esc(t("Hoy","Today","Hoje","היום"))}</button>
+      ${spec.allowClear(ds) ? `<button type="button" class="dp-clear" data-action="dp-clear">${esc(t("Sin fecha","No date","Sem data","ללא תאריך"))}</button>` : ""}
     </div>`;
 }
 function syncDateFieldOpenState(){
@@ -5205,11 +5252,10 @@ function syncDateFieldOpenState(){
   // perdió la clase .open y contra el que hay que reposicionar el popup
   // por si el ancho del texto del trigger cambió.
   if(!dateFieldOpen) return;
-  const { postId, msId, field } = dateFieldOpen;
-  const trigger = document.querySelector(
-    `.date-trigger[data-post-id="${CSS.escape(postId)}"][data-ms-id="${CSS.escape(msId)}"][data-field="${CSS.escape(field)}"]`
-  );
-  if(!trigger) return;
+  const spec = dateFieldSpec(dateFieldOpen.kind);
+  const dfId = spec.dfId(dateFieldOpen.ds);
+  const trigger = document.querySelector(`.date-trigger[data-df-id="${CSS.escape(dfId)}"]`);
+  if(!trigger){ dateFieldOpen = null; return; }
   const wrap = trigger.closest(".date-field");
   wrap.classList.add("open");
   trigger.setAttribute("aria-expanded","true");
@@ -5225,28 +5271,28 @@ function flashInvalidDateInput(input){
   setTimeout(()=>{ input.classList.remove("invalid"); }, 350);
 }
 // Confirma lo tipeado en el input de fecha del popup. Se llama tanto al
-// perder foco como al apretar Enter: vacío revierte en la fecha de inicio
-// (siempre hace falta una) pero BORRA la de fin (opcional, mismo resultado
-// que "Sin fecha"); texto no parseable sacude+flashea en rojo y vuelve al
-// último valor válido; un valor nuevo válido actualiza el hito, salta el
-// calendario a ese mes y re-renderiza todo sin cerrar el popup.
+// perder foco como al apretar Enter: vacío revierte (o BORRA, si el campo
+// admite quedar sin fecha — mismo resultado que "Sin fecha"); texto no
+// parseable o fuera de rango sacude+flashea en rojo y vuelve al último
+// valor válido; un valor nuevo válido lo aplica, salta el calendario a ese
+// mes y re-renderiza todo sin cerrar el popup.
 function commitTypedDate(input){
   if(!dateFieldOpen) return;
-  const { postId, msId, field } = dateFieldOpen;
-  const post = getPostById(postId);
-  if(!post || !canManageProject(post)) return;
-  const m = postMilestones(post).find(x=>x.id===msId);
-  if(!m) return;
-  const currentValue = m[field];
+  const { kind, ds } = dateFieldOpen;
+  const spec = dateFieldSpec(kind);
+  if(!spec.canEdit(ds)) return;
+  const currentValue = spec.get(ds);
   const trimmed = input.value.trim();
   if(!trimmed){
-    if(field === "endDate" && currentValue != null){
-      // No hace falta releer el post para reflejar esto: saveMilestones
-      // guarda en Firestore y el snapshot va a disparar un render() que
-      // (con el enganche de syncDateFieldOpenState en render()) va a
-      // redibujar el popup solo, ya con el dato guardado — no antes, porque
-      // hasta entonces getPostById devuelve el valor viejo.
-      saveMilestones(post, postMilestones(post).map(x=> x.id===msId ? { ...x, endDate:null } : x));
+    if(spec.allowClear(ds) && currentValue != null){
+      // No hace falta releer el valor para reflejar esto: para los hitos,
+      // spec.set() guarda en Firestore y el snapshot dispara un render()
+      // que (con el enganche de syncDateFieldOpenState en render()) va a
+      // redibujar el popup solo, ya con el dato guardado — no antes,
+      // porque hasta entonces spec.get() devuelve el valor viejo. Para los
+      // drafts locales (composer, importar historial) spec.set() ya
+      // renderiza adentro, así que da lo mismo.
+      spec.set(ds, null);
       return;
     }
     input.value = fmtTypedDate(currentValue);
@@ -5254,18 +5300,19 @@ function commitTypedDate(input){
   }
   const fallbackYear = Number(dateFieldOpen.viewMonth.slice(0,4));
   const iso = parseTypedDate(trimmed, fallbackYear);
-  if(!iso){
+  const maxIso = spec.max ? spec.max(ds) : null;
+  const minIso = spec.min ? spec.min(ds) : null;
+  if(!iso || (maxIso && iso > maxIso) || (minIso && iso < minIso)){
     flashInvalidDateInput(input);
     input.value = fmtTypedDate(currentValue);
     return;
   }
-  // Formatea ya mismo (feedback instantáneo) y guarda; la grilla del
-  // calendario se pone al día sola cuando llegue el snapshot de Firestore
-  // con el nuevo valor — leerlo de una en state.posts acá daría el viejo.
+  // Formatea ya mismo (feedback instantáneo) y guarda; el resto del popup
+  // se pone al día solo cuando corresponda (ver comentario arriba).
   input.value = fmtTypedDate(iso);
   if(iso === currentValue) return;
   dateFieldOpen.viewMonth = iso;
-  saveMilestones(post, postMilestones(post).map(x=> x.id===msId ? { ...x, [field]:iso } : x));
+  spec.set(ds, iso);
 }
 // Hitos típicos de un curso/seminario/congreso, en días relativos a la
 // fecha de inicio del evento (los de la línea de tiempo de referencia del
@@ -5507,9 +5554,13 @@ function ppApply(key, email){
   const [kind, postId, msId] = key.split(":");
   const post = getPostById(postId);
   personQueries[key] = { q:"", hi:0 };
-  if(!post || !canManageProject(post)){ render(); return; }
+  // render() ya mismo, sin esperar a que Firestore vuelva: elegir a alguien
+  // (con Enter o con un click) tiene que cerrar el buscador y limpiar lo
+  // tipeado al toque, no recién cuando llegue el guardado.
+  render();
+  if(!post || !canManageProject(post)) return;
   if(kind === "own") saveMilestones(post, postMilestones(post).map(m=> m.id === msId && !msOwners(m).includes(email) ? withOwners(m, msOwners(m).concat([email])) : m));
-  else if(kind === "ed"){ if(email !== post.authorEmail && !postEditors(post).includes(email)) saveEditors(post, postEditors(post).concat([email])); else render(); }
+  else if(kind === "ed" && email !== post.authorEmail && !postEditors(post).includes(email)) saveEditors(post, postEditors(post).concat([email]));
 }
 function ownerChip(email){
   if(!email) return "";
@@ -5580,7 +5631,7 @@ function renderProjectPanel(post, opts={}){
   const rows = list.map(m=>{
     const st = milestoneStatus(m);
     const owners = msOwners(m);
-    const doneBy = m.done && m.doneBy ? `<span class="pj-doneby">${t("por","by","por","על ידי")} ${ownerChip(m.doneBy)}${m.doneAt ? " · " + esc(fmtDate(m.doneAt)) : ""}</span>` : "";
+    const doneBy = m.done && m.doneBy ? `<span class="pj-doneby">${ownerChip(m.doneBy)}${m.doneAt ? " · " + esc(fmtDate(m.doneAt)) : ""}</span>` : "";
     if(!manage){
       const when = m.date ? `<span class="pj-when">${esc(fmtDate(m.date))}${m.endDate && m.endDate > m.date ? ` – ${esc(fmtDate(m.endDate))}` : ""}</span>` : `<span class="pj-when"><i>${esc(t("sin fecha","no date","sem data","ללא תאריך"))}</i></span>`;
       return `<li class="pj-row ${st}" data-ms-id="${esc(m.id)}">
@@ -5598,10 +5649,11 @@ function renderProjectPanel(post, opts={}){
     // Botón + popup vacío (el popup se llena recién al abrirse, ver
     // renderDatePop) — mismo criterio que .color-control/.color-pop.
     const dateTrigger = (field, value) => {
+      const dfId = DATE_FIELD_SPECS.milestone.dfId({ postId:post.id, msId:m.id, field });
       const empty = field === "endDate" && !value;
       const label = value ? esc(fmtTypedDate(value)) : esc(t("sin fecha de fin","no end date","sem data de fim","ללא תאריך סיום"));
       return `<span class="date-field">
-        <button type="button" class="date-trigger ${empty ? "empty" : ""}" data-action="date-open" data-post-id="${post.id}" data-ms-id="${esc(m.id)}" data-field="${field}" aria-haspopup="dialog" aria-expanded="false"><span class="cal-ic" aria-hidden="true">📅</span>${label}</button>
+        <button type="button" class="date-trigger ${empty ? "empty" : ""}" data-action="date-open" data-df-kind="milestone" data-df-id="${esc(dfId)}" data-post-id="${post.id}" data-ms-id="${esc(m.id)}" data-field="${field}" aria-haspopup="dialog" aria-expanded="false"><span class="cal-ic" aria-hidden="true">📅</span>${label}</button>
         <div class="date-pop" hidden role="dialog" aria-label="${esc(field === "date" ? t("Fecha de inicio","Start date","Data de início","תאריך התחלה") : t("Fecha de fin","End date","Data de fim","תאריך סיום"))}"></div>
       </span>`;
     };
@@ -7127,7 +7179,10 @@ function renderCalendarImportBlock(d){
       <div class="field" style="margin-top:22px;">
         <label>${t("Importar desde","Import from","Importar desde","ייבוא מתאריך")}</label>
         <div class="locked-field">
-          <input type="date" id="calendarImportFromInput" value="${esc(d.importFrom||"")}" max="${todayISO()}" style="flex:0 1 220px;">
+          <span class="date-field">
+            <button type="button" class="date-trigger ${d.importFrom ? "" : "empty"}" data-action="date-open" data-df-kind="calendar-import" data-df-id="calendar-import" aria-haspopup="dialog" aria-expanded="false"><span class="cal-ic" aria-hidden="true">📅</span>${d.importFrom ? esc(fmtTypedDate(d.importFrom)) : esc(t("todo el historial","entire history","todo o histórico","כל ההיסטוריה"))}</button>
+            <div class="date-pop" hidden role="dialog" aria-label="${esc(t("Importar desde","Import from","Importar desde","ייבוא מתאריך"))}"></div>
+          </span>
           ${dirty ? `<button type="button" class="btn-secondary" data-action="calendar-importfrom-save" ${d.importSaving?"disabled":""}>${d.importSaving ? t("Guardando…","Saving…","Salvando…","...שומר") : t("Guardar fecha","Save date","Salvar data","שמירת תאריך")}</button>` : ""}
           <button type="button" class="btn-secondary" data-action="calendar-reimport" ${d.reimporting||state.calendarSyncing?"disabled":""}>🔄 ${d.reimporting ? t("Reimportando…","Reimporting…","Reimportando…","...מייבא מחדש") : t("Reimportar historial","Reimport history","Reimportar histórico","ייבוא מחדש של ההיסטוריה")}</button>
         </div>
@@ -9698,9 +9753,15 @@ function renderComposer(){
       <div class="field-icon-body">
         <label class="allday-toggle"><input type="checkbox" id="cAllDay" ${d.allDay?"checked":""}> ${t("Todo el día","All day","O dia todo","כל היום")}</label>
         <div class="dt-row">
-          <input type="date" id="cStartDate" value="${esc(d.startDate)}">
+          <span class="date-field">
+            <button type="button" class="date-trigger" data-action="date-open" data-df-kind="composer-start" data-df-id="composer:start" aria-haspopup="dialog" aria-expanded="false"><span class="cal-ic" aria-hidden="true">📅</span>${esc(fmtTypedDate(d.startDate))}</button>
+            <div class="date-pop" hidden role="dialog" aria-label="${esc(t("Fecha de inicio","Start date","Data de início","תאריך התחלה"))}"></div>
+          </span>
           <span class="dt-sep">${isRTL()?"←":"→"}</span>
-          <input type="date" id="cEndDate" value="${esc(d.endDate)}">
+          <span class="date-field">
+            <button type="button" class="date-trigger" data-action="date-open" data-df-kind="composer-end" data-df-id="composer:end" aria-haspopup="dialog" aria-expanded="false"><span class="cal-ic" aria-hidden="true">📅</span>${esc(fmtTypedDate(d.endDate))}</button>
+            <div class="date-pop" hidden role="dialog" aria-label="${esc(t("Fecha de fin","End date","Data de fim","תאריך סיום"))}"></div>
+          </span>
         </div>
         ${!d.allDay ? `
         <div class="dt-row">
@@ -10657,7 +10718,7 @@ document.addEventListener("focusin", e=>{
   if(!dateFieldOpen) return;
   if(e.target.closest(".date-pop")) return;
   const t = e.target.closest(".date-trigger");
-  if(t && t.dataset.msId === dateFieldOpen.msId && t.dataset.field === dateFieldOpen.field) return;
+  if(t && t.dataset.dfId === dateFieldSpec(dateFieldOpen.kind).dfId(dateFieldOpen.ds)) return;
   closeDateFields();
 });
 
@@ -10854,13 +10915,13 @@ document.addEventListener("click", async e=>{
     const wrap = el.closest(".date-field");
     const abrir = !wrap.classList.contains("open");
     if(!abrir){ closeDateFields(); return; }
-    const post = getPostById(postId);
-    if(!post || !canManageProject(post)) return;
-    const msId = el.dataset.msId, field = el.dataset.field;
-    const m = postMilestones(post).find(x=>x.id===msId);
-    if(!m) return;
+    const kind = el.dataset.dfKind;
+    const spec = dateFieldSpec(kind);
+    const ds = { postId, msId: el.dataset.msId, field: el.dataset.field };
+    if(!spec.canEdit(ds)) return;
     closeDateFields();
-    dateFieldOpen = { postId, msId, field, viewMonth: m[field] || m.date || todayISO() };
+    const viewMonth = spec.get(ds) || (spec.fallbackView && spec.fallbackView(ds)) || todayISO();
+    dateFieldOpen = { kind, ds, viewMonth };
     wrap.classList.add("open");
     el.setAttribute("aria-expanded","true");
     const pop = wrap.querySelector(".date-pop");
@@ -10881,19 +10942,18 @@ document.addEventListener("click", async e=>{
   },
     "dp-pick": async (el, e, action, postId) => {
     if(!dateFieldOpen) return;
-    const { msId, field } = dateFieldOpen;
-    const post = getPostById(postId);
-    if(!post || !canManageProject(post)) return;
-    const iso = el.dataset.pick;
-    saveMilestones(post, postMilestones(post).map(x=> x.id===msId ? { ...x, [field]:iso } : x));
+    const { kind, ds } = dateFieldOpen;
+    const spec = dateFieldSpec(kind);
+    if(!spec.canEdit(ds)) return;
+    spec.set(ds, el.dataset.pick);
     closeDateFields();
   },
     "dp-clear": async (el, e, action, postId) => {
-    if(!dateFieldOpen || dateFieldOpen.field !== "endDate") return;
-    const { msId } = dateFieldOpen;
-    const post = getPostById(postId);
-    if(!post || !canManageProject(post)) return;
-    saveMilestones(post, postMilestones(post).map(x=> x.id===msId ? { ...x, endDate:null } : x));
+    if(!dateFieldOpen) return;
+    const { kind, ds } = dateFieldOpen;
+    const spec = dateFieldSpec(kind);
+    if(!spec.allowClear(ds) || !spec.canEdit(ds)) return;
+    spec.set(ds, null);
     closeDateFields();
   },
     "ms-editor-remove": async (el, e, action, postId) => {
@@ -11605,7 +11665,6 @@ document.addEventListener("input", e=>{
   else if(el.id === "tiposNewIcon"){ getTiposDraft().newIcon = el.value; }
   else if(el.id === "tiposNewLabel"){ getTiposDraft().newLabel = el.value; }
   else if(el.id === "calendarIdInput"){ const d = getCalendarDraft(); if(!d.locked){ d.calendarId = el.value; if(d.confirmWord){ d.confirmWord = null; d.typed = ""; render(); const inp = document.getElementById("calendarIdInput"); if(inp){ inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); } } } }
-  else if(el.id === "calendarImportFromInput"){ getCalendarDraft().importFrom = el.value; render(); }
   else if(el.id === "calendarConfirmInput"){
     // Solo se re-renderiza cuando cambia si el botón debe habilitarse,
     // para no perder el foco a cada tecla.
@@ -11661,12 +11720,6 @@ document.addEventListener("change", e=>{
     return;
   }
   if(el.name === "cType"){ composerDraft.activityType = el.value; render(); }
-  else if(el.id === "cStartDate"){
-    composerDraft.startDate = el.value;
-    if(composerDraft.endDate < el.value) composerDraft.endDate = el.value;
-    render();
-  }
-  else if(el.id === "cEndDate"){ composerDraft.endDate = el.value; render(); }
   else if(el.id === "cAllDay"){
     composerDraft.allDay = el.checked;
     if(el.checked){ composerDraft.startTime = ""; composerDraft.endTime = ""; }
