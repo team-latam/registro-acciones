@@ -2684,6 +2684,21 @@ function similarColorTo(hex, exceptPref){
   });
   return best;
 }
+// Igual que similarColorTo pero contra el BORRADOR de Zonas, no contra la
+// config publicada: en ese editor se cambian varios colores antes de
+// guardar, así que comparar contra ZONES (lo ya publicado) no serviría.
+// Sin esto, dos zonas podían terminar con colores indistinguibles en el
+// calendario y nadie se enteraba hasta verlo.
+function zoneColorClash(draft, key, hex){
+  let best = null;
+  draft.zoneOrder.forEach(k=>{
+    if(k === key) return;
+    const z = draft.zones[k]; if(!z) return;
+    const d = colorDistance(hex, safeColor(z.color));
+    if(d < COLOR_TOO_CLOSE && (!best || d < best.d)) best = { label: z.label, d };
+  });
+  return best;
+}
 // Locale para toLocaleDateString/toLocaleTimeString según el idioma activo
 // (si no, quedaban siempre en "es-AR" — fecha en español aunque el resto
 // de la interfaz ya esté en EN/PT/HE).
@@ -2744,7 +2759,12 @@ function typedDateOrder(){
 }
 function typedDatePlaceholder(){
   const ord = typedDateOrder();
-  return ord === "mdy" ? "mm/dd/aaaa" : ord === "ymd" ? "aaaa-mm-dd" : "dd/mm/aaaa";
+  // El "aaaa" es la abreviatura de año en español/portugués: en inglés y en
+  // hebreo se escribe "yyyy". Era la única cadena visible de los campos
+  // nuevos que no pasaba por t().
+  return ord === "mdy" ? t("mm/dd/aaaa","mm/dd/yyyy","mm/dd/aaaa","mm/dd/yyyy")
+    : ord === "ymd" ? t("aaaa-mm-dd","yyyy-mm-dd","aaaa-mm-dd","yyyy-mm-dd")
+    : t("dd/mm/aaaa","dd/mm/yyyy","dd/mm/aaaa","dd/mm/yyyy");
 }
 function fmtTypedDate(iso){
   if(!iso) return "";
@@ -2869,6 +2889,10 @@ function commitTypedTimeField(input){
     input.classList.add("invalid");
     setTimeout(()=>{ input.classList.remove("invalid"); }, 350);
     input.value = fmtTypedTime(currentValue);
+    // Igual que en las fechas: la sacudida sola se pierde si el modal se
+    // cierra en el mismo momento, y el horario mal tipeado se descartaba
+    // sin dejar rastro.
+    showCalendarNotice({ ok:false, message: t("No se entendió el horario «{v}». Quedó el anterior.","Couldn't read the time “{v}”. The previous one stands.","Não se entendeu o horário «{v}». Ficou o anterior.","לא הובנה השעה «{v}». נשארה הקודמת.",{v:trimmed}) });
     return;
   }
   input.value = fmtTypedTime(hhmm);
@@ -3781,7 +3805,8 @@ async function shareCalendarWith(email, opts={}){
     // propio navegador de esa persona (ver shouldShowCalendarInvitePopup y
     // hasActiveCalendarInviteNotice) para saber si hay que mostrarle de
     // nuevo el popup y/o la novedad de "revisá tu correo".
-    fb.updateDoc(fb.doc(db,"allowlist",email), { calendarShared:true, calendarInviteSentAt: fb.serverTimestamp() }).catch(()=>{});
+    fb.updateDoc(fb.doc(db,"allowlist",email), { calendarShared:true, calendarInviteSentAt: fb.serverTimestamp() })
+      .catch(err=> console.error("Se compartió el Calendar pero no se pudo anotar en el roster:", err));
     return { ok:true };
   }catch(err){
     console.error("Error compartiendo el Calendar:", err);
@@ -3845,7 +3870,8 @@ async function unshareCalendarWith(email, opts={}){
     // Si sigue en allowlist (cambio de rol, o "Sacar del Calendar" desde
     // Usuarios), su fila deja de decir "Invitación enviada". Si ya fue
     // revocado el doc no existe y esto falla en silencio, que es lo esperado.
-    try{ fb.updateDoc(fb.doc(db,"allowlist",email), { calendarShared:false }).catch(()=>{}); }catch(e){}
+    try{ fb.updateDoc(fb.doc(db,"allowlist",email), { calendarShared:false })
+      .catch(err=> console.error("Se sacó del Calendar pero no se pudo anotar en el roster:", err)); }catch(e){}
     return { ok:true };
   }catch(err){
     console.error("Error sacando del Calendar:", err);
@@ -4358,9 +4384,31 @@ async function syncFromCalendar(opts){
       ? t("Sincronizado con Calendar: {a} de {n} evento(s) revisado(s) se aplicaron.","Synced with Calendar: {a} of {n} reviewed event(s) were applied.","Sincronizado com o Calendar: {a} de {n} evento(s) revisado(s) foram aplicados.","{n} מתוך {a} :סונכרן עם היומן אירועים שנבדקו הוחלו.",{a:applied,n:reviewed})
       : t("Sincronizado con Calendar: {n} evento(s) revisado(s), sin cambios para aplicar.","Synced with Calendar: {n} event(s) reviewed, nothing to apply.","Sincronizado com o Calendar: {n} evento(s) revisado(s), nada para aplicar.","{n} :סונכרן עם היומן אירועים שנבדקו, אין מה להחיל.",{n:reviewed})
     }); }
+    // Llegar hasta acá significa que se habló con Calendar sin errores
+    // (aunque algún evento suelto no se haya podido aplicar): se reinicia
+    // el contador de fallas seguidas del sync automático.
+    calendarSyncFailStreak = 0; calendarSyncFailWarned = false;
   }catch(err){
     console.error("Error sincronizando desde Calendar:", err);
     if(!silent){ showCalendarNotice({ ok:false, message:t("No se pudo sincronizar con Calendar: {msg}","Couldn't sync with Calendar: {msg}","Não foi possível sincronizar com o Calendar: {msg}","{msg} :הסנכרון עם היומן נכשל",{msg:err.message}) }); }
+    else {
+      // El sync automático corre callado a propósito (cada 30 s: avisar de
+      // cada tropiezo sería insoportable). Pero si falla MUCHAS veces
+      // seguidas ya no es un tropiezo: es la integración rota — permiso
+      // revocado, calendario borrado, config cambiada — y antes eso se
+      // quedaba para siempre en un console.error que nadie mira. Se avisa
+      // una sola vez por racha; se vuelve a callar apenas sincroniza bien.
+      calendarSyncFailStreak++;
+      if(calendarSyncFailStreak >= CALENDAR_SYNC_FAIL_STREAK && !calendarSyncFailWarned){
+        calendarSyncFailWarned = true;
+        showCalendarNotice({ ok:false, message:t(
+          "Hace rato que no se puede sincronizar con Calendar ({msg}). Revisá la configuración del Calendario.",
+          "Syncing with Calendar has been failing for a while ({msg}). Check the Calendar settings.",
+          "Faz tempo que não é possível sincronizar com o Calendar ({msg}). Revise a configuração do Calendário.",
+          "כבר זמן מה שהסנכרון עם היומן נכשל ({msg}). בדוק/בדקי את הגדרות היומן.",
+          {msg:err.message}) });
+      }
+    }
   }finally{
     calendarSyncInFlight = false;
     if(!silent){ state.calendarSyncing = false; render(); }
@@ -4371,6 +4419,11 @@ async function syncFromCalendar(opts){
 // (además del botón manual, que sigue estando). Se arranca una sola vez
 // por sesión y se para al cerrar sesión.
 let calendarSyncInterval = null;
+// Fallas seguidas del sync automático (ver el catch de syncFromCalendar).
+// A 30 s por intento, 5 seguidas son ~2 min y medio: ya no es un bache de
+// red, es algo roto de verdad.
+const CALENDAR_SYNC_FAIL_STREAK = 5;
+let calendarSyncFailStreak = 0, calendarSyncFailWarned = false;
 function startCalendarAutoSync(){
   if(calendarSyncInterval) return;
   // El observador no escribe posteos ni el sync token: sin esto su
@@ -5228,8 +5281,21 @@ const DATE_FIELD_SPECS = {
     dfId: (ds) => `ms:${ds.postId}:${ds.msId}:${ds.field}`,
     canEdit: (ds) => { const post = getPostById(ds.postId); return !!post && canManageProject(post); },
     get: (ds) => { const post = getPostById(ds.postId); const m = post && postMilestones(post).find(x=>x.id===ds.msId); return m ? m[ds.field] : null; },
-    set: (ds, iso) => { const post = getPostById(ds.postId); if(!post) return; saveMilestones(post, postMilestones(post).map(x=> x.id===ds.msId ? { ...x, [ds.field]:iso } : x)); },
+    // Mismo criterio que el composer: mover el inicio más allá del fin
+    // arrastra el fin con él, en vez de dejar un rango al revés.
+    set: (ds, iso) => {
+      const post = getPostById(ds.postId); if(!post) return;
+      saveMilestones(post, postMilestones(post).map(x=>{
+        if(x.id !== ds.msId) return x;
+        const n = { ...x, [ds.field]:iso };
+        if(ds.field === "date" && n.endDate && iso && n.endDate < iso) n.endDate = iso;
+        return n;
+      }));
+    },
     allowClear: (ds) => ds.field === "endDate",
+    // El fin no puede ser anterior al inicio: los días previos quedan
+    // deshabilitados en la grilla y un tipeo así se rechaza.
+    min: (ds) => { if(ds.field !== "endDate") return null; const post = getPostById(ds.postId); const m = post && postMilestones(post).find(x=>x.id===ds.msId); return (m && m.date) || null; },
     fallbackView: (ds) => { const post = getPostById(ds.postId); const m = post && postMilestones(post).find(x=>x.id===ds.msId); return (m && m.date) || null; },
   },
   "composer-start": {
@@ -5247,6 +5313,9 @@ const DATE_FIELD_SPECS = {
     get: () => composerDraft.endDate || null,
     set: (ds, iso) => { composerDraft.endDate = iso; render(); },
     allowClear: () => false,
+    // Igual que en los hitos: no se puede elegir un fin anterior al inicio
+    // (antes solo lo agarraba la validación al publicar).
+    min: () => composerDraft.startDate || null,
     fallbackView: () => composerDraft.startDate || null,
   },
   "calendar-import": {
@@ -5400,6 +5469,12 @@ function commitTypedDate(input){
   if(!iso || (maxIso && iso > maxIso) || (minIso && iso < minIso)){
     flashInvalidDateInput(input);
     input.value = fmtTypedDate(currentValue);
+    // Además de la sacudida, un aviso que queda: la sacudida dura 350 ms y
+    // si justo publicabas en ese momento el modal se cerraba antes, así que
+    // la fecha mal tipeada se descartaba sin que quedara ningún rastro.
+    showCalendarNotice({ ok:false, message: !iso
+      ? t("No se entendió la fecha «{v}». Quedó la anterior.","Couldn't read the date “{v}”. The previous one stands.","Não se entendeu a data «{v}». Ficou a anterior.","לא הובן התאריך «{v}». נשאר הקודם.",{v:trimmed})
+      : t("«{v}» queda fuera del rango permitido. Quedó la fecha anterior.","“{v}” is outside the allowed range. The previous date stands.","«{v}» fica fora do intervalo permitido. Ficou a data anterior.","«{v}» מחוץ לטווח המותר. נשאר התאריך הקודם.",{v:trimmed}) });
     return;
   }
   // Formatea ya mismo (feedback instantáneo) y guarda; el resto del popup
@@ -5606,15 +5681,26 @@ function addMilestoneFromDraft(postId){
   if(!d.label.trim()){ showCalendarNotice({ ok:false, message: t("Escribí el nombre del hito.","Type the milestone name.","Escreva o nome do marco.","הקלד/י את שם אבן הדרך.") }); return; }
   const cur = postMilestones(post);
   const n = { id: uid(), label: d.label.trim(), date:"", owners:[], done:false };
-  if(cur.length && cur.every(m=> Number.isFinite(m.order))) n.order = cur.length;
+  // El último `order` + 1, NO cur.length: borrar hitos deja huecos en la
+  // numeración (ms-remove no renumera a los que quedan), así que con dos
+  // bajas previas cur.length ya choca con un `order` existente y el hito
+  // nuevo caía en el medio de la lista en vez de al final.
+  if(cur.length && cur.every(m=> Number.isFinite(m.order))) n.order = Math.max(...cur.map(m=>m.order)) + 1;
   projectDrafts[postId] = { label:"" };
   saveMilestones(post, cur.concat([n]));
 }
 function reorderMilestones(post, orderedIds){
-  const byId = new Map(postMilestones(post).map(m=>[m.id, m]));
+  // Se relee el posteo y se re-chequea el permiso ACÁ, no solo al empezar
+  // a arrastrar: entre que agarrás la manija y soltás pasa tiempo real, y
+  // en el medio el proyecto puede haberse cerrado (o haber cambiado la
+  // lista de hitos) desde otra pestaña. El `post` del arrastre ya quedó
+  // viejo. El resto de las acciones de hitos ya lo verifican al escribir.
+  const fresh = getPostById(post.id);
+  if(!fresh || !canManageProject(fresh)) return;
+  const byId = new Map(postMilestones(fresh).map(m=>[m.id, m]));
   const list = orderedIds.map(id=>byId.get(id)).filter(Boolean);
   if(list.length !== byId.size) return;
-  saveMilestones(post, list.map((m, k)=> ({ ...m, order:k })));
+  saveMilestones(fresh, list.map((m, k)=> ({ ...m, order:k })));
 }
 document.addEventListener("pointerdown", e=>{
   const grip = e.target.closest && e.target.closest("[data-pj-grip]");
@@ -6090,6 +6176,22 @@ const calendarToastTextEl = document.getElementById("calendarToastText");
 // fuera de `state` a propósito, como openThreads/openReplyForms: es puro
 // estado de UI efímero, no hace falta que sobreviva a nada.
 let userMenuOpen = false;
+
+// Emails con una acción de roster en vuelo (aprobar, rechazar, revocar,
+// cambiar rol). Mientras están acá, sus botones van deshabilitados: sin
+// esto, dos clicks seguidos disparaban dos altas en paralelo, y como el
+// @nickname se calcula leyendo los ocupados ANTES de escribir, las dos
+// leían la lista vieja y podían asignarle el mismo @nickname a dos
+// personas distintas (sin error, y después las @menciones no las
+// distinguen). El resto de los guardados de Configuración ya se protegían
+// así con su propio flag `saving`.
+const savingRoster = new Set();
+async function withRosterGuard(email, fn){
+  if(savingRoster.has(email)) return;
+  savingRoster.add(email); render();
+  try{ await fn(); }
+  finally{ savingRoster.delete(email); render(); }
+}
 
 // Etiqueta de rol que se ve en el menú del avatar, según state.auth.status
 // (ver más abajo dónde se asigna: admin/approved/pending/rejected).
@@ -6804,7 +6906,7 @@ function renderUsuariosSection(){
     // Tampoco se puede tocar el propio rol (reglas incluidas): que otro
     // admin lo haga. Evita quedarse sin admins o escalarse a uno mismo.
     const isMe = u.email === (state.auth.user && state.auth.user.email);
-    const roleSelect = (isAdminUser || isMe) ? "" : `<select class="role-select" data-action="set-role" data-email="${esc(u.email)}" aria-label="${esc(t("Rol de {n}","Role of {n}","Papel de {n}","תפקיד של {n}",{n:u.name||u.email}))}">
+    const roleSelect = (isAdminUser || isMe) ? "" : `<select class="role-select" data-action="set-role" data-email="${esc(u.email)}" ${savingRoster.has(u.email) ? "disabled" : ""} aria-label="${esc(t("Rol de {n}","Role of {n}","Papel de {n}","תפקיד של {n}",{n:u.name||u.email}))}">
           ${ROLES.map(r=>`<option value="${r}" ${role===r?"selected":""}>${esc(roleLabel(r))}</option>`).join("")}
         </select><span class="ractions-sep"></span>`;
     return `<div class="request-row">
@@ -6815,7 +6917,13 @@ function renderUsuariosSection(){
       </div>
       <div class="ractions">
         ${roleSelect}
-        ${role === "observer"
+        ${isAdminUser
+          // La fila del admin fijo no lleva botones de Calendar: su acceso
+          // no pasa por allowlist y las reglas rechazan cualquier escritura
+          // sobre su documento, así que compartir/sacar fallaba SIEMPRE, en
+          // silencio, mientras la UI decía que había salido bien.
+          ? ""
+          : role === "observer"
           // Observador: nunca se le ofrece compartir (sería permiso de
           // escritura en el Calendar). Si lo tenía de antes, solo sacarlo.
           ? (u.calendarShared
@@ -6824,7 +6932,7 @@ function renderUsuariosSection(){
           : u.calendarShared
           ? `<span class="status-pill approved">✅ ${t("Invitación enviada","Invite sent","Convite enviado","הזמנה נשלחה")}</span><span class="ractions-sep"></span><button class="btn-ghost" data-action="resend-calendar-invite" data-email="${esc(u.email)}">${t("Reenviar invitación","Resend invite","Reenviar convite","שליחה חוזרת של ההזמנה")}</button>`
           : `<button class="btn-ghost" data-action="share-calendar" data-email="${esc(u.email)}">${t("Compartir Calendar","Share Calendar","Compartilhar Calendar","שיתוף היומן")}</button>`}
-        ${isAdminUser ? "" : `<span class="ractions-sep"></span><button class="btn-ghost danger" data-action="revoke-access" data-email="${esc(u.email)}">${t("Revocar acceso","Revoke access","Revogar acesso","ביטול גישה")}</button>`}
+        ${(isAdminUser || isMe) ? "" : `<span class="ractions-sep"></span><button class="btn-ghost danger" data-action="revoke-access" data-email="${esc(u.email)}" ${savingRoster.has(u.email) ? "disabled" : ""}>${t("Revocar acceso","Revoke access","Revogar acesso","ביטול גישה")}</button>`}
       </div>
     </div>`;
   }).join("");
@@ -6858,15 +6966,15 @@ function renderSolicitudesQueueSection(){
     </div>`;
   const pendingHtml = pending.length
     ? pending.map(r => renderRow(r, `${r.status !== "pending" ? `<span class="status-pill rejected" title="${esc(t("Figura como aprobada pero no tiene acceso: probablemente le borraron el documento del allowlist a mano.","Marked as approved but has no access: their allowlist document was probably deleted by hand.","Consta como aprovada mas não tem acesso: provavelmente apagaram o documento do allowlist à mão.","מסומן כמאושר אך ללא גישה: כנראה שמחקו את המסמך מה-allowlist ידנית."))}">${t("Sin acceso","No access","Sem acesso","ללא גישה")}</span>` : ""}
-        <button class="btn-secondary" data-action="reject-request" data-email="${esc(r.email)}">${t("Rechazar","Reject","Rejeitar","דחייה")}</button>
-        <button class="btn-primary" data-action="approve-request" data-email="${esc(r.email)}">${t("Aprobar","Approve","Aprovar","אישור")}</button>`)).join("")
+        <button class="btn-secondary" data-action="reject-request" data-email="${esc(r.email)}" ${savingRoster.has(r.email) ? "disabled" : ""}>${t("Rechazar","Reject","Rejeitar","דחייה")}</button>
+        <button class="btn-primary" data-action="approve-request" data-email="${esc(r.email)}" ${savingRoster.has(r.email) ? "disabled" : ""}>${savingRoster.has(r.email) ? t("Aprobando…","Approving…","Aprovando…","...מאשר") : t("Aprobar","Approve","Aprovar","אישור")}</button>`)).join("")
     : `<div class="empty-state"><div class="big">📭</div>${t("No hay solicitudes pendientes.","There are no pending requests.","Não há solicitações pendentes.","אין בקשות ממתינות.")}</div>`;
   const rejectedHtml = rejected.length ? `
     <div class="rejected-section">
       <div class="hint" style="margin:18px 0 10px;">${t("Rechazadas (incluye accesos revocados) — quedan acá por si hay que revertir.","Rejected (includes revoked access) — kept here in case it needs to be reverted.","Rejeitadas (inclui acessos revogados) — ficam aqui caso seja preciso reverter.","נדחו (כולל גישות שבוטלו) — נשארות כאן למקרה שיהיה צורך לבטל.")}</div>
       ${rejected.map(r => renderRow(r, `
         <span class="status-pill rejected">${t("Rechazado","Rejected","Recusado","נדחה")}</span>
-        <button class="btn-primary" data-action="approve-request" data-email="${esc(r.email)}">${t("Aprobar igual","Approve anyway","Aprovar mesmo assim","אישור בכל זאת")}</button>`)).join("")}
+        <button class="btn-primary" data-action="approve-request" data-email="${esc(r.email)}" ${savingRoster.has(r.email) ? "disabled" : ""}>${t("Aprobar igual","Approve anyway","Aprovar mesmo assim","אישור בכל זאת")}</button>`)).join("")}
     </div>` : "";
   const formersHtml = formers.length ? `
     <div class="rejected-section">
@@ -6888,7 +6996,7 @@ function renderSolicitudesQueueSection(){
           <div class="ractions">
             <button class="btn-ghost" data-action="show-user-profile" data-nick="${esc(String(u.nickname||"").toLowerCase())}">${t("Ver perfil","View profile","Ver perfil","צפייה בפרופיל")}</button>
             <button class="btn-ghost danger" data-action="unshare-calendar" data-email="${esc(u.email)}">${t("Sacar del Calendar","Remove from Calendar","Tirar do Calendar","הסרה מהיומן")}</button>
-            <button class="btn-primary" data-action="approve-request" data-email="${esc(u.email)}">${t("Volver a dar acceso","Grant access again","Dar acesso de novo","להעניק גישה שוב")}</button>
+            <button class="btn-primary" data-action="approve-request" data-email="${esc(u.email)}" ${savingRoster.has(u.email) ? "disabled" : ""}>${t("Volver a dar acceso","Grant access again","Dar acesso de novo","להעניק גישה שוב")}</button>
           </div>
         </div>`).join("")}
     </div>` : "";
@@ -7785,7 +7893,7 @@ const replyDrafts = {}; // postId -> draft
 const openNestedReplyForms = new Set(); // replyIds con su mini-formulario de "responder a esto" abierto
 const nestedReplyDrafts = {}; // replyId -> { content }
 function getNestedReplyDraft(replyId){
-  if(!nestedReplyDrafts[replyId]) nestedReplyDrafts[replyId] = { content:"", images:[], links:[], files:[], mentionQuery:null, mentionCaret:0, mentionHighlight:0 };
+  if(!nestedReplyDrafts[replyId]) nestedReplyDrafts[replyId] = { content:"", images:[], links:[], files:[], mentionQuery:null, mentionCaret:0, mentionHighlight:0, scopeError:"" };
   return nestedReplyDrafts[replyId];
 }
 
@@ -7992,6 +8100,7 @@ function renderNestedReplyForm(postId, replyId){
         <div class="img-preview"><img src="${safeImageSrc(src)}"><button type="button" class="rm" data-action="nested-reply-rm-image" data-reply-id="${replyId}" data-idx="${i}">✕</button></div>`).join("")}</div>` : ""}
       ${renderFileChips(d.files, "nested-reply-rm-file", `data-reply-id="${replyId}"`)}
       ${d.links.length ? `<div class="attach-panel">${renderLinkRows("nested-reply", replyId, d.links)}</div>` : ""}
+      ${d.scopeError ? `<div class="form-error">${esc(d.scopeError)}</div>` : ""}
       <div class="reply-form-footer">
         <div class="attach-toolbar">
           <label class="btn-attach" for="nestedReplyImages-${replyId}">📎 ${t("Imagen","Image","Imagem","תמונה")}</label>
@@ -10788,8 +10897,15 @@ document.addEventListener("keydown", e=>{
   // Buscador de personas del proyecto (responsables, editores).
   if(e.target && e.target.dataset && e.target.dataset.ppKey){
     const key = e.target.dataset.ppKey, st = ppState(key);
-    const [kind, postId] = key.split(":"); const post = getPostById(postId);
-    const exclude = kind === "ed" && post ? [post.authorEmail, ...postEditors(post)] : [];
+    // El mismo `exclude` que usa renderPersonPicker al dibujar la lista: si
+    // acá se calculaba distinto (antes, para "own" quedaba siempre vacío
+    // porque se descartaba el msId), el resaltado que se ve en pantalla y
+    // lo que elegía Enter eran dos listas distintas — Enter terminaba
+    // agregando a otra persona, o no hacía nada.
+    const [kind, postId, msId] = key.split(":"); const post = getPostById(postId);
+    const exclude = !post ? []
+      : kind === "ed" ? [post.authorEmail, ...postEditors(post)]
+      : msOwners(postMilestones(post).find(m=>m.id===msId) || {});
     handleAutocompleteKeydown(e, {
       getMatches: () => ppMatches(key, exclude),
       getHighlight: () => st.hi,
@@ -11381,6 +11497,7 @@ document.addEventListener("click", async e=>{
     // Mismo criterio que al revocar: se comparte el Calendar solo si el
     // token sale en silencio; si no, queda para el botón "Compartir
     // Calendar" de su ficha, que sí puede abrir el popup del consentimiento.
+    await withRosterGuard(email, ()=>
     approveRequest(email).then(()=>shareCalendarWith(email, { silentOnly:true })).then(res=>{
       showCalendarNotice(res.ok
         ? { ok:true, message: t("{email} ya puede usar la app y cargar eventos al Calendar compartido de LatAm.","{email} can now use the app and add events to LatAm's shared Calendar.","{email} já pode usar o app e adicionar eventos ao Calendar compartilhado da LatAm.","{email} יכול/ה כעת להשתמש באפליקציה ולהוסיף אירועים ליומן המשותף של LatAm.",{email}) }
@@ -11390,7 +11507,7 @@ document.addEventListener("click", async e=>{
             `{email} já pode usar o app. Para compartilhar também o Calendar, use "Compartilhar Calendar" na ficha em Usuários.`,
             `{email} יכול/ה כעת להשתמש באפליקציה. כדי לשתף גם את היומן, השתמש/י ב"שיתוף היומן" בכרטיס שלו/ה במשתמשים.`,
             { email }) });
-    }).catch(err=>{ console.error(err); appAlert(t("No se pudo aprobar: {msg}","Couldn't approve: {msg}","Não foi possível aprovar: {msg}","{msg} :האישור נכשל",{msg:err.message})); });
+    }).catch(err=>{ console.error(err); appAlert(t("No se pudo aprobar: {msg}","Couldn't approve: {msg}","Não foi possível aprovar: {msg}","{msg} :האישור נכשל",{msg:err.message})); }));
   },
     "unshare-calendar": async (el, e, action, postId) => {
     const email = el.dataset.email;
@@ -11409,7 +11526,9 @@ document.addEventListener("click", async e=>{
     }).catch(err=>{ console.error(err); appAlert(t("No se pudo compartir: {msg}","Couldn't share: {msg}","Não foi possível compartilhar: {msg}","{msg} :השיתוף נכשל",{msg:err.message})); });
   },
     "reject-request": async (el, e, action, postId) => {
-    rejectRequest(el.dataset.email).catch(err=>{ console.error(err); appAlert(t("No se pudo rechazar: {msg}","Couldn't reject: {msg}","Não foi possível rejeitar: {msg}","{msg} :הדחייה נכשלה",{msg:err.message})); });
+    const email = el.dataset.email;
+    await withRosterGuard(email, ()=>
+    rejectRequest(email).catch(err=>{ console.error(err); appAlert(t("No se pudo rechazar: {msg}","Couldn't reject: {msg}","Não foi possível rejeitar: {msg}","{msg} :הדחייה נכשלה",{msg:err.message})); }));
   },
     "revoke-access": async (el, e, action, postId) => {
     const email = el.dataset.email;
@@ -11425,6 +11544,7 @@ document.addEventListener("click", async e=>{
       `?{email} לבטל את הגישה של. הוא/היא לא יוכלו יותר לראות או לפרסם, והגישה ליומן המשותף של LatAm תוסר`,
       { email }
     ), { danger:true, okLabel: t("Revocar acceso","Revoke access","Revogar acesso","ביטול הגישה") })){
+      await withRosterGuard(email, ()=>
       revokeAccess(email).then(()=>unshareCalendarWith(email, { silentOnly:true })).then(res=>{
         showCalendarNotice(res.ok
           ? { ok:true, message: t("Se revocó el acceso de {email} (app y Calendar).","{email}'s access was revoked (app and Calendar).","O acesso de {email} foi revogado (app e Calendar).","הגישה של {email} בוטלה (אפליקציה ויומן).",{email}) }
@@ -11434,7 +11554,7 @@ document.addEventListener("click", async e=>{
               `O acesso de {email} ao app foi revogado, mas o Calendar segue compartilhado: termine com "Tirar do Calendar", em Solicitações > Ex-integrantes.`,
               `הגישה של {email} לאפליקציה בוטלה, אך היומן עדיין משותף: סיים/י עם "הסרה מהיומן", בבקשות > חברים לשעבר.`,
               { email }) });
-      }).catch(err=>{ console.error(err); appAlert(t("No se pudo revocar: {msg}","Couldn't revoke: {msg}","Não foi possível revogar: {msg}","{msg} :הביטול נכשל",{msg:err.message})); });
+      }).catch(err=>{ console.error(err); appAlert(t("No se pudo revocar: {msg}","Couldn't revoke: {msg}","Não foi possível revogar: {msg}","{msg} :הביטול נכשל",{msg:err.message})); }));
     }
   },
     "zonas-remove-zone": async (el, e, action, postId) => {
@@ -11458,6 +11578,11 @@ document.addEventListener("click", async e=>{
     const d = getZonasDraft();
     const label = d.newZoneLabel.trim();
     if(!label){ d.error = t("Escribí un nombre para la zona nueva.","Type a name for the new zone.","Escreva um nome para a zona nova.",".הקלד/י שם לאזור החדש"); render(); return; }
+    // Mismo control que en Tipos de actividad: sin esto se podían crear dos
+    // zonas "Norte" (con claves distintas, norte y norte2, pero idénticas en
+    // pantalla) y no había forma de distinguirlas después.
+    const dupZone = d.zoneOrder.map(k=>d.zones[k]).find(z=> z && normalize(z.label) === normalize(label));
+    if(dupZone){ d.error = t("Ya existe la zona «{n}».","The zone “{n}” already exists.","A zona «{n}» já existe.","האזור «{n}» כבר קיים.",{n:dupZone.label}); render(); return; }
     const key = slugifyKey(label, d.zoneOrder);
     d.zones[key] = { label, color:"#64748b" };
     d.zoneOrder.push(key);
@@ -11471,6 +11596,17 @@ document.addEventListener("click", async e=>{
   },
     "zonas-save": async (el, e, action, postId) => {
     const d = getZonasDraft();
+    // Mismos controles que tipos-save, que acá no existían: se podía dejar
+    // una zona sin nombre, o renombrar dos con el mismo, y se guardaba.
+    if(!d.zoneOrder.length){ d.error = t("Tiene que quedar al menos una zona.","At least one zone has to remain.","Tem que sobrar pelo menos uma zona.",".חייב להישאר לפחות אזור אחד"); render(); return; }
+    const seenZones = new Set();
+    for(const k of d.zoneOrder){
+      const z = d.zones[k]; if(!z) continue;
+      const n = normalize(String(z.label||""));
+      if(!n){ d.error = t("Hay una zona sin nombre.","There's a zone without a name.","Há uma zona sem nome.","יש אזור ללא שם."); render(); return; }
+      if(seenZones.has(n)){ d.error = t("Hay dos zonas con el nombre «{n}».","There are two zones named “{n}”.","Há duas zonas com o nome «{n}».","יש שני אזורים בשם «{n}».",{n:z.label}); render(); return; }
+      seenZones.add(n);
+    }
     d.saving = true; d.error = ""; render();
     saveTerritoryConfig(d.zones, d.countryZones).then(()=>{
       d.saving = false; render();
@@ -11842,7 +11978,20 @@ document.addEventListener("change", e=>{
   else if(el.dataset.action === "rutina-files"){ handleFileAttachments(el.files, rutinaDraft.files); }
   else if(el.dataset.action === "reply-files"){ handleFileAttachments(el.files, getReplyDraft(el.dataset.postId).files); }
   else if(el.dataset.action === "nested-reply-files"){ handleFileAttachments(el.files, getNestedReplyDraft(el.dataset.replyId).files); }
-  else if(el.dataset.action === "zonas-color"){ getZonasDraft().zones[el.dataset.key].color = el.value; render(); }
+  else if(el.dataset.action === "zonas-color"){
+    const d = getZonasDraft();
+    d.zones[el.dataset.key].color = el.value;
+    const clash = zoneColorClash(d, el.dataset.key, el.value);
+    if(clash){
+      showCalendarNotice({ ok:false, message: t(
+        "Ese color se parece mucho al de la zona «{n}». Si querés distinguirlas de un vistazo en el calendario, elegí otro.",
+        "That colour is very close to the “{n}” zone's. To tell them apart at a glance on the calendar, pick another one.",
+        "Essa cor é muito parecida com a da zona «{n}». Para distingui-las de relance no calendário, escolha outra.",
+        "הצבע הזה דומה מאוד לזה של אזור «{n}». כדי להבחין ביניהם במבט חטוף ביומן, בחר/י אחר.",
+        { n: clash.label }) });
+    }
+    render();
+  }
   else if(el.dataset.action === "dp-my-change"){
     if(!dateFieldOpen) return;
     const [curYear, curMonth] = dateFieldOpen.viewMonth.slice(0,7).split("-").map(Number);
@@ -11851,7 +12000,7 @@ document.addEventListener("change", e=>{
     dateFieldOpen.viewMonth = `${newYear}-${String(newMonth).padStart(2,"0")}-01`;
     syncDateFieldOpenState();
   }
-  else if(el.dataset.action === "set-role"){ changeRole(el.dataset.email, el.value); }
+  else if(el.dataset.action === "set-role"){ const email = el.dataset.email, value = el.value; withRosterGuard(email, ()=> changeRole(email, value)); }
   else if(el.dataset.msField === "label"){
     const post = getPostById(el.dataset.postId);
     if(post && canManageProject(post)){
@@ -11969,13 +12118,16 @@ async function submitNestedReply(postId, replyId){
   const d = getNestedReplyDraft(replyId);
   if(d.submitting) return;
   const content = d.content.trim();
-  if(!content) return;
+  // Con aviso, como en la respuesta de primer nivel: antes era un `return`
+  // pelado y tocar "Responder" con el campo vacío no hacía absolutamente
+  // nada (ni error ni envío), sin forma de saber qué había pasado.
+  if(!content){ d.scopeError = t("Escribí una respuesta antes de publicar.","Write a reply before posting.","Escreva uma resposta antes de publicar.",".כתוב/כתבי תגובה לפני הפרסום"); render(); return; }
   const parent = (state.repliesByPost[postId]||[]).find(r=>r.id===replyId);
   const replyToId = parent?.replyToId || replyId;
   const links = d.links.filter(l=>safeUrl(l.url));
   const mentions = extractMentionsFromContent(content);
-  if(mentions.length > MAX_MENTIONS){ await appAlert(tooManyMentionsMsg()); return; }
-  d.submitting = true; render();
+  if(mentions.length > MAX_MENTIONS){ d.scopeError = tooManyMentionsMsg(); render(); return; }
+  d.submitting = true; d.scopeError = ""; render();
   try{
     await createReply(postId, {
       authorName: state.auth.user.displayName, authorEmail: state.auth.user.email,
