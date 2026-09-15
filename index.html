@@ -4020,7 +4020,7 @@ async function shareCalendarWith(email, opts={}){
     // propio navegador de esa persona (ver shouldShowCalendarInvitePopup y
     // hasActiveCalendarInviteNotice) para saber si hay que mostrarle de
     // nuevo el popup y/o la novedad de "revisá tu correo".
-    fb.updateDoc(fb.doc(db,"allowlist",email), { calendarShared:true, calendarInviteSentAt: fb.serverTimestamp() })
+    store.roster.setCalendarShared(email, true)
       .catch(err=> console.error("Se compartió el Calendar pero no se pudo anotar en el roster:", err));
     return { ok:true };
   }catch(err){
@@ -4085,7 +4085,7 @@ async function unshareCalendarWith(email, opts={}){
     // Si sigue en allowlist (cambio de rol, o "Sacar del Calendar" desde
     // Usuarios), su fila deja de decir "Invitación enviada". Si ya fue
     // revocado el doc no existe y esto falla en silencio, que es lo esperado.
-    try{ fb.updateDoc(fb.doc(db,"allowlist",email), { calendarShared:false })
+    try{ store.roster.setCalendarShared(email, false)
       .catch(err=> console.error("Se sacó del Calendar pero no se pudo anotar en el roster:", err)); }catch(e){}
     return { ok:true };
   }catch(err){
@@ -5085,9 +5085,9 @@ async function onAuthChanged(user){
     dataSubscribed = false;
     if(adminSubscribed){ adminSubscribed = false; if(unsubscribeRequests){ unsubscribeRequests(); unsubscribeRequests = null; } if(unsubAuditLog){ unsubAuditLog(); unsubAuditLog = null; } state.accessRequests = []; state.auditLog = []; }
   };
-  unsubAllowlist = fb.onSnapshot(fb.doc(db, "allowlist", profile.email), snap=>{
-    state.auth.allowlisted = snap.exists();
-    state.auth.role = snap.exists() ? (snap.data().role || "member") : null;
+  unsubAllowlist = store.roster.watchOwn(profile.email, miembro=>{
+    state.auth.allowlisted = !!miembro;
+    state.auth.role = miembro ? (miembro.role || "member") : null;
     recomputeAuthStatus();
     syncAdminSubs();
     if(state.auth.allowlisted && !dataSubscribed){
@@ -5201,6 +5201,79 @@ function subscribeAuditLog(){
    está bien mientras dure el proceso.
    ====================================================================== */
 const firebaseStore = {
+  // ---- El equipo ----
+  // En Firestore la colección se llama `allowlist` porque nació siendo una
+  // lista de permitidos; hoy es el roster del equipo (quién está, con qué
+  // rol y con qué @nickname). Acá se la nombra por lo que ES, no por cómo
+  // quedó llamada adentro de la base.
+  roster: {
+    // La lista entera, tal cual está guardada. El acomodo (nickname de
+    // reemplazo, rol válido, orden por antigüedad) lo hace subscribeRoster:
+    // es criterio de la app, y tiene que dar igual con cualquier base.
+    subscribe(alCambiar, alFallar){
+      return fb.onSnapshot(fb.collection(db, "allowlist"),
+        snap => alCambiar(snap.docs.map(d=>({ email:d.id, ...d.data() }))),
+        alFallar);
+    },
+    // La propia membresía, que es LO QUE DECIDE SI HAY ACCESO: llega el
+    // registro, o null si esa persona no está en el equipo. Queda
+    // escuchando a propósito — si le revocan el acceso con la sesión
+    // abierta, la pantalla tiene que enterarse sin recargar.
+    watchOwn(email, alCambiar, alFallar){
+      return fb.onSnapshot(fb.doc(db, "allowlist", email),
+        snap => alCambiar(snap.exists() ? { email:snap.id, ...snap.data() } : null),
+        alFallar);
+    },
+    async get(email){
+      const snap = await fb.getDoc(fb.doc(db, "allowlist", email));
+      return snap.exists() ? { email:snap.id, ...snap.data() } : null;
+    },
+    async all(){
+      const snap = await fb.getDocs(fb.collection(db, "allowlist"));
+      return snap.docs.map(d=>({ email:d.id, ...d.data() }));
+    },
+    // Aprobar a alguien: entra con todo nuevo, y la fecha de alta la pone
+    // el servidor — es un dato de auditoría (desde cuándo tiene acceso) y
+    // no puede depender del reloj de quien aprueba.
+    async add(email, datos){
+      await fb.setDoc(fb.doc(db, "allowlist", email), { ...datos, approvedAt: fb.serverTimestamp() });
+    },
+    // El alta que NO pisa lo que ya hay: completa lo que falte. La usa el
+    // admin para asegurarse su propio lugar en el roster sin borrarle nada
+    // a un documento que quizás ya existe. Si ya tenía fecha de alta se
+    // respeta; si no, la pone el servidor.
+    async ensure(email, datos){
+      await fb.setDoc(fb.doc(db, "allowlist", email),
+        { ...datos, approvedAt: datos.approvedAt || fb.serverTimestamp() }, { merge: true });
+    },
+    async setRole(email, role){
+      await fb.updateDoc(fb.doc(db, "allowlist", email), { role });
+    },
+    // El @nickname. `name` va SOLO cuando además se está completando un
+    // acceso viejo que nunca lo tuvo guardado (ver backfillNicknames): si
+    // no se pasa, no se toca, para no pisar el nombre de nadie.
+    async setNickname(email, nickname, name){
+      const campos = { nickname };
+      if(name !== undefined) campos.name = name;
+      await fb.updateDoc(fb.doc(db, "allowlist", email), campos);
+    },
+    // Al compartir se anota TAMBIÉN cuándo: es lo que mira el navegador de
+    // esa persona para decidir si le vuelve a avisar que revise el correo.
+    // Al sacar alcanza con el estado.
+    async setCalendarShared(email, compartido){
+      await fb.updateDoc(fb.doc(db, "allowlist", email),
+        compartido ? { calendarShared: true, calendarInviteSentAt: fb.serverTimestamp() }
+                   : { calendarShared: false });
+    },
+    // El tour se marca por cuenta y no por dispositivo, así no le vuelve a
+    // aparecer cuando entra desde el teléfono.
+    async markTourSeen(email){
+      await fb.updateDoc(fb.doc(db, "allowlist", email), { tourSeenAt: fb.serverTimestamp() });
+    },
+    async remove(email){
+      await fb.deleteDoc(fb.doc(db, "allowlist", email));
+    },
+  },
   // ---- Solicitudes de acceso ----
   accessRequests: {
     subscribe(alCambiar, alFallar){
@@ -5296,13 +5369,12 @@ function subscribeRoster(){
   // documentos que no tienen ese campo, y esa persona desaparecía del
   // roster (no se la podía @mencionar, myRosterEntry() daba null). Se
   // ordena acá, con los que no tienen fecha al principio.
-  unsubRoster = fb.onSnapshot(fb.collection(db,"allowlist"), snap=>{
+  unsubRoster = store.roster.subscribe(lista=>{
     const missingNickname = [];
-    state.roster = snap.docs.map(d=>{
-      const data = d.data();
-      if(!data.nickname) missingNickname.push(d.id);
+    state.roster = lista.map(data=>{
+      if(!data.nickname) missingNickname.push(data.email);
       return {
-        email: d.id, nickname: data.nickname || nicknameFallback(d.id), photoURL: data.photoURL || null,
+        email: data.email, nickname: data.nickname || nicknameFallback(data.email), photoURL: data.photoURL || null,
         name: data.name || null, approvedAt: data.approvedAt || null, approvedBy: data.approvedBy || null,
         calendarShared: data.calendarShared === true, calendarInviteSentAt: data.calendarInviteSentAt || null,
         tourSeenAt: data.tourSeenAt || null,
@@ -5325,7 +5397,7 @@ async function backfillNicknames(emails){
       const name = (req && req.name) || email;
       const nickname = makeNickname(name, existingNicknames);
       existingNicknames.add(nickname);
-      await fb.updateDoc(fb.doc(db, "allowlist", email), { name, nickname });
+      await store.roster.setNickname(email, nickname, name);
     }catch(err){ console.error("No se pudo completar el nickname de " + email + ":", err); }
   }
 }
@@ -5501,12 +5573,12 @@ async function takenNicknames(exceptEmail){
   const taken = new Set();
   const add = (email, nick)=>{ if(nick && email !== exceptEmail) taken.add(String(nick).toLowerCase()); };
   const [roster, formers] = await Promise.all([
-    fb.getDocs(fb.collection(db,"allowlist")),
+    store.roster.all(),
     // Si las reglas de formerMembers todavía no están publicadas, se sigue
     // con los activos nomás en vez de romper el alta.
     store.formerMembers.all().catch(()=>[]),
   ]);
-  roster.docs.forEach(d=> add(d.id, d.data().nickname));
+  roster.forEach(u=> add(u.email, u.nickname));
   formers.forEach(u=> add(u.email, u.nickname));
   return taken;
 }
@@ -5529,15 +5601,14 @@ function makeNickname(displayName, existingNicknames){
 // otro aprobado (no cambia nada de cómo se calculan sus permisos).
 async function ensureAdminInRoster(profile){
   try{
-    const ref = fb.doc(db, "allowlist", profile.email);
-    const snap = await fb.getDoc(ref);
-    if(snap.exists() && snap.data().nickname) return;
+    const existente = await store.roster.get(profile.email);
+    if(existente && existente.nickname) return;
     const nickname = makeNickname(profile.displayName, await takenNicknames(profile.email));
-    await fb.setDoc(ref, {
+    await store.roster.ensure(profile.email, {
       email: profile.email, name: profile.displayName, nickname, photoURL: profile.photoURL || null,
-      approvedAt: (snap.exists() && snap.data().approvedAt) || fb.serverTimestamp(),
+      approvedAt: (existente && existente.approvedAt) || null,
       approvedBy: profile.email,
-    }, { merge: true });
+    });
   }catch(err){ console.error("No se pudo sumar al admin al equipo (roster de @menciones):", err); }
 }
 async function approveRequest(email){
@@ -5552,9 +5623,9 @@ async function approveRequest(email){
   const nickname = former && former.nickname && !taken.has(String(former.nickname).toLowerCase())
     ? former.nickname
     : makeNickname(name, taken);
-  await fb.setDoc(fb.doc(db, "allowlist", email), {
+  await store.roster.add(email, {
     email, name, nickname, photoURL: reqData.photoURL || null, role: "member",
-    approvedAt: fb.serverTimestamp(), approvedBy: (state.auth.user && state.auth.user.email) || ADMIN_EMAIL,
+    approvedBy: (state.auth.user && state.auth.user.email) || ADMIN_EMAIL,
   });
   await store.accessRequests.setStatus(email, "approved");
   // Ya no es "ex": vuelve a estar en el roster y el registro histórico
@@ -5571,7 +5642,7 @@ async function changeRole(email, role){
   if(email === ADMIN_EMAIL || email === me || !ROLES.includes(role)) { render(); return; }
   try{
     const wasShared = !!(state.roster.find(u=>u.email===email) || {}).calendarShared;
-    await fb.updateDoc(fb.doc(db, "allowlist", email), { role });
+    await store.roster.setRole(email, role);
     logAudit("role_changed", { targetEmail: email, detail: role });
     // Observador = solo lectura también en el Calendar: si lo tenía
     // compartido (writer), se lo saca. Mismo criterio que al revocar: en
@@ -5604,15 +5675,14 @@ async function revokeAccess(email){
   // error (solo console.error) y borraba el acceso igual, perdiendo el
   // nickname para siempre sin que nadie se enterara. El catch de quien
   // llama a revokeAccess() ya le avisa a la persona que revoca.
-  const snap = await fb.getDoc(fb.doc(db, "allowlist", email));
-  if(snap.exists()){
-    const d = snap.data();
+  const d = await store.roster.get(email);
+  if(d){
     await store.formerMembers.save(email, {
       email, name: d.name || email, nickname: d.nickname || "",
       photoURL: d.photoURL || null, approvedAt: d.approvedAt || null,
     });
   }
-  await fb.deleteDoc(fb.doc(db, "allowlist", email));
+  await store.roster.remove(email);
   // La solicitud original queda marcada como "rejected" (no solo se borra
   // el acceso real) para que, si esa persona intenta entrar de nuevo, la
   // pantalla de "acceso no aprobado" con el botón "Pedir acceso de nuevo"
@@ -6862,7 +6932,7 @@ async function saveNicknameEdit(){
   if(!check.ok){ nicknameError = check.error; render(); return; }
   const email = state.auth.user.email;
   try{
-    await fb.updateDoc(fb.doc(db,"allowlist",email), { nickname: check.value });
+    await store.roster.setNickname(email, check.value);
     nicknameEditing = false; nicknameError = null;
     render();
   }catch(err){
@@ -11046,7 +11116,7 @@ function hasSeenTour(){
 function markTourSeen(){
   const email = state.auth.user && state.auth.user.email;
   if(email){
-    fb.updateDoc(fb.doc(db, "allowlist", email), { tourSeenAt: fb.serverTimestamp() }).catch(()=>{});
+    store.roster.markTourSeen(email).catch(()=>{});
   }
   // También local: la escritura de arriba es asíncrona y el render que
   // viene enseguida no puede esperarla.
