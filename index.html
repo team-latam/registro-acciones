@@ -7963,14 +7963,169 @@ function preferenciasSections(){
     { key:"lugares", label:t("Lugares","Places","Lugares","מקומות") },
     { key:"calendar", label:"Calendar" },
     { key:"adjuntos", label:t("Adjuntos","Attachments","Anexos","קבצים מצורפים") },
+    { key:"respaldo", label:t("Copia de seguridad","Backup","Cópia de segurança","גיבוי") },
   ];
 }
+/* ======================================================================
+   COPIA DE SEGURIDAD (panel admin, Preferencias > Copia de seguridad)
+
+   Descarga TODO lo que hay en Firestore como un archivo JSON, desde el
+   navegador de quien lo pide (que es quien tiene los permisos). No hay
+   servidor propio, así que no hay forma de sacar un respaldo automático:
+   esto es el equivalente manual, y es lo que permite volver atrás si una
+   migración sale mal.
+
+   Lo que NO puede entrar, y conviene saberlo: las preferencias
+   personales de los DEMÁS (userPrefs). Las reglas dejan que cada uno lea
+   solo las suyas — a propósito, ver firestore.rules. Son configuraciones
+   de cada persona (colores, avisos), no contenido del equipo: si hubiera
+   que reconstruir, cada uno vuelve a elegirlas.
+   ====================================================================== */
+let respaldoEstado = { corriendo:false, resumen:null, error:"" };
+// Los Timestamp de Firestore no sobreviven a JSON.stringify de forma
+// reconocible: se marcan explícitamente para que quien lea el archivo
+// (o un importador futuro) sepa que eso era una fecha y no un número.
+function respaldoValor(v){
+  if(v == null) return v;
+  if(typeof v.toMillis === "function") return { __tipo:"fecha", ms: v.toMillis() };
+  if(Array.isArray(v)) return v.map(respaldoValor);
+  if(typeof v === "object"){
+    const out = {};
+    Object.keys(v).forEach(k=>{ out[k] = respaldoValor(v[k]); });
+    return out;
+  }
+  return v;
+}
+// La versión liviana saca lo que pesa (imágenes y archivos en base64) y
+// deja en su lugar cuántos había. Sirve para mirar o comparar el
+// contenido sin abrir un archivo de cientos de MB; el respaldo de verdad
+// es el completo.
+function respaldoSinAdjuntos(d){
+  const out = { ...d };
+  if(Array.isArray(out.images)) out.images = { __quitado:"images", cantidad: out.images.length };
+  if(Array.isArray(out.files)) out.files = { __quitado:"files", cantidad: out.files.length };
+  return out;
+}
+async function leerColeccion(nombre, conAdjuntos){
+  const snap = await fb.getDocs(fb.collection(db, nombre));
+  return snap.docs.map(d=>({ id:d.id, ...respaldoValor(conAdjuntos ? d.data() : respaldoSinAdjuntos(d.data())) }));
+}
+async function leerDocMeta(id){
+  try{
+    const snap = await fb.getDoc(fb.doc(db, "meta", id));
+    return snap.exists() ? respaldoValor(snap.data()) : null;
+  }catch(e){ return null; }
+}
+async function armarRespaldo(conAdjuntos){
+  const datos = { formato:1, generado: new Date().toISOString(), conAdjuntos, origen:"firestore" };
+  datos.posts = await leerColeccion("posts", conAdjuntos);
+  // Las respuestas en UNA consulta de grupo, no una por posteo: el id del
+  // posteo padre sale de la propia referencia.
+  const reps = await fb.getDocs(fb.collectionGroup(db, "replies"));
+  datos.replies = reps.docs.map(d=>({
+    id: d.id, postId: d.ref.parent.parent ? d.ref.parent.parent.id : null,
+    ...respaldoValor(conAdjuntos ? d.data() : respaldoSinAdjuntos(d.data())),
+  }));
+  for(const col of ["allowlist","formerMembers","accessRequests","auditLog"]){
+    try{ datos[col] = await leerColeccion(col, true); }
+    catch(e){ datos[col] = { __error: e.message }; }
+  }
+  datos.meta = {
+    territoryConfig: await leerDocMeta("territoryConfig"),
+    preferences: await leerDocMeta("preferences"),
+    calendarSync: await leerDocMeta("calendarSync"),
+  };
+  // Solo las propias: las reglas no dejan leer las de los demás.
+  const miEmail = state.auth.user && state.auth.user.email;
+  if(miEmail){
+    try{
+      const mias = await fb.getDoc(fb.doc(db, "userPrefs", miEmail));
+      datos.userPrefs = mias.exists() ? { [miEmail]: respaldoValor(mias.data()) } : {};
+    }catch(e){ datos.userPrefs = {}; }
+  }
+  return datos;
+}
+function bajarArchivo(nombre, texto){
+  const blob = new Blob([texto], { type:"application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = nombre;
+  document.body.appendChild(a); a.click(); a.remove();
+  // Se libera en el siguiente turno: revocarla en el acto cancela la
+  // descarga en algunos navegadores.
+  setTimeout(()=> URL.revokeObjectURL(url), 60000);
+}
+async function descargarRespaldo(conAdjuntos){
+  if(respaldoEstado.corriendo) return;
+  respaldoEstado = { corriendo:true, resumen:null, error:"" }; render();
+  try{
+    const datos = await armarRespaldo(conAdjuntos);
+    const texto = JSON.stringify(datos, null, conAdjuntos ? 0 : 2);
+    const hoy = todayISO();
+    bajarArchivo(`registro-acciones-respaldo-${hoy}${conAdjuntos ? "" : "-liviano"}.json`, texto);
+    respaldoEstado = { corriendo:false, error:"", resumen:{
+      conAdjuntos,
+      bytes: texto.length,
+      posts: (datos.posts||[]).length,
+      replies: (datos.replies||[]).length,
+      allowlist: (datos.allowlist||[]).length,
+      formerMembers: (datos.formerMembers||[]).length,
+      auditLog: (datos.auditLog||[]).length,
+    }};
+  }catch(err){
+    console.error("No se pudo armar el respaldo:", err);
+    respaldoEstado = { corriendo:false, resumen:null, error: err.message || String(err) };
+  }
+  render();
+}
+function pesoLegible(bytes){
+  if(bytes >= 1048576) return `${(bytes/1048576).toFixed(1)} MB`;
+  if(bytes >= 1024) return `${Math.round(bytes/1024)} KB`;
+  return `${bytes} B`;
+}
+function renderRespaldoSection(){
+  const r = respaldoEstado;
+  const resumen = !r.resumen ? "" : `
+    <div class="settings-card" style="margin-top:16px;">
+      <div class="setting-row" style="display:block;">
+        <div class="setting-label">✅ ${t("Copia descargada","Backup downloaded","Cópia baixada","הגיבוי הורד")}</div>
+        <div class="setting-sub" style="margin-top:6px;">
+          ${t("Pesa {peso}. Incluye {posts} posteos, {replies} comentarios, {roster} integrantes, {ex} ex integrantes y {audit} registros de actividad.",
+              "It weighs {peso}. It has {posts} posts, {replies} comments, {roster} members, {ex} former members and {audit} activity records.",
+              "Pesa {peso}. Inclui {posts} postagens, {replies} comentários, {roster} integrantes, {ex} ex-integrantes e {audit} registros de atividade.",
+              "{peso} משקל. כולל {posts} פוסטים, {replies} תגובות, {roster} חברים, {ex} חברים לשעבר ו-{audit} רשומות פעילות.",
+              { peso: pesoLegible(r.resumen.bytes), posts: r.resumen.posts, replies: r.resumen.replies,
+                roster: r.resumen.allowlist, ex: r.resumen.formerMembers, audit: r.resumen.auditLog })}
+          ${r.resumen.conAdjuntos ? "" : ` ${t("(Sin adjuntos: las imágenes y los archivos NO están en este archivo.)","(No attachments: images and files are NOT in this file.)","(Sem anexos: as imagens e os arquivos NÃO estão neste arquivo.)","(ללא קבצים מצורפים: התמונות והקבצים אינם בקובץ הזה.)")}`}
+        </div>
+      </div>
+    </div>`;
+  return `
+      <div class="hint" style="margin-bottom:16px;">${t(
+        "Baja todo lo que hay guardado en un solo archivo, desde este navegador. Es el respaldo que te deja volver atrás si algo sale mal — guardalo en un lugar seguro. No incluye las preferencias personales de los demás (colores, avisos): cada uno solo puede leer las suyas, y se vuelven a elegir en un minuto.",
+        "Downloads everything stored, in a single file, from this browser. It's the backup that lets you go back if something goes wrong — keep it somewhere safe. It doesn't include other people's personal settings (colours, alerts): each person can only read their own, and they take a minute to set again.",
+        "Baixa tudo o que está guardado num único arquivo, deste navegador. É o backup que permite voltar atrás se algo der errado — guarde-o num lugar seguro. Não inclui as preferências pessoais dos outros (cores, avisos): cada um só pode ler as suas, e se voltam a escolher num minuto.",
+        "מוריד את כל מה ששמור לקובץ אחד, מהדפדפן הזה. זה הגיבוי שמאפשר לחזור אחורה אם משהו משתבש — שמור אותו במקום בטוח. הוא לא כולל את ההעדפות האישיות של האחרים (צבעים, התראות): כל אחד יכול לקרוא רק את שלו, ולוקח דקה להגדיר אותן מחדש."
+      )}</div>
+      <div class="settings-card">
+        ${prefRow("💾", t("Copia completa","Full backup","Cópia completa","גיבוי מלא"),
+          t("Todo, con las imágenes y los archivos adentro. Es el que sirve para restaurar de verdad, y el que más pesa.","Everything, with images and files inside. This is the one that actually restores, and the heaviest.","Tudo, com as imagens e os arquivos dentro. É o que serve para restaurar de verdade, e o que mais pesa.","הכול, כולל התמונות והקבצים. זה זה שבאמת משחזר, והכי כבד."),
+          `<button type="button" class="btn-primary" data-action="descargar-respaldo" data-adjuntos="1" ${r.corriendo?"disabled":""}>${r.corriendo ? t("Preparando…","Preparing…","Preparando…","...מכין") : t("Descargar","Download","Baixar","הורדה")}</button>`)}
+        ${prefRow("📄", t("Copia liviana","Light backup","Cópia leve","גיבוי קל"),
+          t("Lo mismo pero sin imágenes ni archivos, para poder abrirlo y mirarlo. NO sirve para restaurar.","The same but without images or files, so you can open and read it. It does NOT restore.","O mesmo mas sem imagens nem arquivos, para poder abrir e olhar. NÃO serve para restaurar.","אותו דבר אבל בלי תמונות וקבצים, כדי שאפשר יהיה לפתוח ולעיין. לא מתאים לשחזור."),
+          `<button type="button" data-action="descargar-respaldo" data-adjuntos="0" ${r.corriendo?"disabled":""}>${t("Descargar","Download","Baixar","הורדה")}</button>`)}
+      </div>
+      ${r.error ? `<div class="form-error" style="margin-top:12px;">${esc(t("No se pudo armar la copia: {msg}","Couldn't build the backup: {msg}","Não foi possível criar a cópia: {msg}","{msg} :יצירת הגיבוי נכשלה",{msg:r.error}))}</div>` : ""}
+      ${resumen}`;
+}
+
 function renderPreferenciasView(){
   const sec = state.preferenciasSection;
   const body = sec==="tipos" ? renderTiposSection()
     : sec==="lugares" ? renderLugaresSection()
     : sec==="calendar" ? renderCalendarSection()
     : sec==="adjuntos" ? renderAdjuntosSection()
+    : sec==="respaldo" ? renderRespaldoSection()
     : renderZonasSection();
   return `
     <div class="preferencias-view">
@@ -12523,6 +12678,9 @@ document.addEventListener("click", async e=>{
   },
     "config-section": async (el, e, action, postId) => {
     state.configSection = el.dataset.key; render();
+  },
+    "descargar-respaldo": async (el, e, action, postId) => {
+    await descargarRespaldo(el.dataset.adjuntos === "1");
   },
     "goto-config-capas": async (el, e, action, postId) => {
     calLayersMenuOpen = false;
