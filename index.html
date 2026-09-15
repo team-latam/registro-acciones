@@ -5183,12 +5183,63 @@ function subscribeAuditLog(){
 }
 // Lista de nombre/email de todo aprobado, para autocompletar @menciones.
 // Cualquier aprobado puede LEER esto (no solo el admin) — ver el cambio
+/* ======================================================================
+   CAPA DE DATOS
+
+   Todo el acceso a la base pasa por acá, y NADA de afuera vuelve a
+   nombrar a Firestore directamente. La razón es la migración a Supabase:
+   con esta capa, cambiar de una base a la otra es cambiar qué
+   implementación se le asigna a `store` — una línea — en vez de
+   reescribir las 80 y pico de llamadas desparramadas por el archivo. Y
+   volver atrás, lo mismo.
+
+   La forma de cada método se eligió por lo que la app NECESITA, no por
+   lo que Firestore ofrece, justamente para que la otra implementación
+   pueda cumplirla a su manera:
+
+   - subscribe(alCambiar) -> función para cortar. Entrega SIEMPRE la
+     lista entera, ya ordenada y con su id adentro. Firestore hace eso
+     solo con onSnapshot; Supabase manda los cambios de a uno y la lista
+     la arma la implementación, no quien llama.
+   - all() -> una lectura suelta, sin quedar escuchando.
+   - save(id, datos) / remove(id) -> escritura por id.
+
+   Se migra de a una colección por vez (ver VOLVER-A-FIREBASE.md): las
+   que todavía no pasaron por acá siguen llamando a fb.* directo, y eso
+   está bien mientras dure el proceso.
+   ====================================================================== */
+const firebaseStore = {
+  formerMembers: {
+    subscribe(alCambiar, alFallar){
+      return fb.onSnapshot(fb.collection(db, "formerMembers"),
+        snap => alCambiar(snap.docs.map(d=>({ email:d.id, ...d.data() }))),
+        alFallar);
+    },
+    async all(){
+      const snap = await fb.getDocs(fb.collection(db, "formerMembers"));
+      return snap.docs.map(d=>({ email:d.id, ...d.data() }));
+    },
+    async save(email, datos){
+      // La hora la pone el servidor, no el reloj de quien escribe: es un
+      // dato de auditoría (cuándo dejó el equipo) y no puede depender de
+      // que alguien tenga la fecha mal.
+      await fb.setDoc(fb.doc(db, "formerMembers", email), { ...datos, revokedAt: fb.serverTimestamp() });
+    },
+    async remove(email){
+      await fb.deleteDoc(fb.doc(db, "formerMembers", email));
+    },
+  },
+};
+// Qué implementación está en uso. Durante la migración esto va a poder
+// valer también `supabaseStore`.
+let store = firebaseStore;
+
 // correspondiente en firestore.rules (allowlist: allow list).
 // Ex integrantes: lo lee cualquier aprobado, igual que el roster y por el
 // mismo motivo — resolver el @nickname de quien escribió algo.
 function subscribeFormerMembers(){
-  unsubFormerMembers = fb.onSnapshot(fb.collection(db,"formerMembers"), snap=>{
-    state.formerMembers = snap.docs.map(d=>({ email:d.id, ...d.data() }));
+  unsubFormerMembers = store.formerMembers.subscribe(lista=>{
+    state.formerMembers = lista;
     render();
   }, err=>console.error("Error leyendo ex integrantes:", err));
 }
@@ -5405,10 +5456,10 @@ async function takenNicknames(exceptEmail){
     fb.getDocs(fb.collection(db,"allowlist")),
     // Si las reglas de formerMembers todavía no están publicadas, se sigue
     // con los activos nomás en vez de romper el alta.
-    fb.getDocs(fb.collection(db,"formerMembers")).catch(()=>({ docs:[] })),
+    store.formerMembers.all().catch(()=>[]),
   ]);
   roster.docs.forEach(d=> add(d.id, d.data().nickname));
-  formers.docs.forEach(d=> add(d.id, d.data().nickname));
+  formers.forEach(u=> add(u.email, u.nickname));
   return taken;
 }
 function makeNickname(displayName, existingNicknames){
@@ -5460,7 +5511,7 @@ async function approveRequest(email){
   await fb.updateDoc(fb.doc(db, "accessRequests", email), { status:"approved" });
   // Ya no es "ex": vuelve a estar en el roster y el registro histórico
   // dejaría duplicada su identidad en memberByEmail.
-  try{ await fb.deleteDoc(fb.doc(db, "formerMembers", email)); }catch(e){}
+  try{ await store.formerMembers.remove(email); }catch(e){}
   logAudit("access_approved", { targetEmail: email });
 }
 // Cambio de rol desde Usuarios. ADMIN_EMAIL queda afuera, y uno mismo
@@ -5508,10 +5559,9 @@ async function revokeAccess(email){
   const snap = await fb.getDoc(fb.doc(db, "allowlist", email));
   if(snap.exists()){
     const d = snap.data();
-    await fb.setDoc(fb.doc(db, "formerMembers", email), {
+    await store.formerMembers.save(email, {
       email, name: d.name || email, nickname: d.nickname || "",
       photoURL: d.photoURL || null, approvedAt: d.approvedAt || null,
-      revokedAt: fb.serverTimestamp(),
     });
   }
   await fb.deleteDoc(fb.doc(db, "allowlist", email));
@@ -13035,7 +13085,7 @@ document.addEventListener("click", async e=>{
     if(!ok) return;
     await withRosterGuard(email, async ()=>{
       try{
-        await fb.deleteDoc(fb.doc(db, "formerMembers", email));
+        await store.formerMembers.remove(email);
       }catch(err){
         console.error(err);
         await appAlert(t("No se pudo borrar: {msg}","Couldn't remove: {msg}","Não foi possível apagar: {msg}","{msg} :המחיקה נכשלה",{msg:err.message}));
