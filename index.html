@@ -1115,20 +1115,22 @@
   .dt-row{ display:flex; align-items:center; gap:8px; margin-bottom:8px; }
   .dt-row:last-child{ margin-bottom:0; }
   /* Mismo pill que .date-trigger justo arriba en el mismo .field-icon-body
-     (fondo, borde, radio, tipografía): antes era el <input type=time> con
-     su caja gris por defecto, que desentonaba al lado de la fecha ya
-     rediseñada. El reloj propio del navegador (los segmentos hh:mm y su
-     selección) sigue siendo nativo — eso no se puede tocar por CSS sin
-     armar un selector propio — pero el marco alrededor ahora es el mismo. */
-  .dt-row input[type=time]{
-    flex:1; min-width:0; text-align:center; cursor:pointer;
+     (fondo, borde, radio, tipografía). Antes era el <input type=time>
+     nativo: además de desentonar visualmente, su widget segmentado (hh
+     por un lado, mm por otro) hace que escribir de corrido dé un
+     resultado distinto al que se tipeó — mismo problema de fondo que
+     tenían las fechas. Se reemplaza por texto libre + parseTypedTime
+     (ver commitTypedTime), tipeado y validado igual que la fecha. */
+  .dt-time-input{
+    flex:1; min-width:0; text-align:center;
     font-family:inherit; font-weight:600; font-size:12.5px; letter-spacing:.02em;
     padding:5px 10px; border-radius:999px; border:1px solid var(--border);
     background:var(--surface-soft); color:var(--ink);
   }
-  .dt-row input[type=time]:hover{ border-color:var(--celeste-dark); }
-  .dt-row input[type=time]:focus{ outline:none; border-color:var(--celeste-dark); background:var(--card); }
-  .dt-row input[type=time]::-webkit-calendar-picker-indicator{ cursor:pointer; opacity:.75; }
+  .dt-time-input::placeholder{ color:var(--text-muted); font-weight:600; opacity:.8; }
+  .dt-time-input:hover{ border-color:var(--celeste-dark); }
+  .dt-time-input:focus{ outline:none; border-color:var(--celeste-dark); background:var(--card); }
+  .dt-time-input.invalid{ animation:dp-shake .32s ease; border-color:var(--danger); background:var(--danger-bg); color:var(--danger-text); }
   .dt-row .date-field{ flex:1; min-width:0; }
   .dt-row .date-trigger{ width:100%; justify-content:center; }
   .dt-sep{ color:var(--text-muted); font-size:13px; flex:none; }
@@ -2797,6 +2799,82 @@ function fmtHHMM(hhmm){
   if(h > 23 || min > 59) return String(hhmm);
   if(!uses12h()) return `${pad2(h)}:${m[2]}`;
   return new Date(2000,0,1,h,min).toLocaleTimeString(dateLocale(), { hour:"numeric", minute:"2-digit", hour12:true });
+}
+// ---------------------------------------------------------------------
+// Entrada tipeada de horario (reemplaza el <input type=time> nativo del
+// composer, ver commitTypedTime): mismo problema que resolvió el selector
+// de fecha propio — el widget segmentado del navegador (hora por un lado,
+// minutos por otro) no deja escribir con confianza de corrido. Formato
+// simple y fijo para tipear/mostrar (no el de fmtHHMM, que en 12 h usa
+// "a. m."/"p. m." con puntos — más piola de tipear "9:00 am" a secas),
+// aunque lo guardado sigue siendo siempre "HH:MM" en 24 h, como siempre.
+// ---------------------------------------------------------------------
+function typedTimePlaceholder(){ return uses12h() ? "hh:mm am/pm" : "hh:mm"; }
+function fmtTypedTime(hhmm){
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm||""));
+  if(!m) return "";
+  const h = Number(m[1]), min = Number(m[2]);
+  if(h > 23 || min > 59) return "";
+  if(!uses12h()) return `${pad2(h)}:${pad2(min)}`;
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${pad2(min)} ${h < 12 ? "am" : "pm"}`;
+}
+// Acepta "9", "900", "0900", "9:00", "9.00", "9 00", "9:00am", "9:00 a.m."
+// — con o sin separador, con o sin am/pm (si no hay am/pm, se lee en 24 h
+// aunque la preferencia sea 12 h: alguien puede preferir ver "9:00 pm"
+// pero tipear "21:00" y tiene que andar igual).
+function parseTypedTime(raw){
+  if(typeof raw !== "string") return null;
+  let s = raw.trim().toLowerCase();
+  if(!s) return null;
+  let meridiem = null;
+  const withMeridiem = /^(.*?)\s*([ap])\.?\s*m?\.?$/.exec(s);
+  if(withMeridiem && withMeridiem[1]){ meridiem = withMeridiem[2]; s = withMeridiem[1].trim(); }
+  let hour, minute;
+  const sep = /^(\d{1,2})[:.\s-](\d{1,2})$/.exec(s);
+  if(sep){
+    hour = Number(sep[1]); minute = Number(sep[2]);
+  } else if(/^\d{3,4}$/.test(s)){
+    hour = Number(s.slice(0, s.length - 2)); minute = Number(s.slice(-2));
+  } else if(/^\d{1,2}$/.test(s)){
+    hour = Number(s); minute = 0;
+  } else return null;
+  if(!Number.isInteger(hour) || !Number.isInteger(minute)) return null;
+  if(minute < 0 || minute > 59) return null;
+  if(meridiem){
+    if(hour < 1 || hour > 12) return null;
+    if(meridiem === "p" && hour !== 12) hour += 12;
+    if(meridiem === "a" && hour === 12) hour = 0;
+  } else if(hour < 0 || hour > 23) return null;
+  return `${pad2(hour)}:${pad2(minute)}`;
+}
+// Confirma lo tipeado en un <input class="dt-time-input">: mismo criterio
+// que commitTypedDate, pero sin popup — el valor vive directo en
+// composerDraft, así que alcanza con leer/escribir data-time-field
+// ("start"/"end") y renderizar. Vacío se acepta (hora sin definir); no
+// parseable sacude+flashea y vuelve al último valor válido.
+function commitTypedTimeField(input){
+  const field = input.dataset.timeField === "end" ? "endTime" : "startTime";
+  const currentValue = composerDraft[field];
+  const trimmed = input.value.trim();
+  if(!trimmed){
+    composerDraft[field] = "";
+    if(currentValue) render();
+    return;
+  }
+  const hhmm = parseTypedTime(trimmed);
+  if(!hhmm){
+    input.classList.remove("invalid");
+    void input.offsetWidth;
+    input.classList.add("invalid");
+    setTimeout(()=>{ input.classList.remove("invalid"); }, 350);
+    input.value = fmtTypedTime(currentValue);
+    return;
+  }
+  input.value = fmtTypedTime(hhmm);
+  if(hhmm === currentValue) return;
+  composerDraft[field] = hhmm;
+  render();
 }
 // Etiqueta de la columna de horas de Semana/Día: en 12 h va sin ":00"
 // ("1 p. m."), que es lo que hace Google y ocupa menos en la canaleta.
@@ -5385,7 +5463,7 @@ function renderProyectosView(){
   projectOpen = null;
   const list = projectPosts().sort((a,b)=> (projectDone(a) ? 1 : 0) - (projectDone(b) ? 1 : 0) || projectSortKey(a).localeCompare(projectSortKey(b)));
   if(!list.length){
-    return `<div class="empty-state"><div class="big">📋</div>${t("Todavía no hay proyectos.","There are no projects yet.","Ainda não há projetos.","עדיין אין פרויקטים.")}<br>${t("En cualquier Evento del Feed, tocá «Crear proyecto» para armarle su línea de tiempo de hitos.","On any Event in the Feed, tap “Create project” to build its milestone timeline.","Em qualquer Evento do Feed, toque em «Criar projeto» para montar sua linha do tempo de marcos.","בכל אירוע בפיד, לחצו על «יצירת פרויקט» כדי לבנות את ציר הזמן של אבני הדרך שלו.")}</div>`;
+    return `<div class="empty-state"><div class="big">📋</div>${t("Todavía no hay proyectos.","There are no projects yet.","Ainda não há projetos.","עדיין אין פרויקטים.")}<br>${t("En cualquier Evento, tocá «Crear proyecto» para armar la línea de tiempo.","On any Event, tap “Create project” to build the timeline.","Em qualquer Evento, toque em «Criar projeto» para montar a linha do tempo.","בכל אירוע, לחצו על «יצירת פרויקט» כדי לבנות את ציר הזמן.")}</div>`;
   }
   return `<div class="projects-grid">${list.map(p=>{
     const ms = postMilestones(p), done = ms.filter(m=>m.done).length, overdue = ms.filter(m=>milestoneStatus(m)==="overdue").length;
@@ -9782,9 +9860,9 @@ function renderComposer(){
         </div>
         ${!d.allDay ? `
         <div class="dt-row">
-          <input type="time" id="cStartTime" value="${esc(d.startTime)}">
+          <input type="text" inputmode="${uses12h() ? "text" : "numeric"}" autocomplete="off" class="dt-time-input" id="cStartTime" data-time-field="start" placeholder="${esc(typedTimePlaceholder())}" aria-label="${esc(t("Hora de inicio","Start time","Hora de início","שעת התחלה"))}" value="${esc(fmtTypedTime(d.startTime))}">
           <span class="dt-sep">${isRTL()?"←":"→"}</span>
-          <input type="time" id="cEndTime" value="${esc(d.endTime)}">
+          <input type="text" inputmode="${uses12h() ? "text" : "numeric"}" autocomplete="off" class="dt-time-input" id="cEndTime" data-time-field="end" placeholder="${esc(typedTimePlaceholder())}" aria-label="${esc(t("Hora de fin","End time","Hora de fim","שעת סיום"))}" value="${esc(fmtTypedTime(d.endTime))}">
         </div>` : ""}
       </div>
     </div>
@@ -10706,6 +10784,7 @@ document.addEventListener("keydown", e=>{
   }
   if(e.key === "Enter" && e.target && e.target.dataset && e.target.dataset.msNew === "label"){ e.preventDefault(); addMilestoneFromDraft(e.target.dataset.postId); return; }
   if(e.key === "Enter" && e.target.classList && e.target.classList.contains("dp-date-input")){ e.preventDefault(); commitTypedDate(e.target); return; }
+  if(e.key === "Enter" && e.target.dataset && e.target.dataset.timeField){ e.preventDefault(); commitTypedTimeField(e.target); return; }
   // Buscador de personas del proyecto (responsables, editores).
   if(e.target && e.target.dataset && e.target.dataset.ppKey){
     const key = e.target.dataset.ppKey, st = ppState(key);
@@ -11742,8 +11821,7 @@ document.addEventListener("change", e=>{
     if(el.checked){ composerDraft.startTime = ""; composerDraft.endTime = ""; }
     render();
   }
-  else if(el.id === "cStartTime"){ composerDraft.startTime = el.value; render(); }
-  else if(el.id === "cEndTime"){ composerDraft.endTime = el.value; render(); }
+  else if(el.dataset.timeField){ commitTypedTimeField(el); }
   else if(el.dataset.scopeField === "type"){ getDraftFor(el.dataset.scope, el.dataset.ownerId).scopeDraft.type = el.value; render(); }
   else if(el.dataset.scopeField === "country"){
     const sd = getDraftFor(el.dataset.scope, el.dataset.ownerId).scopeDraft;
