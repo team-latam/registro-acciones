@@ -565,6 +565,15 @@
      hoy en Adjuntos — mismo lenguaje visual que .zone-section/.country-row
      en vez de labels sueltos arriba de inputs. */
   .settings-card{ background:var(--card); border-radius:var(--radius-lg); box-shadow:var(--shadow); overflow:hidden; }
+  /* Título de bloque adentro de una sección: separa por TEMA cuando una
+     sección tiene más de una cosa (Capas: hitos, feriados, países). Mismo
+     tono que el "CONFIGURACIÓN DE CAPAS" de la barra del Calendario, para
+     que se reconozca que es lo mismo visto desde otro lado. */
+  .settings-card-title{
+    font-size:11px; font-weight:800; letter-spacing:.06em; text-transform:uppercase;
+    color:var(--text-muted); margin:22px 0 8px 4px;
+  }
+  .settings-card-title:first-of-type{ margin-top:0; }
   .setting-row{ display:flex; align-items:center; gap:14px; padding:14px 18px; flex-wrap:wrap; }
   .setting-row + .setting-row{ border-top:1px solid var(--border); }
   .setting-icon{ font-size:19px; flex:none; width:26px; text-align:center; }
@@ -3568,6 +3577,12 @@ const DEFAULT_PREFS = {
   // del propio Calendario, no escondido en Configuración, porque es algo
   // que se quiere prender y apagar mientras se está mirando la grilla.
   calendarShowMilestones: true,
+  // Los hitos ya tildados se siguen dibujando salvo que se pidan
+  // esconder (Configuración > Capas): en un proyecto largo tapan el mes.
+  calendarHideDoneMilestones: false,
+  // Con cuántos días de anticipación un hito pendiente pasa a "Por
+  // vencer". Ver MILESTONE_DUE_SOON_OPTIONS: también vale en Proyectos.
+  milestoneDueSoonDays: 5,
   // Orden del Feed: por fecha del evento, más reciente primero salvo que
   // se elija lo contrario (se recuerda por persona). Hubo una versión
   // "Reciente" con destacados intercalados — se sacó, ver el README.
@@ -5609,7 +5624,16 @@ async function setProjectStatus(post, done){
   catch(err){ console.error(err); showCalendarNotice({ ok:false, message: t("No se pudo guardar ({m}). Si las reglas de Firestore son viejas, hay que publicarlas.","Couldn't save ({m}). If the Firestore rules are outdated, they need publishing.","Não foi possível salvar ({m}). Se as regras do Firestore forem antigas, é preciso publicá-las.","לא ניתן היה לשמור ({m}). אם כללי Firestore ישנים, יש לפרסם אותם.",{m:err.code||err.message}) }); }
 }
 // done | overdue | today | soon | upcoming
+// Con cuántos días de anticipación un hito pasa a "Por vencer". Es una
+// preferencia de cada persona (Configuración > Capas): el 5 es el valor
+// de fábrica, no un tope. OJO, no es solo del Calendario — el mismo
+// estado se lee en la solapa Proyectos.
 const MILESTONE_DUE_SOON_DAYS = 5;
+const MILESTONE_DUE_SOON_OPTIONS = [1, 3, 5, 7, 15];
+function milestoneDueSoonDays(){
+  const n = Number(prefs().milestoneDueSoonDays);
+  return MILESTONE_DUE_SOON_OPTIONS.includes(n) ? n : MILESTONE_DUE_SOON_DAYS;
+}
 function milestoneStatus(m){
   if(m.done) return "done";
   if(!m.date) return "upcoming"; // sin fecha todavía: ni vencido ni hoy
@@ -5617,7 +5641,7 @@ function milestoneStatus(m){
   const last = m.endDate && m.endDate >= m.date ? m.endDate : m.date;
   if(last < today) return "overdue";
   if(m.date <= today && today <= last) return "today";
-  if(m.date <= addDaysISO(today, MILESTONE_DUE_SOON_DAYS)) return "soon";
+  if(m.date <= addDaysISO(today, milestoneDueSoonDays())) return "soon";
   return "upcoming";
 }
 // Misma pastilla clickeable en las dos vistas (ver renderProjectPanel):
@@ -9113,7 +9137,11 @@ function configSections(){
   return [
     { key:"calendario", label:t("Calendario","Calendar","Calendário","יומן") },
     { key:"notificaciones", label:t("Notificaciones","Notifications","Notificações","התראות") },
-    { key:"feriados", label:t("Feriados","Holidays","Feriados","חגים") },
+    // "Capas": lo que el Calendario dibuja ADEMÁS de los eventos — hitos y
+    // feriados. Antes se llamaba "Feriados" y solo hablaba de la mitad,
+    // aunque desde la barra del Calendario se llega con las tres capas
+    // (Hitos, Locales, Judíos) a la vista.
+    { key:"capas", label:t("Capas","Layers","Camadas","שכבות") },
   ];
 }
 // Cuánto antes avisar. 0 = no avisar, y apaga la sección entera.
@@ -9131,7 +9159,7 @@ function renderConfiguracionView(){
   const secs = configSections();
   const sec = secs.some(s=>s.key === state.configSection) ? state.configSection : secs[0].key;
   const body = sec === "notificaciones" ? renderConfigNotificacionesSection()
-    : sec === "feriados" ? renderConfigFeriadosSection()
+    : sec === "capas" ? renderConfigCapasSection()
     : renderConfigCalendarioSection();
   return `
     <div class="preferencias-view">
@@ -9270,7 +9298,7 @@ function prefChips(prefKey, items, active){
       <span class="chip-toggle${active.includes(it.key)?" active":""}" data-action="pref-toggle-list" data-pref="${prefKey}" data-key="${esc(it.key)}">${it.icon ? it.icon + " " : ""}${esc(it.label)}</span>`).join("")}
     </div>`;
 }
-function renderConfigFeriadosSection(){
+function renderConfigCapasSection(){
   const p = prefs();
   const modes = [
     { v:"sutil",  label:t("Marca en el día","Mark on the day","Marca no dia","סימון ביום") },
@@ -9280,29 +9308,59 @@ function renderConfigFeriadosSection(){
   const modeSel = `<select data-pref="holidayMode">
       ${modes.map(m=>`<option value="${m.v}" ${(p.holidayMode||"sutil")===m.v?"selected":""}>${esc(m.label)}</option>`).join("")}
     </select>`;
+  const soonSel = `<select data-pref="milestoneDueSoonDays" data-pref-num="1">
+      ${MILESTONE_DUE_SOON_OPTIONS.map(n=>`<option value="${n}" ${milestoneDueSoonDays()===n?"selected":""}>${esc(n === 1
+        ? t("1 día antes","1 day before","1 dia antes","יום לפני")
+        : t("{n} días antes","{n} days before","{n} dias antes","{n} ימים לפני",{n}))}</option>`).join("")}
+    </select>`;
+  // Los dos bloques llevan el MISMO orden, para que se lea igual en los
+  // dos: primero si la capa se muestra, después qué se filtra, y al final
+  // cómo se ve. Antes esta sección era solo feriados y había crecido sin
+  // orden (el color de las festividades judías venía ANTES del switch que
+  // decide si se muestran).
   return `
       <div class="hint" style="margin-bottom:16px;">${t(
-        "Los feriados salen de los calendarios públicos de Google, así que se actualizan solos y no hay ninguna lista que mantener acá. Si Google no responde, el calendario se dibuja igual, sin feriados.",
-        "Holidays come from Google's public calendars, so they update on their own and there's no list to maintain here. If Google doesn't answer, the calendar still renders, just without holidays.",
-        "Os feriados saem dos calendários públicos do Google, então se atualizam sozinhos e não há lista para manter aqui. Se o Google não responder, o calendário é desenhado igual, sem feriados.",
-        "החגים מגיעים מהיומנים הציבוריים של גוגל, כך שהם מתעדכנים לבד ואין רשימה לתחזק כאן. אם גוגל לא עונה, היומן מוצג כרגיל, בלי חגים."
+        "Las capas son lo que el Calendario dibuja además de los eventos: los hitos de los proyectos y los feriados. Se prenden y apagan al toque desde el propio Calendario; acá se define cómo se ven. Son opciones tuyas: no cambian lo que ven los demás.",
+        "Layers are what the Calendar draws besides events: project milestones and holidays. You turn them on and off right from the Calendar; here you set how they look. These options are yours: they don't change what others see.",
+        "As camadas são o que o Calendário desenha além dos eventos: os marcos dos projetos e os feriados. Ligam-se e desligam-se na hora no próprio Calendário; aqui se define como se veem. São opções suas: não mudam o que os outros veem.",
+        "השכבות הן מה שהיומן מצייר מעבר לאירועים: אבני הדרך של הפרויקטים והחגים. אפשר להדליק ולכבות אותן מהיומן עצמו; כאן מגדירים איך הן נראות. אלה אפשרויות שלך: הן לא משנות את מה שאחרים רואים."
       )}</div>
+
+      <div class="settings-card-title">◆ ${t("Hitos","Milestones","Marcos","אבני דרך")}</div>
+      <div class="settings-card">
+        ${prefRow("◆", t("Mostrarlos en el Calendario","Show them on the Calendar","Mostrá-los no Calendário","להציג אותם ביומן"),
+          t("Es el mismo interruptor que la píldora \u201c◆ Hitos\u201d de la barra del Calendario.","Same switch as the \u201c◆ Milestones\u201d pill on the Calendar bar.","É o mesmo interruptor que a píldora \u201c◆ Marcos\u201d da barra do Calendário.","זה אותו מתג כמו הכפתור \u201c◆ אבני דרך\u201d בסרגל היומן."),
+          prefSwitch("calendarShowMilestones", p.calendarShowMilestones !== false))}
+        ${prefRow("✅", t("Esconder los ya cumplidos","Hide the ones already done","Esconder os já cumpridos","להסתיר את אלה שכבר הושלמו"),
+          t("En un proyecto largo, los hitos tildados tapan el mes con cosas que ya no hay que mirar. Siguen estando en el proyecto.","In a long project, ticked milestones fill the month with things you no longer need to watch. They stay in the project.","Em um projeto longo, os marcos marcados tapam o mês com coisas que já não é preciso olhar. Continuam no projeto.","בפרויקט ארוך, אבני דרך שסומנו ממלאות את החודש בדברים שכבר לא צריך לעקוב אחריהם. הן נשארות בפרויקט."),
+          prefSwitch("calendarHideDoneMilestones", !!p.calendarHideDoneMilestones))}
+        ${prefRow("⏳", t("Avisar \u201cPor vencer\u201d con","Flag \u201cDue soon\u201d","Avisar \u201cA vencer\u201d com","להתריע \u201cבקרוב יפוג\u201d"),
+          t("Cuánto antes de la fecha un hito pendiente pasa a \u201cPor vencer\u201d. Vale también para la solapa Proyectos, no solo para el Calendario.","How long before its date a pending milestone turns \u201cDue soon\u201d. It also applies to the Projects tab, not just the Calendar.","Quanto antes da data um marco pendente passa a \u201cA vencer\u201d. Vale também para a aba Projetos, não só para o Calendário.","כמה זמן לפני התאריך אבן דרך ממתינה הופכת ל\u201cבקרוב יפוג\u201d. חל גם על לשונית הפרויקטים, לא רק על היומן."),
+          soonSel)}
+      </div>
+
+      <div class="settings-card-title">🎌 ${t("Feriados","Holidays","Feriados","חגים")}</div>
       <div class="settings-card">
         ${prefRow("🎌", t("Cómo mostrarlos","How to show them","Como mostrá-los","איך להציג אותם"),
-          t("\"Marca en el día\" los pone en chico junto al número, sin competir con los eventos.","\"Mark on the day\" puts them small next to the number, without competing with events.","\"Marca no dia\" os coloca pequenos ao lado do número, sem competir com os eventos.","\"סימון ביום\" מציב אותם קטן ליד המספר, בלי להתחרות באירועים."),
+          t("\u201cMarca en el día\u201d los pone en chico junto al número, sin competir con los eventos.","\u201cMark on the day\u201d puts them small next to the number, without competing with events.","\u201cMarca no dia\u201d os coloca pequenos ao lado do número, sem competir com os eventos.","\u201cסימון ביום\u201d מציב אותם קטן ליד המספר, בלי להתחרות באירועים."),
           modeSel)}
+        ${prefRow("✡️", t("Sumar las festividades judías","Include Jewish holidays","Somar as festividades judaicas","לכלול חגים יהודיים"),
+          t("Rosh Hashaná, Pésaj, Januca y el resto del calendario hebreo.","Rosh Hashanah, Passover, Hanukkah and the rest of the Hebrew calendar.","Rosh Hashaná, Pessach, Chanucá e o resto do calendário hebraico.","ראש השנה, פסח, חנוכה ושאר הלוח העברי."),
+          prefSwitch("holidayJewish", !!p.holidayJewish))}
         ${prefColorRow("holidayColor", "🏳️", t("Color de los feriados de país","Country holiday colour","Cor dos feriados de país","צבע חגי המדינה"),
           t("Con qué color se marcan en el calendario.","What colour marks them on the calendar.","Com que cor são marcados no calendário.","באיזה צבע הם מסומנים ביומן."))}
         ${prefColorRow("holidayJewishColor", "✡️", t("Color de las festividades judías","Jewish holiday colour","Cor das festividades judaicas","צבע החגים היהודיים"),
           t("Conviene que sea distinto al de país: pueden caer el mismo día.","Best if it differs from the country one: they can fall on the same day.","Convém que seja diferente do de país: podem cair no mesmo dia.","כדאי שיהיה שונה מזה של המדינה: הם יכולים ליפול באותו יום."))}
-        ${prefRow("✡️", t("Festividades judías","Jewish holidays","Festividades judaicas","חגים יהודיים"),
-          t("Rosh Hashaná, Pésaj, Januca y el resto del calendario hebreo.","Rosh Hashanah, Passover, Hanukkah and the rest of the Hebrew calendar.","Rosh Hashaná, Pessach, Chanucá e o resto do calendário hebraico.","ראש השנה, פסח, חנוכה ושאר הלוח העברי."),
-          prefSwitch("holidayJewish", !!p.holidayJewish))}
       </div>
-      <div class="settings-card" style="margin-top:16px;">
+
+      <div class="settings-card-title">🌎 ${t("De qué países","From which countries","De quais países","מאילו מדינות")}</div>
+      <div class="settings-card">
         <div class="setting-row" style="display:block;">
-          <div class="setting-label">${t("Feriados de estos países","Holidays from these countries","Feriados destes países","חגים מהמדינות האלה")}</div>
-          <div class="setting-sub" style="margin-bottom:10px;">${t("Elegí los que te interesen. Sin ninguno marcado no se muestra ningún feriado de país.","Pick the ones you care about. With none selected, no country holidays are shown.","Escolha os que te interessam. Sem nenhum marcado, não se mostra nenhum feriado de país.","בחר/י את אלה שמעניינים אותך. אם לא נבחר אף אחד, לא יוצגו חגי מדינה.")}</div>
+          <div class="setting-sub" style="margin-bottom:10px;">${t(
+            "Elegí los que te interesen. Sin ninguno marcado no se muestra ningún feriado de país — las festividades judías no dependen de esto. Salen de los calendarios públicos de Google, así que se actualizan solos y no hay ninguna lista que mantener acá.",
+            "Pick the ones you care about. With none selected, no country holidays are shown — Jewish holidays don't depend on this. They come from Google's public calendars, so they update on their own and there's no list to maintain here.",
+            "Escolha os que te interessam. Sem nenhum marcado, não se mostra nenhum feriado de país — as festividades judaicas não dependem disto. Saem dos calendários públicos do Google, então se atualizam sozinhos e não há lista para manter aqui.",
+            "בחר/י את אלה שמעניינים אותך. אם לא נבחר אף אחד, לא יוצגו חגי מדינה — החגים היהודיים אינם תלויים בזה. הם מגיעים מהיומנים הציבוריים של גוגל, מתעדכנים לבד ואין רשימה לתחזק כאן.")}</div>
           ${prefChips("holidayCountries", holidayCountryOptions(), p.holidayCountries || [])}
         </div>
       </div>`;
@@ -9966,7 +10024,11 @@ function calendarioEventsByDate(fromISO, toISO){
   };
   // Los hitos de proyecto entran como ítems de un día (o rango), con ◆,
   // salvo que la persona los haya apagado en la barra del Calendario.
-  calendarioPosts().concat(prefs().calendarShowMilestones === false ? [] : allMilestoneItems()).forEach(p=>{
+  // Los hitos ya tildados se pueden esconder (Configuración > Capas): en un
+  // proyecto largo tapan el mes con cosas que ya no hay que mirar.
+  const hitos = prefs().calendarShowMilestones === false ? []
+    : allMilestoneItems().filter(it => !(prefs().calendarHideDoneMilestones && it.milestone && it.milestone.done));
+  calendarioPosts().concat(hitos).forEach(p=>{
     const start = p.startDate || p.date;
     const end = p.endDate && p.endDate >= start ? p.endDate : start;
     // Un mes de más en cada punta: una fecha corrida a otro día
@@ -10106,7 +10168,7 @@ function renderCalendarioView(){
           ${msToggle}
           ${holidayLayerToggle("local")}
           ${holidayLayerToggle("jewish")}
-          <button type="button" class="cal-holidays-config-link" data-action="goto-config-feriados">${t("Ver Configuración","View Settings","Ver Configurações","הצגת הגדרות")} ${isRTL()?"←":"→"}</button>
+          <button type="button" class="cal-holidays-config-link" data-action="goto-config-capas">${t("Ver Configuración","View Settings","Ver Configurações","הצגת הגדרות")} ${isRTL()?"←":"→"}</button>
         </div>` : ""}
     </div>`;
   const toggle = `
@@ -11447,7 +11509,7 @@ function renderHolidayCard(){
       </div></div>` : ""}
     </div>
     <div class="ev-actions ev-actions-even">
-      <button type="button" data-action="goto-config-feriados">⚙️ ${t("Ver Configuración","View Settings","Ver Configurações","הצגת הגדרות")}</button>
+      <button type="button" data-action="goto-config-capas">⚙️ ${t("Ver Configuración","View Settings","Ver Configurações","הצגת הגדרות")}</button>
       ${canWrite() ? `<button type="button" class="btn-primary" data-action="holiday-new-event" data-date="${iso}">➕ ${t("Cargar evento","Add event","Carregar evento","הוספת אירוע")}</button>` : ""}
     </div>`;
 }
@@ -12404,7 +12466,7 @@ document.addEventListener("click", async e=>{
     "config-section": async (el, e, action, postId) => {
     state.configSection = el.dataset.key; render();
   },
-    "goto-config-feriados": async (el, e, action, postId) => {
+    "goto-config-capas": async (el, e, action, postId) => {
     calLayersMenuOpen = false;
     // Si se llegó desde la tarjeta de un feriado, se cierra: si no, queda
     // tapando justo la sección a la que acaba de llevar. El foco NO vuelve
@@ -12418,7 +12480,7 @@ document.addEventListener("click", async e=>{
       if(document.activeElement && document.activeElement.blur) document.activeElement.blur();
       closeEventCard();
     }
-    state.view = "configuracion"; state.configSection = "feriados"; render(); scrollToTop();
+    state.view = "configuracion"; state.configSection = "capas"; render(); scrollToTop();
   },
     "new-posts-jump": async (el, e, action, postId) => {
     jumpToNewPosts();
