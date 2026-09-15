@@ -1703,12 +1703,22 @@
   .cal-holiday{
     flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
     font-size:10px; font-weight:700; color:var(--celeste-dark);
+    /* Se puede tocar: abre su tarjeta, como cualquier evento. Sigue sin
+       verse como botón para no competir con los chips del día. */
+    font-family:inherit; background:none; border:none; padding:0;
+    text-align:start; cursor:pointer;
   }
+  .cal-holiday:hover{ text-decoration:underline; }
   /* El fondo del día feriado queda neutro: el color lo lleva el nombre, que
      es lo que hay que poder distinguir de un vistazo. Un fondo del color
      elegido competiría con los chips de los eventos de ese mismo día. */
   .cal-cell.holiday{ background:var(--surface-alt); }
-  .cal-bar.holiday{ background:transparent; font-weight:700; cursor:default; }
+  /* "Ese día también: X · Y" dentro de la tarjeta de un feriado. */
+  .ev-holiday-link{
+    font-family:inherit; font-size:inherit; font-weight:700; color:var(--celeste-dark);
+    background:none; border:none; padding:0; cursor:pointer; text-decoration:underline;
+  }
+  .cal-bar.holiday{ background:transparent; font-weight:700; cursor:pointer; }
   /* Un poco más grande que el de la lista de zonas: acá es el control
      principal de la fila, no un detalle al costado de un nombre. */
   .setting-control-wide .zone-swatch{ width:30px; height:30px; border-radius:8px; }
@@ -9066,6 +9076,15 @@ function holidayTintOn(iso){
   return holidaysOn(iso).some(h => h.key !== JEWISH_CAL);
 }
 // Cada feriado se pinta según de dónde viene: país o festividad judía.
+// De dónde sale este feriado, para poder decirlo en su tarjeta: el país
+// (dando vuelta HOLIDAY_CAL) o las festividades judías.
+function holidaySourceLabel(key){
+  if(key === JEWISH_CAL) return t("Festividades judías","Jewish holidays","Festividades judaicas","חגים יהודיים");
+  const pais = Object.keys(HOLIDAY_CAL).find(n => HOLIDAY_CAL[n] === key);
+  return pais
+    ? t("Feriados de {p}","{p} holidays","Feriados de {p}","{p} חגי",{p:pais})
+    : t("Feriados","Holidays","Feriados","חגים");
+}
 function holidayColorOf(h){
   return safeColor(h.key === JEWISH_CAL ? prefs().holidayJewishColor : prefs().holidayColor);
 }
@@ -10276,9 +10295,9 @@ function overflowsIn(overflow, it){
 
 function calendarioBar(it, weekDays){
   if(it.holiday){
-    return `<span class="cal-bar holiday" style="grid-column:${it.from+1} / span 1;grid-row:${it.lane+1};color:${it.holidayColor}" title="${esc(it.holiday)}">
+    return `<button type="button" class="cal-bar holiday" style="grid-column:${it.from+1} / span 1;grid-row:${it.lane+1};color:${it.holidayColor}" data-action="cal-open-holiday" data-date="${esc(it.holidayDate)}" data-hi="${it.holidayIdx}" title="${esc(it.holiday)}">
         <span class="cal-dot" style="background:${it.holidayColor}"></span><span class="cal-txt">${esc(it.holiday)}</span>
-      </span>`;
+      </button>`;
   }
   const p = it.post;
   const color = calendarioColor(p);
@@ -10321,7 +10340,7 @@ function renderCalendarioMes(anchor){
     const weekDays = days.slice(w*cols, (w+1)*cols);
     const asEvent = prefs().holidayMode === "evento";
     const extras = asEvent
-      ? weekDays.flatMap((iso,i)=> holidaysOn(iso).map(h=>({ holiday:h.name, holidayColor:holidayColorOf(h), from:i, to:i })))
+      ? weekDays.flatMap((iso,i)=> holidaysOn(iso).map((h,hi)=>({ holiday:h.name, holidayColor:holidayColorOf(h), holidayDate:iso, holidayIdx:hi, from:i, to:i })))
       : [];
     const { placed, overflow } = layoutWeekBars(weekDays, byDate, MES_MAX_LANES, extras);
     const cells = weekDays.map(iso=>{
@@ -10330,13 +10349,16 @@ function renderCalendarioMes(anchor){
       // compite con ningún evento.
       // El feriado de país va primero: si el día tiene los dos, el nombre
       // que se ve es el que define si se trabaja o no.
-      const hol = (asEvent ? [] : holidaysOn(iso))
-        .slice().sort((a,b)=> (a.key===JEWISH_CAL?1:0) - (b.key===JEWISH_CAL?1:0));
+      // Se ordena una COPIA con el índice original a cuestas: es lo que
+      // necesita la tarjeta para saber cuál de los feriados del día se
+      // tocó (holidaysOn no está ordenado igual).
+      const hol = (asEvent ? [] : holidaysOn(iso)).map((h,i)=>({ h, i }))
+        .sort((a,b)=> (a.h.key===JEWISH_CAL?1:0) - (b.h.key===JEWISH_CAL?1:0));
       return `
         <div class="cal-cell${iso.slice(0,7)!==month?" other":""}${iso===today?" today":""}${!asEvent&&holidayTintOn(iso)?" holiday":""}${pastClass(iso)}"${calendarioNewAttrs(iso)}>
           <div class="cal-dayhead">
             <span class="cal-daynum">${Number(iso.slice(8,10))}</span>
-            ${hol.length ? `<span class="cal-holiday" style="color:${holidayColorOf(hol[0])}" title="${esc(hol.map(h=>h.name).join(" · "))}">${esc(hol[0].name)}</span>` : ""}
+            ${hol.length ? `<button type="button" class="cal-holiday" style="color:${holidayColorOf(hol[0].h)}" data-action="cal-open-holiday" data-date="${iso}" data-hi="${hol[0].i}" title="${esc(hol.map(x=>x.h.name).join(" · "))}">${esc(hol[0].h.name)}</button>` : ""}
           </div>
         </div>`;
     }).join("");
@@ -11293,6 +11315,10 @@ const eventCardOverlay = document.getElementById("eventCardOverlay");
 const eventCardBody = document.getElementById("eventCardBody");
 let eventCardPostId = null;
 let eventCardOcc = null; // qué repetición se tocó en el Calendario
+// Un feriado no es un posteo (viene de un calendario público de Google y
+// no se guarda en Firestore), así que la tarjeta se abre con la fecha y
+// la posición en holidaysOn(fecha) — no con un id.
+let eventCardHoliday = null;
 let eventCardReturnFocus = null;
 // "19 – 27 de septiembre de 2026" en vez de repetir mes y año dos veces,
 // como muestra Google Calendar. Solo se compacta si caen en el mismo mes:
@@ -11306,6 +11332,7 @@ function eventDateRange(startIso, endIso){
   return `${fmtDate(startIso)} – ${fmtDate(endIso)}`;
 }
 function renderEventCard(){
+  if(eventCardHoliday){ renderHolidayCard(); return; }
   const post = getPostById(eventCardPostId);
   if(!post){ closeEventCard(); return; }
   const type = ACTIVITY_BY_KEY[post.activityType] || ACTIVITY_BY_KEY.otro || { icon:"✨", label:String(post.activityType||"") };
@@ -11365,10 +11392,69 @@ function renderEventCard(){
       ${canEditPost(post) ? `<button type="button" data-action="event-card-edit" data-post-id="${esc(post.id)}">✏️ ${t("Editar","Edit","Editar","עריכה")}</button>` : ""}
     </div>`;
 }
+// Misma tarjeta que la de un evento, con lo que un feriado SÍ tiene
+// (nombre, día, de qué calendario sale) y sin lo que no puede tener: no
+// se edita, no se cancela, no tiene historia ni proyecto — no es un
+// posteo de la app, es un dato de un calendario público de Google.
+function renderHolidayCard(){
+  const { iso, idx } = eventCardHoliday;
+  const h = holidaysOn(iso)[idx];
+  // Apagar la capa desde Configuración mientras la tarjeta está abierta
+  // la deja sin contenido: se cierra sola en vez de quedar en blanco.
+  if(!h){ closeEventCard(); return; }
+  const color = holidayColorOf(h);
+  const dia = fmtISO(iso, { weekday:"long", day:"numeric", month:"long" });
+  const rows = [
+    { icon:"📅", html: esc(holidaySourceLabel(h.key)) },
+    { icon:"🔒", html: esc(t(
+      "Solo lectura: sale del calendario público de Google, no se edita desde acá.",
+      "Read-only: it comes from Google's public calendar, it can't be edited here.",
+      "Somente leitura: vem do calendário público do Google, não se edita aqui.",
+      ".לקריאה בלבד: מגיע מהיומן הציבורי של Google ולא ניתן לעריכה כאן")) },
+  ];
+  // El resto de los feriados del mismo día, para poder saltar entre ellos
+  // (un 1° de mayo puede ser feriado en varios países a la vez).
+  const otros = holidaysOn(iso).map((x,i)=>({ x, i })).filter(({i})=> i !== idx);
+  eventCardBody.innerHTML = `
+    <div class="ev-head">
+      <span class="ev-dot" style="background:${color}"></span>
+      <div class="ev-head-text">
+        <h2 class="ev-title" id="eventCardTitle">${esc(h.name)}</h2>
+        <div class="ev-when">${esc(dia.charAt(0).toUpperCase() + dia.slice(1))}</div>
+      </div>
+    </div>
+    <div class="ev-badges">
+      <span class="type-badge" style="background:${color};color:${readableOn(color)};">${h.key === JEWISH_CAL
+        ? `✡️ ${esc(t("Festividad","Holiday","Festividade","חג"))}`
+        : `🎌 ${esc(t("Feriado","Public holiday","Feriado","חג רשמי"))}`}</span>
+    </div>
+    <div class="ev-rows">
+      ${rows.map(r=>`<div class="ev-row"><span class="ev-icon">${r.icon}</span><div class="ev-val">${r.html}</div></div>`).join("")}
+      ${otros.length ? `<div class="ev-row"><span class="ev-icon">🎌</span><div class="ev-val">
+        ${t("Ese día también:","That day also:","Nesse dia também:",":באותו יום גם")}
+        ${otros.map(({x,i})=>`<button type="button" class="ev-holiday-link" data-action="cal-open-holiday" data-date="${iso}" data-hi="${i}">${esc(x.name)}</button>`).join(" · ")}
+      </div></div>` : ""}
+    </div>
+    <div class="ev-actions">
+      ${canWrite() ? `<button type="button" class="btn-primary" data-action="holiday-new-event" data-date="${iso}">➕ ${t("Cargar un evento este día","Add an event on this day","Carregar um evento neste dia","הוספת אירוע ביום זה")}</button>` : ""}
+      <button type="button" data-action="goto-config-feriados">⚙️ ${t("Feriados en Configuración","Holidays in Settings","Feriados em Configurações","חגים בהגדרות")}</button>
+    </div>`;
+}
+function openHolidayCard(iso, idx){
+  if(!holidaysOn(iso)[idx]) return;
+  eventCardHoliday = { iso, idx };
+  eventCardPostId = null;
+  eventCardOcc = null;
+  renderEventCard();
+  eventCardReturnFocus = document.activeElement;
+  eventCardOverlay.hidden = false;
+  document.getElementById("eventCardClose").focus();
+}
 function openEventCard(postId, occ){
   if(!getPostById(postId)) return;
   eventCardPostId = postId;
   eventCardOcc = occ || null;
+  eventCardHoliday = null;
   renderEventCard();
   eventCardReturnFocus = document.activeElement;
   eventCardOverlay.hidden = false;
@@ -11378,6 +11464,7 @@ function closeEventCard(){
   eventCardOverlay.hidden = true;
   eventCardPostId = null;
   eventCardOcc = null;
+  eventCardHoliday = null;
   if(eventCardReturnFocus && typeof eventCardReturnFocus.focus === "function") eventCardReturnFocus.focus();
   eventCardReturnFocus = null;
 }
@@ -12424,6 +12511,14 @@ document.addEventListener("click", async e=>{
     "occ-unmove": async (el, e, action, postId) => {
     closeOccPops();
     await moveOccurrence(el.dataset.postId, el.dataset.occ, el.dataset.occ);
+  },
+    "cal-open-holiday": async (el, e, action, postId) => {
+    openHolidayCard(el.dataset.date, Number(el.dataset.hi));
+  },
+    "holiday-new-event": async (el, e, action, postId) => {
+    const iso = el.dataset.date;
+    closeEventCard();
+    openComposerOnDate(iso);
   },
     "cal-open": async (el, e, action, postId) => {
     if(String(postId).includes("#m:")) openProjectMilestone(postId);
