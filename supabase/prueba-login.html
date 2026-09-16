@@ -71,11 +71,16 @@
   </div>
 
   <div class="tarjeta">
-    <h2>2 · ¿La base está cerrada?</h2>
+    <h2>2 · ¿La base frena lo que tiene que frenar?</h2>
     <p style="margin:0 0 14px;font-size:.94rem;">
-      Las tablas se crearon con la llave puesta y sin permisos todavía. Esta
-      prueba intenta escribir una fila: <strong>lo correcto es que Supabase la
+      Esta prueba intenta anotar en el registro de auditoría una entrada
+      <strong>a nombre de otra persona</strong>. Eso no lo puede hacer nadie
+      — ni vos, que sos el admin. <strong>Lo correcto es que Supabase la
       rechace</strong>. Si dijera que escribió, habría que frenar todo.
+    </p>
+    <p class="nota" style="margin:-6px 0 14px;">
+      Se eligió a propósito algo que está prohibido para todo el mundo: así
+      la prueba sigue sirviendo antes y después de poner los permisos.
     </p>
     <button id="btnCerrada" class="secundario" disabled>Probar</button>
     <div id="resultadoCerrada"></div>
@@ -188,16 +193,25 @@ async function entrar(){
 btnCerrada.onclick = async ()=>{
   btnCerrada.disabled = true;
   resultadoCerrada.innerHTML = `<div class="resultado">Probando…</div>`;
-  // app_config es la tabla más inocua que hay: si esto ESCRIBIERA, se borra la
-  // fila y se frena la migración hasta entender por qué.
-  const { error } = await sb.from("app_config")
-    .insert({ key: "prueba_de_que_esta_cerrada", value: {} });
+  // Escribir auditoría a nombre de otro está prohibido SIEMPRE y para
+  // TODOS: sin permisos puestos porque no hay permiso ninguno, y con ellos
+  // puestos porque piden que el actor sea uno mismo. Por eso sirve como
+  // prueba en las dos etapas.
+  //
+  // La primera versión intentaba escribir en app_config, y eso el admin
+  // fijo SÍ puede: apenas se aplicaron los permisos, la prueba gritó que
+  // la base estaba abierta cuando estaba funcionando bien. Una prueba que
+  // avisa en falso es peor que no tenerla.
+  const { error } = await sb.from("audit_log").insert({
+    id: "prueba_" + Date.now(), type: "login",
+    actor_email: "otra.persona@ejemplo.com", actor_name: "Prueba",
+  });
   if(error){
     resultadoCerrada.innerHTML =
       `<div class="resultado ok">✅ Rechazado, que es lo correcto.\n\nSupabase contestó: ${esc(error.message)}</div>`;
   } else {
     resultadoCerrada.innerHTML =
-      `<div class="resultado mal">⚠️ ESCRIBIÓ. La base quedó abierta: cualquiera con la dirección de esta página podría escribirle.\n\nFrená acá y avisá antes de seguir.</div>`;
+      `<div class="resultado mal">⚠️ ESCRIBIÓ una entrada a nombre de otra persona. Eso no debería poder hacerse nunca.\n\nFrená acá y avisá antes de seguir.</div>`;
   }
   btnCerrada.disabled = false;
 };
