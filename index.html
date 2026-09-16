@@ -4324,7 +4324,7 @@ async function moveOccurrence(postId, origenISO, destinoISO){
     await appAlert(t("Ya hay {n} fechas corridas en este evento. Sacá alguna antes de correr otra.","This event already has {n} moved dates. Undo one before moving another.","Este evento já tem {n} datas movidas. Desfaça uma antes de mover outra.","{n} תאריכים כבר הוזזו באירוע הזה. בטל/י אחד לפני הזזת נוסף",{n:MAX_OCC_MOVES}));
     return;
   }
-  await updatePostDoc(postId, { recurrenceMoves: nuevos, lastEditedAt: fb.serverTimestamp(), lastEditedBy: state.auth.user.displayName });
+  await updatePostDoc(postId, { recurrenceMoves: nuevos, lastEditedAt: store.horaDelServidor(), lastEditedBy: state.auth.user.displayName });
   await createReply(postId, {
     authorName: state.auth.user.displayName, authorEmail: state.auth.user.email,
     content: destinoISO === origenISO
@@ -4351,7 +4351,7 @@ async function setOccurrenceSkipped(postId, iso, skipped){
   const ya = actual.includes(iso);
   if(ya === skipped) return;
   const nuevo = skipped ? actual.concat([iso]).slice(-200) : actual.filter(d=>d !== iso);
-  await updatePostDoc(postId, { recurrenceSkip: nuevo, lastEditedAt: fb.serverTimestamp(), lastEditedBy: state.auth.user.displayName });
+  await updatePostDoc(postId, { recurrenceSkip: nuevo, lastEditedAt: store.horaDelServidor(), lastEditedBy: state.auth.user.displayName });
   await createReply(postId, {
     authorName: state.auth.user.displayName, authorEmail: state.auth.user.email,
     content: skipped
@@ -4438,11 +4438,10 @@ async function findCalendarEventId(post){
 */
 
 async function getSyncMeta(){
-  const snap = await fb.getDoc(fb.doc(db, "meta", "calendarSync"));
-  return snap.exists() ? snap.data() : null;
+  return store.config.get("calendarSync");
 }
 async function setSyncMeta(patch){
-  await fb.setDoc(fb.doc(db, "meta", "calendarSync"), { ...patch, lastSyncedAt: fb.serverTimestamp() }, { merge:true });
+  await store.config.mergeCalendarSync(patch);
 }
 
 // Lee eventos con la clave de API (no el login de nadie) — el calendario
@@ -4545,12 +4544,7 @@ function importedPostDocId(eventId){
   return "cal_" + String(eventId).replace(/[^A-Za-z0-9_-]/g, "").slice(0, 59);
 }
 async function createImportedPost(ev, data){
-  const ref = fb.doc(db, "posts", importedPostDocId(ev.id));
-  await fb.runTransaction(db, async tx => {
-    const snap = await tx.get(ref);
-    if(snap.exists()) return;
-    tx.set(ref, { ...data, createdAt: fb.serverTimestamp() });
-  });
+  await store.posts.createOnce(importedPostDocId(ev.id), data);
 }
 
 // Devuelve si REALMENTE aplicó un cambio (true) o si el evento se revisó
@@ -4589,7 +4583,7 @@ async function applyCalendarEventToPosts(ev){
       return false;
     }
     if(existing && !existing.cancelled){
-      await updatePostDoc(existing.id, { cancelled:true, lastEditedAt: fb.serverTimestamp(), lastEditedBy:"Google Calendar" });
+      await updatePostDoc(existing.id, { cancelled:true, lastEditedAt: store.horaDelServidor(), lastEditedBy:"Google Calendar" });
       await createReply(existing.id, {
         authorName:"Google Calendar", content:t(
           "Este evento se canceló o se borró directamente en Google Calendar.",
@@ -4634,7 +4628,7 @@ async function applyCalendarEventToPosts(ev){
       : t("lugar (se quitó)","place (removed)","lugar (removido)","(מקום (הוסר"));
     const patch = {
       startDate, endDate, date:startDate, startTime, endTime, location,
-      lastEditedAt: fb.serverTimestamp(), lastEditedBy:"Google Calendar",
+      lastEditedAt: store.horaDelServidor(), lastEditedBy:"Google Calendar",
     };
     if(titleChanged) patch.title = newTitle;
     if(recurrenceChanged){
@@ -4690,7 +4684,7 @@ async function applyCalendarEventToPosts(ev){
       if(startDate === origISO) delete nuevos[origISO];
       else nuevos[origISO] = startDate;
       if(Object.keys(nuevos).length > MAX_OCC_MOVES) return false;
-      await updatePostDoc(master.id, { recurrenceMoves: nuevos, lastEditedAt: fb.serverTimestamp(), lastEditedBy:"Google Calendar" });
+      await updatePostDoc(master.id, { recurrenceMoves: nuevos, lastEditedAt: store.horaDelServidor(), lastEditedBy:"Google Calendar" });
       await createReply(master.id, {
         authorName:"Google Calendar", content: startDate === origISO
           ? t("Vuelve a su día de siempre: {d}.","Back to its usual day: {d}.","Volta ao seu dia de sempre: {d}.",".{d} :חוזר ליום הרגיל שלו",{d:fmtDate(origISO)})
@@ -4928,7 +4922,7 @@ async function logAudit(type, opts){
       detail: opts?.detail || null,
       device: deviceLabel(),
       ip,
-      createdAt: fb.serverTimestamp(),
+      createdAt: store.horaDelServidor(),
     };
     // "login"/"access_requested" los puede escribir CUALQUIER cuenta de
     // Google, aprobada o no (ver el comentario de isValidAuditEntry en
@@ -5196,11 +5190,178 @@ function subscribeAuditLog(){
    - all() -> una lectura suelta, sin quedar escuchando.
    - save(id, datos) / remove(id) -> escritura por id.
 
-   Se migra de a una colección por vez (ver VOLVER-A-FIREBASE.md): las
-   que todavía no pasaron por acá siguen llamando a fb.* directo, y eso
-   está bien mientras dure el proceso.
+   Las OCHO colecciones ya pasan por acá. La única excepción viva es la
+   copia de seguridad (armarRespaldo), que le habla a Firestore directo A
+   PROPÓSITO: es la red de la marcha atrás, y tiene que bajar lo que hay
+   en FIREBASE, no lo que haya en la base en uso. Si pasara por la capa,
+   el día que `store` apunte a Supabase el respaldo dejaría de servir
+   justamente para lo que existe: para volver.
    ====================================================================== */
 const firebaseStore = {
+  // ---- Posteos ----
+  posts: {
+    // Todos, SIN ordenar: el orden (fecha desc y, dentro del día, creación
+    // desc) es criterio de la app y tiene que dar igual con cualquier
+    // base. Va sin orden también por otro motivo, que costó encontrar:
+    // Firestore EXCLUYE de una consulta ordenada los documentos que no
+    // tienen ese campo, y un posteo viejo sin `date` quedaba invisible sin
+    // dar ningún error.
+    subscribe(alCambiar, alFallar){
+      return fb.onSnapshot(fb.collection(db, "posts"),
+        snap => alCambiar(snap.docs.map(d=>({ id:d.id, ...d.data({serverTimestamps:"estimate"}) }))),
+        alFallar);
+    },
+    // Devuelve el id nuevo: quien llama lo necesita enseguida para enlazar
+    // el evento de Calendar recién creado.
+    async create(datos){
+      const ref = await fb.addDoc(fb.collection(db, "posts"), { ...datos, createdAt: fb.serverTimestamp() });
+      return ref.id;
+    },
+    // Alta con un id ELEGIDO, y solo si no existe todavía. Es lo que evita
+    // que dos navegadores que ven el mismo evento nuevo de Calendar con un
+    // segundo de diferencia lo importen dos veces.
+    async createOnce(id, datos){
+      const ref = fb.doc(db, "posts", id);
+      await fb.runTransaction(db, async tx => {
+        const snap = await tx.get(ref);
+        if(snap.exists()) return;
+        tx.set(ref, { ...datos, createdAt: fb.serverTimestamp() });
+      });
+    },
+    async update(id, parche){
+      await fb.updateDoc(fb.doc(db, "posts", id), parche);
+    },
+    async remove(id){
+      await fb.deleteDoc(fb.doc(db, "posts", id));
+    },
+    // Poner o sacar el me gusta de UNA persona, sin traerse la lista ni
+    // reescribirla entera: dos personas pueden estar dando me gusta al
+    // mismo tiempo y ninguna tiene que pisar a la otra.
+    async setLike(id, email, puesto){
+      await fb.updateDoc(fb.doc(db, "posts", id),
+        { likedBy: puesto ? fb.arrayUnion(email) : fb.arrayRemove(email) });
+    },
+  },
+
+  // ---- Comentarios ----
+  replies: {
+    // Todos los de todos los posteos de una sola vez, ya agrupados por
+    // posteo y ordenados del más viejo al más nuevo. Con un listener por
+    // posteo la cantidad crecía sin tope.
+    subscribeAll(alCambiar, alFallar){
+      return fb.onSnapshot(fb.collectionGroup(db, "replies"), snap=>{
+        const porPosteo = Object.create(null);
+        snap.docs.forEach(d=>{
+          const postId = d.ref.parent.parent.id;
+          (porPosteo[postId] = porPosteo[postId] || []).push(
+            { id:d.id, postId, ...d.data({serverTimestamps:"estimate"}) });
+        });
+        // El orden se arma acá y no en la consulta: en Firestore, ordenar
+        // una consulta de grupo pide un índice aparte.
+        Object.values(porPosteo).forEach(lista =>
+          lista.sort((a,b)=> tsToMillis(a.createdAt) - tsToMillis(b.createdAt)));
+        alCambiar(porPosteo);
+      }, alFallar);
+    },
+    // Las de UN posteo. Es el respaldo de subscribeAll (ver
+    // subscribeReplies): no escala, pero funciona aunque la regla que
+    // permite leerlas todas juntas no esté publicada todavía.
+    subscribeOf(postId, alCambiar, alFallar){
+      const q = fb.query(fb.collection(db, "posts", postId, "replies"), fb.orderBy("createdAt", "asc"));
+      return fb.onSnapshot(q,
+        snap => alCambiar(snap.docs.map(d=>({ id:d.id, postId, ...d.data({serverTimestamps:"estimate"}) }))),
+        alFallar);
+    },
+    async create(postId, datos){
+      await fb.addDoc(fb.collection(db, "posts", postId, "replies"),
+        { ...datos, createdAt: fb.serverTimestamp() });
+    },
+    async remove(postId, replyId){
+      await fb.deleteDoc(fb.doc(db, "posts", postId, "replies", replyId));
+    },
+    async setLike(postId, replyId, email, puesto){
+      await fb.updateDoc(fb.doc(db, "posts", postId, "replies", replyId),
+        { likedBy: puesto ? fb.arrayUnion(email) : fb.arrayRemove(email) });
+    },
+  },
+
+  // La hora del servidor, para los campos que la app arma y manda adentro
+  // de otra escritura (cuándo se editó algo, cuándo se completó un hito).
+  // No es una fecha: es una MARCA que la base reemplaza por su propio
+  // reloj al escribir. Cada base la expresa a su manera, y por eso la
+  // app pide "la hora del servidor" y no sabe cómo se escribe.
+  horaDelServidor(){
+    return fb.serverTimestamp();
+  },
+
+  // "¿Este error es por falta de permiso?" — cada base lo dice a su
+  // manera, y la app necesita distinguirlo para pasar al modo de respaldo
+  // de los comentarios sin quedarse sin nada.
+  esErrorDePermiso(err){
+    return !!err && err.code === "permission-denied";
+  },
+  // ---- Configuración del equipo ----
+  // Los tres documentos de `meta`: las zonas y los países
+  // (territoryConfig), el resto del panel de Preferencias (preferences) y
+  // el estado de la sincronización con Calendar (calendarSync). Se los
+  // trata como una tabla clave→valor y no como tres cosas distintas,
+  // porque es lo que son.
+  config: {
+    // Queda escuchando: si el admin agrega un tipo de actividad o mueve un
+    // país de zona, a todo el equipo le tiene que cambiar sin recargar.
+    watch(clave, alCambiar, alFallar){
+      return fb.onSnapshot(fb.doc(db, "meta", clave),
+        snap => alCambiar(snap.exists() ? snap.data() : null),
+        alFallar);
+    },
+    async get(clave){
+      const snap = await fb.getDoc(fb.doc(db, "meta", clave));
+      return snap.exists() ? snap.data() : null;
+    },
+    // Reemplaza TODO. Lo usa el mapa de zonas: ahí se guarda la
+    // configuración completa, y un país que se sacó tiene que desaparecer
+    // de verdad, no quedar por omisión.
+    async replace(clave, datos){
+      await fb.setDoc(fb.doc(db, "meta", clave), datos);
+    },
+    // Cambia SOLO lo que se le pasa. El panel de Preferencias tiene cuatro
+    // secciones que guardan por separado adentro del mismo documento:
+    // reemplazarlo entero haría que guardar una sección borre las otras
+    // tres.
+    async merge(clave, parche){
+      await fb.setDoc(fb.doc(db, "meta", clave), parche, { merge:true });
+    },
+    // La sincronización anota además CUÁNDO se corrió, y esa hora la pone
+    // el servidor: es lo que decide si hay que volver a sincronizar, y no
+    // puede depender del reloj de quien tenga la pestaña abierta.
+    async mergeCalendarSync(parche){
+      await fb.setDoc(fb.doc(db, "meta", "calendarSync"),
+        { ...parche, lastSyncedAt: fb.serverTimestamp() }, { merge: true });
+    },
+  },
+
+  // ---- Preferencias de cada persona ----
+  // Colección aparte y no un campo más del roster, por el mismo motivo de
+  // siempre: el roster lo lee TODO el equipo para las @menciones, y la
+  // configuración de cada uno no tiene por qué estar a la vista de los
+  // demás.
+  userPrefs: {
+    // Se escuchan y no se leen una sola vez, a propósito: cambiar algo en
+    // la computadora tiene que verse en el teléfono sin recargar.
+    watchOwn(email, alCambiar, alFallar){
+      return fb.onSnapshot(fb.doc(db, "userPrefs", email),
+        snap => alCambiar(snap.exists() ? snap.data() : null),
+        alFallar);
+    },
+    async get(email){
+      const snap = await fb.getDoc(fb.doc(db, "userPrefs", email));
+      return snap.exists() ? snap.data() : null;
+    },
+    // Siempre parcial: son ~25 opciones y cada control guarda la suya.
+    async merge(email, parche){
+      await fb.setDoc(fb.doc(db, "userPrefs", email), parche, { merge: true });
+    },
+  },
   // ---- El equipo ----
   // En Firestore la colección se llama `allowlist` porque nació siendo una
   // lista de permitidos; hoy es el roster del equipo (quién está, con qué
@@ -5406,8 +5567,8 @@ async function backfillNicknames(emails){
 // ZONES/COUNTRIES[].zone. Se leen para TODOS los aprobados (no solo el
 // admin) porque afecta colores del mapa y filtros de todo el mundo.
 function subscribeTerritoryConfig(){
-  unsubTerritoryConfig = fb.onSnapshot(fb.doc(db,"meta","territoryConfig"), snap=>{
-    applyTerritoryConfig(snap.exists() ? snap.data() : null);
+  unsubTerritoryConfig = store.config.watch("territoryConfig", cfg=>{
+    applyTerritoryConfig(cfg);
     render();
   }, err=>console.error("Error leyendo la configuración de zonas:", err));
 }
@@ -5433,15 +5594,15 @@ function applyTerritoryConfig(cfg){
   refreshZoneLabels();
 }
 async function saveTerritoryConfig(zones, countryZones){
-  await fb.setDoc(fb.doc(db,"meta","territoryConfig"), { zones, countryZones });
+  await store.config.replace("territoryConfig", { zones, countryZones });
 }
 
 // Resto de Preferencias (Tipos de actividad, Lugares, Calendar, Adjuntos):
 // un solo doc meta/preferences, un campo por sección — cada sección
 // guarda el suyo con merge:true para no pisar los otros al guardar.
 function subscribePreferences(){
-  unsubPreferences = fb.onSnapshot(fb.doc(db,"meta","preferences"), snap=>{
-    applyPreferencesConfig(snap.exists() ? snap.data() : null);
+  unsubPreferences = store.config.watch("preferences", cfg=>{
+    applyPreferencesConfig(cfg);
     render();
   }, err=>console.error("Error leyendo preferencias:", err));
 }
@@ -5451,8 +5612,8 @@ function subscribePreferences(){
 function subscribeUserPrefs(){
   const email = state.auth.user && state.auth.user.email;
   if(!email) return;
-  unsubUserPrefs = fb.onSnapshot(fb.doc(db,"userPrefs",email), snap=>{
-    state.prefs = { ...DEFAULT_PREFS, ...(snap.exists() ? snap.data() : null) };
+  unsubUserPrefs = store.userPrefs.watchOwn(email, propias=>{
+    state.prefs = { ...DEFAULT_PREFS, ...propias };
     render();
   }, err=>console.error("Error leyendo preferencias personales:", err));
 }
@@ -5464,7 +5625,7 @@ function savePrefs(patch){
   render();
   const email = state.auth.user && state.auth.user.email;
   if(!email || !db) return;
-  fb.setDoc(fb.doc(db,"userPrefs",email), patch, { merge:true })
+  store.userPrefs.merge(email, patch)
     .catch(err=>{
       // Si el servidor rechaza, el SDK revierte el cambio local y el
       // switch "vuelve solo" sin decir nada — parece que la app está rota.
@@ -5522,7 +5683,7 @@ async function promoteCustomCity(country, city){
   Object.keys(extraCitiesConfig).forEach(k=>{ next[k] = [...extraCitiesConfig[k]]; });
   if(!next[country]) next[country] = [];
   if(!next[country].some(n=>normalize(n)===normalize(city))) next[country].push(city);
-  await fb.setDoc(fb.doc(db,"meta","preferences"), { extraCities: next }, { merge:true });
+  await store.config.merge("preferences", { extraCities: next });
 }
 function applyCalendarIdConfig(calendarId){
   if(calendarId) CALENDAR_ID = calendarId;
@@ -5713,9 +5874,8 @@ function syncReplyListeners(){
   });
   currentIds.forEach(postId=>{
     if(repliesUnsubs[postId]) return;
-    const repliesQ = fb.query(fb.collection(db,"posts",postId,"replies"), fb.orderBy("createdAt","asc"));
-    repliesUnsubs[postId] = fb.onSnapshot(repliesQ, snap=>{
-      state.repliesByPost[postId] = snap.docs.map(d=>({ id:d.id, postId, ...d.data({serverTimestamps:"estimate"}) }));
+    repliesUnsubs[postId] = store.replies.subscribeOf(postId, lista=>{
+      state.repliesByPost[postId] = lista;
       scheduleRender();
     }, err=>console.error(`Error leyendo respuestas de ${postId}:`, err));
   });
@@ -5734,21 +5894,13 @@ let unsubRepliesGroup = null;
 function subscribeReplies(){
   if(repliesMode === "perPost"){ syncReplyListeners(); return; }
   if(unsubRepliesGroup) return;
-  unsubRepliesGroup = fb.onSnapshot(fb.collectionGroup(db, "replies"), snap=>{
-    const byPost = Object.create(null);
-    snap.docs.forEach(d=>{
-      const postId = d.ref.parent.parent.id;
-      (byPost[postId] = byPost[postId] || []).push({ id:d.id, postId, ...d.data({serverTimestamps:"estimate"}) });
-    });
-    // Sin orderBy en la consulta (un collectionGroup con orderBy pide un
-    // índice de grupo aparte): se ordena acá, más antigua primero.
-    Object.values(byPost).forEach(list=>list.sort((a,b)=> tsToMillis(a.createdAt) - tsToMillis(b.createdAt)));
-    state.repliesByPost = byPost;
+  unsubRepliesGroup = store.replies.subscribeAll(porPosteo=>{
+    state.repliesByPost = porPosteo;
     scheduleRender();
   }, err=>{
-    console.error("Error leyendo respuestas (collectionGroup):", err);
+    console.error("Error leyendo respuestas (todas juntas):", err);
     if(unsubRepliesGroup){ unsubRepliesGroup(); unsubRepliesGroup = null; }
-    if(err && err.code === "permission-denied"){
+    if(store.esErrorDePermiso(err)){
       repliesMode = "perPost";
       syncReplyListeners();
     }
@@ -5761,9 +5913,9 @@ function subscribeData(){
   // ningún error; (2) el desempate dentro del mismo día era el id del
   // documento (aleatorio), así que las rutinas de hoy salían en cualquier
   // orden. Se ordena acá: fecha desc y, dentro del día, creación desc.
-  const unsubPosts = fb.onSnapshot(fb.collection(db,"posts"), snap=>{
+  const unsubPosts = store.posts.subscribe(lista=>{
     const prevLoaded = state.loaded;
-    state.posts = snap.docs.map(d=>({ id:d.id, ...d.data({serverTimestamps:"estimate"}) }))
+    state.posts = lista
       .sort((a,b)=> String(b.date||"").localeCompare(String(a.date||"")) || (tsToMillis(b.createdAt) - tsToMillis(a.createdAt)));
     state.loaded = true;
     noteIncomingPosts(prevLoaded);
@@ -5785,20 +5937,13 @@ function subscribeData(){
 }
 
 async function createPost(data){
-  const ref = await fb.addDoc(fb.collection(db,"posts"), {
-    ...data,
-    createdAt: fb.serverTimestamp(),
-  });
-  return ref.id;
+  return store.posts.create(data);
 }
 async function createReply(postId, data){
-  await fb.addDoc(fb.collection(db, "posts", postId, "replies"), {
-    ...data,
-    createdAt: fb.serverTimestamp(),
-  });
+  await store.replies.create(postId, data);
 }
 async function updatePostDoc(postId, patch){
-  await fb.updateDoc(fb.doc(db, "posts", postId), patch);
+  await store.posts.update(postId, patch);
 }
 
 function canEditPost(post){
@@ -5840,7 +5985,7 @@ function canManageProject(post){ return post.activityType !== "rutina" && !proje
 function canCloseProject(post){ return post.activityType !== "rutina" && canEditPost(post); }
 async function setProjectStatus(post, done){
   const me = state.auth.user.email;
-  try{ await updatePostDoc(post.id, done ? { projectStatus:"done", projectDoneBy:me, projectDoneAt: fb.serverTimestamp() } : { projectStatus:"open", projectDoneBy:null, projectDoneAt:null }); }
+  try{ await updatePostDoc(post.id, done ? { projectStatus:"done", projectDoneBy:me, projectDoneAt: store.horaDelServidor() } : { projectStatus:"open", projectDoneBy:null, projectDoneAt:null }); }
   catch(err){ console.error(err); showCalendarNotice({ ok:false, message: t("No se pudo guardar ({m}). Si las reglas de Firestore son viejas, hay que publicarlas.","Couldn't save ({m}). If the Firestore rules are outdated, they need publishing.","Não foi possível salvar ({m}). Se as regras do Firestore forem antigas, é preciso publicá-las.","לא ניתן היה לשמור ({m}). אם כללי Firestore ישנים, יש לפרסם אותם.",{m:err.code||err.message}) }); }
 }
 // done | overdue | today | soon | upcoming
@@ -6602,7 +6747,7 @@ async function updatePostAndSync(postId, original, newData){
     activityType:newData.activityType, scopes:newData.scopes, images:newData.images, links:newData.links,
     files:newData.files, mentions:newData.mentions,
     recurrence: newData.recurrence || null,
-    lastEditedAt: fb.serverTimestamp(), lastEditedBy: state.auth.user.displayName,
+    lastEditedAt: store.horaDelServidor(), lastEditedBy: state.auth.user.displayName,
   };
   // Si cambió CÓMO se repite, las fechas suspendidas y corridas eran de
   // la regla vieja: con otra regla dejan de tener sentido y esconderían o
@@ -6664,8 +6809,8 @@ async function deletePostHard(post){
     { title: nombre, n: replies.length }
   ), { danger:true, okLabel: t("Borrar","Delete","Apagar","מחיקה") }))) return;
   try{
-    await Promise.all(replies.map(r=> fb.deleteDoc(fb.doc(db, "posts", post.id, "replies", r.id))));
-    await fb.deleteDoc(fb.doc(db, "posts", post.id));
+    await Promise.all(replies.map(r=> store.replies.remove(post.id, r.id)));
+    await store.posts.remove(post.id);
     let calMsg = "";
     if(post.calendarEventId){
       const res = await deleteCalendarEvent(post.calendarEventId);
@@ -6679,7 +6824,7 @@ async function deletePostHard(post){
 }
 async function deleteReplyHard(postId, replyId){
   if(!(await appConfirm(t("¿Borrar esta respuesta del todo? No queda marca y no se puede deshacer.","Delete this reply for good? No trace is left and it can't be undone.","Apagar esta resposta de vez? Não fica marca e não dá para desfazer.","למחוק את התגובה לצמיתות? לא יישאר סימן ואי אפשר לבטל."), { danger:true, okLabel: t("Borrar","Delete","Apagar","מחיקה") }))) return;
-  try{ await fb.deleteDoc(fb.doc(db, "posts", postId, "replies", replyId)); }
+  try{ await store.replies.remove(postId, replyId); }
   catch(err){ console.error("No se pudo borrar la respuesta:", err); showCalendarNotice({ ok:false, message: t("No se pudo borrar ({m}).","Couldn't delete ({m}).","Não foi possível apagar ({m}).","לא ניתן היה למחוק ({m}).",{m:err.code||err.message}) }); }
 }
 async function cancelPost(post){
@@ -6691,7 +6836,7 @@ async function cancelPost(post){
     { title: post.title }
   ), { danger:true, okLabel: t("Cancelar evento","Cancel event","Cancelar evento","ביטול האירוע") }))) return;
   try{
-    await updatePostDoc(post.id, { cancelled:true, lastEditedAt: fb.serverTimestamp(), lastEditedBy: state.auth.user.displayName });
+    await updatePostDoc(post.id, { cancelled:true, lastEditedAt: store.horaDelServidor(), lastEditedBy: state.auth.user.displayName });
     await createReply(post.id, {
       authorName: state.auth.user.displayName, authorEmail: state.auth.user.email,
       content: t("🚫 {n} canceló este evento.","🚫 {n} cancelled this event.","🚫 {n} cancelou este evento.","🚫 {n} ביטל/ה את האירוע הזה.",{n:state.auth.user.displayName}), system:true, icon:"🚫",
@@ -8174,6 +8319,11 @@ function respaldoSinAdjuntos(d){
   if(Array.isArray(out.files)) out.files = { __quitado:"files", cantidad: out.files.length };
   return out;
 }
+// Estas tres funciones son las ÚNICAS de la app que le hablan a Firestore
+// sin pasar por la capa de datos, y es a propósito: el respaldo es la red
+// de la marcha atrás (ver VOLVER-A-FIREBASE.md). Tiene que bajar lo que
+// hay en FIREBASE, no lo que haya en la base que esté en uso — si no, el
+// día que se cambie de base dejaría de servir justamente para volver.
 async function leerColeccion(nombre, conAdjuntos){
   const snap = await fb.getDocs(fb.collection(db, nombre));
   return snap.docs.map(d=>({ id:d.id, ...respaldoValor(conAdjuntos ? d.data() : respaldoSinAdjuntos(d.data())) }));
@@ -13343,7 +13493,7 @@ document.addEventListener("click", async e=>{
       seen.add(n);
     }
     d.saving = true; d.error = ""; render();
-    fb.setDoc(fb.doc(db,"meta","preferences"), { activityTypes: d.types }, { merge:true }).then(()=>{
+    store.config.merge("preferences", { activityTypes: d.types }).then(()=>{
       d.saving = false; render();
     }).catch(err=>{
       console.error(err);
@@ -13390,7 +13540,7 @@ document.addEventListener("click", async e=>{
     const v = (d.importFrom || "").trim();
     if(v && !/^\d{4}-\d{2}-\d{2}$/.test(v)){ d.error = t("Fecha inválida.","Invalid date.","Data inválida.","תאריך לא תקין."); render(); return; }
     d.importSaving = true; d.error = ""; render();
-    fb.setDoc(fb.doc(db,"meta","preferences"), { calendarImportFrom: v || null }, { merge:true }).then(()=>{
+    store.config.merge("preferences", { calendarImportFrom: v || null }).then(()=>{
       d.importSaving = false; render();
       showCalendarNotice({ ok:true, message: v ? t("Se importa desde el {d}. Para traer lo anterior que falte, usá «Reimportar historial».","Importing from {d}. To bring in anything missing before that, use “Reimport history”.","Importa-se desde {d}. Para trazer o que falte de antes, use «Reimportar histórico».","מייבאים מ-{d}. כדי להביא מה שחסר, השתמש/י ב«ייבוא מחדש של ההיסטוריה».",{d:fmtDate(v)}) : t("Se importa todo el historial. Para traer lo que falte, usá «Reimportar historial».","Importing the whole history. To bring in what's missing, use “Reimport history”.","Importa-se todo o histórico. Para trazer o que falte, use «Reimportar histórico».","מייבאים את כל ההיסטוריה. כדי להביא מה שחסר, השתמש/י ב«ייבוא מחדש של ההיסטוריה».") });
     }).catch(err=>{ d.importSaving = false; d.error = t("No se pudo guardar: {msg}","Couldn't save: {msg}","Não foi possível salvar: {msg}","{msg} :השמירה נכשלה",{msg:err.message}); render(); });
@@ -13433,7 +13583,7 @@ document.addEventListener("click", async e=>{
     // El syncToken es de UN calendario: con el ID nuevo, el token viejo
     // devuelve 400 "Invalid sync token" (no 410) y el sync quedaba muerto
     // hasta que alguien lo borrara a mano. Se resetea junto con el ID.
-    fb.setDoc(fb.doc(db,"meta","preferences"), { calendarId: id }, { merge:true })
+    store.config.merge("preferences", { calendarId: id })
       .then(()=> id !== CALENDAR_ID ? setSyncMeta({ syncToken: null }) : null)
       .then(()=>{
       // Guardado: el campo vuelve a quedar bloqueado con el ID nuevo
@@ -13454,7 +13604,7 @@ document.addEventListener("click", async e=>{
     const maxImages = Math.min(HARD_MAX_IMAGES, Math.max(1, Number(d.maxImages) || HARD_MAX_IMAGES));
     const maxAttachmentFiles = Math.min(HARD_MAX_ATTACHMENT_FILES, Math.max(1, Number(d.maxFiles) || HARD_MAX_ATTACHMENT_FILES));
     const maxAttachmentFileBytes = Math.min(HARD_MAX_ATTACHMENT_FILE_BYTES, Math.max(1024, (Number(d.maxFileKB) || 150) * 1024));
-    fb.setDoc(fb.doc(db,"meta","preferences"), { maxImages, maxAttachmentFiles, maxAttachmentFileBytes }, { merge:true }).then(()=>{
+    store.config.merge("preferences", { maxImages, maxAttachmentFiles, maxAttachmentFileBytes }).then(()=>{
       d.saving = false; render();
     }).catch(err=>{
       console.error(err);
@@ -13844,9 +13994,7 @@ async function togglePostLike(postId){
   if(!post) return;
   const liked = (post.likedBy||[]).includes(email);
   try{
-    await fb.updateDoc(fb.doc(db,"posts",postId), {
-      likedBy: liked ? fb.arrayRemove(email) : fb.arrayUnion(email),
-    });
+    await store.posts.setLike(postId, email, !liked);
   }catch(err){
     console.error("Error al dar me gusta:", err);
     appAlert(t("No se pudo registrar el me gusta ({m}).","Couldn't register the like ({m}).","Não foi possível registrar o like ({m}).","לא ניתן היה לרשום את הלייק ({m}).",{m:err.code||err.message}));
@@ -13859,9 +14007,7 @@ async function toggleReplyLike(postId, replyId){
   if(!reply) return;
   const liked = (reply.likedBy||[]).includes(email);
   try{
-    await fb.updateDoc(fb.doc(db,"posts",postId,"replies",replyId), {
-      likedBy: liked ? fb.arrayRemove(email) : fb.arrayUnion(email),
-    });
+    await store.replies.setLike(postId, replyId, email, !liked);
   }catch(err){
     console.error("Error al dar me gusta:", err);
     appAlert(t("No se pudo registrar el me gusta ({m}).","Couldn't register the like ({m}).","Não foi possível registrar o like ({m}).","לא ניתן היה לרשום את הלייק ({m}).",{m:err.code||err.message}));
