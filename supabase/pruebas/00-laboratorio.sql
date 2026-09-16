@@ -34,3 +34,68 @@ create table if not exists storage.objects (
 create or replace function storage.foldername(name text) returns text[]
   language sql immutable as $$ select string_to_array(name, '/') $$;
 alter table storage.objects enable row level security;
+
+-- ---------- El banco de pruebas ----------
+-- Vive acá y no adentro de cada archivo de pruebas: así cualquiera de
+-- ellos se puede correr solo, después de levantar la base.
+create schema if not exists lab;
+
+-- Una credencial de mentira, con la forma que manda Supabase de verdad.
+create or replace function lab.como(correo text, proveedor text default 'google', verificado boolean default true)
+returns jsonb language sql as $$
+  select jsonb_build_object(
+    'sub', '00000000-0000-0000-0000-000000000001',
+    'email', correo, 'role', 'authenticated',
+    'app_metadata', jsonb_build_object('provider', proveedor),
+    'user_metadata', jsonb_build_object('email_verified', verificado))
+$$;
+
+create table if not exists lab.resultados(n serial, nombre text, esperado boolean, obtenido boolean, detalle text);
+
+-- Corre una sentencia haciéndose pasar por alguien, anota si la dejó o no,
+-- y deshace lo que haya hecho: cada prueba arranca del mismo estado.
+create or replace function lab.probar(nombre text, quien jsonb, sentencia text, espera boolean)
+returns void language plpgsql as $$
+declare n int; ok boolean; detalle text := '';
+begin
+  begin
+    execute 'set local role authenticated';
+    perform set_config('request.jwt.claims', quien::text, true);
+    execute sentencia;
+    get diagnostics n = row_count;
+    raise exception using errcode = '22000', message = 'FILAS=' || n;
+  exception
+    when sqlstate '22000' then
+      if sqlerrm like 'FILAS=%' then
+        n := replace(sqlerrm, 'FILAS=', '')::int;
+        ok := n > 0;
+        if not ok then detalle := 'no tocó ninguna fila'; end if;
+      else ok := false; detalle := sqlerrm; end if;
+    when others then ok := false; detalle := left(sqlerrm, 90);
+  end;
+  execute 'reset role';
+  insert into lab.resultados(nombre, esperado, obtenido, detalle) values (nombre, espera, ok, detalle);
+end $$;
+
+-- Igual, pero comprueba un VALOR y no solo si dejó o no dejó.
+create or replace function lab.probar_valor(nombre text, quien jsonb, sentencia text, consulta text, espera text)
+returns void language plpgsql as $$
+declare obtenido text; ok boolean;
+begin
+  begin
+    execute 'set local role authenticated';
+    perform set_config('request.jwt.claims', quien::text, true);
+    execute sentencia;
+    execute consulta into obtenido;
+    raise exception using errcode = '22000', message = 'VAL=' || coalesce(obtenido, '(nulo)');
+  exception
+    when sqlstate '22000' then
+      if sqlerrm like 'VAL=%' then obtenido := replace(sqlerrm, 'VAL=', '');
+      else obtenido := left(sqlerrm, 70); end if;
+    when others then obtenido := left(sqlerrm, 70);
+  end;
+  execute 'reset role';
+  ok := obtenido = espera;
+  insert into lab.resultados(nombre, esperado, obtenido, detalle)
+    values (nombre, true, ok, case when ok then '' else 'dio: ' || obtenido end);
+end $$;

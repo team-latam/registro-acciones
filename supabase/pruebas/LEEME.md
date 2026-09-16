@@ -21,7 +21,14 @@ Los archivos:
   comprobaciones (largos, formatos, que una imagen sea una ruta del bucket
   y no un archivo embebido, que la hora la ponga el servidor pero la
   importación conserve la fecha real).
+- `93-me-gusta.sql` — que el me gusta sea atómico y que el correo salga de
+  la credencial y no de un parámetro: 12 comprobaciones.
+- `94-hora-del-servidor.sql` — que la hora de una edición la ponga la base
+  y no el reloj de quien edita, pero que la importación conserve las fechas
+  reales de Firebase.
+- `95-guardar-por-partes.sql` — que guardar una preferencia no borre las
+  otras, y que dos controles tocados rápido no se pisen.
 - `levantar.sh` — levanta el servidor local y reconstruye la base entera
-  desde los cuatro archivos, en orden.
+  desde los archivos del paso 1 al 4, en orden.
 
 Al final cada uno imprime cuáles fallaron, si falló alguna.
