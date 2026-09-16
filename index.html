@@ -5512,8 +5512,359 @@ const firebaseStore = {
     },
   },
 };
-// Qué implementación está en uso. Durante la migración esto va a poder
-// valer también `supabaseStore`.
+/* ======================================================================
+   LA MISMA CAPA, CONTRA SUPABASE
+
+   Cumple exactamente los mismos métodos que firebaseStore, con las mismas
+   formas de entrada y salida. Todavía NO está en uso: `store` sigue
+   apuntando a Firebase. El día del cambio, eso es una línea.
+
+   Tres diferencias de fondo con Firestore, que es lo que resuelve este
+   archivo:
+
+   1. LOS NOMBRES. La app habla en camelCase (authorEmail, createdAt) y la
+      base en snake_case (author_email, created_at). La traducción es
+      mecánica salvo una excepción, photoURL, que de puro mecánica saldría
+      photo_u_r_l.
+
+   2. LOS CAMBIOS EN VIVO. Firestore manda SIEMPRE la lista entera en cada
+      cambio; Supabase manda el cambio suelto (se agregó esto, se borró
+      aquello). Como la app espera la lista entera, la guarda y la rearma
+      esta capa (ver enVivo). Es la diferencia que más código cuesta y la
+      que la app no tiene por qué conocer.
+
+   3. LA HORA DEL SERVIDOR. En Firestore es un valor especial que el
+      servidor reemplaza al escribir. Acá no existe nada parecido, así que
+      lo resuelve la base con disparadores (ver 04-funciones.sql) y desde
+      acá se manda una marca.
+   ====================================================================== */
+function crearSupabaseStore(sb){
+  // photoURL es la única que no sale de la regla mecánica.
+  const A_SNAKE = { photoURL: "photo_url" };
+  const A_CAMEL = { photo_url: "photoURL" };
+  const aSnake = k => A_SNAKE[k] || k.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase();
+  const aCamel = k => A_CAMEL[k] || k.replace(/_([a-z0-9])/g, (_, c) => c.toUpperCase());
+
+  // "Poné vos la hora": una fecha imposible en esta app, que la base
+  // reemplaza por su reloj al escribir (ver 04-funciones.sql).
+  const MARCA_HORA = "1970-01-01T00:00:00.000Z";
+
+  const aFila = obj => {
+    const fila = {};
+    Object.keys(obj || {}).forEach(k => { fila[aSnake(k)] = obj[k]; });
+    return fila;
+  };
+  // Lo de adentro de un jsonb (hitos, alcances, enlaces) NO se traduce: son
+  // datos de la app, no columnas, y viajan tal cual.
+  const aObjeto = fila => {
+    const obj = {};
+    Object.keys(fila || {}).forEach(k => { obj[aCamel(k)] = fila[k]; });
+    return obj;
+  };
+
+  const revienta = ({ error }) => { if(error) throw error; };
+
+  // Un id nuevo con la misma forma que los que vienen de Firestore (20
+  // caracteres del mismo alfabeto), así los viejos y los nuevos se ven
+  // iguales y nada de lo que ya existe tiene que distinguirlos. En
+  // Firestore lo generaba addDoc; acá no hay nadie que lo haga por uno.
+  const ALFABETO = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  const nuevoId = () => Array.from(crypto.getRandomValues(new Uint8Array(20)),
+    b => ALFABETO[b % ALFABETO.length]).join("");
+
+  /* --- Los cambios en vivo ---------------------------------------
+     Guarda la lista, le aplica cada cambio que llega y la vuelve a
+     entregar ENTERA, que es lo que la app espera desde siempre. */
+  function enVivo({ tabla, clave = "id", igual, orden, tope, alArmar, alCambiar, alFallar }){
+    const porClave = new Map();
+    let vivo = true, cargado = false;
+    const pendientes = [];
+    const armar = alArmar || (l => l);
+    const entregar = () => { if(vivo) alCambiar(armar([...porClave.values()])); };
+    const aplicar = c => {
+      if(c.eventType === "DELETE") porClave.delete(String(c.old && c.old[clave]));
+      else porClave.set(String(c.new[clave]), aObjeto(c.new));
+    };
+
+    // Se escucha PRIMERO y se carga después: al revés, un cambio que
+    // ocurra entre la carga y la suscripción se perdería sin que nadie se
+    // entere, y esa lista quedaría vieja hasta recargar la página.
+    const canal = sb.channel(`${tabla}:${clave}:${igual ? igual.valor : "todo"}:${Date.now()}`)
+      .on("postgres_changes",
+          { event: "*", schema: "public", table: tabla,
+            filter: igual ? `${igual.columna}=eq.${igual.valor}` : undefined },
+          c => { if(!cargado){ pendientes.push(c); return; } aplicar(c); entregar(); })
+      .subscribe();
+
+    let q = sb.from(tabla).select("*");
+    if(igual) q = q.eq(igual.columna, igual.valor);
+    if(orden) q = q.order(orden.columna, { ascending: !orden.desc });
+    if(tope) q = q.limit(tope);
+    q.then(({ data, error }) => {
+      if(!vivo) return;
+      if(error){ if(alFallar) alFallar(error); return; }
+      (data || []).forEach(f => porClave.set(String(f[clave]), aObjeto(f)));
+      cargado = true;
+      // Los cambios que llegaron mientras se cargaba se aplican ahora, en
+      // orden: si uno de ellos ya venía en la carga, lo pisa con lo más
+      // nuevo, que es lo correcto.
+      pendientes.splice(0).forEach(aplicar);
+      entregar();
+    });
+
+    return () => { vivo = false; sb.removeChannel(canal); };
+  }
+
+  // Una lectura suelta de una fila, por su clave.
+  async function unaFila(tabla, columna, valor){
+    const { data, error } = await sb.from(tabla).select("*").eq(columna, valor).maybeSingle();
+    if(error) throw error;
+    return data ? aObjeto(data) : null;
+  }
+
+  const porFecha = (campo, lista) =>
+    [...lista].sort((a, b) => tsToMillis(a[campo]) - tsToMillis(b[campo]));
+
+  return {
+    // ---- Posteos ----
+    posts: {
+      subscribe(alCambiar, alFallar){
+        return enVivo({ tabla: "posts", alCambiar, alFallar });
+      },
+      async create(datos){
+        const id = nuevoId();
+        revienta(await sb.from("posts").insert({ ...aFila(datos), id }));
+        return id;
+      },
+      // "Creá esto, pero solo si no existe": es un insert que ignora el
+      // choque de id, que es la forma que tiene Postgres de decir lo que
+      // en Firestore era una transacción.
+      async createOnce(id, datos){
+        revienta(await sb.from("posts").upsert({ ...aFila(datos), id },
+          { onConflict: "id", ignoreDuplicates: true }));
+      },
+      async update(id, parche){
+        revienta(await sb.from("posts").update(aFila(parche)).eq("id", id));
+      },
+      async remove(id){
+        revienta(await sb.from("posts").delete().eq("id", id));
+      },
+      // El correo NO viaja: la base lo saca de la credencial (ver
+      // me_gusta_posteo en 04-funciones.sql). Así nadie puede dar me gusta
+      // en nombre de otro ni pasándolo a mano.
+      async setLike(id, email, puesto){
+        revienta(await sb.rpc("me_gusta_posteo", { p_id: id, p_puesto: puesto }));
+      },
+    },
+
+    // ---- Comentarios ----
+    replies: {
+      subscribeAll(alCambiar, alFallar){
+        return enVivo({ tabla: "replies", alCambiar, alFallar,
+          alArmar: lista => {
+            const porPosteo = Object.create(null);
+            lista.forEach(r => (porPosteo[r.postId] = porPosteo[r.postId] || []).push(r));
+            Object.keys(porPosteo).forEach(k => { porPosteo[k] = porFecha("createdAt", porPosteo[k]); });
+            return porPosteo;
+          } });
+      },
+      subscribeOf(postId, alCambiar, alFallar){
+        return enVivo({ tabla: "replies", igual: { columna: "post_id", valor: postId },
+          orden: { columna: "created_at" }, alCambiar, alFallar,
+          alArmar: lista => porFecha("createdAt", lista) });
+      },
+      async create(postId, datos){
+        revienta(await sb.from("replies").insert(
+          { ...aFila(datos), id: nuevoId(), post_id: postId }));
+      },
+      async remove(postId, replyId){
+        revienta(await sb.from("replies").delete().eq("id", replyId));
+      },
+      async setLike(postId, replyId, email, puesto){
+        revienta(await sb.rpc("me_gusta_comentario", { p_id: replyId, p_puesto: puesto }));
+      },
+    },
+
+    // ---- El equipo ----
+    roster: {
+      subscribe(alCambiar, alFallar){
+        return enVivo({ tabla: "members", clave: "email", alCambiar, alFallar });
+      },
+      watchOwn(email, alCambiar, alFallar){
+        return enVivo({ tabla: "members", clave: "email",
+          igual: { columna: "email", valor: email }, alCambiar, alFallar,
+          alArmar: lista => lista[0] || null });
+      },
+      async get(email){ return unaFila("members", "email", email); },
+      async all(){
+        const { data, error } = await sb.from("members").select("*");
+        if(error) throw error;
+        return (data || []).map(aObjeto);
+      },
+      async add(email, datos){
+        revienta(await sb.from("members").insert({ ...aFila(datos), email, approved_at: MARCA_HORA }));
+      },
+      async ensure(email, datos){
+        revienta(await sb.from("members").upsert(
+          { ...aFila(datos), email, approved_at: datos.approvedAt || MARCA_HORA },
+          { onConflict: "email" }));
+      },
+      async setRole(email, role){
+        revienta(await sb.from("members").update({ role }).eq("email", email));
+      },
+      async setNickname(email, nickname, name){
+        const campos = { nickname };
+        if(name !== undefined) campos.name = name;
+        revienta(await sb.from("members").update(campos).eq("email", email));
+      },
+      async setCalendarShared(email, compartido){
+        revienta(await sb.from("members").update(
+          compartido ? { calendar_shared: true, calendar_invite_sent_at: MARCA_HORA }
+                     : { calendar_shared: false }).eq("email", email));
+      },
+      async markTourSeen(email){
+        revienta(await sb.from("members").update({ tour_seen_at: MARCA_HORA }).eq("email", email));
+      },
+      async remove(email){
+        revienta(await sb.from("members").delete().eq("email", email));
+      },
+    },
+
+    // ---- Ex integrantes ----
+    formerMembers: {
+      subscribe(alCambiar, alFallar){
+        return enVivo({ tabla: "former_members", clave: "email", alCambiar, alFallar });
+      },
+      async all(){
+        const { data, error } = await sb.from("former_members").select("*");
+        if(error) throw error;
+        return (data || []).map(aObjeto);
+      },
+      async save(email, datos){
+        revienta(await sb.from("former_members").upsert(
+          { ...aFila(datos), email, revoked_at: MARCA_HORA }, { onConflict: "email" }));
+      },
+      async remove(email){
+        revienta(await sb.from("former_members").delete().eq("email", email));
+      },
+    },
+
+    // ---- Solicitudes de acceso ----
+    // El id de una solicitud ES el correo: la app las mira por `id`, así
+    // que se lo agrega al entregarlas.
+    accessRequests: {
+      subscribe(alCambiar, alFallar){
+        return enVivo({ tabla: "access_requests", clave: "email",
+          orden: { columna: "requested_at", desc: true }, alCambiar, alFallar,
+          alArmar: lista => [...lista]
+            .sort((a, b) => tsToMillis(b.requestedAt) - tsToMillis(a.requestedAt))
+            .map(r => ({ ...r, id: r.email })) });
+      },
+      watchOwn(email, alCambiar, alFallar){
+        return enVivo({ tabla: "access_requests", clave: "email",
+          igual: { columna: "email", valor: email }, alCambiar, alFallar,
+          alArmar: lista => lista[0] ? { ...lista[0], id: lista[0].email } : null });
+      },
+      async get(email){
+        const r = await unaFila("access_requests", "email", email);
+        return r ? { ...r, id: r.email } : null;
+      },
+      async save(email, datos){
+        revienta(await sb.from("access_requests").upsert(
+          { ...aFila(datos), email, requested_at: MARCA_HORA }, { onConflict: "email" }));
+      },
+      async setStatus(email, status){
+        revienta(await sb.from("access_requests").update({ status }).eq("email", email));
+      },
+    },
+
+    // ---- Configuración del equipo ----
+    // Lo que se guarda adentro de `value` es un bloque de la app y viaja
+    // tal cual: ahí no se traduce nada.
+    config: {
+      watch(clave, alCambiar, alFallar){
+        return enVivo({ tabla: "app_config", clave: "key",
+          igual: { columna: "key", valor: clave }, alCambiar, alFallar,
+          alArmar: lista => (lista[0] ? lista[0].value : null) });
+      },
+      async get(clave){
+        const { data, error } = await sb.from("app_config").select("value").eq("key", clave).maybeSingle();
+        if(error) throw error;
+        return data ? data.value : null;
+      },
+      async replace(clave, datos){
+        revienta(await sb.from("app_config").upsert({ key: clave, value: datos }, { onConflict: "key" }));
+      },
+      // Va por una función de la base y no por leer-cambiar-escribir: dos
+      // controles tocados rápido se pisarían, y el segundo guardaría un
+      // bloque armado sobre una foto vieja (ver guardar_config en
+      // 04-funciones.sql).
+      async merge(clave, parche){
+        revienta(await sb.rpc("guardar_config", { p_clave: clave, p_parche: parche }));
+      },
+      async mergeCalendarSync(parche){
+        await this.merge("calendarSync", { ...parche, lastSyncedAt: new Date().toISOString() });
+      },
+    },
+
+    // ---- Preferencias de cada persona ----
+    userPrefs: {
+      watchOwn(email, alCambiar, alFallar){
+        return enVivo({ tabla: "user_prefs", clave: "email",
+          igual: { columna: "email", valor: email }, alCambiar, alFallar,
+          alArmar: lista => (lista[0] ? lista[0].prefs : null) });
+      },
+      async get(email){
+        const { data, error } = await sb.from("user_prefs").select("prefs").eq("email", email).maybeSingle();
+        if(error) throw error;
+        return data ? data.prefs : null;
+      },
+      // Igual que la configuración: lo hace la base, no el navegador. Acá
+      // importa más todavía, porque cada interruptor de Configuración
+      // guarda el suyo y se tocan de a varios seguidos.
+      // De quién son NO viaja: sale de la credencial.
+      async merge(email, parche){
+        revienta(await sb.rpc("guardar_preferencias", { p_parche: parche }));
+      },
+    },
+
+    // ---- Auditoría ----
+    auditLog: {
+      subscribeRecent(tope, alCambiar, alFallar){
+        return enVivo({ tabla: "audit_log", orden: { columna: "created_at", desc: true }, tope,
+          alCambiar, alFallar,
+          alArmar: lista => [...lista]
+            .sort((a, b) => tsToMillis(b.createdAt) - tsToMillis(a.createdAt))
+            .slice(0, tope) });
+      },
+      async add(datos){
+        revienta(await sb.from("audit_log").insert({ ...aFila(datos), id: nuevoId() }));
+      },
+      // "Escribir solo si no existe todavía": es lo que hace que un login
+      // deje UNA entrada por día y no una por recarga. En Firestore se
+      // logra con un id fijo que la segunda vez rebota contra las reglas;
+      // acá, con un insert que ignora el choque de id. Lo que importa es
+      // la intención, no el mecanismo.
+      async addOnce(id, datos){
+        revienta(await sb.from("audit_log").upsert({ ...aFila(datos), id },
+          { onConflict: "id", ignoreDuplicates: true }));
+      },
+    },
+
+    // La marca que la base reemplaza por su propio reloj al escribir.
+    horaDelServidor(){ return MARCA_HORA; },
+
+    // Postgres contesta 42501 cuando una política deja algo afuera, y
+    // PostgREST lo devuelve como código 42501 en el error.
+    esErrorDePermiso(err){
+      return !!err && (err.code === "42501" || err.code === "PGRST301");
+    },
+  };
+}
+
+// Qué implementación está en uso. La de Supabase existe y está probada,
+// pero todavía NO se enchufa: el día del cambio, esto es una línea
+// (`let store = crearSupabaseStore(sb)`), y volver atrás también.
 let store = firebaseStore;
 
 // correspondiente en firestore.rules (allowlist: allow list).
