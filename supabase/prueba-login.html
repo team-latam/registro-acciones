@@ -81,6 +81,15 @@
     <div id="resultadoCerrada"></div>
     <p class="nota" id="notaCerrada">Se habilita después de entrar.</p>
   </div>
+
+  <div class="tarjeta">
+    <h2>3 · Qué dice tu credencial</h2>
+    <p style="margin:0 0 14px;font-size:.94rem;">
+      Los permisos de la base van a mirar estas tres cosas para decidir si
+      sos vos. Acá se ven tal como las manda Supabase, sin intermediarios.
+    </p>
+    <div id="zonaClaims"><p class="nota">Se completa después de entrar.</p></div>
+  </div>
 </main>
 
 <script type="module">
@@ -99,6 +108,7 @@ const zonaLogin = document.getElementById("zonaLogin");
 const btnCerrada = document.getElementById("btnCerrada");
 const resultadoCerrada = document.getElementById("resultadoCerrada");
 const notaCerrada = document.getElementById("notaCerrada");
+const zonaClaims = document.getElementById("zonaClaims");
 
 function esc(s){ return String(s).replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c])); }
 
@@ -109,6 +119,7 @@ function pintar(sesion){
     document.getElementById("btnEntrar").onclick = entrar;
     btnCerrada.disabled = true;
     notaCerrada.hidden = false;
+    pintarClaims(null);
     return;
   }
   const u = sesion.user;
@@ -128,6 +139,40 @@ function pintar(sesion){
   document.getElementById("btnSalir").onclick = async ()=>{ await sb.auth.signOut(); };
   btnCerrada.disabled = false;
   notaCerrada.hidden = true;
+  pintarClaims(sesion);
+}
+
+// Lo que viaja adentro del token, sin verificar la firma: acá solo se
+// muestra lo que ya es tuyo. Quien valida de verdad es la base.
+function claimsDe(sesion){
+  try{
+    const b64 = sesion.access_token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+    return JSON.parse(new TextDecoder().decode(bytes));
+  }catch(e){ return null; }
+}
+
+function pintarClaims(sesion){
+  if(!sesion){ zonaClaims.innerHTML = `<p class="nota">Se completa después de entrar.</p>`; return; }
+  const c = claimsDe(sesion);
+  if(!c){
+    zonaClaims.innerHTML = `<div class="resultado mal">No se pudo leer la credencial. Avisá con una captura.</div>`;
+    return;
+  }
+  const correo = c.email || "";
+  const proveedor = (c.app_metadata && c.app_metadata.provider) || "(no viene)";
+  const verificado = c.user_metadata && c.user_metadata.email_verified;
+  const marca = v => v ? '<span class="ok">✅</span>' : '<span class="mal">❌</span>';
+  const todoBien = !!correo && verificado === true && proveedor === "google";
+  zonaClaims.innerHTML = `
+    <dl>
+      <dt>${marca(!!correo)} correo</dt><dd><code>${esc(correo || "(no viene)")}</code></dd>
+      <dt>${marca(proveedor === "google")} entró con</dt><dd><code>${esc(String(proveedor))}</code></dd>
+      <dt>${marca(verificado === true)} correo verificado</dt><dd><code>${esc(String(verificado))}</code></dd>
+    </dl>
+    <div class="resultado ${todoBien ? "ok" : "aviso"}">${todoBien
+      ? "✅ Los permisos te van a reconocer. No hay que ajustar nada."
+      : "⚠️ Falta alguno de los tres. Mandá una captura de esta tarjeta: hay que ajustar una línea de los permisos antes de aplicarlos."}</div>`;
 }
 
 async function entrar(){
