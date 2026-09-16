@@ -1,8 +1,8 @@
 -- Laboratorio: lo mínimo de Supabase para poder probar los permisos acá.
 -- NO forma parte de lo que se corre en Supabase: allá esto ya existe.
-create role anon nologin;
-create role authenticated nologin;
-create role service_role nologin bypassrls;
+do $$ begin create role anon nologin; exception when duplicate_object then null; end $$;
+do $$ begin create role authenticated nologin; exception when duplicate_object then null; end $$;
+do $$ begin create role service_role nologin bypassrls; exception when duplicate_object then null; end $$;
 grant usage on schema public to anon, authenticated, service_role;
 
 create schema if not exists auth;
