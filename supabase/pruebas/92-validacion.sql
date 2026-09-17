@@ -49,10 +49,14 @@ select lab.probar('una ruta que se escapa de su carpeta NO', :YO,
   $q$insert into public.posts(id,title,content,date,start_date,end_date,activity_type,author_name,author_email,images)
      values ('x6','T','C','2026-09-10','2026-09-10','2026-09-10','evento','B','benny@team-latam.com',
              array['posts/../../otro/secreto.jpg'])$q$, false);
-select lab.probar('siete imágenes NO (el tope es seis)', :YO,
+-- El tope pasó de 6 a 20 cuando los archivos salieron del documento y se
+-- fueron al bucket (ver 07-adjuntos-grandes.sql). Las pruebas de ese
+-- cambio están en 99-adjuntos-grandes.sql; acá queda una sola, para que
+-- este archivo no diga otra cosa.
+select lab.probar('siete imágenes ahora SÍ (el tope dejó de ser seis)', :YO,
   $q$insert into public.posts(id,title,content,date,start_date,end_date,activity_type,author_name,author_email,images)
      values ('x7','T','C','2026-09-10','2026-09-10','2026-09-10','evento','B','benny@team-latam.com',
-             array['a','b','c','d','e','f','g'])$q$, false);
+             array['a','b','c','d','e','f','g'])$q$, true);
 select lab.probar('un adjunto embebido tampoco', :YO,
   $q$insert into public.posts(id,title,content,date,start_date,end_date,activity_type,author_name,author_email,files)
      values ('x8','T','C','2026-09-10','2026-09-10','2026-09-10','evento','B','benny@team-latam.com',

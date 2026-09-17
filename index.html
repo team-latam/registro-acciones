@@ -1350,8 +1350,8 @@
     color:#fff; border:none; font-size:12px; cursor:pointer; line-height:20px; text-align:center; padding:0;
   }
 
-  /* Adjuntos genéricos (PDF/audio chicos, ver MAX_ATTACHMENT_FILE_BYTES):
-     mismo look que los chips de imagen, pero sin miniatura. */
+  /* Adjuntos genéricos (PDF/audio, ver maxBytesPorArchivo()): mismo look
+     que los chips de imagen, pero sin miniatura. */
   .file-preview-list{ display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
   .file-chip{
     display:inline-flex; align-items:center; gap:6px; background:var(--surface-alt); border:1px solid var(--border);
@@ -5333,7 +5333,51 @@ function subscribeAuditLog(){
    el día que `store` apunte a Supabase el respaldo dejaría de servir
    justamente para lo que existe: para volver.
    ====================================================================== */
+
+/* ----------------------------------------------------------------------
+   CUÁNTO AGUANTA CADA BASE
+
+   Esto NO es una preferencia del equipo: es lo que la base puede guardar,
+   y por eso viaja con la base y no suelto en el código.
+
+   Firestore mete el archivo ADENTRO del documento del posteo, como texto
+   base64 (que pesa ~33% más que el archivo original), y no admite más de
+   1 MiB por documento entero. De ahí salen el 6, el 2 y los 500 KB: no
+   son un criterio nuestro, son el techo de la base. Por eso también las
+   imágenes se achican a 1280 px y se recomprimen fuerte.
+
+   Supabase sube el archivo al bucket y en el posteo queda solo la ruta,
+   así que un posteo pesa lo mismo con una foto que con veinte. El techo
+   pasa a ser el del plan (1 GB de archivos, 5 GB de descarga por mes),
+   que para fotos y PDF es muchísimo.
+
+   Quien elige de acá para abajo es Configuración > Adjuntos; nunca de acá
+   para arriba. Si mañana se cambia de base, lo elegido se recorta solo
+   contra el techo de la base nueva.
+---------------------------------------------------------------------- */
+const LIMITES_FIREBASE = {
+  imagenes: 6,
+  ladoMaximo: 1280,
+  calidadImagen: 0.72,
+  archivos: 2,
+  bytesPorArchivo: 500 * 1024,
+  bytesSugeridos: 150 * 1024,
+};
+const LIMITES_SUPABASE = {
+  imagenes: 20,
+  // 2560 px es el lado largo de una foto que se ve bien en cualquier
+  // pantalla y en una impresión chica. Se sigue achicando (una foto de
+  // celular sale de la cámara en 4000 px y pesa 5 MB) pero con muchísima
+  // menos pérdida: ~600 KB en vez de ~120 KB.
+  ladoMaximo: 2560,
+  calidadImagen: 0.85,
+  archivos: 10,
+  bytesPorArchivo: 25 * 1024 * 1024,
+  bytesSugeridos: 10 * 1024 * 1024,
+};
+
 const firebaseStore = {
+  limites: LIMITES_FIREBASE,
   // ---- Posteos ----
   posts: {
     // Todos, SIN ordenar: el orden (fecha desc y, dentro del día, creación
@@ -5761,8 +5805,14 @@ function crearSupabaseStore(sb){
   // base rechaza un archivo embebido a propósito (ver 03-validacion.sql):
   // si esto no corriera, subir una foto fallaría con un error raro en vez
   // de guardarse mal en silencio.
+  // Sin el audio acá, una nota de voz subía como ".bin": andaba (el tipo
+  // viaja en el blob y la URL firmada lo sirve bien) pero el archivo
+  // quedaba sin extensión y no se podía reconocer mirando el bucket.
   const TIPO_A_EXT = { "image/png":"png", "image/jpeg":"jpg", "image/gif":"gif",
-                       "image/webp":"webp", "application/pdf":"pdf" };
+                       "image/webp":"webp", "application/pdf":"pdf",
+                       "audio/mpeg":"mp3", "audio/mp4":"m4a", "audio/x-m4a":"m4a",
+                       "audio/aac":"aac", "audio/ogg":"ogg", "audio/wav":"wav",
+                       "audio/x-wav":"wav", "audio/webm":"weba", "audio/3gpp":"3gp" };
   function aBlob(dataUrl){
     const [cabecera, b64] = String(dataUrl).split(",");
     const tipo = (cabecera.match(/:(.*?);/) || [])[1] || "application/octet-stream";
@@ -5906,6 +5956,7 @@ function crearSupabaseStore(sb){
     [...lista].sort((a, b) => tsToMillis(a[campo]) - tsToMillis(b[campo]));
 
   return {
+    limites: LIMITES_SUPABASE,
     // ---- Posteos ----
     posts: {
       subscribe(alCambiar, alFallar){
@@ -6436,11 +6487,15 @@ let CALENDAR_IMPORT_FROM = "";
 function applyCalendarImportFromConfig(v){
   CALENDAR_IMPORT_FROM = /^\d{4}-\d{2}-\d{2}$/.test(String(v||"")) ? v : "";
 }
+// Lo guardado se toma tal cual, sin recortarlo acá: el recorte contra el
+// techo de la base lo hacen maxImagenes()/maxArchivos()/maxBytesPorArchivo()
+// en el momento de usarlo. Así un número elegido con una base no se pierde
+// si se pasa a la otra y vuelve — se recorta mientras haga falta, nada más.
 function applyAttachmentLimitsConfig(cfg){
   if(!cfg) return;
-  if(cfg.maxImages) MAX_IMAGES = Math.min(HARD_MAX_IMAGES, Math.max(1, cfg.maxImages));
-  if(cfg.maxAttachmentFiles) MAX_ATTACHMENT_FILES = Math.min(HARD_MAX_ATTACHMENT_FILES, Math.max(1, cfg.maxAttachmentFiles));
-  if(cfg.maxAttachmentFileBytes) MAX_ATTACHMENT_FILE_BYTES = Math.min(HARD_MAX_ATTACHMENT_FILE_BYTES, Math.max(1024, cfg.maxAttachmentFileBytes));
+  if(cfg.maxImages) limitesElegidos.imagenes = Math.max(1, cfg.maxImages);
+  if(cfg.maxAttachmentFiles) limitesElegidos.archivos = Math.max(1, cfg.maxAttachmentFiles);
+  if(cfg.maxAttachmentFileBytes) limitesElegidos.bytesPorArchivo = Math.max(1024, cfg.maxAttachmentFileBytes);
 }
 
 // Primera "palabra" usable de un nombre o de un email (si no es un
@@ -8967,10 +9022,18 @@ function renderCalendarImportBlock(d){
 }
 
 /* ----- Preferencias: sección "Adjuntos" ----- */
+// La unidad del campo de tamaño la decide la base: escribir "10240" para
+// decir 10 MB es ilegible, y "0.15" para decir 150 KB también.
+function unidadAdjuntos(){
+  return store.limites.bytesPorArchivo >= 1024 * 1024
+    ? { nombre:"MB", factor:1024*1024, min:1, paso:1 }
+    : { nombre:"KB", factor:1024, min:50, paso:10 };
+}
 function newAdjuntosDraft(){
+  const u = unidadAdjuntos();
   return {
-    maxImages: MAX_IMAGES, maxFiles: MAX_ATTACHMENT_FILES,
-    maxFileKB: Math.round(MAX_ATTACHMENT_FILE_BYTES/1024), error:"", saving:false,
+    maxImages: maxImagenes(), maxFiles: maxArchivos(),
+    maxFileSize: Math.round(maxBytesPorArchivo() / u.factor), error:"", saving:false,
   };
 }
 let adjuntosDraft = null;
@@ -8980,6 +9043,7 @@ function getAdjuntosDraft(){
 }
 function renderAdjuntosSection(){
   const d = getAdjuntosDraft();
+  const u = unidadAdjuntos();
   return `
       <div class="hint" style="margin-bottom:16px;">${t("Límites de archivos que se pueden adjuntar a un posteo (Evento, Rutina o respuesta).","Limits on files that can be attached to a post (Event, Routine or reply).","Limites de arquivos que podem ser anexados a uma postagem (Evento, Rotina ou resposta).","מגבלות על קבצים שניתן לצרף לפוסט (אירוע, שגרה או תגובה).")}</div>
       <div class="settings-card">
@@ -8987,35 +9051,39 @@ function renderAdjuntosSection(){
           <span class="setting-icon">🖼️</span>
           <div class="setting-text">
             <div class="setting-label">${t("Máximo de imágenes","Maximum images","Máximo de imagens","מקסימום תמונות")}</div>
-            <div class="setting-sub">${t("Por posteo — tope duro: {n}","Per post — hard cap: {n}","Por postagem — limite máximo: {n}","לכל פוסט — תקרה קשיחה: {n}",{n:HARD_MAX_IMAGES})}</div>
+            <div class="setting-sub">${t("Por posteo — tope de la base: {n}","Per post — cap of the database: {n}","Por postagem — limite da base: {n}","לכל פוסט — תקרת מסד הנתונים: {n}",{n:store.limites.imagenes})}</div>
           </div>
           <div class="setting-control">
-            <input type="number" id="adjMaxImages" min="1" max="${HARD_MAX_IMAGES}" value="${d.maxImages}">
+            <input type="number" id="adjMaxImages" min="1" max="${store.limites.imagenes}" value="${d.maxImages}">
           </div>
         </div>
         <div class="setting-row">
           <span class="setting-icon">📄</span>
           <div class="setting-text">
             <div class="setting-label">${t("Máximo de PDF/audio","Maximum PDF/audio files","Máximo de PDF/áudio","מקסימום קבצי PDF/אודיו")}</div>
-            <div class="setting-sub">${t("Por posteo — tope duro: {n}","Per post — hard cap: {n}","Por postagem — limite máximo: {n}","לכל פוסט — תקרה קשיחה: {n}",{n:HARD_MAX_ATTACHMENT_FILES})}</div>
+            <div class="setting-sub">${t("Por posteo — tope de la base: {n}","Per post — cap of the database: {n}","Por postagem — limite da base: {n}","לכל פוסט — תקרת מסד הנתונים: {n}",{n:store.limites.archivos})}</div>
           </div>
           <div class="setting-control">
-            <input type="number" id="adjMaxFiles" min="1" max="${HARD_MAX_ATTACHMENT_FILES}" value="${d.maxFiles}">
+            <input type="number" id="adjMaxFiles" min="1" max="${store.limites.archivos}" value="${d.maxFiles}">
           </div>
         </div>
         <div class="setting-row">
           <span class="setting-icon">⚖️</span>
           <div class="setting-text">
             <div class="setting-label">${t("Tamaño máximo por archivo","Maximum size per file","Tamanho máximo por arquivo","גודל מקסימלי לכל קובץ")}</div>
-            <div class="setting-sub">${t("Para cada PDF/audio adjunto","For each attached PDF/audio file","Para cada PDF/áudio anexado","לכל קובץ PDF/אודיו מצורף")}</div>
+            <div class="setting-sub">${t("Para cada PDF/audio adjunto — tope de la base: {n}","For each attached PDF/audio file — cap of the database: {n}","Para cada PDF/áudio anexado — limite da base: {n}","לכל קובץ PDF/אודיו מצורף — תקרת מסד הנתונים: {n}",{n:topeLegible(store.limites.bytesPorArchivo)})}</div>
           </div>
           <div class="setting-control setting-control-unit">
-            <input type="number" id="adjMaxFileKB" min="50" max="500" value="${d.maxFileKB}">
-            <span class="setting-unit">KB</span>
+            <input type="number" id="adjMaxFileSize" min="${u.min}" step="${u.paso}" max="${Math.round(store.limites.bytesPorArchivo / u.factor)}" value="${d.maxFileSize}">
+            <span class="setting-unit">${u.nombre}</span>
           </div>
         </div>
       </div>
-      <div class="hint" style="margin-top:12px;">${t("Los topes duros también los exige Firestore — acá se puede achicar, no agrandar más que eso.","The hard caps are also enforced by Firestore — here you can shrink them, not raise them past that.","Os limites máximos também são exigidos pelo Firestore — aqui dá para diminuir, não aumentar além disso.","התקרות הקשיחות נאכפות גם על ידי Firestore — כאן אפשר להקטין, לא להגדיל מעבר לכך.")}</div>
+      <div class="hint" style="margin-top:12px;">${t(
+        "Los topes son los que aguanta la base que estés usando, y la base los exige también de su lado — acá se puede achicar, no agrandar más que eso.",
+        "The caps are whatever the database in use can hold, and the database enforces them on its side too — here you can shrink them, not raise them past that.",
+        "Os limites são os que a base em uso aguenta, e a base também os exige do lado dela — aqui dá para diminuir, não aumentar além disso.",
+        "התקרות הן מה שמסד הנתונים שבשימוש יכול להכיל, והוא אוכף אותן גם מצידו — כאן אפשר להקטין, לא להגדיל מעבר לכך.")}</div>
       ${d.error ? `<div class="form-error">${esc(d.error)}</div>` : ""}
       <div class="modal-actions" style="margin-top:16px;">
         <button type="button" class="btn-secondary" data-action="adjuntos-reset">${t("Descartar cambios","Discard changes","Descartar alterações","ביטול השינויים")}</button>
@@ -12406,11 +12474,11 @@ function renderComposer(){
         ${renderFileChips(d.files, "post-rm-file")}
         ${d.links.length ? `<div class="attach-panel">${renderLinkRows("post", "new", d.links)}</div>` : ""}
         <div class="hint">${t(
-          `Imágenes: se comprimen solas, máximo {maxImg}. PDF/audio: hasta {maxFiles} archivos chicos (≤{maxKB}KB c/u). Para video o archivos más grandes: pegá un link (Drive, YouTube, etc.).`,
-          `Images: compressed automatically, up to {maxImg}. PDF/audio: up to {maxFiles} small files (≤{maxKB}KB each). For video or bigger files: paste a link (Drive, YouTube, etc.).`,
-          `Imagens: são comprimidas sozinhas, máximo {maxImg}. PDF/áudio: até {maxFiles} arquivos pequenos (≤{maxKB}KB cada). Para vídeo ou arquivos maiores: cole um link (Drive, YouTube, etc.).`,
-          `תמונות: נדחסות לבד, עד {maxImg}. PDF/אודיו: עד {maxFiles} קבצים קטנים (עד {maxKB}KB כל אחד). לווידאו או קבצים גדולים יותר: הדבק/הדביקי קישור (Drive, YouTube וכו').`,
-          { maxImg: MAX_IMAGES, maxFiles: MAX_ATTACHMENT_FILES, maxKB: (MAX_ATTACHMENT_FILE_BYTES/1024).toFixed(0) }
+          `Imágenes: se achican solas, máximo {maxImg}. PDF/audio: hasta {maxFiles} archivos (≤{maxKB} c/u). Para video o archivos más grandes: pegá un link (Drive, YouTube, etc.).`,
+          `Images: resized automatically, up to {maxImg}. PDF/audio: up to {maxFiles} files (≤{maxKB} each). For video or bigger files: paste a link (Drive, YouTube, etc.).`,
+          `Imagens: são reduzidas sozinhas, máximo {maxImg}. PDF/áudio: até {maxFiles} arquivos (≤{maxKB} cada). Para vídeo ou arquivos maiores: cole um link (Drive, YouTube, etc.).`,
+          `תמונות: מוקטנות לבד, עד {maxImg}. PDF/אודיו: עד {maxFiles} קבצים (עד {maxKB} כל אחד). לווידאו או קבצים גדולים יותר: הדבק/הדביקי קישור (Drive, YouTube וכו').`,
+          { maxImg: maxImagenes(), maxFiles: maxArchivos(), maxKB: topeLegible(maxBytesPorArchivo()) }
         )}</div>
       ` : `
         <button type="button" class="btn-text-add" data-action="toggle-post-attach">📎 ${t("Agregar imagen, PDF/audio o link","Add image, PDF/audio or link","Adicionar imagem, PDF/áudio ou link","הוספת תמונה, PDF/אודיו או קישור")}</button>
@@ -12928,16 +12996,31 @@ trapTabWithin(userProfileOverlay);
 trapTabWithin(confirmOverlay);
 trapTabWithin(eventCardOverlay);
 
-// Tope duro absoluto de imágenes: MAX_IMAGES (editable desde Preferencias
-// > Adjuntos) puede achicarlo, nunca agrandarlo más allá de esto — Firestore
-// también lo exige (ver isValidPostBase en firestore.rules).
-const HARD_MAX_IMAGES = 6;
-let MAX_IMAGES = HARD_MAX_IMAGES;
-async function handleImageFiles(fileList, targetArray, max=MAX_IMAGES){
-  const files = Array.from(fileList).slice(0, Math.max(0, max - targetArray.length));
+// Los topes duros ya no viven acá: son de la base en uso (store.limites,
+// arriba de firebaseStore). Acá queda solo lo que el admin eligió en
+// Configuración > Adjuntos, que siempre es de ese techo para abajo.
+// null = "todo lo que aguante la base".
+let limitesElegidos = { imagenes:null, archivos:null, bytesPorArchivo:null };
+const maxImagenes = ()=> Math.min(store.limites.imagenes, limitesElegidos.imagenes || store.limites.imagenes);
+const maxArchivos = ()=> Math.min(store.limites.archivos, limitesElegidos.archivos || store.limites.archivos);
+const maxBytesPorArchivo = ()=> Math.min(store.limites.bytesPorArchivo, limitesElegidos.bytesPorArchivo || store.limites.bytesSugeridos);
+// Un tope, en palabras. Aparte de pesoLegible() (el de la copia de
+// seguridad) a propósito: ahí el decimal es información — cuánto pesa de
+// verdad el archivo —, y acá es ruido: un tope es un número redondo y
+// "≤10.0 MB" se lee peor que "≤10 MB". Y en KB queda ilegible apenas el
+// tope pasa de un mega.
+function topeLegible(bytes){
+  if(bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  const mb = bytes / (1024 * 1024);
+  return `${Number.isInteger(mb) ? mb : mb.toFixed(1)} MB`;
+}
+async function handleImageFiles(fileList, targetArray){
+  const files = Array.from(fileList).slice(0, Math.max(0, maxImagenes() - targetArray.length));
   for(const file of files){
     try{
-      const dataUrl = await compressImage(file);
+      // Cuánto se achica también lo decide la base: con el archivo adentro
+      // del documento hay que apretar fuerte; con bucket, casi nada.
+      const dataUrl = await compressImage(file, store.limites.ladoMaximo, store.limites.calidadImagen);
       targetArray.push(dataUrl);
     }catch(err){
       console.error("Error comprimiendo imagen:", err);
@@ -12956,13 +13039,6 @@ async function handleImageFiles(fileList, targetArray, max=MAX_IMAGES){
 // nunca agrandarlos más allá de esto — Firestore también los exige (ver
 // isValidPostBase en firestore.rules, que valida contra el tope duro, no
 // contra estas variables editables).
-const HARD_MAX_ATTACHMENT_FILES = 2;
-let MAX_ATTACHMENT_FILES = HARD_MAX_ATTACHMENT_FILES;
-// Tope duro por adjunto (mismo valor que isValidPreferences en
-// firestore.rules): sin techo, 2 adjuntos + 6 imágenes pasaban el límite
-// de 1 MiB por documento y la escritura fallaba con un error opaco.
-const HARD_MAX_ATTACHMENT_FILE_BYTES = 500 * 1024;
-let MAX_ATTACHMENT_FILE_BYTES = 150 * 1024;
 function readFileAsDataUrl(file){
   return new Promise((resolve, reject)=>{
     const reader = new FileReader();
@@ -12972,15 +13048,15 @@ function readFileAsDataUrl(file){
   });
 }
 async function handleFileAttachments(fileList, targetArray){
-  const files = Array.from(fileList).slice(0, Math.max(0, MAX_ATTACHMENT_FILES - targetArray.length));
+  const files = Array.from(fileList).slice(0, Math.max(0, maxArchivos() - targetArray.length));
   for(const file of files){
-    if(file.size > MAX_ATTACHMENT_FILE_BYTES){
+    if(file.size > maxBytesPorArchivo()){
       await appAlert(t(
-        `"{name}" pesa {size}KB, más del máximo de {max}KB para adjuntar acá. Para archivos más grandes, subilo a Drive (o similar) y pegá el link.`,
-        `"{name}" is {size}KB, over the {max}KB max for attaching here. For bigger files, upload it to Drive (or similar) and paste the link.`,
-        `"{name}" pesa {size}KB, mais do que o máximo de {max}KB para anexar aqui. Para arquivos maiores, suba para o Drive (ou similar) e cole o link.`,
-        `"{name}" שוקל {size}KB, מעל המקסימום של {max}KB לצירוף כאן. לקבצים גדולים יותר, העלה/י ל-Drive (או דומה) והדבק/הדביקי את הקישור.`,
-        { name: file.name, size: (file.size/1024).toFixed(0), max: (MAX_ATTACHMENT_FILE_BYTES/1024).toFixed(0) }
+        `"{name}" pesa {size}, más del máximo de {max} para adjuntar acá. Para archivos más grandes, subilo a Drive (o similar) y pegá el link.`,
+        `"{name}" is {size}, over the {max} max for attaching here. For bigger files, upload it to Drive (or similar) and paste the link.`,
+        `"{name}" pesa {size}, mais do que o máximo de {max} para anexar aqui. Para arquivos maiores, suba para o Drive (ou similar) e cole o link.`,
+        `"{name}" שוקל {size}, מעל המקסימום של {max} לצירוף כאן. לקבצים גדולים יותר, העלה/י ל-Drive (או דומה) והדבק/הדביקי את הקישור.`,
+        { name: file.name, size: topeLegible(file.size), max: topeLegible(maxBytesPorArchivo()) }
       ));
       continue;
     }
@@ -14383,9 +14459,11 @@ document.addEventListener("click", async e=>{
     "adjuntos-save": async (el, e, action, postId) => {
     const d = getAdjuntosDraft();
     d.saving = true; d.error = ""; render();
-    const maxImages = Math.min(HARD_MAX_IMAGES, Math.max(1, Number(d.maxImages) || HARD_MAX_IMAGES));
-    const maxAttachmentFiles = Math.min(HARD_MAX_ATTACHMENT_FILES, Math.max(1, Number(d.maxFiles) || HARD_MAX_ATTACHMENT_FILES));
-    const maxAttachmentFileBytes = Math.min(HARD_MAX_ATTACHMENT_FILE_BYTES, Math.max(1024, (Number(d.maxFileKB) || 150) * 1024));
+    const u = unidadAdjuntos();
+    const maxImages = Math.min(store.limites.imagenes, Math.max(1, Number(d.maxImages) || store.limites.imagenes));
+    const maxAttachmentFiles = Math.min(store.limites.archivos, Math.max(1, Number(d.maxFiles) || store.limites.archivos));
+    const maxAttachmentFileBytes = Math.min(store.limites.bytesPorArchivo,
+      Math.max(1024, (Number(d.maxFileSize) || (store.limites.bytesSugeridos / u.factor)) * u.factor));
     store.config.merge("preferences", { maxImages, maxAttachmentFiles, maxAttachmentFileBytes }).then(()=>{
       d.saving = false; render();
     }).catch(err=>{
@@ -14518,7 +14596,7 @@ document.addEventListener("input", e=>{
   }
   else if(el.id === "adjMaxImages"){ getAdjuntosDraft().maxImages = el.value; }
   else if(el.id === "adjMaxFiles"){ getAdjuntosDraft().maxFiles = el.value; }
-  else if(el.id === "adjMaxFileKB"){ getAdjuntosDraft().maxFileKB = el.value; }
+  else if(el.id === "adjMaxFileSize"){ getAdjuntosDraft().maxFileSize = el.value; }
 });
 
 document.addEventListener("change", e=>{

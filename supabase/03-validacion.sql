@@ -81,9 +81,12 @@ create or replace function public.participantes_ok(v jsonb) returns boolean
 $$;
 
 -- Adjuntos: {name, path}. El archivo vive en el bucket; acá va su ruta.
+-- El tope era 2, heredado de Firestore: ahí el archivo iba ADENTRO del
+-- documento en base64 y no entraba más. Acá el documento guarda la ruta,
+-- así que el posteo pesa lo mismo con dos archivos que con diez.
 create or replace function public.archivos_ok(v jsonb) returns boolean
   language sql immutable as $$
-  select public.lista_ok(v, 2) and (v is null or not exists (
+  select public.lista_ok(v, 10) and (v is null or not exists (
     select 1 from jsonb_array_elements(v) e
     where jsonb_typeof(e) <> 'object'
        or length(coalesce(e ->> 'name', '')) > 200
@@ -148,7 +151,7 @@ alter table public.posts
     public.lista_ok(scopes, 15)
     and public.links_ok(links)
     and public.participantes_ok(participants)
-    and public.rutas_ok(images, 6)
+    and public.rutas_ok(images, 20)
     and public.archivos_ok(files)
     and public.textos_ok(mentions, 10, 200)
     and public.textos_ok(editors, 20, 200)
@@ -187,7 +190,7 @@ alter table public.replies
   add constraint replies_listas check (
     public.lista_ok(scopes, 15)
     and public.links_ok(links)
-    and public.rutas_ok(images, 6)
+    and public.rutas_ok(images, 20)
     and public.archivos_ok(files)
     and public.textos_ok(mentions, 10, 200)
     and public.textos_ok(liked_by, 1000, 200)

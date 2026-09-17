@@ -230,9 +230,20 @@ alter table public.audit_log       enable row level security;
 -- Privado (public = false): se llega a los archivos con una URL firmada
 -- que caduca, no con un enlace abierto a todo internet. Los posteos son
 -- internos del equipo.
-insert into storage.buckets (id, name, public)
-values ('adjuntos', 'adjuntos', false)
-on conflict (id) do nothing;
+-- Con techo propio y lista de tipos permitidos: el bucket es lo único que
+-- puede crecer sin aviso, y una cuenta con permiso de escribir no tiene
+-- por qué poder subir CUALQUIER cosa. 25 MB por archivo es cómodo para un
+-- PDF o una nota de voz larga, y lejos del 1 GB del plan.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('adjuntos', 'adjuntos', false, 26214400, array[
+  'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+  'application/pdf',
+  'audio/mpeg', 'audio/mp4', 'audio/x-m4a', 'audio/aac',
+  'audio/ogg', 'audio/wav', 'audio/x-wav', 'audio/webm', 'audio/3gpp'
+])
+on conflict (id) do update
+  set file_size_limit    = excluded.file_size_limit,
+      allowed_mime_types = excluded.allowed_mime_types;
 
 
 -- ============================================================

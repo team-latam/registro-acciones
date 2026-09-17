@@ -29,3 +29,8 @@ select lab.probar('el admin fijo sí (es como arranca todo)', lab.como('benny@te
 \echo ''
 select case when esperado = obtenido then 'ok     ' else 'FALLA  ' end || nombre as resultado,
        detalle from lab.resultados order by n;
+-- El mismo resumen que los demás archivos, para poder correrlos todos de
+-- una y leer una sola línea por archivo.
+select count(*) filter (where esperado = obtenido) || ' pasaron, ' ||
+       count(*) filter (where esperado <> obtenido) || ' fallaron  (de ' || count(*) || ')' as resultado
+from lab.resultados;

@@ -50,6 +50,32 @@ rompe sin consecuencias.
 - [ ] Marcar un hito como cumplido
 - [ ] Cambiar algo en Configuración (colores, avisos)
 
+### Lo que esta base permite y la otra no
+Esta es la razón por la que nos mudamos. En la pestaña con
+`?base=supabase` los topes son otros — no hay que configurar nada, salen
+solos:
+
+| | Antes (Firebase) | Acá |
+|---|---|---|
+| Fotos por posteo | 6 | **20** |
+| Calidad de la foto | achicada a 1280 px | **2560 px, casi sin comprimir** |
+| PDF/audio por posteo | 2 | **10** |
+| Peso de cada uno | 150 KB | **10 MB** |
+
+- [ ] Subí **una foto grande** (de la cámara del celular, sin achicarla) y
+      fijate que se vea nítida al abrirla — comparala con la misma foto
+      subida en la pestaña normal
+- [ ] Subí **más de 6 fotos** a un posteo
+- [ ] Subí un **PDF de verdad** (uno de varios MB, no uno recortado)
+- [ ] Mandá una **nota de voz** o un audio largo
+- [ ] En **Administrar → Configuración → Adjuntos**, mirá que los topes
+      digan 20 / 10 / 25 MB y que el tamaño esté en MB (en la pestaña
+      normal dice 6 / 2 / 500 KB, en KB)
+
+> El **video** sigue yendo por link, a propósito. No es por el lugar (hay
+> de sobra) sino por la descarga: el plan da 5 GB por mes y un video que
+> mire todo el equipo se lo come.
+
 ### Lo que se repite
 - [ ] Un evento semanal: que se vea en todas sus fechas
 - [ ] Un comentario en UNA fecha: que no aparezca en las otras
