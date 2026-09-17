@@ -261,7 +261,7 @@ alter table public.audit_log
 create or replace function public.members_controlar_nickname() returns trigger
   language plpgsql security definer set search_path = '' as $$
 begin
-  if public.sin_sesion_de_persona() then return new; end if;
+  if public.sin_sesion_de_persona() or public.es_importacion() then return new; end if;
   if new.nickname is distinct from old.nickname
      and new.nickname is not null
      and new.nickname !~ '^[a-z0-9_]{2,20}$' then
@@ -288,7 +288,7 @@ create trigger members_controlar_nickname before update on public.members
 create or replace function public.hora_del_servidor() returns trigger
   language plpgsql security definer set search_path = '' as $$
 begin
-  if public.sin_sesion_de_persona() then return new; end if;
+  if public.sin_sesion_de_persona() or public.es_importacion() then return new; end if;
   return jsonb_populate_record(new, jsonb_build_object(tg_argv[0], now()));
 end $$;
 

@@ -57,8 +57,16 @@ create or replace function public.mi_correo() returns text
   select case when public.sesion_valida() then auth.jwt() ->> 'email' end
 $$;
 
+-- El coalesce NO es decorativo. Sin correo válido, mi_correo() es null, y
+-- `null = 'benny@...'` en SQL no da false: da NULL. Las políticas de
+-- acceso tratan un NULL como "no" y quedaban bien igual, pero un
+-- `if not es_admin_fijo()` adentro de una función NO entra cuando la
+-- condición es NULL — o sea que el control se salteaba solo. Apareció
+-- probando la importación con una sesión que no entró por Google.
 create or replace function public.es_admin_fijo() returns boolean
-  language sql stable as $$ select public.mi_correo() = public.admin_fijo() $$;
+  language sql stable as $$
+  select coalesce(public.mi_correo() = public.admin_fijo(), false)
+$$;
 
 -- Estas TRES leen la tabla `members`, que a su vez tiene sus propias
 -- políticas. Sin `security definer` se morderían la cola: para saber si
@@ -96,7 +104,8 @@ create or replace function public.puede_escribir() returns boolean
 -- isAuthorOrNonRoutine en firestore.rules.
 create or replace function public.puede_editar_posteo(autor text, tipo text) returns boolean
   language sql stable as $$
-  select coalesce(autor, '') = public.mi_correo() or coalesce(tipo, '') <> 'rutina'
+  select coalesce(coalesce(autor, '') = public.mi_correo(), false)
+      or coalesce(tipo, '') <> 'rutina'
 $$;
 
 -- ¿Esta escritura viene del navegador de una persona, o de adentro?
@@ -114,6 +123,19 @@ $$;
 -- importador).
 create or replace function public.sin_sesion_de_persona() returns boolean
   language sql stable as $$ select public.mi_correo() is null $$;
+
+-- ¿Esto es una importación? Traer diez años de historia desde Firebase
+-- necesita escribir cosas que ningún navegador puede: la fecha real de
+-- creación de cada posteo, la firma de quien lo escribió. Los disparadores
+-- de más abajo se hacen a un lado cuando esto es verdad.
+--
+-- No lo puede prender nadie desde afuera: lo enciende la función importar()
+-- (ver 05-importar.sql), que antes comprueba que quien llama sea el
+-- administrador, y solo dura lo que dura esa transacción.
+create or replace function public.es_importacion() returns boolean
+  language sql stable as $$
+  select coalesce(current_setting('app.importando', true), '') = 'si'
+$$;
 
 -- Qué columnas cambiaron en un UPDATE. Es el equivalente de
 -- diff().affectedKeys() de Firestore, que Postgres no trae de fábrica.
@@ -426,7 +448,7 @@ declare
   cambios text[] := public.campos_cambiados(to_jsonb(old), to_jsonb(new));
   yo text := public.mi_correo();
 begin
-  if public.sin_sesion_de_persona() then return new; end if;
+  if public.sin_sesion_de_persona() or public.es_importacion() then return new; end if;
 
   -- De quién es y cuándo se creó no cambia NUNCA, ni para el admin.
   if cambios && array['id', 'author_email', 'author_name', 'created_at'] then
@@ -476,7 +498,7 @@ declare
   cambios text[] := public.campos_cambiados(to_jsonb(old), to_jsonb(new));
   yo text := public.mi_correo();
 begin
-  if public.sin_sesion_de_persona() then return new; end if;
+  if public.sin_sesion_de_persona() or public.es_importacion() then return new; end if;
 
   if cambios <> array['liked_by'] then
     raise exception 'De un comentario solo se puede cambiar el me gusta'
@@ -504,7 +526,7 @@ declare
   cambios text[] := public.campos_cambiados(to_jsonb(old), to_jsonb(new));
   yo text := public.mi_correo();
 begin
-  if public.sin_sesion_de_persona() then return new; end if;
+  if public.sin_sesion_de_persona() or public.es_importacion() then return new; end if;
 
   if 'email' = any(cambios) then
     raise exception 'El correo de una persona no se cambia: es su identidad en todo lo que escribió'

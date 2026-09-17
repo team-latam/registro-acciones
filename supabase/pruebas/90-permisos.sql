@@ -1,44 +1,9 @@
 \set QUIET on
 \set ON_ERROR_STOP on
-create schema if not exists lab;
-
--- Una credencial de mentira, con la forma que manda Supabase.
-create or replace function lab.como(correo text, proveedor text default 'google', verificado boolean default true)
-returns jsonb language sql as $$
-  select jsonb_build_object(
-    'sub', '00000000-0000-0000-0000-000000000001',
-    'email', correo, 'role', 'authenticated',
-    'app_metadata', jsonb_build_object('provider', proveedor),
-    'user_metadata', jsonb_build_object('email_verified', verificado))
-$$;
-
-create table if not exists lab.resultados(n serial, nombre text, esperado boolean, obtenido boolean, detalle text);
-truncate lab.resultados;
-
--- Corre una sentencia haciéndose pasar por alguien, y deshace lo que haya
--- hecho: cada prueba arranca del mismo estado.
-create or replace function lab.probar(nombre text, quien jsonb, sentencia text, espera boolean)
-returns void language plpgsql as $$
-declare n int; ok boolean; detalle text := '';
-begin
-  begin
-    execute 'set local role authenticated';
-    perform set_config('request.jwt.claims', quien::text, true);
-    execute sentencia;
-    get diagnostics n = row_count;
-    raise exception using errcode = '22000', message = 'FILAS=' || n;
-  exception
-    when sqlstate '22000' then
-      if sqlerrm like 'FILAS=%' then
-        n := replace(sqlerrm, 'FILAS=', '')::int;
-        ok := n > 0;
-        if not ok then detalle := 'no tocó ninguna fila'; end if;
-      else ok := false; detalle := sqlerrm; end if;
-    when others then ok := false; detalle := left(sqlerrm, 90);
-  end;
-  execute 'reset role';
-  insert into lab.resultados(nombre, esperado, obtenido, detalle) values (nombre, espera, ok, detalle);
-end $$;
+-- El banco de pruebas (lab.como, lab.probar, lab.probar_valor) vive en
+-- 00-laboratorio.sql. No repetirlo acá: una copia vieja adentro de un
+-- archivo pisa la compartida, y el resultado de las demás pruebas pasa a
+-- depender del orden en que se corran. Ya pasó una vez.
 
 -- ---------- Datos de prueba ----------
 truncate public.posts, public.replies, public.members, public.former_members,
