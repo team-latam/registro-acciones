@@ -1,0 +1,87 @@
+# ============================================================
+# Calendar, sin que nadie tenga la app abierta
+# ============================================================
+# Hasta ahora, los cambios hechos directo en Google Calendar entraban al
+# Registro solo mientras alguien tenía la app abierta (un chequeo cada 30
+# segundos en el navegador). Si nadie entraba en toda la semana no se
+# perdía nada —Google guarda el lugar— pero tampoco pasaba nada hasta que
+# alguien abriera.
+#
+# Esto hace lo mismo, todas las madrugadas, sin nadie adelante.
+#
+# ATENCIÓN: la lógica de qué hacer con cada evento está DOS VECES (en
+# supabase/sync-calendar/decidir.mjs y en index.html). La prueba
+# diferencial corre las dos contra los mismos eventos y compara escritura
+# por escritura: es lo único que evita que se separen en silencio. Si se
+# cae, no la saltees.
+#
+# Lo único que hay que darle es la llave de servicio de Supabase. A qué
+# proyecto, qué calendario y con qué clave leerlo salen de index.html.
+# ============================================================
+name: Calendar
+
+on:
+  schedule:
+    # 06:00 UTC = 03:00 en Argentina. GitHub puede correrlo unos minutos
+    # más tarde si está cargado; para esto da igual.
+    - cron: '0 6 * * *'
+  # Para correrlo a mano desde la pestaña Actions.
+  workflow_dispatch:
+  # Y en cada cambio a cualquiera de las dos copias, para que no se separen.
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/sync-calendar/**'
+      - 'index.html'
+      - '.github/workflows/calendario.yml'
+  pull_request:
+    paths:
+      - 'supabase/sync-calendar/**'
+      - 'index.html'
+
+jobs:
+  probar:
+    name: Que las dos copias digan lo mismo
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: La prueba diferencial y la de punta a punta
+        run: ./supabase/sync-calendar/pruebas/correr.sh
+
+  sincronizar:
+    name: Traer los cambios de Calendar
+    needs: probar
+    # En un push a main NO se sincroniza: ahí solo interesa que las dos
+    # copias sigan diciendo lo mismo. Se sincroniza de madrugada y cuando
+    # se pide a mano.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+
+      # Sin la llave esto no puede escribir, pero tampoco tiene sentido que
+      # la corrida figure en rojo por eso: avisa qué falta y termina bien.
+      - name: ¿Está la llave?
+        id: revisar
+        env:
+          LLAVE: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          if [ -z "$LLAVE" ]; then
+            echo "hay=no" >> "$GITHUB_OUTPUT"
+            echo "### Falta el secreto SUPABASE_SERVICE_ROLE_KEY" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "Se carga en Settings → Secrets and variables → Actions." >> "$GITHUB_STEP_SUMMARY"
+            echo "El paso a paso está en supabase/sync-calendar/LEEME.md." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "hay=si" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Sincronizar
+        if: steps.revisar.outputs.hay == 'si'
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node supabase/sync-calendar/sincronizar.mjs | tee -a "$GITHUB_STEP_SUMMARY"

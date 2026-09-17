@@ -84,6 +84,16 @@ Se aplican en orden. Todos se pueden correr más de una vez sin romper nada
 | `06-tiempo-real.sql` | Que los cambios lleguen solos a las pantallas abiertas |
 | `07-adjuntos-grandes.sql` | Los topes de adjuntos, sueltos |
 
+## El otro secreto
+
+Hay un segundo trabajo automático que también necesita algo tuyo: el que
+trae los cambios de Google Calendar todas las madrugadas
+(`sync-calendar/LEEME.md`). Ese usa la **llave de servicio**
+(`SUPABASE_SERVICE_ROLE_KEY`), que es otra cosa distinta de la dirección de
+la base de arriba. Los dos secretos se cargan en el mismo lugar.
+
+---
+
 `pruebas/` es aparte y **nunca** se aplica a la base de verdad: adentro hay
 un `auth` de mentira y una función para hacerse pasar por cualquier
 persona. Eso existe para probar permisos en una base descartable, y es
