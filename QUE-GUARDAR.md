@@ -18,7 +18,7 @@ que usás todos los días**.
 | **`VOLVER-A-FIREBASE.md`** | El procedimiento de marcha atrás de la migración. | — |
 | **`QUE-GUARDAR.md`** | Este archivo. | — |
 | **`PROBAR-SUPABASE.md`** | Cómo usar la app contra la base nueva, y qué conviene probar. | — |
-| **`supabase/`** | Todo lo de la base nueva: el SQL que la arma (pasos 1 al 6), el importador y las pruebas. | Habría que rehacerla desde cero. |
+| **`supabase/`** | Todo lo de la base nueva: el SQL que la arma (pasos 1 al 7), el importador, las pruebas y `LEEME.md`. | Habría que rehacerla desde cero. |
 
 ## 2. Tu copia de seguridad de los datos
 
@@ -47,7 +47,24 @@ Anotá en algún lado seguro con qué cuenta entrás a cada cosa:
 Si se pierde el acceso a la cuenta de Firebase, los archivos no alcanzan:
 los datos viven ahí.
 
-## 4. Dónde están las claves de conexión
+## 4. Las contraseñas de verdad (guardalas aparte, nunca en un chat)
+
+Hay dos cosas en todo el proyecto que sí son secretas. No están en ningún
+archivo ni pueden estarlo:
+
+- **La contraseña de la base de Supabase.** Aparece dentro de la dirección
+  de conexión (`postgresql://…`) que está guardada en GitHub como el
+  secreto `SUPABASE_DB_URL`, y es lo que permite que el SQL se aplique
+  solo (ver `supabase/LEEME.md`). Quien la tenga puede leer, cambiar y
+  borrar todo sin pasar por los permisos. Si se pierde, se genera una
+  nueva desde el panel de Supabase y se vuelve a cargar el secreto.
+- **El Client Secret de Google** (el del login). Vive en la configuración
+  de Supabase, no en el repo.
+
+Si alguna de las dos aparece alguna vez en un chat, un mail o una captura,
+se cambia por una nueva y listo — no se "borra" de donde haya quedado.
+
+## 5. Dónde están las claves de conexión
 
 Todas dentro de `index.html`, cerca del principio:
 
