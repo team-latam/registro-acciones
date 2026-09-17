@@ -5576,6 +5576,12 @@ const firebaseStore = {
     async setStatus(email, status){
       await fb.updateDoc(fb.doc(db, "accessRequests", email), { status });
     },
+    // Borrar el pedido, no rechazarlo: rechazarlo lo deja a la vista y esa
+    // persona ve que se lo rechazaron. Borrarlo lo saca del todo, y ella
+    // vuelve a ver la pantalla de pedir acceso como si fuera la primera vez.
+    async remove(email){
+      await fb.deleteDoc(fb.doc(db, "accessRequests", email));
+    },
   },
 
   // ---- Auditoría ----
@@ -6059,6 +6065,10 @@ function crearSupabaseStore(sb){
       },
       async setStatus(email, status){
         revienta(await sb.from("access_requests").update({ status }).eq("email", email));
+        await refrescar("access_requests");
+      },
+      async remove(email){
+        revienta(await sb.from("access_requests").delete().eq("email", email));
         await refrescar("access_requests");
       },
     },
@@ -8487,7 +8497,10 @@ function renderSolicitudesQueueSection(){
       <div class="hint" style="margin:18px 0 10px;">${t("Rechazadas (incluye accesos revocados) — quedan acá por si hay que revertir.","Rejected (includes revoked access) — kept here in case it needs to be reverted.","Rejeitadas (inclui acessos revogados) — ficam aqui caso seja preciso reverter.","נדחו (כולל גישות שבוטלו) — נשארות כאן למקרה שיהיה צורך לבטל.")}</div>
       ${rejected.map(r => renderRow(r, `
         <span class="status-pill rejected">${t("Rechazado","Rejected","Recusado","נדחה")}</span>
-        <button class="btn-primary" data-action="approve-request" data-email="${esc(r.email)}" ${savingRoster.has(r.email) ? "disabled" : ""}>${t("Aprobar igual","Approve anyway","Aprovar mesmo assim","אישור בכל זאת")}</button>`)).join("")}
+        <button class="btn-primary" data-action="approve-request" data-email="${esc(r.email)}" ${savingRoster.has(r.email) ? "disabled" : ""}>${t("Aprobar igual","Approve anyway","Aprovar mesmo assim","אישור בכל זאת")}</button>
+        <button type="button" class="row-x" data-action="delete-request" data-email="${esc(r.email)}" ${savingRoster.has(r.email) ? "disabled" : ""}
+          aria-label="${esc(t("Borrar el pedido","Delete the request","Apagar o pedido","מחיקת הבקשה"))}"
+          title="${esc(t("Borrar el pedido de la lista","Delete the request from the list","Apagar o pedido da lista","מחיקת הבקשה מהרשימה"))}">✕</button>`)).join("")}
     </div>` : "";
   const formersHtml = formers.length ? `
     <div class="rejected-section">
@@ -14031,6 +14044,33 @@ document.addEventListener("click", async e=>{
     const email = el.dataset.email;
     await withRosterGuard(email, ()=>
     rejectRequest(email).catch(err=>{ console.error(err); appAlert(t("No se pudo rechazar: {msg}","Couldn't reject: {msg}","Não foi possível rejeitar: {msg}","{msg} :הדחייה נכשלה",{msg:err.message})); }));
+  },
+    // Borra una solicitud RECHAZADA de la lista. Lo importante, y por eso
+    // se avisa: la solicitud es lo que hace que esa persona vea "tu acceso
+    // no fue aprobado". Sin ella, vuelve a ver la pantalla de pedir acceso
+    // en limpio y puede pedir de nuevo — que a veces es justo lo que uno
+    // quiere (alguien que no era de acá, un pedido por error) y a veces
+    // no (alguien a quien no se le quiere dar).
+    "delete-request": async (el, e, action, postId) => {
+    const email = el.dataset.email;
+    const r = state.accessRequests.find(x=>x.email === email);
+    if(!r) return;
+    const ok = await appConfirm(
+      t("¿Borrar el pedido de {email}? Va a poder pedir acceso de nuevo, en vez de ver que se lo rechazaste.",
+        "Delete {email}'s request? They'll be able to request access again, instead of seeing it was rejected.",
+        "Apagar o pedido de {email}? Vai poder pedir acesso de novo, em vez de ver que foi recusado.",
+        "?{email} למחוק את הבקשה של. הוא/היא יוכל/תוכל לבקש גישה שוב, במקום לראות שנדחתה",
+        { email }),
+      { danger:true, okLabel: t("Borrar","Delete","Apagar","מחיקה") });
+    if(!ok) return;
+    await withRosterGuard(email, async ()=>{
+      try{
+        await store.accessRequests.remove(email);
+      }catch(err){
+        console.error(err);
+        await appAlert(t("No se pudo borrar: {msg}","Couldn't delete: {msg}","Não foi possível apagar: {msg}","{msg} :המחיקה נכשלה",{msg:err.message}));
+      }
+    });
   },
     "delete-former-member": async (el, e, action, postId) => {
     const email = el.dataset.email;
