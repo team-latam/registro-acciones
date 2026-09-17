@@ -17,6 +17,8 @@ que usás todos los días**.
 | **`CLAUDE.md`** | Las reglas de trabajo del proyecto (dónde se publica, cómo se prueba). | Se pierde el "cómo se hacen las cosas acá". |
 | **`VOLVER-A-FIREBASE.md`** | El procedimiento de marcha atrás de la migración. | — |
 | **`QUE-GUARDAR.md`** | Este archivo. | — |
+| **`PROBAR-SUPABASE.md`** | Cómo usar la app contra la base nueva, y qué conviene probar. | — |
+| **`supabase/`** | Todo lo de la base nueva: el SQL que la arma (pasos 1 al 6), el importador y las pruebas. | Habría que rehacerla desde cero. |
 
 ## 2. Tu copia de seguridad de los datos
 
@@ -37,6 +39,10 @@ Anotá en algún lado seguro con qué cuenta entrás a cada cosa:
   está en `index.html`, buscá `CALENDAR_ID`).
 - **GitHub** — el repositorio `team-latam/registro-acciones`, que además es
   lo que publica el sitio.
+- **Supabase** — el proyecto `team-latam` (identificador
+  `benonmzlgdjkhzauamrz`), donde vive la base nueva mientras dure la
+  migración. Ojo: está a nombre de `cursoslatam.argentina@gmail.com`;
+  conviene resolver eso antes del cambio definitivo.
 
 Si se pierde el acceso a la cuenta de Firebase, los archivos no alcanzan:
 los datos viven ahí.
