@@ -5624,6 +5624,22 @@ function crearSupabaseStore(sb){
 
   const revienta = ({ error }) => { if(error) throw error; };
 
+  // Postgres devuelve una hora como "15:00:00"; la app guarda y muestra
+  // "15:00", y su formateador no reconoce la otra forma — así que el
+  // horario de cada evento salía con los segundos colgando.
+  //
+  // Apareció usando la app de verdad contra la base nueva, y NINGUNA
+  // prueba lo habría encontrado: las dos capas se hablaban bien entre sí,
+  // el dato viajaba entero, y el desajuste recién se veía en pantalla. Es
+  // exactamente para esto que existe la etapa de probar en paralelo.
+  const soloHora = v => (typeof v === "string" && /^\d{2}:\d{2}:\d{2}/.test(v)) ? v.slice(0, 5) : v;
+  const aPosteo = f => {
+    const o = aObjeto(f);
+    o.startTime = soloHora(o.startTime);
+    o.endTime = soloHora(o.endTime);
+    return o;
+  };
+
   // Un id nuevo con la misma forma que los que vienen de Firestore (20
   // caracteres del mismo alfabeto), así los viejos y los nuevos se ven
   // iguales y nada de lo que ya existe tiene que distinguirlos. En
@@ -5635,7 +5651,8 @@ function crearSupabaseStore(sb){
   /* --- Los cambios en vivo ---------------------------------------
      Guarda la lista, le aplica cada cambio que llega y la vuelve a
      entregar ENTERA, que es lo que la app espera desde siempre. */
-  function enVivo({ tabla, clave = "id", igual, orden, tope, alArmar, alCambiar, alFallar }){
+  function enVivo({ tabla, clave = "id", igual, orden, tope, alArmar, alCambiar, alFallar, afinar }){
+    const traducir = afinar || aObjeto;
     const porClave = new Map();
     let vivo = true, cargado = false;
     const pendientes = [];
@@ -5643,7 +5660,7 @@ function crearSupabaseStore(sb){
     const entregar = () => { if(vivo) alCambiar(armar([...porClave.values()])); };
     const aplicar = c => {
       if(c.eventType === "DELETE") porClave.delete(String(c.old && c.old[clave]));
-      else porClave.set(String(c.new[clave]), aObjeto(c.new));
+      else porClave.set(String(c.new[clave]), traducir(c.new));
     };
 
     // Se escucha PRIMERO y se carga después: al revés, un cambio que
@@ -5663,7 +5680,7 @@ function crearSupabaseStore(sb){
     q.then(({ data, error }) => {
       if(!vivo) return;
       if(error){ if(alFallar) alFallar(error); return; }
-      (data || []).forEach(f => porClave.set(String(f[clave]), aObjeto(f)));
+      (data || []).forEach(f => porClave.set(String(f[clave]), traducir(f)));
       cargado = true;
       // Los cambios que llegaron mientras se cargaba se aplican ahora, en
       // orden: si uno de ellos ya venía en la carga, lo pisa con lo más
@@ -5689,7 +5706,7 @@ function crearSupabaseStore(sb){
     // ---- Posteos ----
     posts: {
       subscribe(alCambiar, alFallar){
-        return enVivo({ tabla: "posts", alCambiar, alFallar });
+        return enVivo({ tabla: "posts", alCambiar, alFallar, afinar: aPosteo });
       },
       async create(datos){
         const id = nuevoId();
