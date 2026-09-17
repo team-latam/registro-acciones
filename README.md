@@ -337,23 +337,49 @@ vez con "Toda LatAm", cada región, cada país y cada ciudad de
 `CITY_PRESETS` — y agrega el mismo objeto `scope` que ya usa Evento/
 respuestas, solo que sin el selector paso a paso.
 
-### Adjuntos: imágenes, PDF/audio chicos, y links
+### Adjuntos: imágenes, PDF/audio, y links
 
-- **Imágenes**: se comprimen en el navegador (JPEG, máx. 1280px de lado),
-  hasta 6 por posteo/respuesta.
-- **PDF y audio**: se adjuntan de verdad (embebidos como `data:` URL en el
-  documento, igual que las imágenes) pero SIN comprimir, así que hay un
-  tope de tamaño chico por archivo (`MAX_ATTACHMENT_FILE_BYTES`, 150KB) y
-  de cantidad (`MAX_ATTACHMENT_FILES`, 2) — Firestore permite ~1MB por
-  documento entero y el base64 pesa ~33% más que el archivo original, hay
-  que dejar margen para el resto del posteo. Pasarse del tamaño muestra un
-  aviso pidiendo usar un link en su lugar.
-- **Video**: siempre por link (Drive, YouTube, etc.) — casi nunca entra
-  comprimido bajo el límite de 1MB de Firestore, así que no vale la pena
-  tratar de embeberlo como a las imágenes/PDF/audio.
+**Los topes son de la base, no del código.** Viven en `store.limites`
+(`LIMITES_FIREBASE` / `LIMITES_SUPABASE`, arriba de `firebaseStore`) porque
+no son un criterio nuestro: son lo que cada base puede guardar.
+
+| | Firebase | Supabase |
+|---|---|---|
+| Imágenes por posteo | 6 | 20 |
+| Se achican a | 1280 px, calidad 0.72 | 2560 px, calidad 0.85 |
+| PDF/audio por posteo | 2 | 10 |
+| Por archivo | 150 KB (techo 500 KB) | 10 MB (techo 25 MB) |
+
+La diferencia no es de plan ni de precio: **Firestore mete el archivo
+ADENTRO del documento del posteo**, como texto base64 (que pesa ~33% más
+que el archivo original), y no admite más de 1 MiB por documento entero. De
+ahí salen el 6, el 2 y los 500 KB, y de ahí sale también que las imágenes
+se recompriman tan fuerte. **Supabase lo sube al bucket privado `adjuntos`
+y en el posteo queda solo la ruta**, así que un posteo pesa lo mismo con
+una foto que con veinte, y la foto puede ir casi sin recomprimir.
+
+Quien elige de ese techo para abajo es **Configuración > Adjuntos**; nunca
+de ahí para arriba. Lo elegido se guarda tal cual y se recorta contra el
+techo de la base **en el momento de usarlo** (`maxImagenes()`,
+`maxArchivos()`, `maxBytesPorArchivo()`): así un número elegido con una
+base no se pierde al pasar a la otra y volver. El campo de tamaño cambia de
+unidad solo (`unidadAdjuntos()`) — KB con Firebase, MB con Supabase —
+porque escribir "10240" para decir 10 MB es ilegible.
+
+Del lado de la base los mismos topes se exigen otra vez, que es lo único
+que vale: `isValidPostBase` en `firestore.rules` (6/2/500 KB), y
+`posts_listas`/`replies_listas` + `archivos_ok` en
+`supabase/03-validacion.sql` (20/10). El bucket además tiene techo propio
+de 25 MB por archivo y una lista de tipos permitidos
+(`supabase/01-tablas.sql`).
+
+- **Video**: sigue yendo por link (Drive, YouTube, etc.). No es por el
+  lugar — el plan gratis de Supabase da 1 GB — sino por la **descarga**: da
+  5 GB por mes, y un video de 20 MB que mire todo el equipo un par de veces
+  se come el mes. El bucket lo rechaza a propósito.
 - No hay Firebase Storage ni plan pago (Blaze) en este proyecto — decisión
-  deliberada para mantenerlo gratis; todo lo que no entra chico va por
-  link.
+  deliberada para mantenerlo gratis. Del lado de Firebase, todo lo que no
+  entra chico sigue yendo por link.
 
 ### @Menciones
 
@@ -424,9 +450,11 @@ a qué Calendar se sincroniza, límites de adjuntos.
   sincronizan los Eventos. Cambiarlo no mueve lo que ya está en el
   calendario viejo, solo afecta a los nuevos/editados de ahí en más.
 - **Adjuntos** — límites de cantidad/tamaño de archivos que se pueden
-  adjuntar a un posteo. Son topes *ajustables hacia abajo* de los topes
-  duros del código (6 imágenes, 2 archivos), que además exige
-  Firestore — no se pueden agrandar más allá de eso desde acá.
+  adjuntar a un posteo. Son topes *ajustables hacia abajo* de los de la
+  base en uso (ver la tabla en "Adjuntos", más arriba), que además la base
+  exige de su lado — no se pueden agrandar más allá de eso desde acá. El
+  panel muestra el tope de la base que esté andando, y el campo de tamaño
+  va en KB o en MB según cuál sea.
 
 #### El control de color (`colorControl()`)
 

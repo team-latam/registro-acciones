@@ -5,6 +5,11 @@
 -- archivo pisa la compartida, y el resultado de las demás pruebas pasa a
 -- depender del orden en que se corran. Ya pasó una vez.
 
+-- La pizarra, limpia. Sin esto este archivo sumaba a su cuenta los
+-- resultados del que se hubiera corrido antes: "87 pasaron" cuando sus
+-- pruebas son 66. Otra forma del mismo problema de arriba.
+truncate lab.resultados;
+
 -- ---------- Datos de prueba ----------
 truncate public.posts, public.replies, public.members, public.former_members,
          public.access_requests, public.user_prefs, public.app_config, public.audit_log cascade;
