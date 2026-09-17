@@ -2182,6 +2182,26 @@ const FIREBASE_CONFIG = {
 
 const CONFIG_IS_PLACEHOLDER = FIREBASE_CONFIG.apiKey === "YOUR_API_KEY";
 
+/* ----------------------------------------------------------------------
+   A QUÉ BASE APUNTA ESTA PESTAÑA
+
+   Normalmente, a Firebase: es la que usa el equipo y la que manda. Pero
+   agregando `?base=supabase` a la dirección, ESA PESTAÑA —y solo esa—
+   trabaja contra Supabase. Es la forma de probar la app de verdad contra
+   la base nueva sin que nadie más note nada, y sin tener que publicar una
+   versión distinta.
+
+   Quien no agrega nada a la dirección no se entera de que esto existe.
+   Cerrar la pestaña alcanza para volver.
+---------------------------------------------------------------------- */
+const SUPABASE_URL = "https://benonmzlgdjkhzauamrz.supabase.co";
+const SUPABASE_KEY = "sb_publishable_Y9rfOHOQJ1fbSKcRltQiZQ_TRErHBsB";
+function baseElegida(){
+  try{ return new URLSearchParams(location.search).get("base") === "supabase" ? "supabase" : "firebase"; }
+  catch(e){ return "firebase"; }
+}
+const BASE = baseElegida();
+
 // Único email con permisos de administrador (aprueba/rechaza accesos).
 // Está hardcodeado también dentro de firestore.rules (función isAdmin()):
 // si se cambia acá, hay que cambiarlo también ahí y volver a publicar las
@@ -3701,6 +3721,7 @@ let authMod = null; // exports de firebase-auth.js
 
 async function initFirebase(){
   if(CONFIG_IS_PLACEHOLDER) return;
+  if(BASE === "supabase") return arrancarSupabase();
   try{
     const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js");
     const firestoreMod = await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js");
@@ -3710,7 +3731,7 @@ async function initFirebase(){
     fb = firestoreMod;
     authMod = authModImport;
     auth = authMod.getAuth(app);
-    authMod.onAuthStateChanged(auth, onAuthChanged);
+    sesion.alCambiar(onAuthChanged);
   }catch(err){
     console.error("Error inicializando Firebase:", err);
     renderFatalError(t(
@@ -3722,6 +3743,46 @@ async function initFirebase(){
   }
 }
 
+// El arranque en modo Supabase. Va aparte y NO cuelga de que Firebase
+// haya cargado: la primera versión lo tenía adentro del mismo try, y si
+// Firebase no respondía, la pestaña que miraba Supabase tampoco arrancaba
+// — dos cosas que no tienen por qué depender una de la otra.
+async function arrancarSupabase(){
+  // Lo primero de todo, antes de cualquier descarga: que se vea de entrada
+  // qué base está mirando esta pestaña.
+  mostrarAvisoDeBase();
+
+  // Firebase se inicializa igual, pero SOLO para pedirle a Google el
+  // permiso de Calendar (ensureCalendarToken usa su ventanita). Si no
+  // carga, no es fatal: se pierde la sincronización con Calendar, no la
+  // app entera.
+  try{
+    const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js");
+    const authModImport = await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js");
+    const app = initializeApp(FIREBASE_CONFIG);
+    authMod = authModImport;
+    auth = authMod.getAuth(app);
+  }catch(err){
+    console.warn("Sin Firebase: la sincronización con Calendar no va a estar disponible en esta pestaña.", err);
+  }
+
+  try{
+    const { createClient } = await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm");
+    const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+    store = crearSupabaseStore(sb);
+    sesion = crearSupabaseSesion(sb);
+    sesion.alCambiar(onAuthChanged);
+  }catch(err){
+    console.error("Error inicializando Supabase:", err);
+    renderFatalError(t(
+      "No se pudo conectar con Supabase. Sacá «?base=supabase» de la dirección para volver a la base del equipo.",
+      "Couldn't connect to Supabase. Remove “?base=supabase” from the address to go back to the team's database.",
+      "Não foi possível conectar ao Supabase. Tire «?base=supabase» do endereço para voltar à base da equipe.",
+      ".לא ניתן היה להתחבר ל-Supabase. הסר/י את «base=supabase?» מהכתובת כדי לחזור לבסיס של הצוות"
+    ));
+  }
+}
+
 async function signIn(){
   try{
     // Solo identidad. El permiso de Calendar (calendar.events, que es
@@ -3729,9 +3790,8 @@ async function signIn(){
     // se pide recién la primera vez que hace falta (ver
     // ensureCalendarToken): quien solo lee nunca lo concede, y el token
     // no queda en sessionStorage sin motivo. El token que devuelve este
-    // popup no sirve para Calendar, así que no se guarda.
-    const provider = new authMod.GoogleAuthProvider();
-    await authMod.signInWithPopup(auth, provider);
+    // login no sirve para Calendar, así que no se guarda.
+    await sesion.iniciar();
   }catch(err){
     if(err.code !== "auth/popup-closed-by-user" && err.code !== "auth/cancelled-popup-request"){
       console.error("Error al iniciar sesión:", err);
@@ -3744,7 +3804,7 @@ async function doSignOut(){
   stopCalendarAutoSync();
   auditLoginLoggedThisSession = false;
   try{ sessionStorage.removeItem(CALENDAR_TOKEN_STORAGE_KEY); }catch(e){}
-  try{ await authMod.signOut(auth); }catch(e){ console.error(e); }
+  try{ await sesion.cerrar(); }catch(e){ console.error(e); }
 }
 
 /* ======================================================================
@@ -5861,6 +5921,71 @@ function crearSupabaseStore(sb){
     },
   };
 }
+
+/* ======================================================================
+   QUIÉN SOS: la sesión
+
+   Lo mismo que la capa de datos pero para el login, y es mucho más chico:
+   la app solo necesita tres cosas. Quién está adentro (avisando cuando
+   cambia), entrar, y salir.
+
+   Las dos implementaciones entregan la MISMA forma de perfil — uid,
+   email, displayName, photoURL — así que onAuthChanged no sabe ni le
+   importa de dónde salió.
+
+   El permiso de Google Calendar NO pasa por acá: eso es de Google y sigue
+   siendo de Google con cualquier base. Se pide aparte (ensureCalendarToken).
+   ====================================================================== */
+const firebaseSesion = {
+  alCambiar(fn){ authMod.onAuthStateChanged(auth, fn); },
+  async iniciar(){
+    // Solo identidad: el permiso de Calendar se pide recién cuando hace
+    // falta (ver signIn más abajo, que es donde estaba este comentario).
+    const provider = new authMod.GoogleAuthProvider();
+    await authMod.signInWithPopup(auth, provider);
+  },
+  async cerrar(){ await authMod.signOut(auth); },
+};
+
+// Un cartel fijo arriba de todo, imposible de no ver. Mirar datos de una
+// base creyendo que son de la otra es la peor forma de perder una tarde.
+function mostrarAvisoDeBase(){
+  const d = document.createElement("div");
+  d.id = "avisoBase";
+  d.textContent = "⚠️ Esta pestaña está mirando SUPABASE, no la base del equipo. Lo que hagas acá no lo ve nadie más.";
+  d.style.cssText = "position:sticky;top:0;z-index:99999;background:#8a5a00;color:#fff;" +
+    "padding:8px 14px;font:600 13px/1.4 system-ui,sans-serif;text-align:center;";
+  document.body.prepend(d);
+}
+
+function crearSupabaseSesion(sb){
+  // Supabase devuelve el perfil con otros nombres; se traduce acá para que
+  // el resto de la app siga viendo lo de siempre.
+  const perfil = u => !u ? null : {
+    uid: u.id,
+    email: u.email,
+    displayName: (u.user_metadata && u.user_metadata.full_name) || u.email,
+    photoURL: (u.user_metadata && u.user_metadata.avatar_url) || "",
+  };
+  return {
+    alCambiar(fn){
+      // Se avisa del estado de arranque además de los cambios: Firebase
+      // llama al oyente apenas se registra, y la app cuenta con eso.
+      sb.auth.getSession().then(({ data }) => fn(perfil(data.session && data.session.user)));
+      sb.auth.onAuthStateChange((_e, s) => fn(perfil(s && s.user)));
+    },
+    async iniciar(){
+      // Con redirección y no con una ventanita: es lo que hace Supabase, y
+      // vuelve a esta misma dirección — con `?base=supabase` incluido, que
+      // es lo que mantiene la pestaña apuntando donde estaba.
+      const { error } = await sb.auth.signInWithOAuth({
+        provider: "google", options: { redirectTo: location.href.split("#")[0] } });
+      if(error) throw error;
+    },
+    async cerrar(){ await sb.auth.signOut(); },
+  };
+}
+let sesion = firebaseSesion;
 
 // Qué implementación está en uso. La de Supabase existe y está probada,
 // pero todavía NO se enchufa: el día del cambio, esto es una línea
