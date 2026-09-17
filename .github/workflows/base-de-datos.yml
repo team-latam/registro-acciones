@@ -1,0 +1,119 @@
+# ============================================================
+# La base de datos, sola
+# ============================================================
+# Antes: cada cambio al SQL había que pegarlo a mano en el panel de
+# Supabase. Ahora se hace solo al pushear a main — pero NUNCA sin antes
+# probarlo contra un Postgres de verdad, descartable, que se arma y se tira
+# en cada corrida.
+#
+# Si falla aunque sea UNA de las 195 comprobaciones, el segundo trabajo no
+# corre y la base de verdad no se toca.
+# ============================================================
+name: Base de datos
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/**.sql'
+      - 'supabase/aplicar.sh'
+      - 'supabase/pruebas/**'
+      - '.github/workflows/base-de-datos.yml'
+  pull_request:
+    paths:
+      - 'supabase/**.sql'
+      - 'supabase/aplicar.sh'
+      - 'supabase/pruebas/**'
+      - '.github/workflows/base-de-datos.yml'
+  # Para correrlo a mano desde la pestaña Actions, sin cambiar nada.
+  workflow_dispatch:
+
+jobs:
+  probar:
+    name: Probarlo en una base descartable
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      # Esta base vive y muere con esta corrida. La clave está a la vista a
+      # propósito: no protege nada.
+      BASE: postgresql://postgres:postgres@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Que haya psql
+        run: |
+          if ! command -v psql >/dev/null; then
+            sudo apt-get update && sudo apt-get install -y postgresql-client
+          fi
+          psql --version
+
+      # El auth y el storage de mentira, más el banco de pruebas. Esto NO
+      # se aplica nunca a la base de verdad: arma una función para hacerse
+      # pasar por cualquiera, que es justo lo que hay que poder hacer para
+      # probar permisos, y justo lo que no puede existir en producción.
+      - name: Armar el laboratorio
+        run: psql "$BASE" -q -v ON_ERROR_STOP=1 -f supabase/pruebas/00-laboratorio.sql
+
+      - name: Aplicar el esquema entero
+        run: ./supabase/aplicar.sh "$BASE"
+
+      - name: Aplicarlo DE NUEVO (tiene que ser inofensivo)
+        run: ./supabase/aplicar.sh "$BASE"
+
+      - name: Las pruebas
+        run: ./supabase/pruebas/correr.sh "$BASE"
+
+  aplicar:
+    name: Aplicarlo a Supabase
+    needs: probar
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Que haya psql
+        run: |
+          if ! command -v psql >/dev/null; then
+            sudo apt-get update && sudo apt-get install -y postgresql-client
+          fi
+
+      # Sin el secreto esto no puede hacer nada, pero tampoco tiene sentido
+      # que la corrida figure en rojo por eso: avisa qué falta y termina
+      # bien. El día que se cargue, empieza a aplicar solo.
+      - name: ¿Está puesta la dirección de la base?
+        id: revisar
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "hay=no" >> "$GITHUB_OUTPUT"
+            echo "### Falta el secreto SUPABASE_DB_URL" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "El SQL se probó y quedó bien, pero no se aplicó a Supabase." >> "$GITHUB_STEP_SUMMARY"
+            echo "Se carga en Settings → Secrets and variables → Actions." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "hay=si" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Aplicar
+        if: steps.revisar.outputs.hay == 'si'
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: ./supabase/aplicar.sh "$SUPABASE_DB_URL"
+
+      - name: Dejarlo dicho
+        if: steps.revisar.outputs.hay == 'si'
+        run: |
+          echo "### Esquema aplicado a Supabase" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Pasó las 195 comprobaciones contra un Postgres descartable antes de tocar nada." >> "$GITHUB_STEP_SUMMARY"
