@@ -5083,6 +5083,13 @@ function recomputeAuthStatus(){
     state.auth.status = role === "admin" ? "admin" : role === "observer" ? "observer" : "approved";
     return;
   }
+  // "Todavía no contestó el padrón" NO es lo mismo que "no es integrante".
+  // Cada suscripción (la ficha propia del padrón y la solicitud propia)
+  // contesta por su lado, y en Supabase la carga inicial de cada una es una
+  // consulta aparte: cuál llega primero no está garantizado. Sin esta
+  // línea, si contestaba antes la solicitud, a alguien YA APROBADO le
+  // parpadeaba la pantalla de "pendiente de aprobación".
+  if(state.auth.padronConocido === false){ state.auth.status = "loading"; return; }
   state.auth.status = state.auth.requestStatus === "rejected" ? "rejected" : "pending";
 }
 
@@ -5157,7 +5164,7 @@ async function onAuthChanged(user){
 
   // Mientras se resuelve si está aprobado, no se suscribe a posts/replies
   // (evita un permission-denied transitorio contra Firestore).
-  state.auth = { status:"loading", user:profile, allowlisted:false, requestStatus:null, role:null };
+  state.auth = { status:"loading", user:profile, allowlisted:false, requestStatus:null, role:null, padronConocido:false };
   render();
 
   let dataSubscribed = false;
@@ -5191,7 +5198,40 @@ async function onAuthChanged(user){
     dataSubscribed = false;
     if(adminSubscribed){ adminSubscribed = false; if(unsubscribeRequests){ unsubscribeRequests(); unsubscribeRequests = null; } if(unsubAuditLog){ unsubAuditLog(); unsubAuditLog = null; } state.accessRequests = []; state.auditLog = []; }
   };
+  // Pedir acceso (o volver a pedirlo) es una decisión que necesita LAS DOS
+  // respuestas: la ficha del padrón y la solicitud. Antes se decidía adentro
+  // del aviso de la solicitud, mirando un state.auth.allowlisted que
+  // todavía valía false porque el padrón no había contestado — y a alguien
+  // YA APROBADO se le volvía a crear la solicitud en "pending": reaparecía
+  // en la cola del admin como si nunca lo hubieran aprobado.
+  let padronRespondio = false;
+  let solicitudRespondio = false;
+  let ultimaSolicitud = null;
+  const pedirDeNuevo = () => store.accessRequests.save(profile.email, {
+    email: profile.email, name: profile.displayName, photoURL: profile.photoURL,
+    status: "pending",
+  });
+  // La llaman las dos suscripciones, pero solo hace algo cuando ya
+  // contestaron las dos.
+  const revisarAcceso = async ()=>{
+    if(!padronRespondio || !solicitudRespondio) return; // todavía no sé lo suficiente
+    if(state.auth.allowlisted) return;                  // ya está adentro: no hay nada que pedir
+    const estado = ultimaSolicitud ? ultimaSolicitud.status : null;
+    if(estado === "pending" || estado === "rejected") return; // ya tiene un pedido en curso
+    // Sin ficha en el padrón y sin pedido en curso. Son dos casos: quien
+    // entra por primera vez (no hay solicitud), y el "limbo" de una
+    // solicitud en approved sin ficha (una aprobación que quedó a medias, o
+    // le borraron la ficha a mano). El limbo se repara solo volviendo a
+    // pedir: si no, esa persona veía "pendiente de aprobación" para siempre
+    // y no figuraba en ninguna cola, porque la del admin filtra "pending".
+    try{
+      await pedirDeNuevo();
+      logAudit("access_requested", { actorEmail: profile.email, actorName: profile.displayName });
+    }catch(err){ console.error("No se pudo crear la solicitud de acceso:", err); }
+  };
   unsubAllowlist = store.roster.watchOwn(profile.email, miembro=>{
+    padronRespondio = true;
+    state.auth.padronConocido = true;
     state.auth.allowlisted = !!miembro;
     state.auth.role = miembro ? (miembro.role || "member") : null;
     recomputeAuthStatus();
@@ -5208,6 +5248,7 @@ async function onAuthChanged(user){
       teardownApprovedData(); fatalError = null;
     }
     render();
+    revisarAcceso();
   }, err=>{
     // Sin esto el estado quedaba en "pendiente de aprobación" para
     // siempre, sin decir por qué, aunque la persona estuviera aprobada.
@@ -5215,35 +5256,18 @@ async function onAuthChanged(user){
     renderFatalError(t("No se pudo verificar tu acceso ({msg}). Recargá la página; si sigue pasando, avisale al administrador.","Couldn't verify your access ({msg}). Reload the page; if it keeps happening, let the admin know.","Não foi possível verificar seu acesso ({msg}). Recarregue a página; se continuar, avise o administrador.","לא ניתן היה לאמת את הגישה שלך ({msg}). טען/י מחדש את הדף; אם זה נמשך, פנה/י למנהל/ת.",{msg:err.message}));
   });
 
-  const pedirDeNuevo = () => store.accessRequests.save(profile.email, {
-    email: profile.email, name: profile.displayName, photoURL: profile.photoURL,
-    status: "pending",
-  });
-  unsubOwnRequest = store.accessRequests.watchOwn(profile.email, async req=>{
-    if(!req){
-      try{
-        await pedirDeNuevo();
-        logAudit("access_requested", { actorEmail: profile.email, actorName: profile.displayName });
-      }catch(err){ console.error("Error creando solicitud de acceso:", err); }
-      return; // el propio guardado va a disparar otro aviso, ya con la solicitud
-    }
-    state.auth.requestStatus = req.status;
-    // "Limbo": la solicitud quedó en approved pero la persona NO está en el
-    // allowlist (le borraron el documento a mano, o una aprobación quedó a
-    // medias). Veía "pendiente de aprobación" para siempre y el admin no la
-    // veía en ninguna cola, porque esa cola filtra status == "pending".
-    // Se repara sola: se vuelve a poner la solicitud en pending, que es
-    // justo lo que las reglas permiten hacer sobre la propia solicitud.
-    if(state.auth.requestStatus !== "pending" && state.auth.requestStatus !== "rejected" && !state.auth.allowlisted){
-      try{
-        await pedirDeNuevo();
-        logAudit("access_requested", { actorEmail: profile.email, actorName: profile.displayName });
-      }catch(err){ console.error("No se pudo reactivar la solicitud:", err); }
-      return; // el propio guardado dispara otro aviso, ya con status pending
-    }
+  unsubOwnRequest = store.accessRequests.watchOwn(profile.email, req=>{
+    solicitudRespondio = true;
+    ultimaSolicitud = req || null;
+    state.auth.requestStatus = req ? req.status : null;
     recomputeAuthStatus();
     render();
+    revisarAcceso();
   }, err=>{
+    // A propósito NO se marca solicitudRespondio: si la lectura falló no se
+    // sabe si hay solicitud, y crear una a ciegas podría pisar un "approved"
+    // o un "rejected" que sí existe. Mientras tanto la pantalla muestra
+    // "pendiente", que es lo que menos promete.
     console.error("Error leyendo solicitud de acceso:", err);
     state.auth.requestStatus = "pending";
     recomputeAuthStatus();
@@ -6489,6 +6513,18 @@ async function ensureAdminInRoster(profile){
   }catch(err){ console.error("No se pudo sumar al admin al equipo (roster de @menciones):", err); }
 }
 async function approveRequest(email){
+  // Si esa persona YA está en el equipo, aprobarla de nuevo no puede
+  // rehacerle la ficha: el alta reemplaza el registro entero, así que le
+  // daría un @nickname nuevo (partiendo su historia de @menciones en dos) y
+  // le borraría el rol, el Calendar compartido y si ya vio el tour. Pasa
+  // cada vez que una solicitud vuelve a la cola por un desajuste; ahí
+  // alcanza con marcarla aprobada para sacarla de la lista.
+  const yaEstaEnElEquipo = await store.roster.get(email);
+  if(yaEstaEnElEquipo){
+    await store.accessRequests.setStatus(email, "approved");
+    logAudit("access_approved", { targetEmail: email });
+    return;
+  }
   const req = await store.accessRequests.get(email);
   const reqData = req || {};
   const name = reqData.name || email;
