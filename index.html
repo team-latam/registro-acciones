@@ -2763,14 +2763,24 @@ function safeUrl(u){
 // un string que pueda cerrarlo (el charset validado no incluye comillas,
 // < > ni espacios, por eso no hace falta esc() encima).
 const IMAGE_DATA_URL_RE = /^data:image\/(?:png|jpe?g|gif|webp);base64,[A-Za-z0-9+/=]+$/;
+// Una URL firmada del bucket empieza siempre así. Se compara la dirección
+// ENTERA contra la del proyecto propio y no "que parezca de Supabase": esto
+// va derecho a un src="", y ahí no alcanza con parecerse.
+function esUrlDelBucket(u){
+  return typeof u === "string" && u.startsWith(SUPABASE_URL + "/storage/v1/object/sign/");
+}
 function safeImageSrc(src){
-  return typeof src === "string" && IMAGE_DATA_URL_RE.test(src) ? src : "";
+  if(typeof src !== "string") return "";
+  if(IMAGE_DATA_URL_RE.test(src)) return src;   // Firebase: el archivo adentro
+  return esUrlDelBucket(src) ? src : "";        // Supabase: una URL que caduca
 }
 // application/octet-stream: lo que pone FileReader cuando el archivo no
 // tiene MIME (pasa con algunos PDF en Android); no puede ejecutar nada.
 const FILE_DATA_URL_RE = /^data:(?:application\/pdf|application\/octet-stream|audio\/[A-Za-z0-9.+-]+);base64,[A-Za-z0-9+/=]+$/;
 function safeFileDataUrl(u){
-  return typeof u === "string" && FILE_DATA_URL_RE.test(u) ? u : "";
+  if(typeof u !== "string") return "";
+  if(FILE_DATA_URL_RE.test(u)) return u;
+  return esUrlDelBucket(u) ? u : "";
 }
 // Colores de zona: vienen de la config del admin en Firestore y van
 // derecho a un style="" — se aceptan solo #rrggbb (que es lo único que
@@ -5632,13 +5642,103 @@ function crearSupabaseStore(sb){
   // prueba lo habría encontrado: las dos capas se hablaban bien entre sí,
   // el dato viajaba entero, y el desajuste recién se veía en pantalla. Es
   // exactamente para esto que existe la etapa de probar en paralelo.
+  /* --- Los adjuntos ------------------------------------------------
+     En Firestore el archivo viajaba adentro de la fila. Acá vive en el
+     bucket, que es privado: para mostrarlo hace falta una URL firmada, que
+     caduca. La app no sabe nada de eso — recibe algo que puede poner en un
+     src="", igual que siempre.
+
+     Se firman de a muchas y no de a una: 900 posteos son una sola vuelta
+     al servidor en vez de 900. */
+  const SEGUNDOS_FIRMA = 4 * 60 * 60;   // cuatro horas
+  const firmadas = new Map();           // ruta -> { url, vence }
+  const esRuta = v => typeof v === "string" && v.length > 0 && !v.startsWith("data:") && !v.startsWith("http");
+  function rutasDe(fila){
+    const r = [];
+    if(Array.isArray(fila.images)) fila.images.forEach(v => { if(esRuta(v)) r.push(v); });
+    if(Array.isArray(fila.files)) fila.files.forEach(a => { if(a && esRuta(a.path)) r.push(a.path); });
+    return r;
+  }
+  const tieneFirma = ruta => {
+    const f = firmadas.get(ruta);
+    // Se renueva antes de que caduque: una imagen que se rompe sola a la
+    // hora y media es peor que una que no aparece nunca.
+    return !!f && f.vence > Date.now() + 10 * 60 * 1000;
+  };
+  async function firmar(rutas){
+    const faltan = [...new Set(rutas)].filter(r => !tieneFirma(r));
+    if(!faltan.length) return;
+    const { data, error } = await sb.storage.from("adjuntos").createSignedUrls(faltan, SEGUNDOS_FIRMA);
+    if(error){ console.error("No se pudieron firmar los adjuntos:", error); return; }
+    (data || []).forEach(d => {
+      if(d && d.signedUrl && !d.error) firmadas.set(d.path, { url:d.signedUrl, vence: Date.now() + SEGUNDOS_FIRMA * 1000 });
+    });
+  }
+  // Si una ruta no está firmada todavía, se deja como está: no se ve, pero
+  // tampoco se rompe nada, y la próxima carga la arregla.
+  const conFirma = ruta => (firmadas.get(ruta) || {}).url || ruta;
+  function resolverAdjuntos(o){
+    if(Array.isArray(o.images)) o.images = o.images.map(v => esRuta(v) ? conFirma(v) : v);
+    if(Array.isArray(o.files)) o.files = o.files.map(a =>
+      a && esRuta(a.path) ? { ...a, dataUrl: conFirma(a.path) } : a);
+    return o;
+  }
+
+  // --- Y al revés: lo que la app manda embebido, va al bucket ---
+  // Es la diferencia que hace que entremos en el plan gratis. Además, la
+  // base rechaza un archivo embebido a propósito (ver 03-validacion.sql):
+  // si esto no corriera, subir una foto fallaría con un error raro en vez
+  // de guardarse mal en silencio.
+  const TIPO_A_EXT = { "image/png":"png", "image/jpeg":"jpg", "image/gif":"gif",
+                       "image/webp":"webp", "application/pdf":"pdf" };
+  function aBlob(dataUrl){
+    const [cabecera, b64] = String(dataUrl).split(",");
+    const tipo = (cabecera.match(/:(.*?);/) || [])[1] || "application/octet-stream";
+    const bin = atob(b64);
+    return new Blob([Uint8Array.from(bin, c => c.charCodeAt(0))], { type: tipo });
+  }
+  async function subirUno(base, dataUrl){
+    const blob = aBlob(dataUrl);
+    // La hora en el nombre: editar un posteo sube un archivo NUEVO en vez
+    // de pisar el anterior, así una edición nunca rompe una pantalla que
+    // alguien tenga abierta con la versión de antes.
+    const ruta = `${base}_${Date.now()}.${TIPO_A_EXT[blob.type] || "bin"}`;
+    const { error } = await sb.storage.from("adjuntos").upload(ruta, blob);
+    if(error) throw error;
+    return ruta;
+  }
+  async function subirNuevos(tabla, id, datos){
+    if(!datos) return datos;
+    const salida = { ...datos };
+    if(Array.isArray(salida.images)){
+      salida.images = [];
+      for(let i = 0; i < datos.images.length; i++){
+        const v = datos.images[i];
+        salida.images.push(typeof v === "string" && v.startsWith("data:")
+          ? await subirUno(`${tabla}/${id}/img${i}`, v) : v);
+      }
+    }
+    if(Array.isArray(salida.files)){
+      salida.files = [];
+      for(let i = 0; i < datos.files.length; i++){
+        const a = datos.files[i];
+        if(a && typeof a.dataUrl === "string" && a.dataUrl.startsWith("data:")){
+          salida.files.push({ name: a.name || `archivo${i}`,
+                              path: await subirUno(`${tabla}/${id}/arch${i}`, a.dataUrl) });
+        } else salida.files.push(a);
+      }
+    }
+    return salida;
+  }
+
   const soloHora = v => (typeof v === "string" && /^\d{2}:\d{2}:\d{2}/.test(v)) ? v.slice(0, 5) : v;
   const aPosteo = f => {
     const o = aObjeto(f);
     o.startTime = soloHora(o.startTime);
     o.endTime = soloHora(o.endTime);
-    return o;
+    return resolverAdjuntos(o);
   };
+  const aComentario = f => resolverAdjuntos(aObjeto(f));
 
   // Un id nuevo con la misma forma que los que vienen de Firestore (20
   // caracteres del mismo alfabeto), así los viejos y los nuevos se ven
@@ -5669,7 +5769,7 @@ function crearSupabaseStore(sb){
   /* --- Los cambios en vivo ---------------------------------------
      Guarda la lista, le aplica cada cambio que llega y la vuelve a
      entregar ENTERA, que es lo que la app espera desde siempre. */
-  function enVivo({ tabla, clave = "id", igual, orden, tope, alArmar, alCambiar, alFallar, afinar }){
+  function enVivo({ tabla, clave = "id", igual, orden, tope, alArmar, alCambiar, alFallar, afinar, firmaAdjuntos }){
     const traducir = afinar || aObjeto;
     const porClave = new Map();
     let vivo = true, cargado = false;
@@ -5677,8 +5777,12 @@ function crearSupabaseStore(sb){
     const armar = alArmar || (l => l);
     const entregar = () => { if(vivo) alCambiar(armar([...porClave.values()])); };
     const aplicar = c => {
-      if(c.eventType === "DELETE") porClave.delete(String(c.old && c.old[clave]));
-      else porClave.set(String(c.new[clave]), traducir(c.new));
+      if(c.eventType === "DELETE"){ porClave.delete(String(c.old && c.old[clave])); return; }
+      // Si trae un adjunto que todavía no está firmado, no alcanza con
+      // aplicar el cambio suelto: hay que ir a firmarlo, y eso es una
+      // carga entera.
+      if(firmaAdjuntos && rutasDe(c.new).some(r => !tieneFirma(r))){ cargar(); return; }
+      porClave.set(String(c.new[clave]), traducir(c.new));
     };
 
     // Se escucha PRIMERO y se carga después: al revés, un cambio que
@@ -5701,6 +5805,9 @@ function crearSupabaseStore(sb){
       const { data, error } = await q;
       if(!vivo) return;
       if(error){ if(alFallar) alFallar(error); return; }
+      // Antes de entregar nada: los adjuntos de TODAS las filas de una vez.
+      if(firmaAdjuntos) await firmar((data || []).flatMap(rutasDe));
+      if(!vivo) return;
       porClave.clear();
       (data || []).forEach(f => porClave.set(String(f[clave]), traducir(f)));
       cargado = true;
@@ -5730,11 +5837,11 @@ function crearSupabaseStore(sb){
     // ---- Posteos ----
     posts: {
       subscribe(alCambiar, alFallar){
-        return enVivo({ tabla: "posts", alCambiar, alFallar, afinar: aPosteo });
+        return enVivo({ tabla: "posts", alCambiar, alFallar, afinar: aPosteo, firmaAdjuntos: true });
       },
       async create(datos){
         const id = nuevoId();
-        revienta(await sb.from("posts").insert({ ...aFila(datos), id }));
+        revienta(await sb.from("posts").insert({ ...aFila(await subirNuevos("posts", id, datos)), id }));
         await refrescar("posts");
         return id;
       },
@@ -5742,12 +5849,12 @@ function crearSupabaseStore(sb){
       // choque de id, que es la forma que tiene Postgres de decir lo que
       // en Firestore era una transacción.
       async createOnce(id, datos){
-        revienta(await sb.from("posts").upsert({ ...aFila(datos), id },
+        revienta(await sb.from("posts").upsert({ ...aFila(await subirNuevos("posts", id, datos)), id },
           { onConflict: "id", ignoreDuplicates: true }));
         await refrescar("posts");
       },
       async update(id, parche){
-        revienta(await sb.from("posts").update(aFila(parche)).eq("id", id));
+        revienta(await sb.from("posts").update(aFila(await subirNuevos("posts", id, parche))).eq("id", id));
         await refrescar("posts");
       },
       async remove(id){
@@ -5767,6 +5874,7 @@ function crearSupabaseStore(sb){
     replies: {
       subscribeAll(alCambiar, alFallar){
         return enVivo({ tabla: "replies", alCambiar, alFallar,
+          afinar: aComentario, firmaAdjuntos: true,
           alArmar: lista => {
             const porPosteo = Object.create(null);
             lista.forEach(r => (porPosteo[r.postId] = porPosteo[r.postId] || []).push(r));
@@ -5777,11 +5885,13 @@ function crearSupabaseStore(sb){
       subscribeOf(postId, alCambiar, alFallar){
         return enVivo({ tabla: "replies", igual: { columna: "post_id", valor: postId },
           orden: { columna: "created_at" }, alCambiar, alFallar,
+          afinar: aComentario, firmaAdjuntos: true,
           alArmar: lista => porFecha("createdAt", lista) });
       },
       async create(postId, datos){
+        const id = nuevoId();
         revienta(await sb.from("replies").insert(
-          { ...aFila(datos), id: nuevoId(), post_id: postId }));
+          { ...aFila(await subirNuevos("replies", id, datos)), id, post_id: postId }));
         await refrescar("replies");
       },
       async remove(postId, replyId){
