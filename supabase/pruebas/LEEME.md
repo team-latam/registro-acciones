@@ -28,6 +28,10 @@ Los archivos:
   reales de Firebase.
 - `95-guardar-por-partes.sql` — que guardar una preferencia no borre las
   otras, y que dos controles tocados rápido no se pisen.
+- `97-de-punta-a-punta.sql` — lo que produce el importador con un respaldo
+  de forma real, metido en una base Postgres de verdad con los permisos
+  puestos: que las fechas viejas se conserven, que los adjuntos queden como
+  rutas del bucket, y que correrlo de nuevo no duplique nada.
 - `levantar.sh` — levanta el servidor local y reconstruye la base entera
   desde los archivos del paso 1 al 4, en orden.
 

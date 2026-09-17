@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Traer los datos a Supabase</title>
+<!--
+  PÁGINA DE UN SOLO USO. Lee el archivo de la copia de seguridad (el que
+  baja la app desde Administrar → Preferencias) y carga su contenido en
+  Supabase. NO toca Firebase: el archivo se lee del disco, nada más.
+  Se puede borrar cuando la migración termine.
+
+  Se puede correr más de una vez: lo que ya entró se saltea (ver importar()
+  en 05-importar.sql). Si algo se corta, se vuelve a empezar y listo.
+-->
+<style>
+  :root{
+    --fondo:#f6f7f9; --papel:#fff; --texto:#1b1d21; --suave:#6b7280;
+    --linea:#e3e6ea; --acento:#2f6f4f; --ok:#137a4a; --mal:#b3261e; --aviso:#8a5a00;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --fondo:#15171a; --papel:#1e2125; --texto:#e8eaed; --suave:#9aa0a6;
+      --linea:#32363c; --acento:#6dbb92; --ok:#6dbb92; --mal:#f2857c; --aviso:#e0b357;
+    }
+  }
+  *{ box-sizing:border-box; }
+  body{ margin:0; padding:24px 16px 64px; background:var(--fondo); color:var(--texto);
+    font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+  main{ max-width:680px; margin:0 auto; }
+  h1{ font-size:1.35rem; margin:0 0 4px; }
+  .sub{ color:var(--suave); margin:0 0 24px; font-size:.92rem; }
+  .tarjeta{ background:var(--papel); border:1px solid var(--linea); border-radius:12px;
+    padding:20px; margin-bottom:16px; }
+  .tarjeta h2{ font-size:.78rem; text-transform:uppercase; letter-spacing:.06em;
+    color:var(--suave); margin:0 0 14px; font-weight:600; }
+  button{ font:inherit; font-weight:600; padding:11px 18px; border-radius:9px; cursor:pointer;
+    border:1px solid var(--acento); background:var(--acento); color:#fff; }
+  button.secundario{ background:transparent; color:var(--texto); border-color:var(--linea); }
+  button[disabled]{ opacity:.5; cursor:default; }
+  dl{ margin:0; display:grid; grid-template-columns:auto 1fr; gap:8px 16px; font-size:.94rem; }
+  dt{ color:var(--suave); } dd{ margin:0; word-break:break-all; }
+  .resultado{ margin-top:14px; padding:12px 14px; border-radius:9px; font-size:.94rem;
+    border:1px solid var(--linea); background:var(--fondo); white-space:pre-wrap; }
+  .ok{ color:var(--ok); } .mal{ color:var(--mal); } .aviso{ color:var(--aviso); }
+  .nota{ font-size:.86rem; color:var(--suave); margin-top:12px; }
+  code{ font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.88em; }
+  table{ width:100%; border-collapse:collapse; font-size:.94rem; margin-top:4px; }
+  th,td{ text-align:left; padding:7px 10px 7px 0; border-bottom:1px solid var(--linea); }
+  th{ color:var(--suave); font-weight:600; font-size:.82rem; }
+  td.n{ text-align:right; font-variant-numeric:tabular-nums; }
+  input[type=file]{ font:inherit; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Traer los datos a Supabase</h1>
+  <p class="sub">
+    Lee el archivo de la copia de seguridad y carga su contenido en Supabase.
+    <strong>No toca Firebase</strong>: el archivo se lee de tu disco y nada más.
+    Se puede correr de nuevo sin duplicar nada.
+  </p>
+
+  <div class="tarjeta">
+    <h2>1 · Entrar</h2>
+    <div id="zonaLogin"></div>
+  </div>
+
+  <div class="tarjeta">
+    <h2>2 · Elegir el archivo</h2>
+    <p style="margin:0 0 14px;font-size:.94rem;">
+      Tiene que ser la <strong>copia completa</strong> (la que trae las imágenes
+      adentro), no la liviana.
+    </p>
+    <input type="file" id="archivo" accept=".json,application/json" disabled>
+    <div id="zonaArchivo"></div>
+    <p class="nota" id="notaArchivo">Se habilita después de entrar.</p>
+  </div>
+
+  <div class="tarjeta">
+    <h2>3 · Traer</h2>
+    <button id="btnImportar" disabled>Traer los datos</button>
+    <div id="zonaImportar"></div>
+    <p class="nota" id="notaImportar">Se habilita después de elegir el archivo.</p>
+  </div>
+</main>
+
+<script type="module">
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+
+const SUPABASE_URL = "https://benonmzlgdjkhzauamrz.supabase.co";
+const SUPABASE_KEY = "sb_publishable_Y9rfOHOQJ1fbSKcRltQiZQ_TRErHBsB";
+const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+
+/* ---------- Traducciones, las mismas que usa la app ---------- */
+const A_SNAKE = { photoURL: "photo_url" };
+const aSnake = k => A_SNAKE[k] || k.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase();
+
+// El respaldo marca las fechas de Firestore como { __tipo:"fecha", ms }.
+// Sin convertirlas, Postgres recibiría un objeto donde espera una fecha.
+function valor(v){
+  if(v == null) return v;
+  if(typeof v === "object" && v.__tipo === "fecha") return new Date(v.ms).toISOString();
+  if(Array.isArray(v)) return v.map(valor);
+  if(typeof v === "object"){
+    const o = {};
+    Object.keys(v).forEach(k => { o[k] = valor(v[k]); });
+    return o;
+  }
+  return v;
+}
+
+// Las columnas que existen de verdad en cada tabla. Lo que venga de más se
+// pierde al escribir, en silencio, así que se avisa ANTES en vez de
+// descubrirlo después.
+const COLUMNAS = {
+  posts: ["id","title","content","date","start_date","end_date","start_time","end_time",
+    "activity_type","author_name","author_email","organizer","location","cancelled",
+    "is_project","project_notes","project_status","project_done_by","project_done_at",
+    "milestones","editors","recurrence","recurrence_skip","recurrence_moves","scopes",
+    "participants","links","mentions","images","files","liked_by","calendar_event_id",
+    "created_at","last_edited_at","last_edited_by"],
+  replies: ["id","post_id","content","author_name","author_email","scopes","links","images",
+    "files","mentions","liked_by","reply_to_id","system","icon","occ","created_at"],
+  members: ["email","name","nickname","photo_url","role","approved_at","approved_by",
+    "calendar_shared","calendar_invite_sent_at","tour_seen_at"],
+  former_members: ["email","name","nickname","photo_url","approved_at","revoked_at"],
+  access_requests: ["email","name","photo_url","status","requested_at"],
+  user_prefs: ["email","prefs"],
+  app_config: ["key","value"],
+  audit_log: ["id","type","actor_email","actor_name","target_email","detail","device","ip","created_at"],
+};
+
+// De dónde sale cada tabla dentro del archivo, y en qué orden se traen:
+// los comentarios dependen de que su posteo ya esté.
+const PLAN = [
+  { tabla:"members",         desde:"allowlist",       porEmail:true },
+  { tabla:"former_members",  desde:"formerMembers",   porEmail:true },
+  { tabla:"access_requests", desde:"accessRequests",  porEmail:true },
+  { tabla:"posts",           desde:"posts" },
+  { tabla:"replies",         desde:"replies" },
+  { tabla:"audit_log",       desde:"auditLog" },
+  { tabla:"app_config",      desde:"meta",            especial:"config" },
+  { tabla:"user_prefs",      desde:"userPrefs",       especial:"prefs" },
+];
+
+function filasDe(paso, datos){
+  const crudo = datos[paso.desde];
+  if(paso.especial === "config"){
+    if(!crudo) return [];
+    return Object.keys(crudo).filter(k => crudo[k] != null)
+      .map(k => ({ key: k, value: valor(crudo[k]) }));
+  }
+  if(paso.especial === "prefs"){
+    if(!crudo) return [];
+    return Object.keys(crudo).map(e => ({ email: e, prefs: valor(crudo[e]) }));
+  }
+  if(!Array.isArray(crudo)) return [];   // { __error } cuando no se pudo leer
+  return crudo.map(d => {
+    const fila = {};
+    Object.keys(d).forEach(k => { fila[aSnake(k)] = valor(d[k]); });
+    // En estas tres el id ES el correo: se descarta el id suelto para no
+    // mandar una columna que no existe.
+    if(paso.porEmail){ fila.email = fila.email || fila.id; delete fila.id; }
+    return fila;
+  });
+}
+
+function camposDeMas(tabla, filas){
+  const validas = new Set(COLUMNAS[tabla]);
+  const sobran = new Set();
+  filas.forEach(f => Object.keys(f).forEach(k => { if(!validas.has(k)) sobran.add(k); }));
+  return [...sobran];
+}
+
+/* ---------- Adjuntos: de texto embebido a archivo del bucket ---------- */
+function aBlob(dataUrl){
+  const [cabecera, b64] = String(dataUrl).split(",");
+  const tipo = (cabecera.match(/:(.*?);/) || [])[1] || "application/octet-stream";
+  const bin = atob(b64);
+  return new Blob([Uint8Array.from(bin, c => c.charCodeAt(0))], { type: tipo });
+}
+const EXT = { "image/png":"png", "image/jpeg":"jpg", "image/gif":"gif", "image/webp":"webp",
+              "application/pdf":"pdf" };
+
+async function subirAdjuntos(tabla, filas, avisar){
+  let subidos = 0, fallados = [];
+  for(const f of filas){
+    if(Array.isArray(f.images)){
+      const rutas = [];
+      for(let i = 0; i < f.images.length; i++){
+        const v = f.images[i];
+        if(typeof v !== "string" || !v.startsWith("data:")){ rutas.push(v); continue; }
+        const blob = aBlob(v);
+        const ruta = `${tabla}/${f.id}/img${i}.${EXT[blob.type] || "bin"}`;
+        const { error } = await sb.storage.from("adjuntos").upload(ruta, blob, { upsert:true });
+        if(error){ fallados.push(`${ruta}: ${error.message}`); rutas.push(v); }
+        else { rutas.push(ruta); subidos++; avisar(subidos); }
+      }
+      f.images = rutas;
+    }
+    if(Array.isArray(f.files)){
+      const nuevos = [];
+      for(let i = 0; i < f.files.length; i++){
+        const a = f.files[i] || {};
+        if(typeof a.dataUrl !== "string" || !a.dataUrl.startsWith("data:")){ nuevos.push(a); continue; }
+        const blob = aBlob(a.dataUrl);
+        const ruta = `${tabla}/${f.id}/arch${i}.${EXT[blob.type] || "bin"}`;
+        const { error } = await sb.storage.from("adjuntos").upload(ruta, blob, { upsert:true });
+        if(error){ fallados.push(`${ruta}: ${error.message}`); nuevos.push(a); }
+        else { nuevos.push({ name: a.name || `archivo${i}`, path: ruta }); subidos++; avisar(subidos); }
+      }
+      f.files = nuevos;
+    }
+  }
+  return { subidos, fallados };
+}
+
+/* ---------- Pantalla ---------- */
+let sesion = null, datos = null, analisis = null;
+
+function pintarLogin(s){
+  sesion = s;
+  if(!s){
+    $("zonaLogin").innerHTML = `<button id="btnEntrar">Entrar con Google</button>
+      <p class="nota">Tiene que ser la cuenta del administrador.</p>`;
+    $("btnEntrar").onclick = entrar;
+    $("archivo").disabled = true; $("btnImportar").disabled = true;
+    return;
+  }
+  $("zonaLogin").innerHTML = `
+    <p class="ok" style="margin:0 0 10px;font-weight:600;">✅ ${esc(s.user.email)}</p>
+    <button id="btnSalir" class="secundario">Salir</button>`;
+  $("btnSalir").onclick = () => sb.auth.signOut();
+  $("archivo").disabled = false;
+  $("notaArchivo").hidden = true;
+}
+
+async function entrar(){
+  const { error } = await sb.auth.signInWithOAuth({
+    provider: "google",
+    options: { redirectTo: location.href.split("#")[0].split("?")[0] },
+  });
+  if(error) $("zonaLogin").innerHTML = `<p class="mal">${esc(error.message)}</p>`;
+}
+
+$("archivo").onchange = async e => {
+  const f = e.target.files[0];
+  if(!f) return;
+  $("zonaArchivo").innerHTML = `<div class="resultado">Leyendo…</div>`;
+  try{
+    datos = JSON.parse(await f.text());
+  }catch(err){
+    datos = null;
+    $("zonaArchivo").innerHTML = `<div class="resultado mal">No se pudo leer el archivo: ${esc(err.message)}</div>`;
+    return;
+  }
+  if(datos.formato !== 1 || datos.origen !== "firestore"){
+    $("zonaArchivo").innerHTML = `<div class="resultado mal">Este archivo no parece una copia de seguridad de la app.</div>`;
+    datos = null; return;
+  }
+  analisis = PLAN.map(p => {
+    const filas = filasDe(p, datos);
+    return { ...p, filas, sobran: camposDeMas(p.tabla, filas) };
+  });
+  const adjuntos = analisis.flatMap(a => a.filas).reduce((n, f) =>
+    n + (Array.isArray(f.images) ? f.images.filter(v => typeof v === "string" && v.startsWith("data:")).length : 0)
+      + (Array.isArray(f.files) ? f.files.filter(v => v && typeof v.dataUrl === "string").length : 0), 0);
+  const liviano = datos.conAdjuntos === false;
+  const sobranTodos = [...new Set(analisis.flatMap(a => a.sobran.map(c => `${a.tabla}.${c}`)))];
+
+  $("zonaArchivo").innerHTML = `
+    <table><tr><th>De dónde</th><th>A qué tabla</th><th style="text-align:right">Filas</th></tr>
+    ${analisis.map(a => `<tr><td><code>${esc(a.desde)}</code></td><td><code>${esc(a.tabla)}</code></td>
+      <td class="n">${a.filas.length}</td></tr>`).join("")}
+    </table>
+    <div class="resultado ${liviano ? "aviso" : "ok"}">${liviano
+      ? "⚠️ Esta es la copia LIVIANA: no trae las imágenes. Sirve para mirar, no para traer los datos de verdad."
+      : `Archivo válido, del ${esc(new Date(datos.generado).toLocaleDateString())}. Adjuntos para subir: ${adjuntos}.`}</div>
+    ${sobranTodos.length ? `<div class="resultado aviso">⚠️ Hay campos guardados que no tienen lugar en la base nueva y se van a perder:\n${esc(sobranTodos.join(", "))}\n\nAvisá antes de seguir.</div>` : ""}`;
+  $("btnImportar").disabled = liviano;
+  $("notaImportar").hidden = !liviano;
+};
+
+$("btnImportar").onclick = async () => {
+  $("btnImportar").disabled = true;
+  const z = $("zonaImportar");
+  const lineas = [];
+  const mostrar = extra => {
+    z.innerHTML = `<div class="resultado">${esc(lineas.join("\n"))}${extra ? "\n" + esc(extra) : ""}</div>`;
+  };
+  try{
+    for(const paso of analisis){
+      if(!paso.filas.length){ lineas.push(`— ${paso.tabla}: nada que traer`); mostrar(); continue; }
+
+      if(paso.tabla === "posts" || paso.tabla === "replies"){
+        mostrar(`${paso.tabla}: subiendo adjuntos…`);
+        const { subidos, fallados } = await subirAdjuntos(paso.tabla, paso.filas,
+          n => mostrar(`${paso.tabla}: ${n} adjuntos subidos…`));
+        if(subidos) lineas.push(`   ${paso.tabla}: ${subidos} adjuntos al bucket`);
+        if(fallados.length) lineas.push(`   ⚠️ ${fallados.length} adjuntos fallaron: ${fallados[0]}`);
+      }
+
+      // De a 200: un pedido con todo junto puede pasarse de tamaño, y si
+      // se corta conviene que lo que ya entró quede.
+      let entraron = 0;
+      for(let i = 0; i < paso.filas.length; i += 200){
+        const tanda = paso.filas.slice(i, i + 200);
+        mostrar(`${paso.tabla}: ${i}/${paso.filas.length}…`);
+        const { data, error } = await sb.rpc("importar", { p_tabla: paso.tabla, p_filas: tanda });
+        if(error) throw new Error(`${paso.tabla}: ${error.message}`);
+        entraron += data || 0;
+      }
+      const repetidas = paso.filas.length - entraron;
+      lineas.push(`✅ ${paso.tabla}: ${entraron} nuevas${repetidas > 0 ? `, ${repetidas} ya estaban` : ""}`);
+      mostrar();
+    }
+
+    const { data: conteo, error } = await sb.rpc("cuantas_filas");
+    if(error) throw error;
+    lineas.push("");
+    lineas.push("Lo que quedó guardado en Supabase:");
+    (conteo || []).forEach(c => lineas.push(`   ${c.tabla}: ${c.filas}`));
+    z.innerHTML = `<div class="resultado ok">${esc(lineas.join("\n"))}\n\n✅ Listo. Comprobá que los números coincidan con los de arriba.</div>`;
+  }catch(err){
+    lineas.push("");
+    lineas.push(`❌ Se cortó: ${err.message}`);
+    z.innerHTML = `<div class="resultado mal">${esc(lineas.join("\n"))}\n\nLo que ya entró quedó guardado. Se puede volver a apretar el botón: lo repetido se saltea.</div>`;
+    $("btnImportar").disabled = false;
+  }
+};
+
+const { data } = await sb.auth.getSession();
+pintarLogin(data.session);
+sb.auth.onAuthStateChange((_e, s) => pintarLogin(s));
+</script>
+</body>
+</html>
