@@ -410,6 +410,43 @@ quién es admin. El `nickname` se arma una sola vez al aprobar a alguien
 (`makeNickname()`, primer nombre de Google, con desempate si ya existe
 otro con el mismo) y queda guardado en su documento de `allowlist`.
 
+### Reportes
+
+Pestaña **Reportes**, visible para todo el equipo (también para
+observadores): cuántas actividades hubo en un período, y repartidas por
+mes, zona, país, tipo, quién las cargó y quién participó. El período se
+elige con dos filas de chips — el año y el trimestre (o el año entero) —
+y arriba va el total con la comparación contra el período anterior.
+
+**Se calcula en el navegador, no en la base** (`armarReporte()`), y por eso
+funciona igual con Firebase y con Supabase. La app ya se trae TODOS los
+posteos para dibujar el Feed, así que contarlos no cuesta nada extra. El
+día que el Registro no entre de una en el navegador habrá que contar del
+lado de la base — y ese mismo día habrá que paginar el Feed, así que va a
+ser una sola conversación y no dos.
+
+Tres decisiones de conteo, que la pantalla aclara al pie porque cambian los
+números:
+
+- **Lo que se repite cuenta una vez por fecha**; lo que dura varios días,
+  una sola (`vecesEnVentana()`). Una reunión semanal durante un trimestre
+  son 13 reuniones, no una; un congreso de jueves a sábado es un congreso,
+  no tres. Las fechas suspendidas no cuentan y una fecha corrida cuenta el
+  día en el que pasó de verdad, no el original.
+- **Una actividad en dos países suma en los dos**, así que esa columna
+  puede dar más que el total. Repartir medios puntos sería más prolijo y
+  menos cierto.
+- **Los alcances grandes no se desarman**: "toda la zona Sur" suma a la
+  zona y a ningún país, y "Toda LatAm" tiene su propia fila. Es el mismo
+  criterio de Vistas (`own` / `region` / `latam`): si se repartieran, un
+  anuncio general taparía lo que de verdad pasó en cada lado.
+
+Lo cancelado no entra en ningún lado, y lo que no tiene lugar cargado se
+cuenta aparte con su propia nota.
+
+Las barras son CSS, sin librería de gráficos: son barras, y una librería
+entera serían cientos de KB más en un archivo que ya pesa 900.
+
 ### Configuración (panel admin)
 
 Pestaña **Configuración** (solo admin; por dentro sigue siendo
