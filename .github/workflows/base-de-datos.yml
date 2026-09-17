@@ -64,6 +64,10 @@ jobs:
       - name: Armar el laboratorio
         run: psql "$BASE" -q -v ON_ERROR_STOP=1 -f supabase/pruebas/00-laboratorio.sql
 
+      # El WARNING de "wal_level is insufficient" que sale acá es esperable
+      # y no rompe nada: un Postgres pelado no arranca preparado para
+      # mandar cambios en vivo, Supabase sí. La publicación se crea igual y
+      # la prueba 98 lo comprueba.
       - name: Aplicar el esquema entero
         run: ./supabase/aplicar.sh "$BASE"
 
