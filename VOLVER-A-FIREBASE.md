@@ -27,6 +27,17 @@ guardado a un archivo JSON.
 
 ---
 
+## Dónde estamos hoy
+
+Supabase ya tiene una **copia** de los datos y la app se puede usar contra
+ella agregando `?base=supabase` a la dirección (ver `PROBAR-SUPABASE.md`).
+Pero **el equipo sigue usando Firebase y nada cambió para ellos**.
+
+Mientras eso siga así, volver atrás es no hacer nada: se deja de abrir esa
+dirección y listo. No hay ni un paso que dar.
+
+---
+
 ## Qué se pierde según cuándo vuelvas
 
 Volver siempre es posible. Lo que cambia es cuánto trabajo cuesta.
@@ -91,6 +102,8 @@ Antes de cada etapa de la migración, chequeá estas tres:
       fuera de la computadora.
 - [ ] La rama `firebase-v1` sigue en GitHub.
 - [ ] El proyecto de Firebase sigue existiendo, con sus reglas publicadas.
+- [ ] El equipo sigue entrando por la dirección de siempre (sin
+      `?base=supabase`), o sea que Firebase sigue siendo la que manda.
 
 Si las tres están, podés volver. Si falta alguna, paralo y arreglá eso
 primero.
