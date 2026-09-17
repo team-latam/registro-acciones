@@ -88,7 +88,7 @@ create or replace function public.posts_marca_de_hora() returns trigger
   language plpgsql security definer set search_path = '' as $$
 begin
   -- La importación manda las fechas REALES de Firebase: no se tocan.
-  if public.sin_sesion_de_persona() then return new; end if;
+  if public.sin_sesion_de_persona() or public.es_importacion() then return new; end if;
 
   -- Desde el navegador la hora la pone SIEMPRE la base, mire lo que mire
   -- el reloj de quien edita. No hace falta ninguna marca: da igual qué

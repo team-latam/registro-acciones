@@ -1,30 +1,10 @@
 \set QUIET on
 truncate lab.resultados;
 
--- Comprueba un VALOR, no solo si dejó o no dejó: hace el cambio, mira cómo
--- quedó, y lo deshace.
-create or replace function lab.probar_valor(nombre text, quien jsonb, sentencia text, consulta text, espera text)
-returns void language plpgsql as $$
-declare obtenido text; ok boolean;
-begin
-  begin
-    execute 'set local role authenticated';
-    perform set_config('request.jwt.claims', quien::text, true);
-    execute sentencia;
-    execute consulta into obtenido;
-    raise exception using errcode = '22000', message = 'VAL=' || coalesce(obtenido, '(nulo)');
-  exception
-    when sqlstate '22000' then
-      if sqlerrm like 'VAL=%' then obtenido := replace(sqlerrm, 'VAL=', '');
-      else obtenido := left(sqlerrm, 60); end if;
-    when others then obtenido := left(sqlerrm, 60);
-  end;
-  execute 'reset role';
-  ok := obtenido = espera;
-  insert into lab.resultados(nombre, esperado, obtenido, detalle)
-    values (nombre, true, ok, case when ok then '' else 'dio: ' || obtenido end);
-end $$;
-
+-- El banco de pruebas (lab.probar, lab.probar_valor, lab.como) vive en
+-- 00-laboratorio.sql: tenerlo repetido acá hacía que este archivo pisara
+-- la versión compartida, y el resultado de otras pruebas cambiaba según en
+-- qué orden se corrieran.
 truncate public.posts, public.replies, public.members, public.former_members,
          public.access_requests, public.user_prefs, public.app_config, public.audit_log cascade;
 insert into public.members(email, name, nickname, role) values

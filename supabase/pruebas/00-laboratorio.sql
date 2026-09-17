@@ -99,3 +99,9 @@ begin
   insert into lab.resultados(nombre, esperado, obtenido, detalle)
     values (nombre, true, ok, case when ok then '' else 'dio: ' || obtenido end);
 end $$;
+
+-- El banco de pruebas corre haciéndose pasar por `authenticated`, así que
+-- necesita poder llegar a sus propias funciones. Esto es SOLO del
+-- laboratorio local: en Supabase el esquema `lab` no existe.
+grant usage on schema lab to anon, authenticated;
+alter default privileges in schema lab grant execute on functions to authenticated;
