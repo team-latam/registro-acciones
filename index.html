@@ -3927,6 +3927,37 @@ async function requestSilentCalendarToken(scopes){
     }
   });
 }
+// La ventana de Google, por el MISMO camino que el intento silencioso (no
+// por Firebase). Es lo que permite que el permiso de Calendar deje de
+// depender de Firebase: la sincronización es de Google y sigue siendo de
+// Google, con cualquier base.
+//
+// Sin `prompt: ""`: acá SÍ se quiere la ventana. El pedido de permiso se
+// hace igual que siempre, la primera vez que hace falta y no al entrar —
+// quien solo lee nunca lo concede.
+async function requestCalendarTokenPopup(scopes){
+  if(!state.auth.user) return null;
+  if(!(await loadGis())) return null;
+  return new Promise(resolve=>{
+    try{
+      const client = window.google.accounts.oauth2.initTokenClient({
+        client_id: GOOGLE_OAUTH_CLIENT_ID,
+        scope: scopes.join(" "),
+        hint: state.auth.user.email,
+        callback: resp=> resolve(resp && resp.access_token ? resp : null),
+        error_callback: err=>{
+          console.warn("No se pudo pedir el permiso de Calendar:", err && err.type);
+          resolve(null);
+        },
+      });
+      client.requestAccessToken();
+    }catch(err){
+      console.warn("No se pudo abrir el pedido de permiso de Calendar:", err);
+      resolve(null);
+    }
+  });
+}
+
 function storeGisToken(resp, opts={}){
   calendarAccessToken = resp.access_token;
   calendarTokenExpiry = Date.now() + Math.max(60, (Number(resp.expires_in) || 3600) - 300) * 1000;
@@ -3972,6 +4003,11 @@ async function ensureCalendarToken(){
   if(isAdminUser) scopes.push("https://www.googleapis.com/auth/calendar.acls");
   const silent = await requestSilentCalendarToken(scopes);
   if(silent) return storeGisToken(silent, { aclScope: isAdminUser });
+  const conVentana = await requestCalendarTokenPopup(scopes);
+  if(conVentana) return storeGisToken(conVentana, { aclScope: isAdminUser });
+  // El camino viejo, por Firebase, como último recurso y mientras exista.
+  // El día que Firebase se apague, esta rama se va sola.
+  if(!authMod) return null;
   try{
     const provider = new authMod.GoogleAuthProvider();
     provider.addScope("https://www.googleapis.com/auth/calendar.events");
@@ -4005,6 +4041,12 @@ async function ensureCalendarAclToken(opts={}){
   ]);
   if(silent) return storeGisToken(silent, { aclScope: true });
   if(opts.silentOnly) return null;
+  const conVentana = await requestCalendarTokenPopup([
+    "https://www.googleapis.com/auth/calendar.events",
+    "https://www.googleapis.com/auth/calendar.acls",
+  ]);
+  if(conVentana) return storeGisToken(conVentana, { aclScope: true });
+  if(!authMod) return null;
   try{
     const provider = new authMod.GoogleAuthProvider();
     provider.addScope("https://www.googleapis.com/auth/calendar.events");
@@ -5920,8 +5962,21 @@ function crearSupabaseStore(sb){
         if(error) throw error;
         return (data || []).map(aObjeto);
       },
+      // Va como upsert y no como insert, y esto NO es un detalle: aprobar a
+      // alguien que ya estuvo en el equipo es normal (se lo revocó y
+      // vuelve, o su solicitud quedó dando vueltas). En Firestore el alta
+      // era un setDoc, que crea O REEMPLAZA sin quejarse; un insert a secas
+      // se caía con "duplicate key" y el admin no podía aprobar a nadie
+      // que ya tuviera ficha.
+      //
+      // Hay una diferencia chica con Firestore, y es para mejor: allá el
+      // setDoc borraba los campos que no venían (por eso las reglas listan
+      // tourSeenAt, para que el alta no le borre a la persona la marca de
+      // que ya vio el tutorial). Acá los campos que no se mandan se
+      // quedan como estaban, así que eso no puede pasar.
       async add(email, datos){
-        revienta(await sb.from("members").insert({ ...aFila(datos), email, approved_at: MARCA_HORA }));
+        revienta(await sb.from("members").upsert(
+          { ...aFila(datos), email, approved_at: MARCA_HORA }, { onConflict: "email" }));
         await refrescar("members");
       },
       async ensure(email, datos){
