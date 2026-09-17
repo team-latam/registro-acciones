@@ -5648,6 +5648,24 @@ function crearSupabaseStore(sb){
   const nuevoId = () => Array.from(crypto.getRandomValues(new Uint8Array(20)),
     b => ALFABETO[b % ALFABETO.length]).join("");
 
+  /* --- Quién está mirando cada tabla ------------------------------
+     Para poder refrescar sus listas apenas se escribe algo, sin esperar a
+     que el aviso dé la vuelta por el servidor. Con Firestore esto no hacía
+     falta: el propio SDK mostraba el cambio al instante y después lo
+     confirmaba. Acá, si se depende SOLO del aviso en vivo, escribir algo
+     se siente como que no pasó nada. */
+  const mirando = new Map();
+  function anotarMirada(tabla, recargar){
+    if(!mirando.has(tabla)) mirando.set(tabla, new Set());
+    mirando.get(tabla).add(recargar);
+    return () => { const s = mirando.get(tabla); if(s) s.delete(recargar); };
+  }
+  async function refrescar(tabla){
+    const s = mirando.get(tabla);
+    if(!s || !s.size) return;
+    await Promise.all([...s].map(f => f()));
+  }
+
   /* --- Los cambios en vivo ---------------------------------------
      Guarda la lista, le aplica cada cambio que llega y la vuelve a
      entregar ENTERA, que es lo que la app espera desde siempre. */
@@ -5673,23 +5691,29 @@ function crearSupabaseStore(sb){
           c => { if(!cargado){ pendientes.push(c); return; } aplicar(c); entregar(); })
       .subscribe();
 
-    let q = sb.from(tabla).select("*");
-    if(igual) q = q.eq(igual.columna, igual.valor);
-    if(orden) q = q.order(orden.columna, { ascending: !orden.desc });
-    if(tope) q = q.limit(tope);
-    q.then(({ data, error }) => {
+    // Se usa al arrancar y cada vez que hay que volver a mirar: después de
+    // escribir algo, o si el aviso en vivo no llegó.
+    const cargar = async () => {
+      let q = sb.from(tabla).select("*");
+      if(igual) q = q.eq(igual.columna, igual.valor);
+      if(orden) q = q.order(orden.columna, { ascending: !orden.desc });
+      if(tope) q = q.limit(tope);
+      const { data, error } = await q;
       if(!vivo) return;
       if(error){ if(alFallar) alFallar(error); return; }
+      porClave.clear();
       (data || []).forEach(f => porClave.set(String(f[clave]), traducir(f)));
       cargado = true;
-      // Los cambios que llegaron mientras se cargaba se aplican ahora, en
-      // orden: si uno de ellos ya venía en la carga, lo pisa con lo más
-      // nuevo, que es lo correcto.
+      // Los cambios que llegaron mientras cargaba se aplican ahora, en
+      // orden: si uno ya venía en la carga, lo pisa con lo más nuevo, que
+      // es lo correcto.
       pendientes.splice(0).forEach(aplicar);
       entregar();
-    });
+    };
+    cargar();
+    const olvidar = anotarMirada(tabla, cargar);
 
-    return () => { vivo = false; sb.removeChannel(canal); };
+    return () => { vivo = false; olvidar(); sb.removeChannel(canal); };
   }
 
   // Una lectura suelta de una fila, por su clave.
@@ -5711,6 +5735,7 @@ function crearSupabaseStore(sb){
       async create(datos){
         const id = nuevoId();
         revienta(await sb.from("posts").insert({ ...aFila(datos), id }));
+        await refrescar("posts");
         return id;
       },
       // "Creá esto, pero solo si no existe": es un insert que ignora el
@@ -5719,18 +5744,22 @@ function crearSupabaseStore(sb){
       async createOnce(id, datos){
         revienta(await sb.from("posts").upsert({ ...aFila(datos), id },
           { onConflict: "id", ignoreDuplicates: true }));
+        await refrescar("posts");
       },
       async update(id, parche){
         revienta(await sb.from("posts").update(aFila(parche)).eq("id", id));
+        await refrescar("posts");
       },
       async remove(id){
         revienta(await sb.from("posts").delete().eq("id", id));
+        await refrescar("posts");
       },
       // El correo NO viaja: la base lo saca de la credencial (ver
       // me_gusta_posteo en 04-funciones.sql). Así nadie puede dar me gusta
       // en nombre de otro ni pasándolo a mano.
       async setLike(id, email, puesto){
         revienta(await sb.rpc("me_gusta_posteo", { p_id: id, p_puesto: puesto }));
+        await refrescar("posts");
       },
     },
 
@@ -5753,12 +5782,15 @@ function crearSupabaseStore(sb){
       async create(postId, datos){
         revienta(await sb.from("replies").insert(
           { ...aFila(datos), id: nuevoId(), post_id: postId }));
+        await refrescar("replies");
       },
       async remove(postId, replyId){
         revienta(await sb.from("replies").delete().eq("id", replyId));
+        await refrescar("replies");
       },
       async setLike(postId, replyId, email, puesto){
         revienta(await sb.rpc("me_gusta_comentario", { p_id: replyId, p_puesto: puesto }));
+        await refrescar("replies");
       },
     },
 
@@ -5780,30 +5812,37 @@ function crearSupabaseStore(sb){
       },
       async add(email, datos){
         revienta(await sb.from("members").insert({ ...aFila(datos), email, approved_at: MARCA_HORA }));
+        await refrescar("members");
       },
       async ensure(email, datos){
         revienta(await sb.from("members").upsert(
           { ...aFila(datos), email, approved_at: datos.approvedAt || MARCA_HORA },
           { onConflict: "email" }));
+        await refrescar("members");
       },
       async setRole(email, role){
         revienta(await sb.from("members").update({ role }).eq("email", email));
+        await refrescar("members");
       },
       async setNickname(email, nickname, name){
         const campos = { nickname };
         if(name !== undefined) campos.name = name;
         revienta(await sb.from("members").update(campos).eq("email", email));
+        await refrescar("members");
       },
       async setCalendarShared(email, compartido){
         revienta(await sb.from("members").update(
           compartido ? { calendar_shared: true, calendar_invite_sent_at: MARCA_HORA }
                      : { calendar_shared: false }).eq("email", email));
+        await refrescar("members");
       },
       async markTourSeen(email){
         revienta(await sb.from("members").update({ tour_seen_at: MARCA_HORA }).eq("email", email));
+        await refrescar("members");
       },
       async remove(email){
         revienta(await sb.from("members").delete().eq("email", email));
+        await refrescar("members");
       },
     },
 
@@ -5820,9 +5859,11 @@ function crearSupabaseStore(sb){
       async save(email, datos){
         revienta(await sb.from("former_members").upsert(
           { ...aFila(datos), email, revoked_at: MARCA_HORA }, { onConflict: "email" }));
+        await refrescar("former_members");
       },
       async remove(email){
         revienta(await sb.from("former_members").delete().eq("email", email));
+        await refrescar("former_members");
       },
     },
 
@@ -5849,9 +5890,11 @@ function crearSupabaseStore(sb){
       async save(email, datos){
         revienta(await sb.from("access_requests").upsert(
           { ...aFila(datos), email, requested_at: MARCA_HORA }, { onConflict: "email" }));
+        await refrescar("access_requests");
       },
       async setStatus(email, status){
         revienta(await sb.from("access_requests").update({ status }).eq("email", email));
+        await refrescar("access_requests");
       },
     },
 
@@ -5871,6 +5914,7 @@ function crearSupabaseStore(sb){
       },
       async replace(clave, datos){
         revienta(await sb.from("app_config").upsert({ key: clave, value: datos }, { onConflict: "key" }));
+        await refrescar("app_config");
       },
       // Va por una función de la base y no por leer-cambiar-escribir: dos
       // controles tocados rápido se pisarían, y el segundo guardaría un
@@ -5878,6 +5922,7 @@ function crearSupabaseStore(sb){
       // 04-funciones.sql).
       async merge(clave, parche){
         revienta(await sb.rpc("guardar_config", { p_clave: clave, p_parche: parche }));
+        await refrescar("app_config");
       },
       async mergeCalendarSync(parche){
         await this.merge("calendarSync", { ...parche, lastSyncedAt: new Date().toISOString() });
@@ -5902,6 +5947,7 @@ function crearSupabaseStore(sb){
       // De quién son NO viaja: sale de la credencial.
       async merge(email, parche){
         revienta(await sb.rpc("guardar_preferencias", { p_parche: parche }));
+        await refrescar("user_prefs");
       },
     },
 
@@ -5916,6 +5962,7 @@ function crearSupabaseStore(sb){
       },
       async add(datos){
         revienta(await sb.from("audit_log").insert({ ...aFila(datos), id: nuevoId() }));
+        await refrescar("audit_log");
       },
       // "Escribir solo si no existe todavía": es lo que hace que un login
       // deje UNA entrada por día y no una por recarga. En Firestore se
@@ -5925,6 +5972,7 @@ function crearSupabaseStore(sb){
       async addOnce(id, datos){
         revienta(await sb.from("audit_log").upsert({ ...aFila(datos), id },
           { onConflict: "id", ignoreDuplicates: true }));
+        await refrescar("audit_log");
       },
     },
 
