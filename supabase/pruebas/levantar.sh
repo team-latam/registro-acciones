@@ -8,7 +8,7 @@ for i in 1 2 3 4 5; do su postgres -c "$BIN/pg_isready -h /var/run/postgresql -q
 su postgres -c "$BIN/psql -h /var/run/postgresql -U postgres -tAc 'drop database if exists registro;'" >/dev/null
 su postgres -c "$BIN/psql -h /var/run/postgresql -U postgres -tAc 'create database registro;'" >/dev/null
 R=/home/user/registro-acciones/supabase
-for f in /pglab/00-lab.sql $R/01-tablas.sql $R/02-politicas.sql $R/03-validacion.sql $R/04-funciones.sql $R/05-importar.sql; do
+for f in /pglab/00-lab.sql $R/01-tablas.sql $R/02-politicas.sql $R/03-validacion.sql $R/04-funciones.sql $R/05-importar.sql $R/06-tiempo-real.sql; do
   [ -f "$f" ] || continue
   out=$(su postgres -c "$BIN/psql -h /var/run/postgresql -U postgres -d registro -q -v ON_ERROR_STOP=1 -f $f" 2>&1 | grep -i "error")
   [ -n "$out" ] && { echo "FALLÓ $f"; echo "$out" | head -5; exit 1; }

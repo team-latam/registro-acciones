@@ -32,6 +32,9 @@ Los archivos:
   de forma real, metido en una base Postgres de verdad con los permisos
   puestos: que las fechas viejas se conserven, que los adjuntos queden como
   rutas del bucket, y que correrlo de nuevo no duplique nada.
+- `98-tiempo-real.sql` — que las ocho tablas estén habilitadas para mandar
+  sus cambios en vivo. Viene apagado de fábrica y es fácil no enterarse:
+  todo anda, uno escribe algo, y a los demás no les aparece hasta recargar.
 - `levantar.sh` — levanta el servidor local y reconstruye la base entera
   desde los archivos del paso 1 al 4, en orden.
 
