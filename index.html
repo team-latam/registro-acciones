@@ -1528,6 +1528,41 @@
   .subview-toggle button.active{ background:var(--petroleo); color:#fff; }
   .paises-toolbar{ display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:16px; }
   .paises-toolbar .subview-toggle, .paises-toolbar .zone-legend{ margin-bottom:0; }
+  /* ----- Reportes ----- */
+  .rep-selector{ display:flex; flex-direction:column; gap:8px; margin-bottom:18px; }
+  .rep-chips{ display:flex; flex-wrap:wrap; gap:6px; }
+  .rep-total{
+    background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md);
+    padding:16px 18px; box-shadow:var(--shadow); margin-bottom:18px;
+    display:flex; align-items:baseline; flex-wrap:wrap; gap:4px 12px;
+  }
+  .rep-total-num{ font-size:34px; font-weight:800; color:var(--petroleo); line-height:1; }
+  .rep-total-txt{ font-weight:700; }
+  .rep-total-sub{ display:block; font-weight:600; font-size:12.5px; color:var(--text-muted); margin-top:2px; }
+  .rep-comparacion{ margin-inline-start:auto; font-size:13px; font-weight:700; }
+  .rep-comparacion.sube{ color:var(--ok-text); }
+  .rep-comparacion.baja{ color:var(--danger); }
+  .rep-grilla{ display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:14px; }
+  .rep-bloque{
+    background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md);
+    padding:14px 16px; box-shadow:var(--shadow); min-width:0;
+  }
+  .rep-bloque h3{ margin:0 0 10px; font-size:13px; text-transform:uppercase; letter-spacing:0.04em; color:var(--text-muted); }
+  .rep-fila{ display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+  .rep-etiqueta{
+    flex:0 0 38%; min-width:0; font-size:12.5px; font-weight:600;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .rep-riel{ flex:1; min-width:0; height:10px; background:var(--surface-alt); border-radius:999px; overflow:hidden; }
+  .rep-barra{ height:100%; border-radius:999px; }
+  .rep-num{ flex:0 0 auto; min-width:28px; text-align:end; font-size:12.5px; font-weight:800; font-variant-numeric:tabular-nums; }
+  .rep-vacio{ font-size:12.5px; color:var(--text-muted); }
+  .rep-notas{ margin-top:16px; font-size:12px; color:var(--text-muted); line-height:1.6; }
+  @media (max-width:520px){
+    .rep-etiqueta{ flex-basis:44%; }
+    .rep-comparacion{ margin-inline-start:0; flex-basis:100%; }
+  }
+
   .country-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:12px; }
   .country-card{
     background:var(--card); border-radius:var(--radius-md); padding:14px; box-shadow:var(--shadow); cursor:pointer;
@@ -2049,6 +2084,7 @@
       <button data-view="paises">Vistas</button>
       <button data-view="calendario">Calendario</button>
       <button data-view="proyectos">Proyectos</button>
+      <button data-view="reportes">Reportes</button>
       <button data-view="configuracion">Configuración</button>
       <button data-view="auditoria" id="tabAuditoria" hidden>Actividad</button>
       <button data-view="solicitudes" id="tabSolicitudes" hidden>Usuarios<span id="pendingBadge"></span></button>
@@ -3613,6 +3649,9 @@ const state = {
     text: "",              // busca en actorName/actorEmail/targetEmail
     types: new Set(),      // tipos de AUDIT_LABELS activos (vacío = todos)
   },
+  // Qué período mira Reportes. anio como texto ("2026") porque viene del
+  // data-key de un botón; trimestre 0 = el año entero.
+  reportes: { anio: "", trimestre: 0 },
   solicitudesSection: "usuarios", // usuarios | pendientes — ver renderAccesoView
   usuariosFilters: { text: "", sort: "name" }, // sort: name | approvedAt | activity
 };
@@ -7954,6 +7993,7 @@ function applyStaticI18n(){
     calendario: t("Calendario", "Calendar", "Calendário", "יומן"),
     memoria: t("Memoria", "Memory", "Memória", "זיכרון"),
     proyectos: t("Proyectos", "Projects", "Projetos", "פרויקטים"),
+    reportes: t("Reportes", "Reports", "Relatórios", "דוחות"),
     configuracion: t("Configuración", "Settings", "Configurações", "הגדרות"),
     auditoria: t("Actividad", "Activity", "Atividade", "פעילות"),
     solicitudes: t("Usuarios", "Users", "Usuários", "משתמשים"),
@@ -8345,6 +8385,7 @@ function doRender(){
   else if(state.view === "paises") html += renderPaisesView();
   else if(state.view === "calendario") html += renderCalendarioView();
   else if(state.view === "proyectos") html += renderProyectosView();
+  else if(state.view === "reportes") html += renderReportesView();
   else if(state.view === "configuracion") html += renderConfiguracionView();
   else if(state.view === "solicitudes") html += renderAccesoView();
   else if(state.view === "auditoria") html += renderAuditoriaView();
@@ -10106,6 +10147,328 @@ function computePlaceCounts(){
   });
   placeCountsCache = byCountry;
   return byCountry;
+}
+
+
+/* ======================================================================
+   REPORTES
+
+   Las preguntas de planilla —"cuántas actividades por zona este
+   trimestre", "qué país se movió más", "quién cargó"— contestadas con lo
+   que ya está en memoria. No hace falta pedirle nada a la base: la app se
+   trae TODOS los posteos para dibujar el Feed, así que contarlos sale
+   gratis.
+
+   Por eso funciona igual con Firebase y con Supabase, y lo ve todo el
+   equipo y no solo el admin. El día que el Registro sea tan grande que no
+   entre de una en el navegador habrá que contar del lado de la base — y
+   ese mismo día habrá que paginar el Feed, así que va a ser una sola
+   conversación y no dos.
+   ====================================================================== */
+
+// Cuántas VECES pasó una actividad adentro de una ventana de fechas.
+//
+// Un posteo suelto cuenta 1 si toca la ventana, aunque dure tres días: un
+// congreso de jueves a sábado es un congreso, no tres. Uno que se repite
+// cuenta una vez por cada fecha que caiga adentro — una reunión semanal
+// durante un trimestre son 13 reuniones, no una, y esa es la respuesta
+// que espera quien pregunta cuánto se hizo.
+//
+// Las fechas suspendidas no cuentan, y una fecha corrida cuenta el día en
+// el que pasó de verdad, no el original: por eso se expande un mes para
+// cada lado y recién después se filtra.
+function vecesEnVentana(post, desdeISO, hastaISO){
+  if(!post || post.cancelled) return 0;
+  const inicio = post.startDate || post.date || "";
+  if(!inicio) return 0;
+  const repes = expandRecurrence(inicio, post.recurrence,
+    addDaysISO(desdeISO, -31), addDaysISO(hastaISO, 31));
+  if(repes){
+    const saltear = recurrenceSkipDates(post);
+    const corridas = recurrenceMoves(post);
+    return repes
+      .filter(iso => !saltear.has(iso))
+      .map(iso => corridas[iso] || iso)
+      .filter(iso => iso >= desdeISO && iso <= hastaISO).length;
+  }
+  const fin = post.endDate || inicio;
+  return (inicio <= hastaISO && fin >= desdeISO) ? 1 : 0;
+}
+
+// En qué día cae un posteo para el gráfico por mes. Los que se repiten
+// aportan una fecha por vez; los sueltos, la de su inicio.
+function fechasEnVentana(post, desdeISO, hastaISO){
+  if(!post || post.cancelled) return [];
+  const inicio = post.startDate || post.date || "";
+  if(!inicio) return [];
+  const repes = expandRecurrence(inicio, post.recurrence,
+    addDaysISO(desdeISO, -31), addDaysISO(hastaISO, 31));
+  if(repes){
+    const saltear = recurrenceSkipDates(post);
+    const corridas = recurrenceMoves(post);
+    return repes
+      .filter(iso => !saltear.has(iso))
+      .map(iso => corridas[iso] || iso)
+      .filter(iso => iso >= desdeISO && iso <= hastaISO);
+  }
+  const fin = post.endDate || inicio;
+  return (inicio <= hastaISO && fin >= desdeISO) ? [inicio < desdeISO ? desdeISO : inicio] : [];
+}
+
+// Los años que tienen algo cargado, del más nuevo al más viejo. Se mira
+// la fecha de la actividad y no la de carga: alguien puede cargar hoy
+// algo del año pasado, y el reporte es de cuándo pasó.
+function aniosConDatos(){
+  const anios = new Set();
+  state.posts.forEach(p=>{
+    const d = p.startDate || p.date || "";
+    if(/^\d{4}/.test(d)) anios.add(d.slice(0,4));
+    const f = p.endDate || "";
+    if(/^\d{4}/.test(f)) anios.add(f.slice(0,4));
+  });
+  anios.add(todayISO().slice(0,4));
+  return [...anios].sort().reverse();
+}
+
+// El período elegido, en fechas. Trimestre 0 = el año entero.
+function ventanaDelReporte(){
+  const anio = state.reportes.anio || todayISO().slice(0,4);
+  const tri = Number(state.reportes.trimestre) || 0;
+  if(!tri) return { desde: `${anio}-01-01`, hasta: `${anio}-12-31`, anio, tri };
+  const primerMes = (tri - 1) * 3 + 1;
+  const ultimoMes = primerMes + 2;
+  const dd = new Date(Date.UTC(Number(anio), ultimoMes, 0)).getUTCDate();
+  return {
+    desde: `${anio}-${String(primerMes).padStart(2,"0")}-01`,
+    hasta: `${anio}-${String(ultimoMes).padStart(2,"0")}-${String(dd).padStart(2,"0")}`,
+    anio, tri,
+  };
+}
+
+// El período de antes, para poder decir "subió" o "bajó": el trimestre
+// anterior si hay trimestre elegido, el año anterior si es el año entero.
+function ventanaAnterior(v){
+  if(!v.tri) return { desde:`${Number(v.anio)-1}-01-01`, hasta:`${Number(v.anio)-1}-12-31` };
+  const anio = v.tri === 1 ? Number(v.anio) - 1 : Number(v.anio);
+  const tri = v.tri === 1 ? 4 : v.tri - 1;
+  const primerMes = (tri - 1) * 3 + 1, ultimoMes = primerMes + 2;
+  const dd = new Date(Date.UTC(anio, ultimoMes, 0)).getUTCDate();
+  return {
+    desde: `${anio}-${String(primerMes).padStart(2,"0")}-01`,
+    hasta: `${anio}-${String(ultimoMes).padStart(2,"0")}-${String(dd).padStart(2,"0")}`,
+  };
+}
+
+// Cuánto suma una actividad en un período, y dónde.
+//
+// Un posteo con dos países suma en los DOS: pasó en los dos. Por eso la
+// suma de la columna por país puede dar más que el total, y la pantalla
+// lo aclara en vez de esconderlo repartiendo medios puntos.
+//
+// Los alcances grandes no se desarman: "toda la zona Sur" suma a la zona,
+// no a cada uno de sus países, y "Toda LatAm" tiene su propia fila. Si se
+// repartieran, un anuncio general taparía lo que de verdad pasó en cada
+// lado — es el mismo criterio que ya usa Vistas.
+function armarReporte(desdeISO, hastaISO){
+  const porMes = Object.create(null);
+  const porZona = Object.create(null);
+  const porPais = Object.create(null);
+  const porTipo = Object.create(null);
+  const porPersona = Object.create(null);
+  const participantes = Object.create(null);
+  let total = 0, latam = 0, sinLugar = 0, conParticipantes = 0;
+
+  state.posts.forEach(p=>{
+    const veces = vecesEnVentana(p, desdeISO, hastaISO);
+    if(!veces) return;
+    total += veces;
+
+    fechasEnVentana(p, desdeISO, hastaISO).forEach(iso=>{
+      const mes = iso.slice(0,7);
+      porMes[mes] = (porMes[mes] || 0) + 1;
+    });
+
+    const tipo = p.activityType || "otro";
+    porTipo[tipo] = (porTipo[tipo] || 0) + veces;
+
+    const correo = String(p.authorEmail || "").toLowerCase();
+    if(correo) porPersona[correo] = (porPersona[correo] || 0) + veces;
+
+    const gente = (p.participants || []).map(x=>String(x.email||"").toLowerCase()).filter(Boolean);
+    if(gente.length) conParticipantes += veces;
+    new Set(gente).forEach(e=>{ participantes[e] = (participantes[e] || 0) + veces; });
+
+    // Los alcances: de dónde es esta actividad.
+    const alcances = p.scopes || [];
+    const paises = new Set(), zonas = new Set();
+    let esLatam = false;
+    alcances.forEach(sc=>{
+      if(!sc) return;
+      if(sc.type === "todo"){ esLatam = true; return; }
+      if(sc.type === "region"){ if(sc.region) zonas.add(sc.region); return; }
+      if(sc.country && COUNTRY_BY_NAME[sc.country]){
+        paises.add(sc.country);
+        zonas.add(COUNTRY_BY_NAME[sc.country].zone);
+      }
+    });
+    if(esLatam) latam += veces;
+    if(!paises.size && !zonas.size && !esLatam) sinLugar += veces;
+    paises.forEach(n=>{ porPais[n] = (porPais[n] || 0) + veces; });
+    zonas.forEach(z=>{ porZona[z] = (porZona[z] || 0) + veces; });
+  });
+
+  return { total, porMes, porZona, porPais, porTipo, porPersona,
+           participantes, latam, sinLugar, conParticipantes };
+}
+
+
+/* ----- Reportes: la pantalla ----- */
+// "sep 26" a partir de "2026-09". En hebreo o portugués sale en ese
+// idioma solo; el año de dos dígitos porque un período largo mete doce
+// etiquetas en una fila angosta.
+function mesCortoDe(mesISO){
+  return fmtISO(mesISO + "-01", { month:"short", year:"2-digit" });
+}
+// Una fila del gráfico: etiqueta, barra proporcional y número. Sin
+// librería de gráficos — son barras, y una librería entera para esto
+// serían 200 KB más en un archivo que ya pesa.
+function filaDeBarra(etiqueta, n, maximo, color){
+  const ancho = maximo > 0 ? Math.max(2, Math.round(n * 100 / maximo)) : 0;
+  return `<div class="rep-fila">
+      <div class="rep-etiqueta">${etiqueta}</div>
+      <div class="rep-riel"><div class="rep-barra" style="width:${ancho}%;background:${color || "var(--petroleo)"}"></div></div>
+      <div class="rep-num">${n}</div>
+    </div>`;
+}
+function bloqueDeBarras(titulo, filas, vacio){
+  if(!filas.length) return `<div class="rep-bloque"><h3>${titulo}</h3><div class="rep-vacio">${vacio}</div></div>`;
+  const maximo = Math.max(...filas.map(f=>f.n));
+  return `<div class="rep-bloque"><h3>${titulo}</h3>
+    ${filas.map(f=>filaDeBarra(f.etiqueta, f.n, maximo, f.color)).join("")}</div>`;
+}
+
+function renderReportesView(){
+  if(!state.loaded){
+    return `<div class="empty-state"><div class="big">⏳</div>${t("Cargando…","Loading…","Carregando…","...טוען")}</div>`;
+  }
+  const v = ventanaDelReporte();
+  const anterior = ventanaAnterior(v);
+  const r = armarReporte(v.desde, v.hasta);
+  const rAnterior = armarReporte(anterior.desde, anterior.hasta);
+
+  const anios = aniosConDatos();
+  const TRIMESTRES = [
+    { n:0, label:t("Todo el año","Whole year","O ano todo","כל השנה") },
+    { n:1, label:t("1.er trimestre","1st quarter","1º trimestre","רבעון 1") },
+    { n:2, label:t("2.º trimestre","2nd quarter","2º trimestre","רבעון 2") },
+    { n:3, label:t("3.er trimestre","3rd quarter","3º trimestre","רבעון 3") },
+    { n:4, label:t("4.º trimestre","4th quarter","4º trimestre","רבעון 4") },
+  ];
+  const selector = `
+    <div class="rep-selector">
+      <div class="rep-chips">${anios.map(a=>
+        `<button type="button" class="chip-toggle${a === v.anio ? " active" : ""}" data-action="reporte-anio" data-key="${esc(a)}">${esc(a)}</button>`).join("")}</div>
+      <div class="rep-chips">${TRIMESTRES.map(q=>
+        `<button type="button" class="chip-toggle${q.n === v.tri ? " active" : ""}" data-action="reporte-trimestre" data-key="${q.n}">${esc(q.label)}</button>`).join("")}</div>
+    </div>`;
+
+  // La comparación con el período de antes. Sin nada antes no se dice
+  // nada: "subió infinito" respecto de cero no informa. Y el porcentaje
+  // solo cuando el período anterior tenía con qué compararse — de 1 a 145
+  // el porcentaje da 14400%, que es cierto y no dice nada; "144 más" sí.
+  const dif = r.total - rAnterior.total;
+  const contra = v.tri
+    ? t("que el trimestre anterior","than the previous quarter","que o trimestre anterior","מהרבעון הקודם")
+    : t("que el año anterior","than the previous year","que o ano anterior","מהשנה הקודמת");
+  let comparacion = "";
+  if(rAnterior.total && dif === 0){
+    comparacion = `<div class="rep-comparacion">= ${esc(t("igual","the same","igual","זהה"))} ${esc(contra)}</div>`;
+  } else if(rAnterior.total){
+    const cuanto = rAnterior.total >= 10
+      ? `${Math.abs(Math.round(dif * 100 / rAnterior.total))}%`
+      : String(Math.abs(dif));
+    const verbo = dif > 0 ? t("más","more","mais","יותר") : t("menos","fewer","menos","פחות");
+    comparacion = `<div class="rep-comparacion ${dif > 0 ? "sube" : "baja"}">${dif > 0 ? "▲" : "▼"} ${cuanto} ${esc(verbo)} ${esc(contra)}</div>`;
+  }
+
+  const cabecera = `
+    <div class="rep-total">
+      <div class="rep-total-num">${r.total}</div>
+      <div class="rep-total-txt">${t("actividades","activities","atividades","פעילויות")}
+        <span class="rep-total-sub">${esc(fmtDate(v.desde))} – ${esc(fmtDate(v.hasta))}</span></div>
+      ${comparacion}
+    </div>`;
+
+  if(!r.total){
+    return selector + `<div class="empty-state"><div class="big">📊</div>${
+      t("No hay nada cargado en ese período.","Nothing logged in that period.","Não há nada carregado nesse período.","לא נרשם דבר בתקופה הזו.")}</div>`;
+  }
+
+  // Por mes: TODOS los meses del período, incluidos los vacíos. Un mes sin
+  // nada es justamente lo que se quiere ver en una serie.
+  const meses = [];
+  for(let m = v.desde.slice(0,7); m <= v.hasta.slice(0,7); m = addMonthsISO(m + "-01", 1).slice(0,7)){
+    meses.push({ etiqueta: esc(mesCortoDe(m)), n: r.porMes[m] || 0 });
+  }
+
+  const zonas = Object.values(ZONES).map(z=>({
+    etiqueta: esc(z.label), n: r.porZona[z.key] || 0, color: safeColor(z.color),
+  })).filter(x=>x.n).sort((a,b)=>b.n-a.n);
+  if(r.latam) zonas.push({ etiqueta: esc(t("Toda LatAm","All LatAm","Toda a LatAm","כל אמריקה הלטינית")), n: r.latam, color:"var(--text-muted)" });
+
+  const paises = Object.entries(r.porPais)
+    .map(([nombre, n])=>({ etiqueta: esc(countryLabel(nombre)), n,
+      color: safeColor((ZONES[zoneOfCountry(nombre)] || {}).color) }))
+    .sort((a,b)=> b.n - a.n || a.etiqueta.localeCompare(b.etiqueta, currentLang()));
+
+  const tipos = Object.entries(r.porTipo)
+    .map(([clave, n])=>{
+      const ty = ACTIVITY_BY_KEY[clave];
+      return { etiqueta: `${ty ? ty.icon : "✨"} ${esc(ty ? ty.label : clave)}`, n };
+    })
+    .sort((a,b)=>b.n-a.n);
+
+  const nombreDe = correo => {
+    const m = memberByEmail(correo);
+    return esc(m ? (m.name || m.email) : correo);
+  };
+  const personas = Object.entries(r.porPersona)
+    .map(([correo, n])=>({ etiqueta: nombreDe(correo), n }))
+    .sort((a,b)=>b.n-a.n);
+  const quienesParticiparon = Object.entries(r.participantes)
+    .map(([correo, n])=>({ etiqueta: nombreDe(correo), n }))
+    .sort((a,b)=>b.n-a.n);
+
+  const notas = [];
+  if(r.sinLugar) notas.push(t(
+    "{n} sin lugar cargado — no aparecen en zona ni en país.",
+    "{n} with no place set — they don't show up under zone or country.",
+    "{n} sem lugar carregado — não aparecem em zona nem em país.",
+    "{n} ללא מקום — אינן מופיעות באזור או במדינה.", { n: r.sinLugar }));
+  notas.push(t(
+    "Una actividad con dos países suma en los dos, así que esa columna puede dar más que el total.",
+    "An activity in two countries counts in both, so that column can add up to more than the total.",
+    "Uma atividade em dois países soma nos dois, então essa coluna pode dar mais que o total.",
+    "פעילות בשתי מדינות נספרת בשתיהן, ולכן העמודה הזו יכולה להסתכם ביותר מהסך הכול."));
+  notas.push(t(
+    "Lo que se repite cuenta una vez por fecha; lo que dura varios días, una sola.",
+    "Recurring activities count once per date; multi-day ones count once.",
+    "O que se repete conta uma vez por data; o que dura vários dias, uma só.",
+    "פעילות חוזרת נספרת פעם לכל תאריך; פעילות רב-יומית נספרת פעם אחת."));
+
+  return selector + cabecera + `
+    <div class="rep-grilla">
+      ${bloqueDeBarras(t("Mes a mes","Month by month","Mês a mês","חודש אחר חודש"), meses, "")}
+      ${bloqueDeBarras(t("Por zona","By zone","Por zona","לפי אזור"), zonas,
+        t("Nada con zona cargada.","Nothing with a zone set.","Nada com zona carregada.","אין דבר עם אזור."))}
+      ${bloqueDeBarras(t("Por país","By country","Por país","לפי מדינה"), paises,
+        t("Nada con país cargado.","Nothing with a country set.","Nada com país carregado.","אין דבר עם מדינה."))}
+      ${bloqueDeBarras(t("Por tipo","By type","Por tipo","לפי סוג"), tipos, "")}
+      ${bloqueDeBarras(t("Quién cargó","Who logged it","Quem carregou","מי רשם"), personas, "")}
+      ${bloqueDeBarras(t("Quién participó","Who took part","Quem participou","מי השתתף"), quienesParticiparon,
+        t("Todavía nadie cargó participantes en este período.","Nobody has logged participants in this period yet.","Ninguém carregou participantes neste período.","עדיין לא נרשמו משתתפים בתקופה זו."))}
+    </div>
+    <div class="rep-notas">${notas.map(n=>`<div>· ${esc(n)}</div>`).join("")}</div>`;
 }
 
 /* ======================================================================
@@ -13835,6 +14198,12 @@ document.addEventListener("click", async e=>{
   },
     "paises-subview": async (el, e, action, postId) => {
     state.paisesSubview = el.dataset.key; state.countryDrill = null; render();
+  },
+    "reporte-anio": async (el, e, action, postId) => {
+    state.reportes.anio = el.dataset.key; render();
+  },
+    "reporte-trimestre": async (el, e, action, postId) => {
+    state.reportes.trimestre = Number(el.dataset.key) || 0; render();
   },
     "pref-toggle-list": async (el, e, action, postId) => {
     const key = el.dataset.key, prefKey = el.dataset.pref;

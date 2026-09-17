@@ -22,9 +22,10 @@ fi
 CARPETA="$(cd "$(dirname "$0")" && pwd)"
 PSQL="${PSQL:-psql}"
 
-total=0; malas=0
+total=0; malas=0; archivos=0
 for f in "$CARPETA"/9[0-9]-*.sql; do
   [ -f "$f" ] || continue
+  archivos=$((archivos + 1))
   nombre="$(basename "$f")"
   salida="$("$PSQL" "$DESTINO" --quiet -f "$f" 2>&1)"
   linea="$(echo "$salida" | grep -E '[0-9]+ pasaron,' | tail -1)"
@@ -41,6 +42,14 @@ for f in "$CARPETA"/9[0-9]-*.sql; do
 done
 
 echo ""
+# Un portero que no encuentra a quién revisar y dice "pasen todos" es peor
+# que ninguno: si el patrón deja de encontrar archivos (se renombraron, se
+# movieron, el checkout vino incompleto), esto tiene que gritar, no dar el
+# visto bueno sobre cero pruebas.
+if [ "$archivos" = 0 ]; then
+  echo "✗ No encontré ninguna prueba en $CARPETA. Eso NO es que estén todas bien."
+  exit 1
+fi
 if [ "$malas" = 0 ]; then
   echo "✓ $total comprobaciones, todas en verde."
 else
