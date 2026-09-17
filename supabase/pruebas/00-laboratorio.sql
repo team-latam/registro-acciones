@@ -25,7 +25,11 @@ $$;
 create schema if not exists storage;
 grant usage on schema storage to anon, authenticated, service_role;
 create table if not exists storage.buckets (
-  id text primary key, name text, public boolean not null default false);
+  id text primary key, name text, public boolean not null default false,
+  -- Las dos que usa 01-tablas.sql para ponerle techo al bucket. En Supabase
+  -- de verdad ya vienen; acá hay que declararlas o ese archivo se cae con
+  -- "column does not exist" y la prueba no prueba nada.
+  file_size_limit bigint, allowed_mime_types text[]);
 create table if not exists storage.objects (
   id uuid primary key default gen_random_uuid(),
   bucket_id text references storage.buckets(id),

@@ -8331,7 +8331,7 @@ function doRender(){
   tabSolicitudesEl.hidden = !isAdmin();
   tabAuditoriaEl.hidden = !isAdmin();
   tabPreferenciasEl.hidden = !isAdmin();
-  const pendingCount = state.accessRequests.filter(r=>r.status==="pending").length;
+  const pendingCount = solicitudesPendientes().length;
   document.getElementById("pendingBadge").innerHTML = (isAdmin() && pendingCount) ? `<span class="pending-count">${pendingCount}</span>` : "";
   if(!isAdmin() && (state.view === "solicitudes" || state.view === "auditoria" || state.view === "preferencias")) state.view = "feed";
 
@@ -8478,7 +8478,7 @@ function lastLoginByEmail(){
 }
 
 function renderAccesoSubnav(){
-  const pendingCount = state.accessRequests.filter(r=>r.status==="pending").length;
+  const pendingCount = solicitudesPendientes().length;
   return `<div class="pref-subnav">
     <button type="button" class="chip-toggle${state.solicitudesSection==="usuarios"?" active":""}" data-action="acceso-section" data-key="usuarios">${t("Usuarios","Users","Usuários","משתמשים")} (${state.roster.length})</button>
     <button type="button" class="chip-toggle${state.solicitudesSection==="pendientes"?" active":""}" data-action="acceso-section" data-key="pendientes">${t("Solicitudes","Requests","Solicitações","בקשות")}${pendingCount ? ` (${pendingCount})` : ""}</button>
@@ -8552,16 +8552,32 @@ function renderUsuariosSection(){
   }).join("");
 }
 
-function renderSolicitudesQueueSection(){
-  // La cola no filtra solo por status == "pending": también entra quien
-  // quedó en "limbo" (solicitud en approved pero sin documento en el
-  // allowlist). Esa persona ve "pendiente de aprobación" en su pantalla, y
-  // antes acá no figuraba en ningún lado. La app intenta repararlo sola
-  // (ver el listener de la propia solicitud), pero si eso falla — sin red,
-  // reglas viejas — al menos el admin la ve y puede aprobarla.
+// Quién está esperando de verdad una decisión del admin.
+//
+// La regla es una sola: no tiene acceso todavía y no se lo rechazamos.
+// Eso deja adentro a los dos casos que hay que decidir — el pedido nuevo
+// (status "pending") y el "limbo" de una solicitud en approved pero sin
+// ficha en el padrón, que si no aparecería acá nunca a pesar de que esa
+// persona ve "pendiente de aprobación" en su pantalla.
+//
+// Y deja AFUERA a quien ya está en el equipo, que es lo que faltaba: su
+// pedido quedó dando vueltas (una aprobación que no llegó a marcarse, o
+// el error que volvía a crear el pedido al iniciar sesión) y lo hacía
+// aparecer como si hubiera que decidir algo ya decidido. La fila no se
+// borra: si algún día se le revoca el acceso, vuelve a la cola sola, que
+// es exactamente lo que corresponde.
+//
+// Vive en una función y no repetida en cada lugar porque son TRES los que
+// la preguntan: esta lista, el número al lado de "Solicitudes" y el globo
+// rojo del encabezado. Antes cada uno filtraba por su cuenta, y el globo
+// decía 1 mientras la lista mostraba otra cosa.
+function solicitudesPendientes(){
   const conAcceso = new Set(state.roster.map(u=>u.email));
-  const pending = state.accessRequests.filter(r=>
-    r.status === "pending" || (r.status !== "rejected" && !conAcceso.has(r.email)));
+  return state.accessRequests.filter(r => !conAcceso.has(r.email) && r.status !== "rejected");
+}
+
+function renderSolicitudesQueueSection(){
+  const pending = solicitudesPendientes();
   // "Rechazadas" mezclaba dos cosas muy distintas: alguien a quien nunca se
   // le dio acceso, y alguien que SÍ estuvo en el equipo y se fue. Se
   // separan: quien tiene registro de ex integrante va a su propia lista,
