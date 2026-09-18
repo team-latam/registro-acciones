@@ -80,7 +80,12 @@ jobs:
   aplicar:
     name: Aplicarlo a Supabase
     needs: probar
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Todo menos un pull request. Antes decía `== 'push'`, y eso dejaba
+    # afuera al botón "Run workflow": estaba puesto justamente para poder
+    # aplicar a mano, y no aplicaba nada — el trabajo se salteaba entero y
+    # la corrida figuraba en verde igual. Un botón de adorno es peor que no
+    # tenerlo, porque parece que hizo algo.
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
