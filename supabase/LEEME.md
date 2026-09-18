@@ -15,12 +15,23 @@ mientras Firebase sea la base del equipo.
 
 ### 1. Copiar la dirección de la base
 
-En Supabase → **Project Settings** → **Database** → **Connection string** →
-pestaña **URI**. Es una línea que arranca con `postgresql://`.
+En Supabase, el **botón verde `Connect`** de arriba de todo (al lado del
+nombre de la rama). No está en el menú de la izquierda: Supabase lo movió
+ahí.
 
-Te va a pedir la contraseña de la base. Si no la tenés, en esa misma
-pantalla se puede generar una nueva (**Reset database password**); ojo que
-al cambiarla se corta cualquier otra cosa que la esté usando.
+Se abre una ventana con varias opciones. **Elegí "Session pooler".**
+
+> ⚠️ **No elijas "Direct connection".** Esa es solo IPv6, y las máquinas de
+> GitHub no tienen IPv6: el trabajo fallaría con un timeout que no dice
+> nada útil. La de "Session pooler" anda por IPv4 y es la correcta para
+> esto.
+
+Es una línea que arranca con `postgresql://` y trae un `[YOUR-PASSWORD]` en
+el medio: hay que reemplazarlo por la contraseña de la base.
+
+Si no la tenés, se genera una nueva desde **Database → Settings** (o con
+`Ctrl+K`, escribiendo "database password"). Ojo que al cambiarla se corta
+cualquier otra cosa que la esté usando.
 
 > ⚠️ **Esa línea es la llave maestra del proyecto**: quien la tenga puede
 > leer, cambiar y borrar todo, sin pasar por los permisos. No la pegues en

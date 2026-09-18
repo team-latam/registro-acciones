@@ -14,8 +14,15 @@ Ahora esto corre **todas las madrugadas a las 3**, sin nadie adelante.
 
 ### 1. Copiar la llave de servicio de Supabase
 
-Supabase → **Project Settings** → **API Keys** → la que dice
-**`service_role`** (hay que hacer clic en "Reveal" para verla).
+Supabase → **Project Settings** → **API Keys**, en el menú de la izquierda.
+
+Ahí puede aparecer de dos formas, según cómo lo muestre el panel:
+
+- Si ves una que dice **`service_role`**, con un "Reveal" al lado → esa es.
+- Si en cambio ves **"Secret keys"** y un botón para crear una → creá una
+  nueva (`sb_secret_...`). Hace exactamente lo mismo: es el formato nuevo
+  de llaves, el mismo sistema del que salió la `sb_publishable_...` que usa
+  la app.
 
 > ⚠️ **Esa llave pasa por encima de todos los permisos.** No es la misma
 > que está en `index.html` (esa es la pública, y está bien que sea
