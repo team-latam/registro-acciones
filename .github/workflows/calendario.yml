@@ -84,4 +84,16 @@ jobs:
         if: steps.revisar.outputs.hay == 'si'
         env:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: node supabase/sync-calendar/sincronizar.mjs | tee -a "$GITHUB_STEP_SUMMARY"
+          # Si está cargada, gana sobre la de index.html. Hace falta una
+          # aparte: la de la página está restringida por dominio (bien, es
+          # pública y cualquiera la ve), y desde un servidor no hay dominio
+          # de origen, así que Google contesta "Requests from referer
+          # <empty> are blocked".
+          CALENDAR_API_KEY: ${{ secrets.CALENDAR_API_KEY }}
+        # `set -o pipefail` NO es opcional acá: sin eso, bash devuelve el
+        # resultado de `tee` —que siempre anda— y no el del programa. El
+        # paso quedaba en verde con la sincronización caída, que es la
+        # única forma de fallar que no se ve.
+        run: |
+          set -o pipefail
+          node supabase/sync-calendar/sincronizar.mjs | tee -a "$GITHUB_STEP_SUMMARY"
