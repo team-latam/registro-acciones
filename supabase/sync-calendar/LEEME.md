@@ -39,8 +39,33 @@ https://github.com/team-latam/registro-acciones/settings/secrets/actions
 - **Name:** `SUPABASE_SERVICE_ROLE_KEY`
 - **Secret:** la llave que copiaste
 
-Listo. Nada más: a qué proyecto conectarse, qué calendario mirar y con qué
-clave leerlo salen de `index.html`, que es donde ya viven.
+### 3. Una clave de Google aparte, solo para esto
+
+La clave con la que la app lee el calendario **no sirve desde un
+servidor**, y está bien que así sea: viaja en la página, cualquiera la ve,
+y por eso está restringida a `team-latam.github.io`. Un programa que corre
+en GitHub no tiene dominio de origen, así que Google lo rechaza con
+`Requests from referer <empty> are blocked`.
+
+Hace falta una segunda clave, sin esa restricción pero acotada a lo único
+que necesita:
+
+1. https://console.cloud.google.com/apis/credentials, con el mismo proyecto
+   de siempre (`team-latam-2f320`)
+2. **+ CREATE CREDENTIALS** → **API key**
+3. En la clave nueva, **Edit API key**:
+   - **Application restrictions:** `None`
+   - **API restrictions:** `Restrict key` → tildá **Google Calendar API** y
+     nada más
+4. Ponele un nombre que se entienda, tipo `calendario-github`
+5. Copiala y cargala en GitHub como el secreto **`CALENDAR_API_KEY`**
+
+> Sin restricción de dominio pero limitada a la Calendar API, esa clave
+> solo puede leer un calendario que ya es público. No abre nada más.
+
+A qué proyecto de Supabase conectarse y qué calendario mirar siguen
+saliendo de `index.html`; lo único que va por secreto es esto y la llave de
+servicio.
 
 ---
 
