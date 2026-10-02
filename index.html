@@ -5237,6 +5237,9 @@ let unsubscribeData = null;
 let unsubscribeRequests = null;
 let unsubAllowlist = null;
 let unsubOwnRequest = null;
+// Ver el setTimeout de onAuthChanged: el reloj que corta el "Cargando…"
+// eterno si el padrón no contesta nunca.
+let relojPadron = null;
 let unsubAuditLog = null;
 let unsubRoster = null;
 let unsubTerritoryConfig = null;
@@ -5276,6 +5279,7 @@ async function onAuthChanged(user){
   if(unsubscribeRequests){ unsubscribeRequests(); unsubscribeRequests = null; }
   if(unsubAllowlist){ unsubAllowlist(); unsubAllowlist = null; }
   if(unsubOwnRequest){ unsubOwnRequest(); unsubOwnRequest = null; }
+  if(relojPadron){ clearTimeout(relojPadron); relojPadron = null; }
   if(unsubAuditLog){ unsubAuditLog(); unsubAuditLog = null; }
   if(unsubRoster){ unsubRoster(); unsubRoster = null; }
   if(unsubTerritoryConfig){ unsubTerritoryConfig(); unsubTerritoryConfig = null; }
@@ -5336,8 +5340,25 @@ async function onAuthChanged(user){
 
   // Mientras se resuelve si está aprobado, no se suscribe a posts/replies
   // (evita un permission-denied transitorio contra Firestore).
-  state.auth = { status:"loading", user:profile, allowlisted:false, requestStatus:null, role:null, padronConocido:false };
+  state.auth = { status:"loading", user:profile, allowlisted:false, requestStatus:null, role:null, padronConocido:false, demorado:false };
   render();
+  // "Cargando…" no puede ser para siempre, y hasta ahora podía: esa
+  // pantalla no tiene mensaje ni botón para salir. El callback de ERROR
+  // del padrón sí avisa (pega el cartel rojo), pero el caso que deja la
+  // pantalla muerta es el otro — que NO conteste nunca y nadie llame a
+  // ningún callback: la base pausada, el teléfono sin señal, una consulta
+  // colgada. Desde afuera eso es "no me deja entrar", sin un solo dato
+  // para saber por qué, ni forma de probar con otra cuenta.
+  //
+  // A los 12 segundos deja de prometer y lo dice. El admin fijo no pasa
+  // por acá (sale antes, por ADMIN_EMAIL), así que esto es justamente
+  // para el resto del equipo, que es quien no tenía cómo contarlo.
+  relojPadron = setTimeout(()=>{
+    relojPadron = null;
+    if(state.auth.status !== "loading" || state.auth.padronConocido) return;
+    state.auth.demorado = true;
+    render();
+  }, 12000);
 
   let dataSubscribed = false;
   // Suscripciones que solo tienen sentido (y permiso) con rol admin:
@@ -5404,6 +5425,8 @@ async function onAuthChanged(user){
   unsubAllowlist = store.roster.watchOwn(profile.email, miembro=>{
     padronRespondio = true;
     state.auth.padronConocido = true;
+    state.auth.demorado = false;
+    if(relojPadron){ clearTimeout(relojPadron); relojPadron = null; }
     state.auth.allowlisted = !!miembro;
     state.auth.role = miembro ? (miembro.role || "member") : null;
     recomputeAuthStatus();
@@ -5424,6 +5447,11 @@ async function onAuthChanged(user){
   }, err=>{
     // Sin esto el estado quedaba en "pendiente de aprobación" para
     // siempre, sin decir por qué, aunque la persona estuviera aprobada.
+    //
+    // El padrón contestó —mal, pero contestó—, así que el reloj de la
+    // demora ya no tiene nada que agregar: acá abajo hay un mensaje que
+    // dice qué falló, y es mejor que "está tardando".
+    if(relojPadron){ clearTimeout(relojPadron); relojPadron = null; }
     console.error("Error chequeando allowlist:", err);
     renderFatalError(t("No se pudo verificar tu acceso ({msg}). Recargá la página; si sigue pasando, avisale al administrador.","Couldn't verify your access ({msg}). Reload the page; if it keeps happening, let the admin know.","Não foi possível verificar seu acesso ({msg}). Recarregue a página; se continuar, avise o administrador.","לא ניתן היה לאמת את הגישה שלך ({msg}). טען/י מחדש את הדף; אם זה נמשך, פנה/י למנהל/ת.",{msg:err.message}));
   });
@@ -8572,7 +8600,24 @@ function renderObserverBanner(){
 function renderAuthGate(){
   const s = state.auth.status;
   if(s === "loading"){
-    return `<div class="auth-gate"><div class="big">⏳</div><p>${t("Cargando…","Loading…","Carregando…","...טוען")}</p></div>`;
+    if(!state.auth.demorado) return `<div class="auth-gate"><div class="big">⏳</div><p>${t("Cargando…","Loading…","Carregando…","...טוען")}</p></div>`;
+    // Lo importante acá no es el texto: son los dos botones. Sin ellos
+    // esta pantalla no tiene salida — ni recargar con un clic, ni probar
+    // con otra cuenta.
+    return `<div class="auth-gate">
+      <div class="big">🐢</div>
+      <h2>${t("Esto está tardando más de lo normal","This is taking longer than usual","Isto está demorando mais do que o normal","זה לוקח יותר זמן מהרגיל")}</h2>
+      <p>${t(
+        `No pudimos confirmar si <strong>{email}</strong> tiene acceso: la base no contesta. Casi siempre es la conexión. Probá reintentar, y si sigue igual avisale al <strong>Administrador</strong> con la hora en que pasó.`,
+        `We couldn't confirm whether <strong>{email}</strong> has access: the database isn't answering. It's almost always the connection. Try again, and if it keeps happening let the <strong>Admin</strong> know what time it happened.`,
+        `Não conseguimos confirmar se <strong>{email}</strong> tem acesso: a base não responde. Quase sempre é a conexão. Tente de novo e, se continuar, avise o <strong>Administrador</strong> com a hora em que aconteceu.`,
+        `לא הצלחנו לאמת אם ל-<strong>{email}</strong> יש גישה: מסד הנתונים לא מגיב. כמעט תמיד זה החיבור. נסה/נסי שוב, ואם זה נמשך פנה/פני ל<strong>מנהל/ת</strong> וציין/י את השעה.`,
+        { email: esc(state.auth.user.email) }
+      )}</p>
+      <button class="btn-mini" data-action="reload-page">🔄 ${t("Reintentar","Try again","Tentar de novo","ניסיון נוסף")}</button>
+      <div style="height:10px"></div>
+      <button class="btn-secondary" data-action="sign-out">${t("Cerrar sesión","Sign out","Sair","התנתקות")}</button>
+    </div>`;
   }
   if(s === "signedOut"){
     return `<div class="auth-gate">
@@ -14261,7 +14306,13 @@ document.addEventListener("click", async e=>{
   },
     "open-file-preview": async (el, e, action, postId) => {
     const owner = attachmentOwner(el.dataset.postId, el.dataset.replyId);
-    const previewable = owner ? (owner.files||[]).filter(f=>f && sePuedeVer(f))
+    // La MISMA lista que dibujó renderPostedFiles, no owner.files: en un
+    // posteo con documentación esperada la tarjeta muestra solo los
+    // adjuntos sueltos, y data-idx es el índice dentro de ESA lista. Con
+    // owner.files entero el índice se corría y el visor abría otro
+    // archivo. Un comentario no tiene activityType, así que ahí
+    // archivosSueltos() devuelve todo, que es lo que corresponde.
+    const previewable = owner ? archivosSueltos(owner.files, owner.activityType).filter(f=>f && sePuedeVer(f))
       .map(f=>({ name:f.name, dataUrl:safeFileDataUrl(f.dataUrl) })).filter(f=>f.dataUrl) : [];
     openFilePreview(previewable, Number(el.dataset.idx)||0);
   },
@@ -14827,6 +14878,9 @@ document.addEventListener("click", async e=>{
     "sign-out": async (el, e, action, postId) => {
     userMenuOpen = false;
     doSignOut();
+  },
+    "reload-page": async (el, e, action, postId) => {
+    location.reload();
   },
     "request-again": async (el, e, action, postId) => {
     requestAccessAgain();
