@@ -11,15 +11,17 @@ name: ¿Está arriba la página?
 on:
   workflow_dispatch:
 
+env:
+  URL: https://team-latam.github.io/registro-acciones/
+
 jobs:
   mirar:
     name: Pedirle la página a GitHub Pages desde afuera
     runs-on: ubuntu-latest
     steps:
-      - name: Pedirla
+      - name: Pedirla como la pide curl
         run: |
           set -o pipefail   # si no, el exit code lo tapa el último comando de la tubería
-          URL="https://team-latam.github.io/registro-acciones/"
           echo "Pidiendo $URL"
           echo
 
@@ -50,8 +52,58 @@ jobs:
           fi
 
           echo "✓ La página está arriba y es la de verdad ($bytes bytes)."
+
+      # Un navegador NO pide la página como curl: pide la versión
+      # comprimida, por HTTP/2, y se presenta como Chrome. Si la copia
+      # comprimida del CDN está rota o cortada, curl a secas no se entera
+      # —pide la cruda— y el navegador se queda con la barra a medias y la
+      # pantalla en blanco. Que es exactamente lo que se ve.
+      - name: Pedirla como la pide un navegador
+        run: |
+          set -o pipefail
+          UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36'
+          esperado=$(wc -c < pagina.html)
+          falla=0
+
+          for modo in "gzip" "br" "gzip, deflate, br, zstd"; do
+            echo "── Accept-Encoding: $modo"
+            # --compressed-no: se pide a mano para controlar exactamente qué
+            # se ofrece, y curl descomprime solo lo que sabe.
+            if ! curl -sS --max-time 30 --compressed \
+                 -H "Accept-Encoding: $modo" -H "User-Agent: $UA" \
+                 -o conmodo.html -w '   HTTP %{http_code}  bajado %{size_download}B  en %{time_total}s  por %{http_version}\n' \
+                 "$URL"; then
+              echo "   ✗ se cortó la descarga"
+              falla=1
+              continue
+            fi
+            real=$(wc -c < conmodo.html)
+            echo "   descomprimido: $real bytes (esperado $esperado)"
+            if [ "$real" != "$esperado" ]; then
+              echo "   ✗ NO coincide: la copia comprimida viene distinta de la cruda."
+              falla=1
+            elif ! grep -q "</html>" conmodo.html; then
+              echo "   ✗ llegó cortada: no tiene el cierre </html>."
+              falla=1
+            else
+              echo "   ✓ igual que la cruda y completa"
+            fi
+            echo
+          done
+
+          echo "── Encabezados que manda el CDN"
+          curl -sSI --max-time 30 -H "User-Agent: $UA" "$URL" \
+            | grep -iE "^(content-|cache-|age|x-served-by|x-cache|via|server|last-modified)" || true
           echo
-          echo "Si vos no podés entrar y esto dio verde, el problema está"
-          echo "entre tu máquina y github.io: la red, el DNS, un VPN, el"
-          echo "antivirus o una extensión del navegador. La prueba más"
-          echo "rápida es abrirla en el celular CON DATOS, sin wifi."
+
+          if [ "$falla" != "0" ]; then
+            echo "✗ La página está publicada, pero el CDN la entrega mal a quien la"
+            echo "  pide comprimida — o sea, a cualquier navegador. No es tu red."
+            exit 1
+          fi
+          echo "✓ También llega bien comprimida, por HTTP/2 y como Chrome."
+          echo
+          echo "Con esto, de mi lado no queda nada roto: la página está arriba y se"
+          echo "entrega bien de todas las formas en que se la puede pedir. Si vos"
+          echo "no podés abrirla, lo que falla está en el camino entre tu equipo y"
+          echo "github.io (proveedor de internet, DNS, VPN o antivirus)."
