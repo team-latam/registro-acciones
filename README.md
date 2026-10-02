@@ -381,6 +381,47 @@ de 25 MB por archivo y una lista de tipos permitidos
   deliberada para mantenerlo gratis. Del lado de Firebase, todo lo que no
   entra chico sigue yendo por link.
 
+### Documentación esperada de un evento
+
+Una visita no es solo el evento: antes hay un plan de viaje y después un
+reporte. Cada **tipo de actividad** declara qué documentos espera, y la
+tarjeta de cada evento de ese tipo muestra esa lista con lo que ya está
+adjuntado y lo que falta — el mismo patrón que los hitos de Proyectos,
+pero configurable.
+
+Se arma en **Configuración > Tipos de actividad**: debajo de cada tipo hay
+una fila "Documentos esperados" donde se suman y se sacan (hasta 10 por
+tipo). Es una lista de lo que se espera, **no una obligación**: nada
+bloquea publicar un evento sin ellos.
+
+**Cómo se guarda, y por qué así.** No hay un campo nuevo en el posteo: cada
+archivo de `files[]` lleva un `doc` con el id de la ranura que ocupa, y los
+que no lo llevan son los adjuntos sueltos de siempre. Una sola lista, un
+solo lugar donde mirar. Una estructura paralela ("documentos esperados" por
+un lado, archivos por el otro) se desincroniza sola a la primera edición.
+
+Consecuencia práctica: **esto no necesitó tocar `firestore.rules` ni el
+SQL**. Las dos capas validan cada archivo por nombre y ruta sin exigir una
+lista cerrada de claves (`isValidFileAt` / `archivos_ok`), y
+`isValidPreferences` solo pide que `activityTypes` sea una lista — así que
+un `doc` de más y unos `docs` adentro de cada tipo pasan sin cambiar nada
+del lado servidor.
+
+Detalles que importan:
+
+- **El id de cada documento se deriva del nombre pero no cambia al
+  renombrarlo** (`tipo-doc-add`): es lo que ata cada archivo ya adjuntado a
+  su ranura. Si cambiara, los documentos de los eventos viejos quedarían
+  huérfanos.
+- **Sacar un documento de la configuración no borra archivos**: el que
+  estaba adjuntado vuelve a la lista de sueltos (`archivosSueltos()`).
+- **Adjuntar es una edición del posteo como cualquier otra**: pasa por
+  `canEditPost()`, por los mismos topes de cantidad y tamaño, y firma
+  `lastEditedBy`. Reemplazar el documento de una ranura no cuenta como uno
+  más, así que se puede aunque el posteo esté en el tope de archivos.
+- Lo que el navegador sabe mostrar (PDF, texto) abre en el visor; el resto
+  (Word, Excel) se baja, igual que los adjuntos sueltos.
+
 ### @Menciones
 
 Escribir `@` en cualquier comentario/respuesta (Evento, Rutina, respuesta
