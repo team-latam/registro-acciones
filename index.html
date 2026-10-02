@@ -5997,6 +5997,12 @@ function crearSupabaseStore(sb){
      al servidor en vez de 900. */
   const SEGUNDOS_FIRMA = 4 * 60 * 60;   // cuatro horas
   const firmadas = new Map();           // ruta -> { url, vence }
+  // Y al revés. Lo que se guarda en la base es SIEMPRE la ruta: una firma
+  // vence en horas, y escribirla en la fila pisa la ruta y deja el archivo
+  // irrecuperable. Las entradas viejas no se borran a propósito: un objeto
+  // que quedó en memoria con una firma anterior tiene que poder volver a
+  // su ruta igual.
+  const rutaDeUrl = new Map();          // url firmada -> ruta
   const esRuta = v => typeof v === "string" && v.length > 0 && !v.startsWith("data:") && !v.startsWith("http");
   function rutasDe(fila){
     const r = [];
@@ -6016,12 +6022,17 @@ function crearSupabaseStore(sb){
     const { data, error } = await sb.storage.from("adjuntos").createSignedUrls(faltan, SEGUNDOS_FIRMA);
     if(error){ console.error("No se pudieron firmar los adjuntos:", error); return; }
     (data || []).forEach(d => {
-      if(d && d.signedUrl && !d.error) firmadas.set(d.path, { url:d.signedUrl, vence: Date.now() + SEGUNDOS_FIRMA * 1000 });
+      if(d && d.signedUrl && !d.error){
+        firmadas.set(d.path, { url:d.signedUrl, vence: Date.now() + SEGUNDOS_FIRMA * 1000 });
+        rutaDeUrl.set(d.signedUrl, d.path);
+      }
     });
   }
   // Si una ruta no está firmada todavía, se deja como está: no se ve, pero
   // tampoco se rompe nada, y la próxima carga la arregla.
   const conFirma = ruta => (firmadas.get(ruta) || {}).url || ruta;
+  // El camino de vuelta, para no guardar nunca una firma donde va una ruta.
+  const sinFirma = v => rutaDeUrl.get(v) || v;
   function resolverAdjuntos(o){
     if(Array.isArray(o.images)) o.images = o.images.map(v => esRuta(v) ? conFirma(v) : v);
     if(Array.isArray(o.files)) o.files = o.files.map(a =>
@@ -6077,17 +6088,34 @@ function crearSupabaseStore(sb){
       salida.images = [];
       for(let i = 0; i < datos.images.length; i++){
         const v = datos.images[i];
+        // sinFirma: en memoria una imagen ya subida es su URL firmada, no
+        // su ruta. Sin esto, editar un posteo guardaba la firma PISANDO la
+        // ruta, y cuando vencía —a las cuatro horas— la imagen quedaba
+        // rota sin forma de recuperarla.
         salida.images.push(typeof v === "string" && v.startsWith("data:")
-          ? await subirUno(`${tabla}/${id}/img${i}`, v) : v);
+          ? await subirUno(`${tabla}/${id}/img${i}`, v) : sinFirma(v));
       }
     }
     if(Array.isArray(salida.files)){
       salida.files = [];
       for(let i = 0; i < datos.files.length; i++){
         const a = datos.files[i];
-        if(a && typeof a.dataUrl === "string" && a.dataUrl.startsWith("data:")){
-          salida.files.push({ name: a.name || `archivo${i}`,
-                              path: await subirUno(`${tabla}/${id}/arch${i}`, a.dataUrl) });
+        if(!a){ salida.files.push(a); continue; }
+        if(typeof a.dataUrl === "string" && a.dataUrl.startsWith("data:")){
+          // Se conserva TODO el resto del archivo y se reemplaza solo el
+          // contenido por su ruta. Antes se armaba un objeto nuevo con
+          // name y path nada más, y se perdían mime, kind, doc y subidoEl:
+          // en Supabase un documento subido a su ranura volvía como
+          // adjunto suelto, sin ícono y sin fecha, y la cuenta de la
+          // tarjeta se quedaba en 0/2 para siempre.
+          const { dataUrl, ...resto } = a;
+          salida.files.push({ ...resto, name: a.name || `archivo${i}`,
+                              path: await subirUno(`${tabla}/${id}/arch${i}`, dataUrl) });
+        } else if(esRuta(a.path)){
+          // Ya está en el bucket: va sin dataUrl, que acá es una URL
+          // firmada. Al leer se vuelve a firmar sola.
+          const { dataUrl, ...resto } = a;
+          salida.files.push(resto);
         } else salida.files.push(a);
       }
     }
