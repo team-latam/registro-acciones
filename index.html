@@ -1376,6 +1376,65 @@
   .post-file-link{ text-decoration:underline; text-decoration-color:transparent; }
   .post-file-link:hover{ text-decoration-color:currentColor; }
 
+  /* ----- Documentación esperada de un evento ----- */
+  .doc-bloque{
+    margin-top:12px; padding:10px 12px; border:1px solid var(--border);
+    border-radius:var(--radius-md); background:var(--surface-alt);
+  }
+  .doc-titulo{
+    display:flex; align-items:center; gap:8px; font-size:11.5px; font-weight:800;
+    text-transform:uppercase; letter-spacing:0.04em; color:var(--text-muted); margin-bottom:8px;
+  }
+  .doc-cuenta{
+    font-variant-numeric:tabular-nums; background:var(--card); border:1px solid var(--border);
+    border-radius:999px; padding:1px 8px; letter-spacing:0;
+  }
+  .doc-cuenta.completo{ background:var(--ok-bg); border-color:var(--ok-border); color:var(--ok-text); }
+  .doc-fila{ display:flex; align-items:center; gap:8px; padding:3px 0; min-width:0; flex-wrap:wrap; }
+  .doc-estado{ flex:0 0 auto; width:16px; text-align:center; font-weight:800; color:var(--text-muted); }
+  .doc-estado.ok{ color:var(--ok-text); }
+  .doc-nombre{ font-size:12.5px; font-weight:700; }
+  .doc-fila.falta .doc-nombre{ color:var(--text-muted); }
+  .doc-archivo{
+    font-size:12.5px; font-weight:600; color:var(--ink); background:none; border:none; padding:0;
+    font-family:inherit; cursor:pointer; text-align:start; min-width:0;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    text-decoration:underline; text-decoration-color:transparent;
+  }
+  a.doc-archivo{ display:inline-block; }
+  .doc-archivo:hover{ text-decoration-color:currentColor; }
+  .doc-adjuntar{
+    font-size:11.5px; font-weight:700; border:1px dashed var(--border); background:var(--card);
+    color:var(--text-muted); border-radius:999px; padding:2px 10px; cursor:pointer; font-family:inherit;
+  }
+  .doc-adjuntar:hover{ color:var(--ink); border-style:solid; }
+  .doc-pendiente, .doc-roto{ font-size:11.5px; color:var(--text-muted); font-style:italic; }
+  .doc-fila .rm{
+    margin-inline-start:auto; width:18px; height:18px; border-radius:50%; background:none;
+    border:none; color:var(--text-muted); font-size:11px; cursor:pointer; line-height:18px; padding:0;
+  }
+  .doc-fila .rm:hover{ background:var(--danger-bg); color:var(--danger); }
+
+  /* Documentos esperados, en Configuración > Tipos de actividad */
+  .tipo-docs{
+    display:flex; align-items:center; flex-wrap:wrap; gap:6px;
+    padding:6px 0 10px 0; margin-top:-6px;
+  }
+  .tipo-docs-rotulo{ font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.03em; }
+  .doc-chip{
+    display:inline-flex; align-items:center; gap:4px; background:var(--surface-alt);
+    border:1px solid var(--border); border-radius:999px; padding:2px 4px 2px 10px; font-size:12px; font-weight:600;
+  }
+  .doc-chip .rm{
+    width:16px; height:16px; border-radius:50%; background:none; border:none;
+    color:var(--text-muted); font-size:10px; cursor:pointer; line-height:16px; padding:0;
+  }
+  .doc-chip .rm:hover{ background:var(--danger-bg); color:var(--danger); }
+  .doc-nuevo-input{
+    flex:1; min-width:120px; max-width:220px; font-size:12px; padding:4px 8px;
+    border:1px solid var(--border); border-radius:8px; background:var(--card); color:var(--ink); font-family:inherit;
+  }
+
   /* Autocompletado genérico (lugar y @menciones): lista angosta debajo
      del input/textarea que la dispara. */
   .autocomplete-list{
@@ -6577,6 +6636,17 @@ function applyActivityTypesConfig(types){
   ACTIVITY_TYPES.forEach(ty=>{ ACTIVITY_BY_KEY[ty.key] = ty; });
   CALENDAR_SYNC_TYPES.clear();
   types.forEach(ty=>{ if(ty.calendarSync) CALENDAR_SYNC_TYPES.add(ty.key); });
+  // Qué documentos espera cada tipo. Aparte por el mismo motivo que
+  // CALENDAR_SYNC_TYPES: arriba solo se copian key/label/icono.
+  Object.keys(DOCS_POR_TIPO).forEach(k=>delete DOCS_POR_TIPO[k]);
+  types.forEach(ty=>{
+    if(!Array.isArray(ty.docs)) return;
+    const limpios = ty.docs
+      .filter(d => d && typeof d.id === "string" && typeof d.label === "string" && d.label.trim())
+      .slice(0, 10)
+      .map(d => ({ id: d.id, label: String(d.label).slice(0, 60) }));
+    if(limpios.length) DOCS_POR_TIPO[ty.key] = limpios;
+  });
   refreshActivityTypeLabels();
 }
 // Espejo de lo último leído de Firestore (no de CITY_PRESETS, que ya
@@ -8968,8 +9038,10 @@ function renderZonasSection(){
    Los tipos de Evento (Rutina queda afuera: tiene su propio composer y
    nunca se sincroniza con Calendar, no tiene sentido editarla acá). */
 function newTiposDraft(){
-  const types = EVENTO_TYPES.map(t=>({ key:t.key, label:t.label, icon:t.icon, calendarSync: CALENDAR_SYNC_TYPES.has(t.key) }));
-  return { types, newLabel:"", newIcon:"", error:"", saving:false };
+  const types = EVENTO_TYPES.map(t=>({ key:t.key, label:t.label, icon:t.icon,
+    calendarSync: CALENDAR_SYNC_TYPES.has(t.key),
+    docs: docsEsperados(t.key).map(d=>({ ...d })) }));
+  return { types, newLabel:"", newIcon:"", error:"", saving:false, nuevoDoc:{} };
 }
 let tiposDraft = null;
 function getTiposDraft(){
@@ -9003,10 +9075,10 @@ function renderTiposSection(){
   return `
       <div class="hint" style="margin-bottom:16px;">
         ${t(
-          `Tipos de actividad disponibles al cargar un Evento nuevo (Rutina es aparte, no se edita acá). Los que tienen tildado "Calendar" se suman solos al Calendar compartido de LatAm; los que no, quedan solo en el Registro.`,
-          `Activity types available when creating a new Event (Routine is separate, not edited here). The ones with "Calendar" checked sync automatically to the shared LatAm Calendar; the rest stay only in the Log.`,
-          `Tipos de atividade disponíveis ao criar um Evento novo (Rotina é separado, não se edita aqui). Os que têm "Calendar" marcado são somados sozinhos ao Calendar compartilhado da LatAm; os que não, ficam só no Registro.`,
-          `סוגי הפעילות הזמינים ביצירת אירוע חדש (שגרה נפרדת, לא נערכת כאן). אלה שמסומן להם "Calendar" מתווספים לבד ליומן המשותף של LatAm; השאר נשארים רק ביומן הפעילויות.`
+          `Tipos de actividad disponibles al cargar un Evento nuevo (Rutina es aparte, no se edita acá). Los que tienen tildado "Calendar" se suman solos al Calendar compartido de LatAm; los que no, quedan solo en el Registro.<br><br>Los <b>documentos esperados</b> de cada tipo aparecen en la tarjeta de cada evento de ese tipo, con lo que ya está adjuntado y lo que falta — por ejemplo, una Visita con "Plan de viaje" y "Reporte". Es una lista de lo que se espera, no una obligación: nada bloquea publicar sin ellos.`,
+          `Activity types available when creating a new Event (Routine is separate, not edited here). The ones with "Calendar" checked sync automatically to the shared LatAm Calendar; the rest stay only in the Log.<br><br>The <b>expected documents</b> of each type show up on every event card of that type, with what's attached and what's missing — for example, a Visit with "Travel plan" and "Report". It's a list of what's expected, not a requirement: nothing blocks publishing without them.`,
+          `Tipos de atividade disponíveis ao criar um Evento novo (Rotina é separado, não se edita aqui). Os que têm "Calendar" marcado são somados sozinhos ao Calendar compartilhado da LatAm; os que não, ficam só no Registro.<br><br>Os <b>documentos esperados</b> de cada tipo aparecem no cartão de cada evento desse tipo, com o que já está anexado e o que falta — por exemplo, uma Visita com "Plano de viagem" e "Relatório". É uma lista do que se espera, não uma obrigação: nada bloqueia publicar sem eles.`,
+          `סוגי הפעילות הזמינים ביצירת אירוע חדש (שגרה נפרדת, לא נערכת כאן). אלה שמסומן להם "Calendar" מתווספים לבד ליומן המשותף של LatAm; השאר נשארים רק ביומן הפעילויות.<br><br><b>המסמכים הצפויים</b> של כל סוג מופיעים בכרטיס של כל אירוע מאותו סוג, עם מה שכבר צורף ומה שחסר — למשל, ביקור עם "תוכנית נסיעה" ו"דוח". זו רשימה של מה שמצופה, לא חובה: דבר אינו חוסם פרסום בלעדיהם.`
         )}
       </div>
       <div class="zone-edit-list">
@@ -9020,6 +9092,14 @@ function renderTiposSection(){
               <span class="zone-count">${count === 1 ? t("1 posteo","1 post","1 postagem","פוסט אחד") : t("{n} posteos","{n} posts","{n} postagens","{n} פוסטים",{n:count})}</span>
               <button type="button" class="rm" data-action="tipos-remove" data-key="${ty.key}" ${count>0?`disabled title="${esc(t("Hay posteos con este tipo","There are posts with this type","Há postagens com este tipo",".יש פוסטים עם הסוג הזה"))}"`:`title="${esc(t("Eliminar","Delete","Excluir","מחיקה"))}"`}>✕</button>
             </div>
+          </div>
+          <div class="tipo-docs">
+            <span class="tipo-docs-rotulo">${t("Documentos esperados","Expected documents","Documentos esperados","מסמכים צפויים")}</span>
+            ${(ty.docs||[]).map((doc, i)=>`<span class="doc-chip">${esc(doc.label)}<button type="button" class="rm" data-action="tipo-doc-remove" data-key="${esc(ty.key)}" data-idx="${i}" title="${esc(t("Quitar","Remove","Remover","הסרה"))}">✕</button></span>`).join("")}
+            <input type="text" class="doc-nuevo-input" data-action="tipo-doc-nuevo" data-key="${esc(ty.key)}"
+              value="${esc((d.nuevoDoc||{})[ty.key] || "")}" maxlength="60"
+              placeholder="${esc(t("ej: Plan de viaje","e.g. Travel plan","ex: Plano de viagem","למשל: תוכנית נסיעה"))}">
+            <button type="button" class="btn-mini" data-action="tipo-doc-add" data-key="${esc(ty.key)}">+</button>
           </div>`;
         }).join("")}
       </div>
@@ -9869,6 +9949,156 @@ function renderAttachments(item, owner){
       `<img src="${src}" data-action="open-lightbox" ${ownerAttrs(owner)} data-idx="${idx}">`).join(""),
   };
 }
+
+/* ======================================================================
+   DOCUMENTACIÓN ESPERADA DE UN EVENTO
+
+   Una visita no es solo el evento: antes hay un plan de viaje y después
+   un reporte. Antes eso quedaba librado a que alguien se acordara de
+   adjuntarlos, y a mirar la lista de archivos para saber si estaban.
+
+   Ahora cada tipo de actividad declara qué documentos espera (se
+   configura en Configuración > Tipos de actividad), y la tarjeta del
+   evento muestra esa lista con lo que hay y lo que falta — el mismo
+   patrón que los hitos de Proyectos.
+
+   Cómo se guarda, y por qué así: NO hay un campo nuevo en el posteo. Cada
+   archivo adjunto lleva un `doc` con el id de la ranura que ocupa, y los
+   que no lo llevan son los adjuntos sueltos de siempre. Una sola lista,
+   un solo lugar donde mirar. Una estructura paralela ("documentos
+   esperados" por un lado, archivos por el otro) se desincroniza sola a la
+   primera edición.
+
+   Y por eso mismo esto NO necesita cambiar firestore.rules ni el SQL: las
+   dos capas validan los archivos por nombre y ruta sin exigir una lista
+   cerrada de claves, así que un `doc` de más pasa sin tocar nada.
+   ====================================================================== */
+
+// Qué documentos espera cada tipo. Espejo de lo último leído de la
+// configuración, con la misma forma que CALENDAR_SYNC_TYPES: va aparte
+// porque applyActivityTypesConfig copia a EVENTO_TYPES solo key/label/icono.
+const DOCS_POR_TIPO = Object.create(null);
+function docsEsperados(activityType){
+  const lista = DOCS_POR_TIPO[activityType];
+  return Array.isArray(lista) ? lista : [];
+}
+// La ranura que ocupa cada archivo, si ocupa alguna.
+function docDeArchivo(f){ return f && typeof f.doc === "string" ? f.doc : null; }
+function archivoDelDoc(post, docId){
+  return (post.files || []).find(f => docDeArchivo(f) === docId) || null;
+}
+// Los adjuntos que NO son parte de la documentación esperada: los
+// "extras" de los que hablaba el pedido, y todos los de antes de que esto
+// existiera.
+function archivosSueltos(files, activityType){
+  const esperados = new Set(docsEsperados(activityType).map(d=>d.id));
+  return (files || []).filter(f => !esperados.has(docDeArchivo(f)));
+}
+function cuantosDocsHay(post){
+  const esperados = docsEsperados(post.activityType);
+  return { hay: esperados.filter(d => archivoDelDoc(post, d.id)).length, total: esperados.length };
+}
+
+function renderDocumentacion(post){
+  const esperados = docsEsperados(post.activityType);
+  if(!esperados.length) return "";
+  const puede = canEditPost(post);
+  const { hay, total } = cuantosDocsHay(post);
+  const filas = esperados.map(d=>{
+    const f = archivoDelDoc(post, d.id);
+    if(f){
+      const url = safeFileDataUrl(f.dataUrl);
+      const icono = claseDe(f).icono;
+      // El mismo criterio que los adjuntos sueltos: lo que el navegador
+      // sabe mostrar abre en el visor, el resto se baja.
+      const abrir = !url ? `<span class="doc-roto">${esc(t("archivo no disponible","file unavailable","arquivo indisponível","הקובץ אינו זמין"))}</span>`
+        : sePuedeVer(f)
+          ? `<button type="button" class="doc-archivo" data-action="open-doc" data-post-id="${post.id}" data-doc="${esc(d.id)}">${icono} ${esc(f.name)}</button>`
+          : `<a class="doc-archivo" href="${url}" download="${esc(f.name)}">${icono} ${esc(f.name)} ↓</a>`;
+      return `<div class="doc-fila lista">
+        <span class="doc-estado ok" aria-hidden="true">✓</span>
+        <span class="doc-nombre">${esc(d.label)}</span>
+        ${abrir}
+        ${puede ? `<button type="button" class="rm" data-action="quitar-doc" data-post-id="${post.id}" data-doc="${esc(d.id)}" title="${esc(t("Quitar este documento","Remove this document","Remover este documento","הסרת המסמך הזה"))}">✕</button>` : ""}
+      </div>`;
+    }
+    return `<div class="doc-fila falta">
+      <span class="doc-estado" aria-hidden="true">○</span>
+      <span class="doc-nombre">${esc(d.label)}</span>
+      ${puede
+        ? `<button type="button" class="doc-adjuntar" data-action="adjuntar-doc" data-post-id="${post.id}" data-doc="${esc(d.id)}">📎 ${t("Adjuntar","Attach","Anexar","צירוף")}</button>`
+        : `<span class="doc-pendiente">${esc(t("falta","missing","falta","חסר"))}</span>`}
+    </div>`;
+  }).join("");
+  return `<div class="doc-bloque">
+      <div class="doc-titulo">${t("Documentación","Documentation","Documentação","תיעוד")}
+        <span class="doc-cuenta ${hay === total ? "completo" : ""}">${hay}/${total}</span></div>
+      ${filas}
+    </div>`;
+}
+
+// Adjuntar un documento a un posteo YA publicado. Es una edición del
+// posteo como cualquier otra (pasa por las mismas reglas y los mismos
+// topes), no una vía aparte.
+async function adjuntarDocumento(postId, docId, file){
+  const post = getPostById(postId);
+  if(!post || !file) return;
+  if(!canEditPost(post)) return;
+  if(file.size > maxBytesPorArchivo()){
+    await appAlert(t(
+      `"{name}" pesa {size}, más del máximo de {max} para adjuntar acá. Para archivos más grandes, subilo a Drive (o similar) y pegá el link.`,
+      `"{name}" is {size}, over the {max} max for attaching here. For bigger files, upload it to Drive (or similar) and paste the link.`,
+      `"{name}" pesa {size}, mais do que o máximo de {max} para anexar aqui. Para arquivos maiores, suba para o Drive (ou similar) e cole o link.`,
+      `"{name}" שוקל {size}, מעל המקסימום של {max} לצירוף כאן. לקבצים גדולים יותר, העלה/י ל-Drive (או דומה) והדבק/הדביקי את הקישור.`,
+      { name:file.name, size:topeLegible(file.size), max:topeLegible(maxBytesPorArchivo()) }));
+    return;
+  }
+  // Reemplazar el documento de una ranura no suma un archivo: por eso se
+  // cuenta sobre la lista YA sin el que se está por pisar.
+  const resto = (post.files || []).filter(f => docDeArchivo(f) !== docId);
+  if(resto.length >= maxArchivos()){
+    await appAlert(t(
+      "Este posteo ya tiene {n} archivos, que es el máximo. Quitá uno para poder sumar este.",
+      "This post already has {n} files, which is the maximum. Remove one to add this.",
+      "Esta postagem já tem {n} arquivos, que é o máximo. Remova um para somar este.",
+      "לפוסט הזה כבר יש {n} קבצים, שזה המקסימום. הסר/י אחד כדי להוסיף את זה.",
+      { n: maxArchivos() }));
+    return;
+  }
+  try{
+    const dataUrl = await readFileAsDataUrl(file);
+    await updatePostDoc(postId, {
+      files: resto.concat([{ name:file.name, mime:file.type,
+        kind: claseDeArchivo(file.type, file.name).clase, doc: docId, dataUrl }]),
+      lastEditedAt: store.horaDelServidor(),
+      lastEditedBy: state.auth.user.displayName,
+    });
+  }catch(err){
+    console.error("Error adjuntando el documento:", err);
+    await appAlert(t("No se pudo adjuntar \"{name}\" ({m}).","Couldn't attach \"{name}\" ({m}).","Não foi possível anexar \"{name}\" ({m}).","לא ניתן היה לצרף את \"{name}\" ({m}).",{name:file.name, m:err.code||err.message}));
+  }
+}
+async function quitarDocumento(postId, docId){
+  const post = getPostById(postId);
+  if(!post || !canEditPost(post)) return;
+  const f = archivoDelDoc(post, docId);
+  if(!f) return;
+  const ok = await appConfirm(t(
+    "¿Quitar «{name}» de este evento?","Remove “{name}” from this event?","Remover «{name}» deste evento?","להסיר את «{name}» מהאירוע הזה?",
+    { name: f.name }));
+  if(!ok) return;
+  try{
+    await updatePostDoc(postId, {
+      files: (post.files || []).filter(x => docDeArchivo(x) !== docId),
+      lastEditedAt: store.horaDelServidor(),
+      lastEditedBy: state.auth.user.displayName,
+    });
+  }catch(err){
+    console.error("Error quitando el documento:", err);
+    await appAlert(t("No se pudo quitar: {m}","Couldn't remove it: {m}","Não foi possível remover: {m}","{m} :לא ניתן היה להסיר",{m:err.code||err.message}));
+  }
+}
+
 function renderPostCard(post, replies){
   // El último fallback es por si el admin borró "otro" desde Configuración
   // (o el tipo del posteo) — un tipo desconocido no puede tirar el render.
@@ -9945,7 +10175,8 @@ function renderPostCard(post, replies){
       ${!scopesHtml && post.activityType !== "rutina" ? `<div class="hint" style="color:var(--danger);">⚠️ ${t("Sin Dónde definido — editalo para asignarle un país/ciudad.","No Where set — edit it to assign a country/city.","Sem Onde definido — edite para atribuir um país/cidade.",".לא הוגדר \"איפה\" — ערוך/כי כדי להקצות מדינה/עיר")}</div>` : ""}
       ${linksHtml ? `<div class="post-links">${linksHtml}</div>` : ""}
       ${imagesHtml ? `<div class="post-images">${imagesHtml}</div>` : ""}
-      ${renderPostedFiles(post.files, {postId: post.id})}
+      ${renderDocumentacion(post)}
+      ${renderPostedFiles(archivosSueltos(post.files, post.activityType), {postId: post.id})}
       <div class="post-actions">
         ${canWrite() ? `<button data-action="toggle-like" data-post-id="${post.id}" class="${postLiked?"liked":""}">${postLiked?"👍":"🤍"} ${t("Me gusta","Like","Curtir","לייק")}${postLikedBy.length?` (${postLikedBy.length})`:""}</button>
         <button data-action="toggle-reply" data-post-id="${post.id}">💬 ${t("Responder","Reply","Responder","תגובה")}</button>` : (postLikedBy.length ? `<span class="post-likes-ro">👍 ${postLikedBy.length}</span>` : "")}
@@ -14818,6 +15049,56 @@ document.addEventListener("click", async e=>{
     "tipos-reset": async (el, e, action, postId) => {
     tiposDraft = null; render();
   },
+    "tipo-doc-add": async (el, e, action, postId) => {
+    const d = getTiposDraft(), key = el.dataset.key;
+    const ty = d.types.find(x=>x.key===key);
+    const texto = String((d.nuevoDoc||{})[key] || "").trim();
+    if(!ty || !texto) return;
+    if(!Array.isArray(ty.docs)) ty.docs = [];
+    // El id se deriva del nombre pero NO cambia si después lo renombran:
+    // es lo que ata cada archivo ya adjuntado a su ranura. Si cambiara,
+    // los documentos de los eventos viejos quedarían huérfanos.
+    if(ty.docs.length >= 10){
+      d.error = t("Hasta 10 documentos por tipo.","Up to 10 documents per type.","Até 10 documentos por tipo.","עד 10 מסמכים לכל סוג.");
+      render(); return;
+    }
+    const base = slugifyKey(texto) || "doc";
+    let id = base, n = 2;
+    while(ty.docs.some(x=>x.id === id)) id = `${base}${n++}`;
+    ty.docs.push({ id, label: texto.slice(0, 60) });
+    d.nuevoDoc[key] = "";
+    d.error = "";
+    render();
+  },
+    "tipo-doc-remove": async (el, e, action, postId) => {
+    const d = getTiposDraft();
+    const ty = d.types.find(x=>x.key===el.dataset.key);
+    if(!ty || !Array.isArray(ty.docs)) return;
+    ty.docs.splice(Number(el.dataset.idx), 1);
+    render();
+  },
+    "adjuntar-doc": async (el, e, action, postId) => {
+    // Un input de archivo por click, descartable: así no hace falta
+    // mantener uno escondido por cada ranura de cada tarjeta del Feed.
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ACEPTA_ARCHIVOS;
+    input.onchange = async ()=>{
+      const file = input.files && input.files[0];
+      if(file) await adjuntarDocumento(el.dataset.postId, el.dataset.doc, file);
+    };
+    input.click();
+  },
+    "quitar-doc": async (el, e, action, postId) => {
+    await quitarDocumento(el.dataset.postId, el.dataset.doc);
+  },
+    "open-doc": async (el, e, action, postId) => {
+    const post = getPostById(el.dataset.postId);
+    if(!post) return;
+    const f = archivoDelDoc(post, el.dataset.doc);
+    const url = f ? safeFileDataUrl(f.dataUrl) : "";
+    if(url) openFilePreview([{ name:f.name, dataUrl:url }], 0);
+  },
     "tipos-save": async (el, e, action, postId) => {
     const d = getTiposDraft();
     if(!d.types.length){ d.error = t("Tiene que quedar al menos un tipo de actividad.","At least one activity type has to remain.","Tem que sobrar pelo menos um tipo de atividade.",".חייב להישאר לפחות סוג פעילות אחד"); render(); return; }
@@ -15078,6 +15359,11 @@ document.addEventListener("input", e=>{
   else if(el.id === "adjMaxImages"){ getAdjuntosDraft().maxImages = el.value; }
   else if(el.id === "adjMaxFiles"){ getAdjuntosDraft().maxFiles = el.value; }
   else if(el.id === "adjMaxFileSize"){ getAdjuntosDraft().maxFileSize = el.value; }
+  else if(el.dataset.action === "tipo-doc-nuevo"){
+    const d = getTiposDraft();
+    if(!d.nuevoDoc) d.nuevoDoc = {};
+    d.nuevoDoc[el.dataset.key] = el.value;
+  }
 });
 
 document.addEventListener("change", e=>{
