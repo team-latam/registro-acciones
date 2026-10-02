@@ -9020,7 +9020,12 @@ function getZonasDraft(){
 // Clave estable (sin tildes/espacios) para un item nuevo (zona o tipo de
 // actividad), sin chocar con las que ya existen — ej. "Caribe" ->
 // "caribe", y si ya existiera, "caribe2".
-function slugifyKey(label, existingKeys){
+// existingKeys va con valor por defecto porque "no hay contra qué
+// chequear" es un caso legítimo: quien llama puede resolver los repetidos
+// por su cuenta, y es justo lo que hace tipo-doc-add. Sin el valor por
+// defecto, llamarla con un solo argumento tiraba un TypeError adentro del
+// handler, y el síntoma era un botón que no hacía absolutamente nada.
+function slugifyKey(label, existingKeys = []){
   const base = normalize(label).replace(/[^a-z0-9]+/g,"") || "item";
   let key = base, i = 2;
   while(existingKeys.includes(key)){ key = base + i; i++; }
@@ -15116,7 +15121,7 @@ document.addEventListener("click", async e=>{
       d.error = t("Hasta 10 documentos por tipo.","Up to 10 documents per type.","Até 10 documentos por tipo.","עד 10 מסמכים לכל סוג.");
       render(); return;
     }
-    const base = slugifyKey(texto) || "doc";
+    const base = slugifyKey(texto, []) || "doc";  // los repetidos se resuelven abajo, contra ty.docs
     let id = base, n = 2;
     while(ty.docs.some(x=>x.id === id)) id = `${base}${n++}`;
     ty.docs.push({ id, label: texto.slice(0, 60) });
