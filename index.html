@@ -1392,17 +1392,32 @@
   .post-file-link:hover{ text-decoration-color:currentColor; }
 
   /* ----- Documentación esperada de un evento ----- */
-  .doc-bloque{
-    margin-top:12px; padding:10px 12px; border:1px solid var(--border);
+  /* La caja gris aparece SOLO cuando está abierto. Cerrado es un renglón
+     más de la tarjeta: la lista de documentos esperados estaba ocupando
+     seis renglones en cada evento del feed para decir "0/2". */
+  .doc-abierto{
+    margin-top:10px; padding:4px 12px 10px; border:1px solid var(--border);
     border-radius:var(--radius-md); background:var(--surface-alt);
   }
-  .doc-titulo{
-    display:flex; align-items:center; gap:8px; font-size:11.5px; font-weight:800;
-    text-transform:uppercase; letter-spacing:0.04em; color:var(--text-muted); margin-bottom:8px;
+  /* El renglón cerrado tiene que alcanzar para no abrirlo: la cuenta y
+     CADA documento con su estado. Toda la fila es el botón —blanco grande,
+     para el celular— y por eso adentro no hay otros botones: un <button>
+     dentro de otro no es HTML válido y el navegador lo desarma. */
+  .doc-linea{
+    display:flex; align-items:center; gap:6px; flex-wrap:wrap; width:100%;
+    font-size:12.5px; font-weight:700; color:var(--text-muted);
+    background:none; border:none; padding:5px 0; cursor:pointer;
+    font-family:inherit; text-align:start;
   }
+  .doc-linea:hover{ color:var(--ink); }
+  .doc-linea.ok{ color:var(--ok-text); }
+  .doc-linea .sep{ color:var(--border); font-weight:400; }
+  .doc-linea .listo{ color:var(--ok-text); font-weight:700; }
+  .doc-linea .pend{ font-weight:600; }
+  .doc-linea .chev{ margin-inline-start:auto; font-size:9px; opacity:.7; }
   .doc-cuenta{
     font-variant-numeric:tabular-nums; background:var(--card); border:1px solid var(--border);
-    border-radius:999px; padding:1px 8px; letter-spacing:0;
+    border-radius:999px; padding:1px 8px; letter-spacing:0; font-size:11.5px; font-weight:800;
   }
   .doc-cuenta.completo{ background:var(--ok-bg); border-color:var(--ok-border); color:var(--ok-text); }
   .doc-fila{ display:flex; align-items:center; gap:8px; padding:3px 0; min-width:0; flex-wrap:wrap; }
@@ -5317,6 +5332,7 @@ async function onAuthChanged(user){
   Object.keys(nestedReplyDrafts).forEach(k => delete nestedReplyDrafts[k]);
   openReplyForms.clear();
   openThreads.clear();
+  docsAbiertos.clear();
   openNestedReplyForms.clear();
   userMenuOpen = false;
   mentionsMenuOpen = false;
@@ -10102,6 +10118,29 @@ function sueltosConPosicion(post){
   const files = post.files || [];
   return archivosSueltos(files, post.activityType).map(f => ({ f, pos: files.indexOf(f) }));
 }
+// Abierto o cerrado, por posteo. Lo que eligió la persona manda; si no
+// eligió nada, decide la regla de abajo. Un Map y no un Set porque hay que
+// distinguir tres cosas: lo abrió, lo cerró, y no tocó nada — con un Set,
+// cerrar algo que la regla abre sola no se podría recordar.
+const docsAbiertos = new Map();
+// La misma cuenta que usa la tarjeta para mostrar las fechas (ver el
+// renderPostCard): el final es endDate si es posterior al inicio, y si no
+// el inicio mismo.
+function eventoYaPaso(post){
+  const inicio = post.startDate || post.date;
+  if(!inicio) return false;
+  const fin = post.endDate && post.endDate >= inicio ? post.endDate : inicio;
+  return fin < todayISO();
+}
+// Se abre solo cuando falta algo Y el evento ya pasó, que es cuando "falta
+// el reporte" dejó de ser un plan y pasó a ser una deuda. Antes de la
+// fecha queda cerrado: que falte el reporte de un viaje que todavía no
+// ocurrió no es noticia, y ocuparía lugar en el feed para no decir nada.
+function docsAbierto(post){
+  if(docsAbiertos.has(post.id)) return docsAbiertos.get(post.id);
+  const { hay, total } = cuantosDocsHay(post);
+  return hay < total && eventoYaPaso(post);
+}
 function cuantosDocsHay(post){
   const esperados = docsEsperados(post.activityType);
   return { hay: esperados.filter(d => archivoDelDoc(post, d.id)).length, total: esperados.length };
@@ -10112,9 +10151,29 @@ function renderDocumentacion(post){
   if(!esperados.length) return "";
   const puede = canEditPost(post);
   const { hay, total } = cuantosDocsHay(post);
-  // El caso que motivó todo esto: el archivo ya está adjunto, pero suelto,
-  // y la tarjeta decía "falta" con el documento dos líneas más abajo. Sin
-  // forma de decir que ESE es el plan, y sin forma de sacarlo.
+  const abierto = docsAbierto(post);
+  const completo = hay === total;
+
+  // El renglón de siempre, abierto o cerrado. Dice la cuenta y CADA
+  // documento con su estado: decir solo "falta X" es más corto pero no
+  // cuenta nada de lo hecho, y mirando un evento viejo eso es justo lo que
+  // se quiere saber. Completo va en verde y callado: no hay nada que
+  // hacer, así que no tiene por qué pedir atención.
+  const resumen = esperados.map(d => archivoDelDoc(post, d.id)
+    ? `<span class="listo">✓ ${esc(d.label)}</span>`
+    : `<span class="pend">○ ${esc(d.label)}</span>`
+  ).join(`<span class="sep" aria-hidden="true">·</span>`);
+  const titulo = t("Documentación","Documentation","Documentação","תיעוד");
+  const cabeza = `<button type="button" class="doc-linea${completo ? " ok" : ""}"
+      data-action="toggle-docs" data-post-id="${post.id}" aria-expanded="${abierto}">
+      📄 ${titulo} <span class="doc-cuenta${completo ? " completo" : ""}">${hay}/${total}</span>
+      <span class="sep" aria-hidden="true">·</span>${resumen}
+      <span class="chev" aria-hidden="true">${abierto ? "▲" : "▼"}</span>
+    </button>`;
+  if(!abierto) return cabeza;
+
+  // Los adjuntos que ya están en el posteo y no ocupan ninguna ranura:
+  // una ranura vacía puede adoptar uno sin volver a subirlo.
   const sueltos = sueltosConPosicion(post);
   const filas = esperados.map(d=>{
     const f = archivoDelDoc(post, d.id);
@@ -10147,11 +10206,7 @@ function renderDocumentacion(post){
         : `<span class="doc-pendiente">${esc(t("falta","missing","falta","חסר"))}</span>`}
     </div>`;
   }).join("");
-  return `<div class="doc-bloque">
-      <div class="doc-titulo">${t("Documentación","Documentation","Documentação","תיעוד")}
-        <span class="doc-cuenta ${hay === total ? "completo" : ""}">${hay}/${total}</span></div>
-      ${filas}
-    </div>`;
+  return `<div class="doc-abierto">${cabeza}${filas}</div>`;
 }
 
 // Adjuntar un documento a un posteo YA publicado. Es una edición del
@@ -15287,6 +15342,14 @@ document.addEventListener("click", async e=>{
   },
     "quitar-doc": async (el, e, action, postId) => {
     await quitarDocumento(el.dataset.postId, el.dataset.doc);
+  },
+    "toggle-docs": async (el, e, action, postId) => {
+    // Se guarda la elección, no se alterna un Set: hay que poder recordar
+    // que alguien CERRÓ algo que la regla abre sola.
+    const post = getPostById(el.dataset.postId);
+    if(!post) return;
+    docsAbiertos.set(post.id, !docsAbierto(post));
+    render();
   },
     "quitar-adjunto": async (el, e, action, postId) => {
     await quitarAdjunto(el.dataset.postId, Number(el.dataset.pos));
