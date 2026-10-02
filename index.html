@@ -1365,19 +1365,15 @@
   .post-files{ display:flex; flex-direction:column; gap:6px; margin-bottom:10px; }
   /* Cada adjunto es una fila: el archivo, y su ✕ empujado al final. */
   .post-file-row{ display:flex; align-items:center; gap:8px; min-width:0; }
+  /* Cuándo se subió: lo más callado que se puede sin dejar de leerse. */
+  .doc-fecha{ font-size:10.5px; font-weight:500; color:var(--text-muted); opacity:.7;
+    white-space:nowrap; font-variant-numeric:tabular-nums; }
   .post-file-row .rm{
-    margin-inline-start:auto; flex:0 0 auto; width:18px; height:18px; border-radius:50%;
+    flex:0 0 auto; width:18px; height:18px; border-radius:50%;
     background:none; border:none; color:var(--text-muted); font-size:11px; cursor:pointer;
     line-height:18px; padding:0;
   }
   .post-file-row .rm:hover{ background:var(--danger-bg); color:var(--danger); }
-  /* Elegir un adjunto que YA está en el posteo para una ranura vacía. */
-  .doc-elegir{
-    font-size:11.5px; font-weight:600; color:var(--text-muted); background:var(--card);
-    border:1px solid var(--border); border-radius:999px; padding:2px 8px;
-    font-family:inherit; cursor:pointer; max-width:220px;
-  }
-  .doc-elegir:hover{ color:var(--ink); }
   .post-file-audio{ display:flex; align-items:center; gap:8px; }
   .post-file-audio audio{ height:32px; max-width:260px; }
   .post-file-audio .fname, .post-file-link{ font-size:12.5px; font-weight:600; color:var(--ink); }
@@ -1439,8 +1435,10 @@
   }
   .doc-adjuntar:hover{ color:var(--ink); border-style:solid; }
   .doc-pendiente, .doc-roto{ font-size:11.5px; color:var(--text-muted); font-style:italic; }
+  /* Pegado a lo que saca. Empujarlo al borde derecho con margin:auto lo
+     dejaba lejísimos del archivo en una pantalla ancha. */
   .doc-fila .rm{
-    margin-inline-start:auto; width:18px; height:18px; border-radius:50%; background:none;
+    width:18px; height:18px; border-radius:50%; background:none;
     border:none; color:var(--text-muted); font-size:11px; cursor:pointer; line-height:18px; padding:0;
   }
   .doc-fila .rm:hover{ background:var(--danger-bg); color:var(--danger); }
@@ -10108,16 +10106,18 @@ function archivosSueltos(files, activityType){
   const esperados = new Set(docsEsperados(activityType).map(d=>d.id));
   return (files || []).filter(f => !esperados.has(docDeArchivo(f)));
 }
+// Cuándo se subió. Los archivos de antes no lo traen y no se inventa nada:
+// devuelve "" y no se dibuja. Va por fmtDate para respetar el formato de
+// fecha que cada uno eligió en Configuración.
+function fechaDeArchivo(f){
+  const iso = f && typeof f.subidoEl === "string" ? f.subidoEl : "";
+  if(!iso) return "";
+  const d = new Date(iso);
+  return isNaN(d) ? "" : fmtDate(d);
+}
 // El mismo archivo, sin ocupar ninguna ranura. Vuelve a la lista de
 // adjuntos sueltos; NO se borra.
 function sinRanura(f){ const { doc, ...resto } = f; return resto; }
-// Los adjuntos sueltos con la posición que ocupan en post.files, que es
-// contra la que se escribe. La lista dibujada viene filtrada, así que su
-// índice no sirve.
-function sueltosConPosicion(post){
-  const files = post.files || [];
-  return archivosSueltos(files, post.activityType).map(f => ({ f, pos: files.indexOf(f) }));
-}
 // Abierto o cerrado, por posteo. Lo que eligió la persona manda; si no
 // eligió nada, decide la regla de abajo. Un Map y no un Set porque hay que
 // distinguir tres cosas: lo abrió, lo cerró, y no tocó nada — con un Set,
@@ -10172,9 +10172,6 @@ function renderDocumentacion(post){
     </button>`;
   if(!abierto) return cabeza;
 
-  // Los adjuntos que ya están en el posteo y no ocupan ninguna ranura:
-  // una ranura vacía puede adoptar uno sin volver a subirlo.
-  const sueltos = sueltosConPosicion(post);
   const filas = esperados.map(d=>{
     const f = archivoDelDoc(post, d.id);
     if(f){
@@ -10186,23 +10183,20 @@ function renderDocumentacion(post){
         : sePuedeVer(f)
           ? `<button type="button" class="doc-archivo" data-action="open-doc" data-post-id="${post.id}" data-doc="${esc(d.id)}">${icono} ${esc(f.name)}</button>`
           : `<a class="doc-archivo" href="${url}" download="${esc(f.name)}">${icono} ${esc(f.name)} ↓</a>`;
+      const cuando = fechaDeArchivo(f);
       return `<div class="doc-fila lista">
         <span class="doc-estado ok" aria-hidden="true">✓</span>
         <span class="doc-nombre">${esc(d.label)}</span>
         ${abrir}
-        ${puede ? `<button type="button" class="rm" data-action="quitar-doc" data-post-id="${post.id}" data-doc="${esc(d.id)}" title="${esc(t("Sacar de acá (el archivo queda adjunto)","Take it out of here (the file stays attached)","Tirar daqui (o arquivo continua anexado)","הוצאה מכאן (הקובץ נשאר מצורף)"))}">✕</button>` : ""}
+        ${cuando ? `<span class="doc-fecha">${esc(cuando)}</span>` : ""}
+        ${puede ? `<button type="button" class="rm" data-action="quitar-doc" data-post-id="${post.id}" data-doc="${esc(d.id)}" title="${esc(t("Quitar este archivo del evento","Remove this file from the event","Remover este arquivo do evento","הסרת הקובץ הזה מהאירוע"))}">✕</button>` : ""}
       </div>`;
     }
     return `<div class="doc-fila falta">
       <span class="doc-estado" aria-hidden="true">○</span>
       <span class="doc-nombre">${esc(d.label)}</span>
       ${puede
-        ? `<button type="button" class="doc-adjuntar" data-action="adjuntar-doc" data-post-id="${post.id}" data-doc="${esc(d.id)}">📎 ${t("Adjuntar","Attach","Anexar","צירוף")}</button>
-           ${sueltos.length ? `<select class="doc-elegir" data-action="doc-elegir" data-post-id="${post.id}" data-doc="${esc(d.id)}"
-             aria-label="${esc(t("Usar un archivo que ya está adjunto","Use a file that's already attached","Usar um arquivo que já está anexado","שימוש בקובץ שכבר מצורף"))}">
-             <option value="">${esc(t("o usar uno ya adjunto…","or use one already attached…","ou usar um já anexado…","…או להשתמש באחד שכבר מצורף"))}</option>
-             ${sueltos.map(({ f, pos }) => `<option value="${pos}">${esc(f.name)}</option>`).join("")}
-           </select>` : ""}`
+        ? `<button type="button" class="doc-adjuntar" data-action="adjuntar-doc" data-post-id="${post.id}" data-doc="${esc(d.id)}">📎 ${t("Adjuntar","Attach","Anexar","צירוף")}</button>`
         : `<span class="doc-pendiente">${esc(t("falta","missing","falta","חסר"))}</span>`}
     </div>`;
   }).join("");
@@ -10240,61 +10234,53 @@ async function adjuntarDocumento(postId, docId, file){
   try{
     const dataUrl = await readFileAsDataUrl(file);
     await updatePostDoc(postId, {
+      // subidoEl sale del reloj del navegador y no del servidor a
+      // propósito: el sentinel de hora del servidor NO se puede usar
+      // adentro de un array. Es para mostrar, no para ordenar ni comparar.
       files: resto.concat([{ name:file.name, mime:file.type,
-        kind: claseDeArchivo(file.type, file.name).clase, doc: docId, dataUrl }]),
+        kind: claseDeArchivo(file.type, file.name).clase, doc: docId,
+        subidoEl: new Date().toISOString(), dataUrl }]),
       lastEditedAt: store.horaDelServidor(),
       lastEditedBy: state.auth.user.displayName,
     });
   }catch(err){
     console.error("Error adjuntando el documento:", err);
     await appAlert(t("No se pudo adjuntar \"{name}\" ({m}).","Couldn't attach \"{name}\" ({m}).","Não foi possível anexar \"{name}\" ({m}).","לא ניתן היה לצרף את \"{name}\" ({m}).",{name:file.name, m:err.code||err.message}));
+    return;
   }
+  // Que se vea lo que acaba de subir, SIEMPRE: si no, al completar el
+  // último documento la regla de "completo = cerrado" plegaba el bloque
+  // justo después de adjuntar y el archivo desaparecía de la vista.
+  // Afuera del try a propósito: adentro, un error acá diría "no se pudo
+  // adjuntar" cuando el archivo ya quedó guardado.
+  docsAbiertos.set(postId, true);
 }
 async function quitarDocumento(postId, docId){
   const post = getPostById(postId);
   if(!post || !canEditPost(post)) return;
   const f = archivoDelDoc(post, docId);
   if(!f) return;
-  // Esto SACA DE LA RANURA, no borra: el archivo vuelve a la lista de
-  // adjuntos sueltos, de donde se lo puede volver a elegir o quitar del
-  // evento. Antes borraba, y entonces corregir una ranura mal asignada
-  // costaba perder el archivo y volver a subirlo — con el agravante de
-  // que el cartel decía "¿Quitar de este evento?" y la gente le daba que
-  // sí pensando que lo desvinculaba. Como no se pierde nada y se deshace
-  // en un clic, tampoco pregunta nada.
+  // Un solo significado para el ✕, acá y en los adjuntos sueltos:
+  // pregunta y lo quita del evento. Probé que sacara de la ranura sin
+  // borrar y no sirvió: eran dos ✕ que se veían igual y hacían cosas
+  // distintas, que es peor que el riesgo que quería evitar.
+  const ok = await appConfirm(t(
+    "¿Quitar «{name}» de este evento? No se puede deshacer.",
+    "Remove \u201c{name}\u201d from this event? This can't be undone.",
+    "Remover «{name}» deste evento? Não dá para desfazer.",
+    "להסיר את «{name}» מהאירוע הזה? אי אפשר לבטל.",
+    { name: f.name }));
+  if(!ok) return;
   try{
     await updatePostDoc(postId, {
-      files: (post.files || []).map(x => docDeArchivo(x) === docId ? sinRanura(x) : x),
+      files: (post.files || []).filter(x => docDeArchivo(x) !== docId),
       lastEditedAt: store.horaDelServidor(),
       lastEditedBy: state.auth.user.displayName,
     });
+    docsAbiertos.set(postId, true);   // que se vea lo que quedó
   }catch(err){
-    console.error("Error sacando el documento de su lugar:", err);
-    await appAlert(t("No se pudo sacar de ahí: {m}","Couldn't take it out: {m}","Não foi possível tirar daí: {m}","{m} :לא ניתן היה להוציא",{m:err.code||err.message}));
-  }
-}
-
-// Decir que un adjunto que YA está en el posteo es el documento de una
-// ranura. No sube nada ni toca el tope de archivos: solo le pone el `doc`.
-async function asignarDocumento(postId, docId, pos){
-  const post = getPostById(postId);
-  if(!post || !canEditPost(post)) return;
-  const files = post.files || [];
-  const elegido = files[pos];
-  if(!elegido) return;
-  try{
-    await updatePostDoc(postId, {
-      // Si otro archivo ocupaba la ranura, queda suelto en vez de perderse:
-      // una ranura tiene un solo documento, pero el posteo los conserva a
-      // los dos.
-      files: files.map((x, i) => i === Number(pos) ? { ...x, doc: docId }
-                                                  : (docDeArchivo(x) === docId ? sinRanura(x) : x)),
-      lastEditedAt: store.horaDelServidor(),
-      lastEditedBy: state.auth.user.displayName,
-    });
-  }catch(err){
-    console.error("Error asignando el documento:", err);
-    await appAlert(t("No se pudo usar \"{name}\": {m}","Couldn't use \"{name}\": {m}","Não foi possível usar \"{name}\": {m}","\"{name}\" :לא ניתן היה להשתמש ב {m}",{name:elegido.name, m:err.code||err.message}));
+    console.error("Error quitando el documento:", err);
+    await appAlert(t("No se pudo quitar: {m}","Couldn't remove it: {m}","Não foi possível remover: {m}","{m} :לא ניתן היה להסיר",{m:err.code||err.message}));
   }
 }
 
@@ -13984,7 +13970,8 @@ async function handleFileAttachments(fileList, targetArray){
     try{
       const dataUrl = await readFileAsDataUrl(file);
       targetArray.push({ name:file.name, mime:file.type,
-        kind: claseDeArchivo(file.type, file.name).clase, dataUrl });
+        kind: claseDeArchivo(file.type, file.name).clase,
+        subidoEl: new Date().toISOString(), dataUrl });
     }catch(err){
       console.error("Error leyendo archivo:", err);
       await appAlert(t("No se pudo adjuntar \"{name}\" ({m}).","Couldn't attach \"{name}\" ({m}).","Não foi possível anexar \"{name}\" ({m}).","לא ניתן היה לצרף את \"{name}\" ({m}).",{name:file.name, m:err.message}));
@@ -14036,7 +14023,8 @@ function renderPostedFiles(files, owner){
       : sePuedeVer(f)
         ? `<button type="button" class="post-file-link" data-action="open-file-preview" ${ownerAttrs(owner)} data-idx="${previewable.indexOf(f)}">${icono} ${esc(f.name)}</button>`
         : `<a class="post-file-link" href="${dataUrl}" download="${esc(f.name)}" title="${esc(t("Bajar el archivo","Download the file","Baixar o arquivo","הורדת הקובץ"))}">${icono} ${esc(f.name)} ↓</a>`;
-    return `<div class="post-file-row">${cuerpo}${quitarDe(f)}</div>`;
+    const cuando = fechaDeArchivo(f);
+    return `<div class="post-file-row">${cuerpo}${cuando ? `<span class="doc-fecha">${esc(cuando)}</span>` : ""}${quitarDe(f)}</div>`;
   }).join("")}</div>`;
 }
 
@@ -15630,14 +15618,6 @@ document.addEventListener("input", e=>{
 
 document.addEventListener("change", e=>{
   const el = e.target;
-  // El <select> de "o usar uno ya adjunto…": avisa por change, no por
-  // click, así que no pasa por el despachador de acciones.
-  if(el.dataset && el.dataset.action === "doc-elegir"){
-    const pos = el.value;
-    el.value = "";   // vuelve al rótulo; lo que manda es lo que quedó guardado
-    if(pos !== "") asignarDocumento(el.dataset.postId, el.dataset.doc, Number(pos));
-    return;
-  }
   // El campo de hexadecimal lleva el MISMO data-* que la muestra de color
   // que tiene al lado, así que alcanza con normalizar el valor acá y
   // dejarlo seguir por la rama que le corresponda: no hay un segundo
