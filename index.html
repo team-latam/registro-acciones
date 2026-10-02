@@ -1350,7 +1350,7 @@
     color:#fff; border:none; font-size:12px; cursor:pointer; line-height:20px; text-align:center; padding:0;
   }
 
-  /* Adjuntos genéricos (PDF/audio, ver maxBytesPorArchivo()): mismo look
+  /* Adjuntos genéricos (documentos y audio, ver maxBytesPorArchivo()): mismo look
      que los chips de imagen, pero sin miniatura. */
   .file-preview-list{ display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
   .file-chip{
@@ -1366,11 +1366,15 @@
   .post-file-audio{ display:flex; align-items:center; gap:8px; }
   .post-file-audio audio{ height:32px; max-width:260px; }
   .post-file-audio .fname, .post-file-link{ font-size:12.5px; font-weight:600; color:var(--ink); }
-  /* .post-file-link es un <button> (abre la vista previa, no navega) con
-     pinta de link de texto — sin esto quedaba con el chrome de botón del
-     navegador (fondo, borde, fuente distinta). */
-  button.post-file-link{ background:none; border:none; padding:0; font-family:inherit; cursor:pointer; text-align:start; text-decoration:underline; text-decoration-color:transparent; }
-  button.post-file-link:hover{ text-decoration-color:currentColor; }
+  /* .post-file-link viene de dos formas, y las dos tienen que verse igual:
+     un <button> cuando el archivo se puede ver sin bajarlo (PDF, texto), y
+     un <a download> cuando no (Word, Excel, PowerPoint). Sin esto, el
+     botón quedaba con el chrome del navegador y el enlace con el subrayado
+     azul de siempre. */
+  button.post-file-link{ background:none; border:none; padding:0; font-family:inherit; cursor:pointer; text-align:start; }
+  a.post-file-link{ display:inline-block; }
+  .post-file-link{ text-decoration:underline; text-decoration-color:transparent; }
+  .post-file-link:hover{ text-decoration-color:currentColor; }
 
   /* Autocompletado genérico (lugar y @menciones): lista angosta debajo
      del input/textarea que la dispara. */
@@ -2810,9 +2814,79 @@ function safeImageSrc(src){
   if(IMAGE_DATA_URL_RE.test(src)) return src;   // Firebase: el archivo adentro
   return esUrlDelBucket(src) ? src : "";        // Supabase: una URL que caduca
 }
+/* ----------------------------------------------------------------------
+   QUÉ SE PUEDE ADJUNTAR
+
+   Un solo lugar para todo lo que hay que saber de cada clase de archivo:
+   con qué tipo lo manda el navegador, con qué extensión viene, con qué
+   ícono se muestra, y si se puede ver sin bajarlo.
+
+   Por qué también las extensiones: el tipo que manda el navegador NO es
+   confiable. Un .md suele llegar vacío, un .csv a veces llega como Excel
+   y en Android muchos archivos llegan como "application/octet-stream" a
+   secas. Si se mirara solo el tipo, media docena de formatos entrarían
+   como "otro" o directamente no entrarían.
+---------------------------------------------------------------------- */
+const TIPOS_DE_ARCHIVO = [
+  { clase:"pdf", icono:"📄", seVe:true,
+    mimes:["application/pdf"], exts:["pdf"] },
+  // Texto plano: se ve derecho en el visor, igual que un PDF.
+  { clase:"texto", icono:"📝", seVe:true,
+    mimes:["text/plain","text/markdown","text/csv","text/tab-separated-values"],
+    exts:["txt","md","csv","tsv","log"] },
+  { clase:"doc", icono:"📘", seVe:false,
+    mimes:["application/msword",
+           "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+           "application/vnd.oasis.opendocument.text",
+           "application/rtf","text/rtf"],
+    exts:["doc","docx","odt","rtf"] },
+  { clase:"planilla", icono:"📊", seVe:false,
+    mimes:["application/vnd.ms-excel",
+           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+           "application/vnd.oasis.opendocument.spreadsheet"],
+    exts:["xls","xlsx","ods"] },
+  { clase:"presentacion", icono:"📽️", seVe:false,
+    mimes:["application/vnd.ms-powerpoint",
+           "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+           "application/vnd.oasis.opendocument.presentation"],
+    exts:["ppt","pptx","odp"] },
+  { clase:"audio", icono:"🎤", seVe:false, esAudio:true,
+    mimes:[], exts:["mp3","m4a","wav","ogg","oga","aac","weba","3gp"] },
+];
+const CLASE_POR_DEFECTO = { clase:"otro", icono:"📎", seVe:false };
+const extensionDe = nombre => (String(nombre||"").split(".").pop() || "").toLowerCase();
+// La clase de un archivo: primero por tipo, y si el navegador no lo dijo
+// (o dijo "octet-stream", que no dice nada), por la extensión del nombre.
+function claseDeArchivo(mime, nombre){
+  const m = String(mime||"").toLowerCase();
+  if(m.startsWith("audio/")) return TIPOS_DE_ARCHIVO.find(x=>x.clase==="audio");
+  const porMime = m && m !== "application/octet-stream"
+    ? TIPOS_DE_ARCHIVO.find(x=>x.mimes.includes(m)) : null;
+  if(porMime) return porMime;
+  const ext = extensionDe(nombre);
+  return TIPOS_DE_ARCHIVO.find(x=>x.exts.includes(ext)) || CLASE_POR_DEFECTO;
+}
+const claseDe = f => (f && TIPOS_DE_ARCHIVO.find(x=>x.clase===f.kind)) || CLASE_POR_DEFECTO;
+// Lo que se le pasa al selector de archivos del sistema. Van los tipos Y
+// las extensiones, por lo mismo de arriba: con solo los tipos, en algunos
+// sistemas un .md o un .csv aparecen en gris y no se pueden elegir.
+const ACEPTA_ARCHIVOS = [
+  ...TIPOS_DE_ARCHIVO.flatMap(x=>x.mimes), "audio/*",
+  ...TIPOS_DE_ARCHIVO.flatMap(x=>x.exts).map(e=>"."+e),
+].join(",");
+
 // application/octet-stream: lo que pone FileReader cuando el archivo no
-// tiene MIME (pasa con algunos PDF en Android); no puede ejecutar nada.
-const FILE_DATA_URL_RE = /^data:(?:application\/pdf|application\/octet-stream|audio\/[A-Za-z0-9.+-]+);base64,[A-Za-z0-9+/=]+$/;
+// tiene MIME (pasa con algunos PDF en Android, y con casi todo en algunos
+// Windows); no puede ejecutar nada.
+//
+// OJO: esta lista tiene que coincidir con la de firestore.rules
+// (isValidFiles) y con allowed_mime_types del bucket en
+// supabase/01-tablas.sql. Las tres validan lo mismo de su lado, y si una
+// se queda atrás el archivo entra en el navegador y lo rechaza la base.
+const FILE_DATA_URL_RE = new RegExp("^data:(?:" +
+  [...TIPOS_DE_ARCHIVO.flatMap(x=>x.mimes), "application/octet-stream"]
+    .map(m=>m.replace(/[.+*?^${}()|[\]\\]/g, "\\$&")).join("|") +
+  "|audio/[A-Za-z0-9.+-]+);base64,[A-Za-z0-9+/=]+$");
 function safeFileDataUrl(u){
   if(typeof u !== "string") return "";
   if(FILE_DATA_URL_RE.test(u)) return u;
@@ -5851,7 +5925,19 @@ function crearSupabaseStore(sb){
                        "image/webp":"webp", "application/pdf":"pdf",
                        "audio/mpeg":"mp3", "audio/mp4":"m4a", "audio/x-m4a":"m4a",
                        "audio/aac":"aac", "audio/ogg":"ogg", "audio/wav":"wav",
-                       "audio/x-wav":"wav", "audio/webm":"weba", "audio/3gpp":"3gp" };
+                       "audio/x-wav":"wav", "audio/webm":"weba", "audio/3gpp":"3gp",
+                       "text/plain":"txt", "text/markdown":"md", "text/csv":"csv",
+                       "text/tab-separated-values":"tsv",
+                       "application/msword":"doc",
+                       "application/vnd.openxmlformats-officedocument.wordprocessingml.document":"docx",
+                       "application/vnd.oasis.opendocument.text":"odt",
+                       "application/rtf":"rtf", "text/rtf":"rtf",
+                       "application/vnd.ms-excel":"xls",
+                       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":"xlsx",
+                       "application/vnd.oasis.opendocument.spreadsheet":"ods",
+                       "application/vnd.ms-powerpoint":"ppt",
+                       "application/vnd.openxmlformats-officedocument.presentationml.presentation":"pptx",
+                       "application/vnd.oasis.opendocument.presentation":"odp" };
   function aBlob(dataUrl){
     const [cabecera, b64] = String(dataUrl).split(",");
     const tipo = (cabecera.match(/:(.*?);/) || [])[1] || "application/octet-stream";
@@ -9117,7 +9203,7 @@ function renderAdjuntosSection(){
         <div class="setting-row">
           <span class="setting-icon">📄</span>
           <div class="setting-text">
-            <div class="setting-label">${t("Máximo de PDF/audio","Maximum PDF/audio files","Máximo de PDF/áudio","מקסימום קבצי PDF/אודיו")}</div>
+            <div class="setting-label">${t("Máximo de documentos","Maximum documents","Máximo de documentos","מקסימום מסמכים")}</div>
             <div class="setting-sub">${t("Por posteo — tope de la base: {n}","Per post — cap of the database: {n}","Por postagem — limite da base: {n}","לכל פוסט — תקרת מסד הנתונים: {n}",{n:store.limites.archivos})}</div>
           </div>
           <div class="setting-control">
@@ -9128,7 +9214,7 @@ function renderAdjuntosSection(){
           <span class="setting-icon">⚖️</span>
           <div class="setting-text">
             <div class="setting-label">${t("Tamaño máximo por archivo","Maximum size per file","Tamanho máximo por arquivo","גודל מקסימלי לכל קובץ")}</div>
-            <div class="setting-sub">${t("Para cada PDF/audio adjunto — tope de la base: {n}","For each attached PDF/audio file — cap of the database: {n}","Para cada PDF/áudio anexado — limite da base: {n}","לכל קובץ PDF/אודיו מצורף — תקרת מסד הנתונים: {n}",{n:topeLegible(store.limites.bytesPorArchivo)})}</div>
+            <div class="setting-sub">${t("Para cada documento adjunto — tope de la base: {n}","For each attached document — cap of the database: {n}","Para cada documento anexado — limite da base: {n}","לכל מסמך מצורף — תקרת מסד הנתונים: {n}",{n:topeLegible(store.limites.bytesPorArchivo)})}</div>
           </div>
           <div class="setting-control setting-control-unit">
             <input type="number" id="adjMaxFileSize" min="${u.min}" step="${u.paso}" max="${Math.round(store.limites.bytesPorArchivo / u.factor)}" value="${d.maxFileSize}">
@@ -9692,7 +9778,7 @@ function renderRutinaComposer(){
       </div>
       ${d.scopes.length ? `<div class="post-scopes" style="margin-top:8px;">${d.scopes.map((sc,i)=>renderScopeChip(sc, "rm-scope-rutina", i, "new")).join("")}</div>` : ""}
       <input type="file" id="rutinaImages" accept="image/*" multiple hidden data-action="rutina-images">
-      <input type="file" id="rutinaFiles" accept="application/pdf,audio/*" multiple hidden data-action="rutina-files">
+      <input type="file" id="rutinaFiles" accept="${ACEPTA_ARCHIVOS}" multiple hidden data-action="rutina-files">
       ${d.images.length ? `<div class="img-preview-list">${d.images.map((src,i)=>`
         <div class="img-preview"><img src="${safeImageSrc(src)}"><button type="button" class="rm" data-action="rutina-rm-image" data-idx="${i}">✕</button></div>`).join("")}</div>` : ""}
       ${renderFileChips(d.files, "rutina-rm-file")}
@@ -9972,7 +10058,7 @@ function renderNestedReplyForm(postId, replyId){
         ${renderMentionSuggestions(d, "nested-reply", replyId, textareaId)}
       </div>
       <input type="file" id="nestedReplyImages-${replyId}" accept="image/*" multiple hidden data-action="nested-reply-images" data-reply-id="${replyId}">
-      <input type="file" id="nestedReplyFiles-${replyId}" accept="application/pdf,audio/*" multiple hidden data-action="nested-reply-files" data-reply-id="${replyId}">
+      <input type="file" id="nestedReplyFiles-${replyId}" accept="${ACEPTA_ARCHIVOS}" multiple hidden data-action="nested-reply-files" data-reply-id="${replyId}">
       ${d.images.length ? `<div class="img-preview-list">${d.images.map((src,i)=>`
         <div class="img-preview"><img src="${safeImageSrc(src)}"><button type="button" class="rm" data-action="nested-reply-rm-image" data-reply-id="${replyId}" data-idx="${i}">✕</button></div>`).join("")}</div>` : ""}
       ${renderFileChips(d.files, "nested-reply-rm-file", `data-reply-id="${replyId}"`)}
@@ -10017,7 +10103,7 @@ function renderReplyForm(postId){
       ${d.scopes.length ? `<div class="post-scopes" style="margin-top:-2px;margin-bottom:8px;">${d.scopes.map((sc,i)=>renderScopeChip(sc, "rm-scope-reply", i, postId)).join("")}</div>` : ""}
       ${d.scopeError ? `<div class="form-error">${esc(d.scopeError)}</div>` : ""}
       <input type="file" id="replyImages-${postId}" accept="image/*" multiple hidden data-action="reply-images" data-post-id="${postId}">
-      <input type="file" id="replyFiles-${postId}" accept="application/pdf,audio/*" multiple hidden data-action="reply-files" data-post-id="${postId}">
+      <input type="file" id="replyFiles-${postId}" accept="${ACEPTA_ARCHIVOS}" multiple hidden data-action="reply-files" data-post-id="${postId}">
       ${d.images.length ? `<div class="img-preview-list">${d.images.map((src,i)=>`
         <div class="img-preview"><img src="${safeImageSrc(src)}"><button type="button" class="rm" data-action="reply-rm-image" data-post-id="${postId}" data-idx="${i}">✕</button></div>`).join("")}</div>` : ""}
       ${renderFileChips(d.files, "reply-rm-file", `data-post-id="${postId}"`)}
@@ -12840,7 +12926,7 @@ function renderComposer(){
     </div>
     <div class="field">
       <input type="file" id="cImages" accept="image/*" multiple hidden>
-      <input type="file" id="cFiles" accept="application/pdf,audio/*" multiple hidden>
+      <input type="file" id="cFiles" accept="${ACEPTA_ARCHIVOS}" multiple hidden>
       ${(d.attachOpen || d.images.length || d.files.length || d.links.length) ? `
         <label>${t("Adjuntos","Attachments","Anexos","קבצים מצורפים")}</label>
         <div class="attach-toolbar">
@@ -12853,14 +12939,14 @@ function renderComposer(){
         ${renderFileChips(d.files, "post-rm-file")}
         ${d.links.length ? `<div class="attach-panel">${renderLinkRows("post", "new", d.links)}</div>` : ""}
         <div class="hint">${t(
-          `Imágenes: se achican solas, máximo {maxImg}. PDF/audio: hasta {maxFiles} archivos (≤{maxKB} c/u). Para video o archivos más grandes: pegá un link (Drive, YouTube, etc.).`,
-          `Images: resized automatically, up to {maxImg}. PDF/audio: up to {maxFiles} files (≤{maxKB} each). For video or bigger files: paste a link (Drive, YouTube, etc.).`,
-          `Imagens: são reduzidas sozinhas, máximo {maxImg}. PDF/áudio: até {maxFiles} arquivos (≤{maxKB} cada). Para vídeo ou arquivos maiores: cole um link (Drive, YouTube, etc.).`,
-          `תמונות: מוקטנות לבד, עד {maxImg}. PDF/אודיו: עד {maxFiles} קבצים (עד {maxKB} כל אחד). לווידאו או קבצים גדולים יותר: הדבק/הדביקי קישור (Drive, YouTube וכו').`,
+          `Imágenes: se achican solas, máximo {maxImg}. Documentos (PDF, Word, Excel, PowerPoint, texto) y audio: hasta {maxFiles} archivos (≤{maxKB} c/u). Para video o archivos más grandes: pegá un link (Drive, YouTube, etc.).`,
+          `Images: resized automatically, up to {maxImg}. Documents (PDF, Word, Excel, PowerPoint, text) and audio: up to {maxFiles} files (≤{maxKB} each). For video or bigger files: paste a link (Drive, YouTube, etc.).`,
+          `Imagens: são reduzidas sozinhas, máximo {maxImg}. Documentos (PDF, Word, Excel, PowerPoint, texto) e áudio: até {maxFiles} arquivos (≤{maxKB} cada). Para vídeo ou arquivos maiores: cole um link (Drive, YouTube, etc.).`,
+          `תמונות: מוקטנות לבד, עד {maxImg}. מסמכים (PDF, Word, Excel, PowerPoint, טקסט) ואודיו: עד {maxFiles} קבצים (עד {maxKB} כל אחד). לווידאו או קבצים גדולים יותר: הדבק/הדביקי קישור (Drive, YouTube וכו').`,
           { maxImg: maxImagenes(), maxFiles: maxArchivos(), maxKB: topeLegible(maxBytesPorArchivo()) }
         )}</div>
       ` : `
-        <button type="button" class="btn-text-add" data-action="toggle-post-attach">📎 ${t("Agregar imagen, PDF/audio o link","Add image, PDF/audio or link","Adicionar imagem, PDF/áudio ou link","הוספת תמונה, PDF/אודיו או קישור")}</button>
+        <button type="button" class="btn-text-add" data-action="toggle-post-attach">📎 ${t("Agregar imagen, documento, audio o link","Add image, document, audio or link","Adicionar imagem, documento, áudio ou link","הוספת תמונה, מסמך, אודיו או קישור")}</button>
       `}
     </div>
     ${d.error ? `<div class="form-error">${esc(d.error)}</div>` : ""}
@@ -13410,7 +13496,7 @@ async function handleImageFiles(fileList, targetArray){
 }
 
 // Adjuntos genéricos chicos (PDF, audio): a diferencia de las imágenes no
-// se comprimen (no tiene sentido para un PDF/audio), así que se limita
+// se comprimen (no tiene sentido para un documento ni para un audio), así que se limita
 // directamente el tamaño del archivo y la cantidad — Firestore permite
 // ~1MB por documento entero, y el base64 pesa ~33% más que el archivo
 // original, así que hay que dejar margen para el resto del posteo.
@@ -13441,7 +13527,8 @@ async function handleFileAttachments(fileList, targetArray){
     }
     try{
       const dataUrl = await readFileAsDataUrl(file);
-      targetArray.push({ name:file.name, mime:file.type, kind: file.type.startsWith("audio/") ? "audio" : "pdf", dataUrl });
+      targetArray.push({ name:file.name, mime:file.type,
+        kind: claseDeArchivo(file.type, file.name).clase, dataUrl });
     }catch(err){
       console.error("Error leyendo archivo:", err);
       await appAlert(t("No se pudo adjuntar \"{name}\" ({m}).","Couldn't attach \"{name}\" ({m}).","Não foi possível anexar \"{name}\" ({m}).","לא ניתן היה לצרף את \"{name}\" ({m}).",{name:file.name, m:err.message}));
@@ -13452,22 +13539,31 @@ async function handleFileAttachments(fileList, targetArray){
 function renderFileChips(files, rmAction, extraAttrs=""){
   if(!files || !files.length) return "";
   return `<div class="file-preview-list">${files.map((f,i)=>`
-    <div class="file-chip">${f.kind==="audio"?"🎤":"📄"} <span class="fname">${esc(f.name)}</span>
+    <div class="file-chip">${claseDe(f).icono} <span class="fname">${esc(f.name)}</span>
       <button type="button" class="rm" data-action="${rmAction}" data-idx="${i}" ${extraAttrs}>✕</button></div>`).join("")}</div>`;
 }
 // Archivos YA publicados en un posteo/respuesta (a diferencia de
 // renderFileChips, que es para los que todavía se están por mandar).
+// Un adjunto se muestra de una de tres formas, según lo que el navegador
+// pueda hacer con él:
+//   - audio: suena ahí mismo, con su reproductor;
+//   - PDF y texto plano: abren en el visor, sin salir de la página;
+//   - Word, Excel, PowerPoint y cualquier otro: se bajan. Meterlos en un
+//     <iframe> no los muestra — según el navegador, o bajan igual o se ve
+//     una pantalla en blanco, que es peor que un botón que dice "bajar".
+function sePuedeVer(f){ return claseDe(f).seVe; }
 function renderPostedFiles(files, owner){
   if(!files || !files.length) return "";
-  // Índice DENTRO de los previsualizables (sin contar audio, que no abre
-  // el visor) — tiene que coincidir con la lista que arma
-  // attachmentOwner()+filtro en el manejador de "open-file-preview".
-  const previewable = files.filter(f => f && f.kind !== "audio" && safeFileDataUrl(f.dataUrl));
+  // Índice DENTRO de los que abren el visor — tiene que coincidir con la
+  // lista que arma attachmentOwner()+filtro en "open-file-preview".
+  const previewable = files.filter(f => f && sePuedeVer(f) && safeFileDataUrl(f.dataUrl));
   return `<div class="post-files">${files.map(f => {
     const dataUrl = safeFileDataUrl(f && f.dataUrl);
     if(!dataUrl) return "";
-    if(f.kind === "audio") return `<div class="post-file-audio"><audio controls src="${dataUrl}"></audio><span class="fname">${esc(f.name)}</span></div>`;
-    return `<button type="button" class="post-file-link" data-action="open-file-preview" ${ownerAttrs(owner)} data-idx="${previewable.indexOf(f)}">📄 ${esc(f.name)}</button>`;
+    const icono = claseDe(f).icono;
+    if(claseDe(f).esAudio) return `<div class="post-file-audio"><audio controls src="${dataUrl}"></audio><span class="fname">${esc(f.name)}</span></div>`;
+    if(sePuedeVer(f)) return `<button type="button" class="post-file-link" data-action="open-file-preview" ${ownerAttrs(owner)} data-idx="${previewable.indexOf(f)}">${icono} ${esc(f.name)}</button>`;
+    return `<a class="post-file-link" href="${dataUrl}" download="${esc(f.name)}" title="${esc(t("Bajar el archivo","Download the file","Baixar o arquivo","הורדת הקובץ"))}">${icono} ${esc(f.name)} ↓</a>`;
   }).join("")}</div>`;
 }
 
@@ -13934,7 +14030,7 @@ document.addEventListener("click", async e=>{
   },
     "open-file-preview": async (el, e, action, postId) => {
     const owner = attachmentOwner(el.dataset.postId, el.dataset.replyId);
-    const previewable = owner ? (owner.files||[]).filter(f=>f && f.kind !== "audio")
+    const previewable = owner ? (owner.files||[]).filter(f=>f && sePuedeVer(f))
       .map(f=>({ name:f.name, dataUrl:safeFileDataUrl(f.dataUrl) })).filter(f=>f.dataUrl) : [];
     openFilePreview(previewable, Number(el.dataset.idx)||0);
   },

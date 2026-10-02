@@ -107,8 +107,43 @@ insert into lab.resultados(nombre, esperado, obtenido, detalle)
          allowed_mime_types @> array['audio/mpeg','audio/mp4','audio/ogg'], ''
   from storage.buckets where id = 'adjuntos';
 insert into lab.resultados(nombre, esperado, obtenido, detalle)
+  select 'y los de oficina: Word, Excel y PowerPoint', true,
+         allowed_mime_types @> array[
+           'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+           'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+           'application/vnd.openxmlformats-officedocument.presentationml.presentation'], ''
+  from storage.buckets where id = 'adjuntos';
+insert into lab.resultados(nombre, esperado, obtenido, detalle)
+  select 'y el texto plano, que es lo que más se usa para notas sueltas', true,
+         allowed_mime_types @> array['text/plain','text/csv','text/markdown'], ''
+  from storage.buckets where id = 'adjuntos';
+insert into lab.resultados(nombre, esperado, obtenido, detalle)
+  select 'también los formatos abiertos (LibreOffice, lo que baja Google Docs)', true,
+         allowed_mime_types @> array[
+           'application/vnd.oasis.opendocument.text',
+           'application/vnd.oasis.opendocument.spreadsheet'], ''
+  from storage.buckets where id = 'adjuntos';
+insert into lab.resultados(nombre, esperado, obtenido, detalle)
   select 'el video queda afuera a propósito (por la descarga, no por el lugar)', true,
          not (allowed_mime_types && array['video/mp4','video/quicktime','video/webm']), ''
+  from storage.buckets where id = 'adjuntos';
+-- Lo que no puede entrar nunca, por más que se amplíe la lista: nada que
+-- un navegador pueda ejecutar o interpretar como página.
+insert into lab.resultados(nombre, esperado, obtenido, detalle)
+  select 'nada que el navegador pueda ejecutar: ni HTML, ni SVG, ni JavaScript', true,
+         not (allowed_mime_types && array[
+           'text/html','image/svg+xml','text/javascript','application/javascript',
+           'application/xhtml+xml','application/x-httpd-php']), ''
+  from storage.buckets where id = 'adjuntos';
+insert into lab.resultados(nombre, esperado, obtenido, detalle)
+  select 'ni comprimidos, que son una bolsa donde entra todo lo anterior', true,
+         not (allowed_mime_types && array[
+           'application/zip','application/x-zip-compressed','application/x-rar-compressed',
+           'application/x-7z-compressed','application/gzip']), ''
+  from storage.buckets where id = 'adjuntos';
+insert into lab.resultados(nombre, esperado, obtenido, detalle)
+  select 'y la lista no quedó abierta de par en par', true,
+         not (allowed_mime_types && array['*/*','application/octet-stream']), ''
   from storage.buckets where id = 'adjuntos';
 insert into lab.resultados(nombre, esperado, obtenido, detalle)
   select 'y el bucket sigue siendo privado', true, public = false, ''
