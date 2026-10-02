@@ -1,0 +1,57 @@
+# "¿Es el sitio o es mi conexión?"
+#
+# Esto se pregunta desde adentro, con la página sin cargar y sin ninguna
+# forma de saberlo: si el navegador no llega, no hay consola ni error que
+# mirar. Acá la pregunta la hace una máquina de GitHub, que no comparte ni
+# tu red, ni tu DNS, ni tu antivirus, ni tus extensiones.
+#
+# Se aprieta a mano: Actions > "¿Está arriba la página?" > Run workflow.
+name: ¿Está arriba la página?
+
+on:
+  workflow_dispatch:
+
+jobs:
+  mirar:
+    name: Pedirle la página a GitHub Pages desde afuera
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pedirla
+        run: |
+          set -o pipefail   # si no, el exit code lo tapa el último comando de la tubería
+          URL="https://team-latam.github.io/registro-acciones/"
+          echo "Pidiendo $URL"
+          echo
+
+          # --max-time para que un cuelgue termine en un resultado y no en
+          # un trabajo colgado 6 horas.
+          codigo=$(curl -sS -o pagina.html -w '%{http_code}' --max-time 30 "$URL") || {
+            echo "✗ No contestó: la página NO está respondiendo desde afuera tampoco."
+            echo "  Entonces el problema no es tu red: es GitHub Pages."
+            exit 1
+          }
+
+          bytes=$(wc -c < pagina.html)
+          echo "Respuesta HTTP: $codigo"
+          echo "Tamaño: $bytes bytes"
+          echo
+
+          if [ "$codigo" != "200" ]; then
+            echo "✗ Contestó $codigo en vez de 200. El sitio está mal publicado."
+            exit 1
+          fi
+
+          # Que haya contestado 200 no alcanza: GitHub sirve una página de
+          # error con 200 si el sitio no existe. Esto comprueba que lo que
+          # volvió es la app de verdad.
+          if ! grep -q "Registro de Acciones" pagina.html; then
+            echo "✗ Contestó 200 pero lo que vino no es la app."
+            exit 1
+          fi
+
+          echo "✓ La página está arriba y es la de verdad ($bytes bytes)."
+          echo
+          echo "Si vos no podés entrar y esto dio verde, el problema está"
+          echo "entre tu máquina y github.io: la red, el DNS, un VPN, el"
+          echo "antivirus o una extensión del navegador. La prueba más"
+          echo "rápida es abrirla en el celular CON DATOS, sin wifi."
