@@ -1363,6 +1363,21 @@
     font-size:11px; cursor:pointer; line-height:18px; text-align:center; padding:0; flex-shrink:0;
   }
   .post-files{ display:flex; flex-direction:column; gap:6px; margin-bottom:10px; }
+  /* Cada adjunto es una fila: el archivo, y su ✕ empujado al final. */
+  .post-file-row{ display:flex; align-items:center; gap:8px; min-width:0; }
+  .post-file-row .rm{
+    margin-inline-start:auto; flex:0 0 auto; width:18px; height:18px; border-radius:50%;
+    background:none; border:none; color:var(--text-muted); font-size:11px; cursor:pointer;
+    line-height:18px; padding:0;
+  }
+  .post-file-row .rm:hover{ background:var(--danger-bg); color:var(--danger); }
+  /* Elegir un adjunto que YA está en el posteo para una ranura vacía. */
+  .doc-elegir{
+    font-size:11.5px; font-weight:600; color:var(--text-muted); background:var(--card);
+    border:1px solid var(--border); border-radius:999px; padding:2px 8px;
+    font-family:inherit; cursor:pointer; max-width:220px;
+  }
+  .doc-elegir:hover{ color:var(--ink); }
   .post-file-audio{ display:flex; align-items:center; gap:8px; }
   .post-file-audio audio{ height:32px; max-width:260px; }
   .post-file-audio .fname, .post-file-link{ font-size:12.5px; font-weight:600; color:var(--ink); }
@@ -10077,6 +10092,16 @@ function archivosSueltos(files, activityType){
   const esperados = new Set(docsEsperados(activityType).map(d=>d.id));
   return (files || []).filter(f => !esperados.has(docDeArchivo(f)));
 }
+// El mismo archivo, sin ocupar ninguna ranura. Vuelve a la lista de
+// adjuntos sueltos; NO se borra.
+function sinRanura(f){ const { doc, ...resto } = f; return resto; }
+// Los adjuntos sueltos con la posición que ocupan en post.files, que es
+// contra la que se escribe. La lista dibujada viene filtrada, así que su
+// índice no sirve.
+function sueltosConPosicion(post){
+  const files = post.files || [];
+  return archivosSueltos(files, post.activityType).map(f => ({ f, pos: files.indexOf(f) }));
+}
 function cuantosDocsHay(post){
   const esperados = docsEsperados(post.activityType);
   return { hay: esperados.filter(d => archivoDelDoc(post, d.id)).length, total: esperados.length };
@@ -10087,6 +10112,10 @@ function renderDocumentacion(post){
   if(!esperados.length) return "";
   const puede = canEditPost(post);
   const { hay, total } = cuantosDocsHay(post);
+  // El caso que motivó todo esto: el archivo ya está adjunto, pero suelto,
+  // y la tarjeta decía "falta" con el documento dos líneas más abajo. Sin
+  // forma de decir que ESE es el plan, y sin forma de sacarlo.
+  const sueltos = sueltosConPosicion(post);
   const filas = esperados.map(d=>{
     const f = archivoDelDoc(post, d.id);
     if(f){
@@ -10102,14 +10131,19 @@ function renderDocumentacion(post){
         <span class="doc-estado ok" aria-hidden="true">✓</span>
         <span class="doc-nombre">${esc(d.label)}</span>
         ${abrir}
-        ${puede ? `<button type="button" class="rm" data-action="quitar-doc" data-post-id="${post.id}" data-doc="${esc(d.id)}" title="${esc(t("Quitar este documento","Remove this document","Remover este documento","הסרת המסמך הזה"))}">✕</button>` : ""}
+        ${puede ? `<button type="button" class="rm" data-action="quitar-doc" data-post-id="${post.id}" data-doc="${esc(d.id)}" title="${esc(t("Sacar de acá (el archivo queda adjunto)","Take it out of here (the file stays attached)","Tirar daqui (o arquivo continua anexado)","הוצאה מכאן (הקובץ נשאר מצורף)"))}">✕</button>` : ""}
       </div>`;
     }
     return `<div class="doc-fila falta">
       <span class="doc-estado" aria-hidden="true">○</span>
       <span class="doc-nombre">${esc(d.label)}</span>
       ${puede
-        ? `<button type="button" class="doc-adjuntar" data-action="adjuntar-doc" data-post-id="${post.id}" data-doc="${esc(d.id)}">📎 ${t("Adjuntar","Attach","Anexar","צירוף")}</button>`
+        ? `<button type="button" class="doc-adjuntar" data-action="adjuntar-doc" data-post-id="${post.id}" data-doc="${esc(d.id)}">📎 ${t("Adjuntar","Attach","Anexar","צירוף")}</button>
+           ${sueltos.length ? `<select class="doc-elegir" data-action="doc-elegir" data-post-id="${post.id}" data-doc="${esc(d.id)}"
+             aria-label="${esc(t("Usar un archivo que ya está adjunto","Use a file that's already attached","Usar um arquivo que já está anexado","שימוש בקובץ שכבר מצורף"))}">
+             <option value="">${esc(t("o usar uno ya adjunto…","or use one already attached…","ou usar um já anexado…","…או להשתמש באחד שכבר מצורף"))}</option>
+             ${sueltos.map(({ f, pos }) => `<option value="${pos}">${esc(f.name)}</option>`).join("")}
+           </select>` : ""}`
         : `<span class="doc-pendiente">${esc(t("falta","missing","falta","חסר"))}</span>`}
     </div>`;
   }).join("");
@@ -10166,18 +10200,71 @@ async function quitarDocumento(postId, docId){
   if(!post || !canEditPost(post)) return;
   const f = archivoDelDoc(post, docId);
   if(!f) return;
-  const ok = await appConfirm(t(
-    "¿Quitar «{name}» de este evento?","Remove “{name}” from this event?","Remover «{name}» deste evento?","להסיר את «{name}» מהאירוע הזה?",
-    { name: f.name }));
-  if(!ok) return;
+  // Esto SACA DE LA RANURA, no borra: el archivo vuelve a la lista de
+  // adjuntos sueltos, de donde se lo puede volver a elegir o quitar del
+  // evento. Antes borraba, y entonces corregir una ranura mal asignada
+  // costaba perder el archivo y volver a subirlo — con el agravante de
+  // que el cartel decía "¿Quitar de este evento?" y la gente le daba que
+  // sí pensando que lo desvinculaba. Como no se pierde nada y se deshace
+  // en un clic, tampoco pregunta nada.
   try{
     await updatePostDoc(postId, {
-      files: (post.files || []).filter(x => docDeArchivo(x) !== docId),
+      files: (post.files || []).map(x => docDeArchivo(x) === docId ? sinRanura(x) : x),
       lastEditedAt: store.horaDelServidor(),
       lastEditedBy: state.auth.user.displayName,
     });
   }catch(err){
-    console.error("Error quitando el documento:", err);
+    console.error("Error sacando el documento de su lugar:", err);
+    await appAlert(t("No se pudo sacar de ahí: {m}","Couldn't take it out: {m}","Não foi possível tirar daí: {m}","{m} :לא ניתן היה להוציא",{m:err.code||err.message}));
+  }
+}
+
+// Decir que un adjunto que YA está en el posteo es el documento de una
+// ranura. No sube nada ni toca el tope de archivos: solo le pone el `doc`.
+async function asignarDocumento(postId, docId, pos){
+  const post = getPostById(postId);
+  if(!post || !canEditPost(post)) return;
+  const files = post.files || [];
+  const elegido = files[pos];
+  if(!elegido) return;
+  try{
+    await updatePostDoc(postId, {
+      // Si otro archivo ocupaba la ranura, queda suelto en vez de perderse:
+      // una ranura tiene un solo documento, pero el posteo los conserva a
+      // los dos.
+      files: files.map((x, i) => i === Number(pos) ? { ...x, doc: docId }
+                                                  : (docDeArchivo(x) === docId ? sinRanura(x) : x)),
+      lastEditedAt: store.horaDelServidor(),
+      lastEditedBy: state.auth.user.displayName,
+    });
+  }catch(err){
+    console.error("Error asignando el documento:", err);
+    await appAlert(t("No se pudo usar \"{name}\": {m}","Couldn't use \"{name}\": {m}","Não foi possível usar \"{name}\": {m}","\"{name}\" :לא ניתן היה להשתמש ב {m}",{name:elegido.name, m:err.code||err.message}));
+  }
+}
+
+// Quitar un adjunto suelto DEL EVENTO. Esto sí borra, así que pregunta.
+async function quitarAdjunto(postId, pos){
+  const post = getPostById(postId);
+  if(!post || !canEditPost(post)) return;
+  const files = post.files || [];
+  const f = files[pos];
+  if(!f) return;
+  const ok = await appConfirm(t(
+    "¿Quitar «{name}» de este evento? No se puede deshacer.",
+    "Remove \u201c{name}\u201d from this event? This can't be undone.",
+    "Remover «{name}» deste evento? Não dá para desfazer.",
+    "להסיר את «{name}» מהאירוע הזה? אי אפשר לבטל.",
+    { name: f.name }));
+  if(!ok) return;
+  try{
+    await updatePostDoc(postId, {
+      files: files.filter((_, i) => i !== Number(pos)),
+      lastEditedAt: store.horaDelServidor(),
+      lastEditedBy: state.auth.user.displayName,
+    });
+  }catch(err){
+    console.error("Error quitando el adjunto:", err);
     await appAlert(t("No se pudo quitar: {m}","Couldn't remove it: {m}","Não foi possível remover: {m}","{m} :לא ניתן היה להסיר",{m:err.code||err.message}));
   }
 }
@@ -10259,7 +10346,7 @@ function renderPostCard(post, replies){
       ${linksHtml ? `<div class="post-links">${linksHtml}</div>` : ""}
       ${imagesHtml ? `<div class="post-images">${imagesHtml}</div>` : ""}
       ${renderDocumentacion(post)}
-      ${renderPostedFiles(archivosSueltos(post.files, post.activityType), {postId: post.id})}
+      ${renderPostedFiles(archivosSueltos(post.files, post.activityType), {postId: post.id, todos: post.files || [], puede: canEditPost(post)})}
       <div class="post-actions">
         ${canWrite() ? `<button data-action="toggle-like" data-post-id="${post.id}" class="${postLiked?"liked":""}">${postLiked?"👍":"🤍"} ${t("Me gusta","Like","Curtir","לייק")}${postLikedBy.length?` (${postLikedBy.length})`:""}</button>
         <button data-action="toggle-reply" data-post-id="${post.id}">💬 ${t("Responder","Reply","Responder","תגובה")}</button>` : (postLikedBy.length ? `<span class="post-likes-ro">👍 ${postLikedBy.length}</span>` : "")}
@@ -13871,13 +13958,30 @@ function renderPostedFiles(files, owner){
   // Índice DENTRO de los que abren el visor — tiene que coincidir con la
   // lista que arma attachmentOwner()+filtro en "open-file-preview".
   const previewable = files.filter(f => f && sePuedeVer(f) && safeFileDataUrl(f.dataUrl));
+  // Sacar un adjunto es editar el posteo, así que el ✕ aparece solo donde
+  // eso se puede. En un comentario NO: el store no tiene replies.update,
+  // los comentarios se borran enteros o nada.
+  //
+  // `todos` es la lista COMPLETA del posteo y no la que se dibuja acá (que
+  // viene filtrada, sin los que ocupan una ranura de documentación): el
+  // data-pos tiene que apuntar a la posición real, que es contra la que se
+  // escribe. Confundir las dos listas ya me costó el visor abriendo otro
+  // archivo.
+  const todos = owner && owner.todos;
+  const puede = !!(owner && owner.puede && Array.isArray(todos));
+  const quitarDe = f => puede
+    ? `<button type="button" class="rm" data-action="quitar-adjunto" ${ownerAttrs(owner)} data-pos="${todos.indexOf(f)}" title="${esc(t("Quitar este archivo del evento","Remove this file from the event","Remover este arquivo do evento","הסרת הקובץ הזה מהאירוע"))}">✕</button>`
+    : "";
   return `<div class="post-files">${files.map(f => {
     const dataUrl = safeFileDataUrl(f && f.dataUrl);
     if(!dataUrl) return "";
     const icono = claseDe(f).icono;
-    if(claseDe(f).esAudio) return `<div class="post-file-audio"><audio controls src="${dataUrl}"></audio><span class="fname">${esc(f.name)}</span></div>`;
-    if(sePuedeVer(f)) return `<button type="button" class="post-file-link" data-action="open-file-preview" ${ownerAttrs(owner)} data-idx="${previewable.indexOf(f)}">${icono} ${esc(f.name)}</button>`;
-    return `<a class="post-file-link" href="${dataUrl}" download="${esc(f.name)}" title="${esc(t("Bajar el archivo","Download the file","Baixar o arquivo","הורדת הקובץ"))}">${icono} ${esc(f.name)} ↓</a>`;
+    const cuerpo = claseDe(f).esAudio
+      ? `<div class="post-file-audio"><audio controls src="${dataUrl}"></audio><span class="fname">${esc(f.name)}</span></div>`
+      : sePuedeVer(f)
+        ? `<button type="button" class="post-file-link" data-action="open-file-preview" ${ownerAttrs(owner)} data-idx="${previewable.indexOf(f)}">${icono} ${esc(f.name)}</button>`
+        : `<a class="post-file-link" href="${dataUrl}" download="${esc(f.name)}" title="${esc(t("Bajar el archivo","Download the file","Baixar o arquivo","הורדת הקובץ"))}">${icono} ${esc(f.name)} ↓</a>`;
+    return `<div class="post-file-row">${cuerpo}${quitarDe(f)}</div>`;
   }).join("")}</div>`;
 }
 
@@ -15184,6 +15288,9 @@ document.addEventListener("click", async e=>{
     "quitar-doc": async (el, e, action, postId) => {
     await quitarDocumento(el.dataset.postId, el.dataset.doc);
   },
+    "quitar-adjunto": async (el, e, action, postId) => {
+    await quitarAdjunto(el.dataset.postId, Number(el.dataset.pos));
+  },
     "open-doc": async (el, e, action, postId) => {
     const post = getPostById(el.dataset.postId);
     if(!post) return;
@@ -15460,6 +15567,14 @@ document.addEventListener("input", e=>{
 
 document.addEventListener("change", e=>{
   const el = e.target;
+  // El <select> de "o usar uno ya adjunto…": avisa por change, no por
+  // click, así que no pasa por el despachador de acciones.
+  if(el.dataset && el.dataset.action === "doc-elegir"){
+    const pos = el.value;
+    el.value = "";   // vuelve al rótulo; lo que manda es lo que quedó guardado
+    if(pos !== "") asignarDocumento(el.dataset.postId, el.dataset.doc, Number(pos));
+    return;
+  }
   // El campo de hexadecimal lleva el MISMO data-* que la muestra de color
   // que tiene al lado, así que alcanza con normalizar el valor acá y
   // dejarlo seguir por la rama que le corresponda: no hay un segundo
