@@ -238,6 +238,17 @@ insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_typ
 values ('adjuntos', 'adjuntos', false, 26214400, array[
   'image/jpeg', 'image/png', 'image/gif', 'image/webp',
   'application/pdf',
+  'text/plain', 'text/markdown', 'text/csv', 'text/tab-separated-values',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.oasis.opendocument.text',
+  'application/rtf', 'text/rtf',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.oasis.opendocument.spreadsheet',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'application/vnd.oasis.opendocument.presentation',
   'audio/mpeg', 'audio/mp4', 'audio/x-m4a', 'audio/aac',
   'audio/ogg', 'audio/wav', 'audio/x-wav', 'audio/webm', 'audio/3gpp'
 ])

@@ -116,11 +116,26 @@ service cloud.firestore {
         list[i].matches('^data:image/(png|jpe?g|gif|webp);base64,[A-Za-z0-9+/=]+$')
       );
     }
+    // Qué tipos de archivo se pueden adjuntar. La MISMA lista está en
+    // TIPOS_DE_ARCHIVO de index.html y en allowed_mime_types del bucket
+    // (supabase/01-tablas.sql): si una de las tres se queda atrás, el
+    // archivo entra en el navegador y lo rechaza la base, con un error que
+    // no le dice nada a quien lo estaba publicando.
+    //
+    // Lo que importa de esta lista no es lo que deja entrar, es lo que
+    // deja AFUERA: nada que un navegador pueda ejecutar o interpretar como
+    // página (HTML, SVG, JavaScript). El dataUrl de un adjunto termina
+    // adentro de un href, así que esta línea es lo que separa un documento
+    // de un problema.
+    //
+    // application/octet-stream es lo que pone el navegador cuando no sabe
+    // qué es: pasa con algunos PDF en Android y con casi todo en algunos
+    // Windows. No puede ejecutar nada por sí mismo.
     function isValidFileAt(list, i) {
       return i >= list.size() || (
         list[i].get('name', '') is string && list[i].get('name', '').size() <= 200 &&
         list[i].get('dataUrl', '') is string &&
-        list[i].get('dataUrl', '').matches('^data:(application/pdf|application/octet-stream|audio/[A-Za-z0-9.+-]+);base64,[A-Za-z0-9+/=]+$')
+        list[i].get('dataUrl', '').matches('^data:(application/pdf|application/octet-stream|text/plain|text/markdown|text/csv|text/tab-separated-values|application/msword|application/vnd\\.openxmlformats-officedocument\\.wordprocessingml\\.document|application/vnd\\.oasis\\.opendocument\\.text|application/rtf|text/rtf|application/vnd\\.ms-excel|application/vnd\\.openxmlformats-officedocument\\.spreadsheetml\\.sheet|application/vnd\\.oasis\\.opendocument\\.spreadsheet|application/vnd\\.ms-powerpoint|application/vnd\\.openxmlformats-officedocument\\.presentationml\\.presentation|application/vnd\\.oasis\\.opendocument\\.presentation|audio/[A-Za-z0-9.+-]+);base64,[A-Za-z0-9+/=]+$')
       );
     }
     function isValidLinkAt(list, i) {
