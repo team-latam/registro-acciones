@@ -6132,24 +6132,35 @@ function crearSupabaseStore(sb){
     // Se usa al arrancar y cada vez que hay que volver a mirar: después de
     // escribir algo, o si el aviso en vivo no llegó.
     const cargar = async () => {
-      let q = sb.from(tabla).select("*");
-      if(igual) q = q.eq(igual.columna, igual.valor);
-      if(orden) q = q.order(orden.columna, { ascending: !orden.desc });
-      if(tope) q = q.limit(tope);
-      const { data, error } = await q;
-      if(!vivo) return;
-      if(error){ if(alFallar) alFallar(error); return; }
-      // Antes de entregar nada: los adjuntos de TODAS las filas de una vez.
-      if(firmaAdjuntos) await firmar((data || []).flatMap(rutasDe));
-      if(!vivo) return;
-      porClave.clear();
-      (data || []).forEach(f => porClave.set(String(f[clave]), traducir(f)));
-      cargado = true;
-      // Los cambios que llegaron mientras cargaba se aplican ahora, en
-      // orden: si uno ya venía en la carga, lo pisa con lo más nuevo, que
-      // es lo correcto.
-      pendientes.splice(0).forEach(aplicar);
-      entregar();
+      // Todo adentro del try: sin esto, cualquier excepción —firmar los
+      // adjuntos, la red que se corta a mitad— dejaba `cargado` en false
+      // PARA SIEMPRE. La lista no se entregaba nunca, nadie se enteraba
+      // del error, y la pantalla quedaba en "Cargando…" hasta recargar.
+      // Un error que no se ve es peor que uno que se ve.
+      try{
+        let q = sb.from(tabla).select("*");
+        if(igual) q = q.eq(igual.columna, igual.valor);
+        if(orden) q = q.order(orden.columna, { ascending: !orden.desc });
+        if(tope) q = q.limit(tope);
+        const { data, error } = await q;
+        if(!vivo) return;
+        if(error){ if(alFallar) alFallar(error); return; }
+        // Antes de entregar nada: los adjuntos de TODAS las filas de una vez.
+        if(firmaAdjuntos) await firmar((data || []).flatMap(rutasDe));
+        if(!vivo) return;
+        porClave.clear();
+        (data || []).forEach(f => porClave.set(String(f[clave]), traducir(f)));
+        cargado = true;
+        // Los cambios que llegaron mientras cargaba se aplican ahora, en
+        // orden: si uno ya venía en la carga, lo pisa con lo más nuevo, que
+        // es lo correcto.
+        pendientes.splice(0).forEach(aplicar);
+        entregar();
+      }catch(err){
+        if(!vivo) return;
+        console.error(`No se pudo cargar ${tabla}:`, err);
+        if(alFallar) alFallar(err);
+      }
     };
     cargar();
     const olvidar = anotarMirada(tabla, cargar);
@@ -6498,8 +6509,30 @@ function crearSupabaseSesion(sb){
     alCambiar(fn){
       // Se avisa del estado de arranque además de los cambios: Firebase
       // llama al oyente apenas se registra, y la app cuenta con eso.
-      sb.auth.getSession().then(({ data }) => fn(perfil(data.session && data.session.user)));
-      sb.auth.onAuthStateChange((_e, s) => fn(perfil(s && s.user)));
+      //
+      // Y se FILTRA, que es la mitad del trabajo de este adaptador.
+      // Firebase avisa solo cuando la sesión cambia de verdad. Supabase
+      // avisa muchísimo más: emite SIGNED_IN cada vez que la pestaña
+      // vuelve a tener foco, y TOKEN_REFRESHED cada hora. Para la app
+      // cada aviso es un cambio de sesión, así que corta todas las
+      // suscripciones, vacía el estado y vuelve a empezar — y volviendo
+      // de otra ventana eso se veía como "Cargando registro compartido…"
+      // otra vez, cada vez, y a veces para siempre.
+      //
+      // El contrato de este adaptador es parecerse a Firebase. Mismo
+      // usuario, ningún aviso. `undefined` como valor inicial y no `null`
+      // porque "todavía no avisé nunca" y "no hay nadie" son distintos:
+      // el primer aviso de que no hay sesión tiene que pasar.
+      let ultimoUid;
+      const avisar = u => {
+        const p = perfil(u);
+        const uid = p ? p.uid : null;
+        if(uid === ultimoUid) return;
+        ultimoUid = uid;
+        fn(p);
+      };
+      sb.auth.getSession().then(({ data }) => avisar(data.session && data.session.user));
+      sb.auth.onAuthStateChange((_e, s) => avisar(s && s.user));
     },
     async iniciar(){
       // Con redirección y no con una ventanita: es lo que hace Supabase, y
