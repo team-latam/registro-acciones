@@ -107,3 +107,27 @@ jobs:
           echo "entrega bien de todas las formas en que se la puede pedir. Si vos"
           echo "no podés abrirla, lo que falla está en el camino entre tu equipo y"
           echo "github.io (proveedor de internet, DNS, VPN o antivirus)."
+
+      # Si github.io está bloqueado en el camino hacia él, el archivo sigue
+      # existiendo en otro lado: jsDelivr sirve cualquier archivo de un repo
+      # público, por otro CDN y otro dominio. No reemplaza al sitio —el login
+      # de Google no funciona desde ahí sin autorizar el dominio— pero sirve
+      # para contestar la pregunta que importa: ¿llega el archivo, o no llega
+      # NADA? Informativo: que el espejo falle no es problema suyo.
+      - name: Un espejo del mismo archivo, por otro CDN
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          ESPEJO="https://cdn.jsdelivr.net/gh/team-latam/registro-acciones@main/index.html"
+          echo "Pidiendo $ESPEJO"
+          codigo=$(curl -sSL -o espejo.html -w '%{http_code}' --max-time 60 "$ESPEJO") || {
+            echo "✗ El espejo no contestó."; exit 1; }
+          bytes=$(wc -c < espejo.html)
+          echo "HTTP $codigo · $bytes bytes"
+          if [ "$codigo" = "200" ] && grep -q "Registro de Acciones" espejo.html; then
+            echo "✓ El espejo sirve la app. Como PRUEBA sirve: si desde ahí la ve,"
+            echo "  lo que falla es github.io y no la página."
+          else
+            echo "✗ El espejo no trajo la app."
+            exit 1
+          fi
