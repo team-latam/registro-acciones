@@ -1470,6 +1470,17 @@ individuales (para no generar un aluvión de posteos por cada repetición):
 una serie recurrente cuenta como un solo evento. No debería ser un
 problema real, ya que cada acción del equipo tiene sus propias fechas.
 
+### Revisar lo de Calendar (solo admins)
+
+Administración › Revisar lo de Calendar: lo que entró de Google Calendar
+como "Otro" y sin lugar, para ordenarlo de a muchos (tipo, lugar,
+personas) o sacarlo del Registro. Ver REDISENO.md, tanda 19, y
+`supabase/12-revisar-calendar.sql`. Las sugerencias de cada evento están
+en `calendar_sugerencias` (`13-sugerencias-calendar.sql`); lo sacado, en
+`calendar_sacados`, que los dos sincronizadores saltean. Clasificar no
+toca `last_edited_*` (no es una edición del contenido) y sacar deja su
+entrada `post_deleted` en el registro de actividad.
+
 ### Actividad (solo admins)
 
 Pestaña "Actividad" (en Administrar, "Registro de actividad"), visible

@@ -681,6 +681,65 @@
      renderUsuariosSection y renderTiposSection): la lista con lo mínimo
      a la izquierda y, al tocar una fila, la ficha con todo a la derecha.
      En angosto la ficha ocupa el lugar de la lista, con "← Volver". */
+  /* Revisar lo de Calendar (Administración): lista con selección múltiple
+     y una barra con lo que se hace con los elegidos. */
+  .rv-filtros{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:4px 0 12px; }
+  .rv-chip{ border:1px solid var(--border); background:var(--card); border-radius:999px; padding:7px 13px; font:700 12.5px inherit; font-family:inherit; color:var(--ink); cursor:pointer; }
+  .rv-chip.on{ background:var(--petroleo); border-color:var(--petroleo); color:#fff; }
+  .rv-chip small{ opacity:.7; font-weight:600; margin-inline-start:5px; }
+  .rv-buscar{ flex:1; min-width:160px; max-width:280px; border:1px solid var(--border); border-radius:999px; padding:8px 14px; font-size:13px; font-family:inherit; background:var(--card); color:var(--ink); }
+  .rv-seguro{ display:flex; align-items:center; gap:6px; font-size:12.5px; font-weight:700; color:var(--text-muted); cursor:pointer; }
+  .rv-barra{ position:sticky; top:calc(var(--header-h, 110px) + 8px); z-index:6; display:flex; flex-wrap:wrap; gap:8px; align-items:center; background:var(--petroleo); color:#fff; border-radius:14px; padding:10px 12px; margin-bottom:10px; box-shadow:0 8px 24px rgba(0,0,0,.18); }
+  .rv-barra b{ font-size:13.5px; margin-inline-end:4px; }
+  .rv-barra button{ border:1px solid rgba(255,255,255,.28); background:rgba(255,255,255,.08); color:#fff; border-radius:999px; padding:7px 12px; font-size:12.5px; font-weight:700; font-family:inherit; cursor:pointer; }
+  .rv-barra button[aria-expanded="true"]{ background:rgba(255,255,255,.22); }
+  .rv-barra button.prin{ background:#fff; color:var(--petroleo); border-color:#fff; }
+  .rv-barra button.peligro{ background:transparent; border-color:#ff9b9b; color:#ffd0d0; margin-inline-start:auto; }
+  .rv-barra button.x{ background:transparent; border:none; opacity:.85; }
+  .rv-barra button:disabled{ opacity:.5; cursor:default; }
+  .rv-panel{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow); padding:14px 16px; margin-bottom:12px; display:flex; flex-direction:column; gap:12px; }
+  .rv-campos{ display:flex; flex-wrap:wrap; gap:12px; }
+  .rv-campo{ display:flex; flex-direction:column; gap:4px; font-size:12px; font-weight:700; color:var(--text-muted); min-width:200px; }
+  .rv-campo select, .rv-libre input{ border:1px solid var(--border); border-radius:10px; padding:8px 10px; font-size:13.5px; font-family:inherit; background:var(--card); color:var(--ink); }
+  .rv-personas{ flex-basis:100%; }
+  .rv-gente{ display:flex; flex-wrap:wrap; gap:6px; }
+  .rv-persona{ border:1px solid var(--border); background:var(--card); border-radius:999px; padding:5px 11px; font-size:12.5px; font-weight:700; font-family:inherit; color:var(--ink); cursor:pointer; }
+  .rv-persona.on{ background:var(--celeste-soft); border-color:var(--celeste-dark); color:var(--celeste-dark); }
+  .rv-persona.suelto{ border-style:dashed; }
+  .rv-libre{ display:flex; gap:8px; margin-top:6px; max-width:420px; }
+  .rv-libre input{ flex:1; min-width:0; }
+  .rv-panel-acc{ display:flex; gap:8px; justify-content:flex-end; }
+  .rv-row{ display:flex; align-items:center; gap:12px; padding:11px 14px; border-top:1px solid var(--border); }
+  .rv-row:first-child{ border-top:none; }
+  .rv-row.on{ background:var(--celeste-soft); }
+  .rv-row > input[type=checkbox], .rv-seguro input{ width:18px; height:18px; accent-color:var(--petroleo); flex:none; cursor:pointer; }
+  .rv-fecha{ width:92px; flex:none; font-size:12.5px; color:var(--text-muted); font-weight:600; }
+  .rv-tit{ flex:1; min-width:0; display:flex; flex-direction:column; gap:5px; }
+  .rv-tit b{ font-size:14px; color:var(--ink-strong); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .rv-n{ font-size:12.5px; color:var(--text-muted); }
+  .rv-sug{ display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  .rv-s{ display:inline-flex; align-items:center; gap:4px; font-size:12px; font-weight:700; border-radius:999px; padding:3px 9px; background:var(--surface-alt); color:var(--ink); }
+  .rv-s.tipo{ background:var(--petroleo); color:#fff; }
+  .rv-s.falta{ background:transparent; border:1px dashed var(--border); color:var(--text-muted); font-weight:600; }
+  .rv-conf{ width:9px; height:9px; border-radius:50%; flex:none; display:inline-block; }
+  .rv-conf.a{ background:#16a34a; } .rv-conf.m{ background:#eab308; } .rv-conf.b{ background:#dc2626; }
+  .rv-acc{ flex:none; border:1px solid var(--border); background:var(--card); border-radius:999px; padding:6px 11px; font-size:12px; font-weight:700; font-family:inherit; color:var(--celeste-dark); cursor:pointer; }
+  .rv-leyenda{ display:flex; gap:14px; font-size:12px; color:var(--text-muted); margin:10px 2px 0; }
+  .rv-leyenda span{ display:flex; align-items:center; gap:5px; }
+  .rv-mas{ margin-top:10px; }
+  .rv-sueltos{ margin-top:28px; }
+  .rv-sueltos h3{ margin:0 0 4px; font-size:16px; color:var(--ink-strong); }
+  .rv-sueltos .hint{ margin:0 0 10px; }
+  .rv-vincular{ border:1px solid var(--border); border-radius:10px; padding:6px 8px; font-family:inherit; background:var(--card); color:var(--ink); }
+  @media (max-width:760px){
+    .rv-row{ flex-wrap:wrap; gap:8px 10px; }
+    .rv-fecha{ width:auto; }
+    .rv-tit{ flex-basis:calc(100% - 40px); }
+    .rv-acc{ margin-inline-start:28px; }
+    .rv-barra{ top:8px; }
+    .rv-barra button.peligro{ margin-inline-start:0; }
+    .rv-campo{ min-width:0; flex:1 1 100%; }
+  }
   .lp-layout{ display:flex; gap:20px; align-items:flex-start; }
   .lp-list{ flex:1 1 0; min-width:0; }
   .lp-rows{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius-lg); overflow:hidden; box-shadow:var(--shadow); }
@@ -5492,8 +5551,25 @@ function importedTypeAndTitle(ev){
 // mira si ya existe: el poll de 30 s corre en TODOS los navegadores
 // abiertos, y dos que veían el mismo evento nuevo con ~1 s de diferencia
 // lo creaban los dos (con addDoc, ids distintos → dos posteos iguales).
+// Una huella corta y estable de un texto (FNV-1a, dos vueltas): la misma
+// entrada da siempre la misma salida, en el navegador y en el servidor.
+function huellaDeId(s){
+  let a = 0x811c9dc5, b = 0x9e3779b9;
+  for(let i = 0; i < s.length; i++){
+    const c = s.charCodeAt(i);
+    a = Math.imul(a ^ c, 16777619) >>> 0;
+    b = Math.imul(b ^ c, 2246822507) >>> 0;
+  }
+  return (a.toString(36).padStart(7, "0") + b.toString(36).padStart(7, "0")).slice(0, 12);
+}
+// Un id de evento largo se cortaba a 59 caracteres, y hay eventos (los que
+// crea alguna integración de Google) cuyos ids comparten esos 59: el
+// segundo chocaba con el primero y no entraba nunca. Hasta 59 sigue igual
+// (los posteos de siempre conservan su id); más largo, 46 + una huella del
+// id entero. Igual que idDePosteoImportado en supabase/sync-calendar.
 function importedPostDocId(eventId){
-  return "cal_" + String(eventId).replace(/[^A-Za-z0-9_-]/g, "").slice(0, 59);
+  const limpio = String(eventId).replace(/[^A-Za-z0-9_-]/g, "");
+  return "cal_" + (limpio.length <= 59 ? limpio : limpio.slice(0, 46) + "_" + huellaDeId(limpio));
 }
 async function createImportedPost(ev, data){
   await store.posts.createOnce(importedPostDocId(ev.id), data);
@@ -5732,7 +5808,15 @@ async function syncFromCalendar(opts){
     // de notar que ese evento en particular no tocó nada.
     let failed = 0, applied = 0;
     const failedMessages = [];
+    // Lo que un admin sacó del Registro (Administración › Revisar lo de
+    // Calendar) sigue en Google Calendar, pero no se vuelve a traer. Se
+    // pregunta solo si llegó algo; si la lista no se puede leer, se sigue
+    // sin ella antes que trabar la sincronización.
+    const sacados = (result.events || []).length
+      ? await store.revisarCalendar.sacados().catch(err=>{ console.warn("No se pudo leer lo sacado del Registro:", err); return new Set(); })
+      : new Set();
     for(const ev of result.events || []){
+      if(sacados.has(ev.id) || (ev.recurringEventId && sacados.has(ev.recurringEventId))) continue;
       try{ if(await applyCalendarEventToPosts(ev)) applied++; }
       catch(err){
         failed++;
@@ -6566,6 +6650,13 @@ function crearSupabaseStore(sb, opciones = {}){
     if(!s || !s.size) return;
     await Promise.all([...s].map(m => m.releerFila(valorClave)));
   }
+  // Después de cambiar muchas filas de una (Revisar lo de Calendar): una
+  // sola carga de la lista, no cientos de relecturas fila por fila.
+  async function recargarTabla(tabla){
+    const s = mirando.get(tabla);
+    if(!s || !s.size) return;
+    await Promise.all([...s].map(m => m.recargar && m.recargar()));
+  }
 
   // La API devuelve como máximo 1.000 filas por pedido (Settings → API →
   // Max rows). Pasado ese número, lo que falta NO llega y nadie se entera:
@@ -6739,7 +6830,7 @@ function crearSupabaseStore(sb, opciones = {}){
     const relojFirmas = firmaAdjuntos ? setInterval(renovar, 60 * 60 * 1000) : null;
 
     cargar();
-    const olvidar = anotarMirada(tabla, { releerFila });
+    const olvidar = anotarMirada(tabla, { releerFila, recargar: () => { if(vivo) return cargar(); } });
 
     return () => { vivo = false; clearTimeout(reintento); clearInterval(relojFirmas); olvidar(); sb.removeChannel(canal); };
   }
@@ -6965,6 +7056,50 @@ function crearSupabaseStore(sb, opciones = {}){
       },
       async mergeCalendarSync(parche){
         await this.merge("calendarSync", { ...parche, lastSyncedAt: new Date().toISOString() });
+      },
+    },
+
+    // ---- Lo que llegó de Google Calendar (Administración › Revisar) ----
+    // Ver supabase/12-revisar-calendar.sql: las sugerencias las lee solo
+    // un admin, y clasificar y sacar van por funciones de la base que
+    // controlan que quien llama sea admin y que el posteo venga de
+    // Calendar. De a 500 por pedido: la base acepta hasta 1000.
+    revisarCalendar: {
+      async sugerencias(){
+        const { data, error } = await traerTodas(contar =>
+          sb.from("calendar_sugerencias").select("*", contar ? { count: "exact" } : undefined).order("evento", { ascending: true }));
+        if(error) throw error;
+        const porEvento = new Map();
+        (data || []).forEach(f => porEvento.set(f.evento, {
+          grupo: f.grupo, tipo: f.tipo || null, lugares: Array.isArray(f.lugares) ? f.lugares : [],
+          personas: Array.isArray(f.personas) ? f.personas : [], confianza: f.confianza || "media" }));
+        return porEvento;
+      },
+      async sacados(){
+        const { data, error } = await traerTodas(contar =>
+          sb.from("calendar_sacados").select("evento", contar ? { count: "exact" } : undefined).order("evento", { ascending: true }));
+        if(error) throw error;
+        return new Set((data || []).map(f => f.evento));
+      },
+      async clasificar(cambios){
+        let n = 0;
+        for(let i = 0; i < cambios.length; i += 500){
+          const { data, error } = await sb.rpc("clasificar_importados", { p_cambios: cambios.slice(i, i + 500) });
+          if(error) throw error;
+          n += Number(data) || 0;
+        }
+        await recargarTabla("posts");
+        return n;
+      },
+      async sacar(ids){
+        let n = 0;
+        for(let i = 0; i < ids.length; i += 500){
+          const { data, error } = await sb.rpc("sacar_del_registro", { p_ids: ids.slice(i, i + 500) });
+          if(error) throw error;
+          n += Number(data) || 0;
+        }
+        await Promise.all([recargarTabla("posts"), recargarTabla("replies")]);
+        return n;
       },
     },
 
@@ -9362,6 +9497,7 @@ function doRender(){
   else if(state.view === "admin") html += renderAdminShell(renderAdminResumen());
   else if(state.view === "solicitudes") html += renderAdminShell(renderAccesoView());
   else if(state.view === "auditoria") html += renderAdminShell(renderAuditoriaView());
+  else if(state.view === "revisarcal") html += renderAdminShell(renderRevisarCalendar());
   else if(state.view === "preferencias") html += renderAdminShell(renderPreferenciasView());
 
   viewRoot.innerHTML = html;
@@ -9858,12 +9994,13 @@ function renderAccesoView(){
    preferencias con su sección): el cascarón solo las agrupa y marca
    dónde se está.
    ====================================================================== */
-const ADMIN_VIEWS = new Set(["admin","solicitudes","auditoria","preferencias"]);
+const ADMIN_VIEWS = new Set(["admin","solicitudes","auditoria","preferencias","revisarcal"]);
 function adminMenuItems(){
   const pend = solicitudesPendientes().length;
   const lugares = getCustomCityUsage().length;
   return [
-    { grupo:null, items:[ { key:"resumen", view:"admin", label:t("Resumen","Overview","Resumo","סיכום") } ] },
+    { grupo:null, items:[ { key:"resumen", view:"admin", label:t("Resumen","Overview","Resumo","סיכום") },
+      { key:"revisarcal", view:"revisarcal", label:t("Revisar lo de Calendar","Review Calendar imports","Revisar o que veio do Calendar","סקירת מה שהגיע מהיומן"), badge:rvPendientes().length, suave:true } ] },
     { grupo:t("Equipo","Team","Equipe","צוות"), items:[
       { key:"personas", view:"solicitudes", sub:"usuarios", label:t("Personas","People","Pessoas","אנשים"), badge:pend },
       { key:"actividad", view:"auditoria", label:t("Registro de actividad","Activity log","Registro de atividade","יומן פעילות") },
@@ -9882,6 +10019,7 @@ function adminMenuItems(){
 function adminSeccionActual(){
   if(state.view === "solicitudes") return "personas";
   if(state.view === "auditoria") return "actividad";
+  if(state.view === "revisarcal") return "revisarcal";
   if(state.view === "preferencias") return state.preferenciasSection;
   return "resumen";
 }
@@ -9900,6 +10038,10 @@ function adminSeccionTextos(key){
     resumen: { lead: t("Lo que hay para hacer hoy y cómo viene el equipo.","What needs doing today and how the team is doing.","O que há para fazer hoje e como vai a equipe.","מה יש לעשות היום ואיך הצוות מתקדם.") },
     personas: { lead: t("Quién está en el equipo, con qué rol, y los pedidos de acceso.","Who's on the team, with which role, and the access requests.","Quem está na equipe, com qual papel, e os pedidos de acesso.","מי בצוות, באיזה תפקיד, ובקשות הגישה.") },
     actividad: { lead: t("Quién entró, qué cargó y qué cambió, día por día.","Who signed in, what they logged and what changed, day by day.","Quem entrou, o que carregou e o que mudou, dia a dia.","מי נכנס/ה, מה נרשם ומה השתנה, יום אחר יום.") },
+    revisarcal: {
+      lead: t("Lo que llegó de Google Calendar sin tipo ni lugar. Elegí varios a la vez y ponéles tipo, lugar o personas, o sacalos del Registro. Nada de esto avisa a nadie ni cambia Google Calendar.","What came in from Google Calendar with no type or place. Select several at once and give them a type, a place or people, or remove them from the Log. None of this notifies anyone or changes Google Calendar.","O que chegou do Google Calendar sem tipo nem lugar. Escolha vários de uma vez e defina tipo, lugar ou pessoas, ou tire do Registro. Nada disso avisa ninguém nem muda o Google Calendar.","מה שהגיע מ-Google Calendar בלי סוג ובלי מקום. בחר/י כמה בבת אחת והגדר/י סוג, מקום או אנשים, או הסר/י מהיומן. שום דבר מזה לא שולח הודעה לאף אחד ולא משנה את Google Calendar."),
+      ayuda: t("La sugerencia de cada evento sale de su título (el lugar y las personas que nombra). El puntito dice qué tan segura es. «Sacar del Registro» lo borra de la app con sus comentarios; en Google Calendar sigue igual, y la sincronización ya no lo vuelve a traer. Los títulos no se cambian: el de Calendar manda.","Each event's suggestion comes from its title (the place and people it names). The dot says how sure it is. “Remove from the Log” deletes it from the app with its comments; it stays in Google Calendar, and syncing won't bring it back. Titles aren't changed: Calendar's one rules.","A sugestão de cada evento sai do título (o lugar e as pessoas que ele nomeia). A bolinha diz quão segura ela é. «Tirar do Registro» apaga do app com os comentários; no Google Calendar continua igual, e a sincronização não traz de volta. Os títulos não mudam: vale o do Calendar.","ההצעה לכל אירוע נגזרת מהכותרת שלו (המקום והאנשים שהיא מזכירה). הנקודה מראה עד כמה היא בטוחה. «הסרה מהיומן» מוחקת אותו מהאפליקציה יחד עם התגובות; ב-Google Calendar הוא נשאר, והסנכרון לא יחזיר אותו. הכותרות לא משתנות: הקובעת היא זו של היומן."),
+    },
     zonas: { lead: t("A qué zona pertenece cada país. Cambiarlo aplica también a los posteos ya cargados.","Which zone each country belongs to. Changing it also applies to posts already logged.","A que zona pertence cada país. Trocar também se aplica às postagens já carregadas.","לאיזה אזור שייכת כל מדינה. שינוי חל גם על פוסטים שכבר נרשמו.") },
     tipos: {
       lead: t("Los tipos que se ofrecen al cargar un evento, y qué documentos se espera de cada uno.","The types offered when logging an event, and which documents are expected for each.","Os tipos oferecidos ao criar um evento, e que documentos se espera de cada um.","הסוגים שמוצעים ברישום אירוע, ואילו מסמכים מצופים מכל אחד."),
@@ -10132,6 +10274,341 @@ function renderAuditColumnsHeader(){
       <button type="button" class="ach-sort ach-date" data-action="audit-sort" data-key="date">${t("Fecha","Date","Data","תאריך")}${auditSortArrow("date")}</button>
     </div>`;
 }
+/* ======================================================================
+   REVISAR LO DE CALENDAR (Administración)
+   ----------------------------------------------------------------------
+   Lo que se creó directo en Google Calendar entra al Registro como "Otro"
+   y sin lugar. Acá un admin lo ordena de a muchos: tilda, y les pone lo
+   sugerido, un tipo, un lugar o personas, o los saca del Registro (siguen
+   en Calendar y no vuelven a entrar). Pedido del usuario el 3/10/2026
+   (REDISENO.md, tanda 19). Nada de esto avisa a nadie ni toca Calendar:
+   va por funciones de la base (supabase/12-revisar-calendar.sql) y no por
+   la edición de siempre, que sí sincroniza con Calendar.
+   ====================================================================== */
+// Estado de la pantalla: efímero, como auditVisibleCount. Lo que se elige
+// son ids de posteo; los datos se buscan en vivo en state.posts.
+const RV_PAGINA = 100;
+let rv = { grupo:"actividad", buscar:"", soloSeguros:false, elegidos:new Set(), panel:null,
+  editId:null, borrador:null, trabajando:false, sugerencias:null, cargando:false, error:"", visibles:RV_PAGINA,
+  vincular:{} };
+function esImportado(p){ return !!(p && p.authorName === "Google Calendar" && !p.authorEmail && p.calendarEventId); }
+// Pendiente = sigue como vino: "Otro" y sin lugar.
+function rvPendiente(p){ return esImportado(p) && p.activityType === "otro" && !(p.scopes || []).length; }
+function rvPendientes(){ return state.posts.filter(rvPendiente); }
+function rvSugerencia(p){ return (rv.sugerencias && p && rv.sugerencias.get(p.calendarEventId)) || null; }
+function rvGrupoDe(p){
+  if(!rvPendiente(p)) return "ordenados";
+  const s = rvSugerencia(p);
+  return s ? s.grupo : "sin";
+}
+function rvGrupos(){
+  return [
+    { key:"actividad", label:t("Actividades","Activities","Atividades","פעילויות") },
+    { key:"reunion", label:t("Reuniones","Meetings","Reuniões","פגישות") },
+    { key:"personal", label:t("Personales","Personal","Pessoais","אישיים") },
+    { key:"gestion", label:t("Recordatorios","Reminders","Lembretes","תזכורות") },
+    { key:"sin", label:t("Sin sugerencia","No suggestion","Sem sugestão","ללא הצעה") },
+    { key:"ordenados", label:t("Ya ordenados","Already sorted","Já organizados","כבר מסודרים") },
+  ];
+}
+function rvCargarSugerencias(){
+  if(rv.sugerencias || rv.cargando) return;
+  rv.cargando = true; rv.error = "";
+  store.revisarCalendar.sugerencias()
+    .then(m => { rv.sugerencias = m; })
+    .catch(err => { console.error("No se pudieron leer las sugerencias:", err); rv.sugerencias = new Map(); rv.error = err.message || String(err); })
+    .finally(() => { rv.cargando = false; render(); });
+}
+// Un nombre del título → una persona del equipo, si hay una que se llame
+// así (por @nickname o por el primer nombre); si no, queda el nombre suelto
+// y se vincula después (ver "Nombres sueltos").
+function rvPersona(nombre){
+  const n = normalize(nombre);
+  const m = state.roster.find(u => normalize(u.nickname) === n)
+    || state.roster.find(u => normalize(String(u.name || "").split(/\s+/)[0]) === n);
+  return m ? { email: m.email, name: m.name || m.nickname || nombre } : { name: String(nombre).slice(0, 120) };
+}
+function rvParticipantes(nombres, previos){
+  const out = [...(previos || [])];
+  nombres.map(rvPersona).forEach(p => {
+    const ya = out.some(o => (p.email && o.email && o.email.toLowerCase() === p.email.toLowerCase()) || (!p.email && !o.email && normalize(o.name) === normalize(p.name)));
+    if(!ya) out.push(p);
+  });
+  return out.slice(0, 10);
+}
+function rvLista(){
+  const q = normalize(rv.buscar);
+  const base = rv.grupo === "ordenados"
+    ? state.posts.filter(p => esImportado(p) && !rvPendiente(p))
+    : rvPendientes().filter(p => rvGrupoDe(p) === rv.grupo);
+  return base.filter(p => {
+    if(rv.soloSeguros && rv.grupo !== "ordenados"){ const s = rvSugerencia(p); if(!s || s.confianza !== "alta") return false; }
+    if(!q) return true;
+    const s = rvSugerencia(p);
+    const texto = [p.title, ...(s ? s.lugares.map(scopeLabel) : []), ...(s ? s.personas : []), ...(p.scopes || []).map(scopeLabel)].join(" ");
+    return normalize(texto).includes(q);
+  }).sort((a, b) => String(b.startDate || "").localeCompare(String(a.startDate || "")));
+}
+function rvTipoChip(key){
+  const ty = ACTIVITY_BY_KEY[key];
+  return ty ? `<span class="rv-s tipo">${esc(ty.icon || "")} ${esc(ty.label)}</span>` : "";
+}
+function rvChips(tipo, lugares, personas){
+  return `${rvTipoChip(tipo)}${lugares.length
+      ? lugares.map(sc => `<span class="rv-s">${scopeIcon(sc)} ${esc(scopeLabel(sc))}</span>`).join("")
+      : `<span class="rv-s falta">${t("sin lugar","no place","sem lugar","ללא מקום")}</span>`}${personas.length
+      ? `<span class="rv-s">👥 ${esc(personas.join(", "))}</span>` : ""}`;
+}
+function rvFila(p){
+  const s = rvSugerencia(p);
+  const on = rv.elegidos.has(p.id);
+  const ordenado = !rvPendiente(p);
+  const chips = ordenado
+    ? rvChips(p.activityType, p.scopes || [], (p.participants || []).map(x => x.name || x.email))
+    : s ? rvChips(s.tipo, s.lugares, s.personas) : `<span class="rv-s falta">${t("sin sugerencia","no suggestion","sem sugestão","ללא הצעה")}</span>`;
+  const conf = !ordenado && s ? `<span class="rv-conf ${s.confianza === "alta" ? "a" : s.confianza === "baja" ? "b" : "m"}" title="${esc(rvConfianzaLabel(s.confianza))}" aria-label="${esc(rvConfianzaLabel(s.confianza))}"></span>` : "";
+  return `<div class="rv-row${on ? " on" : ""}">
+      <input type="checkbox" data-action="rv-elegir" data-post-id="${esc(p.id)}" ${on ? "checked" : ""} aria-label="${esc(t("Elegir «{t}»","Select “{t}”","Escolher «{t}»","בחירת «{t}»",{t:p.title || ""}))}">
+      <span class="rv-fecha">${esc(fmtDate(p.startDate))}</span>
+      <div class="rv-tit"><b dir="auto">${esc(p.title || t("(Sin título)","(Untitled)","(Sem título)","(ללא כותרת)"))}</b><div class="rv-sug">${chips}</div></div>
+      ${conf}
+      <button type="button" class="rv-acc" data-action="rv-editar" data-post-id="${esc(p.id)}">${t("Editar","Edit","Editar","עריכה")}</button>
+    </div>`;
+}
+function rvConfianzaLabel(c){
+  return c === "alta" ? t("Seguro","Sure","Seguro","בטוח") : c === "baja" ? t("Dudoso","Doubtful","Duvidoso","מפוקפק") : t("Más o menos","Fairly sure","Mais ou menos","די בטוח");
+}
+// El panel de la barra: tipo, lugar, personas, o los tres (Editar una fila).
+function rvBorradorNuevo(p){
+  const s = p ? rvSugerencia(p) : null;
+  const pend = p && rvPendiente(p);
+  const tipo = p ? (pend ? (s && s.tipo) || "" : p.activityType) : "";
+  const lugar = p ? ((pend ? (s ? s.lugares : []) : (p.scopes || []))[0] || null) : null;
+  const personas = p ? (pend ? (s ? s.personas : []) : (p.participants || []).map(x => x.name || x.email)) : [];
+  return {
+    tipo,
+    alcance: lugar ? lugar.type : "",
+    zona: lugar && lugar.type === "region" ? lugar.region : "",
+    pais: lugar && (lugar.type === "pais" || lugar.type === "ciudad") ? lugar.country : "",
+    ciudad: lugar && lugar.type === "ciudad" ? lugar.city : "",
+    personas: [...personas], libre: "",
+  };
+}
+function rvAlcanceDelBorrador(b){
+  if(b.alcance === "todo") return { type:"todo" };
+  if(b.alcance === "region" && b.zona) return { type:"region", region:b.zona };
+  if(b.pais && b.ciudad) return { type:"ciudad", country:b.pais, city:b.ciudad };
+  if(b.pais) return { type:"pais", country:b.pais };
+  return null;
+}
+function rvCampoTipo(b){
+  return `<label class="rv-campo"><span>${t("Tipo","Type","Tipo","סוג")}</span>
+      <select id="rvTipo"><option value="">${t("— elegí —","— choose —","— escolha —","— בחירה —")}</option>
+      ${EVENTO_TYPES.map(ty => `<option value="${esc(ty.key)}"${b.tipo === ty.key ? " selected" : ""}>${esc((ty.icon ? ty.icon + " " : "") + ty.label)}</option>`).join("")}
+      </select></label>`;
+}
+function rvCampoLugar(b){
+  const ciudades = b.pais ? cityPresetsFor(b.pais).map(c => c.name) : [];
+  if(b.ciudad && !ciudades.includes(b.ciudad)) ciudades.unshift(b.ciudad);
+  return `<label class="rv-campo"><span>${t("Lugar","Place","Lugar","מקום")}</span>
+      <select id="rvPais">
+        <option value="">${t("— elegí —","— choose —","— escolha —","— בחירה —")}</option>
+        <option value="@todo"${b.alcance === "todo" ? " selected" : ""}>🌐 ${t("Toda LatAm","All of LatAm","Toda a LatAm","כל LatAm")}</option>
+        ${Object.values(ZONES).map(z => `<option value="@zona:${esc(z.key)}"${b.alcance === "region" && b.zona === z.key ? " selected" : ""}>🌎 ${esc(t("Región {z}","{z} region","Região {z}","אזור {z}",{z:z.label}))}</option>`).join("")}
+        ${COUNTRIES.map(c => `<option value="${esc(c.name)}"${b.pais === c.name && b.alcance !== "todo" && b.alcance !== "region" ? " selected" : ""}>${esc(countryLabel(c.name))}</option>`).join("")}
+      </select></label>
+      ${b.pais && b.alcance !== "todo" && b.alcance !== "region" ? `<label class="rv-campo"><span>${t("Ciudad","City","Cidade","עיר")}</span>
+      <select id="rvCiudad"><option value="">${t("Todo el país","Whole country","País inteiro","כל המדינה")}</option>
+      ${ciudades.map(c => `<option value="${esc(c)}"${b.ciudad === c ? " selected" : ""}>${esc(cityLabel(b.pais, c))}</option>`).join("")}
+      </select></label>` : ""}`;
+}
+function rvCampoPersonas(b){
+  const equipo = [...state.roster].sort((x, y) => String(x.nickname).localeCompare(String(y.nickname)));
+  const enEquipo = new Set(equipo.map(u => normalize(u.nickname)));
+  const sueltos = b.personas.filter(n => !enEquipo.has(normalize(n)) && !equipo.some(u => normalize(String(u.name || "").split(/\s+/)[0]) === normalize(n)));
+  return `<div class="rv-campo rv-personas"><span>${t("Personas","People","Pessoas","אנשים")}</span>
+      <div class="rv-gente">${equipo.map(u => {
+        const on = b.personas.some(n => normalize(n) === normalize(u.nickname) || normalize(n) === normalize(String(u.name || "").split(/\s+/)[0]));
+        return `<button type="button" class="rv-persona${on ? " on" : ""}" data-action="rv-persona" data-nickname="${esc(u.nickname)}" aria-pressed="${on}">${esc(u.nickname)}</button>`;
+      }).join("")}${sueltos.map(n => `<button type="button" class="rv-persona on suelto" data-action="rv-persona" data-nickname="${esc(n)}" aria-pressed="true" title="${esc(t("Todavía no está en el equipo","Not on the team yet","Ainda não está na equipe","עדיין לא בצוות"))}">${esc(n)} ✕</button>`).join("")}</div>
+      <div class="rv-libre"><input id="rvLibre" type="text" maxlength="60" value="${esc(b.libre)}" placeholder="${esc(t("Otro nombre (alguien que no está en el equipo)","Another name (someone not on the team)","Outro nome (alguém que não está na equipe)","שם אחר (מישהו שלא בצוות)"))}">
+      <button type="button" class="btn-mini" data-action="rv-libre-sumar">${t("Sumar","Add","Adicionar","הוספה")}</button></div>
+    </div>`;
+}
+function rvPanel(){
+  const b = rv.borrador;
+  if(!rv.panel || !b) return "";
+  const titulo = rv.panel === "editar" ? t("Editar este evento","Edit this event","Editar este evento","עריכת האירוע")
+    : rv.panel === "tipo" ? t("Ponerles un tipo","Set a type","Definir um tipo","הגדרת סוג")
+    : rv.panel === "lugar" ? t("Ponerles un lugar","Set a place","Definir um lugar","הגדרת מקום")
+    : t("Sumarles personas","Add people","Adicionar pessoas","הוספת אנשים");
+  const campos = (rv.panel === "editar" || rv.panel === "tipo" ? rvCampoTipo(b) : "")
+    + (rv.panel === "editar" || rv.panel === "lugar" ? rvCampoLugar(b) : "")
+    + (rv.panel === "editar" || rv.panel === "personas" ? rvCampoPersonas(b) : "");
+  return `<div class="rv-panel" role="group" aria-label="${esc(titulo)}">
+      <b>${esc(titulo)}</b>
+      <div class="rv-campos">${campos}</div>
+      <div class="rv-panel-acc">
+        <button type="button" class="btn-secondary" data-action="rv-panel-cerrar">${t("Cancelar","Cancel","Cancelar","ביטול")}</button>
+        <button type="button" class="btn-primary" data-action="rv-panel-aplicar" ${rv.trabajando ? "disabled" : ""}>${rv.panel === "editar" ? t("Guardar","Save","Salvar","שמירה") : t("Aplicar a {n}","Apply to {n}","Aplicar a {n}","החלה על {n}",{n:rv.elegidos.size})}</button>
+      </div>
+    </div>`;
+}
+// Nombres que quedaron sueltos (gente que no estaba en el equipo): cuando
+// entran, se vinculan acá y pasan a ser participantes de verdad.
+function rvNombresSueltos(){
+  const cuenta = new Map();
+  state.posts.filter(esImportado).forEach(p => (p.participants || []).forEach(x => {
+    if(!x.email && x.name){ const k = normalize(x.name); const c = cuenta.get(k) || { name:x.name, n:0 }; c.n++; cuenta.set(k, c); }
+  }));
+  return [...cuenta.values()].sort((a, b) => b.n - a.n || a.name.localeCompare(b.name));
+}
+function renderNombresSueltos(){
+  const sueltos = rvNombresSueltos();
+  if(!sueltos.length) return "";
+  const equipo = [...state.roster].sort((x, y) => String(x.nickname).localeCompare(String(y.nickname)));
+  return `<section class="rv-sueltos">
+      <h3>${t("Nombres sueltos","Unlinked names","Nomes soltos","שמות לא מקושרים")}</h3>
+      <p class="hint">${t("Personas que figuran en eventos pero no están en el equipo. Si alguna entra, elegí quién es y sus eventos pasan a ser suyos.","People listed in events who aren't on the team. If one joins, pick who they are and their events become theirs.","Pessoas que aparecem em eventos mas não estão na equipe. Se alguma entrar, escolha quem é e os eventos passam a ser dela.","אנשים שמופיעים באירועים אך אינם בצוות. אם מישהו מצטרף, בחר/י מי זה והאירועים יעברו אליו.")}</p>
+      <div class="lp-rows">${sueltos.map(s => `<div class="rv-row">
+          <div class="rv-tit"><b>${esc(s.name)}</b><span class="rv-n">${t("{n} eventos","{n} events","{n} eventos","{n} אירועים",{n:s.n})}</span></div>
+          <select class="rv-vincular" data-nombre="${esc(s.name)}" aria-label="${esc(t("Quién es {n}","Who {n} is","Quem é {n}","מי זה {n}",{n:s.name}))}">
+            <option value="">${t("— es… —","— is… —","— é… —","— זה… —")}</option>
+            ${equipo.map(u => `<option value="${esc(u.email)}"${rv.vincular[s.name] === u.email ? " selected" : ""}>${esc(u.nickname)}</option>`).join("")}
+          </select>
+          <button type="button" class="btn-mini" data-action="rv-vincular" data-nombre="${esc(s.name)}" ${rv.vincular[s.name] && !rv.trabajando ? "" : "disabled"}>${t("Vincular","Link","Vincular","קישור")}</button>
+        </div>`).join("")}</div>
+    </section>`;
+}
+function renderRevisarCalendar(){
+  rvCargarSugerencias();
+  if(rv.cargando && !rv.sugerencias) return `<div class="empty-state"><div class="big">⏳</div>${t("Cargando…","Loading…","Carregando…","...טוען")}</div>`;
+  const pend = rvPendientes();
+  const porGrupo = {};
+  pend.forEach(p => { const g = rvGrupoDe(p); porGrupo[g] = (porGrupo[g] || 0) + 1; });
+  porGrupo.ordenados = state.posts.filter(p => esImportado(p) && !rvPendiente(p)).length;
+  const grupos = rvGrupos().filter(g => g.key === "actividad" || g.key === "ordenados" || porGrupo[g.key]);
+  const lista = rvLista();
+  // Lo elegido que ya no está en la lista (se ordenó, se filtró) se olvida.
+  const enLista = new Set(lista.map(p => p.id));
+  [...rv.elegidos].forEach(id => { if(!enLista.has(id)) rv.elegidos.delete(id); });
+  const seguros = lista.filter(p => { const s = rvSugerencia(p); return s && s.confianza === "alta"; }).length;
+  const todos = lista.length > 0 && lista.every(p => rv.elegidos.has(p.id));
+  const n = rv.elegidos.size;
+  const barra = n ? `<div class="rv-barra" role="toolbar" aria-label="${esc(t("Qué hacer con los elegidos","What to do with the selected ones","O que fazer com os escolhidos","מה לעשות עם הנבחרים"))}">
+      <b>${t("{n} elegidos","{n} selected","{n} escolhidos","{n} נבחרו",{n})}</b>
+      ${rv.grupo !== "ordenados" ? `<button type="button" class="prin" data-action="rv-sugerido" ${rv.trabajando ? "disabled" : ""}>✓ ${t("Usar lo sugerido","Use the suggestion","Usar o sugerido","שימוש בהצעה")}</button>` : ""}
+      <button type="button" data-action="rv-abrir" data-key="tipo" aria-expanded="${rv.panel === "tipo"}">${t("Tipo","Type","Tipo","סוג")} ▾</button>
+      <button type="button" data-action="rv-abrir" data-key="lugar" aria-expanded="${rv.panel === "lugar"}">${t("Lugar","Place","Lugar","מקום")} ▾</button>
+      <button type="button" data-action="rv-abrir" data-key="personas" aria-expanded="${rv.panel === "personas"}">${t("Personas","People","Pessoas","אנשים")} ▾</button>
+      <button type="button" class="peligro" data-action="rv-sacar" ${rv.trabajando ? "disabled" : ""}>${t("Sacar del Registro","Remove from the Log","Tirar do Registro","הסרה מהיומן")}</button>
+      <button type="button" class="x" data-action="rv-ninguno" aria-label="${esc(t("Soltar todos","Deselect all","Soltar todos","ביטול הבחירה"))}">✕</button>
+    </div>` : "";
+  return `${rv.error ? `<div class="gate-aviso">${t("No se pudieron leer las sugerencias ({m}). Igual se puede ordenar a mano.","Couldn't read the suggestions ({m}). You can still sort by hand.","Não foi possível ler as sugestões ({m}). Dá para organizar à mão mesmo assim.","לא ניתן היה לקרוא את ההצעות ({m}). עדיין אפשר לסדר ידנית.",{m:esc(rv.error)})}</div>` : ""}
+    <div class="rv-filtros" role="group" aria-label="${esc(t("Qué mirar","What to look at","O que ver","מה להציג"))}">
+      ${grupos.map(g => `<button type="button" class="rv-chip${rv.grupo === g.key ? " on" : ""}" data-action="rv-grupo" data-key="${g.key}" aria-pressed="${rv.grupo === g.key}">${esc(g.label)}<small>${porGrupo[g.key] || 0}</small></button>`).join("")}
+      <input id="rvBuscar" class="rv-buscar" type="search" value="${esc(rv.buscar)}" placeholder="${esc(t("Buscar: Mendoza, curso, Ran…","Search: Mendoza, course, Ran…","Buscar: Mendoza, curso, Ran…","חיפוש: מנדוסה, קורס, רן…"))}" aria-label="${esc(t("Buscar","Search","Buscar","חיפוש"))}">
+      ${rv.grupo !== "ordenados" ? `<label class="rv-seguro"><input type="checkbox" data-action="rv-seguros" ${rv.soloSeguros ? "checked" : ""}> ${t("Solo los seguros","Only the sure ones","Só os seguros","רק הבטוחים")}</label>` : ""}
+    </div>
+    ${barra}
+    ${rvPanel()}
+    ${lista.length ? `<div class="lp-rows">
+      <div class="rv-row rv-todos"><input type="checkbox" data-action="rv-todos" ${todos ? "checked" : ""} aria-label="${esc(t("Elegir todos los de la lista","Select everything in the list","Escolher todos da lista","בחירת כל הרשימה"))}">
+        <span class="rv-fecha">${t("Elegir todos","Select all","Escolher todos","בחירת הכל")}</span>
+        <div class="rv-tit"><span class="rv-n">${rv.grupo === "ordenados" ? t("{n} en esta lista","{n} in this list","{n} nesta lista","{n} ברשימה",{n:lista.length}) : t("{n} en esta lista · {s} seguros","{n} in this list · {s} sure","{n} nesta lista · {s} seguros","{n} ברשימה · {s} בטוחים",{n:lista.length, s:seguros})}</span></div></div>
+      ${lista.slice(0, rv.visibles).map(rvFila).join("")}
+      </div>
+      ${lista.length > rv.visibles ? `<button type="button" class="btn-secondary rv-mas" data-action="rv-mas">${t("Ver más ({n} más)","Show more ({n} more)","Ver mais ({n} a mais)","הצגת עוד ({n})",{n:lista.length - rv.visibles})}</button>` : ""}
+      ${rv.grupo !== "ordenados" ? `<div class="rv-leyenda"><span><i class="rv-conf a"></i>${t("Seguro","Sure","Seguro","בטוח")}</span><span><i class="rv-conf m"></i>${t("Más o menos","Fairly sure","Mais ou menos","די בטוח")}</span><span><i class="rv-conf b"></i>${t("Dudoso","Doubtful","Duvidoso","מפוקפק")}</span></div>` : ""}`
+      : `<div class="empty-state"><div class="big">✅</div>${rv.grupo === "ordenados" ? t("Todavía no se ordenó nada.","Nothing sorted yet.","Nada organizado ainda.","עדיין לא סודר דבר.") : t("No queda nada por ordenar acá.","Nothing left to sort here.","Não sobrou nada para organizar aqui.","לא נשאר כאן מה לסדר.")}</div>`}
+    ${renderNombresSueltos()}`;
+}
+// ---- Lo que hacen los botones ----
+async function rvAplicar(cambios, mensaje){
+  if(!cambios.length) return;
+  rv.trabajando = true; render();
+  try{
+    const n = await store.revisarCalendar.clasificar(cambios);
+    rv.elegidos.clear(); rv.panel = null; rv.borrador = null;
+    showCalendarNotice({ ok:true, message: mensaje(n) });
+  }catch(err){
+    console.error("No se pudo ordenar:", err);
+    showCalendarNotice({ ok:false, message: t("No se pudo guardar ({m}). No cambió nada.","Couldn't save ({m}). Nothing changed.","Não foi possível salvar ({m}). Nada mudou.","לא ניתן היה לשמור ({m}). דבר לא השתנה.",{m:err.code || err.message}) });
+  }finally{ rv.trabajando = false; render(); }
+}
+const rvOrdenados = n => t("Listo: {n} ordenados.","Done: {n} sorted.","Pronto: {n} organizados.","בוצע: {n} סודרו.",{n});
+function rvUsarSugerido(){
+  const elegidos = state.posts.filter(p => rv.elegidos.has(p.id));
+  const cambios = [];
+  let sin = 0;
+  elegidos.forEach(p => {
+    const s = rvSugerencia(p);
+    if(!s || !s.tipo){ sin++; return; }
+    const c = { id: p.id, activity_type: s.tipo };
+    if(s.lugares.length) c.scopes = s.lugares;
+    if(s.personas.length) c.participants = rvParticipantes(s.personas, p.participants);
+    cambios.push(c);
+  });
+  if(!cambios.length){
+    showCalendarNotice({ ok:false, message: t("Ninguno de los elegidos tiene un tipo sugerido: ponéselo con «Tipo».","None of the selected ones has a suggested type: set it with “Type”.","Nenhum dos escolhidos tem um tipo sugerido: defina com «Tipo».","לאף אחד מהנבחרים אין סוג מוצע: הגדר/י עם «סוג».") });
+    return;
+  }
+  rvAplicar(cambios, n => sin
+    ? t("Listo: {n} ordenados. {s} quedaron igual porque no tenían un tipo sugerido.","Done: {n} sorted. {s} stayed as they were because they had no suggested type.","Pronto: {n} organizados. {s} ficaram iguais porque não tinham tipo sugerido.","בוצע: {n} סודרו. {s} נשארו כמו שהיו כי לא היה להם סוג מוצע.",{n, s:sin})
+    : rvOrdenados(n));
+}
+function rvAplicarPanel(){
+  const b = rv.borrador;
+  if(!b) return;
+  const ids = rv.panel === "editar" ? [rv.editId] : [...rv.elegidos];
+  const alcance = rvAlcanceDelBorrador(b);
+  const quiere = k => rv.panel === "editar" || rv.panel === k;
+  if(quiere("tipo") && rv.panel !== "editar" && !b.tipo){ showCalendarNotice({ ok:false, message: t("Elegí un tipo.","Choose a type.","Escolha um tipo.","בחר/י סוג.") }); return; }
+  if(rv.panel === "lugar" && !alcance){ showCalendarNotice({ ok:false, message: t("Elegí un lugar.","Choose a place.","Escolha um lugar.","בחר/י מקום.") }); return; }
+  if(rv.panel === "personas" && !b.personas.length){ showCalendarNotice({ ok:false, message: t("Elegí al menos una persona.","Choose at least one person.","Escolha pelo menos uma pessoa.","בחר/י לפחות אדם אחד.") }); return; }
+  const cambios = ids.map(id => getPostById(id)).filter(Boolean).map(p => {
+    const c = { id: p.id };
+    if(quiere("tipo") && b.tipo) c.activity_type = b.tipo;
+    if(quiere("lugar")) c.scopes = alcance ? [alcance] : [];
+    if(rv.panel === "personas") c.participants = rvParticipantes(b.personas, p.participants);
+    if(rv.panel === "editar") c.participants = rvParticipantes(b.personas, []);
+    return c;
+  });
+  rvAplicar(cambios, rvOrdenados);
+}
+async function rvSacar(){
+  const ids = [...rv.elegidos];
+  if(!ids.length) return;
+  if(!(await appConfirm(t(
+    "¿Sacar {n} del Registro? Desaparecen de la app (con sus comentarios), pero siguen en Google Calendar y no vuelven a entrar.",
+    "Remove {n} from the Log? They disappear from the app (with their comments), but stay in Google Calendar and won't come back in.",
+    "Tirar {n} do Registro? Somem do app (com seus comentários), mas continuam no Google Calendar e não voltam a entrar.",
+    "להסיר {n} מהיומן? הם ייעלמו מהאפליקציה (עם התגובות), אבל יישארו ב-Google Calendar ולא ייכנסו שוב.",{n:ids.length}),
+    { danger:true, okLabel: t("Sacar del Registro","Remove from the Log","Tirar do Registro","הסרה מהיומן") }))) return;
+  rv.trabajando = true; render();
+  try{
+    const n = await store.revisarCalendar.sacar(ids);
+    rv.elegidos.clear(); rv.panel = null;
+    showCalendarNotice({ ok:true, message: t("Listo: {n} fuera del Registro. En Google Calendar siguen igual.","Done: {n} out of the Log. They're unchanged in Google Calendar.","Pronto: {n} fora do Registro. No Google Calendar continuam iguais.","בוצע: {n} הוסרו מהיומן. ב-Google Calendar הם ללא שינוי.",{n}) });
+  }catch(err){
+    console.error("No se pudo sacar del Registro:", err);
+    showCalendarNotice({ ok:false, message: t("No se pudo ({m}). No cambió nada.","Couldn't do it ({m}). Nothing changed.","Não foi possível ({m}). Nada mudou.","לא ניתן היה ({m}). דבר לא השתנה.",{m:err.code || err.message}) });
+  }finally{ rv.trabajando = false; render(); }
+}
+function rvVincular(nombre){
+  const email = rv.vincular[nombre];
+  const m = state.roster.find(u => u.email === email);
+  if(!m) return;
+  const k = normalize(nombre);
+  const cambios = state.posts.filter(esImportado).filter(p => (p.participants || []).some(x => !x.email && normalize(x.name) === k)).map(p => {
+    const sin = (p.participants || []).filter(x => !(!x.email && normalize(x.name) === k));
+    if(!sin.some(x => x.email && x.email.toLowerCase() === m.email.toLowerCase())) sin.push({ email: m.email, name: m.name || m.nickname });
+    return { id: p.id, participants: sin };
+  });
+  delete rv.vincular[nombre];
+  rvAplicar(cambios, n => t("Listo: {nombre} es {who} en {n} eventos.","Done: {nombre} is {who} in {n} events.","Pronto: {nombre} é {who} em {n} eventos.","בוצע: {nombre} הוא/היא {who} ב-{n} אירועים.",{nombre, who:m.nickname, n}));
+}
+
 function renderAuditoriaView(){
   const entries = state.auditLog;
   if(!entries.length) return `<div class="empty-state"><div class="big">🗂️</div>${t("Todavía no hay actividad registrada.","No activity recorded yet.","Ainda não há atividade registrada.","עדיין אין פעילות רשומה.")}</div>`;
@@ -16310,6 +16787,57 @@ document.addEventListener("click", async e=>{
     }
     moreMenuOpen = false; render();
   },
+    // ---- Revisar lo de Calendar (ver renderRevisarCalendar) ----
+    "rv-grupo": async (el) => { rv.grupo = el.dataset.key; rv.elegidos.clear(); rv.panel = null; rv.visibles = RV_PAGINA; render(); },
+    "rv-elegir": async (el, e, action, postId) => {
+    if(rv.elegidos.has(postId)) rv.elegidos.delete(postId); else rv.elegidos.add(postId);
+    if(rv.panel === "editar"){ rv.panel = null; rv.borrador = null; }
+    render();
+  },
+    "rv-todos": async () => {
+    const lista = rvLista();
+    const todos = lista.length > 0 && lista.every(p => rv.elegidos.has(p.id));
+    if(todos) rv.elegidos.clear(); else lista.forEach(p => rv.elegidos.add(p.id));
+    if(rv.panel === "editar"){ rv.panel = null; rv.borrador = null; }
+    render();
+  },
+    "rv-seguros": async () => { rv.soloSeguros = !rv.soloSeguros; rv.visibles = RV_PAGINA; render(); },
+    "rv-ninguno": async () => { rv.elegidos.clear(); rv.panel = null; rv.borrador = null; render(); },
+    "rv-mas": async () => { rv.visibles += RV_PAGINA; render(); },
+    "rv-sugerido": async () => { rvUsarSugerido(); },
+    "rv-abrir": async (el) => {
+    const k = el.dataset.key;
+    if(rv.panel === k){ rv.panel = null; rv.borrador = null; }
+    else { rv.panel = k; rv.borrador = rvBorradorNuevo(null); }
+    render();
+  },
+    "rv-editar": async (el, e, action, postId) => {
+    const p = getPostById(postId);
+    if(!p) return;
+    rv.elegidos.clear(); rv.elegidos.add(p.id);
+    rv.panel = "editar"; rv.editId = p.id; rv.borrador = rvBorradorNuevo(p);
+    render();
+    const panel = document.querySelector(".rv-panel");
+    if(panel){ panel.scrollIntoView({ block:"nearest" }); const f = panel.querySelector("select, input"); if(f) f.focus(); }
+  },
+    "rv-panel-cerrar": async () => { rv.panel = null; rv.borrador = null; if(rv.editId){ rv.elegidos.clear(); rv.editId = null; } render(); },
+    "rv-panel-aplicar": async () => { rvAplicarPanel(); },
+    "rv-persona": async (el) => {
+    const b = rv.borrador; if(!b) return;
+    const n = el.dataset.nickname;
+    const i = b.personas.findIndex(x => normalize(x) === normalize(n));
+    if(i >= 0) b.personas.splice(i, 1); else if(b.personas.length < 10) b.personas.push(n);
+    render();
+  },
+    "rv-libre-sumar": async () => {
+    const b = rv.borrador; if(!b) return;
+    const n = String(b.libre || "").trim().slice(0, 60);
+    if(n && b.personas.length < 10 && !b.personas.some(x => normalize(x) === normalize(n))) b.personas.push(n);
+    b.libre = ""; render();
+    const f = document.getElementById("rvLibre"); if(f) f.focus();
+  },
+    "rv-sacar": async () => { rvSacar(); },
+    "rv-vincular": async (el) => { rvVincular(el.dataset.nombre); },
     "toggle-more-menu": async (el, e, action, postId) => {
     moreMenuOpen = !moreMenuOpen; renderBottomNav();
   },
@@ -17420,6 +17948,12 @@ document.addEventListener("input", e=>{
     preaprobarDraft.email = el.value;
   } else if(el.id === "preName"){
     preaprobarDraft.name = el.value;
+  } else if(el.id === "rvBuscar"){
+    rv.buscar = el.value; rv.visibles = RV_PAGINA;
+    clearTimeout(searchRenderTimer);
+    searchRenderTimer = setTimeout(render, 150);
+  } else if(el.id === "rvLibre"){
+    if(rv.borrador) rv.borrador.libre = el.value;
   } else if(el.id === "auditSearch"){
     state.auditFilters.text = el.value; auditVisibleCount = 30; render();
   } else if(el.id === "usuariosSearch"){
@@ -17519,6 +18053,18 @@ document.addEventListener("input", e=>{
 
 document.addEventListener("change", e=>{
   const el = e.target;
+  // Revisar lo de Calendar: los selectores del panel y de "Nombres sueltos".
+  if(el.id === "rvTipo" && rv.borrador){ rv.borrador.tipo = el.value; return; }
+  if(el.id === "rvPais" && rv.borrador){
+    const b = rv.borrador, v = el.value;
+    b.ciudad = "";
+    if(v === "@todo"){ b.alcance = "todo"; b.pais = ""; b.zona = ""; }
+    else if(v.startsWith("@zona:")){ b.alcance = "region"; b.zona = v.slice(6); b.pais = ""; }
+    else { b.alcance = v ? "pais" : ""; b.pais = v; b.zona = ""; }
+    render(); return;
+  }
+  if(el.id === "rvCiudad" && rv.borrador){ rv.borrador.ciudad = el.value; rv.borrador.alcance = el.value ? "ciudad" : "pais"; return; }
+  if(el.classList && el.classList.contains("rv-vincular")){ rv.vincular[el.dataset.nombre] = el.value; render(); return; }
   // El campo de hexadecimal lleva el MISMO data-* que la muestra de color
   // que tiene al lado, así que alcanza con normalizar el valor acá y
   // dejarlo seguir por la rama que le corresponda: no hay un segundo

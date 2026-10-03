@@ -108,6 +108,23 @@ async function traerPosteos(){
   return [...porId.values()].map(aObjeto);
 }
 
+// Los eventos que un admin sacó del Registro (Administración › Revisar
+// lo de Calendar): siguen en Google Calendar, pero no se vuelven a traer.
+// Pedido de a páginas, como los posteos.
+async function traerSacados(){
+  const sacados = new Set();
+  for(;;){
+    const pagina = await rest(`calendar_sacados?select=evento&order=evento.asc&limit=1000&offset=${sacados.size}`);
+    const antes = sacados.size;
+    (pagina || []).forEach(f => sacados.add(f.evento));
+    if(sacados.size === antes) break;
+  }
+  return sacados;
+}
+export function estaSacado(ev, sacados){
+  return sacados.has(ev.id) || (!!ev.recurringEventId && sacados.has(ev.recurringEventId));
+}
+
 async function traerConfig(clave){
   const filas = await rest(`app_config?select=value&key=eq.${encodeURIComponent(clave)}`);
   return filas.length ? filas[0].value : null;
@@ -274,9 +291,11 @@ async function main(){
   // eventos de la misma serie en la misma corrida tienen que verse entre
   // ellos, igual que en la app (que trabaja sobre state.posts en vivo).
   const posteos = await traerPosteos();
+  const sacados = await traerSacados();
   let aplicados = 0, fallados = 0;
 
   for(const ev of eventos){
+    if(estaSacado(ev, sacados)) continue;
     let acciones;
     try{ acciones = decidir(ev, posteos, ctx); }
     catch(err){ fallados++; console.error(`  ✗ ${ev.id}: al decidir — ${err.message}`); continue; }

@@ -1,0 +1,177 @@
+-- ============================================================
+-- Revisar lo que llegó de Google Calendar
+-- ============================================================
+-- Todo evento creado directo en Google Calendar entra al Registro como
+-- "Otro" y sin lugar (lo trae el sincronizador o el navegador de alguien,
+-- a nombre de "Google Calendar"). En Administración › Revisar lo de
+-- Calendar un admin los ordena de a muchos: les pone tipo, lugar y
+-- personas, o los saca del Registro. Pedido del usuario el 3/10/2026
+-- (REDISENO.md, tanda 19).
+--
+-- Tres piezas:
+--   calendar_sugerencias  lo que propuso la clasificación del 3/10/2026
+--                         para cada evento (sin títulos ni fechas).
+--   calendar_sacados      los eventos que un admin sacó del Registro: los
+--                         dos sincronizadores los saltean, así no vuelven.
+--   dos funciones         clasificar_importados y sacar_del_registro.
+--
+-- Nada de esto avisa a nadie ni toca Google Calendar: no cambia la fecha
+-- de edición (sin "Cambios en tus eventos" ni "Editado por") y no pasa
+-- por la app que sincroniza con Calendar.
+--
+-- Se puede correr más de una vez sin romper nada.
+-- ============================================================
+
+create table if not exists public.calendar_sugerencias (
+  evento     text primary key,         -- el id del evento (o de la serie) en Google Calendar
+  grupo      text not null,
+  tipo       text,
+  lugares    jsonb not null default '[]'::jsonb,   -- con la forma de posts.scopes
+  personas   text[] not null default '{}',         -- nombres tal como aparecen en el título
+  confianza  text not null default 'media'
+);
+
+alter table public.calendar_sugerencias
+  drop constraint if exists sugerencias_forma;
+alter table public.calendar_sugerencias
+  add constraint sugerencias_forma check (
+    grupo in ('actividad', 'reunion', 'personal', 'gestion')
+    and (tipo is null or tipo ~ '^[a-z0-9]{1,40}$')
+    and confianza in ('alta', 'media', 'baja')
+    and jsonb_typeof(lugares) = 'array' and jsonb_array_length(lugares) <= 15
+    and coalesce(array_length(personas, 1), 0) <= 10
+  );
+
+create table if not exists public.calendar_sacados (
+  evento     text primary key,
+  titulo     text not null default '',
+  sacado_por text not null,
+  sacado_el  timestamptz not null default now()
+);
+
+alter table public.calendar_sacados
+  drop constraint if exists sacados_textos;
+alter table public.calendar_sacados
+  add constraint sacados_textos check (
+    length(evento) between 1 and 1024
+    and length(titulo) <= 300
+    and length(sacado_por) between 1 and 200
+  );
+
+-- 02-politicas.sql reparte los permisos de todas las tablas que existen
+-- cuando corre, y estas nacen después: se dan acá. Quién ve qué fila lo
+-- deciden las políticas de abajo.
+grant select on public.calendar_sugerencias to authenticated;
+grant select, delete on public.calendar_sacados to authenticated;
+revoke all on public.calendar_sugerencias, public.calendar_sacados from anon;
+
+alter table public.calendar_sugerencias enable row level security;
+alter table public.calendar_sacados     enable row level security;
+
+-- Las sugerencias las lee solo un admin (es quien ordena). Nadie las
+-- escribe desde el navegador: vienen de este archivo.
+drop policy if exists sugerencias_leer on public.calendar_sugerencias;
+create policy sugerencias_leer on public.calendar_sugerencias for select
+  using ((select public.es_admin_fijo()) or (select public.es_admin_rol()));
+
+-- Lo sacado lo lee cualquiera que puede escribir posteos: el navegador
+-- de cualquiera de ellos sincroniza con Calendar y tiene que saltearlo.
+-- Se escribe solo con sacar_del_registro; volver a traer uno es borrarlo
+-- de acá, y eso lo hace un admin.
+drop policy if exists sacados_leer on public.calendar_sacados;
+create policy sacados_leer on public.calendar_sacados for select
+  using ((select public.es_admin_fijo()) or (select public.puede_escribir()));
+
+drop policy if exists sacados_devolver on public.calendar_sacados;
+create policy sacados_devolver on public.calendar_sacados for delete
+  using ((select public.es_admin_fijo()) or (select public.es_admin_rol()));
+
+-- Un posteo que vino de Calendar: lo creó "Google Calendar", sin correo
+-- de nadie, y está atado a un evento.
+create or replace function public.es_importado(p public.posts) returns boolean
+  language sql stable as $$
+  select p.author_name = 'Google Calendar' and coalesce(p.author_email, '') = ''
+     and p.calendar_event_id is not null
+$$;
+
+
+-- ---------- Ponerles tipo, lugar y personas, de a muchos ----------
+-- p_cambios: [{ "id": "<posteo>", "activity_type"?: "...", "scopes"?: [...],
+-- "participants"?: [...] }, ...]. Lo que no viene, no se toca.
+--
+-- `security invoker`: corre con los permisos de quien llama, así que pasa
+-- por las mismas políticas, disparadores y validaciones que cualquier
+-- edición. No toca last_edited_*: ordenar no es editar el contenido.
+create or replace function public.clasificar_importados(p_cambios jsonb)
+returns integer language plpgsql security invoker set search_path = '' as $$
+declare
+  c jsonb;
+  n integer := 0;
+  filas integer;
+begin
+  if not (public.es_admin_fijo() or public.es_admin_rol()) then
+    raise exception 'Ordenar lo que vino de Calendar lo hace un admin'
+      using errcode = 'insufficient_privilege';
+  end if;
+  if jsonb_typeof(p_cambios) <> 'array' or jsonb_array_length(p_cambios) > 1000 then
+    raise exception 'Se ordenan hasta 1000 por vez'
+      using errcode = 'check_violation';
+  end if;
+  for c in select * from jsonb_array_elements(p_cambios) loop
+    if jsonb_typeof(c) <> 'object' or coalesce(c ->> 'id', '') = ''
+       or exists (select 1 from jsonb_object_keys(c) k
+                   where k not in ('id', 'activity_type', 'scopes', 'participants')) then
+      raise exception 'Cada cambio es {id, activity_type, scopes, participants}'
+        using errcode = 'check_violation';
+    end if;
+    update public.posts p set
+      activity_type = case when c ? 'activity_type' then c ->> 'activity_type' else p.activity_type end,
+      scopes        = case when c ? 'scopes' then c -> 'scopes' else p.scopes end,
+      participants  = case when c ? 'participants' then c -> 'participants' else p.participants end
+    where p.id = c ->> 'id' and public.es_importado(p);
+    get diagnostics filas = row_count;
+    n := n + filas;
+  end loop;
+  return n;
+end $$;
+
+revoke execute on function public.clasificar_importados(jsonb) from public, anon;
+grant execute on function public.clasificar_importados(jsonb) to authenticated;
+
+
+-- ---------- Sacarlos del Registro ----------
+-- Borra el posteo (y sus respuestas, en cascada) y anota el evento en
+-- calendar_sacados para que no vuelva. Google Calendar no se toca.
+--
+-- `security definer` porque borrar posteos es solo del admin fijo (ver
+-- posts_borrar): esto abre esa puerta a los admins, pero solo para lo que
+-- vino de Calendar, y deja anotado quién lo sacó. El registro de
+-- actividad anota cada borrado (registrar_posteo, 04-funciones.sql).
+create or replace function public.sacar_del_registro(p_ids text[])
+returns integer language plpgsql security definer set search_path = '' as $$
+declare
+  yo text := public.mi_correo();
+  p public.posts;
+  n integer := 0;
+begin
+  if not (public.es_admin_fijo() or public.es_admin_rol()) then
+    raise exception 'Sacar del Registro lo que vino de Calendar lo hace un admin'
+      using errcode = 'insufficient_privilege';
+  end if;
+  if coalesce(array_length(p_ids, 1), 0) > 1000 then
+    raise exception 'Se sacan hasta 1000 por vez'
+      using errcode = 'check_violation';
+  end if;
+  for p in select * from public.posts where id = any(p_ids) loop
+    if not public.es_importado(p) then continue; end if;
+    insert into public.calendar_sacados (evento, titulo, sacado_por)
+    values (p.calendar_event_id, left(coalesce(p.title, ''), 300), yo)
+    on conflict (evento) do nothing;
+    delete from public.posts where id = p.id;
+    n := n + 1;
+  end loop;
+  return n;
+end $$;
+
+revoke execute on function public.sacar_del_registro(text[]) from public, anon;
+grant execute on function public.sacar_del_registro(text[]) to authenticated;

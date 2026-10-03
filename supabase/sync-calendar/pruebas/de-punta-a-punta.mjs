@@ -55,6 +55,10 @@ function baseDeMentira(guion){
       reg.lecturas = (reg.lecturas || 0) + 1;
       return ok(lista.slice(desde, desde + cuantos));
     }
+    if(u.includes("/rest/v1/calendar_sacados")){
+      const q = new URL(u).searchParams;
+      return ok((guion.sacados || []).slice(Number(q.get("offset") || 0)).map(evento => ({ evento })));
+    }
     if(u.includes("/rest/v1/replies")){
       reg.replies.push(cuerpo);
       return ok(null);
@@ -132,6 +136,23 @@ const diaEntero = (id, f, extra={}) => ({ id, status:"confirmed", summary:"Reuni
   eq("la hora la pone la base, no este programa", reg.posts[0].created_at, "1970-01-01T00:00:00.000Z");
   eq("y el token nuevo queda guardado", reg.config.calendarSync.syncToken, "tok1");
   eq("con la fecha de la última corrida", typeof reg.config.calendarSync.lastSyncedAt, "string");
+}
+
+/* ---------- Lo que un admin sacó del Registro no vuelve ----------
+   Administración › Revisar lo de Calendar: el evento sigue en Google
+   Calendar, pero si cambia ahí (o se relee el calendario entero) no tiene
+   que volver a nacer como posteo. Tampoco una repetición de una serie
+   sacada. */
+{
+  const reg = baseDeMentira({ sacados:["evS", "serieS"], paginas:[{ items:[
+    diaEntero("evS","2026-09-01",{ summary:"Reunión semanal, renombrada" }),
+    diaEntero("serieS_20260908","2026-09-08",{ summary:"Reunión semanal", recurringEventId:"serieS" }),
+    diaEntero("evB","2026-09-02",{ summary:"Charla nueva" }),
+  ], nextSyncToken:"tok1" }] });
+  const r = await callado(()=> main());
+  eq("lo sacado se saltea y lo demás se aplica", [r.aplicados, r.fallados], [1, 0]);
+  eq("no nace ningún posteo de lo sacado", reg.posts.map(p => p.calendar_event_id), ["evB"]);
+  eq("y el token avanza igual", reg.config.calendarSync.syncToken, "tok1");
 }
 
 /* ---------- Un cambio sobre un posteo que ya existe ---------- */
