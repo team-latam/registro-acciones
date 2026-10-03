@@ -121,17 +121,16 @@ importador.
 
 Lo que queda, en orden:
 
-1. **Ver si en Firebase quedó algo que no esté en Supabase.** Se baja la
-   última copia de Firebase (desde una pestaña con `?base=firebase`:
-   Preferencias → Copia de seguridad → Copia completa) y se la elige en
-   `importar.html`, que la compara con lo que hay y muestra, una por una,
-   las cosas que faltan en Supabase. Mirar no cambia nada. Si hay algo que
-   traer, el botón «Traer lo que falta» agrega eso y nada más: no toca ni
-   saca nada de lo que ya está.
-2. **Cerrar Firebase**: reglas que no dejan leer ni escribir nada, y
-   después borrar la base de Firestore y el login de Firebase. **No el
-   proyecto de Google Cloud** que está detrás (ahí viven el permiso y la
-   clave de Calendar). Y sacar de la app todo lo de Firebase.
+1. ~~**Ver si en Firebase quedó algo que no esté en Supabase.**~~ **Hecho
+   el 3 de octubre.** Se bajó la última copia de Firebase y `importar.html`
+   la comparó con Supabase: faltaban 4 posteos, 6 comentarios, 4 registros
+   de actividad y unas preferencias. «Traer lo que falta» los agregó (sin
+   tocar ni sacar nada de lo que ya estaba), y ahora dice que no falta nada.
+2. **Cerrar Firebase.** Las reglas de `firestore.rules` ya no dejan leer ni
+   escribir nada, a nadie; se publican a mano en Firebase Console. Después,
+   borrar la base de Firestore y el login de Firebase. **No el proyecto de
+   Google Cloud** que está detrás (ahí viven el permiso y la clave de
+   Calendar). Y sacar de la app todo lo de Firebase.
 
 Las preferencias personales de cada uno (colores, avisos) no vienen de
 Firebase: cada persona las vuelve a elegir.

@@ -372,8 +372,10 @@ Lo que falta, en orden:
 2. ~~**Importación final** con el importador.~~ **No se hizo, a propósito:**
    para el 3 de octubre el equipo ya trabajaba en Supabase y tenía ahí
    cosas que Firebase no; dejar Supabase igual a Firebase las habría
-   borrado. La opción se sacó del importador. Queda solo ver si en
-   Firebase quedó algo que falte y traerlo con «Completar lo que falta».
+   borrado. La opción se sacó del importador. En cambio se miró qué había
+   en Firebase que faltara en Supabase (4 posteos, 6 comentarios, 4
+   registros de actividad y unas preferencias) y se trajo solo eso, con
+   «Traer lo que falta».
 3. ~~Cambiar la base por defecto a Supabase y sacar el cartel.~~ **Hecho
    el 3 de octubre.** `?base=firebase` queda unos días, con un cartel, solo
    para bajar la última copia de Firebase.
@@ -385,7 +387,14 @@ Lo que falta, en orden:
 5. Sacar la carga de Firebase en modo Supabase: hoy se inicializa igual,
    solo como último recurso para el permiso de Calendar, que ya se pide por
    Google Identity Services.
-6. **Antes del paso 3: copias de seguridad de Supabase** (punto 13).
+6. **Copias de seguridad de Supabase** (punto 13). Iban antes del paso 3;
+   el cambio se adelantó porque el equipo ya trabajaba en Supabase, así
+   que **hoy no hay ninguna copia de lo que se carga**. Es lo más urgente
+   que queda.
+7. **Cerrar Firestore**: `firestore.rules` ya no deja leer ni escribir
+   nada, a nadie. Se publica a mano en Firebase Console. Después, borrar
+   la base de Firestore, el login de Firebase y el registro de la app web
+   (no el proyecto: ver el paso 4).
 
 ## El código que sobra
 
