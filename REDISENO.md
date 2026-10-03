@@ -234,6 +234,24 @@ Las opciones se compararon en https://claude.ai/artifact/2vtYrPhNKwsbqN8FqX16Jq
   tarjeta, como primera fila.
 - Lugares: cada ciudad en la misma lista que Personas y Tipos.
 
+### 15. Revisión completa en celular — HECHO (3 oct 2026)
+
+Barrido automático a 390px de las 37 pantallas en es/en/pt/he y en modo
+oscuro (es y he), midiendo desbordes y textos cortados, más la revisión a
+ojo de las hojas de contacto. Lo que salió:
+
+- La campanita: el panel colgaba del botón y se salía 16px de la pantalla
+  (en hebreo por el otro lado). En angosto es fijo, de borde a borde.
+- "@usuario" en hebreo: la @ es neutra y el bidi la mandaba al final
+  ("diego@") en el menú del avatar, el perfil y las tarjetas. Cada
+  @usuario va aislado como texto LTR.
+- Modo oscuro: la pestaña activa de la barra de abajo y los números
+  grandes de Reportes y del Resumen iban en petróleo, casi el fondo. Van
+  en celeste (`--acento-fuerte`).
+- Ficha de Personas: "Reenviar" y "Sacar" se partían en dos renglones.
+- Lo que el barrido marca y es a propósito: la semana del Calendario se
+  desliza de costado (con su pista), y los textos con puntos suspensivos.
+
 ## Fuera de alcance (necesitan algo que la app no tiene)
 
 - Mandar correos (resumen semanal, invitaciones): no hay servicio de

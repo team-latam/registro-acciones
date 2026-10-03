@@ -119,6 +119,9 @@
     --danger:#ef4444;
     --shadow: 0 6px 24px rgba(0,0,0,0.45);
     color-scheme: dark;
+    /* Lo que en claro va en petróleo sobre fondo claro (números grandes,
+       pestaña activa de abajo): en oscuro el petróleo es casi el fondo. */
+    --acento-fuerte:#6fd8ec;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
@@ -697,6 +700,7 @@
   .lp-grid2{ display:grid; grid-template-columns:minmax(0,1fr) 88px; gap:12px; }
   .lp-rol-fijo{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
   .lp-cal{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .lp-cal-btns{ display:inline-flex; gap:8px; white-space:nowrap; }
   .lp-kv{ display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:12px; }
   .lp-kv small{ display:block; font-size:11px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:var(--text-muted); }
   .lp-kv b{ font-size:14px; }
@@ -1947,6 +1951,8 @@
      WhatsApp, pero con la misma idea de resaltar la mención del resto
      del texto. */
   .mention-tag{ color:var(--celeste-dark); font-weight:700; cursor:pointer; }
+  /* La @ es neutra: en hebreo el bidi la mandaba al final ("diego@"). */
+  .mention-tag, .up-nick, .um-nickname > span{ direction:ltr; unicode-bidi:isolate; }
   .mention-tag:hover{ text-decoration:underline; }
   /* Nombre de un participante clickeable (👥 Participantes: ...) — a
      diferencia de .mention-tag (para el "@nickname" propiamente dicho),
@@ -2004,12 +2010,20 @@
   .bell-btn:hover, .bell-btn.open{ border-color:#fff; }
   .mentions-menu{
     position:absolute; top:calc(100% + 12px); inset-inline-end:0; width:min(340px, calc(100vw - 24px));
+    /* En angosto se vuelve fijo y de borde a borde (ver la regla de 520px):
+       colgado del botón se salía de la pantalla. */
     background:var(--card); color:var(--text); border-radius:var(--radius-md);
     box-shadow:0 14px 36px rgba(8,42,44,0.28); padding:10px; z-index:60; text-align:start;
   }
   .mentions-menu::before{
     content:""; position:absolute; top:-6px; inset-inline-end:13px; width:12px; height:12px;
     background:var(--card); transform:rotate(45deg); border-radius:2px;
+  }
+  /* En angosto, fijo y de borde a borde: colgado del botón se salía de la
+     pantalla. Va después de la regla base porque la pisa. */
+  @media (max-width:520px){
+    .mentions-menu{ position:fixed; top:calc(var(--header-h, 70px) + 6px); inset-inline:12px; width:auto; max-height:calc(100vh - var(--header-h, 70px) - 90px); overflow:auto; }
+    .mentions-menu::before{ display:none; }
   }
   .mentions-menu-title{ font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.4px; color:var(--text-muted); padding:4px 8px 8px; }
   .mention-item{
@@ -2115,7 +2129,7 @@
   /* Los tres números de arriba, al lado del total. */
   .rep-kpis{ display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:12px; margin-bottom:18px; }
   .rep-kpi{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md); padding:12px 16px; box-shadow:var(--shadow); }
-  .rep-kpi-num{ font-size:26px; font-weight:800; color:var(--petroleo); line-height:1.1; }
+  .rep-kpi-num{ font-size:26px; font-weight:800; color:var(--acento-fuerte, var(--petroleo)); line-height:1.1; }
   .rep-kpi-txt{ font-size:12.5px; font-weight:700; color:var(--text-muted); margin-top:2px; }
   .rep-kpi-delta{ display:block; font-size:12px; font-weight:700; margin-top:4px; color:var(--text-muted); }
   .rep-kpi-delta.sube{ color:var(--ok-text); }
@@ -2728,7 +2742,7 @@
       flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; position:relative;
       border:none; background:none; color:var(--text-muted); font-family:inherit; font-size:10.5px; font-weight:700; cursor:pointer; padding:4px 0;
     }
-    .bn-item.active{ color:var(--petroleo); }
+    .bn-item.active{ color:var(--acento-fuerte, var(--petroleo)); }
     .bn-ico{ font-size:20px; line-height:1; }
     .bn-gap{ flex:1; }
     .bn-dot{ position:absolute; top:6px; left:calc(50% + 8px); width:8px; height:8px; border-radius:50%; background:var(--danger); }
@@ -9472,7 +9486,7 @@ function renderPersonaPanel(u){
         ? `<div class="lp-cal"><span class="status-pill approved">${t("Compartido","Shared","Compartilhado","משותף")}</span><button type="button" class="btn-ghost btn-ghost-chico" data-action="unshare-calendar" data-email="${esc(u.email)}">${t("Sacar del Calendar","Remove from Calendar","Tirar do Calendar","הסרה מהיומן")}</button></div>`
         : `<div class="lp-cal"><span class="status-pill observer">${t("Sin Calendar","No Calendar","Sem Calendar","ללא יומן")}</span><span class="hint">${t("Un observador solo mira: no carga eventos.","An observer only looks: doesn't log events.","Um observador só olha: não carrega eventos.","משקיף/ה רק צופה: לא רושם/ת אירועים.")}</span></div>`)
     : u.calendarShared
-    ? `<div class="lp-cal"><span class="status-pill approved">✅ ${t("Invitación enviada","Invite sent","Convite enviado","הזמנה נשלחה")}</span><button type="button" class="btn-ghost btn-ghost-chico" data-action="resend-calendar-invite" data-email="${esc(u.email)}">${t("Reenviar","Resend","Reenviar","שליחה חוזרת")}</button><button type="button" class="btn-ghost btn-ghost-chico" data-action="unshare-calendar" data-email="${esc(u.email)}">${t("Sacar","Remove","Tirar","הסרה")}</button></div>`
+    ? `<div class="lp-cal"><span class="status-pill approved">✅ ${t("Invitación enviada","Invite sent","Convite enviado","הזמנה נשלחה")}</span><span class="lp-cal-btns"><button type="button" class="btn-ghost btn-ghost-chico" data-action="resend-calendar-invite" data-email="${esc(u.email)}">${t("Reenviar","Resend","Reenviar","שליחה חוזרת")}</button><button type="button" class="btn-ghost btn-ghost-chico" data-action="unshare-calendar" data-email="${esc(u.email)}">${t("Sacar","Remove","Tirar","הסרה")}</button></span></div>`
     : `<div class="lp-cal"><span class="status-pill observer">${t("Sin Calendar","No Calendar","Sem Calendar","ללא יומן")}</span><button type="button" class="btn-mini" data-action="share-calendar" data-email="${esc(u.email)}">${t("Compartir Calendar","Share Calendar","Compartilhar Calendar","שיתוף היומן")}</button></div>`;
   return `<aside class="lp-panel" aria-label="${esc(u.name || u.email)}">
     <div class="lp-ph">
