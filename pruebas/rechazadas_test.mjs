@@ -51,7 +51,7 @@ eq("y la fila sigue", await page.locator(".row-x").count(), 2);
 await page.evaluate(()=>{ window.__confirmado = true; window.__alertas = []; });
 await page.locator('.row-x[data-email="spam@x.com"]').click();
 eq("borra sin avisar de más", await page.evaluate(()=>window.__alertas), []);
-eq("y pasa por la capa de datos, no por Firestore directo",
+eq("y pasa por la capa de datos",
    await page.evaluate(()=>window.__borrados), ["spam@x.com"]);
 
 // ---- si el servidor lo rechaza, se avisa ----

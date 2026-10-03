@@ -750,7 +750,6 @@
     background:var(--warn-bg); border:1px solid var(--warn-border); color:var(--warn-text);
     border-radius:var(--radius-md); padding:16px 18px; margin-bottom:16px; font-size:13.5px; line-height:1.5;
   }
-  .setup-banner code{ background:var(--warn-border); padding:1px 6px; border-radius:5px; }
   /* Flota encima del contenido (no empuja nada) y se desvanece sola. */
   .calendar-notice{
     position:fixed; left:50%; bottom:24px; z-index:70; max-width:min(560px, calc(100vw - 32px));
@@ -1582,7 +1581,6 @@
   .btn-secondary{ background:var(--surface-alt); color:var(--text); border:none; padding:11px 18px; border-radius:999px; font-weight:700; font-size:13.5px; cursor:pointer; }
   .btn-primary{ background:var(--petroleo); color:#fff; border:none; padding:11px 20px; border-radius:999px; font-weight:700; font-size:13.5px; cursor:pointer; }
   .btn-primary:disabled{ opacity:0.5; cursor:not-allowed; }
-  a.btn-primary{ display:inline-block; text-decoration:none; text-align:center; }
   .btn-primary.danger{ background:var(--danger); }
   .confirm-message{ margin:2px 0 18px; font-size:14.5px; line-height:1.55; color:var(--ink); white-space:pre-wrap; }
   .form-error{ color:var(--danger); font-size:12.5px; margin-top:6px; }
@@ -2293,49 +2291,24 @@
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" crossorigin=""></script>
 <script type="module">
 /* ======================================================================
-   CONFIGURACIÓN DE FIREBASE
-   Reemplazá estos valores por los de tu proyecto (Firebase Console →
-   Configuración del proyecto → Tus apps → Config del SDK). Ver README.md
-   para el paso a paso completo (crear proyecto, activar Firestore,
-   reglas de seguridad, hosting).
+   LA BASE: SUPABASE
+
+   La base del equipo desde el 3 de octubre de 2026 (antes fue Firebase,
+   que quedó cerrado: ver supabase/LEEME.md).
+
+   Estos dos valores son públicos a propósito: viajan a cualquiera que
+   abra la página, y así tiene que ser. La clave "publishable" solo deja
+   hablar con la base; lo que cada uno puede leer o escribir lo deciden
+   los permisos de supabase/02-politicas.sql, del lado del servidor. Lo
+   que NO puede aparecer nunca acá es la llave de servicio (secret).
    ====================================================================== */
-const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyAwaOoqWUQFfZHlhl03ezu85GfZK1rvXCE",
-  authDomain: "team-latam-2f320.firebaseapp.com",
-  projectId: "team-latam-2f320",
-  storageBucket: "team-latam-2f320.firebasestorage.app",
-  messagingSenderId: "40280679854",
-  appId: "1:40280679854:web:9a56ca7dc806adb6b8943f",
-};
-
-const CONFIG_IS_PLACEHOLDER = FIREBASE_CONFIG.apiKey === "YOUR_API_KEY";
-
-/* ----------------------------------------------------------------------
-   A QUÉ BASE APUNTA ESTA PESTAÑA
-
-   A Supabase: es la base del equipo desde el 3 de octubre de 2026. Para
-   entonces el equipo ya trabajaba ahí (con `?base=supabase`, durante la
-   prueba), y Supabase tenía cosas que Firebase no.
-
-   `?base=supabase` sigue andando: es lo mismo que no poner nada, así que
-   ningún enlace guardado se rompe.
-
-   `?base=firebase` abre la base vieja, en esa pestaña sola y con un
-   cartel que lo avisa. Queda unos días, para un solo uso: bajar la
-   última copia de Firebase. Después se va con el resto de Firebase.
----------------------------------------------------------------------- */
 const SUPABASE_URL = "https://benonmzlgdjkhzauamrz.supabase.co";
 const SUPABASE_KEY = "sb_publishable_Y9rfOHOQJ1fbSKcRltQiZQ_TRErHBsB";
-function baseElegida(){
-  try{ return new URLSearchParams(location.search).get("base") === "firebase" ? "firebase" : "supabase"; }
-  catch(e){ return "supabase"; }
-}
-const BASE = baseElegida();
 
 // Único email con permisos de administrador (aprueba/rechaza accesos).
-// Está hardcodeado también dentro de firestore.rules (función isAdmin()):
-// si se cambia acá, hay que cambiarlo también ahí y volver a publicar las
-// reglas, o la persona nueva no va a poder aprobar/rechazar nada.
+// Está también en la base, en admin_fijo() de supabase/02-politicas.sql:
+// si se cambia acá, hay que cambiarlo también ahí, o la persona nueva no
+// va a poder aprobar/rechazar nada.
 const ADMIN_EMAIL = "benny@team-latam.com";
 
 // ---------- Idioma / traducción: primitivas (van ACÁ, antes de
@@ -2505,7 +2478,7 @@ const CITY_PRESETS = {
 // ZONES, los países no son editables por el admin — son fijos en el código —
 // así que acá alcanza con una tabla derecha, sin el mecanismo de "respetar
 // si el admin ya escribió otra cosa". OJO: countryLabel() es solo para
-// MOSTRAR. El identificador real (el que se guarda en Firestore dentro de
+// MOSTRAR. El identificador real (el que se guarda en la base dentro de
 // cada scope, el que se usa como key de CITY_PRESETS/COUNTRY_BY_NAME/
 // ZONE_COUNTRIES, y el que viaja en data-country de cada botón) sigue
 // siendo SIEMPRE el nombre en español (c.name) — cambiarlo por idioma
@@ -2566,7 +2539,7 @@ function countryLabel(name){
 // existe en Belice y en Guatemala, "La Paz" en Bolivia y México) — hace
 // falta la key del país para desambiguar. cityLabel() también es solo
 // para MOSTRAR: el identificador real sigue siendo CITY_PRESETS[country]
-// [i].name en español (se guarda así en cada scope de Firestore, viaja en
+// [i].name en español (se guarda así en cada scope, en la base; viaja en
 // data-city, y es lo que compara scopeLevelFor() al resolver un alcance).
 const DEFAULT_CITY_LABELS = {
   "Argentina": {
@@ -2706,7 +2679,7 @@ function cityLabel(country, city){
   const row = byCity && hasOwn(byCity, city) ? byCity[city] : null;
   return row ? row[currentLang()] : city;
 }
-// Lookups con claves que vienen de Firestore (país/ciudad de un scope):
+// Lookups con claves que vienen de la base (país/ciudad de un scope):
 // con `obj[key]` a secas, "__proto__"/"constructor" devuelven cosas
 // heredadas de Object.prototype en vez de undefined.
 function hasOwn(obj, key){ return Object.prototype.hasOwnProperty.call(obj, key); }
@@ -2774,7 +2747,7 @@ const ACTIVITY_BY_KEY = Object.fromEntries(ACTIVITY_TYPES.map(ty=>[ty.key,ty]));
 
 // Traducción de los 7 tipos de actividad DE FÁBRICA. El admin puede
 // renombrarlos (o agregar otros) desde Configuración > Tipos de
-// actividad — eso queda guardado en Firestore como texto libre suyo, no
+// actividad — eso queda guardado en la base como texto libre suyo, no
 // como una clave traducible, así que NO se toca: refreshActivityLabels()
 // solo re-etiqueta una entrada si su label actual coincide con alguna de
 // las 4 traducciones conocidas para esa key (o sea, sigue siendo "de
@@ -2802,10 +2775,10 @@ refreshActivityTypeLabels();
 function esc(s){
   return String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 }
-// Espejo de los topes de firestore.rules (isValidPostBase/isValidReplyCreate).
-// Se chequean acá con un mensaje claro ANTES de escribir: si no, el
-// undécimo @ o el decimosexto lugar fallaban con un "Missing or
-// insufficient permissions" pelado después de armar todo el posteo.
+// Espejo de los topes de la base (posts_listas y compañía, en
+// supabase/03-validacion.sql). Se chequean acá con un mensaje claro ANTES
+// de escribir: si no, el undécimo @ o el decimosexto lugar fallarían con
+// un error de la base pelado después de armar todo el posteo.
 const MAX_SCOPES = 15, MAX_LINKS = 10, MAX_PARTICIPANTS = 10, MAX_MENTIONS = 10;
 const MAX_POST_CONTENT = 5000, MAX_REPLY_CONTENT = 3000;
 function tooManyMentionsMsg(){
@@ -2885,10 +2858,10 @@ function safeUrl(u){
   return null;
 }
 // Imágenes y adjuntos embebidos: solo data: URLs con cuerpo base64 puro.
-// Las imágenes SIEMPRE se generan acá adentro (compressImage →
+// Es como está una foto o un archivo recién elegido, antes de subirlo:
+// las imágenes SIEMPRE se generan acá adentro (compressImage →
 // canvas.toDataURL) y los adjuntos con FileReader, así que cualquier
-// otra forma es un documento escrito a mano contra Firestore — las
-// reglas solo chequean que `images`/`files` sean listas, no qué tienen.
+// otra forma vino de otro lado y no se pinta.
 // Devuelven "" si no pasa: no se pinta nada, y nunca llega a un atributo
 // un string que pueda cerrarlo (el charset validado no incluye comillas,
 // < > ni espacios, por eso no hace falta esc() encima).
@@ -2901,8 +2874,8 @@ function esUrlDelBucket(u){
 }
 function safeImageSrc(src){
   if(typeof src !== "string") return "";
-  if(IMAGE_DATA_URL_RE.test(src)) return src;   // Firebase: el archivo adentro
-  return esUrlDelBucket(src) ? src : "";        // Supabase: una URL que caduca
+  if(IMAGE_DATA_URL_RE.test(src)) return src;   // recién elegida, sin subir
+  return esUrlDelBucket(src) ? src : "";        // ya subida: su URL firmada
 }
 // Para lo que se muestra chico (las fotos de una tarjeta, las de un
 // borrador): la miniatura, si la foto tiene. El visor abre la entera.
@@ -2974,10 +2947,9 @@ const ACEPTA_ARCHIVOS = [
 // tiene MIME (pasa con algunos PDF en Android, y con casi todo en algunos
 // Windows); no puede ejecutar nada.
 //
-// OJO: esta lista tiene que coincidir con la de firestore.rules
-// (isValidFiles) y con allowed_mime_types del bucket en
-// supabase/01-tablas.sql. Las tres validan lo mismo de su lado, y si una
-// se queda atrás el archivo entra en el navegador y lo rechaza la base.
+// OJO: esta lista tiene que coincidir con allowed_mime_types del bucket en
+// supabase/01-tablas.sql (lo exige formatos_test.mjs). Si se queda atrás,
+// el archivo entra en el navegador y lo rechaza la base.
 const FILE_DATA_URL_RE = new RegExp("^data:(?:" +
   [...TIPOS_DE_ARCHIVO.flatMap(x=>x.mimes), "application/octet-stream"]
     .map(m=>m.replace(/[.+*?^${}()|[\]\\]/g, "\\$&")).join("|") +
@@ -2987,7 +2959,7 @@ function safeFileDataUrl(u){
   if(FILE_DATA_URL_RE.test(u)) return u;
   return esUrlDelBucket(u) ? u : "";
 }
-// Colores de zona: vienen de la config del admin en Firestore y van
+// Colores de zona: vienen de la config del admin en la base y van
 // derecho a un style="" — se aceptan solo #rrggbb (que es lo único que
 // produce el <input type="color">), cualquier otra cosa cae al gris.
 function safeColor(c){
@@ -3309,7 +3281,7 @@ function fmtHourLabel(h){
   if(!uses12h()) return `${pad2(h)}:00`;
   return new Date(2000,0,1,h,0).toLocaleTimeString(dateLocale(), { hour:"numeric", hour12:true });
 }
-// Solo la hora (HH:MM) de un timestamp de Firestore — se usa en la
+// Solo la hora (HH:MM) de una fecha guardada — se usa en la
 // tarjeta de posteo para distinguir el orden entre varios del mismo día
 // (la fecha del posteo puede ser la del evento, no la de creación; en
 // una Rutina son siempre "hoy" para todos, así que sin la hora no había
@@ -3532,8 +3504,7 @@ function mentionsInclude(mentions, email){
 // realidad no la mencionaba. Recalcular desde el texto lo hace imposible.
 function extractMentionsFromContent(content){
   // Object.create(null): sin prototipo, así "@constructor" o "@toString"
-  // no encuentran una función heredada y la meten en `mentions` (Firestore
-  // rechaza el documento entero por ese valor).
+  // no encuentran una función heredada y la meten en `mentions`.
   const byNickname = Object.create(null);
   state.roster.forEach(u=>{ if(u.nickname) byNickname[u.nickname.toLowerCase()] = u.email; });
   const found = new Set();
@@ -3839,8 +3810,8 @@ state.accessRequests = []; // solo se llena para el admin
 state.auditLog = []; // solo se llena para el admin
 state.roster = []; // [{email, nickname}] — todo aprobado, para autocompletar @menciones
 // Quiénes ESTUVIERON en el equipo y ya no están. Se guarda al revocar el
-// acceso, porque el @nickname vive únicamente en allowlist/{email} y ahí se
-// borra: sin esto, todos los posteos viejos de esa persona pasaban a
+// acceso, porque el @nickname vive únicamente en la ficha del equipo
+// (members) y ahí se borra: sin esto, todos los posteos viejos de esa persona pasaban a
 // mostrar el nombre crudo de Google y dejaban de ser clickeables. En una
 // app que se llama "Memoria histórica", perder quién escribió qué es un
 // agujero, no un detalle.
@@ -3849,12 +3820,12 @@ state.formerMembers = []; // [{email, name, nickname, photoURL, approvedAt, revo
 /* ======================================================================
    PREFERENCIAS PERSONALES (userPrefs/{email})
    ======================================================================
-   Van en su PROPIA colección y no adentro de allowlist/{email}: ese doc lo
-   lee entero todo el equipo (state.roster, con onSnapshot), así que meter
-   ahí la configuración de cada uno haría que todos se bajen las
-   preferencias de todos en cada cambio del roster, y las dejaría a la
-   vista de cualquier aprobado. userPrefs/{email} lo lee y lo escribe
-   únicamente su dueño (ver firestore.rules).
+   Van en su PROPIA tabla (user_prefs) y no en la ficha de members: esa la
+   lee entera todo el equipo (state.roster), así que meter ahí la
+   configuración de cada uno haría que todos se bajen las preferencias de
+   todos en cada cambio del equipo, y las dejaría a la vista de cualquier
+   aprobado. Cada fila de user_prefs la lee y la escribe únicamente su
+   dueño (ver supabase/02-politicas.sql).
 
    Las listas vacías significan "todos/todas" a propósito: así el caso por
    defecto no guarda nada y el documento arranca (y se queda) mínimo.
@@ -3918,8 +3889,8 @@ function prefs(){ return state.prefs || DEFAULT_PREFS; }
 // y observador. isAuthorized() = puede ENTRAR y ver; canWrite() = puede
 // publicar, responder, dar me gusta y editar. El observador entra, ve
 // todo y no toca nada. El admin es ADMIN_EMAIL (fijo en el código y en
-// las reglas, no se puede sacar) o cualquiera con role "admin" en su
-// documento de allowlist.
+// la base, no se puede sacar) o cualquiera con role "admin" en su ficha
+// del equipo.
 function isAuthorized(){ return state.auth.status === "approved" || state.auth.status === "admin" || state.auth.status === "observer"; }
 function isAdmin(){ return state.auth.status === "admin"; }
 // Solo el admin fijo (ADMIN_EMAIL), no los admins por rol: es quien puede
@@ -3935,65 +3906,15 @@ function roleLabel(role){
 }
 
 /* ======================================================================
-   FIREBASE
+   EL ARRANQUE
    ====================================================================== */
-let db = null;
-let fb = null;   // exports de firebase-firestore.js
-let auth = null;
-let authMod = null; // exports de firebase-auth.js
-
-async function initFirebase(){
-  if(CONFIG_IS_PLACEHOLDER) return;
-  if(BASE === "supabase") return arrancarSupabase();
-  // Lo primero de todo, antes de cualquier descarga: que se vea de entrada
-  // que esta pestaña mira la base vieja.
-  mostrarAvisoDeBase();
+async function arrancar(){
   try{
-    const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js");
-    const firestoreMod = await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js");
-    const authModImport = await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js");
-    const app = initializeApp(FIREBASE_CONFIG);
-    db = firestoreMod.getFirestore(app);
-    fb = firestoreMod;
-    authMod = authModImport;
-    auth = authMod.getAuth(app);
-    sesion.alCambiar(onAuthChanged);
-  }catch(err){
-    console.error("Error inicializando Firebase:", err);
-    renderFatalError(t(
-      "No se pudo conectar con Firebase. Revisá la configuración (FIREBASE_CONFIG) y la consola del navegador para más detalle.",
-      "Couldn't connect to Firebase. Check the configuration (FIREBASE_CONFIG) and the browser console for more detail.",
-      "Não foi possível conectar ao Firebase. Revise a configuração (FIREBASE_CONFIG) e o console do navegador para mais detalhes.",
-      ".לא ניתן היה להתחבר ל-Firebase. בדוק/י את ההגדרות (FIREBASE_CONFIG) ואת קונסולת הדפדפן לפרטים נוספים"
-    ));
-  }
-}
-
-// El arranque en modo Supabase. Va aparte y NO cuelga de que Firebase
-// haya cargado: la primera versión lo tenía adentro del mismo try, y si
-// Firebase no respondía, la pestaña que miraba Supabase tampoco arrancaba
-// — dos cosas que no tienen por qué depender una de la otra.
-async function arrancarSupabase(){
-  // Firebase se inicializa igual, pero SOLO para pedirle a Google el
-  // permiso de Calendar (ensureCalendarToken usa su ventanita). Si no
-  // carga, no es fatal: se pierde la sincronización con Calendar, no la
-  // app entera.
-  try{
-    const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js");
-    const authModImport = await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js");
-    const app = initializeApp(FIREBASE_CONFIG);
-    authMod = authModImport;
-    auth = authMod.getAuth(app);
-  }catch(err){
-    console.warn("Sin Firebase: la sincronización con Calendar no va a estar disponible en esta pestaña.", err);
-  }
-
-  try{
+    // Con la versión FIJA: con `@2` se cargaba la última 2.x que hubiera
+    // en ese momento, así que una versión nueva rota —o comprometida—
+    // entraba sola a la app, con acceso a la sesión de cada persona.
+    // Subirla es una decisión, no algo que pasa.
     const { createClient } = await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/+esm");
-    // Con la versión FIJA (como Firebase, 10.13.0): con `@2` se cargaba la
-    // última 2.x que hubiera en ese momento, así que una versión nueva
-    // rota —o comprometida— entraba sola a la app, con acceso a la sesión
-    // de cada persona. Subirla es una decisión, no algo que pasa.
     const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
     store = crearSupabaseStore(sb, { achicar: achicarDataUrl });
     sesion = crearSupabaseSesion(sb);
@@ -4058,8 +3979,8 @@ const CALENDAR_API_KEY = "AIzaSyBLsB3SxSuEOyiPyCIYHa0yOcPiTs5KfwI";
 // El token de Calendar se guarda también en sessionStorage (dura hasta
 // cerrar la pestaña, no queda en el disco) para sobrevivir a un F5 — sin
 // esto, cada recarga de página forzaba un popup de Google nuevo para
-// cualquier acción que tocara Calendar, aunque la sesión de Firebase
-// siguiera activa. Si sessionStorage no está disponible (modo privado,
+// cualquier acción que tocara Calendar, aunque la sesión siguiera
+// activa. Si sessionStorage no está disponible (modo privado,
 // etc.) simplemente no persiste y se pide el popup como antes.
 const CALENDAR_TOKEN_STORAGE_KEY = "calendarToken";
 let calendarAccessToken = null;
@@ -4080,10 +4001,10 @@ try{
 
 /* ---------- Token de Calendar sin popup (Google Identity Services) -------
    Escribir en Calendar (crear un evento, compartir o sacar del compartido)
-   necesita OAuth, y el signInWithPopup de Firebase SIEMPRE abre ventana.
-   GIS permite pedir el token con prompt:"" — devuelve uno en silencio si
-   esa cuenta YA dio el consentimiento antes. Resultado: consentimiento una
-   sola vez (por el popup de abajo), y de ahí en más nada de ventanas.
+   necesita OAuth. GIS permite pedir el token con prompt:"" — devuelve uno
+   en silencio si esa cuenta YA dio el consentimiento antes. Resultado:
+   consentimiento una sola vez (por la ventana de abajo), y de ahí en más
+   nada de ventanas.
 
    Esto ya se intentó una vez y se revirtió (ver el commit "Revertir la
    renovación silenciosa del token de Calendar (GIS)"): el origen de GitHub
@@ -4143,10 +4064,9 @@ async function requestSilentCalendarToken(scopes){
     }
   });
 }
-// La ventana de Google, por el MISMO camino que el intento silencioso (no
-// por Firebase). Es lo que permite que el permiso de Calendar deje de
-// depender de Firebase: la sincronización es de Google y sigue siendo de
-// Google, con cualquier base.
+// La ventana de Google, por el MISMO camino que el intento silencioso. El
+// permiso de Calendar no tiene nada que ver con la base: es de Google, y
+// se pide a Google.
 //
 // Sin `prompt: ""`: acá SÍ se quiere la ventana. El pedido de permiso se
 // hace igual que siempre, la primera vez que hace falta y no al entrar —
@@ -4183,29 +4103,11 @@ function storeGisToken(resp, opts={}){
   }catch(e){}
   return calendarAccessToken;
 }
-function storeCalendarCredential(result, opts={}){
-  const cred = authMod.GoogleAuthProvider.credentialFromResult(result);
-  if(cred && cred.accessToken){
-    calendarAccessToken = cred.accessToken;
-    calendarTokenExpiry = Date.now() + 55*60*1000; // los access tokens de Google duran ~1h
-    if(opts.aclScope) calendarAclScopeGranted = true;
-    try{
-      sessionStorage.setItem(CALENDAR_TOKEN_STORAGE_KEY, JSON.stringify({ token: calendarAccessToken, expiry: calendarTokenExpiry, aclScope: calendarAclScopeGranted }));
-    }catch(e){}
-  }
-}
-// Se asegura de tener un token de Calendar vigente. Si no lo tiene (por
-// ejemplo, la sesión de Firebase se restauró silenciosamente al recargar
-// la página, lo que NO trae un access token nuevo), vuelve a pedir el
-// login con Google — normalmente un click rápido, ya con la cuenta
-// pre-seleccionada, no un login completo de nuevo.
-// (Se probó renovarlo en segundo plano con Google Identity Services antes
-// de este popup, para evitar interrumpir — se sacó porque requiere que
-// el origen de esta página esté agregado a mano en "Authorized JavaScript
-// origins" del Client ID en Google Cloud Console, y sin eso el intento
-// silencioso queda trabado mostrando una pantalla de error de Google en
-// vez de resolverse solo. Mejor un popup confiable que uno silencioso que
-// a veces se rompe.)
+// Se asegura de tener un token de Calendar vigente. Si no lo tiene (la
+// sesión con la app se restaura sola al recargar la página, pero eso NO
+// trae un token de Calendar), lo pide primero en silencio y, si Google no
+// lo da así, con su ventana — normalmente un click rápido, ya con la
+// cuenta pre-seleccionada, no un login completo de nuevo.
 // Si quien está logueado es el admin, se pide de una vez también el
 // permiso de compartir/sacar gente del Calendar (ver ensureCalendarAclToken)
 // junto con el de eventos, en el MISMO popup — así el admin ve como mucho
@@ -4221,21 +4123,7 @@ async function ensureCalendarToken(){
   if(silent) return storeGisToken(silent, { aclScope: isAdminUser });
   const conVentana = await requestCalendarTokenPopup(scopes);
   if(conVentana) return storeGisToken(conVentana, { aclScope: isAdminUser });
-  // El camino viejo, por Firebase, como último recurso y mientras exista.
-  // El día que Firebase se apague, esta rama se va sola.
-  if(!authMod) return null;
-  try{
-    const provider = new authMod.GoogleAuthProvider();
-    provider.addScope("https://www.googleapis.com/auth/calendar.events");
-    if(isAdminUser) provider.addScope("https://www.googleapis.com/auth/calendar.acls");
-    provider.setCustomParameters({ login_hint: state.auth.user.email });
-    const result = await authMod.signInWithPopup(auth, provider);
-    storeCalendarCredential(result, { aclScope: isAdminUser });
-    return calendarAccessToken;
-  }catch(err){
-    console.error("No se pudo obtener acceso a Calendar:", err);
-    return null;
-  }
+  return null;
 }
 
 // Sólo la usa el admin: pide además el permiso para administrar a quién
@@ -4262,25 +4150,13 @@ async function ensureCalendarAclToken(opts={}){
     "https://www.googleapis.com/auth/calendar.acls",
   ]);
   if(conVentana) return storeGisToken(conVentana, { aclScope: true });
-  if(!authMod) return null;
-  try{
-    const provider = new authMod.GoogleAuthProvider();
-    provider.addScope("https://www.googleapis.com/auth/calendar.events");
-    provider.addScope("https://www.googleapis.com/auth/calendar.acls");
-    provider.setCustomParameters({ login_hint: state.auth.user.email });
-    const result = await authMod.signInWithPopup(auth, provider);
-    storeCalendarCredential(result, { aclScope: true });
-    return calendarAccessToken;
-  }catch(err){
-    console.error("No se pudo obtener acceso para compartir/sacar del Calendar:", err);
-    return null;
-  }
+  return null;
 }
 
 // El rol vive en el roster (allowlist): un observador nunca recibe el
 // Calendar, porque compartirlo da permiso de ESCRITURA (writer) sobre el
 // calendario del equipo — sería una puerta lateral para cargar eventos
-// que la app y las reglas le niegan.
+// que la app y la base le niegan.
 function isObserverEmail(email){
   const u = state.roster.find(x=>x.email===email);
   return !!(u && u.role === "observer");
@@ -4747,17 +4623,16 @@ async function findCalendarEventId(post){
    ======================================================================
    Si alguien edita, cancela/borra o crea un evento directamente en
    Google Calendar (sin pasar por la app), esto lo refleja en los
-   posteos de Firestore. Usa el "sync token" que da la API de Calendar
-   para pedir solo lo que cambió desde la última vez (se guarda en
-   meta/calendarSync), no todo el calendario entero cada vez.
+   posteos. Usa el "sync token" que da la API de Calendar para pedir solo
+   lo que cambió desde la última vez (se guarda en la configuración, clave
+   calendarSync), no todo el calendario entero cada vez.
 
    Se dispara solo: (a) una vez por sesión, apenas cargan los posteos,
    PERO solo si ya hay un token de Calendar en memoria (o sea, sin pedir
    un login-popup extra a alguien que nunca tocó Calendar), y (b) a mano
-   con el botón "Actualizar". No hace falta ninguna regla
-   nueva de Firestore para posts/replies: quien corre la sincronización
-   ya es un usuario aprobado de la app, así que sus escrituras pasan por
-   las mismas reglas de siempre.
+   con el botón "Actualizar". No hace falta ningún permiso nuevo: quien
+   corre la sincronización ya es un usuario aprobado de la app, así que
+   sus escrituras pasan por los mismos controles de siempre.
 
    Nota: los eventos recurrentes NO se expanden (no se usa singleEvents),
    así que una serie recurrente cuenta como un solo evento/posteo. No es
@@ -4928,9 +4803,9 @@ async function applyCalendarEventToPosts(ev){
 
   const { startDate, endDate, startTime, endTime } = calendarEventDates(ev);
   if(!startDate) return false;
-  // Los mismos topes que exigen las reglas (title 140, content 5000,
+  // Los mismos topes que exige la base (title 140, content 5000,
   // location 200, organizer 140): lo que viene de Calendar no pasa por
-  // el formulario, así que se recorta acá o Firestore rechaza el evento.
+  // el formulario, así que se recorta acá o la base rechaza el evento.
   const location = String(ev.location || "").slice(0, 200);
 
   if(existing){
@@ -5180,8 +5055,9 @@ let calendarSyncInterval = null;
 // Fallas seguidas del sync automático (ver el catch de syncFromCalendar).
 // A 30 s por intento, 5 seguidas son ~2 min y medio: ya no es un bache de
 // red, es algo roto de verdad.
-// Tope de fechas corridas por serie: las reglas de Firestore lo exigen
-// (un map sin techo en un documento que lee todo el equipo), y a esta
+// Tope de fechas corridas por serie: la base lo exige (mudanzas_ok en
+// 03-validacion.sql: un objeto sin techo en una fila que lee todo el
+// equipo), y a esta
 // altura correr 60 fechas de una misma serie ya es otra serie.
 const MAX_OCC_MOVES = 60;
 const CALENDAR_SYNC_FAIL_STREAK = 5;
@@ -5189,7 +5065,7 @@ let calendarSyncFailStreak = 0, calendarSyncFailWarned = false;
 function startCalendarAutoSync(){
   if(calendarSyncInterval) return;
   // El observador no escribe posteos ni el sync token: sin esto su
-  // navegador intentaba importar cada 30 s y fallaba contra las reglas.
+  // navegador intentaba importar cada 30 s y fallaba contra la base.
   if(!canWrite()) return;
   syncFromCalendar({ silent:true });
   calendarSyncInterval = setInterval(()=> syncFromCalendar({ silent:true }), 30000);
@@ -5258,18 +5134,16 @@ async function logAudit(type, opts){
       createdAt: store.horaDelServidor(),
     };
     // "login"/"access_requested" los puede escribir CUALQUIER cuenta de
-    // Google, aprobada o no (ver el comentario de isValidAuditEntry en
-    // firestore.rules) — es a propósito, para poder registrar el login o
-    // el pedido de acceso de alguien que todavía no está en la
-    // allowlist. Sin más freno, alguien podía escribir infinitos
-    // documentos acá desde la consola del navegador y agotar la cuota
-    // gratis de Firestore para todo el equipo por un día. Con un id fijo
-    // por cuenta+tipo+día (en vez de uno al azar), el segundo intento
-    // del mismo día cae en "allow update: if false" (ya existe en las
-    // reglas) y se rechaza solo, sin crear un documento nuevo. El resto
-    // de los tipos (aprobar/rechazar/revocar/rol/Calendar) los escribe
-    // solo un admin desde su panel, y cada uno es una acción real que sí
-    // merece su propio documento — esos siguen con id al azar.
+    // Google, aprobada o no (ver audit_crear en 02-politicas.sql) — es a
+    // propósito, para poder registrar el login o el pedido de acceso de
+    // alguien que todavía no está en el equipo. Sin más freno, alguien
+    // podía escribir infinitas filas desde la consola del navegador. Por
+    // eso van con un id fijo por cuenta+tipo+día (en vez de uno al azar):
+    // el segundo intento del mismo día choca con ese id y no crea nada, y
+    // la base exige ese id (auditoria_una_por_dia, en 03-validacion.sql).
+    // El resto de los tipos (aprobar/rechazar/revocar/rol/Calendar) los
+    // escribe solo un admin desde su panel, y cada uno es una acción real
+    // que sí merece su propia fila — esos siguen con id al azar.
     if(type === "login" || type === "access_requested"){
       const dayId = `${actorEmail}_${type}_${todayISO()}`.replace(/[^A-Za-z0-9_.@-]/g, "_");
       await store.auditLog.addOnce(dayId, data);
@@ -5279,7 +5153,7 @@ async function logAudit(type, opts){
   }catch(err){ console.error("Error escribiendo auditoría:", err); }
 }
 // Un solo registro de "login" por sesión de navegador (no uno por cada
-// re-render/recarga silenciosa de la sesión de Firebase).
+// re-render o renovación silenciosa de la sesión).
 let auditLoginLoggedThisSession = false;
 
 let unsubscribeData = null;
@@ -5320,8 +5194,8 @@ function recomputeAuthStatus(){
 async function onAuthChanged(user){
   // El poll de Calendar solo se paraba en doSignOut(): un cierre de
   // sesión desde otra pestaña o un token vencido lo dejaba pegándole a
-  // Google y a Firestore (con permiso denegado) cada 30 s. Si la cuenta
-  // sigue aprobada, el snapshot de posts lo vuelve a arrancar.
+  // Google y a la base (con permiso denegado) cada 30 s. Si la cuenta
+  // sigue aprobada, la carga de los posteos lo vuelve a arrancar.
   stopCalendarAutoSync();
   fatalError = null; // un error de la sesión anterior no tiene por qué seguir en pantalla
   if(unsubscribeData){ unsubscribeData(); unsubscribeData = null; }
@@ -5335,7 +5209,7 @@ async function onAuthChanged(user){
   if(unsubPreferences){ unsubPreferences(); unsubPreferences = null; }
   state.posts = []; state.repliesByPost = {}; state.loaded = false; state.accessRequests = []; state.auditLog = []; state.roster = [];
   // Borradores sin publicar (posteo nuevo/edición, Rutina, respuestas) y
-  // paneles abiertos son estado de UI en memoria, no de Firestore — sin
+  // paneles abiertos son estado de UI en memoria, no de la base — sin
   // esto, lo que alguien estaba escribiendo le quedaba visible a la
   // SIGUIENTE persona que iniciara sesión en la misma pestaña (cerrar
   // sesión no recarga la página). Se limpia en CUALQUIER cambio de
@@ -5393,7 +5267,7 @@ async function onAuthChanged(user){
   }
 
   // Mientras se resuelve si está aprobado, no se suscribe a posts/replies
-  // (evita un permission-denied transitorio contra Firestore).
+  // (evita un permiso denegado transitorio contra la base).
   state.auth = { status:"loading", user:profile, allowlisted:false, requestStatus:null, role:null, padronConocido:false, demorado:false };
   render();
   // "Cargando…" no puede ser para siempre, y hasta ahora podía: esa
@@ -5557,438 +5431,68 @@ function subscribeAuditLog(){
     render();
   }, err=>console.error("Error leyendo auditoría:", err));
 }
-// Lista de nombre/email de todo aprobado, para autocompletar @menciones.
-// Cualquier aprobado puede LEER esto (no solo el admin) — ver el cambio
 /* ======================================================================
    CAPA DE DATOS
 
-   Todo el acceso a la base pasa por acá, y NADA de afuera vuelve a
-   nombrar a Firestore directamente. La razón es la migración a Supabase:
-   con esta capa, cambiar de una base a la otra es cambiar qué
-   implementación se le asigna a `store` — una línea — en vez de
-   reescribir las 80 y pico de llamadas desparramadas por el archivo. Y
-   volver atrás, lo mismo.
-
-   La forma de cada método se eligió por lo que la app NECESITA, no por
-   lo que Firestore ofrece, justamente para que la otra implementación
-   pueda cumplirla a su manera:
+   Todo el acceso a la base pasa por acá (crearSupabaseStore, más abajo),
+   y nada de afuera le habla a la base directo. La forma de cada método se
+   eligió por lo que la app NECESITA, no por lo que ofrece la base:
 
    - subscribe(alCambiar) -> función para cortar. Entrega SIEMPRE la
-     lista entera, ya ordenada y con su id adentro. Firestore hace eso
-     solo con onSnapshot; Supabase manda los cambios de a uno y la lista
-     la arma la implementación, no quien llama.
+     lista entera, ya ordenada y con su id adentro. Supabase manda los
+     cambios de a uno; la lista la arma la capa, no quien llama.
    - all() -> una lectura suelta, sin quedar escuchando.
    - save(id, datos) / remove(id) -> escritura por id.
 
-   Las OCHO colecciones ya pasan por acá. La única excepción viva es la
-   copia de seguridad (armarRespaldo), que le habla a Firestore directo A
-   PROPÓSITO: es la red de la marcha atrás, y tiene que bajar lo que hay
-   en FIREBASE, no lo que haya en la base en uso. Si pasara por la capa,
-   el día que `store` apunte a Supabase el respaldo dejaría de servir
-   justamente para lo que existe: para volver.
+   Nació para poder mudar la app de Firebase a Supabase cambiando una sola
+   línea, y así se hizo. Ahora sirve para lo de siempre: que el resto del
+   archivo no tenga que saber cómo se guarda nada.
    ====================================================================== */
 
 /* ----------------------------------------------------------------------
-   CUÁNTO AGUANTA CADA BASE
+   CUÁNTO AGUANTA LA BASE
 
-   Esto NO es una preferencia del equipo: es lo que la base puede guardar,
-   y por eso viaja con la base y no suelto en el código.
-
-   Firestore mete el archivo ADENTRO del documento del posteo, como texto
-   base64 (que pesa ~33% más que el archivo original), y no admite más de
-   1 MiB por documento entero. De ahí salen el 6, el 2 y los 500 KB: no
-   son un criterio nuestro, son el techo de la base. Por eso también las
-   imágenes se achican a 1280 px y se recomprimen fuerte.
-
-   Supabase sube el archivo al bucket y en el posteo queda solo la ruta,
-   así que un posteo pesa lo mismo con una foto que con veinte. El techo
-   pasa a ser el del plan (1 GB de archivos, 5 GB de descarga por mes),
-   que para fotos y PDF es muchísimo.
+   Esto NO es una preferencia del equipo: es el techo. Cada archivo sube
+   al bucket y en el posteo queda solo su ruta, así que un posteo pesa lo
+   mismo con una foto que con veinte. El techo es el del plan (1 GB de
+   archivos, 5 GB de descarga por mes), que para fotos y PDF es muchísimo.
 
    Quien elige de acá para abajo es Configuración > Adjuntos; nunca de acá
-   para arriba. Si mañana se cambia de base, lo elegido se recorta solo
-   contra el techo de la base nueva.
+   para arriba.
 ---------------------------------------------------------------------- */
-const LIMITES_FIREBASE = {
-  imagenes: 6,
-  ladoMaximo: 1280,
-  calidadImagen: 0.72,
-  archivos: 2,
-  bytesPorArchivo: 500 * 1024,
-  bytesSugeridos: 150 * 1024,
-  // El documento ENTERO: texto, fotos y archivos juntos. Los topes de
-  // arriba son por archivo y no alcanzan solos — dos archivos de 500 KB ya
-  // pesan 1,3 MB en base64. Ver excesoDePeso().
-  bytesPorPosteo: 1024 * 1024,
-};
-const LIMITES_SUPABASE = {
+const LIMITES_DE_LA_BASE = {
   imagenes: 20,
   // 2560 px es el lado largo de una foto que se ve bien en cualquier
   // pantalla y en una impresión chica. Se sigue achicando (una foto de
-  // celular sale de la cámara en 4000 px y pesa 5 MB) pero con muchísima
-  // menos pérdida: ~600 KB en vez de ~120 KB.
+  // celular sale de la cámara en 4000 px y pesa 5 MB) pero con poca
+  // pérdida: ~600 KB.
   ladoMaximo: 2560,
   calidadImagen: 0.85,
   archivos: 10,
+  // El mismo que el del bucket (ver 01-tablas.sql): más que eso, la base
+  // lo rechaza igual.
   bytesPorArchivo: 25 * 1024 * 1024,
   bytesSugeridos: 10 * 1024 * 1024,
-  // Sin techo: en el posteo quedan solo las rutas de los archivos.
-  bytesPorPosteo: Infinity,
 };
 
-const firebaseStore = {
-  limites: LIMITES_FIREBASE,
-  // ---- Posteos ----
-  posts: {
-    // Todos, SIN ordenar: el orden (fecha desc y, dentro del día, creación
-    // desc) es criterio de la app y tiene que dar igual con cualquier
-    // base. Va sin orden también por otro motivo, que costó encontrar:
-    // Firestore EXCLUYE de una consulta ordenada los documentos que no
-    // tienen ese campo, y un posteo viejo sin `date` quedaba invisible sin
-    // dar ningún error.
-    subscribe(alCambiar, alFallar){
-      return fb.onSnapshot(fb.collection(db, "posts"),
-        snap => alCambiar(snap.docs.map(d=>({ id:d.id, ...d.data({serverTimestamps:"estimate"}) }))),
-        alFallar);
-    },
-    // Devuelve el id nuevo: quien llama lo necesita enseguida para enlazar
-    // el evento de Calendar recién creado.
-    async create(datos){
-      const ref = await fb.addDoc(fb.collection(db, "posts"), { ...datos, createdAt: fb.serverTimestamp() });
-      return ref.id;
-    },
-    // Alta con un id ELEGIDO, y solo si no existe todavía. Es lo que evita
-    // que dos navegadores que ven el mismo evento nuevo de Calendar con un
-    // segundo de diferencia lo importen dos veces.
-    async createOnce(id, datos){
-      const ref = fb.doc(db, "posts", id);
-      await fb.runTransaction(db, async tx => {
-        const snap = await tx.get(ref);
-        if(snap.exists()) return;
-        tx.set(ref, { ...datos, createdAt: fb.serverTimestamp() });
-      });
-    },
-    async update(id, parche){
-      await fb.updateDoc(fb.doc(db, "posts", id), parche);
-    },
-    async remove(id){
-      await fb.deleteDoc(fb.doc(db, "posts", id));
-    },
-    // Poner o sacar el me gusta de UNA persona, sin traerse la lista ni
-    // reescribirla entera: dos personas pueden estar dando me gusta al
-    // mismo tiempo y ninguna tiene que pisar a la otra.
-    async setLike(id, email, puesto){
-      await fb.updateDoc(fb.doc(db, "posts", id),
-        { likedBy: puesto ? fb.arrayUnion(email) : fb.arrayRemove(email) });
-    },
-  },
-
-  // ---- Comentarios ----
-  replies: {
-    // Todos los de todos los posteos de una sola vez, ya agrupados por
-    // posteo y ordenados del más viejo al más nuevo. Con un listener por
-    // posteo la cantidad crecía sin tope.
-    subscribeAll(alCambiar, alFallar){
-      return fb.onSnapshot(fb.collectionGroup(db, "replies"), snap=>{
-        const porPosteo = Object.create(null);
-        snap.docs.forEach(d=>{
-          const postId = d.ref.parent.parent.id;
-          (porPosteo[postId] = porPosteo[postId] || []).push(
-            { id:d.id, postId, ...d.data({serverTimestamps:"estimate"}) });
-        });
-        // El orden se arma acá y no en la consulta: en Firestore, ordenar
-        // una consulta de grupo pide un índice aparte.
-        Object.values(porPosteo).forEach(lista =>
-          lista.sort((a,b)=> tsToMillis(a.createdAt) - tsToMillis(b.createdAt)));
-        alCambiar(porPosteo);
-      }, alFallar);
-    },
-    // Las de UN posteo. Es el respaldo de subscribeAll (ver
-    // subscribeReplies): no escala, pero funciona aunque la regla que
-    // permite leerlas todas juntas no esté publicada todavía.
-    subscribeOf(postId, alCambiar, alFallar){
-      const q = fb.query(fb.collection(db, "posts", postId, "replies"), fb.orderBy("createdAt", "asc"));
-      return fb.onSnapshot(q,
-        snap => alCambiar(snap.docs.map(d=>({ id:d.id, postId, ...d.data({serverTimestamps:"estimate"}) }))),
-        alFallar);
-    },
-    async create(postId, datos){
-      await fb.addDoc(fb.collection(db, "posts", postId, "replies"),
-        { ...datos, createdAt: fb.serverTimestamp() });
-    },
-    async remove(postId, replyId){
-      await fb.deleteDoc(fb.doc(db, "posts", postId, "replies", replyId));
-    },
-    async setLike(postId, replyId, email, puesto){
-      await fb.updateDoc(fb.doc(db, "posts", postId, "replies", replyId),
-        { likedBy: puesto ? fb.arrayUnion(email) : fb.arrayRemove(email) });
-    },
-  },
-
-  // La hora del servidor, para los campos que la app arma y manda adentro
-  // de otra escritura (cuándo se editó algo, cuándo se completó un hito).
-  // No es una fecha: es una MARCA que la base reemplaza por su propio
-  // reloj al escribir. Cada base la expresa a su manera, y por eso la
-  // app pide "la hora del servidor" y no sabe cómo se escribe.
-  horaDelServidor(){
-    return fb.serverTimestamp();
-  },
-
-  // En Firestore la foto viaja adentro del posteo: no hay miniatura aparte
-  // ni firmas que olvidar. Están para que las dos capas ofrezcan lo mismo.
-  miniaturaDe(src){ return src; },
-  olvidarFirmas(){},
-
-  // "¿Este error es por falta de permiso?" — cada base lo dice a su
-  // manera, y la app necesita distinguirlo para pasar al modo de respaldo
-  // de los comentarios sin quedarse sin nada.
-  esErrorDePermiso(err){
-    return !!err && err.code === "permission-denied";
-  },
-  // ---- Configuración del equipo ----
-  // Los tres documentos de `meta`: las zonas y los países
-  // (territoryConfig), el resto del panel de Preferencias (preferences) y
-  // el estado de la sincronización con Calendar (calendarSync). Se los
-  // trata como una tabla clave→valor y no como tres cosas distintas,
-  // porque es lo que son.
-  config: {
-    // Queda escuchando: si el admin agrega un tipo de actividad o mueve un
-    // país de zona, a todo el equipo le tiene que cambiar sin recargar.
-    watch(clave, alCambiar, alFallar){
-      return fb.onSnapshot(fb.doc(db, "meta", clave),
-        snap => alCambiar(snap.exists() ? snap.data() : null),
-        alFallar);
-    },
-    async get(clave){
-      const snap = await fb.getDoc(fb.doc(db, "meta", clave));
-      return snap.exists() ? snap.data() : null;
-    },
-    // Reemplaza TODO. Lo usa el mapa de zonas: ahí se guarda la
-    // configuración completa, y un país que se sacó tiene que desaparecer
-    // de verdad, no quedar por omisión.
-    async replace(clave, datos){
-      await fb.setDoc(fb.doc(db, "meta", clave), datos);
-    },
-    // Cambia SOLO lo que se le pasa. El panel de Preferencias tiene cuatro
-    // secciones que guardan por separado adentro del mismo documento:
-    // reemplazarlo entero haría que guardar una sección borre las otras
-    // tres.
-    async merge(clave, parche){
-      await fb.setDoc(fb.doc(db, "meta", clave), parche, { merge:true });
-    },
-    // La sincronización anota además CUÁNDO se corrió, y esa hora la pone
-    // el servidor: es lo que decide si hay que volver a sincronizar, y no
-    // puede depender del reloj de quien tenga la pestaña abierta.
-    async mergeCalendarSync(parche){
-      await fb.setDoc(fb.doc(db, "meta", "calendarSync"),
-        { ...parche, lastSyncedAt: fb.serverTimestamp() }, { merge: true });
-    },
-  },
-
-  // ---- Preferencias de cada persona ----
-  // Colección aparte y no un campo más del roster, por el mismo motivo de
-  // siempre: el roster lo lee TODO el equipo para las @menciones, y la
-  // configuración de cada uno no tiene por qué estar a la vista de los
-  // demás.
-  userPrefs: {
-    // Se escuchan y no se leen una sola vez, a propósito: cambiar algo en
-    // la computadora tiene que verse en el teléfono sin recargar.
-    watchOwn(email, alCambiar, alFallar){
-      return fb.onSnapshot(fb.doc(db, "userPrefs", email),
-        snap => alCambiar(snap.exists() ? snap.data() : null),
-        alFallar);
-    },
-    async get(email){
-      const snap = await fb.getDoc(fb.doc(db, "userPrefs", email));
-      return snap.exists() ? snap.data() : null;
-    },
-    // Siempre parcial: son ~25 opciones y cada control guarda la suya.
-    async merge(email, parche){
-      await fb.setDoc(fb.doc(db, "userPrefs", email), parche, { merge: true });
-    },
-  },
-  // ---- El equipo ----
-  // En Firestore la colección se llama `allowlist` porque nació siendo una
-  // lista de permitidos; hoy es el roster del equipo (quién está, con qué
-  // rol y con qué @nickname). Acá se la nombra por lo que ES, no por cómo
-  // quedó llamada adentro de la base.
-  roster: {
-    // La lista entera, tal cual está guardada. El acomodo (nickname de
-    // reemplazo, rol válido, orden por antigüedad) lo hace subscribeRoster:
-    // es criterio de la app, y tiene que dar igual con cualquier base.
-    subscribe(alCambiar, alFallar){
-      return fb.onSnapshot(fb.collection(db, "allowlist"),
-        snap => alCambiar(snap.docs.map(d=>({ email:d.id, ...d.data() }))),
-        alFallar);
-    },
-    // La propia membresía, que es LO QUE DECIDE SI HAY ACCESO: llega el
-    // registro, o null si esa persona no está en el equipo. Queda
-    // escuchando a propósito — si le revocan el acceso con la sesión
-    // abierta, la pantalla tiene que enterarse sin recargar.
-    watchOwn(email, alCambiar, alFallar){
-      return fb.onSnapshot(fb.doc(db, "allowlist", email),
-        snap => alCambiar(snap.exists() ? { email:snap.id, ...snap.data() } : null),
-        alFallar);
-    },
-    async get(email){
-      const snap = await fb.getDoc(fb.doc(db, "allowlist", email));
-      return snap.exists() ? { email:snap.id, ...snap.data() } : null;
-    },
-    async all(){
-      const snap = await fb.getDocs(fb.collection(db, "allowlist"));
-      return snap.docs.map(d=>({ email:d.id, ...d.data() }));
-    },
-    // Aprobar a alguien: entra con todo nuevo, y la fecha de alta la pone
-    // el servidor — es un dato de auditoría (desde cuándo tiene acceso) y
-    // no puede depender del reloj de quien aprueba.
-    async add(email, datos){
-      await fb.setDoc(fb.doc(db, "allowlist", email), { ...datos, approvedAt: fb.serverTimestamp() });
-    },
-    // El alta que NO pisa lo que ya hay: completa lo que falte. La usa el
-    // admin para asegurarse su propio lugar en el roster sin borrarle nada
-    // a un documento que quizás ya existe. Si ya tenía fecha de alta se
-    // respeta; si no, la pone el servidor.
-    async ensure(email, datos){
-      await fb.setDoc(fb.doc(db, "allowlist", email),
-        { ...datos, approvedAt: datos.approvedAt || fb.serverTimestamp() }, { merge: true });
-    },
-    async setRole(email, role){
-      await fb.updateDoc(fb.doc(db, "allowlist", email), { role });
-    },
-    // El @nickname. `name` va SOLO cuando además se está completando un
-    // acceso viejo que nunca lo tuvo guardado (ver backfillNicknames): si
-    // no se pasa, no se toca, para no pisar el nombre de nadie.
-    async setNickname(email, nickname, name){
-      const campos = { nickname };
-      if(name !== undefined) campos.name = name;
-      await fb.updateDoc(fb.doc(db, "allowlist", email), campos);
-    },
-    // Al compartir se anota TAMBIÉN cuándo: es lo que mira el navegador de
-    // esa persona para decidir si le vuelve a avisar que revise el correo.
-    // Al sacar alcanza con el estado.
-    async setCalendarShared(email, compartido){
-      await fb.updateDoc(fb.doc(db, "allowlist", email),
-        compartido ? { calendarShared: true, calendarInviteSentAt: fb.serverTimestamp() }
-                   : { calendarShared: false });
-    },
-    // El tour se marca por cuenta y no por dispositivo, así no le vuelve a
-    // aparecer cuando entra desde el teléfono.
-    async markTourSeen(email){
-      await fb.updateDoc(fb.doc(db, "allowlist", email), { tourSeenAt: fb.serverTimestamp() });
-    },
-    async remove(email){
-      await fb.deleteDoc(fb.doc(db, "allowlist", email));
-    },
-  },
-  // ---- Solicitudes de acceso ----
-  accessRequests: {
-    subscribe(alCambiar, alFallar){
-      const q = fb.query(fb.collection(db, "accessRequests"), fb.orderBy("requestedAt", "desc"));
-      return fb.onSnapshot(q,
-        snap => alCambiar(snap.docs.map(d=>({ id:d.id, ...d.data({serverTimestamps:"estimate"}) }))),
-        alFallar);
-    },
-    // La propia solicitud, que se mira de a una: entrega el documento o
-    // null si todavía no existe. Lo que hay que HACER con eso (crearla,
-    // repararla si quedó en limbo) es decisión de quien llama, no de la
-    // capa — ver subscribeOwnRequest.
-    watchOwn(email, alCambiar, alFallar){
-      return fb.onSnapshot(fb.doc(db, "accessRequests", email),
-        snap => alCambiar(snap.exists() ? { id:snap.id, ...snap.data() } : null),
-        alFallar);
-    },
-    async get(email){
-      const snap = await fb.getDoc(fb.doc(db, "accessRequests", email));
-      return snap.exists() ? { id:snap.id, ...snap.data() } : null;
-    },
-    // La hora del pedido la pone el servidor, igual que en ex integrantes:
-    // es la que decide el orden de la cola del admin.
-    async save(email, datos){
-      await fb.setDoc(fb.doc(db, "accessRequests", email), { ...datos, requestedAt: fb.serverTimestamp() });
-    },
-    async setStatus(email, status){
-      await fb.updateDoc(fb.doc(db, "accessRequests", email), { status });
-    },
-    // Borrar el pedido, no rechazarlo: rechazarlo lo deja a la vista y esa
-    // persona ve que se lo rechazaron. Borrarlo lo saca del todo, y ella
-    // vuelve a ver la pantalla de pedir acceso como si fuera la primera vez.
-    async remove(email){
-      await fb.deleteDoc(fb.doc(db, "accessRequests", email));
-    },
-  },
-
-  // ---- Auditoría ----
-  auditLog: {
-    // Con tope: la colección solo crece (un login por sesión por persona,
-    // para siempre, y nadie puede borrar) y sin límite el panel bajaba
-    // TODO en cada login del admin.
-    subscribeRecent(tope, alCambiar, alFallar){
-      const q = fb.query(fb.collection(db, "auditLog"), fb.orderBy("createdAt", "desc"), fb.limit(tope));
-      return fb.onSnapshot(q,
-        snap => alCambiar(snap.docs.map(d=>({ id:d.id, ...d.data({serverTimestamps:"estimate"}) }))),
-        alFallar);
-    },
-    async add(datos){
-      await fb.addDoc(fb.collection(db, "auditLog"), datos);
-    },
-    // "Escribir solo si no existe todavía": es lo que hace que un login
-    // deje UNA entrada por día y no una por recarga. En Firestore se
-    // logra escribiendo con un id fijo — el segundo intento cae en el
-    // "allow update: if false" de las reglas y se rechaza solo, sin
-    // crear nada. Lo que importa es la intención, no el mecanismo: otra
-    // base lo resuelve a su manera.
-    async addOnce(id, datos){
-      await fb.setDoc(fb.doc(db, "auditLog", id), datos);
-    },
-  },
-
-  formerMembers: {
-    subscribe(alCambiar, alFallar){
-      return fb.onSnapshot(fb.collection(db, "formerMembers"),
-        snap => alCambiar(snap.docs.map(d=>({ email:d.id, ...d.data() }))),
-        alFallar);
-    },
-    async all(){
-      const snap = await fb.getDocs(fb.collection(db, "formerMembers"));
-      return snap.docs.map(d=>({ email:d.id, ...d.data() }));
-    },
-    async save(email, datos){
-      // La hora la pone el servidor, no el reloj de quien escribe: es un
-      // dato de auditoría (cuándo dejó el equipo) y no puede depender de
-      // que alguien tenga la fecha mal.
-      await fb.setDoc(fb.doc(db, "formerMembers", email), { ...datos, revokedAt: fb.serverTimestamp() });
-    },
-    async remove(email){
-      await fb.deleteDoc(fb.doc(db, "formerMembers", email));
-    },
-  },
-};
 /* ======================================================================
-   LA MISMA CAPA, CONTRA SUPABASE
+   LA CAPA, CONTRA SUPABASE
 
-   Cumple exactamente los mismos métodos que firebaseStore, con las mismas
-   formas de entrada y salida. Se usa en la pestaña que abre con
-   `?base=supabase` (ver baseElegida); el día del cambio pasa a ser la
-   de todos.
-
-   Tres diferencias de fondo con Firestore, que es lo que resuelve este
-   archivo:
+   Tres cosas que se resuelven acá para que la app no tenga que saberlas:
 
    1. LOS NOMBRES. La app habla en camelCase (authorEmail, createdAt) y la
       base en snake_case (author_email, created_at). La traducción es
       mecánica salvo una excepción, photoURL, que de puro mecánica saldría
       photo_u_r_l.
 
-   2. LOS CAMBIOS EN VIVO. Firestore manda SIEMPRE la lista entera en cada
-      cambio; Supabase manda el cambio suelto (se agregó esto, se borró
-      aquello). Como la app espera la lista entera, la guarda y la rearma
-      esta capa (ver enVivo). Es la diferencia que más código cuesta y la
-      que la app no tiene por qué conocer.
+   2. LOS CAMBIOS EN VIVO. Supabase manda el cambio suelto (se agregó
+      esto, se borró aquello), y la app espera la lista entera, que es como
+      nació. La guarda y la rearma esta capa (ver enVivo). Es lo que más
+      código cuesta, y lo que la app no tiene por qué conocer.
 
-   3. LA HORA DEL SERVIDOR. En Firestore es un valor especial que el
-      servidor reemplaza al escribir. Acá no existe nada parecido, así que
-      lo resuelve la base con disparadores (ver 04-funciones.sql) y desde
-      acá se manda una marca.
+   3. LA HORA DEL SERVIDOR. La pone la base, con disparadores (ver
+      04-funciones.sql): desde acá se manda una marca, y la base la
+      reemplaza por su reloj.
    ====================================================================== */
 function crearSupabaseStore(sb, opciones = {}){
   // photoURL es la única que no sale de la regla mecánica.
@@ -6017,9 +5521,8 @@ function crearSupabaseStore(sb, opciones = {}){
   const revienta = ({ error }) => { if(error) throw error; };
 
   /* --- Los adjuntos ------------------------------------------------
-     En Firestore el archivo viajaba adentro de la fila. Acá vive en el
-     bucket, que es privado: para mostrarlo hace falta una URL firmada, que
-     caduca. La app no sabe nada de eso — recibe algo que puede poner en un
+     El archivo no viaja adentro de la fila: vive en el bucket, que es
+     privado, y para mostrarlo hace falta una URL firmada, que caduca. La app no sabe nada de eso — recibe algo que puede poner en un
      src="", igual que siempre.
 
      Se firman de a muchas y no de a una: 900 posteos son una sola vuelta
@@ -6287,20 +5790,18 @@ function crearSupabaseStore(sb, opciones = {}){
   };
   const aComentario = f => resolverAdjuntos(aObjeto(f));
 
-  // Un id nuevo con la misma forma que los que vienen de Firestore (20
+  // Un id nuevo con la misma forma que los que vinieron de Firebase (20
   // caracteres del mismo alfabeto), así los viejos y los nuevos se ven
-  // iguales y nada de lo que ya existe tiene que distinguirlos. En
-  // Firestore lo generaba addDoc; acá no hay nadie que lo haga por uno.
+  // iguales y nada de lo que ya existe tiene que distinguirlos. La base no
+  // los genera: los pone la app.
   const ALFABETO = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
   const nuevoId = () => Array.from(crypto.getRandomValues(new Uint8Array(20)),
     b => ALFABETO[b % ALFABETO.length]).join("");
 
   /* --- Quién está mirando cada tabla ------------------------------
      Para poder refrescar sus listas apenas se escribe algo, sin esperar a
-     que el aviso dé la vuelta por el servidor. Con Firestore esto no hacía
-     falta: el propio SDK mostraba el cambio al instante y después lo
-     confirmaba. Acá, si se depende SOLO del aviso en vivo, escribir algo
-     se siente como que no pasó nada.
+     que el aviso dé la vuelta por el servidor: si se depende SOLO del aviso
+     en vivo, escribir algo se siente como que no pasó nada.
 
      Se relee SOLO la fila escrita, no la tabla: antes un «me gusta»
      volvía a bajar todos los posteos, y uno en un comentario, todos los
@@ -6383,9 +5884,9 @@ function crearSupabaseStore(sb, opciones = {}){
     // entere, y esa lista quedaría vieja hasta recargar la página.
     //
     // Y si la conexión se corta (la notebook se duerme, el wifi se cae),
-    // los avisos de ese rato se PIERDEN: Supabase no los repite. Firebase
-    // se resincronizaba solo. Acá, cada vez que el canal vuelve a quedar
-    // suscripto después de la primera, se vuelve a cargar la lista.
+    // los avisos de ese rato se PIERDEN: Supabase no los repite. Por eso,
+    // cada vez que el canal vuelve a quedar suscripto después de la
+    // primera, se vuelve a cargar la lista.
     let suscripto = false;
     const canal = sb.channel(`${tabla}:${clave}:${igual ? igual.valor : "todo"}:${Date.now()}`)
       .on("postgres_changes",
@@ -6505,7 +6006,6 @@ function crearSupabaseStore(sb, opciones = {}){
     [...lista].sort((a, b) => tsToMillis(a[campo]) - tsToMillis(b[campo]));
 
   return {
-    limites: LIMITES_SUPABASE,
     // ---- Posteos ----
     posts: {
       subscribe(alCambiar, alFallar){
@@ -6517,9 +6017,9 @@ function crearSupabaseStore(sb, opciones = {}){
         await refrescar("posts", id);
         return id;
       },
-      // "Creá esto, pero solo si no existe": es un insert que ignora el
-      // choque de id, que es la forma que tiene Postgres de decir lo que
-      // en Firestore era una transacción.
+      // "Creá esto, pero solo si no existe": un insert que ignora el
+      // choque de id. Así dos navegadores que traen el mismo evento de
+      // Calendar a la vez no lo duplican.
       async createOnce(id, datos){
         revienta(await sb.from("posts").upsert({ ...aFila(await subirNuevos("posts", id, datos)), id },
           { onConflict: "id", ignoreDuplicates: true }));
@@ -6553,12 +6053,6 @@ function crearSupabaseStore(sb, opciones = {}){
             Object.keys(porPosteo).forEach(k => { porPosteo[k] = porFecha("createdAt", porPosteo[k]); });
             return porPosteo;
           } });
-      },
-      subscribeOf(postId, alCambiar, alFallar){
-        return enVivo({ tabla: "replies", igual: { columna: "post_id", valor: postId },
-          orden: { columna: "created_at" }, alCambiar, alFallar,
-          afinar: aComentario, firmaAdjuntos: true,
-          alArmar: lista => porFecha("createdAt", lista) });
       },
       async create(postId, datos){
         const id = nuevoId();
@@ -6594,16 +6088,13 @@ function crearSupabaseStore(sb, opciones = {}){
       },
       // Va como upsert y no como insert, y esto NO es un detalle: aprobar a
       // alguien que ya estuvo en el equipo es normal (se lo revocó y
-      // vuelve, o su solicitud quedó dando vueltas). En Firestore el alta
-      // era un setDoc, que crea O REEMPLAZA sin quejarse; un insert a secas
-      // se caía con "duplicate key" y el admin no podía aprobar a nadie
-      // que ya tuviera ficha.
+      // vuelve, o su solicitud quedó dando vueltas). Un insert a secas se
+      // caía con "duplicate key" y el admin no podía aprobar a nadie que
+      // ya tuviera ficha.
       //
-      // Hay una diferencia chica con Firestore, y es para mejor: allá el
-      // setDoc borraba los campos que no venían (por eso las reglas listan
-      // tourSeenAt, para que el alta no le borre a la persona la marca de
-      // que ya vio el tutorial). Acá los campos que no se mandan se
-      // quedan como estaban, así que eso no puede pasar.
+      // Los campos que no se mandan se quedan como estaban: el alta no le
+      // borra a la persona, por ejemplo, la marca de que ya vio el
+      // tutorial.
       async add(email, datos){
         revienta(await sb.from("members").upsert(
           { ...aFila(datos), email, approved_at: MARCA_HORA }, { onConflict: "email" }));
@@ -6765,10 +6256,8 @@ function crearSupabaseStore(sb, opciones = {}){
         await refrescar("audit_log", id);
       },
       // "Escribir solo si no existe todavía": es lo que hace que un login
-      // deje UNA entrada por día y no una por recarga. En Firestore se
-      // logra con un id fijo que la segunda vez rebota contra las reglas;
-      // acá, con un insert que ignora el choque de id. Lo que importa es
-      // la intención, no el mecanismo.
+      // deje UNA entrada por día y no una por recarga — un id fijo, y un
+      // insert que ignora el choque de id (ver logAudit).
       async addOnce(id, datos){
         revienta(await sb.from("audit_log").upsert({ ...aFila(datos), id },
           { onConflict: "id", ignoreDuplicates: true }));
@@ -6793,14 +6282,6 @@ function crearSupabaseStore(sb, opciones = {}){
       try{ localStorage.removeItem(CLAVE_FIRMAS); }catch(e){}
     },
 
-    // Postgres contesta 42501 cuando una política deja algo afuera, y
-    // PostgREST lo devuelve como código 42501 en el error.
-    // PGRST301 NO va acá: es un token vencido o inválido, no falta de
-    // permiso. Tomarlo como permiso pasaba los comentarios al modo de
-    // respaldo (un canal por posteo) por un token que se renueva solo.
-    esErrorDePermiso(err){
-      return !!err && err.code === "42501";
-    },
   };
 }
 
@@ -6809,41 +6290,13 @@ function crearSupabaseStore(sb, opciones = {}){
 
    Lo mismo que la capa de datos pero para el login, y es mucho más chico:
    la app solo necesita tres cosas. Quién está adentro (avisando cuando
-   cambia), entrar, y salir.
+   cambia), entrar, y salir. El perfil llega siempre con la misma forma —
+   uid, email, displayName, photoURL—, así que onAuthChanged no sabe ni le
+   importa cómo lo guarda Supabase.
 
-   Las dos implementaciones entregan la MISMA forma de perfil — uid,
-   email, displayName, photoURL — así que onAuthChanged no sabe ni le
-   importa de dónde salió.
-
-   El permiso de Google Calendar NO pasa por acá: eso es de Google y sigue
-   siendo de Google con cualquier base. Se pide aparte (ensureCalendarToken).
+   El permiso de Google Calendar NO pasa por acá: es de Google, y se pide
+   aparte (ensureCalendarToken).
    ====================================================================== */
-const firebaseSesion = {
-  alCambiar(fn){ authMod.onAuthStateChanged(auth, fn); },
-  async iniciar(){
-    // Solo identidad: el permiso de Calendar se pide recién cuando hace
-    // falta (ver signIn más abajo, que es donde estaba este comentario).
-    const provider = new authMod.GoogleAuthProvider();
-    await authMod.signInWithPopup(auth, provider);
-  },
-  async cerrar(){ await authMod.signOut(auth); },
-};
-
-// Un cartel fijo arriba de todo, imposible de no ver. Mirar datos de una
-// base creyendo que son de la otra es la peor forma de perder una tarde.
-function mostrarAvisoDeBase(){
-  const d = document.createElement("div");
-  d.id = "avisoBase";
-  d.textContent = t(
-    "⚠️ Esta pestaña está mirando FIREBASE, la base vieja. Lo que hagas acá no llega a la app del equipo: sirve solo para bajar su última copia.",
-    "⚠️ This tab is looking at FIREBASE, the old database. Nothing you do here reaches the team's app: it's only for downloading its last backup.",
-    "⚠️ Esta aba está olhando o FIREBASE, a base antiga. O que você fizer aqui não chega ao app da equipe: serve só para baixar a última cópia.",
-    "⚠️ הלשונית הזו מציגה את FIREBASE, הבסיס הישן. מה שתעשה/י כאן לא מגיע לאפליקציה של הצוות: היא רק להורדת הגיבוי האחרון.");
-  d.style.cssText = "position:sticky;top:0;z-index:99999;background:#8a5a00;color:#fff;" +
-    "padding:8px 14px;font:600 13px/1.4 system-ui,sans-serif;text-align:center;";
-  document.body.prepend(d);
-}
-
 function crearSupabaseSesion(sb){
   // Supabase devuelve el perfil con otros nombres; se traduce acá para que
   // el resto de la app siga viendo lo de siempre.
@@ -6855,22 +6308,22 @@ function crearSupabaseSesion(sb){
   };
   return {
     alCambiar(fn){
-      // Se avisa del estado de arranque además de los cambios: Firebase
-      // llama al oyente apenas se registra, y la app cuenta con eso.
+      // Se avisa del estado de arranque además de los cambios: la app
+      // cuenta con un primer aviso apenas se registra, haya alguien o no.
       //
       // Y se FILTRA, que es la mitad del trabajo de este adaptador.
-      // Firebase avisa solo cuando la sesión cambia de verdad. Supabase
-      // avisa muchísimo más: emite SIGNED_IN cada vez que la pestaña
-      // vuelve a tener foco, y TOKEN_REFRESHED cada hora. Para la app
-      // cada aviso es un cambio de sesión, así que corta todas las
-      // suscripciones, vacía el estado y vuelve a empezar — y volviendo
-      // de otra ventana eso se veía como "Cargando registro compartido…"
-      // otra vez, cada vez, y a veces para siempre.
+      // Supabase avisa muchísimo más de lo que la sesión cambia: emite
+      // SIGNED_IN cada vez que la pestaña vuelve a tener foco, y
+      // TOKEN_REFRESHED cada hora. Para la app cada aviso es un cambio de
+      // sesión, así que corta todas las suscripciones, vacía el estado y
+      // vuelve a empezar — y volviendo de otra ventana eso se veía como
+      // "Cargando registro compartido…" otra vez, cada vez, y a veces para
+      // siempre.
       //
-      // El contrato de este adaptador es parecerse a Firebase. Mismo
-      // usuario, ningún aviso. `undefined` como valor inicial y no `null`
-      // porque "todavía no avisé nunca" y "no hay nadie" son distintos:
-      // el primer aviso de que no hay sesión tiene que pasar.
+      // El contrato es: mismo usuario, ningún aviso. `undefined` como
+      // valor inicial y no `null` porque "todavía no avisé nunca" y "no
+      // hay nadie" son distintos: el primer aviso de que no hay sesión
+      // tiene que pasar.
       let ultimoUid;
       const avisar = u => {
         const p = perfil(u);
@@ -6884,8 +6337,8 @@ function crearSupabaseSesion(sb){
     },
     async iniciar(){
       // Con redirección y no con una ventanita: es lo que hace Supabase, y
-      // vuelve a esta misma dirección — con `?base=supabase` incluido, que
-      // es lo que mantiene la pestaña apuntando donde estaba.
+      // vuelve a esta misma dirección (sin el #, que es lo que Supabase
+      // usa para devolver la sesión).
       const { error } = await sb.auth.signInWithOAuth({
         provider: "google", options: { redirectTo: location.href.split("#")[0] } });
       if(error) throw error;
@@ -6893,14 +6346,11 @@ function crearSupabaseSesion(sb){
     async cerrar(){ await sb.auth.signOut(); },
   };
 }
-let sesion = firebaseSesion;
+// Las dos las arma arrancar(), apenas carga Supabase. Antes de eso no hay
+// nada que mostrar ni botón de entrar: la pantalla está en "Cargando".
+let sesion = null;
+let store = null;
 
-// Qué implementación está en uso: Firebase, salvo en la pestaña que abre
-// con `?base=supabase`, donde arrancarSupabase() la cambia por la de
-// Supabase. El día del cambio, la de Supabase pasa a ser la de todos.
-let store = firebaseStore;
-
-// correspondiente en firestore.rules (allowlist: allow list).
 // Ex integrantes: lo lee cualquier aprobado, igual que el roster y por el
 // mismo motivo — resolver el @nickname de quien escribió algo.
 function subscribeFormerMembers(){
@@ -6909,11 +6359,13 @@ function subscribeFormerMembers(){
     render();
   }, err=>console.error("Error leyendo ex integrantes:", err));
 }
+// Lista de nombre/email de todo aprobado, para autocompletar @menciones.
+// Cualquier aprobado puede LEER esto, no solo el admin (ver la política
+// de members en supabase/02-politicas.sql).
 function subscribeRoster(){
-  // Sin orderBy("approvedAt"): Firestore EXCLUYE de la consulta los
-  // documentos que no tienen ese campo, y esa persona desaparecía del
-  // roster (no se la podía @mencionar, myRosterEntry() daba null). Se
-  // ordena acá, con los que no tienen fecha al principio.
+  // Se ordena acá y no en la consulta, con los que no tienen fecha de
+  // alta al principio: nadie puede quedar afuera del roster por un dato
+  // que falta (no se lo podría @mencionar, y myRosterEntry() daría null).
   unsubRoster = store.roster.subscribe(lista=>{
     const missingNickname = [];
     state.roster = lista.map(data=>{
@@ -7061,7 +6513,7 @@ function applyActivityTypesConfig(types){
   });
   refreshActivityTypeLabels();
 }
-// Espejo de lo último leído de Firestore (no de CITY_PRESETS, que ya
+// Espejo de lo último leído de la base (no de CITY_PRESETS, que ya
 // incluye tanto lo hardcodeado como lo promovido): hace falta para poder
 // sumar una ciudad más sin perder las que ya se habían promovido antes.
 let extraCitiesConfig = {};
@@ -7137,8 +6589,8 @@ async function takenNicknames(exceptEmail){
   const add = (email, nick)=>{ if(nick && email !== exceptEmail) taken.add(String(nick).toLowerCase()); };
   const [roster, formers] = await Promise.all([
     store.roster.all(),
-    // Si las reglas de formerMembers todavía no están publicadas, se sigue
-    // con los activos nomás en vez de romper el alta.
+    // Si no se pueden leer los ex integrantes, se sigue con los activos
+    // nomás en vez de romper el alta.
     store.formerMembers.all().catch(()=>[]),
   ]);
   roster.forEach(u=> add(u.email, u.nickname));
@@ -7156,11 +6608,11 @@ function makeNickname(displayName, existingNicknames){
   return base + n;
 }
 // El admin no pasa por accessRequests/allowlist para tener acceso (su
-// permiso viene de ADMIN_EMAIL hardcodeado en las reglas), así que sin
+// permiso viene de ADMIN_EMAIL, fijo también en la base), así que sin
 // esto NUNCA aparecía en state.roster (que sale de la colección
 // allowlist) — nadie podía etiquetarlo con @ aunque estuviera bien
 // aprobado de hecho. Se asegura, una vez por login, de que también
-// tenga su propio documento en allowlist con nickname, como cualquier
+// tenga su propia ficha en el equipo, con nickname, como cualquier
 // otro aprobado (no cambia nada de cómo se calculan sus permisos).
 async function ensureAdminInRoster(profile){
   try{
@@ -7209,11 +6661,11 @@ async function approveRequest(email){
   logAudit("access_approved", { targetEmail: email });
 }
 // Cambio de rol desde Usuarios. ADMIN_EMAIL queda afuera, y uno mismo
-// también (las dos cosas también en las reglas): el propio rol lo cambia
+// también (las dos cosas también en la base): el propio rol lo cambia
 // otro admin. Así nadie se baja por error ni se escala solo.
 async function changeRole(email, role){
   const me = state.auth.user && state.auth.user.email;
-  // Ni el admin fijo ni uno mismo (las reglas lo rechazan igual).
+  // Ni el admin fijo ni uno mismo (la base lo rechaza igual).
   if(email === ADMIN_EMAIL || email === me || !ROLES.includes(role)) { render(); return; }
   try{
     const wasShared = !!(state.roster.find(u=>u.email===email) || {}).calendarShared;
@@ -7241,8 +6693,8 @@ async function rejectRequest(email){
 }
 async function revokeAccess(email){
   // Primero se guarda quién era (nombre, @nickname, foto, desde cuándo) y
-  // recién después se borra su acceso: el nickname vive SOLO en el
-  // documento de allowlist, así que si se borra antes se pierde para
+  // recién después se borra su acceso: el nickname vive SOLO en su
+  // ficha del equipo, así que si se borra antes se pierde para
   // siempre y todos sus posteos viejos quedan con el nombre crudo de
   // Google, sin @nickname y sin perfil.
   // Sin el try/catch de antes: si getDoc/setDoc fallan acá, el error se
@@ -7272,61 +6724,25 @@ async function revokeAccess(email){
   logAudit("access_revoked", { targetEmail: email });
 }
 
-// Las respuestas se escuchan posteo por posteo (subcolección normal),
-// nunca con una consulta collectionGroup — ver el comentario grande en
-// firestore.rules sobre por qué (esas consultas dan "Missing or
-// insufficient permissions" en este proyecto sin importar la regla).
-let repliesUnsubs = {}; // postId -> función para dejar de escuchar
-function syncReplyListeners(){
-  const currentIds = new Set(state.posts.map(p=>p.id));
-  Object.keys(repliesUnsubs).forEach(postId=>{
-    if(!currentIds.has(postId)){
-      repliesUnsubs[postId]();
-      delete repliesUnsubs[postId];
-      delete state.repliesByPost[postId];
-    }
-  });
-  currentIds.forEach(postId=>{
-    if(repliesUnsubs[postId]) return;
-    repliesUnsubs[postId] = store.replies.subscribeOf(postId, lista=>{
-      state.repliesByPost[postId] = lista;
-      scheduleRender();
-    }, err=>console.error(`Error leyendo respuestas de ${postId}:`, err));
-  });
-}
-
-// Lectura de respuestas. Modo "group": UNA consulta collectionGroup para
-// las respuestas de todos los posteos (necesita el match
-// /{path=**}/replies de firestore.rules). Modo "perPost": un listener por
-// posteo (syncReplyListeners, el modo original) — la cantidad de
-// listeners crecía con la cantidad de posteos, sin tope. Se arranca en
-// group; si las reglas publicadas todavía no tienen ese match, Firestore
-// contesta permission-denied y se pasa a perPost solo, sin que nadie
-// note nada.
-let repliesMode = "group";
+// Los comentarios de todos los posteos, en una sola suscripción: llegan
+// ya agrupados por posteo y ordenados (ver replies.subscribeAll).
 let unsubRepliesGroup = null;
 function subscribeReplies(){
-  if(repliesMode === "perPost"){ syncReplyListeners(); return; }
   if(unsubRepliesGroup) return;
   unsubRepliesGroup = store.replies.subscribeAll(porPosteo=>{
     state.repliesByPost = porPosteo;
     scheduleRender();
   }, err=>{
-    console.error("Error leyendo respuestas (todas juntas):", err);
+    console.error("Error leyendo respuestas:", err);
     if(unsubRepliesGroup){ unsubRepliesGroup(); unsubRepliesGroup = null; }
-    if(store.esErrorDePermiso(err)){
-      repliesMode = "perPost";
-      syncReplyListeners();
-    }
   });
 }
 
 function subscribeData(){
-  // Sin orderBy("date") en la consulta: (1) Firestore excluye los docs
-  // que no tienen el campo — un posteo viejo sin `date` era invisible sin
-  // ningún error; (2) el desempate dentro del mismo día era el id del
-  // documento (aleatorio), así que las rutinas de hoy salían en cualquier
-  // orden. Se ordena acá: fecha desc y, dentro del día, creación desc.
+  // El orden es criterio de la app y se arma acá: fecha desc y, dentro
+  // del día, creación desc. Ordenando solo por fecha, el desempate dentro
+  // del mismo día quedaba librado al id (aleatorio), y las rutinas de hoy
+  // salían en cualquier orden.
   const unsubPosts = store.posts.subscribe(lista=>{
     const prevLoaded = state.loaded;
     state.posts = lista
@@ -7344,85 +6760,18 @@ function subscribeData(){
   unsubscribeData = ()=>{
     unsubPosts();
     if(unsubRepliesGroup){ unsubRepliesGroup(); unsubRepliesGroup = null; }
-    Object.values(repliesUnsubs).forEach(fn=>fn());
-    repliesUnsubs = {};
     state.repliesByPost = {};
   };
 }
 
-/* ----------------------------------------------------------------------
-   CUÁNTO PESA UN POSTEO ENTERO
-
-   En Firestore el posteo va entero en un documento —texto, fotos y
-   archivos— y el documento no puede pasar de 1 MiB. Los topes por archivo
-   no alcanzan para cuidar eso: dos archivos de 500 KB, que cada uno por
-   separado entra, juntos pesan 1,3 MB en base64. Y seis fotos pueden pasar
-   también. Antes esto se descubría al guardar, con el error de Firestore
-   en inglés, y al editar encima con la ventana ya cerrada: la edición se
-   perdía entera.
-
-   Se mide como JSON, que pesa apenas MÁS que lo que cuenta Firestore
-   (comillas, comas, "true" en vez de un byte). Lo único que Firestore
-   cuenta y el JSON no son el nombre del documento y los números, que
-   ocupan 8 bytes: para eso es el kilobyte de margen.
----------------------------------------------------------------------- */
-const MARGEN_DEL_POSTEO = 1024;
-function pesoDelPosteo(doc){
-  try{ return new TextEncoder().encode(JSON.stringify(doc)).length; }
-  catch(err){ return 0; }   // algo que no se puede medir: que decida la base
-}
-// Cuánto hay que sacar para que entre; 0 si entra.
-//
-// Con `antes` (el documento como está guardado) frena solo lo que SUMA
-// peso de verdad, como una foto o un archivo. Un posteo que ya está al
-// límite lo aceptó la base así como está, y sacarle un archivo, marcarlo
-// cancelado o guardarle el vínculo con el Calendar tiene que poder
-// hacerse siempre: frenar eso por el margen sería inventar un error que
-// la base no da.
-function excesoDePeso(doc, antes){
-  const tope = store.limites.bytesPorPosteo;
-  if(!Number.isFinite(tope)) return 0;   // Supabase: los archivos van al bucket
-  const peso = pesoDelPosteo(doc);
-  const sobra = peso + MARGEN_DEL_POSTEO - tope;
-  if(sobra <= 0) return 0;
-  if(antes && peso - pesoDelPosteo(antes) < MARGEN_DEL_POSTEO) return 0;
-  return sobra;
-}
-// Cuánto sobra, redondeado SIEMPRE para arriba: decir "sobran 0 KB", o
-// quedarse corto, es mandar a sacar de menos.
-function excesoLegible(bytes){
-  return bytes < 1024 * 1024
-    ? `${Math.max(1, Math.ceil(bytes / 1024))} KB`
-    : `${(Math.ceil(bytes / (1024 * 1024) * 10) / 10).toFixed(1)} MB`;
-}
-// Escrito para leerse después de "No se pudo publicar: ", que es como lo
-// muestran todos los que atrapan el error.
-function mensajeDePeso(exceso){
-  return t(
-    "con lo adjunto se pasa por {cuanto} del máximo de {max}. Sacá alguna foto o algún archivo, o subí el archivo a Drive y pegá el link.",
-    "with the attachments it's {cuanto} over the {max} maximum. Remove a photo or a file, or upload the file to Drive and paste the link.",
-    "com os anexos passa {cuanto} do máximo de {max}. Remova alguma foto ou algum arquivo, ou suba o arquivo para o Drive e cole o link.",
-    "עם הקבצים המצורפים זה חורג ב-{cuanto} מהמקסימום של {max}. הסר/י תמונה או קובץ, או העלה/י את הקובץ ל-Drive והדבק/הדביקי את הקישור.",
-    { cuanto: excesoLegible(exceso), max: topeLegible(store.limites.bytesPorPosteo) });
-}
-// La última red, por donde pasa TODA escritura de posteos y respuestas:
-// lo que no entra no se manda, y el error dice qué hacer.
-function frenarSiNoEntra(doc, antes){
-  const exceso = excesoDePeso(doc, antes);
-  if(exceso) throw new Error(mensajeDePeso(exceso));
-}
-
+// Toda escritura de posteos y respuestas pasa por acá.
 async function createPost(data){
-  frenarSiNoEntra(data);
   return store.posts.create(data);
 }
 async function createReply(postId, data){
-  frenarSiNoEntra(data);
   await store.replies.create(postId, data);
 }
 async function updatePostDoc(postId, patch){
-  const antes = getPostById(postId);
-  if(antes) frenarSiNoEntra({ ...antes, ...patch }, antes);
   await store.posts.update(postId, patch);
 }
 
@@ -7507,7 +6856,7 @@ function milestoneStatusLabel(st){
 // porque cerrar todos los demás al abrir uno es el mismo comportamiento
 // que ya tiene el selector de color.
 //
-// Un mismo popup sirve para los hitos (guardan en Firestore), las fechas
+// Un mismo popup sirve para los hitos (guardan en la base), las fechas
 // del composer y el "importar desde" del Calendario (guardan en un draft
 // local): cada "kind" resuelve leer/escribir/validar contra lo suyo, el
 // popup en sí no sabe ni le importa de dónde sale el valor.
@@ -7720,7 +7069,7 @@ function commitTypedDate(input){
   if(!trimmed){
     if(spec.allowClear(ds) && currentValue != null){
       // No hace falta releer el valor para reflejar esto: para los hitos,
-      // spec.set() guarda en Firestore y el snapshot dispara un render()
+      // spec.set() guarda en la base y el aviso en vivo dispara un render()
       // que (con el enganche de syncDateFieldOpenState en render()) va a
       // redibujar el popup solo, ya con el dato guardado — no antes,
       // porque hasta entonces spec.get() devuelve el valor viejo. Para los
@@ -7865,7 +7214,7 @@ function renderProjectDetail(post){
       ${renderProjectLog(post)}
     </div>`;
 }
-// Guarda la lista entera: es corta (tope 40 en las reglas) y así el
+// Guarda la lista entera: es corta (tope 40 en la base) y así el
 // documento queda consistente en una sola escritura.
 async function saveMilestones(post, list){
   try{ await updatePostDoc(post.id, { milestones: list }); }
@@ -8005,7 +7354,7 @@ function ppApply(key, email){
   const [kind, postId, msId] = key.split(":");
   const post = getPostById(postId);
   personQueries[key] = { q:"", hi:0 };
-  // render() ya mismo, sin esperar a que Firestore vuelva: elegir a alguien
+  // render() ya mismo, sin esperar a que la base conteste: elegir a alguien
   // (con Enter o con un click) tiene que cerrar el buscador y limpiar lo
   // tipeado al toque, no recién cuando llegue el guardado.
   render();
@@ -8280,8 +7629,8 @@ async function updatePostAndSync(postId, original, newData){
   return calResult;
 }
 
-// Borrado DE VERDAD, solo para el admin fijo (las reglas lo exigen con
-// isAdmin()): se van el posteo y todas sus respuestas, sin marca, sin
+// Borrado DE VERDAD, solo para el admin fijo (la base lo exige, ver
+// supabase/02-politicas.sql): se van el posteo y todas sus respuestas, sin marca, sin
 // entrada en la auditoría y sin aviso en ningún hilo. Si el posteo estaba
 // en el Calendar, también se intenta borrar el evento: si quedara, una
 // reimportación completa lo traería de vuelta como posteo nuevo.
@@ -8422,7 +7771,7 @@ function render(){
   // clase .open y su popup quedó vacío/oculto — hay que reabrirlo contra el
   // trigger nuevo. Esto es también lo que hace que un guardado async
   // (saveMilestones) se vea reflejado en el popup: llega por acá cuando el
-  // snapshot de Firestore dispara este mismo render().
+  // aviso de la base dispara este mismo render().
   syncDateFieldOpenState();
   syncOccPopState();
   syncRecurPopState();
@@ -8437,9 +7786,9 @@ function render(){
   document.querySelectorAll("textarea.autogrow").forEach(autoGrowTextarea);
   updateNewPostsPill(); // la píldora depende de la vista y del scroll
 }
-// Para los listeners de Firestore que llegan en ráfaga (uno por posteo al
-// cargar las respuestas): junta todos los pedidos de un mismo frame en UN
-// render en vez de N reconstrucciones completas del feed. render() sigue
+// Para los avisos que llegan en ráfaga (varios cambios seguidos, o la
+// carga de los comentarios): junta todos los pedidos de un mismo frame en
+// UN render en vez de N reconstrucciones completas del feed. render() sigue
 // siendo síncrono para el código que después busca un elemento recién
 // pintado (foco en un input, scroll a una tarjeta).
 let renderScheduled = false;
@@ -8499,11 +7848,12 @@ function userRoleLabel(status){
   return labels[status] || labels.approved;
 }
 
-// Edición del propio @nickname desde el menú del avatar (ver
-// firestore.rules: cada uno puede tocar SOLO el campo nickname de su
-// propio documento en allowlist, con forma de nickname — nada de
-// espacios/@/tildes, 2 a 20 caracteres). Unicidad y la palabra reservada
-// "all" se controlan acá, del lado del cliente, antes de escribir.
+// Edición del propio @nickname desde el menú del avatar. La base deja que
+// cada uno toque SOLO su @nickname en su propia ficha de members, con forma
+// de nickname — nada de espacios/@/tildes, 2 a 20 caracteres (ver
+// members_controlar_nickname en 03-validacion.sql). Unicidad y la palabra
+// reservada "all" se controlan acá, del lado del cliente, antes de
+// escribir.
 let nicknameEditing = false;
 let nicknameDraft = "";
 let nicknameError = null;
@@ -8849,7 +8199,7 @@ function withContentTranslation(scope, id, title, content){
 }
 
 // Claro/oscuro. La preferencia es por dispositivo (localStorage), no por
-// usuario en Firestore: es una cuestión de cómo se ve la pantalla donde
+// usuario en la base: es una cuestión de cómo se ve la pantalla donde
 // estás, no de quién sos — la misma persona puede querer oscuro en el
 // celular de noche y claro en la compu de la oficina.
 function currentTheme(){
@@ -8998,20 +8348,6 @@ function doRender(){
   });
 
   let html = "";
-  if(CONFIG_IS_PLACEHOLDER){
-    tabsNav.classList.add("tabs-hidden"); closeFab(); fabEl.hidden = true; userBadgeEl.innerHTML = ""; mentionsBellEl.innerHTML = "";
-    html += `<div class="setup-banner">
-      ⚠️ <strong>${t("Falta configurar Firebase.","Firebase isn't configured yet.","Falta configurar o Firebase.",".עדיין צריך להגדיר את Firebase")}</strong> ${t(
-        `Esta app todavía no tiene datos compartidos porque <code>FIREBASE_CONFIG</code> tiene valores de ejemplo. Abrí <code>index.html</code>, completá la configuración con los datos de tu proyecto de Firebase y volvé a publicar el archivo. Instrucciones paso a paso en <code>README.md</code>.`,
-        `This app doesn't have shared data yet because <code>FIREBASE_CONFIG</code> still has placeholder values. Open <code>index.html</code>, fill in your Firebase project's settings and republish the file. Step-by-step instructions in <code>README.md</code>.`,
-        `Este app ainda não tem dados compartilhados porque <code>FIREBASE_CONFIG</code> tem valores de exemplo. Abra o <code>index.html</code>, preencha a configuração com os dados do seu projeto do Firebase e publique o arquivo de novo. Instruções passo a passo no <code>README.md</code>.`,
-        `לאפליקציה הזו עדיין אין נתונים משותפים כי ל-<code>FIREBASE_CONFIG</code> יש ערכי דוגמה. פתח/י את <code>index.html</code>, מלא/י את ההגדרות עם הפרטים של פרויקט ה-Firebase שלך ופרסמ/י מחדש את הקובץ. הוראות שלב-אחר-שלב ב-<code>README.md</code>.`
-      )}
-    </div>`;
-    viewRoot.innerHTML = html;
-    return;
-  }
-
   if(fatalError){
     html += `<div class="setup-banner">⚠️ ${esc(fatalError)}</div>`;
   }
@@ -9230,7 +8566,7 @@ function renderUsuariosSection(){
   return toolbar + users.map(u=>{
     const tier = activityTierFor(u.postCount);
     const isAdminUser = u.email === ADMIN_EMAIL;
-    // El rol de ADMIN_EMAIL no se toca desde acá (ni desde las reglas), y
+    // El rol de ADMIN_EMAIL no se toca desde acá (ni desde la base), y
     // a propósito NO se lo señala como "dueño" ni nada parecido: para el
     // resto del equipo es un admin más. Solo que su fila no tiene selector.
     const role = isAdminUser ? "admin" : (u.role || "member");
@@ -9252,9 +8588,9 @@ function renderUsuariosSection(){
         ${roleSelect}
         ${isAdminUser
           // La fila del admin fijo no lleva botones de Calendar: su acceso
-          // no pasa por allowlist y las reglas rechazan cualquier escritura
-          // sobre su documento, así que compartir/sacar fallaba SIEMPRE, en
-          // silencio, mientras la UI decía que había salido bien.
+          // no depende de la lista del equipo, y compartir/sacar sobre su
+          // ficha fallaba SIEMPRE, en silencio, mientras la UI decía que
+          // había salido bien.
           ? ""
           : role === "observer"
           // Observador: nunca se le ofrece compartir (sería permiso de
@@ -9393,7 +8729,7 @@ function auditLabels(){
 let auditVisibleCount = 30;
 // Orden de la tabla (click en un header, ver renderAuditColumnsHeader):
 // bien simple, un solo criterio a la vez. Por defecto más nuevo primero,
-// que es como ya venían las entradas desde Firestore.
+// que es como vienen de la base.
 let auditSort = { key: "date", dir: "desc" };
 function auditSortValue(e, key, labels){
   if(key === "date") return tsToMillis(e.createdAt) || 0;
@@ -9775,7 +9111,7 @@ function renderCalendarImportBlock(d){
 // La unidad del campo de tamaño la decide la base: escribir "10240" para
 // decir 10 MB es ilegible, y "0.15" para decir 150 KB también.
 function unidadAdjuntos(){
-  return store.limites.bytesPorArchivo >= 1024 * 1024
+  return LIMITES_DE_LA_BASE.bytesPorArchivo >= 1024 * 1024
     ? { nombre:"MB", factor:1024*1024, min:1, paso:1 }
     : { nombre:"KB", factor:1024, min:50, paso:10 };
 }
@@ -9801,30 +9137,30 @@ function renderAdjuntosSection(){
           <span class="setting-icon">🖼️</span>
           <div class="setting-text">
             <div class="setting-label">${t("Máximo de imágenes","Maximum images","Máximo de imagens","מקסימום תמונות")}</div>
-            <div class="setting-sub">${t("Por posteo — tope de la base: {n}","Per post — cap of the database: {n}","Por postagem — limite da base: {n}","לכל פוסט — תקרת מסד הנתונים: {n}",{n:store.limites.imagenes})}</div>
+            <div class="setting-sub">${t("Por posteo — tope de la base: {n}","Per post — cap of the database: {n}","Por postagem — limite da base: {n}","לכל פוסט — תקרת מסד הנתונים: {n}",{n:LIMITES_DE_LA_BASE.imagenes})}</div>
           </div>
           <div class="setting-control">
-            <input type="number" id="adjMaxImages" min="1" max="${store.limites.imagenes}" value="${d.maxImages}">
+            <input type="number" id="adjMaxImages" min="1" max="${LIMITES_DE_LA_BASE.imagenes}" value="${d.maxImages}">
           </div>
         </div>
         <div class="setting-row">
           <span class="setting-icon">📄</span>
           <div class="setting-text">
             <div class="setting-label">${t("Máximo de documentos","Maximum documents","Máximo de documentos","מקסימום מסמכים")}</div>
-            <div class="setting-sub">${t("Por posteo — tope de la base: {n}","Per post — cap of the database: {n}","Por postagem — limite da base: {n}","לכל פוסט — תקרת מסד הנתונים: {n}",{n:store.limites.archivos})}</div>
+            <div class="setting-sub">${t("Por posteo — tope de la base: {n}","Per post — cap of the database: {n}","Por postagem — limite da base: {n}","לכל פוסט — תקרת מסד הנתונים: {n}",{n:LIMITES_DE_LA_BASE.archivos})}</div>
           </div>
           <div class="setting-control">
-            <input type="number" id="adjMaxFiles" min="1" max="${store.limites.archivos}" value="${d.maxFiles}">
+            <input type="number" id="adjMaxFiles" min="1" max="${LIMITES_DE_LA_BASE.archivos}" value="${d.maxFiles}">
           </div>
         </div>
         <div class="setting-row">
           <span class="setting-icon">⚖️</span>
           <div class="setting-text">
             <div class="setting-label">${t("Tamaño máximo por archivo","Maximum size per file","Tamanho máximo por arquivo","גודל מקסימלי לכל קובץ")}</div>
-            <div class="setting-sub">${t("Para cada documento adjunto — tope de la base: {n}","For each attached document — cap of the database: {n}","Para cada documento anexado — limite da base: {n}","לכל מסמך מצורף — תקרת מסד הנתונים: {n}",{n:topeLegible(store.limites.bytesPorArchivo)})}</div>
+            <div class="setting-sub">${t("Para cada documento adjunto — tope de la base: {n}","For each attached document — cap of the database: {n}","Para cada documento anexado — limite da base: {n}","לכל מסמך מצורף — תקרת מסד הנתונים: {n}",{n:topeLegible(LIMITES_DE_LA_BASE.bytesPorArchivo)})}</div>
           </div>
           <div class="setting-control setting-control-unit">
-            <input type="number" id="adjMaxFileSize" min="${u.min}" step="${u.paso}" max="${Math.round(store.limites.bytesPorArchivo / u.factor)}" value="${d.maxFileSize}">
+            <input type="number" id="adjMaxFileSize" min="${u.min}" step="${u.paso}" max="${Math.round(LIMITES_DE_LA_BASE.bytesPorArchivo / u.factor)}" value="${d.maxFileSize}">
             <span class="setting-unit">${u.nombre}</span>
           </div>
         </div>
@@ -9849,189 +9185,14 @@ function preferenciasSections(){
     { key:"lugares", label:t("Lugares","Places","Lugares","מקומות") },
     { key:"calendar", label:"Calendar" },
     { key:"adjuntos", label:t("Adjuntos","Attachments","Anexos","קבצים מצורפים") },
-    { key:"respaldo", label:t("Copia de seguridad","Backup","Cópia de segurança","גיבוי") },
   ];
 }
-/* ======================================================================
-   COPIA DE SEGURIDAD (panel admin, Preferencias > Copia de seguridad)
-
-   Descarga TODO lo que hay en Firestore como un archivo JSON, desde el
-   navegador de quien lo pide (que es quien tiene los permisos). No hay
-   servidor propio, así que no hay forma de sacar un respaldo automático:
-   esto es el equivalente manual, y es lo que permite volver atrás si una
-   migración sale mal.
-
-   Lo que NO puede entrar, y conviene saberlo: las preferencias
-   personales de los DEMÁS (userPrefs). Las reglas dejan que cada uno lea
-   solo las suyas — a propósito, ver firestore.rules. Son configuraciones
-   de cada persona (colores, avisos), no contenido del equipo: si hubiera
-   que reconstruir, cada uno vuelve a elegirlas.
-   ====================================================================== */
-let respaldoEstado = { corriendo:false, resumen:null, error:"" };
-// Los Timestamp de Firestore no sobreviven a JSON.stringify de forma
-// reconocible: se marcan explícitamente para que quien lea el archivo
-// (o un importador futuro) sepa que eso era una fecha y no un número.
-function respaldoValor(v){
-  if(v == null) return v;
-  if(typeof v.toMillis === "function") return { __tipo:"fecha", ms: v.toMillis() };
-  if(Array.isArray(v)) return v.map(respaldoValor);
-  if(typeof v === "object"){
-    const out = {};
-    Object.keys(v).forEach(k=>{ out[k] = respaldoValor(v[k]); });
-    return out;
-  }
-  return v;
-}
-// La versión liviana saca lo que pesa (imágenes y archivos en base64) y
-// deja en su lugar cuántos había. Sirve para mirar o comparar el
-// contenido sin abrir un archivo de cientos de MB; el respaldo de verdad
-// es el completo.
-function respaldoSinAdjuntos(d){
-  const out = { ...d };
-  if(Array.isArray(out.images)) out.images = { __quitado:"images", cantidad: out.images.length };
-  if(Array.isArray(out.files)) out.files = { __quitado:"files", cantidad: out.files.length };
-  return out;
-}
-// Estas tres funciones son las ÚNICAS de la app que le hablan a Firestore
-// sin pasar por la capa de datos, y es a propósito: el respaldo es la red
-// de la marcha atrás (ver VOLVER-A-FIREBASE.md). Tiene que bajar lo que
-// hay en FIREBASE, no lo que haya en la base que esté en uso — si no, el
-// día que se cambie de base dejaría de servir justamente para volver.
-async function leerColeccion(nombre, conAdjuntos){
-  const snap = await fb.getDocs(fb.collection(db, nombre));
-  return snap.docs.map(d=>({ id:d.id, ...respaldoValor(conAdjuntos ? d.data() : respaldoSinAdjuntos(d.data())) }));
-}
-async function leerDocMeta(id){
-  try{
-    const snap = await fb.getDoc(fb.doc(db, "meta", id));
-    return snap.exists() ? respaldoValor(snap.data()) : null;
-  }catch(e){ return null; }
-}
-async function armarRespaldo(conAdjuntos){
-  const datos = { formato:1, generado: new Date().toISOString(), conAdjuntos, origen:"firestore" };
-  datos.posts = await leerColeccion("posts", conAdjuntos);
-  // Las respuestas en UNA consulta de grupo, no una por posteo: el id del
-  // posteo padre sale de la propia referencia.
-  const reps = await fb.getDocs(fb.collectionGroup(db, "replies"));
-  datos.replies = reps.docs.map(d=>({
-    id: d.id, postId: d.ref.parent.parent ? d.ref.parent.parent.id : null,
-    ...respaldoValor(conAdjuntos ? d.data() : respaldoSinAdjuntos(d.data())),
-  }));
-  for(const col of ["allowlist","formerMembers","accessRequests","auditLog"]){
-    try{ datos[col] = await leerColeccion(col, true); }
-    catch(e){ datos[col] = { __error: e.message }; }
-  }
-  datos.meta = {
-    territoryConfig: await leerDocMeta("territoryConfig"),
-    preferences: await leerDocMeta("preferences"),
-    calendarSync: await leerDocMeta("calendarSync"),
-  };
-  // Solo las propias: las reglas no dejan leer las de los demás.
-  const miEmail = state.auth.user && state.auth.user.email;
-  if(miEmail){
-    try{
-      const mias = await fb.getDoc(fb.doc(db, "userPrefs", miEmail));
-      datos.userPrefs = mias.exists() ? { [miEmail]: respaldoValor(mias.data()) } : {};
-    }catch(e){ datos.userPrefs = {}; }
-  }
-  return datos;
-}
-function bajarArchivo(nombre, texto){
-  const blob = new Blob([texto], { type:"application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url; a.download = nombre;
-  document.body.appendChild(a); a.click(); a.remove();
-  // Se libera en el siguiente turno: revocarla en el acto cancela la
-  // descarga en algunos navegadores.
-  setTimeout(()=> URL.revokeObjectURL(url), 60000);
-}
-async function descargarRespaldo(conAdjuntos){
-  if(respaldoEstado.corriendo) return;
-  respaldoEstado = { corriendo:true, resumen:null, error:"" }; render();
-  try{
-    const datos = await armarRespaldo(conAdjuntos);
-    const texto = JSON.stringify(datos, null, conAdjuntos ? 0 : 2);
-    const hoy = todayISO();
-    bajarArchivo(`registro-acciones-respaldo-${hoy}${conAdjuntos ? "" : "-liviano"}.json`, texto);
-    respaldoEstado = { corriendo:false, error:"", resumen:{
-      conAdjuntos,
-      bytes: texto.length,
-      posts: (datos.posts||[]).length,
-      replies: (datos.replies||[]).length,
-      allowlist: (datos.allowlist||[]).length,
-      formerMembers: (datos.formerMembers||[]).length,
-      auditLog: (datos.auditLog||[]).length,
-    }};
-  }catch(err){
-    console.error("No se pudo armar el respaldo:", err);
-    respaldoEstado = { corriendo:false, resumen:null, error: err.message || String(err) };
-  }
-  render();
-}
-function pesoLegible(bytes){
-  if(bytes >= 1048576) return `${(bytes/1048576).toFixed(1)} MB`;
-  if(bytes >= 1024) return `${Math.round(bytes/1024)} KB`;
-  return `${bytes} B`;
-}
-function renderRespaldoSection(){
-  // Esta copia lee FIREBASE (ver armarRespaldo), y en la pestaña de
-  // Supabase no hay sesión de Firebase: los botones fallaban con un error
-  // de permisos. Se explica dónde se baja, en vez.
-  if(BASE !== "firebase") return `
-      <div class="hint" style="margin-bottom:16px;">${t(
-        "Esta copia baja lo que quedó en Firebase, la base anterior. Desde el 3 de octubre la base del equipo es Supabase, así que la copia de Firebase se baja desde una pestaña aparte.",
-        "This backup downloads what's left in Firebase, the previous database. Since October 3 the team's database is Supabase, so the Firebase backup is downloaded from a separate tab.",
-        "Esta cópia baixa o que ficou no Firebase, a base anterior. Desde 3 de outubro a base da equipe é o Supabase, então a cópia do Firebase se baixa numa aba separada.",
-        "הגיבוי הזה מוריד את מה שנשאר ב-Firebase, הבסיס הקודם. מאז 3 באוקטובר הבסיס של הצוות הוא Supabase, ולכן את הגיבוי של Firebase מורידים מלשונית נפרדת."
-      )}</div>
-      <div class="settings-card">
-        ${prefRow("🗄️", t("Copia de Firebase","Firebase backup","Cópia do Firebase","גיבוי Firebase"),
-          t("Se abre en otra pestaña, con un cartel que avisa que es la base vieja. Ahí: Preferencias → Copia de seguridad.","It opens in another tab, with a banner saying it's the old database. There: Preferences → Backup.","Abre em outra aba, com um aviso de que é a base antiga. Lá: Preferências → Cópia de segurança.","נפתח בלשונית אחרת, עם הודעה שזה הבסיס הישן. שם: העדפות ← גיבוי."),
-          `<a class="btn-primary" href="?base=firebase" target="_blank" rel="noopener">${t("Abrir Firebase","Open Firebase","Abrir o Firebase","פתיחת Firebase")}</a>`)}
-      </div>`;
-  const r = respaldoEstado;
-  const resumen = !r.resumen ? "" : `
-    <div class="settings-card" style="margin-top:16px;">
-      <div class="setting-row" style="display:block;">
-        <div class="setting-label">✅ ${t("Copia descargada","Backup downloaded","Cópia baixada","הגיבוי הורד")}</div>
-        <div class="setting-sub" style="margin-top:6px;">
-          ${t("Pesa {peso}. Incluye {posts} posteos, {replies} comentarios, {roster} integrantes, {ex} ex integrantes y {audit} registros de actividad.",
-              "It weighs {peso}. It has {posts} posts, {replies} comments, {roster} members, {ex} former members and {audit} activity records.",
-              "Pesa {peso}. Inclui {posts} postagens, {replies} comentários, {roster} integrantes, {ex} ex-integrantes e {audit} registros de atividade.",
-              "{peso} משקל. כולל {posts} פוסטים, {replies} תגובות, {roster} חברים, {ex} חברים לשעבר ו-{audit} רשומות פעילות.",
-              { peso: pesoLegible(r.resumen.bytes), posts: r.resumen.posts, replies: r.resumen.replies,
-                roster: r.resumen.allowlist, ex: r.resumen.formerMembers, audit: r.resumen.auditLog })}
-          ${r.resumen.conAdjuntos ? "" : ` ${t("(Sin adjuntos: las imágenes y los archivos NO están en este archivo.)","(No attachments: images and files are NOT in this file.)","(Sem anexos: as imagens e os arquivos NÃO estão neste arquivo.)","(ללא קבצים מצורפים: התמונות והקבצים אינם בקובץ הזה.)")}`}
-        </div>
-      </div>
-    </div>`;
-  return `
-      <div class="hint" style="margin-bottom:16px;">${t(
-        "Baja todo lo que hay guardado en un solo archivo, desde este navegador. Es el respaldo que te deja volver atrás si algo sale mal — guardalo en un lugar seguro. No incluye las preferencias personales de los demás (colores, avisos): cada uno solo puede leer las suyas, y se vuelven a elegir en un minuto.",
-        "Downloads everything stored, in a single file, from this browser. It's the backup that lets you go back if something goes wrong — keep it somewhere safe. It doesn't include other people's personal settings (colours, alerts): each person can only read their own, and they take a minute to set again.",
-        "Baixa tudo o que está guardado num único arquivo, deste navegador. É o backup que permite voltar atrás se algo der errado — guarde-o num lugar seguro. Não inclui as preferências pessoais dos outros (cores, avisos): cada um só pode ler as suas, e se voltam a escolher num minuto.",
-        "מוריד את כל מה ששמור לקובץ אחד, מהדפדפן הזה. זה הגיבוי שמאפשר לחזור אחורה אם משהו משתבש — שמור אותו במקום בטוח. הוא לא כולל את ההעדפות האישיות של האחרים (צבעים, התראות): כל אחד יכול לקרוא רק את שלו, ולוקח דקה להגדיר אותן מחדש."
-      )}</div>
-      <div class="settings-card">
-        ${prefRow("💾", t("Copia completa","Full backup","Cópia completa","גיבוי מלא"),
-          t("Todo, con las imágenes y los archivos adentro. Es el que sirve para restaurar de verdad, y el que más pesa.","Everything, with images and files inside. This is the one that actually restores, and the heaviest.","Tudo, com as imagens e os arquivos dentro. É o que serve para restaurar de verdade, e o que mais pesa.","הכול, כולל התמונות והקבצים. זה זה שבאמת משחזר, והכי כבד."),
-          `<button type="button" class="btn-primary" data-action="descargar-respaldo" data-adjuntos="1" ${r.corriendo?"disabled":""}>${r.corriendo ? t("Preparando…","Preparing…","Preparando…","...מכין") : t("Descargar","Download","Baixar","הורדה")}</button>`)}
-        ${prefRow("📄", t("Copia liviana","Light backup","Cópia leve","גיבוי קל"),
-          t("Lo mismo pero sin imágenes ni archivos, para poder abrirlo y mirarlo. NO sirve para restaurar.","The same but without images or files, so you can open and read it. It does NOT restore.","O mesmo mas sem imagens nem arquivos, para poder abrir e olhar. NÃO serve para restaurar.","אותו דבר אבל בלי תמונות וקבצים, כדי שאפשר יהיה לפתוח ולעיין. לא מתאים לשחזור."),
-          `<button type="button" data-action="descargar-respaldo" data-adjuntos="0" ${r.corriendo?"disabled":""}>${t("Descargar","Download","Baixar","הורדה")}</button>`)}
-      </div>
-      ${r.error ? `<div class="form-error" style="margin-top:12px;">${esc(t("No se pudo armar la copia: {msg}","Couldn't build the backup: {msg}","Não foi possível criar a cópia: {msg}","{msg} :יצירת הגיבוי נכשלה",{msg:r.error}))}</div>` : ""}
-      ${resumen}`;
-}
-
 function renderPreferenciasView(){
   const sec = state.preferenciasSection;
   const body = sec==="tipos" ? renderTiposSection()
     : sec==="lugares" ? renderLugaresSection()
     : sec==="calendar" ? renderCalendarSection()
     : sec==="adjuntos" ? renderAdjuntosSection()
-    : sec==="respaldo" ? renderRespaldoSection()
     : renderZonasSection();
   return `
     <div class="preferencias-view">
@@ -10113,7 +9274,7 @@ function afterRenderView(){
   syncTabsScroll();
   fitDropdownPanels();
   updateScrollTop();
-  if(state.view === "paises" && state.paisesSubview === "mapa" && !CONFIG_IS_PLACEHOLDER){
+  if(state.view === "paises" && state.paisesSubview === "mapa"){
     initOrUpdateMap();
   }
   if(state.view === "calendario") ensureHolidays();
@@ -10513,9 +9674,9 @@ function renderAttachments(item, owner){
    esperados" por un lado, archivos por el otro) se desincroniza sola a la
    primera edición.
 
-   Y por eso mismo esto NO necesita cambiar firestore.rules ni el SQL: las
-   dos capas validan los archivos por nombre y ruta sin exigir una lista
-   cerrada de claves, así que un `doc` de más pasa sin tocar nada.
+   Y por eso mismo esto NO necesita cambiar el SQL: la base valida los
+   archivos por nombre y ruta sin exigir una lista cerrada de claves, así
+   que un `doc` de más pasa sin tocar nada.
    ====================================================================== */
 
 // Qué documentos espera cada tipo. Espejo de lo último leído de la
@@ -10671,17 +9832,6 @@ async function adjuntarDocumento(postId, docId, file){
     const files = resto.concat([{ name:file.name, mime:file.type,
       kind: claseDeArchivo(file.type, file.name).clase, doc: docId,
       subidoEl: new Date().toISOString(), dataUrl }]);
-    // Entra solo, pero puede no entrar con lo que el evento ya tiene.
-    const exceso = excesoDePeso({ ...post, files }, post);
-    if(exceso){
-      await appAlert(t(
-        "«{name}» no entra: con él, este evento se pasaría por {cuanto} del máximo de {max}. Quitá alguna foto o archivo del evento, o probá con una versión más liviana del archivo.",
-        "\u201c{name}\u201d doesn't fit: with it, this event would be {cuanto} over the {max} maximum. Remove a photo or file from the event, or try a lighter version of the file.",
-        "«{name}» não cabe: com ele, este evento passaria {cuanto} do máximo de {max}. Remova alguma foto ou arquivo do evento, ou tente uma versão mais leve do arquivo.",
-        "«{name}» לא נכנס: איתו, האירוע הזה יחרוג ב-{cuanto} מהמקסימום של {max}. הסר/י תמונה או קובץ מהאירוע, או נסה/י גרסה קלה יותר של הקובץ.",
-        { name:file.name, cuanto:excesoLegible(exceso), max:topeLegible(store.limites.bytesPorPosteo) }));
-      return;
-    }
     await updatePostDoc(postId, {
       files,
       lastEditedAt: store.horaDelServidor(),
@@ -11081,7 +10231,7 @@ let placeCountsCache = null;
 function computePlaceCounts(){
   if(placeCountsCache) return placeCountsCache;
   // Object.create(null) en los dos niveles: `country`/`city` vienen de
-  // scopes guardados en Firestore (las reglas no validan su forma), y un
+  // scopes guardados en la base (que no valida su forma por dentro), y un
   // "__proto__" ahí adentro no puede terminar escribiendo en Object.prototype.
   const byCountry = Object.create(null);
   // own = pasó ahí (país o ciudad); region/latam = macro que también
@@ -11131,8 +10281,7 @@ function computePlaceCounts(){
    trae TODOS los posteos para dibujar el Feed, así que contarlos sale
    gratis.
 
-   Por eso funciona igual con Firebase y con Supabase, y lo ve todo el
-   equipo y no solo el admin. El día que el Registro sea tan grande que no
+   Por eso lo ve todo el equipo y no solo el admin. El día que el Registro sea tan grande que no
    entre de una en el navegador habrá que contar del lado de la base — y
    ese mismo día habrá que paginar el Feed, así que va a ser una sola
    conversación y no dos.
@@ -11467,8 +10616,6 @@ function renderPaisesView(){
       <button data-action="paises-subview" data-key="lista" class="${sub==="lista"?"active":""}">${t("Lista","List","Lista","רשימה")}</button>
       <button data-action="paises-subview" data-key="mapa" class="${sub==="mapa"?"active":""}">${t("Mapa","Map","Mapa","מפה")}</button>
     </div>`;
-  if(CONFIG_IS_PLACEHOLDER) return toggle + `<div class="empty-state">${t("Configurá Firebase para ver datos.","Set up Firebase to see data.","Configure o Firebase para ver dados.",".הגדר/י את Firebase כדי לראות נתונים")}</div>`;
-
   const counts = computePlaceCounts();
   const toolbar = `<div class="paises-toolbar">${toggle}${renderZoneLegend()}</div>`;
   if(sub === "mapa"){
@@ -11586,7 +10733,7 @@ const MAP_MARKER_SIZE = 40; // diámetro fijo, en px, de TODOS los círculos (no
 // número es la suma (ver iconCreateFunction); acercando, se separan.
 // Un país sin nada propio conserva su círculo tenue con 0 en la capital:
 // dice "el equipo está acá aunque todavía no pasó nada", y da lugar al
-// popup con lo regional/LatAm. Una ciudad promovida desde Firestore sin
+// popup con lo regional/LatAm. Una ciudad promovida desde Configuración sin
 // coordenada cae en la capital de su país.
 function mapMarkerSpecs(counts, countries){
   const specs = [];
@@ -11762,7 +10909,6 @@ function holidayCalendarsWanted(){
   return [...new Set(keys)];
 }
 async function ensureHolidays(){
-  if(CONFIG_IS_PLACEHOLDER) return;
   const year = Number(calendarioAnchor().slice(0,4));
   const wanted = holidayCalendarsWanted();
   for(const key of wanted){
@@ -12903,9 +12049,6 @@ function renderCalendarioView(){
     ? `<button type="button" class="btn-sync" data-action="sync-calendar" ${state.calendarSyncing?"disabled":""}>🔄 ${t("Actualizar","Refresh","Atualizar","עדכון")}</button>`
     : "";
   const toolbar = `<div class="paises-toolbar">${nav}<div class="cal-toolbar-end">${layersMenu}${toggle}${syncBtn}</div></div>`;
-  if(CONFIG_IS_PLACEHOLDER){
-    return toolbar + `<div class="empty-state">${t("Configurá Firebase para ver datos.","Set up Firebase to see data.","Configure o Firebase para ver dados.",".הגדר/י את Firebase כדי לראות נתונים")}</div>`;
-  }
   if(sub === "mes") return toolbar + renderCalendarioMes(anchor);
   if(sub === "anio") return toolbar + renderCalendarioAnio(anchor);
   if(sub === "agenda") return toolbar + renderCalendarioAgenda(anchor);
@@ -13352,11 +12495,10 @@ confirmOverlay.addEventListener("click", e=>{ if(e.target === confirmOverlay) cl
 // la app de antes no lo ve nunca (no hay forma de "contar logins" desde
 // una cuenta común — eso vive en Actividad, que solo lee el admin — así
 // que la fecha de aprobación es el único dato propio que dice si la
-// cuenta es nueva). Que ya lo vio queda anotado en tourSeenAt del
-// documento de allowlist, por cuenta y no por dispositivo, así no le
-// reaparece aunque cambie de máquina; si esa escritura falla (reglas
-// todavía sin publicar en Firebase) cae a localStorage para no quedar
-// mostrándolo en bucle.
+// cuenta es nueva). Que ya lo vio queda anotado en tourSeenAt de su ficha
+// en members, por cuenta y no por dispositivo, así no le reaparece aunque
+// cambie de máquina; si esa escritura falla (sin conexión, por ejemplo)
+// cae a localStorage para no quedar mostrándolo en bucle.
 const TOUR_ELIGIBLE_FROM = Date.UTC(2026, 8, 11); // cuentas aprobadas desde el 11/9/2026
 const TOUR_FALLBACK_KEY = "ra_tour_seen";
 // Función y no array fijo: el título/texto depende del idioma actual en
@@ -13830,7 +12972,7 @@ function renderComposer(){
           `Imagens: são reduzidas sozinhas, máximo {maxImg}. Documentos (PDF, Word, Excel, PowerPoint, texto) e áudio: até {maxFiles} arquivos (≤{maxKB} cada). Para vídeo ou arquivos maiores: cole um link (Drive, YouTube, etc.).`,
           `תמונות: מוקטנות לבד, עד {maxImg}. מסמכים (PDF, Word, Excel, PowerPoint, טקסט) ואודיו: עד {maxFiles} קבצים (עד {maxKB} כל אחד). לווידאו או קבצים גדולים יותר: הדבק/הדביקי קישור (Drive, YouTube וכו').`,
           { maxImg: maxImagenes(), maxFiles: maxArchivos(), maxKB: topeLegible(maxBytesPorArchivo()) }
-        )}${Number.isFinite(store.limites.bytesPorPosteo) ? " " + t("Entre todo, hasta {max} por posteo.","All together, up to {max} per post.","No total, até {max} por postagem.","בסך הכול, עד {max} לפוסט.",{max:topeLegible(store.limites.bytesPorPosteo)}) : ""}</div>
+        )}</div>
       ` : `
         <button type="button" class="btn-text-add" data-action="toggle-post-attach">📎 ${t("Agregar imagen, documento, audio o link","Add image, document, audio or link","Adicionar imagem, documento, áudio ou link","הוספת תמונה, מסמך, אודיו או קישור")}</button>
       `}
@@ -14094,7 +13236,7 @@ const eventCardBody = document.getElementById("eventCardBody");
 let eventCardPostId = null;
 let eventCardOcc = null; // qué repetición se tocó en el Calendario
 // Un feriado no es un posteo (viene de un calendario público de Google y
-// no se guarda en Firestore), así que la tarjeta se abre con la fecha y
+// no se guarda en la base), así que la tarjeta se abre con la fecha y
 // la posición en holidaysOn(fecha) — no con un id.
 let eventCardHoliday = null;
 let eventCardReturnFocus = null;
@@ -14347,19 +13489,17 @@ trapTabWithin(userProfileOverlay);
 trapTabWithin(confirmOverlay);
 trapTabWithin(eventCardOverlay);
 
-// Los topes duros ya no viven acá: son de la base en uso (store.limites,
-// arriba de firebaseStore). Acá queda solo lo que el admin eligió en
-// Configuración > Adjuntos, que siempre es de ese techo para abajo.
+// Los topes duros son los de la base (LIMITES_DE_LA_BASE, en la capa de
+// datos). Acá queda solo lo que el admin eligió en Configuración >
+// Adjuntos, que siempre es de ese techo para abajo.
 // null = "todo lo que aguante la base".
 let limitesElegidos = { imagenes:null, archivos:null, bytesPorArchivo:null };
-const maxImagenes = ()=> Math.min(store.limites.imagenes, limitesElegidos.imagenes || store.limites.imagenes);
-const maxArchivos = ()=> Math.min(store.limites.archivos, limitesElegidos.archivos || store.limites.archivos);
-const maxBytesPorArchivo = ()=> Math.min(store.limites.bytesPorArchivo, limitesElegidos.bytesPorArchivo || store.limites.bytesSugeridos);
-// Un tope, en palabras. Aparte de pesoLegible() (el de la copia de
-// seguridad) a propósito: ahí el decimal es información — cuánto pesa de
-// verdad el archivo —, y acá es ruido: un tope es un número redondo y
-// "≤10.0 MB" se lee peor que "≤10 MB". Y en KB queda ilegible apenas el
-// tope pasa de un mega.
+const maxImagenes = ()=> Math.min(LIMITES_DE_LA_BASE.imagenes, limitesElegidos.imagenes || LIMITES_DE_LA_BASE.imagenes);
+const maxArchivos = ()=> Math.min(LIMITES_DE_LA_BASE.archivos, limitesElegidos.archivos || LIMITES_DE_LA_BASE.archivos);
+const maxBytesPorArchivo = ()=> Math.min(LIMITES_DE_LA_BASE.bytesPorArchivo, limitesElegidos.bytesPorArchivo || LIMITES_DE_LA_BASE.bytesSugeridos);
+// Un tope, en palabras. Sin decimales cuando no hacen falta: un tope es
+// un número redondo, y "≤10.0 MB" se lee peor que "≤10 MB". Y en KB queda
+// ilegible apenas el tope pasa de un mega.
 function topeLegible(bytes){
   if(bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
   const mb = bytes / (1024 * 1024);
@@ -14369,9 +13509,9 @@ async function handleImageFiles(fileList, targetArray){
   const files = Array.from(fileList).slice(0, Math.max(0, maxImagenes() - targetArray.length));
   for(const file of files){
     try{
-      // Cuánto se achica también lo decide la base: con el archivo adentro
-      // del documento hay que apretar fuerte; con bucket, casi nada.
-      const dataUrl = await compressImage(file, store.limites.ladoMaximo, store.limites.calidadImagen);
+      // Cuánto se achica lo dice LIMITES_DE_LA_BASE: poco, porque la foto
+      // va al bucket y no adentro del posteo.
+      const dataUrl = await compressImage(file, LIMITES_DE_LA_BASE.ladoMaximo, LIMITES_DE_LA_BASE.calidadImagen);
       targetArray.push(dataUrl);
     }catch(err){
       console.error("Error comprimiendo imagen:", err);
@@ -14381,15 +13521,12 @@ async function handleImageFiles(fileList, targetArray){
   render();
 }
 
-// Adjuntos genéricos chicos (PDF, audio): a diferencia de las imágenes no
-// se comprimen (no tiene sentido para un documento ni para un audio), así que se limita
-// directamente el tamaño del archivo y la cantidad — Firestore permite
-// ~1MB por documento entero, y el base64 pesa ~33% más que el archivo
-// original, así que hay que dejar margen para el resto del posteo.
-// Topes duros absolutos: los de Preferencias > Adjuntos pueden achicarlos,
-// nunca agrandarlos más allá de esto — Firestore también los exige (ver
-// isValidPostBase en firestore.rules, que valida contra el tope duro, no
-// contra estas variables editables).
+// Adjuntos genéricos (PDF, documentos, audio): a diferencia de las
+// imágenes no se comprimen (no tiene sentido para un documento ni para un
+// audio), así que se limita directamente el tamaño del archivo y la
+// cantidad. Los topes duros son los de LIMITES_DE_LA_BASE: los de
+// Configuración > Adjuntos pueden achicarlos, nunca agrandarlos — y el
+// bucket rechaza igual lo que pase el suyo.
 function readFileAsDataUrl(file){
   return new Promise((resolve, reject)=>{
     const reader = new FileReader();
@@ -15220,9 +14357,6 @@ document.addEventListener("click", async e=>{
     "config-section": async (el, e, action, postId) => {
     state.configSection = el.dataset.key; render();
   },
-    "descargar-respaldo": async (el, e, action, postId) => {
-    await descargarRespaldo(el.dataset.adjuntos === "1");
-  },
     "goto-config-capas": async (el, e, action, postId) => {
     calLayersMenuOpen = false;
     // Si se llegó desde la tarjeta de un feriado, se cierra: si no, queda
@@ -15916,10 +15050,10 @@ document.addEventListener("click", async e=>{
     const d = getAdjuntosDraft();
     d.saving = true; d.error = ""; render();
     const u = unidadAdjuntos();
-    const maxImages = Math.min(store.limites.imagenes, Math.max(1, Number(d.maxImages) || store.limites.imagenes));
-    const maxAttachmentFiles = Math.min(store.limites.archivos, Math.max(1, Number(d.maxFiles) || store.limites.archivos));
-    const maxAttachmentFileBytes = Math.min(store.limites.bytesPorArchivo,
-      Math.max(1024, (Number(d.maxFileSize) || (store.limites.bytesSugeridos / u.factor)) * u.factor));
+    const maxImages = Math.min(LIMITES_DE_LA_BASE.imagenes, Math.max(1, Number(d.maxImages) || LIMITES_DE_LA_BASE.imagenes));
+    const maxAttachmentFiles = Math.min(LIMITES_DE_LA_BASE.archivos, Math.max(1, Number(d.maxFiles) || LIMITES_DE_LA_BASE.archivos));
+    const maxAttachmentFileBytes = Math.min(LIMITES_DE_LA_BASE.bytesPorArchivo,
+      Math.max(1024, (Number(d.maxFileSize) || (LIMITES_DE_LA_BASE.bytesSugeridos / u.factor)) * u.factor));
     store.config.merge("preferences", { maxImages, maxAttachmentFiles, maxAttachmentFileBytes }).then(()=>{
       d.saving = false; render();
     }).catch(err=>{
@@ -16200,19 +15334,6 @@ postForm.addEventListener("submit", async e=>{
     recurrence: d.recur && d.recur.key === "otra" ? (d.recurrence || null) : recurLinesFrom(d.recur, d.startDate),
     authorName: state.auth.user.displayName, authorEmail: state.auth.user.email,
   };
-  // Al editar, la ventana se cierra ANTES de guardar (el Calendar sigue
-  // solo): si no entra, se tiene que saber acá, con la edición todavía en
-  // pantalla. Al publicar alcanzaría con la red de createPost, pero así
-  // los dos caminos dicen lo mismo.
-  const exceso = d.editingPost
-    ? excesoDePeso({ ...d.editingPost, ...parcheDeEdicion(d.editingPost, postData) }, d.editingPost)
-    : excesoDePeso(postData);
-  if(exceso){
-    d.error = d.editingPost
-      ? t("No se pudo guardar: {msg}","Couldn't save: {msg}","Não foi possível salvar: {msg}","{msg} :לא ניתן היה לשמור",{msg:mensajeDePeso(exceso)})
-      : t("No se pudo publicar: {msg}","Couldn't publish: {msg}","Não foi possível publicar: {msg}","{msg} :הפרסום נכשל",{msg:mensajeDePeso(exceso)});
-    render(); return;
-  }
   d.submitting = true; render();
   try{
     if(d.editingPost){
@@ -16352,7 +15473,7 @@ async function toggleReplyLike(postId, replyId){
    BOOT
    ====================================================================== */
 render();
-initFirebase();
+arrancar();
 </script>
 </body>
 </html>

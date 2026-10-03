@@ -32,7 +32,7 @@ async function appConfirm(msg, opts){ window.__ultimoConfirm = msg; window.__ult
 async function appAlert(msg){ window.__alertas.push(msg); }
 async function withRosterGuard(email, fn){ savingRoster.add(email); try{ await fn(); } finally { savingRoster.delete(email); render(); } }
 window.__falla = false;
-// El borrado ya no llama a Firestore directo: pasa por la capa de datos.
+// El borrado pasa por la capa de datos.
 // El harness le pone su propia implementación, que es exactamente lo que
 // va a hacer Supabase el día que le toque.
 window.__borradosStore = [];
