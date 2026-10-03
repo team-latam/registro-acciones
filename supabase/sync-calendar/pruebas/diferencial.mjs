@@ -59,7 +59,7 @@ const HORA = "HORA_DEL_SERVIDOR";
 const codigo = ["addDaysISO","isoDate","isoDow","addMonthsISO","RRULE_MAX_STEPS","RRULE_DOW","isISODate",
   "parseRecurrence","recurrenceLabel","recurrenceMoves","rruleDateToISO","calendarEventDates",
   "originalOccurrenceISO","extractTitleFromSummary","importedTypeAndTitle","summaryMatchesPost",
-  "activityLabelVariants","importedPostDocId","createImportedPost","MAX_OCC_MOVES",
+  "activityLabelVariants","huellaDeId","importedPostDocId","createImportedPost","MAX_OCC_MOVES",
   "CALENDAR_SYNC_TYPES","ACTIVITY_TYPES","ACTIVITY_BY_KEY","DEFAULT_ACTIVITY_LABELS",
   "applyCalendarEventToPosts"].map(grab).join("\n");
 
@@ -111,6 +111,18 @@ const dia = (id, f, extra={}) => ({ id, status:"confirmed", summary:"Reunión",
   start:{ date:f }, end:{ date: (d=>{const x=new Date(d+"T00:00:00Z");x.setUTCDate(x.getUTCDate()+1);return x.toISOString().slice(0,10);})(f) }, ...extra });
 
 /* ---------- Cancelaciones ---------- */
+// Ids largos que comparten los primeros 59 caracteres (los crea alguna
+// integración de Google): antes chocaban y el segundo no entraba nunca.
+const LARGO = "_60q30c1g60o30e1i60o4ac1g60rj8gpl88rj2c1h84s34h9g60s30c1g60o30c1g";
+await comparar("evento nuevo con id largo (1)", dia(LARGO + "8gs3gh266kqj0cph6kp48ghg64o30c1g6co4ag", "2026-02-12", { summary:"Visita a San Pablo" }), []);
+await comparar("evento nuevo con id largo (2)", dia(LARGO + "6534cgq564p3ag9p8csk8ghg64o30c1g6koj6h", "2026-06-03", { summary:"Visita a Mendoza" }), []);
+{
+  const a = decidir(dia(LARGO + "8gs3gh266kqj0cph6kp48ghg64o30c1g6co4ag", "2026-02-12"), [], CTX_SERVIDOR).find(x => x.tipo === "crear");
+  const b = decidir(dia(LARGO + "6534cgq564p3ag9p8csk8ghg64o30c1g6koj6h", "2026-06-03"), [], CTX_SERVIDOR).find(x => x.tipo === "crear");
+  const corto = decidir(dia("evCorto", "2026-06-03"), [], CTX_SERVIDOR).find(x => x.tipo === "crear");
+  eq("dos ids largos con el mismo comienzo dan posteos distintos", a.id !== b.id, true);
+  eq("y un id corto sigue dando el mismo posteo de siempre", corto.id, "cal_evCorto");
+}
 await comparar("cancelado, con posteo vivo",
   { id:"ev1", status:"cancelled" }, [P_SIMPLE]);
 await comparar("cancelado, con el posteo ya cancelado",

@@ -300,6 +300,40 @@ del nombre.
   y fecha). Queda una tarjeta con "Espacio privado del equipo", el botón
   de Google, "¿Es tu primera vez?" en una línea y los idiomas.
 
+### 19. Revisar lo de Calendar — HECHO (3 oct 2026)
+
+Todo lo creado directo en Google Calendar entraba como "Otro" y sin
+lugar. Se clasificaron los 925 eventos del calendario "LatAm" (2019 →
+2026) a partir de sus títulos, y el usuario pidió una herramienta en la
+app, más rápida que una planilla, para revisar de a muchos y poder sacar
+eventos.
+
+- Administración › **Revisar lo de Calendar** (solo admins), con cuántos
+  faltan en el menú. Filtros por lo que es (Actividades, Reuniones,
+  Personales, Recordatorios, Sin sugerencia, Ya ordenados), buscador y
+  "Solo los seguros". Cada fila: fecha, título de Calendar y la
+  sugerencia (tipo, lugar, personas) con un punto de color según qué tan
+  segura es.
+- Se tilda de a muchos ("Elegir todos") y la barra ofrece: Usar lo
+  sugerido, Tipo, Lugar, Personas, Sacar del Registro. "Editar" corrige
+  una fila sola.
+- **Sacar del Registro** borra el posteo con sus comentarios y anota el
+  evento en `calendar_sacados`: los dos sincronizadores lo saltean, así
+  no vuelve. En Google Calendar no cambia nada.
+- **Personas**: un nombre que coincide con alguien del equipo (@nickname
+  o primer nombre) queda vinculado; si no, queda como nombre suelto.
+  "Nombres sueltos" lista esos nombres y los vincula a una persona cuando
+  entra al equipo.
+- Nada avisa a nadie: no cambia la fecha de edición ni pasa por la
+  edición que sincroniza con Calendar. Los títulos no se tocan.
+- Base: `12-revisar-calendar.sql` (tablas y funciones, solo admins y
+  solo lo importado) y `13-sugerencias-calendar.sql` (las 925
+  sugerencias, sin títulos ni fechas porque el repo es público).
+- **Encontrado al armarla:** los ids de evento largos se cortaban a 59
+  caracteres y algunos (de una integración de Google) comparten esos 59:
+  6 eventos de 2024–2026 nunca entraron al Registro. Arreglado en los dos
+  sincronizadores; entran con un "Reimportar historial".
+
 ## Fuera de alcance (necesitan algo que la app no tiene)
 
 - Mandar correos (resumen semanal, invitaciones): no hay servicio de
@@ -309,24 +343,12 @@ del nombre.
 
 ## Decisiones pendientes del usuario
 
-- **Clasificar lo que vino de Google Calendar** (empezado el 3 oct 2026).
-  Todo lo creado directo en Calendar entró como "Otro" y sin lugar. Se
-  clasificaron los 925 eventos del calendario "LatAm" (2019 → 2026):
-  497 actividades, 385 reuniones internas, 22 personales y 21 plazos o
-  recordatorios. El usuario revisa la propuesta de las actividades en
-  dos planillas de su Google Drive (cuenta cursoslatam.argentina):
-  "Clasificación – Actividades" (tipo, lugar, participantes; columna
-  "Corrección") y "Clasificación – Personas" (quién es del equipo y su
-  correo). Las reuniones quedan para después, por pedido suyo.
-  - Cómo se aplica: un SQL de una sola vez que actualiza `activity_type`,
-    `scopes` y `participants` por `calendar_event_id` (el evento se
-    reencuentra por fecha y título en Calendar), **solo** donde el
-    posteo sigue como "otro" y sin lugar, para no pisar lo que alguien
-    ya corrigió. Directo en la base: sin invitaciones de Calendar, sin
-    "Cambios en tus eventos", sin comentarios de sistema.
-  - Los títulos NO se tocan: el sync de Calendar (nocturno y
-    "Reimportar historial") volvería a poner el de Calendar y dejaría un
-    comentario "Se actualizó desde Google Calendar".
+- **Clasificar lo que vino de Google Calendar**: la herramienta está
+  (tanda 19); falta que el usuario la use. Empezar por Actividades →
+  "Solo los seguros" → "Elegir todos" → "Usar lo sugerido". Las
+  reuniones, personales y recordatorios quedan para cuando decida.
+  Las planillas de Drive ("Clasificación – Actividades / Personas") que
+  se armaron antes quedaron sin uso: la herramienta las reemplaza.
 
 - ~~¿Un integrante común puede editar o cancelar eventos de otros?~~
   Decidido el 3 oct 2026: editar sí, cancelar solo autor / participantes /

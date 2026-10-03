@@ -128,8 +128,22 @@ export function elSummaryEsDe(summary, post, tipos){
 // El id del posteo importado se deriva del id del evento: el poll corre en
 // TODOS los navegadores abiertos, y dos que vieran el mismo evento nuevo
 // con un segundo de diferencia lo crearían dos veces.
+// Una huella corta y estable de un texto (FNV-1a, dos vueltas): la misma
+// entrada da siempre la misma salida, en el navegador y en el servidor.
+export function huellaDeId(s){
+  let a = 0x811c9dc5, b = 0x9e3779b9;
+  for(let i = 0; i < s.length; i++){
+    const c = s.charCodeAt(i);
+    a = Math.imul(a ^ c, 16777619) >>> 0;
+    b = Math.imul(b ^ c, 2246822507) >>> 0;
+  }
+  return (a.toString(36).padStart(7, "0") + b.toString(36).padStart(7, "0")).slice(0, 12);
+}
+// Un id largo se cortaba a 59 y dos eventos con el mismo comienzo
+// chocaban: el segundo no entraba nunca. Ver importedPostDocId en la app.
 export function idDePosteoImportado(idDeEvento){
-  return "cal_" + String(idDeEvento).replace(/[^A-Za-z0-9_-]/g, "").slice(0, 59);
+  const limpio = String(idDeEvento).replace(/[^A-Za-z0-9_-]/g, "");
+  return "cal_" + (limpio.length <= 59 ? limpio : limpio.slice(0, 46) + "_" + huellaDeId(limpio));
 }
 
 /* ======================================================================
