@@ -16,6 +16,10 @@ líneas), nueve archivos de esquema SQL y el sincronizador de Calendar.
 
 ### 1. Las pruebas no están en el repositorio
 
+> **Resuelto** (`fba759e`). Viven en `pruebas/`, sacan el código del
+> `index.html` de verdad en cada corrida, y GitHub las corre en cada push
+> que toca la app (`.github/workflows/app.yml`).
+
 **1.145 de las 1.451 comprobaciones viven fuera del repo** y desaparecen
 cuando termina la sesión que las escribió.
 
@@ -66,6 +70,16 @@ lado del dibujo. Del lado de Supabase la pieza ya existe y no se usa:
 pasa.
 
 ### 3. Los topes por archivo suman más que el tope del documento
+
+> **Resuelto.** La base declara su techo por posteo entero
+> (`limites.bytesPorPosteo`: 1 MiB en Firebase, sin techo en Supabase) y
+> `excesoDePeso()` lo mide antes de cada escritura, en las tres funciones
+> por donde pasan todas (`createPost`, `createReply`, `updatePostDoc`). El
+> aviso dice cuánto sobra y qué sacar. Al editar se mide *antes* de cerrar
+> la ventana, que era donde se perdía la edición. A un posteo que ya está
+> al límite se le puede seguir sacando cosas: solo se frena lo que suma.
+> La medida se comparó contra el cálculo que publica Firestore
+> (`pruebas/peso_test.mjs`): difiere en menos de 250 bytes.
 
 ```
 tope por archivo (crudo)        500 KB

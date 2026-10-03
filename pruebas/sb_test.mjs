@@ -416,7 +416,12 @@ eq("las dos bases declaran los mismos topes", Object.keys(limFb).sort(), Object.
 eq("todos números de verdad", Object.values(limFb).concat(Object.values(limSb))
    .every(v => typeof v === "number" && v > 0), true);
 eq("y Supabase aguanta más en todo, porque el archivo no va adentro del posteo",
-   ["imagenes","archivos","bytesPorArchivo","bytesSugeridos","ladoMaximo"].filter(k => limSb[k] <= limFb[k]), []);
+   ["imagenes","archivos","bytesPorArchivo","bytesSugeridos","ladoMaximo","bytesPorPosteo"].filter(k => limSb[k] <= limFb[k]), []);
+eq("el techo del posteo entero en Firebase es el de Firestore: 1 MiB, ni un byte más",
+   limFb.bytesPorPosteo, 1024 * 1024);
+eq("y en Supabase no hay (en el posteo quedan solo las rutas)", limSb.bytesPorPosteo, Infinity);
+eq("un archivo al tope entra solo en un posteo de Firebase, aunque sea en base64",
+   4 * Math.ceil(limFb.bytesPorArchivo / 3) < limFb.bytesPorPosteo, true);
 eq("la calidad de compresión también sube (achicar fuerte era para que entrara)",
    limSb.calidadImagen > limFb.calidadImagen, true);
 eq("el sugerido nunca puede pasar el techo", 
