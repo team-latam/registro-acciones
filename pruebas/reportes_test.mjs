@@ -138,12 +138,14 @@ const SEMANAL = { recurrence:["RRULE:FREQ=WEEKLY;BYDAY=MO"], startDate:"2026-01-
 /* ---------- Los años que se ofrecen ---------- */
 {
   const api = armar([post({ startDate:"2024-03-01", endDate:"2024-03-01" }), post({ startDate:"2026-01-01", endDate:"2026-01-01" })]);
-  eq("solo los años con algo cargado, más el de hoy, del más nuevo al más viejo",
-     api.aniosConDatos(), ["2026","2024"]);
+  // En orden cronológico: los chips se leen de izquierda a derecha como
+  // una línea de tiempo (y el reporte arranca en el año actual igual).
+  eq("solo los años con algo cargado, más el de hoy, en orden",
+     api.aniosConDatos(), ["2024","2026"]);
 }
 {
   const api = armar([post({ startDate:"2025-12-28", endDate:"2026-01-04" })]);
-  eq("uno que cruza el año aparece en los dos", api.aniosConDatos(), ["2026","2025"]);
+  eq("uno que cruza el año aparece en los dos", api.aniosConDatos(), ["2025","2026"]);
 }
 
 /* ---------- El reporte entero ---------- */
