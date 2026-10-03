@@ -487,6 +487,8 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   await p.click('.admin-item[data-view="revisarcal"]');
   await p.waitForSelector(".rv-row [data-action='rv-editar']");
   const filas = () => p.$$eval(".admin-body > .lp-rows .rv-row:not(.rv-todos) .rv-tit b", l => l.map(e => e.textContent));
+  eq("revisar: la pestaña «Sacados» se ve siempre, aunque no se haya sacado nada",
+     await p.$eval('[data-action="rv-grupo"][data-key="sacados"]', e => e.textContent.replace(/\s+/g, " ").trim()).catch(() => null), "Sacados0");
   eq("revisar: arranca en Actividades, lo más nuevo primero", await filas(), ["Glämsta", "Visita Tucumán - Ana", "CB Mendoza (7 personas)"]);
   eq("revisar: cada fila con lo sugerido (tipo, lugar, personas)",
      await p.$eval('.rv-row:has([data-post-id="cal_ev1"]) .rv-sug', e => [...e.children].map(c => c.textContent.trim())), ["🧳 Visita", "📍 Tucuman, Argentina", "👥 Ana, Zeka"]);

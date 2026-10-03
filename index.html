@@ -10343,10 +10343,10 @@ function rvGrupos(){
 }
 function rvCargarSacados(forzar){
   if((rv.sacados && !forzar) || rv.cargandoSacados) return;
-  rv.cargandoSacados = true;
+  rv.cargandoSacados = true; rv.errorSacados = "";
   store.revisarCalendar.listaSacados()
     .then(l => { rv.sacados = l; })
-    .catch(err => { console.error("No se pudo leer lo sacado:", err); rv.sacados = []; })
+    .catch(err => { console.error("No se pudo leer lo sacado:", err); rv.sacados = []; rv.errorSacados = err.message || String(err); })
     .finally(() => { rv.cargandoSacados = false; render(); });
 }
 // La pestaña "Sacados": lo que se sacó del Registro, para devolverlo.
@@ -10360,6 +10360,7 @@ function renderSacados(){
   const todos = lista.length > 0 && lista.every(x => rv.elegidos.has(x.evento));
   const n = rv.elegidos.size;
   const quien = email => { const m = memberByEmail(email); return m ? m.nickname : email; };
+  if(rv.errorSacados) return `<div class="gate-aviso">${t("No se pudo leer la lista de lo sacado ({m}). Recargá la página; si sigue igual, avisá.","Couldn't read the list of removed events ({m}). Reload the page; if it keeps happening, let us know.","Não foi possível ler a lista do que foi tirado ({m}). Recarregue a página; se continuar, avise.","לא ניתן היה לקרוא את רשימת מה שהוסר ({m}). טען/י מחדש את הדף; אם זה נמשך, דווח/י.",{m:esc(rv.errorSacados)})}</div>`;
   return `${n ? `<div class="rv-barra" role="toolbar" aria-label="${esc(t("Qué hacer con los elegidos","What to do with the selected ones","O que fazer com os escolhidos","מה לעשות עם הנבחרים"))}">
       <b>${t("{n} elegidos","{n} selected","{n} escolhidos","{n} נבחרו",{n})}</b>
       <button type="button" class="prin" data-action="rv-devolver" ${rv.trabajando ? "disabled" : ""}>↩ ${t("Devolver al Registro","Bring back to the Log","Devolver ao Registro","החזרה ליומן")}</button>
@@ -10579,7 +10580,10 @@ function renderRevisarCalendar(){
   porGrupo.ordenados = state.posts.filter(p => esImportado(p) && !rvPendiente(p)).length;
   if(rv.sacados) porGrupo.sacados = rv.sacados.length;
   else rvCargarSacados(false);
-  const grupos = rvGrupos().filter(g => g.key === "actividad" || g.key === "ordenados" || porGrupo[g.key]);
+  // "Sacados" siempre a la vista: es por donde se deshace un "Sacar del
+  // Registro" tocado sin querer, y no puede depender de que la lista
+  // haya cargado.
+  const grupos = rvGrupos().filter(g => g.key === "actividad" || g.key === "ordenados" || g.key === "sacados" || porGrupo[g.key]);
   const filtros = `<div class="rv-filtros" role="group" aria-label="${esc(t("Qué mirar","What to look at","O que ver","מה להציג"))}">
       ${grupos.map(g => `<button type="button" class="rv-chip${rv.grupo === g.key ? " on" : ""}" data-action="rv-grupo" data-key="${g.key}" aria-pressed="${rv.grupo === g.key}">${esc(g.label)}<small>${porGrupo[g.key] || 0}</small></button>`).join("")}
       <input id="rvBuscar" class="rv-buscar" type="search" value="${esc(rv.buscar)}" placeholder="${esc(t("Buscar: Mendoza, curso, Ran…","Search: Mendoza, course, Ran…","Buscar: Mendoza, curso, Ran…","חיפוש: מנדוסה, קורס, רן…"))}" aria-label="${esc(t("Buscar","Search","Buscar","חיפוש"))}">
