@@ -36,6 +36,11 @@ create table if not exists auth.identities (
 -- (el sincronizador nocturno escribe así).
 alter default privileges in schema public grant all on tables to service_role;
 alter default privileges in schema public grant all on sequences to service_role;
+-- Y como en Supabase, toda función nueva de `public` se puede llamar de
+-- entrada desde el navegador (anon, authenticated). Sin esto, una prueba
+-- de «esta función no la puede llamar cualquiera» pasaba aunque el
+-- esquema se olvidara de sacarle el permiso.
+alter default privileges in schema public grant execute on functions to anon, authenticated, service_role;
 
 -- Storage, lo imprescindible para que las políticas del bucket compilen.
 create schema if not exists storage;

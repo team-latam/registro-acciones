@@ -34,7 +34,7 @@ workflows `base-de-datos.yml` y `calendario.yml`, el adaptador
 | 8 | Las políticas se evalúan fila por fila: 80 veces más lentas | Media | medido | resuelto |
 | 9 | Después de una desconexión, la pantalla queda vieja | Media | código | resuelto |
 | 10 | Cada escritura, hasta un «me gusta», vuelve a bajar la tabla entera | Media | código | resuelto |
-| 11 | Quitar un adjunto no lo borra del bucket | Media | código | **pendiente** |
+| 11 | Quitar un adjunto no lo borra del bucket | Media | código | resuelto |
 | 12 | Menores (ver abajo) | Baja | — | resuelto |
 
 ---
@@ -277,6 +277,15 @@ navegador conectado** recarga la tabla entera para firmarla.
 
 ## 11. Quitar un adjunto no lo borra del bucket
 
+> **Resuelto.** Una limpieza semanal (`supabase/limpieza/`, los domingos
+> de madrugada) le pregunta a la base qué archivos no nombra ninguna fila
+> —ni como foto, ni como adjunto, ni como miniatura de una foto en uso— y
+> tienen más de dos días, y los **mueve** a una papelera fechada; lo que
+> lleva más de 30 días en la papelera se borra. Si lo que habría que mover
+> es más de un cuarto del bucket, no toca nada y queda en rojo: eso es una
+> cuenta que salió mal, no limpieza. Lo movido un día se devuelve a mano
+> con «restaurar». La función solo la puede usar la llave de servicio.
+
 Solo el admin fijo puede borrar del bucket y la app no lo hace nunca. Un
 archivo quitado de un evento **sigue ahí**: ocupa lugar del GB del plan y
 cualquier aprobado que tenga la ruta lo sigue pudiendo abrir.
@@ -309,7 +318,8 @@ la nombra a través de su foto, y se va con ella.
   sincronizador, y una ya se había desviado del original. **Resuelto:** se
   sacaron; las originales corren en su workflow con cada cambio a la app.
 - ~~`pruebas/levantar.sh` usa una copia del laboratorio guardada aparte.~~
-  **Resuelto.** Hay dos pruebas numeradas `98`.
+  **Resuelto.** ~~Hay dos pruebas numeradas `98`.~~ **Resuelto:** la de
+  tiempo real pasó a ser la `88`.
 
 ---
 
