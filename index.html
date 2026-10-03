@@ -882,7 +882,12 @@
      de luz. Mientras se scrollea por el medio el FAB tapa lo que tenga
      debajo, como cualquier botón flotante; lo que no puede pasar es que
      algo quede INALCANZABLE, y con esto, al llegar al final, no queda. */
-  main{ flex:1; max-width:1200px; width:100%; margin:0 auto; padding:18px 16px 112px 16px; }
+  /* Abajo, un respiro estándar (24px) y enseguida el pie: los 112px de
+     antes dejaban un hueco de un cuarto de pantalla después del
+     calendario, los reportes, etc. El + de escritorio (abajo a la derecha,
+     56px a 24px del borde) no llega a tapar el contenido: entre el pie
+     (54px) y este margen quedan 78px. */
+  main{ flex:1; max-width:1200px; width:100%; margin:0 auto; padding:18px 16px 24px 16px; }
 
   /* ---------- Setup banner ---------- */
   .setup-banner{
