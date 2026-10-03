@@ -41,6 +41,12 @@ workflows `base-de-datos.yml` y `calendario.yml`, el adaptador
 
 ## 1. El próximo cambio de SQL no se va a poder aplicar — urgente
 
+> **Resuelto.** Cada restricción se define en un solo archivo: el `07` y el
+> `08` se fundieron en el `01` y el `03`, y el `09` quedó solo con la
+> limpieza de datos. Y CI ahora vuelve a aplicar el esquema sobre una base
+> **con datos al límite** de lo permitido (`reaplicar-con-datos.sh`):
+> contra el esquema de antes da exactamente el error de arriba.
+
 `aplicar.sh` vuelve a aplicar **todos** los archivos en orden en cada push,
 y dos de ellos definen la misma restricción distinto:
 
@@ -70,6 +76,10 @@ El bucket tiene el mismo patrón: `01` pone la lista de tipos completa,
 en CI que vuelva a aplicar el esquema sobre una base **con datos**.
 
 ## 2. Lo que crea el sincronizador nocturno queda fechado en 1970
+
+> **Resuelto.** La base reemplaza la marca también cuando escribe la llave
+> de servicio (y respeta una fecha real), y `10-fechas-de-1970.sql`
+> corrige lo que haya quedado así de antes.
 
 El sincronizador escribe `created_at = 1970-01-01` (y lo mismo en la última
 edición) contando con que la base lo reemplace por su hora. Pero el
@@ -141,6 +151,12 @@ reuse, y carga diferida.
 
 ## 6. Cualquier integrante puede inflar lo que bajan todos
 
+> **Resuelto.** Tope por fila entera (posteo 256 KB, comentario 128 KB,
+> preferencias 32 KB, configuración 256 KB) y la forma exacta de la
+> sincronización, los tipos de actividad y las zonas. Lo de los tipos y las
+> ciudades se valida cuando cambia, para que un dato viejo de una sección
+> no trabe el guardado de las otras.
+
 **Reproducido**, con la credencial de una integrante común:
 
 | Qué | Guardé | Quién lo baja |
@@ -159,6 +175,11 @@ configuración, y la forma exacta de `calendarSync`, tipos y zonas.
 
 ## 7. El correo se valida con un dato que el usuario puede cambiar
 
+> **Resuelto en la base:** el correo del token tiene que ser el que
+> autenticó Google (`auth.identities`). Si algún día Supabase no dejara
+> leer esa tabla, se vuelve a la regla de antes en vez de dejar a todos
+> afuera. Igual conviene revisar el panel.
+
 `sesion_valida()` exige `user_metadata.email_verified`, pero **cualquier
 usuario puede reescribir su propio `user_metadata`** desde el navegador.
 Lo que de verdad protege es que el proveedor sea Google… más la
@@ -174,6 +195,8 @@ ella. (Al del admin no: ese correo ya existe y Supabase no lo deja repetir.)
 Google (`auth.identities`), que el usuario no puede tocar.
 
 ## 8. Las políticas se evalúan fila por fila
+
+> **Resuelto:** las 31 políticas, envueltas.
 
 Cada política llama a `es_admin_fijo()` / `esta_aprobado()` directo, y
 Postgres las vuelve a evaluar **por cada fila**: decodifica el token cuatro
@@ -216,13 +239,13 @@ cualquier aprobado que tenga la ruta lo sigue pudiendo abrir.
 
 ## 12. Menores
 
-- **El «me gusta» se puede duplicar** escribiendo directo a la base (la app
-  no lo hace: usa la función que sí controla). **Reproducido.**
-- **`cuantas_filas()` la puede llamar cualquier cuenta de Google**, aunque
-  no esté aprobada: cuántos posteos, integrantes y solicitudes hay.
-  **Reproducido.**
-- **La auditoría acepta filas sin límite** de cualquier cuenta de Google
-  (logins con id inventado): engorda la tabla.
+- ~~**El «me gusta» se puede duplicar** escribiendo directo a la base.~~
+  **Resuelto.**
+- ~~**`cuantas_filas()` la puede llamar cualquier cuenta de Google.**~~
+  **Resuelto:** solo un admin.
+- ~~**La auditoría acepta filas sin límite** de cualquier cuenta de
+  Google.~~ **Resuelto:** un login se anota con el id que arma la app
+  (correo, tipo y fecha), así que son tres filas como mucho.
 - **`supabase-js` se carga sin versión fija** (`@2`, la última 2.x de ese
   momento). Una versión nueva rota, o comprometida, entra sola, con acceso a
   la sesión. Firebase sí está fijado.
@@ -230,11 +253,9 @@ cualquier aprobado que tenga la ruta lo sigue pudiendo abrir.
   español, fuera de `t()`.
 - `esErrorDePermiso` toma `PGRST301` (token vencido) como falta de permiso.
 - Documentación vieja: el encabezado de `crearSupabaseStore` dice «todavía
-  NO está en uso»; `supabase/LEEME.md` y el workflow hablan de 195
-  comprobaciones (son 212) y la tabla de archivos llega hasta el `07`.
-- `pruebas/levantar.sh` (el corredor local) usa una copia del laboratorio
-  guardada en `/pglab` en vez del archivo del repo; hoy difieren en un
-  comentario. Hay dos pruebas numeradas `98`.
+  NO está en uso». (Lo de `supabase/LEEME.md` y el workflow, **resuelto**.)
+- ~~`pruebas/levantar.sh` usa una copia del laboratorio guardada aparte.~~
+  **Resuelto.** Hay dos pruebas numeradas `98`.
 
 ---
 

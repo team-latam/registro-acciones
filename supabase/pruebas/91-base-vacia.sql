@@ -17,9 +17,9 @@ select lab.probar('NADIE escribe un posteo con la tabla del equipo vacía', lab.
 select lab.probar('ni lee nada', lab.como('intruso@x.com'),
   'create temp table z1 as select * from public.app_config', false);
 select lab.probar('NADIE registra auditoría a nombre de otro — ni el admin fijo', lab.como('benny@team-latam.com'),
-  $q$insert into public.audit_log(id,type,actor_email,actor_name) values ('z','login','otro@x.com','Otro')$q$, false);
+  $q$insert into public.audit_log(id,type,actor_email,actor_name) values ('otro@x.com_login_' || to_char(now() at time zone 'utc', 'YYYY-MM-DD'), 'login','otro@x.com','Otro')$q$, false);
 select lab.probar('el admin fijo SÍ registra la suya', lab.como('benny@team-latam.com'),
-  $q$insert into public.audit_log(id,type,actor_email,actor_name) values ('z2','login','benny@team-latam.com','B')$q$, true);
+  $q$insert into public.audit_log(id,type,actor_email,actor_name) values ('benny@team-latam.com_login_' || to_char(now() at time zone 'utc', 'YYYY-MM-DD'), 'login','benny@team-latam.com','B')$q$, true);
 select lab.probar('alguien de afuera NO se da de alta en el equipo', lab.como('intruso@x.com'),
   $q$insert into public.members(email,name,nickname) values ('intruso@x.com','X','x')$q$, false);
 select lab.probar('el admin fijo sí (es como arranca todo)', lab.como('benny@team-latam.com'),

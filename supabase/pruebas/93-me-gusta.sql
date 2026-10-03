@@ -54,6 +54,18 @@ select lab.probar_valor('y dar me gusta NO deja editar el texto de contrabando',
      update public.posts set content='pisado' where id='rut'$q$,
   $q$select content from public.posts where id='rut'$q$, 'Una Rutina la edita solo quien la escribió');
 
+-- ---------- ESCRIBIENDO DIRECTO A LA TABLA ----------
+-- La app usa las funciones de arriba, que ya no duplican. Pero alguien con
+-- su credencial puede escribir la columna directo, y ahí el control es el
+-- disparador.
+select lab.probar('escribiendo directo, el propio me gusta NO se suma dos veces', lab.como('ana@x.com'),
+  $q$update public.posts set liked_by = liked_by || 'ana@x.com'::text where id = 'rut'$q$, false);
+select lab.probar('pero ponerlo una vez sí', lab.como('juan@x.com'),
+  $q$update public.posts set liked_by = liked_by || 'juan@x.com'::text where id = 'p1'$q$, true);
+select lab.probar('en un comentario, igual: no dos veces', lab.como('juan@x.com'),
+  $q$update public.replies set liked_by = liked_by || 'juan@x.com'::text where id = 'r1';
+     update public.replies set liked_by = liked_by || 'juan@x.com'::text where id = 'r1'$q$, false);
+
 \set QUIET off
 select n, '  FALLA  ' || nombre || ' — ' || detalle as falla from lab.resultados where esperado <> obtenido order by n;
 select count(*) filter (where esperado=obtenido) || ' pasaron, ' ||

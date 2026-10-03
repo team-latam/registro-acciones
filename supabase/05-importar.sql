@@ -111,18 +111,23 @@ grant execute on function public.importar(text, jsonb) to authenticated;
 -- ============================================================
 -- Cuántas filas hay de cada cosa
 -- ============================================================
--- Para poder comprobar, después de importar, que está todo. Se lee con la
--- credencial normal y no dice nada que el admin no pueda ver igual.
+-- Para poder comprobar, después de importar, que está todo. Solo para un
+-- admin: cuenta por encima de las políticas (por eso `security definer`),
+-- y sin este filtro cualquier cuenta de Google, aunque no estuviera
+-- aprobada, se enteraba de cuántos posteos, integrantes y solicitudes hay.
 create or replace function public.cuantas_filas()
 returns table(tabla text, filas bigint) language sql security definer set search_path = '' as $$
-  select 'posts', count(*) from public.posts
-  union all select 'replies', count(*) from public.replies
-  union all select 'members', count(*) from public.members
-  union all select 'former_members', count(*) from public.former_members
-  union all select 'access_requests', count(*) from public.access_requests
-  union all select 'user_prefs', count(*) from public.user_prefs
-  union all select 'app_config', count(*) from public.app_config
-  union all select 'audit_log', count(*) from public.audit_log
+  select c.tabla, c.filas from (
+    select 'posts' as tabla, count(*) as filas from public.posts
+    union all select 'replies', count(*) from public.replies
+    union all select 'members', count(*) from public.members
+    union all select 'former_members', count(*) from public.former_members
+    union all select 'access_requests', count(*) from public.access_requests
+    union all select 'user_prefs', count(*) from public.user_prefs
+    union all select 'app_config', count(*) from public.app_config
+    union all select 'audit_log', count(*) from public.audit_log
+  ) c
+  where public.es_admin_fijo() or public.es_admin_rol()
 $$;
 
 grant execute on function public.cuantas_filas() to authenticated;

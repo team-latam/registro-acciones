@@ -36,20 +36,44 @@ create or replace function public.admin_fijo() returns text
   language sql immutable as $$ select 'benny@team-latam.com'::text $$;
 
 -- La sesión que aceptamos. Es el equivalente de signedIn() en
--- firestore.rules, y exige lo mismo: correo verificado Y que haya entrado
--- con Google. Si algún día se habilita otro modo de entrar (magic link,
--- contraseña), cualquiera podría presentarse con el correo del admin sin
--- probar que es suyo — por eso la exigencia está acá y no se relaja sola.
+-- firestore.rules: haber entrado con Google, y que el correo del token sea
+-- el de esa cuenta de Google.
 --
--- OJO al aplicar: la forma exacta de estas claves hay que confirmarla
--- contra un token real del proyecto (la página de prueba las muestra).
--- Si no coinciden, esto deniega TODO — que es el modo seguro de fallar,
--- pero deja a todo el mundo afuera.
+-- Lo segundo NO se puede leer del token solo. El token trae el correo de
+-- la cuenta de Supabase, que el propio usuario puede pedir cambiar; y
+-- `user_metadata` (de donde antes se sacaba email_verified) lo puede
+-- reescribir cualquiera desde su navegador con updateUser(). Si el panel
+-- tuviera apagado «Confirm email», alguien que entró con su Google podría
+-- cambiarse el correo al de una persona aprobada que todavía no entró
+-- nunca, sin confirmar nada, y pasar a ser ella.
+--
+-- Lo que el usuario NO puede tocar es la identidad que guardó Supabase
+-- cuando Google lo autenticó (auth.identities): ahí el correo lo puso
+-- Google. Por eso se exige que coincidan.
+--
+-- `security definer` porque auth.identities no se lee con la credencial
+-- de cualquiera. Y una salida segura: si la base no dejara leerla (un
+-- cambio de permisos de Supabase), se vuelve a la regla de antes en vez de
+-- dejar a todo el equipo afuera. Un email_verified que no venga se toma
+-- como verificado (Google lo manda siempre); uno en false, no.
+create or replace function public.correo_de_su_google() returns boolean
+  language plpgsql stable security definer set search_path = '' as $$
+begin
+  return exists (
+    select 1 from auth.identities i
+     where i.user_id = auth.uid()
+       and i.provider = 'google'
+       and lower(i.identity_data ->> 'email') = lower(auth.jwt() ->> 'email')
+       and coalesce(i.identity_data ->> 'email_verified', 'true') <> 'false');
+exception when insufficient_privilege or undefined_table or undefined_column then
+  return coalesce(auth.jwt() -> 'user_metadata' ->> 'email_verified', 'false') = 'true';
+end $$;
+
 create or replace function public.sesion_valida() returns boolean
   language sql stable as $$
   select coalesce(auth.jwt() ->> 'email', '') <> ''
-     and coalesce((auth.jwt() -> 'user_metadata' ->> 'email_verified')::boolean, false)
      and coalesce(auth.jwt() -> 'app_metadata' ->> 'provider', '') = 'google'
+     and public.correo_de_su_google()
 $$;
 
 create or replace function public.mi_correo() returns text
@@ -147,6 +171,14 @@ create or replace function public.campos_cambiados(viejo jsonb, nuevo jsonb) ret
 $$;
 
 
+-- En las políticas de abajo cada llamada va envuelta en (select …), y no
+-- es estética. Llamada directa, Postgres la vuelve a evaluar POR CADA
+-- FILA: leer 3.000 posteos decodificaba el token 12.000 veces y buscaba en
+-- `members` otras 3.000. Envuelta, se evalúa una vez por consulta. Medido
+-- en el laboratorio: 67 ms contra 0,8 ms. Pesa en cada carga y en cada
+-- aviso en vivo, que se chequea contra las políticas de cada persona
+-- conectada.
+
 -- ============================================================
 -- 2. Quién entra a la base
 -- ============================================================
@@ -168,7 +200,7 @@ revoke all on all tables in schema public from anon;
 -- ============================================================
 drop policy if exists posts_leer on public.posts;
 create policy posts_leer on public.posts for select
-  using (public.es_admin_fijo() or public.esta_aprobado());
+  using ((select public.es_admin_fijo()) or (select public.esta_aprobado()));
 
 -- Al crear, la firma tiene que ser la propia. La segunda forma es la que
 -- usa la app al importar un evento creado directo en Google Calendar
@@ -179,9 +211,9 @@ create policy posts_leer on public.posts for select
 drop policy if exists posts_crear on public.posts;
 create policy posts_crear on public.posts for insert
   with check (
-    (public.es_admin_fijo() or public.puede_escribir())
+    ((select public.es_admin_fijo()) or (select public.puede_escribir()))
     and (
-      author_email = public.mi_correo()
+      author_email = (select public.mi_correo())
       or (author_name = 'Google Calendar' and coalesce(author_email, '') = ''
           and calendar_event_id is not null)
     )
@@ -193,14 +225,14 @@ create policy posts_crear on public.posts for insert
 -- (using) y después (with check).
 drop policy if exists posts_editar on public.posts;
 create policy posts_editar on public.posts for update
-  using (public.es_admin_fijo() or public.puede_escribir())
-  with check (public.es_admin_fijo() or public.puede_escribir());
+  using ((select public.es_admin_fijo()) or (select public.puede_escribir()))
+  with check ((select public.es_admin_fijo()) or (select public.puede_escribir()));
 
 -- Borrar de verdad: SOLO el admin fijo. Los admin por rol no (igual que
 -- en firestore.rules); el resto cancela el evento, que no lo borra.
 drop policy if exists posts_borrar on public.posts;
 create policy posts_borrar on public.posts for delete
-  using (public.es_admin_fijo());
+  using ((select public.es_admin_fijo()));
 
 
 -- ============================================================
@@ -208,16 +240,16 @@ create policy posts_borrar on public.posts for delete
 -- ============================================================
 drop policy if exists replies_leer on public.replies;
 create policy replies_leer on public.replies for select
-  using (public.es_admin_fijo() or public.esta_aprobado());
+  using ((select public.es_admin_fijo()) or (select public.esta_aprobado()));
 
 -- Igual que los posteos, con una excepción: los mensajes de sistema que
 -- escribe la sincronización con Calendar van sin correo.
 drop policy if exists replies_crear on public.replies;
 create policy replies_crear on public.replies for insert
   with check (
-    (public.es_admin_fijo() or public.puede_escribir())
+    ((select public.es_admin_fijo()) or (select public.puede_escribir()))
     and (
-      author_email = public.mi_correo()
+      author_email = (select public.mi_correo())
       or (system = true and author_name = 'Google Calendar' and author_email is null)
     )
   );
@@ -226,12 +258,12 @@ create policy replies_crear on public.replies for insert
 -- disparador). El texto no se edita: así es hoy.
 drop policy if exists replies_editar on public.replies;
 create policy replies_editar on public.replies for update
-  using (public.es_admin_fijo() or public.puede_escribir())
-  with check (public.es_admin_fijo() or public.puede_escribir());
+  using ((select public.es_admin_fijo()) or (select public.puede_escribir()))
+  with check ((select public.es_admin_fijo()) or (select public.puede_escribir()));
 
 drop policy if exists replies_borrar on public.replies;
 create policy replies_borrar on public.replies for delete
-  using (public.es_admin_fijo());
+  using ((select public.es_admin_fijo()));
 
 
 -- ============================================================
@@ -244,13 +276,13 @@ create policy replies_borrar on public.replies for delete
 -- de si tiene acceso.
 drop policy if exists members_leer on public.members;
 create policy members_leer on public.members for select
-  using (public.es_admin_fijo() or public.esta_aprobado() or email = public.mi_correo());
+  using ((select public.es_admin_fijo()) or (select public.esta_aprobado()) or email = (select public.mi_correo()));
 
 drop policy if exists members_crear on public.members;
 create policy members_crear on public.members for insert
   with check (
-    public.es_admin_fijo()
-    or (public.es_admin_rol() and email <> public.admin_fijo())
+    (select public.es_admin_fijo())
+    or ((select public.es_admin_rol()) and email <> public.admin_fijo())
   );
 
 -- Tres puertas distintas, y el disparador decide qué puede tocar cada
@@ -259,22 +291,22 @@ create policy members_crear on public.members for insert
 drop policy if exists members_editar on public.members;
 create policy members_editar on public.members for update
   using (
-    public.es_admin_fijo()
-    or (public.es_admin_rol() and email <> public.admin_fijo())
-    or email = public.mi_correo()
+    (select public.es_admin_fijo())
+    or ((select public.es_admin_rol()) and email <> public.admin_fijo())
+    or email = (select public.mi_correo())
   )
   with check (
-    public.es_admin_fijo()
-    or (public.es_admin_rol() and email <> public.admin_fijo())
-    or email = public.mi_correo()
+    (select public.es_admin_fijo())
+    or ((select public.es_admin_rol()) and email <> public.admin_fijo())
+    or email = (select public.mi_correo())
   );
 
 -- Nadie se saca a sí mismo, y al admin fijo no lo saca nadie.
 drop policy if exists members_borrar on public.members;
 create policy members_borrar on public.members for delete
   using (
-    public.es_admin_fijo()
-    or (public.es_admin_rol() and email <> public.admin_fijo() and email <> public.mi_correo())
+    (select public.es_admin_fijo())
+    or ((select public.es_admin_rol()) and email <> public.admin_fijo() and email <> (select public.mi_correo()))
   );
 
 
@@ -285,20 +317,20 @@ create policy members_borrar on public.members for delete
 -- el @nickname de quien escribió algo hace dos años. No da acceso a nada.
 drop policy if exists former_leer on public.former_members;
 create policy former_leer on public.former_members for select
-  using (public.esta_aprobado());
+  using ((select public.esta_aprobado()));
 
 drop policy if exists former_crear on public.former_members;
 create policy former_crear on public.former_members for insert
-  with check (public.es_admin_fijo() or public.es_admin_rol());
+  with check ((select public.es_admin_fijo()) or (select public.es_admin_rol()));
 
 drop policy if exists former_editar on public.former_members;
 create policy former_editar on public.former_members for update
-  using (public.es_admin_fijo() or public.es_admin_rol())
-  with check (public.es_admin_fijo() or public.es_admin_rol());
+  using ((select public.es_admin_fijo()) or (select public.es_admin_rol()))
+  with check ((select public.es_admin_fijo()) or (select public.es_admin_rol()));
 
 drop policy if exists former_borrar on public.former_members;
 create policy former_borrar on public.former_members for delete
-  using (public.es_admin_fijo() or public.es_admin_rol());
+  using ((select public.es_admin_fijo()) or (select public.es_admin_rol()));
 
 
 -- ============================================================
@@ -308,16 +340,16 @@ create policy former_borrar on public.former_members for delete
 -- no las necesita para nada, y es configuración personal.
 drop policy if exists prefs_leer on public.user_prefs;
 create policy prefs_leer on public.user_prefs for select
-  using (email = public.mi_correo());
+  using (email = (select public.mi_correo()));
 
 drop policy if exists prefs_crear on public.user_prefs;
 create policy prefs_crear on public.user_prefs for insert
-  with check (email = public.mi_correo() and public.esta_aprobado());
+  with check (email = (select public.mi_correo()) and (select public.esta_aprobado()));
 
 drop policy if exists prefs_editar on public.user_prefs;
 create policy prefs_editar on public.user_prefs for update
-  using (email = public.mi_correo())
-  with check (email = public.mi_correo() and public.esta_aprobado());
+  using (email = (select public.mi_correo()))
+  with check (email = (select public.mi_correo()) and (select public.esta_aprobado()));
 
 
 -- ============================================================
@@ -328,23 +360,23 @@ create policy prefs_editar on public.user_prefs for update
 -- uno mismo no es una opción.
 drop policy if exists solicitudes_leer on public.access_requests;
 create policy solicitudes_leer on public.access_requests for select
-  using (public.es_admin_fijo() or public.es_admin_rol() or email = public.mi_correo());
+  using ((select public.es_admin_fijo()) or (select public.es_admin_rol()) or email = (select public.mi_correo()));
 
 drop policy if exists solicitudes_crear on public.access_requests;
 create policy solicitudes_crear on public.access_requests for insert
-  with check (email = public.mi_correo() and status = 'pending');
+  with check (email = (select public.mi_correo()) and status = 'pending');
 
 drop policy if exists solicitudes_editar on public.access_requests;
 create policy solicitudes_editar on public.access_requests for update
-  using (public.es_admin_fijo() or public.es_admin_rol() or email = public.mi_correo())
+  using ((select public.es_admin_fijo()) or (select public.es_admin_rol()) or email = (select public.mi_correo()))
   with check (
-    public.es_admin_fijo() or public.es_admin_rol()
-    or (email = public.mi_correo() and status = 'pending')
+    (select public.es_admin_fijo()) or (select public.es_admin_rol())
+    or (email = (select public.mi_correo()) and status = 'pending')
   );
 
 drop policy if exists solicitudes_borrar on public.access_requests;
 create policy solicitudes_borrar on public.access_requests for delete
-  using (public.es_admin_fijo() or public.es_admin_rol());
+  using ((select public.es_admin_fijo()) or (select public.es_admin_rol()));
 
 
 -- ============================================================
@@ -358,24 +390,24 @@ create policy solicitudes_borrar on public.access_requests for delete
 --                                     al vuelo mientras usa la app
 drop policy if exists config_leer on public.app_config;
 create policy config_leer on public.app_config for select
-  using (public.es_admin_fijo() or public.esta_aprobado());
+  using ((select public.es_admin_fijo()) or (select public.esta_aprobado()));
 
 drop policy if exists config_crear on public.app_config;
 create policy config_crear on public.app_config for insert
   with check (
-    public.es_admin_fijo() or public.es_admin_rol()
-    or (key = 'calendarSync' and public.puede_escribir())
+    (select public.es_admin_fijo()) or (select public.es_admin_rol())
+    or (key = 'calendarSync' and (select public.puede_escribir()))
   );
 
 drop policy if exists config_editar on public.app_config;
 create policy config_editar on public.app_config for update
   using (
-    public.es_admin_fijo() or public.es_admin_rol()
-    or (key = 'calendarSync' and public.puede_escribir())
+    (select public.es_admin_fijo()) or (select public.es_admin_rol())
+    or (key = 'calendarSync' and (select public.puede_escribir()))
   )
   with check (
-    public.es_admin_fijo() or public.es_admin_rol()
-    or (key = 'calendarSync' and public.puede_escribir())
+    (select public.es_admin_fijo()) or (select public.es_admin_rol())
+    or (key = 'calendarSync' and (select public.puede_escribir()))
   );
 
 -- Nadie borra configuración: se reemplaza.
@@ -390,14 +422,14 @@ create policy config_editar on public.app_config for update
 -- alguien que todavía no está aprobado.
 drop policy if exists audit_leer on public.audit_log;
 create policy audit_leer on public.audit_log for select
-  using (public.es_admin_fijo() or public.es_admin_rol());
+  using ((select public.es_admin_fijo()) or (select public.es_admin_rol()));
 
 drop policy if exists audit_crear on public.audit_log;
 create policy audit_crear on public.audit_log for insert
   with check (
-    actor_email = public.mi_correo()
+    actor_email = (select public.mi_correo())
     and (
-      public.es_admin_fijo() or public.es_admin_rol()
+      (select public.es_admin_fijo()) or (select public.es_admin_rol())
       -- Sin ser admin: solo sobre uno mismo, y solo estos dos tipos.
       or (type in ('login', 'access_requested') and target_email is null)
     )
@@ -416,18 +448,18 @@ create policy audit_crear on public.audit_log for insert
 -- quién puede subir.
 drop policy if exists adjuntos_leer on storage.objects;
 create policy adjuntos_leer on storage.objects for select
-  using (bucket_id = 'adjuntos' and (public.es_admin_fijo() or public.esta_aprobado()));
+  using (bucket_id = 'adjuntos' and ((select public.es_admin_fijo()) or (select public.esta_aprobado())));
 
 drop policy if exists adjuntos_subir on storage.objects;
 create policy adjuntos_subir on storage.objects for insert
-  with check (bucket_id = 'adjuntos' and (public.es_admin_fijo() or public.puede_escribir()));
+  with check (bucket_id = 'adjuntos' and ((select public.es_admin_fijo()) or (select public.puede_escribir())));
 
 -- Un archivo subido no se pisa: si cambia la imagen de un posteo, se sube
 -- otra con otro nombre y se cambia la ruta guardada. Así una edición
 -- nunca rompe una versión anterior que alguien tenga abierta.
 drop policy if exists adjuntos_borrar on storage.objects;
 create policy adjuntos_borrar on storage.objects for delete
-  using (bucket_id = 'adjuntos' and public.es_admin_fijo());
+  using (bucket_id = 'adjuntos' and (select public.es_admin_fijo()));
 
 
 -- ============================================================
@@ -460,9 +492,12 @@ begin
   -- nunca las dos cosas en la misma escritura. Así una edición no puede
   -- llevarse puestos los me gusta de los demás de contrabando.
   if cambios = array['liked_by'] then
-    if not (new.liked_by = old.liked_by || yo
+    -- Poner solo si no estaba: sin eso, escribiendo directo a la base (la
+    -- app usa me_gusta_posteo, que ya lo controla) se podía sumar el
+    -- propio correo dos veces y contar doble.
+    if not ((new.liked_by = old.liked_by || yo and not (yo = any(old.liked_by)))
             or new.liked_by = array_remove(old.liked_by, yo)) then
-      raise exception 'Solo se puede poner o sacar el propio me gusta'
+      raise exception 'Solo se puede poner o sacar el propio me gusta, una vez'
         using errcode = 'check_violation';
     end if;
     return new;
@@ -504,9 +539,9 @@ begin
     raise exception 'De un comentario solo se puede cambiar el me gusta'
       using errcode = 'insufficient_privilege';
   end if;
-  if not (new.liked_by = old.liked_by || yo
+  if not ((new.liked_by = old.liked_by || yo and not (yo = any(old.liked_by)))
           or new.liked_by = array_remove(old.liked_by, yo)) then
-    raise exception 'Solo se puede poner o sacar el propio me gusta'
+    raise exception 'Solo se puede poner o sacar el propio me gusta, una vez'
       using errcode = 'check_violation';
   end if;
   return new;

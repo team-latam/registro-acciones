@@ -163,9 +163,9 @@ select lab.probar('un aprobado común NO ve la cola de solicitudes', lab.como('j
 
 -- ---------- AUDITORÍA ----------
 select lab.probar('cualquiera registra SU login', lab.como('quien@x.com'),
-  $q$insert into public.audit_log(id,type,actor_email,actor_name) values ('a2','login','quien@x.com','Quien')$q$, true);
+  $q$insert into public.audit_log(id,type,actor_email,actor_name) values ('quien@x.com_login_' || to_char(now() at time zone 'utc', 'YYYY-MM-DD'), 'login','quien@x.com','Quien')$q$, true);
 select lab.probar('NADIE registra el login de otro', lab.como('quien@x.com'),
-  $q$insert into public.audit_log(id,type,actor_email,actor_name) values ('a3','login','juan@x.com','Juan')$q$, false);
+  $q$insert into public.audit_log(id,type,actor_email,actor_name) values ('juan@x.com_login_' || to_char(now() at time zone 'utc', 'YYYY-MM-DD'), 'login','juan@x.com','Juan')$q$, false);
 select lab.probar('un no admin NO inventa un "acceso aprobado"', lab.como('quien@x.com'),
   $q$insert into public.audit_log(id,type,actor_email,actor_name,target_email)
      values ('a4','access_approved','quien@x.com','Quien','juan@x.com')$q$, false);
@@ -180,10 +180,12 @@ select lab.probar('ni se borra', lab.como('benny@team-latam.com'),
 -- ---------- CONFIGURACIÓN ----------
 select lab.probar('cualquiera que escribe deja el estado de la sincronización', lab.como('juan@x.com'),
   $q$update public.app_config set value = '{"syncToken":"x"}' where key = 'calendarSync'$q$, true);
+-- Con la forma que guarda la app (al menos una zona, con nombre y color):
+-- lo que se prueba acá es QUIÉN, la forma se prueba en 92-validacion.sql.
 select lab.probar('pero NO cambia las zonas del equipo', lab.como('juan@x.com'),
-  $q$update public.app_config set value = '{"zones":{}}' where key = 'territoryConfig'$q$, false);
+  $q$update public.app_config set value = '{"zones":{"sur":{"label":"Sur","color":"#2563eb"}},"countryZones":{"Argentina":"sur"}}' where key = 'territoryConfig'$q$, false);
 select lab.probar('un admin por rol sí cambia las zonas', lab.como('ana@x.com'),
-  $q$update public.app_config set value = '{"zones":{}}' where key = 'territoryConfig'$q$, true);
+  $q$update public.app_config set value = '{"zones":{"sur":{"label":"Sur","color":"#2563eb"}},"countryZones":{"Argentina":"sur"}}' where key = 'territoryConfig'$q$, true);
 select lab.probar('un observador NO toca la sincronización', lab.como('obs@x.com'),
   $q$update public.app_config set value = '{"syncToken":"y"}' where key = 'calendarSync'$q$, false);
 
@@ -194,6 +196,58 @@ select lab.probar('y NO las de otro', lab.como('ana@x.com'),
   $q$update public.user_prefs set prefs = '{"weekStart":6}' where email = 'juan@x.com'$q$, false);
 select lab.probar('alguien de afuera NO se crea preferencias', lab.como('intruso@x.com'),
   $q$insert into public.user_prefs(email,prefs) values ('intruso@x.com','{}')$q$, false);
+
+-- ---------- EL CORREO TIENE QUE SER EL DE SU GOOGLE ----------
+-- Alguien que entró con su propio Google y se cambió el correo de la cuenta
+-- de Supabase por el de otra persona (posible si el panel tuviera apagado
+-- «Confirm email»). Su token dice que es esa persona, con email_verified en
+-- true y todo; lo que Google autenticó es otra cuenta.
+select lab.probar('quien se puso el correo de una integrante NO ve los posteos',
+  lab.como_suplantando('juan@x.com', 'atacante@gmail.com'),
+  $q$select 1 from public.posts$q$, false);
+select lab.probar('ni publica en su nombre', lab.como_suplantando('juan@x.com', 'atacante@gmail.com'),
+  $q$insert into public.posts(id,title,content,date,start_date,end_date,activity_type,author_name,author_email)
+     values ('falso','T','C','2026-09-10','2026-09-10','2026-09-10','evento','Juan','juan@x.com')$q$, false);
+select lab.probar('ni con el correo del admin fijo borra nada',
+  lab.como_suplantando('benny@team-latam.com', 'atacante@gmail.com'),
+  $q$delete from public.posts where id = 'p_evento'$q$, false);
+select lab.probar('ni con el de una admin por rol aprueba a nadie',
+  lab.como_suplantando('ana@x.com', 'atacante@gmail.com'),
+  $q$insert into public.members(email, name) values ('atacante@gmail.com', 'Yo')$q$, false);
+select lab.probar('y la integrante de verdad, con su Google, sigue entrando', lab.como('juan@x.com'),
+  $q$select 1 from public.posts$q$, true);
+
+-- ---------- CUÁNTAS FILAS HAY: SOLO UN ADMIN ----------
+select lab.probar('alguien de afuera NO ve cuántas filas hay', lab.como('intruso@x.com'),
+  $q$select * from public.cuantas_filas()$q$, false);
+select lab.probar('un integrante tampoco', lab.como('juan@x.com'),
+  $q$select * from public.cuantas_filas()$q$, false);
+select lab.probar('una admin por rol sí', lab.como('ana@x.com'),
+  $q$select * from public.cuantas_filas()$q$, true);
+select lab.probar('el admin fijo sí (lo usa el importador)', lab.como('benny@team-latam.com'),
+  $q$select * from public.cuantas_filas()$q$, true);
+
+-- ---------- UNA ENTRADA DE LOGIN POR DÍA ----------
+-- La app anota correo_tipo_fecha; el segundo del día choca con ese id.
+select lab.probar('alguien de afuera anota su login, con el id que arma la app', lab.como('intruso@x.com'),
+  $q$insert into public.audit_log(id, type, actor_email, actor_name)
+     values ('intruso@x.com_login_' || to_char(now() at time zone 'utc', 'YYYY-MM-DD'), 'login', 'intruso@x.com', 'I')$q$, true);
+select lab.probar('con la fecha de su huso horario (ayer o mañana en UTC) también', lab.como('intruso@x.com'),
+  $q$insert into public.audit_log(id, type, actor_email, actor_name)
+     values ('intruso@x.com_login_' || to_char((now() at time zone 'utc')::date - 1, 'YYYY-MM-DD'), 'login', 'intruso@x.com', 'I')$q$, true);
+select lab.probar('pero un id inventado NO se guarda', lab.como('intruso@x.com'),
+  $q$insert into public.audit_log(id, type, actor_email, actor_name) values ('l2','login','intruso@x.com','I')$q$, false);
+select lab.probar('ni uno con la fecha de otro mes', lab.como('intruso@x.com'),
+  $q$insert into public.audit_log(id, type, actor_email, actor_name)
+     values ('intruso@x.com_login_' || to_char((now() at time zone 'utc')::date - 30, 'YYYY-MM-DD'), 'login', 'intruso@x.com', 'I')$q$, false);
+select lab.probar('ni el mismo dos veces', lab.como('intruso@x.com'),
+  $q$insert into public.audit_log(id, type, actor_email, actor_name)
+     values ('intruso@x.com_login_' || to_char(now() at time zone 'utc', 'YYYY-MM-DD'), 'login', 'intruso@x.com', 'I');
+     insert into public.audit_log(id, type, actor_email, actor_name)
+     values ('intruso@x.com_login_' || to_char(now() at time zone 'utc', 'YYYY-MM-DD'), 'login', 'intruso@x.com', 'I')$q$, false);
+select lab.probar('lo que registra un admin no tiene ese límite', lab.como('ana@x.com'),
+  $q$insert into public.audit_log(id, type, actor_email, actor_name, target_email) values ('t1','role_changed','ana@x.com','Ana','juan@x.com');
+     insert into public.audit_log(id, type, actor_email, actor_name, target_email) values ('t2','role_changed','ana@x.com','Ana','obs@x.com')$q$, true);
 
 \set QUIET off
 \echo ''

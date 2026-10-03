@@ -6,8 +6,8 @@
 # probarlo contra un Postgres de verdad, descartable, que se arma y se tira
 # en cada corrida.
 #
-# Si falla aunque sea UNA de las 195 comprobaciones, el segundo trabajo no
-# corre y la base de verdad no se toca.
+# Si falla aunque sea UNA comprobación, el segundo trabajo no corre y la
+# base de verdad no se toca.
 # ============================================================
 name: Base de datos
 
@@ -77,6 +77,15 @@ jobs:
       - name: Las pruebas
         run: ./supabase/pruebas/correr.sh "$BASE"
 
+      # Lo de arriba aplica el esquema sobre una base VACÍA. La de verdad
+      # tiene datos, y Postgres los revisa cada vez que se recrea una
+      # restricción: un archivo que endurece algo sin acordarse de lo ya
+      # guardado pasaba acá en verde y se caía recién en Supabase (pasó con
+      # el 03 y el 09). Esto vuelve a aplicar todo con filas al límite de lo
+      # permitido adentro.
+      - name: Aplicarlo otra vez, con datos adentro
+        run: ./supabase/pruebas/reaplicar-con-datos.sh "$BASE"
+
   aplicar:
     name: Aplicarlo a Supabase
     needs: probar
@@ -125,4 +134,4 @@ jobs:
         run: |
           echo "### Esquema aplicado a Supabase" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "Pasó las 195 comprobaciones contra un Postgres descartable antes de tocar nada." >> "$GITHUB_STEP_SUMMARY"
+          echo "Pasó todas las comprobaciones contra un Postgres descartable, vacío y con datos, antes de tocar nada." >> "$GITHUB_STEP_SUMMARY"
