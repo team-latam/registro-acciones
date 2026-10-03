@@ -16,7 +16,8 @@ los datos reales) está marcado **a confirmar**.
 **Lo revisado:** 9 archivos de esquema (~1.200 líneas de SQL) y sus 212
 pruebas (todas en verde), el sincronizador y sus 15 corridas nocturnas, los
 workflows `base-de-datos.yml` y `calendario.yml`, el adaptador
-`crearSupabaseStore` / `crearSupabaseSesion` (~700 líneas) e `importar.html`.
+`crearSupabaseStore` / `crearSupabaseSesion` (~700 líneas) y el importador
+(que ya no existe: ver «El código que sobra»).
 
 ---
 
@@ -333,10 +334,10 @@ la nombra a través de su foto, y se va con ella.
 
 *Encontrado al cerrar los anteriores.*
 
-La copia de seguridad de la app (Preferencias → Copia de seguridad) lee
-**Firebase**, a propósito: mientras Firebase sea la base, es la red para
-volver atrás. El día que Supabase pase a ser la base, eso deja de copiar
-lo que importa, y no queda otra:
+La copia de seguridad que tenía la app (Administrar → Copia de seguridad)
+leía **Firebase**: era la red para volver atrás mientras Firebase fue la
+base. Desde el cambio no copiaba lo que importa, y se fue con el resto de
+Firebase. Hoy no queda ninguna:
 
 - En el plan gratis, el panel de Supabase no ofrece copias para bajar o
   restaurar (**a confirmar** en Database → Backups; las diarias son del
@@ -356,60 +357,57 @@ lo que importa, y no queda otra:
 2. Lo mismo, pero a una carpeta de Google Drive del equipo, con una cuenta
    de servicio de Google Cloud. Más pasos de configuración.
 3. El plan pago de Supabase (copias diarias de 7 días, ~25 USD por mes).
-4. Que la copia de la app, en modo Supabase, baje de Supabase (con las
-   fotos adentro, en el mismo formato que lee `importar.html`). Es a
-   mano: sirve solo si alguien se acuerda de bajarla.
+4. Que la app tenga un botón para bajar una copia de Supabase (con las
+   fotos adentro). Es a mano: sirve solo si alguien se acuerda de bajarla.
 
-Mientras Firebase siga siendo la base, no hace falta nada de esto: la
-copia de la app sigue sirviendo.
+La copia que tenía la app leía Firebase y se fue con él: hoy no hay
+ninguna.
 
 ## Para apagar Firebase
-
-Lo que falta, en orden:
 
 1. ~~Arreglar 1 a 4: sin eso, la mudanza pierde o esconde datos.~~
    **Hecho.**
 2. ~~**Importación final** con el importador.~~ **No se hizo, a propósito:**
    para el 3 de octubre el equipo ya trabajaba en Supabase y tenía ahí
    cosas que Firebase no; dejar Supabase igual a Firebase las habría
-   borrado. La opción se sacó del importador. En cambio se miró qué había
-   en Firebase que faltara en Supabase (4 posteos, 6 comentarios, 4
-   registros de actividad y unas preferencias) y se trajo solo eso, con
-   «Traer lo que falta».
-3. ~~Cambiar la base por defecto a Supabase y sacar el cartel.~~ **Hecho
-   el 3 de octubre.** `?base=firebase` queda unos días, con un cartel, solo
-   para bajar la última copia de Firebase.
-4. **No borrar el proyecto de Google Cloud que está detrás de Firebase**
-   (número 40280679854). Ahí viven el cliente de OAuth con el que se pide
-   el permiso de Calendar y la clave de la API de Calendar, y muy
-   probablemente el login de Google de Supabase. Apagar Firebase es dejar
-   de usar Firestore, no borrar el proyecto.
-5. Sacar la carga de Firebase en modo Supabase: hoy se inicializa igual,
-   solo como último recurso para el permiso de Calendar, que ya se pide por
-   Google Identity Services.
-6. **Copias de seguridad de Supabase** (punto 13). Iban antes del paso 3;
-   el cambio se adelantó porque el equipo ya trabajaba en Supabase, así
-   que **hoy no hay ninguna copia de lo que se carga**. Es lo más urgente
-   que queda.
-7. **Cerrar Firestore**: `firestore.rules` ya no deja leer ni escribir
-   nada, a nadie. Se publica a mano en Firebase Console. Después, borrar
-   la base de Firestore, el login de Firebase y el registro de la app web
-   (no el proyecto: ver el paso 4).
+   borrado. En cambio se miró qué había en Firebase que faltara en
+   Supabase (4 posteos, 6 comentarios, 4 registros de actividad y unas
+   preferencias) y se trajo solo eso.
+3. ~~Cambiar la base por defecto a Supabase.~~ **Hecho el 3 de octubre.**
+4. ~~**Cerrar Firestore.**~~ **Hecho el 3 de octubre:** `firestore.rules`
+   no deja leer ni escribir nada, a nadie, y está publicado.
+5. ~~Sacar Firebase del código.~~ **Hecho el 3 de octubre** (ver «El
+   código que sobra»).
+6. **Falta, en Firebase Console:** borrar la base de Firestore, el login de
+   Firebase y el registro de la app web. **No borrar el proyecto de Google
+   Cloud que está detrás** (número 40280679854): ahí viven el cliente de
+   OAuth con el que se pide el permiso de Calendar y la clave de la API de
+   Calendar, y muy probablemente el login de Google de Supabase.
+7. **Copias de seguridad de Supabase** (punto 13). Iban antes del cambio
+   de base; el cambio se adelantó porque el equipo ya trabajaba en
+   Supabase, así que **hoy no hay ninguna copia de lo que se carga**. Es lo
+   más urgente que queda.
 
 ## El código que sobra
 
 ~~**Hoy**, del lado de Supabase: el comentario y la documentación vieja del
 punto 12, y el `07`/`08` que se pisan entre sí (punto 1).~~ **Hecho.**
 
-**El día del cambio** (no antes: Firebase sigue siendo producción):
-`firebaseStore`, `firebaseSesion`, `LIMITES_FIREBASE` y el control de
-peso de 1 MiB (`excesoDePeso` y compañía, que solo existe por Firestore),
-el respaldo de Firestore (`armarRespaldo`), el modo de respaldo de los
-comentarios para cuando falta la regla de `collectionGroup`, el selector
-`?base=` y su cartel, `firestore.rules`, `importar.html`,
-`prueba-login.html`, `PROBAR-SUPABASE.md`, `QUE-GUARDAR.md`, y las
-funciones `importar()` e `importar_quitar()` del `05`. Más adelante,
-`VOLVER-A-FIREBASE.md`.
+~~**El día del cambio**: `firebaseStore`, `firebaseSesion`,
+`LIMITES_FIREBASE` y el control de peso de 1 MiB, el respaldo de
+Firestore, el modo de respaldo de los comentarios, el selector `?base=` y
+su cartel, `importar.html`, `prueba-login.html`, `PROBAR-SUPABASE.md`,
+`VOLVER-A-FIREBASE.md`, y las funciones `importar()` e `importar_quitar()`
+del `05`.~~ **Hecho el 3 de octubre.** Además se fueron `cuantas_filas()` y
+la marca `es_importacion()`, que dejaba a los disparadores hacerse a un
+lado (`05-sin-importacion.sql`). `QUE-GUARDAR.md` se reescribió para
+Supabase, y `firestore.rules` queda, cerrado, mientras exista la base de
+Firestore.
+
+Al sacarlo apareció un error que venía de antes: en Supabase las
+preferencias personales no se guardaban (`savePrefs` pedía la conexión de
+Firestore). Arreglado, con una prueba de la app entera con la sesión
+iniciada (`pruebas/app_dom_test.mjs`) para que no vuelva a pasar algo así.
 
 ---
 
