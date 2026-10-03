@@ -73,10 +73,13 @@ eq("aclara que las judías no dependen de esto",
 eq("y que salen de los calendarios de Google",
    (await paises.innerText()).includes("calendarios públicos de Google"), true);
 
-// ---- la explicación de arriba dice qué es una capa ----
-const hint = await page.locator(".hint").first().innerText();
-eq("explica qué es una capa", hint.includes("además de los eventos"), true);
-eq("y que son opciones personales", hint.includes("no cambian lo que ven los demás"), true);
+// ---- la explicación de la sección dice qué es una capa ----
+// Desde la tanda 14 va en la cabecera de Mis preferencias ("¿Cómo
+// funciona?"), que arma renderConfiguracionView con prefsSeccionTextos.
+const textos = await page.evaluate(()=>window.textosCapas());
+eq("la cabecera dice para qué sirve la sección", textos.lead.length > 10, true);
+eq("explica qué es una capa", textos.ayuda.includes("además de los eventos"), true);
+eq("y que son opciones personales", textos.ayuda.includes("no cambian lo que ven los demás"), true);
 
 // ---- el número de días cambia de verdad el estado de un hito ----
 // Hoy es 2026-09-15. Un hito el 2026-09-22 está a 7 días.

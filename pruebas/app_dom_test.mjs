@@ -290,6 +290,10 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   eq("admin: y en Solicitudes, el pedido pendiente", await esperarTexto(p, "Nueva Persona", 3000), true);
   await p.click('.admin-menu [data-action="admin-go"][data-view="auditoria"]');
   eq("admin: en el registro de actividad aparece lo registrado", await esperarTexto(p, "Ana Pérez", 3000), true);
+  eq("admin: los títulos de columna del registro van adentro de la tarjeta, no flotando arriba",
+    await p.$eval(".audit-list", e => !!e.firstElementChild && e.firstElementChild.classList.contains("audit-columns-header")), true);
+  await p.click('.admin-menu [data-action="admin-go"][data-view="preferencias"][data-key="lugares"]');
+  eq("admin: Lugares usa la misma lista que Personas y Tipos", await p.$$eval('.lp-rows .lp-row [data-action="lugares-promote"]', es => es.length), 1);
 
   // Una preferencia personal, desde el menú del avatar: se ve y queda
   // guardada (ver preferencias_test).
@@ -298,6 +302,39 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   await p.waitForTimeout(200);
   const hayControl = !!(await p.$('select[data-pref="weekStart"]'));
   eq("admin: Configuración tiene el control del primer día de la semana", hayControl, true);
+  // Mis preferencias se arma como Administración: menú al costado y
+  // cabecera con título, línea y "¿Cómo funciona?" por sección.
+  eq("prefs: Mis preferencias tiene menú al costado y cabecera como Administración",
+    [await p.$$eval('.preferencias-view .admin-menu [data-action="config-section"]', bs => bs.map(b => b.dataset.key)),
+     await p.$eval(".preferencias-view .admin-cabecera .admin-h2", e => e.textContent.trim())],
+    [["calendario","notificaciones","capas"], "Calendario"]);
+  await p.click('.preferencias-view .admin-menu [data-action="config-section"][data-key="notificaciones"]');
+  await p.waitForTimeout(150);
+  eq("prefs: cada sección trae su título y su explicación plegada",
+    [await p.$eval(".admin-cabecera .admin-h2", e => e.textContent.trim()), !!(await p.$(".admin-cabecera .admin-ayuda")), !!(await p.$(".settings-card"))],
+    ["Notificaciones", true, true]);
+  // El perfil de una persona (tocar un nombre en el Inicio) se arma como
+  // la ficha de Personas: nombre solo (sin el "·" suelto), @usuario ·
+  // email, datos en grilla y "Ver todo lo que cargó".
+  await p.click('#tabs button[data-view="feed"]');
+  await p.waitForTimeout(200);
+  await p.click('[data-action="show-user-profile"]');
+  await p.waitForTimeout(200);
+  eq("perfil: el cuadro se arma como la ficha, sin el punto suelto después del nombre",
+    await p.evaluate(() => { const o = document.getElementById("userProfileOverlay"); const n = document.getElementById("userProfileNameLabel");
+      return [!o.hidden, n ? n.textContent.includes("·") : null, !!o.querySelector(".up-kv"), !!o.querySelector(".up-sub .up-nick"), !!o.querySelector('[data-action="ver-posteos-de"]')]; }),
+    [true, false, true, true, true]);
+  await p.click('#userProfileOverlay [data-action="ver-posteos-de"]');
+  await p.waitForTimeout(200);
+  eq("perfil: 'Ver todo lo que cargó' cierra el cuadro y deja el Inicio filtrado por esa persona",
+    await p.evaluate(() => [document.getElementById("userProfileOverlay").hidden, !!document.querySelector('[data-action="clear-author"]')]), [true, true]);
+  await p.click('[data-action="clear-author"]');
+  await p.waitForTimeout(150);
+  // De vuelta a Mis preferencias › Calendario, que es donde sigue la prueba.
+  await p.click('[data-action="toggle-user-menu"]');
+  await p.click('.user-menu [data-action="goto-view"][data-view="configuracion"]');
+  await p.click('.preferencias-view .admin-menu [data-action="config-section"][data-key="calendario"]');
+  await p.waitForTimeout(150);
   if(hayControl){
     await p.selectOption('select[data-pref="weekStart"]', "1");
     await hasta(p, () => (window.__sb.tablas.user_prefs || []).length > 0);
