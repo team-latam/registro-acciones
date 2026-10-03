@@ -92,6 +92,19 @@ service cloud.firestore {
     function isNonEmptyString(v, maxLen) {
       return v is string && v.size() > 0 && v.size() <= maxLen;
     }
+    // Un string que puede estar vacío, pero tiene que ser string. Es el
+    // contenido de un posteo: un evento traído de Google Calendar que no
+    // trae descripción NO tiene contenido, y eso es correcto — el título y
+    // la fecha ya lo describen. Antes había que guardar un relleno
+    // ("Creado automáticamente desde Google Calendar.") sólo para cumplir
+    // con esta validación, y esa línea terminaba repetida en media
+    // pantalla del Feed sin decir nada.
+    //
+    // Los comentarios siguen exigiendo texto: un comentario vacío no es
+    // un comentario.
+    function isBoundedString(v, maxLen) {
+      return v is string && v.size() <= maxLen;
+    }
     function isOptionalString(v, maxLen) {
       return v == null || (v is string && v.size() <= maxLen);
     }
@@ -247,7 +260,7 @@ service cloud.firestore {
     // se comparten sin cambios entre crear y editar.
     function isValidPostScalars(d) {
       return isNonEmptyString(d.title, 140) &&
-        isNonEmptyString(d.content, 5000) &&
+        isBoundedString(d.content, 5000) &&
         isValidDateStr(d.date) &&
         isValidDateStr(d.startDate) &&
         isValidDateStr(d.endDate) &&
