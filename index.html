@@ -418,6 +418,43 @@
 
   /* ---------- Auth gate (login / pendiente / rechazado) ---------- */
   .auth-gate{ max-width:440px; margin:60px auto; text-align:center; }
+  /* La portada de entrada (ver renderAuthGate): el lado petróleo con qué
+     es el Registro, y la tarjeta con Google, los tres pasos y los idiomas. */
+  .gate-portada{ display:flex; gap:28px; align-items:stretch; max-width:980px; margin:24px auto; }
+  .gate-lado{
+    flex:1 1 0; min-width:0; background:linear-gradient(135deg, var(--petroleo), var(--petroleo-dark)); color:#fff;
+    border-radius:var(--radius-lg); padding:40px 36px; display:flex; flex-direction:column; justify-content:center; gap:14px;
+  }
+  .gate-lado .big{ font-size:40px; }
+  .gate-lado h2{ margin:0; font-size:30px; line-height:1.15; color:#fff; }
+  .gate-lado p{ margin:0; color:#bfe9ef; font-size:15px; line-height:1.6; }
+  .gate-portada .gate-tarjeta{
+    flex:0 0 360px; margin:0; max-width:none; background:var(--card); border:1px solid var(--border); border-radius:var(--radius-lg);
+    box-shadow:var(--shadow); padding:32px 28px; display:flex; flex-direction:column; gap:14px; text-align:start;
+  }
+  .gate-tarjeta h2{ font-size:22px; }
+  .gate-tarjeta p{ margin:0; }
+  .gate-tarjeta .btn-google{ justify-content:center; width:100%; }
+  .gate-primera{ font-size:13px; font-weight:800; color:var(--ink-strong); margin-top:6px; }
+  .gate-pasos{ display:flex; flex-direction:column; gap:10px; margin:0; padding:0; list-style:none; }
+  .gate-paso{ display:flex; gap:12px; align-items:flex-start; font-size:13.5px; color:var(--text); line-height:1.5; text-align:start; }
+  .gate-paso small{ color:var(--text-muted); }
+  .gate-num{ width:26px; height:26px; border-radius:50%; background:var(--celeste-soft); color:var(--celeste-dark); font-weight:800; font-size:13px; display:flex; align-items:center; justify-content:center; flex:none; }
+  .gate-num.ok{ background:var(--ok-bg); color:var(--ok-text); }
+  .gate-num.ahora{ background:var(--warn-bg); color:var(--warn-text); border:2px solid var(--warn-border); box-sizing:border-box; }
+  .gate-idiomas{ display:flex; gap:14px; }
+  .gate-idiomas button{ background:none; border:none; cursor:pointer; font-family:inherit; font-size:13px; font-weight:800; color:var(--text-muted); padding:6px 2px; }
+  .gate-idiomas button.active{ color:var(--petroleo); text-decoration:underline; text-underline-offset:4px; }
+  .gate-espera .gate-pasos-tarjeta{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md); padding:16px 18px; margin:0 0 16px; }
+  .gate-aviso{ background:var(--warn-bg); border:1px solid var(--warn-border); color:var(--warn-text); border-radius:var(--radius-sm); padding:10px 12px; font-size:13px; line-height:1.5; text-align:start; margin-bottom:16px; }
+  @media (max-width:760px){
+    /* En celular, el botón de entrar primero: la mayoría de las veces
+       quien llega ya conoce la app y solo quiere entrar. */
+    .gate-portada{ flex-direction:column; margin:8px auto; gap:14px; }
+    .gate-portada .gate-lado{ order:2; padding:26px 22px; }
+    .gate-lado h2{ font-size:23px; }
+    .gate-portada .gate-tarjeta{ flex:none; padding:24px 20px; }
+  }
   .auth-gate .big{ font-size:44px; margin-bottom:14px; }
   .auth-gate h2{ margin:0 0 8px 0; color:var(--ink); font-size:19px; }
   .auth-gate p{ color:var(--text-muted); font-size:13.5px; line-height:1.6; margin:0 0 20px 0; }
@@ -1775,7 +1812,7 @@
   }
   .bell-btn:hover, .bell-btn.open{ border-color:#fff; }
   .mentions-menu{
-    position:absolute; top:calc(100% + 12px); inset-inline-end:0; width:280px;
+    position:absolute; top:calc(100% + 12px); inset-inline-end:0; width:min(340px, calc(100vw - 24px));
     background:var(--card); color:var(--text); border-radius:var(--radius-md);
     box-shadow:0 14px 36px rgba(8,42,44,0.28); padding:10px; z-index:60; text-align:start;
   }
@@ -1793,6 +1830,13 @@
   .mention-item .mi-content{ font-size:12px; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .mention-item .mi-date{ font-size:10.5px; color:var(--text-muted); }
   .mentions-empty{ padding:12px 8px; font-size:12.5px; color:var(--text-muted); text-align:center; }
+  /* Los filtros de la campanita y la marca de lo que es nuevo. */
+  .bell-filtros{ display:flex; gap:4px; flex-wrap:wrap; padding:0 4px 8px; }
+  .bell-filtros button{ background:var(--surface-alt); border:none; border-radius:999px; padding:5px 9px; font-family:inherit; font-size:11.5px; font-weight:700; color:var(--text-muted); cursor:pointer; }
+  .bell-filtros button.active{ background:var(--petroleo); color:#fff; }
+  .mention-item.nuevo{ background:var(--celeste-soft); }
+  .mi-nuevo{ display:inline-block; margin-inline-start:6px; font-size:9.5px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:var(--celeste-dark); background:var(--card); border:1px solid var(--border); border-radius:999px; padding:1px 6px; vertical-align:middle; }
+  .mi-faltan{ color:var(--warn-text) !important; font-weight:700; }
   /* El aviso de Calendar en la campanita NO se apaga solo con abrirlo (a
      diferencia de una @mención): necesita el botón "Ya la acepté" de acá
      abajo, aparte, porque no hay forma de saber si la persona aceptó de
@@ -8751,7 +8795,9 @@ function renderUserBadge(){
 // acción "goto-mention".
 let mentionsMenuOpen = false;
 function renderMentionsBell(){
-  if(!state.auth.user){ mentionsBellEl.innerHTML = ""; mentionsMenuOpen = false; return; }
+  // Sin acceso (esperando aprobación, rechazado) la campanita no tiene
+  // nada que mostrar: no se dibuja.
+  if(!state.auth.user || !isAuthorized()){ mentionsBellEl.innerHTML = ""; mentionsMenuOpen = false; return; }
   const hasInvite = hasActiveCalendarInviteNotice();
   const upcoming = upcomingEvents();
   // El globito cuenta SOLO lo que todavía no se abrió; el menú de abajo
@@ -8771,27 +8817,48 @@ function renderMentionsBell(){
         ${renderMentionsMenuItems(hasInvite, upcoming)}
       </div>` : ""}`;
 }
+// Lo que era nuevo al abrir la campanita (ver "toggle-mentions-menu") y
+// qué se está mirando (todo, menciones, respuestas o eventos).
+let bellVistoAlAbrir = null;
+let bellFiltro = "todo";
 function renderMentionsMenuItems(hasInvite, upcoming){
   const recent = getRecentMentions(4);
   const replies = getRecentReplies(3);
-  // Lo que se viene va primero: es lo único con fecha de vencimiento.
-  const upcomingItems = (upcoming || []).length ? `
+  const f = bellFiltro;
+  const ver = k => f === "todo" || f === k;
+  const esNuevo = (ts, clave) => !!(bellVistoAlAbrir && tsToMillis(ts) > bellVistoAlAbrir[clave]);
+  const nuevo = `<span class="mi-nuevo">${t("Nuevo","New","Novo","חדש")}</span>`;
+  const filtros = `<div class="bell-filtros" role="group">${[
+      ["todo", t("Todo","All","Tudo","הכול")], ["menciones", t("Menciones","Mentions","Menções","אזכורים")],
+      ["respuestas", t("Respuestas","Replies","Respostas","תגובות")], ["eventos", t("Eventos","Events","Eventos","אירועים")],
+    ].map(([k,l])=>`<button type="button" class="${f===k?"active":""}" data-action="bell-filtro" data-key="${k}">${l}</button>`).join("")}</div>`;
+  // Lo que se viene va primero: es lo único con fecha de vencimiento. Y
+  // si al evento le falta documentación, lo dice acá, que es cuando
+  // todavía hay tiempo de subirla.
+  const upcomingItems = (ver("eventos") && (upcoming || []).length) ? `
     <div class="bell-section">${t("Próximos eventos","Upcoming events","Próximos eventos","אירועים קרובים")}</div>
     ${upcoming.slice(0,4).map(p=>{
       const type = ACTIVITY_BY_KEY[p.activityType] || { icon:"✨" };
       const when = p.startTime
         ? `${fmtISO(p.startDate || p.date, { weekday:"short", day:"numeric", month:"short" })} · ${esc(fmtHHMM(p.startTime))}`
         : fmtISO(p.startDate || p.date, { weekday:"short", day:"numeric", month:"short" });
+      // Un hito de proyecto no tiene documentación propia: lo que falte
+      // es del proyecto, y eso ya se ve en su tarjeta.
+      const docs = !p.hito && docsEsperados(p.activityType).length ? cuantosDocsHay(p) : null;
+      const faltan = docs && docs.hay < docs.total ? `<span class="mi-content mi-faltan">📎 ${docs.total - docs.hay === 1
+          ? t("Falta 1 documento","1 document missing","Falta 1 documento","חסר מסמך אחד")
+          : t("Faltan {n} documentos","{n} documents missing","Faltam {n} documentos","חסרים {n} מסמכים",{n:docs.total - docs.hay})}</span>` : "";
       return `<button type="button" class="mention-item" data-action="goto-mention" data-post-id="${esc(p.id)}">
           <span class="mi-author">${type.icon} ${esc(calendarioLabel(p))}</span>
+          ${faltan}
           <span class="mi-date">${esc(when)}</span>
         </button>`;
     }).join("")}` : "";
-  const replyItems = replies.length ? `
+  const replyItems = (ver("respuestas") && replies.length) ? `
     <div class="bell-section">${t("Respuestas a tus posteos","Replies to your posts","Respostas às suas postagens","תגובות לפוסטים שלך")}</div>
     ${replies.map(r=>`
-      <button type="button" class="mention-item" data-action="goto-mention" data-post-id="${esc(r.postId)}" data-reply-id="${esc(r.replyId)}">
-        <span class="mi-author">${authorLabelHtml(r.authorEmail, r.authorName) || t("Alguien","Someone","Alguém","מישהו/י")}</span>
+      <button type="button" class="mention-item${esNuevo(r.createdAt, "r") ? " nuevo" : ""}" data-action="goto-mention" data-post-id="${esc(r.postId)}" data-reply-id="${esc(r.replyId)}">
+        <span class="mi-author">${authorLabelHtml(r.authorEmail, r.authorName) || t("Alguien","Someone","Alguém","מישהו/י")}${esNuevo(r.createdAt, "r") ? nuevo : ""}</span>
         <span class="mi-content" dir="auto">${esc(String(r.content||"").slice(0,90))}</span>
         <span class="mi-date">${fmtDateTime(r.createdAt)}</span>
       </button>`).join("")}` : "";
@@ -8805,14 +8872,18 @@ function renderMentionsMenuItems(hasInvite, upcoming){
       </button>
       <button type="button" class="ci-dismiss" data-action="dismiss-calendar-invite-notice">${t("Ya la acepté ✕","Already accepted ✕","Já aceitei ✕","כבר אישרתי ✕")}</button>
     </div>` : "";
-  if(!recent.length && !inviteItem && !upcomingItems && !replyItems){
-    return `<div class="mentions-empty">${t("Todavía no te mencionaron.","No one has mentioned you yet.","Ainda não te mencionaram.","עדיין לא אזכרו אותך.")}</div>`;
+  const menciones = ver("menciones") ? recent : [];
+  if(!menciones.length && !inviteItem && !upcomingItems && !replyItems){
+    const vacio = f === "todo"
+      ? t("Todavía no hay novedades: ni menciones, ni respuestas, ni eventos cerca.","Nothing new yet: no mentions, replies or events coming up.","Ainda não há novidades: nem menções, nem respostas, nem eventos próximos.","עדיין אין חדש: לא אזכורים, לא תגובות ולא אירועים קרובים.")
+      : t("Nada por acá.","Nothing here.","Nada por aqui.","אין כאן כלום.");
+    return filtros + `<div class="mentions-empty">${vacio}</div>`;
   }
-  const mentionItems = recent.length ? `
+  const mentionItems = menciones.length ? `
     <div class="bell-section">${t("Menciones","Mentions","Menções","אזכורים")}</div>` : "";
-  return inviteItem + upcomingItems + replyItems + mentionItems + recent.map(m=>`
-    <button type="button" class="mention-item" data-action="goto-mention" data-post-id="${esc(m.postId)}" ${m.replyId ? `data-reply-id="${esc(m.replyId)}"` : ""}>
-      <span class="mi-author">${authorLabelHtml(m.authorEmail, m.authorName) || t("Alguien","Someone","Alguém","מישהו/י")}</span>
+  return filtros + inviteItem + upcomingItems + replyItems + mentionItems + menciones.map(m=>`
+    <button type="button" class="mention-item${esNuevo(m.createdAt, "m") ? " nuevo" : ""}" data-action="goto-mention" data-post-id="${esc(m.postId)}" ${m.replyId ? `data-reply-id="${esc(m.replyId)}"` : ""}>
+      <span class="mi-author">${authorLabelHtml(m.authorEmail, m.authorName) || t("Alguien","Someone","Alguém","מישהו/י")}${esNuevo(m.createdAt, "m") ? nuevo : ""}</span>
       <span class="mi-content" dir="auto">${esc((m.content||"").slice(0,80))}</span>
       <span class="mi-date">${fmtDateTime(m.createdAt)}</span>
     </button>`).join("");
@@ -8918,39 +8989,67 @@ function renderAuthGate(){
     </div>`;
   }
   if(s === "signedOut"){
-    return `<div class="auth-gate">
-      <div class="big">🔒</div>
-      <h2>${t("Acceso privado","Private access","Acesso privado","גישה פרטית")}</h2>
-      <p>${t("Este registro es solo para el equipo. Iniciá sesión con tu cuenta de Google para entrar.","This log is for the team only. Sign in with your Google account to get in.","Este registro é só para a equipe. Entre com sua conta do Google para acessar.","היומן הזה הוא לצוות בלבד. התחבר/י עם חשבון Google שלך כדי להיכנס.")}</p>
-      <button class="btn-google" data-action="google-signin">
-        <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.9c1.7-1.57 2.7-3.88 2.7-6.62z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.9-2.26c-.81.54-1.84.86-3.06.86-2.35 0-4.34-1.59-5.05-3.72H.96v2.33A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.95 10.7A5.4 5.4 0 0 1 3.67 9c0-.59.1-1.17.28-1.7V4.97H.96A9 9 0 0 0 0 9c0 1.45.35 2.83.96 4.03l2.99-2.33z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .96 4.97l2.99 2.33C4.66 5.17 6.65 3.58 9 3.58z"/></svg>
-        ${t("Iniciar sesión con Google","Sign in with Google","Entrar com o Google","התחברות עם Google")}
-      </button>
+    // Una portada: qué es el Registro y cómo se entra la primera vez
+    // (tres pasos), con el botón de Google y los idiomas a mano. Antes era
+    // un candado y una línea, y quien llegaba por primera vez no sabía
+    // qué esperar después de apretar el botón.
+    const lang = currentLang();
+    return `<div class="gate-portada">
+      <div class="gate-lado">
+        <div class="big" aria-hidden="true">🗺️</div>
+        <h2>${t("La memoria de lo que el equipo hace en cada lugar de LatAm.","The record of what the team does in every corner of LatAm.","A memória do que a equipe faz em cada lugar da LatAm.","הזיכרון של מה שהצוות עושה בכל מקום ב-LatAm.")}</h2>
+        <p>${t("Visitas, cursos, seminarios y rutinas, con sus fotos y documentos, ordenados por país y por fecha.","Visits, courses, seminars and routines, with their photos and documents, by country and by date.","Visitas, cursos, seminários e rotinas, com suas fotos e documentos, por país e por data.","ביקורים, קורסים, סמינרים ושגרות, עם התמונות והמסמכים שלהם, לפי מדינה ולפי תאריך.")}</p>
+      </div>
+      <div class="gate-tarjeta auth-gate">
+        <h2>${t("Entrar","Sign in","Entrar","כניסה")}</h2>
+        <p>${t("Es un espacio privado del equipo. Entrá con tu cuenta de Google.","It's a private space for the team. Sign in with your Google account.","É um espaço privado da equipe. Entre com sua conta do Google.","זהו מרחב פרטי של הצוות. התחבר/י עם חשבון Google שלך.")}</p>
+        <button class="btn-google" data-action="google-signin">
+          <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.9c1.7-1.57 2.7-3.88 2.7-6.62z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.9-2.26c-.81.54-1.84.86-3.06.86-2.35 0-4.34-1.59-5.05-3.72H.96v2.33A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.95 10.7A5.4 5.4 0 0 1 3.67 9c0-.59.1-1.17.28-1.7V4.97H.96A9 9 0 0 0 0 9c0 1.45.35 2.83.96 4.03l2.99-2.33z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .96 4.97l2.99 2.33C4.66 5.17 6.65 3.58 9 3.58z"/></svg>
+          ${t("Entrar con Google","Sign in with Google","Entrar com o Google","התחברות עם Google")}
+        </button>
+        <div class="gate-primera">${t("¿Es tu primera vez?","First time here?","É a sua primeira vez?","פעם ראשונה כאן?")}</div>
+        <ol class="gate-pasos">
+          <li class="gate-paso"><span class="gate-num">1</span><span>${t("Entrás con Google.","You sign in with Google.","Você entra com o Google.","נכנסים עם Google.")}</span></li>
+          <li class="gate-paso"><span class="gate-num">2</span><span>${t("Un administrador aprueba tu pedido.","An administrator approves your request.","Um administrador aprova seu pedido.","מנהל/ת מאשר/ת את הבקשה.")}</span></li>
+          <li class="gate-paso"><span class="gate-num">3</span><span>${t("Listo: ya podés ver y cargar todo.","Done: you can see and log everything.","Pronto: já pode ver e carregar tudo.","זהו: אפשר לראות ולרשום הכול.")}</span></li>
+        </ol>
+        <div class="gate-idiomas" role="group" aria-label="${esc(t("Idioma","Language","Idioma","שפה"))}">
+          ${LANGS.map(l=>`<button type="button" class="${lang===l.key?"active":""}" data-action="set-lang" data-lang="${l.key}" aria-pressed="${lang===l.key}" title="${esc(l.name)}">${l.label}</button>`).join("")}
+        </div>
+      </div>
     </div>`;
   }
   if(s === "pending"){
-    return `<div class="auth-gate">
+    const email = state.auth.user.email;
+    // Una cuenta personal (gmail, hotmail…) suele ser la cuenta
+    // equivocada: se avisa, por si tiene una del equipo.
+    const dominio = String(email).split("@")[1] || "";
+    const personal = /^(gmail|hotmail|outlook|yahoo|icloud|live)\./i.test(dominio);
+    return `<div class="auth-gate gate-espera">
       <div class="big">⏳</div>
-      <h2>${t("Tu acceso está pendiente de aprobación","Your access is waiting for approval","Seu acesso está pendente de aprovação","הגישה שלך ממתינה לאישור")}</h2>
-      <p>${t(
-        `Le avisamos al <strong>Administrador</strong> que pediste entrar como <strong>{email}</strong>. Cuando lo apruebe vas a poder entrar (no hace falta que hagas nada más, esta pantalla se actualiza sola).`,
-        `We let the <strong>Admin</strong> know you asked to join as <strong>{email}</strong>. Once approved you'll get in — no need to do anything else, this screen updates on its own.`,
-        `Avisamos o <strong>Administrador</strong> que você pediu para entrar como <strong>{email}</strong>. Quando aprovar, você vai poder entrar (não precisa fazer mais nada, esta tela se atualiza sozinha).`,
-        `הודענו ל<strong>מנהל/ת</strong> שביקשת להצטרף בתור <strong>{email}</strong>. ברגע שיאושר תוכל/י להיכנס (אין צורך לעשות עוד כלום, המסך הזה מתעדכן לבד).`,
-        { email: esc(state.auth.user.email) }
-      )}</p>
+      <h2>${t("Tu pedido está en camino","Your request is on its way","Seu pedido está a caminho","הבקשה שלך בדרך")}</h2>
+      <p>${t("No tenés que hacer nada más: esta pantalla se actualiza sola apenas te aprueben.","Nothing else to do: this screen updates on its own as soon as you're approved.","Não precisa fazer mais nada: esta tela se atualiza sozinha assim que aprovarem.","אין צורך לעשות עוד כלום: המסך הזה מתעדכן לבד ברגע שיאשרו.")}</p>
+      <ol class="gate-pasos gate-pasos-tarjeta">
+        <li class="gate-paso"><span class="gate-num ok">✓</span><span><b>${t("Entraste con Google","You signed in with Google","Você entrou com o Google","נכנסת עם Google")}</b><br><small>${esc(email)}</small></span></li>
+        <li class="gate-paso"><span class="gate-num ok">✓</span><span><b>${t("Le avisamos al administrador","We let the administrator know","Avisamos o administrador","הודענו למנהל/ת")}</b></span></li>
+        <li class="gate-paso"><span class="gate-num ahora">3</span><span><b>${t("Esperando la aprobación","Waiting for approval","Aguardando a aprovação","ממתינים לאישור")}</b><br><small>${t("Suele tardar menos de un día.","It usually takes less than a day.","Costuma levar menos de um dia.","בדרך כלל לוקח פחות מיום.")}</small></span></li>
+      </ol>
+      ${personal ? `<div class="gate-aviso">${t("Entraste con una cuenta personal ({d}). Si tenés una cuenta del equipo, conviene cerrar sesión y entrar con esa.","You signed in with a personal account ({d}). If you have a team account, better sign out and use that one.","Você entrou com uma conta pessoal ({d}). Se tiver uma conta da equipe, é melhor sair e entrar com ela.","נכנסת עם חשבון אישי ({d}). אם יש לך חשבון של הצוות, עדיף להתנתק ולהיכנס איתו.",{d:esc(dominio)})}</div>` : ""}
       <button class="btn-secondary" data-action="sign-out">${t("Cerrar sesión","Sign out","Sair","התנתקות")}</button>
     </div>`;
   }
   if(s === "rejected"){
+    // Acá caen dos casos que la app no puede distinguir desde este lado:
+    // un pedido que no se aprobó y un acceso que se quitó. El texto
+    // habla de los dos y no acusa a nadie.
     return `<div class="auth-gate">
       <div class="big">🚫</div>
-      <h2>${t("Acceso no aprobado","Access not approved","Acesso não aprovado","הגישה לא אושרה")}</h2>
+      <h2>${t("Esta cuenta no tiene acceso al Registro","This account has no access to the Log","Esta conta não tem acesso ao Registro","לחשבון הזה אין גישה ליומן")}</h2>
       <p>${t(
-        `Tu solicitud con <strong>{email}</strong> no fue aprobada. Si creés que es un error, contactá al <strong>Administrador</strong>.`,
-        `Your request with <strong>{email}</strong> wasn't approved. If you think this is a mistake, contact the <strong>Admin</strong>.`,
-        `Sua solicitação com <strong>{email}</strong> não foi aprovada. Se você acha que é um engano, entre em contato com o <strong>Administrador</strong>.`,
-        `הבקשה שלך עם <strong>{email}</strong> לא אושרה. אם נראה לך שזו טעות, פנה/י אל <strong>המנהל/ת</strong>.`,
+        `<strong>{email}</strong> no está en la lista del equipo: o el pedido no fue aprobado, o el acceso se quitó. Lo que hayas cargado sigue guardado. Si creés que es un error, hablá con el <strong>Administrador</strong>.`,
+        `<strong>{email}</strong> isn't on the team list: either the request wasn't approved or access was removed. Anything you logged is still saved. If you think this is a mistake, talk to the <strong>Admin</strong>.`,
+        `<strong>{email}</strong> não está na lista da equipe: ou o pedido não foi aprovado, ou o acesso foi retirado. O que você carregou continua guardado. Se acha que é um engano, fale com o <strong>Administrador</strong>.`,
+        `<strong>{email}</strong> לא ברשימת הצוות: או שהבקשה לא אושרה, או שהגישה הוסרה. מה שרשמת נשאר שמור. אם נראה לך שזו טעות, דבר/י עם <strong>המנהל/ת</strong>.`,
         { email: esc(state.auth.user.email) }
       )}</p>
       <button class="btn-mini" data-action="request-again">${t("Pedir acceso de nuevo","Request access again","Pedir acesso de novo","בקשת גישה מחדש")}</button>
@@ -15744,8 +15843,16 @@ document.addEventListener("click", async e=>{
   },
     "toggle-mentions-menu": async (el, e, action, postId) => {
     mentionsMenuOpen = !mentionsMenuOpen;
-    if(mentionsMenuOpen){ markMentionsSeen(); markRepliesSeen(); markUpcomingSeen(); markCalendarInviteSeen(); }
+    if(mentionsMenuOpen){
+      // Qué era nuevo al abrir, ANTES de marcarlo visto: así el panel lo
+      // resalta esta vez, y la próxima ya no.
+      bellVistoAlAbrir = { m: getMentionsSeenAt(), r: getRepliesSeenAt() };
+      markMentionsSeen(); markRepliesSeen(); markUpcomingSeen(); markCalendarInviteSeen();
+    }
     render();
+  },
+    "bell-filtro": async (el, e, action, postId) => {
+    bellFiltro = el.dataset.key; render();
   },
     "goto-mention": async (el, e, action, postId) => {
     mentionsMenuOpen = false;
