@@ -168,27 +168,42 @@ async function abrir(){
 }
 const elegir = (p, datos) => p.setInputFiles("#archivo",
   { name: "registro-acciones-respaldo.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(datos)) });
-const fila = (p, tabla) => p.evaluate(t => {
-  const tr = [...document.querySelectorAll("#zonaArchivo tr")].find(x => x.textContent.trim().startsWith(t + " ") || (x.cells[0] && x.cells[0].textContent === t));
+// La fila de una tabla en la comparación, por el nombre que ve el admin.
+const fila = (p, nombre) => p.evaluate(t => {
+  const tr = [...document.querySelectorAll("#zonaArchivo tr")].find(x => x.cells[0] && x.cells[0].textContent === t);
   return tr ? [...tr.cells].slice(1).map(c => c.textContent) : null;
-}, tabla);
+}, nombre);
+// Hasta que la comparación con Supabase terminó y la tarjeta 3 lo dice.
+const comparado = p => p.waitForFunction(() =>
+  /no están en Supabase|No falta nada/.test(document.querySelector("#zonaModo").textContent), null, { timeout: 15000 });
 
-/* ---------- La importación final ya no está ---------- */
+/* ---------- Primero se mira: qué falta en Supabase ---------- */
 // Desde el 3 de octubre de 2026 la base del equipo es Supabase, con cosas
-// que Firebase no tiene: dejarla igual a Firebase las borraría.
+// que Firebase no tiene: de Firebase se trae solo lo que falta.
 {
   const { p, errores } = await abrir();
   eq("entra con la sesión del admin y habilita el archivo", await p.isDisabled("#archivo"), false);
   eq("no se ofrece la importación final", await p.$("#modoFinal"), null);
   eq("y la página dice por qué", /«Importación final», que dejaba Supabase igual a Firebase, ya no está/.test(await p.textContent("main")), true);
   await elegir(p, respaldo());
-  await p.waitForFunction(() => !document.querySelector("#zonaArchivo").textContent.includes("Comparando"));
-  eq("compara con lo que hay: posteos en el archivo, nuevos, que ya estaban y solo en Supabase",
-     await fila(p, "posts"), ["3", "1", "2", "2"]);
-  eq("y lo mismo con el equipo", await fila(p, "members"), ["1", "0", "1", "1"]);
-  eq("de la configuración no se saca nada: ahí la columna no aplica", await fila(p, "app_config"), ["2", "1", "1", "—"]);
+  await comparado(p);
+  eq("compara con lo que hay: posteos en el archivo, los que faltan en Supabase y los que ya están",
+     await fila(p, "Posteos"), ["3", "1", "2"]);
+  eq("un integrante que está en Supabase y no en Firebase no cuenta para nada", await fila(p, "Integrantes"), ["1", "0", "1"]);
+  eq("la configuración que falta, también", await fila(p, "Configuración"), ["2", "1", "1"]);
+  const listas = await p.$$eval("#zonaModo details", ds => ds.map(d => [d.querySelector("summary").textContent,
+    [...d.querySelectorAll("li")].map(li => li.textContent)]));
+  eq("muestra, una por una, las cosas que faltan", listas, [
+    ["Ex integrantes: 1", ["Se Fue <se.fue@x.com>"]],
+    ["Posteos: 1", ["Nuevo con todo — 2026-09-05"]],
+    ["Comentarios: 1", ["«¡Qué bueno!» — en «Nuevo con todo» · sin fecha"]],
+    ["Registro de actividad: 1", ["login · ana@x.com · sin fecha"]],
+    ["Configuración: 1", ["configuración «calendarSync»"]],
+  ]);
+  eq("y avisa que lo borrado a propósito en Supabase no hay que traerlo",
+     /se borró a propósito en Supabase, no lo aprietes todavía/.test(await p.textContent("#zonaModo")), true);
   eq("el botón dice lo que hace", (await p.textContent("#btnImportar")).trim(), "Traer lo que falta");
-  eq("y no aparece ninguna lista de cosas para sacar", await p.$$eval("#zonaModo details", d => d.length), 0);
+  eq("y se puede apretar", await p.isDisabled("#btnImportar"), false);
 
   // Que se pueda leer en una pantalla chica, sin irse de costado.
   await p.setViewportSize({ width: 380, height: 900 });
@@ -202,20 +217,28 @@ const fila = (p, tabla) => p.evaluate(t => {
   await p.close();
 }
 
-/* ---------- Completar lo que falta: no toca ni saca nada ---------- */
+/* ---------- Traer lo que falta, y nada más ---------- */
 {
   const { p, errores } = await abrir();
   await elegir(p, respaldo());
-  await p.waitForFunction(() => !document.querySelector("#zonaArchivo").textContent.includes("Comparando"));
-  eq("el modo de siempre viene elegido", await p.isChecked("#modoCompletar"), true);
-  eq("y se puede traer sin confirmar nada", await p.isDisabled("#btnImportar"), false);
+  await comparado(p);
   await p.click("#btnImportar");
   await p.waitForFunction(() => /Listo|Se cortó/.test(document.querySelector("#zonaImportar").textContent), null, { timeout: 30000 });
-  const sb = await p.evaluate(() => JSON.parse(JSON.stringify({ rpc: window.__sb.rpc, tablas: window.__sb.tablas })));
-  eq("no reemplaza", sb.rpc.filter(([n]) => n === "importar").some(([, a]) => a.p_reemplazar), false);
-  eq("ni saca nada", sb.rpc.some(([n]) => n === "importar_quitar"), false);
+  const sb = await p.evaluate(() => JSON.parse(JSON.stringify({ rpc: window.__sb.rpc, tablas: window.__sb.tablas, subidas: window.__sb.subidas })));
+  const enviados = tabla => sb.rpc.filter(([n, a]) => n === "importar" && a.p_tabla === tabla)
+    .flatMap(([, a]) => a.p_filas.map(f => f.id || f.email || f.key));
+  eq("de los posteos se manda solo el que falta", enviados("posts"), ["p_nuevo"]);
+  eq("de los integrantes, ninguno: ya estaban", enviados("members"), []);
+  eq("nunca reemplazando", sb.rpc.filter(([n]) => n === "importar").some(([, a]) => a.p_reemplazar), false);
+  eq("ni sacando nada", sb.rpc.some(([n]) => n === "importar_quitar"), false);
   eq("lo que ya estaba queda como estaba", (sb.tablas.posts.find(x => x.id === "p_cambia") || {}).title, "Antes");
-  eq("y lo nuevo entra", sb.tablas.posts.some(x => x.id === "p_nuevo"), true);
+  eq("y lo que faltaba entra", sb.tablas.posts.some(x => x.id === "p_nuevo"), true);
+  eq("solo se suben los adjuntos de lo que faltaba", sb.subidas.length > 0 && sb.subidas.every(x => x.ruta.startsWith("posts/p_nuevo/")), true);
+  eq("la foto, con su miniatura armada por el canvas", sb.subidas.some(x => x.ruta.endsWith(".min.jpg") && x.tipo === "image/jpeg"), true);
+  // Después se vuelve a comparar: ya no falta nada.
+  await p.waitForFunction(() => /No falta nada/.test(document.querySelector("#zonaModo").textContent), null, { timeout: 10000 }).catch(() => {});
+  eq("después, la página dice que ya no falta nada", /No falta nada/.test(await p.textContent("#zonaModo")), true);
+  eq("y el botón ya no se puede apretar", await p.isDisabled("#btnImportar"), true);
   eq("sin errores", errores, []);
   await p.close();
 }
@@ -226,11 +249,11 @@ const fila = (p, tabla) => p.evaluate(t => {
   const datos = respaldo();
   datos.replies.push({ id: "r_huerfano", postId: "no_existe", content: "huérfano", authorName: "X" });
   await elegir(p, datos);
-  await p.waitForFunction(() => !document.querySelector("#zonaArchivo").textContent.includes("Comparando"));
+  await comparado(p);
   await p.click("#btnImportar");
   await p.waitForFunction(() => /Listo|Se cortó|no entraron/.test(document.querySelector("#zonaImportar").textContent), null, { timeout: 30000 });
   const texto = await p.textContent("#zonaImportar");
-  eq("una fila que la base no acepta queda en la lista, con su motivo", /replies r_huerfano: .*foreign key/.test(texto), true);
+  eq("una fila que la base no acepta queda en la lista, con su motivo", /Comentarios r_huerfano: .*foreign key/.test(texto), true);
   eq("y las demás entran igual", await p.evaluate(() => window.__sb.tablas.replies.some(r => r.id === "r_nuevo")), true);
   eq("sin errores de página", errores, []);
   await p.close();
