@@ -1717,9 +1717,36 @@
   .rep-num{ flex:0 0 auto; min-width:28px; text-align:end; font-size:12.5px; font-weight:800; font-variant-numeric:tabular-nums; }
   .rep-vacio{ font-size:12.5px; color:var(--text-muted); }
   .rep-notas{ margin-top:16px; font-size:12px; color:var(--text-muted); line-height:1.6; }
+  .rep-acciones{ display:flex; gap:8px; flex-wrap:wrap; }
+  /* Los tres números de arriba, al lado del total. */
+  .rep-kpis{ display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:12px; margin-bottom:18px; }
+  .rep-kpi{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md); padding:12px 16px; box-shadow:var(--shadow); }
+  .rep-kpi-num{ font-size:26px; font-weight:800; color:var(--petroleo); line-height:1.1; }
+  .rep-kpi-txt{ font-size:12.5px; font-weight:700; color:var(--text-muted); margin-top:2px; }
+  .rep-kpi-delta{ display:block; font-size:12px; font-weight:700; margin-top:4px; color:var(--text-muted); }
+  .rep-kpi-delta.sube{ color:var(--ok-text); }
+  .rep-kpi-delta.baja{ color:var(--danger); }
+  /* La barra fina del período anterior, debajo de la del mes. */
+  .rep-riel.doble{ height:auto; padding:2px 0; display:flex; flex-direction:column; gap:2px; }
+  .rep-riel.doble .rep-barra{ height:8px; }
+  .rep-riel.doble .rep-barra.prev{ height:4px; background:var(--text-muted); opacity:.45; }
+  .rep-bloque-nota{ font-size:11.5px; color:var(--text-muted); margin-top:8px; }
+  /* Una fila que lleva a algún lado se nota al pasar por encima. */
+  .rep-fila-ir{ cursor:pointer; border-radius:8px; margin-inline:-6px; padding-inline:6px; }
+  .rep-fila-ir:hover, .rep-fila-ir:focus-visible{ background:var(--celeste-soft); outline:none; }
+  .rep-print-title{ display:none; }
   @media (max-width:520px){
     .rep-etiqueta{ flex-basis:44%; }
     .rep-comparacion{ margin-inline-start:0; flex-basis:100%; }
+  }
+  /* Imprimir / PDF: solo el reporte, sin el cascarón de la app. */
+  @media print{
+    .topbar, nav.tabs, .fab-wrap, .scroll-top, .new-posts-pill, footer.appfoot, .rep-selector, .observer-banner{ display:none !important; }
+    body{ background:#fff; }
+    main{ padding:0; max-width:none; }
+    .rep-print-title{ display:block; font-size:18px; font-weight:800; margin-bottom:14px; }
+    .rep-total, .rep-kpi, .rep-bloque{ box-shadow:none; break-inside:avoid; }
+    .rep-grilla{ grid-template-columns:repeat(2, minmax(0, 1fr)); }
   }
 
   .country-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:12px; }
@@ -1735,6 +1762,25 @@
      aplica sin haber pasado ahí. La región en el color de su zona. */
   .country-card .cross-line{ display:flex; flex-wrap:wrap; gap:2px 10px; font-size:11.5px; font-weight:600; color:var(--text-muted); margin-top:3px; }
   .country-card.quiet .count{ color:var(--text-muted); }
+  .country-top{ display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
+  .country-top .name{ margin-bottom:0; min-width:0; }
+  .country-top .count{ flex:none; white-space:nowrap; line-height:1.1; }
+  .country-serie{ display:flex; align-items:flex-end; gap:3px; height:26px; margin:8px 0 6px; }
+  .country-serie span{ flex:1; border-radius:2px; background:var(--surface-alt); }
+  .country-last{ font-size:12px; color:var(--text-muted); font-weight:600; margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .paises-resumen{ margin:0 0 12px; font-size:14px; }
+  /* Los países sin actividad propia, plegados: siguen ahí para abrirlos
+     (lo macro de su zona y de LatAm aplica igual), sin tapar a los que
+     sí tienen algo. */
+  .paises-quietos{ margin-top:16px; background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md); padding:12px 16px; }
+  .paises-quietos summary{ cursor:pointer; font-weight:700; font-size:13.5px; color:var(--text-muted); }
+  .paises-quietos-lista{ display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+  .country-mini{
+    display:inline-flex; align-items:center; gap:6px; min-height:34px; padding:0 12px; border-radius:999px; cursor:pointer;
+    border:1px solid var(--border); background:var(--surface-soft); color:var(--text); font-family:inherit; font-size:12.5px; font-weight:600;
+  }
+  .country-mini:hover{ border-color:var(--celeste-dark); }
+  .country-mini .dot{ width:8px; height:8px; border-radius:50%; flex:none; }
   .map-popup .cross-line{ display:flex; flex-wrap:wrap; gap:2px 10px; font-size:11px; font-weight:600; color:var(--text-muted); margin-top:4px; }
   /* "Además, 40 posteos de toda LatAm aplican a todos los países": una
      sola vez, al pie de la grilla de Vistas, en vez de en cada tarjeta. */
@@ -10625,19 +10671,49 @@ function mesCortoDe(mesISO){
 // Una fila del gráfico: etiqueta, barra proporcional y número. Sin
 // librería de gráficos — son barras, y una librería entera para esto
 // serían 200 KB más en un archivo que ya pesa.
-function filaDeBarra(etiqueta, n, maximo, color){
+// `prev`: el mismo renglón en el período anterior, como una barra fina
+// debajo (solo en "Mes a mes"). `ir`: a dónde lleva tocar la fila (ver
+// "reporte-ir"): el Feed filtrado por ese país, zona o tipo.
+function filaDeBarra(etiqueta, n, maximo, color, { prev, ir } = {}){
   const ancho = maximo > 0 ? Math.max(2, Math.round(n * 100 / maximo)) : 0;
-  return `<div class="rep-fila">
+  const anchoPrev = prev != null && maximo > 0 ? Math.max(prev ? 2 : 0, Math.round(prev * 100 / maximo)) : 0;
+  const titulo = prev != null ? ` title="${esc(t("Período anterior: {n}","Previous period: {n}","Período anterior: {n}","התקופה הקודמת: {n}",{n:prev}))}"` : "";
+  const clic = ir ? ` role="button" tabindex="0" data-action="reporte-ir" data-kind="${esc(ir.kind)}" data-key="${esc(ir.key)}"` : "";
+  return `<div class="rep-fila${ir ? " rep-fila-ir" : ""}"${clic}${titulo}>
       <div class="rep-etiqueta">${etiqueta}</div>
-      <div class="rep-riel"><div class="rep-barra" style="width:${ancho}%;background:${color || "var(--petroleo)"}"></div></div>
+      <div class="rep-riel${prev != null ? " doble" : ""}"><div class="rep-barra" style="width:${ancho}%;background:${color || "var(--petroleo)"}"></div>${prev != null ? `<div class="rep-barra prev" style="width:${anchoPrev}%"></div>` : ""}</div>
       <div class="rep-num">${n}</div>
     </div>`;
 }
-function bloqueDeBarras(titulo, filas, vacio){
+function bloqueDeBarras(titulo, filas, vacio, nota){
   if(!filas.length) return `<div class="rep-bloque"><h3>${titulo}</h3><div class="rep-vacio">${vacio}</div></div>`;
-  const maximo = Math.max(...filas.map(f=>f.n));
+  const maximo = Math.max(...filas.map(f=>Math.max(f.n, f.prev || 0)));
   return `<div class="rep-bloque"><h3>${titulo}</h3>
-    ${filas.map(f=>filaDeBarra(f.etiqueta, f.n, maximo, f.color)).join("")}</div>`;
+    ${filas.map(f=>filaDeBarra(f.etiqueta, f.n, maximo, f.color, { prev:f.prev, ir:f.ir })).join("")}${nota ? `<div class="rep-bloque-nota">${nota}</div>` : ""}</div>`;
+}
+// Lo último que dibujó renderReportesView, para bajarlo como planilla:
+// las mismas secciones y los mismos números que están en pantalla.
+let reporteEnPantalla = null;
+function csvDelReporte(){
+  const r = reporteEnPantalla;
+  if(!r) return "";
+  const sinHtml = s => String(s).replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").trim();
+  const celda = s => `"${String(s).replace(/"/g, '""')}"`;
+  const filas = [[t("Sección","Section","Seção","מדור"), t("Etiqueta","Label","Etiqueta","תווית"), t("Cantidad","Count","Quantidade","כמות"), t("Período anterior","Previous period","Período anterior","התקופה הקודמת")]];
+  filas.push([t("Período","Period","Período","תקופה"), `${r.desde} – ${r.hasta}`, r.total, r.totalAnterior]);
+  r.secciones.forEach(s => s.filas.forEach(f => filas.push([sinHtml(s.titulo), sinHtml(f.etiqueta), f.n, f.prev != null ? f.prev : ""])));
+  // Punto y coma: es lo que Excel en español toma como separador; con
+  // coma todo caía en una sola columna.
+  return filas.map(f => f.map(celda).join(";")).join("\r\n");
+}
+function descargarTexto(nombre, texto, tipo){
+  // El BOM al principio: sin él, Excel abre el archivo como Latin-1 y
+  // los acentos salen rotos.
+  const blob = new Blob(["﻿" + texto], { type: tipo || "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = nombre; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=> URL.revokeObjectURL(url), 1000);
 }
 
 function renderReportesView(){
@@ -10657,13 +10733,22 @@ function renderReportesView(){
     { n:3, label:t("3.er trimestre","3rd quarter","3º trimestre","רבעון 3") },
     { n:4, label:t("4.º trimestre","4th quarter","4º trimestre","רבעון 4") },
   ];
+  // Bajar: una planilla (CSV, que Excel abre) con las mismas secciones, o
+  // la impresión del navegador (que guarda en PDF). Solo con algo que
+  // bajar.
+  const acciones = r.total ? `<div class="rep-acciones">
+      <button type="button" class="btn-sync" data-action="reporte-csv">⬇ ${t("Bajar planilla","Download spreadsheet","Baixar planilha","הורדת גיליון")}</button>
+      <button type="button" class="btn-sync" data-action="reporte-imprimir">🖨️ ${t("Imprimir / PDF","Print / PDF","Imprimir / PDF","הדפסה / PDF")}</button>
+    </div>` : "";
   const selector = `
     <div class="rep-selector">
       <div class="rep-chips">${anios.map(a=>
         `<button type="button" class="chip-toggle${a === v.anio ? " active" : ""}" data-action="reporte-anio" data-key="${esc(a)}">${esc(a)}</button>`).join("")}</div>
       <div class="rep-chips">${TRIMESTRES.map(q=>
         `<button type="button" class="chip-toggle${q.n === v.tri ? " active" : ""}" data-action="reporte-trimestre" data-key="${q.n}">${esc(q.label)}</button>`).join("")}</div>
-    </div>`;
+      ${acciones}
+    </div>
+    <div class="rep-print-title">Registro de Acciones · ${t("Reporte","Report","Relatório","דוח")} ${esc(fmtDate(v.desde))} – ${esc(fmtDate(v.hasta))}</div>`;
 
   // La comparación con el período de antes. Sin nada antes no se dice
   // nada: "subió infinito" respecto de cero no informa. Y el porcentaje
@@ -10699,25 +10784,30 @@ function renderReportesView(){
 
   // Por mes: TODOS los meses del período, incluidos los vacíos. Un mes sin
   // nada es justamente lo que se quiere ver en una serie.
+  // Cada mes lleva al lado el mismo mes del período anterior (barra fina):
+  // es la comparación que más se mira, "¿octubre fue mejor que el
+  // octubre pasado?".
+  const mesesAnt = [];
+  for(let m = anterior.desde.slice(0,7); m <= anterior.hasta.slice(0,7); m = addMonthsISO(m + "-01", 1).slice(0,7)) mesesAnt.push(m);
   const meses = [];
-  for(let m = v.desde.slice(0,7); m <= v.hasta.slice(0,7); m = addMonthsISO(m + "-01", 1).slice(0,7)){
-    meses.push({ etiqueta: esc(mesCortoDe(m)), n: r.porMes[m] || 0 });
+  for(let m = v.desde.slice(0,7), i = 0; m <= v.hasta.slice(0,7); m = addMonthsISO(m + "-01", 1).slice(0,7), i++){
+    meses.push({ etiqueta: esc(mesCortoDe(m)), n: r.porMes[m] || 0, prev: rAnterior.total ? (rAnterior.porMes[mesesAnt[i]] || 0) : null });
   }
 
   const zonas = Object.values(ZONES).map(z=>({
-    etiqueta: esc(z.label), n: r.porZona[z.key] || 0, color: safeColor(z.color),
+    etiqueta: esc(z.label), n: r.porZona[z.key] || 0, color: safeColor(z.color), ir:{ kind:"zona", key:z.key },
   })).filter(x=>x.n).sort((a,b)=>b.n-a.n);
-  if(r.latam) zonas.push({ etiqueta: esc(t("Toda LatAm","All LatAm","Toda a LatAm","כל אמריקה הלטינית")), n: r.latam, color:"var(--text-muted)" });
+  if(r.latam) zonas.push({ etiqueta: esc(t("Toda LatAm","All LatAm","Toda a LatAm","כל אמריקה הלטינית")), n: r.latam, color:"var(--text-muted)", ir:{ kind:"latam", key:"" } });
 
   const paises = Object.entries(r.porPais)
     .map(([nombre, n])=>({ etiqueta: esc(countryLabel(nombre)), n,
-      color: safeColor((ZONES[zoneOfCountry(nombre)] || {}).color) }))
+      color: safeColor((ZONES[zoneOfCountry(nombre)] || {}).color), ir:{ kind:"pais", key:nombre } }))
     .sort((a,b)=> b.n - a.n || a.etiqueta.localeCompare(b.etiqueta, currentLang()));
 
   const tipos = Object.entries(r.porTipo)
     .map(([clave, n])=>{
       const ty = ACTIVITY_BY_KEY[clave];
-      return { etiqueta: `${esc(ty ? ty.icon : "✨")} ${esc(ty ? ty.label : clave)}`, n };
+      return { etiqueta: `${esc(ty ? ty.icon : "✨")} ${esc(ty ? ty.label : clave)}`, n, ir:{ kind:"tipo", key:clave } };
     })
     .sort((a,b)=>b.n-a.n);
 
@@ -10749,9 +10839,35 @@ function renderReportesView(){
     "O que se repete conta uma vez por data; o que dura vários dias, uma só.",
     "פעילות חוזרת נספרת פעם לכל תאריך; פעילות רב-יומית נספרת פעם אחת."));
 
-  return selector + cabecera + `
+  // Los otros tres números de arriba: cuántos países se tocaron, cuánta
+  // gente participó y cuánta cargó, cada uno contra el período anterior.
+  const cuenta = o => Object.keys(o).length;
+  const kpi = (n, nAnt, txt) => {
+    const d = n - nAnt;
+    const delta = !rAnterior.total ? "" : d === 0
+      ? `<span class="rep-kpi-delta">= ${esc(t("igual","the same","igual","זהה"))}</span>`
+      : `<span class="rep-kpi-delta ${d > 0 ? "sube" : "baja"}">${d > 0 ? "▲" : "▼"} ${Math.abs(d)} ${esc(d > 0 ? t("más","more","mais","יותר") : t("menos","fewer","menos","פחות"))}</span>`;
+    return `<div class="rep-kpi"><div class="rep-kpi-num">${n}</div><div class="rep-kpi-txt">${txt}</div>${delta}</div>`;
+  };
+  const kpis = `<div class="rep-kpis">
+      ${kpi(cuenta(r.porPais), cuenta(rAnterior.porPais), t("países con actividad","countries with activity","países com atividade","מדינות עם פעילות"))}
+      ${kpi(cuenta(r.participantes), cuenta(rAnterior.participantes), t("personas que participaron","people who took part","pessoas que participaram","אנשים שהשתתפו"))}
+      ${kpi(cuenta(r.porPersona), cuenta(rAnterior.porPersona), t("personas que cargaron","people who logged","pessoas que carregaram","אנשים שרשמו"))}
+    </div>`;
+
+  reporteEnPantalla = { desde:v.desde, hasta:v.hasta, total:r.total, totalAnterior:rAnterior.total, secciones:[
+    { titulo:t("Mes a mes","Month by month","Mês a mês","חודש אחר חודש"), filas:meses },
+    { titulo:t("Por zona","By zone","Por zona","לפי אזור"), filas:zonas },
+    { titulo:t("Por país","By country","Por país","לפי מדינה"), filas:paises },
+    { titulo:t("Por tipo","By type","Por tipo","לפי סוג"), filas:tipos },
+    { titulo:t("Quién cargó","Who logged it","Quem carregou","מי רשם"), filas:personas },
+    { titulo:t("Quién participó","Who took part","Quem participou","מי השתתף"), filas:quienesParticiparon },
+  ] };
+
+  return selector + cabecera + kpis + `
     <div class="rep-grilla">
-      ${bloqueDeBarras(t("Mes a mes","Month by month","Mês a mês","חודש אחר חודש"), meses, "")}
+      ${bloqueDeBarras(t("Mes a mes","Month by month","Mês a mês","חודש אחר חודש"), meses, "",
+        rAnterior.total ? t("La barra fina es el mismo mes del período anterior.","The thin bar is the same month of the previous period.","A barra fina é o mesmo mês do período anterior.","הפס הדק הוא אותו חודש בתקופה הקודמת.") : "")}
       ${bloqueDeBarras(t("Por zona","By zone","Por zona","לפי אזור"), zonas,
         t("Nada con zona cargada.","Nothing with a zone set.","Nada com zona carregada.","אין דבר עם אזור."))}
       ${bloqueDeBarras(t("Por país","By country","Por país","לפי מדינה"), paises,
@@ -10809,28 +10925,78 @@ function renderPaisesView(){
   if(state.countryDrill && byCountryExists(state.countryDrill)){
     return toolbar + renderCountryDrill(state.countryDrill, counts[state.countryDrill]);
   }
-  // Alfabético por el nombre que se VE (a pedido): con 43 países, para
-  // ubicar uno a ojo sirve más el orden fijo que el ranking por cantidad
-  // — el número ya está en la tarjeta. En hebreo o inglés se ordena en
-  // ese idioma, no por la clave interna en español.
-  const sorted = visiblePaisesCountries().slice().sort((a,b)=> countryLabel(a.name).localeCompare(countryLabel(b.name), currentLang()));
-  const cards = sorted.map(c=>{
+  // Primero los países con actividad propia, del que más tiene al que
+  // menos (alfabético entre iguales, en el idioma que se ve); los que no
+  // tienen nada propio van plegados abajo como fichas chicas. Antes eran
+  // 45 tarjetas iguales, casi todas en "0 propios", y los pocos activos
+  // había que buscarlos a ojo.
+  const act = actividadPorPais();
+  const porNombre = (a,b)=> countryLabel(a.name).localeCompare(countryLabel(b.name), currentLang());
+  const visibles = visiblePaisesCountries().slice();
+  const activos = visibles.filter(c => counts[c.name].own > 0).sort((a,b)=> counts[b.name].own - counts[a.name].own || porNombre(a,b));
+  const quietos = visibles.filter(c => !(counts[c.name].own > 0)).sort(porNombre);
+  const cards = activos.map(c=>{
     const d = counts[c.name];
     const cnt = d.own;
-    const quiet = cnt === 0 && (d.region || d.latam);
+    const color = safeColor(ZONES[c.zone]?.color);
     // border-inline-start-color, no border-left-color: la clase .country-card
     // fija el ancho/estilo del borde con border-inline-start (ver CSS, para
     // que en RTL quede del lado correcto) — pisarlo acá con la propiedad
     // física vieja lo dejaba sin color en RTL (el navegador ya no pinta
     // border-left ahí, solo border-right).
-    const unit = quiet ? t("propios","own","próprios","משלה") : cnt === 1 ? t("registro","record","registro","רשומה") : t("registros","records","registros","רשומות");
-    return `<div class="country-card${quiet?" quiet":""}" style="border-inline-start-color:${safeColor(ZONES[c.zone]?.color)}" data-action="drill-country" data-country="${esc(c.name)}">
-      <div class="name">${esc(countryLabel(c.name))}</div>
-      <div class="count">${cnt}<small> ${unit}</small></div>
+    const unit = cnt === 1 ? t("registro","record","registro","רשומה") : t("registros","records","registros","רשומות");
+    const a = act[c.name] || {};
+    const cuando = p => fmtISO(p.startDate || p.date, { day:"numeric", month:"short" });
+    const linea = a.proxima
+      ? `<div class="country-last">${t("Próximo","Next","Próximo","הבא")}: <span dir="auto">${esc(calendarioLabel(a.proxima))}</span> · ${esc(cuando(a.proxima))}</div>`
+      : a.ultima ? `<div class="country-last">${t("Última","Latest","Última","אחרונה")}: <span dir="auto">${esc(calendarioLabel(a.ultima))}</span> · ${esc(cuando(a.ultima))}</div>` : "";
+    return `<div class="country-card" style="border-inline-start-color:${color}" data-action="drill-country" data-country="${esc(c.name)}">
+      <div class="country-top"><div class="name">${esc(countryLabel(c.name))}</div><div class="count">${cnt}<small> ${unit}</small></div></div>
+      ${renderSerieMensual(a.meses, color)}
+      ${linea}
       ${crossLine(c.name, d, false)}
     </div>`;
   }).join("");
-  return `${toolbar}<div class="country-grid">${cards}</div>${latamFootnote()}`;
+  const resumen = `<p class="paises-resumen">${activos.length === 1
+      ? t("<b>1 país</b> con actividad propia","<b>1 country</b> with activity of its own","<b>1 país</b> com atividade própria","<b>מדינה אחת</b> עם פעילות משלה")
+      : t("<b>{n} países</b> con actividad propia","<b>{n} countries</b> with activity of their own","<b>{n} países</b> com atividade própria","<b>{n} מדינות</b> עם פעילות משלהן",{n:activos.length})}${quietos.length
+      ? ` · ${t("{n} sin actividad propia","{n} with none of their own","{n} sem atividade própria","{n} ללא פעילות משלהן",{n:quietos.length})}` : ""}</p>`;
+  const plegados = quietos.length ? `<details class="paises-quietos"${activos.length ? "" : " open"}>
+      <summary>${t("{n} países sin actividad propia","{n} countries with none of their own","{n} países sem atividade própria","{n} מדינות ללא פעילות משלהן",{n:quietos.length})}</summary>
+      <div class="paises-quietos-lista">${quietos.map(c=>`<button type="button" class="country-mini" data-action="drill-country" data-country="${esc(c.name)}"><span class="dot" style="background:${safeColor(ZONES[c.zone]?.color)}"></span>${esc(countryLabel(c.name))}</button>`).join("")}</div>
+    </details>` : "";
+  return `${toolbar}${resumen}<div class="country-grid">${cards}</div>${plegados}${latamFootnote()}`;
+}
+// Para cada país: la última actividad que ya pasó, la próxima que viene y
+// cuántas hubo en cada uno de los últimos 12 meses (la mini-serie de la
+// tarjeta). Un posteo cuenta en cada país de sus alcances.
+function actividadPorPais(){
+  const today = todayISO();
+  const mesHoy = today.slice(0,7);
+  const mesDesde = addMonthsISO(mesHoy + "-01", -11).slice(0,7);
+  const indiceDeMes = m => (Number(m.slice(0,4)) - Number(mesDesde.slice(0,4))) * 12 + Number(m.slice(5,7)) - Number(mesDesde.slice(5,7));
+  const out = Object.create(null);
+  state.posts.forEach(p=>{
+    const inicio = p.startDate || p.date;
+    if(!inicio) return;
+    const paises = new Set((p.scopes||[]).map(sc => sc && sc.country).filter(n => n && COUNTRY_BY_NAME[n]));
+    paises.forEach(n=>{
+      const a = out[n] = out[n] || { ultima:null, proxima:null, meses:new Array(12).fill(0) };
+      if(inicio <= today){ if(!a.ultima || inicio > (a.ultima.startDate || a.ultima.date)) a.ultima = p; }
+      else if(!a.proxima || inicio < (a.proxima.startDate || a.proxima.date)) a.proxima = p;
+      const idx = indiceDeMes(inicio.slice(0,7));
+      if(idx >= 0 && idx < 12) a.meses[idx]++;
+    });
+  });
+  return out;
+}
+// Doce barritas, una por mes, para ver de un vistazo si el país tuvo
+// movimiento parejo o un pico. Sin nada en el año, no se dibuja.
+function renderSerieMensual(meses, color){
+  if(!meses || !meses.some(n=>n)) return "";
+  const max = Math.max(...meses);
+  return `<div class="country-serie" aria-hidden="true">${meses.map(n=>
+    `<span style="height:${n ? Math.max(18, Math.round(n * 100 / max)) : 10}%;${n ? `background:${color}` : ""}"></span>`).join("")}</div>`;
 }
 function byCountryExists(name){ return !!COUNTRY_BY_NAME[name]; }
 // "+1 de Región Norte · +3 de toda LatAm": lo que aplica al lugar sin
@@ -14697,6 +14863,23 @@ document.addEventListener("click", async e=>{
   },
     "paises-subview": async (el, e, action, postId) => {
     state.paisesSubview = el.dataset.key; state.countryDrill = null; render();
+  },
+    "reporte-ir": async (el, e, action, postId) => {
+    // Una fila del reporte abre el Feed con ESE filtro (y ningún otro).
+    const { kind, key } = el.dataset;
+    state.filters.text = ""; state.filters.types = new Set(); state.filters.zones = new Set(); state.filters.place = null;
+    if(kind === "pais") state.filters.place = { kind:"country", country:key };
+    else if(kind === "latam") state.filters.place = { kind:"latam" };
+    else if(kind === "zona") state.filters.zones = new Set([key]);
+    else if(kind === "tipo") state.filters.types = new Set([key]);
+    state.view = "feed"; state.countryDrill = null; render(); scrollToTop();
+  },
+    "reporte-csv": async (el, e, action, postId) => {
+    const r = reporteEnPantalla;
+    if(r) descargarTexto(`registro-reporte-${r.desde}-${r.hasta}.csv`, csvDelReporte());
+  },
+    "reporte-imprimir": async (el, e, action, postId) => {
+    window.print();
   },
     "reporte-anio": async (el, e, action, postId) => {
     state.reportes.anio = el.dataset.key; render();
