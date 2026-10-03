@@ -132,6 +132,21 @@ del mapa, modo oscuro, campanita, franja de Documentación.
   documentación propia). No hay botón "marcar todo como leído": abrir
   la campanita ya marca todo como visto, así que sobraba.
 
+### 9. El Inicio en escritorio — HECHO (4 oct 2026)
+
+- Columna lateral a la derecha del Feed (solo de 1024px para arriba):
+  próximos eventos (30 días), hitos por vencer y accesos directos (Mis
+  posteos, Donde participo, Les falta documentación, Este mes), que se
+  suman a los filtros de siempre y se ven como un chip más. Con un
+  filtro puesto, "Guardar este filtro" lo deja con nombre en la columna
+  (en las preferencias de la persona, hasta 12).
+- Buscador general en la barra de arriba (`renderGlobalSearch`): desde
+  cualquier pestaña busca posteos, proyectos, países y personas; Enter o
+  el último renglón lo pasa como texto al Feed. En angosto no entra:
+  ahí sigue el buscador del Feed.
+- "Ver traducción" pasó a la fila de acciones de la tarjeta (Me gusta ·
+  Responder · …), ya no es un renglón suelto.
+
 ## Fuera de alcance (necesitan algo que la app no tiene)
 
 - Mandar correos (resumen semanal, invitaciones): no hay servicio de

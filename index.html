@@ -173,6 +173,37 @@
   }
   .btn-new:hover{ background:var(--celeste-dark); color:#fff; }
   .header-actions{ display:flex; align-items:center; gap:10px; }
+  /* Buscador general (ver renderGlobalSearch): un campo en la barra de
+     arriba que busca posteos, proyectos, países y personas desde
+     cualquier pestaña. En angosto no entra: ahí sigue el buscador del
+     Feed. */
+  .global-search{ position:relative; }
+  .global-search::before{ content:"🔍"; position:absolute; inset-inline-start:11px; top:50%; transform:translateY(-50%); font-size:12px; pointer-events:none; opacity:.85; }
+  .global-search input{
+    width:200px; background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.25); color:#fff; border-radius:999px;
+    padding:7px 12px; padding-inline-start:32px; font-family:inherit; font-size:13px; font-weight:600; transition:width .15s ease, background .15s ease;
+  }
+  .global-search input::placeholder{ color:rgba(255,255,255,.75); font-weight:600; }
+  .global-search input:focus{ outline:none; background:#fff; color:var(--ink); width:300px; border-color:#fff; }
+  .global-search input::-webkit-search-cancel-button{ cursor:pointer; }
+  .gs-panel{
+    position:absolute; top:calc(100% + 8px); inset-inline-end:0; width:min(440px, calc(100vw - 24px)); z-index:70;
+    background:var(--card); color:var(--text); border:1px solid var(--border); border-radius:var(--radius-md); box-shadow:0 14px 36px rgba(8,42,44,0.28);
+    padding:6px; max-height:70vh; overflow:auto; text-align:start;
+  }
+  .gs-group{ font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; color:var(--text-muted); padding:8px 10px 4px; }
+  .gs-item{
+    display:flex; gap:10px; align-items:center; width:100%; text-align:start; background:none; border:none; padding:8px 10px;
+    border-radius:var(--radius-sm); font-family:inherit; font-size:13px; font-weight:600; color:var(--text); cursor:pointer;
+  }
+  .gs-item:hover, .gs-item:focus{ background:var(--surface-alt); color:var(--ink-strong); outline:none; }
+  .gs-ico{ flex:none; width:22px; text-align:center; }
+  .gs-txt{ display:flex; flex-direction:column; min-width:0; }
+  .gs-txt b{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .gs-txt small{ color:var(--text-muted); font-weight:600; }
+  .gs-empty{ padding:10px; color:var(--text-muted); font-size:13px; }
+  .gs-all{ border-top:1px solid var(--border); border-radius:0; margin-top:4px; padding-top:10px; color:var(--celeste-dark); }
+  @media (max-width:900px){ .global-search{ display:none; } }
 
   /* Botón flotante de crear, en todas las solapas. Queda debajo de los
      modales (z-100) y del aviso del Calendar (z-70), y arriba del header
@@ -914,6 +945,45 @@
 
   /* ---------- Filter bar ---------- */
   .filterbar{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:16px; }
+
+  /* El Inicio en escritorio: el Feed a la izquierda y una columna
+     lateral (ver renderFeedSide) con lo que se viene, los hitos por
+     vencer y los accesos directos. En angosto la columna no se dibuja:
+     lo mismo está en Calendario, Proyectos y los filtros del Feed. */
+  .feed-layout{ display:flex; gap:20px; align-items:flex-start; }
+  .feed-main{ flex:1 1 0; min-width:0; }
+  .feed-side{ display:none; }
+  @media (min-width:1024px){
+    .feed-side{
+      display:block; flex:0 0 276px; position:sticky; top:calc(var(--header-h, 96px) + 16px);
+      max-height:calc(100vh - var(--header-h, 96px) - 32px); overflow:auto;
+    }
+  }
+  .fs-box{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow); padding:14px 14px 10px; margin-bottom:14px; }
+  .fs-box h4{ margin:0 0 8px; font-size:11.5px; text-transform:uppercase; letter-spacing:.04em; color:var(--text-muted); }
+  .fs-box h4.fs-sub{ margin-top:12px; }
+  .fs-item, .fs-link{
+    display:flex; flex-direction:column; gap:1px; width:100%; text-align:start; background:none; border:none; padding:7px 8px; margin:0 -8px; width:calc(100% + 16px);
+    border-radius:var(--radius-sm); font-family:inherit; font-size:13px; color:var(--text); cursor:pointer; line-height:1.35;
+  }
+  .fs-item:hover, .fs-link:hover{ background:var(--surface-alt); color:var(--ink-strong); }
+  .fs-when{ font-size:11.5px; font-weight:700; color:var(--celeste-dark); }
+  .fs-what{ font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .fs-item .pl-st{ font-size:11px; }
+  .fs-link{ flex-direction:row; align-items:center; gap:8px; font-weight:700; }
+  .fs-link.active{ background:var(--celeste-soft); color:var(--petroleo); }
+  .fs-empty{ margin:0 0 6px; color:var(--text-muted); font-size:13px; }
+  .fs-more{ background:none; border:none; padding:6px 0 4px; font-family:inherit; font-size:12.5px; font-weight:700; color:var(--celeste-dark); cursor:pointer; }
+  .fs-more:hover{ text-decoration:underline; }
+  .fs-saved{ display:flex; align-items:center; gap:4px; }
+  .fs-saved .fs-link{ flex:1; }
+  .fs-x{ flex:none; background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:13px; padding:4px 6px; border-radius:var(--radius-sm); }
+  .fs-x:hover{ color:var(--danger); background:var(--surface-alt); }
+  .fs-save{ display:flex; gap:6px; margin-top:6px; }
+  .fs-save input{ flex:1; min-width:0; padding:7px 10px; border:1px solid var(--border); border-radius:var(--radius-sm); font-family:inherit; font-size:13px; background:var(--input-bg, var(--card)); color:var(--text); }
+  /* "Ver traducción" vive en la fila de acciones (Me gusta · Responder …),
+     no como renglón suelto debajo del texto. */
+  .post-actions .translate-toggle{ font-size:12.5px; margin-top:0; padding:4px 0; }
   .filterbar input[type=text]{
     flex:1 1 220px; padding:11px 14px; border-radius:999px; border:1.5px solid var(--border);
     font-size:13.5px; background:var(--card);
@@ -2589,6 +2659,10 @@
         </div>
       </div>
       <div class="header-actions">
+        <div class="global-search" id="globalSearch" hidden>
+          <input type="search" id="globalSearchInput" placeholder="Buscar en todo…" autocomplete="off" aria-label="Buscar en todo">
+          <div class="gs-panel" id="globalResults" hidden></div>
+        </div>
         <div id="mentionsBell" class="mentions-bell-wrap"></div>
         <div id="userBadge" class="user-badge"></div>
       </div>
@@ -4208,6 +4282,7 @@ const state = {
     types: new Set(),       // activityType keys activos
     zones: new Set(),       // zone keys activos
     place: null,            // {kind:'country'|'city'|'zone', country?, city?, zone?}
+    quick: null,            // acceso directo de la columna lateral: mine | participo | docs | mes
   },
   paisesSubview: "lista",   // lista | mapa
   configSection: "calendario", // sección abierta en la solapa Configuración
@@ -4313,6 +4388,9 @@ const DEFAULT_PREFS = {
   notifyZones: [],         // vacío = todas las zonas
   notifyReplies: true,
   calendarReminders: false,
+  // Filtros del Feed guardados con nombre (columna lateral, ver
+  // renderFeedSide): [{ name, text, types:[], zones:[], place, quick }].
+  savedFilters: [],
 };
 state.prefs = { ...DEFAULT_PREFS };
 function prefs(){ return state.prefs || DEFAULT_PREFS; }
@@ -8509,6 +8587,11 @@ function applyStaticI18n(){
   );
   const brandH1 = document.querySelector(".brand h1");
   if(brandH1) brandH1.textContent = t("Registro de Acciones", "Action Log", "Registro de Ações", "יומן הפעילויות");
+  const gsInput = document.getElementById("globalSearchInput");
+  if(gsInput){
+    const l = t("Buscar en todo…","Search everything…","Buscar em tudo…","חיפוש בהכול…");
+    gsInput.placeholder = l; gsInput.setAttribute("aria-label", l);
+  }
   const brandSub = document.querySelector(".brand .sub");
   if(brandSub) brandSub.textContent = t(
     "Memoria histórica · Team LatAm", "Historical record · Team LatAm",
@@ -8926,6 +9009,9 @@ function doRender(){
   renderUserBadge();
   renderMentionsBell();
   renderBottomNav();
+  // El buscador general solo tiene sentido con acceso (busca en los
+  // posteos y en el equipo): sin sesión o esperando aprobación, no está.
+  { const gs = document.getElementById("globalSearch"); if(gs) gs.hidden = !isAuthorized(); }
 
   if(!isAuthorized()){
     tabsNav.classList.add("tabs-hidden"); closeFab(); fabEl.hidden = true;
@@ -10223,7 +10309,11 @@ function renderFilterBar(prefix){
     <span class="chip-toggle active" data-action="clear-place">
       📍 ${esc(placeFilterLabel(state.filters.place))} ✕
     </span>` : "";
-  const anyFilter = state.filters.text || state.filters.types.size || state.filters.zones.size || state.filters.place;
+  const quickChip = state.filters.quick ? `
+    <span class="chip-toggle active" data-action="clear-quick">
+      ⚡ ${esc(etiquetaFiltroRapido(state.filters.quick))} ✕
+    </span>` : "";
+  const anyFilter = anyActiveFilter();
   return `
     <div class="filterbar">
       <input type="text" id="${prefix}Search" placeholder="${esc(t("Buscar por texto…","Search by text…","Buscar por texto…","...חיפוש לפי טקסט"))}" value="${esc(state.filters.text)}">
@@ -10241,7 +10331,7 @@ function renderFilterBar(prefix){
         </button>
         ${zoneFilterOpen ? `<div class="filter-dropdown-panel">${zoneChips}</div>` : ""}
       </div>
-      ${placeChip}
+      ${placeChip}${quickChip}
       ${anyFilter ? `<button class="filter-clear" data-action="clear-filters">${t("Limpiar filtros","Clear filters","Limpar filtros","ניקוי מסננים")}</button>` : ""}
     </div>`;
 }
@@ -10309,11 +10399,38 @@ function matchesPlaceOrZoneFilter(record){
   return true;
 }
 
+// Los accesos directos de la columna lateral (ver renderFeedSide): un
+// filtro de un toque que se suma a los demás.
+function etiquetaFiltroRapido(k){
+  return {
+    mine: t("Mis posteos","My posts","Minhas postagens","הפוסטים שלי"),
+    participo: t("Donde participo","Where I take part","Onde participo","איפה שאני משתתף/ת"),
+    docs: t("Les falta documentación","Missing documents","Falta documentação","חסרים מסמכים"),
+    mes: t("Este mes","This month","Este mês","החודש"),
+  }[k] || "";
+}
+function pasaFiltroRapido(p){
+  const q = state.filters.quick;
+  if(!q) return true;
+  const me = String(state.auth.user && state.auth.user.email || "").toLowerCase();
+  if(q === "mine") return String(p.authorEmail||"").toLowerCase() === me;
+  if(q === "participo") return isMineOrParticipant(p, me);
+  if(q === "docs"){
+    const d = docsEsperados(p.activityType).length ? cuantosDocsHay(p) : null;
+    return !!d && d.hay < d.total;
+  }
+  if(q === "mes"){
+    const fecha = occurrenceOf(p) || String(p.startDate || p.date || "");
+    return fecha.slice(0,7) === todayISO().slice(0,7);
+  }
+  return true;
+}
 // Devuelve los posts visibles según filtros, cada uno con sus replies ordenadas
 function getVisiblePosts(){
   const f = state.filters;
   return state.posts
     .filter(p=> !f.types.size || f.types.has(p.activityType))
+    .filter(pasaFiltroRapido)
     .filter(p=>{
       const replies = state.repliesByPost[p.id] || [];
       const postMatchesText = matchesTextFilter(f.text, p) || replies.some(r=>matchesTextFilter(f.text, r));
@@ -10377,7 +10494,7 @@ function renderFeedView(){
   // desaparecía en modo Cronológico.
   const all = sortedFeedPosts();
   const items = all.slice(0, feedVisibleCount);
-  return `
+  return `<div class="feed-layout"><div class="feed-main">
     ${canWrite() ? renderRutinaComposer() : ""}
     ${renderFilterBar("feed")}${renderPlaceLevelSeg()}
     ${renderFeedOrderBar()}
@@ -10386,11 +10503,140 @@ function renderFeedView(){
         ? t("Todavía no hay posteos que coincidan con el filtro.","No posts match the filter yet.","Ainda não há postagens que coincidam com o filtro.","עדיין אין פוסטים שתואמים למסנן.")
         : t("Todavía no hay posteos.","There are no posts yet.","Ainda não há postagens.","עדיין אין פוסטים.")
       }<br>${t('Usá "+ Nuevo evento" para sumar el primero.','Use "+ New event" to add the first one.','Use "+ Novo evento" para somar o primeiro.','.כדי להוסיף את הראשון "+ אירוע חדש" השתמש/י ב')}</div>`}
-  `;
+  </div>${renderFeedSide()}</div>`;
 }
 function anyActiveFilter(){
   const f = state.filters;
-  return !!(f.text || f.types.size || f.zones.size || f.place);
+  return !!(f.text || f.types.size || f.zones.size || f.place || f.quick);
+}
+// La columna lateral del Inicio en escritorio (en angosto no se dibuja,
+// ver .feed-side): lo que se viene en 30 días, los hitos por vencer y los
+// accesos directos, más los filtros que la persona guardó con nombre.
+let savingFilter = false;      // está escribiendo el nombre de un filtro para guardarlo
+let savingFilterName = "";
+function filtrosGuardados(){ return Array.isArray(prefs().savedFilters) ? prefs().savedFilters : []; }
+function renderFeedSide(){
+  const hoy = todayISO(), limite = addDaysISO(hoy, 30);
+  const proximos = calendarioPosts().filter(p=>!p.cancelled)
+    .map(p=>({ p, f: occurrenceOf(p) || String(p.startDate || p.date) }))
+    .filter(x=> x.f >= hoy && x.f <= limite)
+    .sort((a,b)=> a.f.localeCompare(b.f) || String(a.p.startTime||"").localeCompare(String(b.p.startTime||"")))
+    .slice(0, 5);
+  const hitos = allMilestoneItems({ skipDone:true })
+    .filter(it => !it.milestone.done && ["overdue","today","soon"].includes(milestoneStatus(it.milestone)))
+    .sort((a,b)=> String(a.milestone.date||"").localeCompare(String(b.milestone.date||"")))
+    .slice(0, 4);
+  const q = state.filters.quick;
+  const flecha = isRTL() ? "←" : "→";
+  const rapido = (k, icon) => `<button type="button" class="fs-link${q===k?" active":""}" data-action="feed-quick" data-key="${k}">${icon} ${esc(etiquetaFiltroRapido(k))}</button>`;
+  const guardados = filtrosGuardados();
+  return `<aside class="feed-side">
+    <section class="fs-box">
+      <h4>📅 ${t("Próximos eventos","Upcoming events","Próximos eventos","אירועים קרובים")}</h4>
+      ${proximos.length ? proximos.map(({p,f})=>{
+        const type = ACTIVITY_BY_KEY[p.activityType] || { icon:"✨" };
+        const when = fmtISO(f, { weekday:"short", day:"numeric", month:"short" }) + (p.startTime ? ` · ${esc(fmtHHMM(p.startTime))}` : "");
+        return `<button type="button" class="fs-item" data-action="goto-mention" data-post-id="${esc(p.id)}">
+          <span class="fs-when">${when}</span><span class="fs-what" dir="auto">${esc(type.icon)} ${esc(calendarioLabel(p))}</span>
+        </button>`;
+      }).join("") : `<p class="fs-empty">${t("Nada en los próximos 30 días.","Nothing in the next 30 days.","Nada nos próximos 30 dias.","אין כלום ב-30 הימים הקרובים.")}</p>`}
+      <button type="button" class="fs-more" data-action="goto-view" data-view="calendario">${t("Ver calendario","See calendar","Ver calendário","הצגת היומן")} ${flecha}</button>
+    </section>
+    ${hitos.length ? `<section class="fs-box">
+      <h4>◆ ${t("Hitos por vencer","Milestones coming due","Marcos a vencer","אבני דרך שמועדן מתקרב")}</h4>
+      ${hitos.map(it=>{
+        const m = it.milestone, st = milestoneStatus(m);
+        return `<button type="button" class="fs-item" data-action="project-open" data-post-id="${esc(it.post.id)}">
+          <span class="fs-when"><span class="pl-st ${st}">${esc(milestoneStatusLabel(st))}</span> · ${esc(fmtDate(m.date))}</span>
+          <span class="fs-what" dir="auto">${esc(m.label)}</span>
+          <small class="hint" dir="auto">${esc(calendarioLabel(it.post))}</small>
+        </button>`;
+      }).join("")}
+      <button type="button" class="fs-more" data-action="goto-view" data-view="proyectos">${t("Ver proyectos","See projects","Ver projetos","הצגת הפרויקטים")} ${flecha}</button>
+    </section>` : ""}
+    <section class="fs-box">
+      <h4>⚡ ${t("Accesos directos","Shortcuts","Atalhos","קיצורי דרך")}</h4>
+      ${rapido("mine","✍️")}${rapido("participo","👥")}${rapido("docs","📎")}${rapido("mes","🗓️")}
+      ${guardados.length ? `<h4 class="fs-sub">💾 ${t("Filtros guardados","Saved filters","Filtros salvos","מסננים שמורים")}</h4>` + guardados.map((g,i)=>`
+        <div class="fs-saved">
+          <button type="button" class="fs-link" data-action="feed-saved-apply" data-idx="${i}">${esc(g.name)}</button>
+          <button type="button" class="fs-x" data-action="feed-saved-delete" data-idx="${i}" aria-label="${esc(t("Borrar","Delete","Excluir","מחיקה"))}" title="${esc(t("Borrar","Delete","Excluir","מחיקה"))}">✕</button>
+        </div>`).join("") : ""}
+      ${anyActiveFilter() ? (savingFilter
+        ? `<div class="fs-save"><input type="text" id="savedFilterName" maxlength="40" placeholder="${esc(t("Nombre del filtro","Filter name","Nome do filtro","שם המסנן"))}" value="${esc(savingFilterName)}" autocomplete="off"><button type="button" class="btn-mini" data-action="feed-saved-save">${t("Guardar","Save","Salvar","שמירה")}</button></div>`
+        : `<button type="button" class="fs-more" data-action="feed-saved-start">💾 ${t("Guardar este filtro","Save this filter","Salvar este filtro","שמירת המסנן הזה")}</button>`) : ""}
+    </section>
+  </aside>`;
+}
+
+/* ======================================================================
+   BUSCADOR GENERAL (barra de arriba, ver .global-search)
+   ====================================================================== */
+// Busca en todo desde cualquier pestaña: posteos y proyectos por su
+// texto, países por nombre y personas del equipo. El panel se dibuja
+// aparte del render general (vive en el cascarón fijo, no en #viewRoot).
+let globalQuery = "";
+let globalSearchTimer = null;
+function resultadosGlobales(q){
+  const n = normalize(q);
+  const porFecha = (a,b)=> String(b.startDate||b.date||"").localeCompare(String(a.startDate||a.date||""));
+  const posts = state.posts.filter(p=> !p.isProject && matchesTextFilter(q, p)).sort(porFecha).slice(0, 5);
+  const proyectos = state.posts.filter(p=> p.isProject && matchesTextFilter(q, p)).sort(porFecha).slice(0, 3);
+  const paises = COUNTRIES.filter(c => normalize(c.name).includes(n) || normalize(countryLabel(c.name)).includes(n)).slice(0, 4);
+  const personas = state.roster.filter(r => normalize(r.name||"").includes(n) || normalize(r.nickname||"").includes(n) || normalize(r.email||"").includes(n)).slice(0, 3);
+  return { posts, proyectos, paises, personas };
+}
+function renderGlobalSearch(){
+  const panel = document.getElementById("globalResults");
+  if(!panel) return;
+  const q = globalQuery.trim();
+  if(q.length < 2 || !isAuthorized()){ panel.hidden = true; panel.innerHTML = ""; return; }
+  const r = resultadosGlobales(q);
+  const grupo = (titulo, items) => items.length ? `<div class="gs-group">${titulo}</div>${items.join("")}` : "";
+  const ficha = (p, action) => {
+    const type = ACTIVITY_BY_KEY[p.activityType] || { icon:"✨" };
+    return `<button type="button" class="gs-item" data-action="${action}" data-post-id="${esc(p.id)}">
+      <span class="gs-ico">${esc(type.icon)}</span>
+      <span class="gs-txt"><b dir="auto">${esc(calendarioLabel(p))}</b><small>${esc(fmtDate(p.startDate || p.date))} · ${esc(p.authorName || p.authorEmail || "")}</small></span>
+    </button>`;
+  };
+  const html =
+    grupo(t("Posteos","Posts","Postagens","פוסטים"), r.posts.map(p=>ficha(p, "gs-post"))) +
+    grupo(t("Proyectos","Projects","Projetos","פרויקטים"), r.proyectos.map(p=>ficha(p, "gs-project"))) +
+    grupo(t("Países","Countries","Países","מדינות"), r.paises.map(c=>`<button type="button" class="gs-item" data-action="gs-country" data-country="${esc(c.name)}"><span class="gs-ico">🗺️</span><span class="gs-txt"><b>${esc(countryLabel(c.name))}</b></span></button>`)) +
+    grupo(t("Personas","People","Pessoas","אנשים"), r.personas.map(p=>`<button type="button" class="gs-item" data-action="show-user-profile" data-nick="${esc(String(p.nickname||"").toLowerCase())}"><span class="gs-ico">👤</span><span class="gs-txt"><b>${esc(p.name || p.email)}</b><small>@${esc(p.nickname||"")}</small></span></button>`));
+  panel.innerHTML = (html || `<div class="gs-empty">${t("Sin resultados para “{q}”","No results for “{q}”","Sem resultados para “{q}”","אין תוצאות עבור “{q}”",{q:esc(q)})}</div>`) +
+    `<button type="button" class="gs-item gs-all" data-action="gs-feed"><span class="gs-ico">🔎</span><span class="gs-txt"><b>${t("Buscar “{q}” en el Feed","Search “{q}” in the Feed","Buscar “{q}” no Feed","חיפוש “{q}” בפיד",{q:esc(q)})}</b></span></button>`;
+  panel.hidden = false;
+}
+function cerrarBuscadorGlobal(limpiar){
+  const panel = document.getElementById("globalResults");
+  if(panel){ panel.hidden = true; panel.innerHTML = ""; }
+  if(limpiar){
+    globalQuery = "";
+    const input = document.getElementById("globalSearchInput");
+    if(input){ input.value = ""; input.blur(); }
+  }
+}
+// Lo escrito en el buscador general pasa a ser el filtro de texto del
+// Feed (Enter en el campo, o el último renglón del panel).
+function buscarEnElFeed(){
+  const q = globalQuery.trim();
+  cerrarBuscadorGlobal(true);
+  state.filters.text = q; state.filters.quick = null;
+  feedVisibleCount = PAGE_SIZE; state.view = "feed"; render(); scrollToTop();
+}
+// Guarda el filtro que está puesto con el nombre escrito (Enter en el
+// campo o el botón "Guardar"). Mismo nombre, se reemplaza; y como mucho
+// 12: son atajos, no un archivo.
+function guardarFiltroActual(){
+  const name = savingFilterName.trim().slice(0, 40);
+  if(!name) return;
+  const f = state.filters;
+  const nuevo = { name, text:f.text || "", types:[...f.types], zones:[...f.zones], place:f.place || null, quick:f.quick || null };
+  const lista = filtrosGuardados().filter(g => g.name !== name).concat([nuevo]).slice(-12);
+  savingFilter = false; savingFilterName = "";
+  savePrefs({ savedFilters: lista });
 }
 
 /* ======================================================================
@@ -10903,7 +11149,6 @@ function renderPostCard(post, replies){
       ${showTitle ? `<h3 dir="auto" style="margin:6px 0 0 0;font-size:16px;color:var(--ink);${post.cancelled?"text-decoration:line-through;opacity:0.7;":""}">${esc(tr.displayTitle)}</h3>` : ""}
       ${metaBits.length ? `<div class="hint" style="margin-top:4px;">${metaBits.join(" · ")}</div>` : ""}
       ${tr.displayContent ? `<div class="post-content" dir="auto">${nl2br(tr.displayContent)}</div>` : ""}
-      ${tr.toggleHtml}
       ${!scopesHtml && post.activityType !== "rutina" ? `<div class="hint" style="color:var(--danger);">⚠️ ${t("Sin Dónde definido — editalo para asignarle un país/ciudad.","No Where set — edit it to assign a country/city.","Sem Onde definido — edite para atribuir um país/cidade.",".לא הוגדר \"איפה\" — ערוך/כי כדי להקצות מדינה/עיר")}</div>` : ""}
       ${linksHtml ? `<div class="post-links">${linksHtml}</div>` : ""}
       ${imagesHtml ? `<div class="post-images">${imagesHtml}</div>` : ""}
@@ -10916,6 +11161,7 @@ function renderPostCard(post, replies){
         ${post.isProject
           ? `<button data-action="toggle-project" data-post-id="${post.id}" class="${openProjects.has(post.id)?"active":""}">📋 ${openProjects.has(post.id) ? t("Ocultar proyecto","Hide project","Ocultar projeto","הסתרת פרויקט") : t("Ver proyecto","View project","Ver projeto","הצגת פרויקט")}${postMilestones(post).length ? ` (${postMilestones(post).filter(m=>m.done).length}/${postMilestones(post).length})` : ""}</button>`
           : ""}
+        ${tr.toggleHtml}
         ${renderPostMenu(post, { editable, canCancel })}
       </div>
       ${post.isProject && openProjects.has(post.id) ? renderProjectPanel(post, { preview:true }) : ""}
@@ -14629,6 +14875,7 @@ document.addEventListener("keydown", e=>{
   if(!tourLayer.hidden){ closeTour(); return; }
   if(!calendarInviteOverlay.hidden){ dismissCalendarInviteOverlay(); return; }
   if(fabOpen){ closeFab(); fabMainEl.focus(); return; }
+  { const gs = document.getElementById("globalResults"); if(gs && !gs.hidden){ cerrarBuscadorGlobal(true); return; } }
   if(postMenuOpen){ postMenuOpen = null; render(); return; }
   if(moreMenuOpen){ moreMenuOpen = false; renderBottomNav(); return; }
   if(calViewMenuOpen){ calViewMenuOpen = false; render(); return; }
@@ -15111,6 +15358,17 @@ document.addEventListener("keydown", e=>{
     else if(e.key === "Escape"){ nicknameEditing = false; nicknameError = null; render(); }
     return;
   }
+  if(el.id === "savedFilterName"){
+    if(e.key === "Enter"){ e.preventDefault(); guardarFiltroActual(); }
+    else if(e.key === "Escape"){ savingFilter = false; savingFilterName = ""; render(); }
+    return;
+  }
+  if(el.id === "globalSearchInput"){
+    // Enter busca eso mismo en el Feed; Escape cierra y limpia.
+    if(e.key === "Enter"){ e.preventDefault(); if(globalQuery.trim()) buscarEnElFeed(); }
+    else if(e.key === "Escape"){ cerrarBuscadorGlobal(true); }
+    return;
+  }
   if(el.id === "cParticipantQuery"){
     const draft = composerDraft;
     handleAutocompleteKeydown(e, {
@@ -15189,6 +15447,9 @@ document.addEventListener("click", async e=>{
   if(mentionsMenuOpen && !e.target.closest("#mentionsBell")){
     mentionsMenuOpen = false; render();
   }
+  // El panel del buscador general se esconde al clickear afuera, pero lo
+  // escrito queda: volver al campo lo vuelve a mostrar (ver focusin).
+  if(!e.target.closest(".global-search")) cerrarBuscadorGlobal(false);
   // El menú ⋯ de un posteo se cierra al clickear afuera y también al
   // elegir algo adentro: la acción sigue su curso con el menú ya cerrado.
   if(postMenuOpen && (!e.target.closest(".post-menu-wrap") || e.target.closest(".post-menu-item"))){
@@ -15248,7 +15509,48 @@ document.addEventListener("click", async e=>{
     state.filters.place = null; render();
   },
     "clear-filters": async (el, e, action, postId) => {
-    state.filters = { text:"", types:new Set(), zones:new Set(), place:null }; render();
+    state.filters = { text:"", types:new Set(), zones:new Set(), place:null, quick:null }; render();
+  },
+    "clear-quick": async (el, e, action, postId) => {
+    state.filters.quick = null; feedVisibleCount = PAGE_SIZE; render();
+  },
+    "feed-quick": async (el, e, action, postId) => {
+    // El mismo acceso directo otra vez lo apaga.
+    state.filters.quick = state.filters.quick === el.dataset.key ? null : el.dataset.key;
+    feedVisibleCount = PAGE_SIZE; render();
+  },
+    "feed-saved-start": async (el, e, action, postId) => {
+    savingFilter = true; savingFilterName = ""; render();
+    const input = document.getElementById("savedFilterName"); if(input) input.focus();
+  },
+    "feed-saved-save": async (el, e, action, postId) => {
+    guardarFiltroActual();
+  },
+    "feed-saved-apply": async (el, e, action, postId) => {
+    const g = filtrosGuardados()[Number(el.dataset.idx)];
+    if(!g) return;
+    state.filters = { text:g.text || "", types:new Set(g.types || []), zones:new Set(g.zones || []), place:g.place || null, quick:g.quick || null };
+    feedVisibleCount = PAGE_SIZE; state.view = "feed"; render(); scrollToTop();
+  },
+    "feed-saved-delete": async (el, e, action, postId) => {
+    const lista = filtrosGuardados().filter((g, i) => i !== Number(el.dataset.idx));
+    savePrefs({ savedFilters: lista });
+  },
+    "gs-post": async (el, e, action, postId) => {
+    cerrarBuscadorGlobal(true);
+    gotoMention(realPostId(el.dataset.postId), null);
+  },
+    "gs-project": async (el, e, action, postId) => {
+    cerrarBuscadorGlobal(true);
+    projectOpen = postId; state.view = "proyectos"; render(); scrollToTop();
+  },
+    "gs-country": async (el, e, action, postId) => {
+    cerrarBuscadorGlobal(true);
+    state.filters = { text:"", types:new Set(), zones:new Set(), place:{ kind:"country", country:el.dataset.country }, quick:null };
+    feedVisibleCount = PAGE_SIZE; state.view = "feed"; state.countryDrill = null; render(); scrollToTop();
+  },
+    "gs-feed": async (el, e, action, postId) => {
+    buscarEnElFeed();
   },
     "audit-load-more": async (el, e, action, postId) => {
     auditVisibleCount += 30; render();
@@ -15588,7 +15890,7 @@ document.addEventListener("click", async e=>{
     "reporte-ir": async (el, e, action, postId) => {
     // Una fila del reporte abre el Feed con ESE filtro (y ningún otro).
     const { kind, key } = el.dataset;
-    state.filters.text = ""; state.filters.types = new Set(); state.filters.zones = new Set(); state.filters.place = null;
+    state.filters.text = ""; state.filters.types = new Set(); state.filters.zones = new Set(); state.filters.place = null; state.filters.quick = null;
     if(kind === "pais") state.filters.place = { kind:"country", country:key };
     else if(kind === "latam") state.filters.place = { kind:"latam" };
     else if(kind === "zona") state.filters.zones = new Set([key]);
@@ -16370,6 +16672,11 @@ document.addEventListener("scroll", e=>{
   }
 }, true);
 
+// Volver al buscador general con algo ya escrito muestra el panel de
+// nuevo (se escondió al clickear afuera sin borrar lo escrito).
+document.addEventListener("focusin", e=>{
+  if(e.target && e.target.id === "globalSearchInput") renderGlobalSearch();
+});
 document.addEventListener("input", e=>{
   const el = e.target;
   if(el.dataset.mentionScope) syncMentionBackdrop(el);
@@ -16380,6 +16687,12 @@ document.addEventListener("input", e=>{
     feedVisibleCount = PAGE_SIZE;
     clearTimeout(searchRenderTimer);
     searchRenderTimer = setTimeout(render, 150);
+  } else if(el.id === "globalSearchInput"){
+    globalQuery = el.value;
+    clearTimeout(globalSearchTimer);
+    globalSearchTimer = setTimeout(renderGlobalSearch, 120);
+  } else if(el.id === "savedFilterName"){
+    savingFilterName = el.value;
   } else if(el.id === "auditSearch"){
     state.auditFilters.text = el.value; auditVisibleCount = 30; render();
   } else if(el.id === "usuariosSearch"){
