@@ -252,6 +252,21 @@ ojo de las hojas de contacto. Lo que salió:
 - Lo que el barrido marca y es a propósito: la semana del Calendario se
   desliza de costado (con su pista), y los textos con puntos suspensivos.
 
+### 16. Teclado y accesibilidad — HECHO (3 oct 2026)
+
+- Escape cierra lo que faltaba: la campanita y el menú del avatar (el
+  foco vuelve al botón), los desplegables de Actividades / Zonas y la
+  ficha de Personas / Tipos (el foco vuelve a la fila).
+- ↑ ↓ (Inicio / Fin) recorren las filas de Personas y Tipos y el menú de
+  secciones de Administración y Mis preferencias (en angosto, ← → también).
+- Al abrir una ficha con el teclado, o en angosto (donde tapa la lista),
+  el foco entra en su cabecera (`enfocarFicha`); con el mouse en
+  escritorio se queda en la fila.
+- El foco del teclado se ve igual en toda la app (anillo celeste, también
+  en oscuro); un enlace "Saltar al contenido" aparece al tabular desde el
+  principio; `aria-expanded` en la campanita y `aria-current` en la
+  sección activa y la pestaña de abajo.
+
 ## Fuera de alcance (necesitan algo que la app no tiene)
 
 - Mandar correos (resumen semanal, invitaciones): no hay servicio de
