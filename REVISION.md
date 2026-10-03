@@ -360,8 +360,9 @@ peso de 1 MiB (`excesoDePeso` y compañía, que solo existe por Firestore),
 el respaldo de Firestore (`armarRespaldo`), el modo de respaldo de los
 comentarios para cuando falta la regla de `collectionGroup`, el selector
 `?base=` y su cartel, `firestore.rules`, `importar.html`,
-`prueba-login.html`, `PROBAR-SUPABASE.md`, `QUE-GUARDAR.md`, y la función
-`importar()` del `05`. Más adelante, `VOLVER-A-FIREBASE.md`.
+`prueba-login.html`, `PROBAR-SUPABASE.md`, `QUE-GUARDAR.md`, y las
+funciones `importar()` e `importar_quitar()` del `05`. Más adelante,
+`VOLVER-A-FIREBASE.md`.
 
 ---
 
@@ -384,10 +385,11 @@ bien resueltos.
   rutas se validan (nada embebido, nada que salga de su carpeta).
 - **El «me gusta» desde la app es atómico** y el correo sale de la
   credencial, no de un parámetro.
-- **Ningún cambio de SQL llega a la base sin pasar antes 212 pruebas** en un
-  Postgres descartable, y cada archivo se aplica entero o nada.
-- **La llave de servicio vive solo en los secretos de GitHub** y solo la usa
-  el sincronizador.
+- **Ningún cambio de SQL llega a la base sin pasar antes sus pruebas** (casi
+  300) en un Postgres descartable, y además volver a aplicarse sobre datos al
+  límite; cada archivo se aplica entero o nada.
+- **La llave de servicio vive solo en los secretos de GitHub** y solo la usan
+  el sincronizador y la limpieza del bucket.
 - **La lógica del sincronizador está dos veces a propósito**, y una prueba
   diferencial las compara escritura por escritura en cada push.
 
@@ -395,10 +397,12 @@ bien resueltos.
 
 ## A confirmar con vos
 
-1. **¿Se creó o se cambió algún evento en el Google Calendar del equipo
-   desde el 18 de septiembre?** El sincronizador nocturno corrió todas las
-   noches desde entonces y **siempre dijo «0 cambios»**. Si hubo cambios,
-   está leyendo otro calendario o un token trabado, y a Supabase le faltan
-   esos eventos.
+1. ~~**¿Se creó o se cambió algún evento en el Google Calendar del equipo
+   desde el 18 de septiembre?** El sincronizador nocturno siempre dijo «0
+   cambios».~~ **Comprobado, y anda bien:** en el calendario hubo cambios
+   el 25 y el 28 de septiembre y el 2 de octubre, y la corrida del 28 dice
+   «Eventos con cambios: 1 … Revisados: 1» (ese no pedía tocar nada). Lee
+   el calendario que corresponde y el token avanza; «0 cambios» era que no
+   había nada nuevo esa noche.
 2. En el panel de Supabase, **Authentication → Providers**: ¿está apagado
    «Email» y prendido «Confirm email»? (punto 7)
