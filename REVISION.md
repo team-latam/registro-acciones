@@ -27,7 +27,7 @@ workflows `base-de-datos.yml` y `calendario.yml`, el adaptador
 | 1 | El próximo cambio de SQL no se va a poder aplicar | **Urgente** | reproducido | resuelto |
 | 2 | Lo que crea el sincronizador nocturno queda fechado en 1970 | Alta | reproducido | resuelto |
 | 3 | Pasando las 1.000 filas, posteos y comentarios desaparecen | Alta | código + límite de fábrica de Supabase | resuelto |
-| 4 | La importación final perdería datos | Alta — frena la mudanza | código | **pendiente** |
+| 4 | La importación final perdería datos | Alta — frena la mudanza | código | resuelto |
 | 5 | Las fotos se comen la cuota de descarga del plan gratis | Alta | calculado | resuelto |
 | 6 | Cualquier integrante puede inflar lo que bajan todos | Media | reproducido | resuelto |
 | 7 | El correo se valida con un dato que el usuario puede cambiar | Media — depende del panel | a confirmar | resuelto en la base |
@@ -120,6 +120,21 @@ afuera de los mil se toma como nuevo y **se duplica**.
 sincronizador.
 
 ## 4. La importación final perdería datos — frena la mudanza
+
+> **Resuelto.** `importar.html` tiene un modo **Importación final**: lo de
+> Firebase pisa lo que hay (fila entera; lo que vino igual no se
+> reescribe) y se saca de Supabase exactamente la lista de lo que ya no
+> está en Firebase, que la página muestra antes y hay que confirmar. Cada
+> adjunto conserva todos sus campos y su extensión; el nombre lleva una
+> huella del contenido, así que lo que ya estaba en el bucket se reusa y
+> nada se pisa. Cada foto sube con su miniatura. Una fila rota no frena a
+> las demás. Trae también el estado de la sincronización de Calendar, y no
+> trae los topes de adjuntos de Firebase. El paso a paso está en
+> `supabase/LEEME.md`, «La mudanza».
+>
+> **Encontrado al arreglarlo:** sin sacar lo que ya no está, un posteo
+> borrado en Firebase después de la primera importación volvía a aparecer,
+> y alguien a quien se le sacó el acceso allá seguía entrando acá.
 
 Para apagar Firebase hay que traer lo último. `importar.html` hoy:
 
@@ -302,9 +317,11 @@ la nombra a través de su foto, y se va con ella.
 
 Lo que falta, en orden:
 
-1. Arreglar 1 a 4: sin eso, la mudanza pierde o esconde datos.
-2. **Importación final** con el importador corregido, con Firebase en
-   pausa mientras corre para que no entre nada nuevo en el medio.
+1. ~~Arreglar 1 a 4: sin eso, la mudanza pierde o esconde datos.~~
+   **Hecho.**
+2. **Importación final** con el importador, con Firebase en pausa mientras
+   corre para que no entre nada nuevo en el medio. El paso a paso, en
+   `supabase/LEEME.md` («La mudanza»).
 3. Cambiar la base por defecto a Supabase (`baseElegida()`) y sacar el
    cartel; dejar `?base=firebase` unas semanas como vuelta atrás
    (`VOLVER-A-FIREBASE.md`).
@@ -319,8 +336,8 @@ Lo que falta, en orden:
 
 ## El código que sobra
 
-**Hoy**, del lado de Supabase: el comentario y la documentación vieja del
-punto 12, y el `07`/`08` que se pisan entre sí (punto 1).
+~~**Hoy**, del lado de Supabase: el comentario y la documentación vieja del
+punto 12, y el `07`/`08` que se pisan entre sí (punto 1).~~ **Hecho.**
 
 **El día del cambio** (no antes: Firebase sigue siendo producción):
 `firebaseStore`, `firebaseSesion`, `LIMITES_FIREBASE` y el control de

@@ -5,29 +5,36 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Traer los datos a Supabase</title>
 <!--
-  PÁGINA DE UN SOLO USO. Lee el archivo de la copia de seguridad (el que
-  baja la app desde Administrar → Preferencias) y carga su contenido en
-  Supabase. NO toca Firebase: el archivo se lee del disco, nada más.
-  Se puede borrar cuando la migración termine.
+  Lee el archivo de la copia de seguridad (el que baja la app desde
+  Administrar → Preferencias) y carga su contenido en Supabase. NO toca
+  Firebase: el archivo se lee del disco, nada más.
 
-  Se puede correr más de una vez: lo que ya entró se saltea (ver importar()
-  en 05-importar.sql). Si algo se corta, se vuelve a empezar y listo.
+  Dos formas:
+  - Completar lo que falta: trae lo nuevo y no toca lo que ya está. Se
+    puede correr las veces que haga falta.
+  - Importación final: lo de Firebase pisa lo que hay, y se saca de
+    Supabase lo que ya no está en Firebase. Es la de antes de apagarlo
+    (ver supabase/LEEME.md, «La mudanza»).
+
+  Se puede borrar cuando la migración termine.
 -->
 <style>
   :root{
     --fondo:#f6f7f9; --papel:#fff; --texto:#1b1d21; --suave:#6b7280;
     --linea:#e3e6ea; --acento:#2f6f4f; --ok:#137a4a; --mal:#b3261e; --aviso:#8a5a00;
+    --marca:#eef5f1;
   }
   @media (prefers-color-scheme: dark){
     :root{
       --fondo:#15171a; --papel:#1e2125; --texto:#e8eaed; --suave:#9aa0a6;
       --linea:#32363c; --acento:#6dbb92; --ok:#6dbb92; --mal:#f2857c; --aviso:#e0b357;
+      --marca:#1f2a24;
     }
   }
   *{ box-sizing:border-box; }
   body{ margin:0; padding:24px 16px 64px; background:var(--fondo); color:var(--texto);
     font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
-  main{ max-width:680px; margin:0 auto; }
+  main{ max-width:720px; margin:0 auto; }
   h1{ font-size:1.35rem; margin:0 0 4px; }
   .sub{ color:var(--suave); margin:0 0 24px; font-size:.92rem; }
   .tarjeta{ background:var(--papel); border:1px solid var(--linea); border-radius:12px;
@@ -38,18 +45,30 @@
     border:1px solid var(--acento); background:var(--acento); color:#fff; }
   button.secundario{ background:transparent; color:var(--texto); border-color:var(--linea); }
   button[disabled]{ opacity:.5; cursor:default; }
-  dl{ margin:0; display:grid; grid-template-columns:auto 1fr; gap:8px 16px; font-size:.94rem; }
-  dt{ color:var(--suave); } dd{ margin:0; word-break:break-all; }
+  button:focus-visible, input:focus-visible, summary:focus-visible{ outline:2px solid var(--acento); outline-offset:2px; }
   .resultado{ margin-top:14px; padding:12px 14px; border-radius:9px; font-size:.94rem;
-    border:1px solid var(--linea); background:var(--fondo); white-space:pre-wrap; }
+    border:1px solid var(--linea); background:var(--fondo); white-space:pre-wrap; overflow-wrap:anywhere; }
   .ok{ color:var(--ok); } .mal{ color:var(--mal); } .aviso{ color:var(--aviso); }
   .nota{ font-size:.86rem; color:var(--suave); margin-top:12px; }
   code{ font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.88em; }
-  table{ width:100%; border-collapse:collapse; font-size:.94rem; margin-top:4px; }
+  .tabla{ overflow-x:auto; }
+  table{ width:100%; border-collapse:collapse; font-size:.92rem; margin-top:4px; }
   th,td{ text-align:left; padding:7px 10px 7px 0; border-bottom:1px solid var(--linea); }
-  th{ color:var(--suave); font-weight:600; font-size:.82rem; }
-  td.n{ text-align:right; font-variant-numeric:tabular-nums; }
-  input[type=file]{ font:inherit; }
+  th{ color:var(--suave); font-weight:600; font-size:.8rem; }
+  th.n, td.n{ text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  input[type=file]{ font:inherit; max-width:100%; }
+  .opciones{ display:grid; gap:10px; }
+  .opcion{ display:grid; grid-template-columns:auto 1fr; gap:4px 12px; align-items:start;
+    border:1px solid var(--linea); border-radius:10px; padding:12px 14px; cursor:pointer; }
+  .opcion:has(input:checked){ border-color:var(--acento); background:var(--marca); }
+  .opcion input{ margin:5px 0 0; }
+  .opcion strong{ display:block; }
+  .opcion span{ font-size:.9rem; color:var(--suave); }
+  details{ margin-top:10px; border:1px solid var(--linea); border-radius:9px; padding:8px 12px; }
+  summary{ cursor:pointer; font-weight:600; font-size:.92rem; }
+  details ul{ margin:8px 0 2px; padding-left:20px; font-size:.88rem; max-height:260px; overflow:auto; }
+  .confirmar{ display:flex; gap:10px; align-items:flex-start; margin-top:14px; font-size:.94rem; }
+  .confirmar input{ margin-top:4px; }
 </style>
 </head>
 <body>
@@ -58,7 +77,6 @@
   <p class="sub">
     Lee el archivo de la copia de seguridad y carga su contenido en Supabase.
     <strong>No toca Firebase</strong>: el archivo se lee de tu disco y nada más.
-    Se puede correr de nuevo sin duplicar nada.
   </p>
 
   <div class="tarjeta">
@@ -78,7 +96,24 @@
   </div>
 
   <div class="tarjeta">
-    <h2>3 · Traer</h2>
+    <h2>3 · Cómo traerlo</h2>
+    <div class="opciones">
+      <label class="opcion" for="modoCompletar">
+        <input type="radio" name="modo" id="modoCompletar" value="completar" checked>
+        <div><strong>Completar lo que falta</strong>
+          <span>Trae lo nuevo. Lo que ya está en Supabase no se toca y no se saca nada. Se puede correr las veces que haga falta.</span></div>
+      </label>
+      <label class="opcion" for="modoFinal">
+        <input type="radio" name="modo" id="modoFinal" value="final">
+        <div><strong>Importación final</strong>
+          <span>Lo de Firebase pisa lo que hay en Supabase, y se saca de Supabase lo que ya no está en Firebase. Es la de antes de apagarlo: con Firebase quieto y una copia recién bajada.</span></div>
+      </label>
+    </div>
+    <div id="zonaModo"></div>
+  </div>
+
+  <div class="tarjeta">
+    <h2>4 · Traer</h2>
     <button id="btnImportar" disabled>Traer los datos</button>
     <div id="zonaImportar"></div>
     <p class="nota" id="notaImportar">Se habilita después de elegir el archivo.</p>
@@ -147,12 +182,31 @@ const PLAN = [
   { tabla:"user_prefs",      desde:"userPrefs",       especial:"prefs" },
 ];
 
+// Lo que identifica a cada fila: con eso se compara el archivo con lo que
+// ya hay en Supabase.
+const CLAVE = { members:"email", former_members:"email", access_requests:"email",
+                user_prefs:"email", app_config:"key" };
+const claveDe = tabla => CLAVE[tabla] || "id";
+
+// Los topes de adjuntos que se eligieron con Firebase eran para que todo
+// entrara en un documento de Firestore (1 MB): pocas fotos, 150 KB por
+// archivo. Traídos tal cual, Supabase quedaría atado a esos topes, que
+// fueron justamente uno de los motivos de la mudanza. No se traen: en
+// Supabase arrancan en los suyos, y se cambian en Preferencias → Adjuntos.
+const TOPES_DE_FIREBASE = ["maxImages", "maxAttachmentFiles", "maxAttachmentFileBytes"];
+
 function filasDe(paso, datos){
   const crudo = datos[paso.desde];
   if(paso.especial === "config"){
     if(!crudo) return [];
-    return Object.keys(crudo).filter(k => crudo[k] != null)
-      .map(k => ({ key: k, value: valor(crudo[k]) }));
+    return Object.keys(crudo).filter(k => crudo[k] != null).map(k => {
+      let v = valor(crudo[k]);
+      if(k === "preferences" && v && typeof v === "object"){
+        v = { ...v };
+        TOPES_DE_FIREBASE.forEach(t => { delete v[t]; });
+      }
+      return { key: k, value: v };
+    });
   }
   if(paso.especial === "prefs"){
     if(!crudo) return [];
@@ -176,51 +230,384 @@ function camposDeMas(tabla, filas){
   return [...sobran];
 }
 
-/* ---------- Adjuntos: de texto embebido a archivo del bucket ---------- */
-function aBlob(dataUrl){
-  const [cabecera, b64] = String(dataUrl).split(",");
-  const tipo = (cabecera.match(/:(.*?);/) || [])[1] || "application/octet-stream";
-  const bin = atob(b64);
-  return new Blob([Uint8Array.from(bin, c => c.charCodeAt(0))], { type: tipo });
+// Una clave repetida en el archivo: se queda la primera. No debería pasar
+// (Firestore no repite ids), pero al reemplazar, dos filas con la misma
+// clave en una misma tanda la hacen fallar entera.
+function sinRepetidas(tabla, filas){
+  const clave = claveDe(tabla), vistas = new Set(), repetidas = [];
+  const unicas = filas.filter(f => {
+    const k = String(f[clave]);
+    if(vistas.has(k)){ repetidas.push(k); return false; }
+    vistas.add(k);
+    return true;
+  });
+  return { filas: unicas, repetidas };
 }
-const EXT = { "image/png":"png", "image/jpeg":"jpg", "image/gif":"gif", "image/webp":"webp",
-              "application/pdf":"pdf" };
 
-async function subirAdjuntos(tabla, filas, avisar){
-  let subidos = 0, fallados = [];
-  for(const f of filas){
-    if(Array.isArray(f.images)){
-      const rutas = [];
-      for(let i = 0; i < f.images.length; i++){
-        const v = f.images[i];
-        if(typeof v !== "string" || !v.startsWith("data:")){ rutas.push(v); continue; }
-        const blob = aBlob(v);
-        const ruta = `${tabla}/${f.id}/img${i}.${EXT[blob.type] || "bin"}`;
-        const { error } = await sb.storage.from("adjuntos").upload(ruta, blob, { upsert:true });
-        if(error){ fallados.push(`${ruta}: ${error.message}`); rutas.push(v); }
-        else { rutas.push(ruta); subidos++; avisar(subidos); }
-      }
-      f.images = rutas;
+/* ---------- Comparar con lo que ya hay ----------
+   Antes de traer nada: cuántas filas son nuevas, cuántas ya estaban, y
+   cuáles están solo en Supabase. Esas últimas son las que la importación
+   final saca: lo que se borró en Firebase después de la primera
+   importación (un posteo, el acceso de alguien) o lo que se probó acá. */
+
+// Lo justo para reconocer cada fila en la lista de lo que se va a sacar.
+const PARA_RECONOCER = {
+  posts: "id,title,start_date",
+  replies: "id,post_id,content,system",
+  members: "email,name",
+  former_members: "email,name",
+  access_requests: "email,name,status",
+};
+// Solo de estas se saca lo que no vino (ver importar_quitar en
+// 05-importar.sql). De las preferencias la copia trae solo las del admin;
+// la configuración y la auditoría no se borran.
+const SE_QUITA = new Set(Object.keys(PARA_RECONOCER));
+
+function comparar(tabla, filas, enSupabase){
+  const clave = claveDe(tabla);
+  const enArchivo = new Set(filas.map(f => String(f[clave])));
+  const hay = new Set(enSupabase.map(f => String(f[clave])));
+  return {
+    nuevas: new Set(filas.map(f => String(f[clave])).filter(k => !hay.has(k))),
+    yaEstaban: filas.filter(f => hay.has(String(f[clave]))).length,
+    soloEnSupabase: SE_QUITA.has(tabla) ? enSupabase.filter(f => !enArchivo.has(String(f[clave]))) : [],
+  };
+}
+
+// Una copia que trae mucho menos de lo que hay es casi seguro una copia
+// equivocada (vieja, de otro proyecto, cortada): con esa, la importación
+// final sacaría media base. Se frena antes.
+const sospechosa = (enArchivo, enSupabase) => enSupabase > 10 && enArchivo < enSupabase / 2;
+
+// Los comentarios de un posteo que se saca se van con él: no se listan
+// aparte (ni se mandan a sacar), se cuentan en su posteo.
+function loQueSeSaca(comparaciones, enSupabase){
+  const posteos = new Set((comparaciones.posts?.soloEnSupabase || []).map(p => String(p.id)));
+  const comentariosDe = new Map();
+  (enSupabase.replies || []).forEach(r => {
+    if(posteos.has(String(r.post_id))) comentariosDe.set(String(r.post_id), (comentariosDe.get(String(r.post_id)) || 0) + 1);
+  });
+  const quitar = {};
+  SE_QUITA.forEach(tabla => {
+    let filas = comparaciones[tabla]?.soloEnSupabase || [];
+    if(tabla === "replies") filas = filas.filter(r => !posteos.has(String(r.post_id)));
+    quitar[tabla] = filas;
+  });
+  return { quitar, comentariosDe };
+}
+
+function describir(tabla, f, extra = {}){
+  if(tabla === "posts"){
+    const n = (extra.comentariosDe && extra.comentariosDe.get(String(f.id))) || 0;
+    return `${f.title || "(sin título)"} — ${f.start_date || "sin fecha"}`
+      + (String(f.id).startsWith("cal_") ? " · de Google Calendar" : "")
+      + (n ? ` · con ${n} comentario${n === 1 ? "" : "s"}` : "");
+  }
+  if(tabla === "replies"){
+    const texto = String(f.content || "").replace(/\s+/g, " ").trim();
+    const titulo = extra.titulos && extra.titulos.get(String(f.post_id));
+    return `${f.system ? "(automático) " : ""}«${texto.length > 70 ? texto.slice(0, 70) + "…" : texto}» — en ${titulo ? `«${titulo}»` : f.post_id}`;
+  }
+  if(tabla === "access_requests") return `${f.email} (${f.status || "sin estado"})`;
+  return f.name ? `${f.name} <${f.email}>` : f.email;
+}
+
+/* ---------- Adjuntos: de texto embebido a archivo del bucket ----------
+   En Firebase el archivo viajaba adentro del documento. Acá va al bucket,
+   y en la fila queda su ruta, igual que cuando se sube desde la app.
+
+   Lo que la primera importación hacía mal:
+   - Cada adjunto se armaba de nuevo con nombre y ruta nada más: se
+     perdían la ranura de documentación, el tipo y la fecha de subida, y
+     un «Plan de viaje» llegaba como adjunto suelto. Ahora se conserva todo.
+   - Un Word, un Excel o un audio subían como .bin. Ahora cada uno con su
+     extensión, y un .docx que el navegador no reconoció sale de su nombre.
+   - Volver a correrla fallaba en cada adjunto que ya estaba: subía con
+     `upsert`, y el bucket no deja reemplazar un archivo (ver
+     02-politicas.sql). Ahora el nombre lleva una huella del contenido: lo
+     que ya está en el bucket se reconoce y se reusa, y lo que cambió en
+     Firebase sube con otro nombre. Nada se pisa.
+   Y cada foto sube con su miniatura al lado, como desde la app. */
+
+// La misma tabla que crearSupabaseStore en index.html (una prueba exige
+// que sean iguales).
+const TIPO_A_EXT = { "image/png":"png", "image/jpeg":"jpg", "image/gif":"gif",
+                     "image/webp":"webp", "application/pdf":"pdf",
+                     "audio/mpeg":"mp3", "audio/mp4":"m4a", "audio/x-m4a":"m4a",
+                     "audio/aac":"aac", "audio/ogg":"ogg", "audio/wav":"wav",
+                     "audio/x-wav":"wav", "audio/webm":"weba", "audio/3gpp":"3gp",
+                     "text/plain":"txt", "text/markdown":"md", "text/csv":"csv",
+                     "text/tab-separated-values":"tsv",
+                     "application/msword":"doc",
+                     "application/vnd.openxmlformats-officedocument.wordprocessingml.document":"docx",
+                     "application/vnd.oasis.opendocument.text":"odt",
+                     "application/rtf":"rtf", "text/rtf":"rtf",
+                     "application/vnd.ms-excel":"xls",
+                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":"xlsx",
+                     "application/vnd.oasis.opendocument.spreadsheet":"ods",
+                     "application/vnd.ms-powerpoint":"ppt",
+                     "application/vnd.openxmlformats-officedocument.presentationml.presentation":"pptx",
+                     "application/vnd.oasis.opendocument.presentation":"odp" };
+const EXT_A_TIPO = Object.entries(TIPO_A_EXT).reduce((m, [tipo, ext]) => {
+  if(!m[ext]) m[ext] = tipo; return m; }, {});
+
+const esEmbebido = v => typeof v === "string" && v.startsWith("data:");
+
+// El contenido de un dataUrl, y su tipo. Si el navegador no lo reconoció
+// (un .docx leído como application/octet-stream, que el bucket no
+// acepta), el tipo sale del nombre, como en la app.
+function aBytes(dataUrl, nombre){
+  const coma = String(dataUrl).indexOf(",");
+  const cabecera = String(dataUrl).slice(0, coma), b64 = String(dataUrl).slice(coma + 1);
+  let tipo = (cabecera.match(/^data:([^;,]*)/) || [])[1] || "";
+  if(!TIPO_A_EXT[tipo]){
+    const ext = String(nombre || "").toLowerCase().split(".").pop();
+    if(EXT_A_TIPO[ext]) tipo = EXT_A_TIPO[ext];
+  }
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for(let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return { bytes, tipo: tipo || "application/octet-stream" };
+}
+
+// MD5: es lo que Supabase guarda como eTag de cada archivo, y es lo que
+// permite reconocer uno que ya está sin bajarlo. El navegador trae SHA,
+// pero no MD5.
+const MD5_K = new Uint32Array([
+  0xd76aa478, 0xe8c7b756, 0x242070db, 0xc1bdceee, 0xf57c0faf, 0x4787c62a, 0xa8304613, 0xfd469501,
+  0x698098d8, 0x8b44f7af, 0xffff5bb1, 0x895cd7be, 0x6b901122, 0xfd987193, 0xa679438e, 0x49b40821,
+  0xf61e2562, 0xc040b340, 0x265e5a51, 0xe9b6c7aa, 0xd62f105d, 0x02441453, 0xd8a1e681, 0xe7d3fbc8,
+  0x21e1cde6, 0xc33707d6, 0xf4d50d87, 0x455a14ed, 0xa9e3e905, 0xfcefa3f8, 0x676f02d9, 0x8d2a4c8a,
+  0xfffa3942, 0x8771f681, 0x6d9d6122, 0xfde5380c, 0xa4beea44, 0x4bdecfa9, 0xf6bb4b60, 0xbebfbc70,
+  0x289b7ec6, 0xeaa127fa, 0xd4ef3085, 0x04881d05, 0xd9d4d039, 0xe6db99e5, 0x1fa27cf8, 0xc4ac5665,
+  0xf4292244, 0x432aff97, 0xab9423a7, 0xfc93a039, 0x655b59c3, 0x8f0ccc92, 0xffeff47d, 0x85845dd1,
+  0x6fa87e4f, 0xfe2ce6e0, 0xa3014314, 0x4e0811a1, 0xf7537e82, 0xbd3af235, 0x2ad7d2bb, 0xeb86d391]);
+const MD5_S = [7, 12, 17, 22, 5, 9, 14, 20, 4, 11, 16, 23, 6, 10, 15, 21];
+function md5(bytes){
+  const n = bytes.length, palabras = (((n + 8) >>> 6) + 1) * 16;
+  const w = new Uint32Array(palabras);
+  for(let i = 0; i < n; i++) w[i >> 2] |= bytes[i] << ((i % 4) * 8);
+  w[n >> 2] |= 0x80 << ((n % 4) * 8);
+  w[palabras - 2] = (n * 8) >>> 0;
+  w[palabras - 1] = Math.floor(n / 0x20000000);
+  let a0 = 0x67452301, b0 = 0xefcdab89, c0 = 0x98badcfe, d0 = 0x10325476;
+  for(let j = 0; j < palabras; j += 16){
+    let a = a0, b = b0, c = c0, d = d0;
+    for(let i = 0; i < 64; i++){
+      let f, g;
+      if(i < 16){ f = (b & c) | (~b & d); g = i; }
+      else if(i < 32){ f = (d & b) | (~d & c); g = (5 * i + 1) % 16; }
+      else if(i < 48){ f = b ^ c ^ d; g = (3 * i + 5) % 16; }
+      else { f = c ^ (b | ~d); g = (7 * i) % 16; }
+      const x = (a + f + MD5_K[i] + w[j + g]) | 0, s = MD5_S[(i >> 4) * 4 + (i % 4)];
+      a = d; d = c; c = b;
+      b = (b + ((x << s) | (x >>> (32 - s)))) | 0;
     }
-    if(Array.isArray(f.files)){
-      const nuevos = [];
-      for(let i = 0; i < f.files.length; i++){
-        const a = f.files[i] || {};
-        if(typeof a.dataUrl !== "string" || !a.dataUrl.startsWith("data:")){ nuevos.push(a); continue; }
-        const blob = aBlob(a.dataUrl);
-        const ruta = `${tabla}/${f.id}/arch${i}.${EXT[blob.type] || "bin"}`;
-        const { error } = await sb.storage.from("adjuntos").upload(ruta, blob, { upsert:true });
-        if(error){ fallados.push(`${ruta}: ${error.message}`); nuevos.push(a); }
-        else { nuevos.push({ name: a.name || `archivo${i}`, path: ruta }); subidos++; avisar(subidos); }
+    a0 = (a0 + a) | 0; b0 = (b0 + b) | 0; c0 = (c0 + c) | 0; d0 = (d0 + d) | 0;
+  }
+  return [a0, b0, c0, d0].map(v => [0, 8, 16, 24]
+    .map(k => ((v >>> k) & 255).toString(16).padStart(2, "0")).join("")).join("");
+}
+
+// La miniatura de una foto, con el mismo nombre y tamaño que usa la app
+// (ver «Las miniaturas» en crearSupabaseStore).
+const LADO_MINIATURA = 480, CALIDAD_MINIATURA = 0.75;
+const rutaMiniatura = ruta => String(ruta).replace(/\.[A-Za-z0-9]+$/, "") + ".min.jpg";
+// La misma función que index.html (una prueba exige que sean iguales).
+function achicarDataUrl(dataUrl, maxDim, quality){
+  return new Promise((resolve,reject)=>{
+    const img = new Image();
+    img.onerror = ()=>reject(new Error("Imagen inválida"));
+    img.onload = ()=>{
+      let { width, height } = img;
+      if(width > height && width > maxDim){ height = Math.round(height*maxDim/width); width = maxDim; }
+      else if(height > maxDim){ width = Math.round(width*maxDim/height); height = maxDim; }
+      const canvas = document.createElement("canvas");
+      canvas.width = width; canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#fff"; ctx.fillRect(0,0,width,height);
+      ctx.drawImage(img,0,0,width,height);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    img.src = dataUrl;
+  });
+}
+
+const yaEstaba = e => !!e && (String(e.statusCode) === "409" || /already exists|duplicate/i.test(String(e.message || "")));
+
+// Lo que ya hay en la carpeta de una fila: por huella, por nombre, y el
+// tamaño de cada uno.
+async function carpeta(bucket, dir){
+  const { data, error } = await bucket.list(dir, { limit: 1000 });
+  if(error) throw error;
+  const porHuella = new Map(), nombres = new Set(), tamanios = new Map();
+  (data || []).forEach(o => {
+    if(!o || !o.name) return;
+    nombres.add(o.name);
+    if(o.metadata && typeof o.metadata.size === "number") tamanios.set(o.name, o.metadata.size);
+    const huella = String((o.metadata && o.metadata.eTag) || "").replace(/"/g, "").toLowerCase();
+    if(/^[0-9a-f]{32}$/.test(huella) && !o.name.endsWith(".min.jpg")) porHuella.set(huella, `${dir}/${o.name}`);
+  });
+  return { porHuella, nombres, tamanios };
+}
+
+// true si lo subió; false si ya estaba (el nombre lleva la huella, así que
+// lo que ya estaba con ese nombre es este mismo contenido).
+async function subirArchivo(bucket, ruta, bytes, tipo){
+  const { error } = await bucket.upload(ruta, new Blob([bytes], { type: tipo }),
+    { contentType: tipo, cacheControl: "31536000" });
+  if(error && !yaEstaba(error)) throw new Error(`${ruta}: ${error.message || error}`);
+  return !error;
+}
+
+// Los adjuntos de UNA fila. Devuelve la fila con rutas en vez de contenido.
+async function adjuntosDeFila(tabla, fila, { bucket, achicar, cuenta }){
+  const embebidos = (fila.images || []).filter(esEmbebido).length
+    + (fila.files || []).filter(a => a && esEmbebido(a.dataUrl)).length;
+  if(!embebidos) return fila;
+  const dir = `${tabla}/${fila.id}`;
+  const hay = await carpeta(bucket, dir);
+  const guardar = async (base, dataUrl, nombre) => {
+    const { bytes, tipo } = aBytes(dataUrl, nombre);
+    const huella = md5(bytes), ext = TIPO_A_EXT[tipo] || "bin";
+    // Por si el eTag del bucket no fuera un MD5: lo que subió la primera
+    // importación tiene el nombre que le tocaba a este lugar (img0.jpg,
+    // sin huella), y si además pesa exactamente lo mismo, es este archivo.
+    // Sin esto, la importación final volvería a subir todo y duplicaría
+    // el bucket.
+    const deEntonces = `${base}.${ext}`;
+    const reusada = hay.porHuella.get(huella)
+      || (hay.tamanios.get(deEntonces) === bytes.length ? `${dir}/${deEntonces}` : null);
+    if(reusada){ cuenta.reusados++; return reusada; }
+    const ruta = `${dir}/${base}_${huella.slice(0, 12)}.${ext}`;
+    if(await subirArchivo(bucket, ruta, bytes, tipo)) cuenta.subidos++; else cuenta.reusados++;
+    hay.porHuella.set(huella, ruta);
+    hay.nombres.add(ruta.slice(dir.length + 1));
+    return ruta;
+  };
+  const salida = { ...fila };
+  if(Array.isArray(fila.images)){
+    salida.images = [];
+    for(let i = 0; i < fila.images.length; i++){
+      const v = fila.images[i];
+      if(!esEmbebido(v)){ salida.images.push(v); continue; }
+      const ruta = await guardar(`img${i}`, v);
+      salida.images.push(ruta);
+      // La miniatura, si todavía no está. Si no se puede armar, la foto
+      // entra igual: la tarjeta muestra la entera, como antes.
+      const mini = rutaMiniatura(ruta), suNombre = mini.slice(dir.length + 1);
+      if(achicar && !hay.nombres.has(suNombre)){
+        try{
+          const chica = aBytes(await achicar(v, LADO_MINIATURA, CALIDAD_MINIATURA));
+          if(await subirArchivo(bucket, mini, chica.bytes, "image/jpeg")) cuenta.miniaturas++;
+          hay.nombres.add(suNombre);
+        }catch(err){ cuenta.sinMiniatura.push(`${ruta}: ${err.message}`); }
       }
-      f.files = nuevos;
     }
   }
-  return { subidos, fallados };
+  if(Array.isArray(fila.files)){
+    salida.files = [];
+    for(let i = 0; i < fila.files.length; i++){
+      const a = fila.files[i];
+      if(!a || !esEmbebido(a.dataUrl)){ salida.files.push(a); continue; }
+      // Todo lo demás del adjunto se conserva: la ranura (doc), el tipo,
+      // cuándo se subió. Solo el contenido se cambia por su ruta.
+      const { dataUrl, ...resto } = a;
+      salida.files.push({ ...resto, name: a.name || `archivo${i}`, path: await guardar(`arch${i}`, dataUrl, a.name) });
+    }
+  }
+  return salida;
+}
+
+async function enParalelo(lista, cuantos, fn){
+  let siguiente = 0;
+  const trabajar = async () => { while(siguiente < lista.length){ const i = siguiente++; await fn(lista[i], i); } };
+  await Promise.all(Array.from({ length: Math.min(cuantos, lista.length) }, trabajar));
+}
+
+// Los adjuntos de todas las filas de una tabla, de a cuatro filas a la
+// vez. Una fila cuyo adjunto no se pudo subir NO se trae (la base no
+// acepta un archivo embebido): queda en la lista de lo que falló, y
+// volver a correr la importación la reintenta.
+async function subirAdjuntos(tabla, filas, { bucket, achicar, avisar = () => {} }){
+  const cuenta = { subidos: 0, reusados: 0, miniaturas: 0, sinMiniatura: [] };
+  const listas = new Array(filas.length), fallidas = [];
+  let hechas = 0;
+  await enParalelo(filas, 4, async (fila, i) => {
+    try{ listas[i] = await adjuntosDeFila(tabla, fila, { bucket, achicar, cuenta }); }
+    catch(err){ fallidas.push({ clave: fila.id, error: `un adjunto no se pudo subir: ${err.message || err}` }); }
+    avisar(++hechas, cuenta);
+  });
+  return { filas: listas.filter(Boolean), fallidas, cuenta };
+}
+
+/* ---------- Supabase ---------- */
+
+// Una tabla entera, de a páginas: la API devuelve como máximo 1.000 filas
+// por pedido, y sin paginar el resto no llega y nadie se entera.
+async function leerTodas(tabla, columnas){
+  const clave = claveDe(tabla), filas = [];
+  let total = null;
+  for(;;){
+    const { data, error, count } = await sb.from(tabla)
+      .select(columnas, total === null ? { count: "exact" } : undefined)
+      .order(clave, { ascending: true }).range(filas.length, filas.length + 999);
+    if(error) throw error;
+    if(total === null && typeof count === "number") total = count;
+    if(!data || !data.length) break;
+    filas.push(...data);
+    if(total !== null ? filas.length >= total : data.length < 1000) break;
+  }
+  return filas;
+}
+
+// De a 200 filas: un pedido con todo junto puede pasarse de tamaño, y si
+// se corta conviene que lo que ya entró quede. Si una tanda falla por un
+// dato (los errores de Postgres que empiezan con 22 o 23: un comentario de
+// un posteo que ya no existe, un valor que la base no acepta), se prueba
+// fila por fila: una sola fila rota no puede dejar afuera a las otras 199.
+// Cualquier otro error no es de las filas (la sesión venció, se cortó la
+// red, falta permiso) y corta todo: seguir solo llenaría la lista de
+// fallas con el mismo motivo.
+const esDeLaFila = e => /^2[23]/.test(String((e && e.code) || ""));
+async function traerFilas(tabla, filas, reemplazar, avisar = () => {}){
+  const clave = claveDe(tabla);
+  let escritas = 0;
+  const fallidas = [];
+  for(let i = 0; i < filas.length; i += 200){
+    const tanda = filas.slice(i, i + 200);
+    avisar(i);
+    const { data, error } = await sb.rpc("importar", { p_tabla: tabla, p_filas: tanda, p_reemplazar: reemplazar });
+    if(!error){ escritas += data || 0; continue; }
+    if(!esDeLaFila(error)) throw new Error(`${tabla}: ${error.message}`);
+    for(const fila of tanda){
+      const r = await sb.rpc("importar", { p_tabla: tabla, p_filas: [fila], p_reemplazar: reemplazar });
+      if(!r.error){ escritas += r.data || 0; continue; }
+      if(!esDeLaFila(r.error)) throw new Error(`${tabla}: ${r.error.message}`);
+      fallidas.push({ clave: fila[clave], error: r.error.message });
+    }
+  }
+  return { escritas, fallidas };
+}
+
+// Sacar exactamente estas claves, de a 200. Nunca «todo lo que no vino».
+async function quitar(tabla, claves){
+  let quitadas = 0;
+  for(let i = 0; i < claves.length; i += 200){
+    const { data, error } = await sb.rpc("importar_quitar", { p_tabla: tabla, p_claves: claves.slice(i, i + 200) });
+    if(error) throw new Error(`${tabla}: ${error.message}`);
+    quitadas += data || 0;
+  }
+  return quitadas;
 }
 
 /* ---------- Pantalla ---------- */
-let sesion = null, datos = null, analisis = null;
+let sesion = null, datos = null, analisis = null, comparacion = null, corriendo = false;
+const modo = () => ($("modoFinal").checked ? "final" : "completar");
+const n = x => Number(x || 0).toLocaleString("es-AR");
+const peso = bytes => bytes < 1024 * 1024
+  ? Math.ceil(bytes / 1024).toLocaleString("es-AR") + " KB"
+  : (bytes / 1024 / 1024).toLocaleString("es-AR", { maximumFractionDigits: 1 }) + " MB";
 
 function pintarLogin(s){
   sesion = s;
@@ -228,7 +615,8 @@ function pintarLogin(s){
     $("zonaLogin").innerHTML = `<button id="btnEntrar">Entrar con Google</button>
       <p class="nota">Tiene que ser la cuenta del administrador.</p>`;
     $("btnEntrar").onclick = entrar;
-    $("archivo").disabled = true; $("btnImportar").disabled = true;
+    $("archivo").disabled = true;
+    pintarBoton();
     return;
   }
   $("zonaLogin").innerHTML = `
@@ -237,6 +625,7 @@ function pintarLogin(s){
   $("btnSalir").onclick = () => sb.auth.signOut();
   $("archivo").disabled = false;
   $("notaArchivo").hidden = true;
+  pintarBoton();
 }
 
 async function entrar(){
@@ -247,9 +636,117 @@ async function entrar(){
   if(error) $("zonaLogin").innerHTML = `<p class="mal">${esc(error.message)}</p>`;
 }
 
+function contarAdjuntos(){
+  let cuantos = 0, bytes = 0;
+  const sumar = v => { if(esEmbebido(v)){ cuantos++; bytes += Math.floor((v.length - v.indexOf(",") - 1) * 3 / 4); } };
+  analisis.forEach(a => a.filas.forEach(f => {
+    (Array.isArray(f.images) ? f.images : []).forEach(sumar);
+    (Array.isArray(f.files) ? f.files : []).forEach(x => sumar(x && x.dataUrl));
+  }));
+  return { cuantos, bytes };
+}
+
+function pintarArchivo(){
+  const liviano = datos.conAdjuntos === false;
+  const adj = contarAdjuntos();
+  const sobran = [...new Set(analisis.flatMap(a => a.sobran.map(c => `${a.tabla}.${c}`)))];
+  const repetidas = analisis.filter(a => a.repetidas.length);
+  const c = comparacion && comparacion.porTabla;
+  const celda = (tabla, campo) => {
+    if(!comparacion) return `<td class="n">…</td>`;
+    if(!c[tabla]) return `<td class="n" title="${esc(comparacion.errores[tabla] || "")}">—</td>`;
+    const v = c[tabla][campo];
+    // De la configuración, las preferencias y la auditoría no se saca
+    // nada: ahí la columna no aplica.
+    if(campo === "soloEnSupabase" && !SE_QUITA.has(tabla)) return `<td class="n">—</td>`;
+    return `<td class="n">${n(campo === "nuevas" ? v.size : campo === "soloEnSupabase" ? v.length : v)}</td>`;
+  };
+  $("zonaArchivo").innerHTML = `
+    <div class="tabla"><table>
+      <tr><th>Tabla</th><th class="n">En el archivo</th><th class="n">Nuevas</th><th class="n">Ya estaban</th><th class="n">Solo en Supabase</th></tr>
+      ${analisis.map(a => `<tr><td><code>${esc(a.tabla)}</code></td><td class="n">${n(a.filas.length)}</td>
+        ${celda(a.tabla, "nuevas")}${celda(a.tabla, "yaEstaban")}${celda(a.tabla, "soloEnSupabase")}</tr>`).join("")}
+    </table></div>
+    <div class="resultado ${liviano ? "aviso" : "ok"}">${liviano
+      ? "⚠️ Esta es la copia LIVIANA: no trae las imágenes. Sirve para mirar, no para traer los datos de verdad."
+      : `Copia del ${esc(new Date(datos.generado).toLocaleString("es-AR"))}. Adjuntos adentro: ${n(adj.cuantos)} (${peso(adj.bytes)}).`}</div>
+    ${!comparacion ? `<p class="nota">Comparando con lo que hay en Supabase…</p>` : ""}
+    ${comparacion && Object.keys(comparacion.errores).length ? `<div class="resultado aviso">⚠️ No se pudo leer de Supabase: ${esc(Object.entries(comparacion.errores).map(([t, e]) => `${t} (${e})`).join(", "))}.</div>` : ""}
+    ${sobran.length ? `<div class="resultado aviso">⚠️ Hay campos guardados que no tienen lugar en la base nueva y se van a perder:\n${esc(sobran.join(", "))}\n\nAvisá antes de seguir.</div>` : ""}
+    ${repetidas.length ? `<div class="resultado aviso">⚠️ Claves repetidas en el archivo (se trae solo la primera): ${esc(repetidas.map(a => `${a.tabla}: ${a.repetidas.slice(0, 5).join(", ")}`).join(" · "))}</div>` : ""}`;
+}
+
+// Lo que dice la tarjeta 3 según el modo: en la final, la lista de lo que
+// se saca, y la casilla para confirmar que se revisó.
+function pintarModo(){
+  const z = $("zonaModo");
+  if(modo() !== "final" || !analisis){ z.innerHTML = ""; pintarBoton(); return; }
+  if(!comparacion){ z.innerHTML = `<p class="nota">Esperando la comparación con Supabase…</p>`; pintarBoton(); return; }
+  const problemas = finalBloqueada();
+  const horas = (Date.now() - new Date(datos.generado).getTime()) / 36e5;
+  const { quitar: aQuitar, comentariosDe } = comparacion.seSaca;
+  const total = Object.values(aQuitar).reduce((s, l) => s + l.length, 0);
+  const conSuPosteo = [...comentariosDe.values()].reduce((s, k) => s + k, 0);
+  z.innerHTML = `
+    ${horas > 24 ? `<div class="resultado aviso">⚠️ Esta copia es de hace ${n(Math.floor(horas / 24))} día(s). Para la importación final, bajá una nueva con Firebase ya quieto: todo lo que pasó allá después de esta copia no viene.</div>` : ""}
+    ${problemas.length ? `<div class="resultado mal">${esc(problemas.join("\n"))}</div>` : ""}
+    ${total ? `
+      <p style="margin:14px 0 0;font-size:.94rem;">Se van a <strong>sacar de Supabase ${n(total)} fila(s)</strong> que no están en Firebase:</p>
+      ${[...SE_QUITA].filter(t => aQuitar[t].length).map(t => `
+        <details><summary>${esc(t)}: ${n(aQuitar[t].length)}${t === "replies" && conSuPosteo
+          ? ` <span class="nota">(y ${n(conSuPosteo)} más que se ${conSuPosteo === 1 ? "va" : "van"} con su posteo)</span>` : ""}</summary>
+          <ul>${aQuitar[t].map(f => `<li>${esc(describir(t, f, { comentariosDe, titulos: comparacion.titulos }))}</li>`).join("")}</ul>
+        </details>`).join("")}
+      <label class="confirmar" for="confirmo"><input type="checkbox" id="confirmo">
+        <span>Revisé la lista: sacar esas ${n(total)} fila(s) de Supabase.</span></label>`
+    : `<p class="nota">No hay nada en Supabase que no esté en Firebase: no se saca nada.</p>`}`;
+  const casilla = $("confirmo");
+  if(casilla) casilla.onchange = pintarBoton;
+  pintarBoton();
+}
+
+function finalBloqueada(){
+  if(!comparacion) return ["Falta comparar con Supabase."];
+  const problemas = [];
+  SE_QUITA.forEach(t => {
+    if(!comparacion.porTabla[t]) problemas.push(`⛔ No se pudo leer ${t} de Supabase: sin eso no se sabe qué sacar.`);
+    else if(sospechosa(comparacion.archivo[t], comparacion.cuantas[t]))
+      problemas.push(`⛔ ${t}: el archivo trae ${n(comparacion.archivo[t])} y en Supabase hay ${n(comparacion.cuantas[t])}. ¿Es la copia completa y de este proyecto?`);
+  });
+  return problemas;
+}
+
+function pintarBoton(){
+  const b = $("btnImportar");
+  let listo = !!(sesion && analisis && datos && datos.conAdjuntos !== false) && !corriendo;
+  if(listo && modo() === "final"){
+    const casilla = $("confirmo");
+    listo = !!comparacion && !finalBloqueada().length && (!casilla || casilla.checked);
+  }
+  b.disabled = !listo;
+  b.textContent = modo() === "final" ? "Hacer la importación final" : "Traer lo que falta";
+  $("notaImportar").hidden = !!analisis;
+}
+
+async function compararConSupabase(){
+  const porTabla = {}, errores = {}, cuantas = {}, archivo = {}, enSupabase = {};
+  await Promise.all(analisis.map(async a => {
+    archivo[a.tabla] = a.filas.length;
+    try{
+      enSupabase[a.tabla] = await leerTodas(a.tabla, PARA_RECONOCER[a.tabla] || claveDe(a.tabla));
+      cuantas[a.tabla] = enSupabase[a.tabla].length;
+      porTabla[a.tabla] = comparar(a.tabla, a.filas, enSupabase[a.tabla]);
+    }catch(err){ errores[a.tabla] = err.message || String(err); }
+  }));
+  const titulos = new Map((enSupabase.posts || []).map(p => [String(p.id), p.title]));
+  analisis.filter(a => a.tabla === "posts").forEach(a => a.filas.forEach(p => titulos.set(String(p.id), p.title)));
+  return { porTabla, errores, cuantas, archivo, titulos, seSaca: loQueSeSaca(porTabla, enSupabase) };
+}
+
 $("archivo").onchange = async e => {
   const f = e.target.files[0];
   if(!f) return;
+  analisis = null; comparacion = null; pintarModo();
   $("zonaArchivo").innerHTML = `<div class="resultado">Leyendo…</div>`;
   try{
     datos = JSON.parse(await f.text());
@@ -263,76 +760,124 @@ $("archivo").onchange = async e => {
     datos = null; return;
   }
   analisis = PLAN.map(p => {
-    const filas = filasDe(p, datos);
-    return { ...p, filas, sobran: camposDeMas(p.tabla, filas) };
+    const todas = filasDe(p, datos);
+    const { filas, repetidas } = sinRepetidas(p.tabla, todas);
+    return { ...p, filas, repetidas, sobran: camposDeMas(p.tabla, filas) };
   });
-  const adjuntos = analisis.flatMap(a => a.filas).reduce((n, f) =>
-    n + (Array.isArray(f.images) ? f.images.filter(v => typeof v === "string" && v.startsWith("data:")).length : 0)
-      + (Array.isArray(f.files) ? f.files.filter(v => v && typeof v.dataUrl === "string").length : 0), 0);
-  const liviano = datos.conAdjuntos === false;
-  const sobranTodos = [...new Set(analisis.flatMap(a => a.sobran.map(c => `${a.tabla}.${c}`)))];
-
-  $("zonaArchivo").innerHTML = `
-    <table><tr><th>De dónde</th><th>A qué tabla</th><th style="text-align:right">Filas</th></tr>
-    ${analisis.map(a => `<tr><td><code>${esc(a.desde)}</code></td><td><code>${esc(a.tabla)}</code></td>
-      <td class="n">${a.filas.length}</td></tr>`).join("")}
-    </table>
-    <div class="resultado ${liviano ? "aviso" : "ok"}">${liviano
-      ? "⚠️ Esta es la copia LIVIANA: no trae las imágenes. Sirve para mirar, no para traer los datos de verdad."
-      : `Archivo válido, del ${esc(new Date(datos.generado).toLocaleDateString())}. Adjuntos para subir: ${adjuntos}.`}</div>
-    ${sobranTodos.length ? `<div class="resultado aviso">⚠️ Hay campos guardados que no tienen lugar en la base nueva y se van a perder:\n${esc(sobranTodos.join(", "))}\n\nAvisá antes de seguir.</div>` : ""}`;
-  $("btnImportar").disabled = liviano;
-  $("notaImportar").hidden = !liviano;
+  pintarArchivo(); pintarModo();
+  const esta = analisis;
+  const c = await compararConSupabase();
+  if(esta !== analisis) return;   // eligieron otro archivo mientras tanto
+  comparacion = c;
+  pintarArchivo(); pintarModo();
 };
+$("modoCompletar").onchange = pintarModo;
+$("modoFinal").onchange = pintarModo;
+
+window.addEventListener("beforeunload", e => { if(corriendo){ e.preventDefault(); e.returnValue = ""; } });
 
 $("btnImportar").onclick = async () => {
-  $("btnImportar").disabled = true;
+  const final = modo() === "final";
+  corriendo = true; pintarBoton();
+  $("modoCompletar").disabled = $("modoFinal").disabled = $("archivo").disabled = true;
   const z = $("zonaImportar");
-  const lineas = [];
+  const lineas = [], fallas = [];
   const mostrar = extra => {
     z.innerHTML = `<div class="resultado">${esc(lineas.join("\n"))}${extra ? "\n" + esc(extra) : ""}</div>`;
   };
+  const bucket = sb.storage.from("adjuntos");
+  let cortado = null, sacando = false;
   try{
     for(const paso of analisis){
       if(!paso.filas.length){ lineas.push(`— ${paso.tabla}: nada que traer`); mostrar(); continue; }
+      let filas = paso.filas;
+      const deEstaTabla = [];
 
       if(paso.tabla === "posts" || paso.tabla === "replies"){
         mostrar(`${paso.tabla}: subiendo adjuntos…`);
-        const { subidos, fallados } = await subirAdjuntos(paso.tabla, paso.filas,
-          n => mostrar(`${paso.tabla}: ${n} adjuntos subidos…`));
-        if(subidos) lineas.push(`   ${paso.tabla}: ${subidos} adjuntos al bucket`);
-        if(fallados.length) lineas.push(`   ⚠️ ${fallados.length} adjuntos fallaron: ${fallados[0]}`);
+        const r = await subirAdjuntos(paso.tabla, filas, { bucket, achicar: achicarDataUrl,
+          avisar: (hechas, k) => mostrar(`${paso.tabla}: adjuntos de ${n(hechas)}/${n(filas.length)} filas (${n(k.subidos)} subidos, ${n(k.reusados)} ya estaban, ${n(k.miniaturas)} miniaturas)…`) });
+        filas = r.filas;
+        const k = r.cuenta;
+        if(k.subidos || k.reusados || k.miniaturas)
+          lineas.push(`   adjuntos de ${paso.tabla}: ${n(k.subidos)} subidos, ${n(k.reusados)} ya estaban en el bucket, ${n(k.miniaturas)} miniaturas nuevas`);
+        if(k.sinMiniatura.length) lineas.push(`   ⚠️ ${n(k.sinMiniatura.length)} foto(s) sin miniatura (se van a ver enteras): ${k.sinMiniatura[0]}`);
+        deEstaTabla.push(...r.fallidas);
       }
 
-      // De a 200: un pedido con todo junto puede pasarse de tamaño, y si
-      // se corta conviene que lo que ya entró quede.
-      let entraron = 0;
-      for(let i = 0; i < paso.filas.length; i += 200){
-        const tanda = paso.filas.slice(i, i + 200);
-        mostrar(`${paso.tabla}: ${i}/${paso.filas.length}…`);
-        const { data, error } = await sb.rpc("importar", { p_tabla: paso.tabla, p_filas: tanda });
-        if(error) throw new Error(`${paso.tabla}: ${error.message}`);
-        entraron += data || 0;
+      const { escritas, fallidas } = await traerFilas(paso.tabla, filas, final,
+        i => mostrar(`${paso.tabla}: ${n(i)}/${n(filas.length)}…`));
+      deEstaTabla.push(...fallidas);
+      deEstaTabla.forEach(f => fallas.push({ tabla: paso.tabla, ...f }));
+      const entraron = paso.filas.length - deEstaTabla.length;
+      const aviso = deEstaTabla.length ? ` · ⚠️ ${n(deEstaTabla.length)} no entraron` : "";
+      const c = comparacion && comparacion.porTabla[paso.tabla];
+      if(final && c){
+        const caidas = new Set(deEstaTabla.map(f => String(f.clave)));
+        const nuevas = [...c.nuevas].filter(k => !caidas.has(k)).length;
+        const cambiaron = Math.max(0, escritas - nuevas);
+        lineas.push(`✅ ${paso.tabla}: ${n(nuevas)} nuevas, ${n(cambiaron)} actualizadas, ${n(Math.max(0, entraron - nuevas - cambiaron))} sin cambios${aviso}`);
+      } else {
+        const salteadas = entraron - escritas;
+        lineas.push(`✅ ${paso.tabla}: ${n(escritas)} nuevas${salteadas > 0 ? `, ${n(salteadas)} ya estaban (no se tocaron)` : ""}${aviso}`);
       }
-      const repetidas = paso.filas.length - entraron;
-      lineas.push(`✅ ${paso.tabla}: ${entraron} nuevas${repetidas > 0 ? `, ${repetidas} ya estaban` : ""}`);
       mostrar();
     }
 
-    const { data: conteo, error } = await sb.rpc("cuantas_filas");
-    if(error) throw error;
-    lineas.push("");
-    lineas.push("Lo que quedó guardado en Supabase:");
-    (conteo || []).forEach(c => lineas.push(`   ${c.tabla}: ${c.filas}`));
-    z.innerHTML = `<div class="resultado ok">${esc(lineas.join("\n"))}\n\n✅ Listo. Comprobá que los números coincidan con los de arriba.</div>`;
+    if(final){
+      sacando = true;
+      const { quitar: aQuitar } = comparacion.seSaca;
+      // Los comentarios primero; los de un posteo que se saca se van con él.
+      for(const tabla of ["replies", "posts", "members", "former_members", "access_requests"]){
+        const claves = aQuitar[tabla].map(f => f[claveDe(tabla)]);
+        if(!claves.length) continue;
+        mostrar(`${tabla}: sacando ${n(claves.length)}…`);
+        lineas.push(`🗑️ ${tabla}: ${n(await quitar(tabla, claves))} sacadas de Supabase (no estaban en Firebase)`);
+        mostrar();
+      }
+    }
   }catch(err){
-    lineas.push("");
-    lineas.push(`❌ Se cortó: ${err.message}`);
-    z.innerHTML = `<div class="resultado mal">${esc(lineas.join("\n"))}\n\nLo que ya entró quedó guardado. Se puede volver a apretar el botón: lo repetido se saltea.</div>`;
-    $("btnImportar").disabled = false;
+    cortado = err.message || String(err);
   }
+
+  let conteo = null;
+  try{
+    const r = await sb.rpc("cuantas_filas");
+    if(!r.error) conteo = r.data;
+  }catch(e){}
+  if(conteo){
+    lineas.push("");
+    lineas.push("Lo que quedó en Supabase:");
+    conteo.forEach(c => {
+      const a = analisis.find(x => x.tabla === c.tabla);
+      lineas.push(`   ${c.tabla}: ${n(c.filas)}${a ? `  (en el archivo: ${n(a.filas.length)})` : ""}`);
+    });
+  }
+  if(fallas.length){
+    lineas.push("");
+    lineas.push(`⚠️ ${n(fallas.length)} fila(s) no entraron:`);
+    fallas.slice(0, 50).forEach(f => lineas.push(`   ${f.tabla} ${f.clave}: ${f.error}`));
+    if(fallas.length > 50) lineas.push(`   … y ${n(fallas.length - 50)} más`);
+  }
+  if(cortado){
+    lineas.push("");
+    lineas.push(`❌ Se cortó: ${cortado}`);
+    z.innerHTML = `<div class="resultado mal">${esc(lineas.join("\n"))}\n\nLo que ya entró quedó guardado${final && !sacando ? ", y todavía no se sacó nada de Supabase" : ""}. Se puede volver a apretar el botón: lo que ya está se reconoce.</div>`;
+  } else {
+    z.innerHTML = `<div class="resultado ${fallas.length ? "aviso" : "ok"}">${esc(lineas.join("\n"))}\n\n${fallas.length
+      ? "Lo demás quedó guardado. Las que no entraron se pueden reintentar volviendo a apretar el botón."
+      : final ? "✅ Listo: Supabase quedó igual que Firebase." : "✅ Listo."}</div>`;
+  }
+  corriendo = false;
+  $("modoCompletar").disabled = $("modoFinal").disabled = $("archivo").disabled = false;
+  // Lo que hay ahora es otra cosa: la comparación (y la lista de lo que
+  // se saca) se vuelve a hacer, por si se aprieta el botón otra vez.
+  comparacion = null; pintarArchivo(); pintarModo();
+  const esta = analisis, c = await compararConSupabase();
+  if(esta === analisis){ comparacion = c; pintarArchivo(); pintarModo(); }
 };
 
+pintarBoton();
 const { data } = await sb.auth.getSession();
 pintarLogin(data.session);
 sb.auth.onAuthStateChange((_e, s) => pintarLogin(s));
