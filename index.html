@@ -5021,7 +5021,12 @@ async function applyCalendarEventToPosts(ev){
   const { activityType, title } = importedTypeAndTitle(ev);
   await createImportedPost(ev, {
     title: (title || t("(Sin título)","(Untitled)","(Sem título)","(ללא כותרת)")).slice(0, 140),
-    content: String(ev.description || t("Creado automáticamente desde Google Calendar.","Automatically created from Google Calendar.","Criado automaticamente a partir do Google Calendar.",".נוצר אוטומטית מ-Google Calendar")).slice(0, 5000),
+    // Sin relleno: un evento de Calendar que no trae descripción no tiene
+    // contenido, y eso está bien — el título y la fecha ya lo describen.
+    // Antes se guardaba "Creado automáticamente desde Google Calendar."
+    // sólo para cumplir con la validación de contenido no vacío, y esa
+    // línea terminaba repetida en media pantalla del Feed sin decir nada.
+    content: String(ev.description || "").slice(0, 5000),
     startDate, endDate, date:startDate, startTime, endTime,
     organizer: String(ev.organizer?.displayName || ev.organizer?.email || "").slice(0, 140),
     location,
@@ -7489,7 +7494,7 @@ function renderProjectDetail(post){
         <div class="post-meta"><span class="type-badge">${esc(type.icon)} ${esc(type.label)}</span><span class="post-date">${esc(fmtDate(start))}${end!==start?` – ${esc(fmtDate(end))}`:""} · ${t("Creado por","Created by","Criado por","נוצר על ידי")} ${authorLabelHtml(post.authorEmail, post.authorName)}</span></div>
         <h2 class="pd-title">${esc(calendarioLabel(post))}</h2>
         ${scopesHtml ? `<div class="post-scopes">${scopesHtml}</div>` : ""}
-        ${post.content ? `<div class="post-content">${nl2br(String(post.content).slice(0,600))}</div>` : ""}
+        ${contenidoVisible(post.content) ? `<div class="post-content">${nl2br(String(contenidoVisible(post.content)).slice(0,600))}</div>` : ""}
         ${renderProjectEditors(post)}
         <div class="post-actions">
           <button data-action="goto-mention" data-post-id="${post.id}">💬 ${t("Ver en el Feed","See in the Feed","Ver no Feed","הצגה בפיד")}</button>
@@ -8433,10 +8438,30 @@ async function toggleContentTranslation(scope, id, title, content){
   render();
 }
 
+// Los eventos traídos de Calendar hasta octubre de 2026 guardan "Creado
+// automáticamente desde Google Calendar." como contenido, porque la
+// validación de entonces no dejaba guardarlo vacío. No es algo que alguien
+// haya escrito: es relleno, y se oculta.
+//
+// Se compara con el texto COMPLETO, no se busca adentro: así no hay forma
+// de comerle una frase a alguien que la haya escrito de verdad en medio de
+// un texto más largo. Y en los cuatro idiomas, porque se guardaba en el
+// que tuviera puesto quien hizo entrar el evento.
+const RELLENO_CALENDAR = [
+  "Creado automáticamente desde Google Calendar.",
+  "Automatically created from Google Calendar.",
+  "Criado automaticamente a partir do Google Calendar.",
+  ".נוצר אוטומטית מ-Google Calendar",
+];
+function contenidoVisible(texto){
+  return RELLENO_CALENDAR.includes(String(texto == null ? "" : texto).trim()) ? "" : texto;
+}
+
 // Arma el pie con el link "Ver traducción"/"Ver original" y devuelve
 // también el título/contenido a mostrar (traducidos si corresponde) —
 // se usa igual en renderPostCard y en renderReply.
 function withContentTranslation(scope, id, title, content){
+  content = contenidoVisible(content);
   const key = translationKey(scope, id);
   const showTranslated = translationsShown.has(key);
   const entry = contentTranslations[key];
@@ -10409,7 +10434,7 @@ function renderPostCard(post, replies){
       </div>
       ${showTitle ? `<h3 style="margin:6px 0 0 0;font-size:16px;color:var(--ink);${post.cancelled?"text-decoration:line-through;opacity:0.7;":""}">${esc(tr.displayTitle)}</h3>` : ""}
       ${metaBits.length ? `<div class="hint" style="margin-top:4px;">${metaBits.join(" · ")}</div>` : ""}
-      <div class="post-content">${nl2br(tr.displayContent)}</div>
+      ${tr.displayContent ? `<div class="post-content">${nl2br(tr.displayContent)}</div>` : ""}
       ${tr.toggleHtml}
       ${!scopesHtml && post.activityType !== "rutina" ? `<div class="hint" style="color:var(--danger);">⚠️ ${t("Sin Dónde definido — editalo para asignarle un país/ciudad.","No Where set — edit it to assign a country/city.","Sem Onde definido — edite para atribuir um país/cidade.",".לא הוגדר \"איפה\" — ערוך/כי כדי להקצות מדינה/עיר")}</div>` : ""}
       ${linksHtml ? `<div class="post-links">${linksHtml}</div>` : ""}

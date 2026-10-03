@@ -23,9 +23,13 @@ select lab.probar('un posteo normal entra', :YO,
 select lab.probar('un título de 200 caracteres NO', :YO,
   $q$insert into public.posts(id,title,content,date,start_date,end_date,activity_type,author_name,author_email)
      values ('x1',repeat('a',200),'C','2026-09-10','2026-09-10','2026-09-10','evento','B','benny@team-latam.com')$q$, false);
-select lab.probar('un contenido vacío tampoco', :YO,
+-- El contenido vacío SÍ entra desde 09-contenido-vacio.sql: un evento de
+-- Calendar sin descripción no tiene contenido, y eso es correcto. Lo que
+-- sigue sin entrar es un contenido demasiado largo, y un COMENTARIO vacío
+-- (ver 98-contenido-vacio.sql).
+select lab.probar('un contenido vacío ahora SÍ entra', :YO,
   $q$insert into public.posts(id,title,content,date,start_date,end_date,activity_type,author_name,author_email)
-     values ('x2','T','','2026-09-10','2026-09-10','2026-09-10','evento','B','benny@team-latam.com')$q$, false);
+     values ('x2','T','','2026-09-10','2026-09-10','2026-09-10','evento','B','benny@team-latam.com')$q$, true);
 select lab.probar('un tipo con mayúsculas y espacios tampoco', :YO,
   $q$insert into public.posts(id,title,content,date,start_date,end_date,activity_type,author_name,author_email)
      values ('x3','T','C','2026-09-10','2026-09-10','2026-09-10','Evento Nuevo','B','benny@team-latam.com')$q$, false);

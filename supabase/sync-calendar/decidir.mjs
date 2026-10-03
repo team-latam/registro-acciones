@@ -277,7 +277,9 @@ export function decidir(ev, posts, ctx){
   const { activityType, title } = tipoYTituloImportados(ev, tipos);
   acciones.push({ tipo:"crear", id: idDePosteoImportado(ev.id), datos: {
     title: (title || t("(Sin título)")).slice(0, 140),
-    content: String(ev.description || t("Creado automáticamente desde Google Calendar.")).slice(0, 5000),
+    // Sin relleno, igual que en index.html (ver la prueba diferencial):
+    // un evento sin descripción no tiene contenido, y está bien.
+    content: String(ev.description || "").slice(0, 5000),
     startDate, endDate, date: startDate, startTime, endTime,
     organizer: String(ev.organizer?.displayName || ev.organizer?.email || "").slice(0, 140),
     location,
