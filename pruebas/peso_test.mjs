@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import { hacerGrab, recorrer } from "./grab.mjs";
+import { hacerGrab, cuerpoDeListener } from "./grab.mjs";
 import { fileURLToPath as __aRuta } from "node:url";
 process.chdir(__aRuta(new URL(".", import.meta.url)));
 const RAIZ = __aRuta(new URL("..", import.meta.url));
@@ -36,15 +36,7 @@ const archivo = (crudos, extra = {}) => ({ name:"a.pdf", mime:"application/pdf",
 const foto = crudos => "data:image/jpeg;base64," + "B".repeat(base64De(crudos));
 const SERVIDOR = { _methodName:"serverTimestamp" };   // lo que devuelve fb.serverTimestamp()
 
-// El cuerpo de un listener que no tiene nombre: desde la { hasta la que
-// la cierra, con el mismo recorrido que usa grab().
-function cuerpoDe(cabeza){
-  const i = src.indexOf(cabeza);
-  if(i < 0) throw new Error("no se encontró " + cabeza);
-  const abre = i + cabeza.length - 1;
-  for(const [j, c, prof] of recorrer(src, abre)) if(c === "}" && prof === 0) return src.slice(abre + 1, j);
-  throw new Error("no cerró " + cabeza);
-}
+const cuerpoDe = cabeza => cuerpoDeListener(src, cabeza);
 
 function armar(opts = {}){
   const reg = { creados:[], respuestas:[], actualizados:[], cerrado:0, ediciones:[], avisos:[] };

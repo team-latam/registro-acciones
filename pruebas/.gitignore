@@ -5,3 +5,5 @@
 *.png
 node_modules
 __pycache__/
+# Lo que deja el emulador de Firestore en cada corrida.
+*.log

@@ -2,7 +2,7 @@ import fs from "node:fs";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath as __aRuta } from "node:url";
 process.chdir(__aRuta(new URL(".", import.meta.url)));
-import { hacerGrab } from "./grab.mjs";
+import { hacerGrab, hacerCuerpoClick } from "./grab.mjs";
 
 /* ======================================================================
    El extractor es lo que hace que las pruebas prueben el código DE VERDAD
@@ -85,6 +85,32 @@ eq("extractor.py corre", py.status, 0);
 if(dePython){
   const distintas = nombres.filter(n => dePython[n] !== js[n]);
   eq("extractor.py y grab.mjs sacan exactamente lo mismo, declaración por declaración", distintas, []);
+}
+
+/* ---------- Los handlers del despachador, en los dos ----------
+   cuerpo_click() (Python) y cuerpoClick() (JavaScript) sacan el cuerpo de
+   cada acción de la tabla del despachador. Mismo contrato que grab(). */
+const acciones = [...src.matchAll(/\n    "([\w-]+)": async \(el, e, action, postId\) => \{\n/g)].map(m=>m[1]);
+eq("encuentra las acciones del despachador (si esto baja de golpe, el patrón dejó de encontrar)", acciones.length > 100, true);
+const cuerpoClick = hacerCuerpoClick(src);
+const accionesJs = {}, accionesMalas = [];
+for(const a of acciones){ try{ accionesJs[a] = cuerpoClick(a); }catch(e){ accionesMalas.push(a); } }
+eq("todas se pueden sacar desde JavaScript", accionesMalas, []);
+const pyAcc = spawnSync("python3", ["-c", `
+import json, sys
+from extractor import cuerpo_click
+out = {}
+for n in json.load(sys.stdin):
+    try: out[n] = cuerpo_click(n)
+    except BaseException as e: out[n] = None
+print(json.dumps(out))
+`], { input: JSON.stringify(acciones), encoding: "utf8", maxBuffer: 64 * 1024 * 1024,
+      env: { ...process.env, INDEX: process.env.INDEX || "../index.html" } });
+eq("cuerpo_click corre", pyAcc.status, 0);
+if(pyAcc.status === 0){
+  const dePy = JSON.parse(pyAcc.stdout);
+  eq("cuerpo_click y cuerpoClick sacan exactamente lo mismo, acción por acción",
+     acciones.filter(a => dePy[a] !== accionesJs[a]), []);
 }
 
 console.log(`\n${pass} pasaron, ${fail} fallaron`);
