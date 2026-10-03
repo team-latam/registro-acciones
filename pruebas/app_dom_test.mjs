@@ -407,6 +407,39 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   await p.close();
 }
 
+/* ---------- Administración: la sugerencia del Caribe y el menú ⋯ de los tipos ---------- */
+{
+  const { p, errores } = await entrar(ADMIN, "Benny");
+  await esperarTexto(p, "Reunión con la comunidad");
+  await p.click('[data-action="toggle-user-menu"]');
+  await p.click('.user-menu [data-action="goto-view"][data-view="admin"]');
+  await p.click('.admin-menu [data-action="admin-go"][data-view="preferencias"][data-key="zonas"]');
+  eq("zonas: con las islas mezcladas en el Norte, aparece la sugerencia de separar el Caribe", await visible(p, ".sugerencia-caribe"), true);
+  await p.click('[data-action="zonas-caribe"]');
+  const caribe = await p.$$eval('.zone-chips[data-zone-key="caribe"] .zc-chip', es => es.length);
+  const norte = await p.$$eval('.zone-chips[data-zone-key="norte"] .zc-chip', es => es.length);
+  // El Norte de fábrica tiene 40 países: 25 islas y 15 del continente.
+  eq("zonas: armarla pasa las 25 islas a una zona Caribe nueva y el Norte queda con el resto", [caribe, norte], [25, 15]);
+  eq("zonas: queda a la vista como cambios sin guardar, y la sugerencia ya no se muestra",
+    [await p.$eval(".zonas-cambios", e => /25 cambios sin guardar/.test(e.textContent)), await visible(p, ".sugerencia-caribe")], [true, false]);
+  await p.click('[data-action="zonas-reset"]');
+  eq("zonas: descartar los cambios la vuelve a mostrar", await visible(p, ".sugerencia-caribe"), true);
+  await p.click('[data-action="zonas-caribe-no"]');
+  eq("zonas: 'Ahora no' la esconde", await visible(p, ".sugerencia-caribe"), false);
+  // Tipos: el ⋯ de cada tipo, con subir/bajar y eliminar solo si no se usa.
+  await p.click('.admin-menu [data-action="admin-go"][data-view="preferencias"][data-key="tipos"]');
+  const orden = () => p.$$eval(".zone-edit-row .zone-label-input", es => es.map(e => e.value));
+  eq("tipos: arrancan en el orden de fábrica", (await orden()).slice(0, 2), ["Visita", "Curso"]);
+  await p.click('.tipo-menu-wrap [data-action="toggle-tipo-menu"][data-key="visita"]');
+  eq("tipos: el ⋯ de Visita no deja eliminarla (hay posteos) y lo dice",
+    [await p.$eval('.post-menu [data-action="tipos-remove"][data-key="visita"]', e => e.disabled), await p.$eval(".post-menu-nota", e => e.textContent.trim())],
+    [true, "No se puede eliminar: hay 2 posteos con este tipo."]);
+  await p.click('.post-menu [data-action="tipos-move"][data-key="visita"][data-dir="1"]');
+  eq("tipos: 'Bajar' la pone segunda y cierra el menú", [(await orden()).slice(0, 2), await visible(p, ".post-menu")], [["Curso", "Visita"], false]);
+  eq("admin: sin un solo error", errores, []);
+  await p.close();
+}
+
 /* ---------- El Inicio en escritorio: columna lateral y buscador ---------- */
 {
   // Un evento de Ana pasado mañana (lo de la base es de hace dos días) y

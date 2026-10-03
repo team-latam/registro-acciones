@@ -861,6 +861,29 @@
     font-size:11px; cursor:pointer; line-height:26px; text-align:center; padding:0; flex-shrink:0;
   }
   .zone-edit-row .rm:disabled{ background:var(--border); color:var(--text-muted); cursor:not-allowed; }
+  /* El menú ⋯ de cada tipo de actividad (ver renderTipoMenu): mismas
+     piezas que el de la tarjeta, que viven bajo .post-actions, por eso
+     se repiten acá para .tipo-menu-wrap. */
+  .tipo-menu-wrap{ margin-inline-start:0; }
+  .tipo-menu-wrap .post-menu-btn{
+    background:none; border:none; cursor:pointer; font-family:inherit; font-size:20px; line-height:1; padding:2px 10px;
+    border-radius:999px; color:var(--text-muted); min-height:30px;
+  }
+  .tipo-menu-wrap .post-menu-btn:hover, .tipo-menu-wrap .post-menu-btn.open{ background:var(--surface-alt); color:var(--ink-strong); }
+  .tipo-menu-wrap .post-menu-item{
+    display:flex; align-items:center; gap:10px; width:100%; text-align:start; padding:10px 12px; min-height:42px; background:none; border:none;
+    border-radius:var(--radius-sm); font-family:inherit; font-size:13px; font-weight:700; color:var(--text); cursor:pointer; white-space:normal;
+  }
+  .tipo-menu-wrap .post-menu-item:hover:not(:disabled){ background:var(--surface-hover); color:var(--ink-strong); }
+  .tipo-menu-wrap .post-menu-item:disabled{ opacity:.45; cursor:not-allowed; }
+  .tipo-menu-wrap .post-menu-item.danger{ color:var(--danger); }
+  .post-menu-nota{ font-size:11.5px; color:var(--text-muted); padding:2px 12px 8px; line-height:1.4; }
+  /* La sugerencia de separar el Caribe (ver renderSugerenciaCaribe). */
+  .sugerencia-caribe{
+    background:var(--celeste-soft); border:1px solid var(--border); border-radius:var(--radius-md); padding:12px 14px; margin-bottom:16px;
+    font-size:13px; line-height:1.5; color:var(--text); display:flex; flex-direction:column; gap:8px;
+  }
+  .sugerencia-botones{ display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
   .zone-add-row{ display:flex; gap:8px; margin-top:6px; }
   /* Mismo aspecto que los campos de formulario del resto de Administrar
      (el ID del calendario, por ejemplo): antes no tenía fondo propio y en
@@ -9786,12 +9809,45 @@ document.addEventListener("pointerdown", e=>{
   document.addEventListener("pointerup", soltar);
   document.addEventListener("pointercancel", soltar);
 });
+// Las islas del Caribe vienen de fábrica dentro del Norte, que así junta
+// casi 40 países y mezcla Colombia con Barbados en el mapa y los
+// reportes. Se sugiere separarlas como zona propia; el botón arma la
+// zona en el borrador (nada se guarda hasta "Guardar cambios").
+const CARIBE_SUGERIDO = ["Cuba","República Dominicana","Haití","Jamaica","Trinidad y Tobago","Bahamas","Barbados","Puerto Rico",
+  "Guadalupe","Martinica","Aruba","Curazao","Bonaire","Islas Caimán","Islas Vírgenes","Santa Lucía","Granada","San Vicente y las Granadinas",
+  "Antigua y Barbuda","Dominica","San Cristóbal y Nieves","San Martín / Sint Maarten","Bermudas","San Bartolomé (St. Barth)","Turcas y Caicos"];
+function caribeDescartado(){ try{ return localStorage.getItem("ra_caribe_no") === "1"; }catch(e){ return false; } }
+function renderSugerenciaCaribe(d){
+  if(caribeDescartado()) return "";
+  if(d.zoneOrder.some(k => /carib/.test(normalize(String((d.zones[k]||{}).label||""))))) return "";
+  // Solo si de verdad están mezcladas: la mayoría de las islas en una
+  // misma zona que además tiene países que no son del Caribe.
+  const enDraft = CARIBE_SUGERIDO.filter(n => d.countryZones[n]);
+  if(enDraft.length < 10) return "";
+  const porZona = {}; enDraft.forEach(n => { porZona[d.countryZones[n]] = (porZona[d.countryZones[n]] || 0) + 1; });
+  const zona = Object.keys(porZona).sort((a,b)=> porZona[b] - porZona[a])[0];
+  const total = Object.values(d.countryZones).filter(z => z === zona).length;
+  if(porZona[zona] < 10 || total === porZona[zona]) return "";
+  return `<div class="sugerencia-caribe">
+      <div><b>💡 ${t("Sugerencia","Suggestion","Sugestão","הצעה")}:</b> ${t(
+        "la zona {z} junta {n} países, {c} de ellos islas del Caribe. Separar el Caribe como zona propia hace más legibles el mapa, los reportes y el calendario.",
+        "the {z} zone groups {n} countries, {c} of them Caribbean islands. Splitting the Caribbean into its own zone makes the map, reports and calendar easier to read.",
+        "a zona {z} junta {n} países, {c} deles ilhas do Caribe. Separar o Caribe como zona própria deixa o mapa, os relatórios e o calendário mais legíveis.",
+        "אזור {z} מאגד {n} מדינות, {c} מהן איים קריביים. הפרדת הקריביים לאזור משלהם הופכת את המפה, הדוחות והיומן לקריאים יותר.",
+        { z: esc((d.zones[zona]||{}).label || zona), n: total, c: porZona[zona] })}</div>
+      <div class="sugerencia-botones">
+        <button type="button" class="btn-mini" data-action="zonas-caribe" data-zona="${esc(zona)}">${t("Armar la zona Caribe","Create the Caribbean zone","Criar a zona Caribe","יצירת אזור הקריביים")}</button>
+        <button type="button" class="btn-text-add" data-action="zonas-caribe-no">${t("Ahora no","Not now","Agora não","לא עכשיו")}</button>
+      </div>
+    </div>`;
+}
 function renderZonasSection(){
   const d = getZonasDraft();
   const countByZone = {};
   d.zoneOrder.forEach(k=>countByZone[k]=0);
   Object.values(d.countryZones).forEach(z=>{ if(countByZone[z]!=null) countByZone[z]++; });
   return `
+      ${renderSugerenciaCaribe(d)}
       <div class="hint" style="margin-bottom:16px;">
         ${t(
           "Cambiar la zona de un país aplica también a los posteos ya cargados.",
@@ -9852,9 +9908,29 @@ function newTiposDraft(){
   return { types, newLabel:"", newIcon:"", error:"", saving:false, nuevoDoc:{} };
 }
 let tiposDraft = null;
+let tipoMenuOpen = null;   // key del tipo cuyo menú ⋯ está abierto
 function getTiposDraft(){
   if(!tiposDraft) tiposDraft = newTiposDraft();
   return tiposDraft;
+}
+// El menú ⋯ de cada tipo (ver renderTiposSection): subir, bajar y
+// eliminar. Eliminar solo si ningún posteo lo usa; el porqué se dice ahí
+// mismo en vez de dejar un botón gris sin explicación.
+function renderTipoMenu(ty, idx, total, count){
+  const open = tipoMenuOpen === ty.key;
+  const item = (action, extra, label, dis) => `<button type="button" class="post-menu-item${/danger/.test(extra)?" danger":""}" role="menuitem" data-action="${action}" data-key="${esc(ty.key)}" ${extra.replace("danger","")} ${dis ? "disabled" : ""}>${label}</button>`;
+  return `<div class="post-menu-wrap tipo-menu-wrap">
+      <button type="button" class="post-menu-btn${open ? " open" : ""}" data-action="toggle-tipo-menu" data-key="${esc(ty.key)}" aria-haspopup="menu" aria-expanded="${open}" aria-label="${esc(t("Más acciones","More actions","Mais ações","פעולות נוספות"))}">⋯</button>
+      ${open ? `<div class="post-menu" role="menu">
+        ${item("tipos-move", 'data-dir="-1"', `⬆️ ${t("Subir","Move up","Subir","העלאה")}`, idx === 0)}
+        ${item("tipos-move", 'data-dir="1"', `⬇️ ${t("Bajar","Move down","Descer","הורדה")}`, idx === total - 1)}
+        <div class="post-menu-sep"></div>
+        ${item("tipos-remove", "danger", `🗑️ ${t("Eliminar","Delete","Excluir","מחיקה")}`, count > 0)}
+        ${count > 0 ? `<div class="post-menu-nota">${count === 1
+          ? t("No se puede eliminar: hay 1 posteo con este tipo.","Can't delete: there's 1 post with this type.","Não dá para excluir: há 1 postagem com este tipo.","אי אפשר למחוק: יש פוסט אחד עם הסוג הזה.")
+          : t("No se puede eliminar: hay {n} posteos con este tipo.","Can't delete: there are {n} posts with this type.","Não dá para excluir: há {n} postagens com este tipo.","אי אפשר למחוק: יש {n} פוסטים עם הסוג הזה.",{n:count})}</div>` : ""}
+      </div>` : ""}
+    </div>`;
 }
 function countPostsByType(key){
   return state.posts.filter(p=>p.activityType===key).length;
@@ -9890,7 +9966,7 @@ function renderTiposSection(){
         )}
       </div>
       <div class="zone-edit-list">
-        ${d.types.map(ty=>{
+        ${d.types.map((ty, idx)=>{
           const count = countPostsByType(ty.key);
           return `<div class="zone-edit-row">
             <input type="text" class="tipo-icon-input" data-action="tipos-icon" data-key="${esc(ty.key)}" value="${esc(ty.icon)}" maxlength="4">
@@ -9898,7 +9974,7 @@ function renderTiposSection(){
             <div class="tipo-meta">
               <label class="tipo-sync-toggle"><input type="checkbox" data-action="tipos-sync" data-key="${esc(ty.key)}" ${ty.calendarSync?"checked":""}> Calendar</label>
               <span class="zone-count">${count === 1 ? t("1 posteo","1 post","1 postagem","פוסט אחד") : t("{n} posteos","{n} posts","{n} postagens","{n} פוסטים",{n:count})}</span>
-              <button type="button" class="rm" data-action="tipos-remove" data-key="${esc(ty.key)}" ${count>0?`disabled title="${esc(t("Hay posteos con este tipo","There are posts with this type","Há postagens com este tipo",".יש פוסטים עם הסוג הזה"))}"`:`title="${esc(t("Eliminar","Delete","Excluir","מחיקה"))}"`}>✕</button>
+              ${renderTipoMenu(ty, idx, d.types.length, count)}
             </div>
           </div>
           <div class="tipo-docs">
@@ -14877,6 +14953,7 @@ document.addEventListener("keydown", e=>{
   if(fabOpen){ closeFab(); fabMainEl.focus(); return; }
   { const gs = document.getElementById("globalResults"); if(gs && !gs.hidden){ cerrarBuscadorGlobal(true); return; } }
   if(postMenuOpen){ postMenuOpen = null; render(); return; }
+  if(tipoMenuOpen){ tipoMenuOpen = null; render(); return; }
   if(moreMenuOpen){ moreMenuOpen = false; renderBottomNav(); return; }
   if(calViewMenuOpen){ calViewMenuOpen = false; render(); return; }
   if(calLayersMenuOpen){ calLayersMenuOpen = false; render(); return; }
@@ -15454,6 +15531,9 @@ document.addEventListener("click", async e=>{
   // elegir algo adentro: la acción sigue su curso con el menú ya cerrado.
   if(postMenuOpen && (!e.target.closest(".post-menu-wrap") || e.target.closest(".post-menu-item"))){
     postMenuOpen = null; render();
+  }
+  if(tipoMenuOpen && (!e.target.closest(".tipo-menu-wrap") || e.target.closest(".post-menu-item"))){
+    tipoMenuOpen = null; render();
   }
   if(moreMenuOpen && !e.target.closest("#bottomNav")){
     moreMenuOpen = false; renderBottomNav();
@@ -16395,6 +16475,32 @@ document.addEventListener("click", async e=>{
     "zonas-reset": async (el, e, action, postId) => {
     zonasDraft = null;
     render();
+  },
+    "zonas-caribe": async (el, e, action, postId) => {
+    // Arma la zona en el borrador y pasa las islas que hoy están en la
+    // zona mezclada; queda a la vista como "N cambios sin guardar".
+    const d = getZonasDraft();
+    const key = slugifyKey("Caribe", d.zoneOrder);
+    d.zones[key] = { label: t("Caribe","Caribbean","Caribe","קריביים"), color:"#0ea5e9" };
+    d.zoneOrder.push(key);
+    CARIBE_SUGERIDO.forEach(n => { if(d.countryZones[n] === el.dataset.zona) d.countryZones[n] = key; });
+    d.error = ""; render();
+  },
+    "zonas-caribe-no": async (el, e, action, postId) => {
+    try{ localStorage.setItem("ra_caribe_no", "1"); }catch(err){ /* sin localStorage vuelve a aparecer: no es grave */ }
+    render();
+  },
+    "toggle-tipo-menu": async (el, e, action, postId) => {
+    tipoMenuOpen = tipoMenuOpen === el.dataset.key ? null : el.dataset.key; render();
+  },
+    "tipos-move": async (el, e, action, postId) => {
+    // Subir/bajar un tipo cambia el orden en que se ofrecen al cargar un
+    // evento (el más usado, primero).
+    const d = getTiposDraft();
+    const i = d.types.findIndex(x => x.key === el.dataset.key), j = i + Number(el.dataset.dir);
+    if(i < 0 || j < 0 || j >= d.types.length) return;
+    const [ty] = d.types.splice(i, 1); d.types.splice(j, 0, ty);
+    d.error = ""; render();
   },
     "zonas-save": async (el, e, action, postId) => {
     const d = getZonasDraft();

@@ -147,6 +147,19 @@ del mapa, modo oscuro, campanita, franja de Documentación.
 - "Ver traducción" pasó a la fila de acciones de la tarjeta (Me gusta ·
   Responder · …), ya no es un renglón suelto.
 
+### 10. Administración, retoques — HECHO (4 oct 2026)
+
+- Zonas: si las islas del Caribe siguen mezcladas en una zona con otros
+  países, arriba aparece la sugerencia de separarlas; "Armar la zona
+  Caribe" la crea en el borrador con las 25 islas y queda como cambios
+  sin guardar hasta "Guardar cambios". "Ahora no" la esconde en ese
+  navegador.
+- Tipos: cada tipo tiene su menú ⋯ con Subir / Bajar (el orden en que
+  se ofrecen al cargar un evento) y Eliminar, que dice por qué no se
+  puede cuando hay posteos con ese tipo. Archivar un tipo (dejar de
+  ofrecerlo sin borrarlo) necesita que la base acepte la marca: va en
+  la tanda 11.
+
 ## Fuera de alcance (necesitan algo que la app no tiene)
 
 - Mandar correos (resumen semanal, invitaciones): no hay servicio de
