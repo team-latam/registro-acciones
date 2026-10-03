@@ -309,6 +309,25 @@ del nombre.
 
 ## Decisiones pendientes del usuario
 
+- **Clasificar lo que vino de Google Calendar** (empezado el 3 oct 2026).
+  Todo lo creado directo en Calendar entró como "Otro" y sin lugar. Se
+  clasificaron los 925 eventos del calendario "LatAm" (2019 → 2026):
+  497 actividades, 385 reuniones internas, 22 personales y 21 plazos o
+  recordatorios. El usuario revisa la propuesta de las actividades en
+  dos planillas de su Google Drive (cuenta cursoslatam.argentina):
+  "Clasificación – Actividades" (tipo, lugar, participantes; columna
+  "Corrección") y "Clasificación – Personas" (quién es del equipo y su
+  correo). Las reuniones quedan para después, por pedido suyo.
+  - Cómo se aplica: un SQL de una sola vez que actualiza `activity_type`,
+    `scopes` y `participants` por `calendar_event_id` (el evento se
+    reencuentra por fecha y título en Calendar), **solo** donde el
+    posteo sigue como "otro" y sin lugar, para no pisar lo que alguien
+    ya corrigió. Directo en la base: sin invitaciones de Calendar, sin
+    "Cambios en tus eventos", sin comentarios de sistema.
+  - Los títulos NO se tocan: el sync de Calendar (nocturno y
+    "Reimportar historial") volvería a poner el de Calendar y dejaría un
+    comentario "Se actualizó desde Google Calendar".
+
 - ~~¿Un integrante común puede editar o cancelar eventos de otros?~~
   Decidido el 3 oct 2026: editar sí, cancelar solo autor / participantes /
   editores / admins, borrar solo el admin fijo (tanda 17).
