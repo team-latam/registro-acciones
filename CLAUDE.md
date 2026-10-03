@@ -63,16 +63,30 @@ Tres cosas que no son negociables, porque ya se pidieron:
 
 ## Verificación antes de cada commit
 
-1. Extraer el contenido del `<script type="module">` de `index.html` a un
-   `.mjs` en el scratchpad y correr `node --check`.
-2. Para cambios de UI, levantar la página con Playwright headless (Chromium
-   ya está en `/opt/pw-browsers`, con `PLAYWRIGHT_BROWSERS_PATH` seteado —
-   **no correr `playwright install`**) y verificar que no haya errores de
-   página, filtrando los `ERR_TUNNEL_CONNECTION_FAILED` esperados (Firebase
-   y los CDN de Google no son alcanzables desde el sandbox).
-3. El paquete de Playwright vive en `/opt/node22/lib/node_modules/playwright`;
-   para usarlo desde el scratchpad hace falta
-   `ln -sfn /opt/node22/lib/node_modules "$SCRATCH/node_modules"`.
+```
+./pruebas/correr.sh
+```
+
+Corre todas las pruebas de `index.html` (más de mil comprobaciones) y la
+carga de la página en las dos bases. **Tiene que terminar en verde antes de
+cada commit que toque la app.** GitHub lo corre igual en cada push
+(`.github/workflows/app.yml`), pero un push en rojo ya llegó a producción:
+el deploy de Pages no espera a las pruebas.
+
+- Las pruebas sacan el código del `index.html` real en cada corrida, nunca
+  de una copia. Una prueba nueva va en `pruebas/` y sigue esa regla; las
+  páginas de prueba se arman solas y no se versionan. Ver
+  `pruebas/LEEME.md`.
+- **Comprobar que una prueba nueva falla contra el código roto** antes de
+  darla por buena: `INDEX=/ruta/a/copia/rota.html ./pruebas/correr.sh`.
+- En este sandbox Playwright y Chromium ya están (`/opt/pw-browsers`, con
+  `PLAYWRIGHT_BROWSERS_PATH` seteado): **no correr `playwright install`**.
+  El corredor resuelve solo el `node_modules`.
+- Los errores `ERR_TUNNEL_CONNECTION_FAILED` son esperados: Firebase y los
+  CDN de Google no son alcanzables desde el sandbox. `carga_test.mjs` ya los
+  descuenta.
+- El esquema SQL y el sync de Calendar tienen sus propias pruebas
+  (`supabase/pruebas/`, `supabase/sync-calendar/pruebas/`) y sus workflows.
 
 ## Convenciones de código
 

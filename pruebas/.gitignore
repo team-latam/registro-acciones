@@ -1,0 +1,7 @@
+# Lo arman los armadores en cada corrida, desde el index.html de verdad.
+# No se versiona a propósito: una página de prueba guardada es una copia
+# que se queda vieja, que es justo lo que estas pruebas evitan.
+*.html
+*.png
+node_modules
+__pycache__/
