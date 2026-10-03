@@ -31,7 +31,7 @@ workflows `base-de-datos.yml` y `calendario.yml`, el adaptador
 | 4 | La importación final perdería datos | Alta — frena la mudanza | código | resuelto |
 | 5 | Las fotos se comen la cuota de descarga del plan gratis | Alta | calculado | resuelto |
 | 6 | Cualquier integrante puede inflar lo que bajan todos | Media | reproducido | resuelto |
-| 7 | El correo se valida con un dato que el usuario puede cambiar | Media — depende del panel | a confirmar | resuelto en la base |
+| 7 | El correo se valida con un dato que el usuario puede cambiar | Media — depende del panel | confirmado en el panel | resuelto |
 | 8 | Las políticas se evalúan fila por fila: 80 veces más lentas | Media | medido | resuelto |
 | 9 | Después de una desconexión, la pantalla queda vieja | Media | código | resuelto |
 | 10 | Cada escritura, hasta un «me gusta», vuelve a bajar la tabla entera | Media | código | resuelto |
@@ -229,8 +229,12 @@ entró con su Google podría cambiarse el correo al de una persona aprobada
 que **todavía no entró nunca a Supabase**, sin confirmación, y pasar a ser
 ella. (Al del admin no: ese correo ya existe y Supabase no lo deja repetir.)
 
-**A confirmar** en el panel: Authentication → Providers → Email apagado y
-«Confirm email» prendido.
+**Confirmado en el panel el 3 de octubre de 2026** (lo revisó el usuario):
+el proveedor Email estaba prendido y lo apagó; Google queda como único
+proveedor. «Secure email change» está prendido (cambiar el correo exige
+confirmarlo desde el viejo y el nuevo). «Confirm email» quedó apagado, y
+ya no importa: solo aplica a cuentas creadas por correo, que ahora no se
+pueden crear.
 
 **Arreglo, independiente del panel:** atar el correo a la identidad de
 Google (`auth.identities`), que el usuario no puede tocar.
@@ -450,7 +454,9 @@ bien resueltos.
    «Eventos con cambios: 1 … Revisados: 1» (ese no pedía tocar nada). Lee
    el calendario que corresponde y el token avanza; «0 cambios» era que no
    había nada nuevo esa noche.
-2. En el panel de Supabase, **Authentication → Providers**: ¿está apagado
-   «Email» y prendido «Confirm email»? (punto 7)
+2. ~~En el panel de Supabase, **Authentication → Providers**: ¿está apagado
+   «Email» y prendido «Confirm email»? (punto 7)~~ **Hecho el 3 de octubre
+   de 2026:** Email estaba prendido y se apagó; «Secure email change»
+   prendido. Ver el punto 7.
 3. **Las copias de seguridad para después del cambio** (punto 13): ¿cuál de
    las opciones? Recomiendo la del repo privado.
