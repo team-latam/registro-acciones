@@ -39,11 +39,26 @@ for f in "$CARPETA"/[0-9][0-9]-*.sql; do
   hubo=1
   nombre="$(basename "$f")"
   echo "→ $nombre"
-  if ! "$PSQL" "$DESTINO" --quiet --single-transaction -v ON_ERROR_STOP=1 -f "$f"; then
+  # Un "deadlock" no es un error del archivo: es que justo alguien estaba
+  # usando la app y su consulta y este archivo se trabaron entre sí (pasó
+  # el 3/10/2026, con el equipo trabajando mientras se publicaba). Postgres
+  # cancela uno de los dos y el archivo no deja nada a medias, así que se
+  # vuelve a intentar, hasta tres veces. Cualquier otro error corta acá.
+  intento=1
+  while :; do
+    salida="$("$PSQL" "$DESTINO" --quiet --single-transaction -v ON_ERROR_STOP=1 -f "$f" 2>&1)"; codigo=$?
+    [ -n "$salida" ] && echo "$salida"
+    [ $codigo = 0 ] && break
+    if [ $intento -lt 3 ] && echo "$salida" | grep -q "deadlock detected"; then
+      intento=$((intento + 1))
+      echo "  (se trabó con alguien que estaba usando la app; intento $intento de 3 en 10 segundos)"
+      sleep 10
+      continue
+    fi
     echo ""
     echo "✗ Falló $nombre. No se aplicó NADA de ese archivo, ni los que seguían."
     exit 1
-  fi
+  done
 done
 [ "$hubo" = 1 ] || { echo "✗ No encontré ningún archivo NN-*.sql en $CARPETA"; exit 1; }
 echo ""
