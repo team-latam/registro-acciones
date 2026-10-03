@@ -90,43 +90,19 @@ eq("una URL firmada del bucket sí",
 eq("pero no una de otro lado",
    api.safeFileDataUrl("https://otro-sitio.com/storage/v1/object/sign/adjuntos/x.docx"), "");
 
-/* ---------- Las tres capas dicen lo mismo ---------- */
+/* ---------- Las dos capas dicen lo mismo ---------- */
 // Si una se queda atrás, el archivo entra en el navegador y lo rechaza la
-// base — un error opaco justo al publicar.
-const reglas = fs.readFileSync(RAIZ + "firestore.rules","utf8");
+// base — un error opaco justo al publicar. (Eran tres hasta el 3 de octubre
+// de 2026: las reglas de Firestore también lo decidían. Firebase se cerró, y
+// sus reglas ya no dejan entrar nada.)
 const sql = fs.readFileSync(RAIZ + "supabase/01-tablas.sql","utf8");
 const delCodigo = api.TIPOS_DE_ARCHIVO.flatMap(x=>x.mimes);
 eq("el bucket de Supabase acepta todos los que acepta el código",
    delCodigo.filter(m => !sql.includes(m)), []);
-
-// Para las reglas de Firestore no alcanza con que el texto esté: se saca
-// la expresión de verdad del archivo y se la corre contra los mismos
-// casos que la de la app. Si las dos no deciden igual, el archivo entra
-// en el navegador y lo rechaza la base al publicar.
-const reglaCruda = (reglas.match(/matches\('(\^data:\(application\/pdf[^']*)'\)/) || [])[1];
-eq("la expresión de las reglas se encontró", typeof reglaCruda, "string");
-if(reglaCruda){
-  const RE_REGLAS = new RegExp(reglaCruda.replace(/\\\\/g, "\\"));
-  const casos = [
-    ["PDF","application/pdf",true], ["Word",DOCX,true], ["Word viejo","application/msword",true],
-    ["Excel",XLSX,true], ["PowerPoint",PPTX,true], ["texto","text/plain",true],
-    ["markdown","text/markdown",true], ["csv","text/csv",true],
-    ["OpenDocument","application/vnd.oasis.opendocument.text",true],
-    ["planilla abierta","application/vnd.oasis.opendocument.spreadsheet",true],
-    ["rtf","application/rtf",true], ["audio","audio/mpeg",true],
-    ["audio raro","audio/x-m4a",true], ["sin tipo","application/octet-stream",true],
-    ["HTML","text/html",false], ["JavaScript","text/javascript",false],
-    ["SVG","image/svg+xml",false], ["XHTML","application/xhtml+xml",false],
-    ["PHP","application/x-httpd-php",false], ["zip","application/zip",false],
-    ["video","video/mp4",false], ["imagen","image/png",false],
-  ];
-  const discrepan = casos.filter(([, mime]) =>
-    RE_REGLAS.test(d(mime)) !== api.FILE_DATA_URL_RE.test(d(mime)));
-  eq("las reglas de Firestore deciden EXACTAMENTE lo mismo que la app",
-     discrepan.map(c=>c[0]), []);
-  const malas = casos.filter(([, mime, esperado]) => RE_REGLAS.test(d(mime)) !== esperado);
-  eq("y lo que deciden es lo correcto", malas.map(c=>c[0]), []);
-}
+const reglas = fs.readFileSync(RAIZ + "firestore.rules","utf8");
+eq("y Firestore, cerrado: sus reglas no dejan leer ni escribir nada",
+   /match \/\{document=\*\*\} \{\s*allow read, write: if false;\s*\}/.test(reglas)
+     && !/allow [a-z, ]+: if (?!false)/.test(reglas), true);
 
 console.log(`\n${pass} pasaron, ${fail} fallaron`);
 process.exit(fail ? 1 : 0);
