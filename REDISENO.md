@@ -97,17 +97,21 @@ del mapa, modo oscuro, campanita, franja de Documentación.
   y la columna lateral del Inicio en escritorio (próximos eventos, hitos
   por vencer, filtros guardados).
 
-### 7. Administración
+### 7. Administración — HECHO (3 oct 2026)
 
-- Zonas: fichas de país que se arrastran entre zonas; aviso de qué
-  cambia antes de guardar; sugerencia de separar el Caribe.
-- Tipos: tabla con interruptor "Va al Calendar", documentos como
-  etiquetas, menú ⋯ (renombrar, ver posteos, archivar, borrar).
-- Personas: columnas alineadas, "nunca entró" resaltado, mini-serie de lo
-  que cargó, bajar lista, pre-aprobar un email.
-- Registro de actividad: agrupado por día, filtros simples, bajar Excel.
-  Registrar también lo que se crea, edita y borra (toca la base: al
-  final).
+- Zonas: fichas de país que se arrastran de una zona a otra (el
+  selector chico de cada ficha queda para el teclado); antes de guardar
+  dice qué cambió ("Bolivia: Norte → Central").
+- Tipos: el tilde "Calendar" es un interruptor.
+- Personas: columnas alineadas (persona, rol, Calendar, última vez,
+  cargó en 6 meses), "Nunca entró" y "hace más de 30 días" en rojo,
+  mini-serie de lo que cargó cada uno, "Bajar lista" (CSV).
+- Registro de actividad: agrupado por día (Hoy, Ayer, fecha) con la hora
+  en cada fila, y "Bajar planilla" (CSV) con lo filtrado.
+- Quedan para después (no hechos): el menú ⋯ de cada tipo con archivar
+  (toca la forma guardada de los tipos), pre-aprobar un email, la
+  sugerencia de separar el Caribe, y registrar lo que se crea, edita y
+  borra (toca la base).
 
 ### 8. Entrada, espera y avisos
 

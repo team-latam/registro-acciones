@@ -538,6 +538,53 @@
     .audit-columns-header, .audit-row{ grid-template-columns: 22px minmax(140px,1fr) 1fr; }
     .audit-device, .audit-ip, .ach-device, .ach-ip{ display:none; }
   }
+  /* El renglón del día entre las filas ("Hoy", "Ayer", "martes 1 de
+     octubre"), y "Bajar planilla" arriba de la tabla. */
+  .audit-day{ padding:10px 18px 4px; font-size:11px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--text-muted); background:var(--surface-soft); border-top:1px solid var(--border); }
+  .audit-day:first-child{ border-top:none; }
+  .audit-day + .audit-row{ border-top:none; }
+  .audit-bajar{ display:flex; justify-content:flex-end; margin:-4px 0 10px; }
+  /* Personas: columnas alineadas (ver renderUsuariosSection). */
+  .user-row{ display:grid; grid-template-columns:minmax(0, 1.7fr) 130px 190px 110px 110px auto; align-items:center; gap:12px; padding:10px 16px; margin-bottom:8px; }
+  .user-row-head{ background:transparent; border:none; box-shadow:none; padding:0 16px; margin-bottom:4px; font-size:10.5px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--text-muted); }
+  .user-cell-persona{ display:flex; align-items:center; gap:12px; min-width:0; }
+  .user-cell{ min-width:0; font-size:12.5px; }
+  .user-cell-cal{ display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
+  .user-cell-cal .status-pill{ margin-inline-end:0; }
+  .user-cell-vez{ font-weight:600; color:var(--ink); }
+  .uv-nunca, .uv-ausente{ color:var(--danger); font-weight:800; }
+  .user-row-nunca{ background:color-mix(in srgb, var(--danger-bg) 35%, var(--card)); }
+  .user-cell-serie .country-serie{ margin:0; height:22px; width:100px; }
+  .user-row .ractions{ justify-content:flex-end; }
+  .btn-ghost-chico{ padding:6px 10px; font-size:12px; }
+  @media (max-width:900px){
+    .user-row-head{ display:none; }
+    .user-row{ grid-template-columns:1fr 1fr; }
+    .user-cell-persona{ grid-column:1 / -1; }
+    .user-row .ractions{ grid-column:1 / -1; }
+  }
+  /* Zonas: las fichas de país que se arrastran entre zonas. */
+  .zone-chips{ display:flex; flex-wrap:wrap; gap:6px; padding:12px; border-top:1px solid var(--border); min-height:52px; }
+  .zc-chip{
+    display:inline-flex; align-items:center; gap:4px; padding:4px 6px 4px 6px; border-radius:8px; background:var(--surface-soft);
+    border:1px solid var(--border); font-size:13px; font-weight:600; cursor:grab; user-select:none; touch-action:none;
+  }
+  .zc-chip:hover{ border-color:var(--celeste-dark); }
+  .zc-grip{ color:var(--text-muted); opacity:.55; font-size:12px; letter-spacing:-2px; }
+  .zc-select{ font-family:inherit; font-size:11px; font-weight:700; color:var(--text-muted); border:none; background:transparent; padding:2px 0; cursor:pointer; max-width:88px; }
+  .zc-chip.dragging{ position:fixed; z-index:120; cursor:grabbing; box-shadow:0 10px 28px rgba(8,42,44,.3); border-color:var(--celeste-dark); background:var(--card); pointer-events:none; }
+  .zone-section.zc-over{ outline:2px dashed var(--celeste-dark); outline-offset:-2px; }
+  .zonas-cambios{ margin-top:14px; padding:10px 14px; border-radius:var(--radius-sm); background:var(--warn-bg); border:1px solid var(--warn-border); color:var(--warn-text); font-size:13px; font-weight:600; line-height:1.5; }
+  /* Tipos: el tilde "Calendar" como interruptor. */
+  /* (Con .tipo-meta adelante para ganarle al ancho fijo de la regla base
+     y al tamaño de 20px de los tildes en celular.) */
+  .tipo-meta .tipo-sync-toggle input[type=checkbox]{
+    appearance:none; -webkit-appearance:none; width:34px; min-width:34px; height:20px; border-radius:999px; background:var(--border); position:relative; cursor:pointer; margin:0; flex:none; transition:background .15s;
+  }
+  .tipo-meta .tipo-sync-toggle input[type=checkbox]::after{ content:""; position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:#fff; transition:transform .15s; box-shadow:0 1px 3px rgba(0,0,0,.25); }
+  .tipo-meta .tipo-sync-toggle input[type=checkbox]:checked{ background:var(--celeste-dark); }
+  .tipo-meta .tipo-sync-toggle input[type=checkbox]:checked::after{ transform:translateX(14px); }
+  .tipo-meta .tipo-sync-toggle{ width:auto; gap:6px; }
 
   /* ---------- Zonas (panel admin) ----------
      Versión compacta (v2): las zonas van en una lista angosta de una sola
@@ -8999,10 +9046,25 @@ function renderUsuariosSection(){
       <button type="button" class="chip-toggle${f.sort==="approvedAt"?" active":""}" data-action="usuarios-sort" data-key="approvedAt">${t("Fecha de alta","Date joined","Data de entrada","תאריך הצטרפות")}</button>
       <button type="button" class="chip-toggle${f.sort==="activity"?" active":""}" data-action="usuarios-sort" data-key="activity">${t("Actividad","Activity","Atividade","פעילות")}</button>
     </div>
+    <button type="button" class="btn-sync" data-action="usuarios-csv">⬇ ${t("Bajar lista","Download list","Baixar lista","הורדת רשימה")}</button>
   </div>`;
   if(!users.length) return toolbar + `<div class="empty-state"><div class="big">🔎</div>${t("Nadie coincide con la búsqueda.","No one matches the search.","Ninguém coincide com a busca.","אף אחד לא תואם לחיפוש.")}</div>`;
-  return toolbar + users.map(u=>{
+  // Columnas alineadas (ver .user-row): antes cada fila ponía el selector
+  // de rol en un lugar distinto según si tenía o no "Invitación enviada".
+  const cabecera = `<div class="user-row user-row-head">
+      <span>${t("Persona","Person","Pessoa","אדם")}</span><span>${t("Rol","Role","Papel","תפקיד")}</span><span>Calendar</span>
+      <span>${t("Última vez","Last seen","Última vez","לאחרונה")}</span><span>${t("Cargó (6 meses)","Logged (6 months)","Carregou (6 meses)","רשם/ה (6 חודשים)")}</span><span></span>
+    </div>`;
+  const hoy = Date.now();
+  const haceDias = ms => Math.floor((hoy - ms) / 86400000);
+  const ultimaVez = u => !u.lastLogin ? `<span class="uv-nunca">${t("Nunca entró","Never signed in","Nunca entrou","מעולם לא נכנס/ה")}</span>`
+    : haceDias(u.lastLogin) === 0 ? t("Hoy","Today","Hoje","היום")
+    : haceDias(u.lastLogin) === 1 ? t("Ayer","Yesterday","Ontem","אתמול")
+    : haceDias(u.lastLogin) > 30 ? `<span class="uv-ausente">${t("Hace {n} días","{n} days ago","Há {n} dias","לפני {n} ימים",{n:haceDias(u.lastLogin)})}</span>`
+    : t("Hace {n} días","{n} days ago","Há {n} dias","לפני {n} ימים",{n:haceDias(u.lastLogin)});
+  return toolbar + cabecera + users.map(u=>{
     const tier = activityTierFor(u.postCount);
+    const serie = postsPorMesDe(u.email, 6);
     const isAdminUser = u.email === ADMIN_EMAIL;
     // El rol de ADMIN_EMAIL no se toca desde acá (ni desde la base), y
     // a propósito NO se lo señala como "dueño" ni nada parecido: para el
@@ -9013,17 +9075,19 @@ function renderUsuariosSection(){
     // Tampoco se puede tocar el propio rol (reglas incluidas): que otro
     // admin lo haga. Evita quedarse sin admins o escalarse a uno mismo.
     const isMe = u.email === (state.auth.user && state.auth.user.email);
-    const roleSelect = (isAdminUser || isMe) ? "" : `<select class="role-select" data-action="set-role" data-email="${esc(u.email)}" ${savingRoster.has(u.email) ? "disabled" : ""} aria-label="${esc(t("Rol de {n}","Role of {n}","Papel de {n}","תפקיד של {n}",{n:u.name||u.email}))}">
+    const roleSelect = (isAdminUser || isMe) ? rolePill || `<span class="hint">${esc(roleLabel(role))}</span>` : `<select class="role-select" data-action="set-role" data-email="${esc(u.email)}" ${savingRoster.has(u.email) ? "disabled" : ""} aria-label="${esc(t("Rol de {n}","Role of {n}","Papel de {n}","תפקיד של {n}",{n:u.name||u.email}))}">
           ${ROLES.map(r=>`<option value="${r}" ${role===r?"selected":""}>${esc(roleLabel(r))}</option>`).join("")}
-        </select><span class="ractions-sep"></span>`;
-    return `<div class="request-row">
-      ${u.photoURL ? `<img src="${esc(u.photoURL)}" alt="">` : `<div class="avatar-fallback">${esc((u.name||u.nickname||"?")[0].toUpperCase())}</div>`}
-      <div class="rinfo">
-        <div class="rname">${esc(u.name || u.nickname)}${rolePill}</div>
-        <div class="remail">${esc(u.email)} · ${tier.icon} ${tier.label} · ${t("Último login: {v}","Last login: {v}","Último login: {v}","{v} :כניסה אחרונה",{v: u.lastLogin ? fmtDateTime(u.lastLogin) : t("sin registro","no record","sem registro","ללא רישום")})}</div>
+        </select>`;
+    return `<div class="request-row user-row${!u.lastLogin ? " user-row-nunca" : ""}">
+      <div class="user-cell-persona">
+        ${u.photoURL ? `<img src="${esc(u.photoURL)}" alt="">` : `<div class="avatar-fallback">${esc((u.name||u.nickname||"?")[0].toUpperCase())}</div>`}
+        <div class="rinfo">
+          <div class="rname">${esc(u.name || u.nickname)}</div>
+          <div class="remail">${esc(u.email)}</div>
+        </div>
       </div>
-      <div class="ractions">
-        ${roleSelect}
+      <div class="user-cell">${roleSelect}</div>
+      <div class="user-cell user-cell-cal">
         ${isAdminUser
           // La fila del admin fijo no lleva botones de Calendar: su acceso
           // no depende de la lista del equipo, y compartir/sacar sobre su
@@ -9037,12 +9101,43 @@ function renderUsuariosSection(){
               ? `<button class="btn-ghost danger" data-action="unshare-calendar" data-email="${esc(u.email)}">${t("Sacar del Calendar","Remove from Calendar","Tirar do Calendar","הסרה מהיומן")}</button>`
               : `<span class="status-pill observer">${t("Sin Calendar","No Calendar","Sem Calendar","ללא יומן")}</span>`)
           : u.calendarShared
-          ? `<span class="status-pill approved">✅ ${t("Invitación enviada","Invite sent","Convite enviado","הזמנה נשלחה")}</span><span class="ractions-sep"></span><button class="btn-ghost" data-action="resend-calendar-invite" data-email="${esc(u.email)}">${t("Reenviar invitación","Resend invite","Reenviar convite","שליחה חוזרת של ההזמנה")}</button>`
+          ? `<span class="status-pill approved">✅ ${t("Invitación enviada","Invite sent","Convite enviado","הזמנה נשלחה")}</span><button class="btn-ghost btn-ghost-chico" data-action="resend-calendar-invite" data-email="${esc(u.email)}">${t("Reenviar","Resend","Reenviar","שליחה חוזרת")}</button>`
           : `<button class="btn-ghost" data-action="share-calendar" data-email="${esc(u.email)}">${t("Compartir Calendar","Share Calendar","Compartilhar Calendar","שיתוף היומן")}</button>`}
-        ${(isAdminUser || isMe) ? "" : `<span class="ractions-sep"></span><button class="btn-ghost danger" data-action="revoke-access" data-email="${esc(u.email)}" ${savingRoster.has(u.email) ? "disabled" : ""}>${t("Revocar acceso","Revoke access","Revogar acesso","ביטול גישה")}</button>`}
+      </div>
+      <div class="user-cell user-cell-vez">${ultimaVez(u)}</div>
+      <div class="user-cell user-cell-serie" title="${esc(`${tier.icon} ${tier.label} · ${u.postCount}`)}">${serie.some(n=>n) ? renderSerieMensual(serie, "var(--celeste-dark)") : `<span class="hint">${t("Nada todavía","Nothing yet","Nada ainda","עדיין כלום")}</span>`}</div>
+      <div class="user-cell ractions">
+        ${(isAdminUser || isMe) ? "" : `<button class="btn-ghost danger" data-action="revoke-access" data-email="${esc(u.email)}" ${savingRoster.has(u.email) ? "disabled" : ""}>${t("Revocar acceso","Revoke access","Revogar acesso","ביטול גישה")}</button>`}
       </div>
     </div>`;
   }).join("");
+}
+// Cuántos posteos cargó alguien en cada uno de los últimos N meses (la
+// mini-serie de la fila de Personas).
+function postsPorMesDe(email, n){
+  const hoyM = todayISO().slice(0,7);
+  const desde = addMonthsISO(hoyM + "-01", -(n - 1)).slice(0,7);
+  const idx = m => (Number(m.slice(0,4)) - Number(desde.slice(0,4))) * 12 + Number(m.slice(5,7)) - Number(desde.slice(5,7));
+  const out = new Array(n).fill(0);
+  const quien = String(email || "").toLowerCase();
+  state.posts.forEach(p=>{
+    if(String(p.authorEmail || "").toLowerCase() !== quien) return;
+    const ms = tsToMillis(p.createdAt); if(!ms) return;
+    const i = idx(new Date(ms).toISOString().slice(0,7));
+    if(i >= 0 && i < n) out[i]++;
+  });
+  return out;
+}
+function csvDePersonas(){
+  const celda = s => `"${String(s == null ? "" : s).replace(/"/g, '""')}"`;
+  const logins = lastLoginByEmail();
+  const filas = [[t("Nombre","Name","Nome","שם"), "Email", "@", t("Rol","Role","Papel","תפקיד"), "Calendar", t("Última vez","Last seen","Última vez","לאחרונה"), t("Cargó (6 meses)","Logged (6 months)","Carregou (6 meses)","רשם/ה (6 חודשים)")]];
+  state.roster.slice().sort((a,b)=>(a.name||"").localeCompare(b.name||"", "es")).forEach(u=>{
+    const ms = logins[u.email];
+    filas.push([u.name || "", u.email, u.nickname || "", roleLabel(u.email === ADMIN_EMAIL ? "admin" : (u.role || "member")),
+      u.calendarShared ? t("sí","yes","sim","כן") : t("no","no","não","לא"), ms ? new Date(ms).toISOString().slice(0,10) : "", postsPorMesDe(u.email, 6).reduce((a,b)=>a+b, 0)]);
+  });
+  return filas.map(f => f.map(celda).join(";")).join("\r\n");
 }
 
 // Quién está esperando de verdad una decisión del admin.
@@ -9370,20 +9465,44 @@ function renderAuditoriaView(){
   const filtered = sortAuditEntries(entries.filter(matchesAuditFilters));
   const visible = filtered.slice(0, auditVisibleCount);
   const remaining = filtered.length - visible.length;
+  // Agrupado por día cuando está ordenado por fecha (lo normal): un
+  // renglón "Hoy", "Ayer", "martes 1 de octubre" entre día y día, en vez
+  // de una fecha completa repetida en cada fila.
+  const porDia = auditSort.key === "date";
+  const today = todayISO(), ayer = addDaysISO(today, -1);
+  const diaDe = e => { const ms = tsToMillis(e.createdAt); return ms ? new Date(ms).toISOString().slice(0,10) : ""; };
+  const rotuloDia = iso => iso === today ? t("Hoy","Today","Hoje","היום") : iso === ayer ? t("Ayer","Yesterday","Ontem","אתמול") : fmtISO(iso, { weekday:"long", day:"numeric", month:"long" });
+  let diaAnterior = null;
   const list = !filtered.length
     ? `<div class="empty-state"><div class="big">🔎</div>${t("Ningún registro coincide con el filtro.","No record matches the filter.","Nenhum registro coincide com o filtro.","אף רשומה לא תואמת למסנן.")}</div>`
     : `${renderAuditColumnsHeader()}<div class="audit-list">${visible.map(e=>{
         const info = auditLabels()[e.type] || { icon:"•", text: e2 => `${e2.actorName}: ${e2.type}` };
-        return `<div class="audit-row">
+        let cabeza = "";
+        if(porDia){ const d = diaDe(e); if(d !== diaAnterior){ cabeza = `<div class="audit-day">${esc(rotuloDia(d))}</div>`; diaAnterior = d; } }
+        return `${cabeza}<div class="audit-row">
           <span class="audit-icon">${info.icon}</span>
           <div class="audit-text">${esc(info.text(e))}</div>
           <span class="audit-device">${esc(e.device || "")}</span>
           <span class="audit-ip">${esc(e.ip || "")}</span>
-          <span class="audit-date">${fmtDateTime(e.createdAt)}</span>
+          <span class="audit-date">${porDia ? esc(new Date(tsToMillis(e.createdAt)).toLocaleTimeString(dateLocale(), { hour:"2-digit", minute:"2-digit" })) : fmtDateTime(e.createdAt)}</span>
         </div>`;
       }).join("")}</div>
       ${remaining > 0 ? `<div class="audit-more"><button type="button" class="btn-secondary" data-action="audit-load-more">${t("Ver más","See more","Ver mais","הצגת עוד")}</button></div>` : ""}`;
-  return renderAuditFilters() + list;
+  const bajar = filtered.length ? `<div class="audit-bajar"><button type="button" class="btn-sync" data-action="audit-csv">⬇ ${t("Bajar planilla","Download spreadsheet","Baixar planilha","הורדת גיליון")}</button></div>` : "";
+  return renderAuditFilters() + bajar + list;
+}
+// El registro filtrado como planilla (CSV con punto y coma, ver
+// csvDelReporte): fecha, qué pasó, dispositivo, IP.
+function csvDelRegistro(){
+  const celda = s => `"${String(s == null ? "" : s).replace(/"/g, '""')}"`;
+  const labels = auditLabels();
+  const filas = [[t("Fecha","Date","Data","תאריך"), t("Acción","Action","Ação","פעולה"), t("Dispositivo","Device","Dispositivo","מכשיר"), "IP"]];
+  sortAuditEntries(state.auditLog.filter(matchesAuditFilters)).forEach(e=>{
+    const info = labels[e.type] || { text: e2 => `${e2.actorName}: ${e2.type}` };
+    const ms = tsToMillis(e.createdAt);
+    filas.push([ms ? new Date(ms).toISOString().slice(0,16).replace("T"," ") : "", info.text(e), e.device || "", e.ip || ""]);
+  });
+  return filas.map(f => f.map(celda).join(";")).join("\r\n");
 }
 
 /* ======================================================================
@@ -9419,6 +9538,54 @@ function slugifyKey(label, existingKeys = []){
   while(existingKeys.includes(key)){ key = base + i; i++; }
   return key;
 }
+// Qué cambió respecto de lo guardado, dicho con nombres ("Bolivia: Norte
+// → Central") antes de los botones: con 45 países y fichas que se
+// arrastran, un cambio sin querer pasaba desapercibido.
+function renderZonasCambios(d){
+  const cambios = Object.keys(d.countryZones)
+    .filter(n => COUNTRY_BY_NAME[n] && COUNTRY_BY_NAME[n].zone !== d.countryZones[n])
+    .map(n => `${countryLabel(n)}: ${(ZONES[COUNTRY_BY_NAME[n].zone] || {}).label || COUNTRY_BY_NAME[n].zone} → ${(d.zones[d.countryZones[n]] || {}).label || d.countryZones[n]}`);
+  if(!cambios.length) return "";
+  return `<div class="zonas-cambios">${cambios.length === 1
+      ? t("1 cambio sin guardar","1 unsaved change","1 alteração sem salvar","שינוי אחד שלא נשמר")
+      : t("{n} cambios sin guardar","{n} unsaved changes","{n} alterações sem salvar","{n} שינויים שלא נשמרו",{n:cambios.length})}: ${esc(cambios.join(" · "))}</div>`;
+}
+// Arrastrar una ficha de país de una zona a otra (mismo esquema que las
+// filas de hitos, ver data-pj-grip): la ficha sigue al dedo, la zona de
+// abajo se resalta, y al soltar es el mismo cambio que hace el selector
+// chico de la ficha, que queda para el teclado.
+document.addEventListener("pointerdown", e=>{
+  const chip = e.target.closest && e.target.closest(".zc-chip");
+  if(!chip || e.target.closest("select")) return;
+  const name = chip.dataset.country;
+  e.preventDefault();
+  const b = chip.getBoundingClientRect();
+  const dx = e.clientX - b.left, dy = e.clientY - b.top;
+  chip.classList.add("dragging");
+  chip.style.width = b.width + "px";
+  let sobre = null;
+  const mover = ev=>{
+    chip.style.left = (ev.clientX - dx) + "px"; chip.style.top = (ev.clientY - dy) + "px";
+    const abajo = document.elementFromPoint(ev.clientX, ev.clientY);
+    const zona = abajo && abajo.closest ? abajo.closest(".zone-section") : null;
+    if(zona !== sobre){
+      if(sobre) sobre.classList.remove("zc-over");
+      sobre = zona; if(sobre) sobre.classList.add("zc-over");
+    }
+  };
+  const soltar = ()=>{
+    document.removeEventListener("pointermove", mover);
+    document.removeEventListener("pointerup", soltar);
+    document.removeEventListener("pointercancel", soltar);
+    const destino = sobre && sobre.querySelector(".zone-chips") ? sobre.querySelector(".zone-chips").dataset.zoneKey : null;
+    const d = getZonasDraft();
+    if(destino && d.zones[destino] && d.countryZones[name] !== destino) d.countryZones[name] = destino;
+    render();
+  };
+  document.addEventListener("pointermove", mover);
+  document.addEventListener("pointerup", soltar);
+  document.addEventListener("pointercancel", soltar);
+});
 function renderZonasSection(){
   const d = getZonasDraft();
   const countByZone = {};
@@ -9450,17 +9617,20 @@ function renderZonasSection(){
             <span class="zone-count">${count === 1 ? t("1 país","1 country","1 país","מדינה אחת") : t("{n} países","{n} countries","{n} países","{n} מדינות",{n:count})}</span>
             <button type="button" class="zone-rm" data-action="zonas-remove-zone" data-key="${key}" ${count>0?`disabled title="${esc(t("Reasigná primero los países de esta zona","First reassign this zone's countries","Reatribua primeiro os países desta zona",".קודם הקצה/י מחדש את המדינות של אזור זה"))}"`:`title="${esc(t("Eliminar zona","Delete zone","Excluir zona","מחיקת אזור"))}"`}>✕</button>
           </div>
-          <div class="zone-countries">
+          <div class="zone-chips" data-zone-key="${esc(key)}">
             ${countries.map(name=>`
-              <div class="country-row">
-                <span class="country-name" title="${esc(countryLabel(name))}">${esc(countryLabel(name))}</span>
-                <select data-action="zonas-country-zone" data-country="${esc(name)}">
+              <span class="zc-chip" data-country="${esc(name)}" title="${esc(t("Arrastrá a otra zona","Drag to another zone","Arraste para outra zona","גררו לאזור אחר"))}">
+                <span class="zc-grip" aria-hidden="true">⋮⋮</span>
+                <span class="zc-name">${esc(countryLabel(name))}</span>
+                <select class="zc-select" data-action="zonas-country-zone" data-country="${esc(name)}" aria-label="${esc(t("Zona de {p}","Zone of {p}","Zona de {p}","אזור של {p}",{p:countryLabel(name)}))}">
                   ${d.zoneOrder.map(k2=>`<option value="${k2}" ${key===k2?"selected":""}>${esc(d.zones[k2].label)}</option>`).join("")}
                 </select>
-              </div>`).join("")}
+              </span>`).join("")}
+            ${countries.length ? "" : `<span class="hint">${t("Sin países: arrastrá alguno acá.","No countries: drag one here.","Sem países: arraste algum aqui.","אין מדינות: גררו אחת לכאן.")}</span>`}
           </div>
         </div>`;
       }).join("")}
+      ${renderZonasCambios(d)}
       <div class="zone-add-row" style="margin-top:18px;">
         <input type="text" id="zonasNewZoneLabel" placeholder="${esc(t("Nombre de la zona nueva (ej: Caribe)","Name of the new zone (e.g. Caribbean)","Nome da zona nova (ex: Caribe)","שם האזור החדש (למשל: קריביים)"))}" maxlength="30" value="${esc(d.newZoneLabel)}">
         <button type="button" class="btn-mini" data-action="zonas-add-zone">+ ${t("Agregar zona","Add zone","Adicionar zona","הוספת אזור")}</button>
@@ -15286,6 +15456,12 @@ document.addEventListener("click", async e=>{
     else if(kind === "zona") state.filters.zones = new Set([key]);
     else if(kind === "tipo") state.filters.types = new Set([key]);
     state.view = "feed"; state.countryDrill = null; render(); scrollToTop();
+  },
+    "audit-csv": async (el, e, action, postId) => {
+    descargarTexto(`registro-actividad-${todayISO()}.csv`, csvDelRegistro());
+  },
+    "usuarios-csv": async (el, e, action, postId) => {
+    descargarTexto(`registro-personas-${todayISO()}.csv`, csvDePersonas());
   },
     "reporte-csv": async (el, e, action, postId) => {
     const r = reporteEnPantalla;
