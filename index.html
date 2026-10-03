@@ -929,6 +929,68 @@
   .translate-toggle:disabled{ cursor:default; opacity:0.7; }
 
   /* ---------- Proyecto (hitos dentro de un Evento) ---------- */
+  /* Proyectos: la línea de tiempo con todos juntos (ver
+     renderProyectosLinea). Columna de nombres a la izquierda; a la
+     derecha una barra por proyecto sobre una regla de meses, con los
+     hitos como rombos y la marca de hoy. El eje del tiempo va siempre
+     de izquierda a derecha, también en hebreo. */
+  .pl-toolbar{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:14px; }
+  .pl-wrap{ overflow-x:auto; background:var(--card); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow); }
+  .pl{ min-width:640px; }
+  .pl-row{ display:flex; align-items:stretch; border-top:1px solid var(--border); }
+  .pl-row.pl-head{ border-top:none; background:var(--surface-soft); }
+  .pl-name{
+    flex:0 0 220px; min-width:0; display:flex; flex-direction:column; justify-content:center; gap:2px; padding:10px 14px;
+    background:none; border:none; border-inline-end:1px solid var(--border); font-family:inherit; text-align:start; cursor:pointer; color:var(--ink);
+  }
+  .pl-name b{ font-size:13.5px; font-weight:800; color:var(--ink-strong); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .pl-name small{ font-size:11.5px; color:var(--text-muted); font-weight:600; }
+  .pl-name:hover b{ color:var(--celeste-dark); }
+  .pl-name-head{ cursor:default; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; color:var(--text-muted); justify-content:flex-end; }
+  .pl-lane{
+    flex:1; position:relative; min-height:58px; min-width:0; direction:ltr;
+    background-image:linear-gradient(to right, var(--border) 1px, transparent 1px); background-size:calc(100% / var(--meses, 12)) 100%;
+  }
+  .pl-lane::after{ content:""; position:absolute; top:0; bottom:0; left:var(--hoy); border-left:2px dashed var(--danger); opacity:.75; pointer-events:none; }
+  .pl-lane:not([style])::after{ display:none; }
+  .pl-months{ display:grid; grid-template-columns:repeat(var(--meses, 12), minmax(0,1fr)); height:100%; min-height:42px; }
+  .pl-months span{ display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:11px; font-weight:800; text-transform:uppercase; color:var(--text-muted); line-height:1.1; min-width:0; overflow:hidden; }
+  .pl-months span small{ font-size:9.5px; font-weight:700; }
+  .pl-months span.hoy{ color:var(--petroleo); background:var(--celeste-soft); }
+  .pl-bar{
+    position:absolute; top:9px; height:24px; border-radius:7px; display:flex; align-items:center; padding:0 8px;
+    font-size:11.5px; font-weight:700; white-space:nowrap; overflow:hidden; box-sizing:border-box;
+  }
+  .pl-bar-antes{ border-top-left-radius:0; border-bottom-left-radius:0; }
+  .pl-bar-despues{ border-top-right-radius:0; border-bottom-right-radius:0; }
+  .pl-bar.cancelled{ text-decoration:line-through; opacity:.6; }
+  .pl-diamond{
+    display:inline-block; width:14px; height:14px; transform:rotate(45deg); flex:none; box-sizing:border-box;
+    background:#9db3b5; border:2px solid var(--card); box-shadow:0 1px 3px rgba(0,0,0,.25);
+  }
+  /* Los rombos van DEBAJO de la barra, no encima: encima tapaban las
+     fechas escritas en ella. */
+  .pl-lane .pl-diamond{ position:absolute; top:37px; margin-left:-7px; }
+  .pl-diamond.done{ background:#16a34a; }
+  .pl-diamond.soon, .pl-diamond.today{ background:#b45309; }
+  .pl-diamond.overdue{ background:var(--danger); }
+  .pl-leyenda{ display:flex; flex-wrap:wrap; gap:6px 16px; margin-top:10px; font-size:12px; color:var(--text-muted); font-weight:600; }
+  .pl-leyenda span{ display:inline-flex; align-items:center; gap:8px; }
+  .pl-leyenda .pl-diamond{ width:11px; height:11px; }
+  .pl-hoy-leyenda{ display:inline-block; width:0; height:14px; border-inline-start:2px dashed var(--danger); }
+  .pl-due{ margin-top:18px; }
+  .pl-due h3{ margin:0 0 10px; font-size:13px; text-transform:uppercase; letter-spacing:.04em; color:var(--text-muted); }
+  .pl-due-row{
+    display:flex; align-items:center; gap:12px; flex-wrap:wrap; background:var(--card); border:1px solid var(--border);
+    border-radius:var(--radius-md); padding:10px 14px; margin-bottom:8px; box-shadow:var(--shadow);
+  }
+  .pl-due-row .pl-diamond{ width:12px; height:12px; }
+  .pl-due-txt{ flex:1 1 220px; min-width:0; display:flex; flex-direction:column; gap:2px; }
+  .pl-due-txt b{ font-size:14px; }
+  .pl-due-txt small{ font-size:12px; color:var(--text-muted); font-weight:600; }
+  .pl-st.overdue{ color:var(--danger); font-weight:800; }
+  .pl-st.soon, .pl-st.today{ color:#b45309; font-weight:800; }
+  @media (max-width:640px){ .pl-name{ flex-basis:150px; padding:8px 10px; } .pl{ min-width:560px; } }
   .projects-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:14px; }
   .project-card{ text-align:start; font-family:inherit; background:var(--card); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow); padding:14px 16px; cursor:pointer; display:flex; flex-direction:column; gap:8px; color:var(--ink); }
   .project-card:hover{ border-color:var(--celeste-dark); }
@@ -3959,6 +4021,8 @@ const state = {
   calendarioSubview: "mes", // mes | semana | dia
   calendarioAnchor: null,   // YYYY-MM-DD sobre el que está parado el Calendario; null = hoy
   calendarioDiaElegido: null, // en angosto, el día del Mes cuya lista se muestra debajo de la grilla
+  proyectosVista: "linea",   // linea | tarjetas
+  proyectosFiltro: "curso",  // curso | hechos
   preferenciasSection: "zonas", // zonas | tipos | lugares | calendar | adjuntos
   countryDrill: null,       // nombre de país (drill a ciudades) en vista Países > Lista
   paisesZoneFilter: new Set(), // keys de zona (sur/central/norte) para filtrar Países (Lista y Mapa); vacío = todas
@@ -7329,10 +7393,117 @@ function renderProyectosView(){
   const open = projectOpen ? getPostById(projectOpen) : null;
   if(open && open.isProject) return renderProjectDetail(open);
   projectOpen = null;
-  const list = projectPosts().sort((a,b)=> (projectDone(a) ? 1 : 0) - (projectDone(b) ? 1 : 0) || projectSortKey(a).localeCompare(projectSortKey(b)));
-  if(!list.length){
-    return `<div class="empty-state"><div class="big">📋</div>${t("Todavía no hay proyectos.","There are no projects yet.","Ainda não há projetos.","עדיין אין פרויקטים.")}<br>${t("En cualquier Evento, tocá «Crear proyecto» para armar la línea de tiempo.","On any Event, tap “Create project” to build the timeline.","Em qualquer Evento, toque em «Criar projeto» para montar a linha do tempo.","בכל אירוע, לחצו על «יצירת פרויקט» כדי לבנות את ציר הזמן.")}</div>`;
+  const todos = projectPosts();
+  if(!todos.length){
+    return `<div class="empty-state"><div class="big">📋</div>${t("Todavía no hay proyectos.","There are no projects yet.","Ainda não há projetos.","עדיין אין פרויקטים.")}<br>${t("En cualquier Evento, tocá «Convertir en proyecto» (en el menú ⋯) para armar la línea de tiempo.","On any Event, tap “Turn into a project” (in the ⋯ menu) to build the timeline.","Em qualquer Evento, toque em «Converter em projeto» (no menu ⋯) para montar a linha do tempo.","בכל אירוע, לחצו על «להפוך לפרויקט» (בתפריט ⋯) כדי לבנות את ציר הזמן.")}</div>`;
   }
+  // Los en curso por lo que viene primero (su próximo hito); los
+  // completados, del que terminó más recientemente para atrás.
+  const enCurso = todos.filter(p=>!projectDone(p)).sort((a,b)=> projectSortKey(a).localeCompare(projectSortKey(b)));
+  const finDe = p => p.endDate || p.startDate || p.date || "";
+  const hechos = todos.filter(projectDone).sort((a,b)=> finDe(b).localeCompare(finDe(a)));
+  const filtro = state.proyectosFiltro === "hechos" ? "hechos" : "curso";
+  const vista = state.proyectosVista === "tarjetas" ? "tarjetas" : "linea";
+  const list = filtro === "hechos" ? hechos : enCurso;
+  const barra = `<div class="pl-toolbar">
+      <div class="subview-toggle">
+        <button type="button" data-action="proyectos-vista" data-key="linea" class="${vista==="linea"?"active":""}">${t("Línea de tiempo","Timeline","Linha do tempo","ציר זמן")}</button>
+        <button type="button" data-action="proyectos-vista" data-key="tarjetas" class="${vista==="tarjetas"?"active":""}">${t("Tarjetas","Cards","Cartões","כרטיסים")}</button>
+      </div>
+      <div class="rep-chips">
+        <button type="button" class="chip-toggle${filtro==="curso"?" active":""}" data-action="proyectos-filtro" data-key="curso">${t("En curso","Ongoing","Em curso","בעיצומם")} (${enCurso.length})</button>
+        <button type="button" class="chip-toggle${filtro==="hechos"?" active":""}" data-action="proyectos-filtro" data-key="hechos">${t("Completados","Completed","Concluídos","הושלמו")} (${hechos.length})</button>
+      </div>
+    </div>`;
+  const cuerpo = !list.length
+    ? `<div class="empty-state"><div class="big">📋</div>${filtro === "hechos"
+        ? t("Todavía no hay proyectos completados.","No completed projects yet.","Ainda não há projetos concluídos.","עדיין אין פרויקטים שהושלמו.")
+        : t("No hay proyectos en curso.","There are no ongoing projects.","Não há projetos em curso.","אין פרויקטים בעיצומם.")}</div>`
+    : vista === "linea" ? renderProyectosLinea(list) : renderProyectosTarjetas(list);
+  return barra + cuerpo + (filtro === "curso" ? renderHitosPorVencer() : "");
+}
+// Todos los proyectos en una sola línea de tiempo: una barra por
+// proyecto sobre una regla de meses, con sus hitos como rombos (verde
+// cumplido, ámbar por vencer, rojo vencido) y la marca de hoy. Antes
+// cada proyecto tenía su línea de tiempo adentro, pero para ver cuáles
+// se pisan había que abrirlos uno por uno.
+function renderProyectosLinea(list){
+  const today = todayISO();
+  const inicioDe = p => p.startDate || p.date;
+  const finDe = p => p.endDate && p.endDate >= inicioDe(p) ? p.endDate : inicioDe(p);
+  const mesesEntre = (a, b) => { const out = []; for(let m = a; m <= b; m = addMonthsISO(m, 1)) out.push(m); return out; };
+  // El rango: del primer inicio al último fin, meses completos en las
+  // puntas. Con más de 14 meses se acota alrededor de hoy (seis para
+  // atrás, ocho para adelante) y lo que sobra asoma por los bordes.
+  let from = list.map(inicioDe).reduce((a,b)=> a < b ? a : b).slice(0,7) + "-01";
+  let to = addDaysISO(addMonthsISO(list.map(finDe).reduce((a,b)=> a > b ? a : b).slice(0,7) + "-01", 1), -1);
+  let meses = mesesEntre(from, to);
+  if(meses.length > 14){
+    const hoyM = today.slice(0,7) + "-01";
+    from = addMonthsISO(hoyM, -6); to = addDaysISO(addMonthsISO(hoyM, 8), -1);
+    meses = mesesEntre(from, to);
+  }
+  const total = isoDate(to) - isoDate(from) + 86400000;
+  const pct = iso => { const d = iso < from ? from : iso > to ? to : iso; return (isoDate(d) - isoDate(from)) / total * 100; };
+  const hoyPct = today >= from && today <= to ? pct(today) : null;
+  const laneStyle = hoyPct != null ? ` style="--hoy:${hoyPct.toFixed(2)}%"` : "";
+  const cab = `<div class="pl-months">${meses.map(m=>`<span class="${m.slice(0,7)===today.slice(0,7)?"hoy":""}">${esc(fmtISO(m, { month:"short" }))}${(m.slice(5,7)==="01" || m===from) ? `<small>${m.slice(0,4)}</small>` : ""}</span>`).join("")}</div>`;
+  const filas = list.map(p=>{
+    const ms = postMilestones(p), done = ms.filter(m=>m.done).length;
+    const s = inicioDe(p), e = finDe(p);
+    const left = pct(s), width = Math.max(0.8, pct(addDaysISO(e, 1)) - left);
+    const color = calendarioColor(p);
+    const hitos = ms.filter(m=>m.date && m.date >= from && m.date <= to).map(m=>{
+      const st = milestoneStatus(m);
+      return `<span class="pl-diamond ${st}" style="left:${pct(m.date).toFixed(2)}%" title="${esc(m.label)} · ${esc(fmtDate(m.date))} · ${esc(milestoneStatusLabel(st))}"></span>`;
+    }).join("");
+    return `<div class="pl-row">
+        <button type="button" class="pl-name" data-action="project-open" data-post-id="${p.id}">
+          <b dir="auto">${esc(calendarioLabel(p))}</b>
+          <small>${ms.length ? t("{d} de {n} hitos","{d} of {n} milestones","{d} de {n} marcos","{d} מתוך {n} אבני דרך",{d:done,n:ms.length}) : t("Sin hitos todavía","No milestones yet","Sem marcos ainda","עדיין אין אבני דרך")}${projectDone(p) ? " · ✅" : ""}</small>
+        </button>
+        <div class="pl-lane"${laneStyle}>
+          <span class="pl-bar${s < from ? " pl-bar-antes" : ""}${e > to ? " pl-bar-despues" : ""}${p.cancelled ? " cancelled" : ""}" style="left:${left.toFixed(2)}%;width:${width.toFixed(2)}%;background:${color};color:${readableOn(color)}" title="${esc(fmtDate(s))} – ${esc(fmtDate(e))}">${esc(fmtISO(s,{day:"numeric",month:"short"}))} – ${esc(fmtISO(e,{day:"numeric",month:"short"}))}</span>
+          ${hitos}
+        </div>
+      </div>`;
+  }).join("");
+  const leyenda = `<div class="pl-leyenda">
+      <span><i class="pl-diamond done"></i>${t("Cumplido","Done","Cumprido","הושלם")}</span>
+      <span><i class="pl-diamond soon"></i>${t("Por vencer","Due soon","A vencer","בקרוב יפוג")}</span>
+      <span><i class="pl-diamond overdue"></i>${t("Vencido","Overdue","Vencido","באיחור")}</span>
+      <span><i class="pl-diamond upcoming"></i>${t("Pendiente","Pending","Pendente","ממתין")}</span>
+      ${hoyPct != null ? `<span><i class="pl-hoy-leyenda"></i>${t("Hoy","Today","Hoje","היום")}</span>` : ""}
+    </div>`;
+  return `<div class="pl-wrap"><div class="pl" style="--meses:${meses.length}">
+      <div class="pl-row pl-head"><div class="pl-name pl-name-head">${t("Proyecto","Project","Projeto","פרויקט")}</div><div class="pl-lane"${laneStyle}>${cab}</div></div>
+      ${filas}
+    </div></div>${leyenda}`;
+}
+// Lo que hay que mirar ya: los hitos vencidos, de hoy y por vencer de
+// todos los proyectos en curso, con el botón de darlos por cumplidos.
+function renderHitosPorVencer(){
+  const items = allMilestoneItems({ skipDone:true })
+    .filter(it => !it.milestone.done && ["overdue","today","soon"].includes(milestoneStatus(it.milestone)))
+    .sort((a,b)=> String(a.milestone.date||"").localeCompare(String(b.milestone.date||"")));
+  if(!items.length) return "";
+  return `<section class="pl-due">
+      <h3>◆ ${t("Hitos por vencer","Milestones coming due","Marcos a vencer","אבני דרך שמועדן מתקרב")}</h3>
+      ${items.map(it=>{
+        const m = it.milestone, st = milestoneStatus(m);
+        return `<div class="pl-due-row">
+          <span class="pl-diamond ${st}" aria-hidden="true"></span>
+          <div class="pl-due-txt">
+            <b dir="auto">${esc(m.label)}</b>
+            <small><span dir="auto">${esc(calendarioLabel(it.post))}</span> · ${esc(fmtDate(m.date))} · <span class="pl-st ${st}">${esc(milestoneStatusLabel(st))}</span>${ownerChips(msOwners(m))}</small>
+          </div>
+          <button type="button" class="btn-text-add" data-action="project-open" data-post-id="${it.post.id}">${t("Ver proyecto","View project","Ver projeto","הצגת פרויקט")}</button>
+          ${canManageProject(it.post) ? `<button type="button" class="btn-mini" data-action="ms-done" data-post-id="${it.post.id}" data-ms-id="${esc(m.id)}">✓ ${t("Marcar cumplido","Mark done","Marcar cumprido","סימון כהושלם")}</button>` : ""}
+        </div>`;
+      }).join("")}
+    </section>`;
+}
+function renderProyectosTarjetas(list){
   return `<div class="projects-grid">${list.map(p=>{
     const ms = postMilestones(p), done = ms.filter(m=>m.done).length, overdue = ms.filter(m=>milestoneStatus(m)==="overdue").length;
     const next = nextMilestone(p);
@@ -14637,6 +14808,12 @@ document.addEventListener("click", async e=>{
   },
     "project-manage": async (el, e, action, postId) => {
     projectOpen = postId; state.view = "proyectos"; render(); scrollToTop();
+  },
+    "proyectos-vista": async (el, e, action, postId) => {
+    state.proyectosVista = el.dataset.key; render();
+  },
+    "proyectos-filtro": async (el, e, action, postId) => {
+    state.proyectosFiltro = el.dataset.key; render();
   },
     "project-open": async (el, e, action, postId) => {
     projectOpen = postId; state.view = "proyectos"; render(); scrollToTop();
