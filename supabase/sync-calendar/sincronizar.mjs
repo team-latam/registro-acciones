@@ -89,7 +89,24 @@ async function rest(camino, opciones = {}){
   return texto ? JSON.parse(texto) : null;
 }
 
-const traerPosteos = async () => (await rest("posts?select=*")).map(aObjeto);
+// La API devuelve como máximo 1.000 filas por pedido (Settings → API →
+// Max rows). Pedidos de una, pasados los mil posteos el resto no llegaba,
+// y un evento cuyo posteo había quedado afuera se tomaba como nuevo: se
+// DUPLICABA. Se pide de a páginas ordenadas por id, hasta que una llega
+// vacía: así anda igual aunque alguien cambie ese tope en el panel.
+async function traerPosteos(){
+  const porId = new Map();
+  for(;;){
+    const pagina = await rest(`posts?select=*&order=id.asc&limit=1000&offset=${porId.size}`);
+    const antes = porId.size;
+    (pagina || []).forEach(f => porId.set(f.id, f));
+    // Una página vacía es el final. Una que no trae nada nuevo también: es
+    // un servidor que ignora el offset, y sin este corte se pedirían
+    // páginas para siempre.
+    if(porId.size === antes) break;
+  }
+  return [...porId.values()].map(aObjeto);
+}
 
 async function traerConfig(clave){
   const filas = await rest(`app_config?select=value&key=eq.${encodeURIComponent(clave)}`);
