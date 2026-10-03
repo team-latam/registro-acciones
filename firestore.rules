@@ -745,8 +745,36 @@ service cloud.firestore {
     // solo el admin lo puede escribir — reasignar un país de zona o
     // sumar una zona nueva es una decisión administrativa, no algo que
     // cualquiera deba poder tocar.
+    //
+    // Lo lee todo el equipo en cada carga, y el nombre y el color de cada
+    // zona terminan en cada tarjeta y en el mapa: no alcanza con que sean
+    // dos mapas. Hasta 20 zonas, cada una con nombre y color hex (lo único
+    // que la app escribe: el selector nativo y el campo HEX normalizan
+    // antes de guardar), y cada país apuntando a una zona QUE EXISTE —
+    // que además acota el largo de cada valor sin tener que recorrerlos.
+    //
+    // Barato a propósito: Firestore corta en 1.000 expresiones evaluadas
+    // por pedido (y una regla demasiado desenrollada ni compila: "too
+    // complex"). Medido con el emulador en pruebas/reglas/.
+    function isValidZone(z) {
+      return z is map && z.keys().hasOnly(['label', 'color']) &&
+        z.label is string && z.label.size() <= 60 &&
+        z.color is string && z.color.matches('^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$');
+    }
+    function isValidZoneAt(l, i) {
+      return i >= l.size() || isValidZone(l[i]);
+    }
     function isValidTerritoryConfig(d) {
-      return d.zones is map && d.countryZones is map;
+      let zs = d.zones.values();
+      return d.keys().hasOnly(['zones', 'countryZones']) &&
+        d.zones is map && d.zones.size() >= 1 && d.zones.size() <= 20 &&
+        isValidZoneAt(zs, 0) && isValidZoneAt(zs, 1) && isValidZoneAt(zs, 2) && isValidZoneAt(zs, 3) &&
+        isValidZoneAt(zs, 4) && isValidZoneAt(zs, 5) && isValidZoneAt(zs, 6) && isValidZoneAt(zs, 7) &&
+        isValidZoneAt(zs, 8) && isValidZoneAt(zs, 9) && isValidZoneAt(zs, 10) && isValidZoneAt(zs, 11) &&
+        isValidZoneAt(zs, 12) && isValidZoneAt(zs, 13) && isValidZoneAt(zs, 14) && isValidZoneAt(zs, 15) &&
+        isValidZoneAt(zs, 16) && isValidZoneAt(zs, 17) && isValidZoneAt(zs, 18) && isValidZoneAt(zs, 19) &&
+        d.countryZones is map && d.countryZones.size() <= 60 &&
+        d.countryZones.values().hasOnly(d.zones.keys());
     }
     match /meta/territoryConfig {
       allow read: if isAdmin();
@@ -763,9 +791,41 @@ service cloud.firestore {
     // aprobados lo LEEN (afecta a todo el mundo: tipos disponibles,
     // sugerencias de lugar, a qué Calendar se sincroniza, límites de
     // adjuntos), pero solo el admin lo escribe.
+    //
+    // Los tipos de actividad los lee todo el equipo en cada carga y se
+    // dibujan en cada tarjeta. Hasta 20, cada uno con la forma exacta que
+    // escribe la app desde su primera versión (key, label, icon,
+    // calendarSync y, después, docs) y la clave con la misma forma que
+    // exige un posteo (slugifyKey → [a-z0-9]). Los documentos esperados
+    // de cada tipo se CUENTAN (hasta 10, como en la pantalla) pero no se
+    // recorren uno por uno: eso multiplicaba por diez el costo y pasaba
+    // el tope de 1.000 expresiones con una configuración normal.
+    function isValidActivityType(t) {
+      return t is map &&
+        t.keys().hasOnly(['key', 'label', 'icon', 'calendarSync', 'docs']) &&
+        t.key is string && t.key.matches('^[a-z0-9]{1,40}$') &&
+        t.label is string && t.label.size() <= 60 &&
+        t.get('icon', '') is string && t.get('icon', '').size() <= 16 &&
+        t.get('calendarSync', false) is bool &&
+        t.get('docs', []) is list && t.get('docs', []).size() <= 10;
+    }
+    function isValidActivityTypeAt(l, i) {
+      return i >= l.size() || isValidActivityType(l[i]);
+    }
+    function isValidActivityTypes(l) {
+      return l is list && l.size() <= 20 &&
+        isValidActivityTypeAt(l, 0) && isValidActivityTypeAt(l, 1) && isValidActivityTypeAt(l, 2) &&
+        isValidActivityTypeAt(l, 3) && isValidActivityTypeAt(l, 4) && isValidActivityTypeAt(l, 5) &&
+        isValidActivityTypeAt(l, 6) && isValidActivityTypeAt(l, 7) && isValidActivityTypeAt(l, 8) &&
+        isValidActivityTypeAt(l, 9) && isValidActivityTypeAt(l, 10) && isValidActivityTypeAt(l, 11) &&
+        isValidActivityTypeAt(l, 12) && isValidActivityTypeAt(l, 13) && isValidActivityTypeAt(l, 14) &&
+        isValidActivityTypeAt(l, 15) && isValidActivityTypeAt(l, 16) && isValidActivityTypeAt(l, 17) &&
+        isValidActivityTypeAt(l, 18) && isValidActivityTypeAt(l, 19);
+    }
     function isValidPreferences(d) {
-      return (d.get('activityTypes', null) == null || d.activityTypes is list) &&
-        (d.get('extraCities', null) == null || d.extraCities is map) &&
+      return (d.get('activityTypes', null) == null || isValidActivityTypes(d.activityTypes)) &&
+        // Ciudades sumadas a mano, por país: tantos países como hay.
+        (d.get('extraCities', null) == null || (d.extraCities is map && d.extraCities.size() <= 60)) &&
         isOptionalString(d.get('calendarId', null), 200) &&
         // Desde cuándo se importa el historial del Calendar (YYYY-MM-DD o
         // vacío/null = todo).

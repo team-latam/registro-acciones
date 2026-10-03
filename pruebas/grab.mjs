@@ -131,3 +131,29 @@ export function hacerGrab(src){
     throw new Error("no cerró " + name);
   };
 }
+
+// El cuerpo de un handler de la tabla de acciones del despachador, tal
+// cual está en index.html. Una prueba que se escribe su propio handler no
+// prueba el que aprieta la gente. Gemelo de cuerpo_click() en
+// extractor.py, con la misma expresión: extractor_test.mjs exige que los
+// dos saquen lo mismo de cada handler del archivo.
+export function hacerCuerpoClick(src){
+  return function cuerpoClick(nombre){
+    const literal = nombre.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const m = new RegExp(`"${literal}": async \\(el, e, action, postId\\) => \\{\\n([\\s\\S]*?)\\n  \\},\\n`).exec(src);
+    if(!m) throw new Error("no se encontró el handler " + nombre);
+    return m[1];
+  };
+}
+
+// El cuerpo de un listener sin nombre (el submit de un formulario, por
+// ejemplo): desde la { que cierra `cabeza` hasta la que la cierra, con el
+// mismo recorrido que usa grab(). Solo existe en JavaScript: ningún
+// armador de Python lo necesita.
+export function cuerpoDeListener(src, cabeza){
+  const i = src.indexOf(cabeza);
+  if(i < 0) throw new Error("no se encontró " + cabeza);
+  const abre = i + cabeza.length - 1;
+  for(const [j, c, prof] of recorrer(src, abre)) if(c === "}" && prof === 0) return src.slice(abre + 1, j);
+  throw new Error("no cerró " + cabeza);
+}
