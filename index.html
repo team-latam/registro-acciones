@@ -3972,19 +3972,16 @@ function tsToMillis(ts){
   return isNaN(dt) ? 0 : dt.getTime();
 }
 
-// "Notificaciones" de @menciones: sin backend pago (Cloud Functions/Blaze),
-// solo un indicador dentro de la app. Se guarda en localStorage (por
-// dispositivo/navegador, no sincroniza entre aparatos) cuándo fue la
-// última vez que la persona abrió el menú del avatar, y se cuenta cuántas
-// menciones a su email son más nuevas que eso.
+// "Notificaciones" de @menciones: un indicador dentro de la app. Se guarda
+// cuándo fue la última vez que la persona abrió la campanita, y se cuenta
+// cuántas menciones a su email son más nuevas que eso. Va en sus
+// preferencias (ver marcaVista más abajo), así lo que ya vio en la compu
+// tampoco le aparece como nuevo en el celular.
 const MENTIONS_SEEN_KEY = "mentionsSeenAt";
 const REPLIES_SEEN_KEY = "repliesSeenAt";
 const CHANGES_SEEN_KEY = "changesSeenAt";
-// Guardado por email (no una sola clave global): si dos cuentas distintas
-// comparten el mismo navegador, "ya vistas" de una no debe ocultar (ni
-// inventar) menciones nuevas para la otra.
-// Mismo mecanismo que las marcas del Calendar (ver perUserStorageKey más
-// abajo): clave por email en localStorage con la hora en que se vio.
+// Mismo mecanismo que las marcas del Calendar (ver getPerUserTs más
+// abajo).
 function getMentionsSeenAt(){ return getPerUserTs(MENTIONS_SEEN_KEY); }
 function getRepliesSeenAt(){ return getPerUserTs(REPLIES_SEEN_KEY); }
 function getChangesSeenAt(){ return getPerUserTs(CHANGES_SEEN_KEY); }
@@ -4008,8 +4005,8 @@ function markMentionsSeen(){
   markPerUserTs(MENTIONS_SEEN_KEY, latest || Date.now());
 }
 
-// Aviso de "revisá tu correo, te compartimos el Calendar": localStorage
-// por dispositivo (mismo patrón que las "vistas" de @menciones), comparado
+// Aviso de "revisá tu correo, te compartimos el Calendar": una marca de
+// "visto" (mismo patrón que las de @menciones), comparada
 // contra calendarInviteSentAt (que shareCalendarWith pisa en cada envío o
 // reenvío) — sin backend ni tener que escribir en el propio documento de
 // allowlist (que solo el admin puede escribir).
@@ -4039,38 +4036,85 @@ const UPCOMING_SEEN_KEY = "upcomingSeenIds";
 // apenas se abre la campanita, pero SIGUE adentro con su "Ya la acepté"
 // — es una tarea pendiente, no una novedad que se lee y se olvida.
 const CALENDAR_INVITE_SEEN_KEY = "calendarInviteBellSeenAt";
+// Dónde vive cada marca de "visto". En las preferencias de la persona
+// (una clave por marca, así guardar una no pisa las otras: el guardado
+// mezcla de a claves de primer nivel), que llegan a todos sus aparatos.
+// Con Firebase no había forma barata de hacerlo y quedaban en el
+// localStorage de cada navegador: lo visto en la compu seguía saliendo
+// como nuevo en el celular.
+//
+// El localStorage sigue, como copia: trae las marcas de antes del cambio
+// (se toma la más nueva de las dos) y cubre un guardado que falle.
+// Guardado por email (no una sola clave global): si dos cuentas distintas
+// comparten el mismo navegador, "ya vistas" de una no debe ocultar (ni
+// inventar) menciones nuevas para la otra.
 function perUserStorageKey(prefix){
   const email = state.auth.user && state.auth.user.email;
   return email ? `${prefix}:${email}` : null;
 }
+function marcaVista(prefix){ return "visto_" + prefix; }
+// Se juntan las marcas de un mismo momento (abrir la campanita mueve
+// cinco) y van en una sola escritura. Sin aviso si falla: la copia local
+// ya quedó, y un cartel de error por una marca de "visto" sería ruido.
+let vistosPorGuardar = null;
+function guardarVisto(prefix, value){
+  state.prefs = { ...prefs(), [marcaVista(prefix)]: value };
+  const email = state.auth.user && state.auth.user.email;
+  if(!email || !store) return;
+  if(!vistosPorGuardar){
+    vistosPorGuardar = {};
+    setTimeout(()=>{
+      const parche = vistosPorGuardar;
+      vistosPorGuardar = null;
+      store.userPrefs.merge(email, parche).catch(err=> console.error("No se pudo guardar qué se vio:", err));
+    }, 0);
+  }
+  vistosPorGuardar[marcaVista(prefix)] = value;
+}
 function getPerUserTs(prefix){
   const key = perUserStorageKey(prefix);
   if(!key) return 0;
-  try{ return Number(localStorage.getItem(key)) || 0; }catch(e){ return 0; }
+  const deLaCuenta = Number(prefs()[marcaVista(prefix)]) || 0;
+  let local = 0;
+  try{ local = Number(localStorage.getItem(key)) || 0; }catch(e){}
+  return Math.max(deLaCuenta, local);
 }
-// Mismo mecanismo, pero para una lista de ids en vez de una hora.
+// Mismo mecanismo, pero para una lista de ids en vez de una hora. Con un
+// tope: es una fila que se baja en cada carga.
+const MAX_IDS_VISTOS = 300;
 function markPerUserIds(prefix, ids){
   const key = perUserStorageKey(prefix);
   if(!key) return;
-  try{ localStorage.setItem(key, JSON.stringify(ids)); }catch(e){}
+  const lista = ids.slice(0, MAX_IDS_VISTOS);
+  try{ localStorage.setItem(key, JSON.stringify(lista)); }catch(e){}
+  const antes = prefs()[marcaVista(prefix)];
+  if(Array.isArray(antes) && antes.length === lista.length && antes.every((id,i)=> id === lista[i])) return;
+  guardarVisto(prefix, lista);
 }
 function getPerUserIds(prefix){
   const key = perUserStorageKey(prefix);
   if(!key) return new Set();
+  const deLaCuenta = prefs()[marcaVista(prefix)];
+  const out = new Set(Array.isArray(deLaCuenta) ? deLaCuenta : []);
   try{
     const raw = JSON.parse(localStorage.getItem(key) || "[]");
-    return new Set(Array.isArray(raw) ? raw : []);
-  }catch(e){ return new Set(); }
+    if(Array.isArray(raw)) raw.forEach(id=> out.add(id));
+  }catch(e){}
+  return out;
 }
 // `value` es el timestamp DEL DATO que se marca como visto (la hora de la
 // invitación, la mención más nueva), no Date.now(): la comparación es
 // contra horas del servidor, y con el reloj del dispositivo atrasado un
 // "ahora" local quedaba antes que el dato y el popup/la campanita
 // volvían a aparecer en loop.
+// Nunca hacia atrás: un aparato con los datos menos al día no le puede
+// devolver como "nuevo" a los demás lo que ya se vio en otro.
 function markPerUserTs(prefix, value){
   const key = perUserStorageKey(prefix);
   if(!key) return;
-  try{ localStorage.setItem(key, String(value || Date.now())); }catch(e){}
+  const nuevo = Math.max(Number(value) || Date.now(), getPerUserTs(prefix));
+  try{ localStorage.setItem(key, String(nuevo)); }catch(e){}
+  if((Number(prefs()[marcaVista(prefix)]) || 0) !== nuevo) guardarVisto(prefix, nuevo);
 }
 function myCalendarInviteTs(){ return tsToMillis(myRosterEntry()?.calendarInviteSentAt) || Date.now(); }
 function markCalendarInvitePopupSeen(){ markPerUserTs(CALENDAR_INVITE_POPUP_SEEN_KEY, myCalendarInviteTs()); }
@@ -7453,11 +7497,10 @@ function subscribeData(){
 
 // Toda escritura de posteos y respuestas pasa por acá.
 async function createPost(data){
-  const id = await store.posts.create(data);
-  // Queda en el registro de actividad quién cargó qué (lo que llega
-  // desde el Calendar no pasa por acá: no lo cargó una persona).
-  logAudit("post_created", { detail: resumenDePosteo(data) });
-  return id;
+  // Quién cargó qué lo anota la base sola en el registro de actividad
+  // (registrar_posteo, en supabase/04-funciones.sql), igual que las
+  // ediciones, las cancelaciones y los borrados.
+  return store.posts.create(data);
 }
 async function createReply(postId, data){
   await store.replies.create(postId, data);
@@ -8404,7 +8447,6 @@ async function updatePostAndSync(postId, original, newData){
   // invitaciones nuevas para todos — de algo que el equipo canceló.
   const skipCalendar = !!original.cancelled;
   await updatePostDoc(postId, parcheDeEdicion(original, newData));
-  logAudit("post_edited", { detail: resumenDePosteo(newData) });
 
   const summary = buildEditSummary(original, newData);
   if(summary){
@@ -8458,7 +8500,6 @@ async function deletePostHard(post){
   try{
     await Promise.all(replies.map(r=> store.replies.remove(post.id, r.id)));
     await store.posts.remove(post.id);
-    logAudit("post_deleted", { detail: resumenDePosteo(post) });
     let calMsg = "";
     if(post.calendarEventId){
       const res = await deleteCalendarEvent(post.calendarEventId);
@@ -8485,7 +8526,6 @@ async function cancelPost(post){
   ), { danger:true, okLabel: t("Cancelar evento","Cancel event","Cancelar evento","ביטול האירוע") }))) return;
   try{
     await updatePostDoc(post.id, { cancelled:true, lastEditedAt: store.horaDelServidor(), lastEditedBy: state.auth.user.displayName, lastEditedByEmail: state.auth.user.email });
-    logAudit("post_edited", { detail: resumenDePosteo(post, t("(cancelado)","(cancelled)","(cancelado)","(בוטל)")) });
     await createReply(post.id, {
       authorName: state.auth.user.displayName, authorEmail: state.auth.user.email,
       content: t("🚫 {n} canceló este evento.","🚫 {n} cancelled this event.","🚫 {n} cancelou este evento.","🚫 {n} ביטל/ה את האירוע הזה.",{n:state.auth.user.displayName}), system:true, icon:"🚫",
@@ -9986,19 +10026,16 @@ function auditLabels(){
     access_revoked: { icon:"⛔", filterLabel:t("Revocó","Revoked","Revogou","ביטל/ה"), text: e => t("{n} revocó el acceso de {target}.","{n} revoked {target}'s access.","{n} revogou o acesso de {target}.","{n} ביטל/ה את הגישה של {target}.",{n:e.actorName,target:e.targetEmail}) },
     calendar_shared: { icon:"📅", filterLabel:t("Compartió Calendar","Shared Calendar","Compartilhou Calendar","שיתף/ה יומן"), text: e => t("{n} compartió el Calendar con {target}.","{n} shared the Calendar with {target}.","{n} compartilhou o Calendar com {target}.","{n} שיתף/ה את היומן עם {target}.",{n:e.actorName,target:e.targetEmail}) },
     calendar_unshared: { icon:"📅", filterLabel:t("Sacó del Calendar","Removed from Calendar","Tirou do Calendar","הסיר/ה מהיומן"), text: e => t("{n} sacó a {target} del Calendar.","{n} removed {target} from the Calendar.","{n} tirou {target} do Calendar.","{n} הסיר/ה את {target} מהיומן.",{n:e.actorName,target:e.targetEmail}) },
-    // Lo que cada uno hace con los posteos (ver resumenDePosteo): el
-    // posteo va en `detail`, porque un posteo borrado ya no se puede mirar.
+    // Lo que cada uno hace con los posteos: lo anota la base sola
+    // (registrar_posteo, en supabase/04-funciones.sql), con «título» y
+    // tipo en `detail`, porque un posteo borrado ya no se puede mirar.
+    // Hasta el 3/10/2026 una cancelación se anotaba como edición con
+    // "(cancelado)" al final: esas entradas viejas quedan así.
     post_created: { icon:"✍️", filterLabel:t("Cargó","Logged","Carregou","רשם/ה"), text: e => t("{n} cargó {d}.","{n} logged {d}.","{n} carregou {d}.","{n} רשם/ה את {d}.",{n:e.actorName,d:e.detail || t("un posteo","a post","uma postagem","פוסט")}) },
     post_edited: { icon:"✏️", filterLabel:t("Editó","Edited","Editou","ערך/ה"), text: e => t("{n} editó {d}.","{n} edited {d}.","{n} editou {d}.","{n} ערך/ה את {d}.",{n:e.actorName,d:e.detail || t("un posteo","a post","uma postagem","פוסט")}) },
+    post_cancelled: { icon:"🚫", filterLabel:t("Canceló","Cancelled","Cancelou","ביטל/ה"), text: e => t("{n} canceló {d}.","{n} cancelled {d}.","{n} cancelou {d}.","{n} ביטל/ה את {d}.",{n:e.actorName,d:e.detail || t("un posteo","a post","uma postagem","פוסט")}) },
     post_deleted: { icon:"🗑️", filterLabel:t("Borró","Deleted","Apagou","מחק/ה"), text: e => t("{n} borró {d}.","{n} deleted {d}.","{n} apagou {d}.","{n} מחק/ה את {d}.",{n:e.actorName,d:e.detail || t("un posteo","a post","uma postagem","פוסט")}) },
   };
-}
-// Cómo se nombra un posteo en el registro de actividad: «título o
-// primeras palabras» y el tipo. Corto, porque va en una columna de texto.
-function resumenDePosteo(p, extra){
-  const ty = ACTIVITY_BY_KEY[p.activityType];
-  const titulo = String(p.title || p.content || "").replace(/\s+/g, " ").trim().slice(0, 80) || t("Sin título","Untitled","Sem título","ללא כותרת");
-  return `«${titulo}»${ty ? ` (${ty.label})` : ""}${extra ? ` ${extra}` : ""}`;
 }
 // Paginado de a 30 (ver botón "Ver más" más abajo) en vez de mostrar toda
 // la lista de una — con meses de uso esto puede ser larguísimo. Vive

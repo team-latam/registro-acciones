@@ -268,18 +268,14 @@ select lab.probar('lo que registra un admin no tiene ese límite', lab.como('ana
      insert into public.audit_log(id, type, actor_email, actor_name, target_email) values ('t2','role_changed','ana@x.com','Ana','obs@x.com')$q$, true);
 
 -- ---------- LO QUE CADA UNO HACE CON LOS POSTEOS ----------
--- Un integrante anota que cargó, editó o borró un posteo (sobre sí
--- mismo); quien solo mira (observador) o no está en el equipo, no.
-select lab.probar('un integrante anota que cargó un posteo', lab.como('juan@x.com'),
-  $q$insert into public.audit_log(id, type, actor_email, actor_name, detail) values ('pc1','post_created','juan@x.com','Juan','«Evento de Juan»')$q$, true);
-select lab.probar('y que lo editó y lo borró', lab.como('juan@x.com'),
+-- Quién cargó, editó, canceló o borró un posteo lo anota solo la base
+-- (ver 97-registro-de-posteos.sql): a mano no lo escribe nadie.
+select lab.probar('un integrante NO anota a mano que cargó un posteo', lab.como('juan@x.com'),
+  $q$insert into public.audit_log(id, type, actor_email, actor_name, detail) values ('pc1','post_created','juan@x.com','Juan','«Evento de Juan»')$q$, false);
+select lab.probar('ni que lo editó o lo borró', lab.como('juan@x.com'),
   $q$insert into public.audit_log(id, type, actor_email, actor_name, detail) values ('pc2','post_edited','juan@x.com','Juan','«Evento de Juan»');
-     insert into public.audit_log(id, type, actor_email, actor_name, detail) values ('pc3','post_deleted','juan@x.com','Juan','«Evento de Juan»')$q$, true);
-select lab.probar('pero NO a nombre de otro', lab.como('juan@x.com'),
-  $q$insert into public.audit_log(id, type, actor_email, actor_name, detail) values ('pc4','post_created','ana@x.com','Ana','x')$q$, false);
-select lab.probar('ni apuntando a otra persona', lab.como('juan@x.com'),
-  $q$insert into public.audit_log(id, type, actor_email, actor_name, target_email) values ('pc5','post_created','juan@x.com','Juan','ana@x.com')$q$, false);
-select lab.probar('un observador NO (no carga posteos)', lab.como('obs@x.com'),
+     insert into public.audit_log(id, type, actor_email, actor_name, detail) values ('pc3','post_deleted','juan@x.com','Juan','«Evento de Juan»')$q$, false);
+select lab.probar('un observador tampoco', lab.como('obs@x.com'),
   $q$insert into public.audit_log(id, type, actor_email, actor_name) values ('pc6','post_created','obs@x.com','Obs')$q$, false);
 select lab.probar('alguien de afuera tampoco', lab.como('intruso@x.com'),
   $q$insert into public.audit_log(id, type, actor_email, actor_name) values ('pc7','post_created','intruso@x.com','I')$q$, false);

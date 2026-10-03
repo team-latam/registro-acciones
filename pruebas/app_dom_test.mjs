@@ -363,7 +363,7 @@ const hasta = async (p, fn, arg, ms = 5000) => {
     const prefs = (await base()).user_prefs.find(f => f.email === ADMIN);
     eq("admin: la preferencia queda guardada en la base", prefs && prefs.prefs.weekStart, 1);
     eq("admin: por la función de la base, sin decir de quién (sale de la sesión)",
-       (await rpc()).filter(r => r[0] === "guardar_preferencias").map(r => Object.keys(r[1])), [["p_parche"]]);
+       (await rpc()).filter(r => r[0] === "guardar_preferencias" && "weekStart" in r[1].p_parche).map(r => Object.keys(r[1])), [["p_parche"]]);
   }
 
   // Publicar una rutina, como se hace todos los días.
@@ -376,11 +376,12 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   const fila = (await base()).posts.find(x => x.content === "Visita a la escuela del barrio") || {};
   eq("admin: como rutina, a su nombre", [fila.activity_type, fila.author_email], ["rutina", ADMIN]);
   eq("admin: y aparece en el Feed sin recargar", await esperarTexto(p, "Visita a la escuela del barrio", 3000), true);
-  // Y queda en el registro de actividad quién la cargó (tanda 11).
-  await hasta(p, () => (window.__sb.tablas.audit_log || []).some(a => a.type === "post_created"));
-  const anotada = (await base()).audit_log.find(a => a.type === "post_created") || {};
-  eq("admin: el registro de actividad anota que la cargó, con su título y tipo",
-    [anotada.actor_email, anotada.detail], [ADMIN, "«Visita a la escuela del barrio» (Rutina)"]);
+  // Quién la cargó lo anota la base sola (registrar_posteo, probado en
+  // supabase/pruebas/97-registro-de-posteos.sql): la app ya no escribe
+  // esa entrada, ni podría (la base se la rechaza).
+  await new Promise(r => setTimeout(r, 300));
+  eq("admin: la app no anota a mano la carga en el registro (lo hace la base)",
+    ((await base()).audit_log || []).filter(a => /^post_/.test(a.type)).length, 0);
 
   // Me gusta en un posteo de otro.
   const boton = await p.$('button[data-action="toggle-like"][data-post-id="p_reunion"]:not([data-reply-id])');
@@ -428,7 +429,7 @@ const hasta = async (p, fn, arg, ms = 5000) => {
 /* ---------- Un integrante común ---------- */
 {
   // El admin editó la Reunión de Ana hace unas horas (tanda 17).
-  const { p, errores } = await entrar("ana@x.com", "Ana Pérez", base => {
+  const { p, errores, base } = await entrar("ana@x.com", "Ana Pérez", base => {
     base.posts[0].last_edited_at = hace(0.2); base.posts[0].last_edited_by = "Benny"; base.posts[0].last_edited_by_email = ADMIN;
   });
   eq("integrante: entra y ve los posteos", await esperarTexto(p, "Programa de becas"), true);
@@ -453,6 +454,12 @@ const hasta = async (p, fn, arg, ms = 5000) => {
     await p.evaluate(() => [[...document.querySelectorAll(".mentions-menu .bell-section")].map(e => e.textContent).includes("Cambios en tus eventos"),
       /Editó/.test(document.querySelector(".mentions-menu").textContent), !!document.querySelector('.bell-filtros [data-key="cambios"]')]), [true, true, true]);
   await p.click('[data-action="toggle-mentions-menu"]');
+  // Lo visto queda en su cuenta, no solo en este navegador: así en el
+  // celular tampoco le aparece como nuevo.
+  await hasta(p, () => (window.__sb.tablas.user_prefs || []).some(f => f.email === "ana@x.com" && f.prefs.visto_changesSeenAt));
+  const vistos = ((await base()).user_prefs.find(f => f.email === "ana@x.com") || {}).prefs || {};
+  eq("campanita: lo visto se guarda en la cuenta (vale en todos sus aparatos)",
+    ["visto_mentionsSeenAt", "visto_repliesSeenAt", "visto_changesSeenAt", "visto_upcomingSeenIds"].every(k => k in vistos), true);
   await p.click('[data-action="toggle-user-menu"]');
   eq("integrante: el menú del avatar no ofrece Administración", !!(await p.$('.user-menu [data-action="goto-view"][data-view="admin"]')), false);
   await p.click('.user-menu [data-action="goto-view"][data-view="configuracion"]');

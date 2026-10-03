@@ -24,6 +24,7 @@ function grab(name){
   throw new Error("no cerró " + name);
 }
 const code = ["UPCOMING_SEEN_KEY","CALENDAR_INVITE_SEEN_KEY","perUserStorageKey",
+  "marcaVista","vistosPorGuardar","guardarVisto","MAX_IDS_VISTOS",
   "markPerUserTs","getPerUserTs","markPerUserIds","getPerUserIds",
   "getUnseenUpcomingCount","markUpcomingSeen","hasUnseenCalendarInvite","markCalendarInviteSeen"].map(grab).join("\n");
 
@@ -38,7 +39,12 @@ function nuevoStorage(rompe){
     _map: m,
   };
 }
-const ctx = { state:{ auth:{ user:{ email:"benny@team-latam.com" } } }, localStorage:nuevoStorage(false),
+// Las marcas van también a las preferencias de la cuenta (state.prefs, que
+// en la app llegan de la base a todos los aparatos de la persona). `store`
+// anota lo que se mandó a guardar.
+const guardados = [];
+const ctx = { state:{ auth:{ user:{ email:"benny@team-latam.com" } }, prefs:{} }, localStorage:nuevoStorage(false),
+  store:{ userPrefs:{ merge: async (email, parche) => { guardados.push([email, parche]); } } },
   __upcoming: [], __inviteTs: 0, __inviteActivo: false };
 const api = new Function("ctx", `
   const state = ctx.state;
@@ -50,11 +56,14 @@ const api = new Function("ctx", `
     getItem: k => ctx.localStorage.getItem(k),
     setItem: (k,v) => ctx.localStorage.setItem(k,v),
   };
+  function prefs(){ return ctx.state.prefs; }
+  const store = ctx.store;
   function upcomingEvents(){ return ctx.__upcoming; }
   function myCalendarInviteTs(){ return ctx.__inviteTs; }
   function hasActiveCalendarInviteNotice(){ return ctx.__inviteActivo; }
   ${code}
-  return { getUnseenUpcomingCount, markUpcomingSeen, hasUnseenCalendarInvite, markCalendarInviteSeen, getPerUserIds };
+  return { getUnseenUpcomingCount, markUpcomingSeen, hasUnseenCalendarInvite, markCalendarInviteSeen, getPerUserIds,
+           getPerUserTs, markPerUserTs };
 `)(ctx);
 
 let pass=0, fail=0;
@@ -97,12 +106,14 @@ ctx.__inviteActivo = false;
 eq("si ya no hay invitación, no suma", api.hasUnseenCalendarInvite(), false);
 
 // ---- cada cuenta tiene su propia marca en el mismo navegador ----
+// (Las preferencias son de cada cuenta: al entrar otra, llegan las suyas.)
 ctx.__upcoming = [{ id:"x" }];
-ctx.state.auth.user.email = "otra@team-latam.com";
+const prefsDeBenny = ctx.state.prefs;
+ctx.state.auth.user.email = "otra@team-latam.com"; ctx.state.prefs = {};
 eq("otra cuenta arranca sin nada visto", api.getUnseenUpcomingCount(), 1);
 api.markUpcomingSeen();
 eq("y la marca es suya", api.getUnseenUpcomingCount(), 0);
-ctx.state.auth.user.email = "benny@team-latam.com";
+ctx.state.auth.user.email = "benny@team-latam.com"; ctx.state.prefs = prefsDeBenny;
 eq("no le pisa la marca a la primera", api.getUnseenUpcomingCount(), 1);
 
 // ---- sin sesión no se guarda nada ----
@@ -116,14 +127,54 @@ ctx.state.auth.user = { email:"benny@team-latam.com" };
 ctx.localStorage = nuevoStorage(true);
 eq("con el almacenamiento bloqueado, cuenta todo como no visto", api.getUnseenUpcomingCount(), 1);
 api.markUpcomingSeen();
-eq("y marcar no tira error", api.getUnseenUpcomingCount(), 1);
+eq("y marcar no tira error, y queda en la cuenta igual", api.getUnseenUpcomingCount(), 0);
 ctx.localStorage = nuevoStorage(false);
+ctx.state.prefs = {};
 
 // ---- basura guardada a mano no rompe ----
 ctx.localStorage.setItem("upcomingSeenIds:benny@team-latam.com", "{no es json");
 eq("un valor corrupto se ignora", api.getUnseenUpcomingCount(), 1);
 ctx.localStorage.setItem("upcomingSeenIds:benny@team-latam.com", '{"a":1}');
 eq("un json que no es lista, también", api.getUnseenUpcomingCount(), 1);
+
+// ---- lo visto en un aparato vale en los demás ----
+// Con Firebase las marcas vivían solo en el localStorage de cada
+// navegador: lo leído en la compu seguía como nuevo en el celular.
+await new Promise(r => setTimeout(r, 0));
+guardados.length = 0;
+ctx.state.prefs = {}; ctx.localStorage = nuevoStorage(false);
+ctx.__upcoming = [{ id:"m" }, { id:"n" }];
+api.markUpcomingSeen();
+ctx.__inviteActivo = true; ctx.__inviteTs = 5000;
+api.markCalendarInviteSeen();
+await new Promise(r => setTimeout(r, 0));
+eq("las marcas de un mismo momento van a la cuenta en una sola escritura", guardados.length, 1);
+eq("cada una con su clave, para no pisar a las otras", guardados[0] && guardados[0][0] === "benny@team-latam.com" && guardados[0][1],
+   { visto_upcomingSeenIds:["m","n"], visto_calendarInviteBellSeenAt:5000 });
+// El celular: otro localStorage, vacío, pero con las preferencias de la cuenta.
+ctx.localStorage = nuevoStorage(false);
+ctx.state.prefs = { ...guardados[0][1] };
+eq("en otro aparato, lo que se viene ya visto no suma", api.getUnseenUpcomingCount(), 0);
+eq("ni la invitación", api.hasUnseenCalendarInvite(), false);
+guardados.length = 0;
+api.markUpcomingSeen();
+await new Promise(r => setTimeout(r, 0));
+eq("marcar lo mismo otra vez no vuelve a escribir", guardados.length, 0);
+
+// Las marcas de antes del cambio (solo locales) siguen valiendo.
+ctx.state.prefs = {};
+ctx.localStorage.setItem("mentionsSeenAt:benny@team-latam.com", "7000");
+eq("una marca vieja del navegador cuenta", api.getPerUserTs("mentionsSeenAt"), 7000);
+ctx.state.prefs = { visto_mentionsSeenAt: 9000 };
+eq("si la cuenta tiene una más nueva, manda esa", api.getPerUserTs("mentionsSeenAt"), 9000);
+// Un aparato con los datos menos al día no le devuelve "nuevo" al resto.
+guardados.length = 0;
+api.markPerUserTs("mentionsSeenAt", 8000);
+await new Promise(r => setTimeout(r, 0));
+eq("una marca nunca va para atrás", [api.getPerUserTs("mentionsSeenAt"), guardados.length], [9000, 0]);
+api.markPerUserTs("mentionsSeenAt", 9500);
+await new Promise(r => setTimeout(r, 0));
+eq("y una más nueva sí se guarda", guardados.map(g => g[1]), [{ visto_mentionsSeenAt:9500 }]);
 
 console.log(`\n${pass} pasaron, ${fail} fallaron`);
 process.exit(fail ? 1 : 0);

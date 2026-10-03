@@ -245,3 +245,124 @@ $$;
 -- desde el navegador: hay que sacárselo explícitamente.
 revoke execute on function public.limpieza_del_bucket(integer, integer, date) from public, anon, authenticated;
 grant execute on function public.limpieza_del_bucket(integer, integer, date) to service_role;
+
+
+-- ============================================================
+-- Quién cargó, editó, canceló o borró cada posteo
+-- ============================================================
+-- Lo anota la base, al escribir el posteo. Hasta el 3 de octubre de 2026
+-- lo anotaba la app con un segundo pedido (con Firebase no había otra:
+-- no había código del lado del servidor sin pasar al plan pago), y eso
+-- tenía dos agujeros: si la pestaña se cerraba entre una escritura y la
+-- otra, el cambio quedaba sin anotar; y quien escribiera directo a la
+-- base podía no anotar nada, o anotar algo que no hizo. Ahora la entrada
+-- sale de la misma escritura, y nadie más que la base puede escribir
+-- estos tipos (ver audit_crear en 02-politicas.sql).
+--
+-- Solo lo que hace una persona: lo que trae el sincronizador nocturno no
+-- lo cargó nadie. Por la misma razón, lo que el navegador trae solo
+-- desde Google Calendar tampoco cuenta: llega a nombre de "Google
+-- Calendar" (lo creado, con author_email vacío; lo editado, con
+-- last_edited_by = 'Google Calendar').
+
+-- Cómo se nombra un posteo: «título o primeras palabras» y el tipo, igual
+-- que lo hacía la app (resumenDePosteo). El nombre del tipo, el que eligió
+-- el equipo en Configuración; si no lo cambió nunca, el de fábrica.
+create or replace function public.resumen_de_posteo(p jsonb) returns text
+  language sql stable set search_path = '' as $$
+  select '«' || coalesce(nullif(left(btrim(regexp_replace(
+           coalesce(nullif(p ->> 'title', ''), p ->> 'content', ''), '\s+', ' ', 'g')), 80), ''),
+           'Sin título') || '»'
+      || coalesce(' (' || left(coalesce(
+           (select t ->> 'label' from public.app_config c,
+                   jsonb_array_elements(case when jsonb_typeof(c.value -> 'activityTypes') = 'array'
+                                             then c.value -> 'activityTypes' else '[]'::jsonb end) t
+             where c.key = 'preferences' and t ->> 'key' = p ->> 'activity_type'
+               and jsonb_typeof(t -> 'label') = 'string' limit 1),
+           case p ->> 'activity_type'
+             when 'rutina' then 'Rutina' when 'visita' then 'Visita' when 'curso' then 'Curso'
+             when 'seminario' then 'Seminario' when 'congreso' then 'Congreso'
+             when 'virtual' then 'Virtual' when 'otro' then 'Otro' end), 60) || ')', '')
+$$;
+
+-- Desde qué navegador y qué dirección: antes lo averiguaba la app (la IP,
+-- preguntándole a un servicio de afuera). Acá sale del pedido mismo, que
+-- Supabase le pasa a la base. Si no viene, queda vacío: nunca frena la
+-- escritura del posteo.
+create or replace function public.datos_del_pedido() returns table (device text, ip text)
+  language plpgsql stable set search_path = '' as $$
+declare
+  h jsonb;
+  ua text;
+  nav text := 'Navegador';
+  so text := '';
+begin
+  begin
+    h := nullif(current_setting('request.headers', true), '')::jsonb;
+  exception when others then h := null;
+  end;
+  if h is null then device := null; ip := null; return next; return; end if;
+  ua := coalesce(h ->> 'user-agent', '');
+  if ua ~ 'Edg/' then nav := 'Edge';
+  elsif ua ~ 'OPR/' then nav := 'Opera';
+  elsif ua ~ 'Firefox/' then nav := 'Firefox';
+  elsif ua ~ 'Chrome/' then nav := 'Chrome';
+  elsif ua ~ 'Safari/' then nav := 'Safari';
+  end if;
+  if ua ~ 'iPhone|iPad|iPod' then so := 'iOS';
+  elsif ua ~ 'Android' then so := 'Android';
+  elsif ua ~ 'Windows' then so := 'Windows';
+  elsif ua ~ 'Mac OS X' then so := 'Mac';
+  elsif ua ~ 'Linux' then so := 'Linux';
+  end if;
+  device := case when ua = '' then null when so = '' then nav else nav || ' · ' || so end;
+  ip := nullif(left(btrim(coalesce(h ->> 'cf-connecting-ip', h ->> 'x-real-ip',
+                                   split_part(coalesce(h ->> 'x-forwarded-for', ''), ',', 1))), 45), '');
+  return next;
+end $$;
+
+create or replace function public.registrar_posteo() returns trigger
+  language plpgsql security definer set search_path = '' as $$
+declare
+  yo text := public.mi_correo();
+  tipo text;
+  fila jsonb;
+  nombre text;
+  pedido record;
+begin
+  if yo is null then return null; end if;
+
+  if tg_op = 'INSERT' then
+    if coalesce(new.author_email, '') <> yo then return null; end if;
+    tipo := 'post_created'; fila := to_jsonb(new); nombre := new.author_name;
+  elsif tg_op = 'UPDATE' then
+    -- Una edición es lo que la app firma como tal (la hora y quién). Un me
+    -- gusta, tildar un hito o guardar el id del evento de Calendar no
+    -- firman: no son ediciones del posteo.
+    -- Quién, igual sale de la credencial: no del nombre firmado.
+    if new.last_edited_at is not distinct from old.last_edited_at
+       or new.last_edited_by is not distinct from 'Google Calendar' then
+      return null;
+    end if;
+    tipo := case when new.cancelled is true and old.cancelled is not true
+                 then 'post_cancelled' else 'post_edited' end;
+    fila := to_jsonb(new);
+    nombre := case when coalesce(new.last_edited_by_email, '') = yo then new.last_edited_by end;
+  else
+    tipo := 'post_deleted'; fila := to_jsonb(old);
+  end if;
+
+  nombre := coalesce(nullif(btrim(nombre), ''),
+                     (select m.name from public.members m where m.email = yo), yo);
+  select * into pedido from public.datos_del_pedido();
+  insert into public.audit_log (id, type, actor_email, actor_name, detail, device, ip)
+  values (replace(gen_random_uuid()::text, '-', ''), tipo, yo, left(nombre, 120),
+          left(public.resumen_de_posteo(fila), 300), pedido.device, pedido.ip);
+  return null;
+end $$;
+
+drop trigger if exists posts_registrar on public.posts;
+create trigger posts_registrar after insert or update or delete on public.posts
+  for each row execute function public.registrar_posteo();
+
+revoke execute on function public.registrar_posteo() from public, anon, authenticated;
