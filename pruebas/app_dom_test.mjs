@@ -209,7 +209,10 @@ const BASE = () => ({
 const b = await chromium.launch();
 
 // Entra con quien se le diga y devuelve la página, sus errores y la base.
-async function entrar(email, nombre){
+// `mod` retoca la base de mentira antes de cargar (para sumar algo que
+// solo necesita una sección, sin tocar lo que las demás esperan).
+async function entrar(email, nombre, mod){
+  const base = BASE(); if(mod) mod(base);
   const p = await b.newPage();
   const errores = [];
   p.on("pageerror", e => errores.push(String(e)));
@@ -225,7 +228,7 @@ async function entrar(email, nombre){
   await p.addInitScript(([base, sesion]) => {
     window.__sb = { tablas: base, sesion, oyentes: [], rpc: [], escrituras: [], subidas: [], borradas: [],
                     logins: [], canales: 0 };
-  }, [BASE(), { user: { id: "uuid-" + email, email, user_metadata: { full_name: nombre } } }]);
+  }, [base, { user: { id: "uuid-" + email, email, user_metadata: { full_name: nombre } } }]);
   await p.goto(PAGINA);
   return { p, errores, base: () => p.evaluate(() => JSON.parse(JSON.stringify(window.__sb.tablas))),
            rpc: () => p.evaluate(() => window.__sb.rpc) };
@@ -369,6 +372,37 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   for(const v of vistas){ await p.click(`nav.tabs button[data-view="${v}"]`); await p.waitForTimeout(200); }
   eq("integrante: recorre sus solapas", vistas, ["feed","calendario","paises","proyectos","reportes"]);
   eq("integrante: sin un solo error", errores, []);
+  await p.close();
+}
+
+/* ---------- La campanita ---------- */
+{
+  // Un evento cerca (con el aviso de 7 días prendido), una respuesta de
+  // Ana a un proyecto del admin y una mención al admin en el posteo de Ana.
+  const { p, errores } = await entrar(ADMIN, "Benny", base => {
+    base.user_prefs.push({ email: ADMIN, prefs: { notifyLead: 7 * 24 * 60 } });
+    base.replies.push({ id: "r_2", post_id: "p_proyecto", content: "Avance: 30 postulantes.", author_name: "Ana Pérez",
+      author_email: "ana@x.com", scopes: [], links: [], images: [], files: [], mentions: [], liked_by: [],
+      system: false, created_at: hace(0.1) });
+    base.posts[0].mentions = [ADMIN]; base.posts[0].content += " @benny";
+  });
+  await esperarTexto(p, "Reunión con la comunidad");
+  const secciones = () => p.$$eval(".mentions-menu .bell-section", es => es.map(e => e.textContent));
+  const nuevos = () => p.$$eval(".mentions-menu .mention-item.nuevo", es => es.length);
+  await p.click('[data-action="toggle-mentions-menu"]');
+  eq("campanita: las tres secciones, los eventos primero", await secciones(), ["Próximos eventos", "Respuestas a tus posteos", "Menciones"]);
+  // Nunca se había abierto: la respuesta y la mención llevan "Nuevo"; el
+  // evento no, que no es algo que alguien le haya dicho.
+  eq("campanita: lo que no se vio lleva la marca Nuevo", await nuevos(), 2);
+  await p.click('.bell-filtros [data-action="bell-filtro"][data-key="respuestas"]');
+  eq("campanita: el filtro deja solo las respuestas", await secciones(), ["Respuestas a tus posteos"]);
+  eq("campanita: y el panel sigue abierto", await visible(p, ".mentions-menu"), true);
+  await p.click('.bell-filtros [data-action="bell-filtro"][data-key="todo"]');
+  await p.click('[data-action="toggle-mentions-menu"]');
+  eq("campanita: se cierra con el mismo botón", await visible(p, ".mentions-menu"), false);
+  await p.click('[data-action="toggle-mentions-menu"]');
+  eq("campanita: al reabrir, lo de antes ya no es nuevo", await nuevos(), 0);
+  eq("campanita: sin un solo error", errores, []);
   await p.close();
 }
 

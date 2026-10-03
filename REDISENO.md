@@ -113,15 +113,24 @@ del mapa, modo oscuro, campanita, franja de Documentación.
   sugerencia de separar el Caribe, y registrar lo que se crea, edita y
   borra (toca la base).
 
-### 8. Entrada, espera y avisos
+### 8. Entrada, espera y avisos — HECHO (3 oct 2026)
 
-- Portada de entrada con los tres pasos de la primera vez e idiomas.
-- Pantalla de espera con los pasos del pedido y aviso de cuenta personal;
-  pantalla distinta para quien tenía acceso y se lo quitaron. Sin
-  campanita ni menú ahí.
-- Campanita: nuevos separados de vistos, filtros (menciones, respuestas,
-  eventos), "marcar todo como leído", aviso de evento próximo con lo que
-  falta adjuntar.
+- Portada de entrada: qué es el Registro a un lado y la tarjeta de
+  "Entrar" al otro, con los tres pasos de la primera vez y los cuatro
+  idiomas a mano (en celular la tarjeta va primero).
+- Pantalla de espera: "Tu pedido está en camino" con los pasos ya
+  cumplidos tildados y el que falta, y un aviso amarillo si se entró con
+  una cuenta personal (gmail, hotmail, outlook, yahoo, icloud, live).
+  Sin campanita ahí ni en la de sin acceso.
+- La pantalla de sin acceso habla de los dos casos (pedido no aprobado
+  o acceso quitado) sin acusar: la app no puede distinguirlos desde el
+  navegador, así que no hay dos pantallas distintas.
+- Campanita: filtros Todo / Menciones / Respuestas / Eventos; lo que
+  llegó después de la última vez que se abrió lleva "Nuevo" y fondo
+  celeste (la primera vez, todo); los eventos próximos dicen cuántos
+  documentos les faltan (los hitos de proyecto no, que no tienen
+  documentación propia). No hay botón "marcar todo como leído": abrir
+  la campanita ya marca todo como visto, así que sobraba.
 
 ## Fuera de alcance (necesitan algo que la app no tiene)
 

@@ -45,7 +45,9 @@ eq("se puede cerrar sesión y probar con otra cuenta", sinSalida, 1);
 /* ================= 3. Las otras pantallas, intactas =================== */
 await p.evaluate(a=>window.__puerta(a), { status:"signedOut", user:null });
 g = await mirar();
-eq("la de inicio sigue ofreciendo Google", g.acciones, ["google-signin"]);
+// Desde la tanda 8 la portada también ofrece los cuatro idiomas (set-lang),
+// además del botón de Google que sigue siendo la única forma de entrar.
+eq("la de inicio sigue ofreciendo Google", g.acciones, ["google-signin","set-lang","set-lang","set-lang","set-lang"]);
 await p.evaluate(a=>window.__puerta(a), { status:"pending", user:USUARIO, requestStatus:"pending" });
 g = await mirar();
 eq("la de pendiente sigue igual", g.acciones, ["sign-out"]);
