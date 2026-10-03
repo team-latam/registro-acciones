@@ -120,9 +120,9 @@ import crypto from "node:crypto";
 import { hacerGrab } from "./grab.mjs";
 const todo = trozo("const A_SNAKE", "/* ---------- Pantalla");
 const armar = sbFalso => new Function("sb", `${todo}
-  return { filasDe, PLAN, claveDe, sinRepetidas, comparar, loQueSeSaca, sospechosa, describir, SE_QUITA,
+  return { filasDe, PLAN, claveDe, sinRepetidas, comparar, describir, NOMBRE,
            TIPO_A_EXT, aBytes, md5, rutaMiniatura, LADO_MINIATURA, CALIDAD_MINIATURA,
-           subirAdjuntos, leerTodas, traerFilas, quitar };`)(sbFalso);
+           subirAdjuntos, leerTodas, traerFilas };`)(sbFalso);
 // Con un importador viejo, que no tiene estas piezas, se dice qué falta
 // en vez de reventar en la primera línea.
 let I = null;
@@ -266,30 +266,30 @@ const posteo = () => ({ id: "p1", title: "Con todo", images: [FOTO, "posts/p1/vi
 }
 
 /* ---------- Comparar con lo que hay ---------- */
+// Desde el 3 de octubre de 2026 Supabase es la base del equipo: lo único
+// que se trae de Firebase es lo que falta, y nada de lo que ya está se toca.
 {
   const enArchivo = [{ id: "p1" }, { id: "p2" }, { id: "p2" }];
   const { filas, repetidas } = I.sinRepetidas("posts", enArchivo);
   eq("una clave repetida en el archivo se trae una vez", [filas.length, repetidas], [2, ["p2"]]);
 
-  const c = I.comparar("posts", filas, [{ id: "p2", title: "Ya estaba" }, { id: "p9", title: "Borrado en Firebase", start_date: "2026-09-20" }]);
-  eq("cuáles son nuevas, cuántas ya estaban, y cuáles están solo en Supabase",
-     [[...c.nuevas], c.yaEstaban, c.soloEnSupabase.map(p => p.id)], [["p1"], 1, ["p9"]]);
-  eq("de la configuración no se saca nada aunque sobre",
-     I.comparar("app_config", [], [{ key: "calendarSync" }]).soloEnSupabase, []);
-  eq("ni del registro de auditoría", I.SE_QUITA.has("audit_log"), false);
+  const c = I.comparar("posts", [{ id: "p1", title: "Falta" }, { id: "p2", title: "Ya está" }],
+                       [{ id: "p2", title: "Ya está, editado en Supabase" }, { id: "p9", title: "Solo en Supabase" }]);
+  eq("falta lo que está en el archivo y no en Supabase", c.faltan.map(p => p.id), ["p1"]);
+  eq("y se cuenta lo que ya está", c.yaEstan, 1);
+  eq("lo que está solo en Supabase ni se mira: no se saca nada", Object.keys(c).sort(), ["faltan", "yaEstan"]);
 
-  const comparaciones = { posts: c, replies: I.comparar("replies", [], [
-    { id: "r1", post_id: "p9", content: "del borrado" }, { id: "r2", post_id: "p2", content: "suelto", system: true }]) };
-  const { quitar, comentariosDe } = I.loQueSeSaca(comparaciones, { replies: [{ id: "r1", post_id: "p9" }, { id: "r2", post_id: "p2" }] });
-  eq("los comentarios de un posteo que se saca no se listan aparte: se van con él", quitar.replies.map(r => r.id), ["r2"]);
-  eq("y el posteo dice cuántos se lleva",
-     I.describir("posts", quitar.posts[0], { comentariosDe }), "Borrado en Firebase — 2026-09-20 · con 1 comentario");
-  eq("un posteo de Calendar se reconoce en la lista",
+  eq("un posteo que falta se reconoce por su título y su fecha",
+     I.describir("posts", { id: "p1", title: "Visita", start_date: "2026-09-20" }), "Visita — 2026-09-20");
+  eq("uno de Calendar, también",
      I.describir("posts", { id: "cal_abc", title: "Reunión", start_date: "2026-10-01" }), "Reunión — 2026-10-01 · de Google Calendar");
-
-  eq("una copia que trae mucho menos de lo que hay se frena", I.sospechosa(40, 900), true);
-  eq("una normal, no", I.sospechosa(890, 900), false);
-  eq("ni una tabla chica", I.sospechosa(1, 5), false);
+  eq("un comentario, por su texto y el posteo donde va",
+     I.describir("replies", { id: "r1", post_id: "p1", content: "  muy\n bueno  ", created_at: "2026-09-21T10:00:00.000Z" }, new Map([["p1", "Visita"]])),
+     "«muy bueno» — en «Visita» · 2026-09-21");
+  eq("una entrada del registro de actividad, por qué fue, quién y cuándo",
+     I.describir("audit_log", { id: "a1", type: "login", actor_email: "ana@x.com", created_at: "2026-09-16T00:00:00.000Z" }),
+     "login · ana@x.com · 2026-09-16");
+  eq("y cada tabla tiene un nombre que se entiende", I.NOMBRE.replies, "Comentarios");
 }
 
 /* ---------- Escribir: de a tandas, y una fila rota no frena a las demás ---------- */
@@ -337,15 +337,6 @@ function sbDeMentira({ tablas = {}, maxFilas = 1000, contestar } = {}){
   let error = null;
   try{ await armar(falso).traerFilas("posts", [{ id: "p1" }, { id: "p2" }], true); }catch(e){ error = e.message; }
   eq("un error que no es de las filas corta todo, sin probar fila por fila", [error, falso.reg.rpc.length], ["posts: JWT expired", 1]);
-}
-{
-  const falso = sbDeMentira();
-  const claves = Array.from({ length: 250 }, (_, i) => "p" + i);
-  const sacadas = await armar(falso).quitar("posts", claves);
-  eq("se saca exactamente lo de la lista, de a 200",
-     falso.reg.rpc.map(([nombre, a]) => [nombre, a.p_tabla, a.p_claves.length]), [["importar_quitar", "posts", 200], ["importar_quitar", "posts", 50]]);
-  eq("las mismas claves, ni una más", falso.reg.rpc.flatMap(([, a]) => a.p_claves), claves);
-  eq("y dice cuántas sacó", sacadas, 250);
 }
 {
   // Leer lo que hay: de a páginas, aunque el panel tenga un tope más bajo.

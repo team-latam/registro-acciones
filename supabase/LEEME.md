@@ -124,9 +124,10 @@ Lo que queda, en orden:
 1. **Ver si en Firebase quedó algo que no esté en Supabase.** Se baja la
    última copia de Firebase (desde una pestaña con `?base=firebase`:
    Preferencias → Copia de seguridad → Copia completa) y se la elige en
-   `importar.html`, que la compara con lo que hay. Mirar no cambia nada.
-   Si hay algo que traer, se trae con «Completar lo que falta», que solo
-   agrega lo que falta y no toca lo que ya está.
+   `importar.html`, que la compara con lo que hay y muestra, una por una,
+   las cosas que faltan en Supabase. Mirar no cambia nada. Si hay algo que
+   traer, el botón «Traer lo que falta» agrega eso y nada más: no toca ni
+   saca nada de lo que ya está.
 2. **Cerrar Firebase**: reglas que no dejan leer ni escribir nada, y
    después borrar la base de Firestore y el login de Firebase. **No el
    proyecto de Google Cloud** que está detrás (ahí viven el permiso y la

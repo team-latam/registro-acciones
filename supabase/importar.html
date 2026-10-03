@@ -58,26 +58,19 @@
   th{ color:var(--suave); font-weight:600; font-size:.8rem; }
   th.n, td.n{ text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
   input[type=file]{ font:inherit; max-width:100%; }
-  .opciones{ display:grid; gap:10px; }
-  .opcion{ display:grid; grid-template-columns:auto 1fr; gap:4px 12px; align-items:start;
-    border:1px solid var(--linea); border-radius:10px; padding:12px 14px; cursor:pointer; }
-  .opcion:has(input:checked){ border-color:var(--acento); background:var(--marca); }
-  .opcion input{ margin:5px 0 0; }
-  .opcion strong{ display:block; }
-  .opcion span{ font-size:.9rem; color:var(--suave); }
   details{ margin-top:10px; border:1px solid var(--linea); border-radius:9px; padding:8px 12px; }
   summary{ cursor:pointer; font-weight:600; font-size:.92rem; }
   details ul{ margin:8px 0 2px; padding-left:20px; font-size:.88rem; max-height:260px; overflow:auto; }
-  .confirmar{ display:flex; gap:10px; align-items:flex-start; margin-top:14px; font-size:.94rem; }
-  .confirmar input{ margin-top:4px; }
 </style>
 </head>
 <body>
 <main>
   <h1>Traer los datos a Supabase</h1>
   <p class="sub">
-    Lee el archivo de la copia de seguridad y carga su contenido en Supabase.
-    <strong>No toca Firebase</strong>: el archivo se lee de tu disco y nada más.
+    Compara la última copia de Firebase con lo que hay en Supabase, te
+    muestra qué falta, y trae solo eso. <strong>No toca Firebase</strong>
+    (el archivo se lee de tu disco) <strong>y no cambia ni saca nada de lo
+    que ya está en Supabase.</strong>
   </p>
 
   <div class="tarjeta">
@@ -97,16 +90,9 @@
   </div>
 
   <div class="tarjeta">
-    <h2>3 · Cómo traerlo</h2>
-    <div class="opciones">
-      <label class="opcion" for="modoCompletar">
-        <input type="radio" name="modo" id="modoCompletar" value="completar" checked>
-        <div><strong>Completar lo que falta</strong>
-          <span>Trae lo nuevo. Lo que ya está en Supabase no se toca y no se saca nada. Se puede correr las veces que haga falta.</span></div>
-      </label>
-    </div>
+    <h2>3 · Qué falta en Supabase</h2>
+    <div id="zonaModo"><p class="nota">Se completa después de elegir el archivo.</p></div>
     <p class="nota">La «Importación final», que dejaba Supabase igual a Firebase, ya no está: desde el 3 de octubre la base del equipo es Supabase, y esa opción borraría lo cargado ahí.</p>
-    <div id="zonaModo"></div>
   </div>
 
   <div class="tarjeta">
@@ -242,69 +228,41 @@ function sinRepetidas(tabla, filas){
 }
 
 /* ---------- Comparar con lo que ya hay ----------
-   Antes de traer nada: cuántas filas son nuevas, cuántas ya estaban, y
-   cuáles están solo en Supabase. Esas últimas son las que la importación
-   final saca: lo que se borró en Firebase después de la primera
-   importación (un posteo, el acceso de alguien) o lo que se probó acá. */
+   Antes de traer nada: qué hay en el archivo que falta en Supabase. Es lo
+   único que se trae. Supabase es la base del equipo desde el 3 de
+   octubre de 2026 y tiene cosas que Firebase no: nada de acá pisa ni saca
+   nada de lo que ya está. */
 
-// Lo justo para reconocer cada fila en la lista de lo que se va a sacar.
-const PARA_RECONOCER = {
-  posts: "id,title,start_date",
-  replies: "id,post_id,content,system",
-  members: "email,name",
-  former_members: "email,name",
-  access_requests: "email,name,status",
-};
-// Solo de estas se saca lo que no vino (ver importar_quitar en
-// 05-importar.sql). De las preferencias la copia trae solo las del admin;
-// la configuración y la auditoría no se borran.
-const SE_QUITA = new Set(Object.keys(PARA_RECONOCER));
+// Cómo se llama cada tabla para quien lee la página.
+const NOMBRE = { posts: "Posteos", replies: "Comentarios", members: "Integrantes",
+  former_members: "Ex integrantes", access_requests: "Pedidos de acceso",
+  audit_log: "Registro de actividad", app_config: "Configuración", user_prefs: "Preferencias personales" };
+
+// De los posteos se lee también el título: con eso se dice de qué posteo
+// es un comentario que falta. De lo demás alcanza con la clave.
+const PARA_RECONOCER = { posts: "id,title" };
 
 function comparar(tabla, filas, enSupabase){
   const clave = claveDe(tabla);
-  const enArchivo = new Set(filas.map(f => String(f[clave])));
   const hay = new Set(enSupabase.map(f => String(f[clave])));
-  return {
-    nuevas: new Set(filas.map(f => String(f[clave])).filter(k => !hay.has(k))),
-    yaEstaban: filas.filter(f => hay.has(String(f[clave]))).length,
-    soloEnSupabase: SE_QUITA.has(tabla) ? enSupabase.filter(f => !enArchivo.has(String(f[clave]))) : [],
-  };
+  const faltan = filas.filter(f => !hay.has(String(f[clave])));
+  return { faltan, yaEstan: filas.length - faltan.length };
 }
 
-// Una copia que trae mucho menos de lo que hay es casi seguro una copia
-// equivocada (vieja, de otro proyecto, cortada): con esa, la importación
-// final sacaría media base. Se frena antes.
-const sospechosa = (enArchivo, enSupabase) => enSupabase > 10 && enArchivo < enSupabase / 2;
-
-// Los comentarios de un posteo que se saca se van con él: no se listan
-// aparte (ni se mandan a sacar), se cuentan en su posteo.
-function loQueSeSaca(comparaciones, enSupabase){
-  const posteos = new Set((comparaciones.posts?.soloEnSupabase || []).map(p => String(p.id)));
-  const comentariosDe = new Map();
-  (enSupabase.replies || []).forEach(r => {
-    if(posteos.has(String(r.post_id))) comentariosDe.set(String(r.post_id), (comentariosDe.get(String(r.post_id)) || 0) + 1);
-  });
-  const quitar = {};
-  SE_QUITA.forEach(tabla => {
-    let filas = comparaciones[tabla]?.soloEnSupabase || [];
-    if(tabla === "replies") filas = filas.filter(r => !posteos.has(String(r.post_id)));
-    quitar[tabla] = filas;
-  });
-  return { quitar, comentariosDe };
-}
-
-function describir(tabla, f, extra = {}){
-  if(tabla === "posts"){
-    const n = (extra.comentariosDe && extra.comentariosDe.get(String(f.id))) || 0;
-    return `${f.title || "(sin título)"} — ${f.start_date || "sin fecha"}`
-      + (String(f.id).startsWith("cal_") ? " · de Google Calendar" : "")
-      + (n ? ` · con ${n} comentario${n === 1 ? "" : "s"}` : "");
-  }
+// Cómo se reconoce en la lista cada cosa que falta.
+function describir(tabla, f, titulos){
+  const fecha = v => String(v || "").slice(0, 10) || "sin fecha";
+  if(tabla === "posts")
+    return `${f.title || "(sin título)"} — ${f.start_date || f.date || "sin fecha"}`
+      + (String(f.id).startsWith("cal_") ? " · de Google Calendar" : "");
   if(tabla === "replies"){
     const texto = String(f.content || "").replace(/\s+/g, " ").trim();
-    const titulo = extra.titulos && extra.titulos.get(String(f.post_id));
-    return `${f.system ? "(automático) " : ""}«${texto.length > 70 ? texto.slice(0, 70) + "…" : texto}» — en ${titulo ? `«${titulo}»` : f.post_id}`;
+    const titulo = titulos && titulos.get(String(f.post_id));
+    return `${f.system ? "(automático) " : ""}«${texto.length > 70 ? texto.slice(0, 70) + "…" : texto}» — en ${titulo ? `«${titulo}»` : f.post_id} · ${fecha(f.created_at)}`;
   }
+  if(tabla === "audit_log") return `${f.type || "registro"} · ${f.actor_email || "?"} · ${fecha(f.created_at)}`;
+  if(tabla === "app_config") return `configuración «${f.key}»`;
+  if(tabla === "user_prefs") return `preferencias de ${f.email}`;
   if(tabla === "access_requests") return `${f.email} (${f.status || "sin estado"})`;
   return f.name ? `${f.name} <${f.email}>` : f.email;
 }
@@ -587,26 +545,14 @@ async function traerFilas(tabla, filas, reemplazar, avisar = () => {}){
   return { escritas, fallidas };
 }
 
-// Sacar exactamente estas claves, de a 200. Nunca «todo lo que no vino».
-async function quitar(tabla, claves){
-  let quitadas = 0;
-  for(let i = 0; i < claves.length; i += 200){
-    const { data, error } = await sb.rpc("importar_quitar", { p_tabla: tabla, p_claves: claves.slice(i, i + 200) });
-    if(error) throw new Error(`${tabla}: ${error.message}`);
-    quitadas += data || 0;
-  }
-  return quitadas;
-}
-
 /* ---------- Pantalla ---------- */
 let sesion = null, datos = null, analisis = null, comparacion = null, corriendo = false;
-// Siempre «completar»: la importación final se sacó (ver arriba de todo).
-// Lo que queda de ella más abajo no se alcanza desde la página.
-const modo = () => "completar";
 const n = x => Number(x || 0).toLocaleString("es-AR");
 const peso = bytes => bytes < 1024 * 1024
   ? Math.ceil(bytes / 1024).toLocaleString("es-AR") + " KB"
   : (bytes / 1024 / 1024).toLocaleString("es-AR", { maximumFractionDigits: 1 }) + " MB";
+const cuantasFaltan = () => !comparacion ? 0 : analisis.reduce((s, a) =>
+  s + ((comparacion.porTabla[a.tabla] || {}).faltan || []).length, 0);
 
 function pintarLogin(s){
   sesion = s;
@@ -650,102 +596,70 @@ function pintarArchivo(){
   const adj = contarAdjuntos();
   const sobran = [...new Set(analisis.flatMap(a => a.sobran.map(c => `${a.tabla}.${c}`)))];
   const repetidas = analisis.filter(a => a.repetidas.length);
-  const c = comparacion && comparacion.porTabla;
   const celda = (tabla, campo) => {
     if(!comparacion) return `<td class="n">…</td>`;
-    if(!c[tabla]) return `<td class="n" title="${esc(comparacion.errores[tabla] || "")}">—</td>`;
-    const v = c[tabla][campo];
-    // De la configuración, las preferencias y la auditoría no se saca
-    // nada: ahí la columna no aplica.
-    if(campo === "soloEnSupabase" && !SE_QUITA.has(tabla)) return `<td class="n">—</td>`;
-    return `<td class="n">${n(campo === "nuevas" ? v.size : campo === "soloEnSupabase" ? v.length : v)}</td>`;
+    const c = comparacion.porTabla[tabla];
+    if(!c) return `<td class="n" title="${esc(comparacion.errores[tabla] || "")}">—</td>`;
+    return `<td class="n">${n(campo === "faltan" ? c.faltan.length : c.yaEstan)}</td>`;
   };
   $("zonaArchivo").innerHTML = `
     <div class="tabla"><table>
-      <tr><th>Tabla</th><th class="n">En el archivo</th><th class="n">Nuevas</th><th class="n">Ya estaban</th><th class="n">Solo en Supabase</th></tr>
-      ${analisis.map(a => `<tr><td><code>${esc(a.tabla)}</code></td><td class="n">${n(a.filas.length)}</td>
-        ${celda(a.tabla, "nuevas")}${celda(a.tabla, "yaEstaban")}${celda(a.tabla, "soloEnSupabase")}</tr>`).join("")}
+      <tr><th></th><th class="n">En el archivo</th><th class="n">Faltan en Supabase</th><th class="n">Ya están</th></tr>
+      ${analisis.map(a => `<tr><td>${esc(NOMBRE[a.tabla] || a.tabla)}</td><td class="n">${n(a.filas.length)}</td>
+        ${celda(a.tabla, "faltan")}${celda(a.tabla, "yaEstan")}</tr>`).join("")}
     </table></div>
     <div class="resultado ${liviano ? "aviso" : "ok"}">${liviano
       ? "⚠️ Esta es la copia LIVIANA: no trae las imágenes. Sirve para mirar, no para traer los datos de verdad."
       : `Copia del ${esc(new Date(datos.generado).toLocaleString("es-AR"))}. Adjuntos adentro: ${n(adj.cuantos)} (${peso(adj.bytes)}).`}</div>
-    ${!comparacion ? `<p class="nota">Comparando con lo que hay en Supabase…</p>` : ""}
-    ${comparacion && Object.keys(comparacion.errores).length ? `<div class="resultado aviso">⚠️ No se pudo leer de Supabase: ${esc(Object.entries(comparacion.errores).map(([t, e]) => `${t} (${e})`).join(", "))}.</div>` : ""}
+    ${comparacion && Object.keys(comparacion.errores).length ? `<div class="resultado aviso">⚠️ No se pudo leer de Supabase: ${esc(Object.entries(comparacion.errores).map(([t, e]) => `${NOMBRE[t] || t} (${e})`).join(", "))}. De eso no se trae nada.</div>` : ""}
     ${sobran.length ? `<div class="resultado aviso">⚠️ Hay campos guardados que no tienen lugar en la base nueva y se van a perder:\n${esc(sobran.join(", "))}\n\nAvisá antes de seguir.</div>` : ""}
-    ${repetidas.length ? `<div class="resultado aviso">⚠️ Claves repetidas en el archivo (se trae solo la primera): ${esc(repetidas.map(a => `${a.tabla}: ${a.repetidas.slice(0, 5).join(", ")}`).join(" · "))}</div>` : ""}`;
+    ${repetidas.length ? `<div class="resultado aviso">⚠️ Claves repetidas en el archivo (se trae solo la primera): ${esc(repetidas.map(a => `${NOMBRE[a.tabla] || a.tabla}: ${a.repetidas.slice(0, 5).join(", ")}`).join(" · "))}</div>` : ""}`;
 }
 
-// Lo que dice la tarjeta 3 según el modo: en la final, la lista de lo que
-// se saca, y la casilla para confirmar que se revisó.
-function pintarModo(){
+// La tarjeta 3: qué falta en Supabase, una por una, para decidir antes de
+// traer nada.
+function pintarFaltantes(){
   const z = $("zonaModo");
-  if(modo() !== "final" || !analisis){ z.innerHTML = ""; pintarBoton(); return; }
-  if(!comparacion){ z.innerHTML = `<p class="nota">Esperando la comparación con Supabase…</p>`; pintarBoton(); return; }
-  const problemas = finalBloqueada();
-  const horas = (Date.now() - new Date(datos.generado).getTime()) / 36e5;
-  const { quitar: aQuitar, comentariosDe } = comparacion.seSaca;
-  const total = Object.values(aQuitar).reduce((s, l) => s + l.length, 0);
-  const conSuPosteo = [...comentariosDe.values()].reduce((s, k) => s + k, 0);
-  z.innerHTML = `
-    ${horas > 24 ? `<div class="resultado aviso">⚠️ Esta copia es de hace ${n(Math.floor(horas / 24))} día(s). Para la importación final, bajá una nueva con Firebase ya quieto: todo lo que pasó allá después de esta copia no viene.</div>` : ""}
-    ${problemas.length ? `<div class="resultado mal">${esc(problemas.join("\n"))}</div>` : ""}
-    ${total ? `
-      <p style="margin:14px 0 0;font-size:.94rem;">Se van a <strong>sacar de Supabase ${n(total)} fila(s)</strong> que no están en Firebase:</p>
-      ${[...SE_QUITA].filter(t => aQuitar[t].length).map(t => `
-        <details><summary>${esc(t)}: ${n(aQuitar[t].length)}${t === "replies" && conSuPosteo
-          ? ` <span class="nota">(y ${n(conSuPosteo)} más que se ${conSuPosteo === 1 ? "va" : "van"} con su posteo)</span>` : ""}</summary>
-          <ul>${aQuitar[t].map(f => `<li>${esc(describir(t, f, { comentariosDe, titulos: comparacion.titulos }))}</li>`).join("")}</ul>
-        </details>`).join("")}
-      <label class="confirmar" for="confirmo"><input type="checkbox" id="confirmo">
-        <span>Revisé la lista: sacar esas ${n(total)} fila(s) de Supabase.</span></label>`
-    : `<p class="nota">No hay nada en Supabase que no esté en Firebase: no se saca nada.</p>`}`;
-  const casilla = $("confirmo");
-  if(casilla) casilla.onchange = pintarBoton;
+  if(!analisis){ z.innerHTML = `<p class="nota">Se completa después de elegir el archivo.</p>`; pintarBoton(); return; }
+  if(!comparacion){ z.innerHTML = `<p class="nota">Comparando con lo que hay en Supabase…</p>`; pintarBoton(); return; }
+  const tablas = analisis.filter(a => ((comparacion.porTabla[a.tabla] || {}).faltan || []).length);
+  const total = cuantasFaltan();
+  z.innerHTML = total ? `
+    <p style="margin:0;font-size:.94rem;">En Firebase hay <strong>${n(total)} cosa(s) que no están en Supabase</strong>. Si apretás el botón de abajo, se agregan tal cual. Lo que ya está en Supabase no se toca.</p>
+    ${tablas.map(a => { const f = comparacion.porTabla[a.tabla].faltan; return `
+      <details><summary>${esc(NOMBRE[a.tabla] || a.tabla)}: ${n(f.length)}</summary>
+        <ul>${f.map(x => `<li>${esc(describir(a.tabla, x, comparacion.titulos))}</li>`).join("")}</ul>
+      </details>`; }).join("")}
+    <div class="resultado aviso">El botón trae todo lo de la lista junto. Si algo de acá se borró a propósito en Supabase, no lo aprietes todavía: traerlo lo haría aparecer de nuevo.</div>`
+    : `<div class="resultado ok">No falta nada: todo lo que hay en este archivo ya está en Supabase. No hace falta traer nada.</div>`;
   pintarBoton();
-}
-
-function finalBloqueada(){
-  if(!comparacion) return ["Falta comparar con Supabase."];
-  const problemas = [];
-  SE_QUITA.forEach(t => {
-    if(!comparacion.porTabla[t]) problemas.push(`⛔ No se pudo leer ${t} de Supabase: sin eso no se sabe qué sacar.`);
-    else if(sospechosa(comparacion.archivo[t], comparacion.cuantas[t]))
-      problemas.push(`⛔ ${t}: el archivo trae ${n(comparacion.archivo[t])} y en Supabase hay ${n(comparacion.cuantas[t])}. ¿Es la copia completa y de este proyecto?`);
-  });
-  return problemas;
 }
 
 function pintarBoton(){
   const b = $("btnImportar");
-  let listo = !!(sesion && analisis && datos && datos.conAdjuntos !== false) && !corriendo;
-  if(listo && modo() === "final"){
-    const casilla = $("confirmo");
-    listo = !!comparacion && !finalBloqueada().length && (!casilla || casilla.checked);
-  }
-  b.disabled = !listo;
-  b.textContent = modo() === "final" ? "Hacer la importación final" : "Traer lo que falta";
+  b.disabled = corriendo || !(sesion && analisis && datos && datos.conAdjuntos !== false && comparacion && cuantasFaltan());
+  b.textContent = "Traer lo que falta";
   $("notaImportar").hidden = !!analisis;
 }
 
 async function compararConSupabase(){
-  const porTabla = {}, errores = {}, cuantas = {}, archivo = {}, enSupabase = {};
+  const porTabla = {}, errores = {}, enSupabase = {};
   await Promise.all(analisis.map(async a => {
-    archivo[a.tabla] = a.filas.length;
     try{
       enSupabase[a.tabla] = await leerTodas(a.tabla, PARA_RECONOCER[a.tabla] || claveDe(a.tabla));
-      cuantas[a.tabla] = enSupabase[a.tabla].length;
       porTabla[a.tabla] = comparar(a.tabla, a.filas, enSupabase[a.tabla]);
     }catch(err){ errores[a.tabla] = err.message || String(err); }
   }));
+  // Los títulos de los posteos, para decir de cuál es cada comentario.
   const titulos = new Map((enSupabase.posts || []).map(p => [String(p.id), p.title]));
   analisis.filter(a => a.tabla === "posts").forEach(a => a.filas.forEach(p => titulos.set(String(p.id), p.title)));
-  return { porTabla, errores, cuantas, archivo, titulos, seSaca: loQueSeSaca(porTabla, enSupabase) };
+  return { porTabla, errores, titulos };
 }
 
 $("archivo").onchange = async e => {
   const f = e.target.files[0];
   if(!f) return;
-  analisis = null; comparacion = null; pintarModo();
+  analisis = null; comparacion = null; pintarFaltantes();
   $("zonaArchivo").innerHTML = `<div class="resultado">Leyendo…</div>`;
   try{
     datos = JSON.parse(await f.text());
@@ -763,116 +677,80 @@ $("archivo").onchange = async e => {
     const { filas, repetidas } = sinRepetidas(p.tabla, todas);
     return { ...p, filas, repetidas, sobran: camposDeMas(p.tabla, filas) };
   });
-  pintarArchivo(); pintarModo();
+  pintarArchivo(); pintarFaltantes();
   const esta = analisis;
   const c = await compararConSupabase();
   if(esta !== analisis) return;   // eligieron otro archivo mientras tanto
   comparacion = c;
-  pintarArchivo(); pintarModo();
+  pintarArchivo(); pintarFaltantes();
 };
-$("modoCompletar").onchange = pintarModo;
 
 window.addEventListener("beforeunload", e => { if(corriendo){ e.preventDefault(); e.returnValue = ""; } });
 
 $("btnImportar").onclick = async () => {
-  const final = modo() === "final";
   corriendo = true; pintarBoton();
-  $("modoCompletar").disabled = $("archivo").disabled = true;
+  $("archivo").disabled = true;
   const z = $("zonaImportar");
   const lineas = [], fallas = [];
   const mostrar = extra => {
     z.innerHTML = `<div class="resultado">${esc(lineas.join("\n"))}${extra ? "\n" + esc(extra) : ""}</div>`;
   };
   const bucket = sb.storage.from("adjuntos");
-  let cortado = null, sacando = false;
+  let cortado = null;
   try{
     for(const paso of analisis){
-      if(!paso.filas.length){ lineas.push(`— ${paso.tabla}: nada que traer`); mostrar(); continue; }
-      let filas = paso.filas;
+      const nombre = NOMBRE[paso.tabla] || paso.tabla, c = comparacion.porTabla[paso.tabla];
+      // Sin poder comparar no se sabe qué falta: de esa tabla no se trae nada.
+      if(!c){ lineas.push(`⚠️ ${nombre}: no se pudo comparar con Supabase, no se trajo nada`); mostrar(); continue; }
+      // Solo lo que falta: los adjuntos de lo que ya está ni se suben.
+      let filas = c.faltan;
+      if(!filas.length){ lineas.push(`— ${nombre}: no falta nada`); mostrar(); continue; }
       const deEstaTabla = [];
 
       if(paso.tabla === "posts" || paso.tabla === "replies"){
-        mostrar(`${paso.tabla}: subiendo adjuntos…`);
+        mostrar(`${nombre}: subiendo adjuntos…`);
         const r = await subirAdjuntos(paso.tabla, filas, { bucket, achicar: achicarDataUrl,
-          avisar: (hechas, k) => mostrar(`${paso.tabla}: adjuntos de ${n(hechas)}/${n(filas.length)} filas (${n(k.subidos)} subidos, ${n(k.reusados)} ya estaban, ${n(k.miniaturas)} miniaturas)…`) });
+          avisar: (hechas, k) => mostrar(`${nombre}: adjuntos de ${n(hechas)}/${n(filas.length)} (${n(k.subidos)} subidos, ${n(k.reusados)} ya estaban, ${n(k.miniaturas)} miniaturas)…`) });
         filas = r.filas;
         const k = r.cuenta;
         if(k.subidos || k.reusados || k.miniaturas)
-          lineas.push(`   adjuntos de ${paso.tabla}: ${n(k.subidos)} subidos, ${n(k.reusados)} ya estaban en el bucket, ${n(k.miniaturas)} miniaturas nuevas`);
-        if(k.sinMiniatura.length) lineas.push(`   ⚠️ ${n(k.sinMiniatura.length)} foto(s) sin miniatura (se van a ver enteras): ${k.sinMiniatura[0]}`);
+          lineas.push(`   adjuntos: ${n(k.subidos)} subidos, ${n(k.reusados)} ya estaban, ${n(k.miniaturas)} miniaturas`);
+        if(k.sinMiniatura.length) lineas.push(`   ⚠️ ${n(k.sinMiniatura.length)} foto(s) sin miniatura (se van a ver enteras)`);
         deEstaTabla.push(...r.fallidas);
       }
 
-      const { escritas, fallidas } = await traerFilas(paso.tabla, filas, final,
-        i => mostrar(`${paso.tabla}: ${n(i)}/${n(filas.length)}…`));
+      const { escritas, fallidas } = await traerFilas(paso.tabla, filas, false,
+        i => mostrar(`${nombre}: ${n(i)}/${n(filas.length)}…`));
       deEstaTabla.push(...fallidas);
-      deEstaTabla.forEach(f => fallas.push({ tabla: paso.tabla, ...f }));
-      const entraron = paso.filas.length - deEstaTabla.length;
-      const aviso = deEstaTabla.length ? ` · ⚠️ ${n(deEstaTabla.length)} no entraron` : "";
-      const c = comparacion && comparacion.porTabla[paso.tabla];
-      if(final && c){
-        const caidas = new Set(deEstaTabla.map(f => String(f.clave)));
-        const nuevas = [...c.nuevas].filter(k => !caidas.has(k)).length;
-        const cambiaron = Math.max(0, escritas - nuevas);
-        lineas.push(`✅ ${paso.tabla}: ${n(nuevas)} nuevas, ${n(cambiaron)} actualizadas, ${n(Math.max(0, entraron - nuevas - cambiaron))} sin cambios${aviso}`);
-      } else {
-        const salteadas = entraron - escritas;
-        lineas.push(`✅ ${paso.tabla}: ${n(escritas)} nuevas${salteadas > 0 ? `, ${n(salteadas)} ya estaban (no se tocaron)` : ""}${aviso}`);
-      }
+      deEstaTabla.forEach(f => fallas.push({ tabla: nombre, ...f }));
+      lineas.push(`✅ ${nombre}: ${n(escritas)} agregada(s)${deEstaTabla.length ? ` · ⚠️ ${n(deEstaTabla.length)} no entraron` : ""}`);
       mostrar();
-    }
-
-    if(final){
-      sacando = true;
-      const { quitar: aQuitar } = comparacion.seSaca;
-      // Los comentarios primero; los de un posteo que se saca se van con él.
-      for(const tabla of ["replies", "posts", "members", "former_members", "access_requests"]){
-        const claves = aQuitar[tabla].map(f => f[claveDe(tabla)]);
-        if(!claves.length) continue;
-        mostrar(`${tabla}: sacando ${n(claves.length)}…`);
-        lineas.push(`🗑️ ${tabla}: ${n(await quitar(tabla, claves))} sacadas de Supabase (no estaban en Firebase)`);
-        mostrar();
-      }
     }
   }catch(err){
     cortado = err.message || String(err);
   }
 
-  let conteo = null;
-  try{
-    const r = await sb.rpc("cuantas_filas");
-    if(!r.error) conteo = r.data;
-  }catch(e){}
-  if(conteo){
-    lineas.push("");
-    lineas.push("Lo que quedó en Supabase:");
-    conteo.forEach(c => {
-      const a = analisis.find(x => x.tabla === c.tabla);
-      lineas.push(`   ${c.tabla}: ${n(c.filas)}${a ? `  (en el archivo: ${n(a.filas.length)})` : ""}`);
-    });
-  }
   if(fallas.length){
     lineas.push("");
-    lineas.push(`⚠️ ${n(fallas.length)} fila(s) no entraron:`);
+    lineas.push(`⚠️ ${n(fallas.length)} no entraron:`);
     fallas.slice(0, 50).forEach(f => lineas.push(`   ${f.tabla} ${f.clave}: ${f.error}`));
     if(fallas.length > 50) lineas.push(`   … y ${n(fallas.length - 50)} más`);
   }
   if(cortado){
     lineas.push("");
     lineas.push(`❌ Se cortó: ${cortado}`);
-    z.innerHTML = `<div class="resultado mal">${esc(lineas.join("\n"))}\n\nLo que ya entró quedó guardado${final && !sacando ? ", y todavía no se sacó nada de Supabase" : ""}. Se puede volver a apretar el botón: lo que ya está se reconoce.</div>`;
+    z.innerHTML = `<div class="resultado mal">${esc(lineas.join("\n"))}\n\nLo que ya entró quedó guardado. Se puede volver a apretar el botón: lo que ya está se reconoce.</div>`;
   } else {
     z.innerHTML = `<div class="resultado ${fallas.length ? "aviso" : "ok"}">${esc(lineas.join("\n"))}\n\n${fallas.length
-      ? "Lo demás quedó guardado. Las que no entraron se pueden reintentar volviendo a apretar el botón."
-      : final ? "✅ Listo: Supabase quedó igual que Firebase." : "✅ Listo."}</div>`;
+      ? "Lo demás quedó guardado. Lo que no entró se puede reintentar volviendo a apretar el botón."
+      : "✅ Listo: se agregó lo que faltaba."}</div>`;
   }
   corriendo = false;
-  $("modoCompletar").disabled = $("archivo").disabled = false;
-  // Lo que hay ahora es otra cosa: la comparación (y la lista de lo que
-  // se saca) se vuelve a hacer, por si se aprieta el botón otra vez.
-  comparacion = null; pintarArchivo(); pintarModo();
+  $("archivo").disabled = false;
+  // Lo que hay ahora es otra cosa: la comparación se vuelve a hacer.
+  comparacion = null; pintarArchivo(); pintarFaltantes();
   const esta = analisis, c = await compararConSupabase();
-  if(esta === analisis){ comparacion = c; pintarArchivo(); pintarModo(); }
+  if(esta === analisis){ comparacion = c; pintarArchivo(); pintarFaltantes(); }
 };
 
 pintarBoton();
