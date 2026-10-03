@@ -68,10 +68,14 @@ del mapa, modo oscuro, campanita, franja de Documentación.
   ese filtro; "Bajar planilla" (CSV que Excel abre, con punto y coma) e
   "Imprimir / PDF" (hoja de impresión sin el cascarón de la app).
 
-### 5. Proyectos
+### 5. Proyectos — HECHO (3 oct 2026)
 
-- Línea de tiempo con todos los proyectos y la marca de hoy; hitos por
-  vencer debajo; filtros en curso/completados/zona.
+- Línea de tiempo con todos los proyectos juntos: una barra por
+  proyecto sobre una regla de meses (acotada a 14 meses alrededor de
+  hoy), los hitos como rombos de colores y la marca de hoy. Filtro "En
+  curso / Completados" y la vista de tarjetas de antes como alternativa.
+- Debajo, "Hitos por vencer": los vencidos, de hoy y por vencer de todos
+  los proyectos en curso, con "Ver proyecto" y "Marcar cumplido".
 
 ### 6. Navegación (la tanda grande)
 
