@@ -378,9 +378,10 @@ ninguna.
    que no dejaban entrar a nadie, y después se borró la base.
 5. ~~Sacar Firebase del código.~~ **Hecho el 3 de octubre** (ver «El
    código que sobra»).
-6. **Falta, en Firebase Console:** apagar el login de Firebase y borrar su
-   lista de usuarios (la base de Firestore ya se borró). **No borrar el
-   proyecto de Google Cloud que está detrás** (número 40280679854): ahí viven el cliente de
+6. ~~**Limpiar Firebase Console.**~~ **Hecho el 3 de octubre:** se apagó
+   el login con Google y se borró su lista de usuarios; Hosting nunca tuvo
+   nada publicado y Storage nunca se activó. **No borrar el proyecto de
+   Google Cloud que está detrás** (número 40280679854): ahí viven el cliente de
    OAuth con el que se pide el permiso de Calendar y la clave de la API de
    Calendar, y muy probablemente el login de Google de Supabase.
 7. **Copias de seguridad de Supabase** (punto 13). Iban antes del cambio
