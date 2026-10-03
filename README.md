@@ -12,9 +12,10 @@ equipo vía **Supabase** (Postgres, login con Google y archivos; los cambios
 llegan solos a todas las pantallas abiertas).
 
 > **Historia:** la app nació sobre Firebase (Firestore + Auth) y se mudó a
-> Supabase el 3 de octubre de 2026 (ver `supabase/LEEME.md`). Muchas
-> secciones de más abajo se escribieron antes y nombran cosas de Firebase.
-> Lo que explican sigue valiendo, con estas equivalencias:
+> Supabase el 3 de octubre de 2026 (ver `supabase/LEEME.md`). Lo que
+> describe cómo funciona hoy ya habla de Supabase; las notas de historia
+> (bugs viejos, decisiones de entonces) todavía nombran cosas de Firebase.
+> Para leerlas, estas equivalencias:
 >
 > | Donde dice | Hoy es |
 > |---|---|
@@ -92,9 +93,11 @@ aprobación" hasta que el administrador lo apruebe desde la propia app
   persona. Con eso, la próxima vez que esa persona entre a la app le
   aparece un popup recordándole revisar el correo y aceptar la invitación,
   más una novedad extra en la campanita de notificaciones — todo llevado
-  con marcas de "visto" en `localStorage` (igual que las @menciones, ver
-  `MENTIONS_SEEN_KEY`), porque una persona solo puede cambiar su @nickname
-  en su propia ficha, no guardar otras marcas del lado del servidor.
+  con marcas de "visto" en las preferencias de la persona (`visto_*` en
+  `user_prefs`, igual que las @menciones, ver `MENTIONS_SEEN_KEY` y
+  `markPerUserTs()`), con el `localStorage` como copia. Van ahí y no en
+  su fila de `members` porque de su propia ficha una persona solo puede
+  cambiar su @nickname (y la marca del tutorial).
   OJO: son DOS marcas separadas, no una — cerrar el popup con "Entendido"
   (`markCalendarInvitePopupSeen()`) solo evita que se imponga de nuevo en
   cada entrada, pero NO apaga la novedad de la campanita: como el ACL de
@@ -173,13 +176,13 @@ Es un archivo estático, así que sirve cualquier hosting simple:
 ### Modelo de datos
 
 Las tablas están en `supabase/01-tablas.sql`. Lo de abajo es el modelo
-como nació, en Firestore: los campos son los mismos, en snake_case en la
-base (ver las equivalencias del principio). Dos diferencias de fondo:
-`images` y `files` guardan la RUTA de cada archivo en el bucket
+con los nombres que usa la app (camelCase, como nació en Firestore); en la
+base cada campo es la columna en snake_case (ver las equivalencias del
+principio). `images` y `files` guardan la RUTA de cada archivo en el bucket
 `adjuntos`, no el archivo (hasta 20 imágenes y 10 archivos por posteo),
-y las fechas son `timestamptz` que pone la base.
+y las fechas de creación son `timestamptz` que pone la base.
 
-> **Glosario:** lo que en el código, en Firestore y en este README se
+> **Glosario:** lo que en el código, en la base y en este README se
 > llama "alcance" / `scopes` (país, ciudad, región o "Toda LatAm" al que
 > pertenece un posteo), en la pantalla se llama **"Dónde"** desde
 > septiembre de 2026. Es la misma cosa; se renombró solo el texto que ve
@@ -188,10 +191,10 @@ y las fechas son `timestamptz` que pone la base.
 > dirección), que se muestra con 📍 debajo del título.
 
 ```
-posts/{postId}
+posts  (tabla; `id` = texto de 20 caracteres, el mismo que tenía en Firestore)
   title: string              (título corto, ej: "Curso de Transition")
   content: string            (comentarios / descripción libre)
-  date: "YYYY-MM-DD"         (= startDate; se mantiene por compatibilidad con posteos viejos y con el orderBy de Firestore)
+  date: "YYYY-MM-DD"         (= startDate, columna duplicada que viene de Firestore: la app y el sincronizador la siguen escribiendo igual a startDate, y la app la usa de respaldo si falta startDate)
   startDate: "YYYY-MM-DD"
   endDate: "YYYY-MM-DD"      (= startDate si el evento dura un solo día)
   startTime: "HH:MM"         (opcional — vacío/ausente = "todo el día"; si se carga, endTime también)
@@ -205,17 +208,17 @@ posts/{postId}
   authorEmail: string        (email de Google de quien publicó)
   scopes: [{ type:"ciudad", country, city } | { type:"pais", country } | { type:"region", region:"sur"|"central"|"norte" } | { type:"todo" }, ...]
                              (Evento: mínimo 1. Rutina: opcional, se agrega con el buscador de lugar del composer)
-  images: ["data:image/jpeg;base64,...", ...]   (comprimidas en el navegador)
-  files: [{ name, mime, kind:"pdf"|"audio", dataUrl }, ...]  (opcional — PDF/audio chicos, sin comprimir, máx. 2)
+  images: ["posts/{id}/img0...", ...]   (rutas en el bucket `adjuntos`; las fotos se achican en el navegador antes de subir. Al leer, la capa de datos las cambia por una URL firmada)
+  files: [{ name, mime, kind, path, doc?, subidoEl }, ...]  (opcional — PDF, documentos o audio sin comprimir, máx. 10; `path` es la ruta en el bucket)
   links: [{ label, url }, ...]
   mentions: [string, ...]    (opcional — emails de a quién se etiquetó con @ en el texto)
-  createdAt: Timestamp (servidor, nunca cambia)
+  createdAt: timestamptz (la pone la base, nunca cambia)
   calendarEventId: string | null   (id del evento en Calendar, para poder actualizarlo/borrarlo en vez de duplicarlo)
   cancelled: bool                  (opcional — true si se canceló el evento)
-  lastEditedAt: Timestamp          (opcional — última edición)
+  lastEditedAt: timestamptz        (opcional — última edición; la hora la pone la base, no el navegador)
   lastEditedBy: string             (opcional — nombre de quien hizo la última edición)
 
-posts/{postId}/replies/{replyId}
+replies  (tabla; cada respuesta lleva el `postId` del posteo al que pertenece)
   content: string
   authorName: string
   authorEmail: string
@@ -224,40 +227,44 @@ posts/{postId}/replies/{replyId}
   files: [...]               (mismo formato que en posts)
   links: [...]
   mentions: [...]            (mismo formato que en posts)
-  createdAt: Timestamp (servidor)
+  createdAt: timestamptz (la pone la base)
   system: bool               (opcional — true en las respuestas automáticas de edición/cancelación)
   icon: string                (opcional — emoji que acompaña una respuesta de sistema, ej. "✏️")
   replyToId: string | null    (opcional — id de OTRA respuesta del mismo posteo a la que le contesta; un solo nivel de anidamiento)
   likedBy: [string, ...]      (opcional — emails de quienes le dieron "me gusta"; único campo editable después de creada)
 
-allowlist/{email}            (el documento EXISTE = esa persona tiene acceso)
-  email, name, nickname, approvedAt, approvedBy
+members  (tabla, clave = email; la fila EXISTE = esa persona tiene acceso)
+  email, name, nickname, photoURL, approvedAt, approvedBy
                              (name/nickname: nombre de Google y @nickname corto armado al aprobar,
                              para el autocompletado de @menciones — accesos aprobados de antes de
                              que existiera este campo no lo tienen, y se les arma un nickname de
                              reserva a partir del email solo para mostrar, sin guardarlo.
                              CADA PERSONA puede cambiar SU PROPIO nickname más adelante, desde el
                              menú del avatar ("✏️ Editar tu @nickname" en renderUserBadge) — es la
-                             única excepción a "solo el admin escribe en allowlist": firestore.rules
-                             deja que el dueño del doc toque nada más que el campo nickname, y
-                             encima solo con forma válida (isValidNicknameEdit: 2-20 caracteres,
-                             letras/números ASCII/guion bajo, sin espacios ni "@"). Unicidad y la
-                             palabra reservada "all" se controlan en el cliente antes de escribir
-                             — ver validateNicknameDraft() — porque las reglas no comparan bien
-                             contra el resto de la colección)
+                             única excepción a "solo el admin escribe en members": el disparador
+                             members_controlar_update (02-politicas.sql) deja que cada persona toque
+                             de su fila nada más que nickname y tourSeenAt, y
+                             members_controlar_nickname (03-validacion.sql) exige forma válida al
+                             cambiarlo a mano: 2-20 caracteres, minúsculas ASCII/números/guion bajo.
+                             Que sea único lo garantiza la base (índice members_nickname_idx, sin
+                             distinguir mayúsculas) y además lo chequea el cliente antes de escribir
+                             para dar un mensaje claro; la palabra reservada "all" se controla solo
+                             en el cliente — ver validateNicknameDraft())
+  role: "admin"|"member"|"observer"  (ver Roles más abajo)
   calendarShared: bool       (opcional — si ya se le compartió el Calendar de LatAm; lo pone en
                              true shareCalendarWith() al compartir con éxito, para mostrar un ✅
                              real en Usuarios en vez de ofrecer siempre a ciegas el mismo botón.
                              OJO: significa "se le mandó la invitación", no "ya la aceptó" — el
                              ACL de Calendar no tiene un campo de estado de aceptación)
-  calendarInviteSentAt: Timestamp (servidor)
+  calendarInviteSentAt: timestamptz (la hora la pone la base)
                              (opcional — cuándo se compartió/reenvió el Calendar por última vez;
                              lo pisa shareCalendarWith() en cada compartir o reenvío. Sirve para el
                              popup + novedad de campanita que le recuerda a esa persona aceptar la
                              invitación la próxima vez que entre, ver maybeShowCalendarInviteOverlay()
                              / shouldShowCalendarInvitePopup() y hasActiveCalendarInviteNotice())
+  tourSeenAt: timestamptz    (opcional — cuándo vio el tutorial, ver "Tutorial de bienvenida" más abajo)
 
-accessRequests/{email}       (una solicitud de acceso por persona; el id es su propio email)
+access_requests  (tabla; una solicitud de acceso por persona, clave = su propio email)
   email, name, photoURL, status: "pending"|"approved"|"rejected", requestedAt
 ```
 
@@ -265,16 +272,19 @@ accessRequests/{email}       (una solicitud de acceso por persona; el id es su p
 
 Los posteos ya NO son estrictamente append-only (cambio deliberado sobre
 el diseño original): se pueden editar, con estas reglas de permiso
-(en `canEditPost()` de `index.html` y `canEditPost()` de `firestore.rules`
-— tienen que decir lo mismo):
+(en `canEditPost()` de `index.html` y `puede_editar_posteo()` +
+`posts_controlar_update` de `supabase/02-politicas.sql` — tienen que decir
+lo mismo):
 
 - El **autor** siempre puede editar su propio posteo.
 - Cualquier persona aprobada puede editar un posteo que **no** sea Rutina
   (Visita/Curso/Seminario/Congreso/Otro) — son eventos del equipo, no una
   entrada personal, así que cualquiera puede corregir una fecha o un lugar.
-- Una **Rutina** solo la edita quien la publicó.
+- Una **Rutina** solo la edita quien la publicó (y los editores que esa
+  persona haya sumado, `editors`).
 - Nunca se puede editar de quién es (`authorName`/`authorEmail`) ni cuándo
-  se creó originalmente (`createdAt`) — eso lo protegen las reglas.
+  se creó originalmente (`createdAt`) — eso lo protege la base (el
+  disparador `posts_controlar_update`).
 
 Cada edición dispara automáticamente una respuesta en el hilo resumiendo
 qué cambió (título, fechas, lugar, participantes, tipo, comentarios o
@@ -283,7 +293,10 @@ rastro del cambio. Esas respuestas se distinguen con un ícono (✏️ edición,
 🚫 cancelación) y fondo distinto, pero por lo demás se ven como cualquier
 respuesta del hilo.
 
-**Cancelar** (botón aparte de "Editar", mismos permisos) no borra el
+**Cancelar** (botón aparte de "Editar") es más restringido que editar,
+porque saca el evento del Calendar de todos: lo pueden hacer quien lo
+creó, sus participantes, sus editores o un admin (`canCancelPost()` en
+`index.html`, y la misma regla en `posts_controlar_update`). No borra el
 posteo: lo marca visiblemente como "🚫 Cancelado" en el Feed,
 dispara la respuesta automática, y borra el evento correspondiente del
 Calendar compartido (si lo tenía).
@@ -300,10 +313,13 @@ Reportado por el usuario: tocar solo la fecha de un evento tiraba "No se
 pudo guardar la edición: Missing or insufficient permissions." — ni
 siquiera algo relacionado con lo que se estaba editando.
 
+*(Historia de la época de Firebase: `firestore.rules` ya no existe; hoy
+la forma de cada lista la controla `supabase/03-validacion.sql`.)*
+
 La causa: `isValidPostBase(d)` en `firestore.rules` (la Tarea de
 seguridad de esta sesión que sumó validación por elemento a las 5 listas
 "de adjuntos" — `images`/`files`/`links`/`participants`/`mentions`, más
-`editors`) revalida el DOCUMENTO ENTERO en cada edición, no solo lo que
+`editors`) revalidaba el DOCUMENTO ENTERO en cada edición, no solo lo que
 cambió. Cualquier posteo con un elemento en alguna de esas listas
 guardado ANTES de que existiera esa validación (por ejemplo una imagen
 guardada como URL simple, de antes de que la app embebiera todo en
@@ -313,13 +329,13 @@ CUALQUIER otro campo de ese posteo —aunque fuera solo la fecha—
 revalidaba esa lista vieja de paso, y la rechazaba entera.
 
 El arreglo (`isValidPostAttachmentsForUpdate` en `firestore.rules`, que
-reemplaza a `isValidPostBase` en `isValidPostUpdate`): cada una de esas
-6 listas pasa si es válida per se, **o si quedó exactamente igual que
+reemplazó a `isValidPostBase` en `isValidPostUpdate`): cada una de esas
+6 listas pasaba si era válida per se, **o si quedó exactamente igual que
 antes del cambio** — mismo criterio que ya usaba `scopes` en la misma
 función (un posteo importado sin alcance definido podía seguir
-guardándose sin alcance). Sin tocar una lista, no hace falta que cumpla
-la forma nueva; tocarla si la sigue exigiendo. `isValidPostBase` (la
-versión estricta, sin ese escape) se queda tal cual para **crear**
+guardándose sin alcance). Sin tocar una lista, no hacía falta que
+cumpliera la forma nueva; tocarla sí la seguía exigiendo. `isValidPostBase`
+(la versión estricta, sin ese escape) quedó tal cual para **crear**
 posteos, donde todo el documento es nuevo y tiene que cumplir desde
 cero.
 
@@ -341,7 +357,7 @@ Otro), hay una barra fija arriba del Feed —inspirada en el compositor de
 X— para cargar una **Rutina**: solo pide texto; título y fechas se
 completan solos del lado del cliente (`submitRutina()` en `index.html`) y
 no se muestran en la tarjeta para no repetir el contenido dos veces.
-Rutina y Evento comparten el mismo `posts/{postId}`, así que aparecen
+Rutina y Evento comparten la misma tabla `posts`, así que aparecen
 mezclados en el mismo Feed — se distinguen por el badge de tipo
 ("🔁 Rutina"). A diferencia de Evento, el alcance (lugar) es **opcional**
 en Rutina, y no sincroniza con Calendar.
@@ -354,36 +370,34 @@ respuestas, solo que sin el selector paso a paso.
 
 ### Adjuntos: imágenes, PDF/audio, y links
 
-**Los topes son de la base, no del código.** Viven en `store.limites`
-(`LIMITES_FIREBASE` / `LIMITES_SUPABASE`, arriba de `firebaseStore`) porque
-no son un criterio nuestro: son lo que cada base puede guardar.
+**Los topes son de la base, no del código.** Viven en
+`LIMITES_DE_LA_BASE` (en la capa de datos de `index.html`) porque no son
+un criterio nuestro: son lo que la base puede guardar.
 
-| | Firebase | Supabase |
-|---|---|---|
-| Imágenes por posteo | 6 | 20 |
-| Se achican a | 1280 px, calidad 0.72 | 2560 px, calidad 0.85 |
-| PDF/audio por posteo | 2 | 10 |
-| Por archivo | 150 KB (techo 500 KB) | 10 MB (techo 25 MB) |
+| | Tope |
+|---|---|
+| Imágenes por posteo | 20 |
+| Se achican a | 2560 px, calidad 0.85 |
+| Archivos (PDF, documentos, audio) por posteo | 10 |
+| Por archivo | 10 MB sugerido (techo 25 MB) |
 
-La diferencia no es de plan ni de precio: **Firestore mete el archivo
-ADENTRO del documento del posteo**, como texto base64 (que pesa ~33% más
-que el archivo original), y no admite más de 1 MiB por documento entero. De
-ahí salen el 6, el 2 y los 500 KB, y de ahí sale también que las imágenes
-se recompriman tan fuerte. **Supabase lo sube al bucket privado `adjuntos`
-y en el posteo queda solo la ruta**, así que un posteo pesa lo mismo con
-una foto que con veinte, y la foto puede ir casi sin recomprimir.
+**Supabase sube cada archivo al bucket privado `adjuntos` y en el posteo
+queda solo la ruta**, así que un posteo pesa lo mismo con una foto que con
+veinte, y la foto puede ir casi sin recomprimir. En la época de Firebase
+los topes eran mucho más chicos (6 imágenes de 1280 px, 2 archivos de
+hasta 500 KB): Firestore metía el archivo ADENTRO del documento del
+posteo, como texto base64 (~33% más pesado que el original), y no admitía
+más de 1 MiB por documento entero.
 
 Quien elige de ese techo para abajo es **Configuración > Adjuntos**; nunca
 de ahí para arriba. Lo elegido se guarda tal cual y se recorta contra el
 techo de la base **en el momento de usarlo** (`maxImagenes()`,
-`maxArchivos()`, `maxBytesPorArchivo()`): así un número elegido con una
-base no se pierde al pasar a la otra y volver. El campo de tamaño cambia de
-unidad solo (`unidadAdjuntos()`) — KB con Firebase, MB con Supabase —
+`maxArchivos()`, `maxBytesPorArchivo()`). El campo de tamaño va en la
+unidad que decide `unidadAdjuntos()` según el techo de la base (hoy MB),
 porque escribir "10240" para decir 10 MB es ilegible.
 
 Del lado de la base los mismos topes se exigen otra vez, que es lo único
-que vale: `isValidPostBase` en `firestore.rules` (6/2/500 KB), y
-`posts_listas`/`replies_listas` + `archivos_ok` en
+que vale: `posts_listas`/`replies_listas` + `archivos_ok` en
 `supabase/03-validacion.sql` (20/10). El bucket además tiene techo propio
 de 25 MB por archivo y una lista de tipos permitidos
 (`supabase/01-tablas.sql`).
@@ -392,9 +406,9 @@ de 25 MB por archivo y una lista de tipos permitidos
   lugar — el plan gratis de Supabase da 1 GB — sino por la **descarga**: da
   5 GB por mes, y un video de 20 MB que mire todo el equipo un par de veces
   se come el mes. El bucket lo rechaza a propósito.
-- No hay Firebase Storage ni plan pago (Blaze) en este proyecto — decisión
-  deliberada para mantenerlo gratis. Del lado de Firebase, todo lo que no
-  entra chico sigue yendo por link.
+- No hay plan pago en este proyecto — decisión deliberada para mantenerlo
+  gratis: todo entra en el plan gratis de Supabase (ver arriba), y lo que
+  no entra (video) va por link.
 
 ### Documentación esperada de un evento
 
@@ -415,12 +429,12 @@ que no lo llevan son los adjuntos sueltos de siempre. Una sola lista, un
 solo lugar donde mirar. Una estructura paralela ("documentos esperados" por
 un lado, archivos por el otro) se desincroniza sola a la primera edición.
 
-Consecuencia práctica: **esto no necesitó tocar `firestore.rules` ni el
-SQL**. Las dos capas validan cada archivo por nombre y ruta sin exigir una
-lista cerrada de claves (`isValidFileAt` / `archivos_ok`), y
-`isValidPreferences` solo pide que `activityTypes` sea una lista — así que
-un `doc` de más y unos `docs` adentro de cada tipo pasan sin cambiar nada
-del lado servidor.
+Consecuencia práctica: **el `doc` de cada archivo no necesitó tocar nada
+del lado servidor**. `archivos_ok` (`supabase/03-validacion.sql`) valida
+cada archivo por nombre y ruta sin exigir una lista cerrada de claves (en
+la época de Firebase, `isValidFileAt` hacía lo mismo). Los `docs` adentro
+de cada tipo sí los conoce la base: `tipo_ok` acepta `docs` en un tipo de
+actividad, hasta 10, cada uno con su `id` y su nombre (`label`).
 
 Detalles que importan:
 
@@ -455,17 +469,19 @@ aparece como nuevo en el celular; con Firebase vivían en el
 `localStorage` de cada navegador, que sigue como copia.
 
 Como cualquier aprobado necesita ver nombres/nicknames del resto del
-equipo para poder etiquetarlos, `allowlist` (antes solo legible por el
-admin en su totalidad) ahora permite `list` a cualquier aprobado —
-Firestore no tiene seguridad a nivel de campo, así que ese `list` trae
-el documento entero de cada persona: email, nombre, nickname, fecha de
-aprobación, y también su **rol** (`role`) y el estado de Calendar
-compartido (`calendarShared`, `calendarInviteSentAt`). Nada de eso es
-un dato sensible en sí mismo (no hay tokens ni contraseñas), pero vale
-saber que cualquier aprobado —incluidos los observadores— puede ver
-quién es admin. El `nickname` se arma una sola vez al aprobar a alguien
-(`makeNickname()`, primer nombre de Google, con desempate si ya existe
-otro con el mismo) y queda guardado en su documento de `allowlist`.
+equipo para poder etiquetarlos, cualquier aprobado puede leer la tabla
+`members` entera (política `members_leer` en
+`supabase/02-politicas.sql`; quien todavía no está aprobado lee solo su
+propia fila). La política es por fila, no por columna, así que cada
+aprobado recibe la fila completa de cada persona: email, nombre, nickname,
+foto, fecha de aprobación, y también su **rol** (`role`), el estado de
+Calendar compartido (`calendarShared`, `calendarInviteSentAt`) y
+`tourSeenAt`. Nada de eso es un dato sensible en sí mismo (no hay tokens
+ni contraseñas), pero vale saber que cualquier aprobado —incluidos los
+observadores— puede ver quién es admin. El `nickname` se arma una sola
+vez al aprobar a alguien (`makeNickname()`, primer nombre de Google, con
+desempate si ya existe otro con el mismo) y queda guardado en su fila de
+`members`.
 
 ### Reportes
 
@@ -475,8 +491,8 @@ mes, zona, país, tipo, quién las cargó y quién participó. El período se
 elige con dos filas de chips — el año y el trimestre (o el año entero) —
 y arriba va el total con la comparación contra el período anterior.
 
-**Se calcula en el navegador, no en la base** (`armarReporte()`), y por eso
-funciona igual con Firebase y con Supabase. La app ya se trae TODOS los
+**Se calcula en el navegador, no en la base** (`armarReporte()`): nació
+así con Firebase y siguió igual con Supabase. La app ya se trae TODOS los
 posteos para dibujar el Feed, así que contarlos no cuesta nada extra. El
 día que el Registro no entre de una en el navegador habrá que contar del
 lado de la base — y ese mismo día habrá que paginar el Feed, así que va a
@@ -507,12 +523,14 @@ entera serían cientos de KB más en un archivo que ya pesa 900.
 ### Configuración (panel admin)
 
 Pestaña **Configuración** (solo admin; por dentro sigue siendo
-`preferencias` en el código, Firestore y este README — se renombró solo
+`preferencias` en el código, la base y este README — se renombró solo
 el texto que ve la gente), con una sub-navegación de 5
 secciones para las cosas que antes solo se podían cambiar editando
-código. Todas se guardan en Firestore (`meta/territoryConfig` para
-Zonas, `meta/preferences` — un campo por sección, con `merge:true` — para
-el resto) y se leen para **todos los aprobados** apenas inician sesión
+código. Todas se guardan en la tabla `app_config` (la fila
+`territoryConfig` para Zonas, la fila `preferences` — un campo por
+sección, guardado por partes con la función `guardar_config` de
+`supabase/04-funciones.sql` para no pisar las demás — para el resto) y
+se leen para **todos los aprobados** apenas inician sesión
 (no solo el admin), porque afectan lo que ve todo el mundo: colores del
 mapa, tipos de actividad disponibles, sugerencias del buscador de lugar,
 a qué Calendar se sincroniza, límites de adjuntos.
@@ -545,10 +563,9 @@ a qué Calendar se sincroniza, límites de adjuntos.
   calendario viejo, solo afecta a los nuevos/editados de ahí en más.
 - **Adjuntos** — límites de cantidad/tamaño de archivos que se pueden
   adjuntar a un posteo. Son topes *ajustables hacia abajo* de los de la
-  base en uso (ver la tabla en "Adjuntos", más arriba), que además la base
+  base (ver la tabla en "Adjuntos", más arriba), que además la base
   exige de su lado — no se pueden agrandar más allá de eso desde acá. El
-  panel muestra el tope de la base que esté andando, y el campo de tamaño
-  va en KB o en MB según cuál sea.
+  panel muestra el tope de la base, y el campo de tamaño va en MB.
 
 #### El control de color (`colorControl()`)
 
@@ -587,7 +604,8 @@ como texto libre. Si suman presencia en un país nuevo, se puede ampliar
 `CITY_PRESETS` en `index.html` a mano.
 
 Incorporadas en septiembre 2026 desde lo que el equipo había cargado a
-mano (`extraCities` en Firestore): **George Town** (Islas Caimán),
+mano (`extraCities`, que entonces vivía en Firestore y hoy está en la
+fila `preferences` de `app_config`): **George Town** (Islas Caimán),
 **Quintana Roo** y **Cuernavaca** (México). Dos decisiones que conviene
 conocer:
 
@@ -596,11 +614,12 @@ conocer:
   que ya tenía "Chiapas". Se eligió no reemplazarlo por una ciudad para
   que los posteos que ya lo usan sigan matcheando (el nombre es el
   identificador, ver arriba).
-- **"Cuerna Vaca" estaba mal escrito** en Firestore; en el código entró
+- **"Cuerna Vaca" estaba mal escrito** en lo cargado a mano; en el código entró
   como "Cuernavaca". Como el nombre es el identificador, los posteos
   viejos que dicen "Cuerna Vaca" NO matchean solos: el admin los corrige
   a mano (decisión suya, en vez de un mapa de alias en el código), y hay
-  que borrar "Cuerna Vaca" de `extraCities` en Firestore — si no,
+  que borrar "Cuerna Vaca" de `extraCities` (en la fila `preferences` de
+  `app_config`) — si no,
   `applyExtraCitiesConfig()` lo vuelve a sumar como preset sin
   coordenada y aparece dos veces en el buscador.
 
@@ -698,7 +717,7 @@ el sandbox no llega a unpkg.
 
 Un país sin nada propio conserva su círculo tenue con 0 en la capital:
 dice "el equipo está acá aunque todavía no pasó nada" y da lugar al popup
-con lo regional/LatAm. Una ciudad promovida desde Firestore sin coordenada
+con lo regional/LatAm. Una ciudad sumada a mano (`extraCities`) sin coordenada
 cae en la capital de su país. El número de cada círculo es lo **propio**
 (ver "Lo propio y lo de LatAm").
 
@@ -872,9 +891,13 @@ que el emparejado de eventos huérfanos siga funcionando en los dos casos.
 
 Leer el Calendar va con `CALENDAR_API_KEY` (calendarios públicos, sin
 login). **Escribir** —crear un evento, compartir el calendario, sacar a
-alguien— necesita OAuth. El `signInWithPopup` de Firebase SIEMPRE abre
-ventana; **Google Identity Services no**: `requestAccessToken({prompt:""})`
-devuelve un token en silencio si esa cuenta ya dio el consentimiento.
+alguien— necesita OAuth, y ese permiso es de Google, no de la base: el
+login de Supabase no lo trae. Se pide con **Google Identity Services**,
+que no obliga a abrir ventana: `requestAccessToken({prompt:""})`
+(`requestSilentCalendarToken()`) devuelve un token en silencio si esa
+cuenta ya dio el consentimiento, y solo si no hay token se abre la ventana
+por el mismo camino (`requestCalendarTokenPopup()`). (En la época de
+Firebase el popup era `signInWithPopup`, que abría ventana siempre.)
 
 Entonces: **una sola pantalla de consentimiento** (la primera vez, por el
 popup de los botones de Calendar) y de ahí en más nada de ventanas.
@@ -948,15 +971,15 @@ verde, vencido rojo, hoy celeste, pendiente amarillo, el evento en
 petróleo) y una marca de "hoy" interpolada entre sus dos vecinos. En el
 celular queda solo la lista.
 
-Todo vive en el documento del posteo: `milestones[]` (tope 40) y
-`editors[]` (tope 20). No hay colección nueva ni plantillas en
+Todo vive en la fila del posteo: `milestones` (`jsonb`, tope 40) y
+`editors` (tope 20). No hay tabla nueva ni plantillas en
 Administrar: "Sugerir hitos típicos" (`SUGGESTED_MILESTONES`, días
 relativos al inicio del evento; el reporte final, al fin) carga una lista
 base que se edita como cualquier otra. Quien puede editar el posteo
 maneja el proyecto (`canManageProject`); además el creador suma
 **editores** (`editors`), que pasan a poder editar el posteo y manejar
 sus hitos (`canEditPost` los incluye). Los hitos se guardan como lista
-entera en cada cambio (`saveMilestones`), así el documento queda
+entera en cada cambio (`saveMilestones`), así el posteo queda
 consistente en una escritura.
 
 Un hito nuevo se agrega **solo con el título** (Enter o "+ Agregar
@@ -1003,15 +1026,16 @@ mirando la grilla.
 
 ### Borrar de verdad (solo el admin fijo)
 
-El admin fijo (`ADMIN_EMAIL`, `isFixedAdmin()` en la app, `isAdmin()` en
-las reglas) tiene en cada posteo y en cada respuesta un botón rojo
-"🗑️ Borrar" que borra **de verdad**: el documento del posteo y toda su
-subcolección de respuestas (`deletePostHard`), o la respuesta sola
+El admin fijo (`ADMIN_EMAIL`, `isFixedAdmin()` en la app, `es_admin_fijo()`
+en `supabase/02-politicas.sql`) tiene en cada posteo y en cada respuesta
+un botón rojo "🗑️ Borrar" que borra **de verdad**: la fila del posteo y
+todas sus respuestas (`deletePostHard`), o la respuesta sola
 (`deleteReplyHard`). Sin marca, sin aviso en
 ningún hilo (el registro de actividad sí anota el borrado del posteo,
 ver `registrar_posteo`); solo un `appConfirm()` (el modal propio, no el del
 navegador) antes. Los admins por rol NO lo tienen
-(a propósito: `isRoleAdmin` no aparece en los `allow delete`); el resto
+(a propósito: las políticas `posts_borrar` y `replies_borrar` solo
+dejan pasar a `es_admin_fijo()`); el resto
 del equipo sigue con "Cancelar evento", que deja marca. Si el posteo
 estaba en el Calendar también se borra el evento (`deleteCalendarEvent`);
 si eso falla, se avisa, porque una reimportación del historial lo
@@ -1019,8 +1043,9 @@ traería de vuelta como posteo nuevo.
 
 ### Roles
 
-Tres roles, guardados en `allowlist/{email}.role` (ausente = `member`, que
-es lo que tienen todos los aprobados de antes de que existiera el campo):
+Tres roles, guardados en la columna `role` de `members` (por defecto
+`member`, que es lo que tienen todos los aprobados de antes de que
+existiera el campo):
 
 | Rol | Ve | Escribe | Administra |
 |---|---|---|---|
@@ -1034,13 +1059,14 @@ me gusta/responder/editar, ni "Actualizar desde Calendar"; en su lugar ve
 una franja arriba que le dice que está en modo observador, y en los
 posteos con me gusta ve el conteo como texto. Todo eso son gates
 `canWrite()` en `index.html`, pero **la barrera real está en
-`firestore.rules`**: `canWrite()` ahí es "aprobado y no observador", y es
-lo que exigen las escrituras de posts/replies/likes/`meta/calendarSync`.
-Sus preferencias personales (`userPrefs`) sí las puede guardar.
+`supabase/02-politicas.sql`**: `puede_escribir()` ahí es "aprobado y no
+observador", y es lo que exigen las escrituras de posts/replies/me gusta,
+la fila `calendarSync` de `app_config` y la subida de adjuntos al bucket.
+Sus preferencias personales (`user_prefs`) sí las puede guardar.
 
 **Tampoco recibe el Calendar.** Compartirlo da permiso de escritura
 (`writer`) sobre el calendario del equipo, y sería una puerta lateral para
-cargar eventos que la app y las reglas le niegan. Por eso: su fila en
+cargar eventos que la app y la base le niegan. Por eso: su fila en
 Usuarios no ofrece "Compartir Calendar" ni "Reenviar invitación" (dice
 "Sin Calendar", o "Sacar del Calendar" si lo tenía de antes),
 `shareCalendarWith()` se niega si el roster dice que es observador, al
@@ -1049,42 +1075,45 @@ pasar a alguien a observador se lo saca del Calendar en el mismo acto
 arranca la sincronización automática Calendar → app
 (`startCalendarAutoSync` exige `canWrite()`).
 
-Los admins por rol (`role == 'admin'`, `isRoleAdmin()` en las reglas)
-pueden todo lo que el admin fijo: aprobar/rechazar/revocar, compartir el
-Calendar, Zonas, Preferencias, leer la auditoría, y **cambiar el rol de
-cualquiera** desde Usuarios (un `<select>` por fila, `changeRole()` en
-`index.html`) — con dos límites que están en las reglas, no solo en la UI:
-el documento de `ADMIN_EMAIL` no se puede tocar ni borrar, el rol
-escrito tiene que ser uno de los tres, y **nadie se cambia su propio rol**
-(`keepsOwnRole` en las reglas; la fila propia en Usuarios no tiene
-selector): que lo haga otro admin, así nadie se baja por error ni se
-escala solo. Cada cambio deja una entrada `role_changed` en la auditoría,
+Los admins por rol (`role = 'admin'`, `es_admin_rol()` en
+`supabase/02-politicas.sql`) pueden todo lo que el admin fijo salvo borrar
+de verdad: aprobar/rechazar/revocar, compartir el Calendar, Zonas,
+Preferencias, leer la auditoría, y **cambiar el rol de cualquiera** desde
+Usuarios (un `<select>` por fila, `changeRole()` en `index.html`) — con
+límites que están en la base, no solo en la UI: la fila de `ADMIN_EMAIL`
+no se puede tocar ni borrar (políticas `members_editar`/`members_borrar`),
+el rol tiene que ser uno de los tres (un `check` de la tabla), y **nadie se
+cambia su propio rol** (`members_controlar_update`; la fila propia en
+Usuarios no tiene selector): que lo haga otro admin, así nadie se baja por
+error ni se escala solo. Cada cambio deja una entrada `role_changed` en la auditoría,
 con el rol nuevo en `detail`.
 
 En `index.html`: `state.auth.status` toma `admin`/`approved`/`observer`
-según el rol del snapshot de `allowlist` (`recomputeAuthStatus`), y las
+según el rol de su fila de `members`, que llega por el aviso en vivo
+(`recomputeAuthStatus`), y las
 suscripciones que solo tienen sentido con admin (solicitudes, auditoría)
 se prenden y apagan con ese estado (`syncAdminSubs`): un admin degradado
 con la sesión abierta deja de recibirlas sin esperar un permiso denegado.
 `isAuthorized()` (puede entrar) ≠ `canWrite()` (puede publicar) ≠
 `isAdmin()` (administra).
 
-Detalle de reglas: `isRoleAdmin()` y `canWrite()` usan `get()` sobre el
-propio documento de `allowlist`, y siguen la regla de oro de este repo:
-líneas `allow` **separadas** para `isAdmin()` (el fijo) y para
-`isRoleAdmin()`, nunca las dos en una misma expresión.
+Detalle de la base: `es_admin_rol()` y `puede_escribir()` leen la propia
+fila de `members` a través de `esta_aprobado()`/`mi_rol()`, que son
+`security definer` para no morderse la cola con las políticas de la misma
+tabla. El admin fijo (`es_admin_fijo()`) se chequea aparte en cada
+política y no depende de tener fila.
 
-### Ex integrantes (`formerMembers/{email}`)
+### Ex integrantes (`former_members`)
 
-Al revocar un acceso se borra `allowlist/{email}`, y ahí vivía el
-`@nickname` — el único lugar. Antes de borrarlo se guarda una copia en
-`formerMembers/{email}` (nombre, nickname, foto, desde/hasta cuándo estuvo).
+Al revocar un acceso se borra su fila de `members`, y ahí vivía el
+`@nickname` — el único lugar. Antes de borrarla se guarda una copia en
+`former_members` (nombre, nickname, foto, desde/hasta cuándo estuvo).
 Sin eso, **todos los posteos y respuestas de esa persona pasaban a mostrar
 el nombre crudo de su cuenta de Google**, sin `@nickname` ni perfil
 clickeable, y las @menciones que le habían hecho quedaban como texto muerto.
 
-La colección **no da acceso a nada**: `isApproved()` sigue mirando
-únicamente si existe el documento en `allowlist`. La lee cualquier
+La tabla **no da acceso a nada**: `esta_aprobado()` sigue mirando
+únicamente si existe la fila en `members`. La lee cualquier
 aprobado, por el mismo motivo que el roster (resolver el `@nickname` de un
 autor); la escriben solo los admins.
 
@@ -1130,18 +1159,19 @@ cadena (quedarían en gris, sin link). Se pierde el link, pero nadie queda mal
 atribuido. Haría falta una lista de nicknames "retirados" que
 `highlightMentions` consulte antes de linkear.
 
-### Configuración personal (`userPrefs/{email}`)
+### Configuración personal (`user_prefs`)
 
 La solapa **Configuración** es de cada persona; la de admin se llama
-**Administrar** y configura el equipo (`meta/preferences`). No confundirlas.
+**Administrar** y configura el equipo (la fila `preferences` de
+`app_config`). No confundirlas.
 
-Las preferencias viven en una colección propia, `userPrefs/{email}`, y **no**
-como un campo más de `allowlist/{email}`. El motivo es concreto: ese
-documento lo lee entero todo el equipo con un `onSnapshot` (hace falta para
-las @menciones), así que meter ahí la configuración de cada uno haría que
-todos se bajen las preferencias de todos en cada cambio del roster, y las
-dejaría a la vista de cualquier aprobado. En `userPrefs/{email}` cada uno
-lee y escribe solo el suyo.
+Las preferencias viven en una tabla propia, `user_prefs` (una fila por
+email, con todo en un `jsonb`), y **no** como columnas de `members`. El
+motivo es concreto: `members` lo lee entero todo el equipo y lo escucha en
+vivo (hace falta para las @menciones), así que meter ahí la configuración
+de cada uno haría que todos se bajen las preferencias de todos en cada
+cambio del roster, y las dejaría a la vista de cualquier aprobado. En
+`user_prefs` cada uno lee y escribe solo la suya (políticas `prefs_*`).
 
 Cada control lleva `data-pref="<clave>"` y lo guarda **un solo** manejador
 genérico de `change` (más `data-action="pref-toggle-list"` para las listas
@@ -1384,13 +1414,13 @@ de Calendar no se pudieron aplicar: {msg}. Se van a reintentar la próxima
 vez que actualices.`) y el `syncToken` **no se guarda** si `failed > 0` —
 el próximo Actualizar vuelve a traer el mismo lote de eventos. Reaplicar
 los que sí habían funcionado no duplica nada: `createImportedPost` es
-idempotente por el id de documento (`cal_<eventId>`), y el resto de las
+idempotente por el id del posteo (`cal_<eventId>`), y el resto de las
 ramas de `applyCalendarEventToPosts` solo escribe si detecta un cambio
 real.
 
 Cómo funciona, en criollo: la app le pregunta a Google "¿qué cambió desde
 la última vez?" (usando un "sync token" que Calendar entrega y que se
-guarda en el documento `meta/calendarSync` de Firestore) en vez de releer
+guarda en la fila `calendarSync` de `app_config`) en vez de releer
 todo el calendario cada vez. Esta lectura usa una **clave de API de
 Google Cloud** (constante `CALENDAR_API_KEY` en `index.html`), no el
 login de la persona — así nunca aparece un popup de Google solo por
@@ -1401,7 +1431,8 @@ tiene que estar configurado como **público para lectura**:
    disponibilidad" → tildar **"Hacer disponible al público"** (alcanza
    con "Ver solo la disponibilidad (ocultar detalles)" desactivado, o sea
    que se vean los detalles, no solo si está libre/ocupado).
-2. Google Cloud Console → el mismo proyecto de Firebase → "Credenciales"
+2. Google Cloud Console → el mismo proyecto de siempre (el que quedó del
+   de Firebase, ver `supabase/LEEME.md`) → "Credenciales"
    → "Crear credenciales" → "Clave de API".
 3. Restringirla (recomendado): "Restricciones de API" → solo **Calendar
    API**; "Restricciones de aplicación" → "Referentes HTTP" → agregar
@@ -1413,24 +1444,25 @@ tiene que estar configurado como **público para lectura**:
 calendario (visible en el código fuente, que es público en GitHub) y una
 clave de API propia podría leer los eventos de "LatAm" sin ser parte del
 equipo ni loguearse en la app — es el precio de sacar el popup para la
-lectura. Los datos de la app (Firestore: posteos, hilos, quién tiene
+lectura. Los datos de la app (Supabase: posteos, hilos, quién tiene
 acceso) siguen 100% privados, esto solo afecta al Calendar de Google en
 sí. **Escribir** en Calendar (crear/editar/cancelar desde la app) sigue
 requiriendo el login de la persona que lo hace, igual que siempre.
 
-No hay servidor propio corriendo esto todo el tiempo — se dispara solo
-mientras alguien aprobado tiene la app abierta en el navegador: apenas
+En el navegador se dispara mientras alguien aprobado tiene la app
+abierta: apenas
 carga (una vez) y después sola cada **30 segundos** mientras la pestaña
 siga abierta, además de a mano con el botón **"🔄 Actualizar desde
 Calendar"** (por si alguien quiere forzar un chequeo ya mismo, o nadie
-tiene la app abierta en ese momento). Es decir: sigue sin ser en tiempo
-real al segundo — si nadie tiene la app abierta, un cambio hecho en
-Calendar recién se refleja cuando alguien la vuelve a abrir. Si más
-adelante hace falta que sea instantáneo incluso con la app cerrada, la
-alternativa es un webhook de Calendar corriendo en una Cloud Function
-propia (requiere plan de pago Blaze de Firebase y más piezas de
-infraestructura) — se dejó afuera a propósito por ahora, para no sumar
-esa complejidad sin necesidad.
+tiene la app abierta en ese momento). Además, aunque nadie tenga la app
+abierta, un trabajo de GitHub (`.github/workflows/calendario.yml`, ver
+`supabase/sync-calendar/LEEME.md`) hace lo mismo todas las madrugadas con
+la llave de servicio. Es decir: sigue sin ser en tiempo real al segundo —
+si nadie tiene la app abierta, un cambio hecho en Calendar se refleja a
+la madrugada siguiente o cuando alguien la vuelve a abrir. Que sea
+instantáneo incluso con la app cerrada pediría un webhook de Calendar con
+un servidor propio escuchando — se dejó afuera a propósito por ahora,
+para no sumar esa complejidad sin necesidad.
 
 Los eventos recurrentes de Calendar no se "expanden" en instancias
 individuales (para no generar un aluvión de posteos por cada repetición):
@@ -1440,7 +1472,7 @@ problema real, ya que cada acción del equipo tiene sus propias fechas.
 ### Actividad (solo admin)
 
 Pestaña "Actividad", visible solo para `ADMIN_EMAIL`: un registro de
-eventos de **acceso y administración** (colección `auditLog`), no del
+eventos de **acceso y administración** (tabla `audit_log`), no del
 contenido de los posteos. Como el login es 100% con cuenta de Google, no
 existe "cambio de contraseña" que registrar; en su lugar queda
 constancia de:
@@ -1515,7 +1547,7 @@ el admin (son fijos en el código, en `COUNTRIES`/`CITY_PRESETS`) — así
 que alcanza con tablas derechas, `DEFAULT_COUNTRY_LABELS`/
 `DEFAULT_CITY_LABELS`, sin el mecanismo de "respetar si ya lo tocaron".
 Las dos son solo para MOSTRAR: el identificador real (el que se guarda
-en cada scope de Firestore, la key de `CITY_PRESETS`/`COUNTRY_BY_NAME`/
+en cada scope de la base, la key de `CITY_PRESETS`/`COUNTRY_BY_NAME`/
 `ZONE_COUNTRIES`, y el que viaja en `data-country`/`data-city` de cada
 botón) sigue siendo siempre el nombre en español — cambiarlo por idioma
 rompería la carga de posteos viejos y cualquier comparación/matching
@@ -1712,7 +1744,8 @@ días** en el código (`timeMin = hoy − 90`), y después el sync token solo
 trae cambios posteriores: todo lo anterior a mediados de junio de 2026
 nunca había entrado y el token nunca vuelve a mirar para atrás. Ahora:
 
-- **"Importar desde"** (`meta/preferences.calendarImportFrom`,
+- **"Importar desde"** (`calendarImportFrom` en la fila `preferences` de
+  `app_config`,
   `CALENDAR_IMPORT_FROM`): la fecha desde la que se lee el calendario
   en una lectura completa. Vacío = **todo el historial** (sin `timeMin`).
   Se guarda con "Guardar fecha", sin palabra.
@@ -1848,11 +1881,12 @@ buscar la solapa correcta), sin la parte que generaba desconfianza.
 **Costo de sacarlo:** bajo. `renderMemoriaView`, `computeFeedOrder`,
 `placeView()`/`unifiedFeed()` y las preferencias `feedFeatured`/
 `unifiedFeed` se borraron del código; `feedOrder` quedó con dos valores
-(`desc | asc`) en vez de tres. `firestore.rules` sigue aceptando
-`unifiedFeed`/`feedFeatured` y el valor viejo `feedOrder: "reciente"`
-si algún documento ya guardado los tuviera (nadie los vuelve a escribir,
-pero rechazar un documento existente rompería el guardado de cualquier
-otra preferencia de esa persona).
+(`desc | asc`) en vez de tres. La base no se queja si alguna fila de
+`user_prefs` todavía tiene `unifiedFeed`/`feedFeatured` o el valor viejo
+`feedOrder: "reciente"`: no valida una lista cerrada de claves, solo el
+peso (nadie los vuelve a escribir, y rechazarlos rompería el guardado de
+cualquier otra preferencia de esa persona — por eso, en la época de
+Firebase, `firestore.rules` los seguía aceptando a propósito).
 
 Queda **revisable**: si en algún momento se quiere retomar la idea de
 "Reciente" con destacados, esta sección documenta exactamente cómo
@@ -1944,7 +1978,7 @@ mano**: la primera vez que entra alguien aprobado a partir de
 `TOUR_ELIGIBLE_FROM` (11/9/2026). Quien ya venía usando la app no lo ve
 nunca. Se usa la fecha de aprobación porque es el único dato propio que
 una cuenta común puede leer para saber si es nueva — los logins están en
-Actividad (`auditLog`), que solo lee el admin. (Hasta el 11/9/2026 hubo
+Actividad (`audit_log`), que solo lee el admin. (Hasta el 11/9/2026 hubo
 un botón "❔ Cómo funciona" en el menú del avatar para volver a verlo
 cuando se quisiera; se sacó para dejar ese lugar libre — ahí va a ir el
 selector de idioma.)
@@ -1966,13 +2000,14 @@ el header, que es `sticky`, por eso no hace falta seguir el scroll (sí se
 reposiciona al cambiar el tamaño de la ventana).
 
 Que ya se vio se marca **por cuenta, no por dispositivo**: en el campo
-`tourSeenAt` del documento de `allowlist`, así una cuenta nueva lo ve la
-primera vez que entra y no le reaparece aunque después cambie de máquina.
-Eso necesita la regla `isValidTourSeenEdit` en `firestore.rules` (cada
-persona puede escribir SOLO ese campo, y solo con la hora del servidor).
-Si esa escritura falla — típicamente porque las reglas todavía no se
-publicaron en Firebase — cae a `localStorage` (`ra_tour_seen`) para no
-quedar mostrándolo en bucle en cada carga.
+`tourSeenAt` de su fila en `members` (`store.roster.markTourSeen`), así
+una cuenta nueva lo ve la primera vez que entra y no le reaparece aunque
+después cambie de máquina. La base lo permite porque `tour_seen_at` es,
+junto con el `nickname`, lo único que cada persona puede cambiar de su
+propia fila (`members_controlar_update`), y la hora la pone la base
+(`members_marca_de_hora`). Si esa escritura falla (sin conexión, por
+ejemplo) queda también en `localStorage` (`ra_tour_seen`) para no quedar
+mostrándolo en bucle en cada carga.
 
 Tiene prioridad sobre el aviso del Calendar compartido: mientras el
 recorrido está abierto ese popup no aparece, y se muestra recién cuando
@@ -1981,18 +2016,22 @@ se cierra.
 ### Revisión de código (septiembre 2026): decisiones que hay que conocer
 
 Se hizo una pasada completa (seguridad del cliente, reglas, bugs, código
-muerto). Lo que cambió y conviene tener presente al tocar el código:
+muerto), cuando la base todavía era Firebase. Lo que cambió y conviene
+tener presente al tocar el código (donde se nombra Firestore, es la
+historia de por qué se hizo así):
 
 - **Todo `src`/`href` que viene de datos pasa por un validador**:
-  `safeImageSrc()` (solo `data:image/...;base64,` con cuerpo base64 puro),
-  `safeFileDataUrl()` (PDF/audio/octet-stream), `safeUrl()` (http/https/
+  `safeImageSrc()` (una `data:image/...;base64,` recién elegida, o la URL
+  firmada del bucket), `safeFileDataUrl()` (lo mismo para los archivos),
+  `safeUrl()` (http/https/
   mailto; acepta "www.algo.com/x" sin esquema y le pone https) y
   `safeColor()` (`#rrggbb`, para los colores de zona que van a un
-  `style=""`). Las reglas solo chequean que `images`/`files` sean listas,
-  no qué tienen adentro — un documento escrito a mano contra Firestore
-  podía meter un `" onerror="..."` que corría en el navegador de todos.
+  `style=""`). En su momento las reglas de Firestore solo chequeaban que
+  `images`/`files` fueran listas, no qué tenían adentro — un documento
+  escrito a mano podía meter un `" onerror="..."` que corría en el
+  navegador de todos.
   Labels/iconos de tipos y zonas (config del admin) también van con
-  `esc()`. Regla general: **nada que venga de Firestore o de Calendar se
+  `esc()`. Regla general: **nada que venga de la base o de Calendar se
   interpola sin `esc()` o sin uno de esos validadores.**
 - **Fechas**: `todayISO()` da "hoy" en hora local (`toISOString()` es
   UTC: a las 22:00 de Buenos Aires ya es mañana) y `addDaysISO()` hace la
@@ -2004,7 +2043,7 @@ muerto). Lo que cambió y conviene tener presente al tocar el código:
   labels) usan `Object.create(null)` o `hasOwn()`: un scope con country
   `"__proto__"` escribía en `Object.prototype`, y un `@constructor` en un
   texto metía la función `Object` en `mentions` y Firestore rechazaba el
-  posteo entero. `canonicalCityName()` devuelve el nombre del preset si
+  posteo entero (en aquella época). `canonicalCityName()` devuelve el nombre del preset si
   coincide sin tildes/mayúsculas (antes `titleCase()` convertía "Ciudad
   de México" en "Ciudad De México" y no matcheaba nada).
 - **Zonas/tipos borrados por el admin** con posteos que todavía los
@@ -2015,7 +2054,7 @@ muerto). Lo que cambió y conviene tener presente al tocar el código:
 - **Composer**: cerrar con cambios sin guardar pregunta; Escape cierra
   de adentro hacia afuera (lightbox → desplegable → modal); Enter en un
   input no publica; hay un flag `submitting` que evita el doble envío
-  (los posteos no se pueden borrar); los topes de las reglas (15 lugares,
+  (los posteos no se pueden borrar); los topes de la base (15 lugares,
   10 links, 10 participantes, 10 @menciones, 5000/3000 caracteres) se
   chequean antes de escribir, con mensaje.
 - **Calendar**: los eventos que crea la app llevan
@@ -2023,24 +2062,25 @@ muerto). Lo que cambió y conviene tener presente al tocar el código:
   label, que cambia con el idioma) y `raPostId`; `extractTitleFromSummary`
   y `findCalendarEventId` reconocen el prefijo "Tipo: " en cualquiera de
   los labels conocidos. Los posteos importados desde Calendar usan un id
-  de documento derivado del id del evento (`cal_<id>`) y se crean en una
-  transacción: el poll de 30 s corre en todos los navegadores abiertos y
-  dos podían importar el mismo evento. Un evento cancelado no se
+  derivado del id del evento (`cal_<id>`) y se crean con
+  `store.posts.createOnce` (un `upsert` que ignora el duplicado; con
+  Firebase era una transacción): el poll de 30 s corre en todos los
+  navegadores abiertos y dos podían importar el mismo evento. Un evento cancelado no se
   resucita al editar el posteo. Cambiar el ID del calendario resetea el
   `syncToken`. El loop del sync tolera un evento que falle (los demás se
   aplican y el token avanza).
 - **Sesión**: revocar a alguien online corta sus listeners antes de que
-  fallen; si el listener de `allowlist` falla se muestra el motivo (no un
-  "pendiente" eterno). El roster no usa `orderBy("approvedAt")` porque
-  Firestore excluye los docs sin ese campo.
+  fallen; si la suscripción a `members` falla se muestra el motivo (no un
+  "pendiente" eterno). El roster no se pide ordenado por `approvedAt`
+  (con Firestore, `orderBy("approvedAt")` excluía los docs sin ese campo).
 - **Respuestas con una sola consulta**: `subscribeReplies()` lee las
-  respuestas de todos los posteos con un `collectionGroup("replies")` en
-  vez de un listener por posteo (que crecían sin tope). Necesita el
-  `match /{path=**}/replies/{replyId}` de `firestore.rules` — la regla
-  anidada en `/posts/{postId}/replies` NO cubre consultas de grupo, y eso
-  era lo que faltaba cuando "hasta con `if true` seguía fallando". Si
-  las reglas publicadas todavía no lo tienen, Firestore contesta
-  permission-denied y el cliente pasa solo al modo posteo por posteo.
+  respuestas de todos los posteos con una sola suscripción a la tabla
+  `replies` (`store.replies.subscribeAll`) en vez de un listener por
+  posteo (que crecían sin tope). En la época de Firebase eso era un
+  `collectionGroup("replies")`, que necesitaba su propia regla
+  `match /{path=**}/replies/{replyId}` en `firestore.rules` — la regla
+  anidada no cubría consultas de grupo, y eso era lo que faltaba cuando
+  "hasta con `if true` seguía fallando".
 - **Marcas de "visto"** (popup y campanita del Calendar, @menciones)
   guardan la hora DEL DATO (la invitación, la mención más nueva), no
   `Date.now()`: con el reloj del dispositivo atrasado, un "ahora" local
@@ -2058,10 +2098,10 @@ muerto). Lo que cambió y conviene tener presente al tocar el código:
   marcadores si cambió algo); la regex de @menciones y los conteos por
   persona se memoizan por versión de roster/posts; Actividad baja como
   mucho 1000 entradas.
-- **Se dejó a propósito**: el banner de `CONFIG_IS_PLACEHOLDER` (hoy es
-  siempre `false`, pero es el camino de arranque para un fork nuevo) y
-  los chequeos `isAuthorized()` redundantes dentro de vistas que ya están
-  detrás del gate (defensa barata).
+- **Se dejó a propósito**: los chequeos `isAuthorized()` redundantes
+  dentro de vistas que ya están detrás del gate (defensa barata). (El
+  banner de `CONFIG_IS_PLACEHOLDER`, para un fork sin configurar, se fue
+  con Firebase.)
 
 ## 4. Qué falta / decisiones pendientes
 
