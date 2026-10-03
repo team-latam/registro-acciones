@@ -284,6 +284,22 @@ Decisión del usuario (3 oct 2026), con la mirada de un integrante:
   eventos ("Cambios en tus eventos", con su filtro y su "Nuevo"). Quién
   editó se guarda también por correo (`last_edited_by_email`).
 
+### 18. La entrada, sin adelantar la app — HECHO (3 oct 2026)
+
+Pedido del usuario: que la pantalla de entrada no "spoilee" cómo es el
+sistema por dentro. Se le mostraron tres propuestas (pantalla entera, dos
+mitades, mínima) y eligió la de pantalla entera con la frase chica debajo
+del nombre.
+
+- Sin la barra de arriba ni el pie de la app mientras no hay sesión
+  (`body.en-portada`, también en el "Cargando…" del arranque). Aparecen
+  recién al entrar.
+- Todo el fondo en petróleo, con el nombre grande, "TEAM LATAM" y la
+  frase "Lo que hacemos, en un solo lugar." (en los cuatro idiomas).
+- Se fue el texto que contaba qué hay adentro (visitas, cursos… por país
+  y fecha). Queda una tarjeta con "Espacio privado del equipo", el botón
+  de Google, "¿Es tu primera vez?" en una línea y los idiomas.
+
 ## Fuera de alcance (necesitan algo que la app no tiene)
 
 - Mandar correos (resumen semanal, invitaciones): no hay servicio de
