@@ -422,7 +422,17 @@
   .admin-item:hover{ background:var(--surface-alt); }
   .admin-item.active{ background:var(--petroleo); color:#fff; }
   .admin-body{ flex:1; min-width:0; }
-  .admin-h2{ margin:0 0 14px; font-size:22px; color:var(--ink-strong); }
+  /* La cabecera de cada sección (ver adminSeccionTextos): título, una
+     línea de para qué sirve y la explicación larga plegada. */
+  .admin-cabecera{ margin:0 0 18px; }
+  .admin-h2{ margin:0 0 4px; font-size:22px; color:var(--ink-strong); }
+  .admin-lead{ margin:0; font-size:13.5px; line-height:1.5; color:var(--text-muted); max-width:70ch; }
+  .admin-ayuda{ margin-top:8px; max-width:72ch; }
+  .admin-ayuda summary{ cursor:pointer; list-style:none; font-size:12.5px; font-weight:700; color:var(--celeste-dark); width:max-content; }
+  .admin-ayuda summary::-webkit-details-marker{ display:none; }
+  .admin-ayuda summary::before{ content:"▸ "; }
+  .admin-ayuda[open] summary::before{ content:"▾ "; }
+  .admin-ayuda > div{ margin-top:8px; font-size:13px; line-height:1.55; color:var(--text); background:var(--surface-alt); border-radius:var(--radius-sm); padding:10px 14px; }
   .admin-h3{ margin:18px 0 10px; font-size:13px; text-transform:uppercase; letter-spacing:.04em; color:var(--text-muted); }
   .admin-ahora{ background:var(--warn-bg); border:1px solid var(--warn-border); border-radius:var(--radius-md); padding:12px 16px; margin-bottom:16px; }
   .admin-ahora h3{ margin:0 0 6px; font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--warn-text); }
@@ -613,7 +623,15 @@
   .audit-day + .audit-row{ border-top:none; }
   .audit-bajar{ display:flex; justify-content:flex-end; margin:-4px 0 10px; }
   /* Personas: columnas alineadas (ver renderUsuariosSection). */
-  .user-row{ display:grid; grid-template-columns:minmax(0, 1.7fr) 130px 190px 110px 110px auto; align-items:center; gap:12px; padding:10px 16px; margin-bottom:8px; }
+  /* La primera columna más ancha: con 1.7fr el email se partía en dos
+     renglones ("ana@team-" / "latam.com") en casi todas las filas. */
+  .user-row{ display:grid; grid-template-columns:minmax(0, 2.4fr) 128px 172px 96px 92px auto; align-items:center; gap:12px; padding:10px 16px; margin-bottom:8px; }
+  .user-row .status-pill{ white-space:nowrap; font-size:11px; }
+  .user-row select{ width:100%; min-width:0; }
+  /* Nombre y email en un renglón cada uno, con puntos suspensivos si no
+     entran: partidos en dos ("ana@team-" / "latam.com") se leían peor. */
+  .user-row .user-cell-persona .rinfo{ min-width:0; }
+  .user-row .user-cell-persona .rname, .user-row .user-cell-persona .remail{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .user-row-head{ background:transparent; border:none; box-shadow:none; padding:0 16px; margin-bottom:4px; font-size:10.5px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--text-muted); }
   .user-cell-persona{ display:flex; align-items:center; gap:12px; min-width:0; }
   .user-cell{ min-width:0; font-size:12.5px; }
@@ -879,7 +897,6 @@
   .tipo-menu-wrap .post-menu-item.danger{ color:var(--danger); }
   .post-menu-nota{ font-size:11.5px; color:var(--text-muted); padding:2px 12px 8px; line-height:1.4; }
   /* Un tipo archivado (tanda 11): se ve apagado y con su etiqueta. */
-  .zone-edit-row.archivado .tipo-icon-input, .zone-edit-row.archivado .zone-label-input{ opacity:.55; }
   .tipo-archivado{ background:var(--surface-alt); color:var(--text-muted); font-size:11px; }
   /* Dar acceso por adelantado (ver renderPreaprobar). */
   .preaprobar{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md); padding:14px 16px; margin-bottom:18px; }
@@ -1811,16 +1828,30 @@
   }
   .doc-fila .rm:hover{ background:var(--danger-bg); color:var(--danger); }
 
-  /* Documentos esperados, en Configuración > Tipos de actividad */
-  .tipo-docs{
-    display:flex; align-items:center; flex-wrap:wrap; gap:6px;
-    /* El mismo margen lateral que la fila de arriba (.zone-edit-row):
-       sin él, el rótulo quedaba pegado al borde de la tarjeta. */
-    padding:6px 8px 10px; margin-top:-6px;
+  /* Tipos de actividad: una tarjeta por tipo (ver renderTiposSection).
+     Arriba la fila del tipo; debajo, en la misma tarjeta y sangrados
+     bajo el nombre, los documentos esperados. Antes era una lista
+     corrida con una franja gris por tipo, un rótulo en mayúsculas, un
+     campo ancho y un botón + grande y brillante en cada una: seis
+     botones llamativos para una acción secundaria. */
+  .zone-edit-list:has(.tipo-card){ border:none; border-radius:0; overflow:visible; gap:10px; }
+  .tipo-card{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md); box-shadow:var(--shadow); }
+  .tipo-card .zone-edit-row{ grid-template-columns:40px minmax(0,1fr) auto; gap:12px; padding:12px 14px 4px; background:transparent; border:none; }
+  .tipo-card .zone-edit-row:hover{ background:transparent; }
+  .tipo-card .tipo-icon-input{
+    width:40px; height:40px; border:1px solid transparent; border-radius:12px; background:var(--surface-alt); font-size:20px; padding:0;
   }
-  .tipo-docs-rotulo{ font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.03em; }
+  .tipo-card .tipo-icon-input:hover, .tipo-card .tipo-icon-input:focus{ border-color:var(--border); background:var(--card); outline:none; }
+  .tipo-card .zone-label-input{ font-size:15px; font-weight:700; color:var(--ink-strong); }
+  .tipo-card.archivado .tipo-icon-input, .tipo-card.archivado .zone-label-input{ opacity:.55; }
+  .tipo-docs{
+    display:flex; align-items:center; flex-wrap:wrap; gap:6px 8px;
+    padding:4px 14px 12px 66px;
+  }
+  .tipo-docs-rotulo{ font-size:12px; font-weight:600; color:var(--text-muted); }
+  .tipo-docs-nada{ font-size:12px; color:var(--text-muted); font-style:italic; }
   .doc-chip{
-    display:inline-flex; align-items:center; gap:4px; background:var(--surface-alt);
+    display:inline-flex; align-items:center; gap:2px; background:var(--surface-alt);
     border:1px solid var(--border); border-radius:999px; padding:2px 4px 2px 10px; font-size:12px; font-weight:600;
   }
   .doc-chip .rm{
@@ -1828,10 +1859,20 @@
     color:var(--text-muted); font-size:11px; cursor:pointer; line-height:22px; padding:0;
   }
   .doc-chip .rm:hover{ background:var(--danger-bg); color:var(--danger); }
+  /* El campo para sumar un documento parece un chip más, punteado; recién
+     al escribir se ve como campo. El + es chico y discreto: la acción
+     principal de la pantalla es "Guardar cambios", no esta. */
   .doc-nuevo-input{
-    flex:1; min-width:120px; max-width:220px; font-size:12px; padding:4px 8px;
-    border:1px solid var(--border); border-radius:8px; background:var(--card); color:var(--ink); font-family:inherit;
+    flex:0 1 190px; min-width:140px; font-size:12px; padding:4px 12px; font-family:inherit;
+    border:1px dashed var(--border); border-radius:999px; background:transparent; color:var(--ink);
   }
+  .doc-nuevo-input::placeholder{ color:var(--text-muted); font-weight:600; }
+  .doc-nuevo-input:focus{ outline:none; border-style:solid; border-color:var(--celeste-dark); background:var(--card); }
+  .btn-doc-add{
+    width:26px; height:26px; border-radius:50%; border:1px solid var(--border); background:var(--card); color:var(--celeste-dark);
+    font-size:16px; font-weight:800; line-height:1; padding:0; cursor:pointer; flex:none;
+  }
+  .btn-doc-add:hover{ background:var(--celeste-soft); border-color:var(--celeste-dark); }
 
   /* Autocompletado genérico (lugar y @menciones): lista angosta debajo
      del input/textarea que la dispara. */
@@ -2627,6 +2668,10 @@
     /* El rótulo "Documentos esperados" en su propia línea: al lado del
        campo y del +, el + se caía solo a la línea de abajo. */
     .tipo-docs-rotulo{ flex:1 0 100%; }
+    /* En angosto no hay lugar para la sangría bajo el nombre, y el campo
+       de "agregar" ocupa lo que queda para que el + no se baje solo. */
+    .tipo-docs{ padding-inline-start:14px; }
+    .doc-nuevo-input{ flex:1 1 140px; }
   }
   /* ---- Navegación: pestañas arriba en ancho, barra abajo en angosto ----
      (los estilos de escritorio del menú del avatar y de Administración
@@ -9562,17 +9607,52 @@ function adminSeccionActual(){
   if(state.view === "preferencias") return state.preferenciasSection;
   return "resumen";
 }
+// Cada sección de Administración arranca igual: el título, una línea que
+// dice para qué sirve y, cuando hace falta más, "¿Cómo funciona?"
+// plegado. Antes cada una empezaba distinto (un párrafo gris largo, o
+// directamente los controles) y no había dónde leer el nombre de la
+// sección en la que se estaba.
+function adminSeccionTextos(key){
+  const T = {
+    resumen: { lead: t("Lo que hay para hacer hoy y cómo viene el equipo.","What needs doing today and how the team is doing.","O que há para fazer hoje e como vai a equipe.","מה יש לעשות היום ואיך הצוות מתקדם.") },
+    personas: { lead: t("Quién está en el equipo, con qué rol, y los pedidos de acceso.","Who's on the team, with which role, and the access requests.","Quem está na equipe, com qual papel, e os pedidos de acesso.","מי בצוות, באיזה תפקיד, ובקשות הגישה.") },
+    actividad: { lead: t("Quién entró, qué cargó y qué cambió, día por día.","Who signed in, what they logged and what changed, day by day.","Quem entrou, o que carregou e o que mudou, dia a dia.","מי נכנס/ה, מה נרשם ומה השתנה, יום אחר יום.") },
+    zonas: { lead: t("A qué zona pertenece cada país. Cambiarlo aplica también a los posteos ya cargados.","Which zone each country belongs to. Changing it also applies to posts already logged.","A que zona pertence cada país. Trocar também se aplica às postagens já carregadas.","לאיזה אזור שייכת כל מדינה. שינוי חל גם על פוסטים שכבר נרשמו.") },
+    tipos: {
+      lead: t("Los tipos que se ofrecen al cargar un evento, y qué documentos se espera de cada uno.","The types offered when logging an event, and which documents are expected for each.","Os tipos oferecidos ao criar um evento, e que documentos se espera de cada um.","הסוגים שמוצעים ברישום אירוע, ואילו מסמכים מצופים מכל אחד."),
+      ayuda: t(
+        `Rutina es aparte y no se edita acá. Los que tienen prendido "Calendar" se suman solos al Calendar compartido de LatAm; los que no, quedan solo en el Registro.<br><br>Los <b>documentos esperados</b> de cada tipo aparecen en la tarjeta de cada evento de ese tipo, con lo que ya está adjuntado y lo que falta — por ejemplo, una Visita con "Plan de viaje" y "Reporte". Es una lista de lo que se espera, no una obligación: nada bloquea publicar sin ellos.`,
+        `Routine is separate and isn't edited here. The ones with "Calendar" on sync automatically to the shared LatAm Calendar; the rest stay only in the Log.<br><br>The <b>expected documents</b> of each type show up on every event card of that type, with what's attached and what's missing — for example, a Visit with "Travel plan" and "Report". It's a list of what's expected, not a requirement: nothing blocks publishing without them.`,
+        `Rotina é separado e não se edita aqui. Os que têm "Calendar" ligado são somados sozinhos ao Calendar compartilhado da LatAm; os que não, ficam só no Registro.<br><br>Os <b>documentos esperados</b> de cada tipo aparecem no cartão de cada evento desse tipo, com o que já está anexado e o que falta — por exemplo, uma Visita com "Plano de viagem" e "Relatório". É uma lista do que se espera, não uma obrigação: nada bloqueia publicar sem eles.`,
+        `שגרה נפרדת ולא נערכת כאן. אלה ש"Calendar" דולק אצלם מתווספים לבד ליומן המשותף של LatAm; השאר נשארים רק ביומן הפעילויות.<br><br><b>המסמכים הצפויים</b> של כל סוג מופיעים בכרטיס של כל אירוע מאותו סוג, עם מה שכבר צורף ומה שחסר — למשל, ביקור עם "תוכנית נסיעה" ו"דוח". זו רשימה של מה שמצופה, לא חובה: דבר אינו חוסם פרסום בלעדיהם.`),
+    },
+    lugares: {
+      lead: t("Ciudades que el equipo escribió a mano y todavía no están en la lista oficial.","Cities the team typed by hand that aren't in the official list yet.","Cidades que a equipe digitou à mão e ainda não estão na lista oficial.","ערים שהצוות הקליד ידנית ושעדיין לא ברשימה הרשמית."),
+      ayuda: t("Sumarlas acá hace que aparezcan como sugerencia del buscador de lugar para todo el mundo, en vez de que cada uno la escriba de cero cada vez.","Adding them here makes them show up as a place-search suggestion for everyone, instead of each person typing it from scratch every time.","Somá-las aqui faz com que apareçam como sugestão do buscador de lugar para todo mundo, em vez de cada um escrever do zero toda vez.","הוספתן כאן גורמת להן להופיע כהצעה בחיפוש המקום לכולם, במקום שכל אחד יקליד אותן מחדש בכל פעם."),
+    },
+    adjuntos: { lead: t("Cuántos archivos, y de qué tamaño, se pueden adjuntar a un posteo (evento, rutina o respuesta).","How many files, and how big, can be attached to a post (event, routine or reply).","Quantos arquivos, e de que tamanho, podem ser anexados a uma postagem (evento, rotina ou resposta).","כמה קבצים, ובאיזה גודל, אפשר לצרף לפוסט (אירוע, שגרה או תגובה).") },
+    calendar: { lead: t("El Google Calendar al que van los eventos (la Rutina no). Si lo cambiás, los ya cargados se quedan donde están.","The Google Calendar where events go (Routines don't). If you change it, the ones already created stay where they are.","O Google Calendar para onde vão os eventos (a Rotina não). Se trocar, os já criados ficam onde estão.","ה-Google Calendar שאליו נשלחים האירועים (שגרה לא). אם משנים אותו, הקיימים נשארים במקומם.") },
+  };
+  return T[key] || {};
+}
 function renderAdminShell(contenido){
   const actual = adminSeccionActual();
   const menu = adminMenuItems().map(g => `${g.grupo ? `<div class="admin-grupo">${esc(g.grupo)}</div>` : ""}${g.items.map(it => `
       <button type="button" class="admin-item${it.key===actual?" active":""}" data-action="admin-go" data-view="${it.view}"${it.sub ? ` data-key="${it.sub}"` : ""}>
         <span>${esc(it.label)}</span>${it.badge ? `<span class="pending-count${it.suave?" suave":""}">${it.badge}</span>` : ""}
       </button>`).join("")}`).join("");
+  const item = adminMenuItems().flatMap(g => g.items).find(it => it.key === actual);
+  const tx = adminSeccionTextos(actual);
+  const cabecera = `<header class="admin-cabecera">
+      <h2 class="admin-h2">${esc(item ? item.label : "")}</h2>
+      ${tx.lead ? `<p class="admin-lead">${tx.lead}</p>` : ""}
+      ${tx.ayuda ? `<details class="admin-ayuda"><summary>${t("¿Cómo funciona?","How does it work?","Como funciona?","איך זה עובד?")}</summary><div>${tx.ayuda}</div></details>` : ""}
+    </header>`;
   return `<div class="admin-view">
       <aside class="admin-menu" aria-label="${esc(t("Administración","Administration","Administração","ניהול"))}">
         <div class="admin-titulo">${t("Administración","Administration","Administração","ניהול")}</div>${menu}
       </aside>
-      <div class="admin-body">${contenido}</div>
+      <div class="admin-body">${cabecera}${contenido}</div>
     </div>`;
 }
 // El Resumen: primero lo que hay para hacer (pedidos de acceso, lugares
@@ -9614,7 +9694,6 @@ function renderAdminResumen(){
     : `<div class="admin-ok">✅ ${t("Nada pendiente: no hay pedidos de acceso ni lugares por revisar.","Nothing pending: no access requests and no places to review.","Nada pendente: não há pedidos de acesso nem lugares para revisar.","אין ממתינים: אין בקשות גישה ואין מקומות לבדיקה.")}</div>`;
   const cifra = (n, txt, alerta) => `<div class="rep-kpi"><div class="rep-kpi-num${alerta && n ? " alerta" : ""}">${n}</div><div class="rep-kpi-txt">${txt}</div></div>`;
   return `<div class="admin-resumen">
-      <h2 class="admin-h2">${t("Resumen","Overview","Resumo","סיכום")}</h2>
       ${ahora}
       <h3 class="admin-h3">${t("El equipo este mes","The team this month","A equipe este mês","הצוות החודש")}</h3>
       <section class="admin-cifras">
@@ -9933,14 +10012,6 @@ function renderZonasSection(){
   Object.values(d.countryZones).forEach(z=>{ if(countByZone[z]!=null) countByZone[z]++; });
   return `
       ${renderSugerenciaCaribe(d)}
-      <div class="hint" style="margin-bottom:16px;">
-        ${t(
-          "Cambiar la zona de un país aplica también a los posteos ya cargados.",
-          "Changing a country's zone also applies to posts already loaded.",
-          "Trocar a zona de um país também se aplica às postagens já carregadas.",
-          "שינוי האזור של מדינה חל גם על פוסטים שכבר נטענו."
-        )}
-      </div>
       ${d.zoneOrder.map(key=>{
         const z = d.zones[key];
         const count = countByZone[key] || 0;
@@ -10049,19 +10120,14 @@ function tiposFootnote(d){
 }
 function renderTiposSection(){
   const d = getTiposDraft();
+  // La explicación larga vive en la cabecera de la sección ("¿Cómo
+  // funciona?", ver adminSeccionTextos). Cada tipo es una tarjeta: la
+  // fila del tipo y, debajo, sus documentos esperados.
   return `
-      <div class="hint" style="margin-bottom:16px;">
-        ${t(
-          `Tipos de actividad disponibles al cargar un Evento nuevo (Rutina es aparte, no se edita acá). Los que tienen tildado "Calendar" se suman solos al Calendar compartido de LatAm; los que no, quedan solo en el Registro.<br><br>Los <b>documentos esperados</b> de cada tipo aparecen en la tarjeta de cada evento de ese tipo, con lo que ya está adjuntado y lo que falta — por ejemplo, una Visita con "Plan de viaje" y "Reporte". Es una lista de lo que se espera, no una obligación: nada bloquea publicar sin ellos.`,
-          `Activity types available when creating a new Event (Routine is separate, not edited here). The ones with "Calendar" checked sync automatically to the shared LatAm Calendar; the rest stay only in the Log.<br><br>The <b>expected documents</b> of each type show up on every event card of that type, with what's attached and what's missing — for example, a Visit with "Travel plan" and "Report". It's a list of what's expected, not a requirement: nothing blocks publishing without them.`,
-          `Tipos de atividade disponíveis ao criar um Evento novo (Rotina é separado, não se edita aqui). Os que têm "Calendar" marcado são somados sozinhos ao Calendar compartilhado da LatAm; os que não, ficam só no Registro.<br><br>Os <b>documentos esperados</b> de cada tipo aparecem no cartão de cada evento desse tipo, com o que já está anexado e o que falta — por exemplo, uma Visita com "Plano de viagem" e "Relatório". É uma lista do que se espera, não uma obrigação: nada bloqueia publicar sem eles.`,
-          `סוגי הפעילות הזמינים ביצירת אירוע חדש (שגרה נפרדת, לא נערכת כאן). אלה שמסומן להם "Calendar" מתווספים לבד ליומן המשותף של LatAm; השאר נשארים רק ביומן הפעילויות.<br><br><b>המסמכים הצפויים</b> של כל סוג מופיעים בכרטיס של כל אירוע מאותו סוג, עם מה שכבר צורף ומה שחסר — למשל, ביקור עם "תוכנית נסיעה" ו"דוח". זו רשימה של מה שמצופה, לא חובה: דבר אינו חוסם פרסום בלעדיהם.`
-        )}
-      </div>
       <div class="zone-edit-list">
         ${d.types.map((ty, idx)=>{
           const count = countPostsByType(ty.key);
-          return `<div class="zone-edit-row${ty.archived ? " archivado" : ""}">
+          return `<div class="tipo-card${ty.archived ? " archivado" : ""}"><div class="zone-edit-row">
             <input type="text" class="tipo-icon-input" data-action="tipos-icon" data-key="${esc(ty.key)}" value="${esc(ty.icon)}" maxlength="4">
             <input type="text" class="zone-label-input" data-action="tipos-label" data-key="${esc(ty.key)}" value="${esc(ty.label)}" maxlength="30">
             <div class="tipo-meta">
@@ -10072,13 +10138,14 @@ function renderTiposSection(){
             </div>
           </div>
           <div class="tipo-docs">
-            <span class="tipo-docs-rotulo">${t("Documentos esperados","Expected documents","Documentos esperados","מסמכים צפויים")}</span>
+            <span class="tipo-docs-rotulo">${t("Documentos esperados:","Expected documents:","Documentos esperados:","מסמכים צפויים:")}</span>
+            ${(ty.docs||[]).length ? "" : `<span class="tipo-docs-nada">${t("ninguno","none","nenhum","אין")}</span>`}
             ${(ty.docs||[]).map((doc, i)=>`<span class="doc-chip">${esc(doc.label)}<button type="button" class="rm" data-action="tipo-doc-remove" data-key="${esc(ty.key)}" data-idx="${i}" title="${esc(t("Quitar","Remove","Remover","הסרה"))}">✕</button></span>`).join("")}
             <input type="text" class="doc-nuevo-input" data-action="tipo-doc-nuevo" data-key="${esc(ty.key)}"
               value="${esc((d.nuevoDoc||{})[ty.key] || "")}" maxlength="60"
-              placeholder="${esc(t("ej: Plan de viaje","e.g. Travel plan","ex: Plano de viagem","למשל: תוכנית נסיעה"))}">
-            <button type="button" class="btn-mini" data-action="tipo-doc-add" data-key="${esc(ty.key)}">+</button>
-          </div>`;
+              placeholder="${esc(t("+ Agregar documento…","+ Add document…","+ Adicionar documento…","+ הוספת מסמך…"))}">
+            <button type="button" class="btn-doc-add" data-action="tipo-doc-add" data-key="${esc(ty.key)}" aria-label="${esc(t("Agregar documento","Add document","Adicionar documento","הוספת מסמך"))}" title="${esc(t("Agregar documento","Add document","Adicionar documento","הוספת מסמך"))}">+</button>
+          </div></div>`;
         }).join("")}
       </div>
       ${tiposFootnote(d)}
@@ -10118,14 +10185,6 @@ function getCustomCityUsage(){
 function renderLugaresSection(){
   const items = getCustomCityUsage();
   return `
-      <div class="hint" style="margin-bottom:16px;">
-        ${t(
-          "Ciudades que el equipo fue cargando y todavía no están en la lista oficial. Sumarlas acá hace que aparezcan como sugerencia del buscador de lugar para todo el mundo, en vez de que cada uno la escriba de cero cada vez.",
-          "Cities the team has been entering that aren't in the official list yet. Adding them here makes them show up as a place-search suggestion for everyone, instead of each person typing it from scratch every time.",
-          "Cidades que a equipe foi digitando e ainda não estão na lista oficial. Somá-las aqui faz com que apareçam como sugestão do buscador de lugar para todo mundo, em vez de cada um escrever do zero toda vez.",
-          "ערים שהצוות הקליד ושעדיין לא נמצאות ברשימה הרשמית. הוספתן כאן גורמת להן להופיע כהצעה בחיפוש המקום לכולם, במקום שכל אחד יקליד אותן מחדש בכל פעם."
-        )}
-      </div>
       ${!items.length ? `<div class="empty-state"><div class="big">📍</div>${t("No hay ciudades nuevas pendientes de revisar.","No new cities pending review.","Não há cidades novas pendentes de revisão.","אין ערים חדשות שממתינות לבדיקה.")}</div>` : `
       <div class="country-zone-list" style="grid-template-columns:1fr;">
         ${items.map(it=>`
@@ -10162,14 +10221,6 @@ function getCalendarDraft(){
 function renderCalendarSection(){
   const d = getCalendarDraft();
   return `
-      <div class="hint" style="margin-bottom:16px;">
-        ${t(
-          "Google Calendar al que van los Eventos (la Rutina no). Si lo cambiás, los ya cargados se quedan donde están.",
-          "Google Calendar where Events go (Routines don't). If you change it, the ones already created stay where they are.",
-          "Google Calendar para onde vão os Eventos (a Rotina não). Se trocar, os já criados ficam onde estão.",
-          "Google Calendar שאליו נשלחים האירועים (שגרה לא). אם משנים אותו, הקיימים נשארים במקומם."
-        )}
-      </div>
       <div class="field">
         <label>${t("ID del calendario","Calendar ID","ID do calendário","מזהה היומן")}</label>
         <div class="locked-field">
@@ -10246,7 +10297,6 @@ function renderAdjuntosSection(){
   const d = getAdjuntosDraft();
   const u = unidadAdjuntos();
   return `
-      <div class="hint" style="margin-bottom:16px;">${t("Límites de archivos que se pueden adjuntar a un posteo (Evento, Rutina o respuesta).","Limits on files that can be attached to a post (Event, Routine or reply).","Limites de arquivos que podem ser anexados a uma postagem (Evento, Rotina ou resposta).","מגבלות על קבצים שניתן לצרף לפוסט (אירוע, שגרה או תגובה).")}</div>
       <div class="settings-card">
         <div class="setting-row">
           <span class="setting-icon">🖼️</span>
@@ -15539,6 +15589,11 @@ document.addEventListener("keydown", e=>{
   }
   if(el.id === "preEmail" || el.id === "preName"){
     if(e.key === "Enter"){ e.preventDefault(); darAccesoPorAdelantado(); }
+    return;
+  }
+  if(el.dataset.action === "tipo-doc-nuevo"){
+    // Enter suma el documento, igual que el + de al lado.
+    if(e.key === "Enter"){ e.preventDefault(); const b = el.parentElement && el.parentElement.querySelector('[data-action="tipo-doc-add"]'); if(b) b.click(); }
     return;
   }
   if(el.id === "savedFilterName"){
