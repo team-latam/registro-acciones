@@ -99,6 +99,12 @@ la importación, más una corrección para las filas que ya la tengan.
 
 ## 3. Pasando las 1.000 filas, posteos y comentarios desaparecen
 
+> **Resuelto.** La app pide cada lista de a páginas ordenadas por su clave,
+> con la cuenta total en el primer pedido (una tabla chica sigue siendo un
+> pedido), y anda igual si se cambia el tope en el panel. El sincronizador
+> también pagina: con el código de antes, un evento del posteo 2.400 creaba
+> un duplicado, y la prueba lo muestra.
+
 La app pide cada lista entera con `select("*")`, sin paginar
 (`enVivo` → `cargar`). La API de Supabase devuelve como máximo **1.000
 filas por pedido** de fábrica (Settings → API → Max rows). Pasado ese
@@ -212,6 +218,10 @@ puede qué; lo comprueban las 66 pruebas de permisos.
 
 ## 9. Después de una desconexión, la pantalla queda vieja
 
+> **Resuelto.** Cuando el canal se vuelve a suscribir, la lista se vuelve a
+> cargar. Y si esa recarga falla (la red todavía inestable), no aparece la
+> pantalla de error: queda la lista que había y se reintenta sola.
+
 Los avisos en vivo de Supabase no se repiten: lo que cambió mientras la
 notebook dormía o se cortaba el wifi **se pierde**, y la pantalla queda
 mostrando lo de antes hasta recargar. Firebase se resincronizaba solo.
@@ -221,6 +231,9 @@ ni el foco ni la vuelta de la red.
 **Arreglo:** volver a cargar la lista cuando el canal se reconecta.
 
 ## 10. Cada escritura vuelve a bajar la tabla entera
+
+> **Resuelto.** Después de escribir se relee solo esa fila, y un aviso en
+> vivo con una foto nueva firma solo esa foto.
 
 Después de escribir, `refrescar()` recarga la tabla completa para que se vea
 al instante: un «me gusta» baja todos los posteos; uno en un comentario,
@@ -246,14 +259,20 @@ cualquier aprobado que tenga la ruta lo sigue pudiendo abrir.
 - ~~**La auditoría acepta filas sin límite** de cualquier cuenta de
   Google.~~ **Resuelto:** un login se anota con el id que arma la app
   (correo, tipo y fecha), así que son tres filas como mucho.
-- **`supabase-js` se carga sin versión fija** (`@2`, la última 2.x de ese
-  momento). Una versión nueva rota, o comprometida, entra sola, con acceso a
-  la sesión. Firebase sí está fijado.
-- El cartel «Esta pestaña está mirando SUPABASE…» está escrito solo en
-  español, fuera de `t()`.
-- `esErrorDePermiso` toma `PGRST301` (token vencido) como falta de permiso.
-- Documentación vieja: el encabezado de `crearSupabaseStore` dice «todavía
-  NO está en uso». (Lo de `supabase/LEEME.md` y el workflow, **resuelto**.)
+- ~~**`supabase-js` se carga sin versión fija.**~~ **Resuelto:** fija en
+  2.117.2, en la app y en las dos páginas de herramientas.
+- ~~El cartel «Esta pestaña está mirando SUPABASE…» está escrito solo en
+  español.~~ **Resuelto.**
+- ~~`esErrorDePermiso` toma `PGRST301` (token vencido) como falta de
+  permiso.~~ **Resuelto.**
+- ~~Documentación vieja.~~ **Resuelto.**
+- **Encontrado al arreglar lo demás:** un `.docx` o `.xlsx` que el navegador
+  no reconoce (pasa en Windows y Android) se leía como
+  `application/octet-stream`, que el bucket no acepta: el archivo
+  rebotaba. **Resuelto:** el tipo sale de la extensión.
+- **Encontrado también:** `pruebas/` tenía copias de las dos pruebas del
+  sincronizador, y una ya se había desviado del original. **Resuelto:** se
+  sacaron; las originales corren en su workflow con cada cambio a la app.
 - ~~`pruebas/levantar.sh` usa una copia del laboratorio guardada aparte.~~
   **Resuelto.** Hay dos pruebas numeradas `98`.
 

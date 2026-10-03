@@ -3977,7 +3977,11 @@ async function arrancarSupabase(){
   }
 
   try{
-    const { createClient } = await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm");
+    const { createClient } = await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/+esm");
+    // Con la versión FIJA (como Firebase, 10.13.0): con `@2` se cargaba la
+    // última 2.x que hubiera en ese momento, así que una versión nueva
+    // rota —o comprometida— entraba sola a la app, con acceso a la sesión
+    // de cada persona. Subirla es una decisión, no algo que pasa.
     const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
     store = crearSupabaseStore(sb);
     sesion = crearSupabaseSesion(sb);
@@ -5942,8 +5946,9 @@ const firebaseStore = {
    LA MISMA CAPA, CONTRA SUPABASE
 
    Cumple exactamente los mismos métodos que firebaseStore, con las mismas
-   formas de entrada y salida. Todavía NO está en uso: `store` sigue
-   apuntando a Firebase. El día del cambio, eso es una línea.
+   formas de entrada y salida. Se usa en la pestaña que abre con
+   `?base=supabase` (ver baseElegida); el día del cambio pasa a ser la
+   de todos.
 
    Tres diferencias de fondo con Firestore, que es lo que resuelve este
    archivo:
@@ -5990,14 +5995,6 @@ function crearSupabaseStore(sb){
 
   const revienta = ({ error }) => { if(error) throw error; };
 
-  // Postgres devuelve una hora como "15:00:00"; la app guarda y muestra
-  // "15:00", y su formateador no reconoce la otra forma — así que el
-  // horario de cada evento salía con los segundos colgando.
-  //
-  // Apareció usando la app de verdad contra la base nueva, y NINGUNA
-  // prueba lo habría encontrado: las dos capas se hablaban bien entre sí,
-  // el dato viajaba entero, y el desajuste recién se veía en pantalla. Es
-  // exactamente para esto que existe la etapa de probar en paralelo.
   /* --- Los adjuntos ------------------------------------------------
      En Firestore el archivo viajaba adentro de la fila. Acá vive en el
      bucket, que es privado: para mostrarlo hace falta una URL firmada, que
@@ -6082,8 +6079,19 @@ function crearSupabaseStore(sb){
     const bin = atob(b64);
     return new Blob([Uint8Array.from(bin, c => c.charCodeAt(0))], { type: tipo });
   }
-  async function subirUno(base, dataUrl){
-    const blob = aBlob(dataUrl);
+  // Al revés de TIPO_A_EXT: el tipo de un archivo por su extensión.
+  const EXT_A_TIPO = Object.entries(TIPO_A_EXT).reduce((m, [tipo, ext]) => {
+    if(!m[ext]) m[ext] = tipo; return m; }, {});
+  async function subirUno(base, dataUrl, nombre){
+    let blob = aBlob(dataUrl);
+    // Algunos navegadores no reconocen un .docx o un .xlsx (pasa en
+    // Windows y en Android) y lo leen como "application/octet-stream". El
+    // bucket no acepta ese tipo, así que el archivo rebotaba con un error
+    // que no le decía nada a quien lo subía. El nombre sí dice qué es.
+    if(!blob.type || blob.type === "application/octet-stream"){
+      const ext = String(nombre || "").toLowerCase().split(".").pop();
+      if(EXT_A_TIPO[ext]) blob = new Blob([blob], { type: EXT_A_TIPO[ext] });
+    }
     // La hora en el nombre: editar un posteo sube un archivo NUEVO en vez
     // de pisar el anterior, así una edición nunca rompe una pantalla que
     // alguien tenga abierta con la versión de antes.
@@ -6121,7 +6129,7 @@ function crearSupabaseStore(sb){
           // tarjeta se quedaba en 0/2 para siempre.
           const { dataUrl, ...resto } = a;
           salida.files.push({ ...resto, name: a.name || `archivo${i}`,
-                              path: await subirUno(`${tabla}/${id}/arch${i}`, dataUrl) });
+                              path: await subirUno(`${tabla}/${id}/arch${i}`, dataUrl, a.name) });
         } else if(esRuta(a.path)){
           // Ya está en el bucket: va sin dataUrl, que acá es una URL
           // firmada. Al leer se vuelve a firmar sola.
@@ -6133,6 +6141,14 @@ function crearSupabaseStore(sb){
     return salida;
   }
 
+  // Postgres devuelve una hora como "15:00:00"; la app guarda y muestra
+  // "15:00", y su formateador no reconoce la otra forma — así que el
+  // horario de cada evento salía con los segundos colgando.
+  //
+  // Apareció usando la app de verdad contra la base nueva, y NINGUNA
+  // prueba lo habría encontrado: las dos capas se hablaban bien entre sí,
+  // el dato viajaba entero, y el desajuste recién se veía en pantalla. Es
+  // exactamente para esto que existe la etapa de probar en paralelo.
   const soloHora = v => (typeof v === "string" && /^\d{2}:\d{2}:\d{2}/.test(v)) ? v.slice(0, 5) : v;
   const aPosteo = f => {
     const o = aObjeto(f);
@@ -6155,17 +6171,43 @@ function crearSupabaseStore(sb){
      que el aviso dé la vuelta por el servidor. Con Firestore esto no hacía
      falta: el propio SDK mostraba el cambio al instante y después lo
      confirmaba. Acá, si se depende SOLO del aviso en vivo, escribir algo
-     se siente como que no pasó nada. */
+     se siente como que no pasó nada.
+
+     Se relee SOLO la fila escrita, no la tabla: antes un «me gusta»
+     volvía a bajar todos los posteos, y uno en un comentario, todos los
+     comentarios. */
   const mirando = new Map();
-  function anotarMirada(tabla, recargar){
+  function anotarMirada(tabla, mirada){
     if(!mirando.has(tabla)) mirando.set(tabla, new Set());
-    mirando.get(tabla).add(recargar);
-    return () => { const s = mirando.get(tabla); if(s) s.delete(recargar); };
+    mirando.get(tabla).add(mirada);
+    return () => { const s = mirando.get(tabla); if(s) s.delete(mirada); };
   }
-  async function refrescar(tabla){
+  async function refrescar(tabla, valorClave){
     const s = mirando.get(tabla);
     if(!s || !s.size) return;
-    await Promise.all([...s].map(f => f()));
+    await Promise.all([...s].map(m => m.releerFila(valorClave)));
+  }
+
+  // La API devuelve como máximo 1.000 filas por pedido (Settings → API →
+  // Max rows). Pasado ese número, lo que falta NO llega y nadie se entera:
+  // sin error, sin aviso. Por eso una lista entera se pide de a páginas,
+  // ordenada por su clave para que ninguna fila se repita ni se saltee
+  // entre una página y la siguiente, y la primera trae la cuenta total:
+  // así se sabe cuándo se terminó aunque alguien cambie ese tope en el
+  // panel, y una tabla chica sigue siendo un solo pedido.
+  const PAGINA = 1000;
+  async function traerTodas(armar){
+    const filas = [];
+    let total = null;
+    for(;;){
+      const { data, error, count } = await armar(total === null).range(filas.length, filas.length + PAGINA - 1);
+      if(error) return { data: null, error };
+      if(total === null && typeof count === "number") total = count;
+      if(!data || !data.length) break;
+      filas.push(...data);
+      if(total !== null ? filas.length >= total : data.length < PAGINA) break;
+    }
+    return { data: filas, error: null };
   }
 
   /* --- Los cambios en vivo ---------------------------------------
@@ -6174,66 +6216,134 @@ function crearSupabaseStore(sb){
   function enVivo({ tabla, clave = "id", igual, orden, tope, alArmar, alCambiar, alFallar, afinar, firmaAdjuntos }){
     const traducir = afinar || aObjeto;
     const porClave = new Map();
-    let vivo = true, cargado = false;
-    const pendientes = [];
+    let vivo = true, cargado = false, cargando = false, vuelta = 0, reintento = null;
+    const pendientes = [];              // avisos que llegan mientras se carga
+    const porReleer = new Set();        // filas escritas mientras se cargaba
     const armar = alArmar || (l => l);
     const entregar = () => { if(vivo) alCambiar(armar([...porClave.values()])); };
     const aplicar = c => {
       if(c.eventType === "DELETE"){ porClave.delete(String(c.old && c.old[clave])); return; }
-      // Si trae un adjunto que todavía no está firmado, no alcanza con
-      // aplicar el cambio suelto: hay que ir a firmarlo, y eso es una
-      // carga entera.
-      if(firmaAdjuntos && rutasDe(c.new).some(r => !tieneFirma(r))){ cargar(); return; }
       porClave.set(String(c.new[clave]), traducir(c.new));
+    };
+    const faltanFirmas = c => firmaAdjuntos && c.eventType !== "DELETE"
+      ? rutasDe(c.new || {}).filter(r => !tieneFirma(r)) : [];
+
+    // Un aviso con un adjunto que todavía no está firmado se firma ANTES de
+    // aplicarlo, y solo ese adjunto: antes se recargaba la tabla entera,
+    // en cada navegador conectado, cada vez que alguien subía una foto. Los
+    // avisos se aplican en el orden en que llegaron: uno que espera su
+    // firma no puede quedar pisando a otro posterior.
+    let cadena = Promise.resolve(), enCola = 0;
+    const alLlegar = c => {
+      if(cargando || !cargado){ pendientes.push(c); return; }
+      if(!enCola && !faltanFirmas(c).length){ aplicar(c); entregar(); return; }
+      enCola++;
+      cadena = cadena.then(async () => {
+        try{
+          await firmar(faltanFirmas(c));
+          if(!vivo) return;
+          aplicar(c);
+          entregar();
+        }catch(err){ console.error(`No se pudo aplicar un cambio de ${tabla}:`, err); }
+        finally{ enCola--; }
+      });
     };
 
     // Se escucha PRIMERO y se carga después: al revés, un cambio que
     // ocurra entre la carga y la suscripción se perdería sin que nadie se
     // entere, y esa lista quedaría vieja hasta recargar la página.
+    //
+    // Y si la conexión se corta (la notebook se duerme, el wifi se cae),
+    // los avisos de ese rato se PIERDEN: Supabase no los repite. Firebase
+    // se resincronizaba solo. Acá, cada vez que el canal vuelve a quedar
+    // suscripto después de la primera, se vuelve a cargar la lista.
+    let suscripto = false;
     const canal = sb.channel(`${tabla}:${clave}:${igual ? igual.valor : "todo"}:${Date.now()}`)
       .on("postgres_changes",
           { event: "*", schema: "public", table: tabla,
             filter: igual ? `${igual.columna}=eq.${igual.valor}` : undefined },
-          c => { if(!cargado){ pendientes.push(c); return; } aplicar(c); entregar(); })
-      .subscribe();
+          alLlegar)
+      .subscribe(estado => {
+        if(estado !== "SUBSCRIBED") return;
+        if(suscripto && vivo) cargar();
+        suscripto = true;
+      });
 
-    // Se usa al arrancar y cada vez que hay que volver a mirar: después de
-    // escribir algo, o si el aviso en vivo no llegó.
+    const consulta = contar => {
+      let q = sb.from(tabla).select("*", contar ? { count: "exact" } : undefined);
+      if(igual) q = q.eq(igual.columna, igual.valor);
+      if(orden) q = q.order(orden.columna, { ascending: !orden.desc });
+      return q.order(clave, { ascending: true });
+    };
+
+    // Se usa al arrancar, cuando se reconecta, y si una recarga falló.
     const cargar = async () => {
+      const mia = ++vuelta;
+      cargando = true;
+      clearTimeout(reintento);
       // Todo adentro del try: sin esto, cualquier excepción —firmar los
-      // adjuntos, la red que se corta a mitad— dejaba `cargado` en false
-      // PARA SIEMPRE. La lista no se entregaba nunca, nadie se enteraba
-      // del error, y la pantalla quedaba en "Cargando…" hasta recargar.
-      // Un error que no se ve es peor que uno que se ve.
+      // adjuntos, la red que se corta a mitad— dejaba la lista sin
+      // entregar PARA SIEMPRE, nadie se enteraba del error, y la pantalla
+      // quedaba en "Cargando…" hasta recargar. Un error que no se ve es
+      // peor que uno que se ve.
       try{
-        let q = sb.from(tabla).select("*");
-        if(igual) q = q.eq(igual.columna, igual.valor);
-        if(orden) q = q.order(orden.columna, { ascending: !orden.desc });
-        if(tope) q = q.limit(tope);
-        const { data, error } = await q;
-        if(!vivo) return;
-        if(error){ if(alFallar) alFallar(error); return; }
+        const { data, error } = tope
+          ? await consulta(false).limit(tope)
+          : await traerTodas(consulta);
+        if(!vivo || mia !== vuelta) return;   // una carga más nueva manda
+        if(error) throw error;
         // Antes de entregar nada: los adjuntos de TODAS las filas de una vez.
         if(firmaAdjuntos) await firmar((data || []).flatMap(rutasDe));
-        if(!vivo) return;
+        if(!vivo || mia !== vuelta) return;
         porClave.clear();
         (data || []).forEach(f => porClave.set(String(f[clave]), traducir(f)));
-        cargado = true;
         // Los cambios que llegaron mientras cargaba se aplican ahora, en
         // orden: si uno ya venía en la carga, lo pisa con lo más nuevo, que
         // es lo correcto.
-        pendientes.splice(0).forEach(aplicar);
+        const enEspera = pendientes.splice(0);
+        if(firmaAdjuntos) await firmar(enEspera.flatMap(faltanFirmas));
+        if(!vivo || mia !== vuelta) return;
+        enEspera.forEach(aplicar);
+        cargado = true;
+        cargando = false;
         entregar();
+        const releer = [...porReleer]; porReleer.clear();
+        releer.forEach(v => releerFila(v));
       }catch(err){
-        if(!vivo) return;
+        if(!vivo || mia !== vuelta) return;
+        cargando = false;
         console.error(`No se pudo cargar ${tabla}:`, err);
-        if(alFallar) alFallar(err);
+        // La PRIMERA carga que falla se avisa: la pantalla no tiene nada que
+        // mostrar. Una recarga posterior no: ya hay una lista en pantalla,
+        // y un corte de red al reconectarse no puede terminar en la
+        // pantalla de error. Se vuelve a intentar sola.
+        if(!cargado){ if(alFallar) alFallar(err); }
+        else reintento = setTimeout(() => { if(vivo) cargar(); }, 15000);
       }
     };
-    cargar();
-    const olvidar = anotarMirada(tabla, cargar);
 
-    return () => { vivo = false; olvidar(); sb.removeChannel(canal); };
+    // Releer UNA fila, después de escribirla. Si se está cargando la lista,
+    // se relee cuando termine: esa carga pudo haber salido antes de la
+    // escritura.
+    const releerFila = async valor => {
+      if(valor === undefined || valor === null) return;
+      if(cargando || !cargado){ porReleer.add(valor); return; }
+      try{
+        const { data, error } = await sb.from(tabla).select("*").eq(clave, valor).maybeSingle();
+        if(!vivo || error) return;
+        const fila = data && (!igual || String(data[igual.columna]) === String(igual.valor)) ? data : null;
+        if(fila && firmaAdjuntos) await firmar(rutasDe(fila));
+        if(!vivo) return;
+        if(fila) porClave.set(String(fila[clave]), traducir(fila));
+        else porClave.delete(String(valor));
+        entregar();
+      }catch(err){ console.error(`No se pudo releer ${tabla}:`, err); }
+    };
+
+    cargar();
+    const olvidar = anotarMirada(tabla, { releerFila });
+
+    return () => { vivo = false; clearTimeout(reintento); olvidar(); sb.removeChannel(canal); };
   }
 
   // Una lectura suelta de una fila, por su clave.
@@ -6256,7 +6366,7 @@ function crearSupabaseStore(sb){
       async create(datos){
         const id = nuevoId();
         revienta(await sb.from("posts").insert({ ...aFila(await subirNuevos("posts", id, datos)), id }));
-        await refrescar("posts");
+        await refrescar("posts", id);
         return id;
       },
       // "Creá esto, pero solo si no existe": es un insert que ignora el
@@ -6265,22 +6375,22 @@ function crearSupabaseStore(sb){
       async createOnce(id, datos){
         revienta(await sb.from("posts").upsert({ ...aFila(await subirNuevos("posts", id, datos)), id },
           { onConflict: "id", ignoreDuplicates: true }));
-        await refrescar("posts");
+        await refrescar("posts", id);
       },
       async update(id, parche){
         revienta(await sb.from("posts").update(aFila(await subirNuevos("posts", id, parche))).eq("id", id));
-        await refrescar("posts");
+        await refrescar("posts", id);
       },
       async remove(id){
         revienta(await sb.from("posts").delete().eq("id", id));
-        await refrescar("posts");
+        await refrescar("posts", id);
       },
       // El correo NO viaja: la base lo saca de la credencial (ver
       // me_gusta_posteo en 04-funciones.sql). Así nadie puede dar me gusta
       // en nombre de otro ni pasándolo a mano.
       async setLike(id, email, puesto){
         revienta(await sb.rpc("me_gusta_posteo", { p_id: id, p_puesto: puesto }));
-        await refrescar("posts");
+        await refrescar("posts", id);
       },
     },
 
@@ -6306,15 +6416,15 @@ function crearSupabaseStore(sb){
         const id = nuevoId();
         revienta(await sb.from("replies").insert(
           { ...aFila(await subirNuevos("replies", id, datos)), id, post_id: postId }));
-        await refrescar("replies");
+        await refrescar("replies", id);
       },
       async remove(postId, replyId){
         revienta(await sb.from("replies").delete().eq("id", replyId));
-        await refrescar("replies");
+        await refrescar("replies", replyId);
       },
       async setLike(postId, replyId, email, puesto){
         revienta(await sb.rpc("me_gusta_comentario", { p_id: replyId, p_puesto: puesto }));
-        await refrescar("replies");
+        await refrescar("replies", replyId);
       },
     },
 
@@ -6349,37 +6459,37 @@ function crearSupabaseStore(sb){
       async add(email, datos){
         revienta(await sb.from("members").upsert(
           { ...aFila(datos), email, approved_at: MARCA_HORA }, { onConflict: "email" }));
-        await refrescar("members");
+        await refrescar("members", email);
       },
       async ensure(email, datos){
         revienta(await sb.from("members").upsert(
           { ...aFila(datos), email, approved_at: datos.approvedAt || MARCA_HORA },
           { onConflict: "email" }));
-        await refrescar("members");
+        await refrescar("members", email);
       },
       async setRole(email, role){
         revienta(await sb.from("members").update({ role }).eq("email", email));
-        await refrescar("members");
+        await refrescar("members", email);
       },
       async setNickname(email, nickname, name){
         const campos = { nickname };
         if(name !== undefined) campos.name = name;
         revienta(await sb.from("members").update(campos).eq("email", email));
-        await refrescar("members");
+        await refrescar("members", email);
       },
       async setCalendarShared(email, compartido){
         revienta(await sb.from("members").update(
           compartido ? { calendar_shared: true, calendar_invite_sent_at: MARCA_HORA }
                      : { calendar_shared: false }).eq("email", email));
-        await refrescar("members");
+        await refrescar("members", email);
       },
       async markTourSeen(email){
         revienta(await sb.from("members").update({ tour_seen_at: MARCA_HORA }).eq("email", email));
-        await refrescar("members");
+        await refrescar("members", email);
       },
       async remove(email){
         revienta(await sb.from("members").delete().eq("email", email));
-        await refrescar("members");
+        await refrescar("members", email);
       },
     },
 
@@ -6396,11 +6506,11 @@ function crearSupabaseStore(sb){
       async save(email, datos){
         revienta(await sb.from("former_members").upsert(
           { ...aFila(datos), email, revoked_at: MARCA_HORA }, { onConflict: "email" }));
-        await refrescar("former_members");
+        await refrescar("former_members", email);
       },
       async remove(email){
         revienta(await sb.from("former_members").delete().eq("email", email));
-        await refrescar("former_members");
+        await refrescar("former_members", email);
       },
     },
 
@@ -6427,15 +6537,15 @@ function crearSupabaseStore(sb){
       async save(email, datos){
         revienta(await sb.from("access_requests").upsert(
           { ...aFila(datos), email, requested_at: MARCA_HORA }, { onConflict: "email" }));
-        await refrescar("access_requests");
+        await refrescar("access_requests", email);
       },
       async setStatus(email, status){
         revienta(await sb.from("access_requests").update({ status }).eq("email", email));
-        await refrescar("access_requests");
+        await refrescar("access_requests", email);
       },
       async remove(email){
         revienta(await sb.from("access_requests").delete().eq("email", email));
-        await refrescar("access_requests");
+        await refrescar("access_requests", email);
       },
     },
 
@@ -6455,7 +6565,7 @@ function crearSupabaseStore(sb){
       },
       async replace(clave, datos){
         revienta(await sb.from("app_config").upsert({ key: clave, value: datos }, { onConflict: "key" }));
-        await refrescar("app_config");
+        await refrescar("app_config", clave);
       },
       // Va por una función de la base y no por leer-cambiar-escribir: dos
       // controles tocados rápido se pisarían, y el segundo guardaría un
@@ -6463,7 +6573,7 @@ function crearSupabaseStore(sb){
       // 04-funciones.sql).
       async merge(clave, parche){
         revienta(await sb.rpc("guardar_config", { p_clave: clave, p_parche: parche }));
-        await refrescar("app_config");
+        await refrescar("app_config", clave);
       },
       async mergeCalendarSync(parche){
         await this.merge("calendarSync", { ...parche, lastSyncedAt: new Date().toISOString() });
@@ -6488,7 +6598,7 @@ function crearSupabaseStore(sb){
       // De quién son NO viaja: sale de la credencial.
       async merge(email, parche){
         revienta(await sb.rpc("guardar_preferencias", { p_parche: parche }));
-        await refrescar("user_prefs");
+        await refrescar("user_prefs", email);
       },
     },
 
@@ -6502,8 +6612,9 @@ function crearSupabaseStore(sb){
             .slice(0, tope) });
       },
       async add(datos){
-        revienta(await sb.from("audit_log").insert({ ...aFila(datos), id: nuevoId() }));
-        await refrescar("audit_log");
+        const id = nuevoId();
+        revienta(await sb.from("audit_log").insert({ ...aFila(datos), id }));
+        await refrescar("audit_log", id);
       },
       // "Escribir solo si no existe todavía": es lo que hace que un login
       // deje UNA entrada por día y no una por recarga. En Firestore se
@@ -6513,7 +6624,7 @@ function crearSupabaseStore(sb){
       async addOnce(id, datos){
         revienta(await sb.from("audit_log").upsert({ ...aFila(datos), id },
           { onConflict: "id", ignoreDuplicates: true }));
-        await refrescar("audit_log");
+        await refrescar("audit_log", id);
       },
     },
 
@@ -6522,8 +6633,11 @@ function crearSupabaseStore(sb){
 
     // Postgres contesta 42501 cuando una política deja algo afuera, y
     // PostgREST lo devuelve como código 42501 en el error.
+    // PGRST301 NO va acá: es un token vencido o inválido, no falta de
+    // permiso. Tomarlo como permiso pasaba los comentarios al modo de
+    // respaldo (un canal por posteo) por un token que se renueva solo.
     esErrorDePermiso(err){
-      return !!err && (err.code === "42501" || err.code === "PGRST301");
+      return !!err && err.code === "42501";
     },
   };
 }
@@ -6558,7 +6672,11 @@ const firebaseSesion = {
 function mostrarAvisoDeBase(){
   const d = document.createElement("div");
   d.id = "avisoBase";
-  d.textContent = "⚠️ Esta pestaña está mirando SUPABASE, no la base del equipo. Lo que hagas acá no lo ve nadie más.";
+  d.textContent = t(
+    "⚠️ Esta pestaña está mirando SUPABASE, no la base del equipo. Lo que hagas acá no lo ve nadie más.",
+    "⚠️ This tab is looking at SUPABASE, not the team's database. Nobody else sees what you do here.",
+    "⚠️ Esta aba está olhando o SUPABASE, não a base da equipe. O que você fizer aqui ninguém mais vê.",
+    "⚠️ הלשונית הזו מציגה את SUPABASE, לא את הבסיס של הצוות. מה שתעשה/י כאן אף אחד אחר לא רואה.");
   d.style.cssText = "position:sticky;top:0;z-index:99999;background:#8a5a00;color:#fff;" +
     "padding:8px 14px;font:600 13px/1.4 system-ui,sans-serif;text-align:center;";
   document.body.prepend(d);
@@ -6615,9 +6733,9 @@ function crearSupabaseSesion(sb){
 }
 let sesion = firebaseSesion;
 
-// Qué implementación está en uso. La de Supabase existe y está probada,
-// pero todavía NO se enchufa: el día del cambio, esto es una línea
-// (`let store = crearSupabaseStore(sb)`), y volver atrás también.
+// Qué implementación está en uso: Firebase, salvo en la pestaña que abre
+// con `?base=supabase`, donde arrancarSupabase() la cambia por la de
+// Supabase. El día del cambio, la de Supabase pasa a ser la de todos.
 let store = firebaseStore;
 
 // correspondiente en firestore.rules (allowlist: allow list).

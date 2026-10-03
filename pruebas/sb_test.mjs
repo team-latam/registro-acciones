@@ -24,27 +24,52 @@ process.on("unhandledRejection", e => {
    le digamos. No tiene NADA de Postgres adentro.
    --------------------------------------------------------------- */
 function supabaseDeMentira(){
-  const reg = { pedidos: [], canales: [], rpc: [], escrituras: [] };
+  // maxFilas: como Supabase de verdad (Settings → API → Max rows), nunca
+  // devuelve más de 1.000 filas por pedido, se le pida lo que se le pida.
+  const reg = { pedidos: [], canales: [], rpc: [], escrituras: [], maxFilas: 1000 };
   let filas = [];
+  const clavesDe = { members:"email", former_members:"email", access_requests:"email",
+                     user_prefs:"email", app_config:"key" };
+  const claveDe = tabla => clavesDe[tabla] || "id";
+  // Escribir también deja la fila guardada: releer lo escrito tiene que
+  // encontrarlo, como en una base de verdad.
+  const guardar = (tabla, f) => {
+    const k = claveDe(tabla), i = filas.findIndex(x => x.__tabla === tabla && String(x[k]) === String(f[k]));
+    if(i >= 0) filas[i] = { ...filas[i], ...f }; else filas.push({ ...f, __tabla: tabla });
+  };
   const consulta = tabla => {
-    const q = { tabla, filtros: [], orden: null, tope: null };
+    const q = { tabla, filtros: [], orden: [], tope: null, rango: null, contar: false };
     const api = {
-      select(cols){ q.cols = cols; return api; },
+      select(cols, op){ q.cols = cols; q.contar = !!(op && op.count); return api; },
       eq(c, v){ q.filtros.push([c, v]); return api; },
-      order(c, o){ q.orden = [c, o]; return api; },
+      order(c, o){ q.orden.push([c, o || {}]); return api; },
       limit(n){ q.tope = n; return api; },
+      range(desde, hasta){ q.rango = [desde, hasta]; return api; },
       maybeSingle(){ q.uno = true; return api.then(); },
       single(){ q.uno = true; return api.then(); },
       then(ok){
         reg.pedidos.push(q);
         let r = filas.filter(f => f.__tabla === tabla)
           .filter(f => q.filtros.every(([c, v]) => String(f[c]) === String(v)));
-        if(q.orden){ const [c, o] = q.orden; r = [...r].sort((a,b)=> (o.ascending ? 1 : -1) * String(a[c]).localeCompare(String(b[c]))); }
+        if(q.orden.length) r = [...r].sort((a, b) => {
+          for(const [c, o] of q.orden){
+            // Comparación simple y no localeCompare: el primer localeCompare
+            // de Node inicializa la intercalación (~10 ms) y desfasaba las
+            // esperas cortas de estas pruebas.
+            const x = String(a[c] ?? ""), y = String(b[c] ?? "");
+            const d = x < y ? -1 : x > y ? 1 : 0;
+            if(d) return (o.ascending === false ? -1 : 1) * d;
+          }
+          return 0;
+        });
+        const total = r.length;
+        if(q.rango) r = r.slice(q.rango[0], q.rango[1] + 1);
         if(q.tope) r = r.slice(0, q.tope);
+        r = r.slice(0, reg.maxFilas);
         const limpia = f => { const { __tabla, ...resto } = f; return resto; };
         r = r.map(limpia);
         const data = q.uno ? (r[0] || null) : r;
-        const res = { data, error: reg.errorProximo || null };
+        const res = { data, error: reg.errorProximo || null, count: q.contar ? total : null };
         reg.errorProximo = null;
         return new Promise(r2 => setTimeout(()=> r2(ok ? ok(res) : res), 0));
       },
@@ -58,11 +83,13 @@ function supabaseDeMentira(){
     from(tabla){
       return {
         ...consulta(tabla),
-        insert(f){ reg.escrituras.push(["insert", tabla, f]); return Promise.resolve({ error:null }); },
+        insert(f){ reg.escrituras.push(["insert", tabla, f]); guardar(tabla, f); return Promise.resolve({ error:null }); },
         update(f){ reg.escrituras.push(["update", tabla, f]);
-          return { eq(c,v){ reg.escrituras[reg.escrituras.length-1].push([c,v]); return Promise.resolve({ error:null }); } }; },
-        upsert(f, o){ reg.escrituras.push(["upsert", tabla, f, o]); return Promise.resolve({ error:null }); },
-        delete(){ return { eq(c,v){ reg.escrituras.push(["delete", tabla, [c,v]]); return Promise.resolve({ error:null }); } }; },
+          return { eq(c,v){ reg.escrituras[reg.escrituras.length-1].push([c,v]); guardar(tabla, { ...f, [c]: v }); return Promise.resolve({ error:null }); } }; },
+        upsert(f, o){ reg.escrituras.push(["upsert", tabla, f, o]); guardar(tabla, f); return Promise.resolve({ error:null }); },
+        delete(){ return { eq(c,v){ reg.escrituras.push(["delete", tabla, [c,v]]);
+          filas = filas.filter(x => !(x.__tabla === tabla && String(x[c]) === String(v)));
+          return Promise.resolve({ error:null }); } }; },
       };
     },
     rpc(nombre, args){ reg.rpc.push([nombre, args]); return Promise.resolve({ error:null }); },
@@ -73,10 +100,13 @@ function supabaseDeMentira(){
         return { data: rutas.map(r=>({ path:r, signedUrl:`https://x.supabase.co/storage/v1/object/sign/${r}?token=t` })), error:null }; },
       upload: async (ruta, blob)=>{ reg.subidas = (reg.subidas||[]).concat([[bucket, ruta, blob.type]]); return { error:null }; },
     }; } },
+    // El canal: guarda a quién avisarle cuando cambia su estado, para poder
+    // simular que la conexión se corta y vuelve.
     channel(nombre){
-      const c = { nombre, escuchas: [] };
+      const c = { nombre, escuchas: [], estado: null };
       reg.canales.push(c);
-      return { on(ev, cfg, fn){ c.escuchas.push({ cfg, fn }); return this; }, subscribe(){ return c; } };
+      return { on(ev, cfg, fn){ c.escuchas.push({ cfg, fn }); return this; },
+               subscribe(fn){ c.estado = fn || null; return c; } };
     },
     removeChannel(c){ reg.cortados = (reg.cortados||[]).concat([c && c.nombre]); },
   };
@@ -197,31 +227,32 @@ const cortarW = stW.posts.subscribe(l => listas.push(l));
 await esperar();
 eq("arranca con lo que hay", listas.length, 1);
 
-// Escribir de verdad: el registro del banco no cambia lo que devuelve la
-// consulta, así que se agrega a mano para ver si vuelve a mirar.
 listas = [];
-sbW.ponerFilas("posts", [{ id:"p1", title:"El que ya estaba" }, { id:"p2", title:"El nuevo" }]);
-await stW.posts.create({ title:"El nuevo" });
+sbW.reg.pedidos.length = 0;
+const idNuevo = await stW.posts.create({ title:"El nuevo" });
 await esperar();
-eq("después de escribir, la lista se vuelve a pedir sola", listas.length >= 1, true);
+eq("después de escribir, la lista se actualiza sola", listas.length >= 1, true);
 eq("y trae lo recién escrito, sin depender del aviso en vivo",
-   listas[listas.length-1].map(p=>p.id).sort(), ["p1","p2"]);
+   listas[listas.length-1].map(p=>p.title).sort(), ["El nuevo","El que ya estaba"]);
+// Antes se volvía a pedir la tabla ENTERA después de cada escritura.
+eq("releyendo SOLO esa fila, no la tabla entera",
+   sbW.reg.pedidos.map(q => [q.filtros, !!q.uno]), [[[["id", idNuevo]], true]]);
 
 listas = [];
-sbW.ponerFilas("posts", [{ id:"p1", title:"Editado" }, { id:"p2", title:"El nuevo" }]);
 await stW.posts.update("p1", { title:"Editado" });
 eq("editar también se ve", listas[listas.length-1].find(p=>p.id==="p1").title, "Editado");
 
 listas = [];
-sbW.ponerFilas("posts", [{ id:"p2", title:"El nuevo" }]);
 await stW.posts.remove("p1");
-eq("y borrar, también", listas[listas.length-1].map(p=>p.id), ["p2"]);
-eq("al recargar no quedan restos de lo que ya no está",
+eq("y borrar, también", listas[listas.length-1].map(p=>p.id), [idNuevo]);
+eq("al releer no quedan restos de lo que ya no está",
    listas[listas.length-1].length, 1);
 
 listas = [];
-await stW.posts.setLike("p2", "juan@x.com", true);
+sbW.reg.pedidos.length = 0;
+await stW.posts.setLike(idNuevo, "juan@x.com", true);
 eq("un me gusta también vuelve a mirar", listas.length >= 1, true);
+eq("pero solo ese posteo: antes un me gusta bajaba todos", sbW.reg.pedidos.length, 1);
 
 // Y cuando se corta, deja de escuchar: si no, cada escritura seguiría
 // recargando listas que ya no mira nadie.
@@ -597,6 +628,130 @@ eq("ni vacío", img(""), "");
   eq("y la nueva se sube", typeof imgs[1] === "string" && imgs[1].includes("img1"), true);
   eq("se subió una sola", (sbM.reg.subidas||[]).length, 1);
 }
+
+/* ================================================================
+   Más de mil filas
+
+   La API de Supabase devuelve como máximo 1.000 filas por pedido. Sin
+   paginar, pasado ese número el resto no llegaba y nadie se enteraba: ni
+   error ni aviso. Los posteos se pedían sin orden, así que lo que faltaba
+   no eran «los más viejos»: era cualquiera.
+================================================================ */
+{
+  const sbP = supabaseDeMentira();
+  sbP.ponerFilas("posts", Array.from({ length: 2500 }, (_, i) => ({ id: "p" + String(i).padStart(4, "0"), title: "Evento " + i })));
+  const stP = crear(sbP);
+  let lista = null;
+  stP.posts.subscribe(l => { lista = l; });
+  await new Promise(r => setTimeout(r, 40));
+  eq("con 2.500 posteos llegan los 2.500", lista && lista.length, 2500);
+  eq("sin repetir ninguno", lista && new Set(lista.map(p => p.id)).size, 2500);
+  eq("de a páginas: tres pedidos", sbP.reg.pedidos.length, 3);
+  eq("ordenadas por la clave, para no saltear ni repetir entre páginas",
+     sbP.reg.pedidos[0].orden.map(o => o[0]), ["id"]);
+}
+{
+  // Aunque alguien baje el tope en el panel, se siguen trayendo todas.
+  const sbP = supabaseDeMentira();
+  sbP.reg.maxFilas = 300;
+  sbP.ponerFilas("replies", Array.from({ length: 700 }, (_, i) => ({ id: "r" + String(i).padStart(4, "0"), post_id: "p1", content: "c", created_at: "2026-01-01" })));
+  const stP = crear(sbP);
+  let porPosteo = null;
+  stP.replies.subscribeAll(x => { porPosteo = x; });
+  await new Promise(r => setTimeout(r, 40));
+  eq("con el tope del panel en 300, llegan los 700 comentarios", porPosteo && porPosteo.p1.length, 700);
+}
+{
+  const sbP = supabaseDeMentira();
+  sbP.ponerFilas("posts", [{ id:"p1", title:"Uno" }]);
+  const stP = crear(sbP);
+  stP.posts.subscribe(()=>{});
+  await new Promise(r => setTimeout(r, 20));
+  eq("una tabla chica sigue siendo un solo pedido (la cuenta viene en el primero)", sbP.reg.pedidos.length, 1);
+}
+
+/* ================================================================
+   Un aviso en vivo con una foto nueva
+
+   Antes, un posteo nuevo con una foto sin firmar hacía recargar la tabla
+   ENTERA, en cada navegador conectado. Ahora se firma esa foto y se
+   aplica el cambio.
+================================================================ */
+{
+  const sbV = supabaseDeMentira();
+  sbV.ponerFilas("posts", [{ id:"p1", title:"Uno" }]);
+  const stV = crear(sbV);
+  let lista = null;
+  stV.posts.subscribe(l => { lista = l; });
+  await new Promise(r => setTimeout(r, 20));
+  const pedidosAntes = sbV.reg.pedidos.length;
+  sbV.reg.firmadas = [];
+  sbV.reg.canales[0].escuchas[0].fn({ eventType:"INSERT", new:{ id:"p2", title:"Con foto", images:["posts/p2/img0_1.jpg"] } });
+  await new Promise(r => setTimeout(r, 20));
+  eq("un posteo nuevo con foto NO recarga la tabla", sbV.reg.pedidos.length, pedidosAntes);
+  eq("se firma solo su foto", sbV.reg.firmadas.map(f => f[1]), [["posts/p2/img0_1.jpg"]]);
+  eq("y aparece, con la foto lista para mostrar",
+     String((lista.find(p => p.id === "p2") || { images:[""] }).images[0]).startsWith("https://"), true);
+}
+
+/* ================================================================
+   La conexión que se corta y vuelve
+
+   Los avisos en vivo no se repiten: lo que cambió mientras la notebook
+   dormía se perdía, y la pantalla quedaba vieja hasta recargar. Ahora,
+   cuando el canal vuelve a quedar suscripto, se vuelve a cargar.
+================================================================ */
+{
+  const sbC = supabaseDeMentira();
+  sbC.ponerFilas("posts", [{ id:"p1", title:"Uno" }]);
+  const stC = crear(sbC);
+  let lista = null; const fallas = [];
+  stC.posts.subscribe(l => { lista = l; }, e => fallas.push(e));
+  await new Promise(r => setTimeout(r, 20));
+  const canal = sbC.reg.canales[0];
+  // Si el código no escucha el estado del canal, no hay a quién avisarle:
+  // las pruebas de abajo lo dicen fallando, en vez de reventar acá.
+  const avisarEstado = e => { if(canal.estado) canal.estado(e); };
+  eq("escucha el estado de la conexión", typeof canal.estado, "function");
+  avisarEstado("SUBSCRIBED");
+  await new Promise(r => setTimeout(r, 20));
+  eq("la primera suscripción no carga dos veces", sbC.reg.pedidos.length, 1);
+
+  // Se corta; mientras, alguien publica (y ese aviso no llega nunca).
+  avisarEstado("CHANNEL_ERROR");
+  sbC.ponerFilas("posts", [{ id:"p1", title:"Uno" }, { id:"p2", title:"Mientras estaba cortado" }]);
+  avisarEstado("SUBSCRIBED");
+  await new Promise(r => setTimeout(r, 20));
+  eq("al volver, se vuelve a cargar", sbC.reg.pedidos.length, 2);
+  eq("y aparece lo que pasó mientras estaba cortado", lista.map(p => p.id).sort(), ["p1", "p2"]);
+
+  // Y si esa recarga falla (la red todavía inestable), NO es un error de
+  // pantalla completa: ya hay una lista mostrándose.
+  sbC.reg.errorProximo = { message: "network error" };
+  avisarEstado("SUBSCRIBED");
+  await new Promise(r => setTimeout(r, 20));
+  eq("una recarga que falla no tira la pantalla de error", fallas, []);
+  eq("y la lista que había se sigue viendo", lista.map(p => p.id).sort(), ["p1", "p2"]);
+}
+
+/* ================================================================
+   Un Word que el navegador no reconoce
+
+   Algunos navegadores leen un .docx como "application/octet-stream", y
+   el bucket no acepta ese tipo: el archivo rebotaba. El nombre dice qué es.
+================================================================ */
+{
+  const sbD = supabaseDeMentira();
+  const stD = crear(sbD);
+  await stD.posts.create({ title:"Reporte", files:[{ name:"Reporte de viaje.docx", mime:"", kind:"doc",
+    dataUrl:"data:application/octet-stream;base64,UEsDBA==" }] });
+  const subida = (sbD.reg.subidas || [])[0] || [];
+  eq("se sube con el tipo que dice su extensión",
+     subida[2], "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+  eq("y con su extensión en el bucket", String(subida[1] || "").endsWith(".docx"), true);
+}
+
+eq("un token vencido (PGRST301) NO es falta de permiso", crear(supabaseDeMentira()).esErrorDePermiso({ code:"PGRST301" }), false);
 
 console.log(`\n${pass} pasaron, ${fail} fallaron`);
 process.exit(fail ? 1 : 0);

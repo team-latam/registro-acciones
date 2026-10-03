@@ -95,8 +95,14 @@ eq("las dos formas de entrar ofrecen exactamente lo mismo",
 const doc = { creado:null, puesto:null,
   createElement: ()=>({ style:{}, set textContent(v){ this._t = v; }, get textContent(){ return this._t; } }),
   body: { prepend(d){ doc.puesto = d; } } };
+// t() de mentira: devuelve el español y anota que se la llamó con los
+// cuatro idiomas (el cartel estaba escrito solo en español, fuera de t()).
+const llamadasT = [];
 new Function("ctx", `const document = ctx.document;
-  ${grab("mostrarAvisoDeBase")} mostrarAvisoDeBase();`)({ document: doc });
+  const t = (...idiomas) => { ctx.llamadasT.push(idiomas); return idiomas[0]; };
+  ${grab("mostrarAvisoDeBase")} mostrarAvisoDeBase();`)({ document: doc, llamadasT });
+eq("el cartel pasa por t(), en los cuatro idiomas",
+   llamadasT.length === 1 && llamadasT[0].filter(x => typeof x === "string" && x.includes("SUPABASE")).length, 4);
 eq("el cartel dice claramente qué base está mirando",
    doc.puesto.textContent.includes("SUPABASE"), true);
 eq("y que lo que se haga ahí no lo ve el equipo",

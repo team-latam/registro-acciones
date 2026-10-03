@@ -45,7 +45,15 @@ function baseDeMentira(guion){
         if(!reg.posts.some(x => x.id === cuerpo.id)) reg.posts.push(cuerpo);
         return ok(null);
       }
-      return ok(reg.posts);
+      // Como la API de verdad: a lo sumo `maxFilas` por pedido (1.000 de
+      // fábrica), con limit/offset y el orden que se pida.
+      const q = new URL(u).searchParams;
+      let lista = [...reg.posts];
+      if((q.get("order") || "").startsWith("id")) lista.sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+      const desde = guion.ignoraOffset ? 0 : Number(q.get("offset") || 0);
+      const cuantos = Math.min(Number(q.get("limit") || Infinity), guion.maxFilas || 1000);
+      reg.lecturas = (reg.lecturas || 0) + 1;
+      return ok(lista.slice(desde, desde + cuantos));
     }
     if(u.includes("/rest/v1/replies")){
       reg.replies.push(cuerpo);
@@ -70,6 +78,45 @@ const callado = async fn => {
 
 const diaEntero = (id, f, extra={}) => ({ id, status:"confirmed", summary:"Reunión",
   start:{ date:f }, end:{ date:(d=>{const x=new Date(d+"T00:00:00Z");x.setUTCDate(x.getUTCDate()+1);return x.toISOString().slice(0,10);})(f) }, ...extra });
+
+/* ---------- Más de mil posteos ----------
+   La API devuelve 1.000 filas por pedido. Sin paginar, el posteo del
+   evento podía quedar afuera de los mil, y el evento se tomaba como nuevo:
+   se duplicaba. */
+{
+  const posts = Array.from({ length: 2500 }, (_, i) => ({
+    id: "p" + String(i).padStart(4, "0"), title: "Evento " + i, content: "", date: "2026-09-01",
+    start_date: "2026-09-01", end_date: "2026-09-01", activity_type: "virtual",
+    author_name: "Google Calendar", author_email: "", calendar_event_id: "ev" + i, scopes: [] }));
+  const reg = baseDeMentira({ posts,
+    paginas:[{ items:[diaEntero("ev2400","2026-09-01",{ summary:"Evento 2400, renombrado" })], nextSyncToken:"tok1" }] });
+  const r = await callado(()=> main());
+  eq("con 2.500 posteos, un evento del posteo 2.400 se aplica", [r.aplicados, r.fallados], [1, 0]);
+  eq("y NO nace un posteo duplicado", reg.posts.length, 2500);
+  eq("se actualiza el que ya estaba", reg.posts.find(p => p.id === "p2400").title, "Evento 2400, renombrado");
+  eq("pidiendo de a páginas (tres llenas y una vacía)", reg.lecturas, 4);
+}
+{
+  // Aunque alguien baje el tope en el panel, se siguen trayendo todos.
+  const posts = Array.from({ length: 700 }, (_, i) => ({
+    id: "q" + String(i).padStart(4, "0"), title: "Evento " + i, content: "", date: "2026-09-01",
+    start_date: "2026-09-01", end_date: "2026-09-01", activity_type: "virtual",
+    author_name: "Google Calendar", author_email: "", calendar_event_id: "ew" + i, scopes: [] }));
+  const reg = baseDeMentira({ posts, maxFilas: 250,
+    paginas:[{ items:[diaEntero("ew650","2026-09-01",{ summary:"Otro nombre" })], nextSyncToken:"tok1" }] });
+  await callado(()=> main());
+  eq("con el tope del panel en 250, el posteo 650 tampoco se duplica", reg.posts.length, 700);
+}
+{
+  // Un servidor que ignora el offset devuelve siempre lo mismo: no puede
+  // dejar al trabajo pidiendo páginas para siempre.
+  const posts = [{ id:"x1", title:"Uno", content:"", date:"2026-09-01", start_date:"2026-09-01", end_date:"2026-09-01",
+    activity_type:"virtual", author_name:"Google Calendar", author_email:"", calendar_event_id:"ex1", scopes:[] }];
+  const reg = baseDeMentira({ posts, ignoraOffset: true,
+    paginas:[{ items:[diaEntero("ex1","2026-09-01",{ summary:"Renombrado" })], nextSyncToken:"tok1" }] });
+  const r = await callado(()=> main());
+  eq("si el servidor ignora el offset, termina igual", [r.aplicados, reg.lecturas], [1, 2]);
+}
 
 /* ---------- Un evento nuevo ---------- */
 {
