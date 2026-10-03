@@ -565,7 +565,7 @@
   /* Estados del hito de proyecto (ver milestoneStatusLabel): mismos
      tokens semánticos que ya usa este componente para aprobar/rechazar,
      nada nuevo. "pending" acá es "todavía falta", no tiene relación con
-     el "pendiente" de aprobación de la allowlist. */
+     el "pendiente" de aprobación de una solicitud de acceso. */
   .status-pill.soon{ background:var(--warn-bg); color:var(--warn-text); }
   .status-pill.today{ background:var(--celeste-soft); color:var(--celeste-dark); }
   .status-pill.pending{ background:var(--surface-hover); color:var(--text-muted); }
@@ -3930,7 +3930,7 @@ function fmtHourLabel(h){
 // forma de saber cuál se cargó primero).
 function fmtTime(ts){
   if(!ts) return "";
-  const dt = ts.toDate ? ts.toDate() : new Date(ts);
+  const dt = new Date(ts);
   if(isNaN(dt)) return "";
   const h12 = uses12h();
   return dt.toLocaleTimeString(dateLocale(),{ hour: h12 ? "numeric" : "2-digit", minute:"2-digit", hour12:h12 });
@@ -3961,14 +3961,14 @@ setInterval(()=>{
 }, 60000);
 function fmtDateTime(ts){
   if(!ts) return "";
-  const dt = ts.toDate ? ts.toDate() : new Date(ts);
+  const dt = new Date(ts);
   if(isNaN(dt)) return "";
   return fmtDate(dt) + " " + fmtTime(ts);
 }
 function uid(){ return Math.random().toString(36).slice(2,10); }
 function tsToMillis(ts){
   if(!ts) return 0;
-  const dt = ts.toDate ? ts.toDate() : new Date(ts);
+  const dt = new Date(ts);
   return isNaN(dt) ? 0 : dt.getTime();
 }
 
@@ -4008,8 +4008,8 @@ function markMentionsSeen(){
 // Aviso de "revisá tu correo, te compartimos el Calendar": una marca de
 // "visto" (mismo patrón que las de @menciones), comparada
 // contra calendarInviteSentAt (que shareCalendarWith pisa en cada envío o
-// reenvío) — sin backend ni tener que escribir en el propio documento de
-// allowlist (que solo el admin puede escribir).
+// reenvío) — sin tener que escribir en la propia fila de `members`
+// (que solo el admin puede escribir).
 //
 // Son DOS estados separados a propósito, porque el ACL de Calendar no
 // avisa cuándo la persona lo acepta de verdad:
@@ -4877,7 +4877,7 @@ async function ensureCalendarAclToken(opts={}){
   return null;
 }
 
-// El rol vive en el roster (allowlist): un observador nunca recibe el
+// El rol vive en el roster (`members`): un observador nunca recibe el
 // Calendar, porque compartirlo da permiso de ESCRITURA (writer) sobre el
 // calendario del equipo — sería una puerta lateral para cargar eventos
 // que la app y la base le niegan.
@@ -5010,9 +5010,9 @@ async function unshareCalendarWith(email, opts={}){
       throw new Error(body.error?.message || res.statusText);
     }
     logAudit("calendar_unshared", { targetEmail: email });
-    // Si sigue en allowlist (cambio de rol, o "Sacar del Calendar" desde
+    // Si sigue en el equipo (cambio de rol, o "Sacar del Calendar" desde
     // Usuarios), su fila deja de decir "Invitación enviada". Si ya fue
-    // revocado el doc no existe y esto falla en silencio, que es lo esperado.
+    // revocado la fila no existe y esto falla en silencio, que es lo esperado.
     try{ store.roster.setCalendarShared(email, false)
       .catch(err=> console.error("Se sacó del Calendar pero no se pudo anotar en el roster:", err)); }catch(e){}
     return { ok:true };
@@ -5895,9 +5895,9 @@ let unsubUserPrefs = null;
 let unsubFormerMembers = null;
 
 function recomputeAuthStatus(){
-  // ADMIN_EMAIL es admin siempre, con o sin documento en allowlist. Para
+  // ADMIN_EMAIL es admin siempre, con o sin fila en members. Para
   // el resto manda el campo role de su documento (ausente = integrante),
-  // que llega por el snapshot de allowlist: si le cambian el rol con la
+  // que llega por el aviso en vivo de members: si le cambian el rol con la
   // sesión abierta, esto se recalcula solo.
   if(state.auth.user && state.auth.user.email === ADMIN_EMAIL){ state.auth.status = "admin"; return; }
   if(state.auth.allowlisted){
@@ -6015,7 +6015,7 @@ async function onAuthChanged(user){
   let dataSubscribed = false;
   // Suscripciones que solo tienen sentido (y permiso) con rol admin:
   // solicitudes de acceso y auditoría. Se prenden y apagan según el rol
-  // que diga el snapshot de allowlist, así un admin degradado con la
+  // que diga el aviso en vivo de members, así un admin degradado con la
   // sesión abierta deja de recibir eso sin esperar a que falle con
   // permiso denegado.
   let adminSubscribed = false;
@@ -6104,7 +6104,7 @@ async function onAuthChanged(user){
     // demora ya no tiene nada que agregar: acá abajo hay un mensaje que
     // dice qué falló, y es mejor que "está tardando".
     if(relojPadron){ clearTimeout(relojPadron); relojPadron = null; }
-    console.error("Error chequeando allowlist:", err);
+    console.error("Error chequeando si está en el equipo:", err);
     renderFatalError(t("No se pudo verificar tu acceso ({msg}). Recargá la página; si sigue pasando, avisale al administrador.","Couldn't verify your access ({msg}). Reload the page; if it keeps happening, let the admin know.","Não foi possível verificar seu acesso ({msg}). Recarregue a página; se continuar, avise o administrador.","לא ניתן היה לאמת את הגישה שלך ({msg}). טען/י מחדש את הדף; אם זה נמשך, פנה/י למנהל/ת.",{msg:err.message}));
   });
 
@@ -7338,10 +7338,10 @@ function makeNickname(displayName, existingNicknames){
   while(existingNicknames.has(base + n)) n++;
   return base + n;
 }
-// El admin no pasa por accessRequests/allowlist para tener acceso (su
+// El admin no pasa por access_requests/members para tener acceso (su
 // permiso viene de ADMIN_EMAIL, fijo también en la base), así que sin
-// esto NUNCA aparecía en state.roster (que sale de la colección
-// allowlist) — nadie podía etiquetarlo con @ aunque estuviera bien
+// esto NUNCA aparecía en state.roster (que sale de la tabla
+// members) — nadie podía etiquetarlo con @ aunque estuviera bien
 // aprobado de hecho. Se asegura, una vez por login, de que también
 // tenga su propia ficha en el equipo, con nickname, como cualquier
 // otro aprobado (no cambia nada de cómo se calculan sus permisos).
@@ -7428,8 +7428,8 @@ async function revokeAccess(email){
   // ficha del equipo, así que si se borra antes se pierde para
   // siempre y todos sus posteos viejos quedan con el nombre crudo de
   // Google, sin @nickname y sin perfil.
-  // Sin el try/catch de antes: si getDoc/setDoc fallan acá, el error se
-  // propaga y deleteDoc() de abajo NUNCA corre — antes se tragaba el
+  // Sin el try/catch de antes: si leer o guardar fallan acá, el error se
+  // propaga y el borrado de abajo NUNCA corre — antes se tragaba el
   // error (solo console.error) y borraba el acceso igual, perdiendo el
   // nickname para siempre sin que nadie se enterara. El catch de quien
   // llama a revokeAccess() ya le avisa a la persona que revoca.
@@ -9114,9 +9114,9 @@ function renderUserBadge(){
     ? `<img class="um-avatar" src="${esc(u.photoURL)}" alt="">`
     : `<div class="um-avatar-fallback">${initial}</div>`;
   const role = userRoleLabel(state.auth.status);
-  // Solo alguien con allowlist propio (admin/approved) puede editar su
-  // nickname — pendiente/rechazado todavía no tiene ese documento, así
-  // que ni se les ofrece (guardar fallaría contra un doc inexistente).
+  // Solo alguien que ya está en el equipo (admin/approved) puede editar
+  // su nickname — pendiente/rechazado todavía no tiene su fila en
+  // `members`, así que ni se les ofrece (guardar fallaría).
   const canEditNickname = isAuthorized();
   const theme = currentTheme();
   const lang = currentLang();
@@ -9453,11 +9453,11 @@ function renderAuthGate(){
 
 /* ======================================================================
    ACCESO (panel admin, pestaña "Solicitudes") — dos secciones:
-   "Usuarios" (quién tiene acceso YA, sacado de allowlist/state.roster en
+   "Usuarios" (quién tiene acceso YA, sacado de members/state.roster en
    vivo) y "Solicitudes" (la cola de pedidos por decidir, sacada de
-   accessRequests). Antes era una sola lista con accessRequests como
+   access_requests). Antes era una sola lista con las solicitudes como
    única fuente, lo que hacía que alguien revocado siguiera apareciendo
-   como "Aprobado" — revocar solo tocaba allowlist, nunca el status de la
+   como "Aprobado" — revocar solo tocaba el equipo, nunca el status de la
    solicitud vieja. Ver revokeAccess() para el arreglo de fondo.
    ====================================================================== */
 // "Actividad" de cada persona en Usuarios: en vez de mostrar la cantidad
@@ -9723,7 +9723,7 @@ function renderSolicitudesQueueSection(){
       <div class="ractions">${actionsHtml}</div>
     </div>`;
   const pendingHtml = pending.length
-    ? pending.map(r => renderRow(r, `${r.status !== "pending" ? `<span class="status-pill rejected" title="${esc(t("Figura como aprobada pero no tiene acceso: probablemente le borraron el documento del allowlist a mano.","Marked as approved but has no access: their allowlist document was probably deleted by hand.","Consta como aprovada mas não tem acesso: provavelmente apagaram o documento do allowlist à mão.","מסומן כמאושר אך ללא גישה: כנראה שמחקו את המסמך מה-allowlist ידנית."))}">${t("Sin acceso","No access","Sem acesso","ללא גישה")}</span>` : ""}
+    ? pending.map(r => renderRow(r, `${r.status !== "pending" ? `<span class="status-pill rejected" title="${esc(t("Figura como aprobada pero no tiene acceso: probablemente la sacaron del equipo directo en la base.","Marked as approved but has no access: they were probably removed from the team directly in the database.","Consta como aprovada mas não tem acesso: provavelmente foi tirada da equipe direto na base.","מסומן כמאושר אך ללא גישה: כנראה שהוסר/ה מהצוות ישירות במסד הנתונים."))}">${t("Sin acceso","No access","Sem acesso","ללא גישה")}</span>` : ""}
         <button class="btn-secondary" data-action="reject-request" data-email="${esc(r.email)}" ${savingRoster.has(r.email) ? "disabled" : ""}>${t("Rechazar","Reject","Rejeitar","דחייה")}</button>
         <button class="btn-primary" data-action="approve-request" data-email="${esc(r.email)}" ${savingRoster.has(r.email) ? "disabled" : ""}>${savingRoster.has(r.email) ? t("Aprobando…","Approving…","Aprovando…","...מאשר") : t("Aprobar","Approve","Aprovar","אישור")}</button>`)).join("")
     : `<div class="empty-state"><div class="big">📭</div>${t("No hay solicitudes pendientes.","There are no pending requests.","Não há solicitações pendentes.","אין בקשות ממתינות.")}</div>`;
