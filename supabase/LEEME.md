@@ -120,16 +120,15 @@ Ese mismo día:
 1. Se bajó la última copia de Firebase y el importador la comparó con
    Supabase: faltaban 4 posteos, 6 comentarios, 4 registros de actividad y
    unas preferencias. Se trajo eso y nada más.
-2. Firestore quedó cerrado: sus reglas (`firestore.rules`) no dejan leer
-   ni escribir nada, a nadie.
+2. Se cerró Firestore (reglas que no dejaban entrar a nadie) y después
+   se borró su base. La última copia quedó guardada aparte.
 3. Se sacó de la app todo lo de Firebase, y de la base la puerta de la
    importación (`05-sin-importacion.sql`). El importador quedó en el
    historial del repo.
 
-Lo que falta es del lado de Firebase Console: borrar la base de Firestore,
-el login de Firebase y el registro de la app web. **No el proyecto de
-Google Cloud** que está detrás: ahí viven el permiso y la clave de
-Calendar.
+Lo que falta es del lado de Firebase Console: apagar el login de Firebase
+y borrar su lista de usuarios. **No el proyecto de Google Cloud** que está
+detrás: ahí viven el permiso y la clave de Calendar.
 
 ## El otro secreto
 

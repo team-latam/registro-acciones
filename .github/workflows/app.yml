@@ -9,7 +9,6 @@ on:
   push:
     paths:
       - "index.html"
-      - "firestore.rules"          # formatos_test comprueba que siga cerrado
       - "supabase/**"              # y sb_test, el adaptador de Supabase
       - "pruebas/**"
       - ".github/workflows/app.yml"

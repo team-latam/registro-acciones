@@ -1,9 +1,9 @@
 -- ============================================================
 -- Registro de Acciones — Paso 2: los permisos
 -- ============================================================
--- Esto es lo que hoy hace firestore.rules, traducido. NO es una
--- traducción línea por línea, porque Postgres y Firestore reparten el
--- trabajo distinto:
+-- Nació como la traducción de las reglas de Firestore, cuando la base era
+-- Firebase. NO fue línea por línea, porque Postgres y Firestore reparten
+-- el trabajo distinto:
 --
 --   En Firestore              Acá
 --   ------------------------  ----------------------------------------
@@ -18,10 +18,9 @@
 --
 -- Se puede correr más de una vez sin romper nada.
 --
--- IMPORTANTE, lo mismo que dice firestore.rules: TODO el modelo descansa
--- en el CORREO. No en el identificador de Supabase, que cambia si alguna
--- vez se rehace el login. Es lo que permite volver a Firebase sin tocar
--- un dato.
+-- IMPORTANTE: TODO el modelo descansa en el CORREO. No en el
+-- identificador de Supabase, que cambia si alguna vez se rehace el login:
+-- así, rehacerlo no obliga a tocar un dato.
 -- ============================================================
 
 
@@ -30,14 +29,13 @@
 -- ============================================================
 
 -- El admin fijo. Tiene que coincidir EXACTAMENTE con ADMIN_EMAIL en
--- index.html y con el de firestore.rules. Está en una función sola para
--- que cambiarlo sea tocar un solo lugar.
+-- index.html. Está en una función sola para que cambiarlo acá sea tocar un
+-- solo lugar.
 create or replace function public.admin_fijo() returns text
   language sql immutable as $$ select 'benny@team-latam.com'::text $$;
 
--- La sesión que aceptamos. Es el equivalente de signedIn() en
--- firestore.rules: haber entrado con Google, y que el correo del token sea
--- el de esa cuenta de Google.
+-- La sesión que aceptamos: haber entrado con Google, y que el correo del
+-- token sea el de esa cuenta de Google.
 --
 -- Lo segundo NO se puede leer del token solo. El token trae el correo de
 -- la cuenta de Supabase, que el propio usuario puede pedir cambiar; y
@@ -124,8 +122,7 @@ create or replace function public.puede_escribir() returns boolean
 
 -- Quién puede editar un posteo que ya existe: el autor siempre, y
 -- cualquier aprobado los que no son Rutina (son eventos compartidos del
--- equipo, no una entrada personal). Mismo criterio que
--- isAuthorOrNonRoutine en firestore.rules.
+-- equipo, no una entrada personal).
 create or replace function public.puede_editar_posteo(autor text, tipo text) returns boolean
   language sql stable as $$
   select coalesce(coalesce(autor, '') = public.mi_correo(), false)
@@ -215,8 +212,8 @@ create policy posts_editar on public.posts for update
   using ((select public.es_admin_fijo()) or (select public.puede_escribir()))
   with check ((select public.es_admin_fijo()) or (select public.puede_escribir()));
 
--- Borrar de verdad: SOLO el admin fijo. Los admin por rol no (igual que
--- en firestore.rules); el resto cancela el evento, que no lo borra.
+-- Borrar de verdad: SOLO el admin fijo. Los admin por rol no; el resto
+-- cancela el evento, que no lo borra.
 drop policy if exists posts_borrar on public.posts;
 create policy posts_borrar on public.posts for delete
   using ((select public.es_admin_fijo()));
@@ -423,8 +420,7 @@ create policy audit_crear on public.audit_log for insert
   );
 
 -- Sin políticas de update ni delete: el registro no se corrige ni se
--- borra, ni siquiera por el admin. Es lo mismo que el
--- "allow update, delete: if false" de firestore.rules.
+-- borra, ni siquiera por el admin.
 
 
 -- ============================================================

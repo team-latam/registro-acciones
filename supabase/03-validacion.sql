@@ -4,10 +4,9 @@
 -- El paso 2 contestó QUIÉN puede escribir. Éste contesta QUÉ puede
 -- escribir: largos, formatos, cuántos elementos entran en cada lista.
 --
--- Es el equivalente de las funciones isValidX() de firestore.rules, con
--- una diferencia que conviene tener presente: allá la validación y el
--- permiso viven mezclados en la misma línea `allow`; acá van separados a
--- propósito. Si mañana hay que aflojar un largo, se toca este archivo y
+-- La validación y el permiso van separados a propósito (en las reglas de
+-- Firestore, cuando la base era Firebase, vivían mezclados en la misma
+-- línea `allow`). Si mañana hay que aflojar un largo, se toca este archivo y
 -- los permisos no se mueven — que es lo que uno quiere cuando el que se
 -- toca es el archivo delicado.
 --
@@ -209,7 +208,7 @@ alter table public.replies
 -- El @nickname autogenerado en el alta puede traer tildes o ñ (sale del
 -- nombre real de Google), así que acá solo se controla el largo. La forma
 -- estricta — solo minúsculas ASCII — se exige únicamente cuando alguien lo
--- cambia a mano, que es lo mismo que hace firestore.rules.
+-- cambia a mano.
 alter table public.members
   drop constraint if exists members_textos;
 alter table public.members
@@ -288,9 +287,9 @@ create trigger members_controlar_nickname before update on public.members
 -- ============================================================
 -- 7. LA HORA LA PONE EL SERVIDOR
 -- ============================================================
--- En firestore.rules esto era `d.createdAt == request.time`: nadie puede
--- inventarse cuándo pasó algo. Acá se pisa el valor directamente, que es
--- más simple y da lo mismo desde afuera.
+-- Nadie puede inventarse cuándo pasó algo. Se pisa el valor
+-- directamente, que es más simple que rechazarlo y da lo mismo desde
+-- afuera.
 --
 -- Sin una persona detrás (la llave de servicio del sincronizador nocturno,
 -- el editor SQL) se respeta la fecha que venga, salvo la MARCA: el
