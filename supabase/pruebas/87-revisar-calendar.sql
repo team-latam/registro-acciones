@@ -32,6 +32,9 @@ select lab.probar_valor('un admin les pone tipo, lugar y personas de a muchos', 
   $q$select public.clasificar_importados('[{"id":"cal_ev1","activity_type":"visita","scopes":[{"type":"ciudad","country":"Argentina","city":"Tucuman"}],"participants":[{"name":"Ran"}]},{"id":"cal_ev2","activity_type":"seminario"}]')$q$,
   $q$select string_agg(id || ':' || activity_type || ':' || jsonb_array_length(scopes) || ':' || jsonb_array_length(participants), ' ' order by id) from public.posts where id like 'cal_%'$q$,
   'cal_ev1:visita:1:1 cal_ev2:seminario:0:0');
+select lab.probar_valor('dónde fue (location) va aparte de a quién alcanza (scopes)', lab.como('ana@x.com'),
+  $q$select public.clasificar_importados('[{"id":"cal_ev1","scopes":[{"type":"todo"}],"location":"Israel"}]')$q$,
+  $q$select (scopes->0->>'type') || ':' || location from public.posts where id = 'cal_ev1'$q$, 'todo:Israel');
 select lab.probar_valor('lo que no viene en el cambio no se toca', lab.como('ana@x.com'),
   $q$update public.posts set scopes = '[{"type":"pais","country":"Chile"}]' where id = 'cal_ev2';
      select public.clasificar_importados('[{"id":"cal_ev2","activity_type":"curso"}]')$q$,

@@ -337,6 +337,21 @@ eventos.
   la pestaña **"Sacados"** devuelve lo sacado ("Devolver al Registro"):
   con la copia que se guarda desde ahora vuelve igual; lo sacado antes
   se vuelve a traer de Google Calendar como llegó ("Otro", sin lugar).
+- **Ajustes del mismo día, usándola:**
+  - Lo guardado se queda en la lista marcado **"✓ Guardado"** y con lo
+    que quedó (antes desaparecía al toque y parecía que no se había
+    guardado; además las filas mostraban siempre la sugerencia).
+  - La barra y el panel **flotan abajo** de la pantalla y acompañan al
+    recorrer la lista; con el panel abierto, solo el panel.
+  - **Alcance** (a quién alcanza: país, ciudad, región, toda LatAm) y
+    **Dónde fue** (el lugar físico: "Israel", "Online", una sede) van
+    separados, como en el formulario: un congreso en Israel para toda
+    LatAm. Dónde fue se guarda en `location`.
+  - Un solo panel, **"Cambiar tipo, alcance, dónde o personas"**: se
+    completa solo lo que se quiere cambiar y se aplica una vez (antes,
+    abrir otro panel borraba lo elegido). De a muchos, el alcance y las
+    personas se **suman** a lo que ya tenían; se pueden poner varios
+    alcances; y los elegidos siguen elegidos después de aplicar.
 - **Encontrado al armarla:** los ids de evento largos se cortaban a 59
   caracteres y algunos (de una integración de Google) comparten esos 59:
   6 eventos de 2024–2026 nunca entraron al Registro. Arreglado en los dos

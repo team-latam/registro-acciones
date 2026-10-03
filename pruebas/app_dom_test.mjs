@@ -156,7 +156,7 @@ export function createClient(url, clave){
         for(const c of args.p_cambios){
           const f = (estado.tablas.posts || []).find(x => x.id === c.id);
           if(!importado(f)) continue;
-          ["activity_type", "scopes", "participants"].forEach(k => { if(k in c) f[k] = copia(c[k]); });
+          ["activity_type", "scopes", "participants", "location"].forEach(k => { if(k in c) f[k] = copia(c[k]); });
           n++;
         }
         return { data: n, error: null };
@@ -491,7 +491,7 @@ const hasta = async (p, fn, arg, ms = 5000) => {
      await p.$eval('[data-action="rv-grupo"][data-key="sacados"]', e => e.textContent.replace(/\s+/g, " ").trim()).catch(() => null), "Sacados0");
   eq("revisar: arranca en Actividades, lo más nuevo primero", await filas(), ["Glämsta", "Visita Tucumán - Ana", "CB Mendoza (7 personas)"]);
   eq("revisar: cada fila con lo sugerido (tipo, lugar, personas)",
-     await p.$eval('.rv-row:has([data-post-id="cal_ev1"]) .rv-sug', e => [...e.children].map(c => c.textContent.trim())), ["🧳 Visita", "📍 Tucuman, Argentina", "👥 Ana, Zeka"]);
+     await p.$eval('.rv-row:has([data-post-id="cal_ev1"]) .rv-sug', e => [...e.children].map(c => c.textContent.trim())), ["Sugerido:", "🧳 Visita", "📍 Tucuman, Argentina", "👥 Ana, Zeka"]);
   await p.click('[data-action="rv-seguros"]');
   eq("revisar: «Solo los seguros» deja los de punto verde", await filas(), ["Visita Tucumán - Ana", "CB Mendoza (7 personas)"]);
   await p.click('[data-action="rv-todos"]');
@@ -510,7 +510,33 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   eq("revisar: el que no está en el equipo queda como nombre suelto, y el del equipo vinculado",
      posts.find(x => x.id === "cal_ev1").participants, [{ email: "ana@x.com", name: "Ana Pérez" }, { name: "Zeka" }]);
   await hasta(p, () => document.querySelector('.admin-item[data-view="revisarcal"]').textContent.includes("2"));
-  eq("revisar: y salen de la lista de pendientes", await filas(), []);
+  eq("revisar: lo guardado se queda en su lugar, marcado «✓ Guardado» y con lo que quedó (no lo sugerido)",
+     await p.$eval('.rv-row:has([data-post-id="cal_ev1"]) .rv-sug', e => [...e.children].map(c => c.textContent.trim())),
+     ["✓ Guardado", "🧳 Visita", "📍 Tucuman, Argentina", "👥 Ana Pérez, Zeka"]);
+  eq("revisar: la barra y el panel flotan abajo de la pantalla (acompañan al recorrer la lista)",
+     await p.evaluate(() => { document.querySelector('[data-action="rv-elegir"][data-post-id="cal_ev2"]').click(); return true; })
+       .then(() => p.waitForSelector(".rv-flota .rv-barra")).then(() => p.$eval(".rv-flota", e => getComputedStyle(e).position)), "fixed");
+  await p.click('[data-action="rv-ninguno"]');
+  // Varias cosas a la vez y sin borrar lo que ya tenían.
+  await p.click('[data-action="rv-elegir"][data-post-id="cal_ev1"]');
+  await p.click('[data-action="rv-elegir"][data-post-id="cal_ev2"]');
+  await p.click('[data-action="rv-abrir"][data-key="cambiar"]');
+  await p.waitForSelector(".rv-panel #rvTipo");
+  await p.selectOption("#rvTipo", "seminario");
+  await p.selectOption("#rvPais", "Uruguay");
+  await p.click('[data-action="rv-alcance-sumar"]');
+  await p.selectOption("#rvPais", "Chile");
+  await p.click('[data-action="rv-alcance-sumar"]');
+  eq("revisar: en un mismo panel se arman tipo y varios alcances, sin que se borren al seguir eligiendo",
+     [await p.$eval("#rvTipo", e => e.value), await p.$$eval('[data-action="rv-alcance-quitar"]', l => l.length)], ["seminario", 2]);
+  await p.click('[data-action="rv-panel-aplicar"]');
+  await hasta(p, () => !document.querySelector(".rv-panel"));
+  const juntos = (await base()).posts.filter(x => ["cal_ev1", "cal_ev2"].includes(x.id)).map(x => [x.id, x.activity_type, x.scopes.map(sc => sc.city || sc.country)]);
+  eq("revisar: se aplica todo junto, y el alcance se SUMA al que ya tenían",
+     juntos, [["cal_ev1", "seminario", ["Tucuman", "Uruguay", "Chile"]], ["cal_ev2", "seminario", ["Mendoza", "Uruguay", "Chile"]]]);
+  eq("revisar: y los elegidos siguen elegidos, para seguir cambiándoles otra cosa",
+     await p.$eval(".rv-flota .rv-barra b", e => e.textContent), "2 elegidos");
+  await p.click('[data-action="rv-ninguno"]');
   // Los nombres sueltos se vinculan cuando la persona entra al equipo.
   eq("revisar: «Nombres sueltos» muestra a Zeka", await p.$$eval(".rv-sueltos .rv-tit b", l => l.map(e => e.textContent)), ["Zeka"]);
   await p.selectOption('.rv-vincular[data-nombre="Zeka"]', "ana@x.com");
@@ -526,10 +552,12 @@ const hasta = async (p, fn, arg, ms = 5000) => {
      await p.evaluate(() => !!document.querySelector(".rv-barra")), false);
   await p.selectOption("#rvTipo", "seminario");
   await p.selectOption("#rvPais", "Chile");
+  await p.fill("#rvDonde", "Online");
   await p.click('[data-action="rv-panel-aplicar"]');
   await hasta(p, () => !document.querySelector(".rv-panel"));
   const ev3 = (await base()).posts.find(x => x.id === "cal_ev3");
-  eq("revisar: «Editar» guarda tipo y lugar de esa fila", [ev3.activity_type, ev3.scopes], ["seminario", [{ type: "pais", country: "Chile" }]]);
+  eq("revisar: «Editar» guarda tipo, a quién alcanza y, aparte, dónde fue",
+     [ev3.activity_type, ev3.scopes, ev3.location], ["seminario", [{ type: "pais", country: "Chile" }], "Online"]);
   // Sacar del Registro: pregunta antes, y no vuelve.
   await p.click('[data-action="rv-grupo"][data-key="reunion"]');
   await p.click('[data-action="rv-elegir"][data-post-id="cal_ev4"]');
