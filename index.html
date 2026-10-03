@@ -9253,9 +9253,9 @@ function renderTiposSection(){
             <input type="text" class="tipo-icon-input" data-action="tipos-icon" data-key="${esc(ty.key)}" value="${esc(ty.icon)}" maxlength="4">
             <input type="text" class="zone-label-input" data-action="tipos-label" data-key="${esc(ty.key)}" value="${esc(ty.label)}" maxlength="30">
             <div class="tipo-meta">
-              <label class="tipo-sync-toggle"><input type="checkbox" data-action="tipos-sync" data-key="${ty.key}" ${ty.calendarSync?"checked":""}> Calendar</label>
+              <label class="tipo-sync-toggle"><input type="checkbox" data-action="tipos-sync" data-key="${esc(ty.key)}" ${ty.calendarSync?"checked":""}> Calendar</label>
               <span class="zone-count">${count === 1 ? t("1 posteo","1 post","1 postagem","פוסט אחד") : t("{n} posteos","{n} posts","{n} postagens","{n} פוסטים",{n:count})}</span>
-              <button type="button" class="rm" data-action="tipos-remove" data-key="${ty.key}" ${count>0?`disabled title="${esc(t("Hay posteos con este tipo","There are posts with this type","Há postagens com este tipo",".יש פוסטים עם הסוג הזה"))}"`:`title="${esc(t("Eliminar","Delete","Excluir","מחיקה"))}"`}>✕</button>
+              <button type="button" class="rm" data-action="tipos-remove" data-key="${esc(ty.key)}" ${count>0?`disabled title="${esc(t("Hay posteos con este tipo","There are posts with this type","Há postagens com este tipo",".יש פוסטים עם הסוג הזה"))}"`:`title="${esc(t("Eliminar","Delete","Excluir","מחיקה"))}"`}>✕</button>
             </div>
           </div>
           <div class="tipo-docs">
@@ -11005,7 +11005,7 @@ function renderReportesView(){
   const tipos = Object.entries(r.porTipo)
     .map(([clave, n])=>{
       const ty = ACTIVITY_BY_KEY[clave];
-      return { etiqueta: `${ty ? ty.icon : "✨"} ${esc(ty ? ty.label : clave)}`, n };
+      return { etiqueta: `${esc(ty ? ty.icon : "✨")} ${esc(ty ? ty.label : clave)}`, n };
     })
     .sort((a,b)=>b.n-a.n);
 
