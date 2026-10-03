@@ -8,6 +8,8 @@ codigo = "\n".join(grab(n) for n in [
   "esUrlDelBucket","FILE_DATA_URL_RE","safeFileDataUrl","sePuedeVer",
   "DOCS_POR_TIPO","docsEsperados","docDeArchivo","archivoDelDoc","archivosSueltos",
   "cuantosDocsHay","renderDocumentacion","renderTiposSection","tiposFootnote","countPostsByType",
+  # El menú ⋯ de cada tipo (tanda 10) y la variable que dice cuál está abierto.
+  "tipoMenuOpen","renderTipoMenu",
   "normalize","slugifyKey","fmtDate","sinRanura","docsAbiertos","eventoYaPaso","docsAbierto","fechaDeArchivo",
   "quitarDocumento","quitarAdjunto","renderPostedFiles","ownerAttrs"])
 
