@@ -3,9 +3,9 @@
 SPA de una sola página (`index.html`) sin backend propio ni build step:
 HTML + CSS + JS (`<script type="module">` inline) que se edita y publica tal
 cual. El backend es **Supabase** (Postgres + Auth con Google + Storage, ver
-`supabase/LEEME.md`) más la API de Google Calendar. Desde el 3 de octubre de
-2026 es la base del equipo; Firebase quedó como base vieja, detrás de
-`?base=firebase`, hasta que se cierre del todo. Ver `README.md` para las
+`supabase/LEEME.md`) más la API de Google Calendar. Firebase fue la base
+hasta el 3 de octubre de 2026: quedó cerrado y fuera del código (la rama
+`firebase-v1` guarda cómo era, y NO se borra). Ver `README.md` para las
 decisiones de arquitectura.
 
 ## Ramas — LEER ANTES DE EMPEZAR
@@ -41,13 +41,23 @@ Si la sesión arranca desde una rama que ya quedó atrás respecto de
 `main`, traerse primero los commits nuevos (merge o
 rebase) antes de trabajar.
 
+## La autorización: `supabase/02-politicas.sql`
+
+Es la única capa de autorización del lado servidor (más las validaciones de
+`03-validacion.sql`). Se aplica sola: al llegar a `main`, el workflow
+"Base de datos" la prueba entera en una base descartable y recién después
+la aplica a Supabase. Un push con el SQL roto no llega a la base real, pero
+**probarlo antes en local** (`bash supabase/pruebas/levantar.sh` y
+`bash supabase/pruebas/correr.sh "postgresql:///registro?host=/var/run/postgresql&user=postgres"`).
+
 ## firestore.rules
 
-Es la única capa de autorización del lado servidor. **No se puede publicar
-desde acá**: cada cambio a ese archivo requiere que el usuario lo pegue a
-mano en Firebase Console → Firestore → Reglas, lo pruebe en el Simulador y
-haga clic en "Publicar". Avisarle explícitamente cada vez que el archivo
-cambie.
+Firestore está **cerrado**: estas reglas no dejan leer ni escribir nada, a
+nadie, y así tienen que quedar (`formatos_test.mjs` lo comprueba). No hay
+motivo para tocarlas. **No se pueden publicar desde acá**: si alguna vez
+cambiaran, el usuario las pega a mano en Firebase Console → Firestore →
+Reglas y hace clic en "Publicar". Avisarle explícitamente cada vez que el
+archivo cambie.
 
 **Cómo entregárselo (siempre, sin que lo pida):** cuando el archivo cambie,
 pegar el **contenido completo en un bloque de código en el chat**, listo
@@ -70,8 +80,9 @@ Tres cosas que no son negociables, porque ya se pidieron:
 ./pruebas/correr.sh
 ```
 
-Corre todas las pruebas de `index.html` (más de mil comprobaciones) y la
-carga de la página en las dos bases. **Tiene que terminar en verde antes de
+Corre todas las pruebas de `index.html` (más de mil comprobaciones), la
+carga de la página y la app entera con la sesión iniciada contra un
+Supabase de mentira (`app_dom_test.mjs`). **Tiene que terminar en verde antes de
 cada commit que toque la app.** GitHub lo corre igual en cada push
 (`.github/workflows/app.yml`), pero un push en rojo ya llegó a producción:
 el deploy de Pages no espera a las pruebas.
@@ -85,8 +96,8 @@ el deploy de Pages no espera a las pruebas.
 - En este sandbox Playwright y Chromium ya están (`/opt/pw-browsers`, con
   `PLAYWRIGHT_BROWSERS_PATH` seteado): **no correr `playwright install`**.
   El corredor resuelve solo el `node_modules`.
-- Los errores `ERR_TUNNEL_CONNECTION_FAILED` son esperados: Firebase y los
-  CDN de Google no son alcanzables desde el sandbox. `carga_test.mjs` ya los
+- Los errores `ERR_TUNNEL_CONNECTION_FAILED` son esperados: los CDN de
+  Google no son alcanzables desde el sandbox. `carga_test.mjs` ya los
   descuenta.
 - El esquema SQL y el sync de Calendar tienen sus propias pruebas
   (`supabase/pruebas/`, `supabase/sync-calendar/pruebas/`) y sus workflows.

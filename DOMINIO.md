@@ -72,21 +72,19 @@ al dominio nuevo: nadie tiene que cambiar su marcador. (Quien esté
 bloqueado tampoco va a poder llegar a la redirección, así que al equipo
 hay que pasarle la dirección nueva igual.)
 
-## 3. Autorizar el dominio nuevo en los cuatro lados
+## 3. Autorizar el dominio nuevo en los tres lados
 
 El login y el calendario están atados al dominio desde el que se sirve la
 página. Con el dominio nuevo sin autorizar, la página abre pero no se
 puede iniciar sesión.
 
-1. **Firebase** → `Authentication` → `Settings` → `Authorized domains` →
-   `Add domain` → `registro.team-latam.com`
-2. **Supabase** → `Authentication` → `URL Configuration` → agregar
+1. **Supabase** → `Authentication` → `URL Configuration` → agregar
    `https://registro.team-latam.com` a `Site URL` y a `Redirect URLs`
-3. **Google Cloud** → `APIs y servicios` → `Credenciales` → la clave de
+2. **Google Cloud** → `APIs y servicios` → `Credenciales` → la clave de
    API del navegador (la que está en `index.html`, restringida por
    dominio) → `Restricciones de sitio web` → agregar
    `https://registro.team-latam.com/*`
-4. **Google Cloud** → la misma pantalla → el `ID de cliente de OAuth` →
+3. **Google Cloud** → la misma pantalla → el `ID de cliente de OAuth` →
    `Orígenes de JavaScript autorizados` → agregar
    `https://registro.team-latam.com`
 
@@ -98,7 +96,6 @@ puede iniciar sesión.
 
 - **`index.html`**: no tiene ni una sola mención a `github.io`. El
   redirect de Supabase sale de `location.href`, así que se adapta solo.
-- **`firestore.rules`**: no mira dominios.
 - **El SQL**: tampoco.
 
 ## Comprobarlo

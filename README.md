@@ -1,9 +1,5 @@
 # Registro de Acciones — Team LatAm
 
-> **Desde el 3 de octubre de 2026 la base del equipo es Supabase** (ver
-> `supabase/LEEME.md`). Lo que este archivo dice de Firebase queda hasta
-> que se cierre del todo.
-
 Herramienta web de un solo archivo (`index.html`) para llevar la memoria
 histórica de las acciones del equipo (rutinas, visitas, cursos, seminarios,
 etc.) en cada ciudad/país/región de LatAm. Feed tipo posteo + hilo de
@@ -12,43 +8,49 @@ respuestas, con orden cronológico elegible, y vista agregada por país
 
 No requiere build ni instalación de dependencias: es HTML/CSS/JS plano que
 se sirve como archivo estático. La persistencia es compartida entre todo el
-equipo vía **Firebase Firestore** (tiempo real, sin exportar/importar nada
-a mano).
+equipo vía **Supabase** (Postgres, login con Google y archivos; los cambios
+llegan solos a todas las pantallas abiertas).
 
-## 1. Poner en marcha el backend (Firebase)
+> **Historia:** la app nació sobre Firebase (Firestore + Auth) y se mudó a
+> Supabase el 3 de octubre de 2026 (ver `supabase/LEEME.md`). Muchas
+> secciones de más abajo se escribieron antes y nombran cosas de Firebase.
+> Lo que explican sigue valiendo, con estas equivalencias:
+>
+> | Donde dice | Hoy es |
+> |---|---|
+> | `firestore.rules` | `supabase/02-politicas.sql` (quién puede qué) y `supabase/03-validacion.sql` (qué forma tiene lo que se guarda) |
+> | `posts/{id}` | la tabla `posts` |
+> | `posts/{id}/replies/{id}` | la tabla `replies`, con su `post_id` |
+> | `allowlist/{email}` | la tabla `members` |
+> | `formerMembers/{email}` | `former_members` |
+> | `accessRequests/{email}` | `access_requests` |
+> | `userPrefs/{email}` | `user_prefs` |
+> | `meta/{clave}` | `app_config`, con su `key` |
+> | `auditLog/{id}` | `audit_log` |
+> | un campo en camelCase (`authorEmail`) | la columna en snake_case (`author_email`): la capa de datos traduce sola |
+> | una imagen o un archivo en base64 adentro del posteo | un archivo en el bucket `adjuntos`, y su ruta en el posteo |
+>
+> Firestore quedó cerrado: `firestore.rules` no deja leer ni escribir nada.
+> La rama `firebase-v1` guarda cómo era la app con Firebase.
 
-1. Andá a [console.firebase.google.com](https://console.firebase.google.com)
-   y creá un proyecto nuevo (o reutilizá uno existente del equipo).
-2. En el proyecto, andá a **Compilación → Firestore Database** y creá una
-   base de datos (elegí la región más cercana al equipo; modo "producción").
-3. Andá a **Configuración del proyecto** (ícono de tuerca) → pestaña
-   **General** → sección **Tus apps** → agregá una app **Web** (ícono `</>`).
-   No hace falta Firebase Hosting para este paso, sólo registrar la app.
-4. Copiá el objeto `firebaseConfig` que te muestra (algo como esto):
-   ```js
-   const firebaseConfig = {
-     apiKey: "AIza...",
-     authDomain: "tu-proyecto.firebaseapp.com",
-     projectId: "tu-proyecto",
-     storageBucket: "tu-proyecto.appspot.com",
-     messagingSenderId: "123456789",
-     appId: "1:123456789:web:abcdef",
-   };
-   ```
-5. Abrí `index.html` en este repo, buscá la constante `FIREBASE_CONFIG`
-   (cerca del principio del `<script type="module">`) y reemplazá los
-   valores de ejemplo por los tuyos.
-6. Publicá las reglas de seguridad: en Firestore Database → pestaña
-   **Reglas**, pegá el contenido de [`firestore.rules`](./firestore.rules)
-   de este repo y publicá. (Si usás la CLI de Firebase: `firebase deploy
-   --only firestore:rules`.)
-7. Activá el login con Google: **Compilación → Authentication → Comenzar**
-   (o "Sign-in method" si ya la activaste antes) → método **Google** →
-   Habilitar → elegí un email de soporte → Guardar.
+## 1. Poner en marcha el backend (Supabase)
 
-Sin el paso 5, la app muestra un aviso de "Falta configurar Firebase" y no
-guarda nada. Sin el paso 7, cualquiera que inicie sesión se queda trabado
-en "Cargando…" porque Firebase rechaza el login.
+El detalle está en [`supabase/LEEME.md`](./supabase/LEEME.md). En corto:
+
+1. Un proyecto en [supabase.com](https://supabase.com).
+2. El esquema (`supabase/NN-*.sql`) no se pega a mano: lo aplica GitHub
+   al pushear a `main` (`.github/workflows/base-de-datos.yml`), después de
+   probarlo entero en una base descartable. Necesita el secreto
+   `SUPABASE_DB_URL`.
+3. El login: **Authentication → Providers → Google**, con el cliente de
+   OAuth del proyecto de Google Cloud. **Tiene que ser el único proveedor
+   prendido** (ver más abajo por qué). Y en **URL Configuration**, la
+   dirección donde se publica la app.
+4. En `index.html`, `SUPABASE_URL` y `SUPABASE_KEY` (la clave
+   *publishable*, que está hecha para viajar al navegador).
+5. Los trabajos automáticos (el sincronizador de Calendar y la limpieza del
+   bucket) necesitan además `SUPABASE_SERVICE_ROLE_KEY` y
+   `CALENDAR_API_KEY` como secretos de GitHub.
 
 ### Acceso privado (login + aprobación manual)
 
@@ -59,20 +61,21 @@ aprobación" hasta que el administrador lo apruebe desde la propia app
 
 - Hay un email con permisos de administrador **fijo** en dos lugares que
   tienen que coincidir: la constante `ADMIN_EMAIL` en `index.html` y la
-  función `isAdmin()` en `firestore.rules`. Hoy es `benny@team-latam.com`.
-  Ese admin no depende de ningún documento: es admin con o sin `allowlist`,
+  función `admin_fijo()` en `supabase/02-politicas.sql`. Hoy es
+  `benny@team-latam.com`. Ese admin no depende de su ficha: es admin con o
+  sin fila en `members`,
   y nadie (ni otro admin) puede cambiarle el rol ni revocarle el acceso.
   A propósito **no se lo señala como "dueño" u "owner" en ningún lado**:
   para el resto del equipo es un admin más; solo que su fila en Usuarios no
   tiene selector de rol ni botón de revocar.
-- Los demás roles viven en el campo `role` de `allowlist/{email}` — ver
+- Los demás roles viven en la columna `role` de `members` — ver
   [Roles](#roles) más abajo.
 - El nombre que se muestra en cada posteo/respuesta ya no es un campo de
   texto libre: se toma automáticamente del nombre de la cuenta de Google
   con la que se inició sesión.
 - La pestaña Solicitudes tiene dos secciones (ver `renderAccesoView` en
   `index.html`): **Usuarios** (quién tiene acceso *ahora mismo*, sacado en
-  vivo de `allowlist` — cada fila muestra email, una categoría de actividad
+  vivo de `members` — cada fila muestra email, una categoría de actividad
   de los últimos 3 meses (🟢 Activo/🟡 Ocasional/⚪ Inactivo según cuántos
   posteos cargó, ver `ACTIVITY_TIERS`) y el último login) y **Solicitudes**
   (la cola de pedidos por decidir, con las rechazadas aparte por si hay que
@@ -84,13 +87,13 @@ aprobación" hasta que el administrador lo apruebe desde la propia app
   sería falso prometer que ya lo tiene activo) y al lado hay un botón
   "Reenviar invitación" (`resendCalendarInvite()`: saca el ACL y lo vuelve
   a insertar, porque Google no manda un mail nuevo si el ACL ya existía).
-  Cada compartir/reenvío guarda `calendarInviteSentAt` en el `allowlist` de
-  esa persona. Con eso, la próxima vez que esa persona entre a la app le
+  Cada compartir/reenvío guarda `calendarInviteSentAt` en la ficha de esa
+  persona. Con eso, la próxima vez que esa persona entre a la app le
   aparece un popup recordándole revisar el correo y aceptar la invitación,
   más una novedad extra en la campanita de notificaciones — todo llevado
   con marcas de "visto" en `localStorage` (igual que las @menciones, ver
-  `MENTIONS_SEEN_KEY`), porque un usuario normal no puede escribir en su
-  propio doc de `allowlist` para guardarlo del lado del servidor.
+  `MENTIONS_SEEN_KEY`), porque una persona solo puede cambiar su @nickname
+  en su propia ficha, no guardar otras marcas del lado del servidor.
   OJO: son DOS marcas separadas, no una — cerrar el popup con "Entendido"
   (`markCalendarInvitePopupSeen()`) solo evita que se imponga de nuevo en
   cada entrada, pero NO apaga la novedad de la campanita: como el ACL de
@@ -121,29 +124,29 @@ aprobación" hasta que el administrador lo apruebe desde la propia app
   acceso de nuevo" que funciona de verdad (antes de este cambio, quedaba
   en un limbo: ni aparecía de nuevo en la cola de Solicitudes ni el admin
   se enteraba).
-- El `firebaseConfig` (`apiKey`, `projectId`, etc.) sigue sin ser secreto —
-  eso es así por diseño en cualquier app web de Firebase — pero ya no
-  alcanza por sí solo para entrar: hace falta estar en la lista de
-  aprobados. Igualmente, si el repositorio es público, cualquiera puede ver
-  ese dato (y el código en general); si prefieren ocultarlo también,
-  pueden poner el repo en privado desde Settings → General → Danger Zone
-  → Change visibility en GitHub.
-- **Las reglas exigen login con Google y email verificado**
-  (`signedIn()` en `firestore.rules`: `email_verified == true` y
-  `sign_in_provider == 'google.com'`). Todo el modelo de acceso descansa
-  en `request.auth.token.email`; si en la consola de Firebase se
-  habilitara otro proveedor que deje elegir el email sin verificarlo
-  (Email/Password, por ejemplo), cualquiera podría presentarse como el
-  admin. Por eso, además de esa regla, **en Authentication → Sign-in
-  method tiene que estar habilitado solo Google**.
-- **Lo que escribe cada uno va firmado con su propio token**: un posteo o
-  una respuesta tienen que llevar el `authorEmail` de quien la crea (las
-  reglas lo comparan con el token), los "me gusta" solo pueden agregar o
-  sacar el propio email (la lista entera se compara contra "la de antes
-  ± yo"), y cada documento solo puede tener las claves que la app usa
-  (`keys().hasOnly()` al crear, `affectedKeys().hasOnly()` al editar).
-  Quien no es admin solo puede registrar en `auditLog` su propio login o
-  su propio pedido de acceso. La única excepción, y es deliberada: los
+- `SUPABASE_URL` y `SUPABASE_KEY` no son secretos — la clave
+  *publishable* está hecha para viajar al navegador — pero no alcanzan
+  para entrar: hace falta estar en la lista de aprobados, y eso lo decide
+  la base. El repositorio es público: cualquiera puede ver esos datos y el
+  código entero. Lo que nunca puede aparecer en el repo es la llave de
+  servicio ni la contraseña de la base.
+- **La base exige login con Google**: `sesion_valida()` en
+  `supabase/02-politicas.sql` mira que la sesión venga de Google y que el
+  correo sea el que Google autenticó (la identidad guardada), no uno que
+  la persona pueda reescribir en su cuenta. Todo el modelo de acceso
+  descansa en ese correo; si en el panel de Supabase se habilitara otro
+  proveedor que deje elegir el email sin verificarlo (Email/Password, por
+  ejemplo), alguien podría presentarse como el admin. Por eso, además de
+  ese control, **en Authentication → Providers tiene que estar habilitado
+  solo Google**.
+- **Lo que escribe cada uno va firmado con su propio correo**: un posteo o
+  una respuesta tienen que llevar el `authorEmail` de quien la crea (la
+  política lo compara con la sesión), los "me gusta" pasan por funciones
+  que sacan el correo de la credencial y solo agregan o sacan el propio
+  (`me_gusta_posteo`), y qué columnas puede cambiar cada uno lo deciden
+  disparadores (`posts_controlar_update` y compañía). Quien no es admin
+  solo puede registrar en `audit_log` su propio login o su propio pedido
+  de acceso, una vez por día. La única excepción, y es deliberada: los
   mensajes firmados "Google Calendar" (el posteo que importa un evento
   creado directo en Calendar y la respuesta de sistema del sync) no
   tienen una persona detrás, así que un aprobado podría fabricarlos —
@@ -154,19 +157,23 @@ aprobación" hasta que el administrador lo apruebe desde la propia app
 
 Es un archivo estático, así que sirve cualquier hosting simple:
 
-- **GitHub Pages**: Settings → Pages → Deploy from branch → elegir la rama
-  y la raíz (`/`). Importante: **tiene que servirse por HTTP(S)**, no abrirse
+- **GitHub Pages**, que es como se publica hoy: Settings → Pages → Deploy
+  from branch → `main` y la raíz (`/`). Cada push a `main` publica. Importante: **tiene que servirse por HTTP(S)**, no abrirse
   como `file://` local, porque usa módulos ES (`<script type="module">`) que
   el navegador bloquea en local por CORS.
-- **Firebase Hosting**: `firebase init hosting` (elegir esta carpeta como
-  público) y `firebase deploy --only hosting`. Cómodo porque ya tenés el
-  proyecto de Firebase creado.
 - Cualquier otro hosting estático (Netlify, Vercel, un servidor propio, etc.)
   también funciona — es un único `index.html` sin build step.
 
 ## 3. Cómo está armado (por si hay que tocarlo)
 
-### Modelo de datos (Firestore)
+### Modelo de datos
+
+Las tablas están en `supabase/01-tablas.sql`. Lo de abajo es el modelo
+como nació, en Firestore: los campos son los mismos, en snake_case en la
+base (ver las equivalencias del principio). Dos diferencias de fondo:
+`images` y `files` guardan la RUTA de cada archivo en el bucket
+`adjuntos`, no el archivo (hasta 20 imágenes y 10 archivos por posteo),
+y las fechas son `timestamptz` que pone la base.
 
 > **Glosario:** lo que en el código, en Firestore y en este README se
 > llama "alcance" / `scopes` (país, ciudad, región o "Toda LatAm" al que
@@ -320,8 +327,8 @@ navegador bloquea el `submit` del formulario ENTERO antes de que llegue
 a JavaScript — sin el toast de error propio de la app, solo el globo
 nativo del navegador, fácil de no notar. Un posteo viejo con un link así
 guardado no se puede editar desde el composer hasta corregir o sacar
-ese link a mano (por ejemplo, editando el documento directo en la
-consola de Firebase).
+ese link a mano (por ejemplo, editando la fila directo en el panel de
+Supabase).
 
 ### Rutina: composer liviano estilo "¿Qué está pasando?"
 
@@ -1133,10 +1140,11 @@ lee y escribe solo el suyo.
 Cada control lleva `data-pref="<clave>"` y lo guarda **un solo** manejador
 genérico de `change` (más `data-action="pref-toggle-list"` para las listas
 multi-selección), en vez de una rama por opción. El cambio se aplica en
-pantalla al toque y el `onSnapshot` confirma después.
+pantalla al toque y el aviso en vivo de la base confirma después.
 
-Cualquier clave nueva hay que sumarla al `hasOnly` de `isValidUserPrefs` en
-`firestore.rules` **y volver a publicar las reglas a mano**.
+Una clave nueva no necesita nada en la base: `guardar_preferencias()`
+guarda solo lo que cambió, sobre lo que ya había, y `user_prefs` tiene
+un tope de peso (32 KB por persona), no una lista cerrada de claves.
 
 ### Notificaciones: qué puede y qué no
 
@@ -2051,6 +2059,10 @@ muerto). Lo que cambió y conviene tener presente al tocar el código:
 
 ## 4. Qué falta / decisiones pendientes
 
+- **Copias de seguridad de Supabase: hoy no hay ninguna.** Es lo más
+  urgente que queda. Las opciones y la recomendación están en el punto 13
+  de `REVISION.md`.
+
 - **Varios calendarios de Google: evaluado y descartado** (septiembre
   2026). Se propuso "Agregar otro calendario" en Administrar › Calendar.
   Es un cambio grande: el `calendarEventId` de cada posteo, el sync
@@ -2072,7 +2084,8 @@ muerto). Lo que cambió y conviene tener presente al tocar el código:
   se calculan con `curl -sSL <url> | openssl dgst -sha256 -binary |
   base64` y se pegan como `integrity="sha256-..."`.
 - **CSP**: no hay `Content-Security-Policy`. Una que limite `script-src` a
-  self + unpkg + gstatic y `connect-src` a googleapis/firestore/ipify/
+  self + unpkg + cdn.jsdelivr.net (supabase-js) + accounts.google.com (el
+  permiso de Calendar) y `connect-src` a supabase.co/googleapis/ipify/
   mymemory reduciría mucho el impacto de cualquier XSS futuro, pero hay
   que probarla en producción (los popups de login de Google y las
   teselas del mapa son fáciles de romper con una CSP mal armada).
@@ -2082,18 +2095,14 @@ muerto). Lo que cambió y conviene tener presente al tocar el código:
   en los dos); y el login manda la IP de cada persona a ipify para la
   auditoría. Son decisiones asumidas por no tener backend; conviene que
   el equipo lo sepa.
-- **Firebase App Check** (recomendado, no activado): `auditLog` y
-  `accessRequests` aceptan `create` de cualquier cuenta de Google
-  logueada, aprobada o no — es a propósito, para poder registrar el
-  login o el pedido de acceso de alguien que todavía no está en la
-  allowlist (ver el comentario de `isValidAuditEntry` en
-  `firestore.rules`). Eso deja una puerta abierta a que alguien agote la
-  cuota gratis de Firestore escribiendo documentos sin límite desde la
-  consola del navegador. `logAudit()` ya lo achica bastante (usa un id
-  fijo por cuenta+tipo+día para "login"/"access_requested", así que el
-  segundo intento del mismo día se rechaza solo — ver el comentario en
-  `index.html`), pero la mitigación completa es
-  [Firebase App Check](https://firebase.google.com/docs/app-check): se
-  activa desde Firebase Console → App Check, sin tocar código (el SDK
-  de la app ya soporta agregarlo con el proveedor reCAPTCHA v3 o
-  reCAPTCHA Enterprise). Queda para cuando el equipo lo decida.
+- **Escrituras de cuentas que todavía no están aprobadas**: `audit_log` y
+  `access_requests` aceptan filas de cualquier cuenta de Google logueada,
+  aprobada o no — es a propósito, para poder registrar el login o el
+  pedido de acceso de alguien que todavía no está en el equipo. Con
+  Firebase eso dejaba una puerta a llenar la base desde la consola del
+  navegador. Con Supabase está acotado en la base: una solicitud por
+  correo, y un login o pedido por cuenta, tipo y día, con el id que arma
+  la app (`auditoria_una_por_dia` en `03-validacion.sql`). Lo que queda
+  es que alguien abra muchas cuentas de Google; si alguna vez pasara,
+  Supabase permite pedir un CAPTCHA al entrar (Authentication → Attack
+  Protection), sin tocar el código de la base.
