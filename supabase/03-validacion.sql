@@ -148,6 +148,7 @@ alter table public.posts
     and length(coalesce(project_done_by, '')) <= 200
     and length(coalesce(calendar_event_id, '')) <= 200
     and length(coalesce(last_edited_by, '')) <= 120
+    and length(coalesce(last_edited_by_email, '')) <= 254
   ),
   -- Los tipos NO son una lista fija: el admin agrega y renombra desde
   -- Configuración. Se valida la forma del identificador, no cuál es.

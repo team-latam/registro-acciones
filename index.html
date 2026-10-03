@@ -3979,6 +3979,7 @@ function tsToMillis(ts){
 // menciones a su email son más nuevas que eso.
 const MENTIONS_SEEN_KEY = "mentionsSeenAt";
 const REPLIES_SEEN_KEY = "repliesSeenAt";
+const CHANGES_SEEN_KEY = "changesSeenAt";
 // Guardado por email (no una sola clave global): si dos cuentas distintas
 // comparten el mismo navegador, "ya vistas" de una no debe ocultar (ni
 // inventar) menciones nuevas para la otra.
@@ -3986,6 +3987,11 @@ const REPLIES_SEEN_KEY = "repliesSeenAt";
 // abajo): clave por email en localStorage con la hora en que se vio.
 function getMentionsSeenAt(){ return getPerUserTs(MENTIONS_SEEN_KEY); }
 function getRepliesSeenAt(){ return getPerUserTs(REPLIES_SEEN_KEY); }
+function getChangesSeenAt(){ return getPerUserTs(CHANGES_SEEN_KEY); }
+function markChangesSeen(){
+  const latest = getRecentChanges(1).reduce((max,c)=> Math.max(max, tsToMillis(c.at)), 0);
+  markPerUserTs(CHANGES_SEEN_KEY, latest || Date.now());
+}
 function markRepliesSeen(){
   const latest = getRecentReplies(1).reduce((max,r)=> Math.max(max, tsToMillis(r.createdAt)), 0);
   markPerUserTs(REPLIES_SEEN_KEY, latest || Date.now());
@@ -4238,6 +4244,30 @@ function upcomingEvents(){
 // cachea la lista COMPLETA sin recortar, y cada llamado hace el slice()
 // (barato) sobre lo ya cacheado en vez de repetir el recorrido entero.
 let recentRepliesCache = null;
+// Cambios que OTROS hicieron en tus eventos (editar, cancelar) en los
+// últimos 30 días: con la edición abierta a todo el equipo, el autor se
+// entera por la campanita y no de casualidad. Se reconoce al otro por el
+// correo (lastEditedByEmail); en lo guardado antes de que existiera, por
+// el nombre.
+let recentChangesCache = null;
+function getRecentChanges(limit=4){
+  const email = String(state.auth.user && state.auth.user.email || "").toLowerCase();
+  if(!email) return [];
+  if(!recentChangesCache){
+    const desde = Date.now() - 30 * 86400000;
+    const miNombre = state.auth.user.displayName || "";
+    recentChangesCache = state.posts
+      .filter(p => String(p.authorEmail || "").toLowerCase() === email && p.lastEditedBy && tsToMillis(p.lastEditedAt) > desde)
+      .filter(p => p.lastEditedByEmail ? String(p.lastEditedByEmail).toLowerCase() !== email : p.lastEditedBy !== miNombre)
+      .map(p => ({ postId:p.id, byName:p.lastEditedBy, byEmail:p.lastEditedByEmail || null, at:p.lastEditedAt, cancelled:!!p.cancelled, title:calendarioLabel(p) }))
+      .sort((a,b) => tsToMillis(b.at) - tsToMillis(a.at));
+  }
+  return recentChangesCache.slice(0, limit);
+}
+function getUnseenChangesCount(){
+  const seenAt = getChangesSeenAt();
+  return getRecentChanges(50).filter(c => tsToMillis(c.at) > seenAt).length;
+}
 function getRecentReplies(limit=4){
   if(!prefs().notifyReplies) return [];
   const email = String(state.auth.user && state.auth.user.email || "").toLowerCase();
@@ -5178,7 +5208,7 @@ async function moveOccurrence(postId, origenISO, destinoISO){
     await appAlert(t("Ya hay {n} fechas corridas en este evento. Sacá alguna antes de correr otra.","This event already has {n} moved dates. Undo one before moving another.","Este evento já tem {n} datas movidas. Desfaça uma antes de mover outra.","{n} תאריכים כבר הוזזו באירוע הזה. בטל/י אחד לפני הזזת נוסף",{n:MAX_OCC_MOVES}));
     return;
   }
-  await updatePostDoc(postId, { recurrenceMoves: nuevos, lastEditedAt: store.horaDelServidor(), lastEditedBy: state.auth.user.displayName });
+  await updatePostDoc(postId, { recurrenceMoves: nuevos, lastEditedAt: store.horaDelServidor(), lastEditedBy: state.auth.user.displayName, lastEditedByEmail: state.auth.user.email });
   await createReply(postId, {
     authorName: state.auth.user.displayName, authorEmail: state.auth.user.email,
     content: destinoISO === origenISO
@@ -5205,7 +5235,7 @@ async function setOccurrenceSkipped(postId, iso, skipped){
   const ya = actual.includes(iso);
   if(ya === skipped) return;
   const nuevo = skipped ? actual.concat([iso]).slice(-200) : actual.filter(d=>d !== iso);
-  await updatePostDoc(postId, { recurrenceSkip: nuevo, lastEditedAt: store.horaDelServidor(), lastEditedBy: state.auth.user.displayName });
+  await updatePostDoc(postId, { recurrenceSkip: nuevo, lastEditedAt: store.horaDelServidor(), lastEditedBy: state.auth.user.displayName, lastEditedByEmail: state.auth.user.email });
   await createReply(postId, {
     authorName: state.auth.user.displayName, authorEmail: state.auth.user.email,
     content: skipped
@@ -7440,6 +7470,18 @@ function canEditPost(post){
   if(!canWrite()) return false;
   return post.authorEmail === state.auth.user.email || post.activityType !== "rutina" || postEditors(post).includes(state.auth.user.email);
 }
+// Cancelar saca el evento del Calendar de todos: lo hace quien lo creó,
+// sus participantes, sus editores o un admin. Editar sigue abierto a todo
+// el equipo (ver canEditPost); borrar, solo el admin fijo. La base exige
+// lo mismo (posts_controlar_update en 02-politicas.sql).
+function canCancelPost(post){
+  if(!canEditPost(post) || post.activityType === "rutina" || post.cancelled) return false;
+  if(isAdmin()) return true;
+  const yo = String(state.auth.user.email || "").toLowerCase();
+  return String(post.authorEmail || "").toLowerCase() === yo
+    || postEditors(post).some(e => String(e || "").toLowerCase() === yo)
+    || (Array.isArray(post.participants) ? post.participants : []).some(x => String(x && x.email || "").toLowerCase() === yo);
+}
 
 /* ======================================================================
    PROYECTO: cualquier Evento (no Rutina) se puede ver como proyecto, con
@@ -8338,7 +8380,7 @@ function parcheDeEdicion(original, newData){
     activityType:newData.activityType, scopes:newData.scopes, images:newData.images, links:newData.links,
     files:newData.files, mentions:newData.mentions,
     recurrence: newData.recurrence || null,
-    lastEditedAt: store.horaDelServidor(), lastEditedBy: state.auth.user.displayName,
+    lastEditedAt: store.horaDelServidor(), lastEditedBy: state.auth.user.displayName, lastEditedByEmail: state.auth.user.email,
   };
   // Si cambió CÓMO se repite, las fechas suspendidas y corridas eran de
   // la regla vieja: con otra regla dejan de tener sentido y esconderían o
@@ -8442,7 +8484,7 @@ async function cancelPost(post){
     { title: post.title }
   ), { danger:true, okLabel: t("Cancelar evento","Cancel event","Cancelar evento","ביטול האירוע") }))) return;
   try{
-    await updatePostDoc(post.id, { cancelled:true, lastEditedAt: store.horaDelServidor(), lastEditedBy: state.auth.user.displayName });
+    await updatePostDoc(post.id, { cancelled:true, lastEditedAt: store.horaDelServidor(), lastEditedBy: state.auth.user.displayName, lastEditedByEmail: state.auth.user.email });
     logAudit("post_edited", { detail: resumenDePosteo(post, t("(cancelado)","(cancelled)","(cancelado)","(בוטל)")) });
     await createReply(post.id, {
       authorName: state.auth.user.displayName, authorEmail: state.auth.user.email,
@@ -9096,7 +9138,7 @@ function renderMentionsBell(){
   // El globito cuenta SOLO lo que todavía no se abrió; el menú de abajo
   // sigue mostrando todo. Antes "lo que se viene" sumaba siempre, así que
   // el número no bajaba a cero por más que se abriera la campanita.
-  const count = getUnseenMentionCount() + getUnseenReplyCount()
+  const count = getUnseenMentionCount() + getUnseenReplyCount() + getUnseenChangesCount()
     + getUnseenUpcomingCount() + (hasUnseenCalendarInvite() ? 1 : 0);
   const countLabel = count === 1
     ? t("1 novedad", "1 update", "1 novidade", "עדכון אחד")
@@ -9123,7 +9165,8 @@ function renderMentionsMenuItems(hasInvite, upcoming){
   const nuevo = `<span class="mi-nuevo">${t("Nuevo","New","Novo","חדש")}</span>`;
   const filtros = `<div class="bell-filtros" role="group">${[
       ["todo", t("Todo","All","Tudo","הכול")], ["menciones", t("Menciones","Mentions","Menções","אזכורים")],
-      ["respuestas", t("Respuestas","Replies","Respostas","תגובות")], ["eventos", t("Eventos","Events","Eventos","אירועים")],
+      ["respuestas", t("Respuestas","Replies","Respostas","תגובות")], ["cambios", t("Cambios","Changes","Mudanças","שינויים")],
+      ["eventos", t("Eventos","Events","Eventos","אירועים")],
     ].map(([k,l])=>`<button type="button" class="${f===k?"active":""}" data-action="bell-filtro" data-key="${k}">${l}</button>`).join("")}</div>`;
   // Lo que se viene va primero: es lo único con fecha de vencimiento. Y
   // si al evento le falta documentación, lo dice acá, que es cuando
@@ -9147,6 +9190,18 @@ function renderMentionsMenuItems(hasInvite, upcoming){
           <span class="mi-date">${esc(when)}</span>
         </button>`;
     }).join("")}` : "";
+  // Lo que otros cambiaron en tus eventos: quién, qué y cuándo.
+  const cambios = ver("cambios") ? getRecentChanges(3) : [];
+  const changeItems = cambios.length ? `
+    <div class="bell-section">${t("Cambios en tus eventos","Changes to your events","Mudanças nos seus eventos","שינויים באירועים שלך")}</div>
+    ${cambios.map(c=>`
+      <button type="button" class="mention-item${esNuevo(c.at, "c") ? " nuevo" : ""}" data-action="goto-mention" data-post-id="${esc(c.postId)}">
+        <span class="mi-author">${(c.byEmail && authorLabelHtml(c.byEmail, c.byName)) || esc(c.byName)}${esNuevo(c.at, "c") ? nuevo : ""}</span>
+        <span class="mi-content" dir="auto">${c.cancelled
+          ? "🚫 " + esc(t("Canceló “{t}”","Cancelled “{t}”","Cancelou “{t}”","ביטל/ה את “{t}”",{t:c.title}))
+          : "✏️ " + esc(t("Editó “{t}”","Edited “{t}”","Editou “{t}”","ערך/ה את “{t}”",{t:c.title}))}</span>
+        <span class="mi-date">${fmtDateTime(c.at)}</span>
+      </button>`).join("")}` : "";
   const replyItems = (ver("respuestas") && replies.length) ? `
     <div class="bell-section">${t("Respuestas a tus posteos","Replies to your posts","Respostas às suas postagens","תגובות לפוסטים שלך")}</div>
     ${replies.map(r=>`
@@ -9166,7 +9221,7 @@ function renderMentionsMenuItems(hasInvite, upcoming){
       <button type="button" class="ci-dismiss" data-action="dismiss-calendar-invite-notice">${t("Ya la acepté ✕","Already accepted ✕","Já aceitei ✕","כבר אישרתי ✕")}</button>
     </div>` : "";
   const menciones = ver("menciones") ? recent : [];
-  if(!menciones.length && !inviteItem && !upcomingItems && !replyItems){
+  if(!menciones.length && !inviteItem && !upcomingItems && !changeItems && !replyItems){
     const vacio = f === "todo"
       ? t("Todavía no hay novedades: ni menciones, ni respuestas, ni eventos cerca.","Nothing new yet: no mentions, replies or events coming up.","Ainda não há novidades: nem menções, nem respostas, nem eventos próximos.","עדיין אין חדש: לא אזכורים, לא תגובות ולא אירועים קרובים.")
       : t("Nada por acá.","Nothing here.","Nada por aqui.","אין כאן כלום.");
@@ -9174,7 +9229,7 @@ function renderMentionsMenuItems(hasInvite, upcoming){
   }
   const mentionItems = menciones.length ? `
     <div class="bell-section">${t("Menciones","Mentions","Menções","אזכורים")}</div>` : "";
-  return filtros + inviteItem + upcomingItems + replyItems + mentionItems + menciones.map(m=>`
+  return filtros + inviteItem + upcomingItems + changeItems + replyItems + mentionItems + menciones.map(m=>`
     <button type="button" class="mention-item${esNuevo(m.createdAt, "m") ? " nuevo" : ""}" data-action="goto-mention" data-post-id="${esc(m.postId)}" ${m.replyId ? `data-reply-id="${esc(m.replyId)}"` : ""}>
       <span class="mi-author">${authorLabelHtml(m.authorEmail, m.authorName) || t("Alguien","Someone","Alguém","מישהו/י")}${esNuevo(m.createdAt, "m") ? nuevo : ""}</span>
       <span class="mi-content" dir="auto">${esc((m.content||"").slice(0,80))}</span>
@@ -9187,7 +9242,7 @@ function doRender(){
   // Mismo criterio: recorren TODOS los posteos/respuestas y se llamaban de
   // cero en cada render (hasta por cada tecla de un buscador). Se cachean
   // acá y se invalidan al principio de cada doRender(), como los lugares.
-  upcomingEventsCache = null; recentRepliesCache = null; recentMentionsCache = null;
+  upcomingEventsCache = null; recentRepliesCache = null; recentMentionsCache = null; recentChangesCache = null;
   // La solapa Memoria ya no existe (se unificó con el Feed, ver README):
   // cualquier camino que llegue ahí (un atajo viejo, un enlace guardado)
   // cae en el Feed.
@@ -11422,7 +11477,7 @@ async function adjuntarDocumento(postId, docId, file){
     await updatePostDoc(postId, {
       files,
       lastEditedAt: store.horaDelServidor(),
-      lastEditedBy: state.auth.user.displayName,
+      lastEditedBy: state.auth.user.displayName, lastEditedByEmail: state.auth.user.email,
     });
   }catch(err){
     console.error("Error adjuntando el documento:", err);
@@ -11456,7 +11511,7 @@ async function quitarDocumento(postId, docId){
     await updatePostDoc(postId, {
       files: (post.files || []).filter(x => docDeArchivo(x) !== docId),
       lastEditedAt: store.horaDelServidor(),
-      lastEditedBy: state.auth.user.displayName,
+      lastEditedBy: state.auth.user.displayName, lastEditedByEmail: state.auth.user.email,
     });
     docsAbiertos.set(postId, true);   // que se vea lo que quedó
   }catch(err){
@@ -11483,7 +11538,7 @@ async function quitarAdjunto(postId, pos){
     await updatePostDoc(postId, {
       files: files.filter((_, i) => i !== Number(pos)),
       lastEditedAt: store.horaDelServidor(),
-      lastEditedBy: state.auth.user.displayName,
+      lastEditedBy: state.auth.user.displayName, lastEditedByEmail: state.auth.user.email,
     });
   }catch(err){
     console.error("Error quitando el adjunto:", err);
@@ -11554,8 +11609,13 @@ function renderPostCard(post, replies){
   const creadoPor = publicado;
   const createdTimeLabel = "";
   if(post.location) metaBits.push(`📍 ${esc(post.location)}`);
+  // Quién lo tocó por última vez y cuándo: con la edición abierta a todo
+  // el equipo, que se note en la tarjeta y no solo en el registro. (La
+  // marca de 1970 es la que la base reemplaza por su reloj: no se muestra.)
+  const editadoMs = tsToMillis(post.lastEditedAt);
+  if(post.lastEditedBy && editadoMs > Date.UTC(1971, 0, 1)) metaBits.push(`<span class="post-editado" title="${esc(fmtDateTime(post.lastEditedAt))}">✏️ ${esc(t("Editado por {n}","Edited by {n}","Editado por {n}","נערך על ידי {n}",{n:post.lastEditedBy}))} · ${esc(timeAgo(post.lastEditedAt))}</span>`);
   const editable = canEditPost(post);
-  const canCancel = editable && post.activityType !== "rutina" && !post.cancelled;
+  const canCancel = canCancelPost(post);
   const postLikedBy = post.likedBy || [];
   const postLiked = canWrite() && postLikedBy.includes(state.auth.user.email);
   const commentsLabel = replies.length === 1
@@ -16205,7 +16265,7 @@ document.addEventListener("click", async e=>{
   },
     "cancel-post": async (el, e, action, postId) => {
     const post = getPostById(postId);
-    if(post) cancelPost(post);
+    if(post && canCancelPost(post)) cancelPost(post);
   },
     "project-create": async (el, e, action, postId) => {
     const post = getPostById(postId);
@@ -16746,8 +16806,8 @@ document.addEventListener("click", async e=>{
     if(mentionsMenuOpen){
       // Qué era nuevo al abrir, ANTES de marcarlo visto: así el panel lo
       // resalta esta vez, y la próxima ya no.
-      bellVistoAlAbrir = { m: getMentionsSeenAt(), r: getRepliesSeenAt() };
-      markMentionsSeen(); markRepliesSeen(); markUpcomingSeen(); markCalendarInviteSeen();
+      bellVistoAlAbrir = { m: getMentionsSeenAt(), r: getRepliesSeenAt(), c: getChangesSeenAt() };
+      markMentionsSeen(); markRepliesSeen(); markChangesSeen(); markUpcomingSeen(); markCalendarInviteSeen();
     }
     render();
   },

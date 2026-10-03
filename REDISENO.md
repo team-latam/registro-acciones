@@ -267,6 +267,23 @@ ojo de las hojas de contacto. Lo que salió:
   principio; `aria-expanded` en la campanita y `aria-current` en la
   sección activa y la pestaña de abajo.
 
+### 17. Editar, cancelar y borrar: la regla — HECHO (3 oct 2026)
+
+Decisión del usuario (3 oct 2026), con la mirada de un integrante:
+
+- **Editar** sigue abierto a todo el equipo para los eventos (es una
+  memoria compartida: el que viajó no siempre tiene el reporte a mano).
+  Las Rutinas siguen siendo de cada uno (y de los editores que sume).
+- **Cancelar**: solo el autor, los participantes, los editores y los
+  admins. Saca el evento del Calendar de todos; es lo que más molesta por
+  error. Lo exige la app (`canCancelPost`) y la base
+  (`posts_controlar_update`).
+- **Borrar**: solo el admin fijo, como antes.
+- Que se note: la tarjeta dice "✏️ Editado por X · hace N", y la
+  campanita avisa al autor de los cambios que hicieron otros en sus
+  eventos ("Cambios en tus eventos", con su filtro y su "Nuevo"). Quién
+  editó se guarda también por correo (`last_edited_by_email`).
+
 ## Fuera de alcance (necesitan algo que la app no tiene)
 
 - Mandar correos (resumen semanal, invitaciones): no hay servicio de
@@ -276,5 +293,6 @@ ojo de las hojas de contacto. Lo que salió:
 
 ## Decisiones pendientes del usuario
 
-- ¿Un integrante común puede editar o cancelar eventos de otros? Hoy sí
-  (solo Borrar está restringido). Se deja como está hasta que diga.
+- ~~¿Un integrante común puede editar o cancelar eventos de otros?~~
+  Decidido el 3 oct 2026: editar sí, cancelar solo autor / participantes /
+  editores / admins, borrar solo el admin fijo (tanda 17).

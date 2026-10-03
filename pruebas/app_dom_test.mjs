@@ -427,8 +427,32 @@ const hasta = async (p, fn, arg, ms = 5000) => {
 
 /* ---------- Un integrante común ---------- */
 {
-  const { p, errores } = await entrar("ana@x.com", "Ana Pérez");
+  // El admin editó la Reunión de Ana hace unas horas (tanda 17).
+  const { p, errores } = await entrar("ana@x.com", "Ana Pérez", base => {
+    base.posts[0].last_edited_at = hace(0.2); base.posts[0].last_edited_by = "Benny"; base.posts[0].last_edited_by_email = ADMIN;
+  });
   eq("integrante: entra y ve los posteos", await esperarTexto(p, "Programa de becas"), true);
+  // Tanda 17: editar está abierto a todo el equipo; cancelar, solo para el
+  // autor, los participantes, los editores y los admins. Ana puede editar
+  // el proyecto del admin pero no cancelarlo; el suyo, las dos cosas.
+  const menuDe = async id => {
+    await p.click(`.post[data-post-id="${id}"] [data-action="toggle-post-menu"]`);
+    await p.waitForTimeout(150);
+    const acciones = await p.evaluate(id => [...document.querySelectorAll(`.post[data-post-id="${id}"] .post-menu [data-action]`)].map(b => b.dataset.action), id);
+    await p.keyboard.press("Escape"); await p.waitForTimeout(100);
+    return acciones;
+  };
+  const menuAjeno = await menuDe("p_proyecto"), menuPropio = await menuDe("p_reunion");
+  eq("integrante: puede editar el evento de otro, pero no cancelarlo", [menuAjeno.includes("edit-post"), menuAjeno.includes("cancel-post")], [true, false]);
+  eq("integrante: el suyo lo edita y lo cancela", [menuPropio.includes("edit-post"), menuPropio.includes("cancel-post")], [true, true]);
+  eq("tarjeta: dice quién la editó por última vez y cuándo",
+    await p.$eval('.post[data-post-id="p_reunion"] .post-editado', e => e.textContent.includes("Editado por Benny")), true);
+  await p.click('[data-action="toggle-mentions-menu"]');
+  await p.waitForTimeout(150);
+  eq("campanita: avisa los cambios que otros hicieron en tus eventos",
+    await p.evaluate(() => [[...document.querySelectorAll(".mentions-menu .bell-section")].map(e => e.textContent).includes("Cambios en tus eventos"),
+      /Editó/.test(document.querySelector(".mentions-menu").textContent), !!document.querySelector('.bell-filtros [data-key="cambios"]')]), [true, true, true]);
+  await p.click('[data-action="toggle-mentions-menu"]');
   await p.click('[data-action="toggle-user-menu"]');
   eq("integrante: el menú del avatar no ofrece Administración", !!(await p.$('.user-menu [data-action="goto-view"][data-view="admin"]')), false);
   await p.click('.user-menu [data-action="goto-view"][data-view="configuracion"]');

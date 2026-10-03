@@ -71,8 +71,15 @@ create table if not exists public.posts (
   calendar_event_id text,
   created_at        timestamptz not null default now(),
   last_edited_at    timestamptz,
-  last_edited_by    text
+  last_edited_by    text,
+  last_edited_by_email text
 );
+-- Quién editó por última vez, por correo (el nombre ya estaba): la
+-- campanita le avisa al autor de los cambios que hicieron OTROS, y el
+-- nombre solo no alcanza para saberlo con certeza. Sumada el 3/10/2026:
+-- el alter es para las bases que ya existían (el create de arriba no toca
+-- una tabla que ya está).
+alter table public.posts add column if not exists last_edited_by_email text;
 
 create index if not exists posts_date_idx           on public.posts (date desc);
 create index if not exists posts_start_date_idx     on public.posts (start_date);

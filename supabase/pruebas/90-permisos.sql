@@ -84,6 +84,34 @@ select lab.probar('ni el admin fijo puede editar la rutina ajena', lab.como('ben
   $q$update public.posts set content = 'editado' where id = 'p_rutina'$q$, false);
 select lab.probar('un observador NO edita nada', lab.como('obs@x.com'),
   $q$update public.posts set content = 'editado' where id = 'p_evento'$q$, false);
+update public.posts set editors = array['ana@x.com'] where id = 'p_rutina';
+select lab.probar('una rutina la edita también quien su autor sumó como editor', lab.como('ana@x.com'),
+  $q$update public.posts set content = 'editado por la editora' where id = 'p_rutina'$q$, true);
+update public.posts set editors = '{}' where id = 'p_rutina';
+
+-- ---------- CANCELAR ----------
+-- Editar está abierto a todo el equipo; cancelar, no: saca el evento del
+-- Calendar de todos. Lo hace el autor, un participante, un editor o un
+-- admin. (Juan es integrante común; Ana, admin por rol.)
+select lab.probar('cancelar el evento de otro, sin ser participante ni editor, NO', lab.como('juan@x.com'),
+  $q$update public.posts set cancelled = true where id = 'p_de_ana'$q$, false);
+select lab.probar('pero editarlo SÍ (es del equipo)', lab.como('juan@x.com'),
+  $q$update public.posts set content = 'editado' where id = 'p_de_ana'$q$, true);
+select lab.probar('el autor SÍ cancela el suyo', lab.como('juan@x.com'),
+  $q$update public.posts set cancelled = true where id = 'p_evento'$q$, true);
+select lab.probar('un admin por rol cancela el de otro', lab.como('ana@x.com'),
+  $q$update public.posts set cancelled = true where id = 'p_evento'$q$, true);
+select lab.probar('el admin fijo también', lab.como('benny@team-latam.com'),
+  $q$update public.posts set cancelled = true where id = 'p_evento'$q$, true);
+update public.posts set participants = '[{"email":"juan@x.com","name":"Juan"}]' where id = 'p_de_ana';
+select lab.probar('un participante del evento SÍ lo cancela', lab.como('juan@x.com'),
+  $q$update public.posts set cancelled = true where id = 'p_de_ana'$q$, true);
+update public.posts set participants = '[]', editors = array['juan@x.com'] where id = 'p_de_ana';
+select lab.probar('y un editor del evento también', lab.como('juan@x.com'),
+  $q$update public.posts set cancelled = true where id = 'p_de_ana'$q$, true);
+update public.posts set editors = '{}' where id = 'p_de_ana';
+select lab.probar('quién editó por última vez se guarda también por correo', lab.como('juan@x.com'),
+  $q$update public.posts set content = 'editado', last_edited_by = 'Juan', last_edited_by_email = 'juan@x.com' where id = 'p_de_ana'$q$, true);
 select lab.probar('NADIE cambia de quién es un posteo', lab.como('ana@x.com'),
   $q$update public.posts set author_email = 'ana@x.com' where id = 'p_evento'$q$, false);
 select lab.probar('ni cuándo se creó', lab.como('benny@team-latam.com'),
