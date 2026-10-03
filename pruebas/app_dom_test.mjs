@@ -407,6 +407,60 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   await p.close();
 }
 
+/* ---------- El Inicio en escritorio: columna lateral y buscador ---------- */
+{
+  // Un evento de Ana pasado mañana (lo de la base es de hace dos días) y
+  // el hito del proyecto con su etiqueta como la guarda la app (label).
+  const { p, errores, base } = await entrar(ADMIN, "Benny", base => {
+    base.posts.push({ ...base.posts[0], id: "p_taller", title: "Taller de pasado mañana", images: [],
+      date: dia(-2), start_date: dia(-2), end_date: dia(-2), created_at: hace(0.5) });
+    base.posts[1].milestones = [{ id: "h1", label: "Primera entrega", date: dia(-5), done: false }];
+  });
+  await esperarTexto(p, "Reunión con la comunidad");
+  const cuantas = () => p.$$eval("#viewRoot article.post", es => es.length);
+  eq("escritorio: la columna lateral está a la vista, con sus tres cajas",
+    await p.$$eval(".feed-side .fs-box h4:not(.fs-sub)", es => es.map(e => e.textContent.replace(/^\S+\s/, ""))),
+    ["Próximos eventos", "Hitos por vencer", "Accesos directos"]);
+  eq("escritorio: lo que se viene lista el taller de pasado mañana y el hito por vencer", await p.$$eval(".feed-side .fs-item .fs-what", es => es.map(e => e.textContent.trim())),
+    ["🧳 Taller de pasado mañana", "Primera entrega"]);
+  // Acceso directo "Mis posteos": del admin es solo el proyecto.
+  await p.click('.feed-side [data-action="feed-quick"][data-key="mine"]');
+  eq("escritorio: 'Mis posteos' deja solo lo del admin, con su chip en la barra de filtros",
+    [await cuantas(), await p.$eval('[data-action="clear-quick"]', e => e.textContent.trim())], [1, "⚡ Mis posteos ✕"]);
+  // Guardar ese filtro con nombre: queda en la columna y en las preferencias.
+  await p.click('[data-action="feed-saved-start"]');
+  await p.type("#savedFilterName", "Lo mío");
+  await p.keyboard.press("Enter");
+  eq("escritorio: el filtro guardado aparece en la columna", await hasta(p, () => [...document.querySelectorAll(".fs-saved .fs-link")].some(e => e.textContent.trim() === "Lo mío")), true);
+  // La escritura a la base es asincrónica: se espera a que llegue, no se
+  // mira la foto de inmediato (con la máquina cargada llegaba después).
+  await hasta(p, email => (window.__sb.tablas.user_prefs || []).some(u => u.email === email && u.prefs && Array.isArray(u.prefs.savedFilters) && u.prefs.savedFilters.length), ADMIN);
+  const guardado = ((await base()).user_prefs.find(u => u.email === ADMIN) || { prefs: {} }).prefs.savedFilters;
+  eq("escritorio: y en las preferencias de la persona, con el acceso directo adentro", guardado && guardado.map(g => [g.name, g.quick]), [["Lo mío", "mine"]]);
+  await p.click('[data-action="clear-filters"]');
+  eq("escritorio: limpiar filtros apaga también el acceso directo", await cuantas(), 3);
+  await p.click('.fs-saved [data-action="feed-saved-apply"]');
+  eq("escritorio: aplicar el guardado vuelve a dejar una tarjeta", await cuantas(), 1);
+  await p.click('[data-action="clear-filters"]');
+  // El buscador general: proyectos y países desde la barra de arriba.
+  await p.click("#globalSearchInput");
+  await p.type("#globalSearchInput", "becas");
+  eq("buscador: con 'becas' ofrece el proyecto", await hasta(p, () => [...document.querySelectorAll("#globalResults .gs-item b")].some(b => b.textContent === "Programa de becas")), true);
+  eq("buscador: agrupado como Proyectos", await p.$$eval("#globalResults .gs-group", es => es.map(e => e.textContent)), ["Proyectos"]);
+  await p.click('#globalResults [data-action="gs-project"]');
+  eq("buscador: elegirlo abre el proyecto y cierra el panel",
+    [await p.$eval("nav.tabs button.active", e => e.dataset.view), await p.$eval("#globalResults", e => e.hidden), await p.$eval("#globalSearchInput", e => e.value)],
+    ["proyectos", true, ""]);
+  await p.click("#globalSearchInput");
+  await p.type("#globalSearchInput", "argent");
+  eq("buscador: con 'argent' ofrece el país", await hasta(p, () => !!document.querySelector('#globalResults [data-action="gs-country"][data-country="Argentina"]')), true);
+  await p.click('#globalResults [data-action="gs-country"]');
+  eq("buscador: elegir el país abre el Feed filtrado por Argentina",
+    [await p.$eval("nav.tabs button.active", e => e.dataset.view), await p.$eval('[data-action="clear-place"]', e => e.textContent.trim())], ["feed", "📍 Argentina ✕"]);
+  eq("escritorio: sin un solo error", errores, []);
+  await p.close();
+}
+
 /* ---------- En un celular ---------- */
 {
   const ANCHO = 390;
