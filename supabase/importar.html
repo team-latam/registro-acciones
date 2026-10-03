@@ -9,12 +9,13 @@
   Administrar → Preferencias) y carga su contenido en Supabase. NO toca
   Firebase: el archivo se lee del disco, nada más.
 
-  Dos formas:
-  - Completar lo que falta: trae lo nuevo y no toca lo que ya está. Se
-    puede correr las veces que haga falta.
-  - Importación final: lo de Firebase pisa lo que hay, y se saca de
-    Supabase lo que ya no está en Firebase. Es la de antes de apagarlo
-    (ver supabase/LEEME.md, «La mudanza»).
+  Trae solo lo que falta: lo que ya está en Supabase no se toca y no se
+  saca nada. Se puede correr las veces que haga falta.
+
+  Hubo también una «Importación final», que dejaba Supabase igual a
+  Firebase: pisaba lo que había y sacaba lo que Firebase no tenía. Se sacó
+  el 3 de octubre de 2026, cuando Supabase pasó a ser la base del equipo:
+  para entonces el equipo ya cargaba ahí, y esa opción lo habría borrado.
 
   Se puede borrar cuando la migración termine.
 -->
@@ -103,12 +104,8 @@
         <div><strong>Completar lo que falta</strong>
           <span>Trae lo nuevo. Lo que ya está en Supabase no se toca y no se saca nada. Se puede correr las veces que haga falta.</span></div>
       </label>
-      <label class="opcion" for="modoFinal">
-        <input type="radio" name="modo" id="modoFinal" value="final">
-        <div><strong>Importación final</strong>
-          <span>Lo de Firebase pisa lo que hay en Supabase, y se saca de Supabase lo que ya no está en Firebase. Es la de antes de apagarlo: con Firebase quieto y una copia recién bajada.</span></div>
-      </label>
     </div>
+    <p class="nota">La «Importación final», que dejaba Supabase igual a Firebase, ya no está: desde el 3 de octubre la base del equipo es Supabase, y esa opción borraría lo cargado ahí.</p>
     <div id="zonaModo"></div>
   </div>
 
@@ -603,7 +600,9 @@ async function quitar(tabla, claves){
 
 /* ---------- Pantalla ---------- */
 let sesion = null, datos = null, analisis = null, comparacion = null, corriendo = false;
-const modo = () => ($("modoFinal").checked ? "final" : "completar");
+// Siempre «completar»: la importación final se sacó (ver arriba de todo).
+// Lo que queda de ella más abajo no se alcanza desde la página.
+const modo = () => "completar";
 const n = x => Number(x || 0).toLocaleString("es-AR");
 const peso = bytes => bytes < 1024 * 1024
   ? Math.ceil(bytes / 1024).toLocaleString("es-AR") + " KB"
@@ -772,14 +771,13 @@ $("archivo").onchange = async e => {
   pintarArchivo(); pintarModo();
 };
 $("modoCompletar").onchange = pintarModo;
-$("modoFinal").onchange = pintarModo;
 
 window.addEventListener("beforeunload", e => { if(corriendo){ e.preventDefault(); e.returnValue = ""; } });
 
 $("btnImportar").onclick = async () => {
   const final = modo() === "final";
   corriendo = true; pintarBoton();
-  $("modoCompletar").disabled = $("modoFinal").disabled = $("archivo").disabled = true;
+  $("modoCompletar").disabled = $("archivo").disabled = true;
   const z = $("zonaImportar");
   const lineas = [], fallas = [];
   const mostrar = extra => {
@@ -869,7 +867,7 @@ $("btnImportar").onclick = async () => {
       : final ? "✅ Listo: Supabase quedó igual que Firebase." : "✅ Listo."}</div>`;
   }
   corriendo = false;
-  $("modoCompletar").disabled = $("modoFinal").disabled = $("archivo").disabled = false;
+  $("modoCompletar").disabled = $("archivo").disabled = false;
   // Lo que hay ahora es otra cosa: la comparación (y la lista de lo que
   // se saca) se vuelve a hacer, por si se aprieta el botón otra vez.
   comparacion = null; pintarArchivo(); pintarModo();

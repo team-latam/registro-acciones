@@ -369,12 +369,14 @@ Lo que falta, en orden:
 
 1. ~~Arreglar 1 a 4: sin eso, la mudanza pierde o esconde datos.~~
    **Hecho.**
-2. **Importación final** con el importador, con Firebase en pausa mientras
-   corre para que no entre nada nuevo en el medio. El paso a paso, en
-   `supabase/LEEME.md` («La mudanza»).
-3. Cambiar la base por defecto a Supabase (`baseElegida()`) y sacar el
-   cartel; dejar `?base=firebase` unas semanas como vuelta atrás
-   (`VOLVER-A-FIREBASE.md`).
+2. ~~**Importación final** con el importador.~~ **No se hizo, a propósito:**
+   para el 3 de octubre el equipo ya trabajaba en Supabase y tenía ahí
+   cosas que Firebase no; dejar Supabase igual a Firebase las habría
+   borrado. La opción se sacó del importador. Queda solo ver si en
+   Firebase quedó algo que falte y traerlo con «Completar lo que falta».
+3. ~~Cambiar la base por defecto a Supabase y sacar el cartel.~~ **Hecho
+   el 3 de octubre.** `?base=firebase` queda unos días, con un cartel, solo
+   para bajar la última copia de Firebase.
 4. **No borrar el proyecto de Google Cloud que está detrás de Firebase**
    (número 40280679854). Ahí viven el cliente de OAuth con el que se pide
    el permiso de Calendar y la clave de la API de Calendar, y muy

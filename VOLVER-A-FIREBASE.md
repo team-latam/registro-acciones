@@ -1,5 +1,9 @@
 # Cómo volver a Firebase
 
+> **Ya no aplica:** desde el 3 de octubre de 2026 Supabase es la base del
+> equipo y tiene cosas que Firebase no. Volver a Firebase las perdería. El
+> plan ahora es cerrar Firebase (ver `supabase/LEEME.md`, «La mudanza»).
+
 Este archivo existe por una sola razón: que la migración a Supabase se pueda
 deshacer. Está escrito para vos, no para un programador.
 

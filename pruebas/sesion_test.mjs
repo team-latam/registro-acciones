@@ -17,15 +17,18 @@ const elegir = busqueda => new Function("ctx", `
   return baseElegida();
 `)({ location:{ search: busqueda }, URLSearchParams });
 
-eq("sin nada en la dirección, va a Firebase (la del equipo)", elegir(""), "firebase");
-eq("con ?base=supabase, a Supabase", elegir("?base=supabase"), "supabase");
-eq("y acompañada de otras cosas, también", elegir("?vista=feed&base=supabase"), "supabase");
-eq("cualquier otro valor NO cambia de base", elegir("?base=otra"), "firebase");
-eq("ni escrito a medias", elegir("?base=supa"), "firebase");
+// Desde el 3 de octubre de 2026 la base del equipo es Supabase.
+eq("sin nada en la dirección, va a Supabase (la del equipo)", elegir(""), "supabase");
+eq("con ?base=supabase, como se usó durante la prueba, también: ningún enlace guardado se rompe",
+   elegir("?base=supabase"), "supabase");
+eq("con ?base=firebase, a la base vieja", elegir("?base=firebase"), "firebase");
+eq("y acompañada de otras cosas, también", elegir("?vista=feed&base=firebase"), "firebase");
+eq("cualquier otro valor NO cambia de base", elegir("?base=otra"), "supabase");
+eq("ni escrito a medias", elegir("?base=fire"), "supabase");
 eq("si el navegador no sabe leer la dirección, se queda en la del equipo",
    new Function("ctx", `const location = ctx.location;
      const URLSearchParams = function(){ throw new Error("no existe"); };
-     ${grab("baseElegida")} return baseElegida();`)({ location:{ search:"?base=supabase" } }), "firebase");
+     ${grab("baseElegida")} return baseElegida();`)({ location:{ search:"?base=firebase" } }), "supabase");
 
 /* ---------- El perfil, traducido ---------- */
 function supabaseDeMentira(){
@@ -102,15 +105,34 @@ new Function("ctx", `const document = ctx.document;
   const t = (...idiomas) => { ctx.llamadasT.push(idiomas); return idiomas[0]; };
   ${grab("mostrarAvisoDeBase")} mostrarAvisoDeBase();`)({ document: doc, llamadasT });
 eq("el cartel pasa por t(), en los cuatro idiomas",
-   llamadasT.length === 1 && llamadasT[0].filter(x => typeof x === "string" && x.includes("SUPABASE")).length, 4);
-eq("el cartel dice claramente qué base está mirando",
-   doc.puesto.textContent.includes("SUPABASE"), true);
-eq("y que lo que se haga ahí no lo ve el equipo",
-   doc.puesto.textContent.includes("no lo ve nadie más"), true);
+   llamadasT.length === 1 && llamadasT[0].filter(x => typeof x === "string" && x.includes("FIREBASE")).length, 4);
+eq("el cartel dice claramente que es la base vieja",
+   doc.puesto.textContent.includes("FIREBASE") && doc.puesto.textContent.includes("la base vieja"), true);
+eq("y que lo que se haga ahí no llega al equipo",
+   doc.puesto.textContent.includes("no llega a la app del equipo"), true);
 eq("se queda pegado arriba aunque se baje",
    /position:\s*sticky/.test(doc.puesto.style.cssText || ""), true);
 eq("y por encima de todo lo demás",
    /z-index:\s*9{3,}/.test(doc.puesto.style.cssText || ""), true);
+
+/* ---------- La copia de seguridad, según la base ---------- */
+// La copia lee FIREBASE. En la pestaña de Supabase no hay sesión de
+// Firebase y los botones fallaban con un error de permisos: ahí se
+// explica dónde se baja.
+const respaldoEn = base => new Function("ctx", `
+  const BASE = ctx.base;
+  const t = (...idiomas) => idiomas[0];
+  const respaldoEstado = { corriendo:false, resumen:null, error:"" };
+  ${grab("esc")}
+  ${grab("prefRow")}
+  ${grab("renderRespaldoSection")}
+  return renderRespaldoSection();`)({ base });
+eq("en la pestaña de Supabase, la copia de Firebase se ofrece en otra pestaña, con ?base=firebase",
+   respaldoEn("supabase").includes('href="?base=firebase"'), true);
+eq("sin los botones de descarga, que ahí fallaban",
+   respaldoEn("supabase").includes('data-action="descargar-respaldo"'), false);
+eq("y en la pestaña de Firebase, los botones de siempre",
+   respaldoEn("firebase").includes('data-action="descargar-respaldo" data-adjuntos="1"'), true);
 
 /* ---------- Que el interruptor esté cableado ---------- */
 eq("en modo Supabase se cambian las DOS cosas: los datos y la sesión",
@@ -125,8 +147,10 @@ eq("y la capa de datos recibe con qué armar la miniatura de cada foto",
 // pestaña, la sesión que vence—, que es cuando onAuthChanged recibe nadie.
 eq("al quedar sin sesión, por donde sea, se olvidan las firmas guardadas",
    /async function onAuthChanged\(user\)\{[\s\S]*?if\(!user\)\{[\s\S]{0,400}?store\.olvidarFirmas\(\);[\s\S]{0,120}?status:"signedOut"/.test(src), true);
-eq("el cartel se muestra ANTES de descargar nada: si algo falla, igual se ve qué base es",
-   /async function arrancarSupabase\(\)\{[\s\S]{0,400}?mostrarAvisoDeBase\(\);[\s\S]*?await import/.test(src), true);
+eq("el cartel sale en la pestaña de Firebase ANTES de descargar nada: si algo falla, igual se ve qué base es",
+   /async function initFirebase\(\)\{[\s\S]{0,200}?return arrancarSupabase\(\);[\s\S]{0,250}?mostrarAvisoDeBase\(\);[\s\S]*?await import/.test(src), true);
+eq("y NO en la de Supabase, que es la del equipo",
+   /async function arrancarSupabase\(\)\{[\s\S]{0,600}?mostrarAvisoDeBase\(\)/.test(src), false);
 eq("y el modo Supabase NO cuelga del arranque de Firebase",
    /if\(BASE === "supabase"\) return arrancarSupabase\(\);/.test(src), true);
 eq("que Firebase no cargue en ese modo es un aviso, no un error fatal",

@@ -1,5 +1,9 @@
 # Registro de Acciones — Team LatAm
 
+> **Desde el 3 de octubre de 2026 la base del equipo es Supabase** (ver
+> `supabase/LEEME.md`). Lo que este archivo dice de Firebase queda hasta
+> que se cierre del todo.
+
 Herramienta web de un solo archivo (`index.html`) para llevar la memoria
 histórica de las acciones del equipo (rutinas, visitas, cursos, seminarios,
 etc.) en cada ciudad/país/región de LatAm. Feed tipo posteo + hilo de

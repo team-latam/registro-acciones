@@ -1582,6 +1582,7 @@
   .btn-secondary{ background:var(--surface-alt); color:var(--text); border:none; padding:11px 18px; border-radius:999px; font-weight:700; font-size:13.5px; cursor:pointer; }
   .btn-primary{ background:var(--petroleo); color:#fff; border:none; padding:11px 20px; border-radius:999px; font-weight:700; font-size:13.5px; cursor:pointer; }
   .btn-primary:disabled{ opacity:0.5; cursor:not-allowed; }
+  a.btn-primary{ display:inline-block; text-decoration:none; text-align:center; }
   .btn-primary.danger{ background:var(--danger); }
   .confirm-message{ margin:2px 0 18px; font-size:14.5px; line-height:1.55; color:var(--ink); white-space:pre-wrap; }
   .form-error{ color:var(--danger); font-size:12.5px; margin-top:6px; }
@@ -2312,20 +2313,22 @@ const CONFIG_IS_PLACEHOLDER = FIREBASE_CONFIG.apiKey === "YOUR_API_KEY";
 /* ----------------------------------------------------------------------
    A QUÉ BASE APUNTA ESTA PESTAÑA
 
-   Normalmente, a Firebase: es la que usa el equipo y la que manda. Pero
-   agregando `?base=supabase` a la dirección, ESA PESTAÑA —y solo esa—
-   trabaja contra Supabase. Es la forma de probar la app de verdad contra
-   la base nueva sin que nadie más note nada, y sin tener que publicar una
-   versión distinta.
+   A Supabase: es la base del equipo desde el 3 de octubre de 2026. Para
+   entonces el equipo ya trabajaba ahí (con `?base=supabase`, durante la
+   prueba), y Supabase tenía cosas que Firebase no.
 
-   Quien no agrega nada a la dirección no se entera de que esto existe.
-   Cerrar la pestaña alcanza para volver.
+   `?base=supabase` sigue andando: es lo mismo que no poner nada, así que
+   ningún enlace guardado se rompe.
+
+   `?base=firebase` abre la base vieja, en esa pestaña sola y con un
+   cartel que lo avisa. Queda unos días, para un solo uso: bajar la
+   última copia de Firebase. Después se va con el resto de Firebase.
 ---------------------------------------------------------------------- */
 const SUPABASE_URL = "https://benonmzlgdjkhzauamrz.supabase.co";
 const SUPABASE_KEY = "sb_publishable_Y9rfOHOQJ1fbSKcRltQiZQ_TRErHBsB";
 function baseElegida(){
-  try{ return new URLSearchParams(location.search).get("base") === "supabase" ? "supabase" : "firebase"; }
-  catch(e){ return "firebase"; }
+  try{ return new URLSearchParams(location.search).get("base") === "firebase" ? "firebase" : "supabase"; }
+  catch(e){ return "supabase"; }
 }
 const BASE = baseElegida();
 
@@ -3942,6 +3945,9 @@ let authMod = null; // exports de firebase-auth.js
 async function initFirebase(){
   if(CONFIG_IS_PLACEHOLDER) return;
   if(BASE === "supabase") return arrancarSupabase();
+  // Lo primero de todo, antes de cualquier descarga: que se vea de entrada
+  // que esta pestaña mira la base vieja.
+  mostrarAvisoDeBase();
   try{
     const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js");
     const firestoreMod = await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js");
@@ -3968,10 +3974,6 @@ async function initFirebase(){
 // Firebase no respondía, la pestaña que miraba Supabase tampoco arrancaba
 // — dos cosas que no tienen por qué depender una de la otra.
 async function arrancarSupabase(){
-  // Lo primero de todo, antes de cualquier descarga: que se vea de entrada
-  // qué base está mirando esta pestaña.
-  mostrarAvisoDeBase();
-
   // Firebase se inicializa igual, pero SOLO para pedirle a Google el
   // permiso de Calendar (ensureCalendarToken usa su ventanita). Si no
   // carga, no es fatal: se pierde la sincronización con Calendar, no la
@@ -3999,10 +4001,10 @@ async function arrancarSupabase(){
   }catch(err){
     console.error("Error inicializando Supabase:", err);
     renderFatalError(t(
-      "No se pudo conectar con Supabase. Sacá «?base=supabase» de la dirección para volver a la base del equipo.",
-      "Couldn't connect to Supabase. Remove “?base=supabase” from the address to go back to the team's database.",
-      "Não foi possível conectar ao Supabase. Tire «?base=supabase» do endereço para voltar à base da equipe.",
-      ".לא ניתן היה להתחבר ל-Supabase. הסר/י את «base=supabase?» מהכתובת כדי לחזור לבסיס של הצוות"
+      "No se pudo conectar con la base de datos. Revisá la conexión y volvé a cargar la página.",
+      "Couldn't connect to the database. Check your connection and reload the page.",
+      "Não foi possível conectar à base de dados. Verifique a conexão e recarregue a página.",
+      ".לא ניתן היה להתחבר לבסיס הנתונים. בדוק/י את החיבור וטען/י מחדש את הדף"
     ));
   }
 }
@@ -6833,10 +6835,10 @@ function mostrarAvisoDeBase(){
   const d = document.createElement("div");
   d.id = "avisoBase";
   d.textContent = t(
-    "⚠️ Esta pestaña está mirando SUPABASE, no la base del equipo. Lo que hagas acá no lo ve nadie más.",
-    "⚠️ This tab is looking at SUPABASE, not the team's database. Nobody else sees what you do here.",
-    "⚠️ Esta aba está olhando o SUPABASE, não a base da equipe. O que você fizer aqui ninguém mais vê.",
-    "⚠️ הלשונית הזו מציגה את SUPABASE, לא את הבסיס של הצוות. מה שתעשה/י כאן אף אחד אחר לא רואה.");
+    "⚠️ Esta pestaña está mirando FIREBASE, la base vieja. Lo que hagas acá no llega a la app del equipo: sirve solo para bajar su última copia.",
+    "⚠️ This tab is looking at FIREBASE, the old database. Nothing you do here reaches the team's app: it's only for downloading its last backup.",
+    "⚠️ Esta aba está olhando o FIREBASE, a base antiga. O que você fizer aqui não chega ao app da equipe: serve só para baixar a última cópia.",
+    "⚠️ הלשונית הזו מציגה את FIREBASE, הבסיס הישן. מה שתעשה/י כאן לא מגיע לאפליקציה של הצוות: היא רק להורדת הגיבוי האחרון.");
   d.style.cssText = "position:sticky;top:0;z-index:99999;background:#8a5a00;color:#fff;" +
     "padding:8px 14px;font:600 13px/1.4 system-ui,sans-serif;text-align:center;";
   document.body.prepend(d);
@@ -7226,7 +7228,7 @@ async function changeRole(email, role){
     }
   }catch(err){
     console.error("No se pudo cambiar el rol:", err);
-    showCalendarNotice({ ok:false, message: t("No se pudo cambiar el rol ({m}). Si las reglas de Firestore son viejas, hay que publicarlas.","Couldn't change the role ({m}). If the Firestore rules are outdated, they need publishing.","Não foi possível mudar o papel ({m}). Se as regras do Firestore forem antigas, é preciso publicá-las.","לא ניתן היה לשנות את התפקיד ({m}). אם כללי Firestore ישנים, יש לפרסם אותם.",{m:err.code||err.message}) });
+    showCalendarNotice({ ok:false, message: t("No se pudo cambiar el rol ({m}).","Couldn't change the role ({m}).","Não foi possível mudar o papel ({m}).","לא ניתן היה לשנות את התפקיד ({m}).",{m:err.code||err.message}) });
     render();
   }
 }
@@ -7333,7 +7335,7 @@ function subscribeData(){
     startCalendarAutoSync();
   }, err=>{
     console.error("Error leyendo posts:", err);
-    renderFatalError(t("Error leyendo los posteos desde Firestore: {msg}","Error reading posts from Firestore: {msg}","Erro ao ler os posteios do Firestore: {msg}","{msg} :שגיאה בקריאת הפוסטים מ-Firestore",{msg:err.message}));
+    renderFatalError(t("Error leyendo los posteos: {msg}","Error reading posts: {msg}","Erro ao ler os posteios: {msg}","{msg} :שגיאה בקריאת הפוסטים",{msg:err.message}));
   });
 
   unsubscribeData = ()=>{
@@ -7461,7 +7463,7 @@ function canCloseProject(post){ return post.activityType !== "rutina" && canEdit
 async function setProjectStatus(post, done){
   const me = state.auth.user.email;
   try{ await updatePostDoc(post.id, done ? { projectStatus:"done", projectDoneBy:me, projectDoneAt: store.horaDelServidor() } : { projectStatus:"open", projectDoneBy:null, projectDoneAt:null }); }
-  catch(err){ console.error(err); showCalendarNotice({ ok:false, message: t("No se pudo guardar ({m}). Si las reglas de Firestore son viejas, hay que publicarlas.","Couldn't save ({m}). If the Firestore rules are outdated, they need publishing.","Não foi possível salvar ({m}). Se as regras do Firestore forem antigas, é preciso publicá-las.","לא ניתן היה לשמור ({m}). אם כללי Firestore ישנים, יש לפרסם אותם.",{m:err.code||err.message}) }); }
+  catch(err){ console.error(err); showCalendarNotice({ ok:false, message: t("No se pudo guardar ({m}).","Couldn't save ({m}).","Não foi possível salvar ({m}).","לא ניתן היה לשמור ({m}).",{m:err.code||err.message}) }); }
 }
 // done | overdue | today | soon | upcoming
 // Con cuántos días de anticipación un hito pasa a "Por vencer". Es una
@@ -7784,7 +7786,7 @@ async function createProject(post){
     projectOpen = post.id; state.view = "proyectos"; render(); scrollToTop();
   }catch(err){
     console.error("No se pudo crear el proyecto:", err);
-    showCalendarNotice({ ok:false, message: t("No se pudo crear el proyecto ({m}). Si las reglas de Firestore son viejas, hay que publicarlas.","Couldn't create the project ({m}). If the Firestore rules are outdated, they need publishing.","Não foi possível criar o projeto ({m}). Se as regras do Firestore forem antigas, é preciso publicá-las.","לא ניתן היה ליצור את הפרויקט ({m}). אם כללי Firestore ישנים, יש לפרסם אותם.",{m:err.code||err.message}) });
+    showCalendarNotice({ ok:false, message: t("No se pudo crear el proyecto ({m}).","Couldn't create the project ({m}).","Não foi possível criar o projeto ({m}).","לא ניתן היה ליצור את הפרויקט ({m}).",{m:err.code||err.message}) });
   }
 }
 // Deshacer: el evento vuelve a ser un evento limpio (se van hitos,
@@ -7866,7 +7868,7 @@ async function saveMilestones(post, list){
   try{ await updatePostDoc(post.id, { milestones: list }); }
   catch(err){
     console.error("No se pudo guardar el proyecto:", err);
-    showCalendarNotice({ ok:false, message: t("No se pudo guardar el proyecto ({m}). Si las reglas de Firestore son viejas, hay que publicarlas.","Couldn't save the project ({m}). If the Firestore rules are outdated, they need publishing.","Não foi possível salvar o projeto ({m}). Se as regras do Firestore forem antigas, é preciso publicá-las.","לא ניתן היה לשמור את הפרויקט ({m}). אם כללי Firestore ישנים, יש לפרסם אותם.",{m:err.code||err.message}) });
+    showCalendarNotice({ ok:false, message: t("No se pudo guardar el proyecto ({m}).","Couldn't save the project ({m}).","Não foi possível salvar o projeto ({m}).","לא ניתן היה לשמור את הפרויקט ({m}).",{m:err.code||err.message}) });
   }
 }
 async function saveEditors(post, list){
@@ -8301,7 +8303,7 @@ async function deletePostHard(post){
     showCalendarNotice({ ok:!calMsg, message: t("Borrado.","Deleted.","Apagado.","נמחק.") + calMsg });
   }catch(err){
     console.error("No se pudo borrar:", err);
-    showCalendarNotice({ ok:false, message: t("No se pudo borrar ({m}). Si las reglas de Firestore son viejas, hay que publicarlas.","Couldn't delete ({m}). If the Firestore rules are outdated, they need publishing.","Não foi possível apagar ({m}). Se as regras do Firestore forem antigas, é preciso publicá-las.","לא ניתן היה למחוק ({m}). אם כללי Firestore ישנים, יש לפרסם אותם.",{m:err.code||err.message}) });
+    showCalendarNotice({ ok:false, message: t("No se pudo borrar ({m}).","Couldn't delete ({m}).","Não foi possível apagar ({m}).","לא ניתן היה למחוק ({m}).",{m:err.code||err.message}) });
   }
 }
 async function deleteReplyHard(postId, replyId){
@@ -9970,6 +9972,21 @@ function pesoLegible(bytes){
   return `${bytes} B`;
 }
 function renderRespaldoSection(){
+  // Esta copia lee FIREBASE (ver armarRespaldo), y en la pestaña de
+  // Supabase no hay sesión de Firebase: los botones fallaban con un error
+  // de permisos. Se explica dónde se baja, en vez.
+  if(BASE !== "firebase") return `
+      <div class="hint" style="margin-bottom:16px;">${t(
+        "Esta copia baja lo que quedó en Firebase, la base anterior. Desde el 3 de octubre la base del equipo es Supabase, así que la copia de Firebase se baja desde una pestaña aparte.",
+        "This backup downloads what's left in Firebase, the previous database. Since October 3 the team's database is Supabase, so the Firebase backup is downloaded from a separate tab.",
+        "Esta cópia baixa o que ficou no Firebase, a base anterior. Desde 3 de outubro a base da equipe é o Supabase, então a cópia do Firebase se baixa numa aba separada.",
+        "הגיבוי הזה מוריד את מה שנשאר ב-Firebase, הבסיס הקודם. מאז 3 באוקטובר הבסיס של הצוות הוא Supabase, ולכן את הגיבוי של Firebase מורידים מלשונית נפרדת."
+      )}</div>
+      <div class="settings-card">
+        ${prefRow("🗄️", t("Copia de Firebase","Firebase backup","Cópia do Firebase","גיבוי Firebase"),
+          t("Se abre en otra pestaña, con un cartel que avisa que es la base vieja. Ahí: Preferencias → Copia de seguridad.","It opens in another tab, with a banner saying it's the old database. There: Preferences → Backup.","Abre em outra aba, com um aviso de que é a base antiga. Lá: Preferências → Cópia de segurança.","נפתח בלשונית אחרת, עם הודעה שזה הבסיס הישן. שם: העדפות ← גיבוי."),
+          `<a class="btn-primary" href="?base=firebase" target="_blank" rel="noopener">${t("Abrir Firebase","Open Firebase","Abrir o Firebase","פתיחת Firebase")}</a>`)}
+      </div>`;
   const r = respaldoEstado;
   const resumen = !r.resumen ? "" : `
     <div class="settings-card" style="margin-top:16px;">

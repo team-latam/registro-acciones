@@ -21,7 +21,10 @@ const deRed = t => /ERR_TUNNEL_CONNECTION_FAILED|ERR_NAME_NOT_RESOLVED|ERR_INTER
 
 const pagina = "file://" + (process.env.INDEX || RAIZ + "index.html");
 const b = await chromium.launch();
-for(const [modo, extra, conCartel] of [["Firebase", "", false], ["Supabase", "?base=supabase", true]]){
+// Desde el 3 de octubre de 2026, sin nada en la dirección es Supabase; la
+// pestaña de Firebase es la que avisa que mira la base vieja.
+for(const [modo, extra, conCartel] of [["Supabase", "", false], ["Supabase (enlace de la prueba)", "?base=supabase", false],
+                                       ["Firebase", "?base=firebase", true]]){
   const p = await b.newPage();
   const errores = [], consola = [];
   p.on("pageerror", e => errores.push(String(e)));
