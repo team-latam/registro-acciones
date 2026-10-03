@@ -447,6 +447,15 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   eq("feed: al llegar al final carga solo las que faltan, sin tocar nada",
     await hasta(p, () => document.querySelectorAll("#viewRoot article.post").length === 22), true);
   eq("feed: y cuando no queda nada por cargar, el botón desaparece", await hayVerMas(), false);
+  // Después de la última tarjeta viene el pie casi enseguida: un respiro
+  // estándar (24px de main + el margen de la tarjeta), no el cuarto de
+  // pantalla vacío que había antes.
+  await p.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  const hueco = await p.evaluate(() => {
+    const arts = document.querySelectorAll("#viewRoot article.post");
+    return Math.round(document.querySelector("footer.appfoot").getBoundingClientRect().top - arts[arts.length - 1].getBoundingClientRect().bottom);
+  });
+  eq("feed: entre la última tarjeta y el pie hay un respiro chico (≤ 48px)", hueco <= 48 && hueco >= 16, true);
   eq("feed: sin un solo error", errores, []);
   await p.close();
 }
