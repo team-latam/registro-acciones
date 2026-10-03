@@ -134,32 +134,19 @@ $$;
 
 -- ¿Esta escritura viene del navegador de una persona, o de adentro?
 -- Importa para los disparadores de más abajo: una política de acceso NO
--- corre para la clave de administración (por diseño, es la que usan las
--- migraciones y la importación de datos), pero un disparador SÍ corre
--- siempre. Sin esta puerta, el día que traigamos los datos de Firebase la
--- propia base los rechazaría por "no podés cambiar de quién es un
--- posteo", que es justo lo que una importación tiene que hacer.
+-- corre para la llave de servicio (por diseño: es la que usan el
+-- sincronizador de Calendar, la limpieza del bucket y las migraciones),
+-- pero un disparador SÍ corre siempre. Sin esta puerta, la propia base le
+-- rechazaría al sincronizador, por ejemplo, editar un posteo que no es
+-- suyo.
 --
 -- Que esto exista NO abre nada desde afuera: quien entra por el navegador
 -- sin sesión válida no tiene correo acá, pero tampoco pasa las políticas
 -- de acceso, que son las que lo frenan antes. Este permiso solo aplica a
--- quien YA está adentro de la base (el editor SQL, una migración, el
--- importador).
+-- quien YA está adentro de la base (el editor SQL, una migración, la
+-- llave de servicio).
 create or replace function public.sin_sesion_de_persona() returns boolean
   language sql stable as $$ select public.mi_correo() is null $$;
-
--- ¿Esto es una importación? Traer diez años de historia desde Firebase
--- necesita escribir cosas que ningún navegador puede: la fecha real de
--- creación de cada posteo, la firma de quien lo escribió. Los disparadores
--- de más abajo se hacen a un lado cuando esto es verdad.
---
--- No lo puede prender nadie desde afuera: lo enciende la función importar()
--- (ver 05-importar.sql), que antes comprueba que quien llama sea el
--- administrador, y solo dura lo que dura esa transacción.
-create or replace function public.es_importacion() returns boolean
-  language sql stable as $$
-  select coalesce(current_setting('app.importando', true), '') = 'si'
-$$;
 
 -- Qué columnas cambiaron en un UPDATE. Es el equivalente de
 -- diff().affectedKeys() de Firestore, que Postgres no trae de fábrica.
@@ -480,7 +467,7 @@ declare
   cambios text[] := public.campos_cambiados(to_jsonb(old), to_jsonb(new));
   yo text := public.mi_correo();
 begin
-  if public.sin_sesion_de_persona() or public.es_importacion() then return new; end if;
+  if public.sin_sesion_de_persona() then return new; end if;
 
   -- De quién es y cuándo se creó no cambia NUNCA, ni para el admin.
   if cambios && array['id', 'author_email', 'author_name', 'created_at'] then
@@ -533,7 +520,7 @@ declare
   cambios text[] := public.campos_cambiados(to_jsonb(old), to_jsonb(new));
   yo text := public.mi_correo();
 begin
-  if public.sin_sesion_de_persona() or public.es_importacion() then return new; end if;
+  if public.sin_sesion_de_persona() then return new; end if;
 
   if cambios <> array['liked_by'] then
     raise exception 'De un comentario solo se puede cambiar el me gusta'
@@ -561,7 +548,7 @@ declare
   cambios text[] := public.campos_cambiados(to_jsonb(old), to_jsonb(new));
   yo text := public.mi_correo();
 begin
-  if public.sin_sesion_de_persona() or public.es_importacion() then return new; end if;
+  if public.sin_sesion_de_persona() then return new; end if;
 
   if 'email' = any(cambios) then
     raise exception 'El correo de una persona no se cambia: es su identidad en todo lo que escribió'

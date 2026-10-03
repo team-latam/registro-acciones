@@ -25,8 +25,8 @@ Los archivos:
   servicio pueda preguntarlo.
 - `90-permisos.sql` — quién puede hacer qué: los seis roles, y también
   alguien que se cambió el correo de su cuenta por el de otra persona (el
-  correo tiene que ser el que autenticó Google), quién ve cuántas filas
-  hay, y que un login se anote una vez por día.
+  correo tiene que ser el que autenticó Google), y que un login se anote
+  una vez por día.
 - `91-base-vacia.sql` — el estado del proyecto recién creado (permisos
   puestos, equipo vacío): que el admin fijo pueda arrancar y que nadie más
   pueda absolutamente nada.
@@ -38,17 +38,13 @@ Los archivos:
   la credencial y no de un parámetro.
 - `94-hora-del-servidor.sql` — que la hora de una edición la ponga la base
   y no el reloj de quien edita, que lo que escribe el sincronizador nocturno
-  no quede en 1970, y que la importación conserve las fechas reales de
-  Firebase.
+  no quede en 1970, y que sin una persona detrás (el editor SQL, una
+  migración) se respete la fecha que venga.
 - `95-guardar-por-partes.sql` — que guardar una preferencia no borre las
   otras, y que dos controles tocados rápido no se pisen.
-- `96-importar.sql` — la puerta de la importación: que solo la use el
-  admin fijo, que conserve fechas y autores, que la importación final
-  reemplace lo editado en Firebase, y que saque solo lo que se le nombra.
-- `97-de-punta-a-punta.sql` — lo que produce el importador con un respaldo
-  de forma real, metido en una base Postgres de verdad con los permisos
-  puestos: que las fechas viejas se conserven, que los adjuntos queden como
-  rutas del bucket, y que correrlo de nuevo no duplique nada.
+- `96-sin-importacion.sql` — que la puerta por la que entraron los datos de
+  Firebase quedó cerrada: que sus funciones ya no existan, y que prender a
+  mano la marca que hacía a un lado los controles no saltee ninguno.
 - `98-contenido-vacio.sql` — un evento de Calendar sin descripción entra
   con el contenido vacío, sin relleno.
 - `99-adjuntos-grandes.sql` — el techo del bucket y los tipos de archivo

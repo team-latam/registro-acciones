@@ -217,16 +217,6 @@ select lab.probar('ni con el de una admin por rol aprueba a nadie',
 select lab.probar('y la integrante de verdad, con su Google, sigue entrando', lab.como('juan@x.com'),
   $q$select 1 from public.posts$q$, true);
 
--- ---------- CUÁNTAS FILAS HAY: SOLO UN ADMIN ----------
-select lab.probar('alguien de afuera NO ve cuántas filas hay', lab.como('intruso@x.com'),
-  $q$select * from public.cuantas_filas()$q$, false);
-select lab.probar('un integrante tampoco', lab.como('juan@x.com'),
-  $q$select * from public.cuantas_filas()$q$, false);
-select lab.probar('una admin por rol sí', lab.como('ana@x.com'),
-  $q$select * from public.cuantas_filas()$q$, true);
-select lab.probar('el admin fijo sí (lo usa el importador)', lab.como('benny@team-latam.com'),
-  $q$select * from public.cuantas_filas()$q$, true);
-
 -- ---------- UNA ENTRADA DE LOGIN POR DÍA ----------
 -- La app anota correo_tipo_fecha; el segundo del día choca con ese id.
 select lab.probar('alguien de afuera anota su login, con el id que arma la app', lab.como('intruso@x.com'),

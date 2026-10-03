@@ -23,12 +23,13 @@ select lab.probar_valor('y compartir el Calendar anota cuándo, con el reloj de 
   $q$update public.members set calendar_shared=true, calendar_invite_sent_at='epoch' where email='juan@x.com'$q$,
   $q$select case when calendar_invite_sent_at > now() - interval '1 minute' then 'ahora' else 'no' end
      from public.members where email='juan@x.com'$q$, 'ahora');
--- Pero la importación (sin persona detrás) conserva las fechas reales de
--- Firebase: si no, diez años de historia quedarían editados hoy.
+-- Pero sin una persona detrás (el editor SQL, una migración) se respeta la
+-- fecha que venga: si no, la historia que se trae a mano quedaría editada
+-- hoy.
 \set QUIET on
-update public.posts set content='importado', last_edited_at='2019-05-05 12:00+00' where id='p1';
+update public.posts set content='traído a mano', last_edited_at='2019-05-05 12:00+00' where id='p1';
 insert into lab.resultados(nombre, esperado, obtenido, detalle)
-  select 'pero la importación conserva la fecha real de edición', true,
+  select 'pero sin una persona detrás se respeta la fecha real de edición', true,
          to_char(last_edited_at at time zone 'UTC','YYYY-MM-DD') = '2019-05-05', ''
   from public.posts where id='p1';
 select lab.probar_valor('destildar un hito deja la fecha en blanco, no la pisa con hoy', lab.como('juan@x.com'),
