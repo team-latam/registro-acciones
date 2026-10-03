@@ -114,7 +114,17 @@ eq("y por encima de todo lo demás",
 
 /* ---------- Que el interruptor esté cableado ---------- */
 eq("en modo Supabase se cambian las DOS cosas: los datos y la sesión",
-   /store = crearSupabaseStore\(sb\);\s*\n\s*sesion = crearSupabaseSesion\(sb\);/.test(src), true);
+   /store = crearSupabaseStore\(sb\b[^;]*\);\s*\n\s*sesion = crearSupabaseSesion\(sb\);/.test(src), true);
+// Sin esto el adaptador no tiene con qué armar las miniaturas, y cada foto
+// se sube sola: las tarjetas vuelven a bajar la foto entera, sin que
+// ninguna otra prueba lo note (sb_test le pasa una de mentira).
+eq("y la capa de datos recibe con qué armar la miniatura de cada foto",
+   /store = crearSupabaseStore\(sb, \{ achicar: achicarDataUrl \}\);/.test(src), true);
+// Las firmas de los adjuntos quedan guardadas en el navegador y abren los
+// archivos sin sesión. Se borran en CUALQUIER salida —el botón, otra
+// pestaña, la sesión que vence—, que es cuando onAuthChanged recibe nadie.
+eq("al quedar sin sesión, por donde sea, se olvidan las firmas guardadas",
+   /async function onAuthChanged\(user\)\{[\s\S]*?if\(!user\)\{[\s\S]{0,400}?store\.olvidarFirmas\(\);[\s\S]{0,120}?status:"signedOut"/.test(src), true);
 eq("el cartel se muestra ANTES de descargar nada: si algo falla, igual se ve qué base es",
    /async function arrancarSupabase\(\)\{[\s\S]{0,400}?mostrarAvisoDeBase\(\);[\s\S]*?await import/.test(src), true);
 eq("y el modo Supabase NO cuelga del arranque de Firebase",

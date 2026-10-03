@@ -2901,6 +2901,11 @@ function safeImageSrc(src){
   if(IMAGE_DATA_URL_RE.test(src)) return src;   // Firebase: el archivo adentro
   return esUrlDelBucket(src) ? src : "";        // Supabase: una URL que caduca
 }
+// Para lo que se muestra chico (las fotos de una tarjeta, las de un
+// borrador): la miniatura, si la foto tiene. El visor abre la entera.
+function srcMiniatura(src){
+  return safeImageSrc(store.miniaturaDe(src)) || safeImageSrc(src);
+}
 /* ----------------------------------------------------------------------
    QUÉ SE PUEDE ADJUNTAR
 
@@ -3762,23 +3767,28 @@ function compressImage(file, maxDim=1280, quality=0.72){
   return new Promise((resolve,reject)=>{
     const reader = new FileReader();
     reader.onerror = ()=>reject(new Error(t("No se pudo leer la imagen","Couldn't read the image","Não foi possível ler a imagem","לא ניתן היה לקרוא את התמונה")));
-    reader.onload = ()=>{
-      const img = new Image();
-      img.onerror = ()=>reject(new Error("Imagen inválida"));
-      img.onload = ()=>{
-        let { width, height } = img;
-        if(width > height && width > maxDim){ height = Math.round(height*maxDim/width); width = maxDim; }
-        else if(height > maxDim){ width = Math.round(width*maxDim/height); height = maxDim; }
-        const canvas = document.createElement("canvas");
-        canvas.width = width; canvas.height = height;
-        const ctx = canvas.getContext("2d");
-        ctx.fillStyle = "#fff"; ctx.fillRect(0,0,width,height);
-        ctx.drawImage(img,0,0,width,height);
-        resolve(canvas.toDataURL("image/jpeg", quality));
-      };
-      img.src = reader.result;
-    };
+    reader.onload = ()=> achicarDataUrl(reader.result, maxDim, quality).then(resolve, reject);
     reader.readAsDataURL(file);
+  });
+}
+// Lo mismo, para una imagen que ya está leída: es como se arma la
+// miniatura de una foto al subirla a Supabase (ver crearSupabaseStore).
+function achicarDataUrl(dataUrl, maxDim, quality){
+  return new Promise((resolve,reject)=>{
+    const img = new Image();
+    img.onerror = ()=>reject(new Error("Imagen inválida"));
+    img.onload = ()=>{
+      let { width, height } = img;
+      if(width > height && width > maxDim){ height = Math.round(height*maxDim/width); width = maxDim; }
+      else if(height > maxDim){ width = Math.round(width*maxDim/height); height = maxDim; }
+      const canvas = document.createElement("canvas");
+      canvas.width = width; canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#fff"; ctx.fillRect(0,0,width,height);
+      ctx.drawImage(img,0,0,width,height);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    img.src = dataUrl;
   });
 }
 
@@ -3983,7 +3993,7 @@ async function arrancarSupabase(){
     // rota —o comprometida— entraba sola a la app, con acceso a la sesión
     // de cada persona. Subirla es una decisión, no algo que pasa.
     const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
-    store = crearSupabaseStore(sb);
+    store = crearSupabaseStore(sb, { achicar: achicarDataUrl });
     sesion = crearSupabaseSesion(sb);
     sesion.alCambiar(onAuthChanged);
   }catch(err){
@@ -5347,6 +5357,10 @@ async function onAuthChanged(user){
   state.filters = { text:"", types:new Set(), zones:new Set(), place:null };
 
   if(!user){
+    // Acá y no en doSignOut: también se sale desde otra pestaña, o porque
+    // venció la sesión. Las firmas de los adjuntos que quedaron guardadas
+    // en el navegador abren los archivos sin sesión (ver crearSupabaseStore).
+    try{ store.olvidarFirmas(); }catch(e){}
     state.auth = { status:"signedOut", user:null };
     render();
     return;
@@ -5718,6 +5732,11 @@ const firebaseStore = {
     return fb.serverTimestamp();
   },
 
+  // En Firestore la foto viaja adentro del posteo: no hay miniatura aparte
+  // ni firmas que olvidar. Están para que las dos capas ofrezcan lo mismo.
+  miniaturaDe(src){ return src; },
+  olvidarFirmas(){},
+
   // "¿Este error es por falta de permiso?" — cada base lo dice a su
   // manera, y la app necesita distinguirlo para pasar al modo de respaldo
   // de los comentarios sin quedarse sin nada.
@@ -5969,7 +5988,7 @@ const firebaseStore = {
       lo resuelve la base con disparadores (ver 04-funciones.sql) y desde
       acá se manda una marca.
    ====================================================================== */
-function crearSupabaseStore(sb){
+function crearSupabaseStore(sb, opciones = {}){
   // photoURL es la única que no sale de la regla mecánica.
   const A_SNAKE = { photoURL: "photo_url" };
   const A_CAMEL = { photo_url: "photoURL" };
@@ -6002,39 +6021,128 @@ function crearSupabaseStore(sb){
      src="", igual que siempre.
 
      Se firman de a muchas y no de a una: 900 posteos son una sola vuelta
-     al servidor en vez de 900. */
-  const SEGUNDOS_FIRMA = 4 * 60 * 60;   // cuatro horas
+     al servidor en vez de 900.
+
+     Cada firma nueva es una dirección nueva, y para el navegador una
+     dirección nueva es una foto que no tiene: la vuelve a bajar entera.
+     Antes las firmas duraban cuatro horas y cada carga de la página
+     firmaba todo de nuevo, así que cada foto se bajaba entera en cada
+     carga. Ahora duran una semana y se guardan de una carga a la otra
+     (ver «Las firmas se guardan»). Una semana es también lo que una
+     dirección copiada sigue abriendo el archivo, aun para alguien que ya
+     no está en el equipo: es el precio, y es por eso que no es más. */
+  const SEGUNDOS_FIRMA = 7 * 24 * 60 * 60;
+  // Se renueva cuando le queda menos de un día, y una pestaña abierta
+  // revisa cada hora (ver `renovar` en enVivo): lo que todavía no se bajó
+  // —una foto de más abajo, la entera al abrirla— nunca se encuentra con
+  // la firma vencida.
+  const MARGEN_FIRMA = 24 * 60 * 60 * 1000;
   const firmadas = new Map();           // ruta -> { url, vence }
   // Y al revés. Lo que se guarda en la base es SIEMPRE la ruta: una firma
-  // vence en horas, y escribirla en la fila pisa la ruta y deja el archivo
+  // vence, y escribirla en la fila pisa la ruta y deja el archivo
   // irrecuperable. Las entradas viejas no se borran a propósito: un objeto
   // que quedó en memoria con una firma anterior tiene que poder volver a
   // su ruta igual.
   const rutaDeUrl = new Map();          // url firmada -> ruta
   const esRuta = v => typeof v === "string" && v.length > 0 && !v.startsWith("data:") && !v.startsWith("http");
+
+  /* --- Las miniaturas ---------------------------------------------
+     Una foto se sube a 2560 px (~600 KB), y las tarjetas la mostraban
+     así, entera, en un cuadrado de 92 px. El plan gratis da 5 GB de
+     descarga por mes, y una pantalla con ocho fotos eran ~5 MB. Al subir
+     una foto se sube también una versión chica al lado, con el mismo
+     nombre terminado en ".min.jpg" (~30 KB): las tarjetas usan esa, y la
+     entera se baja recién al abrirla en el visor. 480 px de lado alcanzan
+     para esos 92 px en una pantalla de las más densas.
+
+     Una foto de antes no tiene miniatura y se sigue mostrando entera.
+     Esas se anotan por un día (noHay), para no pedir en cada carga la
+     firma de algo que no existe; si la miniatura aparece después, al otro
+     día ya se usa. */
+  const LADO_MINIATURA = 480, CALIDAD_MINIATURA = 0.75;
+  const achicar = opciones.achicar || null;
+  const rutaMiniatura = ruta => String(ruta).replace(/\.[A-Za-z0-9]+$/, "") + ".min.jpg";
+  const esMiniatura = ruta => typeof ruta === "string" && ruta.endsWith(".min.jpg");
+  const noHay = new Map();              // miniatura que no existe -> hasta cuándo creerlo
+  const sinMiniatura = ruta => (noHay.get(ruta) || 0) > Date.now();
+
   function rutasDe(fila){
     const r = [];
-    if(Array.isArray(fila.images)) fila.images.forEach(v => { if(esRuta(v)) r.push(v); });
+    if(Array.isArray(fila.images)) fila.images.forEach(v => {
+      if(!esRuta(v)) return;
+      r.push(v);
+      if(!sinMiniatura(rutaMiniatura(v))) r.push(rutaMiniatura(v));
+    });
     if(Array.isArray(fila.files)) fila.files.forEach(a => { if(a && esRuta(a.path)) r.push(a.path); });
     return r;
   }
   const tieneFirma = ruta => {
+    if(sinMiniatura(ruta)) return true;   // no hay nada que firmar
     const f = firmadas.get(ruta);
-    // Se renueva antes de que caduque: una imagen que se rompe sola a la
-    // hora y media es peor que una que no aparece nunca.
-    return !!f && f.vence > Date.now() + 10 * 60 * 1000;
+    return !!f && f.vence > Date.now() + MARGEN_FIRMA;
   };
-  async function firmar(rutas){
-    const faltan = [...new Set(rutas)].filter(r => !tieneFirma(r));
-    if(!faltan.length) return;
-    const { data, error } = await sb.storage.from("adjuntos").createSignedUrls(faltan, SEGUNDOS_FIRMA);
-    if(error){ console.error("No se pudieron firmar los adjuntos:", error); return; }
-    (data || []).forEach(d => {
-      if(d && d.signedUrl && !d.error){
-        firmadas.set(d.path, { url:d.signedUrl, vence: Date.now() + SEGUNDOS_FIRMA * 1000 });
-        rutaDeUrl.set(d.signedUrl, d.path);
+
+  /* --- Las firmas se guardan en el navegador ----------------------
+     Así una foto conserva la MISMA dirección de una carga a la otra, y el
+     navegador la reconoce y no la vuelve a bajar. Se borran al cerrar la
+     sesión (olvidarFirmas): en una compu compartida no tienen que quedar.
+
+     El lugar es poco, y lo comparten todas las páginas de
+     team-latam.github.io. Si no entran todas, se guardan las de las
+     miniaturas, que son las que se ven en cada carga; si tampoco, ninguna:
+     se firma como antes y no se rompe nada. */
+  const CLAVE_FIRMAS = "registro.firmas.v1";
+  try{
+    const guardado = JSON.parse(localStorage.getItem(CLAVE_FIRMAS) || "{}");
+    const ahora = Date.now();
+    Object.entries(guardado.firmas || {}).forEach(([ruta, f]) => {
+      if(f && typeof f.url === "string" && f.vence > ahora + MARGEN_FIRMA){
+        firmadas.set(ruta, f); rutaDeUrl.set(f.url, ruta);
       }
     });
+    Object.entries(guardado.noHay || {}).forEach(([ruta, hasta]) => { if(hasta > ahora) noHay.set(ruta, hasta); });
+  }catch(e){ /* sin almacenamiento, o algo que no se entiende: se firma como antes */ }
+  function guardarFirmas(){
+    const ahora = Date.now(), todas = {}, chicas = {}, faltan = {};
+    firmadas.forEach((f, ruta) => {
+      if(f.vence <= ahora + MARGEN_FIRMA) return;   // se va a renovar igual
+      todas[ruta] = f;
+      if(esMiniatura(ruta)) chicas[ruta] = f;
+    });
+    noHay.forEach((hasta, ruta) => { if(hasta > ahora) faltan[ruta] = hasta; });
+    for(const firmas of [todas, chicas]){
+      try{ localStorage.setItem(CLAVE_FIRMAS, JSON.stringify({ firmas, noHay: faltan })); return; }
+      catch(e){ /* no entra: se prueba con menos */ }
+    }
+    // Que no quede lo de antes: serían firmas que ya no se renuevan.
+    try{ localStorage.removeItem(CLAVE_FIRMAS); }catch(e){}
+  }
+
+  // Cambia al cerrar la sesión: una firma que estaba en camino (la pidió
+  // otra pestaña, o una lista que todavía cargaba) ya no se guarda, o
+  // volvería a dejar firmas en el navegador después de borrarlas.
+  let sesionDeFirmas = 0;
+  // Devuelve cuántas firmó: 0 es que no cambió ninguna dirección.
+  async function firmar(rutas){
+    const faltan = [...new Set(rutas)].filter(r => !tieneFirma(r));
+    if(!faltan.length) return 0;
+    const mia = sesionDeFirmas;
+    const { data, error } = await sb.storage.from("adjuntos").createSignedUrls(faltan, SEGUNDOS_FIRMA);
+    if(mia !== sesionDeFirmas) return 0;
+    if(error){ console.error("No se pudieron firmar los adjuntos:", error); return 0; }
+    const vence = Date.now() + SEGUNDOS_FIRMA * 1000;
+    let nuevas = 0;
+    (data || []).forEach(d => {
+      if(d && d.signedUrl && !d.error){
+        firmadas.set(d.path, { url:d.signedUrl, vence });
+        rutaDeUrl.set(d.signedUrl, d.path);
+        nuevas++;
+      } else if(d && esMiniatura(d.path)){
+        noHay.set(d.path, Date.now() + 24 * 60 * 60 * 1000);   // una foto de antes
+      }
+    });
+    guardarFirmas();
+    return nuevas;
   }
   // Si una ruta no está firmada todavía, se deja como está: no se ve, pero
   // tampoco se rompe nada, y la próxima carga la arregla.
@@ -6047,6 +6155,10 @@ function crearSupabaseStore(sb){
       a && esRuta(a.path) ? { ...a, dataUrl: conFirma(a.path) } : a);
     return o;
   }
+  // Algo ya traducido, de vuelta a sus rutas: para volver a firmarlo sin
+  // tener que traer la fila de nuevo (los adjuntos guardan su ruta al
+  // lado). Siempre una copia: lo que ya se entregó a la app no se toca.
+  const conRutas = o => Array.isArray(o.images) ? { ...o, images: o.images.map(sinFirma) } : { ...o };
 
   // --- Y al revés: lo que la app manda embebido, va al bucket ---
   // Es la diferencia que hace que entremos en el plan gratis. Además, la
@@ -6082,6 +6194,13 @@ function crearSupabaseStore(sb){
   // Al revés de TIPO_A_EXT: el tipo de un archivo por su extensión.
   const EXT_A_TIPO = Object.entries(TIPO_A_EXT).reduce((m, [tipo, ext]) => {
     if(!m[ext]) m[ext] = tipo; return m; }, {});
+  // Las rutas no se reusan nunca (llevan la hora), así que lo subido no
+  // cambia: el navegador lo puede guardar un año sin volver a pedirlo.
+  async function subirEn(ruta, blob){
+    const { error } = await sb.storage.from("adjuntos").upload(ruta, blob, { cacheControl: "31536000" });
+    if(error) throw error;
+    return ruta;
+  }
   async function subirUno(base, dataUrl, nombre){
     let blob = aBlob(dataUrl);
     // Algunos navegadores no reconocen un .docx o un .xlsx (pasa en
@@ -6095,9 +6214,17 @@ function crearSupabaseStore(sb){
     // La hora en el nombre: editar un posteo sube un archivo NUEVO en vez
     // de pisar el anterior, así una edición nunca rompe una pantalla que
     // alguien tenga abierta con la versión de antes.
-    const ruta = `${base}_${Date.now()}.${TIPO_A_EXT[blob.type] || "bin"}`;
-    const { error } = await sb.storage.from("adjuntos").upload(ruta, blob);
-    if(error) throw error;
+    return subirEn(`${base}_${Date.now()}.${TIPO_A_EXT[blob.type] || "bin"}`, blob);
+  }
+  // Una foto nueva: la entera y, al lado, su miniatura. Si la miniatura no
+  // se puede armar o subir, la foto se guarda igual: la tarjeta va a
+  // mostrar la entera, como antes.
+  async function subirFoto(base, dataUrl){
+    const ruta = await subirUno(base, dataUrl);
+    if(achicar){
+      try{ await subirEn(rutaMiniatura(ruta), aBlob(await achicar(dataUrl, LADO_MINIATURA, CALIDAD_MINIATURA))); }
+      catch(err){ console.warn("No se pudo subir la miniatura de", ruta, err); }
+    }
     return ruta;
   }
   async function subirNuevos(tabla, id, datos){
@@ -6112,7 +6239,7 @@ function crearSupabaseStore(sb){
         // ruta, y cuando vencía —a las cuatro horas— la imagen quedaba
         // rota sin forma de recuperarla.
         salida.images.push(typeof v === "string" && v.startsWith("data:")
-          ? await subirUno(`${tabla}/${id}/img${i}`, v) : sinFirma(v));
+          ? await subirFoto(`${tabla}/${id}/img${i}`, v) : sinFirma(v));
       }
     }
     if(Array.isArray(salida.files)){
@@ -6340,10 +6467,29 @@ function crearSupabaseStore(sb){
       }catch(err){ console.error(`No se pudo releer ${tabla}:`, err); }
     };
 
+    // Una pestaña que queda abierta días enteros: antes de que las firmas
+    // venzan se renuevan, y la lista vuelve a llegar con las direcciones
+    // nuevas, sin bajar la tabla de nuevo. Sin esto, pasado el plazo, lo
+    // que todavía no se había bajado (las fotos de más abajo, la entera al
+    // abrirla, un adjunto) aparecía roto hasta recargar la página.
+    const renovar = async () => {
+      if(!vivo || !cargado || cargando) return;
+      const faltan = [...porClave.values()].map(conRutas).flatMap(rutasDe).filter(r => !tieneFirma(r));
+      if(!faltan.length) return;
+      try{
+        // Si no firmó nada (solo volvió a buscar miniaturas que siguen sin
+        // existir), no cambió ninguna dirección y no hay nada que entregar.
+        if(!(await firmar(faltan)) || !vivo || cargando) return;
+        porClave.forEach((o, k) => porClave.set(k, resolverAdjuntos(conRutas(o))));
+        entregar();
+      }catch(err){ console.error(`No se pudieron renovar las firmas de ${tabla}:`, err); }
+    };
+    const relojFirmas = firmaAdjuntos ? setInterval(renovar, 60 * 60 * 1000) : null;
+
     cargar();
     const olvidar = anotarMirada(tabla, { releerFila });
 
-    return () => { vivo = false; clearTimeout(reintento); olvidar(); sb.removeChannel(canal); };
+    return () => { vivo = false; clearTimeout(reintento); clearInterval(relojFirmas); olvidar(); sb.removeChannel(canal); };
   }
 
   // Una lectura suelta de una fila, por su clave.
@@ -6630,6 +6776,20 @@ function crearSupabaseStore(sb){
 
     // La marca que la base reemplaza por su propio reloj al escribir.
     horaDelServidor(){ return MARCA_HORA; },
+
+    // La miniatura de una foto ya firmada, para lo que se muestra chico;
+    // si no tiene (una foto de antes), la foto misma.
+    miniaturaDe(src){
+      const ruta = rutaDeUrl.get(src), mini = ruta && firmadas.get(rutaMiniatura(ruta));
+      return mini && mini.vence > Date.now() ? mini.url : src;
+    },
+    // Al cerrar la sesión: las firmas guardadas no tienen que quedar en el
+    // navegador.
+    olvidarFirmas(){
+      sesionDeFirmas++;
+      firmadas.clear(); noHay.clear();
+      try{ localStorage.removeItem(CLAVE_FIRMAS); }catch(e){}
+    },
 
     // Postgres contesta 42501 cuando una política deja algo afuera, y
     // PostgREST lo devuelve como código 42501 en el error.
@@ -10222,7 +10382,7 @@ function renderRutinaComposer(){
       <input type="file" id="rutinaImages" accept="image/*" multiple hidden data-action="rutina-images">
       <input type="file" id="rutinaFiles" accept="${ACEPTA_ARCHIVOS}" multiple hidden data-action="rutina-files">
       ${d.images.length ? `<div class="img-preview-list">${d.images.map((src,i)=>`
-        <div class="img-preview"><img src="${safeImageSrc(src)}"><button type="button" class="rm" data-action="rutina-rm-image" data-idx="${i}">✕</button></div>`).join("")}</div>` : ""}
+        <div class="img-preview"><img src="${srcMiniatura(src)}"><button type="button" class="rm" data-action="rutina-rm-image" data-idx="${i}">✕</button></div>`).join("")}</div>` : ""}
       ${renderFileChips(d.files, "rutina-rm-file")}
       ${d.links.length ? `<div class="attach-panel">${renderLinkRows("rutina", "new", d.links)}</div>` : ""}
       ${d.error ? `<div class="form-error">${esc(d.error)}</div>` : ""}
@@ -10307,8 +10467,10 @@ function renderAttachments(item, owner){
     scopesHtml: (item.scopes||[]).map(sc=>renderScopeChip(sc)).join(""),
     linksHtml: (item.links||[]).filter(l=>safeUrl(l.url)).map(l=>
       `<a href="${esc(safeUrl(l.url))}" target="_blank" rel="noopener noreferrer">🔗 ${esc(l.label||l.url)}</a>`).join(""),
+    // La miniatura (si la foto la tiene) y con carga diferida: una foto
+    // que todavía no se ve no se baja. La entera, recién en el visor.
     imagesHtml: (item.images||[]).map(safeImageSrc).filter(Boolean).map((src,idx)=>
-      `<img src="${src}" data-action="open-lightbox" ${ownerAttrs(owner)} data-idx="${idx}">`).join(""),
+      `<img src="${srcMiniatura(src)}" loading="lazy" decoding="async" data-action="open-lightbox" ${ownerAttrs(owner)} data-idx="${idx}">`).join(""),
   };
 }
 
@@ -10764,7 +10926,7 @@ function renderNestedReplyForm(postId, replyId){
       <input type="file" id="nestedReplyImages-${replyId}" accept="image/*" multiple hidden data-action="nested-reply-images" data-reply-id="${replyId}">
       <input type="file" id="nestedReplyFiles-${replyId}" accept="${ACEPTA_ARCHIVOS}" multiple hidden data-action="nested-reply-files" data-reply-id="${replyId}">
       ${d.images.length ? `<div class="img-preview-list">${d.images.map((src,i)=>`
-        <div class="img-preview"><img src="${safeImageSrc(src)}"><button type="button" class="rm" data-action="nested-reply-rm-image" data-reply-id="${replyId}" data-idx="${i}">✕</button></div>`).join("")}</div>` : ""}
+        <div class="img-preview"><img src="${srcMiniatura(src)}"><button type="button" class="rm" data-action="nested-reply-rm-image" data-reply-id="${replyId}" data-idx="${i}">✕</button></div>`).join("")}</div>` : ""}
       ${renderFileChips(d.files, "nested-reply-rm-file", `data-reply-id="${replyId}"`)}
       ${d.links.length ? `<div class="attach-panel">${renderLinkRows("nested-reply", replyId, d.links)}</div>` : ""}
       ${d.scopeError ? `<div class="form-error">${esc(d.scopeError)}</div>` : ""}
@@ -10809,7 +10971,7 @@ function renderReplyForm(postId){
       <input type="file" id="replyImages-${postId}" accept="image/*" multiple hidden data-action="reply-images" data-post-id="${postId}">
       <input type="file" id="replyFiles-${postId}" accept="${ACEPTA_ARCHIVOS}" multiple hidden data-action="reply-files" data-post-id="${postId}">
       ${d.images.length ? `<div class="img-preview-list">${d.images.map((src,i)=>`
-        <div class="img-preview"><img src="${safeImageSrc(src)}"><button type="button" class="rm" data-action="reply-rm-image" data-post-id="${postId}" data-idx="${i}">✕</button></div>`).join("")}</div>` : ""}
+        <div class="img-preview"><img src="${srcMiniatura(src)}"><button type="button" class="rm" data-action="reply-rm-image" data-post-id="${postId}" data-idx="${i}">✕</button></div>`).join("")}</div>` : ""}
       ${renderFileChips(d.files, "reply-rm-file", `data-post-id="${postId}"`)}
       ${d.links.length ? `<div class="attach-panel">${renderLinkRows("reply", postId, d.links)}</div>` : ""}
       <div class="reply-form-footer">
@@ -13639,7 +13801,7 @@ function renderComposer(){
           <button type="button" class="btn-attach" data-action="post-add-link">🔗 Link</button>
         </div>
         ${d.images.length ? `<div class="img-preview-list">${d.images.map((src,i)=>`
-          <div class="img-preview"><img src="${safeImageSrc(src)}"><button type="button" class="rm" data-action="post-rm-image" data-idx="${i}">✕</button></div>`).join("")}</div>` : ""}
+          <div class="img-preview"><img src="${srcMiniatura(src)}"><button type="button" class="rm" data-action="post-rm-image" data-idx="${i}">✕</button></div>`).join("")}</div>` : ""}
         ${renderFileChips(d.files, "post-rm-file")}
         ${d.links.length ? `<div class="attach-panel">${renderLinkRows("post", "new", d.links)}</div>` : ""}
         <div class="hint">${t(
