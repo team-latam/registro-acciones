@@ -605,7 +605,8 @@
     display:grid; grid-template-columns: 26px minmax(220px,2fr) 1fr 1fr 1fr;
     align-items:center; gap:12px;
   }
-  .audit-columns-header{ padding:0 18px 8px; }
+  .audit-columns-header{ padding:10px 18px 8px; background:var(--surface-soft); border-bottom:1px solid var(--border); }
+  .audit-columns-header + .audit-day{ border-top:none; }
   .audit-row{ padding:11px 18px; }
   .audit-row + .audit-row{ border-top:1px solid var(--border); }
   .audit-icon{ font-size:16px; }
@@ -653,6 +654,10 @@
   .lp-row:first-child{ border-top:none; }
   .lp-row:hover{ background:var(--surface-soft); }
   .lp-row.on{ background:var(--celeste-soft); }
+  /* Una fila que no se abre (Lugares): sin mano ni resaltado. */
+  .lp-row.estatica{ cursor:default; }
+  .lp-row.estatica:hover{ background:var(--card); }
+  .lp-angosto{ display:none; }
   .lp-row:focus-visible{ outline:2px solid var(--celeste-dark); outline-offset:-2px; }
   /* El foco que render() devuelve por programa a un elemento recién
      dibujado, cuando el original no mostraba anillo (se puso con el mouse). */
@@ -719,6 +724,9 @@
   }
   @media (max-width:640px){
     .lp-row .status-pill{ display:none; }
+    .lp-ancho{ display:none; }
+    .lp-angosto{ display:inline; }
+    .lp-row.estatica .lp-when{ display:none; }
   }
   /* Zonas: las fichas de país que se arrastran entre zonas. */
   .zone-chips{ display:flex; flex-wrap:wrap; gap:6px; padding:12px; border-top:1px solid var(--border); min-height:52px; }
@@ -971,13 +979,6 @@
     flex:1; border:1.5px solid var(--border); border-radius:var(--radius-sm); padding:10px 12px; font-size:14px;
     background:var(--surface-soft); color:var(--ink);
   }
-  .country-zone-list{
-    display:grid; grid-template-columns:repeat(auto-fill, minmax(230px, 1fr)); gap:1px;
-    background:var(--border); border:1px solid var(--border); border-radius:var(--radius-sm);
-    overflow:hidden; max-height:400px; overflow-y:auto;
-  }
-  .country-zone-row{ display:flex; align-items:center; gap:8px; background:var(--card); padding:7px 10px; }
-  .cz-name{ flex:1; min-width:0; font-size:12.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   /* En un celular las 5 (u 8, para el admin) pestañas no entran en el
      ancho. Antes ensanchaban el DOCUMENTO entero: la página completa
      scrolleaba de costado, "Memoria" quedaba cortada y Configuración /
@@ -2555,24 +2556,19 @@
   #filePreviewCounter{ font-size:12px; color:var(--text-muted); font-weight:700; min-width:42px; text-align:center; }
 
   /* ---------- Popup de perfil (al clickear un @mención) ---------- */
-  .up-head{ display:flex; align-items:center; gap:12px; margin-bottom:14px; padding-inline-end:24px; }
-  .up-avatar{ width:52px; height:52px; border-radius:50%; object-fit:cover; flex:none; }
-  .up-avatar.up-avatar-fallback{
-    display:flex; align-items:center; justify-content:center; background:var(--petroleo); color:#fff;
-    font-weight:800; font-size:22px;
-  }
-  .up-head-text{ min-width:0; }
-  .up-name{ font-size:15px; font-weight:800; color:var(--ink-strong); line-height:1.3; }
-  .up-nick{ font-size:12.5px; font-weight:700; color:var(--celeste-dark); }
-  .up-email{ font-size:12.5px; color:var(--text-muted); word-break:break-word; margin-top:2px; }
-  .up-former{ display:inline-block; margin-top:3px; padding:2px 8px; border-radius:999px; background:var(--surface-alt); color:var(--text-muted); font-size:11px; font-weight:700; }
-  /* La @mención de alguien que ya no está sigue siendo clickeable, pero en
-     gris: se distingue de un integrante activo sin desaparecer del texto. */
-  .mention-tag.former{ color:var(--text-muted); }
-  .up-rows{ display:flex; flex-direction:column; gap:7px; padding:12px; background:var(--surface-soft); border-radius:var(--radius-sm); margin-bottom:14px; }
-  .up-row{ display:flex; justify-content:space-between; gap:10px; font-size:13px; }
-  .up-row .up-label{ color:var(--text-muted); font-weight:700; flex:none; }
-  .up-row span:last-child{ text-align:end; word-break:break-word; }
+  /* El perfil de una persona, con el mismo lenguaje que la ficha de
+     Administración › Personas (ver renderUserProfile): foto, nombre,
+     @usuario · email, el rol, los datos en grilla y la mini-serie. */
+  .up-head{ display:flex; align-items:center; gap:14px; margin-bottom:14px; padding-inline-end:28px; }
+  .up-head .lp-av{ font-size:22px; }
+  .up-head-text{ min-width:0; display:flex; flex-direction:column; gap:4px; }
+  .up-name{ font-size:17px; font-weight:800; color:var(--ink-strong); line-height:1.25; }
+  .up-sub{ font-size:12.5px; color:var(--text-muted); word-break:break-word; }
+  .up-nick{ font-weight:700; color:var(--celeste-dark); }
+  .up-former{ display:inline-block; padding:2px 8px; border-radius:999px; background:var(--surface-alt); color:var(--text-muted); font-size:11px; font-weight:700; }
+  .up-kv{ padding:12px 14px; background:var(--surface-soft); border-radius:var(--radius-sm); margin-bottom:12px; }
+  .up-serie{ margin:0 0 14px; }
+  .up-botones{ margin-top:14px; }
   .up-posts-title{ font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.4px; color:var(--text-muted); margin-bottom:6px; }
   .up-post-row{
     display:flex; align-items:center; gap:8px; width:100%; text-align:start; background:none; border:none;
@@ -2861,7 +2857,7 @@
 </div>
 
 <div class="modal-overlay" id="userProfileOverlay" hidden>
-  <div class="modal modal-wrap" style="max-width:340px;" role="dialog" aria-modal="true" aria-labelledby="userProfileNameLabel">
+  <div class="modal modal-wrap" style="max-width:380px;" role="dialog" aria-modal="true" aria-labelledby="userProfileNameLabel">
     <button class="close" id="userProfileClose" aria-label="Cerrar">✕</button>
     <div id="userProfileBody"></div>
   </div>
@@ -8511,14 +8507,23 @@ function focusSelectorOf(el){
   if(!attrs.length) return null;
   return el.tagName.toLowerCase() + attrs.map(a=>`[${a.name}="${CSS.escape(a.value)}"]`).join("");
 }
+// Mueve el foco por programa a `el` y, si quien lo tenía (`origen`) no
+// mostraba el anillo del navegador (se había puesto con el mouse), lo
+// marca (.sin-anillo) para que el nuevo tampoco lo muestre hasta perderlo:
+// Chrome le pinta el anillo de teclado a todo foco por programa.
+function tieneAnillo(el){ try{ return !!(el && el.matches(":focus-visible")); }catch(e){ return false; } }
+function enfocarComo(el, origen, conAnillo = tieneAnillo(origen)){
+  if(!el || typeof el.focus !== "function") return;
+  el.focus();
+  if(!conAnillo && document.activeElement === el){
+    el.classList.add("sin-anillo");
+    el.addEventListener("blur", ()=> el.classList.remove("sin-anillo"), { once:true });
+  }
+}
 function render(){
   const active = document.activeElement;
   const focusSel = focusSelectorOf(active);
-  // Si el foco se puso con el mouse no tiene anillo; al devolverlo por
-  // programa a un elemento nuevo el navegador se lo pintaría igual. Se
-  // recuerda para no hacerlo (ver .sin-anillo).
-  let anilloVisible = false;
-  try{ anilloVisible = !!(active && active.matches(":focus-visible")); }catch(e){}
+  const anilloVisible = tieneAnillo(active);
   const selStart = active && typeof active.selectionStart === "number" ? active.selectionStart : null;
   const selEnd = active && typeof active.selectionEnd === "number" ? active.selectionEnd : null;
   doRender();
@@ -8535,12 +8540,8 @@ function render(){
     let el = null;
     try{ el = document.querySelector(focusSel); }catch(e){}
     if(el && el !== active){
-      el.focus();
+      enfocarComo(el, active, anilloVisible);
       if(selStart != null) try{ el.setSelectionRange(selStart, selEnd); }catch(e){}
-      if(!anilloVisible && document.activeElement === el){
-        el.classList.add("sin-anillo");
-        el.addEventListener("blur", ()=> el.classList.remove("sin-anillo"), { once:true });
-      }
     }
   }
   document.querySelectorAll("textarea.autogrow").forEach(autoGrowTextarea);
@@ -9976,7 +9977,7 @@ function renderAuditoriaView(){
   let diaAnterior = null;
   const list = !filtered.length
     ? `<div class="empty-state"><div class="big">🔎</div>${t("Ningún registro coincide con el filtro.","No record matches the filter.","Nenhum registro coincide com o filtro.","אף רשומה לא תואמת למסנן.")}</div>`
-    : `${renderAuditColumnsHeader()}<div class="audit-list">${visible.map(e=>{
+    : `<div class="audit-list">${renderAuditColumnsHeader()}${visible.map(e=>{
         const info = auditLabels()[e.type] || { icon:"•", text: e2 => `${e2.actorName}: ${e2.type}` };
         let cabeza = "";
         if(porDia){ const d = diaDe(e); if(d !== diaAnterior){ cabeza = `<div class="audit-day">${esc(rotuloDia(d))}</div>`; diaAnterior = d; } }
@@ -10338,13 +10339,14 @@ function renderLugaresSection(){
   const items = getCustomCityUsage();
   return `
       ${!items.length ? `<div class="empty-state"><div class="big">📍</div>${t("No hay ciudades nuevas pendientes de revisar.","No new cities pending review.","Não há cidades novas pendentes de revisão.","אין ערים חדשות שממתינות לבדיקה.")}</div>` : `
-      <div class="country-zone-list" style="grid-template-columns:1fr;">
-        ${items.map(it=>`
-          <div class="country-zone-row">
-            <span class="cz-name" style="flex:2;" title="${esc(it.city)}, ${esc(countryLabel(it.country))}">${esc(it.city)}, ${esc(countryLabel(it.country))}</span>
-            <span class="zone-count">${it.count === 1 ? t("1 posteo","1 post","1 postagem","פוסט אחד") : t("{n} posteos","{n} posts","{n} postagens","{n} פוסטים",{n:it.count})}</span>
-            <button type="button" class="btn-mini" data-action="lugares-promote" data-country="${esc(it.country)}" data-city="${esc(it.city)}">+ ${t("Sumar a la lista oficial","Add to the official list","Somar à lista oficial","הוספה לרשימה הרשמית")}</button>
-          </div>`).join("")}
+      <div class="lp-rows">
+        ${items.map(it=>{ const posteos = it.count === 1 ? t("1 posteo","1 post","1 postagem","פוסט אחד") : t("{n} posteos","{n} posts","{n} postagens","{n} פוסטים",{n:it.count}); return `
+          <div class="lp-row estatica">
+            <span class="tipo-ico" aria-hidden="true">📍</span>
+            <span class="lp-who"><b>${esc(it.city)}</b><span>${esc(countryLabel(it.country))}<span class="lp-angosto"> · ${posteos}</span></span></span>
+            <span class="lp-when">${posteos}</span>
+            <button type="button" class="btn-mini" data-action="lugares-promote" data-country="${esc(it.country)}" data-city="${esc(it.city)}" title="${esc(t("Sumar a la lista oficial","Add to the official list","Somar à lista oficial","הוספה לרשימה הרשמית"))}">+ <span class="lp-ancho">${t("Sumar a la lista oficial","Add to the official list","Somar à lista oficial","הוספה לרשימה הרשמית")}</span><span class="lp-angosto">${t("Sumar","Add","Somar","הוספה")}</span></button>
+          </div>`; }).join("")}
       </div>`}`;
 }
 
@@ -12691,17 +12693,61 @@ function notifyLeadOptions(){
     { v:10080, label:t("1 semana antes","1 week before","1 semana antes","שבוע לפני") },
   ];
 }
+// Mis preferencias se arma como Administración (ver renderAdminShell):
+// el menú de secciones al costado, y cada sección con su título, una
+// línea de para qué sirve y la explicación larga plegada. Antes eran
+// tres chips y un párrafo gris: no se parecía al resto.
+function prefsSeccionTextos(key){
+  const tuyas = t("Estas opciones son tuyas: no cambian lo que ven los demás, y te siguen a cualquier dispositivo donde entres con tu cuenta.",
+    "These options are yours: they don't change what others see, and they follow you to any device you sign in from.",
+    "Estas opções são suas: não mudam o que os outros veem, e te acompanham em qualquer dispositivo onde você entrar.",
+    "האפשרויות האלה שלך: הן לא משנות את מה שאחרים רואים, והן מלוות אותך בכל מכשיר שבו תיכנס/י עם החשבון שלך.");
+  const T = {
+    calendario: {
+      lead: t("Cómo se ve tu calendario: el primer día de la semana, los fines de semana y los formatos de fecha y hora.",
+        "How your calendar looks: the first day of the week, weekends, and the date and time formats.",
+        "Como o seu calendário aparece: o primeiro dia da semana, os fins de semana e os formatos de data e hora.",
+        "איך היומן שלך נראה: היום הראשון בשבוע, סופי השבוע ופורמט התאריך והשעה."),
+      ayuda: tuyas },
+    notificaciones: {
+      lead: t("Qué te muestra la campanita y con cuánta anticipación.","What the bell shows you and how far in advance.","O que o sino mostra e com quanta antecedência.","מה הפעמון מציג ובאיזו הקדמה."),
+      ayuda: t("La campanita te muestra lo que se viene cada vez que entrás a la app. Como el Registro no tiene servidor propio, no puede avisarte con la app cerrada: para eso está la última opción, que le pide el recordatorio a Google Calendar.",
+        "The bell shows what's coming every time you open the app. Since the Log has no server of its own, it can't reach you with the app closed: that's what the last option is for — it asks Google Calendar to remind you.",
+        "O sino mostra o que vem cada vez que você entra no app. Como o Registro não tem servidor próprio, não pode avisar com o app fechado: para isso está a última opção, que pede o lembrete ao Google Calendar.",
+        "הפעמון מציג מה מתקרב בכל כניסה לאפליקציה. מכיוון שליומן אין שרת משלו, הוא לא יכול להתריע כשהאפליקציה סגורה: בשביל זה יש את האפשרות האחרונה, שמבקשת את התזכורת מ-Google Calendar.") + " " + tuyas },
+    capas: {
+      lead: t("Cómo se ven los hitos y los feriados en el Calendario.","How milestones and holidays look on the Calendar.","Como os marcos e os feriados aparecem no Calendário.","איך אבני הדרך והחגים נראים ביומן."),
+      ayuda: t("Las capas son lo que el Calendario dibuja además de los eventos: los hitos de los proyectos y los feriados. Se prenden y apagan al toque desde el propio Calendario; acá se define cómo se ven. Son opciones tuyas: no cambian lo que ven los demás.",
+        "Layers are what the Calendar draws besides events: project milestones and holidays. You turn them on and off right from the Calendar; here you set how they look. These options are yours: they don't change what others see.",
+        "As camadas são o que o Calendário desenha além dos eventos: os marcos dos projetos e os feriados. Ligam-se e desligam-se na hora no próprio Calendário; aqui se define como se veem. São opções suas: não mudam o que os outros veem.",
+        "השכבות הן מה שהיומן מצייר מעבר לאירועים: אבני הדרך של הפרויקטים והחגים. אפשר להדליק ולכבות אותן מהיומן עצמו; כאן מגדירים איך הן נראות. אלה אפשרויות שלך: הן לא משנות את מה שאחרים רואים.") },
+  };
+  return T[key] || { lead:"", ayuda:"" };
+}
 function renderConfiguracionView(){
   const secs = configSections();
   const sec = secs.some(s=>s.key === state.configSection) ? state.configSection : secs[0].key;
   const body = sec === "notificaciones" ? renderConfigNotificacionesSection()
     : sec === "capas" ? renderConfigCapasSection()
     : renderConfigCalendarioSection();
-  return `
-    <div class="preferencias-view">
-      ${secs.length > 1 ? `<div class="pref-subnav">${secs.map(s=>`
-        <button type="button" class="chip-toggle${sec===s.key?" active":""}" data-action="config-section" data-key="${s.key}">${esc(s.label)}</button>`).join("")}</div>` : ""}
-      ${body}
+  const actual = secs.find(s=>s.key === sec);
+  const tx = prefsSeccionTextos(sec);
+  const titulo = t("Mis preferencias","My preferences","Minhas preferências","ההעדפות שלי");
+  const menu = secs.map(s=>`<button type="button" class="admin-item${sec===s.key?" active":""}" data-action="config-section" data-key="${s.key}"><span>${esc(s.label)}</span></button>`).join("");
+  return `<div class="admin-view preferencias-view">
+      <aside class="admin-menu" aria-label="${esc(titulo)}">
+        <div class="admin-titulo">${titulo}</div>${menu}
+      </aside>
+      <div class="admin-body">
+        <header class="admin-cabecera">
+          <div class="admin-cab-txt">
+            <h2 class="admin-h2">${esc(actual.label)}</h2>
+            ${tx.lead ? `<p class="admin-lead">${tx.lead}</p>` : ""}
+            ${tx.ayuda ? `<details class="admin-ayuda"><summary>${t("¿Cómo funciona?","How does it work?","Como funciona?","איך זה עובד?")}</summary><div>${tx.ayuda}</div></details>` : ""}
+          </div>
+        </header>
+        ${body}
+      </div>
     </div>`;
 }
 function prefSwitch(key, on){
@@ -12794,12 +12840,6 @@ function renderConfigCalendarioSection(){
       ${TIME_FORMATS.map(f=>`<option value="${f}" ${timeFormatPref()===f?"selected":""}>${esc(sampleTime(f))}</option>`).join("")}
     </select>`;
   return `
-      <div class="hint" style="margin-bottom:16px;">${t(
-        "Estas opciones son tuyas: no cambian lo que ven los demás, y te siguen a cualquier dispositivo donde entres con tu cuenta.",
-        "These options are yours: they don't change what others see, and they follow you to any device you sign in from.",
-        "Estas opções são suas: não mudam o que os outros veem, e te acompanham em qualquer dispositivo onde você entrar.",
-        "האפשרויות האלה שלך: הן לא משנות את מה שאחרים רואים, והן מלוות אותך בכל מכשיר שבו תיכנס/י עם החשבון שלך."
-      )}</div>
       <div class="settings-card">
         ${prefRow("📅", t("Comenzar la semana el","Start the week on","Começar a semana em","תחילת השבוע ביום"),
           t("Afecta Semana, Mes y los mini-meses de la vista Año.","Affects Week, Month and the mini-months in the Year view.","Afeta Semana, Mês e os mini-meses da vista Ano.","משפיע על שבוע, חודש והחודשים הקטנים בתצוגת שנה."),
@@ -12855,12 +12895,6 @@ function renderConfigCapasSection(){
   // orden (el color de las festividades judías venía ANTES del switch que
   // decide si se muestran).
   return `
-      <div class="hint" style="margin-bottom:16px;">${t(
-        "Las capas son lo que el Calendario dibuja además de los eventos: los hitos de los proyectos y los feriados. Se prenden y apagan al toque desde el propio Calendario; acá se define cómo se ven. Son opciones tuyas: no cambian lo que ven los demás.",
-        "Layers are what the Calendar draws besides events: project milestones and holidays. You turn them on and off right from the Calendar; here you set how they look. These options are yours: they don't change what others see.",
-        "As camadas são o que o Calendário desenha além dos eventos: os marcos dos projetos e os feriados. Ligam-se e desligam-se na hora no próprio Calendário; aqui se define como se veem. São opções suas: não mudam o que os outros veem.",
-        "השכבות הן מה שהיומן מצייר מעבר לאירועים: אבני הדרך של הפרויקטים והחגים. אפשר להדליק ולכבות אותן מהיומן עצמו; כאן מגדירים איך הן נראות. אלה אפשרויות שלך: הן לא משנות את מה שאחרים רואים."
-      )}</div>
 
       <div class="settings-card-title">◆ ${t("Hitos","Milestones","Marcos","אבני דרך")}</div>
       <div class="settings-card">
@@ -12911,12 +12945,6 @@ function renderConfigNotificacionesSection(){
   const zones = Object.values(ZONES).map(z=>({ key:z.key, label:z.label, icon:"" }));
   const sel = p.notifyTypes || [], selZ = p.notifyZones || [];
   return `
-      <div class="hint" style="margin-bottom:16px;">${t(
-        "La campanita te muestra lo que se viene cada vez que entrás a la app. Como el Registro no tiene servidor propio, no puede avisarte con la app cerrada: para eso está la última opción, que le pide el recordatorio a Google Calendar.",
-        "The bell shows what's coming every time you open the app. Since the Log has no server of its own, it can't reach you with the app closed: that's what the last option is for — it asks Google Calendar to remind you.",
-        "O sino mostra o que vem cada vez que você entra no app. Como o Registro não tem servidor próprio, não pode avisar com o app fechado: para isso está a última opção, que pede o lembrete ao Google Calendar.",
-        "הפעמון מציג מה מתקרב בכל כניסה לאפליקציה. מכיוון שליומן אין שרת משלו, הוא לא יכול להתריע כשהאפליקציה סגורה: בשביל זה יש את האפשרות האחרונה, שמבקשת את התזכורת מ-Google Calendar."
-      )}</div>
       <div class="settings-card">
         ${prefRow("⏰", t("Avisarme","Notify me","Avisar-me","להתריע"),
           t("Un evento aparece en la campanita cuando falta esto o menos para que empiece.","An event shows up in the bell when it's this close to starting.","Um evento aparece no sino quando falta isso ou menos para começar.","אירוע מופיע בפעמון כשנותר זה או פחות עד תחילתו."),
@@ -14994,10 +15022,16 @@ function renderUserProfile(){
   const entry = memberByEmail(userProfileEmail);
   if(!entry){ closeUserProfile(); return; } // ya no está aprobado / se fue mientras estaba abierto
   const displayName = entry.name || entry.nickname;
-  const avatarHtml = entry.photoURL
-    ? `<img class="up-avatar" src="${esc(entry.photoURL)}" alt="">`
-    : `<div class="up-avatar up-avatar-fallback">${esc(displayName[0].toUpperCase())}</div>`;
-  const tier = activityTierFor(countRecentPosts(entry.email));
+  const recientes = countRecentPosts(entry.email);
+  const tier = activityTierFor(recientes);
+  const total = state.posts.filter(p => p.authorEmail === entry.email).length;
+  const serie = postsPorMesDe(entry.email, 6);
+  const desdeMs = tsToMillis(entry.approvedAt);
+  const desde = desdeMs ? fmtDate(new Date(desdeMs).toISOString().slice(0, 10)) : "—";
+  // "Última vez" sale del registro de actividad, que solo el admin tiene
+  // cargado: para los demás no se muestra (diría "nunca entró" a todos).
+  const uv = isAdmin() && !entry.former ? ultimaVezDe({ lastLogin: lastLoginByEmail()[entry.email] || 0 }) : null;
+  const role = entry.email === ADMIN_EMAIL ? "admin" : (entry.role || "member");
   const myPosts = state.posts.filter(p => p.authorEmail === entry.email)
     .sort((a,b) => tsToMillis(b.createdAt) - tsToMillis(a.createdAt))
     .slice(0, 3);
@@ -15014,20 +15048,30 @@ function renderUserProfile(){
     : `<div class="hint">${t("Todavía no publicó nada.","Hasn't posted anything yet.","Ainda não publicou nada.","עדיין לא פרסם/ה כלום.")}</div>`;
   userProfileBody.innerHTML = `
     <div class="up-head">
-      ${avatarHtml}
+      ${avatarDe(entry, 56)}
       <div class="up-head-text">
-        <div class="up-name" id="userProfileNameLabel">${esc(displayName)} · <span class="up-nick">@${esc(entry.nickname.toLowerCase())}</span></div>
-        ${entry.former ? `<div class="up-former">${t("Ex integrante · hasta {d}","Former member · until {d}","Ex-integrante · até {d}","חבר/ה לשעבר · עד {d}",{d:fmtDateTime(entry.revokedAt) || "—"})}</div>` : ""}
-        <div class="up-email">${esc(entry.email)}</div>
+        <div class="up-name" id="userProfileNameLabel">${esc(displayName)}</div>
+        <div class="up-sub"><span class="up-nick">@${esc(entry.nickname.toLowerCase())}</span> · ${esc(entry.email)}</div>
+        ${entry.former
+          ? `<div><span class="up-former">${t("Ex integrante · hasta {d}","Former member · until {d}","Ex-integrante · até {d}","חבר/ה לשעבר · עד {d}",{d:fmtDateTime(entry.revokedAt) || "—"})}</span></div>`
+          : `<div>${rolPill(role)}</div>`}
       </div>
     </div>
-    <div class="up-rows">
-      <div class="up-row"><span class="up-label">${t("Se unió","Joined","Entrou","הצטרף/ה")}</span><span>${entry.approvedAt ? fmtDateTime(entry.approvedAt) : "—"}</span></div>
-      <div class="up-row"><span class="up-label">${t("Actividad","Activity","Atividade","פעילות")}</span><span>${tier.icon} ${esc(tier.label)}</span></div>
+    <div class="lp-kv up-kv">
+      <span><small>${t("En el equipo desde","On the team since","Na equipe desde","בצוות מאז")}</small><b>${esc(desde)}</b></span>
+      <span><small>${t("Actividad","Activity","Atividade","פעילות")}</small><b>${tier.icon} ${esc(tier.label)}</b></span>
+      <span><small>${t("Posteos","Posts","Postagens","פוסטים")}</small><b>${total}</b></span>
+      ${uv ? `<span><small>${t("Última vez","Last seen","Última vez","לאחרונה")}</small><b class="${uv.clase}">${esc(uv.texto)}</b></span>` : ""}
     </div>
+    ${serie.some(n=>n) ? `<div class="lp-serie up-serie">${renderSerieMensual(serie, "var(--celeste-dark)")}<span class="hint">${recientes === 1
+      ? t("1 posteo en los últimos 6 meses","1 post in the last 6 months","1 postagem nos últimos 6 meses","פוסט אחד ב-6 החודשים האחרונים")
+      : t("{n} posteos en los últimos 6 meses","{n} posts in the last 6 months","{n} postagens nos últimos 6 meses","{n} פוסטים ב-6 החודשים האחרונים",{n:recientes})}</span></div>` : ""}
     <div class="up-posts">
       <div class="up-posts-title">${t("Últimos posteos","Recent posts","Postagens recentes","פוסטים אחרונים")}</div>
       ${postsHtml}
+    </div>
+    <div class="lp-botones up-botones">
+      <button type="button" class="btn-secondary" data-action="ver-posteos-de" data-email="${esc(entry.email)}">${t("Ver todo lo que cargó","See everything they logged","Ver tudo o que carregou","כל מה שנרשם על ידו/ה")}</button>
     </div>
   `;
 }
@@ -15038,7 +15082,7 @@ function openUserProfile(email){
   renderUserProfile();
   userProfileReturnFocus = document.activeElement;
   userProfileOverlay.hidden = false;
-  document.getElementById("userProfileClose").focus();
+  enfocarComo(document.getElementById("userProfileClose"), userProfileReturnFocus);
 }
 function closeUserProfile(){
   userProfileOverlay.hidden = true;
@@ -15917,8 +15961,9 @@ document.addEventListener("click", async e=>{
     state.filters.author = null; feedVisibleCount = PAGE_SIZE; render();
   },
     "ver-posteos-de": async (el, e, action, postId) => {
-    // Desde la ficha de una persona (Administración › Personas): el Feed
-    // con solo lo que cargó ella, y ningún otro filtro.
+    // Desde la ficha de una persona (Administración › Personas) o su
+    // perfil: el Feed con solo lo que cargó ella, y ningún otro filtro.
+    if(!userProfileOverlay.hidden) closeUserProfile();
     state.filters = { text:"", types:new Set(), zones:new Set(), place:null, quick:null, author:String(el.dataset.email||"").toLowerCase() };
     feedVisibleCount = PAGE_SIZE; state.view = "feed"; render(); scrollToTop();
   },

@@ -219,6 +219,21 @@ Las opciones se compararon en https://claude.ai/artifact/2vtYrPhNKwsbqN8FqX16Jq
   el anillo de teclado de las filas va por dentro (`outline-offset:-2px`)
   para que la esquina redondeada de la lista no lo recorte.
 
+### 14. Que todo se sienta de la misma familia — HECHO (3 oct 2026)
+
+- Mis preferencias se arma como Administración: el menú de secciones al
+  costado (en celular, la tira de arriba) y cada sección con su título,
+  una línea de para qué sirve y "¿Cómo funciona?" plegado
+  (`prefsSeccionTextos`). Los párrafos grises de cada sección pasaron ahí.
+- El perfil de una persona (tocar un nombre) usa el lenguaje de la ficha
+  de Personas: foto, nombre, @usuario · email, el rol, los datos en
+  grilla (en el equipo desde, actividad, posteos y, para el admin, última
+  vez), la mini-serie, los últimos posteos y "Ver todo lo que cargó".
+  Se fue el "·" que quedaba suelto después del nombre.
+- Registro de actividad: los títulos de columna van adentro de la
+  tarjeta, como primera fila.
+- Lugares: cada ciudad en la misma lista que Personas y Tipos.
+
 ## Fuera de alcance (necesitan algo que la app no tiene)
 
 - Mandar correos (resumen semanal, invitaciones): no hay servicio de

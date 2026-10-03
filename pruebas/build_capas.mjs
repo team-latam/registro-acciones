@@ -31,7 +31,7 @@ const css = src.slice(src.indexOf("<style>") + 7, src.indexOf("</style>"));
 const fns = ["MILESTONE_DUE_SOON_DAYS","MILESTONE_DUE_SOON_OPTIONS","milestoneDueSoonDays",
   "milestoneStatus","milestoneStatusLabel","addDaysISO","isoDate","todayISO","safeColor",
   "configSections","prefSwitch","prefRow","prefColorRow","prefChips","similarColorTo",
-  "usedColors","colorDistance","hexToRgb","colorControl","countryLabel","hasOwn","DEFAULT_COUNTRY_LABELS","currentLang","holidayCountryOptions","renderConfigCapasSection"].map(grab).join("\n")
+  "usedColors","colorDistance","hexToRgb","colorControl","countryLabel","hasOwn","DEFAULT_COUNTRY_LABELS","currentLang","holidayCountryOptions","renderConfigCapasSection","prefsSeccionTextos"].map(grab).join("\n")
   .replace(/function todayISO\(\)\{[\s\S]*?\n\}/, 'function todayISO(){ return "2026-09-15"; }');
 
 const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><style>
@@ -53,6 +53,8 @@ window.setPrefs = p => { state.prefs = p; render(); };
 function render(){ document.getElementById("box").innerHTML = renderConfigCapasSection(); }
 window.render = render;
 window.secciones = () => configSections().map(s=>({ key:s.key, label:s.label }));
+// La explicación de la sección vive en la cabecera (ver renderConfiguracionView), no en el cuerpo.
+window.textosCapas = () => prefsSeccionTextos("capas");
 window.estado = m => milestoneStatus(m);
 window.dias = () => milestoneDueSoonDays();
 window.setPrefs({ holidayMode:"sutil", holidayColor:"#c0392b", holidayJewishColor:"#6b4fbb",
