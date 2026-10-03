@@ -178,6 +178,20 @@ del mapa, modo oscuro, campanita, franja de Documentación.
   se guarda solo cuando es verdadera, así un guardado sin archivar
   nada escribe la misma forma de siempre.
 
+### 12. Revisión estética de Administración — HECHO (4 oct 2026)
+
+- Todas las secciones arrancan igual: título, una línea de para qué
+  sirve y, si hace falta, "¿Cómo funciona?" plegado (`adminSeccionTextos`).
+  Los párrafos grises largos de arriba de Tipos, Lugares, Adjuntos y
+  Calendar pasaron ahí.
+- Tipos: una tarjeta por tipo; el ícono en un cuadrado suave (ya no
+  parece un campo), el nombre más grande, y debajo "Documentos
+  esperados:" con los chips, un campo punteado "+ Agregar documento…"
+  (Enter también agrega) y un + chico. Se fueron la franja gris, el
+  rótulo en mayúsculas y los seis botones + grandes y brillantes.
+- Personas: nombre y email en un renglón (con puntos suspensivos si no
+  entran) y el pill de "Invitación enviada" sin partirse.
+
 ## Fuera de alcance (necesitan algo que la app no tiene)
 
 - Mandar correos (resumen semanal, invitaciones): no hay servicio de

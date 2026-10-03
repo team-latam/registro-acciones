@@ -461,7 +461,7 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   // ofrecerse al cargar un evento, pero sigue en la lista para desarchivar.
   await p.click('.tipo-menu-wrap [data-action="toggle-tipo-menu"][data-key="congreso"]');
   await p.click('.post-menu [data-action="tipos-archive"][data-key="congreso"]');
-  eq("tipos: archivar marca la fila", await p.$$eval(".zone-edit-row.archivado .zone-label-input", es => es.map(e => e.value)), ["Congreso"]);
+  eq("tipos: archivar marca la tarjeta", await p.$$eval(".tipo-card.archivado .zone-label-input", es => es.map(e => e.value)), ["Congreso"]);
   await p.click('[data-action="tipos-save"]');
   eq("tipos: al guardar, la base recibe archived:true en ese tipo", await hasta(p, () => {
     const c = (window.__sb.tablas.app_config || []).find(x => x.key === "preferences");
