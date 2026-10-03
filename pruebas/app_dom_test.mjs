@@ -210,10 +210,11 @@ const b = await chromium.launch();
 
 // Entra con quien se le diga y devuelve la página, sus errores y la base.
 // `mod` retoca la base de mentira antes de cargar (para sumar algo que
-// solo necesita una sección, sin tocar lo que las demás esperan).
-async function entrar(email, nombre, mod){
+// solo necesita una sección, sin tocar lo que las demás esperan);
+// `viewport` abre la página con otro tamaño (un celular).
+async function entrar(email, nombre, mod, viewport){
   const base = BASE(); if(mod) mod(base);
-  const p = await b.newPage();
+  const p = await b.newPage(viewport ? { viewport } : {});
   const errores = [];
   p.on("pageerror", e => errores.push(String(e)));
   p.on("console", m => { if(m.type() === "error" && !deRed(m.text())) errores.push(m.text()); });
@@ -403,6 +404,30 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   await p.click('[data-action="toggle-mentions-menu"]');
   eq("campanita: al reabrir, lo de antes ya no es nuevo", await nuevos(), 0);
   eq("campanita: sin un solo error", errores, []);
+  await p.close();
+}
+
+/* ---------- En un celular ---------- */
+{
+  const ANCHO = 390;
+  const { p, errores } = await entrar(ADMIN, "Benny", null, { width: ANCHO, height: 844 });
+  await esperarTexto(p, "Reunión con la comunidad");
+  eq("celular: las pestañas de arriba se esconden y aparece la barra de abajo",
+    [await visible(p, "nav.tabs"), await visible(p, ".bottom-nav")], [false, true]);
+  eq("celular: la barra trae Inicio, Calendario, Países y Más, con el hueco del + en el medio",
+    await p.$$eval(".bottom-nav > *", es => es.map(e => e.classList.contains("bn-gap") ? "+" : e.dataset.view || e.dataset.action)),
+    ["feed", "calendario", "+", "paises", "toggle-more-menu"]);
+  // El + tiene que caer en el medio exacto de la pantalla, sobre el hueco
+  // de la barra, y no corrido (pisaba "Países": la caja que lo envuelve es
+  // tan ancha como las acciones que despliega, y se centraba el + dentro
+  // de esa caja en vez de la caja en la pantalla).
+  const fab = await p.$eval(".fab-main", e => { const r = e.getBoundingClientRect(); return { centro: r.left + r.width / 2, abajo: r.bottom }; });
+  const hueco = await p.$eval(".bottom-nav .bn-gap", e => { const r = e.getBoundingClientRect(); return { izq: r.left, der: r.right }; });
+  eq("celular: el + está centrado en la pantalla", Math.abs(fab.centro - ANCHO / 2) <= 2, true);
+  eq("celular: y sobre el hueco de la barra", fab.centro > hueco.izq && fab.centro < hueco.der, true);
+  await p.click(".fab-main");
+  eq("celular: al abrirlo, las acciones aparecen", await hasta(p, () => !!document.querySelector(".fab-wrap.open .fab-action")), true);
+  eq("celular: sin un solo error", errores, []);
   await p.close();
 }
 

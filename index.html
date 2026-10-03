@@ -2553,8 +2553,13 @@
       color:var(--text); font-family:inherit; font-size:14px; font-weight:600; text-align:start; cursor:pointer;
     }
     .bn-sheet-item:hover, .bn-sheet-item.active{ background:var(--surface-alt); color:var(--ink-strong); }
-    /* El + vive en el medio de la barra: el hueco (.bn-gap) es su lugar. */
-    .fab-wrap{ inset-block-end:calc(22px + env(safe-area-inset-bottom)); inset-inline-end:auto; left:50%; margin-left:-28px; align-items:center; }
+    /* El + vive en el medio de la barra: el hueco (.bn-gap) es su lugar.
+       Se centra la caja entera con translateX(-50%), no el + solo con un
+       margen: la caja es tan ancha como las acciones que se despliegan
+       arriba (aunque no se vean), y con "left:50%; margin-left:-28px" el
+       + quedaba centrado dentro de esa caja ancha, o sea corrido a la
+       derecha, pisando "Países". */
+    .fab-wrap{ inset-block-end:calc(22px + env(safe-area-inset-bottom)); inset-inline-end:auto; left:50%; transform:translateX(-50%); align-items:center; }
     .fab-main{ width:56px; height:56px; font-size:30px; box-shadow:0 6px 20px rgba(8,42,44,0.35); }
     .fab-actions{ align-items:center; }
     .scroll-top{ inset-block-end:calc(76px + env(safe-area-inset-bottom)); inset-inline-end:14px; }
