@@ -49,6 +49,11 @@ create table if not exists public.calendar_sacados (
   sacado_el  timestamptz not null default now()
 );
 
+-- Una copia del posteo tal como estaba al sacarlo, para poder devolverlo
+-- igual (ver devolver_al_registro). Los sacados antes de que existiera
+-- (3/10/2026) no la tienen: se vuelven a traer de Google Calendar.
+alter table public.calendar_sacados add column if not exists fila jsonb;
+
 alter table public.calendar_sacados
   drop constraint if exists sacados_textos;
 alter table public.calendar_sacados
@@ -164,8 +169,8 @@ begin
   end if;
   for p in select * from public.posts where id = any(p_ids) loop
     if not public.es_importado(p) then continue; end if;
-    insert into public.calendar_sacados (evento, titulo, sacado_por)
-    values (p.calendar_event_id, left(coalesce(p.title, ''), 300), yo)
+    insert into public.calendar_sacados (evento, titulo, sacado_por, fila)
+    values (p.calendar_event_id, left(coalesce(p.title, ''), 300), yo, to_jsonb(p))
     on conflict (evento) do nothing;
     delete from public.posts where id = p.id;
     n := n + 1;
@@ -175,3 +180,45 @@ end $$;
 
 revoke execute on function public.sacar_del_registro(text[]) from public, anon;
 grant execute on function public.sacar_del_registro(text[]) to authenticated;
+
+
+-- ---------- Devolverlos al Registro ----------
+-- Pasó el 3/10/2026: "Sacar del Registro" se usó creyendo que marcaba el
+-- evento como listo. Esto deshace: el posteo vuelve tal como estaba (de
+-- la copia guardada en `fila`) y el evento deja de estar sacado. Los que
+-- no tienen copia (sacados antes de que existiera) solo dejan de estar
+-- sacados, y la app los vuelve a traer de Google Calendar; esos vuelven
+-- como llegaron la primera vez ("Otro", sin lugar). Los comentarios que
+-- tenía no vuelven.
+--
+-- Devuelve { "devueltos": n, "aTraer": [eventos sin copia] }.
+create or replace function public.devolver_al_registro(p_eventos text[])
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare
+  s public.calendar_sacados;
+  n integer := 0;
+  traer text[] := '{}';
+begin
+  if not (public.es_admin_fijo() or public.es_admin_rol()) then
+    raise exception 'Devolver al Registro lo hace un admin'
+      using errcode = 'insufficient_privilege';
+  end if;
+  if coalesce(array_length(p_eventos, 1), 0) > 1000 then
+    raise exception 'Se devuelven hasta 1000 por vez'
+      using errcode = 'check_violation';
+  end if;
+  for s in select * from public.calendar_sacados where evento = any(p_eventos) loop
+    if s.fila is not null then
+      insert into public.posts select * from jsonb_populate_record(null::public.posts, s.fila)
+      on conflict (id) do nothing;
+      n := n + 1;
+    else
+      traer := traer || s.evento;
+    end if;
+    delete from public.calendar_sacados where evento = s.evento;
+  end loop;
+  return jsonb_build_object('devueltos', n, 'aTraer', to_jsonb(traer));
+end $$;
+
+revoke execute on function public.devolver_al_registro(text[]) from public, anon;
+grant execute on function public.devolver_al_registro(text[]) to authenticated;

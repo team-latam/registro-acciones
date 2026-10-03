@@ -5482,6 +5482,16 @@ async function fetchCalendarChanges(syncToken){
   return { events, nextSyncToken };
 }
 
+// Un evento suelto, por su id (Revisar lo de Calendar › Devolver al
+// Registro): con la clave de API, como el resto de las lecturas.
+async function fetchCalendarEvent(eventId){
+  const params = new URLSearchParams({ key: CALENDAR_API_KEY });
+  const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events/${encodeURIComponent(eventId)}?${params}`);
+  const body = await res.json().catch(()=>({}));
+  if(!res.ok) throw new Error(body.error?.message || res.statusText);
+  return body;
+}
+
 // A partir de un evento de Calendar, calcula startDate/endDate en el
 // mismo formato que usa la app (YYYY-MM-DD, fin inclusive). Los eventos
 // de "todo el día" que arma esta misma app tienen el fin exclusivo
@@ -7090,6 +7100,25 @@ function crearSupabaseStore(sb, opciones = {}){
         }
         await recargarTabla("posts");
         return n;
+      },
+      async listaSacados(){
+        const { data, error } = await traerTodas(contar =>
+          sb.from("calendar_sacados").select("evento,titulo,sacado_por,sacado_el", contar ? { count: "exact" } : undefined).order("sacado_el", { ascending: false }).order("evento", { ascending: true }));
+        if(error) throw error;
+        return (data || []).map(f => ({ evento: f.evento, titulo: f.titulo || "", sacadoPor: f.sacado_por, sacadoEl: f.sacado_el }));
+      },
+      // Devuelve { devueltos, aTraer }: los que tenían copia ya volvieron;
+      // los de aTraer hay que volver a traerlos de Google Calendar.
+      async devolver(eventos){
+        let devueltos = 0; const aTraer = [];
+        for(let i = 0; i < eventos.length; i += 500){
+          const { data, error } = await sb.rpc("devolver_al_registro", { p_eventos: eventos.slice(i, i + 500) });
+          if(error) throw error;
+          devueltos += Number(data && data.devueltos) || 0;
+          aTraer.push(...((data && data.aTraer) || []));
+        }
+        await recargarTabla("posts");
+        return { devueltos, aTraer };
       },
       async sacar(ids){
         let n = 0;
@@ -10290,7 +10319,7 @@ function renderAuditColumnsHeader(){
 const RV_PAGINA = 100;
 let rv = { grupo:"actividad", buscar:"", soloSeguros:false, elegidos:new Set(), panel:null,
   editId:null, borrador:null, trabajando:false, sugerencias:null, cargando:false, error:"", visibles:RV_PAGINA,
-  vincular:{} };
+  vincular:{}, sacados:null, cargandoSacados:false };
 function esImportado(p){ return !!(p && p.authorName === "Google Calendar" && !p.authorEmail && p.calendarEventId); }
 // Pendiente = sigue como vino: "Otro" y sin lugar.
 function rvPendiente(p){ return esImportado(p) && p.activityType === "otro" && !(p.scopes || []).length; }
@@ -10309,7 +10338,68 @@ function rvGrupos(){
     { key:"gestion", label:t("Recordatorios","Reminders","Lembretes","תזכורות") },
     { key:"sin", label:t("Sin sugerencia","No suggestion","Sem sugestão","ללא הצעה") },
     { key:"ordenados", label:t("Ya ordenados","Already sorted","Já organizados","כבר מסודרים") },
+    { key:"sacados", label:t("Sacados","Removed","Tirados","הוסרו") },
   ];
+}
+function rvCargarSacados(forzar){
+  if((rv.sacados && !forzar) || rv.cargandoSacados) return;
+  rv.cargandoSacados = true;
+  store.revisarCalendar.listaSacados()
+    .then(l => { rv.sacados = l; })
+    .catch(err => { console.error("No se pudo leer lo sacado:", err); rv.sacados = []; })
+    .finally(() => { rv.cargandoSacados = false; render(); });
+}
+// La pestaña "Sacados": lo que se sacó del Registro, para devolverlo.
+function renderSacados(){
+  rvCargarSacados(false);
+  if(!rv.sacados) return `<div class="empty-state"><div class="big">⏳</div>${t("Cargando…","Loading…","Carregando…","...טוען")}</div>`;
+  const q = normalize(rv.buscar);
+  const lista = rv.sacados.filter(x => !q || normalize(x.titulo).includes(q));
+  const enLista = new Set(lista.map(x => x.evento));
+  [...rv.elegidos].forEach(id => { if(!enLista.has(id)) rv.elegidos.delete(id); });
+  const todos = lista.length > 0 && lista.every(x => rv.elegidos.has(x.evento));
+  const n = rv.elegidos.size;
+  const quien = email => { const m = memberByEmail(email); return m ? m.nickname : email; };
+  return `${n ? `<div class="rv-barra" role="toolbar" aria-label="${esc(t("Qué hacer con los elegidos","What to do with the selected ones","O que fazer com os escolhidos","מה לעשות עם הנבחרים"))}">
+      <b>${t("{n} elegidos","{n} selected","{n} escolhidos","{n} נבחרו",{n})}</b>
+      <button type="button" class="prin" data-action="rv-devolver" ${rv.trabajando ? "disabled" : ""}>↩ ${t("Devolver al Registro","Bring back to the Log","Devolver ao Registro","החזרה ליומן")}</button>
+      <button type="button" class="x" data-action="rv-ninguno" aria-label="${esc(t("Soltar todos","Deselect all","Soltar todos","ביטול הבחירה"))}">✕</button>
+    </div>` : ""}
+    ${lista.length ? `<div class="lp-rows">
+      <div class="rv-row rv-todos"><input type="checkbox" data-action="rv-todos" ${todos ? "checked" : ""} aria-label="${esc(t("Elegir todos los de la lista","Select everything in the list","Escolher todos da lista","בחירת כל הרשימה"))}">
+        <span class="rv-fecha">${t("Elegir todos","Select all","Escolher todos","בחירת הכל")}</span>
+        <div class="rv-tit"><span class="rv-n">${t("{n} sacados del Registro. Siguen en Google Calendar.","{n} removed from the Log. Still in Google Calendar.","{n} tirados do Registro. Continuam no Google Calendar.","{n} הוסרו מהיומן. עדיין ב-Google Calendar.",{n:lista.length})}</span></div></div>
+      ${lista.slice(0, rv.visibles).map(x => { const on = rv.elegidos.has(x.evento); return `<div class="rv-row${on ? " on" : ""}">
+        <input type="checkbox" data-action="rv-elegir" data-post-id="${esc(x.evento)}" ${on ? "checked" : ""} aria-label="${esc(t("Elegir «{t}»","Select “{t}”","Escolher «{t}»","בחירת «{t}»",{t:x.titulo}))}">
+        <span class="rv-fecha">${esc(fmtDate(x.sacadoEl))}</span>
+        <div class="rv-tit"><b dir="auto">${esc(x.titulo || t("(Sin título)","(Untitled)","(Sem título)","(ללא כותרת)"))}</b><span class="rv-n">${t("Lo sacó {q}","Removed by {q}","Tirado por {q}","הוסר על ידי {q}",{q:esc(quien(x.sacadoPor))})}</span></div>
+      </div>`; }).join("")}
+      </div>
+      ${lista.length > rv.visibles ? `<button type="button" class="btn-secondary rv-mas" data-action="rv-mas">${t("Ver más ({n} más)","Show more ({n} more)","Ver mais ({n} a mais)","הצגת עוד ({n})",{n:lista.length - rv.visibles})}</button>` : ""}`
+      : `<div class="empty-state"><div class="big">✅</div>${t("No se sacó nada del Registro.","Nothing has been removed from the Log.","Nada foi tirado do Registro.","לא הוסר דבר מהיומן.")}</div>`}`;
+}
+async function rvDevolver(){
+  const eventos = [...rv.elegidos];
+  if(!eventos.length) return;
+  rv.trabajando = true; render();
+  try{
+    const { devueltos, aTraer } = await store.revisarCalendar.devolver(eventos);
+    // Los que no tenían copia se vuelven a traer de Calendar, uno por uno:
+    // si alguno falla (se borró en Calendar), los demás vuelven igual.
+    let traidos = 0, fallaron = 0;
+    for(const id of aTraer){
+      try{ const ev = await fetchCalendarEvent(id); if(ev && ev.id && ev.status !== "cancelled" && await applyCalendarEventToPosts(ev)) traidos++; else fallaron++; }
+      catch(err){ fallaron++; console.error("No se pudo volver a traer de Calendar", id, err); }
+    }
+    rv.elegidos.clear(); rv.sacados = null;
+    const n = devueltos + traidos;
+    showCalendarNotice({ ok: !fallaron, message: fallaron
+      ? t("Volvieron {n} al Registro. {f} no se pudieron traer de Google Calendar (puede que ya no estén ahí).","{n} are back in the Log. {f} couldn't be fetched from Google Calendar (they may no longer be there).","{n} voltaram ao Registro. {f} não puderam ser trazidos do Google Calendar (talvez não estejam mais lá).","{n} חזרו ליומן. {f} לא ניתן היה להביא מ-Google Calendar (ייתכן שכבר אינם שם).",{n, f:fallaron})
+      : t("Listo: {n} volvieron al Registro. Están en «Actividades» (o donde corresponda) para ordenarlos de nuevo.","Done: {n} are back in the Log. They're under “Activities” (or wherever they belong) to sort again.","Pronto: {n} voltaram ao Registro. Estão em «Atividades» (ou onde couber) para organizar de novo.","בוצע: {n} חזרו ליומן. הם ב«פעילויות» (או במקום המתאים) לסידור מחדש.",{n}) });
+  }catch(err){
+    console.error("No se pudo devolver al Registro:", err);
+    showCalendarNotice({ ok:false, message: t("No se pudo ({m}). No cambió nada.","Couldn't do it ({m}). Nothing changed.","Não foi possível ({m}). Nada mudou.","לא ניתן היה ({m}). דבר לא השתנה.",{m:err.code || err.message}) });
+  }finally{ rv.trabajando = false; render(); }
 }
 function rvCargarSugerencias(){
   if(rv.sugerencias || rv.cargando) return;
@@ -10487,7 +10577,15 @@ function renderRevisarCalendar(){
   const porGrupo = {};
   pend.forEach(p => { const g = rvGrupoDe(p); porGrupo[g] = (porGrupo[g] || 0) + 1; });
   porGrupo.ordenados = state.posts.filter(p => esImportado(p) && !rvPendiente(p)).length;
+  if(rv.sacados) porGrupo.sacados = rv.sacados.length;
+  else rvCargarSacados(false);
   const grupos = rvGrupos().filter(g => g.key === "actividad" || g.key === "ordenados" || porGrupo[g.key]);
+  const filtros = `<div class="rv-filtros" role="group" aria-label="${esc(t("Qué mirar","What to look at","O que ver","מה להציג"))}">
+      ${grupos.map(g => `<button type="button" class="rv-chip${rv.grupo === g.key ? " on" : ""}" data-action="rv-grupo" data-key="${g.key}" aria-pressed="${rv.grupo === g.key}">${esc(g.label)}<small>${porGrupo[g.key] || 0}</small></button>`).join("")}
+      <input id="rvBuscar" class="rv-buscar" type="search" value="${esc(rv.buscar)}" placeholder="${esc(t("Buscar: Mendoza, curso, Ran…","Search: Mendoza, course, Ran…","Buscar: Mendoza, curso, Ran…","חיפוש: מנדוסה, קורס, רן…"))}" aria-label="${esc(t("Buscar","Search","Buscar","חיפוש"))}">
+      ${rv.grupo !== "ordenados" && rv.grupo !== "sacados" ? `<label class="rv-seguro"><input type="checkbox" data-action="rv-seguros" ${rv.soloSeguros ? "checked" : ""}> ${t("Solo los seguros","Only the sure ones","Só os seguros","רק הבטוחים")}</label>` : ""}
+    </div>`;
+  if(rv.grupo === "sacados") return filtros + renderSacados();
   const lista = rvLista();
   // Lo elegido que ya no está en la lista (se ordenó, se filtró) se olvida.
   const enLista = new Set(lista.map(p => p.id));
@@ -10495,7 +10593,9 @@ function renderRevisarCalendar(){
   const seguros = lista.filter(p => { const s = rvSugerencia(p); return s && s.confianza === "alta"; }).length;
   const todos = lista.length > 0 && lista.every(p => rv.elegidos.has(p.id));
   const n = rv.elegidos.size;
-  const barra = n ? `<div class="rv-barra" role="toolbar" aria-label="${esc(t("Qué hacer con los elegidos","What to do with the selected ones","O que fazer com os escolhidos","מה לעשות עם הנבחרים"))}">
+  // Mientras se edita una fila, solo el panel (Guardar / Cancelar): con la
+  // barra a la vista, "Sacar del Registro" se tocó creyendo que guardaba.
+  const barra = n && rv.panel !== "editar" ? `<div class="rv-barra" role="toolbar" aria-label="${esc(t("Qué hacer con los elegidos","What to do with the selected ones","O que fazer com os escolhidos","מה לעשות עם הנבחרים"))}">
       <b>${t("{n} elegidos","{n} selected","{n} escolhidos","{n} נבחרו",{n})}</b>
       ${rv.grupo !== "ordenados" ? `<button type="button" class="prin" data-action="rv-sugerido" ${rv.trabajando ? "disabled" : ""}>✓ ${t("Usar lo sugerido","Use the suggestion","Usar o sugerido","שימוש בהצעה")}</button>` : ""}
       <button type="button" data-action="rv-abrir" data-key="tipo" aria-expanded="${rv.panel === "tipo"}">${t("Tipo","Type","Tipo","סוג")} ▾</button>
@@ -10505,11 +10605,7 @@ function renderRevisarCalendar(){
       <button type="button" class="x" data-action="rv-ninguno" aria-label="${esc(t("Soltar todos","Deselect all","Soltar todos","ביטול הבחירה"))}">✕</button>
     </div>` : "";
   return `${rv.error ? `<div class="gate-aviso">${t("No se pudieron leer las sugerencias ({m}). Igual se puede ordenar a mano.","Couldn't read the suggestions ({m}). You can still sort by hand.","Não foi possível ler as sugestões ({m}). Dá para organizar à mão mesmo assim.","לא ניתן היה לקרוא את ההצעות ({m}). עדיין אפשר לסדר ידנית.",{m:esc(rv.error)})}</div>` : ""}
-    <div class="rv-filtros" role="group" aria-label="${esc(t("Qué mirar","What to look at","O que ver","מה להציג"))}">
-      ${grupos.map(g => `<button type="button" class="rv-chip${rv.grupo === g.key ? " on" : ""}" data-action="rv-grupo" data-key="${g.key}" aria-pressed="${rv.grupo === g.key}">${esc(g.label)}<small>${porGrupo[g.key] || 0}</small></button>`).join("")}
-      <input id="rvBuscar" class="rv-buscar" type="search" value="${esc(rv.buscar)}" placeholder="${esc(t("Buscar: Mendoza, curso, Ran…","Search: Mendoza, course, Ran…","Buscar: Mendoza, curso, Ran…","חיפוש: מנדוסה, קורס, רן…"))}" aria-label="${esc(t("Buscar","Search","Buscar","חיפוש"))}">
-      ${rv.grupo !== "ordenados" ? `<label class="rv-seguro"><input type="checkbox" data-action="rv-seguros" ${rv.soloSeguros ? "checked" : ""}> ${t("Solo los seguros","Only the sure ones","Só os seguros","רק הבטוחים")}</label>` : ""}
-    </div>
+    ${filtros}
     ${barra}
     ${rvPanel()}
     ${lista.length ? `<div class="lp-rows">
@@ -10536,7 +10632,7 @@ async function rvAplicar(cambios, mensaje){
     showCalendarNotice({ ok:false, message: t("No se pudo guardar ({m}). No cambió nada.","Couldn't save ({m}). Nothing changed.","Não foi possível salvar ({m}). Nada mudou.","לא ניתן היה לשמור ({m}). דבר לא השתנה.",{m:err.code || err.message}) });
   }finally{ rv.trabajando = false; render(); }
 }
-const rvOrdenados = n => t("Listo: {n} ordenados.","Done: {n} sorted.","Pronto: {n} organizados.","בוצע: {n} סודרו.",{n});
+const rvOrdenados = n => t("Guardado: {n} ordenados. Ya salieron de la lista de pendientes; los ves en «Ya ordenados».","Saved: {n} sorted. They've left the pending list; you'll find them under “Already sorted”.","Salvo: {n} organizados. Já saíram da lista de pendentes; estão em «Já organizados».","נשמר: {n} סודרו. הם יצאו מרשימת הממתינים; הם ב«כבר מסודרים».",{n});
 function rvUsarSugerido(){
   const elegidos = state.posts.filter(p => rv.elegidos.has(p.id));
   const cambios = [];
@@ -10580,15 +10676,15 @@ async function rvSacar(){
   const ids = [...rv.elegidos];
   if(!ids.length) return;
   if(!(await appConfirm(t(
-    "¿Sacar {n} del Registro? Desaparecen de la app (con sus comentarios), pero siguen en Google Calendar y no vuelven a entrar.",
-    "Remove {n} from the Log? They disappear from the app (with their comments), but stay in Google Calendar and won't come back in.",
-    "Tirar {n} do Registro? Somem do app (com seus comentários), mas continuam no Google Calendar e não voltam a entrar.",
-    "להסיר {n} מהיומן? הם ייעלמו מהאפליקציה (עם התגובות), אבל יישארו ב-Google Calendar ולא ייכנסו שוב.",{n:ids.length}),
+    "¿Sacar {n} del Registro? Esto NO es para marcarlos como listos (lo ordenado sale solo de la lista): los BORRA de la app, con sus comentarios. Siguen en Google Calendar, y se pueden devolver desde «Sacados».",
+    "Remove {n} from the Log? This is NOT for marking them as done (sorted ones leave the list on their own): it DELETES them from the app, with their comments. They stay in Google Calendar, and can be brought back from “Removed”.",
+    "Tirar {n} do Registro? Isto NÃO é para marcar como prontos (o que foi organizado sai sozinho da lista): APAGA do app, com os comentários. Continuam no Google Calendar e podem ser devolvidos em «Tirados».",
+    "להסיר {n} מהיומן? זה לא לסימון כ«מוכן» (מה שסודר יוצא מהרשימה לבד): זה מוחק אותם מהאפליקציה, יחד עם התגובות. הם נשארים ב-Google Calendar, ואפשר להחזיר אותם מ«הוסרו».",{n:ids.length}),
     { danger:true, okLabel: t("Sacar del Registro","Remove from the Log","Tirar do Registro","הסרה מהיומן") }))) return;
   rv.trabajando = true; render();
   try{
     const n = await store.revisarCalendar.sacar(ids);
-    rv.elegidos.clear(); rv.panel = null;
+    rv.elegidos.clear(); rv.panel = null; rv.sacados = null;
     showCalendarNotice({ ok:true, message: t("Listo: {n} fuera del Registro. En Google Calendar siguen igual.","Done: {n} out of the Log. They're unchanged in Google Calendar.","Pronto: {n} fora do Registro. No Google Calendar continuam iguais.","בוצע: {n} הוסרו מהיומן. ב-Google Calendar הם ללא שינוי.",{n}) });
   }catch(err){
     console.error("No se pudo sacar del Registro:", err);
@@ -16795,9 +16891,12 @@ document.addEventListener("click", async e=>{
     render();
   },
     "rv-todos": async () => {
-    const lista = rvLista();
-    const todos = lista.length > 0 && lista.every(p => rv.elegidos.has(p.id));
-    if(todos) rv.elegidos.clear(); else lista.forEach(p => rv.elegidos.add(p.id));
+    const q = normalize(rv.buscar);
+    const ids = rv.grupo === "sacados"
+      ? (rv.sacados || []).filter(x => !q || normalize(x.titulo).includes(q)).map(x => x.evento)
+      : rvLista().map(p => p.id);
+    const todos = ids.length > 0 && ids.every(id => rv.elegidos.has(id));
+    if(todos) rv.elegidos.clear(); else ids.forEach(id => rv.elegidos.add(id));
     if(rv.panel === "editar"){ rv.panel = null; rv.borrador = null; }
     render();
   },
@@ -16837,6 +16936,7 @@ document.addEventListener("click", async e=>{
     const f = document.getElementById("rvLibre"); if(f) f.focus();
   },
     "rv-sacar": async () => { rvSacar(); },
+    "rv-devolver": async () => { rvDevolver(); },
     "rv-vincular": async (el) => { rvVincular(el.dataset.nombre); },
     "toggle-more-menu": async (el, e, action, postId) => {
     moreMenuOpen = !moreMenuOpen; renderBottomNav();

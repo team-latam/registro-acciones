@@ -82,6 +82,25 @@ select lab.probar('un integrante no', lab.como('juan@x.com'),
   $q$set local role postgres; insert into public.calendar_sacados(evento,sacado_por) values ('ev8','ana@x.com'); set local role authenticated;
      delete from public.calendar_sacados where evento = 'ev8'$q$, false);
 
+-- ---------- Devolver al Registro ----------
+-- "Sacar" se usó creyendo que marcaba como listo: tiene que poder deshacerse.
+select lab.probar_valor('sacar y devolver deja el posteo como estaba, con lo que tenía', lab.como('ana@x.com'),
+  $q$select public.clasificar_importados('[{"id":"cal_ev1","activity_type":"visita","scopes":[{"type":"pais","country":"Chile"}]}]');
+     select public.sacar_del_registro(array['cal_ev1']);
+     select public.devolver_al_registro(array['ev1'])$q$,
+  $q$select (select activity_type || ':' || (scopes->0->>'country') || ':' || title from public.posts where id = 'cal_ev1')
+         || ' / sacados: ' || (select count(*) from public.calendar_sacados)$q$,
+  'visita:Chile:Visita Tucumán - Ran / sacados: 0');
+select lab.probar_valor('uno sacado sin copia (de antes) deja de estar sacado y se avisa para traerlo de Calendar', lab.como('ana@x.com'),
+  $q$set local role postgres; insert into public.calendar_sacados(evento,titulo,sacado_por) values ('evViejo','Viejo','ana@x.com'); set local role authenticated;
+     create temp table r as select public.devolver_al_registro(array['evViejo']) as v$q$,
+  $q$select (select v::text from r) || ' / ' || (select count(*) from public.calendar_sacados)$q$,
+  '{"aTraer": ["evViejo"], "devueltos": 0} / 0');
+select lab.probar('un integrante no devuelve', lab.como('juan@x.com'),
+  $q$set local role postgres; insert into public.calendar_sacados(evento,titulo,sacado_por) values ('evX','X','ana@x.com'); set local role authenticated;
+     select public.devolver_al_registro(array['evX']);
+     do $d$ begin if exists (select 1 from public.calendar_sacados) then raise exception 'sigue'; end if; end $d$$q$, false);
+
 \set QUIET off
 \echo ''
 select n, case when esperado = obtenido then '  ok' else '  FALLA' end as r, nombre, detalle

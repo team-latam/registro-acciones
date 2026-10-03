@@ -164,9 +164,18 @@ export function createClient(url, clave){
       if(nombre === "sacar_del_registro"){
         const idos = (estado.tablas.posts || []).filter(f => args.p_ids.includes(f.id) && importado(f));
         const t = estado.tablas.calendar_sacados = estado.tablas.calendar_sacados || [];
-        idos.forEach(f => t.push({ evento: f.calendar_event_id, titulo: f.title, sacado_por: quien() }));
+        idos.forEach(f => t.push({ evento: f.calendar_event_id, titulo: f.title, sacado_por: quien(), sacado_el: new Date().toISOString(), fila: copia(f) }));
         estado.tablas.posts = estado.tablas.posts.filter(f => !idos.includes(f));
         return { data: idos.length, error: null };
+      }
+      if(nombre === "devolver_al_registro"){
+        const t = estado.tablas.calendar_sacados = estado.tablas.calendar_sacados || [];
+        let devueltos = 0; const aTraer = [];
+        t.filter(x => args.p_eventos.includes(x.evento)).forEach(x => {
+          if(x.fila){ estado.tablas.posts.push(copia(x.fila)); devueltos++; } else aTraer.push(x.evento);
+        });
+        estado.tablas.calendar_sacados = t.filter(x => !args.p_eventos.includes(x.evento));
+        return { data: { devueltos, aTraer }, error: null };
       }
       return { data: null, error: { code: "PGRST202", message: "no existe la función " + nombre } };
     },
@@ -511,6 +520,8 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   await p.click('[data-action="rv-seguros"]');
   await p.click('[data-action="rv-editar"][data-post-id="cal_ev3"]');
   await p.waitForSelector(".rv-panel #rvTipo");
+  eq("revisar: mientras se edita una fila no se ve la barra (ahí estaba «Sacar del Registro»)",
+     await p.evaluate(() => !!document.querySelector(".rv-barra")), false);
   await p.selectOption("#rvTipo", "seminario");
   await p.selectOption("#rvPais", "Chile");
   await p.click('[data-action="rv-panel-aplicar"]');
@@ -522,12 +533,23 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   await p.click('[data-action="rv-elegir"][data-post-id="cal_ev4"]');
   await p.click('[data-action="rv-sacar"]');
   await p.waitForSelector("#confirmOk", { state: "visible" });
-  eq("revisar: «Sacar del Registro» pregunta antes y explica que en Calendar sigue",
-     await p.$eval("#confirmMessage, .confirm-message, [role=alertdialog] p, #confirmOverlay", e => /siguen en Google Calendar/.test(e.textContent)).catch(() => null), true);
+  eq("revisar: «Sacar del Registro» pregunta antes, aclara que no es para marcar como listo y que en Calendar sigue",
+     await p.$eval("#confirmMessage, .confirm-message, [role=alertdialog] p, #confirmOverlay", e => /NO es para marcarlos como listos/.test(e.textContent) && /Siguen en Google Calendar/.test(e.textContent)).catch(() => null), true);
   await p.click("#confirmOk");
   await hasta(p, () => !(window.__sb.tablas.posts || []).some(x => x.id === "cal_ev4"));
   eq("revisar: se va de la base y queda anotado como sacado",
      [(await base()).posts.some(x => x.id === "cal_ev4"), ((await base()).calendar_sacados || []).map(x => x.evento)], [false, ["ev4"]]);
+  // Y se puede deshacer: "Sacados" › Devolver al Registro.
+  await p.waitForSelector('[data-action="rv-grupo"][data-key="sacados"]');
+  await p.click('[data-action="rv-grupo"][data-key="sacados"]');
+  await p.waitForSelector('.rv-row [data-action="rv-elegir"][data-post-id="ev4"]');
+  eq("revisar: «Sacados» lista lo que se sacó, con quién lo sacó",
+     await p.$eval('.rv-row:has([data-post-id="ev4"]) .rv-tit', e => [...e.children].map(c => c.textContent.trim())), ["Reunión semanal", "Lo sacó benny"]);
+  await p.click('[data-action="rv-elegir"][data-post-id="ev4"]');
+  await p.click('[data-action="rv-devolver"]');
+  await hasta(p, () => (window.__sb.tablas.posts || []).some(x => x.id === "cal_ev4"));
+  eq("revisar: «Devolver al Registro» lo trae de vuelta y deja de estar sacado",
+     [(await base()).posts.some(x => x.id === "cal_ev4"), ((await base()).calendar_sacados || []).length], [true, 0]);
   eq("revisar: sin un solo error", errores, []);
   await p.close();
 }
