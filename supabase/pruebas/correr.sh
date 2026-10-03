@@ -23,7 +23,7 @@ CARPETA="$(cd "$(dirname "$0")" && pwd)"
 PSQL="${PSQL:-psql}"
 
 total=0; malas=0; archivos=0
-for f in "$CARPETA"/9[0-9]-*.sql; do
+for f in "$CARPETA"/[89][0-9]-*.sql; do
   [ -f "$f" ] || continue
   archivos=$((archivos + 1))
   nombre="$(basename "$f")"

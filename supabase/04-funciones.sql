@@ -179,3 +179,71 @@ end $$;
 
 grant execute on function public.guardar_preferencias(jsonb) to authenticated;
 grant execute on function public.guardar_config(text, jsonb) to authenticated;
+
+
+-- ============================================================
+-- Los adjuntos que ya no nombra nadie
+-- ============================================================
+-- Quitar una foto de un posteo, cambiarla por otra o borrar el posteo
+-- entero deja el archivo en el bucket: la app no borra nunca (solo el
+-- admin fijo puede, ver 02-politicas.sql). Así el bucket crece sin techo
+-- —el plan trae 1 GB— y un archivo quitado se sigue pudiendo abrir con su
+-- ruta.
+--
+-- Esto dice qué limpiar, y lo limpia el trabajo semanal de
+-- supabase/limpieza/, por la API del bucket: borrar acá, de la tabla,
+-- dejaría el archivo guardado igual. Devuelve:
+--
+--   total      cuántos archivos hay (sin contar la papelera), para que el
+--              trabajo frene si lo que hay que mover es demasiado;
+--   huerfanos  los que ninguna fila nombra —ni como foto, ni como
+--              adjunto, ni como miniatura de una foto que sí está— y
+--              tienen más de p_gracia días: un archivo se sube ANTES de
+--              escribir la fila que lo nombra, y en ese rato parece
+--              huérfano;
+--   vencidos   lo que lleva más de p_papelera días en la papelera: eso sí
+--              se borra de verdad;
+--   restaurar  si se pide una fecha, lo que la limpieza movió ese día,
+--              para devolverlo a su lugar.
+--
+-- Solo la puede usar la llave de servicio: lee el bucket y todas las
+-- filas por encima de las políticas.
+create or replace function public.fecha_de_papelera(nombre text) returns date
+  language plpgsql immutable set search_path = '' as $$
+begin
+  if nombre !~ '^papelera/\d{4}-\d{2}-\d{2}/' then return null; end if;
+  return substr(nombre, 10, 10)::date;
+exception when others then return null;   -- una fecha que no existe
+end $$;
+
+create or replace function public.limpieza_del_bucket(
+  p_gracia integer default 2, p_papelera integer default 30, p_restaurar date default null)
+returns jsonb language sql stable security definer set search_path = '' as $$
+  with nombrados as (
+    select unnest(p.images) as ruta from public.posts p
+    union all select a ->> 'path' from public.posts p, jsonb_array_elements(p.files) a
+    union all select unnest(r.images) from public.replies r
+    union all select a ->> 'path' from public.replies r, jsonb_array_elements(r.files) a
+  ), usados as (
+    select ruta from nombrados where ruta is not null
+    union
+    select regexp_replace(ruta, '\.[A-Za-z0-9]+$', '') || '.min.jpg' from nombrados where ruta is not null
+  ), objetos as (
+    select o.name, o.created_at from storage.objects o where o.bucket_id = 'adjuntos'
+  )
+  select jsonb_build_object(
+    'total', (select count(*) from objetos where name not like 'papelera/%'),
+    'huerfanos', coalesce((select jsonb_agg(o.name order by o.name) from objetos o
+        where o.name not like 'papelera/%'
+          and o.created_at < now() - make_interval(days => greatest(p_gracia, 1))
+          and not exists (select 1 from usados u where u.ruta = o.name)), '[]'::jsonb),
+    'vencidos', coalesce((select jsonb_agg(o.name order by o.name) from objetos o
+        where public.fecha_de_papelera(o.name) < (now() at time zone 'utc')::date - greatest(p_papelera, 7)), '[]'::jsonb),
+    'restaurar', coalesce((select jsonb_agg(o.name order by o.name) from objetos o
+        where p_restaurar is not null and public.fecha_de_papelera(o.name) = p_restaurar), '[]'::jsonb))
+$$;
+
+-- En Supabase toda función nueva de `public` se puede llamar de entrada
+-- desde el navegador: hay que sacárselo explícitamente.
+revoke execute on function public.limpieza_del_bucket(integer, integer, date) from public, anon, authenticated;
+grant execute on function public.limpieza_del_bucket(integer, integer, date) to service_role;

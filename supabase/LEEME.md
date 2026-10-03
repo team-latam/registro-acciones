@@ -94,7 +94,7 @@ Se aplican en orden. Todos se pueden correr más de una vez sin romper nada
 | `01-tablas.sql` | Las 8 tablas y el bucket de adjuntos |
 | `02-politicas.sql` | Quién puede tocar qué. Es el equivalente de `firestore.rules` |
 | `03-validacion.sql` | Qué forma tiene que tener lo que se guarda |
-| `04-funciones.sql` | Lo que hace la base y no el navegador (me gusta, fechas) |
+| `04-funciones.sql` | Lo que hace la base y no el navegador (me gusta, fechas, qué sobra en el bucket) |
 | `05-importar.sql` | La puerta por la que entra el respaldo de Firebase, también en la importación final |
 | `06-tiempo-real.sql` | Que los cambios lleguen solos a las pantallas abiertas |
 | `09-contenido-vacio.sql` | Saca el relleno de los eventos de Calendar sin descripción |
@@ -161,11 +161,13 @@ toca lo que ya está y no saca nada. Sirve para probar.
 
 ## El otro secreto
 
-Hay un segundo trabajo automático que también necesita algo tuyo: el que
+Hay dos trabajos automáticos más que también necesitan algo tuyo: el que
 trae los cambios de Google Calendar todas las madrugadas
-(`sync-calendar/LEEME.md`). Ese usa la **llave de servicio**
-(`SUPABASE_SERVICE_ROLE_KEY`), que es otra cosa distinta de la dirección de
-la base de arriba. Los dos secretos se cargan en el mismo lugar.
+(`sync-calendar/LEEME.md`) y el que limpia del bucket los archivos que ya
+no usa nadie, los domingos (`limpieza/LEEME.md`). Los dos usan la **llave
+de servicio** (`SUPABASE_SERVICE_ROLE_KEY`), que es otra cosa distinta de
+la dirección de la base de arriba. Los secretos se cargan todos en el
+mismo lugar.
 
 ---
 

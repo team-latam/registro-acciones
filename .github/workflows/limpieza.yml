@@ -1,0 +1,94 @@
+# ============================================================
+# La limpieza del bucket, una vez por semana
+# ============================================================
+# Los archivos que ya no nombra ninguna fila (una foto quitada o cambiada,
+# los adjuntos de un posteo borrado) se quedaban en el bucket para siempre:
+# ocupaban lugar del GB del plan, y quien tuviera la ruta los seguía
+# pudiendo abrir. Esto los pasa a una papelera fechada y borra lo que
+# lleva más de 30 días ahí. El detalle, en supabase/limpieza/LEEME.md.
+#
+# Usa la misma llave de servicio que el sincronizador de Calendar.
+# ============================================================
+name: Limpieza del bucket
+
+on:
+  schedule:
+    # Domingos 07:30 UTC = 04:30 en Argentina: después del sincronizador
+    # de Calendar y con el equipo durmiendo.
+    - cron: '30 7 * * 0'
+  # A mano, desde la pestaña Actions.
+  workflow_dispatch:
+    inputs:
+      en_seco:
+        description: 'Solo decir qué haría, sin mover ni borrar nada'
+        type: boolean
+        default: false
+      sin_tope:
+        description: 'Mover aunque sea más de un cuarto del bucket (solo después de revisar la lista)'
+        type: boolean
+        default: false
+      restaurar:
+        description: 'Devolver a su lugar lo que la limpieza movió ese día (AAAA-MM-DD). Vacío = limpiar'
+        type: string
+        default: ''
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/limpieza/**'
+      - '.github/workflows/limpieza.yml'
+  pull_request:
+    paths:
+      - 'supabase/limpieza/**'
+
+jobs:
+  probar:
+    name: La prueba de la limpieza
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Contra un Supabase de mentira
+        run: ./supabase/limpieza/pruebas/correr.sh
+
+  limpiar:
+    name: Limpiar
+    needs: probar
+    # En un push solo se prueba. Se limpia los domingos y cuando se pide.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+
+      # Sin la llave no puede hacer nada, pero tampoco tiene sentido que la
+      # corrida figure en rojo por eso: avisa qué falta y termina bien.
+      - name: ¿Está la llave?
+        id: revisar
+        env:
+          LLAVE: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          if [ -z "$LLAVE" ]; then
+            echo "hay=no" >> "$GITHUB_OUTPUT"
+            echo "### Falta el secreto SUPABASE_SERVICE_ROLE_KEY" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "Es el mismo del sincronizador de Calendar: supabase/sync-calendar/LEEME.md." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "hay=si" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Limpiar
+        if: steps.revisar.outputs.hay == 'si'
+        # Lo que se escribe a mano entra por variables, nunca pegado adentro
+        # del comando: así no hay forma de que se ejecute como otra cosa.
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          EN_SECO: ${{ inputs.en_seco && '1' || '' }}
+          SIN_TOPE: ${{ inputs.sin_tope && '1' || '' }}
+          RESTAURAR: ${{ inputs.restaurar }}
+        # `set -o pipefail`: sin eso, el paso toma el resultado de `tee`,
+        # que siempre anda, y queda en verde aunque la limpieza falle.
+        run: |
+          set -o pipefail
+          node supabase/limpieza/limpiar.mjs | tee -a "$GITHUB_STEP_SUMMARY"
