@@ -558,8 +558,8 @@
   }
   .zone-name:hover, .zone-name:focus{ outline:none; border-bottom-color:var(--border); }
   .zone-rm{
-    width:24px; height:24px; border-radius:50%; border:none; background:transparent; color:var(--text-muted);
-    font-size:13px; cursor:pointer; flex:none; line-height:24px; text-align:center; padding:0;
+    width:30px; height:30px; border-radius:50%; border:none; background:transparent; color:var(--text-muted);
+    font-size:13px; cursor:pointer; flex:none; line-height:30px; text-align:center; padding:0;
   }
   .zone-rm:hover:not(:disabled){ background:var(--danger-soft); color:var(--danger); }
   .zone-rm:disabled{ opacity:0.25; cursor:not-allowed; }
@@ -571,7 +571,10 @@
     border:1.5px solid var(--border); background:var(--bg); color:var(--text); font-family:inherit;
     font-size:12px; font-weight:700; border-radius:999px; padding:6px 12px; cursor:pointer; flex:none;
   }
-  @media (max-width:520px){ .zone-countries{ grid-template-columns:1fr; } .country-row{ border-inline-end:none; } }
+  /* minmax(0,1fr) y min-width:0: con "1fr" a secas la fila no podía ser
+     más angosta que su contenido ("San Vicente y las Granadinas" más el
+     selector) y se salía de la tarjeta, con el selector cortado. */
+  @media (max-width:520px){ .zone-countries{ grid-template-columns:minmax(0,1fr); } .country-row{ border-inline-end:none; min-width:0; } }
   /* Filas de configuración genéricas (ícono + texto + control), usadas
      hoy en Adjuntos — mismo lenguaje visual que .zone-section/.country-row
      en vez de labels sueltos arriba de inputs. */
@@ -686,9 +689,11 @@
     .zone-edit-row{ grid-template-columns:38px 1fr; }
     .tipo-meta{ grid-column:1 / -1; justify-self:stretch; justify-content:flex-start; }
   }
+  /* Las ✕ de borrar medían 18px (y 16 en los chips de documentos): un
+     blanco imposible con el dedo y chico hasta con el mouse. */
   .zone-edit-row .rm{
-    width:18px; height:18px; border-radius:50%; background:var(--danger); color:#fff; border:none;
-    font-size:10px; cursor:pointer; line-height:18px; text-align:center; padding:0; flex-shrink:0;
+    width:26px; height:26px; border-radius:50%; background:var(--danger); color:#fff; border:none;
+    font-size:11px; cursor:pointer; line-height:26px; text-align:center; padding:0; flex-shrink:0;
   }
   .zone-edit-row .rm:disabled{ background:var(--border); color:var(--text-muted); cursor:not-allowed; }
   .zone-add-row{ display:flex; gap:8px; margin-top:6px; }
@@ -1214,6 +1219,14 @@
   }
   .modal-wrap{ position:relative; }
   #postForm{ overflow-y:auto; flex:1; min-height:0; padding-inline-end:4px; margin-inline-end:-4px; }
+  /* Cancelar / Publicar quedan pegados al borde de abajo mientras el resto
+     del formulario scrollea: antes viajaban con él, y al editar un evento
+     largo (adjuntos, tipos, hint) había que ir a buscarlos al fondo — en
+     el celular directamente no se veían. */
+  #postForm .modal-actions{
+    position:sticky; bottom:0; margin-top:10px; padding:10px 0 2px;
+    background:var(--card); border-top:1px solid var(--border);
+  }
   .field{ margin-bottom:14px; }
   .field label{ display:block; font-size:12px; font-weight:700; color:var(--text-muted); margin-bottom:5px; text-transform:uppercase; letter-spacing:0.4px; }
   .field input[type=text], .field textarea, .field select, .field input[type=url]{
@@ -1437,15 +1450,17 @@
   /* Pegado a lo que saca. Empujarlo al borde derecho con margin:auto lo
      dejaba lejísimos del archivo en una pantalla ancha. */
   .doc-fila .rm{
-    width:18px; height:18px; border-radius:50%; background:none;
-    border:none; color:var(--text-muted); font-size:11px; cursor:pointer; line-height:18px; padding:0;
+    width:24px; height:24px; border-radius:50%; background:none;
+    border:none; color:var(--text-muted); font-size:12px; cursor:pointer; line-height:24px; padding:0;
   }
   .doc-fila .rm:hover{ background:var(--danger-bg); color:var(--danger); }
 
   /* Documentos esperados, en Configuración > Tipos de actividad */
   .tipo-docs{
     display:flex; align-items:center; flex-wrap:wrap; gap:6px;
-    padding:6px 0 10px 0; margin-top:-6px;
+    /* El mismo margen lateral que la fila de arriba (.zone-edit-row):
+       sin él, el rótulo quedaba pegado al borde de la tarjeta. */
+    padding:6px 8px 10px; margin-top:-6px;
   }
   .tipo-docs-rotulo{ font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.03em; }
   .doc-chip{
@@ -1453,8 +1468,8 @@
     border:1px solid var(--border); border-radius:999px; padding:2px 4px 2px 10px; font-size:12px; font-weight:600;
   }
   .doc-chip .rm{
-    width:16px; height:16px; border-radius:50%; background:none; border:none;
-    color:var(--text-muted); font-size:10px; cursor:pointer; line-height:16px; padding:0;
+    width:22px; height:22px; border-radius:50%; background:none; border:none;
+    color:var(--text-muted); font-size:11px; cursor:pointer; line-height:22px; padding:0;
   }
   .doc-chip .rm:hover{ background:var(--danger-bg); color:var(--danger); }
   .doc-nuevo-input{
@@ -1531,9 +1546,9 @@
   /* Punto rojo de @menciones sin ver (ver getUnseenMentionCount), hoy
      colgado de la campanita en vez del avatar. */
   .mention-dot{
-    position:absolute; top:-2px; inset-inline-end:-2px; min-width:16px; height:16px; padding:0 3px; border-radius:999px;
-    background:var(--danger); color:#fff; font-size:9.5px; font-weight:800; display:flex; align-items:center;
-    justify-content:center; border:2px solid var(--petroleo-dark);
+    position:absolute; top:-5px; inset-inline-end:-5px; min-width:20px; height:20px; padding:0 4px; border-radius:999px;
+    background:var(--danger); color:#fff; font-size:11px; font-weight:800; display:flex; align-items:center;
+    justify-content:center; border:2px solid var(--petroleo-dark); line-height:1;
   }
 
   /* Campanita de @menciones, entre "+ Nuevo evento" y el avatar: mismo
@@ -1686,6 +1701,14 @@
      como el menú desplegable del avatar en el header — pasaba porque el
      header solo tiene z-index:40, muy por debajo de esos 400-1000. */
   #map{ height:480px; border-radius:var(--radius-lg); box-shadow:var(--shadow); border:1px solid var(--border); position:relative; z-index:0; }
+  /* Cuando Leaflet no llegó (CDN bloqueado, sin conexión): un aviso en
+     vez del recuadro blanco mudo. */
+  .map-fallback{
+    display:flex; flex-direction:column; align-items:center; gap:14px; padding:48px 20px; text-align:center;
+    background:var(--card); border:1px dashed var(--border); border-radius:var(--radius-lg);
+    color:var(--text-muted); font-size:14px; line-height:1.5;
+  }
+  .map-fallback .map-fallback-ico{ font-size:34px; }
   .breadcrumb{ font-size:12.5px; color:var(--text-muted); margin-bottom:12px; }
   .breadcrumb a{ cursor:pointer; font-weight:700; }
   .city-list{ display:flex; flex-direction:column; gap:8px; }
@@ -1826,6 +1849,9 @@
   }
   .cal-bar:hover{ filter:brightness(0.94); }
   .cal-bar.span{ font-weight:700; }
+  /* En modo oscuro el color de zona a pleno encandila contra el fondo:
+     las barras de varios días se apagan un poco. */
+  html[data-theme="dark"] .cal-bar.span{ filter:brightness(0.8) saturate(0.85); }
   /* Punta cuadrada del lado por el que el evento sigue fuera de la semana. */
   .cal-bar.cont-start{ border-start-start-radius:0; border-end-start-radius:0; }
   .cal-bar.cont-end{ border-start-end-radius:0; border-end-end-radius:0; }
@@ -2145,11 +2171,30 @@
     .breadcrumb a{ display:inline-block; padding:7px 0; }
     .year-month-name{ padding:7px 0 8px; }
     .um-nickname-edit{ padding:8px; font-size:14px; }
-    .zone-rm{ width:32px; height:32px; line-height:32px; }
-    .zone-edit-row .rm{ width:28px; height:28px; line-height:28px; font-size:12px; }
+    .zone-rm{ width:36px; height:36px; line-height:36px; }
+    .zone-edit-row .rm{ width:32px; height:32px; line-height:32px; font-size:13px; }
+    .doc-chip .rm, .doc-fila .rm{ width:28px; height:28px; line-height:28px; font-size:12px; }
     .zone-bar .zone-swatch{ width:28px; height:28px; border-radius:8px; }
     .zone-name, .color-hex, .tipo-icon-input, .zone-label-input{ padding-block:7px; }
     input[type=checkbox][data-action]{ width:20px; min-width:20px; height:20px; }
+    /* "+ Agregar tipo" se partía en tres renglones al lado de los dos
+       campos: si no entra, baja a su propia fila. */
+    .zone-add-row{ flex-wrap:wrap; }
+    .zone-add-row .btn-mini{ white-space:nowrap; flex:1 0 auto; }
+    /* El ID del calendario es largo: el campo ocupa todo el ancho y el
+       botón de desbloquear va abajo, en vez de cortarse a la mitad. */
+    .locked-field{ flex-wrap:wrap; }
+    /* Con .field adelante para ganarle a ".field input[type=text]" (más
+       específico que ".locked-field input"); si no, la letra no se achica. */
+    .field .locked-field input[type=text]{ flex:1 1 100%; font-size:10.5px; padding-inline:8px; }
+    /* El rótulo "Documentos esperados" en su propia línea: al lado del
+       campo y del +, el + se caía solo a la línea de abajo. */
+    .tipo-docs-rotulo{ flex:1 0 100%; }
+    /* El + se esconde mientras se baja y vuelve al subir (ver
+       updateFabHidden): tapaba la esquina de cada tarjeta — Borrar, los
+       números de Reportes, el estado de un hito. */
+    .fab-wrap{ transition:transform .2s ease; }
+    .fab-wrap.escondido{ transform:translateY(calc(100% + 24px)); }
   }
 </style>
 </head>
@@ -8307,7 +8352,7 @@ function renderMentionsMenuItems(hasInvite, upcoming){
     ${replies.map(r=>`
       <button type="button" class="mention-item" data-action="goto-mention" data-post-id="${esc(r.postId)}" data-reply-id="${esc(r.replyId)}">
         <span class="mi-author">${authorLabelHtml(r.authorEmail, r.authorName) || t("Alguien","Someone","Alguém","מישהו/י")}</span>
-        <span class="mi-content">${esc(String(r.content||"").slice(0,90))}</span>
+        <span class="mi-content" dir="auto">${esc(String(r.content||"").slice(0,90))}</span>
         <span class="mi-date">${fmtDateTime(r.createdAt)}</span>
       </button>`).join("")}` : "";
   const me = hasInvite ? myRosterEntry() : null;
@@ -8328,7 +8373,7 @@ function renderMentionsMenuItems(hasInvite, upcoming){
   return inviteItem + upcomingItems + replyItems + mentionItems + recent.map(m=>`
     <button type="button" class="mention-item" data-action="goto-mention" data-post-id="${esc(m.postId)}" ${m.replyId ? `data-reply-id="${esc(m.replyId)}"` : ""}>
       <span class="mi-author">${authorLabelHtml(m.authorEmail, m.authorName) || t("Alguien","Someone","Alguém","מישהו/י")}</span>
-      <span class="mi-content">${esc((m.content||"").slice(0,80))}</span>
+      <span class="mi-content" dir="auto">${esc((m.content||"").slice(0,80))}</span>
       <span class="mi-date">${fmtDateTime(m.createdAt)}</span>
     </button>`).join("");
 }
@@ -9049,10 +9094,10 @@ function renderCalendarSection(){
   return `
       <div class="hint" style="margin-bottom:16px;">
         ${t(
-          "Google Calendar al que van los Eventos - la Rutina no - . Si lo cambiás, los ya cargados se quedan donde están.",
-          "Google Calendar where Events go - Routine doesn't - . If you change it, existing ones stay where they are.",
-          "Google Calendar para onde vão os Eventos - a Rotina não - . Se trocar, os já criados ficam onde estão.",
-          "Google Calendar שאליו הולכים האירועים - שגרה לא - . אם משנים אותו, הקיימים נשארים במקומם."
+          "Google Calendar al que van los Eventos (la Rutina no). Si lo cambiás, los ya cargados se quedan donde están.",
+          "Google Calendar where Events go (Routines don't). If you change it, the ones already created stay where they are.",
+          "Google Calendar para onde vão os Eventos (a Rotina não). Se trocar, os já criados ficam onde estão.",
+          "Google Calendar שאליו נשלחים האירועים (שגרה לא). אם משנים אותו, הקיימים נשארים במקומם."
         )}
       </div>
       <div class="field">
@@ -9760,7 +9805,7 @@ function renderDocumentacion(post){
   const cabeza = `<button type="button" class="doc-linea${completo ? " ok" : ""}"
       data-action="toggle-docs" data-post-id="${post.id}" aria-expanded="${abierto}">
       📄 ${titulo} <span class="doc-cuenta${completo ? " completo" : ""}">${hay}/${total}</span>
-      <span class="sep" aria-hidden="true">·</span>${resumen}
+      ${abierto ? "" : `<span class="sep" aria-hidden="true">·</span>${resumen}`}
       <span class="chev" aria-hidden="true">${abierto ? "▲" : "▼"}</span>
     </button>`;
   if(!abierto) return cabeza;
@@ -9973,9 +10018,9 @@ function renderPostCard(post, replies){
         </div>
         ${scopesHtml ? `<div class="post-scopes post-scopes-head">${scopesHtml}</div>` : ""}
       </div>
-      ${showTitle ? `<h3 style="margin:6px 0 0 0;font-size:16px;color:var(--ink);${post.cancelled?"text-decoration:line-through;opacity:0.7;":""}">${esc(tr.displayTitle)}</h3>` : ""}
+      ${showTitle ? `<h3 dir="auto" style="margin:6px 0 0 0;font-size:16px;color:var(--ink);${post.cancelled?"text-decoration:line-through;opacity:0.7;":""}">${esc(tr.displayTitle)}</h3>` : ""}
       ${metaBits.length ? `<div class="hint" style="margin-top:4px;">${metaBits.join(" · ")}</div>` : ""}
-      ${tr.displayContent ? `<div class="post-content">${nl2br(tr.displayContent)}</div>` : ""}
+      ${tr.displayContent ? `<div class="post-content" dir="auto">${nl2br(tr.displayContent)}</div>` : ""}
       ${tr.toggleHtml}
       ${!scopesHtml && post.activityType !== "rutina" ? `<div class="hint" style="color:var(--danger);">⚠️ ${t("Sin Dónde definido — editalo para asignarle un país/ciudad.","No Where set — edit it to assign a country/city.","Sem Onde definido — edite para atribuir um país/cidade.",".לא הוגדר \"איפה\" — ערוך/כי כדי להקצות מדינה/עיר")}</div>` : ""}
       ${linksHtml ? `<div class="post-links">${linksHtml}</div>` : ""}
@@ -10068,7 +10113,7 @@ function renderReply(r){
         <span class="reply-author">${r.system ? `${esc(r.icon||"🔔")} ` : ""}${authorLabelHtml(r.authorEmail, r.authorName) || t("Anónimo","Anonymous","Anônimo","אנונימי")}</span>
         <span class="reply-date">${fmtDateTime(r.createdAt)}</span>
       </div>
-      <div class="reply-content">${nl2br(tr.displayContent)}</div>
+      <div class="reply-content" dir="auto">${nl2br(tr.displayContent)}</div>
       ${tr.toggleHtml}
       ${scopesHtml ? `<div class="reply-scopes">${scopesHtml}</div>` : ""}
       ${linksHtml ? `<div class="reply-links">${linksHtml}</div>` : ""}
@@ -10336,7 +10381,8 @@ function fechasEnVentana(post, desdeISO, hastaISO){
   return (inicio <= hastaISO && fin >= desdeISO) ? [inicio < desdeISO ? desdeISO : inicio] : [];
 }
 
-// Los años que tienen algo cargado, del más nuevo al más viejo. Se mira
+// Los años que tienen algo cargado, en orden (el reporte arranca en el
+// año actual igual, ver reporteVista). Se mira
 // la fecha de la actividad y no la de carga: alguien puede cargar hoy
 // algo del año pasado, y el reporte es de cuándo pasó.
 function aniosConDatos(){
@@ -10348,7 +10394,7 @@ function aniosConDatos(){
     if(/^\d{4}/.test(f)) anios.add(f.slice(0,4));
   });
   anios.add(todayISO().slice(0,4));
-  return [...anios].sort().reverse();
+  return [...anios].sort();
 }
 
 // El período elegido, en fechas. Trimestre 0 = el año entero.
@@ -10619,6 +10665,19 @@ function renderPaisesView(){
   const counts = computePlaceCounts();
   const toolbar = `<div class="paises-toolbar">${toggle}${renderZoneLegend()}</div>`;
   if(sub === "mapa"){
+    // Leaflet se carga con <script> clásico antes que la app, así que a
+    // esta altura o está o no va a estar: sin él, un aviso en vez del
+    // recuadro blanco (ver initOrUpdateMap, que también lo salta).
+    if(!window.L || !window.L.markerClusterGroup){
+      return `${toolbar}<div class="map-fallback" role="status">
+        <span class="map-fallback-ico" aria-hidden="true">🗺️</span>
+        <span>${t("El mapa no se pudo cargar: no hay conexión con el servicio de mapas. La lista muestra lo mismo, país por país.",
+                  "The map couldn't load: no connection to the map service. The list shows the same, country by country.",
+                  "O mapa não pôde ser carregado: sem conexão com o serviço de mapas. A lista mostra o mesmo, país por país.",
+                  "לא ניתן לטעון את המפה: אין חיבור לשירות המפות. הרשימה מציגה את אותו המידע, מדינה אחר מדינה.")}</span>
+        <button type="button" class="btn-secondary" data-action="paises-subview" data-key="lista">${t("Ver la lista","See the list","Ver a lista","לרשימה")}</button>
+      </div>`;
+    }
     return `${toolbar}<div id="map"></div>`;
   }
   if(state.countryDrill && byCountryExists(state.countryDrill)){
@@ -11945,7 +12004,7 @@ function calendarioChip(p, iso){
   // evento de varios días no significa nada.
   const time = p.startTime && (p.startDate || p.date) === iso ? `<b>${esc(fmtHHMM(p.startTime))}</b> ` : "";
   return `<button type="button" class="cal-chip${p.cancelled?" cancelled":""}${p.hito?" hito":""}${pastClass(iso)}" data-action="cal-open" data-post-id="${esc(p.id)}"${occAttr(p)} title="${esc(label)}">
-      <span class="cal-dot" style="background:${calendarioColor(p)}"></span><span class="cal-txt">${type.icon} ${time}${esc(label)}</span>
+      <span class="cal-dot" style="background:${calendarioColor(p)}"></span><span class="cal-txt" dir="auto">${type.icon} ${time}${esc(label)}</span>
     </button>`;
 }
 
@@ -12217,7 +12276,7 @@ function overflowsIn(overflow, it){
 function calendarioBar(it, weekDays){
   if(it.holiday){
     return `<button type="button" class="cal-bar holiday" style="grid-column:${it.from+1} / span 1;grid-row:${it.lane+1};color:${it.holidayColor}" data-action="cal-open-holiday" data-date="${esc(it.holidayDate)}" data-hi="${it.holidayIdx}" title="${esc(it.holiday)}">
-        <span class="cal-dot" style="background:${it.holidayColor}"></span><span class="cal-txt">${esc(it.holiday)}</span>
+        <span class="cal-dot" style="background:${it.holidayColor}"></span><span class="cal-txt" dir="auto">${esc(it.holiday)}</span>
       </button>`;
   }
   const p = it.post;
@@ -12240,7 +12299,7 @@ function calendarioBar(it, weekDays){
   return `<button type="button" class="cal-bar${multi?" span":""}${p.cancelled?" cancelled":""}${p.hito?" hito":""}${pastClass(weekDays[it.from])}${contStart?" cont-start":""}${contEnd?" cont-end":""}"
       style="grid-column:${it.from+1} / span ${it.to - it.from + 1};grid-row:${it.lane+1};${style}"
       data-action="cal-open" data-post-id="${esc(p.id)}"${occAttr(p)} title="${esc(label)}">
-      ${multi ? "" : `<span class="cal-dot" style="background:${color}"></span>`}<span class="cal-txt">${type.icon} ${time}${esc(label)}</span>
+      ${multi ? "" : `<span class="cal-dot" style="background:${color}"></span>`}<span class="cal-txt" dir="auto">${type.icon} ${time}${esc(label)}</span>
     </button>`;
 }
 
@@ -12335,7 +12394,7 @@ function calendarioBlock(it){
   const width = 100 / it.cols;
   return `<button type="button" class="cal-block${p.cancelled?" cancelled":""}${pastClass(it.iso)}" data-action="cal-open" data-post-id="${esc(p.id)}"${occAttr(p)}
       style="top:${top}%;height:${height}%;inset-inline-start:${it.col*width}%;width:${width}%;border-inline-start-color:${calendarioColor(p)}">
-      <b>${esc(fmtHHMM(p.startTime))}</b> ${esc(calendarioLabel(p))}
+      <span dir="auto"><b>${esc(fmtHHMM(p.startTime))}</b> ${esc(calendarioLabel(p))}</span>
     </button>`;
 }
 
@@ -12701,6 +12760,20 @@ function updateScrollTop(){
 }
 window.addEventListener("scroll", updateScrollTop, { passive:true });
 window.addEventListener("resize", updateScrollTop);
+// El + flotante se esconde mientras se BAJA y vuelve apenas se sube un
+// poco (o al llegar arriba): tapaba lo que vive en la esquina de cada
+// tarjeta. Acá solo se pone la clase; el CSS decide que en escritorio no
+// pase nada (ahí sobra lugar al costado). Con el menú abierto no se toca.
+let fabLastY = window.scrollY;
+function updateFabHidden(){
+  const fab = document.getElementById("fab");
+  if(!fab) return;
+  const y = window.scrollY, delta = y - fabLastY;
+  if(Math.abs(delta) < 6) return;
+  fabLastY = y;
+  fab.classList.toggle("escondido", delta > 0 && y > 160 && !fabOpen);
+}
+window.addEventListener("scroll", updateFabHidden, { passive:true });
 function scrollToTop(){
   const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   window.scrollTo({ top:0, behavior: reduce ? "auto" : "smooth" });
@@ -13291,7 +13364,7 @@ function renderEventCard(){
     <div class="ev-head">
       <span class="ev-dot" style="background:${calendarioColor(post)}"></span>
       <div class="ev-head-text">
-        <h2 class="ev-title" id="eventCardTitle"${post.cancelled?' style="text-decoration:line-through;opacity:0.7;"':""}>${esc(calendarioLabel(post))}</h2>
+        <h2 class="ev-title" id="eventCardTitle" dir="auto"${post.cancelled?' style="text-decoration:line-through;opacity:0.7;"':""}>${esc(calendarioLabel(post))}</h2>
         <div class="ev-when">${esc(dateLabel)} · ${esc(timeLabel)}${repeatLabel ? ` · 🔁 ${esc(repeatLabel)}` : ""}</div>
       </div>
     </div>
