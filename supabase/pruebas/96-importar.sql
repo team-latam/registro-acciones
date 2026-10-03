@@ -73,6 +73,120 @@ select lab.probar_valor('y el conteo sirve para comprobar que está todo', lab.c
   $q$select public.importar('posts', lab.posteo_viejo())$q$,
   $q$select filas::text from public.cuantas_filas() where tabla='posts'$q$, '1');
 
+-- ============================================================
+-- La importación FINAL: lo que viene de Firebase pisa lo que hay
+-- ============================================================
+-- El mismo posteo, editado en Firebase después de la primera importación:
+-- otro título, otra fecha de fin, cancelado, con un «me gusta» y una foto.
+create or replace function lab.posteo_editado() returns jsonb language sql immutable as $f$
+  select '[{"id":"p_viejo","title":"De 2019, corregido","content":"C2","date":"2019-03-05",
+             "start_date":"2019-03-05","end_date":"2019-03-06","activity_type":"evento",
+             "author_name":"Alguien","author_email":"alguien@x.com","cancelled":true,
+             "liked_by":["ana@x.com"],"images":["posts/p_viejo/img0_0123456789ab.jpg"],
+             "created_at":"2019-03-05T10:00:00Z","last_edited_at":"2026-09-30T10:00:00Z"}]'::jsonb
+$f$;
+grant execute on function lab.posteo_editado() to authenticated;
+
+select lab.probar_valor('sin reemplazar, lo que ya estaba se saltea, como siempre', lab.como('benny@team-latam.com'),
+  $q$select public.importar('posts', lab.posteo_viejo()); select public.importar('posts', lab.posteo_editado())$q$,
+  $q$select title from public.posts where id='p_viejo'$q$, 'De 2019');
+select lab.probar_valor('reemplazando, lo editado en Firebase llega', lab.como('benny@team-latam.com'),
+  $q$select public.importar('posts', lab.posteo_viejo()); select public.importar('posts', lab.posteo_editado(), true)$q$,
+  $q$select title || ' / ' || end_date || ' / ' || cancelled || ' / ' || array_to_string(liked_by, ',') || ' / ' || array_to_string(images, ',')
+     from public.posts where id='p_viejo'$q$,
+  'De 2019, corregido / 2019-03-06 / true / ana@x.com / posts/p_viejo/img0_0123456789ab.jpg');
+select lab.probar_valor('con sus fechas de Firebase, no con la hora de ahora', lab.como('benny@team-latam.com'),
+  $q$select public.importar('posts', lab.posteo_viejo()); select public.importar('posts', lab.posteo_editado(), true)$q$,
+  $q$select to_char(created_at at time zone 'UTC','YYYY-MM-DD') || ' / ' || to_char(last_edited_at at time zone 'UTC','YYYY-MM-DD')
+     from public.posts where id='p_viejo'$q$, '2019-03-05 / 2026-09-30');
+select lab.probar_valor('y cuenta la fila que cambió', lab.como('benny@team-latam.com'),
+  $q$select public.importar('posts', lab.posteo_viejo())$q$,
+  $q$select public.importar('posts', lab.posteo_editado(), true)::text$q$, '1');
+select lab.probar_valor('una fila que vino igual no se reescribe ni se cuenta', lab.como('benny@team-latam.com'),
+  $q$select public.importar('posts', lab.posteo_editado(), true)$q$,
+  $q$select public.importar('posts', lab.posteo_editado(), true)::text$q$, '0');
+select lab.probar_valor('lo nuevo entra igual', lab.como('benny@team-latam.com'),
+  $q$select public.importar('posts', lab.posteo_editado(), true)$q$,
+  $q$select title from public.posts where id='p_viejo'$q$, 'De 2019, corregido');
+-- Lo que en Firebase ya no está en el documento, acá tampoco: la fila
+-- queda como vino, no mezclada con la de antes.
+select lab.probar_valor('un campo que el documento ya no trae vuelve a su valor de siempre', lab.como('benny@team-latam.com'),
+  $q$select public.importar('posts', lab.posteo_editado()); select public.importar('posts', lab.posteo_viejo(), true)$q$,
+  $q$select cancelled || ' / ' || coalesce(array_length(liked_by, 1), 0) || ' / ' || coalesce(array_length(images, 1), 0)
+     from public.posts where id='p_viejo'$q$, 'false / 0 / 0');
+-- Los disparadores que en la app impiden cambiar de quién es un posteo se
+-- hacen a un lado: lo que manda es Firebase.
+select lab.probar_valor('reemplazar puede cambiar lo que desde la app no se puede (de quién es)', lab.como('benny@team-latam.com'),
+  $q$select public.importar('posts', lab.posteo_viejo());
+     select public.importar('posts', jsonb_set(lab.posteo_viejo(), '{0,author_email}', '"otra@x.com"'), true)$q$,
+  $q$select author_email from public.posts where id='p_viejo'$q$, 'otra@x.com');
+select lab.probar_valor('y después la puerta se cierra igual', lab.como('benny@team-latam.com'),
+  $q$select public.importar('posts', lab.posteo_viejo()); select public.importar('posts', lab.posteo_editado(), true);
+     update public.posts set author_email = 'benny@team-latam.com' where id = 'p_viejo'$q$,
+  $q$select author_email from public.posts where id='p_viejo'$q$, 'No se puede cambiar de quién es un posteo ni cuándo se creó');
+select lab.probar_valor('reemplazar sirve para cualquier tabla: el rol de alguien', lab.como('benny@team-latam.com'),
+  $q$select public.importar('members', '[{"email":"juan@x.com","name":"Juan","nickname":"juan","role":"observer"}]', true)$q$,
+  $q$select role from public.members where email='juan@x.com'$q$, 'observer');
+select lab.probar_valor('y la configuración', lab.como('benny@team-latam.com'),
+  $q$select public.importar('app_config', '[{"key":"calendarSync","value":{"syncToken":"viejo"}}]');
+     select public.importar('app_config', '[{"key":"calendarSync","value":{"syncToken":"de-firebase"}}]', true)$q$,
+  $q$select value->>'syncToken' from public.app_config where key='calendarSync'$q$, 'de-firebase');
+select lab.probar_valor('reemplazar tampoco lo puede un admin por rol', lab.como('ana@x.com'),
+  $q$select public.importar('posts', lab.posteo_editado(), true)$q$,
+  $q$select count(*)::text from public.posts$q$, 'Solo el administrador puede importar');
+
+-- ============================================================
+-- Sacar lo que ya no está en Firebase
+-- ============================================================
+create or replace function lab.dos_posteos() returns void language sql as $f$
+  select public.importar('posts', '[
+    {"id":"p_queda","title":"Queda","content":"C","date":"2026-09-10","start_date":"2026-09-10","end_date":"2026-09-10",
+     "activity_type":"evento","author_name":"Ana","author_email":"ana@x.com"},
+    {"id":"p_se_va","title":"Se va","content":"C","date":"2026-09-10","start_date":"2026-09-10","end_date":"2026-09-10",
+     "activity_type":"evento","author_name":"Ana","author_email":"ana@x.com"}]');
+  select public.importar('replies', '[
+    {"id":"r_queda","post_id":"p_queda","content":"hola","author_name":"Juan","author_email":"juan@x.com"},
+    {"id":"r_se_va","post_id":"p_se_va","content":"chau","author_name":"Juan","author_email":"juan@x.com"}]');
+$f$;
+grant execute on function lab.dos_posteos() to authenticated;
+
+select lab.probar_valor('el admin saca los posteos que se le nombran', lab.como('benny@team-latam.com'),
+  $q$select lab.dos_posteos(); select public.importar_quitar('posts', '["p_se_va"]')$q$,
+  $q$select string_agg(id, ',' order by id) from public.posts where id like 'p\_%'$q$, 'p_queda');
+select lab.probar_valor('y sus comentarios se van con ellos', lab.como('benny@team-latam.com'),
+  $q$select lab.dos_posteos(); select public.importar_quitar('posts', '["p_se_va"]')$q$,
+  $q$select string_agg(id, ',' order by id) from public.replies$q$, 'r_queda');
+select lab.probar_valor('devuelve cuántas sacó', lab.como('benny@team-latam.com'),
+  $q$select lab.dos_posteos()$q$,
+  $q$select public.importar_quitar('posts', '["p_se_va","no_existe"]')::text$q$, '1');
+select lab.probar_valor('una lista vacía no saca nada', lab.como('benny@team-latam.com'),
+  $q$select lab.dos_posteos(); select public.importar_quitar('posts', '[]')$q$,
+  $q$select count(*)::text from public.posts$q$, '2');
+select lab.probar_valor('saca a alguien del equipo por su correo', lab.como('benny@team-latam.com'),
+  $q$select public.importar_quitar('members', '["juan@x.com"]')$q$,
+  $q$select string_agg(email, ',' order by email) from public.members$q$, 'ana@x.com,benny@team-latam.com');
+select lab.probar_valor('el registro de auditoría no se toca nunca', lab.como('benny@team-latam.com'),
+  $q$select public.importar_quitar('audit_log', '["a1"]')$q$,
+  $q$select 'no debería llegar'$q$, 'De audit_log no se saca nada');
+select lab.probar_valor('ni la configuración', lab.como('benny@team-latam.com'),
+  $q$select public.importar_quitar('app_config', '["preferences"]')$q$,
+  $q$select 'no debería llegar'$q$, 'De app_config no se saca nada');
+select lab.probar_valor('ni las preferencias de cada uno (la copia trae solo las del admin)', lab.como('benny@team-latam.com'),
+  $q$select public.importar_quitar('user_prefs', '["ana@x.com"]')$q$,
+  $q$select 'no debería llegar'$q$, 'De user_prefs no se saca nada');
+select lab.probar_valor('algo que no es una lista de claves se rechaza', lab.como('benny@team-latam.com'),
+  $q$select public.importar_quitar('posts', '{"id":"p_se_va"}')$q$,
+  $q$select 'no debería llegar'$q$, 'Se esperaba una lista de claves');
+select lab.probar_valor('sacar no lo puede un admin por rol', lab.como('ana@x.com'),
+  $q$select public.importar_quitar('members', '["juan@x.com"]')$q$,
+  $q$select 'no debería llegar'$q$, 'Solo el administrador puede importar');
+select lab.probar_valor('ni un integrante', lab.como('juan@x.com'),
+  $q$select public.importar_quitar('posts', '["p_se_va"]')$q$,
+  $q$select 'no debería llegar'$q$, 'Solo el administrador puede importar');
+select lab.probar_valor('ni alguien de afuera', lab.como('intruso@x.com'),
+  $q$select public.importar_quitar('posts', '["p_se_va"]')$q$,
+  $q$select 'no debería llegar'$q$, 'Solo el administrador puede importar');
+
 \set QUIET off
 select n, '  FALLA  ' || nombre || ' — ' || detalle as falla from lab.resultados where esperado <> obtenido order by n;
 select count(*) filter (where esperado=obtenido) || ' pasaron, ' ||

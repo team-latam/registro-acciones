@@ -95,7 +95,7 @@ Se aplican en orden. Todos se pueden correr más de una vez sin romper nada
 | `02-politicas.sql` | Quién puede tocar qué. Es el equivalente de `firestore.rules` |
 | `03-validacion.sql` | Qué forma tiene que tener lo que se guarda |
 | `04-funciones.sql` | Lo que hace la base y no el navegador (me gusta, fechas) |
-| `05-importar.sql` | La puerta por la que entró el respaldo de Firebase |
+| `05-importar.sql` | La puerta por la que entra el respaldo de Firebase, también en la importación final |
 | `06-tiempo-real.sql` | Que los cambios lleguen solos a las pantallas abiertas |
 | `09-contenido-vacio.sql` | Saca el relleno de los eventos de Calendar sin descripción |
 | `10-fechas-de-1970.sql` | Corrige lo que el sincronizador nocturno haya fechado en 1970 |
@@ -107,6 +107,57 @@ guardado, el esquema deja de poder aplicarse. Pasó con el contenido de un
 posteo (1 carácter en el `03`, 0 en el `09`): por eso el `07` y el `08`
 se fundieron en el `01` y el `03`, y el `09` y el `10` solo corrigen
 datos.
+
+## La mudanza: la importación final
+
+Para apagar Firebase, Supabase tiene que quedar **igual que Firebase**. Lo
+hace `importar.html`, en el modo **Importación final**:
+
+1. **Avisale al equipo** que por un rato no use la app: lo que se escriba
+   en Firebase después de bajar la copia no viene.
+2. **Bajá la copia completa** desde la app (Preferencias → Copia de
+   seguridad → Copia completa). La liviana no sirve: no trae las fotos.
+3. Abrí https://team-latam.github.io/registro-acciones/supabase/importar.html,
+   entrá con la cuenta del admin y elegí el archivo.
+4. **Mirá la comparación**: por cada tabla, cuántas filas son nuevas,
+   cuántas ya estaban, y cuáles están **solo en Supabase**. Esas son las
+   que se van a sacar: lo que se borró en Firebase después de la primera
+   importación (un posteo, el acceso de alguien) y lo que se probó acá.
+5. Elegí **Importación final**, abrí las listas, revisalas, tildá la
+   confirmación y apretá el botón.
+
+Qué hace:
+
+- Lo de Firebase **pisa** lo que hay en Supabase, la fila entera. Lo que
+  vino igual no se reescribe.
+- **Saca** de Supabase exactamente lo de la lista: posteos (con sus
+  comentarios), comentarios, integrantes, ex integrantes y pedidos de
+  acceso. No toca el registro de actividad ni las preferencias de cada
+  persona.
+- Trae también **el estado de la sincronización con Calendar**: el
+  sincronizador nocturno sigue desde donde estaba Firebase, y trae solo lo
+  que Firebase no llegó a ver.
+- Los **topes de adjuntos** de Firebase no se traen: eran para que todo
+  entrara en un documento de Firestore. En Supabase arrancan en los suyos
+  (20 fotos, 10 archivos, 10 MB sugeridos) y se cambian en Preferencias →
+  Adjuntos.
+- Cada foto sube **con su miniatura**. Lo que ya estaba en el bucket (de
+  la primera importación) se reconoce y no se vuelve a subir.
+
+Lo que lo frena: una copia que trae mucho menos de lo que hay en Supabase
+(¿es la completa? ¿es de este proyecto?), o una tabla que no se pudo leer
+para comparar. Y avisa si la copia tiene más de un día.
+
+Si se corta, se vuelve a apretar el botón: lo que ya entró se reconoce. Una
+fila que la base no acepta (por ejemplo, un comentario de un posteo que ya
+no existe) no frena a las demás: queda listada al final, con el motivo.
+
+Las preferencias personales de cada uno (colores, avisos) **no vienen**: la
+copia trae solo las del admin, porque nadie puede leer las de los demás.
+Cada persona las vuelve a elegir.
+
+El modo **Completar lo que falta** es el de siempre: trae lo nuevo, no
+toca lo que ya está y no saca nada. Sirve para probar.
 
 ## El otro secreto
 

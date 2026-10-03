@@ -26,11 +26,23 @@
 -- Se puede correr más de una vez sin romper nada, y la importación
 -- también: las filas que ya están se saltean en vez de duplicarse, así que
 -- si se corta a la mitad se vuelve a empezar y listo.
+--
+-- La importación FINAL es distinta (p_reemplazar). Para apagar Firebase
+-- hay que traer lo último, y saltear lo que ya está dejaba afuera todo lo
+-- que se editó allá después de la primera importación: un documento
+-- nuevo, una fecha cambiada, un «me gusta», una cancelación. Con
+-- p_reemplazar, lo que viene pisa lo que hay, la fila entera, como estaba
+-- en Firebase. Una fila que vino igual no se reescribe: no cuenta, y no le
+-- llega como cambio a ninguna pantalla abierta.
 -- ============================================================
 
-create or replace function public.importar(p_tabla text, p_filas jsonb)
+-- La de dos argumentos se saca: con las dos, la API no sabría a cuál
+-- llamar cuando se le pasan solo la tabla y las filas.
+drop function if exists public.importar(text, jsonb);
+
+create or replace function public.importar(p_tabla text, p_filas jsonb, p_reemplazar boolean default false)
 returns integer language plpgsql security definer set search_path = '' as $$
-declare n integer; v_defectos jsonb;
+declare n integer; v_defectos jsonb; v_tabla regclass; v_clave text; v_campos text; v_choque text;
 begin
   -- Con la credencial de Google del admin, no con una clave de servicio.
   if public.es_admin_fijo() is not true then
@@ -80,18 +92,37 @@ begin
     when 'audit_log' then jsonb_build_object('created_at', now())
     else '{}'::jsonb end;
 
+  -- `on conflict do nothing`: si esto se corta por la mitad y se vuelve a
+  -- correr, lo que ya entró se saltea. No hay que llevar la cuenta de por
+  -- dónde iba.
+  --
+  -- Para reemplazar, las columnas salen de la tabla misma y no de una
+  -- lista escrita acá: una columna que se agregue mañana se reemplaza
+  -- también, sin que nadie tenga que acordarse de este archivo.
+  v_choque := 'on conflict do nothing';
+  if p_reemplazar then
+    v_tabla := format('public.%I', p_tabla)::regclass;
+    select string_agg(format('%I', a.attname), ', ' order by a.attnum) into v_clave
+      from pg_catalog.pg_index i
+      join pg_catalog.pg_attribute a on a.attrelid = i.indrelid and a.attnum = any(i.indkey)
+     where i.indrelid = v_tabla and i.indisprimary;
+    select string_agg(format('%1$I = excluded.%1$I', a.attname), ', ' order by a.attnum) into v_campos
+      from pg_catalog.pg_attribute a
+     where a.attrelid = v_tabla and a.attnum > 0 and not a.attisdropped
+       and not exists (select 1 from pg_catalog.pg_index i
+                        where i.indrelid = v_tabla and i.indisprimary and a.attnum = any(i.indkey));
+    v_choque := format('on conflict (%s) do update set %s where t is distinct from excluded', v_clave, v_campos);
+  end if;
+
   -- La marca, que vale solo adentro de esta transacción (el `true` del
   -- final): cuando la función termina, se apaga sola.
   perform set_config('app.importando', 'si', true);
 
-  -- `on conflict do nothing`: si esto se corta por la mitad y se vuelve a
-  -- correr, lo que ya entró se saltea. No hay que llevar la cuenta de por
-  -- dónde iba.
   execute format(
-    'insert into public.%I select * from jsonb_populate_recordset(null::public.%I,
+    'insert into public.%I as t select * from jsonb_populate_recordset(null::public.%I,
        (select coalesce(jsonb_agg($2 || f), ''[]''::jsonb) from jsonb_array_elements($1) f))
-     on conflict do nothing',
-    p_tabla, p_tabla) using p_filas, v_defectos;
+     %s',
+    p_tabla, p_tabla, v_choque) using p_filas, v_defectos;
   get diagnostics n = row_count;
 
   -- Y se apaga en cuanto termina, sin esperar a que cierre la transacción.
@@ -105,7 +136,52 @@ end $$;
 -- Solo el admin puede usarla de hecho (lo comprueba adentro), pero el
 -- permiso se le da a cualquiera que haya entrado: si no, ni siquiera
 -- llegaría a la línea que lo rechaza y el error sería confuso.
-grant execute on function public.importar(text, jsonb) to authenticated;
+grant execute on function public.importar(text, jsonb, boolean) to authenticated;
+
+
+-- ============================================================
+-- Sacar lo que ya no está en Firebase
+-- ============================================================
+-- En la importación final, lo que está acá y no vino en la copia es lo que
+-- se borró allá después de la primera importación (un posteo, el acceso
+-- de alguien) o lo que se probó acá. Si se queda, un posteo borrado vuelve
+-- a aparecer, y alguien a quien se le sacó el acceso sigue entrando.
+--
+-- Se borra SOLO lo que se nombra: la página arma la lista, la muestra, y
+-- manda exactamente esa. Nunca «todo lo que no esté en esta lista»: con
+-- una copia cortada a la mitad, eso borraría la mitad de la base.
+--
+-- Los comentarios de un posteo que se borra se van con él (on delete
+-- cascade). Los archivos quedan en el bucket: los saca la limpieza de lo
+-- que ninguna fila nombra.
+create or replace function public.importar_quitar(p_tabla text, p_claves jsonb)
+returns integer language plpgsql security definer set search_path = '' as $$
+declare n integer;
+begin
+  if public.es_admin_fijo() is not true then
+    raise exception 'Solo el administrador puede importar'
+      using errcode = 'insufficient_privilege';
+  end if;
+  -- Ni la configuración ni las preferencias de cada uno (la copia trae
+  -- solo las del admin), ni el registro de auditoría, que no se borra
+  -- nunca.
+  if p_tabla not in ('posts','replies','members','former_members','access_requests') then
+    raise exception 'De % no se saca nada', p_tabla using errcode = 'check_violation';
+  end if;
+  if jsonb_typeof(p_claves) <> 'array' then
+    raise exception 'Se esperaba una lista de claves' using errcode = 'check_violation';
+  end if;
+
+  perform set_config('app.importando', 'si', true);
+  execute format('delete from public.%I where %I in (select jsonb_array_elements_text($1))',
+                 p_tabla, case when p_tabla in ('posts','replies') then 'id' else 'email' end)
+    using p_claves;
+  get diagnostics n = row_count;
+  perform set_config('app.importando', '', true);
+  return n;
+end $$;
+
+grant execute on function public.importar_quitar(text, jsonb) to authenticated;
 
 
 -- ============================================================
