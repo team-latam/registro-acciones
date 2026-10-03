@@ -1,5 +1,9 @@
 # Cómo probar la base nueva
 
+> **Ya no aplica:** desde el 3 de octubre de 2026 Supabase es la base del
+> equipo y el enlace de siempre la abre. Este archivo se borra cuando se
+> cierre Firebase.
+
 La app del equipo sigue funcionando con Firebase, como siempre. En
 paralelo hay una copia de los datos en Supabase, y **una forma de usar la
 app de verdad contra esa copia**, sin que nadie se entere.

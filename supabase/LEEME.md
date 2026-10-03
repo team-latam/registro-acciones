@@ -109,56 +109,31 @@ posteo (1 carácter en el `03`, 0 en el `09`): por eso el `07` y el `08`
 se fundieron en el `01` y el `03`, y del `09` en adelante solo se corrigen
 datos.
 
-## La mudanza: la importación final
+## La mudanza
 
-Para apagar Firebase, Supabase tiene que quedar **igual que Firebase**. Lo
-hace `importar.html`, en el modo **Importación final**:
+**Desde el 3 de octubre de 2026, Supabase es la base del equipo.** El
+enlace de siempre abre Supabase. Para entonces el equipo ya trabajaba ahí
+(con `?base=supabase`), y Supabase tenía cosas que Firebase no.
 
-1. **Avisale al equipo** que por un rato no use la app: lo que se escriba
-   en Firebase después de bajar la copia no viene.
-2. **Bajá la copia completa** desde la app (Preferencias → Copia de
-   seguridad → Copia completa). La liviana no sirve: no trae las fotos.
-3. Abrí https://team-latam.github.io/registro-acciones/supabase/importar.html,
-   entrá con la cuenta del admin y elegí el archivo.
-4. **Mirá la comparación**: por cada tabla, cuántas filas son nuevas,
-   cuántas ya estaban, y cuáles están **solo en Supabase**. Esas son las
-   que se van a sacar: lo que se borró en Firebase después de la primera
-   importación (un posteo, el acceso de alguien) y lo que se probó acá.
-5. Elegí **Importación final**, abrí las listas, revisalas, tildá la
-   confirmación y apretá el botón.
+Por eso **no hubo «importación final»** (la que dejaba Supabase igual a
+Firebase): habría borrado lo cargado en Supabase. Esa opción se sacó del
+importador.
 
-Qué hace:
+Lo que queda, en orden:
 
-- Lo de Firebase **pisa** lo que hay en Supabase, la fila entera. Lo que
-  vino igual no se reescribe.
-- **Saca** de Supabase exactamente lo de la lista: posteos (con sus
-  comentarios), comentarios, integrantes, ex integrantes y pedidos de
-  acceso. No toca el registro de actividad ni las preferencias de cada
-  persona.
-- Trae también **el estado de la sincronización con Calendar**: el
-  sincronizador nocturno sigue desde donde estaba Firebase, y trae solo lo
-  que Firebase no llegó a ver.
-- Los **topes de adjuntos** de Firebase no se traen: eran para que todo
-  entrara en un documento de Firestore. En Supabase arrancan en los suyos
-  (20 fotos, 10 archivos, 10 MB sugeridos) y se cambian en Preferencias →
-  Adjuntos.
-- Cada foto sube **con su miniatura**. Lo que ya estaba en el bucket (de
-  la primera importación) se reconoce y no se vuelve a subir.
+1. **Ver si en Firebase quedó algo que no esté en Supabase.** Se baja la
+   última copia de Firebase (desde una pestaña con `?base=firebase`:
+   Preferencias → Copia de seguridad → Copia completa) y se la elige en
+   `importar.html`, que la compara con lo que hay. Mirar no cambia nada.
+   Si hay algo que traer, se trae con «Completar lo que falta», que solo
+   agrega lo que falta y no toca lo que ya está.
+2. **Cerrar Firebase**: reglas que no dejan leer ni escribir nada, y
+   después borrar la base de Firestore y el login de Firebase. **No el
+   proyecto de Google Cloud** que está detrás (ahí viven el permiso y la
+   clave de Calendar). Y sacar de la app todo lo de Firebase.
 
-Lo que lo frena: una copia que trae mucho menos de lo que hay en Supabase
-(¿es la completa? ¿es de este proyecto?), o una tabla que no se pudo leer
-para comparar. Y avisa si la copia tiene más de un día.
-
-Si se corta, se vuelve a apretar el botón: lo que ya entró se reconoce. Una
-fila que la base no acepta (por ejemplo, un comentario de un posteo que ya
-no existe) no frena a las demás: queda listada al final, con el motivo.
-
-Las preferencias personales de cada uno (colores, avisos) **no vienen**: la
-copia trae solo las del admin, porque nadie puede leer las de los demás.
-Cada persona las vuelve a elegir.
-
-El modo **Completar lo que falta** es el de siempre: trae lo nuevo, no
-toca lo que ya está y no saca nada. Sirve para probar.
+Las preferencias personales de cada uno (colores, avisos) no vienen de
+Firebase: cada persona las vuelve a elegir.
 
 ## El otro secreto
 

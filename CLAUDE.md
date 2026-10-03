@@ -2,8 +2,11 @@
 
 SPA de una sola página (`index.html`) sin backend propio ni build step:
 HTML + CSS + JS (`<script type="module">` inline) que se edita y publica tal
-cual. El backend es Firebase (Firestore + Auth con Google) más la API de
-Google Calendar. Ver `README.md` para las decisiones de arquitectura.
+cual. El backend es **Supabase** (Postgres + Auth con Google + Storage, ver
+`supabase/LEEME.md`) más la API de Google Calendar. Desde el 3 de octubre de
+2026 es la base del equipo; Firebase quedó como base vieja, detrás de
+`?base=firebase`, hasta que se cierre del todo. Ver `README.md` para las
+decisiones de arquitectura.
 
 ## Ramas — LEER ANTES DE EMPEZAR
 

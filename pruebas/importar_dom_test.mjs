@@ -173,30 +173,22 @@ const fila = (p, tabla) => p.evaluate(t => {
   return tr ? [...tr.cells].slice(1).map(c => c.textContent) : null;
 }, tabla);
 
-/* ---------- La importación final ---------- */
+/* ---------- La importación final ya no está ---------- */
+// Desde el 3 de octubre de 2026 la base del equipo es Supabase, con cosas
+// que Firebase no tiene: dejarla igual a Firebase las borraría.
 {
   const { p, errores } = await abrir();
   eq("entra con la sesión del admin y habilita el archivo", await p.isDisabled("#archivo"), false);
+  eq("no se ofrece la importación final", await p.$("#modoFinal"), null);
+  eq("y la página dice por qué", /«Importación final», que dejaba Supabase igual a Firebase, ya no está/.test(await p.textContent("main")), true);
   await elegir(p, respaldo());
   await p.waitForFunction(() => !document.querySelector("#zonaArchivo").textContent.includes("Comparando"));
   eq("compara con lo que hay: posteos en el archivo, nuevos, que ya estaban y solo en Supabase",
      await fila(p, "posts"), ["3", "1", "2", "2"]);
   eq("y lo mismo con el equipo", await fila(p, "members"), ["1", "0", "1", "1"]);
   eq("de la configuración no se saca nada: ahí la columna no aplica", await fila(p, "app_config"), ["2", "1", "1", "—"]);
-
-  await p.check("#modoFinal");
-  const listas = await p.$$eval("#zonaModo details", ds => ds.map(d => [d.querySelector("summary").textContent,
-    [...d.querySelectorAll("li")].map(li => li.textContent)]));
-  eq("muestra, tabla por tabla, lo que se va a sacar", listas, [
-    ["posts: 2", ["Reunión de prueba — 2026-09-04 · de Google Calendar", "Borrado en Firebase — 2026-09-03 · con 1 comentario"]],
-    ["replies: 1 (y 1 más que se va con su posteo)", ["«probando en Supabase» — en «Igual»"]],
-    ["members: 1", ["Se Fue <se.fue@x.com>"]],
-    ["access_requests: 1", ["vieja@x.com (pending)"]],
-  ]);
-  eq("el botón dice lo que hace", (await p.textContent("#btnImportar")).trim(), "Hacer la importación final");
-  eq("y no se habilita hasta confirmar que se revisó la lista", await p.isDisabled("#btnImportar"), true);
-  await p.check("#confirmo");
-  eq("confirmado, sí", await p.isDisabled("#btnImportar"), false);
+  eq("el botón dice lo que hace", (await p.textContent("#btnImportar")).trim(), "Traer lo que falta");
+  eq("y no aparece ninguna lista de cosas para sacar", await p.$$eval("#zonaModo details", d => d.length), 0);
 
   // Que se pueda leer en una pantalla chica, sin irse de costado.
   await p.setViewportSize({ width: 380, height: 900 });
@@ -206,48 +198,6 @@ const fila = (p, tabla) => p.evaluate(t => {
   await p.screenshot({ path: "importar_angosto.png", fullPage: true });
   await p.setViewportSize({ width: 900, height: 1000 });
   await p.screenshot({ path: "importar_ancho.png", fullPage: true });
-
-  await p.click("#btnImportar");
-  await p.waitForFunction(() => /Listo|Se cortó/.test(document.querySelector("#zonaImportar").textContent), null, { timeout: 30000 });
-  const resultado = await p.textContent("#zonaImportar");
-  const sb = await p.evaluate(() => JSON.parse(JSON.stringify({ rpc: window.__sb.rpc, subidas: window.__sb.subidas, tablas: window.__sb.tablas })));
-
-  eq("termina diciendo que Supabase quedó igual que Firebase", /Supabase quedó igual que Firebase/.test(resultado), true);
-  const imports = sb.rpc.filter(([n]) => n === "importar");
-  eq("todas las tablas se traen reemplazando", imports.every(([, a]) => a.p_reemplazar === true) && imports.length >= 6, true);
-  eq("y en el orden que hace falta (los comentarios después de los posteos)",
-     imports.map(([, a]) => a.p_tabla).filter((t, i, l) => l.indexOf(t) === i),
-     ["members", "former_members", "posts", "replies", "audit_log", "app_config"]);
-  const nuevo = sb.tablas.posts.find(x => x.id === "p_nuevo") || { images: [], files: [{}] };
-  eq("la foto queda como ruta con huella", /^posts\/p_nuevo\/img0_[0-9a-f]{12}\.jpg$/.test(nuevo.images[0] || ""), true);
-  eq("el Word conserva su ranura y su fecha, con su ruta y sin el contenido",
-     [nuevo.files[0].doc, nuevo.files[0].subidoEl, /\.docx$/.test(nuevo.files[0].path || ""), "dataUrl" in nuevo.files[0]],
-     ["reporte", "2026-09-05T10:00:00.000Z", true, false]);
-  const foto = sb.subidas.find(s => s.ruta === nuevo.images[0]) || {};
-  const mini = sb.subidas.find(s => s.ruta === String(nuevo.images[0]).replace(/\.jpg$/, ".min.jpg")) || {};
-  eq("sube la foto y, al lado, su miniatura armada con el canvas", [foto.tipo, mini.tipo], ["image/jpeg", "image/jpeg"]);
-  eq("que es mucho más liviana", mini.tam > 0 && mini.tam * 5 < foto.tam, true);
-  eq("el Word sube como Word", (sb.subidas.find(s => s.ruta.endsWith(".docx")) || {}).tipo,
-     "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
-  eq("nada sube con upsert", sb.subidas.some(s => s.upsert), false);
-  eq("se saca exactamente lo de la lista",
-     sb.rpc.filter(([n]) => n === "importar_quitar").map(([, a]) => [a.p_tabla, a.p_claves]),
-     [["replies", ["r_suelto"]], ["posts", ["cal_x1", "p_borrado"]], ["members", ["se.fue@x.com"]], ["access_requests", ["vieja@x.com"]]]);
-  eq("los posteos quedan como en Firebase", sb.tablas.posts.map(x => x.id).sort(), ["p_cambia", "p_igual", "p_nuevo"]);
-  eq("con lo editado allá", (sb.tablas.posts.find(x => x.id === "p_cambia") || {}).title, "Después");
-  eq("los comentarios del posteo sacado se fueron con él", sb.tablas.replies.map(x => x.id).sort(), ["r_nuevo"]);
-  eq("quien perdió el acceso en Firebase ya no está en el equipo", sb.tablas.members.map(x => x.email), ["benny@team-latam.com"]);
-  const prefs = (sb.tablas.app_config.find(x => x.key === "preferences") || {}).value || {};
-  eq("las preferencias llegan sin los topes de adjuntos de Firebase", [prefs.calendarId, "maxImages" in prefs, "maxAttachmentFileBytes" in prefs],
-     ["equipo@group.calendar.google.com", false, false]);
-  eq("la sincronización de Calendar sigue desde donde estaba Firebase",
-     ((sb.tablas.app_config.find(x => x.key === "calendarSync") || {}).value || {}).syncToken, "token-de-firebase");
-  eq("el registro de auditoría de Supabase no se toca", sb.tablas.audit_log.map(x => x.id).sort(), ["a1", "a_de_supabase"]);
-
-  // Después, la comparación se vuelve a hacer: ya no queda nada que sacar.
-  await p.waitForFunction(() => /No hay nada en Supabase que no esté en Firebase/.test(document.querySelector("#zonaModo").textContent), null, { timeout: 10000 }).catch(() => {});
-  eq("después, la comparación se rehace y ya no hay nada que sacar",
-     /No hay nada en Supabase que no esté en Firebase/.test(await p.textContent("#zonaModo")), true);
   eq("sin un solo error en la página", errores, []);
   await p.close();
 }
@@ -270,28 +220,6 @@ const fila = (p, tabla) => p.evaluate(t => {
   await p.close();
 }
 
-/* ---------- Lo que frena la importación final ---------- */
-{
-  const { p } = await abrir();
-  const vieja = respaldo(new Date(Date.now() - 3 * 24 * 3600 * 1000).toISOString());
-  await elegir(p, vieja);
-  await p.waitForFunction(() => !document.querySelector("#zonaArchivo").textContent.includes("Comparando"));
-  await p.check("#modoFinal");
-  eq("una copia de hace días avisa que lo de después no viene", /Esta copia es de hace 3 día/.test(await p.textContent("#zonaModo")), true);
-  await p.close();
-}
-{
-  // Una copia que trae mucho menos de lo que hay: con esa, la final
-  // sacaría media base.
-  const { p } = await abrir();
-  await p.evaluate(() => { for(let i = 0; i < 40; i++) window.__sb.tablas.posts.push({ id: "p_extra" + i, title: "x" }); });
-  await elegir(p, respaldo());
-  await p.waitForFunction(() => !document.querySelector("#zonaArchivo").textContent.includes("Comparando"));
-  await p.check("#modoFinal");
-  eq("una copia que trae mucho menos de lo que hay frena la final", /¿Es la copia completa/.test(await p.textContent("#zonaModo")), true);
-  eq("y el botón no se habilita", await p.isDisabled("#btnImportar"), true);
-  await p.close();
-}
 {
   // Un comentario cuyo posteo no existe: no entra, y lo demás sí.
   const { p, errores } = await abrir();
