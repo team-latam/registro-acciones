@@ -329,6 +329,14 @@ eventos.
 - Base: `12-revisar-calendar.sql` (tablas y funciones, solo admins y
   solo lo importado) y `13-sugerencias-calendar.sql` (las 925
   sugerencias, sin títulos ni fechas porque el repo es público).
+- **Corregido el mismo día:** el usuario ordenó eventos con "Editar" y
+  después tocó "Sacar del Registro" creyendo que guardaba o marcaba como
+  listo; lo ordenado no se había guardado y los eventos se borraron.
+  Ahora: mientras se edita una fila no se ve la barra (solo Guardar /
+  Cancelar), la confirmación dice que NO es para marcar como listo, y
+  la pestaña **"Sacados"** devuelve lo sacado ("Devolver al Registro"):
+  con la copia que se guarda desde ahora vuelve igual; lo sacado antes
+  se vuelve a traer de Google Calendar como llegó ("Otro", sin lugar).
 - **Encontrado al armarla:** los ids de evento largos se cortaban a 59
   caracteres y algunos (de una integración de Google) comparten esos 59:
   6 eventos de 2024–2026 nunca entraron al Registro. Arreglado en los dos
