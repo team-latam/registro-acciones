@@ -604,6 +604,17 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   eq("celular: y sobre el hueco de la barra", fab.centro > hueco.izq && fab.centro < hueco.der, true);
   await p.click(".fab-main");
   eq("celular: al abrirlo, las acciones aparecen", await hasta(p, () => !!document.querySelector(".fab-wrap.open .fab-action")), true);
+  // Tanda 15: el panel de la campanita entra entero en la pantalla (colgado
+  // del botón se salía 16px por un costado; en hebreo, por el otro), y un
+  // @usuario va aislado como texto LTR (en hebreo la @ se iba al final:
+  // "diego@").
+  await p.click('[data-action="toggle-mentions-menu"]');
+  await p.waitForSelector(".mentions-menu", { timeout: 3000 });
+  const panelCampana = await p.evaluate(() => { const r = document.querySelector(".mentions-menu").getBoundingClientRect(); return { izq: Math.round(r.left), der: Math.round(r.right) }; });
+  eq("celular: el panel de la campanita entra entero en la pantalla", panelCampana.izq >= 0 && panelCampana.der <= ANCHO, true);
+  await p.click('[data-action="toggle-mentions-menu"]');
+  eq("celular: un @usuario va aislado como texto de izquierda a derecha",
+    await p.evaluate(() => { const m = document.querySelector(".mention-tag"); const cs = m && getComputedStyle(m); return cs ? [cs.direction, cs.unicodeBidi] : null; }), ["ltr", "isolate"]);
   eq("celular: sin un solo error", errores, []);
   await p.close();
 }
