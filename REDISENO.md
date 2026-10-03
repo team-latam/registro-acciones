@@ -30,20 +30,19 @@ Pie fijo en el modal de evento, hebreo (dir="auto"), años en orden,
 Administrar en celular, ✕ más grandes, + que se esconde al bajar, aviso
 del mapa, modo oscuro, campanita, franja de Documentación.
 
-### 2. Posteos y formulario
+### 2. Posteos y formulario — HECHO (3 oct 2026)
 
-- Tarjeta: a la vista solo Me gusta, Responder y "N comentarios". Editar,
-  Repetir este evento (nuevo: abre el composer con los mismos datos),
-  Crear/Ver proyecto, Cancelar evento y Borrar van a un menú "⋯" en la
-  esquina; Borrar último y en rojo.
-- Formulario de evento: el tipo de actividad primero; un solo campo de
-  lugar con explicación y "Agregar dirección exacta (opcional)" para el
-  "Dónde ocurre" de hoy; participantes; comentarios con pistas según el
-  tipo.
-- Adjuntos en la tarjeta: fotos como galería, archivos y links como
-  fichas con nombre y origen (nunca la URL cruda), documentación como
-  "falta 1 de 3" con el botón de subir lo que falta.
-- "Ver traducción" en inglés/hebreo pasa al menú ⋯ o a un enlace chico.
+- Tarjeta: a la vista Me gusta, Responder, "N comentarios" y "Ver
+  proyecto". Editar, Repetir este evento (nuevo: abre el composer con
+  los mismos datos, fechado hoy), Convertir en proyecto, Cancelar evento
+  y Borrar están en el menú "⋯" de la esquina; Borrar último y en rojo.
+- Formulario de evento: el tipo primero; un solo campo de lugar (el
+  alcance) con explicación y "+ Agregar dirección exacta (opcional)"
+  que despliega el "Dónde ocurre"; la pista del texto cambia con el tipo.
+- Adjuntos: fotos más grandes, archivos y links como fichas con nombre y
+  sitio (nunca la URL cruda); la franja de documentación en amarillo
+  mientras falta algo, con el botón "Subir X" al lado.
+- Pendiente de esta tanda: "Ver traducción" sigue como renglón aparte.
 
 ### 3. Calendario en celular
 
