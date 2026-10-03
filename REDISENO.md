@@ -212,6 +212,12 @@ Las opciones se compararon en https://claude.ai/artifact/2vtYrPhNKwsbqN8FqX16Jq
   no tiene posteos). "+ Agregar tipo" abre la ficha de uno nuevo. Todo va
   al borrador y se guarda con "Guardar cambios", que avisa "Cambios sin
   guardar" mientras haya algo.
+- La acción principal de una sección ("+ Agregar tipo") va en la cabecera,
+  a la derecha del título (`adminSeccionAccion`), sin un renglón propio.
+- La fila tocada con el mouse recupera el foco sin el anillo del navegador
+  (`.sin-anillo`, lo pone `render()` cuando el foco original no lo tenía);
+  el anillo de teclado de las filas va por dentro (`outline-offset:-2px`)
+  para que la esquina redondeada de la lista no lo recorte.
 
 ## Fuera de alcance (necesitan algo que la app no tiene)
 

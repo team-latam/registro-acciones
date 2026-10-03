@@ -453,8 +453,16 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   const orden = () => p.$$eval('.lp-row[data-action="tipo-abrir"] .lp-who b', es => es.map(e => e.textContent));
   eq("tipos: arrancan en el orden de fábrica", (await orden()).slice(0, 2), ["Visita", "Curso"]);
   eq("tipos: sin ficha abierta hasta tocar un tipo", await visible(p, ".lp-panel"), false);
+  eq("tipos: '+ Agregar tipo' va en la cabecera, a la altura del título, sin un renglón propio",
+    [!!(await p.$('.admin-cabecera [data-action="tipo-nuevo"]')), !!(await p.$(".tipos-top"))], [true, false]);
   await p.click('.lp-row[data-action="tipo-abrir"][data-key="visita"]');
   eq("tipos: tocar Visita abre su ficha, con su nombre para editar", await p.$eval('.lp-panel [data-action="tipos-label"][data-key="visita"]', e => e.value), "Visita");
+  // Al tocar con el mouse, el foco vuelve por programa a la fila recién
+  // dibujada; el navegador le pintaría el anillo de teclado (y la esquina
+  // redondeada de la lista lo recortaba con picos blancos). No va.
+  eq("tipos: la fila tocada con el mouse recupera el foco pero sin el anillo del navegador",
+    await p.evaluate(() => { const a = document.activeElement; return [a.dataset.action, a.dataset.key, a.classList.contains("sin-anillo"), getComputedStyle(a).outlineStyle]; }),
+    ["tipo-abrir", "visita", true, "none"]);
   eq("tipos: la ficha no ofrece eliminarla (hay posteos) y dice por qué",
     [!!(await p.$('.lp-panel [data-action="tipos-remove"]')), await p.$eval(".lp-pf", e => /No se puede eliminar: hay 2 posteos con este tipo/.test(e.textContent))],
     [false, true]);
