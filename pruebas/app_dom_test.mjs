@@ -431,6 +431,26 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   await p.close();
 }
 
+/* ---------- El Feed carga solo al acercarse al final ---------- */
+{
+  // 22 posteos: entran 15, y al bajar hasta el final tienen que aparecer
+  // los otros 7 sin tocar "Ver más".
+  const { p, errores } = await entrar(ADMIN, "Benny", base => {
+    for(let i = 0; i < 20; i++) base.posts.push({ ...base.posts[0], id: "p_relleno_" + i, title: "Posteo de relleno " + i,
+      images: [], date: dia(20 + i), start_date: dia(20 + i), end_date: dia(20 + i), created_at: hace(20 + i) });
+  });
+  await esperarTexto(p, "Reunión con la comunidad");
+  const cuantas = () => p.$$eval("#viewRoot article.post", es => es.length);
+  const hayVerMas = async () => !!(await p.$('[data-action="feed-load-more"]'));
+  eq("feed: arranca con 15 tarjetas y el botón Ver más de respaldo", [await cuantas(), await hayVerMas()], [15, true]);
+  await p.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  eq("feed: al llegar al final carga solo las que faltan, sin tocar nada",
+    await hasta(p, () => document.querySelectorAll("#viewRoot article.post").length === 22), true);
+  eq("feed: y cuando no queda nada por cargar, el botón desaparece", await hayVerMas(), false);
+  eq("feed: sin un solo error", errores, []);
+  await p.close();
+}
+
 /* ---------- Alguien que entra por primera vez ---------- */
 {
   const { p, errores, base } = await entrar("pedro@x.com", "Pedro Gómez");
