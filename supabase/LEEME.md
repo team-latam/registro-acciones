@@ -126,9 +126,12 @@ Ese mismo día:
    importación (`05-sin-importacion.sql`). El importador quedó en el
    historial del repo.
 
-Lo que falta es del lado de Firebase Console: apagar el login de Firebase
-y borrar su lista de usuarios. **No el proyecto de Google Cloud** que está
-detrás: ahí viven el permiso y la clave de Calendar.
+4. En Firebase Console se apagó el login con Google y se borró su lista de
+   usuarios. Hosting nunca tuvo nada publicado, y Storage nunca se activó.
+
+Lo que queda del proyecto de Firebase es el proyecto de Google Cloud que
+está detrás, y **no se borra**: ahí viven el permiso y la clave de
+Calendar, y el cliente de Google con el que se pide el permiso.
 
 ## El otro secreto
 
