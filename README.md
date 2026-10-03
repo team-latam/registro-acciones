@@ -30,8 +30,9 @@ llegan solos a todas las pantallas abiertas).
 > | un campo en camelCase (`authorEmail`) | la columna en snake_case (`author_email`): la capa de datos traduce sola |
 > | una imagen o un archivo en base64 adentro del posteo | un archivo en el bucket `adjuntos`, y su ruta en el posteo |
 >
-> Firestore quedó cerrado: `firestore.rules` no deja leer ni escribir nada.
-> La rama `firebase-v1` guarda cómo era la app con Firebase.
+> La base de Firestore se borró el 3 de octubre de 2026 (la última copia
+> quedó guardada aparte). La rama `firebase-v1` guarda cómo era la app con
+> Firebase.
 
 ## 1. Poner en marcha el backend (Supabase)
 

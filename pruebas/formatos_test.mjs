@@ -90,19 +90,14 @@ eq("una URL firmada del bucket sí",
 eq("pero no una de otro lado",
    api.safeFileDataUrl("https://otro-sitio.com/storage/v1/object/sign/adjuntos/x.docx"), "");
 
-/* ---------- Las dos capas dicen lo mismo ---------- */
-// Si una se queda atrás, el archivo entra en el navegador y lo rechaza la
-// base — un error opaco justo al publicar. (Eran tres hasta el 3 de octubre
-// de 2026: las reglas de Firestore también lo decidían. Firebase se cerró, y
-// sus reglas ya no dejan entrar nada.)
+/* ---------- La app y el bucket dicen lo mismo ---------- */
+// Si uno se queda atrás, el archivo entra en el navegador y lo rechaza la
+// base — un error opaco justo al publicar. (Hasta el 3 de octubre de 2026
+// también lo decidían las reglas de Firestore, que se fueron con su base.)
 const sql = fs.readFileSync(RAIZ + "supabase/01-tablas.sql","utf8");
 const delCodigo = api.TIPOS_DE_ARCHIVO.flatMap(x=>x.mimes);
 eq("el bucket de Supabase acepta todos los que acepta el código",
    delCodigo.filter(m => !sql.includes(m)), []);
-const reglas = fs.readFileSync(RAIZ + "firestore.rules","utf8");
-eq("y Firestore, cerrado: sus reglas no dejan leer ni escribir nada",
-   /match \/\{document=\*\*\} \{\s*allow read, write: if false;\s*\}/.test(reglas)
-     && !/allow [a-z, ]+: if (?!false)/.test(reglas), true);
 
 console.log(`\n${pass} pasaron, ${fail} fallaron`);
 process.exit(fail ? 1 : 0);

@@ -50,29 +50,19 @@ la aplica a Supabase. Un push con el SQL roto no llega a la base real, pero
 **probarlo antes en local** (`bash supabase/pruebas/levantar.sh` y
 `bash supabase/pruebas/correr.sh "postgresql:///registro?host=/var/run/postgresql&user=postgres"`).
 
-## firestore.rules
+## Algo para pegar a mano en una consola
 
-Firestore está **cerrado**: estas reglas no dejan leer ni escribir nada, a
-nadie, y así tienen que quedar (`formatos_test.mjs` lo comprueba). No hay
-motivo para tocarlas. **No se pueden publicar desde acá**: si alguna vez
-cambiaran, el usuario las pega a mano en Firebase Console → Firestore →
-Reglas y hace clic en "Publicar". Avisarle explícitamente cada vez que el
-archivo cambie.
+Ya no hay nada que se publique a mano (`firestore.rules` se fue con la base
+de Firestore, borrada el 3 de octubre de 2026). Si alguna vez hiciera falta
+que el usuario pegue algo en una consola, se le entrega como pidió para las
+reglas, sin que lo pida:
 
-**Cómo entregárselo (siempre, sin que lo pida):** cuando el archivo cambie,
-pegar el **contenido completo en un bloque de código en el chat**, listo
-para seleccionar y copiar de una.
-
-Tres cosas que no son negociables, porque ya se pidieron:
-
-1. **Entero, siempre.** Nunca un fragmento, ni "solo la función que
-   cambió", ni ofrecer el fragmento como alternativa. Aunque el cambio sea
-   de dos líneas: las reglas se publican reemplazando TODO el archivo, y un
-   fragmento obliga a buscar dónde va.
-2. **Pegado en el chat, no adjunto.** Un adjunto lo obliga a abrirlo,
-   seleccionar y copiar — un paso de más para algo que hace seguido.
-3. Después del bloque, **una línea** diciendo qué bloques son los nuevos
-   respecto de lo último que publicó.
+1. **Entero, siempre.** Nunca un fragmento, ni ofrecer el fragmento como
+   alternativa: un fragmento obliga a buscar dónde va.
+2. **Pegado en el chat, en un bloque de código, no adjunto.** Un adjunto lo
+   obliga a abrirlo, seleccionar y copiar.
+3. Después del bloque, **una línea** diciendo qué es nuevo respecto de lo
+   último que pegó.
 
 ## Verificación antes de cada commit
 

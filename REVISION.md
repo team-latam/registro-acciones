@@ -374,13 +374,13 @@ ninguna.
    Supabase (4 posteos, 6 comentarios, 4 registros de actividad y unas
    preferencias) y se trajo solo eso.
 3. ~~Cambiar la base por defecto a Supabase.~~ **Hecho el 3 de octubre.**
-4. ~~**Cerrar Firestore.**~~ **Hecho el 3 de octubre:** `firestore.rules`
-   no deja leer ni escribir nada, a nadie, y está publicado.
+4. ~~**Cerrar Firestore.**~~ **Hecho el 3 de octubre:** primero con reglas
+   que no dejaban entrar a nadie, y después se borró la base.
 5. ~~Sacar Firebase del código.~~ **Hecho el 3 de octubre** (ver «El
    código que sobra»).
-6. **Falta, en Firebase Console:** borrar la base de Firestore, el login de
-   Firebase y el registro de la app web. **No borrar el proyecto de Google
-   Cloud que está detrás** (número 40280679854): ahí viven el cliente de
+6. **Falta, en Firebase Console:** apagar el login de Firebase y borrar su
+   lista de usuarios (la base de Firestore ya se borró). **No borrar el
+   proyecto de Google Cloud que está detrás** (número 40280679854): ahí viven el cliente de
    OAuth con el que se pide el permiso de Calendar y la clave de la API de
    Calendar, y muy probablemente el login de Google de Supabase.
 7. **Copias de seguridad de Supabase** (punto 13). Iban antes del cambio
@@ -401,7 +401,7 @@ su cartel, `importar.html`, `prueba-login.html`, `PROBAR-SUPABASE.md`,
 del `05`.~~ **Hecho el 3 de octubre.** Además se fueron `cuantas_filas()` y
 la marca `es_importacion()`, que dejaba a los disparadores hacerse a un
 lado (`05-sin-importacion.sql`). `QUE-GUARDAR.md` se reescribió para
-Supabase, y `firestore.rules` queda, cerrado, mientras exista la base de
+Supabase, y `firestore.rules` se fue cuando se borró la base de
 Firestore.
 
 Al sacarlo apareció un error que venía de antes: en Supabase las
