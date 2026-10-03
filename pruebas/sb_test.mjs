@@ -23,6 +23,7 @@ process.on("unhandledRejection", e => {
    Un Supabase de mentira: anota qué se le pidió y contesta lo que
    le digamos. No tiene NADA de Postgres adentro.
    --------------------------------------------------------------- */
+let firmasDadas = 0;
 function supabaseDeMentira(){
   // maxFilas: como Supabase de verdad (Settings → API → Max rows), nunca
   // devuelve más de 1.000 filas por pedido, se le pida lo que se le pida.
@@ -97,8 +98,18 @@ function supabaseDeMentira(){
       createSignedUrls: async (rutas, seg)=>{ reg.firmadas = (reg.firmadas||[]).concat([[bucket, rutas, seg]]);
         // Una excepción, no un {error}: así se corta la red de verdad.
         if(reg.explotarFirma) throw new Error("se cortó la red firmando adjuntos");
-        return { data: rutas.map(r=>({ path:r, signedUrl:`https://x.supabase.co/storage/v1/object/sign/${r}?token=t` })), error:null }; },
-      upload: async (ruta, blob)=>{ reg.subidas = (reg.subidas||[]).concat([[bucket, ruta, blob.type]]); return { error:null }; },
+        // Para que la respuesta tarde lo que diga la prueba.
+        if(reg.demorarFirma) await reg.demorarFirma;
+        // Cada vuelta firma distinto, como las de verdad (llevan la hora). Y
+        // si se le dijo qué hay en el bucket (reg.objetos), lo que no está
+        // vuelve con su error y sin firma, como contesta Supabase.
+        const vuelta = ++firmasDadas;
+        return { data: rutas.map(r => reg.objetos && !reg.objetos.has(r)
+          ? { path:r, error:"Either the object does not exist or you do not have access to it", signedUrl:null }
+          : { path:r, error:null, signedUrl:`https://x.supabase.co/storage/v1/object/sign/${r}?token=t${vuelta}` }), error:null }; },
+      upload: async (ruta, blob, op)=>{ reg.subidas = (reg.subidas||[]).concat([[bucket, ruta, blob.type, op]]);
+        if(reg.objetos) reg.objetos.add(ruta);
+        return { error:null }; },
     }; } },
     // El canal: guarda a quién avisarle cuando cambia su estado, para poder
     // simular que la conexión se corta y vuelve.
@@ -295,8 +306,8 @@ eq("y el adjunto llega con la forma que la app ya entiende (name + dataUrl)",
 eq("conservando su nombre", a1.files[0].name, "informe.pdf");
 eq("se firman TODAS de una sola vez, no de a una",
    sbA.reg.firmadas.length, 1);
-eq("y las dos rutas van en el mismo pedido",
-   sbA.reg.firmadas[0][1].sort(), ["posts/a1/arch0.pdf","posts/a1/img0.png"]);
+eq("y las tres rutas (la foto, su miniatura y el adjunto) van en el mismo pedido",
+   sbA.reg.firmadas[0][1].sort(), ["posts/a1/arch0.pdf","posts/a1/img0.min.jpg","posts/a1/img0.png"]);
 eq("las firmas duran horas, no minutos: una imagen que se rompe sola es peor",
    sbA.reg.firmadas[0][2] >= 3600, true);
 eq("un posteo sin adjuntos no pide firmar nada de más",
@@ -689,7 +700,7 @@ eq("ni vacío", img(""), "");
   sbV.reg.canales[0].escuchas[0].fn({ eventType:"INSERT", new:{ id:"p2", title:"Con foto", images:["posts/p2/img0_1.jpg"] } });
   await new Promise(r => setTimeout(r, 20));
   eq("un posteo nuevo con foto NO recarga la tabla", sbV.reg.pedidos.length, pedidosAntes);
-  eq("se firma solo su foto", sbV.reg.firmadas.map(f => f[1]), [["posts/p2/img0_1.jpg"]]);
+  eq("se firma solo su foto (y su miniatura)", sbV.reg.firmadas.map(f => f[1]), [["posts/p2/img0_1.jpg", "posts/p2/img0_1.min.jpg"]]);
   eq("y aparece, con la foto lista para mostrar",
      String((lista.find(p => p.id === "p2") || { images:[""] }).images[0]).startsWith("https://"), true);
 }
@@ -749,6 +760,301 @@ eq("ni vacío", img(""), "");
   eq("se sube con el tipo que dice su extensión",
      subida[2], "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
   eq("y con su extensión en el bucket", String(subida[1] || "").endsWith(".docx"), true);
+}
+
+/* ================================================================
+   Las fotos: la miniatura en la tarjeta, la entera en el visor, y
+   firmas que se reusan
+
+   El plan gratis da 5 GB de descarga por mes. Las tarjetas mostraban la
+   foto entera (~600 KB) en un cuadrado de 92 px, y como cada carga de la
+   página la firmaba de nuevo, la dirección cambiaba y el navegador la
+   volvía a bajar entera cada vez: ocho fotos eran ~5 MB por carga.
+================================================================ */
+// El mismo adaptador, con un navegador de mentira alrededor: su
+// localStorage, su reloj y su setInterval, para poder adelantar el tiempo
+// y mirar qué queda guardado.
+const DIA = 24 * 60 * 60 * 1000;
+const CLAVE_FIRMAS = "registro.firmas.v1";
+const aTiempo = () => new Promise(r => setTimeout(r, 30));
+function navegadorDeMentira(){
+  const guardado = new Map();
+  const nav = { ahora: Date.UTC(2026, 9, 3, 12), relojes: [], guardado, lleno: Infinity };
+  nav.localStorage = {
+    getItem: k => guardado.has(k) ? guardado.get(k) : null,
+    setItem: (k, v) => {
+      if(String(v).length > nav.lleno){ const e = new Error("no entra"); e.name = "QuotaExceededError"; throw e; }
+      guardado.set(k, String(v));
+    },
+    removeItem: k => { guardado.delete(k); },
+  };
+  class Fecha extends Date { static now(){ return nav.ahora; } }
+  nav.crear = new Function("ctx", `
+    const crypto = ctx.crypto, localStorage = ctx.localStorage, Date = ctx.Date;
+    const setInterval = (fn, ms) => ctx.relojes.push({ fn, ms, parado:false });
+    const clearInterval = n => { if(ctx.relojes[n - 1]) ctx.relojes[n - 1].parado = true; };
+    ${grab("tsToMillis")}
+    ${grab("LIMITES_SUPABASE")}
+    ${grab("crearSupabaseStore")}
+    return crearSupabaseStore;
+  `)({ crypto: ctx.crypto, localStorage: nav.localStorage, Date: Fecha, relojes: nav.relojes });
+  return nav;
+}
+const ultimaDe = listas => listas[listas.length - 1] || [];
+const miniDe = (st, src) => typeof st.miniaturaDe === "function" ? st.miniaturaDe(src) : src;
+const olvidarEn = st => { if(typeof st.olvidarFirmas === "function") st.olvidarFirmas(); };
+eq("el adaptador sabe dar la miniatura de una foto y olvidar las firmas al salir",
+   ["miniaturaDe", "olvidarFirmas"].map(m => typeof crear(supabaseDeMentira())[m]), ["function", "function"]);
+
+{
+  // Subir una foto nueva.
+  const nav = navegadorDeMentira();
+  const sbF = supabaseDeMentira(); sbF.reg.objetos = new Set();
+  const pedidas = [];
+  const achicar = async (dataUrl, lado, calidad) => { pedidas.push({ dataUrl, lado, calidad }); return "data:image/jpeg;base64,/9j/2wBD"; };
+  const stF = nav.crear(sbF, { achicar });
+  await stF.posts.create({ title:"Con foto", images:["data:image/jpeg;base64,/9j/4AAQ"] });
+  const subidas = sbF.reg.subidas || [], [foto, mini] = subidas;
+  eq("una foto nueva sube dos archivos: ella y su miniatura", subidas.length, 2);
+  eq("la miniatura va al lado, con el mismo nombre terminado en .min.jpg",
+     mini && mini[1], foto && foto[1].replace(/\.jpg$/, ".min.jpg"));
+  eq("y es un JPEG", mini && mini[2], "image/jpeg");
+  eq("se arma con la foto que se está subiendo", pedidas.map(p => p.dataUrl), ["data:image/jpeg;base64,/9j/4AAQ"]);
+  eq("y chica: 480 px de lado como mucho, para una tarjeta de 92",
+     pedidas.length === 1 && pedidas[0].lado <= 480, true);
+  const fila = (sbF.reg.escrituras.find(e => e[0] === "insert") || [,,{}])[2];
+  eq("en la fila queda UNA ruta por foto: la miniatura se encuentra por el nombre",
+     fila.images, [foto && foto[1]]);
+  eq("lo subido se puede guardar un año en el navegador (una ruta no se reusa nunca)",
+     subidas.map(s => s[3] && s[3].cacheControl), ["31536000", "31536000"]);
+}
+{
+  // Si la miniatura no se puede armar, la foto no se pierde.
+  const nav = navegadorDeMentira();
+  const sbF = supabaseDeMentira();
+  const avisos = [], avisar = console.warn;
+  console.warn = (...a) => avisos.push(a.map(String).join(" "));
+  const stF = nav.crear(sbF, { achicar: async () => { throw new Error("este navegador no puede achicar"); } });
+  try{ await stF.posts.create({ title:"Igual", images:["data:image/jpeg;base64,/9j/4AAQ"] }); }
+  finally{ console.warn = avisar; }
+  const fila = (sbF.reg.escrituras.find(e => e[0] === "insert") || [,,{}])[2];
+  eq("si la miniatura no se puede armar, el posteo se guarda igual, con su foto", (fila.images || []).length, 1);
+  eq("subida una sola vez", (sbF.reg.subidas || []).length, 1);
+}
+{
+  // Leer: la tarjeta, el visor, y la página que se vuelve a cargar.
+  const nav = navegadorDeMentira();
+  const objetos = new Set(["posts/p1/img0_1.jpg", "posts/p1/img0_1.min.jpg", "posts/p1/img1_1.jpg", "posts/p1/arch0_1.pdf"]);
+  const filas = [{ id:"p1", title:"Visita", images:["posts/p1/img0_1.jpg", "posts/p1/img1_1.jpg"],
+                   files:[{ name:"plan.pdf", path:"posts/p1/arch0_1.pdf" }] }];
+  const abrir = () => {
+    const sbX = supabaseDeMentira(); sbX.reg.objetos = objetos; sbX.ponerFilas("posts", filas);
+    const stX = nav.crear(sbX);
+    const listas = [];
+    stX.posts.subscribe(l => listas.push(l));
+    return { sbX, stX, listas };
+  };
+  const a = abrir(); await aTiempo();
+  const p = ultimaDe(a.listas)[0] || { images:[], files:[] };
+  const [nueva, vieja] = p.images;
+  eq("la foto llega entera: es la que abre el visor", /img0_1\.jpg\?/.test(nueva || ""), true);
+  eq("y la tarjeta usa su miniatura", /img0_1\.min\.jpg\?/.test(miniDe(a.stX, nueva)), true);
+  eq("una foto de antes, sin miniatura, se sigue mostrando entera", miniDe(a.stX, vieja), vieja);
+  eq("lo que no es del bucket queda como está",
+     miniDe(a.stX, "data:image/jpeg;base64,/9j/"), "data:image/jpeg;base64,/9j/");
+  eq("todo se firma en un solo pedido, miniaturas incluidas", (a.sbX.reg.firmadas || []).length, 1);
+  eq("por una semana", ((a.sbX.reg.firmadas || [])[0] || [])[2] >= 7 * 24 * 60 * 60, true);
+  const guardado = nav.guardado.get(CLAVE_FIRMAS) || "";
+  eq("las firmas quedan guardadas en el navegador", guardado.includes("img0_1.min.jpg?"), true);
+  eq("solo las firmas: nada de lo que dice el posteo", guardado.includes("Visita"), false);
+
+  // La página se vuelve a cargar al rato: otro adaptador, el mismo navegador.
+  nav.ahora += 2 * 60 * 60 * 1000;
+  const b = abrir(); await aTiempo();
+  const p2 = ultimaDe(b.listas)[0] || { images:[], files:[{}] };
+  eq("al volver a cargar la página, cada foto tiene LA MISMA dirección: el navegador ya la tiene",
+     p2.images, p.images);
+  eq("su miniatura también", miniDe(b.stX, p2.images[0]), miniDe(a.stX, nueva));
+  eq("y el adjunto", p2.files[0].dataUrl, p.files[0].dataUrl);
+  eq("sin pedir ninguna firma, ni la de la miniatura que no existe", b.sbX.reg.firmadas || [], []);
+
+  // Casi una semana después, a las firmas les queda menos de un día.
+  nav.ahora += 6.5 * DIA;
+  const c = abrir(); await aTiempo();
+  const p3 = ultimaDe(c.listas)[0] || { images:[] };
+  eq("con menos de un día por delante, se firma de nuevo", (c.sbX.reg.firmadas || []).length, 1);
+  eq("y la dirección cambia", p3.images[0] !== nueva && /img0_1\.jpg\?/.test(p3.images[0] || ""), true);
+  eq("la miniatura que no existía se vuelve a buscar: pasó más de un día y puede haber aparecido",
+     ((c.sbX.reg.firmadas || [])[0] || [, []])[1].includes("posts/p1/img1_1.min.jpg"), true);
+
+  // Y al cerrar la sesión no queda nada.
+  olvidarEn(c.stX);
+  eq("al cerrar la sesión, las firmas se borran del navegador", nav.guardado.has(CLAVE_FIRMAS), false);
+  const d = abrir(); await aTiempo();
+  eq("y la sesión siguiente firma todo de nuevo", (d.sbX.reg.firmadas || []).length, 1);
+
+  // Se cierra la sesión (desde otra pestaña, por ejemplo) justo mientras
+  // una firma está en camino: cuando llega, ya no se guarda.
+  olvidarEn(d.stX);
+  let soltar; const demora = new Promise(r => { soltar = r; });
+  const e = (() => {
+    const sbX = supabaseDeMentira(); sbX.reg.objetos = objetos; sbX.ponerFilas("posts", filas);
+    sbX.reg.demorarFirma = demora;
+    const stX = nav.crear(sbX);
+    stX.posts.subscribe(() => {});
+    return { sbX, stX };
+  })();
+  await aTiempo();
+  olvidarEn(e.stX);
+  soltar(); await aTiempo();
+  eq("una firma que llega después de cerrar la sesión no se guarda", nav.guardado.has(CLAVE_FIRMAS), false);
+}
+{
+  // Una pestaña que queda abierta casi una semana.
+  const nav = navegadorDeMentira();
+  const sbR = supabaseDeMentira();
+  sbR.reg.objetos = new Set(["posts/p1/img0_1.jpg", "posts/p1/img0_1.min.jpg", "posts/p1/arch0_1.pdf", "posts/p2/arch0_1.pdf"]);
+  sbR.ponerFilas("posts", [{ id:"p1", title:"Abierta", images:["posts/p1/img0_1.jpg"],
+                             files:[{ name:"plan.pdf", path:"posts/p1/arch0_1.pdf", doc:"plan" }] },
+                           { id:"p2", title:"Solo un adjunto", files:[{ name:"b.pdf", path:"posts/p2/arch0_1.pdf" }] }]);
+  const stR = nav.crear(sbR);
+  const listas = [];
+  const cortarR = stR.posts.subscribe(l => listas.push(l));
+  await aTiempo();
+  const reloj = nav.relojes.find(r => !r.parado);
+  eq("una pestaña abierta revisa sus firmas cada hora", reloj ? reloj.ms : null, 60 * 60 * 1000);
+  const antes = ultimaDe(listas)[0] || { images:[], files:[{}] };
+  const soloAdjunto = ultimaDe(listas)[1] || { files:[{}] }, suFirma = soloAdjunto.files[0].dataUrl;
+  const miniAntes = miniDe(stR, antes.images[0]);
+  const pedidos = sbR.reg.pedidos.length, entregas = listas.length;
+  if(reloj) await reloj.fn();
+  eq("con las firmas al día, revisar no pide nada ni vuelve a entregar la lista",
+     [(sbR.reg.firmadas || []).length, listas.length], [1, entregas]);
+
+  nav.ahora += 6.5 * DIA;
+  if(reloj) await reloj.fn();
+  const despues = ultimaDe(listas)[0] || { images:[], files:[{}] };
+  eq("con menos de un día por delante, se renueva y la lista vuelve a llegar", listas.length, entregas + 1);
+  eq("con otra dirección para la foto",
+     despues.images[0] !== antes.images[0] && /img0_1\.jpg\?/.test(despues.images[0] || ""), true);
+  eq("y para su miniatura", miniDe(stR, despues.images[0]) !== miniAntes
+     && /img0_1\.min\.jpg\?/.test(miniDe(stR, despues.images[0])), true);
+  eq("y para el adjunto", !!despues.files[0].dataUrl && despues.files[0].dataUrl !== antes.files[0].dataUrl, true);
+  eq("que conserva todo lo demás", [despues.files[0].name, despues.files[0].path, despues.files[0].doc],
+     ["plan.pdf", "posts/p1/arch0_1.pdf", "plan"]);
+  eq("sin volver a bajar la tabla", sbR.reg.pedidos.length, pedidos);
+  eq("lo que ya se había entregado no se toca: la lista nueva trae objetos nuevos",
+     [soloAdjunto.files[0].dataUrl === suFirma, (ultimaDe(listas)[1] || { files:[{}] }).files[0].dataUrl !== suFirma], [true, true]);
+
+  await stR.posts.update("p1", { images: despues.images, files: despues.files });
+  const escrita = (sbR.reg.escrituras.find(e => e[0] === "update") || [,,{ images:[], files:[{}] }])[2];
+  eq("guardar después de renovar escribe la RUTA, no la firma nueva",
+     [escrita.images[0], escrita.files[0].path, escrita.files[0].dataUrl],
+     ["posts/p1/img0_1.jpg", "posts/p1/arch0_1.pdf", undefined]);
+  cortarR();
+  eq("al dejar de mirar la lista, el reloj se apaga", !!(reloj && reloj.parado), true);
+}
+{
+  // Una foto de antes, en una pestaña abierta: al otro día se vuelve a
+  // buscar su miniatura (pudo haber aparecido), pero si sigue sin existir
+  // no cambió ninguna dirección y no hay nada que volver a dibujar.
+  const nav = navegadorDeMentira();
+  const sbN = supabaseDeMentira();
+  sbN.reg.objetos = new Set(["posts/p1/img0_1.jpg"]);
+  sbN.ponerFilas("posts", [{ id:"p1", images:["posts/p1/img0_1.jpg"] }]);
+  const stN = nav.crear(sbN);
+  const listas = [];
+  stN.posts.subscribe(l => listas.push(l));
+  await aTiempo();
+  const reloj = nav.relojes.find(r => !r.parado), entregas = listas.length;
+  nav.ahora += 1.5 * DIA;
+  if(reloj) await reloj.fn();
+  eq("al otro día se vuelve a buscar la miniatura de una foto de antes, y solo eso",
+     (sbN.reg.firmadas || []).map(f => f[1]), [["posts/p1/img0_1.jpg", "posts/p1/img0_1.min.jpg"], ["posts/p1/img0_1.min.jpg"]]);
+  eq("y si sigue sin existir, la lista no se vuelve a entregar", listas.length, entregas);
+}
+{
+  // El lugar del navegador es poco, y lo comparten todas las páginas de
+  // team-latam.github.io.
+  const nav = navegadorDeMentira();
+  const sbQ = supabaseDeMentira();
+  sbQ.ponerFilas("posts", Array.from({ length: 40 }, (_, i) => ({ id: "p" + i,
+    images: [`posts/p${i}/img0_1.jpg`], files: [{ name: "a.pdf", path: `posts/p${i}/arch0_1.pdf` }] })));
+  nav.lleno = 8000;
+  const stQ = nav.crear(sbQ);
+  const listas = [];
+  stQ.posts.subscribe(l => listas.push(l));
+  await aTiempo();
+  let guardadas = {};
+  try{ guardadas = JSON.parse(nav.guardado.get(CLAVE_FIRMAS) || "{}").firmas || {}; }catch(e){}
+  eq("si no entran todas, se guardan las de las miniaturas: son las que se ven en cada carga",
+     [Object.keys(guardadas).length, Object.keys(guardadas).every(r => r.endsWith(".min.jpg"))], [40, true]);
+
+  nav.lleno = 10;
+  sbQ.reg.canales[0].escuchas[0].fn({ eventType:"INSERT", new:{ id:"pNueva", images:["posts/pNueva/img0_1.jpg"] } });
+  await aTiempo();
+  eq("y si no entra ni eso, no queda guardado nada viejo", nav.guardado.has(CLAVE_FIRMAS), false);
+  eq("la app sigue andando igual",
+     ultimaDe(listas).some(p => p.id === "pNueva" && /img0_1\.jpg\?/.test(p.images[0] || "")), true);
+}
+{
+  // Lo guardado puede estar roto, o ser de otra versión.
+  const nav = navegadorDeMentira();
+  const filas = [{ id:"p1", images:["posts/p1/img0_1.jpg"] }, { id:"p2", images:["posts/p2/img0_1.jpg"] }];
+  nav.guardado.set(CLAVE_FIRMAS, JSON.stringify({ noHay: null, firmas: {
+    "posts/p1/img0_1.jpg": "basura",
+    "posts/p2/img0_1.jpg": { url: "https://x.supabase.co/storage/v1/object/sign/posts/p2/img0_1.jpg?token=porvencer",
+                             vence: nav.ahora + 60 * 60 * 1000 } } }));
+  const sbC = supabaseDeMentira(); sbC.ponerFilas("posts", filas);
+  const stC = nav.crear(sbC);
+  let lista = [];
+  stC.posts.subscribe(l => { lista = l; });
+  await aTiempo();
+  const firmadasC = ((sbC.reg.firmadas || [])[0] || [, []])[1].filter(r => !r.endsWith(".min.jpg")).sort();
+  eq("lo guardado que no se entiende no se usa: se firma como siempre",
+     firmadasC, ["posts/p1/img0_1.jpg", "posts/p2/img0_1.jpg"]);
+  eq("y una firma guardada a la que le queda una hora, tampoco", lista.some(p => (p.images[0] || "").includes("porvencer")), false);
+
+  nav.guardado.set(CLAVE_FIRMAS, "{esto no es json");
+  const sbC2 = supabaseDeMentira(); sbC2.ponerFilas("posts", filas);
+  const stC2 = nav.crear(sbC2);
+  let lista2 = [];
+  stC2.posts.subscribe(l => { lista2 = l; });
+  await aTiempo();
+  eq("y si ni siquiera es JSON, también",
+     [(sbC2.reg.firmadas || []).length, lista2.every(p => /img0_1\.jpg\?token=/.test(p.images[0] || ""))], [1, true]);
+}
+{
+  // Lo que se dibuja: la miniatura, con carga diferida, y nunca algo que
+  // no sea del bucket propio.
+  const MIO = "https://benonmzlgdjkhzauamrz.supabase.co/storage/v1/object/sign/adjuntos/posts/p1/";
+  const ENTERA = MIO + "img0_1.jpg?token=a", CHICA = MIO + "img0_1.min.jpg?token=b";
+  const VIEJA = MIO + "img1_1.jpg?token=c", RARA = MIO + "img2_1.jpg?token=d";
+  const store = { miniaturaDe: src => src === ENTERA ? CHICA : src === RARA ? "https://cualquiera.com/x.jpg" : src };
+  let dibujar = null;
+  try{
+    dibujar = new Function("ctx", `
+      const SUPABASE_URL = "https://benonmzlgdjkhzauamrz.supabase.co";
+      const store = ctx.store;
+      const safeUrl = u => u, renderScopeChip = () => "";
+      ${grab("esc")}
+      ${grab("IMAGE_DATA_URL_RE")}
+      ${grab("esUrlDelBucket")}
+      ${grab("safeImageSrc")}
+      ${grab("srcMiniatura")}
+      ${grab("ownerAttrs")}
+      ${grab("renderAttachments")}
+      return renderAttachments;
+    `)({ store });
+  }catch(e){ fail++; console.log(`✗ no se pudo armar el dibujo de las fotos: ${e.message}`); }
+  if(dibujar){
+    const html = dibujar({ images:[ENTERA, VIEJA, RARA] }, { postId:"p1" }).imagesHtml;
+    const srcs = [...html.matchAll(/<img src="([^"]*)"/g)].map(m => m[1].replace(/&amp;/g, "&"));
+    eq("la tarjeta muestra la miniatura", srcs[0], CHICA);
+    eq("una foto sin miniatura, entera", srcs[1], VIEJA);
+    eq("y una miniatura que no es del bucket propio no entra: va la entera", srcs[2], RARA);
+    eq("las fotos se bajan recién cuando están por verse", (html.match(/ loading="lazy"/g) || []).length, 3);
+  }
 }
 
 eq("un token vencido (PGRST301) NO es falta de permiso", crear(supabaseDeMentira()).esErrorDePermiso({ code:"PGRST301" }), false);

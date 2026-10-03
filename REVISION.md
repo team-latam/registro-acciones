@@ -22,20 +22,20 @@ workflows `base-de-datos.yml` y `calendario.yml`, el adaptador
 
 ## Resumen
 
-| # | Qué | Gravedad | Cómo se sabe |
-|---|---|---|---|
-| 1 | El próximo cambio de SQL no se va a poder aplicar | **Urgente** | reproducido |
-| 2 | Lo que crea el sincronizador nocturno queda fechado en 1970 | Alta | reproducido |
-| 3 | Pasando las 1.000 filas, posteos y comentarios desaparecen | Alta | código + límite de fábrica de Supabase |
-| 4 | La importación final perdería datos | Alta — frena la mudanza | código |
-| 5 | Las fotos se comen la cuota de descarga del plan gratis | Alta | calculado |
-| 6 | Cualquier integrante puede inflar lo que bajan todos | Media | reproducido |
-| 7 | El correo se valida con un dato que el usuario puede cambiar | Media — depende del panel | a confirmar |
-| 8 | Las políticas se evalúan fila por fila: 80 veces más lentas | Media | medido |
-| 9 | Después de una desconexión, la pantalla queda vieja | Media | código |
-| 10 | Cada escritura, hasta un «me gusta», vuelve a bajar la tabla entera | Media | código |
-| 11 | Quitar un adjunto no lo borra del bucket | Media | código |
-| 12 | Menores (ver abajo) | Baja | — |
+| # | Qué | Gravedad | Cómo se sabe | Estado |
+|---|---|---|---|---|
+| 1 | El próximo cambio de SQL no se va a poder aplicar | **Urgente** | reproducido | resuelto |
+| 2 | Lo que crea el sincronizador nocturno queda fechado en 1970 | Alta | reproducido | resuelto |
+| 3 | Pasando las 1.000 filas, posteos y comentarios desaparecen | Alta | código + límite de fábrica de Supabase | resuelto |
+| 4 | La importación final perdería datos | Alta — frena la mudanza | código | **pendiente** |
+| 5 | Las fotos se comen la cuota de descarga del plan gratis | Alta | calculado | resuelto |
+| 6 | Cualquier integrante puede inflar lo que bajan todos | Media | reproducido | resuelto |
+| 7 | El correo se valida con un dato que el usuario puede cambiar | Media — depende del panel | a confirmar | resuelto en la base |
+| 8 | Las políticas se evalúan fila por fila: 80 veces más lentas | Media | medido | resuelto |
+| 9 | Después de una desconexión, la pantalla queda vieja | Media | código | resuelto |
+| 10 | Cada escritura, hasta un «me gusta», vuelve a bajar la tabla entera | Media | código | resuelto |
+| 11 | Quitar un adjunto no lo borra del bucket | Media | código | **pendiente** |
+| 12 | Menores (ver abajo) | Baja | — | resuelto |
 
 ---
 
@@ -138,6 +138,24 @@ modo «importación final» que actualice lo que ya existe (solo el admin
 fijo, como hoy).
 
 ## 5. Las fotos se comen la cuota de descarga
+
+> **Resuelto.** Cada foto nueva sube con una miniatura al lado
+> (`.min.jpg`, 480 px, ~30 KB): las tarjetas y los borradores muestran esa,
+> y la entera se baja recién en el visor. Las fotos de las tarjetas se
+> bajan cuando están por verse (`loading="lazy"`). Las firmas duran una
+> semana y se guardan en el navegador, así una foto tiene la misma
+> dirección de una carga a la otra y no se vuelve a bajar; lo subido se
+> puede guardar un año en el navegador, porque una ruta no se reusa nunca.
+> Una pestaña abierta renueva sola las firmas que vencen en menos de un
+> día (antes, pasadas cuatro horas, lo que no se había bajado aparecía
+> roto). Al cerrar la sesión, por donde sea, las firmas guardadas se
+> borran.
+>
+> **El precio:** una dirección copiada abre su archivo hasta una semana,
+> aun para alguien a quien se le sacó el acceso. Antes eran cuatro horas.
+>
+> **Las fotos de antes no tienen miniatura** y se siguen mostrando
+> enteras: la importación final (punto 4) las tiene que armar.
 
 El plan gratis da **5 GB de descarga por mes**. Hoy:
 
@@ -248,7 +266,9 @@ Solo el admin fijo puede borrar del bucket y la app no lo hace nunca. Un
 archivo quitado de un evento **sigue ahí**: ocupa lugar del GB del plan y
 cualquier aprobado que tenga la ruta lo sigue pudiendo abrir.
 
-**Arreglo:** una limpieza periódica de lo que ninguna fila nombra.
+**Arreglo:** una limpieza periódica de lo que ninguna fila nombra. Ojo:
+la miniatura de una foto (`…_123.min.jpg`) no la nombra ninguna fila; se
+la nombra a través de su foto, y se va con ella.
 
 ## 12. Menores
 

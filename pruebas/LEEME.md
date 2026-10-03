@@ -48,6 +48,7 @@ INDEX=/tmp/roto.html ./pruebas/correr.sh
 | `armar_*.py`, `build*.mjs` | arman las páginas de prueba desde `index.html`. |
 | `grab.mjs`, `extractor.py` | el extractor, en JavaScript y en Python. Son gemelos: `extractor_test.mjs` exige que saquen exactamente lo mismo de cada declaración del archivo. |
 | `carga_test.mjs` | la página entera, en las dos bases. |
+| `miniatura_test.mjs` | la miniatura de una foto, armada en un Chromium de verdad: un canvas no existe fuera del navegador, y `sb_test.mjs` usa una de mentira. |
 
 ## Para correrlas
 
