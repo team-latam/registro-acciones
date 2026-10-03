@@ -724,6 +724,26 @@
   .rv-conf{ width:9px; height:9px; border-radius:50%; flex:none; display:inline-block; }
   .rv-conf.a{ background:#16a34a; } .rv-conf.m{ background:#eab308; } .rv-conf.b{ background:#dc2626; }
   .rv-acc{ flex:none; border:1px solid var(--border); background:var(--card); border-radius:999px; padding:6px 11px; font-size:12px; font-weight:700; font-family:inherit; color:var(--celeste-dark); cursor:pointer; }
+  /* La barra y el panel flotan abajo de la pantalla: así acompañan a
+     quien recorre una lista larga, en vez de quedarse arriba de todo. */
+  .rv-flota{ position:fixed; left:50%; transform:translateX(-50%); bottom:16px; z-index:70; width:min(960px, calc(100vw - 32px)); display:flex; flex-direction:column; gap:8px; }
+  .rv-flota .rv-barra{ position:static; margin:0; }
+  .rv-flota .rv-panel{ margin:0; max-height:60vh; overflow:auto; box-shadow:0 12px 32px rgba(0,0,0,.22); }
+  .rv-flota-espacio{ height:220px; }
+  /* Con la barra flotando abajo, los avisos van arriba: si no, la tapan. */
+  body:has(.rv-flota) .calendar-notice{ bottom:auto; top:calc(var(--header-h, 110px) + 12px); }
+  .rv-row.guardado{ background:var(--ok-bg); }
+  .rv-ok{ display:inline-flex; align-items:center; font-size:12px; font-weight:800; border-radius:999px; padding:3px 9px; background:var(--ok-bg); color:var(--ok-text); border:1px solid currentColor; }
+  .rv-sugerido{ font-size:11.5px; font-weight:700; color:var(--text-muted); margin-inline-end:2px; }
+  .rv-s.donde{ background:transparent; border:1px solid var(--border); }
+  .rv-campo input#rvDonde{ border:1px solid var(--border); border-radius:10px; padding:8px 10px; font-size:13.5px; font-family:inherit; background:var(--card); color:var(--ink); }
+  .rv-campo small{ font-weight:600; color:var(--text-muted); max-width:320px; }
+  .rv-alcance-elegir{ flex-wrap:wrap; max-width:640px; }
+  .rv-alcance-elegir select{ flex:1 1 160px; min-width:0; }
+  .rv-ayuda{ margin:-4px 0 0; }
+  @media (max-width:760px){
+    .rv-flota{ bottom:calc(70px + env(safe-area-inset-bottom)); }
+  }
   .rv-leyenda{ display:flex; gap:14px; font-size:12px; color:var(--text-muted); margin:10px 2px 0; }
   .rv-leyenda span{ display:flex; align-items:center; gap:5px; }
   .rv-mas{ margin-top:10px; }
@@ -10068,7 +10088,7 @@ function adminSeccionTextos(key){
     personas: { lead: t("Quién está en el equipo, con qué rol, y los pedidos de acceso.","Who's on the team, with which role, and the access requests.","Quem está na equipe, com qual papel, e os pedidos de acesso.","מי בצוות, באיזה תפקיד, ובקשות הגישה.") },
     actividad: { lead: t("Quién entró, qué cargó y qué cambió, día por día.","Who signed in, what they logged and what changed, day by day.","Quem entrou, o que carregou e o que mudou, dia a dia.","מי נכנס/ה, מה נרשם ומה השתנה, יום אחר יום.") },
     revisarcal: {
-      lead: t("Lo que llegó de Google Calendar sin tipo ni lugar. Elegí varios a la vez y ponéles tipo, lugar o personas, o sacalos del Registro. Nada de esto avisa a nadie ni cambia Google Calendar.","What came in from Google Calendar with no type or place. Select several at once and give them a type, a place or people, or remove them from the Log. None of this notifies anyone or changes Google Calendar.","O que chegou do Google Calendar sem tipo nem lugar. Escolha vários de uma vez e defina tipo, lugar ou pessoas, ou tire do Registro. Nada disso avisa ninguém nem muda o Google Calendar.","מה שהגיע מ-Google Calendar בלי סוג ובלי מקום. בחר/י כמה בבת אחת והגדר/י סוג, מקום או אנשים, או הסר/י מהיומן. שום דבר מזה לא שולח הודעה לאף אחד ולא משנה את Google Calendar."),
+      lead: t("Lo que llegó de Google Calendar sin tipo ni lugar. Elegí varios a la vez y ponéles tipo, alcance, dónde fue o personas, o sacalos del Registro. Nada de esto avisa a nadie ni cambia Google Calendar.","What came in from Google Calendar with no type or place. Select several at once and give them a type, a reach, where it was or people, or remove them from the Log. None of this notifies anyone or changes Google Calendar.","O que chegou do Google Calendar sem tipo nem lugar. Escolha vários de uma vez e defina tipo, lugar ou pessoas, ou tire do Registro. Nada disso avisa ninguém nem muda o Google Calendar.","מה שהגיע מ-Google Calendar בלי סוג ובלי מקום. בחר/י כמה בבת אחת והגדר/י סוג, מקום או אנשים, או הסר/י מהיומן. שום דבר מזה לא שולח הודעה לאף אחד ולא משנה את Google Calendar."),
       ayuda: t("La sugerencia de cada evento sale de su título (el lugar y las personas que nombra). El puntito dice qué tan segura es. «Sacar del Registro» lo borra de la app con sus comentarios; en Google Calendar sigue igual, y la sincronización ya no lo vuelve a traer. Los títulos no se cambian: el de Calendar manda.","Each event's suggestion comes from its title (the place and people it names). The dot says how sure it is. “Remove from the Log” deletes it from the app with its comments; it stays in Google Calendar, and syncing won't bring it back. Titles aren't changed: Calendar's one rules.","A sugestão de cada evento sai do título (o lugar e as pessoas que ele nomeia). A bolinha diz quão segura ela é. «Tirar do Registro» apaga do app com os comentários; no Google Calendar continua igual, e a sincronização não traz de volta. Os títulos não mudam: vale o do Calendar.","ההצעה לכל אירוע נגזרת מהכותרת שלו (המקום והאנשים שהיא מזכירה). הנקודה מראה עד כמה היא בטוחה. «הסרה מהיומן» מוחקת אותו מהאפליקציה יחד עם התגובות; ב-Google Calendar הוא נשאר, והסנכרון לא יחזיר אותו. הכותרות לא משתנות: הקובעת היא זו של היומן."),
     },
     zonas: { lead: t("A qué zona pertenece cada país. Cambiarlo aplica también a los posteos ya cargados.","Which zone each country belongs to. Changing it also applies to posts already logged.","A que zona pertence cada país. Trocar também se aplica às postagens já carregadas.","לאיזה אזור שייכת כל מדינה. שינוי חל גם על פוסטים שכבר נרשמו.") },
@@ -10319,14 +10339,15 @@ function renderAuditColumnsHeader(){
 const RV_PAGINA = 100;
 let rv = { grupo:"actividad", buscar:"", soloSeguros:false, elegidos:new Set(), panel:null,
   editId:null, borrador:null, trabajando:false, sugerencias:null, cargando:false, error:"", visibles:RV_PAGINA,
-  vincular:{}, sacados:null, cargandoSacados:false };
+  vincular:{}, sacados:null, cargandoSacados:false, recientes:new Set() };
 function esImportado(p){ return !!(p && p.authorName === "Google Calendar" && !p.authorEmail && p.calendarEventId); }
-// Pendiente = sigue como vino: "Otro" y sin lugar.
-function rvPendiente(p){ return esImportado(p) && p.activityType === "otro" && !(p.scopes || []).length; }
+// Tocado = alguien ya le puso algo (tipo, alcance, dónde fue o personas).
+// Pendiente = sigue como vino de Calendar.
+function rvTocado(p){ return p.activityType !== "otro" || !!(p.scopes || []).length || !!(p.participants || []).length || !!p.location; }
+function rvPendiente(p){ return esImportado(p) && !rvTocado(p); }
 function rvPendientes(){ return state.posts.filter(rvPendiente); }
 function rvSugerencia(p){ return (rv.sugerencias && p && rv.sugerencias.get(p.calendarEventId)) || null; }
 function rvGrupoDe(p){
-  if(!rvPendiente(p)) return "ordenados";
   const s = rvSugerencia(p);
   return s ? s.grupo : "sin";
 }
@@ -10361,11 +10382,11 @@ function renderSacados(){
   const n = rv.elegidos.size;
   const quien = email => { const m = memberByEmail(email); return m ? m.nickname : email; };
   if(rv.errorSacados) return `<div class="gate-aviso">${t("No se pudo leer la lista de lo sacado ({m}). Recargá la página; si sigue igual, avisá.","Couldn't read the list of removed events ({m}). Reload the page; if it keeps happening, let us know.","Não foi possível ler a lista do que foi tirado ({m}). Recarregue a página; se continuar, avise.","לא ניתן היה לקרוא את רשימת מה שהוסר ({m}). טען/י מחדש את הדף; אם זה נמשך, דווח/י.",{m:esc(rv.errorSacados)})}</div>`;
-  return `${n ? `<div class="rv-barra" role="toolbar" aria-label="${esc(t("Qué hacer con los elegidos","What to do with the selected ones","O que fazer com os escolhidos","מה לעשות עם הנבחרים"))}">
+  return `${n ? `<div class="rv-flota-espacio" aria-hidden="true"></div><div class="rv-flota"><div class="rv-barra" role="toolbar" aria-label="${esc(t("Qué hacer con los elegidos","What to do with the selected ones","O que fazer com os escolhidos","מה לעשות עם הנבחרים"))}">
       <b>${t("{n} elegidos","{n} selected","{n} escolhidos","{n} נבחרו",{n})}</b>
       <button type="button" class="prin" data-action="rv-devolver" ${rv.trabajando ? "disabled" : ""}>↩ ${t("Devolver al Registro","Bring back to the Log","Devolver ao Registro","החזרה ליומן")}</button>
       <button type="button" class="x" data-action="rv-ninguno" aria-label="${esc(t("Soltar todos","Deselect all","Soltar todos","ביטול הבחירה"))}">✕</button>
-    </div>` : ""}
+    </div></div>` : ""}
     ${lista.length ? `<div class="lp-rows">
       <div class="rv-row rv-todos"><input type="checkbox" data-action="rv-todos" ${todos ? "checked" : ""} aria-label="${esc(t("Elegir todos los de la lista","Select everything in the list","Escolher todos da lista","בחירת כל הרשימה"))}">
         <span class="rv-fecha">${t("Elegir todos","Select all","Escolher todos","בחירת הכל")}</span>
@@ -10429,14 +10450,18 @@ function rvParticipantes(nombres, previos){
 }
 function rvLista(){
   const q = normalize(rv.buscar);
+  // Lo que se acaba de guardar se queda en su lugar (con "✓ Guardado")
+  // hasta cambiar de pestaña: si desapareciera al toque, no se vería que
+  // el cambio quedó.
   const base = rv.grupo === "ordenados"
-    ? state.posts.filter(p => esImportado(p) && !rvPendiente(p))
-    : rvPendientes().filter(p => rvGrupoDe(p) === rv.grupo);
+    ? state.posts.filter(p => esImportado(p) && rvTocado(p))
+    : state.posts.filter(p => esImportado(p) && (rvPendiente(p) || rv.recientes.has(p.id)) && rvGrupoDe(p) === rv.grupo);
   return base.filter(p => {
-    if(rv.soloSeguros && rv.grupo !== "ordenados"){ const s = rvSugerencia(p); if(!s || s.confianza !== "alta") return false; }
+    if(rv.soloSeguros && rv.grupo !== "ordenados" && !rv.recientes.has(p.id)){ const s = rvSugerencia(p); if(!s || s.confianza !== "alta") return false; }
     if(!q) return true;
     const s = rvSugerencia(p);
-    const texto = [p.title, ...(s ? s.lugares.map(scopeLabel) : []), ...(s ? s.personas : []), ...(p.scopes || []).map(scopeLabel)].join(" ");
+    const texto = [p.title, p.location || "", ...(s ? s.lugares.map(scopeLabel) : []), ...(s ? s.personas : []), ...(p.scopes || []).map(scopeLabel),
+      ...(p.participants || []).map(x => x.name || x.email)].join(" ");
     return normalize(texto).includes(q);
   }).sort((a, b) => String(b.startDate || "").localeCompare(String(a.startDate || "")));
 }
@@ -10444,21 +10469,26 @@ function rvTipoChip(key){
   const ty = ACTIVITY_BY_KEY[key];
   return ty ? `<span class="rv-s tipo">${esc(ty.icon || "")} ${esc(ty.label)}</span>` : "";
 }
-function rvChips(tipo, lugares, personas){
+// Alcance (a quién alcanza) y dónde fue van separados, como en el
+// formulario de un evento.
+function rvChips(tipo, lugares, personas, donde){
   return `${rvTipoChip(tipo)}${lugares.length
-      ? lugares.map(sc => `<span class="rv-s">${scopeIcon(sc)} ${esc(scopeLabel(sc))}</span>`).join("")
-      : `<span class="rv-s falta">${t("sin lugar","no place","sem lugar","ללא מקום")}</span>`}${personas.length
+      ? lugares.map(sc => `<span class="rv-s" title="${esc(t("A quién alcanza","Who it reaches","A quem alcança","למי זה מגיע"))}">${scopeIcon(sc)} ${esc(scopeLabel(sc))}</span>`).join("")
+      : `<span class="rv-s falta">${t("sin alcance","no reach","sem alcance","ללא היקף")}</span>`}${donde
+      ? `<span class="rv-s donde" title="${esc(t("Dónde fue","Where it was","Onde foi","איפה זה היה"))}">📌 ${esc(donde)}</span>` : ""}${personas.length
       ? `<span class="rv-s">👥 ${esc(personas.join(", "))}</span>` : ""}`;
 }
 function rvFila(p){
   const s = rvSugerencia(p);
   const on = rv.elegidos.has(p.id);
-  const ordenado = !rvPendiente(p);
+  // Lo tocado muestra lo GUARDADO; lo que sigue como vino, lo sugerido
+  // (marcado como tal, para no confundirlo con lo que ya tiene).
+  const ordenado = rvTocado(p);
   const chips = ordenado
-    ? rvChips(p.activityType, p.scopes || [], (p.participants || []).map(x => x.name || x.email))
-    : s ? rvChips(s.tipo, s.lugares, s.personas) : `<span class="rv-s falta">${t("sin sugerencia","no suggestion","sem sugestão","ללא הצעה")}</span>`;
+    ? `${rv.recientes.has(p.id) ? `<span class="rv-ok">✓ ${t("Guardado","Saved","Salvo","נשמר")}</span>` : ""}${rvChips(p.activityType, p.scopes || [], (p.participants || []).map(x => x.name || x.email), p.location)}`
+    : s ? `<span class="rv-sugerido">${t("Sugerido:","Suggested:","Sugerido:","מוצע:")}</span>${rvChips(s.tipo, s.lugares, s.personas, "")}` : `<span class="rv-s falta">${t("sin sugerencia","no suggestion","sem sugestão","ללא הצעה")}</span>`;
   const conf = !ordenado && s ? `<span class="rv-conf ${s.confianza === "alta" ? "a" : s.confianza === "baja" ? "b" : "m"}" title="${esc(rvConfianzaLabel(s.confianza))}" aria-label="${esc(rvConfianzaLabel(s.confianza))}"></span>` : "";
-  return `<div class="rv-row${on ? " on" : ""}">
+  return `<div class="rv-row${on ? " on" : ""}${rv.recientes.has(p.id) ? " guardado" : ""}">
       <input type="checkbox" data-action="rv-elegir" data-post-id="${esc(p.id)}" ${on ? "checked" : ""} aria-label="${esc(t("Elegir «{t}»","Select “{t}”","Escolher «{t}»","בחירת «{t}»",{t:p.title || ""}))}">
       <span class="rv-fecha">${esc(fmtDate(p.startDate))}</span>
       <div class="rv-tit"><b dir="auto">${esc(p.title || t("(Sin título)","(Untitled)","(Sem título)","(ללא כותרת)"))}</b><div class="rv-sug">${chips}</div></div>
@@ -10469,20 +10499,21 @@ function rvFila(p){
 function rvConfianzaLabel(c){
   return c === "alta" ? t("Seguro","Sure","Seguro","בטוח") : c === "baja" ? t("Dudoso","Doubtful","Duvidoso","מפוקפק") : t("Más o menos","Fairly sure","Mais ou menos","די בטוח");
 }
-// El panel de la barra: tipo, lugar, personas, o los tres (Editar una fila).
+// El panel de la barra: tipo, alcance, dónde fue, personas, o todo junto
+// (Editar una fila).
 function rvBorradorNuevo(p){
   const s = p ? rvSugerencia(p) : null;
   const pend = p && rvPendiente(p);
-  const tipo = p ? (pend ? (s && s.tipo) || "" : p.activityType) : "";
-  const lugar = p ? ((pend ? (s ? s.lugares : []) : (p.scopes || []))[0] || null) : null;
+  const tipo = p ? (pend ? (s && s.tipo) || "" : (p.activityType === "otro" && s && s.tipo ? s.tipo : p.activityType)) : "";
   const personas = p ? (pend ? (s ? s.personas : []) : (p.participants || []).map(x => x.name || x.email)) : [];
+  const alcances = p ? JSON.parse(JSON.stringify((pend ? (s ? s.lugares : []) : (p.scopes || [])))) : [];
+  // alcance/zona/pais/ciudad son lo que está eligiendo en los selectores,
+  // antes de tocar "Agregar"; alcances, la lista que se va a guardar.
   return {
-    tipo,
-    alcance: lugar ? lugar.type : "",
-    zona: lugar && lugar.type === "region" ? lugar.region : "",
-    pais: lugar && (lugar.type === "pais" || lugar.type === "ciudad") ? lugar.country : "",
-    ciudad: lugar && lugar.type === "ciudad" ? lugar.city : "",
+    tipo, alcances,
+    alcance: "", zona: "", pais: "", ciudad: "",
     personas: [...personas], libre: "",
+    donde: p && !pend ? (p.location || "") : "",
   };
 }
 function rvAlcanceDelBorrador(b){
@@ -10494,24 +10525,36 @@ function rvAlcanceDelBorrador(b){
 }
 function rvCampoTipo(b){
   return `<label class="rv-campo"><span>${t("Tipo","Type","Tipo","סוג")}</span>
-      <select id="rvTipo"><option value="">${t("— elegí —","— choose —","— escolha —","— בחירה —")}</option>
+      <select id="rvTipo"><option value="">${rv.panel === "editar" ? t("— elegí —","— choose —","— escolha —","— בחירה —") : t("— no cambiar —","— don't change —","— não mudar —","— ללא שינוי —")}</option>
       ${EVENTO_TYPES.map(ty => `<option value="${esc(ty.key)}"${b.tipo === ty.key ? " selected" : ""}>${esc((ty.icon ? ty.icon + " " : "") + ty.label)}</option>`).join("")}
       </select></label>`;
 }
+function rvCampoDonde(b){
+  return `<label class="rv-campo"><span>${t("Dónde fue","Where it was","Onde foi","איפה זה היה")}</span>
+      <input id="rvDonde" type="text" maxlength="200" value="${esc(b.donde)}" placeholder="${esc(t("Ej.: Israel, Online, Hacoaj Tigre","E.g.: Israel, Online, Hacoaj Tigre","Ex.: Israel, Online, Hacoaj Tigre","לדוגמה: ישראל, אונליין, הכואח טיגרה"))}">
+      <small>${t("El lugar físico. Puede ser distinto del alcance: un congreso en Israel para toda LatAm.","The physical place. It can differ from the reach: a congress in Israel for all of LatAm.","O lugar físico. Pode ser diferente do alcance: um congresso em Israel para toda a LatAm.","המקום הפיזי. יכול להיות שונה מההיקף: כנס בישראל לכל LatAm.")}</small></label>`;
+}
+function rvMismoAlcance(a, b){ return JSON.stringify(a) === JSON.stringify(b); }
 function rvCampoLugar(b){
   const ciudades = b.pais ? cityPresetsFor(b.pais).map(c => c.name) : [];
   if(b.ciudad && !ciudades.includes(b.ciudad)) ciudades.unshift(b.ciudad);
-  return `<label class="rv-campo"><span>${t("Lugar","Place","Lugar","מקום")}</span>
-      <select id="rvPais">
+  const lista = b.alcances.length
+    ? b.alcances.map((sc, i) => `<button type="button" class="rv-persona on" data-action="rv-alcance-quitar" data-idx="${i}" aria-label="${esc(t("Quitar {x}","Remove {x}","Tirar {x}","הסרת {x}",{x:scopeLabel(sc)}))}">${scopeIcon(sc)} ${esc(scopeLabel(sc))} ✕</button>`).join("")
+    : `<span class="rv-n">${t("Todavía ninguno","None yet","Nenhum ainda","עדיין אין")}</span>`;
+  return `<div class="rv-campo rv-personas"><span>${t("Alcance (a quién alcanza)","Reach (who it reaches)","Alcance (a quem alcança)","היקף (למי זה מגיע)")}</span>
+      <div class="rv-gente">${lista}</div>
+      <div class="rv-libre rv-alcance-elegir">
+      <select id="rvPais" aria-label="${esc(t("País, región o toda LatAm","Country, region or all of LatAm","País, região ou toda a LatAm","מדינה, אזור או כל LatAm"))}">
         <option value="">${t("— elegí —","— choose —","— escolha —","— בחירה —")}</option>
         <option value="@todo"${b.alcance === "todo" ? " selected" : ""}>🌐 ${t("Toda LatAm","All of LatAm","Toda a LatAm","כל LatAm")}</option>
         ${Object.values(ZONES).map(z => `<option value="@zona:${esc(z.key)}"${b.alcance === "region" && b.zona === z.key ? " selected" : ""}>🌎 ${esc(t("Región {z}","{z} region","Região {z}","אזור {z}",{z:z.label}))}</option>`).join("")}
         ${COUNTRIES.map(c => `<option value="${esc(c.name)}"${b.pais === c.name && b.alcance !== "todo" && b.alcance !== "region" ? " selected" : ""}>${esc(countryLabel(c.name))}</option>`).join("")}
       </select></label>
-      ${b.pais && b.alcance !== "todo" && b.alcance !== "region" ? `<label class="rv-campo"><span>${t("Ciudad","City","Cidade","עיר")}</span>
-      <select id="rvCiudad"><option value="">${t("Todo el país","Whole country","País inteiro","כל המדינה")}</option>
+      ${b.pais && b.alcance !== "todo" && b.alcance !== "region" ? `<select id="rvCiudad" aria-label="${esc(t("Ciudad","City","Cidade","עיר"))}"><option value="">${t("Todo el país","Whole country","País inteiro","כל המדינה")}</option>
       ${ciudades.map(c => `<option value="${esc(c)}"${b.ciudad === c ? " selected" : ""}>${esc(cityLabel(b.pais, c))}</option>`).join("")}
-      </select></label>` : ""}`;
+      </select>` : ""}
+      <button type="button" class="btn-mini" data-action="rv-alcance-sumar" ${rvAlcanceDelBorrador(b) ? "" : "disabled"}>${t("Agregar","Add","Adicionar","הוספה")}</button>
+      </div></div>`;
 }
 function rvCampoPersonas(b){
   const equipo = [...state.roster].sort((x, y) => String(x.nickname).localeCompare(String(y.nickname)));
@@ -10529,15 +10572,15 @@ function rvCampoPersonas(b){
 function rvPanel(){
   const b = rv.borrador;
   if(!rv.panel || !b) return "";
+  // Todo en un solo panel: se elige tipo, alcance, dónde fue y personas
+  // y se aplica una vez. Antes eran paneles separados y abrir uno borraba
+  // lo elegido en el otro.
   const titulo = rv.panel === "editar" ? t("Editar este evento","Edit this event","Editar este evento","עריכת האירוע")
-    : rv.panel === "tipo" ? t("Ponerles un tipo","Set a type","Definir um tipo","הגדרת סוג")
-    : rv.panel === "lugar" ? t("Ponerles un lugar","Set a place","Definir um lugar","הגדרת מקום")
-    : t("Sumarles personas","Add people","Adicionar pessoas","הוספת אנשים");
-  const campos = (rv.panel === "editar" || rv.panel === "tipo" ? rvCampoTipo(b) : "")
-    + (rv.panel === "editar" || rv.panel === "lugar" ? rvCampoLugar(b) : "")
-    + (rv.panel === "editar" || rv.panel === "personas" ? rvCampoPersonas(b) : "");
+    : t("Cambiar los {n} elegidos","Change the {n} selected","Mudar os {n} escolhidos","שינוי {n} הנבחרים",{n:rv.elegidos.size});
+  const campos = rvCampoTipo(b) + rvCampoLugar(b) + rvCampoDonde(b) + rvCampoPersonas(b);
   return `<div class="rv-panel" role="group" aria-label="${esc(titulo)}">
       <b>${esc(titulo)}</b>
+      ${rv.panel === "editar" ? "" : `<p class="hint rv-ayuda">${t("Completá solo lo que quieras cambiar. El alcance y las personas se suman a los que ya tienen; el tipo y dónde fue se reemplazan.","Fill in only what you want to change. Reach and people are added to what they already have; type and where it was are replaced.","Preencha só o que quiser mudar. O alcance e as pessoas se somam aos que já têm; o tipo e onde foi são substituídos.","מלא/י רק מה שרוצים לשנות. ההיקף והאנשים מתווספים לקיימים; הסוג ו«איפה זה היה» מוחלפים.")}</p>`}
       <div class="rv-campos">${campos}</div>
       <div class="rv-panel-acc">
         <button type="button" class="btn-secondary" data-action="rv-panel-cerrar">${t("Cancelar","Cancel","Cancelar","ביטול")}</button>
@@ -10577,7 +10620,7 @@ function renderRevisarCalendar(){
   const pend = rvPendientes();
   const porGrupo = {};
   pend.forEach(p => { const g = rvGrupoDe(p); porGrupo[g] = (porGrupo[g] || 0) + 1; });
-  porGrupo.ordenados = state.posts.filter(p => esImportado(p) && !rvPendiente(p)).length;
+  porGrupo.ordenados = state.posts.filter(p => esImportado(p) && rvTocado(p)).length;
   if(rv.sacados) porGrupo.sacados = rv.sacados.length;
   else rvCargarSacados(false);
   // "Sacados" siempre a la vista: es por donde se deshace un "Sacar del
@@ -10597,21 +10640,17 @@ function renderRevisarCalendar(){
   const seguros = lista.filter(p => { const s = rvSugerencia(p); return s && s.confianza === "alta"; }).length;
   const todos = lista.length > 0 && lista.every(p => rv.elegidos.has(p.id));
   const n = rv.elegidos.size;
-  // Mientras se edita una fila, solo el panel (Guardar / Cancelar): con la
-  // barra a la vista, "Sacar del Registro" se tocó creyendo que guardaba.
-  const barra = n && rv.panel !== "editar" ? `<div class="rv-barra" role="toolbar" aria-label="${esc(t("Qué hacer con los elegidos","What to do with the selected ones","O que fazer com os escolhidos","מה לעשות עם הנבחרים"))}">
+  // Con el panel abierto, solo el panel (Aplicar o Guardar / Cancelar): con
+  // la barra a la vista, "Sacar del Registro" se tocó creyendo que guardaba.
+  const barra = n && !rv.panel ? `<div class="rv-barra" role="toolbar" aria-label="${esc(t("Qué hacer con los elegidos","What to do with the selected ones","O que fazer com os escolhidos","מה לעשות עם הנבחרים"))}">
       <b>${t("{n} elegidos","{n} selected","{n} escolhidos","{n} נבחרו",{n})}</b>
       ${rv.grupo !== "ordenados" ? `<button type="button" class="prin" data-action="rv-sugerido" ${rv.trabajando ? "disabled" : ""}>✓ ${t("Usar lo sugerido","Use the suggestion","Usar o sugerido","שימוש בהצעה")}</button>` : ""}
-      <button type="button" data-action="rv-abrir" data-key="tipo" aria-expanded="${rv.panel === "tipo"}">${t("Tipo","Type","Tipo","סוג")} ▾</button>
-      <button type="button" data-action="rv-abrir" data-key="lugar" aria-expanded="${rv.panel === "lugar"}">${t("Lugar","Place","Lugar","מקום")} ▾</button>
-      <button type="button" data-action="rv-abrir" data-key="personas" aria-expanded="${rv.panel === "personas"}">${t("Personas","People","Pessoas","אנשים")} ▾</button>
+      <button type="button" data-action="rv-abrir" data-key="cambiar" aria-expanded="${rv.panel === "cambiar"}">✏️ ${t("Cambiar tipo, alcance, dónde o personas","Change type, reach, place or people","Mudar tipo, alcance, onde ou pessoas","שינוי סוג, היקף, מקום או אנשים")}</button>
       <button type="button" class="peligro" data-action="rv-sacar" ${rv.trabajando ? "disabled" : ""}>${t("Sacar del Registro","Remove from the Log","Tirar do Registro","הסרה מהיומן")}</button>
       <button type="button" class="x" data-action="rv-ninguno" aria-label="${esc(t("Soltar todos","Deselect all","Soltar todos","ביטול הבחירה"))}">✕</button>
     </div>` : "";
   return `${rv.error ? `<div class="gate-aviso">${t("No se pudieron leer las sugerencias ({m}). Igual se puede ordenar a mano.","Couldn't read the suggestions ({m}). You can still sort by hand.","Não foi possível ler as sugestões ({m}). Dá para organizar à mão mesmo assim.","לא ניתן היה לקרוא את ההצעות ({m}). עדיין אפשר לסדר ידנית.",{m:esc(rv.error)})}</div>` : ""}
     ${filtros}
-    ${barra}
-    ${rvPanel()}
     ${lista.length ? `<div class="lp-rows">
       <div class="rv-row rv-todos"><input type="checkbox" data-action="rv-todos" ${todos ? "checked" : ""} aria-label="${esc(t("Elegir todos los de la lista","Select everything in the list","Escolher todos da lista","בחירת כל הרשימה"))}">
         <span class="rv-fecha">${t("Elegir todos","Select all","Escolher todos","בחירת הכל")}</span>
@@ -10621,22 +10660,27 @@ function renderRevisarCalendar(){
       ${lista.length > rv.visibles ? `<button type="button" class="btn-secondary rv-mas" data-action="rv-mas">${t("Ver más ({n} más)","Show more ({n} more)","Ver mais ({n} a mais)","הצגת עוד ({n})",{n:lista.length - rv.visibles})}</button>` : ""}
       ${rv.grupo !== "ordenados" ? `<div class="rv-leyenda"><span><i class="rv-conf a"></i>${t("Seguro","Sure","Seguro","בטוח")}</span><span><i class="rv-conf m"></i>${t("Más o menos","Fairly sure","Mais ou menos","די בטוח")}</span><span><i class="rv-conf b"></i>${t("Dudoso","Doubtful","Duvidoso","מפוקפק")}</span></div>` : ""}`
       : `<div class="empty-state"><div class="big">✅</div>${rv.grupo === "ordenados" ? t("Todavía no se ordenó nada.","Nothing sorted yet.","Nada organizado ainda.","עדיין לא סודר דבר.") : t("No queda nada por ordenar acá.","Nothing left to sort here.","Não sobrou nada para organizar aqui.","לא נשאר כאן מה לסדר.")}</div>`}
-    ${renderNombresSueltos()}`;
+    ${renderNombresSueltos()}
+    ${barra || rv.panel ? `<div class="rv-flota-espacio" aria-hidden="true"></div><div class="rv-flota">${rvPanel()}${barra}</div>` : ""}`;
 }
 // ---- Lo que hacen los botones ----
-async function rvAplicar(cambios, mensaje){
+async function rvAplicar(cambios, mensaje, opts){
   if(!cambios.length) return;
   rv.trabajando = true; render();
   try{
     const n = await store.revisarCalendar.clasificar(cambios);
-    rv.elegidos.clear(); rv.panel = null; rv.borrador = null;
+    cambios.forEach(c => rv.recientes.add(c.id));
+    // De a muchos, lo elegido queda elegido: se puede seguir cambiándoles
+    // otra cosa sin volver a tildarlos. Se sueltan con la ✕.
+    if(!(opts && opts.mantenerElegidos)) rv.elegidos.clear();
+    rv.panel = null; rv.borrador = null; rv.editId = null;
     showCalendarNotice({ ok:true, message: mensaje(n) });
   }catch(err){
     console.error("No se pudo ordenar:", err);
     showCalendarNotice({ ok:false, message: t("No se pudo guardar ({m}). No cambió nada.","Couldn't save ({m}). Nothing changed.","Não foi possível salvar ({m}). Nada mudou.","לא ניתן היה לשמור ({m}). דבר לא השתנה.",{m:err.code || err.message}) });
   }finally{ rv.trabajando = false; render(); }
 }
-const rvOrdenados = n => t("Guardado: {n} ordenados. Ya salieron de la lista de pendientes; los ves en «Ya ordenados».","Saved: {n} sorted. They've left the pending list; you'll find them under “Already sorted”.","Salvo: {n} organizados. Já saíram da lista de pendentes; estão em «Já organizados».","נשמר: {n} סודרו. הם יצאו מרשימת הממתינים; הם ב«כבר מסודרים».",{n});
+const rvOrdenados = n => t("Guardado: {n}. Quedan marcados con «✓ Guardado»; después los encontrás en «Ya ordenados».","Saved: {n}. They're marked “✓ Saved”; later you'll find them under “Already sorted”.","Salvo: {n}. Ficam marcados com «✓ Salvo»; depois estão em «Já organizados».","נשמר: {n}. הם מסומנים «✓ נשמר»; אחר כך הם ב«כבר מסודרים».",{n});
 function rvUsarSugerido(){
   const elegidos = state.posts.filter(p => rv.elegidos.has(p.id));
   const cambios = [];
@@ -10660,21 +10704,37 @@ function rvUsarSugerido(){
 function rvAplicarPanel(){
   const b = rv.borrador;
   if(!b) return;
-  const ids = rv.panel === "editar" ? [rv.editId] : [...rv.elegidos];
-  const alcance = rvAlcanceDelBorrador(b);
-  const quiere = k => rv.panel === "editar" || rv.panel === k;
-  if(quiere("tipo") && rv.panel !== "editar" && !b.tipo){ showCalendarNotice({ ok:false, message: t("Elegí un tipo.","Choose a type.","Escolha um tipo.","בחר/י סוג.") }); return; }
-  if(rv.panel === "lugar" && !alcance){ showCalendarNotice({ ok:false, message: t("Elegí un lugar.","Choose a place.","Escolha um lugar.","בחר/י מקום.") }); return; }
-  if(rv.panel === "personas" && !b.personas.length){ showCalendarNotice({ ok:false, message: t("Elegí al menos una persona.","Choose at least one person.","Escolha pelo menos uma pessoa.","בחר/י לפחות אדם אחד.") }); return; }
+  const editar = rv.panel === "editar";
+  const ids = editar ? [rv.editId] : [...rv.elegidos];
+  // Lo que quedó elegido en los selectores sin tocar "Agregar" también va.
+  const pendiente = rvAlcanceDelBorrador(b);
+  const alcances = pendiente && !b.alcances.some(x => rvMismoAlcance(x, pendiente)) ? [...b.alcances, pendiente] : b.alcances;
+  const donde = String(b.donde || "").trim().slice(0, 200);
+  if(!editar && !b.tipo && !alcances.length && !donde && !b.personas.length){
+    showCalendarNotice({ ok:false, message: t("No elegiste nada para cambiar.","You didn't choose anything to change.","Você não escolheu nada para mudar.","לא נבחר שום דבר לשינוי.") });
+    return;
+  }
   const cambios = ids.map(id => getPostById(id)).filter(Boolean).map(p => {
     const c = { id: p.id };
-    if(quiere("tipo") && b.tipo) c.activity_type = b.tipo;
-    if(quiere("lugar")) c.scopes = alcance ? [alcance] : [];
-    if(rv.panel === "personas") c.participants = rvParticipantes(b.personas, p.participants);
-    if(rv.panel === "editar") c.participants = rvParticipantes(b.personas, []);
+    if(b.tipo) c.activity_type = b.tipo;
+    if(editar){
+      // Una fila sola: queda exactamente lo que está en el panel.
+      c.scopes = alcances;
+      c.location = donde;
+      c.participants = rvParticipantes(b.personas, []);
+    } else {
+      // De a muchos: alcance y personas se SUMAN a lo que ya tienen.
+      if(alcances.length){
+        const juntos = [...(p.scopes || [])];
+        alcances.forEach(x => { if(!juntos.some(y => rvMismoAlcance(x, y))) juntos.push(x); });
+        c.scopes = juntos.slice(0, 15);
+      }
+      if(donde) c.location = donde;
+      if(b.personas.length) c.participants = rvParticipantes(b.personas, p.participants);
+    }
     return c;
   });
-  rvAplicar(cambios, rvOrdenados);
+  rvAplicar(cambios, rvOrdenados, { mantenerElegidos: !editar });
 }
 async function rvSacar(){
   const ids = [...rv.elegidos];
@@ -16888,7 +16948,7 @@ document.addEventListener("click", async e=>{
     moreMenuOpen = false; render();
   },
     // ---- Revisar lo de Calendar (ver renderRevisarCalendar) ----
-    "rv-grupo": async (el) => { rv.grupo = el.dataset.key; rv.elegidos.clear(); rv.panel = null; rv.visibles = RV_PAGINA; render(); },
+    "rv-grupo": async (el) => { rv.grupo = el.dataset.key; rv.elegidos.clear(); rv.recientes.clear(); rv.panel = null; rv.borrador = null; rv.editId = null; rv.visibles = RV_PAGINA; render(); },
     "rv-elegir": async (el, e, action, postId) => {
     if(rv.elegidos.has(postId)) rv.elegidos.delete(postId); else rv.elegidos.add(postId);
     if(rv.panel === "editar"){ rv.panel = null; rv.borrador = null; }
@@ -16921,7 +16981,7 @@ document.addEventListener("click", async e=>{
     rv.panel = "editar"; rv.editId = p.id; rv.borrador = rvBorradorNuevo(p);
     render();
     const panel = document.querySelector(".rv-panel");
-    if(panel){ panel.scrollIntoView({ block:"nearest" }); const f = panel.querySelector("select, input"); if(f) f.focus(); }
+    if(panel){ const f = panel.querySelector("select, input"); if(f) f.focus(); }
   },
     "rv-panel-cerrar": async () => { rv.panel = null; rv.borrador = null; if(rv.editId){ rv.elegidos.clear(); rv.editId = null; } render(); },
     "rv-panel-aplicar": async () => { rvAplicarPanel(); },
@@ -16931,6 +16991,17 @@ document.addEventListener("click", async e=>{
     const i = b.personas.findIndex(x => normalize(x) === normalize(n));
     if(i >= 0) b.personas.splice(i, 1); else if(b.personas.length < 10) b.personas.push(n);
     render();
+  },
+    "rv-alcance-sumar": async () => {
+    const b = rv.borrador; if(!b) return;
+    const x = rvAlcanceDelBorrador(b);
+    if(x && b.alcances.length < 15 && !b.alcances.some(y => rvMismoAlcance(x, y))) b.alcances.push(x);
+    b.alcance = ""; b.zona = ""; b.pais = ""; b.ciudad = "";
+    render();
+  },
+    "rv-alcance-quitar": async (el) => {
+    const b = rv.borrador; if(!b) return;
+    b.alcances.splice(Number(el.dataset.idx), 1); render();
   },
     "rv-libre-sumar": async () => {
     const b = rv.borrador; if(!b) return;
@@ -18056,6 +18127,8 @@ document.addEventListener("input", e=>{
     rv.buscar = el.value; rv.visibles = RV_PAGINA;
     clearTimeout(searchRenderTimer);
     searchRenderTimer = setTimeout(render, 150);
+  } else if(el.id === "rvDonde"){
+    if(rv.borrador) rv.borrador.donde = el.value;
   } else if(el.id === "rvLibre"){
     if(rv.borrador) rv.borrador.libre = el.value;
   } else if(el.id === "auditSearch"){
@@ -18167,7 +18240,7 @@ document.addEventListener("change", e=>{
     else { b.alcance = v ? "pais" : ""; b.pais = v; b.zona = ""; }
     render(); return;
   }
-  if(el.id === "rvCiudad" && rv.borrador){ rv.borrador.ciudad = el.value; rv.borrador.alcance = el.value ? "ciudad" : "pais"; return; }
+  if(el.id === "rvCiudad" && rv.borrador){ rv.borrador.ciudad = el.value; rv.borrador.alcance = el.value ? "ciudad" : "pais"; render(); return; }
   if(el.classList && el.classList.contains("rv-vincular")){ rv.vincular[el.dataset.nombre] = el.value; render(); return; }
   // El campo de hexadecimal lleva el MISMO data-* que la muestra de color
   // que tiene al lado, así que alcanza con normalizar el valor acá y

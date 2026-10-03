@@ -102,7 +102,10 @@ $$;
 
 -- ---------- Ponerles tipo, lugar y personas, de a muchos ----------
 -- p_cambios: [{ "id": "<posteo>", "activity_type"?: "...", "scopes"?: [...],
--- "participants"?: [...] }, ...]. Lo que no viene, no se toca.
+-- "participants"?: [...], "location"?: "..." }, ...]. Lo que no viene, no
+-- se toca. `scopes` es a quién alcanza (país, ciudad, región, toda LatAm);
+-- `location`, dónde fue de verdad ("Israel", "Online", una dirección):
+-- son dos cosas distintas, como en el formulario de un evento.
 --
 -- `security invoker`: corre con los permisos de quien llama, así que pasa
 -- por las mismas políticas, disparadores y validaciones que cualquier
@@ -125,14 +128,15 @@ begin
   for c in select * from jsonb_array_elements(p_cambios) loop
     if jsonb_typeof(c) <> 'object' or coalesce(c ->> 'id', '') = ''
        or exists (select 1 from jsonb_object_keys(c) k
-                   where k not in ('id', 'activity_type', 'scopes', 'participants')) then
-      raise exception 'Cada cambio es {id, activity_type, scopes, participants}'
+                   where k not in ('id', 'activity_type', 'scopes', 'participants', 'location')) then
+      raise exception 'Cada cambio es {id, activity_type, scopes, participants, location}'
         using errcode = 'check_violation';
     end if;
     update public.posts p set
       activity_type = case when c ? 'activity_type' then c ->> 'activity_type' else p.activity_type end,
       scopes        = case when c ? 'scopes' then c -> 'scopes' else p.scopes end,
-      participants  = case when c ? 'participants' then c -> 'participants' else p.participants end
+      participants  = case when c ? 'participants' then c -> 'participants' else p.participants end,
+      location      = case when c ? 'location' then nullif(c ->> 'location', '') else p.location end
     where p.id = c ->> 'id' and public.es_importado(p);
     get diagnostics filas = row_count;
     n := n + filas;
