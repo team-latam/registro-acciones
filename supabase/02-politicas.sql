@@ -416,6 +416,10 @@ create policy audit_crear on public.audit_log for insert
       (select public.es_admin_fijo()) or (select public.es_admin_rol())
       -- Sin ser admin: solo sobre uno mismo, y solo estos dos tipos.
       or (type in ('login', 'access_requested') and target_email is null)
+      -- Quien puede cargar posteos anota también qué cargó, editó o
+      -- borró (siempre sobre sí mismo: el posteo va en `detail`).
+      or (type in ('post_created', 'post_edited', 'post_deleted') and target_email is null
+          and (select public.puede_escribir()))
     )
   );
 

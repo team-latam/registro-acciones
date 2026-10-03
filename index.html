@@ -878,6 +878,14 @@
   .tipo-menu-wrap .post-menu-item:disabled{ opacity:.45; cursor:not-allowed; }
   .tipo-menu-wrap .post-menu-item.danger{ color:var(--danger); }
   .post-menu-nota{ font-size:11.5px; color:var(--text-muted); padding:2px 12px 8px; line-height:1.4; }
+  /* Un tipo archivado (tanda 11): se ve apagado y con su etiqueta. */
+  .zone-edit-row.archivado .tipo-icon-input, .zone-edit-row.archivado .zone-label-input{ opacity:.55; }
+  .tipo-archivado{ background:var(--surface-alt); color:var(--text-muted); font-size:11px; }
+  /* Dar acceso por adelantado (ver renderPreaprobar). */
+  .preaprobar{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md); padding:14px 16px; margin-bottom:18px; }
+  .preaprobar .hint{ margin:4px 0 10px; }
+  .preaprobar .zone-add-row input[type=email]{ flex:2; }
+  .preaprobar-ok{ color:var(--ok-text); font-weight:700; margin-top:8px; }
   /* La sugerencia de separar el Caribe (ver renderSugerenciaCaribe). */
   .sugerencia-caribe{
     background:var(--celeste-soft); border:1px solid var(--border); border-radius:var(--radius-md); padding:12px 14px; margin-bottom:16px;
@@ -7024,11 +7032,18 @@ function applyPreferencesConfig(cfg){
 // código ya los referencia directo por nombre.
 function applyActivityTypesConfig(types){
   if(!types || !types.length) return;
+  // Un tipo archivado ya no se ofrece al cargar un evento (no está en
+  // EVENTO_TYPES) pero sigue nombrando a sus posteos viejos (sí está en
+  // ACTIVITY_TYPES / ACTIVITY_BY_KEY). Mismo objeto en las dos listas,
+  // para que renombrarlo en una lo renombre en la otra.
   EVENTO_TYPES.length = 0;
-  types.forEach(ty=>{ EVENTO_TYPES.push({ key:ty.key, label:ty.label, icon:ty.icon }); });
   ACTIVITY_TYPES.length = 0;
   ACTIVITY_TYPES.push({ key:"rutina", label:DEFAULT_ACTIVITY_LABELS.rutina[currentLang()], icon:"🔁" });
-  EVENTO_TYPES.forEach(ty=>ACTIVITY_TYPES.push(ty));
+  types.forEach(ty=>{
+    const obj = { key:ty.key, label:ty.label, icon:ty.icon };
+    if(ty.archived === true) obj.archived = true; else EVENTO_TYPES.push(obj);
+    ACTIVITY_TYPES.push(obj);
+  });
   Object.keys(ACTIVITY_BY_KEY).forEach(k=>delete ACTIVITY_BY_KEY[k]);
   ACTIVITY_TYPES.forEach(ty=>{ ACTIVITY_BY_KEY[ty.key] = ty; });
   CALENDAR_SYNC_TYPES.clear();
@@ -7299,7 +7314,11 @@ function subscribeData(){
 
 // Toda escritura de posteos y respuestas pasa por acá.
 async function createPost(data){
-  return store.posts.create(data);
+  const id = await store.posts.create(data);
+  // Queda en el registro de actividad quién cargó qué (lo que llega
+  // desde el Calendar no pasa por acá: no lo cargó una persona).
+  logAudit("post_created", { detail: resumenDePosteo(data) });
+  return id;
 }
 async function createReply(postId, data){
   await store.replies.create(postId, data);
@@ -8234,6 +8253,7 @@ async function updatePostAndSync(postId, original, newData){
   // invitaciones nuevas para todos — de algo que el equipo canceló.
   const skipCalendar = !!original.cancelled;
   await updatePostDoc(postId, parcheDeEdicion(original, newData));
+  logAudit("post_edited", { detail: resumenDePosteo(newData) });
 
   const summary = buildEditSummary(original, newData);
   if(summary){
@@ -8287,6 +8307,7 @@ async function deletePostHard(post){
   try{
     await Promise.all(replies.map(r=> store.replies.remove(post.id, r.id)));
     await store.posts.remove(post.id);
+    logAudit("post_deleted", { detail: resumenDePosteo(post) });
     let calMsg = "";
     if(post.calendarEventId){
       const res = await deleteCalendarEvent(post.calendarEventId);
@@ -8313,6 +8334,7 @@ async function cancelPost(post){
   ), { danger:true, okLabel: t("Cancelar evento","Cancel event","Cancelar evento","ביטול האירוע") }))) return;
   try{
     await updatePostDoc(post.id, { cancelled:true, lastEditedAt: store.horaDelServidor(), lastEditedBy: state.auth.user.displayName });
+    logAudit("post_edited", { detail: resumenDePosteo(post, t("(cancelado)","(cancelled)","(cancelado)","(בוטל)")) });
     await createReply(post.id, {
       authorName: state.auth.user.displayName, authorEmail: state.auth.user.email,
       content: t("🚫 {n} canceló este evento.","🚫 {n} cancelled this event.","🚫 {n} cancelou este evento.","🚫 {n} ביטל/ה את האירוע הזה.",{n:state.auth.user.displayName}), system:true, icon:"🚫",
@@ -9447,7 +9469,58 @@ function renderSolicitudesQueueSection(){
           </div>
         </div>`).join("")}
     </div>` : "";
-  return pendingHtml + formersHtml + rejectedHtml;
+  return renderPreaprobar() + pendingHtml + formersHtml + rejectedHtml;
+}
+// Dar acceso por adelantado: el admin carga el correo de Google de alguien
+// y, cuando entre por primera vez, ya tiene acceso sin pasar por la cola.
+// Es la misma alta que al aprobar un pedido (ficha en el padrón con
+// @nickname), pero antes de que exista el pedido.
+let preaprobarDraft = { email:"", name:"", error:"", ok:"", saving:false };
+function renderPreaprobar(){
+  const d = preaprobarDraft;
+  return `<div class="preaprobar">
+      <div class="setting-label">✉️ ${t("Dar acceso por adelantado","Grant access in advance","Dar acesso antecipado","מתן גישה מראש")}</div>
+      <div class="hint">${t(
+        "Cargá el correo de Google de alguien y, cuando entre por primera vez, ya tiene acceso sin esperar aprobación.",
+        "Enter someone's Google email and, the first time they sign in, they're already in without waiting for approval.",
+        "Cadastre o e-mail do Google de alguém e, quando entrar pela primeira vez, já tem acesso sem esperar aprovação.",
+        "הזינו את כתובת ה-Google של מישהו/י, ובכניסה הראשונה כבר תהיה גישה בלי להמתין לאישור.")}</div>
+      <div class="zone-add-row">
+        <input type="email" id="preEmail" placeholder="nombre@dominio.com" value="${esc(d.email)}" autocomplete="off" aria-label="${esc(t("Correo","Email","E-mail","אימייל"))}">
+        <input type="text" id="preName" placeholder="${esc(t("Nombre (opcional)","Name (optional)","Nome (opcional)","שם (לא חובה)"))}" maxlength="120" value="${esc(d.name)}" autocomplete="off">
+        <button type="button" class="btn-mini" data-action="preaprobar" ${d.saving ? "disabled" : ""}>${d.saving ? t("Dando acceso…","Granting…","Dando acesso…","...מעניק גישה") : t("Dar acceso","Grant access","Dar acesso","מתן גישה")}</button>
+      </div>
+      ${d.error ? `<div class="form-error">${esc(d.error)}</div>` : ""}
+      ${d.ok ? `<div class="hint preaprobar-ok">✅ ${esc(d.ok)}</div>` : ""}
+    </div>`;
+}
+async function darAccesoPorAdelantado(){
+  const d = preaprobarDraft;
+  const email = d.email.trim().toLowerCase();
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ d.error = t("Escribí un correo válido.","Type a valid email.","Escreva um e-mail válido.","הקלד/י אימייל תקין."); d.ok = ""; render(); return; }
+  if(state.roster.some(u => u.email === email)){ d.error = t("{e} ya está en el equipo.","{e} is already on the team.","{e} já está na equipe.","{e} כבר בצוות.",{e:email}); d.ok = ""; render(); return; }
+  d.saving = true; d.error = ""; d.ok = ""; render();
+  try{
+    if(state.accessRequests.some(r => r.email === email)){
+      // Ya pidió acceso: es aprobar ese pedido, con todo lo que eso hace.
+      await approveRequest(email);
+    } else {
+      const name = d.name.trim() || email.split("@")[0];
+      const taken = await takenNicknames(email);
+      const former = state.formerMembers.find(u => u.email === email);
+      const nickname = former && former.nickname && !taken.has(String(former.nickname).toLowerCase())
+        ? former.nickname : makeNickname(name, taken);
+      await store.roster.add(email, { email, name, nickname, photoURL:null, role:"member", approvedBy: state.auth.user.email });
+      try{ await store.formerMembers.remove(email); }catch(e){ /* no era ex integrante */ }
+      logAudit("access_approved", { targetEmail: email, detail: t("por adelantado","in advance","antecipado","מראש") });
+    }
+    d.ok = t("{e} ya tiene acceso: cuando entre con Google, va directo.","{e} now has access: when they sign in with Google, they go straight in.","{e} já tem acesso: quando entrar com o Google, vai direto.","ל-{e} יש כעת גישה: בכניסה עם Google ייכנס/תיכנס ישירות.",{e:email});
+    d.email = ""; d.name = "";
+  }catch(err){
+    console.error(err);
+    d.error = t("No se pudo dar el acceso: {m}","Couldn't grant access: {m}","Não foi possível dar o acesso: {m}","{m} :לא ניתן היה להעניק גישה",{m:err.message});
+  }
+  d.saving = false; render();
 }
 
 function renderAccesoView(){
@@ -9613,7 +9686,19 @@ function auditLabels(){
     access_revoked: { icon:"⛔", filterLabel:t("Revocó","Revoked","Revogou","ביטל/ה"), text: e => t("{n} revocó el acceso de {target}.","{n} revoked {target}'s access.","{n} revogou o acesso de {target}.","{n} ביטל/ה את הגישה של {target}.",{n:e.actorName,target:e.targetEmail}) },
     calendar_shared: { icon:"📅", filterLabel:t("Compartió Calendar","Shared Calendar","Compartilhou Calendar","שיתף/ה יומן"), text: e => t("{n} compartió el Calendar con {target}.","{n} shared the Calendar with {target}.","{n} compartilhou o Calendar com {target}.","{n} שיתף/ה את היומן עם {target}.",{n:e.actorName,target:e.targetEmail}) },
     calendar_unshared: { icon:"📅", filterLabel:t("Sacó del Calendar","Removed from Calendar","Tirou do Calendar","הסיר/ה מהיומן"), text: e => t("{n} sacó a {target} del Calendar.","{n} removed {target} from the Calendar.","{n} tirou {target} do Calendar.","{n} הסיר/ה את {target} מהיומן.",{n:e.actorName,target:e.targetEmail}) },
+    // Lo que cada uno hace con los posteos (ver resumenDePosteo): el
+    // posteo va en `detail`, porque un posteo borrado ya no se puede mirar.
+    post_created: { icon:"✍️", filterLabel:t("Cargó","Logged","Carregou","רשם/ה"), text: e => t("{n} cargó {d}.","{n} logged {d}.","{n} carregou {d}.","{n} רשם/ה את {d}.",{n:e.actorName,d:e.detail || t("un posteo","a post","uma postagem","פוסט")}) },
+    post_edited: { icon:"✏️", filterLabel:t("Editó","Edited","Editou","ערך/ה"), text: e => t("{n} editó {d}.","{n} edited {d}.","{n} editou {d}.","{n} ערך/ה את {d}.",{n:e.actorName,d:e.detail || t("un posteo","a post","uma postagem","פוסט")}) },
+    post_deleted: { icon:"🗑️", filterLabel:t("Borró","Deleted","Apagou","מחק/ה"), text: e => t("{n} borró {d}.","{n} deleted {d}.","{n} apagou {d}.","{n} מחק/ה את {d}.",{n:e.actorName,d:e.detail || t("un posteo","a post","uma postagem","פוסט")}) },
   };
+}
+// Cómo se nombra un posteo en el registro de actividad: «título o
+// primeras palabras» y el tipo. Corto, porque va en una columna de texto.
+function resumenDePosteo(p, extra){
+  const ty = ACTIVITY_BY_KEY[p.activityType];
+  const titulo = String(p.title || p.content || "").replace(/\s+/g, " ").trim().slice(0, 80) || t("Sin título","Untitled","Sem título","ללא כותרת");
+  return `«${titulo}»${ty ? ` (${ty.label})` : ""}${extra ? ` ${extra}` : ""}`;
 }
 // Paginado de a 30 (ver botón "Ver más" más abajo) en vez de mostrar toda
 // la lista de una — con meses de uso esto puede ser larguísimo. Vive
@@ -9902,7 +9987,10 @@ function renderZonasSection(){
    Los tipos de Evento (Rutina queda afuera: tiene su propio composer y
    nunca se sincroniza con Calendar, no tiene sentido editarla acá). */
 function newTiposDraft(){
-  const types = EVENTO_TYPES.map(t=>({ key:t.key, label:t.label, icon:t.icon,
+  // Desde ACTIVITY_TYPES y no desde EVENTO_TYPES: los archivados no se
+  // ofrecen al cargar, pero acá sí se ven (para desarchivarlos).
+  const types = ACTIVITY_TYPES.filter(t=>t.key!=="rutina").map(t=>({ key:t.key, label:t.label, icon:t.icon,
+    archived: t.archived === true,
     calendarSync: CALENDAR_SYNC_TYPES.has(t.key),
     docs: docsEsperados(t.key).map(d=>({ ...d })) }));
   return { types, newLabel:"", newIcon:"", error:"", saving:false, nuevoDoc:{} };
@@ -9924,6 +10012,11 @@ function renderTipoMenu(ty, idx, total, count){
       ${open ? `<div class="post-menu" role="menu">
         ${item("tipos-move", 'data-dir="-1"', `⬆️ ${t("Subir","Move up","Subir","העלאה")}`, idx === 0)}
         ${item("tipos-move", 'data-dir="1"', `⬇️ ${t("Bajar","Move down","Descer","הורדה")}`, idx === total - 1)}
+        <div class="post-menu-sep"></div>
+        ${ty.archived
+          ? item("tipos-archive", "", `📂 ${t("Desarchivar","Unarchive","Desarquivar","שחזור מהארכיון")}`, false)
+          : item("tipos-archive", "", `📦 ${t("Archivar","Archive","Arquivar","העברה לארכיון")}`, false) +
+            `<div class="post-menu-nota">${t("Deja de ofrecerse al cargar un evento; los posteos que ya lo tienen no cambian.","It's no longer offered when logging an event; posts that already have it don't change.","Deixa de ser oferecido ao criar um evento; as postagens que já o têm não mudam.","לא יוצע עוד ברישום אירוע; פוסטים שכבר משויכים אליו לא משתנים.")}</div>`}
         <div class="post-menu-sep"></div>
         ${item("tipos-remove", "danger", `🗑️ ${t("Eliminar","Delete","Excluir","מחיקה")}`, count > 0)}
         ${count > 0 ? `<div class="post-menu-nota">${count === 1
@@ -9968,10 +10061,11 @@ function renderTiposSection(){
       <div class="zone-edit-list">
         ${d.types.map((ty, idx)=>{
           const count = countPostsByType(ty.key);
-          return `<div class="zone-edit-row">
+          return `<div class="zone-edit-row${ty.archived ? " archivado" : ""}">
             <input type="text" class="tipo-icon-input" data-action="tipos-icon" data-key="${esc(ty.key)}" value="${esc(ty.icon)}" maxlength="4">
             <input type="text" class="zone-label-input" data-action="tipos-label" data-key="${esc(ty.key)}" value="${esc(ty.label)}" maxlength="30">
             <div class="tipo-meta">
+              ${ty.archived ? `<span class="status-pill tipo-archivado" title="${esc(t("No se ofrece al cargar un evento","Not offered when logging an event","Não é oferecido ao criar um evento","לא מוצע ברישום אירוע"))}">📦 ${t("Archivado","Archived","Arquivado","בארכיון")}</span>` : ""}
               <label class="tipo-sync-toggle"><input type="checkbox" data-action="tipos-sync" data-key="${esc(ty.key)}" ${ty.calendarSync?"checked":""}> Calendar</label>
               <span class="zone-count">${count === 1 ? t("1 posteo","1 post","1 postagem","פוסט אחד") : t("{n} posteos","{n} posts","{n} postagens","{n} פוסטים",{n:count})}</span>
               ${renderTipoMenu(ty, idx, d.types.length, count)}
@@ -10373,7 +10467,9 @@ let zoneFilterOpen = false;
 function renderFilterBar(prefix){
   const activeTypes = state.filters.types.size;
   const activeZones = state.filters.zones.size;
-  const typeChips = ACTIVITY_TYPES.map(ty=>`
+  // Un tipo archivado se ofrece como filtro solo si todavía hay posteos
+  // con él: para filtrar lo viejo sirve; si no queda nada, es ruido.
+  const typeChips = ACTIVITY_TYPES.filter(ty => !ty.archived || countPostsByType(ty.key)).map(ty=>`
     <span class="chip-toggle ${state.filters.types.has(ty.key)?"active":""}" data-action="toggle-type" data-key="${esc(ty.key)}">
       ${esc(ty.icon)} ${esc(ty.label)}
     </span>`).join("");
@@ -14404,7 +14500,13 @@ function renderComposer(){
     <div class="field field-type-first">
       <label>${t("¿Qué tipo de actividad?","What kind of activity?","Que tipo de atividade?","איזה סוג פעילות?")}</label>
       <div class="type-picker">
-        ${(d.editingPost && d.editingPost.activityType === "rutina" ? ACTIVITY_TYPES : EVENTO_TYPES).map(ty=>`
+        ${(()=>{
+          // Los archivados no se ofrecen; salvo el del posteo que se está
+          // editando, que si no perdería su tipo al guardar.
+          const base = (d.editingPost && d.editingPost.activityType === "rutina" ? ACTIVITY_TYPES : EVENTO_TYPES).filter(ty => !ty.archived);
+          const propio = d.activityType && !base.some(ty => ty.key === d.activityType) ? ACTIVITY_BY_KEY[d.activityType] : null;
+          return propio ? base.concat([propio]) : base;
+        })().map(ty=>`
           <label class="type-opt ${d.activityType===ty.key?"checked":""}">
             <input type="radio" name="cType" value="${esc(ty.key)}" ${d.activityType===ty.key?"checked":""}> ${esc(ty.icon)} ${esc(ty.label)}
           </label>`).join("")}
@@ -15433,6 +15535,10 @@ document.addEventListener("keydown", e=>{
   if(el.id === "nicknameInput"){
     if(e.key === "Enter"){ e.preventDefault(); saveNicknameEdit(); }
     else if(e.key === "Escape"){ nicknameEditing = false; nicknameError = null; render(); }
+    return;
+  }
+  if(el.id === "preEmail" || el.id === "preName"){
+    if(e.key === "Enter"){ e.preventDefault(); darAccesoPorAdelantado(); }
     return;
   }
   if(el.id === "savedFilterName"){
@@ -16486,12 +16592,22 @@ document.addEventListener("click", async e=>{
     CARIBE_SUGERIDO.forEach(n => { if(d.countryZones[n] === el.dataset.zona) d.countryZones[n] = key; });
     d.error = ""; render();
   },
+    "preaprobar": async (el, e, action, postId) => {
+    darAccesoPorAdelantado();
+  },
     "zonas-caribe-no": async (el, e, action, postId) => {
     try{ localStorage.setItem("ra_caribe_no", "1"); }catch(err){ /* sin localStorage vuelve a aparecer: no es grave */ }
     render();
   },
     "toggle-tipo-menu": async (el, e, action, postId) => {
     tipoMenuOpen = tipoMenuOpen === el.dataset.key ? null : el.dataset.key; render();
+  },
+    "tipos-archive": async (el, e, action, postId) => {
+    const d = getTiposDraft();
+    const ty = d.types.find(x => x.key === el.dataset.key);
+    if(!ty) return;
+    ty.archived = !ty.archived;
+    d.error = ""; render();
   },
     "tipos-move": async (el, e, action, postId) => {
     // Subir/bajar un tipo cambia el orden en que se ofrecen al cargar un
@@ -16621,6 +16737,7 @@ document.addEventListener("click", async e=>{
     "tipos-save": async (el, e, action, postId) => {
     const d = getTiposDraft();
     if(!d.types.length){ d.error = t("Tiene que quedar al menos un tipo de actividad.","At least one activity type has to remain.","Tem que sobrar pelo menos um tipo de atividade.",".חייב להישאר לפחות סוג פעילות אחד"); render(); return; }
+    if(!d.types.some(ty => !ty.archived)){ d.error = t("Tiene que quedar al menos un tipo sin archivar, para poder cargar eventos.","At least one type has to stay unarchived, to be able to log events.","Tem que sobrar pelo menos um tipo sem arquivar, para poder criar eventos.","חייב להישאר לפחות סוג אחד שלא בארכיון, כדי שאפשר יהיה לרשום אירועים."); render(); return; }
     // Mismo control que al agregar, pero sobre los renombres: dos tipos
     // con el mismo nombre, o uno llamado "Rutina", no se guardan.
     const seen = new Set(); const rutinaNames = Object.values(DEFAULT_ACTIVITY_LABELS.rutina).map(normalize);
@@ -16632,7 +16749,10 @@ document.addEventListener("click", async e=>{
       seen.add(n);
     }
     d.saving = true; d.error = ""; render();
-    store.config.merge("preferences", { activityTypes: d.types }).then(()=>{
+    // `archived` va solo cuando es verdadero: así un guardado sin
+    // archivar nada escribe la misma forma de siempre.
+    const activityTypes = d.types.map(ty => { const o = { ...ty }; if(!o.archived) delete o.archived; return o; });
+    store.config.merge("preferences", { activityTypes }).then(()=>{
       d.saving = false; render();
     }).catch(err=>{
       console.error(err);
@@ -16799,6 +16919,10 @@ document.addEventListener("input", e=>{
     globalSearchTimer = setTimeout(renderGlobalSearch, 120);
   } else if(el.id === "savedFilterName"){
     savingFilterName = el.value;
+  } else if(el.id === "preEmail"){
+    preaprobarDraft.email = el.value;
+  } else if(el.id === "preName"){
+    preaprobarDraft.name = el.value;
   } else if(el.id === "auditSearch"){
     state.auditFilters.text = el.value; auditVisibleCount = 30; render();
   } else if(el.id === "usuariosSearch"){

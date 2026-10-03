@@ -191,6 +191,12 @@ select lab.probar('un nombre de 5.000 caracteres NO', :YO,
   $q$select public.guardar_config('preferences', jsonb_build_object('activityTypes', jsonb_build_array(jsonb_build_object('key', 'x', 'label', repeat('x', 5000)))))$q$, false);
 select lab.probar('once documentos esperados NO', :YO,
   $q$select public.guardar_config('preferences', jsonb_build_object('activityTypes', jsonb_build_array(jsonb_build_object('key', 'x', 'label', 'X', 'docs', (select jsonb_agg(jsonb_build_object('id', 'd' || g, 'label', 'D')) from generate_series(1, 11) g)))))$q$, false);
+-- Un tipo archivado (ya no se ofrece al cargar, pero sigue nombrando a
+-- sus posteos viejos) lleva archived:true; cualquier otra cosa ahí, no.
+select lab.probar('un tipo archivado entra', :YO,
+  $q$select public.guardar_config('preferences', '{"activityTypes":[{"key":"visita","label":"Visita","icon":"🧳","calendarSync":true},{"key":"taller","label":"Taller","icon":"🛠️","calendarSync":true,"archived":true}]}')$q$, true);
+select lab.probar('archived que no sea sí/no NO', :YO,
+  $q$select public.guardar_config('preferences', '{"activityTypes":[{"key":"taller","label":"Taller","archived":"si"}]}')$q$, false);
 -- Las Preferencias se guardan por partes adentro del mismo valor: un dato
 -- viejo de una sección no puede trabar el guardado de las otras.
 update public.app_config set value = value || '{"activityTypes":[{"key":"Viejo-Mal","label":"Viejo"}]}' where key = 'preferences';

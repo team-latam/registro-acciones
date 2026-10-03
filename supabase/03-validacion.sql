@@ -246,7 +246,10 @@ alter table public.audit_log
 alter table public.audit_log
   add constraint audit_tipo check (type in (
     'login', 'access_requested', 'access_approved', 'access_rejected',
-    'access_revoked', 'role_changed', 'calendar_shared', 'calendar_unshared')),
+    'access_revoked', 'role_changed', 'calendar_shared', 'calendar_unshared',
+    -- Lo que cada integrante hace con los posteos (quién cargó, editó o
+    -- borró qué): lo escribe la app al hacerlo, ver logAudit.
+    'post_created', 'post_edited', 'post_deleted')),
   add constraint audit_textos check (
     length(actor_email) between 1 and 200
     and length(actor_name) between 1 and 120
@@ -390,18 +393,21 @@ create trigger config_peso before insert or update on public.app_config
 -- un dato viejo de una sección trabaría el guardado de las demás.
 
 -- Un tipo de actividad, con la forma exacta que escribe la app desde su
--- primera versión (key, label, icon, calendarSync, y después docs). La
--- clave, con la misma forma que exige un posteo (slugifyKey → [a-z0-9]).
+-- primera versión (key, label, icon, calendarSync, después docs, y
+-- después archived: un tipo que ya no se ofrece al cargar pero sigue
+-- nombrando a sus posteos viejos). La clave, con la misma forma que
+-- exige un posteo (slugifyKey → [a-z0-9]).
 create or replace function public.tipo_ok(t jsonb) returns boolean
   language sql immutable as $$
   select jsonb_typeof(t) = 'object'
      and not exists (select 1 from jsonb_object_keys(t) k
-                      where k not in ('key', 'label', 'icon', 'calendarSync', 'docs'))
+                      where k not in ('key', 'label', 'icon', 'calendarSync', 'docs', 'archived'))
      and coalesce(t ->> 'key', '') ~ '^[a-z0-9]{1,40}$'
      and jsonb_typeof(t -> 'label') = 'string' and length(t ->> 'label') <= 60
      and coalesce(jsonb_typeof(t -> 'icon'), 'null') in ('string', 'null')
      and length(coalesce(t ->> 'icon', '')) <= 16
      and coalesce(jsonb_typeof(t -> 'calendarSync'), 'null') in ('boolean', 'null')
+     and coalesce(jsonb_typeof(t -> 'archived'), 'null') in ('boolean', 'null')
      and (coalesce(jsonb_typeof(t -> 'docs'), 'null') = 'null' or (
           jsonb_typeof(t -> 'docs') = 'array' and jsonb_array_length(t -> 'docs') <= 10
           and not exists (select 1 from jsonb_array_elements(t -> 'docs') d

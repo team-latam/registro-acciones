@@ -317,6 +317,11 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   const fila = (await base()).posts.find(x => x.content === "Visita a la escuela del barrio") || {};
   eq("admin: como rutina, a su nombre", [fila.activity_type, fila.author_email], ["rutina", ADMIN]);
   eq("admin: y aparece en el Feed sin recargar", await esperarTexto(p, "Visita a la escuela del barrio", 3000), true);
+  // Y queda en el registro de actividad quién la cargó (tanda 11).
+  await hasta(p, () => (window.__sb.tablas.audit_log || []).some(a => a.type === "post_created"));
+  const anotada = (await base()).audit_log.find(a => a.type === "post_created") || {};
+  eq("admin: el registro de actividad anota que la cargó, con su título y tipo",
+    [anotada.actor_email, anotada.detail], [ADMIN, "«Visita a la escuela del barrio» (Rutina)"]);
 
   // Me gusta en un posteo de otro.
   const boton = await p.$('button[data-action="toggle-like"][data-post-id="p_reunion"]:not([data-reply-id])');
@@ -407,9 +412,9 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   await p.close();
 }
 
-/* ---------- Administración: la sugerencia del Caribe y el menú ⋯ de los tipos ---------- */
+/* ---------- Administración: la sugerencia del Caribe, el menú ⋯ de los tipos, acceso por adelantado ---------- */
 {
-  const { p, errores } = await entrar(ADMIN, "Benny");
+  const { p, errores, base } = await entrar(ADMIN, "Benny");
   await esperarTexto(p, "Reunión con la comunidad");
   await p.click('[data-action="toggle-user-menu"]');
   await p.click('.user-menu [data-action="goto-view"][data-view="admin"]');
@@ -426,16 +431,51 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   eq("zonas: descartar los cambios la vuelve a mostrar", await visible(p, ".sugerencia-caribe"), true);
   await p.click('[data-action="zonas-caribe-no"]');
   eq("zonas: 'Ahora no' la esconde", await visible(p, ".sugerencia-caribe"), false);
+  // Dar acceso por adelantado (tanda 11): el correo queda en el equipo
+  // antes de que la persona entre por primera vez.
+  await p.click('.admin-menu [data-action="admin-go"][data-view="solicitudes"]');
+  await p.click('[data-action="acceso-section"][data-key="pendientes"]');
+  await p.fill("#preEmail", "Nuevo@x.com");
+  await p.fill("#preName", "Nuevo Integrante");
+  await p.click('[data-action="preaprobar"]');
+  eq("acceso: el correo cargado queda en el equipo (en minúsculas)", await hasta(p, () => (window.__sb.tablas.members || []).some(m => m.email === "nuevo@x.com")), true);
+  const nuevo = (await base()).members.find(m => m.email === "nuevo@x.com") || {};
+  eq("acceso: con su nombre, como integrante y con @nickname", [nuevo.name, nuevo.role, nuevo.nickname], ["Nuevo Integrante", "member", "nuevo"]);
+  eq("acceso: y la pantalla lo confirma", await hasta(p, () => /nuevo@x.com ya tiene acceso/.test((document.querySelector(".preaprobar-ok") || {}).textContent || "")), true);
+  eq("acceso: queda anotado en el registro de actividad", await hasta(p, admin => (window.__sb.tablas.audit_log || []).some(a => a.type === "access_approved" && a.target_email === "nuevo@x.com" && a.actor_email === admin), ADMIN), true);
+  await p.fill("#preEmail", "nuevo@x.com");
+  await p.click('[data-action="preaprobar"]');
+  eq("acceso: cargarlo de nuevo avisa que ya está", await hasta(p, () => /ya está en el equipo/.test((document.querySelector(".preaprobar .form-error") || {}).textContent || "")), true);
   // Tipos: el ⋯ de cada tipo, con subir/bajar y eliminar solo si no se usa.
   await p.click('.admin-menu [data-action="admin-go"][data-view="preferencias"][data-key="tipos"]');
   const orden = () => p.$$eval(".zone-edit-row .zone-label-input", es => es.map(e => e.value));
   eq("tipos: arrancan en el orden de fábrica", (await orden()).slice(0, 2), ["Visita", "Curso"]);
   await p.click('.tipo-menu-wrap [data-action="toggle-tipo-menu"][data-key="visita"]');
   eq("tipos: el ⋯ de Visita no deja eliminarla (hay posteos) y lo dice",
-    [await p.$eval('.post-menu [data-action="tipos-remove"][data-key="visita"]', e => e.disabled), await p.$eval(".post-menu-nota", e => e.textContent.trim())],
+    // La nota de Eliminar es la última del menú (antes va la de Archivar).
+    [await p.$eval('.post-menu [data-action="tipos-remove"][data-key="visita"]', e => e.disabled), await p.$$eval(".post-menu-nota", es => es[es.length - 1].textContent.trim())],
     [true, "No se puede eliminar: hay 2 posteos con este tipo."]);
   await p.click('.post-menu [data-action="tipos-move"][data-key="visita"][data-dir="1"]');
   eq("tipos: 'Bajar' la pone segunda y cierra el menú", [(await orden()).slice(0, 2), await visible(p, ".post-menu")], [["Curso", "Visita"], false]);
+  // Archivar (tanda 11): Congreso no tiene posteos; archivado deja de
+  // ofrecerse al cargar un evento, pero sigue en la lista para desarchivar.
+  await p.click('.tipo-menu-wrap [data-action="toggle-tipo-menu"][data-key="congreso"]');
+  await p.click('.post-menu [data-action="tipos-archive"][data-key="congreso"]');
+  eq("tipos: archivar marca la fila", await p.$$eval(".zone-edit-row.archivado .zone-label-input", es => es.map(e => e.value)), ["Congreso"]);
+  await p.click('[data-action="tipos-save"]');
+  eq("tipos: al guardar, la base recibe archived:true en ese tipo", await hasta(p, () => {
+    const c = (window.__sb.tablas.app_config || []).find(x => x.key === "preferences");
+    return !!(c && c.value && Array.isArray(c.value.activityTypes) && c.value.activityTypes.some(t => t.key === "congreso" && t.archived === true));
+  }), true);
+  const tiposGuardados = ((await base()).app_config.find(x => x.key === "preferences") || { value: {} }).value.activityTypes || [];
+  eq("tipos: los demás se guardan con la forma de siempre, sin la marca", tiposGuardados.filter(t => "archived" in t).map(t => t.key), ["congreso"]);
+  await p.click('[data-action="toggle-fab"]');
+  await p.click('.fab-action[data-action="new-evento"]');
+  eq("tipos: el formulario de evento nuevo ya no ofrece Congreso", await hasta(p, () => {
+    const ops = [...document.querySelectorAll(".type-picker .type-opt")].map(e => e.textContent.trim());
+    return ops.length > 0 && !ops.some(x => /Congreso/.test(x)) && ops.some(x => /Visita/.test(x));
+  }), true);
+  await p.keyboard.press("Escape");
   eq("admin: sin un solo error", errores, []);
   await p.close();
 }
