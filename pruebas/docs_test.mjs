@@ -22,10 +22,7 @@ function armar(opts={}){
     const render = ()=>{};
     const esc = s => String(s ?? "");
     const state = { auth:{ user:{ email:"ana@x.com", displayName:"Ana" } }, posts: ctx.posts };
-    ${grab("LIMITES_FIREBASE")}
-    ${grab("LIMITES_SUPABASE")}
-    const store = { horaDelServidor: ()=> "HORA",
-      limites: ctx.base === "supabase" ? LIMITES_SUPABASE : LIMITES_FIREBASE };
+    const store = { horaDelServidor: ()=> "HORA" };
     const getPostById = id => state.posts.find(p=>p.id===id);
     const canEditPost = ()=> ctx.puedeEditar !== false;
     // Un archivo de prueba puede traer su contenido ya leído (para probar
@@ -45,7 +42,6 @@ function armar(opts={}){
     ${["TIPOS_DE_ARCHIVO","CLASE_POR_DEFECTO","extensionDe","claseDeArchivo","claseDe","topeLegible",
        "DOCS_POR_TIPO","docsEsperados","docDeArchivo","archivoDelDoc","archivosSueltos","cuantosDocsHay",
        "sinRanura","fechaDeArchivo","fmtDate",
-       "MARGEN_DEL_POSTEO","pesoDelPosteo","excesoDePeso","excesoLegible",
        "adjuntarDocumento","quitarDocumento","quitarAdjunto",
        "ACTIVITY_TYPES","EVENTO_TYPES","CALENDAR_SYNC_TYPES","ACTIVITY_BY_KEY",
        "DEFAULT_ACTIVITY_LABELS","applyActivityTypesConfig"].map(grab).join("\n")}
@@ -55,7 +51,7 @@ function armar(opts={}){
              cuantosDocsHay, sinRanura, fechaDeArchivo,
              adjuntarDocumento, quitarDocumento, quitarAdjunto,
              applyActivityTypesConfig, state };
-  `)({ reg, posts: opts.posts || [], puedeEditar: opts.puedeEditar, maxArchivos: opts.maxArchivos, maxBytes: opts.maxBytes, base: opts.base });
+  `)({ reg, posts: opts.posts || [], puedeEditar: opts.puedeEditar, maxArchivos: opts.maxArchivos, maxBytes: opts.maxBytes });
   return { reg, api };
 }
 const ponerDocs = (api, mapa) => {
@@ -153,42 +149,18 @@ const archivo = (extra={}) => ({ name:"a.pdf", kind:"pdf", dataUrl:"data:applica
   eq("pasado el tope de cantidad, no entra", reg.escrituras.length, 0);
   eq("y se explica qué hacer", /máximo/.test(reg.avisos[0]), true);
 }
-/* ---------- Que entre en el posteo ENTERO ----------
-   En Firestore el archivo va adentro del documento del posteo, que no
-   puede pasar de 1 MiB. Un archivo que por sí solo entra puede no entrar
-   con lo que el evento ya tiene. */
+/* ---------- No hay techo para el posteo entero ----------
+   Hubo uno mientras la base fue Firestore, que guardaba el archivo
+   adentro del posteo y no admitía más de 1 MiB por documento. Ahora cada
+   archivo va al bucket y en el posteo queda su ruta. */
 const pesado = kb => "data:application/pdf;base64," + "A".repeat(4 * Math.ceil(kb * 1024 / 3));
 {
-  const post = { id:"p1", activityType:"visita", images:[], files:[archivo({ name:"viejo.pdf", dataUrl: pesado(450) })] };
+  const post = { id:"p1", activityType:"visita", images:[], files:[archivo({ name:"viejo.pdf", dataUrl: pesado(900) })] };
   const { api, reg } = armar({ posts:[post] });
-  ponerDocs(api, { visita: VISITA });
-  await api.adjuntarDocumento("p1", "plan", { name:"Plan.pdf", size: 450*1024, type:"application/pdf", contenido: pesado(450) });
-  eq("uno que solo entra, pero no con lo que ya hay: no se escribe", reg.escrituras.length, 0);
-  eq("se avisa nombrando el archivo y cuánto sobra",
-     /«Plan\.pdf» no entra/.test(reg.avisos[0] || "") && /se pasaría por \d+ KB del máximo de 1 MB/.test(reg.avisos[0] || ""), true);
-}
-{
-  const post = { id:"p1", activityType:"visita", images:[], files:[archivo({ name:"viejo.pdf", dataUrl: pesado(450) })] };
-  const { api, reg } = armar({ posts:[post] });
-  ponerDocs(api, { visita: VISITA });
-  await api.adjuntarDocumento("p1", "plan", { name:"Plan.pdf", size: 200*1024, type:"application/pdf", contenido: pesado(200) });
-  eq("uno que sí entra con lo que ya hay, se escribe", reg.escrituras.length, 1);
-}
-{
-  // Reemplazar el de la ranura descuenta el que se va: si no, cambiar un
-  // plan pesado por otro igual de pesado parecería que no entra.
-  const post = { id:"p1", activityType:"visita", images:[], files:[archivo({ name:"viejo.pdf", doc:"plan", dataUrl: pesado(450) })] };
-  const { api, reg } = armar({ posts:[post] });
-  ponerDocs(api, { visita: VISITA });
-  await api.adjuntarDocumento("p1", "plan", { name:"nuevo.pdf", size: 450*1024, type:"application/pdf", contenido: pesado(450) });
-  eq("reemplazar uno pesado por otro igual de pesado, sí", reg.escrituras.length, 1);
-}
-{
-  const post = { id:"p1", activityType:"visita", images:[], files:[archivo({ name:"viejo.pdf", dataUrl: pesado(450) })] };
-  const { api, reg } = armar({ posts:[post], base:"supabase" });
   ponerDocs(api, { visita: VISITA });
   await api.adjuntarDocumento("p1", "plan", { name:"Plan.pdf", size: 900*1024, type:"application/pdf", contenido: pesado(900) });
-  eq("en Supabase el archivo va al bucket: no hay techo de posteo", reg.escrituras.length, 1);
+  eq("un archivo pesado entra aunque el evento ya tenga otros pesados", reg.escrituras.length, 1);
+  eq("sin avisos", reg.avisos, []);
 }
 {
   // Pero REEMPLAZAR estando en el tope sí tiene que poder: no suma uno.

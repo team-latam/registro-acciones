@@ -10,26 +10,6 @@ let pass=0, fail=0;
 const eq=(n,g,w)=>{ const a=JSON.stringify(g), x=JSON.stringify(w);
   if(a===x) pass++; else { fail++; console.log(`✗ ${n}\n   esperado: ${x}\n   obtenido: ${a}`); } };
 
-/* ---------- Qué base elige la pestaña ---------- */
-const elegir = busqueda => new Function("ctx", `
-  const location = ctx.location; const URLSearchParams = ctx.URLSearchParams;
-  ${grab("baseElegida")}
-  return baseElegida();
-`)({ location:{ search: busqueda }, URLSearchParams });
-
-// Desde el 3 de octubre de 2026 la base del equipo es Supabase.
-eq("sin nada en la dirección, va a Supabase (la del equipo)", elegir(""), "supabase");
-eq("con ?base=supabase, como se usó durante la prueba, también: ningún enlace guardado se rompe",
-   elegir("?base=supabase"), "supabase");
-eq("con ?base=firebase, a la base vieja", elegir("?base=firebase"), "firebase");
-eq("y acompañada de otras cosas, también", elegir("?vista=feed&base=firebase"), "firebase");
-eq("cualquier otro valor NO cambia de base", elegir("?base=otra"), "supabase");
-eq("ni escrito a medias", elegir("?base=fire"), "supabase");
-eq("si el navegador no sabe leer la dirección, se queda en la del equipo",
-   new Function("ctx", `const location = ctx.location;
-     const URLSearchParams = function(){ throw new Error("no existe"); };
-     ${grab("baseElegida")} return baseElegida();`)({ location:{ search:"?base=firebase" } }), "supabase");
-
 /* ---------- El perfil, traducido ---------- */
 function supabaseDeMentira(){
   const reg = { pedidos:[] };
@@ -59,7 +39,7 @@ const ses = crearSesion(sbm);
 let visto = [];
 ses.alCambiar(p => visto.push(p));
 await new Promise(r => setTimeout(r, 0));
-eq("al arrancar avisa aunque no haya nadie (Firebase hace lo mismo)", visto, [null]);
+eq("al arrancar avisa aunque no haya nadie (la app cuenta con ese primer aviso)", visto, [null]);
 
 visto = [];
 sbm.entrar({ id:"uuid-1", email:"benny@team-latam.com",
@@ -72,13 +52,13 @@ eq("y la foto también", visto[0].photoURL, "http://foto");
 
 visto = [];
 sbm.entrar({ id:"uuid-2", email:"sin.nombre@x.com", user_metadata:{} });
-eq("si no hay nombre, se usa el correo (igual que con Firebase)",
+eq("si no hay nombre, se usa el correo",
    visto[0].displayName, "sin.nombre@x.com");
 eq("y si no hay foto, queda vacío y no undefined", visto[0].photoURL, "");
 
 await ses.iniciar();
 eq("entrar pide Google", sbm.reg.pedidos[0].provider, "google");
-eq("y vuelve a ESTA pestaña, sin perder el ?base=supabase",
+eq("y vuelve a ESTA misma dirección, con lo que tenga después del ?",
    sbm.reg.pedidos[0].options.redirectTo, "https://x.io/app/?base=supabase");
 eq("sin arrastrar lo que venga después del #",
    sbm.reg.pedidos[0].options.redirectTo.includes("#"), false);
@@ -86,56 +66,13 @@ eq("sin arrastrar lo que venga después del #",
 await ses.cerrar();
 eq("salir cierra la sesión", sbm.reg.cerro, true);
 
-/* ---------- Las dos sesiones ofrecen lo mismo ---------- */
-const fbSes = new Function("ctx", `const authMod = ctx.authMod; const auth = {};
-  ${grab("firebaseSesion")};
-  return firebaseSesion;`)({ authMod: new Proxy({}, { get: ()=> ()=>({}) }) });
+/* ---------- La sesión ofrece justo lo que la app usa ---------- */
 const firma = o => Object.keys(o).sort().map(k => `${k}(${o[k].length})`).join(" | ");
-eq("las dos formas de entrar ofrecen exactamente lo mismo",
-   firma(crearSesion(supabaseDeMentira())), firma(fbSes));
+eq("quién está adentro, entrar y salir: nada más",
+   firma(crearSesion(supabaseDeMentira())), "alCambiar(1) | cerrar(0) | iniciar(0)");
 
-/* ---------- El cartel ---------- */
-const doc = { creado:null, puesto:null,
-  createElement: ()=>({ style:{}, set textContent(v){ this._t = v; }, get textContent(){ return this._t; } }),
-  body: { prepend(d){ doc.puesto = d; } } };
-// t() de mentira: devuelve el español y anota que se la llamó con los
-// cuatro idiomas (el cartel estaba escrito solo en español, fuera de t()).
-const llamadasT = [];
-new Function("ctx", `const document = ctx.document;
-  const t = (...idiomas) => { ctx.llamadasT.push(idiomas); return idiomas[0]; };
-  ${grab("mostrarAvisoDeBase")} mostrarAvisoDeBase();`)({ document: doc, llamadasT });
-eq("el cartel pasa por t(), en los cuatro idiomas",
-   llamadasT.length === 1 && llamadasT[0].filter(x => typeof x === "string" && x.includes("FIREBASE")).length, 4);
-eq("el cartel dice claramente que es la base vieja",
-   doc.puesto.textContent.includes("FIREBASE") && doc.puesto.textContent.includes("la base vieja"), true);
-eq("y que lo que se haga ahí no llega al equipo",
-   doc.puesto.textContent.includes("no llega a la app del equipo"), true);
-eq("se queda pegado arriba aunque se baje",
-   /position:\s*sticky/.test(doc.puesto.style.cssText || ""), true);
-eq("y por encima de todo lo demás",
-   /z-index:\s*9{3,}/.test(doc.puesto.style.cssText || ""), true);
-
-/* ---------- La copia de seguridad, según la base ---------- */
-// La copia lee FIREBASE. En la pestaña de Supabase no hay sesión de
-// Firebase y los botones fallaban con un error de permisos: ahí se
-// explica dónde se baja.
-const respaldoEn = base => new Function("ctx", `
-  const BASE = ctx.base;
-  const t = (...idiomas) => idiomas[0];
-  const respaldoEstado = { corriendo:false, resumen:null, error:"" };
-  ${grab("esc")}
-  ${grab("prefRow")}
-  ${grab("renderRespaldoSection")}
-  return renderRespaldoSection();`)({ base });
-eq("en la pestaña de Supabase, la copia de Firebase se ofrece en otra pestaña, con ?base=firebase",
-   respaldoEn("supabase").includes('href="?base=firebase"'), true);
-eq("sin los botones de descarga, que ahí fallaban",
-   respaldoEn("supabase").includes('data-action="descargar-respaldo"'), false);
-eq("y en la pestaña de Firebase, los botones de siempre",
-   respaldoEn("firebase").includes('data-action="descargar-respaldo" data-adjuntos="1"'), true);
-
-/* ---------- Que el interruptor esté cableado ---------- */
-eq("en modo Supabase se cambian las DOS cosas: los datos y la sesión",
+/* ---------- El arranque ---------- */
+eq("arrancar() arma las DOS cosas: los datos y la sesión",
    /store = crearSupabaseStore\(sb\b[^;]*\);\s*\n\s*sesion = crearSupabaseSesion\(sb\);/.test(src), true);
 // Sin esto el adaptador no tiene con qué armar las miniaturas, y cada foto
 // se sube sola: las tarjetas vuelven a bajar la foto entera, sin que
@@ -147,18 +84,21 @@ eq("y la capa de datos recibe con qué armar la miniatura de cada foto",
 // pestaña, la sesión que vence—, que es cuando onAuthChanged recibe nadie.
 eq("al quedar sin sesión, por donde sea, se olvidan las firmas guardadas",
    /async function onAuthChanged\(user\)\{[\s\S]*?if\(!user\)\{[\s\S]{0,400}?store\.olvidarFirmas\(\);[\s\S]{0,120}?status:"signedOut"/.test(src), true);
-eq("el cartel sale en la pestaña de Firebase ANTES de descargar nada: si algo falla, igual se ve qué base es",
-   /async function initFirebase\(\)\{[\s\S]{0,200}?return arrancarSupabase\(\);[\s\S]{0,250}?mostrarAvisoDeBase\(\);[\s\S]*?await import/.test(src), true);
-eq("y NO en la de Supabase, que es la del equipo",
-   /async function arrancarSupabase\(\)\{[\s\S]{0,600}?mostrarAvisoDeBase\(\)/.test(src), false);
-eq("y el modo Supabase NO cuelga del arranque de Firebase",
-   /if\(BASE === "supabase"\) return arrancarSupabase\(\);/.test(src), true);
-eq("que Firebase no cargue en ese modo es un aviso, no un error fatal",
-   /console\.warn\("Sin Firebase/.test(src), true);
-eq("entrar y salir ya no nombran a Firebase",
+eq("entrar y salir van por la sesión",
    /await sesion\.iniciar\(\);/.test(src) && /await sesion\.cerrar\(\);/.test(src), true);
-eq("y el arranque escucha por el adaptador, no por Firebase directo",
+eq("y el arranque escucha por ella",
    /sesion\.alCambiar\(onAuthChanged\);/.test(src), true);
+eq("la página arranca por arrancar(), una sola vez", (src.match(/^arrancar\(\);$/mg) || []).length, 1);
+
+// Firebase se cerró el 3 de octubre de 2026 y su código se fue con él. Lo
+// que no puede volver: que la app lo cargue, o que algo lo llame.
+const codigo = src.slice(src.indexOf('<script type="module">'));
+eq("la app no carga nada de Firebase",
+   /gstatic\.com\/firebasejs|firebaseapp\.com|FIREBASE_CONFIG/.test(codigo), false);
+eq("ni queda nada que lo use",
+   ["firebaseStore","firebaseSesion","initFirebase","arrancarSupabase","authMod","baseElegida",
+    "mostrarAvisoDeBase","armarRespaldo","LIMITES_FIREBASE","CONFIG_IS_PLACEHOLDER"]
+     .filter(n => new RegExp("\\b" + n + "\\b").test(codigo)), []);
 
 /* ================================================================
    Volver a la pestaña NO es iniciar sesión
@@ -169,8 +109,8 @@ eq("y el arranque escucha por el adaptador, no por Firebase directo",
    síntoma era volver de otra ventana y encontrarse con "Cargando registro
    compartido…" otra vez — a veces para siempre.
 
-   Firebase no hace nada de esto: avisa cuando la sesión CAMBIA. Que el
-   adaptador se parezca a Firebase es justamente su trabajo.
+   La app espera un aviso solo cuando la sesión CAMBIA: filtrar el resto es
+   justamente el trabajo del adaptador.
 ================================================================ */
 {
   const sb2 = supabaseDeMentira();

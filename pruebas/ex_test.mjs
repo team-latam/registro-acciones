@@ -51,10 +51,10 @@ eq("sin posteos, lo aclara", (await page.evaluate(()=>window.__ultimoConfirm)).i
 await page.evaluate(()=>{ window.__confirmado = true; window.__falla = false; window.__alertas = []; });
 await page.locator('.row-x[data-email="sofia@x.com"]').click();
 eq("borra sin avisar de más", await page.evaluate(()=>window.__alertas), []);
-eq("y el borrado pasó por la capa de datos, no por Firestore directo",
+eq("y el borrado pasó por la capa de datos",
    await page.evaluate(()=>window.__borradosStore), ["sofia@x.com"]);
 
-// ---- si Firestore lo rechaza, se avisa ----
+// ---- si la base lo rechaza, se avisa ----
 await page.evaluate(()=>{ window.__falla = true; window.__alertas = []; });
 await page.locator('.row-x[data-email="sofia@x.com"]').click();
 eq("un rechazo del servidor se cuenta", (await page.evaluate(()=>window.__alertas))[0].includes("No se pudo borrar"), true);

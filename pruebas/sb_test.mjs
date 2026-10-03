@@ -127,7 +127,6 @@ const ctx = { crypto: { getRandomValues: a => { a.forEach((_, i)=> a[i] = i * 7 
 const crear = new Function("ctx", `
   const crypto = ctx.crypto;
   ${grab("tsToMillis")}
-  ${grab("LIMITES_SUPABASE")}
   ${grab("crearSupabaseStore")}
   return crearSupabaseStore;
 `)(ctx);
@@ -144,7 +143,7 @@ const fila = sb.reg.escrituras[0][2];
 eq("camelCase se vuelve snake_case al escribir",
    Object.keys(fila).filter(k=>k!=="id").sort(),
    ["author_email","calendar_event_id","is_project","start_date","title"]);
-eq("y el id nuevo tiene 20 caracteres, como los de Firestore", fila.id.length, 20);
+eq("y el id nuevo tiene 20 caracteres, como los que vinieron de Firebase", fila.id.length, 20);
 
 sb.reg.escrituras.length = 0;
 await st.roster.setNickname("juan@x.com", "juancito");
@@ -226,9 +225,8 @@ eq("y cierra el canal", sb2.reg.cortados.length, 1);
 
 /* ---------------------------------------------------------------
    PARTE 2b — escribir algo tiene que VERSE, sin esperar al aviso
-   Con Firestore el SDK mostraba el cambio al instante. Acá, si se
-   depende solo del aviso en vivo, escribir se siente como que no pasó
-   nada — y si el aviso no está habilitado, directamente no pasa.
+   Si se depende solo del aviso en vivo, escribir se siente como que no
+   pasó nada — y si el aviso no está habilitado, directamente no pasa.
    --------------------------------------------------------------- */
 const sbW = supabaseDeMentira();
 const stW = crear(sbW);
@@ -340,7 +338,7 @@ eq("editar sin cambiar la foto no la sube de nuevo", sbA.reg.subidas.length, 0);
 /* ---------------------------------------------------------------
    PARTE 2d — aprobar a alguien que YA tiene ficha
    Pasa seguido: se le revocó el acceso y vuelve, o su solicitud quedó
-   dando vueltas. En Firestore el alta crea O REEMPLAZA sin quejarse.
+   dando vueltas. El alta tiene que crear O REEMPLAZAR sin quejarse.
    --------------------------------------------------------------- */
 const sbR = supabaseDeMentira();
 const stR = crear(sbR);
@@ -430,44 +428,42 @@ await st6.roster.markTourSeen("juan@x.com");
 eq("y se manda tal cual: la base la reemplaza por su reloj",
    sb6.reg.escrituras[0][2], { tour_seen_at:"1970-01-01T00:00:00.000Z" });
 
-eq("un error de permisos de Postgres se reconoce", st6.esErrorDePermiso({ code:"42501" }), true);
-eq("uno cualquiera no", st6.esErrorDePermiso({ code:"23505" }), false);
+/* ---------------------------------------------------------------
+   PARTE 7 — la capa ofrece lo que la app usa, y nada más
+   Todo lo que la app le pide (store.posts.create(...), etc.) tiene que
+   existir: si no, se descubre cuando alguien toca el botón. Y lo que
+   nadie pide es código muerto, como lo que quedó del modo de respaldo
+   de los comentarios cuando se fue Firebase.
+   --------------------------------------------------------------- */
+{
+  const capa = crear(supabaseDeMentira());
+  const desde = src.indexOf("\nfunction crearSupabaseStore(");
+  const fuera = src.slice(0, desde) + src.slice(desde + grab("crearSupabaseStore").length);
+  const pedidos = new Set();
+  for(const m of fuera.matchAll(/\bstore\.(\w+)(?:\.(\w+))?\(/g)) pedidos.add(m[2] ? `${m[1]}.${m[2]}` : m[1]);
+  const existe = n => { const [a, b] = n.split("."); return b ? typeof (capa[a] || {})[b] === "function" : typeof capa[a] === "function"; };
+  eq("la app le pide a la capa unas cuantas cosas (si no, esta prueba no prueba nada)", pedidos.size > 30, true);
+  eq("y todas existen", [...pedidos].filter(n => !existe(n)), []);
+  const ofrece = Object.keys(capa).flatMap(a => typeof capa[a] === "function" ? [a]
+    : Object.keys(capa[a]).filter(b => typeof capa[a][b] === "function").map(b => `${a}.${b}`));
+  // Las que se llaman por dentro (this.merge) o con otro nombre cuentan igual.
+  const usadas = n => pedidos.has(n) || new RegExp(`\\b${n.split(".").pop()}\\b`).test(fuera);
+  eq("y la capa no ofrece nada que la app no use", ofrece.filter(n => !usadas(n)), []);
+}
 
 /* ---------------------------------------------------------------
-   PARTE 7 — las dos capas ofrecen EXACTAMENTE lo mismo
-   Es lo que hace que cambiar de base sea una línea.
+   PARTE 7b — cuánto aguanta la base
    --------------------------------------------------------------- */
-const fbStore = new Function("ctx", `const fb = ctx.fb; const db = {};
-  ${grab("tsToMillis")}
-  ${grab("LIMITES_FIREBASE")}
-  ${grab("firebaseStore")}
-  return firebaseStore;`)({ fb:new Proxy({}, { get: ()=> ()=>({}) }) });
-
-const firma = obj => Object.keys(obj).sort().map(k =>
-  typeof obj[k] === "function" ? `${k}(${obj[k].length})`
-  : `${k}{${Object.keys(obj[k]).sort().map(m=>`${m}(${obj[k][m].length})`).join(",")}}`).join(" | ");
-eq("los dos ofrecen los mismos métodos, con la misma cantidad de argumentos",
-   firma(crear(supabaseDeMentira())), firma(fbStore));
-
-// `limites` es parte del contrato igual que los métodos: la app no sabe
-// cuánto entra en un posteo, se lo pregunta a la base. Las mismas claves
-// de los dos lados (si no, la app leería undefined y no lo notaría), y
-// valores distintos: si fueran iguales, uno de los dos estaría mintiendo.
-const limFb = fbStore.limites, limSb = crear(supabaseDeMentira()).limites;
-eq("las dos bases declaran los mismos topes", Object.keys(limFb).sort(), Object.keys(limSb).sort());
-eq("todos números de verdad", Object.values(limFb).concat(Object.values(limSb))
-   .every(v => typeof v === "number" && v > 0), true);
-eq("y Supabase aguanta más en todo, porque el archivo no va adentro del posteo",
-   ["imagenes","archivos","bytesPorArchivo","bytesSugeridos","ladoMaximo","bytesPorPosteo"].filter(k => limSb[k] <= limFb[k]), []);
-eq("el techo del posteo entero en Firebase es el de Firestore: 1 MiB, ni un byte más",
-   limFb.bytesPorPosteo, 1024 * 1024);
-eq("y en Supabase no hay (en el posteo quedan solo las rutas)", limSb.bytesPorPosteo, Infinity);
-eq("un archivo al tope entra solo en un posteo de Firebase, aunque sea en base64",
-   4 * Math.ceil(limFb.bytesPorArchivo / 3) < limFb.bytesPorPosteo, true);
-eq("la calidad de compresión también sube (achicar fuerte era para que entrara)",
-   limSb.calidadImagen > limFb.calidadImagen, true);
-eq("el sugerido nunca puede pasar el techo", 
-   [limFb.bytesSugeridos <= limFb.bytesPorArchivo, limSb.bytesSugeridos <= limSb.bytesPorArchivo], [true, true]);
+{
+  const L = new Function(`${grab("LIMITES_DE_LA_BASE")} return LIMITES_DE_LA_BASE;`)();
+  eq("todos los topes son números de verdad", Object.values(L).every(v => typeof v === "number" && v > 0), true);
+  eq("el sugerido nunca pasa el techo", L.bytesSugeridos <= L.bytesPorArchivo, true);
+  // El techo de un archivo es el del bucket: si la app dejara pasar más,
+  // el archivo rebotaría al subir, con un error que no le dice nada a nadie.
+  const bucket = Number((fs.readFileSync(RAIZ + "supabase/01-tablas.sql", "utf8")
+    .match(/values \('adjuntos', 'adjuntos', false, (\d+),/) || [])[1]);
+  eq("y el de cada archivo es exactamente el del bucket (01-tablas.sql)", L.bytesPorArchivo, bucket);
+}
 
 /* ---------------------------------------------------------------
    PARTE 8 — lo que se deja entrar a un src=""
@@ -488,7 +484,7 @@ const guardias = new Function("ctx", `
 const img = guardias.safeImageSrc, arch = guardias.safeFileDataUrl;
 const FIRMADA = "https://benonmzlgdjkhzauamrz.supabase.co/storage/v1/object/sign/adjuntos/posts/p1/img0.png?token=abc";
 
-eq("una imagen embebida sigue entrando (lo de Firebase no se rompió)",
+eq("una imagen embebida sigue entrando (es como está una foto recién elegida, antes de subirla)",
    img("data:image/png;base64,iVBORw0KGgo="), "data:image/png;base64,iVBORw0KGgo=");
 eq("y una URL firmada del bucket propio, también", img(FIRMADA), FIRMADA);
 eq("un adjunto firmado del bucket propio, igual", arch(FIRMADA), FIRMADA);
@@ -794,7 +790,6 @@ function navegadorDeMentira(){
     const setInterval = (fn, ms) => ctx.relojes.push({ fn, ms, parado:false });
     const clearInterval = n => { if(ctx.relojes[n - 1]) ctx.relojes[n - 1].parado = true; };
     ${grab("tsToMillis")}
-    ${grab("LIMITES_SUPABASE")}
     ${grab("crearSupabaseStore")}
     return crearSupabaseStore;
   `)({ crypto: ctx.crypto, localStorage: nav.localStorage, Date: Fecha, relojes: nav.relojes });
@@ -1056,8 +1051,6 @@ eq("el adaptador sabe dar la miniatura de una foto y olvidar las firmas al salir
     eq("las fotos se bajan recién cuando están por verse", (html.match(/ loading="lazy"/g) || []).length, 3);
   }
 }
-
-eq("un token vencido (PGRST301) NO es falta de permiso", crear(supabaseDeMentira()).esErrorDePermiso({ code:"PGRST301" }), false);
 
 console.log(`\n${pass} pasaron, ${fail} fallaron`);
 process.exit(fail ? 1 : 0);

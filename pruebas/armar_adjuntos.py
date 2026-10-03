@@ -34,7 +34,7 @@ def grab(name):
 
 estilo = re.search(r'<style>(.*?)</style>', src, re.S).group(1)
 codigo = "\n".join(grab(n) for n in [
-    "LIMITES_FIREBASE","LIMITES_SUPABASE","limitesElegidos","maxImagenes","maxArchivos",
+    "LIMITES_DE_LA_BASE","limitesElegidos","maxImagenes","maxArchivos",
     "maxBytesPorArchivo","topeLegible","unidadAdjuntos","newAdjuntosDraft","getAdjuntosDraft",
     "renderAdjuntosSection"])
 
@@ -47,16 +47,7 @@ const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt
 const t = (es, en, pt, he, vars) => String(es).replace(/\\{(\\w+)\\}/g, (todo, k) => (vars && k in vars) ? vars[k] : todo);
 let adjuntosDraft = null;
 %s
-let store = { limites: LIMITES_FIREBASE };
-function pintar(){
-  const partes = [];
-  for(const [nombre, lim] of [["Firebase (la del equipo)", LIMITES_FIREBASE], ["Supabase (la nueva)", LIMITES_SUPABASE]]){
-    store = { limites: lim }; adjuntosDraft = null;
-    partes.push(`<h2 style="margin:24px 0 8px;font-size:16px;">${nombre}</h2>` + renderAdjuntosSection());
-  }
-  document.getElementById("raiz").innerHTML = partes.join("");
-}
-pintar();
+document.getElementById("raiz").innerHTML = renderAdjuntosSection();
 window.__leer = () => [...document.querySelectorAll("#raiz input[type=number]")].map(i =>
   ({ id:i.id, value:i.value, min:i.min, max:i.max, step:i.step }));
 window.__unidades = () => [...document.querySelectorAll("#raiz .setting-unit")].map(e => e.textContent.trim());

@@ -46,15 +46,12 @@ function armar(ctx){
     const SILENT_TOKEN_TIMEOUT_MS = 20;
     const sessionStorage = { setItem(){}, getItem(){ return null; } };
     let calendarAccessToken = null, calendarTokenExpiry = 0, calendarAclScopeGranted = false;
-    let authMod = ctx.authMod;
-    const auth = {};
     const Date_ = Date;
     function isAdmin(){ return ctx.esAdmin === true; }
     async function loadGis(){ return !!(window.google && window.google.accounts); }
     ${grab("requestSilentCalendarToken")}
     ${grab("requestCalendarTokenPopup")}
     ${grab("storeGisToken")}
-    ${grab("storeCalendarCredential")}
     ${grab("ensureCalendarToken")}
     ${grab("ensureCalendarAclToken")}
     return { ensureCalendarToken, ensureCalendarAclToken, verToken: ()=> calendarAccessToken };
@@ -73,22 +70,22 @@ function gis({ silencioso, conVentana }){
     } };
   } } } } };
 }
-const base = (g, authMod) => ({
+const base = g => ({
   state: { auth: { user: { email:"benny@team-latam.com" }, status:"admin" }, roster: [] },
-  window: g.google ? g : {}, console: { warn(){}, error(){} }, authMod, esAdmin: false,
+  window: g.google ? g : {}, console: { warn(){}, error(){} }, esAdmin: false,
 });
 
 /* --- 1. Si Google lo da en silencio, ni se molesta a nadie --- */
 let g = gis({ silencioso:{ access_token:"TOKEN_SILENCIOSO", expires_in:3600 } });
-let ctx = base(g, null);
+let ctx = base(g);
 eq("con el permiso ya dado, el token sale solo, sin ventanas",
    await armar(ctx).ensureCalendarToken(), "TOKEN_SILENCIOSO");
 eq("y se pidió UNA sola vez, en silencio", g.reg.pedidos.map(p=>p.silencioso), [true]);
 
-/* --- 2. Si no, la ventana de Google — SIN Firebase --- */
+/* --- 2. Si no, la ventana de Google --- */
 g = gis({ silencioso:null, conVentana:{ access_token:"TOKEN_CON_VENTANA", expires_in:3600 } });
-ctx = base(g, null);   // authMod null: NO hay Firebase
-eq("sin Firebase, la ventana de Google igual consigue el permiso",
+ctx = base(g);
+eq("si no sale en silencio, la ventana de Google consigue el permiso",
    await armar(ctx).ensureCalendarToken(), "TOKEN_CON_VENTANA");
 eq("primero se intenta en silencio y recién después con ventana",
    g.reg.pedidos.map(p=>p.silencioso), [true, false]);
@@ -98,43 +95,35 @@ eq("con la cuenta ya elegida, para no hacerla buscar",
 
 /* --- 3. El admin pide los dos permisos en la MISMA ventana --- */
 g = gis({ silencioso:null, conVentana:{ access_token:"T", expires_in:3600 } });
-ctx = base(g, null); ctx.esAdmin = true;
+ctx = base(g); ctx.esAdmin = true;
 await armar(ctx).ensureCalendarToken();
 eq("el admin pide eventos Y compartir de una vez (una sola ventana por sesión)",
    [g.reg.pedidos[1].scope.includes("calendar.events"), g.reg.pedidos[1].scope.includes("calendar.acls")],
    [true, true]);
 
-/* --- 4. Si Google no puede, se cae al camino viejo por Firebase --- */
+/* --- 4. Si Google no lo da, no rompe: devuelve nada --- */
 g = gis({ silencioso:null, conVentana:null });
-const authFalso = { GoogleAuthProvider: function(){ this.addScope = ()=>{}; this.setCustomParameters = ()=>{}; },
-  signInWithPopup: async ()=>({ __resultado:true }) };
-authFalso.GoogleAuthProvider.credentialFromResult = ()=>({ accessToken:"TOKEN_DE_FIREBASE" });
-ctx = base(g, authFalso);
-eq("si Google falla y Firebase todavía está, se usa Firebase",
-   await armar(ctx).ensureCalendarToken(), "TOKEN_DE_FIREBASE");
-
-/* --- 5. Y sin ninguno de los dos, no rompe: devuelve nada --- */
-g = gis({ silencioso:null, conVentana:null });
-ctx = base(g, null);
-eq("sin Google ni Firebase, no rompe la app: se queda sin Calendar",
+ctx = base(g);
+eq("si Google no da el permiso, no rompe la app: se queda sin Calendar",
    await armar(ctx).ensureCalendarToken(), null);
+eq("y no lo vuelve a intentar por otro lado", g.reg.pedidos.map(p=>p.silencioso), [true, false]);
 
-/* --- 6. Lo mismo para compartir el Calendar --- */
+/* --- 5. Lo mismo para compartir el Calendar --- */
 g = gis({ silencioso:null, conVentana:{ access_token:"TOKEN_ACL", expires_in:3600 } });
-ctx = base(g, null);
-eq("compartir el Calendar tampoco necesita Firebase",
+ctx = base(g);
+eq("compartir el Calendar va por el mismo camino",
    await armar(ctx).ensureCalendarAclToken(), "TOKEN_ACL");
 eq("y pide los dos permisos", g.reg.pedidos[1].scope.includes("calendar.acls"), true);
 
 g = gis({ silencioso:null, conVentana:{ access_token:"NO_DEBERIA", expires_in:3600 } });
-ctx = base(g, null);
+ctx = base(g);
 eq("pero el modo callado sigue callado: no abre ninguna ventana",
    await armar(ctx).ensureCalendarAclToken({ silentOnly:true }), null);
 eq("y solo intentó en silencio", g.reg.pedidos.map(p=>p.silencioso), [true]);
 
-/* --- 7. Que no quede ninguna llamada a Firebase sin red --- */
-eq("las dos funciones se fijan si Firebase existe antes de usarlo",
-   (src.match(/if\(!authMod\) return null;/g) || []).length, 2);
+/* --- 6. El permiso es de Google, y se le pide a Google --- */
+eq("ninguna de las dos pasa por otro lado que no sea Google",
+   [grab("ensureCalendarToken"), grab("ensureCalendarAclToken")].some(f => /authMod|signInWithPopup|firebase/i.test(f)), false);
 
 /* ================================================================
    "Creado automáticamente desde Google Calendar."

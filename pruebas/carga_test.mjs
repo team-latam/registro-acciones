@@ -4,15 +4,14 @@ process.chdir(__aRuta(new URL(".", import.meta.url)));
 const RAIZ = __aRuta(new URL("..", import.meta.url));
 
 /* ======================================================================
-   La página entera, de verdad, en las dos bases. Es la comprobación que
-   pide CLAUDE.md antes de cada commit, y hasta ahora vivía suelta, sin
-   formato de prueba y fuera del repo.
+   La página entera, de verdad. Es la comprobación que pide CLAUDE.md
+   antes de cada commit.
 
-   No inicia sesión (no hay con qué), así que cubre la carga: que el
-   módulo entero se evalúe sin un solo error propio, que el arranque elija
-   bien la base, y que la pestaña de Supabase avise que lo es. Los errores
-   de red se descuentan: en el sandbox Firebase y los CDN de Google no son
-   alcanzables, y eso no dice nada del código.
+   No inicia sesión (eso lo hace app_dom_test.mjs), así que cubre la
+   carga: que el módulo entero se evalúe sin un solo error propio, con
+   cualquiera de los enlaces que el equipo tiene guardados. Los errores de
+   red se descuentan: en el sandbox los CDN de Google no son alcanzables,
+   y eso no dice nada del código.
    ====================================================================== */
 let pass=0, fail=0;
 const eq=(n,g,w)=>{ const a=JSON.stringify(g), x=JSON.stringify(w);
@@ -21,19 +20,23 @@ const deRed = t => /ERR_TUNNEL_CONNECTION_FAILED|ERR_NAME_NOT_RESOLVED|ERR_INTER
 
 const pagina = "file://" + (process.env.INDEX || RAIZ + "index.html");
 const b = await chromium.launch();
-// Desde el 3 de octubre de 2026, sin nada en la dirección es Supabase; la
-// pestaña de Firebase es la que avisa que mira la base vieja.
-for(const [modo, extra, conCartel] of [["Supabase", "", false], ["Supabase (enlace de la prueba)", "?base=supabase", false],
-                                       ["Firebase", "?base=firebase", true]]){
+// La base es Supabase, y Firebase ya no está en el código: un enlace viejo
+// —el de la prueba, con ?base=supabase, o el de la base vieja, con
+// ?base=firebase— abre lo mismo que el de siempre.
+for(const [modo, extra] of [["el enlace de siempre", ""], ["el de la prueba", "?base=supabase"],
+                            ["el viejo de Firebase", "?base=firebase"]]){
   const p = await b.newPage();
-  const errores = [], consola = [];
+  const errores = [], consola = [], pedidos = [];
   p.on("pageerror", e => errores.push(String(e)));
   p.on("console", m => { if(m.type() === "error") consola.push(m.text()); });
+  p.on("request", r => pedidos.push(r.url()));
   await p.goto(pagina + extra);
   await p.waitForTimeout(2500);
   eq(`${modo}: ni un error de página propio`, errores.filter(e => !deRed(e)), []);
   eq(`${modo}: ni un error de consola propio`, consola.filter(t => !deRed(t)), []);
-  eq(`${modo}: ${conCartel ? "avisa" : "no avisa"} que está mirando otra base`, !!(await p.$("#avisoBase")), conCartel);
+  eq(`${modo}: ningún cartel de otra base`, !!(await p.$("#avisoBase")), false);
+  eq(`${modo}: no le pide nada a Firebase`, pedidos.filter(u => /^https?:/.test(u) && /firebase/i.test(u)), []);
+  eq(`${modo}: y sí carga Supabase`, pedidos.some(u => u.includes("@supabase/supabase-js")), true);
   eq(`${modo}: dibujó la pantalla (no quedó en blanco)`, (await p.evaluate(() => document.body.innerText.trim().length)) > 0, true);
   await p.close();
 }
