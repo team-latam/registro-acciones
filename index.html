@@ -863,11 +863,22 @@
   .post-content, .reply-content, .post h3, .post-links a, .reply-links a, .post .hint, .post-date{ overflow-wrap:anywhere; }
   .post-scopes{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
   .post-scopes-head{ margin:0 0 0 auto; justify-content:flex-end; }
-  .post-links{ display:flex; flex-direction:column; gap:4px; margin-bottom:10px; }
-  .post-links a{ font-size:12.5px; font-weight:600; }
+  /* Un link es una ficha con el nombre y el sitio, no la dirección cruda
+     (una URL de 90 caracteres no le dice nada a nadie). */
+  .post-links{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
+  .post-link-card{
+    display:inline-flex; align-items:center; gap:10px; max-width:100%; min-width:0; padding:7px 12px 7px 8px;
+    border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--surface-soft);
+    text-decoration:none; color:var(--ink);
+  }
+  .post-link-card:hover{ border-color:var(--celeste-dark); }
+  .plc-ico{ width:32px; height:32px; border-radius:8px; background:var(--celeste-soft); display:flex; align-items:center; justify-content:center; flex:none; font-size:15px; }
+  .plc-body{ display:flex; flex-direction:column; min-width:0; }
+  .plc-title{ font-size:13px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .plc-host{ font-size:11.5px; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; direction:ltr; unicode-bidi:isolate; }
   .post-images{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
   .post-images img{
-    width:92px; height:92px; object-fit:cover; border-radius:var(--radius-sm); cursor:pointer;
+    width:116px; height:116px; object-fit:cover; border-radius:var(--radius-sm); cursor:pointer;
     border:1px solid var(--border);
   }
   /* flex-wrap: con "Cancelar evento" son cinco acciones y en 330px no
@@ -881,6 +892,29 @@
   .post-actions button:hover{ color:var(--celeste-dark); }
   .post-actions button.danger, .reply-actions button.danger{ color:var(--danger); }
   .post-actions button.liked{ color:var(--celeste-dark); }
+  /* El menú ⋯ de la tarjeta: Editar, Repetir, Convertir en proyecto,
+     Cancelar y Borrar viven acá adentro. Antes eran hasta siete botones
+     en una fila (tres renglones en el celular) con Borrar al lado de Me
+     gusta; a la vista quedan solo las acciones de todos los días. */
+  .post-menu-wrap{ position:relative; margin-inline-start:auto; }
+  .post-actions .post-menu-btn{
+    font-size:20px; line-height:1; padding:2px 10px; border-radius:999px; color:var(--text-muted); min-height:30px;
+  }
+  .post-actions .post-menu-btn:hover, .post-actions .post-menu-btn.open{ background:var(--surface-alt); color:var(--ink-strong); }
+  .post-menu{
+    position:absolute; top:calc(100% + 6px); inset-inline-end:0; z-index:56; min-width:240px;
+    background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md);
+    box-shadow:0 14px 36px rgba(8,42,44,0.28); padding:6px; display:flex; flex-direction:column;
+    transform-origin:top right; animation:filterDropdownPop .2s cubic-bezier(.34,1.56,.64,1);
+  }
+  html[dir="rtl"] .post-menu{ transform-origin:top left; }
+  .post-actions .post-menu-item{
+    display:flex; align-items:center; gap:10px; width:100%; text-align:start; padding:10px 12px; min-height:42px;
+    border-radius:var(--radius-sm); font-size:13px; color:var(--text); white-space:normal;
+  }
+  .post-actions .post-menu-item:hover{ background:var(--surface-hover); color:var(--ink-strong); }
+  .post-actions .post-menu-item.danger{ color:var(--danger); }
+  .post-menu-sep{ height:1px; background:var(--border); margin:4px 8px; }
 
   /* "Ver traducción"/"Ver original" del contenido (ver withContentTranslation):
      texto libre que cada quien escribe, no se puede traducir de antemano
@@ -1248,6 +1282,11 @@
   }
   .field.field-title-plain input.title-input-plain:focus{ outline:none; border-bottom-color:var(--celeste); }
   .field-icon-row{ display:flex; align-items:flex-start; gap:12px; margin-bottom:14px; }
+  /* El tipo va primero: es lo primero que uno decide, y de él dependen
+     la pista del texto y los documentos esperados. */
+  .field-type-first{ margin-bottom:10px; }
+  .field-hint{ font-size:12px; color:var(--text-muted); margin-top:6px; line-height:1.45; }
+  .field-hint .btn-text-add{ display:inline; padding:0; margin-inline-start:4px; font-size:12px; }
   .field-icon{ flex:none; width:20px; text-align:center; font-size:15px; line-height:2.2; color:var(--text-muted); }
   .field-icon-body{ flex:1; min-width:0; }
   .field-icon-input{
@@ -1374,9 +1413,13 @@
     width:18px; height:18px; border-radius:50%; background:var(--danger); color:#fff; border:none;
     font-size:11px; cursor:pointer; line-height:18px; text-align:center; padding:0; flex-shrink:0;
   }
-  .post-files{ display:flex; flex-direction:column; gap:6px; margin-bottom:10px; }
+  .post-files{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
   /* Cada adjunto es una fila: el archivo, y su ✕ empujado al final. */
-  .post-file-row{ display:flex; align-items:center; gap:8px; min-width:0; }
+  /* Cada archivo, una ficha como la de los links. */
+  .post-file-row{
+    display:flex; align-items:center; gap:8px; min-width:0; max-width:100%; padding:7px 10px;
+    border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--surface-soft);
+  }
   /* Cuándo se subió: lo más callado que se puede sin dejar de leerse. */
   .doc-fecha{ font-size:10.5px; font-weight:500; color:var(--text-muted); opacity:.7;
     white-space:nowrap; font-variant-numeric:tabular-nums; }
@@ -1419,6 +1462,17 @@
   }
   .doc-linea:hover{ color:var(--ink); }
   .doc-linea.ok{ color:var(--ok-text); }
+  /* La franja: el renglón plegable y, al lado, el botón para subir lo
+     primero que falta sin tener que abrirla. Mientras falta algo va en
+     amarillo suave; completa, en verde y sin caja. El botón va AFUERA
+     del renglón (que ya es un <button>): no se anidan. */
+  .doc-strip{
+    display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:6px; padding:3px 10px;
+    border-radius:var(--radius-sm); background:var(--warn-bg); border:1px solid var(--warn-border);
+  }
+  .doc-strip.ok, .doc-abierto .doc-strip{ background:transparent; border-color:transparent; padding-inline:0; }
+  .doc-strip .doc-linea{ width:auto; flex:1 1 220px; }
+  .doc-strip .doc-subir{ border-style:solid; border-color:var(--warn-border); color:var(--warn-text); padding:5px 12px; }
   .doc-linea .sep{ color:var(--border); font-weight:400; }
   .doc-linea .listo{ color:var(--ok-text); font-weight:700; }
   .doc-linea .pend{ font-weight:600; }
@@ -9688,11 +9742,31 @@ function resetReplyDraft(postId){
 function ownerAttrs(owner){
   return `data-post-id="${esc(owner.postId)}"${owner.replyId ? ` data-reply-id="${esc(owner.replyId)}"` : ""}`;
 }
+// Para la ficha de un link: el sitio y el resto de la dirección por
+// separado. Con etiqueta, abajo va el sitio; sin etiqueta, el sitio es el
+// título y abajo va el camino (recortado).
+function partesDeUrl(url){
+  try{
+    const u = new URL(url);
+    const host = u.hostname.replace(/^www\./, "");
+    let resto = (u.pathname + u.search).replace(/\/$/, "");
+    if(resto === "/") resto = "";
+    if(resto.length > 40) resto = resto.slice(0, 38) + "…";
+    return { host, resto };
+  }catch(e){ return { host:url, resto:"" }; }
+}
 function renderAttachments(item, owner){
   return {
     scopesHtml: (item.scopes||[]).map(sc=>renderScopeChip(sc)).join(""),
-    linksHtml: (item.links||[]).filter(l=>safeUrl(l.url)).map(l=>
-      `<a href="${esc(safeUrl(l.url))}" target="_blank" rel="noopener noreferrer">🔗 ${esc(l.label||l.url)}</a>`).join(""),
+    linksHtml: (item.links||[]).filter(l=>safeUrl(l.url)).map(l=>{
+      const url = safeUrl(l.url);
+      const { host, resto } = partesDeUrl(url);
+      const abajo = l.label ? host : resto;
+      return `<a class="post-link-card" href="${esc(url)}" target="_blank" rel="noopener noreferrer" title="${esc(url)}">
+        <span class="plc-ico" aria-hidden="true">🔗</span>
+        <span class="plc-body"><span class="plc-title">${esc(l.label || host)}</span>${abajo ? `<span class="plc-host">${esc(abajo)}</span>` : ""}</span>
+      </a>`;
+    }).join(""),
     // La miniatura (si la foto la tiene) y con carga diferida: una foto
     // que todavía no se ve no se baja. La entera, recién en el visor.
     imagesHtml: (item.images||[]).map(safeImageSrc).filter(Boolean).map((src,idx)=>
@@ -9802,12 +9876,18 @@ function renderDocumentacion(post){
     : `<span class="pend">○ ${esc(d.label)}</span>`
   ).join(`<span class="sep" aria-hidden="true">·</span>`);
   const titulo = t("Documentación","Documentation","Documentação","תיעוד");
-  const cabeza = `<button type="button" class="doc-linea${completo ? " ok" : ""}"
+  // Al lado del renglón, cerrado, el botón para subir lo PRIMERO que
+  // falta: lo más común es que falte uno solo (el reporte de después).
+  const faltantes = esperados.filter(d => !archivoDelDoc(post, d.id));
+  const subir = (!abierto && puede && faltantes.length)
+    ? `<button type="button" class="doc-adjuntar doc-subir" data-action="adjuntar-doc" data-post-id="${post.id}" data-doc="${esc(faltantes[0].id)}">📎 ${t("Subir {d}","Upload {d}","Enviar {d}","העלאת {d}",{d:esc(faltantes[0].label)})}</button>`
+    : "";
+  const cabeza = `<div class="doc-strip${completo ? " ok" : ""}"><button type="button" class="doc-linea${completo ? " ok" : ""}"
       data-action="toggle-docs" data-post-id="${post.id}" aria-expanded="${abierto}">
       📄 ${titulo} <span class="doc-cuenta${completo ? " completo" : ""}">${hay}/${total}</span>
       ${abierto ? "" : `<span class="sep" aria-hidden="true">·</span>${resumen}`}
       <span class="chev" aria-hidden="true">${abierto ? "▲" : "▼"}</span>
-    </button>`;
+    </button>${subir}</div>`;
   if(!abierto) return cabeza;
 
   const filas = esperados.map(d=>{
@@ -9949,6 +10029,25 @@ async function quitarAdjunto(postId, pos){
   }
 }
 
+// Qué posteo tiene abierto su menú ⋯ (uno por vez). Afuera de `state`
+// como openReplyForms: es UI pura, no se guarda ni se sincroniza.
+let postMenuOpen = null;
+function renderPostMenu(post, { editable, canCancel }){
+  const items = [];
+  if(editable) items.push(`<button type="button" class="post-menu-item" role="menuitem" data-action="edit-post" data-post-id="${post.id}">✏️ ${t("Editar","Edit","Editar","עריכה")}</button>`);
+  // Repetir: un evento nuevo con los mismos datos (tipo, lugar, gente,
+  // texto), para la visita de todos los meses sin volver a cargar todo.
+  if(canWrite() && post.activityType !== "rutina") items.push(`<button type="button" class="post-menu-item" role="menuitem" data-action="duplicate-post" data-post-id="${post.id}">🔁 ${t("Repetir este evento","Repeat this event","Repetir este evento","לחזור על האירוע הזה")}</button>`);
+  if(!post.isProject && post.activityType !== "rutina" && canManageProject(post)) items.push(`<button type="button" class="post-menu-item" role="menuitem" data-action="project-create" data-post-id="${post.id}">📋 ${t("Convertir en proyecto","Turn into a project","Converter em projeto","להפוך לפרויקט")}</button>`);
+  if(canCancel) items.push(`<button type="button" class="post-menu-item" role="menuitem" data-action="cancel-post" data-post-id="${post.id}">🚫 ${t("Cancelar evento","Cancel event","Cancelar evento","ביטול האירוע")}</button>`);
+  if(isFixedAdmin()) items.push(`<div class="post-menu-sep" role="separator"></div><button type="button" class="post-menu-item danger" role="menuitem" data-action="delete-post" data-post-id="${post.id}">🗑️ ${t("Borrar…","Delete…","Apagar…","מחיקה…")}</button>`);
+  if(!items.length) return "";
+  const open = postMenuOpen === post.id;
+  return `<div class="post-menu-wrap">
+      <button type="button" class="post-menu-btn${open ? " open" : ""}" data-action="toggle-post-menu" data-post-id="${post.id}" aria-haspopup="menu" aria-expanded="${open}" aria-label="${esc(t("Más acciones","More actions","Mais ações","פעולות נוספות"))}">⋯</button>
+      ${open ? `<div class="post-menu" role="menu">${items.join("")}</div>` : ""}
+    </div>`;
+}
 function renderPostCard(post, replies){
   // El último fallback es por si el admin borró "otro" desde Configuración
   // (o el tipo del posteo) — un tipo desconocido no puede tirar el render.
@@ -10033,10 +10132,8 @@ function renderPostCard(post, replies){
         ${replies.length ? `<button data-action="toggle-thread" data-post-id="${post.id}">${threadOpen ? "▲ " + t("Ocultar","Hide","Ocultar","הסתרה") : "▼ " + t("Ver","View","Ver","הצגה")} ${commentsLabel}</button>` : ""}
         ${post.isProject
           ? `<button data-action="toggle-project" data-post-id="${post.id}" class="${openProjects.has(post.id)?"active":""}">📋 ${openProjects.has(post.id) ? t("Ocultar proyecto","Hide project","Ocultar projeto","הסתרת פרויקט") : t("Ver proyecto","View project","Ver projeto","הצגת פרויקט")}${postMilestones(post).length ? ` (${postMilestones(post).filter(m=>m.done).length}/${postMilestones(post).length})` : ""}</button>`
-          : (post.activityType !== "rutina" && canManageProject(post) ? `<button data-action="project-create" data-post-id="${post.id}">📋 ${t("Crear proyecto","Create project","Criar projeto","יצירת פרויקט")}</button>` : "")}
-        ${editable ? `<button data-action="edit-post" data-post-id="${post.id}">✏️ ${t("Editar","Edit","Editar","עריכה")}</button>` : ""}
-        ${canCancel ? `<button data-action="cancel-post" data-post-id="${post.id}">🚫 ${t("Cancelar evento","Cancel event","Cancelar evento","ביטול האירוע")}</button>` : ""}
-        ${isFixedAdmin() ? `<button class="danger" data-action="delete-post" data-post-id="${post.id}">🗑️ ${t("Borrar","Delete","Apagar","מחיקה")}</button>` : ""}
+          : ""}
+        ${renderPostMenu(post, { editable, canCancel })}
       </div>
       ${post.isProject && openProjects.has(post.id) ? renderProjectPanel(post, { preview:true }) : ""}
       ${threadOpen ? renderThread(replies) : ""}
@@ -12450,6 +12547,10 @@ function newComposerDraft(){
     location: "",
     locationSuggestions: null,
     locationHighlight: 0,
+    // La dirección exacta se pide aparte, con un enlace: dos campos de
+    // lugar uno debajo del otro ("Dónde ocurre" y "¿Cuál es el alcance?")
+    // confundían; el alcance es el que importa y va solo.
+    locationOpen: false,
     images: [],
     links: [],
     files: [],
@@ -12935,6 +13036,39 @@ function snapshotComposer(){
   });
 }
 function composerIsDirty(){ return snapshotComposer() !== composerSnapshot; }
+// "Repetir este evento": el composer con los datos del otro (tipo, lugar,
+// gente, título, texto), pero como evento NUEVO: fechado hoy con la misma
+// duración, sin adjuntos, sin repetición y sin editingPost, así se
+// publica aparte y el original queda como estaba.
+function openDuplicateComposer(post){
+  openEditComposer(post);
+  const d = composerDraft;
+  const today = todayISO();
+  const inicio = post.startDate || post.date;
+  const dias = post.endDate && post.endDate > inicio ? Math.round((isoDate(post.endDate) - isoDate(inicio)) / 86400000) : 0;
+  d.startDate = today; d.endDate = addDaysISO(today, dias);
+  d.images = []; d.files = []; d.links = [];
+  d.recur = recurDraftFrom(null, today); d.recurrence = null;
+  d.legacyOrganizer = "";
+  d.editingPost = null;
+  composerSnapshot = snapshotComposer();
+  postModalTitle.textContent = t("Nuevo evento (a partir de otro)","New event (based on another)","Novo evento (a partir de outro)","אירוע חדש (על בסיס אחר)");
+  renderComposer();
+  focusIntoComposer();
+}
+// La pista del campo de comentarios cambia con el tipo: a quien carga una
+// visita le sirve que le recuerden qué conviene anotar de una visita.
+function pistaDeContenido(typeKey){
+  const pistas = {
+    visita: t("Qué lugares se visitaron, con quién se habló, qué quedó pendiente…","Which places were visited, who you met, what's still pending…","Que lugares foram visitados, com quem se falou, o que ficou pendente…","אילו מקומות ביקרתם, עם מי דיברתם, מה נשאר פתוח…"),
+    curso: t("Tema, cuántos participaron, qué se trabajó…","Topic, how many took part, what was covered…","Tema, quantos participaram, o que foi trabalhado…","נושא, כמה השתתפו, מה נלמד…"),
+    seminario: t("Tema, quiénes expusieron, cuántos asistieron…","Topic, who presented, how many attended…","Tema, quem apresentou, quantos participaram…","נושא, מי הציג, כמה הגיעו…"),
+    congreso: t("Qué se presentó, con quién se hizo contacto, qué sigue…","What was presented, who you connected with, what's next…","O que foi apresentado, com quem se fez contato, o que vem a seguir…","מה הוצג, עם מי נוצר קשר, מה הלאה…"),
+    virtual: t("Plataforma, quiénes participaron, qué se acordó…","Platform, who took part, what was agreed…","Plataforma, quem participou, o que foi combinado…","פלטפורמה, מי השתתף, מה סוכם…"),
+  };
+  const base = pistas[typeKey] || t("Contá qué se hizo (o qué va a pasar)…","Tell what happened (or what's coming up)…","Conte o que foi feito (ou o que vai acontecer)…","ספר/י מה נעשה (או מה עומד לקרות)…");
+  return base + " " + t("Usá @ para mencionar a alguien.","Use @ to mention someone.","Use @ para mencionar alguém.","השתמש/י ב-@ כדי לאזכר מישהו.");
+}
 // Cerrar por ✕, Cancelar, click afuera o Escape: si hay cambios sin
 // guardar, pregunta. Antes cualquiera de esos (un Escape para cerrar el
 // desplegable de lugar, un click en el fondo) tiraba el borrador entero.
@@ -12958,6 +13092,15 @@ function renderComposer(){
       `<strong>{me}</strong> עורך/ת בתור (הפוסט המקורי עדיין מוצג בתור של {author})`,
       { me: esc(state.auth.user.displayName), author: esc(d.editingPost.authorName) }
     )}</div>` : ""}
+    <div class="field field-type-first">
+      <label>${t("¿Qué tipo de actividad?","What kind of activity?","Que tipo de atividade?","איזה סוג פעילות?")}</label>
+      <div class="type-picker">
+        ${(d.editingPost && d.editingPost.activityType === "rutina" ? ACTIVITY_TYPES : EVENTO_TYPES).map(ty=>`
+          <label class="type-opt ${d.activityType===ty.key?"checked":""}">
+            <input type="radio" name="cType" value="${esc(ty.key)}" ${d.activityType===ty.key?"checked":""}> ${esc(ty.icon)} ${esc(ty.label)}
+          </label>`).join("")}
+      </div>
+    </div>
     <div class="field field-title-plain">
       <input type="text" id="cTitle" maxlength="140" class="title-input-plain" placeholder="${esc(t("Agregar título","Add title","Adicionar título","הוספת כותרת"))}" value="${esc(d.title)}">
     </div>
@@ -12986,24 +13129,28 @@ function renderComposer(){
       </div>
     </div>
     <div class="field-icon-row">
-      <span class="field-icon">📍</span>
-      <div class="field-icon-body">
-        <div class="location-field">
-          <input type="text" id="cLocation" class="field-icon-input" maxlength="200" autocomplete="off" placeholder="${esc(t("Dónde ocurre (opcional): ciudad, hotel, dirección…","Where it happens (optional): city, hotel, address…","Onde acontece (opcional): cidade, hotel, endereço…","(עיר, מלון, כתובת) :(איפה זה קורה (אופציונלי"))}" value="${esc(d.location||"")}">
-          ${renderLocationSuggestions(d)}
-        </div>
-      </div>
-    </div>
-    <div class="field-icon-row">
       <span class="field-icon">🌎</span>
       <div class="field-icon-body">
         <div class="place-picker place-picker-inline">
-          <input type="text" id="cPlaceQuery" data-place-scope="post" data-place-owner="new" placeholder="${esc(t("¿Cuál es el alcance? (ciudad, país, región)...","What's the reach? (city, country, region)...","Qual é o alcance? (cidade, país, região)...","(עיר, מדינה, אזור) ?מה ההיקף..."))}" autocomplete="off" value="${esc(d.placeQuery)}">
+          <input type="text" id="cPlaceQuery" data-place-scope="post" data-place-owner="new" placeholder="${esc(t("Dónde: ciudad, país o región…","Where: city, country or region…","Onde: cidade, país ou região…","איפה: עיר, מדינה או אזור…"))}" autocomplete="off" value="${esc(d.placeQuery)}">
           ${d.placeQuery ? renderPlaceSuggestions(d, "post", "new") : ""}
         </div>
         ${d.scopes.length ? `<div class="post-scopes" style="margin-top:8px;">${d.scopes.map((sc,i)=>renderScopeChip(sc, "rm-scope-post", i, "new")).join("")}</div>` : ""}
+        <div class="field-hint">${t("Ciudad, país o región. Con esto se filtra el Feed y se arma el mapa.","City, country or region. This is what filters the Feed and builds the map.","Cidade, país ou região. É o que filtra o Feed e monta o mapa.","עיר, מדינה או אזור. לפי זה מסננים את הפיד ובונים את המפה.")}
+          ${(d.location || d.locationOpen) ? "" : `<button type="button" class="btn-text-add" data-action="composer-toggle-location">+ ${t("Agregar dirección exacta (opcional)","Add an exact address (optional)","Adicionar endereço exato (opcional)","הוספת כתובת מדויקת (אופציונלי)")}</button>`}
+        </div>
       </div>
     </div>
+    ${(d.location || d.locationOpen) ? `
+    <div class="field-icon-row">
+      <span class="field-icon">📍</span>
+      <div class="field-icon-body">
+        <div class="location-field">
+          <input type="text" id="cLocation" class="field-icon-input" maxlength="200" autocomplete="off" placeholder="${esc(t("Dirección exacta (opcional): hotel, calle, sala…","Exact address (optional): hotel, street, room…","Endereço exato (opcional): hotel, rua, sala…","כתובת מדויקת (אופציונלי): מלון, רחוב, אולם…"))}" value="${esc(d.location||"")}">
+          ${renderLocationSuggestions(d)}
+        </div>
+      </div>
+    </div>` : ""}
     <div class="field-icon-row">
       <span class="field-icon">👥</span>
       ${renderParticipantsField(d)}
@@ -13012,17 +13159,8 @@ function renderComposer(){
       <label>${t("Comentarios","Comments","Comentários","הערות")}</label>
       <div class="mention-anchor">
         <div class="mention-highlight-backdrop" id="cContent-hl" aria-hidden="true">${highlightMentions(esc(d.content))}</div>
-        <textarea id="cContent" class="mention-input" maxlength="${MAX_POST_CONTENT}" data-mention-scope="post" data-mention-owner="new" placeholder="${esc(t("Contá qué se hizo (o qué va a pasar)... usá @ para mencionar a alguien","Tell what happened (or what's coming up)... use @ to mention someone","Conte o que foi feito (ou o que vai acontecer)... use @ para mencionar alguém","(כדי לאזכר מישהו @ השתמש/י ב) ...ספר/י מה נעשה (או מה עומד לקרות"))}">${esc(d.content)}</textarea>
+        <textarea id="cContent" class="mention-input" maxlength="${MAX_POST_CONTENT}" data-mention-scope="post" data-mention-owner="new" placeholder="${esc(pistaDeContenido(d.activityType))}">${esc(d.content)}</textarea>
         ${renderMentionSuggestions(d, "post", "new", "cContent")}
-      </div>
-    </div>
-    <div class="field">
-      <label>${t("Tipo de actividad","Activity type","Tipo de atividade","סוג פעילות")}</label>
-      <div class="type-picker">
-        ${(d.editingPost && d.editingPost.activityType === "rutina" ? ACTIVITY_TYPES : EVENTO_TYPES).map(ty=>`
-          <label class="type-opt ${d.activityType===ty.key?"checked":""}">
-            <input type="radio" name="cType" value="${esc(ty.key)}" ${d.activityType===ty.key?"checked":""}> ${esc(ty.icon)} ${esc(ty.label)}
-          </label>`).join("")}
       </div>
     </div>
     <div class="field">
@@ -13504,6 +13642,7 @@ document.addEventListener("keydown", e=>{
   if(!tourLayer.hidden){ closeTour(); return; }
   if(!calendarInviteOverlay.hidden){ dismissCalendarInviteOverlay(); return; }
   if(fabOpen){ closeFab(); fabMainEl.focus(); return; }
+  if(postMenuOpen){ postMenuOpen = null; render(); return; }
   if(calViewMenuOpen){ calViewMenuOpen = false; render(); return; }
   if(calLayersMenuOpen){ calLayersMenuOpen = false; render(); return; }
   if(postModalOverlay.hidden) return;
@@ -14062,6 +14201,11 @@ document.addEventListener("click", async e=>{
   if(mentionsMenuOpen && !e.target.closest("#mentionsBell")){
     mentionsMenuOpen = false; render();
   }
+  // El menú ⋯ de un posteo se cierra al clickear afuera y también al
+  // elegir algo adentro: la acción sigue su curso con el menú ya cerrado.
+  if(postMenuOpen && (!e.target.closest(".post-menu-wrap") || e.target.closest(".post-menu-item"))){
+    postMenuOpen = null; render();
+  }
   if(typeFilterOpen && !e.target.closest(".type-filter")){
     typeFilterOpen = false; render();
   }
@@ -14174,6 +14318,17 @@ document.addEventListener("click", async e=>{
     "toggle-thread": async (el, e, action, postId) => {
     openThreads.has(postId) ? openThreads.delete(postId) : openThreads.add(postId);
     render();
+  },
+    "toggle-post-menu": async (el, e, action, postId) => {
+    postMenuOpen = postMenuOpen === postId ? null : postId; render();
+  },
+    "duplicate-post": async (el, e, action, postId) => {
+    const post = getPostById(postId);
+    if(post && canWrite()) openDuplicateComposer(post);
+  },
+    "composer-toggle-location": async () => {
+    composerDraft.locationOpen = true; renderComposer();
+    const inp = document.getElementById("cLocation"); if(inp) inp.focus();
   },
     "edit-post": async (el, e, action, postId) => {
     const post = getPostById(postId);

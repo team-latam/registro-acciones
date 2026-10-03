@@ -303,6 +303,21 @@ const hasta = async (p, fn, arg, ms = 5000) => {
        () => /\(1\)/.test((document.querySelector('button[data-action="toggle-like"][data-post-id="p_reunion"]:not([data-reply-id])') || {}).textContent || "")), true);
   }
 
+  // El menú ⋯ de la tarjeta: Editar, Repetir, Convertir en proyecto,
+  // Cancelar y Borrar viven ahí (a la vista quedan Me gusta, Responder y
+  // los comentarios). "Repetir este evento" abre el composer como evento
+  // NUEVO con los datos del otro: mismo título, sin editingPost.
+  await p.click('[data-action="toggle-post-menu"][data-post-id="p_reunion"]');
+  const enMenu = await p.evaluate(() => [...document.querySelectorAll(".post-menu .post-menu-item")].map(b => b.dataset.action));
+  eq("admin: el menú ⋯ ofrece editar, repetir y borrar", ["edit-post","duplicate-post","delete-post"].every(a => enMenu.includes(a)), true);
+  eq("admin: y Borrar va último", enMenu[enMenu.length - 1], "delete-post");
+  await p.click('.post-menu [data-action="duplicate-post"]');
+  eq("admin: Repetir abre el composer con el mismo título", await hasta(p, () => (document.getElementById("cTitle") || {}).value === "Reunión con la comunidad"), true);
+  eq("admin: como evento nuevo, no como edición", await p.evaluate(() => document.getElementById("postModalTitle").textContent.includes("otro")), true);
+  eq("admin: y el menú ⋯ quedó cerrado", await p.evaluate(() => !document.querySelector(".post-menu")), true);
+  await p.click('[data-action="cancel-composer"]');
+  await hasta(p, () => document.getElementById("postModalOverlay").hidden);
+
   eq("admin: el login quedó anotado en Actividad", (await base()).audit_log.some(a => a.type === "login" && a.actor_email === ADMIN), true);
 
   // Salir.
