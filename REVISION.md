@@ -285,6 +285,11 @@ navegador conectado** recarga la tabla entera para firmarla.
 > es más de un cuarto del bucket, no toca nada y queda en rojo: eso es una
 > cuenta que salió mal, no limpieza. Lo movido un día se devuelve a mano
 > con «restaurar». La función solo la puede usar la llave de servicio.
+>
+> **Encontrado al armarla:** antes del 2 de octubre, una edición en
+> Supabase podía guardar la URL firmada de una foto en vez de su ruta. Esa
+> foto se ve rota desde que venció la firma, y su archivo habría parecido
+> sobrar. `11-firmas-guardadas.sql` saca la ruta de adentro de la firma.
 
 Solo el admin fijo puede borrar del bucket y la app no lo hace nunca. Un
 archivo quitado de un evento **sigue ahí**: ocupa lugar del GB del plan y
