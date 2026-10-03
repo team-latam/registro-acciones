@@ -36,6 +36,45 @@ select lab.probar_valor('destildar un hito deja la fecha en blanco, no la pisa c
   $q$select coalesce(project_done_at::text,'(en blanco)') from public.posts where id='p1'$q$, '(en blanco)');
 \set QUIET off
 
+-- ---------- SIN PERSONA DETRÁS: EL SINCRONIZADOR NOCTURNO ----------
+-- Escribe con la llave de servicio y manda la marca de 1970 («poné vos la
+-- hora»). Antes la marca quedaba guardada tal cual.
+select lab.probar_valor_servicio('un posteo que crea el sincronizador nace con la hora de la base, no en 1970',
+  $q$insert into public.posts(id,title,content,date,start_date,end_date,activity_type,author_name,author_email,calendar_event_id,created_at)
+     values ('noc1','Congreso','','2026-11-10','2026-11-10','2026-11-12','congreso','Google Calendar','','ev1','1970-01-01T00:00:00.000Z')$q$,
+  $q$select case when created_at > now() - interval '1 minute' then 'ahora' else created_at::text end from public.posts where id='noc1'$q$,
+  'ahora');
+select lab.probar_valor_servicio('su comentario de sistema también',
+  $q$insert into public.replies(id,post_id,content,author_name,author_email,system,icon,created_at)
+     values ('noc2','p1','📅 Se movió en Google Calendar','Google Calendar',null,true,'📅','1970-01-01T00:00:00.000Z')$q$,
+  $q$select case when created_at > now() - interval '1 minute' then 'ahora' else created_at::text end from public.replies where id='noc2'$q$,
+  'ahora');
+select lab.probar_valor_servicio('y la hora de una edición suya',
+  $q$update public.posts set title='Corrido', last_edited_at='1970-01-01T00:00:00.000Z', last_edited_by='Google Calendar' where id='p1'$q$,
+  $q$select case when last_edited_at > now() - interval '1 minute' then 'ahora' else last_edited_at::text end from public.posts where id='p1'$q$,
+  'ahora');
+select lab.probar_valor_servicio('una fecha real que mande, se respeta',
+  $q$update public.posts set last_edited_at='2026-09-01T12:00:00Z' where id='p1'$q$,
+  $q$select last_edited_at::date::text from public.posts where id='p1'$q$,
+  '2026-09-01');
+
+-- ---------- LO QUE YA HABÍA QUEDADO EN 1970 ----------
+-- Así quedaban antes: se escribe salteando los disparadores, y después se
+-- corre el archivo de verdad que lo corrige (10-fechas-de-1970.sql).
+set session_replication_role = replica;
+insert into public.posts(id,title,content,date,start_date,end_date,activity_type,author_name,author_email,calendar_event_id,created_at,last_edited_at)
+  values ('v1970','Evento','','2026-08-20','2026-08-20','2026-08-20','visita','Google Calendar','','ev9','epoch','epoch');
+insert into public.replies(id,post_id,content,author_name,author_email,system,created_at)
+  values ('rv1970','v1970','📅 Cambió en Google Calendar','Google Calendar',null,true,'epoch');
+set session_replication_role = origin;
+\ir ../10-fechas-de-1970.sql
+select lab.probar_valor('un posteo que quedó en 1970 pasa al día de su evento', lab.como('juan@x.com'), $q$select 1$q$,
+  $q$select created_at::date::text from public.posts where id='v1970'$q$, '2026-08-20');
+select lab.probar_valor('su edición, a ahora', lab.como('juan@x.com'), $q$select 1$q$,
+  $q$select case when last_edited_at > now() - interval '1 minute' then 'ahora' else last_edited_at::text end from public.posts where id='v1970'$q$, 'ahora');
+select lab.probar_valor('y su comentario de sistema, a ahora (queda último en el hilo)', lab.como('juan@x.com'), $q$select 1$q$,
+  $q$select case when created_at > now() - interval '1 minute' then 'ahora' else created_at::text end from public.replies where id='rv1970'$q$, 'ahora');
+
 \set QUIET off
 select n, '  FALLA  ' || nombre || ' — ' || detalle as falla from lab.resultados where esperado <> obtenido order by n;
 select count(*) filter (where esperado=obtenido) || ' pasaron, ' ||

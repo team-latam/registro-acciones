@@ -57,9 +57,13 @@ Cada vez que se pushea a `main` un cambio en `supabase/`:
 1. **Se arma un Postgres nuevo, vacío y descartable**, y se le aplica el
    esquema entero — dos veces, para comprobar que aplicar lo mismo de nuevo
    no rompe nada.
-2. **Se corren las 195 comprobaciones** contra esa base: permisos de los
-   tres roles, validaciones, me gusta, importación, tiempo real.
-3. **Recién si todo eso quedó en verde**, se aplica a tu Supabase.
+2. **Se corren todas las comprobaciones** contra esa base: permisos de los
+   tres roles, validaciones, topes, me gusta, la hora del servidor,
+   importación, tiempo real.
+3. **Se vuelve a aplicar el esquema con datos adentro**, al límite de lo
+   que se permite: la base de verdad no está vacía, y un archivo que
+   endurece algo sin acordarse de lo ya guardado se cae acá y no allá.
+4. **Recién si todo eso quedó en verde**, se aplica a tu Supabase.
 
 Si falla aunque sea una comprobación, el segundo paso no corre y **tu base
 no se toca**.
@@ -93,7 +97,16 @@ Se aplican en orden. Todos se pueden correr más de una vez sin romper nada
 | `04-funciones.sql` | Lo que hace la base y no el navegador (me gusta, fechas) |
 | `05-importar.sql` | La puerta por la que entró el respaldo de Firebase |
 | `06-tiempo-real.sql` | Que los cambios lleguen solos a las pantallas abiertas |
-| `07-adjuntos-grandes.sql` | Los topes de adjuntos, sueltos |
+| `09-contenido-vacio.sql` | Saca el relleno de los eventos de Calendar sin descripción |
+| `10-fechas-de-1970.sql` | Corrige lo que el sincronizador nocturno haya fechado en 1970 |
+
+**Cada cosa se define en UN solo archivo.** Como se vuelven a aplicar
+todos en cada push, dos archivos que definen lo mismo distinto se pisan
+en cada corrida — y si el de antes es más estricto que lo que ya está
+guardado, el esquema deja de poder aplicarse. Pasó con el contenido de un
+posteo (1 carácter en el `03`, 0 en el `09`): por eso el `07` y el `08`
+se fundieron en el `01` y el `03`, y el `09` y el `10` solo corrigen
+datos.
 
 ## El otro secreto
 

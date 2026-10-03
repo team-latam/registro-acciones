@@ -154,6 +154,61 @@ insert into lab.resultados(nombre, esperado, obtenido, detalle)
   select 'y no le arruina el resto de la fila', true,
          title = 'Titulo viejo' and author_email = 'viejo@x.com' and start_date = '2019-03-05', ''
   from public.posts where id = 'h2';
+-- ---------- CUÁNTO PUEDE PESAR UNA FILA ----------
+-- Con la credencial de un integrante común. Antes todo esto entraba.
+insert into public.app_config(key, value) values
+  ('calendarSync', '{}'), ('preferences', '{}'),
+  ('territoryConfig', '{"zones":{"sur":{"label":"Sur","color":"#2563eb"}},"countryZones":{"Argentina":"sur"}}')
+  on conflict (key) do nothing;
+select lab.probar('preferencias personales de 5 MB NO entran', lab.como('juan@x.com'),
+  $q$select public.guardar_preferencias(jsonb_build_object('relleno', repeat('x', 5*1024*1024)))$q$, false);
+select lab.probar('las de verdad sí', lab.como('juan@x.com'),
+  $q$select public.guardar_preferencias('{"weekStart":1,"holidayCountries":["Argentina","Chile"],"dimPast":true}')$q$, true);
+select lab.probar('hitos de 4 MB en un posteo NO entran', lab.como('juan@x.com'),
+  $q$update public.posts set milestones = (select jsonb_agg(jsonb_build_object('label', repeat('y', 100*1024))) from generate_series(1, 40) g) where id = 'p1'$q$, false);
+select lab.probar('cuarenta hitos de verdad sí', lab.como('juan@x.com'),
+  $q$update public.posts set milestones = (select jsonb_agg(jsonb_build_object('id', 'm' || g, 'label', 'Hito número ' || g, 'date', '2026-10-01', 'done', false, 'owners', '["juan@x.com"]'::jsonb)) from generate_series(1, 40) g) where id = 'p1'$q$, true);
+
+-- ---------- EL ESTADO DE LA SINCRONIZACIÓN ----------
+-- Lo escribe cualquier integrante y lo lee el navegador de todos cada 30 s.
+select lab.probar('5 MB en la sincronización NO entran', lab.como('juan@x.com'),
+  $q$select public.guardar_config('calendarSync', jsonb_build_object('syncToken', repeat('x', 5*1024*1024)))$q$, false);
+select lab.probar('ni un campo que la app no escribe', lab.como('juan@x.com'),
+  $q$select public.guardar_config('calendarSync', '{"relleno":"x"}')$q$, false);
+select lab.probar('lo que escribe la app sí', lab.como('juan@x.com'),
+  $q$select public.guardar_config('calendarSync', '{"syncToken":"CPDAlvWDx4sCEPDAlvWDx4sCGAU=","lastSyncedAt":"2026-10-03T03:00:00.000Z"}')$q$, true);
+
+-- ---------- LOS TIPOS DE ACTIVIDAD ----------
+select lab.probar('los tipos como los guarda la app entran', :YO,
+  $q$select public.guardar_config('preferences', '{"activityTypes":[{"key":"visita","label":"Visita","icon":"🧳","calendarSync":true,"docs":[{"id":"plandeviaje","label":"Plan de viaje"},{"id":"reporte","label":"Reporte de cierre"}]},{"key":"taller","label":"Taller","icon":"🛠️","calendarSync":true},{"key":"otro","label":"Otro","icon":"✨","calendarSync":false,"docs":[]}]}')$q$, true);
+select lab.probar('31 tipos NO', :YO,
+  $q$select public.guardar_config('preferences', jsonb_build_object('activityTypes', (select jsonb_agg(jsonb_build_object('key', 't' || g, 'label', 'Tipo ' || g, 'icon', '✨')) from generate_series(1, 31) g)))$q$, false);
+select lab.probar('una clave con HTML NO', :YO,
+  $q$select public.guardar_config('preferences', '{"activityTypes":[{"key":"<img src=x>","label":"X"}]}')$q$, false);
+select lab.probar('un campo que la app no escribe NO', :YO,
+  $q$select public.guardar_config('preferences', '{"activityTypes":[{"key":"x","label":"X","html":"<b>"}]}')$q$, false);
+select lab.probar('un nombre de 5.000 caracteres NO', :YO,
+  $q$select public.guardar_config('preferences', jsonb_build_object('activityTypes', jsonb_build_array(jsonb_build_object('key', 'x', 'label', repeat('x', 5000)))))$q$, false);
+select lab.probar('once documentos esperados NO', :YO,
+  $q$select public.guardar_config('preferences', jsonb_build_object('activityTypes', jsonb_build_array(jsonb_build_object('key', 'x', 'label', 'X', 'docs', (select jsonb_agg(jsonb_build_object('id', 'd' || g, 'label', 'D')) from generate_series(1, 11) g)))))$q$, false);
+-- Las Preferencias se guardan por partes adentro del mismo valor: un dato
+-- viejo de una sección no puede trabar el guardado de las otras.
+update public.app_config set value = value || '{"activityTypes":[{"key":"Viejo-Mal","label":"Viejo"}]}' where key = 'preferences';
+select lab.probar('con un tipo viejo mal guardado, las otras secciones se siguen guardando', :YO,
+  $q$select public.guardar_config('preferences', '{"calendarId":"equipo@group.calendar.google.com"}')$q$, true);
+
+-- ---------- LAS ZONAS ----------
+select lab.probar('las zonas como las guarda la app entran', :YO,
+  $q$update public.app_config set value = '{"zones":{"sur":{"label":"Sur","color":"#2563eb"},"caribe":{"label":"Caribe","color":"#0ea5e9"}},"countryZones":{"Argentina":"sur","Cuba":"caribe"}}' where key = 'territoryConfig'$q$, true);
+select lab.probar('un color que no es un color NO (va adentro de un style=)', :YO,
+  $q$update public.app_config set value = '{"zones":{"sur":{"label":"Sur","color":"red;background:url(https://x)"}},"countryZones":{}}' where key = 'territoryConfig'$q$, false);
+select lab.probar('un país en una zona que no existe NO', :YO,
+  $q$update public.app_config set value = '{"zones":{"sur":{"label":"Sur","color":"#2563eb"}},"countryZones":{"Chile":"inventada"}}' where key = 'territoryConfig'$q$, false);
+select lab.probar('21 zonas NO', :YO,
+  $q$update public.app_config set value = jsonb_build_object('zones', (select jsonb_object_agg('z' || g, jsonb_build_object('label', 'Zona ' || g, 'color', '#000000')) from generate_series(1, 21) g), 'countryZones', '{}'::jsonb) where key = 'territoryConfig'$q$, false);
+select lab.probar('un campo de más en una zona NO', :YO,
+  $q$update public.app_config set value = '{"zones":{"sur":{"label":"Sur","color":"#2563eb","html":"<b>"}},"countryZones":{}}' where key = 'territoryConfig'$q$, false);
+
 \set QUIET off
 select n, '  FALLA  ' || nombre as falla from lab.resultados where esperado <> obtenido order by n;
 select count(*) filter (where esperado = obtenido) || ' pasaron, ' ||

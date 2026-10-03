@@ -12,7 +12,9 @@ R=/home/user/registro-acciones/supabase
 # que 07, 08 y 09 nunca entraban a la base de prueba y las pruebas corrían
 # contra un esquema viejo sin que nadie se enterara. Mismo criterio que
 # aplicar.sh.
-for f in /pglab/00-lab.sql $R/[0-9][0-9]-*.sql; do
+# El laboratorio, también del repo: antes leía una copia guardada aparte
+# (/pglab/00-lab.sql) que nadie actualizaba.
+for f in $R/pruebas/00-laboratorio.sql $R/[0-9][0-9]-*.sql; do
   [ -f "$f" ] || continue
   out=$(su postgres -c "$BIN/psql -h /var/run/postgresql -U postgres -d registro -q -v ON_ERROR_STOP=1 -f $f" 2>&1 | grep -i "error")
   [ -n "$out" ] && { echo "FALLÓ $f"; echo "$out" | head -5; exit 1; }
