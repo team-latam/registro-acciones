@@ -71,6 +71,44 @@ select lab.probar_valor_servicio('para devolver lo movido un día, dice qué se 
 select lab.probar_valor_servicio('sin fecha, no hay nada que devolver',
   'select 1', $q$select (public.limpieza_del_bucket() -> 'restaurar')::text$q$, '[]');
 
+-- ============================================================
+-- Una foto guardada con su firma en vez de su ruta (11-firmas-guardadas.sql)
+-- ============================================================
+-- Antes del 2 de octubre, una edición podía guardar la URL firmada. Esa
+-- foto se ve rota, y su archivo parecería sobrar. La corrección saca la
+-- ruta de adentro de la firma.
+\set QUIET on
+insert into public.posts (id, title, content, date, start_date, end_date, activity_type, author_name, author_email, images, files)
+values ('p_firmado', 'Editado antes del arreglo', 'C', '2026-09-20', '2026-09-20', '2026-09-20', 'visita', 'Ana', 'ana@x.com',
+        array['https://benonmzlgdjkhzauamrz.supabase.co/storage/v1/object/sign/adjuntos/posts/p_firmado/img0_5.jpg?token=eyJhbGciOiJIUzI1NiJ9.e30.abc',
+              'posts/p_firmado/img1_5.jpg'],
+        '[{"name":"plan.pdf","path":"posts/p_firmado/arch0_5.pdf","doc":"plan",
+           "dataUrl":"https://benonmzlgdjkhzauamrz.supabase.co/storage/v1/object/sign/adjuntos/posts/p_firmado/arch0_5.pdf?token=x"}]');
+insert into public.replies (id, post_id, content, author_name, author_email, images)
+values ('r_firmado', 'p_firmado', 'con foto', 'Juan', 'juan@x.com',
+        array['https://benonmzlgdjkhzauamrz.supabase.co/storage/v1/object/sign/adjuntos/replies/r_firmado/img0_5.png?token=y']);
+insert into storage.objects (bucket_id, name, created_at) values
+  ('adjuntos', 'posts/p_firmado/img0_5.jpg', now() - interval '10 days'),
+  ('adjuntos', 'replies/r_firmado/img0_5.png', now() - interval '10 days');
+\set QUIET off
+select lab.probar_valor_servicio('antes de corregirla, el archivo de una foto guardada con su firma parece sobrar',
+  'select 1', $q$select case when (public.limpieza_del_bucket() -> 'huerfanos') ? 'posts/p_firmado/img0_5.jpg' then 'sobra' else 'no' end$q$, 'sobra');
+\set QUIET on
+\ir ../11-firmas-guardadas.sql
+\ir ../11-firmas-guardadas.sql
+\set QUIET off
+select lab.probar_valor_servicio('la corrección guarda la ruta que estaba adentro de la firma, y deja la otra como estaba',
+  'select 1', $q$select array_to_string(images, ' | ') from public.posts where id = 'p_firmado'$q$,
+  'posts/p_firmado/img0_5.jpg | posts/p_firmado/img1_5.jpg');
+select lab.probar_valor_servicio('en los comentarios también',
+  'select 1', $q$select array_to_string(images, ' | ') from public.replies where id = 'r_firmado'$q$, 'replies/r_firmado/img0_5.png');
+select lab.probar_valor_servicio('del adjunto se va la firma vencida, y queda todo lo demás',
+  'select 1', $q$select files::text from public.posts where id = 'p_firmado'$q$,
+  '[{"doc": "plan", "name": "plan.pdf", "path": "posts/p_firmado/arch0_5.pdf"}]');
+select lab.probar_valor_servicio('y ahora su archivo ya no sobra',
+  'select 1', $q$select count(*)::text from jsonb_array_elements_text(public.limpieza_del_bucket() -> 'huerfanos') h
+     where h in ('posts/p_firmado/img0_5.jpg', 'replies/r_firmado/img0_5.png')$q$, '0');
+
 -- Lee el bucket y todas las filas por encima de las políticas: nadie más
 -- que la llave de servicio.
 select lab.probar_valor('ni el admin fijo la puede llamar desde el navegador', lab.como('benny@team-latam.com'),

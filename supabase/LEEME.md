@@ -99,13 +99,14 @@ Se aplican en orden. Todos se pueden correr más de una vez sin romper nada
 | `06-tiempo-real.sql` | Que los cambios lleguen solos a las pantallas abiertas |
 | `09-contenido-vacio.sql` | Saca el relleno de los eventos de Calendar sin descripción |
 | `10-fechas-de-1970.sql` | Corrige lo que el sincronizador nocturno haya fechado en 1970 |
+| `11-firmas-guardadas.sql` | Corrige las fotos que quedaron guardadas con su firma vencida en vez de su ruta |
 
 **Cada cosa se define en UN solo archivo.** Como se vuelven a aplicar
 todos en cada push, dos archivos que definen lo mismo distinto se pisan
 en cada corrida — y si el de antes es más estricto que lo que ya está
 guardado, el esquema deja de poder aplicarse. Pasó con el contenido de un
 posteo (1 carácter en el `03`, 0 en el `09`): por eso el `07` y el `08`
-se fundieron en el `01` y el `03`, y el `09` y el `10` solo corrigen
+se fundieron en el `01` y el `03`, y del `09` en adelante solo se corrigen
 datos.
 
 ## La mudanza: la importación final
