@@ -393,6 +393,47 @@ ninguna.
    Supabase, así que **hoy no hay ninguna copia de lo que se carga**. Es lo
    más urgente que queda.
 
+## Lo que quedaba armado a la manera de Firebase
+
+*Revisado el 3 de octubre de 2026, después del cambio.* Cosas que se
+hicieron así porque Firebase no tenía código del lado del servidor sin
+pasar al plan pago, y que con Supabase se pueden hacer mejor.
+
+**Hecho:**
+
+- **Lo visto en la campanita vale en todos los aparatos.** Las marcas de
+  "visto" vivían en el `localStorage` de cada navegador; ahora van a las
+  preferencias de la persona (`visto_*` en `user_prefs`).
+- **El registro de lo que se hace con los posteos lo anota la base**
+  (`registrar_posteo`, en `04-funciones.sql`): ya no se pierde si se
+  cierra la pestaña, nadie lo puede escribir a mano, y anota el navegador
+  y la IP del pedido mismo. Las acciones de admin (aprobar, rechazar,
+  revocar, rol, Calendar) las sigue anotando la app.
+- **Limpieza**: restos de Firestore en el código (las fechas `toDate`, un
+  cartel que hablaba de "documento del allowlist") y el `README.md`.
+
+**A decidir con el usuario** (necesitan que él cree algo):
+
+1. **Avisos por correo** (una mención, un resumen semanal): una función de
+   Supabase más un servicio de envío gratis (Resend, 3.000 por mes).
+2. **Calendar desde el servidor**, con una sola cuenta de servicio de
+   Google: nadie necesitaría invitación ni permiso, y el evento llegaría
+   aunque se cierre la pestaña. Cambia cómo se usa la app: avisar antes.
+3. **Avisos en el celular** (push): en iPhone solo si se agrega la app a
+   la pantalla de inicio.
+4. **Quién ve qué del equipo**: hoy cualquier aprobado lee la fila entera
+   de `members` (rol, estado de Calendar). Se podría mostrar solo nombre
+   y apodo.
+
+**Visto y dejado como está:**
+
+- La columna `date` de `posts` repite `start_date` (era para ordenar en
+  Firestore). Sacarla cambia la forma de la tabla principal mientras el
+  equipo tiene la app abierta: una pestaña vieja dejaría de poder
+  guardar hasta recargar. No vale el riesgo por nada visible.
+- Los reportes se calculan en el navegador: con el volumen de hoy anda
+  bien.
+
 ## El código que sobra
 
 ~~**Hoy**, del lado de Supabase: el comentario y la documentación vieja del
