@@ -248,9 +248,9 @@ alter table public.audit_log
   add constraint audit_tipo check (type in (
     'login', 'access_requested', 'access_approved', 'access_rejected',
     'access_revoked', 'role_changed', 'calendar_shared', 'calendar_unshared',
-    -- Lo que cada integrante hace con los posteos (quién cargó, editó o
-    -- borró qué): lo escribe la app al hacerlo, ver logAudit.
-    'post_created', 'post_edited', 'post_deleted')),
+    -- Lo que cada integrante hace con los posteos (quién cargó, editó,
+    -- canceló o borró qué): lo escribe la base, ver registrar_posteo.
+    'post_created', 'post_edited', 'post_cancelled', 'post_deleted')),
   add constraint audit_textos check (
     length(actor_email) between 1 and 200
     and length(actor_name) between 1 and 120

@@ -147,7 +147,10 @@ aprobación" hasta que el administrador lo apruebe desde la propia app
   (`me_gusta_posteo`), y qué columnas puede cambiar cada uno lo deciden
   disparadores (`posts_controlar_update` y compañía). Quien no es admin
   solo puede registrar en `audit_log` su propio login o su propio pedido
-  de acceso, una vez por día. La única excepción, y es deliberada: los
+  de acceso, una vez por día. Quién cargó, editó, canceló o borró cada
+  posteo no lo escribe nadie a mano: lo anota la base con la misma
+  escritura (`registrar_posteo` en `04-funciones.sql`), con el navegador y
+  la IP que trae el pedido. La única excepción, y es deliberada: los
   mensajes firmados "Google Calendar" (el posteo que importa un evento
   creado directo en Calendar y la respuesta de sistema del sync) no
   tienen una persona detrás, así que un aprobado podría fabricarlos —
@@ -442,13 +445,14 @@ lista de aprobados, con su `nickname`) — al elegir uno, se inserta
 "@Nickname " en el texto y se guarda su email en el array `mentions` del
 posteo/respuesta.
 
-No hay notificaciones push ni email (eso requeriría Cloud Functions y
-pasar a plan pago Blaze, que este proyecto evita a propósito): en su
-lugar, el avatar del header muestra un punto rojo con la cantidad de
-menciones nuevas (`getUnseenMentionCount()`), calculada comparando la
-fecha de creación contra la última vez que la persona abrió el menú del
-avatar (`localStorage`, por dispositivo — no sincroniza entre aparatos).
-Abrir el menú marca todo como visto.
+No hay notificaciones push ni email todavía: la campanita muestra la
+cantidad de menciones nuevas (`getUnseenMentionCount()`), calculada
+comparando la fecha de creación contra la última vez que la persona abrió
+la campanita. Abrir la campanita marca todo como visto. Esas marcas de
+"visto" se guardan en las preferencias de la persona (`visto_*` en
+`user_prefs`, ver `marcaVista()`), así que lo leído en la compu tampoco
+aparece como nuevo en el celular; con Firebase vivían en el
+`localStorage` de cada navegador, que sigue como copia.
 
 Como cualquier aprobado necesita ver nombres/nicknames del resto del
 equipo para poder etiquetarlos, `allowlist` (antes solo legible por el
@@ -1003,8 +1007,9 @@ El admin fijo (`ADMIN_EMAIL`, `isFixedAdmin()` en la app, `isAdmin()` en
 las reglas) tiene en cada posteo y en cada respuesta un botón rojo
 "🗑️ Borrar" que borra **de verdad**: el documento del posteo y toda su
 subcolección de respuestas (`deletePostHard`), o la respuesta sola
-(`deleteReplyHard`). Sin marca, sin entrada en la auditoría, sin aviso en
-ningún hilo; solo un `appConfirm()` (el modal propio, no el del
+(`deleteReplyHard`). Sin marca, sin aviso en
+ningún hilo (el registro de actividad sí anota el borrado del posteo,
+ver `registrar_posteo`); solo un `appConfirm()` (el modal propio, no el del
 navegador) antes. Los admins por rol NO lo tienen
 (a propósito: `isRoleAdmin` no aparece en los `allow delete`); el resto
 del equipo sigue con "Cancelar evento", que deja marca. Si el posteo
