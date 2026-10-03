@@ -7001,26 +7001,29 @@ function subscribeUserPrefs(){
     render();
   }, err=>console.error("Error leyendo preferencias personales:", err));
 }
-// Se aplica en pantalla al toque y recién después se guarda: el onSnapshot
-// confirma (o corrige) cuando vuelve del servidor, y mientras tanto el
-// control no queda "pegado" esperando la ida y vuelta a Firestore.
+// Se aplica en pantalla al toque y recién después se guarda: el aviso en
+// vivo confirma (o corrige) cuando vuelve del servidor, y mientras tanto el
+// control no queda "pegado" esperando la ida y vuelta a la base.
+//
+// Hasta el 3 de octubre de 2026 acá también se pedía la conexión con
+// Firestore, y en la pestaña de Supabase no la había nunca: el cambio se
+// veía, pero no se guardaba (ver pruebas/preferencias_test.mjs).
 function savePrefs(patch){
   state.prefs = { ...prefs(), ...patch };
   render();
   const email = state.auth.user && state.auth.user.email;
-  if(!email || !db) return;
+  if(!email) return;
   store.userPrefs.merge(email, patch)
     .catch(err=>{
-      // Si el servidor rechaza, el SDK revierte el cambio local y el
-      // switch "vuelve solo" sin decir nada — parece que la app está rota.
-      // Mejor decir qué pasó: lo más probable es que falte publicar las
-      // reglas después de agregar una preferencia nueva.
+      // Lo elegido ya está en pantalla, así que un rechazo sin aviso
+      // pasaría desapercibido hasta recargar, cuando todo vuelve a como
+      // estaba y parece que la app está rota. Mejor decirlo ahora.
       console.error("Error guardando preferencias:", err);
       showCalendarNotice({ ok:false, message: t(
-        "No se pudo guardar tu configuración ({m}). Si se agregó una opción nueva, puede que falte publicar las reglas de Firestore.",
-        "Couldn't save your settings ({m}). If a new option was just added, the Firestore rules may still need publishing.",
-        "Não foi possível salvar sua configuração ({m}). Se uma opção nova foi adicionada, pode faltar publicar as regras do Firestore.",
-        "לא ניתן היה לשמור את ההגדרות שלך ({m}). אם נוספה אפשרות חדשה, ייתכן שצריך לפרסם את כללי Firestore.",
+        "No se pudo guardar tu configuración ({m}): al recargar la página va a volver a como estaba.",
+        "Couldn't save your settings ({m}): when you reload the page they'll go back to how they were.",
+        "Não foi possível salvar sua configuração ({m}): ao recarregar a página ela vai voltar a como estava.",
+        "לא ניתן היה לשמור את ההגדרות שלך ({m}): כשתטען/י מחדש את הדף הן יחזרו למה שהיו.",
         { m: err.code || err.message }) });
     });
 }
