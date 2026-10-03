@@ -10,7 +10,9 @@ from extractor import grab, src, estilo, cuerpo_click
 
 codigo = "\n".join(grab(n) for n in [
     "esc", "tsToMillis", "pad2", "fmtDate", "uses12h", "fmtTime", "fmtDateTime",
-    "solicitudesPendientes", "withRosterGuard", "renderSolicitudesQueueSection"])
+    "solicitudesPendientes", "withRosterGuard",
+    # El formulario de "Dar acceso por adelantado" (tanda 11) va arriba de la cola.
+    "preaprobarDraft", "renderPreaprobar", "renderSolicitudesQueueSection"])
 
 pagina = """<!doctype html><html lang="es"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">

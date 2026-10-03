@@ -160,6 +160,24 @@ del mapa, modo oscuro, campanita, franja de Documentación.
   ofrecerlo sin borrarlo) necesita que la base acepte la marca: va en
   la tanda 11.
 
+### 11. Lo que toca la base — HECHO (4 oct 2026)
+
+- El registro de actividad anota también quién cargó, editó (y
+  canceló) o borró cada posteo, con «título» y tipo en el detalle
+  (`post_created` / `post_edited` / `post_deleted`). Lo escribe la app
+  al hacerlo; la base solo se lo acepta a quien puede cargar posteos y
+  siempre sobre sí mismo (`audit_crear`, `audit_tipo`).
+- Dar acceso por adelantado: en Administración › Personas › Solicitudes,
+  el admin carga un correo (y un nombre opcional) y esa persona entra
+  directo la primera vez, sin cola. Si ya había pedido acceso, es
+  aprobar ese pedido. No necesitó SQL nuevo: un admin ya podía dar de
+  alta en `members`.
+- Archivar un tipo de actividad (menú ⋯ › Archivar): deja de ofrecerse
+  al cargar un evento, pero sigue nombrando a sus posteos viejos y se
+  puede desarchivar. La base acepta la marca `archived` (`tipo_ok`);
+  se guarda solo cuando es verdadera, así un guardado sin archivar
+  nada escribe la misma forma de siempre.
+
 ## Fuera de alcance (necesitan algo que la app no tiene)
 
 - Mandar correos (resumen semanal, invitaciones): no hay servicio de
