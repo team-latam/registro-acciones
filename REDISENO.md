@@ -192,6 +192,27 @@ del mapa, modo oscuro, campanita, franja de Documentación.
 - Personas: nombre y email en un renglón (con puntos suspensivos si no
   entran) y el pill de "Invitación enviada" sin partirse.
 
+### 13. Personas y Tipos como lista + ficha — HECHO (3 oct 2026)
+
+Las opciones se compararon en https://claude.ai/artifact/2vtYrPhNKwsbqN8FqX16Jq
+(Personas A, Tipos C, las dos recomendadas, elegidas por el usuario).
+
+- Personas: la lista muestra solo foto, nombre, email, el rol como
+  etiqueta y cuándo entró por última vez; los grupos de arriba son
+  Todos / Admins / Sin Calendar / Inactivos. Al tocar a alguien se abre
+  su ficha a la derecha (en celular, a pantalla completa con "← Personas")
+  con el rol, el Calendar, la actividad (última vez, posteos, mini-serie),
+  "Ver perfil", "Ver lo que cargó" (el Feed filtrado por esa persona) y,
+  aparte, la "zona de cuidado" con "Quitar acceso…".
+- Tipos de actividad: la lista muestra ícono, nombre, los documentos
+  resumidos, si va al Calendar y cuántos posteos; al tocar uno, su
+  ficha con nombre, ícono, el interruptor del Calendar, los documentos
+  esperados (lista con ✕ y "Nombre del documento…" + Enter), Subir /
+  Bajar y la zona de cuidado (Archivar / Desarchivar, Eliminar solo si
+  no tiene posteos). "+ Agregar tipo" abre la ficha de uno nuevo. Todo va
+  al borrador y se guarda con "Guardar cambios", que avisa "Cambios sin
+  guardar" mientras haya algo.
+
 ## Fuera de alcance (necesitan algo que la app no tiene)
 
 - Mandar correos (resumen semanal, invitaciones): no hay servicio de

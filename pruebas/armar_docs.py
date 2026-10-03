@@ -8,8 +8,9 @@ codigo = "\n".join(grab(n) for n in [
   "esUrlDelBucket","FILE_DATA_URL_RE","safeFileDataUrl","sePuedeVer",
   "DOCS_POR_TIPO","docsEsperados","docDeArchivo","archivoDelDoc","archivosSueltos",
   "cuantosDocsHay","renderDocumentacion","renderTiposSection","tiposFootnote","countPostsByType",
-  # El menú ⋯ de cada tipo (tanda 10) y la variable que dice cuál está abierto.
-  "tipoMenuOpen","renderTipoMenu",
+  # La lista + ficha de Tipos: qué tipo está abierto, su ficha, el formulario
+  # de uno nuevo y el aviso de "cambios sin guardar".
+  "tipoAbierto","tiposDirty","renderTipoPanel","renderTipoNuevoPanel",
   "normalize","slugifyKey","fmtDate","sinRanura","docsAbiertos","eventoYaPaso","docsAbierto","fechaDeArchivo",
   "quitarDocumento","quitarAdjunto","renderPostedFiles","ownerAttrs"])
 
@@ -79,6 +80,7 @@ pagina = """<!doctype html><html lang="es"><head><meta charset="utf-8">
 <script>
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const t = (es, en, pt, he, vars) => String(es).replace(/\\{(\\w+)\\}/g, (todo, k) => (vars && k in vars) ? vars[k] : todo);
+const isRTL = () => false;
 const SUPABASE_URL = "https://benonmzlgdjkhzauamrz.supabase.co";
 let PUEDE_EDITAR = true;
 const canEditPost = () => PUEDE_EDITAR;
@@ -158,8 +160,13 @@ window.__pintarConfig = () => {
     { key:"curso", label:"Curso", icon:"📘", calendarSync:true, docs:[{id:"programa",label:"Programa"}] },
     { key:"virtual", label:"Virtual", icon:"💻", calendarSync:false, docs:[] },
   ]};
+  // Con la ficha de Visita abierta: los documentos se editan ahí, y las
+  // pruebas de siempre (quitar, sumar) miran la de Visita.
+  tipoAbierto = "visita";
   document.getElementById("raiz").innerHTML = renderTiposSection();
 };
+// Abre la ficha de un tipo (los documentos se editan ahí, no en la lista).
+window.__abrirTipo = key => { tipoAbierto = key; document.getElementById("raiz").innerHTML = renderTiposSection(); };
 window.__sinDocs = () => {
   Object.keys(DOCS_POR_TIPO).forEach(k=>delete DOCS_POR_TIPO[k]);
   document.getElementById("raiz").innerHTML = renderDocumentacion({ id:"p1", activityType:"rutina", files:[] }) || "<i>vacio</i>";

@@ -16,9 +16,11 @@ await p.goto("file://" + process.cwd() + "/documentacion.html");
 await p.waitForTimeout(200);
 await p.evaluate(()=>window.__pintarConfig());
 
-const chipsDe = key => p.evaluate(k => [...document.querySelectorAll(".doc-chip")]
+// Los documentos se editan en la ficha del tipo (lista + ficha): para
+// mirar los de un tipo, primero se abre su ficha.
+const chipsDe = key => p.evaluate(k => { window.__abrirTipo(k); return [...document.querySelectorAll(".doc-chip")]
   .filter(c => c.querySelector(`[data-key="${k}"]`))
-  .map(c => c.textContent.replace("✕","").trim()), key);
+  .map(c => c.textContent.replace("✕","").trim()); }, key);
 
 /* ====== El ✕ de un documento, con un clic DE VERDAD ====== */
 eq("Visita arranca con dos", await chipsDe("visita"), ["Plan de viaje","Reporte"]);
@@ -61,6 +63,7 @@ eq("sacar el del medio saca ese y no otro", await chipsDe("visita"), ["Plan de v
 /* ====== Y en OTRO tipo, el índice no se mezcla ====== */
 await p.evaluate(()=>window.__pintarConfig());
 await p.evaluate(()=>{
+  window.__abrirTipo("curso");
   const bs = [...document.querySelectorAll('.doc-chip [data-action="tipo-doc-remove"]')]
     .filter(b => b.dataset.key === "curso");
   bs[0].click();

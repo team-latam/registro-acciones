@@ -446,22 +446,27 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   await p.fill("#preEmail", "nuevo@x.com");
   await p.click('[data-action="preaprobar"]');
   eq("acceso: cargarlo de nuevo avisa que ya está", await hasta(p, () => /ya está en el equipo/.test((document.querySelector(".preaprobar .form-error") || {}).textContent || "")), true);
-  // Tipos: el ⋯ de cada tipo, con subir/bajar y eliminar solo si no se usa.
+  // Tipos: una lista con lo mínimo y, al tocar un tipo, su ficha al
+  // costado con todo (nombre, ícono, Calendar, documentos, orden,
+  // archivar; eliminar solo si no se usa).
   await p.click('.admin-menu [data-action="admin-go"][data-view="preferencias"][data-key="tipos"]');
-  const orden = () => p.$$eval(".zone-edit-row .zone-label-input", es => es.map(e => e.value));
+  const orden = () => p.$$eval('.lp-row[data-action="tipo-abrir"] .lp-who b', es => es.map(e => e.textContent));
   eq("tipos: arrancan en el orden de fábrica", (await orden()).slice(0, 2), ["Visita", "Curso"]);
-  await p.click('.tipo-menu-wrap [data-action="toggle-tipo-menu"][data-key="visita"]');
-  eq("tipos: el ⋯ de Visita no deja eliminarla (hay posteos) y lo dice",
-    // La nota de Eliminar es la última del menú (antes va la de Archivar).
-    [await p.$eval('.post-menu [data-action="tipos-remove"][data-key="visita"]', e => e.disabled), await p.$$eval(".post-menu-nota", es => es[es.length - 1].textContent.trim())],
-    [true, "No se puede eliminar: hay 2 posteos con este tipo."]);
-  await p.click('.post-menu [data-action="tipos-move"][data-key="visita"][data-dir="1"]');
-  eq("tipos: 'Bajar' la pone segunda y cierra el menú", [(await orden()).slice(0, 2), await visible(p, ".post-menu")], [["Curso", "Visita"], false]);
+  eq("tipos: sin ficha abierta hasta tocar un tipo", await visible(p, ".lp-panel"), false);
+  await p.click('.lp-row[data-action="tipo-abrir"][data-key="visita"]');
+  eq("tipos: tocar Visita abre su ficha, con su nombre para editar", await p.$eval('.lp-panel [data-action="tipos-label"][data-key="visita"]', e => e.value), "Visita");
+  eq("tipos: la ficha no ofrece eliminarla (hay posteos) y dice por qué",
+    [!!(await p.$('.lp-panel [data-action="tipos-remove"]')), await p.$eval(".lp-pf", e => /No se puede eliminar: hay 2 posteos con este tipo/.test(e.textContent))],
+    [false, true]);
+  await p.click('.lp-panel [data-action="tipos-move"][data-key="visita"][data-dir="1"]');
+  eq("tipos: 'Bajar' la pone segunda y la ficha sigue abierta", [(await orden()).slice(0, 2), await visible(p, ".lp-panel")], [["Curso", "Visita"], true]);
+  eq("tipos: y abajo avisa que hay cambios sin guardar", await p.$eval(".tipos-acciones", e => /Cambios sin guardar/.test(e.textContent)), true);
   // Archivar (tanda 11): Congreso no tiene posteos; archivado deja de
   // ofrecerse al cargar un evento, pero sigue en la lista para desarchivar.
-  await p.click('.tipo-menu-wrap [data-action="toggle-tipo-menu"][data-key="congreso"]');
-  await p.click('.post-menu [data-action="tipos-archive"][data-key="congreso"]');
-  eq("tipos: archivar marca la tarjeta", await p.$$eval(".tipo-card.archivado .zone-label-input", es => es.map(e => e.value)), ["Congreso"]);
+  await p.click('.lp-row[data-action="tipo-abrir"][data-key="congreso"]');
+  eq("tipos: un tipo sin posteos sí se puede eliminar desde su ficha", !!(await p.$('.lp-panel [data-action="tipos-remove"][data-key="congreso"]')), true);
+  await p.click('.lp-panel [data-action="tipos-archive"][data-key="congreso"]');
+  eq("tipos: archivar marca la fila", await p.$$eval(".lp-row.archivado .lp-who b", es => es.map(e => e.textContent)), ["Congreso"]);
   await p.click('[data-action="tipos-save"]');
   eq("tipos: al guardar, la base recibe archived:true en ese tipo", await hasta(p, () => {
     const c = (window.__sb.tablas.app_config || []).find(x => x.key === "preferences");

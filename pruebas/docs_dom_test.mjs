@@ -84,18 +84,29 @@ eq("y se avisa en su lugar", (await p.$$(".doc-roto")).length, 1);
 /* ---------- El editor de Configuración ---------- */
 await p.evaluate(()=> window.__pintarConfig());
 await p.waitForTimeout(150);
-const porTipo = await p.$$eval(".tipo-docs", els => els.map(e => ({
-  chips: [...e.querySelectorAll(".doc-chip")].map(c=>c.textContent.replace("✕","").trim()),
-  tieneInput: !!e.querySelector(".doc-nuevo-input"),
-  tieneAgregar: !!e.querySelector('[data-action="tipo-doc-add"]'),
-})));
-eq("una línea de documentos por tipo", porTipo.length, 3);
-eq("Visita trae los suyos", porTipo[0].chips, ["Plan de viaje","Reporte"]);
-eq("Curso el suyo", porTipo[1].chips, ["Programa"]);
+// La lista resume los documentos de cada tipo; se editan en la ficha que
+// se abre al tocar el tipo (lista + ficha, como Personas).
+eq("una fila por tipo en la lista", await p.$$eval('.lp-row[data-action="tipo-abrir"]', es => es.length), 3);
+eq("la lista resume los documentos de cada tipo", await p.$$eval('.lp-row[data-action="tipo-abrir"] .lp-who span', es => es.map(e => e.textContent.trim())),
+  ["Plan de viaje · Reporte", "Programa", "Sin documentos"]);
+const porTipo = [];
+for(const key of ["visita", "curso", "virtual"]){
+  await p.evaluate(k => window.__abrirTipo(k), key);
+  await p.waitForTimeout(100);
+  porTipo.push(await p.$eval(".tipo-docs", e => ({
+    chips: [...e.querySelectorAll(".doc-chip")].map(c=>c.textContent.replace("✕","").trim()),
+    tieneInput: !!e.querySelector(".doc-nuevo-input"),
+    tieneAgregar: !!e.querySelector('[data-action="tipo-doc-add"]'),
+  })));
+}
+eq("la ficha de Visita trae los suyos", porTipo[0].chips, ["Plan de viaje","Reporte"]);
+eq("la de Curso el suyo", porTipo[1].chips, ["Programa"]);
 eq("y un tipo sin documentos queda listo para sumarle", porTipo[2].chips, []);
-eq("todos con dónde escribir uno nuevo", porTipo.map(x=>x.tieneInput && x.tieneAgregar), [true,true,true]);
+eq("todas con dónde escribir uno nuevo", porTipo.map(x=>x.tieneInput && x.tieneAgregar), [true,true,true]);
+await p.evaluate(()=> window.__abrirTipo("visita"));
+await p.waitForTimeout(100);
 const quitables = await p.$$('[data-action="tipo-doc-remove"]');
-eq("cada documento configurado se puede quitar", quitables.length, 3);
+eq("cada documento configurado se puede quitar desde su ficha", quitables.length, 2);
 
 /* ---------- En un teléfono ---------- */
 await p.evaluate(()=> window.__pintarTarjeta({ id:"p1", activityType:"visita", files:[
