@@ -124,6 +124,15 @@
     --acento-fuerte:#6fd8ec;
   }
   *{box-sizing:border-box;}
+  /* El foco del teclado se ve igual en toda la app (y en oscuro): el
+     anillo del navegador cambia por elemento y a veces no se distingue.
+     :where() no suma especificidad, así las reglas propias (.lp-row,
+     .sin-anillo) le ganan. */
+  :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible{ outline:2px solid var(--celeste-dark); outline-offset:2px; }
+  #viewRoot:focus{ outline:none; }
+  /* "Saltar al contenido": invisible hasta que el teclado lo enfoca. */
+  .skip-link{ position:absolute; top:-80px; inset-inline-start:12px; z-index:200; padding:8px 14px; border-radius:999px; background:var(--card); color:var(--ink-strong); font-weight:700; box-shadow:var(--shadow); text-decoration:none; }
+  .skip-link:focus{ top:12px; }
   html,body{margin:0;padding:0;}
   /* Si el navegador necesita hacer scroll solo (ej. para mantener a la
      vista el cursor mientras crece el textarea de Rutina), que lo haga
@@ -2777,6 +2786,7 @@
 </style>
 </head>
 <body>
+  <a class="skip-link" id="skipLink" href="#viewRoot">Saltar al contenido</a>
 <div id="app">
   <header class="topbar">
     <div class="topbar-inner">
@@ -2809,7 +2819,7 @@
       <button data-view="reportes">Reportes</button>
     </nav>
   </header>
-  <main id="viewRoot"></main>
+  <main id="viewRoot" tabindex="-1"></main>
   <!-- Barra de abajo en celular (ver renderBottomNav): las pestañas de
        arriba no entraban y había que descubrir que se deslizaban. El +
        flotante queda en el medio de la barra. -->
@@ -8534,6 +8544,31 @@ function enfocarComo(el, origen, conAnillo = tieneAnillo(origen)){
     el.addEventListener("blur", ()=> el.classList.remove("sin-anillo"), { once:true });
   }
 }
+// Lista + ficha (Personas, Tipos): al abrir con el teclado, o en angosto
+// (donde la ficha ocupa el lugar de la lista y la fila desaparece), el
+// foco pasa a la cabecera de la ficha; con el mouse en escritorio se queda
+// en la fila. Al cerrar, vuelve a la fila.
+function enfocarFicha(conAnillo){
+  const panel = document.querySelector(".lp-panel");
+  if(!panel) return;
+  const lista = document.querySelector(".lp-layout.abierto .lp-list");
+  const listaOculta = !!(lista && getComputedStyle(lista).display === "none");
+  if(!conAnillo && !listaOculta) return;
+  const destino = [...panel.querySelectorAll(".lp-back, .lp-cerrar")].find(b => b.offsetParent !== null) || panel.querySelector("button, input, select");
+  enfocarComo(destino, null, conAnillo);
+}
+function volverAFila(selector, conAnillo){
+  const fila = document.querySelector(selector);
+  if(fila) enfocarComo(fila, null, conAnillo);
+}
+function cerrarFichaPersona(conAnillo = tieneAnillo(document.activeElement)){
+  const email = usuarioAbierto; usuarioAbierto = null; render();
+  if(email) volverAFila(`.lp-row[data-action="usuario-abrir"][data-email="${CSS.escape(email)}"]`, conAnillo);
+}
+function cerrarFichaTipo(conAnillo = tieneAnillo(document.activeElement)){
+  const key = tipoAbierto; tipoAbierto = null; render();
+  volverAFila(key && key !== "__nuevo__" ? `.lp-row[data-action="tipo-abrir"][data-key="${CSS.escape(key)}"]` : '[data-action="tipo-nuevo"]', conAnillo);
+}
 function render(){
   const active = document.activeElement;
   const focusSel = focusSelectorOf(active);
@@ -8743,6 +8778,8 @@ function applyStaticI18n(){
     "Registro de Acciones — Team LatAm", "Action Log — Team LatAm",
     "Registro de Ações — Team LatAm", "יומן הפעילויות — Team LatAm"
   );
+  const skip = document.getElementById("skipLink");
+  if(skip) skip.textContent = t("Saltar al contenido","Skip to content","Pular para o conteúdo","דילוג לתוכן");
   const brandH1 = document.querySelector(".brand h1");
   if(brandH1) brandH1.textContent = t("Registro de Acciones", "Action Log", "Registro de Ações", "יומן הפעילויות");
   const gsInput = document.getElementById("globalSearchInput");
@@ -9065,7 +9102,7 @@ function renderMentionsBell(){
     ? t("1 novedad", "1 update", "1 novidade", "עדכון אחד")
     : t("{n} novedades", "{n} updates", "{n} novidades", "{n} עדכונים", { n: count });
   mentionsBellEl.innerHTML = `
-    <button class="bell-btn${mentionsMenuOpen ? " open" : ""}" data-action="toggle-mentions-menu" aria-label="${esc(t("Notificaciones","Notifications","Notificações","התראות"))}">🔔</button>
+    <button class="bell-btn${mentionsMenuOpen ? " open" : ""}" data-action="toggle-mentions-menu" aria-haspopup="true" aria-expanded="${mentionsMenuOpen}" aria-label="${esc(t("Notificaciones","Notifications","Notificações","התראות"))}">🔔</button>
     ${count ? `<span class="mention-dot" title="${esc(countLabel)}">${count > 9 ? "9+" : count}</span>` : ""}
     ${mentionsMenuOpen ? `
       <div class="mentions-menu">
@@ -9761,7 +9798,7 @@ function adminSeccionTextos(key){
 function renderAdminShell(contenido){
   const actual = adminSeccionActual();
   const menu = adminMenuItems().map(g => `${g.grupo ? `<div class="admin-grupo">${esc(g.grupo)}</div>` : ""}${g.items.map(it => `
-      <button type="button" class="admin-item${it.key===actual?" active":""}" data-action="admin-go" data-view="${it.view}"${it.sub ? ` data-key="${it.sub}"` : ""}>
+      <button type="button" class="admin-item${it.key===actual?" active":""}" data-action="admin-go" data-view="${it.view}"${it.sub ? ` data-key="${it.sub}"` : ""}${it.key===actual ? ' aria-current="page"' : ""}>
         <span>${esc(it.label)}</span>${it.badge ? `<span class="pending-count${it.suave?" suave":""}">${it.badge}</span>` : ""}
       </button>`).join("")}`).join("");
   const item = adminMenuItems().flatMap(g => g.items).find(it => it.key === actual);
@@ -9852,7 +9889,7 @@ function renderBottomNav(){
   if(!bottomNavEl) return;
   if(!isAuthorized()){ bottomNavEl.hidden = true; moreMenuOpen = false; return; }
   bottomNavEl.hidden = false;
-  const item = (view, icon, label) => `<button type="button" class="bn-item${state.view===view?" active":""}" data-action="goto-view" data-view="${view}"><span class="bn-ico" aria-hidden="true">${icon}</span><span>${label}</span></button>`;
+  const item = (view, icon, label) => `<button type="button" class="bn-item${state.view===view?" active":""}" data-action="goto-view" data-view="${view}"${state.view===view ? ' aria-current="page"' : ""}><span class="bn-ico" aria-hidden="true">${icon}</span><span>${label}</span></button>`;
   const enMas = ["proyectos","reportes","configuracion", ...ADMIN_VIEWS];
   const pend = isAdmin() ? solicitudesPendientes().length : 0;
   const hoja = (view, icon, label, extra) => `<button type="button" class="bn-sheet-item${state.view===view?" active":""}" data-action="goto-view" data-view="${view}">${icon} ${label}${extra || ""}</button>`;
@@ -12747,7 +12784,7 @@ function renderConfiguracionView(){
   const actual = secs.find(s=>s.key === sec);
   const tx = prefsSeccionTextos(sec);
   const titulo = t("Mis preferencias","My preferences","Minhas preferências","ההעדפות שלי");
-  const menu = secs.map(s=>`<button type="button" class="admin-item${sec===s.key?" active":""}" data-action="config-section" data-key="${s.key}"><span>${esc(s.label)}</span></button>`).join("");
+  const menu = secs.map(s=>`<button type="button" class="admin-item${sec===s.key?" active":""}" data-action="config-section" data-key="${s.key}"${sec===s.key ? ' aria-current="page"' : ""}><span>${esc(s.label)}</span></button>`).join("");
   return `<div class="admin-view preferencias-view">
       <aside class="admin-menu" aria-label="${esc(titulo)}">
         <div class="admin-titulo">${titulo}</div>${menu}
@@ -15319,11 +15356,21 @@ document.addEventListener("keydown", e=>{
   if(!tourLayer.hidden){ closeTour(); return; }
   if(!calendarInviteOverlay.hidden){ dismissCalendarInviteOverlay(); return; }
   if(fabOpen){ closeFab(); fabMainEl.focus(); return; }
+  // La campanita y el menú del avatar: se cierran y el foco vuelve al botón
+  // que los abrió (mientras se edita el @nickname, Escape solo cancela eso:
+  // lo maneja el input).
+  if(mentionsMenuOpen){ const o = document.activeElement; mentionsMenuOpen = false; render(); enfocarComo(document.querySelector('[data-action="toggle-mentions-menu"]'), o); return; }
+  if(userMenuOpen && !nicknameEditing){ const o = document.activeElement; userMenuOpen = false; render(); enfocarComo(document.querySelector('[data-action="toggle-user-menu"]'), o); return; }
+  if(typeFilterOpen || zoneFilterOpen){ typeFilterOpen = false; zoneFilterOpen = false; render(); return; }
   { const gs = document.getElementById("globalResults"); if(gs && !gs.hidden){ cerrarBuscadorGlobal(true); return; } }
   if(postMenuOpen){ postMenuOpen = null; render(); return; }
   if(moreMenuOpen){ moreMenuOpen = false; renderBottomNav(); return; }
   if(calViewMenuOpen){ calViewMenuOpen = false; render(); return; }
   if(calLayersMenuOpen){ calLayersMenuOpen = false; render(); return; }
+  // La ficha de Personas / Tipos (lista + ficha): se cierra y el foco
+  // vuelve a su fila.
+  if(state.view === "solicitudes" && usuarioAbierto){ cerrarFichaPersona(); return; }
+  if(state.view === "preferencias" && tipoAbierto){ cerrarFichaTipo(); return; }
   if(postModalOverlay.hidden) return;
   const d = composerDraft;
   if(d.placeQuery || d.mentionQuery != null || d.participantQuery) return;
@@ -15774,6 +15821,25 @@ function handleAutocompleteKeydown(e, { getMatches, getHighlight, setHighlight, 
 document.addEventListener("keydown", e=>{
   const el = e.target;
   if(!el || !el.dataset) return; // teclas con target document/window (no un elemento)
+  // ↑ ↓ (y Inicio / Fin) para moverse por las filas de una lista (Personas,
+  // Tipos) y por el menú de secciones (en angosto es una tira: también ← →).
+  if(el.classList && (el.classList.contains("lp-row") || el.classList.contains("admin-item"))){
+    const esMenu = el.classList.contains("admin-item");
+    const teclas = esMenu ? ["ArrowDown","ArrowUp","ArrowLeft","ArrowRight","Home","End"] : ["ArrowDown","ArrowUp","Home","End"];
+    if(teclas.includes(e.key)){
+      const cont = el.closest(esMenu ? ".admin-menu" : ".lp-rows");
+      const items = cont ? [...cont.querySelectorAll(esMenu ? ".admin-item" : ".lp-row")].filter(b => !b.disabled && b.offsetParent !== null) : [];
+      const i = items.indexOf(el);
+      if(i >= 0){
+        e.preventDefault();
+        let paso = (e.key === "ArrowDown" || e.key === "ArrowRight") ? 1 : -1;
+        if((e.key === "ArrowLeft" || e.key === "ArrowRight") && isRTL()) paso = -paso;
+        const j = e.key === "Home" ? 0 : e.key === "End" ? items.length - 1 : Math.min(items.length - 1, Math.max(0, i + paso));
+        items[j].focus();
+      }
+      return;
+    }
+  }
   if(el.dataset.placeScope){
     const draft = getDraftFor(el.dataset.placeScope, el.dataset.placeOwner);
     handleAutocompleteKeydown(e, {
@@ -15983,19 +16049,25 @@ document.addEventListener("click", async e=>{
   },
     "usuario-abrir": async (el, e, action, postId) => {
     // La misma persona otra vez cierra la ficha.
-    usuarioAbierto = usuarioAbierto === el.dataset.email ? null : el.dataset.email; render();
+    const conAnillo = tieneAnillo(el);
+    const abre = usuarioAbierto !== el.dataset.email;
+    usuarioAbierto = abre ? el.dataset.email : null; render();
+    if(abre) enfocarFicha(conAnillo);
   },
     "usuario-cerrar": async (el, e, action, postId) => {
-    usuarioAbierto = null; render();
+    cerrarFichaPersona(tieneAnillo(el));
   },
     "usuarios-grupo": async (el, e, action, postId) => {
     state.usuariosFilters.grupo = el.dataset.key; render();
   },
     "tipo-abrir": async (el, e, action, postId) => {
-    tipoAbierto = tipoAbierto === el.dataset.key ? null : el.dataset.key; render();
+    const conAnillo = tieneAnillo(el);
+    const abre = tipoAbierto !== el.dataset.key;
+    tipoAbierto = abre ? el.dataset.key : null; render();
+    if(abre) enfocarFicha(conAnillo);
   },
     "tipo-cerrar": async (el, e, action, postId) => {
-    tipoAbierto = null; render();
+    cerrarFichaTipo(tieneAnillo(el));
   },
     "tipo-nuevo": async (el, e, action, postId) => {
     tipoAbierto = "__nuevo__"; render();

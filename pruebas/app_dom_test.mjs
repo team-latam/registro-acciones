@@ -286,6 +286,28 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   eq("admin: cada sección de Administración dibuja algo", vacias, []);
   await p.click('.admin-menu [data-action="admin-go"][data-view="solicitudes"]');
   eq("admin: en Personas está el equipo", await esperarTexto(p, "Ana Pérez", 3000), true);
+  // Tanda 16, teclado: ↓ pasa a la fila siguiente, Enter abre la ficha y
+  // lleva el foco adentro, Escape la cierra y devuelve el foco a la fila.
+  const filasPersonas = await p.$$eval('.lp-row[data-action="usuario-abrir"]', es => es.map(e => e.dataset.email));
+  await p.focus(`.lp-row[data-action="usuario-abrir"][data-email="${filasPersonas[0]}"]`);
+  await p.keyboard.press("ArrowDown");
+  eq("teclado: ↓ pasa el foco a la fila siguiente", await p.evaluate(() => document.activeElement.dataset.email), filasPersonas[1]);
+  await p.keyboard.press("Enter");
+  await p.waitForTimeout(150);
+  eq("teclado: Enter abre la ficha y el foco entra en ella",
+    await p.evaluate(() => [!!document.querySelector(".lp-panel"), !!document.activeElement.closest(".lp-panel")]), [true, true]);
+  await p.keyboard.press("Escape");
+  await p.waitForTimeout(150);
+  eq("teclado: Escape cierra la ficha y el foco vuelve a la fila",
+    await p.evaluate(() => [!!document.querySelector(".lp-panel"), document.activeElement.dataset.email]), [false, filasPersonas[1]]);
+  await p.click('[data-action="toggle-mentions-menu"]');
+  await p.keyboard.press("Escape");
+  await p.waitForTimeout(150);
+  eq("teclado: Escape cierra la campanita y el foco vuelve a su botón",
+    await p.evaluate(() => [!!document.querySelector(".mentions-menu"), document.activeElement.dataset.action]), [false, "toggle-mentions-menu"]);
+  eq("accesibilidad: la campanita dice si está abierta, la sección activa se marca y hay un enlace para saltar al contenido",
+    await p.evaluate(() => [document.querySelector('[data-action="toggle-mentions-menu"]').getAttribute("aria-expanded"),
+      document.querySelector('.admin-menu .admin-item.active').getAttribute("aria-current"), !!document.querySelector('a.skip-link[href="#viewRoot"]')]), ["false", "page", true]);
   await p.click('button[data-action="acceso-section"][data-key="pendientes"]');
   eq("admin: y en Solicitudes, el pedido pendiente", await esperarTexto(p, "Nueva Persona", 3000), true);
   await p.click('.admin-menu [data-action="admin-go"][data-view="auditoria"]');
