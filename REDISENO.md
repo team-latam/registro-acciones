@@ -77,18 +77,25 @@ del mapa, modo oscuro, campanita, franja de Documentación.
 - Debajo, "Hitos por vencer": los vencidos, de hoy y por vencer de todos
   los proyectos en curso, con "Ver proyecto" y "Marcar cumplido".
 
-### 6. Navegación (la tanda grande)
+### 6. Navegación — HECHO (3 oct 2026)
 
 - 5 pestañas: Inicio, Calendario, Países, Proyectos, Reportes.
 - Configuración → "Mis preferencias", desde el menú del avatar.
-- Actividad, Usuarios y Administrar → una sección "Administración" con
-  menú lateral y un Resumen (pedidos pendientes, lugares por sumar,
-  estado del Calendar, copias de seguridad, espacio de fotos, el equipo
-  este mes).
-- En celular: barra inferior de íconos con el + en el medio.
-- Buscador general arriba (posteos, personas, lugares).
-- Inicio con columna lateral en escritorio: próximos eventos, hitos por
-  vencer, filtros guardados.
+- Actividad, Usuarios y Administrar → la sección "Administración" con
+  menú lateral (Resumen · Equipo: Personas, Registro de actividad · Cómo
+  se carga: Zonas y países, Tipos, Lugares, Adjuntos · Sistema: Google
+  Calendar). El Resumen: pedidos de acceso para aprobar ahí, lugares por
+  sumar, hitos vencidos, cuatro números del equipo este mes, el estado
+  del Calendar y el aviso de que no hay copias de seguridad. Las vistas
+  de adentro siguen siendo las mismas (`solicitudes`, `auditoria`,
+  `preferencias`): el cascarón solo las agrupa.
+- En celular: barra inferior (Inicio, Calendario, +, Países, Más) con
+  el + en el medio; "Más" abre Proyectos, Reportes, Mis preferencias y
+  Administración. El número rojo de pedidos pendientes va sobre el
+  avatar y en "Más".
+- Quedan para una tanda aparte (no hechas): el buscador general arriba
+  y la columna lateral del Inicio en escritorio (próximos eventos, hitos
+  por vencer, filtros guardados).
 
 ### 7. Administración
 
