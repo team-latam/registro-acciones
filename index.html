@@ -364,7 +364,57 @@
     padding:9px; border-radius:999px; font-weight:700; font-size:13px; cursor:pointer;
   }
   .user-menu .um-signout:hover{ background:var(--surface-hover); }
-  #tabSolicitudes .pending-count{ background:var(--danger); color:#fff; border-radius:999px; font-size:10.5px; font-weight:800; padding:1px 6px; margin-inline-start:6px; }
+  .pending-count{ background:var(--danger); color:#fff; border-radius:999px; font-size:10.5px; font-weight:800; padding:1px 6px; margin-inline-start:6px; }
+  .pending-count.suave{ background:var(--text-muted); }
+  /* Las entradas del menú del avatar a Mis preferencias y Administración,
+     y el número rojo sobre el avatar con los pedidos de acceso. */
+  .um-links{ display:flex; flex-direction:column; gap:6px; margin:0 0 14px; }
+  .um-link{
+    display:flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:9px 12px; border-radius:999px;
+    border:1px solid var(--border); background:var(--surface-soft); color:var(--ink-strong); font-family:inherit; font-size:13px; font-weight:700; cursor:pointer;
+  }
+  .um-link:hover{ background:var(--surface-hover); }
+  .avatar-pending{
+    position:absolute; top:-5px; inset-inline-end:-5px; min-width:18px; height:18px; padding:0 4px; border-radius:999px; pointer-events:none;
+    background:var(--danger); color:#fff; font-size:10.5px; font-weight:800; display:flex; align-items:center; justify-content:center; border:2px solid var(--petroleo-dark);
+  }
+  .bottom-nav{ display:none; }
+  /* Administración: el menú al costado y el contenido. */
+  .admin-view{ display:flex; gap:24px; align-items:flex-start; }
+  .admin-menu{ flex:0 0 230px; display:flex; flex-direction:column; gap:2px; position:sticky; top:calc(var(--header-h, 110px) + 12px); }
+  .admin-titulo{ font-size:17px; font-weight:800; color:var(--ink-strong); padding:0 12px 8px; }
+  .admin-grupo{ font-size:11px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--text-muted); padding:14px 12px 4px; }
+  .admin-item{
+    display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:40px; padding:0 12px; border-radius:10px;
+    border:none; background:none; color:var(--ink); font-family:inherit; font-size:13.5px; font-weight:600; cursor:pointer; text-align:start;
+  }
+  .admin-item:hover{ background:var(--surface-alt); }
+  .admin-item.active{ background:var(--petroleo); color:#fff; }
+  .admin-body{ flex:1; min-width:0; }
+  .admin-h2{ margin:0 0 14px; font-size:22px; color:var(--ink-strong); }
+  .admin-h3{ margin:18px 0 10px; font-size:13px; text-transform:uppercase; letter-spacing:.04em; color:var(--text-muted); }
+  .admin-ahora{ background:var(--warn-bg); border:1px solid var(--warn-border); border-radius:var(--radius-md); padding:12px 16px; margin-bottom:16px; }
+  .admin-ahora h3{ margin:0 0 6px; font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--warn-text); }
+  .admin-ahora-row{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding:8px 0; border-top:1px solid var(--warn-border); }
+  .admin-ahora-row:first-of-type{ border-top:none; }
+  .aar-ico{ width:36px; height:36px; border-radius:50%; background:var(--card); display:flex; align-items:center; justify-content:center; flex:none; font-size:16px; }
+  .aar-ico .avatar-fallback{ width:36px; height:36px; font-size:14px; }
+  .aar-txt{ flex:1 1 220px; min-width:0; display:flex; flex-direction:column; }
+  .aar-txt b{ font-size:14px; }
+  .aar-txt small{ font-size:12.5px; color:var(--text-muted); }
+  .admin-ok{ background:var(--ok-bg); border:1px solid var(--ok-border); color:var(--ok-text); border-radius:var(--radius-md); padding:12px 16px; margin-bottom:16px; font-weight:700; }
+  .admin-cifras{ display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:12px; margin-bottom:16px; }
+  .rep-kpi-num.alerta{ color:var(--danger); }
+  .admin-tarjetas{ display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:12px; }
+  .admin-tarjetas p{ margin:0 0 10px; font-size:13.5px; line-height:1.5; }
+  @media (max-width:760px){
+    .admin-view{ flex-direction:column; gap:14px; }
+    .admin-menu{ position:static; flex:none; width:100%; flex-direction:row; flex-wrap:nowrap; overflow-x:auto; gap:6px; padding-bottom:4px; scrollbar-width:none; }
+    .admin-menu::-webkit-scrollbar{ display:none; }
+    .admin-titulo, .admin-grupo{ display:none; }
+    .admin-item{ flex:none; border:1px solid var(--border); border-radius:999px; background:var(--card); min-height:36px; font-size:12.5px; }
+    .admin-item.active{ border-color:var(--petroleo); }
+  }
 
   /* ---------- Auth gate (login / pendiente / rechazado) ---------- */
   .auth-gate{ max-width:440px; margin:60px auto; text-align:center; }
@@ -2380,11 +2430,44 @@
     /* El rótulo "Documentos esperados" en su propia línea: al lado del
        campo y del +, el + se caía solo a la línea de abajo. */
     .tipo-docs-rotulo{ flex:1 0 100%; }
-    /* El + se esconde mientras se baja y vuelve al subir (ver
-       updateFabHidden): tapaba la esquina de cada tarjeta — Borrar, los
-       números de Reportes, el estado de un hito. */
-    .fab-wrap{ transition:transform .2s ease; }
-    .fab-wrap.escondido{ transform:translateY(calc(100% + 24px)); }
+  }
+  /* ---- Navegación: pestañas arriba en ancho, barra abajo en angosto ----
+     (los estilos de escritorio del menú del avatar y de Administración
+     están más arriba, cerca de .user-menu y de .rep-kpi). */
+  @media (max-width:640px){
+    nav.tabs{ display:none; }
+    header.topbar{ padding-bottom:14px; }
+    .bottom-nav{
+      position:fixed; left:0; right:0; bottom:0; z-index:64; display:flex; align-items:stretch;
+      height:calc(62px + env(safe-area-inset-bottom)); padding-bottom:env(safe-area-inset-bottom);
+      background:var(--card); border-top:1px solid var(--border); box-shadow:0 -4px 16px rgba(8,42,44,.08);
+    }
+    .bottom-nav[hidden]{ display:none; }
+    .bn-item{
+      flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; position:relative;
+      border:none; background:none; color:var(--text-muted); font-family:inherit; font-size:10.5px; font-weight:700; cursor:pointer; padding:4px 0;
+    }
+    .bn-item.active{ color:var(--petroleo); }
+    .bn-ico{ font-size:20px; line-height:1; }
+    .bn-gap{ flex:1; }
+    .bn-dot{ position:absolute; top:6px; left:calc(50% + 8px); width:8px; height:8px; border-radius:50%; background:var(--danger); }
+    .bn-sheet{
+      position:absolute; bottom:calc(100% + 8px); inset-inline-end:8px; width:min(280px, calc(100vw - 16px));
+      background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md); box-shadow:0 14px 36px rgba(8,42,44,0.28);
+      padding:6px; display:flex; flex-direction:column; animation:filterDropdownPop .2s cubic-bezier(.34,1.56,.64,1); transform-origin:bottom right;
+    }
+    html[dir="rtl"] .bn-sheet{ transform-origin:bottom left; }
+    .bn-sheet-item{
+      display:flex; align-items:center; gap:10px; min-height:44px; padding:0 12px; border:none; background:none; border-radius:var(--radius-sm);
+      color:var(--text); font-family:inherit; font-size:14px; font-weight:600; text-align:start; cursor:pointer;
+    }
+    .bn-sheet-item:hover, .bn-sheet-item.active{ background:var(--surface-alt); color:var(--ink-strong); }
+    /* El + vive en el medio de la barra: el hueco (.bn-gap) es su lugar. */
+    .fab-wrap{ inset-block-end:calc(22px + env(safe-area-inset-bottom)); inset-inline-end:auto; left:50%; margin-left:-28px; align-items:center; }
+    .fab-main{ width:56px; height:56px; font-size:30px; box-shadow:0 6px 20px rgba(8,42,44,0.35); }
+    .fab-actions{ align-items:center; }
+    .scroll-top{ inset-block-end:calc(76px + env(safe-area-inset-bottom)); inset-inline-end:14px; }
+    main{ padding-bottom:calc(96px + env(safe-area-inset-bottom)); }
   }
 </style>
 </head>
@@ -2404,19 +2487,24 @@
         <div id="userBadge" class="user-badge"></div>
       </div>
     </div>
+    <!-- Cinco pestañas, las de todos los días. Lo personal (Mis
+         preferencias) y lo de admin (Administración) se llegan desde el
+         menú del avatar: con nueve pestañas, en el celular entraban tres
+         y media y "Configuración" (lo tuyo) se confundía con
+         "Administrar" (lo del equipo). -->
     <nav class="tabs tabs-hidden" id="tabs">
-      <button data-view="feed">Feed</button>
-      <button data-view="paises">Vistas</button>
+      <button data-view="feed">Inicio</button>
       <button data-view="calendario">Calendario</button>
+      <button data-view="paises">Países</button>
       <button data-view="proyectos">Proyectos</button>
       <button data-view="reportes">Reportes</button>
-      <button data-view="configuracion">Configuración</button>
-      <button data-view="auditoria" id="tabAuditoria" hidden>Actividad</button>
-      <button data-view="solicitudes" id="tabSolicitudes" hidden>Usuarios<span id="pendingBadge"></span></button>
-      <button data-view="preferencias" id="tabPreferencias" hidden>Administrar</button>
     </nav>
   </header>
   <main id="viewRoot"></main>
+  <!-- Barra de abajo en celular (ver renderBottomNav): las pestañas de
+       arriba no entraban y había que descubrir que se deslizaban. El +
+       flotante queda en el medio de la barra. -->
+  <nav class="bottom-nav" id="bottomNav" hidden></nav>
   <footer class="appfoot">Registro de Acciones · Team LatAm</footer>
   <!-- Botón flotante para crear, disponible en TODAS las solapas (antes
        "+ Nuevo evento" vivía en el header y solo creaba eventos, sin
@@ -8148,9 +8236,7 @@ const userBadgeEl = document.getElementById("userBadge");
 const mentionsBellEl = document.getElementById("mentionsBell");
 const fabEl = document.getElementById("fab");
 const fabMainEl = document.getElementById("fabMain");
-const tabSolicitudesEl = document.getElementById("tabSolicitudes");
-const tabAuditoriaEl = document.getElementById("tabAuditoria");
-const tabPreferenciasEl = document.getElementById("tabPreferencias");
+const bottomNavEl = document.getElementById("bottomNav");
 // Orden del Feed: por fecha del evento, más reciente primero salvo que
 // la persona elija lo contrario.
 function feedOrder(){ return prefs().feedOrder === "asc" ? "asc" : "desc"; }
@@ -8324,8 +8410,8 @@ function applyStaticI18n(){
   );
 
   const tabLabels = {
-    feed: t("Feed", "Feed", "Feed", "פיד"),
-    paises: t("Vistas", "Views", "Vistas", "תצוגות"),
+    feed: t("Inicio", "Home", "Início", "ראשי"),
+    paises: t("Países", "Countries", "Países", "מדינות"),
     calendario: t("Calendario", "Calendar", "Calendário", "יומן"),
     memoria: t("Memoria", "Memory", "Memória", "זיכרון"),
     proyectos: t("Proyectos", "Projects", "Projetos", "פרויקטים"),
@@ -8338,11 +8424,7 @@ function applyStaticI18n(){
   document.querySelectorAll("#tabs button[data-view]").forEach(btn=>{
     const label = tabLabels[btn.dataset.view];
     if(!label) return;
-    // "Usuarios" lleva adentro <span id="pendingBadge"> con el conteo de
-    // solicitudes — se preserva en vez de perderlo con un textContent liso.
-    const badge = btn.querySelector("#pendingBadge");
     btn.textContent = label;
-    if(badge) btn.appendChild(badge);
   });
 
   const fabEvento = document.getElementById("fabEventoLabel");
@@ -8585,8 +8667,18 @@ function renderUserBadge(){
       <span>@${esc(myNickname())}</span>
       <button type="button" class="um-nickname-edit" data-action="edit-nickname" title="${esc(t("Editar tu @nickname","Edit your @nickname","Editar seu @nickname","עריכת ה-@nickname שלך"))}" aria-label="${esc(t("Editar tu @nickname","Edit your @nickname","Editar seu @nickname","עריכת ה-@nickname שלך"))}">✏️</button>
     </div>`;
+  // Desde acá se entra a lo personal (Mis preferencias) y, para el admin,
+  // a Administración; el número rojo sobre el avatar son los pedidos de
+  // acceso esperando.
+  const pend = isAdmin() ? solicitudesPendientes().length : 0;
+  const links = isAuthorized() ? `
+        <div class="um-links">
+          <button type="button" class="um-link" data-action="goto-view" data-view="configuracion">⚙️ ${t("Mis preferencias","My preferences","Minhas preferências","ההעדפות שלי")}</button>
+          ${isAdmin() ? `<button type="button" class="um-link" data-action="goto-view" data-view="admin">🛠️ ${t("Administración","Administration","Administração","ניהול")}${pend ? `<span class="pending-count">${pend}</span>` : ""}</button>` : ""}
+        </div>` : "";
   userBadgeEl.innerHTML = `
     <button class="avatar-btn${userMenuOpen ? " open" : ""}" data-action="toggle-user-menu" title="${esc(u.displayName)}" aria-label="${esc(t("Cuenta","Account","Conta","חשבון"))}">${avatar}</button>
+    ${pend ? `<span class="avatar-pending" title="${esc(t("{n} pedidos de acceso esperando","{n} access requests waiting","{n} pedidos de acesso esperando","{n} בקשות גישה ממתינות",{n:pend}))}">${pend}</span>` : ""}
     ${userMenuOpen ? `
       <div class="user-menu">
         ${menuAvatar}
@@ -8594,6 +8686,7 @@ function renderUserBadge(){
         <div class="um-email">${esc(u.email)}</div>
         <div class="um-role ${role.cls}">${role.text}</div>
         ${nicknameBlock}
+        ${links}
         <div class="um-segmented um-lang" role="group" aria-label="${esc(t("Idioma","Language","Idioma","שפה"))}">
           ${LANGS.map(l=>`<button type="button" class="${lang===l.key?"active":""}" data-action="set-lang" data-lang="${l.key}" aria-pressed="${lang===l.key}" title="${esc(l.name)}">${l.label}</button>`).join("")}
         </div>
@@ -8699,6 +8792,7 @@ function doRender(){
 
   renderUserBadge();
   renderMentionsBell();
+  renderBottomNav();
 
   if(!isAuthorized()){
     tabsNav.classList.add("tabs-hidden"); closeFab(); fabEl.hidden = true;
@@ -8710,12 +8804,7 @@ function doRender(){
   tabsNav.classList.remove("tabs-hidden");
   fabEl.hidden = !canWrite(); // el observador no crea nada
   if(isObserver()) html += renderObserverBanner();
-  tabSolicitudesEl.hidden = !isAdmin();
-  tabAuditoriaEl.hidden = !isAdmin();
-  tabPreferenciasEl.hidden = !isAdmin();
-  const pendingCount = solicitudesPendientes().length;
-  document.getElementById("pendingBadge").innerHTML = (isAdmin() && pendingCount) ? `<span class="pending-count">${pendingCount}</span>` : "";
-  if(!isAdmin() && (state.view === "solicitudes" || state.view === "auditoria" || state.view === "preferencias")) state.view = "feed";
+  if(!isAdmin() && ADMIN_VIEWS.has(state.view)) state.view = "feed";
 
   if(!fatalError && !state.loaded){
     html += `<div class="empty-state"><div class="big">⏳</div>${t("Cargando registro compartido…","Loading shared log…","Carregando registro compartilhado…","...טוען יומן משותף")}</div>`;
@@ -8729,9 +8818,13 @@ function doRender(){
   else if(state.view === "proyectos") html += renderProyectosView();
   else if(state.view === "reportes") html += renderReportesView();
   else if(state.view === "configuracion") html += renderConfiguracionView();
-  else if(state.view === "solicitudes") html += renderAccesoView();
-  else if(state.view === "auditoria") html += renderAuditoriaView();
-  else if(state.view === "preferencias") html += renderPreferenciasView();
+  // Las tres vistas de admin siguen siendo las de siempre (así cada
+  // atajo que llega a ellas sigue andando); el cascarón de Administración
+  // las envuelve con el menú al costado.
+  else if(state.view === "admin") html += renderAdminShell(renderAdminResumen());
+  else if(state.view === "solicitudes") html += renderAdminShell(renderAccesoView());
+  else if(state.view === "auditoria") html += renderAdminShell(renderAuditoriaView());
+  else if(state.view === "preferencias") html += renderAdminShell(renderPreferenciasView());
 
   viewRoot.innerHTML = html;
   afterRenderView();
@@ -9041,6 +9134,143 @@ function renderSolicitudesQueueSection(){
 
 function renderAccesoView(){
   return renderAccesoSubnav() + (state.solicitudesSection === "pendientes" ? renderSolicitudesQueueSection() : renderUsuariosSection());
+}
+
+/* ======================================================================
+   ADMINISTRACIÓN: el cascarón con el menú al costado
+   Lo que antes eran tres pestañas (Usuarios, Actividad, Administrar) es
+   una sección sola, con un Resumen de lo que hay para hacer. Las vistas
+   de adentro siguen siendo las mismas (solicitudes, auditoria,
+   preferencias con su sección): el cascarón solo las agrupa y marca
+   dónde se está.
+   ====================================================================== */
+const ADMIN_VIEWS = new Set(["admin","solicitudes","auditoria","preferencias"]);
+function adminMenuItems(){
+  const pend = solicitudesPendientes().length;
+  const lugares = getCustomCityUsage().length;
+  return [
+    { grupo:null, items:[ { key:"resumen", view:"admin", label:t("Resumen","Overview","Resumo","סיכום") } ] },
+    { grupo:t("Equipo","Team","Equipe","צוות"), items:[
+      { key:"personas", view:"solicitudes", sub:"usuarios", label:t("Personas","People","Pessoas","אנשים"), badge:pend },
+      { key:"actividad", view:"auditoria", label:t("Registro de actividad","Activity log","Registro de atividade","יומן פעילות") },
+    ] },
+    { grupo:t("Cómo se carga","How things are logged","Como se carrega","איך רושמים"), items:[
+      { key:"zonas", view:"preferencias", sub:"zonas", label:t("Zonas y países","Zones and countries","Zonas e países","אזורים ומדינות") },
+      { key:"tipos", view:"preferencias", sub:"tipos", label:t("Tipos de actividad","Activity types","Tipos de atividade","סוגי פעילות") },
+      { key:"lugares", view:"preferencias", sub:"lugares", label:t("Lugares","Places","Lugares","מקומות"), badge:lugares, suave:true },
+      { key:"adjuntos", view:"preferencias", sub:"adjuntos", label:t("Adjuntos","Attachments","Anexos","קבצים מצורפים") },
+    ] },
+    { grupo:t("Sistema","System","Sistema","מערכת"), items:[
+      { key:"calendar", view:"preferencias", sub:"calendar", label:"Google Calendar" },
+    ] },
+  ];
+}
+function adminSeccionActual(){
+  if(state.view === "solicitudes") return "personas";
+  if(state.view === "auditoria") return "actividad";
+  if(state.view === "preferencias") return state.preferenciasSection;
+  return "resumen";
+}
+function renderAdminShell(contenido){
+  const actual = adminSeccionActual();
+  const menu = adminMenuItems().map(g => `${g.grupo ? `<div class="admin-grupo">${esc(g.grupo)}</div>` : ""}${g.items.map(it => `
+      <button type="button" class="admin-item${it.key===actual?" active":""}" data-action="admin-go" data-view="${it.view}"${it.sub ? ` data-key="${it.sub}"` : ""}>
+        <span>${esc(it.label)}</span>${it.badge ? `<span class="pending-count${it.suave?" suave":""}">${it.badge}</span>` : ""}
+      </button>`).join("")}`).join("");
+  return `<div class="admin-view">
+      <aside class="admin-menu" aria-label="${esc(t("Administración","Administration","Administração","ניהול"))}">
+        <div class="admin-titulo">${t("Administración","Administration","Administração","ניהול")}</div>${menu}
+      </aside>
+      <div class="admin-body">${contenido}</div>
+    </div>`;
+}
+// El Resumen: primero lo que hay para hacer (pedidos de acceso, lugares
+// por sumar, hitos vencidos), después cuatro números del equipo este
+// mes y el estado de lo que corre solo.
+function renderAdminResumen(){
+  const pend = solicitudesPendientes();
+  const lugares = getCustomCityUsage().length;
+  const vencidos = allMilestoneItems({ skipDone:true }).filter(it => !it.milestone.done && milestoneStatus(it.milestone) === "overdue").length;
+  const mes = todayISO().slice(0,7);
+  const mesDe = ts => { const ms = tsToMillis(ts); return ms ? new Date(ms).toISOString().slice(0,7) : ""; };
+  const entraron = new Set(state.auditLog.filter(e => e.type === "login" && e.actorEmail && mesDe(e.createdAt) === mes).map(e => String(e.actorEmail).toLowerCase())).size;
+  const cargadas = state.posts.filter(p => mesDe(p.createdAt) === mes).length;
+  const logins = lastLoginByEmail();
+  const hace30 = Date.now() - 30 * 86400000;
+  const ausentes = state.roster.filter(m => !(logins[m.email] > hace30)).length;
+  const fila = (ico, titulo, sub, botones) => `<div class="admin-ahora-row">
+      <span class="aar-ico" aria-hidden="true">${ico}</span>
+      <div class="aar-txt"><b>${titulo}</b>${sub ? `<small>${sub}</small>` : ""}</div>
+      ${botones}
+    </div>`;
+  const pendientes = pend.map(r => fila(
+    `<span class="avatar-fallback">${esc((r.name||r.email||"?")[0].toUpperCase())}</span>`,
+    t("{n} pidió entrar","{n} asked to join","{n} pediu para entrar","{n} ביקש/ה להצטרף",{n:esc(r.name||r.email)}),
+    `${esc(r.email)} · ${esc(fmtDateTime(r.requestedAt))}`,
+    `<button type="button" class="btn-secondary" data-action="reject-request" data-email="${esc(r.email)}" ${savingRoster.has(r.email) ? "disabled" : ""}>${t("Rechazar","Reject","Rejeitar","דחייה")}</button>
+     <button type="button" class="btn-primary" data-action="approve-request" data-email="${esc(r.email)}" ${savingRoster.has(r.email) ? "disabled" : ""}>${savingRoster.has(r.email) ? t("Aprobando…","Approving…","Aprovando…","...מאשר") : t("Aprobar","Approve","Aprovar","אישור")}</button>`
+  )).join("");
+  const otros = (lugares ? fila("📍",
+      lugares === 1 ? t("1 lugar nuevo para sumar a la lista oficial","1 new place to add to the official list","1 lugar novo para somar à lista oficial","מקום חדש אחד להוספה לרשימה הרשמית")
+                    : t("{n} lugares nuevos para sumar a la lista oficial","{n} new places to add to the official list","{n} lugares novos para somar à lista oficial","{n} מקומות חדשים להוספה לרשימה הרשמית",{n:lugares}),
+      "", `<button type="button" class="btn-secondary" data-action="admin-go" data-view="preferencias" data-key="lugares">${t("Revisar","Review","Revisar","בדיקה")}</button>`) : "")
+    + (vencidos ? fila("◆",
+      vencidos === 1 ? t("1 hito vencido en los proyectos","1 overdue milestone in the projects","1 marco vencido nos projetos","אבן דרך אחת באיחור בפרויקטים")
+                     : t("{n} hitos vencidos en los proyectos","{n} overdue milestones in the projects","{n} marcos vencidos nos projetos","{n} אבני דרך באיחור בפרויקטים",{n:vencidos}),
+      "", `<button type="button" class="btn-secondary" data-action="goto-view" data-view="proyectos">${t("Ver proyectos","View projects","Ver projetos","הצגת הפרויקטים")}</button>`) : "");
+  const ahora = (pendientes || otros)
+    ? `<section class="admin-ahora"><h3>${t("Para hacer ahora","To do now","Para fazer agora","לעשות עכשיו")}</h3>${pendientes}${otros}</section>`
+    : `<div class="admin-ok">✅ ${t("Nada pendiente: no hay pedidos de acceso ni lugares por revisar.","Nothing pending: no access requests and no places to review.","Nada pendente: não há pedidos de acesso nem lugares para revisar.","אין ממתינים: אין בקשות גישה ואין מקומות לבדיקה.")}</div>`;
+  const cifra = (n, txt, alerta) => `<div class="rep-kpi"><div class="rep-kpi-num${alerta && n ? " alerta" : ""}">${n}</div><div class="rep-kpi-txt">${txt}</div></div>`;
+  return `<div class="admin-resumen">
+      <h2 class="admin-h2">${t("Resumen","Overview","Resumo","סיכום")}</h2>
+      ${ahora}
+      <h3 class="admin-h3">${t("El equipo este mes","The team this month","A equipe este mês","הצוות החודש")}</h3>
+      <section class="admin-cifras">
+        ${cifra(state.roster.length, t("integrantes","members","integrantes","חברי צוות"))}
+        ${cifra(entraron, t("entraron este mes","signed in this month","entraram este mês","נכנסו החודש"))}
+        ${cifra(cargadas, t("actividades cargadas este mes","activities logged this month","atividades carregadas este mês","פעילויות שנרשמו החודש"))}
+        ${cifra(ausentes, t("no entran hace más de 30 días","haven't signed in for 30+ days","não entram há mais de 30 dias","לא נכנסו יותר מ-30 יום"), true)}
+      </section>
+      <section class="admin-tarjetas">
+        <div class="rep-bloque"><h3>Google Calendar</h3>
+          <p>${t("Los eventos van solos al Calendar compartido del equipo; un trabajo nocturno trae los cambios que se hacen allá.","Events go to the team's shared Calendar on their own; a nightly job brings back changes made there.","Os eventos vão sozinhos para o Calendar compartilhado da equipe; um trabalho noturno traz as mudanças feitas lá.","האירועים נשלחים לבד ליומן המשותף של הצוות; עבודת לילה מביאה את השינויים שנעשו שם.")}</p>
+          <button type="button" class="btn-secondary" data-action="admin-go" data-view="preferencias" data-key="calendar">${t("Ver configuración","View settings","Ver configuração","הצגת ההגדרות")}</button>
+          ${canWrite() ? ` <button type="button" class="btn-secondary" data-action="sync-calendar" ${state.calendarSyncing?"disabled":""}>🔄 ${t("Actualizar ahora","Refresh now","Atualizar agora","לעדכן עכשיו")}</button>` : ""}
+        </div>
+        <div class="rep-bloque"><h3>${t("Copias de seguridad","Backups","Cópias de segurança","גיבויים")}</h3>
+          <p>${t("Todavía no hay copias automáticas de la base ni de las fotos: es lo más urgente que queda (REVISION.md, punto 13).","There are no automatic backups of the database or the photos yet: it's the most urgent thing left (REVISION.md, item 13).","Ainda não há cópias automáticas da base nem das fotos: é o mais urgente que resta (REVISION.md, ponto 13).","עדיין אין גיבויים אוטומטיים של בסיס הנתונים או התמונות: זה הדבר הדחוף ביותר שנותר (REVISION.md, סעיף 13).")}</p>
+        </div>
+      </section>
+    </div>`;
+}
+// La barra de abajo del celular: Inicio, Calendario, (el +), Países y
+// "Más" con lo que no entra (Proyectos, Reportes, Mis preferencias y,
+// para el admin, Administración). Vive afuera de #viewRoot como el
+// header, así que se redibuja a mano en cada render.
+let moreMenuOpen = false;
+function renderBottomNav(){
+  if(!bottomNavEl) return;
+  if(!isAuthorized()){ bottomNavEl.hidden = true; moreMenuOpen = false; return; }
+  bottomNavEl.hidden = false;
+  const item = (view, icon, label) => `<button type="button" class="bn-item${state.view===view?" active":""}" data-action="goto-view" data-view="${view}"><span class="bn-ico" aria-hidden="true">${icon}</span><span>${label}</span></button>`;
+  const enMas = ["proyectos","reportes","configuracion", ...ADMIN_VIEWS];
+  const pend = isAdmin() ? solicitudesPendientes().length : 0;
+  const hoja = (view, icon, label, extra) => `<button type="button" class="bn-sheet-item${state.view===view?" active":""}" data-action="goto-view" data-view="${view}">${icon} ${label}${extra || ""}</button>`;
+  bottomNavEl.innerHTML = `
+    ${item("feed", "🏠", t("Inicio","Home","Início","ראשי"))}
+    ${item("calendario", "📅", t("Calendario","Calendar","Calendário","יומן"))}
+    <span class="bn-gap" aria-hidden="true"></span>
+    ${item("paises", "🗺️", t("Países","Countries","Países","מדינות"))}
+    <button type="button" class="bn-item${enMas.includes(state.view)?" active":""}${moreMenuOpen?" open":""}" data-action="toggle-more-menu" aria-haspopup="true" aria-expanded="${moreMenuOpen}">
+      <span class="bn-ico" aria-hidden="true">☰</span><span>${t("Más","More","Mais","עוד")}</span>${pend ? `<span class="bn-dot" aria-hidden="true"></span>` : ""}
+    </button>
+    ${moreMenuOpen ? `<div class="bn-sheet" role="menu">
+        ${hoja("proyectos", "📋", t("Proyectos","Projects","Projetos","פרויקטים"))}
+        ${hoja("reportes", "📊", t("Reportes","Reports","Relatórios","דוחות"))}
+        ${hoja("configuracion", "⚙️", t("Mis preferencias","My preferences","Minhas preferências","ההעדפות שלי"))}
+        ${isAdmin() ? hoja("admin", "🛠️", t("Administración","Administration","Administração","ניהול"), pend ? `<span class="pending-count">${pend}</span>` : "") : ""}
+      </div>` : ""}`;
 }
 
 /* ======================================================================
@@ -9539,11 +9769,10 @@ function renderPreferenciasView(){
     : sec==="calendar" ? renderCalendarSection()
     : sec==="adjuntos" ? renderAdjuntosSection()
     : renderZonasSection();
+  // Sin la fila de chips de antes: el menú de Administración (ver
+  // renderAdminShell) ya dice en qué sección se está.
   return `
     <div class="preferencias-view">
-      <div class="pref-subnav">
-        ${preferenciasSections().map(s=>`<button type="button" class="chip-toggle${sec===s.key?" active":""}" data-action="pref-section" data-key="${s.key}">${s.label}</button>`).join("")}
-      </div>
       ${body}
     </div>`;
 }
@@ -13319,20 +13548,6 @@ function updateScrollTop(){
 }
 window.addEventListener("scroll", updateScrollTop, { passive:true });
 window.addEventListener("resize", updateScrollTop);
-// El + flotante se esconde mientras se BAJA y vuelve apenas se sube un
-// poco (o al llegar arriba): tapaba lo que vive en la esquina de cada
-// tarjeta. Acá solo se pone la clase; el CSS decide que en escritorio no
-// pase nada (ahí sobra lugar al costado). Con el menú abierto no se toca.
-let fabLastY = window.scrollY;
-function updateFabHidden(){
-  const fab = document.getElementById("fab");
-  if(!fab) return;
-  const y = window.scrollY, delta = y - fabLastY;
-  if(Math.abs(delta) < 6) return;
-  fabLastY = y;
-  fab.classList.toggle("escondido", delta > 0 && y > 160 && !fabOpen);
-}
-window.addEventListener("scroll", updateFabHidden, { passive:true });
 function scrollToTop(){
   const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   window.scrollTo({ top:0, behavior: reduce ? "auto" : "smooth" });
@@ -14107,6 +14322,7 @@ document.addEventListener("keydown", e=>{
   if(!calendarInviteOverlay.hidden){ dismissCalendarInviteOverlay(); return; }
   if(fabOpen){ closeFab(); fabMainEl.focus(); return; }
   if(postMenuOpen){ postMenuOpen = null; render(); return; }
+  if(moreMenuOpen){ moreMenuOpen = false; renderBottomNav(); return; }
   if(calViewMenuOpen){ calViewMenuOpen = false; render(); return; }
   if(calLayersMenuOpen){ calLayersMenuOpen = false; render(); return; }
   if(postModalOverlay.hidden) return;
@@ -14670,6 +14886,9 @@ document.addEventListener("click", async e=>{
   if(postMenuOpen && (!e.target.closest(".post-menu-wrap") || e.target.closest(".post-menu-item"))){
     postMenuOpen = null; render();
   }
+  if(moreMenuOpen && !e.target.closest("#bottomNav")){
+    moreMenuOpen = false; renderBottomNav();
+  }
   if(typeFilterOpen && !e.target.closest(".type-filter")){
     typeFilterOpen = false; render();
   }
@@ -14782,6 +15001,23 @@ document.addEventListener("click", async e=>{
     "toggle-thread": async (el, e, action, postId) => {
     openThreads.has(postId) ? openThreads.delete(postId) : openThreads.add(postId);
     render();
+  },
+    "goto-view": async (el, e, action, postId) => {
+    // Desde el menú del avatar, la barra de abajo o un atajo del Resumen.
+    state.view = el.dataset.view; state.countryDrill = null;
+    userMenuOpen = false; nicknameEditing = false; nicknameError = null; moreMenuOpen = false;
+    render(); scrollToTop();
+  },
+    "admin-go": async (el, e, action, postId) => {
+    state.view = el.dataset.view;
+    if(el.dataset.key){
+      if(state.view === "preferencias") state.preferenciasSection = el.dataset.key;
+      else if(state.view === "solicitudes") state.solicitudesSection = el.dataset.key;
+    }
+    moreMenuOpen = false; render();
+  },
+    "toggle-more-menu": async (el, e, action, postId) => {
+    moreMenuOpen = !moreMenuOpen; renderBottomNav();
   },
     "toggle-post-menu": async (el, e, action, postId) => {
     postMenuOpen = postMenuOpen === postId ? null : postId; render();

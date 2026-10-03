@@ -245,13 +245,16 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   eq("admin: entra y ve los posteos del equipo", await esperarTexto(p, "Reunión con la comunidad"), true);
   await p.click('button[data-action="toggle-thread"][data-post-id="p_reunion"]');
   eq("admin: con el comentario adentro", await esperarTexto(p, "¡Qué bueno que se hizo!", 3000), true);
-  eq("admin: ve las solapas de admin", [await visible(p, "#tabAuditoria"), await visible(p, "#tabSolicitudes"),
-     await visible(p, "#tabPreferencias")], [true, true, true]);
+  // Las pestañas de arriba son cinco, las de todos los días. Lo de admin
+  // (Administración) y lo personal (Mis preferencias) se llegan desde el
+  // menú del avatar.
+  await p.click('[data-action="toggle-user-menu"]');
+  eq("admin: el menú del avatar ofrece Administración", !!(await p.$('.user-menu [data-action="goto-view"][data-view="admin"]')), true);
+  await p.click('[data-action="toggle-user-menu"]');
 
   // Todas las solapas, una por una: cada una se dibuja y ninguna rompe.
   const vistas = await p.$$eval("nav.tabs button[data-view]", bs => bs.filter(x => !x.hidden).map(x => x.dataset.view));
-  eq("admin: están todas las solapas", vistas,
-     ["feed","paises","calendario","proyectos","reportes","configuracion","auditoria","solicitudes","preferencias"]);
+  eq("admin: están las cinco solapas", vistas, ["feed","calendario","paises","proyectos","reportes"]);
   const vacias = [];
   for(const v of vistas){
     await p.click(`nav.tabs button[data-view="${v}"]`);
@@ -260,15 +263,34 @@ const hasta = async (p, fn, arg, ms = 5000) => {
     if(largo < 20) vacias.push(v);
   }
   eq("admin: cada solapa dibuja algo", vacias, []);
-  await p.click('nav.tabs button[data-view="solicitudes"]');
-  eq("admin: en Usuarios está el equipo", await esperarTexto(p, "Ana Pérez", 3000), true);
+
+  // Administración: el Resumen muestra el pedido de acceso pendiente, y
+  // cada sección del menú de al lado se dibuja.
+  await p.click('[data-action="toggle-user-menu"]');
+  await p.click('.user-menu [data-action="goto-view"][data-view="admin"]');
+  eq("admin: el Resumen de Administración muestra el pedido pendiente", await esperarTexto(p, "Nueva Persona", 3000), true);
+  const secciones = await p.$$eval('.admin-menu [data-action="admin-go"]', bs => bs.map(b => b.dataset.view + (b.dataset.key ? ":" + b.dataset.key : "")));
+  eq("admin: el menú de Administración tiene todas las secciones", secciones,
+     ["admin","solicitudes:usuarios","auditoria","preferencias:zonas","preferencias:tipos","preferencias:lugares","preferencias:adjuntos","preferencias:calendar"]);
+  for(const s of secciones){
+    const [v, k] = s.split(":");
+    await p.click(`.admin-menu [data-action="admin-go"][data-view="${v}"]${k ? `[data-key="${k}"]` : ""}`);
+    await p.waitForTimeout(200);
+    const largo = await p.evaluate(() => document.querySelector(".admin-body").innerText.trim().length);
+    if(largo < 20) vacias.push(s);
+  }
+  eq("admin: cada sección de Administración dibuja algo", vacias, []);
+  await p.click('.admin-menu [data-action="admin-go"][data-view="solicitudes"]');
+  eq("admin: en Personas está el equipo", await esperarTexto(p, "Ana Pérez", 3000), true);
   await p.click('button[data-action="acceso-section"][data-key="pendientes"]');
   eq("admin: y en Solicitudes, el pedido pendiente", await esperarTexto(p, "Nueva Persona", 3000), true);
-  await p.click('nav.tabs button[data-view="auditoria"]');
-  eq("admin: en Actividad aparece lo registrado", await esperarTexto(p, "Ana Pérez", 3000), true);
+  await p.click('.admin-menu [data-action="admin-go"][data-view="auditoria"]');
+  eq("admin: en el registro de actividad aparece lo registrado", await esperarTexto(p, "Ana Pérez", 3000), true);
 
-  // Una preferencia personal: se ve y queda guardada (ver preferencias_test).
-  await p.click('nav.tabs button[data-view="configuracion"]');
+  // Una preferencia personal, desde el menú del avatar: se ve y queda
+  // guardada (ver preferencias_test).
+  await p.click('[data-action="toggle-user-menu"]');
+  await p.click('.user-menu [data-action="goto-view"][data-view="configuracion"]');
   await p.waitForTimeout(200);
   const hayControl = !!(await p.$('select[data-pref="weekStart"]'));
   eq("admin: Configuración tiene el control del primer día de la semana", hayControl, true);
@@ -339,11 +361,13 @@ const hasta = async (p, fn, arg, ms = 5000) => {
 {
   const { p, errores } = await entrar("ana@x.com", "Ana Pérez");
   eq("integrante: entra y ve los posteos", await esperarTexto(p, "Programa de becas"), true);
-  eq("integrante: no ve nada de admin", [await visible(p, "#tabAuditoria"), await visible(p, "#tabSolicitudes"),
-     await visible(p, "#tabPreferencias")], [false, false, false]);
+  await p.click('[data-action="toggle-user-menu"]');
+  eq("integrante: el menú del avatar no ofrece Administración", !!(await p.$('.user-menu [data-action="goto-view"][data-view="admin"]')), false);
+  await p.click('.user-menu [data-action="goto-view"][data-view="configuracion"]');
+  eq("integrante: llega a Mis preferencias", await hasta(p, () => !!document.querySelector('select[data-pref="weekStart"]')), true);
   const vistas = await p.$$eval("nav.tabs button[data-view]", bs => bs.filter(x => !x.hidden).map(x => x.dataset.view));
   for(const v of vistas){ await p.click(`nav.tabs button[data-view="${v}"]`); await p.waitForTimeout(200); }
-  eq("integrante: recorre sus solapas", vistas, ["feed","paises","calendario","proyectos","reportes","configuracion"]);
+  eq("integrante: recorre sus solapas", vistas, ["feed","calendario","paises","proyectos","reportes"]);
   eq("integrante: sin un solo error", errores, []);
   await p.close();
 }
