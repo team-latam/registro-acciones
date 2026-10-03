@@ -2563,7 +2563,12 @@
     .fab-main{ width:56px; height:56px; font-size:30px; box-shadow:0 6px 20px rgba(8,42,44,0.35); }
     .fab-actions{ align-items:center; }
     .scroll-top{ inset-block-end:calc(76px + env(safe-area-inset-bottom)); inset-inline-end:14px; }
-    main{ padding-bottom:calc(96px + env(safe-area-inset-bottom)); }
+    /* Abajo del todo solo hace falta pasar la barra (62px) y un respiro:
+       con 96px más el pie de página quedaba un hueco de media pantalla
+       después de la última tarjeta. El pie ("Registro de Acciones · Team
+       LatAm") en celular queda tapado por la barra, así que no se dibuja. */
+    main{ padding-bottom:calc(78px + env(safe-area-inset-bottom)); }
+    footer.appfoot{ display:none; }
   }
 </style>
 </head>
@@ -10117,11 +10122,35 @@ function fitDropdownPanels(){
     if(shift) panel.style.translate = `${Math.round(shift)}px 0`;
   });
 }
+// El Feed carga solo las siguientes tarjetas al acercarse al final: se
+// vigila el botón "Ver más" y, cuando está por entrar en pantalla (400px
+// antes), se hace lo mismo que al tocarlo. El botón queda como respaldo
+// (teclado, navegadores sin IntersectionObserver). Cada render reconstruye
+// el botón, así que el vigía se arma de nuevo en cada afterRenderView().
+let feedMoreObserver = null;
+function vigilarVerMas(){
+  if(feedMoreObserver){ feedMoreObserver.disconnect(); feedMoreObserver = null; }
+  if(state.view !== "feed" || typeof IntersectionObserver !== "function") return;
+  const boton = viewRoot.querySelector('[data-action="feed-load-more"]');
+  if(!boton) return;
+  feedMoreObserver = new IntersectionObserver(entries => {
+    if(!entries.some(en => en.isIntersecting)) return;
+    feedMoreObserver.disconnect(); feedMoreObserver = null;
+    // Igual que el handler de "feed-load-more", sin tocar el foco: si la
+    // persona está escribiendo en el buscador, no hay que sacárselo.
+    const y = window.scrollY;
+    feedVisibleCount += PAGE_STEP;
+    render();
+    window.scrollTo({ top:y, behavior:"auto" });
+  }, { rootMargin:"0px 0px 400px 0px" });
+  feedMoreObserver.observe(boton);
+}
 function afterRenderView(){
   syncHeaderHeight();
   syncTabsScroll();
   fitDropdownPanels();
   updateScrollTop();
+  vigilarVerMas();
   if(state.view === "paises" && state.paisesSubview === "mapa"){
     initOrUpdateMap();
   }
