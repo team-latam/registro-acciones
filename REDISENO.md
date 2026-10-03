@@ -44,13 +44,16 @@ del mapa, modo oscuro, campanita, franja de Documentación.
   mientras falta algo, con el botón "Subir X" al lado.
 - Pendiente de esta tanda: "Ver traducción" sigue como renglón aparte.
 
-### 3. Calendario en celular
+### 3. Calendario — HECHO (3 oct 2026)
 
-- Mes: un punto de color por día; al tocar un día, la lista de ese día
-  debajo de la grilla. Los proyectos largos, agrupados en una línea
-  ("2 proyectos en curso este mes") en vez de repetirse en cada semana.
-- Agenda: lo que dura varios días aparece una vez, no en cada día.
-- Semana en celular: pista de que se desplaza de costado.
+- Lo que dura más de tres semanas (proyectos) va una sola vez en la
+  línea "En curso" arriba del Mes, la Agenda y la Semana, en vez de una
+  barra en cada semana (`separarLargos`).
+- Agenda: lo de varios días aparece una vez, con "hasta el …".
+- Mes en celular: un punto de color por evento en cada día (sin barras);
+  tocar un día muestra su lista debajo de la grilla, con "+ Nuevo
+  evento" para ese día. En escritorio no cambia nada.
+- Semana/4 días en celular: línea que avisa que se desplaza de costado.
 
 ### 4. Países y Reportes
 

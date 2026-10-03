@@ -172,5 +172,31 @@ eq("ninguna de las dos pasa por otro lado que no sea Google",
      /\$\{tr\.displayContent \? `<div class="post-content"[^>]*>/.test(src), true);
 }
 
+/* ---------- Lo largo va aparte (separarLargos) ----------
+   Lo que dura más de tres semanas se dibuja una sola vez en una línea
+   arriba del Mes/Agenda/Semana, no barra por barra en cada semana. */
+{
+  const api = new Function(`
+    function isoDate(iso){ return new Date(iso + "T00:00:00Z"); }
+    ${grab("LARGO_DIAS")}
+    ${grab("esLargo")}
+    ${grab("separarLargos")}
+    return { esLargo, separarLargos };
+  `)();
+  const corto = { id:"c", startDate:"2026-10-05", endDate:"2026-10-07" };
+  const largo = { id:"l", startDate:"2026-09-23", endDate:"2026-11-12" };
+  const hito = { id:"l#m:1", hito:true, startDate:"2026-09-01", endDate:"2026-12-01" };
+  eq("tres días no es largo", api.esLargo(corto), false);
+  eq("siete semanas sí", api.esLargo(largo), true);
+  eq("un hito nunca es largo, aunque dure meses", api.esLargo(hito), false);
+  const byDate = { "2026-10-05":[largo, corto], "2026-10-06":[largo, corto, hito], "2026-10-07":[largo] };
+  const r = api.separarLargos(byDate, "2026-10-01", "2026-10-31");
+  eq("el largo sale de todos los días, y un día que queda vacío desaparece",
+     Object.keys(r.byDate).map(d => r.byDate[d].map(p=>p.id)), [["c"],["c","l#m:1"]]);
+  eq("y queda una sola vez en la lista de largos", r.largos.map(p=>p.id), ["l"]);
+  eq("el largo que no toca el rango no se lista",
+     api.separarLargos({ "2026-10-05":[largo] }, "2026-12-01", "2026-12-31").largos.length, 0);
+}
+
 console.log(`\n${pass} pasaron, ${fail} fallaron`);
 process.exit(fail ? 1 : 0);

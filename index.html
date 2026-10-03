@@ -1960,6 +1960,29 @@
   .cal-chip .cal-txt{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .cal-chip b{ font-weight:800; }
   .cal-more{ border:none; background:none; color:var(--text-muted); font-size:11px; font-weight:700; cursor:pointer; text-align:start; padding:1px 6px; }
+  /* Lo que dura más de tres semanas va una sola vez, en una línea arriba
+     del Mes y de la Agenda, en vez de una barra en cada semana. */
+  .cal-en-curso{ display:flex; align-items:center; flex-wrap:wrap; gap:6px 8px; margin-bottom:10px; }
+  .cal-en-curso-rotulo{ font-size:11px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:var(--text-muted); margin-inline-end:4px; }
+  .cal-en-curso-chip{
+    display:inline-flex; align-items:center; gap:6px; max-width:100%; min-width:0; cursor:pointer; font-family:inherit;
+    border:1px solid var(--border); background:var(--card); color:var(--ink); border-radius:999px;
+    padding:5px 12px 5px 8px; font-size:12.5px; font-weight:700; text-align:start;
+  }
+  .cal-en-curso-chip:hover{ border-color:var(--celeste-dark); }
+  .cal-en-curso-chip.cancelled{ text-decoration:line-through; opacity:0.6; }
+  .cal-en-curso-chip small{ font-weight:600; color:var(--text-muted); white-space:nowrap; }
+  .cal-en-curso-chip .cal-dot{ width:8px; height:8px; border-radius:50%; flex:none; }
+  .cal-hasta{ font-weight:600; color:var(--text-muted); white-space:nowrap; }
+  /* Los puntos por día, la lista del día elegido y la pista de scroll
+     existen solo en angosto (ver el @media de abajo). */
+  .cal-dots, .cal-dia-elegido, .cal-scroll-hint{ display:none; }
+  .cal-mdot{ width:7px; height:7px; border-radius:50%; }
+  .cal-mdot-more{ font-size:9px; font-weight:800; color:var(--text-muted); line-height:8px; }
+  .cal-dia-elegido{ margin-top:12px; background:var(--card); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow); padding:12px 14px; }
+  .cal-dia-elegido-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px; font-size:14px; }
+  .cal-dia-elegido .agenda-events .cal-chip{ padding:8px 10px; font-size:12.5px; }
+  .cal-scroll-hint{ font-size:11.5px; color:var(--text-muted); margin:-6px 0 8px; }
   .cal-more:hover{ color:var(--celeste-dark); }
   .cal-grid{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow); overflow:hidden; }
   /* overflow-x:hidden en las filas de encabezado y "todo el día": no
@@ -2009,12 +2032,17 @@
   .cal-block.cancelled{ text-decoration:line-through; opacity:0.6; }
   .cal-block b{ font-weight:800; }
   @media (max-width:640px){
-    /* 22 de cabecera + 4 carriles de 18 con 2 de separación + 2 = 102:
-       con 92 y carriles de 16 el cuarto carril ya se pasaba 2px. Los 18px
-       son también por el dedo: 16 era muy poco para acertarle a una barra. */
-    .cal-cell{ min-height:104px; padding:3px; }
-    .cal-week-bars{ inset-block-start:22px; grid-auto-rows:18px; padding:0 2px; }
-    .cal-bar{ font-size:10px; line-height:18px; padding:0 4px; }
+    /* En angosto el Mes no dibuja barras (a 50px de ancho no se leía ni
+       el título, solo "🧳…"): cada día lleva un punto por evento en el
+       color de su zona, y tocar el día muestra su lista debajo. */
+    .cal-week-bars{ display:none; }
+    .cal-cell{ min-height:54px; padding:5px 2px 4px; align-items:center; gap:4px; }
+    .cal-cell .cal-dayhead{ justify-content:center; }
+    .cal-cell .cal-holiday{ display:none; }
+    .cal-cell.elegido{ box-shadow:inset 0 0 0 2px var(--celeste-dark); }
+    .cal-dots{ display:flex; flex-wrap:wrap; justify-content:center; gap:3px; min-height:8px; }
+    .cal-dia-elegido{ display:block; }
+    .cal-scroll-hint{ display:block; }
     .cal-gutter{ width:44px; }
     .cal-chip{ font-size:10.5px; padding:4px 5px; }
     .agenda-events .cal-chip{ padding:7px 8px; }
@@ -3884,6 +3912,7 @@ const state = {
   prefs: null,              // preferencias de ESTA persona; se llena abajo con DEFAULT_PREFS
   calendarioSubview: "mes", // mes | semana | dia
   calendarioAnchor: null,   // YYYY-MM-DD sobre el que está parado el Calendario; null = hoy
+  calendarioDiaElegido: null, // en angosto, el día del Mes cuya lista se muestra debajo de la grilla
   preferenciasSection: "zonas", // zonas | tipos | lugares | calendar | adjuntos
   countryDrill: null,       // nombre de país (drill a ciudades) en vista Países > Lista
   paisesZoneFilter: new Set(), // keys de zona (sur/central/norte) para filtrar Países (Lista y Mapa); vacío = todas
@@ -12094,14 +12123,18 @@ function occAttr(p){
   const id = p.occId || (isRecurring(p) ? (p.startDate || p.date) : null);
   return id ? ` data-occ="${esc(id)}"` : "";
 }
-function calendarioChip(p, iso){
+function calendarioChip(p, iso, opts){
   const type = ACTIVITY_BY_KEY[p.activityType] || { icon:"✨" };
   const label = calendarioLabel(p);
   // La hora solo en el día en que arranca: en los días del medio de un
   // evento de varios días no significa nada.
   const time = p.startTime && (p.startDate || p.date) === iso ? `<b>${esc(fmtHHMM(p.startTime))}</b> ` : "";
+  // Donde el chip aparece una sola vez (Agenda, la lista del día), lo de
+  // varios días dice hasta cuándo sigue.
+  const hasta = opts && opts.hasta && (p.endDate || "") > (p.startDate || p.date)
+    ? ` <small class="cal-hasta">· ${esc(t("hasta el {d}","until {d}","até {d}","עד {d}",{d:fmtISO(p.endDate,{day:"numeric",month:"short"})}))}</small>` : "";
   return `<button type="button" class="cal-chip${p.cancelled?" cancelled":""}${p.hito?" hito":""}${pastClass(iso)}" data-action="cal-open" data-post-id="${esc(p.id)}"${occAttr(p)} title="${esc(label)}">
-      <span class="cal-dot" style="background:${calendarioColor(p)}"></span><span class="cal-txt" dir="auto">${type.icon} ${time}${esc(label)}</span>
+      <span class="cal-dot" style="background:${calendarioColor(p)}"></span><span class="cal-txt" dir="auto">${type.icon} ${time}${esc(label)}${hasta}</span>
     </button>`;
 }
 
@@ -12220,7 +12253,13 @@ function renderCalendarioView(){
     const visible = calendarioVisibleDays(days);
     if(visible.length) days = visible;
   }
-  return toolbar + renderCalendarioGrid(days);
+  // En angosto la grilla es más ancha que la pantalla y se desplaza de
+  // costado (ver --cal-colw) mientras el título dice la semana entera:
+  // una línea avisa que hay más días. Solo el CSS angosto la muestra.
+  const pista = days.length > 3
+    ? `<div class="cal-scroll-hint">↔ ${t("Deslizá de costado para ver todos los días","Swipe sideways to see every day","Deslize de lado para ver todos os dias","החליקו הצידה כדי לראות את כל הימים")}</div>`
+    : "";
+  return toolbar + pista + renderCalendarioGrid(days);
 }
 
 function calendarioTitle(sub, anchor){
@@ -12276,20 +12315,32 @@ function renderCalendarioAnio(anchor){
 function renderCalendarioAgenda(anchor){
   const from = anchor.slice(0,8) + "01";
   const to = addDaysISO(addMonthsISO(from, 1), -1);
-  const byDate = calendarioEventsByDate(from, to);
-  const days = Object.keys(byDate).sort();
-  if(!days.length){
+  const { byDate, largos } = separarLargos(calendarioEventsByDate(from, to), from, to);
+  // Lo de varios días, UNA sola vez: el primer día en que aparece en el
+  // mes, con hasta cuándo sigue. Repetido en cada día tapaba la agenda.
+  const vistos = new Set();
+  const dias = Object.keys(byDate).sort().map(iso => ({ iso, lista: byDate[iso].filter(p=>{
+    if(!((p.endDate || "") > (p.startDate || p.date))) return true;
+    const k = p.id + (p.occId || "");
+    if(vistos.has(k)) return false;
+    vistos.add(k);
+    return true;
+  }) })).filter(d => d.lista.length);
+  if(!dias.length && !largos.length){
     return `<div class="empty-state"><div class="big">📅</div>${t("No hay eventos en este mes.","There are no events this month.","Não há eventos neste mês.",".אין אירועים בחודש הזה")}</div>`;
   }
   const today = todayISO();
-  return `<div class="cal-agenda">${days.map(iso=>`
+  const cuerpo = dias.length
+    ? `<div class="cal-agenda">${dias.map(({ iso, lista })=>`
       <div class="agenda-day${iso===today?" today":""}">
         <div class="agenda-date">
           <span class="ad-dow">${esc(fmtISO(iso,{weekday:"short"}))}</span>
           <span class="ad-num">${Number(iso.slice(8,10))}</span>
         </div>
-        <div class="agenda-events">${byDate[iso].map(p=>calendarioChip(p, iso)).join("")}</div>
-      </div>`).join("")}</div>`;
+        <div class="agenda-events">${lista.map(p=>calendarioChip(p, iso, { hasta:true })).join("")}</div>
+      </div>`).join("")}</div>`
+    : `<div class="empty-state"><div class="big">📅</div>${t("No hay otros eventos en este mes.","There are no other events this month.","Não há outros eventos neste mês.",".אין אירועים אחרים בחודש הזה")}</div>`;
+  return renderEnCurso(largos) + cuerpo;
 }
 
 // Siempre 6 semanas (42 celdas), aunque el mes entre en 5: así la grilla
@@ -12400,14 +12451,73 @@ function calendarioBar(it, weekDays){
     </button>`;
 }
 
+// Lo que dura más de tres semanas (un proyecto, una campaña) no va barra
+// por barra en cada semana del Mes ni día por día en la Agenda: tapaba
+// dos carriles en las seis semanas para decir siempre lo mismo. Va una
+// sola vez, en una línea arriba de la grilla, y la grilla queda para lo
+// que pasa ese día.
+const LARGO_DIAS = 21;
+function esLargo(p){
+  if(p.hito) return false;
+  const start = p.startDate || p.date;
+  const end = p.endDate && p.endDate >= start ? p.endDate : start;
+  return Math.round((isoDate(end) - isoDate(start)) / 86400000) >= LARGO_DIAS;
+}
+// Separa lo largo del resto: el byDate sin ellos, y la lista de largos
+// (cada uno una vez, en el orden de su primer día) que toquen el rango.
+function separarLargos(byDate, fromISO, toISO){
+  const largos = new Map(), resto = {};
+  Object.keys(byDate).sort().forEach(iso=>{
+    const lista = byDate[iso].filter(p=>{
+      if(!esLargo(p)) return true;
+      const k = p.id + (p.occId || "");
+      if(!largos.has(k)) largos.set(k, p);
+      return false;
+    });
+    if(lista.length) resto[iso] = lista;
+  });
+  const enRango = [...largos.values()].filter(p => (p.startDate || p.date) <= toISO && (p.endDate || p.startDate || p.date) >= fromISO);
+  return { byDate: resto, largos: enRango };
+}
+function renderEnCurso(largos){
+  if(!largos.length) return "";
+  const rango = p => `${fmtISO(p.startDate || p.date, {day:"numeric",month:"short"})} – ${fmtISO(p.endDate, {day:"numeric",month:"short"})}`;
+  return `<div class="cal-en-curso">
+      <span class="cal-en-curso-rotulo">${t("En curso","Ongoing","Em curso","בעיצומו")}</span>
+      ${largos.map(p=>`<button type="button" class="cal-en-curso-chip${p.cancelled?" cancelled":""}" data-action="cal-open" data-post-id="${esc(p.id)}"${occAttr(p)} title="${esc(calendarioLabel(p))}">
+          <span class="cal-dot" style="background:${calendarioColor(p)}"></span><span dir="auto">${esc(calendarioLabel(p))}</span> <small>${esc(rango(p))}</small>
+        </button>`).join("")}
+    </div>`;
+}
+// En angosto, el Mes muestra debajo de la grilla la lista de UN día: el
+// elegido con el dedo, o hoy si es este mes, o el 1.
+function diaElegidoDe(month){
+  const d = state.calendarioDiaElegido, today = todayISO();
+  if(d && d.slice(0,7) === month) return d;
+  return today.slice(0,7) === month ? today : month + "-01";
+}
+function renderDiaElegido(byDate, iso){
+  const evs = byDate[iso] || [];
+  return `<div class="cal-dia-elegido">
+      <div class="cal-dia-elegido-head">
+        <strong>${esc(fmtISO(iso, {weekday:"long", day:"numeric", month:"long"}))}</strong>
+        ${canWrite() ? `<button type="button" class="btn-text-add" data-action="cal-new" data-date="${iso}" data-force-new="1">+ ${t("Nuevo evento","New event","Novo evento","אירוע חדש")}</button>` : ""}
+      </div>
+      ${evs.length
+        ? `<div class="agenda-events">${evs.map(p=>calendarioChip(p, iso, { hasta:true })).join("")}</div>`
+        : `<div class="hint">${t("Nada cargado ese día.","Nothing on that day.","Nada nesse dia.","אין כלום ביום הזה.")}</div>`}
+    </div>`;
+}
 function renderCalendarioMes(anchor){
   const first = anchor.slice(0,8) + "01";
   const gridStart = weekStartISO(first);
   const all = Array.from({length:42}, (_,i)=> addDaysISO(gridStart, i));
   const days = calendarioVisibleDays(all);
   const cols = days.length / 6;   // 7, o 5 con los fines de semana apagados
-  const byDate = calendarioEventsByDate(gridStart, all[41]);
   const month = first.slice(0,7);
+  const lastOfMonth = addDaysISO(addMonthsISO(first, 1), -1);
+  const { byDate, largos } = separarLargos(calendarioEventsByDate(gridStart, all[41]), first, lastOfMonth);
+  const elegido = diaElegidoDe(month);
   const today = todayISO();
   // Los encabezados salen de la primera fila YA filtrada: así respetan el
   // arranque de semana y el apagado de fines de semana sin recalcular nada
@@ -12431,12 +12541,21 @@ function renderCalendarioMes(anchor){
       // tocó (holidaysOn no está ordenado igual).
       const hol = (asEvent ? [] : holidaysOn(iso)).map((h,i)=>({ h, i }))
         .sort((a,b)=> (a.h.key===JEWISH_CAL?1:0) - (b.h.key===JEWISH_CAL?1:0));
+      // Los puntos (uno por evento, en el color de su zona) solo se ven en
+      // angosto, donde no hay barras: ver el @media de .cal-dots.
+      const evs = byDate[iso] || [];
+      const dots = evs.slice(0,4).map(p=>`<span class="cal-mdot" style="background:${calendarioColor(p)}"></span>`).join("")
+        + (evs.length > 4 ? `<span class="cal-mdot-more">+${evs.length - 4}</span>` : "");
+      // Quien no puede crear eventos igual puede elegir el día (en angosto)
+      // o abrirlo (en ancho).
+      const attrs = calendarioNewAttrs(iso) || ` data-action="cal-pick-day" data-date="${iso}"`;
       return `
-        <div class="cal-cell${iso.slice(0,7)!==month?" other":""}${iso===today?" today":""}${!asEvent&&holidayTintOn(iso)?" holiday":""}${pastClass(iso)}"${calendarioNewAttrs(iso)}>
+        <div class="cal-cell${iso.slice(0,7)!==month?" other":""}${iso===today?" today":""}${iso===elegido?" elegido":""}${!asEvent&&holidayTintOn(iso)?" holiday":""}${pastClass(iso)}"${attrs}>
           <div class="cal-dayhead">
             <span class="cal-daynum">${Number(iso.slice(8,10))}</span>
             ${hol.length ? `<button type="button" class="cal-holiday" style="color:${holidayColorOf(hol[0].h)}" data-action="cal-open-holiday" data-date="${iso}" data-hi="${hol[0].i}" title="${esc(hol.map(x=>x.h.name).join(" · "))}">${esc(hol[0].h.name)}</button>` : ""}
           </div>
+          <div class="cal-dots" aria-hidden="true">${dots}</div>
         </div>`;
     }).join("");
     const bars = placed.map(it=> calendarioBar(it, weekDays)).join("");
@@ -12450,10 +12569,10 @@ function renderCalendarioMes(anchor){
         <div class="cal-week-bars">${bars}${more}</div>
       </div>`;
   }).join("");
-  return `<div class="cal-month">
+  return `${renderEnCurso(largos)}<div class="cal-month">
       <div class="cal-heads cols-${cols}">${heads}</div>
       <div class="cal-weeks cols-${cols}">${weeks}</div>
-    </div>`;
+    </div>${renderDiaElegido(byDate, elegido)}`;
 }
 
 function minutesOf(hhmm){
@@ -12496,7 +12615,9 @@ function calendarioBlock(it){
 }
 
 function renderCalendarioGrid(days){
-  const byDate = calendarioEventsByDate(days[0], days[days.length-1]);
+  // Lo largo va en la línea de arriba, no repetido en la banda de "todo
+  // el día" de cada columna (ver separarLargos).
+  const { byDate, largos } = separarLargos(calendarioEventsByDate(days[0], days[days.length-1]), days[0], days[days.length-1]);
   const today = todayISO();
   const heads = days.map(iso=>`
       <div class="cal-gcol-head${iso===today?" today":""}">
@@ -12516,7 +12637,7 @@ function renderCalendarioGrid(days){
     const slots = Array.from({length:24}, (_,h)=>`<div class="cal-slot"${calendarioNewAttrs(iso,h)}></div>`).join("");
     return `<div class="cal-gcol">${slots}${layoutTimedEvents(timed).map(it=>calendarioBlock({ ...it, iso })).join("")}</div>`;
   }).join("");
-  return `<div class="cal-grid" style="--cal-cols:${days.length}">
+  return `${renderEnCurso(largos)}<div class="cal-grid" style="--cal-cols:${days.length}">
       <div class="cal-grid-row cal-grid-head"><div class="cal-gutter"></div><div class="cal-grid-cols">${heads}</div></div>
       <div class="cal-grid-row cal-grid-allday"><div class="cal-gutter">${esc(t("Todo el día","All day","Dia todo","כל היום"))}</div><div class="cal-grid-cols">${allDay}</div></div>
       <div class="cal-grid-body" id="calGridBody"><div class="cal-gutter cal-hours">${hours}</div><div class="cal-grid-cols">${cols}</div></div>
@@ -12977,6 +13098,12 @@ let composerReturnFocus = null;
 // tipo de puntero y no por ancho de pantalla: una tablet apaisada es ancha
 // y también levanta un teclado en pantalla. En escritorio, foco al campo
 // como siempre — ahí escribir de una es lo cómodo.
+// La misma frontera que el @media (max-width:640px) del CSS: lo que ahí
+// cambia de forma (el Mes con puntos en vez de barras) cambia acá de
+// comportamiento (tocar un día lo elige en vez de crear un evento).
+function esAngosto(){
+  try{ return window.matchMedia("(max-width: 640px)").matches; }catch(e){ return false; }
+}
 function isTouchDevice(){
   try{ return window.matchMedia("(hover: none) and (pointer: coarse)").matches; }catch(e){ return false; }
 }
@@ -14750,7 +14877,17 @@ document.addEventListener("click", async e=>{
     else if(canManageProject(post)) createProject(post);
   },
     "cal-new": async (el, e, action, postId) => {
+    // En angosto, tocar un día del Mes lo ELIGE (su lista aparece debajo
+    // de la grilla, ver renderDiaElegido); el "+ Nuevo evento" de esa
+    // lista trae data-force-new y sí abre el composer.
+    if(esAngosto() && state.calendarioSubview === "mes" && !el.dataset.forceNew){
+      state.calendarioDiaElegido = el.dataset.date; render(); return;
+    }
     openComposerOnDate(el.dataset.date, el.dataset.hour);
+  },
+    "cal-pick-day": async (el, e, action, postId) => {
+    if(esAngosto()){ state.calendarioDiaElegido = el.dataset.date; render(); return; }
+    state.calendarioAnchor = el.dataset.date; state.calendarioSubview = "dia"; render();
   },
     "toggle-paises-zone": async (el, e, action, postId) => {
     const key = el.dataset.key;
