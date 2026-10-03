@@ -8,6 +8,23 @@ hasta el 3 de octubre de 2026: quedó cerrado y fuera del código (la rama
 `firebase-v1` guarda cómo era, y NO se borra). Ver `README.md` para las
 decisiones de arquitectura.
 
+## Reglas fijas del usuario — valen en toda sesión
+
+- **Nunca pedirle que pegue en el chat contraseñas, la llave de servicio
+  de Supabase ni el Client Secret de Google.** Si hace falta que mire o
+  cambie algo en un panel, se le dan los pasos y él cuenta qué vio.
+- **Nunca borrar** el proyecto de Google Cloud `40280679854` ni la rama
+  `firebase-v1`.
+- No es técnico: hablarle en español, en palabras simples y paso a paso.
+  Las propuestas van con capturas; las decisiones que son suyas se le
+  presentan con opciones y una recomendación.
+- El estado del trabajo vive en el repo: `REDISENO.md` (tandas hechas y
+  decisiones) y `REVISION.md` (la revisión técnica y lo que queda).
+  Pendiente del usuario al 3/10/2026: crear el repo privado
+  `team-latam/registro-respaldos` para las copias de seguridad
+  (REVISION.md, punto 13). Hay un recordatorio programado para el
+  5/10/2026.
+
 ## Ramas — LEER ANTES DE EMPEZAR
 
 **La rama de producción es `main`.** Es la rama default
