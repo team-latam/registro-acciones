@@ -55,13 +55,18 @@ del mapa, modo oscuro, campanita, franja de Documentación.
   evento" para ese día. En escritorio no cambia nada.
 - Semana/4 días en celular: línea que avisa que se desplaza de costado.
 
-### 4. Países y Reportes
+### 4. Países y Reportes — HECHO (3 oct 2026)
 
-- Países: primero los que tuvieron actividad (con su última o próxima
-  actividad y una mini-serie por mes), los vacíos plegados abajo.
-- Reportes: cuatro números arriba (actividades, países, personas,
-  proyectos), comparación con el período anterior, tocar una barra abre
-  esas actividades en el Feed, bajar Excel (CSV) y PDF (imprimir).
+- Países: primero los que tienen actividad propia, del que más al que
+  menos, cada uno con su última o próxima actividad y una mini-serie de
+  los últimos 12 meses; los que no tienen nada propio, plegados abajo
+  como fichas (`actividadPorPais`).
+- Reportes: cuatro números arriba (actividades, países, personas que
+  participaron, personas que cargaron) con la diferencia contra el
+  período anterior; en "Mes a mes", una barra fina con el mismo mes del
+  período anterior; tocar una fila de país, zona o tipo abre el Feed con
+  ese filtro; "Bajar planilla" (CSV que Excel abre, con punto y coma) e
+  "Imprimir / PDF" (hoja de impresión sin el cascarón de la app).
 
 ### 5. Proyectos
 

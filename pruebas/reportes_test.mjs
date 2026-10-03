@@ -29,7 +29,7 @@ const eq=(n,g,w)=>{ const a=JSON.stringify(g), x=JSON.stringify(w);
 
 const codigo = ["addDaysISO","isoDate","isoDow","addMonthsISO","RRULE_MAX_STEPS","RRULE_DOW","isISODate","parseRecurrence",
   "expandRecurrence","recurrenceSkipDates","recurrenceMoves","vecesEnVentana","fechasEnVentana",
-  "aniosConDatos","ventanaDelReporte","ventanaAnterior","armarReporte"].map(grab).join("\n");
+  "aniosConDatos","ventanaDelReporte","ventanaAnterior","armarReporte","actividadPorPais"].map(grab).join("\n");
 
 // Los 43 países de verdad no hacen falta: alcanza con unos pocos, y así
 // la prueba dice qué espera sin depender de la tabla entera.
@@ -48,7 +48,7 @@ function armar(posts, hoy="2026-09-17"){
     const todayISO = ()=> ctx.hoy;
     ${codigo}
     return { vecesEnVentana, fechasEnVentana, aniosConDatos, ventanaDelReporte,
-             ventanaAnterior, armarReporte, state };
+             ventanaAnterior, armarReporte, actividadPorPais, state };
   `)({ state: { posts, reportes:{ anio:"", trimestre:0 } }, paises: PAISES, hoy });
   return api;
 }
@@ -222,6 +222,26 @@ const SEMANAL = { recurrence:["RRULE:FREQ=WEEKLY;BYDAY=MO"], startDate:"2026-01-
   const api = armar([post({ cancelled:true })]);
   const r = api.armarReporte("2026-01-01","2026-12-31");
   eq("lo cancelado no entra en ningún lado", [r.total, Object.keys(r.porPais).length], [0, 0]);
+}
+
+/* ---------- Lo último y lo próximo de cada país (actividadPorPais) ----------
+   Es lo que dice la tarjeta de cada país en Vistas, y la mini-serie de
+   los últimos 12 meses. Hoy es 2026-09-17: la serie va de oct 2025 a
+   sept 2026. */
+{
+  const api = armar([
+    post({ id:"a", title:"Visita vieja", startDate:"2026-03-10", endDate:"2026-03-10" }),
+    post({ id:"b", title:"Visita reciente", startDate:"2026-09-01", endDate:"2026-09-02",
+           scopes:[{ type:"ciudad", country:"Perú", city:"Lima" }, { type:"pais", country:"Chile" }] }),
+    post({ id:"c", title:"Próxima", startDate:"2026-10-20", endDate:"2026-10-20" }),
+    post({ id:"d", title:"Más lejos", startDate:"2026-12-01", endDate:"2026-12-01" }),
+  ]);
+  const a = api.actividadPorPais();
+  eq("la última es la más reciente que ya pasó", a["Perú"].ultima.id, "b");
+  eq("la próxima es la más cercana que viene", a["Perú"].proxima.id, "c");
+  eq("un posteo cuenta en cada país de sus alcances (ciudad incluida)", a["Chile"].ultima.id, "b");
+  eq("sin nada, el país no aparece", a["México"], undefined);
+  eq("la serie de 12 meses: marzo y septiembre tienen algo, lo futuro no", a["Perú"].meses, [0,0,0,0,0,1,0,0,0,0,0,1]);
 }
 
 console.log(`\n${pass} pasaron, ${fail} fallaron`);
