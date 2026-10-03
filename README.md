@@ -20,6 +20,7 @@ llegan solos a todas las pantallas abiertas).
 > | Donde dice | Hoy es |
 > |---|---|
 > | `firestore.rules` | `supabase/02-politicas.sql` (quién puede qué) y `supabase/03-validacion.sql` (qué forma tiene lo que se guarda) |
+> | `isAdmin()` / `isRoleAdmin()` / `canWrite()` de las reglas | `es_admin_fijo()` / `es_admin_rol()` / `puede_escribir()` en `02-politicas.sql` |
 > | `posts/{id}` | la tabla `posts` |
 > | `posts/{id}/replies/{id}` | la tabla `replies`, con su `post_id` |
 > | `allowlist/{email}` | la tabla `members` |
@@ -945,8 +946,8 @@ proyecto** (`renderProjectLog`): es el MISMO hilo de respuestas del
 posteo, siempre desplegado y con el formulario abierto, así se publican
 avances con adjuntos, links, imágenes y @menciones, y lo que se escribe
 acá aparece también en el hilo del evento en el Feed (una sola
-conversación). `projectNotes` quedó en las reglas por compatibilidad,
-pero la app ya no lo usa.
+conversación). `projectNotes` quedó como columna en la base
+(`project_notes`) por compatibilidad, pero la app ya no lo usa.
 
 **Dar por completado** (`projectStatus: "done"`, con `projectDoneBy` y
 `projectDoneAt`): cualquier editor puede cerrar el proyecto aunque
@@ -1469,22 +1470,28 @@ individuales (para no generar un aluvión de posteos por cada repetición):
 una serie recurrente cuenta como un solo evento. No debería ser un
 problema real, ya que cada acción del equipo tiene sus propias fechas.
 
-### Actividad (solo admin)
+### Actividad (solo admins)
 
-Pestaña "Actividad", visible solo para `ADMIN_EMAIL`: un registro de
-eventos de **acceso y administración** (tabla `audit_log`), no del
-contenido de los posteos. Como el login es 100% con cuenta de Google, no
-existe "cambio de contraseña" que registrar; en su lugar queda
-constancia de:
+Pestaña "Actividad" (en Administrar, "Registro de actividad"), visible
+solo para los admins: un registro de eventos de **acceso y
+administración** (tabla `audit_log`), más quién cargó, editó, canceló o
+borró cada posteo (eso lo anota la base sola, ver `registrar_posteo` en
+la sección 1). Como el login es 100% con cuenta de Google, no existe
+"cambio de contraseña" que registrar; en su lugar queda constancia de:
 
-- Inicio de sesión (una vez por sesión de navegador, no en cada recarga).
+- Inicio de sesión (como mucho uno por cuenta y por día: la app lo
+  intenta una vez por sesión de navegador, y la base acepta un solo id
+  por día, `auditoria_una_por_dia`).
 - Pedido de acceso (primera vez, o "pedir de nuevo" tras un rechazo).
-- Aprobar / rechazar / revocar acceso.
+- Aprobar / rechazar / revocar acceso, y cambios de rol.
 - Compartir / sacar a alguien del Calendar compartido.
+- Cargar / editar / cancelar / borrar un posteo.
 
-Cualquier persona logueada puede **crear** una entrada, pero solo sobre
-sí misma como actor (así queda registro del login incluso de alguien que
-todavía no está aprobado); **leer** el registro es exclusivo del admin.
+Cualquier persona logueada puede **crear** una entrada de login o de
+pedido de acceso, pero solo sobre sí misma como actor (así queda registro
+del login incluso de alguien que todavía no está aprobado); el resto lo
+escriben los admins o la base. **Leer** el registro es exclusivo de los
+admins (política `audit_leer`), y nadie lo corrige ni lo borra.
 
 ### Idioma (ES / EN / PT / HE)
 
