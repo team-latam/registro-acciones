@@ -84,6 +84,7 @@ const isRTL = () => false;
 const SUPABASE_URL = "https://benonmzlgdjkhzauamrz.supabase.co";
 let PUEDE_EDITAR = true;
 const canEditPost = () => PUEDE_EDITAR;
+const canCancelPost = () => PUEDE_EDITAR;
 const state = { posts: [] };
 // Una fecha fija: así "ya pasó" no depende del día en que se corra.
 const HOY = "2026-10-02";

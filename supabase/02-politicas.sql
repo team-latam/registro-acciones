@@ -122,11 +122,14 @@ create or replace function public.puede_escribir() returns boolean
 
 -- Quién puede editar un posteo que ya existe: el autor siempre, y
 -- cualquier aprobado los que no son Rutina (son eventos compartidos del
--- equipo, no una entrada personal).
-create or replace function public.puede_editar_posteo(autor text, tipo text) returns boolean
+-- equipo, no una entrada personal). Una Rutina también la editan los que
+-- su autor sumó como editores: la app lo permitía y la base lo rechazaba.
+drop function if exists public.puede_editar_posteo(text, text);
+create or replace function public.puede_editar_posteo(autor text, tipo text, editores text[] default '{}') returns boolean
   language sql stable as $$
   select coalesce(coalesce(autor, '') = public.mi_correo(), false)
       or coalesce(tipo, '') <> 'rutina'
+      or coalesce(public.mi_correo() = any(coalesce(editores, '{}')), false)
 $$;
 
 -- ¿Esta escritura viene del navegador de una persona, o de adentro?
@@ -498,9 +501,24 @@ begin
   -- Editar el contenido: el autor siempre puede; los demás, solo lo que
   -- no es Rutina. Se mira la fila VIEJA — si no, alguien podría cambiar
   -- el tipo a "no rutina" en la misma escritura y habilitarse solo.
-  if not public.puede_editar_posteo(old.author_email, old.activity_type) then
+  if not public.puede_editar_posteo(old.author_email, old.activity_type, old.editors) then
     raise exception 'Una Rutina la edita solo quien la escribió'
       using errcode = 'insufficient_privilege';
+  end if;
+
+  -- Cancelar (o volver a activar) saca el evento del Calendar de todos:
+  -- lo hace quien lo creó, sus participantes, sus editores o un admin.
+  -- Editar sigue abierto a todo el equipo. Lo decidió el usuario el
+  -- 3/10/2026 (REDISENO.md, tanda 17).
+  if 'cancelled' = any(cambios) then
+    if not (public.es_admin_fijo() or public.es_admin_rol()
+            or coalesce(old.author_email, '') = yo
+            or yo = any(coalesce(old.editors, '{}'))
+            or exists (select 1 from jsonb_array_elements(case when jsonb_typeof(old.participants) = 'array' then old.participants else '[]'::jsonb end) p
+                        where lower(coalesce(p->>'email', '')) = lower(yo))) then
+      raise exception 'Cancelar un evento: solo quien lo creó, sus participantes, sus editores o un admin'
+        using errcode = 'insufficient_privilege';
+    end if;
   end if;
 
   return new;
