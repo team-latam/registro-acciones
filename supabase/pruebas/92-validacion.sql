@@ -140,14 +140,14 @@ select count(*) filter (where esperado = obtenido) || ' pasaron, ' ||
        count(*) filter (where esperado <> obtenido) || ' fallaron  (de ' || count(*) || ')' as resultado
 from lab.resultados;
 
--- ---------- Pero la importación conserva la fecha REAL ----------
--- Sin esto, traer diez años de historia desde Firebase convertiría todo en
--- "hoy". Corre sin sesión de persona, que es como corre el importador.
+-- ---------- Sin una persona detrás, se respeta la fecha REAL ----------
+-- El editor SQL o una migración que trae filas viejas: si la base pisara
+-- la fecha, convertiría la historia en "hoy". Corre sin sesión de persona.
 \set QUIET on
 insert into public.posts(id,title,content,date,start_date,end_date,activity_type,author_name,author_email,created_at)
   values ('h2','Titulo viejo','C','2019-03-05','2019-03-05','2019-03-05','evento','Alguien','viejo@x.com','2019-03-05 10:00+00');
 insert into lab.resultados(nombre, esperado, obtenido, detalle)
-  select 'la importación conserva la fecha real (no la pisa con hoy)', true,
+  select 'sin una persona detrás, se respeta la fecha real (no la pisa con hoy)', true,
          created_at = '2019-03-05 10:00+00'::timestamptz, ''
   from public.posts where id = 'h2';
 insert into lab.resultados(nombre, esperado, obtenido, detalle)

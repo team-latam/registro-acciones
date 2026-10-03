@@ -87,8 +87,6 @@ grant execute on function public.me_gusta_comentario(text, boolean) to authentic
 create or replace function public.posts_marca_de_hora() returns trigger
   language plpgsql security definer set search_path = '' as $$
 begin
-  -- La importación manda las fechas REALES de Firebase: no se tocan.
-  if public.es_importacion() then return new; end if;
   -- Sin una persona detrás (el sincronizador nocturno, con la llave de
   -- servicio) se respeta la fecha que venga, salvo la marca: si no, una
   -- edición que hacía el sincronizador quedaba fechada en 1970.

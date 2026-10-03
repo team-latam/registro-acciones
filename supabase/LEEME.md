@@ -4,10 +4,8 @@ Hasta ahora, cada cambio al SQL te lo pasaba por chat y vos lo pegabas en
 el panel de Supabase. Eso se terminó: **el SQL vive en el repo y se aplica
 solo al pushear a `main`.**
 
-Era uno de los motivos de la mudanza. Con Firebase no se puede: las reglas
-de Firestore se publican a mano desde la consola y no hay forma de
-automatizarlo desde acá. Por eso `firestore.rules` **sigue siendo a mano**
-mientras Firebase sea la base del equipo.
+Era uno de los motivos de la mudanza: con Firebase no se podía, las reglas
+de Firestore se publicaban a mano desde la consola.
 
 ---
 
@@ -92,10 +90,10 @@ Se aplican en orden. Todos se pueden correr más de una vez sin romper nada
 | | Qué es |
 |---|---|
 | `01-tablas.sql` | Las 8 tablas y el bucket de adjuntos |
-| `02-politicas.sql` | Quién puede tocar qué. Es el equivalente de `firestore.rules` |
+| `02-politicas.sql` | Quién puede tocar qué. Es la única autorización del lado del servidor |
 | `03-validacion.sql` | Qué forma tiene que tener lo que se guarda |
 | `04-funciones.sql` | Lo que hace la base y no el navegador (me gusta, fechas, qué sobra en el bucket) |
-| `05-importar.sql` | La puerta por la que entra el respaldo de Firebase, también en la importación final |
+| `05-sin-importacion.sql` | Saca las funciones por las que entraron los datos de Firebase: esa puerta ya no tiene motivo para estar abierta |
 | `06-tiempo-real.sql` | Que los cambios lleguen solos a las pantallas abiertas |
 | `09-contenido-vacio.sql` | Saca el relleno de los eventos de Calendar sin descripción |
 | `10-fechas-de-1970.sql` | Corrige lo que el sincronizador nocturno haya fechado en 1970 |
@@ -109,31 +107,29 @@ posteo (1 carácter en el `03`, 0 en el `09`): por eso el `07` y el `08`
 se fundieron en el `01` y el `03`, y del `09` en adelante solo se corrigen
 datos.
 
-## La mudanza
+## La mudanza (terminada)
 
-**Desde el 3 de octubre de 2026, Supabase es la base del equipo.** El
-enlace de siempre abre Supabase. Para entonces el equipo ya trabajaba ahí
-(con `?base=supabase`), y Supabase tenía cosas que Firebase no.
+**Desde el 3 de octubre de 2026, Supabase es la base del equipo**, y la
+única. Para entonces el equipo ya trabajaba ahí (con `?base=supabase`), y
+Supabase tenía cosas que Firebase no: por eso no hubo una «importación
+final» que dejara Supabase igual a Firebase, que habría borrado lo cargado
+acá.
 
-Por eso **no hubo «importación final»** (la que dejaba Supabase igual a
-Firebase): habría borrado lo cargado en Supabase. Esa opción se sacó del
-importador.
+Ese mismo día:
 
-Lo que queda, en orden:
+1. Se bajó la última copia de Firebase y el importador la comparó con
+   Supabase: faltaban 4 posteos, 6 comentarios, 4 registros de actividad y
+   unas preferencias. Se trajo eso y nada más.
+2. Firestore quedó cerrado: sus reglas (`firestore.rules`) no dejan leer
+   ni escribir nada, a nadie.
+3. Se sacó de la app todo lo de Firebase, y de la base la puerta de la
+   importación (`05-sin-importacion.sql`). El importador quedó en el
+   historial del repo.
 
-1. ~~**Ver si en Firebase quedó algo que no esté en Supabase.**~~ **Hecho
-   el 3 de octubre.** Se bajó la última copia de Firebase y `importar.html`
-   la comparó con Supabase: faltaban 4 posteos, 6 comentarios, 4 registros
-   de actividad y unas preferencias. «Traer lo que falta» los agregó (sin
-   tocar ni sacar nada de lo que ya estaba), y ahora dice que no falta nada.
-2. **Cerrar Firebase.** Las reglas de `firestore.rules` ya no dejan leer ni
-   escribir nada, a nadie; se publican a mano en Firebase Console. Después,
-   borrar la base de Firestore y el login de Firebase. **No el proyecto de
-   Google Cloud** que está detrás (ahí viven el permiso y la clave de
-   Calendar). Y sacar de la app todo lo de Firebase.
-
-Las preferencias personales de cada uno (colores, avisos) no vienen de
-Firebase: cada persona las vuelve a elegir.
+Lo que falta es del lado de Firebase Console: borrar la base de Firestore,
+el login de Firebase y el registro de la app web. **No el proyecto de
+Google Cloud** que está detrás: ahí viven el permiso y la clave de
+Calendar.
 
 ## El otro secreto
 

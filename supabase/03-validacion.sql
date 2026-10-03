@@ -270,7 +270,7 @@ alter table public.audit_log
 create or replace function public.members_controlar_nickname() returns trigger
   language plpgsql security definer set search_path = '' as $$
 begin
-  if public.sin_sesion_de_persona() or public.es_importacion() then return new; end if;
+  if public.sin_sesion_de_persona() then return new; end if;
   if new.nickname is distinct from old.nickname
      and new.nickname is not null
      and new.nickname !~ '^[a-z0-9_]{2,20}$' then
@@ -292,9 +292,6 @@ create trigger members_controlar_nickname before update on public.members
 -- inventarse cuándo pasó algo. Acá se pisa el valor directamente, que es
 -- más simple y da lo mismo desde afuera.
 --
--- No corre para la importación: esas filas traen la fecha REAL de
--- Firebase, y pisarla convertiría diez años de historia en "hoy".
---
 -- Sin una persona detrás (la llave de servicio del sincronizador nocturno,
 -- el editor SQL) se respeta la fecha que venga, salvo la MARCA: el
 -- 1/1/1970 quiere decir «poné vos la hora». Antes se respetaba también la
@@ -305,7 +302,6 @@ create or replace function public.hora_del_servidor() returns trigger
   language plpgsql security definer set search_path = '' as $$
 declare valor text := to_jsonb(new) ->> tg_argv[0];
 begin
-  if public.es_importacion() then return new; end if;
   if public.sin_sesion_de_persona()
      and (valor is null or valor::timestamptz <> 'epoch'::timestamptz) then
     return new;
@@ -347,16 +343,15 @@ create trigger former_hora before insert on public.former_members
 -- Se mide la fila entera como JSON, que es como viaja. Los topes están muy
 -- por encima de cualquier uso real (un posteo con todo completo no llega a
 -- 60 KB) y muy por debajo de lo que haría daño. Como todos los controles de
--- este esquema, se aplica a lo que escribe una persona: la importación trae
--- la historia tal cual era, y el sincronizador nocturno y las migraciones
--- son de confianza.
+-- este esquema, se aplica a lo que escribe una persona: el sincronizador
+-- nocturno y las migraciones son de confianza.
 create or replace function public.limitar_peso() returns trigger
   language plpgsql set search_path = '' as $$
 declare
   tope int := tg_argv[0]::int;
   peso int := octet_length(to_jsonb(new)::text);
 begin
-  if public.sin_sesion_de_persona() or public.es_importacion() then return new; end if;
+  if public.sin_sesion_de_persona() then return new; end if;
   if peso > tope then
     raise exception 'Es demasiado grande para guardarse: % KB, y el máximo es % KB',
       ceil(peso / 1024.0), tope / 1024
@@ -474,7 +469,7 @@ declare
   antes jsonb := case when tg_op = 'UPDATE' then old.value else '{}'::jsonb end;
   cambio boolean;
 begin
-  if public.sin_sesion_de_persona() or public.es_importacion() then return new; end if;
+  if public.sin_sesion_de_persona() then return new; end if;
   if new.key = 'calendarSync' and not public.sincronizacion_ok(new.value) then
     raise exception 'El estado de la sincronización con Calendar no tiene la forma esperada'
       using errcode = 'check_violation';
@@ -525,7 +520,7 @@ declare
   fecha text;
   hoy date := (now() at time zone 'utc')::date;
 begin
-  if public.sin_sesion_de_persona() or public.es_importacion() then return new; end if;
+  if public.sin_sesion_de_persona() then return new; end if;
   if new.type not in ('login', 'access_requested') then return new; end if;
   prefijo := regexp_replace(new.actor_email, '[^A-Za-z0-9_.@-]', '_', 'g') || '_' || new.type || '_';
   fecha := substr(new.id, length(prefijo) + 1);
