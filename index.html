@@ -424,7 +424,9 @@
   .admin-body{ flex:1; min-width:0; }
   /* La cabecera de cada sección (ver adminSeccionTextos): título, una
      línea de para qué sirve y la explicación larga plegada. */
-  .admin-cabecera{ margin:0 0 18px; }
+  .admin-cabecera{ display:flex; align-items:flex-start; gap:12px 16px; margin:0 0 18px; }
+  .admin-cab-txt{ flex:1 1 0; min-width:0; }
+  .admin-cab-acc{ flex:none; padding-top:1px; }
   .admin-h2{ margin:0 0 4px; font-size:22px; color:var(--ink-strong); }
   .admin-lead{ margin:0; font-size:13.5px; line-height:1.5; color:var(--text-muted); max-width:70ch; }
   .admin-ayuda{ margin-top:8px; max-width:72ch; }
@@ -450,6 +452,17 @@
   .admin-tarjetas p{ margin:0 0 10px; font-size:13.5px; line-height:1.5; }
   @media (max-width:760px){
     .admin-view{ flex-direction:column; gap:14px; }
+    /* El título comparte el renglón con la acción de la sección: un poco
+       más chico para que "Tipos de actividad" entre en una línea. */
+    .admin-h2{ font-size:20px; }
+    .admin-cab-acc .btn-mini{ padding:8px 10px; font-size:12px; }
+    /* Y solo el título comparte el renglón con la acción: la línea de
+       para qué sirve y "¿Cómo funciona?" van debajo, a todo el ancho. */
+    .admin-cabecera{ display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:4px 12px; }
+    .admin-cab-txt{ display:contents; }
+    .admin-cab-acc{ grid-column:2; grid-row:1; padding-top:0; }
+    .admin-lead, .admin-ayuda{ grid-column:1 / -1; }
+    .admin-h2{ margin:0; }
     /* Con align-items:flex-start (heredado del escritorio) el cuerpo tomaba
        el ancho de su contenido y una ficha con texto largo ensanchaba la
        página entera; va al ancho de la pantalla. */
@@ -640,6 +653,10 @@
   .lp-row:first-child{ border-top:none; }
   .lp-row:hover{ background:var(--surface-soft); }
   .lp-row.on{ background:var(--celeste-soft); }
+  .lp-row:focus-visible{ outline:2px solid var(--celeste-dark); outline-offset:-2px; }
+  /* El foco que render() devuelve por programa a un elemento recién
+     dibujado, cuando el original no mostraba anillo (se puso con el mouse). */
+  .sin-anillo:focus-visible{ outline:none; }
   .lp-row.archivado > *{ opacity:.6; }
   .lp-av{ border-radius:50%; flex:none; object-fit:cover; }
   .lp-who{ display:flex; flex-direction:column; min-width:0; flex:1 1 0; }
@@ -1867,7 +1884,6 @@
 
   /* Tipos de actividad: la lista (ver renderTiposSection) y el editor de
      documentos esperados adentro de la ficha (ver renderTipoPanel). */
-  .tipos-top{ display:flex; justify-content:flex-end; margin-bottom:12px; }
   .tipos-acciones{ align-items:center; margin-top:16px; }
   .tipos-acciones .zonas-cambios{ margin:0 auto 0 0; }
   .tipo-ico{ width:40px; height:40px; border-radius:12px; background:var(--surface-alt); display:flex; align-items:center; justify-content:center; font-size:20px; flex:none; }
@@ -8498,6 +8514,11 @@ function focusSelectorOf(el){
 function render(){
   const active = document.activeElement;
   const focusSel = focusSelectorOf(active);
+  // Si el foco se puso con el mouse no tiene anillo; al devolverlo por
+  // programa a un elemento nuevo el navegador se lo pintaría igual. Se
+  // recuerda para no hacerlo (ver .sin-anillo).
+  let anilloVisible = false;
+  try{ anilloVisible = !!(active && active.matches(":focus-visible")); }catch(e){}
   const selStart = active && typeof active.selectionStart === "number" ? active.selectionStart : null;
   const selEnd = active && typeof active.selectionEnd === "number" ? active.selectionEnd : null;
   doRender();
@@ -8516,6 +8537,10 @@ function render(){
     if(el && el !== active){
       el.focus();
       if(selStart != null) try{ el.setSelectionRange(selStart, selEnd); }catch(e){}
+      if(!anilloVisible && document.activeElement === el){
+        el.classList.add("sin-anillo");
+        el.addEventListener("blur", ()=> el.classList.remove("sin-anillo"), { once:true });
+      }
     }
   }
   document.querySelectorAll("textarea.autogrow").forEach(autoGrowTextarea);
@@ -9690,6 +9715,11 @@ function adminSeccionActual(){
 // plegado. Antes cada una empezaba distinto (un párrafo gris largo, o
 // directamente los controles) y no había dónde leer el nombre de la
 // sección en la que se estaba.
+// El botón de la acción principal de cada sección, para la cabecera.
+function adminSeccionAccion(key){
+  if(key === "tipos") return `<button type="button" class="btn-mini" data-action="tipo-nuevo">+ ${t("Agregar tipo","Add type","Adicionar tipo","הוספת סוג")}</button>`;
+  return "";
+}
 function adminSeccionTextos(key){
   const T = {
     resumen: { lead: t("Lo que hay para hacer hoy y cómo viene el equipo.","What needs doing today and how the team is doing.","O que há para fazer hoje e como vai a equipe.","מה יש לעשות היום ואיך הצוות מתקדם.") },
@@ -9721,10 +9751,16 @@ function renderAdminShell(contenido){
       </button>`).join("")}`).join("");
   const item = adminMenuItems().flatMap(g => g.items).find(it => it.key === actual);
   const tx = adminSeccionTextos(actual);
+  // La acción principal de la sección (si tiene una) va a la derecha del
+  // título, a la altura de "¿Cómo funciona?": no gasta un renglón propio.
+  const accion = adminSeccionAccion(actual);
   const cabecera = `<header class="admin-cabecera">
-      <h2 class="admin-h2">${esc(item ? item.label : "")}</h2>
-      ${tx.lead ? `<p class="admin-lead">${tx.lead}</p>` : ""}
-      ${tx.ayuda ? `<details class="admin-ayuda"><summary>${t("¿Cómo funciona?","How does it work?","Como funciona?","איך זה עובד?")}</summary><div>${tx.ayuda}</div></details>` : ""}
+      <div class="admin-cab-txt">
+        <h2 class="admin-h2">${esc(item ? item.label : "")}</h2>
+        ${tx.lead ? `<p class="admin-lead">${tx.lead}</p>` : ""}
+        ${tx.ayuda ? `<details class="admin-ayuda"><summary>${t("¿Cómo funciona?","How does it work?","Como funciona?","איך זה עובד?")}</summary><div>${tx.ayuda}</div></details>` : ""}
+      </div>
+      ${accion ? `<div class="admin-cab-acc">${accion}</div>` : ""}
     </header>`;
   return `<div class="admin-view">
       <aside class="admin-menu" aria-label="${esc(t("Administración","Administration","Administração","ניהול"))}">
@@ -10201,8 +10237,7 @@ function renderTiposSection(){
   }).join("");
   const ty = tipoAbierto && tipoAbierto !== "__nuevo__" ? d.types.find(x => x.key === tipoAbierto) : null;
   const panel = tipoAbierto === "__nuevo__" ? renderTipoNuevoPanel(d) : ty ? renderTipoPanel(d, ty) : "";
-  return `<div class="tipos-top"><button type="button" class="btn-mini" data-action="tipo-nuevo">+ ${t("Agregar tipo","Add type","Adicionar tipo","הוספת סוג")}</button></div>
-    <div class="lp-layout${panel ? " abierto" : ""}">
+  return `<div class="lp-layout${panel ? " abierto" : ""}">
       <div class="lp-list"><div class="lp-rows">${filas}</div>${tiposFootnote(d)}</div>
       ${panel}
     </div>
