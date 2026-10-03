@@ -36,6 +36,7 @@ workflows `base-de-datos.yml` y `calendario.yml`, el adaptador
 | 10 | Cada escritura, hasta un «me gusta», vuelve a bajar la tabla entera | Media | código | resuelto |
 | 11 | Quitar un adjunto no lo borra del bucket | Media | código | resuelto |
 | 12 | Menores (ver abajo) | Baja | — | resuelto |
+| 13 | Después del cambio no queda ninguna copia de seguridad | Alta — antes del cambio | código + repo público | **a decidir con vos** |
 
 ---
 
@@ -328,6 +329,40 @@ la nombra a través de su foto, y se va con ella.
 
 ---
 
+## 13. Después del cambio no queda ninguna copia de seguridad
+
+*Encontrado al cerrar los anteriores.*
+
+La copia de seguridad de la app (Preferencias → Copia de seguridad) lee
+**Firebase**, a propósito: mientras Firebase sea la base, es la red para
+volver atrás. El día que Supabase pase a ser la base, eso deja de copiar
+lo que importa, y no queda otra:
+
+- En el plan gratis, el panel de Supabase no ofrece copias para bajar o
+  restaurar (**a confirmar** en Database → Backups; las diarias son del
+  plan pago).
+- **El repo es público.** Un volcado de la base o las fotos no se pueden
+  dejar como artefacto de GitHub Actions: cualquiera con una cuenta de
+  GitHub los podría bajar. Por la misma razón, los trabajos automáticos
+  no escriben en sus registros nada más que rutas y cantidades.
+
+**Opciones**, de menos a más trabajo para vos:
+
+1. **Un repo privado para las copias** (`team-latam/registro-respaldos`) y
+   un token que solo pueda escribir ahí, cargado como secreto. Un trabajo
+   semanal vuelca la base con la dirección que ya está (`SUPABASE_DB_URL`)
+   y agrega solo las fotos nuevas. Para vos: crear el repo y el token, una
+   vez. **Es la que recomiendo.**
+2. Lo mismo, pero a una carpeta de Google Drive del equipo, con una cuenta
+   de servicio de Google Cloud. Más pasos de configuración.
+3. El plan pago de Supabase (copias diarias de 7 días, ~25 USD por mes).
+4. Que la copia de la app, en modo Supabase, baje de Supabase (con las
+   fotos adentro, en el mismo formato que lee `importar.html`). Es a
+   mano: sirve solo si alguien se acuerda de bajarla.
+
+Mientras Firebase siga siendo la base, no hace falta nada de esto: la
+copia de la app sigue sirviendo.
+
 ## Para apagar Firebase
 
 Lo que falta, en orden:
@@ -348,6 +383,7 @@ Lo que falta, en orden:
 5. Sacar la carga de Firebase en modo Supabase: hoy se inicializa igual,
    solo como último recurso para el permiso de Calendar, que ya se pide por
    Google Identity Services.
+6. **Antes del paso 3: copias de seguridad de Supabase** (punto 13).
 
 ## El código que sobra
 
@@ -406,3 +442,5 @@ bien resueltos.
    había nada nuevo esa noche.
 2. En el panel de Supabase, **Authentication → Providers**: ¿está apagado
    «Email» y prendido «Confirm email»? (punto 7)
+3. **Las copias de seguridad para después del cambio** (punto 13): ¿cuál de
+   las opciones? Recomiendo la del repo privado.
