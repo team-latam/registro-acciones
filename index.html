@@ -5596,6 +5596,10 @@ const LIMITES_FIREBASE = {
   archivos: 2,
   bytesPorArchivo: 500 * 1024,
   bytesSugeridos: 150 * 1024,
+  // El documento ENTERO: texto, fotos y archivos juntos. Los topes de
+  // arriba son por archivo y no alcanzan solos — dos archivos de 500 KB ya
+  // pesan 1,3 MB en base64. Ver excesoDePeso().
+  bytesPorPosteo: 1024 * 1024,
 };
 const LIMITES_SUPABASE = {
   imagenes: 20,
@@ -5608,6 +5612,8 @@ const LIMITES_SUPABASE = {
   archivos: 10,
   bytesPorArchivo: 25 * 1024 * 1024,
   bytesSugeridos: 10 * 1024 * 1024,
+  // Sin techo: en el posteo quedan solo las rutas de los archivos.
+  bytesPorPosteo: Infinity,
 };
 
 const firebaseStore = {
@@ -7061,13 +7067,79 @@ function subscribeData(){
   };
 }
 
+/* ----------------------------------------------------------------------
+   CUÁNTO PESA UN POSTEO ENTERO
+
+   En Firestore el posteo va entero en un documento —texto, fotos y
+   archivos— y el documento no puede pasar de 1 MiB. Los topes por archivo
+   no alcanzan para cuidar eso: dos archivos de 500 KB, que cada uno por
+   separado entra, juntos pesan 1,3 MB en base64. Y seis fotos pueden pasar
+   también. Antes esto se descubría al guardar, con el error de Firestore
+   en inglés, y al editar encima con la ventana ya cerrada: la edición se
+   perdía entera.
+
+   Se mide como JSON, que pesa apenas MÁS que lo que cuenta Firestore
+   (comillas, comas, "true" en vez de un byte). Lo único que Firestore
+   cuenta y el JSON no son el nombre del documento y los números, que
+   ocupan 8 bytes: para eso es el kilobyte de margen.
+---------------------------------------------------------------------- */
+const MARGEN_DEL_POSTEO = 1024;
+function pesoDelPosteo(doc){
+  try{ return new TextEncoder().encode(JSON.stringify(doc)).length; }
+  catch(err){ return 0; }   // algo que no se puede medir: que decida la base
+}
+// Cuánto hay que sacar para que entre; 0 si entra.
+//
+// Con `antes` (el documento como está guardado) frena solo lo que SUMA
+// peso de verdad, como una foto o un archivo. Un posteo que ya está al
+// límite lo aceptó la base así como está, y sacarle un archivo, marcarlo
+// cancelado o guardarle el vínculo con el Calendar tiene que poder
+// hacerse siempre: frenar eso por el margen sería inventar un error que
+// la base no da.
+function excesoDePeso(doc, antes){
+  const tope = store.limites.bytesPorPosteo;
+  if(!Number.isFinite(tope)) return 0;   // Supabase: los archivos van al bucket
+  const peso = pesoDelPosteo(doc);
+  const sobra = peso + MARGEN_DEL_POSTEO - tope;
+  if(sobra <= 0) return 0;
+  if(antes && peso - pesoDelPosteo(antes) < MARGEN_DEL_POSTEO) return 0;
+  return sobra;
+}
+// Cuánto sobra, redondeado SIEMPRE para arriba: decir "sobran 0 KB", o
+// quedarse corto, es mandar a sacar de menos.
+function excesoLegible(bytes){
+  return bytes < 1024 * 1024
+    ? `${Math.max(1, Math.ceil(bytes / 1024))} KB`
+    : `${(Math.ceil(bytes / (1024 * 1024) * 10) / 10).toFixed(1)} MB`;
+}
+// Escrito para leerse después de "No se pudo publicar: ", que es como lo
+// muestran todos los que atrapan el error.
+function mensajeDePeso(exceso){
+  return t(
+    "con lo adjunto se pasa por {cuanto} del máximo de {max}. Sacá alguna foto o algún archivo, o subí el archivo a Drive y pegá el link.",
+    "with the attachments it's {cuanto} over the {max} maximum. Remove a photo or a file, or upload the file to Drive and paste the link.",
+    "com os anexos passa {cuanto} do máximo de {max}. Remova alguma foto ou algum arquivo, ou suba o arquivo para o Drive e cole o link.",
+    "עם הקבצים המצורפים זה חורג ב-{cuanto} מהמקסימום של {max}. הסר/י תמונה או קובץ, או העלה/י את הקובץ ל-Drive והדבק/הדביקי את הקישור.",
+    { cuanto: excesoLegible(exceso), max: topeLegible(store.limites.bytesPorPosteo) });
+}
+// La última red, por donde pasa TODA escritura de posteos y respuestas:
+// lo que no entra no se manda, y el error dice qué hacer.
+function frenarSiNoEntra(doc, antes){
+  const exceso = excesoDePeso(doc, antes);
+  if(exceso) throw new Error(mensajeDePeso(exceso));
+}
+
 async function createPost(data){
+  frenarSiNoEntra(data);
   return store.posts.create(data);
 }
 async function createReply(postId, data){
+  frenarSiNoEntra(data);
   await store.replies.create(postId, data);
 }
 async function updatePostDoc(postId, patch){
+  const antes = getPostById(postId);
+  if(antes) frenarSiNoEntra({ ...antes, ...patch }, antes);
   await store.posts.update(postId, patch);
 }
 
@@ -7855,16 +7927,10 @@ async function saveCalendarLinkOrWarn(postId, patch){
   }
 }
 
-// Actualiza el posteo, deja constancia en el hilo, y mantiene el mismo
-// evento de Calendar en vez de duplicarlo (lo crea si antes no existía,
-// lo actualiza si ya existía, o lo borra si dejó de ser un tipo que
-// sincroniza).
-async function updatePostAndSync(postId, original, newData){
-  // Un evento cancelado ya no tiene evento en Calendar (se borró al
-  // cancelar): editarlo actualiza solo el posteo. Sin este corte,
-  // updateCalendarEvent daba 404 y "recreaba" el evento — con
-  // invitaciones nuevas para todos — de algo que el equipo canceló.
-  const skipCalendar = !!original.cancelled;
+// Lo que se escribe al guardar una edición. Aparte para que el formulario
+// pueda medir EXACTAMENTE esto antes de cerrarse (ver el submit de
+// postForm).
+function parcheDeEdicion(original, newData){
   const patch = {
     title:newData.title, content:newData.content, startDate:newData.startDate, endDate:newData.endDate,
     date:newData.startDate, startTime:newData.startTime||null, endTime:newData.endTime||null,
@@ -7882,7 +7948,20 @@ async function updatePostAndSync(postId, original, newData){
     if(original.recurrenceSkip && original.recurrenceSkip.length) patch.recurrenceSkip = [];
     if(original.recurrenceMoves && Object.keys(original.recurrenceMoves).length) patch.recurrenceMoves = {};
   }
-  await updatePostDoc(postId, patch);
+  return patch;
+}
+
+// Actualiza el posteo, deja constancia en el hilo, y mantiene el mismo
+// evento de Calendar en vez de duplicarlo (lo crea si antes no existía,
+// lo actualiza si ya existía, o lo borra si dejó de ser un tipo que
+// sincroniza).
+async function updatePostAndSync(postId, original, newData){
+  // Un evento cancelado ya no tiene evento en Calendar (se borró al
+  // cancelar): editarlo actualiza solo el posteo. Sin este corte,
+  // updateCalendarEvent daba 404 y "recreaba" el evento — con
+  // invitaciones nuevas para todos — de algo que el equipo canceló.
+  const skipCalendar = !!original.cancelled;
+  await updatePostDoc(postId, parcheDeEdicion(original, newData));
 
   const summary = buildEditSummary(original, newData);
   if(summary){
@@ -10286,13 +10365,25 @@ async function adjuntarDocumento(postId, docId, file){
   }
   try{
     const dataUrl = await readFileAsDataUrl(file);
+    // subidoEl sale del reloj del navegador y no del servidor a
+    // propósito: el sentinel de hora del servidor NO se puede usar
+    // adentro de un array. Es para mostrar, no para ordenar ni comparar.
+    const files = resto.concat([{ name:file.name, mime:file.type,
+      kind: claseDeArchivo(file.type, file.name).clase, doc: docId,
+      subidoEl: new Date().toISOString(), dataUrl }]);
+    // Entra solo, pero puede no entrar con lo que el evento ya tiene.
+    const exceso = excesoDePeso({ ...post, files }, post);
+    if(exceso){
+      await appAlert(t(
+        "«{name}» no entra: con él, este evento se pasaría por {cuanto} del máximo de {max}. Quitá alguna foto o archivo del evento, o probá con una versión más liviana del archivo.",
+        "\u201c{name}\u201d doesn't fit: with it, this event would be {cuanto} over the {max} maximum. Remove a photo or file from the event, or try a lighter version of the file.",
+        "«{name}» não cabe: com ele, este evento passaria {cuanto} do máximo de {max}. Remova alguma foto ou arquivo do evento, ou tente uma versão mais leve do arquivo.",
+        "«{name}» לא נכנס: איתו, האירוע הזה יחרוג ב-{cuanto} מהמקסימום של {max}. הסר/י תמונה או קובץ מהאירוע, או נסה/י גרסה קלה יותר של הקובץ.",
+        { name:file.name, cuanto:excesoLegible(exceso), max:topeLegible(store.limites.bytesPorPosteo) }));
+      return;
+    }
     await updatePostDoc(postId, {
-      // subidoEl sale del reloj del navegador y no del servidor a
-      // propósito: el sentinel de hora del servidor NO se puede usar
-      // adentro de un array. Es para mostrar, no para ordenar ni comparar.
-      files: resto.concat([{ name:file.name, mime:file.type,
-        kind: claseDeArchivo(file.type, file.name).clase, doc: docId,
-        subidoEl: new Date().toISOString(), dataUrl }]),
+      files,
       lastEditedAt: store.horaDelServidor(),
       lastEditedBy: state.auth.user.displayName,
     });
@@ -13439,7 +13530,7 @@ function renderComposer(){
           `Imagens: são reduzidas sozinhas, máximo {maxImg}. Documentos (PDF, Word, Excel, PowerPoint, texto) e áudio: até {maxFiles} arquivos (≤{maxKB} cada). Para vídeo ou arquivos maiores: cole um link (Drive, YouTube, etc.).`,
           `תמונות: מוקטנות לבד, עד {maxImg}. מסמכים (PDF, Word, Excel, PowerPoint, טקסט) ואודיו: עד {maxFiles} קבצים (עד {maxKB} כל אחד). לווידאו או קבצים גדולים יותר: הדבק/הדביקי קישור (Drive, YouTube וכו').`,
           { maxImg: maxImagenes(), maxFiles: maxArchivos(), maxKB: topeLegible(maxBytesPorArchivo()) }
-        )}</div>
+        )}${Number.isFinite(store.limites.bytesPorPosteo) ? " " + t("Entre todo, hasta {max} por posteo.","All together, up to {max} per post.","No total, até {max} por postagem.","בסך הכול, עד {max} לפוסט.",{max:topeLegible(store.limites.bytesPorPosteo)}) : ""}</div>
       ` : `
         <button type="button" class="btn-text-add" data-action="toggle-post-attach">📎 ${t("Agregar imagen, documento, audio o link","Add image, document, audio or link","Adicionar imagem, documento, áudio ou link","הוספת תמונה, מסמך, אודיו או קישור")}</button>
       `}
@@ -15809,6 +15900,19 @@ postForm.addEventListener("submit", async e=>{
     recurrence: d.recur && d.recur.key === "otra" ? (d.recurrence || null) : recurLinesFrom(d.recur, d.startDate),
     authorName: state.auth.user.displayName, authorEmail: state.auth.user.email,
   };
+  // Al editar, la ventana se cierra ANTES de guardar (el Calendar sigue
+  // solo): si no entra, se tiene que saber acá, con la edición todavía en
+  // pantalla. Al publicar alcanzaría con la red de createPost, pero así
+  // los dos caminos dicen lo mismo.
+  const exceso = d.editingPost
+    ? excesoDePeso({ ...d.editingPost, ...parcheDeEdicion(d.editingPost, postData) }, d.editingPost)
+    : excesoDePeso(postData);
+  if(exceso){
+    d.error = d.editingPost
+      ? t("No se pudo guardar: {msg}","Couldn't save: {msg}","Não foi possível salvar: {msg}","{msg} :לא ניתן היה לשמור",{msg:mensajeDePeso(exceso)})
+      : t("No se pudo publicar: {msg}","Couldn't publish: {msg}","Não foi possível publicar: {msg}","{msg} :הפרסום נכשל",{msg:mensajeDePeso(exceso)});
+    render(); return;
+  }
   d.submitting = true; render();
   try{
     if(d.editingPost){
