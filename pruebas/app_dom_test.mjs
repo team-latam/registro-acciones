@@ -409,6 +409,8 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   await p.click('[data-action="cancel-composer"]');
   await hasta(p, () => document.getElementById("postModalOverlay").hidden);
 
+  eq("con sesión, la barra de la app vuelve", await p.evaluate(() =>
+     [document.body.classList.contains("en-portada"), getComputedStyle(document.querySelector("header.topbar")).display !== "none"]), [false, true]);
   eq("admin: el login quedó anotado en Actividad", (await base()).audit_log.some(a => a.type === "login" && a.actor_email === ADMIN), true);
 
   // Salir.
@@ -417,6 +419,12 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   const salio = await hasta(p, () => !document.body.innerText.includes("Reunión con la comunidad"));
   if(!salio) console.log("   (en pantalla: " + JSON.stringify((await p.evaluate(() => document.body.innerText)).slice(0, 400)) + ")");
   eq("admin: al salir vuelve a la pantalla de entrada", salio, true);
+  // La portada no adelanta cómo es la app por dentro: sin la barra de
+  // arriba ni el pie (tanda 18).
+  eq("portada: sin la barra de la app ni su pie, con la frase",
+     await hasta(p, () => getComputedStyle(document.querySelector("header.topbar")).display === "none"
+       && getComputedStyle(document.querySelector("footer.appfoot")).display === "none"
+       && !!document.querySelector(".gate-portada .gate-frase")), true);
   eq("admin: y las solapas de admin ya no se ven", [await visible(p, "#tabAuditoria"), await visible(p, "#tabSolicitudes"),
      await visible(p, "#tabPreferencias")], [false, false, false]);
   eq("admin: y no quedan firmas de adjuntos guardadas en el navegador",

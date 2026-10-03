@@ -490,17 +490,48 @@
   .auth-gate{ max-width:440px; margin:60px auto; text-align:center; }
   /* La portada de entrada (ver renderAuthGate): el lado petróleo con qué
      es el Registro, y la tarjeta con Google, los tres pasos y los idiomas. */
-  .gate-portada{ display:flex; gap:28px; align-items:stretch; max-width:980px; margin:24px auto; }
-  .gate-lado{
-    flex:1 1 0; min-width:0; background:linear-gradient(135deg, var(--petroleo), var(--petroleo-dark)); color:#fff;
-    border-radius:var(--radius-lg); padding:40px 36px; display:flex; flex-direction:column; justify-content:center; gap:14px;
+  /* La portada de entrada: pantalla entera, sin la barra de arriba ni el
+     pie de la app (body.en-portada, ver render). Lo de adentro no se
+     adelanta: el nombre, una frase y la tarjeta para entrar. El fondo es
+     el mismo petróleo en claro y en oscuro; la tarjeta toma los colores
+     del tema. */
+  body.en-portada{ background:radial-gradient(1200px 600px at 75% 20%, rgba(79,199,224,.18), transparent 60%), linear-gradient(160deg, var(--petroleo), var(--petroleo-dark)) fixed; }
+  body.en-portada header.topbar, body.en-portada footer.appfoot{ display:none; }
+  body.en-portada main{ max-width:none; padding:0; display:flex; }
+  body.en-portada .auth-gate:not(.gate-tarjeta){ color:#fff; }
+  body.en-portada .auth-gate:not(.gate-tarjeta) p{ color:#bfe9ef; }
+  .gate-portada{
+    position:relative; flex:1; min-height:100vh; min-height:100dvh; box-sizing:border-box; overflow:hidden;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; padding:32px 16px 56px;
   }
-  .gate-lado .big{ font-size:40px; }
-  .gate-lado h2{ margin:0; font-size:30px; line-height:1.15; color:#fff; }
-  .gate-lado p{ margin:0; color:#bfe9ef; font-size:15px; line-height:1.6; }
+  .gate-portada::before{
+    content:""; position:absolute; inset:0; pointer-events:none;
+    background-image:radial-gradient(rgba(255,255,255,.07) 1.2px, transparent 1.3px); background-size:22px 22px;
+    -webkit-mask-image:radial-gradient(ellipse at center, #000 30%, transparent 75%); mask-image:radial-gradient(ellipse at center, #000 30%, transparent 75%);
+  }
+  .gate-centro{ position:relative; width:100%; max-width:400px; display:flex; flex-direction:column; align-items:center; gap:22px; }
+  .gate-marca{ text-align:center; color:#fff; }
+  .gate-logo{
+    width:68px; height:68px; border-radius:20px; margin:0 auto 18px; font-size:36px;
+    display:flex; align-items:center; justify-content:center;
+    background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.14);
+  }
+  .gate-marca h1{ margin:0; font-size:34px; font-weight:800; line-height:1.15; letter-spacing:-.01em; color:#fff; }
+  .gate-marca .gate-equipo{ margin-top:6px; font-size:13px; font-weight:700; letter-spacing:.22em; text-transform:uppercase; color:var(--celeste); }
+  .gate-frase{ margin:-4px 0 0; font-size:20px; font-weight:700; line-height:1.35; text-align:center; color:#fff; }
+  .gate-frase em{ font-style:normal; color:var(--celeste); }
   .gate-portada .gate-tarjeta{
-    flex:0 0 360px; margin:0; max-width:none; background:var(--card); border:1px solid var(--border); border-radius:var(--radius-lg);
-    box-shadow:var(--shadow); padding:32px 28px; display:flex; flex-direction:column; gap:14px; text-align:start;
+    width:100%; max-width:none; margin:0; box-sizing:border-box; background:var(--card); border-radius:22px;
+    box-shadow:0 24px 60px rgba(0,0,0,.35); padding:28px 26px 22px; display:flex; flex-direction:column; gap:16px; text-align:center;
+  }
+  .gate-portada .gate-tarjeta p{ margin:0; color:var(--text-muted); font-size:14px; line-height:1.55; }
+  .gate-portada .gate-primera-linea{ border-top:1px solid var(--border); padding-top:14px; font-size:12.5px; line-height:1.55; color:var(--text-muted); }
+  .gate-portada .gate-primera-linea b{ color:var(--ink-strong); }
+  .gate-portada .gate-idiomas{ justify-content:center; }
+  .gate-pie{ position:absolute; bottom:18px; inset-inline:0; text-align:center; font-size:12px; color:rgba(255,255,255,.45); }
+  @media (max-width:500px){
+    .gate-marca h1{ font-size:30px; }
+    .gate-frase{ font-size:18px; }
   }
   .gate-tarjeta h2{ font-size:22px; }
   .gate-tarjeta p{ margin:0; }
@@ -518,12 +549,6 @@
   .gate-espera .gate-pasos-tarjeta{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md); padding:16px 18px; margin:0 0 16px; }
   .gate-aviso{ background:var(--warn-bg); border:1px solid var(--warn-border); color:var(--warn-text); border-radius:var(--radius-sm); padding:10px 12px; font-size:13px; line-height:1.5; text-align:start; margin-bottom:16px; }
   @media (max-width:760px){
-    /* En celular, el botón de entrar primero: la mayoría de las veces
-       quien llega ya conoce la app y solo quiere entrar. */
-    .gate-portada{ flex-direction:column; margin:8px auto; gap:14px; }
-    .gate-portada .gate-lado{ order:2; padding:26px 22px; }
-    .gate-lado h2{ font-size:23px; }
-    .gate-portada .gate-tarjeta{ flex:none; padding:24px 20px; }
   }
   .auth-gate .big{ font-size:44px; margin-bottom:14px; }
   .auth-gate h2{ margin:0 0 8px 0; color:var(--ink); font-size:19px; }
@@ -9303,6 +9328,10 @@ function doRender(){
   // posteos y en el equipo): sin sesión o esperando aprobación, no está.
   { const gs = document.getElementById("globalSearch"); if(gs) gs.hidden = !isAuthorized(); }
 
+  // Sin sesión (la portada, y el "Cargando…" del arranque, antes de saber
+  // si hay alguien) no se ve la barra de la app: no se adelanta cómo es
+  // por dentro.
+  document.body.classList.toggle("en-portada", !state.auth.user);
   if(!isAuthorized()){
     tabsNav.classList.add("tabs-hidden"); closeFab(); fabEl.hidden = true;
     html += renderAuthGate();
@@ -9380,34 +9409,33 @@ function renderAuthGate(){
     </div>`;
   }
   if(s === "signedOut"){
-    // Una portada: qué es el Registro y cómo se entra la primera vez
-    // (tres pasos), con el botón de Google y los idiomas a mano. Antes era
-    // un candado y una línea, y quien llegaba por primera vez no sabía
-    // qué esperar después de apretar el botón.
+    // La portada: el nombre, una frase y la tarjeta para entrar, a
+    // pantalla entera y sin la barra de la app (ver body.en-portada en
+    // render). No cuenta qué hay adentro a propósito: lo decidió el
+    // usuario el 3/10/2026 (REDISENO.md, tanda 18). Sí dice qué pasa la
+    // primera vez, para que nadie se quede esperando sin saber por qué.
     const lang = currentLang();
     return `<div class="gate-portada">
-      <div class="gate-lado">
-        <div class="big" aria-hidden="true">🗺️</div>
-        <h2>${t("La memoria de lo que el equipo hace en cada lugar de LatAm.","The record of what the team does in every corner of LatAm.","A memória do que a equipe faz em cada lugar da LatAm.","הזיכרון של מה שהצוות עושה בכל מקום ב-LatAm.")}</h2>
-        <p>${t("Visitas, cursos, seminarios y rutinas, con sus fotos y documentos, ordenados por país y por fecha.","Visits, courses, seminars and routines, with their photos and documents, by country and by date.","Visitas, cursos, seminários e rotinas, com suas fotos e documentos, por país e por data.","ביקורים, קורסים, סמינרים ושגרות, עם התמונות והמסמכים שלהם, לפי מדינה ולפי תאריך.")}</p>
-      </div>
-      <div class="gate-tarjeta auth-gate">
-        <h2>${t("Entrar","Sign in","Entrar","כניסה")}</h2>
-        <p>${t("Es un espacio privado del equipo. Entrá con tu cuenta de Google.","It's a private space for the team. Sign in with your Google account.","É um espaço privado da equipe. Entre com sua conta do Google.","זהו מרחב פרטי של הצוות. התחבר/י עם חשבון Google שלך.")}</p>
-        <button class="btn-google" data-action="google-signin">
-          <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.9c1.7-1.57 2.7-3.88 2.7-6.62z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.9-2.26c-.81.54-1.84.86-3.06.86-2.35 0-4.34-1.59-5.05-3.72H.96v2.33A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.95 10.7A5.4 5.4 0 0 1 3.67 9c0-.59.1-1.17.28-1.7V4.97H.96A9 9 0 0 0 0 9c0 1.45.35 2.83.96 4.03l2.99-2.33z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .96 4.97l2.99 2.33C4.66 5.17 6.65 3.58 9 3.58z"/></svg>
-          ${t("Entrar con Google","Sign in with Google","Entrar com o Google","התחברות עם Google")}
-        </button>
-        <div class="gate-primera">${t("¿Es tu primera vez?","First time here?","É a sua primeira vez?","פעם ראשונה כאן?")}</div>
-        <ol class="gate-pasos">
-          <li class="gate-paso"><span class="gate-num">1</span><span>${t("Entrás con Google.","You sign in with Google.","Você entra com o Google.","נכנסים עם Google.")}</span></li>
-          <li class="gate-paso"><span class="gate-num">2</span><span>${t("Un administrador aprueba tu pedido.","An administrator approves your request.","Um administrador aprova seu pedido.","מנהל/ת מאשר/ת את הבקשה.")}</span></li>
-          <li class="gate-paso"><span class="gate-num">3</span><span>${t("Listo: ya podés ver y cargar todo.","Done: you can see and log everything.","Pronto: já pode ver e carregar tudo.","זהו: אפשר לראות ולרשום הכול.")}</span></li>
-        </ol>
-        <div class="gate-idiomas" role="group" aria-label="${esc(t("Idioma","Language","Idioma","שפה"))}">
-          ${LANGS.map(l=>`<button type="button" class="${lang===l.key?"active":""}" data-action="set-lang" data-lang="${l.key}" aria-pressed="${lang===l.key}" title="${esc(l.name)}">${l.label}</button>`).join("")}
+      <div class="gate-centro">
+        <div class="gate-marca">
+          <div class="gate-logo" aria-hidden="true">🗺️</div>
+          <h1>Registro de Acciones</h1>
+          <div class="gate-equipo">Team LatAm</div>
+        </div>
+        <p class="gate-frase">${t("Lo que hacemos, <em>en un solo lugar.</em>","What we do, <em>all in one place.</em>","O que fazemos, <em>num só lugar.</em>","מה שאנחנו עושים, <em>במקום אחד.</em>")}</p>
+        <div class="gate-tarjeta auth-gate">
+          <p>${t("Espacio privado del equipo.","A private space for the team.","Espaço privado da equipe.","מרחב פרטי של הצוות.")}</p>
+          <button class="btn-google" data-action="google-signin">
+            <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.9c1.7-1.57 2.7-3.88 2.7-6.62z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.9-2.26c-.81.54-1.84.86-3.06.86-2.35 0-4.34-1.59-5.05-3.72H.96v2.33A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.95 10.7A5.4 5.4 0 0 1 3.67 9c0-.59.1-1.17.28-1.7V4.97H.96A9 9 0 0 0 0 9c0 1.45.35 2.83.96 4.03l2.99-2.33z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .96 4.97l2.99 2.33C4.66 5.17 6.65 3.58 9 3.58z"/></svg>
+            ${t("Entrar con Google","Sign in with Google","Entrar com o Google","התחברות עם Google")}
+          </button>
+          <div class="gate-primera-linea"><b>${t("¿Es tu primera vez?","First time here?","É a sua primeira vez?","פעם ראשונה כאן?")}</b> ${t("Entrás con Google y un administrador aprueba tu pedido.","Sign in with Google and an administrator approves your request.","Você entra com o Google e um administrador aprova seu pedido.","נכנסים עם Google ומנהל/ת מאשר/ת את הבקשה.")}</div>
+          <div class="gate-idiomas" role="group" aria-label="${esc(t("Idioma","Language","Idioma","שפה"))}">
+            ${LANGS.map(l=>`<button type="button" class="${lang===l.key?"active":""}" data-action="set-lang" data-lang="${l.key}" aria-pressed="${lang===l.key}" title="${esc(l.name)}">${l.label}</button>`).join("")}
+          </div>
         </div>
       </div>
+      <div class="gate-pie">Registro de Acciones · Team LatAm</div>
     </div>`;
   }
   if(s === "pending"){
