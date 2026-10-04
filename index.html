@@ -2292,8 +2292,12 @@
   .country-card{
     background:var(--card); border-radius:var(--radius-md); padding:14px; box-shadow:var(--shadow); cursor:pointer;
     border:1px solid var(--border); border-inline-start:6px solid var(--petroleo); transition:transform 0.1s;
+    display:flex; flex-direction:column;
   }
   .country-card:hover{ transform:translateY(-2px); }
+  /* Las barritas bajan al fondo: con un nombre de dos renglones
+     ("República Dominicana") quedan a la misma altura que las de al lado. */
+  .country-card .country-serie{ margin-top:auto; padding-top:8px; }
   .country-card .name{ font-weight:800; font-size:14px; margin-bottom:4px; }
   .country-card .count{ font-size:22px; font-weight:800; color:var(--ink); }
   .country-card .count small{ font-size:11px; font-weight:600; color:var(--text-muted); }
@@ -2301,9 +2305,12 @@
      aplica sin haber pasado ahí. La región en el color de su zona. */
   .country-card .cross-line{ display:flex; flex-wrap:wrap; gap:2px 10px; font-size:11.5px; font-weight:600; color:var(--text-muted); margin-top:3px; }
   .country-card.quiet .count{ color:var(--text-muted); }
-  .country-top{ display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
-  .country-top .name{ margin-bottom:0; min-width:0; }
-  .country-top .count{ flex:none; white-space:nowrap; line-height:1.1; }
+  /* El nombre arriba y el número abajo, cada uno en su renglón: lado a
+     lado, en una tarjeta de 180px "Argentina" y "207 registros" no
+     entraban y el número se le montaba encima al nombre (4/10/2026). */
+  .country-top{ display:flex; flex-direction:column; align-items:flex-start; gap:2px; }
+  .country-top .name{ margin-bottom:0; min-width:0; max-width:100%; overflow-wrap:break-word; line-height:1.25; }
+  .country-top .count{ white-space:nowrap; line-height:1.1; }
   .country-serie{ display:flex; align-items:flex-end; gap:3px; height:26px; margin:8px 0 6px; }
   .country-serie span{ flex:1; border-radius:2px; background:var(--surface-alt); }
   .country-last{ font-size:12px; color:var(--text-muted); font-weight:600; margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -13267,8 +13274,10 @@ function actividadPorPais(){
 // Doce barritas, una por mes, para ver de un vistazo si el país tuvo
 // movimiento parejo o un pico. Sin nada en el año, no se dibuja.
 function renderSerieMensual(meses, color){
-  if(!meses || !meses.some(n=>n)) return "";
-  const max = Math.max(...meses);
+  // Sin nada en los últimos 12 meses va la base vacía igual: sin ella esas
+  // tarjetas quedaban más bajas y la grilla se desalineaba.
+  if(!meses || !meses.length) meses = Array(12).fill(0);
+  const max = Math.max(1, ...meses);
   return `<div class="country-serie" aria-hidden="true">${meses.map(n=>
     `<span style="height:${n ? Math.max(18, Math.round(n * 100 / max)) : 10}%;${n ? `background:${color}` : ""}"></span>`).join("")}</div>`;
 }

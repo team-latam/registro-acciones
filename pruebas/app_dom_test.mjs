@@ -296,6 +296,17 @@ const hasta = async (p, fn, arg, ms = 5000) => {
     if(largo < 20) vacias.push(v);
   }
   eq("admin: cada solapa dibuja algo", vacias, []);
+  // Países (4/10/2026): en la tarjeta, el número no se monta sobre el
+  // nombre, y todas llevan la serie de 12 meses (aunque esté vacía), así
+  // la grilla queda pareja.
+  await p.evaluate(() => document.querySelector('nav.tabs button[data-view="paises"]').click());
+  await p.waitForSelector(".country-card");
+  eq("países: el número va debajo del nombre, sin pisarlo, y cada tarjeta tiene su serie",
+    await p.$$eval(".country-card", cs => cs.every(c => {
+      const n = c.querySelector(".name").getBoundingClientRect(), k = c.querySelector(".count").getBoundingClientRect();
+      return k.top >= n.bottom - 1 && !!c.querySelector(".country-serie");
+    })), true);
+  await p.evaluate(() => document.querySelector('nav.tabs button[data-view="feed"]').click());
 
   // Administración: el Resumen muestra el pedido de acceso pendiente, y
   // cada sección del menú de al lado se dibuja.
