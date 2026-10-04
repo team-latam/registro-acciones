@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
 <title>Registro de Acciones — Team LatAm</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -177,6 +177,10 @@
   .brand .logo{ font-size:26px; }
   .brand h1{ font-size:17px; margin:0; font-weight:800; letter-spacing:0.2px; }
   .brand .sub{ font-size:11px; color:#bfe9ef; font-weight:500; }
+  @media (max-width:400px){
+    .brand .logo{ font-size:22px; }
+    .brand h1{ font-size:15.5px; }
+  }
   .btn-new{
     background:var(--celeste); color:var(--petroleo-dark); border:none;
     padding:10px 18px; border-radius:999px; font-weight:700; font-size:13.5px;
@@ -1733,6 +1737,12 @@
     justify-content:center; padding:24px 12px; z-index:100; overflow-y:auto;
   }
   .modal-overlay[hidden]{ display:none; }
+  @media (max-width:640px){
+    /* En el celular el formulario aprovecha la pantalla: menos margen
+       alrededor y alto tope según lo que de verdad se ve. */
+    .modal-overlay{ padding:10px 8px; }
+    .modal{ padding:18px 16px; max-height:calc(var(--vvh, 100dvh) - 20px); }
+  }
   .modal{
     background:var(--card); border-radius:var(--radius-lg); width:100%; max-width:640px; padding:22px;
     box-shadow:0 20px 60px rgba(0,0,0,0.3); margin:auto 0;
@@ -2847,7 +2857,12 @@
      están más arriba, cerca de .user-menu y de .rep-kpi). */
   @media (max-width:640px){
     nav.tabs{ display:none; }
-    header.topbar{ padding-bottom:14px; }
+    header.topbar{ padding:12px 14px; }
+    /* El nombre en una sola línea: en un celular chico se iba a cuatro
+       renglones y el header, que queda fijo arriba, se comía la pantalla. */
+    .brand{ min-width:0; gap:8px; }
+    .brand > div{ min-width:0; }
+    .brand h1, .brand .sub{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .bottom-nav{
       position:fixed; left:0; right:0; bottom:0; z-index:64; display:flex; align-items:stretch;
       height:calc(62px + env(safe-area-inset-bottom)); padding-bottom:env(safe-area-inset-bottom);
@@ -2889,6 +2904,31 @@
        LatAm") en celular queda tapado por la barra, así que no se dibuja. */
     main{ padding-bottom:calc(78px + env(safe-area-inset-bottom)); }
     footer.appfoot{ display:none; }
+    /* El composer de "¿Qué hiciste hoy?" no queda pegado arriba en el
+       celular: con el header, se comían un cuarto de la pantalla todo el
+       tiempo, y para cargar algo ya está el + de la barra. */
+    .quick-composer{ position:static; }
+    /* Con el panel de Revisar abierto, el + taparía sus botones. */
+    body:has(.rv-flota .rv-panel) .fab-wrap{ display:none; }
+  }
+  /* ---- Celular con el teclado abierto (html.teclado, ver vigilarTeclado) ----
+     El teclado se come casi media pantalla. Lo que queda es para el campo
+     donde se escribe: afuera la barra de abajo, el +, el "subir" y el
+     header pegado arriba (pasa a irse con la página), y los formularios
+     flotantes se acomodan al alto que de verdad se ve (--vvh). Pedido del
+     usuario el 4/10/2026: "queda todo distorsionado". */
+  @media (max-width:760px){
+    html.teclado .bottom-nav, html.teclado .fab-wrap, html.teclado .scroll-top,
+    html.teclado .new-posts-pill{ display:none !important; }
+    html.teclado{ --header-h:0px !important; }
+    html.teclado header.topbar{ position:static; }
+    html.teclado .quick-composer{ position:static; }
+    html.teclado main{ padding-bottom:16px; }
+    html.teclado .modal-overlay{ top:var(--vvtop, 0px); bottom:auto; height:var(--vvh, 100%); padding:6px; }
+    html.teclado .modal{ max-height:calc(var(--vvh, 100dvh) - 12px); padding:14px 16px; }
+    html.teclado .rv-flota{ bottom:auto; top:calc(var(--vvtop, 0px) + 6px); width:calc(100vw - 12px); }
+    html.teclado .rv-flota .rv-panel{ max-height:calc(var(--vvh, 100dvh) - 12px); }
+    html.teclado .rv-flota-espacio{ height:0; }
   }
 </style>
 </head>
@@ -4622,7 +4662,7 @@ const state = {
   calendarioSubview: "mes", // mes | semana | dia
   calendarioAnchor: null,   // YYYY-MM-DD sobre el que está parado el Calendario; null = hoy
   calendarioDiaElegido: null, // en angosto, el día del Mes cuya lista se muestra debajo de la grilla
-  proyectosVista: "linea",   // linea | tarjetas
+  proyectosVista: null,      // linea | tarjetas; null = según la pantalla (ver renderProyectosView)
   proyectosFiltro: "curso",  // curso | hechos
   preferenciasSection: "zonas", // zonas | tipos | lugares | calendar | adjuntos
   countryDrill: null,       // nombre de país (drill a ciudades) en vista Países > Lista
@@ -8134,7 +8174,10 @@ function renderProyectosView(){
   const finDe = p => p.endDate || p.startDate || p.date || "";
   const hechos = todos.filter(projectDone).sort((a,b)=> finDe(b).localeCompare(finDe(a)));
   const filtro = state.proyectosFiltro === "hechos" ? "hechos" : "curso";
-  const vista = state.proyectosVista === "tarjetas" ? "tarjetas" : "linea";
+  // En el celular la línea de tiempo no entra (el nombre se corta y los
+  // meses quedan fuera de la pantalla): arranca en Tarjetas, salvo que la
+  // persona haya elegido otra cosa.
+  const vista = (state.proyectosVista || (esAngosto() ? "tarjetas" : "linea")) === "tarjetas" ? "tarjetas" : "linea";
   const list = filtro === "hechos" ? hechos : enCurso;
   const barra = `<div class="pl-toolbar">
       <div class="subview-toggle">
@@ -11377,6 +11420,45 @@ function syncHeaderHeight(){
   document.documentElement.style.setProperty("--header-h", header.offsetHeight + "px");
 }
 window.addEventListener("resize", syncHeaderHeight);
+// El teclado del celular. Mientras se escribe en un campo de texto,
+// html.teclado esconde lo que flota (barra de abajo, +, header pegado) y
+// --vvh/--vvtop dicen qué parte de la pantalla se ve de verdad: en iPhone
+// (y en Android con el teclado "encima") la ventana no se achica, solo la
+// parte visible, y un formulario de alto fijo quedaba con los botones
+// debajo del teclado. Al cambiar ese alto, el campo vuelve a la vista.
+const CAMPO_DE_TEXTO = 'textarea, [contenteditable="true"], input:not([type]), input[type="text"], input[type="search"], input[type="email"], input[type="url"], input[type="tel"], input[type="number"], input[type="password"]';
+function esCampoDeTexto(el){ return !!(el && el.matches && el.matches(CAMPO_DE_TEXTO) && !el.readOnly && !el.disabled); }
+function vigilarTeclado(){
+  const raiz = document.documentElement;
+  const vv = window.visualViewport;
+  const angosto = () => window.matchMedia("(max-width:760px)").matches;
+  const medir = () => {
+    raiz.style.setProperty("--vvh", Math.round(vv ? vv.height : window.innerHeight) + "px");
+    raiz.style.setProperty("--vvtop", Math.round(vv ? vv.offsetTop : 0) + "px");
+  };
+  const alFoco = () => {
+    const activo = document.activeElement;
+    raiz.classList.toggle("teclado", angosto() && esCampoDeTexto(activo));
+    medir();
+  };
+  document.addEventListener("focusin", alFoco);
+  // focusout llega antes de que el foco pase al campo siguiente: se mira
+  // un instante después, para no hacer saltar la pantalla entre campos.
+  document.addEventListener("focusout", () => setTimeout(alFoco, 60));
+  let tic = null;
+  const alCambiar = () => {
+    medir();
+    clearTimeout(tic);
+    tic = setTimeout(() => {
+      const activo = document.activeElement;
+      if(raiz.classList.contains("teclado") && esCampoDeTexto(activo)) activo.scrollIntoView({ block:"center" });
+    }, 80);
+  };
+  if(vv){ vv.addEventListener("resize", alCambiar); vv.addEventListener("scroll", medir); }
+  window.addEventListener("resize", alCambiar);
+  medir();
+}
+vigilarTeclado();
 // Pestañas en pantallas angostas (ver nav.tabs en el CSS): traer la activa
 // a la vista —si no, cambiar de solapa desde la campanita o el menú dejaba
 // la barra mostrando otras— y marcar por qué lado sigue habiendo pestañas.
@@ -11689,8 +11771,8 @@ function renderFeedOrderBar(){
   return `
     <div class="sort-toggle feed-order">
       <div class="sort-toggle-group">
-        <span class="chip-toggle ${order==="desc"?"active":""}" data-action="feed-order" data-key="desc">${t("Más reciente primero","Newest first","Mais recente primeiro","החדש ביותר קודם")}</span>
-        <span class="chip-toggle ${order==="asc"?"active":""}" data-action="feed-order" data-key="asc">${t("Más antiguo primero","Oldest first","Mais antigo primeiro","הישן ביותר קודם")}</span>
+        <span class="chip-toggle ${order==="desc"?"active":""}" data-action="feed-order" data-key="desc"><span class="lp-ancho">${t("Más reciente primero","Newest first","Mais recente primeiro","החדש ביותר קודם")}</span><span class="lp-angosto">${t("Recientes","Newest","Recentes","חדשים")}</span></span>
+        <span class="chip-toggle ${order==="asc"?"active":""}" data-action="feed-order" data-key="asc"><span class="lp-ancho">${t("Más antiguo primero","Oldest first","Mais antigo primeiro","הישן ביותר קודם")}</span><span class="lp-angosto">${t("Antiguos","Oldest","Antigos","ישנים")}</span></span>
       </div>
       ${canWrite() ? `<button type="button" class="btn-sync" data-action="sync-calendar" ${state.calendarSyncing?"disabled":""}>🔄 ${t("Actualizar","Refresh","Atualizar","עדכון")}</button>` : ""}
     </div>`;

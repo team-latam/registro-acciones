@@ -834,6 +834,31 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   await p.click('[data-action="toggle-mentions-menu"]');
   eq("celular: un @usuario va aislado como texto de izquierda a derecha",
     await p.evaluate(() => { const m = document.querySelector(".mention-tag"); const cs = m && getComputedStyle(m); return cs ? [cs.direction, cs.unicodeBidi] : null; }), ["ltr", "isolate"]);
+  // Tanda 21: con el teclado abierto queda media pantalla, y es para el
+  // campo. Al escribir se esconden la barra de abajo y el +, y el header
+  // deja de quedar pegado arriba; al salir del campo, todo vuelve.
+  await p.click(".fab-main");
+  await p.evaluate(() => scrollTo(0, 0));
+  await p.focus("#rutinaContent");
+  eq("celular: al escribir, se esconden la barra de abajo y el + y el header se va con la página",
+    await p.evaluate(() => [document.documentElement.classList.contains("teclado"), getComputedStyle(document.querySelector(".bottom-nav")).display,
+      getComputedStyle(document.querySelector(".fab-wrap")).display, getComputedStyle(document.querySelector("header.topbar")).position]),
+    [true, "none", "none", "static"]);
+  await p.setViewportSize({ width: ANCHO, height: 420 });
+  eq("celular: --vvh sigue el alto que de verdad se ve",
+    await hasta(p, () => getComputedStyle(document.documentElement).getPropertyValue("--vvh").trim() === "420px"), true);
+  await p.evaluate(() => document.activeElement.blur());
+  await p.setViewportSize({ width: ANCHO, height: 844 });
+  eq("celular: al salir del campo, la barra y el header vuelven",
+    await hasta(p, () => !document.documentElement.classList.contains("teclado") && getComputedStyle(document.querySelector(".bottom-nav")).display === "flex"
+      && getComputedStyle(document.querySelector("header.topbar")).position === "sticky"), true);
+  eq("celular: un casillero no cuenta como escribir (no saca la barra)",
+    await p.evaluate(() => { const c = document.createElement("input"); c.type = "checkbox"; document.getElementById("viewRoot").append(c); c.focus(); const r = document.documentElement.classList.contains("teclado"); c.remove(); return r; }), false);
+  await p.click('[data-action="goto-view"][data-view="calendario"]').catch(() => {});
+  await p.click('[data-action="toggle-more-menu"]');
+  await p.click('.bn-sheet [data-view="proyectos"]');
+  eq("celular: Proyectos arranca en Tarjetas (la línea de tiempo no entra)",
+    await hasta(p, () => document.querySelector('[data-action="proyectos-vista"][data-key="tarjetas"].active') !== null), true);
   eq("celular: sin un solo error", errores, []);
   await p.close();
 }
