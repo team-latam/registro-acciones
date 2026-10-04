@@ -744,6 +744,16 @@ const hasta = async (p, fn, arg, ms = 5000) => {
     const ops = [...document.querySelectorAll(".type-picker .type-opt")].map(e => e.textContent.trim());
     return ops.length > 0 && !ops.some(x => /Congreso/.test(x)) && ops.some(x => /Visita/.test(x));
   }), true);
+  // Comentarios es opcional (4/10/2026): con título, fecha y lugar alcanza.
+  eq("evento: el campo de comentarios dice que es opcional",
+    await p.$$eval("#postForm label", ls => ls.some(l => l.textContent.trim() === "Comentarios (opcional)")), true);
+  await p.fill("#cTitle", "Evento sin comentarios");
+  await p.fill("#cPlaceQuery", "Uruguay");
+  await p.waitForSelector('#postForm [data-action="pick-place"]');
+  await p.click('#postForm [data-action="pick-place"]');
+  await p.click('#postForm button[type="submit"]');
+  eq("evento: se publica sin comentarios, con el contenido vacío", await hasta(p, () =>
+    (window.__sb.tablas.posts || []).some(x => x.title === "Evento sin comentarios" && x.content === "")), true);
   await p.keyboard.press("Escape");
   eq("admin: sin un solo error", errores, []);
   await p.close();
