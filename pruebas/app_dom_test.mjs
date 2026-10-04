@@ -345,6 +345,11 @@ const hasta = async (p, fn, arg, ms = 5000) => {
     await p.$eval(".audit-list", e => !!e.firstElementChild && e.firstElementChild.classList.contains("audit-columns-header")), true);
   await p.click('.admin-menu [data-action="admin-go"][data-view="preferencias"][data-key="lugares"]');
   eq("admin: Lugares usa la misma lista que Personas y Tipos", await p.$$eval('.lp-rows .lp-row [data-action="lugares-promote"]', es => es.length), 1);
+  eq("admin: la ciudad escrita a mano figura en «Sin ubicación propia en el mapa», para pasar la lista y cargarle la coordenada",
+    await p.evaluate(() => {
+      const ciudad = document.querySelector('.lp-rows [data-action="lugares-promote"]').dataset.city;
+      return [...document.querySelectorAll(".lugares-sin-ubicar li")].some(li => li.textContent.includes(ciudad));
+    }), true);
 
   // Una preferencia personal, desde el menú del avatar: se ve y queda
   // guardada (ver preferencias_test).
@@ -527,13 +532,16 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   await p.click('[data-action="rv-alcance-sumar"]');
   await p.selectOption("#rvPais", "Chile");
   await p.click('[data-action="rv-alcance-sumar"]');
-  eq("revisar: en un mismo panel se arman tipo y varios alcances, sin que se borren al seguir eligiendo",
-     [await p.$eval("#rvTipo", e => e.value), await p.$$eval('[data-action="rv-alcance-quitar"]', l => l.length)], ["seminario", 2]);
+  // Israel: fuera de LatAm, pero se puede elegir como alcance.
+  await p.selectOption("#rvPais", "Israel");
+  await p.click('[data-action="rv-alcance-sumar"]');
+  eq("revisar: en un mismo panel se arman tipo y varios alcances (Israel incluido), sin que se borren al seguir eligiendo",
+     [await p.$eval("#rvTipo", e => e.value), await p.$$eval('[data-action="rv-alcance-quitar"]', l => l.length)], ["seminario", 3]);
   await p.click('[data-action="rv-panel-aplicar"]');
   await hasta(p, () => !document.querySelector(".rv-panel"));
   const juntos = (await base()).posts.filter(x => ["cal_ev1", "cal_ev2"].includes(x.id)).map(x => [x.id, x.activity_type, x.scopes.map(sc => sc.city || sc.country)]);
   eq("revisar: se aplica todo junto, y el alcance se SUMA al que ya tenían",
-     juntos, [["cal_ev1", "seminario", ["Tucuman", "Uruguay", "Chile"]], ["cal_ev2", "seminario", ["Mendoza", "Uruguay", "Chile"]]]);
+     juntos, [["cal_ev1", "seminario", ["Tucuman", "Uruguay", "Chile", "Israel"]], ["cal_ev2", "seminario", ["Mendoza", "Uruguay", "Chile", "Israel"]]]);
   eq("revisar: y los elegidos siguen elegidos, para seguir cambiándoles otra cosa",
      await p.$eval(".rv-flota .rv-barra b", e => e.textContent), "2 elegidos");
   await p.click('[data-action="rv-ninguno"]');
