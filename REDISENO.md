@@ -369,6 +369,30 @@ eventos.
   sin coordenada). Cuando el usuario termine de cargar lugares, pasa esa
   lista y se les carga la coordenada en `CITY_PRESETS`.
 
+### 21. El celular con el teclado abierto — HECHO (4 oct 2026)
+
+Pedido: "algunas pantallas no se ven bien, especialmente cuando se abre el
+teclado; queda todo distorsionado". Se recorrieron todas las pantallas a
+390×844 y 360×640, con y sin teclado (simulado achicando la ventana).
+
+- **Teclado** (`vigilarTeclado`, `html.teclado`): mientras se escribe en un
+  campo de texto en angosto, se esconden la barra de abajo, el +, el
+  "subir" y el aviso de posteos nuevos, y el header y el composer dejan de
+  quedar pegados arriba. `--vvh`/`--vvtop` siguen la parte visible de la
+  pantalla (`visualViewport`): los formularios (modal del evento, panel de
+  Revisar lo de Calendar) se acomodan a ese alto con los botones a la
+  vista, y el campo vuelve al centro cuando cambia el alto.
+- `interactive-widget=resizes-content` en el viewport: en Android el
+  teclado achica la página en vez de taparla.
+- **Header** en una línea en celulares chicos (en 360px eran cuatro
+  renglones fijos arriba).
+- El composer "¿Qué hiciste hoy?" ya no queda fijo arriba en el celular
+  (para cargar está el +).
+- El modal aprovecha la pantalla (menos margen, alto según lo visible).
+- Proyectos arranca en **Tarjetas** en el celular: la línea de tiempo no
+  entra (se puede elegir igual).
+- Orden del Inicio con rótulos cortos en angosto: "Recientes / Antiguos".
+
 ## Fuera de alcance (necesitan algo que la app no tiene)
 
 - Mandar correos (resumen semanal, invitaciones): no hay servicio de
