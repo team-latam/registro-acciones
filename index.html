@@ -15736,7 +15736,7 @@ function renderComposer(){
       ${renderParticipantsField(d)}
     </div>
     <div class="field">
-      <label>${t("Comentarios","Comments","Comentários","הערות")}</label>
+      <label>${t("Comentarios (opcional)","Comments (optional)","Comentários (opcional)","הערות (לא חובה)")}</label>
       <div class="mention-anchor">
         <div class="mention-highlight-backdrop" id="cContent-hl" aria-hidden="true">${highlightMentions(esc(d.content))}</div>
         <textarea id="cContent" class="mention-input" maxlength="${MAX_POST_CONTENT}" data-mention-scope="post" data-mention-owner="new" placeholder="${esc(pistaDeContenido(d.activityType))}">${esc(d.content)}</textarea>
@@ -18477,7 +18477,9 @@ postForm.addEventListener("submit", async e=>{
   const title = d.title.trim();
   const content = d.content.trim();
   if(!title){ d.error = t("Escribí un título.","Type a title.","Escreva um título.",".הקלד/י כותרת"); render(); return; }
-  if(!content){ d.error = t("Contá algo en comentarios.","Write something in comments.","Conte algo em comentários.",".ספר/י משהו בהערות"); render(); return; }
+  // Comentarios es opcional (pedido del usuario el 4/10/2026): un evento
+  // con título, fecha y lugar ya dice lo que pasó. La base acepta el
+  // contenido vacío desde el 3/10 (03-validacion.sql).
   if(!d.scopes.length){ d.error = t("Agregá al menos un lugar (país, ciudad, región o toda LatAm).","Add at least one place (country, city, region or all of LatAm).","Adicione pelo menos um lugar (país, cidade, região ou toda a LatAm).",".הוסף/הוסיפי לפחות מקום אחד (מדינה, עיר, אזור או כל LatAm)"); render(); return; }
   if(!d.startDate){ d.error = t("Elegí una fecha de inicio.","Choose a start date.","Escolha uma data de início.",".בחר/י תאריך התחלה"); render(); return; }
   if(d.endDate < d.startDate){ d.error = t("La fecha de fin no puede ser anterior a la de inicio.","The end date can't be before the start date.","A data de término não pode ser anterior à de início.",".תאריך הסיום לא יכול להיות לפני תאריך ההתחלה"); render(); return; }
