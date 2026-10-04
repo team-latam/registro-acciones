@@ -713,6 +713,9 @@
   .rv-libre{ display:flex; gap:8px; margin-top:6px; max-width:420px; }
   .rv-libre input{ flex:1; min-width:0; }
   .rv-panel-acc{ display:flex; gap:8px; justify-content:flex-end; }
+  /* Guardar / Cancelar siempre a la vista, aunque el panel scrollee (con
+     el teclado abierto queda poco alto). */
+  .rv-flota .rv-panel-acc{ position:sticky; bottom:-14px; background:var(--card); padding:10px 0 4px; margin-bottom:-4px; border-top:1px solid var(--border); }
   .rv-row{ display:flex; align-items:center; gap:12px; padding:11px 14px; border-top:1px solid var(--border); }
   .rv-row:first-child{ border-top:none; }
   .rv-row.on{ background:var(--celeste-soft); }
@@ -2909,7 +2912,7 @@
        tiempo, y para cargar algo ya está el + de la barra. */
     .quick-composer{ position:static; }
     /* Con el panel de Revisar abierto, el + taparía sus botones. */
-    body:has(.rv-flota .rv-panel) .fab-wrap{ display:none; }
+    body:has(.rv-flota .rv-panel) .fab-wrap, body:has(.rv-flota .rv-panel) .scroll-top{ display:none; }
   }
   /* ---- Celular con el teclado abierto (html.teclado, ver vigilarTeclado) ----
      El teclado se come casi media pantalla. Lo que queda es para el campo
