@@ -274,7 +274,9 @@ export function decidir(ev, posts, ctx){
   // duplicar — los posteos no se pueden borrar después.
   const raPostId = ev.extendedProperties?.private?.raPostId;
   const summary = String(ev.summary || "");
-  const huerfano = posts.find(p => !p.calendarEventId && !p.cancelled && (
+  // Uno cargado "sin pasar a Google Calendar" no se vincula: no tiene
+  // evento a propósito, aunque haya otro con el mismo título y fecha.
+  const huerfano = posts.find(p => !p.calendarEventId && !p.cancelled && !p.sinCalendar && (
     (raPostId && p.id === raPostId) ||
     (p.startDate === startDate && TIPOS_QUE_SINCRONIZAN.has(p.activityType) &&
       elSummaryEsDe(summary, p, tipos))

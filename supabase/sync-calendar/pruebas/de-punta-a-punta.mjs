@@ -122,6 +122,20 @@ const diaEntero = (id, f, extra={}) => ({ id, status:"confirmed", summary:"Reuni
   eq("si el servidor ignora el offset, termina igual", [r.aplicados, reg.lecturas], [1, 2]);
 }
 
+/* ---------- Cargado "sin pasar a Google Calendar" ----------
+   Un posteo guardado a propósito sin evento no se vincula con uno de
+   Calendar, aunque traiga su id: el que lleva el vínculo es el otro. */
+for(const sinCal of [false, true]){
+  const posts = [{ id:"p_sc", title:"Visita a Rosario", content:"", date:"2025-12-29", start_date:"2025-12-29", end_date:"2025-12-29",
+    activity_type:"visita", author_name:"Ana", author_email:"ana@x.com", calendar_event_id:null, cancelled:false, sin_calendar:sinCal, scopes:[] }];
+  const reg = baseDeMentira({ posts, paginas:[{ items:[diaEntero("evSC","2025-12-29",{ summary:"Visita: Visita a Rosario",
+    extendedProperties:{ private:{ raPostId:"p_sc", raActivityType:"visita" } } })], nextSyncToken:"tok1" }] });
+  await callado(()=> main());
+  const p = reg.posts.find(x => x.id === "p_sc");
+  eq(sinCal ? "uno cargado sin Calendar no se vincula con un evento que lo nombra" : "uno que perdió el vínculo sí se vincula",
+     p.calendar_event_id || null, sinCal ? null : "evSC");
+}
+
 /* ---------- Un evento nuevo ---------- */
 {
   const reg = baseDeMentira({ paginas:[{ items:[diaEntero("evA","2026-09-01",{ summary:"Charla abierta" })], nextSyncToken:"tok1" }] });

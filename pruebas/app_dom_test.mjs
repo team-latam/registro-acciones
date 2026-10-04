@@ -744,6 +744,24 @@ const hasta = async (p, fn, arg, ms = 5000) => {
     const ops = [...document.querySelectorAll(".type-picker .type-opt")].map(e => e.textContent.trim());
     return ops.length > 0 && !ops.some(x => /Congreso/.test(x)) && ops.some(x => /Visita/.test(x));
   }), true);
+  // "No pasarlo a Google Calendar" (4/10/2026): queda solo en el Registro,
+  // sin crear el evento en el Calendar compartido.
+  eq("evento: la casilla «No pasarlo a Google Calendar» está, sin marcar", await p.$eval("#cSinCalendar", e => e.checked).catch(() => null), false);
+  await p.fill("#cTitle", "Evento viejo sin Calendar");
+  await p.fill("#cPlaceQuery", "Uruguay");
+  await p.waitForSelector('#postForm [data-action="pick-place"]');
+  await p.click('#postForm [data-action="pick-place"]');
+  await p.check("#cSinCalendar");
+  const avisoAntes = await p.evaluate(() => [...document.querySelectorAll(".calendar-notice")].map(e => e.textContent).join("|"));
+  await p.click('#postForm button[type="submit"]');
+  eq("evento: se guarda marcado sin Calendar", await hasta(p, () =>
+    (window.__sb.tablas.posts || []).some(x => x.title === "Evento viejo sin Calendar" && x.sin_calendar === true)), true);
+  await p.waitForTimeout(1200);
+  eq("evento: y no intenta pasarlo al Calendar (no hay aviso de Calendar)",
+    await p.evaluate(a => [...document.querySelectorAll(".calendar-notice")].map(e => e.textContent).join("|"), avisoAntes).then(t => t === avisoAntes || !/Calendar/.test(t)), true);
+  await p.click('[data-action="toggle-fab"]');
+  await p.click('.fab-action[data-action="new-evento"]');
+  await p.waitForSelector("#cTitle");
   // Comentarios es opcional (4/10/2026): con título, fecha y lugar alcanza.
   eq("evento: el campo de comentarios dice que es opcional",
     await p.$$eval("#postForm label", ls => ls.some(l => l.textContent.trim() === "Comentarios (opcional)")), true);

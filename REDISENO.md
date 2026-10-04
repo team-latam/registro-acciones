@@ -393,6 +393,16 @@ teclado; queda todo distorsionado". Se recorrieron todas las pantallas a
   entra (se puede elegir igual).
 - Orden del Inicio con rótulos cortos en angosto: "Recientes / Antiguos".
 
+### 22. Comentarios opcionales y "No pasarlo a Google Calendar" — HECHO (4 oct 2026)
+
+- En un evento, **Comentarios** es opcional (la base ya lo aceptaba).
+- Casilla **"No pasarlo a Google Calendar"** en el formulario del evento,
+  para cargar algo que ya pasó sin que aparezca en el Calendar compartido
+  ni avise a nadie. Se guarda en `posts.sin_calendar`; con la marca, la app
+  no crea el evento, no lo busca al editar o cancelar, y ninguno de los
+  dos sincronizadores lo vincula con un evento parecido. Se ofrece solo
+  cuando el tipo va al Calendar y el evento todavía no está ahí.
+
 ## Fuera de alcance (necesitan algo que la app no tiene)
 
 - Mandar correos (resumen semanal, invitaciones): no hay servicio de

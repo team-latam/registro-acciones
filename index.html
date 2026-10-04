@@ -1801,6 +1801,8 @@
     font-size:14px; background:var(--surface-soft);
   }
   .allday-toggle{ display:flex; align-items:center; gap:6px; font-size:13px; font-weight:600; color:var(--text); margin-bottom:8px; cursor:pointer; }
+  .allday-toggle.sin-calendar{ margin:12px 0 0; }
+  .sin-calendar-hint{ margin:2px 0 4px 26px; }
   .dt-row{ display:flex; align-items:center; gap:8px; margin-bottom:8px; }
   .dt-row:last-child{ margin-bottom:0; }
   /* Mismo pill que .date-trigger justo arriba en el mismo .field-icon-body
@@ -5812,7 +5814,7 @@ async function applyCalendarEventToPosts(ev){
 
   const raPostId = ev.extendedProperties?.private?.raPostId;
   const summary = String(ev.summary || "");
-  const orphan = state.posts.find(p => !p.calendarEventId && !p.cancelled && (
+  const orphan = state.posts.find(p => !p.calendarEventId && !p.cancelled && !p.sinCalendar && (
     (raPostId && p.id === raPostId) ||
     (p.startDate === startDate && CALENDAR_SYNC_TYPES.has(p.activityType) &&
       summaryMatchesPost(summary, p))
@@ -8692,6 +8694,7 @@ function parcheDeEdicion(original, newData){
     activityType:newData.activityType, scopes:newData.scopes, images:newData.images, links:newData.links,
     files:newData.files, mentions:newData.mentions,
     recurrence: newData.recurrence || null,
+    ...(newData.sinCalendar || original.sinCalendar ? { sinCalendar: !!newData.sinCalendar } : {}),
     lastEditedAt: store.horaDelServidor(), lastEditedBy: state.auth.user.displayName, lastEditedByEmail: state.auth.user.email,
   };
   // Si cambió CÓMO se repite, las fechas suspendidas y corridas eran de
@@ -8714,7 +8717,9 @@ async function updatePostAndSync(postId, original, newData){
   // cancelar): editarlo actualiza solo el posteo. Sin este corte,
   // updateCalendarEvent daba 404 y "recreaba" el evento — con
   // invitaciones nuevas para todos — de algo que el equipo canceló.
-  const skipCalendar = !!original.cancelled;
+  // Uno cargado "sin pasar a Google Calendar" tampoco: no tiene evento y
+  // no se le crea (ver puedeQuedarSinCalendar).
+  const skipCalendar = !!original.cancelled || !!newData.sinCalendar;
   await updatePostDoc(postId, parcheDeEdicion(original, newData));
 
   const summary = buildEditSummary(original, newData);
@@ -8801,7 +8806,7 @@ async function cancelPost(post){
       scopes:[], images:[], links:[],
     });
     let eventId = post.calendarEventId;
-    if(!eventId && CALENDAR_SYNC_TYPES.has(post.activityType)){
+    if(!eventId && CALENDAR_SYNC_TYPES.has(post.activityType) && !post.sinCalendar){
       eventId = await findCalendarEventId(post);
       if(eventId) await saveCalendarLinkOrWarn(post.id, { calendarEventId: eventId });
     }
@@ -8811,7 +8816,7 @@ async function cancelPost(post){
       // Sin el vínculo, una edición posterior del posteo cancelado no
       // intenta tocar (ni recrear) un evento que ya no existe.
       if(calResult.ok) await saveCalendarLinkOrWarn(post.id, { calendarEventId: null });
-    } else if(CALENDAR_SYNC_TYPES.has(post.activityType)){
+    } else if(CALENDAR_SYNC_TYPES.has(post.activityType) && !post.sinCalendar){
       calResult = { ok:false, reason:t(
         "no se encontró un evento de Calendar que coincida (puede que ya se haya borrado a mano, o el título cambió demasiado) — revisalo a mano si hace falta",
         "no matching Calendar event was found (it may have already been deleted by hand, or the title changed too much) — check it manually if needed",
@@ -15109,6 +15114,12 @@ function renderCalendarioGrid(days){
 /* ======================================================================
    COMPOSER: Nuevo evento (modal)
    ====================================================================== */
+// La casilla "No pasarlo a Google Calendar" se ofrece solo cuando el tipo
+// va al Calendar y el evento todavía no está ahí: sacar uno que ya está
+// sería borrarlo del Calendar de todos, y eso es cancelar.
+function puedeQuedarSinCalendar(d){
+  return CALENDAR_SYNC_TYPES.has(d.activityType) && !(d.editingPost && d.editingPost.calendarEventId);
+}
 function newComposerDraft(){
   const today = todayISO();
   return {
@@ -15147,6 +15158,9 @@ function newComposerDraft(){
     // (key "otra"), se guardan tal cual en vez de aproximarlas.
     recur: { key:"none", byDay:[isoDow(today)], byDayAuto:true, until:"" },
     recurrence: null,
+    // "No pasarlo a Google Calendar": para cargar algo que ya pasó sin
+    // que aparezca en el Calendar compartido ni avise a nadie.
+    sinCalendar: false,
     editingPost: null,
   };
 }
@@ -15584,6 +15598,7 @@ function openEditComposer(post){
     mentionQuery: null, mentionCaret: 0, mentionHighlight: 0,
     recur: recurDraftFrom(post.recurrence, post.startDate || post.date),
     recurrence: Array.isArray(post.recurrence) ? [...post.recurrence] : null,
+    sinCalendar: !!post.sinCalendar,
     error: "", editingPost: post,
   };
   composerSnapshot = snapshotComposer();
@@ -15768,6 +15783,8 @@ function renderComposer(){
         <button type="button" class="btn-text-add" data-action="toggle-post-attach">📎 ${t("Agregar imagen, documento, audio o link","Add image, document, audio or link","Adicionar imagem, documento, áudio ou link","הוספת תמונה, מסמך, אודיו או קישור")}</button>
       `}
     </div>
+    ${puedeQuedarSinCalendar(d) ? `<label class="allday-toggle sin-calendar"><input type="checkbox" id="cSinCalendar" ${d.sinCalendar?"checked":""}> ${t("No pasarlo a Google Calendar","Don't add it to Google Calendar","Não passar para o Google Calendar","לא להוסיף ל-Google Calendar")}</label>
+      <div class="field-hint sin-calendar-hint">${t("Queda solo en el Registro: no aparece en el Calendar compartido ni le llega aviso a nadie. Sirve para cargar algo que ya pasó.","It stays only in the Registro: it doesn't show up in the shared Calendar and nobody gets notified. Useful for adding something that already happened.","Fica só no Registro: não aparece no Calendar compartilhado nem chega aviso a ninguém. Serve para cadastrar algo que já aconteceu.","נשאר רק ביומן הפעילויות: לא מופיע ביומן המשותף ואף אחד לא מקבל התראה. שימושי להוספת משהו שכבר קרה.")}</div>` : ""}
     ${d.error ? `<div class="form-error">${esc(d.error)}</div>` : ""}
     <div class="modal-actions">
       <button type="button" class="btn-secondary" data-action="cancel-composer">${t("Cancelar","Cancel","Cancelar","ביטול")}</button>
@@ -18403,6 +18420,7 @@ document.addEventListener("change", e=>{
     return;
   }
   if(el.name === "cType"){ composerDraft.activityType = el.value; render(); }
+  else if(el.id === "cSinCalendar"){ composerDraft.sinCalendar = el.checked; render(); }
   else if(el.id === "cAllDay"){
     composerDraft.allDay = el.checked;
     if(el.checked){ composerDraft.startTime = ""; composerDraft.endTime = ""; }
@@ -18501,6 +18519,9 @@ postForm.addEventListener("submit", async e=>{
     // en Google Calendar.
     recurrence: d.recur && d.recur.key === "otra" ? (d.recurrence || null) : recurLinesFrom(d.recur, d.startDate),
     authorName: state.auth.user.displayName, authorEmail: state.auth.user.email,
+    // Solo cuando se marcó: así un posteo común se guarda con la forma de
+    // siempre (y no depende de que la base ya tenga la columna).
+    ...(d.sinCalendar && puedeQuedarSinCalendar(d) ? { sinCalendar:true } : {}),
   };
   d.submitting = true; render();
   try{
@@ -18519,7 +18540,7 @@ postForm.addEventListener("submit", async e=>{
     } else {
       const postId = await createPost(postData);
       closeComposer();
-      if(CALENDAR_SYNC_TYPES.has(postData.activityType)){
+      if(CALENDAR_SYNC_TYPES.has(postData.activityType) && !postData.sinCalendar){
         syncToCalendar(postData, postId).then(res=>{
           // Si el vínculo no se guarda, el sync de vuelta (Calendar → app)
           // no reconoce el evento y lo importa como posteo nuevo: se avisa
