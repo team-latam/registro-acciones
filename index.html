@@ -1723,6 +1723,9 @@
 
   .empty-state{ text-align:center; padding:50px 20px; color:var(--text-muted); }
   .empty-state .big{ font-size:36px; margin-bottom:10px; }
+  .lp-sub{ font-size:15px; margin:22px 0 6px; }
+  .lugares-sin-ubicar{ list-style:none; margin:8px 0 0; padding:0; columns:2 220px; }
+  .lugares-sin-ubicar li{ padding:4px 0; break-inside:avoid; }
 
   /* ---------- Modal ---------- */
   .modal-overlay{
@@ -3231,6 +3234,7 @@ const CITY_PRESETS = {
 // rompería la carga de posteos viejos y toda comparación/matching.
 const DEFAULT_COUNTRY_LABELS = {
   "Argentina": { es:"Argentina", en:"Argentina", pt:"Argentina", he:"ארגנטינה" },
+  "Israel": { es:"Israel", en:"Israel", pt:"Israel", he:"ישראל" },
   "Chile": { es:"Chile", en:"Chile", pt:"Chile", he:"צ'ילה" },
   "Uruguay": { es:"Uruguay", en:"Uruguay", pt:"Uruguai", he:"אורוגוואי" },
   "Paraguay": { es:"Paraguay", en:"Paraguay", pt:"Paraguai", he:"פרגוואי" },
@@ -3441,6 +3445,13 @@ function canonicalCityName(country, city){
   return preset ? preset.name : titleCase(city);
 }
 const COUNTRY_BY_NAME = Object.fromEntries(COUNTRIES.map(c=>[c.name,c]));
+// Países fuera de LatAm que igual se pueden elegir como alcance (pedido
+// del usuario el 4/10/2026: lo que se hace para Israel tiene alcance
+// allá). A propósito NO están en COUNTRIES: no tienen zona, no suman a
+// "Toda LatAm" ni a ninguna región, y el mapa, Países y los conteos por
+// país no los muestran (computePlaceCounts y COUNTRY_BY_NAME no los
+// conocen). Solo existen como alcance {type:"pais", country:"Israel"}.
+const PAISES_FUERA_DE_LATAM = ["Israel"];
 const ZONE_COUNTRIES = { sur:[], central:[], norte:[] };
 COUNTRIES.forEach(c=>ZONE_COUNTRIES[c.zone].push(c.name));
 
@@ -3459,6 +3470,9 @@ function buildPlaceIndex(){
     (CITY_PRESETS[c.name]||[]).forEach(city=>{
       items.push({ label:`${cityLabel(c.name, city.name)}, ${countryLabel(c.name)}`, icon:"📍", scope:{ type:"ciudad", country:c.name, city:city.name } });
     });
+  });
+  PAISES_FUERA_DE_LATAM.forEach(name=>{
+    items.push({ label:countryLabel(name), icon:"🏳️", scope:{ type:"pais", country:name } });
   });
   // norm: el label sin tildes ni mayúsculas, precalculado una vez acá para
   // que getPlaceMatches no lo recalcule por cada item en cada tecla. En
@@ -10548,7 +10562,7 @@ function rvCampoLugar(b){
         <option value="">${t("— elegí —","— choose —","— escolha —","— בחירה —")}</option>
         <option value="@todo"${b.alcance === "todo" ? " selected" : ""}>🌐 ${t("Toda LatAm","All of LatAm","Toda a LatAm","כל LatAm")}</option>
         ${Object.values(ZONES).map(z => `<option value="@zona:${esc(z.key)}"${b.alcance === "region" && b.zona === z.key ? " selected" : ""}>🌎 ${esc(t("Región {z}","{z} region","Região {z}","אזור {z}",{z:z.label}))}</option>`).join("")}
-        ${COUNTRIES.map(c => `<option value="${esc(c.name)}"${b.pais === c.name && b.alcance !== "todo" && b.alcance !== "region" ? " selected" : ""}>${esc(countryLabel(c.name))}</option>`).join("")}
+        ${[...COUNTRIES.map(c => c.name), ...PAISES_FUERA_DE_LATAM].map(n => `<option value="${esc(n)}"${b.pais === n && b.alcance !== "todo" && b.alcance !== "region" ? " selected" : ""}>${esc(countryLabel(n))}</option>`).join("")}
       </select></label>
       ${b.pais && b.alcance !== "todo" && b.alcance !== "region" ? `<select id="rvCiudad" aria-label="${esc(t("Ciudad","City","Cidade","עיר"))}"><option value="">${t("Todo el país","Whole country","País inteiro","כל המדינה")}</option>
       ${ciudades.map(c => `<option value="${esc(c)}"${b.ciudad === c ? " selected" : ""}>${esc(cityLabel(b.pais, c))}</option>`).join("")}
@@ -11143,8 +11157,26 @@ function getCustomCityUsage(){
   });
   return Object.values(usage).sort((a,b)=> b.count - a.count);
 }
+// Ciudades que ya están en la lista (sumadas desde acá) pero sin
+// coordenada propia: en el mapa caen en la capital de su país (ver
+// mapMarkerSpecs). Se muestran para que alguien les cargue la ubicación
+// real en CITY_PRESETS (pedido del usuario el 4/10/2026).
+function getCitiesWithoutCoord(){
+  const out = [];
+  Object.keys(CITY_PRESETS).forEach(country => {
+    CITY_PRESETS[country].forEach(c => { if(!c.coord) out.push({ country, city:c.name }); });
+  });
+  return out.sort((a, b) => a.country.localeCompare(b.country) || a.city.localeCompare(b.city));
+}
 function renderLugaresSection(){
   const items = getCustomCityUsage();
+  // Lo de fuera de LatAm (Israel) no va al mapa a propósito: no se lista.
+  const sinUbicar = [...items.map(it => ({ country:it.country, city:it.city })), ...getCitiesWithoutCoord()]
+    .filter(it => !PAISES_FUERA_DE_LATAM.includes(it.country));
+  const bloqueSinUbicar = sinUbicar.length ? `
+      <h3 class="lp-sub" id="lugaresSinUbicar">${t("Sin ubicación propia en el mapa","No location of their own on the map","Sem localização própria no mapa","ללא מיקום משלהן במפה")} (${sinUbicar.length})</h3>
+      <p class="hint">${t("Por ahora el mapa las pone en la capital del país. Cuando termines de cargar lugares, mandale esta lista a quien mantiene la app para que les ponga la ubicación exacta.","For now the map puts them in the country's capital. When you finish adding places, send this list to whoever maintains the app so they can set the exact location.","Por enquanto o mapa as coloca na capital do país. Quando terminar de cadastrar lugares, mande esta lista a quem mantém o app para colocar a localização exata.","בינתיים המפה מציבה אותן בבירת המדינה. כשתסיים/י להוסיף מקומות, שלח/י את הרשימה הזו למי שמתחזק את האפליקציה כדי שיגדיר את המיקום המדויק.")}</p>
+      <ul class="lugares-sin-ubicar">${sinUbicar.map(it => `<li>📍 ${esc(it.city)}, ${esc(countryLabel(it.country))}</li>`).join("")}</ul>` : "";
   return `
       ${!items.length ? `<div class="empty-state"><div class="big">📍</div>${t("No hay ciudades nuevas pendientes de revisar.","No new cities pending review.","Não há cidades novas pendentes de revisão.","אין ערים חדשות שממתינות לבדיקה.")}</div>` : `
       <div class="lp-rows">
@@ -11155,7 +11187,7 @@ function renderLugaresSection(){
             <span class="lp-when">${posteos}</span>
             <button type="button" class="btn-mini" data-action="lugares-promote" data-country="${esc(it.country)}" data-city="${esc(it.city)}" title="${esc(t("Sumar a la lista oficial","Add to the official list","Somar à lista oficial","הוספה לרשימה הרשמית"))}">+ <span class="lp-ancho">${t("Sumar a la lista oficial","Add to the official list","Somar à lista oficial","הוספה לרשימה הרשמית")}</span><span class="lp-angosto">${t("Sumar","Add","Somar","הוספה")}</span></button>
           </div>`; }).join("")}
-      </div>`}`;
+      </div>`}${bloqueSinUbicar}`;
 }
 
 /* ----- Preferencias: sección "Calendar" ----- */
@@ -12585,7 +12617,10 @@ function groupedCountryOptions(selected){
   return Object.values(ZONES).map(z=>`
     <optgroup label="${esc(z.label)}">
       ${ZONE_COUNTRIES[z.key].map(name=>`<option value="${esc(name)}" ${selected===name?"selected":""}>${esc(countryLabel(name))}</option>`).join("")}
-    </optgroup>`).join("");
+    </optgroup>`).join("") + `
+    <optgroup label="${esc(t("Fuera de LatAm","Outside LatAm","Fora da LatAm","מחוץ ל-LatAm"))}">
+      ${PAISES_FUERA_DE_LATAM.map(name=>`<option value="${esc(name)}" ${selected===name?"selected":""}>${esc(countryLabel(name))}</option>`).join("")}
+    </optgroup>`;
 }
 
 /* ======================================================================

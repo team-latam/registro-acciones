@@ -357,6 +357,18 @@ eventos.
   6 eventos de 2024–2026 nunca entraron al Registro. Arreglado en los dos
   sincronizadores; entran con un "Reimportar historial".
 
+### 20. Israel como alcance, y lugares sin ubicar — HECHO (4 oct 2026)
+
+- **Israel** se puede elegir como alcance (formulario del evento, buscador
+  de lugar y Revisar lo de Calendar), en un grupo aparte "Fuera de LatAm".
+  A propósito no está en `COUNTRIES`: no tiene zona, no suma a "Toda
+  LatAm" ni a una región, y no aparece en el mapa, en Países ni en los
+  conteos por país (`PAISES_FUERA_DE_LATAM`).
+- **Configuración › Lugares** lista "Sin ubicación propia en el mapa": las
+  ciudades que hoy caen en la capital de su país (escritas a mano o sumadas
+  sin coordenada). Cuando el usuario termine de cargar lugares, pasa esa
+  lista y se les carga la coordenada en `CITY_PRESETS`.
+
 ## Fuera de alcance (necesitan algo que la app no tiene)
 
 - Mandar correos (resumen semanal, invitaciones): no hay servicio de
