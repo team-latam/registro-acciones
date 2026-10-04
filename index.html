@@ -3243,9 +3243,9 @@ const COUNTRIES = [
 // opción de escribir una ciudad nueva si no está en la lista.
 const CITY_PRESETS = {
   "Argentina": [{name:"Avellaneda", coord:[-34.6626,-58.3654]}, {name:"Bahia Blanca", coord:[-38.7196,-62.2724]}, {name:"Bariloche", coord:[-41.1335,-71.3103]}, {name:"Basavilbaso", coord:[-32.3714,-58.8784]}, {name:"Buenos Aires (CABA)", coord:[-34.6037,-58.3816]}, {name:"Catamarca", coord:[-28.4696,-65.7795]}, {name:"Cipolletti", coord:[-38.9339,-67.9903]}, {name:"Concepción del Uruguay", coord:[-32.4846,-58.2373]}, {name:"Concordia", coord:[-31.3929,-58.0209]}, {name:"Cordoba", coord:[-31.4201,-64.1888]}, {name:"Corrientes", coord:[-27.4692,-58.8306]}, {name:"Gualeguay", coord:[-33.1416,-59.3097]}, {name:"Gualeguaychú", coord:[-33.0094,-58.5172]}, {name:"La Plata", coord:[-34.9215,-57.9545]}, {name:"Mar Del Plata", coord:[-38.0055,-57.5426]}, {name:"Martinez", coord:[-34.4930,-58.5064]}, {name:"Mendoza", coord:[-32.8895,-68.8458]}, {name:"Moisés Ville", coord:[-30.7167,-61.4667]}, {name:"Moron", coord:[-34.6534,-58.6198]}, {name:"Neuquén", coord:[-38.9516,-68.0591]}, {name:"Nordelta", coord:[-34.4056,-58.6614]}, {name:"Paraná", coord:[-31.7319,-60.5238]}, {name:"Posadas", coord:[-27.3671,-55.8961]}, {name:"Rafaela", coord:[-31.2503,-61.4867]}, {name:"Ramos Mejia", coord:[-34.6494,-58.5638]}, {name:"Resistencia", coord:[-27.4514,-58.9867]}, {name:"Rosario", coord:[-32.9468,-60.6393]}, {name:"Salta", coord:[-24.7859,-65.4117]}, {name:"San Fernando", coord:[-34.4402,-58.5599]}, {name:"Santa Fe", coord:[-31.6333,-60.7000]}, {name:"Tigre", coord:[-34.4264,-58.5796]}, {name:"Tucuman", coord:[-26.8083,-65.2176]}, {name:"Vicente Lopez", coord:[-34.5266,-58.4726]}, {name:"Villa Clara", coord:[-31.8306,-58.8222]}, {name:"Villaguay", coord:[-31.8653,-59.0269]}, {name:"Yerba Buena", coord:[-26.8180,-65.3181]}],
-  "Aruba": [{name:"Aruba", coord:[12.5211,-70.0270]}, {name:"Oranjestad", coord:[12.5240,-70.0270]}],
+  "Aruba": [{name:"Aruba", coord:[12.5211,-70.0270]}, {name:"Noord", coord:[12.5833,-70.0333]}, {name:"Oranjestad", coord:[12.5240,-70.0270]}],
   "Bahamas": [{name:"Freeport", coord:[26.5333,-78.7000]}, {name:"Nassau", coord:[25.0480,-77.3554]}],
-  "Barbados": [{name:"Barbados", coord:[13.1132,-59.5988]}, {name:"Bridgetown", coord:[13.1132,-59.5988]}],
+  "Barbados": [{name:"Barbados", coord:[13.1132,-59.5988]}, {name:"Bridgetown", coord:[13.1132,-59.5988]}, {name:"Worthing", coord:[13.0719,-59.5848]}],
   "Belice": [{name:"Belmopan", coord:[17.2510,-88.7590]}, {name:"Ciudad de Belice", coord:[17.5046,-88.1962]}, {name:"San Pedro", coord:[17.9161,-87.9647]}],
   "Bermudas": [{name:"Bermuda", coord:[32.2949,-64.7859]}, {name:"Hamilton", coord:[32.2949,-64.7859]}],
   "Bolivia": [{name:"Cochabamba", coord:[-17.3895,-66.1568]}, {name:"La Paz", coord:[-16.5000,-68.1500]}, {name:"Santa Cruz de la Sierra", coord:[-17.7833,-63.1821]}],
@@ -3258,10 +3258,10 @@ const CITY_PRESETS = {
   "Surinam": [{name:"Paramaribo", coord:[5.8520,-55.2038]}],
   "Haití": [{name:"Cabo Haitiano", coord:[19.7578,-72.2042]}, {name:"Puerto Príncipe", coord:[18.5944,-72.3074]}],
   "Trinidad y Tobago": [{name:"Puerto España", coord:[10.6596,-61.5019]}],
-  "Puerto Rico": [{name:"Dorado", coord:[18.4589,-66.2677]}, {name:"Ponce", coord:[18.0111,-66.6141]}, {name:"San Juan", coord:[18.4655,-66.1057]}],
+  "Puerto Rico": [{name:"Dorado", coord:[18.4589,-66.2677]}, {name:"Isla Verde", coord:[18.4434,-66.0182]}, {name:"Ponce", coord:[18.0111,-66.6141]}, {name:"San Juan", coord:[18.4655,-66.1057]}],
   "Guadalupe": [{name:"Pointe-à-Pitre", coord:[16.2411,-61.5331]}],
   "Bonaire": [{name:"Kralendijk", coord:[12.1443,-68.2655]}],
-  "Islas Vírgenes": [{name:"Charlotte Amalie", coord:[18.3419,-64.9307]}, {name:"Road Town", coord:[18.4286,-64.6185]}],
+  "Islas Vírgenes": [{name:"Road Town", coord:[18.4286,-64.6185]}, {name:"St. Croix", coord:[17.7466,-64.7032]}, {name:"St. John", coord:[18.3305,-64.7949]}, {name:"St. Thomas", coord:[18.3419,-64.9307]}],
   "San Vicente y las Granadinas": [{name:"Kingstown", coord:[13.1600,-61.2248]}],
   "Antigua y Barbuda": [{name:"St. John's", coord:[17.1274,-61.8468]}],
   "Dominica": [{name:"Roseau", coord:[15.3010,-61.3870]}],
@@ -3269,7 +3269,7 @@ const CITY_PRESETS = {
   "Curazao": [{name:"Curacao", coord:[12.1224,-68.9040]}, {name:"Willemstad", coord:[12.1091,-68.9316]}],
   "Ecuador": [{name:"Cuenca", coord:[-2.9001,-79.0059]}, {name:"Guayaquil", coord:[-2.1894,-79.8891]}, {name:"Montañita", coord:[-1.8333,-80.7500]}, {name:"Quito", coord:[-0.1807,-78.4678]}],
   "El Salvador": [{name:"El Salvador", coord:[13.6929,-89.2182]}, {name:"San Salvador", coord:[13.6929,-89.2182]}],
-  "Granada": [{name:"Grenada", coord:[12.0561,-61.7488]}, {name:"St. George's", coord:[12.0561,-61.7488]}],
+  "Granada": [{name:"Grenada", coord:[12.0561,-61.7488]}, {name:"St. George's", coord:[12.0561,-61.7488]}, {name:"True Blue", coord:[12.0058,-61.7606]}],
   "Guatemala": [{name:"Antigua", coord:[14.5586,-90.7295]}, {name:"Ciudad de Guatemala", coord:[14.6349,-90.5069]}, {name:"San Pedro", coord:[14.6931,-91.2717]}],
   "Honduras": [{name:"Roatan", coord:[16.3200,-86.5350]}, {name:"San Pedro Sula", coord:[15.5050,-88.0250]}, {name:"Tegucigalpa", coord:[14.0723,-87.1921]}],
   "Islas Caimán": [{name:"George Town", coord:[19.2866,-81.3744]}, {name:"Grand Cayman", coord:[19.3133,-81.2546]}],
@@ -3282,7 +3282,7 @@ const CITY_PRESETS = {
   "Perú": [{name:"Arequipa", coord:[-16.4090,-71.5375]}, {name:"Cuzco", coord:[-13.5320,-71.9675]}, {name:"Lima", coord:[-12.0464,-77.0428]}, {name:"Pisac", coord:[-13.4194,-71.8511]}],
   "República Dominicana": [{name:"Puerto Plata", coord:[19.7934,-70.6884]}, {name:"Punta Cana", coord:[18.5601,-68.3725]}, {name:"Santiago de los Caballeros", coord:[19.4517,-70.6970]}, {name:"Santo Domingo", coord:[18.4861,-69.9312]}],
   "San Bartolomé (St. Barth)": [{name:"Gustavia", coord:[17.8962,-62.8498]}],
-  "San Martín / Sint Maarten": [{name:"Philipsburg", coord:[18.0260,-63.0458]}, {name:"St. Martin", coord:[18.0708,-63.0501]}],
+  "San Martín / Sint Maarten": [{name:"Philipsburg", coord:[18.0260,-63.0458]}, {name:"Simpson Bay", coord:[18.0319,-63.0928]}, {name:"St. Martin", coord:[18.0708,-63.0501]}],
   "Santa Lucía": [{name:"Castries", coord:[14.0101,-60.9875]}, {name:"Rodney Bay", coord:[14.0800,-60.9500]}],
   "Turcas y Caicos": [{name:"Providenciales", coord:[21.7840,-72.2653]}],
   "Uruguay": [{name:"Colonia del Sacramento", coord:[-34.4626,-57.8398]}, {name:"Montevideo", coord:[-34.9011,-56.1645]}, {name:"Punta Del Este", coord:[-34.9670,-54.9508]}],
@@ -3518,6 +3518,7 @@ const DEFAULT_CITY_LABELS = {
     "Puerto España": { es:"Puerto España", en:"Port of Spain", pt:"Porto da Espanha", he:"פורט אוף ספיין" },
   },
   "Puerto Rico": {
+    "Isla Verde": { es:"Isla Verde (Carolina)", en:"Isla Verde (Carolina)", pt:"Isla Verde (Carolina)", he:"איסלה ורדה" },
     "San Juan": { es:"San Juan", en:"San Juan", pt:"San Juan", he:"סן חואן" },
     "Ponce": { es:"Ponce", en:"Ponce", pt:"Ponce", he:"פונסה" },
     "Dorado": { es:"Dorado", en:"Dorado", pt:"Dorado", he:"דוראדו" },
@@ -3529,7 +3530,9 @@ const DEFAULT_CITY_LABELS = {
     "Kralendijk": { es:"Kralendijk", en:"Kralendijk", pt:"Kralendijk", he:"קרלנדייק" },
   },
   "Islas Vírgenes": {
-    "Charlotte Amalie": { es:"Charlotte Amalie", en:"Charlotte Amalie", pt:"Charlotte Amalie", he:"שרלוט אמלי" },
+    "St. Croix": { es:"St. Croix", en:"St. Croix", pt:"St. Croix", he:"סנט קרוי" },
+    "St. John": { es:"St. John", en:"St. John", pt:"St. John", he:"סנט ג'ון" },
+    "St. Thomas": { es:"St. Thomas", en:"St. Thomas", pt:"St. Thomas", he:"סנט תומאס" },
     "Road Town": { es:"Road Town", en:"Road Town", pt:"Road Town", he:"רוד טאון" },
   },
   "San Vicente y las Granadinas": {
@@ -3545,9 +3548,11 @@ const DEFAULT_CITY_LABELS = {
     "Basseterre": { es:"Basseterre", en:"Basseterre", pt:"Basseterre", he:"בסטר" },
   },
   "Aruba": {
+    "Noord": { es:"Noord (Palm Beach)", en:"Noord (Palm Beach)", pt:"Noord (Palm Beach)", he:"נורד" },
     "Oranjestad": { es:"Oranjestad", en:"Oranjestad", pt:"Oranjestad", he:"אורנייסטאד" },
   },
   "Barbados": {
+    "Worthing": { es:"Worthing", en:"Worthing", pt:"Worthing", he:"וורת'ינג" },
     "Bridgetown": { es:"Bridgetown", en:"Bridgetown", pt:"Bridgetown", he:"ברידג'טאון" },
   },
   "Belice": {
@@ -3561,6 +3566,7 @@ const DEFAULT_CITY_LABELS = {
     "San Salvador": { es:"San Salvador", en:"San Salvador", pt:"San Salvador", he:"סן סלבדור" },
   },
   "Granada": {
+    "True Blue": { es:"True Blue", en:"True Blue", pt:"True Blue", he:"טרו בלו" },
     "St. George's": { es:"St. George's", en:"St. George's", pt:"St. George's", he:"סנט ג'ורג'ס" },
   },
   "Honduras": {
@@ -3589,6 +3595,7 @@ const DEFAULT_CITY_LABELS = {
     "Castries": { es:"Castries", en:"Castries", pt:"Castries", he:"קסטריז" },
   },
   "San Martín / Sint Maarten": {
+    "Simpson Bay": { es:"Simpson Bay", en:"Simpson Bay", pt:"Simpson Bay", he:"סימפסון ביי" },
     "Philipsburg": { es:"Philipsburg", en:"Philipsburg", pt:"Philipsburg", he:"פיליפסבורג" },
   },
   "Venezuela": {
