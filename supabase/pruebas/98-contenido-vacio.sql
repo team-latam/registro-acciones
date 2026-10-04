@@ -91,6 +91,21 @@ insert into lab.resultados(nombre, esperado, obtenido, detalle)
   select 'aplicarla de nuevo es inofensivo', true, count(*) = 5, 'vacíos: ' || count(*)
   from public.posts where content = '';
 
+-- Comentarios opcional y "sin pasar a Google Calendar" (4/10/2026): un
+-- evento viejo se carga sin texto y marcado para que no vaya al Calendar.
+select lab.probar_valor('un evento sin comentarios y sin Calendar entra, con la marca', :YO,
+  $q$insert into public.posts(id,title,content,date,start_date,end_date,activity_type,author_name,author_email,sin_calendar)
+     values ('sc1','Viejo','','2022-02-27','2022-02-27','2022-03-02','curso','Benny','benny@team-latam.com',true)$q$,
+  $q$select sin_calendar::text from public.posts where id='sc1'$q$, 'true');
+select lab.probar_valor('sin decir nada, va al Calendar como siempre', :YO,
+  $q$insert into public.posts(id,title,content,date,start_date,end_date,activity_type,author_name,author_email)
+     values ('sc2','Nuevo','','2026-12-09','2026-12-09','2026-12-09','curso','Benny','benny@team-latam.com')$q$,
+  $q$select sin_calendar::text from public.posts where id='sc2'$q$, 'false');
+insert into public.posts(id,title,content,date,start_date,end_date,activity_type,author_name,author_email,sin_calendar)
+  values ('sc3','Viejo','','2022-02-27','2022-02-27','2022-03-02','curso','Benny','benny@team-latam.com',true);
+select lab.probar('y la marca se puede cambiar al editar', :YO,
+  $q$update public.posts set sin_calendar = false where id='sc3'$q$, true);
+
 \set QUIET off
 select n, '  FALLA  ' || nombre as falla from lab.resultados where esperado <> obtenido order by n;
 select count(*) filter (where esperado = obtenido) || ' pasaron, ' ||

@@ -80,6 +80,11 @@ create table if not exists public.posts (
 -- el alter es para las bases que ya existían (el create de arriba no toca
 -- una tabla que ya está).
 alter table public.posts add column if not exists last_edited_by_email text;
+-- Cargado "sin pasar a Google Calendar" (4/10/2026): un evento de un tipo
+-- que va al Calendar, pero que se guardó solo en el Registro (algo que ya
+-- pasó, que no tiene que avisarle a nadie). La app no le crea evento ni lo
+-- vincula con uno que se le parezca.
+alter table public.posts add column if not exists sin_calendar boolean not null default false;
 
 create index if not exists posts_date_idx           on public.posts (date desc);
 create index if not exists posts_start_date_idx     on public.posts (start_date);
