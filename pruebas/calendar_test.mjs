@@ -216,5 +216,33 @@ eq("ninguna de las dos pasa por otro lado que no sea Google",
      [true, true, true, false]);
 }
 
+/* ---------- Pasar al Calendar lo que solo está en el Registro (5/10/2026) ---------- */
+{
+  const llamadas = { crear:[], guardar:[] };
+  const api = new Function("llamadas", `
+    const CALENDAR_SYNC_TYPES = new Set(["visita","curso"]);
+    const state = { posts: [
+      { id:"a", title:"Curso de Moda", activityType:"curso", startDate:"2022-02-27", sinCalendar:true },
+      { id:"b", title:"Córdoba", activityType:"visita", startDate:"2025-12-30" },
+      { id:"c", title:"Ya está", activityType:"visita", startDate:"2025-01-01", calendarEventId:"ev_c" },
+      { id:"d", title:"Cancelado", activityType:"visita", startDate:"2025-01-02", cancelled:true },
+      { id:"e", title:"Rutina", activityType:"rutina", startDate:"2025-01-03" } ] };
+    const render = () => {}; const t = s => s; const console = { warn(){} };
+    async function ensureCalendarToken(){ return "tok"; }
+    async function findCalendarEventId(p){ return p.id === "b" ? "ev_b_existente" : null; }
+    async function syncToCalendar(p, id, opts){ llamadas.crear.push([id, opts]); return { ok:true, eventId:"ev_" + id + "_nuevo" }; }
+    async function updatePostDoc(id, patch){ llamadas.guardar.push([id, patch]); }
+    ${grab("postsSinCalendar")}
+    ${grab("calFaltantes")}
+    ${grab("pasarFaltantesACalendar")}
+    return { postsSinCalendar, pasarFaltantesACalendar, calFaltantes: () => calFaltantes };`)(llamadas);
+  eq("se listan solo los que van al Calendar, sin evento y sin cancelar, por fecha", api.postsSinCalendar().map(p => p.id), ["a", "b"]);
+  await api.pasarFaltantesACalendar();
+  eq("el que no estaba se crea SIN avisarle a nadie", llamadas.crear, [["a", { avisar:false }]]);
+  eq("el que ya estaba en el Calendar se vincula, no se duplica; y se le saca la marca de «sin Calendar»",
+     llamadas.guardar, [["a", { calendarEventId:"ev_a_nuevo", sinCalendar:false }], ["b", { calendarEventId:"ev_b_existente" }]]);
+  eq("y queda dicho cuáles se pasaron", api.calFaltantes().pasados, ["Curso de Moda", "Córdoba"]);
+}
+
 console.log(`\n${pass} pasaron, ${fail} fallaron`);
 process.exit(fail ? 1 : 0);

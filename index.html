@@ -1733,6 +1733,9 @@
   .lp-sub{ font-size:15px; margin:22px 0 6px; }
   .lugares-sin-ubicar{ list-style:none; margin:8px 0 0; padding:0; columns:2 220px; }
   .lugares-sin-ubicar li{ padding:4px 0; break-inside:avoid; }
+  .cal-faltantes-lista{ list-style:none; margin:4px 0 10px; padding:0; max-height:260px; overflow:auto; font-size:13.5px; }
+  .cal-faltantes-lista li{ padding:4px 0; border-bottom:1px solid var(--border); }
+  .cal-faltantes-ok{ margin-top:8px; font-weight:700; color:var(--ok-text); }
 
   /* ---------- Modal ---------- */
   .modal-overlay{
@@ -5410,11 +5413,14 @@ function activityLabelVariants(activityType){
   return [...out];
 }
 
-async function syncToCalendar(postData, postId){
+// avisar:false crea el evento sin mandarle mail a nadie (sendUpdates=none):
+// para pasar al Calendar lo que ya estaba en el Registro (ver
+// pasarFaltantesACalendar), no para un evento nuevo.
+async function syncToCalendar(postData, postId, { avisar = true } = {}){
   const token = await ensureCalendarToken();
   if(!token) return { ok:false, reason:t("no se pudo autorizar el acceso a Calendar","couldn't authorize access to Calendar","não foi possível autorizar o acesso ao Calendar","לא ניתן היה לאשר את הגישה ליומן") };
   try{
-    const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events?sendUpdates=all`, {
+    const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events?sendUpdates=${avisar ? "all" : "none"}`, {
       method: "POST",
       headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
       body: JSON.stringify(buildCalendarEvent(postData, postId)),
@@ -11417,6 +11423,7 @@ function renderCalendarSection(){
       </div>` : ""}
       ${d.error ? `<div class="form-error">${esc(d.error)}</div>` : ""}
       ${renderCalendarImportBlock(d)}
+      ${renderCalendarFaltantes()}
       ${d.locked ? "" : `<div class="modal-actions" style="margin-top:16px;">
         <button type="button" class="btn-secondary" data-action="calendar-reset">${t("Descartar cambios","Discard changes","Descartar alterações","ביטול השינויים")}</button>
         <button type="button" class="btn-primary" data-action="calendar-save" ${d.saving || (d.confirmWord && d.typed.trim().toLowerCase() !== d.confirmWord.toLowerCase()) ? "disabled" : ""}>${d.saving ? t("Guardando…","Saving…","Salvando…","...שומר") : d.confirmWord ? t("Confirmar y guardar","Confirm and save","Confirmar e salvar","אישור ושמירה") : t("Guardar cambios","Save changes","Salvar alterações","שמירת השינויים")}</button>
@@ -11451,6 +11458,76 @@ function renderCalendarImportBlock(d){
           <button type="button" class="btn-primary" data-action="calendar-reimport" ${d.typed.trim().toLowerCase() !== d.confirmWord.toLowerCase() ? "disabled" : ""}>${t("Confirmar y reimportar","Confirm and reimport","Confirmar e reimportar","אישור וייבוא מחדש")}</button>
         </div>
       </div>` : ""}`;
+}
+
+// Lo que está en el Registro pero no en el Calendar compartido: eventos de
+// un tipo que va al Calendar, sin cancelar y sin evento vinculado (los
+// cargados con "No pasarlo a Google Calendar", o los que fallaron al
+// crearse). El usuario decidió el 5/10/2026 que todo esté en Calendar: se
+// listan y se pasan de una, sin avisarle a nadie.
+function postsSinCalendar(){
+  return state.posts
+    .filter(p => CALENDAR_SYNC_TYPES.has(p.activityType) && !p.calendarEventId && !p.cancelled)
+    .sort((a, b) => String(a.startDate || a.date).localeCompare(String(b.startDate || b.date)));
+}
+let calFaltantes = { trabajando:false, hechos:0, total:0, pasados:[], fallados:[] };
+function renderCalendarFaltantes(){
+  const f = calFaltantes;
+  const lista = postsSinCalendar();
+  const fecha = p => fmtISO(p.startDate || p.date, { day:"numeric", month:"short", year:"numeric" });
+  const resultado = !f.trabajando && (f.pasados.length || f.fallados.length) ? `
+        <div class="hint cal-faltantes-ok" role="status">${f.pasados.length === 1
+          ? t("Se pasó 1 evento al Calendar, sin avisos.","1 event was added to the Calendar, without notifications.","1 evento foi passado ao Calendar, sem avisos.","אירוע אחד נוסף ליומן, ללא התראות.")
+          : t("Se pasaron {n} eventos al Calendar, sin avisos.","{n} events were added to the Calendar, without notifications.","{n} eventos foram passados ao Calendar, sem avisos.","{n} אירועים נוספו ליומן, ללא התראות.",{n:f.pasados.length})}${f.fallados.length
+          ? " " + t("No se pudieron pasar {n} ({m}).","{n} couldn't be added ({m}).","Não foi possível passar {n} ({m}).","{n} לא נוספו ({m}).",{n:f.fallados.length, m:f.fallados[0].motivo}) : ""}</div>` : "";
+  return `
+      <div class="field cal-faltantes" style="margin-top:22px;">
+        <label>${t("En el Registro pero no en el Calendar","In the Registro but not in the Calendar","No Registro mas não no Calendar","ביומן הפעילויות אבל לא ביומן")}</label>
+        ${lista.length ? `
+        <ul class="cal-faltantes-lista">${lista.slice(0, 50).map(p => `<li><b dir="auto">${esc(p.title)}</b> · ${esc(fecha(p))}</li>`).join("")}${lista.length > 50 ? `<li>${t("y {n} más","and {n} more","e mais {n}","ועוד {n}",{n:lista.length - 50})}</li>` : ""}</ul>
+        <button type="button" class="btn-secondary" data-action="calendar-faltantes" ${f.trabajando || state.calendarSyncing ? "disabled" : ""}>📅 ${f.trabajando
+          ? t("Pasando… {a} de {b}","Adding… {a} of {b}","Passando… {a} de {b}","מוסיף… {a} מתוך {b}",{a:f.hechos, b:f.total})
+          : lista.length === 1 ? t("Pasarlo al Calendar","Add it to the Calendar","Passar ao Calendar","הוספה ליומן")
+          : t("Pasar los {n} al Calendar","Add the {n} to the Calendar","Passar os {n} ao Calendar","הוספת {n} ליומן",{n:lista.length})}</button>
+        <div class="hint">${t("Se crean en el Calendar compartido sin mandarle aviso a nadie. Si alguno ya estaba allá con el mismo título y fecha, se vincula en vez de duplicarse.","They're created in the shared Calendar without notifying anyone. If one was already there with the same title and date, it's linked instead of duplicated.","São criados no Calendar compartilhado sem avisar ninguém. Se algum já estava lá com o mesmo título e data, é vinculado em vez de duplicado.","הם נוצרים ביומן המשותף בלי לשלוח התראה לאף אחד. אם אחד כבר היה שם עם אותה כותרת ותאריך, הוא מקושר במקום להשתכפל.")}</div>`
+        : `<div class="hint">✅ ${t("Todos los eventos del Registro están en el Calendar.","Every event in the Registro is in the Calendar.","Todos os eventos do Registro estão no Calendar.","כל האירועים ביומן הפעילויות נמצאים ביומן.")}</div>`}
+        ${resultado}
+      </div>`;
+}
+async function pasarFaltantesACalendar(){
+  const f = calFaltantes;
+  const lista = postsSinCalendar();
+  if(f.trabajando || !lista.length) return;
+  Object.assign(f, { trabajando:true, hechos:0, total:lista.length, pasados:[], fallados:[] });
+  render();
+  // Sin permiso de Calendar no tiene sentido intentar uno por uno.
+  if(!(await ensureCalendarToken())){
+    const motivo = t("no se pudo autorizar el acceso a Calendar","couldn't authorize access to Calendar","não foi possível autorizar o acesso ao Calendar","לא ניתן היה לאשר את הגישה ליומן");
+    Object.assign(f, { trabajando:false, fallados: lista.map(p => ({ titulo:p.title, motivo })) });
+    render();
+    return;
+  }
+  for(const p of lista){
+    try{
+      // Primero se busca: si ya está en el Calendar (mismo título y
+      // fecha, o con el id del posteo), se vincula y no se duplica.
+      let eventId = await findCalendarEventId(p);
+      if(!eventId){
+        const r = await syncToCalendar(p, p.id, { avisar:false });
+        if(!r.ok) throw new Error(r.reason || "error");
+        eventId = r.eventId;
+      }
+      await updatePostDoc(p.id, { calendarEventId: eventId, ...(p.sinCalendar ? { sinCalendar:false } : {}) });
+      f.pasados.push(p.title);
+    }catch(err){
+      console.warn("No se pudo pasar al Calendar:", p.id, err);
+      f.fallados.push({ titulo: p.title, motivo: err.message || String(err) });
+    }
+    f.hechos++;
+    render();
+  }
+  f.trabajando = false;
+  render();
 }
 
 /* ----- Preferencias: sección "Adjuntos" ----- */
@@ -18281,6 +18358,7 @@ document.addEventListener("click", async e=>{
     "calendar-reimport-cancel": async (el, e, action, postId) => {
     const d = getCalendarDraft(); d.confirmWord = null; d.confirmMode = null; d.typed = ""; render();
   },
+    "calendar-faltantes": async () => { pasarFaltantesACalendar(); },
     "calendar-reimport": async (el, e, action, postId) => {
     const d = getCalendarDraft();
     if(!d.confirmWord || d.confirmMode !== "reimport"){

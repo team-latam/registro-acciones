@@ -414,6 +414,16 @@ teclado; queda todo distorsionado". Se recorrieron todas las pantallas a
   sin tocar la fecha de edición. Los eventos ya creados en el Calendar
   compartido se renombraron sin avisos (notificaciones apagadas).
 
+### 24. Todo en Calendar — HECHO (5 oct 2026)
+
+El usuario decidió que los eventos del Registro estén también en el
+Calendar compartido. Administración › Configuración › Google Calendar
+lista "En el Registro pero no en el Calendar" (`postsSinCalendar`: tipo que
+va al Calendar, sin evento vinculado, sin cancelar) y un botón los pasa de
+una sin avisarle a nadie (`sendUpdates=none`). Si alguno ya estaba en el
+Calendar con el mismo título y fecha, se vincula en vez de duplicarse. La
+casilla "No pasarlo a Google Calendar" sigue en el formulario.
+
 ## Fuera de alcance (necesitan algo que la app no tiene)
 
 - Mandar correos (resumen semanal, invitaciones): no hay servicio de
