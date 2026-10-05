@@ -67,6 +67,27 @@ select 'las preferencias pasan si la cuenta nueva no tenía', true, prefs ->> 'l
 insert into lab.resultados(nombre, esperado, obtenido, detalle)
 select 'no queda anotado como edición en el registro de actividad', true, count(*) = 0, count(*)::text from public.audit_log;
 
+-- Un correo que no está en ningún lado (ni en Personas ni entre los ex
+-- integrantes: la cuenta se borró a mano) también se puede pasar.
+insert into public.posts(id,title,content,date,start_date,end_date,activity_type,author_name,author_email,liked_by,editors,mentions,participants,milestones) values
+  ('p3','','Rutina del borrado','2026-09-11','2026-09-11','2026-09-11','rutina','Borrado','Borrado@x.com','{borrado@x.com,juan@x.com}','{}','{}','[]','[]');
+insert into public.replies(id,post_id,content,author_name,author_email,liked_by,mentions) values
+  ('r2','p2','de un borrado','Borrado','borrado@x.com','{BORRADO@x.com}','{}');
+set role authenticated;
+\o /dev/null
+select set_config('request.jwt.claims', lab.como('benny@team-latam.com')::text, false);
+select public.unificar_cuentas('borrado@x.com', 'benny@team-latam.com');
+reset role;
+select set_config('request.jwt.claims', '', false);
+\o
+insert into lab.resultados(nombre, esperado, obtenido, detalle)
+select 'un correo sin ficha: su rutina pasa a la cuenta nueva', true, author_email = 'benny@team-latam.com', author_email from public.posts where id = 'p3';
+insert into lab.resultados(nombre, esperado, obtenido, detalle)
+select 'un correo sin ficha: sus me gusta también, en el mismo lugar', true, liked_by = '{benny@team-latam.com,juan@x.com}', liked_by::text from public.posts where id = 'p3';
+insert into lab.resultados(nombre, esperado, obtenido, detalle)
+select 'un correo sin ficha: sus comentarios y sus me gusta en comentarios', true,
+       author_email = 'benny@team-latam.com' and liked_by = '{benny@team-latam.com}', author_email || liked_by::text from public.replies where id = 'r2';
+
 \set QUIET off
 select n, '  FALLA  ' || nombre as falla, detalle from lab.resultados where esperado <> obtenido order by n;
 select count(*) filter (where esperado = obtenido) || ' pasaron, ' ||

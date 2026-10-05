@@ -991,6 +991,37 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   await p.close();
 }
 
+/* ---------- Correos que ya no están en el equipo (6/10/2026) ---------- */
+// Una cuenta borrada a mano dejó una rutina que nadie podía editar: no
+// estaba en Personas ni entre los ex integrantes, así que no había desde
+// dónde pasar lo suyo a otra cuenta.
+{
+  const { p, errores, rpc } = await entrar(ADMIN, "Benny", base => {
+    base.posts.push({ id: "p_borrado", title: "", content: "Rutina de una cuenta borrada",
+      date: dia(3), start_date: dia(3), end_date: dia(3), activity_type: "rutina",
+      author_name: "Borrado", author_email: "borrado@x.com", scopes: [], images: [], files: [], links: [], mentions: [],
+      liked_by: ["borrado@x.com"], milestones: [], editors: [], participants: [], recurrence_skip: [], recurrence_moves: {},
+      created_at: hace(3) });
+  });
+  await esperarTexto(p, "Rutina de una cuenta borrada");
+  await p.click('[data-action="toggle-user-menu"]');
+  await p.click('.user-menu [data-action="goto-view"][data-view="admin"]');
+  await p.click('.admin-menu [data-action="admin-go"][data-view="solicitudes"][data-key="usuarios"]');
+  eq("sin cuenta: Personas muestra el correo que no es de nadie", await esperarTexto(p, "Correos que ya no están en el equipo", 3000), true);
+  eq("sin cuenta: con cuántas veces aparece (su rutina y su me gusta)",
+    await p.$$eval(".sin-cuenta-fila .lp-who", es => es.map(e => e.innerText.replace(/\s+/g, " ").trim())), ["borrado@x.com aparece 2 veces"]);
+  eq("sin cuenta: los del equipo no aparecen ahí", await p.$$eval(".sin-cuenta-fila", es => es.some(e => /ana@x\.com|benny@/.test(e.textContent.split("Pasar")[0]))), false);
+  await p.selectOption('.sin-cuenta .unificar-destino[data-email="borrado@x.com"]', ADMIN);
+  await p.click('.sin-cuenta [data-action="unificar-cuentas"][data-email="borrado@x.com"]');
+  await p.waitForSelector("#confirmOk", { state: "visible" });
+  await p.click("#confirmOk");
+  eq("sin cuenta: su rutina pasa a la cuenta elegida", await hasta(p, () =>
+    (window.__sb.tablas.posts || []).find(x => x.id === "p_borrado").author_email === "benny@team-latam.com"), true);
+  eq("sin cuenta: se llama a la base con ese correo", (await rpc()).some(([n, a]) => n === "unificar_cuentas" && a.p_viejo === "borrado@x.com" && a.p_nuevo === ADMIN), true);
+  eq("sin cuenta: sin un solo error", errores, []);
+  await p.close();
+}
+
 /* ---------- El Inicio en escritorio: columna lateral y buscador ---------- */
 {
   // Un evento de Ana pasado mañana (lo de la base es de hace dos días) y
