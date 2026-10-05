@@ -13,7 +13,7 @@ codigo = "\n".join(grab(n) for n in [
   "TIPOS_DE_ARCHIVO","CLASE_POR_DEFECTO","extensionDe","claseDeArchivo","claseDe",
   "esUrlDelBucket","FILE_DATA_URL_RE","safeFileDataUrl","esWordNuevo","sePuedeVer","seAbreEnVisor","esPlanilla","itemDelVisor",
   "DOCS_POR_TIPO","docsEsperados","docDeArchivo","archivosDelDoc","docsDesplegados","archivoDelDoc","archivosSueltos",
-  "ownerAttrs","fechaDeArchivo","fmtDate","renderPostedFiles",
+  "ownerAttrs","fechaDeArchivo","fmtDate","FICHA_POR_CLASE","fichaDeArchivo","renderPostedFiles",
   # La portada de entrada marca el idioma activo y lista los cuatro.
   "LANGS","currentLang","renderAuthGate"])
 

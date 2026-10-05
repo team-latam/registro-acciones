@@ -29,7 +29,8 @@ const leer = () => p.evaluate(()=>({
     tieneQuitar: !!e.querySelector('[data-action="quitar-doc"]'),
   })),
   sueltos: [...document.querySelectorAll(".post-file-row")].map(e=>({
-    texto: e.textContent.replace("✕","").trim(),
+    texto: (e.querySelector(".fname")||{}).textContent,
+    sigla: (e.querySelector(".ficha-sigla")||{}).textContent || null,
     fecha: (e.querySelector(".doc-fecha")||{}).textContent || null,
     tieneQuitar: !!e.querySelector('[data-action="quitar-adjunto"]'),
   })),
@@ -44,15 +45,20 @@ eq("no hay ningún desplegable", v.hayCombo, false);
 eq("la ranura vacía ofrece adjuntar y nada más",
    await p.$$eval(".doc-fila.falta", els => els.map(e => e.querySelectorAll("button, a, select").length)), [1,1]);
 
-/* ====== Un adjunto suelto se puede quitar, y el ✕ está al lado ====== */
+/* ====== Un adjunto suelto se puede quitar: el ✕ se asoma en su ficha ====== */
 eq("el suelto tiene su ✕", v.sueltos[0].tieneQuitar, true);
-const lejos = await p.evaluate(()=>{
-  const fila = document.querySelector(".post-file-row");
-  const arch = fila.querySelector(".post-file-link, .fname");
-  const x = fila.querySelector('[data-action="quitar-adjunto"]');
-  return Math.round(x.getBoundingClientRect().left - arch.getBoundingClientRect().right);
+const opacidadX = () => p.evaluate(()=>+getComputedStyle(document.querySelector('.post-file-row [data-action="quitar-adjunto"]')).opacity);
+eq("quieto, el ✕ no se ve (la ficha queda limpia)", await opacidadX(), 0);
+await p.hover(".post-file-row.ficha");
+await p.waitForTimeout(200);
+eq("al pasar el mouse, aparece", await opacidadX(), 1);
+const dentro = await p.evaluate(()=>{
+  const f = document.querySelector(".post-file-row").getBoundingClientRect();
+  const x = document.querySelector('.post-file-row [data-action="quitar-adjunto"]').getBoundingClientRect();
+  return Math.abs(x.right - f.right) < 12 && Math.abs(x.top - f.top) < 12;
 });
-eq("y está pegado al archivo, no en la otra punta", lejos >= 0 && lejos < 40, true);
+eq("en la esquina de su ficha", dentro, true);
+await p.mouse.move(0, 0);
 
 /* ====== La fecha de subida, suave pero presente ====== */
 await p.evaluate(x=>window.__ponerPost(x, true), { id:"p1", activityType:"visita", authorEmail:"x@x.com", files:[
@@ -93,7 +99,8 @@ await p.evaluate(x=>window.__ponerPost(x, true, true), { id:"p2", activityType:"
   { name:"dos.docx", kind:"doc", dataUrl:DOCX },
   { name:"tres.pdf", kind:"pdf", dataUrl:PDF }]});
 v = await leer();
-eq("se dibujan los tres sueltos (el Word ya no se baja: abre en el visor)", v.sueltos.map(s=>s.texto), ["📄 uno.pdf","📘 dos.docx","📄 tres.pdf"]);
+eq("se dibujan los tres sueltos (el Word ya no se baja: abre en el visor)", v.sueltos.map(s=>s.texto), ["uno.pdf","dos.docx","tres.pdf"]);
+eq("cada ficha con la sigla de su tipo", v.sueltos.map(s=>s.sigla), ["PDF","DOCX","PDF"]);
 await p.evaluate(()=>{ window.__escrituras = []; });
 await p.evaluate(()=>document.querySelectorAll('[data-action="quitar-adjunto"]')[1].click());
 await p.waitForTimeout(120);
