@@ -7,9 +7,8 @@
 -- Dos decisiones de diseño, para que se entiendan al leer:
 --
 -- 1) Los IDS SE CONSERVAN TAL CUAL vienen de Firestore (texto de 20
---    caracteres), en vez de generar unos nuevos. Es lo que permite
---    volver atrás: si hay que regresar a Firebase, cada fila vuelve a
---    su documento original. Además, adentro de los datos hay
+--    caracteres), en vez de generar unos nuevos (mientras duró la mudanza
+--    eso permitía volver atrás; Firebase ya se cerró). Además, adentro de los datos hay
 --    referencias por id (replyToId, calendarEventId) que se romperían
 --    si los cambiáramos.
 --

@@ -4,8 +4,9 @@ SPA de una sola página (`index.html`) sin backend propio ni build step:
 HTML + CSS + JS (`<script type="module">` inline) que se edita y publica tal
 cual. El backend es **Supabase** (Postgres + Auth con Google + Storage, ver
 `supabase/LEEME.md`) más la API de Google Calendar. Firebase fue la base
-hasta el 3 de octubre de 2026: quedó cerrado y fuera del código (la rama
-`firebase-v1` guarda cómo era, y NO se borra). Ver `README.md` para las
+hasta el 3 de octubre de 2026: quedó cerrado y fuera del código, y la rama
+`firebase-v1` que guardaba cómo era la borró el usuario el 5/10/2026 (lo
+de entonces sigue en el historial de `main`). Ver `README.md` para las
 decisiones de arquitectura.
 
 ## Reglas fijas del usuario — valen en toda sesión
@@ -13,8 +14,9 @@ decisiones de arquitectura.
 - **Nunca pedirle que pegue en el chat contraseñas, la llave de servicio
   de Supabase ni el Client Secret de Google.** Si hace falta que mire o
   cambie algo en un panel, se le dan los pasos y él cuenta qué vio.
-- **Nunca borrar** el proyecto de Google Cloud `40280679854` ni la rama
-  `firebase-v1`.
+- **Nunca borrar** el proyecto de Google Cloud `40280679854`: aunque
+  nació con Firebase, ahí viven el login de Google y la API de Calendar
+  que la app usa hoy.
 - No es técnico: hablarle en español, en palabras simples y paso a paso.
   Las propuestas van con capturas; las decisiones que son suyas se le
   presentan con opciones y una recomendación.

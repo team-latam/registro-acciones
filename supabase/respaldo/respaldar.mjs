@@ -1,7 +1,7 @@
 /* ======================================================================
    La copia de seguridad semanal
    ======================================================================
-   Desde que Firebase se apagó no quedaba ninguna copia (REVISION.md,
+   Desde que Firebase se apagó no quedaba ninguna copia (docs/REVISION.md,
    punto 13). Esto corre una vez por semana (.github/workflows/respaldo.yml)
    y deja todo en el repo PRIVADO team-latam/registro-respaldos:
 

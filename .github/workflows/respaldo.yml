@@ -1,7 +1,7 @@
 # ============================================================
 # La copia de seguridad, una vez por semana
 # ============================================================
-# Desde que se apagó Firebase no quedaba ninguna copia (REVISION.md,
+# Desde que se apagó Firebase no quedaba ninguna copia (docs/REVISION.md,
 # punto 13). Cada domingo esto copia la base entera, cada tabla en JSON
 # y las fotos y adjuntos nuevos al repo PRIVADO
 # team-latam/registro-respaldos. El detalle, en supabase/respaldo/.
