@@ -18,9 +18,13 @@ decisiones de arquitectura.
 - No es técnico: hablarle en español, en palabras simples y paso a paso.
   Las propuestas van con capturas; las decisiones que son suyas se le
   presentan con opciones y una recomendación.
-- El estado del trabajo vive en el repo: `REDISENO.md` (tandas hechas y
-  decisiones) y `REVISION.md` (la revisión técnica y lo que queda).
-  Copias de seguridad (REVISION.md, punto 13): andando desde el
+- El estado del trabajo vive en el repo, en `docs/`: `docs/REDISENO.md`
+  (tandas hechas y decisiones), `docs/REVISION.md` (la revisión técnica y
+  lo que queda), `docs/QUE-GUARDAR.md` (qué tener a mano para reconstruir)
+  y `docs/DOMINIO.md` (el plan, no ejecutado, de mudar el sitio a un
+  dominio propio si `*.github.io` vuelve a bloquearse en Argentina). En la
+  raíz quedan solo `index.html`, `README.md` y este archivo.
+  Copias de seguridad (docs/REVISION.md, punto 13): andando desde el
   5/10/2026 — workflow «Copia de seguridad» (`supabase/respaldo/`) cada
   domingo al repo privado `team-latam/registro-respaldos`, y
   Administración → Copia de seguridad para bajar una. **El token
