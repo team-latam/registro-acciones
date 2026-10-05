@@ -20,10 +20,12 @@ decisiones de arquitectura.
   presentan con opciones y una recomendación.
 - El estado del trabajo vive en el repo: `REDISENO.md` (tandas hechas y
   decisiones) y `REVISION.md` (la revisión técnica y lo que queda).
-  Pendiente del usuario al 3/10/2026: crear el repo privado
-  `team-latam/registro-respaldos` para las copias de seguridad
-  (REVISION.md, punto 13). Hay un recordatorio programado para el
-  5/10/2026.
+  Copias de seguridad (REVISION.md, punto 13): el código está desde el
+  6/10/2026 (`supabase/respaldo/`, workflow «Copia de seguridad», y
+  Administración → Copia de seguridad). Pendiente del usuario: crear el
+  repo privado `team-latam/registro-respaldos` y el secreto
+  `RESPALDOS_TOKEN` (pasos en `supabase/respaldo/LEEME.md`). Claude no
+  puede crear repos en la organización.
 
 ## Ramas — LEER ANTES DE EMPEZAR
 

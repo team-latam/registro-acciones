@@ -198,6 +198,7 @@ export function createClient(url, clave){
       upload: async (ruta, blob) => { estado.subidas.push([ruta, blob.type]); return { error: null }; },
       remove: async rutas => { estado.borradas.push(...rutas); return { error: null }; },
       list: async () => ({ data: [], error: null }),
+      download: async ruta => /rota/.test(ruta) ? { data: null, error: { message: "Object not found" } } : { data: new Blob(["contenido de " + ruta]), error: null },
     }; } },
     channel(nombre){
       estado.canales++;
@@ -263,6 +264,10 @@ async function entrar(email, nombre, mod, viewport){
   await p.route(/^https?:\/\//, ruta => {
     const u = ruta.request().url();
     if(u === CDN) return ruta.fulfill({ contentType: "application/javascript", body: FALSO });
+    // La herramienta del .zip, de mentira: el "zip" es la lista de lo que
+    // se le metió, para poder mirarla.
+    if(/\/jszip\//.test(u)) return ruta.fulfill({ contentType: "application/javascript", body: `window.JSZip = class { constructor(){ this.n = []; }
+      file(nombre){ this.n.push(nombre); return this; } async generateAsync(){ return new Blob([JSON.stringify(this.n.sort())]); } };` });
     if(/\/storage\/v1\/object\/sign\//.test(u)) return ruta.fulfill({ contentType: "image/png", body: PNG });
     if(/^https:\/\/www\.googleapis\.com\/calendar\//.test(u))
       return ruta.fulfill({ contentType: "application/json", body: JSON.stringify({ items: [] }) });
@@ -343,6 +348,29 @@ const hasta = async (p, fn, arg, ms = 5000) => {
     await p.click('[data-action="cal-subview"][data-key="mes"]').catch(async () => { await p.click('[data-action="toggle-cal-view"]'); await p.click('[data-action="cal-subview"][data-key="mes"]'); });
     await p.click('[data-action="cal-today"]');
   }
+  // Administración → Copia de seguridad (6/10/2026): baja una copia en el
+  // momento, solo datos (.json) o con fotos y archivos (.zip).
+  {
+    await p.click('[data-action="toggle-user-menu"]');
+    await p.click('.user-menu [data-action="goto-view"][data-view="admin"]');
+    await p.click('.admin-menu [data-action="admin-go"][data-view="preferencias"][data-key="copia"]');
+    await p.waitForSelector('[data-action="copia-datos"]');
+    eq("copia: la sección está en el menú de Administración, con su título", await p.$eval(".admin-h2", e => e.textContent.trim()), "Copia de seguridad");
+    const [bajada] = await Promise.all([p.waitForEvent("download"), p.click('[data-action="copia-datos"]')]);
+    const fs = await import("node:fs");
+    const datos = JSON.parse(fs.readFileSync(await bajada.path(), "utf8"));
+    eq("copia: solo los datos baja un .json con fecha", /^registro-copia-\d{4}-\d{2}-\d{2}\.json$/.test(bajada.suggestedFilename()), true);
+    eq("copia: con cada tabla, tal como está en la base", [Object.keys(datos.tablas).includes("posts"), datos.tablas.posts.length === (await base()).posts.length, datos.tablas.posts[0].author_email !== undefined, datos.por],
+       [true, true, true, ADMIN]);
+    eq("copia: y lo dice", await hasta(p, () => /Listo: \d+ filas/.test(document.querySelector(".copia-estado").textContent)), true);
+    await p.evaluate(() => { const f = window.__sb.tablas.posts.find(x => x.id === "p_reunion"); f.files = [{ path: "posts/p_reunion/acta.pdf", name: "acta.pdf" }, { path: "posts/p_reunion/rota.pdf", name: "rota.pdf" }]; });
+    await p.evaluate(() => document.querySelector('.admin-menu [data-action="admin-go"][data-view="preferencias"][data-key="copia"]').click());
+    const [zip] = await Promise.all([p.waitForEvent("download"), p.click('[data-action="copia-completa"]')]);
+    const adentro = JSON.parse(fs.readFileSync(await zip.path(), "utf8"));
+    eq("copia completa: un .zip con los datos y las fotos y adjuntos que nombran los posteos", [/\.zip$/.test(zip.suggestedFilename()), adentro],
+       [true, ["archivos/posts/p_reunion/acta.pdf", "archivos/posts/p_reunion/img0_1.jpg", "datos.json"]]);
+    eq("copia completa: el que no se pudo bajar no corta el resto, y se avisa", await hasta(p, () => /1 no se pudieron bajar/.test(document.querySelector(".copia-estado").textContent)), true);
+  }
   // Países (4/10/2026): en la tarjeta, el número no se monta sobre el
   // nombre, y todas llevan la serie de 12 meses (aunque esté vacía), así
   // la grilla queda pareja.
@@ -362,7 +390,7 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   eq("admin: el Resumen de Administración muestra el pedido pendiente", await esperarTexto(p, "Nueva Persona", 3000), true);
   const secciones = await p.$$eval('.admin-menu [data-action="admin-go"]', bs => bs.map(b => b.dataset.view + (b.dataset.key ? ":" + b.dataset.key : "")));
   eq("admin: el menú de Administración tiene todas las secciones", secciones,
-     ["admin","revisarcal","solicitudes:usuarios","auditoria","preferencias:zonas","preferencias:tipos","preferencias:lugares","preferencias:adjuntos","preferencias:calendar"]);
+     ["admin","revisarcal","solicitudes:usuarios","auditoria","preferencias:zonas","preferencias:tipos","preferencias:lugares","preferencias:adjuntos","preferencias:calendar","preferencias:copia"]);
   for(const s of secciones){
     const [v, k] = s.split(":");
     await p.click(`.admin-menu [data-action="admin-go"][data-view="${v}"]${k ? `[data-key="${k}"]` : ""}`);
