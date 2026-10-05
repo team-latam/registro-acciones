@@ -4890,8 +4890,8 @@ function personaQueGusta(email){
 }
 // El "Me gusta" se parte en dos: el pulgar (y la palabra) da o saca el
 // me gusta; el número abre la lista de quiénes, sin darlo. Al pasar el
-// mouse por el número, los primeros cuatro, uno por renglón.
-const GUSTAN_EN_LA_BURBUJA = 4;
+// mouse por el número, los primeros tres, uno por renglón.
+const GUSTAN_EN_LA_BURBUJA = 3;
 function gustanHtml(likedBy, postId, replyId){
   const n = (likedBy||[]).length;
   if(!n) return "";

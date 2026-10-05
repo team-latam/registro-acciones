@@ -953,7 +953,7 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   await p.click('button[data-action="toggle-thread"][data-post-id="p_rutina"]');
   eq("hilo: el comentario cuyo padre se borró igual se ve", await esperarTexto(p, "Respuesta a uno que ya no está", 3000), true);
   // El número al lado de «Me gusta» (5/10/2026): al pasar el mouse, los
-  // primeros cuatro, uno por renglón; al apretarlo, la lista entera, sin
+  // primeros tres, uno por renglón; al apretarlo, la lista entera, sin
   // dar me gusta; y desde la lista, el perfil de cada uno.
   const gustan = '.post[data-post-id="p_rutina"] .post-actions .gustan';
   await p.hover(gustan);
