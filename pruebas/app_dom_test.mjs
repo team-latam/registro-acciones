@@ -1063,11 +1063,20 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   await p.click('nav.tabs button[data-view="paises"]');
   await p.evaluate(() => { const x = document.createElement("button"); x.dataset.action = "paises-subview"; x.dataset.key = "lista"; document.body.appendChild(x); x.click(); x.remove(); });
   await p.click('[data-action="drill-country"][data-country="Uruguay"]');
-  eq("lugar: el país muestra su resumen", await esperarTexto(p, "Resumen de Uruguay", 3000), true);
-  eq("lugar: visitas, objetivos y lo que sigue", await p.$$eval(".lg-stat b", bs => bs.map(x => x.textContent.trim())).then(v => [v[0], v[2], v[3]]), ["1", "1 de 2", "2"]);
-  eq("lugar: con el resumen de la última visita", await p.$eval(".lg-card .rs-txt", e => e.textContent.trim()), "La visita a la sede salió bien.");
-  eq("lugar: lo que sigue dice de qué visita salió", await p.$$eval(".lg-card .rs-pasos li small", s => s.length > 0 && s.every(x => /Visita a la sede/.test(x.textContent))), true);
-  eq("lugar: y la historia de las visitas", await p.$$eval(".lg-hist li", ls => ls.map(l => l.querySelector(".lg-ir").textContent.trim() + " " + l.querySelector(".rs-ok").textContent.trim())), ["Visita a la sede 1/2"]);
+  // La ficha del país (6/10/2026): todo sin salir de Países.
+  eq("ficha: el país tiene su ficha", await hasta(p, () => (document.querySelector(".ficha-lugar h1") || {}).textContent === "Uruguay"), true);
+  eq("ficha: visitas, objetivos y lo que sigue", await p.$$eval(".fl-stat b", bs => bs.map(x => x.textContent.trim())).then(v => [v[0], v[2], v[3]]), ["1", "1 de 2", "2"]);
+  eq("ficha: la lectura rápida cuenta los objetivos de la última visita",
+    await p.$$eval(".fl-lectura li", ls => ls.some(l => /1 de 2 objetivos/.test(l.textContent))), true);
+  eq("ficha: lo que sigue dice de qué visita salió", await p.$$eval(".fl-main .rs-pasos li small", s => s.length === 2 && s.every(x => /Visita a la sede/.test(x.textContent))), true);
+  eq("ficha: en la línea de tiempo, la visita con su resumen y su 1/2",
+    await p.$eval('.fl-it[data-post-id="p_visita"]', e => [e.querySelector(".tt").textContent.trim(), e.querySelector(".rs").textContent.trim(), e.querySelector(".rs-ok").textContent.trim()]),
+    ["Visita a la sede", "La visita a la sede salió bien.", "1/2"]);
+  await p.click('.fl-it[data-post-id="p_visita"]');
+  eq("ficha: tocar un ítem lo abre ahí mismo, sin ir al Inicio", await hasta(p, () =>
+    !document.getElementById("fichaPostOverlay").hidden && !!document.querySelector('#fichaPostBody .post[data-post-id="p_visita"]') && !!document.querySelector(".ficha-lugar")), true);
+  await p.keyboard.press("Escape");
+  eq("ficha: Escape lo cierra", await p.evaluate(() => document.getElementById("fichaPostOverlay").hidden), true);
   // Una rutina en Uruguay: la app pregunta si cumple algo pendiente.
   await p.click('nav.tabs button[data-view="feed"]');
   await p.waitForSelector("#rutinaContent");
@@ -1104,6 +1113,11 @@ const hasta = async (p, fn, arg, ms = 5000) => {
       files: [{ name: "Formulario de Cierre - Montevideo, Uruguay.docx", kind: "doc", path: "posts/p_viaje/cierre-uy.docx", subidoEl: hace(34) },
               { name: "Formulario de Cierre - Buenos Aires, Argentina.docx", kind: "doc", path: "posts/p_viaje/cierre-ar.docx", subidoEl: hace(33) }],
       created_at: hace(45) });
+    // Algo de todo el equipo, que en una ciudad solo entra si se pide.
+    base.posts.push({ id: "p_latam", title: "Reunión regional de todo el equipo", content: "x",
+      date: dia(5), start_date: dia(5), end_date: dia(5), activity_type: "otro", author_name: "Benny", author_email: ADMIN,
+      scopes: [{ type: "todo" }], images: [], files: [], links: [], mentions: [], liked_by: [], milestones: [], editors: [], participants: [], recurrence_skip: [], recurrence_moves: {},
+      created_at: hace(6) });
     // Y otra visita, a Punta del Este, ya leída.
     base.posts.push({ id: "p_pde", title: "Punta del Este", content: "x",
       date: dia(10), start_date: dia(10), end_date: dia(9), activity_type: "visita", author_name: "Benny", author_email: ADMIN,
@@ -1116,42 +1130,63 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   await p.click('nav.tabs button[data-view="paises"]');
   await p.evaluate(() => { const x = document.createElement("button"); x.dataset.action = "paises-subview"; x.dataset.key = "lista"; document.body.appendChild(x); x.click(); x.remove(); });
   await p.click('[data-action="drill-country"][data-country="Argentina"]');
-  await esperarTexto(p, "Resumen de Argentina", 3000);
-  eq("viaje: sin leer, la historia ofrece leer el Cierre ahí mismo", !!(await p.$('.lg-hist [data-action="leer-resumen"][data-post-id="p_viaje"]')), true);
-  await p.click('.lg-hist [data-action="leer-resumen"]');
-  eq("viaje: se guardan los dos Cierres", await hasta(p, () => {
+  await hasta(p, () => (document.querySelector(".ficha-lugar h1") || {}).textContent === "Argentina");
+  const stats = () => p.$$eval(".fl-stat b", bs => bs.map(x => x.textContent.trim()));
+  eq("viaje: sin leer, la visita dice «sin Cierre»", await p.$eval('.fl-it[data-post-id="p_viaje"] .rs-ok', e => e.textContent.trim()), "sin Cierre");
+  await p.click('.fl-it[data-post-id="p_viaje"]');
+  await p.click('#fichaPostBody [data-action="toggle-post-menu"]');
+  await p.click('#fichaPostBody [data-action="leer-resumen"]');
+  eq("viaje: leerlo desde la ventana guarda los dos Cierres", await hasta(p, () => {
     const r = window.__sb.tablas.posts.find(x => x.id === "p_viaje").resumen;
     return !!r && r.partes.length === 2;
   }), true);
+  await p.keyboard.press("Escape");
   eq("viaje: Argentina cuenta solo su Cierre", await hasta(p, () => {
-    const v = [...document.querySelectorAll(".lg-stat b")].map(x => x.textContent.trim());
+    const v = [...document.querySelectorAll(".fl-stat b")].map(x => x.textContent.trim());
     return v[2] === "1 de 1" && v[3] === "1";
   }), true);
-  eq("viaje: con su resumen ejecutivo y su marca en la historia",
-    [await p.$eval(".lg-card .rs-txt", e => e.textContent.trim()), await p.$eval('.lg-hist li:has([data-post-id="p_viaje"]) .rs-ok', e => e.textContent.trim())], ["En Buenos Aires todo en orden.", "1/1"]);
-  await p.click('[data-action="drill-clear"]');
+  eq("viaje: con su resumen en la línea de tiempo y su marca",
+    await p.$eval('.fl-it[data-post-id="p_viaje"]', e => [e.querySelector(".rs").textContent.trim(), e.querySelector(".rs-ok").textContent.trim()]), ["En Buenos Aires todo en orden.", "1/1"]);
+  await p.click('.fl-migas [data-action="drill-clear"]');
   await p.click('[data-action="drill-country"][data-country="Uruguay"]');
   eq("viaje: y Uruguay, solo el suyo (Punta del Este todavía sin leer)", await hasta(p, () => {
-    const v = [...document.querySelectorAll(".lg-stat b")].map(x => x.textContent.trim());
+    const v = [...document.querySelectorAll(".fl-stat b")].map(x => x.textContent.trim());
     return v[0] === "2" && v[2] === "1 de 2" && v[3] === "4";
   }), true);
-  await p.click('.lg-hist [data-action="leer-resumen"][data-post-id="p_pde"]');
+  await p.click('.fl-it[data-post-id="p_pde"]');
+  await p.click('#fichaPostBody [data-action="toggle-post-menu"]');
+  await p.click('#fichaPostBody [data-action="leer-resumen"]');
+  await p.keyboard.press("Escape");
   eq("ciudades: Uruguay junta las dos ciudades", await hasta(p, () => {
-    const v = [...document.querySelectorAll(".lg-stat b")].map(x => x.textContent.trim());
+    const v = [...document.querySelectorAll(".fl-stat b")].map(x => x.textContent.trim());
     return v[2] === "2 de 3" && v[3] === "5";
   }), true);
-  await p.click('.city-row[data-action="goto-city"][data-city="Punta Del Este"]');
-  eq("ciudades: al entrar a Punta del Este, su resumen arriba", await esperarTexto(p, "Resumen de Punta Del Este", 3000), true);
-  eq("ciudades: solo con lo suyo", await p.$$eval(".lg-stat b", bs => bs.map(x => x.textContent.trim())).then(v => [v[0], v[2], v[3]]), ["1", "1 de 1", "1"]);
-  eq("ciudades: y su resumen ejecutivo", await p.$eval(".lg-card .rs-txt", e => e.textContent.trim()), "En Punta del Este, todo listo.");
-  await p.click('nav.tabs button[data-view="paises"]');
-  await p.evaluate(() => { const x = document.createElement("button"); x.dataset.action = "paises-subview"; x.dataset.key = "lista"; document.body.appendChild(x); x.click(); x.remove(); });
-  await p.click('[data-action="drill-country"][data-country="Uruguay"]');
-  await p.click('.city-row[data-action="goto-city"][data-city="Montevideo"]');
+  eq("ciudades: la ficha del país lista sus ciudades", await p.$$eval('.fl-ciudad[data-action="drill-city"]', es => es.map(e => e.dataset.city).sort()), ["Montevideo", "Punta Del Este"]);
+  await p.click('.fl-ciudad[data-city="Punta Del Este"]');
+  eq("ciudades: al entrar a Punta del Este, su ficha (sin ir al Inicio)", await hasta(p, () =>
+    (document.querySelector(".ficha-lugar h1") || {}).textContent === "Punta Del Este" && /Uruguay/.test(document.querySelector(".fl-migas").textContent)), true);
+  eq("ciudades: solo con lo suyo", await stats().then(v => [v[0], v[2], v[3]]), ["1", "1 de 1", "1"]);
+  await p.click('.fl-migas [data-action="drill-country"]');
+  await p.click('.fl-ciudad[data-city="Montevideo"]');
   eq("ciudades: Montevideo, solo el Cierre que la nombra", await hasta(p, () => {
-    const v = [...document.querySelectorAll(".lg-stat b")].map(x => x.textContent.trim());
-    return /Resumen de Montevideo/.test(document.querySelector(".lg-tit")?.textContent || "") && v[2] === "1 de 2";
+    const v = [...document.querySelectorAll(".fl-stat b")].map(x => x.textContent.trim());
+    return (document.querySelector(".ficha-lugar h1") || {}).textContent === "Montevideo" && v[2] === "1 de 2";
   }), true);
+  // Excluir (pedido del usuario): lo regional no entra si no se pide, y
+  // un tipo se oculta con un toque.
+  eq("excluir: por defecto, solo lo de acá", await p.$eval('.fl-seg [aria-checked="true"]', e => e.dataset.nivel), "0");
+  await p.click('.fl-seg [data-nivel="3"]');
+  eq("excluir: «+ Toda LatAm» suma lo de todo el equipo", await hasta(p, () => document.querySelectorAll(".fl-it").length > 1 && !!document.querySelector(".fl-it.amplio")), true);
+  eq("excluir: lo de todo el equipo se ve atenuado y con su etiqueta", await p.$eval('.fl-it[data-post-id="p_latam"] .fl-amplio', e => e.textContent.trim()), "Toda LatAm");
+  await p.click('.fl-chip[data-tipo="visita"]');
+  eq("excluir: ocultar Visitas las saca de la línea de tiempo", await hasta(p, () =>
+    !document.querySelector('.fl-it.t-visita') && document.querySelector('.fl-chip[data-tipo="visita"]').classList.contains("fuera")), true);
+  await p.click('.fl-chip-todo');
+  await p.click('.fl-seg [data-nivel="0"]');
+  await p.click('[data-action="ficha-cargar"]');
+  eq("ficha: «Cargar algo acá» abre el formulario con el lugar ya puesto", await hasta(p, () =>
+    !!document.getElementById("postForm") && /Montevideo/.test(document.getElementById("postForm").textContent)), true);
+  await p.keyboard.press("Escape");
   await p.click('nav.tabs button[data-view="feed"]');
   // Ya quedó abierto al leerlo (como cuando se lee desde la tarjeta).
   if(await p.$eval('.post[data-post-id="p_viaje"] .rs-pill', e => e.getAttribute("aria-expanded")) !== "true") await p.click('.post[data-post-id="p_viaje"] .rs-pill');

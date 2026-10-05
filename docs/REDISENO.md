@@ -573,6 +573,29 @@ capturas (A/B/C, después D/E/F, después ajustes), el diseño elegido:
   La pregunta de la rutina usa lo pendiente de su ciudad.
 - Queda para después: el resumen por zona y otros tipos además de Visita.
 
+### 33. La ficha de cada lugar, dentro de Países — HECHO (6 oct 2026)
+
+- El usuario no estaba contento: entrar a una ciudad llevaba al Inicio
+  con un filtro y "no se entiende". Ahora cada país y cada ciudad tiene su
+  **ficha**, sin salir de Países (migas: Países › Región › País › Ciudad;
+  el mapa también lleva a la ficha):
+  - **Lectura rápida**: frases armadas con cuentas (última visita, visitas
+    del año, objetivos logrados, pendientes viejos, este año contra el
+    anterior, qué ciudad concentra la actividad). Sin inteligencia
+    artificial.
+  - Los cuatro números, **Lo que sigue** (con la ciudad y los pendientes de
+    más de 3 meses en naranja) y **Lo que pasó**: la línea de tiempo por
+    año y mes; cada ítem se abre en una ventana ahí mismo.
+  - Al costado: **Ciudades** (cada una lleva a su ficha), **Ritmo** de los
+    últimos 12 meses, **Quiénes trabajaron** y **Documentos**.
+  - **"Cargar algo acá"** abre el formulario con el lugar puesto.
+- **Excluir** (pedido del usuario): por defecto solo lo de ese lugar; se
+  puede sumar lo del país en general, la región y toda LatAm (se ve
+  atenuado y con su etiqueta). Los tipos de actividad se ocultan con un
+  toque.
+- Queda para la segunda parte: "Reporte del lugar" (imprimir la ficha) y
+  la ficha de una zona.
+
 ## Fuera de alcance (necesitan algo que la app no tiene)
 
 - Mandar correos (resumen semanal, invitaciones): no hay servicio de
