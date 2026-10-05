@@ -2381,18 +2381,76 @@
     .rep-etiqueta{ flex-basis:44%; }
     .rep-comparacion{ margin-inline-start:0; flex-basis:100%; }
   }
-  /* Imprimir / PDF: solo el reporte, sin el cascarón de la app. */
+  /* Imprimir / PDF: solo el reporte, sin el cascarón de la app.
+     Rehecho el 5/10/2026 porque el PDF "no era claro, se dividía en
+     muchas hojas y no salía toda la información":
+     · Chrome por defecto NO imprime fondos ("Gráficos de fondo" viene
+       destildado) y todas las barras y columnas son fondos: salían en
+       blanco. print-color-adjust:exact las fuerza.
+     · Las tablas con scroll horizontal y las listas con alto máximo se
+       cortaban donde terminaba la caja: en papel no hay scroll.
+     · Cada sección entera tenía break-inside:avoid, así que si no
+       entraba saltaba a otra hoja y dejaba media en blanco. Ahora solo
+       se evita cortar una tarjeta, una fila o un título de su contenido. */
+  @page{ size:A4; margin:12mm 11mm 14mm;
+    @bottom-right{ content:counter(page) " / " counter(pages); font:600 8.5pt Montserrat, sans-serif; color:#5c7a7c; } }
   @media print{
+    /* El papel siempre en claro, aunque la app esté en modo oscuro. */
+    html[data-theme="dark"]{
+      --petroleo:#0d3b3e; --celeste-dark:#1a9fb8; --bg:#fff; --card:#fff; --text:#0d2a2c; --text-muted:#5c7a7c;
+      --border:#e1edee; --ink:#0d3b3e; --ink-strong:#082a2c; --surface-alt:#eef4f4; --celeste-soft:#eafbfd;
+      --ok-text:#166534; --danger:#dc2626; --acento-fuerte:#0d3b3e; color-scheme:light;
+    }
+    html, body{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
     .topbar, nav.tabs, .fab-wrap, .scroll-top, .new-posts-pill, footer.appfoot, .rep-barra-control, .bottom-nav, .observer-banner{ display:none !important; }
-    body{ background:#fff; }
-    main{ padding:0; max-width:none; }
-    /* El título de la pantalla (.rep-cabeza) ya dice qué es: se imprime ese. */
-    .rep-print-title{ display:none; }
-    .rep-seccion{ break-inside:avoid; }
+    body{ background:#fff; font-size:11px; }
+    main{ padding:0 !important; margin:0 !important; max-width:none !important; }
+    /* Arriba de todo, la marca y cuándo se imprimió. */
+    .rep-print-title{ display:flex; justify-content:space-between; gap:12px; font-size:9px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--text-muted); border-bottom:2px solid var(--petroleo); padding-bottom:5px; margin-bottom:10px; }
+    .rep-cabeza{ margin-bottom:10px; }
+    .rep-titulo{ font-size:20px; }
+    .rep-subtitulo{ font-size:11px; }
+    .rep-chip-filtro{ padding:0 7px; font-size:10.5px; }
+    .rep-kpis{ grid-template-columns:repeat(4, minmax(0,1fr)); box-shadow:none; break-inside:avoid; }
+    .rep-kpis .rep-kpi{ padding:9px 12px; }
+    .rep-kpis .rep-kpi:nth-child(n){ border-top:none; border-inline-end:1px solid var(--border); }
+    .rep-kpis .rep-kpi:last-child{ border-inline-end:none; }
+    .rep-kpis .rep-kpi-num{ font-size:21px; }
+    .rep-kpi-txt{ font-size:10px; }
+    .rep-seccion{ margin-top:14px; break-inside:auto; }
+    .rep-seccion-cabeza{ margin-bottom:6px; break-after:avoid; }
+    .rep-seccion-cabeza h3{ font-size:13px; }
     /* "Tocá una fila…" no sirve en papel. */
     .rep-seccion-cabeza span{ display:none; }
-    .rep-total, .rep-kpi, .rep-bloque{ box-shadow:none; break-inside:avoid; }
-    .rep-grilla{ grid-template-columns:repeat(2, minmax(0, 1fr)); }
+    .rep-grilla, .rep-grilla-3, .rep-grilla-ancha, .rep-extras{ grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px; }
+    .rep-extras{ margin-top:0; }
+    .rep-grilla .rep-bloque-mensual{ grid-column:1 / -1; }
+    /* Las tablas de evolución año por año, a todo el ancho: en media hoja
+       la sexta columna quedaba afuera. */
+    .rep-grilla .rep-bloque-ancho{ grid-column:1 / -1; }
+    .rep-bloque, .rep-total, .rep-kpi, .rep-sugerencias{ box-shadow:none; }
+    .rep-bloque{ padding:10px 12px; break-inside:avoid; }
+    .rep-bloque h3{ font-size:10px; margin-bottom:7px; }
+    .rep-fila{ margin-bottom:4px; break-inside:avoid; }
+    /* Los nombres largos enteros, en dos renglones si hace falta, en vez
+       de "República Domi…". */
+    .rep-etiqueta{ font-size:10.5px; white-space:normal; overflow:visible; text-overflow:clip; line-height:1.2; }
+    .rep-num{ font-size:10.5px; }
+    .rep-riel{ height:8px; }
+    .rep-cols{ height:120px; }
+    .rep-col .rep-etiqueta{ font-size:9.5px; }
+    .rep-tabla-envoltorio{ overflow:visible; }
+    .rep-tabla{ font-size:10.5px; }
+    .rep-tabla th{ font-size:9.5px; padding:3px 6px; }
+    .rep-tabla td{ padding:3px 6px; }
+    .rep-tabla tr, .rep-lista li, .rep-sugerencias li{ break-inside:avoid; }
+    .rep-tabla thead{ display:table-header-group; }
+    .rep-lista{ max-height:none; overflow:visible; }
+    .rep-lista li{ padding:3px 0; font-size:10.5px; }
+    .rep-sugerencias{ padding:10px 14px; margin-top:10px; break-inside:auto; }
+    .rep-sugerencias li{ padding:4px 0; font-size:11px; }
+    .rep-notas{ margin-top:10px; font-size:9.5px; }
+    .rep-bloque-nota{ font-size:9.5px; }
   }
 
   .country-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:12px; }
@@ -13478,12 +13536,12 @@ function cabezaDelReporte(titulo, subtitulo, f){
   if(f.pais) chips.push(["pais", countryLabel(f.pais)]);
   if(f.tipo) chips.push(["tipo", (ACTIVITY_BY_KEY[f.tipo] || {}).label || f.tipo]);
   if(f.persona) chips.push(["persona", nombreEnReporte(f.persona)]);
-  return `<div class="rep-cabeza">
+  return `<div class="rep-print-title"><span>Team LatAm · ${t("Registro de Acciones","Activity Log","Registro de Ações","יומן פעולות")}</span><span>${esc(t("Impreso el {d}","Printed on {d}","Impresso em {d}","הודפס ב-{d}",{d:fmtDate(todayISO())}))}</span></div>
+    <div class="rep-cabeza">
       <h2 class="rep-titulo">${titulo}</h2>
       <div class="rep-subtitulo">${subtitulo}${chips.length ? ` · ${t("Solo:","Only:","Só:","רק:")} ${chips.map(([k, txt]) =>
         `<button type="button" class="rep-chip-filtro" data-action="reporte-quitar-filtro" data-key="${k}" aria-label="${esc(t("Quitar filtro {x}","Remove filter {x}","Tirar filtro {x}","הסרת המסנן {x}",{x:txt}))}">${esc(txt)} ✕</button>`).join("")}` : ""}</div>
-    </div>
-    <div class="rep-print-title">Registro de Acciones · ${titulo} · ${subtitulo}</div>`;
+    </div>`;
 }
 // La tira de números de arriba: una sola tarjeta, dividida.
 function tiraDeNumeros(items){
