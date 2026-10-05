@@ -155,3 +155,27 @@ jobs:
           git push --quiet origin HEAD 2>/dev/null || { echo "### ⛔ No se pudo guardar la copia en el repo (¿el token puede escribir?)" >> "$GITHUB_STEP_SUMMARY"; exit 1; }
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "✅ Guardada en team-latam/registro-respaldos." >> "$GITHUB_STEP_SUMMARY"
+
+      # El token vence (el actual, el 5/10/2027). GitHub dice cuándo en cada
+      # respuesta. Faltando menos de 15 días, la corrida queda en rojo
+      # (después de guardar la copia): GitHub le manda un mail al dueño
+      # cuando falla un trabajo programado, y ese es el aviso.
+      - name: ¿Cuándo vence el token?
+        if: always() && steps.revisar.outputs.hay == 'si'
+        env:
+          TOKEN: ${{ secrets.RESPALDOS_TOKEN }}
+        run: |
+          vence=$(curl -sI -H "Authorization: Bearer $TOKEN" https://api.github.com/repos/team-latam/registro-respaldos \
+            | tr -d '\r' | awk -F': ' 'tolower($1)=="github-authentication-token-expiration"{print $2}')
+          if [ -z "$vence" ]; then
+            echo "- No se pudo saber cuándo vence el token RESPALDOS_TOKEN." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          dias=$(( ( $(date -d "$vence" +%s) - $(date +%s) ) / 86400 ))
+          echo "- El token RESPALDOS_TOKEN vence el ${vence%% *} (faltan $dias días)." >> "$GITHUB_STEP_SUMMARY"
+          if [ "$dias" -lt 15 ]; then
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "### ⚠️ El token de las copias vence en $dias días" >> "$GITHUB_STEP_SUMMARY"
+            echo "Hay que generar uno nuevo y reemplazar el secreto RESPALDOS_TOKEN (pasos en supabase/respaldo/LEEME.md). La copia de hoy sí se guardó." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
