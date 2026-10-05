@@ -17,8 +17,8 @@ const eq = (n, g, w) => { const a = JSON.stringify(g), x = JSON.stringify(w);
   if(a === x) pass++; else { fail++; console.log(`✗ ${n}\n   esperado: ${x}\n   obtenido: ${a}`); } };
 
 const codigo = ["W_NS","TITULOS_DE_FORMULARIO","sinTildes","idDePaso","textoDeNodoWord","bloquesDeWord",
-  "tituloDeFormulario","logradoDe","recortar","leerFormularioDeViaje","resumenCombinado","elegirLeido",
-  "extensionDe","esWordDeViaje","cuentaObjetivos","pasosPendientes"].map(grab).join("\n");
+  "tituloDeFormulario","logradoDe","recortar","leerFormularioDeViaje","partesDe","claveDeParte","resumenCombinado",
+  "extensionDe","esWordDeViaje","cuentaObjetivos","pasosDe","pasosPendientes"].map(grab).join("\n");
 
 // Un Word mínimo con la forma de los formularios: un párrafo por línea,
 // y la tabla de objetivos como tabla.
@@ -56,42 +56,58 @@ const PLAN = doc([
   p("Día 1: llegada"),
 ].join(""));
 const MEMORIA = doc([p("Memoria Completa – Cierre de Viaje", true), p("Lugar: Ciudad Inventada"), p("Texto largo.")].join(""));
+// Un viaje por dos lugares: un Cierre por cada uno.
+const CIERRE_2 = doc([
+  p("Formulario de Cierre de Viaje", true), p("Lugar: Otra Ciudad, Otro País"), p("Objetivos:", true),
+  tabla([["Objetivo", "Logrado"], ["1. Visitar la escuela", "Sí"]]),
+  p("Resumen Ejecutivo:", true), p("En la otra ciudad todo bien."), p("Conclusiones:", true), p("Volver en marzo."),
+].join(""));
 const CIERRE_EN = doc([p("Trip Closure Form", true), p("Goals:"), tabla([["Goals", "Achieved"], ["Meet", "YES"]])].join(""));
 
 const b = await chromium.launch();
 const pg = await b.newPage();
 await pg.setContent("<!doctype html><meta charset=utf-8><body></body>");
-const r = await pg.evaluate(([codigo, CIERRE, PLAN, MEMORIA, CIERRE_EN]) => {
-  const api = new Function(`${codigo}; return { leerFormularioDeViaje, resumenCombinado, elegirLeido, idDePaso, esWordDeViaje, cuentaObjetivos, pasosPendientes };`)();
+const r = await pg.evaluate(([codigo, CIERRE, PLAN, MEMORIA, CIERRE_EN, CIERRE_2]) => {
+  const api = new Function(`${codigo}; return { leerFormularioDeViaje, resumenCombinado, partesDe, idDePaso, esWordDeViaje, cuentaObjetivos, pasosPendientes };`)();
   const cierre = api.leerFormularioDeViaje(CIERRE);
   const plan = api.leerFormularioDeViaje(PLAN);
   const fuente = { name: "Formulario de Cierre.docx", subidoEl: "2026-03-05T10:00:00Z" };
-  const r1 = api.resumenCombinado(null, cierre, fuente);
+  const uno = (leido, f) => [{ leido, fuente: f }];
+  const r1 = api.resumenCombinado(null, uno(cierre, fuente));
+  const p1 = api.partesDe(r1)[0];
   // Alguien tilda el primer paso; después se vuelve a subir el mismo Cierre.
-  const tildado = { ...r1, pasos: r1.pasos.map((x, i) => i === 0 ? { ...x, estado: "hecho", por: "ana@x.com" } : x) };
-  const r2 = api.resumenCombinado(tildado, cierre, { name: "Cierre v2.docx", subidoEl: "2026-03-06T10:00:00Z" });
-  const delPlan = api.resumenCombinado(null, plan, { name: "Formulario de Viaje.docx" });
+  const tildado = { v:2, partes: [{ ...p1, pasos: p1.pasos.map((x, i) => i === 0 ? { ...x, estado: "hecho", por: "ana@x.com" } : x) }] };
+  const r2 = api.resumenCombinado(tildado, uno(cierre, { name: "Cierre v2.docx", subidoEl: "2026-03-06T10:00:00Z" }));
+  const delPlan = api.resumenCombinado(null, uno(plan, { name: "Formulario de Viaje.docx" }));
+  const cierre2 = api.leerFormularioDeViaje(CIERRE_2);
+  // Los dos Cierres de un viaje por dos lugares, leídos juntos o de a uno.
+  const dos = api.resumenCombinado(null, [{ leido: cierre, fuente }, { leido: cierre2, fuente: { name: "Cierre 2.docx", subidoEl: "2026-03-07" } }]);
+  const deAUno = api.resumenCombinado(r1, uno(cierre2, { name: "Cierre 2.docx", subidoEl: "2026-03-07" }));
   return {
     cierre, plan,
     memoria: api.leerFormularioDeViaje(MEMORIA).tipo,
     ingles: api.leerFormularioDeViaje(CIERRE_EN).tipo,
-    r1, r2,
-    planNoPisa: api.resumenCombinado(r1, plan, { name: "Formulario de Viaje.docx" }) === r1,
-    delPlan,
-    cierreSobrePlan: api.resumenCombinado(delPlan, cierre, fuente).tipo,
-    elegido: api.elegirLeido([
+    r1: p1, r2: api.partesDe(r2)[0],
+    planNoPisa: api.partesDe(api.resumenCombinado(r1, uno(plan, { name: "Formulario de Viaje.docx", subidoEl: "2026-03-09" }))).map(x => x.tipo),
+    delPlan: api.partesDe(delPlan)[0],
+    cierreSobrePlan: api.partesDe(api.resumenCombinado(delPlan, uno(cierre, fuente))).map(x => x.tipo),
+    elegido: api.partesDe(api.resumenCombinado(null, [
       { fuente: { name: "plan", subidoEl: "2026-03-09" }, leido: plan },
       { fuente: { name: "cierre viejo", subidoEl: "2026-03-01" }, leido: cierre },
       { fuente: { name: "cierre nuevo", subidoEl: "2026-03-07" }, leido: cierre },
       { fuente: { name: "memoria", subidoEl: "2026-03-10" }, leido: { tipo: null } },
-    ]).fuente.name,
-    nadie: api.elegirLeido([{ fuente: { name: "m" }, leido: { tipo: null } }]),
+    ])).map(x => x.fuente.name),
+    nadie: api.resumenCombinado(null, [{ fuente: { name: "m" }, leido: { tipo: null } }]),
+    dos: api.partesDe(dos).map(x => [x.lugar, x.objetivos.length, x.pasos.length]),
+    deAUno: api.partesDe(deAUno).map(x => x.lugar),
+    viejo: api.partesDe({ v:1, tipo:"cierre", objetivos:[], pasos:[] }).length,
+    cuentaDos: api.cuentaObjetivos(api.partesDe(dos)),
     word: [api.esWordDeViaje({ name: "Cierre.docx" }), api.esWordDeViaje({ name: "Cierre.pdf" }), api.esWordDeViaje({ name: "viejo.doc" })],
-    cuenta: api.cuentaObjetivos(r1),
-    pendientes: api.pasosPendientes(r2).length,
+    cuenta: api.cuentaObjetivos(api.partesDe(r1)),
+    pendientes: api.pasosPendientes(api.partesDe(r2)).length,
     mismoId: api.idDePaso("Mandar el plan") === api.idDePaso("mandar  el plan"),
   };
-}, [codigo, CIERRE, PLAN, MEMORIA, CIERRE_EN]);
+}, [codigo, CIERRE, PLAN, MEMORIA, CIERRE_EN, CIERRE_2]);
 await b.close();
 
 /* ---------- El Formulario de Cierre ---------- */
@@ -121,10 +137,14 @@ eq("guardado: 1 de 3 objetivos logrados", r.cuenta, { total: 3, si: 1, parcial: 
 eq("volver a subir el Cierre no destilda lo que ya se marcó", [r.r2.pasos[0].estado, r.r2.pasos[0].por], ["hecho", "ana@x.com"]);
 eq("y lo hecho ya no cuenta como pendiente", r.pendientes, 1);
 eq("el id de un paso no depende de mayúsculas ni espacios", r.mismoId, true);
-eq("un Formulario de Viaje no pisa un Cierre ya leído", r.planNoPisa, true);
+eq("un Formulario de Viaje no pisa un Cierre ya leído", r.planNoPisa, ["cierre"]);
 eq("sin Cierre, el Formulario de Viaje da los objetivos planeados", [r.delPlan.tipo, r.delPlan.objetivos.length, r.delPlan.pasos], ["plan", 2, []]);
-eq("y cuando llega el Cierre, lo reemplaza", r.cierreSobrePlan, "cierre");
-eq("de varios Word, manda el Cierre más nuevo", r.elegido, "cierre nuevo");
+eq("y cuando llega el Cierre, lo reemplaza", r.cierreSobrePlan, ["cierre"]);
+eq("del mismo lugar, manda el Cierre más nuevo (y el Formulario de Viaje sobra)", r.elegido, ["cierre nuevo"]);
+eq("un viaje por dos lugares guarda los dos Cierres, cada uno con lo suyo", r.dos, [["Ciudad Inventada, País Inventado", 3, 2], ["Otra Ciudad, Otro País", 1, 1]]);
+eq("y subir el segundo después no borra el primero", r.deAUno, ["Ciudad Inventada, País Inventado", "Otra Ciudad, Otro País"]);
+eq("los objetivos de los dos se suman", r.cuentaDos, { total: 4, si: 2, parcial: 1 });
+eq("un resumen guardado con la forma de antes se sigue leyendo", r.viejo, 1);
 eq("si no hay ningún formulario, no hay nada que guardar", r.nadie, null);
 
 console.log(`${pass} pasaron, ${fail} fallaron`);
