@@ -10686,7 +10686,8 @@ function renderAdminResumen(){
           ${canWrite() ? ` <button type="button" class="btn-secondary" data-action="sync-calendar" ${state.calendarSyncing?"disabled":""}>🔄 ${t("Actualizar ahora","Refresh now","Atualizar agora","לעדכן עכשיו")}</button>` : ""}
         </div>
         <div class="rep-bloque"><h3>${t("Copias de seguridad","Backups","Cópias de segurança","גיבויים")}</h3>
-          <p>${t("Todavía no hay copias automáticas de la base ni de las fotos: es lo más urgente que queda (REVISION.md, punto 13).","There are no automatic backups of the database or the photos yet: it's the most urgent thing left (REVISION.md, item 13).","Ainda não há cópias automáticas da base nem das fotos: é o mais urgente que resta (REVISION.md, ponto 13).","עדיין אין גיבויים אוטומטיים של בסיס הנתונים או התמונות: זה הדבר הדחוף ביותר שנותר (REVISION.md, סעיף 13).")}</p>
+          <p>${t("Cada domingo se guarda sola una copia completa (datos, fotos y adjuntos) en un lugar privado. También podés bajar una cuando quieras.","Every Sunday a full copy (data, photos and attachments) is saved automatically to a private place. You can also download one whenever you want.","Todo domingo uma cópia completa (dados, fotos e anexos) é guardada sozinha num lugar privado. Você também pode baixar uma quando quiser.","בכל יום ראשון נשמר לבד עותק מלא (נתונים, תמונות וקבצים) במקום פרטי. אפשר גם להוריד עותק מתי שרוצים.")}</p>
+          <button type="button" class="btn-secondary" data-action="admin-go" data-view="preferencias" data-key="copia">${t("Bajar una copia","Download a copy","Baixar uma cópia","הורדת עותק")}</button>
         </div>
       </section>
     </div>`;
@@ -11891,7 +11892,7 @@ function renderAdjuntosSection(){
 }
 
 /* ----- Copia de seguridad -----
-   Desde que se apagó Firebase no quedaba ninguna (REVISION.md, punto 13).
+   Desde que se apagó Firebase no quedaba ninguna (docs/REVISION.md, punto 13).
    Hay dos: la automática de cada domingo (supabase/respaldo/, a un repo
    privado de GitHub) y esta, que baja una en el momento a la computadora
    de quien la pide: solo los datos (un .json) o los datos con las fotos y

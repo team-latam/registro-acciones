@@ -87,7 +87,7 @@ lo que de verdad protege los datos son los permisos de
 
 ## Las copias que conviene tener
 
-1. **GitHub** — ya la tenés, en la rama `main`. La rama `firebase-v1`
-   guarda cómo era la app con Firebase: no se borra.
+1. **GitHub** — ya la tenés, en la rama `main` (con todo su historial,
+   incluido cómo era la app con Firebase).
 2. **Una carpeta tuya** con los archivos de arriba.
-3. **Una copia de los datos** — la que falta (punto 2).
+3. **Una copia de los datos** — ya está: la automática de cada domingo (punto 2).

@@ -33,8 +33,9 @@ llegan solos a todas las pantallas abiertas).
 > | una imagen o un archivo en base64 adentro del posteo | un archivo en el bucket `adjuntos`, y su ruta en el posteo |
 >
 > La base de Firestore se borró el 3 de octubre de 2026 (la última copia
-> quedó guardada aparte). La rama `firebase-v1` guarda cómo era la app con
-> Firebase.
+> quedó guardada aparte). La rama `firebase-v1`, que guardaba cómo era la
+> app con Firebase, se borró el 5 de octubre de 2026: ese código sigue en
+> el historial de `main`.
 
 ## 1. Poner en marcha el backend (Supabase)
 

@@ -398,8 +398,9 @@ ninguna.
    Calendar, y muy probablemente el login de Google de Supabase.
 7. **Copias de seguridad de Supabase** (punto 13). Iban antes del cambio
    de base; el cambio se adelantó porque el equipo ya trabajaba en
-   Supabase, así que **hoy no hay ninguna copia de lo que se carga**. Es lo
-   más urgente que queda.
+   Supabase, así que no quedaba ninguna copia de lo que se cargaba.
+   **Resuelto el 5/10/2026:** copia automática cada domingo y botón en
+   Administración (ver el punto 13).
 
 ## Lo que quedaba armado a la manera de Firebase
 
