@@ -25,7 +25,8 @@ decisiones de arquitectura.
   Administración → Copia de seguridad). Pendiente del usuario: crear el
   repo privado `team-latam/registro-respaldos` y el secreto
   `RESPALDOS_TOKEN` (pasos en `supabase/respaldo/LEEME.md`). Claude no
-  puede crear repos en la organización.
+  puede crear repos en la cuenta `team-latam` (es una cuenta de usuario,
+  no una organización; la conexión de GitHub no tiene ese permiso).
 
 ## Ramas — LEER ANTES DE EMPEZAR
 
