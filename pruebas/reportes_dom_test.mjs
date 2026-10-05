@@ -131,6 +131,28 @@ for(const modo of [{ anio:"todos" }, { modo:"comparar", compA:"2025", compB:"202
   await p.waitForTimeout(100);
   eq("a 380px, " + (modo.modo || "todos los años") + " no se va de la pantalla", await p.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false);
 }
+// Impreso / PDF (5/10/2026): en papel no hay scroll ni "gráficos de fondo".
+await p.setViewportSize({ width: 760, height: 1000 });
+await p.emulateMedia({ media: "print" });
+for(const modo of [{}, { anio:"todos" }, { modo:"comparar", compA:"2025", compB:"2026" }]){
+  await p.evaluate(m => window.__pintar(window.__datos, { anio:"2026", trimestre:0, modo:"periodo", filtro:{}, ...m }), modo);
+  await p.waitForTimeout(100);
+  const impreso = await p.evaluate(() => {
+    const cs = s => [...document.querySelectorAll(s)].map(e => getComputedStyle(e));
+    return {
+      // Chrome por defecto no imprime fondos: sin esto las barras salen en blanco.
+      barras: cs(".rep-barra, .rep-col-barra, .rep-evolucion td").every(c => c.printColorAdjust === "exact"),
+      sinScroll: cs(".rep-lista, .rep-tabla-envoltorio").every(c => c.maxHeight === "none" && c.overflowX === "visible" && c.overflowY === "visible"),
+      sinCortar: [...document.querySelectorAll(".rep-bloque, .rep-tabla")].every(e => e.scrollWidth <= e.clientWidth + 1),
+      seccionesSeParten: cs(".rep-seccion").every(c => c.breakInside !== "avoid"),
+      nombresEnteros: cs(".rep-fila:not(.rep-col) .rep-etiqueta").every(c => c.textOverflow !== "ellipsis"),
+      sinBarra: !document.querySelector(".rep-barra-control") || getComputedStyle(document.querySelector(".rep-barra-control")).display === "none",
+    };
+  });
+  eq("impreso, " + (modo.modo || modo.anio || "un período") + ": barras con color, sin scroll, sin cortes, sin la barra de control", impreso,
+     { barras:true, sinScroll:true, sinCortar:true, seccionesSeParten:true, nombresEnteros:true, sinBarra:true });
+}
+await p.emulateMedia({ media: "screen" });
 eq("y en todo el recorrido, sin un solo error", errores, []);
 
 await b.close();
