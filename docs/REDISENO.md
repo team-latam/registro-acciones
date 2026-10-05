@@ -519,6 +519,27 @@ capturas (A/B/C, después D/E/F, después ajustes), el diseño elegido:
   **− porcentaje +** (tocar el porcentaje vuelve al inicial). El contador
   "1 / 2" va siempre de izquierda a derecha (en hebreo salía "2/1").
 
+### 31. Arreglos y detalles después del visor — HECHO (5 oct 2026)
+
+- Un PDF anotado con un tipo que no servía ("otro") abría como "no se
+  puede mostrar": ahora el tipo también se deduce de la terminación.
+- Al editar un evento, el cuadro de comentarios ya no tapa Cancelar /
+  Guardar cambios.
+- Un comentario cuya respuesta-madre se borró se ve suelto (antes decía
+  "Ver 1 comentario" y el hilo quedaba vacío).
+- **Me gusta**: el número abre la lista de quiénes (foto, nombre,
+  @apodo, "Vos"), sin dar el me gusta; al pasar el mouse, una burbuja
+  con los primeros 3 y "y X más…". Tocar a alguien abre su perfil, y el
+  perfil tiene una **«‹»** sutil para volver a la lista (opción A); lo
+  mismo desde la tarjeta de un evento del Calendario. Esc vuelve un paso.
+- **Adjuntos sueltos como fichas** (opción A): cuadradito de color con
+  la sigla (PDF, DOCX, XLSX…), nombre, tipo y día; el ✕ se asoma al
+  pasar el mouse.
+- **Correos que ya no están en el equipo** (al pie de Personas): lo de
+  una cuenta borrada a mano se pasa a otra con el mismo «Pasar…».
+  unificar_cuentas ahora también mueve los me gusta de un correo sin
+  ficha.
+
 ## Fuera de alcance (necesitan algo que la app no tiene)
 
 - Mandar correos (resumen semanal, invitaciones): no hay servicio de
