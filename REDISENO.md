@@ -424,6 +424,29 @@ una sin avisarle a nadie (`sendUpdates=none`). Si alguno ya estaba en el
 Calendar con el mismo título y fecha, se vincula en vez de duplicarse. La
 casilla "No pasarlo a Google Calendar" sigue en el formulario.
 
+### 25. Reportes, de nuevo — HECHO (5 oct 2026)
+
+Pedido: ver todos los años juntos, comparar año contra año, y sugerencias
+para decidir el año siguiente. El usuario eligió las cuatro mejoras de la
+maqueta (sin el rango de fechas libre).
+
+- **Un período / Comparar** arriba de todo. En "Un período", el chip
+  **Todos los años**: total histórico, año por año, y tablas de evolución
+  por país y por tipo (últimos seis años con datos, con tono según el
+  número).
+- **Comparar**: dos años (y el mismo trimestre de cada uno, si se elige),
+  con los cuatro números de arriba "A → B", mes a mes (gruesa B, fina A) y
+  tablas por tipo, zona y país con la diferencia.
+- **Ver solo**: zona, país, tipo o persona, en las tres pantallas
+  (`pasaFiltroDelReporte`).
+- **Última actividad por país** (cobertura, en rojo lo de más de un año)
+  y **Por persona del equipo** (cargó, participó, en cuántos países).
+- **Sugerencias para el año siguiente** (`sugerenciasDelReporte`): países
+  donde se dejó de ir, lo que lleva más de un año sin actividad, lo que
+  bajó a la mitad, lo que más creció, meses vacíos, una zona con poco del
+  total, y datos que faltan (sin lugar, sin participantes). Reglas
+  simples y explicadas, no adivinanzas.
+
 ## Fuera de alcance (necesitan algo que la app no tiene)
 
 - Mandar correos (resumen semanal, invitaciones): no hay servicio de

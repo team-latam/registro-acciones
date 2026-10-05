@@ -15,7 +15,7 @@ await p.waitForTimeout(400);
 
 eq("la pantalla se dibuja sin un solo error", errores, []);
 
-const bloques = await p.$$eval(".rep-bloque h3", els => els.map(e=>e.textContent.trim()));
+const bloques = await p.$$eval(".rep-grilla > .rep-bloque h3", els => els.map(e=>e.textContent.trim()));
 eq("los seis bloques", bloques,
    ["Mes a mes","Por zona","Por país","Por tipo","Quién cargó","Quién participó"]);
 
@@ -105,6 +105,32 @@ await p.evaluate(()=> {
 await p.waitForTimeout(150);
 const texto2 = await p.$eval(".rep-comparacion", e => e.textContent.trim());
 eq("de 20 a 25 sí es 25% más", /▲ 25% más/.test(texto2), true);
+
+/* ---------- Todos los años, Comparar y "Ver solo" (5/10/2026) ---------- */
+await p.evaluate(()=> window.__pintar(window.__datos, { anio:"todos", trimestre:0, modo:"periodo", filtro:{} }));
+await p.waitForTimeout(150);
+eq("todos los años: los bloques de la historia", await p.$$eval(".rep-grilla > .rep-bloque h3", els => els.map(e => e.textContent.trim())),
+   ["Año por año", "Evolución por país", "Evolución por tipo"]);
+eq("y una barra por año con datos (2025 y 2026)", await p.$$eval(".rep-grilla > .rep-bloque:first-child .rep-fila", l => l.length), 2);
+eq("la tabla de evolución tiene una columna por año", await p.$eval(".rep-evolucion", tb => [...tb.querySelectorAll("thead th")].map(e => e.textContent)), ["", "2025", "2026"]);
+await p.evaluate(()=> window.__pintar(window.__datos, { anio:"2026", trimestre:0, modo:"comparar", compA:"2025", compB:"2026", compTri:0, filtro:{} }));
+await p.waitForTimeout(150);
+eq("comparar: 2025 contra 2026, con el total de cada uno", await p.$eval(".rep-kpi .rep-kpi-num", e => /^\d+ → \d+$/.test(e.textContent.trim())), true);
+eq("y las tablas lado a lado, con la diferencia", await p.$$eval(".rep-tabla thead tr:first-child", l => l[0] && [...l[0].children].map(e => e.textContent)), ["", "2025", "2026", "Diferencia"]);
+await p.evaluate(()=> window.__pintar(window.__datos, { anio:"2026", trimestre:0, modo:"periodo", filtro:{ pais:"Perú" } }));
+await p.waitForTimeout(150);
+eq("ver solo un país: la columna por país tiene solo ese", await p.$$eval(".rep-grilla > .rep-bloque:nth-child(3) .rep-etiqueta", l => l.map(e => e.textContent.trim())), ["Perú"]);
+eq("y se puede quitar el filtro", !!(await p.$('[data-action="reporte-sin-filtro"]')), true);
+await p.evaluate(()=> window.__pintar(window.__datos, { anio:"2026", trimestre:0, modo:"periodo", filtro:{} }));
+await p.waitForTimeout(150);
+eq("un período trae sugerencias, cobertura y equipo", [!!(await p.$(".rep-sugerencias li")), !!(await p.$(".rep-cobertura li")), !!(await p.$(".rep-equipo tbody tr"))], [true, true, true]);
+await p.setViewportSize({ width: 380, height: 800 });
+for(const modo of [{ anio:"todos" }, { modo:"comparar", compA:"2025", compB:"2026" }]){
+  await p.evaluate(m => window.__pintar(window.__datos, { anio:"2026", trimestre:0, modo:"periodo", filtro:{}, ...m }), modo);
+  await p.waitForTimeout(100);
+  eq("a 380px, " + (modo.modo || "todos los años") + " no se va de la pantalla", await p.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false);
+}
+eq("y en todo el recorrido, sin un solo error", errores, []);
 
 await b.close();
 console.log(`\n${pass} pasaron, ${fail} fallaron`);
