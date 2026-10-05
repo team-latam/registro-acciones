@@ -2447,7 +2447,9 @@
     .rep-tabla thead{ display:table-header-group; }
     .rep-lista{ max-height:none; overflow:visible; }
     .rep-lista li{ padding:3px 0; font-size:10.5px; }
-    .rep-sugerencias{ padding:10px 14px; margin-top:10px; break-inside:auto; }
+    /* Las sugerencias juntas: partidas entre dos hojas quedaba un pedazo
+       de recuadro suelto arriba de la segunda (PDF del usuario, 6/10/2026). */
+    .rep-sugerencias{ padding:10px 14px; margin-top:10px; break-inside:avoid; }
     .rep-sugerencias li{ padding:4px 0; font-size:11px; }
     .rep-notas{ margin-top:10px; font-size:9.5px; }
     .rep-bloque-nota{ font-size:9.5px; }
