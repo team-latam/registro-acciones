@@ -515,6 +515,7 @@ const hasta = async (p, fn, arg, ms = 5000) => {
     await p.evaluate(() => { const o = document.getElementById("userProfileOverlay"); const n = document.getElementById("userProfileNameLabel");
       return [!o.hidden, n ? n.textContent.includes("·") : null, !!o.querySelector(".up-kv"), !!o.querySelector(".up-sub .up-nick"), !!o.querySelector('[data-action="ver-posteos-de"]')]; }),
     [true, false, true, true, true]);
+  eq("perfil: abierto desde el Inicio no tiene «‹»: no hay adónde volver", await p.$eval("#userProfileBack", e => e.hidden), true);
   await p.click('#userProfileOverlay [data-action="ver-posteos-de"]');
   await p.waitForTimeout(200);
   eq("perfil: 'Ver todo lo que cargó' cierra el cuadro y deja el Inicio filtrado por esa persona",
@@ -972,7 +973,20 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   eq("me gusta: tocar a alguien abre su perfil", await hasta(p, () =>
     document.getElementById("likesOverlay").hidden && !document.getElementById("userProfileOverlay").hidden &&
     /Ana Pérez/.test(document.getElementById("userProfileBody").textContent)), true);
+  // El «‹» del perfil (6/10/2026): vuelve a la lista; Escape también; la ✕
+  // cierra todo.
+  eq("perfil: desde la lista de Me gusta tiene «‹» para volver", await p.$eval("#userProfileBack", e => !e.hidden && getComputedStyle(e).display !== "none"), true);
+  await p.click("#userProfileBack");
+  eq("perfil: «‹» vuelve a la lista de Me gusta", await p.evaluate(() =>
+    document.getElementById("userProfileOverlay").hidden && !document.getElementById("likesOverlay").hidden), true);
+  await p.click('#likesOverlay .lk-row[data-email="ana@x.com"]');
   await p.keyboard.press("Escape");
+  eq("perfil: Escape también vuelve un paso", await p.evaluate(() =>
+    document.getElementById("userProfileOverlay").hidden && !document.getElementById("likesOverlay").hidden), true);
+  await p.click('#likesOverlay .lk-row[data-email="ana@x.com"]');
+  await p.click("#userProfileClose");
+  eq("perfil: la ✕ cierra todo", await p.evaluate(() =>
+    document.getElementById("userProfileOverlay").hidden && document.getElementById("likesOverlay").hidden), true);
   eq("hilo: sin un solo error", errores, []);
   await p.close();
 }
