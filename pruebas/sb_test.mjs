@@ -1038,6 +1038,7 @@ eq("el adaptador sabe dar la miniatura de una foto y olvidar las firmas al salir
       ${grab("safeImageSrc")}
       ${grab("srcMiniatura")}
       ${grab("ownerAttrs")}
+      ${grab("tiraDeFotos")}
       ${grab("renderAttachments")}
       return renderAttachments;
     `)({ store });
@@ -1049,6 +1050,17 @@ eq("el adaptador sabe dar la miniatura de una foto y olvidar las firmas al salir
     eq("una foto sin miniatura, entera", srcs[1], VIEJA);
     eq("y una miniatura que no es del bucket propio no entra: va la entera", srcs[2], RARA);
     eq("las fotos se bajan recién cuando están por verse", (html.match(/ loading="lazy"/g) || []).length, 3);
+    // La tira (6/10/2026): hasta cuatro; con más, "+N" en la cuarta (y en
+    // la tercera para el celular, donde entran tres).
+    const seis = dibujar({ images:[ENTERA, VIEJA, RARA, VIEJA, VIEJA, VIEJA] }, { postId:"p1" }).imagesHtml;
+    eq("con seis fotos se dibujan cuatro", (seis.match(/<img /g) || []).length, 4);
+    eq("la cuarta dice cuántas más hay (+3)", /data-mas="\+3"[^>]*><img [^>]*data-idx="3"/.test(seis), true);
+    eq("y en el celular, la tercera (+4)", /data-mas-cel="\+4"[^>]*><img [^>]*data-idx="2"/.test(seis), true);
+    const cuatro = dibujar({ images:[ENTERA, VIEJA, RARA, VIEJA] }, { postId:"p1" }).imagesHtml;
+    eq("con cuatro no hay «más» en la computadora", /data-mas=/.test(cuatro), false);
+    eq("pero sí en el celular, donde entran tres (+2)", /data-mas-cel="\+2"/.test(cuatro), true);
+    const dos = dibujar({ images:[ENTERA, VIEJA] }, { postId:"p1" }).imagesHtml;
+    eq("con dos, ninguna marca", /data-mas/.test(dos), false);
   }
 }
 
