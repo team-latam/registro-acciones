@@ -985,8 +985,12 @@ const hasta = async (p, fn, arg, ms = 5000) => {
       base.posts.find(x => x.id === "p_reunion").files = [
         { name: "Plan viejo.pdf", kind: "pdf", doc: "plan", path: "posts/p_reunion/plan1.pdf" },
         { name: "Plan de viaje definitivo con un nombre muy largo.docx", kind: "doc", doc: "plan", path: "posts/p_reunion/plan2.docx" },
-        { name: "Reporte.pdf", kind: "pdf", doc: "reporte", path: "posts/p_reunion/rep.pdf" } ]; });
+        { name: "Reporte.pdf", kind: "pdf", doc: "reporte", path: "posts/p_reunion/rep.pdf" },
+        { name: "Planilla de gastos de octubre.xlsx", kind: "planilla", path: "posts/p_reunion/x7f3a9.xlsx" } ]; });
     await esperarTexto(q, "Reunión con la comunidad");
+    // Lo que se baja conserva el nombre con que se cargó, no el del bucket.
+    const [bajada] = await Promise.all([q.waitForEvent("download"), q.click(`.post[data-post-id="p_reunion"] a.post-file-link[download]`)]);
+    eq("bajar un archivo conserva el nombre con que se cargó", bajada.suggestedFilename(), "Planilla de gastos de octubre.xlsx");
     const tarjeta = '.post[data-post-id="p_reunion"]';
     await q.click(`${tarjeta} .doc-linea`);
     await q.waitForSelector(`${tarjeta} .doc-abierto`);
