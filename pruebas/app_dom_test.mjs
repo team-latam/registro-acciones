@@ -1006,9 +1006,17 @@ const hasta = async (p, fn, arg, ms = 5000) => {
     eq("visor: el nombre, y el contador entre los documentos del evento",
       await q.evaluate(() => [document.getElementById("filePreviewTitle").textContent, document.getElementById("filePreviewCounter").textContent]),
       ["Plan de viaje definitivo con un nombre muy largo.docx", "1 / 3"]);
+    const zoom = () => q.evaluate(() => Number(document.querySelector("#filePreviewWord section.docx").style.zoom || 1));
+    const antes = await zoom();
+    await q.click("#filePreviewMas"); await q.click("#filePreviewMas");
+    const despues = await zoom();
+    await q.click("#filePreviewMenos");
+    eq("visor: con un Word aparecen A− / A+ y cambian el tamaño", [await q.evaluate(() => !document.getElementById("filePreviewZoom").hidden), despues > antes, (await zoom()) < despues], [true, true, true]);
+    eq("visor: el iPhone no agranda la letra por su cuenta", await q.evaluate(() => { const c = getComputedStyle(document.getElementById("filePreviewWord")); return c.webkitTextSizeAdjust || c.textSizeAdjust; }), "100%");
     await q.keyboard.press("ArrowRight");
     eq("visor: la flecha → pasa al siguiente (un PDF, en el marco)", await q.evaluate(() => [document.getElementById("filePreviewTitle").textContent, document.getElementById("filePreviewFrame").hidden, document.getElementById("filePreviewCounter").textContent]),
       ["Plan viejo.pdf", false, "2 / 3"]);
+    eq("visor: en un PDF no hay A− / A+ (el navegador ya trae lo suyo)", await q.evaluate(() => document.getElementById("filePreviewZoom").hidden), true);
     await q.keyboard.press("Escape");
     eq("visor: Esc cierra y el foco vuelve a lo que se tocó", await q.evaluate(() => [document.getElementById("filePreviewOverlay").hidden, document.activeElement.classList.contains("doc-archivo")]), [true, true]);
     // Ventana flotante (opción B): sin fondo negro, la página atrás bloqueada.

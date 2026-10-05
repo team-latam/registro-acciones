@@ -124,6 +124,8 @@
     --acento-fuerte:#6fd8ec;
   }
   *{box-sizing:border-box;}
+  /* Que el iPhone no agrande la letra por su cuenta al girar o en bloques anchos. */
+  html{ -webkit-text-size-adjust:100%; text-size-adjust:100%; }
   /* El foco del teclado se ve igual en toda la app (y en oscuro): el
      anillo del navegador cambia por elemento y a veces no se distingue.
      :where() no suma especificidad, así las reglas propias (.lp-row,
@@ -3081,7 +3083,16 @@
   .visor-hoja{ flex:1; width:100%; min-height:0; overflow:hidden; background:var(--surface-alt); }
   #filePreviewFrame{ width:100%; height:100%; border:0; background:#fff; display:block; }
   #filePreviewFrame[hidden]{ display:none; }
-  .visor-word{ height:100%; overflow:auto; padding:16px 8px; }
+  /* text-size-adjust: el iPhone agranda por su cuenta la letra de los
+     bloques anchos (una hoja A4 lo es) y el documento salía con letra
+     enorme (captura del usuario, 6/10/2026). */
+  .visor-word{ height:100%; overflow:auto; padding:16px 8px; -webkit-text-size-adjust:100%; text-size-adjust:100%; }
+  .visor-zoom{ display:inline-flex; gap:4px; }
+  .visor-zoom[hidden]{ display:none; }
+  .visor-zoom-btn{ padding:6px 10px; min-width:38px; justify-content:center; }
+  /* Con un visor abierto, la barra de abajo del celular no asoma. */
+  body:has(#filePreviewOverlay:not([hidden])) .bottom-nav, body:has(#lightbox.show) .bottom-nav,
+  body:has(#filePreviewOverlay:not([hidden])) .fab-wrap, body:has(#lightbox.show) .fab-wrap{ display:none; }
   .visor-word[hidden]{ display:none; }
   .visor-word .docx-wrapper{ background:transparent !important; padding:0 !important; }
   .visor-word section.docx{ margin:0 auto 16px !important; box-shadow:0 4px 18px rgba(0,0,0,.25) !important; }
@@ -3345,6 +3356,10 @@
   <div class="visor-ventana">
     <div class="visor-barra">
       <span id="filePreviewTitle" class="visor-titulo"></span>
+      <span class="visor-zoom" id="filePreviewZoom" hidden>
+        <button type="button" class="visor-btn visor-zoom-btn" id="filePreviewMenos" aria-label="Letra más chica">A−</button>
+        <button type="button" class="visor-btn visor-zoom-btn" id="filePreviewMas" aria-label="Letra más grande">A+</button>
+      </span>
       <a id="filePreviewDownload" class="visor-btn" download>⬇ Descargar</a>
       <button type="button" id="filePreviewClose" class="visor-btn visor-cerrar" aria-label="Cerrar">✕</button>
     </div>
@@ -9732,6 +9747,9 @@ function applyStaticI18n(){
   const eventCardCloseBtn = document.getElementById("eventCardClose");
   if(eventCardCloseBtn) eventCardCloseBtn.setAttribute("aria-label", closeLabel);
   ["filePreviewDownload", "lightboxDownload"].forEach(id => { const b = document.getElementById(id); if(b) b.textContent = "⬇ " + t("Descargar", "Download", "Baixar", "הורדה"); });
+  const menos = document.getElementById("filePreviewMenos"), mas = document.getElementById("filePreviewMas");
+  if(menos) menos.setAttribute("aria-label", t("Letra más chica","Smaller text","Letra menor","טקסט קטן יותר"));
+  if(mas) mas.setAttribute("aria-label", t("Letra más grande","Larger text","Letra maior","טקסט גדול יותר"));
   const lightboxCloseBtn = document.getElementById("lightboxClose");
   if(lightboxCloseBtn) lightboxCloseBtn.setAttribute("aria-label", closeLabel);
 
@@ -17273,7 +17291,19 @@ const filePreviewCounter = document.getElementById("filePreviewCounter");
 let filePreviewReturnFocus = null;
 let filePreviewItems = [];
 let filePreviewIndex = 0;
-let filePreviewVuelta = 0;   // para no pintar un Word que llegó tarde, si ya se pasó a otro
+let filePreviewVuelta = 0;
+// El tamaño del Word: la escala que lo hace entrar a lo ancho, por un
+// factor que se cambia con A− / A+ (y se recuerda mientras está abierto).
+let filePreviewFactor = 1;
+const filePreviewZoomEl = document.getElementById("filePreviewZoom");
+function aplicarZoomWord(){
+  const ancho = filePreviewWord.clientWidth - 16;
+  filePreviewWord.querySelectorAll("section.docx").forEach(hoja => {
+    hoja.style.zoom = "";
+    const base = Math.min(1, ancho / hoja.offsetWidth);
+    hoja.style.zoom = String(+(base * filePreviewFactor).toFixed(3));
+  });
+}   // para no pintar un Word que llegó tarde, si ya se pasó a otro
 // Lo que dibuja los Word (.docx) en el navegador. Se carga la primera
 // vez que se abre uno; usa JSZip, que ya se carga para la copia de seguridad.
 const DOCX_PREVIEW_CDN = "https://cdn.jsdelivr.net/npm/docx-preview@0.4.1/dist/docx-preview.min.js";
@@ -17285,6 +17315,7 @@ async function cargarVisorWord(){
 // items: array de {name, dataUrl, word?} de los documentos que se pueden
 // mostrar del mismo posteo/respuesta (el audio no participa).
 function openFilePreview(items, index){
+  filePreviewFactor = 1;
   filePreviewItems = items || [];
   filePreviewIndex = Math.min(Math.max(index||0, 0), Math.max(filePreviewItems.length-1, 0));
   renderFilePreviewFrame();
@@ -17307,6 +17338,7 @@ function renderFilePreviewFrame(){
     filePreviewNext.innerHTML = chevronHtml("next");
     filePreviewCounter.textContent = `${filePreviewIndex+1} / ${filePreviewItems.length}`;
   }
+  filePreviewZoomEl.hidden = !item.word;
   if(!item.word){
     filePreviewWord.hidden = true; filePreviewWord.innerHTML = "";
     filePreviewFrame.hidden = false;
@@ -17329,11 +17361,7 @@ function renderFilePreviewFrame(){
       await window.docx.renderAsync(blob, filePreviewWord, null, { inWrapper: true, ignoreLastRenderedPageBreak: true, breakPages: true });
       // La hoja entera, achicada para que entre a lo ancho (en el celular
       // se apretaba el texto en vez de achicarse la página).
-      const ancho = filePreviewWord.clientWidth - 16;
-      filePreviewWord.querySelectorAll("section.docx").forEach(hoja => {
-        const escala = Math.min(1, ancho / hoja.offsetWidth);
-        if(escala < 1) hoja.style.zoom = String(escala);
-      });
+      aplicarZoomWord();
     }catch(err){
       if(vuelta !== filePreviewVuelta) return;
       console.warn("No se pudo mostrar el Word:", err);
@@ -17341,6 +17369,8 @@ function renderFilePreviewFrame(){
     }
   })();
 }
+document.getElementById("filePreviewMenos").addEventListener("click", e=>{ e.stopPropagation(); filePreviewFactor = Math.max(0.6, +(filePreviewFactor - 0.15).toFixed(2)); aplicarZoomWord(); });
+document.getElementById("filePreviewMas").addEventListener("click", e=>{ e.stopPropagation(); filePreviewFactor = Math.min(2.5, +(filePreviewFactor + 0.15).toFixed(2)); aplicarZoomWord(); });
 function filePreviewStep(delta){
   if(filePreviewItems.length < 2) return;
   filePreviewIndex = (filePreviewIndex + delta + filePreviewItems.length) % filePreviewItems.length;
