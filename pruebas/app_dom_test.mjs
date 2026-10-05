@@ -356,6 +356,18 @@ const hasta = async (p, fn, arg, ms = 5000) => {
     await p.$eval(".audit-list", e => !!e.firstElementChild && e.firstElementChild.classList.contains("audit-columns-header")), true);
   await p.click('.admin-menu [data-action="admin-go"][data-view="preferencias"][data-key="lugares"]');
   eq("admin: Lugares usa la misma lista que Personas y Tipos", await p.$$eval('.lp-rows .lp-row [data-action="lugares-promote"]', es => es.length), 1);
+  // Lo que está en el Registro pero no en el Calendar (5/10/2026): se
+  // lista, y el botón intenta pasarlo (acá no hay Google, así que avisa
+  // que no pudo, y no vincula nada).
+  await p.click('.admin-menu [data-action="admin-go"][data-view="preferencias"][data-key="calendar"]');
+  await p.waitForSelector(".cal-faltantes");
+  eq("calendar: lista los eventos del Registro que no están en el Calendar",
+    await p.$$eval(".cal-faltantes-lista li b", l => l.map(e => e.textContent)), ["Programa de becas", "Reunión con la comunidad"]);
+  await p.click('[data-action="calendar-faltantes"]');
+  eq("calendar: sin acceso a Google, avisa que no pudo y no vincula nada",
+    await hasta(p, () => /No se pudieron pasar 2/.test((document.querySelector(".cal-faltantes-ok") || {}).textContent || "")
+      && (window.__sb.tablas.posts || []).every(x => !x.calendar_event_id)), true);
+  await p.click('.admin-menu [data-action="admin-go"][data-view="preferencias"][data-key="lugares"]');
   eq("admin: la ciudad escrita a mano figura en «Sin ubicación propia en el mapa», para pasar la lista y cargarle la coordenada",
     await p.evaluate(() => {
       const ciudad = document.querySelector('.lp-rows [data-action="lugares-promote"]').dataset.city;
