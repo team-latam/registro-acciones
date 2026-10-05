@@ -20,13 +20,14 @@ decisiones de arquitectura.
   presentan con opciones y una recomendación.
 - El estado del trabajo vive en el repo: `REDISENO.md` (tandas hechas y
   decisiones) y `REVISION.md` (la revisión técnica y lo que queda).
-  Copias de seguridad (REVISION.md, punto 13): el código está desde el
-  6/10/2026 (`supabase/respaldo/`, workflow «Copia de seguridad», y
-  Administración → Copia de seguridad). Pendiente del usuario: crear el
-  repo privado `team-latam/registro-respaldos` y el secreto
-  `RESPALDOS_TOKEN` (pasos en `supabase/respaldo/LEEME.md`). Claude no
-  puede crear repos en la cuenta `team-latam` (es una cuenta de usuario,
-  no una organización; la conexión de GitHub no tiene ese permiso).
+  Copias de seguridad (REVISION.md, punto 13): andando desde el
+  5/10/2026 — workflow «Copia de seguridad» (`supabase/respaldo/`) cada
+  domingo al repo privado `team-latam/registro-respaldos`, y
+  Administración → Copia de seguridad para bajar una. **El token
+  `RESPALDOS_TOKEN` vence el 5/10/2027**: hay que renovarlo antes (pasos
+  en `supabase/respaldo/LEEME.md`; la corrida avisa en rojo faltando 15
+  días). Claude no puede crear repos en la cuenta `team-latam` (es una
+  cuenta de usuario; la conexión de GitHub no tiene ese permiso).
 
 ## Ramas — LEER ANTES DE EMPEZAR
 

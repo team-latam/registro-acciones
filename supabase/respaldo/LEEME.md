@@ -25,9 +25,14 @@ workflow**. La prueba (`pruebas/correr.sh`) corre antes de cada copia.
 3. Los secretos que ya están: `SUPABASE_SERVICE_ROLE_KEY` (el del
    sincronizador) y `SUPABASE_DB_URL` (el que aplica el SQL).
 
-El token vence (GitHub deja elegir hasta un año): cuando vence, la corrida
-queda en rojo diciendo que no pudo abrir el repo, y alcanza con generar
-otro y reemplazar el secreto.
+El token vence: **el actual, el 5 de octubre de 2027** (creado el
+5/10/2026). Cada corrida anota cuántos días le quedan, y faltando menos de
+15 la corrida queda en rojo (GitHub manda un mail cuando falla un trabajo
+programado). Para renovarlo: generar otro igual (Settings → Developer
+settings → Fine-grained tokens, acceso solo a `registro-respaldos`,
+Contents: Read and write) y, en este repo, Settings → Secrets → Actions →
+`RESPALDOS_TOKEN` → **Update**. Si vence sin renovarse, la corrida queda
+en rojo diciendo que no pudo abrir el repo.
 
 ## Por qué así
 

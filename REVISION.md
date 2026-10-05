@@ -37,7 +37,7 @@ workflows `base-de-datos.yml` y `calendario.yml`, el adaptador
 | 10 | Cada escritura, hasta un «me gusta», vuelve a bajar la tabla entera | Media | código | resuelto |
 | 11 | Quitar un adjunto no lo borra del bucket | Media | código | resuelto |
 | 12 | Menores (ver abajo) | Baja | — | resuelto |
-| 13 | Después del cambio no queda ninguna copia de seguridad | Alta — antes del cambio | código + repo público | código listo; falta el repo privado y su token |
+| 13 | Después del cambio no queda ninguna copia de seguridad | Alta — antes del cambio | código + repo público | resuelto (5/10/2026) |
 
 ---
 
@@ -342,9 +342,9 @@ la nombra a través de su foto, y se va con ella.
 > `supabase/respaldo/` y `.github/workflows/respaldo.yml` (tablas en JSON,
 > archivos nuevos del bucket y `pg_dump`, al repo privado), y la app tiene
 > **Administración → Copia de seguridad** para bajar una en el momento.
-> Falta que el usuario cree el repo `team-latam/registro-respaldos` y el
-> secreto `RESPALDOS_TOKEN` (pasos en `supabase/respaldo/LEEME.md`):
-> hasta entonces el trabajo avisa qué falta y termina sin copiar.
+> El 5/10/2026 el usuario creó el repo y el secreto `RESPALDOS_TOKEN`, y
+> la primera copia (tablas, archivos y volcado) salió en verde. **El token
+> vence el 5/10/2027**; la corrida avisa en rojo faltando 15 días.
 
 La copia de seguridad que tenía la app (Administrar → Copia de seguridad)
 leía **Firebase**: era la red para volver atrás mientras Firebase fue la
