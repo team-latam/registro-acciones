@@ -40,7 +40,7 @@ function armar(opts={}){
     const dateLocale = () => "es";
     const docsAbiertos = new Map();
     ${["TIPOS_DE_ARCHIVO","CLASE_POR_DEFECTO","extensionDe","claseDeArchivo","claseDe","topeLegible",
-       "DOCS_POR_TIPO","docsEsperados","docDeArchivo","archivoDelDoc","archivosSueltos","cuantosDocsHay",
+       "DOCS_POR_TIPO","docsEsperados","docDeArchivo","archivosDelDoc","docsDesplegados","archivoDelDoc","archivosSueltos","cuantosDocsHay",
        "sinRanura","fechaDeArchivo","fmtDate",
        "adjuntarDocumento","quitarDocumento","quitarAdjunto",
        "ACTIVITY_TYPES","EVENTO_TYPES","CALENDAR_SYNC_TYPES","ACTIVITY_BY_KEY",
@@ -121,15 +121,14 @@ const archivo = (extra={}) => ({ name:"a.pdf", kind:"pdf", dataUrl:"data:applica
   eq("queda firmado como una edición", reg.escrituras[0].parche.lastEditedBy, "Ana");
 }
 {
-  // Reemplazar: el de antes se va, no se acumulan dos en la misma ranura.
+  // Sumar (desde el 6/10/2026): el de antes se queda y el nuevo va al final.
   const post = { id:"p1", activityType:"visita", files:[
     archivo({ name:"viejo.pdf", doc:"plan" }), archivo({ name:"reporte.pdf", doc:"reporte" })]};
   const { api, reg } = armar({ posts:[post] });
   ponerDocs(api, { visita: VISITA });
   await api.adjuntarDocumento("p1", "plan", { name:"nuevo.pdf", size: 1000, type:"application/pdf" });
   const files = reg.escrituras[0].parche.files;
-  eq("queda un solo archivo por ranura", files.filter(f=>f.doc==="plan").length, 1);
-  eq("y es el nuevo", files.find(f=>f.doc==="plan").name, "nuevo.pdf");
+  eq("quedan los dos en el mismo documento, el nuevo al final", files.filter(f=>f.doc==="plan").map(f=>f.name), ["viejo.pdf","nuevo.pdf"]);
   eq("sin tocar los otros", files.find(f=>f.doc==="reporte").name, "reporte.pdf");
 }
 {
@@ -163,14 +162,22 @@ const pesado = kb => "data:application/pdf;base64," + "A".repeat(4 * Math.ceil(k
   eq("sin avisos", reg.avisos, []);
 }
 {
-  // Pero REEMPLAZAR estando en el tope sí tiene que poder: no suma uno.
-  const post = { id:"p1", activityType:"visita", files:[
-    archivo({name:"1.pdf", doc:"plan"}), archivo({name:"2.pdf"})] };
+  // Desde el 6/10/2026 un documento puede tener varios archivos: subir
+  // otro SUMA, no pisa al anterior.
+  const post = { id:"p1", activityType:"visita", files:[archivo({name:"1.pdf", doc:"plan"}), archivo({name:"2.pdf"})] };
+  const { api, reg } = armar({ posts:[post] });
+  ponerDocs(api, { visita: VISITA });
+  await api.adjuntarDocumento("p1", "plan", { name:"3.pdf", size: 1000, type:"application/pdf" });
+  eq("un segundo archivo para el mismo documento se suma", reg.escrituras[0].parche.files.map(f => [f.name, f.doc || null]),
+     [["1.pdf","plan"], ["2.pdf",null], ["3.pdf","plan"]]);
+}
+{
+  // Y por eso, estando en el tope, ya no entra (antes pisaba y no sumaba).
+  const post = { id:"p1", activityType:"visita", files:[archivo({name:"1.pdf", doc:"plan"}), archivo({name:"2.pdf"})] };
   const { api, reg } = armar({ posts:[post], maxArchivos: 2 });
   ponerDocs(api, { visita: VISITA });
   await api.adjuntarDocumento("p1", "plan", { name:"3.pdf", size: 1000, type:"application/pdf" });
-  eq("reemplazar estando en el tope sí se puede (no suma uno)", reg.escrituras.length, 1);
-  eq("y quedan dos, no tres", reg.escrituras[0].parche.files.length, 2);
+  eq("en el tope, otro archivo para el mismo documento tampoco entra", [reg.escrituras.length, /máximo/.test(reg.avisos[0])], [0, true]);
 }
 {
   const post = { id:"p1", activityType:"visita", files:[] };
@@ -196,16 +203,31 @@ const pesado = kb => "data:application/pdf;base64," + "A".repeat(4 * Math.ceil(k
     archivo({ name:"plan.pdf", doc:"plan" }), archivo({ name:"suelto.pdf" })]};
   const { api, reg } = armar({ posts:[post] });
   ponerDocs(api, { visita: VISITA });
-  await api.quitarDocumento("p1", "plan");
+  await api.quitarDocumento("p1", 0);
   eq("pregunta antes, porque no se deshace", (reg.confirmaciones||[]).length, 1);
   eq("y nombra el archivo", /plan\.pdf/.test(reg.confirmaciones[0]), true);
   eq("saca ese y deja el suelto", reg.escrituras[0].parche.files.map(f=>f.name), ["suelto.pdf"]);
 }
 {
+  const post = { id:"p1", activityType:"visita", files:[
+    archivo({ name:"plan-v1.pdf", doc:"plan" }), archivo({ name:"plan-v2.pdf", doc:"plan" })]};
+  const { api, reg } = armar({ posts:[post] });
+  ponerDocs(api, { visita: VISITA });
+  await api.quitarDocumento("p1", 1);
+  eq("con varios archivos en un documento, el ✕ saca solo ése", reg.escrituras[0].parche.files.map(f=>f.name), ["plan-v1.pdf"]);
+}
+{
+  const post = { id:"p1", activityType:"visita", files:[archivo({ name:"suelto.pdf" })]};
+  const { api, reg } = armar({ posts:[post] });
+  ponerDocs(api, { visita: VISITA });
+  await api.quitarDocumento("p1", 0);
+  eq("el ✕ de un documento no saca un adjunto suelto", reg.escrituras.length, 0);
+}
+{
   const post = { id:"p1", activityType:"visita", files:[archivo({ name:"plan.pdf", doc:"plan" })]};
   const { api, reg } = armar({ posts:[post], confirmar:false });
   ponerDocs(api, { visita: VISITA });
-  await api.quitarDocumento("p1", "plan");
+  await api.quitarDocumento("p1", 0);
   eq("si se dice que no, no se toca nada", reg.escrituras.length, 0);
 }
 

@@ -494,6 +494,18 @@ capturas (A/B/C, después D/E/F, después ajustes), el diseño elegido:
 - En el celular la fecha va arriba del nombre, y abajo quedan los íconos
   con su número ("💬 1" para los comentarios).
 
+### 30. Varios archivos por documento y visor de documentos — HECHO (6 oct 2026)
+
+- Un documento esperado (Plan de Viaje, Otro…) puede tener **varios
+  archivos**: subir otro suma, no pisa. Se ve el último subido y "+N más"
+  despliega los anteriores; el "+" agrega otro; cada uno con su fecha y su
+  ✕. Los nombres largos se recortan y quedan enteros al pasar el mouse.
+- **Visor de documentos igual al de las fotos**: fondo oscuro, flechas y
+  contador; el documento como una hoja en el medio, con "Descargar" y ✕
+  arriba. Los Word (.docx) se dibujan con docx-preview (se carga la
+  primera vez); PDF y texto en el marco. Esc cierra, ← → pasan de uno a
+  otro. PowerPoint, Excel y los .doc viejos se siguen bajando.
+
 ## Fuera de alcance (necesitan algo que la app no tiene)
 
 - Mandar correos (resumen semanal, invitaciones): no hay servicio de

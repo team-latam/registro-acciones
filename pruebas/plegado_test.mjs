@@ -111,7 +111,8 @@ eq("abierta a mano", v.abierto, true);
 eq("con sus dos filas", v.filas, 2);
 eq("y se anuncia abierta", v.expandido, "true");
 eq("se puede abrir el que está", (await p.$$('[data-action="open-doc"], a.doc-archivo')).length, 1);
-eq("adjuntar el que falta", (await p.$$('[data-action="adjuntar-doc"]')).length, 1);
+eq("adjuntar el que falta", (await p.$$('.doc-adjuntar')).length, 1);
+eq("y sumarle otro al que está, con el +", (await p.$$('.doc-agregar')).length, 1);
 eq("y sacar el que está de su ranura", (await p.$$('[data-action="quitar-doc"]')).length, 1);
 
 /* ====== Si el tipo no espera documentos, no se dibuja nada ====== */

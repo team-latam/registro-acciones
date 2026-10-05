@@ -93,7 +93,7 @@ await p.evaluate(x=>window.__ponerPost(x, true, true), { id:"p2", activityType:"
   { name:"dos.docx", kind:"doc", dataUrl:DOCX },
   { name:"tres.pdf", kind:"pdf", dataUrl:PDF }]});
 v = await leer();
-eq("se dibujan los tres sueltos", v.sueltos.map(s=>s.texto), ["📄 uno.pdf","📘 dos.docx ↓","📄 tres.pdf"]);
+eq("se dibujan los tres sueltos (el Word ya no se baja: abre en el visor)", v.sueltos.map(s=>s.texto), ["📄 uno.pdf","📘 dos.docx","📄 tres.pdf"]);
 await p.evaluate(()=>{ window.__escrituras = []; });
 await p.evaluate(()=>document.querySelectorAll('[data-action="quitar-adjunto"]')[1].click());
 await p.waitForTimeout(120);
