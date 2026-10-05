@@ -12027,6 +12027,32 @@ function descargarBlob(nombre, blob){
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 30000);
 }
+// Bajar un archivo con el nombre con el que se cargó (pedido del usuario,
+// 6/10/2026). El atributo download solo sirve con direcciones del mismo
+// sitio o data:; los archivos vienen de Supabase (otro sitio) y el
+// navegador lo ignoraba: bajaban con el nombre interno del bucket. Se baja
+// el contenido y se guarda con el nombre; si eso falla, se le pide a
+// Supabase que lo mande ya con ese nombre (?download=).
+function conNombreDeDescarga(url, nombre){
+  return /\/storage\/v1\/object\/sign\//.test(url) ? url + (url.includes("?") ? "&" : "?") + "download=" + encodeURIComponent(nombre) : url;
+}
+async function bajarConNombre(url, nombre){
+  try{
+    const res = await fetch(url);
+    if(!res.ok) throw new Error("HTTP " + res.status);
+    descargarBlob(nombre, await res.blob());
+  }catch(err){
+    console.warn("No se pudo bajar con fetch, se abre con ?download=:", err);
+    window.open(conNombreDeDescarga(url, nombre), "_blank", "noopener");
+  }
+}
+document.addEventListener("click", e=>{
+  const a = e.target.closest && e.target.closest("a[download]");
+  if(!a || !a.href || !/^https?:/i.test(a.href)) return;
+  if(new URL(a.href, location.href).origin === location.origin) return;
+  e.preventDefault();
+  bajarConNombre(a.href, a.getAttribute("download") || "archivo");
+});
 function cargarScript(src){
   return new Promise((ok, mal) => {
     const s = document.createElement("script");
@@ -17150,7 +17176,9 @@ let lightboxIndex = 0;
 let lightboxReturnFocus = null;
 // items: array de src (data: URLs ya validadas) de TODAS las imágenes
 // del mismo posteo/respuesta — index, cuál se clickeó para abrir.
-function openLightbox(items, index){
+let lightboxNombre = "";
+function openLightbox(items, index, nombreBase){
+  lightboxNombre = String(nombreBase || "").replace(/[\\/:*?"<>|]+/g, " ").trim();
   lightboxItems = items || [];
   lightboxIndex = Math.min(Math.max(index||0, 0), Math.max(lightboxItems.length-1, 0));
   renderLightboxFrame();
@@ -17168,7 +17196,9 @@ function renderLightboxFrame(){
     ? t("Foto {a} de {b}","Photo {a} of {b}","Foto {a} de {b}","תמונה {a} מתוך {b}",{a:lightboxIndex+1, b:lightboxItems.length})
     : t("Foto","Photo","Foto","תמונה");
   const bajar = document.getElementById("lightboxDownload");
-  bajar.href = src; bajar.download = `foto-${lightboxIndex+1}`;
+  // Las fotos no guardan su nombre original: bajan como "<evento> - foto N".
+  const ext = (String(src).split("?")[0].match(/\.(jpe?g|png|gif|webp)$/i) || [, "jpg"])[1].toLowerCase();
+  bajar.href = src; bajar.download = `${lightboxNombre || t("Foto","Photo","Foto","תמונה")} - ${t("foto","photo","foto","תמונה")} ${lightboxIndex+1}.${ext}`;
   lightboxPrev.hidden = lightboxNext.hidden = lightboxCounter.hidden = !multi;
   if(multi){
     // ‹ › SÍ los invierte solo dir="rtl" (son puntuación, a diferencia de
@@ -18406,7 +18436,9 @@ document.addEventListener("click", async e=>{
     "open-lightbox": async (el, e, action, postId) => {
     const owner = attachmentOwner(el.dataset.postId, el.dataset.replyId);
     const images = owner ? (owner.images||[]).map(safeImageSrc).filter(Boolean) : [];
-    openLightbox(images, Number(el.dataset.idx)||0);
+    const post = getPostById(el.dataset.postId);
+    const base = (post && (post.title || (ACTIVITY_BY_KEY[post.activityType] || {}).label)) || t("Foto","Photo","Foto","תמונה");
+    openLightbox(images, Number(el.dataset.idx)||0, base);
   },
     "open-file-preview": async (el, e, action, postId) => {
     const owner = attachmentOwner(el.dataset.postId, el.dataset.replyId);
