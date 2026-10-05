@@ -1345,10 +1345,24 @@
   .plc-body{ display:flex; flex-direction:column; min-width:0; }
   .plc-title{ font-size:13px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .plc-host{ font-size:11.5px; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; direction:ltr; unicode-bidi:isolate; }
-  .post-images{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
-  .post-images img{
-    width:116px; height:116px; object-fit:cover; border-radius:var(--radius-sm); cursor:pointer;
-    border:1px solid var(--border);
+  /* La tira de fotos (ver tiraDeFotos): separada de los chips, una sola
+     fila, misma altura y la forma de cada foto. Antes eran cuadraditos de
+     116px pegados a los chips que cortaban los afiches. */
+  .post-images{ display:flex; flex-wrap:nowrap; gap:8px; margin:10px 0 2px; overflow:hidden; }
+  .post-images .foto{ position:relative; flex:none; display:block; border-radius:10px; overflow:hidden; border:1px solid var(--border); background:var(--surface-alt); }
+  .post-images img{ display:block; height:130px; width:auto; min-width:70px; max-width:230px; object-fit:cover; cursor:pointer; }
+  .post-images .foto-mas::after, .post-images .foto-mas-cel::after{
+    position:absolute; inset:0; display:grid; place-items:center; pointer-events:none;
+    background:rgba(13,42,44,.55); color:#fff; font-size:22px; font-weight:800;
+  }
+  .post-images .foto-mas::after{ content:attr(data-mas); }
+  @media (max-width:640px){
+    /* En el celular las tres reparten el ancho: con su forma, la tercera
+       quedaba cortada por el borde. */
+    .post-images .foto{ flex:1 1 0; min-width:0; max-width:200px; }
+    .post-images img{ width:100%; height:110px; min-width:0; max-width:none; }
+    .post-images .foto:nth-child(4){ display:none; }
+    .post-images .foto-mas-cel::after{ content:attr(data-mas-cel); }
   }
   /* flex-wrap: con "Cancelar evento" son cinco acciones y en 330px no
      entran; sin envolver, la última se salía de la tarjeta y las otras
@@ -4124,6 +4138,18 @@ function safeImageSrc(src){
 }
 // Para lo que se muestra chico (las fotos de una tarjeta, las de un
 // borrador): la miniatura, si la foto tiene. El visor abre la entera.
+// Las fotos de una tarjeta, en una tira (6/10/2026, opción B): todas a la
+// misma altura y con su forma (un afiche vertical queda angosto), hasta
+// cuatro; con más, la cuarta lleva "+N" encima. En el celular entran tres
+// y el "+N" va en la tercera. Cualquiera abre el visor en esa foto.
+function tiraDeFotos(fuentes, owner){
+  const n = fuentes.length;
+  return fuentes.slice(0, 4).map((src, idx) => {
+    const mas = n > 4 && idx === 3 ? ` data-mas="+${n - 3}"` : "";
+    const masCel = n > 3 && idx === 2 ? ` data-mas-cel="+${n - 2}"` : "";
+    return `<span class="foto${mas ? " foto-mas" : ""}${masCel ? " foto-mas-cel" : ""}"${mas}${masCel}><img src="${srcMiniatura(src)}" loading="lazy" decoding="async" alt="" data-action="open-lightbox" ${ownerAttrs(owner)} data-idx="${idx}"></span>`;
+  }).join("");
+}
 function srcMiniatura(src){
   return safeImageSrc(store.miniaturaDe(src)) || safeImageSrc(src);
 }
@@ -12860,8 +12886,7 @@ function renderAttachments(item, owner){
     }).join(""),
     // La miniatura (si la foto la tiene) y con carga diferida: una foto
     // que todavía no se ve no se baja. La entera, recién en el visor.
-    imagesHtml: (item.images||[]).map(safeImageSrc).filter(Boolean).map((src,idx)=>
-      `<img src="${srcMiniatura(src)}" loading="lazy" decoding="async" data-action="open-lightbox" ${ownerAttrs(owner)} data-idx="${idx}">`).join(""),
+    imagesHtml: tiraDeFotos((item.images||[]).map(safeImageSrc).filter(Boolean), owner),
   };
 }
 
