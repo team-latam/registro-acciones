@@ -3087,9 +3087,23 @@
      bloques anchos (una hoja A4 lo es) y el documento salía con letra
      enorme (captura del usuario, 6/10/2026). */
   .visor-word{ height:100%; overflow:auto; padding:16px 8px; -webkit-text-size-adjust:100%; text-size-adjust:100%; }
-  .visor-zoom{ display:inline-flex; gap:4px; }
+  /* El zoom: − porcentaje + en una sola pastilla. Tocar el porcentaje
+     vuelve al tamaño inicial (la hoja entera a lo ancho). */
+  .visor-zoom{ display:inline-flex; align-items:center; border:1px solid var(--border); background:var(--surface-alt); border-radius:999px; overflow:hidden; flex:none; }
   .visor-zoom[hidden]{ display:none; }
-  .visor-zoom-btn{ padding:6px 10px; min-width:38px; justify-content:center; }
+  .visor-zoom button{ border:none; background:none; font:inherit; color:var(--ink); cursor:pointer; }
+  .visor-zoom-btn{ width:34px; height:32px; font-size:18px; font-weight:800; line-height:1; }
+  .visor-zoom-btn:hover, .visor-zoom-pct:hover{ background:var(--surface-hover); }
+  .visor-zoom-pct{ min-width:52px; height:32px; font-size:12.5px; font-weight:800; font-variant-numeric:tabular-nums; border-inline:1px solid var(--border) !important; }
+  .visor-planilla{ background:var(--card); border-radius:8px; padding:10px; width:max-content; min-width:100%; }
+  .visor-planilla h4{ margin:10px 4px 6px; font-size:13px; color:var(--text-muted); }
+  .visor-planilla table{ border-collapse:collapse; font-size:12.5px; color:#111; background:#fff; }
+  .visor-planilla td, .visor-planilla th{ border:1px solid #d6dcdd; padding:3px 7px; white-space:nowrap; }
+  .visor-nada{ display:flex; flex-direction:column; align-items:center; gap:12px; text-align:center; padding:56px 20px; color:var(--text-muted); font-size:14px; font-weight:600; line-height:1.5; }
+  .visor-nada .ico{ font-size:46px; }
+  .visor-nada b{ color:var(--ink); font-size:15px; overflow-wrap:anywhere; }
+  /* El contador ("1 / 2") siempre de izquierda a derecha: en hebreo salía "2 / 1". */
+  .lightbox-counter{ direction:ltr; unicode-bidi:isolate; }
   /* Con un visor abierto, la barra de abajo del celular no asoma. */
   body:has(#filePreviewOverlay:not([hidden])) .bottom-nav, body:has(#lightbox.show) .bottom-nav,
   body:has(#filePreviewOverlay:not([hidden])) .fab-wrap, body:has(#lightbox.show) .fab-wrap{ display:none; }
@@ -3357,8 +3371,9 @@
     <div class="visor-barra">
       <span id="filePreviewTitle" class="visor-titulo"></span>
       <span class="visor-zoom" id="filePreviewZoom" hidden>
-        <button type="button" class="visor-btn visor-zoom-btn" id="filePreviewMenos" aria-label="Letra más chica">A−</button>
-        <button type="button" class="visor-btn visor-zoom-btn" id="filePreviewMas" aria-label="Letra más grande">A+</button>
+        <button type="button" class="visor-zoom-btn" id="filePreviewMenos" aria-label="Achicar">−</button>
+        <button type="button" class="visor-zoom-pct" id="filePreviewPct" title="Volver al tamaño inicial">100%</button>
+        <button type="button" class="visor-zoom-btn" id="filePreviewMas" aria-label="Agrandar">+</button>
       </span>
       <a id="filePreviewDownload" class="visor-btn" download>⬇ Descargar</a>
       <button type="button" id="filePreviewClose" class="visor-btn visor-cerrar" aria-label="Cerrar">✕</button>
@@ -9748,8 +9763,10 @@ function applyStaticI18n(){
   if(eventCardCloseBtn) eventCardCloseBtn.setAttribute("aria-label", closeLabel);
   ["filePreviewDownload", "lightboxDownload"].forEach(id => { const b = document.getElementById(id); if(b) b.textContent = "⬇ " + t("Descargar", "Download", "Baixar", "הורדה"); });
   const menos = document.getElementById("filePreviewMenos"), mas = document.getElementById("filePreviewMas");
-  if(menos) menos.setAttribute("aria-label", t("Letra más chica","Smaller text","Letra menor","טקסט קטן יותר"));
-  if(mas) mas.setAttribute("aria-label", t("Letra más grande","Larger text","Letra maior","טקסט גדול יותר"));
+  if(menos) menos.setAttribute("aria-label", t("Achicar","Zoom out","Diminuir","הקטנה"));
+  if(mas) mas.setAttribute("aria-label", t("Agrandar","Zoom in","Aumentar","הגדלה"));
+  const pct = document.getElementById("filePreviewPct");
+  if(pct) pct.title = t("Volver al tamaño inicial","Back to the starting size","Voltar ao tamanho inicial","חזרה לגודל ההתחלתי");
   const lightboxCloseBtn = document.getElementById("lightboxClose");
   if(lightboxCloseBtn) lightboxCloseBtn.setAttribute("aria-label", closeLabel);
 
@@ -13029,12 +13046,9 @@ function renderDocumentacion(post, parte){
     const pos = todos.indexOf(f);
     const cuando = fechaDeArchivo(f);
     const titulo = f.name + (cuando ? " · " + cuando : "");
-    // El mismo criterio que los adjuntos sueltos: lo que se puede mostrar
-    // abre en el visor (desde el 6/10/2026 también los Word), el resto se baja.
+    // Todo abre el visor, como los adjuntos sueltos (ver seAbreEnVisor).
     const abrir = !url ? `<span class="doc-roto">${esc(t("archivo no disponible","file unavailable","arquivo indisponível","הקובץ אינו זמין"))}</span>`
-      : sePuedeVer(f)
-        ? `<button type="button" class="doc-archivo" data-action="open-doc" data-post-id="${post.id}" data-pos="${pos}" title="${esc(titulo)}">${icono} ${esc(f.name)}</button>`
-        : `<a class="doc-archivo" href="${url}" download="${esc(f.name)}" title="${esc(titulo)}">${icono} ${esc(f.name)} ↓</a>`;
+      : `<button type="button" class="doc-archivo" data-action="open-doc" data-post-id="${post.id}" data-pos="${pos}" title="${esc(titulo)}">${icono} ${esc(f.name)}</button>`;
     return `${abrir}
       ${cuando ? `<span class="doc-fecha">${esc(cuando)}</span>` : ""}
       ${puede ? `<button type="button" class="rm" data-action="quitar-doc" data-post-id="${post.id}" data-pos="${pos}" title="${esc(t("Quitar este archivo del evento","Remove this file from the event","Remover este arquivo do evento","הסרת הקובץ הזה מהאירוע"))}">✕</button>` : ""}`;
@@ -17271,6 +17285,7 @@ document.getElementById("lightboxClose").addEventListener("click", closeLightbox
 lightboxPrev.addEventListener("click", e=>{ e.stopPropagation(); lightboxStep(-1); });
 lightboxNext.addEventListener("click", e=>{ e.stopPropagation(); lightboxStep(1); });
 lightboxCounter.addEventListener("click", e=>e.stopPropagation());
+deslizarPara(lightbox, lightboxStep);
 
 // Vista previa de un PDF ya adjuntado (imágenes usan el lightbox de
 // arriba; audio ya se "previsualiza" solo, con el <audio controls> de la
@@ -17291,21 +17306,33 @@ const filePreviewCounter = document.getElementById("filePreviewCounter");
 let filePreviewReturnFocus = null;
 let filePreviewItems = [];
 let filePreviewIndex = 0;
-let filePreviewVuelta = 0;
-// El tamaño del Word: la escala que lo hace entrar a lo ancho, por un
-// factor que se cambia con A− / A+ (y se recuerda mientras está abierto).
-let filePreviewFactor = 1;
+let filePreviewVuelta = 0;   // para no pintar un Word que llegó tarde, si ya se pasó a otro
+// El tamaño de un Word o una planilla: un porcentaje del tamaño real
+// (100% = como es la hoja). Arranca en el que hace entrar la hoja a lo
+// ancho; − y + van por pasos, y tocar el porcentaje vuelve al inicial.
+const ESCALAS_DEL_VISOR = [0.25, 0.33, 0.5, 0.67, 0.75, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5];
+let filePreviewEscala = 1, filePreviewInicial = 1;
 const filePreviewZoomEl = document.getElementById("filePreviewZoom");
+const filePreviewPct = document.getElementById("filePreviewPct");
 function aplicarZoomWord(){
-  const ancho = filePreviewWord.clientWidth - 16;
-  filePreviewWord.querySelectorAll("section.docx").forEach(hoja => {
-    hoja.style.zoom = "";
-    const base = Math.min(1, ancho / hoja.offsetWidth);
-    hoja.style.zoom = String(+(base * filePreviewFactor).toFixed(3));
-  });
-}   // para no pintar un Word que llegó tarde, si ya se pasó a otro
+  filePreviewWord.querySelectorAll("section.docx, .visor-planilla").forEach(hoja => { hoja.style.zoom = String(filePreviewEscala); });
+  filePreviewPct.textContent = Math.round(filePreviewEscala * 100) + "%";
+}
+function escalaQueEntra(){
+  const hoja = filePreviewWord.querySelector("section.docx");
+  if(!hoja) return 1;
+  hoja.style.zoom = "";
+  return Math.min(1, (filePreviewWord.clientWidth - 16) / hoja.offsetWidth);
+}
+function cambiarZoom(paso){
+  const e = filePreviewEscala;
+  const sig = paso > 0 ? ESCALAS_DEL_VISOR.find(x => x > e + 0.001) : [...ESCALAS_DEL_VISOR].reverse().find(x => x < e - 0.001);
+  if(sig){ filePreviewEscala = sig; aplicarZoomWord(); }
+}
 // Lo que dibuja los Word (.docx) en el navegador. Se carga la primera
 // vez que se abre uno; usa JSZip, que ya se carga para la copia de seguridad.
+// Lo que lee las planillas (Excel, LibreOffice) para mostrarlas como tabla.
+const SHEETJS_CDN = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
 const DOCX_PREVIEW_CDN = "https://cdn.jsdelivr.net/npm/docx-preview@0.4.1/dist/docx-preview.min.js";
 async function cargarVisorWord(){
   if(!window.JSZip) await cargarScript(JSZIP_CDN);
@@ -17315,7 +17342,6 @@ async function cargarVisorWord(){
 // items: array de {name, dataUrl, word?} de los documentos que se pueden
 // mostrar del mismo posteo/respuesta (el audio no participa).
 function openFilePreview(items, index){
-  filePreviewFactor = 1;
   filePreviewItems = items || [];
   filePreviewIndex = Math.min(Math.max(index||0, 0), Math.max(filePreviewItems.length-1, 0));
   renderFilePreviewFrame();
@@ -17338,39 +17364,83 @@ function renderFilePreviewFrame(){
     filePreviewNext.innerHTML = chevronHtml("next");
     filePreviewCounter.textContent = `${filePreviewIndex+1} / ${filePreviewItems.length}`;
   }
-  filePreviewZoomEl.hidden = !item.word;
-  if(!item.word){
+  filePreviewZoomEl.hidden = !(item.tipo === "word" || item.tipo === "hoja");
+  if(item.tipo === "marco"){
     filePreviewWord.hidden = true; filePreviewWord.innerHTML = "";
     filePreviewFrame.hidden = false;
     filePreviewFrame.src = item.dataUrl;
     filePreviewFrame.title = item.name;
     return;
   }
-  // Un Word: se baja el archivo y se dibuja como hojas.
   filePreviewFrame.hidden = true; filePreviewFrame.src = "about:blank";
   filePreviewWord.hidden = false;
+  if(item.tipo === "nada"){
+    // Lo que el navegador no sabe mostrar (un PowerPoint, un Word viejo):
+    // el visor igual se abre, con el nombre y la forma de bajarlo.
+    filePreviewWord.innerHTML = `<div class="visor-nada"><span class="ico" aria-hidden="true">${esc(item.icono || "📎")}</span><b>${esc(item.name)}</b>
+      <span>${esc(t("Este tipo de archivo no se puede mostrar acá. Bajalo con «Descargar» para abrirlo.","This kind of file can't be shown here. Get it with “Download” to open it.","Este tipo de arquivo não pode ser mostrado aqui. Baixe com «Baixar» para abri-lo.","אי אפשר להציג כאן סוג קובץ כזה. הורידו אותו עם «הורדה» כדי לפתוח."))}</span></div>`;
+    return;
+  }
   filePreviewWord.innerHTML = `<div class="visor-aviso">${esc(t("Abriendo el documento…","Opening the document…","Abrindo o documento…","...פותח את המסמך"))}</div>`;
   (async () => {
     try{
-      await cargarVisorWord();
       const res = await fetch(item.dataUrl);
       if(!res.ok) throw new Error("HTTP " + res.status);
       const blob = await res.blob();
-      if(vuelta !== filePreviewVuelta) return;
-      filePreviewWord.innerHTML = "";
-      await window.docx.renderAsync(blob, filePreviewWord, null, { inWrapper: true, ignoreLastRenderedPageBreak: true, breakPages: true });
-      // La hoja entera, achicada para que entre a lo ancho (en el celular
-      // se apretaba el texto en vez de achicarse la página).
+      if(item.tipo === "word"){
+        await cargarVisorWord();
+        if(vuelta !== filePreviewVuelta) return;
+        filePreviewWord.innerHTML = "";
+        await window.docx.renderAsync(blob, filePreviewWord, null, { inWrapper: true, ignoreLastRenderedPageBreak: true, breakPages: true });
+        // La hoja entera a lo ancho (en el celular se apretaba el texto en
+        // vez de achicarse la página).
+        filePreviewInicial = filePreviewEscala = escalaQueEntra();
+      }else{
+        // Una planilla: cada hoja como una tabla, con SheetJS.
+        if(!window.XLSX) await cargarScript(SHEETJS_CDN);
+        if(!window.XLSX) throw new Error("SheetJS");
+        const libro = window.XLSX.read(await blob.arrayBuffer(), { type: "array" });
+        if(vuelta !== filePreviewVuelta) return;
+        filePreviewWord.innerHTML = `<div class="visor-planilla">${libro.SheetNames.map(nombre =>
+          `${libro.SheetNames.length > 1 ? `<h4>${esc(nombre)}</h4>` : ""}${window.XLSX.utils.sheet_to_html(libro.Sheets[nombre], { header: "", footer: "" })}`).join("")}</div>`;
+        filePreviewInicial = filePreviewEscala = 1;
+      }
       aplicarZoomWord();
     }catch(err){
       if(vuelta !== filePreviewVuelta) return;
-      console.warn("No se pudo mostrar el Word:", err);
+      console.warn("No se pudo mostrar el archivo:", err);
       filePreviewWord.innerHTML = `<div class="visor-aviso">${esc(t("No se pudo mostrar este documento acá. Podés bajarlo con «Descargar».","This document can't be shown here. You can get it with “Download”.","Não foi possível mostrar este documento aqui. Você pode baixá-lo com «Baixar».","לא ניתן להציג כאן את המסמך. אפשר להוריד אותו עם «הורדה»."))}</div>`;
     }
   })();
 }
-document.getElementById("filePreviewMenos").addEventListener("click", e=>{ e.stopPropagation(); filePreviewFactor = Math.max(0.6, +(filePreviewFactor - 0.15).toFixed(2)); aplicarZoomWord(); });
-document.getElementById("filePreviewMas").addEventListener("click", e=>{ e.stopPropagation(); filePreviewFactor = Math.min(2.5, +(filePreviewFactor + 0.15).toFixed(2)); aplicarZoomWord(); });
+document.getElementById("filePreviewMenos").addEventListener("click", e=>{ e.stopPropagation(); cambiarZoom(-1); });
+document.getElementById("filePreviewMas").addEventListener("click", e=>{ e.stopPropagation(); cambiarZoom(1); });
+filePreviewPct.addEventListener("click", e=>{ e.stopPropagation(); filePreviewEscala = filePreviewInicial; aplicarZoomWord(); });
+// Deslizar con el dedo pasa al anterior o al siguiente, en el visor de
+// archivos y en el de fotos (6/10/2026). Solo un gesto claramente de
+// costado y rápido; si lo que se toca se puede correr de costado (una
+// hoja agrandada) y todavía no llegó al borde, el gesto es para eso.
+function deslizarPara(contenedor, paso){
+  let x0 = 0, y0 = 0, t0 = 0, sigue = false;
+  contenedor.addEventListener("touchstart", e => {
+    if(e.touches.length !== 1){ sigue = false; return; }
+    sigue = true; x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; t0 = Date.now();
+  }, { passive: true });
+  contenedor.addEventListener("touchend", e => {
+    if(!sigue) return; sigue = false;
+    const toque = e.changedTouches[0];
+    const dx = toque.clientX - x0, dy = toque.clientY - y0;
+    if(Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5 || Date.now() - t0 > 700) return;
+    for(let el = e.target; el && el !== contenedor; el = el.parentElement){
+      if(el.scrollWidth > el.clientWidth + 1){
+        const alFinal = el.scrollLeft + el.clientWidth >= el.scrollWidth - 1, alPrincipio = el.scrollLeft <= 0;
+        if((dx < 0 && !alFinal) || (dx > 0 && !alPrincipio)) return;
+      }
+    }
+    // Hacia la izquierda, el siguiente; en hebreo, al revés.
+    paso((dx < 0) !== isRTL() ? 1 : -1);
+  }, { passive: true });
+}
 function filePreviewStep(delta){
   if(filePreviewItems.length < 2) return;
   filePreviewIndex = (filePreviewIndex + delta + filePreviewItems.length) % filePreviewItems.length;
@@ -17389,6 +17459,7 @@ document.getElementById("filePreviewClose").addEventListener("click", closeFileP
 // Como en el de las fotos: tocar el fondo oscuro (fuera de la hoja y de los botones) cierra.
 filePreviewOverlay.addEventListener("click", e=>{ if(e.target === filePreviewOverlay) closeFilePreview(); });
 filePreviewPrev.addEventListener("click", e=>{ e.stopPropagation(); filePreviewStep(-1); });
+deslizarPara(filePreviewOverlay, filePreviewStep);
 filePreviewNext.addEventListener("click", e=>{ e.stopPropagation(); filePreviewStep(1); });
 
 // Popup de perfil: se abre al clickear un "@nickname" DENTRO del texto de
@@ -17865,11 +17936,20 @@ function esWordNuevo(f){
   return !!f && (extensionDe(f.name) === "docx" || f.mime === "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
 }
 function sePuedeVer(f){ return claseDe(f).seVe || esWordNuevo(f); }
+// Desde el 6/10/2026 TODO archivo abre el visor (menos el audio, que tiene
+// su reproductor en la tarjeta): lo que se puede mostrar se muestra, y lo
+// que no (un PowerPoint) muestra su nombre y "Descargar".
+function seAbreEnVisor(f){ return !!f && !claseDe(f).esAudio; }
+function esPlanilla(f){ return !!f && (claseDe(f).clase === "planilla" || ["xlsx","xls","ods"].includes(extensionDe(f.name))); }
+function itemDelVisor(f){
+  const tipo = esWordNuevo(f) ? "word" : esPlanilla(f) ? "hoja" : claseDe(f).seVe ? "marco" : "nada";
+  return { name: f.name, dataUrl: safeFileDataUrl(f.dataUrl), tipo, icono: claseDe(f).icono };
+}
 function renderPostedFiles(files, owner){
   if(!files || !files.length) return "";
   // Índice DENTRO de los que abren el visor — tiene que coincidir con la
   // lista que arma attachmentOwner()+filtro en "open-file-preview".
-  const previewable = files.filter(f => f && sePuedeVer(f) && safeFileDataUrl(f.dataUrl));
+  const previewable = files.filter(f => seAbreEnVisor(f) && safeFileDataUrl(f.dataUrl));
   // Sacar un adjunto es editar el posteo, así que el ✕ aparece solo donde
   // eso se puede. En un comentario NO: el store no tiene replies.update,
   // los comentarios se borran enteros o nada.
@@ -17890,9 +17970,7 @@ function renderPostedFiles(files, owner){
     const icono = claseDe(f).icono;
     const cuerpo = claseDe(f).esAudio
       ? `<div class="post-file-audio"><audio controls src="${dataUrl}"></audio><span class="fname">${esc(f.name)}</span></div>`
-      : sePuedeVer(f)
-        ? `<button type="button" class="post-file-link" data-action="open-file-preview" ${ownerAttrs(owner)} data-idx="${previewable.indexOf(f)}">${icono} ${esc(f.name)}</button>`
-        : `<a class="post-file-link" href="${dataUrl}" download="${esc(f.name)}" title="${esc(t("Bajar el archivo","Download the file","Baixar o arquivo","הורדת הקובץ"))}">${icono} ${esc(f.name)} ↓</a>`;
+      : `<button type="button" class="post-file-link" data-action="open-file-preview" ${ownerAttrs(owner)} data-idx="${previewable.indexOf(f)}" title="${esc(f.name)}">${icono} ${esc(f.name)}</button>`;
     const cuando = fechaDeArchivo(f);
     return `<div class="post-file-row">${cuerpo}${cuando ? `<span class="doc-fecha">${esc(cuando)}</span>` : ""}${quitarDe(f)}</div>`;
   }).join("")}</div>`;
@@ -18503,8 +18581,8 @@ document.addEventListener("click", async e=>{
     // owner.files entero el índice se corría y el visor abría otro
     // archivo. Un comentario no tiene activityType, así que ahí
     // archivosSueltos() devuelve todo, que es lo que corresponde.
-    const previewable = owner ? archivosSueltos(owner.files, owner.activityType).filter(f=>f && sePuedeVer(f))
-      .map(f=>({ name:f.name, dataUrl:safeFileDataUrl(f.dataUrl), word: esWordNuevo(f) })).filter(f=>f.dataUrl) : [];
+    const previewable = owner ? archivosSueltos(owner.files, owner.activityType).filter(seAbreEnVisor)
+      .map(itemDelVisor).filter(f=>f.dataUrl) : [];
     openFilePreview(previewable, Number(el.dataset.idx)||0);
   },
     "show-user-profile": async (el, e, action, postId) => {
@@ -19610,8 +19688,8 @@ document.addEventListener("click", async e=>{
     if(!post) return;
     const tocado = (post.files || [])[Number(el.dataset.pos)];
     const enOrden = docsEsperados(post.activityType).flatMap(d => { const l = archivosDelDoc(post, d.id); return l.length ? [l[l.length - 1], ...l.slice(0, -1).reverse()] : []; })
-      .filter(f => sePuedeVer(f) && safeFileDataUrl(f.dataUrl));
-    const items = enOrden.map(f => ({ name:f.name, dataUrl:safeFileDataUrl(f.dataUrl), word: esWordNuevo(f) }));
+      .filter(f => seAbreEnVisor(f) && safeFileDataUrl(f.dataUrl));
+    const items = enOrden.map(itemDelVisor);
     if(items.length) openFilePreview(items, Math.max(0, enOrden.indexOf(tocado)));
   },
 

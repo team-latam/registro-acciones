@@ -267,6 +267,8 @@ async function entrar(email, nombre, mod, viewport){
     // La herramienta del .zip, de mentira: el "zip" es la lista de lo que
     // se le metió, para poder mirarla.
     // La herramienta que dibuja los Word, de mentira: escribe cuántos bytes le llegaron.
+    // Lo que lee planillas, de mentira: una tabla con una celda.
+    if(/\/xlsx\//.test(u)) return ruta.fulfill({ contentType: "application/javascript", body: `window.XLSX = { read: () => ({ SheetNames: ["Gastos"], Sheets: { Gastos: {} } }), utils: { sheet_to_html: () => "<table><tr><td>Planilla de mentira</td></tr></table>" } };` });
     if(/docx-preview/.test(u)) return ruta.fulfill({ contentType: "application/javascript", body: `window.docx = { renderAsync: async (blob, el) => { el.innerHTML = '<section class="docx">Word de ' + blob.size + ' bytes</section>'; } };` });
     if(/\/jszip\//.test(u)) return ruta.fulfill({ contentType: "application/javascript", body: `window.JSZip = class { constructor(){ this.n = []; }
       file(nombre){ this.n.push(nombre); return this; } async generateAsync(){ return new Blob([JSON.stringify(this.n.sort())]); } };` });
@@ -986,11 +988,31 @@ const hasta = async (p, fn, arg, ms = 5000) => {
         { name: "Plan viejo.pdf", kind: "pdf", doc: "plan", path: "posts/p_reunion/plan1.pdf" },
         { name: "Plan de viaje definitivo con un nombre muy largo.docx", kind: "doc", doc: "plan", path: "posts/p_reunion/plan2.docx" },
         { name: "Reporte.pdf", kind: "pdf", doc: "reporte", path: "posts/p_reunion/rep.pdf" },
-        { name: "Planilla de gastos de octubre.xlsx", kind: "planilla", path: "posts/p_reunion/x7f3a9.xlsx" } ]; });
+        { name: "Planilla de gastos de octubre.xlsx", kind: "planilla", path: "posts/p_reunion/x7f3a9.xlsx" },
+        { name: "Presentación del curso.pptx", kind: "presentacion", path: "posts/p_reunion/pres.pptx" } ]; });
     await esperarTexto(q, "Reunión con la comunidad");
     // Lo que se baja conserva el nombre con que se cargó, no el del bucket.
-    const [bajada] = await Promise.all([q.waitForEvent("download"), q.click(`.post[data-post-id="p_reunion"] a.post-file-link[download]`)]);
+    // Y todo archivo abre el visor (6/10/2026): una planilla se ve como tabla.
+    await q.click(`.post[data-post-id="p_reunion"] .post-file-link`);
+    eq("una planilla adjunta abre el visor y se ve como tabla",
+      await hasta(q, () => !document.getElementById("filePreviewOverlay").hidden && /Planilla de mentira/.test(document.getElementById("filePreviewWord").textContent)), true);
+    const [bajada] = await Promise.all([q.waitForEvent("download"), q.click("#filePreviewDownload")]);
     eq("bajar un archivo conserva el nombre con que se cargó", bajada.suggestedFilename(), "Planilla de gastos de octubre.xlsx");
+    // Deslizar con el dedo pasa al siguiente: de la planilla al PowerPoint,
+    // que no se puede mostrar y avisa cómo bajarlo.
+    const deslizar = (dx) => q.evaluate(dx => { const o = document.getElementById("filePreviewOverlay"); const t = o.querySelector(".visor-hoja");
+      const toque = x => new Touch({ identifier: 1, target: t, clientX: x, clientY: 300 });
+      t.dispatchEvent(new TouchEvent("touchstart", { bubbles: true, touches: [toque(200)], changedTouches: [toque(200)] }));
+      t.dispatchEvent(new TouchEvent("touchend", { bubbles: true, touches: [], changedTouches: [toque(200 + dx)] })); }, dx);
+    await deslizar(-120);
+    eq("deslizar el dedo hacia la izquierda pasa al siguiente archivo", await q.evaluate(() => [document.getElementById("filePreviewTitle").textContent, document.getElementById("filePreviewCounter").textContent]), ["Presentación del curso.pptx", "2 / 2"]);
+    eq("un PowerPoint abre el visor igual, con el aviso y la forma de bajarlo", await q.evaluate(() => [!!document.querySelector(".visor-nada"), /no se puede mostrar/.test(document.getElementById("filePreviewWord").textContent)]), [true, true]);
+    await deslizar(120);
+    eq("y hacia la derecha vuelve al anterior", await q.evaluate(() => document.getElementById("filePreviewTitle").textContent), "Planilla de gastos de octubre.xlsx");
+    await deslizar(-20);
+    eq("un toque corto no cambia nada", await q.evaluate(() => document.getElementById("filePreviewTitle").textContent), "Planilla de gastos de octubre.xlsx");
+    eq("el contador va siempre de izquierda a derecha (en hebreo salía «2/1»)", await q.evaluate(() => getComputedStyle(document.getElementById("filePreviewCounter")).direction), "ltr");
+    await q.keyboard.press("Escape");
     const tarjeta = '.post[data-post-id="p_reunion"]';
     await q.click(`${tarjeta} .doc-linea`);
     await q.waitForSelector(`${tarjeta} .doc-abierto`);
@@ -1011,7 +1033,10 @@ const hasta = async (p, fn, arg, ms = 5000) => {
     await q.click("#filePreviewMas"); await q.click("#filePreviewMas");
     const despues = await zoom();
     await q.click("#filePreviewMenos");
-    eq("visor: con un Word aparecen A− / A+ y cambian el tamaño", [await q.evaluate(() => !document.getElementById("filePreviewZoom").hidden), despues > antes, (await zoom()) < despues], [true, true, true]);
+    eq("visor: con un Word aparecen − % + y cambian el tamaño", [await q.evaluate(() => !document.getElementById("filePreviewZoom").hidden), despues > antes, (await zoom()) < despues], [true, true, true]);
+    eq("visor: el porcentaje dice el tamaño", await q.evaluate(() => document.getElementById("filePreviewPct").textContent), Math.round((await zoom()) * 100) + "%");
+    await q.click("#filePreviewPct");
+    eq("visor: tocar el porcentaje vuelve al tamaño inicial", await zoom(), antes);
     eq("visor: el iPhone no agranda la letra por su cuenta", await q.evaluate(() => { const c = getComputedStyle(document.getElementById("filePreviewWord")); return c.webkitTextSizeAdjust || c.textSizeAdjust; }), "100%");
     await q.keyboard.press("ArrowRight");
     eq("visor: la flecha → pasa al siguiente (un PDF, en el marco)", await q.evaluate(() => [document.getElementById("filePreviewTitle").textContent, document.getElementById("filePreviewFrame").hidden, document.getElementById("filePreviewCounter").textContent]),
