@@ -566,8 +566,12 @@ capturas (A/B/C, después D/E/F, después ajustes), el diseño elegido:
   "Lugar:" (o el nombre del archivo). En la tarjeta, cada uno con su 📍.
   En la historia de un país, una visita con Word sin leer ofrece "Leer el
   Cierre" ahí mismo.
-- Queda para después: el resumen por ciudad y por zona, y otros tipos
-  además de Visita.
+- **Por ciudad** (pedido del usuario): el país junta todas sus ciudades;
+  al entrar a una ciudad (Países → país → ciudad) aparece arriba el
+  resumen de esa ciudad, solo con los Cierres que la nombran (o, si el
+  evento es de esa sola ciudad y el Cierre no nombra ninguna, el suyo).
+  La pregunta de la rutina usa lo pendiente de su ciudad.
+- Queda para después: el resumen por zona y otros tipos además de Visita.
 
 ## Fuera de alcance (necesitan algo que la app no tiene)
 

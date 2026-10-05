@@ -210,6 +210,13 @@ export function createClient(url, clave){
 }`;
 
 const ADMIN = "benny@team-latam.com";
+// Y uno de otra ciudad de Uruguay.
+const CIERRE_PDE_XML = `<?xml version="1.0"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>`
+  + ["Formulario de Cierre de Viaje", "Lugar: Punta del Este, Uruguay", "Objetivos:"].map(t => `<w:p><w:r><w:t>${t}</w:t></w:r></w:p>`).join("")
+  + `<w:tbl><w:tr><w:tc><w:p><w:r><w:t>Objetivo</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>Logrado</w:t></w:r></w:p></w:tc></w:tr>`
+  + `<w:tr><w:tc><w:p><w:r><w:t>Conocer el club</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>Sí</w:t></w:r></w:p></w:tc></w:tr></w:tbl>`
+  + ["Resumen Ejecutivo:", "En Punta del Este, todo listo.", "Conclusiones:", "Mandar el contrato."].map(t => `<w:p><w:r><w:t>${t}</w:t></w:r></w:p>`).join("")
+  + `</w:body></w:document>`;
 // Otro Cierre inventado, del mismo viaje pero de otro país.
 const CIERRE_AR_XML = `<?xml version="1.0"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>`
   + ["Formulario de Cierre de Viaje", "Lugar: Buenos Aires, Argentina", "Objetivos:"].map(t => `<w:p><w:r><w:t>${t}</w:t></w:r></w:p>`).join("")
@@ -293,7 +300,7 @@ async function entrar(email, nombre, mod, viewport){
     if(/\/jszip\//.test(u)) return ruta.fulfill({ contentType: "application/javascript", body: `window.JSZip = class { constructor(){ this.n = []; }
       file(nombre){ this.n.push(nombre); return this; } async generateAsync(){ return new Blob([JSON.stringify(this.n.sort())]); }
       static async loadAsync(buf){ const xml = new TextDecoder().decode(buf); return { file: n => n === "word/document.xml" ? { async: async () => xml } : null }; } };` });
-    if(/\/storage\/v1\/object\/sign\/.*\.docx/.test(u)) return ruta.fulfill({ contentType: "application/octet-stream", body: /cierre-ar/i.test(u) ? CIERRE_AR_XML : /cierre/i.test(u) ? CIERRE_XML : "<nada/>" });
+    if(/\/storage\/v1\/object\/sign\/.*\.docx/.test(u)) return ruta.fulfill({ contentType: "application/octet-stream", body: /cierre-ar/i.test(u) ? CIERRE_AR_XML : /cierre-pde/i.test(u) ? CIERRE_PDE_XML : /cierre/i.test(u) ? CIERRE_XML : "<nada/>" });
     if(/\/storage\/v1\/object\/sign\//.test(u)) return ruta.fulfill({ contentType: "image/png", body: PNG });
     if(/^https:\/\/www\.googleapis\.com\/calendar\//.test(u))
       return ruta.fulfill({ contentType: "application/json", body: JSON.stringify({ items: [] }) });
@@ -1097,6 +1104,13 @@ const hasta = async (p, fn, arg, ms = 5000) => {
       files: [{ name: "Formulario de Cierre - Montevideo, Uruguay.docx", kind: "doc", path: "posts/p_viaje/cierre-uy.docx", subidoEl: hace(34) },
               { name: "Formulario de Cierre - Buenos Aires, Argentina.docx", kind: "doc", path: "posts/p_viaje/cierre-ar.docx", subidoEl: hace(33) }],
       created_at: hace(45) });
+    // Y otra visita, a Punta del Este, ya leída.
+    base.posts.push({ id: "p_pde", title: "Punta del Este", content: "x",
+      date: dia(10), start_date: dia(10), end_date: dia(9), activity_type: "visita", author_name: "Benny", author_email: ADMIN,
+      scopes: [{ type: "ciudad", country: "Uruguay", city: "Punta Del Este" }],
+      images: [], links: [], mentions: [], liked_by: [], milestones: [], editors: [], participants: [], recurrence_skip: [], recurrence_moves: {},
+      files: [{ name: "Formulario de Cierre - Punta del Este.docx", kind: "doc", path: "posts/p_pde/cierre-pde.docx", subidoEl: hace(8) }],
+      created_at: hace(12) });
   });
   await esperarTexto(p, "Montevideo y Buenos Aires");
   await p.click('nav.tabs button[data-view="paises"]');
@@ -1117,9 +1131,26 @@ const hasta = async (p, fn, arg, ms = 5000) => {
     [await p.$eval(".lg-card .rs-txt", e => e.textContent.trim()), await p.$eval('.lg-hist li:has([data-post-id="p_viaje"]) .rs-ok', e => e.textContent.trim())], ["En Buenos Aires todo en orden.", "1/1"]);
   await p.click('[data-action="drill-clear"]');
   await p.click('[data-action="drill-country"][data-country="Uruguay"]');
-  eq("viaje: y Uruguay, solo el suyo", await hasta(p, () => {
+  eq("viaje: y Uruguay, solo el suyo (Punta del Este todavía sin leer)", await hasta(p, () => {
     const v = [...document.querySelectorAll(".lg-stat b")].map(x => x.textContent.trim());
-    return v[2] === "1 de 2" && v[3] === "4";
+    return v[0] === "2" && v[2] === "1 de 2" && v[3] === "4";
+  }), true);
+  await p.click('.lg-hist [data-action="leer-resumen"][data-post-id="p_pde"]');
+  eq("ciudades: Uruguay junta las dos ciudades", await hasta(p, () => {
+    const v = [...document.querySelectorAll(".lg-stat b")].map(x => x.textContent.trim());
+    return v[2] === "2 de 3" && v[3] === "5";
+  }), true);
+  await p.click('.city-row[data-action="goto-city"][data-city="Punta Del Este"]');
+  eq("ciudades: al entrar a Punta del Este, su resumen arriba", await esperarTexto(p, "Resumen de Punta Del Este", 3000), true);
+  eq("ciudades: solo con lo suyo", await p.$$eval(".lg-stat b", bs => bs.map(x => x.textContent.trim())).then(v => [v[0], v[2], v[3]]), ["1", "1 de 1", "1"]);
+  eq("ciudades: y su resumen ejecutivo", await p.$eval(".lg-card .rs-txt", e => e.textContent.trim()), "En Punta del Este, todo listo.");
+  await p.click('nav.tabs button[data-view="paises"]');
+  await p.evaluate(() => { const x = document.createElement("button"); x.dataset.action = "paises-subview"; x.dataset.key = "lista"; document.body.appendChild(x); x.click(); x.remove(); });
+  await p.click('[data-action="drill-country"][data-country="Uruguay"]');
+  await p.click('.city-row[data-action="goto-city"][data-city="Montevideo"]');
+  eq("ciudades: Montevideo, solo el Cierre que la nombra", await hasta(p, () => {
+    const v = [...document.querySelectorAll(".lg-stat b")].map(x => x.textContent.trim());
+    return /Resumen de Montevideo/.test(document.querySelector(".lg-tit")?.textContent || "") && v[2] === "1 de 2";
   }), true);
   await p.click('nav.tabs button[data-view="feed"]');
   // Ya quedó abierto al leerlo (como cuando se lee desde la tarjeta).
