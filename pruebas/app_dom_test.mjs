@@ -1007,6 +1007,25 @@ const hasta = async (p, fn, arg, ms = 5000) => {
       ["Plan viejo.pdf", false, "2 / 3"]);
     await q.keyboard.press("Escape");
     eq("visor: Esc cierra y el foco vuelve a lo que se tocó", await q.evaluate(() => [document.getElementById("filePreviewOverlay").hidden, document.activeElement.classList.contains("doc-archivo")]), [true, true]);
+    // Ventana flotante (opción B): sin fondo negro, la página atrás bloqueada.
+    await q.click(`${tarjeta} .doc-fila .doc-archivo`);
+    eq("visor: ventana blanca sobre la página apenas atenuada (sin fondo negro)",
+      await hasta(q, () => { const o = document.getElementById("filePreviewOverlay"); if(o.hidden) return false; const a = Number((getComputedStyle(o).backgroundColor.match(/[\d.]+\)$/) || ["1)"])[0].replace(")", "")); return a < 0.3 && !!o.querySelector(".visor-ventana .visor-barra"); }), true);
+    eq("visor: la página de atrás no se puede tocar mientras está abierto",
+      await q.evaluate(() => { const r = document.querySelector(".post-actions").getBoundingClientRect(); const e = document.elementFromPoint(r.left + 5, r.top + 5); return !!e && !!e.closest("#filePreviewOverlay"); }), true);
+    await q.mouse.click(5, 300);
+    eq("visor: tocar la página de atrás lo cierra", await q.evaluate(() => document.getElementById("filePreviewOverlay").hidden), true);
+    // Las fotos, con la misma ventana.
+    await q.click(`${tarjeta} img[data-action="open-lightbox"]`);
+    eq("fotos: la misma ventana, con su barra y sin fondo negro",
+      await hasta(q, () => { const l = document.getElementById("lightbox"); if(!l.classList.contains("show")) return false; const a = Number((getComputedStyle(l).backgroundColor.match(/[\d.]+\)$/) || ["1)"])[0].replace(")", "")); return a < 0.3 && document.getElementById("lightboxTitle").textContent === "Foto"; }), true);
+    await q.click("#lightboxImg");
+    eq("fotos: tocar la foto no la cierra", await q.evaluate(() => document.getElementById("lightbox").classList.contains("show")), true);
+    await q.keyboard.press("Escape");
+    eq("fotos: Esc la cierra", await q.evaluate(() => document.getElementById("lightbox").classList.contains("show")), false);
+    await q.click(`${tarjeta} img[data-action="open-lightbox"]`);
+    await q.click("#lightboxClose");
+    eq("fotos: la ✕ también", await q.evaluate(() => document.getElementById("lightbox").classList.contains("show")), false);
     eq("varios por documento y visor: sin un solo error", err2, []);
     await q.close();
   }
