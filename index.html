@@ -2574,6 +2574,53 @@
      en es/pt ("septiembre de 2026"), y un text-transform:capitalize dejaba
      "Septiembre De 2026", con el "de" capitalizado de más. */
   .cal-title::first-letter{ text-transform:uppercase; }
+  /* "Ir a una fecha" (5/10/2026): el título del mes es un botón que abre
+     una ventanita para escribir una fecha o elegir año y mes, en vez de
+     ir mes por mes con ‹ › hasta 2024. */
+  .cal-ir-envoltorio{ position:relative; }
+  .cal-nav .cal-title-btn{ gap:6px; border:1px solid transparent; background:none; border-radius:10px; padding:5px 10px; }
+  .cal-nav .cal-title-btn:hover, .cal-nav .cal-title-btn.open{ background:var(--surface-alt); border-color:transparent; }
+  .cal-title-btn .filter-dropdown-chevron{ font-size:11px; color:var(--text-muted); }
+  .cal-ir{
+    position:absolute; top:calc(100% + 8px); inset-inline-start:0; z-index:60; width:318px;
+    background:var(--card); border:1px solid var(--border); border-radius:16px;
+    box-shadow:0 18px 44px rgba(8,42,44,.22); padding:14px; text-align:start;
+    animation:calIrEntra .14s ease-out;
+  }
+  @keyframes calIrEntra{ from{ opacity:0; transform:translateY(-4px); } }
+  .cal-ir-fecha{ display:flex; gap:8px; }
+  .cal-ir-campo{ flex:1; min-width:0; display:flex; align-items:center; gap:8px; border:1.5px solid var(--border); border-radius:10px; padding:0 10px; height:40px; background:var(--card); }
+  .cal-ir-campo:focus-within{ border-color:var(--celeste); box-shadow:0 0 0 3px rgba(79,199,224,.22); }
+  .cal-ir-campo span{ font-size:16px; }
+  .cal-ir-campo input{ border:none; outline:none; font:inherit; font-size:14px; font-weight:700; color:var(--ink); width:100%; min-width:0; background:none; padding:0; }
+  .cal-nav .cal-ir-ir{ border:none; background:var(--petroleo); color:#fff; border-radius:10px; padding:0 16px; font-size:13px; font-weight:800; }
+  .cal-nav .cal-ir-ir:hover{ background:var(--petroleo-dark); border:none; }
+  .cal-ir-ayuda{ font-size:11.5px; font-weight:600; color:var(--text-muted); margin:6px 2px 12px; line-height:1.4; }
+  .cal-ir-ayuda.error{ color:var(--danger); }
+  .cal-ir-anios{ display:flex; gap:4px; margin-bottom:10px; overflow-x:auto; scrollbar-width:none; }
+  .cal-ir-anios::-webkit-scrollbar{ display:none; }
+  .cal-nav .cal-ir-anios button{ flex:1 1 0; min-width:38px; border:none; border-radius:8px; padding:6px 4px; font-size:12px; font-weight:700; color:var(--text-muted); background:var(--surface-alt); }
+  .cal-nav .cal-ir-anios button:hover{ color:var(--ink-strong); border:none; }
+  .cal-nav .cal-ir-anios button.on{ background:var(--celeste-soft); color:var(--ink-strong); box-shadow:inset 0 0 0 1.5px var(--celeste-dark); }
+  .cal-ir-meses{ display:grid; grid-template-columns:repeat(4, 1fr); gap:6px; }
+  .cal-nav .cal-ir-mes{ position:relative; border-radius:10px; padding:9px 0 14px; font-size:12.5px; font-weight:700; text-transform:capitalize; }
+  .cal-ir-mes i{ position:absolute; inset-inline:0; bottom:5px; margin:auto; height:4px; max-width:60%; border-radius:4px; background:var(--celeste); }
+  .cal-nav .cal-ir-mes.actual{ background:var(--petroleo); color:#fff; border-color:var(--petroleo); }
+  .cal-ir-mes.actual i{ background:#fff; }
+  .cal-nav .cal-ir-mes.hoy:not(.actual){ border-color:var(--celeste-dark); box-shadow:inset 0 0 0 1px var(--celeste-dark); }
+  .cal-ir-leyenda{ display:flex; align-items:center; gap:6px; font-size:10.5px; font-weight:600; color:var(--text-muted); margin-top:8px; }
+  .cal-ir-leyenda i{ flex:none; width:22px; height:4px; border-radius:4px; background:var(--celeste); }
+  .cal-ir-pie{ display:flex; flex-wrap:wrap; gap:6px; margin-top:12px; padding-top:10px; border-top:1px solid var(--border); }
+  .cal-nav .cal-ir-pie button{ padding:4px 11px; font-size:12px; color:var(--celeste-dark); }
+  /* El día al que se fue, marcado un momento para que el ojo lo encuentre. */
+  .cal-cell.cal-destino{ animation:calDestino 2.2s ease-out; }
+  @keyframes calDestino{ 0%, 40%{ box-shadow:inset 0 0 0 3px var(--celeste); background:var(--celeste-soft); } }
+  @media (max-width:640px){
+    /* En el celular, a todo el ancho de la barra (colgada de .cal-nav). */
+    .cal-nav{ position:relative; width:100%; }
+    .cal-ir-envoltorio{ position:static; }
+    .cal-ir{ inset-inline:0; width:auto; }
+  }
   /* Selector de vista: lista vertical, a diferencia de los desplegables de
      filtro (que son una nube de chips) — de ahí el flex-direction y el
      nowrap que pisan a .filter-dropdown-panel. */
@@ -15430,6 +15477,10 @@ function calendarioViews(){
   ];
 }
 let calViewMenuOpen = false;
+// "Ir a una fecha": abierta o no, el año que muestra la grilla de meses,
+// lo que se lleva escrito (sobrevive a un render que llegue mientras se
+// escribe) y el aviso si no se entendió la fecha.
+let calIrAbierto = false, calIrAnio = "", calIrTexto = "", calIrError = "";
 let calLayersMenuOpen = false;
 // Mismo pill que "◆ Hitos", pero para cada capa de feriados por
 // separado (país / festividades judías): kind decide qué pref lee/
@@ -15503,7 +15554,12 @@ function renderCalendarioView(){
       <button type="button" class="cal-today" data-action="cal-today">${t("Hoy","Today","Hoje","היום")}</button>
       <button type="button" class="cal-arrow" data-action="cal-step" data-step="-1" aria-label="${esc(t("Anterior","Previous","Anterior","הקודם"))}">${isRTL()?"›":"‹"}</button>
       <button type="button" class="cal-arrow" data-action="cal-step" data-step="1" aria-label="${esc(t("Siguiente","Next","Próximo","הבא"))}">${isRTL()?"‹":"›"}</button>
-      <span class="cal-title">${esc(calendarioTitle(sub, anchor))}</span>
+      <div class="cal-ir-envoltorio">
+        <button type="button" class="cal-title-btn${calIrAbierto?" open":""}" data-action="cal-ir-abrir" aria-haspopup="dialog" aria-expanded="${calIrAbierto}" title="${esc(t("Ir a una fecha","Go to a date","Ir para uma data","מעבר לתאריך"))}">
+          <span class="cal-title">${esc(calendarioTitle(sub, anchor))}</span><span class="filter-dropdown-chevron" aria-hidden="true">▾</span>
+        </button>
+        ${calIrAbierto ? renderCalIr(anchor) : ""}
+      </div>
     </div>`;
   // Navegación a la izquierda ("Hoy ‹ › septiembre de 2026"); del lado
   // derecho, Capas, el selector de vista y "Actualizar". Ya no hay un
@@ -15547,6 +15603,118 @@ function calendarioTitle(sub, anchor){
   const a = sub === "semana" ? weekStartISO(anchor) : anchor;
   const b = addDaysISO(a, n - 1);
   return `${fmtISO(a,{day:"numeric",month:"short"})} – ${fmtISO(b,{day:"numeric",month:"short",year:"numeric"})}`;
+}
+// La ventanita de "Ir a una fecha": un campo para escribir la fecha, los
+// años en una fila y los doce meses del año elegido. La rayita de cada mes
+// es cuánta actividad hubo (contada igual que en Reportes), para ver de un
+// vistazo los meses movidos y los vacíos.
+function renderCalIr(anchor){
+  const anio = calIrAnio || anchor.slice(0,4);
+  const hoy = todayISO(), hoyAnio = Number(hoy.slice(0,4));
+  const conDatos = aniosConDatos();
+  const desde = Math.min(Number(conDatos[0]) || hoyAnio, Number(anio), hoyAnio - 1);
+  const hasta = Math.max(hoyAnio + 1, Number(anio));
+  const anios = [];
+  for(let a = desde; a <= hasta; a++) anios.push(String(a));
+  const r = armarReporte(`${anio}-01-01`, `${anio}-12-31`, {});
+  const maximo = Math.max(1, ...Object.values(r.porMes));
+  const meses = Array.from({ length:12 }, (_, i) => {
+    const m = `${anio}-${String(i + 1).padStart(2, "0")}`;
+    const n = r.porMes[m] || 0;
+    const nombre = fmtISO(m + "-01", { month:"long", year:"numeric" });
+    const cuantas = n === 1 ? t("1 actividad","1 activity","1 atividade","פעילות אחת") : t("{n} actividades","{n} activities","{n} atividades","{n} פעילויות",{n});
+    return `<button type="button" class="cal-pill cal-ir-mes${m === anchor.slice(0,7) ? " actual" : ""}${m === hoy.slice(0,7) ? " hoy" : ""}" data-action="cal-ir-mes" data-key="${m}" aria-label="${esc(nombre)} · ${esc(cuantas)}" title="${esc(cuantas)}">
+        ${esc(fmtISO(m + "-01", { month:"short" }).replace(".", "").slice(0, 3))}${n ? `<i style="width:${Math.max(8, Math.round(n * 60 / maximo))}%"></i>` : ""}
+      </button>`;
+  }).join("");
+  return `<div class="cal-ir" role="dialog" aria-label="${esc(t("Ir a una fecha","Go to a date","Ir para uma data","מעבר לתאריך"))}">
+      <div class="cal-ir-fecha">
+        <label class="cal-ir-campo"><span aria-hidden="true">📅</span>
+          <input id="calIrFecha" type="text" autocomplete="off" spellcheck="false" value="${esc(calIrTexto)}"
+            placeholder="${esc(t("dd/mm/aaaa","dd/mm/yyyy","dd/mm/aaaa","dd/mm/yyyy"))}" aria-label="${esc(t("Fecha","Date","Data","תאריך"))}" aria-describedby="calIrAyuda"${calIrError ? ` aria-invalid="true"` : ""}>
+        </label>
+        <button type="button" class="cal-ir-ir" data-action="cal-ir-fecha">${t("Ir","Go","Ir","מעבר")}</button>
+      </div>
+      <div class="cal-ir-ayuda${calIrError ? " error" : ""}" id="calIrAyuda" role="status">${esc(calIrError || t(
+        "Escribí una fecha (día/mes/año) o elegí un mes abajo.",
+        "Type a date (day/month/year) or pick a month below.",
+        "Escreva uma data (dia/mês/ano) ou escolha um mês abaixo.",
+        "הקלידו תאריך (יום/חודש/שנה) או בחרו חודש למטה."))}</div>
+      <div class="cal-ir-anios" role="group" aria-label="${esc(t("Año","Year","Ano","שנה"))}">${anios.map(a =>
+        `<button type="button" class="${a === anio ? "on" : ""}" data-action="cal-ir-anio" data-key="${a}" aria-pressed="${a === anio}">${a}</button>`).join("")}</div>
+      <div class="cal-ir-meses" role="group" aria-label="${esc(t("Mes","Month","Mês","חודש"))}">${meses}</div>
+      <div class="cal-ir-leyenda"><i></i>${t("la rayita muestra cuánta actividad hubo ese mes","the line shows how much activity there was that month","o tracinho mostra quanta atividade houve nesse mês","הקו מראה כמה פעילות הייתה באותו חודש")}</div>
+      <div class="cal-ir-pie">
+        <button type="button" class="cal-pill" data-action="cal-ir-atajo" data-key="hoy">${t("Hoy","Today","Hoje","היום")}</button>
+        <button type="button" class="cal-pill" data-action="cal-ir-atajo" data-key="mes">${t("Hace un mes","A month ago","Há um mês","לפני חודש")}</button>
+        <button type="button" class="cal-pill" data-action="cal-ir-atajo" data-key="anio">${t("Hace un año","A year ago","Há um ano","לפני שנה")}</button>
+      </div>
+    </div>`;
+}
+// Lo que se escribió en "Ir a una fecha", en una fecha ISO. Día primero
+// (como se escribe en LatAm e Israel): "1/1/2024", "1-1-24", "1.1.2024",
+// "1 1 2024"; también "2024-01-01", un mes solo ("3/2024") o un año solo
+// ("2024"). `vista` dice si se pidió un mes o un año entero. null si no
+// es una fecha que exista.
+function fechaEscrita(texto){
+  const s = String(texto || "").trim();
+  const anio4 = y => y.length === 2 ? 2000 + Number(y) : Number(y);
+  const existe = (y, m, d) => {
+    if(y < 1900 || y > 2200 || m < 1 || m > 12 || d < 1) return false;
+    return d <= new Date(Date.UTC(y, m, 0)).getUTCDate();
+  };
+  const iso = (y, m, d) => `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  let x;
+  if((x = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/))){
+    const [y, m, d] = [Number(x[1]), Number(x[2]), Number(x[3])];
+    return existe(y, m, d) ? { iso: iso(y, m, d), vista: null } : null;
+  }
+  if((x = s.match(/^(\d{1,2})\s*[\/.\- ]\s*(\d{1,2})\s*[\/.\- ]\s*(\d{2}|\d{4})$/))){
+    const [d, m, y] = [Number(x[1]), Number(x[2]), anio4(x[3])];
+    return existe(y, m, d) ? { iso: iso(y, m, d), vista: null } : null;
+  }
+  if((x = s.match(/^(\d{1,2})\s*[\/.\- ]\s*(\d{4})$/))){
+    const [m, y] = [Number(x[1]), Number(x[2])];
+    return existe(y, m, 1) ? { iso: iso(y, m, 1), vista: "mes" } : null;
+  }
+  if((x = s.match(/^(\d{4})$/))){
+    const y = Number(x[1]);
+    return existe(y, 1, 1) ? { iso: iso(y, 1, 1), vista: "anio" } : null;
+  }
+  return null;
+}
+// Cierra la ventanita; con `volver`, el foco regresa al título que la abrió.
+function cerrarCalIr(volver){
+  calIrAbierto = false; calIrError = "";
+  render();
+  if(volver) enfocarComo(document.querySelector('[data-action="cal-ir-abrir"]'), null, false);
+}
+// Va a una fecha: cierra, mueve el calendario y marca un momento el día
+// (en el Mes; en el celular además queda elegido, con su lista debajo).
+function calIrA(iso, vista){
+  state.calendarioAnchor = iso;
+  if(vista === "anio") state.calendarioSubview = "anio";
+  else if(vista === "mes" && !["mes","agenda"].includes(state.calendarioSubview)) state.calendarioSubview = "mes";
+  if(!vista) state.calendarioDiaElegido = iso;
+  calIrTexto = "";
+  cerrarCalIr(true);
+  if(!vista){
+    const celda = document.querySelector(`.cal-cell[data-date="${iso}"]`);
+    if(celda){ celda.classList.add("cal-destino"); celda.scrollIntoView({ block:"nearest" }); }
+  }
+}
+function irAFechaEscrita(){
+  const campo = document.getElementById("calIrFecha");
+  const texto = campo ? campo.value : calIrTexto;
+  const f = fechaEscrita(texto);
+  if(f) return calIrA(f.iso, f.vista);
+  calIrTexto = texto;
+  calIrError = String(texto || "").trim()
+    ? t("No entendí esa fecha. Probá con día/mes/año, por ejemplo 1/1/2024.","Couldn't read that date. Try day/month/year, e.g. 1/1/2024.","Não entendi essa data. Tente dia/mês/ano, por exemplo 1/1/2024.","לא הבנתי את התאריך. נסו יום/חודש/שנה, למשל 1/1/2024.")
+    : t("Escribí una fecha primero, por ejemplo 1/1/2024.","Type a date first, e.g. 1/1/2024.","Escreva uma data primeiro, por exemplo 1/1/2024.","הקלידו קודם תאריך, למשל 1/1/2024.");
+  render();
+  const nuevo = document.getElementById("calIrFecha");
+  if(nuevo){ nuevo.focus(); nuevo.select(); }
 }
 // Cuánto se mueve cada ‹ ›: una unidad de lo que la vista muestra.
 function calendarioStep(sub, anchor, step){
@@ -17033,6 +17201,7 @@ document.querySelectorAll("#tabs button").forEach(btn=>{
   btn.addEventListener("click", ()=>{
     state.view = btn.dataset.view;
     state.countryDrill = null;
+    calIrAbierto = false;
     render();
   });
 });
@@ -17075,6 +17244,7 @@ document.addEventListener("keydown", e=>{
   { const gs = document.getElementById("globalResults"); if(gs && !gs.hidden){ cerrarBuscadorGlobal(true); return; } }
   if(postMenuOpen){ postMenuOpen = null; render(); return; }
   if(moreMenuOpen){ moreMenuOpen = false; renderBottomNav(); return; }
+  if(calIrAbierto){ cerrarCalIr(true); return; }
   if(calViewMenuOpen){ calViewMenuOpen = false; render(); return; }
   if(calLayersMenuOpen){ calLayersMenuOpen = false; render(); return; }
   // La ficha de Personas / Tipos (lista + ficha): se cierra y el foco
@@ -17107,6 +17277,17 @@ document.addEventListener("keydown", e=>{
   state.calendarioSubview = view;
   calViewMenuOpen = false;
   render();
+});
+// "Ir a una fecha": Enter en el campo va; Tab cicla dentro de la ventanita.
+document.addEventListener("keydown", e=>{
+  if(!calIrAbierto) return;
+  if(e.key === "Enter" && e.target && e.target.id === "calIrFecha"){ e.preventDefault(); irAFechaEscrita(); return; }
+  const caja = e.target && e.target.closest && e.target.closest(".cal-ir-envoltorio");
+  if(e.key !== "Tab" || !caja) return;
+  const focos = [...caja.querySelectorAll("button, input")].filter(x => !x.disabled && x.offsetParent !== null);
+  const primero = focos[0], ultimo = focos[focos.length - 1];
+  if(e.shiftKey && document.activeElement === primero){ e.preventDefault(); ultimo.focus(); }
+  else if(!e.shiftKey && document.activeElement === ultimo){ e.preventDefault(); primero.focus(); }
 });
 // Enter en un input de texto del modal (título, participante, lugar,
 // link) no publica: el envío implícito del <form> hacía que un Enter en
@@ -17696,6 +17877,9 @@ document.addEventListener("click", async e=>{
   }
   if(zoneFilterOpen && !e.target.closest(".zone-filter")){
     zoneFilterOpen = false; render();
+  }
+  if(calIrAbierto && !e.target.closest(".cal-ir-envoltorio")){
+    calIrAbierto = false; calIrError = ""; render();
   }
   if(calViewMenuOpen && !e.target.closest(".cal-view-filter")){
     calViewMenuOpen = false; render();
@@ -18320,6 +18504,35 @@ document.addEventListener("click", async e=>{
   },
     "cal-subview": async (el, e, action, postId) => {
     state.calendarioSubview = el.dataset.key; calViewMenuOpen = false; render();
+  },
+    "cal-ir-abrir": async (el, e, action, postId) => {
+    if(calIrAbierto) return cerrarCalIr(true);
+    calViewMenuOpen = false; calLayersMenuOpen = false;
+    calIrAbierto = true; calIrAnio = calendarioAnchor().slice(0,4); calIrTexto = ""; calIrError = "";
+    render();
+    // Con mouse/teclado el foco va al campo para escribir directo; en el
+    // celular, al mes actual: enfocar el campo abriría el teclado tapando
+    // la grilla de meses.
+    const destino = isTouchDevice() ? document.querySelector(".cal-ir-mes.actual") || document.querySelector(".cal-ir-mes") : document.getElementById("calIrFecha");
+    if(destino) destino.focus();
+    // Con muchos años la fila se desliza: el elegido, a la vista.
+    const elegido = document.querySelector(".cal-ir-anios .on");
+    if(elegido) elegido.scrollIntoView({ block:"nearest", inline:"center" });
+  },
+    "cal-ir-anio": async (el, e, action, postId) => {
+    calIrAnio = el.dataset.key; render();
+    const b = document.querySelector(`[data-action="cal-ir-anio"][data-key="${calIrAnio}"]`);
+    if(b) b.scrollIntoView({ block:"nearest", inline:"nearest" });
+  },
+    "cal-ir-mes": async (el, e, action, postId) => {
+    calIrA(el.dataset.key + "-01", "mes");
+  },
+    "cal-ir-atajo": async (el, e, action, postId) => {
+    const hoy = todayISO();
+    calIrA(el.dataset.key === "mes" ? addMonthsISO(hoy, -1) : el.dataset.key === "anio" ? addMonthsISO(hoy, -12) : hoy, null);
+  },
+    "cal-ir-fecha": async (el, e, action, postId) => {
+    irAFechaEscrita();
   },
     "cal-today": async (el, e, action, postId) => {
     state.calendarioAnchor = todayISO(); render();
@@ -19105,6 +19318,8 @@ document.addEventListener("input", e=>{
     globalQuery = el.value;
     clearTimeout(globalSearchTimer);
     globalSearchTimer = setTimeout(renderGlobalSearch, 120);
+  } else if(el.id === "calIrFecha"){
+    calIrTexto = el.value;
   } else if(el.id === "savedFilterName"){
     savingFilterName = el.value;
   } else if(el.id === "preEmail"){

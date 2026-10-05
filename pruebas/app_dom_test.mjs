@@ -309,6 +309,40 @@ const hasta = async (p, fn, arg, ms = 5000) => {
     if(largo < 20) vacias.push(v);
   }
   eq("admin: cada solapa dibuja algo", vacias, []);
+  // Calendario → "Ir a una fecha" (5/10/2026): el título del mes abre
+  // una ventanita para escribir la fecha o elegir año y mes, en vez de ir
+  // mes por mes con ‹ › hasta 2024.
+  {
+    await p.click('nav.tabs button[data-view="calendario"]');
+    await p.waitForSelector('[data-action="cal-ir-abrir"]');
+    const titulo = () => p.$eval(".cal-title", e => e.textContent.trim().toLowerCase());
+    const foco = () => p.evaluate(() => document.activeElement.id || document.activeElement.dataset.action || "");
+    await p.click('[data-action="cal-ir-abrir"]');
+    eq("ir a fecha: se abre como diálogo, con el foco en el campo", [!!(await p.$('.cal-ir[role="dialog"]')), await foco()], [true, "calIrFecha"]);
+    eq("y trae los doce meses", await p.$$eval('[data-action="cal-ir-mes"]', l => l.length), 12);
+    await p.fill("#calIrFecha", "1/1/2024"); await p.keyboard.press("Enter"); await p.waitForTimeout(150);
+    eq("escribir 1/1/2024 + Enter lleva a enero de 2024, cierra y marca el día", [await titulo(), !!(await p.$(".cal-ir")), await p.$$eval(".cal-destino", l => l.map(e => e.dataset.date)), await foco()],
+       ["enero de 2024", false, ["2024-01-01"], "cal-ir-abrir"]);
+    await p.click('[data-action="cal-ir-abrir"]');
+    await p.click('[data-action="cal-ir-anio"][data-key="2025"]');
+    eq("elegir un año deja la ventanita abierta y cambia los meses", [!!(await p.$(".cal-ir")), await p.$eval('[data-action="cal-ir-mes"]', e => e.dataset.key)], [true, "2025-01"]);
+    await p.click('[data-action="cal-ir-mes"][data-key="2025-03"]'); await p.waitForTimeout(100);
+    eq("y un mes lleva ahí", await titulo(), "marzo de 2025");
+    await p.click('[data-action="cal-ir-abrir"]');
+    await p.fill("#calIrFecha", "31/2/2024"); await p.click('[data-action="cal-ir-fecha"]'); await p.waitForTimeout(100);
+    eq("una fecha que no existe: avisa y no se mueve", [await p.$eval("#calIrAyuda", e => e.classList.contains("error")), await titulo()], [true, "marzo de 2025"]);
+    await p.keyboard.press("Escape"); await p.waitForTimeout(100);
+    eq("Escape cierra y devuelve el foco al título", [!!(await p.$(".cal-ir")), await foco()], [false, "cal-ir-abrir"]);
+    const irA = async x => { await p.click('[data-action="cal-ir-abrir"]'); await p.fill("#calIrFecha", x); await p.keyboard.press("Enter"); await p.waitForTimeout(80);
+      const r = (await p.$(".cal-ir")) ? "error" : await titulo(); if(r === "error") await p.keyboard.press("Escape"); return r; };
+    const leidas = [];
+    for(const x of ["01-01-24", "1.1.2024", "2024-02-01", "3/2024", "29/2/2023", "hola"]) leidas.push(await irA(x));
+    eq("las fechas escritas, día primero (y las que no existen avisan)", leidas, ["enero de 2024", "enero de 2024", "febrero de 2024", "marzo de 2024", "error", "error"]);
+    await p.click('[data-action="cal-ir-abrir"]'); await p.fill("#calIrFecha", "2024"); await p.keyboard.press("Enter"); await p.waitForTimeout(80);
+    eq("un año solo pasa a la vista Año", await titulo(), "2024");
+    await p.click('[data-action="cal-subview"][data-key="mes"]').catch(async () => { await p.click('[data-action="toggle-cal-view"]'); await p.click('[data-action="cal-subview"][data-key="mes"]'); });
+    await p.click('[data-action="cal-today"]');
+  }
   // Países (4/10/2026): en la tarjeta, el número no se monta sobre el
   // nombre, y todas llevan la serie de 12 meses (aunque esté vacía), así
   // la grilla queda pareja.
