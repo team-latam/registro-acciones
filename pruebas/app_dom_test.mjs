@@ -177,6 +177,19 @@ export function createClient(url, clave){
         estado.tablas.calendar_sacados = t.filter(x => !args.p_eventos.includes(x.evento));
         return { data: { devueltos, aTraer }, error: null };
       }
+      if(nombre === "unificar_cuentas"){
+        const viejo = String(args.p_viejo).toLowerCase(), nuevo = args.p_nuevo;
+        const m = (estado.tablas.members || []).find(x => x.email === nuevo);
+        let cargados = 0, comentarios = 0;
+        (estado.tablas.posts || []).forEach(f => {
+          if(String(f.author_email || "").toLowerCase() === viejo){ f.author_email = nuevo; f.author_name = m.name; cargados++; }
+          f.liked_by = [...new Set((f.liked_by || []).map(x => x.toLowerCase() === viejo ? nuevo : x))];
+        });
+        (estado.tablas.replies || []).forEach(f => {
+          if(String(f.author_email || "").toLowerCase() === viejo){ f.author_email = nuevo; f.author_name = m.name; comentarios++; }
+        });
+        return { data: { cargados, comentarios }, error: null };
+      }
       return { data: null, error: { code: "PGRST202", message: "no existe la función " + nombre } };
     },
     storage: { from(){ return {
@@ -340,6 +353,21 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   await p.waitForTimeout(150);
   eq("teclado: Escape cierra la ficha y el foco vuelve a la fila",
     await p.evaluate(() => [!!document.querySelector(".lp-panel"), document.activeElement.dataset.email]), [false, filasPersonas[1]]);
+  // Unificar cuentas (5/10/2026): desde la ficha, todo lo de Ana pasa a
+  // Benny, después de confirmar.
+  await p.click('.lp-row[data-action="usuario-abrir"][data-email="ana@x.com"]');
+  await p.waitForSelector("#unificarDestino");
+  eq("unificar: el botón espera a que se elija la cuenta", await p.$eval('[data-action="unificar-cuentas"]', e => e.disabled), true);
+  await p.selectOption("#unificarDestino", ADMIN);
+  await p.click('[data-action="unificar-cuentas"]');
+  await p.waitForSelector("#confirmOk", { state: "visible" });
+  await p.click("#confirmOk");
+  eq("unificar: lo que cargó Ana queda a nombre de Benny", await hasta(p, () =>
+    (window.__sb.tablas.posts || []).find(x => x.id === "p_reunion").author_email === "benny@team-latam.com"), true);
+  eq("unificar: y se llama a la base con los dos correos", (await rpc()).some(([n, a]) => n === "unificar_cuentas" && a.p_viejo === "ana@x.com" && a.p_nuevo === ADMIN), true);
+  eq("unificar: avisa cuánto pasó", await esperarTexto(p, "pasaron de Ana Pérez a Benny", 3000), true);
+  await p.keyboard.press("Escape");
+  await p.waitForTimeout(150);
   await p.click('[data-action="toggle-mentions-menu"]');
   await p.keyboard.press("Escape");
   await p.waitForTimeout(150);

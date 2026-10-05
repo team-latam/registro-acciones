@@ -1731,6 +1731,10 @@
   .empty-state{ text-align:center; padding:50px 20px; color:var(--text-muted); }
   .empty-state .big{ font-size:36px; margin-bottom:10px; }
   .lp-sub{ font-size:15px; margin:22px 0 6px; }
+  .lp-unificar{ display:flex; flex-direction:column; gap:6px; padding-bottom:12px; margin-bottom:12px; border-bottom:1px dashed var(--border); width:100%; }
+  .lp-unificar label{ font-size:12.5px; font-weight:800; color:var(--ink); }
+  .lp-unificar-fila{ display:flex; gap:8px; flex-wrap:wrap; }
+  .lp-unificar-fila select{ flex:1 1 200px; min-width:0; border:1px solid var(--border); border-radius:10px; padding:8px 10px; font:inherit; font-size:13px; background:var(--card); color:var(--ink); }
   .lugares-sin-ubicar{ list-style:none; margin:8px 0 0; padding:0; columns:2 220px; }
   .lugares-sin-ubicar li{ padding:4px 0; break-inside:avoid; }
   .cal-faltantes-lista{ list-style:none; margin:4px 0 10px; padding:0; max-height:260px; overflow:auto; font-size:13.5px; }
@@ -7459,6 +7463,15 @@ function crearSupabaseStore(sb, opciones = {}){
       },
     },
 
+    // ---- Unificar dos cuentas de la misma persona (15-unificar-cuentas.sql) ----
+    // Devuelve cuántos de cada cosa pasaron: { cargados, comentarios, ... }.
+    async unificarCuentas(viejo, nuevo){
+      const { data, error } = await sb.rpc("unificar_cuentas", { p_viejo: viejo, p_nuevo: nuevo });
+      if(error) throw error;
+      await Promise.all([recargarTabla("posts"), recargarTabla("replies")]);
+      return data || {};
+    },
+
     // ---- Preferencias de cada persona ----
     userPrefs: {
       watchOwn(email, alCambiar, alFallar){
@@ -10173,10 +10186,31 @@ function renderPersonaPanel(u){
     </div>
     ${(isAdminUser || isMe) ? "" : `<div class="lp-pf">
       <span class="lp-cuidado">${t("Zona de cuidado","Handle with care","Zona de cuidado","אזור זהירות")}</span>
+      ${renderUnificarCuenta(u)}
       <button type="button" class="btn-ghost danger lp-peligro" data-action="revoke-access" data-email="${esc(u.email)}" ${savingRoster.has(u.email) ? "disabled" : ""}>${t("Quitar acceso…","Remove access…","Tirar acesso…","הסרת גישה…")}</button>
       <span class="hint">${t("Deja de poder entrar; lo que cargó queda.","They can no longer sign in; what they logged stays.","Deixa de poder entrar; o que carregou fica.","לא יוכל/תוכל להיכנס יותר; מה שנרשם נשאר.")}</span>
     </div>`}
   </aside>`;
+}
+// "Pasar todo a otra cuenta": para alguien que usó dos correos y va a
+// dejar uno (pedido del usuario el 5/10/2026). Lo hace la base, en
+// unificar_cuentas; acá se elige a qué cuenta.
+let unificarDestino = Object.create(null);
+function renderUnificarCuenta(u){
+  const otros = state.roster.filter(m => m.email !== u.email).sort((a, b) => String(a.name || a.email).localeCompare(String(b.name || b.email), currentLang()));
+  if(!otros.length) return "";
+  const elegido = unificarDestino[u.email] || "";
+  return `<div class="lp-unificar">
+      <label for="unificarDestino">${t("Pasar todo lo suyo a otra cuenta","Move everything to another account","Passar tudo para outra conta","העברת הכול לחשבון אחר")}</label>
+      <div class="lp-unificar-fila">
+        <select id="unificarDestino" data-email="${esc(u.email)}">
+          <option value="">${t("— elegí la cuenta —","— choose the account —","— escolha a conta —","— בחירת חשבון —")}</option>
+          ${otros.map(m => `<option value="${esc(m.email)}"${m.email === elegido ? " selected" : ""}>${esc(m.name || m.email)} · ${esc(m.email)}</option>`).join("")}
+        </select>
+        <button type="button" class="btn-secondary" data-action="unificar-cuentas" data-email="${esc(u.email)}" ${elegido && !savingRoster.has(u.email) ? "" : "disabled"}>${t("Pasar…","Move…","Passar…","העברה…")}</button>
+      </div>
+      <span class="hint">${t("Para alguien que usó dos correos: lo que cargó, sus comentarios, me gusta, participaciones, menciones y hitos pasan a la cuenta elegida. Después se le puede quitar el acceso a esta.","For someone who used two emails: what they logged, their comments, likes, participations, mentions and milestones move to the chosen account. Then this one's access can be removed.","Para quem usou dois e-mails: o que carregou, seus comentários, curtidas, participações, menções e marcos passam para a conta escolhida. Depois se pode tirar o acesso desta.","למי שהשתמש/ה בשני מיילים: מה שנרשם, תגובות, לייקים, השתתפויות, אזכורים ואבני דרך עוברים לחשבון שנבחר. אחר כך אפשר להסיר את הגישה לחשבון הזה.")}</span>
+    </div>`;
 }
 // Cuántos posteos cargó alguien en cada uno de los últimos N meses (la
 // mini-serie de la fila de Personas).
@@ -18588,6 +18622,30 @@ document.addEventListener("click", async e=>{
       }
     });
   },
+    "unificar-cuentas": async (el) => {
+    const viejo = el.dataset.email, nuevo = unificarDestino[viejo];
+    if(!nuevo) return;
+    const mv = memberByEmail(viejo), mn = memberByEmail(nuevo);
+    if(!(await appConfirm(t(
+      "¿Pasar todo lo de {a} a {b}? Lo que cargó, sus comentarios, me gusta, participaciones, menciones e hitos van a quedar a nombre de {b}. No se puede deshacer desde la app.",
+      "Move everything from {a} to {b}? What they logged, their comments, likes, participations, mentions and milestones will be under {b}. It can't be undone from the app.",
+      "Passar tudo de {a} para {b}? O que carregou, comentários, curtidas, participações, menções e marcos vão ficar no nome de {b}. Não dá para desfazer pelo app.",
+      "להעביר הכול מ-{a} אל {b}? מה שנרשם, תגובות, לייקים, השתתפויות, אזכורים ואבני דרך יירשמו על שם {b}. אי אפשר לבטל דרך האפליקציה.",
+      { a: viejo, b: nuevo }), { danger:true, okLabel: t("Pasar todo","Move everything","Passar tudo","העברת הכול") }))) return;
+    await withRosterGuard(viejo, () => store.unificarCuentas(viejo, nuevo).then(n => {
+      delete unificarDestino[viejo];
+      const total = ["cargados","comentarios","listas","participa","hitos"].reduce((s, k) => s + (Number(n[k]) || 0), 0);
+      showCalendarNotice({ ok:true, message: t(
+        "Listo: {n} cosas pasaron de {a} a {b} ({c} eventos cargados, {d} comentarios). Ahora le podés quitar el acceso a {a}.",
+        "Done: {n} items moved from {a} to {b} ({c} events, {d} comments). You can now remove {a}'s access.",
+        "Pronto: {n} itens passaram de {a} para {b} ({c} eventos, {d} comentários). Agora você pode tirar o acesso de {a}.",
+        "בוצע: {n} פריטים עברו מ-{a} אל {b} ({c} אירועים, {d} תגובות). עכשיו אפשר להסיר את הגישה של {a}.",
+        { n: total, a: (mv && mv.name) || viejo, b: (mn && mn.name) || nuevo, c: Number(n.cargados) || 0, d: Number(n.comentarios) || 0 }) });
+    }).catch(err => {
+      console.error("No se pudo unificar:", err);
+      showCalendarNotice({ ok:false, message: t("No se pudo pasar: {m}","Couldn't move it: {m}","Não foi possível passar: {m}","ההעברה נכשלה: {m}",{ m: err.message || err.code }) });
+    }));
+  },
     "revoke-access": async (el, e, action, postId) => {
     const email = el.dataset.email;
     // Un solo botón saca app + Calendar, pero el Calendar SOLO si el token
@@ -19102,6 +19160,7 @@ document.addEventListener("change", e=>{
   const el = e.target;
   // Revisar lo de Calendar: los selectores del panel y de "Nombres sueltos".
   if(el.id === "rvTipo" && rv.borrador){ rv.borrador.tipo = el.value; return; }
+  if(el.id === "unificarDestino"){ unificarDestino[el.dataset.email] = el.value; render(); return; }
   // Reportes: los años a comparar y el "Ver solo".
   const REP_CAMPOS = { repCompA:"compA", repCompB:"compB", repCompTri:"compTri", repAnio:"anio", repTri:"trimestre" };
   const REP_FILTROS = { repFZona:"zona", repFPais:"pais", repFTipo:"tipo", repFPersona:"persona" };
