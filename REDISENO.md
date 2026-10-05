@@ -459,6 +459,17 @@ sola tarjeta; y secciones con nombre ("Cuándo y dónde", "Sugerencias",
 "Equipo y cobertura"). "Mes a mes" pasa a columnas a todo el ancho; "Quién
 cargó/participó" se fue a la tabla "Por persona del equipo".
 
+### 27. Unificar dos cuentas de la misma persona — HECHO (5 oct 2026)
+
+El usuario usó dos correos y va a dejar uno. Administración › Personas, en
+la ficha de la cuenta vieja: "Pasar todo lo suyo a otra cuenta". Lo hace
+`unificar_cuentas` (15-unificar-cuentas.sql): autor y nombre, quién editó,
+quién completó el proyecto, me gusta, editores, menciones, participantes,
+responsables de hitos, comentarios, el @usuario escrito en los textos, lo
+sacado de Revisar lo de Calendar y las preferencias (si la nueva no
+tenía). No toca el registro de actividad (es historia) ni la ficha vieja
+(el acceso se quita a mano). Los correos no van en el repositorio.
+
 ## Fuera de alcance (necesitan algo que la app no tiene)
 
 - Mandar correos (resumen semanal, invitaciones): no hay servicio de
