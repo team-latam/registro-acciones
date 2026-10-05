@@ -15,12 +15,16 @@ en la computadora que usás todos los días**.
 | **`supabase/`** | Todo lo de la base: el SQL que la arma, las pruebas, el sincronizador de Calendar, la limpieza del bucket y `LEEME.md`. | Habría que rehacer la base desde cero, y con ella los permisos. |
 | **`README.md`** | Cómo está armado y por qué. | Se puede reconstruir, pero a ciegas. |
 | **`CLAUDE.md`** | Las reglas de trabajo del proyecto (dónde se publica, cómo se prueba). | Se pierde el "cómo se hacen las cosas acá". |
-| **`QUE-GUARDAR.md`** | Este archivo. | — |
+| **`docs/`** | Este archivo y las notas del trabajo: qué se hizo y por qué (`REDISENO.md`), la revisión técnica (`REVISION.md`) y el plan del dominio propio (`DOMINIO.md`). | Se pierde la historia de las decisiones. |
 
 ## 2. Los datos
 
-Viven en Supabase. **Hoy no hay ninguna copia de seguridad automática**
-(ver el punto 13 de `REVISION.md`): es lo que falta resolver.
+Viven en Supabase, y desde el 5 de octubre de 2026 hay **copia de
+seguridad automática cada domingo** en el repo privado
+`team-latam/registro-respaldos` (datos, fotos y adjuntos, y la base
+entera; ver `supabase/respaldo/LEEME.md`). Además, en la app,
+**Administración → Copia de seguridad** baja una en el momento. El token
+que usa la copia automática vence el **5/10/2027**: renovarlo antes.
 
 La última copia de Firebase (el JSON que se bajó el 3 de octubre de 2026)
 es una foto de cómo estaban las cosas ese día. Guardala, pero no es una

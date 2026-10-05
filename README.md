@@ -1474,7 +1474,7 @@ problema real, ya que cada acción del equipo tiene sus propias fechas.
 
 Administración › Revisar lo de Calendar: lo que entró de Google Calendar
 como "Otro" y sin lugar, para ordenarlo de a muchos (tipo, lugar,
-personas) o sacarlo del Registro. Ver REDISENO.md, tanda 19, y
+personas) o sacarlo del Registro. Ver docs/REDISENO.md, tanda 19, y
 `supabase/12-revisar-calendar.sql`. Las sugerencias de cada evento están
 en `calendar_sugerencias` (`13-sugerencias-calendar.sql`); lo sacado, en
 `calendar_sacados`, que los dos sincronizadores saltean. Clasificar no
@@ -2125,7 +2125,7 @@ historia de por qué se hizo así):
 
 - **Copias de seguridad de Supabase: hoy no hay ninguna.** Es lo más
   urgente que queda. Las opciones y la recomendación están en el punto 13
-  de `REVISION.md`.
+  de `docs/REVISION.md`.
 
 - **Varios calendarios de Google: evaluado y descartado** (septiembre
   2026). Se propuso "Agregar otro calendario" en Administrar › Calendar.
