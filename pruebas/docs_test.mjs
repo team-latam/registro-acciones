@@ -42,7 +42,7 @@ function armar(opts={}){
     ${["TIPOS_DE_ARCHIVO","CLASE_POR_DEFECTO","extensionDe","claseDeArchivo","claseDe","topeLegible",
        "DOCS_POR_TIPO","docsEsperados","docDeArchivo","archivosDelDoc","docsDesplegados","archivoDelDoc","archivosSueltos","cuantosDocsHay",
        "sinRanura","fechaDeArchivo","fmtDate",
-       "adjuntarDocumento","quitarDocumento","quitarAdjunto",
+       "adjuntarDocumento","quitarDocumento","quitarAdjunto","esWordDeViaje",
        "ACTIVITY_TYPES","EVENTO_TYPES","CALENDAR_SYNC_TYPES","ACTIVITY_BY_KEY",
        "DEFAULT_ACTIVITY_LABELS","applyActivityTypesConfig"].map(grab).join("\n")}
     const currentLang = ()=> "es";

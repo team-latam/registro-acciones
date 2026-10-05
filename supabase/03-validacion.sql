@@ -128,7 +128,8 @@ alter table public.posts
   drop constraint if exists posts_listas,
   drop constraint if exists posts_proyecto,
   drop constraint if exists posts_repeticion,
-  drop constraint if exists posts_fechas;
+  drop constraint if exists posts_fechas,
+  drop constraint if exists posts_resumen;
 
 alter table public.posts
   add constraint posts_textos check (
@@ -175,7 +176,13 @@ alter table public.posts
   -- Que el final no sea anterior al principio. Firestore no lo controlaba
   -- (el lenguaje de reglas no compara fechas cómodamente) y quedaba
   -- únicamente en manos del navegador.
-  add constraint posts_fechas check (end_date >= start_date);
+  add constraint posts_fechas check (end_date >= start_date),
+  -- El resumen leído del Formulario de Cierre: un objeto, con un tope de
+  -- tamaño (el resumen ejecutivo, hasta 12 objetivos y 30 pasos entran
+  -- holgados en 64 KB).
+  add constraint posts_resumen check (
+    resumen is null or (jsonb_typeof(resumen) = 'object' and pg_column_size(resumen) <= 65536)
+  );
 
 
 -- ============================================================

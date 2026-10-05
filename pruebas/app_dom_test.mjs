@@ -210,6 +210,17 @@ export function createClient(url, clave){
 }`;
 
 const ADMIN = "benny@team-latam.com";
+// Un Formulario de Cierre inventado (el repo es público: nada real).
+const CIERRE_XML = (() => {
+  const p = t => `<w:p><w:r><w:t xml:space="preserve">${t}</w:t></w:r></w:p>`;
+  const fila = c => `<w:tr>${c.map(x => `<w:tc>${p(x)}</w:tc>`).join("")}</w:tr>`;
+  return `<?xml version="1.0"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>`
+    + p("Formulario de Cierre de Viaje") + p("Lugar: Montevideo, Uruguay") + p("Objetivos:")
+    + `<w:tbl>${fila(["Objetivo","Logrado"])}${fila(["1. Conocer la sede","Sí"])}${fila(["2. Revisar el acceso","Parcial"])}</w:tbl>`
+    + p("Resumen Ejecutivo:") + p("La visita a la sede salió bien.") + p("Conclusiones:")
+    + p("Mandar el plan de cámaras al rabino.") + p("Capacitar a los guardias.") + p("Revisar la iluminación.") + p("Sumar un segundo turno.")
+    + `</w:body></w:document>`;
+})();
 const hace = dias => new Date(Date.now() - dias * 86400000).toISOString();
 const dia = dias => hace(dias).slice(0, 10);
 const BASE = () => ({
@@ -270,8 +281,12 @@ async function entrar(email, nombre, mod, viewport){
     // Lo que lee planillas, de mentira: una tabla con una celda.
     if(/\/xlsx\//.test(u)) return ruta.fulfill({ contentType: "application/javascript", body: `window.XLSX = { read: () => ({ SheetNames: ["Gastos"], Sheets: { Gastos: {} } }), utils: { sheet_to_html: () => "<table><tr><td>Planilla de mentira</td></tr></table>" } };` });
     if(/docx-preview/.test(u)) return ruta.fulfill({ contentType: "application/javascript", body: `window.docx = { renderAsync: async (blob, el) => { el.innerHTML = '<section class="docx">Word de ' + blob.size + ' bytes</section>'; } };` });
+    // Y para leer un Word (el resumen de una visita): el "docx" de las
+    // pruebas es directamente su document.xml.
     if(/\/jszip\//.test(u)) return ruta.fulfill({ contentType: "application/javascript", body: `window.JSZip = class { constructor(){ this.n = []; }
-      file(nombre){ this.n.push(nombre); return this; } async generateAsync(){ return new Blob([JSON.stringify(this.n.sort())]); } };` });
+      file(nombre){ this.n.push(nombre); return this; } async generateAsync(){ return new Blob([JSON.stringify(this.n.sort())]); }
+      static async loadAsync(buf){ const xml = new TextDecoder().decode(buf); return { file: n => n === "word/document.xml" ? { async: async () => xml } : null }; } };` });
+    if(/\/storage\/v1\/object\/sign\/.*\.docx/.test(u)) return ruta.fulfill({ contentType: "application/octet-stream", body: /cierre/i.test(u) ? CIERRE_XML : "<nada/>" });
     if(/\/storage\/v1\/object\/sign\//.test(u)) return ruta.fulfill({ contentType: "image/png", body: PNG });
     if(/^https:\/\/www\.googleapis\.com\/calendar\//.test(u))
       return ruta.fulfill({ contentType: "application/json", body: JSON.stringify({ items: [] }) });
@@ -988,6 +1003,76 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   eq("perfil: la ✕ cierra todo", await p.evaluate(() =>
     document.getElementById("userProfileOverlay").hidden && document.getElementById("likesOverlay").hidden), true);
   eq("hilo: sin un solo error", errores, []);
+  await p.close();
+}
+
+/* ---------- El resumen de una visita (6/10/2026) ---------- */
+// La app lee el Formulario de Cierre en Word y arma el resumen de la
+// visita (resumen ejecutivo, objetivos, lo que sigue) y el del país.
+{
+  const { p, errores } = await entrar(ADMIN, "Benny", base => {
+    base.posts.push({ id: "p_visita", title: "Visita a la sede", content: "x",
+      date: dia(20), start_date: dia(20), end_date: dia(18), activity_type: "visita",
+      author_name: "Ana Pérez", author_email: "ana@x.com", scopes: [{ type: "ciudad", country: "Uruguay", city: "Montevideo" }],
+      images: [], links: [], mentions: [], liked_by: [], milestones: [], editors: [], participants: [], recurrence_skip: [], recurrence_moves: {},
+      files: [{ name: "Formulario de Cierre - Montevideo.docx", kind: "doc", path: "posts/p_visita/cierre.docx", subidoEl: hace(17) },
+              { name: "Memoria Completa - Montevideo.docx", kind: "doc", path: "posts/p_visita/memoria.docx", subidoEl: hace(16) }],
+      created_at: hace(25) });
+  });
+  await esperarTexto(p, "Visita a la sede");
+  const tarjeta = '.post[data-post-id="p_visita"]';
+  eq("resumen: sin leer todavía, la tarjeta no muestra ninguno", !!(await p.$(tarjeta + " .rs-pill")), false);
+  await p.click(tarjeta + ' [data-action="toggle-post-menu"]');
+  await p.click(tarjeta + ' [data-action="leer-resumen"]');
+  eq("resumen: «Leer el resumen de los documentos» lo guarda en la base", await hasta(p, () => {
+    const r = (window.__sb.tablas.posts.find(x => x.id === "p_visita") || {}).resumen;
+    return !!r && r.tipo === "cierre" && r.objetivos.length === 2 && r.pasos.length === 4;
+  }), true);
+  eq("resumen: el de la Memoria no se usa (manda el Cierre)", (await p.evaluate(() => window.__sb.tablas.posts.find(x => x.id === "p_visita").resumen.fuente.name)), "Formulario de Cierre - Montevideo.docx");
+  eq("resumen: la tarjeta lo ofrece con cuántos objetivos se lograron", await hasta(p, s => /Resumen · 1\/2/.test((document.querySelector(s + " .rs-pill") || {}).textContent || ""), tarjeta), true);
+  eq("resumen: queda abierto después de leerlo", await p.$$eval(tarjeta + " .rs-panel .rs-obj li", ls => ls.map(l => l.innerText.replace(/\s+/g, " ").trim())), ["Sí Conocer la sede", "Parcial Revisar el acceso"]);
+  eq("resumen: con el resumen ejecutivo", await p.$eval(tarjeta + " .rs-txt", e => e.textContent.trim()), "La visita a la sede salió bien.");
+  eq("resumen: «lo que sigue» muestra tres y el resto en «+1 más»",
+    [await p.$$eval(tarjeta + " .rs-pasos li", ls => ls.length), await p.$eval(tarjeta + ' [data-action="resumen-todos-pasos"]', e => e.textContent.trim())], [3, "+1 más"]);
+  eq("resumen: y un enlace para abrir la Memoria completa", !!(await p.$(tarjeta + ' .rs-pie [data-action="resumen-abrir"][data-pos="1"]')), true);
+  await p.click(tarjeta + ' .rs-pasos li:first-child input[data-action="resumen-paso"]');
+  eq("resumen: tildar un paso lo guarda como hecho, con quién", await hasta(p, () => {
+    const x = window.__sb.tablas.posts.find(y => y.id === "p_visita").resumen.pasos[0];
+    return x.estado === "hecho" && x.por === "benny@team-latam.com";
+  }), true);
+  eq("resumen: y no cuenta como edición del evento", (await p.evaluate(() => window.__sb.tablas.posts.find(y => y.id === "p_visita").last_edited_by || null)), null);
+  await p.click(tarjeta + ' .rs-pasos li:first-child [data-action="resumen-no-tarea"]');
+  eq("resumen: «No es tarea» lo saca de los pendientes", await hasta(p, () =>
+    window.__sb.tablas.posts.find(y => y.id === "p_visita").resumen.pasos[1].estado === "no"), true);
+  // El resumen del país: Países → Uruguay.
+  await p.click('nav.tabs button[data-view="paises"]');
+  await p.evaluate(() => { const x = document.createElement("button"); x.dataset.action = "paises-subview"; x.dataset.key = "lista"; document.body.appendChild(x); x.click(); x.remove(); });
+  await p.click('[data-action="drill-country"][data-country="Uruguay"]');
+  eq("lugar: el país muestra su resumen", await esperarTexto(p, "Resumen de Uruguay", 3000), true);
+  eq("lugar: visitas, objetivos y lo que sigue", await p.$$eval(".lg-stat b", bs => bs.map(x => x.textContent.trim())).then(v => [v[0], v[2], v[3]]), ["1", "1 de 2", "2"]);
+  eq("lugar: con el resumen de la última visita", await p.$eval(".lg-card .rs-txt", e => e.textContent.trim()), "La visita a la sede salió bien.");
+  eq("lugar: lo que sigue dice de qué visita salió", await p.$$eval(".lg-card .rs-pasos li small", s => s.length > 0 && s.every(x => /Visita a la sede/.test(x.textContent))), true);
+  eq("lugar: y la historia de las visitas", await p.$$eval(".lg-hist li", ls => ls.map(l => l.querySelector(".lg-ir").textContent.trim() + " " + l.querySelector(".rs-ok").textContent.trim())), ["Visita a la sede 1/2"]);
+  // Una rutina en Uruguay: la app pregunta si cumple algo pendiente.
+  await p.click('nav.tabs button[data-view="feed"]');
+  await p.waitForSelector("#rutinaContent");
+  await p.fill("#rutinaContent", "Se envió el plan de cámaras al rabino");
+  await p.fill("#rutinaPlaceQuery", "Montevideo");
+  await p.waitForSelector('[data-action="pick-place"]');
+  await p.click('[data-action="pick-place"]');
+  await p.click("#rutinaPublish");
+  eq("cumple: después de la rutina pregunta si cumple algo pendiente en Uruguay", await hasta(p, () => !document.getElementById("cumpleOverlay").hidden), true);
+  eq("cumple: con los pendientes de sus visitas (no los hechos ni los que no son tarea)",
+    await p.$$eval("#cumpleOverlay .cp-fila .t", ts => ts.map(x => x.textContent.trim())), ["Revisar la iluminación.", "Sumar un segundo turno."]);
+  await p.click('#cumpleOverlay .cp-fila:nth-child(2)');
+  eq("cumple: elegir uno lo marca hecho, con la rutina al lado", await hasta(p, () => {
+    const posts = window.__sb.tablas.posts;
+    const rutina = posts.find(x => x.content === "Se envió el plan de cámaras al rabino");
+    const x = posts.find(y => y.id === "p_visita").resumen.pasos[3];
+    return !!rutina && x.estado === "hecho" && x.rutina === rutina.id;
+  }), true);
+  eq("cumple: y se cierra", await p.evaluate(() => document.getElementById("cumpleOverlay").hidden), true);
+  eq("resumen: sin un solo error", errores, []);
   await p.close();
 }
 

@@ -84,6 +84,11 @@ alter table public.posts add column if not exists last_edited_by_email text;
 -- pasó, que no tiene que avisarle a nadie). La app no le crea evento ni lo
 -- vincula con uno que se le parezca.
 alter table public.posts add column if not exists sin_calendar boolean not null default false;
+-- Lo que la app leyó del Formulario de Cierre (o de Viaje) de una visita
+-- (6/10/2026): resumen ejecutivo, objetivos y "lo que sigue". Lo lee el
+-- navegador del Word que se sube; acá queda guardado para armar el
+-- resumen de cada lugar sin volver a bajar los documentos.
+alter table public.posts add column if not exists resumen jsonb;
 
 create index if not exists posts_date_idx           on public.posts (date desc);
 create index if not exists posts_start_date_idx     on public.posts (start_date);
