@@ -210,6 +210,13 @@ export function createClient(url, clave){
 }`;
 
 const ADMIN = "benny@team-latam.com";
+// Otro Cierre inventado, del mismo viaje pero de otro país.
+const CIERRE_AR_XML = `<?xml version="1.0"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>`
+  + ["Formulario de Cierre de Viaje", "Lugar: Buenos Aires, Argentina", "Objetivos:"].map(t => `<w:p><w:r><w:t>${t}</w:t></w:r></w:p>`).join("")
+  + `<w:tbl><w:tr><w:tc><w:p><w:r><w:t>Objetivo</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>Logrado</w:t></w:r></w:p></w:tc></w:tr>`
+  + `<w:tr><w:tc><w:p><w:r><w:t>Ver el templo</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>Sí</w:t></w:r></w:p></w:tc></w:tr></w:tbl>`
+  + ["Resumen Ejecutivo:", "En Buenos Aires todo en orden.", "Conclusiones:", "Volver en marzo."].map(t => `<w:p><w:r><w:t>${t}</w:t></w:r></w:p>`).join("")
+  + `</w:body></w:document>`;
 // Un Formulario de Cierre inventado (el repo es público: nada real).
 const CIERRE_XML = (() => {
   const p = t => `<w:p><w:r><w:t xml:space="preserve">${t}</w:t></w:r></w:p>`;
@@ -286,7 +293,7 @@ async function entrar(email, nombre, mod, viewport){
     if(/\/jszip\//.test(u)) return ruta.fulfill({ contentType: "application/javascript", body: `window.JSZip = class { constructor(){ this.n = []; }
       file(nombre){ this.n.push(nombre); return this; } async generateAsync(){ return new Blob([JSON.stringify(this.n.sort())]); }
       static async loadAsync(buf){ const xml = new TextDecoder().decode(buf); return { file: n => n === "word/document.xml" ? { async: async () => xml } : null }; } };` });
-    if(/\/storage\/v1\/object\/sign\/.*\.docx/.test(u)) return ruta.fulfill({ contentType: "application/octet-stream", body: /cierre/i.test(u) ? CIERRE_XML : "<nada/>" });
+    if(/\/storage\/v1\/object\/sign\/.*\.docx/.test(u)) return ruta.fulfill({ contentType: "application/octet-stream", body: /cierre-ar/i.test(u) ? CIERRE_AR_XML : /cierre/i.test(u) ? CIERRE_XML : "<nada/>" });
     if(/\/storage\/v1\/object\/sign\//.test(u)) return ruta.fulfill({ contentType: "image/png", body: PNG });
     if(/^https:\/\/www\.googleapis\.com\/calendar\//.test(u))
       return ruta.fulfill({ contentType: "application/json", body: JSON.stringify({ items: [] }) });
@@ -1026,9 +1033,10 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   await p.click(tarjeta + ' [data-action="leer-resumen"]');
   eq("resumen: «Leer el resumen de los documentos» lo guarda en la base", await hasta(p, () => {
     const r = (window.__sb.tablas.posts.find(x => x.id === "p_visita") || {}).resumen;
-    return !!r && r.tipo === "cierre" && r.objetivos.length === 2 && r.pasos.length === 4;
+    const x = r && r.partes && r.partes[0];
+    return !!x && r.partes.length === 1 && x.tipo === "cierre" && x.objetivos.length === 2 && x.pasos.length === 4;
   }), true);
-  eq("resumen: el de la Memoria no se usa (manda el Cierre)", (await p.evaluate(() => window.__sb.tablas.posts.find(x => x.id === "p_visita").resumen.fuente.name)), "Formulario de Cierre - Montevideo.docx");
+  eq("resumen: el de la Memoria no se usa (manda el Cierre)", (await p.evaluate(() => window.__sb.tablas.posts.find(x => x.id === "p_visita").resumen.partes[0].fuente.name)), "Formulario de Cierre - Montevideo.docx");
   eq("resumen: la tarjeta lo ofrece con cuántos objetivos se lograron", await hasta(p, s => /Resumen · 1\/2/.test((document.querySelector(s + " .rs-pill") || {}).textContent || ""), tarjeta), true);
   eq("resumen: queda abierto después de leerlo", await p.$$eval(tarjeta + " .rs-panel .rs-obj li", ls => ls.map(l => l.innerText.replace(/\s+/g, " ").trim())), ["Sí Conocer la sede", "Parcial Revisar el acceso"]);
   eq("resumen: con el resumen ejecutivo", await p.$eval(tarjeta + " .rs-txt", e => e.textContent.trim()), "La visita a la sede salió bien.");
@@ -1037,13 +1045,13 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   eq("resumen: y un enlace para abrir la Memoria completa", !!(await p.$(tarjeta + ' .rs-pie [data-action="resumen-abrir"][data-pos="1"]')), true);
   await p.click(tarjeta + ' .rs-pasos li:first-child input[data-action="resumen-paso"]');
   eq("resumen: tildar un paso lo guarda como hecho, con quién", await hasta(p, () => {
-    const x = window.__sb.tablas.posts.find(y => y.id === "p_visita").resumen.pasos[0];
+    const x = window.__sb.tablas.posts.find(y => y.id === "p_visita").resumen.partes[0].pasos[0];
     return x.estado === "hecho" && x.por === "benny@team-latam.com";
   }), true);
   eq("resumen: y no cuenta como edición del evento", (await p.evaluate(() => window.__sb.tablas.posts.find(y => y.id === "p_visita").last_edited_by || null)), null);
   await p.click(tarjeta + ' .rs-pasos li:first-child [data-action="resumen-no-tarea"]');
   eq("resumen: «No es tarea» lo saca de los pendientes", await hasta(p, () =>
-    window.__sb.tablas.posts.find(y => y.id === "p_visita").resumen.pasos[1].estado === "no"), true);
+    window.__sb.tablas.posts.find(y => y.id === "p_visita").resumen.partes[0].pasos[1].estado === "no"), true);
   // El resumen del país: Países → Uruguay.
   await p.click('nav.tabs button[data-view="paises"]');
   await p.evaluate(() => { const x = document.createElement("button"); x.dataset.action = "paises-subview"; x.dataset.key = "lista"; document.body.appendChild(x); x.click(); x.remove(); });
@@ -1068,11 +1076,58 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   eq("cumple: elegir uno lo marca hecho, con la rutina al lado", await hasta(p, () => {
     const posts = window.__sb.tablas.posts;
     const rutina = posts.find(x => x.content === "Se envió el plan de cámaras al rabino");
-    const x = posts.find(y => y.id === "p_visita").resumen.pasos[3];
+    const x = posts.find(y => y.id === "p_visita").resumen.partes[0].pasos[3];
     return !!rutina && x.estado === "hecho" && x.rutina === rutina.id;
   }), true);
   eq("cumple: y se cierra", await p.evaluate(() => document.getElementById("cumpleOverlay").hidden), true);
   eq("resumen: sin un solo error", errores, []);
+  await p.close();
+}
+
+/* ---------- Un viaje por dos países: un Cierre por cada uno ---------- */
+// Pedido del usuario (6/10/2026): un evento por Santo Domingo, Kingston y
+// Montego Bay tenía un Cierre por lugar, y la app se quedaba con uno solo.
+{
+  const { p, errores } = await entrar(ADMIN, "Benny", base => {
+    base.posts.push({ id: "p_viaje", title: "Montevideo y Buenos Aires", content: "x",
+      date: dia(40), start_date: dia(40), end_date: dia(35), activity_type: "visita",
+      author_name: "Benny", author_email: ADMIN,
+      scopes: [{ type: "ciudad", country: "Uruguay", city: "Montevideo" }, { type: "ciudad", country: "Argentina", city: "Buenos Aires" }],
+      images: [], links: [], mentions: [], liked_by: [], milestones: [], editors: [], participants: [], recurrence_skip: [], recurrence_moves: {},
+      files: [{ name: "Formulario de Cierre - Montevideo, Uruguay.docx", kind: "doc", path: "posts/p_viaje/cierre-uy.docx", subidoEl: hace(34) },
+              { name: "Formulario de Cierre - Buenos Aires, Argentina.docx", kind: "doc", path: "posts/p_viaje/cierre-ar.docx", subidoEl: hace(33) }],
+      created_at: hace(45) });
+  });
+  await esperarTexto(p, "Montevideo y Buenos Aires");
+  await p.click('nav.tabs button[data-view="paises"]');
+  await p.evaluate(() => { const x = document.createElement("button"); x.dataset.action = "paises-subview"; x.dataset.key = "lista"; document.body.appendChild(x); x.click(); x.remove(); });
+  await p.click('[data-action="drill-country"][data-country="Argentina"]');
+  await esperarTexto(p, "Resumen de Argentina", 3000);
+  eq("viaje: sin leer, la historia ofrece leer el Cierre ahí mismo", !!(await p.$('.lg-hist [data-action="leer-resumen"][data-post-id="p_viaje"]')), true);
+  await p.click('.lg-hist [data-action="leer-resumen"]');
+  eq("viaje: se guardan los dos Cierres", await hasta(p, () => {
+    const r = window.__sb.tablas.posts.find(x => x.id === "p_viaje").resumen;
+    return !!r && r.partes.length === 2;
+  }), true);
+  eq("viaje: Argentina cuenta solo su Cierre", await hasta(p, () => {
+    const v = [...document.querySelectorAll(".lg-stat b")].map(x => x.textContent.trim());
+    return v[2] === "1 de 1" && v[3] === "1";
+  }), true);
+  eq("viaje: con su resumen ejecutivo y su marca en la historia",
+    [await p.$eval(".lg-card .rs-txt", e => e.textContent.trim()), await p.$eval('.lg-hist li:has([data-post-id="p_viaje"]) .rs-ok', e => e.textContent.trim())], ["En Buenos Aires todo en orden.", "1/1"]);
+  await p.click('[data-action="drill-clear"]');
+  await p.click('[data-action="drill-country"][data-country="Uruguay"]');
+  eq("viaje: y Uruguay, solo el suyo", await hasta(p, () => {
+    const v = [...document.querySelectorAll(".lg-stat b")].map(x => x.textContent.trim());
+    return v[2] === "1 de 2" && v[3] === "4";
+  }), true);
+  await p.click('nav.tabs button[data-view="feed"]');
+  // Ya quedó abierto al leerlo (como cuando se lee desde la tarjeta).
+  if(await p.$eval('.post[data-post-id="p_viaje"] .rs-pill', e => e.getAttribute("aria-expanded")) !== "true") await p.click('.post[data-post-id="p_viaje"] .rs-pill');
+  eq("viaje: en la tarjeta, cada Cierre con su lugar", await p.$$eval('.post[data-post-id="p_viaje"] .rs-lugar', ls => ls.map(l => l.textContent.trim())),
+    ["📍 Montevideo, Uruguay", "📍 Buenos Aires, Argentina"]);
+  eq("viaje: y la cuenta de la tarjeta suma los dos", await p.$eval('.post[data-post-id="p_viaje"] .rs-pill', e => e.textContent.trim()), "📋 Resumen · 2/3");
+  eq("viaje: sin un solo error", errores, []);
   await p.close();
 }
 

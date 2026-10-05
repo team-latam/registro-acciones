@@ -561,6 +561,11 @@ capturas (A/B/C, después D/E/F, después ajustes), el diseño elegido:
   qué visita salió) e historia.
 - Al publicar una **rutina** en un lugar con pendientes, pregunta
   "¿Esto cumple algo pendiente?"; con un toque queda hecho, con la rutina.
+- Un viaje por varios lugares trae **un Cierre por lugar**: se guardan
+  todos (`resumen.partes`) y cada uno cuenta para el país que nombra su
+  "Lugar:" (o el nombre del archivo). En la tarjeta, cada uno con su 📍.
+  En la historia de un país, una visita con Word sin leer ofrece "Leer el
+  Cierre" ahí mismo.
 - Queda para después: el resumen por ciudad y por zona, y otros tipos
   además de Visita.
 

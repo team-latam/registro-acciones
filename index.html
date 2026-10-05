@@ -2121,6 +2121,11 @@
   .rs-pasos li:hover .rs-no, .rs-no:focus-visible{ opacity:1; }
   .rs-no:hover{ color:var(--ink); text-decoration:underline; }
   @media (hover:none){ .rs-no{ opacity:.75; } }
+  .rs-parte{ display:flex; flex-direction:column; gap:14px; }
+  .rs-parte + .rs-parte{ border-top:1px dashed var(--border); padding-top:14px; }
+  .rs-lugar{ font-size:13.5px; font-weight:800; color:var(--ink); }
+  .rs-de{ font-size:11.5px; color:var(--text-muted); margin-top:-6px; }
+  button.rs-ok.leer{ border:none; cursor:pointer; font:inherit; font-size:10.5px; font-weight:800; background:var(--celeste-soft); color:var(--celeste-dark); }
   .rs-pie{ font-size:11.5px; color:var(--text-muted); display:flex; gap:6px 12px; flex-wrap:wrap; justify-content:space-between; align-items:center; border-top:1px solid var(--border); padding-top:10px; }
   /* El resumen de un lugar, arriba de sus ciudades (Países → un país). */
   .lg-card{ margin-bottom:14px; }
@@ -13534,25 +13539,39 @@ async function leerWordDeViaje(buffer){
   return leerFormularioDeViaje(await parte.async("string"));
 }
 const esWordDeViaje = f => !!f && extensionDe(f.name) === "docx";
-// El resumen que queda guardado, a partir de lo que se leyó y de lo que
-// ya había. Un Formulario de Viaje no pisa un Cierre ya leído. Los pasos
-// conservan lo que se marcó (por su id) si se vuelve a subir el Cierre.
-function resumenCombinado(previo, leido, fuente){
-  if(!leido || !leido.tipo) return previo || null;
-  if(leido.tipo === "plan" && previo && previo.tipo === "cierre") return previo;
-  const antes = new Map(((previo && previo.pasos) || []).map(p => [p.id, p]));
-  const pasos = leido.tipo === "cierre"
-    ? leido.conclusiones.map(t => { const id = idDePaso(t); const v = antes.get(id); return v ? { ...v, t } : { id, t, estado:"pendiente" }; })
-    : ((previo && previo.pasos) || []);
-  return { v:1, tipo: leido.tipo, fuente: { name: recortar(fuente.name, 200), subidoEl: fuente.subidoEl || null },
-    lugar: leido.lugar, duracion: leido.duracion, ejecutivo: leido.tipo === "cierre" ? leido.ejecutivo : "",
-    objetivos: leido.objetivos, pasos };
+// El resumen guardado es una lista de PARTES, una por Formulario (por
+// lugar): un viaje por cuatro ciudades trae cuatro Cierres, y cada uno
+// cuenta para su país. Los guardados con la forma de antes (un solo
+// formulario, sin `partes`) se leen como una lista de uno.
+function partesDe(r){
+  if(!r || typeof r !== "object") return [];
+  const l = Array.isArray(r.partes) ? r.partes : [r];
+  return l.filter(x => x && (x.tipo === "cierre" || x.tipo === "plan"));
 }
-// De varios Word, el que manda: el Cierre más nuevo; si no hay, el
-// Formulario de Viaje más nuevo.
-function elegirLeido(leidos){
-  const orden = x => (x.leido.tipo === "cierre" ? "1" : "0") + String(x.fuente.subidoEl || "");
-  return leidos.filter(x => x.leido && x.leido.tipo).sort((a, b) => orden(b).localeCompare(orden(a)))[0] || null;
+const claveDeParte = x => sinTildes(x.lugar) || sinTildes((x.fuente || {}).name);
+// Lo que queda guardado a partir de lo que se leyó y de lo que ya había.
+// Por lugar: lo nuevo reemplaza a lo de antes, salvo que un Formulario de
+// Viaje no pisa un Cierre; y si hay algún Cierre, los Formularios de Viaje
+// sobran. Los pasos conservan lo que se marcó (por su id).
+function resumenCombinado(previo, leidos){
+  const previas = partesDe(previo);
+  const antes = new Map(previas.flatMap(x => x.pasos || []).map(p => [p.id, p]));
+  const porLugar = new Map(previas.map(x => [claveDeParte(x), x]));
+  const nuevos = (leidos || []).filter(x => x.leido && x.leido.tipo)
+    .sort((a, b) => String(a.fuente.subidoEl || "").localeCompare(String(b.fuente.subidoEl || "")));
+  if(!nuevos.length) return previo || null;
+  for(const { leido, fuente } of nuevos){
+    const parte = { tipo: leido.tipo, fuente: { name: recortar(fuente.name, 200), subidoEl: fuente.subidoEl || null },
+      lugar: leido.lugar, duracion: leido.duracion, ejecutivo: leido.tipo === "cierre" ? leido.ejecutivo : "",
+      objetivos: leido.objetivos,
+      pasos: leido.tipo === "cierre" ? leido.conclusiones.map(t => { const id = idDePaso(t); const v = antes.get(id); return v ? { ...v, t } : { id, t, estado:"pendiente" }; }) : [] };
+    const k = claveDeParte(parte), ya = porLugar.get(k);
+    if(ya && ya.tipo === "cierre" && parte.tipo === "plan") continue;
+    porLugar.set(k, parte);
+  }
+  let partes = [...porLugar.values()];
+  if(partes.some(x => x.tipo === "cierre")) partes = partes.filter(x => x.tipo === "cierre");
+  return { v:2, partes: partes.slice(0, 12) };
 }
 const iguales = (a, b) => JSON.stringify(a || null) === JSON.stringify(b || null);
 // Lee los Word que se le pasan ({ name, subidoEl, buffer }) y, si cambia
@@ -13564,11 +13583,10 @@ async function actualizarResumen(postId, fuentes){
     try{ leidos.push({ fuente: f, leido: await leerWordDeViaje(f.buffer) }); }
     catch(err){ console.warn("No se pudo leer", f.name, err); }
   }
-  const elegido = elegirLeido(leidos);
-  if(!elegido) return false;
+  if(!leidos.some(x => x.leido && x.leido.tipo)) return false;
   const post = getPostById(postId);
   const previo = post && post.resumen || null;
-  const nuevo = resumenCombinado(previo, elegido.leido, elegido.fuente);
+  const nuevo = resumenCombinado(previo, leidos);
   if(iguales(nuevo, previo)) return false;
   await updatePostDoc(postId, { resumen: nuevo });
   return true;
@@ -13600,15 +13618,18 @@ async function leerResumenDeLosDocumentos(postId){
   }
   return actualizarResumen(postId, fuentes);
 }
+// Las partes del resumen de un posteo (null si no tiene).
 function resumenDe(post){
-  const r = post && post.resumen;
-  return r && typeof r === "object" && (r.tipo === "cierre" || r.tipo === "plan") ? r : null;
+  const l = partesDe(post && post.resumen);
+  return l.length ? l : null;
 }
-function cuentaObjetivos(r){
-  const l = (r && r.objetivos) || [];
+// Suma los objetivos de los Cierres (una parte o varias).
+function cuentaObjetivos(partes){
+  const l = (Array.isArray(partes) ? partes : [partes]).filter(x => x && x.tipo === "cierre").flatMap(x => x.objetivos || []);
   return { total: l.length, si: l.filter(o => o.logrado === "si").length, parcial: l.filter(o => o.logrado === "parcial").length };
 }
-const pasosPendientes = r => ((r && r.pasos) || []).filter(p => p.estado !== "hecho" && p.estado !== "no");
+const pasosDe = partes => (Array.isArray(partes) ? partes : [partes]).flatMap(x => (x && x.pasos) || []);
+const pasosPendientes = partes => pasosDe(partes).filter(p => p.estado !== "hecho" && p.estado !== "no");
 // Qué tiene desplegado cada tarjeta: el panel, el resumen entero, todos los pasos.
 const resumenAbiertos = new Set(), resumenEntero = new Set(), resumenTodosLosPasos = new Set();
 function etiquetaLogrado(v){
@@ -13618,14 +13639,15 @@ function etiquetaLogrado(v){
     : `<span class="rs-ok plan">${esc(t("Plan","Plan","Plano","תכנון"))}</span>`;
 }
 function renderResumenPill(post){
-  const r = resumenDe(post);
-  if(!r) return "";
-  const c = cuentaObjetivos(r);
+  const partes = resumenDe(post);
+  if(!partes) return "";
+  const hayCierre = partes.some(x => x.tipo === "cierre");
+  const c = cuentaObjetivos(partes);
   const abierto = resumenAbiertos.has(post.id);
   // En el celular la palabra se esconde (como en el resto de la fila) y
   // queda el ícono con la cuenta: "📋 4/4".
-  const palabra = r.tipo === "cierre" ? t("Resumen","Summary","Resumo","סיכום") : t("Objetivos","Goals","Objetivos","מטרות");
-  const cuenta = r.tipo === "cierre" ? (c.total ? `${c.si}/${c.total}` : "") : String(c.total || "");
+  const palabra = hayCierre ? t("Resumen","Summary","Resumo","סיכום") : t("Objetivos","Goals","Objetivos","מטרות");
+  const cuenta = hayCierre ? (c.total ? `${c.si}/${c.total}` : "") : String(partes.reduce((n, x) => n + (x.objetivos || []).length, 0) || "");
   return `<button type="button" class="rs-pill${abierto ? " on" : ""}" data-action="toggle-resumen" data-post-id="${post.id}" aria-expanded="${abierto}" aria-label="${esc(palabra + (cuenta ? " " + cuenta : ""))}">📋<span class="pa-l"> ${esc(palabra)}${cuenta ? " ·" : ""}</span>${cuenta ? " " + esc(cuenta) : ""}</button>`;
 }
 function renderPasos(post, pasos, puede, conOrigen){
@@ -13638,45 +13660,54 @@ function renderPasos(post, pasos, puede, conOrigen){
       <span class="rs-paso"><span class="t">${esc(p.t)}</span>${origen}${quien}${!hecho && puede(de) ? `<button type="button" class="rs-no" data-action="resumen-no-tarea" data-post-id="${de.id}" data-paso="${esc(p.id)}" title="${esc(t("No es una tarea: que no figure como pendiente","Not a task: don't list it as pending","Não é uma tarefa: que não figure como pendente","לא משימה: שלא יופיע כממתין"))}">${esc(t("No es tarea","Not a task","Não é tarefa","לא משימה"))}</button>` : ""}</span>
     </li>`; }).join("")}</ul>`;
 }
-function renderResumenPanel(post){
-  const r = resumenDe(post);
-  if(!r || !resumenAbiertos.has(post.id)) return "";
-  const c = cuentaObjetivos(r);
+// Un formulario leído, dentro del panel de la tarjeta. Con varios (un
+// viaje por varios lugares) cada uno lleva su lugar arriba.
+function renderParteDelResumen(post, parte, conLugar){
+  const c = cuentaObjetivos(parte);
   const puede = p => canEditPost(p);
   const entero = resumenEntero.has(post.id);
-  const pend = pasosPendientes(r);
-  const hechos = (r.pasos || []).filter(p => p.estado === "hecho");
-  const lista = resumenTodosLosPasos.has(post.id) ? [...pend, ...hechos] : pend.slice(0, 3);
-  const memoriaPos = (post.files || []).findIndex(f => /memoria/i.test(f.name || "") && seAbreEnVisor(f) && safeFileDataUrl(f.dataUrl));
-  const fuentePos = (post.files || []).findIndex(f => f.name === (r.fuente || {}).name && seAbreEnVisor(f) && safeFileDataUrl(f.dataUrl));
-  const titulo = r.tipo === "cierre"
+  const pend = pasosPendientes(parte);
+  const hechos = (parte.pasos || []).filter(p => p.estado === "hecho");
+  const todos = resumenTodosLosPasos.has(post.id);
+  const lista = todos ? [...pend, ...hechos] : pend.slice(0, 3);
+  const fuentePos = (post.files || []).findIndex(f => f.name === (parte.fuente || {}).name && seAbreEnVisor(f) && safeFileDataUrl(f.dataUrl));
+  const de = parte.tipo === "cierre" ? t("Sacado del Formulario de Cierre","Taken from the Closure Form","Tirado do Formulário de Fechamento","נלקח מטופס הסגירה") : t("Sacado del Formulario de Viaje","Taken from the Travel Form","Tirado do Formulário de Viagem","נלקח מטופס הנסיעה");
+  const titulo = parte.tipo === "cierre"
     ? t("{a} de {b} logrados","{a} of {b} achieved","{a} de {b} alcançados","{a} מתוך {b} הושגו",{ a: c.si, b: c.total }) + (c.parcial ? " · " + t("{n} en parte","{n} partly","{n} em parte","{n} חלקית",{ n: c.parcial }) : "")
     : t("planeados (todavía sin Cierre)","planned (no Closure yet)","planejados (ainda sem Fechamento)","מתוכננות (עדיין בלי סגירה)");
-  return `<div class="rs-panel">
-    ${r.ejecutivo ? `<div><div class="rs-h">${t("Resumen ejecutivo","Executive summary","Resumo executivo","סיכום מנהלים")}</div>
-      <p class="rs-txt${entero ? " entero" : ""}" dir="auto">${nl2br(r.ejecutivo)}</p>
+  const objetivos = parte.objetivos || [];
+  return `<div class="rs-parte">
+    ${conLugar ? `<div class="rs-lugar" dir="auto">📍 ${esc(parte.lugar || (parte.fuente || {}).name || "")}</div>` : ""}
+    ${parte.ejecutivo ? `<div><div class="rs-h">${t("Resumen ejecutivo","Executive summary","Resumo executivo","סיכום מנהלים")}</div>
+      <p class="rs-txt${entero ? " entero" : ""}" dir="auto">${nl2br(parte.ejecutivo)}</p>
       <button type="button" class="rs-mas" data-action="resumen-entero" data-post-id="${post.id}">${entero ? t("Mostrar menos","Show less","Mostrar menos","הצג פחות") : t("Leer completo","Read it all","Ler completo","קריאה מלאה")}</button></div>` : ""}
-    ${c.total ? `<div><div class="rs-h">${t("Objetivos","Goals","Objetivos","מטרות")} <b>${esc(titulo)}</b></div>
-      <ul class="rs-obj">${r.objetivos.map(o => `<li>${etiquetaLogrado(o.logrado)}<span class="t" dir="auto">${esc(o.t)}</span></li>`).join("")}</ul></div>` : ""}
-    ${(r.pasos || []).length ? `<div><div class="rs-h">${t("Lo que sigue","What's next","O que segue","מה הלאה")} <b>${esc(pend.length === 1 ? t("1 pendiente","1 pending","1 pendente","1 ממתין") : t("{n} pendientes","{n} pending","{n} pendentes","{n} ממתינים",{ n: pend.length }))}${hechos.length ? " · " + esc(t("{n} hechos","{n} done","{n} feitos","{n} בוצעו",{ n: hechos.length })) : ""}</b></div>
+    ${objetivos.length ? `<div><div class="rs-h">${t("Objetivos","Goals","Objetivos","מטרות")} <b>${esc(titulo)}</b></div>
+      <ul class="rs-obj">${objetivos.map(o => `<li>${etiquetaLogrado(o.logrado)}<span class="t" dir="auto">${esc(o.t)}</span></li>`).join("")}</ul></div>` : ""}
+    ${(parte.pasos || []).length ? `<div><div class="rs-h">${t("Lo que sigue","What's next","O que segue","מה הלאה")} <b>${esc(pend.length === 1 ? t("1 pendiente","1 pending","1 pendente","1 ממתין") : t("{n} pendientes","{n} pending","{n} pendentes","{n} ממתינים",{ n: pend.length }))}${hechos.length ? " · " + esc(t("{n} hechos","{n} done","{n} feitos","{n} בוצעו",{ n: hechos.length })) : ""}</b></div>
       ${renderPasos(post, lista.map(p => ({ p, post })), puede, false)}
-      ${pend.length > 3 || hechos.length ? `<button type="button" class="rs-mas" data-action="resumen-todos-pasos" data-post-id="${post.id}">${resumenTodosLosPasos.has(post.id) ? t("Mostrar menos","Show less","Mostrar menos","הצג פחות") : pend.length > 3 ? t("+{n} más","+{n} more","+{n} mais","+{n} נוספים",{ n: pend.length - 3 }) : t("Ver los hechos","See the done ones","Ver os feitos","הצגת אלה שבוצעו")}</button>` : ""}</div>` : ""}
-    <div class="rs-pie">
-      <span>${fuentePos >= 0 ? `<button type="button" class="rs-link" data-action="resumen-abrir" data-post-id="${post.id}" data-pos="${fuentePos}">${esc(r.tipo === "cierre" ? t("Sacado del Formulario de Cierre","Taken from the Closure Form","Tirado do Formulário de Fechamento","נלקח מטופס הסגירה") : t("Sacado del Formulario de Viaje","Taken from the Travel Form","Tirado do Formulário de Viagem","נלקח מטופס הנסיעה"))}</button>` : esc(r.tipo === "cierre" ? t("Sacado del Formulario de Cierre","Taken from the Closure Form","Tirado do Formulário de Fechamento","נלקח מטופס הסגירה") : t("Sacado del Formulario de Viaje","Taken from the Travel Form","Tirado do Formulário de Viagem","נלקח מטופס הנסיעה"))}${r.fuente && r.fuente.subidoEl ? " · " + esc(fmtDate(new Date(r.fuente.subidoEl))) : ""}</span>
-      ${memoriaPos >= 0 ? `<button type="button" class="rs-link" data-action="resumen-abrir" data-post-id="${post.id}" data-pos="${memoriaPos}">${esc(t("Abrir la Memoria completa","Open the Complete Memory","Abrir a Memória completa","פתיחת התיעוד המלא"))} ${isRTL() ? "←" : "→"}</button>` : ""}
-    </div>
+      ${pend.length > 3 || hechos.length ? `<button type="button" class="rs-mas" data-action="resumen-todos-pasos" data-post-id="${post.id}">${todos ? t("Mostrar menos","Show less","Mostrar menos","הצג פחות") : pend.length > 3 ? t("+{n} más","+{n} more","+{n} mais","+{n} נוספים",{ n: pend.length - 3 }) : t("Ver los hechos","See the done ones","Ver os feitos","הצגת אלה שבוצעו")}</button>` : ""}</div>` : ""}
+    <div class="rs-de">${fuentePos >= 0 ? `<button type="button" class="rs-link" data-action="resumen-abrir" data-post-id="${post.id}" data-pos="${fuentePos}">${esc(de)}</button>` : esc(de)}${parte.fuente && parte.fuente.subidoEl ? " · " + esc(fmtDate(new Date(parte.fuente.subidoEl))) : ""}</div>
+  </div>`;
+}
+function renderResumenPanel(post){
+  const partes = resumenDe(post);
+  if(!partes || !resumenAbiertos.has(post.id)) return "";
+  const memoriaPos = (post.files || []).findIndex(f => /memoria/i.test(f.name || "") && seAbreEnVisor(f) && safeFileDataUrl(f.dataUrl));
+  return `<div class="rs-panel">
+    ${partes.map(x => renderParteDelResumen(post, x, partes.length > 1)).join("")}
+    ${memoriaPos >= 0 ? `<div class="rs-pie"><span></span><button type="button" class="rs-link" data-action="resumen-abrir" data-post-id="${post.id}" data-pos="${memoriaPos}">${esc(t("Abrir la Memoria completa","Open the Complete Memory","Abrir a Memória completa","פתיחת התיעוד המלא"))} ${isRTL() ? "←" : "→"}</button></div>` : ""}
   </div>`;
 }
 // Marca un paso (hecho / no es tarea / de nuevo pendiente). Va solo el
 // resumen: no cuenta como edición del evento.
 async function marcarPaso(postId, pasoId, estado, extra){
   const post = getPostById(postId);
-  const r = resumenDe(post);
-  if(!r || !canEditPost(post)) return;
-  const pasos = (r.pasos || []).map(p => p.id !== pasoId ? p
+  const partes = resumenDe(post);
+  if(!partes || !canEditPost(post)) return;
+  const nuevas = partes.map(x => ({ ...x, pasos: (x.pasos || []).map(p => p.id !== pasoId ? p
     : estado === "pendiente" ? { id: p.id, t: p.t, estado: "pendiente" }
-    : { ...p, estado, por: state.auth.user.email, el: new Date().toISOString(), ...(extra || {}) });
-  try{ await updatePostDoc(postId, { resumen: { ...r, pasos } }); }
+    : { ...p, estado, por: state.auth.user.email, el: new Date().toISOString(), ...(extra || {}) }) }));
+  try{ await updatePostDoc(postId, { resumen: { v:2, partes: nuevas } }); }
   catch(err){
     console.error("No se pudo guardar el paso:", err);
     showCalendarNotice({ ok:false, message: t("No se pudo guardar: {m}","Couldn't save: {m}","Não foi possível salvar: {m}","השמירה נכשלה: {m}",{ m: err.message || err.code }) });
@@ -13685,19 +13716,38 @@ async function marcarPaso(postId, pasoId, estado, extra){
 
 /* ---- El resumen de un lugar: lo que juntan sus visitas ---- */
 const esDelPais = (post, country) => postLevelFor(post, { kind:"country", country }) === "own";
+// ¿Este formulario habla de este país? Por el "Lugar:" del formulario (o
+// el nombre del archivo): el país en cualquier idioma o una de sus ciudades.
+function parteEsDelPais(parte, country){
+  const txt = sinTildes((parte.lugar || "") + " " + ((parte.fuente || {}).name || ""));
+  const nombres = [country, ...Object.values(DEFAULT_COUNTRY_LABELS[country] || {}), ...cityPresetsFor(country).map(c => c.name)]
+    .map(sinTildes).filter(n => n.length > 2);
+  return nombres.some(n => (" " + txt.replace(/[^a-z0-9]+/g, " ") + " ").includes(" " + n.replace(/[^a-z0-9]+/g, " ").trim() + " "));
+}
+// Las partes de un posteo que cuentan para un país. Si ninguna nombra a
+// ninguno de los países del posteo (un "Lugar:" mal escrito), cuentan todas.
+function partesDelPais(post, country){
+  const partes = resumenDe(post) || [];
+  const propias = partes.filter(x => parteEsDelPais(x, country));
+  if(propias.length) return propias;
+  const paises = [...new Set((post.scopes || []).map(x => x && x.country).filter(Boolean))];
+  return partes.some(x => paises.some(c => parteEsDelPais(x, c))) ? [] : partes;
+}
 function resumenDelLugar(country){
+  const porFecha = (a, b) => String(b.startDate || b.date).localeCompare(String(a.startDate || a.date));
   const posts = state.posts.filter(p => !p.cancelled && p.activityType !== "rutina" && esDelPais(p, country));
-  const visitas = posts.filter(p => p.activityType === "visita").sort((a, b) => String(b.startDate || b.date).localeCompare(String(a.startDate || a.date)));
-  const conResumen = posts.filter(p => resumenDe(p)).sort((a, b) => String(b.startDate || b.date).localeCompare(String(a.startDate || a.date)));
-  let si = 0, total = 0;
-  conResumen.forEach(p => { const r = resumenDe(p); if(r.tipo === "cierre"){ const c = cuentaObjetivos(r); si += c.si; total += c.total; } });
+  const visitas = posts.filter(p => p.activityType === "visita").sort(porFecha);
+  const conResumen = posts.map(post => ({ post, partes: partesDelPais(post, country) })).filter(x => x.partes.length)
+    .sort((a, b) => porFecha(a.post, b.post));
+  const c = cuentaObjetivos(conResumen.flatMap(x => x.partes));
   const pendientes = [], hechos = [];
-  conResumen.forEach(p => (resumenDe(p).pasos || []).forEach(x => {
-    if(x.estado === "hecho") hechos.push({ p: x, post: p });
-    else if(x.estado !== "no") pendientes.push({ p: x, post: p });
+  conResumen.forEach(({ post, partes }) => pasosDe(partes).forEach(x => {
+    if(x.estado === "hecho") hechos.push({ p: x, post });
+    else if(x.estado !== "no") pendientes.push({ p: x, post });
   }));
-  return { visitas, conResumen, si, total, pendientes, hechos,
-    ultimaConResumen: conResumen.find(p => resumenDe(p).ejecutivo) || null };
+  const ultima = conResumen.find(x => x.partes.some(p => p.ejecutivo)) || null;
+  return { visitas, conResumen, si: c.si, total: c.total, pendientes, hechos,
+    ultimaConResumen: ultima && { post: ultima.post, ejecutivo: ultima.partes.find(p => p.ejecutivo).ejecutivo } };
 }
 const lugarTodosLosPasos = new Set();
 function renderResumenDelLugar(country){
@@ -13712,7 +13762,17 @@ function renderResumenDelLugar(country){
   const puede = p => canEditPost(p);
   const todos = lugarTodosLosPasos.has(country);
   const lista = todos ? [...L.pendientes, ...L.hechos] : L.pendientes.slice(0, 3);
-  const historia = (L.visitas.length ? L.visitas : L.conResumen).slice(0, 8);
+  const historia = (L.visitas.length ? L.visitas : L.conResumen.map(x => x.post)).slice(0, 8);
+  const marcaDe = p => {
+    const partes = partesDelPais(p, country);
+    const c = cuentaObjetivos(partes);
+    if(c.total) return `<span class="rs-ok ${c.si === c.total ? "si" : "par"}">${c.si}/${c.total}</span>`;
+    if(partes.length) return `<span class="rs-ok plan">${esc(t("Plan","Plan","Plano","תכנון"))}</span>`;
+    // Tiene Word pero nunca se leyeron: se ofrece leerlos ahí mismo.
+    if(!resumenDe(p) && canEditPost(p) && (p.files || []).some(esWordDeViaje))
+      return `<button type="button" class="rs-ok leer" data-action="leer-resumen" data-post-id="${p.id}">${esc(t("Leer el Cierre","Read the Closure","Ler o Fechamento","קריאת הסגירה"))}</button>`;
+    return `<span class="rs-ok sin">${esc(t("sin Cierre","no Closure","sem Fechamento","בלי סגירה"))}</span>`;
+  };
   return `<div class="card lg-card">
     <h2 class="lg-tit">${esc(t("Resumen de {p}","{p} summary","Resumo de {p}","סיכום {p}",{ p: nombre }))}</h2>
     <div class="hint lg-sub">${esc(t("Se arma solo, con los Formularios de Cierre de cada visita.","Built automatically from each visit's Closure Form.","Monta-se sozinho, com os Formulários de Fechamento de cada visita.","נבנה לבד, מטופסי הסגירה של כל ביקור."))}</div>
@@ -13722,16 +13782,14 @@ function renderResumenDelLugar(country){
       <div class="lg-stat"><small>${t("Objetivos","Goals","Objetivos","מטרות")}</small><b>${L.total ? esc(t("{a} de {b}","{a} of {b}","{a} de {b}","{a} מתוך {b}",{ a: L.si, b: L.total })) : "—"}</b><span>${pct === null ? esc(t("sin Cierres todavía","no Closures yet","sem Fechamentos ainda","עדיין אין סגירות")) : esc(t("logrados ({p}%)","achieved ({p}%)","alcançados ({p}%)","הושגו ({p}%)",{ p: pct }))}</span></div>
       <div class="lg-stat"><small>${t("Lo que sigue","What's next","O que segue","מה הלאה")}</small><b>${L.pendientes.length}</b><span>${esc(t("pendientes · {n} hechos","pending · {n} done","pendentes · {n} feitos","ממתינים · {n} בוצעו",{ n: L.hechos.length }))}</span></div>
     </div>
-    ${L.ultimaConResumen ? `<div class="lg-sec"><div class="rs-h">${esc(t("Última visita · {f}","Latest visit · {f}","Última visita · {f}","ביקור אחרון · {f}",{ f: rango(L.ultimaConResumen) }))}</div>
-      <p class="rs-txt" dir="auto">${nl2br(resumenDe(L.ultimaConResumen).ejecutivo)}</p>
-      <button type="button" class="rs-mas" data-action="goto-post-from-profile" data-post-id="${L.ultimaConResumen.id}">${t("Ver la visita","See the visit","Ver a visita","לביקור")} ${isRTL() ? "←" : "→"}</button></div>` : ""}
+    ${L.ultimaConResumen ? `<div class="lg-sec"><div class="rs-h">${esc(t("Última visita · {f}","Latest visit · {f}","Última visita · {f}","ביקור אחרון · {f}",{ f: rango(L.ultimaConResumen.post) }))}</div>
+      <p class="rs-txt" dir="auto">${nl2br(L.ultimaConResumen.ejecutivo)}</p>
+      <button type="button" class="rs-mas" data-action="goto-post-from-profile" data-post-id="${L.ultimaConResumen.post.id}">${t("Ver la visita","See the visit","Ver a visita","לביקור")} ${isRTL() ? "←" : "→"}</button></div>` : ""}
     ${L.pendientes.length || L.hechos.length ? `<div class="lg-sec"><div class="rs-h">${esc(t("Lo que sigue en {p}","What's next in {p}","O que segue em {p}","מה הלאה ב{p}",{ p: nombre }))}</div>
       ${renderPasos(null, lista, puede, true)}
       ${L.pendientes.length > 3 || L.hechos.length ? `<button type="button" class="rs-mas" data-action="lugar-todos-pasos" data-country="${esc(country)}">${todos ? t("Mostrar menos","Show less","Mostrar menos","הצג פחות") : t("Ver los {n}","See all {n}","Ver os {n}","הצגת כל ה-{n}",{ n: L.pendientes.length + L.hechos.length })}</button>` : ""}</div>` : ""}
     ${historia.length ? `<div class="lg-sec"><div class="rs-h">${t("Historia","History","Histórico","היסטוריה")}</div>
-      <ul class="lg-hist">${historia.map(p => { const r = resumenDe(p); const c = cuentaObjetivos(r);
-        const marca = r && r.tipo === "cierre" && c.total ? `<span class="rs-ok ${c.si === c.total ? "si" : "par"}">${c.si}/${c.total}</span>` : r ? `<span class="rs-ok plan">${esc(t("Plan","Plan","Plano","תכנון"))}</span>` : `<span class="rs-ok sin">${esc(t("sin Cierre","no Closure","sem Fechamento","בלי סגירה"))}</span>`;
-        return `<li><span class="f">${esc(rango(p))}</span><button type="button" class="lg-ir" data-action="goto-post-from-profile" data-post-id="${p.id}" dir="auto">${esc(p.title)}</button>${marca}</li>`; }).join("")}</ul></div>` : ""}
+      <ul class="lg-hist">${historia.map(p => `<li><span class="f">${esc(rango(p))}</span><button type="button" class="lg-ir" data-action="goto-post-from-profile" data-post-id="${p.id}" dir="auto">${esc(p.title)}</button>${marcaDe(p)}</li>`).join("")}</ul></div>` : ""}
   </div>`;
 }
 
@@ -19309,8 +19367,7 @@ document.addEventListener("click", async e=>{
     render();
   },
     "resumen-paso": async (el, e, action, postId) => {
-    const r = resumenDe(getPostById(postId));
-    const paso = r && (r.pasos || []).find(p => p.id === el.dataset.paso);
+    const paso = pasosDe(resumenDe(getPostById(postId)) || []).find(p => p.id === el.dataset.paso);
     if(paso) await marcarPaso(postId, paso.id, paso.estado === "hecho" ? "pendiente" : "hecho");
   },
     "resumen-no-tarea": async (el, e, action, postId) => {
