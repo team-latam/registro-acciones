@@ -16,8 +16,8 @@ await p.waitForTimeout(400);
 eq("la pantalla se dibuja sin un solo error", errores, []);
 
 const bloques = await p.$$eval(".rep-grilla > .rep-bloque h3", els => els.map(e=>e.textContent.trim()));
-eq("los seis bloques", bloques,
-   ["Mes a mes","Por zona","Por país","Por tipo","Quién cargó","Quién participó"]);
+eq("los cuatro bloques de «Cuándo y dónde»", bloques,
+   ["Mes a mes","Por zona","Por país","Por tipo"]);
 
 const total = await p.$eval(".rep-total-num", e => Number(e.textContent));
 eq("el total es un número mayor que cero", total > 0, true);
@@ -57,7 +57,7 @@ await p.evaluate(()=> window.__pintar(window.__datos, { anio:"2019", trimestre:0
 await p.waitForTimeout(150);
 const vacio = await p.$(".empty-state");
 eq("un período sin nada muestra el cartel de vacío", !!vacio, true);
-const sigueElSelector = await p.$$eval(".rep-chips button", els => els.length > 0);
+const sigueElSelector = await p.$$eval(".rep-barra-control select", els => els.length > 0);
 eq("y el selector sigue ahí para poder salir de ahí", sigueElSelector, true);
 
 // La comparación con el período anterior.
@@ -120,7 +120,8 @@ eq("y las tablas lado a lado, con la diferencia", await p.$$eval(".rep-tabla the
 await p.evaluate(()=> window.__pintar(window.__datos, { anio:"2026", trimestre:0, modo:"periodo", filtro:{ pais:"Perú" } }));
 await p.waitForTimeout(150);
 eq("ver solo un país: la columna por país tiene solo ese", await p.$$eval(".rep-grilla > .rep-bloque:nth-child(3) .rep-etiqueta", l => l.map(e => e.textContent.trim())), ["Perú"]);
-eq("y se puede quitar el filtro", !!(await p.$('[data-action="reporte-sin-filtro"]')), true);
+eq("el filtro puesto se ve en el título y se saca con su ✕", await p.$eval('.rep-cabeza [data-action="reporte-quitar-filtro"][data-key="pais"]', e => e.textContent.trim()).catch(() => null), "Perú ✕");
+eq("y el botón Filtros dice cuántos hay", await p.$eval('[data-action="reporte-filtros"] .rep-cuenta', e => e.textContent).catch(() => null), "1");
 await p.evaluate(()=> window.__pintar(window.__datos, { anio:"2026", trimestre:0, modo:"periodo", filtro:{} }));
 await p.waitForTimeout(150);
 eq("un período trae sugerencias, cobertura y equipo", [!!(await p.$(".rep-sugerencias li")), !!(await p.$(".rep-cobertura li")), !!(await p.$(".rep-equipo tbody tr"))], [true, true, true]);
