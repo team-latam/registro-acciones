@@ -12,7 +12,7 @@ codigo = "\n".join(grab(n) for n in [
   # de uno nuevo y el aviso de "cambios sin guardar".
   "tipoAbierto","tiposDirty","renderTipoPanel","renderTipoNuevoPanel",
   "normalize","slugifyKey","fmtDate","sinRanura","docsAbiertos","eventoYaPaso","docsAbierto","fechaDeArchivo",
-  "quitarDocumento","quitarAdjunto","renderPostedFiles","ownerAttrs"])
+  "quitarDocumento","quitarAdjunto","FICHA_POR_CLASE","fichaDeArchivo","renderPostedFiles","ownerAttrs"])
 
 # Los handlers DE VERDAD, sacados del archivo. Una prueba que se escribe el
 # "+" a mano no prueba el "+" que aprieta él: el botón no andaba porque el

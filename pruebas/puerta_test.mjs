@@ -72,7 +72,7 @@ const conDocs = { id:"p1", activityType:"visita", files:[
 ]};
 await p.evaluate(x=>window.__pintarArchivos(x), conDocs);
 const botones = await p.$$eval('[data-action="open-file-preview"]',
-  els => els.map(e => ({ nombre: e.textContent.trim().replace(/^\S+\s/,""), idx: e.dataset.idx })));
+  els => els.map(e => ({ nombre: (e.querySelector(".fname") || e).textContent.trim(), idx: e.dataset.idx })));
 eq("la tarjeta dibuja solo los sueltos", botones.map(x=>x.nombre), ["suelto-1.pdf","suelto-2.txt","suelto-3.pdf"]);
 eq("con índices 0,1,2 dentro de ESA lista", botones.map(x=>x.idx), ["0","1","2"]);
 for(let i=0; i<botones.length; i++){
@@ -88,7 +88,7 @@ const sinDocs = { id:"p2", activityType:"rutina", files:[
 ]};
 await p.evaluate(x=>window.__pintarArchivos(x), sinDocs);
 const b2 = await p.$$eval('[data-action="open-file-preview"]',
-  els => els.map(e => ({ nombre: e.textContent.trim().replace(/^\S+\s/,""), idx: e.dataset.idx })));
+  els => els.map(e => ({ nombre: (e.querySelector(".fname") || e).textContent.trim(), idx: e.dataset.idx })));
 eq("el audio no es botón del visor; el Word sí, desde el 6/10/2026", b2.map(x=>x.nombre), ["a.pdf","b.docx","c.pdf"]);
 for(let i=0; i<b2.length; i++){
   eq(`sin docs, clic en «${b2[i].nombre}» abre ese archivo`, await p.evaluate(k=>window.__clickear(k), i), b2[i].nombre);
