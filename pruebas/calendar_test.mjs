@@ -169,7 +169,7 @@ eq("ninguna de las dos pasa por otro lado que no sea Google",
 
   // La tarjeta no dibuja un bloque de contenido vacío.
   eq("la tarjeta no dibuja el párrafo si no hay nada que decir",
-     /\$\{tr\.displayContent \? `<div class="post-content"[^>]*>/.test(src), true);
+     /tr\.displayContent \? `<div class="post-content"[^>]*>/.test(src), true);
 }
 
 /* ---------- Lo largo va aparte (separarLargos) ----------

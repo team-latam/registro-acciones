@@ -296,6 +296,24 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   eq("admin: entra y ve los posteos del equipo", await esperarTexto(p, "Reunión con la comunidad"), true);
   await p.click('button[data-action="toggle-thread"][data-post-id="p_reunion"]');
   eq("admin: con el comentario adentro", await esperarTexto(p, "¡Qué bueno que se hizo!", 3000), true);
+  // La tarjeta nueva (6/10/2026): nombre y cuándo arriba, la ciudad sola,
+  // la documentación como pastilla después de los comentarios.
+  {
+    const tarjeta = await p.evaluate(() => {
+      const c = document.querySelector('.post[data-post-id="p_reunion"]');
+      const acc = [...c.querySelectorAll(".post-actions > *")].map(e => e.dataset.action || e.className.split(" ")[0]);
+      const chip = c.querySelector(".post-chips .scope-chip");
+      return { titulo: c.querySelector(".post-top .post-titulo").textContent.trim(), cuando: c.querySelector(".post-cuando").textContent.trim(),
+        chip: chip.textContent.replace(/\s+/g, " ").trim(), chipTitle: chip.title, acc,
+        proyecto: document.querySelector('.post[data-post-id="p_proyecto"] .post-cuando').textContent.trim() };
+    });
+    eq("tarjeta: el nombre arriba", tarjeta.titulo, "Reunión con la comunidad");
+    eq("tarjeta: con hora, el día de la semana y el horario", /^\S+ \d{1,2} \S+( \d{4})? · 18:00–20:00$/.test(tarjeta.cuando), true);
+    eq("tarjeta: sin hora, sin día de la semana y con el año", /^\d{1,2} \S+ \d{4}$/.test(tarjeta.proyecto), true);
+    eq("tarjeta: la ciudad sola, con el país al pasar el mouse", [/📍 Buenos Aires$/.test(tarjeta.chip.replace(", Argentina", "")), tarjeta.chipTitle], [true, "Buenos Aires, Argentina"]);
+    await p.click('.post[data-post-id="p_reunion"] .post-chips .scope-chip');
+    eq("tarjeta: al tocar la ciudad se ve el país", await p.$eval('.post[data-post-id="p_reunion"] .post-chips .scope-chip', e => e.classList.contains("completo") && getComputedStyle(e.querySelector(".sc-resto")).display !== "none"), true);
+  }
   // Las pestañas de arriba son cinco, las de todos los días. Lo de admin
   // (Administración) y lo personal (Mis preferencias) se llegan desde el
   // menú del avatar.
@@ -726,7 +744,7 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   eq("integrante: puede editar el evento de otro, pero no cancelarlo", [menuAjeno.includes("edit-post"), menuAjeno.includes("cancel-post")], [true, false]);
   eq("integrante: el suyo lo edita y lo cancela", [menuPropio.includes("edit-post"), menuPropio.includes("cancel-post")], [true, true]);
   eq("tarjeta: dice quién la editó por última vez y cuándo",
-    await p.$eval('.post[data-post-id="p_reunion"] .post-editado', e => e.textContent.includes("Editado por Benny")), true);
+    await p.$eval('.post[data-post-id="p_reunion"] .post-editado', e => e.textContent.includes("editado") && e.title.startsWith("Editado por Benny")), true);
   await p.click('[data-action="toggle-mentions-menu"]');
   await p.waitForTimeout(150);
   eq("campanita: avisa los cambios que otros hicieron en tus eventos",
@@ -944,11 +962,34 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   await p.close();
 }
 
+/* ---------- La documentación en la tarjeta (6/10/2026) ---------- */
+{
+  const { p, errores } = await entrar(ADMIN, "Benny", base => base.app_config.push({ key: "preferences", value: { activityTypes: [
+    { key: "visita", label: "Visita", icon: "🧳", docs: [{ id: "plan", label: "Plan de viaje" }, { id: "reporte", label: "Reporte" }] }] } }));
+  await esperarTexto(p, "Reunión con la comunidad");
+  const acc = await p.$$eval('.post[data-post-id="p_reunion"] .post-actions > *', l => l.map(e => e.dataset.action || e.className.split(" ")[0]));
+  eq("documentación: una pastilla en las acciones, después de los comentarios", acc.indexOf("toggle-docs") > acc.indexOf("toggle-thread") && acc.indexOf("toggle-thread") >= 0, true);
+  eq("documentación: el evento ya pasó y falta todo, así que va en amarillo y dice que faltan",
+    await p.$eval('.post[data-post-id="p_reunion"] .doc-linea', e => [e.classList.contains("tarde"), e.textContent.replace(/\s+/g, " ").trim()]), [true, "📄 0/2 documentos · faltan"]);
+  eq("documentación: cerrada, no ocupa la tarjeta", await p.$('.post[data-post-id="p_reunion"] .doc-abierto'), null);
+  await p.click('.post[data-post-id="p_reunion"] .doc-linea');
+  eq("documentación: al tocarla, la lista se abre debajo de las acciones",
+    await hasta(p, () => { const c = document.querySelector('.post[data-post-id="p_reunion"]'); const d = c.querySelector(".doc-abierto"); return !!d && d.previousElementSibling.classList.contains("post-actions") && d.querySelectorAll(".doc-fila").length === 2; }), true);
+  eq("documentación: sin un solo error", errores, []);
+  await p.close();
+}
+
 /* ---------- En un celular ---------- */
 {
   const ANCHO = 390;
   const { p, errores } = await entrar(ADMIN, "Benny", null, { width: ANCHO, height: 844 });
   await esperarTexto(p, "Reunión con la comunidad");
+  eq("celular: en la tarjeta la fecha va arriba del nombre, y abajo solo los íconos con su número",
+    await p.evaluate(() => { const c = document.querySelector('.post[data-post-id="p_reunion"]');
+      const arriba = c.querySelector(".post-cuando").getBoundingClientRect().top < c.querySelector(".post-titulo").getBoundingClientRect().top;
+      const nombres = [...c.querySelectorAll(".post-actions .pa-l")].every(e => getComputedStyle(e).display === "none");
+      const hilo = [...c.querySelector('[data-action="toggle-thread"]').children].find(e => getComputedStyle(e).display !== "none").textContent.trim();
+      return [arriba, nombres, hilo]; }), [true, true, "💬 1"]);
   eq("celular: las pestañas de arriba se esconden y aparece la barra de abajo",
     [await visible(p, "nav.tabs"), await visible(p, ".bottom-nav")], [false, true]);
   eq("celular: la barra trae Inicio, Calendario, Países y Más, con el hueco del + en el medio",
@@ -980,8 +1021,9 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   const panelCampana = await p.evaluate(() => { const r = document.querySelector(".mentions-menu").getBoundingClientRect(); return { izq: Math.round(r.left), der: Math.round(r.right) }; });
   eq("celular: el panel de la campanita entra entero en la pantalla", panelCampana.izq >= 0 && panelCampana.der <= ANCHO, true);
   await p.click('[data-action="toggle-mentions-menu"]');
+  // (El @ del autor ya no está en la tarjeta: la regla se prueba sobre uno puesto a mano.)
   eq("celular: un @usuario va aislado como texto de izquierda a derecha",
-    await p.evaluate(() => { const m = document.querySelector(".mention-tag"); const cs = m && getComputedStyle(m); return cs ? [cs.direction, cs.unicodeBidi] : null; }), ["ltr", "isolate"]);
+    await p.evaluate(() => { const m = document.createElement("span"); m.className = "mention-tag"; m.textContent = "@diego"; document.getElementById("viewRoot").append(m); const cs = getComputedStyle(m); const r = [cs.direction, cs.unicodeBidi]; m.remove(); return r; }), ["ltr", "isolate"]);
   // Tanda 21: con el teclado abierto queda media pantalla, y es para el
   // campo. Al escribir se esconden la barra de abajo y el +, y el header
   // deja de quedar pegado arriba; al salir del campo, todo vuelve.

@@ -470,6 +470,30 @@ sacado de Revisar lo de Calendar y las preferencias (si la nueva no
 tenía). No toca el registro de actividad (es historia) ni la ficha vieja
 (el acceso se quita a mano). Los correos no van en el repositorio.
 
+### 28. Copias de seguridad — HECHO (5 oct 2026)
+
+Ver `docs/REVISION.md`, punto 13, y `supabase/respaldo/LEEME.md`: una
+copia automática cada domingo al repo privado y Administración → Copia de
+seguridad para bajar una. El token vence el 5/10/2027.
+
+### 29. Tarjetas del Inicio que aprovechan el lugar — HECHO (6 oct 2026)
+
+"Me molesta el aprovechamiento de cada evento." Tras varias rondas de
+capturas (A/B/C, después D/E/F, después ajustes), el diseño elegido:
+- Arriba el **nombre** y, a la derecha, **cuándo**, liviano: "26 – 30 oct
+  2026"; con hora, el día de la semana y sin el año si es el actual
+  ("lun 26 – vie 30 oct · 09:00–17:00", `fechaDeTarjeta`). "Publicado hace
+  … por …" sale de la vista y queda al pasar por la fecha.
+- Un renglón con tipo, lugares (**la ciudad sola**; el país al pasar el
+  mouse o al tocarla) y participantes.
+- La **documentación** deja de ser un recuadro amarillo de dos renglones:
+  es una pastilla al final de las acciones, después de los comentarios.
+  Gris mientras hay tiempo, **amarilla** cuando el evento ya terminó y
+  falta algo, y ya no se abre sola. Al tocarla, la lista se abre debajo.
+- "Editado hace 5 h" abajo a la derecha, junto al ⋯.
+- En el celular la fecha va arriba del nombre, y abajo quedan los íconos
+  con su número ("💬 1" para los comentarios).
+
 ## Fuera de alcance (necesitan algo que la app no tiene)
 
 - Mandar correos (resumen semanal, invitaciones): no hay servicio de
