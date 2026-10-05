@@ -540,6 +540,30 @@ capturas (A/B/C, después D/E/F, después ajustes), el diseño elegido:
   unificar_cuentas ahora también mueve los me gusta de un correo sin
   ficha.
 
+### 32. El resumen de cada visita y de cada lugar — HECHO (6 oct 2026)
+
+- El usuario quiere que lo que ya manda (Formulario de Viaje, Cierre,
+  Memoria) alimente solo un resumen de la visita y del lugar, **gratis y
+  sin que los documentos salgan a ningún servicio**. Se descartó la
+  inteligencia artificial paga: los formularios tienen siempre la misma
+  forma, así que **la app los lee en el navegador**.
+- Del **Formulario de Cierre en Word (español)** saca el Resumen
+  Ejecutivo, la tabla de objetivos (Sí / Parcial / No) y las
+  Conclusiones, que pasan a **"Lo que sigue"** (se tildan como hechas o
+  "No es tarea"). Sin Cierre, del Formulario de Viaje toma los objetivos
+  como planeados. La **Memoria no se resume**: queda para abrirla entera.
+  Los Cierres en inglés y hebreo no se leen.
+- Se lee al subir el Word (como documento del evento o en el formulario)
+  y, para lo de antes, desde ⋯ → "Leer el resumen de los documentos".
+  Queda en `posts.resumen` (jsonb, tope 64 KB).
+- En la tarjeta: "📋 Resumen · 4/4" despliega el resumen. En **Países →
+  un país**: visitas, última, objetivos logrados, lo que sigue (con de
+  qué visita salió) e historia.
+- Al publicar una **rutina** en un lugar con pendientes, pregunta
+  "¿Esto cumple algo pendiente?"; con un toque queda hecho, con la rutina.
+- Queda para después: el resumen por ciudad y por zona, y otros tipos
+  además de Visita.
+
 ## Fuera de alcance (necesitan algo que la app no tiene)
 
 - Mandar correos (resumen semanal, invitaciones): no hay servicio de
