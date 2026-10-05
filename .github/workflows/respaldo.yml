@@ -1,0 +1,157 @@
+# ============================================================
+# La copia de seguridad, una vez por semana
+# ============================================================
+# Desde que se apagó Firebase no quedaba ninguna copia (REVISION.md,
+# punto 13). Cada domingo esto copia la base entera, cada tabla en JSON
+# y las fotos y adjuntos nuevos al repo PRIVADO
+# team-latam/registro-respaldos. El detalle, en supabase/respaldo/.
+#
+# Necesita tres secretos (Settings → Secrets and variables → Actions):
+#   RESPALDOS_TOKEN            un token que solo puede escribir en ese repo
+#   SUPABASE_SERVICE_ROLE_KEY  el mismo del sincronizador de Calendar
+#   SUPABASE_DB_URL            el mismo que aplica el SQL
+#
+# Este repo es PÚBLICO y sus registros también: acá nunca se escribe un
+# dato, solo cantidades. Los datos van derecho al repo privado.
+# ============================================================
+name: Copia de seguridad
+
+on:
+  schedule:
+    # Domingos 07:00 UTC = 04:00 en Argentina: antes de la limpieza del
+    # bucket (07:30), así lo que la limpieza mueve ya quedó copiado.
+    - cron: '0 7 * * 0'
+  # A mano, desde la pestaña Actions («Run workflow»).
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/respaldo/**'
+      - '.github/workflows/respaldo.yml'
+  pull_request:
+    paths:
+      - 'supabase/respaldo/**'
+
+# Una copia por vez: dos a la par se pisarían el push.
+concurrency:
+  group: respaldo
+  cancel-in-progress: false
+
+jobs:
+  probar:
+    name: La prueba de la copia
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Contra un Supabase de mentira
+        run: ./supabase/respaldo/pruebas/correr.sh
+
+  copiar:
+    name: Copiar
+    needs: probar
+    # En un push solo se prueba. Se copia los domingos y cuando se pide.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+
+      # Sin el token o la llave no puede copiar. Mientras no estén, avisa
+      # qué falta y termina bien (igual que los otros trabajos); el día que
+      # se cargan, empieza solo.
+      - name: ¿Están los secretos?
+        id: revisar
+        env:
+          TOKEN: ${{ secrets.RESPALDOS_TOKEN }}
+          LLAVE: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          faltan=""
+          [ -z "$TOKEN" ] && faltan="$faltan RESPALDOS_TOKEN"
+          [ -z "$LLAVE" ] && faltan="$faltan SUPABASE_SERVICE_ROLE_KEY"
+          if [ -n "$faltan" ]; then
+            echo "hay=no" >> "$GITHUB_OUTPUT"
+            echo "### No se hizo la copia: falta$faltan" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "Se cargan en Settings → Secrets and variables → Actions (ver supabase/respaldo/LEEME.md)." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "hay=si" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Traer el repo de copias
+        if: steps.revisar.outputs.hay == 'si'
+        env:
+          TOKEN: ${{ secrets.RESPALDOS_TOKEN }}
+        run: |
+          if ! git clone --quiet --depth 1 "https://x-access-token:${TOKEN}@github.com/team-latam/registro-respaldos.git" respaldos 2>/dev/null; then
+            echo "### ⛔ No se pudo abrir el repo team-latam/registro-respaldos" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "¿Existe, es privado, y el token RESPALDOS_TOKEN tiene permiso de escritura (Contents: Read and write) sobre él? ¿Venció el token?" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+      - name: Copiar las tablas y los archivos
+        if: steps.revisar.outputs.hay == 'si'
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          DESTINO: ${{ github.workspace }}/respaldos
+        run: |
+          set -o pipefail
+          node supabase/respaldo/respaldar.mjs | tee -a "$GITHUB_STEP_SUMMARY"
+
+      # El volcado completo (estructura y datos), para restaurar la base de
+      # una vez. pg_dump tiene que ser de la misma versión que la base o
+      # más nuevo: se instala el 17 del repositorio oficial de PostgreSQL.
+      - name: Volcar la base
+        id: volcado
+        if: steps.revisar.outputs.hay == 'si'
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "- Base: falta el secreto SUPABASE_DB_URL; quedaron las tablas en JSON, sin el volcado." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          sudo apt-get install -y -qq postgresql-common >/dev/null
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y >/dev/null 2>&1
+          sudo apt-get install -y -qq postgresql-client-17 >/dev/null
+          PGDUMP=/usr/lib/postgresql/17/bin/pg_dump
+          mkdir -p respaldos/base
+          set -o pipefail
+          volcar(){ "$PGDUMP" "$1" --no-owner --no-privileges --schema=public --quote-all-identifiers 2>/tmp/pgdump.err | gzip -n > respaldos/base/registro.sql.gz.nuevo && [ -s respaldos/base/registro.sql.gz.nuevo ]; }
+          # La dirección del pooler en modo transacción (puerto 6543) no le
+          # sirve a pg_dump: si falla con esa, se prueba la de sesión (5432).
+          if volcar "$SUPABASE_DB_URL"; then ok=1
+          elif echo "$SUPABASE_DB_URL" | grep -q ':6543/' && volcar "${SUPABASE_DB_URL/:6543\//:5432/}"; then ok=1
+          else ok=0; fi
+          if [ "$ok" = 1 ]; then
+            mv respaldos/base/registro.sql.gz.nuevo respaldos/base/registro.sql.gz
+            echo "- Base: volcada ($(du -h respaldos/base/registro.sql.gz | cut -f1) comprimida)." >> "$GITHUB_STEP_SUMMARY"
+          else
+            rm -f respaldos/base/registro.sql.gz.nuevo
+            # El error de pg_dump puede nombrar el servidor: solo la primera
+            # palabra clave, sin la dirección.
+            echo "- ⚠️ Base: pg_dump no pudo volcarla ($(grep -oE 'FATAL|ERROR|server version mismatch|timeout|could not connect' /tmp/pgdump.err | head -1)). Las tablas en JSON sí quedaron." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+      # Se guarda lo que haya quedado aunque algún paso anterior haya
+      # fallado a medias: una copia parcial es mejor que ninguna. La
+      # corrida igual queda en rojo para que alguien mire.
+      - name: Guardar la copia
+        if: always() && steps.revisar.outputs.hay == 'si' && hashFiles('respaldos/LEEME.md') != ''
+        run: |
+          cd respaldos
+          git config user.name "Copia de seguridad"
+          git config user.email "copias@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "- Nada cambió desde la copia anterior." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          git commit --quiet -m "Copia del $(date -u +%Y-%m-%d)"
+          git push --quiet origin HEAD 2>/dev/null || { echo "### ⛔ No se pudo guardar la copia en el repo (¿el token puede escribir?)" >> "$GITHUB_STEP_SUMMARY"; exit 1; }
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "✅ Guardada en team-latam/registro-respaldos." >> "$GITHUB_STEP_SUMMARY"

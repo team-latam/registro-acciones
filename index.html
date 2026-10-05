@@ -2454,6 +2454,10 @@
     .rep-bloque-nota{ font-size:9.5px; }
   }
 
+  .copia-botones{ display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+  .copia-estado{ margin-top:8px; font-size:12.5px; font-weight:600; color:var(--text-muted); min-height:1em; }
+  .copia-estado.error{ color:var(--danger); }
+  .copia-card .setting-row{ align-items:flex-start; }
   .country-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:12px; }
   .country-card{
     background:var(--card); border-radius:var(--radius-md); padding:14px; box-shadow:var(--shadow); cursor:pointer;
@@ -7523,6 +7527,27 @@ function crearSupabaseStore(sb, opciones = {}){
       },
     },
 
+    // ---- La copia de seguridad (Administración › Copia de seguridad) ----
+    // Cada tabla entera, tal como está en la base (sin traducir a lo que
+    // usa la app): es lo que sirve para restaurar. La que no se pueda leer
+    // (los permisos de la base mandan) va en `fallas`, no corta el resto.
+    copia: {
+      async tablas(){
+        const tablas = {}, fallas = [];
+        for(const [tabla, clave] of Object.entries(TABLAS_DE_LA_COPIA)){
+          const { data, error } = await traerTodas(contar =>
+            sb.from(tabla).select("*", contar ? { count: "exact" } : undefined).order(clave, { ascending: true }));
+          if(error) fallas.push(tabla); else tablas[tabla] = data || [];
+        }
+        return { tablas, fallas };
+      },
+      async archivo(ruta){
+        const { data, error } = await sb.storage.from("adjuntos").download(ruta);
+        if(error) throw error;
+        return data;
+      },
+    },
+
     // ---- Lo que llegó de Google Calendar (Administración › Revisar) ----
     // Ver supabase/12-revisar-calendar.sql: las sugerencias las lee solo
     // un admin, y clasificar y sacar van por funciones de la base que
@@ -10532,6 +10557,7 @@ function adminMenuItems(){
     ] },
     { grupo:t("Sistema","System","Sistema","מערכת"), items:[
       { key:"calendar", view:"preferencias", sub:"calendar", label:"Google Calendar" },
+      { key:"copia", view:"preferencias", sub:"copia", label:t("Copia de seguridad","Backup","Cópia de segurança","גיבוי") },
     ] },
   ];
 }
@@ -10575,6 +10601,7 @@ function adminSeccionTextos(key){
       ayuda: t("Sumarlas acá hace que aparezcan como sugerencia del buscador de lugar para todo el mundo, en vez de que cada uno la escriba de cero cada vez.","Adding them here makes them show up as a place-search suggestion for everyone, instead of each person typing it from scratch every time.","Somá-las aqui faz com que apareçam como sugestão do buscador de lugar para todo mundo, em vez de cada um escrever do zero toda vez.","הוספתן כאן גורמת להן להופיע כהצעה בחיפוש המקום לכולם, במקום שכל אחד יקליד אותן מחדש בכל פעם."),
     },
     adjuntos: { lead: t("Cuántos archivos, y de qué tamaño, se pueden adjuntar a un posteo (evento, rutina o respuesta).","How many files, and how big, can be attached to a post (event, routine or reply).","Quantos arquivos, e de que tamanho, podem ser anexados a uma postagem (evento, rotina ou resposta).","כמה קבצים, ובאיזה גודל, אפשר לצרף לפוסט (אירוע, שגרה או תגובה).") },
+    copia: { lead: t("Todo lo cargado, guardado fuera de la app: una copia automática cada domingo y, cuando quieras, una para bajar a tu computadora.","Everything logged, kept outside the app: an automatic copy every Sunday and, whenever you want, one to download to your computer.","Tudo o que foi carregado, guardado fora do app: uma cópia automática todo domingo e, quando quiser, uma para baixar no seu computador.","כל מה שנרשם, שמור מחוץ לאפליקציה: עותק אוטומטי בכל יום ראשון, ומתי שתרצו, עותק להורדה למחשב.") },
     calendar: { lead: t("El Google Calendar al que van los eventos (la Rutina no). Si lo cambiás, los ya cargados se quedan donde están.","The Google Calendar where events go (Routines don't). If you change it, the ones already created stay where they are.","O Google Calendar para onde vão os eventos (a Rotina não). Se trocar, os já criados ficam onde estão.","ה-Google Calendar שאליו נשלחים האירועים (שגרה לא). אם משנים אותו, הקיימים נשארים במקומם.") },
   };
   return T[key] || {};
@@ -11863,6 +11890,150 @@ function renderAdjuntosSection(){
       </div>`;
 }
 
+/* ----- Copia de seguridad -----
+   Desde que se apagó Firebase no quedaba ninguna (REVISION.md, punto 13).
+   Hay dos: la automática de cada domingo (supabase/respaldo/, a un repo
+   privado de GitHub) y esta, que baja una en el momento a la computadora
+   de quien la pide: solo los datos (un .json) o los datos con las fotos y
+   adjuntos (un .zip). Las mismas tablas que la automática (la prueba de
+   supabase/respaldo/ lo controla). Lee con los permisos de quien la pide:
+   de user_prefs llegan solo las propias; la automática las trae todas. */
+const TABLAS_DE_LA_COPIA = {
+  posts: "id", replies: "id", members: "email", former_members: "email",
+  access_requests: "email", user_prefs: "email", app_config: "key", audit_log: "id",
+  calendar_sugerencias: "evento", calendar_sacados: "evento",
+};
+const JSZIP_CDN = "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js";
+let copiaEstado = { corriendo: false, texto: "", error: "", listo: "" };
+function renderCopiaSection(){
+  const c = copiaEstado;
+  return `
+      <div class="settings-card copia-card">
+        <div class="setting-row">
+          <span class="setting-icon">🗓️</span>
+          <div class="setting-text">
+            <div class="setting-label">${t("Copia automática, cada domingo","Automatic copy, every Sunday","Cópia automática, todo domingo","עותק אוטומטי, בכל יום ראשון")}</div>
+            <div class="setting-sub">${t(
+              "Todo (los datos, las fotos y los adjuntos) se guarda solo en un lugar privado de GitHub, y se van juntando las de cada semana. Lo que se borra de la app queda en la copia.",
+              "Everything (data, photos and attachments) is saved automatically to a private place on GitHub, and every week's copy is kept. What's deleted from the app stays in the copy.",
+              "Tudo (os dados, as fotos e os anexos) é guardado sozinho num lugar privado do GitHub, e as de cada semana vão se acumulando. O que se apaga do app fica na cópia.",
+              "הכול (הנתונים, התמונות והקבצים) נשמר לבד במקום פרטי ב-GitHub, והעותקים של כל שבוע נשמרים. מה שנמחק מהאפליקציה נשאר בעותק.")}</div>
+          </div>
+        </div>
+        <div class="setting-row copia-bajar">
+          <span class="setting-icon">⬇️</span>
+          <div class="setting-text">
+            <div class="setting-label">${t("Bajar una copia ahora","Download a copy now","Baixar uma cópia agora","הורדת עותק עכשיו")}</div>
+            <div class="setting-sub">${t(
+              "A tu computadora. «Solo los datos» es un archivo chico, al instante. «Con fotos y archivos» puede tardar unos minutos y pesar bastante.",
+              "To your computer. “Data only” is a small file, instantly. “With photos and files” can take a few minutes and be quite large.",
+              "Para o seu computador. «Só os dados» é um arquivo pequeno, na hora. «Com fotos e arquivos» pode demorar alguns minutos e ficar pesado.",
+              "למחשב שלך. «רק הנתונים» הוא קובץ קטן, מיד. «עם תמונות וקבצים» יכול לקחת כמה דקות ולהיות כבד.")}</div>
+            <div class="copia-botones">
+              <button type="button" class="btn-secondary" data-action="copia-datos" ${c.corriendo ? "disabled" : ""}>📄 ${t("Solo los datos","Data only","Só os dados","רק הנתונים")}</button>
+              <button type="button" class="btn-primary" data-action="copia-completa" ${c.corriendo ? "disabled" : ""}>🗂️ ${t("Con fotos y archivos","With photos and files","Com fotos e arquivos","עם תמונות וקבצים")}</button>
+            </div>
+            <div class="copia-estado${c.error ? " error" : ""}" role="status" aria-live="polite">${esc(c.error || c.texto || c.listo || "")}</div>
+          </div>
+        </div>
+      </div>`;
+}
+// La sección se repinta sola en cada paso, sin un render entero (que
+// reconstruiría toda la vista por cada archivo bajado).
+function copiaAvisar(cambios){
+  Object.assign(copiaEstado, cambios);
+  const el = document.querySelector(".copia-estado");
+  if(el){ el.textContent = copiaEstado.error || copiaEstado.texto || copiaEstado.listo || ""; el.classList.toggle("error", !!copiaEstado.error); }
+}
+function descargarBlob(nombre, blob){
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = nombre;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+}
+function cargarScript(src){
+  return new Promise((ok, mal) => {
+    const s = document.createElement("script");
+    s.src = src; s.async = true;
+    s.onload = () => ok(); s.onerror = () => mal(new Error("no cargó " + src));
+    document.head.appendChild(s);
+  });
+}
+// Las rutas de todas las fotos y adjuntos que nombran posteos y
+// comentarios (las miniaturas no: se rehacen solas).
+function rutasDeLaCopia(tablas){
+  const rutas = new Set();
+  [...(tablas.posts || []), ...(tablas.replies || [])].forEach(f => {
+    (Array.isArray(f.images) ? f.images : []).forEach(r => typeof r === "string" && r && rutas.add(r));
+    (Array.isArray(f.files) ? f.files : []).forEach(a => a && typeof a.path === "string" && a.path && rutas.add(a.path));
+  });
+  return [...rutas].sort();
+}
+async function armarDatosDeLaCopia(){
+  copiaAvisar({ texto: t("Leyendo los datos…","Reading the data…","Lendo os dados…","...קורא את הנתונים"), error: "", listo: "" });
+  const { tablas, fallas } = await store.copia.tablas();
+  const datos = { app: "Registro de Acciones", creada: new Date().toISOString(), por: (state.auth && state.auth.user && state.auth.user.email) || "", tablas };
+  return { datos, fallas };
+}
+const nombreDeLaCopia = ext => `registro-copia-${todayISO()}.${ext}`;
+const avisoFallas = fallas => fallas.length ? " " + t("No se pudo leer: {x}.","Couldn't read: {x}.","Não foi possível ler: {x}.","לא ניתן היה לקרוא: {x}.",{x:fallas.join(", ")}) : "";
+async function bajarCopiaDatos(){
+  if(copiaEstado.corriendo) return;
+  copiaEstado.corriendo = true; render();
+  try{
+    const { datos, fallas } = await armarDatosDeLaCopia();
+    descargarBlob(nombreDeLaCopia("json"), new Blob([JSON.stringify(datos, null, 1)], { type: "application/json" }));
+    const filas = Object.values(datos.tablas).reduce((n, l) => n + l.length, 0);
+    copiaAvisar({ texto: "", listo: "✅ " + t("Listo: {n} filas en {a}.","Done: {n} rows in {a}.","Pronto: {n} linhas em {a}.","מוכן: {n} שורות ב-{a}.",{n:filas, a:nombreDeLaCopia("json")}) + avisoFallas(fallas) });
+  }catch(err){
+    console.error(err);
+    copiaAvisar({ texto: "", error: t("No se pudo armar la copia: {m}","Couldn't build the copy: {m}","Não foi possível montar a cópia: {m}","לא ניתן היה להכין את העותק: {m}",{m:err.message || String(err)}) });
+  }finally{
+    copiaEstado.corriendo = false;
+    document.querySelectorAll('[data-action="copia-datos"], [data-action="copia-completa"]').forEach(b => b.disabled = false);
+  }
+}
+async function bajarCopiaCompleta(){
+  if(copiaEstado.corriendo) return;
+  copiaEstado.corriendo = true; render();
+  try{
+    if(!window.JSZip){
+      copiaAvisar({ texto: t("Preparando…","Getting ready…","Preparando…","...מתכונן"), error: "", listo: "" });
+      await cargarScript(JSZIP_CDN);
+      if(!window.JSZip) throw new Error(t("no cargó la herramienta para armar el .zip","the .zip tool didn't load","a ferramenta do .zip não carregou","הכלי ליצירת ה-zip לא נטען"));
+    }
+    const { datos, fallas } = await armarDatosDeLaCopia();
+    const zip = new window.JSZip();
+    zip.file("datos.json", JSON.stringify(datos, null, 1));
+    const rutas = rutasDeLaCopia(datos.tablas);
+    let hechos = 0, sinBajar = 0;
+    const paso = () => copiaAvisar({ texto: t("Bajando fotos y archivos: {a} de {b}…","Downloading photos and files: {a} of {b}…","Baixando fotos e arquivos: {a} de {b}…","...מוריד תמונות וקבצים: {a} מתוך {b}",{a:hechos, b:rutas.length}) });
+    paso();
+    // De a cuatro a la vez: más rápido que uno por uno, sin ahogar la conexión.
+    const cola = [...rutas];
+    await Promise.all(Array.from({ length: Math.min(4, cola.length) }, async () => {
+      while(cola.length){
+        const ruta = cola.shift();
+        try{ zip.file("archivos/" + ruta, await store.copia.archivo(ruta)); }
+        catch(e){ sinBajar++; }
+        hechos++; paso();
+      }
+    }));
+    copiaAvisar({ texto: t("Armando el archivo…","Packing the file…","Montando o arquivo…","...אורז את הקובץ") });
+    const blob = await zip.generateAsync({ type: "blob" });
+    descargarBlob(nombreDeLaCopia("zip"), blob);
+    copiaAvisar({ texto: "", listo: "✅ " + t("Listo: {a}, con {n} fotos y archivos.","Done: {a}, with {n} photos and files.","Pronto: {a}, com {n} fotos e arquivos.","מוכן: {a}, עם {n} תמונות וקבצים.",{a:nombreDeLaCopia("zip"), n:rutas.length - sinBajar})
+      + (sinBajar ? " " + t("{n} no se pudieron bajar.","{n} couldn't be downloaded.","{n} não puderam ser baixados.","{n} לא ניתן היה להוריד.",{n:sinBajar}) : "") + avisoFallas(fallas) });
+  }catch(err){
+    console.error(err);
+    copiaAvisar({ texto: "", error: t("No se pudo armar la copia: {m}","Couldn't build the copy: {m}","Não foi possível montar a cópia: {m}","לא ניתן היה להכין את העותק: {m}",{m:err.message || String(err)}) });
+  }finally{
+    copiaEstado.corriendo = false;
+    document.querySelectorAll('[data-action="copia-datos"], [data-action="copia-completa"]').forEach(b => b.disabled = false);
+  }
+}
+
 /* ----- Preferencias: shell + sub-navegación ----- */
 function preferenciasSections(){
   return [
@@ -11871,6 +12042,7 @@ function preferenciasSections(){
     { key:"lugares", label:t("Lugares","Places","Lugares","מקומות") },
     { key:"calendar", label:"Calendar" },
     { key:"adjuntos", label:t("Adjuntos","Attachments","Anexos","קבצים מצורפים") },
+    { key:"copia", label:t("Copia de seguridad","Backup","Cópia de segurança","גיבוי") },
   ];
 }
 function renderPreferenciasView(){
@@ -11879,6 +12051,7 @@ function renderPreferenciasView(){
     : sec==="lugares" ? renderLugaresSection()
     : sec==="calendar" ? renderCalendarSection()
     : sec==="adjuntos" ? renderAdjuntosSection()
+    : sec==="copia" ? renderCopiaSection()
     : renderZonasSection();
   // Sin la fila de chips de antes: el menú de Administración (ver
   // renderAdminShell) ya dice en qué sección se está.
@@ -18519,6 +18692,12 @@ document.addEventListener("click", async e=>{
   },
     "cal-subview": async (el, e, action, postId) => {
     state.calendarioSubview = el.dataset.key; calViewMenuOpen = false; render();
+  },
+    "copia-datos": async (el, e, action, postId) => {
+    bajarCopiaDatos();
+  },
+    "copia-completa": async (el, e, action, postId) => {
+    bajarCopiaCompleta();
   },
     "cal-ir-abrir": async (el, e, action, postId) => {
     if(calIrAbierto) return cerrarCalIr(true);
