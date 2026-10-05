@@ -1849,6 +1849,17 @@
     position:absolute; top:14px; inset-inline-end:16px; background:none; border:none; font-size:20px; cursor:pointer; color:var(--text-muted);
   }
   .modal-wrap{ position:relative; }
+  /* «‹» para volver un paso (al perfil se llega desde la lista de Me gusta
+     o desde la tarjeta del Calendario): el gemelo de la ✕, en la otra
+     esquina. Solo está cuando hay adónde volver, y entonces el contenido
+     baja un poco para que la flecha no quede encima de la foto. */
+  .modal .volver{
+    position:absolute; top:12px; inset-inline-start:14px; background:none; border:none; padding:0 4px;
+    font-size:24px; line-height:22px; cursor:pointer; color:var(--text-muted);
+  }
+  .modal .volver:hover{ color:var(--ink); }
+  .modal .volver[hidden]{ display:none; }
+  .modal.con-volver{ padding-top:40px; }
   #postForm{ overflow-y:auto; flex:1; min-height:0; padding-inline-end:4px; margin-inline-end:-4px; }
   /* Cancelar / Publicar quedan pegados al borde de abajo mientras el resto
      del formulario scrollea: antes viajaban con él, y al editar un evento
@@ -3211,6 +3222,8 @@
     .reply-actions button{ padding:7px 0; min-height:32px; }
     .translate-toggle{ padding:6px 0; min-height:30px; }
     .modal .close{ width:40px; height:40px; top:8px; inset-inline-end:8px; display:flex; align-items:center; justify-content:center; }
+    .modal .volver:not([hidden]){ width:40px; height:40px; top:8px; inset-inline-start:8px; display:flex; align-items:center; justify-content:center; }
+    .modal.con-volver{ padding-top:48px; }
     .breadcrumb a{ display:inline-block; padding:7px 0; }
     .year-month-name{ padding:7px 0 8px; }
     .um-nickname-edit{ padding:8px; font-size:14px; }
@@ -3447,6 +3460,7 @@
 
 <div class="modal-overlay" id="userProfileOverlay" hidden>
   <div class="modal modal-wrap" style="max-width:380px;" role="dialog" aria-modal="true" aria-labelledby="userProfileNameLabel">
+    <button class="volver" id="userProfileBack" aria-label="Volver" hidden>‹</button>
     <button class="close" id="userProfileClose" aria-label="Cerrar">✕</button>
     <div id="userProfileBody"></div>
   </div>
@@ -17575,6 +17589,8 @@ const userProfileOverlay = document.getElementById("userProfileOverlay");
 const userProfileBody = document.getElementById("userProfileBody");
 let userProfileEmail = null;
 let userProfileReturnFocus = null;
+// Adónde lleva el «‹» del perfil (null: no hay adónde, y no se muestra).
+let userProfileVolver = null;
 function renderUserProfile(){
   const entry = memberByEmail(userProfileEmail);
   if(!entry){ closeUserProfile(); return; } // ya no está aprobado / se fue mientras estaba abierto
@@ -17632,10 +17648,18 @@ function renderUserProfile(){
     </div>
   `;
 }
-function openUserProfile(email){
+function openUserProfile(email, volver){
   const entry = memberByEmail(email);
   if(!entry) return; // ni activo ni ex integrante: no hay a quién mostrar
   userProfileEmail = email;
+  // Encima de la tarjeta del Calendario, volver es cerrar el perfil: la
+  // tarjeta sigue abierta abajo.
+  userProfileVolver = volver || (!eventCardOverlay.hidden ? ()=>{} : null);
+  const back = document.getElementById("userProfileBack");
+  back.hidden = !userProfileVolver;
+  back.textContent = isRTL() ? "›" : "‹";
+  back.setAttribute("aria-label", t("Volver","Back","Voltar","חזרה"));
+  userProfileOverlay.querySelector(".modal").classList.toggle("con-volver", !!userProfileVolver);
   renderUserProfile();
   userProfileReturnFocus = document.activeElement;
   userProfileOverlay.hidden = false;
@@ -17646,8 +17670,21 @@ function closeUserProfile(){
   userProfileEmail = null;
   if(userProfileReturnFocus && typeof userProfileReturnFocus.focus === "function") userProfileReturnFocus.focus();
   userProfileReturnFocus = null;
+  userProfileVolver = null;
 }
-document.getElementById("userProfileClose").addEventListener("click", closeUserProfile);
+// Un paso atrás: cierra el perfil y vuelve a lo de antes.
+function volverDelPerfil(){
+  const ir = userProfileVolver;
+  closeUserProfile();
+  if(ir) ir();
+}
+document.getElementById("userProfileBack").addEventListener("click", volverDelPerfil);
+// La ✕ cierra todo, también la tarjeta del Calendario si estaba abajo.
+document.getElementById("userProfileClose").addEventListener("click", ()=>{
+  const sobreTarjeta = !!userProfileVolver && !eventCardOverlay.hidden;
+  closeUserProfile();
+  if(sobreTarjeta) closeEventCard();
+});
 
 /* ---- Quiénes le dieron Me gusta (el número al lado de «Me gusta») ----
    Se guarda solo de qué posteo o comentario es: la lista sale del estado
@@ -17905,7 +17942,7 @@ document.addEventListener("keydown", e=>{
   if(document.querySelector(".recur-field.open")){ closeRecurPop(); return; }
   if(lightbox.classList.contains("show")){ closeLightbox(); return; }
   if(!filePreviewOverlay.hidden){ closeFilePreview(); return; }
-  if(!userProfileOverlay.hidden){ closeUserProfile(); return; }
+  if(!userProfileOverlay.hidden){ userProfileVolver ? volverDelPerfil() : closeUserProfile(); return; }
   if(!likesOverlay.hidden){ closeLikes(); return; }
   if(!eventCardOverlay.hidden){ closeEventCard(); return; }
   if(!tourLayer.hidden){ closeTour(); return; }
@@ -19009,9 +19046,9 @@ document.addEventListener("click", async e=>{
   },
     "ver-me-gusta": async (el, e, action, postId) => { openLikes(postId, el.dataset.replyId); },
     "like-ver-perfil": async (el) => {
-    const email = el.dataset.email;
+    const email = el.dataset.email, de = likesDe;
     closeLikes();
-    openUserProfile(email);
+    openUserProfile(email, () => openLikes(de.postId, de.replyId));
   },
     "toggle-like": async (el, e, action, postId) => {
     el.dataset.replyId ? toggleReplyLike(postId, el.dataset.replyId) : togglePostLike(postId);
