@@ -59,6 +59,9 @@ eq("ni uno desconocido", seVe("","x.rar"), false);
 eq("claseDe() lee el kind ya guardado en el posteo", api.claseDe({ kind:"planilla" }).clase, "planilla");
 eq("y si el posteo es viejo y no tiene kind, no se rompe", api.claseDe({}).clase, "otro");
 eq("ni si viene nulo", api.claseDe(null).clase, "otro");
+eq("un .pdf que quedó anotado como \"otro\" se reconoce por el nombre", api.claseDe({ name:"Migun Project.pdf", kind:"otro" }).clase, "pdf");
+eq("y uno viejo sin kind pero con su tipo, también", api.claseDe({ name:"informe", mime:"application/pdf" }).clase, "pdf");
+eq("un .pdf sin kind se puede ver", api.claseDe({ name:"a.PDF" }).seVe, true);
 
 /* ---------- Lo que acepta el selector del sistema ---------- */
 eq("ofrece los tipos de oficina", [DOCX, XLSX, PPTX].every(m=>api.ACEPTA_ARCHIVOS.includes(m)), true);

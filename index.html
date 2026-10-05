@@ -4235,7 +4235,15 @@ function claseDeArchivo(mime, nombre){
   const ext = extensionDe(nombre);
   return TIPOS_DE_ARCHIVO.find(x=>x.exts.includes(ext)) || CLASE_POR_DEFECTO;
 }
-const claseDe = f => (f && TIPOS_DE_ARCHIVO.find(x=>x.clase===f.kind)) || CLASE_POR_DEFECTO;
+// La de un archivo ya guardado: la que quedó anotada al subirlo y, si no
+// quedó ninguna que sirva (adjuntos viejos o importados, o "otro" porque
+// ese día el tipo no se reconoció), se vuelve a deducir del tipo y del
+// nombre. Sin esto, un .pdf anotado como "otro" no se podía ver.
+const claseDe = f => {
+  if(!f) return CLASE_POR_DEFECTO;
+  const anotada = TIPOS_DE_ARCHIVO.find(x=>x.clase===f.kind);
+  return anotada || claseDeArchivo(f.mime || f.type, f.name);
+};
 // Lo que se le pasa al selector de archivos del sistema. Van los tipos Y
 // las extensiones, por lo mismo de arriba: con solo los tipos, en algunos
 // sistemas un .md o un .csv aparecen en gris y no se pueden elegir.
