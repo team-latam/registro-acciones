@@ -1808,8 +1808,7 @@
     font-size:14px; background:var(--surface-soft);
   }
   .allday-toggle{ display:flex; align-items:center; gap:6px; font-size:13px; font-weight:600; color:var(--text); margin-bottom:8px; cursor:pointer; }
-  .allday-toggle.sin-calendar{ margin:12px 0 0; }
-  .sin-calendar-hint{ margin:2px 0 4px 26px; }
+  .allday-toggle.sin-calendar{ margin:12px 0 4px; }
   .dt-row{ display:flex; align-items:center; gap:8px; margin-bottom:8px; }
   .dt-row:last-child{ margin-bottom:0; }
   /* Mismo pill que .date-trigger justo arriba en el mismo .field-icon-body
@@ -16764,8 +16763,7 @@ function renderComposer(){
         <button type="button" class="btn-text-add" data-action="toggle-post-attach">📎 ${t("Agregar imagen, documento, audio o link","Add image, document, audio or link","Adicionar imagem, documento, áudio ou link","הוספת תמונה, מסמך, אודיו או קישור")}</button>
       `}
     </div>
-    ${puedeQuedarSinCalendar(d) ? `<label class="allday-toggle sin-calendar"><input type="checkbox" id="cSinCalendar" ${d.sinCalendar?"checked":""}> ${t("No pasarlo a Google Calendar","Don't add it to Google Calendar","Não passar para o Google Calendar","לא להוסיף ל-Google Calendar")}</label>
-      <div class="field-hint sin-calendar-hint">${t("Queda solo en el Registro: no aparece en el Calendar compartido ni le llega aviso a nadie. Sirve para cargar algo que ya pasó.","It stays only in the Registro: it doesn't show up in the shared Calendar and nobody gets notified. Useful for adding something that already happened.","Fica só no Registro: não aparece no Calendar compartilhado nem chega aviso a ninguém. Serve para cadastrar algo que já aconteceu.","נשאר רק ביומן הפעילויות: לא מופיע ביומן המשותף ואף אחד לא מקבל התראה. שימושי להוספת משהו שכבר קרה.")}</div>` : ""}
+    ${puedeQuedarSinCalendar(d) ? `<label class="allday-toggle sin-calendar"><input type="checkbox" id="cSinCalendar" ${d.sinCalendar?"checked":""}> ${t("No pasarlo a Google Calendar","Don't add it to Google Calendar","Não passar para o Google Calendar","לא להוסיף ל-Google Calendar")}</label>` : ""}
     ${d.error ? `<div class="form-error">${esc(d.error)}</div>` : ""}
     <div class="modal-actions">
       <button type="button" class="btn-secondary" data-action="cancel-composer">${t("Cancelar","Cancel","Cancelar","ביטול")}</button>
