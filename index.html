@@ -1377,6 +1377,40 @@
   .post-actions button:hover{ color:var(--celeste-dark); }
   .post-actions button.danger, .reply-actions button.danger{ color:var(--danger); }
   .post-actions button.liked{ color:var(--celeste-dark); }
+  /* "Me gusta" + "(2)": dos botones que se leen como uno. El número abre
+     la lista; al pasar el mouse, la burbuja con los primeros cuatro. */
+  .gusta{ display:inline-flex; align-items:center; gap:4px; }
+  .post-actions .gusta .gustan, .reply-actions .gusta .gustan{ position:relative; text-decoration:underline dotted transparent; text-underline-offset:3px; }
+  .post-actions .gusta .gustan:hover, .reply-actions .gusta .gustan:hover{ text-decoration-color:currentColor; color:var(--celeste-dark); }
+  .post-likes-ro .gustan{ background:none; border:none; padding:0; font:inherit; color:inherit; cursor:pointer; position:relative; }
+  .gustan-tip{
+    display:none; position:absolute; bottom:calc(100% + 8px); inset-inline-start:50%; transform:translateX(-50%);
+    flex-direction:column; align-items:flex-start; gap:2px; min-width:150px; max-width:240px;
+    background:var(--ink, #12302f); color:#fff; border-radius:10px; padding:8px 12px;
+    font-size:12.5px; font-weight:600; line-height:1.4; text-align:start; white-space:nowrap;
+    box-shadow:0 8px 24px rgba(0,0,0,.22); z-index:30; pointer-events:none;
+  }
+  [dir="rtl"] .gustan-tip{ transform:translateX(50%); }
+  .gustan-tip > span{ overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+  .gustan-tip::after{ content:""; position:absolute; top:100%; inset-inline-start:50%; margin-inline-start:-6px; border:6px solid transparent; border-top-color:var(--ink, #12302f); }
+  .gustan-tip .gt-mas{ opacity:.75; font-weight:500; }
+  @media (hover:hover){
+    .gustan:hover .gustan-tip, .gustan:focus-visible .gustan-tip{ display:flex; }
+  }
+  /* La lista de quiénes (como la de Instagram, pero con la cara de la app). */
+  .lk-head{ display:flex; align-items:baseline; gap:8px; margin:0 0 10px; padding-inline-end:28px; }
+  .lk-head h2{ margin:0; font-size:17px; }
+  .lk-head .lk-n{ color:var(--text-muted); font-weight:700; font-size:13px; }
+  .lk-list{ overflow-y:auto; min-height:0; margin:0 -8px; }
+  .lk-row{ display:flex; align-items:center; gap:12px; width:100%; padding:9px 8px; border:none; background:none; border-radius:12px; text-align:start; font:inherit; color:inherit; }
+  button.lk-row{ cursor:pointer; }
+  button.lk-row:hover, button.lk-row:focus-visible{ background:var(--surface-soft); }
+  .lk-row .lp-av{ flex:none; border-radius:50%; object-fit:cover; display:flex; align-items:center; justify-content:center; font-weight:800; }
+  .lk-txt{ flex:1; min-width:0; display:flex; flex-direction:column; }
+  .lk-txt b{ font-size:14px; color:var(--ink-strong, var(--ink)); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .lk-txt small{ font-size:12px; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .lk-ir{ flex:none; color:var(--text-muted); font-size:13px; font-weight:700; }
+  .lk-yo{ flex:none; font-size:11px; font-weight:700; color:var(--celeste-dark); background:var(--celeste-soft); border-radius:999px; padding:2px 8px; }
   /* El menú ⋯ de la tarjeta: Editar, Repetir, Convertir en proyecto,
      Cancelar y Borrar viven acá adentro. Antes eran hasta siete botones
      en una fila (tres renglones en el celular) con Borrar al lado de Me
@@ -3399,6 +3433,13 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="likesOverlay" hidden>
+  <div class="modal modal-wrap" style="max-width:400px;" role="dialog" aria-modal="true" aria-labelledby="likesTitle">
+    <button class="close" id="likesClose" aria-label="Cerrar">✕</button>
+    <div id="likesBody" style="display:flex;flex-direction:column;min-height:0;"></div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="eventCardOverlay" hidden>
   <div class="modal event-card" role="dialog" aria-modal="true" aria-labelledby="eventCardTitle">
     <button class="close" id="eventCardClose" aria-label="Cerrar">✕</button>
@@ -4835,11 +4876,29 @@ function authorLabelHtml(email, fallbackName){
 // el nombre de cada uno que resuelva a una cuenta de la app (por email)
 // queda clickeable — los invitados sumados a mano (que no son cuenta de
 // la app) se quedan como texto, igual que antes.
-// Para el "Me gusta (2)": a quiénes, al pasar por arriba.
-function quienesGustaTitle(likedBy){
-  if(!(likedBy||[]).length) return "";
-  const nombres = likedBy.map(email=>{ const m = memberByEmail(email); return m ? (m.name || "@" + m.nickname) : email; });
-  return ` title="${esc(t("Le gusta a: {n}","Liked by: {n}","Curtido por: {n}","אהבו: {n}",{ n: nombres.join(", ") }))}"`;
+// "Me gusta": quién es cada uno. Con la cuenta, su nombre y su foto; si
+// no se la encuentra (alguien que ya no está), el email a secas.
+function personaQueGusta(email){
+  const e = String(email||"").toLowerCase();
+  const m = memberByEmail(email)
+    || state.roster.find(u=>String(u.email||"").toLowerCase()===e)
+    || state.formerMembers.find(u=>String(u.email||"").toLowerCase()===e);
+  if(m) return { email: m.email, name: m.name || ("@" + m.nickname), nickname: m.nickname || "", photoURL: m.photoURL || "", cuenta: !!memberByEmail(m.email) };
+  const yo = state.auth.user;
+  if(yo && String(yo.email||"").toLowerCase() === e) return { email, name: yo.displayName || email, nickname:"", photoURL: yo.photoURL || "", cuenta:false };
+  return { email, name: email, nickname:"", photoURL:"", cuenta:false };
+}
+// El "Me gusta" se parte en dos: el pulgar (y la palabra) da o saca el
+// me gusta; el número abre la lista de quiénes, sin darlo. Al pasar el
+// mouse por el número, los primeros cuatro, uno por renglón.
+const GUSTAN_EN_LA_BURBUJA = 4;
+function gustanHtml(likedBy, postId, replyId){
+  const n = (likedBy||[]).length;
+  if(!n) return "";
+  const primeros = likedBy.slice(0, GUSTAN_EN_LA_BURBUJA).map(e=>`<span>${esc(personaQueGusta(e).name)}</span>`).join("");
+  const mas = n > GUSTAN_EN_LA_BURBUJA ? `<span class="gt-mas">${esc(t("y {n} más…","and {n} more…","e mais {n}…","ועוד {n}…",{n: n - GUSTAN_EN_LA_BURBUJA}))}</span>` : "";
+  return `<button type="button" class="gustan" data-action="ver-me-gusta" data-post-id="${esc(postId)}"${replyId ? ` data-reply-id="${esc(replyId)}"` : ""}
+    aria-label="${esc(n === 1 ? t("A 1 persona le gusta: ver quién","1 person likes this: see who","1 pessoa curtiu: ver quem","אדם אחד אהב: מי") : t("A {n} personas les gusta: ver quiénes","{n} people like this: see who","{n} pessoas curtiram: ver quem","{n} אנשים אהבו: מי",{n}))}">(${n})<span class="gustan-tip" aria-hidden="true">${primeros}${mas}</span></button>`;
 }
 function participantsHtml(participants){
   return (participants||[]).map(p=>{
@@ -10189,6 +10248,7 @@ function doRender(){
   if(postModalOverlay && !postModalOverlay.hidden) renderComposer();
   if(eventCardOverlay && !eventCardOverlay.hidden) renderEventCard();
   if(userProfileOverlay && !userProfileOverlay.hidden) renderUserProfile();
+  if(likesOverlay && !likesOverlay.hidden) renderLikes();
 }
 
 function renderObserverBanner(){
@@ -13339,8 +13399,8 @@ function renderPostCard(post, replies){
       ${imagesHtml ? `<div class="post-images">${imagesHtml}</div>` : ""}
       ${renderPostedFiles(archivosSueltos(post.files, post.activityType), {postId: post.id, todos: post.files || [], puede: canEditPost(post)})}
       <div class="post-actions">
-        ${canWrite() ? `<button data-action="toggle-like" data-post-id="${post.id}" class="${postLiked?"liked":""}" aria-label="${esc(t("Me gusta","Like","Curtir","לייק"))}"${quienesGustaTitle(postLikedBy)}>${postLiked?"👍":"🤍"}<span class="pa-l"> ${t("Me gusta","Like","Curtir","לייק")}</span>${postLikedBy.length?` (${postLikedBy.length})`:""}</button>
-        <button data-action="toggle-reply" data-post-id="${post.id}" class="${replies.length && !threadOpen ? "pa-pc" : ""}" aria-label="${esc(t("Responder","Reply","Responder","תגובה"))}">💬<span class="pa-l"> ${t("Responder","Reply","Responder","תגובה")}</span></button>` : (postLikedBy.length ? `<span class="post-likes-ro"${quienesGustaTitle(postLikedBy)}>👍 ${postLikedBy.length}</span>` : "")}
+        ${canWrite() ? `<span class="gusta"><button data-action="toggle-like" data-post-id="${post.id}" class="${postLiked?"liked":""}" aria-label="${esc(t("Me gusta","Like","Curtir","לייק"))}" aria-pressed="${postLiked}">${postLiked?"👍":"🤍"}<span class="pa-l"> ${t("Me gusta","Like","Curtir","לייק")}</span></button>${gustanHtml(postLikedBy, post.id)}</span>
+        <button data-action="toggle-reply" data-post-id="${post.id}" class="${replies.length && !threadOpen ? "pa-pc" : ""}" aria-label="${esc(t("Responder","Reply","Responder","תגובה"))}">💬<span class="pa-l"> ${t("Responder","Reply","Responder","תגובה")}</span></button>` : (postLikedBy.length ? `<span class="gusta post-likes-ro">👍 ${gustanHtml(postLikedBy, post.id)}</span>` : "")}
         ${replies.length ? `<button data-action="toggle-thread" data-post-id="${post.id}" aria-label="${esc(commentsLabel)}" aria-expanded="${threadOpen}"><span class="pa-pc">${threadOpen ? "▲ " + t("Ocultar","Hide","Ocultar","הסתרה") : "▼ " + t("Ver","View","Ver","הצגה")} ${commentsLabel}</span><span class="pa-cel" aria-hidden="true">💬 ${replies.length}${threadOpen ? " ▲" : ""}</span></button>` : ""}
         ${post.isProject
           ? `<button data-action="toggle-project" data-post-id="${post.id}" class="${openProjects.has(post.id)?"active":""}">📋 ${openProjects.has(post.id) ? t("Ocultar proyecto","Hide project","Ocultar projeto","הסתרת פרויקט") : t("Ver proyecto","View project","Ver projeto","הצגת פרויקט")}${postMilestones(post).length ? ` (${postMilestones(post).filter(m=>m.done).length}/${postMilestones(post).length})` : ""}</button>`
@@ -13448,7 +13508,7 @@ function renderReply(r){
       ${renderPostedFiles(r.files, {postId: r.postId, replyId: r.id})}
       ${(!r.system && canWrite()) || isFixedAdmin() ? `
       <div class="reply-actions">
-        ${!r.system && canWrite() ? `<button data-action="toggle-like" data-post-id="${r.postId}" data-reply-id="${r.id}" class="${liked?"liked":""}"${quienesGustaTitle(likedBy)}>${liked?"👍":"🤍"} ${t("Me gusta","Like","Curtir","לייק")}${likedBy.length?` (${likedBy.length})`:""}</button>
+        ${!r.system && canWrite() ? `<span class="gusta"><button data-action="toggle-like" data-post-id="${r.postId}" data-reply-id="${r.id}" class="${liked?"liked":""}" aria-pressed="${liked}">${liked?"👍":"🤍"} ${t("Me gusta","Like","Curtir","לייק")}</button>${gustanHtml(likedBy, r.postId, r.id)}</span>
         <button data-action="toggle-nested-reply" data-reply-id="${r.id}">↩ ${t("Responder","Reply","Responder","תגובה")}</button>` : ""}
         ${isFixedAdmin() ? `<button class="danger" data-action="delete-reply" data-post-id="${r.postId}" data-reply-id="${r.id}">🗑️ ${t("Borrar","Delete","Apagar","מחיקה")}</button>` : ""}
       </div>` : ""}
@@ -17569,6 +17629,53 @@ function closeUserProfile(){
   userProfileReturnFocus = null;
 }
 document.getElementById("userProfileClose").addEventListener("click", closeUserProfile);
+
+/* ---- Quiénes le dieron Me gusta (el número al lado de «Me gusta») ----
+   Se guarda solo de qué posteo o comentario es: la lista sale del estado
+   vivo en cada dibujo, así un me gusta nuevo aparece sin cerrar. */
+const likesOverlay = document.getElementById("likesOverlay");
+let likesDe = null, likesReturnFocus = null;
+function likedByDe(de){
+  if(!de) return null;
+  if(de.replyId){
+    const r = (state.repliesByPost[de.postId] || []).find(x=>x.id===de.replyId);
+    return r ? (r.likedBy || []) : null;
+  }
+  const p = getPostById(de.postId);
+  return p ? (p.likedBy || []) : null;
+}
+function renderLikes(){
+  const lista = likedByDe(likesDe);
+  if(!lista || !lista.length){ closeLikes(); return; }
+  const yo = String(state.auth.user && state.auth.user.email || "").toLowerCase();
+  const filas = lista.map(email=>{
+    const u = personaQueGusta(email);
+    const sub = u.nickname ? "@" + u.nickname.toLowerCase() : (u.name !== u.email ? u.email : "");
+    const dentro = `${avatarDe(u, 40)}<span class="lk-txt"><b>${esc(u.name)}</b>${sub ? `<small>${esc(sub)}</small>` : ""}</span>${String(u.email).toLowerCase() === yo ? `<span class="lk-yo">${esc(t("Vos","You","Você","את/ה"))}</span>` : ""}`;
+    return u.cuenta
+      ? `<button type="button" class="lk-row" data-action="like-ver-perfil" data-email="${esc(u.email)}">${dentro}<span class="lk-ir" aria-hidden="true">${isRTL() ? "‹" : "›"}</span></button>`
+      : `<div class="lk-row">${dentro}</div>`;
+  }).join("");
+  document.getElementById("likesBody").innerHTML = `
+    <div class="lk-head"><h2 id="likesTitle">${t("Me gusta","Likes","Curtidas","לייקים")}</h2><span class="lk-n">${lista.length}</span></div>
+    <div class="lk-list">${filas}</div>`;
+}
+function openLikes(postId, replyId){
+  likesDe = { postId, replyId: replyId || null };
+  renderLikes();
+  if(!likesDe) return;
+  likesReturnFocus = document.activeElement;
+  likesOverlay.hidden = false;
+  enfocarComo(document.getElementById("likesClose"), likesReturnFocus);
+}
+function closeLikes(){
+  likesOverlay.hidden = true;
+  likesDe = null;
+  if(likesReturnFocus && typeof likesReturnFocus.focus === "function") likesReturnFocus.focus();
+  likesReturnFocus = null;
+}
+document.getElementById("likesClose").addEventListener("click", closeLikes);
+likesOverlay.addEventListener("click", e=>{ if(e.target === likesOverlay) closeLikes(); });
 userProfileOverlay.addEventListener("click", e=>{ if(e.target === userProfileOverlay) closeUserProfile(); });
 
 /* ======================================================================
@@ -17780,6 +17887,7 @@ document.addEventListener("keydown", e=>{
   if(lightbox.classList.contains("show")){ closeLightbox(); return; }
   if(!filePreviewOverlay.hidden){ closeFilePreview(); return; }
   if(!userProfileOverlay.hidden){ closeUserProfile(); return; }
+  if(!likesOverlay.hidden){ closeLikes(); return; }
   if(!eventCardOverlay.hidden){ closeEventCard(); return; }
   if(!tourLayer.hidden){ closeTour(); return; }
   if(!calendarInviteOverlay.hidden){ dismissCalendarInviteOverlay(); return; }
@@ -17864,6 +17972,7 @@ trapTabWithin(tourLayer);
 trapTabWithin(filePreviewOverlay);
 trapTabWithin(lightbox);
 trapTabWithin(userProfileOverlay);
+trapTabWithin(likesOverlay);
 trapTabWithin(confirmOverlay);
 trapTabWithin(eventCardOverlay);
 
@@ -18859,6 +18968,12 @@ document.addEventListener("click", async e=>{
   },
     "cancel-reply": async (el, e, action, postId) => {
     openReplyForms.delete(postId); render();
+  },
+    "ver-me-gusta": async (el, e, action, postId) => { openLikes(postId, el.dataset.replyId); },
+    "like-ver-perfil": async (el) => {
+    const email = el.dataset.email;
+    closeLikes();
+    openUserProfile(email);
   },
     "toggle-like": async (el, e, action, postId) => {
     el.dataset.replyId ? toggleReplyLike(postId, el.dataset.replyId) : togglePostLike(postId);

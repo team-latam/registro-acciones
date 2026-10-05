@@ -560,7 +560,7 @@ const hasta = async (p, fn, arg, ms = 5000) => {
     const conMeGusta = await hasta(p, () => ((window.__sb.tablas.posts.find(x => x.id === "p_reunion") || {}).liked_by || []).length === 1);
     eq("admin: el me gusta queda guardado", conMeGusta, true);
     eq("admin: y se ve en el botón", await hasta(p,
-       () => /\(1\)/.test((document.querySelector('button[data-action="toggle-like"][data-post-id="p_reunion"]:not([data-reply-id])') || {}).textContent || "")), true);
+       () => /\(1\)/.test((document.querySelector('.post[data-post-id="p_reunion"] .post-actions .gusta') || {}).textContent || "")), true);
   }
 
   // El menú ⋯ de la tarjeta: Editar, Repetir, Convertir en proyecto,
@@ -952,8 +952,27 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   await esperarTexto(p, "Rutina con un comentario suelto");
   await p.click('button[data-action="toggle-thread"][data-post-id="p_rutina"]');
   eq("hilo: el comentario cuyo padre se borró igual se ve", await esperarTexto(p, "Respuesta a uno que ya no está", 3000), true);
-  eq("me gusta: al pasar por arriba dice a quién le gusta",
-    await p.$eval('button[data-action="toggle-like"][data-post-id="p_rutina"]:not([data-reply-id])', e => e.title), "Le gusta a: Ana Pérez");
+  // El número al lado de «Me gusta» (5/10/2026): al pasar el mouse, los
+  // primeros cuatro, uno por renglón; al apretarlo, la lista entera, sin
+  // dar me gusta; y desde la lista, el perfil de cada uno.
+  const gustan = '.post[data-post-id="p_rutina"] .post-actions .gustan';
+  await p.hover(gustan);
+  eq("me gusta: al pasar por el número, una burbuja con quiénes",
+    await p.$eval(gustan + " .gustan-tip", e => getComputedStyle(e).display !== "none" ? [...e.children].map(c => c.textContent) : null), ["Ana Pérez"]);
+  await p.click(gustan);
+  eq("me gusta: apretar el número abre la lista", await hasta(p, () => !document.getElementById("likesOverlay").hidden), true);
+  eq("me gusta: con cada uno, su nombre y su @apodo",
+    await p.$$eval("#likesOverlay .lk-row", rs => rs.map(r => r.querySelector(".lk-txt").innerText.replace(/\s+/g, " ").trim())), ["Ana Pérez @ana"]);
+  eq("me gusta: y no da me gusta", ((await p.evaluate(() => window.__sb.tablas.posts.find(x => x.id === "p_rutina").liked_by))), ["ana@x.com"]);
+  await p.keyboard.press("Escape");
+  eq("me gusta: Escape la cierra y el foco vuelve al número",
+    await p.evaluate(s => document.getElementById("likesOverlay").hidden && document.activeElement === document.querySelector(s), gustan), true);
+  await p.click(gustan);
+  await p.click('#likesOverlay .lk-row[data-email="ana@x.com"]');
+  eq("me gusta: tocar a alguien abre su perfil", await hasta(p, () =>
+    document.getElementById("likesOverlay").hidden && !document.getElementById("userProfileOverlay").hidden &&
+    /Ana Pérez/.test(document.getElementById("userProfileBody").textContent)), true);
+  await p.keyboard.press("Escape");
   eq("hilo: sin un solo error", errores, []);
   await p.close();
 }
