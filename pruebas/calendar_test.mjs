@@ -216,6 +216,26 @@ eq("ninguna de las dos pasa por otro lado que no sea Google",
      [true, true, true, false]);
 }
 
+/* ---------- Invitados: solo quien tiene correo (5/10/2026) ---------- */
+{
+  const api = new Function(`
+    const t = (es, en, pt, he, v) => es.replace(/\\{(\\w+)\\}/g, (_, k) => (v || {})[k] ?? "");
+    const scopeLabel = sc => sc.country || "LatAm";
+    const prefs = () => ({});
+    ${grab("addDaysISO")}
+    ${grab("esCorreoValido")}
+    ${grab("calendarSummary")}
+    ${grab("participantsLabel")}
+    ${grab("buildCalendarEvent")}
+    return { buildCalendarEvent };`)();
+  const ev = api.buildCalendarEvent({ title:"Visita", activityType:"visita", startDate:"2026-05-10", endDate:"2026-05-10",
+    scopes:[{ type:"pais", country:"Chile" }], authorName:"Benny",
+    participants:[{ name:"Zeka", email:"" }, { name:"Ana", email:"ana@x.com" }, { name:"Sin dato" }] }, "p1");
+  eq("a Google van como invitados solo los que tienen correo (sin correo, Google rechazaba el evento entero)",
+     ev.attendees, [{ email:"ana@x.com", displayName:"Ana" }]);
+  eq("y los demás siguen nombrados en la descripción", /Participantes: Zeka, Ana, Sin dato/.test(ev.description), true);
+}
+
 /* ---------- Pasar al Calendar lo que solo está en el Registro (5/10/2026) ---------- */
 {
   const llamadas = { crear:[], guardar:[] };
