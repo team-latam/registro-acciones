@@ -29,7 +29,8 @@ const eq=(n,g,w)=>{ const a=JSON.stringify(g), x=JSON.stringify(w);
 
 const codigo = ["addDaysISO","isoDate","isoDow","addMonthsISO","RRULE_MAX_STEPS","RRULE_DOW","isISODate","parseRecurrence",
   "expandRecurrence","recurrenceSkipDates","recurrenceMoves","vecesEnVentana","fechasEnVentana",
-  "aniosConDatos","ventanaDelReporte","ventanaAnterior","armarReporte","actividadPorPais"].map(grab).join("\n");
+  "aniosConDatos","ventanaDe","ventanaDelReporte","ventanaAnterior","normalize","pasaFiltroDelReporte","armarReporte","actividadPorPais",
+  "ultimaActividadPorPais","haceCuanto","sugerenciasDelReporte"].map(grab).join("\n");
 
 // Los 43 países de verdad no hacen falta: alcanza con unos pocos, y así
 // la prueba dice qué espera sin depender de la tabla entera.
@@ -46,9 +47,14 @@ function armar(posts, hoy="2026-09-17"){
     const state = ctx.state;
     const COUNTRY_BY_NAME = ctx.paises;
     const todayISO = ()=> ctx.hoy;
+    const t = (es, en, pt, he, v) => { let x = String(es); for(const k in (v || {})) x = x.split("{" + k + "}").join(v[k]); return x; };
+    const countryLabel = n => n;
+    const ZONES = { sur:{ key:"sur", label:"Sur" }, central:{ key:"central", label:"Central" }, norte:{ key:"norte", label:"Norte" } };
+    const ACTIVITY_BY_KEY = { visita:{ label:"Visita" }, curso:{ label:"Curso" } };
+    const fmtISO = (iso, o) => new Date(iso + "T00:00:00Z").toLocaleDateString("es-AR", { ...o, timeZone:"UTC" });
     ${codigo}
     return { vecesEnVentana, fechasEnVentana, aniosConDatos, ventanaDelReporte,
-             ventanaAnterior, armarReporte, actividadPorPais, state };
+             ventanaAnterior, armarReporte, actividadPorPais, ultimaActividadPorPais, sugerenciasDelReporte, ventanaDe, state };
   `)({ state: { posts, reportes:{ anio:"", trimestre:0 } }, paises: PAISES, hoy });
   return api;
 }
@@ -242,6 +248,51 @@ const SEMANAL = { recurrence:["RRULE:FREQ=WEEKLY;BYDAY=MO"], startDate:"2026-01-
   eq("un posteo cuenta en cada país de sus alcances (ciudad incluida)", a["Chile"].ultima.id, "b");
   eq("sin nada, el país no aparece", a["México"], undefined);
   eq("la serie de 12 meses: marzo y septiembre tienen algo, lo futuro no", a["Perú"].meses, [0,0,0,0,0,1,0,0,0,0,0,1]);
+}
+
+/* ---------- "Ver solo", ciudades y países por persona (5/10/2026) ---------- */
+{
+  const api = armar([
+    post({ id:"a", scopes:[{ type:"ciudad", country:"Perú", city:"Lima" }] }),
+    post({ id:"b", activityType:"curso", authorEmail:"beto@x.com", scopes:[{ type:"pais", country:"México" }], participants:[{ email:"ana@x.com" }] }),
+    post({ id:"c", scopes:[{ type:"region", region:"central" }] }),
+    post({ id:"d", scopes:[{ type:"ciudad", country:"Perú", city:"lima" }, { type:"ciudad", country:"Chile", city:"Santiago" }] }),
+  ]);
+  const A = "2026-01-01", B = "2026-12-31";
+  eq("por tipo", api.armarReporte(A, B, { tipo:"curso" }).total, 1);
+  eq("por país (una ciudad de ese país cuenta)", api.armarReporte(A, B, { pais:"Perú" }).total, 2);
+  eq("por zona: los países de la zona y lo cargado a la región", api.armarReporte(A, B, { zona:"central" }).total, 1);
+  eq("por zona Sur: Perú y Chile", api.armarReporte(A, B, { zona:"sur" }).total, 2);
+  eq("por persona: lo que cargó y donde participó", api.armarReporte(A, B, { persona:"ana@x.com" }).total, 4);
+  eq("sin filtro, todo", api.armarReporte(A, B, { zona:"", pais:"", tipo:"", persona:"" }).total, 4);
+  const r = api.armarReporte(A, B);
+  eq("las ciudades distintas no se cuentan dos veces por mayúsculas", r.ciudades.size, 2);
+  eq("en cuántos países cargó cada uno", [...r.paisesDePersona["ana@x.com"]].sort(), ["Chile", "Perú"]);
+}
+{
+  // Comparar: el mismo trimestre de dos años.
+  const api = armar([]);
+  eq("el 2.º trimestre de 2025", api.ventanaDe("2025", 2), { desde:"2025-04-01", hasta:"2025-06-30", anio:"2025", tri:2 });
+}
+/* ---------- Cobertura y sugerencias ---------- */
+{
+  const api = armar([
+    post({ id:"v1", startDate:"2024-06-01", endDate:"2024-06-01", date:"2024-06-01", scopes:[{ type:"pais", country:"México" }] }),
+    post({ id:"v2", startDate:"2025-03-01", endDate:"2025-03-01", date:"2025-03-01", scopes:[{ type:"pais", country:"Chile" }] }),
+    post({ id:"v3", startDate:"2025-04-01", endDate:"2025-04-01", date:"2025-04-01", scopes:[{ type:"pais", country:"Chile" }] }),
+    post({ id:"v4", startDate:"2025-05-01", endDate:"2025-05-01", date:"2025-05-01", scopes:[{ type:"pais", country:"Chile" }] }),
+    post({ id:"n1", startDate:"2026-02-01", endDate:"2026-02-01", date:"2026-02-01" }),
+    post({ id:"fut", startDate:"2026-12-01", endDate:"2026-12-01", date:"2026-12-01", scopes:[{ type:"pais", country:"Costa Rica" }] }),
+    post({ id:"reg", startDate:"2026-03-01", endDate:"2026-03-01", date:"2026-03-01", scopes:[{ type:"region", region:"norte" }] }),
+  ]);
+  const u = api.ultimaActividadPorPais({});
+  eq("la última actividad propia de cada país, sin lo que todavía no pasó ni lo regional", u, { "México":"2024-06-01", "Chile":"2025-05-01", "Perú":"2026-02-01" });
+  const v = api.ventanaDe("2026", 0);
+  const r = api.armarReporte(v.desde, v.hasta, {}), ra = api.armarReporte("2025-01-01", "2025-12-31", {});
+  const sug = api.sugerenciasDelReporte(v, r, ra, {}).map(x => x.txt);
+  eq("sugiere retomar el país donde se dejó de ir", sug.some(x => /Retomar Chile/.test(x)), true);
+  eq("y avisa lo que lleva más de un año sin actividad", sug.some(x => /más de un año.*México/.test(x)), true);
+  eq("y los meses que ya pasaron sin nada (no los que vienen)", sug.some(x => /enero/.test(x) && !/noviembre/.test(x)), true);
 }
 
 console.log(`\n${pass} pasaron, ${fail} fallaron`);

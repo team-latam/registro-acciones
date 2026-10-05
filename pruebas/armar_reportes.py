@@ -11,8 +11,12 @@ codigo = "\n".join(grab(n) for n in [
     "addDaysISO","isoDate","isoDow","addMonthsISO","RRULE_MAX_STEPS","RRULE_DOW","isISODate",
     "parseRecurrence","expandRecurrence","recurrenceSkipDates","recurrenceMoves",
     "ZONES","ACTIVITY_TYPES","safeColor",
-    "vecesEnVentana","fechasEnVentana","aniosConDatos","ventanaDelReporte","ventanaAnterior",
-    "armarReporte","mesCortoDe","filaDeBarra","bloqueDeBarras","renderReportesView"])
+    "vecesEnVentana","fechasEnVentana","aniosConDatos","ventanaDe","ventanaDelReporte","ventanaAnterior",
+    "normalize","pasaFiltroDelReporte","armarReporte","mesCortoDe","filaDeBarra","bloqueDeBarras",
+    "trimestresDelReporte","renderReportesView","renderSelectorDelReporte","renderReportePeriodo",
+    "nombreEnReporte","deltaDelReporte","tablaComparada","renderReporteHistorico","renderReporteComparar",
+    "ultimaActividadPorPais","haceCuanto","renderCobertura","renderEquipoDelReporte",
+    "sugerenciasDelReporte","renderSugerencias"])
 
 pagina = """<!doctype html><html lang="es"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -42,6 +46,7 @@ window.__pintar = (posts, reportes) => {
   document.getElementById("viewRoot").innerHTML = renderReportesView();
 };
 let state = { posts:[], loaded:true, reportes:{ anio:"", trimestre:0 } };
+let reporteEnPantalla = null;
 window.__datos = %s;
 window.__pintar(window.__datos, { anio:"2026", trimestre:0 });
 </script></body></html>"""

@@ -2277,6 +2277,34 @@
   .rep-fila-ir{ cursor:pointer; border-radius:8px; margin-inline:-6px; padding-inline:6px; }
   .rep-fila-ir:hover, .rep-fila-ir:focus-visible{ background:var(--celeste-soft); outline:none; }
   .rep-print-title{ display:none; }
+  .rep-modo{ align-self:flex-start; }
+  .rep-comparar-elegir{ display:flex; flex-wrap:wrap; align-items:center; gap:8px; font-weight:700; color:var(--text-muted); }
+  .rep-comparar-elegir select, .rep-filtros select{ border:1px solid var(--border); border-radius:10px; padding:7px 10px; font:inherit; font-size:13px; font-weight:700; background:var(--card); color:var(--ink); max-width:100%; }
+  .rep-filtros{ display:flex; flex-wrap:wrap; align-items:center; gap:6px; }
+  .rep-filtros-tit{ font-size:11.5px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:var(--text-muted); margin-inline-end:4px; }
+  .rep-delta{ font-size:12px; font-weight:800; color:var(--text-muted); white-space:nowrap; }
+  .rep-delta.sube{ color:var(--ok-text, #15803d); } .rep-delta.baja{ color:var(--danger, #b91c1c); }
+  .rep-kpi .rep-delta{ display:block; margin-top:4px; }
+  .rep-tabla-envoltorio{ overflow-x:auto; }
+  .rep-tabla{ width:100%; border-collapse:collapse; font-size:13px; font-variant-numeric:tabular-nums; }
+  .rep-tabla th{ font-size:11.5px; font-weight:800; color:var(--text-muted); text-align:end; padding:5px 8px; white-space:nowrap; }
+  .rep-tabla td{ padding:6px 8px; border-top:1px solid var(--border); text-align:end; font-weight:700; }
+  .rep-tabla th:first-child, .rep-tabla td:first-child{ text-align:start; }
+  .rep-tabla td:first-child{ white-space:nowrap; }
+  .rep-grilla-ancha{ grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); }
+  @media (max-width:420px){ .rep-grilla-ancha{ grid-template-columns:minmax(0,1fr); } }
+  .rep-evolucion td:not(:first-child){ border-inline-start:2px solid var(--card); }
+  .rep-h0{ color:var(--text-muted); font-weight:600; } .rep-h1{ background:#e6f6f9; } .rep-h2{ background:#bfe9f2; } .rep-h3{ background:#7fd3e6; } .rep-h4{ background:#1a9fb8; color:#fff; }
+  .rep-bloque-ancho{ grid-column:span 1; }
+  .rep-extras{ display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:14px; margin-top:14px; }
+  .rep-lista{ list-style:none; margin:0; padding:0; max-height:320px; overflow:auto; }
+  .rep-lista li{ display:flex; justify-content:space-between; gap:10px; padding:6px 0; border-top:1px solid var(--border); font-size:13px; font-weight:600; }
+  .rep-viejo{ color:var(--danger, #b91c1c); font-weight:800; }
+  .rep-sugerencias{ margin-top:14px; background:var(--card); border:1px solid var(--border); border-inline-start:5px solid var(--celeste); border-radius:var(--radius-md); padding:14px 18px; box-shadow:var(--shadow); }
+  .rep-sugerencias h3{ margin:0 0 8px; font-size:15px; }
+  .rep-sugerencias ul{ margin:0 0 6px; padding:0; list-style:none; }
+  .rep-sugerencias li{ padding:6px 0; border-top:1px solid var(--border); font-size:13.5px; line-height:1.45; }
+  .rep-sugerencias li:first-child{ border-top:none; }
   @media (max-width:520px){
     .rep-etiqueta{ flex-basis:44%; }
     .rep-comparacion{ margin-inline-start:0; flex-basis:100%; }
@@ -4818,7 +4846,10 @@ const state = {
   },
   // Qué período mira Reportes. anio como texto ("2026") porque viene del
   // data-key de un botón; trimestre 0 = el año entero.
-  reportes: { anio: "", trimestre: 0 },
+  // modo: "periodo" (un año o "todos") o "comparar" (compA contra compB).
+  // filtro: "Ver solo" una zona, país, tipo o persona (vacío = todo).
+  reportes: { anio: "", trimestre: 0, modo: "periodo", compA: "", compB: "", compTri: 0,
+              filtro: { zona: "", pais: "", tipo: "", persona: "" } },
   solicitudesSection: "usuarios", // usuarios | pendientes — ver renderAccesoView
   usuariosFilters: { text: "", sort: "name", grupo: "todos" }, // sort: name | approvedAt | activity; grupo: todos | admins | sincal | inactivos
 };
@@ -13061,6 +13092,19 @@ function aniosConDatos(){
   return [...anios].sort();
 }
 
+// Un año (y trimestre: 0 = el año entero) en fechas.
+function ventanaDe(anio, tri){
+  tri = Number(tri) || 0;
+  if(!tri) return { desde: `${anio}-01-01`, hasta: `${anio}-12-31`, anio, tri };
+  const primerMes = (tri - 1) * 3 + 1;
+  const ultimoMes = primerMes + 2;
+  const dd = new Date(Date.UTC(Number(anio), ultimoMes, 0)).getUTCDate();
+  return {
+    desde: `${anio}-${String(primerMes).padStart(2,"0")}-01`,
+    hasta: `${anio}-${String(ultimoMes).padStart(2,"0")}-${String(dd).padStart(2,"0")}`,
+    anio, tri,
+  };
+}
 // El período elegido, en fechas. Trimestre 0 = el año entero.
 function ventanaDelReporte(){
   const anio = state.reportes.anio || todayISO().slice(0,4);
@@ -13100,16 +13144,37 @@ function ventanaAnterior(v){
 // no a cada uno de sus países, y "Toda LatAm" tiene su propia fila. Si se
 // repartieran, un anuncio general taparía lo que de verdad pasó en cada
 // lado — es el mismo criterio que ya usa Vistas.
-function armarReporte(desdeISO, hastaISO){
+// "Ver solo": ¿este posteo entra en el filtro del reporte? Zona: un
+// alcance de la región o de un país de esa zona. País: un alcance de ese
+// país (o una ciudad suya). Persona: lo cargó o participó.
+function pasaFiltroDelReporte(p, f){
+  if(!f) return true;
+  if(f.tipo && (p.activityType || "otro") !== f.tipo) return false;
+  if(f.persona){
+    const yo = f.persona.toLowerCase();
+    const cargo = String(p.authorEmail || "").toLowerCase() === yo;
+    const estuvo = (p.participants || []).some(x => String((x && x.email) || "").toLowerCase() === yo);
+    if(!cargo && !estuvo) return false;
+  }
+  const alcances = (p.scopes || []).filter(Boolean);
+  if(f.pais && !alcances.some(sc => sc.country === f.pais)) return false;
+  if(f.zona && !alcances.some(sc => (sc.type === "region" && sc.region === f.zona)
+      || (sc.country && COUNTRY_BY_NAME[sc.country] && COUNTRY_BY_NAME[sc.country].zone === f.zona))) return false;
+  return true;
+}
+function armarReporte(desdeISO, hastaISO, filtro){
   const porMes = Object.create(null);
   const porZona = Object.create(null);
   const porPais = Object.create(null);
   const porTipo = Object.create(null);
   const porPersona = Object.create(null);
   const participantes = Object.create(null);
+  const ciudades = new Set();
+  const paisesDePersona = Object.create(null);
   let total = 0, latam = 0, sinLugar = 0, conParticipantes = 0;
 
   state.posts.forEach(p=>{
+    if(!pasaFiltroDelReporte(p, filtro)) return;
     const veces = vecesEnVentana(p, desdeISO, hastaISO);
     if(!veces) return;
     total += veces;
@@ -13140,8 +13205,13 @@ function armarReporte(desdeISO, hastaISO){
       if(sc.country && COUNTRY_BY_NAME[sc.country]){
         paises.add(sc.country);
         zonas.add(COUNTRY_BY_NAME[sc.country].zone);
+        if(sc.type === "ciudad" && sc.city) ciudades.add(sc.country + "|" + normalize(sc.city));
       }
     });
+    if(correo){
+      const ps = paisesDePersona[correo] || (paisesDePersona[correo] = new Set());
+      paises.forEach(n => ps.add(n));
+    }
     if(esLatam) latam += veces;
     if(!paises.size && !zonas.size && !esLatam) sinLugar += veces;
     paises.forEach(n=>{ porPais[n] = (porPais[n] || 0) + veces; });
@@ -13149,7 +13219,7 @@ function armarReporte(desdeISO, hastaISO){
   });
 
   return { total, porMes, porZona, porPais, porTipo, porPersona,
-           participantes, latam, sinLugar, conParticipantes };
+           participantes, latam, sinLugar, conParticipantes, ciudades, paisesDePersona };
 }
 
 
@@ -13191,7 +13261,8 @@ function csvDelReporte(){
   if(!r) return "";
   const sinHtml = s => String(s).replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").trim();
   const celda = s => `"${String(s).replace(/"/g, '""')}"`;
-  const filas = [[t("Sección","Section","Seção","מדור"), t("Etiqueta","Label","Etiqueta","תווית"), t("Cantidad","Count","Quantidade","כמות"), t("Período anterior","Previous period","Período anterior","התקופה הקודמת")]];
+  const filas = [[t("Sección","Section","Seção","מדור"), t("Etiqueta","Label","Etiqueta","תווית"),
+    r.colN || t("Cantidad","Count","Quantidade","כמות"), r.colPrev != null ? r.colPrev : t("Período anterior","Previous period","Período anterior","התקופה הקודמת")]];
   filas.push([t("Período","Period","Período","תקופה"), `${r.desde} – ${r.hasta}`, r.total, r.totalAnterior]);
   r.secciones.forEach(s => s.filas.forEach(f => filas.push([sinHtml(s.titulo), sinHtml(f.etiqueta), f.n, f.prev != null ? f.prev : ""])));
   // Punto y coma: es lo que Excel en español toma como separador; con
@@ -13208,39 +13279,94 @@ function descargarTexto(nombre, texto, tipo){
   setTimeout(()=> URL.revokeObjectURL(url), 1000);
 }
 
-function renderReportesView(){
-  if(!state.loaded){
-    return `<div class="empty-state"><div class="big">⏳</div>${t("Cargando…","Loading…","Carregando…","...טוען")}</div>`;
-  }
-  const v = ventanaDelReporte();
-  const anterior = ventanaAnterior(v);
-  const r = armarReporte(v.desde, v.hasta);
-  const rAnterior = armarReporte(anterior.desde, anterior.hasta);
-
-  const anios = aniosConDatos();
-  const TRIMESTRES = [
+function trimestresDelReporte(){
+  return [
     { n:0, label:t("Todo el año","Whole year","O ano todo","כל השנה") },
     { n:1, label:t("1.er trimestre","1st quarter","1º trimestre","רבעון 1") },
     { n:2, label:t("2.º trimestre","2nd quarter","2º trimestre","רבעון 2") },
     { n:3, label:t("3.er trimestre","3rd quarter","3º trimestre","רבעון 3") },
     { n:4, label:t("4.º trimestre","4th quarter","4º trimestre","רבעון 4") },
   ];
+}
+// Reportes tiene tres pantallas: un período (un año o un trimestre),
+// todos los años juntos, y un período contra otro. Arriba de las tres, el
+// mismo selector y el mismo "Ver solo" (pedido del usuario el 5/10/2026).
+function renderReportesView(){
+  if(!state.loaded){
+    return `<div class="empty-state"><div class="big">⏳</div>${t("Cargando…","Loading…","Carregando…","...טוען")}</div>`;
+  }
+  const R = state.reportes;
+  const f = R.filtro || {};
+  const modo = R.modo === "comparar" ? "comparar" : "periodo";
+  reporteEnPantalla = null;
+  const cuerpo = modo === "comparar" ? renderReporteComparar(f)
+    : R.anio === "todos" ? renderReporteHistorico(f)
+    : renderReportePeriodo(f);
+  return renderSelectorDelReporte(modo, f) + cuerpo;
+}
+function renderSelectorDelReporte(modo, f){
+  const R = state.reportes;
+  const anios = aniosConDatos();
+  const hoyAnio = todayISO().slice(0,4);
+  const opcion = (valor, actual, texto) => `<option value="${esc(valor)}"${String(valor) === String(actual) ? " selected" : ""}>${esc(texto)}</option>`;
+  const seg = `<div class="subview-toggle rep-modo">
+      <button type="button" data-action="reporte-modo" data-key="periodo" class="${modo === "periodo" ? "active" : ""}">${t("Un período","One period","Um período","תקופה אחת")}</button>
+      <button type="button" data-action="reporte-modo" data-key="comparar" class="${modo === "comparar" ? "active" : ""}">${t("Comparar","Compare","Comparar","השוואה")}</button>
+    </div>`;
+  let elegir;
+  if(modo === "comparar"){
+    const b = R.compB || hoyAnio;
+    const a = R.compA || String(Number(b) - 1);
+    const listaAnios = [...new Set([...anios, a, b])].sort();
+    elegir = `<div class="rep-comparar-elegir">
+        <select id="repCompA" aria-label="${esc(t("Primer año","First year","Primeiro ano","שנה ראשונה"))}">${listaAnios.map(x => opcion(x, a, x)).join("")}</select>
+        <span>${t("contra","versus","contra","מול")}</span>
+        <select id="repCompB" aria-label="${esc(t("Segundo año","Second year","Segundo ano","שנה שנייה"))}">${listaAnios.map(x => opcion(x, b, x)).join("")}</select>
+        <select id="repCompTri" aria-label="${esc(t("Trimestre","Quarter","Trimestre","רבעון"))}">${trimestresDelReporte().map(q => opcion(q.n, Number(R.compTri) || 0, q.label)).join("")}</select>
+      </div>`;
+  } else {
+    const anio = R.anio || hoyAnio;
+    const tri = Number(R.trimestre) || 0;
+    elegir = `<div class="rep-chips">
+        <button type="button" class="chip-toggle${anio === "todos" ? " active" : ""}" data-action="reporte-anio" data-key="todos">${t("Todos los años","All years","Todos os anos","כל השנים")}</button>
+        ${anios.map(a => `<button type="button" class="chip-toggle${a === anio ? " active" : ""}" data-action="reporte-anio" data-key="${esc(a)}">${esc(a)}</button>`).join("")}</div>
+      ${anio === "todos" ? "" : `<div class="rep-chips">${trimestresDelReporte().map(q =>
+        `<button type="button" class="chip-toggle${q.n === tri ? " active" : ""}" data-action="reporte-trimestre" data-key="${q.n}">${esc(q.label)}</button>`).join("")}</div>`}`;
+  }
+  // "Ver solo": las opciones salen de lo cargado (países con algo, gente
+  // que cargó o participó), no de listas enteras.
+  const paisesUsados = new Set(), gente = new Set();
+  state.posts.forEach(p => {
+    (p.scopes || []).forEach(sc => { if(sc && sc.country && COUNTRY_BY_NAME[sc.country]) paisesUsados.add(sc.country); });
+    if(p.authorEmail) gente.add(String(p.authorEmail).toLowerCase());
+    (p.participants || []).forEach(x => { if(x && x.email) gente.add(String(x.email).toLowerCase()); });
+  });
+  const nombre = correo => { const m = memberByEmail(correo); return m ? (m.name || m.email) : correo; };
+  const hayFiltro = !!(f.zona || f.pais || f.tipo || f.persona);
+  const filtros = `<div class="rep-filtros">
+      <span class="rep-filtros-tit">${t("Ver solo","Show only","Ver só","הצג רק")}</span>
+      <select id="repFZona" aria-label="${esc(t("Zona","Zone","Zona","אזור"))}">${opcion("", f.zona || "", t("Todas las zonas","All zones","Todas as zonas","כל האזורים"))}${Object.values(ZONES).map(z => opcion(z.key, f.zona || "", z.label)).join("")}</select>
+      <select id="repFPais" aria-label="${esc(t("País","Country","País","מדינה"))}">${opcion("", f.pais || "", t("Todos los países","All countries","Todos os países","כל המדינות"))}${[...paisesUsados].sort((x, y) => countryLabel(x).localeCompare(countryLabel(y), currentLang())).map(n => opcion(n, f.pais || "", countryLabel(n))).join("")}</select>
+      <select id="repFTipo" aria-label="${esc(t("Tipo","Type","Tipo","סוג"))}">${opcion("", f.tipo || "", t("Todos los tipos","All types","Todos os tipos","כל הסוגים"))}${ACTIVITY_TYPES.map(ty => opcion(ty.key, f.tipo || "", `${ty.icon || ""} ${ty.label}`.trim())).join("")}</select>
+      <select id="repFPersona" aria-label="${esc(t("Persona","Person","Pessoa","אדם"))}">${opcion("", f.persona || "", t("Todo el equipo","Whole team","Toda a equipe","כל הצוות"))}${[...gente].map(c => [c, nombre(c)]).sort((x, y) => x[1].localeCompare(y[1], currentLang())).map(([c, n]) => opcion(c, f.persona || "", n)).join("")}</select>
+      ${hayFiltro ? `<button type="button" class="btn-text-add" data-action="reporte-sin-filtro">✕ ${t("Quitar filtros","Clear filters","Tirar filtros","ניקוי מסננים")}</button>` : ""}
+    </div>`;
   // Bajar: una planilla (CSV, que Excel abre) con las mismas secciones, o
-  // la impresión del navegador (que guarda en PDF). Solo con algo que
-  // bajar.
-  const acciones = r.total ? `<div class="rep-acciones">
+  // la impresión del navegador (que guarda en PDF).
+  const acciones = `<div class="rep-acciones">
       <button type="button" class="btn-sync" data-action="reporte-csv">⬇ ${t("Bajar planilla","Download spreadsheet","Baixar planilha","הורדת גיליון")}</button>
       <button type="button" class="btn-sync" data-action="reporte-imprimir">🖨️ ${t("Imprimir / PDF","Print / PDF","Imprimir / PDF","הדפסה / PDF")}</button>
-    </div>` : "";
-  const selector = `
-    <div class="rep-selector">
-      <div class="rep-chips">${anios.map(a=>
-        `<button type="button" class="chip-toggle${a === v.anio ? " active" : ""}" data-action="reporte-anio" data-key="${esc(a)}">${esc(a)}</button>`).join("")}</div>
-      <div class="rep-chips">${TRIMESTRES.map(q=>
-        `<button type="button" class="chip-toggle${q.n === v.tri ? " active" : ""}" data-action="reporte-trimestre" data-key="${q.n}">${esc(q.label)}</button>`).join("")}</div>
-      ${acciones}
-    </div>
-    <div class="rep-print-title">Registro de Acciones · ${t("Reporte","Report","Relatório","דוח")} ${esc(fmtDate(v.desde))} – ${esc(fmtDate(v.hasta))}</div>`;
+    </div>`;
+  return `<div class="rep-selector">${seg}${elegir}${filtros}${acciones}</div>`;
+}
+
+// Un período: un año o un trimestre, contra el período de antes.
+function renderReportePeriodo(f){
+  const v = ventanaDelReporte();
+  const anterior = ventanaAnterior(v);
+  const r = armarReporte(v.desde, v.hasta, f);
+  const rAnterior = armarReporte(anterior.desde, anterior.hasta, f);
+  const selector = `<div class="rep-print-title">Registro de Acciones · ${t("Reporte","Report","Relatório","דוח")} ${esc(fmtDate(v.desde))} – ${esc(fmtDate(v.hasta))}</div>`;
 
   // La comparación con el período de antes. Sin nada antes no se dice
   // nada: "subió infinito" respecto de cero no informa. Y el porcentaje
@@ -13369,7 +13495,270 @@ function renderReportesView(){
       ${bloqueDeBarras(t("Quién participó","Who took part","Quem participou","מי השתתף"), quienesParticiparon,
         t("Todavía nadie cargó participantes en este período.","Nobody has logged participants in this period yet.","Ninguém carregou participantes neste período.","עדיין לא נרשמו משתתפים בתקופה זו."))}
     </div>
+    ${renderSugerencias(v, r, rAnterior, f)}
+    <div class="rep-extras">
+      ${renderCobertura(f)}
+      ${renderEquipoDelReporte(r)}
+    </div>
     <div class="rep-notas">${notas.map(n=>`<div>· ${esc(n)}</div>`).join("")}</div>`;
+}
+
+// El nombre de alguien del equipo a partir de su correo (o el correo, si
+// ya no está).
+function nombreEnReporte(correo){
+  const m = memberByEmail(correo);
+  return m ? (m.name || m.email) : correo;
+}
+// "▲ 3" / "▼ 5" / "=" entre dos números.
+function deltaDelReporte(a, b){
+  const d = b - a;
+  if(!d) return `<span class="rep-delta">=</span>`;
+  return `<span class="rep-delta ${d > 0 ? "sube" : "baja"}">${d > 0 ? "▲" : "▼"} ${Math.abs(d)}</span>`;
+}
+// Una tabla de dos columnas (período A y B) con la diferencia.
+function tablaComparada(titulo, etiquetaA, etiquetaB, filas, vacio){
+  if(!filas.length) return `<div class="rep-bloque"><h3>${titulo}</h3><div class="rep-vacio">${vacio || ""}</div></div>`;
+  return `<div class="rep-bloque"><h3>${titulo}</h3>
+    <div class="rep-tabla-envoltorio"><table class="rep-tabla">
+      <thead><tr><th></th><th>${esc(etiquetaA)}</th><th>${esc(etiquetaB)}</th><th>${t("Diferencia","Difference","Diferença","הפרש")}</th></tr></thead>
+      <tbody>${filas.map(fl => `<tr><td>${fl.etiqueta}</td><td>${fl.a}</td><td>${fl.b}</td><td>${deltaDelReporte(fl.a, fl.b)}</td></tr>`).join("")}</tbody>
+    </table></div></div>`;
+}
+
+// ---- Todos los años ----
+// La historia entera: cuánto cada año, y cómo evolucionó cada país y cada
+// tipo, año por año.
+function renderReporteHistorico(f){
+  const hoyAnio = todayISO().slice(0,4);
+  const anios = aniosConDatos();
+  const porAnio = anios.map(a => ({ anio:a, r: armarReporte(`${a}-01-01`, `${a}-12-31`, f) }));
+  const todo = armarReporte(`${anios[0]}-01-01`, `${anios[anios.length - 1]}-12-31`, f);
+  if(!todo.total){
+    return `<div class="empty-state"><div class="big">📊</div>${t("No hay nada cargado.","Nothing logged.","Não há nada carregado.","לא נרשם דבר.")}</div>`;
+  }
+  const conDatos = porAnio.filter(x => x.r.total);
+  const mejor = conDatos.reduce((m, x) => (!m || x.r.total > m.r.total) ? x : m, null);
+  const primero = conDatos.length ? conDatos[0].anio : anios[0];
+  const kpi = (num, txt) => `<div class="rep-kpi"><div class="rep-kpi-num">${num}</div><div class="rep-kpi-txt">${txt}</div></div>`;
+  const kpis = `<div class="rep-kpis">
+      ${kpi(todo.total, t("actividades en total ({a}–{b})","activities in total ({a}–{b})","atividades no total ({a}–{b})","פעילויות בסך הכול ({a}–{b})",{a:primero, b:anios[anios.length - 1]}))}
+      ${kpi(Object.keys(todo.porPais).length, t("países con actividad","countries with activity","países com atividade","מדינות עם פעילות"))}
+      ${kpi(todo.ciudades.size, t("ciudades distintas","different cities","cidades diferentes","ערים שונות"))}
+      ${mejor ? kpi(esc(mejor.anio), t("el año con más actividad ({n})","the busiest year ({n})","o ano com mais atividade ({n})","השנה הפעילה ביותר ({n})",{n:mejor.r.total})) : ""}
+    </div>`;
+  const filasAnio = conDatos.map(x => ({
+    etiqueta: x.anio === hoyAnio ? `${esc(x.anio)} <small>${t("(en curso)","(in progress)","(em andamento)","(בתהליך)")}</small>` : esc(x.anio),
+    n: x.r.total, color: x.anio === hoyAnio ? "var(--celeste-dark)" : "var(--petroleo)" }));
+  // La evolución: hasta los últimos seis años con datos, para que la tabla
+  // entre; los países y tipos, del que más tiene al que menos.
+  const columnas = conDatos.slice(-6);
+  const tablaEvolucion = (titulo, claves, valor, etiqueta) => {
+    if(!claves.length) return "";
+    const maximo = Math.max(1, ...claves.flatMap(k => columnas.map(c => valor(c.r, k))));
+    const tono = n => !n ? "rep-h0" : n / maximo > .75 ? "rep-h4" : n / maximo > .5 ? "rep-h3" : n / maximo > .25 ? "rep-h2" : "rep-h1";
+    return `<div class="rep-bloque rep-bloque-ancho"><h3>${titulo}</h3>
+      <div class="rep-tabla-envoltorio"><table class="rep-tabla rep-evolucion">
+        <thead><tr><th></th>${columnas.map(c => `<th>${esc(c.anio)}</th>`).join("")}</tr></thead>
+        <tbody>${claves.map(k => `<tr><td>${etiqueta(k)}</td>${columnas.map(c => { const n = valor(c.r, k); return `<td class="${tono(n)}">${n}</td>`; }).join("")}</tr>`).join("")}</tbody>
+      </table></div></div>`;
+  };
+  const paises = Object.keys(todo.porPais).sort((a, b) => todo.porPais[b] - todo.porPais[a]).slice(0, 15);
+  const tipos = Object.keys(todo.porTipo).sort((a, b) => todo.porTipo[b] - todo.porTipo[a]);
+  const etiquetaTipo = k => { const ty = ACTIVITY_BY_KEY[k]; return `${esc(ty ? ty.icon : "✨")} ${esc(ty ? ty.label : k)}`; };
+  reporteEnPantalla = { desde:`${primero}-01-01`, hasta:`${anios[anios.length - 1]}-12-31`, total:todo.total, totalAnterior:"",
+    colPrev: "", secciones:[
+      { titulo:t("Año por año","Year by year","Ano a ano","שנה אחר שנה"), filas: filasAnio },
+      { titulo:t("Por país","By country","Por país","לפי מדינה"), filas: Object.entries(todo.porPais).sort((a, b) => b[1] - a[1]).map(([n, c]) => ({ etiqueta: esc(countryLabel(n)), n:c })) },
+      { titulo:t("Por tipo","By type","Por tipo","לפי סוג"), filas: tipos.map(k => ({ etiqueta: etiquetaTipo(k), n: todo.porTipo[k] })) },
+    ] };
+  return `<div class="rep-print-title">Registro de Acciones · ${t("Todos los años","All years","Todos os anos","כל השנים")}</div>
+    ${kpis}
+    <div class="rep-grilla">
+      ${bloqueDeBarras(t("Año por año","Year by year","Ano a ano","שנה אחר שנה"), filasAnio, "")}
+      ${tablaEvolucion(t("Evolución por país","Evolution by country","Evolução por país","התפתחות לפי מדינה"), paises, (r, k) => r.porPais[k] || 0, k => esc(countryLabel(k)))}
+      ${tablaEvolucion(t("Evolución por tipo","Evolution by type","Evolução por tipo","התפתחות לפי סוג"), tipos, (r, k) => r.porTipo[k] || 0, etiquetaTipo)}
+    </div>
+    <div class="rep-extras">${renderCobertura(f)}${renderEquipoDelReporte(todo)}</div>`;
+}
+
+// ---- Comparar ----
+function renderReporteComparar(f){
+  const R = state.reportes;
+  const b = R.compB || todayISO().slice(0,4);
+  const a = R.compA || String(Number(b) - 1);
+  const tri = Number(R.compTri) || 0;
+  const vA = ventanaDe(a, tri), vB = ventanaDe(b, tri);
+  const rA = armarReporte(vA.desde, vA.hasta, f), rB = armarReporte(vB.desde, vB.hasta, f);
+  const triLabel = tri ? ` · ${trimestresDelReporte()[tri].label}` : "";
+  const nA = a + (tri ? ` T${tri}` : ""), nB = b + (tri ? ` T${tri}` : "");
+  if(!rA.total && !rB.total){
+    return `<div class="empty-state"><div class="big">📊</div>${t("No hay nada cargado en ninguno de los dos.","Nothing logged in either.","Não há nada carregado em nenhum dos dois.","לא נרשם דבר באף אחת מהשתיים.")}</div>`;
+  }
+  const cuenta = o => Object.keys(o).length;
+  const kpi = (x, y, txt) => `<div class="rep-kpi"><div class="rep-kpi-num">${x} → ${y}</div><div class="rep-kpi-txt">${txt}</div>${deltaDelReporte(x, y)}</div>`;
+  const kpis = `<div class="rep-kpis">
+      ${kpi(rA.total, rB.total, t("actividades","activities","atividades","פעילויות"))}
+      ${kpi(cuenta(rA.porPais), cuenta(rB.porPais), t("países con actividad","countries with activity","países com atividade","מדינות עם פעילות"))}
+      ${kpi(rA.ciudades.size, rB.ciudades.size, t("ciudades distintas","different cities","cidades diferentes","ערים שונות"))}
+      ${kpi(cuenta(rA.porPersona), cuenta(rB.porPersona), t("personas que cargaron","people who logged","pessoas que carregaram","אנשים שרשמו"))}
+    </div>`;
+  // Mes a mes: la barra gruesa es el segundo período, la fina el primero
+  // (la misma lectura que ya tiene "Un período").
+  const meses = [];
+  for(let m = vB.desde.slice(0,7), mA = vA.desde.slice(0,7); m <= vB.hasta.slice(0,7);
+      m = addMonthsISO(m + "-01", 1).slice(0,7), mA = addMonthsISO(mA + "-01", 1).slice(0,7)){
+    meses.push({ etiqueta: esc(fmtISO(m + "-01", { month:"short" })), n: rB.porMes[m] || 0, prev: rA.porMes[mA] || 0 });
+  }
+  const unir = (oa, ob, etiqueta, orden) => [...new Set([...Object.keys(oa), ...Object.keys(ob)])]
+    .map(k => ({ k, etiqueta: etiqueta(k), a: oa[k] || 0, b: ob[k] || 0 }))
+    .sort(orden || ((x, y) => (y.b + y.a) - (x.b + x.a)));
+  const etiquetaTipo = k => { const ty = ACTIVITY_BY_KEY[k]; return `${esc(ty ? ty.icon : "✨")} ${esc(ty ? ty.label : k)}`; };
+  const tipos = unir(rA.porTipo, rB.porTipo, etiquetaTipo);
+  const zonas = unir(rA.porZona, rB.porZona, k => esc((ZONES[k] || {}).label || k));
+  if(rA.latam || rB.latam) zonas.push({ etiqueta: esc(t("Toda LatAm","All LatAm","Toda a LatAm","כל אמריקה הלטינית")), a: rA.latam, b: rB.latam });
+  const paises = unir(rA.porPais, rB.porPais, k => esc(countryLabel(k)));
+  reporteEnPantalla = { desde: vB.desde, hasta: vB.hasta, total: rB.total, totalAnterior: rA.total,
+    colN: nB, colPrev: nA, secciones:[
+      { titulo:t("Mes a mes","Month by month","Mês a mês","חודש אחר חודש"), filas: meses },
+      { titulo:t("Por tipo","By type","Por tipo","לפי סוג"), filas: tipos.map(x => ({ etiqueta:x.etiqueta, n:x.b, prev:x.a })) },
+      { titulo:t("Por zona","By zone","Por zona","לפי אזור"), filas: zonas.map(x => ({ etiqueta:x.etiqueta, n:x.b, prev:x.a })) },
+      { titulo:t("Por país","By country","Por país","לפי מדינה"), filas: paises.map(x => ({ etiqueta:x.etiqueta, n:x.b, prev:x.a })) },
+    ] };
+  return `<div class="rep-print-title">Registro de Acciones · ${esc(nA)} ${t("contra","versus","contra","מול")} ${esc(nB)}${esc(triLabel)}</div>
+    ${kpis}
+    <div class="rep-grilla rep-grilla-ancha">
+      ${bloqueDeBarras(t("Mes a mes: {a} contra {b}","Month by month: {a} vs {b}","Mês a mês: {a} contra {b}","חודש אחר חודש: {a} מול {b}",{a:esc(nA), b:esc(nB)}), meses, "",
+        t("La barra gruesa es {b}; la fina, {a}.","The thick bar is {b}; the thin one, {a}.","A barra grossa é {b}; a fina, {a}.","הפס העבה הוא {b}; הדק, {a}.",{a:esc(nA), b:esc(nB)}))}
+      ${tablaComparada(t("Por tipo","By type","Por tipo","לפי סוג"), nA, nB, tipos)}
+      ${tablaComparada(t("Por zona","By zone","Por zona","לפי אזור"), nA, nB, zonas, t("Nada con zona cargada.","Nothing with a zone set.","Nada com zona carregada.","אין דבר עם אזור."))}
+      ${tablaComparada(t("Por país","By country","Por país","לפי מדינה"), nA, nB, paises, t("Nada con país cargado.","Nothing with a country set.","Nada com país carregado.","אין דבר עם מדינה."))}
+    </div>`;
+}
+
+// ---- Cobertura ----
+// La última vez que cada país tuvo actividad propia (un alcance de ese
+// país o de una ciudad suya), hasta hoy. Sirve para planificar: dónde
+// hace mucho que no se va. Respeta "Ver solo" por tipo, persona y zona
+// (no el país: la gracia es ver a todos).
+function ultimaActividadPorPais(f){
+  const hoy = todayISO();
+  const desde = addDaysISO(hoy, -1100); // las repeticiones, de los últimos tres años
+  const filtro = f ? { ...f, pais:"" } : null;
+  const ultima = Object.create(null);
+  state.posts.forEach(p => {
+    if(p.cancelled || !pasaFiltroDelReporte(p, filtro)) return;
+    const paises = new Set((p.scopes || []).filter(sc => sc && sc.country && COUNTRY_BY_NAME[sc.country]
+      && (sc.type === "pais" || sc.type === "ciudad")).map(sc => sc.country));
+    if(!paises.size) return;
+    let fecha = "";
+    if(p.recurrence && p.recurrence.length){
+      const fechas = fechasEnVentana(p, desde, hoy);
+      fecha = fechas.length ? fechas[fechas.length - 1] : "";
+    } else {
+      const inicio = p.startDate || p.date || "";
+      if(inicio && inicio <= hoy) fecha = inicio;
+    }
+    if(!fecha) return;
+    paises.forEach(n => { if(!ultima[n] || ultima[n] < fecha) ultima[n] = fecha; });
+  });
+  return ultima;
+}
+function haceCuanto(iso){
+  const dias = Math.max(0, Math.round((isoDate(todayISO()) - isoDate(iso)) / 86400000));
+  const meses = Math.floor(dias / 30.44);
+  if(dias === 0) return t("hoy","today","hoje","היום");
+  if(dias === 1) return t("ayer","yesterday","ontem","אתמול");
+  if(dias < 14) return t("hace {n} días","{n} days ago","há {n} dias","לפני {n} ימים",{n:dias});
+  if(meses < 1) return t("hace {n} semanas","{n} weeks ago","há {n} semanas","לפני {n} שבועות",{n:Math.round(dias / 7)});
+  if(meses < 24) return meses === 1 ? t("hace 1 mes","1 month ago","há 1 mês","לפני חודש") : t("hace {n} meses","{n} months ago","há {n} meses","לפני {n} חודשים",{n:meses});
+  return t("hace {n} años","{n} years ago","há {n} anos","לפני {n} שנים",{n:Math.floor(meses / 12)});
+}
+function renderCobertura(f){
+  const ultima = ultimaActividadPorPais(f);
+  const hoy = todayISO();
+  const filas = Object.entries(ultima)
+    .filter(([n]) => !f || !f.zona || (COUNTRY_BY_NAME[n] && COUNTRY_BY_NAME[n].zone === f.zona))
+    .sort((a, b) => a[1].localeCompare(b[1]));
+  if(!filas.length) return "";
+  const anioAtras = addDaysISO(hoy, -365);
+  return `<div class="rep-bloque rep-cobertura"><h3>${t("Última actividad por país","Latest activity by country","Última atividade por país","פעילות אחרונה לפי מדינה")}</h3>
+    <div class="rep-bloque-nota" style="margin:-4px 0 8px">${t("Primero los que hace más tiempo que no tienen nada propio.","Those with the longest gap first.","Primeiro os que há mais tempo não têm nada próprio.","קודם אלה שהכי הרבה זמן אין בהם כלום.")}</div>
+    <ul class="rep-lista">${filas.map(([n, fecha]) => `<li><span>${esc(countryLabel(n))}</span><span class="${fecha < anioAtras ? "rep-viejo" : ""}" title="${esc(fmtDate(fecha))}">${esc(haceCuanto(fecha))}</span></li>`).join("")}</ul></div>`;
+}
+
+// ---- Equipo ----
+function renderEquipoDelReporte(r){
+  const gente = [...new Set([...Object.keys(r.porPersona), ...Object.keys(r.participantes)])];
+  if(!gente.length) return "";
+  const filas = gente.map(c => ({ c, cargo: r.porPersona[c] || 0, estuvo: r.participantes[c] || 0, paises: (r.paisesDePersona[c] || new Set()).size }))
+    .sort((a, b) => (b.cargo + b.estuvo) - (a.cargo + a.estuvo));
+  return `<div class="rep-bloque rep-equipo"><h3>${t("Por persona del equipo","By team member","Por pessoa da equipe","לפי חבר צוות")}</h3>
+    <div class="rep-tabla-envoltorio"><table class="rep-tabla">
+      <thead><tr><th></th><th>${t("Cargó","Logged","Carregou","רשם")}</th><th>${t("Participó","Took part","Participou","השתתף")}</th><th>${t("Países","Countries","Países","מדינות")}</th></tr></thead>
+      <tbody>${filas.map(x => `<tr><td>${esc(nombreEnReporte(x.c))}</td><td>${x.cargo}</td><td>${x.estuvo}</td><td>${x.paises}</td></tr>`).join("")}</tbody>
+    </table></div></div>`;
+}
+
+// ---- Sugerencias ----
+// Lo que los números dicen para decidir el año que viene (pedido del
+// usuario el 5/10/2026): dónde se dejó de ir, qué bajó, qué meses
+// quedaron vacíos, qué creció. Reglas simples y explicables, no adivinanzas;
+// cada una dice de dónde sale.
+function sugerenciasDelReporte(v, r, rAnt, f){
+  const out = [];
+  const nombrePais = n => countryLabel(n);
+  const lista = arr => arr.length <= 1 ? (arr[0] || "") : `${arr.slice(0, -1).join(", ")} ${t("y","and","e","ו")} ${arr[arr.length - 1]}`;
+  const antes = v.tri ? t("el trimestre anterior","the previous quarter","o trimestre anterior","ברבעון הקודם") : String(Number(v.anio) - 1);
+  // 1. Países donde se dejó de ir.
+  if(rAnt.total){
+    const dejados = Object.keys(rAnt.porPais).filter(n => rAnt.porPais[n] > 0 && !r.porPais[n]).sort((a, b) => rAnt.porPais[b] - rAnt.porPais[a]);
+    if(dejados.length) out.push({ ico:"🔁", txt: t("Retomar {p}: en {antes} hubo actividad y en este período no.","Pick up {p} again: there was activity in {antes} and none in this period.","Retomar {p}: em {antes} houve atividade e neste período não.","לחדש את {p}: ב-{antes} הייתה פעילות ובתקופה הזו לא.",{ p: lista(dejados.slice(0, 4).map(nombrePais)), antes }) });
+  }
+  // 2. Hace más de un año que no hay nada.
+  const ultima = ultimaActividadPorPais(f);
+  const anioAtras = addDaysISO(todayISO(), -365);
+  const olvidados = Object.entries(ultima).filter(([, d]) => d < anioAtras).sort((a, b) => a[1].localeCompare(b[1]));
+  if(olvidados.length) out.push({ ico:"🧭", txt: t("Hace más de un año que no hay actividad propia en {p}.","No activity of their own in over a year in {p}.","Há mais de um ano sem atividade própria em {p}.","יותר משנה אין פעילות משלהן ב-{p}.",{ p: lista(olvidados.slice(0, 4).map(([n, d]) => `${nombrePais(n)} (${haceCuanto(d)})`)) }) });
+  // 3. Lo que bajó a la mitad o menos (con un mínimo de 3, para no leer
+  // ruido) y lo que más creció.
+  if(rAnt.total){
+    const bajas = Object.keys(rAnt.porPais).filter(n => rAnt.porPais[n] >= 3 && (r.porPais[n] || 0) > 0 && (r.porPais[n] || 0) <= rAnt.porPais[n] / 2);
+    bajas.slice(0, 2).forEach(n => out.push({ ico:"📉", txt: t("En {p} la actividad bajó de {a} a {b}.","In {p} activity went down from {a} to {b}.","Em {p} a atividade caiu de {a} para {b}.","ב-{p} הפעילות ירדה מ-{a} ל-{b}.",{ p: nombrePais(n), a: rAnt.porPais[n], b: r.porPais[n] }) }));
+    const tiposBajan = Object.keys(rAnt.porTipo).filter(k => rAnt.porTipo[k] >= 3 && (r.porTipo[k] || 0) <= rAnt.porTipo[k] / 2);
+    tiposBajan.slice(0, 2).forEach(k => { const ty = ACTIVITY_BY_KEY[k]; out.push({ ico:"📘", txt: t("{ty}: bajó de {a} a {b}. ¿Hace falta planificar más?","{ty}: went down from {a} to {b}. Does it need more planning?","{ty}: caiu de {a} para {b}. Precisa planejar mais?","{ty}: ירד מ-{a} ל-{b}. צריך לתכנן יותר?",{ ty: ty ? ty.label : k, a: rAnt.porTipo[k], b: r.porTipo[k] || 0 }) }); });
+    const sube = Object.keys(r.porPais).map(n => ({ n, d: r.porPais[n] - (rAnt.porPais[n] || 0) })).filter(x => x.d >= 3).sort((a, b) => b.d - a.d)[0];
+    if(sube) out.push({ ico:"🌱", txt: t("{p} creció de {a} a {b}: vale la pena ver qué funcionó ahí.","{p} grew from {a} to {b}: worth seeing what worked there.","{p} cresceu de {a} para {b}: vale ver o que funcionou lá.","{p} גדלה מ-{a} ל-{b}: כדאי לבדוק מה עבד שם.",{ p: nombrePais(sube.n), a: rAnt.porPais[sube.n] || 0, b: r.porPais[sube.n] }) });
+  }
+  // 4. Meses vacíos (solo los que ya pasaron).
+  const hoyMes = todayISO().slice(0, 7);
+  const vacios = [];
+  for(let m = v.desde.slice(0, 7); m <= v.hasta.slice(0, 7) && m < hoyMes; m = addMonthsISO(m + "-01", 1).slice(0, 7)){
+    if(!r.porMes[m]) vacios.push(fmtISO(m + "-01", { month:"long" }));
+  }
+  if(vacios.length && vacios.length < 12) out.push({ ico:"🗓️", txt: t("No hubo actividad en {m}: conviene planificar algo para esos meses.","There was no activity in {m}: worth planning something for those months.","Não houve atividade em {m}: convém planejar algo para esses meses.","לא הייתה פעילות ב-{m}: כדאי לתכנן משהו לחודשים האלה.",{ m: lista(vacios) }) });
+  // 5. Una zona con muy poco del total.
+  const zonasCon = Object.values(ZONES).map(z => ({ z, n: r.porZona[z.key] || 0 }));
+  const sumaZonas = zonasCon.reduce((s, x) => s + x.n, 0);
+  if(!f.zona && !f.pais && sumaZonas >= 10){
+    const flaca = zonasCon.filter(x => x.n / sumaZonas < 0.15).sort((a, b) => a.n - b.n)[0];
+    if(flaca) out.push({ ico:"🌎", txt: t("La zona {z} tuvo solo el {p}% de la actividad.","The {z} zone had only {p}% of the activity.","A zona {z} teve só {p}% da atividade.","לאזור {z} היו רק {p}% מהפעילות.",{ z: flaca.z.label, p: Math.round(flaca.n * 100 / sumaZonas) }) });
+  }
+  // 6. Datos que faltan: sin lugar, sin participantes.
+  if(r.sinLugar) out.push({ ico:"📍", txt: r.sinLugar === 1
+    ? t("Una actividad no tiene lugar: completarla hace más útil este reporte.","One activity has no place: filling it in makes this report more useful.","Uma atividade não tem lugar: completá-la torna este relatório mais útil.","לפעילות אחת אין מקום: השלמתה תהפוך את הדוח לשימושי יותר.")
+    : t("{n} actividades no tienen lugar: completarlas hace más útil este reporte.","{n} activities have no place: filling them in makes this report more useful.","{n} atividades não têm lugar: completá-las torna este relatório mais útil.","ל-{n} פעילויות אין מקום: השלמתן תהפוך את הדוח לשימושי יותר.",{ n: r.sinLugar }) });
+  if(r.total >= 5 && r.conParticipantes / r.total < 0.5) out.push({ ico:"👥", txt: t("Solo el {p}% de las actividades tiene participantes cargados: sumarlos muestra mejor quién hizo qué.","Only {p}% of activities have participants: adding them shows better who did what.","Só {p}% das atividades têm participantes: somá-los mostra melhor quem fez o quê.","רק ל-{p}% מהפעילויות יש משתתפים: הוספתם מראה טוב יותר מי עשה מה.",{ p: Math.round(r.conParticipantes * 100 / r.total) }) });
+  return out.slice(0, 7);
+}
+function renderSugerencias(v, r, rAnt, f){
+  const lista = sugerenciasDelReporte(v, r, rAnt, f || {});
+  if(!lista.length) return "";
+  const titulo = !v.tri
+    ? t("Sugerencias para {a}","Suggestions for {a}","Sugestões para {a}","הצעות ל-{a}",{ a: Number(v.anio) + 1 })
+    : t("Sugerencias","Suggestions","Sugestões","הצעות");
+  return `<div class="rep-sugerencias"><h3>💡 ${titulo}</h3>
+    <ul>${lista.map(x => `<li><span aria-hidden="true">${x.ico}</span> ${esc(x.txt)}</li>`).join("")}</ul>
+    <div class="rep-bloque-nota">${t("Salen de comparar este período con el anterior y de la última actividad de cada país. Son pistas, no reglas.","They come from comparing this period with the previous one and from each country's latest activity. They're hints, not rules.","Saem de comparar este período com o anterior e da última atividade de cada país. São pistas, não regras.","הן נובעות מהשוואת התקופה הזו לקודמת ומהפעילות האחרונה בכל מדינה. אלה רמזים, לא כללים.")}</div></div>`;
 }
 
 /* ======================================================================
@@ -17660,6 +18049,12 @@ document.addEventListener("click", async e=>{
     "reporte-trimestre": async (el, e, action, postId) => {
     state.reportes.trimestre = Number(el.dataset.key) || 0; render();
   },
+    "reporte-modo": async (el) => {
+    state.reportes.modo = el.dataset.key === "comparar" ? "comparar" : "periodo"; render();
+  },
+    "reporte-sin-filtro": async () => {
+    state.reportes.filtro = { zona:"", pais:"", tipo:"", persona:"" }; render();
+  },
     "pref-toggle-list": async (el, e, action, postId) => {
     const key = el.dataset.key, prefKey = el.dataset.pref;
     const cur = prefs()[prefKey] || [];
@@ -18590,6 +18985,11 @@ document.addEventListener("change", e=>{
   const el = e.target;
   // Revisar lo de Calendar: los selectores del panel y de "Nombres sueltos".
   if(el.id === "rvTipo" && rv.borrador){ rv.borrador.tipo = el.value; return; }
+  // Reportes: los años a comparar y el "Ver solo".
+  const REP_CAMPOS = { repCompA:"compA", repCompB:"compB", repCompTri:"compTri" };
+  const REP_FILTROS = { repFZona:"zona", repFPais:"pais", repFTipo:"tipo", repFPersona:"persona" };
+  if(hasOwn(REP_CAMPOS, el.id)){ state.reportes[REP_CAMPOS[el.id]] = el.id === "repCompTri" ? (Number(el.value) || 0) : el.value; render(); return; }
+  if(hasOwn(REP_FILTROS, el.id)){ state.reportes.filtro = { ...(state.reportes.filtro || {}), [REP_FILTROS[el.id]]: el.value }; render(); return; }
   if(el.id === "rvPais" && rv.borrador){
     const b = rv.borrador, v = el.value;
     b.ciudad = "";
