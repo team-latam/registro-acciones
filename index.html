@@ -1815,6 +1815,13 @@
   .empty-state .big{ font-size:36px; margin-bottom:10px; }
   .lp-sub{ font-size:15px; margin:22px 0 6px; }
   .lp-unificar{ display:flex; flex-direction:column; gap:6px; padding-bottom:12px; margin-bottom:12px; border-bottom:1px dashed var(--border); width:100%; }
+  .sin-cuenta{ margin-top:18px; background:var(--card); border:1px solid var(--border); border-radius:var(--radius-lg); padding:14px 18px; box-shadow:var(--shadow); }
+  .sin-cuenta h3{ margin:0 0 4px; font-size:14.5px; color:var(--ink); }
+  .sin-cuenta > .hint{ margin:0 0 10px; }
+  .sin-cuenta-fila{ display:flex; flex-wrap:wrap; gap:6px 16px; align-items:flex-start; padding:12px 0 0; border-top:1px solid var(--border); }
+  .sin-cuenta-fila .lp-who{ display:flex; flex-direction:column; min-width:180px; flex:1 1 180px; }
+  .sin-cuenta-fila .lp-who span{ font-size:12px; color:var(--text-muted); }
+  .sin-cuenta-fila .lp-unificar{ flex:2 1 300px; width:auto; border-bottom:none; margin-bottom:0; }
   .lp-unificar label{ font-size:12.5px; font-weight:800; color:var(--ink); }
   .lp-unificar-fila{ display:flex; gap:8px; flex-wrap:wrap; }
   .lp-unificar-fila select{ flex:1 1 200px; min-width:0; border:1px solid var(--border); border-radius:10px; padding:8px 10px; font:inherit; font-size:13px; background:var(--card); color:var(--ink); }
@@ -10520,7 +10527,40 @@ function renderUsuariosSection(){
   return toolbar + `<div class="lp-layout${abierto ? " abierto" : ""}">
       <div class="lp-list"><div class="lp-rows">${filas}</div></div>
       ${abierto ? renderPersonaPanel(abierto) : ""}
-    </div>`;
+    </div>${renderCorreosSinCuenta()}`;
+}
+// Correos que figuran en posteos, comentarios o me gusta pero no son de
+// nadie del equipo, ni actual ni ex (6/10/2026: una cuenta borrada a mano
+// dejó una rutina que nadie podía editar). Desde acá se pasa todo lo suyo
+// a una cuenta, igual que desde la ficha de una persona.
+function correosSinCuenta(){
+  const conocidos = new Set([...state.roster, ...state.formerMembers].map(u => String(u.email || "").toLowerCase()));
+  const cuenta = new Map();
+  const sumar = email => {
+    const e = String(email || "").trim().toLowerCase();
+    if(!e || !e.includes("@") || conocidos.has(e)) return;
+    cuenta.set(e, (cuenta.get(e) || 0) + 1);
+  };
+  for(const post of state.posts){
+    sumar(post.authorEmail);
+    (post.likedBy || []).forEach(sumar);
+    postEditors(post).forEach(sumar);
+    (Array.isArray(post.participants) ? post.participants : []).forEach(x => sumar(x && x.email));
+    (state.repliesByPost[post.id] || []).forEach(r => { if(!r.system){ sumar(r.authorEmail); (r.likedBy || []).forEach(sumar); } });
+  }
+  return [...cuenta].map(([email, n]) => ({ email, n })).sort((a, b) => b.n - a.n || a.email.localeCompare(b.email));
+}
+function renderCorreosSinCuenta(){
+  const lista = correosSinCuenta();
+  if(!lista.length) return "";
+  return `<section class="sin-cuenta">
+    <h3>${t("Correos que ya no están en el equipo","Emails no longer on the team","E-mails que já não estão na equipe","מיילים שכבר לא בצוות")}</h3>
+    <p class="hint">${t("Aparecen en eventos, comentarios o me gusta, pero no son de nadie de Personas. Si eran de alguien que ahora usa otra cuenta, pasá todo a esa cuenta: así lo puede editar.","They show up in events, comments or likes, but don't belong to anyone in People. If they were someone's who now uses another account, move everything to it so they can edit it.","Aparecem em eventos, comentários ou curtidas, mas não são de ninguém em Pessoas. Se eram de alguém que agora usa outra conta, passe tudo para ela: assim pode editar.","מופיעים באירועים, תגובות או לייקים, אבל לא שייכים לאף אחד באנשים. אם הם של מישהו שעכשיו משתמש בחשבון אחר, העבירו הכול אליו כדי שיוכל לערוך.")}</p>
+    ${lista.map(o => `<div class="sin-cuenta-fila">
+      <div class="lp-who"><b>${esc(o.email)}</b><span>${esc(o.n === 1 ? t("aparece 1 vez","appears once","aparece 1 vez","מופיע פעם אחת") : t("aparece {n} veces","appears {n} times","aparece {n} vezes","מופיע {n} פעמים",{n:o.n}))}</span></div>
+      ${renderUnificarCuenta(o, "")}
+    </div>`).join("")}
+  </section>`;
 }
 // La ficha de una persona (ver renderUsuariosSection).
 function renderPersonaPanel(u){
@@ -10590,20 +10630,22 @@ function renderPersonaPanel(u){
 // dejar uno (pedido del usuario el 5/10/2026). Lo hace la base, en
 // unificar_cuentas; acá se elige a qué cuenta.
 let unificarDestino = Object.create(null);
-function renderUnificarCuenta(u){
+// `id` = "" para las filas de «Correos que ya no están» (pueden ser
+// varias): ahí el select no lleva id y la etiqueta lo envuelve.
+function renderUnificarCuenta(u, id = "unificarDestino"){
   const otros = state.roster.filter(m => m.email !== u.email).sort((a, b) => String(a.name || a.email).localeCompare(String(b.name || b.email), currentLang()));
   if(!otros.length) return "";
   const elegido = unificarDestino[u.email] || "";
   return `<div class="lp-unificar">
-      <label for="unificarDestino">${t("Pasar todo lo suyo a otra cuenta","Move everything to another account","Passar tudo para outra conta","העברת הכול לחשבון אחר")}</label>
+      <label${id ? ` for="${id}"` : ""}>${t("Pasar todo lo suyo a otra cuenta","Move everything to another account","Passar tudo para outra conta","העברת הכול לחשבון אחר")}</label>
       <div class="lp-unificar-fila">
-        <select id="unificarDestino" data-email="${esc(u.email)}">
+        <select class="unificar-destino"${id ? ` id="${id}"` : ""} data-email="${esc(u.email)}" aria-label="${esc(t("Pasar todo lo suyo a otra cuenta","Move everything to another account","Passar tudo para outra conta","העברת הכול לחשבון אחר"))}">
           <option value="">${t("— elegí la cuenta —","— choose the account —","— escolha a conta —","— בחירת חשבון —")}</option>
           ${otros.map(m => `<option value="${esc(m.email)}"${m.email === elegido ? " selected" : ""}>${esc(m.name || m.email)} · ${esc(m.email)}</option>`).join("")}
         </select>
         <button type="button" class="btn-secondary" data-action="unificar-cuentas" data-email="${esc(u.email)}" ${elegido && !savingRoster.has(u.email) ? "" : "disabled"}>${t("Pasar…","Move…","Passar…","העברה…")}</button>
       </div>
-      <span class="hint">${t("Para alguien que usó dos correos: lo que cargó, sus comentarios, me gusta, participaciones, menciones y hitos pasan a la cuenta elegida. Después se le puede quitar el acceso a esta.","For someone who used two emails: what they logged, their comments, likes, participations, mentions and milestones move to the chosen account. Then this one's access can be removed.","Para quem usou dois e-mails: o que carregou, seus comentários, curtidas, participações, menções e marcos passam para a conta escolhida. Depois se pode tirar o acesso desta.","למי שהשתמש/ה בשני מיילים: מה שנרשם, תגובות, לייקים, השתתפויות, אזכורים ואבני דרך עוברים לחשבון שנבחר. אחר כך אפשר להסיר את הגישה לחשבון הזה.")}</span>
+      ${id ? `<span class="hint">${t("Para alguien que usó dos correos: lo que cargó, sus comentarios, me gusta, participaciones, menciones y hitos pasan a la cuenta elegida. Después se le puede quitar el acceso a esta.","For someone who used two emails: what they logged, their comments, likes, participations, mentions and milestones move to the chosen account. Then this one's access can be removed.","Para quem usou dois e-mails: o que carregou, seus comentários, curtidas, participações, menções e marcos passam para a conta escolhida. Depois se pode tirar o acesso desta.","למי שהשתמש/ה בשני מיילים: מה שנרשם, תגובות, לייקים, השתתפויות, אזכורים ואבני דרך עוברים לחשבון שנבחר. אחר כך אפשר להסיר את הגישה לחשבון הזה.")}</span>` : ""}
     </div>`;
 }
 // Cuántos posteos cargó alguien en cada uno de los últimos N meses (la
@@ -19670,11 +19712,16 @@ document.addEventListener("click", async e=>{
     await withRosterGuard(viejo, () => store.unificarCuentas(viejo, nuevo).then(n => {
       delete unificarDestino[viejo];
       const total = ["cargados","comentarios","listas","participa","hitos"].reduce((s, k) => s + (Number(n[k]) || 0), 0);
-      showCalendarNotice({ ok:true, message: t(
+      showCalendarNotice({ ok:true, message: mv ? t(
         "Listo: {n} cosas pasaron de {a} a {b} ({c} eventos cargados, {d} comentarios). Ahora le podés quitar el acceso a {a}.",
         "Done: {n} items moved from {a} to {b} ({c} events, {d} comments). You can now remove {a}'s access.",
         "Pronto: {n} itens passaram de {a} para {b} ({c} eventos, {d} comentários). Agora você pode tirar o acesso de {a}.",
         "בוצע: {n} פריטים עברו מ-{a} אל {b} ({c} אירועים, {d} תגובות). עכשיו אפשר להסיר את הגישה של {a}.",
+        { n: total, a: mv.name || viejo, b: (mn && mn.name) || nuevo, c: Number(n.cargados) || 0, d: Number(n.comentarios) || 0 }) : t(
+        "Listo: {n} cosas pasaron de {a} a {b} ({c} eventos cargados, {d} comentarios).",
+        "Done: {n} items moved from {a} to {b} ({c} events, {d} comments).",
+        "Pronto: {n} itens passaram de {a} para {b} ({c} eventos, {d} comentários).",
+        "בוצע: {n} פריטים עברו מ-{a} אל {b} ({c} אירועים, {d} תגובות).",
         { n: total, a: (mv && mv.name) || viejo, b: (mn && mn.name) || nuevo, c: Number(n.cargados) || 0, d: Number(n.comentarios) || 0 }) });
     }).catch(err => {
       console.error("No se pudo unificar:", err);
@@ -20207,7 +20254,7 @@ document.addEventListener("change", e=>{
   const el = e.target;
   // Revisar lo de Calendar: los selectores del panel y de "Nombres sueltos".
   if(el.id === "rvTipo" && rv.borrador){ rv.borrador.tipo = el.value; return; }
-  if(el.id === "unificarDestino"){ unificarDestino[el.dataset.email] = el.value; render(); return; }
+  if(el.classList.contains("unificar-destino")){ unificarDestino[el.dataset.email] = el.value; render(); return; }
   // Reportes: los años a comparar y el "Ver solo".
   const REP_CAMPOS = { repCompA:"compA", repCompB:"compB", repCompTri:"compTri", repAnio:"anio", repTri:"trimestre" };
   const REP_FILTROS = { repFZona:"zona", repFPais:"pais", repFTipo:"tipo", repFPersona:"persona" };

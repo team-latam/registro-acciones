@@ -18,6 +18,18 @@
 -- escritos acá: el repositorio es público.
 -- ============================================================
 
+-- Una lista de correos con el viejo (sin importar mayúsculas) cambiado por
+-- el nuevo, sin repetidos y en el orden en que estaban.
+create or replace function public.reemplazar_correo(lista text[], viejo text, nuevo text)
+returns text[] language sql immutable set search_path = '' as $$
+  select coalesce(array_agg(x order by primero), '{}') from (
+    select x, min(i) as primero from (
+      select case when lower(y) = lower(viejo) then nuevo else y end as x, i
+        from unnest(coalesce(lista, '{}')) with ordinality as t(y, i)) a
+    group by x) b
+$$;
+revoke execute on function public.reemplazar_correo(text[], text, text) from public, anon;
+
 create or replace function public.unificar_cuentas(p_viejo text, p_nuevo text)
 returns jsonb language plpgsql security definer set search_path = '' as $$
 declare
@@ -66,11 +78,15 @@ begin
    where lower(coalesce(project_done_by, '')) = viejo;
 
   -- Listas de correos: se reemplaza y, si ya estaban los dos, queda uno.
+  -- Se compara sin mayúsculas y contra el correo pedido, no contra la
+  -- ficha: un correo que ya no está ni en Personas ni entre los ex
+  -- integrantes (6/10/2026: una cuenta borrada a mano) no tiene ficha,
+  -- y antes sus me gusta se quedaban donde estaban.
   update public.posts p set
-    liked_by = (select coalesce(array_agg(distinct x), '{}') from unnest(array_replace(p.liked_by, m_viejo.email, m_nuevo.email)) x),
-    editors  = (select coalesce(array_agg(distinct x), '{}') from unnest(array_replace(p.editors,  m_viejo.email, m_nuevo.email)) x),
-    mentions = (select coalesce(array_agg(distinct x), '{}') from unnest(array_replace(p.mentions, m_viejo.email, m_nuevo.email)) x)
-   where m_viejo.email = any(p.liked_by) or m_viejo.email = any(p.editors) or m_viejo.email = any(p.mentions);
+    liked_by = public.reemplazar_correo(p.liked_by, viejo, m_nuevo.email),
+    editors  = public.reemplazar_correo(p.editors,  viejo, m_nuevo.email),
+    mentions = public.reemplazar_correo(p.mentions, viejo, m_nuevo.email)
+   where exists (select 1 from unnest(coalesce(p.liked_by, '{}') || coalesce(p.editors, '{}') || coalesce(p.mentions, '{}')) y where lower(y) = viejo);
   get diagnostics filas = row_count; n := n || jsonb_build_object('listas', filas);
 
   -- Participantes: [{email, name, ...}]. Si ya estaban las dos cuentas,
@@ -109,9 +125,9 @@ begin
    where lower(coalesce(author_email, '')) = viejo;
   get diagnostics filas = row_count; n := n || jsonb_build_object('comentarios', filas);
   update public.replies r set
-    liked_by = (select coalesce(array_agg(distinct x), '{}') from unnest(array_replace(r.liked_by, m_viejo.email, m_nuevo.email)) x),
-    mentions = (select coalesce(array_agg(distinct x), '{}') from unnest(array_replace(r.mentions, m_viejo.email, m_nuevo.email)) x)
-   where m_viejo.email = any(r.liked_by) or m_viejo.email = any(r.mentions);
+    liked_by = public.reemplazar_correo(r.liked_by, viejo, m_nuevo.email),
+    mentions = public.reemplazar_correo(r.mentions, viejo, m_nuevo.email)
+   where exists (select 1 from unnest(coalesce(r.liked_by, '{}') || coalesce(r.mentions, '{}')) y where lower(y) = viejo);
 
   -- ---------- El @usuario escrito en los textos ----------
   if coalesce(m_viejo.nickname, '') <> '' and coalesce(m_nuevo.nickname, '') <> ''
