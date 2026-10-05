@@ -5339,6 +5339,7 @@ function addDaysISO(dateStr, days){
 // propios de la app (raActivityType). Lo de leer los summaries viejos con
 // prefijo sigue (extractTitleFromSummary, summaryMatchesPost): los
 // eventos de antes pueden seguir llegando así.
+function esCorreoValido(x){ return typeof x === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(x.trim()); }
 function calendarSummary(postData){
   return String(postData.title || "");
 }
@@ -5383,7 +5384,12 @@ function buildCalendarEvent(postData, postId){
     // verdad del evento (Google les manda la invitación por mail gracias a
     // sendUpdates=all en el fetch, ver syncToCalendar/updateCalendarEvent):
     // no alcanza con que figuren en la descripción como texto.
-    attendees: participants.map(p => ({ email:p.email, displayName: p.name && p.name !== p.email ? p.name : undefined })),
+    // Solo quien tiene correo: un participante cargado por nombre (alguien
+    // que todavía no está en el equipo, o un nombre de Revisar lo de
+    // Calendar) sin correo hacía que Google rechazara el evento entero
+    // ("Missing attendee email") — el 5/10/2026 salía en cada edición.
+    // Igual figura en la descripción, en "Participantes".
+    attendees: participants.filter(p => esCorreoValido(p && p.email)).map(p => ({ email:p.email, displayName: p.name && p.name !== p.email ? p.name : undefined })),
     // Datos propios de la app pegados al evento: la KEY del tipo (no el
     // label, que cambia con el idioma o si el admin lo renombra) y el id
     // del posteo. Es lo que usan extractTitleFromSummary/findCalendarEventId
