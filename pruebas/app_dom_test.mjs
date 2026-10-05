@@ -926,6 +926,13 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   eq("celular: la barra trae Inicio, Calendario, Países y Más, con el hueco del + en el medio",
     await p.$$eval(".bottom-nav > *", es => es.map(e => e.classList.contains("bn-gap") ? "+" : e.dataset.view || e.dataset.action)),
     ["feed", "calendario", "+", "paises", "toggle-more-menu"]);
+  // 6/10/2026: píldora de vidrio que flota, solo íconos (los nombres
+  // quedan para los lectores de pantalla).
+  eq("celular: la barra flota separada de los bordes, con vidrio, y muestra solo los íconos",
+    await p.evaluate(() => { const n = document.querySelector(".bottom-nav"), r = n.getBoundingClientRect(), c = getComputedStyle(n);
+      const txt = document.querySelector('.bn-item[data-view="feed"] .bn-txt'), rt = txt.getBoundingClientRect();
+      return [r.left >= 8, innerHeight - r.bottom >= 8, c.backdropFilter !== "none", rt.width <= 1, txt.textContent.trim()]; }),
+    [true, true, true, true, "Inicio"]);
   // El + tiene que caer en el medio exacto de la pantalla, sobre el hueco
   // de la barra, y no corrido (pisaba "Países": la caja que lo envuelve es
   // tan ancha como las acciones que despliega, y se centraba el + dentro

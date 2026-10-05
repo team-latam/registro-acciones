@@ -3088,26 +3088,41 @@
     .brand{ min-width:0; gap:8px; }
     .brand > div{ min-width:0; }
     .brand h1, .brand .sub{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    /* La barra de abajo es una píldora de vidrio esmerilado que flota
+       (pedido del usuario el 6/10/2026, "que se vea más invisible", con
+       una referencia tipo Instagram): deja ver lo de atrás borroso, solo
+       los íconos, y la sección actual con una pastilla clara detrás. Los
+       nombres siguen ahí para los lectores de pantalla (.bn-txt). */
     .bottom-nav{
-      position:fixed; left:0; right:0; bottom:0; z-index:64; display:flex; align-items:stretch;
-      height:calc(62px + env(safe-area-inset-bottom)); padding-bottom:env(safe-area-inset-bottom);
-      background:var(--card); border-top:1px solid var(--border); box-shadow:0 -4px 16px rgba(8,42,44,.08);
+      position:fixed; left:12px; right:12px; bottom:calc(10px + env(safe-area-inset-bottom)); z-index:64; display:flex; align-items:stretch;
+      height:62px; padding:5px; border-radius:999px;
+      background:rgba(255,255,255,.7); -webkit-backdrop-filter:blur(16px) saturate(1.7); backdrop-filter:blur(16px) saturate(1.7);
+      border:1px solid rgba(255,255,255,.8); box-shadow:0 10px 30px rgba(8,42,44,.16), inset 0 1px 0 rgba(255,255,255,.7);
     }
+    html[data-theme="dark"] .bottom-nav{ background:rgba(16,43,46,.66); border-color:rgba(255,255,255,.1); box-shadow:0 10px 30px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06); }
+    /* Sin vidrio (navegadores viejos), opaca: transparente sin desenfoque
+       se leería el texto de atrás encima de los íconos. */
+    @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){ .bottom-nav, .bn-sheet{ background:var(--card); } }
     .bottom-nav[hidden]{ display:none; }
     .bn-item{
-      flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; position:relative;
-      border:none; background:none; color:var(--text-muted); font-family:inherit; font-size:10.5px; font-weight:700; cursor:pointer; padding:4px 0;
+      flex:1; display:flex; align-items:center; justify-content:center; position:relative; border-radius:999px;
+      border:none; background:none; color:var(--text-muted); font-family:inherit; cursor:pointer; padding:0;
+      transition:background .15s;
     }
-    .bn-item.active{ color:var(--acento-fuerte, var(--petroleo)); }
-    .bn-ico{ font-size:20px; line-height:1; }
+    .bn-item.active{ background:rgba(13,59,62,.09); }
+    html[data-theme="dark"] .bn-item.active{ background:rgba(255,255,255,.1); }
+    .bn-ico{ font-size:23px; line-height:1; }
+    .bn-txt{ position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
     .bn-gap{ flex:1; }
-    .bn-dot{ position:absolute; top:6px; left:calc(50% + 8px); width:8px; height:8px; border-radius:50%; background:var(--danger); }
+    .bn-dot{ position:absolute; top:9px; left:calc(50% + 9px); width:8px; height:8px; border-radius:50%; background:var(--danger); }
     .bn-sheet{
-      position:absolute; bottom:calc(100% + 8px); inset-inline-end:8px; width:min(280px, calc(100vw - 16px));
-      background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md); box-shadow:0 14px 36px rgba(8,42,44,0.28);
+      position:absolute; bottom:calc(100% + 10px); inset-inline-end:0; width:min(280px, calc(100vw - 24px));
+      background:rgba(255,255,255,.93); -webkit-backdrop-filter:blur(16px) saturate(1.7); backdrop-filter:blur(16px) saturate(1.7);
+      border:1px solid rgba(255,255,255,.8); border-radius:20px; box-shadow:0 14px 36px rgba(8,42,44,0.24);
       padding:6px; display:flex; flex-direction:column; animation:filterDropdownPop .2s cubic-bezier(.34,1.56,.64,1); transform-origin:bottom right;
     }
     html[dir="rtl"] .bn-sheet{ transform-origin:bottom left; }
+    html[data-theme="dark"] .bn-sheet{ background:rgba(16,43,46,.95); border-color:rgba(255,255,255,.1); }
     .bn-sheet-item{
       display:flex; align-items:center; gap:10px; min-height:44px; padding:0 12px; border:none; background:none; border-radius:var(--radius-sm);
       color:var(--text); font-family:inherit; font-size:14px; font-weight:600; text-align:start; cursor:pointer;
@@ -3119,15 +3134,15 @@
        arriba (aunque no se vean), y con "left:50%; margin-left:-28px" el
        + quedaba centrado dentro de esa caja ancha, o sea corrido a la
        derecha, pisando "Países". */
-    .fab-wrap{ inset-block-end:calc(22px + env(safe-area-inset-bottom)); inset-inline-end:auto; left:50%; transform:translateX(-50%); align-items:center; }
-    .fab-main{ width:56px; height:56px; font-size:30px; box-shadow:0 6px 20px rgba(8,42,44,0.35); }
+    .fab-wrap{ inset-block-end:calc(16px + env(safe-area-inset-bottom)); inset-inline-end:auto; left:50%; transform:translateX(-50%); align-items:center; }
+    .fab-main{ width:50px; height:50px; font-size:27px; box-shadow:0 4px 14px rgba(8,42,44,0.28); }
     .fab-actions{ align-items:center; }
-    .scroll-top{ inset-block-end:calc(76px + env(safe-area-inset-bottom)); inset-inline-end:14px; }
-    /* Abajo del todo solo hace falta pasar la barra (62px) y un respiro:
+    .scroll-top{ inset-block-end:calc(86px + env(safe-area-inset-bottom)); inset-inline-end:14px; }
+    /* Abajo del todo solo hace falta pasar la barra (62px, flotando a 10px del borde) y un respiro:
        con 96px más el pie de página quedaba un hueco de media pantalla
        después de la última tarjeta. El pie ("Registro de Acciones · Team
        LatAm") en celular queda tapado por la barra, así que no se dibuja. */
-    main{ padding-bottom:calc(78px + env(safe-area-inset-bottom)); }
+    main{ padding-bottom:calc(90px + env(safe-area-inset-bottom)); }
     footer.appfoot{ display:none; }
     /* El composer de "¿Qué hiciste hoy?" no queda pegado arriba en el
        celular: con el header, se comían un cuarto de la pantalla todo el
@@ -10658,7 +10673,7 @@ function renderBottomNav(){
   if(!bottomNavEl) return;
   if(!isAuthorized()){ bottomNavEl.hidden = true; moreMenuOpen = false; return; }
   bottomNavEl.hidden = false;
-  const item = (view, icon, label) => `<button type="button" class="bn-item${state.view===view?" active":""}" data-action="goto-view" data-view="${view}"${state.view===view ? ' aria-current="page"' : ""}><span class="bn-ico" aria-hidden="true">${icon}</span><span>${label}</span></button>`;
+  const item = (view, icon, label) => `<button type="button" class="bn-item${state.view===view?" active":""}" data-action="goto-view" data-view="${view}"${state.view===view ? ' aria-current="page"' : ""}><span class="bn-ico" aria-hidden="true">${icon}</span><span class="bn-txt">${label}</span></button>`;
   const enMas = ["proyectos","reportes","configuracion", ...ADMIN_VIEWS];
   const pend = isAdmin() ? solicitudesPendientes().length : 0;
   const hoja = (view, icon, label, extra) => `<button type="button" class="bn-sheet-item${state.view===view?" active":""}" data-action="goto-view" data-view="${view}">${icon} ${label}${extra || ""}</button>`;
@@ -10668,7 +10683,7 @@ function renderBottomNav(){
     <span class="bn-gap" aria-hidden="true"></span>
     ${item("paises", "🗺️", t("Países","Countries","Países","מדינות"))}
     <button type="button" class="bn-item${enMas.includes(state.view)?" active":""}${moreMenuOpen?" open":""}" data-action="toggle-more-menu" aria-haspopup="true" aria-expanded="${moreMenuOpen}">
-      <span class="bn-ico" aria-hidden="true">☰</span><span>${t("Más","More","Mais","עוד")}</span>${pend ? `<span class="bn-dot" aria-hidden="true"></span>` : ""}
+      <span class="bn-ico" aria-hidden="true">☰</span><span class="bn-txt">${t("Más","More","Mais","עוד")}</span>${pend ? `<span class="bn-dot" aria-hidden="true"></span>` : ""}
     </button>
     ${moreMenuOpen ? `<div class="bn-sheet" role="menu">
         ${hoja("proyectos", "📋", t("Proyectos","Projects","Projetos","פרויקטים"))}
