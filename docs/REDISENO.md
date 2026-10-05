@@ -511,6 +511,13 @@ capturas (A/B/C, después D/E/F, después ajustes), el diseño elegido:
   su barra (nombre, Descargar, ✕) y aparece con un fundido corto. Se cierra
   con la ✕, con Esc o tocando la página de atrás; tocar la foto ya no la
   cierra.
+- Y después: **todo archivo abre el visor** (menos el audio): Word, PDF,
+  texto, **planillas como tabla** (SheetJS); lo que no se puede mostrar
+  (PowerPoint, Word viejo) abre igual con su nombre y "Descargar".
+  **Deslizar con el dedo** pasa al anterior o siguiente (fotos y archivos;
+  al revés en hebreo). El tamaño de un Word o una planilla se cambia con
+  **− porcentaje +** (tocar el porcentaje vuelve al inicial). El contador
+  "1 / 2" va siempre de izquierda a derecha (en hebreo salía "2/1").
 
 ## Fuera de alcance (necesitan algo que la app no tiene)
 
