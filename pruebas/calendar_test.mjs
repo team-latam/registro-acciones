@@ -198,5 +198,23 @@ eq("ninguna de las dos pasa por otro lado que no sea Google",
      api.separarLargos({ "2026-10-05":[largo] }, "2026-12-01", "2026-12-31").largos.length, 0);
 }
 
+/* ---------- El título en Calendar, sin el tipo adelante (5/10/2026) ---------- */
+{
+  const api = new Function(`
+    const ACTIVITY_BY_KEY = { curso:{ label:"Curso" }, visita:{ label:"Visita" } };
+    const DEFAULT_ACTIVITY_LABELS = { curso:{ es:"Curso", en:"Course", pt:"Curso", he:"קורס" } };
+    const hasOwn = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+    ${grab("calendarSummary")}
+    ${grab("activityLabelVariants")}
+    ${grab("summaryMatchesPost")}
+    return { calendarSummary, summaryMatchesPost };`)();
+  eq("el evento en Calendar se llama como el posteo, sin «Curso:» adelante",
+     api.calendarSummary({ activityType:"curso", title:"Curso de Team Leader" }), "Curso de Team Leader");
+  const p = { activityType:"curso", title:"Curso de Moda" };
+  eq("se reconoce el evento nuevo (sin prefijo) y el de antes (con prefijo, en cualquier idioma)",
+     ["Curso de Moda", "Curso: Curso de Moda", "Course: Curso de Moda", "Visita: Curso de Moda"].map(x => api.summaryMatchesPost(x, p)),
+     [true, true, true, false]);
+}
+
 console.log(`\n${pass} pasaron, ${fail} fallaron`);
 process.exit(fail ? 1 : 0);

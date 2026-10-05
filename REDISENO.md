@@ -403,6 +403,17 @@ teclado; queda todo distorsionado". Se recorrieron todas las pantallas a
   dos sincronizadores lo vincula con un evento parecido. Se ofrece solo
   cuando el tipo va al Calendar y el evento todavía no está ahí.
 
+### 23. Sin el tipo delante del título — HECHO (5 oct 2026)
+
+- La app mandaba los eventos a Google Calendar como "Tipo: Título"
+  ("Curso: Curso de Team Leader"). Ahora va el título solo
+  (`calendarSummary`). La lectura de summaries viejos con prefijo sigue
+  (`extractTitleFromSummary`, `summaryMatchesPost`, `findCalendarEventId`).
+- `14-titulos-sin-tipo.sql` saca el prefijo exacto "<tipo>: " (de fábrica
+  en 4 idiomas, "Actividad" y los del admin) de los títulos ya guardados,
+  sin tocar la fecha de edición. Los eventos ya creados en el Calendar
+  compartido se renombraron sin avisos (notificaciones apagadas).
+
 ## Fuera de alcance (necesitan algo que la app no tiene)
 
 - Mandar correos (resumen semanal, invitaciones): no hay servicio de
