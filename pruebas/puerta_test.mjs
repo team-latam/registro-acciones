@@ -89,7 +89,7 @@ const sinDocs = { id:"p2", activityType:"rutina", files:[
 await p.evaluate(x=>window.__pintarArchivos(x), sinDocs);
 const b2 = await p.$$eval('[data-action="open-file-preview"]',
   els => els.map(e => ({ nombre: e.textContent.trim().replace(/^\S+\s/,""), idx: e.dataset.idx })));
-eq("el audio y el Word no son botones del visor", b2.map(x=>x.nombre), ["a.pdf","c.pdf"]);
+eq("el audio no es botón del visor; el Word sí, desde el 6/10/2026", b2.map(x=>x.nombre), ["a.pdf","b.docx","c.pdf"]);
 for(let i=0; i<b2.length; i++){
   eq(`sin docs, clic en «${b2[i].nombre}» abre ese archivo`, await p.evaluate(k=>window.__clickear(k), i), b2[i].nombre);
 }

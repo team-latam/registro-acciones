@@ -2018,6 +2018,14 @@
   .doc-cuenta{ font-variant-numeric:tabular-nums; }
   .doc-cuenta.completo{ color:var(--ok-text); }
   .doc-fila{ display:flex; align-items:center; gap:8px; padding:3px 0; min-width:0; flex-wrap:wrap; }
+  .doc-archivos{ display:flex; align-items:center; gap:8px; min-width:0; flex:1 1 220px; flex-wrap:wrap; }
+  .doc-archivos .doc-archivo, .doc-anterior .doc-archivo{ max-width:min(320px, 100%); }
+  .doc-mas{ border:none; border-radius:999px; background:var(--petroleo); color:#fff; font:inherit; font-size:11px; font-weight:800; padding:2px 9px; cursor:pointer; white-space:nowrap; min-height:22px; }
+  .doc-mas[aria-expanded="true"]{ background:var(--surface-hover); color:var(--ink); }
+  .doc-agregar{ border:1px dashed var(--celeste-dark); background:var(--card); color:var(--celeste-dark); border-radius:999px; font:inherit; font-size:13px; font-weight:800; line-height:1; padding:3px 10px; cursor:pointer; min-height:24px; }
+  .doc-agregar:hover{ background:var(--celeste-soft); }
+  .doc-anteriores{ display:flex; flex-direction:column; gap:2px; padding:0 0 4px; margin-inline-start:24px; border-inline-start:2px solid var(--border); padding-inline-start:10px; }
+  .doc-anterior{ display:flex; align-items:center; gap:8px; min-width:0; flex-wrap:wrap; }
   .doc-estado{ flex:0 0 auto; width:16px; text-align:center; font-weight:800; color:var(--text-muted); }
   .doc-estado.ok{ color:var(--ok-text); }
   .doc-nombre{ font-size:12.5px; font-weight:700; }
@@ -2038,11 +2046,11 @@
   .doc-pendiente, .doc-roto{ font-size:11.5px; color:var(--text-muted); font-style:italic; }
   /* Pegado a lo que saca. Empujarlo al borde derecho con margin:auto lo
      dejaba lejísimos del archivo en una pantalla ancha. */
-  .doc-fila .rm{
+  .doc-fila .rm, .doc-anterior .rm{
     width:24px; height:24px; border-radius:50%; background:none;
     border:none; color:var(--text-muted); font-size:12px; cursor:pointer; line-height:24px; padding:0;
   }
-  .doc-fila .rm:hover{ background:var(--danger-bg); color:var(--danger); }
+  .doc-fila .rm:hover, .doc-anterior .rm:hover{ background:var(--danger-bg); color:var(--danger); }
 
   /* Tipos de actividad: la lista (ver renderTiposSection) y el editor de
      documentos esperados adentro de la ficha (ver renderTipoPanel). */
@@ -3035,10 +3043,27 @@
   .ev-actions-even .btn-primary{ border:1px solid transparent; }
 
   /* ---------- Vista previa de adjuntos (PDF) ---------- */
-  #filePreviewFrame{
-    width:100%; height:70vh; border:0; border-radius:var(--radius-sm); background:var(--surface-soft);
+  .visor-doc{ position:fixed; inset:0; z-index:200; background:rgba(0,0,0,0.85); display:flex; flex-direction:column; align-items:center; padding:12px 72px 44px; }
+  .visor-doc[hidden]{ display:none; }
+  .visor-barra{ width:100%; max-width:900px; display:flex; align-items:center; gap:10px; padding:4px 0 10px; color:#fff; }
+  #filePreviewTitle{ flex:1; min-width:0; font-size:14px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .visor-btn{ display:inline-flex; align-items:center; gap:6px; border:1px solid rgba(255,255,255,.35); background:rgba(255,255,255,.1); color:#fff;
+    border-radius:999px; padding:6px 14px; font:inherit; font-size:13px; font-weight:700; cursor:pointer; text-decoration:none; white-space:nowrap; }
+  .visor-btn:hover{ background:rgba(255,255,255,.22); }
+  .visor-cerrar{ padding:6px 11px; }
+  .visor-hoja{ flex:1; width:100%; max-width:900px; min-height:0; border-radius:8px; overflow:hidden; background:#e9eef0; }
+  #filePreviewFrame{ width:100%; height:100%; border:0; background:#fff; display:block; }
+  #filePreviewFrame[hidden]{ display:none; }
+  .visor-word{ height:100%; overflow:auto; padding:16px 8px; }
+  .visor-word[hidden]{ display:none; }
+  .visor-word .docx-wrapper{ background:transparent !important; padding:0 !important; }
+  .visor-word section.docx{ margin:0 auto 16px !important; box-shadow:0 4px 18px rgba(0,0,0,.25) !important; }
+  .visor-aviso{ color:var(--text-muted); font-size:14px; font-weight:600; text-align:center; padding:48px 20px; line-height:1.6; }
+  @media (max-width:640px){
+    .visor-doc{ padding:8px 8px 44px; }
+    .visor-doc .lightbox-nav{ top:auto; bottom:6px; transform:none; width:38px; height:38px; }
+    .visor-doc .lightbox-counter{ bottom:14px; }
   }
-  #filePreviewTitle{ padding-inline-end:28px; overflow-wrap:anywhere; }
 
   /* "Actualizar" (sincronizar con Calendar) vive acá (Feed) en vez del header
      global — pedido explícito: al extremo derecho de esta fila, opuesto
@@ -3275,20 +3300,22 @@
   <span id="lightboxCounter" class="lightbox-counter" hidden></span>
 </div>
 
-<div class="modal-overlay" id="filePreviewOverlay" hidden>
-  <div class="modal modal-wrap" style="max-width:820px;" role="dialog" aria-modal="true" aria-labelledby="filePreviewTitle">
-    <button class="close" id="filePreviewClose" aria-label="Cerrar">✕</button>
-    <h2 id="filePreviewTitle"></h2>
-    <div class="file-preview-pager" id="filePreviewPager" hidden>
-      <button type="button" id="filePreviewPrev" aria-label="Anterior"></button>
-      <span id="filePreviewCounter"></span>
-      <button type="button" id="filePreviewNext" aria-label="Siguiente"></button>
-    </div>
-    <iframe id="filePreviewFrame" title=""></iframe>
-    <div class="modal-actions">
-      <a id="filePreviewDownload" class="btn-secondary" download>⬇ Descargar</a>
-    </div>
+<!-- El visor de documentos: el mismo fondo oscuro, flechas y contador que
+     el de las fotos (#lightbox), con el documento como una hoja en el
+     medio (6/10/2026). Antes era un modal blanco con un iframe. -->
+<div id="filePreviewOverlay" class="visor-doc" role="dialog" aria-modal="true" aria-labelledby="filePreviewTitle" hidden>
+  <div class="visor-barra">
+    <span id="filePreviewTitle"></span>
+    <a id="filePreviewDownload" class="visor-btn" download>⬇ Descargar</a>
+    <button type="button" id="filePreviewClose" class="visor-btn visor-cerrar" aria-label="Cerrar">✕</button>
   </div>
+  <div class="visor-hoja" id="filePreviewHoja">
+    <iframe id="filePreviewFrame" title=""></iframe>
+    <div id="filePreviewWord" class="visor-word" hidden></div>
+  </div>
+  <button type="button" id="filePreviewPrev" class="lightbox-nav lightbox-prev" aria-label="Anterior" hidden></button>
+  <button type="button" id="filePreviewNext" class="lightbox-nav lightbox-next" aria-label="Siguiente" hidden></button>
+  <span id="filePreviewCounter" class="lightbox-counter" hidden></span>
 </div>
 
 <div class="modal-overlay" id="userProfileOverlay" hidden>
@@ -12819,6 +12846,12 @@ function docsEsperados(activityType){
 }
 // La ranura que ocupa cada archivo, si ocupa alguna.
 function docDeArchivo(f){ return f && typeof f.doc === "string" ? f.doc : null; }
+// Todos los archivos de un documento, en el orden en que se subieron.
+function archivosDelDoc(post, docId){
+  return (post.files || []).filter(f => docDeArchivo(f) === docId);
+}
+// Qué documentos tienen desplegados sus archivos anteriores ("+2 más").
+const docsDesplegados = new Set();
 function archivoDelDoc(post, docId){
   return (post.files || []).find(f => docDeArchivo(f) === docId) || null;
 }
@@ -12890,25 +12923,45 @@ function renderDocumentacion(post, parte){
       aria-label="${esc(titulo + " " + hay + "/" + total)}">📄 <span class="doc-cuenta${completo ? " completo" : ""}">${hay}/${total}</span><span class="pa-l"> ${t("documentos","documents","documentos","מסמכים")}</span>${tarde ? `<span class="pa-l"> · ${t("faltan","missing","faltam","חסרים")}</span>` : ""}</button>`;
   if(parte === "linea") return linea;
   if(!abierto) return parte === "panel" ? "" : linea;
+  // Un archivo de la lista: su nombre (recortado; entero al pasar el
+  // mouse), su fecha y su ✕. data-pos es su lugar en post.files, que se
+  // resuelve en vivo al tocarlo.
+  const todos = post.files || [];
+  const archivoHtml = f => {
+    const url = safeFileDataUrl(f.dataUrl);
+    const icono = claseDe(f).icono;
+    const pos = todos.indexOf(f);
+    const cuando = fechaDeArchivo(f);
+    const titulo = f.name + (cuando ? " · " + cuando : "");
+    // El mismo criterio que los adjuntos sueltos: lo que se puede mostrar
+    // abre en el visor (desde el 6/10/2026 también los Word), el resto se baja.
+    const abrir = !url ? `<span class="doc-roto">${esc(t("archivo no disponible","file unavailable","arquivo indisponível","הקובץ אינו זמין"))}</span>`
+      : sePuedeVer(f)
+        ? `<button type="button" class="doc-archivo" data-action="open-doc" data-post-id="${post.id}" data-pos="${pos}" title="${esc(titulo)}">${icono} ${esc(f.name)}</button>`
+        : `<a class="doc-archivo" href="${url}" download="${esc(f.name)}" title="${esc(titulo)}">${icono} ${esc(f.name)} ↓</a>`;
+    return `${abrir}
+      ${cuando ? `<span class="doc-fecha">${esc(cuando)}</span>` : ""}
+      ${puede ? `<button type="button" class="rm" data-action="quitar-doc" data-post-id="${post.id}" data-pos="${pos}" title="${esc(t("Quitar este archivo del evento","Remove this file from the event","Remover este arquivo do evento","הסרת הקובץ הזה מהאירוע"))}">✕</button>` : ""}`;
+  };
   const filas = esperados.map(d=>{
-    const f = archivoDelDoc(post, d.id);
-    if(f){
-      const url = safeFileDataUrl(f.dataUrl);
-      const icono = claseDe(f).icono;
-      // El mismo criterio que los adjuntos sueltos: lo que el navegador
-      // sabe mostrar abre en el visor, el resto se baja.
-      const abrir = !url ? `<span class="doc-roto">${esc(t("archivo no disponible","file unavailable","arquivo indisponível","הקובץ אינו זמין"))}</span>`
-        : sePuedeVer(f)
-          ? `<button type="button" class="doc-archivo" data-action="open-doc" data-post-id="${post.id}" data-doc="${esc(d.id)}">${icono} ${esc(f.name)}</button>`
-          : `<a class="doc-archivo" href="${url}" download="${esc(f.name)}">${icono} ${esc(f.name)} ↓</a>`;
-      const cuando = fechaDeArchivo(f);
+    // Varios archivos por documento (6/10/2026): se ve el último subido
+    // y "+N más" despliega los anteriores; el "+" suma otro.
+    const lista = archivosDelDoc(post, d.id);
+    if(lista.length){
+      const ultimo = lista[lista.length - 1];
+      const anteriores = lista.slice(0, -1).reverse();
+      const clave = post.id + "|" + d.id;
+      const desplegado = anteriores.length > 0 && docsDesplegados.has(clave);
+      const agregar = t("Agregar otro archivo","Add another file","Adicionar outro arquivo","הוספת קובץ נוסף");
       return `<div class="doc-fila lista">
         <span class="doc-estado ok" aria-hidden="true">✓</span>
         <span class="doc-nombre">${esc(d.label)}</span>
-        ${abrir}
-        ${cuando ? `<span class="doc-fecha">${esc(cuando)}</span>` : ""}
-        ${puede ? `<button type="button" class="rm" data-action="quitar-doc" data-post-id="${post.id}" data-doc="${esc(d.id)}" title="${esc(t("Quitar este archivo del evento","Remove this file from the event","Remover este arquivo do evento","הסרת הקובץ הזה מהאירוע"))}">✕</button>` : ""}
-      </div>`;
+        <span class="doc-archivos">${archivoHtml(ultimo)}
+        ${anteriores.length ? `<button type="button" class="doc-mas" data-action="doc-mas" data-post-id="${post.id}" data-doc="${esc(d.id)}" aria-expanded="${desplegado}">${desplegado
+          ? esc(t("ocultar","hide","ocultar","הסתרה")) + " ▴"
+          : esc(t("+{n} más","+{n} more","+{n} mais","+{n} נוספים",{n:anteriores.length})) + " ▾"}</button>` : ""}
+        ${puede ? `<button type="button" class="doc-agregar" data-action="adjuntar-doc" data-post-id="${post.id}" data-doc="${esc(d.id)}" title="${esc(agregar)}" aria-label="${esc(agregar)}">＋</button>` : ""}</span>
+      </div>${desplegado ? `<div class="doc-anteriores">${anteriores.map(f => `<div class="doc-anterior">${archivoHtml(f)}</div>`).join("")}</div>` : ""}`;
     }
     return `<div class="doc-fila falta">
       <span class="doc-estado" aria-hidden="true">○</span>
@@ -12938,9 +12991,9 @@ async function adjuntarDocumento(postId, docId, file){
       { name:file.name, size:topeLegible(file.size), max:topeLegible(maxBytesPorArchivo()) }));
     return;
   }
-  // Reemplazar el documento de una ranura no suma un archivo: por eso se
-  // cuenta sobre la lista YA sin el que se está por pisar.
-  const resto = (post.files || []).filter(f => docDeArchivo(f) !== docId);
+  // Desde el 6/10/2026 suma: un documento puede tener varios archivos
+  // (antes el nuevo pisaba al anterior).
+  const resto = post.files || [];
   if(resto.length >= maxArchivos()){
     await appAlert(t(
       "Este posteo ya tiene {n} archivos, que es el máximo. Quitá uno para poder sumar este.",
@@ -12975,11 +13028,12 @@ async function adjuntarDocumento(postId, docId, file){
   // adjuntar" cuando el archivo ya quedó guardado.
   docsAbiertos.set(postId, true);
 }
-async function quitarDocumento(postId, docId){
+// Quita UN archivo de un documento: el que está en `pos` de post.files.
+async function quitarDocumento(postId, pos){
   const post = getPostById(postId);
   if(!post || !canEditPost(post)) return;
-  const f = archivoDelDoc(post, docId);
-  if(!f) return;
+  const f = (post.files || [])[Number(pos)];
+  if(!f || !docDeArchivo(f)) return;
   // Un solo significado para el ✕, acá y en los adjuntos sueltos:
   // pregunta y lo quita del evento. Probé que sacara de la ranura sin
   // borrar y no sirvió: eran dos ✕ que se veían igual y hacían cosas
@@ -12993,7 +13047,7 @@ async function quitarDocumento(postId, docId){
   if(!ok) return;
   try{
     await updatePostDoc(postId, {
-      files: (post.files || []).filter(x => docDeArchivo(x) !== docId),
+      files: (post.files || []).filter(x => x !== f),
       lastEditedAt: store.horaDelServidor(),
       lastEditedBy: state.auth.user.displayName, lastEditedByEmail: state.auth.user.email,
     });
@@ -17120,40 +17174,82 @@ lightboxCounter.addEventListener("click", e=>e.stopPropagation());
 // guardar.
 const filePreviewOverlay = document.getElementById("filePreviewOverlay");
 const filePreviewFrame = document.getElementById("filePreviewFrame");
+const filePreviewWord = document.getElementById("filePreviewWord");
 const filePreviewTitle = document.getElementById("filePreviewTitle");
 const filePreviewDownload = document.getElementById("filePreviewDownload");
-const filePreviewPager = document.getElementById("filePreviewPager");
 const filePreviewPrev = document.getElementById("filePreviewPrev");
 const filePreviewNext = document.getElementById("filePreviewNext");
 const filePreviewCounter = document.getElementById("filePreviewCounter");
 let filePreviewReturnFocus = null;
 let filePreviewItems = [];
 let filePreviewIndex = 0;
-// items: array de {name, dataUrl} de los PDF previsualizables del mismo
-// posteo/respuesta (el audio no participa: no abre este visor).
+let filePreviewVuelta = 0;   // para no pintar un Word que llegó tarde, si ya se pasó a otro
+// Lo que dibuja los Word (.docx) en el navegador. Se carga la primera
+// vez que se abre uno; usa JSZip, que ya se carga para la copia de seguridad.
+const DOCX_PREVIEW_CDN = "https://cdn.jsdelivr.net/npm/docx-preview@0.4.1/dist/docx-preview.min.js";
+async function cargarVisorWord(){
+  if(!window.JSZip) await cargarScript(JSZIP_CDN);
+  if(!window.docx || typeof window.docx.renderAsync !== "function") await cargarScript(DOCX_PREVIEW_CDN);
+  if(!window.docx || typeof window.docx.renderAsync !== "function") throw new Error("docx-preview");
+}
+// items: array de {name, dataUrl, word?} de los documentos que se pueden
+// mostrar del mismo posteo/respuesta (el audio no participa).
 function openFilePreview(items, index){
   filePreviewItems = items || [];
   filePreviewIndex = Math.min(Math.max(index||0, 0), Math.max(filePreviewItems.length-1, 0));
   renderFilePreviewFrame();
   filePreviewReturnFocus = document.activeElement;
   filePreviewOverlay.hidden = false;
-  document.getElementById("filePreviewClose").focus();
+  (filePreviewItems.length > 1 ? filePreviewNext : document.getElementById("filePreviewClose")).focus();
 }
 function renderFilePreviewFrame(){
   const item = filePreviewItems[filePreviewIndex];
   if(!item) return;
+  const vuelta = ++filePreviewVuelta;
   filePreviewTitle.textContent = item.name;
-  filePreviewFrame.src = item.dataUrl;
-  filePreviewFrame.title = item.name;
+  filePreviewTitle.title = item.name;
   filePreviewDownload.href = item.dataUrl;
-  filePreviewDownload.download = item.name || "archivo.pdf";
+  filePreviewDownload.download = item.name || "archivo";
   const multi = filePreviewItems.length > 1;
-  filePreviewPager.hidden = !multi;
+  filePreviewPrev.hidden = filePreviewNext.hidden = filePreviewCounter.hidden = !multi;
   if(multi){
     filePreviewPrev.innerHTML = chevronHtml("prev");
     filePreviewNext.innerHTML = chevronHtml("next");
     filePreviewCounter.textContent = `${filePreviewIndex+1} / ${filePreviewItems.length}`;
   }
+  if(!item.word){
+    filePreviewWord.hidden = true; filePreviewWord.innerHTML = "";
+    filePreviewFrame.hidden = false;
+    filePreviewFrame.src = item.dataUrl;
+    filePreviewFrame.title = item.name;
+    return;
+  }
+  // Un Word: se baja el archivo y se dibuja como hojas.
+  filePreviewFrame.hidden = true; filePreviewFrame.src = "about:blank";
+  filePreviewWord.hidden = false;
+  filePreviewWord.innerHTML = `<div class="visor-aviso">${esc(t("Abriendo el documento…","Opening the document…","Abrindo o documento…","...פותח את המסמך"))}</div>`;
+  (async () => {
+    try{
+      await cargarVisorWord();
+      const res = await fetch(item.dataUrl);
+      if(!res.ok) throw new Error("HTTP " + res.status);
+      const blob = await res.blob();
+      if(vuelta !== filePreviewVuelta) return;
+      filePreviewWord.innerHTML = "";
+      await window.docx.renderAsync(blob, filePreviewWord, null, { inWrapper: true, ignoreLastRenderedPageBreak: true, breakPages: true });
+      // La hoja entera, achicada para que entre a lo ancho (en el celular
+      // se apretaba el texto en vez de achicarse la página).
+      const ancho = filePreviewWord.clientWidth - 16;
+      filePreviewWord.querySelectorAll("section.docx").forEach(hoja => {
+        const escala = Math.min(1, ancho / hoja.offsetWidth);
+        if(escala < 1) hoja.style.zoom = String(escala);
+      });
+    }catch(err){
+      if(vuelta !== filePreviewVuelta) return;
+      console.warn("No se pudo mostrar el Word:", err);
+      filePreviewWord.innerHTML = `<div class="visor-aviso">${esc(t("No se pudo mostrar este documento acá. Podés bajarlo con «Descargar».","This document can't be shown here. You can get it with “Download”.","Não foi possível mostrar este documento aqui. Você pode baixá-lo com «Baixar».","לא ניתן להציג כאן את המסמך. אפשר להוריד אותו עם «הורדה»."))}</div>`;
+    }
+  })();
 }
 function filePreviewStep(delta){
   if(filePreviewItems.length < 2) return;
@@ -17162,15 +17258,18 @@ function filePreviewStep(delta){
 }
 function closeFilePreview(){
   filePreviewOverlay.hidden = true;
-  filePreviewFrame.src = ""; // no queda el PDF cargado en memoria mientras el modal está cerrado
+  filePreviewVuelta++;
+  filePreviewFrame.src = ""; // no queda el archivo cargado en memoria mientras está cerrado
+  filePreviewWord.innerHTML = "";
   filePreviewItems = [];
   if(filePreviewReturnFocus && typeof filePreviewReturnFocus.focus === "function") filePreviewReturnFocus.focus();
   filePreviewReturnFocus = null;
 }
 document.getElementById("filePreviewClose").addEventListener("click", closeFilePreview);
-filePreviewOverlay.addEventListener("click", e=>{ if(e.target === filePreviewOverlay) closeFilePreview(); });
-filePreviewPrev.addEventListener("click", ()=>filePreviewStep(-1));
-filePreviewNext.addEventListener("click", ()=>filePreviewStep(1));
+// Como en el de las fotos: tocar el fondo oscuro (fuera de la hoja y de los botones) cierra.
+filePreviewOverlay.addEventListener("click", e=>{ if(e.target === filePreviewOverlay || e.target.classList.contains("visor-barra")) closeFilePreview(); });
+filePreviewPrev.addEventListener("click", e=>{ e.stopPropagation(); filePreviewStep(-1); });
+filePreviewNext.addEventListener("click", e=>{ e.stopPropagation(); filePreviewStep(1); });
 
 // Popup de perfil: se abre al clickear un "@nickname" DENTRO del texto de
 // un posteo o respuesta (ver highlightMentions) — nombre y apellido,
@@ -17640,7 +17739,12 @@ function renderFileChips(files, rmAction, extraAttrs=""){
 //   - Word, Excel, PowerPoint y cualquier otro: se bajan. Meterlos en un
 //     <iframe> no los muestra — según el navegador, o bajan igual o se ve
 //     una pantalla en blanco, que es peor que un botón que dice "bajar".
-function sePuedeVer(f){ return claseDe(f).seVe; }
+// Un Word de los nuevos (.docx): el navegador no lo sabe mostrar, pero el
+// visor lo dibuja con docx-preview (6/10/2026). Los .doc viejos, no.
+function esWordNuevo(f){
+  return !!f && (extensionDe(f.name) === "docx" || f.mime === "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+}
+function sePuedeVer(f){ return claseDe(f).seVe || esWordNuevo(f); }
 function renderPostedFiles(files, owner){
   if(!files || !files.length) return "";
   // Índice DENTRO de los que abren el visor — tiene que coincidir con la
@@ -18278,7 +18382,7 @@ document.addEventListener("click", async e=>{
     // archivo. Un comentario no tiene activityType, así que ahí
     // archivosSueltos() devuelve todo, que es lo que corresponde.
     const previewable = owner ? archivosSueltos(owner.files, owner.activityType).filter(f=>f && sePuedeVer(f))
-      .map(f=>({ name:f.name, dataUrl:safeFileDataUrl(f.dataUrl) })).filter(f=>f.dataUrl) : [];
+      .map(f=>({ name:f.name, dataUrl:safeFileDataUrl(f.dataUrl), word: esWordNuevo(f) })).filter(f=>f.dataUrl) : [];
     openFilePreview(previewable, Number(el.dataset.idx)||0);
   },
     "show-user-profile": async (el, e, action, postId) => {
@@ -19359,7 +19463,12 @@ document.addEventListener("click", async e=>{
     input.click();
   },
     "quitar-doc": async (el, e, action, postId) => {
-    await quitarDocumento(el.dataset.postId, el.dataset.doc);
+    await quitarDocumento(el.dataset.postId, el.dataset.pos);
+  },
+    "doc-mas": async (el, e, action, postId) => {
+    const clave = el.dataset.postId + "|" + el.dataset.doc;
+    if(docsDesplegados.has(clave)) docsDesplegados.delete(clave); else docsDesplegados.add(clave);
+    render();
   },
     "toggle-docs": async (el, e, action, postId) => {
     // Se guarda la elección, no se alterna un Set: hay que poder recordar
@@ -19373,12 +19482,17 @@ document.addEventListener("click", async e=>{
     await quitarAdjunto(el.dataset.postId, Number(el.dataset.pos));
   },
     "open-doc": async (el, e, action, postId) => {
+    // El visor recorre todos los documentos del evento que se pueden
+    // mostrar, en el orden de la lista, y arranca en el que se tocó.
     const post = getPostById(el.dataset.postId);
     if(!post) return;
-    const f = archivoDelDoc(post, el.dataset.doc);
-    const url = f ? safeFileDataUrl(f.dataUrl) : "";
-    if(url) openFilePreview([{ name:f.name, dataUrl:url }], 0);
+    const tocado = (post.files || [])[Number(el.dataset.pos)];
+    const enOrden = docsEsperados(post.activityType).flatMap(d => { const l = archivosDelDoc(post, d.id); return l.length ? [l[l.length - 1], ...l.slice(0, -1).reverse()] : []; })
+      .filter(f => sePuedeVer(f) && safeFileDataUrl(f.dataUrl));
+    const items = enOrden.map(f => ({ name:f.name, dataUrl:safeFileDataUrl(f.dataUrl), word: esWordNuevo(f) }));
+    if(items.length) openFilePreview(items, Math.max(0, enOrden.indexOf(tocado)));
   },
+
     "tipos-save": async (el, e, action, postId) => {
     const d = getTiposDraft();
     if(!d.types.length){ d.error = t("Tiene que quedar al menos un tipo de actividad.","At least one activity type has to remain.","Tem que sobrar pelo menos um tipo de atividade.",".חייב להישאר לפחות סוג פעילות אחד"); render(); return; }

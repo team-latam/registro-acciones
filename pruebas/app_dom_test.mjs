@@ -266,6 +266,8 @@ async function entrar(email, nombre, mod, viewport){
     if(u === CDN) return ruta.fulfill({ contentType: "application/javascript", body: FALSO });
     // La herramienta del .zip, de mentira: el "zip" es la lista de lo que
     // se le metió, para poder mirarla.
+    // La herramienta que dibuja los Word, de mentira: escribe cuántos bytes le llegaron.
+    if(/docx-preview/.test(u)) return ruta.fulfill({ contentType: "application/javascript", body: `window.docx = { renderAsync: async (blob, el) => { el.innerHTML = '<section class="docx">Word de ' + blob.size + ' bytes</section>'; } };` });
     if(/\/jszip\//.test(u)) return ruta.fulfill({ contentType: "application/javascript", body: `window.JSZip = class { constructor(){ this.n = []; }
       file(nombre){ this.n.push(nombre); return this; } async generateAsync(){ return new Blob([JSON.stringify(this.n.sort())]); } };` });
     if(/\/storage\/v1\/object\/sign\//.test(u)) return ruta.fulfill({ contentType: "image/png", body: PNG });
@@ -975,8 +977,40 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   await p.click('.post[data-post-id="p_reunion"] .doc-linea');
   eq("documentación: al tocarla, la lista se abre debajo de las acciones",
     await hasta(p, () => { const c = document.querySelector('.post[data-post-id="p_reunion"]'); const d = c.querySelector(".doc-abierto"); return !!d && d.previousElementSibling.classList.contains("post-actions") && d.querySelectorAll(".doc-fila").length === 2; }), true);
-  eq("documentación: sin un solo error", errores, []);
+  // Varios archivos por documento y el visor (6/10/2026).
   await p.close();
+  {
+    const { p: q, errores: err2 } = await entrar(ADMIN, "Benny", base => { base.app_config.push({ key: "preferences", value: { activityTypes: [
+      { key: "visita", label: "Visita", icon: "🧳", docs: [{ id: "plan", label: "Plan de viaje" }, { id: "reporte", label: "Reporte" }] }] } });
+      base.posts.find(x => x.id === "p_reunion").files = [
+        { name: "Plan viejo.pdf", kind: "pdf", doc: "plan", path: "posts/p_reunion/plan1.pdf" },
+        { name: "Plan de viaje definitivo con un nombre muy largo.docx", kind: "doc", doc: "plan", path: "posts/p_reunion/plan2.docx" },
+        { name: "Reporte.pdf", kind: "pdf", doc: "reporte", path: "posts/p_reunion/rep.pdf" } ]; });
+    await esperarTexto(q, "Reunión con la comunidad");
+    const tarjeta = '.post[data-post-id="p_reunion"]';
+    await q.click(`${tarjeta} .doc-linea`);
+    await q.waitForSelector(`${tarjeta} .doc-abierto`);
+    const fila = () => q.$$eval(`${tarjeta} .doc-fila`, l => l.map(e => ({ archivo: (e.querySelector(".doc-archivo") || {}).textContent?.trim(), mas: (e.querySelector(".doc-mas") || {}).textContent?.trim() || null, agregar: !!e.querySelector(".doc-agregar") })));
+    eq("varios por documento: se ve el último subido, «+1 más» y el + para sumar otro", (await fila())[0],
+       { archivo: "📘 Plan de viaje definitivo con un nombre muy largo.docx", mas: "+1 más ▾", agregar: true });
+    eq("con uno solo no hay «más»", (await fila())[1].mas, null);
+    await q.click(`${tarjeta} .doc-mas`);
+    eq("«+1 más» despliega el anterior", await q.$$eval(`${tarjeta} .doc-anteriores .doc-archivo`, l => l.map(e => e.textContent.trim())), ["📄 Plan viejo.pdf"]);
+    await q.click(`${tarjeta} .doc-fila .doc-archivo`);
+    eq("tocar un Word abre el visor oscuro (como las fotos) y lo dibuja",
+      await hasta(q, () => { const o = document.getElementById("filePreviewOverlay"); return !o.hidden && /Word de \d+ bytes/.test(document.getElementById("filePreviewWord").textContent); }), true);
+    eq("visor: el nombre, y el contador entre los documentos del evento",
+      await q.evaluate(() => [document.getElementById("filePreviewTitle").textContent, document.getElementById("filePreviewCounter").textContent]),
+      ["Plan de viaje definitivo con un nombre muy largo.docx", "1 / 3"]);
+    await q.keyboard.press("ArrowRight");
+    eq("visor: la flecha → pasa al siguiente (un PDF, en el marco)", await q.evaluate(() => [document.getElementById("filePreviewTitle").textContent, document.getElementById("filePreviewFrame").hidden, document.getElementById("filePreviewCounter").textContent]),
+      ["Plan viejo.pdf", false, "2 / 3"]);
+    await q.keyboard.press("Escape");
+    eq("visor: Esc cierra y el foco vuelve a lo que se tocó", await q.evaluate(() => [document.getElementById("filePreviewOverlay").hidden, document.activeElement.classList.contains("doc-archivo")]), [true, true]);
+    eq("varios por documento y visor: sin un solo error", err2, []);
+    await q.close();
+  }
+  eq("documentación: sin un solo error", errores, []);
 }
 
 /* ---------- En un celular ---------- */

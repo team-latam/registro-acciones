@@ -22,25 +22,26 @@ const filas = await p.$$eval(".doc-fila", els => els.map(e => ({
   archivo: e.querySelector(".doc-archivo")?.textContent.trim() || null,
   etiqueta: e.querySelector(".doc-archivo")?.tagName || null,
   tieneQuitar: !!e.querySelector('[data-action="quitar-doc"]'),
-  tieneAdjuntar: !!e.querySelector('[data-action="adjuntar-doc"]'),
+  tieneAdjuntar: !!e.querySelector('.doc-adjuntar'),
+  tieneAgregar: !!e.querySelector('.doc-agregar'),
 })));
 eq("una fila por documento esperado", filas.length, 3);
 eq("en el orden configurado", filas.map(f=>f.nombre), ["Plan de viaje","Reporte","Rendición de gastos"]);
 eq("el plan está adjuntado", [filas[0].falta, filas[0].archivo], [false, "📄 Plan de viaje - Peru 2026.pdf"]);
-eq("el reporte también", [filas[1].falta, filas[1].archivo], [false, "📘 Reporte de la visita a Lima.docx ↓"]);
+eq("el reporte también", [filas[1].falta, filas[1].archivo], [false, "📘 Reporte de la visita a Lima.docx"]);
 eq("la rendición falta", [filas[2].falta, filas[2].archivo], [true, null]);
 
 eq("un PDF abre en el visor (es un botón)", filas[0].etiqueta, "BUTTON");
-eq("un Word se baja (es un enlace)", filas[1].etiqueta, "A");
+eq("un Word también abre en el visor desde el 6/10/2026 (es un botón)", filas[1].etiqueta, "BUTTON");
 eq("lo adjuntado se puede quitar", filas.map(f=>f.tieneQuitar), [true, true, false]);
 eq("lo que falta se puede adjuntar", filas.map(f=>f.tieneAdjuntar), [false, false, true]);
+eq("y a lo que ya tiene, se le puede sumar otro con el +", filas.map(f=>f.tieneAgregar), [true, true, false]);
 
 const cuenta = await p.$eval(".doc-cuenta", e => ({ txt: e.textContent.trim(), completo: e.classList.contains("completo") }));
 eq("la cuenta dice cuántos hay de cuántos", cuenta.txt, "2/3");
 eq("y no está marcada como completa", cuenta.completo, false);
 
-const descarga = await p.$eval('a.doc-archivo', e => e.getAttribute("download"));
-eq("el enlace baja con el nombre del archivo", descarga, "Reporte de la visita a Lima.docx");
+eq("el nombre entero queda al pasar el mouse", (await p.$$eval(".doc-archivo", l => l.map(e => e.title))).some(x => x.startsWith("Reporte de la visita a Lima.docx")), true);
 
 /* ---------- Todo completo ---------- */
 await p.evaluate(()=> window.__pintarTarjeta({ id:"p1", activityType:"visita", files:[

@@ -92,10 +92,10 @@ eq("la fila del plan muestra el ✕", (await filas())[0].tieneQuitar, true);
 const botonQuitar = await p.evaluate(()=>{
   const b = document.querySelector('[data-action="quitar-doc"]');
   return b ? { visible: b.offsetWidth>0 && b.offsetHeight>0,
-               postId: b.dataset.postId, doc: b.dataset.doc } : null;
+               postId: b.dataset.postId, pos: b.dataset.pos } : null;
 });
 eq("el ✕ es visible", botonQuitar && botonQuitar.visible, true);
-eq("y lleva el posteo y la ranura", [botonQuitar.postId, botonQuitar.doc], ["p1","plan"]);
+eq("y lleva el posteo y qué archivo es (su lugar en la lista)", [botonQuitar.postId, botonQuitar.pos], ["p1","0"]);
 
 await p.click('[data-action="quitar-doc"]');
 await p.waitForTimeout(150);
