@@ -508,5 +508,6 @@ bien resueltos.
    «Email» y prendido «Confirm email»? (punto 7)~~ **Hecho el 3 de octubre
    de 2026:** Email estaba prendido y se apagó; «Secure email change»
    prendido. Ver el punto 7.
-3. **Las copias de seguridad para después del cambio** (punto 13): ¿cuál de
-   las opciones? Recomiendo la del repo privado.
+3. ~~**Las copias de seguridad para después del cambio** (punto 13): ¿cuál de
+   las opciones?~~ **Hecho el 5 de octubre de 2026:** la del repo privado
+   (ver el punto 13).
