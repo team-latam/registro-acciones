@@ -1823,6 +1823,10 @@
   #postForm .modal-actions{
     position:sticky; bottom:0; margin-top:10px; padding:10px 0 2px;
     background:var(--card); border-top:1px solid var(--border);
+    /* Por encima de los campos que suben de capa: el cuadro de
+       comentarios lleva z-index:1 (para el resaltado de las @menciones)
+       y, sin esto, al scrollear pasaba por encima de los botones. */
+    z-index:3;
   }
   .field{ margin-bottom:14px; }
   .field label{ display:block; font-size:12px; font-weight:700; color:var(--text-muted); margin-bottom:5px; text-transform:uppercase; letter-spacing:0.4px; }
@@ -4831,6 +4835,12 @@ function authorLabelHtml(email, fallbackName){
 // el nombre de cada uno que resuelva a una cuenta de la app (por email)
 // queda clickeable — los invitados sumados a mano (que no son cuenta de
 // la app) se quedan como texto, igual que antes.
+// Para el "Me gusta (2)": a quiénes, al pasar por arriba.
+function quienesGustaTitle(likedBy){
+  if(!(likedBy||[]).length) return "";
+  const nombres = likedBy.map(email=>{ const m = memberByEmail(email); return m ? (m.name || "@" + m.nickname) : email; });
+  return ` title="${esc(t("Le gusta a: {n}","Liked by: {n}","Curtido por: {n}","אהבו: {n}",{ n: nombres.join(", ") }))}"`;
+}
 function participantsHtml(participants){
   return (participants||[]).map(p=>{
     const entry = memberByEmail(p.email);
@@ -13329,8 +13339,8 @@ function renderPostCard(post, replies){
       ${imagesHtml ? `<div class="post-images">${imagesHtml}</div>` : ""}
       ${renderPostedFiles(archivosSueltos(post.files, post.activityType), {postId: post.id, todos: post.files || [], puede: canEditPost(post)})}
       <div class="post-actions">
-        ${canWrite() ? `<button data-action="toggle-like" data-post-id="${post.id}" class="${postLiked?"liked":""}" aria-label="${esc(t("Me gusta","Like","Curtir","לייק"))}">${postLiked?"👍":"🤍"}<span class="pa-l"> ${t("Me gusta","Like","Curtir","לייק")}</span>${postLikedBy.length?` (${postLikedBy.length})`:""}</button>
-        <button data-action="toggle-reply" data-post-id="${post.id}" class="${replies.length && !threadOpen ? "pa-pc" : ""}" aria-label="${esc(t("Responder","Reply","Responder","תגובה"))}">💬<span class="pa-l"> ${t("Responder","Reply","Responder","תגובה")}</span></button>` : (postLikedBy.length ? `<span class="post-likes-ro">👍 ${postLikedBy.length}</span>` : "")}
+        ${canWrite() ? `<button data-action="toggle-like" data-post-id="${post.id}" class="${postLiked?"liked":""}" aria-label="${esc(t("Me gusta","Like","Curtir","לייק"))}"${quienesGustaTitle(postLikedBy)}>${postLiked?"👍":"🤍"}<span class="pa-l"> ${t("Me gusta","Like","Curtir","לייק")}</span>${postLikedBy.length?` (${postLikedBy.length})`:""}</button>
+        <button data-action="toggle-reply" data-post-id="${post.id}" class="${replies.length && !threadOpen ? "pa-pc" : ""}" aria-label="${esc(t("Responder","Reply","Responder","תגובה"))}">💬<span class="pa-l"> ${t("Responder","Reply","Responder","תגובה")}</span></button>` : (postLikedBy.length ? `<span class="post-likes-ro"${quienesGustaTitle(postLikedBy)}>👍 ${postLikedBy.length}</span>` : "")}
         ${replies.length ? `<button data-action="toggle-thread" data-post-id="${post.id}" aria-label="${esc(commentsLabel)}" aria-expanded="${threadOpen}"><span class="pa-pc">${threadOpen ? "▲ " + t("Ocultar","Hide","Ocultar","הסתרה") : "▼ " + t("Ver","View","Ver","הצגה")} ${commentsLabel}</span><span class="pa-cel" aria-hidden="true">💬 ${replies.length}${threadOpen ? " ▲" : ""}</span></button>` : ""}
         ${post.isProject
           ? `<button data-action="toggle-project" data-post-id="${post.id}" class="${openProjects.has(post.id)?"active":""}">📋 ${openProjects.has(post.id) ? t("Ocultar proyecto","Hide project","Ocultar projeto","הסתרת פרויקט") : t("Ver proyecto","View project","Ver projeto","הצגת פרויקט")}${postMilestones(post).length ? ` (${postMilestones(post).filter(m=>m.done).length}/${postMilestones(post).length})` : ""}</button>`
@@ -13405,7 +13415,12 @@ function renderScopeChip(sc, removable, idx, ownerId){
 // cuelga del mismo padre en vez de seguir apilando (ver submitNestedReply).
 function renderThread(replies){
   if(!replies.length) return "";
-  const topLevel = replies.filter(r=>!r.replyToId);
+  // Una respuesta cuyo comentario de arriba ya no está (lo borró el admin,
+  // o quedó en otra fecha de la serie) va suelta, como uno más: antes no
+  // se dibujaba en ningún lado y la tarjeta decía "Ver 1 comentario" con
+  // el hilo vacío.
+  const ids = new Set(replies.map(r=>r.id));
+  const topLevel = replies.filter(r=>!r.replyToId || !ids.has(r.replyToId));
   const childrenOf = id => replies.filter(r=>r.replyToId === id);
   const renderOne = r => {
     const children = childrenOf(r.id);
@@ -13433,7 +13448,7 @@ function renderReply(r){
       ${renderPostedFiles(r.files, {postId: r.postId, replyId: r.id})}
       ${(!r.system && canWrite()) || isFixedAdmin() ? `
       <div class="reply-actions">
-        ${!r.system && canWrite() ? `<button data-action="toggle-like" data-post-id="${r.postId}" data-reply-id="${r.id}" class="${liked?"liked":""}">${liked?"👍":"🤍"} ${t("Me gusta","Like","Curtir","לייק")}${likedBy.length?` (${likedBy.length})`:""}</button>
+        ${!r.system && canWrite() ? `<button data-action="toggle-like" data-post-id="${r.postId}" data-reply-id="${r.id}" class="${liked?"liked":""}"${quienesGustaTitle(likedBy)}>${liked?"👍":"🤍"} ${t("Me gusta","Like","Curtir","לייק")}${likedBy.length?` (${likedBy.length})`:""}</button>
         <button data-action="toggle-nested-reply" data-reply-id="${r.id}">↩ ${t("Responder","Reply","Responder","תגובה")}</button>` : ""}
         ${isFixedAdmin() ? `<button class="danger" data-action="delete-reply" data-post-id="${r.postId}" data-reply-id="${r.id}">🗑️ ${t("Borrar","Delete","Apagar","מחיקה")}</button>` : ""}
       </div>` : ""}

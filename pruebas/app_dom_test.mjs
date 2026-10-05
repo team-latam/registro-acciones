@@ -900,6 +900,29 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   // Comentarios es opcional (4/10/2026): con título, fecha y lugar alcanza.
   eq("evento: el campo de comentarios dice que es opcional",
     await p.$$eval("#postForm label", ls => ls.some(l => l.textContent.trim() === "Comentarios (opcional)")), true);
+  // Los botones de abajo quedan pegados al borde mientras el formulario
+  // scrollea, y el cuadro de comentarios (con z-index por el resaltado de
+  // las @menciones) se les pasaba por encima (5/10/2026).
+  eq("evento: el cuadro de comentarios no tapa la franja de Cancelar / Publicar", await p.evaluate(() => {
+    const form = document.getElementById("postForm");
+    const ta = form.querySelector("textarea.mention-input");
+    const pie = form.querySelector(".modal-actions");
+    ta.style.height = "900px";
+    let vista = false, tapa = false;
+    for(let y = 0; y <= form.scrollHeight; y += 20){
+      form.scrollTop = y;
+      const a = ta.getBoundingClientRect(), b = pie.getBoundingClientRect();
+      if(a.top < b.top + 4 && a.bottom > b.bottom - 4){
+        vista = true;
+        for(const x of [b.left + 4, b.left + b.width / 2, b.right - 4]){
+          const el = document.elementFromPoint(x, b.top + b.height / 2);
+          if(!el || !el.closest(".modal-actions")) tapa = true;
+        }
+      }
+    }
+    ta.style.height = ""; form.scrollTop = 0;
+    return vista && !tapa;
+  }), true);
   await p.fill("#cTitle", "Evento sin comentarios");
   await p.fill("#cPlaceQuery", "Uruguay");
   await p.waitForSelector('#postForm [data-action="pick-place"]');
@@ -909,6 +932,29 @@ const hasta = async (p, fn, arg, ms = 5000) => {
     (window.__sb.tablas.posts || []).some(x => x.title === "Evento sin comentarios" && x.content === "")), true);
   await p.keyboard.press("Escape");
   eq("admin: sin un solo error", errores, []);
+  await p.close();
+}
+
+/* ---------- Un comentario huérfano y a quién le gusta (5/10/2026) ---------- */
+// Una rutina con "Ver 1 comentario" abría el hilo vacío: el comentario
+// respondía a otro que ya se había borrado y no se dibujaba en ningún lado.
+{
+  const { p, errores } = await entrar(ADMIN, "Benny", base => {
+    base.posts.push({ id: "p_rutina", title: "", content: "Rutina con un comentario suelto",
+      date: dia(1), start_date: dia(1), end_date: dia(1), activity_type: "rutina",
+      author_name: "Benny", author_email: ADMIN, scopes: [], images: [], files: [], links: [], mentions: [],
+      liked_by: ["ana@x.com"], milestones: [], editors: [], participants: [], recurrence_skip: [], recurrence_moves: {},
+      created_at: hace(1) });
+    base.replies.push({ id: "r_huerfano", post_id: "p_rutina", reply_to_id: "r_borrado", content: "Respuesta a uno que ya no está",
+      author_name: "Ana Pérez", author_email: "ana@x.com", scopes: [], links: [], images: [], files: [], mentions: [], liked_by: [],
+      system: false, created_at: hace(1) });
+  });
+  await esperarTexto(p, "Rutina con un comentario suelto");
+  await p.click('button[data-action="toggle-thread"][data-post-id="p_rutina"]');
+  eq("hilo: el comentario cuyo padre se borró igual se ve", await esperarTexto(p, "Respuesta a uno que ya no está", 3000), true);
+  eq("me gusta: al pasar por arriba dice a quién le gusta",
+    await p.$eval('button[data-action="toggle-like"][data-post-id="p_rutina"]:not([data-reply-id])', e => e.title), "Le gusta a: Ana Pérez");
+  eq("hilo: sin un solo error", errores, []);
   await p.close();
 }
 
