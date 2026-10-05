@@ -447,6 +447,18 @@ maqueta (sin el rango de fechas libre).
   total, y datos que faltan (sin lugar, sin participantes). Reglas
   simples y explicadas, no adivinanzas.
 
+### 26. Reportes más ordenado: opción A — HECHO (5 oct 2026)
+
+"Quedó todo muy armado en partes; quiero algo más profesional." Se
+mostraron dos diseños (barra arriba / panel a la izquierda) y el usuario
+eligió la **A**: una sola barra de control (Un período/Comparar, Año y
+Período como menús, "Filtros" que se despliega con un número de cuántos
+hay puestos, Planilla y PDF a la derecha); un título por pantalla con los
+filtros puestos como fichas que se sacan con ✕; una tira de números en una
+sola tarjeta; y secciones con nombre ("Cuándo y dónde", "Sugerencias",
+"Equipo y cobertura"). "Mes a mes" pasa a columnas a todo el ancho; "Quién
+cargó/participó" se fue a la tabla "Por persona del equipo".
+
 ## Fuera de alcance (necesitan algo que la app no tiene)
 
 - Mandar correos (resumen semanal, invitaciones): no hay servicio de

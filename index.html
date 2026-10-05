@@ -2277,6 +2277,74 @@
   .rep-fila-ir{ cursor:pointer; border-radius:8px; margin-inline:-6px; padding-inline:6px; }
   .rep-fila-ir:hover, .rep-fila-ir:focus-visible{ background:var(--celeste-soft); outline:none; }
   .rep-print-title{ display:none; }
+  /* ---- Reportes, opción A (5/10/2026): una barra de control, un título,
+     una tira de números y secciones con nombre. ---- */
+  .rep-barra-control{ display:flex; flex-wrap:wrap; align-items:center; gap:10px; background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md); padding:10px 12px; box-shadow:var(--shadow); margin-bottom:22px; }
+  .rep-seg{ display:inline-flex; background:var(--surface-alt); border-radius:10px; padding:3px; }
+  .rep-seg button{ border:none; background:none; padding:7px 14px; border-radius:8px; font:inherit; font-size:13px; font-weight:700; color:var(--text-muted); cursor:pointer; }
+  .rep-seg button.active{ background:var(--card); color:var(--ink); box-shadow:0 1px 3px rgba(0,0,0,.14); }
+  .rep-menu{ position:relative; display:inline-flex; align-items:center; gap:8px; border:1px solid var(--border); border-radius:10px; background:var(--card); padding:0 8px 0 12px; min-height:38px; }
+  .rep-menu span{ font-size:10.5px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--text-muted); }
+  .rep-menu select{ border:none; background:transparent; font:inherit; font-size:13.5px; font-weight:700; color:var(--ink); padding:8px 2px; cursor:pointer; max-width:220px; }
+  .rep-menu select:focus{ outline:none; } .rep-menu:focus-within{ border-color:var(--celeste-dark); box-shadow:0 0 0 3px rgba(79,199,224,.25); }
+  .rep-contra{ font-size:13px; font-weight:700; color:var(--text-muted); }
+  .rep-boton{ display:inline-flex; align-items:center; gap:6px; min-height:38px; border:1px solid var(--border); border-radius:10px; background:var(--card); padding:0 12px; font:inherit; font-size:13px; font-weight:700; color:var(--celeste-dark); cursor:pointer; }
+  .rep-boton:hover{ background:var(--surface-alt); }
+  .rep-boton.con-filtro{ border-color:var(--petroleo); color:var(--ink); }
+  .rep-cuenta{ background:var(--petroleo); color:#fff; border-radius:999px; font-size:11px; padding:1px 7px; }
+  .rep-espacio{ flex:1; }
+  .rep-barra-control{ position:relative; }
+  .rep-filtros-envoltorio{ position:relative; }
+  .rep-filtros-pop{ position:absolute; top:calc(100% + 8px); inset-inline-start:0; z-index:20; width:min(320px, calc(100vw - 32px)); background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md); box-shadow:0 14px 36px rgba(8,42,44,.22); padding:14px; display:flex; flex-direction:column; gap:8px; }
+  .rep-filtros-pop .rep-menu{ display:flex; } .rep-filtros-pop .rep-menu select{ flex:1; max-width:none; }
+  .rep-filtros-tit{ font-size:11px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--text-muted); }
+  .rep-filtros-pie{ display:flex; justify-content:space-between; align-items:center; margin-top:4px; }
+  .rep-cabeza{ margin:0 0 14px; }
+  .rep-titulo{ margin:0; font-size:24px; font-weight:800; color:var(--ink-strong, var(--ink)); }
+  .rep-subtitulo{ margin-top:4px; font-size:13.5px; font-weight:600; color:var(--text-muted); display:flex; flex-wrap:wrap; align-items:center; gap:6px; }
+  .rep-chip-filtro{ border:1px solid var(--border); background:var(--surface-alt); border-radius:999px; padding:2px 10px; font:inherit; font-size:12.5px; font-weight:700; color:var(--ink); cursor:pointer; }
+  .rep-kpis{ display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:0; background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md); box-shadow:var(--shadow); overflow:hidden; margin-bottom:6px; }
+  .rep-kpis .rep-kpi{ background:none; border:none; border-radius:0; box-shadow:none; padding:16px 20px; border-inline-end:1px solid var(--border); }
+  .rep-kpis .rep-kpi:last-child{ border-inline-end:none; }
+  .rep-kpis .rep-kpi-num{ font-size:28px; letter-spacing:-.5px; }
+  .rep-kpis .rep-comparacion{ margin:4px 0 0; font-size:12px; font-weight:800; }
+  .rep-seccion{ margin-top:26px; }
+  .rep-seccion-cabeza{ display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:4px 12px; margin-bottom:10px; }
+  .rep-seccion-cabeza h3{ margin:0; font-size:15.5px; font-weight:800; color:var(--ink-strong, var(--ink)); }
+  .rep-seccion-cabeza span{ font-size:12.5px; font-weight:600; color:var(--text-muted); }
+  /* "Mes a mes" a todo el ancho y debajo, de a tres, lo demás. */
+  .rep-grilla .rep-bloque-mensual{ grid-column:1 / -1; }
+  .rep-grilla-3{ grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); }
+  .rep-cols{ display:flex; align-items:stretch; gap:4px; height:180px; }
+  .rep-col{ flex:1; min-width:0; display:flex; flex-direction:column; align-items:center; gap:4px; margin:0; }
+  .rep-col .rep-num{ min-width:0; font-size:11px; color:var(--text-muted); text-align:center; }
+  .rep-col-par{ flex:1; width:100%; display:flex; align-items:flex-end; justify-content:center; gap:2px; }
+  .rep-col-barra, .rep-col-prev{ display:block; width:46%; max-width:26px; border-radius:4px 4px 1px 1px; }
+  .rep-col-barra{ background:var(--petroleo); } .rep-col-prev{ background:#a9cfd3; }
+  .rep-col-par:not(:has(.rep-col-prev)) .rep-col-barra{ width:70%; max-width:34px; }
+  .rep-col .rep-etiqueta{ flex:none; font-size:11px; font-weight:700; color:var(--text-muted); text-transform:capitalize; overflow:visible; }
+  .rep-sugerencias li{ display:flex; gap:10px; align-items:flex-start; }
+  .rep-sug-ico{ flex:none; width:22px; text-align:center; }
+  @media (max-width:640px){
+    .rep-barra-control{ gap:8px; padding:10px; }
+    .rep-espacio{ display:none; }
+    .rep-seg{ width:100%; } .rep-seg button{ flex:1; }
+    .rep-menu{ flex:1 1 150px; } .rep-menu select{ flex:1; max-width:none; }
+    .rep-boton{ flex:1 1 auto; justify-content:center; }
+    /* El panel de filtros, a lo ancho de la barra: colgado del botón se
+       salía de la pantalla por la derecha. */
+    .rep-filtros-envoltorio{ position:static; flex:1 1 auto; display:flex; }
+    .rep-filtros-envoltorio > .rep-boton{ flex:1; }
+    .rep-filtros-pop{ inset-inline:10px; width:auto; }
+    .rep-filtros-pop .rep-menu{ flex:none; }
+    .rep-titulo{ font-size:20px; }
+    .rep-kpis{ grid-template-columns:repeat(2, minmax(0,1fr)); }
+    .rep-kpis .rep-kpi:nth-child(2n){ border-inline-end:none; }
+    .rep-kpis .rep-kpi:nth-child(n+3){ border-top:1px solid var(--border); }
+    .rep-kpis .rep-kpi-num{ font-size:24px; }
+    .rep-cols{ height:150px; gap:2px; }
+    .rep-col .rep-etiqueta{ font-size:9.5px; }
+  }
   .rep-modo{ align-self:flex-start; }
   .rep-comparar-elegir{ display:flex; flex-wrap:wrap; align-items:center; gap:8px; font-weight:700; color:var(--text-muted); }
   .rep-comparar-elegir select, .rep-filtros select{ border:1px solid var(--border); border-radius:10px; padding:7px 10px; font:inherit; font-size:13px; font-weight:700; background:var(--card); color:var(--ink); max-width:100%; }
@@ -2311,10 +2379,12 @@
   }
   /* Imprimir / PDF: solo el reporte, sin el cascarón de la app. */
   @media print{
-    .topbar, nav.tabs, .fab-wrap, .scroll-top, .new-posts-pill, footer.appfoot, .rep-selector, .observer-banner{ display:none !important; }
+    .topbar, nav.tabs, .fab-wrap, .scroll-top, .new-posts-pill, footer.appfoot, .rep-barra-control, .bottom-nav, .observer-banner{ display:none !important; }
     body{ background:#fff; }
     main{ padding:0; max-width:none; }
-    .rep-print-title{ display:block; font-size:18px; font-weight:800; margin-bottom:14px; }
+    /* El título de la pantalla (.rep-cabeza) ya dice qué es: se imprime ese. */
+    .rep-print-title{ display:none; }
+    .rep-seccion{ break-inside:avoid; }
     .rep-total, .rep-kpi, .rep-bloque{ box-shadow:none; break-inside:avoid; }
     .rep-grilla{ grid-template-columns:repeat(2, minmax(0, 1fr)); }
   }
@@ -13304,34 +13374,36 @@ function renderReportesView(){
     : renderReportePeriodo(f);
   return renderSelectorDelReporte(modo, f) + cuerpo;
 }
+// La barra de arriba (opción A, elegida el 5/10/2026): todo en una sola
+// franja — Un período/Comparar, año y período como menús, "Filtros" que se
+// despliega y Planilla/PDF a la derecha. Antes eran filas de fichas sueltas
+// y "quedaba todo armado en partes".
+let reporteFiltrosAbierto = false;
 function renderSelectorDelReporte(modo, f){
   const R = state.reportes;
   const anios = aniosConDatos();
   const hoyAnio = todayISO().slice(0,4);
   const opcion = (valor, actual, texto) => `<option value="${esc(valor)}"${String(valor) === String(actual) ? " selected" : ""}>${esc(texto)}</option>`;
-  const seg = `<div class="subview-toggle rep-modo">
-      <button type="button" data-action="reporte-modo" data-key="periodo" class="${modo === "periodo" ? "active" : ""}">${t("Un período","One period","Um período","תקופה אחת")}</button>
-      <button type="button" data-action="reporte-modo" data-key="comparar" class="${modo === "comparar" ? "active" : ""}">${t("Comparar","Compare","Comparar","השוואה")}</button>
+  const menu = (id, rotulo, opciones) => `<label class="rep-menu"><span>${rotulo}</span><select id="${id}">${opciones}</select></label>`;
+  const seg = `<div class="rep-seg" role="group" aria-label="${esc(t("Vista","View","Vista","תצוגה"))}">
+      <button type="button" data-action="reporte-modo" data-key="periodo" class="${modo === "periodo" ? "active" : ""}" aria-pressed="${modo === "periodo"}">${t("Un período","One period","Um período","תקופה אחת")}</button>
+      <button type="button" data-action="reporte-modo" data-key="comparar" class="${modo === "comparar" ? "active" : ""}" aria-pressed="${modo === "comparar"}">${t("Comparar","Compare","Comparar","השוואה")}</button>
     </div>`;
+  const trimestres = actual => trimestresDelReporte().map(q => opcion(q.n, actual, q.label)).join("");
   let elegir;
   if(modo === "comparar"){
     const b = R.compB || hoyAnio;
     const a = R.compA || String(Number(b) - 1);
-    const listaAnios = [...new Set([...anios, a, b])].sort();
-    elegir = `<div class="rep-comparar-elegir">
-        <select id="repCompA" aria-label="${esc(t("Primer año","First year","Primeiro ano","שנה ראשונה"))}">${listaAnios.map(x => opcion(x, a, x)).join("")}</select>
-        <span>${t("contra","versus","contra","מול")}</span>
-        <select id="repCompB" aria-label="${esc(t("Segundo año","Second year","Segundo ano","שנה שנייה"))}">${listaAnios.map(x => opcion(x, b, x)).join("")}</select>
-        <select id="repCompTri" aria-label="${esc(t("Trimestre","Quarter","Trimestre","רבעון"))}">${trimestresDelReporte().map(q => opcion(q.n, Number(R.compTri) || 0, q.label)).join("")}</select>
-      </div>`;
+    const listaAnios = [...new Set([...anios, a, b])].sort().reverse();
+    elegir = `${menu("repCompA", t("Año","Year","Ano","שנה"), listaAnios.map(x => opcion(x, a, x)).join(""))}
+      <span class="rep-contra">${t("contra","versus","contra","מול")}</span>
+      ${menu("repCompB", t("Año","Year","Ano","שנה"), listaAnios.map(x => opcion(x, b, x)).join(""))}
+      ${menu("repCompTri", t("Período","Period","Período","תקופה"), trimestres(Number(R.compTri) || 0))}`;
   } else {
     const anio = R.anio || hoyAnio;
-    const tri = Number(R.trimestre) || 0;
-    elegir = `<div class="rep-chips">
-        <button type="button" class="chip-toggle${anio === "todos" ? " active" : ""}" data-action="reporte-anio" data-key="todos">${t("Todos los años","All years","Todos os anos","כל השנים")}</button>
-        ${anios.map(a => `<button type="button" class="chip-toggle${a === anio ? " active" : ""}" data-action="reporte-anio" data-key="${esc(a)}">${esc(a)}</button>`).join("")}</div>
-      ${anio === "todos" ? "" : `<div class="rep-chips">${trimestresDelReporte().map(q =>
-        `<button type="button" class="chip-toggle${q.n === tri ? " active" : ""}" data-action="reporte-trimestre" data-key="${q.n}">${esc(q.label)}</button>`).join("")}</div>`}`;
+    elegir = `${menu("repAnio", t("Año","Year","Ano","שנה"),
+        opcion("todos", anio, t("Todos los años","All years","Todos os anos","כל השנים")) + [...anios].reverse().map(a => opcion(a, anio, a)).join(""))}
+      ${anio === "todos" ? "" : menu("repTri", t("Período","Period","Período","תקופה"), trimestres(Number(R.trimestre) || 0))}`;
   }
   // "Ver solo": las opciones salen de lo cargado (países con algo, gente
   // que cargó o participó), no de listas enteras.
@@ -13341,23 +13413,62 @@ function renderSelectorDelReporte(modo, f){
     if(p.authorEmail) gente.add(String(p.authorEmail).toLowerCase());
     (p.participants || []).forEach(x => { if(x && x.email) gente.add(String(x.email).toLowerCase()); });
   });
-  const nombre = correo => { const m = memberByEmail(correo); return m ? (m.name || m.email) : correo; };
-  const hayFiltro = !!(f.zona || f.pais || f.tipo || f.persona);
-  const filtros = `<div class="rep-filtros">
-      <span class="rep-filtros-tit">${t("Ver solo","Show only","Ver só","הצג רק")}</span>
-      <select id="repFZona" aria-label="${esc(t("Zona","Zone","Zona","אזור"))}">${opcion("", f.zona || "", t("Todas las zonas","All zones","Todas as zonas","כל האזורים"))}${Object.values(ZONES).map(z => opcion(z.key, f.zona || "", z.label)).join("")}</select>
-      <select id="repFPais" aria-label="${esc(t("País","Country","País","מדינה"))}">${opcion("", f.pais || "", t("Todos los países","All countries","Todos os países","כל המדינות"))}${[...paisesUsados].sort((x, y) => countryLabel(x).localeCompare(countryLabel(y), currentLang())).map(n => opcion(n, f.pais || "", countryLabel(n))).join("")}</select>
-      <select id="repFTipo" aria-label="${esc(t("Tipo","Type","Tipo","סוג"))}">${opcion("", f.tipo || "", t("Todos los tipos","All types","Todos os tipos","כל הסוגים"))}${ACTIVITY_TYPES.map(ty => opcion(ty.key, f.tipo || "", `${ty.icon || ""} ${ty.label}`.trim())).join("")}</select>
-      <select id="repFPersona" aria-label="${esc(t("Persona","Person","Pessoa","אדם"))}">${opcion("", f.persona || "", t("Todo el equipo","Whole team","Toda a equipe","כל הצוות"))}${[...gente].map(c => [c, nombre(c)]).sort((x, y) => x[1].localeCompare(y[1], currentLang())).map(([c, n]) => opcion(c, f.persona || "", n)).join("")}</select>
-      ${hayFiltro ? `<button type="button" class="btn-text-add" data-action="reporte-sin-filtro">✕ ${t("Quitar filtros","Clear filters","Tirar filtros","ניקוי מסננים")}</button>` : ""}
+  const cuantos = ["zona","pais","tipo","persona"].filter(k => f[k]).length;
+  const pop = reporteFiltrosAbierto ? `<div class="rep-filtros-pop" role="group" aria-label="${esc(t("Ver solo","Show only","Ver só","הצג רק"))}">
+      <div class="rep-filtros-tit">${t("Ver solo","Show only","Ver só","הצג רק")}</div>
+      ${menu("repFZona", t("Zona","Zone","Zona","אזור"), opcion("", f.zona || "", t("Todas las zonas","All zones","Todas as zonas","כל האזורים")) + Object.values(ZONES).map(z => opcion(z.key, f.zona || "", z.label)).join(""))}
+      ${menu("repFPais", t("País","Country","País","מדינה"), opcion("", f.pais || "", t("Todos los países","All countries","Todos os países","כל המדינות")) + [...paisesUsados].sort((x, y) => countryLabel(x).localeCompare(countryLabel(y), currentLang())).map(n => opcion(n, f.pais || "", countryLabel(n))).join(""))}
+      ${menu("repFTipo", t("Tipo","Type","Tipo","סוג"), opcion("", f.tipo || "", t("Todos los tipos","All types","Todos os tipos","כל הסוגים")) + ACTIVITY_TYPES.map(ty => opcion(ty.key, f.tipo || "", `${ty.icon || ""} ${ty.label}`.trim())).join(""))}
+      ${menu("repFPersona", t("Persona","Person","Pessoa","אדם"), opcion("", f.persona || "", t("Todo el equipo","Whole team","Toda a equipe","כל הצוות")) + [...gente].map(c => [c, nombreEnReporte(c)]).sort((x, y) => x[1].localeCompare(y[1], currentLang())).map(([c, n]) => opcion(c, f.persona || "", n)).join(""))}
+      <div class="rep-filtros-pie">
+        ${cuantos ? `<button type="button" class="btn-text-add" data-action="reporte-sin-filtro">${t("Quitar filtros","Clear filters","Tirar filtros","ניקוי מסננים")}</button>` : "<span></span>"}
+        <button type="button" class="btn-secondary" data-action="reporte-filtros">${t("Listo","Done","Pronto","סיום")}</button>
+      </div>
+    </div>` : "";
+  const filtros = `<div class="rep-filtros-envoltorio">
+      <button type="button" class="rep-boton${cuantos ? " con-filtro" : ""}" data-action="reporte-filtros" aria-expanded="${reporteFiltrosAbierto}">⚙ ${t("Filtros","Filters","Filtros","מסננים")}${cuantos ? ` <span class="rep-cuenta">${cuantos}</span>` : ""}</button>
+      ${pop}
     </div>`;
-  // Bajar: una planilla (CSV, que Excel abre) con las mismas secciones, o
-  // la impresión del navegador (que guarda en PDF).
-  const acciones = `<div class="rep-acciones">
-      <button type="button" class="btn-sync" data-action="reporte-csv">⬇ ${t("Bajar planilla","Download spreadsheet","Baixar planilha","הורדת גיליון")}</button>
-      <button type="button" class="btn-sync" data-action="reporte-imprimir">🖨️ ${t("Imprimir / PDF","Print / PDF","Imprimir / PDF","הדפסה / PDF")}</button>
-    </div>`;
-  return `<div class="rep-selector">${seg}${elegir}${filtros}${acciones}</div>`;
+  const acciones = `<span class="rep-espacio"></span>
+      <button type="button" class="rep-boton" data-action="reporte-csv" title="${esc(t("Bajar planilla","Download spreadsheet","Baixar planilha","הורדת גיליון"))}">⬇ ${t("Planilla","Spreadsheet","Planilha","גיליון")}</button>
+      <button type="button" class="rep-boton" data-action="reporte-imprimir" title="${esc(t("Imprimir o guardar en PDF","Print or save as PDF","Imprimir ou salvar em PDF","הדפסה או שמירה כ-PDF"))}">🖨 PDF</button>`;
+  return `<div class="rep-barra-control">${seg}${elegir}${filtros}${acciones}</div>`;
+}
+// El título de cada pantalla, con el período y los filtros puestos (cada
+// uno se saca con su ✕).
+function cabezaDelReporte(titulo, subtitulo, f){
+  const chips = [];
+  if(f.zona) chips.push(["zona", (ZONES[f.zona] || {}).label || f.zona]);
+  if(f.pais) chips.push(["pais", countryLabel(f.pais)]);
+  if(f.tipo) chips.push(["tipo", (ACTIVITY_BY_KEY[f.tipo] || {}).label || f.tipo]);
+  if(f.persona) chips.push(["persona", nombreEnReporte(f.persona)]);
+  return `<div class="rep-cabeza">
+      <h2 class="rep-titulo">${titulo}</h2>
+      <div class="rep-subtitulo">${subtitulo}${chips.length ? ` · ${t("Solo:","Only:","Só:","רק:")} ${chips.map(([k, txt]) =>
+        `<button type="button" class="rep-chip-filtro" data-action="reporte-quitar-filtro" data-key="${k}" aria-label="${esc(t("Quitar filtro {x}","Remove filter {x}","Tirar filtro {x}","הסרת המסנן {x}",{x:txt}))}">${esc(txt)} ✕</button>`).join("")}` : ""}</div>
+    </div>
+    <div class="rep-print-title">Registro de Acciones · ${titulo} · ${subtitulo}</div>`;
+}
+// La tira de números de arriba: una sola tarjeta, dividida.
+function tiraDeNumeros(items){
+  return `<div class="rep-kpis">${items.join("")}</div>`;
+}
+// "Mes a mes" en columnas. `prev`: el mismo mes del otro período, como una
+// columna clara al lado.
+function graficoMensual(titulo, meses, nota){
+  const maximo = Math.max(1, ...meses.map(m => Math.max(m.n, m.prev || 0)));
+  const alto = n => n ? Math.max(3, Math.round(n * 100 / maximo)) : 0;
+  return `<div class="rep-bloque rep-bloque-mensual"><h3>${titulo}</h3>
+    <div class="rep-cols">${meses.map(m => `<div class="rep-fila rep-col" title="${esc(m.titulo || "")}">
+        <span class="rep-num">${m.n}</span>
+        <div class="rep-col-par">${m.prev != null ? `<i class="rep-col-prev" style="height:${alto(m.prev)}%"></i>` : ""}<i class="rep-col-barra" style="height:${alto(m.n)}%"></i></div>
+        <span class="rep-etiqueta">${m.etiqueta}</span>
+      </div>`).join("")}</div>
+    ${nota ? `<div class="rep-bloque-nota">${nota}</div>` : ""}</div>`;
+}
+function seccionDelReporte(titulo, ayuda, cuerpo){
+  if(!cuerpo || !cuerpo.trim()) return "";
+  return `<section class="rep-seccion"><div class="rep-seccion-cabeza"><h3>${titulo}</h3>${ayuda ? `<span>${ayuda}</span>` : ""}</div>${cuerpo}</section>`;
 }
 
 // Un período: un año o un trimestre, contra el período de antes.
@@ -13366,7 +13477,8 @@ function renderReportePeriodo(f){
   const anterior = ventanaAnterior(v);
   const r = armarReporte(v.desde, v.hasta, f);
   const rAnterior = armarReporte(anterior.desde, anterior.hasta, f);
-  const selector = `<div class="rep-print-title">Registro de Acciones · ${t("Reporte","Report","Relatório","דוח")} ${esc(fmtDate(v.desde))} – ${esc(fmtDate(v.hasta))}</div>`;
+  const titulo = v.tri ? `${esc(trimestresDelReporte()[v.tri].label)} ${esc(v.anio)}` : t("Reporte {a}","Report {a}","Relatório {a}","דוח {a}",{a:esc(v.anio)});
+  const selector = cabezaDelReporte(titulo, `${esc(fmtDate(v.desde))} – ${esc(fmtDate(v.hasta))}`, f);
 
   // La comparación con el período de antes. Sin nada antes no se dice
   // nada: "subió infinito" respecto de cero no informa. Y el porcentaje
@@ -13387,13 +13499,6 @@ function renderReportePeriodo(f){
     comparacion = `<div class="rep-comparacion ${dif > 0 ? "sube" : "baja"}">${dif > 0 ? "▲" : "▼"} ${cuanto} ${esc(verbo)} ${esc(contra)}</div>`;
   }
 
-  const cabecera = `
-    <div class="rep-total">
-      <div class="rep-total-num">${r.total}</div>
-      <div class="rep-total-txt">${t("actividades","activities","atividades","פעילויות")}
-        <span class="rep-total-sub">${esc(fmtDate(v.desde))} – ${esc(fmtDate(v.hasta))}</span></div>
-      ${comparacion}
-    </div>`;
 
   if(!r.total){
     return selector + `<div class="empty-state"><div class="big">📊</div>${
@@ -13409,7 +13514,9 @@ function renderReportePeriodo(f){
   for(let m = anterior.desde.slice(0,7); m <= anterior.hasta.slice(0,7); m = addMonthsISO(m + "-01", 1).slice(0,7)) mesesAnt.push(m);
   const meses = [];
   for(let m = v.desde.slice(0,7), i = 0; m <= v.hasta.slice(0,7); m = addMonthsISO(m + "-01", 1).slice(0,7), i++){
-    meses.push({ etiqueta: esc(mesCortoDe(m)), n: r.porMes[m] || 0, prev: rAnterior.total ? (rAnterior.porMes[mesesAnt[i]] || 0) : null });
+    const prev = rAnterior.total ? (rAnterior.porMes[mesesAnt[i]] || 0) : null;
+    meses.push({ etiqueta: esc(fmtISO(m + "-01", { month:"short" }).replace(".", "").slice(0, 3)), n: r.porMes[m] || 0, prev,
+      titulo: `${mesCortoDe(m)}: ${r.porMes[m] || 0}${prev != null ? ` (${t("antes","before","antes","לפני")}: ${prev})` : ""}` });
   }
 
   const zonas = Object.values(ZONES).map(z=>({
@@ -13457,21 +13564,21 @@ function renderReportePeriodo(f){
     "O que se repete conta uma vez por data; o que dura vários dias, uma só.",
     "פעילות חוזרת נספרת פעם לכל תאריך; פעילות רב-יומית נספרת פעם אחת."));
 
-  // Los otros tres números de arriba: cuántos países se tocaron, cuánta
-  // gente participó y cuánta cargó, cada uno contra el período anterior.
+  // Los números de arriba, cada uno contra el período anterior.
   const cuenta = o => Object.keys(o).length;
-  const kpi = (n, nAnt, txt) => {
+  const delta = (n, nAnt) => {
+    if(!rAnterior.total) return "";
     const d = n - nAnt;
-    const delta = !rAnterior.total ? "" : d === 0
-      ? `<span class="rep-kpi-delta">= ${esc(t("igual","the same","igual","זהה"))}</span>`
+    return d === 0 ? `<span class="rep-kpi-delta">= ${esc(t("igual","the same","igual","זהה"))}</span>`
       : `<span class="rep-kpi-delta ${d > 0 ? "sube" : "baja"}">${d > 0 ? "▲" : "▼"} ${Math.abs(d)} ${esc(d > 0 ? t("más","more","mais","יותר") : t("menos","fewer","menos","פחות"))}</span>`;
-    return `<div class="rep-kpi"><div class="rep-kpi-num">${n}</div><div class="rep-kpi-txt">${txt}</div>${delta}</div>`;
   };
-  const kpis = `<div class="rep-kpis">
-      ${kpi(cuenta(r.porPais), cuenta(rAnterior.porPais), t("países con actividad","countries with activity","países com atividade","מדינות עם פעילות"))}
-      ${kpi(cuenta(r.participantes), cuenta(rAnterior.participantes), t("personas que participaron","people who took part","pessoas que participaram","אנשים שהשתתפו"))}
-      ${kpi(cuenta(r.porPersona), cuenta(rAnterior.porPersona), t("personas que cargaron","people who logged","pessoas que carregaram","אנשים שרשמו"))}
-    </div>`;
+  const kpi = (n, txt, extra) => `<div class="rep-kpi"><div class="rep-kpi-num">${n}</div><div class="rep-kpi-txt">${txt}</div>${extra}</div>`;
+  const kpis = tiraDeNumeros([
+    `<div class="rep-kpi"><div class="rep-kpi-num rep-total-num">${r.total}</div><div class="rep-kpi-txt">${t("actividades","activities","atividades","פעילויות")}</div>${comparacion}</div>`,
+    kpi(cuenta(r.porPais), t("países con actividad","countries with activity","países com atividade","מדינות עם פעילות"), delta(cuenta(r.porPais), cuenta(rAnterior.porPais))),
+    kpi(r.ciudades.size, t("ciudades distintas","different cities","cidades diferentes","ערים שונות"), delta(r.ciudades.size, rAnterior.ciudades.size)),
+    kpi(cuenta(r.porPersona), t("personas que cargaron","people who logged","pessoas que carregaram","אנשים שרשמו"), delta(cuenta(r.porPersona), cuenta(rAnterior.porPersona))),
+  ]);
 
   reporteEnPantalla = { desde:v.desde, hasta:v.hasta, total:r.total, totalAnterior:rAnterior.total, secciones:[
     { titulo:t("Mes a mes","Month by month","Mês a mês","חודש אחר חודש"), filas:meses },
@@ -13482,24 +13589,22 @@ function renderReportePeriodo(f){
     { titulo:t("Quién participó","Who took part","Quem participou","מי השתתף"), filas:quienesParticiparon },
   ] };
 
-  return selector + cabecera + kpis + `
-    <div class="rep-grilla">
-      ${bloqueDeBarras(t("Mes a mes","Month by month","Mês a mês","חודש אחר חודש"), meses, "",
-        rAnterior.total ? t("La barra fina es el mismo mes del período anterior.","The thin bar is the same month of the previous period.","A barra fina é o mesmo mês do período anterior.","הפס הדק הוא אותו חודש בתקופה הקודמת.") : "")}
+  const antes = v.tri ? t("el trimestre anterior","the previous quarter","o trimestre anterior","הרבעון הקודם") : String(Number(v.anio) - 1);
+  return selector + kpis
+    + seccionDelReporte(t("Cuándo y dónde","When and where","Quando e onde","מתי ואיפה"),
+        t("Tocá una fila para ver esas actividades en el Inicio","Tap a row to see those activities on Home","Toque uma linha para ver essas atividades no Início","הקש/י על שורה כדי לראות את הפעילויות בדף הבית"), `
+    <div class="rep-grilla rep-grilla-3">
+      ${graficoMensual(t("Mes a mes","Month by month","Mês a mês","חודש אחר חודש"), meses,
+        rAnterior.total ? t("La columna clara es el mismo mes de {a}.","The light column is the same month of {a}.","A coluna clara é o mesmo mês de {a}.","העמודה הבהירה היא אותו חודש ב-{a}.",{a:esc(antes)}) : "")}
       ${bloqueDeBarras(t("Por zona","By zone","Por zona","לפי אזור"), zonas,
         t("Nada con zona cargada.","Nothing with a zone set.","Nada com zona carregada.","אין דבר עם אזור."))}
       ${bloqueDeBarras(t("Por país","By country","Por país","לפי מדינה"), paises,
         t("Nada con país cargado.","Nothing with a country set.","Nada com país carregado.","אין דבר עם מדינה."))}
       ${bloqueDeBarras(t("Por tipo","By type","Por tipo","לפי סוג"), tipos, "")}
-      ${bloqueDeBarras(t("Quién cargó","Who logged it","Quem carregou","מי רשם"), personas, "")}
-      ${bloqueDeBarras(t("Quién participó","Who took part","Quem participou","מי השתתף"), quienesParticiparon,
-        t("Todavía nadie cargó participantes en este período.","Nobody has logged participants in this period yet.","Ninguém carregou participantes neste período.","עדיין לא נרשמו משתתפים בתקופה זו."))}
-    </div>
-    ${renderSugerencias(v, r, rAnterior, f)}
-    <div class="rep-extras">
-      ${renderCobertura(f)}
-      ${renderEquipoDelReporte(r)}
-    </div>
+    </div>`)
+    + renderSugerencias(v, r, rAnterior, f)
+    + seccionDelReporte(t("Equipo y cobertura","Team and coverage","Equipe e cobertura","צוות וכיסוי"), "",
+        `<div class="rep-extras">${renderEquipoDelReporte(r)}${renderCobertura(f)}</div>`) + `
     <div class="rep-notas">${notas.map(n=>`<div>· ${esc(n)}</div>`).join("")}</div>`;
 }
 
@@ -13540,12 +13645,11 @@ function renderReporteHistorico(f){
   const mejor = conDatos.reduce((m, x) => (!m || x.r.total > m.r.total) ? x : m, null);
   const primero = conDatos.length ? conDatos[0].anio : anios[0];
   const kpi = (num, txt) => `<div class="rep-kpi"><div class="rep-kpi-num">${num}</div><div class="rep-kpi-txt">${txt}</div></div>`;
-  const kpis = `<div class="rep-kpis">
-      ${kpi(todo.total, t("actividades en total ({a}–{b})","activities in total ({a}–{b})","atividades no total ({a}–{b})","פעילויות בסך הכול ({a}–{b})",{a:primero, b:anios[anios.length - 1]}))}
-      ${kpi(Object.keys(todo.porPais).length, t("países con actividad","countries with activity","países com atividade","מדינות עם פעילות"))}
-      ${kpi(todo.ciudades.size, t("ciudades distintas","different cities","cidades diferentes","ערים שונות"))}
-      ${mejor ? kpi(esc(mejor.anio), t("el año con más actividad ({n})","the busiest year ({n})","o ano com mais atividade ({n})","השנה הפעילה ביותר ({n})",{n:mejor.r.total})) : ""}
-    </div>`;
+  const kpis = tiraDeNumeros([
+      kpi(todo.total, t("actividades en total","activities in total","atividades no total","פעילויות בסך הכול")),
+      kpi(Object.keys(todo.porPais).length, t("países con actividad","countries with activity","países com atividade","מדינות עם פעילות")),
+      kpi(todo.ciudades.size, t("ciudades distintas","different cities","cidades diferentes","ערים שונות")),
+      mejor ? kpi(esc(mejor.anio), t("el año con más actividad ({n})","the busiest year ({n})","o ano com mais atividade ({n})","השנה הפעילה ביותר ({n})",{n:mejor.r.total})) : "" ]);
   const filasAnio = conDatos.map(x => ({
     etiqueta: x.anio === hoyAnio ? `${esc(x.anio)} <small>${t("(en curso)","(in progress)","(em andamento)","(בתהליך)")}</small>` : esc(x.anio),
     n: x.r.total, color: x.anio === hoyAnio ? "var(--celeste-dark)" : "var(--petroleo)" }));
@@ -13571,14 +13675,16 @@ function renderReporteHistorico(f){
       { titulo:t("Por país","By country","Por país","לפי מדינה"), filas: Object.entries(todo.porPais).sort((a, b) => b[1] - a[1]).map(([n, c]) => ({ etiqueta: esc(countryLabel(n)), n:c })) },
       { titulo:t("Por tipo","By type","Por tipo","לפי סוג"), filas: tipos.map(k => ({ etiqueta: etiquetaTipo(k), n: todo.porTipo[k] })) },
     ] };
-  return `<div class="rep-print-title">Registro de Acciones · ${t("Todos los años","All years","Todos os anos","כל השנים")}</div>
-    ${kpis}
+  return cabezaDelReporte(t("Todos los años","All years","Todos os anos","כל השנים"), `${esc(primero)} – ${esc(anios[anios.length - 1])}`, f)
+    + kpis
+    + seccionDelReporte(t("La historia, año por año","The history, year by year","A história, ano a ano","ההיסטוריה, שנה אחר שנה"), "", `
     <div class="rep-grilla">
       ${bloqueDeBarras(t("Año por año","Year by year","Ano a ano","שנה אחר שנה"), filasAnio, "")}
       ${tablaEvolucion(t("Evolución por país","Evolution by country","Evolução por país","התפתחות לפי מדינה"), paises, (r, k) => r.porPais[k] || 0, k => esc(countryLabel(k)))}
       ${tablaEvolucion(t("Evolución por tipo","Evolution by type","Evolução por tipo","התפתחות לפי סוג"), tipos, (r, k) => r.porTipo[k] || 0, etiquetaTipo)}
-    </div>
-    <div class="rep-extras">${renderCobertura(f)}${renderEquipoDelReporte(todo)}</div>`;
+    </div>`)
+    + seccionDelReporte(t("Equipo y cobertura","Team and coverage","Equipe e cobertura","צוות וכיסוי"), "",
+        `<div class="rep-extras">${renderEquipoDelReporte(todo)}${renderCobertura(f)}</div>`);
 }
 
 // ---- Comparar ----
@@ -13596,18 +13702,18 @@ function renderReporteComparar(f){
   }
   const cuenta = o => Object.keys(o).length;
   const kpi = (x, y, txt) => `<div class="rep-kpi"><div class="rep-kpi-num">${x} → ${y}</div><div class="rep-kpi-txt">${txt}</div>${deltaDelReporte(x, y)}</div>`;
-  const kpis = `<div class="rep-kpis">
-      ${kpi(rA.total, rB.total, t("actividades","activities","atividades","פעילויות"))}
-      ${kpi(cuenta(rA.porPais), cuenta(rB.porPais), t("países con actividad","countries with activity","países com atividade","מדינות עם פעילות"))}
-      ${kpi(rA.ciudades.size, rB.ciudades.size, t("ciudades distintas","different cities","cidades diferentes","ערים שונות"))}
-      ${kpi(cuenta(rA.porPersona), cuenta(rB.porPersona), t("personas que cargaron","people who logged","pessoas que carregaram","אנשים שרשמו"))}
-    </div>`;
+  const kpis = tiraDeNumeros([
+      kpi(rA.total, rB.total, t("actividades","activities","atividades","פעילויות")),
+      kpi(cuenta(rA.porPais), cuenta(rB.porPais), t("países con actividad","countries with activity","países com atividade","מדינות עם פעילות")),
+      kpi(rA.ciudades.size, rB.ciudades.size, t("ciudades distintas","different cities","cidades diferentes","ערים שונות")),
+      kpi(cuenta(rA.porPersona), cuenta(rB.porPersona), t("personas que cargaron","people who logged","pessoas que carregaram","אנשים שרשמו")) ]);
   // Mes a mes: la barra gruesa es el segundo período, la fina el primero
   // (la misma lectura que ya tiene "Un período").
   const meses = [];
   for(let m = vB.desde.slice(0,7), mA = vA.desde.slice(0,7); m <= vB.hasta.slice(0,7);
       m = addMonthsISO(m + "-01", 1).slice(0,7), mA = addMonthsISO(mA + "-01", 1).slice(0,7)){
-    meses.push({ etiqueta: esc(fmtISO(m + "-01", { month:"short" })), n: rB.porMes[m] || 0, prev: rA.porMes[mA] || 0 });
+    meses.push({ etiqueta: esc(fmtISO(m + "-01", { month:"short" }).replace(".", "").slice(0, 3)), n: rB.porMes[m] || 0, prev: rA.porMes[mA] || 0,
+      titulo: `${fmtISO(m + "-01", { month:"long" })}: ${nA} ${rA.porMes[mA] || 0} · ${nB} ${rB.porMes[m] || 0}` });
   }
   const unir = (oa, ob, etiqueta, orden) => [...new Set([...Object.keys(oa), ...Object.keys(ob)])]
     .map(k => ({ k, etiqueta: etiqueta(k), a: oa[k] || 0, b: ob[k] || 0 }))
@@ -13624,15 +13730,18 @@ function renderReporteComparar(f){
       { titulo:t("Por zona","By zone","Por zona","לפי אזור"), filas: zonas.map(x => ({ etiqueta:x.etiqueta, n:x.b, prev:x.a })) },
       { titulo:t("Por país","By country","Por país","לפי מדינה"), filas: paises.map(x => ({ etiqueta:x.etiqueta, n:x.b, prev:x.a })) },
     ] };
-  return `<div class="rep-print-title">Registro de Acciones · ${esc(nA)} ${t("contra","versus","contra","מול")} ${esc(nB)}${esc(triLabel)}</div>
-    ${kpis}
-    <div class="rep-grilla rep-grilla-ancha">
-      ${bloqueDeBarras(t("Mes a mes: {a} contra {b}","Month by month: {a} vs {b}","Mês a mês: {a} contra {b}","חודש אחר חודש: {a} מול {b}",{a:esc(nA), b:esc(nB)}), meses, "",
-        t("La barra gruesa es {b}; la fina, {a}.","The thick bar is {b}; the thin one, {a}.","A barra grossa é {b}; a fina, {a}.","הפס העבה הוא {b}; הדק, {a}.",{a:esc(nA), b:esc(nB)}))}
+  return cabezaDelReporte(`${esc(nA)} ${t("contra","versus","contra","מול")} ${esc(nB)}`,
+      `${esc(fmtDate(vA.desde))} – ${esc(fmtDate(vA.hasta))} ${t("contra","versus","contra","מול")} ${esc(fmtDate(vB.desde))} – ${esc(fmtDate(vB.hasta))}`, f)
+    + kpis
+    + seccionDelReporte(t("Mes a mes","Month by month","Mês a mês","חודש אחר חודש"), "", `<div class="rep-grilla">
+      ${graficoMensual(t("{a} contra {b}","{a} vs {b}","{a} contra {b}","{a} מול {b}",{a:esc(nA), b:esc(nB)}), meses,
+        t("Columna oscura: {b}. Columna clara: {a}.","Dark column: {b}. Light column: {a}.","Coluna escura: {b}. Coluna clara: {a}.","עמודה כהה: {b}. עמודה בהירה: {a}.",{a:esc(nA), b:esc(nB)}))}
+    </div>`)
+    + seccionDelReporte(t("Qué y dónde","What and where","O quê e onde","מה ואיפה"), "", `<div class="rep-grilla rep-grilla-ancha">
       ${tablaComparada(t("Por tipo","By type","Por tipo","לפי סוג"), nA, nB, tipos)}
       ${tablaComparada(t("Por zona","By zone","Por zona","לפי אזור"), nA, nB, zonas, t("Nada con zona cargada.","Nothing with a zone set.","Nada com zona carregada.","אין דבר עם אזור."))}
       ${tablaComparada(t("Por país","By country","Por país","לפי מדינה"), nA, nB, paises, t("Nada con país cargado.","Nothing with a country set.","Nada com país carregado.","אין דבר עם מדינה."))}
-    </div>`;
+    </div>`);
 }
 
 // ---- Cobertura ----
@@ -13756,9 +13865,8 @@ function renderSugerencias(v, r, rAnt, f){
   const titulo = !v.tri
     ? t("Sugerencias para {a}","Suggestions for {a}","Sugestões para {a}","הצעות ל-{a}",{ a: Number(v.anio) + 1 })
     : t("Sugerencias","Suggestions","Sugestões","הצעות");
-  return `<div class="rep-sugerencias"><h3>💡 ${titulo}</h3>
-    <ul>${lista.map(x => `<li><span aria-hidden="true">${x.ico}</span> ${esc(x.txt)}</li>`).join("")}</ul>
-    <div class="rep-bloque-nota">${t("Salen de comparar este período con el anterior y de la última actividad de cada país. Son pistas, no reglas.","They come from comparing this period with the previous one and from each country's latest activity. They're hints, not rules.","Saem de comparar este período com o anterior e da última atividade de cada país. São pistas, não regras.","הן נובעות מהשוואת התקופה הזו לקודמת ומהפעילות האחרונה בכל מדינה. אלה רמזים, לא כללים.")}</div></div>`;
+  return seccionDelReporte(`💡 ${titulo}`, t("Pistas a partir de los números, no reglas","Hints from the numbers, not rules","Pistas a partir dos números, não regras","רמזים מתוך המספרים, לא כללים"),
+    `<div class="rep-sugerencias"><ul>${lista.map(x => `<li><span class="rep-sug-ico" aria-hidden="true">${x.ico}</span><span>${esc(x.txt)}</span></li>`).join("")}</ul></div>`);
 }
 
 /* ======================================================================
@@ -18055,6 +18163,15 @@ document.addEventListener("click", async e=>{
     "reporte-sin-filtro": async () => {
     state.reportes.filtro = { zona:"", pais:"", tipo:"", persona:"" }; render();
   },
+    "reporte-filtros": async () => {
+    reporteFiltrosAbierto = !reporteFiltrosAbierto; render();
+    if(reporteFiltrosAbierto){ const s = document.getElementById("repFZona"); if(s && !isTouchDevice()) s.focus(); }
+  },
+    "reporte-quitar-filtro": async (el) => {
+    const k = el.dataset.key;
+    if(["zona","pais","tipo","persona"].includes(k)) state.reportes.filtro = { ...(state.reportes.filtro || {}), [k]: "" };
+    render();
+  },
     "pref-toggle-list": async (el, e, action, postId) => {
     const key = el.dataset.key, prefKey = el.dataset.pref;
     const cur = prefs()[prefKey] || [];
@@ -18986,9 +19103,9 @@ document.addEventListener("change", e=>{
   // Revisar lo de Calendar: los selectores del panel y de "Nombres sueltos".
   if(el.id === "rvTipo" && rv.borrador){ rv.borrador.tipo = el.value; return; }
   // Reportes: los años a comparar y el "Ver solo".
-  const REP_CAMPOS = { repCompA:"compA", repCompB:"compB", repCompTri:"compTri" };
+  const REP_CAMPOS = { repCompA:"compA", repCompB:"compB", repCompTri:"compTri", repAnio:"anio", repTri:"trimestre" };
   const REP_FILTROS = { repFZona:"zona", repFPais:"pais", repFTipo:"tipo", repFPersona:"persona" };
-  if(hasOwn(REP_CAMPOS, el.id)){ state.reportes[REP_CAMPOS[el.id]] = el.id === "repCompTri" ? (Number(el.value) || 0) : el.value; render(); return; }
+  if(hasOwn(REP_CAMPOS, el.id)){ state.reportes[REP_CAMPOS[el.id]] = (el.id === "repCompTri" || el.id === "repTri") ? (Number(el.value) || 0) : el.value; render(); return; }
   if(hasOwn(REP_FILTROS, el.id)){ state.reportes.filtro = { ...(state.reportes.filtro || {}), [REP_FILTROS[el.id]]: el.value }; render(); return; }
   if(el.id === "rvPais" && rv.borrador){
     const b = rv.borrador, v = el.value;
