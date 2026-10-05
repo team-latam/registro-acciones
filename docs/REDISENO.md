@@ -505,6 +505,12 @@ capturas (A/B/C, después D/E/F, después ajustes), el diseño elegido:
   arriba. Los Word (.docx) se dibujan con docx-preview (se carga la
   primera vez); PDF y texto en el marco. Esc cierra, ← → pasan de uno a
   otro. PowerPoint, Excel y los .doc viejos se siguen bajando.
+- Después, el usuario no quiso el fondo negro: los dos visores (documentos
+  y **fotos**) pasaron a una **ventana flotante** (opción B): la página
+  queda atrás apenas atenuada y sin poder tocarse, la ventana blanca tiene
+  su barra (nombre, Descargar, ✕) y aparece con un fundido corto. Se cierra
+  con la ✕, con Esc o tocando la página de atrás; tocar la foto ya no la
+  cierra.
 
 ## Fuera de alcance (necesitan algo que la app no tiene)
 

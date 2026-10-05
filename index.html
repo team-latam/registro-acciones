@@ -2915,11 +2915,13 @@
 
   /* ---------- Lightbox ---------- */
   #lightbox{
-    position:fixed; inset:0; background:rgba(0,0,0,0.85); display:none; align-items:center; justify-content:center; z-index:200;
-    cursor:zoom-out; padding:20px;
+    position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:200;
+    padding:12px 72px 44px; background:rgba(13,59,62,.14);
   }
   #lightbox.show{ display:flex; }
-  #lightbox img{ max-width:100%; max-height:100%; border-radius:8px; }
+  .visor-ventana-foto{ width:auto; max-width:min(1100px, 100%); }
+  .visor-marco{ flex:1; min-height:0; display:flex; align-items:center; justify-content:center; background:var(--surface-alt); padding:12px; border-radius:0 0 14px 14px; }
+  #lightbox img{ display:block; max-width:100%; max-height:calc(100vh - 150px); border-radius:6px; }
   /* Mismo botón que la flecha de "subir" (.scroll-top): celeste fijo con
      el chevron oscuro, igual en los dos temas. Antes eran dos ‹ › en un
      círculo translúcido que no se parecían a ninguna otra flecha de la app. */
@@ -3043,15 +3045,26 @@
   .ev-actions-even .btn-primary{ border:1px solid transparent; }
 
   /* ---------- Vista previa de adjuntos (PDF) ---------- */
-  .visor-doc{ position:fixed; inset:0; z-index:200; background:rgba(0,0,0,0.85); display:flex; flex-direction:column; align-items:center; padding:12px 72px 44px; }
+  .visor-doc{ position:fixed; inset:0; z-index:200; background:rgba(13,59,62,.14); display:flex; align-items:center; justify-content:center; padding:12px 72px 44px; }
   .visor-doc[hidden]{ display:none; }
-  .visor-barra{ width:100%; max-width:900px; display:flex; align-items:center; gap:10px; padding:4px 0 10px; color:#fff; }
-  #filePreviewTitle{ flex:1; min-width:0; font-size:14px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .visor-btn{ display:inline-flex; align-items:center; gap:6px; border:1px solid rgba(255,255,255,.35); background:rgba(255,255,255,.1); color:#fff;
+  html[data-theme="dark"] .visor-doc, html[data-theme="dark"] #lightbox{ background:rgba(0,0,0,.45); }
+  /* La ventana: blanca, con su barra arriba y una sombra que la separa de
+     la página (que queda atrás, apenas atenuada y sin poder tocarse). */
+  .visor-ventana{
+    display:flex; flex-direction:column; width:100%; max-width:900px; height:100%; max-height:100%;
+    background:var(--card); border-radius:14px; box-shadow:0 30px 70px rgba(8,42,44,.28); overflow:hidden;
+    animation:visorEntra .18s ease-out;
+  }
+  .visor-ventana-foto{ height:auto; }
+  @keyframes visorEntra{ from{ opacity:0; transform:translateY(8px) scale(.985); } }
+  @media (prefers-reduced-motion:reduce){ .visor-ventana{ animation:none; } }
+  .visor-barra{ display:flex; align-items:center; gap:10px; padding:10px 12px 10px 16px; border-bottom:1px solid var(--border); color:var(--ink); flex:none; }
+  .visor-titulo{ flex:1; min-width:0; font-size:14px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .visor-btn{ display:inline-flex; align-items:center; gap:6px; border:1px solid var(--border); background:var(--surface-alt); color:var(--ink);
     border-radius:999px; padding:6px 14px; font:inherit; font-size:13px; font-weight:700; cursor:pointer; text-decoration:none; white-space:nowrap; }
-  .visor-btn:hover{ background:rgba(255,255,255,.22); }
+  .visor-btn:hover{ background:var(--surface-hover); }
   .visor-cerrar{ padding:6px 11px; }
-  .visor-hoja{ flex:1; width:100%; max-width:900px; min-height:0; border-radius:8px; overflow:hidden; background:#e9eef0; }
+  .visor-hoja{ flex:1; width:100%; min-height:0; overflow:hidden; background:var(--surface-alt); }
   #filePreviewFrame{ width:100%; height:100%; border:0; background:#fff; display:block; }
   #filePreviewFrame[hidden]{ display:none; }
   .visor-word{ height:100%; overflow:auto; padding:16px 8px; }
@@ -3059,10 +3072,13 @@
   .visor-word .docx-wrapper{ background:transparent !important; padding:0 !important; }
   .visor-word section.docx{ margin:0 auto 16px !important; box-shadow:0 4px 18px rgba(0,0,0,.25) !important; }
   .visor-aviso{ color:var(--text-muted); font-size:14px; font-weight:600; text-align:center; padding:48px 20px; line-height:1.6; }
+  .visor-doc .lightbox-counter, #lightbox .lightbox-counter{ background:var(--petroleo); color:#fff; }
   @media (max-width:640px){
-    .visor-doc{ padding:8px 8px 44px; }
-    .visor-doc .lightbox-nav{ top:auto; bottom:6px; transform:none; width:38px; height:38px; }
-    .visor-doc .lightbox-counter{ bottom:14px; }
+    .visor-doc, #lightbox{ padding:8px 8px 52px; }
+    .visor-doc .lightbox-nav, #lightbox .lightbox-nav{ top:auto; bottom:6px; transform:none; width:38px; height:38px; }
+    .visor-doc .lightbox-counter, #lightbox .lightbox-counter{ bottom:14px; }
+    .visor-barra{ padding:8px 8px 8px 12px; gap:6px; }
+    .visor-btn{ padding:6px 10px; }
   }
 
   /* "Actualizar" (sincronizar con Calendar) vive acá (Feed) en vez del header
@@ -3293,25 +3309,35 @@
   <button class="filter-clear" data-action="dismiss-calendar-notice">Cerrar</button>
 </div>
 
-<div id="lightbox" role="dialog" aria-modal="true" tabindex="-1">
+<div id="lightbox" role="dialog" aria-modal="true" aria-labelledby="lightboxTitle" tabindex="-1">
+  <div class="visor-ventana visor-ventana-foto">
+    <div class="visor-barra">
+      <span id="lightboxTitle" class="visor-titulo"></span>
+      <a id="lightboxDownload" class="visor-btn" download target="_blank" rel="noopener">⬇ Descargar</a>
+      <button type="button" id="lightboxClose" class="visor-btn visor-cerrar" aria-label="Cerrar">✕</button>
+    </div>
+    <div class="visor-marco"><img id="lightboxImg" src="" alt=""></div>
+  </div>
   <button type="button" id="lightboxPrev" class="lightbox-nav lightbox-prev" aria-label="Anterior" hidden></button>
-  <img id="lightboxImg" src="" alt="">
   <button type="button" id="lightboxNext" class="lightbox-nav lightbox-next" aria-label="Siguiente" hidden></button>
   <span id="lightboxCounter" class="lightbox-counter" hidden></span>
 </div>
 
-<!-- El visor de documentos: el mismo fondo oscuro, flechas y contador que
-     el de las fotos (#lightbox), con el documento como una hoja en el
-     medio (6/10/2026). Antes era un modal blanco con un iframe. -->
+<!-- El visor de documentos y el de fotos (#lightbox) son la misma ventana
+     flotante (6/10/2026, opción B): la página apenas atenuada y bloqueada,
+     una ventana blanca con su barra (nombre, Descargar, ✕), las flechas y
+     el contador. Antes las fotos se abrían sobre un fondo negro. -->
 <div id="filePreviewOverlay" class="visor-doc" role="dialog" aria-modal="true" aria-labelledby="filePreviewTitle" hidden>
-  <div class="visor-barra">
-    <span id="filePreviewTitle"></span>
-    <a id="filePreviewDownload" class="visor-btn" download>⬇ Descargar</a>
-    <button type="button" id="filePreviewClose" class="visor-btn visor-cerrar" aria-label="Cerrar">✕</button>
-  </div>
-  <div class="visor-hoja" id="filePreviewHoja">
-    <iframe id="filePreviewFrame" title=""></iframe>
-    <div id="filePreviewWord" class="visor-word" hidden></div>
+  <div class="visor-ventana">
+    <div class="visor-barra">
+      <span id="filePreviewTitle" class="visor-titulo"></span>
+      <a id="filePreviewDownload" class="visor-btn" download>⬇ Descargar</a>
+      <button type="button" id="filePreviewClose" class="visor-btn visor-cerrar" aria-label="Cerrar">✕</button>
+    </div>
+    <div class="visor-hoja" id="filePreviewHoja">
+      <iframe id="filePreviewFrame" title=""></iframe>
+      <div id="filePreviewWord" class="visor-word" hidden></div>
+    </div>
   </div>
   <button type="button" id="filePreviewPrev" class="lightbox-nav lightbox-prev" aria-label="Anterior" hidden></button>
   <button type="button" id="filePreviewNext" class="lightbox-nav lightbox-next" aria-label="Siguiente" hidden></button>
@@ -9679,8 +9705,9 @@ function applyStaticI18n(){
   if(userProfileCloseBtn) userProfileCloseBtn.setAttribute("aria-label", closeLabel);
   const eventCardCloseBtn = document.getElementById("eventCardClose");
   if(eventCardCloseBtn) eventCardCloseBtn.setAttribute("aria-label", closeLabel);
-  const filePreviewDownloadBtn = document.getElementById("filePreviewDownload");
-  if(filePreviewDownloadBtn) filePreviewDownloadBtn.textContent = "⬇ " + t("Descargar", "Download", "Baixar", "הורדה");
+  ["filePreviewDownload", "lightboxDownload"].forEach(id => { const b = document.getElementById(id); if(b) b.textContent = "⬇ " + t("Descargar", "Download", "Baixar", "הורדה"); });
+  const lightboxCloseBtn = document.getElementById("lightboxClose");
+  if(lightboxCloseBtn) lightboxCloseBtn.setAttribute("aria-label", closeLabel);
 
   const prevLabel = t("Anterior", "Previous", "Anterior", "הקודם");
   const nextLabel = t("Siguiente", "Next", "Próximo", "הבא");
@@ -17131,11 +17158,17 @@ function openLightbox(items, index){
   lightbox.classList.add("show");
   // Con más de una imagen, arranca el foco en "Siguiente" (primer control
   // útil); con una sola no hay nada que enfocar salvo el propio diálogo.
-  (lightboxItems.length > 1 ? lightboxNext : lightbox).focus();
+  (lightboxItems.length > 1 ? lightboxNext : document.getElementById("lightboxClose")).focus();
 }
 function renderLightboxFrame(){
-  lightboxImg.src = lightboxItems[lightboxIndex] || "";
+  const src = lightboxItems[lightboxIndex] || "";
+  lightboxImg.src = src;
   const multi = lightboxItems.length > 1;
+  document.getElementById("lightboxTitle").textContent = multi
+    ? t("Foto {a} de {b}","Photo {a} of {b}","Foto {a} de {b}","תמונה {a} מתוך {b}",{a:lightboxIndex+1, b:lightboxItems.length})
+    : t("Foto","Photo","Foto","תמונה");
+  const bajar = document.getElementById("lightboxDownload");
+  bajar.href = src; bajar.download = `foto-${lightboxIndex+1}`;
   lightboxPrev.hidden = lightboxNext.hidden = lightboxCounter.hidden = !multi;
   if(multi){
     // ‹ › SÍ los invierte solo dir="rtl" (son puntuación, a diferencia de
@@ -17159,7 +17192,9 @@ function closeLightbox(){
   if(lightboxReturnFocus && typeof lightboxReturnFocus.focus === "function") lightboxReturnFocus.focus();
   lightboxReturnFocus = null;
 }
-lightbox.addEventListener("click", closeLightbox);
+// Se cierra con la ✕, con Esc o tocando la página de atrás (no la foto).
+lightbox.addEventListener("click", e=>{ if(e.target === lightbox) closeLightbox(); });
+document.getElementById("lightboxClose").addEventListener("click", closeLightbox);
 lightboxPrev.addEventListener("click", e=>{ e.stopPropagation(); lightboxStep(-1); });
 lightboxNext.addEventListener("click", e=>{ e.stopPropagation(); lightboxStep(1); });
 lightboxCounter.addEventListener("click", e=>e.stopPropagation());
@@ -17267,7 +17302,7 @@ function closeFilePreview(){
 }
 document.getElementById("filePreviewClose").addEventListener("click", closeFilePreview);
 // Como en el de las fotos: tocar el fondo oscuro (fuera de la hoja y de los botones) cierra.
-filePreviewOverlay.addEventListener("click", e=>{ if(e.target === filePreviewOverlay || e.target.classList.contains("visor-barra")) closeFilePreview(); });
+filePreviewOverlay.addEventListener("click", e=>{ if(e.target === filePreviewOverlay) closeFilePreview(); });
 filePreviewPrev.addEventListener("click", e=>{ e.stopPropagation(); filePreviewStep(-1); });
 filePreviewNext.addEventListener("click", e=>{ e.stopPropagation(); filePreviewStep(1); });
 
