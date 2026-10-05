@@ -2115,9 +2115,9 @@
   .rs-paso{ flex:1; min-width:0; }
   .rs-paso small{ color:var(--text-muted); display:block; font-size:11.5px; }
   .rs-pasos li.hecho .t{ text-decoration:line-through; opacity:.6; }
-  /* "No es tarea": abajo del texto, chiquito. En la compu aparece al
+  /* "No es tarea": al final del renglón, chiquito. En la compu aparece al
      pasar el mouse por el paso; en el celular está siempre, apenas gris. */
-  .rs-no{ display:block; background:none; border:none; padding:2px 0 0; font:inherit; font-size:11px; font-weight:700; color:var(--text-muted); cursor:pointer; opacity:0; transition:opacity .12s; text-align:start; }
+  .rs-no{ display:inline; background:none; border:none; padding:0; margin-inline-start:8px; font:inherit; font-size:11px; font-weight:700; color:var(--text-muted); cursor:pointer; opacity:0; transition:opacity .12s; }
   .rs-pasos li:hover .rs-no, .rs-no:focus-visible{ opacity:1; }
   .rs-no:hover{ color:var(--ink); text-decoration:underline; }
   @media (hover:none){ .rs-no{ opacity:.75; } }
@@ -12847,7 +12847,7 @@ function renderFeedView(){
   const items = all.slice(0, feedVisibleCount);
   return `<div class="feed-layout"><div class="feed-main">
     ${canWrite() ? renderRutinaComposer() : ""}
-    ${renderFilterBar("feed")}${renderPlaceLevelSeg()}
+    ${renderFilterBar("feed")}${renderPlaceLevelSeg()}${state.filters.place && state.filters.place.kind === "city" ? renderResumenDelLugar(state.filters.place.country, state.filters.place.city) : ""}
     ${renderFeedOrderBar()}
     ${items.length ? items.map(({post,replies})=>renderPostCard(post,replies)).join("") + renderLoadMore("feed-load-more", all.length - items.length) :
       `<div class="empty-state"><div class="big">🗒️</div>${anyActiveFilter()
@@ -13718,11 +13718,15 @@ async function marcarPaso(postId, pasoId, estado, extra){
 const esDelPais = (post, country) => postLevelFor(post, { kind:"country", country }) === "own";
 // ¿Este formulario habla de este país? Por el "Lugar:" del formulario (o
 // el nombre del archivo): el país en cualquier idioma o una de sus ciudades.
+// Si el "Lugar:" de un formulario (o el nombre del archivo) nombra alguno
+// de estos nombres, como palabra entera y sin mirar tildes.
+function parteNombra(parte, nombres){
+  const txt = " " + sinTildes((parte.lugar || "") + " " + ((parte.fuente || {}).name || "")).replace(/[^a-z0-9]+/g, " ") + " ";
+  return nombres.map(sinTildes).filter(n => n.length > 2)
+    .some(n => txt.includes(" " + n.replace(/[^a-z0-9]+/g, " ").trim() + " "));
+}
 function parteEsDelPais(parte, country){
-  const txt = sinTildes((parte.lugar || "") + " " + ((parte.fuente || {}).name || ""));
-  const nombres = [country, ...Object.values(DEFAULT_COUNTRY_LABELS[country] || {}), ...cityPresetsFor(country).map(c => c.name)]
-    .map(sinTildes).filter(n => n.length > 2);
-  return nombres.some(n => (" " + txt.replace(/[^a-z0-9]+/g, " ") + " ").includes(" " + n.replace(/[^a-z0-9]+/g, " ").trim() + " "));
+  return parteNombra(parte, [country, ...Object.values(DEFAULT_COUNTRY_LABELS[country] || {}), ...cityPresetsFor(country).map(c => c.name)]);
 }
 // Las partes de un posteo que cuentan para un país. Si ninguna nombra a
 // ninguno de los países del posteo (un "Lugar:" mal escrito), cuentan todas.
@@ -13733,11 +13737,25 @@ function partesDelPais(post, country){
   const paises = [...new Set((post.scopes || []).map(x => x && x.country).filter(Boolean))];
   return partes.some(x => paises.some(c => parteEsDelPais(x, c))) ? [] : partes;
 }
-function resumenDelLugar(country){
+// Lo mismo, para una ciudad: los formularios del país que nombran esa
+// ciudad. Si ninguno nombra ninguna ciudad (el "Lugar:" dice solo el
+// país) y el evento es de esa sola ciudad en ese país, cuentan todos.
+function partesDeCiudad(post, country, city){
+  const del = partesDelPais(post, country);
+  const propias = del.filter(x => parteNombra(x, [city]));
+  if(propias.length) return propias;
+  const ciudades = [...new Set((post.scopes || []).filter(x => x && x.country === country && x.city).map(x => x.city))];
+  const nombraAlguna = del.some(x => parteNombra(x, cityPresetsFor(country).map(c => c.name)));
+  return !nombraAlguna && ciudades.length === 1 && ciudades[0] === city ? del : [];
+}
+// El resumen de un país o, con `city`, de una de sus ciudades.
+function resumenDelLugar(country, city){
   const porFecha = (a, b) => String(b.startDate || b.date).localeCompare(String(a.startDate || a.date));
-  const posts = state.posts.filter(p => !p.cancelled && p.activityType !== "rutina" && esDelPais(p, country));
+  const esDeAca = p => city ? postLevelFor(p, { kind:"city", country, city }) === "own" : esDelPais(p, country);
+  const partesDeAca = p => city ? partesDeCiudad(p, country, city) : partesDelPais(p, country);
+  const posts = state.posts.filter(p => !p.cancelled && p.activityType !== "rutina" && esDeAca(p));
   const visitas = posts.filter(p => p.activityType === "visita").sort(porFecha);
-  const conResumen = posts.map(post => ({ post, partes: partesDelPais(post, country) })).filter(x => x.partes.length)
+  const conResumen = posts.map(post => ({ post, partes: partesDeAca(post) })).filter(x => x.partes.length)
     .sort((a, b) => porFecha(a.post, b.post));
   const c = cuentaObjetivos(conResumen.flatMap(x => x.partes));
   const pendientes = [], hechos = [];
@@ -13750,21 +13768,22 @@ function resumenDelLugar(country){
     ultimaConResumen: ultima && { post: ultima.post, ejecutivo: ultima.partes.find(p => p.ejecutivo).ejecutivo } };
 }
 const lugarTodosLosPasos = new Set();
-function renderResumenDelLugar(country){
-  const L = resumenDelLugar(country);
+function renderResumenDelLugar(country, city){
+  const L = resumenDelLugar(country, city);
   if(!L.visitas.length && !L.conResumen.length) return "";
-  const nombre = countryLabel(country);
+  const nombre = city ? cityLabel(country, city) : countryLabel(country);
+  const clave = country + "|" + (city || "");
   const ultima = L.visitas[0];
   const rango = p => { const c = fechaDeTarjeta(p.startDate || p.date, p.endDate, null, null); return c.dias; };
   const primera = L.visitas[L.visitas.length - 1];
-  const ciudadDe = p => { const s = (p.scopes || []).find(x => x.country === country && x.city); return s ? s.city : ""; };
+  const ciudadDe = p => { if(city) return ""; const s = (p.scopes || []).find(x => x.country === country && x.city); return s ? cityLabel(country, s.city) : ""; };
   const pct = L.total ? Math.round(L.si * 100 / L.total) : null;
   const puede = p => canEditPost(p);
-  const todos = lugarTodosLosPasos.has(country);
+  const todos = lugarTodosLosPasos.has(clave);
   const lista = todos ? [...L.pendientes, ...L.hechos] : L.pendientes.slice(0, 3);
   const historia = (L.visitas.length ? L.visitas : L.conResumen.map(x => x.post)).slice(0, 8);
   const marcaDe = p => {
-    const partes = partesDelPais(p, country);
+    const partes = city ? partesDeCiudad(p, country, city) : partesDelPais(p, country);
     const c = cuentaObjetivos(partes);
     if(c.total) return `<span class="rs-ok ${c.si === c.total ? "si" : "par"}">${c.si}/${c.total}</span>`;
     if(partes.length) return `<span class="rs-ok plan">${esc(t("Plan","Plan","Plano","תכנון"))}</span>`;
@@ -13775,7 +13794,9 @@ function renderResumenDelLugar(country){
   };
   return `<div class="card lg-card">
     <h2 class="lg-tit">${esc(t("Resumen de {p}","{p} summary","Resumo de {p}","סיכום {p}",{ p: nombre }))}</h2>
-    <div class="hint lg-sub">${esc(t("Se arma solo, con los Formularios de Cierre de cada visita.","Built automatically from each visit's Closure Form.","Monta-se sozinho, com os Formulários de Fechamento de cada visita.","נבנה לבד, מטופסי הסגירה של כל ביקור."))}</div>
+    <div class="hint lg-sub">${esc(city
+      ? t("Solo lo de {c}: los Formularios de Cierre que la nombran.","Only {c}: the Closure Forms that name it.","Só o de {c}: os Formulários de Fechamento que a nomeiam.","רק {c}: טופסי הסגירה שמזכירים אותה.",{ c: nombre })
+      : t("Se arma solo, con los Formularios de Cierre de cada visita (todas sus ciudades).","Built automatically from each visit's Closure Form (all its cities).","Monta-se sozinho, com os Formulários de Fechamento de cada visita (todas as suas cidades).","נבנה לבד, מטופסי הסגירה של כל ביקור (כל הערים)."))}</div>
     <div class="lg-stats">
       <div class="lg-stat"><small>${t("Visitas","Visits","Visitas","ביקורים")}</small><b>${L.visitas.length}</b><span>${primera ? esc(t("desde {f}","since {f}","desde {f}","מאז {f}",{ f: fmtISO(primera.startDate || primera.date, { month:"short", year:"numeric" }) })) : ""}</span></div>
       <div class="lg-stat"><small>${t("Última","Latest","Última","אחרון")}</small><b>${ultima ? esc(rango(ultima)) : "—"}</b><span>${ultima ? esc(ciudadDe(ultima)) : ""}</span></div>
@@ -13787,7 +13808,7 @@ function renderResumenDelLugar(country){
       <button type="button" class="rs-mas" data-action="goto-post-from-profile" data-post-id="${L.ultimaConResumen.post.id}">${t("Ver la visita","See the visit","Ver a visita","לביקור")} ${isRTL() ? "←" : "→"}</button></div>` : ""}
     ${L.pendientes.length || L.hechos.length ? `<div class="lg-sec"><div class="rs-h">${esc(t("Lo que sigue en {p}","What's next in {p}","O que segue em {p}","מה הלאה ב{p}",{ p: nombre }))}</div>
       ${renderPasos(null, lista, puede, true)}
-      ${L.pendientes.length > 3 || L.hechos.length ? `<button type="button" class="rs-mas" data-action="lugar-todos-pasos" data-country="${esc(country)}">${todos ? t("Mostrar menos","Show less","Mostrar menos","הצג פחות") : t("Ver los {n}","See all {n}","Ver os {n}","הצגת כל ה-{n}",{ n: L.pendientes.length + L.hechos.length })}</button>` : ""}</div>` : ""}
+      ${L.pendientes.length > 3 || L.hechos.length ? `<button type="button" class="rs-mas" data-action="lugar-todos-pasos" data-clave="${esc(clave)}">${todos ? t("Mostrar menos","Show less","Mostrar menos","הצג פחות") : t("Ver los {n}","See all {n}","Ver os {n}","הצגת כל ה-{n}",{ n: L.pendientes.length + L.hechos.length })}</button>` : ""}</div>` : ""}
     ${historia.length ? `<div class="lg-sec"><div class="rs-h">${t("Historia","History","Histórico","היסטוריה")}</div>
       <ul class="lg-hist">${historia.map(p => `<li><span class="f">${esc(rango(p))}</span><button type="button" class="lg-ir" data-action="goto-post-from-profile" data-post-id="${p.id}" dir="auto">${esc(p.title)}</button>${marcaDe(p)}</li>`).join("")}</ul></div>` : ""}
   </div>`;
@@ -18231,10 +18252,12 @@ likesOverlay.addEventListener("click", e=>{ if(e.target === likesOverlay) closeL
    confiable ("Se envió plan de cámaras a Rabino" puede cumplir dos). */
 const cumpleOverlay = document.getElementById("cumpleOverlay");
 let cumpleRutina = null, cumpleReturnFocus = null;
+// Una rutina en una ciudad pregunta por lo pendiente de esa ciudad; una
+// cargada para todo el país, por lo del país.
 function pendientesPara(scopes){
-  const paises = [...new Set((scopes || []).map(x => x && x.country).filter(Boolean))];
+  const lugares = (scopes || []).filter(x => x && x.country).map(x => x.city ? [x.country, x.city] : [x.country, null]);
   const vistos = new Set(), out = [];
-  paises.forEach(c => resumenDelLugar(c).pendientes.forEach(x => {
+  lugares.forEach(([c, city]) => resumenDelLugar(c, city).pendientes.forEach(x => {
     const k = x.post.id + "|" + x.p.id;
     if(!vistos.has(k) && canEditPost(x.post)){ vistos.add(k); out.push(x); }
   }));
@@ -19362,7 +19385,7 @@ document.addEventListener("click", async e=>{
     render();
   },
     "lugar-todos-pasos": async (el) => {
-    const c = el.dataset.country;
+    const c = el.dataset.clave;
     lugarTodosLosPasos.has(c) ? lugarTodosLosPasos.delete(c) : lugarTodosLosPasos.add(c);
     render();
   },
