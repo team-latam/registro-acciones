@@ -210,6 +210,45 @@ alter table public.replies
   );
 
 
+-- ------------------------------------------------------------
+-- El id de un posteo o de un comentario: solo letras, números y _ . : @ -
+-- ------------------------------------------------------------
+-- El id lo elige quien escribe (la app arma 20 caracteres al azar, lo
+-- traído de Calendar es «cal_» + el id del evento) y nada lo revisaba. La
+-- app lo pone en el HTML de cada tarjeta, así que un id con comillas o con
+-- < > metía código en la pantalla de todos (docs/AUDITORIA.md, U3). La app
+-- ahora lo escapa igual; esto lo cierra del lado de la base, para
+-- cualquiera que escriba directo por la API.
+--
+-- Se agrega NOT VALID y después se intenta validar: si la base de verdad
+-- tuviera de antes alguna fila con otra forma, la restricción queda igual
+-- para todo lo nuevo (y para editar esa fila habría que corregirle el id),
+-- en vez de frenar la aplicación entera del esquema.
+alter table public.posts   drop constraint if exists posts_id_forma;
+alter table public.replies drop constraint if exists replies_id_forma;
+alter table public.posts
+  add constraint posts_id_forma check (id ~ '^[A-Za-z0-9_.:@-]{1,200}$') not valid;
+alter table public.replies
+  add constraint replies_id_forma check (
+    id ~ '^[A-Za-z0-9_.:@-]{1,200}$'
+    and (reply_to_id is null or reply_to_id ~ '^[A-Za-z0-9_.:@-]{1,200}$')
+  ) not valid;
+do $$
+begin
+  begin
+    alter table public.posts validate constraint posts_id_forma;
+  exception when check_violation then
+    raise notice 'Hay posteos con un id de otra forma: posts_id_forma vale solo para lo nuevo.';
+  end;
+  begin
+    alter table public.replies validate constraint replies_id_forma;
+  exception when check_violation then
+    raise notice 'Hay comentarios con un id de otra forma: replies_id_forma vale solo para lo nuevo.';
+  end;
+end
+$$;
+
+
 -- ============================================================
 -- 4. EL EQUIPO Y LOS EX INTEGRANTES
 -- ============================================================

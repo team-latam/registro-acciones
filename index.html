@@ -9164,7 +9164,7 @@ function renderProyectosLinea(list){
       return `<span class="pl-diamond ${st}" style="left:${pct(m.date).toFixed(2)}%" title="${esc(m.label)} · ${esc(fmtDate(m.date))} · ${esc(milestoneStatusLabel(st))}"></span>`;
     }).join("");
     return `<div class="pl-row">
-        <button type="button" class="pl-name" data-action="project-open" data-post-id="${p.id}">
+        <button type="button" class="pl-name" data-action="project-open" data-post-id="${esc(p.id)}">
           <b dir="auto">${esc(calendarioLabel(p))}</b>
           <small>${ms.length ? t("{d} de {n} hitos","{d} of {n} milestones","{d} de {n} marcos","{d} מתוך {n} אבני דרך",{d:done,n:ms.length}) : t("Sin hitos todavía","No milestones yet","Sem marcos ainda","עדיין אין אבני דרך")}${projectDone(p) ? " · ✅" : ""}</small>
         </button>
@@ -9203,8 +9203,8 @@ function renderHitosPorVencer(){
             <b dir="auto">${esc(m.label)}</b>
             <small><span dir="auto">${esc(calendarioLabel(it.post))}</span> · ${esc(fmtDate(m.date))} · <span class="pl-st ${st}">${esc(milestoneStatusLabel(st))}</span>${ownerChips(msOwners(m))}</small>
           </div>
-          <button type="button" class="btn-text-add" data-action="project-open" data-post-id="${it.post.id}">${t("Ver proyecto","View project","Ver projeto","הצגת פרויקט")}</button>
-          ${canManageProject(it.post) ? `<button type="button" class="btn-mini" data-action="ms-done" data-post-id="${it.post.id}" data-ms-id="${esc(m.id)}">✓ ${t("Marcar cumplido","Mark done","Marcar cumprido","סימון כהושלם")}</button>` : ""}
+          <button type="button" class="btn-text-add" data-action="project-open" data-post-id="${esc(it.post.id)}">${t("Ver proyecto","View project","Ver projeto","הצגת פרויקט")}</button>
+          ${canManageProject(it.post) ? `<button type="button" class="btn-mini" data-action="ms-done" data-post-id="${esc(it.post.id)}" data-ms-id="${esc(m.id)}">✓ ${t("Marcar cumplido","Mark done","Marcar cumprido","סימון כהושלם")}</button>` : ""}
         </div>`;
       }).join("")}
     </section>`;
@@ -9216,7 +9216,7 @@ function renderProyectosTarjetas(list){
     const type = ACTIVITY_BY_KEY[p.activityType] || { icon:"✨", label:p.activityType };
     const start = p.startDate || p.date, end = p.endDate && p.endDate >= start ? p.endDate : start;
     const pct = ms.length ? Math.round(done / ms.length * 100) : 0;
-    return `<button type="button" class="project-card${p.cancelled?" cancelled":""}" data-action="project-open" data-post-id="${p.id}">
+    return `<button type="button" class="project-card${p.cancelled?" cancelled":""}" data-action="project-open" data-post-id="${esc(p.id)}">
       <div class="pc-top"><span class="type-badge">${esc(type.icon)} ${esc(type.label)}</span><span class="pc-dates">${esc(fmtDate(start))}${end!==start?` – ${esc(fmtDate(end))}`:""}</span></div>
       <div class="pc-title">${esc(calendarioLabel(p))}${projectDone(p) ? ` <span class="pj-done-badge">✅ ${t("Completado","Completed","Concluído","הושלם")}</span>` : ""}</div>
       <div class="pc-bar"><span style="width:${pct}%"></span></div>
@@ -9252,12 +9252,12 @@ function renderProjectDetail(post){
         ${contenidoVisible(post.content) ? `<div class="post-content">${nl2br(String(contenidoVisible(post.content)).slice(0,600))}</div>` : ""}
         ${renderProjectEditors(post)}
         <div class="post-actions">
-          <button data-action="goto-mention" data-post-id="${post.id}">💬 ${t("Ver en el Feed","See in the Feed","Ver no Feed","הצגה בפיד")}</button>
-          ${canEditPost(post) ? `<button data-action="edit-post" data-post-id="${post.id}">✏️ ${t("Editar evento","Edit event","Editar evento","עריכת האירוע")}</button>` : ""}
+          <button data-action="goto-mention" data-post-id="${esc(post.id)}">💬 ${t("Ver en el Feed","See in the Feed","Ver no Feed","הצגה בפיד")}</button>
+          ${canEditPost(post) ? `<button data-action="edit-post" data-post-id="${esc(post.id)}">✏️ ${t("Editar evento","Edit event","Editar evento","עריכת האירוע")}</button>` : ""}
           ${canCloseProject(post) ? (projectDone(post)
-            ? `<button data-action="project-reopen" data-post-id="${post.id}">✏️ ${t("Volver a editar","Edit again","Voltar a editar","עריכה מחדש")}</button>`
-            : `<button data-action="project-close" data-post-id="${post.id}">✅ ${t("Dar por completado","Mark as completed","Dar por concluído","סימון כהושלם")}</button>`) : ""}
-          ${manage ? `<button class="danger" data-action="project-remove" data-post-id="${post.id}">🗑️ ${t("Quitar proyecto","Remove project","Remover projeto","הסרת הפרויקט")}</button>` : ""}
+            ? `<button data-action="project-reopen" data-post-id="${esc(post.id)}">✏️ ${t("Volver a editar","Edit again","Voltar a editar","עריכה מחדש")}</button>`
+            : `<button data-action="project-close" data-post-id="${esc(post.id)}">✅ ${t("Dar por completado","Mark as completed","Dar por concluído","סימון כהושלם")}</button>`) : ""}
+          ${manage ? `<button class="danger" data-action="project-remove" data-post-id="${esc(post.id)}">🗑️ ${t("Quitar proyecto","Remove project","Remover projeto","הסרת הפרויקט")}</button>` : ""}
         </div>
         ${projectDone(post) ? `<div class="hint pj-done-hint">${t("Proyecto completado: los hitos quedan en solo lectura; la bitácora sigue abierta. Para cambiar hitos, «Volver a editar».","Project completed: milestones are read-only; the log stays open. To change milestones, “Edit again”.","Projeto concluído: os marcos ficam em somente leitura; o diário continua aberto. Para mudar marcos, «Voltar a editar».","הפרויקט הושלם: אבני הדרך לקריאה בלבד; היומן נשאר פתוח. לשינוי אבני דרך, «עריכה מחדש».")}</div>` : ""}
       </div>
@@ -9427,7 +9427,7 @@ function renderProjectEditors(post){
   return `<div class="pj-editors">
       <span class="pj-editors-lbl">${t("Editores","Editors","Editores","עורכים")}:</span>
       ${ownerChip(post.authorEmail)}
-      ${editors.map(e=>`<span class="pj-editor-chip">${ownerChip(e)}${manage ? `<button type="button" data-action="ms-editor-remove" data-post-id="${post.id}" data-email="${esc(e)}" aria-label="${esc(t("Quitar editor","Remove editor","Remover editor","הסרת עורך/ת"))}">✕</button>` : ""}</span>`).join("")}
+      ${editors.map(e=>`<span class="pj-editor-chip">${ownerChip(e)}${manage ? `<button type="button" data-action="ms-editor-remove" data-post-id="${esc(post.id)}" data-email="${esc(e)}" aria-label="${esc(t("Quitar editor","Remove editor","Remover editor","הסרת עורך/ת"))}">✕</button>` : ""}</span>`).join("")}
       ${manage ? renderPersonPicker(`ed:${post.id}`, "+ " + t("Sumar editor…","Add editor…","Adicionar editor…","…הוספת עורך/ת"), [post.authorEmail, ...editors]) : ""}
     </div>`;
 }
@@ -9504,22 +9504,22 @@ function renderProjectPanel(post, opts={}){
       const empty = field === "endDate" && !value;
       const label = value ? esc(fmtTypedDate(value)) : esc(t("sin fecha de fin","no end date","sem data de fim","ללא תאריך סיום"));
       return `<span class="date-field">
-        <button type="button" class="date-trigger ${empty ? "empty" : ""}" data-action="date-open" data-df-kind="milestone" data-df-id="${esc(dfId)}" data-post-id="${post.id}" data-ms-id="${esc(m.id)}" data-field="${field}" aria-haspopup="dialog" aria-expanded="false"><span class="cal-ic" aria-hidden="true">📅</span>${label}</button>
+        <button type="button" class="date-trigger ${empty ? "empty" : ""}" data-action="date-open" data-df-kind="milestone" data-df-id="${esc(dfId)}" data-post-id="${esc(post.id)}" data-ms-id="${esc(m.id)}" data-field="${field}" aria-haspopup="dialog" aria-expanded="false"><span class="cal-ic" aria-hidden="true">📅</span>${label}</button>
         <div class="date-pop" hidden role="dialog" aria-label="${esc(field === "date" ? t("Fecha de inicio","Start date","Data de início","תאריך התחלה") : t("Fecha de fin","End date","Data de fim","תאריך סיום"))}"></div>
       </span>`;
     };
     return `<li class="pj-row ${st}" data-ms-id="${esc(m.id)}">
       <div class="pj-top">
-        <span class="pj-grip" data-pj-grip data-post-id="${post.id}" title="${esc(t("Arrastrá para reordenar","Drag to reorder","Arraste para reordenar","גרירה לסידור מחדש"))}" aria-hidden="true"><svg viewBox="0 0 10 16" width="10" height="16"><circle cx="3" cy="3" r="1.4"/><circle cx="7" cy="3" r="1.4"/><circle cx="3" cy="8" r="1.4"/><circle cx="7" cy="8" r="1.4"/><circle cx="3" cy="13" r="1.4"/><circle cx="7" cy="13" r="1.4"/></svg></span>
-        <input type="text" class="pj-label-input" data-ms-field="label" data-post-id="${post.id}" data-ms-id="${esc(m.id)}" value="${esc(m.label)}" maxlength="120">
-        <button type="button" class="status-pill ${st}" data-action="ms-done" data-post-id="${post.id}" data-ms-id="${esc(m.id)}">${esc(milestoneStatusLabel(st))}</button>
-        <button type="button" class="rm" data-action="ms-remove" data-post-id="${post.id}" data-ms-id="${esc(m.id)}" title="${esc(t("Quitar hito","Remove milestone","Remover marco","הסרת אבן דרך"))}">✕</button>
+        <span class="pj-grip" data-pj-grip data-post-id="${esc(post.id)}" title="${esc(t("Arrastrá para reordenar","Drag to reorder","Arraste para reordenar","גרירה לסידור מחדש"))}" aria-hidden="true"><svg viewBox="0 0 10 16" width="10" height="16"><circle cx="3" cy="3" r="1.4"/><circle cx="7" cy="3" r="1.4"/><circle cx="3" cy="8" r="1.4"/><circle cx="7" cy="8" r="1.4"/><circle cx="3" cy="13" r="1.4"/><circle cx="7" cy="13" r="1.4"/></svg></span>
+        <input type="text" class="pj-label-input" data-ms-field="label" data-post-id="${esc(post.id)}" data-ms-id="${esc(m.id)}" value="${esc(m.label)}" maxlength="120">
+        <button type="button" class="status-pill ${st}" data-action="ms-done" data-post-id="${esc(post.id)}" data-ms-id="${esc(m.id)}">${esc(milestoneStatusLabel(st))}</button>
+        <button type="button" class="rm" data-action="ms-remove" data-post-id="${esc(post.id)}" data-ms-id="${esc(m.id)}" title="${esc(t("Quitar hito","Remove milestone","Remover marco","הסרת אבן דרך"))}">✕</button>
       </div>
       <div class="pj-bottom">
         ${dateTrigger("date", m.date)}
         <span class="date-sep">${isRTL() ? "←" : "→"}</span>
         ${dateTrigger("endDate", m.endDate)}
-        <span class="pj-owners">${owners.map(o=>`<span class="pj-owner-wrap">${ownerChip(o)}<button type="button" class="pj-owner-clear" data-action="ms-owner-remove" data-post-id="${post.id}" data-ms-id="${esc(m.id)}" data-email="${esc(o)}" aria-label="${esc(t("Quitar responsable","Remove owner","Remover responsável","הסרת אחראי/ת"))}">✕</button></span>`).join("")}${renderPersonPicker(`own:${post.id}:${m.id}`, "+ " + t("Responsable…","Owner…","Responsável…","…אחראי/ת"), owners)}</span>
+        <span class="pj-owners">${owners.map(o=>`<span class="pj-owner-wrap">${ownerChip(o)}<button type="button" class="pj-owner-clear" data-action="ms-owner-remove" data-post-id="${esc(post.id)}" data-ms-id="${esc(m.id)}" data-email="${esc(o)}" aria-label="${esc(t("Quitar responsable","Remove owner","Remover responsável","הסרת אחראי/ת"))}">✕</button></span>`).join("")}${renderPersonPicker(`own:${post.id}:${m.id}`, "+ " + t("Responsable…","Owner…","Responsável…","…אחראי/ת"), owners)}</span>
         ${doneBy}
       </div>
     </li>`;
@@ -9527,19 +9527,19 @@ function renderProjectPanel(post, opts={}){
   const d = projectDraft(post.id);
   const addForm = manage ? `
     <div class="pj-add">
-      <input type="text" data-ms-new="label" data-post-id="${post.id}" placeholder="${esc(t("Hito nuevo (ej: Enviar invitaciones)","New milestone (e.g. Send invitations)","Marco novo (ex: Enviar convites)","אבן דרך חדשה (למשל: שליחת הזמנות)"))}" value="${esc(d.label)}" maxlength="120" aria-label="${esc(t("Hito nuevo","New milestone","Marco novo","אבן דרך חדשה"))}">
-      <button type="button" class="btn-mini" data-action="ms-add" data-post-id="${post.id}">+ ${t("Agregar hito","Add milestone","Adicionar marco","הוספת אבן דרך")}</button>
-      ${!list.length ? `<button type="button" class="btn-text-add" data-action="ms-suggest" data-post-id="${post.id}">✨ ${t("Sugerir hitos típicos","Suggest typical milestones","Sugerir marcos típicos","הצעת אבני דרך טיפוסיות")}</button>` : ""}
+      <input type="text" data-ms-new="label" data-post-id="${esc(post.id)}" placeholder="${esc(t("Hito nuevo (ej: Enviar invitaciones)","New milestone (e.g. Send invitations)","Marco novo (ex: Enviar convites)","אבן דרך חדשה (למשל: שליחת הזמנות)"))}" value="${esc(d.label)}" maxlength="120" aria-label="${esc(t("Hito nuevo","New milestone","Marco novo","אבן דרך חדשה"))}">
+      <button type="button" class="btn-mini" data-action="ms-add" data-post-id="${esc(post.id)}">+ ${t("Agregar hito","Add milestone","Adicionar marco","הוספת אבן דרך")}</button>
+      ${!list.length ? `<button type="button" class="btn-text-add" data-action="ms-suggest" data-post-id="${esc(post.id)}">✨ ${t("Sugerir hitos típicos","Suggest typical milestones","Sugerir marcos típicos","הצעת אבני דרך טיפוסיות")}</button>` : ""}
     </div>` : "";
   // La lista (con el formulario de alta) se pliega para ver solo la
   // línea de tiempo; el estado es por posteo y arranca desplegada.
   const collapsed = collapsedMilestones.has(post.id);
-  const listBar = (list.length || manage) ? `<div class="pj-list-bar"><button type="button" class="btn-text-add" data-action="toggle-ms-list" data-post-id="${post.id}" aria-expanded="${collapsed ? "false" : "true"}">${collapsed
+  const listBar = (list.length || manage) ? `<div class="pj-list-bar"><button type="button" class="btn-text-add" data-action="toggle-ms-list" data-post-id="${esc(post.id)}" aria-expanded="${collapsed ? "false" : "true"}">${collapsed
       ? `${t("Ver hitos","Show milestones","Ver marcos","הצגת אבני דרך")} (${list.length}) ▾`
       : `${t("Ocultar hitos","Hide milestones","Ocultar marcos","הסתרת אבני דרך")} ▴`}</button></div>` : "";
-  const manageBtn = preview ? `<div class="pj-manage"><button type="button" class="btn-primary" data-action="project-manage" data-post-id="${post.id}">${canManageProject(post) ? t("Gestionar proyecto","Manage project","Gerenciar projeto","ניהול הפרויקט") : t("Abrir en Proyectos","Open in Projects","Abrir em Projetos","פתיחה בפרויקטים")} ${isRTL() ? "←" : "→"}</button></div>` : "";
+  const manageBtn = preview ? `<div class="pj-manage"><button type="button" class="btn-primary" data-action="project-manage" data-post-id="${esc(post.id)}">${canManageProject(post) ? t("Gestionar proyecto","Manage project","Gerenciar projeto","ניהול הפרויקט") : t("Abrir en Proyectos","Open in Projects","Abrir em Projetos","פתיחה בפרויקטים")} ${isRTL() ? "←" : "→"}</button></div>` : "";
   const doneBadge = projectDone(post) ? ` <span class="pj-done-badge">✅ ${t("Completado","Completed","Concluído","הושלם")}${post.projectDoneAt ? " · " + esc(fmtDate(post.projectDoneAt)) : ""}${post.projectDoneBy ? " · " + ownerChip(post.projectDoneBy) : ""}</span>` : "";
-  return `<div class="project-panel${preview ? " preview" : ""}${projectDone(post) ? " done" : ""}" data-post-id="${post.id}">
+  return `<div class="project-panel${preview ? " preview" : ""}${projectDone(post) ? " done" : ""}" data-post-id="${esc(post.id)}">
       <div class="pj-head">📋 <b>${t("Proyecto","Project","Projeto","פרויקט")}</b>${doneBadge} · ${head}</div>
       ${timeline}
       ${listBar}
@@ -12017,7 +12017,7 @@ function renderZonasSection(){
                            t("la zona {z}","the {z} zone","a zona {z}","אזור {z}",{z:z.label}))}
             <input type="text" class="zone-name" data-action="zonas-label" data-key="${esc(key)}" value="${esc(z.label)}" maxlength="30">
             <span class="zone-count">${count === 1 ? t("1 país","1 country","1 país","מדינה אחת") : t("{n} países","{n} countries","{n} países","{n} מדינות",{n:count})}</span>
-            <button type="button" class="zone-rm" data-action="zonas-remove-zone" data-key="${key}" ${count>0?`disabled title="${esc(t("Reasigná primero los países de esta zona","First reassign this zone's countries","Reatribua primeiro os países desta zona",".קודם הקצה/י מחדש את המדינות של אזור זה"))}"`:`title="${esc(t("Eliminar zona","Delete zone","Excluir zona","מחיקת אזור"))}"`}>✕</button>
+            <button type="button" class="zone-rm" data-action="zonas-remove-zone" data-key="${esc(key)}" ${count>0?`disabled title="${esc(t("Reasigná primero los países de esta zona","First reassign this zone's countries","Reatribua primeiro os países desta zona",".קודם הקצה/י מחדש את המדינות של אזור זה"))}"`:`title="${esc(t("Eliminar zona","Delete zone","Excluir zona","מחיקת אזור"))}"`}>✕</button>
           </div>
           <div class="zone-chips" data-zone-key="${esc(key)}">
             ${countries.map(name=>`
@@ -13490,7 +13490,7 @@ function renderDocumentacion(post, parte){
   // solo la cuenta, pero mirando un evento viejo se quiere saber cuál.
   const estado = esperados.map(d => `${archivoDelDoc(post, d.id) ? "✓" : "○"} ${d.label}${d.opcional ? ` (${opcionalTxt})` : ""}`).join(" · ");
   const linea = `<button type="button" class="doc-linea${completo ? " ok" : ""}${tarde ? " tarde" : ""}"
-      data-action="toggle-docs" data-post-id="${post.id}" aria-expanded="${abierto}" title="${esc(titulo + ": " + estado)}"
+      data-action="toggle-docs" data-post-id="${esc(post.id)}" aria-expanded="${abierto}" title="${esc(titulo + ": " + estado)}"
       aria-label="${esc(titulo + " " + cuenta)}">📄 ${cuentaHtml}${tarde ? `<span class="pa-l"> · ${t("faltan","missing","faltam","חסרים")}</span>` : ""}</button>`;
   if(parte === "linea") return linea;
   if(!abierto) return parte === "panel" ? "" : linea;
@@ -13506,10 +13506,10 @@ function renderDocumentacion(post, parte){
     const titulo = f.name + (cuando ? " · " + cuando : "");
     // Todo abre el visor, como los adjuntos sueltos (ver seAbreEnVisor).
     const abrir = !url ? `<span class="doc-roto">${esc(t("archivo no disponible","file unavailable","arquivo indisponível","הקובץ אינו זמין"))}</span>`
-      : `<button type="button" class="doc-archivo" data-action="open-doc" data-post-id="${post.id}" data-pos="${pos}" title="${esc(titulo)}">${icono} ${esc(f.name)}</button>`;
+      : `<button type="button" class="doc-archivo" data-action="open-doc" data-post-id="${esc(post.id)}" data-pos="${pos}" title="${esc(titulo)}">${icono} ${esc(f.name)}</button>`;
     return `${abrir}
       ${cuando ? `<span class="doc-fecha">${esc(cuando)}</span>` : ""}
-      ${puede ? `<button type="button" class="rm" data-action="quitar-doc" data-post-id="${post.id}" data-pos="${pos}" title="${esc(t("Quitar este archivo del evento","Remove this file from the event","Remover este arquivo do evento","הסרת הקובץ הזה מהאירוע"))}">✕</button>` : ""}`;
+      ${puede ? `<button type="button" class="rm" data-action="quitar-doc" data-post-id="${esc(post.id)}" data-pos="${pos}" title="${esc(t("Quitar este archivo del evento","Remove this file from the event","Remover este arquivo do evento","הסרת הקובץ הזה מהאירוע"))}">✕</button>` : ""}`;
   };
   const filas = esperados.map(d=>{
     // Varios archivos por documento (6/10/2026): se ve el último subido
@@ -13525,10 +13525,10 @@ function renderDocumentacion(post, parte){
         <span class="doc-estado ok" aria-hidden="true">✓</span>
         <span class="doc-nombre">${esc(d.label)}</span>${d.opcional ? `<span class="doc-tag">${esc(opcionalTxt)}</span>` : ""}
         <span class="doc-archivos">${archivoHtml(ultimo)}
-        ${anteriores.length ? `<button type="button" class="doc-mas" data-action="doc-mas" data-post-id="${post.id}" data-doc="${esc(d.id)}" aria-expanded="${desplegado}">${desplegado
+        ${anteriores.length ? `<button type="button" class="doc-mas" data-action="doc-mas" data-post-id="${esc(post.id)}" data-doc="${esc(d.id)}" aria-expanded="${desplegado}">${desplegado
           ? esc(t("ocultar","hide","ocultar","הסתרה")) + " ▴"
           : esc(t("+{n} más","+{n} more","+{n} mais","+{n} נוספים",{n:anteriores.length})) + " ▾"}</button>` : ""}
-        ${puede ? `<button type="button" class="doc-agregar" data-action="adjuntar-doc" data-post-id="${post.id}" data-doc="${esc(d.id)}" title="${esc(agregar)}" aria-label="${esc(agregar)}">＋</button>` : ""}</span>
+        ${puede ? `<button type="button" class="doc-agregar" data-action="adjuntar-doc" data-post-id="${esc(post.id)}" data-doc="${esc(d.id)}" title="${esc(agregar)}" aria-label="${esc(agregar)}">＋</button>` : ""}</span>
       </div>${desplegado ? `<div class="doc-anteriores">${anteriores.map(f => `<div class="doc-anterior">${archivoHtml(f)}</div>`).join("")}</div>` : ""}`;
     }
     // Un opcional que no está no "falta": nomás se ofrece subirlo.
@@ -13536,7 +13536,7 @@ function renderDocumentacion(post, parte){
       <span class="doc-estado" aria-hidden="true">○</span>
       <span class="doc-nombre">${esc(d.label)}</span>${d.opcional ? `<span class="doc-tag">${esc(opcionalTxt)}</span>` : ""}
       ${puede
-        ? `<button type="button" class="doc-adjuntar" data-action="adjuntar-doc" data-post-id="${post.id}" data-doc="${esc(d.id)}">📎 ${t("Adjuntar","Attach","Anexar","צירוף")}</button>`
+        ? `<button type="button" class="doc-adjuntar" data-action="adjuntar-doc" data-post-id="${esc(post.id)}" data-doc="${esc(d.id)}">📎 ${t("Adjuntar","Attach","Anexar","צירוף")}</button>`
         : d.opcional ? "" : `<span class="doc-pendiente">${esc(t("falta","missing","falta","חסר"))}</span>`}
     </div>`;
   }).join("");
@@ -13878,7 +13878,7 @@ function renderResumenPill(post){
   // queda el ícono con la cuenta: "📋 4/4".
   const palabra = hayCierre ? t("Resumen","Summary","Resumo","סיכום") : t("Objetivos","Goals","Objetivos","מטרות");
   const cuenta = hayCierre ? (c.total ? `${c.si}/${c.total}` : "") : String(partes.reduce((n, x) => n + (x.objetivos || []).length, 0) || "");
-  return `<button type="button" class="rs-pill${abierto ? " on" : ""}" data-action="toggle-resumen" data-post-id="${post.id}" aria-expanded="${abierto}" aria-label="${esc(palabra + (cuenta ? " " + cuenta : ""))}">📋<span class="pa-l"> ${esc(palabra)}${cuenta ? " ·" : ""}</span>${cuenta ? " " + esc(cuenta) : ""}</button>`;
+  return `<button type="button" class="rs-pill${abierto ? " on" : ""}" data-action="toggle-resumen" data-post-id="${esc(post.id)}" aria-expanded="${abierto}" aria-label="${esc(palabra + (cuenta ? " " + cuenta : ""))}">📋<span class="pa-l"> ${esc(palabra)}${cuenta ? " ·" : ""}</span>${cuenta ? " " + esc(cuenta) : ""}</button>`;
 }
 function renderPasos(post, pasos, puede, conOrigen){
   return `<ul class="rs-pasos">${pasos.map(({ p, post: de }) => {
@@ -13886,8 +13886,8 @@ function renderPasos(post, pasos, puede, conOrigen){
     const origen = conOrigen ? `<small>${esc(t("de «{v}» · {f}","from “{v}” · {f}","de «{v}» · {f}","מתוך «{v}» · {f}",{ v: recortar(de.title, 60), f: fmtISO(de.startDate || de.date, { month:"long", year:"numeric" }) }))}</small>` : "";
     const quien = hecho && p.rutina ? `<small>✓ ${esc(t("con la rutina «{r}»","with the routine “{r}”","com a rotina «{r}»","עם השגרה «{r}»",{ r: recortar((getPostById(p.rutina) || {}).content || "", 60) }))}</small>` : "";
     return `<li class="${hecho ? "hecho" : ""}">
-      <input type="checkbox" ${hecho ? "checked" : ""} ${puede(de) ? "" : "disabled"} data-action="resumen-paso" data-post-id="${de.id}" data-paso="${esc(p.id)}" aria-label="${esc(t("Hecho","Done","Feito","בוצע"))}">
-      <span class="rs-paso"><span class="t">${esc(p.t)}</span>${origen}${quien}${!hecho && puede(de) ? `<button type="button" class="rs-no" data-action="resumen-no-tarea" data-post-id="${de.id}" data-paso="${esc(p.id)}" title="${esc(t("No es una tarea: que no figure como pendiente","Not a task: don't list it as pending","Não é uma tarefa: que não figure como pendente","לא משימה: שלא יופיע כממתין"))}">${esc(t("No es tarea","Not a task","Não é tarefa","לא משימה"))}</button>` : ""}</span>
+      <input type="checkbox" ${hecho ? "checked" : ""} ${puede(de) ? "" : "disabled"} data-action="resumen-paso" data-post-id="${esc(de.id)}" data-paso="${esc(p.id)}" aria-label="${esc(t("Hecho","Done","Feito","בוצע"))}">
+      <span class="rs-paso"><span class="t">${esc(p.t)}</span>${origen}${quien}${!hecho && puede(de) ? `<button type="button" class="rs-no" data-action="resumen-no-tarea" data-post-id="${esc(de.id)}" data-paso="${esc(p.id)}" title="${esc(t("No es una tarea: que no figure como pendiente","Not a task: don't list it as pending","Não é uma tarefa: que não figure como pendente","לא משימה: שלא יופיע כממתין"))}">${esc(t("No es tarea","Not a task","Não é tarefa","לא משימה"))}</button>` : ""}</span>
     </li>`; }).join("")}</ul>`;
 }
 // Un formulario leído, dentro del panel de la tarjeta. Con varios (un
@@ -13910,13 +13910,13 @@ function renderParteDelResumen(post, parte, conLugar){
     ${conLugar ? `<div class="rs-lugar" dir="auto">📍 ${esc(parte.lugar || (parte.fuente || {}).name || "")}</div>` : ""}
     ${parte.ejecutivo ? `<div><div class="rs-h">${t("Resumen ejecutivo","Executive summary","Resumo executivo","סיכום מנהלים")}</div>
       <p class="rs-txt${entero ? " entero" : ""}" dir="auto">${nl2br(parte.ejecutivo)}</p>
-      <button type="button" class="rs-mas" data-action="resumen-entero" data-post-id="${post.id}">${entero ? t("Mostrar menos","Show less","Mostrar menos","הצג פחות") : t("Leer completo","Read it all","Ler completo","קריאה מלאה")}</button></div>` : ""}
+      <button type="button" class="rs-mas" data-action="resumen-entero" data-post-id="${esc(post.id)}">${entero ? t("Mostrar menos","Show less","Mostrar menos","הצג פחות") : t("Leer completo","Read it all","Ler completo","קריאה מלאה")}</button></div>` : ""}
     ${objetivos.length ? `<div><div class="rs-h">${t("Objetivos","Goals","Objetivos","מטרות")} <b>${esc(titulo)}</b></div>
       <ul class="rs-obj">${objetivos.map(o => `<li>${etiquetaLogrado(o.logrado)}<span class="t" dir="auto">${esc(o.t)}</span></li>`).join("")}</ul></div>` : ""}
     ${(parte.pasos || []).length ? `<div><div class="rs-h">${t("Lo que sigue","What's next","O que segue","מה הלאה")} <b>${esc(pend.length === 1 ? t("1 pendiente","1 pending","1 pendente","1 ממתין") : t("{n} pendientes","{n} pending","{n} pendentes","{n} ממתינים",{ n: pend.length }))}${hechos.length ? " · " + esc(t("{n} hechos","{n} done","{n} feitos","{n} בוצעו",{ n: hechos.length })) : ""}</b></div>
       ${renderPasos(post, lista.map(p => ({ p, post })), puede, false)}
-      ${pend.length > 3 || hechos.length ? `<button type="button" class="rs-mas" data-action="resumen-todos-pasos" data-post-id="${post.id}">${todos ? t("Mostrar menos","Show less","Mostrar menos","הצג פחות") : pend.length > 3 ? t("+{n} más","+{n} more","+{n} mais","+{n} נוספים",{ n: pend.length - 3 }) : t("Ver los hechos","See the done ones","Ver os feitos","הצגת אלה שבוצעו")}</button>` : ""}</div>` : ""}
-    <div class="rs-de">${fuentePos >= 0 ? `<button type="button" class="rs-link" data-action="resumen-abrir" data-post-id="${post.id}" data-pos="${fuentePos}">${esc(de)}</button>` : esc(de)}${parte.fuente && parte.fuente.subidoEl ? " · " + esc(fmtDate(new Date(parte.fuente.subidoEl))) : ""}</div>
+      ${pend.length > 3 || hechos.length ? `<button type="button" class="rs-mas" data-action="resumen-todos-pasos" data-post-id="${esc(post.id)}">${todos ? t("Mostrar menos","Show less","Mostrar menos","הצג פחות") : pend.length > 3 ? t("+{n} más","+{n} more","+{n} mais","+{n} נוספים",{ n: pend.length - 3 }) : t("Ver los hechos","See the done ones","Ver os feitos","הצגת אלה שבוצעו")}</button>` : ""}</div>` : ""}
+    <div class="rs-de">${fuentePos >= 0 ? `<button type="button" class="rs-link" data-action="resumen-abrir" data-post-id="${esc(post.id)}" data-pos="${fuentePos}">${esc(de)}</button>` : esc(de)}${parte.fuente && parte.fuente.subidoEl ? " · " + esc(fmtDate(new Date(parte.fuente.subidoEl))) : ""}</div>
   </div>`;
 }
 function renderResumenPanel(post){
@@ -13925,7 +13925,7 @@ function renderResumenPanel(post){
   const memoriaPos = (post.files || []).findIndex(f => /memoria/i.test(f.name || "") && seAbreEnVisor(f) && safeFileDataUrl(f.dataUrl));
   return `<div class="rs-panel">
     ${partes.map(x => renderParteDelResumen(post, x, partes.length > 1)).join("")}
-    ${memoriaPos >= 0 ? `<div class="rs-pie"><span></span><button type="button" class="rs-link" data-action="resumen-abrir" data-post-id="${post.id}" data-pos="${memoriaPos}">${esc(t("Abrir la Memoria completa","Open the Complete Memory","Abrir a Memória completa","פתיחת התיעוד המלא"))} ${isRTL() ? "←" : "→"}</button></div>` : ""}
+    ${memoriaPos >= 0 ? `<div class="rs-pie"><span></span><button type="button" class="rs-link" data-action="resumen-abrir" data-post-id="${esc(post.id)}" data-pos="${memoriaPos}">${esc(t("Abrir la Memoria completa","Open the Complete Memory","Abrir a Memória completa","פתיחת התיעוד המלא"))} ${isRTL() ? "←" : "→"}</button></div>` : ""}
   </div>`;
 }
 // Marca un paso (hecho / no es tarea / de nuevo pendiente). Va solo el
@@ -14000,20 +14000,20 @@ function resumenDelLugar(country, city){
 
 function renderPostMenu(post, { editable, canCancel }){
   const items = [];
-  if(editable) items.push(`<button type="button" class="post-menu-item" role="menuitem" data-action="edit-post" data-post-id="${post.id}">✏️ ${t("Editar","Edit","Editar","עריכה")}</button>`);
+  if(editable) items.push(`<button type="button" class="post-menu-item" role="menuitem" data-action="edit-post" data-post-id="${esc(post.id)}">✏️ ${t("Editar","Edit","Editar","עריכה")}</button>`);
   // Repetir: un evento nuevo con los mismos datos (tipo, lugar, gente,
   // texto), para la visita de todos los meses sin volver a cargar todo.
-  if(canWrite() && post.activityType !== "rutina") items.push(`<button type="button" class="post-menu-item" role="menuitem" data-action="duplicate-post" data-post-id="${post.id}">🔁 ${t("Repetir este evento","Repeat this event","Repetir este evento","לחזור על האירוע הזה")}</button>`);
-  if(!post.isProject && post.activityType !== "rutina" && canManageProject(post)) items.push(`<button type="button" class="post-menu-item" role="menuitem" data-action="project-create" data-post-id="${post.id}">📋 ${t("Convertir en proyecto","Turn into a project","Converter em projeto","להפוך לפרויקט")}</button>`);
+  if(canWrite() && post.activityType !== "rutina") items.push(`<button type="button" class="post-menu-item" role="menuitem" data-action="duplicate-post" data-post-id="${esc(post.id)}">🔁 ${t("Repetir este evento","Repeat this event","Repetir este evento","לחזור על האירוע הזה")}</button>`);
+  if(!post.isProject && post.activityType !== "rutina" && canManageProject(post)) items.push(`<button type="button" class="post-menu-item" role="menuitem" data-action="project-create" data-post-id="${esc(post.id)}">📋 ${t("Convertir en proyecto","Turn into a project","Converter em projeto","להפוך לפרויקט")}</button>`);
   // Para los posteos de antes de que la app leyera los formularios: leer
   // ahora los Word que ya tiene.
-  if(editable && post.activityType !== "rutina" && (post.files || []).some(esWordDeViaje)) items.push(`<button type="button" class="post-menu-item" role="menuitem" data-action="leer-resumen" data-post-id="${post.id}">📋 ${t("Leer el resumen de los documentos","Read the summary from the documents","Ler o resumo dos documentos","קריאת הסיכום מהמסמכים")}</button>`);
-  if(canCancel) items.push(`<button type="button" class="post-menu-item" role="menuitem" data-action="cancel-post" data-post-id="${post.id}">🚫 ${t("Cancelar evento","Cancel event","Cancelar evento","ביטול האירוע")}</button>`);
-  if(isFixedAdmin()) items.push(`<div class="post-menu-sep" role="separator"></div><button type="button" class="post-menu-item danger" role="menuitem" data-action="delete-post" data-post-id="${post.id}">🗑️ ${t("Borrar…","Delete…","Apagar…","מחיקה…")}</button>`);
+  if(editable && post.activityType !== "rutina" && (post.files || []).some(esWordDeViaje)) items.push(`<button type="button" class="post-menu-item" role="menuitem" data-action="leer-resumen" data-post-id="${esc(post.id)}">📋 ${t("Leer el resumen de los documentos","Read the summary from the documents","Ler o resumo dos documentos","קריאת הסיכום מהמסמכים")}</button>`);
+  if(canCancel) items.push(`<button type="button" class="post-menu-item" role="menuitem" data-action="cancel-post" data-post-id="${esc(post.id)}">🚫 ${t("Cancelar evento","Cancel event","Cancelar evento","ביטול האירוע")}</button>`);
+  if(isFixedAdmin()) items.push(`<div class="post-menu-sep" role="separator"></div><button type="button" class="post-menu-item danger" role="menuitem" data-action="delete-post" data-post-id="${esc(post.id)}">🗑️ ${t("Borrar…","Delete…","Apagar…","מחיקה…")}</button>`);
   if(!items.length) return "";
   const open = postMenuOpen === post.id;
   return `<div class="post-menu-wrap">
-      <button type="button" class="post-menu-btn${open ? " open" : ""}" data-action="toggle-post-menu" data-post-id="${post.id}" aria-haspopup="menu" aria-expanded="${open}" aria-label="${esc(t("Más acciones","More actions","Mais ações","פעולות נוספות"))}">⋯</button>
+      <button type="button" class="post-menu-btn${open ? " open" : ""}" data-action="toggle-post-menu" data-post-id="${esc(post.id)}" aria-haspopup="menu" aria-expanded="${open}" aria-label="${esc(t("Más acciones","More actions","Mais ações","פעולות נוספות"))}">⋯</button>
       ${open ? `<div class="post-menu" role="menu">${items.join("")}</div>` : ""}
     </div>`;
 }
@@ -14107,7 +14107,7 @@ function renderPostCard(post, replies){
   const crossClass = rel && rel !== "own" ? ` post-cross post-cross-${rel}` : "";
   const crossStyle = rel === "region" ? ` style="--cross-color:${safeColor(ZONES[zoneOfCountry(state.filters.place.country)]?.color)}"` : "";
   return `
-    <article class="card post ${post.cancelled?"post-cancelled":""}${crossClass}"${crossStyle} data-post-id="${post.id}">
+    <article class="card post ${post.cancelled?"post-cancelled":""}${crossClass}"${crossStyle} data-post-id="${esc(post.id)}">
       <div class="post-top">
         ${showTitle ? `<h3 class="post-titulo" dir="auto" style="${post.cancelled?"text-decoration:line-through;opacity:0.7;":""}">${esc(tr.displayTitle)}</h3>`
           : (tr.displayContent ? `<div class="post-content" dir="auto">${nl2br(tr.displayContent)}</div>` : "<span></span>")}
@@ -14125,11 +14125,11 @@ function renderPostCard(post, replies){
       ${imagesHtml ? `<div class="post-images">${imagesHtml}</div>` : ""}
       ${renderPostedFiles(archivosSueltos(post.files, post.activityType), {postId: post.id, todos: post.files || [], puede: canEditPost(post)})}
       <div class="post-actions">
-        ${canWrite() ? `<span class="gusta"><button data-action="toggle-like" data-post-id="${post.id}" class="${postLiked?"liked":""}" aria-label="${esc(t("Me gusta","Like","Curtir","לייק"))}" aria-pressed="${postLiked}">${postLiked?"👍":"🤍"}<span class="pa-l"> ${t("Me gusta","Like","Curtir","לייק")}</span></button>${gustanHtml(postLikedBy, post.id)}</span>
-        <button data-action="toggle-reply" data-post-id="${post.id}" class="${replies.length && !threadOpen ? "pa-pc" : ""}" aria-label="${esc(t("Responder","Reply","Responder","תגובה"))}">💬<span class="pa-l"> ${t("Responder","Reply","Responder","תגובה")}</span></button>` : (postLikedBy.length ? `<span class="gusta post-likes-ro">👍 ${gustanHtml(postLikedBy, post.id)}</span>` : "")}
-        ${replies.length ? `<button data-action="toggle-thread" data-post-id="${post.id}" aria-label="${esc(commentsLabel)}" aria-expanded="${threadOpen}"><span class="pa-pc">${threadOpen ? "▲ " + t("Ocultar","Hide","Ocultar","הסתרה") : "▼ " + t("Ver","View","Ver","הצגה")} ${commentsLabel}</span><span class="pa-cel" aria-hidden="true">💬 ${replies.length}${threadOpen ? " ▲" : ""}</span></button>` : ""}
+        ${canWrite() ? `<span class="gusta"><button data-action="toggle-like" data-post-id="${esc(post.id)}" class="${postLiked?"liked":""}" aria-label="${esc(t("Me gusta","Like","Curtir","לייק"))}" aria-pressed="${postLiked}">${postLiked?"👍":"🤍"}<span class="pa-l"> ${t("Me gusta","Like","Curtir","לייק")}</span></button>${gustanHtml(postLikedBy, post.id)}</span>
+        <button data-action="toggle-reply" data-post-id="${esc(post.id)}" class="${replies.length && !threadOpen ? "pa-pc" : ""}" aria-label="${esc(t("Responder","Reply","Responder","תגובה"))}">💬<span class="pa-l"> ${t("Responder","Reply","Responder","תגובה")}</span></button>` : (postLikedBy.length ? `<span class="gusta post-likes-ro">👍 ${gustanHtml(postLikedBy, post.id)}</span>` : "")}
+        ${replies.length ? `<button data-action="toggle-thread" data-post-id="${esc(post.id)}" aria-label="${esc(commentsLabel)}" aria-expanded="${threadOpen}"><span class="pa-pc">${threadOpen ? "▲ " + t("Ocultar","Hide","Ocultar","הסתרה") : "▼ " + t("Ver","View","Ver","הצגה")} ${commentsLabel}</span><span class="pa-cel" aria-hidden="true">💬 ${replies.length}${threadOpen ? " ▲" : ""}</span></button>` : ""}
         ${post.isProject
-          ? `<button data-action="toggle-project" data-post-id="${post.id}" class="${openProjects.has(post.id)?"active":""}">📋 ${openProjects.has(post.id) ? t("Ocultar proyecto","Hide project","Ocultar projeto","הסתרת פרויקט") : t("Ver proyecto","View project","Ver projeto","הצגת פרויקט")}${postMilestones(post).length ? ` (${postMilestones(post).filter(m=>m.done).length}/${postMilestones(post).length})` : ""}</button>`
+          ? `<button data-action="toggle-project" data-post-id="${esc(post.id)}" class="${openProjects.has(post.id)?"active":""}">📋 ${openProjects.has(post.id) ? t("Ocultar proyecto","Hide project","Ocultar projeto","הסתרת פרויקט") : t("Ver proyecto","View project","Ver projeto","הצגת פרויקט")}${postMilestones(post).length ? ` (${postMilestones(post).filter(m=>m.done).length}/${postMilestones(post).length})` : ""}</button>`
           : ""}
         ${tr.toggleHtml}
         ${renderDocumentacion(post, "linea")}
@@ -14236,9 +14236,9 @@ function renderReply(r){
       ${renderPostedFiles(r.files, {postId: r.postId, replyId: r.id})}
       ${(!r.system && canWrite()) || isFixedAdmin() ? `
       <div class="reply-actions">
-        ${!r.system && canWrite() ? `<span class="gusta"><button data-action="toggle-like" data-post-id="${r.postId}" data-reply-id="${r.id}" class="${liked?"liked":""}" aria-pressed="${liked}">${liked?"👍":"🤍"} ${t("Me gusta","Like","Curtir","לייק")}</button>${gustanHtml(likedBy, r.postId, r.id)}</span>
-        <button data-action="toggle-nested-reply" data-reply-id="${r.id}">↩ ${t("Responder","Reply","Responder","תגובה")}</button>` : ""}
-        ${isFixedAdmin() ? `<button class="danger" data-action="delete-reply" data-post-id="${r.postId}" data-reply-id="${r.id}">🗑️ ${t("Borrar","Delete","Apagar","מחיקה")}</button>` : ""}
+        ${!r.system && canWrite() ? `<span class="gusta"><button data-action="toggle-like" data-post-id="${esc(r.postId)}" data-reply-id="${esc(r.id)}" class="${liked?"liked":""}" aria-pressed="${liked}">${liked?"👍":"🤍"} ${t("Me gusta","Like","Curtir","לייק")}</button>${gustanHtml(likedBy, r.postId, r.id)}</span>
+        <button data-action="toggle-nested-reply" data-reply-id="${esc(r.id)}">↩ ${t("Responder","Reply","Responder","תגובה")}</button>` : ""}
+        ${isFixedAdmin() ? `<button class="danger" data-action="delete-reply" data-post-id="${esc(r.postId)}" data-reply-id="${esc(r.id)}">🗑️ ${t("Borrar","Delete","Apagar","מחיקה")}</button>` : ""}
       </div>` : ""}
       ${nestedOpen ? renderNestedReplyForm(r.postId, r.id) : ""}
     </div>`;
@@ -14250,25 +14250,25 @@ function renderNestedReplyForm(postId, replyId){
     <div class="reply-nested-form">
       <div class="mention-anchor">
         <div class="mention-highlight-backdrop" id="${textareaId}-hl" aria-hidden="true">${highlightMentions(esc(d.content))}</div>
-        <textarea id="${textareaId}" class="mention-input" maxlength="${MAX_REPLY_CONTENT}" data-nested-reply-field="content" data-reply-id="${replyId}" data-mention-scope="nested-reply" data-mention-owner="${replyId}" placeholder="${esc(t("Responder... (@ para mencionar a alguien)","Reply... (@ to mention someone)","Responder... (@ para mencionar alguém)","(כדי לאזכר מישהו @) ...הגב/י"))}">${esc(d.content)}</textarea>
+        <textarea id="${esc(textareaId)}" class="mention-input" maxlength="${MAX_REPLY_CONTENT}" data-nested-reply-field="content" data-reply-id="${esc(replyId)}" data-mention-scope="nested-reply" data-mention-owner="${esc(replyId)}" placeholder="${esc(t("Responder... (@ para mencionar a alguien)","Reply... (@ to mention someone)","Responder... (@ para mencionar alguém)","(כדי לאזכר מישהו @) ...הגב/י"))}">${esc(d.content)}</textarea>
         ${renderMentionSuggestions(d, "nested-reply", replyId, textareaId)}
       </div>
-      <input type="file" id="nestedReplyImages-${replyId}" accept="image/*" multiple hidden data-action="nested-reply-images" data-reply-id="${replyId}">
-      <input type="file" id="nestedReplyFiles-${replyId}" accept="${ACEPTA_ARCHIVOS}" multiple hidden data-action="nested-reply-files" data-reply-id="${replyId}">
+      <input type="file" id="nestedReplyImages-${replyId}" accept="image/*" multiple hidden data-action="nested-reply-images" data-reply-id="${esc(replyId)}">
+      <input type="file" id="nestedReplyFiles-${replyId}" accept="${ACEPTA_ARCHIVOS}" multiple hidden data-action="nested-reply-files" data-reply-id="${esc(replyId)}">
       ${d.images.length ? `<div class="img-preview-list">${d.images.map((src,i)=>`
-        <div class="img-preview"><img src="${srcMiniatura(src)}"><button type="button" class="rm" data-action="nested-reply-rm-image" data-reply-id="${replyId}" data-idx="${i}">✕</button></div>`).join("")}</div>` : ""}
-      ${renderFileChips(d.files, "nested-reply-rm-file", `data-reply-id="${replyId}"`)}
+        <div class="img-preview"><img src="${srcMiniatura(src)}"><button type="button" class="rm" data-action="nested-reply-rm-image" data-reply-id="${esc(replyId)}" data-idx="${i}">✕</button></div>`).join("")}</div>` : ""}
+      ${renderFileChips(d.files, "nested-reply-rm-file", `data-reply-id="${esc(replyId)}"`)}
       ${d.links.length ? `<div class="attach-panel">${renderLinkRows("nested-reply", replyId, d.links)}</div>` : ""}
       ${d.scopeError ? `<div class="form-error">${esc(d.scopeError)}</div>` : ""}
       <div class="reply-form-footer">
         <div class="attach-toolbar">
           <label class="btn-attach" for="nestedReplyImages-${replyId}">📎 ${t("Imagen","Image","Imagem","תמונה")}</label>
           <label class="btn-attach" for="nestedReplyFiles-${replyId}">📄 PDF/${t("Audio","Audio","Áudio","אודיו")}</label>
-          <button type="button" class="btn-attach" data-action="nested-reply-add-link" data-reply-id="${replyId}">🔗 Link</button>
+          <button type="button" class="btn-attach" data-action="nested-reply-add-link" data-reply-id="${esc(replyId)}">🔗 Link</button>
         </div>
         <div class="modal-actions" style="margin:0;">
-          <button class="btn-secondary" data-action="cancel-nested-reply" data-reply-id="${replyId}">${t("Cancelar","Cancel","Cancelar","ביטול")}</button>
-          <button class="btn-primary" data-action="submit-nested-reply" data-post-id="${postId}" data-reply-id="${replyId}" ${d.submitting ? "disabled" : ""}>${d.submitting ? t("Publicando…","Posting…","Publicando…","...מפרסם") : t("Responder","Reply","Responder","תגובה")}</button>
+          <button class="btn-secondary" data-action="cancel-nested-reply" data-reply-id="${esc(replyId)}">${t("Cancelar","Cancel","Cancelar","ביטול")}</button>
+          <button class="btn-primary" data-action="submit-nested-reply" data-post-id="${esc(postId)}" data-reply-id="${esc(replyId)}" ${d.submitting ? "disabled" : ""}>${d.submitting ? t("Publicando…","Posting…","Publicando…","...מפרסם") : t("Responder","Reply","Responder","תגובה")}</button>
         </div>
       </div>
     </div>`;
@@ -14288,31 +14288,31 @@ function renderReplyForm(postId){
         <label>${t("Respuesta","Reply","Resposta","תגובה")}</label>
         <div class="mention-anchor">
           <div class="mention-highlight-backdrop" id="${textareaId}-hl" aria-hidden="true">${highlightMentions(esc(d.content))}</div>
-          <textarea id="${textareaId}" class="mention-input" maxlength="${MAX_REPLY_CONTENT}" data-reply-field="content" data-post-id="${postId}" data-mention-scope="reply" data-mention-owner="${postId}" placeholder="${esc(t("Sumá información... (@ para mencionar a alguien)","Add information... (@ to mention someone)","Some informações... (@ para mencionar alguém)","(כדי לאזכר מישהו @) ...הוסף/הוסיפי מידע"))}">${esc(d.content)}</textarea>
+          <textarea id="${esc(textareaId)}" class="mention-input" maxlength="${MAX_REPLY_CONTENT}" data-reply-field="content" data-post-id="${esc(postId)}" data-mention-scope="reply" data-mention-owner="${esc(postId)}" placeholder="${esc(t("Sumá información... (@ para mencionar a alguien)","Add information... (@ to mention someone)","Some informações... (@ para mencionar alguém)","(כדי לאזכר מישהו @) ...הוסף/הוסיפי מידע"))}">${esc(d.content)}</textarea>
           ${renderMentionSuggestions(d, "reply", postId, textareaId)}
         </div>
       </div>
       <div class="place-picker place-picker-inline" style="margin-bottom:8px;">
-        <input type="text" id="replyPlaceQuery-${postId}" data-place-scope="reply" data-place-owner="${postId}" placeholder="📍 ${esc(t("¿Afectó a otro lugar? (país, ciudad, región)...","Did it involve another place? (country, city, region)...","Envolveu outro lugar? (país, cidade, região)...","(מדינה, עיר, אזור) ?נגע למקום אחר..."))}" autocomplete="off" value="${esc(d.placeQuery||"")}">
+        <input type="text" id="replyPlaceQuery-${postId}" data-place-scope="reply" data-place-owner="${esc(postId)}" placeholder="📍 ${esc(t("¿Afectó a otro lugar? (país, ciudad, región)...","Did it involve another place? (country, city, region)...","Envolveu outro lugar? (país, cidade, região)...","(מדינה, עיר, אזור) ?נגע למקום אחר..."))}" autocomplete="off" value="${esc(d.placeQuery||"")}">
         ${d.placeQuery ? renderPlaceSuggestions(d, "reply", postId) : ""}
       </div>
       ${d.scopes.length ? `<div class="post-scopes" style="margin-top:-2px;margin-bottom:8px;">${d.scopes.map((sc,i)=>renderScopeChip(sc, "rm-scope-reply", i, postId)).join("")}</div>` : ""}
       ${d.scopeError ? `<div class="form-error">${esc(d.scopeError)}</div>` : ""}
-      <input type="file" id="replyImages-${postId}" accept="image/*" multiple hidden data-action="reply-images" data-post-id="${postId}">
-      <input type="file" id="replyFiles-${postId}" accept="${ACEPTA_ARCHIVOS}" multiple hidden data-action="reply-files" data-post-id="${postId}">
+      <input type="file" id="replyImages-${postId}" accept="image/*" multiple hidden data-action="reply-images" data-post-id="${esc(postId)}">
+      <input type="file" id="replyFiles-${postId}" accept="${ACEPTA_ARCHIVOS}" multiple hidden data-action="reply-files" data-post-id="${esc(postId)}">
       ${d.images.length ? `<div class="img-preview-list">${d.images.map((src,i)=>`
-        <div class="img-preview"><img src="${srcMiniatura(src)}"><button type="button" class="rm" data-action="reply-rm-image" data-post-id="${postId}" data-idx="${i}">✕</button></div>`).join("")}</div>` : ""}
-      ${renderFileChips(d.files, "reply-rm-file", `data-post-id="${postId}"`)}
+        <div class="img-preview"><img src="${srcMiniatura(src)}"><button type="button" class="rm" data-action="reply-rm-image" data-post-id="${esc(postId)}" data-idx="${i}">✕</button></div>`).join("")}</div>` : ""}
+      ${renderFileChips(d.files, "reply-rm-file", `data-post-id="${esc(postId)}"`)}
       ${d.links.length ? `<div class="attach-panel">${renderLinkRows("reply", postId, d.links)}</div>` : ""}
       <div class="reply-form-footer">
         <div class="attach-toolbar">
           <label class="btn-attach" for="replyImages-${postId}">📎 ${t("Imagen","Image","Imagem","תמונה")}</label>
           <label class="btn-attach" for="replyFiles-${postId}">📄 PDF/${t("Audio","Audio","Áudio","אודיו")}</label>
-          <button type="button" class="btn-attach" data-action="reply-add-link" data-post-id="${postId}">🔗 Link</button>
+          <button type="button" class="btn-attach" data-action="reply-add-link" data-post-id="${esc(postId)}">🔗 Link</button>
         </div>
         <div class="modal-actions" style="margin:0;">
-          <button class="btn-secondary" data-action="cancel-reply" data-post-id="${postId}">${t("Cancelar","Cancel","Cancelar","ביטול")}</button>
-          <button class="btn-primary" data-action="submit-reply" data-post-id="${postId}" ${d.submitting ? "disabled" : ""}>${d.submitting ? t("Publicando…","Posting…","Publicando…","...מפרסם") : t("Publicar respuesta","Post reply","Publicar resposta","פרסום תגובה")}</button>
+          <button class="btn-secondary" data-action="cancel-reply" data-post-id="${esc(postId)}">${t("Cancelar","Cancel","Cancelar","ביטול")}</button>
+          <button class="btn-primary" data-action="submit-reply" data-post-id="${esc(postId)}" ${d.submitting ? "disabled" : ""}>${d.submitting ? t("Publicando…","Posting…","Publicando…","...מפרסם") : t("Publicar respuesta","Post reply","Publicar resposta","פרסום תגובה")}</button>
         </div>
       </div>
     </div>`;
@@ -14322,9 +14322,9 @@ function renderLinkRows(scope, ownerId, links){
   if(!links.length) return "";
   return `<div class="link-rows">${links.map((l,i)=>`
     <div class="attach-row">
-      <input type="text" placeholder="${esc(t("Etiqueta","Label","Etiqueta","תווית"))}" data-link-field="label" data-scope="${scope}" data-owner-id="${ownerId}" data-idx="${i}" value="${esc(l.label)}">
-      <input type="url" placeholder="https://..." data-link-field="url" data-scope="${scope}" data-owner-id="${ownerId}" data-idx="${i}" value="${esc(l.url)}">
-      <button type="button" class="btn-mini" data-action="rm-link" data-scope="${scope}" data-owner-id="${ownerId}" data-idx="${i}">✕</button>
+      <input type="text" placeholder="${esc(t("Etiqueta","Label","Etiqueta","תווית"))}" data-link-field="label" data-scope="${scope}" data-owner-id="${esc(ownerId)}" data-idx="${i}" value="${esc(l.label)}">
+      <input type="url" placeholder="https://..." data-link-field="url" data-scope="${scope}" data-owner-id="${esc(ownerId)}" data-idx="${i}" value="${esc(l.url)}">
+      <button type="button" class="btn-mini" data-action="rm-link" data-scope="${scope}" data-owner-id="${esc(ownerId)}" data-idx="${i}">✕</button>
     </div>`).join("")}</div>`;
 }
 
@@ -14332,11 +14332,11 @@ function renderScopeBuilder(scope, ownerId, draft){
   const sd = draft.scopeDraft;
   let extra = "";
   if(sd.type === "region"){
-    extra = `<select data-scope-field="region" data-scope="${scope}" data-owner-id="${ownerId}">
+    extra = `<select data-scope-field="region" data-scope="${scope}" data-owner-id="${esc(ownerId)}">
         ${Object.values(ZONES).map(z=>`<option value="${esc(z.key)}" ${sd.region===z.key?"selected":""}>${esc(z.label)}</option>`).join("")}
       </select>`;
   } else if(sd.type === "pais"){
-    extra = `<select data-scope-field="country" data-scope="${scope}" data-owner-id="${ownerId}">
+    extra = `<select data-scope-field="country" data-scope="${scope}" data-owner-id="${esc(ownerId)}">
         <option value="">${esc(t("Elegir país…","Choose country…","Escolher país…","...בחירת מדינה"))}</option>${groupedCountryOptions(sd.country)}
       </select>`;
   } else if(sd.type === "todo"){
@@ -14345,16 +14345,16 @@ function renderScopeBuilder(scope, ownerId, draft){
     const presets = hasOwn(CITY_PRESETS, sd.country) ? CITY_PRESETS[sd.country] : null;
     let cityField;
     if(presets && !sd.cityUseCustom){
-      cityField = `<select data-scope-field="citySelect" data-scope="${scope}" data-owner-id="${ownerId}">
+      cityField = `<select data-scope-field="citySelect" data-scope="${scope}" data-owner-id="${esc(ownerId)}">
           <option value="">${esc(t("Elegir ciudad…","Choose city…","Escolher cidade…","...בחירת עיר"))}</option>
           ${presets.map(c=>`<option value="${esc(c.name)}" ${sd.city===c.name?"selected":""}>${esc(cityLabel(sd.country, c.name))}</option>`).join("")}
           <option value="__other__">${esc(t("Otra ciudad (escribir)…","Other city (type it)…","Outra cidade (digitar)…","(הקלדה) עיר אחרת..."))}</option>
         </select>`;
     } else {
-      cityField = `<input type="text" placeholder="${esc(t("Ciudad","City","Cidade","עיר"))}" data-scope-field="city" data-scope="${scope}" data-owner-id="${ownerId}" value="${esc(sd.city)}">
-        ${presets ? `<button type="button" class="btn-text-add" data-action="use-city-preset" data-scope="${scope}" data-owner-id="${ownerId}">${isRTL()?"→":"←"} ${t("Elegir de la lista","Choose from the list","Escolher da lista","בחירה מהרשימה")}</button>` : ""}`;
+      cityField = `<input type="text" placeholder="${esc(t("Ciudad","City","Cidade","עיר"))}" data-scope-field="city" data-scope="${scope}" data-owner-id="${esc(ownerId)}" value="${esc(sd.city)}">
+        ${presets ? `<button type="button" class="btn-text-add" data-action="use-city-preset" data-scope="${scope}" data-owner-id="${esc(ownerId)}">${isRTL()?"→":"←"} ${t("Elegir de la lista","Choose from the list","Escolher da lista","בחירה מהרשימה")}</button>` : ""}`;
     }
-    extra = `<select data-scope-field="country" data-scope="${scope}" data-owner-id="${ownerId}">
+    extra = `<select data-scope-field="country" data-scope="${scope}" data-owner-id="${esc(ownerId)}">
         <option value="">${esc(t("Elegir país…","Choose country…","Escolher país…","...בחירת מדינה"))}</option>${groupedCountryOptions(sd.country)}
       </select>
       ${cityField}`;
@@ -14362,7 +14362,7 @@ function renderScopeBuilder(scope, ownerId, draft){
   return `
     <div class="scope-builder" style="margin-bottom:8px;">
       <div class="scope-builder-add ${sd.type==='ciudad'?'has-extra':''}">
-        <select data-scope-field="type" data-scope="${scope}" data-owner-id="${ownerId}">
+        <select data-scope-field="type" data-scope="${scope}" data-owner-id="${esc(ownerId)}">
           <option value="ciudad" ${sd.type==="ciudad"?"selected":""}>${t("Ciudad específica","Specific city","Cidade específica","עיר ספציפית")}</option>
           <option value="pais" ${sd.type==="pais"?"selected":""}>${t("País completo","Whole country","País inteiro","מדינה שלמה")}</option>
           <option value="region" ${sd.type==="region"?"selected":""}>${t("Región completa","Whole region","Região inteira","אזור שלם")}</option>
@@ -14370,7 +14370,7 @@ function renderScopeBuilder(scope, ownerId, draft){
         </select>
         ${extra}
       </div>
-      <button type="button" class="btn-mini" data-action="add-scope" data-scope="${scope}" data-owner-id="${ownerId}">+ ${t("Agregar dónde","Add where","Adicionar onde","הוספת מקום")}</button>
+      <button type="button" class="btn-mini" data-action="add-scope" data-scope="${scope}" data-owner-id="${esc(ownerId)}">+ ${t("Agregar dónde","Add where","Adicionar onde","הוספת מקום")}</button>
       ${draft.scopeError ? `<div class="form-error">${esc(draft.scopeError)}</div>` : ""}
       <div class="scope-list">${draft.scopes.map((sc,i)=>renderScopeChip(sc, `rm-scope-${scope}`, i, ownerId)).join("")}</div>
     </div>`;
@@ -18434,7 +18434,7 @@ function renderCumple(){
   document.getElementById("cumpleBody").innerHTML = `
     <h2 id="cumpleTitle" class="cp-tit">${esc(t("¿Esto cumple algo pendiente en {p}?","Does this complete something pending in {p}?","Isto cumpre algo pendente em {p}?","האם זה משלים משהו שממתין ב{p}?",{ p: paises.join(", ") }))}</h2>
     <p class="cp-rutina" dir="auto">«${esc(recortar(rutina.content, 140))}»</p>
-    <div class="cp-lista">${lista.map(x => `<button type="button" class="cp-fila" data-action="cumple-elegir" data-post-id="${x.post.id}" data-paso="${esc(x.p.id)}">
+    <div class="cp-lista">${lista.map(x => `<button type="button" class="cp-fila" data-action="cumple-elegir" data-post-id="${esc(x.post.id)}" data-paso="${esc(x.p.id)}">
       <span class="t" dir="auto">${esc(x.p.t)}</span>
       <small>${esc(t("de «{v}»","from “{v}”","de «{v}»","מתוך «{v}»",{ v: recortar(x.post.title, 60) }))}</small></button>`).join("")}</div>
     <div class="modal-actions"><button type="button" class="btn-secondary" data-action="cumple-ninguno">${t("No, ninguno","No, none","Não, nenhum","לא, אף אחד")}</button></div>`;
@@ -18750,10 +18750,10 @@ function renderFichaLugar(L){
       const puede = canEditPost(post);
       const dias = diasDesde(post.endDate || fechaDePost(post));
       const dondeTxt = lugarDeParte(parte, L, post);
-      return `<li class="${hecho ? "hecho" : ""}"><input type="checkbox" ${hecho ? "checked" : ""} ${puede ? "" : "disabled"} data-action="resumen-paso" data-post-id="${post.id}" data-paso="${esc(p.id)}" aria-label="${esc(t("Hecho","Done","Feito","בוצע"))}">
+      return `<li class="${hecho ? "hecho" : ""}"><input type="checkbox" ${hecho ? "checked" : ""} ${puede ? "" : "disabled"} data-action="resumen-paso" data-post-id="${esc(post.id)}" data-paso="${esc(p.id)}" aria-label="${esc(t("Hecho","Done","Feito","בוצע"))}">
         <span class="rs-paso"><span class="t" dir="auto">${esc(p.t)}</span>
         <small>${dondeTxt ? esc(dondeTxt) + " · " : ""}${esc(t("de «{v}»","from “{v}”","de «{v}»","מתוך «{v}»",{ v: recortar(post.title, 50) }))}${!hecho && dias > 90 ? ` · <span class="fl-viejo">${esc(t("hace {m} meses","{m} months ago","há {m} meses","לפני {m} חודשים",{ m: Math.floor(dias / 30) }))}</span>` : ""}</small>
-        ${!hecho && puede ? `<button type="button" class="rs-no" data-action="resumen-no-tarea" data-post-id="${post.id}" data-paso="${esc(p.id)}">${esc(t("No es tarea","Not a task","Não é tarefa","לא משימה"))}</button>` : ""}</span></li>`; }).join("")}</ul>
+        ${!hecho && puede ? `<button type="button" class="rs-no" data-action="resumen-no-tarea" data-post-id="${esc(post.id)}" data-paso="${esc(p.id)}">${esc(t("No es tarea","Not a task","Não é tarefa","לא משימה"))}</button>` : ""}</span></li>`; }).join("")}</ul>
   </div>` : "";
   // Lo que pasó: tipos (para ocultar) y la línea de tiempo.
   const tipos = [...D.porTipo.entries()].sort((a, b) => b[1] - a[1]);
@@ -18767,7 +18767,7 @@ function renderFichaLugar(L){
   const hitosDe = p => D.hitos.filter(h => h.p === p);
   const proyRow = D.proyectos.length ? `<div class="fl-proy"><small>${t("Proyectos","Projects","Projetos","פרויקטים")}</small>
     <button type="button" class="fl-chip${fichaProyecto === null || (fichaProyecto !== "ninguno" && !elegido) ? " on" : ""}" data-action="ficha-proyecto" data-id="" aria-pressed="${!elegido && fichaProyecto !== "ninguno"}">📋 ${t("Todos los hitos","All milestones","Todos os marcos","כל אבני הדרך")} · ${D.hitos.length}</button>
-    ${D.proyectos.map(p => { const hs = hitosDe(p); return `<button type="button" class="fl-chip${elegido === p.id ? " on" : ""}" data-action="ficha-proyecto" data-id="${p.id}" aria-pressed="${elegido === p.id}" dir="auto">${esc(nombreDeProyecto(p))}${hs.length ? ` · ${hs.filter(h => h.st === "done").length}/${hs.length}` : ""}</button>`; }).join("")}
+    ${D.proyectos.map(p => { const hs = hitosDe(p); return `<button type="button" class="fl-chip${elegido === p.id ? " on" : ""}" data-action="ficha-proyecto" data-id="${esc(p.id)}" aria-pressed="${elegido === p.id}" dir="auto">${esc(nombreDeProyecto(p))}${hs.length ? ` · ${hs.filter(h => h.st === "done").length}/${hs.length}` : ""}</button>`; }).join("")}
     <button type="button" class="fl-chip${fichaProyecto === "ninguno" ? " on" : ""}" data-action="ficha-proyecto" data-id="ninguno" aria-pressed="${fichaProyecto === "ninguno"}">${t("Sin hitos","No milestones","Sem marcos","בלי אבני דרך")}</button></div>
     ${elegido ? `<div class="fl-nota">${t("Mostrando solo los hitos de <b>{p}</b>; los demás proyectos quedan atenuados.","Showing only the milestones of <b>{p}</b>; the other projects are dimmed.","Mostrando só os marcos de <b>{p}</b>; os outros projetos ficam atenuados.","מוצגות רק אבני הדרך של <b>{p}</b>; שאר הפרויקטים מעומעמים.",{ p: esc(nombreDeProyecto(getPostById(elegido))) })} <button type="button" class="fl-chip-todo" data-action="ficha-proyecto" data-id="">${t("Ver todos","Show all","Ver todos","הצג הכול")}</button></div>` : ""}` : "";
   // Dónde pasó cada cosa, dentro del lugar: en una zona, el país (y la
@@ -18801,7 +18801,7 @@ function renderFichaLugar(L){
       const { p, m, st } = it;
       const clase = st === "done" ? "hecho" : st === "overdue" ? "vencido" : st === "today" ? "hoy" : st === "soon" ? "proximo" : "pendiente";
       const quienes = msOwners(m).map(o => (memberByEmail(o) || {}).name || String(o).split("@")[0]);
-      return `${cab}<button type="button" class="fl-it t-hito ${clase}${elegido && p.id !== elegido ? " apagado" : ""}" data-action="ficha-abrir-hito" data-proyecto="${p.id}">
+      return `${cab}<button type="button" class="fl-it t-hito ${clase}${elegido && p.id !== elegido ? " apagado" : ""}" data-action="ficha-abrir-hito" data-proyecto="${esc(p.id)}">
         <span class="fl-dot" aria-hidden="true"></span>
         <span class="fl-fecha">${esc(fechaDeTarjeta(f, m.endDate, null, null).dias.replace(/ \d{4}$/, ""))}</span>
         <span class="fl-cuerpo"><span class="tt" dir="auto">${esc(m.label || "")}</span><span class="mt">◆ ${esc(t("Hito","Milestone","Marco","אבן דרך"))} · ${t("de <b>{p}</b>","of <b>{p}</b>","de <b>{p}</b>","של <b>{p}</b>",{ p: esc(nombreDeProyecto(p)) })}${quienes.length ? " · " + esc(quienes.join(", ")) : ""}</span></span>
@@ -18826,7 +18826,7 @@ function renderFichaLugar(L){
     const ej = (partes.find(x => x.ejecutivo) || {}).ejecutivo;
     const marca = c.total ? `<span class="rs-ok ${c.si === c.total ? "si" : "par"}">${c.si}/${c.total}</span>`
       : p.activityType === "visita" && !partes.length ? `<span class="rs-ok sin">${esc(t("sin Cierre","no Closure","sem Fechamento","בלי סגירה"))}</span>` : "";
-    return `${cab}<button type="button" class="fl-it t-${esc(p.activityType)}${nivel !== "own" ? " amplio" : ""}${elegido && p.isProject && p.id !== elegido ? " apagado" : ""}" data-action="ficha-abrir" data-post-id="${p.id}">
+    return `${cab}<button type="button" class="fl-it t-${esc(p.activityType)}${nivel !== "own" ? " amplio" : ""}${elegido && p.isProject && p.id !== elegido ? " apagado" : ""}" data-action="ficha-abrir" data-post-id="${esc(p.id)}">
       <span class="fl-dot" aria-hidden="true"></span>
       <span class="fl-fecha">${esc(fechaDeTarjeta(f, p.endDate, null, null).dias.replace(/ \d{4}$/, ""))}</span>
       <span class="fl-cuerpo"><span class="tt" dir="auto">${esc(titulo)}</span><span class="mt">${meta}</span>${ej ? `<span class="rs" dir="auto">${esc(recortar(ej, 220))}</span>` : ""}</span>
@@ -18852,7 +18852,7 @@ function renderFichaLugar(L){
       v ? `<span class="v">${esc(v === 1 ? t("1 vencido","1 overdue","1 vencido","1 באיחור") : t("{v} vencidos","{v} overdue","{v} vencidos","{v} באיחור",{ v }))}</span>` : "",
       prox && !cerrado ? esc(t("próximo: {h}, {f}","next: {h}, {f}","próximo: {h}, {f}","הבא: {h}, {f}",{ h: recortar(prox.m.label, 40), f: fmtISO(prox.f, { day:"numeric", month:"short" }) })) : "",
     ].filter(Boolean).join(" · ");
-    return `<button type="button" class="fl-pj-item${elegido === p.id ? " on" : ""}" data-action="ficha-proyecto" data-id="${p.id}" aria-pressed="${elegido === p.id}">
+    return `<button type="button" class="fl-pj-item${elegido === p.id ? " on" : ""}" data-action="ficha-proyecto" data-id="${esc(p.id)}" aria-pressed="${elegido === p.id}">
       <b dir="auto">${esc(calendarioLabel(p))}</b><span class="fl-pj-bar" aria-hidden="true"><i style="width:${hs.length ? Math.round(d * 100 / hs.length) : 0}%"></i></span><small>${partes}</small></button>`; }).join("")}</div></div>` : "";
   // Después, los países de la zona o las ciudades del país: hasta cinco
   // y «Ver más» / «Ver menos» (pedido del usuario, 6/10/2026; en el
@@ -18904,7 +18904,7 @@ function renderFichaLugar(L){
     .sort((a, b) => String(b.f.subidoEl || fechaDePost(b.p)).localeCompare(String(a.f.subidoEl || fechaDePost(a.p))));
   const todosDocs = fichaDesplegado.has("docs") || fichaImprimiendo;
   const documentos = docs.length ? `<div class="fl-card"><h3>${t("Documentos","Documents","Documentos","מסמכים")}${docs.length > 4 ? `<button type="button" class="fl-mas" data-action="ficha-desplegar" data-que="docs">${fichaDesplegado.has("docs") ? t("Mostrar menos","Show less","Mostrar menos","הצג פחות") : t("Ver los {n}","See all {n}","Ver os {n}","הצגת כל ה-{n}",{ n: docs.length })}</button>` : ""}</h3>
-    <div class="fl-docs">${(todosDocs ? docs : docs.slice(0, 4)).map(x => { const fi = fichaDeArchivo(x.f); return `<button type="button" class="fl-doc" data-action="resumen-abrir" data-post-id="${x.p.id}" data-pos="${x.pos}" title="${esc(x.f.name)}">
+    <div class="fl-docs">${(todosDocs ? docs : docs.slice(0, 4)).map(x => { const fi = fichaDeArchivo(x.f); return `<button type="button" class="fl-doc" data-action="resumen-abrir" data-post-id="${esc(x.p.id)}" data-pos="${x.pos}" title="${esc(x.f.name)}">
       <i style="background:${fi.color}">${esc(fi.sigla)}</i><span>${esc(x.f.name)}</span><small>${esc(fechaDeArchivo(x.f) || fmtISO(fechaDePost(x.p), { day:"numeric", month:"short" }))}</small></button>`; }).join("")}</div></div>` : "";
   return `<div class="ficha-lugar">${tituloPrint}${migas}${head}${seg}${incluyePrint}
     ${lectura.length ? `<div class="fl-card fl-lectura"><h3>${t("Lectura rápida","At a glance","Leitura rápida","במבט מהיר")}</h3><ul>${lectura.map(x => `<li class="${x.alerta ? "alerta" : ""}"><span class="ic" aria-hidden="true">${x.ic}</span><span>${x.html}</span></li>`).join("")}</ul></div>` : ""}
@@ -19464,7 +19464,7 @@ function renderPlaceSuggestions(draft, scope, ownerId){
   if(!draft.placeQuery.trim()) return "";
   if(!matches.length) return `<div class="autocomplete-list"><div class="autocomplete-empty">${t('Sin resultados. Para sumar un lugar nuevo, escribí "Ciudad, País".','No results. To add a new place, type "City, Country".','Sem resultados. Para somar um lugar novo, escreva "Cidade, País".','.אין תוצאות. כדי להוסיף מקום חדש, הקלד/י "עיר, מדינה"')}</div></div>`;
   return `<div class="autocomplete-list">${matches.map((it,i)=>`
-    <button type="button" class="autocomplete-option${it.isNew?" autocomplete-option-new":""}${i===draft.placeHighlight?" active":""}" data-action="pick-place" data-scope="${scope}" data-owner-id="${ownerId}" data-match-idx="${i}">${it.icon} ${esc(it.label)}</button>`).join("")}</div>`;
+    <button type="button" class="autocomplete-option${it.isNew?" autocomplete-option-new":""}${i===draft.placeHighlight?" active":""}" data-action="pick-place" data-scope="${scope}" data-owner-id="${esc(ownerId)}" data-match-idx="${i}">${it.icon} ${esc(it.label)}</button>`).join("")}</div>`;
 }
 function selectPlaceMatch(scope, ownerId, match){
   const draft = getDraftFor(scope, ownerId);
@@ -19572,7 +19572,7 @@ function renderMentionSuggestions(draft, scope, ownerId, textareaId){
     const avatar = u.isAll ? `<span class="mention-avatar mention-avatar-fallback">👥</span>`
       : u.photoURL ? `<img class="mention-avatar" src="${esc(u.photoURL)}" alt="">`
       : `<span class="mention-avatar mention-avatar-fallback">${esc(u.nickname[0].toUpperCase())}</span>`;
-    return `<button type="button" class="autocomplete-option mention-option${i===draft.mentionHighlight?" active":""}" data-action="pick-mention" data-scope="${scope}" data-owner-id="${ownerId}" data-textarea-id="${textareaId}" data-nickname="${esc(u.nickname.toLowerCase())}" data-email="${esc(u.email)}">${avatar}<span>@${esc(u.nickname.toLowerCase())}</span></button>`;
+    return `<button type="button" class="autocomplete-option mention-option${i===draft.mentionHighlight?" active":""}" data-action="pick-mention" data-scope="${scope}" data-owner-id="${esc(ownerId)}" data-textarea-id="${esc(textareaId)}" data-nickname="${esc(u.nickname.toLowerCase())}" data-email="${esc(u.email)}">${avatar}<span>@${esc(u.nickname.toLowerCase())}</span></button>`;
   }).join("")}</div>`;
 }
 function selectMentionMatch(scope, ownerId, textareaId, match){
