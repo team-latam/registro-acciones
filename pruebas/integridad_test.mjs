@@ -40,5 +40,24 @@ eq("SheetJS en una versión con los arreglos de seguridad (0.19.3 o más)", v.le
 // La política de seguridad mínima.
 eq("hay CSP con object-src y base-uri cerrados", /http-equiv="Content-Security-Policy" content="[^"]*object-src 'none'[^"]*base-uri 'none'/.test(cabeza), true);
 
+// La política completa (I3): de dónde se carga cada cosa y a quién se le
+// habla. Cada servicio que nombra el código tiene que estar en la lista
+// (si no, el navegador lo frena en el sitio de verdad), y nada de comodines
+// que la vacíen.
+const csp = (cabeza.match(/http-equiv="Content-Security-Policy" content="([^"]+)"/) || [, ""])[1];
+const directivas = Object.fromEntries(csp.split(";").map(x => x.trim().split(/\s+/)).filter(x => x[0]).map(([k, ...v]) => [k, v]));
+eq("la política arranca cerrada (default-src 'self')", directivas["default-src"], ["'self'"]);
+eq("sin 'unsafe-eval' ni un * suelto en ninguna parte", Object.entries(directivas).filter(([, v]) => v.some(x => x === "*" || x === "'unsafe-eval'" || x === "https:" || x === "http:")).map(([k]) => k), []);
+eq("form-action cerrado a la propia página", directivas["form-action"], ["'self'"]);
+const cubre = (lista, url) => { const u = new URL(url); return (lista || []).some(x => { if(!/^(https|wss):\/\//.test(x)) return false; const h = new URL(x.replace("*.", "comodin.")); if(h.protocol !== u.protocol) return false; return x.includes("*.") ? u.hostname.endsWith(h.hostname.replace(/^comodin/, "")) : u.hostname === h.hostname; }); };
+// Lo que el código pide por fetch o abre en vivo.
+const aQuienHabla = [...new Set([...src.matchAll(/(?:fetch\(\s*|const url = )`?["']?((?:https|wss):\/\/[a-z0-9.-]+)/g)].map(m => m[1]))];
+eq("todo lo que se pide por fetch está en connect-src", aQuienHabla.filter(u => !cubre(directivas["connect-src"], u)), []);
+const SB = (src.match(/const SUPABASE_URL = "([^"]+)"/) || [])[1];
+eq("Supabase: datos, en vivo, fotos y PDF", [cubre(directivas["connect-src"], SB), cubre(directivas["connect-src"], SB.replace("https:", "wss:")), cubre(directivas["img-src"], SB), cubre(directivas["frame-src"], SB)], [true, true, true, true]);
+const scripts = [...new Set([...src.matchAll(/"(https:\/\/[a-z0-9.-]+)\/[^"]*\.(?:js|mjs)"|import\("(https:\/\/[a-z0-9.-]+)\//g)].map(m => m[1] || m[2])), (src.match(/const GIS_SRC = "([^"]+)"/) || [])[1]].filter(Boolean);
+eq("cada librería que se carga está en script-src", scripts.filter(u => !cubre(directivas["script-src"], u)), []);
+eq("los mapas, las fotos de perfil de Google y las fuentes", [cubre(directivas["img-src"], "https://a.tile.openstreetmap.org/1/1/1.png"), cubre(directivas["img-src"], "https://lh3.googleusercontent.com/x"), cubre(directivas["style-src"], "https://fonts.googleapis.com/css2"), cubre(directivas["font-src"], "https://fonts.gstatic.com/s")], [true, true, true, true]);
+
 console.log(`\n${pass} pasaron, ${fail} fallaron`);
 process.exit(fail ? 1 : 0);
