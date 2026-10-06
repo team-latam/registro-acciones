@@ -102,6 +102,13 @@ que decidir o hacer un paso en un panel).
 
 ### Urgente — esta semana
 
+> **6/10/2026: U1 a U4 hechos** (commits `f15e3e2`, `a67723f`, `c5a47a9`).
+> Para que U1 tenga efecto falta un clic del usuario: Settings → Pages →
+> Build and deployment → Source → «GitHub Actions». Hasta entonces el
+> trabajo «Publicar el sitio» corre las pruebas y avisa en su resumen que
+> todavía no publica. U5 queda esperando la decisión del usuario y la
+> confirmación en Google Calendar de que el calendario está público.
+
 | # | Qué | Por qué | Detalle | Trabajo | Quién |
 |---|---|---|---|---|---|
 | U1 | Publicar GitHub Pages desde un workflow que espere a las pruebas | hoy un `index.html` roto está en línea desde el minuto 1 y las pruebas avisan 10 minutos después, sin vuelta atrás | backend 4 | medio | Claude arma el workflow; **usuario** cambia Settings → Pages → Source a "GitHub Actions" (un clic, Claude le dice dónde) |
