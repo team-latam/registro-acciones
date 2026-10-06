@@ -1124,7 +1124,8 @@ const hasta = async (p, fn, arg, ms = 5000) => {
       date: dia(40), start_date: dia(40), end_date: dia(35), activity_type: "visita",
       author_name: "Benny", author_email: ADMIN,
       scopes: [{ type: "ciudad", country: "Uruguay", city: "Montevideo" }, { type: "ciudad", country: "Argentina", city: "Buenos Aires" }],
-      images: [], links: [], mentions: [], liked_by: [], milestones: [], editors: [], participants: [], recurrence_skip: [], recurrence_moves: {},
+      images: [], links: [], mentions: [], liked_by: [], editors: [], participants: [], recurrence_skip: [], recurrence_moves: {},
+      milestones: [{ id: "h1", label: "Mandar el presupuesto", date: dia(10), done: false }, { id: "h2", label: "Pedir la autorización", date: dia(50), done: true }],
       files: [{ name: "Formulario de Cierre - Montevideo, Uruguay.docx", kind: "doc", path: "posts/p_viaje/cierre-uy.docx", subidoEl: hace(34) },
               { name: "Formulario de Cierre - Buenos Aires, Argentina.docx", kind: "doc", path: "posts/p_viaje/cierre-ar.docx", subidoEl: hace(33) }],
       is_project: true, project_status: "open",
@@ -1141,6 +1142,13 @@ const hasta = async (p, fn, arg, ms = 5000) => {
       images: [], links: [], mentions: [], liked_by: [], milestones: [], editors: [], participants: [], recurrence_skip: [], recurrence_moves: {},
       files: [{ name: "Formulario de Cierre - Punta del Este.docx", kind: "doc", path: "posts/p_pde/cierre-pde.docx", subidoEl: hace(8) }],
       created_at: hace(12) });
+    // Y otro proyecto en Montevideo, con un hito que todavía no llegó.
+    base.posts.push({ id: "p_proy2", title: "Plan de cámaras de Montevideo", content: "x",
+      date: dia(30), start_date: dia(30), end_date: dia(30), activity_type: "otro", author_name: "Benny", author_email: ADMIN,
+      scopes: [{ type: "ciudad", country: "Uruguay", city: "Montevideo" }], is_project: true, project_status: "open",
+      milestones: [{ id: "h3", label: "Instalar las cámaras", date: dia(-20), done: false, owners: [ADMIN] }],
+      images: [], files: [], links: [], mentions: [], liked_by: [], editors: [], participants: [], recurrence_skip: [], recurrence_moves: {},
+      created_at: hace(31) });
   });
   await esperarTexto(p, "Montevideo y Buenos Aires");
   await p.click('nav.tabs button[data-view="paises"]');
@@ -1188,6 +1196,47 @@ const hasta = async (p, fn, arg, ms = 5000) => {
     const v = [...document.querySelectorAll(".fl-stat b")].map(x => x.textContent.trim());
     return (document.querySelector(".ficha-lugar h1") || {}).textContent === "Montevideo" && v[2] === "1 de 2";
   }), true);
+  // Los proyectos y sus hitos en «Lo que pasó» (pedido del usuario,
+  // 6/10/2026): rombos con su estado, un filtro por proyecto que atenúa al
+  // resto (eligió «atenuado», no ocultar) y la tarjeta del costado.
+  eq("hitos: los hitos de los proyectos entran en la línea, cada uno con su estado",
+    await p.$$eval(".fl-it.t-hito", es => es.map(e => [e.dataset.proyecto, e.querySelector(".tt").textContent.trim(), e.querySelector(".fl-hito-estado").textContent.trim()])),
+    [["p_proy2", "Instalar las cámaras", "Pendiente"], ["p_viaje", "Mandar el presupuesto", "Vencido"], ["p_viaje", "Pedir la autorización", "✓ Cumplido"]]);
+  eq("hitos: con la clase de cada estado (vencido en rojo, hecho relleno)", await p.$$eval(".fl-it.t-hito", es => es.map(e => e.className.replace("fl-it t-hito ", ""))), ["pendiente", "vencido", "hecho"]);
+  eq("hitos: cada hito dice de qué proyecto es y quién lo tiene a cargo", await p.$eval('.fl-it.t-hito[data-proyecto="p_proy2"] .mt', e => e.textContent.replace(/\s+/g, " ").trim()), "◆ Hito · de Plan de cámaras de Montevideo · Benny");
+  eq("hitos: el posteo del proyecto dice cuántos hitos lleva", await p.$eval('.fl-it[data-post-id="p_viaje"] .mt', e => /📋 Proyecto · 1\/2 hitos/.test(e.textContent)), true);
+  eq("hitos: la lectura rápida los cuenta", await p.$eval(".fl-lectura", e => /2 proyectos abiertos con 2 hitos pendientes, 1 de ellos vencido \(Mandar el presupuesto\)\./.test(e.textContent.replace(/\s+/g, " "))), true);
+  eq("hitos: la fila de proyectos: «Todos los hitos», uno por proyecto y «Sin hitos»",
+    await p.$$eval(".fl-proy .fl-chip", es => es.map(e => [e.dataset.id, e.textContent.trim(), e.classList.contains("on")])),
+    [["", "📋 Todos los hitos · 3", true], ["p_proy2", "Plan de cámaras de Montevideo · 0/1", false], ["p_viaje", "Montevideo y Buenos Aires · 1/2", false], ["ninguno", "Sin hitos", false]]);
+  eq("hitos: al costado, cada proyecto con su avance, sus vencidos y el próximo hito",
+    await p.$$eval(".fl-pj-item", es => es.map(e => [e.dataset.id, e.querySelector(".fl-pj-bar i").style.width, e.querySelector("small").textContent.replace(/\s+/g, " ").trim()])).then(v => [v[0][0], v[0][1], /^0\/1 hitos · próximo: Instalar las cámaras, \d{1,2} \S+$/.test(v[0][2]), v[1]]),
+    ["p_proy2", "0%", true, ["p_viaje", "50%", "1/2 hitos · 1 vencido"]]);
+  eq("hitos: la tarjeta dice cuántos siguen abiertos", await p.$eval(".fl-pj", e => { const h = e.closest(".fl-card").querySelector("h3"); return [h.firstChild.textContent.trim(), h.querySelector(".fl-h3-nota").textContent.trim()]; }), ["Proyectos en Montevideo", "2 abiertos"]);
+  await p.click('.fl-proy .fl-chip[data-id="p_viaje"]');
+  eq("hitos: elegir un proyecto deja sus hitos y atenúa a los demás proyectos y sus hitos", await hasta(p, () =>
+    document.querySelector('.fl-it.t-hito[data-proyecto="p_proy2"]').classList.contains("apagado")
+    && document.querySelector('.fl-it[data-post-id="p_proy2"]').classList.contains("apagado")
+    && !document.querySelector('.fl-it.t-hito[data-proyecto="p_viaje"]').classList.contains("apagado")
+    && !document.querySelector('.fl-it[data-post-id="p_viaje"]').classList.contains("apagado")
+    && document.querySelector('.fl-pj-item[data-id="p_viaje"]').classList.contains("on")), true);
+  eq("hitos: con la nota de qué se está mostrando", await p.$eval(".fl-nota", e => e.textContent.replace(/\s+/g, " ").trim()), "Mostrando solo los hitos de Montevideo y Buenos Aires; los demás proyectos quedan atenuados. Ver todos");
+  await p.click('.fl-nota [data-action="ficha-proyecto"]');
+  eq("hitos: «Ver todos» vuelve a todos", await hasta(p, () => !document.querySelector(".fl-it.apagado") && !document.querySelector(".fl-nota")), true);
+  await p.click('.fl-pj-item[data-id="p_proy2"]');
+  eq("hitos: desde la tarjeta del costado se elige igual", await hasta(p, () =>
+    document.querySelector('.fl-pj-item[data-id="p_proy2"]').classList.contains("on") && document.querySelector('.fl-it[data-post-id="p_viaje"]').classList.contains("apagado")), true);
+  await p.click('.fl-pj-item[data-id="p_proy2"]');
+  eq("hitos: tocar el mismo otra vez vuelve a todos", await hasta(p, () => !document.querySelector(".fl-it.apagado")), true);
+  await p.click('.fl-proy .fl-chip[data-id="ninguno"]');
+  eq("hitos: «Sin hitos» los saca de la línea", await hasta(p, () => !document.querySelector(".fl-it.t-hito") && document.querySelectorAll(".fl-it").length === 2), true);
+  await p.click('.fl-proy .fl-chip[data-id=""]');
+  await hasta(p, () => document.querySelectorAll(".fl-it.t-hito").length === 3);
+  await p.click('.fl-it.t-hito[data-proyecto="p_viaje"]');
+  eq("hitos: tocar un hito abre la ventana del proyecto con sus hitos a la vista", await hasta(p, () =>
+    !document.getElementById("fichaPostOverlay").hidden && !!document.querySelector('#fichaPostBody [data-action="project-manage"]')
+    && /Mandar el presupuesto/.test(document.getElementById("fichaPostBody").textContent)), true);
+  await p.keyboard.press("Escape");
   // Excluir (pedido del usuario): lo regional no entra si no se pide, y
   // un tipo se oculta con un toque.
   eq("excluir: por defecto, solo lo de acá", await p.$eval('.fl-seg [aria-checked="true"]', e => e.dataset.nivel), "0");
@@ -1271,11 +1320,73 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   await p.click('[data-action="drill-country"][data-country="Uruguay"]');
   await hasta(p, () => (document.querySelector(".ficha-lugar h1") || {}).textContent === "Uruguay");
   await p.click('.fl-it[data-post-id="p_viaje"]');
-  await p.click('#fichaPostBody [data-action="toggle-project"]');
+  if(!(await p.$('#fichaPostBody [data-action="project-manage"]'))) await p.click('#fichaPostBody [data-action="toggle-project"]');
   await p.click('#fichaPostBody [data-action="project-manage"]');
   eq("ventana: «Gestionar proyecto» cierra la ventana y abre Proyectos", await hasta(p, () =>
     document.getElementById("fichaPostOverlay").hidden && !!document.querySelector('nav.tabs button[data-view="proyectos"].active')), true);
   eq("viaje: sin un solo error", errores, []);
+  await p.close();
+}
+
+/* ---------- La ficha, de a tandas; el costado que acompaña; quiénes; el mapa ---------- */
+// Pedidos del usuario (6/10/2026): «Lo que pasó» se carga como el Inicio,
+// la columna de la derecha acompaña el scroll, «Google Calendar» no es
+// una persona en «Quiénes trabajaron acá», y el mapa llega hasta abajo.
+{
+  const MVD = [{ type: "ciudad", country: "Uruguay", city: "Montevideo" }];
+  const { p, errores } = await entrar(ADMIN, "Benny", base => {
+    for(let i = 0; i < 35; i++) base.posts.push({ id: "p_r" + i, title: "", content: "Rutina vieja " + i,
+      date: dia(400 + i), start_date: dia(400 + i), end_date: dia(400 + i), activity_type: "rutina", author_name: "Ana Pérez", author_email: "ana@x.com",
+      scopes: MVD, images: [], files: [], links: [], mentions: [], liked_by: [], milestones: [], editors: [], participants: [], recurrence_skip: [], recurrence_moves: {}, created_at: hace(400 + i) });
+    // Dos eventos traídos de Google Calendar: el organizador de uno es
+    // alguien del equipo; el del otro es el calendario mismo.
+    base.posts.push({ id: "p_gcal", title: "Reunión traída del calendario", content: "", date: dia(3), start_date: dia(3), end_date: dia(3), activity_type: "otro",
+      author_name: "Google Calendar", author_email: "", organizer: "Ana Pérez", calendar_event_id: "ev1", scopes: MVD,
+      participants: [{ email: ADMIN, name: "Benny" }, { email: "", name: "Invitado de afuera" }],
+      images: [], files: [], links: [], mentions: [], liked_by: [], milestones: [], editors: [], recurrence_skip: [], recurrence_moves: {}, created_at: hace(3) });
+    base.posts.push({ id: "p_gcal2", title: "Otra traída del calendario", content: "", date: dia(4), start_date: dia(4), end_date: dia(4), activity_type: "otro",
+      author_name: "Google Calendar", author_email: "", organizer: "LatAm", calendar_event_id: "ev2", scopes: MVD,
+      participants: [], images: [], files: [], links: [], mentions: [], liked_by: [], milestones: [], editors: [], recurrence_skip: [], recurrence_moves: {}, created_at: hace(4) });
+  });
+  await esperarTexto(p, "Reunión traída del calendario");
+  await p.click('nav.tabs button[data-view="paises"]');
+  await p.evaluate(() => { const x = document.createElement("button"); x.dataset.action = "drill-city"; x.dataset.country = "Uruguay"; x.dataset.city = "Montevideo"; document.body.appendChild(x); x.click(); x.remove(); });
+  await hasta(p, () => (document.querySelector(".ficha-lugar h1") || {}).textContent === "Montevideo");
+  eq("tandas: arranca con 30 filas y el botón «Ver más»", await p.evaluate(() => [document.querySelectorAll(".fl-it").length, !!document.querySelector('.fl-main [data-action="ficha-ver-mas"]')]), [30, true]);
+  await p.evaluate(() => document.querySelector('[data-action="ficha-ver-mas"]').scrollIntoView());
+  eq("tandas: al bajar hasta el botón se liberan solas las que faltan", await hasta(p, () => document.querySelectorAll(".fl-it").length === 37 && !document.querySelector('[data-action="ficha-ver-mas"]')), true);
+  eq("quiénes: Google Calendar no es una persona; cuenta el organizador si es del equipo, y los participantes con cuenta",
+    await p.$$eval(".fl-gente > div", es => es.map(e => [e.querySelector(".nm").textContent.trim(), e.querySelector(".cn").textContent.trim()])), [["Ana Pérez", "36"], ["Benny", "1"]]);
+  eq("quiénes: en la línea, lo del calendario dice quién lo organizó solo si es del equipo", await p.evaluate(() => [
+    document.querySelector('.fl-it[data-post-id="p_gcal"] .mt').textContent.replace(/\s+/g, " ").trim(), document.querySelector('.fl-it[data-post-id="p_gcal2"] .mt').textContent.replace(/\s+/g, " ").trim()]),
+    ["✨ Otro · Ana Pérez", "✨ Otro"]);
+  eq("costado: la columna de la derecha acompaña el scroll", await p.$eval(".fl-lado", e => getComputedStyle(e).position), "sticky");
+  await p.emulateMedia({ media: "print" });
+  eq("costado: en papel, no", await p.$eval(".fl-lado", e => getComputedStyle(e).position), "static");
+  await p.emulateMedia({ media: "screen" });
+  // Países › Mapa llega hasta el borde de abajo. Leaflet no llega al
+  // sandbox: uno de mentira, con lo justo para que el mapa se dibuje.
+  await p.setViewportSize({ width: 1280, height: 900 });
+  await p.evaluate(() => {
+    const mapa = { llamadas: [], setView(){ return this; }, addLayer(){ return this; }, invalidateSize(){ this.llamadas.push("invalidateSize"); return this; }, fitBounds(){ return this; }, on(){ return this; } };
+    window.__mapa = mapa;
+    window.L = { map: () => mapa, tileLayer: () => ({ addTo(){ return this; } }), divIcon: o => o, marker: () => ({ bindPopup(){ return this; } }),
+      markerClusterGroup: () => ({ clearLayers(){}, addLayer(){} }) };
+  });
+  await p.click('.fl-migas [data-action="drill-clear"]');
+  await p.click('[data-action="paises-subview"][data-key="mapa"]');
+  eq("mapa: ocupa hasta el borde de abajo de la pantalla, y se le avisa a Leaflet", await hasta(p, () => {
+    const el = document.getElementById("map"); if(!el) return false;
+    const r = el.getBoundingClientRect();
+    const abajo = parseFloat(getComputedStyle(document.querySelector("main")).paddingBottom);
+    return window.scrollY === 0 && Math.abs(r.bottom + abajo - window.innerHeight) <= 1 && window.__mapa.llamadas.includes("invalidateSize");
+  }), true);
+  await p.setViewportSize({ width: 1280, height: 760 });
+  eq("mapa: y se acomoda si cambia el tamaño de la ventana", await hasta(p, () => {
+    const r = document.getElementById("map").getBoundingClientRect();
+    return Math.abs(r.bottom + parseFloat(getComputedStyle(document.querySelector("main")).paddingBottom) - window.innerHeight) <= 1;
+  }), true);
+  eq("tandas: sin un solo error", errores, []);
   await p.close();
 }
 

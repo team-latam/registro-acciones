@@ -608,6 +608,45 @@ capturas (A/B/C, después D/E/F, después ajustes), el diseño elegido:
   botones, con lo incluido dicho en una línea y las tarjetas del costado
   en dos columnas.
 
+### 34. Proyectos e hitos en la ficha, el costado que acompaña, de a tandas, el mapa — HECHO (6 oct 2026)
+
+- **Los hitos de los proyectos entran en «Lo que pasó»** (pedido del
+  usuario: "puede que haya hitos metidos ahí"): cada hito es un rombo ◆
+  en la línea, con su fecha, de qué proyecto es, quién lo tiene a cargo y
+  su estado (✓ Cumplido, Vencido en rojo, Por vencer, Pendiente). Tocarlo
+  abre el proyecto con sus hitos a la vista. El posteo del proyecto dice
+  "📋 Proyecto · 2/4 hitos".
+- **Filtrar por proyecto**: una fila "Proyectos" con "📋 Todos los hitos ·
+  N", un botón por proyecto y "Sin hitos". Con un proyecto elegido se ven
+  solo sus hitos y **los demás proyectos y sus hitos quedan atenuados**
+  (el usuario eligió "atenuado" antes que ocultar), con una nota
+  "Mostrando solo los hitos de … · Ver todos". Al costado, la tarjeta
+  **"Proyectos en {lugar}"**: cada uno con su barra de avance, los
+  vencidos en rojo y el próximo hito; tocar uno filtra igual. La lectura
+  rápida suma una línea ("2 proyectos abiertos con 4 hitos pendientes, 2
+  de ellos vencidos (…)"). El reporte impreso no muestra los botones y
+  dice en su línea de "Incluye" si se imprimió con un solo proyecto o sin
+  hitos.
+- **El costado acompaña el scroll** (Ritmo, Quiénes, Documentos…): en
+  escritorio la columna queda pegada debajo del header, como la del
+  Inicio; si es más alta que la pantalla, se desplaza por dentro. En el
+  papel, no.
+- **«Lo que pasó» se carga de a tandas**, como el Inicio: 30 filas y, al
+  acercarse al final, se liberan 30 más (con un botón "Ver más" de
+  respaldo). El reporte impreso sigue sacando todo.
+- **"Google Calendar" ya no es una persona** en "Quiénes trabajaron acá":
+  lo traído del calendario cuenta a su organizador si es alguien del
+  equipo (por correo, nombre o @apodo; el calendario "LatAm" no es nadie)
+  y a los participantes que tienen cuenta en la app, una vez por registro.
+  Lo mismo en la línea de tiempo y en "Última visita … por …".
+- **Países › Mapa llega hasta abajo de la pantalla** en vez de medir
+  480px fijos y dejar una franja vacía: se mide al dibujarlo y al cambiar
+  el tamaño de la ventana (en el celular deja el lugar de la barra de
+  abajo), y se le avisa a Leaflet del cambio.
+- De paso: la ventana de un ítem de la ficha vacía su contenido al
+  cerrarse (escondida, seguía en la página y una búsqueda por posteo podía
+  dar con ella primero).
+
 ## Fuera de alcance (necesitan algo que la app no tiene)
 
 - Mandar correos (resumen semanal, invitaciones): no hay servicio de

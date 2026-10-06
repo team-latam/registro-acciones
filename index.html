@@ -2169,6 +2169,40 @@
   .fl-dot{ position:relative; z-index:1; width:12px; height:12px; border-radius:50%; margin:4px 3px 0; background:var(--card); border:3px solid #8fa3a6; box-sizing:border-box; }
   .fl-it.t-visita .fl-dot{ border-color:#1b8fa6; background:#1b8fa6; }
   .fl-it.amplio{ opacity:.75; }
+  /* Los hitos de los proyectos en la línea: un rombo ◆, relleno si se
+     cumplió y con el borde rojo si venció. Con un proyecto elegido, los
+     demás proyectos y sus hitos quedan atenuados (.apagado), no se van. */
+  .fl-it.t-hito{ padding:4px 8px 4px 0; }
+  .fl-it.t-hito .fl-dot{ width:11px; height:11px; border-radius:2px; transform:rotate(45deg); border:2px solid #7c5cc4; margin:5px 4px 0; }
+  .fl-it.t-hito.hecho .fl-dot{ background:#7c5cc4; }
+  .fl-it.t-hito.vencido .fl-dot{ border-color:#d9534f; }
+  .fl-it.t-hito .tt{ font-weight:500; font-size:13px; }
+  .fl-it .mt b{ font-weight:700; color:var(--ink); }
+  .fl-hito-estado{ flex:none; font-size:10.5px; font-weight:800; border-radius:999px; padding:2px 8px; margin-top:1px; white-space:nowrap; background:#eef2f3; color:var(--text-muted); }
+  .fl-hito-estado.hecho{ background:#e3f4ea; color:#1f7a45; }
+  .fl-hito-estado.vencido{ background:#fbe4e4; color:#b42318; }
+  .fl-hito-estado.proximo, .fl-hito-estado.hoy{ background:#fdf1dc; color:#9a6200; }
+  html[data-theme="dark"] .fl-hito-estado{ background:#263538; }
+  html[data-theme="dark"] .fl-hito-estado.hecho{ background:#173d2a; color:#7fdca4; }
+  html[data-theme="dark"] .fl-hito-estado.vencido{ background:#40191a; color:#f19a94; }
+  html[data-theme="dark"] .fl-hito-estado.proximo, html[data-theme="dark"] .fl-hito-estado.hoy{ background:#3d3015; color:#f0c46a; }
+  .fl-it.apagado{ opacity:.35; }
+  .fl-proy{ display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin:-4px 0 12px; }
+  .fl-proy > small{ font-size:11px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:var(--text-muted); margin-inline-end:4px; }
+  .fl-chip.on{ background:var(--petroleo); color:#fff; border-color:transparent; }
+  .fl-nota{ font-size:12px; color:var(--text-muted); margin:-6px 0 10px; }
+  .fl-nota b{ color:var(--ink); }
+  .fl-h3-nota{ text-transform:none; letter-spacing:0; font-weight:700; font-size:12px; color:var(--text-muted); }
+  .fl-pj{ display:flex; flex-direction:column; gap:10px; }
+  .fl-pj-item{ display:flex; flex-direction:column; gap:4px; width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:12px; cursor:pointer; background:var(--card); font:inherit; color:inherit; text-align:start; }
+  .fl-pj-item:hover, .fl-pj-item:focus-visible{ border-color:var(--celeste); }
+  .fl-pj-item.on{ border-color:var(--celeste-dark); box-shadow:0 0 0 2px var(--celeste-soft); }
+  .fl-pj-item b{ font-size:13.5px; color:var(--ink); }
+  .fl-pj-item small{ font-size:11.5px; color:var(--text-muted); }
+  .fl-pj-item small .v{ color:#b42318; font-weight:700; }
+  html[data-theme="dark"] .fl-pj-item small .v{ color:#f19a94; }
+  .fl-pj-bar{ height:6px; border-radius:3px; background:var(--surface-alt, #eef2f3); overflow:hidden; }
+  .fl-pj-bar i{ display:block; height:100%; background:#7c5cc4; border-radius:3px; }
   .fl-fecha{ font-size:12px; color:var(--text-muted); padding-top:1px; }
   .fl-cuerpo{ min-width:0; display:flex; flex-direction:column; }
   .fl-cuerpo .tt{ font-size:14px; font-weight:700; color:var(--ink); line-height:1.35; }
@@ -2234,6 +2268,12 @@
   @media (max-width:640px){
     .ficha-post-modal{ max-height:none; padding:0 14px 16px; }
     .ficha-post-modal .fp-cabeza{ margin:0 -14px 10px; padding:8px 8px 6px 14px; }
+  }
+  /* El costado acompaña al bajar (pedido del usuario, 6/10/2026): se
+     pega debajo del header, como la columna del Inicio, y si es más alto
+     que la pantalla se desplaza por dentro. */
+  @media (min-width:761px){
+    .fl-lado{ position:sticky; top:calc(var(--header-h, 110px) + 12px); max-height:calc(100vh - var(--header-h, 110px) - 28px); overflow:auto; scrollbar-width:thin; }
   }
   @media (max-width:760px){
     .fl-grid{ grid-template-columns:minmax(0,1fr); }
@@ -2741,7 +2781,7 @@
        una columna, con las tarjetas del costado en dos, y sin partir un
        ítem de la línea de tiempo entre dos hojas. */
     .ficha-lugar{ max-width:none; }
-    .fl-migas, .fl-acciones, .fl-seg, .fl-chips, .fl-mas, .rs-no, .fl-hijo .fl-ir, .fl-tl + .hint{ display:none !important; }
+    .fl-migas, .fl-acciones, .fl-seg, .fl-chips, .fl-proy, .fl-nota, .fl-mas, .rs-no, .fl-hijo .fl-ir, .fl-main .audit-more{ display:none !important; }
     .fl-incluye-print{ display:block; font-size:10px; font-weight:700; color:var(--text-muted); margin:-6px 0 10px; }
     .fl-head{ margin-bottom:6px; }
     .fl-head h1{ font-size:19px; }
@@ -2755,7 +2795,7 @@
     .fl-stat b{ font-size:15px; }
     .fl-stat small, .fl-stat span{ font-size:9.5px; }
     .fl-grid{ display:block; }
-    .fl-lado{ display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:9px; align-items:start; }
+    .fl-lado{ display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:9px; align-items:start; position:static; max-height:none; overflow:visible; }
     .fl-lado .fl-card{ break-inside:avoid; margin-bottom:0; }
     .rs-pasos li{ font-size:10.5px; break-inside:avoid; }
     .rs-paso small{ font-size:9.5px; }
@@ -2763,6 +2803,10 @@
     .fl-mes{ font-size:9.5px; break-after:avoid; }
     .fl-it{ grid-template-columns:18px 86px minmax(0,1fr) auto; padding:4px 4px 4px 0; break-inside:avoid; }
     .fl-it.amplio{ opacity:1; }
+    .fl-it.apagado{ opacity:.55; }
+    .fl-pj-item{ padding:6px 10px; border-radius:8px; }
+    .fl-pj-item b{ font-size:11px; }
+    .fl-pj-item small{ font-size:9.5px; }
     .fl-fecha, .fl-it .mt{ font-size:9.5px; }
     .fl-it .tt{ font-size:11px; }
     .fl-it .rs{ font-size:10px; padding:4px 8px; margin-top:3px; }
@@ -12703,24 +12747,26 @@ function fitDropdownPanels(){
     if(shift) panel.style.translate = `${Math.round(shift)}px 0`;
   });
 }
-// El Feed carga solo las siguientes tarjetas al acercarse al final: se
-// vigila el botón "Ver más" y, cuando está por entrar en pantalla (400px
-// antes), se hace lo mismo que al tocarlo. El botón queda como respaldo
-// (teclado, navegadores sin IntersectionObserver). Cada render reconstruye
-// el botón, así que el vigía se arma de nuevo en cada afterRenderView().
+// El Feed (y «Lo que pasó» en la ficha de un lugar) carga solo las
+// siguientes tarjetas al acercarse al final: se vigila el botón "Ver más"
+// y, cuando está por entrar en pantalla (400px antes), se hace lo mismo
+// que al tocarlo. El botón queda como respaldo (teclado, navegadores sin
+// IntersectionObserver). Cada render reconstruye el botón, así que el
+// vigía se arma de nuevo en cada afterRenderView().
 let feedMoreObserver = null;
 function vigilarVerMas(){
   if(feedMoreObserver){ feedMoreObserver.disconnect(); feedMoreObserver = null; }
-  if(state.view !== "feed" || typeof IntersectionObserver !== "function") return;
-  const boton = viewRoot.querySelector('[data-action="feed-load-more"]');
+  if(typeof IntersectionObserver !== "function") return;
+  const boton = viewRoot.querySelector('[data-action="feed-load-more"], [data-action="ficha-ver-mas"]');
   if(!boton) return;
+  const deFicha = boton.dataset.action === "ficha-ver-mas";
   feedMoreObserver = new IntersectionObserver(entries => {
     if(!entries.some(en => en.isIntersecting)) return;
     feedMoreObserver.disconnect(); feedMoreObserver = null;
-    // Igual que el handler de "feed-load-more", sin tocar el foco: si la
-    // persona está escribiendo en el buscador, no hay que sacárselo.
+    // Igual que el handler del botón, sin tocar el foco: si la persona
+    // está escribiendo en el buscador, no hay que sacárselo.
     const y = window.scrollY;
-    feedVisibleCount += PAGE_STEP;
+    if(deFicha) fichaVisibles += FICHA_TANDA; else feedVisibleCount += PAGE_STEP;
     render();
     window.scrollTo({ top:y, behavior:"auto" });
   }, { rootMargin:"0px 0px 400px 0px" });
@@ -12734,6 +12780,7 @@ function afterRenderView(){
   vigilarVerMas();
   if(state.view === "paises" && state.paisesSubview === "mapa"){
     initOrUpdateMap();
+    ajustarAltoDelMapa();
   }
   if(state.view === "calendario") ensureHolidays();
   if(state.view === "calendario" && state.calendarioSubview !== "mes"){
@@ -15351,6 +15398,23 @@ function mapMarkerSpecs(counts, countries){
 // cualquier respuesta que llegara reseteaba el zoom/posición y volvía a
 // bajar las teselas.
 let mapContainerEl = null, mapClusterGroup = null, mapMarkersSig = "";
+// Países › Mapa llega hasta el borde de abajo de la pantalla (pedido del
+// usuario, 6/10/2026): antes medía 480px fijos y dejaba una franja vacía
+// debajo. Se mide después de cada dibujo y al cambiar el tamaño de la
+// ventana: desde donde arranca el mapa hasta abajo, menos el respiro de
+// la página (en el celular, el lugar de la barra de abajo).
+function ajustarAltoDelMapa(){
+  const el = document.getElementById("map");
+  if(!el || !el.isConnected) return;
+  const main = el.closest("main");
+  const abajo = main ? parseFloat(getComputedStyle(main).paddingBottom) || 0 : 24;
+  const arriba = el.getBoundingClientRect().top + window.scrollY;
+  const alto = Math.max(320, Math.round(window.innerHeight - arriba - abajo)) + "px";
+  if(el.style.height === alto) return;
+  el.style.height = alto;
+  if(state.leafletMap && mapContainerEl === el) state.leafletMap.invalidateSize();
+}
+window.addEventListener("resize", ajustarAltoDelMapa);
 function initOrUpdateMap(){
   const placeholder = document.getElementById("map");
   if(!placeholder || !window.L || !window.L.markerClusterGroup) return;
@@ -18383,6 +18447,18 @@ const fichaOcultos = new Set();
 const fichaDesplegado = new Set(); // "pasos", "docs"
 // Mientras se imprime la ficha («Reporte del lugar»): todo desplegado.
 let fichaImprimiendo = false;
+// Los hitos de los proyectos entran en «Lo que pasó» (pedido del usuario,
+// 6/10/2026). null: los de todos los proyectos; "ninguno": sin hitos; el
+// id de un proyecto: solo los suyos, y los demás proyectos y sus hitos
+// quedan atenuados (no se van: se sigue viendo el contexto).
+let fichaProyecto = null;
+// «Lo que pasó» se carga de a tandas, como el Inicio: tantas filas al
+// entrar y, al acercarse al final, se liberan más (ver vigilarVerMas).
+const FICHA_TANDA = 30;
+let fichaVisibles = FICHA_TANDA;
+// Al pasar a otra ficha, el filtro de proyecto y las tandas vuelven a cero
+// (qué incluir y los tipos ocultos se quedan: son un filtro de la sesión).
+function reiniciarFicha(){ fichaProyecto = null; fichaVisibles = FICHA_TANDA; }
 // El lugar de una ficha: { zona } (una región), { country } o
 // { country, city }.
 const nombreDeLugar = L => L.zona ? regionLabel(L.zona) : L.city ? cityLabel(L.country, L.city) : countryLabel(L.country);
@@ -18425,6 +18501,21 @@ function partesDeLugar(post, L){
 }
 const fechaDePost = p => String(p.startDate || p.date || "");
 const diasDesde = iso => iso ? Math.floor((isoDate(todayISO()) - isoDate(String(iso).slice(0, 10))) / 86400000) : null;
+// Quién es, a partir de un texto suelto (el organizador que trae Google
+// Calendar: un nombre o un correo): alguien del equipo, o que ya no está,
+// por correo, por nombre o por @apodo. null si no es nadie de acá (por
+// ejemplo, el calendario «LatAm» mismo, que Google manda como organizador).
+function miembroPorTexto(txt){
+  const s = sinTildes(txt);
+  if(!s) return null;
+  const apodo = s.replace(/^@/, "");
+  return [...state.roster, ...state.formerMembers].find(u => sinTildes(u.email) === s || sinTildes(u.name) === s || (u.nickname && sinTildes(u.nickname) === apodo)) || null;
+}
+// Lo traído de Google Calendar no lo cargó una persona: la "firma" es el
+// sync. Quien hizo cada cosa, para mostrar, es entonces su organizador si
+// es del equipo; lo cargado a mano, quien lo cargó.
+const esDeCalendar = p => !p.authorEmail && /google calendar/i.test(p.authorName || "");
+const quienDe = p => esDeCalendar(p) ? ((miembroPorTexto(p.organizer) || {}).name || "") : (p.organizer || p.authorName || "");
 // Todo lo que la ficha necesita, ya contado.
 function datosDeFicha(L){
   const niveles = nivelesDeFicha(L);
@@ -18443,6 +18534,11 @@ function datosDeFicha(L){
   todos.forEach(p => porTipo.set(p.activityType, (porTipo.get(p.activityType) || 0) + 1));
   const visibles = todos.filter(p => !fichaOcultos.has(p.activityType));
   const visitas = visibles.filter(p => p.activityType === "visita");
+  // Los proyectos del lugar y sus hitos con fecha (cada uno con el mismo
+  // estado que ve Proyectos), para la línea de tiempo y el costado.
+  const proyectos = visibles.filter(p => p.isProject);
+  const hitos = [];
+  proyectos.forEach(p => milestonesByDate(p).forEach(m => hitos.push({ p, m, st: milestoneStatus(m), f: String(m.date) })));
   const conResumen = visibles.map(post => ({ post, partes: partesDeLugar(post, L) })).filter(x => x.partes.length);
   const obj = cuentaObjetivos(conResumen.flatMap(x => x.partes));
   const ultimaConCierre = conResumen.find(x => x.partes.some(p => p.tipo === "cierre"));
@@ -18455,7 +18551,7 @@ function datosDeFicha(L){
   // Las rutinas que cumplieron un pendiente (para marcarlas en la línea).
   const cumplen = new Set();
   state.posts.forEach(p => pasosDe(resumenDe(p) || []).forEach(x => { if(x.rutina) cumplen.add(x.rutina); }));
-  return { niveles, porNivel, todos, porTipo, visibles, visitas, conResumen, obj, objUltima, pendientes, hechos, cumplen };
+  return { niveles, porNivel, todos, porTipo, visibles, visitas, proyectos, hitos, conResumen, obj, objUltima, pendientes, hechos, cumplen };
 }
 // "La lectura rápida": frases armadas con cuentas, solo las que dicen algo.
 function lecturaDeFicha(D, L){
@@ -18465,7 +18561,7 @@ function lecturaDeFicha(D, L){
   if(ultimaVisita){
     const fin = ultimaVisita.endDate || ultimaVisita.startDate || ultimaVisita.date;
     const dias = Math.max(0, diasDesde(fin));
-    const quien = ultimaVisita.organizer || ultimaVisita.authorName || "";
+    const quien = quienDe(ultimaVisita);
     const anio = D.visitas.filter(p => diasDesde(fechaDePost(p)) <= 365).length;
     let txt = t("Última visita hace <b>{d} días</b> ({f}){q}.","Last visit <b>{d} days</b> ago ({f}){q}.","Última visita há <b>{d} dias</b> ({f}){q}.","ביקור אחרון לפני <b>{d} ימים</b> ({f}){q}.",
       { d: dias, f: esc(fechaDeTarjeta(fechaDePost(ultimaVisita), ultimaVisita.endDate, null, null).dias), q: quien ? t(", por <b>{n}</b>",", by <b>{n}</b>",", por <b>{n}</b>",", על ידי <b>{n}</b>",{ n: esc(quien) }) : "" });
@@ -18486,6 +18582,20 @@ function lecturaDeFicha(D, L){
       html: (D.pendientes.length === 1 ? t("<b>1 pendiente abierto</b>","<b>1 open item</b>","<b>1 pendente aberto</b>","<b>פריט פתוח אחד</b>") : t("<b>{n} pendientes abiertos</b>","<b>{n} open items</b>","<b>{n} pendentes abertos</b>","<b>{n} פריטים פתוחים</b>",{ n: D.pendientes.length }))
         + (viejos ? t(", {v} desde hace más de <b>3 meses</b>.",", {v} for more than <b>3 months</b>.",", {v} há mais de <b>3 meses</b>.",", {v} כבר יותר מ-<b>3 חודשים</b>.",{ v: viejos }) : ".")
         + (D.hechos.length ? " " + t("Ya se cumplieron {n}.","{n} already done.","Já foram cumpridos {n}.","{n} כבר בוצעו.",{ n: D.hechos.length }) : "") });
+  }
+  // Los proyectos abiertos y cómo vienen sus hitos.
+  const abiertos = D.proyectos.filter(p => !projectDone(p));
+  if(abiertos.length){
+    const pend = D.hitos.filter(h => abiertos.includes(h.p) && h.st !== "done");
+    const venc = pend.filter(h => h.st === "overdue");
+    let txt = abiertos.length === 1 ? t("<b>1 proyecto abierto</b> ({p})","<b>1 open project</b> ({p})","<b>1 projeto aberto</b> ({p})","<b>פרויקט פתוח אחד</b> ({p})",{ p: esc(recortar(calendarioLabel(abiertos[0]), 60)) })
+      : t("<b>{n} proyectos abiertos</b>","<b>{n} open projects</b>","<b>{n} projetos abertos</b>","<b>{n} פרויקטים פתוחים</b>",{ n: abiertos.length });
+    txt += !pend.length ? t(", sin hitos pendientes",", with no pending milestones",", sem marcos pendentes",", ללא אבני דרך ממתינות")
+      : pend.length === 1 ? t(" con <b>1 hito pendiente</b>"," with <b>1 pending milestone</b>"," com <b>1 marco pendente</b>"," עם <b>אבן דרך אחת ממתינה</b>")
+      : t(" con <b>{n} hitos pendientes</b>"," with <b>{n} pending milestones</b>"," com <b>{n} marcos pendentes</b>"," עם <b>{n} אבני דרך ממתינות</b>",{ n: pend.length });
+    if(venc.length) txt += (venc.length === 1 ? t(", 1 de ellos <b>vencido</b>",", 1 of them <b>overdue</b>",", 1 deles <b>vencido</b>",", אחת מהן <b>באיחור</b>") : t(", {v} de ellos <b>vencidos</b>",", {v} of them <b>overdue</b>",", {v} deles <b>vencidos</b>",", {v} מהן <b>באיחור</b>",{ v: venc.length }))
+      + ` (${esc(venc.slice(0, 3).map(h => recortar(h.m.label, 40)).join(", "))}${venc.length > 3 ? "…" : ""})`;
+    out.push({ ic: "📋", html: txt + ".", alerta: !!venc.length });
   }
   const anio = todayISO().slice(0, 4), antes = String(Number(anio) - 1);
   const esteAnio = D.visibles.filter(p => fechaDePost(p).startsWith(anio)).length;
@@ -18547,6 +18657,10 @@ function hijosDeLugar(L){
 }
 function renderFichaLugar(L){
   const D = datosDeFicha(L);
+  // El proyecto elegido, si sigue a la vista (puede haberse ocultado su
+  // tipo o cambiado qué incluir: entonces se muestran todos).
+  const elegido = fichaProyecto && fichaProyecto !== "ninguno" && D.proyectos.some(p => p.id === fichaProyecto) ? fichaProyecto : null;
+  const nombreDeProyecto = p => recortar(calendarioLabel(p), 48);
   const nombre = nombreDeLugar(L);
   const zk = zonaDeLugar(L);
   const zcolor = safeColor(ZONES[zk]?.color);
@@ -18575,7 +18689,9 @@ function renderFichaLugar(L){
     `<button type="button" class="place-seg-btn${incluye === i ? " active" : ""}" role="radio" aria-checked="${incluye === i}" data-action="ficha-incluye" data-nivel="${i}"><span>${esc(etiquetas[n])}</span><b>${D.porNivel[n]}</b></button>`).join("")}</div>`;
   // En el papel el selector no sirve: va dicho en una línea.
   const ocultosTxt = [...fichaOcultos].filter(k => D.porTipo.has(k)).map(k => (ACTIVITY_BY_KEY[k] || { label:k }).label);
-  const incluyePrint = `<div class="fl-incluye-print">${esc(t("Incluye","Includes","Inclui","כולל"))}: ${esc(D.niveles.slice(0, incluye + 1).map(n => etiquetas[n].replace(/^\+ /, "")).join(" + "))}${ocultosTxt.length ? ` · ${esc(t("sin","without","sem","ללא"))} ${esc(ocultosTxt.join(", "))}` : ""}</div>`;
+  const proyPrint = elegido ? ` · ${esc(t("solo los hitos de «{p}»","only the milestones of “{p}”","só os marcos de «{p}»","רק אבני הדרך של «{p}»",{ p: nombreDeProyecto(getPostById(elegido)) }))}`
+    : fichaProyecto === "ninguno" && D.hitos.length ? ` · ${esc(t("sin los hitos de los proyectos","without the projects' milestones","sem os marcos dos projetos","ללא אבני הדרך של הפרויקטים"))}` : "";
+  const incluyePrint = `<div class="fl-incluye-print">${esc(t("Incluye","Includes","Inclui","כולל"))}: ${esc(D.niveles.slice(0, incluye + 1).map(n => etiquetas[n].replace(/^\+ /, "")).join(" + "))}${ocultosTxt.length ? ` · ${esc(t("sin","without","sem","ללא"))} ${esc(ocultosTxt.join(", "))}` : ""}${proyPrint}</div>`;
   const tituloPrint = `<div class="rep-print-title"><span>Team LatAm · ${t("Registro de Acciones","Activity Log","Registro de Ações","יומן פעולות")} · ${esc(t("Ficha de {l}","{l} page","Ficha de {l}","כרטיס {l}",{ l: nombre }))}</span><span>${esc(t("Impreso el {d}","Printed on {d}","Impresso em {d}","הודפס ב-{d}",{ d: fmtDate(todayISO()) }))}</span></div>`;
   const lectura = lecturaDeFicha(D, L);
   const ultima = D.visitas[0];
@@ -18608,6 +18724,14 @@ function renderFichaLugar(L){
     const oculto = fichaOcultos.has(k);
     return `<button type="button" class="fl-chip${oculto ? " fuera" : ""}" data-action="ficha-tipo" data-tipo="${esc(k)}" aria-pressed="${!oculto}" title="${esc(oculto ? t("Mostrar","Show","Mostrar","הצג") : t("Ocultar","Hide","Ocultar","הסתר"))}">${esc(ty.icon)} ${esc(ty.label)} · ${n}</button>`; }).join("")}
     ${fichaOcultos.size ? `<button type="button" class="fl-chip-todo" data-action="ficha-tipo-todos">${t("Ver todo","Show all","Ver tudo","הצג הכול")}</button>` : ""}</div>` : "";
+  // Los proyectos: todos sus hitos, solo los de uno (el resto se atenúa)
+  // o ninguno. La misma elección desde la tarjeta del costado.
+  const hitosDe = p => D.hitos.filter(h => h.p === p);
+  const proyRow = D.proyectos.length ? `<div class="fl-proy"><small>${t("Proyectos","Projects","Projetos","פרויקטים")}</small>
+    <button type="button" class="fl-chip${fichaProyecto === null || (fichaProyecto !== "ninguno" && !elegido) ? " on" : ""}" data-action="ficha-proyecto" data-id="" aria-pressed="${!elegido && fichaProyecto !== "ninguno"}">📋 ${t("Todos los hitos","All milestones","Todos os marcos","כל אבני הדרך")} · ${D.hitos.length}</button>
+    ${D.proyectos.map(p => { const hs = hitosDe(p); return `<button type="button" class="fl-chip${elegido === p.id ? " on" : ""}" data-action="ficha-proyecto" data-id="${p.id}" aria-pressed="${elegido === p.id}" dir="auto">${esc(nombreDeProyecto(p))}${hs.length ? ` · ${hs.filter(h => h.st === "done").length}/${hs.length}` : ""}</button>`; }).join("")}
+    <button type="button" class="fl-chip${fichaProyecto === "ninguno" ? " on" : ""}" data-action="ficha-proyecto" data-id="ninguno" aria-pressed="${fichaProyecto === "ninguno"}">${t("Sin hitos","No milestones","Sem marcos","בלי אבני דרך")}</button></div>
+    ${elegido ? `<div class="fl-nota">${t("Mostrando solo los hitos de <b>{p}</b>; los demás proyectos quedan atenuados.","Showing only the milestones of <b>{p}</b>; the other projects are dimmed.","Mostrando só os marcos de <b>{p}</b>; os outros projetos ficam atenuados.","מוצגות רק אבני הדרך של <b>{p}</b>; שאר הפרויקטים מעומעמים.",{ p: esc(nombreDeProyecto(getPostById(elegido))) })} <button type="button" class="fl-chip-todo" data-action="ficha-proyecto" data-id="">${t("Ver todos","Show all","Ver todos","הצג הכול")}</button></div>` : ""}` : "";
   // Dónde pasó cada cosa, dentro del lugar: en una zona, el país (y la
   // ciudad); en un país, la ciudad.
   const dondeDe = p => {
@@ -18621,43 +18745,78 @@ function renderFichaLugar(L){
     });
     return [...porPais].map(([c, ciudades]) => [...(L.zona ? [countryLabel(c)] : []), ...ciudades].join(" · "));
   };
-  const tope = fichaImprimiendo ? 2000 : 200;
+  // Lo que pasó mezcla los posteos con los hitos de los proyectos (el
+  // rombo ◆), todo en una sola línea por fecha. Elegido un proyecto, sus
+  // hitos siguen enteros y los demás proyectos, con los suyos, se atenúan.
+  const items = D.visibles.map(p => ({ tipo: "post", f: fechaDePost(p), p }));
+  if(fichaProyecto !== "ninguno") D.hitos.forEach(h => items.push({ tipo: "hito", ...h }));
+  items.sort((a, b) => b.f.localeCompare(a.f) || (a.tipo === "hito") - (b.tipo === "hito"));
+  // De a tandas, como el Inicio; en el reporte impreso salen todos.
+  const tope = fichaImprimiendo ? items.length : fichaVisibles;
   let anioActual = "", mesActual = "";
-  const lineas = D.visibles.slice(0, tope).map(p => {
-    const f = fechaDePost(p);
+  const lineas = items.slice(0, tope).map(it => {
+    const f = it.f;
     let cab = "";
     if(f.slice(0, 4) !== anioActual){ anioActual = f.slice(0, 4); mesActual = ""; cab += `<div class="fl-anio">${esc(anioActual)}</div>`; }
     if(f.slice(0, 7) !== mesActual){ mesActual = f.slice(0, 7); cab += `<div class="fl-mes">${esc(fmtISO(f, { month:"long" }))}</div>`; }
+    if(it.tipo === "hito"){
+      const { p, m, st } = it;
+      const clase = st === "done" ? "hecho" : st === "overdue" ? "vencido" : st === "today" ? "hoy" : st === "soon" ? "proximo" : "pendiente";
+      const quienes = msOwners(m).map(o => (memberByEmail(o) || {}).name || String(o).split("@")[0]);
+      return `${cab}<button type="button" class="fl-it t-hito ${clase}${elegido && p.id !== elegido ? " apagado" : ""}" data-action="ficha-abrir-hito" data-proyecto="${p.id}">
+        <span class="fl-dot" aria-hidden="true"></span>
+        <span class="fl-fecha">${esc(fechaDeTarjeta(f, m.endDate, null, null).dias.replace(/ \d{4}$/, ""))}</span>
+        <span class="fl-cuerpo"><span class="tt" dir="auto">${esc(m.label || "")}</span><span class="mt">◆ ${esc(t("Hito","Milestone","Marco","אבן דרך"))} · ${t("de <b>{p}</b>","of <b>{p}</b>","de <b>{p}</b>","של <b>{p}</b>",{ p: esc(nombreDeProyecto(p)) })}${quienes.length ? " · " + esc(quienes.join(", ")) : ""}</span></span>
+        <span class="fl-hito-estado ${clase}">${st === "done" ? "✓ " : ""}${esc(milestoneStatusLabel(st))}</span></button>`;
+    }
+    const p = it.p;
     const ty = ACTIVITY_BY_KEY[p.activityType] || { icon:"✨", label:p.activityType };
     const esRutina = p.activityType === "rutina";
     const titulo = esRutina ? recortar(p.content, 140) : p.title;
     const partes = partesDeLugar(p, L);
     const c = cuentaObjetivos(partes);
     const nivel = nivelEnFicha(p, L);
+    const ms = p.isProject ? postMilestones(p) : [];
     const meta = [
       `${esc(ty.icon)} ${esc(ty.label)}`,
+      p.isProject ? `📋 ${esc(t("Proyecto","Project","Projeto","פרויקט"))}${ms.length ? ` · ${ms.filter(m => m.done).length}/${ms.length} ${esc(t("hitos","milestones","marcos","אבני דרך"))}` : ""}` : "",
       nivel === "own" ? esc(dondeDe(p).join(" · ")) : `<span class="fl-amplio">${esc(etiquetas[nivel].replace(/^\+ /, ""))}</span>`,
-      esc(p.organizer || p.authorName || ""),
+      esc(quienDe(p)),
       (p.files || []).length ? `📎 ${(p.files || []).length}` : "",
       D.cumplen.has(p.id) ? `✓ ${esc(t("cumple un pendiente","completes a pending item","cumpre um pendente","משלים פריט פתוח"))}` : "",
     ].filter(Boolean).join(" · ");
     const ej = (partes.find(x => x.ejecutivo) || {}).ejecutivo;
     const marca = c.total ? `<span class="rs-ok ${c.si === c.total ? "si" : "par"}">${c.si}/${c.total}</span>`
       : p.activityType === "visita" && !partes.length ? `<span class="rs-ok sin">${esc(t("sin Cierre","no Closure","sem Fechamento","בלי סגירה"))}</span>` : "";
-    return `${cab}<button type="button" class="fl-it t-${esc(p.activityType)}${nivel !== "own" ? " amplio" : ""}" data-action="ficha-abrir" data-post-id="${p.id}">
+    return `${cab}<button type="button" class="fl-it t-${esc(p.activityType)}${nivel !== "own" ? " amplio" : ""}${elegido && p.isProject && p.id !== elegido ? " apagado" : ""}" data-action="ficha-abrir" data-post-id="${p.id}">
       <span class="fl-dot" aria-hidden="true"></span>
       <span class="fl-fecha">${esc(fechaDeTarjeta(f, p.endDate, null, null).dias.replace(/ \d{4}$/, ""))}</span>
       <span class="fl-cuerpo"><span class="tt" dir="auto">${esc(titulo)}</span><span class="mt">${meta}</span>${ej ? `<span class="rs" dir="auto">${esc(recortar(ej, 220))}</span>` : ""}</span>
       ${marca}</button>`;
   }).join("");
-  const faltan = D.visibles.length - tope;
   const linea = `<div class="fl-card">
     <h3>${t("Lo que pasó","What happened","O que aconteceu","מה קרה")}</h3>
-    ${chips}
-    ${D.visibles.length ? `<div class="fl-tl">${lineas}</div>${faltan > 0 ? `<div class="hint">${esc(t("Se muestran los últimos {n}; hay {m} más. En el reporte del lugar salen todos.","Showing the latest {n}; there are {m} more. The place report has them all.","Mostram-se os últimos {n}; há mais {m}. No relatório do lugar saem todos.","מוצגים {n} האחרונים; יש עוד {m}. בדוח המקום מופיעים כולם.",{ n: tope, m: faltan }))}</div>` : ""}`
+    ${chips}${proyRow}
+    ${items.length ? `<div class="fl-tl">${lineas}</div>${renderLoadMore("ficha-ver-mas", items.length - tope)}`
       : `<div class="empty-state">${esc(D.todos.length ? t("Ocultaste todo lo que hay. Tocá un tipo para volver a verlo.","You hid everything. Tap a type to show it again.","Você ocultou tudo. Toque um tipo para voltar a ver.","הסתרת הכול. הקש/י על סוג כדי להציג שוב.") : t("Todavía no hay nada cargado acá.","Nothing logged here yet.","Ainda não há nada registrado aqui.","עדיין לא נרשם כאן כלום."))}</div>`}
   </div>`;
-  // Al costado: los países de la zona o las ciudades del país.
+  // Al costado, primero los proyectos del lugar: cuánto avanzó cada uno,
+  // los vencidos en rojo y el próximo hito. Tocar uno filtra la línea.
+  const abiertos = D.proyectos.filter(p => !projectDone(p)).length;
+  const ladoProy = D.proyectos.length ? `<div class="fl-card"><h3>${esc(t("Proyectos en {l}","Projects in {l}","Projetos em {l}","פרויקטים ב{l}",{ l: nombre }))}<span class="fl-h3-nota">${esc(abiertos === 1 ? t("1 abierto","1 open","1 aberto","1 פתוח") : t("{n} abiertos","{n} open","{n} abertos","{n} פתוחים",{ n: abiertos }))}</span></h3><div class="fl-pj">${D.proyectos.map(p => {
+    const hs = hitosDe(p);
+    const d = hs.filter(h => h.st === "done").length, v = hs.filter(h => h.st === "overdue").length;
+    const prox = hs.find(h => h.st === "today" || h.st === "soon" || h.st === "upcoming");
+    const cerrado = projectDone(p);
+    const partes = [
+      cerrado ? esc(t("Completado","Completed","Concluído","הושלם")) : "",
+      hs.length ? esc(t("{d}/{n} hitos","{d}/{n} milestones","{d}/{n} marcos","{d}/{n} אבני דרך",{ d, n: hs.length })) : esc(t("sin hitos con fecha","no dated milestones","sem marcos com data","אין אבני דרך עם תאריך")),
+      v ? `<span class="v">${esc(v === 1 ? t("1 vencido","1 overdue","1 vencido","1 באיחור") : t("{v} vencidos","{v} overdue","{v} vencidos","{v} באיחור",{ v }))}</span>` : "",
+      prox && !cerrado ? esc(t("próximo: {h}, {f}","next: {h}, {f}","próximo: {h}, {f}","הבא: {h}, {f}",{ h: recortar(prox.m.label, 40), f: fmtISO(prox.f, { day:"numeric", month:"short" }) })) : "",
+    ].filter(Boolean).join(" · ");
+    return `<button type="button" class="fl-pj-item${elegido === p.id ? " on" : ""}" data-action="ficha-proyecto" data-id="${p.id}" aria-pressed="${elegido === p.id}">
+      <b dir="auto">${esc(calendarioLabel(p))}</b><span class="fl-pj-bar" aria-hidden="true"><i style="width:${hs.length ? Math.round(d * 100 / hs.length) : 0}%"></i></span><small>${partes}</small></button>`; }).join("")}</div></div>` : "";
+  // Después, los países de la zona o las ciudades del país.
   const ladoHijos = hijos.length ? `<div class="fl-card"><h3>${L.zona ? t("Países","Countries","Países","מדינות") : t("Ciudades","Cities","Cidades","ערים")}</h3><div class="fl-hijos">${hijos.map(h => {
     const ult = h.posts.map(fechaDePost).sort().pop();
     const pend = h.posts.reduce((n, p) => n + pasosPendientes(partesDeLugar(p, h.L)).length, 0);
@@ -18672,8 +18831,25 @@ function renderFichaLugar(L){
     <div class="fl-ritmo">${porMes.map(x => `<i class="${x.v ? "v" : ""}" style="height:${x.n ? Math.max(6, Math.round(x.n * 100 / topeMes)) : 0}%" title="${esc(fmtISO(x.m + "-01", { month:"long", year:"numeric" }))}: ${x.n}"></i>`).join("")}</div>
     <div class="fl-ritmo-ej"><span>${esc(fmtISO(meses[0] + "-01", { month:"short" }))}</span><span>${esc(fmtISO(meses[11] + "-01", { month:"short" }))}</span></div>
     <div class="hint fl-ritmo-ley"><i class="v"></i> ${t("con visita","with a visit","com visita","עם ביקור")}</div></div>` : "";
+  // Quiénes trabajaron acá: quien cargó cada cosa y los participantes con
+  // cuenta en la app, una vez por registro. Lo traído de Google Calendar
+  // no lo cargó una persona (el usuario, 6/10/2026: «Google Calendar»
+  // aparecía como alguien del equipo): cuenta su organizador, si es del
+  // equipo; el calendario mismo («LatAm») no es nadie.
   const gente = new Map();
-  D.visibles.forEach(p => { const k = p.authorEmail || p.authorName; if(!k) return; const g = gente.get(k) || { n: 0, email: p.authorEmail, nombre: p.authorName }; g.n++; gente.set(k, g); });
+  D.visibles.forEach(p => {
+    const deEste = new Set();
+    const sumar = (m, email, nombre) => {
+      const k = String(m ? m.email : (email || nombre || "")).toLowerCase();
+      if(!k || deEste.has(k)) return;
+      deEste.add(k);
+      const g = gente.get(k) || { n: 0, email: m ? m.email : email, nombre: m ? m.name : nombre };
+      g.n++; gente.set(k, g);
+    };
+    if(esDeCalendar(p)){ const m = miembroPorTexto(p.organizer); if(m) sumar(m); }
+    else sumar(memberByEmail(p.authorEmail), p.authorEmail, p.authorName);
+    (p.participants || []).forEach(x => { const m = x && x.email ? memberByEmail(x.email) : null; if(m) sumar(m); });
+  });
   const quienes = gente.size ? `<div class="fl-card"><h3>${t("Quiénes trabajaron acá","Who worked here","Quem trabalhou aqui","מי עבד כאן")}</h3><div class="fl-gente">${[...gente.values()].sort((a, b) => b.n - a.n).slice(0, 6).map(g => {
     const m = g.email ? memberByEmail(g.email) : null;
     const u = m || { name: g.nombre || g.email, photoURL: "" };
@@ -18688,7 +18864,7 @@ function renderFichaLugar(L){
   return `<div class="ficha-lugar">${tituloPrint}${migas}${head}${seg}${incluyePrint}
     ${lectura.length ? `<div class="fl-card fl-lectura"><h3>${t("Lectura rápida","At a glance","Leitura rápida","במבט מהיר")}</h3><ul>${lectura.map(x => `<li class="${x.alerta ? "alerta" : ""}"><span class="ic" aria-hidden="true">${x.ic}</span><span>${x.html}</span></li>`).join("")}</ul></div>` : ""}
     ${stats}
-    <div class="fl-grid"><div class="fl-main">${pasos}${linea}</div><div class="fl-lado">${ladoHijos}${ritmo}${quienes}${documentos}</div></div>
+    <div class="fl-grid"><div class="fl-main">${pasos}${linea}</div><div class="fl-lado">${ladoProy}${ladoHijos}${ritmo}${quienes}${documentos}</div></div>
   </div>`;
 }
 // «Reporte del lugar»: se dibuja todo desplegado, se imprime (o se guarda
@@ -18739,6 +18915,9 @@ function openFichaPost(postId){
 function closeFichaPost(){
   fichaPostOverlay.hidden = true;
   fichaPostId = null;
+  // Sin la tarjeta vieja adentro: escondida seguía en la página y una
+  // búsqueda por posteo (.post[data-post-id]) podía dar con ella primero.
+  document.getElementById("fichaPostBody").innerHTML = "";
   if(fichaPostReturnFocus && typeof fichaPostReturnFocus.focus === "function") fichaPostReturnFocus.focus();
   fichaPostReturnFocus = null;
 }
@@ -20493,20 +20672,21 @@ document.addEventListener("click", async e=>{
     render();
   },
     "drill-zone": async (el) => {
-    state.view = "paises"; fichaOrigen = null; state.countryDrill = null; state.ciudadDrill = null; state.zonaDrill = el.dataset.zona; render(); scrollToTop();
+    state.view = "paises"; fichaOrigen = null; reiniciarFicha(); state.countryDrill = null; state.ciudadDrill = null; state.zonaDrill = el.dataset.zona; render(); scrollToTop();
   },
     "drill-country": async (el, e, action, postId) => {
-    state.view = "paises"; fichaOrigen = null; state.zonaDrill = null; state.countryDrill = el.dataset.country; state.ciudadDrill = null; render(); scrollToTop();
+    state.view = "paises"; fichaOrigen = null; reiniciarFicha(); state.zonaDrill = null; state.countryDrill = el.dataset.country; state.ciudadDrill = null; render(); scrollToTop();
   },
     "drill-city": async (el, e, action, postId) => {
-    state.view = "paises"; fichaOrigen = null; state.zonaDrill = null; state.countryDrill = el.dataset.country; state.ciudadDrill = el.dataset.city; render(); scrollToTop();
+    state.view = "paises"; fichaOrigen = null; reiniciarFicha(); state.zonaDrill = null; state.countryDrill = el.dataset.country; state.ciudadDrill = el.dataset.city; render(); scrollToTop();
   },
     "drill-clear": async (el, e, action, postId) => {
-    fichaOrigen = null; state.countryDrill = null; state.zonaDrill = null; state.ciudadDrill = null; render();
+    fichaOrigen = null; reiniciarFicha(); state.countryDrill = null; state.zonaDrill = null; state.ciudadDrill = null; render();
   },
     "volver-ficha": async () => {
     const L = fichaOrigen; fichaOrigen = null;
     if(!L) return;
+    reiniciarFicha();
     state.view = "paises"; state.zonaDrill = L.zona || null; state.countryDrill = L.country || null; state.ciudadDrill = L.city || null;
     render(); scrollToTop();
   },
@@ -20524,6 +20704,24 @@ document.addEventListener("click", async e=>{
     render();
   },
     "ficha-abrir": async (el, e, action, postId) => { openFichaPost(postId); },
+    // Un hito: se abre el proyecto con su panel de hitos ya a la vista.
+    "ficha-abrir-hito": async (el) => { openProjects.add(el.dataset.proyecto); openFichaPost(el.dataset.proyecto); },
+    // Los hitos de qué proyectos: todos (""), ninguno, o uno solo (tocar
+    // el mismo de nuevo vuelve a todos).
+    "ficha-proyecto": async (el) => {
+    const id = el.dataset.id || "";
+    fichaProyecto = id === "" ? null : fichaProyecto === id ? null : id;
+    render();
+  },
+    "ficha-ver-mas": async (el) => {
+    // Como "feed-load-more": se queda donde estaba y sin el foco en el
+    // botón, que después del render es el nuevo, al final de la lista.
+    const y = window.scrollY;
+    el.blur();
+    fichaVisibles += FICHA_TANDA;
+    render();
+    window.scrollTo({ top:y, behavior:"auto" });
+  },
     "ficha-imprimir": async () => { imprimirFicha(); },
     "ficha-cargar": async (el) => {
     if(!canWrite()) return;
