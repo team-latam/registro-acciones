@@ -1761,6 +1761,27 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   await p.close();
 }
 
+/* ---------- Un id armado no mete nada en la pantalla (docs/AUDITORIA.md, U3) ----------
+   El id lo elige quien escribe, y la app lo pone en decenas de atributos
+   de cada tarjeta. Sin escaparlo, un id con comillas cerraba el atributo y
+   sumaba los suyos. La base ahora rechaza esa forma (03-validacion.sql,
+   posts_id_forma); la app lo escapa igual, por si alguna fila vieja la tiene. */
+{
+  const raro = 'p_raro"><b id="inyectado">x</b><i x="';
+  const { p, errores } = await entrar(ADMIN, "Benny", base => {
+    const molde = base.posts.find(x => x.id === "p_reunion");
+    base.posts.push({ ...JSON.parse(JSON.stringify(molde)), id: raro, title: "Posteo con id raro", images: [] });
+    base.replies.push({ ...base.replies[0], id: 'r_raro"><u id="inyectado2">', post_id: raro, content: "Comentario con id raro" });
+  });
+  eq("id raro: el posteo aparece", await esperarTexto(p, "Posteo con id raro"), true);
+  await p.evaluate(raro => document.querySelector(`button[data-action="toggle-thread"][data-post-id="${CSS.escape(raro)}"]`)?.click(), raro);
+  await esperarTexto(p, "Comentario con id raro", 3000);
+  eq("id raro: no aparece ningún elemento inyectado", await p.evaluate(() => [!!document.getElementById("inyectado"), !!document.getElementById("inyectado2")]), [false, false]);
+  eq("id raro: la tarjeta guarda el id entero en su atributo", await p.evaluate(raro => [...document.querySelectorAll("article.post")].some(a => a.dataset.postId === raro), raro), true);
+  eq("id raro: sin un solo error", errores, []);
+  await p.close();
+}
+
 /* ---------- Alguien que entra por primera vez ---------- */
 {
   const { p, errores, base } = await entrar("pedro@x.com", "Pedro Gómez");

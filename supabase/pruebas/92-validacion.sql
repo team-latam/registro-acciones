@@ -16,6 +16,29 @@ insert into public.posts(id,title,content,date,start_date,end_date,activity_type
 \set YO 'lab.como(''benny@team-latam.com'')'
 \set NUEVO 'insert into public.posts(id,title,content,date,start_date,end_date,activity_type,author_name,author_email'
 
+-- ---------- La forma del id (docs/AUDITORIA.md, U3) ----------
+select lab.probar('un id como los que arma la app entra', :YO,
+  $q$insert into public.posts(id,title,content,date,start_date,end_date,activity_type,author_name,author_email)
+     values ('k3m9x0abcdefghij1234','T','C','2026-09-10','2026-09-10','2026-09-10','evento','B','benny@team-latam.com')$q$, true);
+select lab.probar('un id de Calendar (cal_ + evento con _ y T/Z) entra', :YO,
+  $q$insert into public.posts(id,title,content,date,start_date,end_date,activity_type,author_name,author_email)
+     values ('cal_abc123_20260113T010000Z','T','C','2026-09-10','2026-09-10','2026-09-10','evento','B','benny@team-latam.com')$q$, true);
+select lab.probar('un id con comillas y < > NO', :YO,
+  $q$insert into public.posts(id,title,content,date,start_date,end_date,activity_type,author_name,author_email)
+     values ('x"><b>','T','C','2026-09-10','2026-09-10','2026-09-10','evento','B','benny@team-latam.com')$q$, false);
+select lab.probar('un id con espacios NO', :YO,
+  $q$insert into public.posts(id,title,content,date,start_date,end_date,activity_type,author_name,author_email)
+     values ('a b','T','C','2026-09-10','2026-09-10','2026-09-10','evento','B','benny@team-latam.com')$q$, false);
+select lab.probar('un comentario con id raro NO', :YO,
+  $q$insert into public.replies(id,post_id,content,author_name,author_email)
+     values ('r''x','p1','Hola','Benny','benny@team-latam.com')$q$, false);
+select lab.probar('un comentario que responde a un id raro NO', :YO,
+  $q$insert into public.replies(id,post_id,content,author_name,author_email,reply_to_id)
+     values ('r_ok','p1','Hola','Benny','benny@team-latam.com','"onx=')$q$, false);
+select lab.probar('un comentario normal que responde a otro entra', :YO,
+  $q$insert into public.replies(id,post_id,content,author_name,author_email,reply_to_id)
+     values ('r_ok2','p1','Hola','Benny','benny@team-latam.com','r_ok')$q$, true);
+
 -- ---------- Largos y formatos ----------
 select lab.probar('un posteo normal entra', :YO,
   $q$insert into public.posts(id,title,content,date,start_date,end_date,activity_type,author_name,author_email)
