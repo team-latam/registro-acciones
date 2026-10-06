@@ -24,8 +24,11 @@ para ver**. Con eso el calendario puede dejar de ser público.
 - Los **feriados** siguen con la clave de API: son calendarios públicos
   de Google, no del equipo.
 
-Mientras la función no esté publicada, la app sigue leyendo como antes,
-con la clave de API: nada se corta durante el armado.
+**Hecho el 6/10/2026**: la función publicada, la cuenta con el calendario
+compartido solo para ver, y el calendario **cerrado** (comprobado desde
+afuera: la clave de API recibe «Not Found»). La app y el nocturno ya no
+tienen el camino viejo; los pasos de abajo quedan para rehacerlo si hiciera
+falta (una llave nueva, otro proyecto).
 
 La publica sola el workflow **«Funciones de Supabase»**
 (`.github/workflows/funciones.yml`) en cada push a `main` que la toca.
@@ -112,9 +115,8 @@ está inhabilitada por una política», no seguir: contarle a Claude.
 2. Repetir las pruebas del paso 5 (2 y 3). Si las dos andan, listo: el
    calendario ya no se ve desde afuera.
 
-Después Claude saca de la app el camino viejo (la clave de API para leer
-el calendario del equipo), y el secreto `CALENDAR_API_KEY` de GitHub se
-puede borrar.
+Después ya no hace falta el secreto `CALENDAR_API_KEY` de GitHub (la
+clave de la página sigue, solo para los feriados).
 
 ---
 

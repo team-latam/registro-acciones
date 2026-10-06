@@ -162,7 +162,6 @@ const leer = async r => [r.status, await r.json()];
   process.env.SUPABASE_URL = "https://falso.supabase.co";
   process.env.SUPABASE_SERVICE_ROLE_KEY = "llave-de-mentira";
   process.env.CALENDAR_ID = CAL;
-  process.env.CALENDAR_API_KEY = "clave-de-mentira";
   process.env.GOOGLE_CUENTA_DE_SERVICIO = CUENTA_JSON;
   const reg = [];
   const google = googleDeMentira(reg);
@@ -188,7 +187,7 @@ const leer = async r => [r.status, await r.json()];
   const log = console.log; console.log = () => {};
   try{ await main(); } finally { console.log = log; }
   const aCal = pedidos.filter(p => p.url.includes("googleapis.com/calendar"));
-  eq("nocturno: con la cuenta cargada, lee con ella y sin la clave de API",
+  eq("nocturno: lee con la cuenta, sin ninguna clave de API",
      [aCal.length, aCal[0] && aCal[0].auth, aCal.some(p => /key=/.test(p.url)), config.calendarSync.syncToken], [1, "Bearer permiso-1", false, "tok-2"]);
 }
 

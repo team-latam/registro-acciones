@@ -133,6 +133,7 @@ export async function entrar(b, email, nombre, { viewport, dark, lang, sinSesion
     const u = ruta.request().url();
     if (u === CDN) return ruta.fulfill({ contentType: "application/javascript", body: FALSO });
     if (/\/storage\/v1\/object\/sign\//.test(u)) return ruta.fulfill({ contentType: "image/png", body: PNG });
+    if (u.includes("/functions/v1/calendario")) return ruta.fulfill({ contentType: "application/json", body: JSON.stringify({ estado: 200, cuerpo: { items: [] } }) });
     if (/googleapis\.com\/calendar\//.test(u)) return ruta.fulfill({ contentType: "application/json", body: JSON.stringify({ items: [] }) });
     return ruta.abort();
   });

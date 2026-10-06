@@ -41,13 +41,12 @@ https://github.com/team-latam/registro-acciones/settings/secrets/actions
 
 ### 3. Con qué lee el calendario
 
-**Desde el 6/10/2026, con la cuenta de servicio** (el secreto
+**Desde el 6/10/2026, solo con la cuenta de servicio** (el secreto
 `GOOGLE_CUENTA_DE_SERVICIO`, el mismo de la función de Supabase; los
-pasos en `supabase/functions/LEEME.md`). Con eso el calendario ya no
-tiene que ser público. Si ese secreto no está, lee como antes, con la
-clave de API de abajo, que solo sirve con el calendario público.
+pasos en `supabase/functions/LEEME.md`). El calendario ya no es público:
+sin ese secreto, la corrida avisa «Falta GOOGLE_CUENTA_DE_SERVICIO».
 
-#### Cómo era: una clave de Google aparte, solo para esto
+#### Cómo era antes (ya no se usa): una clave de Google aparte
 
 La clave con la que la app lee el calendario **no sirve desde un
 servidor**, y está bien que así sea: viaja en la página, cualquiera la ve,

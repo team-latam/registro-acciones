@@ -126,7 +126,9 @@ export function createClient(url, clave){
   estado.cliente = [url, clave];
   return {
     auth: {
-      getSession: async () => ({ data: { session: copia(estado.sesion) } }),
+      // Con un access_token de mentira, como la de verdad: la app lo manda a
+      // la función «calendario» (docs/AUDITORIA.md, U5).
+      getSession: async () => ({ data: { session: estado.sesion ? { access_token: "sesion-de-mentira", ...copia(estado.sesion) } : null } }),
       onAuthStateChange(fn){ estado.oyentes.push(fn); return { data: { subscription: { unsubscribe(){} } } }; },
       signInWithOAuth: async o => { estado.logins.push(copia(o)); return { error: null }; },
       signOut: async () => { estado.sesion = null; estado.oyentes.forEach(f => f("SIGNED_OUT", null)); return { error: null }; },
@@ -313,6 +315,9 @@ async function entrar(email, nombre, mod, viewport, pedidos){
       static async loadAsync(buf){ const xml = new TextDecoder().decode(buf); return { file: n => n === "word/document.xml" ? { async: async () => xml } : null }; } };` });
     if(/\/storage\/v1\/object\/sign\/.*\.docx/.test(u)) return ruta.fulfill({ contentType: "application/octet-stream", body: /cierre-ar/i.test(u) ? CIERRE_AR_XML : /cierre-pde/i.test(u) ? CIERRE_PDE_XML : /cierre/i.test(u) ? CIERRE_XML : "<nada/>" });
     if(/\/storage\/v1\/object\/sign\//.test(u)) return ruta.fulfill({ contentType: "image/png", body: PNG });
+    // El calendario del equipo, por la función de Supabase: sin cambios.
+    if(u.includes("/functions/v1/calendario"))
+      return ruta.fulfill({ contentType: "application/json", body: JSON.stringify({ estado: 200, cuerpo: { items: [] } }) });
     if(/^https:\/\/www\.googleapis\.com\/calendar\//.test(u))
       return ruta.fulfill({ contentType: "application/json", body: JSON.stringify({ items: [] }) });
     return ruta.abort();
