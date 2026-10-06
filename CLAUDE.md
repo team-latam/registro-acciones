@@ -39,6 +39,17 @@ decisiones de arquitectura.
   días). Claude no puede crear repos en la cuenta `team-latam` (es una
   cuenta de usuario; la conexión de GitHub no tiene ese permiso).
 
+## Auditorías — `auditoria/`
+
+Cuando el usuario pida una auditoría (o «revisá todo»), se arranca de
+`auditoria/METODO.md`: los pasos, las áreas, los niveles y lo que se revisa
+a mano. `auditoria/RECURRENTES.md` es lo que ya falló más de una vez;
+`auditoria/correr.sh` corre las herramientas (textos, código, seguridad,
+pantallas en todos los tamaños e idiomas, ventanas, datos variados con
+semilla) y arma un informe. Queda abierto: cada auditoría suma lo que
+aprendió. La skill `.claude/skills/auditoria/` es la entrada. A diferencia
+de `pruebas/`, la auditoría no falla: busca y anota.
+
 ## Ramas — LEER ANTES DE EMPEZAR
 
 **La rama de producción es `main`.** Es la rama default

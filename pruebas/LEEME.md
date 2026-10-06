@@ -61,3 +61,13 @@ INDEX=/tmp/roto.html ./pruebas/correr.sh
 Las pruebas del esquema de la base y del sync de Calendar están aparte, en
 `supabase/pruebas/` y `supabase/sync-calendar/pruebas/`, con sus propios
 workflows.
+
+## La app de mentira compartida
+
+`app_de_mentira.mjs` entra a la app (el `index.html` de verdad, o el que
+diga `INDEX`) contra el Supabase de mentira de `app_dom_test.mjs`, con
+datos parecidos a los reales, en el tamaño y el idioma que se pida; recorre
+todas las pantallas (`recorrerApp`) y mide lo que queda cortado
+(`revisarRecortes`). La usan `recortes_test.mjs` y las herramientas de
+`auditoria/`. Una pantalla o ventana nueva se suma a `recorrerApp`: así la
+revisan las dos.

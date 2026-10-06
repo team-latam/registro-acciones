@@ -1,5 +1,10 @@
 # Auditoría completa — 6 de octubre de 2026
 
+> Desde esta auditoría hay un método fijo para las próximas: `auditoria/METODO.md`
+> (pasos, áreas, niveles), `auditoria/RECURRENTES.md` (lo que suele fallar) y
+> `auditoria/correr.sh` (las herramientas). La próxima pasa esta a
+> `docs/auditoria/historial/`.
+
 Pedido del usuario: una auditoría de todo (bugs, código muerto, seguridad,
 diseño, sobrecarga y tamaño de lo visual, estética en escritorio y celular,
 almacenamiento, uso de las funcionalidades) y una crítica del uso, para
