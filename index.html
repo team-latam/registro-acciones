@@ -2212,9 +2212,25 @@
   .fl-doc i{ flex:none; width:30px; height:30px; border-radius:7px; color:#fff; font-style:normal; font-size:9px; font-weight:800; display:flex; align-items:center; justify-content:center; }
   .fl-doc span{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .fl-doc small{ margin-inline-start:auto; color:var(--text-muted); white-space:nowrap; }
-  .ficha-post-modal{ max-width:720px; padding-top:44px; }
-  .ficha-post-modal #fichaPostBody{ overflow-y:auto; min-height:0; }
+  /* La ventana de un ítem de la ficha. Antes tenía alto tope y una barra
+     de desplazamiento propia: quedaba chica, el título se perdía arriba y
+     el menú ⋯ se cortaba contra el borde (captura del usuario, 6/10/2026).
+     Ahora mide lo que mide la tarjeta y se desplaza la ventana entera,
+     con una cabecera pegada arriba (de dónde se vino y la ✕). */
+  .ficha-post-modal{ max-width:760px; max-height:none; padding:0 22px 22px; }
+  .ficha-post-modal .fp-cabeza{
+    position:sticky; top:0; z-index:5; display:flex; align-items:center; justify-content:space-between; gap:10px;
+    margin:0 -22px 12px; padding:12px 22px 10px; background:var(--card); border-bottom:1px solid var(--border);
+    border-radius:var(--radius-lg) var(--radius-lg) 0 0;
+  }
+  .ficha-post-modal .fp-cabeza small{ font-size:12px; font-weight:700; color:var(--text-muted); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .ficha-post-modal .close{ position:static; flex:none; }
+  .ficha-post-modal #fichaPostBody{ overflow:visible; }
   .ficha-post-modal .card.post{ box-shadow:none; border:none; padding:0; margin:0; }
+  @media (max-width:640px){
+    .ficha-post-modal{ max-height:none; padding:0 14px 16px; }
+    .ficha-post-modal .fp-cabeza{ margin:0 -14px 10px; padding:8px 8px 6px 14px; }
+  }
   @media (max-width:760px){
     .fl-grid{ grid-template-columns:minmax(0,1fr); }
     .fl-stats{ grid-template-columns:repeat(2,minmax(0,1fr)); }
@@ -3674,8 +3690,8 @@
 </div>
 
 <div class="modal-overlay" id="fichaPostOverlay" hidden>
-  <div class="modal modal-wrap ficha-post-modal" role="dialog" aria-modal="true" aria-label="Detalle">
-    <button class="close" id="fichaPostClose" aria-label="Cerrar">✕</button>
+  <div class="modal modal-wrap ficha-post-modal" role="dialog" aria-modal="true" aria-labelledby="fichaPostDesde">
+    <div class="fp-cabeza"><small id="fichaPostDesde"></small><button class="close" id="fichaPostClose" aria-label="Cerrar">✕</button></div>
     <div id="fichaPostBody"></div>
   </div>
 </div>
@@ -18684,6 +18700,8 @@ let fichaPostId = null, fichaPostReturnFocus = null;
 function renderFichaPost(){
   const post = getPostById(fichaPostId);
   if(!post){ closeFichaPost(); return; }
+  const L = state.zonaDrill ? { zona: state.zonaDrill } : state.countryDrill ? { country: state.countryDrill, city: state.ciudadDrill || null } : null;
+  document.getElementById("fichaPostDesde").textContent = L ? t("De la ficha de {l}","From the {l} page","Da ficha de {l}","מתוך כרטיס {l}",{ l: nombreDeLugar(L) }) : "";
   document.getElementById("fichaPostBody").innerHTML = renderPostCard(post, state.repliesByPost[post.id] || []);
 }
 function openFichaPost(postId){
@@ -21110,7 +21128,14 @@ document.addEventListener("click", async e=>{
     return;
   }
   const handler = CLICK_ACTIONS[action];
-  if (handler) await handler(el, e, action, postId);
+  if(!handler) return;
+  // Desde la ventana de un ítem de la ficha (Países), una acción que lleva
+  // a otra sección (Gestionar proyecto, Ver en el Feed, Ver lo que
+  // cargó…) cambiaba la vista DEBAJO de la ventana, que seguía tapándola:
+  // "no funciona" (el usuario, 6/10/2026). Si cambió la vista, se cierra.
+  const vistaAntes = state.view, desdeLaFicha = !fichaPostOverlay.hidden;
+  await handler(el, e, action, postId);
+  if(desdeLaFicha && !fichaPostOverlay.hidden && state.view !== vistaAntes){ fichaPostReturnFocus = null; closeFichaPost(); }
 });
 
 // El scroll de un textarea (al crecer más allá de max-height, o al mover
