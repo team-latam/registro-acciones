@@ -8473,6 +8473,7 @@ function subscribeTerritoryConfig(){
 // vieja. Sin doc todavía (nadie guardó nunca desde el panel), no hace
 // nada y quedan los defaults de siempre.
 function applyTerritoryConfig(cfg){
+  configVersion++;
   if(!cfg || !cfg.zones) return;
   Object.keys(ZONES).forEach(k=>delete ZONES[k]);
   Object.entries(cfg.zones).forEach(([key,z])=>{ ZONES[key] = { key, label:z.label, color:z.color }; });
@@ -8538,6 +8539,7 @@ function savePrefs(patch){
     });
 }
 function applyPreferencesConfig(cfg){
+  configVersion++;
   applyActivityTypesConfig(cfg && cfg.activityTypes);
   applyExtraCitiesConfig(cfg && cfg.extraCities);
   applyCalendarIdConfig(cfg && cfg.calendarId);
@@ -10631,12 +10633,27 @@ function renderMentionsMenuItems(hasInvite, upcoming){
     </button>`).join("");
 }
 
+// Lo que se calcula recorriendo TODOS los posteos y comentarios (cuántos
+// por lugar, próximos eventos, comentarios y menciones recientes, cambios)
+// se guarda y se vuelve a calcular solo si cambió algo de lo que depende:
+// las listas (que llegan siempre como listas nuevas, nunca se cambian en
+// el lugar), quién mira, sus preferencias, las zonas y tipos, el día. Antes
+// se borraba en cada dibujado, hasta por cada tecla del buscador
+// (docs/AUDITORIA.md, M7).
+let configVersion = 0;
+let firmaDeLoCalculado = null;
+function firmaDeDatos(){
+  return [state.posts, state.repliesByPost, state.roster, state.formerMembers, state.prefs,
+          state.auth && state.auth.user && state.auth.user.email, configVersion, todayISO(), currentLang()];
+}
 function doRender(){
-  placeCountsCache = null;
-  // Mismo criterio: recorren TODOS los posteos/respuestas y se llamaban de
-  // cero en cada render (hasta por cada tecla de un buscador). Se cachean
-  // acá y se invalidan al principio de cada doRender(), como los lugares.
-  upcomingEventsCache = null; recentRepliesCache = null; recentMentionsCache = null; recentChangesCache = null;
+  const firma = firmaDeDatos();
+  if(!firmaDeLoCalculado || firma.some((x, i) => x !== firmaDeLoCalculado[i])){
+    firmaDeLoCalculado = firma;
+    placeCountsCache = null;
+    upcomingEventsCache = null; recentRepliesCache = null; recentMentionsCache = null; recentChangesCache = null;
+    ocurrenciasCache = new WeakMap();
+  }
   // La solapa Memoria ya no existe (se unificó con el Feed, ver README):
   // cualquier camino que llegue ahí (un atajo viejo, un enlace guardado)
   // cae en el Feed.
@@ -14799,7 +14816,24 @@ function pasaFiltroDelReporte(p, f){
       || (sc.country && COUNTRY_BY_NAME[sc.country] && COUNTRY_BY_NAME[sc.country].zone === f.zona))) return false;
   return true;
 }
+// El reporte se arma recorriendo todos los posteos, y cada pantalla de
+// Reportes arma dos (el período y el anterior) en cada dibujado: abrir el
+// menú de filtros o tocar un chip lo rehacía todo (137 ms con 2.000
+// posteos). Se guarda por período y filtro hasta que cambien los datos
+// (docs/AUDITORIA.md, M7).
+let reportesCache = new Map(), reportesFirma = null;
 function armarReporte(desdeISO, hastaISO, filtro){
+  // Sin firma (las páginas de prueba que sacan solo esto) se arma siempre.
+  if(typeof firmaDeDatos !== "function") return calcularReporte(desdeISO, hastaISO, filtro);
+  const firma = firmaDeDatos();
+  if(!reportesFirma || firma.some((x, i) => x !== reportesFirma[i])){ reportesFirma = firma; reportesCache = new Map(); }
+  const clave = JSON.stringify([desdeISO, hastaISO, filtro || null], (k, v) => v instanceof Set ? [...v].sort() : v);
+  if(reportesCache.has(clave)) return reportesCache.get(clave);
+  const r = calcularReporte(desdeISO, hastaISO, filtro);
+  reportesCache.set(clave, r);
+  return r;
+}
+function calcularReporte(desdeISO, hastaISO, filtro){
   const porMes = Object.create(null);
   const porZona = Object.create(null);
   const porPais = Object.create(null);
@@ -16489,7 +16523,17 @@ function occurrenceDateOf(post, iso){
 // las corridas marcadas — el selector las tiene que mostrar para poder
 // deshacerlas. `iso` es la fecha original (la identidad); `date`, el día
 // en que pasa de verdad.
+// Lo mismo que lo de arriba, por posteo: expandir 30 meses de una
+// repetición se hacía dos veces por posteo repetido en cada dibujado
+// (occurrenceOf la pide dos veces, y el orden del Feed y la tarjeta otra).
+let ocurrenciasCache = new WeakMap();
 function postOccurrenceList(post){
+  if(post && typeof post === "object" && ocurrenciasCache.has(post)) return ocurrenciasCache.get(post);
+  const lista = calcularOcurrencias(post);
+  if(post && typeof post === "object") ocurrenciasCache.set(post, lista);
+  return lista;
+}
+function calcularOcurrencias(post){
   const start = post.startDate || post.date;
   if(!start) return [];
   const hoy = todayISO();

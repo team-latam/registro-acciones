@@ -17,7 +17,7 @@ const grab = hacerGrab(src);
 const css = src.match(/<style>([\s\S]*?)<\/style>/)[1];
 const NOMBRES = ["RRULE_DOW","RRULE_MAX_STEPS","OCC_BACK_MONTHS","occView","occPopOpen","todayISO",
   "isoDate","addMonthsISO","addDaysISO","isoDow","rruleDateToISO","parseRecurrence","expandRecurrence",
-  "recurrenceSkipDates","recurrenceLabel","postOccurrenceList","recurrenceMoves",
+  "recurrenceSkipDates","recurrenceLabel","ocurrenciasCache","calcularOcurrencias","postOccurrenceList","recurrenceMoves",
   "isISODate","occurrenceDateOf","nearestOccurrence","occurrenceOf","repliesForOccurrence","isRecurring",
   "closeOccPops","syncOccPopState","occDateLabel","renderOccurrencePicker","positionDatePop"];
 const ACCIONES = ["occ-toggle","occ-pick","occ-skip","occ-unskip","occ-unmove","cal-open-holiday","holiday-new-event"];
