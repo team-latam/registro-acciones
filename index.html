@@ -184,7 +184,7 @@
   .brand .logo{ font-size:26px; }
   .brand h1{ font-size:17px; margin:0; font-weight:800; letter-spacing:0.2px; }
   .brand .sub{ font-size:11px; color:#bfe9ef; font-weight:500; }
-  @media (max-width:400px){
+  @media (max-width:520px){
     .brand .logo{ font-size:22px; }
     .brand h1{ font-size:15.5px; }
   }
@@ -300,12 +300,6 @@
   .new-posts-pill:focus-visible{ outline:3px solid rgba(8,42,44,.35); outline-offset:2px; }
   .new-posts-pill[hidden]{ display:none; }
   .new-posts-pill svg{ width:16px; height:16px; }
-  @media (max-width:640px){
-    .fab-wrap{ inset-block-end:16px; inset-inline-end:16px; }
-    .fab-main{ width:50px; height:50px; font-size:27px; }
-    /* 16 + 50 + 10 = 76; centrada: (50 − 40) / 2 = 5 → 16 + 5 = 21 */
-    .scroll-top{ inset-block-end:76px; inset-inline-end:21px; }
-  }
 
   /* Avatar circular en el header: al apretarlo despliega un menú tipo
      Google con nombre/email y cerrar sesión, en vez de mostrar el email
@@ -540,14 +534,13 @@
   .gate-portada .gate-primera-linea b{ color:var(--ink-strong); }
   .gate-portada .gate-idiomas{ justify-content:center; }
   .gate-pie{ position:absolute; bottom:18px; inset-inline:0; text-align:center; font-size:12px; color:rgba(255,255,255,.45); }
-  @media (max-width:500px){
+  @media (max-width:520px){
     .gate-marca h1{ font-size:30px; }
     .gate-frase{ font-size:18px; }
   }
   .gate-tarjeta h2{ font-size:22px; }
   .gate-tarjeta p{ margin:0; }
   .gate-tarjeta .btn-google{ justify-content:center; width:100%; }
-  .gate-primera{ font-size:13px; font-weight:800; color:var(--ink-strong); margin-top:6px; }
   .gate-pasos{ display:flex; flex-direction:column; gap:10px; margin:0; padding:0; list-style:none; }
   .gate-paso{ display:flex; gap:12px; align-items:flex-start; font-size:13.5px; color:var(--text); line-height:1.5; text-align:start; }
   .gate-paso small{ color:var(--text-muted); }
@@ -577,7 +570,6 @@
     border:1.5px solid var(--border); font-size:13px; background:var(--card);
   }
   .users-toolbar .chipgroup{ align-items:center; }
-  .sort-label{ font-size:11.5px; font-weight:700; color:var(--text-muted); }
   .request-row{
     display:flex; align-items:center; gap:14px; background:var(--card); border:1px solid var(--border);
     border-radius:var(--radius-md); padding:14px 18px; margin-bottom:10px; box-shadow:var(--shadow);
@@ -617,7 +609,6 @@
     .request-row{ flex-wrap:wrap; gap:10px 12px; padding:12px 14px; }
     .request-row .rinfo{ flex:1 1 0; min-width:0; }
     .request-row .ractions{ flex:1 1 100%; justify-content:flex-end; flex-wrap:wrap; gap:4px 2px; }
-    .request-row .ractions-sep{ display:none; }
     .request-row .status-pill{ margin-inline-end:0; }
   }
   .btn-ghost:hover{ background:var(--surface-alt); }
@@ -634,7 +625,6 @@
   }
   .row-x:hover{ background:var(--danger-bg); color:var(--danger); }
   .row-x:disabled{ opacity:.4; cursor:not-allowed; }
-  .ractions-sep{ width:1px; height:20px; background:var(--border); margin:0 6px; }
 
   /* ---------- Actividad / registro de auditoría (admin) ---------- */
   /* Tabla de verdad con CSS Grid: las 4 columnas (Acción/Dispositivo/IP/
@@ -871,16 +861,6 @@
   .zc-chip.dragging{ position:fixed; z-index:120; cursor:grabbing; box-shadow:0 10px 28px rgba(8,42,44,.3); border-color:var(--celeste-dark); background:var(--card); pointer-events:none; }
   .zone-section.zc-over{ outline:2px dashed var(--celeste-dark); outline-offset:-2px; }
   .zonas-cambios{ margin-top:14px; padding:10px 14px; border-radius:var(--radius-sm); background:var(--warn-bg); border:1px solid var(--warn-border); color:var(--warn-text); font-size:13px; font-weight:600; line-height:1.5; }
-  /* Tipos: el tilde "Calendar" como interruptor. */
-  /* (Con .tipo-meta adelante para ganarle al ancho fijo de la regla base
-     y al tamaño de 20px de los tildes en celular.) */
-  .tipo-meta .tipo-sync-toggle input[type=checkbox]{
-    appearance:none; -webkit-appearance:none; width:34px; min-width:34px; height:20px; border-radius:999px; background:var(--border); position:relative; cursor:pointer; margin:0; flex:none; transition:background .15s;
-  }
-  .tipo-meta .tipo-sync-toggle input[type=checkbox]::after{ content:""; position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:#fff; transition:transform .15s; box-shadow:0 1px 3px rgba(0,0,0,.25); }
-  .tipo-meta .tipo-sync-toggle input[type=checkbox]:checked{ background:var(--celeste-dark); }
-  .tipo-meta .tipo-sync-toggle input[type=checkbox]:checked::after{ transform:translateX(14px); }
-  .tipo-meta .tipo-sync-toggle{ width:auto; gap:6px; }
 
   /* ---------- Zonas (panel admin) ----------
      Versión compacta (v2): las zonas van en una lista angosta de una sola
@@ -888,9 +868,7 @@
      varias columnas en vez de una fila entera por país — con 43 países
      una lista de una sola columna ocupaba una pantalla entera de alto. */
   /* Mismo ancho que el resto de las pestañas (Solicitudes, Actividad,
-     etc.) — usa los 1200px de "main" sin achicarse. La grilla de países
-     de Zonas es auto-fill (ver .zone-countries) así que se acomoda sola
-     a lo ancho que le toque, sin quedar desproporcionada. */
+     etc.) — usa los 1200px de "main" sin achicarse. */
   /* Zonas v3: cada zona es una sección apilada de ancho completo (no
      columnas lado a lado, eso se probó y no gustó — ver charla) con una
      cabecera de color y sus países debajo en filas grandes, en vez de
@@ -956,20 +934,8 @@
   }
   .zone-rm:hover:not(:disabled){ background:var(--danger-soft); color:var(--danger); }
   .zone-rm:disabled{ opacity:0.25; cursor:not-allowed; }
-  .zone-countries{ display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); border-top:1px solid var(--border); }
-  .zone-countries:empty{ display:none; }
-  .country-row{ display:flex; align-items:center; gap:10px; padding:12px 18px; border-top:1px solid var(--border); border-inline-end:1px solid var(--border); }
-  .country-name{ flex:1; min-width:0; font-size:14px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .country-row select{
-    border:1.5px solid var(--border); background:var(--bg); color:var(--text); font-family:inherit;
-    font-size:12px; font-weight:700; border-radius:999px; padding:6px 12px; cursor:pointer; flex:none;
-  }
-  /* minmax(0,1fr) y min-width:0: con "1fr" a secas la fila no podía ser
-     más angosta que su contenido ("San Vicente y las Granadinas" más el
-     selector) y se salía de la tarjeta, con el selector cortado. */
-  @media (max-width:520px){ .zone-countries{ grid-template-columns:minmax(0,1fr); } .country-row{ border-inline-end:none; min-width:0; } }
   /* Filas de configuración genéricas (ícono + texto + control), usadas
-     hoy en Adjuntos — mismo lenguaje visual que .zone-section/.country-row
+     hoy en Adjuntos — mismo lenguaje visual que .zone-section
      en vez de labels sueltos arriba de inputs. */
   .settings-card{ background:var(--card); border-radius:var(--radius-lg); box-shadow:var(--shadow); overflow:hidden; }
   /* Título de bloque adentro de una sección: separa por TEMA cuando una
@@ -1051,46 +1017,9 @@
     padding-block:8px; padding-inline:4px 10px;
   }
   .pref-subnav{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:16px; }
-  .tipo-icon-input{
-    width:38px; flex:none; border:1px solid var(--border); border-radius:6px; padding:3px 4px;
-    font-size:15px; text-align:center; background:var(--card);
-  }
-  /* Fila de Tipos con grilla de 3 columnas (ícono | nombre | bloque de la
-     derecha) en vez de flexbox: con flex, el input del nombre (flex:1)
-     se comía el espacio sobrante distinto en cada fila según cuánto
-     texto tuviera el contador de posteos al lado ("0 posteos" vs "42
-     posteos"), y el checkbox terminaba arrancando en un x distinto por
-     fila — nada quedaba alineado. Con columnas fijas, la 3ra columna
-     (checkbox+Calendar+contador+borrar, ver .tipo-meta) siempre mide lo
-     mismo, así que arranca exactamente en el mismo lugar en toda fila. */
-  .tipo-sync-toggle{ display:flex; align-items:center; gap:4px; font-size:11px; color:var(--text-muted); width:72px; white-space:nowrap; cursor:pointer; }
-  .zone-edit-list{
-    display:flex; flex-direction:column; border:1px solid var(--border); border-radius:var(--radius-sm); overflow:hidden;
-  }
-  .zone-edit-row{ display:grid; grid-template-columns:38px minmax(0,1fr) auto; align-items:center; gap:8px; padding:8px; background:var(--card); }
-  .zone-edit-row + .zone-edit-row{ border-top:1px solid var(--border); }
-  .zone-edit-row:hover{ background:var(--surface-sunken); }
-  .zone-label-input{
-    min-width:0; border:1px solid transparent; border-radius:6px; padding:3px 6px; font-size:13px;
-    font-weight:600; background:transparent;
-  }
-  .zone-label-input:hover, .zone-label-input:focus{ border-color:var(--border); background:var(--card); outline:none; }
   .zone-count{ font-size:11px; color:var(--text-muted); flex:none; white-space:nowrap; }
-  .tipo-meta{ display:flex; align-items:center; gap:10px; justify-self:end; }
-  .tipo-meta .zone-count{ width:66px; text-align:end; }
-  @media (max-width:420px){
-    .zone-edit-row{ grid-template-columns:38px 1fr; }
-    .tipo-meta{ grid-column:1 / -1; justify-self:stretch; justify-content:flex-start; }
-  }
   /* Las ✕ de borrar medían 18px (y 16 en los chips de documentos): un
      blanco imposible con el dedo y chico hasta con el mouse. */
-  .zone-edit-row .rm{
-    width:26px; height:26px; border-radius:50%; background:var(--danger); color:#fff; border:none;
-    font-size:11px; cursor:pointer; line-height:26px; text-align:center; padding:0; flex-shrink:0;
-  }
-  .zone-edit-row .rm:disabled{ background:var(--border); color:var(--text-muted); cursor:not-allowed; }
-  /* Un tipo archivado (tanda 11): se ve apagado y con su etiqueta. */
-  .tipo-archivado{ background:var(--surface-alt); color:var(--text-muted); font-size:11px; }
   /* Dar acceso por adelantado (ver renderPreaprobar). */
   .preaprobar{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md); padding:14px 16px; margin-bottom:18px; }
   .preaprobar .hint{ margin:4px 0 10px; }
@@ -1294,7 +1223,6 @@
   /* ---------- Post card ---------- */
   .post{ transition:background-color .8s ease; }
   .post.mention-highlight, .pj-row.mention-highlight{ background:var(--highlight-bg); }
-  .post-head{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:10px; flex-wrap:wrap; }
   /* La tarjeta del Inicio (rediseño del 6/10/2026, pedido del usuario:
      "el correcto aprovechamiento de cada evento"): arriba el nombre y,
      a la derecha, cuándo (liviano: los días en oscuro, la hora en gris);
@@ -1338,7 +1266,6 @@
      elemento, así que dentro de un flex/grid la caja seguía creciendo. */
   .post-content, .reply-content, .post h3, .post-links a, .reply-links a, .post .hint, .post-date{ overflow-wrap:anywhere; }
   .post-scopes{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
-  .post-scopes-head{ margin:0 0 0 auto; justify-content:flex-end; }
   /* Un link es una ficha con el nombre y el sitio, no la dirección cruda
      (una URL de 90 caracteres no le dice nada a nadie). */
   .post-links{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
@@ -1945,7 +1872,6 @@
   .dt-time-input:hover{ border-color:var(--celeste-dark); }
   .dt-time-input:focus{ outline:none; border-color:var(--celeste-dark); background:var(--card); }
   .dt-time-input.invalid{ animation:dp-shake .32s ease; border-color:var(--danger); background:var(--danger-bg); color:var(--danger-text); }
-  .dt-row .date-field{ flex:1; min-width:0; }
   .dt-row .date-trigger{ width:100%; justify-content:center; }
   /* Va en la MISMA fila que las dos fechas. Las fechas nunca bajan de lo
      que mide "📅 09/12/2026"; el botón se queda con el resto y se recorta
@@ -1969,7 +1895,7 @@
      renderLocationSuggestions): mismo .autocomplete-list de lugar/mención,
      posicionado contra este wrapper en vez de contra .field-icon-body. */
   .location-field{ position:relative; }
-  @media (max-width:480px){ .field-icon-row{ gap:8px; } .field-icon{ width:16px; font-size:13px; } }
+  @media (max-width:520px){ .field-icon-row{ gap:8px; } .field-icon{ width:16px; font-size:13px; } }
 
   .type-picker{ display:flex; flex-wrap:wrap; gap:8px; }
   .type-picker label{ display:inline-flex; }
@@ -1977,10 +1903,6 @@
   .type-opt input{ display:none; }
   .type-opt.checked{ background:var(--petroleo); color:#fff; border-color:var(--petroleo); }
 
-  .scope-builder{ border:1.5px dashed var(--border); border-radius:var(--radius-md); padding:12px; }
-  .scope-builder-add{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px; }
-  .scope-builder-add.has-extra{ grid-template-columns:1fr 1fr 1fr; }
-  @media (max-width:520px){ .scope-builder-add, .scope-builder-add.has-extra{ grid-template-columns:1fr; } }
   .scope-list{ display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
   .btn-mini{ background:var(--celeste); color:var(--petroleo-dark); border:none; padding:9px 14px; border-radius:var(--radius-sm); font-weight:700; font-size:12.5px; cursor:pointer; }
   .btn-mini:hover{ background:var(--celeste-dark); color:#fff; }
@@ -2382,7 +2304,6 @@
   .tipo-dot{ width:8px; height:8px; border-radius:50%; background:var(--ok-text); flex:none; }
   .tipo-cal.off .tipo-dot{ background:var(--border); }
   .tipo-docs{ display:flex; flex-direction:column; gap:8px; }
-  .doc-fila{ display:flex; align-items:center; gap:8px; }
   .doc-fila .doc-chip{
     flex:1 1 0; min-width:0; display:flex; align-items:center; justify-content:space-between; gap:8px; height:38px; padding:0 4px 0 12px;
     border-radius:var(--radius-sm); background:var(--surface-soft); border:1px solid var(--border); font-size:13.5px; font-weight:600;
@@ -2552,15 +2473,6 @@
   .form-error{ color:var(--danger); font-size:12.5px; margin-top:6px; }
   /* Feed unificado: interruptor Reciente / Cronológico */
   .feed-order{ flex-wrap:wrap; gap:10px; }
-  .feed-order-seg{ display:inline-flex; background:var(--surface-alt); border-radius:999px; padding:3px; gap:2px; }
-  .feed-order-btn{
-    font-family:inherit; font-size:12.5px; font-weight:700; padding:7px 13px; border-radius:999px; border:none;
-    background:transparent; color:var(--text-muted); cursor:pointer;
-  }
-  .feed-order-btn.active{ background:var(--card); color:var(--ink-strong); box-shadow:0 1px 4px rgba(0,0,0,.14); }
-  .feed-order-btn:disabled{ opacity:.45; cursor:not-allowed; }
-  .feed-order-btn:focus-visible{ outline:2px solid var(--celeste-dark); outline-offset:1px; }
-  .feed-order-hint{ font-size:12px; color:var(--text-muted); font-weight:600; }
   /* Campo "importante" (ID del calendario): bloqueado hasta que se pida
      editarlo, y guardar un cambio real exige escribir una palabra al azar. */
   .locked-field{ display:flex; gap:8px; align-items:center; }
@@ -2585,16 +2497,8 @@
   .paises-toolbar{ display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:16px; }
   .paises-toolbar .subview-toggle, .paises-toolbar .zone-legend{ margin-bottom:0; }
   /* ----- Reportes ----- */
-  .rep-selector{ display:flex; flex-direction:column; gap:8px; margin-bottom:18px; }
   .rep-chips{ display:flex; flex-wrap:wrap; gap:6px; }
-  .rep-total{
-    background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md);
-    padding:16px 18px; box-shadow:var(--shadow); margin-bottom:18px;
-    display:flex; align-items:baseline; flex-wrap:wrap; gap:4px 12px;
-  }
   .rep-total-num{ font-size:34px; font-weight:800; color:var(--petroleo); line-height:1; }
-  .rep-total-txt{ font-weight:700; }
-  .rep-total-sub{ display:block; font-weight:600; font-size:12.5px; color:var(--text-muted); margin-top:2px; }
   .rep-comparacion{ margin-inline-start:auto; font-size:13px; font-weight:700; }
   .rep-comparacion.sube{ color:var(--ok-text); }
   .rep-comparacion.baja{ color:var(--danger); }
@@ -2614,9 +2518,7 @@
   .rep-num{ flex:0 0 auto; min-width:28px; text-align:end; font-size:12.5px; font-weight:800; font-variant-numeric:tabular-nums; }
   .rep-vacio{ font-size:12.5px; color:var(--text-muted); }
   .rep-notas{ margin-top:16px; font-size:12px; color:var(--text-muted); line-height:1.6; }
-  .rep-acciones{ display:flex; gap:8px; flex-wrap:wrap; }
   /* Los tres números de arriba, al lado del total. */
-  .rep-kpis{ display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:12px; margin-bottom:18px; }
   .rep-kpi{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md); padding:12px 16px; box-shadow:var(--shadow); }
   .rep-kpi-num{ font-size:26px; font-weight:800; color:var(--acento-fuerte, var(--petroleo)); line-height:1.1; }
   .rep-kpi-txt{ font-size:12.5px; font-weight:700; color:var(--text-muted); margin-top:2px; }
@@ -2652,7 +2554,6 @@
   .rep-filtros-envoltorio{ position:relative; }
   .rep-filtros-pop{ position:absolute; top:calc(100% + 8px); inset-inline-start:0; z-index:20; width:min(320px, calc(100vw - 32px)); background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md); box-shadow:0 14px 36px rgba(8,42,44,.22); padding:14px; display:flex; flex-direction:column; gap:8px; }
   .rep-filtros-pop .rep-menu{ display:flex; } .rep-filtros-pop .rep-menu select{ flex:1; max-width:none; }
-  .rep-filtros-tit{ font-size:11px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--text-muted); }
   .rep-filtros-pie{ display:flex; justify-content:space-between; align-items:center; margin-top:4px; }
   .rep-cabeza{ margin:0 0 14px; }
   .rep-titulo{ margin:0; font-size:24px; font-weight:800; color:var(--ink-strong, var(--ink)); }
@@ -2700,10 +2601,6 @@
     .rep-cols{ height:150px; gap:2px; }
     .rep-col .rep-etiqueta{ font-size:9.5px; }
   }
-  .rep-modo{ align-self:flex-start; }
-  .rep-comparar-elegir{ display:flex; flex-wrap:wrap; align-items:center; gap:8px; font-weight:700; color:var(--text-muted); }
-  .rep-comparar-elegir select, .rep-filtros select{ border:1px solid var(--border); border-radius:10px; padding:7px 10px; font:inherit; font-size:13px; font-weight:700; background:var(--card); color:var(--ink); max-width:100%; }
-  .rep-filtros{ display:flex; flex-wrap:wrap; align-items:center; gap:6px; }
   .rep-filtros-tit{ font-size:11.5px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:var(--text-muted); margin-inline-end:4px; }
   .rep-delta{ font-size:12px; font-weight:800; color:var(--text-muted); white-space:nowrap; }
   .rep-delta.sube{ color:var(--ok-text, #15803d); } .rep-delta.baja{ color:var(--danger, #b91c1c); }
@@ -2723,7 +2620,7 @@
     .rep-tabla th, .rep-tabla td{ padding:5px 5px; }
   }
   .rep-grilla-ancha{ grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); }
-  @media (max-width:420px){ .rep-grilla-ancha{ grid-template-columns:minmax(0,1fr); } }
+  @media (max-width:520px){ .rep-grilla-ancha{ grid-template-columns:minmax(0,1fr); } }
   .rep-evolucion td:not(:first-child){ border-inline-start:2px solid var(--card); }
   .rep-h0{ color:var(--text-muted); font-weight:600; } .rep-h1{ background:#e6f6f9; } .rep-h2{ background:#bfe9f2; } .rep-h3{ background:#7fd3e6; } .rep-h4{ background:#1a9fb8; color:#fff; }
   .rep-bloque-ancho{ grid-column:span 1; }
@@ -2787,7 +2684,7 @@
     /* Las tablas de evolución año por año, a todo el ancho: en media hoja
        la sexta columna quedaba afuera. */
     .rep-grilla .rep-bloque-ancho{ grid-column:1 / -1; }
-    .rep-bloque, .rep-total, .rep-kpi, .rep-sugerencias{ box-shadow:none; }
+    .rep-bloque, .rep-kpi, .rep-sugerencias{ box-shadow:none; }
     .rep-bloque{ padding:10px 12px; break-inside:avoid; }
     .rep-bloque h3{ font-size:10px; margin-bottom:7px; }
     .rep-fila{ margin-bottom:4px; break-inside:avoid; }
@@ -2877,7 +2774,6 @@
   /* "+1 de Región Norte · +3 de toda LatAm" debajo del número: lo que
      aplica sin haber pasado ahí. La región en el color de su zona. */
   .country-card .cross-line{ display:flex; flex-wrap:wrap; gap:2px 10px; font-size:11.5px; font-weight:600; color:var(--text-muted); margin-top:3px; }
-  .country-card.quiet .count{ color:var(--text-muted); }
   /* El nombre arriba y el número abajo, cada uno en su renglón: lado a
      lado, en una tarjeta de 180px "Argentina" y "207 registros" no
      entraban y el número se le montaba encima al nombre (4/10/2026). */
@@ -2928,23 +2824,6 @@
     color:var(--text-muted); font-size:14px; line-height:1.5;
   }
   .map-fallback .map-fallback-ico{ font-size:34px; }
-  .breadcrumb{ font-size:12.5px; color:var(--text-muted); margin-bottom:12px; }
-  .breadcrumb a{ cursor:pointer; font-weight:700; }
-  .city-list{ display:flex; flex-direction:column; gap:8px; }
-  .city-row{
-    display:flex; justify-content:space-between; align-items:center; background:var(--card); border:1px solid var(--border);
-    border-radius:var(--radius-sm); padding:12px 14px; cursor:pointer;
-  }
-  .city-row:hover{ border-color:var(--celeste); }
-  .city-row .cname{ font-weight:700; font-size:13.5px; }
-  .city-row .ccount{ font-weight:800; color:var(--ink); }
-  /* Filas de lo macro en la pantalla del país: punteadas, al final. */
-  .city-row.cross{ border-style:dashed; background:var(--surface-alt); color:var(--text-muted); }
-  .city-row.cross .cname{ font-weight:600; display:flex; flex-direction:column; gap:1px; }
-  .city-row.cross .cname small{ font-size:10.5px; font-weight:500; color:var(--text-muted); }
-  .city-row.cross .ccount{ color:var(--text-muted); }
-  .city-row.cross.zone{ border-color:var(--cross); background:color-mix(in srgb, var(--cross) 8%, var(--card)); }
-  .city-row.cross.zone .cname > span:first-child{ color:var(--cross); font-weight:700; }
   /* Selector "Solo acá / + Región / + Toda LatAm" del Feed y la Memoria
      con un lugar filtrado. */
   .place-seg{ display:flex; gap:4px; background:var(--card); border:1px solid var(--border); border-radius:999px; padding:4px; margin:-6px 0 16px; max-width:560px; }
@@ -2958,7 +2837,6 @@
   @media (max-width:640px){ .place-seg-btn{ font-size:11px; padding:8px 4px; gap:3px; } }
   /* Posteo que aplica al lugar filtrado sin haber pasado ahí. */
   .post.post-cross{ border:1px dashed var(--cross-color, var(--border)); box-shadow:none; background:var(--surface-soft); }
-  .post.post-cross-region{ background:color-mix(in srgb, var(--cross-color) 5%, var(--card)); }
 
   /* ---------- Calendario view ---------- */
   .cal-toolbar-end{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
@@ -3316,17 +3194,7 @@
   }
   .lightbox-counter[hidden]{ display:none; }
 
-  /* ---------- Paginador del visor de PDF (Prev/Siguiente entre los
-     adjuntos previsualizables del mismo posteo/respuesta) ---------- */
-  .file-preview-pager{ display:flex; align-items:center; justify-content:center; gap:14px; margin:-4px 0 10px; flex:none; }
-  .file-preview-pager[hidden]{ display:none; }
-  .file-preview-pager button{
-    background:#6fd8ec; border:none; border-radius:50%; width:32px; height:32px;
-    cursor:pointer; color:#082a2c; display:flex; align-items:center; justify-content:center;
-    box-shadow:0 2px 8px rgba(8,42,44,0.22); transition:background .16s ease;
-  }
-  .file-preview-pager button svg{ width:18px; height:18px; }
-  .file-preview-pager button:hover{ background:#8fe3f2; }
+  /* El contador del visor («2 de 5»). */
   #filePreviewCounter{ font-size:12px; color:var(--text-muted); font-weight:700; min-width:42px; text-align:center; }
 
   /* ---------- Popup de perfil (al clickear un @mención) ---------- */
@@ -3369,7 +3237,7 @@
   /* En celulares angostos, el padding fijo de .modal (22px) le come al
      contenido justo lo que le falta a los 3 botones de .ev-actions para
      entrar en una sola fila — se achica solo acá, no en el modal grande. */
-  @media (max-width:480px){ .event-card{ padding:14px; } }
+  @media (max-width:520px){ .event-card{ padding:14px; } }
   /* El cuerpo es el hijo flex del modal: si no es columna con min-height:0,
      .ev-rows nunca llega a scrollear y un texto largo (una invitación de
      Zoom entera, por ejemplo) se sale por abajo de la ficha. */
@@ -3520,14 +3388,12 @@
     .modal .close{ width:40px; height:40px; top:8px; inset-inline-end:8px; display:flex; align-items:center; justify-content:center; }
     .modal .volver:not([hidden]){ width:40px; height:40px; top:8px; inset-inline-start:8px; display:flex; align-items:center; justify-content:center; }
     .modal.con-volver{ padding-top:48px; }
-    .breadcrumb a{ display:inline-block; padding:7px 0; }
     .year-month-name{ padding:7px 0 8px; }
     .um-nickname-edit{ padding:8px; font-size:14px; }
     .zone-rm{ width:36px; height:36px; line-height:36px; }
-    .zone-edit-row .rm{ width:32px; height:32px; line-height:32px; font-size:13px; }
     .doc-chip .rm, .doc-fila .rm{ width:28px; height:28px; line-height:28px; font-size:12px; }
     .zone-bar .zone-swatch{ width:28px; height:28px; border-radius:8px; }
-    .zone-name, .color-hex, .tipo-icon-input, .zone-label-input{ padding-block:7px; }
+    .zone-name, .color-hex{ padding-block:7px; }
     input[type=checkbox][data-action]{ width:20px; min-width:20px; height:20px; }
     /* "+ Agregar tipo" se partía en tres renglones al lado de los dos
        campos: si no entra, baja a su propia fila. */
@@ -3539,9 +3405,6 @@
     /* Con .field adelante para ganarle a ".field input[type=text]" (más
        específico que ".locked-field input"); si no, la letra no se achica. */
     .field .locked-field input[type=text]{ flex:1 1 100%; font-size:10.5px; padding-inline:8px; }
-    /* El rótulo "Documentos esperados" en su propia línea: al lado del
-       campo y del +, el + se caía solo a la línea de abajo. */
-    .tipo-docs-rotulo{ flex:1 0 100%; }
     /* En angosto no hay lugar para la sangría bajo el nombre, y el campo
        de "agregar" ocupa lo que queda para que el + no se baje solo. */
     .tipo-docs{ padding-inline-start:14px; }
@@ -4373,8 +4236,7 @@ COUNTRIES.forEach(c=>ZONE_COUNTRIES[c.zone].push(c.name));
 // Índice plano de "lugares" elegibles (Toda LatAm, cada región, cada país,
 // cada ciudad con presencia conocida) para el buscador de lugar en forma
 // de chip del composer de Rutina — reusa el mismo modelo de "scope" que ya
-// usan Evento y las respuestas (renderScopeBuilder), solo con una UI de
-// autocompletar en vez del selector paso a paso.
+// usan Evento y las respuestas, con una UI de autocompletar.
 function buildPlaceIndex(){
   const items = [{ label:t("Toda LatAm","All of LatAm","Toda a LatAm","כל LatAm"), icon:"🌎", scope:{ type:"todo" } }];
   Object.values(ZONES).forEach(z=>{
@@ -5212,12 +5074,7 @@ function memberByNick(nick){
 // no el nombre completo de la cuenta de Google) — si no hay match
 // (mensajes "Google Calendar" del sync, participantes/organizador que no
 // son cuentas de la app, alguien que ya no está aprobado), se muestra el
-// nombre tal cual venía.
-function authorLabel(email, fallbackName){
-  const entry = memberByEmail(email);
-  return entry ? "@" + entry.nickname.toLowerCase() : (fallbackName || "");
-}
-// Mismo authorLabel() de arriba pero en HTML: si el email resolvió a
+// nombre tal cual venía. En HTML: si el email resolvió a
 // alguien del roster, el "@nickname" queda clickeable — abre el mismo
 // popup de perfil que un @mención dentro del texto (ver
 // highlightMentions). Si no hay match, texto escapado nomás.
@@ -12873,17 +12730,7 @@ async function bajarCopiaCompleta(){
   }
 }
 
-/* ----- Preferencias: shell + sub-navegación ----- */
-function preferenciasSections(){
-  return [
-    { key:"zonas", label:t("Zonas","Zones","Zonas","אזורים") },
-    { key:"tipos", label:t("Tipos de actividad","Activity types","Tipos de atividade","סוגי פעילות") },
-    { key:"lugares", label:t("Lugares","Places","Lugares","מקומות") },
-    { key:"calendar", label:"Calendar" },
-    { key:"adjuntos", label:t("Adjuntos","Attachments","Anexos","קבצים מצורפים") },
-    { key:"copia", label:t("Copia de seguridad","Backup","Cópia de segurança","גיבוי") },
-  ];
-}
+/* ----- Preferencias: el contenedor de cada sección ----- */
 function renderPreferenciasView(){
   const sec = state.preferenciasSection;
   const body = sec==="tipos" ? renderTiposSection()
@@ -13554,9 +13401,8 @@ function getNestedReplyDraft(replyId){
   return nestedReplyDrafts[replyId];
 }
 
-function newScopeDraft(){ return { type:"ciudad", country:"", city:"", region:"sur", cityUseCustom:false }; }
 function newReplyDraft(){
-  return { content:"", images:[], links:[], files:[], mentionQuery:null, mentionCaret:0, mentionHighlight:0, scopes:[], placeQuery:"", placeHighlight:0, scopeDraft:newScopeDraft(), scopeError:"" };
+  return { content:"", images:[], links:[], files:[], mentionQuery:null, mentionCaret:0, mentionHighlight:0, scopes:[], placeQuery:"", placeHighlight:0, scopeError:"" };
 }
 function getReplyDraft(postId){
   if(!replyDrafts[postId]) replyDrafts[postId] = newReplyDraft();
@@ -13676,9 +13522,6 @@ function fechaDeArchivo(f){
   const d = new Date(iso);
   return isNaN(d) ? "" : fmtDate(d);
 }
-// El mismo archivo, sin ocupar ninguna ranura. Vuelve a la lista de
-// adjuntos sueltos; NO se borra.
-function sinRanura(f){ const { doc, ...resto } = f; return resto; }
 // Abierto o cerrado, por posteo. Lo que eligió la persona manda; si no
 // eligió nada, decide la regla de abajo. Un Map y no un Set porque hay que
 // distinguir tres cosas: lo abrió, lo cerró, y no tocó nada — con un Set,
@@ -14571,62 +14414,6 @@ function renderLinkRows(scope, ownerId, links){
     </div>`).join("")}</div>`;
 }
 
-function renderScopeBuilder(scope, ownerId, draft){
-  const sd = draft.scopeDraft;
-  let extra = "";
-  if(sd.type === "region"){
-    extra = `<select data-scope-field="region" data-scope="${scope}" data-owner-id="${esc(ownerId)}">
-        ${Object.values(ZONES).map(z=>`<option value="${esc(z.key)}" ${sd.region===z.key?"selected":""}>${esc(z.label)}</option>`).join("")}
-      </select>`;
-  } else if(sd.type === "pais"){
-    extra = `<select data-scope-field="country" data-scope="${scope}" data-owner-id="${esc(ownerId)}">
-        <option value="">${esc(t("Elegir país…","Choose country…","Escolher país…","...בחירת מדינה"))}</option>${groupedCountryOptions(sd.country)}
-      </select>`;
-  } else if(sd.type === "todo"){
-    extra = "";
-  } else {
-    const presets = hasOwn(CITY_PRESETS, sd.country) ? CITY_PRESETS[sd.country] : null;
-    let cityField;
-    if(presets && !sd.cityUseCustom){
-      cityField = `<select data-scope-field="citySelect" data-scope="${scope}" data-owner-id="${esc(ownerId)}">
-          <option value="">${esc(t("Elegir ciudad…","Choose city…","Escolher cidade…","...בחירת עיר"))}</option>
-          ${presets.map(c=>`<option value="${esc(c.name)}" ${sd.city===c.name?"selected":""}>${esc(cityLabel(sd.country, c.name))}</option>`).join("")}
-          <option value="__other__">${esc(t("Otra ciudad (escribir)…","Other city (type it)…","Outra cidade (digitar)…","(הקלדה) עיר אחרת..."))}</option>
-        </select>`;
-    } else {
-      cityField = `<input type="text" placeholder="${esc(t("Ciudad","City","Cidade","עיר"))}" data-scope-field="city" data-scope="${scope}" data-owner-id="${esc(ownerId)}" value="${esc(sd.city)}">
-        ${presets ? `<button type="button" class="btn-text-add" data-action="use-city-preset" data-scope="${scope}" data-owner-id="${esc(ownerId)}">${isRTL()?"→":"←"} ${t("Elegir de la lista","Choose from the list","Escolher da lista","בחירה מהרשימה")}</button>` : ""}`;
-    }
-    extra = `<select data-scope-field="country" data-scope="${scope}" data-owner-id="${esc(ownerId)}">
-        <option value="">${esc(t("Elegir país…","Choose country…","Escolher país…","...בחירת מדינה"))}</option>${groupedCountryOptions(sd.country)}
-      </select>
-      ${cityField}`;
-  }
-  return `
-    <div class="scope-builder" style="margin-bottom:8px;">
-      <div class="scope-builder-add ${sd.type==='ciudad'?'has-extra':''}">
-        <select data-scope-field="type" data-scope="${scope}" data-owner-id="${esc(ownerId)}">
-          <option value="ciudad" ${sd.type==="ciudad"?"selected":""}>${t("Ciudad específica","Specific city","Cidade específica","עיר ספציפית")}</option>
-          <option value="pais" ${sd.type==="pais"?"selected":""}>${t("País completo","Whole country","País inteiro","מדינה שלמה")}</option>
-          <option value="region" ${sd.type==="region"?"selected":""}>${t("Región completa","Whole region","Região inteira","אזור שלם")}</option>
-          <option value="todo" ${sd.type==="todo"?"selected":""}>${t("Toda LatAm","All of LatAm","Toda a LatAm","כל LatAm")}</option>
-        </select>
-        ${extra}
-      </div>
-      <button type="button" class="btn-mini" data-action="add-scope" data-scope="${scope}" data-owner-id="${esc(ownerId)}">+ ${t("Agregar dónde","Add where","Adicionar onde","הוספת מקום")}</button>
-      ${draft.scopeError ? `<div class="form-error">${esc(draft.scopeError)}</div>` : ""}
-      <div class="scope-list">${draft.scopes.map((sc,i)=>renderScopeChip(sc, `rm-scope-${scope}`, i, ownerId)).join("")}</div>
-    </div>`;
-}
-function groupedCountryOptions(selected){
-  return Object.values(ZONES).map(z=>`
-    <optgroup label="${esc(z.label)}">
-      ${ZONE_COUNTRIES[z.key].map(name=>`<option value="${esc(name)}" ${selected===name?"selected":""}>${esc(countryLabel(name))}</option>`).join("")}
-    </optgroup>`).join("") + `
-    <optgroup label="${esc(t("Fuera de LatAm","Outside LatAm","Fora da LatAm","מחוץ ל-LatAm"))}">
-      ${PAISES_FUERA_DE_LATAM.map(name=>`<option value="${esc(name)}" ${selected===name?"selected":""}>${esc(countryLabel(name))}</option>`).join("")}
-    </optgroup>`;
-}
 
 /* ======================================================================
    AGREGACIÓN POR LUGAR (posts + alcance sumado desde respuestas)
@@ -16556,11 +16343,6 @@ function calcularOcurrencias(post){
   const moves = recurrenceMoves(post);
   return all.map(iso => ({ iso, date: moves[iso] || iso, moved: !!moves[iso], skipped: skip.has(iso) }));
 }
-// Solo las que se hacen, por su fecha original: es lo que usan el orden
-// del Feed y la fecha por omisión de la tarjeta.
-function postOccurrenceDates(post){
-  return postOccurrenceList(post).filter(o=>!o.skipped).map(o=>o.iso);
-}
 // Cuál de todas mostrar cuando la persona todavía no eligió: la más
 // cercana a hoy, para adelante o para atrás. Justo después de la reunión
 // del lunes, la tarjeta se para en ESE lunes — que es cuando uno quiere
@@ -18275,28 +18057,6 @@ function getDraftFor(scope, ownerId){
   return getReplyDraft(ownerId);
 }
 
-function commitScope(scope, ownerId){
-  const draft = getDraftFor(scope, ownerId);
-  const sd = draft.scopeDraft;
-  let newScope = null;
-  if(sd.type === "todo"){
-    newScope = { type:"todo" };
-  } else if(sd.type === "region"){
-    newScope = { type:"region", region: sd.region };
-  } else if(sd.type === "pais"){
-    if(!sd.country){ draft.scopeError = t("Elegí un país.","Choose a country.","Escolha um país.",".בחר/י מדינה"); render(); return; }
-    newScope = { type:"pais", country: sd.country };
-  } else {
-    if(!sd.country || !sd.city.trim()){ draft.scopeError = t("Elegí un país y escribí una ciudad.","Choose a country and type a city.","Escolha um país e digite uma cidade.",".בחר/י מדינה והקלד/י עיר"); render(); return; }
-    const fromPreset = hasOwn(CITY_PRESETS, sd.country) && !sd.cityUseCustom;
-    newScope = { type:"ciudad", country: sd.country, city: fromPreset ? sd.city.trim() : titleCase(sd.city) };
-  }
-  if(draft.scopes.length >= MAX_SCOPES){ draft.scopeError = t("Máximo {n} lugares por posteo.","At most {n} places per post.","No máximo {n} lugares por postagem.","לכל היותר {n} מקומות לכל פוסט.",{n:MAX_SCOPES}); render(); return; }
-  draft.scopes.push(newScope);
-  draft.scopeDraft = newScopeDraft();
-  draft.scopeError = "";
-  render();
-}
 
 /* ======================================================================
    LIGHTBOX
@@ -19716,7 +19476,6 @@ function renderFileChips(files, rmAction, extraAttrs=""){
 function esWordNuevo(f){
   return !!f && (extensionDe(f.name) === "docx" || f.mime === "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
 }
-function sePuedeVer(f){ return claseDe(f).seVe || esWordNuevo(f); }
 // Desde el 6/10/2026 TODO archivo abre el visor (menos el audio, que tiene
 // su reproductor en la tarjeta): lo que se puede mostrar se muestra, y lo
 // que no (un PowerPoint) muestra su nombre y "Descargar".
@@ -20363,9 +20122,6 @@ document.addEventListener("click", async e=>{
     "acceso-section": async (el, e, action, postId) => {
     state.solicitudesSection = el.dataset.key; render();
   },
-    "usuarios-sort": async (el, e, action, postId) => {
-    state.usuariosFilters.sort = el.dataset.key; render();
-  },
     "open-lightbox": async (el, e, action, postId) => {
     const owner = attachmentOwner(el.dataset.postId, el.dataset.replyId);
     const images = owner ? (owner.images||[]).map(safeImageSrc).filter(Boolean) : [];
@@ -20763,13 +20519,6 @@ document.addEventListener("click", async e=>{
     "rm-participant": async (el, e, action, postId) => {
     composerDraft.participants.splice(Number(el.dataset.idx), 1); render();
   },
-    "use-city-preset": async (el, e, action, postId) => {
-    const sd = getDraftFor(el.dataset.scope, el.dataset.ownerId).scopeDraft;
-    sd.cityUseCustom = false; sd.city = ""; render();
-  },
-    "add-scope": async (el, e, action, postId) => {
-    commitScope(el.dataset.scope, el.dataset.ownerId);
-  },
     "submit-reply": async (el, e, action, postId) => {
     submitReply(postId);
   },
@@ -20817,12 +20566,6 @@ document.addEventListener("click", async e=>{
   },
     "reporte-imprimir": async (el, e, action, postId) => {
     window.print();
-  },
-    "reporte-anio": async (el, e, action, postId) => {
-    state.reportes.anio = el.dataset.key; render();
-  },
-    "reporte-trimestre": async (el, e, action, postId) => {
-    state.reportes.trimestre = Number(el.dataset.key) || 0; render();
   },
     "reporte-modo": async (el) => {
     state.reportes.modo = el.dataset.key === "comparar" ? "comparar" : "periodo"; render();
@@ -21128,19 +20871,10 @@ document.addEventListener("click", async e=>{
     composerSnapshot = snapshotComposer();
     renderComposer();
   },
-    "goto-country": async (el, e, action, postId) => {
-    state.filters.place = { kind:"country", country:el.dataset.country };
-    if(el.dataset.level) setPlaceLevel(Number(el.dataset.level)); // las filas "Región"/"Toda LatAm" abren en su nivel
-    state.view = "feed"; state.countryDrill = null; state.zonaDrill = null; render();
-  },
     "goto-latam": async (el, e, action, postId) => {
     // Del pie de Vistas: lo que es de toda LatAm, sin país ni ciudad de
     // por medio (ver scopeLevelFor con kind "latam").
     state.filters.place = { kind:"latam" };
-    state.view = "feed"; state.countryDrill = null; state.zonaDrill = null; render();
-  },
-    "goto-city": async (el, e, action, postId) => {
-    state.filters.place = { kind:"city", country:el.dataset.country, city:el.dataset.city };
     state.view = "feed"; state.countryDrill = null; state.zonaDrill = null; render();
   },
     "feed-order": async (el, e, action, postId) => {
@@ -21493,9 +21227,6 @@ document.addEventListener("click", async e=>{
       console.error(err);
       d.saving = false; d.error = t("No se pudo guardar: {msg}","Couldn't save: {msg}","Não foi possível salvar: {msg}","{msg} :השמירה נכשלה",{msg:err.message}); render();
     });
-  },
-    "pref-section": async (el, e, action, postId) => {
-    state.preferenciasSection = el.dataset.key; render();
   },
     "tipos-remove": async (el, e, action, postId) => {
     const d = getTiposDraft();
@@ -21863,7 +21594,6 @@ document.addEventListener("input", e=>{
     updateMentionState(draft, el);
     if(prevQuery !== draft.mentionQuery) render();
   }
-  else if(el.dataset.scopeField === "city"){ getDraftFor(el.dataset.scope, el.dataset.ownerId).scopeDraft.city = el.value; }
   else if(el.dataset.linkField){
     const draft = getDraftFor(el.dataset.scope, el.dataset.ownerId);
     draft.links[Number(el.dataset.idx)][el.dataset.linkField] = el.value;
@@ -21966,18 +21696,6 @@ document.addEventListener("change", e=>{
     render();
   }
   else if(el.dataset.timeField){ commitTypedTimeField(el); }
-  else if(el.dataset.scopeField === "type"){ getDraftFor(el.dataset.scope, el.dataset.ownerId).scopeDraft.type = el.value; render(); }
-  else if(el.dataset.scopeField === "country"){
-    const sd = getDraftFor(el.dataset.scope, el.dataset.ownerId).scopeDraft;
-    sd.country = el.value; sd.city = ""; sd.cityUseCustom = false; render();
-  }
-  else if(el.dataset.scopeField === "region"){ getDraftFor(el.dataset.scope, el.dataset.ownerId).scopeDraft.region = el.value; }
-  else if(el.dataset.scopeField === "citySelect"){
-    const sd = getDraftFor(el.dataset.scope, el.dataset.ownerId).scopeDraft;
-    if(el.value === "__other__"){ sd.cityUseCustom = true; sd.city = ""; }
-    else { sd.city = el.value; sd.cityUseCustom = false; }
-    render();
-  }
   else if(el.id === "cImages"){ handleImageFiles(el.files, composerDraft.images); }
   else if(el.dataset.action === "rutina-images"){ handleImageFiles(el.files, rutinaDraft.images); }
   else if(el.dataset.action === "reply-images"){ handleImageFiles(el.files, getReplyDraft(el.dataset.postId).images); }

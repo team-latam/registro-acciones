@@ -32,7 +32,6 @@ function armar(opts={}){
     const maxArchivos = ()=> ctx.maxArchivos || 10;
     const maxBytesPorArchivo = ()=> ctx.maxBytes || 10 * 1024 * 1024;
     const safeFileDataUrl = u => String(u||"").startsWith("data:") ? u : "";
-    const sePuedeVer = ()=> true;
     // fmtDate respeta el formato elegido en Configuración; acá se fija en
     // dmy para que la prueba no dependa de la configuración de nadie.
     const pad2 = n => String(n).padStart(2, "0");
@@ -41,14 +40,14 @@ function armar(opts={}){
     const docsAbiertos = new Map();
     ${["TIPOS_DE_ARCHIVO","CLASE_POR_DEFECTO","extensionDe","claseDeArchivo","claseDe","topeLegible",
        "DOCS_POR_TIPO","docsEsperados","esNombreDeOtro","docEsOpcional","docsExigidos","normalize","docDeArchivo","archivosDelDoc","docsDesplegados","archivoDelDoc","archivosSueltos","cuantosDocsHay",
-       "sinRanura","fechaDeArchivo","fmtDate",
+       "fechaDeArchivo","fmtDate",
        "adjuntarDocumento","quitarDocumento","quitarAdjunto","esWordDeViaje",
        "ACTIVITY_TYPES","EVENTO_TYPES","CALENDAR_SYNC_TYPES","ACTIVITY_BY_KEY",
        "DEFAULT_ACTIVITY_LABELS","applyActivityTypesConfig"].map(grab).join("\n")}
     const currentLang = ()=> "es";
     const refreshActivityTypeLabels = ()=>{};
     return { DOCS_POR_TIPO, docsEsperados, docEsOpcional, docsExigidos, docDeArchivo, archivoDelDoc, archivosSueltos,
-             cuantosDocsHay, sinRanura, fechaDeArchivo,
+             cuantosDocsHay, fechaDeArchivo,
              adjuntarDocumento, quitarDocumento, quitarAdjunto,
              applyActivityTypesConfig, state };
   `)({ reg, posts: opts.posts || [], puedeEditar: opts.puedeEditar, maxArchivos: opts.maxArchivos, maxBytes: opts.maxBytes });
@@ -278,9 +277,6 @@ const pesado = kb => "data:application/pdf;base64," + "A".repeat(4 * Math.ceil(k
 /* ---------- La fecha de subida ---------- */
 {
   const { api } = armar({ posts:[] });
-  eq("sinRanura saca el doc y deja el resto", api.sinRanura({ name:"a.pdf", kind:"pdf", doc:"plan" }),
-     { name:"a.pdf", kind:"pdf" });
-  eq("y no rompe si no tenía", api.sinRanura({ name:"a.pdf" }), { name:"a.pdf" });
 
   // Los archivos de antes no la traen: no se inventa nada.
   eq("sin fecha, no se dibuja nada", api.fechaDeArchivo({ name:"a.pdf" }), "");

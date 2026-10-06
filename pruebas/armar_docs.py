@@ -5,13 +5,13 @@ from extractor import grab, balanceada, src, estilo, cuerpo_click   # el extract
 
 codigo = "\n".join(grab(n) for n in [
   "TIPOS_DE_ARCHIVO","CLASE_POR_DEFECTO","extensionDe","claseDeArchivo","claseDe",
-  "esUrlDelBucket","FILE_DATA_URL_RE","safeFileDataUrl","esWordNuevo","sePuedeVer","seAbreEnVisor","esPlanilla","itemDelVisor",
+  "esUrlDelBucket","FILE_DATA_URL_RE","safeFileDataUrl","esWordNuevo","seAbreEnVisor","esPlanilla","itemDelVisor",
   "DOCS_POR_TIPO","docsEsperados","esNombreDeOtro","docEsOpcional","docsExigidos","docDeArchivo","archivosDelDoc","docsDesplegados","archivoDelDoc","archivosSueltos",
   "cuantosDocsHay","renderDocumentacion","renderTiposSection","tiposFootnote","countPostsByType",
   # La lista + ficha de Tipos: qué tipo está abierto, su ficha, el formulario
   # de uno nuevo y el aviso de "cambios sin guardar".
   "tipoAbierto","tiposDirty","renderTipoPanel","renderTipoNuevoPanel",
-  "normalize","slugifyKey","fmtDate","sinRanura","docsAbiertos","eventoYaPaso","docsAbierto","fechaDeArchivo",
+  "normalize","slugifyKey","fmtDate","docsAbiertos","eventoYaPaso","docsAbierto","fechaDeArchivo",
   "quitarDocumento","quitarAdjunto","FICHA_POR_CLASE","fichaDeArchivo","renderPostedFiles","ownerAttrs"])
 
 # Los handlers DE VERDAD, sacados del archivo. Una prueba que se escribe el
