@@ -1075,7 +1075,22 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   await p.click('.fl-it[data-post-id="p_visita"]');
   eq("ficha: tocar un ítem lo abre ahí mismo, sin ir al Inicio", await hasta(p, () =>
     !document.getElementById("fichaPostOverlay").hidden && !!document.querySelector('#fichaPostBody .post[data-post-id="p_visita"]') && !!document.querySelector(".ficha-lugar")), true);
+  // La ventana (6/10/2026): la tarjeta entera, sin barra propia, con la
+  // cabecera que dice de dónde se vino, y el menú ⋯ sin cortar.
+  eq("ventana: sin alto tope ni barra propia, y dice de qué ficha se vino", await p.evaluate(() => [
+    getComputedStyle(document.querySelector(".ficha-post-modal")).maxHeight, getComputedStyle(document.getElementById("fichaPostBody")).overflowY,
+    (document.getElementById("fichaPostDesde") || {}).textContent || null]), ["none", "visible", "De la ficha de Uruguay"]);
+  await p.click('#fichaPostBody [data-action="toggle-post-menu"]');
+  eq("ventana: el menú ⋯ se ve entero", await p.evaluate(() => {
+    const it = document.querySelector('#fichaPostBody .post-menu-item[data-action="edit-post"]');
+    if(!it) return "sin menú";
+    const r = it.getBoundingClientRect();
+    const abajo = document.elementFromPoint(r.left + r.width / 2, r.bottom - 2);
+    return abajo && abajo.closest(".post-menu-item") === it;
+  }), true);
   await p.keyboard.press("Escape");
+  await hasta(p, () => !document.querySelector("#fichaPostBody .post-menu"));
+  if(!(await p.evaluate(() => document.getElementById("fichaPostOverlay").hidden))) await p.keyboard.press("Escape");
   eq("ficha: Escape lo cierra", await p.evaluate(() => document.getElementById("fichaPostOverlay").hidden), true);
   // Una rutina en Uruguay: la app pregunta si cumple algo pendiente.
   await p.click('nav.tabs button[data-view="feed"]');
@@ -1112,6 +1127,7 @@ const hasta = async (p, fn, arg, ms = 5000) => {
       images: [], links: [], mentions: [], liked_by: [], milestones: [], editors: [], participants: [], recurrence_skip: [], recurrence_moves: {},
       files: [{ name: "Formulario de Cierre - Montevideo, Uruguay.docx", kind: "doc", path: "posts/p_viaje/cierre-uy.docx", subidoEl: hace(34) },
               { name: "Formulario de Cierre - Buenos Aires, Argentina.docx", kind: "doc", path: "posts/p_viaje/cierre-ar.docx", subidoEl: hace(33) }],
+      is_project: true, project_status: "open",
       created_at: hace(45) });
     // Algo de todo el equipo, que en una ciudad solo entra si se pide.
     base.posts.push({ id: "p_latam", title: "Reunión regional de todo el equipo", content: "x",
@@ -1233,6 +1249,16 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   eq("viaje: en la tarjeta, cada Cierre con su lugar", await p.$$eval('.post[data-post-id="p_viaje"] .rs-lugar', ls => ls.map(l => l.textContent.trim())),
     ["📍 Montevideo, Uruguay", "📍 Buenos Aires, Argentina"]);
   eq("viaje: y la cuenta de la tarjeta suma los dos", await p.$eval('.post[data-post-id="p_viaje"] .rs-pill', e => e.textContent.trim()), "📋 Resumen · 2/3");
+  // «Gestionar proyecto» desde la ventana (el usuario, 6/10/2026): cambia
+  // de sección, así que la ventana se cierra sola en vez de tapar.
+  await p.click('nav.tabs button[data-view="paises"]');
+  await p.click('[data-action="drill-country"][data-country="Uruguay"]');
+  await hasta(p, () => (document.querySelector(".ficha-lugar h1") || {}).textContent === "Uruguay");
+  await p.click('.fl-it[data-post-id="p_viaje"]');
+  await p.click('#fichaPostBody [data-action="toggle-project"]');
+  await p.click('#fichaPostBody [data-action="project-manage"]');
+  eq("ventana: «Gestionar proyecto» cierra la ventana y abre Proyectos", await hasta(p, () =>
+    document.getElementById("fichaPostOverlay").hidden && !!document.querySelector('nav.tabs button[data-view="proyectos"].active')), true);
   eq("viaje: sin un solo error", errores, []);
   await p.close();
 }

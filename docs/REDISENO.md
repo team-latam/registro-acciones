@@ -585,7 +585,11 @@ capturas (A/B/C, después D/E/F, después ajustes), el diseño elegido:
     artificial.
   - Los cuatro números, **Lo que sigue** (con la ciudad y los pendientes de
     más de 3 meses en naranja) y **Lo que pasó**: la línea de tiempo por
-    año y mes; cada ítem se abre en una ventana ahí mismo.
+    año y mes; cada ítem se abre en una ventana ahí mismo. La ventana
+    muestra la tarjeta entera sin barra propia (se desplaza la ventana,
+    con la ✕ y "De la ficha de…" pegadas arriba), y se cierra sola si una
+    acción cambia de sección ("Gestionar proyecto" no funcionaba porque
+    abría Proyectos debajo de la ventana).
   - Al costado: **Ciudades** (cada una lleva a su ficha), **Ritmo** de los
     últimos 12 meses, **Quiénes trabajaron** y **Documentos**.
   - **"Cargar algo acá"** abre el formulario con el lugar puesto.
