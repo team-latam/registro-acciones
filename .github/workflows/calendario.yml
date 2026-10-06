@@ -49,10 +49,12 @@ jobs:
   probar:
     name: Que las dos copias digan lo mismo
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: '22' }
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with: { node-version: '22', package-manager-cache: false }
       - name: La prueba diferencial y la de punta a punta
         run: ./supabase/sync-calendar/pruebas/correr.sh
 
@@ -71,10 +73,12 @@ jobs:
       group: calendario-sincronizar
       cancel-in-progress: false
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: '22' }
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with: { node-version: '22', package-manager-cache: false }
 
       # Sin la llave esto no puede escribir, pero tampoco tiene sentido que
       # la corrida figure en rojo por eso: avisa qué falta y termina bien.

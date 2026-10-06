@@ -109,6 +109,23 @@ al agregar una función que usan otras, buscar quién las arma
 (`grep -rn nombreDeLaQueLaUsa pruebas/ supabase/`) y correr también
 `supabase/sync-calendar/pruebas/correr.sh`.
 
+## GitHub
+
+**Las acciones de los workflows quedan viejas sin que nadie se entere.**
+El 6/10/2026 cada corrida avisaba «Node.js 20 is deprecated» en amarillo,
+con todo en verde: GitHub las forzaba a andar y un día deja de hacerlo.
+*Por qué:* una acción fijada (por etiqueta o por huella) no se actualiza
+sola, y el aviso solo se ve abriendo la corrida. *Se detecta:* `github`
+(versiones nuevas) y los avisos de la última corrida, a mano. *Regla:*
+cada acción por huella con su versión en un comentario
+(`pruebas/workflows_test.mjs`); al subirla, leer qué cambia entre
+versiones mayores y probar los workflows con actionlint.
+
+**Un punto tachado que no estaba hecho del todo.** B4 decía «acciones
+fijadas por SHA» y estaba tachado, pero eso se había dejado a propósito
+para después. *Regla:* tachar solo lo hecho; lo que se decide dejar se
+escribe al lado, en la misma fila.
+
 ## Código
 
 **Código muerto después de reemplazar algo.** El selector de lugar paso a

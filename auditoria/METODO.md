@@ -78,6 +78,7 @@ informe; «a mano» = criterio de quien audita.
 | **Almacenamiento** | Cuánto ocupa el bucket contra el plan gratis; huérfanos; miniaturas; la papelera | a mano: Administración › Copia de seguridad, `supabase/limpieza/` |
 | **Copias y restauración** | Que la copia del domingo corra; que se pueda restaurar (`docs/RESTAURAR.md`); cuándo vence el token | a mano: Actions |
 | **Integraciones** | Sincronización con Calendar; workflows en verde; «¿Está arriba?» | a mano: Actions; `supabase/sync-calendar/pruebas/` |
+| **GitHub** | Acciones fijadas por huella y con versión nueva (sobre todo una mayor: suele venir porque la anterior quedó vieja); avisos amarillos en las corridas («deprecated»); sintaxis (actionlint); permisos, tiempos máximos, llaves solo desde main, nada pegado en un `run:`; lo que corre solo y cuándo; Settings: Pages, permisos de Actions, escaneo de secretos | `github`, `pruebas/workflows_test.mjs`; a mano: los avisos de la última corrida y los Settings |
 | **Privacidad** | Datos personales en el repo público; qué se manda a servicios de afuera; qué se guarda de cada persona y por cuánto | `seguridad`; a mano |
 | **Accesibilidad** | Teclado en todo; foco visible; contraste; movimiento reducido; lectores de pantalla | `pantallas`; a mano |
 | **Uso de las funciones** | Qué se usa y qué no (en los datos de la base, sin sacar datos: solo cantidades); lo que confunde; duplicados | a mano |
@@ -104,7 +105,8 @@ Un mismo hallazgo sube de nivel si se repite (ver `RECURRENTES.md`).
 - [ ] Sobrecarga: ¿qué pantalla tiene más de lo que se usa? ¿Qué botón sobra?
 - [ ] La crítica del uso: cargar un evento, una rutina, buscar algo viejo, armar un reporte, revisar lo de Calendar.
 - [ ] Almacenamiento: el medidor del bucket y la última limpieza.
-- [ ] Las corridas de Actions: copia del domingo, Calendar, «¿Está arriba?», «Base de datos».
+- [ ] Las corridas de Actions: copia del domingo, Calendar, «¿Está arriba?», «Base de datos». Y los avisos amarillos (*annotations*) de la última de cada una: ahí GitHub avisa lo que va a dejar de andar.
+- [ ] Settings de GitHub (los mira el usuario, con los pasos): Pages → Source en «GitHub Actions»; Actions → Workflow permissions en «Read»; Code security → Secret scanning y Push protection prendidos.
 - [ ] Lo que vence: el token de las copias (5/10/2027) y cualquier llave nueva.
 - [ ] Privacidad: ¿algo nuevo manda datos afuera o guarda algo de las personas?
 - [ ] Lo que quedó abierto en la auditoría anterior y lo que el usuario decidió.
