@@ -116,7 +116,7 @@ que decidir o hacer un paso en un panel).
 
 | # | Qué | Por qué | Detalle | Trabajo | Quién |
 |---|---|---|---|---|---|
-| U1 | ~~Publicar GitHub Pages desde un workflow que espere a las pruebas~~ ✅ 6/10 (falta el clic en Pages) | hoy un `index.html` roto está en línea desde el minuto 1 y las pruebas avisan 10 minutos después, sin vuelta atrás | backend 4 | medio | Claude arma el workflow; **usuario** cambia Settings → Pages → Source a "GitHub Actions" (un clic, Claude le dice dónde) |
+| U1 | ~~Publicar GitHub Pages desde un workflow que espere a las pruebas~~ ✅ 6/10 (y el 6/10 a la noche el usuario cambió Pages a «GitHub Actions»: ya publica solo con verde) | hoy un `index.html` roto está en línea desde el minuto 1 y las pruebas avisan 10 minutos después, sin vuelta atrás | backend 4 | medio | Claude arma el workflow; **usuario** cambia Settings → Pages → Source a "GitHub Actions" (un clic, Claude le dice dónde) |
 | U2 | ~~`concurrency` en `base-de-datos.yml` (y en `calendario.yml`, `limpieza.yml`) y que los jobs con secretos corran solo desde `main`~~ ✅ 6/10 | dos pushes seguidos aplican el SQL a la vez y puede quedar el esquema viejo; con el botón "Run workflow" se aplica a producción el SQL de cualquier rama | backend 3 y 11, seguridad 15 | chico | Claude |
 | U3 | ~~Escapar `post.id` y `r.id` en los 46 atributos y exigir en la base que el id sea `[A-Za-z0-9_-]{1,40}`~~ ✅ 6/10 | XSS almacenado que un integrante aprobado puede meter desde su sesión y corre en el navegador del admin | seguridad 1 | chico (cliente) + chico (SQL con su prueba) | Claude |
 | U4 | ~~Guardar el token de Calendar solo si cambió, sin `lastSyncedAt` en cada vuelta; pausar el sondeo con la pestaña oculta; subirlo de 30 s a 2–5 min~~ ✅ 6/10 | 5.760 pedidos por día por pestaña y 120 × N² mensajes por hora de Realtime; es la primera cuota que se agota | backend 2, rendimiento 11 y G | chico | Claude |
@@ -207,8 +207,8 @@ y él cuenta qué vio.
 5. **GitHub** → Settings → Actions → *Workflow permissions*: ✅ confirmado
    el 6/10 (captura del usuario): "Read repository contents and packages
    permissions", y "Allow GitHub Actions to create and approve pull
-   requests" apagado. Falta Settings → Pages → *Source*: hoy "Deploy from
-   a branch"; para U1 pasa a "GitHub Actions".
+   requests" apagado. Y Settings → Pages → *Source* en "GitHub Actions"
+   ✅ el 6/10 a la noche (U1).
 6. **Un iPhone y un Android de verdad**: tocar + › "Nuevo posteo" con el
    teclado abierto, y subir una foto desde la cámara (la prueba de la tanda
    21 fue simulada achicando la ventana).
