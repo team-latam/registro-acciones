@@ -6429,6 +6429,28 @@ async function getSyncMeta(){
 async function setSyncMeta(patch){
   await store.config.mergeCalendarSync(patch);
 }
+// ¿Hay que guardar el token que devolvió Google? Antes se guardaba en
+// cada vuelta: Google devuelve un token en cada respuesta, haya o no
+// cambios, así que cada pestaña con permiso de escribir reescribía
+// app_config cada 30 segundos, y como app_config se escucha en vivo,
+// cada escritura le llegaba a todas las demás pestañas (con N pestañas,
+// 120 × N² mensajes por hora: la cuota del plan gratis de Supabase que
+// primero se agota; docs/AUDITORIA.md, U4).
+// Ahora: solo si trajo eventos (lo nuevo tiene que quedar anotado), si
+// fue una relectura completa, si no había token, o si el guardado tiene
+// más de 6 horas (para que no envejezca: un token viejo sigue sirviendo,
+// solo trae lo de en medio, y si Google lo da por vencido contesta 410 y
+// se relee todo). Sin eventos, el token anterior trae lo mismo la vuelta
+// siguiente.
+const SYNC_TOKEN_REFRESCO_MS = 6 * 3600 * 1000;
+function debeGuardarSyncToken(meta, result, releido, ahoraMs){
+  if(!result || !result.nextSyncToken) return false;
+  if(!meta || !meta.syncToken) return true;
+  if(result.nextSyncToken === meta.syncToken) return false;
+  if(releido || (result.events || []).length) return true;
+  const ultimo = Date.parse(meta.lastSyncedAt || "");
+  return !Number.isFinite(ultimo) || ahoraMs - ultimo >= SYNC_TOKEN_REFRESCO_MS;
+}
 
 // Lee eventos con la clave de API (no el login de nadie) — el calendario
 // tiene que estar configurado como público para lectura en Google
@@ -6773,12 +6795,13 @@ async function syncFromCalendar(opts){
   const silent = !!(opts && opts.silent);
   // Lee con la clave de API: no hace falta ningún login ni token de
   // usuario, así que esto nunca dispara un popup de Google.
-  if(calendarSyncInFlight) return; // evita superponer sincronizaciones (ej. el intervalo de 30s con una anterior que todavía no terminó)
+  if(calendarSyncInFlight) return; // evita superponer sincronizaciones (ej. el intervalo de 2 min con una anterior que todavía no terminó)
   calendarSyncInFlight = true;
   if(!silent){ state.calendarSyncing = true; render(); }
   try{
     const meta = await getSyncMeta();
     let result = await fetchCalendarChanges(meta?.syncToken || null);
+    const releido = !!result.needsFullResync || !meta?.syncToken;
     if(result.needsFullResync) result = await fetchCalendarChanges(null);
     // Cada evento por separado: si uno falla (un posteo importado que las
     // reglas no dejan actualizar, un título más largo que el máximo, lo
@@ -6820,7 +6843,7 @@ async function syncFromCalendar(opts){
     // funcionaron no duplica nada: createImportedPost es idempotente por
     // el id de documento, y el resto de las ramas solo escribe si algo
     // cambió.
-    if(!failed && result.nextSyncToken) await setSyncMeta({ syncToken: result.nextSyncToken });
+    if(!failed && debeGuardarSyncToken(meta, result, releido, Date.now())) await setSyncMeta({ syncToken: result.nextSyncToken });
     if(failed && !silent){
       showCalendarNotice({ ok:false, message:t(
         "{n} evento(s) de Calendar no se pudieron aplicar: {msg}. Se van a reintentar la próxima vez que actualices.",
@@ -6844,7 +6867,7 @@ async function syncFromCalendar(opts){
     console.error("Error sincronizando desde Calendar:", err);
     if(!silent){ showCalendarNotice({ ok:false, message:t("No se pudo sincronizar con Calendar: {msg}","Couldn't sync with Calendar: {msg}","Não foi possível sincronizar com o Calendar: {msg}","{msg} :הסנכרון עם היומן נכשל",{msg:err.message}) }); }
     else {
-      // El sync automático corre callado a propósito (cada 30 s: avisar de
+      // El sync automático corre callado a propósito (cada 2 min: avisar de
       // cada tropiezo sería insoportable). Pero si falla MUCHAS veces
       // seguidas ya no es un tropiezo: es la integración rota — permiso
       // revocado, calendario borrado, config cambiada — y antes eso se
@@ -6867,13 +6890,13 @@ async function syncFromCalendar(opts){
   }
 }
 
-// Sincroniza sola cada 30s mientras la app esté abierta y con sesión
+// Sincroniza sola cada 2 min mientras la app esté a la vista y con sesión
 // (además del botón manual, que sigue estando). Se arranca una sola vez
 // por sesión y se para al cerrar sesión.
 let calendarSyncInterval = null;
 // Fallas seguidas del sync automático (ver el catch de syncFromCalendar).
-// A 30 s por intento, 5 seguidas son ~2 min y medio: ya no es un bache de
-// red, es algo roto de verdad.
+// A 2 min por intento, 5 seguidas son ~10 min: ya no es un bache de red,
+// es algo roto de verdad.
 // Tope de fechas corridas por serie: la base lo exige (mudanzas_ok en
 // 03-validacion.sql: un objeto sin techo en una fila que lee todo el
 // equipo), y a esta
@@ -6881,17 +6904,37 @@ let calendarSyncInterval = null;
 const MAX_OCC_MOVES = 60;
 const CALENDAR_SYNC_FAIL_STREAK = 5;
 let calendarSyncFailStreak = 0, calendarSyncFailWarned = false;
+// Cada 2 minutos, y solo con la pestaña a la vista. Antes era cada 30 s
+// también con la pestaña escondida o la notebook con la tapa cerrada:
+// 5.760 pedidos por día por pestaña (docs/AUDITORIA.md, U4) para
+// enterarse de cambios que además trae el trabajo nocturno. Al volver a
+// la pestaña o a la red se sincroniza enseguida si pasó más de un minuto.
+const CALENDAR_SYNC_CADA_MS = 2 * 60 * 1000;
+let calendarSyncUltimoMs = 0;
+function sincronizarSiTocaCalendar(minMs){
+  if(!calendarSyncInterval) return;
+  if(typeof document !== "undefined" && document.hidden) return;
+  if(Date.now() - calendarSyncUltimoMs < minMs) return;
+  calendarSyncUltimoMs = Date.now();
+  syncFromCalendar({ silent:true });
+}
+function alVolverACalendar(){ sincronizarSiTocaCalendar(60 * 1000); }
 function startCalendarAutoSync(){
   if(calendarSyncInterval) return;
   // El observador no escribe posteos ni el sync token: sin esto su
   // navegador intentaba importar cada 30 s y fallaba contra la base.
   if(!canWrite()) return;
+  calendarSyncInterval = setInterval(()=> sincronizarSiTocaCalendar(CALENDAR_SYNC_CADA_MS - 5000), CALENDAR_SYNC_CADA_MS);
+  calendarSyncUltimoMs = Date.now();
   syncFromCalendar({ silent:true });
-  calendarSyncInterval = setInterval(()=> syncFromCalendar({ silent:true }), 30000);
+  document.addEventListener("visibilitychange", alVolverACalendar);
+  window.addEventListener("online", alVolverACalendar);
 }
 function stopCalendarAutoSync(){
   clearInterval(calendarSyncInterval);
   calendarSyncInterval = null;
+  document.removeEventListener("visibilitychange", alVolverACalendar);
+  window.removeEventListener("online", alVolverACalendar);
 }
 
 // Registro de auditoría: eventos de acceso/administración (no de contenido
