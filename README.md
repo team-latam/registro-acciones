@@ -1320,6 +1320,16 @@ quien publica para crear el evento.
 - La primera vez que el admin aprueba o revoca a alguien, Google puede
   pedir un login extra (para el permiso de administrar quién tiene acceso
   al calendario) — es normal, solo pasa una vez por sesión.
+- **Desde el 6/10/2026 el login lo hace la página**: el botón oficial de
+  Google (Google Identity Services, `montarBotonDeGoogle()`) le da a la
+  página la identidad, y la página se la pasa a Supabase
+  (`signInWithIdToken`, con nonce). Antes iba y volvía por Supabase y la
+  pantalla de Google decía «Prosseguir para
+  benonmzlgdjkhzauamrz.supabase.co». Si Google no carga queda el botón
+  propio, que entra por Supabase como antes; y si Supabase rechaza la
+  identidad (por ejemplo, porque en Supabase → Authentication → Google el
+  cliente `40280679854-p7k3…` no figura entre los «Client IDs»), se sigue
+  por ese mismo camino. Prueba: `pruebas/login_google_test.mjs`.
 - El login con Google pide SOLO identidad (perfil/email). El permiso de
   `calendar.events` se pide recién la primera vez que hace falta escribir
   en Calendar (crear/editar/cancelar un evento, compartir el calendario)

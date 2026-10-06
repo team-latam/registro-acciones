@@ -19,6 +19,7 @@ function supabaseDeMentira(){
       getSession: async ()=>({ data:{ session: sesionActual } }),
       onAuthStateChange(f){ alCambiar = f; },
       signInWithOAuth: async o=>{ reg.pedidos.push(o); return { error: reg.errorLogin || null }; },
+      signInWithIdToken: async o=>{ reg.conToken = o; return { error: reg.errorToken || null }; },
       signOut: async ()=>{ reg.cerro = true; alCambiar && alCambiar("x", null); },
     },
     entrar(u){ sesionActual = { user:u }; alCambiar && alCambiar("SIGNED_IN", sesionActual); },
@@ -66,10 +67,18 @@ eq("sin arrastrar lo que venga después del #",
 await ses.cerrar();
 eq("salir cierra la sesión", sbm.reg.cerro, true);
 
+// Con el botón de Google de la página (montarBotonDeGoogle): la identidad
+// que dio Google, y el nonce ORIGINAL (a Google va su huella).
+await ses.conGoogle("jwt-de-google", "nonce-crudo");
+eq("entrar con la identidad de Google se la pasa a Supabase con su nonce", sbm.reg.conToken, { provider:"google", token:"jwt-de-google", nonce:"nonce-crudo" });
+sbm.reg.errorToken = { message:"Unacceptable audience" };
+let rechazo = null; try{ await ses.conGoogle("otro", "n"); }catch(e){ rechazo = e.message; }
+eq("si Supabase la rechaza, avisa (y la app sigue por el camino de siempre)", rechazo, "Unacceptable audience");
+
 /* ---------- La sesión ofrece justo lo que la app usa ---------- */
 const firma = o => Object.keys(o).sort().map(k => `${k}(${o[k].length})`).join(" | ");
-eq("quién está adentro, entrar y salir: nada más",
-   firma(crearSesion(supabaseDeMentira())), "alCambiar(1) | cerrar(0) | iniciar(0)");
+eq("quién está adentro, entrar (de las dos formas) y salir: nada más",
+   firma(crearSesion(supabaseDeMentira())), "alCambiar(1) | cerrar(0) | conGoogle(2) | iniciar(0)");
 
 /* ---------- El arranque ---------- */
 eq("arrancar() arma las DOS cosas: los datos y la sesión",
