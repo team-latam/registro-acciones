@@ -36,7 +36,10 @@ decisiones de arquitectura.
   Administración → Copia de seguridad para bajar una. **El token
   `RESPALDOS_TOKEN` vence el 5/10/2027**: hay que renovarlo antes (pasos
   en `supabase/respaldo/LEEME.md`; la corrida avisa en rojo faltando 15
-  días). Claude no puede crear repos en la cuenta `team-latam` (es una
+  días). **El token `SUPABASE_ACCESS_TOKEN`** (publica la función
+  `calendario`, `supabase/functions/LEEME.md`) **vence el 30/9/2027**:
+  renovarlo junto con el otro; si vence, la función sigue andando y solo
+  falla publicar un cambio. Claude no puede crear repos en la cuenta `team-latam` (es una
   cuenta de usuario; la conexión de GitHub no tiene ese permiso).
 
 ## Auditorías — `auditoria/`
