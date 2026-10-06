@@ -333,6 +333,10 @@ drop policy if exists prefs_crear on public.user_prefs;
 create policy prefs_crear on public.user_prefs for insert
   with check (email = (select public.mi_correo()) and (select public.esta_aprobado()));
 
+-- Borrar las de otro (al quitarle el acceso) va por la función
+-- olvidar_preferencias() de 04-funciones.sql: un admin no lee las ajenas.
+drop policy if exists prefs_borrar on public.user_prefs;
+
 drop policy if exists prefs_editar on public.user_prefs;
 create policy prefs_editar on public.user_prefs for update
   using (email = (select public.mi_correo()))

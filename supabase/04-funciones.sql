@@ -418,3 +418,17 @@ create trigger posts_registrar after insert or update or delete on public.posts
   for each row execute function public.registrar_posteo();
 
 revoke execute on function public.registrar_posteo() from public, anon, authenticated;
+
+-- Al quitarle el acceso a alguien, sus preferencias (y sus marcas de
+-- «visto») quedaban para siempre (docs/AUDITORIA.md, B6). Un admin las
+-- borra con esto: por política no puede ni leer las ajenas.
+create or replace function public.olvidar_preferencias(p_email text)
+returns void language plpgsql security definer set search_path = '' as $$
+begin
+  if not (public.es_admin_fijo() or public.es_admin_rol()) then
+    raise exception 'Esto lo hace un admin' using errcode = 'insufficient_privilege';
+  end if;
+  delete from public.user_prefs where email = lower(p_email);
+end $$;
+revoke execute on function public.olvidar_preferencias(text) from public, anon;
+grant execute on function public.olvidar_preferencias(text) to authenticated;

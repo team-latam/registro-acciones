@@ -178,6 +178,10 @@ export function createClient(url, clave){
         estado.tablas.calendar_sacados = t.filter(x => !args.p_eventos.includes(x.evento));
         return { data: { devueltos, aTraer }, error: null };
       }
+      if(nombre === "olvidar_preferencias"){
+        estado.tablas.user_prefs = (estado.tablas.user_prefs || []).filter(x => x.email !== args.p_email);
+        return { data: null, error: null };
+      }
       if(nombre === "tamano_del_bucket") return { data: estado.tamano || { archivos: 3, bytes: 3 * 1024 * 1024 }, error: null };
       if(nombre === "unificar_cuentas"){
         const viejo = String(args.p_viejo).toLowerCase(), nuevo = args.p_nuevo;
@@ -1884,6 +1888,22 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   eq("y una foto con Espacio", await hasta(p, () => document.getElementById("lightbox").classList.contains("show"), null, 3000), true);
   eq("los ✕ dicen qué hacen", await p.evaluate(() => [...document.querySelectorAll(".rm")].filter(b => !b.getAttribute("aria-label") && !b.getAttribute("title")).length), 0);
   eq("sin un solo error", errores, []);
+  await p.close();
+}
+
+/* ---------- Quitarle el acceso a alguien borra sus preferencias (AUDITORIA B6) ---------- */
+{
+  const { p } = await entrar(ADMIN, "Benny", b => b.user_prefs.push({ email: "ana@x.com", prefs: { visto_changesSeenAt: 1 } }));
+  await p.waitForSelector('[data-action="toggle-user-menu"]');
+  await p.click('[data-action="toggle-user-menu"]');
+  await p.click('.user-menu [data-action="goto-view"][data-view="admin"]');
+  await p.click('.admin-menu [data-action="admin-go"][data-view="solicitudes"]');
+  await p.click('.lp-row[data-action="usuario-abrir"][data-email="ana@x.com"]');
+  await p.click('[data-action="revoke-access"][data-email="ana@x.com"]');
+  await p.waitForSelector("#confirmOk", { state: "visible" });
+  await p.click("#confirmOk");
+  eq("quitar acceso: sale del equipo", await hasta(p, () => !(window.__sb.tablas.members || []).some(m => m.email === "ana@x.com")), true);
+  eq("quitar acceso: y sus preferencias se borran", await hasta(p, () => !(window.__sb.tablas.user_prefs || []).some(f => f.email === "ana@x.com")), true);
   await p.close();
 }
 

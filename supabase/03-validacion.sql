@@ -393,6 +393,23 @@ drop trigger if exists solicitudes_hora on public.access_requests;
 create trigger solicitudes_hora before insert on public.access_requests
   for each row execute function public.hora_del_servidor('requested_at');
 
+-- Volver a pedir acceso después de un rechazo: una vez por hora como
+-- mucho. Sin tope, alguien rechazado podía reaparecer en la cola del admin
+-- cada minuto (docs/AUDITORIA.md, B6). El admin, sin tope.
+create or replace function public.solicitudes_reintento() returns trigger
+  language plpgsql security definer set search_path = '' as $$
+begin
+  if public.sin_sesion_de_persona() or public.es_admin_fijo() or public.es_admin_rol() then return new; end if;
+  if old.status = 'rejected' and new.status = 'pending'
+     and old.requested_at > now() - interval '1 hour' then
+    raise exception 'Esperá un rato para volver a pedir acceso' using errcode = 'check_violation';
+  end if;
+  return new;
+end $$;
+drop trigger if exists solicitudes_reintento on public.access_requests;
+create trigger solicitudes_reintento before update on public.access_requests
+  for each row execute function public.solicitudes_reintento();
+
 drop trigger if exists former_hora on public.former_members;
 create trigger former_hora before insert on public.former_members
   for each row execute function public.hora_del_servidor('revoked_at');

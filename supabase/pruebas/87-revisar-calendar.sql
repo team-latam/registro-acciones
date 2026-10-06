@@ -94,6 +94,16 @@ select lab.probar_valor('sacar y devolver deja el posteo como estaba, con lo que
   $q$select (select activity_type || ':' || (scopes->0->>'country') || ':' || title from public.posts where id = 'cal_ev1')
          || ' / sacados: ' || (select count(*) from public.calendar_sacados)$q$,
   'visita:Chile:Visita Tucumán - Ran / sacados: 0');
+select lab.probar_valor('lo devuelto conserva su fecha de creación (no aparece como nuevo)', lab.como('ana@x.com'),
+  $q$set local role postgres;
+     alter table public.posts disable trigger user;
+     update public.posts set created_at = '2026-01-02T00:00:00Z', last_edited_at = null where id = 'cal_ev1';
+     alter table public.posts enable trigger user;
+     set local role authenticated;
+     select public.sacar_del_registro(array['cal_ev1']);
+     select public.devolver_al_registro(array['ev1'])$q$,
+  $q$select to_char(created_at at time zone 'utc', 'YYYY-MM-DD') || ' / ' || coalesce(last_edited_at::text, 'sin editar') from public.posts where id = 'cal_ev1'$q$,
+  '2026-01-02 / sin editar');
 select lab.probar_valor('uno sacado sin copia (de antes) deja de estar sacado y se avisa para traerlo de Calendar', lab.como('ana@x.com'),
   $q$set local role postgres; insert into public.calendar_sacados(evento,titulo,sacado_por) values ('evViejo','Viejo','ana@x.com'); set local role authenticated;
      create temp table r as select public.devolver_al_registro(array['evViejo']) as v$q$,
