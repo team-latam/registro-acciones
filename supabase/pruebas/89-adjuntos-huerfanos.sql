@@ -133,6 +133,17 @@ select 'la foto, su miniatura y el adjunto de lo sacado del Registro NO son hué
        not (h ? 'posts/cal_s/img0_1.jpg' or h ? 'posts/cal_s/img0_1.min.jpg' or h ? 'posts/cal_s/arch0_1.pdf'), h::text
   from (select public.limpieza_del_bucket() -> 'huerfanos' as h) x;
 
+
+-- ---------- Cuánto hay en el bucket (docs/AUDITORIA.md, M8) ----------
+update storage.objects set metadata = '{"size":1000}' where bucket_id = 'adjuntos' and name not like 'papelera/%';
+select lab.probar('un integrante común no ve cuánto hay', lab.como('juan@x.com'),
+  $q$select public.tamano_del_bucket()$q$, false);
+select count(*)::text || '|' || (count(*) * 1000)::text as esperado from storage.objects
+ where bucket_id = 'adjuntos' and name not like 'papelera/%' \gset
+select lab.probar_valor('un admin sí: archivos y bytes, sin la papelera ni otro bucket', lab.como('benny@team-latam.com'),
+  $q$select 1$q$,
+  $q$select (public.tamano_del_bucket() ->> 'archivos') || '|' || (public.tamano_del_bucket() ->> 'bytes')$q$, :'esperado');
+
 \set QUIET off
 select n, '  FALLA  ' || nombre || ' — ' || detalle as falla from lab.resultados where esperado <> obtenido order by n;
 select count(*) filter (where esperado=obtenido) || ' pasaron, ' ||

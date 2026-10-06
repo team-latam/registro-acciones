@@ -260,6 +260,25 @@ reset check_function_bodies;
 revoke execute on function public.limpieza_del_bucket(integer, integer, date) from public, anon, authenticated;
 grant execute on function public.limpieza_del_bucket(integer, integer, date) to service_role;
 
+-- Cuánto hay en el bucket: cuántos archivos y cuánto pesan, sin la
+-- papelera. Para Administración (el medidor del GB del plan gratis, y el
+-- aviso antes de bajar una copia completa, que baja todo eso;
+-- docs/AUDITORIA.md, M8). Solo para admins: no dice qué archivos hay.
+create or replace function public.tamano_del_bucket()
+returns jsonb language plpgsql stable security definer set search_path = '' as $$
+begin
+  if not (public.es_admin_fijo() or public.es_admin_rol()) then
+    raise exception 'Lo ve un admin' using errcode = 'insufficient_privilege';
+  end if;
+  return (select jsonb_build_object(
+      'archivos', count(*),
+      'bytes', coalesce(sum(case when (o.metadata ->> 'size') ~ '^\d+$' then (o.metadata ->> 'size')::bigint end), 0))
+    from storage.objects o
+   where o.bucket_id = 'adjuntos' and o.name not like 'papelera/%');
+end $$;
+revoke execute on function public.tamano_del_bucket() from public, anon;
+grant execute on function public.tamano_del_bucket() to authenticated;
+
 
 -- ============================================================
 -- Quién cargó, editó, canceló o borró cada posteo
