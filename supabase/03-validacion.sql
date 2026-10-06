@@ -296,7 +296,9 @@ alter table public.audit_log
     'access_revoked', 'role_changed', 'calendar_shared', 'calendar_unshared',
     -- Lo que cada integrante hace con los posteos (quién cargó, editó,
     -- canceló o borró qué): lo escribe la base, ver registrar_posteo.
-    'post_created', 'post_edited', 'post_cancelled', 'post_deleted')),
+    'post_created', 'post_edited', 'post_cancelled', 'post_deleted',
+    -- Unificar dos cuentas: lo anota la base (15-unificar-cuentas.sql).
+    'accounts_merged')),
   add constraint audit_textos check (
     length(actor_email) between 1 and 200
     and length(actor_name) between 1 and 120

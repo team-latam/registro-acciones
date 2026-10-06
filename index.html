@@ -11378,6 +11378,9 @@ function auditLabels(){
     post_created: { icon:"✍️", filterLabel:t("Cargó","Logged","Carregou","רשם/ה"), text: e => t("{n} cargó {d}.","{n} logged {d}.","{n} carregou {d}.","{n} רשם/ה את {d}.",{n:e.actorName,d:e.detail || t("un posteo","a post","uma postagem","פוסט")}) },
     post_edited: { icon:"✏️", filterLabel:t("Editó","Edited","Editou","ערך/ה"), text: e => t("{n} editó {d}.","{n} edited {d}.","{n} editou {d}.","{n} ערך/ה את {d}.",{n:e.actorName,d:e.detail || t("un posteo","a post","uma postagem","פוסט")}) },
     post_cancelled: { icon:"🚫", filterLabel:t("Canceló","Cancelled","Cancelou","ביטל/ה"), text: e => t("{n} canceló {d}.","{n} cancelled {d}.","{n} cancelou {d}.","{n} ביטל/ה את {d}.",{n:e.actorName,d:e.detail || t("un posteo","a post","uma postagem","פוסט")}) },
+    // Unificar dos cuentas (Administración › Personas): lo anota la base,
+    // con la cuenta vieja en target y la nueva en detail (6/10/2026).
+    accounts_merged: { icon:"🔀", filterLabel:t("Unificó cuentas","Merged accounts","Unificou contas","איחד/ה חשבונות"), text: e => t("{n} pasó todo lo de {target} a {d}.","{n} moved everything from {target} to {d}.","{n} passou tudo de {target} para {d}.","{n} העביר/ה את כל מה של {target} אל {d}.",{n:e.actorName,target:e.targetEmail,d:e.detail || ""}) },
     post_deleted: { icon:"🗑️", filterLabel:t("Borró","Deleted","Apagou","מחק/ה"), text: e => t("{n} borró {d}.","{n} deleted {d}.","{n} apagou {d}.","{n} מחק/ה את {d}.",{n:e.actorName,d:e.detail || t("un posteo","a post","uma postagem","פוסט")}) },
   };
 }

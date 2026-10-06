@@ -65,7 +65,7 @@ select 'lo de otros no se toca', true, author_email = 'juan@x.com' and author_na
 insert into lab.resultados(nombre, esperado, obtenido, detalle)
 select 'las preferencias pasan si la cuenta nueva no tenía', true, prefs ->> 'lang' = 'he', prefs::text from public.user_prefs where email = 'benny@team-latam.com';
 insert into lab.resultados(nombre, esperado, obtenido, detalle)
-select 'no queda anotado como edición en el registro de actividad', true, count(*) = 0, count(*)::text from public.audit_log;
+select 'no queda anotado como edición en el registro de actividad', true, count(*) = 0, count(*)::text from public.audit_log where type like 'post_%';
 
 -- Un correo que no está en ningún lado (ni en Personas ni entre los ex
 -- integrantes: la cuenta se borró a mano) también se puede pasar.
@@ -87,6 +87,36 @@ select 'un correo sin ficha: sus me gusta también, en el mismo lugar', true, li
 insert into lab.resultados(nombre, esperado, obtenido, detalle)
 select 'un correo sin ficha: sus comentarios y sus me gusta en comentarios', true,
        author_email = 'benny@team-latam.com' and liked_by = '{benny@team-latam.com}', author_email || liked_by::text from public.replies where id = 'r2';
+
+
+-- ---------- El admin fijo y el registro (docs/AUDITORIA.md, I6) ----------
+-- Después de unificar la sesión queda sin persona (así corren los
+-- arreglos): para mirar el resultado hace falta esta ventana del laboratorio.
+create or replace function lab.leer(consulta text) returns text
+  language plpgsql security definer set search_path = '' as $$
+declare r text; begin execute consulta into r; return r; end $$;
+grant execute on function lab.leer(text) to authenticated;
+grant usage on schema lab to authenticated;
+insert into public.members(email, name, nickname, role) values ('rol@x.com','Admin por rol','rol','admin')
+  on conflict (email) do nothing;
+select lab.probar('un admin por rol NO se queda con lo del admin fijo', lab.como('rol@x.com'),
+  $q$select public.unificar_cuentas('benny@team-latam.com','rol@x.com')$q$, false);
+select lab.probar('ni le pasa lo de otro al admin fijo', lab.como('rol@x.com'),
+  $q$select public.unificar_cuentas('juan@x.com','benny@team-latam.com')$q$, false);
+select lab.probar('entre otras dos cuentas, un admin por rol sí puede', lab.como('rol@x.com'),
+  $q$select public.unificar_cuentas('juan@x.com','rol@x.com')$q$, true);
+select lab.probar_valor('y queda anotado en el registro de actividad', lab.como('rol@x.com'),
+  $q$select public.unificar_cuentas('juan@x.com','rol@x.com')$q$,
+  $q$select lab.leer($x$select string_agg(type || '|' || actor_email || '|' || target_email || '|' || detail, ';') from public.audit_log where type = 'accounts_merged' and actor_email = 'rol@x.com'$x$)$q$,
+  'accounts_merged|rol@x.com|juan@x.com|rol@x.com');
+select lab.probar('el tipo nuevo no lo puede escribir nadie a mano', lab.como('rol@x.com'),
+  $q$insert into public.audit_log(id, type, actor_email, actor_name, target_email) values ('am1','accounts_merged','rol@x.com','Rol','juan@x.com')$q$, false);
+update public.members set nickname = 'ju.an(' where email = 'juan@x.com';
+insert into public.posts(id,title,content,date,start_date,end_date,activity_type,author_name,author_email)
+  values ('pnick','N','Hola @ju.an( y @juXan(','2026-01-12','2026-01-12','2026-01-12','visita','Juan','juan@x.com');
+select lab.probar_valor('un @usuario con punto y paréntesis se reemplaza solo él', lab.como('rol@x.com'),
+  $q$select public.unificar_cuentas('juan@x.com','rol@x.com')$q$,
+  $q$select lab.leer($x$select content from public.posts where id = 'pnick'$x$)$q$, 'Hola @rol y @juXan(');
 
 \set QUIET off
 select n, '  FALLA  ' || nombre as falla, detalle from lab.resultados where esperado <> obtenido order by n;
