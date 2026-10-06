@@ -27,10 +27,11 @@ try{
   api = new Function("ctx", `
     const currentLang = () => ctx.idioma();
     const state = ctx.state;
-    ${["hasOwn","textoSano","formaDeLugares","formaDeHitos","DEFAULT_CITY_LABELS","CIUDAD_BIEN_ESCRITA","cityLabel","memberByEmail"].map(grab).join("\n")}
-    return { formaDeLugares, formaDeHitos, cityLabel, memberByEmail };`)({
+    ${["hasOwn","textoSano","formaDeLugares","formaDeHitos","DEFAULT_CITY_LABELS","CIUDAD_BIEN_ESCRITA","cityLabel","memberByEmail","nombreDe","personaQueGusta","nombreEnReporte"].map(grab).join("\n")}
+    return { formaDeLugares, formaDeHitos, cityLabel, memberByEmail, nombreDe, personaQueGusta, nombreEnReporte };`)({
       idioma: () => idioma,
-      state: { roster: [{ email: "ana@x.com", name: "Ana", nickname: "ana" }], formerMembers: [{ email: "vieja@x.com", name: "Vieja" }] },
+      state: { roster: [{ email: "ana@x.com", name: "Ana", nickname: "ana" }, { email: "sin@x.com", name: "", nickname: "sinnombre" }],
+               formerMembers: [{ email: "vieja@x.com", name: "Vieja" }], auth: { user: null } },
     });
 }catch(e){ console.log("no se pudo armar:", e.message); }
 const llamar = (f, ...x) => { try{ return api[f](...x); }catch(e){ return "no existe " + f; } };
@@ -72,6 +73,13 @@ eq("una escrita por alguien queda como la escribió", llamar("cityLabel", "Argen
 eq("Ana@X.com es Ana", (llamar("memberByEmail", "Ana@X.com") || {}).name, "Ana");
 eq("y alguien que ya no está, también", (llamar("memberByEmail", "VIEJA@x.com") || {}).former, true);
 eq("un correo que no es de nadie, nada", llamar("memberByEmail", "otro@x.com"), null);
+
+/* ---------- Un solo nombre para cada persona (AUDITORIA B2) ---------- */
+eq("alguien sin nombre se llama igual en el «Me gusta» y en los reportes",
+  [(llamar("personaQueGusta", "sin@x.com") || {}).name, llamar("nombreEnReporte", "sin@x.com")], ["@sinnombre", "@sinnombre"]);
+eq("con nombre, su nombre; si no es nadie, lo que vino", [llamar("nombreEnReporte", "ANA@x.com"), llamar("nombreEnReporte", "otro@x.com"), llamar("nombreDe", null, "x")], ["Ana", "otro@x.com", "x"]);
+eq("alguien que no es del equipo, con su correo y sin ficha", [(llamar("personaQueGusta", "otro@x.com") || {}).name, (llamar("personaQueGusta", "otro@x.com") || {}).cuenta], ["otro@x.com", false]);
+eq("quien ya no está sigue con su ficha en el «Me gusta»", (llamar("personaQueGusta", "vieja@x.com") || {}).cuenta, true);
 
 console.log(`\n${pass} pasaron, ${fail} fallaron`);
 process.exit(fail ? 1 : 0);
