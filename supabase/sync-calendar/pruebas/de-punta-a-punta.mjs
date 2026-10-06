@@ -280,6 +280,45 @@ for(const sinCal of [false, true]){
   eq("y es el bueno el que quedó", reg.posts.map(p=>p.title), ["Bueno"]);
 }
 
+/* ---------- Un corte pasajero de Supabase (docs/AUDITORIA.md, I4) ---------- */
+{
+  // Un 503 una vez: se reintenta y entra.
+  process.env.SYNC_ESPERA_MS = "1";
+  let cortes = 1;
+  const reg = baseDeMentira({ config:{ calendarSync:{ syncToken:"antes" } },
+    paginas:[{ items:[diaEntero("evCorte","2026-09-03",{ summary:"Corte" })], nextSyncToken:"tokDespues" }] });
+  const fetchOriginal = globalThis.fetch;
+  globalThis.fetch = async (url, op={}) => {
+    if(String(url).includes("/rest/v1/posts") && op.method === "POST" && cortes-- > 0)
+      return { ok:false, status:503, text: async ()=>'{"message":"Service Unavailable"}' };
+    return fetchOriginal(url, op);
+  };
+  const r = await callado(()=> main());
+  eq("un 503 suelto se reintenta y el evento entra", [r.aplicados, r.fallados, reg.posts.length], [1, 0, 1]);
+  eq("y el token avanza", reg.config.calendarSync.syncToken, "tokDespues");
+}
+{
+  // Un corte que no se va: el token NO avanza, así mañana se vuelve a traer.
+  const reg = baseDeMentira({ config:{ calendarSync:{ syncToken:"antes" } },
+    paginas:[{ items:[diaEntero("evCaido","2026-09-04",{ summary:"Caído" })], nextSyncToken:"tokNoVa" }] });
+  const fetchOriginal = globalThis.fetch;
+  let intentos = 0;
+  globalThis.fetch = async (url, op={}) => {
+    if(String(url).includes("/rest/v1/posts") && op.method === "POST"){ intentos++;
+      return { ok:false, status:502, text: async ()=>'{"message":"Bad Gateway","details":"Failing row contains (secreto)"}' }; }
+    return fetchOriginal(url, op);
+  };
+  const salida = [];
+  const log = console.log, err = console.error;
+  console.log = (...x) => salida.push(x.join(" ")); console.error = (...x) => salida.push(x.join(" "));
+  let r; try{ r = await main(); } finally { console.log = log; console.error = err; }
+  eq("un corte que sigue: se intentó tres veces", intentos, 3);
+  eq("y el token no avanza", reg.config.calendarSync.syncToken, "antes");
+  eq("se cuenta como pasajero", r.pasajeros, 1);
+  eq("el registro público no trae la fila ni el id del evento", salida.some(l => /secreto|evCaido/.test(l)), false);
+  process.env.SYNC_ESPERA_MS = "";
+}
+
 /* ---------- Cuando Calendar no contesta ---------- */
 {
   baseDeMentira({ calendarFalla:"cuota excedida" });

@@ -118,6 +118,21 @@ select lab.probar_valor('ni alguien de afuera', lab.como('intruso@x.com'),
 
 \set QUIET on
 delete from storage.objects;
+
+-- ---------- Lo sacado del Registro (docs/AUDITORIA.md, I4) ----------
+-- Su copia guarda las rutas: sus archivos no son huérfanos.
+insert into public.calendar_sacados (evento, titulo, sacado_por, fila) values
+  ('ev_sacado', 'Sacado', 'ana@x.com',
+   '{"id":"cal_s","images":["posts/cal_s/img0_1.jpg"],"files":[{"name":"a.pdf","path":"posts/cal_s/arch0_1.pdf"}]}');
+insert into storage.objects (bucket_id, name, created_at) values
+  ('adjuntos', 'posts/cal_s/img0_1.jpg',     now() - interval '10 days'),
+  ('adjuntos', 'posts/cal_s/img0_1.min.jpg', now() - interval '10 days'),
+  ('adjuntos', 'posts/cal_s/arch0_1.pdf',    now() - interval '10 days');
+insert into lab.resultados(nombre, esperado, obtenido, detalle)
+select 'la foto, su miniatura y el adjunto de lo sacado del Registro NO son huérfanos', true,
+       not (h ? 'posts/cal_s/img0_1.jpg' or h ? 'posts/cal_s/img0_1.min.jpg' or h ? 'posts/cal_s/arch0_1.pdf'), h::text
+  from (select public.limpieza_del_bucket() -> 'huerfanos' as h) x;
+
 \set QUIET off
 select n, '  FALLA  ' || nombre || ' — ' || detalle as falla from lab.resultados where esperado <> obtenido order by n;
 select count(*) filter (where esperado=obtenido) || ' pasaron, ' ||

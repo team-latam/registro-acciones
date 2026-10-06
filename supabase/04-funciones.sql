@@ -214,6 +214,15 @@ begin
 exception when others then return null;   -- una fecha que no existe
 end $$;
 
+-- Lo «sacado del Registro» (12-revisar-calendar.sql) guarda una copia del
+-- posteo en calendar_sacados.fila, para poder devolverlo. Sus archivos
+-- también cuentan como usados: antes la limpieza los mandaba a la
+-- papelera el domingo siguiente y a los 30 días se borraban, y «Devolver
+-- al Registro» lo devolvía con las fotos rotas (docs/AUDITORIA.md, I4).
+-- Esa tabla se crea recién en el 12: en una base vacía todavía no existe
+-- cuando se aplica este archivo, así que acá no se revisa el cuerpo de la
+-- función al crearla (se usa cuando ya está todo aplicado).
+set check_function_bodies = off;
 create or replace function public.limpieza_del_bucket(
   p_gracia integer default 2, p_papelera integer default 30, p_restaurar date default null)
 returns jsonb language sql stable security definer set search_path = '' as $$
@@ -222,6 +231,10 @@ returns jsonb language sql stable security definer set search_path = '' as $$
     union all select a ->> 'path' from public.posts p, jsonb_array_elements(p.files) a
     union all select unnest(r.images) from public.replies r
     union all select a ->> 'path' from public.replies r, jsonb_array_elements(r.files) a
+    union all select x from public.calendar_sacados s,
+      jsonb_array_elements_text(case when jsonb_typeof(s.fila -> 'images') = 'array' then s.fila -> 'images' else '[]'::jsonb end) x
+    union all select a ->> 'path' from public.calendar_sacados s,
+      jsonb_array_elements(case when jsonb_typeof(s.fila -> 'files') = 'array' then s.fila -> 'files' else '[]'::jsonb end) a
   ), usados as (
     select ruta from nombrados where ruta is not null
     union
@@ -240,6 +253,7 @@ returns jsonb language sql stable security definer set search_path = '' as $$
     'restaurar', coalesce((select jsonb_agg(o.name order by o.name) from objetos o
         where p_restaurar is not null and public.fecha_de_papelera(o.name) = p_restaurar), '[]'::jsonb))
 $$;
+reset check_function_bodies;
 
 -- En Supabase toda función nueva de `public` se puede llamar de entrada
 -- desde el navegador: hay que sacárselo explícitamente.
