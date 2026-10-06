@@ -128,7 +128,7 @@ que decidir o hacer un paso en un panel).
 |---|---|---|---|---|---|
 | I1 | ~~Las pestañas de arriba hacen `scrollToTop()` como ya lo hace la barra de abajo~~ ✅ 6/10 | en escritorio se entra al Calendario sin su barra (`scrollY=95`) y a Reportes por la mitad (`scrollY=879`); lo nota cualquiera todos los días | diseño 1 (`index.html:19149`) | chico | Claude |
 | I2 | ~~Que todo lo que mide "actividad" corte en hoy, o separe "realizadas" de "planificadas"~~ ✅ 6/10 (lo planificado aparte, en Reportes y en la ficha) | Reportes, Países, la ficha, el perfil y "cargó en 6 meses" cuentan eventos futuros; las "Sugerencias para el año siguiente" salen torcidas | diseño, "futuro y pasado" (`armarReporte` 14588, `vecesEnVentana` 14464) | medio | Claude; **usuario** decide si lo planificado se muestra aparte o no se cuenta |
-| I3 | ~~Aislar los visores de Word y planilla en un `<iframe sandbox>` y subir SheetJS de 0.18.5 a 0.20; `integrity` en los cinco recursos de CDN que no lo tienen; una CSP en `<meta>`~~ ✅ 6/10 (y la CSP completa, el 6/10 a la noche) | SheetJS 0.18.5 tiene vulnerabilidades conocidas; los dos visores dibujan un archivo ajeno en el DOM de la app, donde vive el token de sesión | seguridad 2, 3, 4, 16 | medio | Claude |
+| I3 | ~~Aislar los visores de Word y planilla en un `<iframe sandbox>` y subir SheetJS de 0.18.5 a 0.20; `integrity` en los cinco recursos de CDN que no lo tienen; una CSP en `<meta>`~~ ✅ 6/10 (y la CSP completa, el 6/10 a la noche; el usuario la probó en el sitio de verdad: entrar, el mapa, un Word y Calendar andan) | SheetJS 0.18.5 tiene vulnerabilidades conocidas; los dos visores dibujan un archivo ajeno en el DOM de la app, donde vive el token de sesión | seguridad 2, 3, 4, 16 | medio | Claude |
 | I4 | ~~El sincronizador nocturno: no guardar el token si un evento falló por error de red o 5xx (reintentar); recortar lo que va al registro público; sumar `calendar_sacados` a lo que la limpieza considera "usado"~~ ✅ 6/10 | un error pasajero pierde un cambio de Calendar para siempre; el registro público de Actions puede mostrar la fila entera de un posteo; lo "sacado del Registro" pierde sus adjuntos a los 32 días y "Devolver" lo devuelve roto | backend 5, 6, 7 | medio | Claude |
 | I5 | ~~Zonas horarias: pedir los eventos a Google con la zona del calendario y crearlos con esa misma zona; preferir `originalStartTime` para las excepciones de una serie; un helper `isoLocalDe(ms)` para los cinco lugares que mezclan día UTC con día local~~ ✅ 6/10 (falta confirmar la zona horaria del calendario LatAm; la app la toma sola de Google) | un evento con hora cargado desde Israel se "corrige" solo a otra hora (y deja comentario); una rutina de 22:00 en Buenos Aires se salta el día equivocado; "Hoy/Ayer", "este mes" y las series por mes se corren después de las 21:00 en Argentina o antes de las 03:00 en Israel | backend 8 y 9, código 1–5 | medio, con prueba en `TZ=Asia/Jerusalem` y `America/Argentina/Buenos_Aires` | Claude; **confirmar** la zona horaria del calendario LatAm |
 | I6 | ~~Endurecer cuatro puntos de la base: `unificar_cuentas` no toca al admin fijo y queda en la auditoría; `registrar_posteo` anota cualquier edición de contenido (hoy se esquiva sin `last_edited_at` o firmando "Google Calendar"); `editors`, `participants`, `calendar_event_id`, `sin_calendar` solo autor/editor/admin; subir al bucket solo a `posts/` y `replies/`~~ ✅ 6/10 (participantes y vínculo con Calendar siguen abiertos a propósito) | un admin por rol puede quedarse con todo lo del admin fijo sin dejar rastro; una edición puede no anotarse; cualquiera puede sacar o poner participantes en un evento ajeno | backend 10, 13, 17, 18, con las pruebas SQL que faltan (19) | medio | Claude |
@@ -204,9 +204,11 @@ y él cuenta qué vio.
 4. **Supabase** → Settings: ¿el proyecto avisó alguna vez de pausa por
    inactividad? (las llamadas nocturnas con la llave de servicio deberían
    contar como actividad; a confirmar).
-5. **GitHub** → Settings → Actions → *Workflow permissions*: debería estar
-   en "Read repository contents" (B4). Y Settings → Pages → *Source*: hoy
-   "Deploy from a branch"; para U1 pasa a "GitHub Actions".
+5. **GitHub** → Settings → Actions → *Workflow permissions*: ✅ confirmado
+   el 6/10 (captura del usuario): "Read repository contents and packages
+   permissions", y "Allow GitHub Actions to create and approve pull
+   requests" apagado. Falta Settings → Pages → *Source*: hoy "Deploy from
+   a branch"; para U1 pasa a "GitHub Actions".
 6. **Un iPhone y un Android de verdad**: tocar + › "Nuevo posteo" con el
    teclado abierto, y subir una foto desde la cámara (la prueba de la tanda
    21 fue simulada achicando la ventana).
