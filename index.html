@@ -2217,6 +2217,10 @@
      el menú ⋯ se cortaba contra el borde (captura del usuario, 6/10/2026).
      Ahora mide lo que mide la tarjeta y se desplaza la ventana entera,
      con una cabecera pegada arriba (de dónde se vino y la ✕). */
+  /* «← Volver a la ficha de …», arriba del Feed o de Proyectos cuando se
+     llegó desde la ventana de una ficha. */
+  .volver-ficha{ display:inline-flex; align-items:center; gap:6px; margin:0 0 12px; padding:6px 12px; border-radius:999px; border:1px solid var(--border); background:var(--card); box-shadow:var(--shadow); font:inherit; font-size:12.5px; font-weight:700; color:var(--celeste-dark); cursor:pointer; }
+  .volver-ficha:hover{ border-color:var(--celeste); text-decoration:underline; }
   .ficha-post-modal{ max-width:760px; max-height:none; padding:0 22px 22px; }
   .ficha-post-modal .fp-cabeza{
     position:sticky; top:0; z-index:5; display:flex; align-items:center; justify-content:space-between; gap:10px;
@@ -10435,6 +10439,14 @@ function doRender(){
     b.classList.toggle("active", b.dataset.view === state.view);
   });
 
+  // La ventana de un ítem de la ficha solo tiene sentido con su ficha
+  // debajo. Si una acción cambió de sección («Convertir en proyecto» navega
+  // solo después de guardar; «Gestionar proyecto»; «Ver en el Feed»…), se
+  // cierra acá, antes de armar la vista, y queda el camino de vuelta:
+  // «← Volver a la ficha de …» (renderVolverAFicha).
+  if(fichaPostOverlay && !fichaPostOverlay.hidden && !(state.view === "paises" && (state.zonaDrill || state.countryDrill))){
+    fichaOrigen = fichaPostOrigen; fichaPostReturnFocus = null; closeFichaPost();
+  }
   let html = "";
   if(fatalError){
     html += `<div class="setup-banner">⚠️ ${esc(fatalError)}</div>`;
@@ -10469,10 +10481,10 @@ function doRender(){
     return;
   }
 
-  if(state.view === "feed") html += renderFeedView();
+  if(state.view === "feed") html += renderVolverAFicha() + renderFeedView();
   else if(state.view === "paises") html += renderPaisesView();
   else if(state.view === "calendario") html += renderCalendarioView();
-  else if(state.view === "proyectos") html += renderProyectosView();
+  else if(state.view === "proyectos") html += renderVolverAFicha() + renderProyectosView();
   else if(state.view === "reportes") html += renderReportesView();
   else if(state.view === "configuracion") html += renderConfiguracionView();
   // Las tres vistas de admin siguen siendo las de siempre (así cada
@@ -18696,17 +18708,27 @@ function imprimirFicha(){
 
 /* ---- Abrir un posteo de la línea de tiempo, sin salir de la ficha ---- */
 const fichaPostOverlay = document.getElementById("fichaPostOverlay");
-let fichaPostId = null, fichaPostReturnFocus = null;
+let fichaPostId = null, fichaPostReturnFocus = null, fichaPostOrigen = null;
+// De qué ficha se salió por una acción que cambió de sección (ver
+// render): el «← Volver a la ficha de …» del Feed y de Proyectos. Se borra
+// al usarlo o al ir a cualquier otro lado por las pestañas.
+let fichaOrigen = null;
+const lugarDeLaFicha = () => state.zonaDrill ? { zona: state.zonaDrill } : state.countryDrill ? { country: state.countryDrill, city: state.ciudadDrill || null } : null;
+function renderVolverAFicha(){
+  if(!fichaOrigen) return "";
+  return `<button type="button" class="volver-ficha" data-action="volver-ficha">${isRTL() ? "→" : "←"} ${esc(t("Volver a la ficha de {l}","Back to the {l} page","Voltar à ficha de {l}","חזרה לכרטיס {l}",{ l: nombreDeLugar(fichaOrigen) }))}</button>`;
+}
 function renderFichaPost(){
   const post = getPostById(fichaPostId);
   if(!post){ closeFichaPost(); return; }
-  const L = state.zonaDrill ? { zona: state.zonaDrill } : state.countryDrill ? { country: state.countryDrill, city: state.ciudadDrill || null } : null;
+  const L = lugarDeLaFicha();
   document.getElementById("fichaPostDesde").textContent = L ? t("De la ficha de {l}","From the {l} page","Da ficha de {l}","מתוך כרטיס {l}",{ l: nombreDeLugar(L) }) : "";
   document.getElementById("fichaPostBody").innerHTML = renderPostCard(post, state.repliesByPost[post.id] || []);
 }
 function openFichaPost(postId){
   if(!getPostById(postId)) return;
   fichaPostId = postId;
+  fichaPostOrigen = lugarDeLaFicha();
   // Si tiene resumen, ya abierto: es lo primero que se quiere ver acá.
   if(resumenDe(getPostById(postId))) resumenAbiertos.add(postId);
   renderFichaPost();
@@ -18903,7 +18925,7 @@ eventCardOverlay.addEventListener("click", e=>{ if(e.target === eventCardOverlay
 document.querySelectorAll("#tabs button").forEach(btn=>{
   btn.addEventListener("click", ()=>{
     state.view = btn.dataset.view;
-    state.countryDrill = null; state.zonaDrill = null;
+    state.countryDrill = null; state.zonaDrill = null; fichaOrigen = null;
     calIrAbierto = false;
     render();
   });
@@ -19846,7 +19868,7 @@ document.addEventListener("click", async e=>{
   },
     "goto-view": async (el, e, action, postId) => {
     // Desde el menú del avatar, la barra de abajo o un atajo del Resumen.
-    state.view = el.dataset.view; state.countryDrill = null; state.zonaDrill = null;
+    state.view = el.dataset.view; state.countryDrill = null; state.zonaDrill = null; fichaOrigen = null;
     userMenuOpen = false; nicknameEditing = false; nicknameError = null; moreMenuOpen = false;
     render(); scrollToTop();
   },
@@ -20471,16 +20493,22 @@ document.addEventListener("click", async e=>{
     render();
   },
     "drill-zone": async (el) => {
-    state.view = "paises"; state.countryDrill = null; state.ciudadDrill = null; state.zonaDrill = el.dataset.zona; render(); scrollToTop();
+    state.view = "paises"; fichaOrigen = null; state.countryDrill = null; state.ciudadDrill = null; state.zonaDrill = el.dataset.zona; render(); scrollToTop();
   },
     "drill-country": async (el, e, action, postId) => {
-    state.view = "paises"; state.zonaDrill = null; state.countryDrill = el.dataset.country; state.ciudadDrill = null; render(); scrollToTop();
+    state.view = "paises"; fichaOrigen = null; state.zonaDrill = null; state.countryDrill = el.dataset.country; state.ciudadDrill = null; render(); scrollToTop();
   },
     "drill-city": async (el, e, action, postId) => {
-    state.view = "paises"; state.zonaDrill = null; state.countryDrill = el.dataset.country; state.ciudadDrill = el.dataset.city; render(); scrollToTop();
+    state.view = "paises"; fichaOrigen = null; state.zonaDrill = null; state.countryDrill = el.dataset.country; state.ciudadDrill = el.dataset.city; render(); scrollToTop();
   },
     "drill-clear": async (el, e, action, postId) => {
-    state.countryDrill = null; state.zonaDrill = null; state.ciudadDrill = null; render();
+    fichaOrigen = null; state.countryDrill = null; state.zonaDrill = null; state.ciudadDrill = null; render();
+  },
+    "volver-ficha": async () => {
+    const L = fichaOrigen; fichaOrigen = null;
+    if(!L) return;
+    state.view = "paises"; state.zonaDrill = L.zona || null; state.countryDrill = L.country || null; state.ciudadDrill = L.city || null;
+    render(); scrollToTop();
   },
     // ---- La ficha de un lugar (ver renderFichaLugar) ----
     "ficha-incluye": async (el) => { fichaIncluye = Number(el.dataset.nivel) || 0; render(); },
@@ -21128,14 +21156,7 @@ document.addEventListener("click", async e=>{
     return;
   }
   const handler = CLICK_ACTIONS[action];
-  if(!handler) return;
-  // Desde la ventana de un ítem de la ficha (Países), una acción que lleva
-  // a otra sección (Gestionar proyecto, Ver en el Feed, Ver lo que
-  // cargó…) cambiaba la vista DEBAJO de la ventana, que seguía tapándola:
-  // "no funciona" (el usuario, 6/10/2026). Si cambió la vista, se cierra.
-  const vistaAntes = state.view, desdeLaFicha = !fichaPostOverlay.hidden;
-  await handler(el, e, action, postId);
-  if(desdeLaFicha && !fichaPostOverlay.hidden && state.view !== vistaAntes){ fichaPostReturnFocus = null; closeFichaPost(); }
+  if (handler) await handler(el, e, action, postId);
 });
 
 // El scroll de un textarea (al crecer más allá de max-height, o al mover
