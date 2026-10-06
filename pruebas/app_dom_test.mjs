@@ -1161,13 +1161,13 @@ const hasta = async (p, fn, arg, ms = 5000) => {
     const v = [...document.querySelectorAll(".fl-stat b")].map(x => x.textContent.trim());
     return v[2] === "2 de 3" && v[3] === "5";
   }), true);
-  eq("ciudades: la ficha del país lista sus ciudades", await p.$$eval('.fl-ciudad[data-action="drill-city"]', es => es.map(e => e.dataset.city).sort()), ["Montevideo", "Punta Del Este"]);
-  await p.click('.fl-ciudad[data-city="Punta Del Este"]');
+  eq("ciudades: la ficha del país lista sus ciudades", await p.$$eval('.fl-hijo[data-action="drill-city"]', es => es.map(e => e.dataset.city).sort()), ["Montevideo", "Punta Del Este"]);
+  await p.click('.fl-hijo[data-city="Punta Del Este"]');
   eq("ciudades: al entrar a Punta del Este, su ficha (sin ir al Inicio)", await hasta(p, () =>
     (document.querySelector(".ficha-lugar h1") || {}).textContent === "Punta Del Este" && /Uruguay/.test(document.querySelector(".fl-migas").textContent)), true);
   eq("ciudades: solo con lo suyo", await stats().then(v => [v[0], v[2], v[3]]), ["1", "1 de 1", "1"]);
   await p.click('.fl-migas [data-action="drill-country"]');
-  await p.click('.fl-ciudad[data-city="Montevideo"]');
+  await p.click('.fl-hijo[data-city="Montevideo"]');
   eq("ciudades: Montevideo, solo el Cierre que la nombra", await hasta(p, () => {
     const v = [...document.querySelectorAll(".fl-stat b")].map(x => x.textContent.trim());
     return (document.querySelector(".ficha-lugar h1") || {}).textContent === "Montevideo" && v[2] === "1 de 2";
@@ -1187,6 +1187,46 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   eq("ficha: «Cargar algo acá» abre el formulario con el lugar ya puesto", await hasta(p, () =>
     !!document.getElementById("postForm") && /Montevideo/.test(document.getElementById("postForm").textContent)), true);
   await p.keyboard.press("Escape");
+  // La ficha de una zona (segunda parte, 6/10/2026): desde las migas de
+  // un país, o desde la fila de zonas de la lista.
+  await p.click('.fl-migas [data-action="drill-zone"]');
+  eq("zona: desde las migas del país se llega a la ficha de la región", await hasta(p, () =>
+    (document.querySelector(".ficha-lugar h1") || {}).textContent === "Región Sur"), true);
+  // En esta sesión hay dos visitas con Cierre: la de dos países (1/2 en
+  // Montevideo + 1/1 en Buenos Aires) y la de Punta del Este (1/1).
+  eq("zona: junta los Cierres de todos sus países", await stats().then(v => [v[2], v[3]]), ["3 de 4", "6"]);
+  eq("zona: al costado, sus países, cada uno con su ficha", await p.$$eval('.fl-hijo[data-action="drill-country"]', es => es.map(e => e.dataset.country).sort()), ["Argentina", "Uruguay"]);
+  await p.click('.fl-main [data-action="ficha-desplegar"][data-que="pasos"]');
+  // El Cierre de Buenos Aires no nombra ninguna ciudad conocida: la ciudad
+  // sale del lugar de la visita.
+  eq("zona: los pendientes dicen de qué país y ciudad son",
+    await p.$$eval(".fl-main .rs-pasos li small", ss => ss.some(x => /^Uruguay · Montevideo/.test(x.textContent.trim())) && ss.some(x => /^Argentina · Buenos Aires/.test(x.textContent.trim()))), true);
+  await p.click('.fl-main [data-action="ficha-desplegar"][data-que="pasos"]');
+  eq("zona: «Mostrar menos» vuelve a los cuatro primeros", await p.$$eval(".fl-main .rs-pasos li", ls => ls.length), 4);
+  eq("zona: qué incluir es solo la región o también toda LatAm", await p.$$eval(".fl-seg .place-seg-btn span", ss => ss.map(x => x.textContent.trim())), ["Solo Región Sur", "+ Toda LatAm"]);
+  await p.click('.fl-hijo[data-country="Argentina"]');
+  eq("zona: tocar un país abre su ficha, con la región en las migas", await hasta(p, () =>
+    (document.querySelector(".ficha-lugar h1") || {}).textContent === "Argentina" && !!document.querySelector('.fl-migas [data-action="drill-zone"][data-zona="sur"]')), true);
+  await p.click('.fl-migas [data-action="drill-clear"]');
+  eq("zona: la lista de Países arranca con las tres zonas", await p.$$eval(".paises-zona", es => es.map(e => e.dataset.zona)), ["sur", "central", "norte"]);
+  eq("zona: con cuántos registros tiene cada una", await p.$eval('.paises-zona[data-zona="sur"] small', e => /^\d+ registros$/.test(e.textContent.trim())), true);
+  await p.click('.paises-zona[data-zona="sur"]');
+  eq("zona: y cada una lleva a su ficha", await hasta(p, () => (document.querySelector(".ficha-lugar h1") || {}).textContent === "Región Sur"), true);
+  // «Reporte del lugar»: se imprime con todo desplegado y sin botones.
+  await p.evaluate(() => { window.print = () => { window.__impreso = { pasos: document.querySelectorAll(".fl-main .rs-pasos li").length, botones: !!document.querySelector(".fl-mas") }; }; });
+  const antesDeImprimir = await p.$$eval(".fl-main .rs-pasos li", ls => ls.length);
+  await p.click('[data-action="ficha-imprimir"]');
+  eq("reporte: al imprimir se despliegan todos los pendientes y hechos", await hasta(p, n => window.__impreso && window.__impreso.pasos > n, antesDeImprimir), true);
+  eq("reporte: y después vuelve a lo de antes", await hasta(p, n => document.querySelectorAll(".fl-main .rs-pasos li").length === n && !!document.querySelector(".fl-mas"), antesDeImprimir), true);
+  await p.emulateMedia({ media: "print" });
+  eq("reporte: en papel, sin botones ni selectores, a una columna y con el encabezado", await p.evaluate(() => {
+    const oculto = s => [...document.querySelectorAll(s)].every(e => getComputedStyle(e).display === "none");
+    return { sinBotones: oculto(".fl-acciones, .fl-seg, .fl-chips, .fl-mas, .fl-migas, .topbar, .bottom-nav"),
+      unaColumna: getComputedStyle(document.querySelector(".fl-grid")).display === "block",
+      incluye: getComputedStyle(document.querySelector(".fl-incluye-print")).display === "block" && /^Incluye: Solo Región Sur/.test(document.querySelector(".fl-incluye-print").textContent),
+      cabecera: getComputedStyle(document.querySelector(".rep-print-title")).display === "flex" && /Ficha de Región Sur/.test(document.querySelector(".rep-print-title").textContent) };
+  }), { sinBotones: true, unaColumna: true, incluye: true, cabecera: true });
+  await p.emulateMedia({ media: "screen" });
   await p.click('nav.tabs button[data-view="feed"]');
   // Ya quedó abierto al leerlo (como cuando se lee desde la tarjeta).
   if(await p.$eval('.post[data-post-id="p_viaje"] .rs-pill', e => e.getAttribute("aria-expanded")) !== "true") await p.click('.post[data-post-id="p_viaje"] .rs-pill');
