@@ -1926,6 +1926,13 @@ const hasta = async (p, fn, arg, ms = 5000) => {
     await p.click(`.post [data-action="toggle-post-menu"][data-post-id="${id}"]`);
   }
   eq("celular: el menú ⋯ de cada tarjeta se abre adentro de la pantalla", fuera, []);
+  // Los tipos del formulario, tres por fila: antes «Otro» quedaba solo en
+  // un tercer renglón (pedido del usuario, 6/10/2026).
+  await p.click("#fabMain"); await p.click('[data-action="new-evento"]');
+  await p.waitForSelector(".type-picker .type-opt");
+  eq("celular: los tipos de actividad entran en filas de a tres",
+    await p.$$eval(".type-picker .type-opt", es => { const filas = new Set(es.map(e => Math.round(e.getBoundingClientRect().top))); return filas.size === Math.ceil(es.length / 3); }), true);
+  await p.keyboard.press("Escape");
   eq("celular: sin un solo error", errores, []);
   await p.close();
 }

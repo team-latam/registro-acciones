@@ -1917,6 +1917,17 @@
   .type-opt{ display:inline-flex; align-items:center; gap:6px; padding:8px 13px; border-radius:999px; border:1.5px solid var(--border); cursor:pointer; font-size:12.5px; font-weight:600; }
   .type-opt input{ display:none; }
   .type-opt.checked{ background:var(--petroleo); color:#fff; border-color:var(--petroleo); }
+  /* En el celular, tres por fila y del mismo ancho: antes quedaban tres,
+     dos y uno solo («Otro») en tres renglones (pedido del usuario,
+     6/10/2026). Un nombre largo de un tipo nuevo baja a dos líneas dentro
+     de su botón en vez de romper la grilla. */
+  @media (max-width:520px){
+    .type-picker{ display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:6px; }
+    .field .type-picker .type-opt{ margin:0; justify-content:center; text-align:center; padding:9px 4px; font-size:11.5px; letter-spacing:.2px; gap:4px; white-space:normal; line-height:1.2; min-height:40px; }
+  }
+  @media (max-width:360px){
+    .field .type-picker .type-opt{ font-size:10px; letter-spacing:0; gap:3px; padding-inline:2px; }
+  }
 
   .scope-list{ display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
   .btn-mini{ background:var(--celeste); color:var(--petroleo-dark); border:none; padding:9px 14px; border-radius:var(--radius-sm); font-weight:700; font-size:12.5px; cursor:pointer; }
