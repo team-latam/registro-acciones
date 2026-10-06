@@ -5499,11 +5499,30 @@ function scopeLevelFor(sc, place){
   // "Toda LatAm" como lugar en sí (desde el pie de Vistas): lo propio es
   // justamente lo transversal, y nada más lo toca.
   if(place.kind === "latam") return sc.type === "todo" ? "own" : null;
+  // País y ciudad, con la misma regla que la ficha (nivelDeAlcance). El
+  // filtro no tiene el nivel «pais» de la ficha de una ciudad: lo cargado
+  // para todo el país no entra al filtrar por la ciudad.
+  if(place.kind === "country" || place.kind === "city"){
+    const n = nivelDeAlcance(sc, place.kind === "city" ? { country: place.country, city: place.city, ciudad: true } : { country: place.country });
+    return n === "pais" ? null : n;
+  }
+  return sc.type === "todo" ? "latam" : null;
+}
+// La regla de una sola vez (docs/auditoria/codigo.md, 17): con qué nivel
+// un alcance guardado toca un lugar L = { zona } | { country } |
+// { country, city }. "own" (el lugar), "pais" (en una ciudad: lo cargado
+// para todo el país), "region" o "latam"; null si no lo toca. En una zona,
+// lo de sus países y lo cargado para la región es todo "own".
+function nivelDeAlcance(sc, L){
+  if(!sc) return null;
   if(sc.type === "todo") return "latam";
-  if(sc.type === "region") return (ZONE_COUNTRIES[sc.region] || []).includes(place.country) ? "region" : null;
-  if(place.kind === "country") return (sc.type === "pais" || sc.type === "ciudad") && sc.country === place.country ? "own" : null;
-  if(place.kind === "city") return sc.type === "ciudad" && sc.country === place.country && normalize(sc.city) === normalize(place.city) ? "own" : null;
-  return null;
+  if(L.zona) return (sc.type === "region" ? sc.region === L.zona : zoneOfCountry(sc.country) === L.zona) ? "own" : null;
+  if(sc.type === "region") return (ZONE_COUNTRIES[sc.region] || []).includes(L.country) ? "region" : null;
+  if(sc.country !== L.country) return null;
+  // (ciudad:true: un filtro de ciudad aunque el nombre venga vacío.)
+  if(!L.city && !L.ciudad) return (sc.type === "pais" || sc.type === "ciudad") ? "own" : null;
+  if(sc.type === "ciudad") return normalize(sc.city) === normalize(L.city) ? "own" : null;
+  return sc.type === "pais" ? "pais" : null;
 }
 // El nivel MÁS cercano con el que un conjunto de alcances toca al lugar
 // (un posteo con alcance "Toda LatAm" Y "Islas Caimán" es propio de
@@ -18957,16 +18976,7 @@ function nivelEnFicha(post, L){
   const orden = ["own", "pais", "region", "latam"];
   let mejor = null;
   scopes.forEach(sc => {
-    if(!sc) return;
-    let n = null;
-    if(sc.type === "todo") n = "latam";
-    else if(L.zona) n = (sc.type === "region" ? sc.region === L.zona : zoneOfCountry(sc.country) === L.zona) ? "own" : null;
-    else if(sc.type === "region") n = (ZONE_COUNTRIES[sc.region] || []).includes(L.country) ? "region" : null;
-    else if(sc.country === L.country){
-      if(!L.city) n = (sc.type === "pais" || sc.type === "ciudad") ? "own" : null;
-      else if(sc.type === "ciudad") n = normalize(sc.city) === normalize(L.city) ? "own" : null;
-      else if(sc.type === "pais") n = "pais";
-    }
+    const n = nivelDeAlcance(sc, L);
     if(n && (mejor === null || orden.indexOf(n) < orden.indexOf(mejor))) mejor = n;
   });
   return mejor;
