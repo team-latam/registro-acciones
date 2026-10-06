@@ -226,6 +226,8 @@ eq("ninguna de las dos pasa por otro lado que no sea Google",
     ${grab("esCorreoValido")}
     ${grab("calendarSummary")}
     ${grab("participantsLabel")}
+    let calendarTimeZone = null;
+    ${grab("zonaDelCalendario")}
     ${grab("buildCalendarEvent")}
     return { buildCalendarEvent };`)();
   const ev = api.buildCalendarEvent({ title:"Visita", activityType:"visita", startDate:"2026-05-10", endDate:"2026-05-10",

@@ -53,13 +53,17 @@ export function fechasDelEvento(ev){
   return { startDate:null, endDate:null, startTime:null, endTime:null };
 }
 
-// De qué fecha de la serie es esta excepción. Google le da a cada una un
-// id "<idDelMolde>_<fechaOriginalUTC>"; originalStartTime dice lo mismo y
-// queda como respaldo por si el id no viene con esa forma.
+// De qué fecha de la serie es esta excepción. originalStartTime trae la
+// hora original en la zona del calendario, que es la fecha con que la app
+// arma la serie: va primero. El id ("<idDelMolde>_<fechaOriginalUTC>") va
+// de respaldo, porque está en UTC: una rutina de las 22:00 en Buenos Aires
+// del 12/1 tiene id "…_20260113T010000Z", y tomándolo primero se salteaba
+// o se movía el 13 en vez del 12 (docs/AUDITORIA.md, I5).
 export function fechaOriginalDeLaExcepcion(ev){
   if(!ev || !ev.recurringEventId) return null;
-  return fechaDeRrule(String(ev.id || "").slice(String(ev.recurringEventId).length + 1)) ||
-    (ev.originalStartTime && fechaDeRrule(String(ev.originalStartTime.date || ev.originalStartTime.dateTime || "").replace(/-/g, ""))) ||
+  const orig = ev.originalStartTime && (ev.originalStartTime.date || String(ev.originalStartTime.dateTime || "").slice(0, 10));
+  return (orig && fechaDeRrule(String(orig).replace(/-/g, ""))) ||
+    fechaDeRrule(String(ev.id || "").slice(String(ev.recurringEventId).length + 1)) ||
     null;
 }
 

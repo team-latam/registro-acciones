@@ -136,6 +136,16 @@ await comparar("la misma, ya salteada",
   [{ ...P_SERIE, recurrenceSkip:["2026-01-12"] }]);
 await comparar("una fecha cancelada de una serie que no tiene molde acá",
   { id:"nada_20260112T000000Z", status:"cancelled", recurringEventId:"nada" }, [P_SERIE]);
+// La serie de las 22:00 en Buenos Aires: el id dice el día siguiente en
+// UTC; originalStartTime, el día de verdad (docs/AUDITORIA.md, I5).
+const NOCHE = { id:"evSerie_20260113T010000Z", status:"cancelled", recurringEventId:"evSerie",
+  originalStartTime:{ dateTime:"2026-01-12T22:00:00-03:00", timeZone:"America/Argentina/Buenos_Aires" } };
+await comparar("una fecha de una serie de noche, cancelada", NOCHE, [P_SERIE]);
+{
+  const salteo = decidir(NOCHE, [P_SERIE], CTX_SERVIDOR).find(x => x.tipo === "actualizar");
+  eq("la de noche saltea el 12 (su día en Buenos Aires), no el 13 del id en UTC",
+     salteo && salteo.patch && salteo.patch.recurrenceSkip, ["2026-01-12"]);
+}
 await comparar("una excepción cancelada sin fecha reconocible en el id",
   { id:"evSerie-raro", status:"cancelled", recurringEventId:"evSerie" }, [P_SERIE]);
 
