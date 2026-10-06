@@ -666,7 +666,9 @@ capturas (A/B/C, después D/E/F, después ajustes), el diseño elegido:
   de la capa oscura, que es la que scrollea) y por esa franja asomaba lo
   que ya había pasado. El respiro pasó de la capa a la ventana.
 - **Ciudades (y Países) al costado de la ficha**: hasta cinco y «Ver
-  más» / «Ver menos» (pedido del usuario). En el reporte impreso salen
+  más» / «Ver menos» (pedido del usuario). Desplegada, la lista se
+  desplaza adentro de la tarjeta con su propia barra, no la columna
+  entera (segunda captura del usuario). En el reporte impreso salen
   todas.
 
 ## Fuera de alcance (necesitan algo que la app no tiene)
