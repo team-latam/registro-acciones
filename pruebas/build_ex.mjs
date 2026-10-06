@@ -9,6 +9,10 @@ const ini = src.indexOf("  const formersHtml = formers.length ? `");
 const fin = src.indexOf("</div>` : \"\";", ini) + "</div>` : \"\";".length;
 if(ini < 0) throw new Error("no se encontró el bloque de ex integrantes");
 const bloque = src.slice(ini, fin);
+// La foto de una persona pasa por fotoSegura (docs/AUDITORIA.md, M11): la
+// de verdad, sacada del index.html.
+const fotoSegura = (src.match(/\nfunction fotoSegura\(url\)\{[\s\S]*?\n\}\n/) || [""])[0];
+if(!fotoSegura) throw new Error("no se encontró fotoSegura");
 // La rama nueva del dispatcher
 const a1 = src.indexOf('    "delete-former-member": async (el, e, action, postId) => {');
 const a2 = src.indexOf('    "revoke-access": async (el, e, action, postId) => {');
@@ -20,6 +24,7 @@ body{ padding:20px; margin:0; }
 <div id="box"></div>
 <script>
 function esc(s){ return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+${fotoSegura}
 function t(es,en,pt,he,vars){ let o=es; if(vars) for(const k in vars) o=o.split("{"+k+"}").join(String(vars[k])); return o; }
 function fmtDateTime(v){ return v ? "1 ene 2026" : ""; }
 function tsToMillis(v){ return Number(v) || 0; }

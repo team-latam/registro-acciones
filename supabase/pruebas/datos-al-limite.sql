@@ -30,7 +30,9 @@ values ('se.fue@ejemplo.com', repeat('V', 120), repeat('v', 40), 'https://' || r
 on conflict (email) do nothing;
 
 insert into public.access_requests (email, name, photo_url, status, requested_at) values
-  ('pide@ejemplo.com', repeat('P', 120), 'https://' || repeat('f', 492), 'pending', now()),
+  -- Desde el 6/10/2026 la foto de una solicitud es solo la de Google
+  -- (solicitudes_foto): la más larga que se acepta, con esa forma.
+  ('pide@ejemplo.com', repeat('P', 120), 'https://lh3.googleusercontent.com/' || repeat('f', 466), 'pending', now()),
   ('rechazada@ejemplo.com', 'R', null, 'rejected', now())
 on conflict (email) do nothing;
 

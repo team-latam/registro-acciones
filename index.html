@@ -5751,11 +5751,14 @@ async function signIn(){
     }
   }
 }
-async function doSignOut(){
+function olvidarPermisoDeCalendar(){
   calendarAccessToken = null; calendarTokenExpiry = 0; calendarAclScopeGranted = false;
   stopCalendarAutoSync();
-  auditLoginLoggedThisSession = false;
   try{ sessionStorage.removeItem(CALENDAR_TOKEN_STORAGE_KEY); }catch(e){}
+}
+async function doSignOut(){
+  olvidarPermisoDeCalendar();
+  auditLoginLoggedThisSession = false;
   try{ await sesion.cerrar(); }catch(e){ console.error(e); }
 }
 
@@ -7143,8 +7146,11 @@ async function onAuthChanged(user){
 
   if(!user){
     // Acá y no en doSignOut: también se sale desde otra pestaña, o porque
-    // venció la sesión. Las firmas de los adjuntos que quedaron guardadas
-    // en el navegador abren los archivos sin sesión (ver crearSupabaseStore).
+    // venció la sesión. El permiso de Calendar de esta pestaña quedaba
+    // guardado hasta cerrarla (docs/AUDITORIA.md, M11). Y las firmas de los
+    // adjuntos guardadas en el navegador abren los archivos sin sesión (ver
+    // crearSupabaseStore).
+    try{ olvidarPermisoDeCalendar(); }catch(e){}
     try{ store.olvidarFirmas(); }catch(e){}
     state.auth = { status:"signedOut", user:null };
     render();
@@ -10433,7 +10439,7 @@ function renderUserBadge(){
   const u = state.auth.user;
   if(!u){ userBadgeEl.innerHTML = ""; userMenuOpen = false; return; }
   const initial = esc((u.displayName || u.email || "?")[0].toUpperCase());
-  const avatar = u.photoURL ? `<img src="${esc(u.photoURL)}" alt="">` : `<span class="avatar-fallback-badge">${initial}</span>`;
+  const avatar = fotoSegura(u.photoURL) ? `<img src="${esc(fotoSegura(u.photoURL))}" alt="">` : `<span class="avatar-fallback-badge">${initial}</span>`;
   const menuAvatar = u.photoURL
     ? `<img class="um-avatar" src="${esc(u.photoURL)}" alt="">`
     : `<div class="um-avatar-fallback">${initial}</div>`;
@@ -10549,7 +10555,7 @@ function renderMentionsMenuItems(hasInvite, upcoming){
           ? t("Falta 1 documento","1 document missing","Falta 1 documento","חסר מסמך אחד")
           : t("Faltan {n} documentos","{n} documents missing","Faltam {n} documentos","חסרים {n} מסמכים",{n:docs.total - docs.hay})}</span>` : "";
       return `<button type="button" class="mention-item" data-action="goto-mention" data-post-id="${esc(p.id)}">
-          <span class="mi-author">${type.icon} ${esc(calendarioLabel(p))}</span>
+          <span class="mi-author">${esc(type.icon)} ${esc(calendarioLabel(p))}</span>
           ${faltan}
           <span class="mi-date">${esc(when)}</span>
         </button>`;
@@ -10873,8 +10879,15 @@ function rolPill(role){
     : role === "observer" ? `<span class="status-pill observer">${esc(t("Observador","Observer","Observador","משקיף/ה"))}</span>`
     : `<span class="status-pill integrante">${esc(t("Integrante","Member","Integrante","חבר/ת צוות"))}</span>`;
 }
+// La foto de alguien va solo si es de Google (la de su cuenta). La de una
+// solicitud de acceso la escribe quien pide entrar, y una dirección de
+// otro sitio le contaba a ese sitio la IP y el momento en que un admin
+// abría Personas (docs/AUDITORIA.md, M11).
+function fotoSegura(url){
+  try{ const u = new URL(String(url || "")); return u.protocol === "https:" && /(^|\.)googleusercontent\.com$/.test(u.hostname) ? u.href : ""; }catch(e){ return ""; }
+}
 function avatarDe(u, px){
-  return u.photoURL ? `<img class="lp-av" src="${esc(u.photoURL)}" alt="" style="width:${px}px;height:${px}px">`
+  return fotoSegura(u.photoURL) ? `<img class="lp-av" src="${esc(fotoSegura(u.photoURL))}" alt="" style="width:${px}px;height:${px}px">`
     : `<div class="avatar-fallback lp-av" style="width:${px}px;height:${px}px">${esc((u.name||u.nickname||"?")[0].toUpperCase())}</div>`;
 }
 function renderUsuariosSection(){
@@ -11062,8 +11075,18 @@ function postsPorMesDe(email, n){
   });
   return out;
 }
+// Una celda de las planillas que bajan los admins. Un texto que empieza
+// con = + - @ (un título, el nombre de una cuenta de Google) Excel y Sheets
+// lo toman como fórmula al abrir el archivo, y una fórmula puede traer
+// datos de afuera o mandarlos: se le antepone un apóstrofo, que la hoja
+// muestra como texto (docs/AUDITORIA.md, M11). Los números van tal cual.
+function celdaCsv(s){
+  let v = String(s == null ? "" : s);
+  if(/^[=+\-@\t\r]/.test(v) && !/^[-+]?\d+([.,]\d+)?%?$/.test(v)) v = "'" + v;
+  return `"${v.replace(/"/g, '""')}"`;
+}
 function csvDePersonas(){
-  const celda = s => `"${String(s == null ? "" : s).replace(/"/g, '""')}"`;
+  const celda = s => celdaCsv(s);
   const logins = lastLoginByEmail();
   const filas = [[t("Nombre","Name","Nome","שם"), "Email", "@", t("Rol","Role","Papel","תפקיד"), "Calendar", t("Última vez","Last seen","Última vez","לאחרונה"), t("Cargó (6 meses)","Logged (6 months)","Carregou (6 meses)","רשם/ה (6 חודשים)")]];
   state.roster.slice().sort((a,b)=>(a.name||"").localeCompare(b.name||"", "es")).forEach(u=>{
@@ -11109,7 +11132,7 @@ function renderSolicitudesQueueSection(){
   const formers = state.formerMembers.slice()
     .sort((a,b)=> tsToMillis(b.revokedAt) - tsToMillis(a.revokedAt));
   const renderRow = (r, actionsHtml) => `<div class="request-row">
-      ${r.photoURL ? `<img src="${esc(r.photoURL)}" alt="">` : `<div class="avatar-fallback">${esc((r.name||r.email||"?")[0].toUpperCase())}</div>`}
+      ${fotoSegura(r.photoURL) ? `<img src="${esc(fotoSegura(r.photoURL))}" alt="">` : `<div class="avatar-fallback">${esc((r.name||r.email||"?")[0].toUpperCase())}</div>`}
       <div class="rinfo">
         <div class="rname">${esc(r.name||r.email)}</div>
         <div class="remail">${esc(r.email)} · ${t("pedido {v}","requested {v}","pedido {v}","{v} התבקש",{v:fmtDateTime(r.requestedAt)})}</div>
@@ -11140,7 +11163,7 @@ function renderSolicitudesQueueSection(){
         "חברים לשעבר — היו בצוות וכבר לא. הפוסטים שלהם נשארים חתומים ב-@nickname שלהם; אם יחזרו, יקבלו אותו בחזרה."
       )}</div>
       ${formers.map(u=>`<div class="request-row">
-          ${u.photoURL ? `<img src="${esc(u.photoURL)}" alt="">` : `<div class="avatar-fallback">${esc((u.name||u.email||"?")[0].toUpperCase())}</div>`}
+          ${fotoSegura(u.photoURL) ? `<img src="${esc(fotoSegura(u.photoURL))}" alt="">` : `<div class="avatar-fallback">${esc((u.name||u.email||"?")[0].toUpperCase())}</div>`}
           <div class="rinfo">
             <div class="rname">${esc(u.name||u.email)} · <span class="up-nick">@${esc(String(u.nickname||"").toLowerCase())}</span></div>
             <div class="remail">${esc(u.email)} · ${t("estuvo del {a} al {b}","member from {a} to {b}","esteve de {a} a {b}","היה/תה מ-{a} עד {b}",{a:fmtDateTime(u.approvedAt)||"—", b:fmtDateTime(u.revokedAt)||"—"})}</div>
@@ -11991,7 +12014,7 @@ function renderAuditoriaView(){
 // El registro filtrado como planilla (CSV con punto y coma, ver
 // csvDelReporte): fecha, qué pasó, dispositivo, IP.
 function csvDelRegistro(){
-  const celda = s => `"${String(s == null ? "" : s).replace(/"/g, '""')}"`;
+  const celda = s => celdaCsv(s);
   const labels = auditLabels();
   const filas = [[t("Fecha","Date","Data","תאריך"), t("Acción","Action","Ação","פעולה"), t("Dispositivo","Device","Dispositivo","מכשיר"), "IP"]];
   sortAuditEntries(state.auditLog.filter(matchesAuditFilters)).forEach(e=>{
@@ -12460,7 +12483,7 @@ function renderCalendarFaltantes(){
         <div class="hint cal-faltantes-ok" role="status">${f.pasados.length === 1
           ? t("Se pasó 1 evento al Calendar, sin avisos.","1 event was added to the Calendar, without notifications.","1 evento foi passado ao Calendar, sem avisos.","אירוע אחד נוסף ליומן, ללא התראות.")
           : t("Se pasaron {n} eventos al Calendar, sin avisos.","{n} events were added to the Calendar, without notifications.","{n} eventos foram passados ao Calendar, sem avisos.","{n} אירועים נוספו ליומן, ללא התראות.",{n:f.pasados.length})}${f.fallados.length
-          ? " " + t("No se pudieron pasar {n} ({m}).","{n} couldn't be added ({m}).","Não foi possível passar {n} ({m}).","{n} לא נוספו ({m}).",{n:f.fallados.length, m:f.fallados[0].motivo}) : ""}</div>` : "";
+          ? " " + t("No se pudieron pasar {n} ({m}).","{n} couldn't be added ({m}).","Não foi possível passar {n} ({m}).","{n} לא נוספו ({m}).",{n:f.fallados.length, m:esc(f.fallados[0].motivo)}) : ""}</div>` : "";
   return `
       <div class="field cal-faltantes" style="margin-top:22px;">
         <label>${t("En el Registro pero no en el Calendar","In the Registro but not in the Calendar","No Registro mas não no Calendar","ביומן הפעילויות אבל לא ביומן")}</label>
@@ -14810,7 +14833,7 @@ function csvDelReporte(){
   const r = reporteEnPantalla;
   if(!r) return "";
   const sinHtml = s => String(s).replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").trim();
-  const celda = s => `"${String(s).replace(/"/g, '""')}"`;
+  const celda = s => celdaCsv(s);
   const filas = [[t("Sección","Section","Seção","מדור"), t("Etiqueta","Label","Etiqueta","תווית"),
     r.colN || t("Cantidad","Count","Quantidade","כמות"), r.colPrev != null ? r.colPrev : t("Período anterior","Previous period","Período anterior","התקופה הקודמת")]];
   filas.push([t("Período","Period","Período","תקופה"), `${r.desde} – ${r.hasta}`, r.total, r.totalAnterior]);
@@ -14898,7 +14921,7 @@ function renderSelectorDelReporte(modo, f){
       <div class="rep-filtros-tit">${t("Ver solo","Show only","Ver só","הצג רק")}</div>
       ${menu("repFZona", t("Zona","Zone","Zona","אזור"), opcion("", f.zona || "", t("Todas las zonas","All zones","Todas as zonas","כל האזורים")) + Object.values(ZONES).map(z => opcion(z.key, f.zona || "", z.label)).join(""))}
       ${menu("repFPais", t("País","Country","País","מדינה"), opcion("", f.pais || "", t("Todos los países","All countries","Todos os países","כל המדינות")) + [...paisesUsados].sort((x, y) => countryLabel(x).localeCompare(countryLabel(y), currentLang())).map(n => opcion(n, f.pais || "", countryLabel(n))).join(""))}
-      ${menu("repFTipo", t("Tipo","Type","Tipo","סוג"), opcion("", f.tipo || "", t("Todos los tipos","All types","Todos os tipos","כל הסוגים")) + ACTIVITY_TYPES.map(ty => opcion(ty.key, f.tipo || "", `${ty.icon || ""} ${ty.label}`.trim())).join(""))}
+      ${menu("repFTipo", t("Tipo","Type","Tipo","סוג"), opcion("", f.tipo || "", t("Todos los tipos","All types","Todos os tipos","כל הסוגים")) + ACTIVITY_TYPES.map(ty => opcion(ty.key, f.tipo || "", `${esc(ty.icon || "")} ${ty.label}`.trim())).join(""))}
       ${menu("repFPersona", t("Persona","Person","Pessoa","אדם"), opcion("", f.persona || "", t("Todo el equipo","Whole team","Toda a equipe","כל הצוות")) + [...gente].map(c => [c, nombreEnReporte(c)]).sort((x, y) => x[1].localeCompare(y[1], currentLang())).map(([c, n]) => opcion(c, f.persona || "", n)).join(""))}
       <div class="rep-filtros-pie">
         ${cuantos ? `<button type="button" class="btn-text-add" data-action="reporte-sin-filtro">${t("Quitar filtros","Clear filters","Tirar filtros","ניקוי מסננים")}</button>` : "<span></span>"}
@@ -16021,7 +16044,7 @@ function renderConfigCalendarioSection(){
 
 function prefChips(prefKey, items, active){
   return `<div class="pref-chips">${items.map(it=>`
-      <span class="chip-toggle${active.includes(it.key)?" active":""}" data-action="pref-toggle-list" data-pref="${prefKey}" data-key="${esc(it.key)}">${it.icon ? it.icon + " " : ""}${esc(it.label)}</span>`).join("")}
+      <span class="chip-toggle${active.includes(it.key)?" active":""}" data-action="pref-toggle-list" data-pref="${prefKey}" data-key="${esc(it.key)}">${it.icon ? esc(it.icon) + " " : ""}${esc(it.label)}</span>`).join("")}
     </div>`;
 }
 function renderConfigCapasSection(){
@@ -16812,7 +16835,7 @@ function calendarioChip(p, iso, opts){
   const hasta = opts && opts.hasta && (p.endDate || "") > (p.startDate || p.date)
     ? ` <small class="cal-hasta">· ${esc(t("hasta el {d}","until {d}","até {d}","עד {d}",{d:fmtISO(p.endDate,{day:"numeric",month:"short"})}))}</small>` : "";
   return `<button type="button" class="cal-chip${p.cancelled?" cancelled":""}${p.hito?" hito":""}${pastClass(iso)}" data-action="cal-open" data-post-id="${esc(p.id)}"${occAttr(p)} title="${esc(label)}">
-      <span class="cal-dot" style="background:${calendarioColor(p)}"></span><span class="cal-txt" dir="auto">${type.icon} ${time}${esc(label)}${hasta}</span>
+      <span class="cal-dot" style="background:${calendarioColor(p)}"></span><span class="cal-txt" dir="auto">${esc(type.icon)} ${time}${esc(label)}${hasta}</span>
     </button>`;
 }
 
@@ -17246,7 +17269,7 @@ function calendarioBar(it, weekDays){
   return `<button type="button" class="cal-bar${multi?" span":""}${p.cancelled?" cancelled":""}${p.hito?" hito":""}${pastClass(weekDays[it.from])}${contStart?" cont-start":""}${contEnd?" cont-end":""}"
       style="grid-column:${it.from+1} / span ${it.to - it.from + 1};grid-row:${it.lane+1};${style}"
       data-action="cal-open" data-post-id="${esc(p.id)}"${occAttr(p)} title="${esc(label)}">
-      ${multi ? "" : `<span class="cal-dot" style="background:${color}"></span>`}<span class="cal-txt" dir="auto">${type.icon} ${time}${esc(label)}</span>
+      ${multi ? "" : `<span class="cal-dot" style="background:${color}"></span>`}<span class="cal-txt" dir="auto">${esc(type.icon)} ${time}${esc(label)}</span>
     </button>`;
 }
 
@@ -19662,7 +19685,7 @@ function renderPlaceSuggestions(draft, scope, ownerId){
   if(!draft.placeQuery.trim()) return "";
   if(!matches.length) return `<div class="autocomplete-list"><div class="autocomplete-empty">${t('Sin resultados. Para sumar un lugar nuevo, escribí "Ciudad, País".','No results. To add a new place, type "City, Country".','Sem resultados. Para somar um lugar novo, escreva "Cidade, País".','.אין תוצאות. כדי להוסיף מקום חדש, הקלד/י "עיר, מדינה"')}</div></div>`;
   return `<div class="autocomplete-list">${matches.map((it,i)=>`
-    <button type="button" class="autocomplete-option${it.isNew?" autocomplete-option-new":""}${i===draft.placeHighlight?" active":""}" data-action="pick-place" data-scope="${scope}" data-owner-id="${esc(ownerId)}" data-match-idx="${i}">${it.icon} ${esc(it.label)}</button>`).join("")}</div>`;
+    <button type="button" class="autocomplete-option${it.isNew?" autocomplete-option-new":""}${i===draft.placeHighlight?" active":""}" data-action="pick-place" data-scope="${scope}" data-owner-id="${esc(ownerId)}" data-match-idx="${i}">${esc(it.icon)} ${esc(it.label)}</button>`).join("")}</div>`;
 }
 function selectPlaceMatch(scope, ownerId, match){
   const draft = getDraftFor(scope, ownerId);
@@ -19768,7 +19791,7 @@ function renderMentionSuggestions(draft, scope, ownerId, textareaId){
   if(!matches.length) return `<div class="autocomplete-list"><div class="autocomplete-empty">${t("Sin coincidencias","No matches","Sem coincidências","אין התאמות")}</div></div>`;
   return `<div class="autocomplete-list">${matches.map((u,i)=>{
     const avatar = u.isAll ? `<span class="mention-avatar mention-avatar-fallback">👥</span>`
-      : u.photoURL ? `<img class="mention-avatar" src="${esc(u.photoURL)}" alt="">`
+      : fotoSegura(u.photoURL) ? `<img class="mention-avatar" src="${esc(fotoSegura(u.photoURL))}" alt="">`
       : `<span class="mention-avatar mention-avatar-fallback">${esc(u.nickname[0].toUpperCase())}</span>`;
     return `<button type="button" class="autocomplete-option mention-option${i===draft.mentionHighlight?" active":""}" data-action="pick-mention" data-scope="${scope}" data-owner-id="${esc(ownerId)}" data-textarea-id="${esc(textareaId)}" data-nickname="${esc(u.nickname.toLowerCase())}" data-email="${esc(u.email)}">${avatar}<span>@${esc(u.nickname.toLowerCase())}</span></button>`;
   }).join("")}</div>`;
@@ -19829,7 +19852,7 @@ function renderParticipantsField(draft){
     </div>`;
 }
 function renderParticipantChip(p, idx){
-  const avatar = p.photoURL && /^https:\/\//.test(p.photoURL) ? `<img class="participant-chip-avatar" src="${esc(p.photoURL)}" alt="">` : "";
+  const avatar = fotoSegura(p.photoURL) ? `<img class="participant-chip-avatar" src="${esc(fotoSegura(p.photoURL))}" alt="">` : "";
   return `<span class="participant-chip">${avatar}${esc(p.name || p.email)}<span class="rm" data-action="rm-participant" data-idx="${idx}">✕</span></span>`;
 }
 function renderParticipantSuggestions(draft){
@@ -19837,7 +19860,7 @@ function renderParticipantSuggestions(draft){
   if(!matches.length) return `<div class="autocomplete-list"><div class="autocomplete-empty">${t("Sin coincidencias. Escribí un email completo para sumar a alguien de afuera.","No matches. Type a full email to add someone from outside.","Sem coincidências. Escreva um email completo para somar alguém de fora.",".אין התאמות. הקלד/י אימייל מלא כדי להוסיף מישהו מבחוץ")}</div></div>`;
   return `<div class="autocomplete-list">${matches.map((m,i)=>{
     const avatar = m.isLoose ? `<span class="mention-avatar mention-avatar-fallback">✉️</span>`
-      : m.photoURL ? `<img class="mention-avatar" src="${esc(m.photoURL)}" alt="">`
+      : fotoSegura(m.photoURL) ? `<img class="mention-avatar" src="${esc(fotoSegura(m.photoURL))}" alt="">`
       : `<span class="mention-avatar mention-avatar-fallback">${esc((m.name||m.email)[0].toUpperCase())}</span>`;
     const label = m.isLoose ? t(`Sumar "{email}" como invitado`,`Add "{email}" as a guest`,`Somar "{email}" como convidado`,`הוספת "{email}" כאורח/ת`,{email:esc(m.email)}) : `${esc(m.name)} <span style="color:var(--text-muted); font-weight:500;">${esc(m.email)}</span>`;
     return `<button type="button" class="autocomplete-option mention-option${i===draft.participantHighlight?" active":""}" data-action="pick-participant" data-match-idx="${i}">${avatar}<span>${label}</span></button>`;
