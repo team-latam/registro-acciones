@@ -5126,14 +5126,21 @@ function authorLabelHtml(email, fallbackName){
 // la app) se quedan como texto, igual que antes.
 // "Me gusta": quién es cada uno. Con la cuenta, su nombre y su foto; si
 // no se la encuentra (alguien que ya no está), el email a secas.
+// El nombre para mostrar de alguien del equipo, con UNA sola regla: su
+// nombre; si no tiene, su @apodo; si tampoco, su correo. Antes cada
+// pantalla tenía la suya (el «Me gusta» ponía el apodo, los reportes el
+// correo, Revisar lo de Calendar lo que se había escrito) (AUDITORIA B2).
+function nombreDe(m, sinNada = ""){
+  if(!m) return sinNada;
+  return String(m.name || "").trim() || (m.nickname ? "@" + m.nickname : "") || m.email || sinNada;
+}
 function personaQueGusta(email){
-  const e = String(email||"").toLowerCase();
-  const m = memberByEmail(email)
-    || state.roster.find(u=>String(u.email||"").toLowerCase()===e)
-    || state.formerMembers.find(u=>String(u.email||"").toLowerCase()===e);
-  if(m) return { email: m.email, name: m.name || ("@" + m.nickname), nickname: m.nickname || "", photoURL: m.photoURL || "", cuenta: !!memberByEmail(m.email) };
+  // memberByEmail ya no distingue mayúsculas (B5): no hace falta buscar
+  // otra vez a mano en las dos listas.
+  const m = memberByEmail(email);
+  if(m) return { email: m.email, name: nombreDe(m, email), nickname: m.nickname || "", photoURL: m.photoURL || "", cuenta: true };
   const yo = state.auth.user;
-  if(yo && String(yo.email||"").toLowerCase() === e) return { email, name: yo.displayName || email, nickname:"", photoURL: yo.photoURL || "", cuenta:false };
+  if(yo && String(yo.email||"").toLowerCase() === String(email||"").toLowerCase()) return { email, name: yo.displayName || email, nickname:"", photoURL: yo.photoURL || "", cuenta:false };
   return { email, name: email, nickname:"", photoURL:"", cuenta:false };
 }
 // El "Me gusta" se parte en dos: el pulgar (y la palabra) da o saca el
@@ -11634,7 +11641,7 @@ function rvPersona(nombre){
   const n = normalize(nombre);
   const m = state.roster.find(u => normalize(u.nickname) === n)
     || state.roster.find(u => normalize(String(u.name || "").split(/\s+/)[0]) === n);
-  return m ? { email: m.email, name: m.name || m.nickname || nombre } : { name: String(nombre).slice(0, 120) };
+  return m ? { email: m.email, name: nombreDe(m, nombre) } : { name: String(nombre).slice(0, 120) };
 }
 function rvParticipantes(nombres, previos){
   const out = [...(previos || [])];
@@ -15087,8 +15094,7 @@ function renderReportePeriodo(f){
 // El nombre de alguien del equipo a partir de su correo (o el correo, si
 // ya no está).
 function nombreEnReporte(correo){
-  const m = memberByEmail(correo);
-  return m ? (m.name || m.email) : correo;
+  return nombreDe(memberByEmail(correo), correo);
 }
 // "▲ 3" / "▼ 5" / "=" entre dos números.
 function deltaDelReporte(a, b){
@@ -16994,15 +17000,15 @@ function renderCalIr(anchor){
       <div class="cal-ir-fecha">
         <label class="cal-ir-campo"><span aria-hidden="true">📅</span>
           <input id="calIrFecha" type="text" autocomplete="off" spellcheck="false" value="${esc(calIrTexto)}"
-            placeholder="${esc(t("dd/mm/aaaa","dd/mm/yyyy","dd/mm/aaaa","dd/mm/yyyy"))}" aria-label="${esc(t("Fecha","Date","Data","תאריך"))}" aria-describedby="calIrAyuda"${calIrError ? ` aria-invalid="true"` : ""}>
+            placeholder="${esc(typedDatePlaceholder())}" aria-label="${esc(t("Fecha","Date","Data","תאריך"))}" aria-describedby="calIrAyuda"${calIrError ? ` aria-invalid="true"` : ""}>
         </label>
         <button type="button" class="cal-ir-ir" data-action="cal-ir-fecha">${t("Ir","Go","Ir","מעבר")}</button>
       </div>
       <div class="cal-ir-ayuda${calIrError ? " error" : ""}" id="calIrAyuda" role="status">${esc(calIrError || t(
-        "Escribí una fecha (día/mes/año) o elegí un mes abajo.",
-        "Type a date (day/month/year) or pick a month below.",
-        "Escreva uma data (dia/mês/ano) ou escolha um mês abaixo.",
-        "הקלידו תאריך (יום/חודש/שנה) או בחרו חודש למטה."))}</div>
+        "Escribí una fecha ({f}) o elegí un mes abajo.",
+        "Type a date ({f}) or pick a month below.",
+        "Escreva uma data ({f}) ou escolha um mês abaixo.",
+        "הקלידו תאריך ({f}) או בחרו חודש למטה.", { f: typedDatePlaceholder() }))}</div>
       <div class="cal-ir-anios" role="group" aria-label="${esc(t("Año","Year","Ano","שנה"))}">${anios.map(a =>
         `<button type="button" class="${a === anio ? "on" : ""}" data-action="cal-ir-anio" data-key="${a}" aria-pressed="${a === anio}">${a}</button>`).join("")}</div>
       <div class="cal-ir-meses" role="group" aria-label="${esc(t("Mes","Month","Mês","חודש"))}">${meses}</div>
@@ -17014,16 +17020,19 @@ function renderCalIr(anchor){
       </div>
     </div>`;
 }
-// Lo que se escribió en "Ir a una fecha", en una fecha ISO. Día primero
-// (como se escribe en LatAm e Israel): "1/1/2024", "1-1-24", "1.1.2024",
-// "1 1 2024"; también "2024-01-01", un mes solo ("3/2024") o un año solo
-// ("2024"). `vista` dice si se pidió un mes o un año entero. null si no
-// es una fecha que exista.
+// Lo que se escribió en "Ir a una fecha", en una fecha ISO. Una fecha
+// entera se lee con el orden que eligió la persona en Configuración (día
+// primero por omisión, como se escribe en LatAm e Israel): "1/1/2024",
+// "1-1-24", "1.1.2024", "1 1 2024". Es el mismo lector que el del
+// formulario (parseTypedDate): antes este leía siempre día primero, y
+// quien eligió mes/día/año iba a otra fecha (docs/AUDITORIA.md, B2).
+// Siempre valen también "2024-01-01", un mes solo ("3/2024") o un año
+// solo ("2024"). `vista` dice si se pidió un mes o un año entero. null si
+// no es una fecha que exista.
 function fechaEscrita(texto){
-  const s = String(texto || "").trim();
-  const anio4 = y => y.length === 2 ? 2000 + Number(y) : Number(y);
+  const s = String(texto || "").trim().replace(/\s+/g, " ");
   const existe = (y, m, d) => {
-    if(y < 1900 || y > 2200 || m < 1 || m > 12 || d < 1) return false;
+    if(y < 1900 || y > 2999 || m < 1 || m > 12 || d < 1) return false;
     return d <= new Date(Date.UTC(y, m, 0)).getUTCDate();
   };
   const iso = (y, m, d) => `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
@@ -17032,11 +17041,11 @@ function fechaEscrita(texto){
     const [y, m, d] = [Number(x[1]), Number(x[2]), Number(x[3])];
     return existe(y, m, d) ? { iso: iso(y, m, d), vista: null } : null;
   }
-  if((x = s.match(/^(\d{1,2})\s*[\/.\- ]\s*(\d{1,2})\s*[\/.\- ]\s*(\d{2}|\d{4})$/))){
-    const [d, m, y] = [Number(x[1]), Number(x[2]), anio4(x[3])];
-    return existe(y, m, d) ? { iso: iso(y, m, d), vista: null } : null;
+  if(/^\d{1,4} ?[\/.\- ] ?\d{1,2} ?[\/.\- ] ?\d{1,4}$/.test(s) || /^\d{8}$/.test(s)){
+    const entera = parseTypedDate(s.replace(/ ?([\/.\-]) ?/g, "$1"), null);
+    return entera ? { iso: entera, vista: null } : null;
   }
-  if((x = s.match(/^(\d{1,2})\s*[\/.\- ]\s*(\d{4})$/))){
+  if((x = s.match(/^(\d{1,2}) ?[\/.\- ] ?(\d{4})$/))){
     const [m, y] = [Number(x[1]), Number(x[2])];
     return existe(y, m, 1) ? { iso: iso(y, m, 1), vista: "mes" } : null;
   }
@@ -17069,12 +17078,17 @@ function calIrA(iso, vista){
 function irAFechaEscrita(){
   const campo = document.getElementById("calIrFecha");
   const texto = campo ? campo.value : calIrTexto;
-  const f = fechaEscrita(texto);
-  if(f) return calIrA(f.iso, f.vista);
+  const leida = fechaEscrita(texto);
+  if(leida) return calIrA(leida.iso, leida.vista);
   calIrTexto = texto;
+  // El ejemplo, en el orden que eligió la persona (un 15 no se confunde
+  // con un mes).
+  const ord = typedDateOrder();
+  const e = ord === "ymd" ? "2024-01-15" : ord === "mdy" ? "1/15/2024" : "15/1/2024";
+  const f = typedDatePlaceholder();
   calIrError = String(texto || "").trim()
-    ? t("No entendí esa fecha. Probá con día/mes/año, por ejemplo 1/1/2024.","Couldn't read that date. Try day/month/year, e.g. 1/1/2024.","Não entendi essa data. Tente dia/mês/ano, por exemplo 1/1/2024.","לא הבנתי את התאריך. נסו יום/חודש/שנה, למשל 1/1/2024.")
-    : t("Escribí una fecha primero, por ejemplo 1/1/2024.","Type a date first, e.g. 1/1/2024.","Escreva uma data primeiro, por exemplo 1/1/2024.","הקלידו קודם תאריך, למשל 1/1/2024.");
+    ? t("No entendí esa fecha. Probá con {f}, por ejemplo {e}.","Couldn't read that date. Try {f}, e.g. {e}.","Não entendi essa data. Tente {f}, por exemplo {e}.","לא הבנתי את התאריך. נסו {f}, למשל {e}.",{ f, e })
+    : t("Escribí una fecha primero, por ejemplo {e}.","Type a date first, e.g. {e}.","Escreva uma data primeiro, por exemplo {e}.","הקלידו קודם תאריך, למשל {e}.",{ e });
   render();
   const nuevo = document.getElementById("calIrFecha");
   if(nuevo){ nuevo.focus(); nuevo.select(); }
@@ -18733,7 +18747,7 @@ function miembroPorTexto(txt){
 // sync. Quien hizo cada cosa, para mostrar, es entonces su organizador si
 // es del equipo; lo cargado a mano, quien lo cargó.
 const esDeCalendar = p => !p.authorEmail && /google calendar/i.test(p.authorName || "");
-const quienDe = p => esDeCalendar(p) ? ((miembroPorTexto(p.organizer) || {}).name || "") : (p.organizer || p.authorName || "");
+const quienDe = p => esDeCalendar(p) ? nombreDe(miembroPorTexto(p.organizer)) : (p.organizer || p.authorName || "");
 // Todo lo que la ficha necesita, ya contado.
 function datosDeFicha(L){
   const niveles = nivelesDeFicha(L);
