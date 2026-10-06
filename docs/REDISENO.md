@@ -593,8 +593,13 @@ capturas (A/B/C, después D/E/F, después ajustes), el diseño elegido:
   puede sumar lo del país en general, la región y toda LatAm (se ve
   atenuado y con su etiqueta). Los tipos de actividad se ocultan con un
   toque.
-- Queda para la segunda parte: "Reporte del lugar" (imprimir la ficha) y
-  la ficha de una zona.
+- **Segunda parte (6 oct 2026):** cada **zona** también tiene su ficha
+  (Países › Región), con sus países al costado y "qué incluir" = solo la
+  región o + toda LatAm; la lista de Países arranca con las tres zonas.
+  **"Reporte del lugar"** imprime o guarda en PDF la ficha de cualquier
+  lugar con todo desplegado (pendientes, documentos, la línea entera), sin
+  botones, con lo incluido dicho en una línea y las tarjetas del costado
+  en dos columnas.
 
 ## Fuera de alcance (necesitan algo que la app no tiene)
 

@@ -2177,12 +2177,22 @@
   .fl-amplio{ border:1px dashed var(--border); border-radius:999px; padding:0 6px; }
   .fl-cuerpo .rs{ font-size:12.5px; color:var(--ink); margin-top:5px; padding:7px 10px; background:var(--surface-soft); border-radius:8px; line-height:1.45; }
   .fl-viejo{ color:#9a4a00; font-weight:700; }
-  .fl-ciudades{ display:flex; flex-direction:column; gap:8px; }
-  .fl-ciudad{ display:grid; grid-template-columns:1fr auto; gap:2px 10px; padding:10px 12px; border:1px solid var(--border); border-radius:12px; cursor:pointer; background:var(--card); font:inherit; color:inherit; text-align:start; }
-  .fl-ciudad:hover, .fl-ciudad:focus-visible{ border-color:var(--celeste); }
-  .fl-ciudad b{ font-size:14px; color:var(--ink); }
-  .fl-ciudad small{ grid-column:1; font-size:11.5px; color:var(--text-muted); }
-  .fl-ciudad .n{ grid-row:1 / span 2; grid-column:2; align-self:center; font-weight:800; color:var(--ink); }
+  .fl-hijos{ display:flex; flex-direction:column; gap:8px; }
+  .fl-hijo{ display:grid; grid-template-columns:1fr auto; gap:2px 10px; padding:10px 12px; border:1px solid var(--border); border-radius:12px; cursor:pointer; background:var(--card); font:inherit; color:inherit; text-align:start; }
+  .fl-hijo:hover, .fl-hijo:focus-visible{ border-color:var(--celeste); }
+  .fl-hijo b{ font-size:14px; color:var(--ink); }
+  .fl-hijo small{ grid-column:1; font-size:11.5px; color:var(--text-muted); }
+  .fl-hijo .n{ grid-row:1 / span 2; grid-column:2; align-self:center; font-weight:800; color:var(--ink); }
+  .fl-incluye-print{ display:none; }
+  /* Las tres zonas arriba de la lista de países, cada una con su ficha. */
+  .paises-zonas{ display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:10px; margin-bottom:14px; }
+  .paises-zona{ display:flex; align-items:center; gap:8px; min-width:0; background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md); padding:10px 12px; box-shadow:var(--shadow); font:inherit; color:var(--ink); cursor:pointer; text-align:start; }
+  .paises-zona:hover, .paises-zona:focus-visible{ border-color:var(--celeste); }
+  .paises-zona .dot{ width:10px; height:10px; border-radius:50%; flex:none; }
+  .paises-zona b{ font-size:13.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .paises-zona small{ margin-inline-start:auto; color:var(--text-muted); font-size:11.5px; white-space:nowrap; }
+  .paises-zona .pz-ir{ color:var(--text-muted); font-weight:800; }
+  @media (max-width:640px){ .paises-zonas{ grid-template-columns:1fr; gap:6px; } .paises-zona{ padding:8px 12px; box-shadow:none; } }
   .fl-ritmo{ display:flex; align-items:flex-end; gap:4px; height:52px; margin:4px 0 6px; }
   .fl-ritmo i{ flex:1; background:#b9c7c9; border-radius:3px 3px 0 0; }
   .fl-ritmo i.v, .fl-ritmo-ley i.v{ background:#1b8fa6; }
@@ -2706,6 +2716,40 @@
     .rep-sugerencias li{ padding:4px 0; font-size:11px; }
     .rep-notas{ margin-top:10px; font-size:9.5px; }
     .rep-bloque-nota{ font-size:9.5px; }
+    /* «Reporte del lugar»: la ficha de una zona, un país o una ciudad.
+       Sin botones ni selectores (lo elegido va dicho en una línea), a
+       una columna, con las tarjetas del costado en dos, y sin partir un
+       ítem de la línea de tiempo entre dos hojas. */
+    .ficha-lugar{ max-width:none; }
+    .fl-migas, .fl-acciones, .fl-seg, .fl-chips, .fl-mas, .rs-no, .fl-hijo .fl-ir, .fl-tl + .hint{ display:none !important; }
+    .fl-incluye-print{ display:block; font-size:10px; font-weight:700; color:var(--text-muted); margin:-6px 0 10px; }
+    .fl-head{ margin-bottom:6px; }
+    .fl-head h1{ font-size:19px; }
+    .fl-sub{ font-size:10.5px; }
+    .fl-card{ box-shadow:none; padding:9px 12px; margin-bottom:9px; border-radius:8px; }
+    .fl-card h3{ font-size:9.5px; margin-bottom:6px; }
+    .fl-lectura{ background:#eafbfd; break-inside:avoid; }
+    .fl-lectura li{ font-size:10.5px; gap:7px; }
+    .fl-stats{ gap:8px; margin-bottom:9px; break-inside:avoid; }
+    .fl-stat{ padding:7px 10px; }
+    .fl-stat b{ font-size:15px; }
+    .fl-stat small, .fl-stat span{ font-size:9.5px; }
+    .fl-grid{ display:block; }
+    .fl-lado{ display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:9px; align-items:start; }
+    .fl-lado .fl-card{ break-inside:avoid; margin-bottom:0; }
+    .rs-pasos li{ font-size:10.5px; break-inside:avoid; }
+    .rs-paso small{ font-size:9.5px; }
+    .fl-anio{ font-size:11px; break-after:avoid; }
+    .fl-mes{ font-size:9.5px; break-after:avoid; }
+    .fl-it{ grid-template-columns:18px 86px minmax(0,1fr) auto; padding:4px 4px 4px 0; break-inside:avoid; }
+    .fl-it.amplio{ opacity:1; }
+    .fl-fecha, .fl-it .mt{ font-size:9.5px; }
+    .fl-it .tt{ font-size:11px; }
+    .fl-it .rs{ font-size:10px; padding:4px 8px; margin-top:3px; }
+    .fl-hijo{ padding:6px 10px; border-radius:8px; }
+    .fl-hijo b{ font-size:11px; }
+    .fl-hijo small, .fl-gente > div, .fl-doc{ font-size:10px; }
+    .fl-ritmo{ height:40px; }
   }
 
   .copia-botones{ display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
@@ -13998,7 +14042,7 @@ function getPostById(id){ return state.posts.find(p=>p.id===id); }
 function gotoMention(postId, replyId){
   if(String(postId).includes("#m:")) return openProjectMilestone(postId);
   state.view = "feed";
-  state.countryDrill = null;
+  state.countryDrill = null; state.zonaDrill = null;
   state.filters = { text:"", types:new Set(), zones:new Set(), place:null };
   if(replyId){
     openThreads.add(postId);
@@ -15085,8 +15129,10 @@ function visiblePaisesCountries(){
 }
 
 function renderPaisesView(){
-  // La ficha de un país o de una ciudad, venga de la lista o del mapa.
-  if(state.countryDrill && byCountryExists(state.countryDrill)) return renderFichaLugar(state.countryDrill, state.ciudadDrill || null);
+  // La ficha de una zona, de un país o de una ciudad, venga de la lista o
+  // del mapa.
+  if(state.zonaDrill && ZONES[state.zonaDrill]) return renderFichaLugar({ zona: state.zonaDrill });
+  if(state.countryDrill && byCountryExists(state.countryDrill)) return renderFichaLugar({ country: state.countryDrill, city: state.ciudadDrill || null });
   state.ciudadDrill = null;
   const sub = state.paisesSubview;
   const toggle = `
@@ -15152,7 +15198,14 @@ function renderPaisesView(){
       <summary>${t("{n} países sin actividad propia","{n} countries with none of their own","{n} países sem atividade própria","{n} מדינות ללא פעילות משלהן",{n:quietos.length})}</summary>
       <div class="paises-quietos-lista">${quietos.map(c=>`<button type="button" class="country-mini" data-action="drill-country" data-country="${esc(c.name)}"><span class="dot" style="background:${safeColor(ZONES[c.zone]?.color)}"></span>${esc(countryLabel(c.name))}</button>`).join("")}</div>
     </details>` : "";
-  return `${toolbar}${resumen}<div class="country-grid">${cards}</div>${plegados}${latamFootnote()}`;
+  // Las zonas, cada una con su ficha (las que el filtro de arriba deja ver).
+  const zonas = Object.values(ZONES).filter(z => !state.paisesZoneFilter.size || state.paisesZoneFilter.has(z.key)).map(z => {
+    const n = state.posts.filter(p => !p.cancelled && nivelEnFicha(p, { zona: z.key }) === "own").length;
+    return `<button type="button" class="paises-zona" data-action="drill-zone" data-zona="${esc(z.key)}">
+      <span class="dot" style="background:${safeColor(z.color)}"></span><b>${esc(regionLabel(z.key))}</b>
+      <small>${n} ${n === 1 ? t("registro","record","registro","רשומה") : t("registros","records","registros","רשומות")}</small><span class="pz-ir" aria-hidden="true">${isRTL() ? "‹" : "›"}</span></button>`;
+  }).join("");
+  return `${toolbar}${resumen}<div class="paises-zonas">${zonas}</div><div class="country-grid">${cards}</div>${plegados}${latamFootnote()}`;
 }
 // Para cada país: la última actividad que ya pasó, la próxima que viene y
 // cuántas hubo en cada uno de los últimos 12 meses (la mini-serie de la
@@ -18290,16 +18343,27 @@ cumpleOverlay.addEventListener("click", e=>{ if(e.target === cumpleOverlay) clos
    Se puede elegir qué entra (pedido del usuario): solo lo de ese lugar, o
    también lo del país en general, la región y toda LatAm; y ocultar tipos
    de actividad con un toque.
+
+   Las zonas también tienen ficha (Países › Región), con sus países al
+   costado; y «Reporte del lugar» imprime cualquier ficha, con todo
+   desplegado (ver imprimirFicha y el @media print).
    ====================================================================== */
 // Qué incluir (0: solo lo de acá; cada paso suma un nivel más amplio) y
 // qué tipos se ocultaron. Valen para la sesión, como un filtro.
 let fichaIncluye = 0;
 const fichaOcultos = new Set();
 const fichaDesplegado = new Set(); // "pasos", "docs"
+// Mientras se imprime la ficha («Reporte del lugar»): todo desplegado.
+let fichaImprimiendo = false;
+// El lugar de una ficha: { zona } (una región), { country } o
+// { country, city }.
+const nombreDeLugar = L => L.zona ? regionLabel(L.zona) : L.city ? cityLabel(L.country, L.city) : countryLabel(L.country);
+const zonaDeLugar = L => L.zona || zoneOfCountry(L.country);
 // El nivel más cercano con el que un posteo toca la ficha: "own" (el
 // lugar), "pais" (en una ciudad: lo cargado para todo el país), "region"
-// o "latam". null si no la toca.
-function nivelEnFicha(post, country, city){
+// o "latam". En una zona, lo de sus países y lo cargado para la región
+// es todo "own": está adentro. null si no la toca.
+function nivelEnFicha(post, L){
   const scopes = [...(post.scopes || [])];
   (state.repliesByPost[post.id] || []).forEach(r => scopes.push(...(r.scopes || [])));
   const orden = ["own", "pais", "region", "latam"];
@@ -18308,28 +18372,40 @@ function nivelEnFicha(post, country, city){
     if(!sc) return;
     let n = null;
     if(sc.type === "todo") n = "latam";
-    else if(sc.type === "region") n = (ZONE_COUNTRIES[sc.region] || []).includes(country) ? "region" : null;
-    else if(sc.country === country){
-      if(!city) n = (sc.type === "pais" || sc.type === "ciudad") ? "own" : null;
-      else if(sc.type === "ciudad") n = normalize(sc.city) === normalize(city) ? "own" : null;
+    else if(L.zona) n = (sc.type === "region" ? sc.region === L.zona : zoneOfCountry(sc.country) === L.zona) ? "own" : null;
+    else if(sc.type === "region") n = (ZONE_COUNTRIES[sc.region] || []).includes(L.country) ? "region" : null;
+    else if(sc.country === L.country){
+      if(!L.city) n = (sc.type === "pais" || sc.type === "ciudad") ? "own" : null;
+      else if(sc.type === "ciudad") n = normalize(sc.city) === normalize(L.city) ? "own" : null;
       else if(sc.type === "pais") n = "pais";
     }
     if(n && (mejor === null || orden.indexOf(n) < orden.indexOf(mejor))) mejor = n;
   });
   return mejor;
 }
-const nivelesDeFicha = city => city ? ["own", "pais", "region", "latam"] : ["own", "region", "latam"];
+const nivelesDeFicha = L => L.zona ? ["own", "latam"] : L.city ? ["own", "pais", "region", "latam"] : ["own", "region", "latam"];
+// Los formularios (Cierres) de un posteo que hablan de este lugar. En una
+// zona, los de cada uno de sus países que el posteo toca.
+function partesDeLugar(post, L){
+  if(L.city) return partesDeCiudad(post, L.country, L.city);
+  if(!L.zona) return partesDelPais(post, L.country);
+  const paises = [...new Set((post.scopes || []).map(s => s && s.country).filter(c => c && zoneOfCountry(c) === L.zona))];
+  if(!paises.length) return resumenDe(post) || [];
+  const out = new Set();
+  paises.forEach(c => partesDelPais(post, c).forEach(x => out.add(x)));
+  return [...out];
+}
 const fechaDePost = p => String(p.startDate || p.date || "");
 const diasDesde = iso => iso ? Math.floor((isoDate(todayISO()) - isoDate(String(iso).slice(0, 10))) / 86400000) : null;
 // Todo lo que la ficha necesita, ya contado.
-function datosDeFicha(country, city){
-  const niveles = nivelesDeFicha(city);
+function datosDeFicha(L){
+  const niveles = nivelesDeFicha(L);
   const permitidos = niveles.slice(0, Math.min(fichaIncluye, niveles.length - 1) + 1);
   const porNivel = Object.fromEntries(niveles.map(n => [n, 0]));
   const todos = [];
   state.posts.forEach(p => {
     if(p.cancelled) return;
-    const n = nivelEnFicha(p, country, city);
+    const n = nivelEnFicha(p, L);
     if(!n) return;
     porNivel[n]++;
     if(permitidos.includes(n)) todos.push(p);
@@ -18338,9 +18414,8 @@ function datosDeFicha(country, city){
   const porTipo = new Map();
   todos.forEach(p => porTipo.set(p.activityType, (porTipo.get(p.activityType) || 0) + 1));
   const visibles = todos.filter(p => !fichaOcultos.has(p.activityType));
-  const partesDeAca = p => city ? partesDeCiudad(p, country, city) : partesDelPais(p, country);
   const visitas = visibles.filter(p => p.activityType === "visita");
-  const conResumen = visibles.map(post => ({ post, partes: partesDeAca(post) })).filter(x => x.partes.length);
+  const conResumen = visibles.map(post => ({ post, partes: partesDeLugar(post, L) })).filter(x => x.partes.length);
   const obj = cuentaObjetivos(conResumen.flatMap(x => x.partes));
   const ultimaConCierre = conResumen.find(x => x.partes.some(p => p.tipo === "cierre"));
   const objUltima = ultimaConCierre ? cuentaObjetivos(ultimaConCierre.partes) : null;
@@ -18355,7 +18430,7 @@ function datosDeFicha(country, city){
   return { niveles, porNivel, todos, porTipo, visibles, visitas, conResumen, obj, objUltima, pendientes, hechos, cumplen };
 }
 // "La lectura rápida": frases armadas con cuentas, solo las que dicen algo.
-function lecturaDeFicha(D, country, city){
+function lecturaDeFicha(D, L){
   const out = [];
   const ultimaVisita = D.visitas[0];
   const ultimoRegistro = D.visibles[0];
@@ -18393,47 +18468,88 @@ function lecturaDeFicha(D, country, city){
       : esteAnio < anioPasado ? t(", menos que en {a} ({m}).",", fewer than in {a} ({m}).",", menos que em {a} ({m}).",", פחות מב-{a} ({m}).",{ a: antes, m: anioPasado })
       : t(", igual que en {a}.",", same as in {a}.",", igual a {a}.",", כמו ב-{a}.",{ a: antes });
     else txt += ".";
-    if(!city){
-      const porCiudad = new Map();
-      D.visibles.forEach(p => (p.scopes || []).forEach(s => { if(s && s.country === country && s.city) porCiudad.set(s.city, (porCiudad.get(s.city) || 0) + 1); }));
-      const total = [...porCiudad.values()].reduce((a, b) => a + b, 0);
-      const [top, n] = [...porCiudad.entries()].sort((a, b) => b[1] - a[1])[0] || [];
-      if(porCiudad.size > 1 && n / total >= 0.5) txt += " " + t("<b>{c}</b> concentra el {p}%.","<b>{c}</b> accounts for {p}%.","<b>{c}</b> concentra {p}%.","<b>{c}</b> מרכזת {p}%.",{ c: esc(cityLabel(country, top)), p: Math.round(n * 100 / total) });
+    // Qué parte concentra la actividad: en una zona, el país; en un país,
+    // la ciudad.
+    if(!L.city){
+      const porParte = new Map();
+      D.visibles.forEach(p => {
+        const claves = new Set();
+        (p.scopes || []).forEach(s => {
+          if(!s || !s.country) return;
+          if(L.zona){ if(zoneOfCountry(s.country) === L.zona) claves.add(s.country); }
+          else if(s.country === L.country && s.city) claves.add(s.city);
+        });
+        claves.forEach(k => porParte.set(k, (porParte.get(k) || 0) + 1));
+      });
+      const total = [...porParte.values()].reduce((a, b) => a + b, 0);
+      const [top, n] = [...porParte.entries()].sort((a, b) => b[1] - a[1])[0] || [];
+      if(porParte.size > 1 && n / total >= 0.5) txt += " " + t("<b>{c}</b> concentra el {p}%.","<b>{c}</b> accounts for {p}%.","<b>{c}</b> concentra {p}%.","<b>{c}</b> מרכזת {p}%.",{ c: esc(L.zona ? countryLabel(top) : cityLabel(L.country, top)), p: Math.round(n * 100 / total) });
     }
     out.push({ ic: "📈", html: txt });
   }
   return out;
 }
-function ciudadDeParte(parte, country){
+// La ciudad de la que habla un Cierre: la que nombra su "Lugar:" (o el
+// nombre del archivo) y, si no nombra ninguna, la única ciudad del
+// posteo en ese país (un Cierre que dice solo "Argentina" de una visita
+// a Buenos Aires es de Buenos Aires).
+function ciudadDeParte(parte, country, post){
   const c = cityPresetsFor(country).find(x => parteNombra(parte, [x.name]));
-  return c ? cityLabel(country, c.name) : "";
+  if(c) return cityLabel(country, c.name);
+  const del = [...new Set(((post && post.scopes) || []).filter(s => s && s.country === country && s.city).map(s => s.city))];
+  return del.length === 1 ? cityLabel(country, del[0]) : "";
 }
-function renderFichaLugar(country, city){
-  const D = datosDeFicha(country, city);
-  const nombre = city ? cityLabel(country, city) : countryLabel(country);
-  const zk = zoneOfCountry(country);
+// De qué parte del lugar es un Cierre: en una zona, el país (y la ciudad
+// si se sabe); en un país, la ciudad; en una ciudad, nada que decir.
+function lugarDeParte(parte, L, post){
+  if(L.city) return "";
+  if(!L.zona) return ciudadDeParte(parte, L.country, post);
+  const c = (ZONE_COUNTRIES[L.zona] || []).find(x => parteEsDelPais(parte, x));
+  if(!c) return "";
+  const ciudad = ciudadDeParte(parte, c, post);
+  return ciudad ? `${countryLabel(c)} · ${ciudad}` : countryLabel(c);
+}
+// Los lugares de adentro con actividad propia: los países de una zona o
+// las ciudades de un país (una ciudad no tiene nada adentro).
+function hijosDeLugar(L){
+  const lista = L.zona ? (ZONE_COUNTRIES[L.zona] || []).map(c => ({ L: { country: c }, nombre: countryLabel(c), accion: `data-action="drill-country" data-country="${esc(c)}"` }))
+    : L.city ? [] : cityPresetsFor(L.country).map(c => ({ L: { country: L.country, city: c.name }, nombre: cityLabel(L.country, c.name), accion: `data-action="drill-city" data-country="${esc(L.country)}" data-city="${esc(c.name)}"` }));
+  return lista.map(h => ({ ...h, posts: state.posts.filter(p => !p.cancelled && nivelEnFicha(p, h.L) === "own") }))
+    .filter(h => h.posts.length).sort((a, b) => b.posts.length - a.posts.length);
+}
+function renderFichaLugar(L){
+  const D = datosDeFicha(L);
+  const nombre = nombreDeLugar(L);
+  const zk = zonaDeLugar(L);
   const zcolor = safeColor(ZONES[zk]?.color);
   const sep = `<span aria-hidden="true">${isRTL() ? "‹" : "›"}</span>`;
+  const migaZona = L.zona ? `<b>${esc(nombre)}</b>` : `<a data-action="drill-zone" data-zona="${esc(zk)}">${esc(regionLabel(zk))}</a>`;
+  const migaPais = L.zona ? "" : L.city ? `${sep}<a data-action="drill-country" data-country="${esc(L.country)}">${esc(countryLabel(L.country))}</a>${sep}<b>${esc(nombre)}</b>` : `${sep}<b>${esc(nombre)}</b>`;
   const migas = `<nav class="fl-migas" aria-label="${esc(t("Dónde estás","Where you are","Onde você está","איפה אתה"))}">
-    <a data-action="drill-clear">${t("Países","Countries","Países","מדינות")}</a>${sep}<span>${esc(regionLabel(zk))}</span>${sep}
-    ${city ? `<a data-action="drill-country" data-country="${esc(country)}">${esc(countryLabel(country))}</a>${sep}<b>${esc(nombre)}</b>` : `<b>${esc(nombre)}</b>`}</nav>`;
-  const ciudades = city ? [] : cityPresetsFor(country).map(c => c.name)
-    .map(c => ({ c, posts: state.posts.filter(p => !p.cancelled && nivelEnFicha(p, country, c) === "own") }))
-    .filter(x => x.posts.length).sort((a, b) => b.posts.length - a.posts.length);
-  const sub = city
-    ? `<span class="fl-zona"><i style="background:${zcolor}"></i>${esc(countryLabel(country))} · ${esc(regionLabel(zk))}</span>`
-    : `<span class="fl-zona"><i style="background:${zcolor}"></i>${esc(regionLabel(zk))}</span>${ciudades.length ? " · " + ciudades.map(x => esc(cityLabel(country, x.c))).join(" · ") : ""}`;
+    <a data-action="drill-clear">${t("Países","Countries","Países","מדינות")}</a>${sep}${migaZona}${migaPais}</nav>`;
+  const hijos = hijosDeLugar(L);
+  const sub = L.city
+    ? `<span class="fl-zona"><i style="background:${zcolor}"></i>${esc(countryLabel(L.country))} · ${esc(regionLabel(zk))}</span>`
+    : `<span class="fl-zona"><i style="background:${zcolor}"></i>${esc(L.zona ? t("{n} países con actividad","{n} countries with activity","{n} países com atividade","{n} מדינות עם פעילות",{ n: hijos.length }) : regionLabel(zk))}</span>${hijos.length ? " · " + hijos.map(h => esc(h.nombre)).join(" · ") : ""}`;
+  const lugarAttrs = L.zona ? `data-zona="${esc(L.zona)}"` : `data-country="${esc(L.country)}"${L.city ? ` data-city="${esc(L.city)}"` : ""}`;
   const head = `<div class="fl-head">
     <div><h1>${esc(nombre)}</h1><div class="fl-sub">${sub}</div></div>
-    ${canWrite() ? `<div class="fl-acciones"><button type="button" class="btn-primary" data-action="ficha-cargar" data-country="${esc(country)}" ${city ? `data-city="${esc(city)}"` : ""}>+ ${t("Cargar algo acá","Log something here","Registrar algo aqui","להוסיף משהו כאן")}</button></div>` : ""}
+    <div class="fl-acciones">
+      <button type="button" class="btn-secondary" data-action="ficha-imprimir" title="${esc(t("Imprimir o guardar en PDF esta ficha","Print or save this page as PDF","Imprimir ou salvar esta ficha em PDF","הדפסה או שמירה כ-PDF"))}">🖨️ ${t("Reporte del lugar","Place report","Relatório do lugar","דוח המקום")}</button>
+      ${canWrite() ? `<button type="button" class="btn-primary" data-action="ficha-cargar" ${lugarAttrs}>+ ${t("Cargar algo acá","Log something here","Registrar algo aqui","להוסיף משהו כאן")}</button>` : ""}
+    </div>
   </div>`;
   // Qué incluir: solo lo de acá, o también lo más amplio.
-  const etiquetas = { own: t("Solo {l}","Only {l}","Só {l}","רק {l}",{ l: nombre }), pais: "+ " + t("{p} en general","{p} in general","{p} em geral","{p} באופן כללי",{ p: countryLabel(country) }),
+  const etiquetas = { own: t("Solo {l}","Only {l}","Só {l}","רק {l}",{ l: nombre }), pais: "+ " + t("{p} en general","{p} in general","{p} em geral","{p} באופן כללי",{ p: L.zona ? "" : countryLabel(L.country) }),
     region: "+ " + regionLabel(zk), latam: "+ " + t("Toda LatAm","All of LatAm","Toda a LatAm","כל LatAm") };
   const incluye = Math.min(fichaIncluye, D.niveles.length - 1);
   const seg = `<div class="place-seg fl-seg" role="radiogroup" aria-label="${esc(t("Qué incluir","What to include","O que incluir","מה לכלול"))}">${D.niveles.map((n, i) =>
     `<button type="button" class="place-seg-btn${incluye === i ? " active" : ""}" role="radio" aria-checked="${incluye === i}" data-action="ficha-incluye" data-nivel="${i}"><span>${esc(etiquetas[n])}</span><b>${D.porNivel[n]}</b></button>`).join("")}</div>`;
-  const lectura = lecturaDeFicha(D, country, city);
+  // En el papel el selector no sirve: va dicho en una línea.
+  const ocultosTxt = [...fichaOcultos].filter(k => D.porTipo.has(k)).map(k => (ACTIVITY_BY_KEY[k] || { label:k }).label);
+  const incluyePrint = `<div class="fl-incluye-print">${esc(t("Incluye","Includes","Inclui","כולל"))}: ${esc(D.niveles.slice(0, incluye + 1).map(n => etiquetas[n].replace(/^\+ /, "")).join(" + "))}${ocultosTxt.length ? ` · ${esc(t("sin","without","sem","ללא"))} ${esc(ocultosTxt.join(", "))}` : ""}</div>`;
+  const tituloPrint = `<div class="rep-print-title"><span>Team LatAm · ${t("Registro de Acciones","Activity Log","Registro de Ações","יומן פעולות")} · ${esc(t("Ficha de {l}","{l} page","Ficha de {l}","כרטיס {l}",{ l: nombre }))}</span><span>${esc(t("Impreso el {d}","Printed on {d}","Impresso em {d}","הודפס ב-{d}",{ d: fmtDate(todayISO()) }))}</span></div>`;
+  const lectura = lecturaDeFicha(D, L);
   const ultima = D.visitas[0];
   const primera = D.visitas[D.visitas.length - 1];
   const stats = `<div class="fl-stats">
@@ -18443,15 +18559,15 @@ function renderFichaLugar(country, city){
     <div class="fl-stat"><small>${t("Lo que sigue","What's next","O que segue","מה הלאה")}</small><b>${D.pendientes.length}</b><span>${esc(t("abiertos · {n} hechos","open · {n} done","abertos · {n} feitos","פתוחים · {n} בוצעו",{ n: D.hechos.length }))}</span></div>
   </div>`;
   // Lo que sigue.
-  const todosPasos = fichaDesplegado.has("pasos");
+  const todosPasos = fichaDesplegado.has("pasos") || fichaImprimiendo;
   const listaPasos = todosPasos ? [...D.pendientes, ...D.hechos] : D.pendientes.slice(0, 4);
   const pasos = D.pendientes.length || D.hechos.length ? `<div class="fl-card">
-    <h3>${t("Lo que sigue","What's next","O que segue","מה הלאה")}${D.pendientes.length > 4 || D.hechos.length ? `<button type="button" class="fl-mas" data-action="ficha-desplegar" data-que="pasos">${todosPasos ? t("Mostrar menos","Show less","Mostrar menos","הצג פחות") : t("Ver los {n}","See all {n}","Ver os {n}","הצגת כל ה-{n}",{ n: D.pendientes.length + D.hechos.length })}</button>` : ""}</h3>
+    <h3>${t("Lo que sigue","What's next","O que segue","מה הלאה")}${D.pendientes.length > 4 || D.hechos.length ? `<button type="button" class="fl-mas" data-action="ficha-desplegar" data-que="pasos">${fichaDesplegado.has("pasos") ? t("Mostrar menos","Show less","Mostrar menos","הצג פחות") : t("Ver los {n}","See all {n}","Ver os {n}","הצגת כל ה-{n}",{ n: D.pendientes.length + D.hechos.length })}</button>` : ""}</h3>
     <ul class="rs-pasos">${listaPasos.map(({ p, post, parte }) => {
       const hecho = p.estado === "hecho";
       const puede = canEditPost(post);
       const dias = diasDesde(post.endDate || fechaDePost(post));
-      const dondeTxt = city ? "" : ciudadDeParte(parte, country);
+      const dondeTxt = lugarDeParte(parte, L, post);
       return `<li class="${hecho ? "hecho" : ""}"><input type="checkbox" ${hecho ? "checked" : ""} ${puede ? "" : "disabled"} data-action="resumen-paso" data-post-id="${post.id}" data-paso="${esc(p.id)}" aria-label="${esc(t("Hecho","Done","Feito","בוצע"))}">
         <span class="rs-paso"><span class="t" dir="auto">${esc(p.t)}</span>
         <small>${dondeTxt ? esc(dondeTxt) + " · " : ""}${esc(t("de «{v}»","from “{v}”","de «{v}»","מתוך «{v}»",{ v: recortar(post.title, 50) }))}${!hecho && dias > 90 ? ` · <span class="fl-viejo">${esc(t("hace {m} meses","{m} months ago","há {m} meses","לפני {m} חודשים",{ m: Math.floor(dias / 30) }))}</span>` : ""}</small>
@@ -18464,8 +18580,22 @@ function renderFichaLugar(country, city){
     const oculto = fichaOcultos.has(k);
     return `<button type="button" class="fl-chip${oculto ? " fuera" : ""}" data-action="ficha-tipo" data-tipo="${esc(k)}" aria-pressed="${!oculto}" title="${esc(oculto ? t("Mostrar","Show","Mostrar","הצג") : t("Ocultar","Hide","Ocultar","הסתר"))}">${esc(ty.icon)} ${esc(ty.label)} · ${n}</button>`; }).join("")}
     ${fichaOcultos.size ? `<button type="button" class="fl-chip-todo" data-action="ficha-tipo-todos">${t("Ver todo","Show all","Ver tudo","הצג הכול")}</button>` : ""}</div>` : "";
+  // Dónde pasó cada cosa, dentro del lugar: en una zona, el país (y la
+  // ciudad); en un país, la ciudad.
+  const dondeDe = p => {
+    if(L.city) return [];
+    const porPais = new Map();
+    (p.scopes || []).forEach(s => {
+      if(!s || !s.country || !(L.zona ? zoneOfCountry(s.country) === L.zona : s.country === L.country && s.city)) return;
+      const l = porPais.get(s.country) || new Set();
+      if(s.city) l.add(cityLabel(s.country, s.city));
+      porPais.set(s.country, l);
+    });
+    return [...porPais].map(([c, ciudades]) => [...(L.zona ? [countryLabel(c)] : []), ...ciudades].join(" · "));
+  };
+  const tope = fichaImprimiendo ? 2000 : 200;
   let anioActual = "", mesActual = "";
-  const lineas = D.visibles.slice(0, 200).map(p => {
+  const lineas = D.visibles.slice(0, tope).map(p => {
     const f = fechaDePost(p);
     let cab = "";
     if(f.slice(0, 4) !== anioActual){ anioActual = f.slice(0, 4); mesActual = ""; cab += `<div class="fl-anio">${esc(anioActual)}</div>`; }
@@ -18473,13 +18603,12 @@ function renderFichaLugar(country, city){
     const ty = ACTIVITY_BY_KEY[p.activityType] || { icon:"✨", label:p.activityType };
     const esRutina = p.activityType === "rutina";
     const titulo = esRutina ? recortar(p.content, 140) : p.title;
-    const partes = city ? partesDeCiudad(p, country, city) : partesDelPais(p, country);
+    const partes = partesDeLugar(p, L);
     const c = cuentaObjetivos(partes);
-    const nivel = nivelEnFicha(p, country, city);
-    const dondes = [...new Set((p.scopes || []).filter(s => s && s.country === country && s.city).map(s => cityLabel(country, s.city)))];
+    const nivel = nivelEnFicha(p, L);
     const meta = [
       `${esc(ty.icon)} ${esc(ty.label)}`,
-      nivel === "own" ? (city ? "" : esc(dondes.join(" · "))) : `<span class="fl-amplio">${esc(etiquetas[nivel].replace(/^\+ /, ""))}</span>`,
+      nivel === "own" ? esc(dondeDe(p).join(" · ")) : `<span class="fl-amplio">${esc(etiquetas[nivel].replace(/^\+ /, ""))}</span>`,
       esc(p.organizer || p.authorName || ""),
       (p.files || []).length ? `📎 ${(p.files || []).length}` : "",
       D.cumplen.has(p.id) ? `✓ ${esc(t("cumple un pendiente","completes a pending item","cumpre um pendente","משלים פריט פתוח"))}` : "",
@@ -18493,25 +18622,26 @@ function renderFichaLugar(country, city){
       <span class="fl-cuerpo"><span class="tt" dir="auto">${esc(titulo)}</span><span class="mt">${meta}</span>${ej ? `<span class="rs" dir="auto">${esc(recortar(ej, 220))}</span>` : ""}</span>
       ${marca}</button>`;
   }).join("");
+  const faltan = D.visibles.length - tope;
   const linea = `<div class="fl-card">
     <h3>${t("Lo que pasó","What happened","O que aconteceu","מה קרה")}</h3>
     ${chips}
-    ${D.visibles.length ? `<div class="fl-tl">${lineas}</div>`
+    ${D.visibles.length ? `<div class="fl-tl">${lineas}</div>${faltan > 0 ? `<div class="hint">${esc(t("Se muestran los últimos {n}; hay {m} más. En el reporte del lugar salen todos.","Showing the latest {n}; there are {m} more. The place report has them all.","Mostram-se os últimos {n}; há mais {m}. No relatório do lugar saem todos.","מוצגים {n} האחרונים; יש עוד {m}. בדוח המקום מופיעים כולם.",{ n: tope, m: faltan }))}</div>` : ""}`
       : `<div class="empty-state">${esc(D.todos.length ? t("Ocultaste todo lo que hay. Tocá un tipo para volver a verlo.","You hid everything. Tap a type to show it again.","Você ocultou tudo. Toque um tipo para voltar a ver.","הסתרת הכול. הקש/י על סוג כדי להציג שוב.") : t("Todavía no hay nada cargado acá.","Nothing logged here yet.","Ainda não há nada registrado aqui.","עדיין לא נרשם כאן כלום."))}</div>`}
   </div>`;
-  // Al costado.
-  const ladoCiudades = ciudades.length ? `<div class="fl-card"><h3>${t("Ciudades","Cities","Cidades","ערים")}</h3><div class="fl-ciudades">${ciudades.map(x => {
-    const ult = x.posts.map(fechaDePost).sort().pop();
-    const pend = x.posts.reduce((n, p) => n + pasosPendientes(partesDeCiudad(p, country, x.c)).length, 0);
-    return `<button type="button" class="fl-ciudad" data-action="drill-city" data-country="${esc(country)}" data-city="${esc(x.c)}">
-      <b>${esc(cityLabel(country, x.c))}</b><small>${esc(t("último: hace {d} días","latest: {d} days ago","último: há {d} dias","אחרון: לפני {d} ימים",{ d: Math.max(0, diasDesde(ult)) }))}${pend ? " · " + esc(t("{n} pendientes","{n} pending","{n} pendentes","{n} ממתינים",{ n: pend })) : ""}</small>
-      <span class="n">${x.posts.length} ${isRTL() ? "‹" : "›"}</span></button>`; }).join("")}</div></div>` : "";
+  // Al costado: los países de la zona o las ciudades del país.
+  const ladoHijos = hijos.length ? `<div class="fl-card"><h3>${L.zona ? t("Países","Countries","Países","מדינות") : t("Ciudades","Cities","Cidades","ערים")}</h3><div class="fl-hijos">${hijos.map(h => {
+    const ult = h.posts.map(fechaDePost).sort().pop();
+    const pend = h.posts.reduce((n, p) => n + pasosPendientes(partesDeLugar(p, h.L)).length, 0);
+    return `<button type="button" class="fl-hijo" ${h.accion}>
+      <b>${esc(h.nombre)}</b><small>${esc(t("último: hace {d} días","latest: {d} days ago","último: há {d} dias","אחרון: לפני {d} ימים",{ d: Math.max(0, diasDesde(ult)) }))}${pend ? " · " + esc(t("{n} pendientes","{n} pending","{n} pendentes","{n} ממתינים",{ n: pend })) : ""}</small>
+      <span class="n">${h.posts.length} <span class="fl-ir" aria-hidden="true">${isRTL() ? "‹" : "›"}</span></span></button>`; }).join("")}</div></div>` : "";
   const meses = [];
   for(let i = 11; i >= 0; i--){ const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - i); meses.push(d.toISOString().slice(0, 7)); }
   const porMes = meses.map(m => ({ m, n: D.visibles.filter(p => fechaDePost(p).startsWith(m)).length, v: D.visibles.some(p => p.activityType === "visita" && fechaDePost(p).startsWith(m)) }));
-  const tope = Math.max(1, ...porMes.map(x => x.n));
+  const topeMes = Math.max(1, ...porMes.map(x => x.n));
   const ritmo = porMes.some(x => x.n) ? `<div class="fl-card"><h3>${t("Ritmo · últimos 12 meses","Pace · last 12 months","Ritmo · últimos 12 meses","קצב · 12 החודשים האחרונים")}</h3>
-    <div class="fl-ritmo">${porMes.map(x => `<i class="${x.v ? "v" : ""}" style="height:${x.n ? Math.max(6, Math.round(x.n * 100 / tope)) : 0}%" title="${esc(fmtISO(x.m + "-01", { month:"long", year:"numeric" }))}: ${x.n}"></i>`).join("")}</div>
+    <div class="fl-ritmo">${porMes.map(x => `<i class="${x.v ? "v" : ""}" style="height:${x.n ? Math.max(6, Math.round(x.n * 100 / topeMes)) : 0}%" title="${esc(fmtISO(x.m + "-01", { month:"long", year:"numeric" }))}: ${x.n}"></i>`).join("")}</div>
     <div class="fl-ritmo-ej"><span>${esc(fmtISO(meses[0] + "-01", { month:"short" }))}</span><span>${esc(fmtISO(meses[11] + "-01", { month:"short" }))}</span></div>
     <div class="hint fl-ritmo-ley"><i class="v"></i> ${t("con visita","with a visit","com visita","עם ביקור")}</div></div>` : "";
   const gente = new Map();
@@ -18523,15 +18653,29 @@ function renderFichaLugar(country, city){
   const docs = D.visibles.flatMap(p => (p.files || []).map((f, pos) => ({ f, pos, p })))
     .filter(x => x.f && seAbreEnVisor(x.f) && safeFileDataUrl(x.f.dataUrl))
     .sort((a, b) => String(b.f.subidoEl || fechaDePost(b.p)).localeCompare(String(a.f.subidoEl || fechaDePost(a.p))));
-  const todosDocs = fichaDesplegado.has("docs");
-  const documentos = docs.length ? `<div class="fl-card"><h3>${t("Documentos","Documents","Documentos","מסמכים")}${docs.length > 4 ? `<button type="button" class="fl-mas" data-action="ficha-desplegar" data-que="docs">${todosDocs ? t("Mostrar menos","Show less","Mostrar menos","הצג פחות") : t("Ver los {n}","See all {n}","Ver os {n}","הצגת כל ה-{n}",{ n: docs.length })}</button>` : ""}</h3>
+  const todosDocs = fichaDesplegado.has("docs") || fichaImprimiendo;
+  const documentos = docs.length ? `<div class="fl-card"><h3>${t("Documentos","Documents","Documentos","מסמכים")}${docs.length > 4 ? `<button type="button" class="fl-mas" data-action="ficha-desplegar" data-que="docs">${fichaDesplegado.has("docs") ? t("Mostrar menos","Show less","Mostrar menos","הצג פחות") : t("Ver los {n}","See all {n}","Ver os {n}","הצגת כל ה-{n}",{ n: docs.length })}</button>` : ""}</h3>
     <div class="fl-docs">${(todosDocs ? docs : docs.slice(0, 4)).map(x => { const fi = fichaDeArchivo(x.f); return `<button type="button" class="fl-doc" data-action="resumen-abrir" data-post-id="${x.p.id}" data-pos="${x.pos}" title="${esc(x.f.name)}">
       <i style="background:${fi.color}">${esc(fi.sigla)}</i><span>${esc(x.f.name)}</span><small>${esc(fechaDeArchivo(x.f) || fmtISO(fechaDePost(x.p), { day:"numeric", month:"short" }))}</small></button>`; }).join("")}</div></div>` : "";
-  return `<div class="ficha-lugar">${migas}${head}${seg}
+  return `<div class="ficha-lugar">${tituloPrint}${migas}${head}${seg}${incluyePrint}
     ${lectura.length ? `<div class="fl-card fl-lectura"><h3>${t("Lectura rápida","At a glance","Leitura rápida","במבט מהיר")}</h3><ul>${lectura.map(x => `<li class="${x.alerta ? "alerta" : ""}"><span class="ic" aria-hidden="true">${x.ic}</span><span>${x.html}</span></li>`).join("")}</ul></div>` : ""}
     ${stats}
-    <div class="fl-grid"><div class="fl-main">${pasos}${linea}</div><div class="fl-lado">${ladoCiudades}${ritmo}${quienes}${documentos}</div></div>
+    <div class="fl-grid"><div class="fl-main">${pasos}${linea}</div><div class="fl-lado">${ladoHijos}${ritmo}${quienes}${documentos}</div></div>
   </div>`;
+}
+// «Reporte del lugar»: se dibuja todo desplegado, se imprime (o se guarda
+// en PDF desde el diálogo) y se vuelve a lo de antes.
+function imprimirFicha(){
+  if(fichaImprimiendo) return;
+  fichaImprimiendo = true; render();
+  let listo = false;
+  const fin = () => { if(listo) return; listo = true; fichaImprimiendo = false; render(); };
+  window.addEventListener("afterprint", fin, { once: true });
+  // Un instante para que lo desplegado llegue a dibujarse antes del diálogo.
+  setTimeout(() => {
+    try{ window.print(); }
+    finally{ setTimeout(fin, 0); }
+  }, 60);
 }
 
 /* ---- Abrir un posteo de la línea de tiempo, sin salir de la ficha ---- */
@@ -18741,7 +18885,7 @@ eventCardOverlay.addEventListener("click", e=>{ if(e.target === eventCardOverlay
 document.querySelectorAll("#tabs button").forEach(btn=>{
   btn.addEventListener("click", ()=>{
     state.view = btn.dataset.view;
-    state.countryDrill = null;
+    state.countryDrill = null; state.zonaDrill = null;
     calIrAbierto = false;
     render();
   });
@@ -19578,7 +19722,7 @@ document.addEventListener("click", async e=>{
     "gs-country": async (el, e, action, postId) => {
     cerrarBuscadorGlobal(true);
     state.filters = { text:"", types:new Set(), zones:new Set(), place:{ kind:"country", country:el.dataset.country }, quick:null, author:null };
-    feedVisibleCount = PAGE_SIZE; state.view = "feed"; state.countryDrill = null; render(); scrollToTop();
+    feedVisibleCount = PAGE_SIZE; state.view = "feed"; state.countryDrill = null; state.zonaDrill = null; render(); scrollToTop();
   },
     "gs-feed": async (el, e, action, postId) => {
     buscarEnElFeed();
@@ -19684,7 +19828,7 @@ document.addEventListener("click", async e=>{
   },
     "goto-view": async (el, e, action, postId) => {
     // Desde el menú del avatar, la barra de abajo o un atajo del Resumen.
-    state.view = el.dataset.view; state.countryDrill = null;
+    state.view = el.dataset.view; state.countryDrill = null; state.zonaDrill = null;
     userMenuOpen = false; nicknameEditing = false; nicknameError = null; moreMenuOpen = false;
     render(); scrollToTop();
   },
@@ -20033,7 +20177,7 @@ document.addEventListener("click", async e=>{
     if(first){ first.setAttribute("tabindex","-1"); try{ first.focus({ preventScroll:true }); }catch(e){ first.focus(); } }
   },
     "paises-subview": async (el, e, action, postId) => {
-    state.paisesSubview = el.dataset.key; state.countryDrill = null; render();
+    state.paisesSubview = el.dataset.key; state.countryDrill = null; state.zonaDrill = null; render();
   },
     "reporte-ir": async (el, e, action, postId) => {
     // Una fila del reporte abre el Feed con ESE filtro (y ningún otro).
@@ -20043,7 +20187,7 @@ document.addEventListener("click", async e=>{
     else if(kind === "latam") state.filters.place = { kind:"latam" };
     else if(kind === "zona") state.filters.zones = new Set([key]);
     else if(kind === "tipo") state.filters.types = new Set([key]);
-    state.view = "feed"; state.countryDrill = null; render(); scrollToTop();
+    state.view = "feed"; state.countryDrill = null; state.zonaDrill = null; render(); scrollToTop();
   },
     "audit-csv": async (el, e, action, postId) => {
     descargarTexto(`registro-actividad-${todayISO()}.csv`, csvDelRegistro());
@@ -20305,17 +20449,20 @@ document.addEventListener("click", async e=>{
     "toggle-paises-zone": async (el, e, action, postId) => {
     const key = el.dataset.key;
     state.paisesZoneFilter.has(key) ? state.paisesZoneFilter.delete(key) : state.paisesZoneFilter.add(key);
-    state.countryDrill = null;
+    state.countryDrill = null; state.zonaDrill = null;
     render();
   },
+    "drill-zone": async (el) => {
+    state.view = "paises"; state.countryDrill = null; state.ciudadDrill = null; state.zonaDrill = el.dataset.zona; render(); scrollToTop();
+  },
     "drill-country": async (el, e, action, postId) => {
-    state.view = "paises"; state.countryDrill = el.dataset.country; state.ciudadDrill = null; render(); scrollToTop();
+    state.view = "paises"; state.zonaDrill = null; state.countryDrill = el.dataset.country; state.ciudadDrill = null; render(); scrollToTop();
   },
     "drill-city": async (el, e, action, postId) => {
-    state.view = "paises"; state.countryDrill = el.dataset.country; state.ciudadDrill = el.dataset.city; render(); scrollToTop();
+    state.view = "paises"; state.zonaDrill = null; state.countryDrill = el.dataset.country; state.ciudadDrill = el.dataset.city; render(); scrollToTop();
   },
     "drill-clear": async (el, e, action, postId) => {
-    state.countryDrill = null; state.ciudadDrill = null; render();
+    state.countryDrill = null; state.zonaDrill = null; state.ciudadDrill = null; render();
   },
     // ---- La ficha de un lugar (ver renderFichaLugar) ----
     "ficha-incluye": async (el) => { fichaIncluye = Number(el.dataset.nivel) || 0; render(); },
@@ -20331,28 +20478,29 @@ document.addEventListener("click", async e=>{
     render();
   },
     "ficha-abrir": async (el, e, action, postId) => { openFichaPost(postId); },
+    "ficha-imprimir": async () => { imprimirFicha(); },
     "ficha-cargar": async (el) => {
     if(!canWrite()) return;
-    const country = el.dataset.country, city = el.dataset.city;
+    const { zona, country, city } = el.dataset;
     openComposer();
-    composerDraft.scopes = [city ? { type:"ciudad", country, city } : { type:"pais", country }];
+    composerDraft.scopes = [zona ? { type:"region", region: zona } : city ? { type:"ciudad", country, city } : { type:"pais", country }];
     composerSnapshot = snapshotComposer();
     renderComposer();
   },
     "goto-country": async (el, e, action, postId) => {
     state.filters.place = { kind:"country", country:el.dataset.country };
     if(el.dataset.level) setPlaceLevel(Number(el.dataset.level)); // las filas "Región"/"Toda LatAm" abren en su nivel
-    state.view = "feed"; state.countryDrill = null; render();
+    state.view = "feed"; state.countryDrill = null; state.zonaDrill = null; render();
   },
     "goto-latam": async (el, e, action, postId) => {
     // Del pie de Vistas: lo que es de toda LatAm, sin país ni ciudad de
     // por medio (ver scopeLevelFor con kind "latam").
     state.filters.place = { kind:"latam" };
-    state.view = "feed"; state.countryDrill = null; render();
+    state.view = "feed"; state.countryDrill = null; state.zonaDrill = null; render();
   },
     "goto-city": async (el, e, action, postId) => {
     state.filters.place = { kind:"city", country:el.dataset.country, city:el.dataset.city };
-    state.view = "feed"; state.countryDrill = null; render();
+    state.view = "feed"; state.countryDrill = null; state.zonaDrill = null; render();
   },
     "feed-order": async (el, e, action, postId) => {
     feedVisibleCount = PAGE_SIZE;
