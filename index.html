@@ -13,9 +13,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
-<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" integrity="sha384-pmjIAcz2bAn0xukfxADbZIb3t8oRT9Sv0rvO+BR5Csr6Dhqq+nZs59P0pPKQJkEV" crossorigin="">
-<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" integrity="sha384-wgw+aLYNQ7dlhK47ZPK7FRACiq7ROZwgFNg0m04avm4CaXS+Z9Y7nMu8yNjBKYC+" crossorigin="">
 <script>
   // Va acá, suelto y antes del CSS, a propósito: el script del módulo se
   // ejecuta recién después de pintar la página, así que si dejáramos esto
@@ -3815,8 +3812,6 @@
 
 <div class="tour-layer" id="tourLayer" role="dialog" aria-modal="true" hidden></div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" integrity="sha384-eXVCORTRlv4FUUgS/xmOyr66XBVraen8ATNLMESp92FKXLAMiKkerixTiBvXriZr" crossorigin=""></script>
 <script type="module">
 /* ======================================================================
    LA BASE: SUPABASE
@@ -7750,6 +7745,29 @@ function crearSupabaseStore(sb, opciones = {}){
   async function traerTodas(armar){
     const filas = [];
     let total = null;
+    // La primera página trae la cuenta total: con eso las demás se piden
+    // todas juntas, en vez de una después de la otra (con 150 ms de ida y
+    // vuelta en un celular, cada página en fila sumaba esa espera;
+    // docs/AUDITORIA.md, I8). Si no vino la cuenta, de a una como antes.
+    {
+      const { data, error, count } = await armar(true).range(0, PAGINA - 1);
+      if(error) return { data: null, error };
+      if(typeof count === "number") total = count;
+      if(!data || !data.length) return { data: filas, error: null };
+      filas.push(...data);
+      if(total !== null ? filas.length >= total : data.length < PAGINA) return { data: filas, error: null };
+      if(total !== null){
+        const desdes = [];
+        for(let d = PAGINA; d < total; d += PAGINA) desdes.push(d);
+        const paginas = await Promise.all(desdes.map(d => armar(false).range(d, d + PAGINA - 1)));
+        const mala = paginas.find(r => r.error);
+        if(mala) return { data: null, error: mala.error };
+        paginas.forEach(r => filas.push(...(r.data || [])));
+        // Si mientras tanto entraron filas nuevas, las que falten las trae
+        // la vuelta de abajo, como antes.
+        if(filas.length >= total || paginas.some(r => !r.data || r.data.length < PAGINA)) return { data: filas, error: null };
+      }
+    }
     for(;;){
       const { data, error, count } = await armar(total === null).range(filas.length, filas.length + PAGINA - 1);
       if(error) return { data: null, error };
@@ -8764,6 +8782,10 @@ function subscribeData(){
   // del día, creación desc. Ordenando solo por fecha, el desempate dentro
   // del mismo día quedaba librado al id (aleatorio), y las rutinas de hoy
   // salían en cualquier orden.
+  // Los comentarios se piden a la par de los posteos: antes recién cuando
+  // los posteos terminaban de llegar, dos o tres viajes más tarde
+  // (docs/AUDITORIA.md, I8). Se agrupan por posteo solos.
+  subscribeReplies();
   const unsubPosts = store.posts.subscribe(lista=>{
     const prevLoaded = state.loaded;
     state.posts = lista
@@ -15359,10 +15381,15 @@ function renderPaisesView(){
   const counts = computePlaceCounts();
   const toolbar = `<div class="paises-toolbar">${toggle}${renderZoneLegend()}</div>`;
   if(sub === "mapa"){
-    // Leaflet se carga con <script> clásico antes que la app, así que a
-    // esta altura o está o no va a estar: sin él, un aviso en vez del
-    // recuadro blanco (ver initOrUpdateMap, que también lo salta).
-    if(!window.L || !window.L.markerClusterGroup){
+    // Leaflet se baja recién ahora (cargarMapa): mientras llega, un aviso
+    // de que está cargando; si no llega, un aviso en vez del recuadro
+    // blanco (ver initOrUpdateMap, que también lo salta).
+    if(!mapaListo() && !mapaFallo){
+      cargarMapa().then(() => { if(state.view === "paises" && state.paisesSubview === "mapa") render(); });
+      return `${toolbar}<div class="map-fallback" role="status"><span class="map-fallback-ico" aria-hidden="true">🗺️</span>
+        <span>${t("Cargando el mapa…","Loading the map…","Carregando o mapa…","טוען את המפה…")}</span></div>`;
+    }
+    if(!mapaListo()){
       return `${toolbar}<div class="map-fallback" role="status">
         <span class="map-fallback-ico" aria-hidden="true">🗺️</span>
         <span>${t("El mapa no se pudo cargar: no hay conexión con el servicio de mapas. La lista muestra lo mismo, país por país.",
@@ -15556,6 +15583,36 @@ function ajustarAltoDelMapa(){
   if(state.leafletMap && mapContainerEl === el) state.leafletMap.invalidateSize();
 }
 window.addEventListener("resize", ajustarAltoDelMapa);
+// El mapa (Leaflet y su agrupador) se baja recién la primera vez que
+// alguien abre Países › Mapa. Antes eran cinco pedidos a unpkg (≈60 KB)
+// en cada visita, y el módulo de la app esperaba a que llegaran para
+// arrancar (docs/AUDITORIA.md, I8). Con las mismas huellas de integridad.
+const MAPA_RECURSOS = {
+  css: [["https://unpkg.com/leaflet@1.9.4/dist/leaflet.css", "sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="],
+        ["https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css", "sha384-pmjIAcz2bAn0xukfxADbZIb3t8oRT9Sv0rvO+BR5Csr6Dhqq+nZs59P0pPKQJkEV"],
+        ["https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css", "sha384-wgw+aLYNQ7dlhK47ZPK7FRACiq7ROZwgFNg0m04avm4CaXS+Z9Y7nMu8yNjBKYC+"]],
+  js: [["https://unpkg.com/leaflet@1.9.4/dist/leaflet.js", "sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="],
+       ["https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js", "sha384-eXVCORTRlv4FUUgS/xmOyr66XBVraen8ATNLMESp92FKXLAMiKkerixTiBvXriZr"]],
+};
+let mapaCarga = null;     // la promesa de la carga, una sola vez
+let mapaFallo = false;
+function mapaListo(){ return !!(window.L && window.L.markerClusterGroup); }
+function cargarMapa(){
+  if(mapaListo()) return Promise.resolve();
+  if(!mapaCarga){
+    MAPA_RECURSOS.css.forEach(([href, integridad]) => {
+      const l = document.createElement("link");
+      l.rel = "stylesheet"; l.href = href;
+      if(!window.__pruebasSinIntegridad){ l.integrity = integridad; l.crossOrigin = "anonymous"; }
+      document.head.appendChild(l);
+    });
+    // En orden: el agrupador necesita a Leaflet ya cargado.
+    mapaCarga = MAPA_RECURSOS.js.reduce((antes, [src, integridad]) => antes.then(() => window.L && src.includes("leaflet.js") ? null : cargarScript(src, integridad)), Promise.resolve())
+      .then(() => { if(!mapaListo()) throw new Error("sin Leaflet"); })
+      .catch(err => { console.warn("No se pudo cargar el mapa:", err); mapaFallo = true; mapaCarga = null; });
+  }
+  return mapaCarga;
+}
 function initOrUpdateMap(){
   const placeholder = document.getElementById("map");
   if(!placeholder || !window.L || !window.L.markerClusterGroup) return;

@@ -110,7 +110,8 @@ function consulta(tabla){
     update(f){ q.op = "update"; q.datos = f; return b; },
     upsert(f, o){ q.op = "upsert"; q.datos = f; q.opciones = o || {}; return b; },
     delete(){ q.op = "delete"; return b; },
-    then(ok, mal){ return new Promise(r => setTimeout(r, 0)).then(() => ejecutar(q)).then(ok, mal); },
+    then(ok, mal){ if(q.op === "select") (estado.consultas = estado.consultas || []).push(q.tabla);
+      return new Promise(r => setTimeout(r, 0)).then(() => ejecutar(q)).then(ok, mal); },
   };
   return b;
 }
@@ -280,7 +281,7 @@ const b = await chromium.launch();
 // `mod` retoca la base de mentira antes de cargar (para sumar algo que
 // solo necesita una sección, sin tocar lo que las demás esperan);
 // `viewport` abre la página con otro tamaño (un celular).
-async function entrar(email, nombre, mod, viewport){
+async function entrar(email, nombre, mod, viewport, pedidos){
   const base = BASE(); if(mod) mod(base);
   const p = await b.newPage(viewport ? { viewport } : {});
   const errores = [];
@@ -288,6 +289,7 @@ async function entrar(email, nombre, mod, viewport){
   p.on("console", m => { if(m.type() === "error" && !deRed(m.text())) errores.push(m.text()); });
   await p.route(/^https?:\/\//, ruta => {
     const u = ruta.request().url();
+    if(pedidos) pedidos.push(u);
     if(u === CDN) return ruta.fulfill({ contentType: "application/javascript", body: FALSO });
     // La herramienta del .zip, de mentira: el "zip" es la lista de lo que
     // se le metió, para poder mirarla.
@@ -1818,6 +1820,24 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   await p.waitForSelector(".rep-equipo table", { timeout: 5000 }).catch(() => {});
   eq("celular: «Por persona del equipo» entra entera en la pantalla", await p.evaluate(() => { const t = document.querySelector(".rep-equipo table"); return !!t && t.getBoundingClientRect().right <= document.documentElement.clientWidth; }), true);
   eq("celular: sin un solo error", errores, []);
+  await p.close();
+}
+
+/* ---------- Un arranque más liviano (docs/AUDITORIA.md, I8) ---------- */
+{
+  const pedidos = [];
+  const { p, errores } = await entrar(ADMIN, "Benny", null, null, pedidos);
+  await esperarTexto(p, "Reunión con la comunidad");
+  eq("al entrar no se baja nada del mapa (antes, cinco pedidos a unpkg en cada visita)", pedidos.filter(u => /unpkg\.com\/leaflet/.test(u)), []);
+  const consultas = await p.evaluate(() => window.__sb.consultas || []);
+  const iPosts = consultas.indexOf("posts"), iReplies = consultas.indexOf("replies");
+  eq("los comentarios se piden a la par de los posteos, no después", iReplies >= 0 && iPosts >= 0 && Math.abs(iReplies - iPosts) <= 3, true);
+  await p.click('nav.tabs button[data-view="paises"]');
+  await p.click('[data-action="paises-subview"][data-key="mapa"]');
+  await p.waitForTimeout(800);
+  eq("al abrir el mapa recién ahí se pide Leaflet", pedidos.some(u => /unpkg\.com\/leaflet@[\d.]+\/dist\/leaflet\.js/.test(u)), true);
+  eq("y como desde acá no llegan, avisa que el mapa no se pudo cargar", await esperarTexto(p, "El mapa no se pudo cargar", 5000), true);
+  eq("sin un solo error", errores, []);
   await p.close();
 }
 
