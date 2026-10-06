@@ -293,11 +293,13 @@ async function entrar(email, nombre, mod, viewport){
     // se le metió, para poder mirarla.
     // La herramienta que dibuja los Word, de mentira: escribe cuántos bytes le llegaron.
     // Lo que lee planillas, de mentira: una tabla con una celda.
-    if(/\/xlsx\//.test(u)) return ruta.fulfill({ contentType: "application/javascript", body: `window.XLSX = { read: () => ({ SheetNames: ["Gastos"], Sheets: { Gastos: {} } }), utils: { sheet_to_html: () => "<table><tr><td>Planilla de mentira</td></tr></table>" } };` });
-    if(/docx-preview/.test(u)) return ruta.fulfill({ contentType: "application/javascript", body: `window.docx = { renderAsync: async (blob, el) => { el.innerHTML = '<section class="docx">Word de ' + blob.size + ' bytes</section>'; } };` });
+    // Con un enlace javascript: y una imagen con onerror, como podría traer
+    // una planilla armada a propósito: el visor los tiene que sacar.
+    if(/xlsx\.full\.min\.js/.test(u)) return ruta.fulfill({ contentType: "application/javascript", body: `window.XLSX = { read: () => ({ SheetNames: ["Gastos"], Sheets: { Gastos: {} } }), utils: { sheet_to_html: () => '<table><tr><td>Planilla de mentira <a id="enlaceMalo" href="javascript:window.__xss=1">x</a><a id="enlaceBueno" href="https://ejemplo.org/a">y</a><img src="nada.png" onerror="window.__xss=2"></td></tr></table>' } };` });
+    if(/docx-preview/.test(u)) return ruta.fulfill({ contentType: "application/javascript", body: `window.docx = { renderAsync: async (blob, el) => { el.innerHTML = '<section class="docx">Word de ' + blob.size + ' bytes <a id="wordMalo" href="javascript:void 0">l</a><iframe id="wordMarco"></iframe></section>'; } };` });
     // Y para leer un Word (el resumen de una visita): el "docx" de las
     // pruebas es directamente su document.xml.
-    if(/\/jszip\//.test(u)) return ruta.fulfill({ contentType: "application/javascript", body: `window.JSZip = class { constructor(){ this.n = []; }
+    if(/jszip\.min\.js/.test(u)) return ruta.fulfill({ contentType: "application/javascript", body: `window.JSZip = class { constructor(){ this.n = []; }
       file(nombre){ this.n.push(nombre); return this; } async generateAsync(){ return new Blob([JSON.stringify(this.n.sort())]); }
       static async loadAsync(buf){ const xml = new TextDecoder().decode(buf); return { file: n => n === "word/document.xml" ? { async: async () => xml } : null }; } };` });
     if(/\/storage\/v1\/object\/sign\/.*\.docx/.test(u)) return ruta.fulfill({ contentType: "application/octet-stream", body: /cierre-ar/i.test(u) ? CIERRE_AR_XML : /cierre-pde/i.test(u) ? CIERRE_PDE_XML : /cierre/i.test(u) ? CIERRE_XML : "<nada/>" });
@@ -309,6 +311,8 @@ async function entrar(email, nombre, mod, viewport){
   await p.addInitScript(([base, sesion]) => {
     window.__sb = { tablas: base, sesion, oyentes: [], rpc: [], escrituras: [], subidas: [], borradas: [],
                     logins: [], canales: 0 };
+    // Las librerías de mentira no tienen la huella de las de verdad.
+    window.__pruebasSinIntegridad = true;
   }, [base, { user: { id: "uuid-" + email, email, user_metadata: { full_name: nombre } } }]);
   await p.goto(PAGINA);
   return { p, errores, base: () => p.evaluate(() => JSON.parse(JSON.stringify(window.__sb.tablas))),
@@ -1585,6 +1589,11 @@ const hasta = async (p, fn, arg, ms = 5000) => {
     await q.click(`.post[data-post-id="p_reunion"] .post-file-link`);
     eq("una planilla adjunta abre el visor y se ve como tabla",
       await hasta(q, () => !document.getElementById("filePreviewOverlay").hidden && /Planilla de mentira/.test(document.getElementById("filePreviewWord").textContent)), true);
+    await q.waitForTimeout(150);
+    eq("planilla armada: el enlace javascript: pierde su destino, el de verdad queda y abre aparte, y la imagen no ejecuta nada",
+      await q.evaluate(() => [document.getElementById("enlaceMalo")?.hasAttribute("href"), document.getElementById("enlaceBueno")?.getAttribute("href"),
+        document.getElementById("enlaceBueno")?.getAttribute("target"), window.__xss === undefined, !!document.querySelector("#filePreviewWord img[onerror]")]),
+      [false, "https://ejemplo.org/a", "_blank", true, false]);
     const [bajada] = await Promise.all([q.waitForEvent("download"), q.click("#filePreviewDownload")]);
     eq("bajar un archivo conserva el nombre con que se cargó", bajada.suggestedFilename(), "Planilla de gastos de octubre.xlsx");
     // Deslizar con el dedo pasa al siguiente: de la planilla al PowerPoint,
@@ -1614,6 +1623,8 @@ const hasta = async (p, fn, arg, ms = 5000) => {
     await q.click(`${tarjeta} .doc-fila .doc-archivo`);
     eq("tocar un Word abre el visor oscuro (como las fotos) y lo dibuja",
       await hasta(q, () => { const o = document.getElementById("filePreviewOverlay"); return !o.hidden && /Word de \d+ bytes/.test(document.getElementById("filePreviewWord").textContent); }), true);
+    eq("Word armado: el enlace javascript: pierde su destino y el marco embebido se va",
+      await q.evaluate(() => [document.getElementById("wordMalo")?.hasAttribute("href"), !!document.getElementById("wordMarco")]), [false, false]);
     eq("visor: el nombre, y el contador entre los documentos del evento",
       await q.evaluate(() => [document.getElementById("filePreviewTitle").textContent, document.getElementById("filePreviewCounter").textContent]),
       ["Plan de viaje definitivo con un nombre muy largo.docx", "1 / 3"]);

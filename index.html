@@ -1,6 +1,12 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+<!-- Lo mínimo que se puede cerrar sin arriesgar nada de lo que usa la app
+     (docs/AUDITORIA.md, I3): ni <object>/<embed> (plugins), ni un <base>
+     que cambie adónde apuntan los enlaces. Una política completa (de dónde
+     se cargan los scripts y a quién se le habla) necesita probarse contra
+     el sitio de verdad, con Google y Supabase: queda anotada aparte. -->
+<meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'none'">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
 <title>Registro de Acciones — Team LatAm</title>
@@ -8,8 +14,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
-<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" crossorigin="">
-<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" crossorigin="">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" integrity="sha384-pmjIAcz2bAn0xukfxADbZIb3t8oRT9Sv0rvO+BR5Csr6Dhqq+nZs59P0pPKQJkEV" crossorigin="">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" integrity="sha384-wgw+aLYNQ7dlhK47ZPK7FRACiq7ROZwgFNg0m04avm4CaXS+Z9Y7nMu8yNjBKYC+" crossorigin="">
 <script>
   // Va acá, suelto y antes del CSS, a propósito: el script del módulo se
   // ejecuta recién después de pintar la página, así que si dejáramos esto
@@ -3810,7 +3816,7 @@
 <div class="tour-layer" id="tourLayer" role="dialog" aria-modal="true" hidden></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" crossorigin=""></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" integrity="sha384-eXVCORTRlv4FUUgS/xmOyr66XBVraen8ATNLMESp92FKXLAMiKkerixTiBvXriZr" crossorigin=""></script>
 <script type="module">
 /* ======================================================================
    LA BASE: SUPABASE
@@ -12565,7 +12571,10 @@ const TABLAS_DE_LA_COPIA = {
   access_requests: "email", user_prefs: "email", app_config: "key", audit_log: "id",
   calendar_sugerencias: "evento", calendar_sacados: "evento",
 };
-const JSZIP_CDN = "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js";
+// Desde jsDelivr (el mismo archivo que publica npm) y con su huella:
+// si el CDN sirviera otra cosa, el navegador no la corre.
+const JSZIP_CDN = "https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js";
+const JSZIP_SRI = "sha384-+mbV2IY1Zk/X1p/nWllGySJSUN8uMs+gUAN10Or95UBH0fpj6GfKgPmgC5EXieXG";
 let copiaEstado = { corriendo: false, texto: "", error: "", listo: "" };
 function renderCopiaSection(){
   const c = copiaEstado;
@@ -12640,10 +12649,14 @@ document.addEventListener("click", e=>{
   e.preventDefault();
   bajarConNombre(a.href, a.getAttribute("download") || "archivo");
 });
-function cargarScript(src){
+// Con `integridad`, el navegador corre el script solo si es exactamente el
+// que se revisó (docs/AUDITORIA.md, I3). Las pruebas sirven librerías de
+// mentira en esas direcciones y lo apagan con __pruebasSinIntegridad.
+function cargarScript(src, integridad){
   return new Promise((ok, mal) => {
     const s = document.createElement("script");
     s.src = src; s.async = true;
+    if(integridad && !window.__pruebasSinIntegridad){ s.integrity = integridad; s.crossOrigin = "anonymous"; }
     s.onload = () => ok(); s.onerror = () => mal(new Error("no cargó " + src));
     document.head.appendChild(s);
   });
@@ -12688,7 +12701,7 @@ async function bajarCopiaCompleta(){
   try{
     if(!window.JSZip){
       copiaAvisar({ texto: t("Preparando…","Getting ready…","Preparando…","...מתכונן"), error: "", listo: "" });
-      await cargarScript(JSZIP_CDN);
+      await cargarScript(JSZIP_CDN, JSZIP_SRI);
       if(!window.JSZip) throw new Error(t("no cargó la herramienta para armar el .zip","the .zip tool didn't load","a ferramenta do .zip não carregou","הכלי ליצירת ה-zip לא נטען"));
     }
     const { datos, fallas } = await armarDatosDeLaCopia();
@@ -13854,7 +13867,7 @@ function leerFormularioDeViaje(xml){
   return r;
 }
 async function leerWordDeViaje(buffer){
-  if(!window.JSZip) await cargarScript(JSZIP_CDN);
+  if(!window.JSZip) await cargarScript(JSZIP_CDN, JSZIP_SRI);
   const zip = await window.JSZip.loadAsync(buffer);
   const parte = zip.file("word/document.xml");
   if(!parte) return null;
@@ -18215,11 +18228,36 @@ function cambiarZoom(paso){
 // Lo que dibuja los Word (.docx) en el navegador. Se carga la primera
 // vez que se abre uno; usa JSZip, que ya se carga para la copia de seguridad.
 // Lo que lee las planillas (Excel, LibreOffice) para mostrarlas como tabla.
-const SHEETJS_CDN = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+// La 0.18.5 de cdnjs (la última que llegó a npm) tiene fallas conocidas al
+// leer un archivo armado a propósito (CVE-2023-30533, CVE-2024-22363). Las
+// versiones corregidas se publican solo en el CDN de SheetJS. Sin huella
+// de integridad: desde acá no se pudo bajar para calcularla.
+const SHEETJS_CDN = "https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js";
 const DOCX_PREVIEW_CDN = "https://cdn.jsdelivr.net/npm/docx-preview@0.4.1/dist/docx-preview.min.js";
+const DOCX_PREVIEW_SRI = "sha384-DifWB1GSGsQgwTegPEbGdEMnGZpmfhUsx9A3WuHv+rfQVCFXMhawW/v4AZcP1FzL";
+// Lo que dibujan los visores sale de un archivo que subió cualquiera del
+// equipo y queda adentro de la app, donde vive la sesión. Antes de
+// mostrarlo se le saca todo lo que pueda ejecutar algo o llevar a otro
+// lado: elementos embebidos, atributos on…, enlaces que no sean http(s)
+// o mailto (docs/AUDITORIA.md, I3). Los enlaces que quedan abren aparte.
+function sanearVisor(raiz){
+  raiz.querySelectorAll("script, iframe, frame, object, embed, applet, base, meta, link, form, input, button, textarea, select").forEach(el => el.remove());
+  raiz.querySelectorAll("*").forEach(el => {
+    [...el.attributes].forEach(a => {
+      const n = a.name.toLowerCase();
+      if(n.startsWith("on") || n === "formaction" || n === "srcdoc") el.removeAttribute(a.name);
+      else if((n === "href" || n === "xlink:href" || n === "action") && el.tagName !== "IMG"){
+        const ok = /^(https?:|mailto:)/i.test(String(a.value).trim()) ? safeUrl(a.value) : null;
+        if(ok){ el.setAttribute(a.name, ok); } else el.removeAttribute(a.name);
+      }else if(n === "src" && !/^(data:image\/|blob:)/i.test(String(a.value).trim())) el.removeAttribute(a.name);
+    });
+    if(el.tagName === "A"){ el.setAttribute("target", "_blank"); el.setAttribute("rel", "noopener noreferrer"); }
+  });
+  return raiz;
+}
 async function cargarVisorWord(){
-  if(!window.JSZip) await cargarScript(JSZIP_CDN);
-  if(!window.docx || typeof window.docx.renderAsync !== "function") await cargarScript(DOCX_PREVIEW_CDN);
+  if(!window.JSZip) await cargarScript(JSZIP_CDN, JSZIP_SRI);
+  if(!window.docx || typeof window.docx.renderAsync !== "function") await cargarScript(DOCX_PREVIEW_CDN, DOCX_PREVIEW_SRI);
   if(!window.docx || typeof window.docx.renderAsync !== "function") throw new Error("docx-preview");
 }
 // items: array de {name, dataUrl, word?} de los documentos que se pueden
@@ -18275,6 +18313,7 @@ function renderFilePreviewFrame(){
         if(vuelta !== filePreviewVuelta) return;
         filePreviewWord.innerHTML = "";
         await window.docx.renderAsync(blob, filePreviewWord, null, { inWrapper: true, ignoreLastRenderedPageBreak: true, breakPages: true });
+        sanearVisor(filePreviewWord);
         // La hoja entera a lo ancho (en el celular se apretaba el texto en
         // vez de achicarse la página).
         filePreviewInicial = filePreviewEscala = escalaQueEntra();
@@ -18284,8 +18323,13 @@ function renderFilePreviewFrame(){
         if(!window.XLSX) throw new Error("SheetJS");
         const libro = window.XLSX.read(await blob.arrayBuffer(), { type: "array" });
         if(vuelta !== filePreviewVuelta) return;
-        filePreviewWord.innerHTML = `<div class="visor-planilla">${libro.SheetNames.map(nombre =>
+        // El HTML de la planilla se arma en un documento aparte, donde nada
+        // se ejecuta ni se carga, se limpia, y recién ahí entra a la página.
+        const html = `<div class="visor-planilla">${libro.SheetNames.map(nombre =>
           `${libro.SheetNames.length > 1 ? `<h4>${esc(nombre)}</h4>` : ""}${window.XLSX.utils.sheet_to_html(libro.Sheets[nombre], { header: "", footer: "" })}`).join("")}</div>`;
+        const aparte = new DOMParser().parseFromString(html, "text/html");
+        sanearVisor(aparte.body);
+        filePreviewWord.replaceChildren(...[...aparte.body.childNodes].map(n => document.importNode(n, true)));
         filePreviewInicial = filePreviewEscala = 1;
       }
       aplicarZoomWord();
