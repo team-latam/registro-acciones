@@ -432,3 +432,20 @@ begin
 end $$;
 revoke execute on function public.olvidar_preferencias(text) from public, anon;
 grant execute on function public.olvidar_preferencias(text) to authenticated;
+
+-- La IP de un login (y de todo lo que la app anota en la auditoría) sale
+-- del pedido, como la de los post_*: antes cada navegador se la
+-- preguntaba a un servicio de afuera (ipify) en cada login, y la que
+-- llegaba era la que el navegador decía (docs/AUDITORIA.md, M1). Lo que
+-- mande la app en `ip` se ignora; con la llave de servicio (sin pedido de
+-- una persona) queda lo que venga.
+create or replace function public.auditoria_ip_del_pedido() returns trigger
+  language plpgsql set search_path = '' as $$
+begin
+  if public.sin_sesion_de_persona() then return new; end if;
+  new.ip := (select d.ip from public.datos_del_pedido() d);
+  return new;
+end $$;
+drop trigger if exists audit_ip on public.audit_log;
+create trigger audit_ip before insert on public.audit_log
+  for each row execute function public.auditoria_ip_del_pedido();
