@@ -589,7 +589,10 @@ capturas (A/B/C, después D/E/F, después ajustes), el diseño elegido:
     muestra la tarjeta entera sin barra propia (se desplaza la ventana,
     con la ✕ y "De la ficha de…" pegadas arriba), y se cierra sola si una
     acción cambia de sección ("Gestionar proyecto" no funcionaba porque
-    abría Proyectos debajo de la ventana).
+    abría Proyectos debajo de la ventana; "Convertir en proyecto" también
+    navega solo, después de guardar). Al llegar al Feed o a Proyectos por
+    esa vía queda arriba «← Volver a la ficha de …», que desaparece al
+    usarlo o al cambiar de pestaña.
   - Al costado: **Ciudades** (cada una lleva a su ficha), **Ritmo** de los
     últimos 12 meses, **Quiénes trabajaron** y **Documentos**.
   - **"Cargar algo acá"** abre el formulario con el lugar puesto.

@@ -1249,8 +1249,24 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   eq("viaje: en la tarjeta, cada Cierre con su lugar", await p.$$eval('.post[data-post-id="p_viaje"] .rs-lugar', ls => ls.map(l => l.textContent.trim())),
     ["📍 Montevideo, Uruguay", "📍 Buenos Aires, Argentina"]);
   eq("viaje: y la cuenta de la tarjeta suma los dos", await p.$eval('.post[data-post-id="p_viaje"] .rs-pill', e => e.textContent.trim()), "📋 Resumen · 2/3");
-  // «Gestionar proyecto» desde la ventana (el usuario, 6/10/2026): cambia
-  // de sección, así que la ventana se cierra sola en vez de tapar.
+  // «Convertir en proyecto» desde la ventana (el usuario, 6/10/2026): se
+  // guarda, la ventana se cierra sola y se llega al proyecto, con el
+  // camino de vuelta a la ficha.
+  await p.click('nav.tabs button[data-view="paises"]');
+  await p.click('[data-action="drill-country"][data-country="Uruguay"]');
+  await hasta(p, () => (document.querySelector(".ficha-lugar h1") || {}).textContent === "Uruguay");
+  await p.click('.fl-it[data-post-id="p_pde"]');
+  await p.click('#fichaPostBody [data-action="toggle-post-menu"]');
+  await p.click('#fichaPostBody [data-action="project-create"]');
+  eq("ventana: «Convertir en proyecto» cierra la ventana y lleva al proyecto", await hasta(p, () =>
+    document.getElementById("fichaPostOverlay").hidden && !!document.querySelector('nav.tabs button[data-view="proyectos"].active')
+    && /Punta del Este/.test((document.querySelector(".project-detail") || {}).textContent || "")), true);
+  eq("ventana: y deja el camino de vuelta", await p.$eval(".volver-ficha", e => e.textContent.trim()), "← Volver a la ficha de Uruguay");
+  await p.click(".volver-ficha");
+  eq("ventana: «Volver» abre de nuevo la ficha de Uruguay, y el camino se va", await hasta(p, () =>
+    (document.querySelector(".ficha-lugar h1") || {}).textContent === "Uruguay" && !document.querySelector(".volver-ficha")), true);
+  // «Gestionar proyecto» desde la ventana: lo mismo, aunque Proyectos ya
+  // fuera la sección de abajo.
   await p.click('nav.tabs button[data-view="paises"]');
   await p.click('[data-action="drill-country"][data-country="Uruguay"]');
   await hasta(p, () => (document.querySelector(".ficha-lugar h1") || {}).textContent === "Uruguay");
