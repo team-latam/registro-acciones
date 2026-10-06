@@ -178,6 +178,7 @@ export function createClient(url, clave){
         estado.tablas.calendar_sacados = t.filter(x => !args.p_eventos.includes(x.evento));
         return { data: { devueltos, aTraer }, error: null };
       }
+      if(nombre === "tamano_del_bucket") return { data: estado.tamano || { archivos: 3, bytes: 3 * 1024 * 1024 }, error: null };
       if(nombre === "unificar_cuentas"){
         const viejo = String(args.p_viejo).toLowerCase(), nuevo = args.p_nuevo;
         const m = (estado.tablas.members || []).find(x => x.email === nuevo);
@@ -199,7 +200,7 @@ export function createClient(url, clave){
       upload: async (ruta, blob) => { estado.subidas.push([ruta, blob.type]); return { error: null }; },
       remove: async rutas => { estado.borradas.push(...rutas); return { error: null }; },
       list: async () => ({ data: [], error: null }),
-      download: async ruta => /rota/.test(ruta) ? { data: null, error: { message: "Object not found" } } : { data: new Blob(["contenido de " + ruta]), error: null },
+      download: async ruta => { estado.descargas = (estado.descargas || 0) + 1; return /rota/.test(ruta) ? { data: null, error: { message: "Object not found" } } : { data: new Blob(["contenido de " + ruta]), error: null }; },
     }; } },
     channel(nombre){
       estado.canales++;
@@ -1837,6 +1838,24 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   await p.waitForTimeout(800);
   eq("al abrir el mapa recién ahí se pide Leaflet", pedidos.some(u => /unpkg\.com\/leaflet@[\d.]+\/dist\/leaflet\.js/.test(u)), true);
   eq("y como desde acá no llegan, avisa que el mapa no se pudo cargar", await esperarTexto(p, "El mapa no se pudo cargar", 5000), true);
+  eq("sin un solo error", errores, []);
+  await p.close();
+}
+
+/* ---------- Cuánto hay guardado, y avisar antes de bajarlo todo (docs/AUDITORIA.md, M8) ---------- */
+{
+  const { p, errores } = await entrar(ADMIN, "Benny");
+  await esperarTexto(p, "Reunión con la comunidad");
+  await p.evaluate(() => { window.__sb.tamano = { archivos: 812, bytes: 640 * 1024 * 1024 }; });
+  await p.click('[data-action="toggle-user-menu"]');
+  await p.click('.user-menu [data-action="goto-view"][data-view="admin"]');
+  await p.click('.admin-menu [data-action="admin-go"][data-view="preferencias"][data-key="copia"]');
+  eq("copia: dice cuánto hay guardado contra el GB del plan gratis", await esperarTexto(p, "812 · 640 MB de 1 GB", 4000), true);
+  await p.click('[data-action="copia-completa"]');
+  eq("copia completa: con más de 200 MB pregunta antes, con cuánto va a bajar", await hasta(p, () => /812 fotos y archivos, unos 640 MB/.test(document.body.innerText), null, 4000), true);
+  await p.keyboard.press("Escape");
+  await p.waitForTimeout(300);
+  eq("y si no se confirma, no baja nada", await p.evaluate(() => window.__sb.descargas || 0), 0);
   eq("sin un solo error", errores, []);
   await p.close();
 }

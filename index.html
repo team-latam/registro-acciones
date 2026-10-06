@@ -2851,6 +2851,11 @@
 
   .copia-botones{ display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
   .copia-estado{ margin-top:8px; font-size:12.5px; font-weight:600; color:var(--text-muted); min-height:1em; }
+  /* El medidor del bucket (docs/AUDITORIA.md, M8). */
+  .bucket-medidor-txt{ font-size:13px; font-weight:700; color:var(--text); }
+  .bucket-medidor-barra{ height:8px; border-radius:999px; background:var(--surface-alt); overflow:hidden; margin-top:6px; max-width:420px; }
+  .bucket-medidor-barra i{ display:block; height:100%; background:var(--celeste-dark); }
+  .bucket-medidor.lleno .bucket-medidor-barra i{ background:var(--warn-text, #b25e00); }
   .copia-estado.error{ color:var(--danger); }
   .copia-card .setting-row{ align-items:flex-start; }
   .country-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:12px; }
@@ -8183,6 +8188,13 @@ function crearSupabaseStore(sb, opciones = {}){
         if(error) throw error;
         return data;
       },
+      // Cuántos archivos hay en el bucket y cuánto pesan (tamano_del_bucket,
+      // en 04-funciones.sql; solo admins).
+      async tamano(){
+        const { data, error } = await sb.rpc("tamano_del_bucket");
+        if(error) throw error;
+        return data;
+      },
     },
 
     // ---- Lo que llegó de Google Calendar (Administración › Revisar) ----
@@ -12620,7 +12632,28 @@ const TABLAS_DE_LA_COPIA = {
 // si el CDN sirviera otra cosa, el navegador no la corre.
 const JSZIP_CDN = "https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js";
 const JSZIP_SRI = "sha384-+mbV2IY1Zk/X1p/nWllGySJSUN8uMs+gUAN10Or95UBH0fpj6GfKgPmgC5EXieXG";
-let copiaEstado = { corriendo: false, texto: "", error: "", listo: "" };
+let copiaEstado = { corriendo: false, texto: "", error: "", listo: "", tamano: undefined };
+// El plan gratis de Supabase: 1 GB guardado y 5 GB por mes de descarga.
+const BUCKET_TOPE_BYTES = 1024 ** 3;
+const COPIA_PREGUNTAR_BYTES = 200 * 1024 ** 2;
+const mb = b => (b / 1024 ** 2).toLocaleString(dateLocale(), { maximumFractionDigits: b < 10 * 1024 ** 2 ? 1 : 0 });
+// Lo que dice el medidor: «N archivos · X MB de 1 GB», con la barra.
+function renderMedidorBucket(){
+  const tm = copiaEstado.tamano;
+  if(tm === undefined){
+    copiaEstado.tamano = null;
+    store.copia.tamano().then(d => { copiaEstado.tamano = d || { archivos: 0, bytes: 0 }; render(); })
+      .catch(err => { console.warn("No se pudo saber cuánto hay en el bucket:", err); copiaEstado.tamano = { error: true }; render(); });
+  }
+  if(!tm || tm.error) return tm && tm.error ? "" : `<div class="hint">${t("Midiendo cuánto hay guardado…","Measuring how much is stored…","Medindo quanto há guardado…","…מודד כמה שמור")}</div>`;
+  const pct = Math.min(100, Math.round(tm.bytes * 100 / BUCKET_TOPE_BYTES));
+  const lleno = pct >= 80;
+  return `<div class="bucket-medidor${lleno ? " lleno" : ""}">
+      <div class="bucket-medidor-txt">${t("Fotos y archivos guardados: {n} · {m} MB de {tope} del plan gratis ({p} %)","Photos and files stored: {n} · {m} MB of the free plan's {tope} ({p}%)","Fotos e arquivos guardados: {n} · {m} MB de {tope} do plano grátis ({p} %)","תמונות וקבצים שמורים: {n} · {m} MB מתוך {tope} של התוכנית החינמית ({p}%)",{ n: tm.archivos, m: mb(tm.bytes), tope: "1 GB", p: pct })}</div>
+      <div class="bucket-medidor-barra" role="img" aria-label="${pct} %"><i style="width:${pct}%"></i></div>
+      ${lleno ? `<div class="hint">${t("Se está llenando: cuando llegue al tope ya no se van a poder subir fotos ni archivos.","It's filling up: once it hits the limit, photos and files can't be uploaded anymore.","Está enchendo: ao chegar ao limite não vai dar para subir fotos nem arquivos.","מתמלא: כשיגיע למגבלה לא יהיה אפשר להעלות תמונות וקבצים.")}</div>` : ""}
+    </div>`;
+}
 function renderCopiaSection(){
   const c = copiaEstado;
   return `
@@ -12651,6 +12684,10 @@ function renderCopiaSection(){
             </div>
             <div class="copia-estado${c.error ? " error" : ""}" role="status" aria-live="polite">${esc(c.error || c.texto || c.listo || "")}</div>
           </div>
+        </div>
+        <div class="setting-row">
+          <span class="setting-icon">💾</span>
+          <div class="setting-text">${renderMedidorBucket()}</div>
         </div>
       </div>`;
 }
@@ -12742,6 +12779,21 @@ async function bajarCopiaDatos(){
 }
 async function bajarCopiaCompleta(){
   if(copiaEstado.corriendo) return;
+  // Antes de bajar todo, cuánto es: una copia completa baja el bucket
+  // entero, y el plan gratis da 5 GB de descarga por mes para todo el
+  // equipo. Pasados 200 MB se pregunta (docs/AUDITORIA.md, M8).
+  let tm = null;
+  try{ tm = await store.copia.tamano(); }catch(e){ console.warn("No se pudo saber cuánto hay en el bucket:", e); }
+  if(tm && tm.bytes > COPIA_PREGUNTAR_BYTES){
+    const pct = Math.round(tm.bytes * 100 / (5 * BUCKET_TOPE_BYTES));
+    const ok = await appConfirm(t(
+      "Esta copia baja {n} fotos y archivos, unos {m} MB. Es el {p} % de lo que el plan gratis deja bajar en un mes a todo el equipo. La copia de cada domingo ya los guarda: ¿la bajás igual?",
+      "This copy downloads {n} photos and files, about {m} MB. That's {p}% of what the free plan lets the whole team download in a month. The Sunday copy already keeps them: download it anyway?",
+      "Esta cópia baixa {n} fotos e arquivos, cerca de {m} MB. É {p} % do que o plano grátis deixa a equipe toda baixar num mês. A cópia de cada domingo já os guarda: baixar mesmo assim?",
+      "העותק הזה מוריד {n} תמונות וקבצים, כ-{m} MB. זה {p}% ממה שהתוכנית החינמית מאפשרת לכל הצוות להוריד בחודש. העותק של כל יום ראשון כבר שומר אותם: להוריד בכל זאת?",
+      { n: tm.archivos, m: mb(tm.bytes), p: pct }), { okLabel: t("Bajarla igual","Download anyway","Baixar mesmo assim","להוריד בכל זאת") });
+    if(!ok) return;
+  }
   copiaEstado.corriendo = true; render();
   try{
     if(!window.JSZip){
