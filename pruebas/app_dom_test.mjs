@@ -316,6 +316,12 @@ async function entrar(email, nombre, mod, viewport, pedidos){
                     logins: [], canales: 0 };
     // Las librerías de mentira no tienen la huella de las de verdad.
     window.__pruebasSinIntegridad = true;
+    // Cuántas veces se redibuja la vista entera (docs/AUDITORIA.md, M7).
+    window.__dibujados = 0;
+    document.addEventListener("DOMContentLoaded", () => {
+      const v = document.getElementById("viewRoot");
+      if(v) new MutationObserver(() => { window.__dibujados++; }).observe(v, { childList: true });
+    });
   }, [base, { user: { id: "uuid-" + email, email, user_metadata: { full_name: nombre } } }]);
   await p.goto(PAGINA);
   return { p, errores, base: () => p.evaluate(() => JSON.parse(JSON.stringify(window.__sb.tablas))),
@@ -1829,6 +1835,8 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   const pedidos = [];
   const { p, errores } = await entrar(ADMIN, "Benny", null, null, pedidos);
   await esperarTexto(p, "Reunión con la comunidad");
+  await p.waitForTimeout(1200);
+  eq("al entrar la vista se dibuja pocas veces (antes once: cada tabla que llegaba la redibujaba entera)", await p.evaluate(() => window.__dibujados <= 6 ? "pocas" : window.__dibujados), "pocas");
   eq("al entrar no se baja nada del mapa (antes, cinco pedidos a unpkg en cada visita)", pedidos.filter(u => /unpkg\.com\/leaflet/.test(u)), []);
   const consultas = await p.evaluate(() => window.__sb.consultas || []);
   const iPosts = consultas.indexOf("posts"), iReplies = consultas.indexOf("replies");

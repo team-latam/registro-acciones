@@ -7350,13 +7350,13 @@ async function requestAccessAgain(){
 function subscribeAccessRequests(){
   unsubscribeRequests = store.accessRequests.subscribe(lista=>{
     state.accessRequests = lista;
-    render();
+    scheduleRender();
   }, err=>console.error("Error leyendo solicitudes:", err));
 }
 function subscribeAuditLog(){
   unsubAuditLog = store.auditLog.subscribeRecent(1000, lista=>{
     state.auditLog = lista;
-    render();
+    scheduleRender();
   }, err=>console.error("Error leyendo auditoría:", err));
 }
 /* ======================================================================
@@ -8414,7 +8414,7 @@ let store = null;
 function subscribeFormerMembers(){
   unsubFormerMembers = store.formerMembers.subscribe(lista=>{
     state.formerMembers = lista;
-    render();
+    scheduleRender();
   }, err=>console.error("Error leyendo ex integrantes:", err));
 }
 // Lista de nombre/email de todo aprobado, para autocompletar @menciones.
@@ -8436,7 +8436,7 @@ function subscribeRoster(){
         role: ROLES.includes(data.role) ? data.role : "member",
       };
     }).sort((a,b)=> tsToMillis(a.approvedAt) - tsToMillis(b.approvedAt));
-    render();
+    scheduleRender();
     // Accesos aprobados de ANTES de que existiera "nickname" no lo tienen
     // guardado — el admin (único que puede leer accessRequests de
     // cualquiera) lo completa solo, una vez, con el nombre real de Google
@@ -8463,7 +8463,7 @@ async function backfillNicknames(emails){
 function subscribeTerritoryConfig(){
   unsubTerritoryConfig = store.config.watch("territoryConfig", cfg=>{
     applyTerritoryConfig(cfg);
-    render();
+    scheduleRender();
   }, err=>console.error("Error leyendo la configuración de zonas:", err));
 }
 // Se MUTAN los mismos objetos/arrays (ZONES, cada país, ZONE_COUNTRIES,
@@ -8497,7 +8497,7 @@ async function saveTerritoryConfig(zones, countryZones){
 function subscribePreferences(){
   unsubPreferences = store.config.watch("preferences", cfg=>{
     applyPreferencesConfig(cfg);
-    render();
+    scheduleRender();
   }, err=>console.error("Error leyendo preferencias:", err));
 }
 
@@ -8508,7 +8508,7 @@ function subscribeUserPrefs(){
   if(!email) return;
   unsubUserPrefs = store.userPrefs.watchOwn(email, propias=>{
     state.prefs = { ...DEFAULT_PREFS, ...propias };
-    render();
+    scheduleRender();
   }, err=>console.error("Error leyendo preferencias personales:", err));
 }
 // Se aplica en pantalla al toque y recién después se guarda: el aviso en
@@ -10028,6 +10028,10 @@ function render(){
 // siendo síncrono para el código que después busca un elemento recién
 // pintado (foco en un input, scroll a una tarjeta).
 let renderScheduled = false;
+// Junta en un solo dibujado todo lo que pide redibujar en el mismo
+// cuadro. Las suscripciones de datos lo usan desde el 6/10/2026: al entrar
+// llegan siete u ocho tablas casi juntas y cada una redibujaba la vista
+// entera, once veces en el arranque (docs/AUDITORIA.md, M7).
 function scheduleRender(){
   if(renderScheduled) return;
   renderScheduled = true;
