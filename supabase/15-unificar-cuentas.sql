@@ -41,6 +41,8 @@ declare
   n jsonb := '{}'::jsonb;
   filas integer;
   hay_prefs boolean;
+  patron text;
+  reemplazo text;
 begin
   if not (public.es_admin_fijo() or public.es_admin_rol()) then
     raise exception 'Unificar cuentas lo hace un admin' using errcode = 'insufficient_privilege';
@@ -52,12 +54,26 @@ begin
   if m_nuevo.email is null then
     raise exception 'La cuenta nueva tiene que estar en el equipo' using errcode = 'check_violation';
   end if;
+  -- Lo del admin fijo lo pasa solo él (docs/AUDITORIA.md, I6): antes un
+  -- admin por rol podía pasarse a su propia cuenta todo lo del admin fijo,
+  -- que en el resto del esquema es lo único que nadie más toca.
+  if (viejo = lower(public.admin_fijo()) or nuevo = lower(public.admin_fijo()))
+     and not public.es_admin_fijo() then
+    raise exception 'Lo del admin fijo lo pasa solo el admin fijo' using errcode = 'insufficient_privilege';
+  end if;
   select * into m_viejo from public.members where lower(email) = viejo;
   if m_viejo.email is null then
     select email, name, nickname into m_viejo.email, m_viejo.name, m_viejo.nickname
       from public.former_members where lower(email) = viejo;
   end if;
   nombre_nuevo := m_nuevo.name;
+
+  -- Queda en el registro de actividad, antes de apagar los controles: es
+  -- irreversible y antes no dejaba rastro.
+  insert into public.audit_log (id, type, actor_email, actor_name, target_email, detail)
+  values (replace(gen_random_uuid()::text, '-', ''), 'accounts_merged', public.mi_correo(),
+          left(coalesce((select m.name from public.members m where lower(m.email) = lower(public.mi_correo())), public.mi_correo()), 120),
+          viejo, left(m_nuevo.email, 300));
 
   -- Sin sesión de persona hasta el final: los controles de edición (que no
   -- dejan cambiar el autor de un posteo, ni nada de un comentario ajeno)
@@ -130,12 +146,17 @@ begin
    where exists (select 1 from unnest(coalesce(r.liked_by, '{}') || coalesce(r.mentions, '{}')) y where lower(y) = viejo);
 
   -- ---------- El @usuario escrito en los textos ----------
+  -- El @usuario viejo va escapado: uno con un punto o un paréntesis
+  -- (el que arma el alta solo tiene tope de largo) cambiaba lo que se
+  -- reemplazaba o hacía fallar la función entera.
   if coalesce(m_viejo.nickname, '') <> '' and coalesce(m_nuevo.nickname, '') <> ''
      and lower(m_viejo.nickname) <> lower(m_nuevo.nickname) then
-    update public.posts set content = regexp_replace(content, '(^|[^\w@])@' || m_viejo.nickname || '(?!\w)', '\1@' || m_nuevo.nickname, 'gi')
-     where content ~* ('(^|[^\w@])@' || m_viejo.nickname || '(?!\w)');
-    update public.replies set content = regexp_replace(content, '(^|[^\w@])@' || m_viejo.nickname || '(?!\w)', '\1@' || m_nuevo.nickname, 'gi')
-     where content ~* ('(^|[^\w@])@' || m_viejo.nickname || '(?!\w)');
+    patron := '(^|[^\w@])@' || regexp_replace(m_viejo.nickname, '([^A-Za-z0-9_])', '\\\1', 'g') || '(?!\w)';
+    reemplazo := '\1@' || replace(m_nuevo.nickname, '\', '\\');
+    update public.posts set content = regexp_replace(content, patron, reemplazo, 'gi')
+     where content ~* patron;
+    update public.replies set content = regexp_replace(content, patron, reemplazo, 'gi')
+     where content ~* patron;
   end if;
 
   -- ---------- Lo demás ----------

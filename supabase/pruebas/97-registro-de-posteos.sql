@@ -74,10 +74,14 @@ select lab.probar_valor('ni guardar el id del evento de Calendar (no firma)', la
   $q$update public.posts set calendar_event_id = 'ev1' where id = 'p1'$q$,
   $q$select lab.registro()$q$, 'nada');
 
-select lab.probar_valor('lo que el navegador trae de Google Calendar no lo editó nadie', lab.como('juan@x.com'),
+-- Hasta el 6/10/2026 esto esperaba «nada»: firmar «Google Calendar» con
+-- la sesión de una persona no dejaba rastro, y cualquiera podía editar así
+-- sin que se supiera (docs/AUDITORIA.md, I6). Ahora queda anotado a nombre
+-- de la cuenta cuyo navegador lo aplicó, dicho como viene de Calendar.
+select lab.probar_valor('lo que el navegador trae de Google Calendar queda a nombre de esa cuenta', lab.como('juan@x.com'),
   $q$update public.posts set start_date = '2026-09-11', end_date = '2026-09-11', date = '2026-09-11',
        last_edited_at = now(), last_edited_by = 'Google Calendar' where id = 'p1'$q$,
-  $q$select lab.registro()$q$, 'nada');
+  $q$select lab.registro()$q$, 'post_edited|juan@x.com|Google Calendar · Juan|«Visita a Lima» (Visita)');
 
 select lab.probar_valor('ni lo cargó nadie', lab.como('juan@x.com'),
   $q$insert into public.posts(id,title,content,date,start_date,end_date,activity_type,author_name,author_email,calendar_event_id)
@@ -119,6 +123,25 @@ select lab.probar('ni el admin fijo', lab.como('benny@team-latam.com'),
   $q$insert into public.audit_log(id, type, actor_email, actor_name, detail) values ('pc3','post_cancelled','benny@team-latam.com','Benny','«Evento»')$q$, false);
 select lab.probar('lo demás que anota un admin sigue igual', lab.como('ana@x.com'),
   $q$insert into public.audit_log(id, type, actor_email, actor_name, target_email) values ('t1','role_changed','ana@x.com','Ana','juan@x.com')$q$, true);
+
+
+-- ---------- Lo que no venía firmado (docs/AUDITORIA.md, I6) ----------
+truncate public.audit_log;
+select lab.probar_valor('editar el contenido sin firmar, directo a la base, igual se anota', lab.como('ana@x.com'),
+  $q$update public.posts set content = 'Cambiado a escondidas' where id = 'p1'$q$,
+  $q$select lab.registro()$q$, 'post_edited|ana@x.com|Ana|«Visita a Lima» (Visita)');
+select lab.probar_valor('tildar un hito sin firmar sigue sin anotarse', lab.como('ana@x.com'),
+  $q$update public.posts set milestones = '[{"id":"h1","label":"Uno","done":true}]' where id = 'p1'$q$,
+  $q$select lab.registro()$q$, 'nada');
+select lab.probar_valor('guardar el id del evento de Calendar tampoco', lab.como('ana@x.com'),
+  $q$update public.posts set calendar_event_id = 'ev1' where id = 'p1'$q$,
+  $q$select lab.registro()$q$, 'nada');
+select lab.probar_valor('firmar como Google Calendar con una sesión se anota a nombre de esa cuenta', lab.como('ana@x.com'),
+  $q$update public.posts set content = 'Desde Calendar', last_edited_at = '1970-01-01', last_edited_by = 'Google Calendar' where id = 'p1'$q$,
+  $q$select lab.registro()$q$, 'post_edited|ana@x.com|Google Calendar · Ana|«Visita a Lima» (Visita)');
+select lab.probar_valor('firmar una edición con el correo de otro: la base pone el propio', lab.como('ana@x.com'),
+  $q$update public.posts set content = 'X', last_edited_at = '1970-01-01', last_edited_by = 'Juan', last_edited_by_email = 'juan@x.com' where id = 'p1'$q$,
+  $q$select last_edited_by_email from public.posts where id = 'p1'$q$, 'ana@x.com');
 
 \set QUIET off
 \echo ''

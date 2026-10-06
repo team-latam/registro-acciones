@@ -331,23 +331,42 @@ declare
   pedido record;
 begin
   if yo is null then return null; end if;
+  -- Revisar lo de Calendar (clasificar_importados) no es editar.
+  if tg_op = 'UPDATE' and current_setting('registro.ordenando_calendar', true) = 'si' then return null; end if;
 
   if tg_op = 'INSERT' then
     if coalesce(new.author_email, '') <> yo then return null; end if;
     tipo := 'post_created'; fila := to_jsonb(new); nombre := new.author_name;
   elsif tg_op = 'UPDATE' then
     -- Una edición es lo que la app firma como tal (la hora y quién). Un me
-    -- gusta, tildar un hito o guardar el id del evento de Calendar no
-    -- firman: no son ediciones del posteo.
-    -- Quién, igual sale de la credencial: no del nombre firmado.
-    if new.last_edited_at is not distinct from old.last_edited_at
-       or new.last_edited_by is not distinct from 'Google Calendar' then
-      return null;
+    -- gusta, tildar un hito, lo del proyecto, el resumen leído de un Word o
+    -- guardar el id del evento de Calendar no firman: no son ediciones del
+    -- posteo. Quién, igual sale de la credencial: no del nombre firmado.
+    --
+    -- Hasta el 6/10/2026 lo que no venía firmado no se anotaba nunca, y
+    -- eso dejaba editar el contenido sin rastro escribiendo directo a la
+    -- base (docs/AUDITORIA.md, I6). Ahora, sin firma, se anota igual si
+    -- cambió algo que no está en esa lista. Y lo firmado «Google Calendar»
+    -- con la sesión de una persona (lo que aplica su navegador al
+    -- sincronizar) se anota a nombre de esa cuenta, dicho así.
+    if new.last_edited_at is not distinct from old.last_edited_at then
+      if not exists (select 1 from unnest(public.campos_cambiados(to_jsonb(old), to_jsonb(new))) c
+                      where c not in ('liked_by', 'milestones', 'editors', 'is_project', 'project_notes',
+                                      'project_status', 'project_done_by', 'project_done_at',
+                                      'calendar_event_id', 'sin_calendar', 'resumen',
+                                      'recurrence_skip', 'recurrence_moves',
+                                      'last_edited_by', 'last_edited_by_email')) then
+        return null;
+      end if;
     end if;
     tipo := case when new.cancelled is true and old.cancelled is not true
                  then 'post_cancelled' else 'post_edited' end;
     fila := to_jsonb(new);
-    nombre := case when coalesce(new.last_edited_by_email, '') = yo then new.last_edited_by end;
+    nombre := case
+      when new.last_edited_by is not distinct from 'Google Calendar'
+           and new.last_edited_at is distinct from old.last_edited_at
+        then 'Google Calendar · ' || coalesce((select m.name from public.members m where m.email = yo), yo)
+      when coalesce(new.last_edited_by_email, '') = yo then new.last_edited_by end;
   else
     tipo := 'post_deleted'; fila := to_jsonb(old);
   end if;

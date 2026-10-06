@@ -423,7 +423,7 @@ create policy audit_crear on public.audit_log for insert
     -- Quién cargó, editó, canceló o borró un posteo lo anota SOLO la base
     -- (registrar_posteo, en 04-funciones.sql), ni siquiera un admin: si no,
     -- se podría anotar algo que no pasó.
-    and type not in ('post_created', 'post_edited', 'post_cancelled', 'post_deleted')
+    and type not in ('post_created', 'post_edited', 'post_cancelled', 'post_deleted', 'accounts_merged')
   );
 
 -- Sin políticas de update ni delete: el registro no se corrige ni se
@@ -441,8 +441,14 @@ create policy adjuntos_leer on storage.objects for select
   using (bucket_id = 'adjuntos' and ((select public.es_admin_fijo()) or (select public.esta_aprobado())));
 
 drop policy if exists adjuntos_subir on storage.objects;
+-- Solo a las dos carpetas que usa la app (posts/<id>/… y replies/<id>/…).
+-- Antes se podía subir a cualquier lado: a la raíz, o a papelera/, que la
+-- limpieza semanal borra (docs/AUDITORIA.md, I6).
 create policy adjuntos_subir on storage.objects for insert
-  with check (bucket_id = 'adjuntos' and ((select public.es_admin_fijo()) or (select public.puede_escribir())));
+  with check (bucket_id = 'adjuntos'
+              and split_part(name, '/', 1) in ('posts', 'replies')
+              and split_part(name, '/', 2) <> ''
+              and ((select public.es_admin_fijo()) or (select public.puede_escribir())));
 
 -- Un archivo subido no se pisa: si cambia la imagen de un posteo, se sube
 -- otra con otro nombre y se cambia la ruta guardada. Así una edición
@@ -496,6 +502,18 @@ begin
   if 'liked_by' = any(cambios) then
     raise exception 'El me gusta se cambia solo, no junto con una edición'
       using errcode = 'check_violation';
+  end if;
+
+  -- «Editado por» lo dice la credencial, no lo que se manda: antes se podía
+  -- firmar una edición con el correo de otro y la campanita le avisaba al
+  -- autor que lo había editado esa persona (docs/AUDITORIA.md, I6). Lo que
+  -- firma Google Calendar (la sincronización desde un navegador) no lleva
+  -- correo de nadie y no se toca.
+  if 'last_edited_at' = any(cambios)
+     and new.last_edited_by is distinct from 'Google Calendar'
+     and new.last_edited_by_email is distinct from yo then
+    new.last_edited_by_email := yo;
+    new.last_edited_by := coalesce((select m.name from public.members m where m.email = yo), yo);
   end if;
 
   -- Editar el contenido: el autor siempre puede; los demás, solo lo que

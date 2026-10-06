@@ -282,6 +282,22 @@ select lab.probar('alguien de afuera tampoco', lab.como('intruso@x.com'),
 select lab.probar('y un tipo inventado no entra ni para el admin', lab.como('ana@x.com'),
   $q$insert into public.audit_log(id, type, actor_email, actor_name) values ('pc8','post_liked','ana@x.com','Ana')$q$, false);
 
+
+-- ---------- A qué carpeta del bucket se sube (docs/AUDITORIA.md, I6) ----------
+-- En Supabase `authenticated` puede insertar en storage.objects (lo que
+-- filtra es la política); el laboratorio no se lo daba.
+grant insert on storage.objects to authenticated;
+select lab.probar('subir a posts/<id>/ se puede', lab.como('juan@x.com'),
+  $q$insert into storage.objects(bucket_id, name) values ('adjuntos', 'posts/abc/img0_1.jpg')$q$, true);
+select lab.probar('y a replies/<id>/ también', lab.como('juan@x.com'),
+  $q$insert into storage.objects(bucket_id, name) values ('adjuntos', 'replies/abc/img0_1.jpg')$q$, true);
+select lab.probar('a la papelera NO', lab.como('juan@x.com'),
+  $q$insert into storage.objects(bucket_id, name) values ('adjuntos', 'papelera/2026-01-01/x.jpg')$q$, false);
+select lab.probar('a la raíz NO', lab.como('juan@x.com'),
+  $q$insert into storage.objects(bucket_id, name) values ('adjuntos', 'suelto.jpg')$q$, false);
+select lab.probar('ni el admin fijo a otra carpeta', lab.como('benny@team-latam.com'),
+  $q$insert into storage.objects(bucket_id, name) values ('adjuntos', 'otra/x.jpg')$q$, false);
+
 \set QUIET off
 \echo ''
 select n, case when esperado = obtenido then '  ok' else '  FALLA' end as r,

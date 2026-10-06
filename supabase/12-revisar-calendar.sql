@@ -121,6 +121,10 @@ begin
     raise exception 'Ordenar lo que vino de Calendar lo hace un admin'
       using errcode = 'insufficient_privilege';
   end if;
+  -- Ordenar no es editar: no va al registro de actividad (registrar_posteo
+  -- mira esta marca, que vale hasta el final de esta transacción). Desde la
+  -- API no se puede poner a mano: solo la pone esta función.
+  perform set_config('registro.ordenando_calendar', 'si', true);
   if jsonb_typeof(p_cambios) <> 'array' or jsonb_array_length(p_cambios) > 1000 then
     raise exception 'Se ordenan hasta 1000 por vez'
       using errcode = 'check_violation';
