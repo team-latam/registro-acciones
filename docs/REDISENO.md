@@ -647,6 +647,28 @@ capturas (A/B/C, después D/E/F, después ajustes), el diseño elegido:
   cerrarse (escondida, seguía en la página y una búsqueda por posteo podía
   dar con ella primero).
 
+### 35. Documentos opcionales, la ventana de la ficha y las ciudades al costado — HECHO (6 oct 2026)
+
+- **Documentos opcionales** (opción A, elegida por el usuario): había
+  puesto «Otro» en casi todos los tipos "por si alguien quiere subir algo
+  más", y le contaba como faltante (2/3 en amarillo, "Falta
+  documentación", la campanita). Ahora en Administración › Tipos de
+  actividad cada documento tiene una casilla **"Opcional"**: queda en la
+  lista del evento con su "📎 Adjuntar", pero no cuenta para el 2/2, no
+  pone la pastilla en amarillo ni figura como faltante; se ve con la
+  marquita "opcional". Los «Otro» ya cargados arrancan opcionales sin
+  tocar nada (y un documento nuevo que se llame así también); con el
+  primer guardado cada documento lleva el dato explícito. Un tipo con
+  solo documentos opcionales muestra "📄 documentos" sin fracción. No
+  cambia la base: la configuración ya admitía el dato.
+- **La ventana de un ítem de la ficha** (captura del usuario): al
+  scrollear, la cabecera pegada quedaba 24px abajo del borde (el relleno
+  de la capa oscura, que es la que scrollea) y por esa franja asomaba lo
+  que ya había pasado. El respiro pasó de la capa a la ventana.
+- **Ciudades (y Países) al costado de la ficha**: hasta cinco y «Ver
+  más» / «Ver menos» (pedido del usuario). En el reporte impreso salen
+  todas.
+
 ## Fuera de alcance (necesitan algo que la app no tiene)
 
 - Mandar correos (resumen semanal, invitaciones): no hay servicio de

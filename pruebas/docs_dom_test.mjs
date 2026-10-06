@@ -95,7 +95,8 @@ for(const key of ["visita", "curso", "virtual"]){
   await p.evaluate(k => window.__abrirTipo(k), key);
   await p.waitForTimeout(100);
   porTipo.push(await p.$eval(".tipo-docs", e => ({
-    chips: [...e.querySelectorAll(".doc-chip")].map(c=>c.textContent.replace("✕","").trim()),
+    // El nombre nomás: desde el 6/10/2026 cada chip trae también la casilla «Opcional».
+    chips: [...e.querySelectorAll(".doc-chip .doc-nombre")].map(c=>c.textContent.trim()),
     tieneInput: !!e.querySelector(".doc-nuevo-input"),
     tieneAgregar: !!e.querySelector('[data-action="tipo-doc-add"]'),
   })));
