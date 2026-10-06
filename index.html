@@ -581,6 +581,11 @@
   .gate-tarjeta h2{ font-size:22px; }
   .gate-tarjeta p{ margin:0; }
   .gate-tarjeta .btn-google{ justify-content:center; width:100%; }
+  /* El botón oficial de Google (montarBotonDeGoogle): cuando se dibuja,
+     reemplaza al nuestro, que queda de repuesto si Google no carga. */
+  .gis-boton{ display:flex; justify-content:center; min-height:0; }
+  .gis-boton:empty{ display:none; }
+  .gate-tarjeta.gis-listo .btn-google{ display:none; }
   .gate-pasos{ display:flex; flex-direction:column; gap:10px; margin:0; padding:0; list-style:none; }
   .gate-paso{ display:flex; gap:12px; align-items:flex-start; font-size:13.5px; color:var(--text); line-height:1.5; text-align:start; }
   .gate-paso small{ color:var(--text-muted); }
@@ -5840,6 +5845,65 @@ async function signIn(){
     }
   }
 }
+/* ---------- Entrar con el botón de Google, desde la página ----------
+   Hasta el 6/10/2026 el login iba y volvía por Supabase, y la pantalla de
+   Google decía «Prosseguir para benonmzlgdjkhzauamrz.supabase.co»: un
+   nombre que no dice nada y que parece sospechoso. Ahora la página le pide
+   la identidad a Google directamente (Google Identity Services, el mismo
+   script del permiso de Calendar) y se la pasa a Supabase
+   (signInWithIdToken); Google muestra el nombre de la app o esta
+   dirección. El nonce ata la respuesta de Google a este pedido: a Google
+   va su huella, a Supabase el original, y Supabase comprueba que coincidan.
+   Si Google no carga (red, bloqueador), queda nuestro botón de siempre,
+   que entra por Supabase como antes; y si Supabase rechaza la identidad,
+   se sigue por ese mismo camino en vez de dejar a la persona afuera. */
+let gisNonce = null;
+const aBase64Url = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+async function nuevoNonce(){
+  const crudo = aBase64Url(crypto.getRandomValues(new Uint8Array(32)));
+  const huella = [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(crudo)))]
+    .map(b => b.toString(16).padStart(2, "0")).join("");
+  return { crudo, huella };
+}
+async function entrarConGoogle(respuesta){
+  const nonce = gisNonce && gisNonce.crudo;
+  try{ await sesion.conGoogle(respuesta.credential, nonce); }
+  catch(err){
+    console.warn("Supabase no aceptó la identidad de Google; se entra por el camino de siempre:", err && err.message);
+    signIn();
+  }
+}
+let gisMontando = false;
+// Lo llama cada render(); se difiere para no tocar nada que el módulo
+// todavía no terminó de declarar si el primer dibujado llega antes.
+function montarBotonDeGoogle(){
+  if(!document.getElementById("gisBoton")) return;
+  queueMicrotask(()=>{ montarBotonDeGoogleYa().catch(()=>{}); });
+}
+async function montarBotonDeGoogleYa(){
+  const caja = document.getElementById("gisBoton");
+  if(!caja || caja.childElementCount || gisMontando || !sesion) return;
+  gisMontando = true;
+  try{
+    if(!(await loadGis()) || !window.google.accounts.id) return;
+    const destino = document.getElementById("gisBoton");
+    if(!destino || destino.childElementCount) return;
+    gisNonce = await nuevoNonce();
+    window.google.accounts.id.initialize({
+      client_id: GOOGLE_OAUTH_CLIENT_ID, callback: entrarConGoogle, nonce: gisNonce.huella,
+      ux_mode: "popup", context: "signin", auto_select: false, itp_support: true,
+    });
+    const oscuro = document.documentElement.getAttribute("data-theme") === "dark";
+    window.google.accounts.id.renderButton(destino, {
+      type: "standard", theme: oscuro ? "filled_black" : "outline", size: "large", shape: "pill",
+      text: "signin_with", logo_alignment: "left", locale: currentLang(),
+      width: Math.min(360, Math.max(200, Math.round(destino.getBoundingClientRect().width || 300))),
+    });
+    if(destino.childElementCount) destino.closest(".gate-tarjeta")?.classList.add("gis-listo");
+  }catch(err){
+    console.warn("No se pudo mostrar el botón de Google; queda el de siempre:", err && err.message);
+  }finally{ gisMontando = false; }
+}
 function olvidarPermisoDeCalendar(){
   calendarAccessToken = null; calendarTokenExpiry = 0; calendarAclScopeGranted = false;
   stopCalendarAutoSync();
@@ -5848,6 +5912,8 @@ function olvidarPermisoDeCalendar(){
 async function doSignOut(){
   olvidarPermisoDeCalendar();
   auditLoginLoggedThisSession = false;
+  // Que Google no vuelva a elegir la cuenta solo en la próxima entrada.
+  try{ window.google?.accounts?.id?.disableAutoSelect(); }catch(e){}
   try{ await sesion.cerrar(); }catch(e){ console.error(e); }
 }
 
@@ -5916,7 +5982,8 @@ const GIS_SRC = "https://accounts.google.com/gsi/client";
 const SILENT_TOKEN_TIMEOUT_MS = 4000;
 let gisLoading = null;
 // El script se carga recién cuando hace falta un token, no en el arranque:
-// la app entera funciona sin él (leer Calendar va con la API key).
+// la app entera funciona sin él. Lo usan el permiso de Calendar y el
+// botón de entrar (montarBotonDeGoogle).
 function loadGis(){
   if(window.google && window.google.accounts && window.google.accounts.oauth2) return Promise.resolve(true);
   if(gisLoading) return gisLoading;
@@ -8478,8 +8545,8 @@ function crearSupabaseSesion(sb){
   const perfil = u => !u ? null : {
     uid: u.id,
     email: u.email,
-    displayName: (u.user_metadata && u.user_metadata.full_name) || u.email,
-    photoURL: (u.user_metadata && u.user_metadata.avatar_url) || "",
+    displayName: (u.user_metadata && (u.user_metadata.full_name || u.user_metadata.name)) || u.email,
+    photoURL: (u.user_metadata && (u.user_metadata.avatar_url || u.user_metadata.picture)) || "",
   };
   return {
     alCambiar(fn){
@@ -8516,6 +8583,11 @@ function crearSupabaseSesion(sb){
       // usa para devolver la sesión).
       const { error } = await sb.auth.signInWithOAuth({
         provider: "google", options: { redirectTo: location.href.split("#")[0] } });
+      if(error) throw error;
+    },
+    // Con la identidad que Google le dio a la página (montarBotonDeGoogle).
+    async conGoogle(idToken, nonce){
+      const { error } = await sb.auth.signInWithIdToken({ provider: "google", token: idToken, nonce });
       if(error) throw error;
     },
     async cerrar(){ await sb.auth.signOut(); },
@@ -10125,6 +10197,7 @@ function render(){
   const selStart = active && typeof active.selectionStart === "number" ? active.selectionStart : null;
   const selEnd = active && typeof active.selectionEnd === "number" ? active.selectionEnd : null;
   doRender();
+  montarBotonDeGoogle();
   // Igual que el foco: doRender() reconstruye la fila del hito de cero, así
   // que el selector de fecha que estaba abierto (si hay uno) perdió su
   // clase .open y su popup quedó vacío/oculto — hay que reabrirlo contra el
@@ -10938,6 +11011,7 @@ function renderAuthGate(){
         <p class="gate-frase">${t("Lo que hacemos, <em>en un solo lugar.</em>","What we do, <em>all in one place.</em>","O que fazemos, <em>num só lugar.</em>","מה שאנחנו עושים, <em>במקום אחד.</em>")}</p>
         <div class="gate-tarjeta auth-gate">
           <p>${t("Espacio privado del equipo.","A private space for the team.","Espaço privado da equipe.","מרחב פרטי של הצוות.")}</p>
+          <div class="gis-boton" id="gisBoton"></div>
           <button class="btn-google" data-action="google-signin">
             <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.9c1.7-1.57 2.7-3.88 2.7-6.62z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.9-2.26c-.81.54-1.84.86-3.06.86-2.35 0-4.34-1.59-5.05-3.72H.96v2.33A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.95 10.7A5.4 5.4 0 0 1 3.67 9c0-.59.1-1.17.28-1.7V4.97H.96A9 9 0 0 0 0 9c0 1.45.35 2.83.96 4.03l2.99-2.33z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .96 4.97l2.99 2.33C4.66 5.17 6.65 3.58 9 3.58z"/></svg>
             ${t("Entrar con Google","Sign in with Google","Entrar com o Google","התחברות עם Google")}

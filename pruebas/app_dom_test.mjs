@@ -131,6 +131,9 @@ export function createClient(url, clave){
       getSession: async () => ({ data: { session: estado.sesion ? { access_token: "sesion-de-mentira", ...copia(estado.sesion) } : null } }),
       onAuthStateChange(fn){ estado.oyentes.push(fn); return { data: { subscription: { unsubscribe(){} } } }; },
       signInWithOAuth: async o => { estado.logins.push(copia(o)); return { error: null }; },
+      signInWithIdToken: async o => { estado.logins.push({ conToken: copia(o) }); if(estado.rechazarToken) return { error: { message: "Unacceptable audience" } };
+        estado.sesion = { access_token: "sesion-de-mentira", user: { id: "uuid-google", email: "ana@x.com", user_metadata: { name: "Ana Pérez", picture: "https://lh3.googleusercontent.com/a" } } };
+        estado.oyentes.forEach(f => f("SIGNED_IN", copia(estado.sesion))); return { error: null }; },
       signOut: async () => { estado.sesion = null; estado.oyentes.forEach(f => f("SIGNED_OUT", null)); return { error: null }; },
     },
     from: consulta,
