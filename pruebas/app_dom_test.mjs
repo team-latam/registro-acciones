@@ -1902,6 +1902,34 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   await p.close();
 }
 
+/* ---------- El menú ⋯ de la tarjeta entra en la pantalla del celular (6/10/2026) ---------- */
+{
+  // Con «hace N horas» y documentos, la fila de abajo no entra y el ⋯ baja
+  // solo a un renglón, pegado al borde: el menú se abría hacia afuera.
+  const { p, errores } = await entrar(ADMIN, "Benny", b => {
+    b.posts.forEach(f => {
+      f.last_edited_at = hace(0.5); f.last_edited_by = "Benny"; f.last_edited_by_email = ADMIN;
+      f.liked_by = [ADMIN, "ana@x.com"];
+      f.files = [{ name: "Formulario de Cierre.docx", path: "posts/" + f.id + "/cierre.docx", doc: "reporte", subidoEl: hace(2) }];
+      f.resumen = { v: 2, partes: [{ tipo: "cierre", fuente: { name: "Formulario de Cierre.docx", subidoEl: hace(2) }, lugar: "", duracion: "", ejecutivo: "Bien.",
+        objetivos: [], pasos: [{ id: "x1", t: "Mandar el plan", estado: "pendiente" }, { id: "x2", t: "Llamar", estado: "hecho" }, { id: "x3", t: "Otra", estado: "pendiente" }] }] };
+    });
+  }, { width: 320, height: 640 });
+  await p.waitForSelector('.post [data-action="toggle-post-menu"]');
+  const ids = await p.$$eval('.post [data-action="toggle-post-menu"]', bs => bs.map(b => b.dataset.postId));
+  const fuera = [];
+  for(const id of ids){
+    await p.click(`.post [data-action="toggle-post-menu"][data-post-id="${id}"]`);
+    await p.waitForSelector(".post-menu");
+    const r = await p.$eval(".post-menu", m => { const x = m.getBoundingClientRect(); return [Math.round(x.left), Math.round(x.right), document.documentElement.clientWidth]; });
+    if(r[0] < 0 || r[1] > r[2]) fuera.push(id + ": " + r.join(","));
+    await p.click(`.post [data-action="toggle-post-menu"][data-post-id="${id}"]`);
+  }
+  eq("celular: el menú ⋯ de cada tarjeta se abre adentro de la pantalla", fuera, []);
+  eq("celular: sin un solo error", errores, []);
+  await p.close();
+}
+
 /* ---------- La IP del login la pone la base (AUDITORIA M1) ---------- */
 {
   const pedidos = [];

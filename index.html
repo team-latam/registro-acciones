@@ -10730,6 +10730,29 @@ function doRender(){
   if(userProfileOverlay && !userProfileOverlay.hidden) renderUserProfile();
   if(likesOverlay && !likesOverlay.hidden) renderLikes();
   if(fichaPostOverlay && !fichaPostOverlay.hidden) renderFichaPost();
+  acomodarMenuDePosteo();
+}
+// El menú ⋯ de una tarjeta se abre hacia adentro desde el botón. En el
+// celular, cuando la fila de abajo de la tarjeta no entra, el ⋯ baja solo
+// a un renglón nuevo, pegado al borde: el menú se abría hacia ese mismo
+// borde y quedaba medio afuera de la pantalla (lo vio el usuario el
+// 6/10/2026). Si se sale por un costado, se abre hacia el otro; y si
+// tampoco entra, se pega al margen de la pantalla.
+function acomodarMenuDePosteo(){
+  const m = document.querySelector(".post-menu");
+  if(!m) return;
+  m.style.insetInlineStart = ""; m.style.insetInlineEnd = ""; m.style.maxWidth = "";
+  const ancho = document.documentElement.clientWidth, margen = 8;
+  const fuera = r => r.left < margen || r.right > ancho - margen;
+  if(!fuera(m.getBoundingClientRect())) return;
+  m.style.insetInlineEnd = "auto"; m.style.insetInlineStart = "0";
+  const r = m.getBoundingClientRect();
+  if(!fuera(r)) return;
+  // Ni para un lado ni para el otro: se corre lo justo para entrar.
+  m.style.maxWidth = `${ancho - 2 * margen}px`;
+  const r2 = m.getBoundingClientRect();
+  const corrimiento = r2.left < margen ? margen - r2.left : (ancho - margen) - r2.right;
+  m.style.insetInlineStart = `${(isRTL() ? -corrimiento : corrimiento)}px`;
 }
 
 function renderObserverBanner(){
