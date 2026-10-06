@@ -156,12 +156,11 @@
      syncHeaderHeight() en cada render y al cambiar el tamaño de pantalla,
      porque el header cambia de alto cuando las solapas se van a dos
      líneas. Un valor fijo acá se rompía en mobile. */
-  .quick-composer{
-    position:sticky; top:var(--header-h, 110px); z-index:30;
-    /* Sombra más marcada que la de una tarjeta común: al quedar fijo, el
-       feed le pasa por debajo y sin esto los dos blancos se confundían. */
-    box-shadow:0 6px 18px rgba(8,42,44,0.16);
-  }
+  /* Ya no queda fijo arriba (6/10/2026, docs/AUDITORIA.md, I9): al
+     scrollear tapaba las tarjetas, y desplegado tapaba más todavía. Para
+     cargar algo con el Feed scrolleado está el + de abajo a la derecha. En
+     el celular ya no era fijo desde la tanda 21. */
+  .quick-composer{ position:static; }
   /* En reposo, una sola línea. Se despliega al enfocarlo o si ya hay algo
      cargado (.active). No se toca el display de cada parte: se las oculta
      solo en reposo, y cada una vuelve a su display propio al desplegarse. */
@@ -2354,6 +2353,14 @@
   html[data-theme="dark"] .doc-tag{ background:#263538; }
   /* Pegado a lo que saca. Empujarlo al borde derecho con margin:auto lo
      dejaba lejísimos del archivo en una pantalla ancha. */
+  /* Angosto: el archivo, su ✕ y el ＋ en un solo renglón debajo del nombre
+     del documento, con el nombre del archivo cortado con «…» (antes se
+     partía en tres renglones; docs/AUDITORIA.md, I9). */
+  @media (max-width:640px){
+    .doc-archivos{ flex:1 1 100%; flex-wrap:nowrap; }
+    .doc-archivos .doc-archivo{ flex:0 1 auto; max-width:none; }
+    .doc-archivos .doc-fecha, .doc-archivos .rm, .doc-archivos .doc-mas, .doc-archivos .doc-agregar{ flex:0 0 auto; }
+  }
   .doc-fila .rm, .doc-anterior .rm{
     width:24px; height:24px; border-radius:50%; background:none;
     border:none; color:var(--text-muted); font-size:12px; cursor:pointer; line-height:24px; padding:0;
@@ -2701,6 +2708,14 @@
   .rep-tabla td{ padding:6px 8px; border-top:1px solid var(--border); text-align:end; font-weight:700; }
   .rep-tabla th:first-child, .rep-tabla td:first-child{ text-align:start; }
   .rep-tabla td:first-child{ white-space:nowrap; }
+  /* En el celular «Por persona del equipo» medía 426px en una pantalla de
+     390 y las últimas columnas quedaban fuera, sin nada que avisara que se
+     desplazaba (docs/AUDITORIA.md, I9): el nombre se parte en dos renglones
+     y la tabla entra entera. */
+  @media (max-width:520px){
+    .rep-tabla td:first-child{ white-space:normal; overflow-wrap:anywhere; }
+    .rep-tabla th, .rep-tabla td{ padding:5px 5px; }
+  }
   .rep-grilla-ancha{ grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); }
   @media (max-width:420px){ .rep-grilla-ancha{ grid-template-columns:minmax(0,1fr); } }
   .rep-evolucion td:not(:first-child){ border-inline-start:2px solid var(--card); }
@@ -19195,6 +19210,11 @@ document.querySelectorAll("#tabs button").forEach(btn=>{
     state.countryDrill = null; state.zonaDrill = null; fichaOrigen = null;
     calIrAbierto = false;
     render();
+    // Como la barra de abajo del celular (goto-view): sin esto, con el
+    // Feed scrolleado, se entraba al Calendario sin su barra de
+    // herramientas a la vista y a Reportes por la mitad
+    // (docs/AUDITORIA.md, I1).
+    scrollToTop();
   });
 });
 document.getElementById("postModalClose").addEventListener("click", requestCloseComposer);

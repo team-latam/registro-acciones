@@ -1782,6 +1782,34 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   await p.close();
 }
 
+/* ---------- Volver arriba, el cuadro que no tapa, la tabla que entra (docs/AUDITORIA.md, I1 e I9) ---------- */
+{
+  const { p, errores } = await entrar(ADMIN, "Benny", base => {
+    for(let i = 0; i < 25; i++) base.posts.push({ ...JSON.parse(JSON.stringify(base.posts[0])), id: "p_relleno" + i, title: "Relleno " + i, images: [], created_at: hace(30 + i) });
+  });
+  await esperarTexto(p, "Relleno 3");
+  await p.evaluate(() => scrollTo(0, 1500)); await p.waitForTimeout(150);
+  eq("escritorio: el cuadro «¿Qué hiciste hoy?» ya no queda fijo arriba", await p.$eval(".quick-composer", e => getComputedStyle(e).position), "static");
+  await p.click('nav.tabs button[data-view="calendario"]');
+  eq("escritorio: una pestaña de arriba lleva al principio de la vista", await hasta(p, () => scrollY === 0, null, 3000), true);
+  eq("sin un solo error", errores, []);
+  await p.close();
+}
+{
+  const { p, errores } = await entrar(ADMIN, "Benny", base => {
+    base.members.push({ email: "lucia@x.com", name: "Lucía Fernández Goldberg de la Torre", nickname: "lucia", role: "member", approved_at: "2025-03-01T12:00:00Z" });
+    base.posts[0].author_email = "lucia@x.com"; base.posts[0].author_name = "Lucía Fernández Goldberg de la Torre";
+  }, { width: 390, height: 844 });
+  await esperarTexto(p, "Reunión con la comunidad");
+  await p.evaluate(() => { document.querySelector('.bn-item[data-action="toggle-more-menu"]').click(); });
+  await p.waitForTimeout(150);
+  await p.evaluate(() => document.querySelector('.bn-sheet-item[data-view="reportes"]').click());
+  await p.waitForSelector(".rep-equipo table", { timeout: 5000 }).catch(() => {});
+  eq("celular: «Por persona del equipo» entra entera en la pantalla", await p.evaluate(() => { const t = document.querySelector(".rep-equipo table"); return !!t && t.getBoundingClientRect().right <= document.documentElement.clientWidth; }), true);
+  eq("celular: sin un solo error", errores, []);
+  await p.close();
+}
+
 /* ---------- Alguien que entra por primera vez ---------- */
 {
   const { p, errores, base } = await entrar("pedro@x.com", "Pedro Gómez");
