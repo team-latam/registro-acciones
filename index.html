@@ -56,7 +56,10 @@
     --bg:#f4f8f8;
     --card:#ffffff;
     --text:#0d2a2c;
-    --text-muted:#5c7a7c;
+    /* Un poco más oscuro desde el 6/10/2026: #5c7a7c daba 4,3 de contraste
+       sobre el fondo (el mínimo para letra chica es 4,5) y se usa en 86
+       reglas de 10 a 11,5 px (docs/AUDITORIA.md, M5). */
+    --text-muted:#4f6c6e;
     --border:#e1edee;
     --ink:#0d3b3e;
     --ink-strong:#082a2c;
@@ -2753,7 +2756,7 @@
   @media print{
     /* El papel siempre en claro, aunque la app esté en modo oscuro. */
     html[data-theme="dark"]{
-      --petroleo:#0d3b3e; --celeste-dark:#1a9fb8; --bg:#fff; --card:#fff; --text:#0d2a2c; --text-muted:#5c7a7c;
+      --petroleo:#0d3b3e; --celeste-dark:#1a9fb8; --bg:#fff; --card:#fff; --text:#0d2a2c; --text-muted:#4f6c6e;
       --border:#e1edee; --ink:#0d3b3e; --ink-strong:#082a2c; --surface-alt:#eef4f4; --celeste-soft:#eafbfd;
       --ok-text:#166534; --danger:#dc2626; --acento-fuerte:#0d3b3e; color-scheme:light;
     }
@@ -3430,6 +3433,11 @@
   .visor-ventana-foto{ height:auto; }
   @keyframes visorEntra{ from{ opacity:0; transform:translateY(8px) scale(.985); } }
   @media (prefers-reduced-motion:reduce){ .visor-ventana{ animation:none; } }
+  /* Quien pidió menos movimiento en su sistema no ve animaciones ni
+     transiciones en ningún lado (antes solo se apagaba la del visor). */
+  @media (prefers-reduced-motion:reduce){
+    *, *::before, *::after{ animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; scroll-behavior:auto !important; }
+  }
   .visor-barra{ display:flex; align-items:center; gap:10px; padding:10px 12px 10px 16px; border-bottom:1px solid var(--border); color:var(--ink); flex:none; }
   .visor-titulo{ flex:1; min-width:0; font-size:14px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .visor-btn{ display:inline-flex; align-items:center; gap:6px; border:1px solid var(--border); background:var(--surface-alt); color:var(--ink);
@@ -4499,7 +4507,7 @@ function highlightMentions(escapedText){
   return escapedText.replace(mentionRegex(), (m, pre, name) => {
     const nick = name.toLowerCase();
     const who = memberByNick(nick);
-    return `${pre}<span class="mention-tag${who && who.former ? " former" : ""}" data-action="show-user-profile" data-nick="${esc(nick)}">@${esc(nick)}</span>`;
+    return `${pre}<span role="button" tabindex="0" class="mention-tag${who && who.former ? " former" : ""}" data-action="show-user-profile" data-nick="${esc(nick)}">@${esc(nick)}</span>`;
   });
 }
 function nl2br(s){ return highlightMentions(esc(s)).replace(/\n/g,"<br>"); }
@@ -4555,7 +4563,7 @@ function tiraDeFotos(fuentes, owner){
   return fuentes.slice(0, 4).map((src, idx) => {
     const mas = n > 4 && idx === 3 ? ` data-mas="+${n - 3}"` : "";
     const masCel = n > 3 && idx === 2 ? ` data-mas-cel="+${n - 2}"` : "";
-    return `<span class="foto${mas ? " foto-mas" : ""}${masCel ? " foto-mas-cel" : ""}"${mas}${masCel}><img src="${srcMiniatura(src)}" loading="lazy" decoding="async" alt="" data-action="open-lightbox" ${ownerAttrs(owner)} data-idx="${idx}"></span>`;
+    return `<span class="foto${mas ? " foto-mas" : ""}${masCel ? " foto-mas-cel" : ""}"${mas}${masCel}><img src="${srcMiniatura(src)}" loading="lazy" decoding="async" alt="${esc(t("Ver la foto","View the photo","Ver a foto","הצגת התמונה"))}" role="button" tabindex="0" data-action="open-lightbox" ${ownerAttrs(owner)} data-idx="${idx}"></span>`;
   }).join("");
 }
 function srcMiniatura(src){
@@ -5217,7 +5225,7 @@ function authorLabelHtml(email, fallbackName){
   const entry = memberByEmail(email);
   if(!entry) return esc(fallbackName || "");
   const nick = entry.nickname.toLowerCase();
-  return `<span class="mention-tag${entry.former?" former":""}" data-action="show-user-profile" data-nick="${esc(nick)}">@${esc(nick)}</span>`;
+  return `<span role="button" tabindex="0" class="mention-tag${entry.former?" former":""}" data-action="show-user-profile" data-nick="${esc(nick)}">@${esc(nick)}</span>`;
 }
 // Mismo criterio para la lista de participantes tageados en un Evento:
 // el nombre de cada uno que resuelva a una cuenta de la app (por email)
@@ -5251,7 +5259,7 @@ function participantsHtml(participants){
   return (participants||[]).map(p=>{
     const entry = memberByEmail(p.email);
     if(!entry) return esc(p.name || p.email);
-    return `<span class="person-link" data-action="show-user-profile" data-nick="${esc(entry.nickname.toLowerCase())}">${esc(p.name || p.email)}</span>`;
+    return `<span role="button" tabindex="0" class="person-link" data-action="show-user-profile" data-nick="${esc(entry.nickname.toLowerCase())}">${esc(p.name || p.email)}</span>`;
   }).join(", ");
 }
 function shouldShowCalendarInvitePopup(){
@@ -13054,24 +13062,24 @@ function renderFilterBar(prefix){
   // Un tipo archivado se ofrece como filtro solo si todavía hay posteos
   // con él: para filtrar lo viejo sirve; si no queda nada, es ruido.
   const typeChips = ACTIVITY_TYPES.filter(ty => !ty.archived || countPostsByType(ty.key)).map(ty=>`
-    <span class="chip-toggle ${state.filters.types.has(ty.key)?"active":""}" data-action="toggle-type" data-key="${esc(ty.key)}">
+    <span role="button" tabindex="0" class="chip-toggle ${state.filters.types.has(ty.key)?"active":""}" data-action="toggle-type" data-key="${esc(ty.key)}">
       ${esc(ty.icon)} ${esc(ty.label)}
     </span>`).join("");
   const zoneChips = Object.values(ZONES).map(z=>`
-    <span class="chip-toggle ${state.filters.zones.has(z.key)?"active":""}" data-action="toggle-zone" data-key="${esc(z.key)}">
+    <span role="button" tabindex="0" class="chip-toggle ${state.filters.zones.has(z.key)?"active":""}" data-action="toggle-zone" data-key="${esc(z.key)}">
       <span class="dot" style="background:${safeColor(z.color)}"></span> ${esc(z.label)}
     </span>`).join("");
   const placeChip = state.filters.place ? `
-    <span class="chip-toggle active" data-action="clear-place">
+    <span role="button" tabindex="0" class="chip-toggle active" data-action="clear-place">
       📍 ${esc(placeFilterLabel(state.filters.place))} ✕
     </span>` : "";
   const quickChip = state.filters.quick ? `
-    <span class="chip-toggle active" data-action="clear-quick">
+    <span role="button" tabindex="0" class="chip-toggle active" data-action="clear-quick">
       ⚡ ${esc(etiquetaFiltroRapido(state.filters.quick))} ✕
     </span>` : "";
   const autor = state.filters.author ? (state.roster.find(u => u.email === state.filters.author) || { name: state.filters.author }) : null;
   const authorChip = autor ? `
-    <span class="chip-toggle active" data-action="clear-author">
+    <span role="button" tabindex="0" class="chip-toggle active" data-action="clear-author">
       ✍️ ${esc(autor.name || autor.nickname || autor.email)} ✕
     </span>` : "";
   const anyFilter = anyActiveFilter();
@@ -13229,8 +13237,8 @@ function renderFeedOrderBar(){
   return `
     <div class="sort-toggle feed-order">
       <div class="sort-toggle-group">
-        <span class="chip-toggle ${order==="desc"?"active":""}" data-action="feed-order" data-key="desc"><span class="lp-ancho">${t("Más reciente primero","Newest first","Mais recente primeiro","החדש ביותר קודם")}</span><span class="lp-angosto">${t("Recientes","Newest","Recentes","חדשים")}</span></span>
-        <span class="chip-toggle ${order==="asc"?"active":""}" data-action="feed-order" data-key="asc"><span class="lp-ancho">${t("Más antiguo primero","Oldest first","Mais antigo primeiro","הישן ביותר קודם")}</span><span class="lp-angosto">${t("Antiguos","Oldest","Antigos","ישנים")}</span></span>
+        <span role="button" tabindex="0" class="chip-toggle ${order==="desc"?"active":""}" data-action="feed-order" data-key="desc"><span class="lp-ancho">${t("Más reciente primero","Newest first","Mais recente primeiro","החדש ביותר קודם")}</span><span class="lp-angosto">${t("Recientes","Newest","Recentes","חדשים")}</span></span>
+        <span role="button" tabindex="0" class="chip-toggle ${order==="asc"?"active":""}" data-action="feed-order" data-key="asc"><span class="lp-ancho">${t("Más antiguo primero","Oldest first","Mais antigo primeiro","הישן ביותר קודם")}</span><span class="lp-angosto">${t("Antiguos","Oldest","Antigos","ישנים")}</span></span>
       </div>
       ${canWrite() ? `<button type="button" class="btn-sync" data-action="sync-calendar" ${state.calendarSyncing?"disabled":""}>🔄 ${t("Actualizar","Refresh","Atualizar","עדכון")}</button>` : ""}
     </div>`;
@@ -13453,7 +13461,7 @@ function renderRutinaComposer(){
       <input type="file" id="rutinaImages" accept="image/*" multiple hidden data-action="rutina-images">
       <input type="file" id="rutinaFiles" accept="${ACEPTA_ARCHIVOS}" multiple hidden data-action="rutina-files">
       ${d.images.length ? `<div class="img-preview-list">${d.images.map((src,i)=>`
-        <div class="img-preview"><img src="${srcMiniatura(src)}"><button type="button" class="rm" data-action="rutina-rm-image" data-idx="${i}">✕</button></div>`).join("")}</div>` : ""}
+        <div class="img-preview"><img src="${srcMiniatura(src)}" alt=""><button type="button" class="rm" aria-label="${esc(t("Quitar","Remove","Remover","הסרה"))}" data-action="rutina-rm-image" data-idx="${i}">✕</button></div>`).join("")}</div>` : ""}
       ${renderFileChips(d.files, "rutina-rm-file")}
       ${d.links.length ? `<div class="attach-panel">${renderLinkRows("rutina", "new", d.links)}</div>` : ""}
       ${d.error ? `<div class="form-error">${esc(d.error)}</div>` : ""}
@@ -14391,13 +14399,13 @@ function renderScopeChip(sc, removable, idx, ownerId){
   // editar (removable) se ve entera, que ahí sí importa cuál es.
   if(!removable && sc.type === "ciudad"){
     const ciudad = cityLabel(sc.country, sc.city);
-    return `<span class="scope-chip ver-completo" data-action="ver-lugar" title="${esc(scopeLabel(sc))}">
+    return `<span role="button" tabindex="0" class="scope-chip ver-completo" data-action="ver-lugar" title="${esc(scopeLabel(sc))}">
       <span class="zdot" style="background:${color}"></span>${scopeIcon(sc)} ${esc(ciudad)}<span class="sc-resto">, ${esc(countryLabel(sc.country))}</span>
     </span>`;
   }
   return `<span class="scope-chip ${removable?"removable":""}">
       <span class="zdot" style="background:${color}"></span>${scopeIcon(sc)} ${esc(scopeLabel(sc))}
-      ${removable ? `<span class="rm" data-action="${removable}" data-idx="${idx}" data-owner-id="${esc(ownerId)}">✕</span>` : ""}
+      ${removable ? `<span class="rm" role="button" tabindex="0" aria-label="${esc(t("Quitar","Remove","Remover","הסרה"))}" data-action="${removable}" data-idx="${idx}" data-owner-id="${esc(ownerId)}">✕</span>` : ""}
     </span>`;
 }
 
@@ -14458,7 +14466,7 @@ function renderNestedReplyForm(postId, replyId){
       <input type="file" id="nestedReplyImages-${replyId}" accept="image/*" multiple hidden data-action="nested-reply-images" data-reply-id="${esc(replyId)}">
       <input type="file" id="nestedReplyFiles-${replyId}" accept="${ACEPTA_ARCHIVOS}" multiple hidden data-action="nested-reply-files" data-reply-id="${esc(replyId)}">
       ${d.images.length ? `<div class="img-preview-list">${d.images.map((src,i)=>`
-        <div class="img-preview"><img src="${srcMiniatura(src)}"><button type="button" class="rm" data-action="nested-reply-rm-image" data-reply-id="${esc(replyId)}" data-idx="${i}">✕</button></div>`).join("")}</div>` : ""}
+        <div class="img-preview"><img src="${srcMiniatura(src)}" alt=""><button type="button" class="rm" aria-label="${esc(t("Quitar","Remove","Remover","הסרה"))}" data-action="nested-reply-rm-image" data-reply-id="${esc(replyId)}" data-idx="${i}">✕</button></div>`).join("")}</div>` : ""}
       ${renderFileChips(d.files, "nested-reply-rm-file", `data-reply-id="${esc(replyId)}"`)}
       ${d.links.length ? `<div class="attach-panel">${renderLinkRows("nested-reply", replyId, d.links)}</div>` : ""}
       ${d.scopeError ? `<div class="form-error">${esc(d.scopeError)}</div>` : ""}
@@ -14503,7 +14511,7 @@ function renderReplyForm(postId){
       <input type="file" id="replyImages-${postId}" accept="image/*" multiple hidden data-action="reply-images" data-post-id="${esc(postId)}">
       <input type="file" id="replyFiles-${postId}" accept="${ACEPTA_ARCHIVOS}" multiple hidden data-action="reply-files" data-post-id="${esc(postId)}">
       ${d.images.length ? `<div class="img-preview-list">${d.images.map((src,i)=>`
-        <div class="img-preview"><img src="${srcMiniatura(src)}"><button type="button" class="rm" data-action="reply-rm-image" data-post-id="${esc(postId)}" data-idx="${i}">✕</button></div>`).join("")}</div>` : ""}
+        <div class="img-preview"><img src="${srcMiniatura(src)}" alt=""><button type="button" class="rm" aria-label="${esc(t("Quitar","Remove","Remover","הסרה"))}" data-action="reply-rm-image" data-post-id="${esc(postId)}" data-idx="${i}">✕</button></div>`).join("")}</div>` : ""}
       ${renderFileChips(d.files, "reply-rm-file", `data-post-id="${esc(postId)}"`)}
       ${d.links.length ? `<div class="attach-panel">${renderLinkRows("reply", postId, d.links)}</div>` : ""}
       <div class="reply-form-footer">
@@ -15433,7 +15441,7 @@ function renderSugerencias(v, r, rAnt, f){
 function renderZoneLegend(){
   const active = state.paisesZoneFilter;
   return `<div class="zone-legend">${Object.values(ZONES).map(z=>
-    `<span class="chip-toggle${active.has(z.key)?" active":""}" data-action="toggle-paises-zone" data-key="${esc(z.key)}">
+    `<span role="button" tabindex="0" class="chip-toggle${active.has(z.key)?" active":""}" data-action="toggle-paises-zone" data-key="${esc(z.key)}">
       <span class="dot" style="background:${safeColor(z.color)}"></span>${esc(z.label)}${active.has(z.key)?" ✕":""}
     </span>`).join("")}</div>`;
 }
@@ -15501,7 +15509,7 @@ function renderPaisesView(){
     const linea = a.proxima
       ? `<div class="country-last">${t("Próximo","Next","Próximo","הבא")}: <span dir="auto">${esc(calendarioLabel(a.proxima))}</span> · ${esc(cuando(a.proxima))}</div>`
       : a.ultima ? `<div class="country-last">${t("Última","Latest","Última","אחרונה")}: <span dir="auto">${esc(calendarioLabel(a.ultima))}</span> · ${esc(cuando(a.ultima))}</div>` : "";
-    return `<div class="country-card" style="border-inline-start-color:${color}" data-action="drill-country" data-country="${esc(c.name)}">
+    return `<div role="button" tabindex="0" class="country-card" style="border-inline-start-color:${color}" data-action="drill-country" data-country="${esc(c.name)}">
       <div class="country-top"><div class="name">${esc(countryLabel(c.name))}</div><div class="count">${cnt}<small> ${unit}</small></div></div>
       ${renderSerieMensual(a.meses, color)}
       ${linea}
@@ -16096,7 +16104,7 @@ function renderConfigCalendarioSection(){
 
 function prefChips(prefKey, items, active){
   return `<div class="pref-chips">${items.map(it=>`
-      <span class="chip-toggle${active.includes(it.key)?" active":""}" data-action="pref-toggle-list" data-pref="${prefKey}" data-key="${esc(it.key)}">${it.icon ? esc(it.icon) + " " : ""}${esc(it.label)}</span>`).join("")}
+      <span role="button" tabindex="0" class="chip-toggle${active.includes(it.key)?" active":""}" data-action="pref-toggle-list" data-pref="${prefKey}" data-key="${esc(it.key)}">${it.icon ? esc(it.icon) + " " : ""}${esc(it.label)}</span>`).join("")}
     </div>`;
 }
 function renderConfigCapasSection(){
@@ -18177,7 +18185,7 @@ function renderComposer(){
           <button type="button" class="btn-attach" data-action="post-add-link">🔗 Link</button>
         </div>
         ${d.images.length ? `<div class="img-preview-list">${d.images.map((src,i)=>`
-          <div class="img-preview"><img src="${srcMiniatura(src)}"><button type="button" class="rm" data-action="post-rm-image" data-idx="${i}">✕</button></div>`).join("")}</div>` : ""}
+          <div class="img-preview"><img src="${srcMiniatura(src)}" alt=""><button type="button" class="rm" aria-label="${esc(t("Quitar","Remove","Remover","הסרה"))}" data-action="post-rm-image" data-idx="${i}">✕</button></div>`).join("")}</div>` : ""}
         ${renderFileChips(d.files, "post-rm-file")}
         ${d.links.length ? `<div class="attach-panel">${renderLinkRows("post", "new", d.links)}</div>` : ""}
         <div class="hint">${t(
@@ -18971,10 +18979,10 @@ function renderFichaLugar(L){
   const zk = zonaDeLugar(L);
   const zcolor = safeColor(ZONES[zk]?.color);
   const sep = `<span aria-hidden="true">${isRTL() ? "‹" : "›"}</span>`;
-  const migaZona = L.zona ? `<b>${esc(nombre)}</b>` : `<a data-action="drill-zone" data-zona="${esc(zk)}">${esc(regionLabel(zk))}</a>`;
-  const migaPais = L.zona ? "" : L.city ? `${sep}<a data-action="drill-country" data-country="${esc(L.country)}">${esc(countryLabel(L.country))}</a>${sep}<b>${esc(nombre)}</b>` : `${sep}<b>${esc(nombre)}</b>`;
+  const migaZona = L.zona ? `<b>${esc(nombre)}</b>` : `<a role="button" tabindex="0" data-action="drill-zone" data-zona="${esc(zk)}">${esc(regionLabel(zk))}</a>`;
+  const migaPais = L.zona ? "" : L.city ? `${sep}<a role="button" tabindex="0" data-action="drill-country" data-country="${esc(L.country)}">${esc(countryLabel(L.country))}</a>${sep}<b>${esc(nombre)}</b>` : `${sep}<b>${esc(nombre)}</b>`;
   const migas = `<nav class="fl-migas" aria-label="${esc(t("Dónde estás","Where you are","Onde você está","איפה אתה"))}">
-    <a data-action="drill-clear">${t("Países","Countries","Países","מדינות")}</a>${sep}${migaZona}${migaPais}</nav>`;
+    <a role="button" tabindex="0" data-action="drill-clear">${t("Países","Countries","Países","מדינות")}</a>${sep}${migaZona}${migaPais}</nav>`;
   const hijos = hijosDeLugar(L);
   const sub = L.city
     ? `<span class="fl-zona"><i style="background:${zcolor}"></i>${esc(countryLabel(L.country))} · ${esc(regionLabel(zk))}</span>`
@@ -19427,6 +19435,17 @@ document.querySelectorAll("#tabs button").forEach(btn=>{
     scrollToTop();
   });
 });
+// Lo que se toca y no es un <button> (chips, nombres, tarjetas de país)
+// lleva role="button" y tabindex: con esto Enter y Espacio lo activan
+// igual que un clic, como haría un botón (docs/AUDITORIA.md, M5).
+document.addEventListener("keydown", e=>{
+  if(e.key !== "Enter" && e.key !== " ") return;
+  const el = e.target;
+  if(!el || el.tagName === "BUTTON" || el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT") return;
+  if(el.getAttribute("role") !== "button" || !el.dataset.action) return;
+  e.preventDefault();
+  el.click();
+});
 document.getElementById("postModalClose").addEventListener("click", requestCloseComposer);
 postModalOverlay.addEventListener("click", e=>{ if(e.target === postModalOverlay) requestCloseComposer(); });
 document.addEventListener("keydown", e=>{
@@ -19621,7 +19640,7 @@ function renderFileChips(files, rmAction, extraAttrs=""){
   if(!files || !files.length) return "";
   return `<div class="file-preview-list">${files.map((f,i)=>`
     <div class="file-chip">${claseDe(f).icono} <span class="fname">${esc(f.name)}</span>
-      <button type="button" class="rm" data-action="${rmAction}" data-idx="${i}" ${extraAttrs}>✕</button></div>`).join("")}</div>`;
+      <button type="button" class="rm" aria-label="${esc(t("Quitar","Remove","Remover","הסרה"))}" data-action="${rmAction}" data-idx="${i}" ${extraAttrs}>✕</button></div>`).join("")}</div>`;
 }
 // Archivos YA publicados en un posteo/respuesta (a diferencia de
 // renderFileChips, que es para los que todavía se están por mandar).
@@ -19905,7 +19924,7 @@ function renderParticipantsField(draft){
 }
 function renderParticipantChip(p, idx){
   const avatar = fotoSegura(p.photoURL) ? `<img class="participant-chip-avatar" src="${esc(fotoSegura(p.photoURL))}" alt="">` : "";
-  return `<span class="participant-chip">${avatar}${esc(p.name || p.email)}<span class="rm" data-action="rm-participant" data-idx="${idx}">✕</span></span>`;
+  return `<span class="participant-chip">${avatar}${esc(p.name || p.email)}<span role="button" tabindex="0" class="rm" aria-label="${esc(t("Quitar","Remove","Remover","הסרה"))}" data-action="rm-participant" data-idx="${idx}">✕</span></span>`;
 }
 function renderParticipantSuggestions(draft){
   const matches = getParticipantMatches(draft);
