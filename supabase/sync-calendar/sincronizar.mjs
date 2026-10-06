@@ -25,6 +25,7 @@
    diferencial. Acá solo se ejecuta lo que esa función pidió.
    ====================================================================== */
 import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { decidir } from "./decidir.mjs";
 
 // Se lee al arrancar el trabajo y no al cargar el archivo: así una prueba
@@ -76,18 +77,50 @@ const aFila   = o => Object.fromEntries(Object.entries(o || {}).map(([k, v]) => 
 const aObjeto = f => Object.fromEntries(Object.entries(f || {}).map(([k, v]) => [aCamel(k), v]));
 
 /* ---------- Hablarle a Supabase ---------- */
+// El registro de esta corrida es público (el repo lo es): un error no
+// lleva el cuerpo de la respuesta, que con una restricción que rechaza
+// una fila trae la fila entera en `details` (título, contenido). Solo el
+// estado, la tabla y el código y mensaje de Postgres (docs/AUDITORIA.md, I4).
 async function rest(camino, opciones = {}){
-  const res = await fetch(`${cfg.url}/rest/v1/${camino}`, {
-    ...opciones,
-    headers: {
-      apikey: cfg.llave, Authorization: `Bearer ${cfg.llave}`,
-      "Content-Type": "application/json", ...(opciones.headers || {}),
-    },
-  });
+  let res;
+  try{
+    res = await fetch(`${cfg.url}/rest/v1/${camino}`, {
+      ...opciones,
+      headers: {
+        apikey: cfg.llave, Authorization: `Bearer ${cfg.llave}`,
+        "Content-Type": "application/json", ...(opciones.headers || {}),
+      },
+    });
+  }catch(err){
+    const e = new Error(`Supabase no contestó (${err.message})`); e.status = 0; throw e;
+  }
   const texto = await res.text();
-  if(!res.ok) throw new Error(`Supabase ${res.status} en ${camino}: ${texto.slice(0, 400)}`);
+  if(!res.ok){
+    let cuerpo = null; try{ cuerpo = JSON.parse(texto); }catch(e){}
+    const tabla = String(camino).split("?")[0];
+    const motivo = cuerpo && typeof cuerpo === "object" ? [cuerpo.code, cuerpo.message].filter(Boolean).join(" ") : "";
+    const e = new Error(`Supabase ${res.status} en ${tabla}${motivo ? ": " + motivo.slice(0, 160) : ""}`);
+    e.status = res.status;
+    throw e;
+  }
   return texto ? JSON.parse(texto) : null;
 }
+// Un corte de red, un 5xx o un 429 es pasajero: se reintenta. Un 4xx de
+// validación no: va a fallar igual la próxima vez.
+const esPasajero = err => err && (err.status === 0 || err.status === 429 || err.status >= 500);
+const ESPERA_MS = Number(process.env.SYNC_ESPERA_MS || 1500);
+async function conReintentos(fn){
+  for(let intento = 1; ; intento++){
+    try{ return await fn(); }
+    catch(err){
+      if(!esPasajero(err) || intento >= 3) throw err;
+      await new Promise(r => setTimeout(r, ESPERA_MS * intento));
+    }
+  }
+}
+// En el registro público, el evento va por una huella corta y no por su
+// id: con el calendario público, el id es el evento entero.
+const huella = id => createHash("sha256").update(String(id)).digest("hex").slice(0, 8);
 
 // La API devuelve como máximo 1.000 filas por pedido (Settings → API →
 // Max rows). Pedidos de una, pasados los mil posteos el resto no llegaba,
@@ -292,34 +325,40 @@ async function main(){
   // ellos, igual que en la app (que trabaja sobre state.posts en vivo).
   const posteos = await traerPosteos();
   const sacados = await traerSacados();
-  let aplicados = 0, fallados = 0;
+  let aplicados = 0, fallados = 0, pasajeros = 0;
 
   for(const ev of eventos){
     if(estaSacado(ev, sacados)) continue;
     let acciones;
     try{ acciones = decidir(ev, posteos, ctx); }
-    catch(err){ fallados++; console.error(`  ✗ ${ev.id}: al decidir — ${err.message}`); continue; }
+    catch(err){ fallados++; console.error(`  ✗ ${huella(ev.id)}: al decidir — ${err.message}`); continue; }
     if(!acciones.length) continue;
     try{
       // Cada evento por separado: si uno falla, los demás se aplican igual
       // y el token avanza. Sin esto, un solo evento malo trababa el mismo
       // lote para siempre, en cada corrida.
-      for(const a of acciones){ if(!cfg.seco) await ejecutar(a); }
+      for(const a of acciones){ if(!cfg.seco) await conReintentos(() => ejecutar(a)); }
       anotarEnMemoria(posteos, acciones);
       aplicados++;
-      console.log(`  ✓ ${ev.id}: ${acciones.map(a=>a.tipo).join(" + ")}`);
+      console.log(`  ✓ ${huella(ev.id)}: ${acciones.map(a=>a.tipo).join(" + ")}`);
     }catch(err){
       fallados++;
-      console.error(`  ✗ ${ev.id}: ${err.message}`);
+      if(esPasajero(err)) pasajeros++;
+      console.error(`  ✗ ${huella(ev.id)}: ${err.message}`);
     }
   }
 
-  // El token se guarda igual aunque alguno haya fallado: si no, la próxima
-  // corrida vuelve a traer TODO y los mismos eventos vuelven a fallar.
-  if(resultado.nextSyncToken && !cfg.seco) await guardarSyncToken(resultado.nextSyncToken);
+  // Si algo falló por un 4xx (una validación), el token se guarda igual:
+  // si no, la próxima corrida vuelve a traer TODO y los mismos eventos
+  // vuelven a fallar. Pero si falló por un corte pasajero (ya reintentado
+  // tres veces), NO: Google no vuelve a mandar un evento ya entregado, y
+  // ese cambio se perdía para siempre (docs/AUDITORIA.md, I4). Sin
+  // guardar, la corrida de mañana lo vuelve a traer.
+  if(resultado.nextSyncToken && !cfg.seco && !pasajeros) await guardarSyncToken(resultado.nextSyncToken);
+  if(pasajeros) console.log(`\n${pasajeros} fallaron por un corte de Supabase: el token no avanza, mañana se reintentan.`);
   console.log(`\nAplicados: ${aplicados}. Fallados: ${fallados}. Revisados: ${eventos.length}.`);
   if(fallados) process.exitCode = 1;
-  return { aplicados, fallados, revisados: eventos.length };
+  return { aplicados, fallados, pasajeros, revisados: eventos.length };
 }
 
 // Deja la lista en memoria como quedó la base, para que el evento

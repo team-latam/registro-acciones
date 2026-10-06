@@ -142,7 +142,10 @@ async function main(){
     }catch(err){ fallas.push(`borrar ${tanda.length} de la papelera: ${err.message}`); }
   }
 
-  if(movidos) console.log(`\nMovidos a papelera/${hoy}/: ${movidos}. Se devuelven con «restaurar ${hoy}».\n${muestra(huerfanos)}`);
+  // Sin la lista: el registro de esta corrida es público, y cada ruta
+  // nombra un posteo (docs/AUDITORIA.md, I4). Para ver cuáles, se corre en
+  // seco a mano, o se mira la papelera en el panel de Supabase.
+  if(movidos) console.log(`\nMovidos a papelera/${hoy}/: ${movidos}. Se devuelven con «restaurar ${hoy}».`);
   if(borrados) console.log(`\nBorrados de la papelera (más de ${PAPELERA_DIAS} días): ${borrados}.`);
   if(!movidos && !borrados && !fallas.length) console.log(`\nNo había nada que limpiar.`);
   if(fallas.length){ console.log(`\nNo se pudieron hacer ${fallas.length}:\n${muestra(fallas)}`); process.exitCode = 1; }
