@@ -52,7 +52,8 @@ jobs:
     name: Copiar
     needs: probar
     # En un push solo se prueba. Se copia los domingos y cuando se pide.
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    # Solo el código de main corre con las llaves (docs/AUDITORIA.md, U2).
+    if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

@@ -41,8 +41,13 @@ decisiones de arquitectura.
 
 **La rama de producción es `main`.** Es la rama default
 del repo y la ÚNICA conectada al deploy: cada push ahí dispara el workflow
-"pages build and deployment" de GitHub Pages y publica el sitio. Un push a
-cualquier otra rama NO despliega nada.
+«Publicar el sitio» (`.github/workflows/pages.yml`), que corre todas las
+pruebas de la app y **recién si dan verde** publica `index.html` en GitHub
+Pages (desde el 6/10/2026; antes publicaba el «pages build and deployment»
+automático, sin esperar a nadie). Para eso Settings → Pages → Source tiene
+que estar en «GitHub Actions»; mientras siga en «Deploy from a branch», el
+trabajo lo avisa en su resumen y GitHub publica por su cuenta como antes.
+Un push a cualquier otra rama NO despliega nada.
 
 Claude Code on the web crea una rama nueva (`claude/...`) por cada sesión —
 eso no se puede desactivar. Para que no se acumulen ramas sueltas:
@@ -103,8 +108,10 @@ Corre todas las pruebas de `index.html` (más de mil comprobaciones), la
 carga de la página y la app entera con la sesión iniciada contra un
 Supabase de mentira (`app_dom_test.mjs`). **Tiene que terminar en verde antes de
 cada commit que toque la app.** GitHub lo corre igual en cada push
-(`.github/workflows/app.yml`), pero un push en rojo ya llegó a producción:
-el deploy de Pages no espera a las pruebas.
+(`.github/workflows/app.yml`; en `main`, adentro de «Publicar el sitio»),
+y un push en rojo ya no se publica: queda en línea la versión anterior.
+Pero igual queda roto en `main` hasta el próximo push, así que se prueba
+antes.
 
 - Las pruebas sacan el código del `index.html` real en cada corrida, nunca
   de una copia. Una prueba nueva va en `pruebas/` y sigue esa regla; las

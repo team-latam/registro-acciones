@@ -1,0 +1,108 @@
+# ============================================================
+# Publicar el sitio, pero solo si las pruebas dan verde
+# ============================================================
+# Antes el sitio salía con el «pages build and deployment» automático de
+# GitHub, que publica la rama main apenas llega un push: en un minuto
+# estaba en línea, y las pruebas (diez minutos) avisaban después, sin
+# frenar nada. Un index.html roto quedaba publicado hasta el próximo push
+# (docs/AUDITORIA.md, U1).
+#
+# Ahora el orden es el otro: primero todas las pruebas de la app
+# (app.yml), y recién si pasan se publica. Si fallan, sigue en línea la
+# versión anterior, que andaba.
+#
+# Para que esto funcione, en el repo tiene que estar elegido
+# Settings → Pages → Build and deployment → Source: «GitHub Actions».
+# Con «Deploy from a branch» GitHub seguiría publicando por su cuenta
+# sin esperar a nadie, y este trabajo fallaría en el último paso.
+# ============================================================
+name: Publicar el sitio
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "index.html"
+      - "supabase/**"
+      - "pruebas/**"
+      - ".github/workflows/app.yml"
+      - ".github/workflows/pages.yml"
+  # Para volver a publicar a mano: Actions → «Publicar el sitio» → Run workflow.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Dos pushes seguidos: el más nuevo cancela al anterior, así nunca termina
+# publicada una versión vieja después de una nueva.
+concurrency:
+  group: publicar-el-sitio
+  cancel-in-progress: true
+
+jobs:
+  pruebas:
+    name: Las pruebas de la app
+    uses: ./.github/workflows/app.yml
+
+  publicar:
+    name: Publicar en GitHub Pages
+    needs: pruebas
+    # Solo desde main: el botón «Run workflow» deja elegir otra rama, y
+    # una rama a medio hacer no tiene que salir a producción.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.publicar.outputs.page_url }}
+    steps:
+      # Mientras en Settings → Pages siga elegido «Deploy from a branch»,
+      # publicar desde acá falla: avisa qué falta y termina sin rojo
+      # (GitHub sigue publicando por su lado, como antes). El día que se
+      # elige «GitHub Actions», publica solo.
+      - name: ¿Pages está esperando a este trabajo?
+        id: modo
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          modo=$(gh api "repos/${{ github.repository }}/pages" --jq .build_type 2>/dev/null || echo "desconocido")
+          echo "Pages publica con: $modo"
+          if [ "$modo" = "workflow" ]; then
+            echo "listo=si" >> "$GITHUB_OUTPUT"
+          else
+            echo "listo=no" >> "$GITHUB_OUTPUT"
+            {
+              echo "### Las pruebas pasaron, pero esto todavía no publica"
+              echo ""
+              echo "GitHub Pages sigue en «Deploy from a branch» ($modo): publica solo, sin esperar a las pruebas."
+              echo "Para que publique este trabajo: Settings → Pages → Build and deployment → Source → **GitHub Actions**."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.modo.outputs.listo == 'si'
+
+      # El sitio es index.html y nada más. Con la publicación desde la
+      # rama, GitHub servía también README, docs/, supabase/ y pruebas/
+      # pasados por Jekyll; nadie los abría desde ahí (se leen en el repo).
+      - name: Armar lo que se publica
+        if: steps.modo.outputs.listo == 'si'
+        run: |
+          mkdir -p _sitio
+          cp index.html _sitio/
+          touch _sitio/.nojekyll
+
+      - uses: actions/configure-pages@v5
+        if: steps.modo.outputs.listo == 'si'
+
+      - uses: actions/upload-pages-artifact@v3
+        if: steps.modo.outputs.listo == 'si'
+        with:
+          path: _sitio
+
+      - id: publicar
+        if: steps.modo.outputs.listo == 'si'
+        uses: actions/deploy-pages@v4
