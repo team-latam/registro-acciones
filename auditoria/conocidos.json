@@ -1,0 +1,22 @@
+[
+  {
+    "que": "Un dato escrito por alguien entra al HTML sin esc()",
+    "contiene": "${role.text}",
+    "porque": "Texto fijo de la app (el nombre del rol), no lo escribe nadie. Revisado el 6/10/2026."
+  },
+  {
+    "que": "Un dato escrito por alguien entra al HTML sin esc()",
+    "contiene": "${l.label}",
+    "porque": "Los nombres de los cuatro idiomas, fijos en el código. Revisado el 6/10/2026."
+  },
+  {
+    "que": "Librería que se carga sin integridad",
+    "contiene": "SHEETJS_CDN",
+    "porque": "SheetJS no publica su archivo en npm con un hash fijo; se carga solo al abrir una planilla. Decidido en la auditoría del 6/10/2026 (U3)."
+  },
+  {
+    "que": "Texto visible escrito directo, sin t()",
+    "contiene": "Registro de Acciones",
+    "porque": "Es el nombre de la app: va igual en los cuatro idiomas."
+  }
+]
