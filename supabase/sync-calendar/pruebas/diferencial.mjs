@@ -61,7 +61,7 @@ const codigo = ["addDaysISO","isoDate","isoDow","addMonthsISO","RRULE_MAX_STEPS"
   "originalOccurrenceISO","extractTitleFromSummary","importedTypeAndTitle","summaryMatchesPost",
   "activityLabelVariants","huellaDeId","importedPostDocId","createImportedPost","MAX_OCC_MOVES",
   "CALENDAR_SYNC_TYPES","ACTIVITY_TYPES","ACTIVITY_BY_KEY","DEFAULT_ACTIVITY_LABELS",
-  "applyCalendarEventToPosts"].map(grab).join("\n");
+  "indicePorEvento","postDeEvento","applyCalendarEventToPosts"].map(grab).join("\n");
 
 // La app, con las escrituras interceptadas en vez de hechas.
 const laApp = new Function("ctx", `
