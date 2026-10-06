@@ -163,7 +163,7 @@ que decidir o hacer un paso en un panel).
 | B7 | ~~Visual chico: título de la semana "4 oct – 10 de oct de 2026"; texto del evento centrado en el bloque de la vista Semana; velo de los modales que atenúa poco y deja el + y "subir" encima; ficha de lugar en celular con dos botones apilados y el segmentado en dos filas; tarjetas de país con "Última: Visita a la c…" cortado~~ ✅ 6/10 | diseño 6, 7, 10 y "sobrecarga" |
 | B8 | ~~Miniaturas en WebP (−30 %); `prefers-reduced-transparency` para la barra con `backdrop-filter`; un `Map` por `calendarEventId` para la resincronización completa~~ ✅ 6/10 | rendimiento J, L, M |
 | B9 | ~~El token `RESPALDOS_TOKEN` vence el 5/10/2027: una deploy key SSH no vencería; mover la limpieza del bucket de las 07:30 a las 09:00 para no pisarse con la copia de las 07:00~~ ✅ 6/10 (la llave que no vence la crea el usuario: queda para cuando toque renovar el token) | backend 27 y "carrera con la copia" |
-| B10 | Confirmar que las series con repetición (`recurrence_skip`/`recurrence_moves`) se usan; si no, es lo más complejo del modelo de datos y se puede simplificar | diseño, "uso" |
+| B10 | ~~Confirmar que las series con repetición (`recurrence_skip`/`recurrence_moves`) se usan; si no, es lo más complejo del modelo de datos y se puede simplificar~~ ✅ 6/10: confirmaste que se usa; queda como está | diseño, "uso" |
 
 ### Opcional — decisiones de producto
 
@@ -175,7 +175,7 @@ que decidir o hacer un paso en un panel).
 | O4 | **PWA**: `manifest.json`, ícono, `theme-color`, service worker | instalable en el celular con ícono propio; visitas repetidas sin bajar 414 KB; portada visible sin red | dos archivos más en la raíz (hoy la regla es "solo `index.html`") |
 | O5 | **Publicar una copia sin comentarios** desde el workflow de U1, dejando el fuente como está | 414 → ≈ 250 KB comprimido (−40 %); 225 KB de comentarios menos para el parser | choca con "sin build": el fuente no cambia, pero lo publicado sería otro archivo |
 | O6 | **Separar los cuatro idiomas** en archivos | ≈ 45 KB comprimidos menos por carga | ídem: más de un archivo |
-| O7 | **Me gusta**: dejarlo o sacarlo | menos ruido por tarjeta en un registro de trabajo de pocas personas | nada; es gusto del equipo |
+| O7 | ~~**Me gusta**: dejarlo o sacarlo~~ ✅ 6/10: decidiste dejarlo | menos ruido por tarjeta en un registro de trabajo de pocas personas | nada; es gusto del equipo |
 | O8 | ~~**Seis vistas del Calendario** → Mes + Agenda (+ Semana)~~ ✅ 6/10: decidiste dejar las vistas y arreglar Año | menos que explicar | ver M6 |
 
 ---
