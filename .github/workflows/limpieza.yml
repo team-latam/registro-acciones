@@ -13,9 +13,12 @@ name: Limpieza del bucket
 
 on:
   schedule:
-    # Domingos 07:30 UTC = 04:30 en Argentina: después del sincronizador
-    # de Calendar y con el equipo durmiendo.
-    - cron: '30 7 * * 0'
+    # Domingos 09:00 UTC = 06:00 en Argentina: después del sincronizador
+    # de Calendar y con el equipo durmiendo. Antes era a las 07:30, media
+    # hora después de que arranca la copia de seguridad (07:00): si la
+    # copia tardaba, la limpieza movía archivos mientras se copiaban
+    # (docs/AUDITORIA.md, B9).
+    - cron: '0 9 * * 0'
   # A mano, desde la pestaña Actions.
   workflow_dispatch:
     inputs:

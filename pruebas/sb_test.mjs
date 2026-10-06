@@ -812,14 +812,15 @@ eq("el adaptador sabe dar la miniatura de una foto y olvidar las firmas al salir
   const nav = navegadorDeMentira();
   const sbF = supabaseDeMentira(); sbF.reg.objetos = new Set();
   const pedidas = [];
-  const achicar = async (dataUrl, lado, calidad) => { pedidas.push({ dataUrl, lado, calidad }); return "data:image/jpeg;base64,/9j/2wBD"; };
+  const achicar = async (dataUrl, lado, calidad, tipo) => { pedidas.push({ dataUrl, lado, calidad, tipo }); return "data:image/webp;base64,UklGRg"; };
   const stF = nav.crear(sbF, { achicar });
   await stF.posts.create({ title:"Con foto", images:["data:image/jpeg;base64,/9j/4AAQ"] });
   const subidas = sbF.reg.subidas || [], [foto, mini] = subidas;
   eq("una foto nueva sube dos archivos: ella y su miniatura", subidas.length, 2);
   eq("la miniatura va al lado, con el mismo nombre terminado en .min.jpg",
      mini && mini[1], foto && foto[1].replace(/\.jpg$/, ".min.jpg"));
-  eq("y es un JPEG", mini && mini[2], "image/jpeg");
+  eq("se pide en WebP, que pesa menos", pedidas.map(p => p.tipo), ["image/webp"]);
+  eq("y sube con su tipo de verdad", mini && mini[2], "image/webp");
   eq("se arma con la foto que se está subiendo", pedidas.map(p => p.dataUrl), ["data:image/jpeg;base64,/9j/4AAQ"]);
   eq("y chica: 480 px de lado como mucho, para una tarjeta de 92",
      pedidas.length === 1 && pedidas[0].lado <= 480, true);

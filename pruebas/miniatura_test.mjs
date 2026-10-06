@@ -65,6 +65,7 @@ if(codigo){
     const mApaisada = await window.__achicar(apaisada, 480, 0.75);
     const mParada = await window.__achicar(parada, 480, 0.75);
     const mChica = await window.__achicar(chica, 480, 0.75);
+    const mWebp = await window.__achicar(apaisada, 480, 0.75, "image/webp");
     let rota = null;
     try{ await window.__achicar("data:image/jpeg;base64,esto no es una foto", 480, 0.75); }
     catch(e){ rota = e.message; }
@@ -77,12 +78,14 @@ if(codigo){
       tipo: mApaisada.slice(0, 23),
       apaisada: await medidas(mApaisada), parada: await medidas(mParada), chica: await medidas(mChica),
       pesoFoto: bytes(apaisada), pesoMini: bytes(mApaisada),
-      rota,
+      rota, tipoWebp: mWebp.slice(0, 23), pesoWebp: bytes(mWebp),
       entera: await medidas(entera), tipoEntera: entera.slice(0, 23),
     };
   });
 
-  eq("la miniatura es un JPEG", r.tipo, "data:image/jpeg;base64,");
+  eq("sin pedir otra cosa, un JPEG", r.tipo, "data:image/jpeg;base64,");
+  eq("pedida en WebP, sale en WebP", r.tipoWebp, "data:image/webp;base64,");
+  eq("y pesa menos que en JPEG", r.pesoWebp < r.pesoMini, true);
   eq("una foto apaisada queda de 480 de ancho, sin deformarse", r.apaisada, [480, 360]);
   eq("una parada, de 480 de alto", r.parada, [360, 480]);
   eq("una que ya es chica no se agranda", r.chica, [300, 200]);
