@@ -438,6 +438,17 @@
   }
   .admin-item:hover{ background:var(--surface-alt); }
   .admin-item.active{ background:var(--petroleo); color:#fff; }
+  /* «Avanzado» desplegado: sus tres secciones, con sangría debajo. */
+  .admin-item.abierto{ color:var(--petroleo); font-weight:800; }
+  .admin-item.hijo{ padding-inline-start:26px; font-size:13px; min-height:36px; }
+  .admin-avanzado{ display:flex; flex-direction:column; gap:10px; max-width:640px; }
+  .admin-avz{ display:flex; align-items:center; gap:12px; text-align:start; width:100%; padding:14px 16px; border-radius:var(--radius-md);
+    border:1px solid var(--border); background:var(--card); box-shadow:var(--shadow); color:var(--ink); font-family:inherit; cursor:pointer; }
+  .admin-avz:hover{ border-color:var(--celeste); }
+  .admin-avz-txt{ flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+  .admin-avz-txt b{ font-size:14.5px; }
+  .admin-avz-txt small{ font-size:12.5px; color:var(--text-muted); }
+  .admin-avz-ir{ font-size:20px; color:var(--text-muted); }
   .admin-body{ flex:1; min-width:0; }
   /* La cabecera de cada sección (ver adminSeccionTextos): título, una
      línea de para qué sirve y la explicación larga plegada. */
@@ -489,6 +500,7 @@
     .admin-titulo, .admin-grupo{ display:none; }
     .admin-item{ flex:none; border:1px solid var(--border); border-radius:999px; background:var(--card); min-height:36px; font-size:12.5px; }
     .admin-item.active{ border-color:var(--petroleo); }
+    .admin-item.hijo{ padding-inline-start:12px; min-height:36px; font-size:12.5px; }
   }
 
   /* ---------- Auth gate (login / pendiente / rechazado) ---------- */
@@ -2587,6 +2599,17 @@
   .rep-col-barra, .rep-col-prev{ display:block; width:46%; max-width:26px; border-radius:4px 4px 1px 1px; }
   .rep-col-barra{ background:var(--petroleo); } .rep-col-prev{ background:#a9cfd3; }
   .rep-col-par:not(:has(.rep-col-prev)) .rep-col-barra{ width:70%; max-width:34px; }
+  /* La columna del mes: lo hecho abajo, lo planificado encima (borde
+     punteado, sin relleno). La pila mide lo que suman las dos. */
+  .rep-col-pila{ display:flex; flex-direction:column; width:46%; max-width:26px; }
+  .rep-col-par:not(:has(.rep-col-prev)) .rep-col-pila{ width:70%; max-width:34px; }
+  .rep-col-pila .rep-col-barra{ width:100%; max-width:none; min-height:3px; }
+  .rep-col-plan{ display:block; width:100%; min-height:3px; border:1.5px dashed var(--petroleo); border-bottom:none; border-radius:4px 4px 0 0; background:color-mix(in srgb, var(--petroleo) 7%, transparent); box-sizing:border-box; }
+  .rep-col-pila:not(:has(.rep-col-barra)) .rep-col-plan{ border-bottom:1.5px dashed var(--petroleo); border-radius:4px 4px 1px 1px; }
+  .rep-col-pila:has(.rep-col-plan) .rep-col-barra{ border-radius:0 0 1px 1px; }
+  .rep-num-plan{ display:block; font-size:9.5px; font-weight:700; color:var(--text-muted); line-height:1; }
+  .rep-col-futuro .rep-etiqueta{ color:var(--text-muted); }
+  .rep-plan{ display:inline-block; margin-top:8px; padding:3px 10px; border:1px dashed var(--border); border-radius:999px; font-size:12px; font-weight:700; color:var(--text-muted); }
   .rep-col .rep-etiqueta{ flex:none; font-size:11px; font-weight:700; color:var(--text-muted); text-transform:capitalize; overflow:visible; }
   .rep-sugerencias li{ display:flex; gap:10px; align-items:flex-start; }
   .rep-sug-ico{ flex:none; width:22px; text-align:center; }
@@ -2962,6 +2985,8 @@
     padding:0 0 6px; font-size:13px; font-weight:800; color:var(--ink-strong); text-transform:capitalize;
   }
   .year-month-name:hover{ color:var(--celeste-dark); }
+  .year-month-name{ display:flex; align-items:baseline; justify-content:space-between; gap:6px; }
+  .year-month-name small{ font-size:10.5px; font-weight:700; color:var(--text-muted); text-transform:none; white-space:nowrap; }
   .year-dows, .year-days{ display:grid; grid-template-columns:repeat(7,1fr); gap:1px; }
   .year-dows span{ padding-bottom:2px; text-align:center; font-size:9.5px; font-weight:800; color:var(--text-muted); text-transform:uppercase; }
   .ymd{
@@ -2970,8 +2995,27 @@
   }
   .ymd.empty{ visibility:hidden; }
   .ymd:hover{ background:var(--surface-alt); }
-  .ymd.has{ background:var(--celeste-soft); color:var(--ink-strong); font-weight:800; }
-  .ymd.today{ background:var(--celeste-dark); color:#fff; font-weight:800; }
+  /* Los cuatro tonos del mapa de calor (ver renderCalendarioAnio), del
+     mismo celeste de la app; mezclados con la tarjeta, sirven igual en el
+     modo oscuro. Hoy, con un aro: el tono del día se sigue viendo. */
+  .ymd{ border-radius:5px; }
+  .ymd.l1{ background:color-mix(in srgb, var(--celeste-dark) 18%, var(--card)); color:var(--ink-strong); }
+  .ymd.l2{ background:color-mix(in srgb, var(--celeste-dark) 40%, var(--card)); color:var(--ink-strong); font-weight:700; }
+  .ymd.l3{ background:color-mix(in srgb, var(--celeste-dark) 68%, var(--card)); color:#fff; font-weight:700; }
+  .ymd.l4{ background:color-mix(in srgb, var(--petroleo) 92%, var(--card)); color:#fff; font-weight:800; }
+  .ymd.today{ box-shadow:inset 0 0 0 2px var(--ink-strong); font-weight:800; }
+  .year-leyenda{ display:flex; align-items:center; justify-content:flex-end; gap:4px; margin-top:12px; font-size:11.5px; font-weight:700; color:var(--text-muted); }
+  .year-leyenda i{ width:14px; height:14px; aspect-ratio:auto; display:inline-block; }
+  .year-leyenda i.l0{ background:var(--surface-alt); }
+  /* En el celular, dos meses por fila: uno solo ocupaba la pantalla entera
+     y el año eran doce pantallas para ver de un vistazo. */
+  @media (max-width:520px){
+    .cal-year{ grid-template-columns:repeat(2, minmax(0,1fr)); gap:8px; }
+    .year-month{ padding:8px 6px; }
+    .year-month-name{ flex-direction:column; align-items:flex-start; gap:0; }
+    .ymd{ font-size:9px; border-radius:3px; }
+    .year-dows span{ font-size:8.5px; }
+  }
   .cal-agenda{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow); overflow:hidden; }
   .agenda-day{ display:flex; gap:12px; padding:10px 14px; border-bottom:1px solid var(--border); }
   .agenda-day:last-child{ border-bottom:none; }
@@ -8575,8 +8619,8 @@ function applyAttachmentLimitsConfig(cfg){
 
 // Primera "palabra" usable de un nombre o de un email (si no es un
 // nombre real, se recorta antes del @ y se separan puntos/guiones) —
-// para "Ari Krengel" da "Ari"; para "cursoslatam.argentina@gmail.com"
-// da "Cursoslatam" en vez de "Cursoslatam.argentina@gmail.com".
+// para "Ana Pérez" da "Ana"; para "cursos.ciudad@gmail.com"
+// da "Cursos" en vez de "Cursos.ciudad@gmail.com".
 function firstWordFrom(text){
   const base = (text||"").includes("@") && !(text||"").includes(" ") ? text.split("@")[0] : text;
   const cleaned = (base||"").replace(/[._-]+/g, " ").trim();
@@ -11252,16 +11296,37 @@ function adminMenuItems(){
       { key:"actividad", view:"auditoria", label:t("Registro de actividad","Activity log","Registro de atividade","יומן פעילות") },
     ] },
     { grupo:t("Cómo se carga","How things are logged","Como se carrega","איך רושמים"), items:[
-      { key:"zonas", view:"preferencias", sub:"zonas", label:t("Zonas y países","Zones and countries","Zonas e países","אזורים ומדינות") },
       { key:"tipos", view:"preferencias", sub:"tipos", label:t("Tipos de actividad","Activity types","Tipos de atividade","סוגי פעילות") },
-      { key:"lugares", view:"preferencias", sub:"lugares", label:t("Lugares","Places","Lugares","מקומות"), badge:lugares, suave:true },
-      { key:"adjuntos", view:"preferencias", sub:"adjuntos", label:t("Adjuntos","Attachments","Anexos","קבצים מצורפים") },
+      // Zonas, Lugares y Adjuntos se tocan una vez al año: juntas en
+      // «Avanzado», que se despliega solo estando adentro (AUDITORIA M12).
+      // Las ciudades por sumar se cuentan igual, en «Avanzado».
+      { key:"avanzado", view:"preferencias", sub:"avanzado", label:t("Avanzado","Advanced","Avançado","מתקדם"), badge:lugares, suave:true, abre:true },
+      ...(ADMIN_AVANZADO.includes(adminSeccionActual()) || adminSeccionActual() === "avanzado" ? adminAvanzadoItems(lugares) : []),
     ] },
     { grupo:t("Sistema","System","Sistema","מערכת"), items:[
       { key:"calendar", view:"preferencias", sub:"calendar", label:"Google Calendar" },
       { key:"copia", view:"preferencias", sub:"copia", label:t("Copia de seguridad","Backup","Cópia de segurança","גיבוי") },
     ] },
   ];
+}
+const ADMIN_AVANZADO = ["zonas", "lugares", "adjuntos"];
+function adminAvanzadoItems(lugares){
+  return [
+    { key:"zonas", view:"preferencias", sub:"zonas", hijo:true, label:t("Zonas y países","Zones and countries","Zonas e países","אזורים ומדינות"),
+      lead:t("A qué zona pertenece cada país.","Which zone each country belongs to.","A que zona pertence cada país.","לאיזה אזור שייכת כל מדינה.") },
+    { key:"lugares", view:"preferencias", sub:"lugares", hijo:true, label:t("Lugares","Places","Lugares","מקומות"), badge:lugares, suave:true,
+      lead:t("Ciudades escritas a mano, para sumar a la lista.","Hand-typed cities, to add to the list.","Cidades digitadas à mão, para somar à lista.","ערים שהוקלדו ידנית, להוספה לרשימה.") },
+    { key:"adjuntos", view:"preferencias", sub:"adjuntos", hijo:true, label:t("Adjuntos","Attachments","Anexos","קבצים מצורפים"),
+      lead:t("Cuántos archivos y de qué tamaño se pueden adjuntar.","How many files, and how big, can be attached.","Quantos arquivos e de que tamanho podem ser anexados.","כמה קבצים ובאיזה גודל אפשר לצרף.") },
+  ];
+}
+// La portada de «Avanzado»: las tres secciones, cada una con para qué es.
+function renderAvanzadoSection(){
+  return `<div class="admin-avanzado">${adminAvanzadoItems(getCustomCityUsage().length).map(it => `
+    <button type="button" class="admin-avz" data-action="admin-go" data-view="preferencias" data-key="${it.sub}">
+      <span class="admin-avz-txt"><b>${esc(it.label)}</b><small>${esc(it.lead)}</small></span>
+      ${it.badge ? `<span class="pending-count suave">${it.badge}</span>` : ""}<span class="admin-avz-ir" aria-hidden="true">${isRTL() ? "‹" : "›"}</span>
+    </button>`).join("")}</div>`;
 }
 function adminSeccionActual(){
   if(state.view === "solicitudes") return "personas";
@@ -11302,6 +11367,7 @@ function adminSeccionTextos(key){
       lead: t("Ciudades que el equipo escribió a mano y todavía no están en la lista oficial.","Cities the team typed by hand that aren't in the official list yet.","Cidades que a equipe digitou à mão e ainda não estão na lista oficial.","ערים שהצוות הקליד ידנית ושעדיין לא ברשימה הרשמית."),
       ayuda: t("Sumarlas acá hace que aparezcan como sugerencia del buscador de lugar para todo el mundo, en vez de que cada uno la escriba de cero cada vez.","Adding them here makes them show up as a place-search suggestion for everyone, instead of each person typing it from scratch every time.","Somá-las aqui faz com que apareçam como sugestão do buscador de lugar para todo mundo, em vez de cada um escrever do zero toda vez.","הוספתן כאן גורמת להן להופיע כהצעה בחיפוש המקום לכולם, במקום שכל אחד יקליד אותן מחדש בכל פעם."),
     },
+    avanzado: { lead: t("Lo que se configura una vez y casi no se toca: las zonas, las ciudades escritas a mano y los adjuntos.","What's set up once and rarely touched: zones, hand-typed cities and attachments.","O que se configura uma vez e quase não se mexe: as zonas, as cidades digitadas à mão e os anexos.","מה שמגדירים פעם אחת וכמעט לא נוגעים: האזורים, הערים שהוקלדו ידנית והקבצים המצורפים.") },
     adjuntos: { lead: t("Cuántos archivos, y de qué tamaño, se pueden adjuntar a un posteo (evento, rutina o respuesta).","How many files, and how big, can be attached to a post (event, routine or reply).","Quantos arquivos, e de que tamanho, podem ser anexados a uma postagem (evento, rotina ou resposta).","כמה קבצים, ובאיזה גודל, אפשר לצרף לפוסט (אירוע, שגרה או תגובה).") },
     copia: { lead: t("Todo lo cargado, guardado fuera de la app: una copia automática cada domingo y, cuando quieras, una para bajar a tu computadora.","Everything logged, kept outside the app: an automatic copy every Sunday and, whenever you want, one to download to your computer.","Tudo o que foi carregado, guardado fora do app: uma cópia automática todo domingo e, quando quiser, uma para baixar no seu computador.","כל מה שנרשם, שמור מחוץ לאפליקציה: עותק אוטומטי בכל יום ראשון, ומתי שתרצו, עותק להורדה למחשב.") },
     calendar: { lead: t("El Google Calendar al que van los eventos (la Rutina no). Si lo cambiás, los ya cargados se quedan donde están.","The Google Calendar where events go (Routines don't). If you change it, the ones already created stay where they are.","O Google Calendar para onde vão os eventos (a Rotina não). Se trocar, os já criados ficam onde estão.","ה-Google Calendar שאליו נשלחים האירועים (שגרה לא). אם משנים אותו, הקיימים נשארים במקומם.") },
@@ -11311,7 +11377,7 @@ function adminSeccionTextos(key){
 function renderAdminShell(contenido){
   const actual = adminSeccionActual();
   const menu = adminMenuItems().map(g => `${g.grupo ? `<div class="admin-grupo">${esc(g.grupo)}</div>` : ""}${g.items.map(it => `
-      <button type="button" class="admin-item${it.key===actual?" active":""}" data-action="admin-go" data-view="${it.view}"${it.sub ? ` data-key="${it.sub}"` : ""}${it.key===actual ? ' aria-current="page"' : ""}>
+      <button type="button" class="admin-item${it.hijo?" hijo":""}${it.key===actual?" active":""}${it.abre && ADMIN_AVANZADO.includes(actual)?" abierto":""}" data-action="admin-go" data-view="${it.view}"${it.sub ? ` data-key="${it.sub}"` : ""}${it.key===actual ? ' aria-current="page"' : ""}>
         <span>${esc(it.label)}</span>${it.badge ? `<span class="pending-count${it.suave?" suave":""}">${it.badge}</span>` : ""}
       </button>`).join("")}`).join("");
   const item = adminMenuItems().flatMap(g => g.items).find(it => it.key === actual);
@@ -12821,6 +12887,7 @@ function renderPreferenciasView(){
     : sec==="calendar" ? renderCalendarSection()
     : sec==="adjuntos" ? renderAdjuntosSection()
     : sec==="copia" ? renderCopiaSection()
+    : sec==="avanzado" ? renderAvanzadoSection()
     : renderZonasSection();
   // Sin la fila de chips de antes: el menú de Administración (ver
   // renderAdminShell) ya dice en qué sección se está.
@@ -14709,7 +14776,8 @@ function armarReporte(desdeISO, hastaISO, filtro){
   if(typeof firmaDeDatos !== "function") return calcularReporte(desdeISO, hastaISO, filtro);
   const firma = firmaDeDatos();
   if(!reportesFirma || firma.some((x, i) => x !== reportesFirma[i])){ reportesFirma = firma; reportesCache = new Map(); }
-  const clave = JSON.stringify([desdeISO, hastaISO, filtro || null], (k, v) => v instanceof Set ? [...v].sort() : v);
+  // Con el día: a la medianoche lo planificado de hoy pasa a hecho.
+  const clave = JSON.stringify([desdeISO, hastaISO, filtro || null, todayISO()], (k, v) => v instanceof Set ? [...v].sort() : v);
   if(reportesCache.has(clave)) return reportesCache.get(clave);
   const r = calcularReporte(desdeISO, hastaISO, filtro);
   reportesCache.set(clave, r);
@@ -14725,14 +14793,29 @@ function calcularReporte(desdeISO, hastaISO, filtro){
   const ciudades = new Set();
   const paisesDePersona = Object.create(null);
   let total = 0, latam = 0, sinLugar = 0, conParticipantes = 0;
+  // Lo que todavía no pasó no es actividad: se cuenta aparte, como
+  // planificado, y no entra en ningún otro número (AUDITORIA I2). Antes un
+  // reporte de octubre sumaba lo de noviembre y diciembre, y las
+  // comparaciones y las sugerencias salían infladas. Lo que está pasando
+  // hoy (un viaje que empezó ayer) ya cuenta como hecho.
+  const hoy = todayISO();
+  const hastaHecho = hastaISO < hoy ? hastaISO : hoy;
+  let planificadas = 0;
+  const porMesPlan = Object.create(null);
 
   state.posts.forEach(p=>{
     if(!pasaFiltroDelReporte(p, filtro)) return;
-    const veces = vecesEnVentana(p, desdeISO, hastaISO);
+    if(hastaISO > hoy){
+      fechasEnVentana(p, desdeISO, hastaISO).filter(iso => iso > hoy).forEach(iso=>{
+        planificadas++;
+        porMesPlan[iso.slice(0,7)] = (porMesPlan[iso.slice(0,7)] || 0) + 1;
+      });
+    }
+    const veces = desdeISO <= hastaHecho ? vecesEnVentana(p, desdeISO, hastaHecho) : 0;
     if(!veces) return;
     total += veces;
 
-    fechasEnVentana(p, desdeISO, hastaISO).forEach(iso=>{
+    fechasEnVentana(p, desdeISO, hastaHecho).forEach(iso=>{
       const mes = iso.slice(0,7);
       porMes[mes] = (porMes[mes] || 0) + 1;
     });
@@ -14772,7 +14855,8 @@ function calcularReporte(desdeISO, hastaISO, filtro){
   });
 
   return { total, porMes, porZona, porPais, porTipo, porPersona,
-           participantes, latam, sinLugar, conParticipantes, ciudades, paisesDePersona };
+           participantes, latam, sinLugar, conParticipantes, ciudades, paisesDePersona,
+           planificadas, porMesPlan };
 }
 
 
@@ -14938,13 +15022,16 @@ function tiraDeNumeros(items){
 }
 // "Mes a mes" en columnas. `prev`: el mismo mes del otro período, como una
 // columna clara al lado.
+// Lo planificado (m.plan, lo que todavía no pasó) va encima de la barra
+// del mes, con borde punteado y sin relleno: se ve que viene, sin
+// confundirse con lo hecho (AUDITORIA I2).
 function graficoMensual(titulo, meses, nota){
-  const maximo = Math.max(1, ...meses.map(m => Math.max(m.n, m.prev || 0)));
+  const maximo = Math.max(1, ...meses.map(m => Math.max(m.n + (m.plan || 0), m.prev || 0)));
   const alto = n => n ? Math.max(3, Math.round(n * 100 / maximo)) : 0;
   return `<div class="rep-bloque rep-bloque-mensual"><h3>${titulo}</h3>
-    <div class="rep-cols">${meses.map(m => `<div class="rep-fila rep-col" title="${esc(m.titulo || "")}">
-        <span class="rep-num">${m.n}</span>
-        <div class="rep-col-par">${m.prev != null ? `<i class="rep-col-prev" style="height:${alto(m.prev)}%"></i>` : ""}<i class="rep-col-barra" style="height:${alto(m.n)}%"></i></div>
+    <div class="rep-cols">${meses.map(m => `<div class="rep-fila rep-col${m.plan && !m.n ? " rep-col-futuro" : ""}" title="${esc(m.titulo || "")}">
+        <span class="rep-num">${m.n || (m.plan ? "" : 0)}${m.plan ? `<small class="rep-num-plan">+${m.plan}</small>` : ""}</span>
+        <div class="rep-col-par">${m.prev != null ? `<i class="rep-col-prev" style="height:${alto(m.prev)}%"></i>` : ""}<span class="rep-col-pila" style="height:${alto(m.n + (m.plan || 0))}%">${m.plan ? `<i class="rep-col-plan" style="flex:${m.plan}"></i>` : ""}${m.n ? `<i class="rep-col-barra" style="flex:${m.n}"></i>` : ""}</span></div>
         <span class="rep-etiqueta">${m.etiqueta}</span>
       </div>`).join("")}</div>
     ${nota ? `<div class="rep-bloque-nota">${nota}</div>` : ""}</div>`;
@@ -14961,7 +15048,9 @@ function renderReportePeriodo(f){
   const r = armarReporte(v.desde, v.hasta, f);
   const rAnterior = armarReporte(anterior.desde, anterior.hasta, f);
   const titulo = v.tri ? `${esc(trimestresDelReporte()[v.tri].label)} ${esc(v.anio)}` : t("Reporte {a}","Report {a}","Relatório {a}","דוח {a}",{a:esc(v.anio)});
-  const selector = cabezaDelReporte(titulo, `${esc(fmtDate(v.desde))} – ${esc(fmtDate(v.hasta))}`, f);
+  const hoy = todayISO();
+  const enCurso = v.desde <= hoy && hoy < v.hasta;
+  const selector = cabezaDelReporte(titulo, `${esc(fmtDate(v.desde))} – ${esc(fmtDate(v.hasta))}${enCurso ? ` · ${esc(t("en curso: lo hecho hasta hoy","in progress: what's done so far","em andamento: o feito até hoje","בתהליך: מה שנעשה עד היום"))}` : ""}`, f);
 
   // La comparación con el período de antes. Sin nada antes no se dice
   // nada: "subió infinito" respecto de cero no informa. Y el porcentaje
@@ -14983,7 +15072,7 @@ function renderReportePeriodo(f){
   }
 
 
-  if(!r.total){
+  if(!r.total && !r.planificadas){
     return selector + `<div class="empty-state"><div class="big">📊</div>${
       t("No hay nada cargado en ese período.","Nothing logged in that period.","Não há nada carregado nesse período.","לא נרשם דבר בתקופה הזו.")}</div>`;
   }
@@ -14998,8 +15087,9 @@ function renderReportePeriodo(f){
   const meses = [];
   for(let m = v.desde.slice(0,7), i = 0; m <= v.hasta.slice(0,7); m = addMonthsISO(m + "-01", 1).slice(0,7), i++){
     const prev = rAnterior.total ? (rAnterior.porMes[mesesAnt[i]] || 0) : null;
-    meses.push({ etiqueta: esc(fmtISO(m + "-01", { month:"short" }).replace(".", "").slice(0, 3)), n: r.porMes[m] || 0, prev,
-      titulo: `${mesCortoDe(m)}: ${r.porMes[m] || 0}${prev != null ? ` (${t("antes","before","antes","לפני")}: ${prev})` : ""}` });
+    const plan = r.porMesPlan[m] || 0;
+    meses.push({ etiqueta: esc(fmtISO(m + "-01", { month:"short" }).replace(".", "").slice(0, 3)), n: r.porMes[m] || 0, prev, plan,
+      titulo: `${mesCortoDe(m)}: ${r.porMes[m] || 0}${plan ? ` + ${t("{n} planificadas","{n} planned","{n} planejadas","{n} מתוכננות",{n:plan})}` : ""}${prev != null ? ` (${t("antes","before","antes","לפני")}: ${prev})` : ""}` });
   }
 
   const zonas = Object.values(ZONES).map(z=>({
@@ -15019,15 +15109,11 @@ function renderReportePeriodo(f){
     })
     .sort((a,b)=>b.n-a.n);
 
-  const nombreDe = correo => {
-    const m = memberByEmail(correo);
-    return esc(m ? (m.name || m.email) : correo);
-  };
   const personas = Object.entries(r.porPersona)
-    .map(([correo, n])=>({ etiqueta: nombreDe(correo), n }))
+    .map(([correo, n])=>({ etiqueta: esc(nombreEnReporte(correo)), n }))
     .sort((a,b)=>b.n-a.n);
   const quienesParticiparon = Object.entries(r.participantes)
-    .map(([correo, n])=>({ etiqueta: nombreDe(correo), n }))
+    .map(([correo, n])=>({ etiqueta: esc(nombreEnReporte(correo)), n }))
     .sort((a,b)=>b.n-a.n);
 
   const notas = [];
@@ -15057,7 +15143,7 @@ function renderReportePeriodo(f){
   };
   const kpi = (n, txt, extra) => `<div class="rep-kpi"><div class="rep-kpi-num">${n}</div><div class="rep-kpi-txt">${txt}</div>${extra}</div>`;
   const kpis = tiraDeNumeros([
-    `<div class="rep-kpi"><div class="rep-kpi-num rep-total-num">${r.total}</div><div class="rep-kpi-txt">${t("actividades","activities","atividades","פעילויות")}</div>${comparacion}</div>`,
+    `<div class="rep-kpi"><div class="rep-kpi-num rep-total-num">${r.total}</div><div class="rep-kpi-txt">${r.planificadas ? t("actividades hechas","activities done","atividades feitas","פעילויות שבוצעו") : t("actividades","activities","atividades","פעילויות")}</div>${comparacion}${r.planificadas ? `<div class="rep-plan" title="${esc(t("Todavía no pasaron: no entran en ningún otro número del reporte.","They haven't happened yet: they're not in any other number of the report.","Ainda não aconteceram: não entram em nenhum outro número do relatório.","הן עוד לא קרו: הן לא נכללות באף מספר אחר בדוח."))}">+ ${esc(t("{n} planificadas","{n} planned","{n} planejadas","{n} מתוכננות",{n:r.planificadas}))}</div>` : ""}</div>`,
     kpi(cuenta(r.porPais), t("países con actividad","countries with activity","países com atividade","מדינות עם פעילות"), delta(cuenta(r.porPais), cuenta(rAnterior.porPais))),
     kpi(r.ciudades.size, t("ciudades distintas","different cities","cidades diferentes","ערים שונות"), delta(r.ciudades.size, rAnterior.ciudades.size)),
     kpi(cuenta(r.porPersona), t("personas que cargaron","people who logged","pessoas que carregaram","אנשים שרשמו"), delta(cuenta(r.porPersona), cuenta(rAnterior.porPersona))),
@@ -15078,7 +15164,8 @@ function renderReportePeriodo(f){
         t("Tocá una fila para ver esas actividades en el Inicio","Tap a row to see those activities on Home","Toque uma linha para ver essas atividades no Início","הקש/י על שורה כדי לראות את הפעילויות בדף הבית"), `
     <div class="rep-grilla rep-grilla-3">
       ${graficoMensual(t("Mes a mes","Month by month","Mês a mês","חודש אחר חודש"), meses,
-        rAnterior.total ? t("La columna clara es el mismo mes de {a}.","The light column is the same month of {a}.","A coluna clara é o mesmo mês de {a}.","העמודה הבהירה היא אותו חודש ב-{a}.",{a:esc(antes)}) : "")}
+        [rAnterior.total ? t("La columna clara es el mismo mes de {a}.","The light column is the same month of {a}.","A coluna clara é o mesmo mês de {a}.","העמודה הבהירה היא אותו חודש ב-{a}.",{a:esc(antes)}) : "",
+         r.planificadas ? t("Con borde punteado, lo planificado: todavía no pasó.","Dotted outline: planned, it hasn't happened yet.","Com borda pontilhada, o planejado: ainda não aconteceu.","במסגרת מנוקדת: מתוכנן, עוד לא קרה.") : ""].filter(Boolean).join(" "))}
       ${bloqueDeBarras(t("Por zona","By zone","Por zona","לפי אזור"), zonas,
         t("Nada con zona cargada.","Nothing with a zone set.","Nada com zona carregada.","אין דבר עם אזור."))}
       ${bloqueDeBarras(t("Por país","By country","Por país","לפי מדינה"), paises,
@@ -16985,11 +17072,14 @@ function renderCalIr(anchor){
   const hasta = Math.max(hoyAnio + 1, Number(anio));
   const anios = [];
   for(let a = desde; a <= hasta; a++) anios.push(String(a));
+  // Para moverse por el calendario sirve ver también lo que viene: lo
+  // hecho y lo planificado juntos (el reporte los separa).
   const r = armarReporte(`${anio}-01-01`, `${anio}-12-31`, {});
-  const maximo = Math.max(1, ...Object.values(r.porMes));
+  const deMes = m => (r.porMes[m] || 0) + (r.porMesPlan[m] || 0);
+  const maximo = Math.max(1, ...Array.from({ length:12 }, (_, i) => deMes(`${anio}-${String(i + 1).padStart(2, "0")}`)));
   const meses = Array.from({ length:12 }, (_, i) => {
     const m = `${anio}-${String(i + 1).padStart(2, "0")}`;
-    const n = r.porMes[m] || 0;
+    const n = deMes(m);
     const nombre = fmtISO(m + "-01", { month:"long", year:"numeric" });
     const cuantas = n === 1 ? t("1 actividad","1 activity","1 atividade","פעילות אחת") : t("{n} actividades","{n} activities","{n} atividades","{n} פעילויות",{n});
     return `<button type="button" class="cal-pill cal-ir-mes${m === anchor.slice(0,7) ? " actual" : ""}${m === hoy.slice(0,7) ? " hoy" : ""}" data-action="cal-ir-mes" data-key="${m}" aria-label="${esc(nombre)} · ${esc(cuantas)}" title="${esc(cuantas)}">
@@ -17106,29 +17196,54 @@ function calendarioStep(sub, anchor, step){
 // para ubicarse de un vistazo ("¿cuándo fue el congreso?"), no para leer
 // los eventos: clickear un día abre ese día, y el nombre del mes abre el
 // mes entero.
+// La vista Año, como mapa de calor (AUDITORIA M6, 6/10/2026): cada día
+// pintado más fuerte cuanta más actividad tuvo, para ver de un vistazo
+// qué meses estuvieron movidos. Antes todo día con algo llevaba el mismo
+// círculo, y con las rutinas casi todos tenían algo: no se distinguía
+// nada. Los cuatro tonos se reparten según los días con actividad de ESE
+// año (por cuartos), así un año tranquilo también muestra sus picos.
+function nivelesDeCalor(cuentas){
+  const hay = cuentas.filter(n => n > 0).sort((a, b) => a - b);
+  if(!hay.length) return () => 0;
+  const q = f => hay[Math.min(hay.length - 1, Math.floor(f * hay.length))];
+  const [a, b, c] = [q(0.25), q(0.5), q(0.75)];
+  return n => n <= 0 ? 0 : n <= a ? 1 : n <= b ? 2 : n <= c ? 3 : 4;
+}
 function renderCalendarioAnio(anchor){
   const year = anchor.slice(0,4);
   const byDate = calendarioEventsByDate(`${year}-01-01`, `${year}-12-31`);
   const today = todayISO();
   const dows = weekdayNames("narrow");
+  // Lo que dura más de una semana (un proyecto de meses, un programa)
+  // cuenta solo el día que empieza: si no, pinta todos sus días y el año
+  // entero queda del mismo tono, que era justamente el problema.
+  const cuentaDelDia = iso => (byDate[iso] || []).filter(x => {
+    const ini = x.startDate || x.date || iso, fin = x.endDate && x.endDate >= ini ? x.endDate : ini;
+    return ini === iso || (isoDate(fin) - isoDate(ini)) <= 7 * 86400000;
+  }).length;
+  const nivel = nivelesDeCalor(Object.keys(byDate).filter(d => d.startsWith(year)).map(cuentaDelDia));
+  const cuantos = n => n === 1 ? t("1 evento","1 event","1 evento","אירוע אחד") : t("{n} eventos","{n} events","{n} eventos","{n} אירועים",{n});
   const months = Array.from({length:12}, (_,mi)=>{
     const first = `${year}-${String(mi+1).padStart(2,"0")}-01`;
     const gridStart = weekStartISO(first);
     const month = first.slice(0,7);
+    let total = 0;
     const cells = Array.from({length:42}, (_,i)=>{
       const iso = addDaysISO(gridStart, i);
       if(iso.slice(0,7) !== month) return `<span class="ymd empty"></span>`;
-      const n = (byDate[iso] || []).length;
-      const label = n === 1 ? t("1 evento","1 event","1 evento","אירוע אחד") : t("{n} eventos","{n} events","{n} eventos","{n} אירועים",{n});
-      return `<button type="button" class="ymd${n?" has":""}${iso===today?" today":""}" data-action="cal-open-day" data-date="${iso}"${n?` title="${esc(label)}"`:""}>${Number(iso.slice(8,10))}</button>`;
+      const n = cuentaDelDia(iso);
+      total += n;
+      const etiqueta = `${fmtISO(iso,{day:"numeric",month:"long"})}: ${n ? cuantos(n) : t("sin actividad","no activity","sem atividade","ללא פעילות")}`;
+      return `<button type="button" class="ymd l${nivel(n)}${iso===today?" today":""}" data-action="cal-open-day" data-date="${iso}" title="${esc(etiqueta)}" aria-label="${esc(etiqueta)}">${Number(iso.slice(8,10))}</button>`;
     }).join("");
     return `<div class="year-month">
-        <button type="button" class="year-month-name" data-action="cal-open-month" data-date="${first}">${esc(fmtISO(first,{month:"long"}))}</button>
+        <button type="button" class="year-month-name" data-action="cal-open-month" data-date="${first}"><span>${esc(fmtISO(first,{month:"long"}))}</span>${total ? `<small>${esc(cuantos(total))}</small>` : ""}</button>
         <div class="year-dows">${dows.map(d=>`<span>${esc(d)}</span>`).join("")}</div>
         <div class="year-days">${cells}</div>
       </div>`;
   }).join("");
-  return `<div class="cal-year">${months}</div>`;
+  const leyenda = `<div class="year-leyenda" aria-hidden="true">${esc(t("Menos","Less","Menos","פחות"))}${[0,1,2,3,4].map(l => `<i class="ymd l${l}"></i>`).join("")}${esc(t("Más","More","Mais","יותר"))}</div>`;
+  return `<div class="cal-year">${months}</div>${leyenda}`;
 }
 
 // Vista Agenda: los eventos del mes como lista corrida, sin grilla. Es la
@@ -18830,8 +18945,10 @@ function lecturaDeFicha(D, L){
           return nombres.length ? ` (${esc(nombres.slice(0, 3).map(x => recortar(x, 40)).join(", "))}${nombres.length > 3 ? "…" : ""})` : ""; })();
     out.push({ ic: "📋", html: txt + ".", alerta: !!venc.length });
   }
-  const anio = todayISO().slice(0, 4), antes = String(Number(anio) - 1);
-  const esteAnio = D.visibles.filter(p => fechaDePost(p).startsWith(anio)).length;
+  const hoyF = todayISO(), anio = hoyF.slice(0, 4), antes = String(Number(anio) - 1);
+  // Lo de este año que ya pasó; lo que viene, aparte (AUDITORIA I2).
+  const esteAnio = D.visibles.filter(p => fechaDePost(p).startsWith(anio) && fechaDePost(p).slice(0, 10) <= hoyF).length;
+  const vienen = D.visibles.filter(p => fechaDePost(p).startsWith(anio) && fechaDePost(p).slice(0, 10) > hoyF && !p.cancelled).length;
   const anioPasado = D.visibles.filter(p => fechaDePost(p).startsWith(antes)).length;
   if(esteAnio || anioPasado){
     let txt = t("Este año: <b>{n} registros</b>","This year: <b>{n} records</b>","Este ano: <b>{n} registros</b>","השנה: <b>{n} רשומות</b>",{ n: esteAnio });
@@ -18839,6 +18956,7 @@ function lecturaDeFicha(D, L){
       : esteAnio < anioPasado ? t(", menos que en {a} ({m}).",", fewer than in {a} ({m}).",", menos que em {a} ({m}).",", פחות מב-{a} ({m}).",{ a: antes, m: anioPasado })
       : t(", igual que en {a}.",", same as in {a}.",", igual a {a}.",", כמו ב-{a}.",{ a: antes });
     else txt += ".";
+    if(vienen) txt = txt.replace(/\.$/, "") + t(", y <b>{n} planificados</b> para lo que queda del año.",", and <b>{n} planned</b> for the rest of the year.",", e <b>{n} planejados</b> para o resto do ano.",", ועוד <b>{n} מתוכננות</b> לשארית השנה.",{ n: vienen });
     // Qué parte concentra la actividad: en una zona, el país; en un país,
     // la ciudad.
     if(!L.city){

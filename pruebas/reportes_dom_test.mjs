@@ -37,8 +37,9 @@ const desbordes = await p.evaluate(()=> [...document.querySelectorAll(".rep-barr
 eq("ninguna barra se sale de su riel", desbordes, 0);
 
 const vacias = await p.evaluate(()=> [...document.querySelectorAll(".rep-num")]
-  .filter(e => !/^\d+$/.test(e.textContent.trim())).length);
-eq("todos los números son números", vacias, 0);
+  .filter(e => { const x = e.textContent.trim(); return !x || !/^(\d+)?(\+\d+)?$/.test(x); }).length);
+// Un mes con algo planificado suma «+n» al lado (AUDITORIA I2).
+eq("todos los números son números (con «+n» si hay algo planificado)", vacias, 0);
 
 // Cambiar de período tiene que cambiar el total.
 const totalAnio = total;
