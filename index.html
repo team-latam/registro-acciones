@@ -136,7 +136,22 @@
      anillo del navegador cambia por elemento y a veces no se distingue.
      :where() no suma especificidad, así las reglas propias (.lp-row,
      .sin-anillo) le ganan. */
-  :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible{ outline:2px solid var(--celeste-dark); outline-offset:2px; }
+  /* El anillo de foco (al moverse con el teclado), HACIA ADENTRO de cada
+     botón, campo o foto: hacia afuera, toda zona con recorte (las pestañas
+     de arriba, el formulario de un evento, el mes del Calendario, una
+     tarjeta) le cortaba los bordes al que estaba de punta (barrido del
+     6/10/2026: 20 casos distintos, en todas las pantallas). Los enlaces de
+     texto lo llevan afuera, para no tapar las letras. */
+  :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible{ outline:2px solid var(--celeste-dark); outline-offset:-2px; }
+  :where(a[href]:not([role=button]):not([class*="btn"])):focus-visible{ outline-offset:2px; }
+  /* Los campos (lo que se escribe o se elige) llevan el anillo HACIA
+     ADENTRO de su borde: hacia afuera, toda zona que se desplaza (el
+     formulario de un evento, una ficha, una tarjeta de configuración) le
+     cortaba los costados al que iba de punta a punta (lo mostró el
+     usuario el 6/10/2026). Adentro no lo corta nada, en ninguna pantalla.
+     :focus y no solo :focus-visible: en un campo, el foco siempre se ve. */
+  :where(input:not([type=checkbox]):not([type=radio]):not([type=range]), select, textarea):focus,
+  :where(input:not([type=checkbox]):not([type=radio]):not([type=range]), select, textarea):focus-visible{ outline:2px solid var(--celeste-dark); outline-offset:-2px; }
   #viewRoot:focus{ outline:none; }
   /* "Saltar al contenido": invisible hasta que el teclado lo enfoca. */
   .skip-link{ position:absolute; top:-80px; inset-inline-start:12px; z-index:200; padding:8px 14px; border-radius:999px; background:var(--card); color:var(--ink-strong); font-weight:700; box-shadow:var(--shadow); text-decoration:none; }
@@ -1201,6 +1216,16 @@
      del mismo borde donde el panel queda pegado, o se ve rara. */
   html[dir="rtl"] .type-filter .filter-dropdown-panel{ transform-origin:top right; }
   html[dir="rtl"] .zone-filter .filter-dropdown-panel{ transform-origin:top left; }
+  /* En hebreo, un panel que asoma por la izquierda aunque sea un instante
+     (antes de que fitDropdownPanels lo corra) hace que Chrome agrande la
+     página hacia ese lado y la deje corrida de costado, con todo lo de la
+     derecha afuera (barrido del 6/10/2026). Ahí el panel se cuelga del
+     borde de la barra entera, que ocupa todo el ancho: no puede asomar. */
+  html[dir="rtl"] .filterbar{ position:relative; }
+  html[dir="rtl"] .filterbar .filter-dropdown{ position:static; }
+  html[dir="rtl"] .filterbar .filter-dropdown-panel{ inset-inline-start:0; inset-inline-end:auto; max-width:100%; transform-origin:top right; }
+  html[dir="rtl"] .rep-filtros-envoltorio{ position:static; }
+  html[dir="rtl"] .rep-filtros-pop{ inset-inline-start:0; inset-inline-end:auto; max-width:calc(100% - 20px); }
   @keyframes filterDropdownPop{
     from{ opacity:0; transform:scale(.85) translateY(-6px); }
     to{ opacity:1; transform:scale(1) translateY(0); }
@@ -2585,7 +2610,10 @@
   .rep-barra-control{ position:relative; }
   .rep-filtros-envoltorio{ position:relative; }
   .rep-filtros-pop{ position:absolute; top:calc(100% + 8px); inset-inline-start:0; z-index:20; width:min(320px, calc(100vw - 32px)); background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md); box-shadow:0 14px 36px rgba(8,42,44,.22); padding:14px; display:flex; flex-direction:column; gap:8px; }
-  .rep-filtros-pop .rep-menu{ display:flex; } .rep-filtros-pop .rep-menu select{ flex:1; max-width:none; }
+  .rep-filtros-pop .rep-menu{ display:flex; min-width:0; } .rep-filtros-pop .rep-menu select{ flex:1; max-width:none; min-width:0; width:100%; text-overflow:ellipsis; }
+  /* Un select se estira hasta su opción más larga (un nombre completo):
+     sin min-width:0 empujaba el panel y la página se corría de costado. */
+  .rep-menu{ min-width:0; } .rep-menu select{ min-width:0; text-overflow:ellipsis; }
   .rep-filtros-pie{ display:flex; justify-content:space-between; align-items:center; margin-top:4px; }
   .rep-cabeza{ margin:0 0 14px; }
   .rep-titulo{ margin:0; font-size:24px; font-weight:800; color:var(--ink-strong, var(--ink)); }
@@ -10759,20 +10787,27 @@ function doRender(){
 // 6/10/2026). Si se sale por un costado, se abre hacia el otro; y si
 // tampoco entra, se pega al margen de la pantalla.
 function acomodarMenuDePosteo(){
-  const m = document.querySelector(".post-menu");
+  sinCorrimientoLateral();
+  document.querySelectorAll(".post-menu, .rep-filtros-pop").forEach(acomodarDesplegable);
+  sinCorrimientoLateral();
+}
+// Lo mismo para cualquier desplegable que se abre desde un botón: el panel
+// de filtros de Reportes se abría hacia afuera cuando el botón quedaba a la
+// derecha (con «Comparar», en una pantalla de 1024).
+function acomodarDesplegable(m){
   if(!m) return;
-  m.style.insetInlineStart = ""; m.style.insetInlineEnd = ""; m.style.maxWidth = "";
+  m.style.translate = ""; m.style.maxWidth = "";
+  // Medido sin la animación de entrada (arranca achicado y daría otro ancho).
+  const animacion = m.style.animation;
+  m.style.animation = "none";
   const ancho = document.documentElement.clientWidth, margen = 8;
-  const fuera = r => r.left < margen || r.right > ancho - margen;
-  if(!fuera(m.getBoundingClientRect())) return;
-  m.style.insetInlineEnd = "auto"; m.style.insetInlineStart = "0";
-  const r = m.getBoundingClientRect();
-  if(!fuera(r)) return;
-  // Ni para un lado ni para el otro: se corre lo justo para entrar.
-  m.style.maxWidth = `${ancho - 2 * margen}px`;
-  const r2 = m.getBoundingClientRect();
-  const corrimiento = r2.left < margen ? margen - r2.left : (ancho - margen) - r2.right;
-  m.style.insetInlineStart = `${(isRTL() ? -corrimiento : corrimiento)}px`;
+  let r = m.getBoundingClientRect();
+  if(r.width > ancho - 2 * margen){ m.style.maxWidth = `${ancho - 2 * margen}px`; r = m.getBoundingClientRect(); }
+  // Se corre lo justo para entrar, del lado que se salga (vale igual en
+  // hebreo: se mide en la pantalla, no en el sentido del texto).
+  const dx = r.left < margen ? margen - r.left : r.right > ancho - margen ? (ancho - margen) - r.right : 0;
+  if(dx) m.style.translate = `${Math.round(dx)}px 0`;
+  m.style.animation = animacion;
 }
 
 function renderObserverBanner(){
@@ -13070,9 +13105,18 @@ function vigilarVerMas(){
   }, { rootMargin:"0px 0px 400px 0px" });
   feedMoreObserver.observe(boton);
 }
+// La página no se corre nunca de costado: es una columna. Pero en hebreo,
+// si un desplegable recién dibujado asoma por la izquierda (antes de que
+// fitDropdownPanels lo acomode), Chrome la desplaza solo, y se quedaba así:
+// todo corrido 100 px, con lo de la derecha afuera (barrido del 6/10/2026).
+// Se vuelve al borde antes de medir y después de acomodar.
+function sinCorrimientoLateral(){
+  if(window.scrollX) window.scrollTo({ left:0, top:window.scrollY, behavior:"instant" });
+}
 function afterRenderView(){
   syncHeaderHeight();
   syncTabsScroll();
+  sinCorrimientoLateral();
   fitDropdownPanels();
   updateScrollTop();
   vigilarVerMas();
