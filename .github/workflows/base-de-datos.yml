@@ -38,6 +38,7 @@ jobs:
   probar:
     name: Probarlo en una base descartable
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     services:
       postgres:
         image: postgres:16
@@ -54,7 +55,8 @@ jobs:
       # propósito: no protege nada.
       BASE: postgresql://postgres:postgres@localhost:5432/postgres
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
 
       - name: Que haya psql
         run: |
@@ -115,8 +117,10 @@ jobs:
       group: base-de-datos-aplicar
       cancel-in-progress: false
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
 
       - name: Que haya psql
         run: |

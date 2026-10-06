@@ -26,6 +26,7 @@ jobs:
   mirar:
     name: Pedirle la página a GitHub Pages desde afuera
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Pedirla como la pide curl
         run: |
@@ -119,8 +120,9 @@ jobs:
       # La app sin Supabase es una pantalla de error: se pregunta por el
       # login y por la API, con la dirección y la clave pública que usa la
       # app (las mismas que están en index.html, que se lee de main).
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           sparse-checkout: index.html
           sparse-checkout-cone-mode: false
       - name: ¿Contesta Supabase?

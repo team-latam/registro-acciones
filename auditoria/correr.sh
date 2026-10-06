@@ -33,7 +33,7 @@ echo "Auditoría → $SALIDA"
 } > "$SALIDA/pruebas.txt" 2>&1
 cat "$SALIDA/pruebas.txt"
 
-for h in textos codigo seguridad; do node "$CARPETA/herramientas/$h.mjs"; done
+for h in textos codigo seguridad github; do node "$CARPETA/herramientas/$h.mjs"; done
 if [ "${RAPIDO:-}" = "1" ]; then
   AUDITORIA_PANTALLAS="1280x800:es,390x844:es,390x844:he" node "$CARPETA/herramientas/pantallas.mjs"
   AUDITORIA_VOLUMEN=400 node "$CARPETA/herramientas/datos.mjs"

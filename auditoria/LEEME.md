@@ -10,7 +10,7 @@ cuando el usuario pide una, se arranca de acá (ver `METODO.md`).
 | `RECURRENTES.md` | Lo que ya falló más de una vez, por qué y la regla que lo evita |
 | `conocidos.json` | Hallazgos ya revisados y aceptados, con el porqué (no se vuelven a contar) |
 | `correr.sh` | Corre todo y arma el informe en `salida/<fecha>/informe.md` |
-| `herramientas/` | Una por tema: `textos`, `codigo`, `seguridad`, `pantallas`, `datos`, e `informe` que junta todo |
+| `herramientas/` | Una por tema: `textos`, `codigo`, `seguridad`, `github`, `pantallas`, `datos`, e `informe` que junta todo |
 
 ```
 ./auditoria/correr.sh            # todo, unos 15 minutos
