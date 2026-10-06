@@ -127,6 +127,9 @@ const ctx = { crypto: { getRandomValues: a => { a.forEach((_, i)=> a[i] = i * 7 
 const crear = new Function("ctx", `
   const crypto = ctx.crypto;
   ${grab("tsToMillis")}
+  ${grab("textoSano")}
+  ${grab("formaDeLugares")}
+  ${grab("formaDeHitos")}
   ${grab("crearSupabaseStore")}
   return crearSupabaseStore;
 `)(ctx);
@@ -790,6 +793,9 @@ function navegadorDeMentira(){
     const setInterval = (fn, ms) => ctx.relojes.push({ fn, ms, parado:false });
     const clearInterval = n => { if(ctx.relojes[n - 1]) ctx.relojes[n - 1].parado = true; };
     ${grab("tsToMillis")}
+    ${grab("textoSano")}
+    ${grab("formaDeLugares")}
+    ${grab("formaDeHitos")}
     ${grab("crearSupabaseStore")}
     return crearSupabaseStore;
   `)({ crypto: ctx.crypto, localStorage: nav.localStorage, Date: Fecha, relojes: nav.relojes });

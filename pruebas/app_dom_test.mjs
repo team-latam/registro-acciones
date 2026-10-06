@@ -678,7 +678,7 @@ const hasta = async (p, fn, arg, ms = 5000) => {
      await p.$eval('[data-action="rv-grupo"][data-key="sacados"]', e => e.textContent.replace(/\s+/g, " ").trim()).catch(() => null), "Sacados0");
   eq("revisar: arranca en Actividades, lo más nuevo primero", await filas(), ["Glämsta", "Visita Tucumán - Ana", "CB Mendoza (7 personas)"]);
   eq("revisar: cada fila con lo sugerido (tipo, lugar, personas)",
-     await p.$eval('.rv-row:has([data-post-id="cal_ev1"]) .rv-sug', e => [...e.children].map(c => c.textContent.trim())), ["Sugerido:", "🧳 Visita", "📍 Tucuman, Argentina", "👥 Ana, Zeka"]);
+     await p.$eval('.rv-row:has([data-post-id="cal_ev1"]) .rv-sug', e => [...e.children].map(c => c.textContent.trim())), ["Sugerido:", "🧳 Visita", "📍 Tucumán, Argentina", "👥 Ana, Zeka"]);
   await p.click('[data-action="rv-seguros"]');
   eq("revisar: «Solo los seguros» deja los de punto verde", await filas(), ["Visita Tucumán - Ana", "CB Mendoza (7 personas)"]);
   await p.click('[data-action="rv-todos"]');
@@ -699,7 +699,7 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   await hasta(p, () => document.querySelector('.admin-item[data-view="revisarcal"]').textContent.includes("2"));
   eq("revisar: lo guardado se queda en su lugar, marcado «✓ Guardado» y con lo que quedó (no lo sugerido)",
      await p.$eval('.rv-row:has([data-post-id="cal_ev1"]) .rv-sug', e => [...e.children].map(c => c.textContent.trim())),
-     ["✓ Guardado", "🧳 Visita", "📍 Tucuman, Argentina", "👥 Ana Pérez, Zeka"]);
+     ["✓ Guardado", "🧳 Visita", "📍 Tucumán, Argentina", "👥 Ana Pérez, Zeka"]);
   eq("revisar: la barra y el panel flotan abajo de la pantalla (acompañan al recorrer la lista)",
      await p.evaluate(() => { document.querySelector('[data-action="rv-elegir"][data-post-id="cal_ev2"]').click(); return true; })
        .then(() => p.waitForSelector(".rv-flota .rv-barra")).then(() => p.$eval(".rv-flota", e => getComputedStyle(e).position)), "fixed");
@@ -1205,7 +1205,7 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   eq("ciudades: la ficha del país lista sus ciudades", await p.$$eval('.fl-hijo[data-action="drill-city"]', es => es.map(e => e.dataset.city).sort()), ["Montevideo", "Punta Del Este"]);
   await p.click('.fl-hijo[data-city="Punta Del Este"]');
   eq("ciudades: al entrar a Punta del Este, su ficha (sin ir al Inicio)", await hasta(p, () =>
-    (document.querySelector(".ficha-lugar h1") || {}).textContent === "Punta Del Este" && /Uruguay/.test(document.querySelector(".fl-migas").textContent)), true);
+    (document.querySelector(".ficha-lugar h1") || {}).textContent === "Punta del Este" && /Uruguay/.test(document.querySelector(".fl-migas").textContent)), true);
   eq("ciudades: solo con lo suyo", await stats().then(v => [v[0], v[2], v[3]]), ["1", "1 de 1", "1"]);
   await p.click('.fl-migas [data-action="drill-country"]');
   await p.click('.fl-hijo[data-city="Montevideo"]');
@@ -1888,6 +1888,28 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   eq("y una foto con Espacio", await hasta(p, () => document.getElementById("lightbox").classList.contains("show"), null, 3000), true);
   eq("los ✕ dicen qué hacen", await p.evaluate(() => [...document.querySelectorAll(".rm")].filter(b => !b.getAttribute("aria-label") && !b.getAttribute("title")).length), 0);
   eq("sin un solo error", errores, []);
+  await p.close();
+}
+
+/* ---------- Un posteo con lugares y hitos de forma rara (AUDITORIA B5) ---------- */
+{
+  const { p, errores } = await entrar(ADMIN, "Benny", b => b.posts.push({
+    id: "p_raro", title: "Proyecto raro", content: "Con datos de otra forma.",
+    date: dia(3), start_date: dia(3), end_date: dia(30), activity_type: "visita",
+    author_name: "Benny", author_email: ADMIN, is_project: true, project_status: "en_curso",
+    milestones: [{ id: "hx", date: dia(-2) }, { id: "hy", label: "Con dueño raro", date: dia(5), owner: { nombre: "Ana" } }, null],
+    scopes: [{ type: "barrio", name: "X" }, { type: "ciudad", country: "Argentina", city: "Cordoba" }],
+    images: [], files: [], links: [], mentions: [], liked_by: [], editors: [], participants: [],
+    recurrence_skip: [], recurrence_moves: {}, created_at: hace(1) }));
+  await p.waitForSelector('.post[data-post-id="p_raro"]');
+  const texto = await p.evaluate(() => document.body.innerText);
+  eq("datos raros: ni undefined ni [object Object] en el Inicio", /undefined|\[object Object\]/.test(texto), false);
+  eq("datos raros: Córdoba con tilde", await p.$eval('.post[data-post-id="p_raro"]', e => e.innerText.includes("Córdoba")), true);
+  eq("datos raros: el lugar desconocido no deja un chip vacío", await p.$$eval('.post[data-post-id="p_raro"] .scope-chip', cs => cs.length), 1);
+  await p.evaluate(() => document.querySelector('nav.tabs button[data-view="proyectos"]')?.click());
+  await p.waitForTimeout(300);
+  eq("datos raros: tampoco en Proyectos", await p.evaluate(() => /undefined|\[object Object\]/.test(document.body.innerText)), false);
+  eq("datos raros: sin un solo error", errores, []);
   await p.close();
 }
 

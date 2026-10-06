@@ -1772,10 +1772,13 @@
 
   /* ---------- Modal ---------- */
   .modal-overlay{
-    position:fixed; inset:0; background:rgba(8,30,31,0.55); display:flex; align-items:flex-start;
+    position:fixed; inset:0; background:rgba(8,30,31,0.62); display:flex; align-items:flex-start;
     justify-content:center; padding:24px 12px; z-index:100; overflow-y:auto;
   }
   .modal-overlay[hidden]{ display:none; }
+  /* Con una ventana abierta, el + y la flecha de subir quedaban encima
+     del velo, sin atenuar y clickeables (AUDITORIA B7): se esconden. */
+  body:has(.modal-overlay:not([hidden]), .visor-doc:not([hidden]), #lightbox.show) :is(#fab, #scrollTop, #newPostsPill){ visibility:hidden; }
   @media (max-width:640px){
     /* En el celular el formulario aprovecha la pantalla: menos margen
        alrededor y alto tope según lo que de verdad se ve. */
@@ -2219,7 +2222,13 @@
     .fl-cuerpo{ grid-column:2; grid-row:2; }
     .fl-it > .rs-ok{ grid-column:3; grid-row:1; }
     .fl-head h1{ font-size:21px; }
-    .place-seg.fl-seg{ width:100%; }
+    /* Los dos botones lado a lado, y las tres opciones de «qué incluir»
+       en una fila: antes los botones iban apilados a lo ancho y la
+       última opción se caía sola a un segundo renglón (AUDITORIA B7). */
+    .fl-acciones{ display:flex; gap:8px; width:100%; }
+    .fl-acciones > button{ flex:1 1 0; min-width:0; padding-inline:10px; font-size:13px; }
+    .place-seg.fl-seg{ width:100%; flex-wrap:nowrap; border-radius:16px; }
+    .place-seg.fl-seg .place-seg-btn{ flex:1 1 0; min-width:0; padding:7px 4px; white-space:normal; text-align:center; line-height:1.2; border-radius:12px; }
   }
 
   /* ----- Documentación esperada de un evento ----- */
@@ -2782,7 +2791,9 @@
   .country-top .count{ white-space:nowrap; line-height:1.1; }
   .country-serie{ display:flex; align-items:flex-end; gap:3px; height:26px; margin:8px 0 6px; }
   .country-serie span{ flex:1; border-radius:2px; background:var(--surface-alt); }
-  .country-last{ font-size:12px; color:var(--text-muted); font-weight:600; margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  /* Hasta dos renglones: en uno solo, «Última: Visita a la c…» no decía
+     ni adónde fue (AUDITORIA B7). Al pasar el mouse se ve entero. */
+  .country-last{ font-size:12px; color:var(--text-muted); font-weight:600; margin-top:2px; overflow:hidden; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-clamp:2; overflow-wrap:anywhere; }
   .paises-resumen{ margin:0 0 12px; font-size:14px; }
   /* Los países sin actividad propia, plegados: siguen ahí para abrirlos
      (lo macro de su zona y de LatAm aplica igual), sin tapar a los que
@@ -3118,6 +3129,9 @@
     position:absolute; overflow:hidden; cursor:pointer; text-align:start; line-height:1.25;
     background:var(--celeste-soft); color:var(--ink-strong); border:1px solid var(--border);
     border-inline-start:3px solid var(--celeste); border-radius:5px; padding:2px 5px; font-size:11.5px; font-weight:600;
+    /* Un <button> centra lo de adentro a lo alto: en un evento de 8 horas
+       el título quedaba flotando en el medio. Arriba, como en Google. */
+    display:flex; flex-direction:column; justify-content:flex-start;
   }
   .cal-block.cancelled{ text-decoration:line-through; opacity:0.6; }
   .cal-block b{ font-weight:800; }
@@ -4202,10 +4216,26 @@ const DEFAULT_CITY_LABELS = {
     "Isla Margarita": { es:"Isla Margarita", en:"Margarita Island", pt:"Ilha Margarita", he:"האי מרגריטה" },
   },
 };
+// Los nombres de CITY_PRESETS se guardaron sin tildes ("Cordoba") y así
+// quedaron en cada posteo: cambiarlos rompería lo ya cargado. Para
+// MOSTRARLOS se escriben bien (docs/AUDITORIA.md, B5); en otro idioma con
+// su propia traducción, manda la traducción.
+const CIUDAD_BIEN_ESCRITA = {
+  "Bahia Blanca":"Bahía Blanca", "Cordoba":"Córdoba", "Mar Del Plata":"Mar del Plata",
+  "Martinez":"Martínez", "Moron":"Morón", "Ramos Mejia":"Ramos Mejía", "Tucuman":"Tucumán",
+  "Vicente Lopez":"Vicente López", "Belem":"Belém", "Itacare":"Itacaré",
+  "Morro De Sp":"Morro de São Paulo", "Petropolis":"Petrópolis", "Rio De Janeiro":"Río de Janeiro",
+  "Sao Paulo":"São Paulo", "Pucon":"Pucón", "Bogota":"Bogotá", "Medellin":"Medellín",
+  "San Andres":"San Andrés", "San Jose":"San José", "Roatan":"Roatán", "Cancun":"Cancún",
+  "Merida":"Mérida", "Playa Del Carmen":"Playa del Carmen", "San Miguel De Allende":"San Miguel de Allende",
+  "San Juan Del Sur":"San Juan del Sur", "Bocas Del Toro":"Bocas del Toro", "Asuncion":"Asunción",
+  "Punta Del Este":"Punta del Este",
+};
 function cityLabel(country, city){
   const byCity = hasOwn(DEFAULT_CITY_LABELS, country) ? DEFAULT_CITY_LABELS[country] : null;
   const row = byCity && hasOwn(byCity, city) ? byCity[city] : null;
-  return row ? row[currentLang()] : city;
+  const dicho = row ? row[currentLang()] : city;
+  return dicho === city && hasOwn(CIUDAD_BIEN_ESCRITA, city) ? CIUDAD_BIEN_ESCRITA[city] : dicho;
 }
 // Lookups con claves que vienen de la base (país/ciudad de un scope):
 // con `obj[key]` a secas, "__proto__"/"constructor" devuelven cosas
@@ -5055,11 +5085,14 @@ function myRosterEntry(){
 // Identidad de alguien por email: primero entre los que están hoy, y si no
 // entre los que estuvieron. La entrada de un ex integrante viene marcada
 // con former:true para poder mostrarlo como tal donde haga falta.
+// Sin distinguir mayúsculas: un correo que llegó como "Ana@X.com" (de
+// Calendar, de una importación) es la misma persona (AUDITORIA B5).
 function memberByEmail(email){
   if(!email) return null;
-  const active = state.roster.find(u=>u.email===email);
+  const e = String(email).toLowerCase();
+  const active = state.roster.find(u=>String(u.email||"").toLowerCase()===e);
   if(active) return active;
-  const former = state.formerMembers.find(u=>u.email===email);
+  const former = state.formerMembers.find(u=>String(u.email||"").toLowerCase()===e);
   return former ? { ...former, former:true } : null;
 }
 function memberByNick(nick){
@@ -5394,6 +5427,38 @@ function scopeLabel(scope){
   if(scope.type==="pais") return countryLabel(scope.country);
   if(scope.type==="ciudad") return `${cityLabel(scope.country, scope.city)}, ${countryLabel(scope.country)}`;
   return "";
+}
+// La base guarda `scopes` y `milestones` como jsonb sin forma fija: si
+// alguna vez llega uno raro (de una versión vieja, de una importación, de
+// alguien escribiendo a mano), la tarjeta pintaba "undefined", "[object
+// Object]" o un chip vacío (docs/AUDITORIA.md, B5). Se ordenan una vez, al
+// leerlos de la base, y el resto de la app puede confiar en la forma.
+const textoSano = v => typeof v === "string" ? v : (typeof v === "number" ? String(v) : "");
+function formaDeLugares(lista){
+  if(!Array.isArray(lista)) return [];
+  return lista.flatMap(sc => {
+    if(!sc || typeof sc !== "object") return [];
+    if(sc.type === "todo") return [{ ...sc }];
+    if(sc.type === "region") return textoSano(sc.region) ? [{ ...sc, region: textoSano(sc.region) }] : [];
+    if(sc.type === "pais") return textoSano(sc.country) ? [{ ...sc, country: textoSano(sc.country) }] : [];
+    if(sc.type === "ciudad"){
+      const country = textoSano(sc.country), city = textoSano(sc.city);
+      return country && city ? [{ ...sc, country, city }] : country ? [{ ...sc, type: "pais", country }] : [];
+    }
+    return [];
+  });
+}
+function formaDeHitos(lista){
+  if(!Array.isArray(lista)) return [];
+  return lista.filter(m => m && typeof m === "object").map(m => {
+    const n = { ...m, label: textoSano(m.label), date: textoSano(m.date), done: !!m.done };
+    if("endDate" in m) n.endDate = textoSano(m.endDate);
+    if("owners" in m || "owner" in m){
+      n.owners = (Array.isArray(m.owners) ? m.owners : [m.owner]).map(textoSano).filter(Boolean);
+      delete n.owner;
+    }
+    return n;
+  });
 }
 function scopeIcon(scope){
   if(scope.type==="todo") return "🌐";
@@ -7575,9 +7640,11 @@ function crearSupabaseStore(sb, opciones = {}){
     const o = aObjeto(f);
     o.startTime = soloHora(o.startTime);
     o.endTime = soloHora(o.endTime);
+    o.scopes = formaDeLugares(o.scopes);
+    o.milestones = formaDeHitos(o.milestones);
     return resolverAdjuntos(o);
   };
-  const aComentario = f => resolverAdjuntos(aObjeto(f));
+  const aComentario = f => { const o = aObjeto(f); o.scopes = formaDeLugares(o.scopes); return resolverAdjuntos(o); };
 
   // Un id nuevo con la misma forma que los que vinieron de Firebase (20
   // caracteres del mismo alfabeto), así los viejos y los nuevos se ven
@@ -15344,8 +15411,8 @@ function renderPaisesView(){
     const a = act[c.name] || {};
     const cuando = p => fmtISO(p.startDate || p.date, { day:"numeric", month:"short" });
     const linea = a.proxima
-      ? `<div class="country-last">${t("Próximo","Next","Próximo","הבא")}: <span dir="auto">${esc(calendarioLabel(a.proxima))}</span> · ${esc(cuando(a.proxima))}</div>`
-      : a.ultima ? `<div class="country-last">${t("Última","Latest","Última","אחרונה")}: <span dir="auto">${esc(calendarioLabel(a.ultima))}</span> · ${esc(cuando(a.ultima))}</div>` : "";
+      ? `<div class="country-last" title="${esc(calendarioLabel(a.proxima))}">${t("Próximo","Next","Próximo","הבא")}: <span dir="auto">${esc(calendarioLabel(a.proxima))}</span> · ${esc(cuando(a.proxima))}</div>`
+      : a.ultima ? `<div class="country-last" title="${esc(calendarioLabel(a.ultima))}">${t("Última","Latest","Última","אחרונה")}: <span dir="auto">${esc(calendarioLabel(a.ultima))}</span> · ${esc(cuando(a.ultima))}</div>` : "";
     return `<div role="button" tabindex="0" class="country-card" style="border-inline-start-color:${color}" data-action="drill-country" data-country="${esc(c.name)}">
       <div class="country-top"><div class="name">${esc(countryLabel(c.name))}</div><div class="count">${cnt}<small> ${unit}</small></div></div>
       ${renderSerieMensual(a.meses, color)}
@@ -16881,7 +16948,15 @@ function calendarioTitle(sub, anchor){
   const n = sub === "4dias" ? customDaysCount() : 7;
   const a = sub === "semana" ? weekStartISO(anchor) : anchor;
   const b = addDaysISO(a, n - 1);
-  return `${fmtISO(a,{day:"numeric",month:"short"})} – ${fmtISO(b,{day:"numeric",month:"short",year:"numeric"})}`;
+  // Con formatRange cada idioma junta las dos puntas a su manera y con el
+  // mismo formato: "4–10 oct 2026", "28 sept – 4 oct 2026". Antes salía
+  // "4 oct – 10 de oct de 2026", cada mitad distinta (AUDITORIA B7).
+  try{
+    return new Intl.DateTimeFormat(dateLocale(), { day:"numeric", month:"short", year:"numeric", timeZone:"UTC" })
+      .formatRange(isoDate(a), isoDate(b));
+  }catch(e){
+    return `${fmtISO(a,{day:"numeric",month:"short"})} – ${fmtISO(b,{day:"numeric",month:"short",year:"numeric"})}`;
+  }
 }
 // La ventanita de "Ir a una fecha": un campo para escribir la fecha, los
 // años en una fila y los doce meses del año elegido. La rayita de cada mes
@@ -18728,7 +18803,8 @@ function lecturaDeFicha(D, L){
       : pend.length === 1 ? t(" con <b>1 hito pendiente</b>"," with <b>1 pending milestone</b>"," com <b>1 marco pendente</b>"," עם <b>אבן דרך אחת ממתינה</b>")
       : t(" con <b>{n} hitos pendientes</b>"," with <b>{n} pending milestones</b>"," com <b>{n} marcos pendentes</b>"," עם <b>{n} אבני דרך ממתינות</b>",{ n: pend.length });
     if(venc.length) txt += (venc.length === 1 ? t(", 1 de ellos <b>vencido</b>",", 1 of them <b>overdue</b>",", 1 deles <b>vencido</b>",", אחת מהן <b>באיחור</b>") : t(", {v} de ellos <b>vencidos</b>",", {v} of them <b>overdue</b>",", {v} deles <b>vencidos</b>",", {v} מהן <b>באיחור</b>",{ v: venc.length }))
-      + ` (${esc(venc.slice(0, 3).map(h => recortar(h.m.label, 40)).join(", "))}${venc.length > 3 ? "…" : ""})`;
+      + (() => { const nombres = venc.map(h => h.m.label).filter(Boolean);
+          return nombres.length ? ` (${esc(nombres.slice(0, 3).map(x => recortar(x, 40)).join(", "))}${nombres.length > 3 ? "…" : ""})` : ""; })();
     out.push({ ic: "📋", html: txt + ".", alerta: !!venc.length });
   }
   const anio = todayISO().slice(0, 4), antes = String(Number(anio) - 1);
