@@ -154,7 +154,7 @@ que decidir o hacer un paso en un panel).
 
 | # | Qué | Detalle |
 |---|---|---|
-| B1 | Borrar 6 funciones sin llamador, 6 ramas del despachador que ningún botón emite, 38 clases CSS sin uso y 5 reglas pisadas; unificar los 8 puntos de quiebre en 3 (≤ 520, ≤ 760, ≥ 1024); 18 bloques `@media 640` repartidos | código 12–16, rendimiento 15 |
+| B1 | ~~Borrar 6 funciones sin llamador, 6 ramas del despachador que ningún botón emite, 38 clases CSS sin uso y 5 reglas pisadas; unificar los 8 puntos de quiebre en 3 (≤ 520, ≤ 760, ≥ 1024); 18 bloques `@media 640` repartidos~~ ✅ 6/10 (quedan 640, 760 y 900 px: juntarlos cambia el diseño entre esos anchos) | código 12–16, rendimiento 15 |
 | B2 | Unificar los tres vocabularios de "lugar" y los dos resolvedores de nivel; dejar un solo reloj (local) y un solo parser de fecha tipeada; una sola `personaDe()` | código 17–19 |
 | B3 | `crearSupabaseStore` tiene 890 líneas y `CLICK_ACTIONS` 1.500; nueve funciones de más de 100 líneas | código 20 |
 | B4 | ~~Workflows: `permissions: contents: read` en los seis; acciones fijadas por SHA; sacar los `insert/update` que el `02` le suma de más a las tablas del `12`; borrar tres índices que nadie usa; uniformar `search_path` en las funciones `security invoker`~~ ✅ 6/10 | seguridad 8, backend 20, 25, 26 |
