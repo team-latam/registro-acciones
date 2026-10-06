@@ -4764,8 +4764,22 @@ function dateLocale(){ return DATE_LOCALES[currentLang()] || "es-AR"; }
 // fecha UTC: a las 22:00 de Buenos Aires ya es mañana en UTC, y toda
 // rutina posteada de noche quedaba fechada al día siguiente.
 function todayISO(){
-  const d = new Date();
+  return isoLocalDe(Date.now());
+}
+// El día (o el mes, o día y hora) de un instante, en la hora de quien
+// mira, igual que todayISO. Antes varios lugares lo sacaban con
+// toISOString(), que da el día en UTC: en Argentina, después de las 21:00
+// lo de hoy caía en mañana (y fuera de «Hoy» en el Registro de actividad,
+// o en el mes siguiente en «este mes»); en Israel, antes de las 03:00, en
+// ayer (docs/AUDITORIA.md, I5).
+function isoLocalDe(ms){
+  const d = new Date(ms);
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
+function mesLocalDe(ms){ return isoLocalDe(ms).slice(0, 7); }
+function horaLocalDe(ms){
+  const d = new Date(ms);
+  return `${isoLocalDe(ms)} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
 }
 // ---------------------------------------------------------------------
 // Formato de fecha y hora, elegible en Configuración > Calendario.
@@ -6129,11 +6143,11 @@ function buildCalendarEvent(postData, postId){
   else if(postData.organizer) descLines.push("", `${t("Creado por","Created by","Criado por","נוצר על ידי")} ${postData.organizer}`);
   descLines.push("", t("Cargado por {n} en Registro de Acciones.","Added by {n} in the Action Log.","Adicionado por {n} no Registro de Ações.","{n} נוסף על ידי ביומן הפעילויות.",{n:postData.authorName}));
   // Con hora (startTime/endTime cargados): evento puntual, dateTime +
-  // timeZone del navegador de quien lo carga (Calendar API lo exige junto
-  // a dateTime). Sin hora: como antes, evento de "todo el día" con date
-  // (el fin es exclusivo, por eso el +1 día).
+  // timeZone del calendario compartido (ver zonaDelCalendario; Calendar API
+  // la exige junto a dateTime). Sin hora: como antes, evento de "todo el
+  // día" con date (el fin es exclusivo, por eso el +1 día).
   const hasTime = !!(postData.startTime && postData.endTime);
-  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const timeZone = zonaDelCalendario();
   return {
     summary: calendarSummary(postData),
     location: postData.location || undefined,
@@ -6470,6 +6484,18 @@ function debeGuardarSyncToken(meta, result, releido, ahoraMs){
 // Lee eventos con la clave de API (no el login de nadie) — el calendario
 // tiene que estar configurado como público para lectura en Google
 // Calendar. Nunca escribe nada: solo se usa para detectar cambios.
+// La zona horaria del calendario compartido, tal como la dice Google en
+// cada respuesta de events.list. Las horas de un posteo no llevan zona: se
+// leen de Google en la del calendario (decidir.mjs y applyCalendarEvent…
+// toman los HH:MM tal cual vienen), así que al crear un evento también hay
+// que mandarlas en esa zona. Antes iban en la del navegador de quien
+// cargaba: alguien en Israel cargaba «15:00», Google lo guardaba como 15:00
+// de Israel, y la sincronización siguiente lo «corregía» a la hora del
+// calendario con un comentario de cambio (docs/AUDITORIA.md, I5).
+let calendarTimeZone = null;
+function zonaDelCalendario(){
+  return calendarTimeZone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+}
 async function fetchCalendarChanges(syncToken){
   let pageToken = null, nextSyncToken = null;
   const events = [];
@@ -6487,6 +6513,7 @@ async function fetchCalendarChanges(syncToken){
     // Configuración) vuelve como 400 "Invalid sync token" — mismo remedio.
     if(res.status === 400 && syncToken && /sync ?token/i.test(body.error?.message || "")) return { needsFullResync:true };
     if(!res.ok) throw new Error(body.error?.message || res.statusText);
+    if(typeof body.timeZone === "string" && body.timeZone) calendarTimeZone = body.timeZone;
     events.push(...(body.items||[]));
     pageToken = body.nextPageToken || null;
     if(body.nextSyncToken) nextSyncToken = body.nextSyncToken;
@@ -6606,13 +6633,17 @@ async function createImportedPost(ev, data){
 // calendarEventId nunca se guardó, ver saveCalendarLinkOrWarn) terminaba
 // en el mismo "Sincronizado ✅" que si sí se hubiera aplicado — no había
 // forma de notar, desde el aviso, que algo se estaba quedando afuera.
-// De qué fecha de la serie es esta excepción. Google le da a cada una un
-// id "<idDelMolde>_<fechaOriginalUTC>"; originalStartTime dice lo mismo y
-// queda como respaldo por si el id no viene con esa forma.
+// De qué fecha de la serie es esta excepción. originalStartTime trae la
+// hora original en la zona del calendario, que es la fecha con que la app
+// arma la serie: va primero. El id ("<idDelMolde>_<fechaOriginalUTC>") va
+// de respaldo, porque está en UTC: una rutina de las 22:00 en Buenos Aires
+// del 12/1 tiene id "…_20260113T010000Z", y tomándolo primero se salteaba
+// o se movía el 13 en vez del 12 (docs/AUDITORIA.md, I5).
 function originalOccurrenceISO(ev){
   if(!ev || !ev.recurringEventId) return null;
-  return rruleDateToISO(String(ev.id||"").slice(String(ev.recurringEventId).length + 1)) ||
-    (ev.originalStartTime && rruleDateToISO(String(ev.originalStartTime.date || ev.originalStartTime.dateTime||"").replace(/-/g,""))) ||
+  const orig = ev.originalStartTime && (ev.originalStartTime.date || String(ev.originalStartTime.dateTime || "").slice(0, 10));
+  return (orig && rruleDateToISO(String(orig).replace(/-/g, ""))) ||
+    rruleDateToISO(String(ev.id||"").slice(String(ev.recurringEventId).length + 1)) ||
     null;
 }
 async function applyCalendarEventToPosts(ev){
@@ -10912,7 +10943,7 @@ function renderPersonaPanel(u){
   const serie = postsPorMesDe(u.email, 6);
   const total = state.posts.filter(p => p.authorEmail === u.email).length;
   const desdeMs = tsToMillis(u.approvedAt);
-  const desde = desdeMs ? fmtDate(new Date(desdeMs).toISOString().slice(0, 10)) : "";
+  const desde = desdeMs ? fmtDate(isoLocalDe(desdeMs)) : "";
   const rolHtml = (isAdminUser || isMe)
     ? `<div class="lp-rol-fijo">${rolPill(role)}<span class="hint">${isMe
         ? t("Tu propio rol lo cambia otro admin.","Another admin changes your own role.","Seu próprio papel é alterado por outro admin.","את התפקיד שלך משנה/ת מנהל/ת אחר/ת.")
@@ -10998,7 +11029,7 @@ function postsPorMesDe(email, n){
   state.posts.forEach(p=>{
     if(String(p.authorEmail || "").toLowerCase() !== quien) return;
     const ms = tsToMillis(p.createdAt); if(!ms) return;
-    const i = idx(new Date(ms).toISOString().slice(0,7));
+    const i = idx(mesLocalDe(ms));
     if(i >= 0 && i < n) out[i]++;
   });
   return out;
@@ -11010,7 +11041,7 @@ function csvDePersonas(){
   state.roster.slice().sort((a,b)=>(a.name||"").localeCompare(b.name||"", "es")).forEach(u=>{
     const ms = logins[u.email];
     filas.push([u.name || "", u.email, u.nickname || "", roleLabel(u.email === ADMIN_EMAIL ? "admin" : (u.role || "member")),
-      u.calendarShared ? t("sí","yes","sim","כן") : t("no","no","não","לא"), ms ? new Date(ms).toISOString().slice(0,10) : "", postsPorMesDe(u.email, 6).reduce((a,b)=>a+b, 0)]);
+      u.calendarShared ? t("sí","yes","sim","כן") : t("no","no","não","לא"), ms ? isoLocalDe(ms) : "", postsPorMesDe(u.email, 6).reduce((a,b)=>a+b, 0)]);
   });
   return filas.map(f => f.map(celda).join(";")).join("\r\n");
 }
@@ -11267,7 +11298,7 @@ function renderAdminResumen(){
   const lugares = getCustomCityUsage().length;
   const vencidos = allMilestoneItems({ skipDone:true }).filter(it => !it.milestone.done && milestoneStatus(it.milestone) === "overdue").length;
   const mes = todayISO().slice(0,7);
-  const mesDe = ts => { const ms = tsToMillis(ts); return ms ? new Date(ms).toISOString().slice(0,7) : ""; };
+  const mesDe = ts => { const ms = tsToMillis(ts); return ms ? mesLocalDe(ms) : ""; };
   const entraron = new Set(state.auditLog.filter(e => e.type === "login" && e.actorEmail && mesDe(e.createdAt) === mes).map(e => String(e.actorEmail).toLowerCase())).size;
   const cargadas = state.posts.filter(p => mesDe(p.createdAt) === mes).length;
   const logins = lastLoginByEmail();
@@ -11908,7 +11939,7 @@ function renderAuditoriaView(){
   // de una fecha completa repetida en cada fila.
   const porDia = auditSort.key === "date";
   const today = todayISO(), ayer = addDaysISO(today, -1);
-  const diaDe = e => { const ms = tsToMillis(e.createdAt); return ms ? new Date(ms).toISOString().slice(0,10) : ""; };
+  const diaDe = e => { const ms = tsToMillis(e.createdAt); return ms ? isoLocalDe(ms) : ""; };
   const rotuloDia = iso => iso === today ? t("Hoy","Today","Hoje","היום") : iso === ayer ? t("Ayer","Yesterday","Ontem","אתמול") : fmtISO(iso, { weekday:"long", day:"numeric", month:"long" });
   let diaAnterior = null;
   const list = !filtered.length
@@ -11938,7 +11969,7 @@ function csvDelRegistro(){
   sortAuditEntries(state.auditLog.filter(matchesAuditFilters)).forEach(e=>{
     const info = labels[e.type] || { text: e2 => `${e2.actorName}: ${e2.type}` };
     const ms = tsToMillis(e.createdAt);
-    filas.push([ms ? new Date(ms).toISOString().slice(0,16).replace("T"," ") : "", info.text(e), e.device || "", e.ip || ""]);
+    filas.push([ms ? horaLocalDe(ms) : "", info.text(e), e.device || "", e.ip || ""]);
   });
   return filas.map(f => f.map(celda).join(";")).join("\r\n");
 }
@@ -18336,7 +18367,7 @@ function renderUserProfile(){
   const total = state.posts.filter(p => p.authorEmail === entry.email).length;
   const serie = postsPorMesDe(entry.email, 6);
   const desdeMs = tsToMillis(entry.approvedAt);
-  const desde = desdeMs ? fmtDate(new Date(desdeMs).toISOString().slice(0, 10)) : "—";
+  const desde = desdeMs ? fmtDate(isoLocalDe(desdeMs)) : "—";
   // "Última vez" sale del registro de actividad, que solo el admin tiene
   // cargado: para los demás no se muestra (diría "nunca entró" a todos).
   const uv = isAdmin() && !entry.former ? ultimaVezDe({ lastLogin: lastLoginByEmail()[entry.email] || 0 }) : null;
@@ -18930,7 +18961,7 @@ function renderFichaLugar(L){
       <b>${esc(h.nombre)}</b><small>${esc(t("último: hace {d} días","latest: {d} days ago","último: há {d} dias","אחרון: לפני {d} ימים",{ d: Math.max(0, diasDesde(ult)) }))}${pend ? " · " + esc(t("{n} pendientes","{n} pending","{n} pendentes","{n} ממתינים",{ n: pend })) : ""}</small>
       <span class="n">${h.posts.length} <span class="fl-ir" aria-hidden="true">${isRTL() ? "‹" : "›"}</span></span></button>`; }).join("")}</div></div>` : "";
   const meses = [];
-  for(let i = 11; i >= 0; i--){ const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - i); meses.push(d.toISOString().slice(0, 7)); }
+  for(let i = 11; i >= 0; i--){ const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - i); meses.push(mesLocalDe(d.getTime())); }
   const porMes = meses.map(m => ({ m, n: D.visibles.filter(p => fechaDePost(p).startsWith(m)).length, v: D.visibles.some(p => p.activityType === "visita" && fechaDePost(p).startsWith(m)) }));
   const topeMes = Math.max(1, ...porMes.map(x => x.n));
   const ritmo = porMes.some(x => x.n) ? `<div class="fl-card"><h3>${t("Ritmo · últimos 12 meses","Pace · last 12 months","Ritmo · últimos 12 meses","קצב · 12 החודשים האחרונים")}</h3>
