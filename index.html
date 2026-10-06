@@ -3450,6 +3450,9 @@
     /* Sin vidrio (navegadores viejos), opaca: transparente sin desenfoque
        se leería el texto de atrás encima de los íconos. */
     @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){ .bottom-nav, .bn-sheet{ background:var(--card); } }
+    /* Quien pidió menos transparencia en su teléfono (iOS: Accesibilidad →
+       Reducir transparencia) ve la barra opaca (AUDITORIA B8). */
+    @media (prefers-reduced-transparency: reduce){ .bottom-nav, .bn-sheet{ background:var(--card); -webkit-backdrop-filter:none; backdrop-filter:none; } }
     .bottom-nav[hidden]{ display:none; }
     .bn-item{
       flex:1; display:flex; align-items:center; justify-content:center; position:relative; border-radius:999px;
@@ -5476,7 +5479,10 @@ function compressImage(file, maxDim=1280, quality=0.72){
 }
 // Lo mismo, para una imagen que ya está leída: es como se arma la
 // miniatura de una foto al subirla a Supabase (ver crearSupabaseStore).
-function achicarDataUrl(dataUrl, maxDim, quality){
+// `tipo`: las miniaturas van en WebP (un 30 % menos que en JPEG, docs/
+// AUDITORIA.md, B8); el navegador que no sabe escribir WebP devuelve un
+// PNG enorme, y entonces se queda en JPEG. Las fotos enteras, en JPEG.
+function achicarDataUrl(dataUrl, maxDim, quality, tipo = "image/jpeg"){
   return new Promise((resolve,reject)=>{
     const img = new Image();
     img.onerror = ()=>reject(new Error("Imagen inválida"));
@@ -5489,7 +5495,8 @@ function achicarDataUrl(dataUrl, maxDim, quality){
       const ctx = canvas.getContext("2d");
       ctx.fillStyle = "#fff"; ctx.fillRect(0,0,width,height);
       ctx.drawImage(img,0,0,width,height);
-      resolve(canvas.toDataURL("image/jpeg", quality));
+      const salida = canvas.toDataURL(tipo, quality);
+      resolve(salida.startsWith("data:" + tipo + ";") ? salida : canvas.toDataURL("image/jpeg", quality));
     };
     img.src = dataUrl;
   });
@@ -6585,8 +6592,25 @@ function originalOccurrenceISO(ev){
     rruleDateToISO(String(ev.id||"").slice(String(ev.recurringEventId).length + 1)) ||
     null;
 }
+// El posteo de un evento de Calendar, sin recorrer la lista entera por
+// cada evento: en la resincronización completa (~900 eventos contra
+// ~2000 posteos) eran casi dos millones de comparaciones (AUDITORIA B8).
+// El índice vale para ESA lista: state.posts se reemplaza entera cada vez
+// que algo cambia, y entonces se arma otro. Ante dos con el mismo evento,
+// el primero, como hacía find().
+const indicePorEvento = new WeakMap();
+function postDeEvento(id){
+  if(!id) return undefined;
+  let m = indicePorEvento.get(state.posts);
+  if(!m){
+    m = new Map();
+    state.posts.forEach(p => { if(p.calendarEventId && !m.has(p.calendarEventId)) m.set(p.calendarEventId, p); });
+    indicePorEvento.set(state.posts, m);
+  }
+  return m.get(id);
+}
 async function applyCalendarEventToPosts(ev){
-  const existing = state.posts.find(p => p.calendarEventId === ev.id);
+  const existing = postDeEvento(ev.id);
 
   if(ev.status === "cancelled"){
     // Una repetición suelta que se canceló en Calendar (el resto de la
@@ -6595,7 +6619,7 @@ async function applyCalendarEventToPosts(ev){
     // original sale del id de la excepción ("<idDelMolde>_<fechaUTC>"),
     // que es lo mismo que mira recurrenceSkipDates.
     if(!existing && ev.recurringEventId){
-      const master = state.posts.find(p => p.calendarEventId === ev.recurringEventId);
+      const master = postDeEvento(ev.recurringEventId);
       const skipISO = originalOccurrenceISO(ev);
       if(master && skipISO && !(master.recurrenceSkip||[]).includes(skipISO)){
         await updatePostDoc(master.id, { recurrenceSkip: (master.recurrenceSkip||[]).concat([skipISO]).slice(-200) });
@@ -6695,7 +6719,7 @@ async function applyCalendarEventToPosts(ev){
   // que es el único lugar donde eso se puede guardar, y recurrenceSkipDates
   // hace que el molde deje de dibujar ese día para no mostrarlo dos veces.
   if(ev.recurringEventId){
-    const master = state.posts.find(p => p.calendarEventId === ev.recurringEventId);
+    const master = postDeEvento(ev.recurringEventId);
     const origISO = originalOccurrenceISO(ev);
     if(master && origISO){
       const moves = recurrenceMoves(master);
@@ -7410,7 +7434,9 @@ function crearSupabaseStore(sb, opciones = {}){
      así, entera, en un cuadrado de 92 px. El plan gratis da 5 GB de
      descarga por mes, y una pantalla con ocho fotos eran ~5 MB. Al subir
      una foto se sube también una versión chica al lado, con el mismo
-     nombre terminado en ".min.jpg" (~30 KB): las tarjetas usan esa, y la
+     nombre terminado en ".min.jpg" (~20 KB; desde el 6/10/2026 adentro va
+     un WebP, con su tipo: el nombre se queda igual para no tener que
+     buscar dos por cada foto): las tarjetas usan esa, y la
      entera se baja recién al abrirla en el visor. 480 px de lado alcanzan
      para esos 92 px en una pantalla de las más densas.
 
@@ -7581,7 +7607,7 @@ function crearSupabaseStore(sb, opciones = {}){
   async function subirFoto(base, dataUrl){
     const ruta = await subirUno(base, dataUrl);
     if(achicar){
-      try{ await subirEn(rutaMiniatura(ruta), aBlob(await achicar(dataUrl, LADO_MINIATURA, CALIDAD_MINIATURA))); }
+      try{ await subirEn(rutaMiniatura(ruta), aBlob(await achicar(dataUrl, LADO_MINIATURA, CALIDAD_MINIATURA, "image/webp"))); }
       catch(err){ console.warn("No se pudo subir la miniatura de", ruta, err); }
     }
     return ruta;
