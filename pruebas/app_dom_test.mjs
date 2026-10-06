@@ -458,7 +458,7 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   eq("admin: el Resumen de Administración muestra el pedido pendiente", await esperarTexto(p, "Nueva Persona", 3000), true);
   const secciones = await p.$$eval('.admin-menu [data-action="admin-go"]', bs => bs.map(b => b.dataset.view + (b.dataset.key ? ":" + b.dataset.key : "")));
   eq("admin: el menú de Administración tiene todas las secciones", secciones,
-     ["admin","revisarcal","solicitudes:usuarios","auditoria","preferencias:zonas","preferencias:tipos","preferencias:lugares","preferencias:adjuntos","preferencias:calendar","preferencias:copia"]);
+     ["admin","revisarcal","solicitudes:usuarios","auditoria","preferencias:tipos","preferencias:avanzado","preferencias:calendar","preferencias:copia"]);
   for(const s of secciones){
     const [v, k] = s.split(":");
     await p.click(`.admin-menu [data-action="admin-go"][data-view="${v}"]${k ? `[data-key="${k}"]` : ""}`);
@@ -467,6 +467,17 @@ const hasta = async (p, fn, arg, ms = 5000) => {
     if(largo < 20) vacias.push(s);
   }
   eq("admin: cada sección de Administración dibuja algo", vacias, []);
+  // «Avanzado» (AUDITORIA M12): junta Zonas, Lugares y Adjuntos, que se
+  // tocan poco. Su portada las lista; adentro, el menú las muestra debajo.
+  await p.click('.admin-menu [data-key="avanzado"]');
+  eq("avanzado: su portada lista las tres secciones", await p.$$eval(".admin-avz", es => es.map(e => e.dataset.key)), ["zonas", "lugares", "adjuntos"]);
+  eq("avanzado: y el menú las despliega debajo", await p.$$eval(".admin-menu .admin-item.hijo", es => es.map(e => e.dataset.key)), ["zonas", "lugares", "adjuntos"]);
+  await p.click('.admin-avz[data-key="adjuntos"]');
+  eq("avanzado: al entrar a una, queda marcada y «Avanzado» se ve abierto",
+    await p.evaluate(() => [document.querySelector(".admin-menu .admin-item.active").dataset.key, !!document.querySelector('.admin-menu [data-key="avanzado"].abierto'), document.querySelector(".admin-h2").textContent]),
+    ["adjuntos", true, "Adjuntos"]);
+  await p.click('.admin-menu [data-key="tipos"]');
+  eq("avanzado: fuera de ahí, se pliega", await p.$$eval(".admin-menu .admin-item.hijo", es => es.length), 0);
   await p.click('.admin-menu [data-action="admin-go"][data-view="solicitudes"]');
   eq("admin: en Personas está el equipo", await esperarTexto(p, "Ana Pérez", 3000), true);
   // Tanda 16, teclado: ↓ pasa a la fila siguiente, Enter abre la ficha y
@@ -512,7 +523,7 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   eq("admin: en el registro de actividad aparece lo registrado", await esperarTexto(p, "Ana Pérez", 3000), true);
   eq("admin: los títulos de columna del registro van adentro de la tarjeta, no flotando arriba",
     await p.$eval(".audit-list", e => !!e.firstElementChild && e.firstElementChild.classList.contains("audit-columns-header")), true);
-  await p.click('.admin-menu [data-action="admin-go"][data-view="preferencias"][data-key="lugares"]');
+  await p.click('.admin-menu [data-key="avanzado"]'); await p.click('.admin-avz[data-key="lugares"]');
   eq("admin: Lugares usa la misma lista que Personas y Tipos", await p.$$eval('.lp-rows .lp-row [data-action="lugares-promote"]', es => es.length), 1);
   // Lo que está en el Registro pero no en el Calendar (5/10/2026): se
   // lista, y el botón intenta pasarlo (acá no hay Google, así que avisa
@@ -525,7 +536,7 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   eq("calendar: sin acceso a Google, avisa que no pudo y no vincula nada",
     await hasta(p, () => /No se pudieron pasar 2/.test((document.querySelector(".cal-faltantes-ok") || {}).textContent || "")
       && (window.__sb.tablas.posts || []).every(x => !x.calendar_event_id)), true);
-  await p.click('.admin-menu [data-action="admin-go"][data-view="preferencias"][data-key="lugares"]');
+  await p.click('.admin-menu [data-key="avanzado"]'); await p.click('.admin-avz[data-key="lugares"]');
   eq("admin: la ciudad escrita a mano figura en «Sin ubicación propia en el mapa», para pasar la lista y cargarle la coordenada",
     await p.evaluate(() => {
       const ciudad = document.querySelector('.lp-rows [data-action="lugares-promote"]').dataset.city;
@@ -856,7 +867,7 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   await esperarTexto(p, "Reunión con la comunidad");
   await p.click('[data-action="toggle-user-menu"]');
   await p.click('.user-menu [data-action="goto-view"][data-view="admin"]');
-  await p.click('.admin-menu [data-action="admin-go"][data-view="preferencias"][data-key="zonas"]');
+  await p.click('.admin-menu [data-key="avanzado"]'); await p.click('.admin-avz[data-key="zonas"]');
   eq("zonas: con las islas mezcladas en el Norte, aparece la sugerencia de separar el Caribe", await visible(p, ".sugerencia-caribe"), true);
   await p.click('[data-action="zonas-caribe"]');
   const caribe = await p.$$eval('.zone-chips[data-zone-key="caribe"] .zc-chip', es => es.length);

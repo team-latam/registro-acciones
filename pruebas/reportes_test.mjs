@@ -295,5 +295,26 @@ const SEMANAL = { recurrence:["RRULE:FREQ=WEEKLY;BYDAY=MO"], startDate:"2026-01-
   eq("y los meses que ya pasaron sin nada (no los que vienen)", sug.some(x => /enero/.test(x) && !/noviembre/.test(x)), true);
 }
 
+/* ---------- Lo planificado, aparte (AUDITORIA I2) ---------- */
+{
+  // Hoy es 17/9/2026: lo de octubre y noviembre todavía no pasó.
+  const api = armar([
+    post({ id:"a", startDate:"2026-05-10", endDate:"2026-05-10" }),
+    post({ id:"b", startDate:"2026-09-15", endDate:"2026-09-20" }),           // empezó y sigue: ya cuenta
+    post({ id:"c", startDate:"2026-10-02", endDate:"2026-10-02", scopes:[{ type:"pais", country:"Chile" }] }),
+    post({ id:"d", startDate:"2026-11-20", endDate:"2026-11-22", authorEmail:"juan@x.com" }),
+    post({ id:"e", startDate:"2026-12-01", endDate:"2026-12-01", cancelled:true }),
+  ]);
+  const r = api.armarReporte("2026-01-01", "2026-12-31", {});
+  eq("lo hecho corta en hoy; lo que ya empezó, cuenta", r.total, 2);
+  eq("lo que viene se cuenta aparte (sin los cancelados)", r.planificadas, 2);
+  eq("y por mes, aparte también", [r.porMes["2026-10"] || 0, r.porMesPlan["2026-10"], r.porMesPlan["2026-11"], r.porMes["2026-09"]], [0, 1, 1, 1]);
+  eq("lo planificado no infla ningún otro número", [Object.keys(r.porPais), Object.keys(r.porPersona)], [["Perú"], ["ana@x.com"]]);
+  const pasado = api.armarReporte("2025-01-01", "2025-12-31", {});
+  eq("un período que ya pasó no tiene nada planificado", pasado.planificadas, 0);
+  const futuro = api.armarReporte("2026-10-01", "2026-12-31", {});
+  eq("uno que todavía no empezó, todo planificado", [futuro.total, futuro.planificadas], [0, 2]);
+}
+
 console.log(`\n${pass} pasaron, ${fail} fallaron`);
 process.exit(fail ? 1 : 0);
