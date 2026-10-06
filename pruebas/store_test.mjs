@@ -43,6 +43,7 @@ const app = new Function("ctx", `
   let store = ctx.store;
   let unsubFormerMembers = null;
   function render(){ ctx.__renders++; }
+  function scheduleRender(){ render(); }
   ${grab("subscribeFormerMembers")}
   return { subscribeFormerMembers, cortar: ()=>unsubFormerMembers && unsubFormerMembers() };
 `)(ctxApp);
@@ -97,6 +98,7 @@ const appRos = new Function("ctx", `
   let store = ctx.store;
   let unsubRoster = null;
   function render(){ ctx.__renders++; }
+  function scheduleRender(){ render(); }
   function backfillNicknames(emails){ ctx.__backfill = emails; }
   ${grab("ROLES")}
   ${grab("isAdmin")}
