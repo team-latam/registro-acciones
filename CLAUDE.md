@@ -23,8 +23,10 @@ decisiones de arquitectura.
 - El estado del trabajo vive en el repo, en `docs/`: `docs/REDISENO.md`
   (tandas hechas y decisiones), `docs/REVISION.md` (la revisión técnica y
   lo que queda), `docs/QUE-GUARDAR.md` (qué tener a mano para reconstruir)
-  y `docs/DOMINIO.md` (el plan, no ejecutado, de mudar el sitio a un
-  dominio propio si `*.github.io` vuelve a bloquearse en Argentina). En la
+  `docs/DOMINIO.md` (el plan, no ejecutado, de mudar el sitio a un
+  dominio propio si `*.github.io` vuelve a bloquearse en Argentina) y
+  `docs/AUDITORIA.md` (la auditoría completa del 6/10/2026 con la lista de
+  mejoras por prioridad; el detalle en `docs/auditoria/`). En la
   raíz quedan solo `index.html`, `README.md` y este archivo.
   Copias de seguridad (docs/REVISION.md, punto 13): andando desde el
   5/10/2026 — workflow «Copia de seguridad» (`supabase/respaldo/`) cada
