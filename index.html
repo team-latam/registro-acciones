@@ -6589,23 +6589,44 @@ let calendarTimeZone = null;
 function zonaDelCalendario(){
   return calendarTimeZone || Intl.DateTimeFormat().resolvedOptions().timeZone;
 }
+// Leer el calendario del equipo (docs/AUDITORIA.md, U5). Hasta el
+// 6/10/2026 se leía con la clave de API, y para eso el calendario tenía
+// que ser público: cualquiera con su id veía todos los eventos desde 2019.
+// Ahora se le pide a la función `calendario` de Supabase, que lee con la
+// cuenta de servicio de la app (supabase/functions/LEEME.md) y solo
+// atiende a un integrante aprobado. Si la función todavía no está (falta
+// cargar la llave) o no contesta, se sigue con la clave de API como antes:
+// así nada se corta mientras se arma. Con el calendario ya cerrado, ese
+// camino de repuesto solo puede fallar.
+async function pedirAlCalendario(pedido, urlConClave){
+  const r = store && store.leerCalendario ? await store.leerCalendario(pedido).catch(()=>null) : null;
+  if(r) return { status:r.estado, ok:r.estado >= 200 && r.estado < 300, body:r.cuerpo || {} };
+  const res = await fetch(urlConClave());
+  return { status:res.status, ok:res.ok, body: await res.json().catch(()=>({})) };
+}
 async function fetchCalendarChanges(syncToken){
   let pageToken = null, nextSyncToken = null;
   const events = [];
   do{
-    const params = new URLSearchParams({ key:CALENDAR_API_KEY, maxResults:"250", showDeleted:"true" });
-    if(syncToken) params.set("syncToken", syncToken);
     // Sincronización completa: desde la fecha configurada, o TODO el
     // historial si no hay fecha (antes: solo los últimos 90 días).
-    else if(CALENDAR_IMPORT_FROM) params.set("timeMin", `${CALENDAR_IMPORT_FROM}T00:00:00Z`);
-    if(pageToken) params.set("pageToken", pageToken);
-    const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events?${params}`);
+    const pedido = { accion:"cambios" };
+    if(syncToken) pedido.syncToken = syncToken;
+    else if(CALENDAR_IMPORT_FROM) pedido.timeMin = `${CALENDAR_IMPORT_FROM}T00:00:00Z`;
+    if(pageToken) pedido.pageToken = pageToken;
+    const res = await pedirAlCalendario(pedido, ()=>{
+      const params = new URLSearchParams({ key:CALENDAR_API_KEY, maxResults:"250", showDeleted:"true" });
+      if(pedido.syncToken) params.set("syncToken", pedido.syncToken);
+      else if(pedido.timeMin) params.set("timeMin", pedido.timeMin);
+      if(pedido.pageToken) params.set("pageToken", pedido.pageToken);
+      return `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events?${params}`;
+    });
     if(res.status === 410) return { needsFullResync:true };
-    const body = await res.json();
+    const body = res.body;
     // 410 es "token vencido"; un token de OTRO calendario (cambió el ID en
     // Configuración) vuelve como 400 "Invalid sync token" — mismo remedio.
     if(res.status === 400 && syncToken && /sync ?token/i.test(body.error?.message || "")) return { needsFullResync:true };
-    if(!res.ok) throw new Error(body.error?.message || res.statusText);
+    if(!res.ok) throw new Error(body.error?.message || `HTTP ${res.status}`);
     if(typeof body.timeZone === "string" && body.timeZone) calendarTimeZone = body.timeZone;
     events.push(...(body.items||[]));
     pageToken = body.nextPageToken || null;
@@ -6615,12 +6636,12 @@ async function fetchCalendarChanges(syncToken){
 }
 
 // Un evento suelto, por su id (Revisar lo de Calendar › Devolver al
-// Registro): con la clave de API, como el resto de las lecturas.
+// Registro): por el mismo camino que el resto de las lecturas.
 async function fetchCalendarEvent(eventId){
-  const params = new URLSearchParams({ key: CALENDAR_API_KEY });
-  const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events/${encodeURIComponent(eventId)}?${params}`);
-  const body = await res.json().catch(()=>({}));
-  if(!res.ok) throw new Error(body.error?.message || res.statusText);
+  const res = await pedirAlCalendario({ accion:"evento", id:eventId }, ()=>
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events/${encodeURIComponent(eventId)}?${new URLSearchParams({ key: CALENDAR_API_KEY })}`);
+  const body = res.body;
+  if(!res.ok) throw new Error(body.error?.message || `HTTP ${res.status}`);
   return body;
 }
 
@@ -6949,8 +6970,9 @@ function showCalendarNotice(notice){
 let calendarSyncInFlight = false;
 async function syncFromCalendar(opts){
   const silent = !!(opts && opts.silent);
-  // Lee con la clave de API: no hace falta ningún login ni token de
-  // usuario, así que esto nunca dispara un popup de Google.
+  // Lee por la función de Supabase con la sesión de la app (ver
+  // pedirAlCalendario): no hace falta ningún permiso de Google de la
+  // persona, así que esto nunca dispara un popup de Google.
   if(calendarSyncInFlight) return; // evita superponer sincronizaciones (ej. el intervalo de 2 min con una anterior que todavía no terminó)
   calendarSyncInFlight = true;
   if(!silent){ state.calendarSyncing = true; render(); }
@@ -8288,6 +8310,25 @@ function crearSupabaseStore(sb, opciones = {}){
         if(error) throw error;
         return data;
       },
+    },
+
+    // ---- Leer el Google Calendar del equipo (docs/AUDITORIA.md, U5) ----
+    // Por la función `calendario` de Supabase, con la sesión de quien está
+    // usando la app. null = la función no está o no contestó: quien llama
+    // sigue por el camino viejo (pedirAlCalendario).
+    async leerCalendario(pedido){
+      const { data } = await sb.auth.getSession();
+      const token = data && data.session && data.session.access_token;
+      if(!token) return null;
+      let res;
+      try{
+        res = await fetch(`${SUPABASE_URL}/functions/v1/calendario`, { method:"POST",
+          headers:{ "Content-Type":"application/json", apikey:SUPABASE_KEY, Authorization:`Bearer ${token}` },
+          body: JSON.stringify(pedido) });
+      }catch(err){ return null; }
+      if(!res.ok){ console.warn("La función calendario no atendió:", res.status); return null; }
+      const r = await res.json().catch(()=>null);
+      return r && typeof r.estado === "number" ? r : null;
     },
 
     // ---- Lo que llegó de Google Calendar (Administración › Revisar) ----

@@ -1,5 +1,6 @@
 #!/bin/bash
-# Las dos pruebas del sync de Calendar del lado del servidor.
+# Las pruebas del sync de Calendar del lado del servidor (y de la cuenta
+# de servicio con la que lee, que comparte con la función de Supabase).
 #
 # La diferencial es la importante: corre la lógica de index.html y la de
 # decidir.mjs contra los mismos eventos y compara escritura por escritura.
@@ -8,7 +9,7 @@
 set -u
 CARPETA="$(cd "$(dirname "$0")" && pwd)"
 malas=0
-for f in "$CARPETA"/diferencial.mjs "$CARPETA"/de-punta-a-punta.mjs; do
+for f in "$CARPETA"/diferencial.mjs "$CARPETA"/de-punta-a-punta.mjs "$CARPETA"/cuenta-de-servicio.mjs; do
   nombre="$(basename "$f")"
   salida="$(node "$f" 2>&1)"
   linea="$(echo "$salida" | grep -E '^[0-9]+ pasaron' | tail -1)"
@@ -20,5 +21,5 @@ for f in "$CARPETA"/diferencial.mjs "$CARPETA"/de-punta-a-punta.mjs; do
   echo "$linea" | grep -qE ', 0 fallaron' || malas=$((malas+1))
 done
 echo ""
-[ "$malas" = 0 ] && { echo "✓ Las dos, en verde."; exit 0; }
+[ "$malas" = 0 ] && { echo "✓ Todas, en verde."; exit 0; }
 echo "✗ Algo falló."; exit 1

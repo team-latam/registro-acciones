@@ -1,0 +1,136 @@
+# ============================================================
+# Funciones de Supabase: publicar la función `calendario`
+# ============================================================
+# La app lee el Google Calendar del equipo por esta función, que usa la
+# cuenta de servicio de la app; así el calendario no tiene que ser público
+# (docs/AUDITORIA.md, U5). Ver supabase/functions/LEEME.md.
+#
+# Se publica sola en cada push a main que la toca, y a mano desde Actions
+# → «Funciones de Supabase» → Run workflow (por ejemplo, después de cargar
+# o cambiar la llave de la cuenta de servicio).
+#
+# Necesita dos secretos de GitHub:
+#   SUPABASE_ACCESS_TOKEN       para publicar en el proyecto
+#   GOOGLE_CUENTA_DE_SERVICIO   el JSON de la llave de la cuenta de servicio
+# Sin ellos avisa qué falta y termina en verde: la app sigue leyendo como
+# antes, con la clave de API.
+# ============================================================
+name: Funciones de Supabase
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/functions/**'
+      - 'supabase/config.toml'
+      - '.github/workflows/funciones.yml'
+  pull_request:
+    paths:
+      - 'supabase/functions/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probar:
+    name: Las pruebas de la función y de la cuenta de servicio
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with: { node-version: '22', package-manager-cache: false }
+      - name: Probar
+        run: node supabase/sync-calendar/pruebas/cuenta-de-servicio.mjs
+
+  publicar:
+    name: Publicar en Supabase
+    needs: probar
+    # Solo el código de main, con las llaves de verdad (docs/AUDITORIA.md, U2).
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+    concurrency:
+      group: funciones-publicar
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with: { node-version: '22', package-manager-cache: false }
+
+      - name: ¿Están los secretos?
+        id: revisar
+        env:
+          TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          CUENTA: ${{ secrets.GOOGLE_CUENTA_DE_SERVICIO }}
+        run: |
+          falta=""
+          [ -z "$TOKEN" ] && falta="$falta SUPABASE_ACCESS_TOKEN"
+          [ -z "$CUENTA" ] && falta="$falta GOOGLE_CUENTA_DE_SERVICIO"
+          if [ -n "$falta" ]; then
+            echo "hay=no" >> "$GITHUB_OUTPUT"
+            {
+              echo "### Todavía no se publica: faltan secretos"
+              echo ""
+              echo "Falta:$falta (Settings → Secrets and variables → Actions)."
+              echo "El paso a paso está en supabase/functions/LEEME.md."
+              echo "Mientras tanto la app lee el calendario como antes, con la clave de API."
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "hay=si" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Revisar la llave de la cuenta de servicio
+        if: steps.revisar.outputs.hay == 'si'
+        env:
+          CUENTA: ${{ secrets.GOOGLE_CUENTA_DE_SERVICIO }}
+        # Si se pegó otra cosa en el secreto, que lo diga acá y con
+        # palabras, y no como un error raro de la app más tarde. Nunca
+        # imprime la llave: solo si está bien y el correo de la cuenta.
+        run: |
+          node --input-type=module -e '
+            import { leerCuenta } from "./supabase/functions/_compartido/google.mjs";
+            try { const c = leerCuenta(process.env.CUENTA); console.log("✓ La llave es de la cuenta " + c.correo); }
+            catch (e) { console.log("✗ " + e.message); process.exit(1); }'
+
+      - name: Publicar la función y sus secretos
+        if: steps.revisar.outputs.hay == 'si'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          CUENTA: ${{ secrets.GOOGLE_CUENTA_DE_SERVICIO }}
+        run: |
+          set -euo pipefail
+          # Qué proyecto y qué calendario salen de index.html, como en el
+          # trabajo nocturno: un solo lugar donde cambiarlos.
+          URL=$(grep -oE 'const SUPABASE_URL = "[^"]+"' index.html | cut -d'"' -f2)
+          PROYECTO=$(echo "$URL" | sed -E 's#https://([^.]+)\.supabase\.co.*#\1#')
+          CALENDARIO=$(grep -oE 'let CALENDAR_ID = "[^"]+"' index.html | cut -d'"' -f2)
+          [ -n "$PROYECTO" ] && [ -n "$CALENDARIO" ] || { echo "✗ No encontré el proyecto o el calendario en index.html"; exit 1; }
+          # El JSON en una sola línea: así viaja entero como secreto.
+          COMPACTO=$(node -e 'process.stdout.write(JSON.stringify(JSON.parse(process.env.CUENTA)))')
+          echo "::add-mask::$COMPACTO"
+          npx --yes supabase@2.120.0 secrets set --project-ref "$PROYECTO" \
+            "GOOGLE_CUENTA_DE_SERVICIO=$COMPACTO" "CALENDAR_ID=$CALENDARIO" > /dev/null
+          echo "✓ Secretos de la función cargados"
+          npx --yes supabase@2.120.0 functions deploy calendario --project-ref "$PROYECTO" --no-verify-jwt --use-api
+          echo "PROYECTO=$PROYECTO" >> "$GITHUB_ENV"
+
+      - name: ¿Contesta?
+        if: steps.revisar.outputs.hay == 'si'
+        # Sin sesión tiene que contestar «sin-sesion» (401): eso prueba que
+        # la que contesta es esta función, publicada, y que no atiende a
+        # cualquiera. Unos segundos de espera por si tarda en arrancar.
+        run: |
+          for i in 1 2 3 4 5 6; do
+            cuerpo=$(curl -sS --max-time 20 -X POST "https://$PROYECTO.supabase.co/functions/v1/calendario" -H 'Content-Type: application/json' -d '{}' || true)
+            if echo "$cuerpo" | grep -q '"sin-sesion"'; then
+              echo "✓ La función contesta y pide sesión." | tee -a "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "✗ La función no contestó como se esperaba: $cuerpo"
+          exit 1

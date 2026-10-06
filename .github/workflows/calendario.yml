@@ -15,8 +15,10 @@
 # por escritura: es lo único que evita que se separen en silencio. Si se
 # cae, no la saltees.
 #
-# Lo único que hay que darle es la llave de servicio de Supabase. A qué
-# proyecto, qué calendario y con qué clave leerlo salen de index.html.
+# Lo único que hay que darle es la llave de servicio de Supabase y la de
+# la cuenta de servicio de Google (GOOGLE_CUENTA_DE_SERVICIO; sin ella,
+# lee con la clave de API, que solo sirve con el calendario público). A
+# qué proyecto y qué calendario salen de index.html.
 # ============================================================
 name: Calendar
 
@@ -32,11 +34,13 @@ on:
     branches: [main]
     paths:
       - 'supabase/sync-calendar/**'
+      - 'supabase/functions/_compartido/**'
       - 'index.html'
       - '.github/workflows/calendario.yml'
   pull_request:
     paths:
       - 'supabase/sync-calendar/**'
+      - 'supabase/functions/_compartido/**'
       - 'index.html'
 
 
@@ -107,6 +111,10 @@ jobs:
           # de origen, así que Google contesta "Requests from referer
           # <empty> are blocked".
           CALENDAR_API_KEY: ${{ secrets.CALENDAR_API_KEY }}
+          # La cuenta de servicio (docs/AUDITORIA.md, U5): si está, lee con
+          # ella y el calendario ya no tiene que ser público. Es el mismo
+          # secreto que usa la función de Supabase (funciones.yml).
+          GOOGLE_CUENTA_DE_SERVICIO: ${{ secrets.GOOGLE_CUENTA_DE_SERVICIO }}
         # `set -o pipefail` NO es opcional acá: sin eso, bash devuelve el
         # resultado de `tee` —que siempre anda— y no el del programa. El
         # paso quedaba en verde con la sincronización caída, que es la

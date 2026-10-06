@@ -27,12 +27,13 @@
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { decidir } from "./decidir.mjs";
+import { leerCuenta, permisoDeGoogle, urlDelPedido } from "../functions/_compartido/google.mjs";
 
 // Se lee al arrancar el trabajo y no al cargar el archivo: así una prueba
 // puede correr el mismo programa varias veces con configuraciones
 // distintas, que es la única forma de comprobar qué hace cuando falta algo
 // o cuando se le pide que no escriba.
-const cfg = { url:"", llave:"", calId:"", calKey:"", seco:false };
+const cfg = { url:"", llave:"", calId:"", calKey:"", cuenta:null, seco:false };
 
 // Las constantes de index.html, leídas del archivo. No son secretas: ya
 // viajan al navegador de cualquiera que abra la página. Lo que se gana
@@ -59,8 +60,12 @@ function leerConfiguracion(){
   cfg.calKey = process.env.CALENDAR_API_KEY || deLaApp.calKey;
   cfg.llave  = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
   cfg.seco   = process.env.EN_SECO === "1"; // decide pero no escribe
+  // La cuenta de servicio (docs/AUDITORIA.md, U5): si está, se lee con
+  // ella y el calendario puede dejar de ser público. Si no, con la clave
+  // de API, como hasta el 6/10/2026 (solo sirve con el calendario público).
+  cfg.cuenta = process.env.GOOGLE_CUENTA_DE_SERVICIO ? leerCuenta(process.env.GOOGLE_CUENTA_DE_SERVICIO) : null;
   for(const [nombre, valor] of [["SUPABASE_URL", cfg.url], ["SUPABASE_SERVICE_ROLE_KEY", cfg.llave],
-                                ["CALENDAR_ID", cfg.calId], ["CALENDAR_API_KEY", cfg.calKey]]){
+                                ["CALENDAR_ID", cfg.calId], ["CALENDAR_API_KEY o GOOGLE_CUENTA_DE_SERVICIO", cfg.cuenta || cfg.calKey]]){
     if(!valor) throw new Error(`Falta ${nombre}.`);
   }
 }
@@ -179,12 +184,20 @@ async function traerCambios(syncToken, desde){
   let pageToken = null, nextSyncToken = null;
   const events = [];
   do{
-    const params = new URLSearchParams({ key: cfg.calKey, maxResults: "250", showDeleted: "true" });
-    if(syncToken) params.set("syncToken", syncToken);
-    else if(desde) params.set("timeMin", `${desde}T00:00:00Z`);
-    if(pageToken) params.set("pageToken", pageToken);
-    const res = await fetch(
-      `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(cfg.calId)}/events?${params}`);
+    let res;
+    if(cfg.cuenta){
+      // El mismo pedido que hace la función de Supabase para la app.
+      const url = urlDelPedido(cfg.calId, { accion: "cambios", syncToken: syncToken || undefined,
+        timeMin: !syncToken && desde ? `${desde}T00:00:00Z` : undefined, pageToken: pageToken || undefined });
+      res = await fetch(url, { headers: { Authorization: `Bearer ${await permisoDeGoogle(cfg.cuenta)}` } });
+    } else {
+      const params = new URLSearchParams({ key: cfg.calKey, maxResults: "250", showDeleted: "true" });
+      if(syncToken) params.set("syncToken", syncToken);
+      else if(desde) params.set("timeMin", `${desde}T00:00:00Z`);
+      if(pageToken) params.set("pageToken", pageToken);
+      res = await fetch(
+        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(cfg.calId)}/events?${params}`);
+    }
     if(res.status === 410) return { needsFullResync: true };
     const body = await res.json();
     if(res.status === 400 && syncToken && /sync ?token/i.test(body.error?.message || "")){
