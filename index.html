@@ -10705,7 +10705,9 @@ function firmaDeDatos(){
   return [state.posts, state.repliesByPost, state.roster, state.formerMembers, state.prefs,
           state.auth && state.auth.user && state.auth.user.email, configVersion, todayISO(), currentLang()];
 }
-function doRender(){
+// Lo derivado de los datos (conteos, próximos, ocurrencias) se recalcula
+// solo si los datos cambiaron desde la última vez.
+function refrescarDerivados(){
   const firma = firmaDeDatos();
   if(!firmaDeLoCalculado || firma.some((x, i) => x !== firmaDeLoCalculado[i])){
     firmaDeLoCalculado = firma;
@@ -10713,6 +10715,9 @@ function doRender(){
     upcomingEventsCache = null; recentRepliesCache = null; recentMentionsCache = null; recentChangesCache = null;
     ocurrenciasCache = new WeakMap();
   }
+}
+function doRender(){
+  refrescarDerivados();
   // La solapa Memoria ya no existe (se unificó con el Feed, ver README):
   // cualquier camino que llegue ahí (un atajo viejo, un enlace guardado)
   // cae en el Feed.
@@ -13101,6 +13106,31 @@ function fitDropdownPanels(){
 // que al tocarlo. El botón queda como respaldo (teclado, navegadores sin
 // IntersectionObserver). Cada render reconstruye el botón, así que el
 // vigía se arma de nuevo en cada afterRenderView().
+// «Ver más» en el Inicio SUMA las tarjetas nuevas al final, sin rehacer
+// la lista entera: con 2.000 posteos rehacerla costaba 356 ms, y en el
+// celular el triple (docs/AUDITORIA.md, M7). Solo si lo dibujado coincide
+// tarjeta por tarjeta con lo que tocaría mostrar; si no (llegó un posteo,
+// cambió un filtro sin dibujar), devuelve false y se dibuja todo como antes.
+function sumarTarjetasDelFeed(){
+  if(state.view !== "feed") return false;
+  const caja = viewRoot.querySelector('[data-action="feed-load-more"]')?.closest(".audit-more");
+  if(!caja) return false;
+  refrescarDerivados();
+  const all = sortedFeedPosts();
+  const dibujadas = [...viewRoot.querySelectorAll("article.post[data-post-id]")].map(a => a.dataset.postId);
+  const esperadas = all.slice(0, Math.min(all.length, feedVisibleCount)).map(it => String(it.post.id));
+  if(dibujadas.length !== esperadas.length || dibujadas.some((id, i) => id !== esperadas[i])) return false;
+  feedVisibleCount += PAGE_STEP;
+  const nuevas = all.slice(dibujadas.length, feedVisibleCount);
+  caja.insertAdjacentHTML("beforebegin", nuevas.map(({post, replies}) => renderPostCard(post, replies)).join("") + renderLoadMore("feed-load-more", all.length - Math.min(all.length, feedVisibleCount)));
+  caja.remove();
+  viewRoot.querySelectorAll("textarea.autogrow").forEach(autoGrowTextarea);
+  fitDropdownPanels();
+  updateScrollTop();
+  vigilarVerMas();
+  updateNewPostsPill();
+  return true;
+}
 let feedMoreObserver = null;
 function vigilarVerMas(){
   if(feedMoreObserver){ feedMoreObserver.disconnect(); feedMoreObserver = null; }
@@ -13113,6 +13143,7 @@ function vigilarVerMas(){
     feedMoreObserver.disconnect(); feedMoreObserver = null;
     // Igual que el handler del botón, sin tocar el foco: si la persona
     // está escribiendo en el buscador, no hay que sacárselo.
+    if(!deFicha && sumarTarjetasDelFeed()) return;
     const y = window.scrollY;
     if(deFicha) fichaVisibles += FICHA_TANDA; else feedVisibleCount += PAGE_STEP;
     render();
@@ -20854,9 +20885,11 @@ document.addEventListener("click", async e=>{
     // navegador scrolleaba hasta él y la persona aterrizaba abajo de las
     // 15 tarjetas nuevas en vez de arriba.
     el.blur();
-    feedVisibleCount += PAGE_STEP;
-    render();
-    window.scrollTo({ top:y, behavior:"auto" });
+    if(!sumarTarjetasDelFeed()){
+      feedVisibleCount += PAGE_STEP;
+      render();
+      window.scrollTo({ top:y, behavior:"auto" });
+    }
     const first = document.querySelectorAll("#viewRoot article.post")[before];
     if(first){ first.setAttribute("tabindex","-1"); try{ first.focus({ preventScroll:true }); }catch(e){ first.focus(); } }
   },
