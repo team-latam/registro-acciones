@@ -18,9 +18,14 @@ const cabeza = src.slice(0, src.indexOf('<script type="module">'));
 
 // Cada <script src> y <link rel=stylesheet> de un CDN: versión fija y huella.
 const etiquetas = [...cabeza.matchAll(/<(script|link)\b[^>]*(?:src|href)="(https:\/\/(?:unpkg\.com|cdn\.jsdelivr\.net|cdnjs\.cloudflare\.com)[^"]+)"[^>]*>/g)];
-eq("hay librerías de CDN en la página (si no, esta prueba no mira nada)", etiquetas.length >= 4, true);
-eq("todas con huella de integridad sha256/384", etiquetas.filter(m => !/integrity="sha(256|384)-[A-Za-z0-9+/=]+"/.test(m[0])).map(m => m[2]), []);
-eq("todas con versión fija (@x.y.z)", etiquetas.filter(m => !/@\d+\.\d+\.\d+\//.test(m[2])).map(m => m[2]), []);
+// Desde el 6/10/2026 el mapa ya no va fijo en la página (se baja al abrir
+// Países › Mapa): si alguna vuelve a ponerse fija, igual tiene que tener huella.
+eq("las que estén fijas en la página, con huella de integridad sha256/384", etiquetas.filter(m => !/integrity="sha(256|384)-[A-Za-z0-9+/=]+"/.test(m[0])).map(m => m[2]), []);
+// El mapa, a demanda: cada recurso con su dirección fija y su huella.
+const recursos = [...(src.match(/const MAPA_RECURSOS = \{[\s\S]*?\n\};/) || [""])[0].matchAll(/\["(https:[^"]+)", "(sha(?:256|384)-[A-Za-z0-9+/=]+)"\]/g)];
+eq("el mapa se baja a demanda: Leaflet, el agrupador y sus tres hojas de estilo, cada uno con huella", recursos.length, 5);
+eq("y ninguna etiqueta fija lo vuelve a bajar en cada visita", /<script src="https:\/\/unpkg\.com\/leaflet/.test(cabeza), false);
+eq("todas con versión fija (@x.y.z)", [...etiquetas.map(m => m[2]), ...recursos.map(m => m[1])].filter(u => !/@\d+\.\d+\.\d+\//.test(u)), []);
 
 // Las que se cargan a demanda.
 const constante = n => (src.match(new RegExp(`const ${n} = "([^"]+)"`)) || [])[1] || "";
