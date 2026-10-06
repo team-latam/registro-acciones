@@ -2147,12 +2147,13 @@ historia de por qué se hizo así):
   hizo la revisión no se pudo descargar unpkg para calcular los hashes;
   se calculan con `curl -sSL <url> | openssl dgst -sha256 -binary |
   base64` y se pegan como `integrity="sha256-..."`.
-- **CSP**: no hay `Content-Security-Policy`. Una que limite `script-src` a
-  self + unpkg + cdn.jsdelivr.net (supabase-js) + accounts.google.com (el
-  permiso de Calendar) y `connect-src` a supabase.co/googleapis/
-  mymemory reduciría mucho el impacto de cualquier XSS futuro, pero hay
-  que probarla en producción (los popups de login de Google y las
-  teselas del mapa son fáciles de romper con una CSP mal armada).
+- **CSP**: desde el 6/10/2026 hay una completa, en el `<meta>` del
+  principio de `index.html`: la lista exacta de a quién le habla la app
+  (Supabase, Google, los CDN, OpenStreetMap, MyMemory), sin comodines ni
+  `'unsafe-eval'`. Lleva `'unsafe-inline'` porque la app entera es un
+  script dentro de la página. Un servicio nuevo hay que sumarlo ahí:
+  `pruebas/integridad_test.mjs` avisa si el código nombra uno que falta,
+  y las pruebas que recorren la app fallan si el navegador frena algo.
 - **Privacidad de terceros**: la traducción bajo demanda manda a
   MyMemory, en el query string, el texto de lo que se está traduciendo
   — un posteo **o una respuesta** (el botón "🌐 Ver traducción" existe

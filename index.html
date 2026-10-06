@@ -1,13 +1,17 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<!-- Lo mínimo que se puede cerrar sin arriesgar nada de lo que usa la app
-     (docs/AUDITORIA.md, I3): ni <object>/<embed> (plugins), ni un <base>
-     que cambie adónde apuntan los enlaces. Una política completa (de dónde
-     se cargan los scripts y a quién se le habla) necesita probarse contra
-     el sitio de verdad, con Google y Supabase: queda anotada aparte. -->
-<meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'none'">
 <meta charset="UTF-8">
+<!-- De dónde puede cargar cosas la página y a quién le puede hablar
+     (docs/AUDITORIA.md, I3). Si algo se cuela en el HTML, igual no puede
+     mandar datos a otro lado ni traer scripts de otro sitio. Es la lista
+     exacta de lo que usa la app: Supabase (datos, fotos, en vivo), Google
+     (entrar, Calendar, fotos de perfil), los CDN de las librerías con
+     versión fija, los mapas y la búsqueda de lugares de OpenStreetMap y la
+     traducción. Un servicio nuevo hay que sumarlo acá, o el navegador lo
+     frena (pruebas/integridad_test.mjs avisa si falta). 'unsafe-inline'
+     porque toda la app es un script dentro de la página. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://cdn.sheetjs.com https://accounts.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com https://accounts.google.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://benonmzlgdjkhzauamrz.supabase.co https://*.googleusercontent.com https://*.tile.openstreetmap.org https://unpkg.com; media-src 'self' data: blob: https://benonmzlgdjkhzauamrz.supabase.co; connect-src 'self' data: blob: https://benonmzlgdjkhzauamrz.supabase.co wss://benonmzlgdjkhzauamrz.supabase.co https://www.googleapis.com https://accounts.google.com https://nominatim.openstreetmap.org https://api.mymemory.translated.net; frame-src 'self' data: blob: https://benonmzlgdjkhzauamrz.supabase.co https://accounts.google.com; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
 <title>Registro de Acciones — Team LatAm</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
