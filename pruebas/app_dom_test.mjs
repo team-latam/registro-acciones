@@ -1562,7 +1562,10 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   const guardado = ((await base()).user_prefs.find(u => u.email === ADMIN) || { prefs: {} }).prefs.savedFilters;
   eq("escritorio: y en las preferencias de la persona, con el acceso directo adentro", guardado && guardado.map(g => [g.name, g.quick]), [["Lo mío", "mine"]]);
   await p.click('[data-action="clear-filters"]');
-  eq("escritorio: limpiar filtros apaga también el acceso directo", await cuantas(), 3);
+  // Son 3: dos que ya pasaron y el taller de pasado mañana, que desde el
+  // 6/10/2026 va en la solapa «Próximos» (M4).
+  eq("escritorio: limpiar filtros apaga también el acceso directo (2 en «Lo que pasó» y 1 en «Próximos»)",
+    [await cuantas(), await p.$$eval(".feed-solapas .fs-n", es => es.map(e => e.textContent.trim()))], [2, ["2", "1"]]);
   await p.click('.fs-saved [data-action="feed-saved-apply"]');
   eq("escritorio: aplicar el guardado vuelve a dejar una tarjeta", await cuantas(), 1);
   await p.click('[data-action="clear-filters"]');

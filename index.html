@@ -2546,8 +2546,6 @@
   .btn-primary.danger{ background:var(--danger); }
   .confirm-message{ margin:2px 0 18px; font-size:14.5px; line-height:1.55; color:var(--ink); white-space:pre-wrap; }
   .form-error{ color:var(--danger); font-size:12.5px; margin-top:6px; }
-  /* Feed unificado: interruptor Reciente / Cronológico */
-  .feed-order{ flex-wrap:wrap; gap:10px; }
   /* Campo "importante" (ID del calendario): bloqueado hasta que se pida
      editarlo, y guardar un cambio real exige escribir una palabra al azar. */
   .locked-field{ display:flex; gap:8px; align-items:center; }
@@ -3631,6 +3629,16 @@
     html.teclado .rv-flota .rv-panel{ max-height:calc(var(--vvh, 100dvh) - 12px); }
     html.teclado .rv-flota-espacio{ height:0; }
   }
+
+  /* Las dos solapas del Inicio (M4) */
+  .feed-solapas-fila{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:14px; }
+  .feed-solapas-fila .feed-orden{ flex:none; }
+  .feed-solapas{ display:flex; background:var(--card); border:1px solid var(--border); border-radius:999px; padding:3px; width:max-content; max-width:100%; min-width:0; }
+  .feed-solapas button{ border:0; background:none; border-radius:999px; padding:7px 16px; font:inherit; font-weight:700; font-size:13.5px; color:var(--text-muted); cursor:pointer; display:flex; gap:6px; align-items:center; justify-content:center; }
+  .feed-solapas button.on{ background:var(--petroleo); color:#fff; }
+  .feed-solapas .fs-n{ background:var(--celeste-soft); color:var(--celeste-dark); border-radius:999px; padding:1px 7px; font-size:11px; }
+  .feed-solapas button.on .fs-n{ background:rgba(255,255,255,.2); color:#fff; }
+  @media (max-width:520px){ .feed-solapas{ flex:1; } .feed-solapas button{ flex:1; padding:7px 10px; } }
 </style>
 </head>
 <body>
@@ -5734,6 +5742,8 @@ const DEFAULT_PREFS = {
   // se elija lo contrario (se recuerda por persona). Hubo una versión
   // "Reciente" con destacados intercalados — se sacó, ver el README.
   feedOrder: "desc",       // desc | asc
+  // En la solapa «Próximos» (M4, 6/10/2026), lo más cercano primero.
+  feedOrderProx: "asc",    // asc | desc
   // El default es 24 h, no "auto": el Calendario SIEMPRE mostró los
   // horarios crudos ("13:00"), y con "auto" Intl considera que es-AR es de
   // 12 h, así que todo el equipo se habría despertado con el calendario en
@@ -10132,6 +10142,7 @@ const bottomNavEl = document.getElementById("bottomNav");
 // Orden del Feed: por fecha del evento, más reciente primero salvo que
 // la persona elija lo contrario.
 function feedOrder(){ return prefs().feedOrder === "asc" ? "asc" : "desc"; }
+function feedOrderProx(){ return prefs().feedOrderProx === "desc" ? "desc" : "asc"; }
 const calendarToastEl = document.getElementById("calendarToast");
 const calendarToastTextEl = document.getElementById("calendarToastText");
 
@@ -13408,57 +13419,83 @@ function getVisiblePosts(){
 const PAGE_SIZE = 15;      // cuántas tarjetas se pintan al entrar (a pedido: 15)
 const PAGE_STEP = 15;      // cuántas suma cada "Ver más" (de a 15)
 let feedVisibleCount = PAGE_SIZE;
+// Qué solapa del Inicio se mira: «Lo que pasó» (arranca acá) o «Próximos»
+// (docs/AUDITORIA.md, M4: antes la primera pantalla eran los eventos de
+// los meses que vienen, y lo hecho esta semana quedaba abajo).
+let feedSolapa = "pasado";
 let searchRenderTimer = null;
 function renderLoadMore(action, remaining){
   // Solo "Ver más", sin números (a pedido): el conteo de lo que queda
   // era ruido. Quien quiere todo, sigue apretando.
   return remaining > 0 ? `<div class="audit-more"><button type="button" class="btn-secondary" data-action="${action}">${t("Ver más","See more","Ver mais","הצגת עוד")}</button></div>` : "";
 }
-// Interruptor Reciente / Cronológico (+ dirección) del Feed unificado.
-// Interruptor de orden del Feed: más reciente / más antiguo primero, por
-// fecha del evento (createdAt como desempate). Reemplaza a la versión
-// con "Reciente" (destacados intercalados) — ver README, sección Feed.
-function renderFeedOrderBar(){
-  const order = feedOrder();
-  return `
-    <div class="sort-toggle feed-order">
-      <div class="sort-toggle-group">
-        <span role="button" tabindex="0" class="chip-toggle ${order==="desc"?"active":""}" data-action="feed-order" data-key="desc"><span class="lp-ancho">${t("Más reciente primero","Newest first","Mais recente primeiro","החדש ביותר קודם")}</span><span class="lp-angosto">${t("Recientes","Newest","Recentes","חדשים")}</span></span>
-        <span role="button" tabindex="0" class="chip-toggle ${order==="asc"?"active":""}" data-action="feed-order" data-key="asc"><span class="lp-ancho">${t("Más antiguo primero","Oldest first","Mais antigo primeiro","הישן ביותר קודם")}</span><span class="lp-angosto">${t("Antiguos","Oldest","Antigos","ישנים")}</span></span>
-      </div>
-      ${canWrite() ? `<button type="button" class="btn-sync" data-action="sync-calendar" ${state.calendarSyncing?"disabled":""}>🔄 ${t("Actualizar","Refresh","Atualizar","עדכון")}</button>` : ""}
-    </div>`;
-}
 // Por fecha del evento (createdAt como desempate, el mismo criterio de
-// siempre para no depender de cómo llegaron los posteos); en asc se
-// invierte entero. Factorizado de renderFeedView para que gotoMention
-// pueda ubicar un posteo en este mismo orden (ver ahí por qué).
-function sortedFeedPosts(){
+// siempre para no depender de cómo llegaron los posteos), partido en lo
+// que ya pasó (hasta hoy incluido) y lo que viene. Cada solapa tiene su
+// orden: lo que pasó, lo más reciente primero; lo que viene, lo más
+// cercano primero; el chip ⇅ da vuelta el de la solapa que se mira.
+function partesDelFeed(){
   // Un evento que se repite se ordena por la fecha que está MOSTRANDO la
   // tarjeta, no por la del molde: si no, la reunión semanal que arrancó
   // en 2024 vivía para siempre en el fondo del Feed, justo la que más se
   // mira. La fecha se calcula una vez por posteo y no adentro del
   // comparador, que se llama muchas más veces.
-  const all = getVisiblePosts().map(it=>({ it, key: occurrenceOf(it.post) || String(it.post.date||"") }))
+  const hoy = todayISO();
+  const desc = getVisiblePosts().map(it=>({ it, key: occurrenceOf(it.post) || String(it.post.date||"") }))
     .sort((a,b)=> b.key.localeCompare(a.key) || (tsToMillis(b.it.post.createdAt) - tsToMillis(a.it.post.createdAt)))
     .map(x=>x.it);
-  if(feedOrder() === "asc") all.reverse();
-  return all;
+  const pasados = [], futuros = [];
+  desc.forEach(it => (esProximo(it.post, hoy) ? futuros : pasados).push(it));
+  if(feedOrder() === "asc") pasados.reverse();
+  if(feedOrderProx() === "asc") futuros.reverse();
+  return { pasados, futuros };
+}
+// Lo que viene: lo que todavía no empezó. Una serie que se repite cuenta
+// desde su primera fecha, la del molde (si no, saltaría de solapa cada
+// semana); y lo que dura varios días y ya arrancó, ya pasa.
+function esProximo(post, hoy){
+  return String(post.startDate || post.date || "") > hoy;
+}
+// Lo que muestra la solapa que se está mirando. Lo usan gotoMention y
+// «Ver más» para ubicar una tarjeta en el mismo orden de la pantalla.
+function sortedFeedPosts(){
+  const { pasados, futuros } = partesDelFeed();
+  return feedSolapa === "futuro" ? futuros : pasados;
+}
+// El chip de orden, adentro de la barra de filtros: uno solo, que se toca
+// para dar vuelta el orden de la solapa (a pedido: nada de botones nuevos).
+function renderChipDeOrden(){
+  const prox = feedSolapa === "futuro";
+  const invertido = prox ? feedOrderProx() === "desc" : feedOrder() === "asc";
+  const largo = prox
+    ? (invertido ? t("Más lejanos primero","Furthest first","Mais distantes primeiro","הרחוקים קודם") : t("Más cercanos primero","Soonest first","Mais próximos primeiro","הקרובים קודם"))
+    : (invertido ? t("Más antiguos primero","Oldest first","Mais antigos primeiro","הישנים קודם") : t("Más recientes primero","Newest first","Mais recentes primeiro","החדשים קודם"));
+  return `<button type="button" class="chip-toggle feed-orden" data-action="feed-order" title="${esc(largo)}" aria-label="${esc(largo)}">⇅<span class="lp-ancho"> ${largo}</span></button>`;
+}
+function renderSolapasDelFeed(pasados, futuros){
+  const b = (key, txt, n) => `<button type="button" class="${feedSolapa===key?"on":""}" data-action="feed-solapa" data-key="${key}" aria-pressed="${feedSolapa===key}">${txt} <span class="fs-n">${n}</span></button>`;
+  return `<div class="feed-solapas-fila"><div class="feed-solapas" role="group" aria-label="${esc(t("Qué mostrar","What to show","O que mostrar","מה להציג"))}">
+    ${b("pasado", t("Lo que pasó","What happened","O que aconteceu","מה קרה"), pasados.length)}
+    ${b("futuro", t("Próximos","Upcoming","Próximos","בקרוב"), futuros.length)}
+  </div>${renderChipDeOrden()}</div>`;
 }
 function renderFeedView(){
-  // El composer de Rutina va SIEMPRE arriba, sin importar el orden — antes
-  // desaparecía en modo Cronológico.
-  const all = sortedFeedPosts();
+  // El composer de Rutina va SIEMPRE arriba, sin importar la solapa.
+  const { pasados, futuros } = partesDelFeed();
+  const all = feedSolapa === "futuro" ? futuros : pasados;
   const items = all.slice(0, feedVisibleCount);
+  const filtro = anyActiveFilter();
+  const vacio = feedSolapa === "futuro"
+    ? (filtro ? t("Nada de lo que viene coincide con el filtro.","Nothing upcoming matches the filter.","Nada do que vem coincide com o filtro.","שום דבר מהקרוב לא תואם למסנן.")
+              : t("No hay nada planificado todavía.","Nothing is planned yet.","Ainda não há nada planejado.","עדיין לא תוכנן כלום."))
+    : (filtro ? t("Todavía no hay posteos que coincidan con el filtro.","No posts match the filter yet.","Ainda não há postagens que coincidam com o filtro.","עדיין אין פוסטים שתואמים למסנן.")
+              : t("Todavía no hay posteos.","There are no posts yet.","Ainda não há postagens.","עדיין אין פוסטים."));
   return `<div class="feed-layout"><div class="feed-main">
     ${canWrite() ? renderRutinaComposer() : ""}
     ${renderFilterBar("feed")}${renderPlaceLevelSeg()}
-    ${renderFeedOrderBar()}
+    ${renderSolapasDelFeed(pasados, futuros)}
     ${items.length ? items.map(({post,replies})=>renderPostCard(post,replies)).join("") + renderLoadMore("feed-load-more", all.length - items.length) :
-      `<div class="empty-state"><div class="big">🗒️</div>${anyActiveFilter()
-        ? t("Todavía no hay posteos que coincidan con el filtro.","No posts match the filter yet.","Ainda não há postagens que coincidam com o filtro.","עדיין אין פוסטים שתואמים למסנן.")
-        : t("Todavía no hay posteos.","There are no posts yet.","Ainda não há postagens.","עדיין אין פוסטים.")
-      }<br>${t('Usá "+ Nuevo evento" para sumar el primero.','Use "+ New event" to add the first one.','Use "+ Novo evento" para somar o primeiro.','.כדי להוסיף את הראשון "+ אירוע חדש" השתמש/י ב')}</div>`}
+      `<div class="empty-state"><div class="big">${feedSolapa === "futuro" ? "📅" : "🗒️"}</div>${vacio}<br>${t('Usá "+ Nuevo evento" para sumar uno.','Use "+ New event" to add one.','Use "+ Novo evento" para somar um.','.כדי להוסיף אחד "+ אירוע חדש" השתמש/י ב')}</div>`}
   </div>${renderFeedSide()}</div>`;
 }
 function anyActiveFilter(){
@@ -14559,6 +14596,10 @@ function gotoMention(postId, replyId){
   // PAGE_STEP): si el posteo queda más atrás en el orden actual, el
   // querySelector de abajo nunca lo iba a encontrar y el salto quedaba
   // mudo (sin scroll, sin aviso). Se adelanta el corte para que exista.
+  // Y si está en la otra solapa del Inicio, se pasa a esa.
+  { const { pasados, futuros } = partesDelFeed();
+    const sol = futuros.some(({post})=>post.id===postId) ? "futuro" : pasados.some(({post})=>post.id===postId) ? "pasado" : null;
+    if(sol && sol !== feedSolapa){ feedSolapa = sol; feedVisibleCount = PAGE_SIZE; } }
   const idx = sortedFeedPosts().findIndex(({post})=>post.id===postId);
   if(idx >= feedVisibleCount) feedVisibleCount = Math.ceil((idx+1)/PAGE_STEP)*PAGE_STEP;
   render();
@@ -17169,10 +17210,11 @@ function renderCalendarioView(){
   // derecho, Capas, el selector de vista y "Actualizar". Ya no hay un
   // "+ Nuevo evento" acá: es lo mismo que ya ofrece el "+" (FAB) en
   // todas las vistas, tenerlo dos veces en Calendario era redundante.
-  // Mismo botón que en el Feed (renderFeedOrderBar): quien vive en esta
-  // vista no debería tener que ir a otra para refrescar desde Calendar.
+  // Trae lo nuevo de Google Calendar (también pasa solo cada noche).
+  // Vivía también en el Inicio como «Actualizar», y ahí parecía que
+  // recargaba la lista: desde el 6/10/2026 está solo acá, con su nombre.
   const syncBtn = canWrite()
-    ? `<button type="button" class="btn-sync" data-action="sync-calendar" ${state.calendarSyncing?"disabled":""}>🔄 ${t("Actualizar","Refresh","Atualizar","עדכון")}</button>`
+    ? `<button type="button" class="btn-sync" data-action="sync-calendar" ${state.calendarSyncing?"disabled":""} title="${esc(t("Traer de Google Calendar","Get from Google Calendar","Trazer do Google Calendar","הבאה מ-Google Calendar"))}" aria-label="${esc(t("Traer de Google Calendar","Get from Google Calendar","Trazer do Google Calendar","הבאה מ-Google Calendar"))}">🔄<span class="lp-ancho"> ${t("Traer de Google Calendar","Get from Google Calendar","Trazer do Google Calendar","הבאה מ-Google Calendar")}</span></button>`
     : "";
   const toolbar = `<div class="paises-toolbar">${nav}<div class="cal-toolbar-end">${layersMenu}${toggle}${syncBtn}</div></div>`;
   if(sub === "mes") return toolbar + renderCalendarioMes(anchor);
@@ -21244,8 +21286,16 @@ document.addEventListener("click", async e=>{
     state.view = "feed"; state.countryDrill = null; state.zonaDrill = null; render();
   },
     "feed-order": async (el, e, action, postId) => {
+    // Da vuelta el orden de la solapa que se mira (cada una recuerda el suyo).
     feedVisibleCount = PAGE_SIZE;
-    savePrefs({ feedOrder: el.dataset.key }); // savePrefs re-renderiza
+    if(feedSolapa === "futuro") savePrefs({ feedOrderProx: feedOrderProx() === "asc" ? "desc" : "asc" });
+    else savePrefs({ feedOrder: feedOrder() === "asc" ? "desc" : "asc" }); // savePrefs re-renderiza
+  },
+    "feed-solapa": async (el) => {
+    const k = el.dataset.key === "futuro" ? "futuro" : "pasado";
+    if(k === feedSolapa) return;
+    feedSolapa = k; feedVisibleCount = PAGE_SIZE;
+    render();
   },
     "place-level": async (el, e, action, postId) => {
     setPlaceLevel(Number(el.dataset.level)); // savePrefs ya re-renderiza
