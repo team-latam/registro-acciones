@@ -1449,7 +1449,7 @@ const hasta = async (p, fn, arg, ms = 5000) => {
 
 /* ---------- Ciudades al costado: hasta cinco y «Ver más» (6/10/2026) ---------- */
 {
-  const CIUDADES = ["Avellaneda", "Bahia Blanca", "Bariloche", "Basavilbaso", "Catamarca", "Cipolletti"];
+  const CIUDADES = ["Avellaneda", "Bahia Blanca", "Bariloche", "Basavilbaso", "Catamarca", "Cipolletti", "Concepción del Uruguay", "Concordia", "Cordoba"];
   const { p, errores } = await entrar(ADMIN, "Benny", base => CIUDADES.forEach((c, i) => base.posts.push({ id: "p_c" + i, title: "", content: "Rutina en " + c,
     date: dia(5 + i), start_date: dia(5 + i), end_date: dia(5 + i), activity_type: "rutina", author_name: "Benny", author_email: ADMIN,
     scopes: [{ type: "ciudad", country: "Argentina", city: c }], images: [], files: [], links: [], mentions: [], liked_by: [], milestones: [], editors: [], participants: [], recurrence_skip: [], recurrence_moves: {}, created_at: hace(5 + i) })));
@@ -1459,9 +1459,13 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   await hasta(p, () => (document.querySelector(".ficha-lugar h1") || {}).textContent === "Argentina");
   eq("ciudades: hasta cinco a la vista, y «Ver más»", [await p.$$eval(".fl-hijos .fl-hijo", es => es.map(e => e.dataset.city)), await p.$eval('.fl-mas[data-que="hijos"]', e => e.textContent.trim())], [CIUDADES.slice(0, 5), "Ver más"]);
   await p.click('.fl-mas[data-que="hijos"]');
-  eq("ciudades: «Ver más» muestra todas, y ofrece «Ver menos»", await hasta(p, () => document.querySelectorAll(".fl-hijos .fl-hijo").length === 6 && document.querySelector('.fl-mas[data-que="hijos"]').textContent.trim() === "Ver menos"), true);
+  eq("ciudades: «Ver más» muestra todas, y ofrece «Ver menos»", await hasta(p, () => document.querySelectorAll(".fl-hijos .fl-hijo").length === 9 && document.querySelector('.fl-mas[data-que="hijos"]').textContent.trim() === "Ver menos"), true);
+  // Desplegada, la lista se desplaza adentro de la tarjeta, no la columna.
+  eq("ciudades: desplegada, se desplaza adentro de la tarjeta con su propia barra", await p.$eval(".fl-hijos", e => ({ scroll: getComputedStyle(e).overflowY, hayMas: e.scrollHeight > e.clientHeight, alto: e.clientHeight < 400 })), { scroll: "auto", hayMas: true, alto: true });
+  await p.evaluate(() => { document.querySelector(".fl-hijos").scrollTop = 500; });
+  eq("ciudades: y al final de la lista se llega a la última", await hasta(p, () => { const e = document.querySelector(".fl-hijos"); const u = e.lastElementChild.getBoundingClientRect(); const r = e.getBoundingClientRect(); return u.bottom <= r.bottom + 1 && u.top >= r.top; }), true);
   await p.click('.fl-mas[data-que="hijos"]');
-  eq("ciudades: «Ver menos» vuelve a cinco", await hasta(p, () => document.querySelectorAll(".fl-hijos .fl-hijo").length === 5), true);
+  eq("ciudades: «Ver menos» vuelve a cinco, sin barra", await hasta(p, () => document.querySelectorAll(".fl-hijos .fl-hijo").length === 5 && getComputedStyle(document.querySelector(".fl-hijos")).overflowY === "visible"), true);
   eq("ciudades: sin un solo error", errores, []);
   await p.close();
 }
