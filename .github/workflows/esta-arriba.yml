@@ -6,10 +6,18 @@
 # tu red, ni tu DNS, ni tu antivirus, ni tus extensiones.
 #
 # Se aprieta a mano: Actions > "¿Está arriba la página?" > Run workflow.
+# Y corre solo cada 6 horas (desde el 6/10/2026, docs/AUDITORIA.md, M9):
+# un trabajo programado que falla le manda un mail al dueño del repo, que
+# es el aviso que faltaba. Mira también que Supabase conteste.
 name: ¿Está arriba la página?
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "17 */6 * * *"
+
+permissions:
+  contents: read
 
 env:
   URL: https://team-latam.github.io/registro-acciones/
@@ -107,6 +115,34 @@ jobs:
           echo "entrega bien de todas las formas en que se la puede pedir. Si vos"
           echo "no podés abrirla, lo que falla está en el camino entre tu equipo y"
           echo "github.io (proveedor de internet, DNS, VPN o antivirus)."
+
+      # La app sin Supabase es una pantalla de error: se pregunta por el
+      # login y por la API, con la dirección y la clave pública que usa la
+      # app (las mismas que están en index.html, que se lee de main).
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: index.html
+          sparse-checkout-cone-mode: false
+      - name: ¿Contesta Supabase?
+        run: |
+          set -o pipefail
+          SB_URL=$(grep -oE 'const SUPABASE_URL = "[^"]+"' index.html | cut -d'"' -f2)
+          SB_KEY=$(grep -oE 'const SUPABASE_KEY = "[^"]+"' index.html | cut -d'"' -f2)
+          if [ -z "$SB_URL" ] || [ -z "$SB_KEY" ]; then echo "✗ No encontré la dirección de Supabase en index.html"; exit 1; fi
+          falla=0
+          for camino in "/auth/v1/health" "/rest/v1/"; do
+            codigo=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 -H "apikey: $SB_KEY" "$SB_URL$camino") || codigo="sin respuesta"
+            echo "$camino → $codigo"
+            # La API sin sesión puede contestar 401/404 (bien: contestó). Un
+            # 5xx o nada es Supabase caído o el proyecto en pausa.
+            case "$codigo" in 2*|401|403|404) ;; *) falla=1 ;; esac
+          done
+          if [ "$falla" != "0" ]; then
+            echo "✗ Supabase no contesta bien: la app no puede entrar ni mostrar nada."
+            echo "  Mirar el panel de Supabase (¿proyecto en pausa?) y https://status.supabase.com"
+            exit 1
+          fi
+          echo "✓ Supabase contesta."
 
       # Si github.io está bloqueado en el camino hacia él, el archivo sigue
       # existiendo en otro lado: jsDelivr sirve cualquier archivo de un repo
