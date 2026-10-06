@@ -40,14 +40,14 @@ function armar(opts={}){
     const dateLocale = () => "es";
     const docsAbiertos = new Map();
     ${["TIPOS_DE_ARCHIVO","CLASE_POR_DEFECTO","extensionDe","claseDeArchivo","claseDe","topeLegible",
-       "DOCS_POR_TIPO","docsEsperados","docDeArchivo","archivosDelDoc","docsDesplegados","archivoDelDoc","archivosSueltos","cuantosDocsHay",
+       "DOCS_POR_TIPO","docsEsperados","esNombreDeOtro","docEsOpcional","docsExigidos","normalize","docDeArchivo","archivosDelDoc","docsDesplegados","archivoDelDoc","archivosSueltos","cuantosDocsHay",
        "sinRanura","fechaDeArchivo","fmtDate",
        "adjuntarDocumento","quitarDocumento","quitarAdjunto","esWordDeViaje",
        "ACTIVITY_TYPES","EVENTO_TYPES","CALENDAR_SYNC_TYPES","ACTIVITY_BY_KEY",
        "DEFAULT_ACTIVITY_LABELS","applyActivityTypesConfig"].map(grab).join("\n")}
     const currentLang = ()=> "es";
     const refreshActivityTypeLabels = ()=>{};
-    return { DOCS_POR_TIPO, docsEsperados, docDeArchivo, archivoDelDoc, archivosSueltos,
+    return { DOCS_POR_TIPO, docsEsperados, docEsOpcional, docsExigidos, docDeArchivo, archivoDelDoc, archivosSueltos,
              cuantosDocsHay, sinRanura, fechaDeArchivo,
              adjuntarDocumento, quitarDocumento, quitarAdjunto,
              applyActivityTypesConfig, state };
@@ -105,6 +105,24 @@ const archivo = (extra={}) => ({ name:"a.pdf", kind:"pdf", dataUrl:"data:applica
   const { api } = armar();
   eq("un posteo sin archivos no rompe nada", api.archivosSueltos(undefined, "visita"), []);
   eq("un doc que no es texto se ignora", api.docDeArchivo({ doc: 42 }), null);
+}
+
+/* ---------- Documentos opcionales (6/10/2026) ---------- */
+// El usuario puso «Otro» en casi todos los tipos "por si alguien quiere
+// subir algo más", y le contaba como faltante. Un documento opcional
+// queda en la lista pero no cuenta.
+{
+  const { api } = armar();
+  api.applyActivityTypesConfig([{ key:"visita", label:"Visita", icon:"🧳", docs:[
+    {id:"plan",label:"Plan"}, {id:"otro",label:"Otro"}, {id:"anexo",label:"Anexo",opcional:true}, {id:"foto",label:"Foto",opcional:false}, {id:"otros",label:"Otros",opcional:false}, {id:"other",label:"  Other "} ] }]);
+  eq("al cargar, cada documento dice si es opcional; «Otro» sin el dato arranca opcional, y con el dato manda el dato",
+     api.docsEsperados("visita").map(d=>[d.id, d.opcional]), [["plan",false],["otro",true],["anexo",true],["foto",false],["otros",false],["other",true]]);
+  eq("los exigidos son los que cuentan", api.docsExigidos("visita").map(d=>d.id), ["plan","foto","otros"]);
+  eq("la cuenta es solo de los exigidos", api.cuantosDocsHay({ activityType:"visita", files:[archivo({doc:"plan"}), archivo({doc:"anexo"})] }), { hay:1, total:3 });
+  eq("un opcional subido no suma", api.cuantosDocsHay({ activityType:"visita", files:[archivo({doc:"otro"})] }), { hay:0, total:3 });
+  eq("con todos opcionales, cero de cero (nada falta nunca)", (()=>{ api.applyActivityTypesConfig([{ key:"otro", label:"Otro", icon:"✨", docs:[{id:"otro",label:"Otro"}] }]); return api.cuantosDocsHay({ activityType:"otro", files:[] }); })(), { hay:0, total:0 });
+  eq("un documento opcional sigue siendo esperado: el archivo que lo ocupa no es un suelto",
+     api.archivosSueltos([archivo({doc:"otro"}), archivo()], "otro").length, 1);
 }
 
 /* ---------- Adjuntar ---------- */

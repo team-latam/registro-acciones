@@ -6,7 +6,7 @@ from extractor import grab, balanceada, src, estilo, cuerpo_click   # el extract
 codigo = "\n".join(grab(n) for n in [
   "TIPOS_DE_ARCHIVO","CLASE_POR_DEFECTO","extensionDe","claseDeArchivo","claseDe",
   "esUrlDelBucket","FILE_DATA_URL_RE","safeFileDataUrl","esWordNuevo","sePuedeVer","seAbreEnVisor","esPlanilla","itemDelVisor",
-  "DOCS_POR_TIPO","docsEsperados","docDeArchivo","archivosDelDoc","docsDesplegados","archivoDelDoc","archivosSueltos",
+  "DOCS_POR_TIPO","docsEsperados","esNombreDeOtro","docEsOpcional","docsExigidos","docDeArchivo","archivosDelDoc","docsDesplegados","archivoDelDoc","archivosSueltos",
   "cuantosDocsHay","renderDocumentacion","renderTiposSection","tiposFootnote","countPostsByType",
   # La lista + ficha de Tipos: qué tipo está abierto, su ficha, el formulario
   # de uno nuevo y el aviso de "cambios sin guardar".

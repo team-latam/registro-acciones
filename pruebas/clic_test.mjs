@@ -20,7 +20,8 @@ await p.evaluate(()=>window.__pintarConfig());
 // mirar los de un tipo, primero se abre su ficha.
 const chipsDe = key => p.evaluate(k => { window.__abrirTipo(k); return [...document.querySelectorAll(".doc-chip")]
   .filter(c => c.querySelector(`[data-key="${k}"]`))
-  .map(c => c.textContent.replace("✕","").trim()); }, key);
+  // El nombre nomás: desde el 6/10/2026 cada chip trae también la casilla «Opcional».
+  .map(c => c.querySelector(".doc-nombre").textContent.trim()); }, key);
 
 /* ====== El ✕ de un documento, con un clic DE VERDAD ====== */
 eq("Visita arranca con dos", await chipsDe("visita"), ["Plan de viaje","Reporte"]);

@@ -2255,7 +2255,12 @@
      llegó desde la ventana de una ficha. */
   .volver-ficha{ display:inline-flex; align-items:center; gap:6px; margin:0 0 12px; padding:6px 12px; border-radius:999px; border:1px solid var(--border); background:var(--card); box-shadow:var(--shadow); font:inherit; font-size:12.5px; font-weight:700; color:var(--celeste-dark); cursor:pointer; }
   .volver-ficha:hover{ border-color:var(--celeste); text-decoration:underline; }
-  .ficha-post-modal{ max-width:760px; max-height:none; padding:0 22px 22px; }
+  .ficha-post-modal{ max-width:760px; max-height:none; padding:0 22px 22px; margin:24px 0; }
+  /* El respiro alrededor va en la ventana y no en la capa oscura: la
+     capa es lo que scrollea, y con su relleno la cabecera pegada quedaba
+     24px abajo del borde, dejando una franja por la que asomaba lo que ya
+     había pasado (captura del usuario, 6/10/2026). */
+  #fichaPostOverlay{ padding-top:0; padding-bottom:0; }
   .ficha-post-modal .fp-cabeza{
     position:sticky; top:0; z-index:5; display:flex; align-items:center; justify-content:space-between; gap:10px;
     margin:0 -22px 12px; padding:12px 22px 10px; background:var(--card); border-bottom:1px solid var(--border);
@@ -2266,7 +2271,7 @@
   .ficha-post-modal #fichaPostBody{ overflow:visible; }
   .ficha-post-modal .card.post{ box-shadow:none; border:none; padding:0; margin:0; }
   @media (max-width:640px){
-    .ficha-post-modal{ max-height:none; padding:0 14px 16px; }
+    .ficha-post-modal{ max-height:none; padding:0 14px 16px; margin:10px 0; }
     .ficha-post-modal .fp-cabeza{ margin:0 -14px 10px; padding:8px 8px 6px 14px; }
   }
   /* El costado acompaña al bajar (pedido del usuario, 6/10/2026): se
@@ -2340,6 +2345,9 @@
   }
   .doc-adjuntar:hover{ color:var(--ink); border-style:solid; }
   .doc-pendiente, .doc-roto{ font-size:11.5px; color:var(--text-muted); font-style:italic; }
+  /* "opcional": al lado del nombre, en la lista de la tarjeta. */
+  .doc-tag{ font-size:10.5px; font-weight:800; border-radius:999px; padding:1px 7px; background:#eef2f3; color:var(--text-muted); white-space:nowrap; }
+  html[data-theme="dark"] .doc-tag{ background:#263538; }
   /* Pegado a lo que saca. Empujarlo al borde derecho con margin:auto lo
      dejaba lejísimos del archivo en una pantalla ancha. */
   .doc-fila .rm, .doc-anterior .rm{
@@ -2367,6 +2375,9 @@
     width:30px; height:30px; border-radius:8px; border:none; background:transparent; color:var(--text-muted); font-size:12px; cursor:pointer; flex:none; padding:0;
   }
   .doc-fila .rm:hover{ background:var(--danger-bg); color:var(--danger); }
+  /* La casilla "Opcional" de cada documento, en Administración. */
+  .doc-fila .doc-opc{ display:inline-flex; align-items:center; gap:6px; margin-inline-start:auto; font-size:12px; font-weight:700; color:var(--text-muted); white-space:nowrap; cursor:pointer; }
+  .doc-fila .doc-opc input{ accent-color:var(--celeste-dark); margin:0; width:15px; height:15px; }
   .doc-add{ display:flex; align-items:center; gap:8px; margin-top:2px; }
   .doc-nuevo-input{
     flex:1 1 0; min-width:0; height:38px; padding:0 12px; font-family:inherit; font-size:13px; font-weight:600; box-sizing:border-box;
@@ -8419,7 +8430,7 @@ function applyActivityTypesConfig(types){
     const limpios = ty.docs
       .filter(d => d && typeof d.id === "string" && typeof d.label === "string" && d.label.trim())
       .slice(0, 10)
-      .map(d => ({ id: d.id, label: String(d.label).slice(0, 60) }));
+      .map(d => ({ id: d.id, label: String(d.label).slice(0, 60), opcional: docEsOpcional(d) }));
     if(limpios.length) DOCS_POR_TIPO[ty.key] = limpios;
   });
   refreshActivityTypeLabels();
@@ -12085,7 +12096,7 @@ function renderTiposSection(){
   const flecha = isRTL() ? "m15 6-6 6 6 6" : "m9 6 6 6-6 6";
   const filas = d.types.map(ty=>{
     const count = countPostsByType(ty.key);
-    const docs = (ty.docs||[]).map(x=>x.label).join(" · ");
+    const docs = (ty.docs||[]).map(x=>x.label + (x.opcional ? ` (${t("opcional","optional","opcional","אופציונלי")})` : "")).join(" · ");
     return `<button type="button" class="lp-row${tipoAbierto===ty.key?" on":""}${ty.archived?" archivado":""}" data-action="tipo-abrir" data-key="${esc(ty.key)}" aria-expanded="${tipoAbierto===ty.key}">
       <span class="tipo-ico" aria-hidden="true">${esc(ty.icon)}</span>
       <span class="lp-who"><b>${esc(ty.label)}</b><span>${ty.archived
@@ -12129,13 +12140,13 @@ function renderTipoPanel(d, ty){
       <label class="lp-switch"><input type="checkbox" data-action="tipos-sync" data-key="${esc(ty.key)}" ${ty.calendarSync?"checked":""}><span class="lp-sw" aria-hidden="true"></span><span class="lp-switch-txt"><b>${t("Se suma al Google Calendar","Goes to Google Calendar","Vai para o Google Calendar","נוסף ל-Google Calendar")}</b><small>${t("Cada evento de este tipo aparece en el Calendar compartido.","Every event of this type shows up in the shared Calendar.","Cada evento deste tipo aparece no Calendar compartilhado.","כל אירוע מסוג זה מופיע ביומן המשותף.")}</small></span></label>
       <div class="lp-field"><label>${t("Documentos esperados","Expected documents","Documentos esperados","מסמכים צפויים")}</label>
         <div class="tipo-docs" data-key="${esc(ty.key)}">
-          ${(ty.docs||[]).map((doc, i)=>`<div class="doc-fila"><span class="doc-chip"><span class="doc-nombre">${esc(doc.label)}</span><button type="button" class="rm" data-action="tipo-doc-remove" data-key="${esc(ty.key)}" data-idx="${i}" aria-label="${esc(t("Quitar","Remove","Remover","הסרה"))}" title="${esc(t("Quitar","Remove","Remover","הסרה"))}">✕</button></span></div>`).join("")}
+          ${(ty.docs||[]).map((doc, i)=>`<div class="doc-fila"><span class="doc-chip"><span class="doc-nombre">${esc(doc.label)}</span><label class="doc-opc" title="${esc(t("No cuenta para la cuenta de documentos ni figura como faltante; queda en la lista para poder subirlo.","Doesn't count toward the document tally nor show as missing; it stays in the list so it can be uploaded.","Não conta para a contagem de documentos nem aparece como faltante; fica na lista para poder subi-lo.","לא נספר במניין המסמכים ולא מוצג כחסר; נשאר ברשימה כדי שאפשר יהיה להעלות אותו."))}"><input type="checkbox" data-action="tipo-doc-opcional" data-key="${esc(ty.key)}" data-idx="${i}" ${doc.opcional ? "checked" : ""}> ${t("Opcional","Optional","Opcional","אופציונלי")}</label><button type="button" class="rm" data-action="tipo-doc-remove" data-key="${esc(ty.key)}" data-idx="${i}" aria-label="${esc(t("Quitar","Remove","Remover","הסרה"))}" title="${esc(t("Quitar","Remove","Remover","הסרה"))}">✕</button></span></div>`).join("")}
           <div class="doc-add">
             <input type="text" class="doc-nuevo-input" data-action="tipo-doc-nuevo" data-key="${esc(ty.key)}" value="${esc((d.nuevoDoc||{})[ty.key] || "")}" maxlength="60" placeholder="${esc(t("Nombre del documento…","Document name…","Nome do documento…","שם המסמך…"))}">
             <button type="button" class="btn-doc-add" data-action="tipo-doc-add" data-key="${esc(ty.key)}" aria-label="${esc(t("Agregar documento","Add document","Adicionar documento","הוספת מסמך"))}" title="${esc(t("Agregar documento","Add document","Adicionar documento","הוספת מסמך"))}">+</button>
           </div>
         </div>
-        <span class="hint">${t("Es lo que se espera de cada evento de este tipo, no una obligación: nada bloquea publicar sin ellos.","It's what's expected of each event of this type, not a requirement: nothing blocks publishing without them.","É o que se espera de cada evento deste tipo, não uma obrigação: nada bloqueia publicar sem eles.","זה מה שמצופה מכל אירוע מסוג זה, לא חובה: דבר אינו חוסם פרסום בלעדיהם.")}</span>
+        <span class="hint">${t("Es lo que se espera de cada evento de este tipo, no una obligación: nada bloquea publicar sin ellos. Un documento «opcional» queda en la lista para poder subirlo, pero no cuenta para el 2/2 ni figura como faltante.","It's what's expected of each event of this type, not a requirement: nothing blocks publishing without them. An “optional” document stays in the list so it can be uploaded, but doesn't count toward the 2/2 nor show as missing.","É o que se espera de cada evento deste tipo, não uma obrigação: nada bloqueia publicar sem eles. Um documento «opcional» fica na lista para poder subi-lo, mas não conta para o 2/2 nem aparece como faltante.","זה מה שמצופה מכל אירוע מסוג זה, לא חובה: דבר אינו חוסם פרסום בלעדיהם. מסמך «אופציונלי» נשאר ברשימה כדי שאפשר יהיה להעלות אותו, אך לא נספר ב-2/2 ולא מוצג כחסר.")}</span>
       </div>
       <div class="lp-field"><label>${t("Orden al cargar un evento","Order when logging an event","Ordem ao criar um evento","סדר ברישום אירוע")}</label>
         <div class="lp-botones">
@@ -13380,6 +13391,17 @@ function docsEsperados(activityType){
   const lista = DOCS_POR_TIPO[activityType];
   return Array.isArray(lista) ? lista : [];
 }
+// Un documento "opcional" queda en la lista para poder subirlo, pero no
+// cuenta para el N/N ni figura como faltante (pedido del usuario,
+// 6/10/2026: había puesto «Otro» en casi todos los tipos "por si alguien
+// quiere subir algo más", y le contaba como faltante). Se marca en
+// Administración › Tipos de actividad; los que no dicen nada y se llaman
+// «Otro» arrancan opcionales, que es el caso que había. Una vez
+// guardado, cada documento lleva el dato explícito.
+function esNombreDeOtro(label){ return /^(otro|otros|other|others|outro|outros|אחר|אחרים)$/.test(normalize(label)); }
+function docEsOpcional(d){ return d.opcional === true || (d.opcional === undefined && esNombreDeOtro(d.label)); }
+// Solo los que cuentan.
+function docsExigidos(activityType){ return docsEsperados(activityType).filter(d => !d.opcional); }
 // La ranura que ocupa cada archivo, si ocupa alguna.
 function docDeArchivo(f){ return f && typeof f.doc === "string" ? f.doc : null; }
 // Todos los archivos de un documento, en el orden en que se subieron.
@@ -13435,8 +13457,8 @@ function docsAbierto(post){
   return docsAbiertos.has(post.id) ? docsAbiertos.get(post.id) : false;
 }
 function cuantosDocsHay(post){
-  const esperados = docsEsperados(post.activityType);
-  return { hay: esperados.filter(d => archivoDelDoc(post, d.id)).length, total: esperados.length };
+  const exigidos = docsExigidos(post.activityType);
+  return { hay: exigidos.filter(d => archivoDelDoc(post, d.id)).length, total: exigidos.length };
 }
 
 // La documentación esperada del evento, en dos partes: `"linea"` es la
@@ -13446,17 +13468,26 @@ function renderDocumentacion(post, parte){
   const esperados = docsEsperados(post.activityType);
   if(!esperados.length) return "";
   const puede = canEditPost(post);
+  // La cuenta es de los exigidos; los opcionales se listan igual, pero no
+  // suman ni faltan. Si todos son opcionales, no hay fracción que mostrar:
+  // se dice cuántos hay subidos.
   const { hay, total } = cuantosDocsHay(post);
+  const subidos = esperados.filter(d => archivoDelDoc(post, d.id)).length;
   const abierto = docsAbierto(post);
-  const completo = hay === total;
-  const tarde = !completo && eventoYaPaso(post);
+  const completo = total > 0 && hay === total;
+  const tarde = hay < total && eventoYaPaso(post);
   const titulo = t("Documentación","Documentation","Documentação","תיעוד");
+  const opcionalTxt = t("opcional","optional","opcional","אופציונלי");
+  const cuenta = total ? `${hay}/${total}` : String(subidos);
+  const cuentaHtml = total ? `<span class="doc-cuenta${completo ? " completo" : ""}">${hay}/${total}</span><span class="pa-l"> ${t("documentos","documents","documentos","מסמכים")}</span>`
+    : !subidos ? `<span class="pa-l">${t("documentos","documents","documentos","מסמכים")}</span>`
+    : `<span class="doc-cuenta">${subidos}</span><span class="pa-l"> ${subidos === 1 ? t("documento","document","documento","מסמך") : t("documentos","documents","documentos","מסמכים")}</span>`;
   // Cada documento con su estado, al pasar el mouse: la pastilla dice
   // solo la cuenta, pero mirando un evento viejo se quiere saber cuál.
-  const estado = esperados.map(d => `${archivoDelDoc(post, d.id) ? "✓" : "○"} ${d.label}`).join(" · ");
+  const estado = esperados.map(d => `${archivoDelDoc(post, d.id) ? "✓" : "○"} ${d.label}${d.opcional ? ` (${opcionalTxt})` : ""}`).join(" · ");
   const linea = `<button type="button" class="doc-linea${completo ? " ok" : ""}${tarde ? " tarde" : ""}"
       data-action="toggle-docs" data-post-id="${post.id}" aria-expanded="${abierto}" title="${esc(titulo + ": " + estado)}"
-      aria-label="${esc(titulo + " " + hay + "/" + total)}">📄 <span class="doc-cuenta${completo ? " completo" : ""}">${hay}/${total}</span><span class="pa-l"> ${t("documentos","documents","documentos","מסמכים")}</span>${tarde ? `<span class="pa-l"> · ${t("faltan","missing","faltam","חסרים")}</span>` : ""}</button>`;
+      aria-label="${esc(titulo + " " + cuenta)}">📄 ${cuentaHtml}${tarde ? `<span class="pa-l"> · ${t("faltan","missing","faltam","חסרים")}</span>` : ""}</button>`;
   if(parte === "linea") return linea;
   if(!abierto) return parte === "panel" ? "" : linea;
   // Un archivo de la lista: su nombre (recortado; entero al pasar el
@@ -13486,9 +13517,9 @@ function renderDocumentacion(post, parte){
       const clave = post.id + "|" + d.id;
       const desplegado = anteriores.length > 0 && docsDesplegados.has(clave);
       const agregar = t("Agregar otro archivo","Add another file","Adicionar outro arquivo","הוספת קובץ נוסף");
-      return `<div class="doc-fila lista">
+      return `<div class="doc-fila lista${d.opcional ? " opcional" : ""}">
         <span class="doc-estado ok" aria-hidden="true">✓</span>
-        <span class="doc-nombre">${esc(d.label)}</span>
+        <span class="doc-nombre">${esc(d.label)}</span>${d.opcional ? `<span class="doc-tag">${esc(opcionalTxt)}</span>` : ""}
         <span class="doc-archivos">${archivoHtml(ultimo)}
         ${anteriores.length ? `<button type="button" class="doc-mas" data-action="doc-mas" data-post-id="${post.id}" data-doc="${esc(d.id)}" aria-expanded="${desplegado}">${desplegado
           ? esc(t("ocultar","hide","ocultar","הסתרה")) + " ▴"
@@ -13496,15 +13527,16 @@ function renderDocumentacion(post, parte){
         ${puede ? `<button type="button" class="doc-agregar" data-action="adjuntar-doc" data-post-id="${post.id}" data-doc="${esc(d.id)}" title="${esc(agregar)}" aria-label="${esc(agregar)}">＋</button>` : ""}</span>
       </div>${desplegado ? `<div class="doc-anteriores">${anteriores.map(f => `<div class="doc-anterior">${archivoHtml(f)}</div>`).join("")}</div>` : ""}`;
     }
-    return `<div class="doc-fila falta">
+    // Un opcional que no está no "falta": nomás se ofrece subirlo.
+    return `<div class="doc-fila falta${d.opcional ? " opcional" : ""}">
       <span class="doc-estado" aria-hidden="true">○</span>
-      <span class="doc-nombre">${esc(d.label)}</span>
+      <span class="doc-nombre">${esc(d.label)}</span>${d.opcional ? `<span class="doc-tag">${esc(opcionalTxt)}</span>` : ""}
       ${puede
         ? `<button type="button" class="doc-adjuntar" data-action="adjuntar-doc" data-post-id="${post.id}" data-doc="${esc(d.id)}">📎 ${t("Adjuntar","Attach","Anexar","צירוף")}</button>`
-        : `<span class="doc-pendiente">${esc(t("falta","missing","falta","חסר"))}</span>`}
+        : d.opcional ? "" : `<span class="doc-pendiente">${esc(t("falta","missing","falta","חסר"))}</span>`}
     </div>`;
   }).join("");
-  const panel = `<div class="doc-abierto"><div class="doc-panel-tit">📄 ${titulo} · ${hay}/${total}</div>${filas}</div>`;
+  const panel = `<div class="doc-abierto"><div class="doc-panel-tit">📄 ${titulo}${total ? ` · ${hay}/${total}` : ""}</div>${filas}</div>`;
   return parte === "panel" ? panel : linea + panel;
 }
 
@@ -18444,7 +18476,9 @@ cumpleOverlay.addEventListener("click", e=>{ if(e.target === cumpleOverlay) clos
 // qué tipos se ocultaron. Valen para la sesión, como un filtro.
 let fichaIncluye = 0;
 const fichaOcultos = new Set();
-const fichaDesplegado = new Set(); // "pasos", "docs"
+const fichaDesplegado = new Set(); // "pasos", "docs", "hijos"
+// Cuántas ciudades (o países) se ven al costado antes del «Ver más».
+const HIJOS_A_LA_VISTA = 5;
 // Mientras se imprime la ficha («Reporte del lugar»): todo desplegado.
 let fichaImprimiendo = false;
 // Los hitos de los proyectos entran en «Lo que pasó» (pedido del usuario,
@@ -18816,8 +18850,11 @@ function renderFichaLugar(L){
     ].filter(Boolean).join(" · ");
     return `<button type="button" class="fl-pj-item${elegido === p.id ? " on" : ""}" data-action="ficha-proyecto" data-id="${p.id}" aria-pressed="${elegido === p.id}">
       <b dir="auto">${esc(calendarioLabel(p))}</b><span class="fl-pj-bar" aria-hidden="true"><i style="width:${hs.length ? Math.round(d * 100 / hs.length) : 0}%"></i></span><small>${partes}</small></button>`; }).join("")}</div></div>` : "";
-  // Después, los países de la zona o las ciudades del país.
-  const ladoHijos = hijos.length ? `<div class="fl-card"><h3>${L.zona ? t("Países","Countries","Países","מדינות") : t("Ciudades","Cities","Cidades","ערים")}</h3><div class="fl-hijos">${hijos.map(h => {
+  // Después, los países de la zona o las ciudades del país: hasta cinco
+  // y «Ver más» / «Ver menos» (pedido del usuario, 6/10/2026; en el
+  // reporte impreso salen todos).
+  const todosHijos = fichaDesplegado.has("hijos") || fichaImprimiendo;
+  const ladoHijos = hijos.length ? `<div class="fl-card"><h3>${L.zona ? t("Países","Countries","Países","מדינות") : t("Ciudades","Cities","Cidades","ערים")}${hijos.length > HIJOS_A_LA_VISTA ? `<button type="button" class="fl-mas" data-action="ficha-desplegar" data-que="hijos">${fichaDesplegado.has("hijos") ? t("Ver menos","Show less","Ver menos","הצג פחות") : t("Ver más","See more","Ver mais","הצגת עוד")}</button>` : ""}</h3><div class="fl-hijos">${(todosHijos ? hijos : hijos.slice(0, HIJOS_A_LA_VISTA)).map(h => {
     const ult = h.posts.map(fechaDePost).sort().pop();
     const pend = h.posts.reduce((n, p) => n + pasosPendientes(partesDeLugar(p, h.L)).length, 0);
     return `<button type="button" class="fl-hijo" ${h.accion}>
@@ -21149,7 +21186,7 @@ document.addEventListener("click", async e=>{
     const base = slugifyKey(texto, []) || "doc";  // los repetidos se resuelven abajo, contra ty.docs
     let id = base, n = 2;
     while(ty.docs.some(x=>x.id === id)) id = `${base}${n++}`;
-    ty.docs.push({ id, label: texto.slice(0, 60) });
+    ty.docs.push({ id, label: texto.slice(0, 60), opcional: esNombreDeOtro(texto) });
     d.nuevoDoc[key] = "";
     d.error = "";
     render();
@@ -21625,6 +21662,11 @@ document.addEventListener("change", e=>{
   else if(el.dataset.action === "tipos-sync"){
     const type = getTiposDraft().types.find(x=>x.key===el.dataset.key);
     if(type) type.calendarSync = el.checked;
+  }
+  else if(el.dataset.action === "tipo-doc-opcional"){
+    const type = getTiposDraft().types.find(x=>x.key===el.dataset.key);
+    const doc = type && Array.isArray(type.docs) ? type.docs[Number(el.dataset.idx)] : null;
+    if(doc){ doc.opcional = el.checked; render(); }
   }
 });
 

@@ -1236,6 +1236,15 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   eq("hitos: tocar un hito abre la ventana del proyecto con sus hitos a la vista", await hasta(p, () =>
     !document.getElementById("fichaPostOverlay").hidden && !!document.querySelector('#fichaPostBody [data-action="project-manage"]')
     && /Mandar el presupuesto/.test(document.getElementById("fichaPostBody").textContent)), true);
+  // La cabecera de la ventana queda pegada al borde al scrollear (captura
+  // del usuario, 6/10/2026: quedaba 24px abajo y por la franja asomaba lo
+  // que ya había pasado).
+  await p.setViewportSize({ width: 1280, height: 420 });
+  eq("ventana: al scrollear, la cabecera queda pegada al borde de arriba", await p.evaluate(() => {
+    const o = document.getElementById("fichaPostOverlay"); o.scrollTop = 150;
+    const c = o.querySelector(".fp-cabeza");
+    return o.scrollTop > 0 && Math.round(c.getBoundingClientRect().top) === Math.round(o.getBoundingClientRect().top); }), true);
+  await p.setViewportSize({ width: 1280, height: 720 });
   await p.keyboard.press("Escape");
   // Excluir (pedido del usuario): lo regional no entra si no se pide, y
   // un tipo se oculta con un toque.
@@ -1387,6 +1396,73 @@ const hasta = async (p, fn, arg, ms = 5000) => {
     return Math.abs(r.bottom + parseFloat(getComputedStyle(document.querySelector("main")).paddingBottom) - window.innerHeight) <= 1;
   }), true);
   eq("tandas: sin un solo error", errores, []);
+  await p.close();
+}
+
+/* ---------- Documentos opcionales (6/10/2026) ---------- */
+// «Otro» estaba en casi todos los tipos "por si alguien quiere subir algo
+// más" y contaba como faltante. Ahora un documento puede ser opcional:
+// queda en la lista, pero no cuenta ni falta.
+{
+  const { p, errores } = await entrar(ADMIN, "Benny", base => {
+    base.app_config.push({ key: "preferences", value: { activityTypes: [
+      { key: "visita", label: "Visita", icon: "🧳", docs: [{ id: "plan", label: "Plan de viaje" }, { id: "reporte", label: "Reporte" }, { id: "otro", label: "Otro" }] },
+      { key: "otro", label: "Otro", icon: "✨", docs: [{ id: "otro", label: "Otro" }] } ] } });
+    base.posts.push({ id: "p_otro", title: "Charla informal", content: "x", date: dia(3), start_date: dia(3), end_date: dia(3), activity_type: "otro",
+      author_name: "Benny", author_email: ADMIN, scopes: [], images: [], files: [], links: [], mentions: [], liked_by: [], milestones: [], editors: [], participants: [], recurrence_skip: [], recurrence_moves: {}, created_at: hace(3) });
+  });
+  await esperarTexto(p, "Reunión con la comunidad");
+  const pill = sel => p.$eval(sel + " .doc-linea", e => ({ txt: e.textContent.replace(/\s+/g, " ").trim(), tarde: e.classList.contains("tarde"), title: e.title }));
+  eq("opcional: «Otro» no cuenta para la cuenta ni como faltante", await pill('.post[data-post-id="p_reunion"]'),
+    { txt: "📄 0/2 documentos · faltan", tarde: true, title: "Documentación: ○ Plan de viaje · ○ Reporte · ○ Otro (opcional)" });
+  await p.click('.post[data-post-id="p_reunion"] .doc-linea');
+  eq("opcional: en la lista está igual, marcado y con su «Adjuntar»", await hasta(p, () => {
+    const d = document.querySelector('.post[data-post-id="p_reunion"] .doc-abierto'); if(!d) return false;
+    const filas = [...d.querySelectorAll(".doc-fila")];
+    return filas.length === 3 && d.querySelector(".doc-panel-tit").textContent.trim() === "📄 Documentación · 0/2"
+      && (filas[2].querySelector(".doc-tag") || {}).textContent === "opcional" && !!filas[2].querySelector(".doc-adjuntar") && !filas[0].querySelector(".doc-tag"); }), true);
+  eq("opcional: un tipo con solo documentos opcionales no muestra fracción ni le falta nada", await pill('.post[data-post-id="p_otro"]'),
+    { txt: "📄 documentos", tarde: false, title: "Documentación: ○ Otro (opcional)" });
+  // Administración › Tipos de actividad: la casilla.
+  await p.click('[data-action="toggle-user-menu"]');
+  await p.click('.user-menu [data-action="goto-view"][data-view="admin"]');
+  await p.click('.admin-menu button:has-text("Tipos")');
+  eq("opcional: la lista de tipos lo dice", await p.$eval('.lp-row[data-key="visita"] .lp-who span', e => e.textContent.trim()), "Plan de viaje · Reporte · Otro (opcional)");
+  await p.click('.lp-row[data-key="visita"]');
+  eq("opcional: en la ficha del tipo, una casilla por documento, con «Otro» ya marcado", await p.$$eval('.lp-panel [data-action="tipo-doc-opcional"]', es => es.map(e => e.checked)), [false, false, true]);
+  await p.uncheck('.lp-panel [data-action="tipo-doc-opcional"][data-idx="2"]');
+  eq("opcional: destildarla queda como cambio sin guardar", await hasta(p, () => !!document.querySelector(".zonas-cambios")), true);
+  await p.fill('.lp-panel .doc-nuevo-input', "Otros");
+  await p.click('.lp-panel [data-action="tipo-doc-add"]');
+  eq("opcional: un documento nuevo llamado «Otros» arranca opcional", await hasta(p, () => {
+    const cs = [...document.querySelectorAll('.lp-panel [data-action="tipo-doc-opcional"]')]; return cs.length === 4 && cs[3].checked && !cs[2].checked; }), true);
+  await p.click('[data-action="tipos-save"]');
+  eq("opcional: se guarda tal cual en la configuración", await hasta(p, () => {
+    const c = (window.__sb.tablas.app_config || []).find(x => x.key === "preferences"); const d = c && c.value.activityTypes[0].docs;
+    return !!d && d.length === 4 && d[0].opcional === false && d[2].opcional === false && d[3].opcional === true; }), true);
+  await p.click('nav.tabs button[data-view="feed"]');
+  eq("opcional: y la tarjeta cuenta como se dejó", await hasta(p, () => {
+    const e = document.querySelector('.post[data-post-id="p_reunion"] .doc-linea'); return !!e && e.textContent.replace(/\s+/g, " ").trim() === "📄 0/3 documentos · faltan"; }), true);
+  eq("opcional: sin un solo error", errores, []);
+  await p.close();
+}
+
+/* ---------- Ciudades al costado: hasta cinco y «Ver más» (6/10/2026) ---------- */
+{
+  const CIUDADES = ["Avellaneda", "Bahia Blanca", "Bariloche", "Basavilbaso", "Catamarca", "Cipolletti"];
+  const { p, errores } = await entrar(ADMIN, "Benny", base => CIUDADES.forEach((c, i) => base.posts.push({ id: "p_c" + i, title: "", content: "Rutina en " + c,
+    date: dia(5 + i), start_date: dia(5 + i), end_date: dia(5 + i), activity_type: "rutina", author_name: "Benny", author_email: ADMIN,
+    scopes: [{ type: "ciudad", country: "Argentina", city: c }], images: [], files: [], links: [], mentions: [], liked_by: [], milestones: [], editors: [], participants: [], recurrence_skip: [], recurrence_moves: {}, created_at: hace(5 + i) })));
+  await esperarTexto(p, "Rutina en Avellaneda");
+  await p.click('nav.tabs button[data-view="paises"]');
+  await p.evaluate(() => { const x = document.createElement("button"); x.dataset.action = "drill-country"; x.dataset.country = "Argentina"; document.body.appendChild(x); x.click(); x.remove(); });
+  await hasta(p, () => (document.querySelector(".ficha-lugar h1") || {}).textContent === "Argentina");
+  eq("ciudades: hasta cinco a la vista, y «Ver más»", [await p.$$eval(".fl-hijos .fl-hijo", es => es.map(e => e.dataset.city)), await p.$eval('.fl-mas[data-que="hijos"]', e => e.textContent.trim())], [CIUDADES.slice(0, 5), "Ver más"]);
+  await p.click('.fl-mas[data-que="hijos"]');
+  eq("ciudades: «Ver más» muestra todas, y ofrece «Ver menos»", await hasta(p, () => document.querySelectorAll(".fl-hijos .fl-hijo").length === 6 && document.querySelector('.fl-mas[data-que="hijos"]').textContent.trim() === "Ver menos"), true);
+  await p.click('.fl-mas[data-que="hijos"]');
+  eq("ciudades: «Ver menos» vuelve a cinco", await hasta(p, () => document.querySelectorAll(".fl-hijos .fl-hijo").length === 5), true);
+  eq("ciudades: sin un solo error", errores, []);
   await p.close();
 }
 

@@ -41,7 +41,8 @@ eq("con su id derivado del nombre", ((await docs("visita"))[2]||{}).id, "reporte
 // mirar los de un tipo, primero se abre su ficha.
 const chipsDe = key => p.evaluate(k => { window.__abrirTipo(k); return [...document.querySelectorAll(".doc-chip")]
   .filter(c => c.querySelector(`[data-key="${k}"]`))
-  .map(c => c.textContent.replace("✕","").trim()); }, key);
+  // El nombre nomás: desde el 6/10/2026 cada chip trae también la casilla «Opcional».
+  .map(c => c.querySelector(".doc-nombre").textContent.trim()); }, key);
 eq("se ve dibujado en la pantalla", await chipsDe("visita"),
    ["Plan de viaje","Reporte","Reporte de cierre"]);
 eq("y el campo queda vacío para el siguiente", await p.evaluate(()=>getTiposDraft().nuevoDoc.visita), "");
