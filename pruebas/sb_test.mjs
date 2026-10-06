@@ -1033,6 +1033,7 @@ eq("el adaptador sabe dar la miniatura de una foto y olvidar las firmas al salir
       const store = ctx.store;
       const safeUrl = u => u, renderScopeChip = () => "";
       ${grab("esc")}
+      const t = es => es;
       ${grab("IMAGE_DATA_URL_RE")}
       ${grab("esUrlDelBucket")}
       ${grab("safeImageSrc")}

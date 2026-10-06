@@ -1860,6 +1860,25 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   await p.close();
 }
 
+/* ---------- Teclado y lectores de pantalla (docs/AUDITORIA.md, M5) ---------- */
+{
+  const { p, errores } = await entrar(ADMIN, "Benny");
+  await esperarTexto(p, "Reunión con la comunidad");
+  const sinRol = await p.evaluate(() => [...document.querySelectorAll("#viewRoot [data-action]")]
+    .filter(e => !["BUTTON","A","INPUT","SELECT","TEXTAREA","LABEL","OPTION"].includes(e.tagName) && !/^(button|link|checkbox|radio|option|tab|menuitem|switch)$/.test(e.getAttribute("role") || ""))
+    .map(e => e.tagName.toLowerCase() + "." + e.dataset.action));
+  eq("en el Inicio, todo lo que se toca es un botón o se anuncia como tal", [...new Set(sinRol)], []);
+  await p.focus('.post[data-post-id="p_reunion"] .post-chips .scope-chip');
+  await p.keyboard.press("Enter");
+  eq("una ciudad de la tarjeta se abre con Enter, como con un clic", await p.$eval('.post[data-post-id="p_reunion"] .post-chips .scope-chip', e => e.classList.contains("completo")), true);
+  await p.focus('.post[data-post-id="p_reunion"] img[data-action="open-lightbox"]');
+  await p.keyboard.press(" ");
+  eq("y una foto con Espacio", await hasta(p, () => document.getElementById("lightbox").classList.contains("show"), null, 3000), true);
+  eq("los ✕ dicen qué hacen", await p.evaluate(() => [...document.querySelectorAll(".rm")].filter(b => !b.getAttribute("aria-label") && !b.getAttribute("title")).length), 0);
+  eq("sin un solo error", errores, []);
+  await p.close();
+}
+
 /* ---------- Alguien que entra por primera vez ---------- */
 {
   const { p, errores, base } = await entrar("pedro@x.com", "Pedro Gómez");
