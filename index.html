@@ -6973,35 +6973,19 @@ function deviceLabel(){
   else if(/Linux/.test(ua)) os = "Linux";
   return os ? `${browser} · ${os}` : browser;
 }
-// IP pública de quien hace la acción: como esta app no tiene backend
-// propio, no hay forma de leerla del lado del servidor — se le pide a
-// un servicio externo gratuito y sin API key (ipify) desde el propio
-// navegador. Si falla (sin conexión, el servicio está caído, un
-// adblocker lo frena) se resuelve con null y el resto de logAudit sigue
-// como si nada: nunca bloquea ni rompe el registro de auditoría.
-async function fetchPublicIp(){
-  try{
-    const ctrl = new AbortController();
-    const timeout = setTimeout(()=>ctrl.abort(), 3000);
-    const res = await fetch("https://api.ipify.org?format=json", { signal: ctrl.signal });
-    clearTimeout(timeout);
-    if(!res.ok) return null;
-    const data = await res.json();
-    return data.ip || null;
-  }catch(e){ return null; }
-}
 async function logAudit(type, opts){
   const actorEmail = opts?.actorEmail || state.auth.user?.email;
   const actorName = opts?.actorName || state.auth.user?.displayName;
   if(!actorEmail || !actorName) return;
   try{
-    const ip = await fetchPublicIp();
+    // La IP no va: la anota la base, sacada del pedido (auditoria_ip_del_
+    // pedido, en 04-funciones.sql). Antes cada login se la preguntaba a un
+    // servicio de afuera (ipify) y le contaba la IP de cada uno (AUDITORIA M1).
     const data = {
       type, actorEmail, actorName,
       targetEmail: opts?.targetEmail || null,
       detail: opts?.detail || null,
       device: deviceLabel(),
-      ip,
       createdAt: store.horaDelServidor(),
     };
     // "login"/"access_requested" los puede escribir CUALQUIER cuenta de
@@ -10291,8 +10275,7 @@ applyStaticI18n();
 // Para poder leerlo en otro idioma hace falta un traductor automático de
 // verdad, y como esta app no tiene backend propio (ver README), se pide
 // a un servicio gratuito desde el propio navegador (MyMemory: sin API
-// key, con CORS habilitado — mismo criterio que fetchPublicIp con
-// ipify). Tiene un límite diario de uso compartido entre quienes usan la
+// key, con CORS habilitado). Tiene un límite diario de uso compartido entre quienes usan la
 // red desde la misma IP — pensado para traducciones ocasionales bajo
 // pedido, no para traducir todo el Feed solo. Por eso NUNCA es
 // automático: cada posteo pide su traducción individual, una sola vez
@@ -10305,7 +10288,7 @@ const translationsShown = new Set(); // keys mostrando la traducción ahora (en 
 async function fetchTranslation(text, targetLang){
   if(!text || !text.trim()) return "";
   const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=es|${targetLang}`;
-  // Con tope de tiempo (como fetchPublicIp): si el servicio no contesta,
+  // Con tope de tiempo: si el servicio no contesta,
   // el botón quedaba en "Traduciendo…" deshabilitado para siempre.
   const ctrl = new AbortController();
   const timer = setTimeout(()=>ctrl.abort(), 10000);

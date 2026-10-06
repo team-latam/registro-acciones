@@ -1593,8 +1593,7 @@ gente. Para eso hay un botón discreto "🌐 Ver traducción" debajo de cada
 posteo/respuesta (solo visible cuando el idioma activo no es español,
 que es en el que se escribe todo el contenido) que pide la traducción a
 [MyMemory](https://mymemory.translated.net/doc/spec.php) — un traductor
-gratuito, sin API key, con CORS habilitado — el mismo criterio que ya se
-usaba para `fetchPublicIp()` contra ipify.org: sin backend propio, la
+gratuito, sin API key, con CORS habilitado: sin backend propio, la
 llamada sale directo del navegador de quien mira. Puntos importantes:
 
 - **Nunca es automático.** Se pide solo al hacer click, nunca al
@@ -2150,16 +2149,17 @@ historia de por qué se hizo así):
   base64` y se pegan como `integrity="sha256-..."`.
 - **CSP**: no hay `Content-Security-Policy`. Una que limite `script-src` a
   self + unpkg + cdn.jsdelivr.net (supabase-js) + accounts.google.com (el
-  permiso de Calendar) y `connect-src` a supabase.co/googleapis/ipify/
+  permiso de Calendar) y `connect-src` a supabase.co/googleapis/
   mymemory reduciría mucho el impacto de cualquier XSS futuro, pero hay
   que probarla en producción (los popups de login de Google y las
   teselas del mapa son fáciles de romper con una CSP mal armada).
 - **Privacidad de terceros**: la traducción bajo demanda manda a
   MyMemory, en el query string, el texto de lo que se está traduciendo
   — un posteo **o una respuesta** (el botón "🌐 Ver traducción" existe
-  en los dos); y el login manda la IP de cada persona a ipify para la
-  auditoría. Son decisiones asumidas por no tener backend; conviene que
-  el equipo lo sepa.
+  en los dos). Es una decisión asumida por no tener backend; conviene
+  que el equipo lo sepa. (Hasta el 6/10/2026 el login también mandaba la
+  IP de cada persona a ipify; desde entonces la anota la base, sacada del
+  pedido: docs/AUDITORIA.md, M1.)
 - **Escrituras de cuentas que todavía no están aprobadas**: `audit_log` y
   `access_requests` aceptan filas de cualquier cuenta de Google logueada,
   aprobada o no — es a propósito, para poder registrar el login o el

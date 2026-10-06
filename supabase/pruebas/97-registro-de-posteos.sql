@@ -114,6 +114,21 @@ select lab.probar_valor('con un pedido raro, el posteo se guarda igual', lab.com
      values ('p2','T','C','2026-09-10','2026-09-10','2026-09-10','visita','Juan','juan@x.com')$q$,
   $q$select lab.registro()$q$, 'post_created|juan@x.com|Juan|«T» (Visita)');
 
+-- La IP de un login también sale del pedido; la que mande la app no vale
+-- (docs/AUDITORIA.md, M1).
+select lab.probar_valor('un login anota la IP del pedido, no la que dice la app', lab.como('juan@x.com'),
+  $q$select set_config('request.headers', '{"x-forwarded-for":"200.1.2.3, 10.0.0.1"}', true);
+     insert into public.audit_log(id,type,actor_email,actor_name,ip)
+     values ('juan@x.com_login_' || to_char(now() at time zone 'utc', 'YYYY-MM-DD'), 'login','juan@x.com','Juan','1.1.1.1');
+     set local role postgres$q$,
+  $q$select ip from public.audit_log where type = 'login' and actor_email = 'juan@x.com'$q$, '200.1.2.3');
+select lab.probar_valor('sin pedido, sin IP (nunca la inventada)', lab.como('juan@x.com'),
+  $q$select set_config('request.headers', '', true);
+     insert into public.audit_log(id,type,actor_email,actor_name,ip)
+     values ('juan@x.com_login_' || to_char(now() at time zone 'utc', 'YYYY-MM-DD'), 'login','juan@x.com','Juan','1.1.1.1');
+     set local role postgres$q$,
+  $q$select coalesce(ip, 'ninguna') from public.audit_log where type = 'login' and actor_email = 'juan@x.com'$q$, 'ninguna');
+
 -- Y a mano no lo escribe nadie: si no, se podría anotar algo que no pasó.
 select lab.probar('un integrante NO puede anotar a mano que cargó algo', lab.como('juan@x.com'),
   $q$insert into public.audit_log(id, type, actor_email, actor_name, detail) values ('pc1','post_created','juan@x.com','Juan','«Evento»')$q$, false);

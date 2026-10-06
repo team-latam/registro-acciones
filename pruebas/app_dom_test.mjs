@@ -1891,6 +1891,17 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   await p.close();
 }
 
+/* ---------- La IP del login la pone la base (AUDITORIA M1) ---------- */
+{
+  const pedidos = [];
+  const { p, base } = await entrar("ana@x.com", "Ana Pérez", null, null, pedidos);
+  eq("login: se anota", await hasta(p, () => (window.__sb.tablas.audit_log || []).some(f => f.type === "login" && f.actor_email === "ana@x.com" && f.id !== "a_1")), true);
+  eq("login: sin preguntarle la IP a nadie de afuera", pedidos.filter(u => /ipify/.test(u)), []);
+  const fila = (await base()).audit_log.find(f => f.type === "login" && f.id !== "a_1") || {};
+  eq("login: y la app no manda ninguna IP", "ip" in fila ? fila.ip : null, null);
+  await p.close();
+}
+
 /* ---------- Un posteo con lugares y hitos de forma rara (AUDITORIA B5) ---------- */
 {
   const { p, errores } = await entrar(ADMIN, "Benny", b => b.posts.push({
