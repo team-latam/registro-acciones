@@ -42,12 +42,10 @@ privado, y el registro de la corrida solo dice cantidades.
 
 ## Restaurar
 
-- **Algo puntual**: buscar la fila en `datos/<tabla>.json` del commit de
-  la semana que corresponda y volver a cargarla (pedírselo a Claude).
-- **Todo**: en una base vacía con el esquema de `supabase/`,
-  `gunzip -c base/registro.sql.gz | psql "<dirección>"` (probado: el único
-  aviso, «schema "public" already exists», no importa), y subir
-  `archivos/` al bucket `adjuntos`.
+Con el trabajo **Actions → Restaurar una copia** (`restaurar.mjs`): trae
+de vuelta algo borrado, ensaya la copia en un proyecto aparte o vuelve
+todo si se perdió. Los pasos, para cualquiera, en `docs/RESTAURAR.md`.
+Por omisión no escribe: solo cuenta lo que haría.
 
 Además de esta copia automática, la app tiene un botón en
 **Administración → Copia de seguridad** para bajar una en el momento.

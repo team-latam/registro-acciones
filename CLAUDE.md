@@ -26,7 +26,9 @@ decisiones de arquitectura.
   `docs/DOMINIO.md` (el plan, no ejecutado, de mudar el sitio a un
   dominio propio si `*.github.io` vuelve a bloquearse en Argentina) y
   `docs/AUDITORIA.md` (la auditoría completa del 6/10/2026 con la lista de
-  mejoras por prioridad; el detalle en `docs/auditoria/`). En la
+  mejoras por prioridad; el detalle en `docs/auditoria/`) y
+  `docs/RESTAURAR.md` (cómo volver atrás con una copia: workflow
+  «Restaurar una copia», `supabase/respaldo/restaurar.mjs`). En la
   raíz quedan solo `index.html`, `README.md` y este archivo.
   Copias de seguridad (docs/REVISION.md, punto 13): andando desde el
   5/10/2026 — workflow «Copia de seguridad» (`supabase/respaldo/`) cada

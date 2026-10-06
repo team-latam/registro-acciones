@@ -1,0 +1,176 @@
+# ============================================================
+# Restaurar una copia de seguridad (a mano, nunca solo)
+# ============================================================
+# El camino de vuelta de «Copia de seguridad» (docs/AUDITORIA.md, I7):
+# toma la copia del repo privado team-latam/registro-respaldos y la
+# vuelve a cargar. Los pasos, explicados para cualquiera, en
+# docs/RESTAURAR.md. Lo hace supabase/respaldo/restaurar.mjs.
+#
+# Adónde:
+#   prueba      un proyecto de Supabase aparte, para ensayar. Necesita los
+#               secretos PRUEBA_SUPABASE_URL, PRUEBA_SUPABASE_SERVICE_ROLE_KEY
+#               y, para armarle las tablas, PRUEBA_SUPABASE_DB_URL.
+#   produccion  el de la app. Para traer de vuelta algo borrado (con
+#               «solo»), o todo si se perdió. Usa los secretos de siempre.
+#
+# Por omisión NO escribe: cuenta lo que haría. Para escribir de verdad en
+# el de la app hay que escribir RESTAURAR en «confirmar».
+#
+# Este repo es PÚBLICO y sus registros también: acá nunca se escribe un
+# dato, solo cantidades (igual que la copia).
+# ============================================================
+name: Restaurar una copia
+
+on:
+  workflow_dispatch:
+    inputs:
+      destino:
+        description: "Adónde restaurar"
+        type: choice
+        options: [prueba, produccion]
+        default: prueba
+      que:
+        description: "Qué traer"
+        type: choice
+        options: [todo, tablas, archivos]
+        default: todo
+      solo:
+        description: "Solo estas filas (opcional). Ej.: posts:abc123;replies:def456"
+        type: string
+        default: ""
+      escribir:
+        description: "Escribir de verdad (si no, solo cuenta lo que haría)"
+        type: boolean
+        default: false
+      confirmar:
+        description: "En «produccion», escribir RESTAURAR"
+        type: string
+        default: ""
+      semana:
+        description: "De qué copia (opcional): un commit del repo de copias. Vacío = la última"
+        type: string
+        default: ""
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/respaldo/**'
+      - '.github/workflows/restaurar.yml'
+  pull_request:
+    paths:
+      - 'supabase/respaldo/**'
+
+# Una restauración por vez, y nunca a la par de una copia.
+concurrency:
+  group: respaldo
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  probar:
+    name: La prueba de la restauración
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Contra un Supabase de mentira
+        run: ./supabase/respaldo/pruebas/correr.sh
+
+  restaurar:
+    name: Restaurar
+    needs: probar
+    # Solo a mano, y solo con el código de main (docs/AUDITORIA.md, U2).
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+
+      - name: ¿Está todo para empezar?
+        id: revisar
+        env:
+          DESTINO: ${{ inputs.destino }}
+          ESCRIBIR: ${{ inputs.escribir }}
+          CONFIRMAR: ${{ inputs.confirmar }}
+          TOKEN: ${{ secrets.RESPALDOS_TOKEN }}
+          P_URL: ${{ secrets.PRUEBA_SUPABASE_URL }}
+          P_LLAVE: ${{ secrets.PRUEBA_SUPABASE_SERVICE_ROLE_KEY }}
+          LLAVE: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          faltan=""
+          [ -z "$TOKEN" ] && faltan="$faltan RESPALDOS_TOKEN"
+          if [ "$DESTINO" = "prueba" ]; then
+            [ -z "$P_URL" ] && faltan="$faltan PRUEBA_SUPABASE_URL"
+            [ -z "$P_LLAVE" ] && faltan="$faltan PRUEBA_SUPABASE_SERVICE_ROLE_KEY"
+          else
+            [ -z "$LLAVE" ] && faltan="$faltan SUPABASE_SERVICE_ROLE_KEY"
+          fi
+          if [ -n "$faltan" ]; then
+            echo "### No se restauró nada: falta$faltan" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "Se cargan en Settings → Secrets and variables → Actions (ver docs/RESTAURAR.md)." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          if [ "$DESTINO" = "produccion" ] && [ "$ESCRIBIR" = "true" ] && [ "$CONFIRMAR" != "RESTAURAR" ]; then
+            echo "### No se restauró nada" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "Para escribir en la app de verdad hay que poner RESTAURAR en «confirmar»." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+      - name: Traer la copia
+        env:
+          TOKEN: ${{ secrets.RESPALDOS_TOKEN }}
+          SEMANA: ${{ inputs.semana }}
+        run: |
+          if ! git clone --quiet "https://x-access-token:${TOKEN}@github.com/team-latam/registro-respaldos.git" respaldos 2>/dev/null; then
+            echo "### ⛔ No se pudo abrir el repo team-latam/registro-respaldos (¿venció el token RESPALDOS_TOKEN?)" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          if [ -n "$SEMANA" ]; then
+            if ! git -C respaldos checkout --quiet "$SEMANA" 2>/dev/null; then
+              echo "### ⛔ No hay ninguna copia «$SEMANA» en el repo de copias" >> "$GITHUB_STEP_SUMMARY"
+              exit 1
+            fi
+          fi
+          echo "- Copia del $(git -C respaldos log -1 --format=%cs) ($(git -C respaldos log -1 --format=%h))." >> "$GITHUB_STEP_SUMMARY"
+
+      # Un proyecto de prueba recién creado no tiene tablas: se le arma el
+      # esquema entero antes de cargar nada (aplicar.sh no borra datos y se
+      # puede correr las veces que haga falta).
+      - name: Armar las tablas del proyecto de prueba
+        if: inputs.destino == 'prueba' && inputs.escribir && inputs.que != 'archivos'
+        env:
+          BASE: ${{ secrets.PRUEBA_SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$BASE" ]; then
+            echo "- Sin PRUEBA_SUPABASE_DB_URL: se da por hecho que el proyecto de prueba ya tiene las tablas." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          sudo apt-get install -y -qq postgresql-client >/dev/null
+          ./supabase/aplicar.sh "$BASE" >/dev/null 2>/tmp/aplicar.err || {
+            echo "### ⛔ No se pudieron armar las tablas en el proyecto de prueba" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          }
+          echo "- Tablas armadas en el proyecto de prueba." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Restaurar
+        env:
+          ORIGEN: ${{ github.workspace }}/respaldos
+          QUE: ${{ inputs.que }}
+          SOLO: ${{ inputs.solo }}
+          SIN_ESCRIBIR: ${{ inputs.escribir && 'no' || 'si' }}
+          ES_PRODUCCION: ${{ inputs.destino == 'produccion' && 'si' || 'no' }}
+          SUPABASE_URL: ${{ inputs.destino == 'prueba' && secrets.PRUEBA_SUPABASE_URL || '' }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ inputs.destino == 'prueba' && secrets.PRUEBA_SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          # En «produccion», la dirección es la de la app (sale de index.html).
+          if [ -z "$SUPABASE_URL" ]; then
+            SUPABASE_URL="$(grep -oE 'const SUPABASE_URL *= *"[^"]+"' index.html | head -1 | cut -d'"' -f2)"
+            export SUPABASE_URL
+          fi
+          set -o pipefail
+          node supabase/respaldo/restaurar.mjs | tee -a "$GITHUB_STEP_SUMMARY"

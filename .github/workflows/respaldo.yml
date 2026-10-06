@@ -19,7 +19,7 @@ name: Copia de seguridad
 on:
   schedule:
     # Domingos 07:00 UTC = 04:00 en Argentina: antes de la limpieza del
-    # bucket (07:30), así lo que la limpieza mueve ya quedó copiado.
+    # bucket (09:00), así lo que la limpieza mueve ya quedó copiado.
     - cron: '0 7 * * 0'
   # A mano, desde la pestaña Actions («Run workflow»).
   workflow_dispatch:
