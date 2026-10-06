@@ -107,7 +107,7 @@ que decidir o hacer un paso en un panel).
 
 ### Urgente — esta semana
 
-> **6/10/2026: U1 a U4 hechos** (commits `f15e3e2`, `a67723f`, `c5a47a9`).
+> **6/10/2026: U1 a U5 hechos** (U5 a la noche, con la cuenta de servicio) (commits `f15e3e2`, `a67723f`, `c5a47a9`).
 > Para que U1 tenga efecto falta un clic del usuario: Settings → Pages →
 > Build and deployment → Source → «GitHub Actions». Hasta entonces el
 > trabajo «Publicar el sitio» corre las pruebas y avisa en su resumen que
@@ -120,7 +120,7 @@ que decidir o hacer un paso en un panel).
 | U2 | ~~`concurrency` en `base-de-datos.yml` (y en `calendario.yml`, `limpieza.yml`) y que los jobs con secretos corran solo desde `main`~~ ✅ 6/10 | dos pushes seguidos aplican el SQL a la vez y puede quedar el esquema viejo; con el botón "Run workflow" se aplica a producción el SQL de cualquier rama | backend 3 y 11, seguridad 15 | chico | Claude |
 | U3 | ~~Escapar `post.id` y `r.id` en los 46 atributos y exigir en la base que el id sea `[A-Za-z0-9_-]{1,40}`~~ ✅ 6/10 | XSS almacenado que un integrante aprobado puede meter desde su sesión y corre en el navegador del admin | seguridad 1 | chico (cliente) + chico (SQL con su prueba) | Claude |
 | U4 | ~~Guardar el token de Calendar solo si cambió, sin `lastSyncedAt` en cada vuelta; pausar el sondeo con la pestaña oculta; subirlo de 30 s a 2–5 min~~ ✅ 6/10 | 5.760 pedidos por día por pestaña y 120 × N² mensajes por hora de Realtime; es la primera cuota que se agota | backend 2, rendimiento 11 y G | chico | Claude |
-| U5 | ~~Decidir qué hacer con el calendario público~~ 6/10: decidiste cerrarlo (opción B, con una cuenta de servicio). La parte de Claude está hecha (función `calendario` de Supabase, el nocturno con la cuenta, workflow «Funciones de Supabase», `pruebas/calendario_privado_test.mjs`); falta la del usuario (`supabase/functions/LEEME.md`, pasos 1 a 6) y después sacar de la app la lectura con la clave de API | cualquiera con el id (que está en el repo) lee todos los eventos desde 2019; la alternativa es leer con credencial (token de lectura en el navegador + cuenta de servicio en el nocturno) y cerrar el calendario | backend 1, seguridad 6 | grande | **usuario** decide; ~~primero **confirmar** en Google Calendar que efectivamente está "público – ver todos los detalles"~~ ✅ confirmado el 6/10: lo está |
+| U5 | ~~Decidir qué hacer con el calendario público~~ ✅ 6/10: cerrado. Lo lee una cuenta de servicio (solo ver) por la función `calendario` de Supabase y el nocturno; el calendario dejó de ser público y se comprobó desde afuera (la clave de API recibe «Not Found»). Sin camino viejo en la app ni en el nocturno (`supabase/functions/LEEME.md`, `pruebas/calendario_privado_test.mjs`) | cualquiera con el id (que está en el repo) lee todos los eventos desde 2019 | backend 1, seguridad 6 | grande | hecho |
 
 ### Importante — en las próximas dos o tres semanas
 
@@ -175,7 +175,7 @@ que decidir o hacer un paso en un panel).
 | # | Qué | Qué resuelve | Qué cuesta |
 |---|---|---|---|
 | O1 | **Dominio propio** (`docs/DOMINIO.md`) | el origen compartido `team-latam.github.io` (el token de sesión y las firmas los puede leer cualquier otra página publicada en esa cuenta); y el bloqueo en Argentina si vuelve | el plan ya está escrito; hay que sumar el dominio en Google Cloud **antes** de mudar |
-| O2 | **Calendar con cuenta de servicio** (REVISION.md, "a decidir", 2) | cierra el calendario público (U5), saca el popup de permiso y el scope `calendar.events` sobre todos los calendarios de cada persona, y el evento llega aunque se cierre la pestaña | cambia cómo se usa: avisar antes |
+| O2 | **Calendar con cuenta de servicio** (REVISION.md, "a decidir", 2) — la mitad de **leer**, hecha el 6/10 con U5; queda escribir | ~~cierra el calendario público (U5)~~, saca el popup de permiso y el scope `calendar.events` sobre todos los calendarios de cada persona, y el evento llega aunque se cierre la pestaña | cambia cómo se usa: avisar antes |
 | O3 | **Avisos por correo** (Resend, 3.000 por mes gratis) | "Le avisamos al administrador" pasaría a ser verdad; menciones y resumen semanal | una función de Supabase y una cuenta en Resend |
 | O4 | **PWA**: `manifest.json`, ícono, `theme-color`, service worker | instalable en el celular con ícono propio; visitas repetidas sin bajar 414 KB; portada visible sin red | dos archivos más en la raíz (hoy la regla es "solo `index.html`") |
 | O5 | **Publicar una copia sin comentarios** desde el workflow de U1, dejando el fuente como está | 414 → ≈ 250 KB comprimido (−40 %); 225 KB de comentarios menos para el parser | choca con "sin build": el fuente no cambia, pero lo publicado sería otro archivo |

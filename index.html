@@ -5864,13 +5864,12 @@ async function doSignOut(){
 // reasignarla alcanza sin tocar ningún otro lado.
 let CALENDAR_ID = "ahf2jnkbng1tblmk7uioolc9ko@group.calendar.google.com";
 
-// Clave de API de Google Cloud, SOLO para LEER el calendario (sincronizar
-// Calendar → app) sin depender del login de cada persona ni mostrar
-// ningún popup. Requiere que el calendario esté configurado como público
-// para lectura (Google Calendar → Configuración de este calendario →
-// "Acceso de disponibilidad" → "Hacer disponible al público") y que esta
-// clave esté restringida en Google Cloud Console a la Calendar API y al
-// dominio de esta página — ver README. Nunca se usa para escribir.
+// Clave de API de Google Cloud, SOLO para leer los calendarios de
+// FERIADOS (públicos de Google, ver ensureHolidays). Restringida en Google
+// Cloud Console a la Calendar API y al dominio de esta página — ver
+// README. Hasta el 6/10/2026 leía también el calendario del equipo, que
+// por eso tenía que ser público; ahora ese lo lee la función `calendario`
+// de Supabase (pedirAlCalendario) y el calendario está cerrado.
 const CALENDAR_API_KEY = "AIzaSyBLsB3SxSuEOyiPyCIYHa0yOcPiTs5KfwI";
 
 // El token de Calendar se guarda también en sessionStorage (dura hasta
@@ -6594,15 +6593,11 @@ function zonaDelCalendario(){
 // que ser público: cualquiera con su id veía todos los eventos desde 2019.
 // Ahora se le pide a la función `calendario` de Supabase, que lee con la
 // cuenta de servicio de la app (supabase/functions/LEEME.md) y solo
-// atiende a un integrante aprobado. Si la función todavía no está (falta
-// cargar la llave) o no contesta, se sigue con la clave de API como antes:
-// así nada se corta mientras se arma. Con el calendario ya cerrado, ese
-// camino de repuesto solo puede fallar.
-async function pedirAlCalendario(pedido, urlConClave){
-  const r = store && store.leerCalendario ? await store.leerCalendario(pedido).catch(()=>null) : null;
-  if(r) return { status:r.estado, ok:r.estado >= 200 && r.estado < 300, body:r.cuerpo || {} };
-  const res = await fetch(urlConClave());
-  return { status:res.status, ok:res.ok, body: await res.json().catch(()=>({})) };
+// atiende a un integrante aprobado. El calendario se cerró el mismo día:
+// la clave de API ya no lo puede leer, así que no hay camino de repuesto.
+async function pedirAlCalendario(pedido){
+  const r = await store.leerCalendario(pedido);
+  return { status:r.estado, ok:r.estado >= 200 && r.estado < 300, body:r.cuerpo || {} };
 }
 async function fetchCalendarChanges(syncToken){
   let pageToken = null, nextSyncToken = null;
@@ -6614,13 +6609,7 @@ async function fetchCalendarChanges(syncToken){
     if(syncToken) pedido.syncToken = syncToken;
     else if(CALENDAR_IMPORT_FROM) pedido.timeMin = `${CALENDAR_IMPORT_FROM}T00:00:00Z`;
     if(pageToken) pedido.pageToken = pageToken;
-    const res = await pedirAlCalendario(pedido, ()=>{
-      const params = new URLSearchParams({ key:CALENDAR_API_KEY, maxResults:"250", showDeleted:"true" });
-      if(pedido.syncToken) params.set("syncToken", pedido.syncToken);
-      else if(pedido.timeMin) params.set("timeMin", pedido.timeMin);
-      if(pedido.pageToken) params.set("pageToken", pedido.pageToken);
-      return `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events?${params}`;
-    });
+    const res = await pedirAlCalendario(pedido);
     if(res.status === 410) return { needsFullResync:true };
     const body = res.body;
     // 410 es "token vencido"; un token de OTRO calendario (cambió el ID en
@@ -6638,8 +6627,7 @@ async function fetchCalendarChanges(syncToken){
 // Un evento suelto, por su id (Revisar lo de Calendar › Devolver al
 // Registro): por el mismo camino que el resto de las lecturas.
 async function fetchCalendarEvent(eventId){
-  const res = await pedirAlCalendario({ accion:"evento", id:eventId }, ()=>
-    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events/${encodeURIComponent(eventId)}?${new URLSearchParams({ key: CALENDAR_API_KEY })}`);
+  const res = await pedirAlCalendario({ accion:"evento", id:eventId });
   const body = res.body;
   if(!res.ok) throw new Error(body.error?.message || `HTTP ${res.status}`);
   return body;
@@ -8314,21 +8302,20 @@ function crearSupabaseStore(sb, opciones = {}){
 
     // ---- Leer el Google Calendar del equipo (docs/AUDITORIA.md, U5) ----
     // Por la función `calendario` de Supabase, con la sesión de quien está
-    // usando la app. null = la función no está o no contestó: quien llama
-    // sigue por el camino viejo (pedirAlCalendario).
+    // usando la app. Devuelve { estado, cuerpo } tal como contestó Google
+    // (el 410 de un token vencido incluido); si la función misma no
+    // atiende (sin sesión, sin aprobar, caída), es un error.
     async leerCalendario(pedido){
       const { data } = await sb.auth.getSession();
       const token = data && data.session && data.session.access_token;
-      if(!token) return null;
-      let res;
-      try{
-        res = await fetch(`${SUPABASE_URL}/functions/v1/calendario`, { method:"POST",
-          headers:{ "Content-Type":"application/json", apikey:SUPABASE_KEY, Authorization:`Bearer ${token}` },
-          body: JSON.stringify(pedido) });
-      }catch(err){ return null; }
-      if(!res.ok){ console.warn("La función calendario no atendió:", res.status); return null; }
+      if(!token) throw new Error(t("Sin sesión para leer el calendario.","No session to read the calendar.","Sem sessão para ler o calendário.","אין חיבור לקריאת היומן."));
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/calendario`, { method:"POST",
+        headers:{ "Content-Type":"application/json", apikey:SUPABASE_KEY, Authorization:`Bearer ${token}` },
+        body: JSON.stringify(pedido) });
       const r = await res.json().catch(()=>null);
-      return r && typeof r.estado === "number" ? r : null;
+      if(!res.ok || !r || typeof r.estado !== "number")
+        throw new Error(t("No se pudo leer el calendario ({e}).","Couldn't read the calendar ({e}).","Não foi possível ler o calendário ({e}).","({e}) לא ניתן היה לקרוא את היומן.",{e:(r && r.error) || res.status}));
+      return r;
     },
 
     // ---- Lo que llegó de Google Calendar (Administración › Revisar) ----
@@ -16019,7 +16006,7 @@ function initOrUpdateMap(){
    FERIADOS (calendarios públicos de Google)
    ======================================================================
    Google publica un calendario de feriados por país y uno de festividades
-   judías, y son PÚBLICOS: se leen con la misma API key que ya usa el sync
+   judías, y son PÚBLICOS: se leen con una clave de API
    (CALENDAR_API_KEY), sin login ni permisos. Por eso no hay ninguna tabla
    de fechas en este repo: una tabla propia habría que cargarla y
    mantenerla año a año, y las festividades judías además necesitan el

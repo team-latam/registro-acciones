@@ -3,8 +3,8 @@
 
    La app le pide los cambios a la función `calendario` de Supabase, con
    la sesión de quien la usa, y la función lee con la cuenta de servicio.
-   Mientras la función no esté (todavía no se cargó la llave), sigue con la
-   clave de API como antes, para que nada se corte.
+   El calendario se cerró el 6/10/2026: la clave de API ya no lo lee, y la
+   app no la vuelve a intentar para el calendario del equipo.
    Con la app de verdad y el Supabase de mentira de app_dom_test.mjs.
    ====================================================================== */
 import { chromium } from "playwright";
@@ -80,9 +80,9 @@ async function entrar({ funcion, conToken = true }){
 }
 {
   const { p, pedidos, errores, traido } = await entrar({ funcion: null });
-  eq("sin la función (todavía no se cargó la llave): sigue con la clave de API y trae igual", await traido("evclave"), true);
-  eq("sin la función: probó primero por ella", pedidos[0] && pedidos[0].a, "funcion");
-  eq("sin la función: sin errores", errores, []);
+  eq("si la función no atiende: no cae a la clave de API para el calendario del equipo",
+     [await traido("evclave"), pedidos.some(x => x.a === "funcion"), pedidos.filter(x => x.a === "google").length], [false, true, 0]);
+  eq("si la función no atiende: la app no se rompe", errores, []);
   await p.close();
 }
 

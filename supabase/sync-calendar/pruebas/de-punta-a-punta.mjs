@@ -10,7 +10,11 @@ const eq=(n,g,w)=>{ const a=JSON.stringify(g), x=JSON.stringify(w);
 process.env.SUPABASE_URL = "https://falso.supabase.co";
 process.env.SUPABASE_SERVICE_ROLE_KEY = "llave-de-mentira";
 process.env.CALENDAR_ID = "cal@group.calendar.google.com";
-process.env.CALENDAR_API_KEY = "clave-de-mentira";
+// La cuenta de servicio con una llave RSA armada en el momento: desde el
+// 6/10/2026 el calendario no es público y se lee solo con ella (U5).
+import { generateKeyPairSync } from "node:crypto";
+process.env.GOOGLE_CUENTA_DE_SERVICIO = JSON.stringify({ client_email: "registro@proyecto.iam.gserviceaccount.com",
+  private_key: generateKeyPairSync("rsa", { modulusLength: 2048 }).privateKey.export({ type: "pkcs8", format: "pem" }) });
 
 function baseDeMentira(guion){
   const reg = { pedidos:[], posts:[...(guion.posts || [])], replies:[], config:{ ...(guion.config || {}) } };
@@ -18,6 +22,7 @@ function baseDeMentira(guion){
   globalThis.fetch = async (url, opciones = {}) => {
     const u = String(url);
     reg.pedidos.push({ url: u, metodo: opciones.method || "GET" });
+    if(u === "https://oauth2.googleapis.com/token") return { ok: true, status: 200, json: async ()=> ({ access_token: "permiso", expires_in: 3600 }) };
     const cuerpo = opciones.body ? JSON.parse(opciones.body) : null;
     const ok = (datos, estado = 200) => ({ ok: estado < 400, status: estado,
       text: async ()=> datos === null ? "" : JSON.stringify(datos),
@@ -25,6 +30,7 @@ function baseDeMentira(guion){
 
     /* ---- Google Calendar ---- */
     if(u.includes("googleapis.com")){
+      if((opciones.headers || {}).Authorization !== "Bearer permiso") return ok({ error:{ message:"sin permiso" } }, 401);
       if(guion.calendarFalla) return ok({ error:{ message: guion.calendarFalla } }, 500);
       if(guion.tokenVencido && u.includes("syncToken=")) return ok(null, 410);
       const pagina = paginas.shift() || { items:[], nextSyncToken:"tok-nuevo" };
@@ -245,7 +251,7 @@ for(const sinCal of [false, true]){
   const r = await callado(()=> main());
   eq("relee el calendario entero", r.revisados, 1);
   eq("y arranca con un token nuevo", reg.config.calendarSync.syncToken, "tokFresco");
-  const aGoogle = reg.pedidos.filter(p=>p.url.includes("googleapis.com"));
+  const aGoogle = reg.pedidos.filter(p=>p.url.includes("googleapis.com/calendar"));
   eq("el primer pedido a Google llevaba el token viejo", /syncToken=viejo/.test(aGoogle[0].url), true);
   eq("y el segundo, ninguno", /syncToken=/.test(aGoogle[1].url), false);
 }
@@ -343,13 +349,13 @@ for(const sinCal of [false, true]){
   const reg = baseDeMentira({ config:{ preferences:{ calendarImportFrom:"2020-01-01" } },
     paginas:[{ items:[], nextSyncToken:"t" }] });
   await callado(()=> main());
-  const pedidoCal = reg.pedidos.find(p=>p.url.includes("googleapis.com"));
+  const pedidoCal = reg.pedidos.find(p=>p.url.includes("googleapis.com/calendar"));
   eq("sin token, pide desde la fecha configurada", /timeMin=2020-01-01/.test(pedidoCal.url), true);
 }
 {
   const reg = baseDeMentira({ paginas:[{ items:[], nextSyncToken:"t" }] });
   await callado(()=> main());
-  const pedidoCal = reg.pedidos.find(p=>p.url.includes("googleapis.com"));
+  const pedidoCal = reg.pedidos.find(p=>p.url.includes("googleapis.com/calendar"));
   eq("sin fecha configurada, pide todo el historial", /timeMin/.test(pedidoCal.url), false);
   eq("y siempre pide también los borrados", /showDeleted=true/.test(pedidoCal.url), true);
 }
