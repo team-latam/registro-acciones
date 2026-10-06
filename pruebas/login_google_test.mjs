@@ -53,6 +53,7 @@ async function portada({ sinGoogle = false, rechazar = false } = {}){
   await p.addInitScript(([base, rechazar]) => {
     window.__sb = { tablas: base, sesion: null, oyentes: [], rpc: [], escrituras: [], subidas: [], borradas: [], logins: [], canales: 0, rechazarToken: rechazar };
     window.__pruebasSinIntegridad = true;
+    window.__pruebasBotonGoogle = true;
   }, [BASE(), rechazar]);
   await p.goto(PAGINA);
   await p.waitForSelector(".gate-tarjeta", { timeout: 8000 });
@@ -87,6 +88,21 @@ async function portada({ sinGoogle = false, rechazar = false } = {}){
   eq("si Supabase rechaza la identidad, sigue por el camino de siempre (no deja a nadie afuera)",
      [!!logins[0].conToken, logins[1] && logins[1].provider, !!(logins[1] && logins[1].options && logins[1].options.redirectTo)], [true, "google", true]);
   eq("rechazada: sin errores", errores, []);
+  await p.close();
+}
+{
+  // Fuera de la dirección del sitio (acá, file://) no se intenta: Google
+  // contestaría «origin not allowed» en la consola.
+  const p = await b.newPage();
+  const pedidos = [];
+  await p.route(/^https?:\/\//, ruta => { const u = ruta.request().url(); pedidos.push(u);
+    return u === CDN ? ruta.fulfill({ contentType: "application/javascript", body: FALSO }) : ruta.fulfill({ contentType: "application/javascript", body: GIS }); });
+  await p.addInitScript(base => { window.__sb = { tablas: base, sesion: null, oyentes: [], rpc: [], escrituras: [], subidas: [], borradas: [], logins: [], canales: 0 }; window.__pruebasSinIntegridad = true; }, BASE());
+  await p.goto(PAGINA);
+  await p.waitForSelector(".gate-tarjeta", { timeout: 8000 });
+  await p.waitForTimeout(800);
+  eq("en otra dirección que no es la del sitio, ni se pide el script de Google (queda nuestro botón)",
+     [pedidos.some(u => u.includes("accounts.google.com/gsi")), await p.$eval("#gisBoton", e => e.childElementCount)], [false, 0]);
   await p.close();
 }
 {

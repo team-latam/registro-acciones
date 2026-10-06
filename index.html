@@ -5876,8 +5876,15 @@ async function entrarConGoogle(respuesta){
 let gisMontando = false;
 // Lo llama cada render(); se difiere para no tocar nada que el módulo
 // todavía no terminó de declarar si el primer dibujado llega antes.
+// Solo en la dirección del sitio: es la única que el cliente de Google
+// tiene autorizada. En otra (una copia local, la de las pruebas) Google
+// contesta «The given origin is not allowed» y el botón no serviría: ahí
+// queda el nuestro. Las pruebas del botón lo prenden con
+// __pruebasBotonGoogle.
+const ORIGENES_DEL_BOTON_DE_GOOGLE = ["https://team-latam.github.io"];
 function montarBotonDeGoogle(){
   if(!document.getElementById("gisBoton")) return;
+  if(!ORIGENES_DEL_BOTON_DE_GOOGLE.includes(location.origin) && !window.__pruebasBotonGoogle) return;
   queueMicrotask(()=>{ montarBotonDeGoogleYa().catch(()=>{}); });
 }
 async function montarBotonDeGoogleYa(){
