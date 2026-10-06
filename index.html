@@ -7343,6 +7343,10 @@ async function requestAccessAgain(){
     render();
   }catch(err){
     console.error(err);
+    if(/Esperá un rato/.test(err && err.message || "")){
+      appAlert(t("Ya pediste acceso hace poco. Probá de nuevo en una hora.","You asked for access a moment ago. Try again in an hour.","Você pediu acesso há pouco. Tente de novo em uma hora.","ביקשת גישה ממש עכשיו. נסה/י שוב בעוד שעה."));
+      return;
+    }
     appAlert(t("No se pudo enviar el pedido de nuevo ({m}).","Couldn't send the request again ({m}).","Não foi possível enviar o pedido de novo ({m}).","לא ניתן היה לשלוח את הבקשה שוב ({m}).",{m:err.code||err.message}));
   }
 }
@@ -8289,6 +8293,10 @@ function crearSupabaseStore(sb, opciones = {}){
         if(error) throw error;
         return data ? data.prefs : null;
       },
+      // Solo un admin (olvidar_preferencias), al quitarle el acceso a alguien.
+      async remove(email){
+        revienta(await sb.rpc("olvidar_preferencias", { p_email: email }));
+      },
       // Igual que la configuración: lo hace la base, no el navegador. Acá
       // importa más todavía, porque cada interruptor de Configuración
       // guarda el suyo y se tocan de a varios seguidos.
@@ -8777,6 +8785,10 @@ async function revokeAccess(email){
     });
   }
   await store.roster.remove(email);
+  // Sus preferencias y marcas de «visto» ya no le sirven a nadie
+  // (docs/AUDITORIA.md, B6). Si no se pueden borrar, no frena nada.
+  try{ await store.userPrefs.remove(email); }
+  catch(e){ console.warn("No se pudieron borrar sus preferencias:", e); }
   // La solicitud original queda marcada como "rejected" (no solo se borra
   // el acceso real) para que, si esa persona intenta entrar de nuevo, la
   // pantalla de "acceso no aprobado" con el botón "Pedir acceso de nuevo"

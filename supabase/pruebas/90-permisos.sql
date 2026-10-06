@@ -186,6 +186,26 @@ select lab.probar('pero NO a nombre de otro', lab.como('nuevo2@x.com'),
   $q$insert into public.access_requests(email,name) values ('ajeno@x.com','Ajeno')$q$, false);
 select lab.probar('ni se aprueba solo', lab.como('nuevo2@x.com'),
   $q$insert into public.access_requests(email,name,status) values ('nuevo2@x.com','N','approved')$q$, false);
+-- Rechazado: volver a pedir, una vez por hora como mucho (AUDITORIA B6).
+select lab.probar('un rechazado recién no vuelve a pedir enseguida', lab.como('rech@x.com'),
+  $q$set local role postgres; insert into public.access_requests(email,name,status) values ('rech@x.com','Rech','rejected'); set local role authenticated;
+     update public.access_requests set status = 'pending' where email = 'rech@x.com'$q$, false);
+select lab.probar('un rechazado hace más de una hora sí vuelve a pedir', lab.como('rech2@x.com'),
+  $q$set local role postgres; insert into public.access_requests(email,name,status) values ('rech2@x.com','Rech','rejected');
+     alter table public.access_requests disable trigger user;
+     update public.access_requests set requested_at = now() - interval '2 hours' where email = 'rech2@x.com';
+     alter table public.access_requests enable trigger user; set local role authenticated;
+     update public.access_requests set status = 'pending' where email = 'rech2@x.com'$q$, true);
+select lab.probar('un admin sí lo devuelve a la cola cuando quiera', lab.como('ana@x.com'),
+  $q$set local role postgres; insert into public.access_requests(email,name,status) values ('rech3@x.com','Rech','rejected'); set local role authenticated;
+     update public.access_requests set status = 'pending' where email = 'rech3@x.com'$q$, true);
+-- Al quitarle el acceso a alguien, un admin borra sus preferencias.
+select lab.probar('un admin borra las preferencias de alguien', lab.como('ana@x.com'),
+  $q$select public.olvidar_preferencias('juan@x.com');
+     delete from public.access_requests where false; update public.members set name = name where email = 'juan@x.com' and not exists (select 1 from public.user_prefs where email = 'juan@x.com')$q$, true);
+select lab.probar('un integrante no borra las de otro', lab.como('juan@x.com'),
+  $q$set local role postgres; insert into public.user_prefs(email, prefs) values ('obs@x.com', '{}') on conflict do nothing; set local role authenticated;
+     select public.olvidar_preferencias('obs@x.com')$q$, false);
 select lab.probar('un aprobado común NO ve la cola de solicitudes', lab.como('juan@x.com'),
   'create temp table t20 as select * from public.access_requests', false);
 

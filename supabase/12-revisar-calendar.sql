@@ -213,6 +213,7 @@ declare
   s public.calendar_sacados;
   n integer := 0;
   traer text[] := '{}';
+  sesion text := current_setting('request.jwt.claims', true);
 begin
   if not (public.es_admin_fijo() or public.es_admin_rol()) then
     raise exception 'Devolver al Registro lo hace un admin'
@@ -222,6 +223,12 @@ begin
     raise exception 'Se devuelven hasta 1000 por vez'
       using errcode = 'check_violation';
   end if;
+  -- Sin sesión de persona desde acá (ya se comprobó que es un admin):
+  -- con la del admin, la base le ponía al posteo devuelto la hora de
+  -- ahora como creación y edición, y aparecía como «nuevo» para todos
+  -- (docs/AUDITORIA.md, B6). Así vuelve con sus fechas. Al terminar se
+  -- repone la sesión, para lo que siga en la misma transacción.
+  perform set_config('request.jwt.claims', '{}', true);
   for s in select * from public.calendar_sacados where evento = any(p_eventos) loop
     if s.fila is not null then
       insert into public.posts select * from jsonb_populate_record(null::public.posts, s.fila)
@@ -232,6 +239,7 @@ begin
     end if;
     delete from public.calendar_sacados where evento = s.evento;
   end loop;
+  perform set_config('request.jwt.claims', coalesce(sesion, ''), true);
   return jsonb_build_object('devueltos', n, 'aTraer', to_jsonb(traer));
 end $$;
 
