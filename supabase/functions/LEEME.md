@@ -83,8 +83,11 @@ está inhabilitada por una política», no seguir: contarle a Claude.
 
 1. https://supabase.com/dashboard/account/tokens → **Generate new token**.
    - Nombre: `github-funciones`
-   - Vencimiento: el más largo que ofrezca. **Anotar la fecha** si tiene
-     (como la de `RESPALDOS_TOKEN`, hay que renovarlo antes).
+   - Vencimiento: **Custom**, a menos de un año (Supabase no deja más).
+     El del 6/10/2026 **vence el 30/9/2027**, anotado en `CLAUDE.md`.
+   - Resource access: **Project** → el de la app. Permissions: todo en
+     None salvo **Application services → Edge Functions** y **Edge
+     Function Secrets**, en Read-write.
 2. Copiar el token (empieza con `sbp_`). Se ve una sola vez.
 3. En GitHub, igual que antes, **New repository secret**:
    - **Name:** `SUPABASE_ACCESS_TOKEN`
