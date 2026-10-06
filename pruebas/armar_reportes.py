@@ -12,7 +12,7 @@ codigo = "\n".join(grab(n) for n in [
     "parseRecurrence","expandRecurrence","recurrenceSkipDates","recurrenceMoves",
     "ZONES","ACTIVITY_TYPES","safeColor",
     "vecesEnVentana","fechasEnVentana","aniosConDatos","ventanaDe","ventanaDelReporte","ventanaAnterior",
-    "normalize","pasaFiltroDelReporte","armarReporte","mesCortoDe","filaDeBarra","bloqueDeBarras",
+    "normalize","pasaFiltroDelReporte","calcularReporte","armarReporte","mesCortoDe","filaDeBarra","bloqueDeBarras",
     "trimestresDelReporte","renderReportesView","reporteFiltrosAbierto","renderSelectorDelReporte","cabezaDelReporte",
     "tiraDeNumeros","graficoMensual","seccionDelReporte","renderReportePeriodo",
     "nombreEnReporte","deltaDelReporte","tablaComparada","renderReporteHistorico","renderReporteComparar",
