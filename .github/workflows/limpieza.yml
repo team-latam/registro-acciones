@@ -40,6 +40,12 @@ on:
     paths:
       - 'supabase/limpieza/**'
 
+
+# Lo justo: leer el repo. Las llaves de verdad van por los secretos, no
+# por el token de GitHub (docs/AUDITORIA.md, B4).
+permissions:
+  contents: read
+
 jobs:
   probar:
     name: La prueba de la limpieza

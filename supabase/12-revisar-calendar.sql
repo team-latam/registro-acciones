@@ -68,6 +68,13 @@ alter table public.calendar_sacados
 -- deciden las políticas de abajo.
 grant select on public.calendar_sugerencias to authenticated;
 grant select, delete on public.calendar_sacados to authenticated;
+-- El `grant … on all tables` del 02 les suma insert y update a estas
+-- dos en la segunda aplicación (RLS las frenaba igual, porque no hay
+-- política de escritura). Se sacan, para que lo de arriba sea verdad y el
+-- día que alguien agregue una política no quede abierto sin querer
+-- (docs/AUDITORIA.md, B4).
+revoke insert, update on public.calendar_sugerencias, public.calendar_sacados from authenticated;
+revoke delete on public.calendar_sugerencias from authenticated;
 revoke all on public.calendar_sugerencias, public.calendar_sacados from anon;
 
 alter table public.calendar_sugerencias enable row level security;
