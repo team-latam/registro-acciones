@@ -6,7 +6,11 @@
 name: Pruebas de la app
 
 on:
+  # En main estas mismas pruebas las corre «Publicar el sitio» (pages.yml)
+  # antes de publicar: si corrieran también acá, cada push a main las
+  # haría dos veces. En cualquier otra rama siguen corriendo solas.
   push:
+    branches-ignore: [main]
     paths:
       - "index.html"
       - "supabase/**"              # y sb_test, el adaptador de Supabase
@@ -14,6 +18,11 @@ on:
       - ".github/workflows/app.yml"
   pull_request:
   workflow_dispatch:
+  # Para que pages.yml las use como portero antes de publicar.
+  workflow_call:
+
+permissions:
+  contents: read
 
 jobs:
   pruebas:

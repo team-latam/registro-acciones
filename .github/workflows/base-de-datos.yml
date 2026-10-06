@@ -94,7 +94,20 @@ jobs:
     # aplicar a mano, y no aplicaba nada — el trabajo se salteaba entero y
     # la corrida figuraba en verde igual. Un botón de adorno es peor que no
     # tenerlo, porque parece que hizo algo.
-    if: github.event_name != 'pull_request'
+    #
+    # Y solo desde main: el botón deja elegir cualquier rama, y aplicaba a
+    # la base de verdad el SQL de una rama a medio hacer (docs/AUDITORIA.md,
+    # U2). Lo que llega a producción es lo que está en main, por acá también.
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    # De a una aplicación por vez, en el orden en que llegaron los push. Sin
+    # esto, dos push seguidos aplicaban el SQL a la vez: se pisaban los
+    # `drop policy` / `create policy` de una y otra, y la del commit viejo
+    # podía terminar última y dejar la base con el esquema anterior, en
+    # verde. Si llega un tercero mientras uno espera, el que esperaba se
+    # descarta: el más nuevo trae todo (aplicar.sh aplica el esquema entero).
+    concurrency:
+      group: base-de-datos-aplicar
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

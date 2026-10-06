@@ -56,7 +56,14 @@ jobs:
     # En un push a main NO se sincroniza: ahí solo interesa que las dos
     # copias sigan diciendo lo mismo. Se sincroniza de madrugada y cuando
     # se pide a mano.
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    # Solo el código de main corre con las llaves de verdad: el botón «Run
+    # workflow» deja elegir otra rama (docs/AUDITORIA.md, U2).
+    if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+    # Una sincronización por vez: una a mano mientras corre la nocturna se
+    # pisaban el token de Google.
+    concurrency:
+      group: calendario-sincronizar
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
