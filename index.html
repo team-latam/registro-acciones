@@ -3372,6 +3372,15 @@
   @media (prefers-reduced-motion:reduce){ .visor-ventana{ animation:none; } }
   /* Quien pidió menos movimiento en su sistema no ve animaciones ni
      transiciones en ningún lado (antes solo se apagaba la del visor). */
+  /* En el iPhone, tocar un campo con letra de menos de 16 px hace que
+     Safari agrande la página sola y la corra de costado: el formulario
+     quedaba cortado a la derecha y había que volver a achicar con los
+     dedos (lo mostró el usuario el 6/10/2026). En pantallas táctiles todo
+     lo que se escribe va a 16 px como mínimo. No se bloquea el zoom con
+     los dedos: eso lo sigue pudiendo hacer cada uno. */
+  @media (pointer:coarse){
+    input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=file]):not(.title-input-plain), select, textarea, [contenteditable="true"]{ font-size:16px !important; }
+  }
   @media (prefers-reduced-motion:reduce){
     *, *::before, *::after{ animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; scroll-behavior:auto !important; }
   }

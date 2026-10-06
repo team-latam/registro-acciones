@@ -288,7 +288,9 @@ const b = await chromium.launch();
 // `viewport` abre la página con otro tamaño (un celular).
 async function entrar(email, nombre, mod, viewport, pedidos){
   const base = BASE(); if(mod) mod(base);
-  const p = await b.newPage(viewport ? { viewport } : {});
+  // `viewport.tactil`: un celular de verdad (pantalla táctil), para lo que
+  // depende de (pointer:coarse).
+  const p = await b.newPage(viewport ? (viewport.tactil ? { viewport: { width: viewport.width, height: viewport.height }, hasTouch: true, isMobile: true } : { viewport }) : {});
   const errores = [];
   p.on("pageerror", e => errores.push(String(e)));
   p.on("console", m => { if(m.type() === "error" && !deRed(m.text())) errores.push(m.text()); });
@@ -1934,6 +1936,23 @@ const hasta = async (p, fn, arg, ms = 5000) => {
     await p.$$eval(".type-picker .type-opt", es => { const filas = new Set(es.map(e => Math.round(e.getBoundingClientRect().top))); return filas.size === Math.ceil(es.length / 3); }), true);
   await p.keyboard.press("Escape");
   eq("celular: sin un solo error", errores, []);
+  await p.close();
+}
+
+/* ---------- iPhone: tocar un campo no agranda la página (6/10/2026) ---------- */
+{
+  // Safari agranda la página sola al tocar un campo con letra de menos de
+  // 16 px, y el formulario quedaba cortado a la derecha.
+  const { p, errores } = await entrar(ADMIN, "Benny", null, { width: 390, height: 844, tactil: true });
+  await p.waitForSelector("#fabMain");
+  await p.click("#fabMain"); await p.click('[data-action="new-evento"]');
+  await p.waitForSelector("#cPlaceQuery");
+  const chicos = await p.evaluate(() => [...document.querySelectorAll("input, select, textarea")]
+    .filter(e => e.offsetParent && !["checkbox","radio","file","range","color","hidden"].includes(e.type) && parseFloat(getComputedStyle(e).fontSize) < 16)
+    .map(e => e.id || e.className));
+  eq("iPhone: todo campo para escribir tiene 16 px o más (si no, Safari hace zoom)", chicos, []);
+  eq("iPhone: y el título sigue más grande", await p.$eval("#cTitle", e => parseFloat(getComputedStyle(e).fontSize) > 16), true);
+  eq("iPhone: sin un solo error", errores, []);
   await p.close();
 }
 
