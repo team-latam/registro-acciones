@@ -79,7 +79,13 @@ Todas dentro de `index.html`:
 - `CALENDAR_ID`, `CALENDAR_API_KEY` y `GOOGLE_OAUTH_CLIENT_ID` — el
   calendario compartido y el permiso para escribir en él.
 
-No son secretos (viajan al navegador de cualquiera que entre a la página):
+Y en los secretos de GitHub (no en `index.html`), desde el 6/10/2026:
+`GOOGLE_CUENTA_DE_SERVICIO` (la llave de la cuenta de Google con la que
+la app lee el calendario, que ya no es público) y `SUPABASE_ACCESS_TOKEN`
+(para publicar la función de Supabase que la usa). Si se pierden, se
+crean de nuevo: los pasos están en `supabase/functions/LEEME.md`.
+
+Los de `index.html` no son secretos (viajan al navegador de cualquiera que entre a la página):
 lo que de verdad protege los datos son los permisos de
 `supabase/02-politicas.sql`.
 

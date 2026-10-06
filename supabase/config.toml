@@ -1,0 +1,11 @@
+# Lo mínimo para que `supabase functions deploy` (workflow «Funciones de
+# Supabase», .github/workflows/funciones.yml) sepa qué proyecto es y cómo
+# publicar cada función. El esquema NO sale de acá: lo aplica el workflow
+# «Base de datos» con los .sql de esta carpeta.
+project_id = "benonmzlgdjkhzauamrz"
+
+# La función controla la sesión ella misma, preguntándole a la base
+# (esta_aprobado()): el control de la puerta de Supabase no entiende las
+# llaves nuevas (sb_publishable_…) y rechazaría a la app.
+[functions.calendario]
+verify_jwt = false

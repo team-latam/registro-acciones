@@ -891,8 +891,10 @@ que el emparejado de eventos huérfanos siga funcionando en los dos casos.
 
 ### Popups de Google: token silencioso con GIS, y popup solo donde se anuncia
 
-Leer el Calendar va con `CALENDAR_API_KEY` (calendarios públicos, sin
-login). **Escribir** —crear un evento, compartir el calendario, sacar a
+Leer el Calendar del equipo va por la función `calendario` de Supabase,
+con la cuenta de servicio de la app (`supabase/functions/LEEME.md`; hasta
+el 6/10/2026, con `CALENDAR_API_KEY` y el calendario público). Leer no
+pide ningún permiso de Google a la persona. **Escribir** —crear un evento, compartir el calendario, sacar a
 alguien— necesita OAuth, y ese permiso es de Google, no de la base: el
 login de Supabase no lo trae. Se pide con **Google Identity Services**,
 que no obliga a abrir ventana: `requestAccessToken({prompt:""})`
@@ -1419,6 +1421,13 @@ los que sí habían funcionado no duplica nada: `createImportedPost` es
 idempotente por el id del posteo (`cal_<eventId>`), y el resto de las
 ramas de `applyCalendarEventToPosts` solo escribe si detecta un cambio
 real.
+
+> **Desde el 6/10/2026 esto cambia** (docs/AUDITORIA.md, U5): la app
+> lee por la función `calendario` de Supabase, con una cuenta de servicio
+> que tiene el calendario compartido solo para ver, y el calendario deja
+> de ser público. Ver `supabase/functions/LEEME.md`. Lo de abajo es cómo
+> era, y sigue valiendo mientras la función no esté publicada (la app cae
+> a la clave de API).
 
 Cómo funciona, en criollo: la app le pregunta a Google "¿qué cambió desde
 la última vez?" (usando un "sync token" que Calendar entrega y que se
