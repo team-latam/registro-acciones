@@ -238,6 +238,17 @@ select lab.probar('21 zonas NO', :YO,
 select lab.probar('un campo de más en una zona NO', :YO,
   $q$update public.app_config set value = '{"zones":{"sur":{"label":"Sur","color":"#2563eb","html":"<b>"}},"countryZones":{}}' where key = 'territoryConfig'$q$, false);
 
+
+-- ---------- La foto de una solicitud (docs/AUDITORIA.md, M11) ----------
+select lab.probar('pedir acceso con la foto de Google entra', lab.como('nuevo1@x.com'),
+  $q$insert into public.access_requests(email, name, status, photo_url) values ('nuevo1@x.com','Nuevo','pending','https://lh3.googleusercontent.com/a/abc=s96-c')$q$, true);
+select lab.probar('sin foto también', lab.como('nuevo2@x.com'),
+  $q$insert into public.access_requests(email, name, status) values ('nuevo2@x.com','Nuevo','pending')$q$, true);
+select lab.probar('con una foto de otro sitio NO', lab.como('nuevo3@x.com'),
+  $q$insert into public.access_requests(email, name, status, photo_url) values ('nuevo3@x.com','Nuevo','pending','https://rastreo.example.com/pixel.gif')$q$, false);
+select lab.probar('ni haciéndose pasar por Google en el nombre', lab.como('nuevo4@x.com'),
+  $q$insert into public.access_requests(email, name, status, photo_url) values ('nuevo4@x.com','Nuevo','pending','https://googleusercontent.com.example.com/x.gif')$q$, false);
+
 \set QUIET off
 select n, '  FALLA  ' || nombre as falla from lab.resultados where esperado <> obtenido order by n;
 select count(*) filter (where esperado = obtenido) || ' pasaron, ' ||

@@ -287,6 +287,23 @@ alter table public.access_requests
     and length(coalesce(photo_url, '')) <= 500
   );
 
+-- La foto de quien pide entrar: solo la de su cuenta de Google. La
+-- escribe alguien que todavía no es del equipo, y una dirección de otro
+-- sitio le contaba a ese sitio la IP y el momento en que un admin abría
+-- Personas (docs/AUDITORIA.md, M11). NOT VALID + validar, como el id.
+alter table public.access_requests drop constraint if exists solicitudes_foto;
+alter table public.access_requests
+  add constraint solicitudes_foto check (
+    coalesce(photo_url, '') = '' or photo_url ~ '^https://([a-z0-9-]+\.)*googleusercontent\.com/'
+  ) not valid;
+do $$
+begin
+  alter table public.access_requests validate constraint solicitudes_foto;
+exception when check_violation then
+  raise notice 'Hay solicitudes con una foto de otro lado: solicitudes_foto vale solo para lo nuevo.';
+end
+$$;
+
 alter table public.audit_log
   drop constraint if exists audit_tipo,
   drop constraint if exists audit_textos;
