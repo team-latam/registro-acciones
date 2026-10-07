@@ -31,7 +31,9 @@ revoke all on public.personas from anon;
 -- Las lee todo aprobado (para sugerirlas al cargar un evento); las crea
 -- cualquiera que carga eventos (lo decidió el usuario: la sugerencia evita
 -- duplicados y lo que se cuele lo ordena el admin); las corrige o borra
--- un admin, o quien la creó.
+-- un admin, o quien la creó mientras siga pudiendo escribir (hasta el
+-- 7/10/2026 la seguía tocando aunque ya fuera observador o hubiera
+-- salido del equipo).
 drop policy if exists personas_leer on public.personas;
 create policy personas_leer on public.personas for select
   using ((select public.es_admin_fijo()) or (select public.esta_aprobado()));
@@ -40,11 +42,33 @@ create policy personas_crear on public.personas for insert
   with check ((select public.puede_escribir()) and created_by = (select public.mi_correo()));
 drop policy if exists personas_editar on public.personas;
 create policy personas_editar on public.personas for update
-  using ((select public.es_admin_fijo()) or (select public.es_admin_rol()) or created_by = (select public.mi_correo()))
-  with check ((select public.es_admin_fijo()) or (select public.es_admin_rol()) or created_by = (select public.mi_correo()));
+  using ((select public.es_admin_fijo()) or (select public.es_admin_rol())
+         or (created_by = (select public.mi_correo()) and (select public.puede_escribir())))
+  with check ((select public.es_admin_fijo()) or (select public.es_admin_rol())
+         or (created_by = (select public.mi_correo()) and (select public.puede_escribir())));
 drop policy if exists personas_borrar on public.personas;
 create policy personas_borrar on public.personas for delete
-  using ((select public.es_admin_fijo()) or (select public.es_admin_rol()) or created_by = (select public.mi_correo()));
+  using ((select public.es_admin_fijo()) or (select public.es_admin_rol())
+         or (created_by = (select public.mi_correo()) and (select public.puede_escribir())));
+
+-- Una ficha que figura en algún posteo (también uno cancelado) no se
+-- borra: el evento quedaría apuntando a nadie y en Reportes saldría «?».
+-- Para sacarla de en medio están unir y vincular, que primero la
+-- reemplazan en los posteos. Sin sesión (el esquema, una restauración),
+-- no se controla.
+create or replace function public.personas_no_borrar_en_uso() returns trigger
+  language plpgsql security definer set search_path = '' as $$
+begin
+  if not public.sin_sesion_de_persona() and exists (
+       select 1 from public.posts p, jsonb_array_elements(case when jsonb_typeof(p.participants) = 'array' then p.participants else '[]'::jsonb end) e
+        where e ->> 'persona' = old.id) then
+    raise exception 'Esa persona figura en algún evento: no se borra (se puede unir con otra o vincular a una cuenta)' using errcode = 'check_violation';
+  end if;
+  return old;
+end $$;
+drop trigger if exists personas_no_borrar_en_uso on public.personas;
+create trigger personas_no_borrar_en_uso before delete on public.personas
+  for each row execute function public.personas_no_borrar_en_uso();
 
 -- Quién la creó y cuándo no se cambian; el correo, siempre en minúsculas.
 create or replace function public.personas_controlar() returns trigger
@@ -73,10 +97,12 @@ do $$ begin
   end if;
 end $$;
 
--- Sin tildes, para comparar nombres («Darío» = «Dario»).
+-- Sin tildes, para comparar nombres («Darío» = «Dario»). También las del
+-- portugués (João = Joao, Conceição = Conceicao): hasta el 7/10/2026
+-- quedaban como fichas distintas, y la app sí las tomaba por iguales.
 create or replace function public.sin_tildes(s text) returns text
   language sql immutable as $$
-  select translate(coalesce(s, ''), 'áéíóúüñÁÉÍÓÚÜÑ', 'aeiouunAEIOUUN')
+  select translate(coalesce(s, ''), 'áéíóúüñàèìòùâêîôûãõçäëïöÁÉÍÓÚÜÑÀÈÌÒÙÂÊÎÔÛÃÕÇÄËÏÖ', 'aeiouunaeiouaeiouaocaeioAEIOUUNAEIOUAEIOUAOCAEIO')
 $$;
 
 -- Un participante ahora puede ser {persona, name} además de {email, name}
@@ -104,13 +130,18 @@ begin
     raise exception 'Unir o vincular una persona lo hace un admin' using errcode = 'insufficient_privilege';
   end if;
   perform set_config('registro.ordenando_calendar', 'si', true);
+  -- Cada uno una sola vez (la primera; un correo sin importar mayúsculas)
+  -- y en el orden en que estaban: hasta el 7/10/2026 «Dario@X.com» y
+  -- «dario@x.com» quedaban los dos, y la lista salía ordenada por letra.
   update public.posts p set participants = (
-    select coalesce(jsonb_agg(z.y), '[]'::jsonb) from (
-      select distinct on (coalesce(y ->> 'email', ''), coalesce(y ->> 'persona', ''), case when y ? 'email' or y ? 'persona' then '' else lower(y ->> 'name') end) y
-        from jsonb_array_elements(
-          (select jsonb_agg(case when e ->> 'persona' = p_id then p_nuevo else e end)
-             from jsonb_array_elements(p.participants) e)) y
-      order by coalesce(y ->> 'email', ''), coalesce(y ->> 'persona', ''), case when y ? 'email' or y ? 'persona' then '' else lower(y ->> 'name') end) z)
+    select coalesce(jsonb_agg(z.y order by z.i), '[]'::jsonb) from (
+      select distinct on (b.k) a.y, a.i from (
+        select case when t.e ->> 'persona' = p_id then p_nuevo else t.e end as y, t.i
+          from jsonb_array_elements(p.participants) with ordinality as t(e, i)) a,
+        lateral (select case when coalesce(a.y ->> 'email', '') <> '' then 'e:' || lower(a.y ->> 'email')
+                             when a.y ? 'persona' then 'p:' || (a.y ->> 'persona')
+                             else 'n:' || lower(coalesce(a.y ->> 'name', '')) end as k) b
+      order by b.k, a.i) z)
   where jsonb_typeof(p.participants) = 'array'
     and exists (select 1 from jsonb_array_elements(p.participants) e where e ->> 'persona' = p_id);
   get diagnostics filas = row_count;
