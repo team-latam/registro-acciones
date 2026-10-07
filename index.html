@@ -7501,7 +7501,7 @@ async function onAuthChanged(user){
     if(unsubPersonas){ unsubPersonas(); unsubPersonas = null; }
     stopCalendarAutoSync();
     state.posts = []; state.repliesByPost = {}; state.loaded = false; state.roster = [];
-    state.prefs = { ...DEFAULT_PREFS }; state.formerMembers = []; state.personas = [];
+    state.prefs = { ...DEFAULT_PREFS }; state.formerMembers = []; state.personas = []; prefsPropiasLeidas = false;
     dataSubscribed = false;
     if(adminSubscribed){ adminSubscribed = false; if(unsubscribeRequests){ unsubscribeRequests(); unsubscribeRequests = null; } if(unsubAuditLog){ unsubAuditLog(); unsubAuditLog = null; } state.accessRequests = []; state.auditLog = []; }
   };
@@ -8887,8 +8887,29 @@ function subscribeUserPrefs(){
   if(!email) return;
   unsubUserPrefs = store.userPrefs.watchOwn(email, propias=>{
     state.prefs = { ...DEFAULT_PREFS, ...propias };
+    prefsPropiasLeidas = true;
+    recordarIdiomaYZona();
     scheduleRender();
   }, err=>console.error("Error leyendo preferencias personales:", err));
+}
+// Los correos salen en el idioma de cada uno y el resumen llega a SU hora
+// (decisión del usuario del 7/10/2026; 17-avisos-por-correo.sql): la app
+// le cuenta a la base el idioma elegido y la zona horaria del aparato.
+// Solo si a la persona le pueden llegar correos, solo si cambió, y en
+// silencio (no es algo que ella esté tocando).
+// Antes de leer las suyas no se sabe si ya estaban: no se escribe a ciegas.
+let prefsPropiasLeidas = false;
+function zonaDelAparato(){ try{ return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; }catch(e){ return ""; } }
+function recordarIdiomaYZona(){
+  const email = state.auth.user && state.auth.user.email;
+  if(!email || !prefsPropiasLeidas || !puedoRecibirCorreos(email)) return;
+  const p = prefs(), patch = {};
+  if(p.emailLang !== currentLang()) patch.emailLang = currentLang();
+  const zona = zonaDelAparato();
+  if(zona && p.emailTz !== zona) patch.emailTz = zona;
+  if(!Object.keys(patch).length) return;
+  state.prefs = { ...p, ...patch };
+  store.userPrefs.merge(email, patch).catch(err => console.warn("No se pudo guardar el idioma de los correos:", err && err.message));
 }
 // Se aplica en pantalla al toque y recién después se guarda: el aviso en
 // vivo confirma (o corrige) cuando vuelve del servidor, y mientras tanto el
@@ -8932,6 +8953,8 @@ function puedoRecibirCorreos(email){
 function applyPreferencesConfig(cfg){
   configVersion++;
   correosConfig = (cfg && cfg.correos) || null;
+  // Si a esta persona le abrieron los correos, que la base sepa su idioma y su hora.
+  recordarIdiomaYZona();
   applyActivityTypesConfig(cfg && cfg.activityTypes);
   applyExtraCitiesConfig(cfg && cfg.extraCities);
   applyCalendarIdConfig(cfg && cfg.calendarId);
@@ -10651,6 +10674,7 @@ function setLang(lang){
   PLACE_INDEX.length = 0;
   PLACE_INDEX.push(...buildPlaceIndex());
   applyStaticI18n();
+  recordarIdiomaYZona();
   // El título del modal de Evento (postModalTitle) vive afuera de
   // #viewRoot, igual que el resto del cascarón — pero a diferencia de
   // ese cascarón fijo, su texto depende de en qué modo esté el composer
@@ -16979,7 +17003,7 @@ function renderAvisosPorCorreo(p){
         ${cuando === "weekly" ? `<div class="correo-subtitulo">${t("Qué día","Which day","Que dia","איזה יום")}</div>${diaBotones}` : ""}
         <div class="correo-subtitulo">${cuando === "instant"
           ? t("Lo que no tiene momento (actividades nuevas, eventos próximos), a qué hora","The rest (new activities, upcoming events), at what time","O resto (atividades novas, eventos próximos), em que horário","השאר (פעילויות חדשות, אירועים קרובים), באיזו שעה")
-          : t("A qué hora","At what time","Em que horário","באיזו שעה")} <span>(${t("de Argentina","Argentina time","da Argentina","שעון ארגנטינה")})</span></div>
+          : t("A qué hora","At what time","Em que horário","באיזו שעה")} <span>(${esc(t("tu hora: {z}","your time: {z}","seu horário: {z}","לפי השעה שלך: {z}",{ z: lugarDeLaZona(prefs().emailTz || zonaDelAparato()) }))})</span></div>
         ${horaBotones}
         <div class="setting-sub" style="margin-top:10px;">${t("Si no pasó nada, no llega ningún correo.","If nothing happened, no email is sent.","Se nada aconteceu, não chega nenhum e-mail.","אם לא קרה כלום, לא נשלח מייל.")}</div>
       </div>
@@ -16995,6 +17019,8 @@ function renderAvisosPorCorreo(p){
     </div>`;
 }
 const correoPrueba = { mandando:false, msg:"" };
+// «Asia/Jerusalem» → «Jerusalem»: lo que se reconoce de una zona horaria.
+const lugarDeLaZona = z => String(z || "America/Argentina/Buenos_Aires").split("/").pop().replace(/_/g, " ");
 const HORAS_DE_CORREO = () => [
   { h:7, icono:"🌅", nombre:t("Temprano","Early","Cedo","מוקדם") },
   { h:9, icono:"☕", nombre:t("Mañana","Morning","Manhã","בוקר") },
