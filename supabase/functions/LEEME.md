@@ -180,3 +180,29 @@ Antes de eso: para mandarle también a otros admins, hacía falta verificar un d
 Resend (Domains → Add domain, con registros en el DNS) y cargar el
 remitente en el secreto de Supabase `AVISOS_DESDE`
 (por ejemplo `Registro de Acciones <avisos@ese-dominio>`).
+
+---
+
+# Avisos por correo para el equipo (7/10/2026)
+
+El dominio `team-latam.com` quedó **verificado en Resend** el 7/10/2026
+(13:57): los avisos salen de `info@team-latam.com`.
+
+Además del pedido de acceso, ahora hay (`supabase/17-avisos-por-correo.sql`):
+
+- **Al momento**, por la función `avisar`: cuando alguien te menciona con
+  @ o comenta en un posteo tuyo. La app de quien publica lo pide
+  (`avisarPorCorreo` en `index.html`); la base decide a quién
+  (`preparar_aviso`): solo su autor lo puede pedir, en los primeros 15
+  minutos, y cada destinatario una sola vez (`avisos_enviados`).
+- **Resúmenes diarios o semanales**, por el workflow «Resúmenes por correo»
+  (`supabase/avisos/resumen.mjs`), que corre cada hora y le escribe a cada
+  uno a su hora (hora de Argentina). Si no pasó nada, no llega nada.
+- **Correo de prueba**, desde Mis preferencias.
+
+**Quién puede recibir correos** lo decide un admin en **Administración →
+Correos**: «Solo yo» (el admin fijo; es lo elegido de fábrica, a pedido
+del usuario), «Todo el equipo» o «Elegir personas». Cada persona
+habilitada elige después en **Mis preferencias → Notificaciones** si los
+quiere, cuándo y de qué. Los diseños de los correos están en
+`_compartido/correos.mjs` (aprobados por el usuario con capturas).

@@ -10,13 +10,15 @@ const eq = (n, g, w) => { const a = JSON.stringify(g), x = JSON.stringify(w);
 
 const URL_SB = "https://proyecto.supabase.co";
 const entorno = (cambios = {}) => { const e = { SUPABASE_URL: URL_SB, RESEND_API_KEY: "re_de_mentira", ...cambios }; return k => e[k]; };
-function mundo({ datos = { para: ["benny@team-latam.com"], nombre: "Ana Pérez", correo: "ana@x.com" }, sesionVencida = false, resendRechaza = [], dominioSinVerificar = false } = {}){
-  const reg = { rpc: [], correos: [] };
+function mundo({ datos = { para: ["benny@team-latam.com"], nombre: "Ana Pérez", correo: "ana@x.com" }, sesionVencida = false, resendRechaza = [], dominioSinVerificar = false, otros = {} } = {}){
+  const reg = { rpc: [], correos: [], cuerpos: [] };
   const traer = async (url, op = {}) => {
     const u = String(url);
     if(u.startsWith(`${URL_SB}/rest/v1/rpc/`)){
       reg.rpc.push({ nombre: u.split("/").pop(), auth: op.headers.Authorization });
+      reg.cuerpos.push(JSON.parse(op.body || "{}"));
       if(sesionVencida) return new Response("{}", { status: 401 });
+      if(otros[u.split("/").pop()] !== undefined) return new Response(JSON.stringify(otros[u.split("/").pop()]));
       if(u.endsWith("pedir_aviso_al_admin")) return new Response(JSON.stringify(datos));
       return new Response("true");
     }
@@ -30,14 +32,14 @@ function mundo({ datos = { para: ["benny@team-latam.com"], nombre: "Ana Pérez",
   };
   return { reg, traer };
 }
-const pedir = ({ auth = "Bearer sesion-de-ana", metodo = "POST", origen = "https://team-latam.github.io" } = {}) =>
-  new Request(`${URL_SB}/functions/v1/avisar`, { method: metodo, headers: { origin: origen, apikey: "sb_publishable_x", ...(auth ? { authorization: auth } : {}) }, body: metodo === "POST" ? "{}" : undefined });
+const pedir = ({ auth = "Bearer sesion-de-ana", metodo = "POST", origen = "https://team-latam.github.io", cuerpo = {} } = {}) =>
+  new Request(`${URL_SB}/functions/v1/avisar`, { method: metodo, headers: { origin: origen, apikey: "sb_publishable_x", ...(auth ? { authorization: auth } : {}) }, body: metodo === "POST" ? JSON.stringify(cuerpo) : undefined });
 const leer = async r => [r.status, await r.json()];
 
 {
   const m = mundo();
   const r = await leer(await atenderAviso(pedir(), { env: entorno(), fetch: m.traer }));
-  eq("corresponde: sale el correo y se anota", [r, m.reg.rpc.map(x => x.nombre)], [[200, { enviado: true }], ["pedir_aviso_al_admin", "aviso_al_admin_enviado"]]);
+  eq("corresponde: sale el correo y se anota", [r, m.reg.rpc.map(x => x.nombre)], [[200, { enviado: true, enviados: 1 }], ["pedir_aviso_al_admin", "aviso_al_admin_enviado"]]);
   eq("a la base le pregunta con la sesión de quien pidió entrar", m.reg.rpc[0].auth, "Bearer sesion-de-ana");
   const c = m.reg.correos[0];
   eq("el correo: al admin, con la llave de Resend, con el nombre en el asunto y el enlace a la app",
@@ -86,6 +88,27 @@ const leer = async r => [r.status, await r.json()];
   const r = await leer(await atenderAviso(pedir(), { env: entorno(), fetch: v.traer }));
   eq("con el dominio todavía sin verificar, sale igual desde la dirección de prueba de Resend",
      [r[1].enviado, v.reg.correos.map(c => c.from)], [true, [DESDE, DESDE_DE_PRUEBA]]);
+}
+/* ---------- Menciones y respuestas, al momento ---------- */
+{
+  const aviso = { para: [{ email: "benny@team-latam.com", motivo: "menciones", nombre: "Benny" }, { email: "juan@x.com", motivo: "respuestas", nombre: "Juan" }],
+                  autor: "Ana Pérez", titulo: "Visita a Rosario", tipo: "visita", texto: "Hola @benny, ¿mandás el plan? <b>", post: "p1", en: "respuesta" };
+  const m = mundo({ otros: { preparar_aviso: aviso } });
+  const r = await leer(await atenderAviso(pedir({ cuerpo: { tipo: "respuesta", id: "r9" } }), { env: entorno(), fetch: m.traer }));
+  eq("un comentario: le pregunta a la base por ESE comentario", [m.reg.rpc[0].nombre, m.reg.cuerpos[0]], ["preparar_aviso", { p_tipo: "respuesta", p_id: "r9" }]);
+  eq("y le escribe a cada uno, con su motivo", [r, m.reg.correos.map(c => [c.to[0], c.subject])],
+     [[200, { enviado: true, enviados: 2 }], [["benny@team-latam.com", "Ana Pérez te mencionó en «Visita a Rosario»"], ["juan@x.com", "Ana Pérez comentó en «Visita a Rosario»"]]]);
+  const html = m.reg.correos[0].html;
+  eq("el enlace lleva al posteo y al comentario, la mención resaltada y el texto escapado",
+     [html.includes("?post=p1&amp;r=r9") || html.includes("?post=p1&r=r9"), /color:#1a9fb8;font-weight:700;">@benny</.test(html), html.includes("plan? <b>"), html.includes("plan? &lt;b&gt;")], [true, true, false, true]);
+  eq("no se anota nada del pedido de acceso", m.reg.rpc.map(x => x.nombre), ["preparar_aviso"]);
+}
+{
+  const m = mundo({ otros: { preparar_prueba: { para: [{ email: "benny@team-latam.com", nombre: "Benny Rosenthal" }] } } });
+  const r = await leer(await atenderAviso(pedir({ cuerpo: { tipo: "prueba" } }), { env: entorno(), fetch: m.traer }));
+  eq("el correo de prueba, a quien lo pidió", [r[1].enviado, m.reg.correos[0].to, m.reg.correos[0].subject], [true, ["benny@team-latam.com"], "Así se ven los avisos del Registro"]);
+  const n = mundo();
+  eq("un tipo que no existe, no", await leer(await atenderAviso(pedir({ cuerpo: { tipo: "spam" } }), { env: entorno(), fetch: n.traer })), [400, { error: "pedido" }]);
 }
 eq("el correo sin nombre usa la dirección", armarCorreo({ nombre: "", correo: "x@y.com" }).subject, "Nuevo pedido de acceso: x@y.com");
 

@@ -1,0 +1,84 @@
+# ============================================================
+# Resúmenes por correo, diarios y semanales
+# ============================================================
+# Corre cada hora. A cada persona que puede recibir correos (Administración
+# → Correos) y eligió un resumen, se lo manda a SU hora y SU día (hora de
+# Argentina), con lo que pasó desde el último. Si no pasó nada, no le llega
+# nada. Ver supabase/avisos/resumen.mjs y 17-avisos-por-correo.sql.
+#
+# Usa dos secretos que ya están: SUPABASE_SERVICE_ROLE_KEY y
+# RESEND_API_KEY. Sin alguno, avisa y termina en verde.
+# ============================================================
+name: Resúmenes por correo
+
+on:
+  schedule:
+    # Al minuto 7 de cada hora: GitHub a veces atrasa los de la hora en punto.
+    - cron: '7 * * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/avisos/**'
+      - 'supabase/functions/_compartido/**'
+      - '.github/workflows/resumenes.yml'
+  pull_request:
+    paths:
+      - 'supabase/avisos/**'
+      - 'supabase/functions/_compartido/**'
+
+permissions:
+  contents: read
+
+jobs:
+  probar:
+    name: Las pruebas de los resúmenes y de los correos
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with: { node-version: '22', package-manager-cache: false }
+      - name: Probar
+        run: |
+          node supabase/avisos/pruebas/resumen.mjs
+          node supabase/functions/_pruebas/avisos.mjs
+
+  mandar:
+    name: Mandar los que tocan a esta hora
+    needs: probar
+    # Solo desde main y con las llaves de verdad (docs/AUDITORIA.md, U2).
+    # En un push solo se prueba.
+    if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+    concurrency:
+      group: resumenes-mandar
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with: { node-version: '22', package-manager-cache: false }
+      - name: ¿Están los secretos?
+        id: revisar
+        env:
+          LLAVE: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          RESEND: ${{ secrets.RESEND_API_KEY }}
+        run: |
+          if [ -z "$LLAVE" ] || [ -z "$RESEND" ]; then
+            echo "hay=no" >> "$GITHUB_OUTPUT"
+            echo "### Faltan SUPABASE_SERVICE_ROLE_KEY o RESEND_API_KEY: no se manda nada." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "hay=si" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Mandar
+        if: steps.revisar.outputs.hay == 'si'
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+        # pipefail: sin eso el paso queda en verde con el trabajo caído.
+        run: |
+          set -o pipefail
+          node supabase/avisos/resumen.mjs | tee -a "$GITHUB_STEP_SUMMARY"
