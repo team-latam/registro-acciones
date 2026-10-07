@@ -201,13 +201,20 @@ y él cuenta qué vio.
 2. **Google Cloud** (proyecto `40280679854`) → APIs y servicios → Pantalla
    de consentimiento → *Publishing status*: ¿"Testing" o "In production"?
    (backend 28; cambia qué pasa con una persona nueva del equipo).
+   ✅ 7/10: «En producción», usuarios externos, 6 de 100 usuarios.
 3. **Supabase** → SQL Editor: `select has_table_privilege('postgres',
    'auth.identities', 'select');` tiene que dar `true` (backend 12: si da
    `false`, el control del correo cayó en silencio a un dato que el usuario
    puede reescribir).
+   ✅ 7/10: dio `true`.
 4. **Supabase** → Settings: ¿el proyecto avisó alguna vez de pausa por
    inactividad? (las llamadas nocturnas con la llave de servicio deberían
    contar como actividad; a confirmar).
+   ✅ 7/10: ningún aviso de pausa en el correo. Sí apareció el del
+   23/9: desde el 30/10/2026 Supabase deja de dar permisos solos a las
+   tablas nuevas; la llave de servicio los recibe ahora a mano en
+   `02-politicas.sql` y `12-revisar-calendar.sql` (y el laboratorio de
+   pruebas ya no se los regala).
 5. **GitHub** → Settings → Actions → *Workflow permissions*: ✅ confirmado
    el 6/10 (captura del usuario): "Read repository contents and packages
    permissions", y "Allow GitHub Actions to create and approve pull

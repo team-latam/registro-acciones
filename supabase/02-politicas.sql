@@ -176,6 +176,15 @@ grant usage on schema public to anon, authenticated;
 grant select, insert, update, delete on all tables in schema public to authenticated;
 grant usage, select on all sequences in schema public to authenticated;
 revoke all on all tables in schema public from anon;
+-- La llave de servicio (copia del domingo, Calendar de la madrugada,
+-- limpieza, restaurar): hasta el 30/10/2026 Supabase le daba sola todos
+-- los permisos sobre cada tabla nueva de `public`; desde ahí hay que
+-- darlos a mano (aviso de Supabase del 23/9/2026). Sin esto, una tabla
+-- nueva —o la base entera, al restaurar una copia en un proyecto nuevo—
+-- le contestaría «permission denied» a todos los trabajos automáticos.
+-- «all», como los daba Supabase: la misma llave, los mismos permisos.
+grant all on all tables in schema public to service_role;
+grant all on all sequences in schema public to service_role;
 
 -- Que un permiso exista no quiere decir que se pueda usar: todo lo de
 -- abajo pasa igual por las políticas. Esto solo abre la puerta del
