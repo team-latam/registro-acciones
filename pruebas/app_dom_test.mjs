@@ -800,6 +800,22 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   await hasta(p, () => !(window.__sb.tablas.personas || []).length);
   eq("personas: vincular la ficha a la cuenta pasa sus eventos a la persona (sin duplicarla) y la ficha se va",
      [(await base()).posts.find(x => x.id === "cal_ev1").participants, ((await base()).personas || []).length], [[{ email: "ana@x.com", name: "Ana Pérez" }], 0]);
+  // «Editar» algo ya ordenado deja a la gente que no se tocó como estaba:
+  // hasta el 7/10/2026 «Ana Pérez» no era ni un @ ni un primer nombre,
+  // quedaba como persona sin cuenta nueva y Ana salía del evento.
+  await p.click('.admin-item[data-view="revisarcal"]');
+  await p.waitForSelector('[data-action="rv-grupo"][data-key="ordenados"]');
+  await p.click('[data-action="rv-grupo"][data-key="ordenados"]');
+  await p.waitForSelector('[data-action="rv-editar"][data-post-id="cal_ev1"]');
+  await p.click('[data-action="rv-editar"][data-post-id="cal_ev1"]');
+  await p.waitForSelector(".rv-panel #rvDonde");
+  await p.fill("#rvDonde", "Club");
+  await p.click('[data-action="rv-panel-aplicar"]');
+  await hasta(p, () => !document.querySelector(".rv-panel"));
+  eq("revisar: «Editar» algo ya ordenado deja a la gente como estaba (una del equipo no pasa a «sin cuenta»)",
+     await hasta(p, () => (window.__sb.tablas.posts.find(x => x.id === "cal_ev1") || {}).location === "Club").then(async () =>
+       [(await base()).posts.find(x => x.id === "cal_ev1").participants, ((await base()).personas || []).length]), [[{ email: "ana@x.com", name: "Ana Pérez" }], 0]);
+  await p.click('[data-action="rv-grupo"][data-key="actividad"]');
   await p.click('.admin-item[data-view="revisarcal"]');
   await p.waitForSelector('[data-action="rv-seguros"]');
   // Editar uno solo, a mano.

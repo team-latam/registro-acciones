@@ -124,6 +124,15 @@ const confirmar = async p => { await p.waitForSelector("#confirmOk", { state: "v
      await p.$$eval("#postForm .participant-chip", l => { const m = e => { const c = getComputedStyle(e); return [Math.round(e.getBoundingClientRect().height), c.backgroundColor, c.boxShadow, c.marginTop]; };
        const del = m(l[l.length - 1]); return l.map(e => JSON.stringify(m(e)) === JSON.stringify(del)); }), [true, true, true]);
   await p.click('#postForm .participant-chip:has-text("ana") .rm');
+  // Un nombre larguísimo sin espacios (auditoría del 7/10/2026: el chip
+  // medía 963 px en un formulario de 600 y la ✕ quedaba afuera).
+  await p.fill("#cParticipantQuery", "Abcdefghij".repeat(12));
+  await p.waitForSelector('#postForm [data-action="pick-participant"]');
+  await p.click('#postForm [data-action="pick-participant"]');
+  eq("participantes: un nombre larguísimo no se sale del formulario y su ✕ queda adentro",
+     await p.$eval("#postForm", f => { const ch = [...f.querySelectorAll(".participant-chip")].pop(), r = f.getBoundingClientRect(), c = ch.getBoundingClientRect(), x = ch.querySelector(".rm").getBoundingClientRect();
+       return c.width <= r.width && x.right <= r.right + 1 && x.left >= r.left - 1; }), true);
+  await p.click('#postForm .participant-chip:has-text("Abcdefghij") .rm');
   await p.fill("#cTitle", "Charla en la escuela");
   await p.fill("#cPlaceQuery", "Uruguay");
   await p.waitForSelector('#postForm [data-action="pick-place"]');
@@ -227,7 +236,7 @@ const confirmar = async p => { await p.waitForSelector("#confirmOk", { state: "v
   await p.close();
 }
 
-/* ---------- 5. «No es»: se descarta la pregunta; y por correo se vincula sola ---------- */
+/* ---------- 5. «No es»: se descarta la pregunta, y la ficha queda como estaba ---------- */
 {
   const { p, errores } = await entrar(ADMIN, "Benny", t => { t.personas.find(x => x.id === "per_dario2").email = "guypo@x.com"; return t; });
   await irASinCuenta(p);
@@ -238,8 +247,13 @@ const confirmar = async p => { await p.waitForSelector("#confirmOk", { state: "v
   eq("solicitudes: «No es» saca la pregunta y deja los botones de siempre",
      [await p.$$eval(".parece-persona", l => l.length), await p.$$eval('[data-action="approve-request"]', l => l.length)], [0, 1]);
   await p.click('[data-action="approve-request"]');
-  eq("solicitudes: aun aprobando «de la forma normal», la ficha que tenía ese correo se vincula sola",
-     await hasta(p, () => !(window.__sb.tablas.personas || []).some(x => x.id === "per_dario2")).then(async () => (await base(p)).posts.find(x => x.id === "p_arg").participants[0]), { email: "guypo@x.com", name: "Guypo Levi" });
+  // Hasta el 7/10/2026 se vinculaba igual por el correo de la ficha: el
+  // admin decía que no era y su historial pasaba a la cuenta nueva. Y el
+  // correo de una ficha lo puede escribir quien la creó.
+  eq("solicitudes: si el admin dijo «No es», aprobar de la forma normal NO le pasa el historial de la ficha",
+     await hasta(p, () => (window.__sb.tablas.members || []).some(m => m.email === "guypo@x.com")).then(() => p.waitForTimeout(400)).then(async () => {
+       const t = await base(p); return [t.personas.some(x => x.id === "per_dario2"), t.posts.find(x => x.id === "p_arg").participants[0].persona]; }),
+     [true, "per_dario2"]);
   eq("sin errores en la página", errores, []);
   await p.close();
 }
@@ -255,6 +269,33 @@ const confirmar = async p => { await p.waitForSelector("#confirmOk", { state: "v
   eq("equipo: cualquiera que carga eventos puede sumar una persona nueva",
      await textos(p, '#postForm [data-action="pick-participant"]'), ["Sumar «Moshe» como persona nueva (sin cuenta)"]);
   eq("equipo: Administración no está para quien no es admin", await p.evaluate(() => { const m = document.querySelector('.user-menu [data-view="admin"]'); return !!m; }), false);
+  eq("sin errores en la página", errores, []);
+  await p.close();
+}
+
+/* ---------- 7. Lo que todavía no pasó no cuenta como hecho; y una ficha en uso no se borra ---------- */
+// (auditoría del 7/10/2026)
+{
+  const { p, errores } = await entrar(ADMIN, "Benny", t => {
+    const futuro = evento("p_futuro", "Visita de diciembre", "Chile", "Santiago", [{ persona: "per_guypo", name: "Guypo" }], -20);
+    const cancelado = { ...evento("p_cancelado", "Charla suspendida", "Chile", "Santiago", [{ persona: "per_cancelada", name: "Rabino" }], 5), cancelled: true };
+    t.posts.push(futuro, cancelado);
+    t.personas.push({ id: "per_cancelada", name: "Rabino", email: null, note: null, created_by: ADMIN, created_at: hace(9) });
+    return t;
+  });
+  await p.click('nav.tabs button[data-view="paises"]');
+  await p.waitForSelector('[data-action="drill-country"][data-country="Chile"]');
+  await p.click('[data-action="drill-country"][data-country="Chile"]');
+  await p.waitForSelector(".fl-gente");
+  eq("ficha de lugar: «Quiénes trabajaron acá» no cuenta a quien solo está en un viaje que todavía no pasó",
+     await p.$$eval(".fl-gente > div .nm", l => l.map(e => e.textContent.trim())), ["Ana Pérez", "Darío"]);
+  await irASinCuenta(p);
+  eq("sin cuenta: lo que viene va aparte («1 actividad · 1 por venir»), no sumado a lo hecho",
+     await p.$eval('.lp-row[data-id="per_guypo"] .lp-who span', e => e.textContent.split(" · ").slice(0, 2)), ["1 actividad", "1 por venir"]);
+  await p.click('.lp-row[data-id="per_cancelada"]');
+  await p.waitForSelector(".lp-panel");
+  eq("sin cuenta: una ficha que solo figura en un evento cancelado no se ofrece borrar (el evento quedaría apuntando a nadie)",
+     await p.$$eval('[data-action="persona-borrar"]', l => l.length), 0);
   eq("sin errores en la página", errores, []);
   await p.close();
 }

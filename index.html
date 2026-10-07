@@ -616,6 +616,11 @@
   .gis-boton{ display:flex; justify-content:center; min-height:0; }
   .gis-boton:empty{ display:none; }
   .gate-tarjeta.gis-listo .btn-google{ display:none; }
+  /* Si la ventanita de Google no se abre (origen sin autorizar, ventana
+     bloqueada, una restricción de la organización), el botón de Google no
+     avisa nada: con este enlace se entra por el camino de siempre. */
+  .gate-otra-forma{ display:none; background:none; border:none; padding:2px 4px; margin:-6px auto 0; color:var(--text-muted); font-size:12.5px; text-decoration:underline; cursor:pointer; }
+  .gate-tarjeta.gis-listo .gate-otra-forma{ display:block; }
   .gate-pasos{ display:flex; flex-direction:column; gap:10px; margin:0; padding:0; list-style:none; }
   .gate-paso{ display:flex; gap:12px; align-items:flex-start; font-size:13.5px; color:var(--text); line-height:1.5; text-align:start; }
   .gate-paso small{ color:var(--text-muted); }
@@ -919,6 +924,9 @@
     .lp-ancho{ display:none; }
     .lp-angosto{ display:inline; }
     .lp-row.estatica .lp-when{ display:none; }
+    /* Sin cuenta: «1 actividad · 1 por venir · correo» no entra en una
+       línea en el celular; mejor dos que cortado. */
+    .sc-fila .lp-who span{ white-space:normal; }
   }
   /* Zonas: las fichas de país que se arrastran entre zonas. */
   .zone-chips{ display:flex; flex-wrap:wrap; gap:6px; padding:12px; border-top:1px solid var(--border); min-height:52px; }
@@ -1305,6 +1313,9 @@
     display:inline-flex; align-items:center; gap:6px; padding:5px 10px; border-radius:999px;
     font-size:11.5px; font-weight:700; background:rgba(79,199,224,0.16); color:var(--celeste-dark); border:1px solid var(--border);
   }
+  /* Un nombre larguísimo sin espacios no estira el formulario ni esconde
+     la ✕ (RECURRENTES.md, «Una palabra larga estira la página»). */
+  .participant-chip{ max-width:100%; min-width:0; overflow-wrap:anywhere; box-sizing:border-box; }
   .participant-chip .rm{ cursor:pointer; font-weight:800; opacity:0.6; margin-inline-start:2px; }
   .participant-chip .rm:hover{ opacity:1; }
   .participant-chip-avatar{ width:16px; height:16px; border-radius:50%; object-fit:cover; flex-shrink:0; }
@@ -5937,7 +5948,10 @@ async function nuevoNonce(){
   return { crudo, huella };
 }
 async function entrarConGoogle(respuesta){
+  // De un solo uso: el próximo botón (si este intento falla y se vuelve a
+  // la portada) se arma con uno nuevo.
   const nonce = gisNonce && gisNonce.crudo;
+  gisNonce = null;
   try{ await sesion.conGoogle(respuesta.credential, nonce); }
   catch(err){
     console.warn("Supabase no aceptó la identidad de Google; se entra por el camino de siempre:", err && err.message);
@@ -5964,13 +5978,20 @@ async function montarBotonDeGoogleYa(){
   gisMontando = true;
   try{
     if(!(await loadGis()) || !window.google.accounts.id) return;
+    // Una vez por visita a la portada, no en cada dibujado: hasta el
+    // 7/10/2026 cada render() (cambiar el idioma, un aviso que llega)
+    // armaba un nonce nuevo, y si la ventanita de Google estaba abierta su
+    // respuesta volvía con la huella vieja, Supabase la rechazaba y se
+    // terminaba entrando por supabase.co, lo que este botón quería evitar.
+    if(!gisNonce){
+      gisNonce = await nuevoNonce();
+      window.google.accounts.id.initialize({
+        client_id: GOOGLE_OAUTH_CLIENT_ID, callback: entrarConGoogle, nonce: gisNonce.huella,
+        ux_mode: "popup", context: "signin", auto_select: false, itp_support: true,
+      });
+    }
     const destino = document.getElementById("gisBoton");
     if(!destino || destino.childElementCount) return;
-    gisNonce = await nuevoNonce();
-    window.google.accounts.id.initialize({
-      client_id: GOOGLE_OAUTH_CLIENT_ID, callback: entrarConGoogle, nonce: gisNonce.huella,
-      ux_mode: "popup", context: "signin", auto_select: false, itp_support: true,
-    });
     const oscuro = document.documentElement.getAttribute("data-theme") === "dark";
     window.google.accounts.id.renderButton(destino, {
       type: "standard", theme: oscuro ? "filled_black" : "outline", size: "large", shape: "pill",
@@ -6760,6 +6781,9 @@ async function fetchCalendarChanges(syncToken){
     // 410 es "token vencido"; un token de OTRO calendario (cambió el ID en
     // Configuración) vuelve como 400 "Invalid sync token" — mismo remedio.
     if(res.status === 400 && syncToken && /sync ?token/i.test(body.error?.message || "")) return { needsFullResync:true };
+    // 404: la cuenta de la app no ve ese calendario (se cambió el ID en
+    // Configuración sin compartírselo). Google solo dice «Not Found».
+    if(res.status === 404) throw new Error(t("La cuenta de la app no puede leer este calendario: ¿se lo compartiste? (Configuración › Google Calendar)","The app's account can't read this calendar: did you share it with it? (Settings › Google Calendar)","A conta do app não consegue ler este calendário: você o compartilhou? (Configuração › Google Calendar)","החשבון של האפליקציה לא יכול לקרוא את היומן הזה: שיתפתם אותו איתו? (הגדרות › Google Calendar)"));
     if(!res.ok) throw new Error(body.error?.message || `HTTP ${res.status}`);
     if(typeof body.timeZone === "string" && body.timeZone) calendarTimeZone = body.timeZone;
     events.push(...(body.items||[]));
@@ -7587,8 +7611,13 @@ async function requestAccessAgain(){
       email, name: state.auth.user.displayName, photoURL: state.auth.user.photoURL,
       status: "pending",
     });
-    state.auth = { ...state.auth, status:"pending" };
+    state.auth = { ...state.auth, status:"pending", avisadoAt:null };
     logAudit("access_requested", { detail:t("pidió de nuevo tras un rechazo","requested again after a rejection","pediu de novo após uma rejeição","ביקש/ה שוב אחרי דחייה") });
+    // Es un pedido nuevo: le corresponde su aviso (lo pide watchOwn al ver
+    // el pedido pendiente), aunque en esta misma carga ya se haya avisado
+    // del anterior. Hasta el 7/10/2026, rechazado con la pantalla abierta y
+    // vuelto a pedir sin recargar, al admin no le llegaba nada.
+    avisoAlAdminPedido = false;
     render();
   }catch(err){
     console.error(err);
@@ -9091,7 +9120,9 @@ async function approveRequest(email){
   logAudit("access_approved", { targetEmail: email });
   // Si una persona sin cuenta tenía anotado justo este correo, es ella:
   // su historial pasa a la cuenta nueva (18-personas.sql).
-  const ficha = state.personas.find(x => x.email && x.email.toLowerCase() === String(email).toLowerCase());
+  // Salvo que el admin haya dicho «No es» en el aviso «¿Es «X»…?»: hasta
+  // el 7/10/2026 se vinculaba igual al tocar «Aprobar» después.
+  const ficha = parecidosDescartados.has(email) ? null : state.personas.find(x => x.email && x.email.toLowerCase() === String(email).toLowerCase());
   if(ficha){ try{ await store.personas.vincular(ficha.id, email); }catch(err){ console.error("No se pudo pasarle su historial:", err); } }
 }
 // Cambio de rol desde Usuarios. ADMIN_EMAIL queda afuera, y uno mismo
@@ -10106,6 +10137,13 @@ function actividadesDePersona(id){
   return state.posts.filter(p => !p.cancelled && (p.participants || []).some(x => x && x.persona === id))
     .sort((a, b) => String(b.startDate || b.date || "").localeCompare(String(a.startDate || a.date || "")));
 }
+// Lo que ya pasó (lo que se cuenta como hecho) y lo que viene, aparte:
+// «3 actividades» no puede incluir la del mes que viene (RECURRENTES.md).
+const yaPaso = p => String(p.startDate || p.date || "") <= todayISO();
+const hechasDePersona = id => actividadesDePersona(id).filter(yaPaso);
+// ¿Figura en algún posteo, aunque esté cancelado? Entonces no se borra
+// (la base tampoco lo deja: 18-personas.sql).
+const personaEnAlgunPosteo = id => state.posts.some(p => (p.participants || []).some(x => x && x.persona === id));
 // Antes de guardar: las personas nuevas del borrador ({nueva, name}) pasan
 // a fichas (o a la que ya exista con ese nombre) y quedan como {persona, name}.
 async function materializarPersonas(participants){
@@ -11251,6 +11289,7 @@ function renderAuthGate(){
             <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.9c1.7-1.57 2.7-3.88 2.7-6.62z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.9-2.26c-.81.54-1.84.86-3.06.86-2.35 0-4.34-1.59-5.05-3.72H.96v2.33A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.95 10.7A5.4 5.4 0 0 1 3.67 9c0-.59.1-1.17.28-1.7V4.97H.96A9 9 0 0 0 0 9c0 1.45.35 2.83.96 4.03l2.99-2.33z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .96 4.97l2.99 2.33C4.66 5.17 6.65 3.58 9 3.58z"/></svg>
             ${t("Entrar con Google","Sign in with Google","Entrar com o Google","התחברות עם Google")}
           </button>
+          <button type="button" class="gate-otra-forma" data-action="google-signin">${t("¿No se abre? Entrar de otra forma","Doesn't open? Sign in another way","Não abre? Entrar de outro jeito","לא נפתח? להתחבר בדרך אחרת")}</button>
           <div class="gate-primera-linea"><b>${t("¿Es tu primera vez?","First time here?","É a sua primeira vez?","פעם ראשונה כאן?")}</b> ${t("Entrás con Google y un administrador aprueba tu pedido.","Sign in with Google and an administrator approves your request.","Você entra com o Google e um administrador aprova seu pedido.","נכנסים עם Google ומנהל/ת מאשר/ת את הבקשה.")}</div>
           <div class="gate-idiomas" role="group" aria-label="${esc(t("Idioma","Language","Idioma","שפה"))}">
             ${LANGS.map(l=>`<button type="button" class="${lang===l.key?"active":""}" data-action="set-lang" data-lang="${l.key}" aria-pressed="${lang===l.key}" title="${esc(l.name)}">${l.label}</button>`).join("")}
@@ -11386,7 +11425,8 @@ function avatarSinCuenta(nombre, px){
 function renderSinCuentaSection(){
   const f = state.usuariosFilters;
   const n = normalize(f.text);
-  const lista = state.personas.map(x => { const acts = actividadesDePersona(x.id); return { ...x, acts, n: acts.length, ultima: acts[0] || null }; })
+  const lista = state.personas.map(x => { const todas = actividadesDePersona(x.id), acts = todas.filter(yaPaso), proximas = todas.filter(p => !yaPaso(p)).reverse();
+      return { ...x, acts, proximas, n: acts.length, ultima: acts[0] || null, enUso: personaEnAlgunPosteo(x.id) }; })
     .filter(x => !n || normalize(x.name).includes(n) || normalize(x.email || "").includes(n))
     .sort((a, b) => b.n - a.n || a.name.localeCompare(b.name, "es"));
   const toolbar = `<div class="users-toolbar">
@@ -11399,9 +11439,9 @@ function renderSinCuentaSection(){
     <button type="button" class="btn-secondary" data-action="persona-nueva-cancelar">${t("Cancelar","Cancel","Cancelar","ביטול")}</button>
   </div>`;
   const flecha = isRTL() ? "m15 6-6 6 6 6" : "m9 6 6 6-6 6";
-  const filas = lista.length ? lista.map(x => `<button type="button" class="lp-row${personaAbierta===x.id?" on":""}" data-action="persona-abrir" data-id="${esc(x.id)}" aria-expanded="${personaAbierta===x.id}">
+  const filas = lista.length ? lista.map(x => `<button type="button" class="lp-row sc-fila${personaAbierta===x.id?" on":""}" data-action="persona-abrir" data-id="${esc(x.id)}" aria-expanded="${personaAbierta===x.id}">
       ${avatarSinCuenta(x.name, 38)}
-      <span class="lp-who"><b>${esc(x.name)}</b><span>${esc(cuantasActividades(x.n))} · ${x.email ? esc(x.email) : esc(t("sin correo","no email","sem email","ללא אימייל"))}</span></span>
+      <span class="lp-who"><b>${esc(x.name)}</b><span>${esc(cuantasActividades(x.n))}${x.proximas.length ? " · " + esc(t("{n} por venir","{n} upcoming","{n} por vir","{n} בקרוב",{n: x.proximas.length})) : ""} · ${x.email ? esc(x.email) : esc(t("sin correo","no email","sem email","ללא אימייל"))}</span></span>
       <span class="lp-when">${x.ultima ? esc(fmtDate(x.ultima.startDate || x.ultima.date)) : ""}</span>
       <svg class="lp-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="${flecha}"/></svg>
     </button>`).join("")
@@ -11440,11 +11480,13 @@ function renderPersonaSinCuentaPanel(x){
     </div>
     <div class="lp-pb">
       ${campo("personaNombre", "name", t("Nombre","Name","Nome","שם"), x.name, 'required')}
-      ${campo("personaCorreo", "email", `${t("Correo","Email","Email","אימייל")} <span class="hint">${t("(si lo sabés)","(if you know it)","(se souber)","(אם ידוע)")}</span>`, x.email, 'placeholder="ej. nombre@gmail.com"',
+      ${campo("personaCorreo", "email", `${t("Correo","Email","Email","אימייל")} <span class="hint">${t("(si lo sabés)","(if you know it)","(se souber)","(אם ידוע)")}</span>`, x.email, `placeholder="${esc(t("ej. nombre@gmail.com","e.g. name@gmail.com","ex. nome@gmail.com","למשל name@gmail.com"))}"`,
         t("Si entra a la app con este correo, su historial pasa a su cuenta solo. No manda invitaciones de Calendar.","If they sign in to the app with this email, their history moves to their account on its own. It doesn't send Calendar invites.","Se entrar no app com este email, o histórico passa para a conta sozinho. Não envia convites do Calendar.","אם ייכנס/תיכנס לאפליקציה עם האימייל הזה, ההיסטוריה תעבור לחשבון לבד. לא שולח הזמנות ליומן."))}
       ${campo("personaNota", "note", t("Nota","Note","Nota","הערה"), x.note, `placeholder="${esc(t("ej. voluntario, natación · Buenos Aires","e.g. volunteer, swimming · Buenos Aires","ex. voluntário, natação · Buenos Aires","למשל מתנדב, שחייה · בואנוס איירס"))}"`)}
       <div class="lp-field"><label>${t("Dónde estuvo","Where they've been","Onde esteve","איפה היה/תה")}</label>
-        ${x.n ? `<div class="pref-chips">${donde}</div>` : `<span class="hint">${t("Todavía no figura en ningún evento.","Not in any event yet.","Ainda não aparece em nenhum evento.","עדיין לא מופיע/ה בשום אירוע.")}</span>`}</div>
+        ${x.n ? `<div class="pref-chips">${donde}</div>` : `<span class="hint">${x.proximas.length ? t("Todavía no estuvo en ninguno: lo que tiene es por venir.","Not in any past event yet: what they have is upcoming.","Ainda não esteve em nenhum: o que tem é por vir.","עדיין לא השתתף/ה באף אירוע שעבר: מה שיש עוד לפניו/ה.") : t("Todavía no figura en ningún evento.","Not in any event yet.","Ainda não aparece em nenhum evento.","עדיין לא מופיע/ה בשום אירוע.")}</span>`}</div>
+      ${x.proximas.length ? `<div class="lp-field"><label>${t("Lo que viene","Coming up","O que vem","מה שבדרך")}</label><div class="pref-chips">${x.proximas.slice(0, 3).map(p => { const ty = ACTIVITY_BY_KEY[p.activityType] || { icon:"✨" };
+        return `<button type="button" class="chip-toggle" data-action="goto-mention" data-post-id="${esc(p.id)}">${esc(ty.icon)} ${esc(p.activityType === "rutina" ? recortar(p.content, 40) : p.title)} · ${esc(fmtDate(p.startDate || p.date))}</button>`; }).join("")}</div></div>` : ""}
       ${!puedeTocar ? `<span class="hint">${t("La ficha la corrige quien la creó, o un admin.","The record is edited by whoever created it, or an admin.","A ficha é corrigida por quem a criou, ou por um admin.","את הכרטיס מתקן/ת מי שיצר/ה אותו, או מנהל/ת.")}</span>` : ""}
     </div>
     ${isAdmin() ? `<div class="lp-pf">
@@ -11461,7 +11503,7 @@ function renderPersonaSinCuentaPanel(x){
           ${equipo.map(u => `<option value="${esc(u.email)}"${personaVincularCon === u.email ? " selected" : ""}>${esc(nombreDe(u))}</option>`).join("")}
         </select><button type="button" class="btn-mini" data-action="persona-vincular" data-id="${esc(x.id)}" ${personaVincularCon && !personaOcupada ? "" : "disabled"}>${t("Vincular","Link","Vincular","קישור")}</button></div>
         <span class="hint">${t("Sus eventos pasan a esa cuenta y la ficha se va.","Their events move to that account and the record goes away.","Seus eventos passam para essa conta e a ficha some.","האירועים שלו/ה עוברים לחשבון ההוא והכרטיס נעלם.")}</span></div>
-      ${!x.n ? `<button type="button" class="btn-ghost danger lp-peligro" data-action="persona-borrar" data-id="${esc(x.id)}" ${personaOcupada ? "disabled" : ""}>${t("Borrar la ficha…","Delete the record…","Apagar a ficha…","מחיקת הכרטיס…")}</button>` : ""}
+      ${!x.enUso ? `<button type="button" class="btn-ghost danger lp-peligro" data-action="persona-borrar" data-id="${esc(x.id)}" ${personaOcupada ? "disabled" : ""}>${t("Borrar la ficha…","Delete the record…","Apagar a ficha…","מחיקת הכרטיס…")}</button>` : ""}
     </div>` : ""}
   </aside>`;
 }
@@ -11486,7 +11528,7 @@ function renderPareceSerPersona(r){
   if(r.status !== "pending" || parecidosDescartados.has(r.email)) return "";
   const x = personaQueParece(r);
   if(!x) return "";
-  const acts = actividadesDePersona(x.id);
+  const acts = hechasDePersona(x.id);
   const ultima = acts[0];
   return `<div class="parece-persona" data-persona="${esc(x.id)}">
     <b>${t("¿Es «{n}», que figura sin cuenta?","Is this “{n}”, listed without an account?","É «{n}», que aparece sem conta?","האם זה/זו «{n}», שמופיע/ה ללא חשבון?",{n: esc(x.name)})}</b>
@@ -11839,7 +11881,7 @@ function renderPreaprobar(){
         "Cadastre o e-mail do Google de alguém e, quando entrar pela primeira vez, já tem acesso sem esperar aprovação.",
         "הזינו את כתובת ה-Google של מישהו/י, ובכניסה הראשונה כבר תהיה גישה בלי להמתין לאישור.")}</div>
       <div class="zone-add-row">
-        <input type="email" id="preEmail" placeholder="nombre@dominio.com" value="${esc(d.email)}" autocomplete="off" aria-label="${esc(t("Correo","Email","E-mail","אימייל"))}">
+        <input type="email" id="preEmail" placeholder="${esc(t("nombre@dominio.com","name@domain.com","nome@dominio.com","למשל name@domain.com"))}" value="${esc(d.email)}" autocomplete="off" aria-label="${esc(t("Correo","Email","E-mail","אימייל"))}">
         <input type="text" id="preName" placeholder="${esc(t("Nombre (opcional)","Name (optional)","Nome (opcional)","שם (לא חובה)"))}" maxlength="120" value="${esc(d.name)}" autocomplete="off">
         <button type="button" class="btn-mini" data-action="preaprobar" ${d.saving ? "disabled" : ""}>${d.saving ? t("Dando acceso…","Granting…","Dando acesso…","...מעניק גישה") : t("Dar acceso","Grant access","Dar acesso","מתן גישה")}</button>
       </div>
@@ -12312,6 +12354,7 @@ function rvCargarSugerencias(){
 function rvPersona(nombre){
   const n = normalize(nombre);
   const m = state.roster.find(u => normalize(u.nickname) === n)
+    || state.roster.find(u => normalize(u.name || "") === n)
     || state.roster.find(u => normalize(String(u.name || "").split(/\s+/)[0]) === n);
   if(m) return { email: m.email, name: nombreDe(m, nombre) };
   // Si no, una persona sin cuenta: la ficha que ya exista con ese nombre,
@@ -12319,9 +12362,14 @@ function rvPersona(nombre){
   const f = state.personas.find(x => normalize(x.name) === n || normalize(String(x.name).split(/\s+/)[0]) === n);
   return f ? { persona: f.id, name: f.name } : { nueva: true, name: String(nombre).slice(0, 120) };
 }
-function rvParticipantes(nombres, previos){
+// `conocidos`: los participantes que el posteo ya tenía, por el nombre con
+// que se muestran en el panel. Hasta el 7/10/2026 «Editar» volvía a
+// buscar cada uno por su nombre: «Ana Pérez» no era ni un @ ni un primer
+// nombre, así que quedaba como persona sin cuenta nueva y Ana salía del
+// evento (y una ficha renombrada se duplicaba).
+function rvParticipantes(nombres, previos, conocidos){
   const out = [...(previos || [])];
-  nombres.map(rvPersona).forEach(p => {
+  nombres.map(n => (conocidos && conocidos.get(n)) || rvPersona(n)).forEach(p => {
     const ya = out.some(o => participanteClave(o) === participanteClave(p) || (!o.email && !p.email && normalize(o.name || "") === normalize(p.name || "")));
     if(!ya) out.push(p);
   });
@@ -12384,14 +12432,16 @@ function rvBorradorNuevo(p){
   const s = p ? rvSugerencia(p) : null;
   const pend = p && rvPendiente(p);
   const tipo = p ? (pend ? (s && s.tipo) || "" : (p.activityType === "otro" && s && s.tipo ? s.tipo : p.activityType)) : "";
-  const personas = p ? (pend ? (s ? s.personas : []) : (p.participants || []).map(x => x.name || x.email)) : [];
+  const yaTenia = p && !pend ? (p.participants || []).filter(Boolean) : [];
+  const conocidos = new Map(yaTenia.map(x => [participanteNombre(x) || x.email, x]));
+  const personas = p ? (pend ? (s ? s.personas : []) : [...conocidos.keys()]) : [];
   const alcances = p ? JSON.parse(JSON.stringify((pend ? (s ? s.lugares : []) : (p.scopes || [])))) : [];
   // alcance/zona/pais/ciudad son lo que está eligiendo en los selectores,
   // antes de tocar "Agregar"; alcances, la lista que se va a guardar.
   return {
     tipo, alcances,
     alcance: "", zona: "", pais: "", ciudad: "",
-    personas: [...personas], libre: "",
+    personas: [...personas], libre: "", conocidos,
     donde: p && !pend ? (p.location || "") : "",
   };
 }
@@ -12577,7 +12627,7 @@ function rvAplicarPanel(){
       // Una fila sola: queda exactamente lo que está en el panel.
       c.scopes = alcances;
       c.location = donde;
-      c.participants = rvParticipantes(b.personas, []);
+      c.participants = rvParticipantes(b.personas, [], b.conocidos);
     } else {
       // De a muchos: alcance y personas se SUMAN a lo que ya tienen.
       if(alcances.length){
@@ -13051,7 +13101,7 @@ function renderCalendarSection(){
         </div>
         <div class="hint" id="calendarIdHint">${d.locked
           ? t("Bloqueado para evitar cambios por error. Desbloquealo solo si de verdad hay que cambiar de calendario.","Locked to prevent accidental changes. Unlock it only if the calendar really has to change.","Bloqueado para evitar mudanças por engano. Desbloqueie só se realmente for preciso trocar de calendário.","נעול כדי למנוע שינויים בטעות. שחרר/י רק אם באמת צריך להחליף יומן.")
-          : t("⚠️ Cuidado: los eventos nuevos y los editados van a ir al calendario que quede acá.","⚠️ Careful: new and edited events will go to whatever calendar ends up here.","⚠️ Cuidado: os eventos novos e editados vão para o calendário que ficar aqui.","⚠️ זהירות: אירועים חדשים ונערכים יעברו ליומן שיישאר כאן.")}</div>
+          : t("⚠️ Cuidado: los eventos nuevos y los editados van a ir al calendario que quede acá. Y antes de cambiarlo, compartí el calendario nuevo con la cuenta de la app («registro-calendario@…», con «Ver todos los detalles del evento»): si no, la app deja de leerlo.","⚠️ Careful: new and edited events will go to whatever calendar ends up here. And before changing it, share the new calendar with the app's account (“registro-calendario@…”, with “See all event details”): otherwise the app stops reading it.","⚠️ Cuidado: os eventos novos e editados vão para o calendário que ficar aqui. E antes de trocar, compartilhe o calendário novo com a conta do app («registro-calendario@…», com «Ver todos os detalhes do evento»): senão o app deixa de lê-lo.","⚠️ זהירות: אירועים חדשים ונערכים יעברו ליומן שיישאר כאן. ולפני ההחלפה, שתפו את היומן החדש עם החשבון של האפליקציה („registro-calendario@…“, עם „הצגת כל פרטי האירוע“): אחרת האפליקציה תפסיק לקרוא אותו.")}</div>
       </div>
       ${d.confirmWord && d.confirmMode !== "reimport" ? `<div class="confirm-box" role="alert">
         ${t("Vas a cambiar el calendario del equipo. Para confirmar, escribí la palabra","You're about to change the team calendar. To confirm, type the word","Você vai trocar o calendário da equipe. Para confirmar, escreva a palavra","את/ה עומד/ת להחליף את יומן הצוות. לאישור, הקלד/י את המילה")} <b>${esc(d.confirmWord)}</b>
@@ -15410,10 +15460,17 @@ function pasaFiltroDelReporte(p, f){
   if(!f) return true;
   if(f.tipo && (p.activityType || "otro") !== f.tipo) return false;
   if(f.persona){
-    const yo = f.persona.toLowerCase();
-    const cargo = String(p.authorEmail || "").toLowerCase() === yo;
-    const estuvo = (p.participants || []).some(x => String((x && x.email) || "").toLowerCase() === yo);
-    if(!cargo && !estuvo) return false;
+    // Una persona sin cuenta viene como «persona:<id>» (18-personas.sql):
+    // hasta el 7/10/2026 se comparaba con el correo y el reporte salía vacío.
+    if(f.persona.startsWith("persona:")){
+      const id = f.persona.slice("persona:".length);
+      if(!(p.participants || []).some(x => x && x.persona === id)) return false;
+    }else{
+      const yo = f.persona.toLowerCase();
+      const cargo = String(p.authorEmail || "").toLowerCase() === yo;
+      const estuvo = (p.participants || []).some(x => String((x && x.email) || "").toLowerCase() === yo);
+      if(!cargo && !estuvo) return false;
+    }
   }
   const alcances = (p.scopes || []).filter(Boolean);
   if(f.pais && !alcances.some(sc => sc.country === f.pais)) return false;
@@ -16879,7 +16936,7 @@ function renderConfigNotificacionesSection(){
 
 // Avisos por correo (17-avisos-por-correo.sql). Los valores de fábrica son
 // los mismos que usa la base (prefs_de_correo): prendido, una vez por día
-// a las 8, menciones y respuestas (y pedidos de acceso, para los admins).
+// a las 9, menciones y respuestas (y pedidos de acceso, para los admins).
 const TEMAS_DE_CORREO = () => [
   { key:"menciones", label:t("@ Cuando me mencionan","@ When I'm mentioned","@ Quando me mencionam","@ כשמזכירים אותי") },
   { key:"respuestas", label:"💬 " + t("Respuestas a mis posteos","Replies to my posts","Respostas às minhas postagens","תגובות לפוסטים שלי") },
@@ -19947,8 +20004,10 @@ function renderFichaLugar(L){
   // Quiénes trabajaron acá: los participantes con cuenta en la app (y en
   // una rutina, quien la escribió), una vez por registro. Ni «Google Calendar» (6/10) ni
   // quien solo cargó el evento (7/10) cuentan como alguien que trabajó acá.
+  // Solo lo que ya pasó: el viaje del mes que viene todavía no es alguien
+  // que trabajó acá (RECURRENTES.md).
   const gente = new Map();
-  D.visibles.forEach(p => {
+  D.visibles.filter(p => fechaDePost(p) <= todayISO()).forEach(p => {
     const deEste = new Set();
     const sumar = (m, email, nombre) => {
       const k = String(m ? m.email : (email || nombre || "")).toLowerCase();
@@ -20705,7 +20764,7 @@ function getParticipantMatches(draft){
   // Las personas sin cuenta que ya tienen ficha (18-personas.sql), por
   // nombre: así «Dario» no se carga dos veces con dos formas.
   state.personas.filter(f => !already.has("persona:" + f.id) && normalize(f.name).includes(qn)).slice(0, 5)
-    .forEach(f => matches.push({ persona: f.id, name: f.name, sinCuenta: true, n: actividadesDePersona(f.id).length }));
+    .forEach(f => matches.push({ persona: f.id, name: f.name, sinCuenta: true, n: hechasDePersona(f.id).length }));
   if(EMAIL_RE.test(raw)){
     if(!already.has(q) && !matches.some(m => m.email && m.email.toLowerCase() === q)) matches.push({ email:raw, name:raw, isLoose:true });
   } else if(raw.length >= 2 && !matches.some(m => m.persona && normalize(m.name) === qn)
@@ -21184,7 +21243,7 @@ document.addEventListener("click", async e=>{
   },
     "persona-borrar": async (el, e, action, postId) => {
     const x = personaPorId(el.dataset.id);
-    if(!x || personaOcupada || actividadesDePersona(x.id).length) return;
+    if(!x || personaOcupada || personaEnAlgunPosteo(x.id)) return;
     if(!(await appConfirm(t("¿Borrar la ficha de «{n}»? No figura en ningún evento.","Delete “{n}”'s record? They're not in any event.","Apagar a ficha de «{n}»? Não aparece em nenhum evento.","למחוק את הכרטיס של «{n}»? לא מופיע/ה בשום אירוע.",{n: x.name}), { danger:true, okLabel: t("Borrar","Delete","Apagar","מחיקה") }))) return;
     personaOcupada = true; render();
     try{ await store.personas.remove(x.id); personaAbierta = null; }

@@ -264,6 +264,7 @@ const SEMANAL = { recurrence:["RRULE:FREQ=WEEKLY;BYDAY=MO"], startDate:"2026-01-
   eq("por zona: los países de la zona y lo cargado a la región", api.armarReporte(A, B, { zona:"central" }).total, 1);
   eq("por zona Sur: Perú y Chile", api.armarReporte(A, B, { zona:"sur" }).total, 2);
   eq("por persona: lo que cargó y donde participó", api.armarReporte(A, B, { persona:"ana@x.com" }).total, 4);
+  eq("por persona sin cuenta: donde participó (hasta el 7/10/2026 daba vacío)", api.armarReporte(A, B, { persona:"persona:p1" }).total, 1);
   eq("sin filtro, todo", api.armarReporte(A, B, { zona:"", pais:"", tipo:"", persona:"" }).total, 4);
   const r = api.armarReporte(A, B);
   eq("las ciudades distintas no se cuentan dos veces por mayúsculas", r.ciudades.size, 2);

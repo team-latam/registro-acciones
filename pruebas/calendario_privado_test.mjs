@@ -33,8 +33,9 @@ const b = await chromium.launch();
 async function entrar({ funcion, conToken = true }){
   const p = await b.newPage();
   const pedidos = [];
-  const errores = [];
+  const errores = [], consola = [];
   p.on("pageerror", e => errores.push(String(e)));
+  p.on("console", m => consola.push(m.text()));
   await p.route(/^https?:\/\//, ruta => {
     const req = ruta.request(), u = req.url();
     if(u === CDN) return ruta.fulfill({ contentType: "application/javascript", body: FALSO });
@@ -55,7 +56,7 @@ async function entrar({ funcion, conToken = true }){
   }, [BASE(), { access_token: conToken ? "sesion-de-benny" : undefined, user: { id: "uuid-benny", email: ADMIN, user_metadata: { full_name: "Benny" } } }]);
   await p.goto(PAGINA);
   const traido = id => p.waitForFunction(id => (window.__sb.tablas.posts || []).some(x => x.calendar_event_id === id), id, { timeout: 8000 }).then(() => true, () => false);
-  return { p, pedidos, errores, traido };
+  return { p, pedidos, errores, traido, consola };
 }
 
 {
@@ -83,6 +84,16 @@ async function entrar({ funcion, conToken = true }){
   eq("si la función no atiende: no cae a la clave de API para el calendario del equipo",
      [await traido("evclave"), pedidos.some(x => x.a === "funcion"), pedidos.filter(x => x.a === "google").length], [false, true, 0]);
   eq("si la función no atiende: la app no se rompe", errores, []);
+  await p.close();
+}
+
+{
+  // Un admin cambió el ID del calendario sin compartírselo a la cuenta de
+  // la app: Google contesta 404 «Not Found», que no le dice nada a nadie.
+  const { p, consola } = await entrar({ funcion: { estado: 404, cuerpo: { error: { code: 404, message: "Not Found" } } } });
+  await p.waitForTimeout(1500);
+  eq("calendario sin compartir con la cuenta de la app: el error lo dice con palabras",
+     consola.some(x => /no puede leer este calendario/.test(x)), true);
   await p.close();
 }
 
