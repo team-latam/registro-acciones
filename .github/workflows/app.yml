@@ -28,7 +28,8 @@ jobs:
   pruebas:
     name: Correr todas
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # Pruebas ~6 min + Playwright (lo normal, 30 s; lo peor, su tope de 20).
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: false }
@@ -41,11 +42,25 @@ jobs:
 
       - name: Playwright
         working-directory: pruebas
+        # El 7/10/2026 (corrida 49 de «Publicar el sitio») este paso se
+        # quedó 20 minutos esperando un servidor de paquetes de Ubuntu y se
+        # comió el tiempo del trabajo entero, sin llegar a las pruebas. Ahora
+        # apt se rinde a los 30 s por pedido, cada intento tiene 6 minutos
+        # y hay tres; lo normal son 30 segundos (con un servidor lento, 4
+        # minutos: el reintento de esa misma corrida).
+        timeout-minutes: 20
         run: |
           npm ci
+          printf 'Acquire::http::Timeout "30";\nAcquire::https::Timeout "30";\nAcquire::Retries "3";\n' \
+            | sudo tee /etc/apt/apt.conf.d/99-tiempos >/dev/null
           # En GitHub sí hay que bajar el navegador (en el sandbox de
           # Claude Code no: ya está instalado).
-          npx playwright install --with-deps chromium
+          for intento in 1 2 3; do
+            timeout 360 npx playwright install --with-deps chromium && exit 0
+            echo "::warning::Bajar el navegador no terminó (intento $intento de 3)."
+            sleep 15
+          done
+          exit 1
 
       - name: Las pruebas
         run: ./pruebas/correr.sh
