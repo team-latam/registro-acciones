@@ -31,11 +31,11 @@ create table if not exists auth.identities (
   identity_data jsonb not null default '{}'::jsonb,
   unique (user_id, provider));
 
--- En Supabase la llave de servicio tiene todos los permisos sobre lo que
--- se crea en `public`; acá hay que dárselos para poder probar como ella
--- (el sincronizador nocturno escribe así).
-alter default privileges in schema public grant all on tables to service_role;
-alter default privileges in schema public grant all on sequences to service_role;
+-- La llave de servicio NO recibe sola los permisos de las tablas nuevas:
+-- así es Supabase desde el 30/10/2026 (antes se los daba). Los da el
+-- esquema a mano (02-politicas.sql, 12-revisar-calendar.sql), y las
+-- pruebas que entran como ella (el sincronizador nocturno escribe así)
+-- comprueban que alcance.
 -- Y como en Supabase, toda función nueva de `public` se puede llamar de
 -- entrada desde el navegador (anon, authenticated). Sin esto, una prueba
 -- de «esta función no la puede llamar cualquiera» pasaba aunque el
