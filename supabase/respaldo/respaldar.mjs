@@ -37,8 +37,10 @@ export const TABLAS = {
 // salió (17-avisos-por-correo.sql), que solo lee la llave de servicio.
 // Restauradas en una base nueva no aportan nada: el resumen siguiente
 // cubre el último día o la última semana igual, y un aviso al momento
-// solo podría repetirse por algo de los últimos 15 minutos.
-export const SIN_COPIA = ["avisos_enviados", "resumenes_enviados"];
+// solo podría repetirse por algo de los últimos 15 minutos. Tampoco
+// avisos_listos: lo que la función `avisar` tiene que mandar en los
+// próximos 10 minutos, con su turno (7/10/2026).
+export const SIN_COPIA = ["avisos_enviados", "resumenes_enviados", "avisos_listos"];
 const BUCKET = "adjuntos";
 const PAGINA = 1000;
 

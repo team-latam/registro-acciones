@@ -3,8 +3,9 @@
 # ============================================================
 # `calendario`: la app lee el Google Calendar del equipo por acá, con la
 # cuenta de servicio de la app; así el calendario no tiene que ser público
-# (docs/AUDITORIA.md, U5). `avisar`: el correo al administrador cuando
-# alguien pide entrar (I10). Ver supabase/functions/LEEME.md.
+# (docs/AUDITORIA.md, U5). `avisar`: los avisos por correo (el pedido de
+# acceso al administrador, las menciones y respuestas al momento y el
+# correo de prueba). Ver supabase/functions/LEEME.md.
 #
 # Se publica sola en cada push a main que la toca, y a mano desde Actions
 # → «Funciones de Supabase» → Run workflow (por ejemplo, después de cargar
@@ -13,10 +14,15 @@
 # Necesita dos secretos de GitHub:
 #   SUPABASE_ACCESS_TOKEN       para publicar en el proyecto
 #   GOOGLE_CUENTA_DE_SERVICIO   el JSON de la llave de la cuenta de servicio
-# Y uno opcional:
-#   RESEND_API_KEY              para mandar el correo de `avisar`; sin él,
+# Y dos opcionales:
+#   RESEND_API_KEY              para mandar los correos de `avisar`; sin él,
 #                               la función contesta «sin-configurar» y la
 #                               pantalla de espera no promete ningún aviso.
+#   SUPABASE_SERVICE_ROLE_KEY   la de las copias y los resúmenes: `avisar`
+#                               la usa para leer qué mandar (tomar_aviso);
+#                               se carga como LLAVE_DE_SERVICIO (Supabase no
+#                               deja nombres que empiecen con SUPABASE_). Sin
+#                               ella, usa la que Supabase le da sola.
 # Sin los dos primeros avisa qué falta y termina en verde.
 # ============================================================
 name: Funciones de Supabase
@@ -83,7 +89,7 @@ jobs:
               echo ""
               echo "Falta:$falta (Settings → Secrets and variables → Actions)."
               echo "El paso a paso está en supabase/functions/LEEME.md."
-              echo "Mientras tanto la app lee el calendario como antes, con la clave de API."
+              echo "Mientras tanto la app no puede leer el calendario del equipo (desde el 6/10/2026 es privado)."
             } >> "$GITHUB_STEP_SUMMARY"
           else
             echo "hay=si" >> "$GITHUB_OUTPUT"
@@ -108,6 +114,7 @@ jobs:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           CUENTA: ${{ secrets.GOOGLE_CUENTA_DE_SERVICIO }}
           RESEND: ${{ secrets.RESEND_API_KEY }}
+          LLAVE: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           set -euo pipefail
           # Qué proyecto y qué calendario salen de index.html, como en el
@@ -127,6 +134,11 @@ jobs:
             echo "✓ Llave de Resend cargada"
           else
             echo "· Sin RESEND_API_KEY: «avisar» queda sin mandar correos" | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+          if [ -n "$LLAVE" ]; then
+            echo "::add-mask::$LLAVE"
+            npx --yes supabase@2.120.0 secrets set --project-ref "$PROYECTO" "LLAVE_DE_SERVICIO=$LLAVE" > /dev/null
+            echo "✓ Llave de servicio cargada para «avisar»"
           fi
           echo "✓ Secretos de las funciones cargados"
           for f in calendario avisar; do

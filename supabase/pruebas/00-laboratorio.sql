@@ -183,3 +183,14 @@ end $$;
 -- laboratorio local: en Supabase el esquema `lab` no existe.
 grant usage on schema lab to anon, authenticated;
 alter default privileges in schema lab grant execute on functions to authenticated;
+
+-- Lo que la base dejó guardado para la función `avisar` con un turno
+-- (17-avisos-por-correo.sql): en Supabase solo lo lee la función, con la
+-- llave de servicio (tomar_aviso); acá las pruebas lo miran por este atajo.
+-- plpgsql y no sql: la tabla todavía no existe cuando se crea esto.
+create or replace function lab.aviso(turno jsonb) returns jsonb
+  language plpgsql security definer set search_path = '' as $$
+begin
+  return (select a.datos from public.avisos_listos a where a.ticket = turno ->> 'ticket');
+end $$;
+grant execute on function lab.aviso(jsonb) to authenticated;

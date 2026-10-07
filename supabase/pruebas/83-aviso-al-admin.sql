@@ -15,8 +15,13 @@ insert into public.app_config(key, value) values ('preferences', '{"correos":{"q
   on conflict (key) do update set value = excluded.value;
 select lab.probar_valor('quien pidió entrar: corresponde, a los dos admins, con su nombre',
   lab.como('nuevo@x.com'), $q$select 1$q$,
-  $q$select (r->'para')::text || ' ' || (r->>'nombre') || ' ' || (r->>'correo') from (select public.pedir_aviso_al_admin() r) x$q$,
+  $q$select (r->'para')::text || ' ' || (r->>'nombre') || ' ' || (r->>'correo') from (select lab.aviso(public.pedir_aviso_al_admin()) r) x$q$,
   '["benny@team-latam.com", "otra.admin@x.com"] Nuevo <b> nuevo@x.com');
+-- Hasta el 7/10/2026 la función devolvía la lista entera a quien pedía
+-- entrar: cualquiera con una cuenta de Google veía los correos de los admins.
+select lab.probar_valor('pero quien pidió entrar no ve a quién le llega: recibe solo un turno',
+  lab.como('nuevo@x.com'), $q$select 1$q$,
+  $q$select string_agg(k, ',') from jsonb_object_keys(public.pedir_aviso_al_admin()) k$q$, 'ticket');
 select lab.probar_valor('pedirlo dos veces seguidas: la segunda no (un intento por hora)',
   lab.como('nuevo@x.com'), $q$select public.pedir_aviso_al_admin()$q$,
   $q$select coalesce(public.pedir_aviso_al_admin()::text, 'nada')$q$, 'nada');
