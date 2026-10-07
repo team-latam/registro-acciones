@@ -82,7 +82,9 @@ Todas dentro de `index.html`:
 Y en los secretos de GitHub (no en `index.html`), desde el 6/10/2026:
 `GOOGLE_CUENTA_DE_SERVICIO` (la llave de la cuenta de Google con la que
 la app lee el calendario, que ya no es público) y `SUPABASE_ACCESS_TOKEN`
-(para publicar la función de Supabase que la usa). Si se pierden, se
+(para publicar la función de Supabase que la usa), y `RESEND_API_KEY`
+(la llave de Resend con la que sale el correo al admin cuando alguien
+pide entrar; desde el 7/10/2026). Si se pierden, se
 crean de nuevo: los pasos están en `supabase/functions/LEEME.md`.
 
 Los de `index.html` no son secretos (viajan al navegador de cualquiera que entre a la página):

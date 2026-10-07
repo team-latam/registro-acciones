@@ -1,9 +1,10 @@
 # ============================================================
-# Funciones de Supabase: publicar la función `calendario`
+# Funciones de Supabase: publicar `calendario` y `avisar`
 # ============================================================
-# La app lee el Google Calendar del equipo por esta función, que usa la
+# `calendario`: la app lee el Google Calendar del equipo por acá, con la
 # cuenta de servicio de la app; así el calendario no tiene que ser público
-# (docs/AUDITORIA.md, U5). Ver supabase/functions/LEEME.md.
+# (docs/AUDITORIA.md, U5). `avisar`: el correo al administrador cuando
+# alguien pide entrar (I10). Ver supabase/functions/LEEME.md.
 #
 # Se publica sola en cada push a main que la toca, y a mano desde Actions
 # → «Funciones de Supabase» → Run workflow (por ejemplo, después de cargar
@@ -12,8 +13,11 @@
 # Necesita dos secretos de GitHub:
 #   SUPABASE_ACCESS_TOKEN       para publicar en el proyecto
 #   GOOGLE_CUENTA_DE_SERVICIO   el JSON de la llave de la cuenta de servicio
-# Sin ellos avisa qué falta y termina en verde: la app sigue leyendo como
-# antes, con la clave de API.
+# Y uno opcional:
+#   RESEND_API_KEY              para mandar el correo de `avisar`; sin él,
+#                               la función contesta «sin-configurar» y la
+#                               pantalla de espera no promete ningún aviso.
+# Sin los dos primeros avisa qué falta y termina en verde.
 # ============================================================
 name: Funciones de Supabase
 
@@ -43,7 +47,9 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with: { node-version: '22', package-manager-cache: false }
       - name: Probar
-        run: node supabase/sync-calendar/pruebas/cuenta-de-servicio.mjs
+        run: |
+          node supabase/sync-calendar/pruebas/cuenta-de-servicio.mjs
+          node supabase/functions/_pruebas/avisos.mjs
 
   publicar:
     name: Publicar en Supabase
@@ -101,6 +107,7 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           CUENTA: ${{ secrets.GOOGLE_CUENTA_DE_SERVICIO }}
+          RESEND: ${{ secrets.RESEND_API_KEY }}
         run: |
           set -euo pipefail
           # Qué proyecto y qué calendario salen de index.html, como en el
@@ -114,8 +121,17 @@ jobs:
           echo "::add-mask::$COMPACTO"
           npx --yes supabase@2.120.0 secrets set --project-ref "$PROYECTO" \
             "GOOGLE_CUENTA_DE_SERVICIO=$COMPACTO" "CALENDAR_ID=$CALENDARIO" > /dev/null
-          echo "✓ Secretos de la función cargados"
-          npx --yes supabase@2.120.0 functions deploy calendario --project-ref "$PROYECTO" --no-verify-jwt --use-api
+          if [ -n "$RESEND" ]; then
+            echo "::add-mask::$RESEND"
+            npx --yes supabase@2.120.0 secrets set --project-ref "$PROYECTO" "RESEND_API_KEY=$RESEND" > /dev/null
+            echo "✓ Llave de Resend cargada"
+          else
+            echo "· Sin RESEND_API_KEY: «avisar» queda sin mandar correos" | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "✓ Secretos de las funciones cargados"
+          for f in calendario avisar; do
+            npx --yes supabase@2.120.0 functions deploy "$f" --project-ref "$PROYECTO" --no-verify-jwt --use-api
+          done
           echo "PROYECTO=$PROYECTO" >> "$GITHUB_ENV"
 
       - name: ¿Contesta?
@@ -124,13 +140,17 @@ jobs:
         # la que contesta es esta función, publicada, y que no atiende a
         # cualquiera. Unos segundos de espera por si tarda en arrancar.
         run: |
-          for i in 1 2 3 4 5 6; do
-            cuerpo=$(curl -sS --max-time 20 -X POST "https://$PROYECTO.supabase.co/functions/v1/calendario" -H 'Content-Type: application/json' -d '{}' || true)
-            if echo "$cuerpo" | grep -q '"sin-sesion"'; then
-              echo "✓ La función contesta y pide sesión." | tee -a "$GITHUB_STEP_SUMMARY"
-              exit 0
+          for f in calendario avisar; do
+            ok=no
+            for i in 1 2 3 4 5 6; do
+              cuerpo=$(curl -sS --max-time 20 -X POST "https://$PROYECTO.supabase.co/functions/v1/$f" -H 'Content-Type: application/json' -d '{}' || true)
+              if echo "$cuerpo" | grep -q '"sin-sesion"'; then ok=si; break; fi
+              sleep 10
+            done
+            if [ "$ok" = si ]; then
+              echo "✓ «$f» contesta y pide sesión." | tee -a "$GITHUB_STEP_SUMMARY"
+            else
+              echo "✗ «$f» no contestó como se esperaba: $cuerpo"
+              exit 1
             fi
-            sleep 10
           done
-          echo "✗ La función no contestó como se esperaba: $cuerpo"
-          exit 1

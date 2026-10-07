@@ -7477,9 +7477,11 @@ async function onAuthChanged(user){
     solicitudRespondio = true;
     ultimaSolicitud = req || null;
     state.auth.requestStatus = req ? req.status : null;
+    state.auth.avisadoAt = (req && req.avisadoAt) || null;
     recomputeAuthStatus();
     render();
     revisarAcceso();
+    if(req && req.status === "pending" && !req.avisadoAt) avisarAlAdminUnaVez();
   }, err=>{
     // A propósito NO se marca solicitudRespondio: si la lectura falló no se
     // sabe si hay solicitud, y crear una a ciegas podría pisar un "approved"
@@ -7492,6 +7494,19 @@ async function onAuthChanged(user){
   });
 }
 
+// El correo al admin (I10): una vez por carga de página como mucho; la
+// base además da uno solo por pedido y un intento por hora, así que
+// llamarla de más no manda nada de más. Si salió, la pantalla de espera
+// pasa a decir «Le avisamos al administrador ✓» (antes lo decía siempre,
+// sin que ningún aviso existiera).
+let avisoAlAdminPedido = false;
+function avisarAlAdminUnaVez(){
+  if(avisoAlAdminPedido) return;
+  avisoAlAdminPedido = true;
+  store.avisarAlAdmin().then(salio=>{
+    if(salio && !state.auth.avisadoAt){ state.auth.avisadoAt = new Date().toISOString(); render(); }
+  }).catch(err=> console.warn("No se pudo avisar al administrador:", err && err.message));
+}
 async function requestAccessAgain(){
   const email = state.auth.user.email;
   try{
@@ -7612,6 +7627,17 @@ function crearSupabaseStore(sb, opciones = {}){
   };
 
   const revienta = ({ error }) => { if(error) throw error; };
+  // Las funciones de Supabase (supabase/functions/), con la sesión de quien
+  // está usando la app: cada una le pregunta a la base qué puede hacer.
+  const llamarFuncion = async (nombre, cuerpo) => {
+    const { data } = await sb.auth.getSession();
+    const token = data && data.session && data.session.access_token;
+    if(!token) throw new Error(t("Sin sesión.","No session.","Sem sessão.","אין חיבור."));
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/${nombre}`, { method:"POST",
+      headers:{ "Content-Type":"application/json", apikey:SUPABASE_KEY, Authorization:`Bearer ${token}` },
+      body: JSON.stringify(cuerpo) });
+    return { res, r: await res.json().catch(()=>null) };
+  };
 
   /* --- Los adjuntos ------------------------------------------------
      El archivo no viaja adentro de la fila: vive en el bucket, que es
@@ -8374,19 +8400,21 @@ function crearSupabaseStore(sb, opciones = {}){
       },
     },
 
+    // ---- El correo al admin cuando alguien pide entrar (I10) ----
+    // La función `avisar` le pregunta a la base si corresponde (uno por
+    // pedido) y lo manda con Resend. true solo si el correo salió.
+    async avisarAlAdmin(){
+      const { r } = await llamarFuncion("avisar", {});
+      return !!(r && r.enviado);
+    },
+
     // ---- Leer el Google Calendar del equipo (docs/AUDITORIA.md, U5) ----
     // Por la función `calendario` de Supabase, con la sesión de quien está
     // usando la app. Devuelve { estado, cuerpo } tal como contestó Google
     // (el 410 de un token vencido incluido); si la función misma no
     // atiende (sin sesión, sin aprobar, caída), es un error.
     async leerCalendario(pedido){
-      const { data } = await sb.auth.getSession();
-      const token = data && data.session && data.session.access_token;
-      if(!token) throw new Error(t("Sin sesión para leer el calendario.","No session to read the calendar.","Sem sessão para ler o calendário.","אין חיבור לקריאת היומן."));
-      const res = await fetch(`${SUPABASE_URL}/functions/v1/calendario`, { method:"POST",
-        headers:{ "Content-Type":"application/json", apikey:SUPABASE_KEY, Authorization:`Bearer ${token}` },
-        body: JSON.stringify(pedido) });
-      const r = await res.json().catch(()=>null);
+      const { res, r } = await llamarFuncion("calendario", pedido);
       if(!res.ok || !r || typeof r.estado !== "number")
         throw new Error(t("No se pudo leer el calendario ({e}).","Couldn't read the calendar ({e}).","Não foi possível ler o calendário ({e}).","({e}) לא ניתן היה לקרוא את היומן.",{e:(r && r.error) || res.status}));
       return r;
@@ -11044,7 +11072,9 @@ function renderAuthGate(){
       <p>${t("No tenés que hacer nada más: esta pantalla se actualiza sola apenas te aprueben.","Nothing else to do: this screen updates on its own as soon as you're approved.","Não precisa fazer mais nada: esta tela se atualiza sozinha assim que aprovarem.","אין צורך לעשות עוד כלום: המסך הזה מתעדכן לבד ברגע שיאשרו.")}</p>
       <ol class="gate-pasos gate-pasos-tarjeta">
         <li class="gate-paso"><span class="gate-num ok">✓</span><span><b>${t("Entraste con Google","You signed in with Google","Você entrou com o Google","נכנסת עם Google")}</b><br><small>${esc(email)}</small></span></li>
-        <li class="gate-paso"><span class="gate-num ok">✓</span><span><b>${t("Le avisamos al administrador","We let the administrator know","Avisamos o administrador","הודענו למנהל/ת")}</b></span></li>
+        ${state.auth.avisadoAt
+          ? `<li class="gate-paso"><span class="gate-num ok">✓</span><span><b>${t("Le avisamos al administrador","We let the administrator know","Avisamos o administrador","הודענו למנהל/ת")}</b><br><small>${t("Le llegó un correo con tu pedido.","They got an email with your request.","Recebeu um e-mail com o seu pedido.","נשלח אליו/ה מייל עם הבקשה שלך.")}</small></span></li>`
+          : `<li class="gate-paso"><span class="gate-num">2</span><span><b>${t("Tu pedido quedó anotado","Your request is recorded","Seu pedido ficou registrado","הבקשה שלך נרשמה")}</b><br><small>${t("El administrador lo ve cuando entra a la app.","The administrator sees it when they open the app.","O administrador vê quando entra no app.","המנהל/ת רואה אותה כשנכנס/ת לאפליקציה.")}</small></span></li>`}
         <li class="gate-paso"><span class="gate-num ahora">3</span><span><b>${t("Esperando la aprobación","Waiting for approval","Aguardando a aprovação","ממתינים לאישור")}</b><br><small>${t("Suele tardar menos de un día.","It usually takes less than a day.","Costuma levar menos de um dia.","בדרך כלל לוקח פחות מיום.")}</small></span></li>
       </ol>
       ${personal ? `<div class="gate-aviso">${t("Entraste con una cuenta personal ({d}). Si tenés una cuenta del equipo, conviene cerrar sesión y entrar con esa.","You signed in with a personal account ({d}). If you have a team account, better sign out and use that one.","Você entrou com uma conta pessoal ({d}). Se tiver uma conta da equipe, é melhor sair e entrar com ela.","נכנסת עם חשבון אישי ({d}). אם יש לך חשבון של הצוות, עדיף להתנתק ולהיכנס איתו.",{d:esc(dominio)})}</div>` : ""}

@@ -130,3 +130,46 @@ clave de la página sigue, solo para los feriados).
   calendario**: la cuenta de servicio no tiene el calendario compartido
   (paso 2). Mientras se arregla, volver a tildar «Compartir de forma
   pública» y todo vuelve a andar como antes.
+
+---
+
+# La función `avisar`: el correo al administrador (6/10/2026)
+
+La pantalla de espera de alguien nuevo decía «Le avisamos al
+administrador ✓» y no era cierto: ningún aviso salía (`docs/AUDITORIA.md`,
+I10). Ahora la app de quien pide entrar llama a `avisar`
+(`avisar/index.ts`, la lógica en `_compartido/avisos.mjs`, sus pruebas en
+`_pruebas/avisos.mjs`), con su sesión. La función le pregunta a la base si
+corresponde y a quién (`pedir_aviso_al_admin()`,
+`supabase/16-aviso-al-admin.sql`): **uno por pedido, un intento por hora**,
+al admin fijo y a los que tienen rol de admin. Así nadie puede usarla para
+llenar la casilla de nadie. El correo sale con **Resend** (3.000 por mes
+gratis); si salió, la base lo anota y recién ahí la pantalla muestra el ✓.
+Si no salió, dice «Tu pedido quedó anotado: el administrador lo ve cuando
+entra a la app», que es lo que pasa.
+
+La publica el mismo workflow «Funciones de Supabase».
+
+## Lo que tiene que hacer el usuario, una vez
+
+1. Crear la cuenta en https://resend.com/signup **con la dirección donde
+   quiere recibir los avisos** (la del admin). Sin un dominio propio
+   verificado, Resend solo le entrega a la dirección de la cuenta, desde
+   `onboarding@resend.dev`.
+2. En Resend → **API Keys** → **Create API Key**: nombre `registro-avisos`,
+   permiso **Sending access**. Copiarla (empieza con `re_`; se ve una sola
+   vez). **No va al chat.**
+3. GitHub → Settings → Secrets and variables → Actions → **New repository
+   secret**: Name `RESEND_API_KEY`, Secret la llave.
+4. Actions → **Funciones de Supabase** → **Run workflow**. En el resumen
+   tiene que decir «✓ Llave de Resend cargada» y «✓ «avisar» contesta».
+5. Probar: entrar a la app desde una ventana de incógnito con una cuenta
+   de Google que no sea del equipo. La pantalla de espera tiene que decir
+   «Le avisamos al administrador ✓» y el correo tiene que llegar (mirar
+   también en Spam la primera vez). Después rechazar ese pedido en
+   Administración → Solicitudes.
+
+Para mandarle también a otros admins, hace falta verificar un dominio en
+Resend (Domains → Add domain, con registros en el DNS) y cargar el
+remitente en el secreto de Supabase `AVISOS_DESDE`
+(por ejemplo `Registro de Acciones <avisos@ese-dominio>`).
