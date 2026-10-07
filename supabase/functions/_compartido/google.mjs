@@ -83,15 +83,23 @@ export const olvidarPermisos = () => guardados.clear();
 // Lo mismo que pedían la app (fetchCalendarChanges, fetchCalendarEvent) y
 // el trabajo nocturno (traerCambios), y nada más: una página de cambios
 // o un evento suelto, siempre del calendario del equipo.
-const ID_DE_EVENTO = /^[A-Za-z0-9_@.\-]{1,1024}$/;
+// Un id hecho solo de puntos («.», «..») la URL lo resuelve como carpeta:
+// pediría la lista o los datos del calendario en vez de un evento.
+const ID_DE_EVENTO = /^(?!\.+$)[A-Za-z0-9_@.\-]{1,1024}$/;
+// Solo los campos de cada evento que usan la app (applyCalendarEventToPosts
+// y lo que llama) y el trabajo nocturno (decidir.mjs). Google devuelve
+// mucho más —los correos de los invitados, el link de Meet, los adjuntos,
+// quién lo creó— y nada de eso le hace falta a nadie en el navegador
+// (7/10/2026). Si la app empieza a usar otro campo, va acá.
+export const CAMPOS_DEL_EVENTO = "id,status,summary,description,location,start,end,recurrence,recurringEventId,originalStartTime,organizer,extendedProperties";
 export function urlDelPedido(calendarId, pedido){
   const cal = API + encodeURIComponent(calendarId);
   if(pedido && pedido.accion === "evento"){
     if(typeof pedido.id !== "string" || !ID_DE_EVENTO.test(pedido.id)) return null;
-    return `${cal}/events/${encodeURIComponent(pedido.id)}`;
+    return `${cal}/events/${encodeURIComponent(pedido.id)}?${new URLSearchParams({ fields: CAMPOS_DEL_EVENTO })}`;
   }
   if(pedido && pedido.accion === "cambios"){
-    const p = new URLSearchParams({ maxResults: "250", showDeleted: "true" });
+    const p = new URLSearchParams({ maxResults: "250", showDeleted: "true", fields: `nextPageToken,nextSyncToken,timeZone,items(${CAMPOS_DEL_EVENTO})` });
     const texto = v => typeof v === "string" && v.length > 0 && v.length <= 4096;
     if(texto(pedido.syncToken)) p.set("syncToken", pedido.syncToken);
     else if(typeof pedido.timeMin === "string" && /^\d{4}-\d{2}-\d{2}T00:00:00Z$/.test(pedido.timeMin)) p.set("timeMin", pedido.timeMin);
@@ -109,10 +117,13 @@ export function urlDelPedido(calendarId, pedido){
    { estado, cuerpo }: el estado y el cuerpo TAL CUAL los devolvió Google,
    para que la app siga tratando el 410 (token vencido) como siempre.
 
-   Quién puede: solo un integrante aprobado. No lo decide esta función: le
-   pregunta a la base con la sesión de quien llama (esta_aprobado(), la
-   misma regla que protege cada tabla). Una sesión falsa o vencida la
-   rechaza la base, no este código.
+   Quién puede: solo quien puede escribir en el Registro (integrante o
+   admin; un observador no: la app nunca le lee el calendario ni se lo
+   comparte, y hasta el 7/10/2026 igual podía pedírselo entero a esta
+   función). No lo decide esta función: le pregunta a la base con la
+   sesión de quien llama (puede_escribir(), la misma regla que protege
+   cada tabla). Una sesión falsa o vencida la rechaza la base, no este
+   código.
    ====================================================================== */
 export async function atender(req, { env, fetch: traer = fetch, ahora = Date.now } = {}){
   const h = encabezados(req.headers.get("origin"));
@@ -131,11 +142,11 @@ export async function atender(req, { env, fetch: traer = fetch, ahora = Date.now
   let pedido;
   try{ pedido = await req.json(); }catch(e){ return responder({ error: "pedido" }, 400); }
 
-  // ¿Es un integrante aprobado? Con SU sesión: la base decide.
+  // ¿Puede escribir en el Registro? Con SU sesión: la base decide.
   const conSesion = { apikey, Authorization: autorizacion, "Content-Type": "application/json" };
   let aprobado;
   try{
-    const r = await traer(`${url}/rest/v1/rpc/esta_aprobado`, { method: "POST", headers: conSesion, body: "{}" });
+    const r = await traer(`${url}/rest/v1/rpc/puede_escribir`, { method: "POST", headers: conSesion, body: "{}" });
     if(r.status === 401) return responder({ error: "sin-sesion" }, 401);
     aprobado = r.ok && (await r.json()) === true;
   }catch(e){ return responder({ error: "base" }, 502); }
