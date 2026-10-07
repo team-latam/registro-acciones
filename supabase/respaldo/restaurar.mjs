@@ -40,7 +40,7 @@ import { TABLAS } from "./respaldar.mjs";
 
 // En este orden: los comentarios (replies) apuntan a su posteo, que tiene
 // que estar antes. El resto no depende de nada.
-export const ORDEN = ["members", "former_members", "access_requests", "app_config", "user_prefs",
+export const ORDEN = ["members", "former_members", "access_requests", "app_config", "user_prefs", "personas",
   "posts", "replies", "audit_log", "calendar_sugerencias", "calendar_sacados"];
 const BUCKET = "adjuntos";
 const LOTE = 500;

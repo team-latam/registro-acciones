@@ -202,8 +202,11 @@ posts  (tabla; `id` = texto de 20 caracteres, el mismo que tenía en Firestore)
   startTime: "HH:MM"         (opcional — vacío/ausente = "todo el día"; si se carga, endTime también)
   endTime: "HH:MM"           (opcional — tiene que ser posterior a startTime cuando startDate == endDate)
   organizer: string          (legado — texto libre de "quién organiza", solo en posteos viejos; los nuevos usan `participants`)
-  participants: [{ email, name }, ...]  (opcional, máx. 10 — participantes taggeados: gente del roster o un email suelto de
-                             alguien externo. Se suman como invitados de verdad al evento de Calendar, ver `attendees` más abajo)
+  participants: [{ email, name } | { persona, name }, ...]
+                             (opcional, máx. 10 — participantes taggeados: gente del roster, un email suelto de
+                             alguien externo, o una persona sin cuenta (`persona` = id de la tabla `personas`, ver
+                             «Personas sin cuenta»). Los que tienen email se suman como invitados de verdad al evento
+                             de Calendar, ver `attendees` más abajo; las personas sin cuenta, no)
   location: string           (opcional — lugar/salón/dirección concreta)
   activityType: "rutina" | "visita" | "curso" | "seminario" | "congreso" | "virtual" | "otro"
   authorName: string         (nombre de Google de quien publicó)
@@ -1107,6 +1110,62 @@ fila de `members` a través de `esta_aprobado()`/`mi_rol()`, que son
 `security definer` para no morderse la cola con las políticas de la misma
 tabla. El admin fijo (`es_admin_fijo()`) se chequea aparte en cada
 política y no depende de tener fila.
+
+### Personas sin cuenta (`personas`)
+
+Gente que participa en actividades pero no tiene cuenta en la app: un
+voluntario, un rabino, alguien de otra institución (pedido del usuario,
+7/10/2026: «poder cargar a alguien que todavía no está, y que cuando
+tenga usuario reciba toda esa información»). Hasta entonces quedaban
+como un nombre suelto adentro de `participants` (`{name}` sin email),
+solo en lo traído de Calendar, y no contaban en ningún lado.
+
+- **Cada persona tiene su ficha** en `supabase/18-personas.sql`: `id`
+  (20 caracteres, como los posteos), `name`, `email` (opcional: sirve
+  para reconocerla si un día pide entrar; **no** la invita a Calendar),
+  `note` (hasta 300 caracteres), quién la creó y cuándo. Básico a
+  propósito (lo pidió así el usuario).
+- **Se suma desde cualquier evento**, en Participantes: al escribir un
+  nombre, abajo de la gente del equipo aparecen las fichas que ya
+  existen («Darío · sin cuenta · 3 actividades») y, si no hay ninguna
+  igual, «Sumar «Darío» como persona nueva». La ficha se crea al
+  publicar (`materializarPersonas`), buscando primero una con el mismo
+  nombre sin tildes ni mayúsculas, así «Dario» y «Darío» no se cargan
+  dos veces. Cualquiera que carga eventos puede sumar (decisión del
+  usuario: la sugerencia evita duplicados y lo que se cuele lo ordena el
+  admin).
+- En el evento queda `{ persona: id, name }`: el nombre es la foto de
+  cuando se cargó; **la app muestra siempre el de la ficha**
+  (`participanteNombre`), así renombrarla alcanza. En el feed se ve con
+  un borde punteado y el título «Sin cuenta en la app».
+- **Cuentan**: en «Quiénes trabajaron acá» de la ficha de cada lugar y
+  en el filtro por persona de los Reportes («Darío · sin cuenta»).
+- **Administración › Personas › Sin cuenta** (solo admins): la lista con
+  cuántas actividades tiene cada una y la ficha al costado (nombre,
+  correo, nota, dónde estuvo). Ahí también se **suma una a mano**, se
+  **unen dos** que son la misma (`unir_personas`: los eventos de una
+  pasan a la otra, la que se va deja su correo y su nota si la otra no
+  los tenía) y se **vincula a una cuenta** cuando la persona ya entró
+  (`vincular_persona`: sus eventos pasan a quedar `{ email, name }` como
+  cualquier integrante, y la ficha se va). Borrar una ficha se puede
+  solo si no figura en ningún evento.
+- **Cuando pide entrar**: si el correo del pedido es el de una ficha, al
+  aprobarlo su historial pasa solo a la cuenta nueva. Si no, pero el
+  nombre se parece (nombre entero, o primer nombre de tres letras o
+  más), abajo del pedido aparece «¿Es «Guypo», que figura sin cuenta?»
+  con «Sí: aprobar y pasarle su historial» / «No es».
+- Reordenar participantes con unir o vincular **no es editar el
+  posteo**: no va al registro de actividad ni pide ser su autor (la
+  misma marca `registro.ordenando_calendar` que usa «Revisar lo de
+  Calendar»).
+- **Lo que ya estaba**: al aplicar el esquema, los nombres sueltos de
+  los posteos pasan a fichas, uno por nombre
+  (`personas_desde_nombres_sueltos()`); la segunda vez no encuentra nada.
+  «Nombres sueltos» de Revisar lo de Calendar ya no existe: lo reemplaza
+  esta sección.
+- Las políticas (`18-personas.sql`): las lee todo aprobado; las crea
+  quien puede escribir; las corrige o borra un admin o quien la creó.
+  Pruebas: `supabase/pruebas/81-personas.sql`, `pruebas/personas_test.mjs`.
 
 ### Ex integrantes (`former_members`)
 

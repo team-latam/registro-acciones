@@ -360,7 +360,7 @@ const capa = fuente.slice(fuente.indexOf("function crearSupabaseStore"),
 const inserts = (capa.match(/\.from\("(\w+)"\)\.insert\(/g) || [])
   .map(m => m.match(/"(\w+)"/)[1]);
 eq("solo se usa insert donde el id se inventa en el momento",
-   [...new Set(inserts)].sort(), ["audit_log","posts","replies"]);
+   [...new Set(inserts)].sort(), ["audit_log","personas","posts","replies"]);
 
 /* ---------------------------------------------------------------
    PARTE 3 — comentarios: agrupados y en orden

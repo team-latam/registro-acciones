@@ -826,10 +826,6 @@
   .rv-leyenda{ display:flex; gap:14px; font-size:12px; color:var(--text-muted); margin:10px 2px 0; }
   .rv-leyenda span{ display:flex; align-items:center; gap:5px; }
   .rv-mas{ margin-top:10px; }
-  .rv-sueltos{ margin-top:28px; }
-  .rv-sueltos h3{ margin:0 0 4px; font-size:16px; color:var(--ink-strong); }
-  .rv-sueltos .hint{ margin:0 0 10px; }
-  .rv-vincular{ border:1px solid var(--border); border-radius:10px; padding:6px 8px; font-family:inherit; background:var(--card); color:var(--ink); }
   @media (max-width:760px){
     .rv-row{ flex-wrap:wrap; gap:8px 10px; }
     .rv-fecha{ width:auto; }
@@ -1312,6 +1308,21 @@
   .participant-chip .rm{ cursor:pointer; font-weight:800; opacity:0.6; margin-inline-start:2px; }
   .participant-chip .rm:hover{ opacity:1; }
   .participant-chip-avatar{ width:16px; height:16px; border-radius:50%; object-fit:cover; flex-shrink:0; }
+  /* Personas sin cuenta (18-personas.sql): el borde punteado las distingue
+     de la gente del equipo en los chips, los avatares y las sugerencias. */
+  .participant-chip.sin-cuenta{ border-style:dashed; }
+  .participant-chip small{ font-weight:600; color:var(--text-muted); }
+  .participant-chip-sc{ width:16px; height:16px; border-radius:50%; border:1.5px dashed var(--text-muted); font-size:9px; font-weight:800; display:inline-flex; align-items:center; justify-content:center; color:var(--text-muted); flex-shrink:0; box-sizing:border-box; }
+  .person-sin-cuenta{ border-bottom:1px dashed var(--text-muted); }
+  .lp-av.sin-cuenta, .avatar-fallback.sin-cuenta{ background:var(--surface-sunken); color:var(--text-muted); border:2px dashed var(--border); box-sizing:border-box; }
+  .mention-avatar.sin-cuenta{ background:var(--surface-sunken); color:var(--text-muted); border:1.5px dashed var(--border); box-sizing:border-box; }
+  .mention-avatar.nueva{ background:var(--celeste-soft); color:var(--celeste-dark); }
+  .sc-nueva{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:0 0 12px; }
+  .sc-nueva input{ flex:1 1 220px; width:auto; }
+  .sc-lead{ margin:0 0 12px; }
+  .users-toolbar .sc-sumar{ border-radius:999px; padding:9px 18px; white-space:nowrap; }
+  .parece-persona{ margin:-6px 0 14px; padding:12px 14px; border-radius:14px; background:var(--celeste-soft); border:1px solid var(--border); display:flex; flex-direction:column; gap:8px; font-size:13.5px; line-height:1.45; }
+  .parece-persona b{ font-weight:800; }
 
   .type-badge{
     display:inline-flex; align-items:center; gap:5px; padding:4px 11px; border-radius:999px;
@@ -1865,6 +1876,10 @@
   .lp-unificar label{ font-size:12.5px; font-weight:800; color:var(--ink); }
   .lp-unificar-fila{ display:flex; gap:8px; flex-wrap:wrap; }
   .lp-unificar-fila select{ flex:1 1 200px; min-width:0; border:1px solid var(--border); border-radius:10px; padding:8px 10px; font:inherit; font-size:13px; background:var(--card); color:var(--ink); }
+  /* En la ficha de una persona sin cuenta el botón va siempre al lado del selector (con flex, «Vincular» se caía abajo). */
+  .lp-pf .sc-campo{ align-self:stretch; }
+  .lp-unificar-fila.sc-fila{ display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; }
+  .lp-unificar-fila.sc-fila select{ width:100%; }
   .lugares-sin-ubicar{ list-style:none; margin:8px 0 0; padding:0; columns:2 220px; }
   .lugares-sin-ubicar li{ padding:4px 0; break-inside:avoid; overflow-wrap:anywhere; }
   .cal-faltantes-lista{ list-style:none; margin:4px 0 10px; padding:0; max-height:260px; overflow:auto; font-size:13.5px; }
@@ -5321,8 +5336,10 @@ function gustanHtml(likedBy, postId, replyId){
 }
 function participantsHtml(participants){
   return (participants||[]).map(p=>{
-    const entry = memberByEmail(p.email);
-    if(!entry) return esc(p.name || p.email);
+    const entry = p && p.email ? memberByEmail(p.email) : null;
+    if(!entry) return esPersonaSinCuenta(p)
+      ? `<span class="person-sin-cuenta" title="${esc(ETIQUETA_SIN_CUENTA())}">${esc(participanteNombre(p))}</span>`
+      : esc(participanteNombre(p));
     return `<span role="button" tabindex="0" class="person-link" data-action="show-user-profile" data-nick="${esc(entry.nickname.toLowerCase())}">${esc(p.name || p.email)}</span>`;
   }).join(", ");
 }
@@ -5740,6 +5757,7 @@ const state = {
    ====================================================================== */
 // status: loading | signedOut | pending | rejected | approved | admin
 state.auth = { status: "loading", user: null };
+state.personas = [];   // las personas sin cuenta (18-personas.sql)
 state.accessRequests = []; // solo se llena para el admin
 state.auditLog = []; // solo se llena para el admin
 state.roster = []; // [{email, nickname}] — todo aprobado, para autocompletar @menciones
@@ -7295,6 +7313,7 @@ let unsubTerritoryConfig = null;
 let unsubPreferences = null;
 let unsubUserPrefs = null;
 let unsubFormerMembers = null;
+let unsubPersonas = null;
 
 function recomputeAuthStatus(){
   // ADMIN_EMAIL es admin siempre, con o sin fila en members. Para
@@ -7390,7 +7409,7 @@ async function onAuthChanged(user){
     // preferencias personales (formato de fecha, nivel de lugar...) ni la
     // lista de ex-miembros, aunque sí tenía permiso para leerlas.
     subscribeUserPrefs();
-    subscribeFormerMembers();
+    subscribeFormerMembers(); subscribePersonas();
     render();
     return;
   }
@@ -7442,9 +7461,10 @@ async function onAuthChanged(user){
     if(unsubPreferences){ unsubPreferences(); unsubPreferences = null; }
     if(unsubUserPrefs){ unsubUserPrefs(); unsubUserPrefs = null; }
     if(unsubFormerMembers){ unsubFormerMembers(); unsubFormerMembers = null; }
+    if(unsubPersonas){ unsubPersonas(); unsubPersonas = null; }
     stopCalendarAutoSync();
     state.posts = []; state.repliesByPost = {}; state.loaded = false; state.roster = [];
-    state.prefs = { ...DEFAULT_PREFS }; state.formerMembers = [];
+    state.prefs = { ...DEFAULT_PREFS }; state.formerMembers = []; state.personas = [];
     dataSubscribed = false;
     if(adminSubscribed){ adminSubscribed = false; if(unsubscribeRequests){ unsubscribeRequests(); unsubscribeRequests = null; } if(unsubAuditLog){ unsubAuditLog(); unsubAuditLog = null; } state.accessRequests = []; state.auditLog = []; }
   };
@@ -7490,7 +7510,7 @@ async function onAuthChanged(user){
     syncAdminSubs();
     if(state.auth.allowlisted && !dataSubscribed){
       dataSubscribed = true; fatalError = null;
-      subscribeData(); subscribeRoster(); subscribeTerritoryConfig(); subscribePreferences(); subscribeUserPrefs(); subscribeFormerMembers();
+      subscribeData(); subscribeRoster(); subscribeTerritoryConfig(); subscribePreferences(); subscribeUserPrefs(); subscribeFormerMembers(); subscribePersonas();
     } else if(!state.auth.allowlisted && dataSubscribed){
       // Revocación con la persona online: se cortan los listeners ANTES
       // de que fallen con permiso denegado. Antes quedaban corriendo, el
@@ -8347,6 +8367,43 @@ function crearSupabaseStore(sb, opciones = {}){
       },
     },
 
+    // ---- Personas sin cuenta (18-personas.sql) ----
+    // Gente que participa sin tener cuenta en la app. Cualquiera que carga
+    // eventos las crea; las corrige o borra un admin o quien la creó; unir
+    // dos fichas y vincular una a una cuenta lo hace la base (funciones de
+    // admin), y reescribe los posteos de una: se recarga la lista.
+    personas: {
+      subscribe(alCambiar, alFallar){
+        return enVivo({ tabla: "personas", clave: "id", alCambiar, alFallar });
+      },
+      async add(datos){
+        const id = nuevoId();
+        revienta(await sb.from("personas").insert({ ...aFila(datos), id }));
+        await refrescar("personas", id);
+        return id;
+      },
+      async update(id, patch){
+        revienta(await sb.from("personas").update(aFila(patch)).eq("id", id));
+        await refrescar("personas", id);
+      },
+      async remove(id){
+        revienta(await sb.from("personas").delete().eq("id", id));
+        await refrescar("personas", id);
+      },
+      async unir(de, a){
+        const { data, error } = await sb.rpc("unir_personas", { p_de: de, p_a: a });
+        if(error) throw error;
+        await Promise.all([recargarTabla("posts"), recargarTabla("personas")]);
+        return data;
+      },
+      async vincular(id, email){
+        const { data, error } = await sb.rpc("vincular_persona", { p_id: id, p_email: email });
+        if(error) throw error;
+        await Promise.all([recargarTabla("posts"), recargarTabla("personas")]);
+        return data;
+      },
+    },
+
     // ---- Solicitudes de acceso ----
     // El id de una solicitud ES el correo: la app las mira por `id`, así
     // que se lo agrega al entregarlas.
@@ -8687,6 +8744,15 @@ function subscribeFormerMembers(){
     scheduleRender();
   }, err=>console.error("Error leyendo ex integrantes:", err));
 }
+// Las personas sin cuenta (18-personas.sql): en vivo, como el padrón.
+function subscribePersonas(){
+  unsubPersonas = store.personas.subscribe(lista=>{
+    state.personas = lista.map(x => ({ id: x.id, name: String(x.name || "").trim(), email: x.email || null, note: x.note || null,
+      createdBy: x.createdBy || null, createdAt: x.createdAt || null }))
+      .sort((a, b) => a.name.localeCompare(b.name, "es"));
+    scheduleRender();
+  }, err=>console.error("Error leyendo las personas sin cuenta:", err));
+}
 // Lista de nombre/email de todo aprobado, para autocompletar @menciones.
 // Cualquier aprobado puede LEER esto, no solo el admin (ver la política
 // de members en supabase/02-politicas.sql).
@@ -9010,6 +9076,10 @@ async function approveRequest(email){
   // dejaría duplicada su identidad en memberByEmail.
   try{ await store.formerMembers.remove(email); }catch(e){}
   logAudit("access_approved", { targetEmail: email });
+  // Si una persona sin cuenta tenía anotado justo este correo, es ella:
+  // su historial pasa a la cuenta nueva (18-personas.sql).
+  const ficha = state.personas.find(x => x.email && x.email.toLowerCase() === String(email).toLowerCase());
+  if(ficha){ try{ await store.personas.vincular(ficha.id, email); }catch(err){ console.error("No se pudo pasarle su historial:", err); } }
 }
 // Cambio de rol desde Usuarios. ADMIN_EMAIL queda afuera, y uno mismo
 // también (las dos cosas también en la base): el propio rol lo cambia
@@ -9997,8 +10067,49 @@ function renderProjectPanel(post, opts={}){
     </div>`;
 }
 
+/* ---------- Personas sin cuenta (18-personas.sql) ----------
+   Quien participa en un evento puede ser alguien del equipo ({email}), una
+   persona sin cuenta ({persona: id}, con su ficha en state.personas) o,
+   en lo viejo, un nombre suelto ({name}). Una sola regla para nombrarlos y
+   para contarlos. El nombre guardado en el evento es la foto de cuando se
+   cargó: se muestra el de la ficha, así renombrarla alcanza. */
+function personaPorId(id){ return id ? state.personas.find(x => x.id === id) || null : null; }
+function participanteNombre(x){
+  if(!x) return "";
+  if(x.persona){ const f = personaPorId(x.persona); return (f && f.name) || x.name || ""; }
+  if(x.email){ const m = memberByEmail(x.email); return x.name || (m ? nombreDe(m) : "") || x.email; }
+  return x.name || "";
+}
+function participanteClave(x){
+  if(!x) return "";
+  if(x.email) return String(x.email).toLowerCase();
+  if(x.persona) return "persona:" + x.persona;
+  return x.name ? "nombre:" + normalize(x.name) : "";
+}
+const esPersonaSinCuenta = x => !!(x && !x.email && (x.persona || x.nueva));
+const ETIQUETA_SIN_CUENTA = () => t("Sin cuenta en la app","No account in the app","Sem conta no app","ללא חשבון באפליקציה");
+// Los eventos (vigentes) que nombran a una persona sin cuenta, el último primero.
+function actividadesDePersona(id){
+  return state.posts.filter(p => !p.cancelled && (p.participants || []).some(x => x && x.persona === id))
+    .sort((a, b) => String(b.startDate || b.date || "").localeCompare(String(a.startDate || a.date || "")));
+}
+// Antes de guardar: las personas nuevas del borrador ({nueva, name}) pasan
+// a fichas (o a la que ya exista con ese nombre) y quedan como {persona, name}.
+async function materializarPersonas(participants){
+  const out = [];
+  for(const x of participants || []){
+    if(!x || !x.nueva){ if(x) out.push(x); continue; }
+    const nombre = String(x.name || "").trim().slice(0, 120);
+    if(!nombre) continue;
+    const n = normalize(nombre);
+    const f = state.personas.find(q => normalize(q.name) === n);
+    const id = f ? f.id : await store.personas.add({ name: nombre });
+    if(!out.some(o => o && o.persona === id)) out.push({ persona: id, name: f ? f.name : nombre });
+  }
+  return out;
+}
 function participantsLabel(participants){
-  return (participants||[]).map(p=>p.name||p.email).join(", ");
+  return (participants||[]).map(participanteNombre).filter(Boolean).join(", ");
 }
 
 // Compara el posteo original con los datos nuevos y arma un resumen en
@@ -11240,6 +11351,139 @@ function renderAccesoSubnav(){
   return `<div class="pref-subnav">
     <button type="button" class="chip-toggle${state.solicitudesSection==="usuarios"?" active":""}" data-action="acceso-section" data-key="usuarios">${t("Usuarios","Users","Usuários","משתמשים")} (${state.roster.length})</button>
     <button type="button" class="chip-toggle${state.solicitudesSection==="pendientes"?" active":""}" data-action="acceso-section" data-key="pendientes">${t("Solicitudes","Requests","Solicitações","בקשות")}${pendingCount ? ` (${pendingCount})` : ""}</button>
+    <button type="button" class="chip-toggle${state.solicitudesSection==="sincuenta"?" active":""}" data-action="acceso-section" data-key="sincuenta">${t("Sin cuenta","No account","Sem conta","ללא חשבון")} (${state.personas.length})</button>
+  </div>`;
+}
+
+/* ---------- Administración › Personas › Sin cuenta ----------
+   Las personas sin cuenta (18-personas.sql): la lista con cuántas
+   actividades tiene cada una y la última, y al tocar una, su ficha:
+   nombre, correo (si se sabe), nota, dónde estuvo; y para el admin, unir
+   dos fichas que son la misma persona, vincularla a una cuenta del equipo
+   (sus eventos pasan a esa cuenta) o borrarla si no figura en nada. Mismo
+   patrón que Usuarios: lista a la izquierda, ficha a la derecha. */
+let personaAbierta = null;       // id de la ficha abierta
+let personaNuevaNombre = null;   // null = el formulito de «Sumar persona» está cerrado
+let personaUnirCon = "", personaVincularCon = "";
+let personaOcupada = false;      // mientras se une, vincula o borra
+const cuantasActividades = n => n === 1 ? t("1 actividad","1 activity","1 atividade","פעילות אחת") : t("{n} actividades","{n} activities","{n} atividades","{n} פעילויות",{n});
+function avatarSinCuenta(nombre, px){
+  return `<div class="avatar-fallback lp-av sin-cuenta" style="width:${px}px;height:${px}px">${esc((nombre||"?")[0].toUpperCase())}</div>`;
+}
+function renderSinCuentaSection(){
+  const f = state.usuariosFilters;
+  const n = normalize(f.text);
+  const lista = state.personas.map(x => { const acts = actividadesDePersona(x.id); return { ...x, acts, n: acts.length, ultima: acts[0] || null }; })
+    .filter(x => !n || normalize(x.name).includes(n) || normalize(x.email || "").includes(n))
+    .sort((a, b) => b.n - a.n || a.name.localeCompare(b.name, "es"));
+  const toolbar = `<div class="users-toolbar">
+    <input type="text" id="usuariosSearch" placeholder="${esc(t("Buscar por nombre o email...","Search by name or email...","Buscar por nome ou email...","...חיפוש לפי שם או אימייל"))}" value="${esc(f.text)}">
+    ${canWrite() ? `<button type="button" class="btn-primary sc-sumar" data-action="persona-nueva">+ ${t("Sumar persona","Add person","Somar pessoa","הוספת אדם")}</button>` : ""}
+  </div>`;
+  const nueva = personaNuevaNombre === null ? "" : `<div class="sc-nueva">
+    <input type="text" id="personaNuevaNombre" class="lp-inp" maxlength="120" placeholder="${esc(t("Nombre y apellido","First and last name","Nome e sobrenome","שם ושם משפחה"))}" value="${esc(personaNuevaNombre)}" aria-label="${esc(t("Nombre de la persona","Person's name","Nome da pessoa","שם האדם"))}">
+    <button type="button" class="btn-primary" data-action="persona-crear" ${personaNuevaNombre.trim() ? "" : "disabled"}>${t("Crear","Create","Criar","יצירה")}</button>
+    <button type="button" class="btn-secondary" data-action="persona-nueva-cancelar">${t("Cancelar","Cancel","Cancelar","ביטול")}</button>
+  </div>`;
+  const flecha = isRTL() ? "m15 6-6 6 6 6" : "m9 6 6 6-6 6";
+  const filas = lista.length ? lista.map(x => `<button type="button" class="lp-row${personaAbierta===x.id?" on":""}" data-action="persona-abrir" data-id="${esc(x.id)}" aria-expanded="${personaAbierta===x.id}">
+      ${avatarSinCuenta(x.name, 38)}
+      <span class="lp-who"><b>${esc(x.name)}</b><span>${esc(cuantasActividades(x.n))} · ${x.email ? esc(x.email) : esc(t("sin correo","no email","sem email","ללא אימייל"))}</span></span>
+      <span class="lp-when">${x.ultima ? esc(fmtDate(x.ultima.startDate || x.ultima.date)) : ""}</span>
+      <svg class="lp-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="${flecha}"/></svg>
+    </button>`).join("")
+    : `<div class="empty-state"><div class="big">${state.personas.length ? "🔎" : "👥"}</div>${state.personas.length
+        ? t("Nadie coincide con la búsqueda.","No one matches the search.","Ninguém coincide com a busca.","אף אחד לא תואם לחיפוש.")
+        : t("Todavía no hay personas sin cuenta. Se suman desde acá o al cargar un evento, en Participantes.","No people without an account yet. Add them here or when logging an event, under Participants.","Ainda não há pessoas sem conta. Somam-se daqui ou ao carregar um evento, em Participantes.","עדיין אין אנשים ללא חשבון. מוסיפים מכאן או בעת רישום אירוע, במשתתפים.")}</div>`;
+  const abierta = personaAbierta ? lista.find(x => x.id === personaAbierta) : null;
+  return toolbar + nueva + `<p class="hint sc-lead">${t(
+    "Gente que participa en actividades pero todavía no tiene cuenta en la app. Se cuentan en las fichas de cada lugar y en los reportes. Si un día una entra, todo su historial pasa a su cuenta.",
+    "People who take part in activities but don't have an account in the app yet. They count in each place's profile and in the reports. If one joins someday, their whole history moves to their account.",
+    "Gente que participa em atividades mas ainda não tem conta no app. Contam nas fichas de cada lugar e nos relatórios. Se um dia alguma entrar, todo o seu histórico passa para a sua conta.",
+    "אנשים שמשתתפים בפעילויות אבל עדיין אין להם חשבון באפליקציה. הם נספרים בכרטיסי המקומות ובדוחות. אם מישהו יצטרף יום אחד, כל ההיסטוריה שלו תעבור לחשבונו.")}</p>
+    <div class="lp-layout${abierta ? " abierto" : ""}">
+      <div class="lp-list"><div class="lp-rows">${filas}</div></div>
+      ${abierta ? renderPersonaSinCuentaPanel(abierta) : ""}
+    </div>`;
+}
+function renderPersonaSinCuentaPanel(x){
+  const yo = state.auth.user && state.auth.user.email;
+  const puedeTocar = isAdmin() || (x.createdBy && x.createdBy === yo);
+  const otras = state.personas.filter(o => o.id !== x.id);
+  const equipo = [...state.roster].sort((a, b) => nombreDe(a).localeCompare(nombreDe(b), "es"));
+  const campo = (id, clave, label, valor, extra, ayuda) => `<div class="lp-field"><label for="${id}">${label}</label>
+      <input type="${clave === "email" ? "email" : "text"}" id="${id}" class="lp-inp" data-persona-campo="${clave}" data-id="${esc(x.id)}" value="${esc(valor || "")}" maxlength="${clave === "note" ? 300 : clave === "email" ? 200 : 120}" ${extra || ""} ${puedeTocar ? "" : "disabled"}>
+      ${ayuda ? `<span class="hint">${ayuda}</span>` : ""}</div>`;
+  const desde = x.acts.length ? fmtDate(x.acts[x.acts.length - 1].startDate || x.acts[x.acts.length - 1].date) : "";
+  const donde = x.acts.slice(0, 3).map(p => { const ty = ACTIVITY_BY_KEY[p.activityType] || { icon:"✨" };
+    return `<button type="button" class="chip-toggle" data-action="goto-mention" data-post-id="${esc(p.id)}">${esc(ty.icon)} ${esc(p.activityType === "rutina" ? recortar(p.content, 40) : p.title)} · ${esc(fmtDate(p.startDate || p.date))}</button>`; }).join("")
+    + (x.n > 3 ? `<span class="chip-toggle" aria-hidden="true">${esc(t("y {n} más","and {n} more","e mais {n}","ועוד {n}",{n: x.n - 3}))}</span>` : "");
+  return `<aside class="lp-panel" aria-label="${esc(x.name)}">
+    <div class="lp-ph">
+      <button type="button" class="btn-text-add lp-back" data-action="persona-cerrar">${isRTL() ? "→" : "←"} ${t("Personas","People","Pessoas","אנשים")}</button>
+      ${avatarSinCuenta(x.name, 44)}
+      <span class="lp-who"><b>${esc(x.name)}</b><span>${esc(ETIQUETA_SIN_CUENTA())} · ${esc(cuantasActividades(x.n))}${desde ? " · " + esc(t("desde {d}","since {d}","desde {d}","מאז {d}",{d: desde})) : ""}</span></span>
+      <button type="button" class="post-menu-btn lp-cerrar" data-action="persona-cerrar" aria-label="${esc(t("Cerrar","Close","Fechar","סגירה"))}">✕</button>
+    </div>
+    <div class="lp-pb">
+      ${campo("personaNombre", "name", t("Nombre","Name","Nome","שם"), x.name, 'required')}
+      ${campo("personaCorreo", "email", `${t("Correo","Email","Email","אימייל")} <span class="hint">${t("(si lo sabés)","(if you know it)","(se souber)","(אם ידוע)")}</span>`, x.email, 'placeholder="ej. nombre@gmail.com"',
+        t("Si entra a la app con este correo, su historial pasa a su cuenta solo. No manda invitaciones de Calendar.","If they sign in to the app with this email, their history moves to their account on its own. It doesn't send Calendar invites.","Se entrar no app com este email, o histórico passa para a conta sozinho. Não envia convites do Calendar.","אם ייכנס/תיכנס לאפליקציה עם האימייל הזה, ההיסטוריה תעבור לחשבון לבד. לא שולח הזמנות ליומן."))}
+      ${campo("personaNota", "note", t("Nota","Note","Nota","הערה"), x.note, `placeholder="${esc(t("ej. voluntario, natación · Buenos Aires","e.g. volunteer, swimming · Buenos Aires","ex. voluntário, natação · Buenos Aires","למשל מתנדב, שחייה · בואנוס איירס"))}"`)}
+      <div class="lp-field"><label>${t("Dónde estuvo","Where they've been","Onde esteve","איפה היה/תה")}</label>
+        ${x.n ? `<div class="pref-chips">${donde}</div>` : `<span class="hint">${t("Todavía no figura en ningún evento.","Not in any event yet.","Ainda não aparece em nenhum evento.","עדיין לא מופיע/ה בשום אירוע.")}</span>`}</div>
+      ${!puedeTocar ? `<span class="hint">${t("La ficha la corrige quien la creó, o un admin.","The record is edited by whoever created it, or an admin.","A ficha é corrigida por quem a criou, ou por um admin.","את הכרטיס מתקן/ת מי שיצר/ה אותו, או מנהל/ת.")}</span>` : ""}
+    </div>
+    ${isAdmin() ? `<div class="lp-pf">
+      <span class="lp-cuidado">${t("Zona de cuidado","Handle with care","Zona de cuidado","אזור זהירות")}</span>
+      <div class="lp-field sc-campo"><label>${t("Unir con otro nombre","Merge with another name","Unir com outro nome","איחוד עם שם אחר")}</label>
+        <div class="lp-unificar-fila sc-fila"><select class="sc-unir" aria-label="${esc(t("Es la misma persona que…","Is the same person as…","É a mesma pessoa que…","זהו אותו אדם כמו…"))}" ${otras.length ? "" : "disabled"}>
+          <option value="">${t("— es la misma persona que… —","— is the same person as… —","— é a mesma pessoa que… —","— זהו אותו אדם כמו… —")}</option>
+          ${otras.map(o => `<option value="${esc(o.id)}"${personaUnirCon === o.id ? " selected" : ""}>${esc(o.name)}</option>`).join("")}
+        </select><button type="button" class="btn-mini" data-action="persona-unir" data-id="${esc(x.id)}" ${personaUnirCon && !personaOcupada ? "" : "disabled"}>${t("Unir","Merge","Unir","איחוד")}</button></div>
+        <span class="hint">${t("Sus eventos pasan a esa ficha y esta se va.","Their events move to that record and this one goes away.","Seus eventos passam para essa ficha e esta some.","האירועים שלו/ה עוברים לכרטיס ההוא וזה נעלם.")}</span></div>
+      <div class="lp-field sc-campo"><label>${t("Ya tiene cuenta","Already has an account","Já tem conta","כבר יש חשבון")}</label>
+        <div class="lp-unificar-fila sc-fila"><select class="sc-vincular" aria-label="${esc(t("Vincular a la cuenta de…","Link to the account of…","Vincular à conta de…","קישור לחשבון של…"))}">
+          <option value="">${t("— es… —","— is… —","— é… —","— זה… —")}</option>
+          ${equipo.map(u => `<option value="${esc(u.email)}"${personaVincularCon === u.email ? " selected" : ""}>${esc(nombreDe(u))}</option>`).join("")}
+        </select><button type="button" class="btn-mini" data-action="persona-vincular" data-id="${esc(x.id)}" ${personaVincularCon && !personaOcupada ? "" : "disabled"}>${t("Vincular","Link","Vincular","קישור")}</button></div>
+        <span class="hint">${t("Sus eventos pasan a esa cuenta y la ficha se va.","Their events move to that account and the record goes away.","Seus eventos passam para essa conta e a ficha some.","האירועים שלו/ה עוברים לחשבון ההוא והכרטיס נעלם.")}</span></div>
+      ${!x.n ? `<button type="button" class="btn-ghost danger lp-peligro" data-action="persona-borrar" data-id="${esc(x.id)}" ${personaOcupada ? "disabled" : ""}>${t("Borrar la ficha…","Delete the record…","Apagar a ficha…","מחיקת הכרטיס…")}</button>` : ""}
+    </div>` : ""}
+  </aside>`;
+}
+function cerrarFichaSinCuenta(conAnillo = tieneAnillo(document.activeElement)){
+  const id = personaAbierta; personaAbierta = null; personaUnirCon = ""; personaVincularCon = ""; render();
+  if(id) volverAFila(`.lp-row[data-action="persona-abrir"][data-id="${CSS.escape(id)}"]`, conAnillo);
+}
+// Quien pide entrar puede ser una persona que ya figura sin cuenta: por
+// el correo de su ficha, o por el nombre. Se le pregunta al admin; si
+// dice que sí, se la aprueba y su historial pasa a la cuenta nueva.
+const parecidosDescartados = new Set();
+function personaQueParece(r){
+  const email = String(r.email || "").toLowerCase();
+  const porCorreo = state.personas.find(x => x.email && x.email.toLowerCase() === email);
+  if(porCorreo) return porCorreo;
+  const n = normalize(r.name || ""), primero = n.split(/\s+/)[0] || "";
+  if(!n) return null;
+  return state.personas.find(x => normalize(x.name) === n)
+    || (primero.length >= 3 ? state.personas.find(x => normalize(x.name).split(/\s+/)[0] === primero) : null) || null;
+}
+function renderPareceSerPersona(r){
+  if(r.status !== "pending" || parecidosDescartados.has(r.email)) return "";
+  const x = personaQueParece(r);
+  if(!x) return "";
+  const acts = actividadesDePersona(x.id);
+  const ultima = acts[0];
+  return `<div class="parece-persona" data-persona="${esc(x.id)}">
+    <b>${t("¿Es «{n}», que figura sin cuenta?","Is this “{n}”, listed without an account?","É «{n}», que aparece sem conta?","האם זה/זו «{n}», שמופיע/ה ללא חשבון?",{n: esc(x.name)})}</b>
+    <span>${acts.length
+      ? t("Aparece en {n} (la última: {t}). Si es, al aprobarlo todo eso pasa a su cuenta: lo ve en su perfil y le llegan los avisos.","Listed in {n} (latest: {t}). If so, approving moves all of it to their account: they see it in their profile and get the notifications.","Aparece em {n} (a última: {t}). Se for, ao aprovar tudo isso passa para a sua conta: vê no perfil e recebe os avisos.","מופיע/ה ב-{n} (האחרונה: {t}). אם כן, באישור הכול עובר לחשבון: רואים בפרופיל ומקבלים התראות.",{ n: esc(cuantasActividades(acts.length)), t: esc(ultima.title || recortar(ultima.content, 40)) })
+      : t("Figura sin cuenta, todavía sin actividades.","Listed without an account, no activities yet.","Aparece sem conta, ainda sem atividades.","מופיע/ה ללא חשבון, עדיין ללא פעילויות.")}</span>
+    <div class="lp-botones">
+      <button type="button" class="btn-primary" data-action="aprobar-y-vincular" data-email="${esc(r.email)}" data-id="${esc(x.id)}" ${savingRoster.has(r.email) ? "disabled" : ""}>${t("Sí: aprobar y pasarle su historial","Yes: approve and move their history","Sim: aprovar e passar o histórico","כן: לאשר ולהעביר את ההיסטוריה")}</button>
+      <button type="button" class="btn-secondary" data-action="parecido-no" data-email="${esc(r.email)}">${t("No es","It's not","Não é","לא")}</button>
+    </div>
   </div>`;
 }
 
@@ -11272,7 +11516,7 @@ function fotoSegura(url){
 }
 function avatarDe(u, px){
   return fotoSegura(u.photoURL) ? `<img class="lp-av" src="${esc(fotoSegura(u.photoURL))}" alt="" style="width:${px}px;height:${px}px">`
-    : `<div class="avatar-fallback lp-av" style="width:${px}px;height:${px}px">${esc((u.name||u.nickname||"?")[0].toUpperCase())}</div>`;
+    : `<div class="avatar-fallback lp-av${u.sinCuenta ? " sin-cuenta" : ""}" style="width:${px}px;height:${px}px"${u.sinCuenta ? ` title="${esc(ETIQUETA_SIN_CUENTA())}"` : ""}>${esc((u.name||u.nickname||"?")[0].toUpperCase())}</div>`;
 }
 function renderUsuariosSection(){
   const f = state.usuariosFilters;
@@ -11526,7 +11770,7 @@ function renderSolicitudesQueueSection(){
   const pendingHtml = pending.length
     ? pending.map(r => renderRow(r, `${r.status !== "pending" ? `<span class="status-pill rejected" title="${esc(t("Figura como aprobada pero no tiene acceso: probablemente la sacaron del equipo directo en la base.","Marked as approved but has no access: they were probably removed from the team directly in the database.","Consta como aprovada mas não tem acesso: provavelmente foi tirada da equipe direto na base.","מסומן כמאושר אך ללא גישה: כנראה שהוסר/ה מהצוות ישירות במסד הנתונים."))}">${t("Sin acceso","No access","Sem acesso","ללא גישה")}</span>` : ""}
         <button class="btn-secondary" data-action="reject-request" data-email="${esc(r.email)}" ${savingRoster.has(r.email) ? "disabled" : ""}>${t("Rechazar","Reject","Rejeitar","דחייה")}</button>
-        <button class="btn-primary" data-action="approve-request" data-email="${esc(r.email)}" ${savingRoster.has(r.email) ? "disabled" : ""}>${savingRoster.has(r.email) ? t("Aprobando…","Approving…","Aprovando…","...מאשר") : t("Aprobar","Approve","Aprovar","אישור")}</button>`)).join("")
+        <button class="btn-primary" data-action="approve-request" data-email="${esc(r.email)}" ${savingRoster.has(r.email) ? "disabled" : ""}>${savingRoster.has(r.email) ? t("Aprobando…","Approving…","Aprovando…","...מאשר") : t("Aprobar","Approve","Aprovar","אישור")}</button>`) + renderPareceSerPersona(r)).join("")
     : `<div class="empty-state"><div class="big">📭</div>${t("No hay solicitudes pendientes.","There are no pending requests.","Não há solicitações pendentes.","אין בקשות ממתינות.")}</div>`;
   const rejectedHtml = rejected.length ? `
     <div class="rejected-section">
@@ -11620,7 +11864,8 @@ async function darAccesoPorAdelantado(){
 }
 
 function renderAccesoView(){
-  return renderAccesoSubnav() + (state.solicitudesSection === "pendientes" ? renderSolicitudesQueueSection() : renderUsuariosSection());
+  return renderAccesoSubnav() + (state.solicitudesSection === "pendientes" ? renderSolicitudesQueueSection()
+    : state.solicitudesSection === "sincuenta" ? renderSinCuentaSection() : renderUsuariosSection());
 }
 
 /* ======================================================================
@@ -11956,7 +12201,7 @@ function renderAuditColumnsHeader(){
 const RV_PAGINA = 100;
 let rv = { grupo:"actividad", buscar:"", soloSeguros:false, elegidos:new Set(), panel:null,
   editId:null, borrador:null, trabajando:false, sugerencias:null, cargando:false, error:"", visibles:RV_PAGINA,
-  vincular:{}, sacados:null, cargandoSacados:false, recientes:new Set() };
+  sacados:null, cargandoSacados:false, recientes:new Set() };
 function esImportado(p){ return !!(p && p.authorName === "Google Calendar" && !p.authorEmail && p.calendarEventId); }
 // Tocado = alguien ya le puso algo (tipo, alcance, dónde fue o personas).
 // Pendiente = sigue como vino de Calendar.
@@ -12055,12 +12300,16 @@ function rvPersona(nombre){
   const n = normalize(nombre);
   const m = state.roster.find(u => normalize(u.nickname) === n)
     || state.roster.find(u => normalize(String(u.name || "").split(/\s+/)[0]) === n);
-  return m ? { email: m.email, name: nombreDe(m, nombre) } : { name: String(nombre).slice(0, 120) };
+  if(m) return { email: m.email, name: nombreDe(m, nombre) };
+  // Si no, una persona sin cuenta: la ficha que ya exista con ese nombre,
+  // o una nueva (se crea al aplicar, en rvAplicar).
+  const f = state.personas.find(x => normalize(x.name) === n || normalize(String(x.name).split(/\s+/)[0]) === n);
+  return f ? { persona: f.id, name: f.name } : { nueva: true, name: String(nombre).slice(0, 120) };
 }
 function rvParticipantes(nombres, previos){
   const out = [...(previos || [])];
   nombres.map(rvPersona).forEach(p => {
-    const ya = out.some(o => (p.email && o.email && o.email.toLowerCase() === p.email.toLowerCase()) || (!p.email && !o.email && normalize(o.name) === normalize(p.name)));
+    const ya = out.some(o => participanteClave(o) === participanteClave(p) || (!o.email && !p.email && normalize(o.name || "") === normalize(p.name || "")));
     if(!ya) out.push(p);
   });
   return out.slice(0, 10);
@@ -12205,32 +12454,9 @@ function rvPanel(){
       </div>
     </div>`;
 }
-// Nombres que quedaron sueltos (gente que no estaba en el equipo): cuando
-// entran, se vinculan acá y pasan a ser participantes de verdad.
-function rvNombresSueltos(){
-  const cuenta = new Map();
-  state.posts.filter(esImportado).forEach(p => (p.participants || []).forEach(x => {
-    if(!x.email && x.name){ const k = normalize(x.name); const c = cuenta.get(k) || { name:x.name, n:0 }; c.n++; cuenta.set(k, c); }
-  }));
-  return [...cuenta.values()].sort((a, b) => b.n - a.n || a.name.localeCompare(b.name));
-}
-function renderNombresSueltos(){
-  const sueltos = rvNombresSueltos();
-  if(!sueltos.length) return "";
-  const equipo = [...state.roster].sort((x, y) => String(x.nickname).localeCompare(String(y.nickname)));
-  return `<section class="rv-sueltos">
-      <h3>${t("Nombres sueltos","Unlinked names","Nomes soltos","שמות לא מקושרים")}</h3>
-      <p class="hint">${t("Personas que figuran en eventos pero no están en el equipo. Si alguna entra, elegí quién es y sus eventos pasan a ser suyos.","People listed in events who aren't on the team. If one joins, pick who they are and their events become theirs.","Pessoas que aparecem em eventos mas não estão na equipe. Se alguma entrar, escolha quem é e os eventos passam a ser dela.","אנשים שמופיעים באירועים אך אינם בצוות. אם מישהו מצטרף, בחר/י מי זה והאירועים יעברו אליו.")}</p>
-      <div class="lp-rows">${sueltos.map(s => `<div class="rv-row">
-          <div class="rv-tit"><b>${esc(s.name)}</b><span class="rv-n">${t("{n} eventos","{n} events","{n} eventos","{n} אירועים",{n:s.n})}</span></div>
-          <select class="rv-vincular" data-nombre="${esc(s.name)}" aria-label="${esc(t("Quién es {n}","Who {n} is","Quem é {n}","מי זה {n}",{n:s.name}))}">
-            <option value="">${t("— es… —","— is… —","— é… —","— זה… —")}</option>
-            ${equipo.map(u => `<option value="${esc(u.email)}"${rv.vincular[s.name] === u.email ? " selected" : ""}>${esc(u.nickname)}</option>`).join("")}
-          </select>
-          <button type="button" class="btn-mini" data-action="rv-vincular" data-nombre="${esc(s.name)}" ${rv.vincular[s.name] && !rv.trabajando ? "" : "disabled"}>${t("Vincular","Link","Vincular","קישור")}</button>
-        </div>`).join("")}</div>
-    </section>`;
-}
+// Los nombres que quedaban sueltos acá («Nombres sueltos») son, desde el
+// 7/10/2026, personas con ficha: se unen o vinculan desde Administración →
+// Personas → Sin cuenta (18-personas.sql).
 function renderRevisarCalendar(){
   rvCargarSugerencias();
   if(rv.cargando && !rv.sugerencias) return `<div class="empty-state"><div class="big">⏳</div>${t("Cargando…","Loading…","Carregando…","...טוען")}</div>`;
@@ -12277,7 +12503,6 @@ function renderRevisarCalendar(){
       ${lista.length > rv.visibles ? `<button type="button" class="btn-secondary rv-mas" data-action="rv-mas">${t("Ver más ({n} más)","Show more ({n} more)","Ver mais ({n} a mais)","הצגת עוד ({n})",{n:lista.length - rv.visibles})}</button>` : ""}
       ${rv.grupo !== "ordenados" ? `<div class="rv-leyenda"><span><i class="rv-conf a"></i>${t("Seguro","Sure","Seguro","בטוח")}</span><span><i class="rv-conf m"></i>${t("Más o menos","Fairly sure","Mais ou menos","די בטוח")}</span><span><i class="rv-conf b"></i>${t("Dudoso","Doubtful","Duvidoso","מפוקפק")}</span></div>` : ""}`
       : `<div class="empty-state"><div class="big">✅</div>${rv.grupo === "ordenados" ? t("Todavía no se ordenó nada.","Nothing sorted yet.","Nada organizado ainda.","עדיין לא סודר דבר.") : t("No queda nada por ordenar acá.","Nothing left to sort here.","Não sobrou nada para organizar aqui.","לא נשאר כאן מה לסדר.")}</div>`}
-    ${renderNombresSueltos()}
     ${barra || rv.panel ? `<div class="rv-flota-espacio" aria-hidden="true"></div><div class="rv-flota">${rvPanel()}${barra}</div>` : ""}`;
 }
 // ---- Lo que hacen los botones ----
@@ -12285,6 +12510,7 @@ async function rvAplicar(cambios, mensaje, opts){
   if(!cambios.length) return;
   rv.trabajando = true; render();
   try{
+    for(const c of cambios) if(c.participants) c.participants = await materializarPersonas(c.participants);
     const n = await store.revisarCalendar.clasificar(cambios);
     cambios.forEach(c => rv.recientes.add(c.id));
     // De a muchos, lo elegido queda elegido: se puede seguir cambiándoles
@@ -12372,20 +12598,6 @@ async function rvSacar(){
     showCalendarNotice({ ok:false, message: t("No se pudo ({m}). No cambió nada.","Couldn't do it ({m}). Nothing changed.","Não foi possível ({m}). Nada mudou.","לא ניתן היה ({m}). דבר לא השתנה.",{m:err.code || err.message}) });
   }finally{ rv.trabajando = false; render(); }
 }
-function rvVincular(nombre){
-  const email = rv.vincular[nombre];
-  const m = state.roster.find(u => u.email === email);
-  if(!m) return;
-  const k = normalize(nombre);
-  const cambios = state.posts.filter(esImportado).filter(p => (p.participants || []).some(x => !x.email && normalize(x.name) === k)).map(p => {
-    const sin = (p.participants || []).filter(x => !(!x.email && normalize(x.name) === k));
-    if(!sin.some(x => x.email && x.email.toLowerCase() === m.email.toLowerCase())) sin.push({ email: m.email, name: m.name || m.nickname });
-    return { id: p.id, participants: sin };
-  });
-  delete rv.vincular[nombre];
-  rvAplicar(cambios, n => t("Listo: {nombre} es {who} en {n} eventos.","Done: {nombre} is {who} in {n} events.","Pronto: {nombre} é {who} em {n} eventos.","בוצע: {nombre} הוא/היא {who} ב-{n} אירועים.",{nombre, who:m.nickname, n}));
-}
-
 function renderAuditoriaView(){
   const entries = state.auditLog;
   if(!entries.length) return `<div class="empty-state"><div class="big">🗂️</div>${t("Todavía no hay actividad registrada.","No activity recorded yet.","Ainda não há atividade registrada.","עדיין אין פעילות רשומה.")}</div>`;
@@ -13021,7 +13233,7 @@ function renderAdjuntosSection(){
 const TABLAS_DE_LA_COPIA = {
   posts: "id", replies: "id", members: "email", former_members: "email",
   access_requests: "email", user_prefs: "email", app_config: "key", audit_log: "id",
-  calendar_sugerencias: "evento", calendar_sacados: "evento",
+  calendar_sugerencias: "evento", calendar_sacados: "evento", personas: "id",
 };
 // Desde jsDelivr (el mismo archivo que publica npm) y con su huella:
 // si el CDN sirviera otra cosa, el navegador no la corre.
@@ -15257,7 +15469,8 @@ function calcularReporte(desdeISO, hastaISO, filtro){
     const correo = String(p.authorEmail || "").toLowerCase();
     if(correo) porPersona[correo] = (porPersona[correo] || 0) + veces;
 
-    const gente = (p.participants || []).map(x=>String(x.email||"").toLowerCase()).filter(Boolean);
+    // Las personas sin cuenta cuentan como «persona:id» (18-personas.sql).
+    const gente = (p.participants || []).map(x => x && x.email ? String(x.email).toLowerCase() : x && x.persona ? "persona:" + x.persona : "").filter(Boolean);
     if(gente.length) conParticipantes += veces;
     new Set(gente).forEach(e=>{ participantes[e] = (participantes[e] || 0) + veces; });
 
@@ -15409,7 +15622,7 @@ function renderSelectorDelReporte(modo, f){
   state.posts.forEach(p => {
     (p.scopes || []).forEach(sc => { if(sc && sc.country && COUNTRY_BY_NAME[sc.country]) paisesUsados.add(sc.country); });
     if(p.authorEmail) gente.add(String(p.authorEmail).toLowerCase());
-    (p.participants || []).forEach(x => { if(x && x.email) gente.add(String(x.email).toLowerCase()); });
+    (p.participants || []).forEach(x => { if(x && x.email) gente.add(String(x.email).toLowerCase()); else if(x && x.persona && personaPorId(x.persona)) gente.add("persona:" + x.persona); });
   });
   const cuantos = ["zona","pais","tipo","persona"].filter(k => f[k]).length;
   const pop = reporteFiltrosAbierto ? `<div class="rep-filtros-pop" role="group" aria-label="${esc(t("Ver solo","Show only","Ver só","הצג רק"))}">
@@ -15612,6 +15825,10 @@ function renderReportePeriodo(f){
 // El nombre de alguien del equipo a partir de su correo (o el correo, si
 // ya no está).
 function nombreEnReporte(correo){
+  if(String(correo).startsWith("persona:")){
+    const f = personaPorId(String(correo).slice(8));
+    return `${f ? f.name : "?"} · ${t("sin cuenta","no account","sem conta","ללא חשבון")}`;
+  }
   return nombreDe(memberByEmail(correo), correo);
 }
 // "▲ 3" / "▼ 5" / "=" entre dos números.
@@ -19381,7 +19598,7 @@ const esDeCalendar = p => !p.authorEmail && /google calendar/i.test(p.authorName
 function quienDe(p){
   if(p.activityType === "rutina") return esDeCalendar(p) ? "" : (p.authorName || "");
   const ps = [...new Set((Array.isArray(p.participants) ? p.participants : [])
-    .map(x => x && (x.name || nombreDe(memberByEmail(x.email)) || x.email)).filter(Boolean))];
+    .map(participanteNombre).filter(Boolean))];
   if(ps.length <= 2) return ps.join(t(" y "," and "," e "," ו"));
   return t("{a}, {b} y {n} más","{a}, {b} and {n} more","{a}, {b} e mais {n}","{a}, {b} ועוד {n}",{ a: ps[0], b: ps[1], n: ps.length - 2 });
 }
@@ -19727,11 +19944,14 @@ function renderFichaLugar(L){
     // Desde el 7/10/2026, quien FUE y no quien lo cargó (ver quienDe): los
     // participantes; en una rutina, además, quien la escribió.
     if(p.activityType === "rutina" && !esDeCalendar(p)) sumar(memberByEmail(p.authorEmail), p.authorEmail, p.authorName);
-    (p.participants || []).forEach(x => { const m = x && x.email ? memberByEmail(x.email) : null; if(m) sumar(m); });
+    (p.participants || []).forEach(x => {
+      if(x && x.email){ const m = memberByEmail(x.email); if(m) sumar(m); }
+      else if(x && x.persona){ const f = personaPorId(x.persona); if(f) sumar(null, "persona:" + f.id, f.name); }
+    });
   });
   const quienes = gente.size ? `<div class="fl-card"><h3>${t("Quiénes trabajaron acá","Who worked here","Quem trabalhou aqui","מי עבד כאן")}</h3><div class="fl-gente">${[...gente.values()].sort((a, b) => b.n - a.n).slice(0, 6).map(g => {
     const m = g.email ? memberByEmail(g.email) : null;
-    const u = m || { name: g.nombre || g.email, photoURL: "" };
+    const u = m || { name: g.nombre || g.email, photoURL: "", sinCuenta: String(g.email || "").startsWith("persona:") };
     return `<div>${avatarDe(u, 28)}<span class="nm">${m ? `<button type="button" class="fl-persona" data-action="show-user-profile" data-nick="${esc(String(m.nickname || "").toLowerCase())}">${esc(m.name || "@" + m.nickname)}</button>` : esc(u.name || "")}</span><span class="cn">${g.n}</span></div>`; }).join("")}</div></div>` : "";
   const docs = D.visibles.flatMap(p => (p.files || []).map((f, pos) => ({ f, pos, p })))
     .filter(x => x.f && seAbreEnVisor(x.f) && safeFileDataUrl(x.f.dataUrl))
@@ -20459,15 +20679,24 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // válido y todavía no fue agregado.
 function getParticipantMatches(draft){
   const raw = (draft.participantQuery||"").trim();
-  const q = raw.toLowerCase();
+  const q = raw.toLowerCase(), qn = normalize(raw);
   if(!q) return [];
-  const already = new Set(draft.participants.map(p=>p.email.toLowerCase()));
+  const already = new Set(draft.participants.map(participanteClave));
   const matches = state.roster.filter(u =>
     !already.has(u.email.toLowerCase()) &&
-    (u.nickname.toLowerCase().includes(q) || u.email.toLowerCase().includes(q))
+    (u.nickname.toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || normalize(u.name || "").includes(qn))
   ).slice(0, 6).map(u => ({ email:u.email, name:u.nickname, photoURL:u.photoURL }));
-  if(EMAIL_RE.test(raw) && !already.has(q) && !matches.some(m=>m.email.toLowerCase()===q)){
-    matches.push({ email:raw, name:raw, isLoose:true });
+  // Las personas sin cuenta que ya tienen ficha (18-personas.sql), por
+  // nombre: así «Dario» no se carga dos veces con dos formas.
+  state.personas.filter(f => !already.has("persona:" + f.id) && normalize(f.name).includes(qn)).slice(0, 5)
+    .forEach(f => matches.push({ persona: f.id, name: f.name, sinCuenta: true, n: actividadesDePersona(f.id).length }));
+  if(EMAIL_RE.test(raw)){
+    if(!already.has(q) && !matches.some(m => m.email && m.email.toLowerCase() === q)) matches.push({ email:raw, name:raw, isLoose:true });
+  } else if(raw.length >= 2 && !matches.some(m => m.persona && normalize(m.name) === qn)
+            && !draft.participants.some(x => x && (x.nueva || !x.email) && normalize(x.name || "") === qn)){
+    // Alguien que no está ni en el equipo ni entre las personas: se suma
+    // como persona nueva, con su ficha (lo decidió el usuario el 7/10/2026).
+    matches.push({ nueva:true, name: raw.slice(0, 120) });
   }
   return matches;
 }
@@ -20487,32 +20716,45 @@ function renderParticipantsField(draft){
     </div>`;
 }
 function renderParticipantChip(p, idx){
-  const avatar = fotoSegura(p.photoURL) ? `<img class="participant-chip-avatar" src="${esc(fotoSegura(p.photoURL))}" alt="">` : "";
-  return `<span class="participant-chip">${avatar}${esc(p.name || p.email)}<span role="button" tabindex="0" class="rm" aria-label="${esc(t("Quitar","Remove","Remover","הסרה"))}" data-action="rm-participant" data-idx="${idx}">✕</span></span>`;
+  const sinCuenta = esPersonaSinCuenta(p);
+  const nombre = participanteNombre(p) || p.email || "";
+  const avatar = fotoSegura(p.photoURL) ? `<img class="participant-chip-avatar" src="${esc(fotoSegura(p.photoURL))}" alt="">`
+    : sinCuenta ? `<span class="participant-chip-sc" aria-hidden="true">${esc((nombre || "?")[0].toUpperCase())}</span>` : "";
+  return `<span class="participant-chip${sinCuenta ? " sin-cuenta" : ""}"${sinCuenta ? ` title="${esc(ETIQUETA_SIN_CUENTA())}"` : ""}>${avatar}${esc(nombre)}${p.nueva ? ` <small>${esc(t("nueva","new","nova","חדש/ה"))}</small>` : ""}<span role="button" tabindex="0" class="rm" aria-label="${esc(t("Quitar","Remove","Remover","הסרה"))}" data-action="rm-participant" data-idx="${idx}">✕</span></span>`;
 }
 function renderParticipantSuggestions(draft){
   const matches = getParticipantMatches(draft);
-  if(!matches.length) return `<div class="autocomplete-list"><div class="autocomplete-empty">${t("Sin coincidencias. Escribí un email completo para sumar a alguien de afuera.","No matches. Type a full email to add someone from outside.","Sem coincidências. Escreva um email completo para somar alguém de fora.",".אין התאמות. הקלד/י אימייל מלא כדי להוסיף מישהו מבחוץ")}</div></div>`;
+  if(!matches.length) return `<div class="autocomplete-list"><div class="autocomplete-empty">${t("Seguí escribiendo el nombre, o un email completo para alguien de afuera.","Keep typing the name, or a full email for someone from outside.","Continue escrevendo o nome, ou um email completo para alguém de fora.","המשיכו להקליד את השם, או אימייל מלא למישהו מבחוץ.")}</div></div>`;
   return `<div class="autocomplete-list">${matches.map((m,i)=>{
     const avatar = m.isLoose ? `<span class="mention-avatar mention-avatar-fallback">✉️</span>`
+      : m.nueva ? `<span class="mention-avatar mention-avatar-fallback nueva">+</span>`
+      : m.sinCuenta ? `<span class="mention-avatar mention-avatar-fallback sin-cuenta">${esc((m.name||"?")[0].toUpperCase())}</span>`
       : fotoSegura(m.photoURL) ? `<img class="mention-avatar" src="${esc(fotoSegura(m.photoURL))}" alt="">`
       : `<span class="mention-avatar mention-avatar-fallback">${esc((m.name||m.email)[0].toUpperCase())}</span>`;
-    const label = m.isLoose ? t(`Sumar "{email}" como invitado`,`Add "{email}" as a guest`,`Somar "{email}" como convidado`,`הוספת "{email}" כאורח/ת`,{email:esc(m.email)}) : `${esc(m.name)} <span style="color:var(--text-muted); font-weight:500;">${esc(m.email)}</span>`;
+    const gris = x => `<span style="color:var(--text-muted); font-weight:500;">${x}</span>`;
+    const label = m.isLoose ? t(`Sumar "{email}" como invitado`,`Add "{email}" as a guest`,`Somar "{email}" como convidado`,`הוספת "{email}" כאורח/ת`,{email:esc(m.email)})
+      : m.nueva ? `${t("Sumar «{n}» como persona nueva","Add “{n}” as a new person","Somar «{n}» como pessoa nova","הוספת «{n}» כאדם חדש",{n:esc(m.name)})} ${gris(t("(sin cuenta)","(no account)","(sem conta)","(ללא חשבון)"))}`
+      : m.sinCuenta ? `${esc(m.name)} ${gris(t("sin cuenta","no account","sem conta","ללא חשבון") + " · " + (m.n === 1 ? t("1 actividad","1 activity","1 atividade","פעילות אחת") : t("{n} actividades","{n} activities","{n} atividades","{n} פעילויות",{n:m.n})))}`
+      : `${esc(m.name)} ${gris(esc(m.email))}`;
     return `<button type="button" class="autocomplete-option mention-option${i===draft.participantHighlight?" active":""}" data-action="pick-participant" data-match-idx="${i}">${avatar}<span>${label}</span></button>`;
   }).join("")}</div>`;
 }
 function selectParticipantMatch(match){
   if(!match) return;
   const draft = composerDraft;
-  if(!draft.participants.some(p=>p.email.toLowerCase()===match.email.toLowerCase())){
+  const nuevo = match.nueva ? { nueva: true, name: String(match.name || "").trim().slice(0, 120) }
+    : match.persona ? { persona: match.persona, name: match.name }
+    // photoURL viaja con el participante para el avatar del chip (ver
+    // renderParticipantChip): antes el chip tenía el <img> y el CSS, pero
+    // acá se descartaba la foto al agregar.
+    : { email: match.email, name: match.name || match.email, photoURL: match.photoURL || null };
+  const clave = participanteClave(nuevo);
+  if(!draft.participants.some(p => participanteClave(p) === clave)){
     if(draft.participants.length >= MAX_PARTICIPANTS){
       draft.error = t("Máximo {n} participantes por evento.","At most {n} participants per event.","No máximo {n} participantes por evento.","לכל היותר {n} משתתפים לכל אירוע.",{n:MAX_PARTICIPANTS});
       render(); return;
     }
-    // photoURL viaja con el participante para el avatar del chip (ver
-    // renderParticipantChip): antes el chip tenía el <img> y el CSS, pero
-    // acá se descartaba la foto al agregar.
-    draft.participants.push({ email: match.email, name: match.name || match.email, photoURL: match.photoURL || null });
+    draft.participants.push(nuevo);
   }
   draft.participantQuery = ""; draft.participantHighlight = 0;
   render();
@@ -20864,6 +21106,88 @@ document.addEventListener("click", async e=>{
     else auditSort = { key, dir: key === "date" ? "desc" : "asc" };
     auditVisibleCount = 30; render();
   },
+    "persona-abrir": async (el, e, action, postId) => {
+    const conAnillo = tieneAnillo(el);
+    const abre = personaAbierta !== el.dataset.id;
+    personaAbierta = abre ? el.dataset.id : null; personaUnirCon = ""; personaVincularCon = ""; render();
+    if(abre) enfocarFicha(conAnillo);
+  },
+    "persona-cerrar": async (el, e, action, postId) => {
+    cerrarFichaSinCuenta(tieneAnillo(el));
+  },
+    "persona-nueva": async (el, e, action, postId) => {
+    personaNuevaNombre = ""; render();
+    const inp = document.getElementById("personaNuevaNombre"); if(inp) inp.focus();
+  },
+    "persona-nueva-cancelar": async (el, e, action, postId) => {
+    personaNuevaNombre = null; render();
+  },
+    "persona-crear": async (el, e, action, postId) => {
+    const nombre = String(personaNuevaNombre || "").trim().slice(0, 120);
+    if(!nombre) return;
+    const n = normalize(nombre);
+    const ya = state.personas.find(x => normalize(x.name) === n);
+    try{
+      const id = ya ? ya.id : await store.personas.add({ name: nombre });
+      personaNuevaNombre = null; personaAbierta = id; render();
+      if(ya) showCalendarNotice({ ok:true, message: t("«{n}» ya estaba: es esta ficha.","“{n}” was already there: this is their record.","«{n}» já existia: é esta ficha.","«{n}» כבר היה/תה: זהו הכרטיס.",{n: ya.name}) });
+    }catch(err){
+      console.error("No se pudo crear la persona:", err);
+      appAlert(t("No se pudo crear: {m}","Couldn't create: {m}","Não foi possível criar: {m}","{m} :לא ניתן היה ליצור",{m: err.message}));
+    }
+  },
+    "persona-unir": async (el, e, action, postId) => {
+    const de = el.dataset.id, a = personaUnirCon;
+    const x = personaPorId(de), y = personaPorId(a);
+    if(!x || !y || personaOcupada) return;
+    if(!(await appConfirm(t("¿«{a}» y «{b}» son la misma persona? Los eventos de «{a}» pasan a «{b}», y la ficha de «{a}» se va.","Are “{a}” and “{b}” the same person? “{a}”'s events move to “{b}”, and “{a}”'s record goes away.","«{a}» e «{b}» são a mesma pessoa? Os eventos de «{a}» passam para «{b}», e a ficha de «{a}» some.","האם «{a}» ו-«{b}» הם אותו אדם? האירועים של «{a}» עוברים ל-«{b}», והכרטיס של «{a}» נעלם.",{a: x.name, b: y.name}), { okLabel: t("Unir","Merge","Unir","איחוד") }))) return;
+    personaOcupada = true; render();
+    try{
+      const n = await store.personas.unir(de, a);
+      personaAbierta = a; personaUnirCon = "";
+      showCalendarNotice({ ok:true, message: t("Listo: «{a}» es «{b}» en {n}.","Done: “{a}” is “{b}” in {n}.","Pronto: «{a}» é «{b}» em {n}.","בוצע: «{a}» הוא/היא «{b}» ב-{n}.",{a: x.name, b: y.name, n: cuantasActividades(n)}) });
+    }catch(err){
+      console.error("No se pudo unir:", err);
+      appAlert(t("No se pudo unir: {m}","Couldn't merge: {m}","Não foi possível unir: {m}","{m} :לא ניתן היה לאחד",{m: err.message}));
+    }finally{ personaOcupada = false; render(); }
+  },
+    "persona-vincular": async (el, e, action, postId) => {
+    const id = el.dataset.id, email = personaVincularCon;
+    const x = personaPorId(id), m = memberByEmail(email);
+    if(!x || !m || personaOcupada) return;
+    if(!(await appConfirm(t("¿«{a}» es {b}? Sus eventos pasan a esa cuenta y la ficha se va.","Is “{a}” {b}? Their events move to that account and the record goes away.","«{a}» é {b}? Seus eventos passam para essa conta e a ficha some.","האם «{a}» הוא/היא {b}? האירועים עוברים לחשבון ההוא והכרטיס נעלם.",{a: x.name, b: nombreDe(m)}), { okLabel: t("Vincular","Link","Vincular","קישור") }))) return;
+    personaOcupada = true; render();
+    try{
+      const n = await store.personas.vincular(id, email);
+      personaAbierta = null; personaVincularCon = "";
+      showCalendarNotice({ ok:true, message: t("Listo: «{a}» es {b} en {n}.","Done: “{a}” is {b} in {n}.","Pronto: «{a}» é {b} em {n}.","בוצע: «{a}» הוא/היא {b} ב-{n}.",{a: x.name, b: nombreDe(m), n: cuantasActividades(n)}) });
+    }catch(err){
+      console.error("No se pudo vincular:", err);
+      appAlert(t("No se pudo vincular: {m}","Couldn't link: {m}","Não foi possível vincular: {m}","{m} :לא ניתן היה לקשר",{m: err.message}));
+    }finally{ personaOcupada = false; render(); }
+  },
+    "persona-borrar": async (el, e, action, postId) => {
+    const x = personaPorId(el.dataset.id);
+    if(!x || personaOcupada || actividadesDePersona(x.id).length) return;
+    if(!(await appConfirm(t("¿Borrar la ficha de «{n}»? No figura en ningún evento.","Delete “{n}”'s record? They're not in any event.","Apagar a ficha de «{n}»? Não aparece em nenhum evento.","למחוק את הכרטיס של «{n}»? לא מופיע/ה בשום אירוע.",{n: x.name}), { danger:true, okLabel: t("Borrar","Delete","Apagar","מחיקה") }))) return;
+    personaOcupada = true; render();
+    try{ await store.personas.remove(x.id); personaAbierta = null; }
+    catch(err){ console.error(err); appAlert(t("No se pudo borrar: {m}","Couldn't delete: {m}","Não foi possível apagar: {m}","{m} :לא ניתן היה למחוק",{m: err.message})); }
+    finally{ personaOcupada = false; render(); }
+  },
+    "aprobar-y-vincular": async (el, e, action, postId) => {
+    const email = el.dataset.email, id = el.dataset.id;
+    await withRosterGuard(email, async ()=>{
+      await approveRequest(email);
+      // approveRequest ya vincula sola si la ficha tenía este correo; si
+      // no, se vincula acá por el nombre que confirmó el admin.
+      if(personaPorId(id)){ try{ await store.personas.vincular(id, email); }catch(err){ if(!/no existe/i.test(err.message || "")) throw err; } }
+      shareCalendarWith(email, { silentOnly:true }).catch(()=>{});
+    }).catch(err => { console.error(err); appAlert(t("No se pudo aprobar: {m}","Couldn't approve: {m}","Não foi possível aprovar: {m}","{m} :לא ניתן היה לאשר",{m: err.message})); });
+  },
+    "parecido-no": async (el, e, action, postId) => {
+    parecidosDescartados.add(el.dataset.email); render();
+  },
     "acceso-section": async (el, e, action, postId) => {
     state.solicitudesSection = el.dataset.key; render();
   },
@@ -21022,7 +21346,6 @@ document.addEventListener("click", async e=>{
   },
     "rv-sacar": async () => { rvSacar(); },
     "rv-devolver": async () => { rvDevolver(); },
-    "rv-vincular": async (el) => { rvVincular(el.dataset.nombre); },
     "toggle-more-menu": async (el, e, action, postId) => {
     moreMenuOpen = !moreMenuOpen; renderBottomNav();
   },
@@ -22323,7 +22646,9 @@ document.addEventListener("input", e=>{
     if(rv.borrador) rv.borrador.libre = el.value;
   } else if(el.id === "auditSearch"){
     state.auditFilters.text = el.value; auditVisibleCount = 30; render();
-  } else if(el.id === "usuariosSearch"){
+  } else if(el.id === "personaNuevaNombre"){
+    const antes = !!String(personaNuevaNombre || "").trim(); personaNuevaNombre = el.value;
+    if(antes !== !!el.value.trim()){ render(); const inp = document.getElementById("personaNuevaNombre"); if(inp){ inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); } }  } else if(el.id === "usuariosSearch"){
     state.usuariosFilters.text = el.value; render();
   } else if(el.id === "nicknameInput"){
     nicknameDraft = el.value; nicknameError = null; render();
@@ -22421,6 +22746,22 @@ document.addEventListener("change", e=>{
   const el = e.target;
   // Revisar lo de Calendar: los selectores del panel y de "Nombres sueltos".
   if(el.id === "rvTipo" && rv.borrador){ rv.borrador.tipo = el.value; return; }
+  // La ficha de una persona sin cuenta: cada campo se guarda al salir de él.
+  if(el.dataset && el.dataset.personaCampo){
+    const campo = el.dataset.personaCampo, id = el.dataset.id, valor = String(el.value || "").trim();
+    const x = personaPorId(id);
+    if(!x) return;
+    if(campo === "name" && !valor){ el.value = x.name; return; }
+    if(campo === "email" && valor && !EMAIL_RE.test(valor)){
+      appAlert(t("Eso no parece un correo.","That doesn't look like an email.","Isso não parece um email.","זה לא נראה כמו אימייל."));
+      el.value = x.email || ""; return;
+    }
+    store.personas.update(id, { [campo]: valor.slice(0, campo === "note" ? 300 : campo === "email" ? 200 : 120) || null })
+      .catch(err => { console.error("No se pudo guardar la ficha:", err); appAlert(t("No se pudo guardar: {m}","Couldn't save: {m}","Não foi possível salvar: {m}","{m} :לא ניתן היה לשמור",{m: err.message})); });
+    return;
+  }
+  if(el.classList.contains("sc-unir")){ personaUnirCon = el.value; render(); return; }
+  if(el.classList.contains("sc-vincular")){ personaVincularCon = el.value; render(); return; }
   if(el.classList.contains("unificar-destino")){ unificarDestino[el.dataset.email] = el.value; render(); return; }
   // Reportes: los años a comparar y el "Ver solo".
   const REP_CAMPOS = { repCompA:"compA", repCompB:"compB", repCompTri:"compTri", repAnio:"anio", repTri:"trimestre" };
@@ -22436,7 +22777,6 @@ document.addEventListener("change", e=>{
     render(); return;
   }
   if(el.id === "rvCiudad" && rv.borrador){ rv.borrador.ciudad = el.value; rv.borrador.alcance = el.value ? "ciudad" : "pais"; render(); return; }
-  if(el.classList && el.classList.contains("rv-vincular")){ rv.vincular[el.dataset.nombre] = el.value; render(); return; }
   // El campo de hexadecimal lleva el MISMO data-* que la muestra de color
   // que tiene al lado, así que alcanza con normalizar el valor acá y
   // dejarlo seguir por la rama que le corresponda: no hay un segundo
@@ -22576,6 +22916,7 @@ postForm.addEventListener("submit", async e=>{
   };
   d.submitting = true; render();
   try{
+    postData.participants = await materializarPersonas(d.participants);
     if(d.editingPost){
       const postId = d.editingPost.id;
       const original = d.editingPost;

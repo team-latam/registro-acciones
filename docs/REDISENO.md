@@ -321,9 +321,9 @@ eventos.
   evento en `calendar_sacados`: los dos sincronizadores lo saltean, así
   no vuelve. En Google Calendar no cambia nada.
 - **Personas**: un nombre que coincide con alguien del equipo (@nickname
-  o primer nombre) queda vinculado; si no, queda como nombre suelto.
-  "Nombres sueltos" lista esos nombres y los vincula a una persona cuando
-  entra al equipo.
+  o primer nombre) queda vinculado; si no, queda como persona sin cuenta,
+  con su ficha (tanda 36; hasta el 7/10 quedaba como nombre suelto y
+  "Nombres sueltos" los vinculaba desde acá).
 - Nada avisa a nadie: no cambia la fecha de edición ni pasa por la
   edición que sincroniza con Calendar. Los títulos no se tocan.
 - Base: `12-revisar-calendar.sql` (tablas y funciones, solo admins y
@@ -670,6 +670,32 @@ capturas (A/B/C, después D/E/F, después ajustes), el diseño elegido:
   desplaza adentro de la tarjeta con su propia barra, no la columna
   entera (segunda captura del usuario). En el reporte impreso salen
   todas.
+
+### 36. Personas sin cuenta — HECHO (7 oct 2026)
+
+El usuario mostró «Swimmers Online», con Darío y Guypo asignados: no
+tienen cuenta y no se los podía cargar ni contar. Decidió: cualquiera que
+carga eventos puede sumar (A), una ficha por persona (A), y básico
+(nombre, correo opcional, nota).
+
+- **En Participantes**, al escribir un nombre: la gente del equipo, las
+  fichas que ya existen («Darío · sin cuenta · 3 actividades») y «Sumar
+  «Darío» como persona nueva». La ficha se crea al publicar, sin
+  duplicar por tildes ni mayúsculas. En el evento queda `{persona, name}`
+  y se muestra el nombre de la ficha (renombrarla alcanza).
+- **Cuentan** en «Quiénes trabajaron acá» de cada lugar y en el filtro
+  por persona de los reportes.
+- **Administración › Personas › Sin cuenta**: lista y ficha (nombre,
+  correo, nota, dónde estuvo), sumar a mano, unir dos que son la misma,
+  vincular a una cuenta cuando entra (el historial pasa a su cuenta),
+  borrar si no está en ningún evento.
+- **Al pedir entrar**: con el correo de una ficha se vincula sola al
+  aprobar; con el nombre parecido, se le pregunta al admin («¿Es
+  «Guypo», que figura sin cuenta?»).
+- Base: `supabase/18-personas.sql` (tabla, políticas, `unir_personas`,
+  `vincular_persona`, y la migración de los nombres sueltos que ya
+  estaban). «Nombres sueltos» de Revisar lo de Calendar se fue: lo
+  reemplaza esta sección. Detalle en README, «Personas sin cuenta».
 
 ## Fuera de alcance (necesitan algo que la app no tiene)
 
