@@ -2,6 +2,13 @@
 # El servidor local se apaga solo entre tandas; esto lo vuelve a levantar y
 # reconstruye la base desde cero con todo el esquema.
 BIN=/usr/lib/postgresql/16/bin
+# En un contenedor nuevo puede no haber ni la carpeta de la base: se arma
+# (el 7/10/2026 la auditoría corrió sin «Base de datos» por esto, sin que
+# nada lo dijera).
+if [ ! -f /pgdata/PG_VERSION ]; then
+  mkdir -p /pgdata /var/run/postgresql && chown postgres:postgres /pgdata /var/run/postgresql
+  su postgres -c "$BIN/initdb -D /pgdata -U postgres --auth=trust" >/dev/null 2>&1 || { echo "No se pudo armar /pgdata"; exit 1; }
+fi
 su postgres -c "$BIN/pg_ctl -D /pgdata -o '-k /var/run/postgresql -h \"\"' -l /pgdata/log status" >/dev/null 2>&1 || \
   su postgres -c "$BIN/pg_ctl -D /pgdata -o '-k /var/run/postgresql -h \"\"' -l /pgdata/log start" >/dev/null 2>&1
 for i in 1 2 3 4 5; do su postgres -c "$BIN/pg_isready -h /var/run/postgresql -q" && break; sleep 1; done

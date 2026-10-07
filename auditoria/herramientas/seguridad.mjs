@@ -21,7 +21,7 @@ import { RAIZ, html, js, lineaDeJs, hallazgo, entregar } from "./comun.mjs";
 const out = [];
 
 /* --- ${} sin escapar dentro de plantillas que arman HTML --- */
-const SEGURO = /===|!==|^\s*(nl2br|highlightMentions|crossLine|esc|escAttr|t|fmt\w*|safeColor|safeImageSrc|safeFileDataUrl|fotoSegura|cityLabel|countryLabel|String\(Number|Number|Math\.\w+|encodeURIComponent)\(|^\s*(render\w*|\w+Html|html\w*|\w+Chip|\w+Pill|avatarDe|iconoDe\w*|svg\w*|chevron\w*|\w+Btn|\w+Menu|\w+Block|\w+Row|\w+Section|grafico\w*|bloque\w*|seccion\w*|tira\w*|kpi|delta\w*|cabeza\w*)\b|^\s*[\w.]+\.(length|size)\s*$|^\s*-?\d|^\s*(i|j|n|idx|i \+ 1|total|count|cnt|pct)\s*$|\?\s*["'`]|^\s*["'`]/;
+const SEGURO = /===|!==|^\s*(nl2br|highlightMentions|crossLine|esc|escAttr|t|fmt\w*|safeColor|safeImageSrc|safeFileDataUrl|fotoSegura|cityLabel|countryLabel|String\(Number|Number|Math\.\w+|encodeURIComponent)\(|^\s*(render\w*|\w+Html|html\w*|\w+Chip|\w+Pill|avatar\w*|iconoDe\w*|svg\w*|chevron\w*|\w+Btn|\w+Menu|\w+Block|\w+Row|\w+Section|grafico\w*|bloque\w*|seccion\w*|tira\w*|kpi|delta\w*|cabeza\w*)\b|^\s*[\w.]+\.(length|size)\s*$|^\s*-?\d|^\s*(i|j|n|idx|i \+ 1|total|count|cnt|pct)\s*$|\?\s*["'`]|^\s*["'`]|^\s*[\w.]+\.(includes|some|every|has|startsWith|endsWith)\([^()]*\)\s*$|^\s*[\w.]+\s*\?\s*esc\(.*:\s*esc\(/;
 const reExp = /\$\{/g;
 let m, revisar = 0;
 while((m = reExp.exec(js))){
@@ -67,7 +67,7 @@ else { if(!/object-src 'none'/.test(csp)) out.push(hallazgo("seguridad", "bajo",
 
 /* --- Datos personales y llaves en el repo (es público) --- */
 const archivos = execSync("git ls-files", { cwd: RAIZ, encoding: "utf8" }).split("\n").filter(f => f && !/\.(png|jpg|gz|zip|docx?|xlsx?|pdf)$/.test(f));
-const CORREO_OK = /ciudad@gmail\.com|@adentro\.com|^atacante@|@(x\.com|example\.(com|org)|ejemplo\.|users\.noreply\.github\.com|noreply\.|anthropic\.com|group\.calendar\.google\.com|group\.v\.calendar\.google\.com|dominio\.com|pedro\.com|github\.com)|^benny@team-latam\.com$|^(nueva|otra|ana|diego|lucia|moshe|juan|obs)@/i;
+const CORREO_OK = /ciudad@gmail\.com|@adentro\.com|^atacante@|@(x\.com|example\.(com|org)|ejemplo\.|users\.noreply\.github\.com|noreply\.|anthropic\.com|group\.calendar\.google\.com|group\.v\.calendar\.google\.com|dominio\.com|pedro\.com|github\.com|y\.com|proyecto\.iam\.gserviceaccount\.com|resend\.dev)|^benny@team-latam\.com$|^-?info@team-latam\.com$|^(nueva|otra|ana|diego|lucia|moshe|juan|obs|nombre|name|nome|largo|veneno|pide|nadie)@/i;
 const vistosCorreo = new Map();
 for(const f of archivos){
   let txt; try{ txt = fs.readFileSync(RAIZ + f, "utf8"); }catch(e){ continue; }
@@ -75,7 +75,9 @@ for(const f of archivos){
     if(CORREO_OK.test(c[0]) || /\.(png|js|css|mjs)$/.test(c[0])) continue;
     if(!vistosCorreo.has(c[0])) vistosCorreo.set(c[0], f);
   }
-  if(/service_role["']?\s*[:=]\s*["']ey|sk_live_|-----BEGIN [A-Z ]*PRIVATE KEY/.test(txt)) out.push(hallazgo("seguridad", "urgente", "Parece una llave secreta en el repo", f));
+  // «sk_(?:live)_» y no la palabra junta: si no, esta misma línea se marcaba
+  // como llave (7/10/2026).
+  if(/service_role["']?\s*[:=]\s*["']ey|sk_(?:live)_|-----BEGIN [A-Z ]*PRIVATE KEY/.test(txt)) out.push(hallazgo("seguridad", "urgente", "Parece una llave secreta en el repo", f));
   for(const t of txt.matchAll(/(?<![\d.])\+?\d{2,3}[\s-]?\(?\d{2,4}\)?[\s-]?\d{3,4}[\s-]\d{3,4}(?![\d.])/g))
     if(!/\d{4}-\d{2}-\d{2}/.test(t[0])) { out.push(hallazgo("datos personales", "bajo", "Parece un teléfono", f, t[0])); break; }
 }

@@ -56,5 +56,14 @@ while((m = reTxt.exec(js))){
   if(!/[áéíóúñ¿¡]|\b(de|la|el|los|las|un|una|para|con|sin|que|del)\b/i.test(txt)) continue;
   out.push(hallazgo("idiomas", "bajo", "Texto visible escrito directo, sin t()", `index.html:${lineaDeJs(m.index)}`, txt));
 }
+// Lo mismo en los atributos que se leen o se oyen: placeholder="ej. nombre@…"
+// quedó en español en los cuatro idiomas (Personas › Sin cuenta, 7/10/2026).
+const reAttr = /\b(placeholder|title|aria-label|alt)="([^"$`]*[a-záéíóúñ]{2,}[^"$`]*)"/gi;
+while((m = reAttr.exec(js))){
+  if(enComentario(m.index) || dentroDeT.some(([a, b]) => m.index > a && m.index < b)) continue;
+  const txt = m[2].trim();
+  if(NOMBRES.test(txt) || !/[áéíóúñ¿¡]|\b(ej|nombre|dominio|de|la|el|los|las|un|una|para|con|sin|que|del)\b/i.test(txt)) continue;
+  out.push(hallazgo("idiomas", "bajo", `Atributo ${m[1]} escrito directo, sin t()`, `index.html:${lineaDeJs(m.index)}`, txt));
+}
 out.push(hallazgo("idiomas", "dato", `Textos traducidos: ${llamadas}`));
 entregar("textos", out);
