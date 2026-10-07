@@ -169,7 +169,14 @@ La publica el mismo workflow «Funciones de Supabase».
    también en Spam la primera vez). Después rechazar ese pedido en
    Administración → Solicitudes.
 
-Para mandarle también a otros admins, hace falta verificar un dominio en
+**Desde el 7/10/2026** el dominio `team-latam.com` está cargado en Resend
+(los cuatro registros en Squarespace: `resend._domainkey`, `send`,
+`rsend`, `_dmarc`) y los avisos salen de **`info@team-latam.com`**, con
+las respuestas a `benny@team-latam.com` (pedido del usuario). Si Resend
+no acepta el remitente (dominio sin verificar), el aviso sale igual desde
+`onboarding@resend.dev`.
+
+Antes de eso: para mandarle también a otros admins, hacía falta verificar un dominio en
 Resend (Domains → Add domain, con registros en el DNS) y cargar el
 remitente en el secreto de Supabase `AVISOS_DESDE`
 (por ejemplo `Registro de Acciones <avisos@ese-dominio>`).
