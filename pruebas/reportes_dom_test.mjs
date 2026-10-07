@@ -126,6 +126,12 @@ eq("y el botón Filtros dice cuántos hay", await p.$eval('[data-action="reporte
 await p.evaluate(()=> window.__pintar(window.__datos, { anio:"2026", trimestre:0, modo:"periodo", filtro:{} }));
 await p.waitForTimeout(150);
 eq("un período trae sugerencias, cobertura y equipo", [!!(await p.$(".rep-sugerencias li")), !!(await p.$(".rep-cobertura li")), !!(await p.$(".rep-equipo tbody tr"))], [true, true, true]);
+// Con las personas sin cuenta la tabla del equipo se hacía larguísima
+// (7/10/2026): misma altura que la lista de países de al lado, con barra
+// y el encabezado pegado arriba.
+eq("«Por persona del equipo» mide como «Última actividad por país» y se desplaza adentro, con el encabezado pegado",
+   await p.evaluate(() => { const e = getComputedStyle(document.querySelector(".rep-equipo .rep-tabla-envoltorio")), l = getComputedStyle(document.querySelector(".rep-cobertura .rep-lista"));
+     return [e.maxHeight === l.maxHeight, e.overflowY, getComputedStyle(document.querySelector(".rep-equipo thead th")).position]; }), [true, "auto", "sticky"]);
 await p.setViewportSize({ width: 380, height: 800 });
 for(const modo of [{ anio:"todos" }, { modo:"comparar", compA:"2025", compB:"2026" }]){
   await p.evaluate(m => window.__pintar(window.__datos, { anio:"2026", trimestre:0, modo:"periodo", filtro:{}, ...m }), modo);

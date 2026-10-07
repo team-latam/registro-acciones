@@ -108,8 +108,22 @@ const confirmar = async p => { await p.waitForSelector("#confirmOk", { state: "v
   eq("participantes: y no se ofrece sumarla otra vez", await p.waitForTimeout(150).then(() => textos(p, '#postForm [data-action="pick-participant"]')), []);
   await p.fill("#cParticipantQuery", "Darío");
   await p.waitForSelector('#postForm [data-action="pick-participant"]');
+  // El avatar de una persona sin cuenta en la lista es claro con borde
+  // punteado, no el círculo oscuro de la gente del equipo (la clase
+  // «sin-cuenta» chocaba con la tarjeta de correos sin cuenta y una regla
+  // de dos clases pisaba el fondo; captura del usuario del 7/10).
+  eq("sugerencias: el avatar de una persona sin cuenta es claro, con borde punteado",
+     await p.$$eval('#postForm .mention-option .mention-avatar', l => l.filter(e => /Dar/.test(e.parentElement.textContent)).map(e => { const c = getComputedStyle(e); return [c.borderStyle, c.backgroundColor !== getComputedStyle(document.documentElement).getPropertyValue("--petroleo").trim() && c.backgroundColor !== "rgb(13, 59, 62)"]; })),
+     [["dashed", true], ["dashed", true]]);
   await p.click('#postForm [data-action="pick-participant"]:has-text("Darío")');
   eq("participantes: la ficha existente se suma tal cual", await textos(p, "#postForm .participant-chip"), ["Zeka Cohen nueva✕", "Darío✕"]);
+  await p.fill("#cParticipantQuery", "ana");
+  await p.waitForSelector('#postForm [data-action="pick-participant"]');
+  await p.click('#postForm [data-action="pick-participant"]:has-text("ana@x.com")');
+  eq("participantes: los chips de personas sin cuenta miden y se pintan como los del equipo (solo cambia el borde punteado)",
+     await p.$$eval("#postForm .participant-chip", l => { const m = e => { const c = getComputedStyle(e); return [Math.round(e.getBoundingClientRect().height), c.backgroundColor, c.boxShadow, c.marginTop]; };
+       const del = m(l[l.length - 1]); return l.map(e => JSON.stringify(m(e)) === JSON.stringify(del)); }), [true, true, true]);
+  await p.click('#postForm .participant-chip:has-text("ana") .rm');
   await p.fill("#cTitle", "Charla en la escuela");
   await p.fill("#cPlaceQuery", "Uruguay");
   await p.waitForSelector('#postForm [data-action="pick-place"]');
@@ -129,7 +143,7 @@ const confirmar = async p => { await p.waitForSelector("#confirmOk", { state: "v
   await p.click('[data-action="drill-country"][data-country="Chile"]');
   await p.waitForSelector(".fl-gente");
   eq("ficha de lugar: «Quiénes trabajaron acá» cuenta a la persona sin cuenta (sin botón de perfil, porque no lo tiene)",
-     await p.$$eval(".fl-gente > div", l => l.map(e => [e.querySelector(".nm").textContent.trim(), !!e.querySelector(".fl-persona"), !!e.querySelector(".sin-cuenta")])),
+     await p.$$eval(".fl-gente > div", l => l.map(e => [e.querySelector(".nm").textContent.trim(), !!e.querySelector(".fl-persona"), !!e.querySelector(".sc-persona")])),
      [["Ana Pérez", true, false], ["Darío", false, true]]);
   await p.click('nav.tabs button[data-view="reportes"]');
   await p.waitForSelector('[data-action="reporte-filtros"]');

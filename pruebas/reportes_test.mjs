@@ -256,7 +256,7 @@ const SEMANAL = { recurrence:["RRULE:FREQ=WEEKLY;BYDAY=MO"], startDate:"2026-01-
     post({ id:"a", scopes:[{ type:"ciudad", country:"Perú", city:"Lima" }] }),
     post({ id:"b", activityType:"curso", authorEmail:"beto@x.com", scopes:[{ type:"pais", country:"México" }], participants:[{ email:"ana@x.com" }] }),
     post({ id:"c", scopes:[{ type:"region", region:"central" }] }),
-    post({ id:"d", scopes:[{ type:"ciudad", country:"Perú", city:"lima" }, { type:"ciudad", country:"Chile", city:"Santiago" }] }),
+    post({ id:"d", scopes:[{ type:"ciudad", country:"Perú", city:"lima" }, { type:"ciudad", country:"Chile", city:"Santiago" }], participants:[{ persona:"p1", name:"Darío" }] }),
   ]);
   const A = "2026-01-01", B = "2026-12-31";
   eq("por tipo", api.armarReporte(A, B, { tipo:"curso" }).total, 1);
@@ -267,7 +267,10 @@ const SEMANAL = { recurrence:["RRULE:FREQ=WEEKLY;BYDAY=MO"], startDate:"2026-01-
   eq("sin filtro, todo", api.armarReporte(A, B, { zona:"", pais:"", tipo:"", persona:"" }).total, 4);
   const r = api.armarReporte(A, B);
   eq("las ciudades distintas no se cuentan dos veces por mayúsculas", r.ciudades.size, 2);
-  eq("en cuántos países cargó cada uno", [...r.paisesDePersona["ana@x.com"]].sort(), ["Chile", "Perú"]);
+  // Los países de cada uno: lo que cargó y donde participó (7/10/2026; antes
+  // solo lo cargado, y quien solo participa quedaba en 0).
+  eq("en cuántos países estuvo cada uno: lo que cargó y donde participó, también una persona sin cuenta",
+     [[...r.paisesDePersona["ana@x.com"]].sort(), [...(r.paisesDePersona["persona:p1"] || [])].sort()], [["Chile", "México", "Perú"], ["Chile", "Perú"]]);
 }
 {
   // Comparar: el mismo trimestre de dos años.
