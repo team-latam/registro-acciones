@@ -3,12 +3,16 @@
 -- pedido pendiente, una vez por pedido, un intento por hora, y las dos
 -- marcas no se pueden tocar desde la app.
 truncate lab.resultados;
-truncate public.access_requests, public.members cascade;
+truncate public.access_requests, public.members, public.app_config, public.user_prefs cascade;
 insert into public.members(email, name, nickname, role) values
   ('otra.admin@x.com', 'Otra', 'otra', 'admin'), ('juan@x.com', 'Juan', 'juan', 'member');
 insert into public.access_requests(email, name, status) values
   ('nuevo@x.com', 'Nuevo <b>', 'pending'), ('rechazado@x.com', 'Rech', 'rejected');
 
+-- Los dos admins pueden recibir correos (17-avisos-por-correo.sql: de
+-- fábrica solo el admin fijo).
+insert into public.app_config(key, value) values ('preferences', '{"correos":{"quienes":"todos"}}')
+  on conflict (key) do update set value = excluded.value;
 select lab.probar_valor('quien pidió entrar: corresponde, a los dos admins, con su nombre',
   lab.como('nuevo@x.com'), $q$select 1$q$,
   $q$select (r->'para')::text || ' ' || (r->>'nombre') || ' ' || (r->>'correo') from (select public.pedir_aviso_al_admin() r) x$q$,

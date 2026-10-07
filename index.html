@@ -8212,6 +8212,7 @@ function crearSupabaseStore(sb, opciones = {}){
         revienta(await sb.from("replies").insert(
           { ...aFila(await subirNuevos("replies", id, datos)), id, post_id: postId }));
         await refrescar("replies", id);
+        return id;
       },
       async remove(postId, replyId){
         revienta(await sb.from("replies").delete().eq("id", replyId));
@@ -8406,6 +8407,11 @@ function crearSupabaseStore(sb, opciones = {}){
     async avisarAlAdmin(){
       const { r } = await llamarFuncion("avisar", {});
       return !!(r && r.enviado);
+    },
+    // Menciones, respuestas y el correo de prueba (17-avisos-por-correo.sql).
+    async avisar(cuerpo){
+      const { r } = await llamarFuncion("avisar", cuerpo);
+      return r || {};
     },
 
     // ---- Leer el Google Calendar del equipo (docs/AUDITORIA.md, U5) ----
@@ -8762,8 +8768,22 @@ function savePrefs(patch){
         { m: err.code || err.message }) });
     });
 }
+// Quién puede recibir avisos por correo (Administración → Correos). Sin
+// nada guardado, solo el admin fijo: así lo pidió el usuario el 7/10/2026.
+// La base decide lo mismo (puede_recibir_correos, 17-avisos-por-correo.sql);
+// esto es solo para mostrar o no la tarjeta en Mis preferencias.
+let correosConfig = null;
+function puedoRecibirCorreos(email){
+  const yo = email || (state.auth.user && state.auth.user.email);
+  if(!yo) return false;
+  if(yo === ADMIN_EMAIL) return true;
+  const c = correosConfig || {};
+  if(!state.auth.allowlisted) return false;
+  return c.quienes === "todos" || (c.quienes === "elegidos" && (c.elegidos || []).includes(yo));
+}
 function applyPreferencesConfig(cfg){
   configVersion++;
+  correosConfig = (cfg && cfg.correos) || null;
   applyActivityTypesConfig(cfg && cfg.activityTypes);
   applyExtraCitiesConfig(cfg && cfg.extraCities);
   applyCalendarIdConfig(cfg && cfg.calendarId);
@@ -9068,10 +9088,25 @@ async function createPost(data){
   // Quién cargó qué lo anota la base sola en el registro de actividad
   // (registrar_posteo, en supabase/04-funciones.sql), igual que las
   // ediciones, las cancelaciones y los borrados.
-  return store.posts.create(data);
+  const id = await store.posts.create(data);
+  if(id && (data.mentions || []).length) avisarPorCorreo("posteo", id);
+  return id;
 }
 async function createReply(postId, data){
-  await store.replies.create(postId, data);
+  const id = await store.replies.create(postId, data);
+  // Las del sistema (📅 Google Calendar) no avisan a nadie.
+  const dueno = (getPostById(postId) || {}).authorEmail;
+  if(id && !data.system && data.authorEmail && ((data.mentions || []).length || (dueno && dueno !== data.authorEmail)))
+    avisarPorCorreo("respuesta", id);
+  return id;
+}
+// Avisos por correo al momento (17-avisos-por-correo.sql): la función
+// `avisar` le pregunta a la base a quién le corresponde (mencionados y el
+// autor del posteo, si pueden recibir correos y lo eligieron así). Sin
+// esperar: un correo que no sale no frena la publicación.
+function avisarPorCorreo(tipo, id){
+  if(!store || !store.avisar) return;
+  store.avisar({ tipo, id }).catch(err=> console.warn("No se pudo mandar el aviso por correo:", err && err.message));
 }
 async function updatePostDoc(postId, patch){
   await store.posts.update(postId, patch);
@@ -10233,6 +10268,7 @@ function render(){
   const selEnd = active && typeof active.selectionEnd === "number" ? active.selectionEnd : null;
   doRender();
   montarBotonDeGoogle();
+  abrirEnlaceDeCorreo();
   // Igual que el foco: doRender() reconstruye la fila del hito de cero, así
   // que el selector de fecha que estaba abierto (si hay uno) perdió su
   // clase .open y su popup quedó vacío/oculto — hay que reabrirlo contra el
@@ -11577,6 +11613,7 @@ function adminMenuItems(){
     { grupo:t("Sistema","System","Sistema","מערכת"), items:[
       { key:"calendar", view:"preferencias", sub:"calendar", label:"Google Calendar" },
       { key:"copia", view:"preferencias", sub:"copia", label:t("Copia de seguridad","Backup","Cópia de segurança","גיבוי") },
+      { key:"correos", view:"preferencias", sub:"correos", label:t("Correos","Emails","E-mails","מיילים") },
     ] },
   ];
 }
@@ -13158,6 +13195,7 @@ function renderPreferenciasView(){
     : sec==="calendar" ? renderCalendarSection()
     : sec==="adjuntos" ? renderAdjuntosSection()
     : sec==="copia" ? renderCopiaSection()
+    : sec==="correos" ? renderCorreosSection()
     : sec==="avanzado" ? renderAvanzadoSection()
     : renderZonasSection();
   // Sin la fila de chips de antes: el menú de Administración (ver
@@ -14718,6 +14756,23 @@ function getPostById(id){ return state.posts.find(p=>p.id===id); }
 // posteo con su hilo ya desplegado) desde el desplegable de la
 // campanita — limpia filtros que pudieran estar tapándolo y resalta la
 // tarjeta un momento para que sea fácil de encontrar en el Feed.
+// Los botones de los correos («Ver y responder») traen ?post=…&r=…: apenas
+// están los posteos, se va a ese, como desde la campanita, y se limpia la
+// dirección (si no, recargar volvía a saltar ahí). Si el posteo no está
+// (borrado, o quien abre no lo puede ver), no pasa nada.
+let enlaceDeCorreo = (()=>{
+  try{
+    const q = new URLSearchParams(location.search);
+    return q.get("post") ? { post: q.get("post"), r: q.get("r") || null } : null;
+  }catch(e){ return null; }
+})();
+function abrirEnlaceDeCorreo(){
+  if(!enlaceDeCorreo || !state.loaded || !state.auth.allowlisted) return;
+  const { post, r } = enlaceDeCorreo;
+  enlaceDeCorreo = null;
+  try{ history.replaceState(null, "", location.pathname + location.hash); }catch(e){}
+  if(getPostById(post)) setTimeout(()=> gotoMention(post, r), 0);
+}
 function gotoMention(postId, replyId){
   if(String(postId).includes("#m:")) return openProjectMilestone(postId);
   state.view = "feed";
@@ -16520,6 +16575,7 @@ function renderConfigNotificacionesSection(){
   const zones = Object.values(ZONES).map(z=>({ key:z.key, label:z.label, icon:"" }));
   const sel = p.notifyTypes || [], selZ = p.notifyZones || [];
   return `
+      ${puedoRecibirCorreos() ? renderAvisosPorCorreo(p) : ""}
       <div class="settings-card">
         ${prefRow("⏰", t("Avisarme","Notify me","Avisar-me","להתריע"),
           t("Un evento aparece en la campanita cuando falta esto o menos para que empiece.","An event shows up in the bell when it's this close to starting.","Um evento aparece no sino quando falta isso ou menos para começar.","אירוע מופיע בפעמון כשנותר זה או פחות עד תחילתו."),
@@ -16546,6 +16602,98 @@ function renderConfigNotificacionesSection(){
           ${prefChips("notifyZones", zones, selZ)}
         </div>
       </div>`;
+}
+
+// Avisos por correo (17-avisos-por-correo.sql). Los valores de fábrica son
+// los mismos que usa la base (prefs_de_correo): prendido, una vez por día
+// a las 8, menciones y respuestas (y pedidos de acceso, para los admins).
+const TEMAS_DE_CORREO = () => [
+  { key:"menciones", label:t("@ Cuando me mencionan","@ When I'm mentioned","@ Quando me mencionam","@ כשמזכירים אותי") },
+  { key:"respuestas", label:"💬 " + t("Respuestas a mis posteos","Replies to my posts","Respostas às minhas postagens","תגובות לפוסטים שלי") },
+  { key:"nuevos", label:"🆕 " + t("Actividades nuevas del equipo","New team activities","Atividades novas da equipe","פעילויות חדשות של הצוות") },
+  { key:"proximos", label:"⏰ " + t("Eventos que empiezan pronto","Events starting soon","Eventos que começam em breve","אירועים שמתחילים בקרוב") },
+  ...(isAdmin() ? [{ key:"pedidos", label:"🔑 " + t("Pedidos de acceso","Access requests","Pedidos de acesso","בקשות גישה") }] : []),
+];
+function temasDeCorreo(p){
+  return Array.isArray(p.emailWhat) ? p.emailWhat : (isAdmin() ? ["menciones","respuestas","pedidos"] : ["menciones","respuestas"]);
+}
+function renderAvisosPorCorreo(p){
+  const on = p.emailOn !== false;
+  const cuando = ["instant","daily","weekly"].includes(p.emailWhen) ? p.emailWhen : "daily";
+  const hora = Number.isInteger(p.emailHour) ? p.emailHour : 8;
+  const dia = Number.isInteger(p.emailDay) ? p.emailDay : 1;
+  const temas = temasDeCorreo(p);
+  const dias = [t("lunes","Monday","segunda","שני"), t("martes","Tuesday","terça","שלישי"), t("miércoles","Wednesday","quarta","רביעי"), t("jueves","Thursday","quinta","חמישי"), t("viernes","Friday","sexta","שישי"), t("sábado","Saturday","sábado","שבת"), t("domingo","Sunday","domingo","ראשון")];
+  const opcionesCuando = [
+    ["instant", t("Al momento","Right away","Na hora","מיד")],
+    ["daily", t("Una vez por día","Once a day","Uma vez por dia","פעם ביום")],
+    ["weekly", t("Una vez por semana","Once a week","Uma vez por semana","פעם בשבוע")],
+  ];
+  const horaSel = `<select data-pref="emailHour" data-pref-num="1" aria-label="${esc(t("Hora","Time","Hora","שעה"))}">${Array.from({ length:24 }, (_, h) => `<option value="${h}" ${h===hora?"selected":""}>${h}:00</option>`).join("")}</select>`;
+  const diaSel = `<select data-pref="emailDay" data-pref-num="1" aria-label="${esc(t("Día","Day","Dia","יום"))}">${dias.map((d, i) => `<option value="${i+1}" ${i+1===dia?"selected":""}>${esc(d)}</option>`).join("")}</select>`;
+  const prueba = correoPrueba;
+  return `<div class="settings-card avisos-correo" style="margin-bottom:16px;">
+      ${prefRow("✉️", t("Avisos por correo","Email notifications","Avisos por e-mail","התראות במייל"),
+        t("Te llegan a {e}, aunque no tengas la app abierta.","They reach {e}, even with the app closed.","Chegam a {e}, mesmo com o app fechado.","הן מגיעות אל {e}, גם כשהאפליקציה סגורה.",{ e: state.auth.user.email }),
+        prefSwitch("emailOn", on))}
+      ${on ? `
+      <div class="setting-row" style="display:block;">
+        <div class="setting-label">${t("Cuándo","When","Quando","מתי")}</div>
+        <div class="setting-sub" style="margin-bottom:10px;">${t("Al momento, o todo junto en un solo correo.","Right away, or all together in one email.","Na hora, ou tudo junto num só e-mail.","מיד, או הכול יחד במייל אחד.")}</div>
+        <div class="um-segmented" role="group" style="display:inline-flex;flex-wrap:wrap;">${opcionesCuando.map(([v, l]) => `<button type="button" class="${cuando===v?"active":""}" data-action="correo-cuando" data-key="${v}" aria-pressed="${cuando===v}">${esc(l)}</button>`).join("")}</div>
+        <div class="setting-sub" style="margin-top:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">${
+          cuando === "instant"
+            ? t("Las actividades nuevas y los eventos próximos llegan juntos, una vez por día, a las {h}.","New activities and upcoming events come together once a day, at {h}.","As atividades novas e os eventos próximos chegam juntos, uma vez por dia, às {h}.","פעילויות חדשות ואירועים קרובים מגיעים יחד, פעם ביום, בשעה {h}.",{ h: horaSel })
+            : cuando === "weekly"
+              ? t("Los {d} a las {h}. Si no pasó nada, no llega ningún correo.","On {d} at {h}. If nothing happened, no email is sent.","Às {d} às {h}. Se nada aconteceu, não chega nenhum e-mail.","בימי {d} בשעה {h}. אם לא קרה כלום, לא נשלח מייל.",{ d: diaSel, h: horaSel })
+              : t("A las {h}. Si no pasó nada, no llega ningún correo.","At {h}. If nothing happened, no email is sent.","Às {h}. Se nada aconteceu, não chega nenhum e-mail.","בשעה {h}. אם לא קרה כלום, לא נשלח מייל.",{ h: horaSel })
+        } <span>(${t("hora de Argentina","Argentina time","hora da Argentina","שעון ארגנטינה")})</span></div>
+      </div>
+      <div class="setting-row" style="display:block;">
+        <div class="setting-label">${t("De qué","About what","Sobre o quê","על מה")}</div>
+        <div class="setting-sub" style="margin-bottom:10px;">${t("Marcá lo que te interesa.","Pick what you care about.","Marque o que te interessa.","סמנו מה מעניין אתכם.")}</div>
+        <div class="pref-chips">${TEMAS_DE_CORREO().map(it => `<button type="button" class="chip-toggle${temas.includes(it.key)?" active":""}" data-action="correo-tema" data-key="${it.key}" aria-pressed="${temas.includes(it.key)}">${esc(it.label)}</button>`).join("")}</div>
+      </div>
+      <div class="setting-row" style="display:block;">
+        <button type="button" class="btn-secondary" data-action="correo-prueba" ${prueba.mandando ? "disabled" : ""}>${prueba.mandando ? t("Mandando…","Sending…","Enviando…","שולח…") : t("Mandarme un correo de prueba","Send me a test email","Enviar-me um e-mail de teste","שלחו לי מייל ניסיון")}</button>
+        ${prueba.msg ? `<span class="setting-sub" role="status" style="margin-inline-start:10px;">${esc(prueba.msg)}</span>` : ""}
+      </div>` : ""}
+    </div>`;
+}
+const correoPrueba = { mandando:false, msg:"" };
+
+// Administración → Correos: quién puede recibir avisos por correo.
+function renderCorreosSection(){
+  const c = correosConfig || {};
+  const quienes = ["todos","elegidos"].includes(c.quienes) ? c.quienes : "admin";
+  const elegidos = c.elegidos || [];
+  const opciones = [
+    ["admin", t("Solo yo","Only me","Só eu","רק אני"), t("Solo le llegan a {e}.","They only reach {e}.","Só chegam a {e}.","מגיעות רק אל {e}.",{ e: ADMIN_EMAIL })],
+    ["todos", t("Todo el equipo","The whole team","Toda a equipe","כל הצוות"), t("A cada integrante, según lo que elija en Mis preferencias.","To every member, as each one picks in My preferences.","A cada integrante, conforme escolher em Minhas preferências.","לכל חבר/ת צוות, לפי מה שבחר/ה בהעדפות.")],
+    ["elegidos", t("Elegir personas","Pick people","Escolher pessoas","לבחור אנשים"), t("Solo a quienes marques abajo (y a vos).","Only to the people you check below (and you).","Só a quem você marcar abaixo (e a você).","רק למי שתסמנו למטה (ולכם).")],
+  ];
+  const personas = (state.roster || []).filter(m => m.email && m.email !== ADMIN_EMAIL).sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email));
+  return `<div class="settings-card">
+      <div class="setting-row" style="display:block;">
+        <div class="setting-label">✉️ ${t("Quién puede recibir avisos por correo","Who can get email notifications","Quem pode receber avisos por e-mail","מי יכול לקבל התראות במייל")}</div>
+        <div class="setting-sub" style="margin-bottom:12px;">${t("Menciones, respuestas, resúmenes y pedidos de acceso. Cada persona habilitada elige después qué le llega y cuándo, en Mis preferencias → Notificaciones. Salen de info@team-latam.com.","Mentions, replies, digests and access requests. Each enabled person then picks what and when, in My preferences → Notifications. They're sent from info@team-latam.com.","Menções, respostas, resumos e pedidos de acesso. Cada pessoa habilitada escolhe depois o que e quando, em Minhas preferências → Notificações. Saem de info@team-latam.com.","אזכורים, תגובות, סיכומים ובקשות גישה. כל מי שמורשה בוחר/ת אחר כך מה ומתי, בהעדפות → התראות. נשלחות מ-info@team-latam.com.")}</div>
+        <div role="radiogroup" class="correos-quienes" style="display:grid;gap:8px;">${opciones.map(([v, l, sub]) => `
+          <button type="button" role="radio" aria-checked="${quienes===v}" class="chip-toggle${quienes===v?" active":""}" data-action="correos-quienes" data-key="${v}" style="text-align:start;justify-content:flex-start;padding:10px 14px;border-radius:12px;">
+            <b>${esc(l)}</b>&nbsp;·&nbsp;<span style="font-weight:400;">${esc(sub)}</span></button>`).join("")}</div>
+      </div>
+      ${quienes === "elegidos" ? `<div class="setting-row" style="display:block;">
+        <div class="setting-label">${t("Personas","People","Pessoas","אנשים")}</div>
+        <div class="pref-chips" style="margin-top:8px;">${personas.map(m => `<button type="button" class="chip-toggle${elegidos.includes(m.email)?" active":""}" data-action="correos-elegir" data-email="${esc(m.email)}" aria-pressed="${elegidos.includes(m.email)}">${esc(m.name || m.email)}</button>`).join("") || `<span class="setting-sub">${t("Todavía no hay nadie más en el equipo.","There's nobody else on the team yet.","Ainda não há mais ninguém na equipe.","עדיין אין עוד אנשים בצוות.")}</span>`}</div>
+      </div>` : ""}
+    </div>`;
+}
+function guardarCorreosConfig(patch){
+  const nuevo = { quienes: "admin", elegidos: [], ...(correosConfig || {}), ...patch };
+  correosConfig = nuevo; render();
+  store.config.merge("preferences", { correos: nuevo }).catch(err=>{
+    console.error("No se pudo guardar quién recibe correos:", err);
+    appAlert(t("No se pudo guardar: {m}","Couldn't save: {m}","Não foi possível salvar: {m}","{m} :לא ניתן היה לשמור",{ m: err.message }));
+  });
 }
 
 /* ======================================================================
@@ -21133,6 +21281,34 @@ document.addEventListener("click", async e=>{
     const key = el.dataset.key, prefKey = el.dataset.pref;
     const cur = prefs()[prefKey] || [];
     savePrefs({ [prefKey]: cur.includes(key) ? cur.filter(k=>k!==key) : [...cur, key] });
+  },
+    "correo-cuando": async (el, e, action, postId) => {
+    savePrefs({ emailWhen: el.dataset.key });
+  },
+    "correo-tema": async (el, e, action, postId) => {
+    const cur = temasDeCorreo(prefs()), k = el.dataset.key;
+    savePrefs({ emailWhat: cur.includes(k) ? cur.filter(x=>x!==k) : [...cur, k] });
+  },
+    "correo-prueba": async (el, e, action, postId) => {
+    if(correoPrueba.mandando) return;
+    correoPrueba.mandando = true; correoPrueba.msg = ""; render();
+    try{
+      const r = await store.avisar({ tipo:"prueba" });
+      correoPrueba.msg = r.enviado
+        ? t("Listo: revisá tu correo (y Spam, la primera vez).","Done: check your inbox (and Spam, the first time).","Pronto: confira seu e-mail (e o Spam, da primeira vez).","בוצע: בדקו את תיבת הדואר (וגם ספאם, בפעם הראשונה).")
+        : t("No salió: se puede pedir uno cada 10 minutos.","Not sent: you can ask for one every 10 minutes.","Não saiu: dá para pedir um a cada 10 minutos.","לא נשלח: אפשר לבקש אחד כל 10 דקות.");
+    }catch(err){
+      correoPrueba.msg = t("No se pudo mandar ({m}).","Couldn't send it ({m}).","Não foi possível enviar ({m}).","({m}) לא ניתן היה לשלוח.",{ m: err.message });
+    }finally{ correoPrueba.mandando = false; render(); }
+  },
+    "correos-quienes": async (el, e, action, postId) => {
+    if(!isAdmin()) return;
+    guardarCorreosConfig({ quienes: el.dataset.key });
+  },
+    "correos-elegir": async (el, e, action, postId) => {
+    if(!isAdmin()) return;
+    const cur = (correosConfig && correosConfig.elegidos) || [], m = el.dataset.email;
+    guardarCorreosConfig({ elegidos: cur.includes(m) ? cur.filter(x=>x!==m) : [...cur, m] });
   },
     "config-section": async (el, e, action, postId) => {
     state.configSection = el.dataset.key; render();
