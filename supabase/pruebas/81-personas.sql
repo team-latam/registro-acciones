@@ -6,7 +6,7 @@ truncate lab.resultados;
 truncate public.posts, public.replies, public.members, public.personas, public.audit_log cascade;
 insert into public.members(email, name, nickname, role) values
   ('benny@team-latam.com', 'Benny', 'benny', 'admin'), ('ana@x.com', 'Ana Pérez', 'ana', 'member'),
-  ('dario@x.com', 'Darío Gómez', 'dario', 'member');
+  ('dario@x.com', 'Darío Gómez', 'dario', 'member'), ('obs@x.com', 'Obs', 'obs', 'observer');
 insert into public.posts(id, title, content, date, start_date, end_date, activity_type, author_name, author_email, participants) values
   ('p1', 'Swimmers Online', '', '2026-10-07', '2026-10-07', '2026-10-07', 'otro', 'Google Calendar', '',
    '[{"name":"Dario"},{"name":"Guypo"},{"email":"ana@x.com","name":"Ana Pérez"}]'),
@@ -35,10 +35,10 @@ select 'y nada de eso quedó en el registro de actividad', true, (select count(*
 
 -- ---------- Crear y corregir ----------
 select lab.probar_valor('una integrante crea una persona: queda firmada por ella, con el correo en minúsculas', lab.como('ana@x.com'),
-  $q$insert into public.personas(id, name, email) values ('rabino', 'Rabino Levy', ' Levy@Shul.org ')$q$,
-  $q$select created_by || ' ' || email from public.personas where id = 'rabino'$q$, 'ana@x.com levy@shul.org');
+  $q$insert into public.personas(id, name, email) values ('rabino', 'Rabino Levy', ' Levy@X.com ')$q$,
+  $q$select created_by || ' ' || email from public.personas where id = 'rabino'$q$, 'ana@x.com levy@x.com');
 -- (lab.probar deshace lo que hace: la ficha se deja creada acá, como la dejaría Ana)
-insert into public.personas(id, name, email, created_by) values ('rabino', 'Rabino Levy', 'levy@shul.org', 'ana@x.com');
+insert into public.personas(id, name, email, created_by) values ('rabino', 'Rabino Levy', 'levy@x.com', 'ana@x.com');
 select lab.probar('un observador no', lab.como('obs@x.com'),
   $q$insert into public.personas(id, name) values ('obs', 'Alguien')$q$, false);
 select lab.probar('sin sesión, nadie', '{"role":"anon"}'::jsonb,
@@ -62,7 +62,7 @@ select lab.probar('con un id de persona con otra forma, no', lab.como('ana@x.com
 -- ---------- Unir ----------
 -- Dos fichas más, cargadas a mano con el nombre partido: «Dario» (de los
 -- sueltos) y «Dario G.».
-insert into public.personas(id, name, email, created_by) values ('dariog', 'Dario G.', 'dario.g@gmail.com', 'ana@x.com');
+insert into public.personas(id, name, email, created_by) values ('dariog', 'Dario G.', 'dario.g@x.com', 'ana@x.com');
 update public.posts set participants = participants || '[{"persona":"dariog","name":"Dario G."}]' where id = 'p2';
 select lab.probar('unir dos fichas lo hace un admin, no una integrante', lab.como('ana@x.com'),
   $q$select public.unir_personas('dariog', (select id from public.personas where name = 'Dario'))$q$, false);
@@ -72,7 +72,7 @@ select lab.probar_valor('unir: los eventos pasan a la que queda, sin duplicarla,
   $q$select (select count(*) from public.personas where id = 'dariog')::text || ' ' ||
           (select email from public.personas where name = 'Dario') || ' ' ||
           (select count(*) from public.posts p, jsonb_array_elements(p.participants) e where p.id = 'p2' and e ? 'persona')::text$q$,
-  '0 dario.g@gmail.com 1');
+  '0 dario.g@x.com 1');
 truncate public.audit_log;
 
 -- ---------- Vincular a una cuenta ----------
@@ -89,6 +89,31 @@ select lab.probar_valor('vincular: todos sus eventos pasan a la cuenta (también
 insert into lab.resultados(nombre, esperado, obtenido, detalle)
 select 'unir y vincular no son ediciones: nada en el registro de actividad, y la fecha de edición sigue vacía', true,
   (select count(*) from public.audit_log) = 0 and not exists (select 1 from public.posts where last_edited_at is not null), '';
+
+-- ---------- Lo que se ajustó el 7/10/2026 (la auditoría) ----------
+-- El orden de los participantes y un mismo correo con otras mayúsculas.
+update public.posts set participants = participants || '[{"email":"Dario@X.com","name":"Darío"}]' where id = 'p2';
+select lab.probar_valor('vincular: el correo con otras mayúsculas no deja a la persona dos veces, y el orden se conserva',
+  lab.como('benny@team-latam.com'),
+  $q$select public.vincular_persona((select id from public.personas where name = 'Dario'), 'dario@x.com')$q$,
+  $q$select (select count(*) from public.posts p, jsonb_array_elements(p.participants) e where p.id = 'p2' and lower(e ->> 'email') = 'dario@x.com')::text || ' ' ||
+          (select participants -> 0 ->> 'email' from public.posts where id = 'p1')$q$,
+  '1 dario@x.com');
+update public.posts set participants = participants - 2 where id = 'p2';
+-- Una ficha que figura en un evento (aunque esté cancelado) no se borra.
+insert into public.personas(id, name, created_by) values ('deobs', 'De Obs', 'obs@x.com');
+update public.posts set participants = '[{"persona":"rabino","name":"Rabino Levy"}]', cancelled = true where id = 'p3';
+select lab.probar('borrar una ficha que figura en un evento cancelado: no, ni siendo admin', lab.como('benny@team-latam.com'),
+  $q$delete from public.personas where id = 'rabino'$q$, false);
+update public.posts set participants = '[]', cancelled = false where id = 'p3';
+select lab.probar('quien la creó y ahora es observador ya no la corrige', lab.como('obs@x.com'),
+  $q$update public.personas set note = 'x' where id = 'deobs'$q$, false);
+select lab.probar('ni la borra', lab.como('obs@x.com'),
+  $q$delete from public.personas where id = 'deobs'$q$, false);
+insert into lab.resultados(nombre, esperado, obtenido, detalle)
+select 'sin tildes también en portugués (João = Joao, Conceição = Conceicao)', true,
+  public.sin_tildes('João Conceição') = 'Joao Conceicao', public.sin_tildes('João Conceição');
+
 select lab.probar('borrar una ficha: quien la creó o un admin', lab.como('ana@x.com'),
   $q$delete from public.personas where id = 'rabino'$q$, true);
 
