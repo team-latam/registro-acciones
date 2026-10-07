@@ -60,6 +60,8 @@ function armar(){
     const renderFatalError = m => { reg.fatal = m; };
     const logAudit = tipo => { reg.auditoria.push(tipo); };
     const ensureAdminInRoster = ()=>{};
+    // El correo al admin (I10): acá solo se cuenta cuándo se pide.
+    const avisarAlAdminUnaVez = ()=>{ reg.avisos = (reg.avisos || 0) + 1; };
     const anotar = n => ()=>{ reg.suscripciones.push(n); return ()=>{}; };
     const subscribeData = anotar("posts"), subscribeAccessRequests = anotar("solicitudes"),
           subscribeAuditLog = anotar("auditoria"), subscribeRoster = anotar("padron"),
@@ -427,6 +429,25 @@ eq("si le revocan el acceso, su pedido vuelve a la cola solo",
   await a.entrar({ uid:"u0", email:"benny@team-latam.com", displayName:"Benny", photoURL:"" });
   eq("el admin fijo entra derecho, sin reloj ni espera", a.state.auth.status, "admin");
   eq("así que no se le arma ninguno", a.reg.relojes.filter(r=>r&&r.vivo).length, 0);
+}
+
+/* ---------- El correo al admin (I10) ---------- */
+{
+  const a = armar();
+  a.entrar({ uid:"u9", email:"nueva@x.com", displayName:"Nueva" });
+  a.padron(null);
+  a.solicitud({ status:"pending" });
+  eq("con el pedido pendiente y sin aviso salido, se pide el correo al admin", a.reg.avisos, 1);
+  const b = armar();
+  b.entrar({ uid:"u9", email:"nueva@x.com", displayName:"Nueva" });
+  b.padron(null);
+  b.solicitud({ status:"pending", avisadoAt:"2026-10-07T10:00:00Z" });
+  eq("con el aviso ya salido, no (y la pantalla lo sabe)", [b.reg.avisos || 0, b.state.auth.avisadoAt], [0, "2026-10-07T10:00:00Z"]);
+  const c = armar();
+  c.entrar({ uid:"u9", email:"nueva@x.com", displayName:"Nueva" });
+  c.padron(null);
+  c.solicitud({ status:"rejected" });
+  eq("con el pedido rechazado, tampoco", c.reg.avisos || 0, 0);
 }
 
 console.log(`\n${pass} pasaron, ${fail} fallaron`);
