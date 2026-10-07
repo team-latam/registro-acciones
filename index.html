@@ -181,6 +181,36 @@
      empujó la página de costado (Reportes y «Pasar todo lo suyo a otra
      cuenta»). */
   select{ max-width:100%; min-width:0; text-overflow:ellipsis; }
+  /* La lista abierta de los selectores, con la cara de la app (pedido del
+     usuario el 7/10/2026: la ventana gris del sistema, larga y cuadrada, no
+     le gustaba). Chrome y Edge (desde la 135, en la compu y en Android)
+     dejan dibujarla: una tarjeta redondeada con sombra, la opción elegida
+     con ✓, y si no entra se desliza adentro; si abajo no hay lugar se abre
+     hacia arriba sola. En Safari, Firefox y el iPhone queda la del
+     sistema, que anda igual. Cómo se ve CERRADO lo sigue decidiendo cada
+     lugar (la píldora de Preferencias, el borde fino de Reportes…): acá
+     solo lo que todos comparten. pruebas/selectores_test.mjs abre cada
+     uno, en compu y en celular, y comprueba que entre en la pantalla. */
+  @supports (appearance: base-select){
+    select, ::picker(select){ appearance:base-select; }
+    select{ display:inline-flex; align-items:center; gap:6px; overflow:hidden; white-space:nowrap; cursor:pointer; }
+    select::picker-icon{ color:var(--celeste-dark); font-size:.8em; transition:rotate .2s; }
+    select:open::picker-icon{ rotate:180deg; }
+    ::picker(select){
+      border:1px solid var(--border); border-radius:16px; background:var(--card); color:var(--text);
+      box-shadow:0 12px 32px rgba(13,59,62,.16); padding:6px; margin-block:6px;
+      max-height:min(300px, 55vh); overflow:auto; min-width:anchor-size(width);
+    }
+    option{ border-radius:10px; padding:9px 12px; font-size:13.5px; font-weight:600; color:var(--text); gap:8px; white-space:normal; }
+    option:hover, option:focus-visible{ background:var(--celeste-soft); outline:none; }
+    option:checked{ background:var(--chip-bg); font-weight:800; color:var(--ink-strong); }
+    option::checkmark{ color:var(--celeste-dark); }
+    option:disabled{ opacity:.5; }
+    /* Los chiquitos (el mes y el año del calendario, la zona de un país):
+       sin lugar para la flecha grande. */
+    .dp-month-select, .dp-year-select, .zc-select{ gap:2px; }
+    .dp-month-select::picker-icon, .dp-year-select::picker-icon, .zc-select::picker-icon{ font-size:.7em; }
+  }
   a{ color:var(--celeste-dark); }
   #app{ min-height:100vh; display:flex; flex-direction:column; }
 
@@ -1023,6 +1053,16 @@
     .setting-control-wide{ width:100%; justify-content:flex-start; }
   }
   .pref-chips{ display:flex; flex-wrap:wrap; gap:7px; }
+  /* Avisos por correo: el día (siete redondos) y la hora (cinco momentos). */
+  .correo-subtitulo{ margin:16px 0 8px; font-size:13px; font-weight:700; color:var(--text); }
+  .correo-subtitulo span{ font-weight:400; color:var(--text-muted); }
+  .correo-dias{ display:flex; gap:6px; flex-wrap:wrap; }
+  .correo-dia{ width:38px; height:38px; border-radius:50%; border:1.5px solid var(--border); background:var(--card); color:var(--text);
+    font:inherit; font-weight:800; font-size:13px; cursor:pointer; flex:none; }
+  .correo-dia:hover{ border-color:var(--celeste); }
+  .correo-dia.active{ background:var(--ink); border-color:var(--ink); color:#fff; }
+  html[data-theme="dark"] .correo-dia.active{ background:var(--celeste); border-color:var(--celeste); color:#082a2c; }
+  .correo-hora-nombre{ font-weight:500; opacity:.8; }
   /* Encabezados que separan las tres fuentes de la campanita (lo que se
      viene, respuestas, menciones): sin esto era una lista sola y no se
      entendía por qué aparecía cada cosa. */
@@ -16620,7 +16660,7 @@ function temasDeCorreo(p){
 function renderAvisosPorCorreo(p){
   const on = p.emailOn !== false;
   const cuando = ["instant","daily","weekly"].includes(p.emailWhen) ? p.emailWhen : "daily";
-  const hora = Number.isInteger(p.emailHour) ? p.emailHour : 8;
+  const hora = Number.isInteger(p.emailHour) ? p.emailHour : 9;
   const dia = Number.isInteger(p.emailDay) ? p.emailDay : 1;
   const temas = temasDeCorreo(p);
   const dias = [t("lunes","Monday","segunda","שני"), t("martes","Tuesday","terça","שלישי"), t("miércoles","Wednesday","quarta","רביעי"), t("jueves","Thursday","quinta","חמישי"), t("viernes","Friday","sexta","שישי"), t("sábado","Saturday","sábado","שבת"), t("domingo","Sunday","domingo","ראשון")];
@@ -16629,8 +16669,13 @@ function renderAvisosPorCorreo(p){
     ["daily", t("Una vez por día","Once a day","Uma vez por dia","פעם ביום")],
     ["weekly", t("Una vez por semana","Once a week","Uma vez por semana","פעם בשבוע")],
   ];
-  const horaSel = `<select data-pref="emailHour" data-pref-num="1" aria-label="${esc(t("Hora","Time","Hora","שעה"))}">${Array.from({ length:24 }, (_, h) => `<option value="${h}" ${h===hora?"selected":""}>${h}:00</option>`).join("")}</select>`;
-  const diaSel = `<select data-pref="emailDay" data-pref-num="1" aria-label="${esc(t("Día","Day","Dia","יום"))}">${dias.map((d, i) => `<option value="${i+1}" ${i+1===dia?"selected":""}>${esc(d)}</option>`).join("")}</select>`;
+  // La hora y el día con botones, no con una lista de 24 (pedido del
+  // usuario el 7/10/2026). Si quedó guardada otra hora, se muestra también.
+  const horas = HORAS_DE_CORREO();
+  if(!horas.some(h => h.h === hora)) horas.push({ h: hora, icono:"🕐", nombre:"" });
+  horas.sort((a, b) => a.h - b.h);
+  const horaBotones = `<div class="pref-chips correo-horas" role="radiogroup" aria-label="${esc(t("A qué hora","At what time","Em que horário","באיזו שעה"))}">${horas.map(x => `<button type="button" role="radio" aria-checked="${x.h===hora}" class="chip-toggle${x.h===hora?" active":""}" data-action="correo-hora" data-key="${x.h}">${x.icono} <b>${x.h}:00</b>${x.nombre ? ` <span class="correo-hora-nombre">· ${esc(x.nombre)}</span>` : ""}</button>`).join("")}</div>`;
+  const diaBotones = `<div class="correo-dias" role="radiogroup" aria-label="${esc(t("Qué día","Which day","Que dia","איזה יום"))}">${dias.map((d, i) => `<button type="button" role="radio" aria-checked="${i+1===dia}" class="correo-dia${i+1===dia?" active":""}" data-action="correo-dia" data-key="${i+1}" title="${esc(d)}" aria-label="${esc(d)}">${esc(d.charAt(0).toUpperCase() === "M" && i === 2 ? "X" : d.charAt(0).toUpperCase())}</button>`).join("")}</div>`;
   const prueba = correoPrueba;
   return `<div class="settings-card avisos-correo" style="margin-bottom:16px;">
       ${prefRow("✉️", t("Avisos por correo","Email notifications","Avisos por e-mail","התראות במייל"),
@@ -16641,13 +16686,12 @@ function renderAvisosPorCorreo(p){
         <div class="setting-label">${t("Cuándo","When","Quando","מתי")}</div>
         <div class="setting-sub" style="margin-bottom:10px;">${t("Al momento, o todo junto en un solo correo.","Right away, or all together in one email.","Na hora, ou tudo junto num só e-mail.","מיד, או הכול יחד במייל אחד.")}</div>
         <div class="um-segmented" role="group" style="display:inline-flex;flex-wrap:wrap;">${opcionesCuando.map(([v, l]) => `<button type="button" class="${cuando===v?"active":""}" data-action="correo-cuando" data-key="${v}" aria-pressed="${cuando===v}">${esc(l)}</button>`).join("")}</div>
-        <div class="setting-sub" style="margin-top:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">${
-          cuando === "instant"
-            ? t("Las actividades nuevas y los eventos próximos llegan juntos, una vez por día, a las {h}.","New activities and upcoming events come together once a day, at {h}.","As atividades novas e os eventos próximos chegam juntos, uma vez por dia, às {h}.","פעילויות חדשות ואירועים קרובים מגיעים יחד, פעם ביום, בשעה {h}.",{ h: horaSel })
-            : cuando === "weekly"
-              ? t("Los {d} a las {h}. Si no pasó nada, no llega ningún correo.","On {d} at {h}. If nothing happened, no email is sent.","Às {d} às {h}. Se nada aconteceu, não chega nenhum e-mail.","בימי {d} בשעה {h}. אם לא קרה כלום, לא נשלח מייל.",{ d: diaSel, h: horaSel })
-              : t("A las {h}. Si no pasó nada, no llega ningún correo.","At {h}. If nothing happened, no email is sent.","Às {h}. Se nada aconteceu, não chega nenhum e-mail.","בשעה {h}. אם לא קרה כלום, לא נשלח מייל.",{ h: horaSel })
-        } <span>(${t("hora de Argentina","Argentina time","hora da Argentina","שעון ארגנטינה")})</span></div>
+        ${cuando === "weekly" ? `<div class="correo-subtitulo">${t("Qué día","Which day","Que dia","איזה יום")}</div>${diaBotones}` : ""}
+        <div class="correo-subtitulo">${cuando === "instant"
+          ? t("Lo que no tiene momento (actividades nuevas, eventos próximos), a qué hora","The rest (new activities, upcoming events), at what time","O resto (atividades novas, eventos próximos), em que horário","השאר (פעילויות חדשות, אירועים קרובים), באיזו שעה")
+          : t("A qué hora","At what time","Em que horário","באיזו שעה")} <span>(${t("de Argentina","Argentina time","da Argentina","שעון ארגנטינה")})</span></div>
+        ${horaBotones}
+        <div class="setting-sub" style="margin-top:10px;">${t("Si no pasó nada, no llega ningún correo.","If nothing happened, no email is sent.","Se nada aconteceu, não chega nenhum e-mail.","אם לא קרה כלום, לא נשלח מייל.")}</div>
       </div>
       <div class="setting-row" style="display:block;">
         <div class="setting-label">${t("De qué","About what","Sobre o quê","על מה")}</div>
@@ -16661,6 +16705,13 @@ function renderAvisosPorCorreo(p){
     </div>`;
 }
 const correoPrueba = { mandando:false, msg:"" };
+const HORAS_DE_CORREO = () => [
+  { h:7, icono:"🌅", nombre:t("Temprano","Early","Cedo","מוקדם") },
+  { h:9, icono:"☕", nombre:t("Mañana","Morning","Manhã","בוקר") },
+  { h:13, icono:"🍽️", nombre:t("Mediodía","Noon","Meio-dia","צהריים") },
+  { h:18, icono:"🌇", nombre:t("Tarde","Afternoon","Tarde","אחר הצהריים") },
+  { h:21, icono:"🌙", nombre:t("Noche","Night","Noite","ערב") },
+];
 
 // Administración → Correos: quién puede recibir avisos por correo.
 function renderCorreosSection(){
@@ -18630,13 +18681,9 @@ function closeComposer(){
 function renderComposer(){
   const d = composerDraft;
   postForm.innerHTML = `
-    ${d.editingPost ? `<div class="hint">${t(
-      `Editás como <strong>{me}</strong> (el posteo original sigue figurando de {author})`,
-      `Editing as <strong>{me}</strong> (the original post still shows as {author}'s)`,
-      `Editando como <strong>{me}</strong> (a postagem original continua constando de {author})`,
-      `<strong>{me}</strong> עורך/ת בתור (הפוסט המקורי עדיין מוצג בתור של {author})`,
-      { me: esc(state.auth.user.displayName), author: esc(d.editingPost.authorName) }
-    )}</div>` : ""}
+    ${/* Sin «Editás como X (el posteo sigue figurando de Y)»: el usuario lo
+       pidió sacar el 7/10/2026. Quién editó qué queda igual en el registro
+       de actividad y en «editado por» de la tarjeta. */""}
     <div class="field field-type-first">
       <label>${t("¿Qué tipo de actividad?","What kind of activity?","Que tipo de atividade?","איזה סוג פעילות?")}</label>
       <div class="type-picker">
@@ -19961,6 +20008,8 @@ document.addEventListener("keydown", e=>{
 });
 document.getElementById("postModalClose").addEventListener("click", requestCloseComposer);
 postModalOverlay.addEventListener("click", e=>{ if(e.target === postModalOverlay) requestCloseComposer(); });
+// :open no existe en los navegadores viejos: ahí querySelector tira error.
+function selectorAbierto(){ try{ return !!document.querySelector("select:open"); }catch(e){ return false; } }
 document.addEventListener("keydown", e=>{
   // ← → para moverse entre imágenes o PDF del mismo posteo/respuesta
   // mientras el visor está abierto (si solo hay uno, step() no hace
@@ -19973,6 +20022,11 @@ document.addEventListener("keydown", e=>{
     return;
   }
   if(e.key !== "Escape") return;
+  // Un selector abierto (la lista con la cara de la app, base-select): ese
+  // Escape es para cerrar la lista, nada más. Con la lista del sistema el
+  // Escape ni llegaba acá; con la nueva sí, y cerraba también la ventana
+  // donde estaba el selector (el calendario de una fecha, un formulario).
+  if(selectorAbierto()) return;
   // Un Escape por vez, de adentro hacia afuera: primero el confirm/alert
   // propio (puede estar encima de cualquier otra cosa), después el
   // lightbox; si hay un desplegable abierto en el composer (lugar,
@@ -21281,6 +21335,12 @@ document.addEventListener("click", async e=>{
     const key = el.dataset.key, prefKey = el.dataset.pref;
     const cur = prefs()[prefKey] || [];
     savePrefs({ [prefKey]: cur.includes(key) ? cur.filter(k=>k!==key) : [...cur, key] });
+  },
+    "correo-hora": async (el, e, action, postId) => {
+    savePrefs({ emailHour: Number(el.dataset.key) });
+  },
+    "correo-dia": async (el, e, action, postId) => {
+    savePrefs({ emailDay: Number(el.dataset.key) });
   },
     "correo-cuando": async (el, e, action, postId) => {
     savePrefs({ emailWhen: el.dataset.key });
