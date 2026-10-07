@@ -15,8 +15,11 @@ para ver**. Con eso el calendario puede dejar de ser público.
 - **La app** le pide los cambios a la función `calendario` de Supabase
   (`calendario/index.ts`, la lógica en `_compartido/google.mjs`), con la
   sesión de quien la está usando. La función le pregunta a la base si esa
-  persona es un integrante aprobado (`esta_aprobado()`, la misma regla de
-  todas las tablas) y recién ahí lee con la cuenta de servicio.
+  persona puede escribir en el Registro (`puede_escribir()`: integrante o
+  admin, no un observador; la misma regla de todas las tablas) y recién
+  ahí lee con la cuenta de servicio. De cada evento devuelve solo los
+  campos que usa la app (sin invitados, sin creador, sin link de Meet:
+  `CAMPOS_DEL_EVENTO` en `_compartido/google.mjs`).
 - **El trabajo de la madrugada** (`supabase/sync-calendar/`) lee con la
   misma cuenta, directo.
 - **Escribir** en el calendario (crear o mover un evento desde la app)
@@ -206,3 +209,29 @@ del usuario), «Todo el equipo» o «Elegir personas». Cada persona
 habilitada elige después en **Mis preferencias → Notificaciones** si los
 quiere, cuándo y de qué. Los diseños de los correos están en
 `_compartido/correos.mjs` (aprobados por el usuario con capturas).
+
+## Lo que cambió con la auditoría del 7/10/2026
+
+- **Quien llama no ve a quién le llega.** `pedir_aviso_al_admin()`,
+  `preparar_aviso()` y `preparar_prueba()` siguen decidiendo todo con la
+  sesión de quien llama, pero ya no le devuelven la lista de
+  destinatarios: guardan lo que hay que mandar en `avisos_listos` y
+  contestan solo un número de turno. La función lo lee con la llave de
+  servicio (`tomar_aviso()`, una vez y dentro de los 10 minutos). Hasta
+  ese día, cualquiera que pidiera entrar podía ver, llamando a la base
+  directo, los correos de los admins.
+- **La llave de servicio** la carga el workflow como `LLAVE_DE_SERVICIO`
+  (la misma `SUPABASE_SERVICE_ROLE_KEY` de las copias y los resúmenes);
+  si no está, la función usa la que Supabase le da sola. Sin ninguna,
+  contesta «sin-configurar».
+- **Topes**: como mucho 30 avisos al momento por hora por autor (lo que
+  pasa del tope llega en el resumen) y el correo de prueba, uno por hora
+  y tres por día.
+- **Si a alguien no le sale** (Resend falla), se borra su marca de
+  «enviado» y le llega en el resumen del día. Ante un 429 de Resend
+  (demasiados pedidos) espera y reintenta una vez, y entre un correo y
+  otro hace una pausa.
+- El nombre de quien escribió sale de su cuenta, no de la firma del
+  posteo; el asunto va sin saltos de línea.
+- `calendario` atiende solo a quien puede escribir (`puede_escribir()`:
+  no a un observador) y devuelve de cada evento solo lo que usa la app.

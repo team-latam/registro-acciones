@@ -54,11 +54,16 @@ const boton = (texto, url) => `<table role="presentation" cellpadding="0" cellsp
   <a href="${esc(url)}" style="display:inline-block;padding:13px 26px;font-family:${FUENTE};font-size:14px;font-weight:700;color:#fff;text-decoration:none;">${texto} →</a></td></tr></table>`;
 const avatar = nombre => `<td style="width:44px;vertical-align:top;"><div style="width:44px;height:44px;line-height:44px;border-radius:22px;background:${colorDe(nombre)};color:#fff;font-weight:800;font-size:15px;text-align:center;font-family:${FUENTE};">${esc(iniciales(nombre))}</div></td>`;
 
+// El asunto lleva un nombre o un título que escribió alguien: sin saltos
+// de línea (en un encabezado de correo, un salto empieza otro encabezado)
+// y de un largo razonable.
+export const asunto = s => String(s).replace(/[\r\n\t\u2028\u2029]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 150);
+
 /* ---------- Pedido de acceso ---------- */
 export function correoPedido({ nombre, correo, pedido_el }){
   const quien = nombre || correo;
   return {
-    subject: `Nuevo pedido de acceso: ${quien}`,
+    subject: asunto(`Nuevo pedido de acceso: ${quien}`),
     text: `${quien} (${correo}) pidió entrar al Registro de Acciones.\n\nMientras no lo apruebes, no ve nada del Registro. Para aprobarlo o rechazarlo: entrá a la app → Administración → Solicitudes.\n${APP}\n`,
     html: marco({
       pre: `${quien} pidió entrar al Registro.`,
@@ -82,13 +87,13 @@ export function correoAviso({ autor, titulo, tipo, texto, post, en, id, motivo }
   const icono = ICONOS[tipo] || "📌";
   const donde = en === "respuesta" ? "un comentario" : "un posteo";
   const encabezado = motivo === "respuestas" ? `${esc(autor)} comentó en tu posteo` : `${esc(autor)} te nombró en ${donde}`;
-  const asunto = motivo === "respuestas" ? `${autor} comentó en «${titulo}»` : `${autor} te mencionó en «${titulo}»`;
+  const linea = asunto(motivo === "respuestas" ? `${autor} comentó en «${titulo}»` : `${autor} te mencionó en «${titulo}»`);
   const url = enlaceAPosteo(post, en === "respuesta" ? id : null);
   return {
-    subject: asunto,
-    text: `${asunto}:\n\n${recortar(texto, 600)}\n\nVer y responder: ${url}\n`,
+    subject: linea,
+    text: `${linea}:\n\n${recortar(texto, 600)}\n\nVer y responder: ${url}\n`,
     html: marco({
-      pre: `${asunto}.`,
+      pre: `${linea}.`,
       etiqueta: motivo === "respuestas" ? "Respuesta a tu posteo" : "Te mencionaron",
       titulo: encabezado,
       cuerpo: `<table role="presentation" cellpadding="0" cellspacing="0" width="100%"><tr>${avatar(autor)}

@@ -62,9 +62,48 @@ create table if not exists public.avisos_enviados (
   enviado_el timestamptz not null default now(),
   primary key (tipo, objeto, email)
 );
+-- Quién lo provocó (el autor del posteo o comentario): para el tope por
+-- persona de más abajo.
+alter table public.avisos_enviados add column if not exists autor text;
 alter table public.avisos_enviados enable row level security;
 revoke all on public.avisos_enviados from anon, authenticated;
 grant all on public.avisos_enviados to service_role;
+
+-- Lo que la función `avisar` tiene que mandar, guardado un rato con un
+-- número de turno (7/10/2026). Hasta ese día preparar_aviso() y
+-- pedir_aviso_al_admin() le DEVOLVÍAN a quien las llamaba la lista de
+-- destinatarios: cualquiera que pidiera entrar podía ver, llamándolas
+-- directo, los correos de los admins (y un integrante, a quién le llegan
+-- avisos y qué eligió). Ahora devuelven solo el turno; lo que hay adentro
+-- lo lee la función con la llave de servicio (tomar_aviso), y nadie más.
+create table if not exists public.avisos_listos (
+  ticket text primary key default gen_random_uuid()::text,
+  datos  jsonb not null,
+  creado timestamptz not null default now()
+);
+alter table public.avisos_listos enable row level security;
+revoke all on public.avisos_listos from anon, authenticated;
+grant all on public.avisos_listos to service_role;
+
+create or replace function public.guardar_aviso(p_datos jsonb) returns jsonb
+  language plpgsql security definer set search_path = '' as $$
+declare t text;
+begin
+  delete from public.avisos_listos where creado < now() - interval '1 day';
+  insert into public.avisos_listos(datos) values (p_datos) returning ticket into t;
+  return jsonb_build_object('ticket', t);
+end $$;
+revoke execute on function public.guardar_aviso(jsonb) from public, anon, authenticated;
+
+-- La función `avisar`, con la llave de servicio: lo que hay que mandar
+-- con ese turno, una sola vez y dentro de los 10 minutos.
+create or replace function public.tomar_aviso(p_ticket text) returns jsonb
+  language sql security definer set search_path = '' as $$
+  delete from public.avisos_listos where ticket = p_ticket and creado > now() - interval '10 minutes'
+  returning datos
+$$;
+revoke execute on function public.tomar_aviso(text) from public, anon, authenticated;
+grant execute on function public.tomar_aviso(text) to service_role;
 
 -- Cuándo salió el último resumen de cada uno (lo escribe el trabajo de
 -- los resúmenes, con la llave de servicio).
@@ -81,13 +120,18 @@ grant all on public.resumenes_enviados to service_role;
 -- primeros 15 minutos. Menciones (o @all) y, en un comentario, el autor
 -- del posteo. Cada destinatario: que pueda recibir correos, que los tenga
 -- prendidos al momento y que haya marcado ese tema. Cada uno, una sola
--- vez por objeto (avisos_enviados). Devuelve lo que hace falta para
--- armar el correo, o null si no hay a quién.
+-- vez por objeto (avisos_enviados). Guarda lo que hace falta para armar
+-- el correo y devuelve su turno (guardar_aviso), o null si no hay a quién.
+-- Como mucho 30 avisos por hora por autor (hasta el 7/10/2026 no había
+-- tope: 30 comentarios eran 30 correos, y el plan gratis de Resend da 100
+-- por día); lo que pasa del tope no se marca como enviado, así que llega
+-- en el resumen (supabase/avisos/resumen.mjs). El nombre del autor sale
+-- de su cuenta, no de la firma del posteo, que la escribe quien publica.
 create or replace function public.preparar_aviso(p_tipo text, p_id text) returns jsonb
   language plpgsql security definer set search_path = '' as $$
 declare
   yo text := public.mi_correo();
-  autor text; autor_nombre text; menciones text[]; creado timestamptz;
+  autor text; autor_nombre text; menciones text[]; creado timestamptz; ya_salieron integer;
   post_id text; titulo text; tipo_act text; texto text; dueno text;
   candidatos jsonb := '[]'::jsonb; para jsonb := '[]'::jsonb; c record; pr jsonb;
 begin
@@ -104,6 +148,10 @@ begin
     return null;
   end if;
   if autor is distinct from yo or creado < now() - interval '15 minutes' then return null; end if;
+  select count(*) into ya_salieron from public.avisos_enviados a
+   where a.autor = yo and a.enviado_el > now() - interval '1 hour';
+  if ya_salieron >= 30 then return null; end if;
+  autor_nombre := coalesce((select nullif(m.name, '') from public.members m where m.email = autor), autor_nombre);
 
   -- Los candidatos, con el motivo: mencionado gana sobre «respuesta».
   if 'all' = any(menciones) then
@@ -122,32 +170,35 @@ begin
     continue when c.email = yo or not public.puede_recibir_correos(c.email);
     pr := public.prefs_de_correo(c.email);
     continue when not (pr ->> 'on')::boolean or pr ->> 'when' <> 'instant' or not (pr -> 'what') ? c.motivo;
-    insert into public.avisos_enviados(tipo, objeto, email) values (p_tipo, p_id, c.email)
+    insert into public.avisos_enviados(tipo, objeto, email, autor) values (p_tipo, p_id, c.email, yo)
       on conflict do nothing;
     continue when not found;
     para := para || jsonb_build_array(jsonb_build_object('email', c.email, 'motivo', c.motivo,
       'nombre', (select m.name from public.members m where m.email = c.email)));
   end loop;
   if jsonb_array_length(para) = 0 then return null; end if;
-  return jsonb_build_object('para', para, 'autor', autor_nombre, 'titulo', titulo, 'tipo', tipo_act,
-    'texto', left(texto, 600), 'post', post_id, 'en', p_tipo);
+  return public.guardar_aviso(jsonb_build_object('para', para, 'autor', autor_nombre, 'titulo', titulo, 'tipo', tipo_act,
+    'texto', left(texto, 600), 'post', post_id, 'en', p_tipo, 'id', p_id));
 end $$;
 revoke execute on function public.preparar_aviso(text, text) from public, anon;
 grant execute on function public.preparar_aviso(text, text) to authenticated;
 
 -- «Mandarme un correo de prueba»: a quien lo pide, si puede recibir
--- correos, y como mucho uno cada 10 minutos.
+-- correos, uno por hora y tres por día (hasta el 7/10/2026, uno cada 10
+-- minutos: 144 por día, más que todo el plan gratis de Resend).
 create or replace function public.preparar_prueba() returns jsonb
   language plpgsql security definer set search_path = '' as $$
 declare yo text := public.mi_correo();
 begin
   if yo is null or not public.puede_recibir_correos(yo) then return null; end if;
-  insert into public.avisos_enviados(tipo, objeto, email)
-    values ('prueba', to_char(now() at time zone 'utc', 'YYYYMMDDHH24') || (extract(minute from now())::int / 10)::text, yo)
+  if (select count(*) from public.avisos_enviados a where a.tipo = 'prueba' and a.email = yo
+        and a.enviado_el > now() - interval '1 day') >= 3 then return null; end if;
+  insert into public.avisos_enviados(tipo, objeto, email, autor)
+    values ('prueba', to_char(now() at time zone 'utc', 'YYYYMMDDHH24'), yo, yo)
     on conflict do nothing;
   if not found then return null; end if;
-  return jsonb_build_object('para', jsonb_build_array(jsonb_build_object('email', yo,
-    'nombre', (select m.name from public.members m where m.email = yo))));
+  return public.guardar_aviso(jsonb_build_object('para', jsonb_build_array(jsonb_build_object('email', yo,
+    'nombre', (select m.name from public.members m where m.email = yo)))));
 end $$;
 revoke execute on function public.preparar_prueba() from public, anon;
 grant execute on function public.preparar_prueba() to authenticated;
@@ -174,8 +225,8 @@ begin
      and (public.prefs_de_correo(e) ->> 'on')::boolean
      and (public.prefs_de_correo(e) -> 'what') ? 'pedidos';
   if para is null then return null; end if;
-  return jsonb_build_object('para', to_jsonb(para), 'nombre', fila.name, 'correo', fila.email,
-    'pedido_el', fila.requested_at);
+  return public.guardar_aviso(jsonb_build_object('para', to_jsonb(para), 'nombre', fila.name, 'correo', fila.email,
+    'pedido_el', fila.requested_at));
 end $$;
 
 -- El trabajo de los resúmenes (supabase/avisos/resumen.mjs) usa las dos
