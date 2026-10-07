@@ -72,14 +72,21 @@ function googleDeMentira(reg, { niega } = {}){
 /* ---------- Qué se le puede pedir ---------- */
 const CAL = "cal@group.calendar.google.com";
 const BASEC = "https://www.googleapis.com/calendar/v3/calendars/cal%40group.calendar.google.com";
-eq("pedido: cambios con syncToken", urlDelPedido(CAL, { accion: "cambios", syncToken: "abc" }), `${BASEC}/events?maxResults=250&showDeleted=true&syncToken=abc`);
+const CAMPOS = "id%2Cstatus%2Csummary%2Cdescription%2Clocation%2Cstart%2Cend%2Crecurrence%2CrecurringEventId%2CoriginalStartTime%2Corganizer%2CextendedProperties";
+const LISTA = `${BASEC}/events?maxResults=250&showDeleted=true&fields=nextPageToken%2CnextSyncToken%2CtimeZone%2Citems%28${CAMPOS}%29`;
+eq("pedido: cambios con syncToken", urlDelPedido(CAL, { accion: "cambios", syncToken: "abc" }), `${LISTA}&syncToken=abc`);
 eq("pedido: completo desde una fecha, con página", urlDelPedido(CAL, { accion: "cambios", timeMin: "2024-01-01T00:00:00Z", pageToken: "p2" }),
-   `${BASEC}/events?maxResults=250&showDeleted=true&timeMin=2024-01-01T00%3A00%3A00Z&pageToken=p2`);
-eq("pedido: un evento suelto (también una instancia de una serie)", urlDelPedido(CAL, { accion: "evento", id: "abc_20261006T120000Z" }), `${BASEC}/events/abc_20261006T120000Z`);
-eq("pedido: nada fuera de eso (otra acción, un id con barras, un timeMin con otra forma, parámetros de más)",
+   `${LISTA}&timeMin=2024-01-01T00%3A00%3A00Z&pageToken=p2`);
+eq("pedido: un evento suelto (también una instancia de una serie)", urlDelPedido(CAL, { accion: "evento", id: "abc_20261006T120000Z" }), `${BASEC}/events/abc_20261006T120000Z?fields=${CAMPOS}`);
+eq("pedido: nada fuera de eso (otra acción, un id con barras o hecho de puntos, un timeMin con otra forma, parámetros de más)",
    [urlDelPedido(CAL, { accion: "acl" }), urlDelPedido(CAL, { accion: "evento", id: "../acl" }), urlDelPedido(CAL, { accion: "evento" }),
+    urlDelPedido(CAL, { accion: "evento", id: "." }), urlDelPedido(CAL, { accion: "evento", id: ".." }),
     urlDelPedido(CAL, { accion: "cambios", timeMin: "2024-01-01&q=x" }), urlDelPedido(CAL, { accion: "cambios", q: "secreto", calendarId: "otro" })],
-   [null, null, null, `${BASEC}/events?maxResults=250&showDeleted=true`, `${BASEC}/events?maxResults=250&showDeleted=true`]);
+   [null, null, null, null, null, LISTA, LISTA]);
+// Google devuelve los correos de los invitados, el link de Meet, quién lo
+// creó...: nada de eso le hace falta a la app (7/10/2026).
+eq("pedido: solo los campos que se usan (sin invitados, sin creador, sin Meet)",
+   ["attendees", "creator", "hangoutLink", "conferenceData", "attachments"].filter(c => decodeURIComponent(LISTA).includes(c)), []);
 
 /* ---------- La función de Supabase ---------- */
 const URL_SB = "https://proyecto.supabase.co";
@@ -95,7 +102,7 @@ function mundo({ aprobado = true, sesionVencida = false, calendarIdConfig = null
     if(u.startsWith(URL_SB)){
       reg.push({ url: u, auth: op.headers?.Authorization, apikey: op.headers?.apikey });
       if(sesionVencida) return new Response(JSON.stringify({ message: "JWT expired" }), { status: 401 });
-      if(u.endsWith("/rest/v1/rpc/esta_aprobado")) return new Response(JSON.stringify(aprobado));
+      if(u.endsWith("/rest/v1/rpc/puede_escribir")) return new Response(JSON.stringify(aprobado));
       if(u.includes("/rest/v1/app_config")) return new Response(JSON.stringify(calendarIdConfig ? [{ value: { calendarId: calendarIdConfig } }] : [{ value: {} }]));
     }
     return google(url, op);
@@ -128,7 +135,7 @@ const leer = async r => [r.status, await r.json()];
 {
   const m = mundo({ aprobado: false });
   const r = await leer(await atender(pedir({ accion: "cambios" }), { env: entorno(), fetch: m.traer }));
-  eq("función: con sesión pero sin aprobar, no (lo decide la base con SU sesión)",
+  eq("función: con sesión pero sin aprobar —o de observador—, no (lo decide la base con SU sesión: puede_escribir)",
      [r, m.reg.filter(x => x.url.includes("googleapis")).length, m.reg[0].auth, m.reg[0].apikey], [[403, { error: "no-aprobado" }], 0, "Bearer sesion-de-ana", "sb_publishable_x"]);
 }
 {
@@ -153,7 +160,7 @@ const leer = async r => [r.status, await r.json()];
   const m = mundo({ calendarIdConfig: "otro@group.calendar.google.com" });
   await atender(pedir({ accion: "evento", id: "ev1" }), { env: entorno(), fetch: m.traer });
   eq("función: si un admin eligió otro calendario en Configuración, ese manda",
-     m.reg.filter(x => x.url.includes("googleapis.com/calendar")).map(x => x.url), ["https://www.googleapis.com/calendar/v3/calendars/otro%40group.calendar.google.com/events/ev1"]);
+     m.reg.filter(x => x.url.includes("googleapis.com/calendar")).map(x => x.url.split("?")[0]), ["https://www.googleapis.com/calendar/v3/calendars/otro%40group.calendar.google.com/events/ev1"]);
 }
 
 /* ---------- El trabajo nocturno con la cuenta ---------- */
