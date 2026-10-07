@@ -35,8 +35,9 @@ const BASE = (prefsEquipo = {}) => ({
 });
 
 const b = await chromium.launch();
-async function entrar(email, nombre, { prefsEquipo, query = "" } = {}){
-  const p = await b.newPage({ viewport: { width: 1280, height: 900 } });
+async function entrar(email, nombre, { prefsEquipo, query = "", lang = null, zona = undefined } = {}){
+  const p = await b.newPage({ viewport: { width: 1280, height: 900 }, timezoneId: zona });
+  if(lang) await p.addInitScript(l => { try{ localStorage.setItem("ra_lang", l); }catch(e){} }, lang);
   const avisos = [], errores = [];
   p.on("pageerror", e => errores.push(String(e)));
   await p.route(/^https?:\/\//, ruta => {
@@ -142,6 +143,32 @@ const misPrefs = (p, email) => p.evaluate(e => ((window.__sb.tablas.user_prefs |
   const salto = await p.waitForFunction(() => { const c = document.querySelector('.post[data-post-id="p_ana"]'); return c && c.classList.contains("flash") || location.search === ""; }, null, { timeout: 5000 }).then(() => true, () => false);
   eq("el enlace de un correo (?post=…) lleva a ese posteo y se limpia la dirección",
      [salto, await p.evaluate(() => location.search)], [true, ""]);
+  await p.close();
+}
+
+/* ---------- El idioma y la hora de cada uno (decisión del usuario del 7/10/2026) ---------- */
+{
+  // Alguien en Israel, con la app en hebreo: la base tiene que saberlo
+  // para mandarle los correos en hebreo y el resumen a SU hora.
+  const { p, errores } = await entrar(ADMIN, "Benny", { lang: "he", zona: "Asia/Jerusalem" });
+  const guardadas = await p.waitForFunction(e => { const f = (window.__sb.tablas.user_prefs || []).find(x => x.email === e); return f && f.prefs.emailLang && f.prefs; }, ADMIN, { timeout: 5000 })
+    .then(h => h.jsonValue()).catch(() => ({}));
+  eq("la app le cuenta a la base el idioma y la zona horaria de quien recibe correos", [guardadas.emailLang, guardadas.emailTz], ["he", "Asia/Jerusalem"]);
+  await irANotificaciones(p);
+  eq("y en Mis preferencias la hora es la suya, no la de Argentina",
+     await p.$eval(".avisos-correo .correo-subtitulo span", e => e.textContent.trim()), "(לפי השעה שלך: Jerusalem)");
+  await p.click('[data-action="toggle-user-menu"]');
+  await p.click('.user-menu [data-action="set-lang"][data-lang="pt"]');
+  eq("si cambia el idioma de la app, cambia el de sus correos",
+     await p.waitForFunction(e => ((window.__sb.tablas.user_prefs || []).find(x => x.email === e) || { prefs: {} }).prefs.emailLang === "pt", ADMIN, { timeout: 5000 }).then(() => true, () => false), true);
+  eq("idioma y hora: sin errores", errores, []);
+  await p.close();
+}
+{
+  // A quien no le llegan correos no se le guarda nada de esto.
+  const { p } = await entrar("ana@x.com", "Ana Pérez", { lang: "he" });
+  await p.waitForTimeout(1200);
+  eq("a quien no puede recibir correos, no se le guarda ni idioma ni zona", (await misPrefs(p, "ana@x.com")).emailLang, undefined);
   await p.close();
 }
 

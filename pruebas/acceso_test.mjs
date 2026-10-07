@@ -44,6 +44,7 @@ function armar(){
         unsubAuditLog=null, unsubRoster=null, unsubTerritoryConfig=null, unsubPreferences=null,
         unsubUserPrefs=null, unsubFormerMembers=null, unsubPersonas=null;
     let auditLoginLoggedThisSession = false;
+    let prefsPropiasLeidas = false;   // 7/10/2026: el idioma y la zona de los correos
     let composerDraft=null, rutinaDraft=null, zonasDraft=null, tiposDraft=null, calendarDraft=null, adjuntosDraft=null;
     const replyDrafts = {}, nestedReplyDrafts = {};
     const openReplyForms = new Set(), openThreads = new Set(), openNestedReplyForms = new Set();
