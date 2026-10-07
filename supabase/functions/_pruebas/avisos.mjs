@@ -147,5 +147,22 @@ eq("el correo sin nombre usa la dirección", armarCorreo({ nombre: "", correo: "
   eq("un nombre con saltos de línea no parte el asunto en dos encabezados", /[\r\n]/.test(c.subject), false);
 }
 
+/* ---------- Cada uno en su idioma (decisión del usuario del 7/10/2026) ---------- */
+{
+  const aviso = { para: [{ email: "benny@team-latam.com", motivo: "menciones", nombre: "Benny", lang: "es" }, { email: "moshe@x.com", motivo: "menciones", nombre: "Moshe", lang: "he" }],
+                  autor: "Ana", titulo: "Visita", tipo: "visita", texto: "@benny @moshe", post: "p1", en: "posteo", id: "p1" };
+  const m = mundo({ otros: { preparar_aviso: aviso } });
+  await atenderAviso(pedir({ cuerpo: { tipo: "posteo", id: "p1" } }), { env: entorno(), fetch: m.traer, esperar: m.esperar });
+  eq("una mención: a cada uno en su idioma (y en hebreo, de derecha a izquierda)",
+     m.reg.correos.map(c => [c.to[0], c.subject, /dir="rtl"/.test(c.html)]),
+     [["benny@team-latam.com", "Ana te mencionó en «Visita»", false], ["moshe@x.com", "Ana הזכיר/ה אותך ב«Visita»", true]]);
+  const p = mundo({ datos: { para: ["benny@team-latam.com", "otra.admin@x.com"], nombre: "Nuevo", correo: "nuevo@x.com", pedido_el: "2026-10-07T12:00:00Z",
+    idiomas: { "benny@team-latam.com": "es", "otra.admin@x.com": "pt" }, zonas: { "otra.admin@x.com": "Asia/Jerusalem" } } });
+  await atenderAviso(pedir(), { env: entorno(), fetch: p.traer, esperar: p.esperar });
+  eq("el pedido de acceso, a cada admin en su idioma y con la hora en su zona",
+     [p.reg.correos.map(c => c.subject), p.reg.correos[0].html.includes("09:00"), p.reg.correos[1].html.includes("15:00")],
+     [["Nuevo pedido de acceso: Nuevo", "Novo pedido de acesso: Nuevo"], true, true]);
+}
+
 console.log(`${pass} pasaron, ${fail} fallaron`);
 process.exit(fail ? 1 : 0);

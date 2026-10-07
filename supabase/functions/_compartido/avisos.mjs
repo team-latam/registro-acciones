@@ -38,11 +38,14 @@ export const RESPONDER_A = "benny@team-latam.com";
 //   {tipo:"prueba"}                       «Mandarme un correo de prueba»
 // A quién y si corresponde lo decide SIEMPRE la base (16 y 17-*.sql).
 export const armarCorreo = correoPedido;
+// Cada uno en su idioma (y el pedido de acceso, con la fecha en su hora):
+// lo dice la base (prefs_de_correo), por decisión del usuario del 7/10/2026.
+const de = (d, para) => d.para.find(x => x.email === para) || {};
 const TIPOS = {
-  pedido:    { rpc: "pedir_aviso_al_admin", cuerpo: () => ({}), para: d => d.para, correo: d => correoPedido(d), anotar: "aviso_al_admin_enviado" },
-  posteo:    { rpc: "preparar_aviso", cuerpo: p => ({ p_tipo: "posteo", p_id: String(p.id || "") }), para: d => d.para.map(x => x.email), correo: (d, para) => correoAviso({ ...d, id: d.id, motivo: d.para.find(x => x.email === para).motivo }) },
-  respuesta: { rpc: "preparar_aviso", cuerpo: p => ({ p_tipo: "respuesta", p_id: String(p.id || "") }), para: d => d.para.map(x => x.email), correo: (d, para) => correoAviso({ ...d, motivo: d.para.find(x => x.email === para).motivo }) },
-  prueba:    { rpc: "preparar_prueba", cuerpo: () => ({}), para: d => d.para.map(x => x.email), correo: d => correoPrueba({ nombre: d.para[0].nombre }) },
+  pedido:    { rpc: "pedir_aviso_al_admin", cuerpo: () => ({}), para: d => d.para, correo: (d, para) => correoPedido({ ...d, lang: (d.idiomas || {})[para], zona: (d.zonas || {})[para] }), anotar: "aviso_al_admin_enviado" },
+  posteo:    { rpc: "preparar_aviso", cuerpo: p => ({ p_tipo: "posteo", p_id: String(p.id || "") }), para: d => d.para.map(x => x.email), correo: (d, para) => correoAviso({ ...d, id: d.id, motivo: de(d, para).motivo, lang: de(d, para).lang }) },
+  respuesta: { rpc: "preparar_aviso", cuerpo: p => ({ p_tipo: "respuesta", p_id: String(p.id || "") }), para: d => d.para.map(x => x.email), correo: (d, para) => correoAviso({ ...d, motivo: de(d, para).motivo, lang: de(d, para).lang }) },
+  prueba:    { rpc: "preparar_prueba", cuerpo: () => ({}), para: d => d.para.map(x => x.email), correo: d => correoPrueba({ nombre: d.para[0].nombre, lang: d.para[0].lang }) },
 };
 
 // Resend atiende hasta 2 pedidos por segundo: entre uno y otro, una pausa;

@@ -3,8 +3,9 @@
    ======================================================================
    Corre cada hora (workflow «Resúmenes por correo») con la llave de
    servicio. A cada persona que puede recibir correos y los tiene
-   prendidos, le manda su resumen cuando es SU hora (hora de Argentina) y
-   SU día si es semanal: lo que pasó desde el último. Quien eligió «al
+   prendidos, le manda su resumen cuando es SU hora (en su zona horaria,
+   emailTz; de fábrica, la de Argentina) y SU día si es semanal, en SU
+   idioma (emailLang); las dos cosas, decisión del usuario del 7/10/2026: lo que pasó desde el último. Quien eligió «al
    momento» recibe acá lo que no tiene momento (actividades nuevas,
    eventos que empiezan pronto), una vez por día, y las menciones y
    respuestas que NO le llegaron al momento (Resend falló, se pasó el tope
@@ -13,7 +14,7 @@
    funciones que usa la app (puede_recibir_correos, prefs_de_correo).
    ====================================================================== */
 import { readFileSync } from "node:fs";
-import { correoResumen } from "../functions/_compartido/correos.mjs";
+import { correoResumen, zonaValida } from "../functions/_compartido/correos.mjs";
 import { DESDE, DESDE_DE_PRUEBA, RESPONDER_A } from "../functions/_compartido/avisos.mjs";
 
 const ZONA = "America/Argentina/Buenos_Aires";
@@ -41,13 +42,15 @@ async function rest(camino, op = {}){
 }
 const rpc = (n, args) => rest(`rpc/${n}`, { method: "POST", body: JSON.stringify(args) });
 
-// La hora, el minuto, el día de la semana (1 = lunes) y la fecha, en Argentina.
-export function relojArgentino(ms){
-  const p = Object.fromEntries(new Intl.DateTimeFormat("en-CA", { timeZone: ZONA, hour12: false, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "short" })
+// La hora, el minuto, el día de la semana (1 = lunes) y la fecha, en una
+// zona (la de cada persona; una que no existe cuenta como Argentina).
+export function relojDe(ms, zona = ZONA){
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-CA", { timeZone: zonaValida(zona) ? zona : ZONA, hour12: false, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "short" })
     .formatToParts(new Date(ms)).map(x => [x.type, x.value]));
   const dias = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 };
   return { hora: Number(p.hour) % 24, min: Number(p.minute), dia: dias[p.weekday], fecha: `${p.year}-${p.month}-${p.day}` };
 }
+export const relojArgentino = ms => relojDe(ms, ZONA);
 const masDias = (iso, n) => new Date(Date.parse(`${iso}T12:00:00Z`) + n * 86400000).toISOString().slice(0, 10);
 
 // ¿Le toca ahora? Devuelve el período, o null.
@@ -90,7 +93,7 @@ const lugarDe = p => p.location || (Array.isArray(p.scopes) && p.scopes[0] && (p
 // marcas de lo que ya salió al momento ("posteo|p1|correo"); sin ellas
 // (no se pudieron leer), a quien eligió «al momento» no se le repite nada.
 export const DEMORA_AL_MOMENTO_MS = 15 * 60000;
-export function armarResumen({ email, pr, periodo, desde, hasta, posts, replies, postsPorId, proximos, enviados = null }){
+export function armarResumen({ email, pr, periodo, desde, hasta, posts, replies, postsPorId, proximos, enviados = null, fecha = null }){
   const temas = new Set(pr.what || []);
   const alMomento = pr.when === "instant";
   const mencionaA = m => (m || []).includes(email) || (m || []).includes("all");
@@ -102,7 +105,7 @@ export function armarResumen({ email, pr, periodo, desde, hasta, posts, replies,
   const pendiente = (tipo, x) => x.created_at > desdeAM && x.created_at <= hastaAM && x.author_email !== email
     && !enviados.has(`${tipo}|${x.id}|${email}`);
   const toca = (tipo, x) => alMomento ? (enviados ? pendiente(tipo, x) : false) : enVentana(x);
-  const d = { periodo: alMomento ? "daily" : periodo, desde, hasta, menciones: [], respuestas: [], nuevos: [], proximos: [] };
+  const d = { periodo: alMomento ? "daily" : periodo, desde, hasta, lang: pr.lang, menciones: [], respuestas: [], nuevos: [], proximos: [] };
   if(temas.has("menciones")){
     for(const p of posts) if(toca("posteo", p) && mencionaA(p.mentions)) d.menciones.push({ autor: p.author_name, titulo: p.title, texto: p.content, post: p.id, en: "posteo" });
     for(const r of replies) if(toca("respuesta", r) && !r.system && mencionaA(r.mentions)){
@@ -123,8 +126,10 @@ export function armarResumen({ email, pr, periodo, desde, hasta, posts, replies,
   if(temas.has("nuevos"))
     d.nuevos = posts.filter(p => enVentana(p) && p.activity_type !== "rutina" && !p.cancelled)
       .map(p => ({ titulo: p.title, tipo: p.activity_type, autor: p.author_name, start: p.start_date, end: p.end_date, lugar: lugarDe(p), post: p.id }));
+  // Los próximos, desde SU hoy (en Israel ya puede ser mañana).
+  const hasta2 = fecha && masDias(fecha, (pr.when === "weekly" ? 6 : 1));
   if(temas.has("proximos"))
-    d.proximos = proximos.map(p => ({ titulo: p.title, tipo: p.activity_type, start: p.start_date, end: p.end_date, lugar: lugarDe(p), post: p.id }));
+    d.proximos = proximos.filter(p => !fecha || (p.start_date >= fecha && p.start_date <= hasta2)).map(p => ({ titulo: p.title, tipo: p.activity_type, start: p.start_date, end: p.end_date, lugar: lugarDe(p), post: p.id }));
   const vacio = !d.menciones.length && !d.respuestas.length && !d.nuevos.length && !d.proximos.length;
   return vacio ? null : d;
 }
@@ -150,8 +155,9 @@ export async function main(ahora = Date.now()){
   for(const email of correos){
     if(!(await rpc("puede_recibir_correos", { p_email: email }))) continue;
     const pr = await rpc("prefs_de_correo", { p_email: email });
-    const periodo = leToca(pr, reloj, ultimos.get(email), ahora);
-    if(periodo) tocan.push({ email, pr, periodo, desde: desdeDe(ultimos.get(email), periodo, ahora) });
+    const suyo = relojDe(ahora, pr.tz);
+    const periodo = leToca(pr, suyo, ultimos.get(email), ahora);
+    if(periodo) tocan.push({ email, pr, periodo, fecha: suyo.fecha, desde: desdeDe(ultimos.get(email), periodo, ahora) });
   }
   console.log(`Hora de Argentina: ${reloj.hora}:${String(reloj.min).padStart(2, "0")}. Les toca a ${tocan.length}.`);
   // Una vez por día (a las 4 de Argentina), lo viejo de los avisos: las
@@ -184,15 +190,14 @@ export async function main(ahora = Date.now()){
       yaSalieron = new Set(marcas.map(m => `${m.tipo}|${m.objeto}|${m.email}`));
     }catch(err){ console.error(`  ✗ ${err.message}`); }
   }
-  const proximosHasta = d => masDias(reloj.fecha, d === "weekly" ? 6 : 1);
-  const prox = {};
-  for(const periodo of ["daily", "weekly"])
-    prox[periodo] = await rest(`posts?select=${cols}&start_date=gte.${reloj.fecha}&start_date=lte.${proximosHasta(periodo)}&activity_type=neq.rutina&order=start_date`)
-      .then(l => l.filter(p => !p.cancelled));
+  // Los próximos de la semana que viene, desde ayer en Argentina (cada uno
+  // los recorta desde SU hoy: en Israel ya puede ser mañana).
+  const proximos = await rest(`posts?select=${cols}&start_date=gte.${masDias(reloj.fecha, -1)}&start_date=lte.${masDias(reloj.fecha, 8)}&activity_type=neq.rutina&order=start_date`)
+    .then(l => l.filter(p => !p.cancelled));
 
   let enviados = 0, fallados = 0;
-  for(const { email, pr, periodo, desde } of tocan){
-    const d = armarResumen({ email, pr, periodo, desde, hasta, posts, replies, postsPorId, proximos: prox[pr.when === "weekly" ? "weekly" : "daily"], enviados: yaSalieron });
+  for(const { email, pr, periodo, desde, fecha } of tocan){
+    const d = armarResumen({ email, pr, periodo, desde, hasta, posts, replies, postsPorId, proximos, enviados: yaSalieron, fecha });
     try{
       if(d && !cfg.seco){ await mandar(email, correoResumen(d)); enviados++; }
       if(!cfg.seco) await rest("resumenes_enviados", { method: "POST", headers: { Prefer: "resolution=merge-duplicates" }, body: JSON.stringify({ email, ultimo: hasta }) });

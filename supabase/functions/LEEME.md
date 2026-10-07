@@ -235,3 +235,19 @@ quiere, cuándo y de qué. Los diseños de los correos están en
   posteo; el asunto va sin saltos de línea.
 - `calendario` atiende solo a quien puede escribir (`puede_escribir()`:
   no a un observador) y devuelve de cada evento solo lo que usa la app.
+
+## Cada uno en su idioma y a su hora (decisión del usuario, 7/10/2026)
+
+- Los correos salen en el idioma que la persona eligió en la app
+  (español, inglés, portugués o hebreo, este de derecha a izquierda), con
+  las mismas palabras que usa la app. Lo escrito por alguien va con
+  `dir="auto"`, así un comentario en hebreo dentro de un correo en
+  español (o al revés) se ordena solo. Los textos, en `TX` de
+  `_compartido/correos.mjs`.
+- El resumen llega a la hora que cada uno eligió **en su hora**: la app
+  guarda en sus preferencias `emailLang` (el idioma) y `emailTz` (la zona
+  horaria del aparato), solo si a esa persona le pueden llegar correos.
+  `prefs_de_correo()` los devuelve con lo de fábrica (español, Argentina)
+  si faltan o no son válidos.
+- Las respuestas a un aviso siguen yendo a `benny@team-latam.com`
+  (`reply_to`): el usuario eligió dejarlo así.

@@ -9,7 +9,14 @@
 -- viven en user_prefs.prefs:
 --   emailOn    boolean   prendido (de fábrica: sí)
 --   emailWhen  text      'instant' | 'daily' | 'weekly' (de fábrica: daily)
---   emailHour  int       la hora del resumen, en Argentina (de fábrica: 9)
+--   emailHour  int       la hora del resumen, en SU hora (de fábrica: 9)
+--   emailLang  text      'es' | 'en' | 'pt' | 'he': el idioma de sus correos
+--                        (lo guarda la app con el idioma que eligió; de
+--                        fábrica: es)
+--   emailTz    text      su zona horaria («Asia/Jerusalem»; la guarda la
+--                        app; de fábrica: la de Argentina). Las dos, por
+--                        decisión del usuario del 7/10/2026: el equipo
+--                        también tiene gente en Israel.
 --   emailDay   int       el día del resumen semanal, 1 = lunes (de fábrica: 1)
 --   emailWhat  text[]    'menciones','respuestas','nuevos','proximos','pedidos'
 --                        (de fábrica: menciones y respuestas; los admins
@@ -43,6 +50,9 @@ create or replace function public.prefs_de_correo(p_email text) returns jsonb
     'when', coalesce(nullif(p.prefs ->> 'emailWhen', ''), 'daily'),
     'hour', coalesce((p.prefs ->> 'emailHour')::int, 9),
     'day',  coalesce((p.prefs ->> 'emailDay')::int, 1),
+    'lang', case when p.prefs ->> 'emailLang' in ('es', 'en', 'pt', 'he') then p.prefs ->> 'emailLang' else 'es' end,
+    'tz',   case when coalesce(p.prefs ->> 'emailTz', '') ~ '^[A-Za-z][A-Za-z0-9_+/-]{1,60}$' then p.prefs ->> 'emailTz'
+                 else 'America/Argentina/Buenos_Aires' end,
     'what', coalesce(p.prefs -> 'emailWhat',
               case when p_email = public.admin_fijo()
                      or exists (select 1 from public.members m where m.email = p_email and m.role = 'admin')
@@ -174,7 +184,7 @@ begin
       on conflict do nothing;
     continue when not found;
     para := para || jsonb_build_array(jsonb_build_object('email', c.email, 'motivo', c.motivo,
-      'nombre', (select m.name from public.members m where m.email = c.email)));
+      'nombre', (select m.name from public.members m where m.email = c.email), 'lang', pr ->> 'lang'));
   end loop;
   if jsonb_array_length(para) = 0 then return null; end if;
   return public.guardar_aviso(jsonb_build_object('para', para, 'autor', autor_nombre, 'titulo', titulo, 'tipo', tipo_act,
@@ -198,7 +208,7 @@ begin
     on conflict do nothing;
   if not found then return null; end if;
   return public.guardar_aviso(jsonb_build_object('para', jsonb_build_array(jsonb_build_object('email', yo,
-    'nombre', (select m.name from public.members m where m.email = yo)))));
+    'nombre', (select m.name from public.members m where m.email = yo), 'lang', public.prefs_de_correo(yo) ->> 'lang'))));
 end $$;
 revoke execute on function public.preparar_prueba() from public, anon;
 grant execute on function public.preparar_prueba() to authenticated;
@@ -225,8 +235,11 @@ begin
      and (public.prefs_de_correo(e) ->> 'on')::boolean
      and (public.prefs_de_correo(e) -> 'what') ? 'pedidos';
   if para is null then return null; end if;
+  -- Cada admin, en su idioma y con la fecha en su hora.
   return public.guardar_aviso(jsonb_build_object('para', to_jsonb(para), 'nombre', fila.name, 'correo', fila.email,
-    'pedido_el', fila.requested_at));
+    'pedido_el', fila.requested_at,
+    'idiomas', (select jsonb_object_agg(e, public.prefs_de_correo(e) ->> 'lang') from unnest(para) e),
+    'zonas', (select jsonb_object_agg(e, public.prefs_de_correo(e) ->> 'tz') from unnest(para) e)));
 end $$;
 
 -- El trabajo de los resúmenes (supabase/avisos/resumen.mjs) usa las dos
