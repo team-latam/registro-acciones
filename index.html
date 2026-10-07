@@ -19371,21 +19371,20 @@ function partesDeLugar(post, L){
 }
 const fechaDePost = p => String(p.startDate || p.date || "");
 const diasDesde = iso => iso ? Math.floor((isoDate(todayISO()) - isoDate(String(iso).slice(0, 10))) / 86400000) : null;
-// Quién es, a partir de un texto suelto (el organizador que trae Google
-// Calendar: un nombre o un correo): alguien del equipo, o que ya no está,
-// por correo, por nombre o por @apodo. null si no es nadie de acá (por
-// ejemplo, el calendario «LatAm» mismo, que Google manda como organizador).
-function miembroPorTexto(txt){
-  const s = sinTildes(txt);
-  if(!s) return null;
-  const apodo = s.replace(/^@/, "");
-  return [...state.roster, ...state.formerMembers].find(u => sinTildes(u.email) === s || sinTildes(u.name) === s || (u.nickname && sinTildes(u.nickname) === apodo)) || null;
-}
-// Lo traído de Google Calendar no lo cargó una persona: la "firma" es el
-// sync. Quien hizo cada cosa, para mostrar, es entonces su organizador si
-// es del equipo; lo cargado a mano, quien lo cargó.
 const esDeCalendar = p => !p.authorEmail && /google calendar/i.test(p.authorName || "");
-const quienDe = p => esDeCalendar(p) ? nombreDe(miembroPorTexto(p.organizer)) : (p.organizer || p.authorName || "");
+// Quién FUE (a la visita, al curso…), no quién lo cargó. Hasta el 7/10/2026
+// era quien lo había cargado (o el organizador en Calendar), y la ficha de
+// Argentina decía «Última visita… por Benny» de un viaje de otra persona:
+// Benny solo había creado el evento. Ahora: los participantes del evento;
+// si no tiene, nadie. Una rutina es la bitácora de quien la escribe: su
+// autor.
+function quienDe(p){
+  if(p.activityType === "rutina") return esDeCalendar(p) ? "" : (p.authorName || "");
+  const ps = [...new Set((Array.isArray(p.participants) ? p.participants : [])
+    .map(x => x && (x.name || nombreDe(memberByEmail(x.email)) || x.email)).filter(Boolean))];
+  if(ps.length <= 2) return ps.join(t(" y "," and "," e "," ו"));
+  return t("{a}, {b} y {n} más","{a}, {b} and {n} more","{a}, {b} e mais {n}","{a}, {b} ועוד {n}",{ a: ps[0], b: ps[1], n: ps.length - 2 });
+}
 // Todo lo que la ficha necesita, ya contado.
 function datosDeFicha(L){
   const niveles = nivelesDeFicha(L);
@@ -19712,11 +19711,9 @@ function renderFichaLugar(L){
     <div class="fl-ritmo">${porMes.map(x => `<i class="${x.v ? "v" : ""}" style="height:${x.n ? Math.max(6, Math.round(x.n * 100 / topeMes)) : 0}%" title="${esc(fmtISO(x.m + "-01", { month:"long", year:"numeric" }))}: ${x.n}"></i>`).join("")}</div>
     <div class="fl-ritmo-ej"><span>${esc(fmtISO(meses[0] + "-01", { month:"short" }))}</span><span>${esc(fmtISO(meses[11] + "-01", { month:"short" }))}</span></div>
     <div class="hint fl-ritmo-ley"><i class="v"></i> ${t("con visita","with a visit","com visita","עם ביקור")}</div></div>` : "";
-  // Quiénes trabajaron acá: quien cargó cada cosa y los participantes con
-  // cuenta en la app, una vez por registro. Lo traído de Google Calendar
-  // no lo cargó una persona (el usuario, 6/10/2026: «Google Calendar»
-  // aparecía como alguien del equipo): cuenta su organizador, si es del
-  // equipo; el calendario mismo («LatAm») no es nadie.
+  // Quiénes trabajaron acá: los participantes con cuenta en la app (y en
+  // una rutina, quien la escribió), una vez por registro. Ni «Google Calendar» (6/10) ni
+  // quien solo cargó el evento (7/10) cuentan como alguien que trabajó acá.
   const gente = new Map();
   D.visibles.forEach(p => {
     const deEste = new Set();
@@ -19727,8 +19724,9 @@ function renderFichaLugar(L){
       const g = gente.get(k) || { n: 0, email: m ? m.email : email, nombre: m ? m.name : nombre };
       g.n++; gente.set(k, g);
     };
-    if(esDeCalendar(p)){ const m = miembroPorTexto(p.organizer); if(m) sumar(m); }
-    else sumar(memberByEmail(p.authorEmail), p.authorEmail, p.authorName);
+    // Desde el 7/10/2026, quien FUE y no quien lo cargó (ver quienDe): los
+    // participantes; en una rutina, además, quien la escribió.
+    if(p.activityType === "rutina" && !esDeCalendar(p)) sumar(memberByEmail(p.authorEmail), p.authorEmail, p.authorName);
     (p.participants || []).forEach(x => { const m = x && x.email ? memberByEmail(x.email) : null; if(m) sumar(m); });
   });
   const quienes = gente.size ? `<div class="fl-card"><h3>${t("Quiénes trabajaron acá","Who worked here","Quem trabalhou aqui","מי עבד כאן")}</h3><div class="fl-gente">${[...gente.values()].sort((a, b) => b.n - a.n).slice(0, 6).map(g => {

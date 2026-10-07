@@ -1391,6 +1391,12 @@ const hasta = async (p, fn, arg, ms = 5000) => {
       author_name: "Google Calendar", author_email: "", organizer: "Ana Pérez", calendar_event_id: "ev1", scopes: MVD,
       participants: [{ email: ADMIN, name: "Benny" }, { email: "", name: "Invitado de afuera" }],
       images: [], files: [], links: [], mentions: [], liked_by: [], milestones: [], editors: [], recurrence_skip: [], recurrence_moves: {}, created_at: hace(3) });
+    // Una visita que cargó Benny sin decir quién fue (la captura del
+    // usuario del 7/10/2026: «Última visita… por Benny», y Benny solo había
+    // creado el evento).
+    base.posts.push({ id: "p_vis", title: "Visita a Montevideo", content: "", date: dia(2), start_date: dia(2), end_date: dia(2), activity_type: "visita",
+      author_name: "Benny", author_email: ADMIN, scopes: MVD, participants: [],
+      images: [], files: [], links: [], mentions: [], liked_by: [], milestones: [], editors: [], recurrence_skip: [], recurrence_moves: {}, created_at: hace(2) });
     base.posts.push({ id: "p_gcal2", title: "Otra traída del calendario", content: "", date: dia(4), start_date: dia(4), end_date: dia(4), activity_type: "otro",
       author_name: "Google Calendar", author_email: "", organizer: "LatAm", calendar_event_id: "ev2", scopes: MVD,
       participants: [], images: [], files: [], links: [], mentions: [], liked_by: [], milestones: [], editors: [], recurrence_skip: [], recurrence_moves: {}, created_at: hace(4) });
@@ -1401,12 +1407,18 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   await hasta(p, () => (document.querySelector(".ficha-lugar h1") || {}).textContent === "Montevideo");
   eq("tandas: arranca con 30 filas y el botón «Ver más»", await p.evaluate(() => [document.querySelectorAll(".fl-it").length, !!document.querySelector('.fl-main [data-action="ficha-ver-mas"]')]), [30, true]);
   await p.evaluate(() => document.querySelector('[data-action="ficha-ver-mas"]').scrollIntoView());
-  eq("tandas: al bajar hasta el botón se liberan solas las que faltan", await hasta(p, () => document.querySelectorAll(".fl-it").length === 37 && !document.querySelector('[data-action="ficha-ver-mas"]')), true);
-  eq("quiénes: Google Calendar no es una persona; cuenta el organizador si es del equipo, y los participantes con cuenta",
-    await p.$$eval(".fl-gente > div", es => es.map(e => [e.querySelector(".nm").textContent.trim(), e.querySelector(".cn").textContent.trim()])), [["Ana Pérez", "36"], ["Benny", "1"]]);
-  eq("quiénes: en la línea, lo del calendario dice quién lo organizó solo si es del equipo", await p.evaluate(() => [
-    document.querySelector('.fl-it[data-post-id="p_gcal"] .mt').textContent.replace(/\s+/g, " ").trim(), document.querySelector('.fl-it[data-post-id="p_gcal2"] .mt').textContent.replace(/\s+/g, " ").trim()]),
-    ["✨ Otro · Ana Pérez", "✨ Otro"]);
+  eq("tandas: al bajar hasta el botón se liberan solas las que faltan", await hasta(p, () => document.querySelectorAll(".fl-it").length === 38 && !document.querySelector('[data-action="ficha-ver-mas"]')), true);
+  // Desde el 7/10/2026 cuenta quien FUE, no quien cargó (ni el organizador
+  // en Calendar, que es quien lo agendó): los participantes; en las
+  // rutinas, quien las escribió.
+  eq("quiénes: los participantes con cuenta y quien escribió cada rutina; no quien solo cargó o agendó un evento",
+    await p.$$eval(".fl-gente > div", es => es.map(e => [e.querySelector(".nm").textContent.trim(), e.querySelector(".cn").textContent.trim()])), [["Ana Pérez", "35"], ["Benny", "1"]]);
+  eq("quiénes: en la línea, cada evento dice quiénes fueron, y si no se cargó nadie, nada", await p.evaluate(() => [
+    document.querySelector('.fl-it[data-post-id="p_gcal"] .mt').textContent.replace(/\s+/g, " ").trim(), document.querySelector('.fl-it[data-post-id="p_gcal2"] .mt').textContent.replace(/\s+/g, " ").trim(),
+    document.querySelector('.fl-it[data-post-id="p_vis"] .mt').textContent.replace(/\s+/g, " ").trim()]),
+    ["✨ Otro · Benny y Invitado de afuera", "✨ Otro", "🧳 Visita"]);
+  eq("la lectura rápida: la última visita no dice «por» quien solo la cargó",
+    await p.$eval(".fl-lectura li", e => e.textContent.replace(/\s+/g, " ").trim()).then(x => [/^.*Última visita hace/.test(x), /por /.test(x)]), [true, false]);
   eq("costado: la columna de la derecha acompaña el scroll", await p.$eval(".fl-lado", e => getComputedStyle(e).position), "sticky");
   await p.emulateMedia({ media: "print" });
   eq("costado: en papel, no", await p.$eval(".fl-lado", e => getComputedStyle(e).position), "static");
