@@ -2,7 +2,7 @@
    La función `avisar` (el correo al admin cuando alguien pide entrar),
    contra una base y un Resend de mentira.
    ====================================================================== */
-import { atenderAviso, armarCorreo, APP } from "../_compartido/avisos.mjs";
+import { atenderAviso, armarCorreo, APP, DESDE, DESDE_DE_PRUEBA } from "../_compartido/avisos.mjs";
 
 let pass = 0, fail = 0;
 const eq = (n, g, w) => { const a = JSON.stringify(g), x = JSON.stringify(w);
@@ -10,7 +10,7 @@ const eq = (n, g, w) => { const a = JSON.stringify(g), x = JSON.stringify(w);
 
 const URL_SB = "https://proyecto.supabase.co";
 const entorno = (cambios = {}) => { const e = { SUPABASE_URL: URL_SB, RESEND_API_KEY: "re_de_mentira", ...cambios }; return k => e[k]; };
-function mundo({ datos = { para: ["benny@team-latam.com"], nombre: "Ana Pérez", correo: "ana@x.com" }, sesionVencida = false, resendRechaza = [] } = {}){
+function mundo({ datos = { para: ["benny@team-latam.com"], nombre: "Ana Pérez", correo: "ana@x.com" }, sesionVencida = false, resendRechaza = [], dominioSinVerificar = false } = {}){
   const reg = { rpc: [], correos: [] };
   const traer = async (url, op = {}) => {
     const u = String(url);
@@ -23,6 +23,7 @@ function mundo({ datos = { para: ["benny@team-latam.com"], nombre: "Ana Pérez",
     if(u === "https://api.resend.com/emails"){
       const c = JSON.parse(op.body);
       reg.correos.push({ ...c, llave: op.headers.Authorization });
+      if(dominioSinVerificar && !c.from.includes("resend.dev")) return new Response('{"message":"The team-latam.com domain is not verified"}', { status: 403 });
       return new Response("{}", { status: resendRechaza.includes(c.to[0]) ? 403 : 200 });
     }
     throw new Error("pedido inesperado: " + u);
@@ -57,7 +58,7 @@ const leer = async r => [r.status, await r.json()];
   const m = mundo({ datos: { para: ["benny@team-latam.com", "otra.admin@x.com"], nombre: "Ana", correo: "ana@x.com" }, resendRechaza: ["otra.admin@x.com"] });
   const r = await leer(await atenderAviso(pedir(), { env: entorno(), fetch: m.traer }));
   eq("de a uno: si Resend no le manda a uno, el otro recibe igual y cuenta como avisado",
-     [r[1].enviado, m.reg.correos.map(c => c.to[0])], [true, ["benny@team-latam.com", "otra.admin@x.com"]]);
+     [r[1].enviado, m.reg.correos.map(c => c.to[0])], [true, ["benny@team-latam.com", "otra.admin@x.com", "otra.admin@x.com"]]); // el rechazado se reintenta una vez con la dirección de prueba
 }
 {
   const m = mundo({ resendRechaza: ["benny@team-latam.com"] });
@@ -75,6 +76,16 @@ const leer = async r => [r.status, await r.json()];
   eq("la app lo puede llamar (CORS), otra página no",
      [o.status, o.headers.get("access-control-allow-origin"), (await atenderAviso(pedir({ metodo: "OPTIONS", origen: "https://otro.io" }), { env: entorno(), fetch: m.traer })).headers.get("access-control-allow-origin")],
      [204, "https://team-latam.github.io", null]);
+}
+{
+  const m = mundo();
+  await atenderAviso(pedir(), { env: entorno(), fetch: m.traer });
+  eq("sale de info@team-latam.com, y las respuestas van al admin",
+     [m.reg.correos[0].from, m.reg.correos[0].reply_to], ["Registro de Acciones <info@team-latam.com>", "benny@team-latam.com"]);
+  const v = mundo({ dominioSinVerificar: true });
+  const r = await leer(await atenderAviso(pedir(), { env: entorno(), fetch: v.traer }));
+  eq("con el dominio todavía sin verificar, sale igual desde la dirección de prueba de Resend",
+     [r[1].enviado, v.reg.correos.map(c => c.from)], [true, [DESDE, DESDE_DE_PRUEBA]]);
 }
 eq("el correo sin nombre usa la dirección", armarCorreo({ nombre: "", correo: "x@y.com" }).subject, "Nuevo pedido de acceso: x@y.com");
 

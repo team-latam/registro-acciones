@@ -13,10 +13,15 @@
 import { encabezados } from "./web.mjs";
 
 export const APP = "https://team-latam.github.io/registro-acciones/";
-// Sin un dominio propio verificado en Resend, el remitente de prueba de
-// Resend; y en ese modo Resend solo entrega a la dirección de la cuenta.
-// Con un dominio verificado, AVISOS_DESDE lo cambia sin tocar código.
-const DESDE = "Registro de Acciones <onboarding@resend.dev>";
+// El remitente: info@team-latam.com (pedido del usuario el 7/10/2026),
+// con el dominio verificado en Resend (registros en Squarespace,
+// docs/QUE-GUARDAR.md). Si Resend todavía no lo acepta —la verificación
+// tarda, o un día se cae— el aviso sale igual desde la dirección de
+// prueba de Resend, que solo entrega a la cuenta de Resend: mejor eso que
+// ningún aviso. Las respuestas van al admin: info@ no es una casilla.
+export const DESDE = "Registro de Acciones <info@team-latam.com>";
+export const DESDE_DE_PRUEBA = "Registro de Acciones <onboarding@resend.dev>";
+export const RESPONDER_A = "benny@team-latam.com";
 
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" })[c]);
 
@@ -62,13 +67,17 @@ export async function atenderAviso(req, { env, fetch: traer = fetch } = {}){
   let enviados = 0;
   // De a uno: si Resend no le puede mandar a uno (en modo prueba solo
   // entrega a la dirección de la cuenta), los demás reciben igual.
+  const mandar = (from, para) => traer("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${llave}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ from, to: [para], reply_to: env("AVISOS_RESPONDER_A") || RESPONDER_A, ...correo }),
+  });
   for(const para of datos.para){
     try{
-      const r = await traer("https://api.resend.com/emails", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${llave}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ from: env("AVISOS_DESDE") || DESDE, to: [para], ...correo }),
-      });
+      let r = await mandar(env("AVISOS_DESDE") || DESDE, para);
+      // 403 = Resend no acepta ese remitente (dominio sin verificar): se
+      // prueba con el de prueba.
+      if(r.status === 403) r = await mandar(DESDE_DE_PRUEBA, para);
       if(r.ok) enviados++;
       else console.error(`Resend no mandó un aviso (${r.status})`);
     }catch(e){ console.error("Resend no contestó:", e.message); }
