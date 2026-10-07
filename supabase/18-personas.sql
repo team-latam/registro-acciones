@@ -172,12 +172,19 @@ grant execute on function public.vincular_persona(text, text) to authenticated;
 -- esquema y no encuentra nada la segunda vez. Sin sesión (es el esquema
 -- el que lo hace), así que no pasa por los controles de edición ni por
 -- el registro de actividad.
+-- La ficha se llama como la forma más usada del nombre; en empate, la
+-- que va primero byte a byte (collate "C": mayúscula antes que
+-- minúscula, sin tilde antes que con tilde). Con el orden del idioma de
+-- la base («en_US» en Supabase y en GitHub, «C» en el sandbox) «dario»
+-- ganaba en una y «Dario» en la otra, y la prueba daba distinto según
+-- dónde corría.
 create or replace function public.personas_desde_nombres_sueltos() returns integer
   language plpgsql security definer set search_path = '' as $$
 declare r record; pid text; n integer := 0;
 begin
   for r in
-    select distinct lower(public.sin_tildes(btrim(e ->> 'name'))) as clave, min(btrim(e ->> 'name')) as nombre
+    select lower(public.sin_tildes(btrim(e ->> 'name'))) as clave,
+           mode() within group (order by btrim(e ->> 'name') collate "C") as nombre
       from public.posts p, jsonb_array_elements(case when jsonb_typeof(p.participants) = 'array' then p.participants else '[]'::jsonb end) e
      where coalesce(e ->> 'email', '') = '' and not (e ? 'persona') and length(btrim(coalesce(e ->> 'name', ''))) > 0
      group by 1
