@@ -490,6 +490,12 @@ declare
   yo text := public.mi_correo();
 begin
   if public.sin_sesion_de_persona() then return new; end if;
+  -- Ordenar desde una función que es solo de admins (Revisar lo de
+  -- Calendar, unir o vincular una persona sin cuenta: 12 y 18-*.sql) no es
+  -- editar: puede tocar los participantes de una rutina ajena. La marca la
+  -- ponen solo esas funciones, y acá vale solo para esas columnas.
+  if current_setting('registro.ordenando_calendar', true) = 'si'
+     and cambios <@ array['participants', 'activity_type', 'scopes', 'location'] then return new; end if;
 
   -- De quién es y cuándo se creó no cambia NUNCA, ni para el admin.
   if cambios && array['id', 'author_email', 'author_name', 'created_at'] then

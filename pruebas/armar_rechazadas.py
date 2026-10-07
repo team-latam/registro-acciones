@@ -11,6 +11,9 @@ from extractor import grab, src, estilo, cuerpo_click
 codigo = "\n".join(grab(n) for n in [
     "esc", "fotoSegura", "tsToMillis", "pad2", "fmtDate", "uses12h", "fmtTime", "fmtDateTime",
     "solicitudesPendientes", "withRosterGuard",
+    # «¿Es X, que figura sin cuenta?» (7/10/2026), abajo de cada pedido pendiente.
+    "normalize", "recortar", "cuantasActividades", "actividadesDePersona",
+    "parecidosDescartados", "personaQueParece", "renderPareceSerPersona",
     # El formulario de "Dar acceso por adelantado" (tanda 11) va arriba de la cola.
     "preaprobarDraft", "renderPreaprobar", "renderSolicitudesQueueSection"])
 
@@ -23,7 +26,7 @@ const t = (es, en, pt, he, vars) => String(es).replace(/\\{(\\w+)\\}/g, (todo, k
 // Lo de afuera de esta pantalla, simulado y anotado para la prueba.
 const prefs = () => ({});
 const dateFormatPref = () => "dmy", timeFormatPref = () => "24", dateLocale = () => "es";
-const state = { accessRequests: [], formerMembers: [], roster: [], posts: [] };
+const state = { accessRequests: [], formerMembers: [], roster: [], posts: [], personas: [] };
 const savingRoster = new Set();
 const appConfirm = async (msg, opts) => { window.__ultimoConfirm = msg; window.__ultimoOpts = opts || {}; return window.__confirmado === true; };
 const appAlert = async m => { (window.__alertas = window.__alertas || []).push(m); };

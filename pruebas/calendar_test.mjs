@@ -225,6 +225,11 @@ eq("ninguna de las dos pasa por otro lado que no sea Google",
     ${grab("addDaysISO")}
     ${grab("esCorreoValido")}
     ${grab("calendarSummary")}
+    // Participantes sin cuenta (7/10/2026): el nombre sale de la ficha.
+    const state = { personas: [] };
+    const memberByEmail = () => null, nombreDe = m => m.name;
+    ${grab("personaPorId")}
+    ${grab("participanteNombre")}
     ${grab("participantsLabel")}
     let calendarTimeZone = null;
     ${grab("zonaDelCalendario")}

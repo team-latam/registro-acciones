@@ -31,7 +31,7 @@ import { pathToFileURL } from "node:url";
 export const TABLAS = {
   posts: "id", replies: "id", members: "email", former_members: "email",
   access_requests: "email", user_prefs: "email", app_config: "key", audit_log: "id",
-  calendar_sugerencias: "evento", calendar_sacados: "evento",
+  calendar_sugerencias: "evento", calendar_sacados: "evento", personas: "id",
 };
 const BUCKET = "adjuntos";
 const PAGINA = 1000;

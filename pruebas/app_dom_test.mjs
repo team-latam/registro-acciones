@@ -43,6 +43,7 @@ const conHora = (tabla, f, nueva) => {
   Object.keys(o).forEach(k => { if(o[k] === MARCA) o[k] = new Date().toISOString(); });
   if(nueva && ["posts","replies","audit_log"].includes(tabla) && !o.created_at) o.created_at = new Date().toISOString();
   if(nueva && tabla === "access_requests" && !o.requested_at) o.requested_at = new Date().toISOString();
+  if(nueva && tabla === "personas"){ if(!o.created_by) o.created_by = quien(); if(!o.created_at) o.created_at = new Date().toISOString(); }
   return o;
 };
 function ejecutar(q){
@@ -200,6 +201,37 @@ export function createClient(url, clave){
           if(String(f.author_email || "").toLowerCase() === viejo){ f.author_email = nuevo; f.author_name = m.name; comentarios++; }
         });
         return { data: { cargados, comentarios }, error: null };
+      }
+      // Personas sin cuenta (18-personas.sql): unir dos fichas o pasarle
+      // el historial a una cuenta. Igual que la base: reemplaza en cada
+      // posteo, sin duplicar, y la ficha que se va desaparece.
+      if(nombre === "unir_personas" || nombre === "vincular_persona"){
+        const personas = estado.tablas.personas || [];
+        const de = personas.find(x => x.id === (nombre === "unir_personas" ? args.p_de : args.p_id));
+        if(!de) return { data: null, error: { code: "23514", message: "Esa persona no existe" } };
+        let nuevo;
+        if(nombre === "unir_personas"){
+          const a = personas.find(x => x.id === args.p_a);
+          if(!a || a === de) return { data: null, error: { code: "23514", message: "Hay que elegir dos personas distintas" } };
+          a.email = a.email || de.email || null; a.note = a.note || de.note || null;
+          nuevo = { persona: a.id, name: a.name };
+        } else {
+          const m = (estado.tablas.members || []).find(x => String(x.email).toLowerCase() === String(args.p_email).toLowerCase());
+          if(!m) return { data: null, error: { code: "23514", message: "Esa cuenta no está en el equipo" } };
+          nuevo = { email: m.email, name: m.name || m.email };
+        }
+        let n = 0;
+        (estado.tablas.posts || []).forEach(f => {
+          if(!Array.isArray(f.participants) || !f.participants.some(x => x && x.persona === de.id)) return;
+          const vistos = new Set(), out = [];
+          f.participants.map(x => x && x.persona === de.id ? nuevo : x).forEach(x => {
+            const k = x.email ? String(x.email).toLowerCase() : x.persona ? "persona:" + x.persona : "nombre:" + String(x.name || "").toLowerCase();
+            if(vistos.has(k)) return; vistos.add(k); out.push(x);
+          });
+          f.participants = out; n++;
+        });
+        estado.tablas.personas = personas.filter(x => x !== de);
+        return { data: n, error: null };
       }
       return { data: null, error: { code: "PGRST202", message: "no existe la función " + nombre } };
     },
@@ -715,8 +747,11 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   eq("revisar: quedan ordenados en la base, sin fecha de edición (nadie recibe «Cambios en tus eventos»)",
      ["cal_ev1", "cal_ev2"].map(id => { const f = posts.find(x => x.id === id); return [f.activity_type, f.last_edited_at || null]; }),
      [["visita", null], ["curso", null]]);
-  eq("revisar: el que no está en el equipo queda como nombre suelto, y el del equipo vinculado",
-     posts.find(x => x.id === "cal_ev1").participants, [{ email: "ana@x.com", name: "Ana Pérez" }, { name: "Zeka" }]);
+  // Zeka no tiene cuenta: pasa a ser una persona con su ficha (7/10/2026),
+  // no un nombre suelto que no contaba en ningún lado.
+  const fichaZeka = ((await base()).personas || []).find(x => x.name === "Zeka");
+  eq("revisar: el que no está en el equipo queda como persona sin cuenta (con ficha propia), y el del equipo vinculado",
+     posts.find(x => x.id === "cal_ev1").participants, [{ email: "ana@x.com", name: "Ana Pérez" }, { persona: fichaZeka && fichaZeka.id, name: "Zeka" }]);
   await hasta(p, () => document.querySelector('.admin-item[data-view="revisarcal"]').textContent.includes("2"));
   eq("revisar: lo guardado se queda en su lugar, marcado «✓ Guardado» y con lo que quedó (no lo sugerido)",
      await p.$eval('.rv-row:has([data-post-id="cal_ev1"]) .rv-sug', e => [...e.children].map(c => c.textContent.trim())),
@@ -748,13 +783,25 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   eq("revisar: y los elegidos siguen elegidos, para seguir cambiándoles otra cosa",
      await p.$eval(".rv-flota .rv-barra b", e => e.textContent), "2 elegidos");
   await p.click('[data-action="rv-ninguno"]');
-  // Los nombres sueltos se vinculan cuando la persona entra al equipo.
-  eq("revisar: «Nombres sueltos» muestra a Zeka", await p.$$eval(".rv-sueltos .rv-tit b", l => l.map(e => e.textContent)), ["Zeka"]);
-  await p.selectOption('.rv-vincular[data-nombre="Zeka"]', "ana@x.com");
-  await p.click('[data-action="rv-vincular"][data-nombre="Zeka"]');
-  await hasta(p, () => !document.querySelector(".rv-sueltos"));
-  eq("revisar: vincular un nombre suelto lo pasa a la persona (sin duplicarla)",
-     (await base()).posts.find(x => x.id === "cal_ev1").participants, [{ email: "ana@x.com", name: "Ana Pérez" }]);
+  // Cuando la persona entra al equipo, su ficha se vincula a la cuenta
+  // desde Administración → Personas → Sin cuenta (el detalle en personas_test).
+  await p.click('.admin-menu [data-action="admin-go"][data-view="solicitudes"][data-key="usuarios"]');
+  await p.click('[data-action="acceso-section"][data-key="sincuenta"]');
+  eq("personas: «Sin cuenta» lista a Zeka con su única actividad",
+     await p.$$eval('.lp-row[data-action="persona-abrir"] .lp-who', l => l.map(e => [e.querySelector("b").textContent, /1 actividad/.test(e.textContent)])), [["Zeka", true]]);
+  await p.click('.lp-row[data-action="persona-abrir"]');
+  await p.waitForSelector(".sc-vincular");
+  await p.selectOption(".sc-vincular", "ana@x.com");
+  await p.click('[data-action="persona-vincular"]');
+  await p.waitForSelector("#confirmOk", { state: "visible" });
+  eq("personas: vincular pregunta antes, nombrando a los dos",
+     await p.$eval("#confirmOverlay", e => /«Zeka» es Ana Pérez/.test(e.textContent)), true);
+  await p.click("#confirmOk");
+  await hasta(p, () => !(window.__sb.tablas.personas || []).length);
+  eq("personas: vincular la ficha a la cuenta pasa sus eventos a la persona (sin duplicarla) y la ficha se va",
+     [(await base()).posts.find(x => x.id === "cal_ev1").participants, ((await base()).personas || []).length], [[{ email: "ana@x.com", name: "Ana Pérez" }], 0]);
+  await p.click('.admin-item[data-view="revisarcal"]');
+  await p.waitForSelector('[data-action="rv-seguros"]');
   // Editar uno solo, a mano.
   await p.click('[data-action="rv-seguros"]');
   await p.click('[data-action="rv-editar"][data-post-id="cal_ev3"]');

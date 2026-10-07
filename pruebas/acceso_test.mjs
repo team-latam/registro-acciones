@@ -42,7 +42,7 @@ function armar(){
     const clearTimeout = id => { if(id && reg.relojes[id-1]) reg.relojes[id-1].vivo = false; };
     let unsubscribeData=null, unsubscribeRequests=null, unsubAllowlist=null, unsubOwnRequest=null,
         unsubAuditLog=null, unsubRoster=null, unsubTerritoryConfig=null, unsubPreferences=null,
-        unsubUserPrefs=null, unsubFormerMembers=null;
+        unsubUserPrefs=null, unsubFormerMembers=null, unsubPersonas=null;
     let auditLoginLoggedThisSession = false;
     let composerDraft=null, rutinaDraft=null, zonasDraft=null, tiposDraft=null, calendarDraft=null, adjuntosDraft=null;
     const replyDrafts = {}, nestedReplyDrafts = {};
@@ -51,7 +51,7 @@ function armar(){
     let userMenuOpen=false, mentionsMenuOpen=false;
     const postModalOverlay = { hidden:true };
     const state = { auth:{ status:"loading", user:null }, posts:[], repliesByPost:{}, loaded:false,
-      accessRequests:[], auditLog:[], roster:[], formerMembers:[], prefs:{}, filters:null,
+      accessRequests:[], auditLog:[], roster:[], formerMembers:[], personas:[], prefs:{}, filters:null,
       preferenciasSection:"zonas", view:"feed" };
     const newComposerDraft = ()=>({}), newRutinaDraft = ()=>({});
     const stopCalendarAutoSync = ()=>{};
@@ -66,7 +66,8 @@ function armar(){
     const subscribeData = anotar("posts"), subscribeAccessRequests = anotar("solicitudes"),
           subscribeAuditLog = anotar("auditoria"), subscribeRoster = anotar("padron"),
           subscribeTerritoryConfig = anotar("config"), subscribePreferences = anotar("preferencias"),
-          subscribeUserPrefs = anotar("mis-preferencias"), subscribeFormerMembers = anotar("ex");
+          subscribeUserPrefs = anotar("mis-preferencias"), subscribeFormerMembers = anotar("ex"),
+          subscribePersonas = anotar("personas");
     ${grab("recomputeAuthStatus")}
     ${grab("onAuthChanged")}
     return { onAuthChanged, state };
@@ -222,7 +223,7 @@ for(const [role, esperado] of [[undefined,"approved"],["member","approved"],["ob
   a.padron(FICHA);
   await tic();
   eq("recién con la ficha se abren los datos",
-     a.reg.suscripciones, ["posts","padron","config","preferencias","mis-preferencias","ex"]);
+     a.reg.suscripciones, ["posts","padron","config","preferencias","mis-preferencias","ex","personas"]);
   eq("y como no es admin, ni solicitudes ni auditoría",
      a.reg.suscripciones.filter(x=>x==="solicitudes"||x==="auditoria"), []);
 }
@@ -283,9 +284,12 @@ for(const [role, esperado] of [[undefined,"approved"],["member","approved"],["ob
    Aprobar a alguien que YA está en el equipo (la cola quedó con un
    pedido viejo): tiene que limpiar la cola sin tocarle la ficha.
 ------------------------------------------------------------------ */
-function armarAprobacion(fichaExistente){
-  const reg = { altas:[], estados:[], borradosEx:[], auditoria:[] };
+function armarAprobacion(fichaExistente, personas = []){
+  const reg = { altas:[], estados:[], borradosEx:[], auditoria:[], vinculadas:[] };
   const store = {
+    // Personas sin cuenta (7/10/2026): si una ficha tiene este correo, al
+    // aprobar se le pasa el historial a la cuenta nueva.
+    personas: { async vincular(id, email){ reg.vinculadas.push([id, email]); } },
     roster: {
       async get(email){ return fichaExistente; },
       async add(email, datos){ reg.altas.push({ email, ...datos }); },
@@ -300,14 +304,26 @@ function armarAprobacion(fichaExistente){
     "use strict";
     const { store, reg } = ctx;
     const ADMIN_EMAIL = "benny@team-latam.com";
-    const state = { auth:{ user:{ email:"benny@team-latam.com" } }, formerMembers:[], roster:[] };
+    const state = { auth:{ user:{ email:"benny@team-latam.com" } }, formerMembers:[], roster:[], personas: ctx.personas };
     const logAudit = tipo => { reg.auditoria.push(tipo); };
     const takenNicknames = async ()=> new Set();
     const makeNickname = (nombre)=> "laura";
     ${grab("approveRequest")}
     return { approveRequest };
-  `)({ store, reg });
+  `)({ store, reg, personas });
   return { reg, aprobar: sandbox.approveRequest };
+}
+{
+  const a = armarAprobacion(null, [{ id:"p_laura", name:"Laura", email:"LAURA@x.com" }, { id:"p_otro", name:"Otro", email:null }]);
+  await a.aprobar("laura@x.com");
+  eq("si una persona sin cuenta tenía anotado ese correo, al aprobar se le pasa su historial (sin importar mayúsculas)",
+     a.reg.vinculadas, [["p_laura", "laura@x.com"]]);
+  eq("y la ficha nueva se crea igual", a.reg.altas.map(x => x.email), ["laura@x.com"]);
+}
+{
+  const a = armarAprobacion(null, [{ id:"p_otro", name:"Otro", email:"otro@x.com" }]);
+  await a.aprobar("laura@x.com");
+  eq("sin una ficha con ese correo no se vincula nada solo (por el nombre se le pregunta al admin)", a.reg.vinculadas, []);
 }
 {
   const a = armarAprobacion({ email:"laura@x.com", nickname:"lau", role:"observer", calendarShared:true });
