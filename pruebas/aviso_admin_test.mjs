@@ -22,7 +22,7 @@ const CDN = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/+esm";
 const BASE = () => ({ members: [], posts: [], replies: [], access_requests: [], former_members: [], audit_log: [], app_config: [], user_prefs: [] });
 
 const b = await chromium.launch();
-async function espera(funcion){
+async function espera(funcion, { base = BASE(), selector = ".gate-espera" } = {}){
   const p = await b.newPage();
   const pedidos = [], errores = [];
   p.on("pageerror", e => errores.push(String(e)));
@@ -39,9 +39,9 @@ async function espera(funcion){
     window.__sb = { tablas: base, sesion: { user: { id: "uuid-pedro", email: "pedro@x.com", user_metadata: { full_name: "Pedro Gómez" } } },
                     oyentes: [], rpc: [], escrituras: [], subidas: [], borradas: [], logins: [], canales: 0 };
     window.__pruebasSinIntegridad = true;
-  }, BASE());
+  }, base);
   await p.goto(PAGINA);
-  await p.waitForSelector(".gate-espera", { timeout: 8000 });
+  await p.waitForSelector(selector, { timeout: 8000 });
   await p.waitForTimeout(800);
   const pasos = await p.$$eval(".gate-espera .gate-paso", ls => ls.map(l => l.innerText.replace(/\s+/g, " ").trim()));
   return { p, pedidos, errores, pasos };
@@ -64,6 +64,21 @@ async function espera(funcion){
 {
   const { p, pasos } = await espera(null);
   eq("y si la función ni contesta, tampoco", /Le avisamos/.test(pasos.join(" ")), false);
+  await p.close();
+}
+
+{
+  // Rechazado, vuelve a pedir sin recargar la página: es un pedido nuevo y
+  // le corresponde su aviso (hasta el 7/10/2026 no salía hasta recargar).
+  const base = BASE();
+  base.access_requests.push({ email: "pedro@x.com", name: "Pedro Gómez", status: "rejected", requested_at: new Date(Date.now() - 3 * 3600000).toISOString() });
+  const { p, pedidos, errores } = await espera({ estado: 200, cuerpo: { enviado: true } }, { base, selector: '[data-action="request-again"]' });
+  const antes = pedidos.length;
+  await p.click('[data-action="request-again"]');
+  await p.waitForSelector(".gate-espera", { timeout: 8000 });
+  await p.waitForTimeout(800);
+  eq("rechazado que vuelve a pedir: sale el aviso del pedido nuevo, sin recargar", [antes, pedidos.length], [0, 1]);
+  eq("vuelve a pedir: sin errores", errores, []);
   await p.close();
 }
 

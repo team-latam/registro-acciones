@@ -284,7 +284,7 @@ for(const [role, esperado] of [[undefined,"approved"],["member","approved"],["ob
    Aprobar a alguien que YA está en el equipo (la cola quedó con un
    pedido viejo): tiene que limpiar la cola sin tocarle la ficha.
 ------------------------------------------------------------------ */
-function armarAprobacion(fichaExistente, personas = []){
+function armarAprobacion(fichaExistente, personas = [], descartados = []){
   const reg = { altas:[], estados:[], borradosEx:[], auditoria:[], vinculadas:[] };
   const store = {
     // Personas sin cuenta (7/10/2026): si una ficha tiene este correo, al
@@ -306,11 +306,13 @@ function armarAprobacion(fichaExistente, personas = []){
     const ADMIN_EMAIL = "benny@team-latam.com";
     const state = { auth:{ user:{ email:"benny@team-latam.com" } }, formerMembers:[], roster:[], personas: ctx.personas };
     const logAudit = tipo => { reg.auditoria.push(tipo); };
+    // Los que el admin descartó con «No es» (7/10/2026): ahí no se vincula.
+    const parecidosDescartados = new Set(ctx.descartados || []);
     const takenNicknames = async ()=> new Set();
     const makeNickname = (nombre)=> "laura";
     ${grab("approveRequest")}
     return { approveRequest };
-  `)({ store, reg, personas });
+  `)({ store, reg, personas, descartados });
   return { reg, aprobar: sandbox.approveRequest };
 }
 {
@@ -319,6 +321,11 @@ function armarAprobacion(fichaExistente, personas = []){
   eq("si una persona sin cuenta tenía anotado ese correo, al aprobar se le pasa su historial (sin importar mayúsculas)",
      a.reg.vinculadas, [["p_laura", "laura@x.com"]]);
   eq("y la ficha nueva se crea igual", a.reg.altas.map(x => x.email), ["laura@x.com"]);
+}
+{
+  const a = armarAprobacion(null, [{ id:"p_laura", name:"Laura", email:"laura@x.com" }], ["laura@x.com"]);
+  await a.aprobar("laura@x.com");
+  eq("pero si el admin dijo «No es», no se vincula aunque coincida el correo (7/10/2026)", a.reg.vinculadas, []);
 }
 {
   const a = armarAprobacion(null, [{ id:"p_otro", name:"Otro", email:"otro@x.com" }]);

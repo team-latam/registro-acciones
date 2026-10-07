@@ -68,6 +68,17 @@ async function portada({ sinGoogle = false, rechazar = false } = {}){
   const cfg = await p.evaluate(() => ({ cliente: window.__gis.client_id, nonce: window.__gis.nonce, modo: window.__gis.ux_mode, idioma: window.__gisOp.locale }));
   eq("con el cliente de la app, en una ventanita, en el idioma de la página, y con la huella de un nonce",
      [/^40280679854-.*\.apps\.googleusercontent\.com$/.test(cfg.cliente), cfg.modo, cfg.idioma, /^[0-9a-f]{64}$/.test(cfg.nonce)], [true, "popup", "es", true]);
+  eq("y a la vista, chico, «Entrar de otra forma» por si la ventanita de Google no se abre",
+     await p.$eval(".gate-tarjeta .gate-otra-forma", e => getComputedStyle(e).display !== "none" && e.dataset.action).catch(() => null), "google-signin");
+  // Un redibujado de la portada (cambiar el idioma) no arma otro pedido a
+  // Google: si la ventanita estaba abierta, su respuesta tiene que seguir
+  // valiendo.
+  await p.click('.gate-idiomas [data-lang="en"]');
+  await p.waitForFunction(() => window.__gisOp && window.__gisOp.locale === "en", null, { timeout: 5000 });
+  await p.click('.gate-idiomas [data-lang="es"]');
+  await p.waitForFunction(() => window.__gisOp && window.__gisOp.locale === "es", null, { timeout: 5000 });
+  eq("redibujar la portada no cambia el nonce (Google se inicializa una vez)",
+     await p.evaluate(nonce => [window.__gisInits, window.__gis.nonce === nonce], cfg.nonce), [1, true]);
   await p.click("#botonGoogle");
   await p.waitForFunction(() => window.__sb.logins.length > 0, null, { timeout: 5000 });
   const login = await p.evaluate(() => window.__sb.logins[0]);

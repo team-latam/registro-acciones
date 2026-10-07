@@ -47,7 +47,9 @@ await p.evaluate(a=>window.__puerta(a), { status:"signedOut", user:null });
 g = await mirar();
 // Desde la tanda 8 la portada también ofrece los cuatro idiomas (set-lang),
 // además del botón de Google que sigue siendo la única forma de entrar.
-eq("la de inicio sigue ofreciendo Google", g.acciones, ["google-signin","set-lang","set-lang","set-lang","set-lang"]);
+// Desde el 7/10/2026, dos veces: el botón de siempre (de repuesto cuando se
+// dibuja el de Google) y «¿No se abre? Entrar de otra forma».
+eq("la de inicio sigue ofreciendo Google", g.acciones, ["google-signin","google-signin","set-lang","set-lang","set-lang","set-lang"]);
 await p.evaluate(a=>window.__puerta(a), { status:"pending", user:USUARIO, requestStatus:"pending" });
 g = await mirar();
 eq("la de pendiente sigue igual", g.acciones, ["sign-out"]);
