@@ -79,6 +79,17 @@ const misPrefs = (p, email) => p.evaluate(e => ((window.__sb.tablas.user_prefs |
   await p.waitForTimeout(300);
   eq("cambiar cuándo y de qué se guarda en sus preferencias",
      await misPrefs(p, ADMIN).then(x => [x.emailWhen, x.emailWhat]), ["instant", ["menciones", "respuestas", "pedidos", "nuevos"]]);
+  eq("la hora, con cinco botones (no una lista de 24), y de fábrica las 9",
+     await p.$$eval('.avisos-correo [data-action="correo-hora"]', l => [l.map(x => x.dataset.key), l.filter(x => x.classList.contains("active")).map(x => x.dataset.key)]),
+     [["7", "9", "13", "18", "21"], ["9"]]);
+  eq("y ningún selector de lista en la tarjeta", await p.$$eval(".avisos-correo select", l => l.length), 0);
+  await p.click('[data-action="correo-hora"][data-key="18"]');
+  await p.click('[data-action="correo-cuando"][data-key="weekly"]');
+  await p.click('[data-action="correo-dia"][data-key="3"]');
+  await p.waitForTimeout(300);
+  eq("semanal: aparecen los siete días; la hora y el día elegidos se guardan",
+     [await p.$$eval('.avisos-correo [data-action="correo-dia"]', l => l.length), await misPrefs(p, ADMIN).then(x => [x.emailWhen, x.emailHour, x.emailDay])],
+     [7, ["weekly", 18, 3]]);
   await p.click('.avisos-correo .pref-switch');
   await p.waitForTimeout(300);
   eq("apagado: se guarda y quedan escondidas las opciones",

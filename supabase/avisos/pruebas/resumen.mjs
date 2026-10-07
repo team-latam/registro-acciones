@@ -11,8 +11,8 @@ process.env.SUPABASE_SERVICE_ROLE_KEY = "llave-de-mentira";
 process.env.RESEND_API_KEY = "re_de_mentira";
 const { main, leToca, relojArgentino, armarResumen } = await import("../resumen.mjs");
 
-// Miércoles 7/10/2026, 8:30 en Argentina (11:30 UTC).
-const AHORA = Date.parse("2026-10-07T11:30:00Z");
+// Miércoles 7/10/2026, 9:30 en Argentina (12:30 UTC): la hora de fábrica.
+const AHORA = Date.parse("2026-10-07T12:30:00Z");
 const hace = h => new Date(AHORA - h * 3600000).toISOString();
 const BENNY = "benny@team-latam.com";
 
@@ -27,7 +27,7 @@ function mundo({ prefs = {}, puede = { [BENNY]: true }, ultimos = [], resendFall
     { id: "r1", post_id: "p2", content: "Buenísimo", author_email: "juan@x.com", author_name: "Juan", mentions: [], created_at: hace(2), system: false },
     { id: "r2", post_id: "p2", content: "📅 Calendar", author_email: "", author_name: "Google Calendar", mentions: [], created_at: hace(2), system: true },
   ];
-  const deFabrica = { on: true, when: "daily", hour: 8, day: 1, what: ["menciones", "respuestas"] };
+  const deFabrica = { on: true, when: "daily", hour: 9, day: 1, what: ["menciones", "respuestas"] };
   globalThis.fetch = async (url, op = {}) => {
     const u = String(url), q = new URL(u).searchParams;
     const ok = d => new Response(d === null ? "" : JSON.stringify(d));
@@ -55,7 +55,7 @@ function mundo({ prefs = {}, puede = { [BENNY]: true }, ultimos = [], resendFall
 const callado = async fn => { const l = console.log, e = console.error; console.log = () => {}; console.error = () => {};
   try{ return await fn(); } finally { console.log = l; console.error = e; } };
 
-eq("el reloj es el de Argentina", relojArgentino(AHORA), { hora: 8, dia: 3, fecha: "2026-10-07" });
+eq("el reloj es el de Argentina", relojArgentino(AHORA), { hora: 9, dia: 3, fecha: "2026-10-07" });
 const pr = { on: true, when: "daily", hour: 8, day: 1, what: [] };
 eq("le toca a su hora; a otra hora no; apagado no; semanal solo su día",
    [leToca(pr, { hora: 8, dia: 3 }, null, AHORA), leToca(pr, { hora: 9, dia: 3 }, null, AHORA), leToca({ ...pr, on: false }, { hora: 8, dia: 3 }, null, AHORA),
@@ -67,7 +67,7 @@ eq("si ya salió hace un rato (el trabajo corrió dos veces), no otra vez", leTo
   const reg = mundo();
   const r = await callado(() => main(AHORA));
   const c = reg.correos[0] || {};
-  eq("a Benny, a las 8, su resumen del día", [r.enviados, c.to, c.from, c.reply_to], [1, [BENNY], "Registro de Acciones <info@team-latam.com>", BENNY]);
+  eq("a Benny, a las 9, su resumen del día", [r.enviados, c.to, c.from, c.reply_to], [1, [BENNY], "Registro de Acciones <info@team-latam.com>", BENNY]);
   eq("con la mención de las últimas 24 horas y la respuesta a su posteo (no la vieja, no la del sistema)",
      [c.subject, c.html.includes("Visita a Rosario"), c.html.includes("Viejo"), c.html.includes("1 respuesta en «Programa de becas»"), c.html.includes("Google Calendar")],
      ["Tu resumen del día: 1 mención, 1 respuesta", true, false, true, false]);
@@ -106,8 +106,8 @@ eq("si ya salió hace un rato (el trabajo corrió dos veces), no otra vez", leTo
   process.exitCode = 0;
 }
 {
-  const reg = mundo({ prefs: { [BENNY]: { hour: 9 } } });
-  eq("a las 8 no, si eligió las 9", (await callado(() => main(AHORA))).enviados, 0);
+  const reg = mundo({ prefs: { [BENNY]: { hour: 18 } } });
+  eq("a las 9 no, si eligió las 18", (await callado(() => main(AHORA))).enviados, 0);
 }
 
 console.log(`${pass} pasaron, ${fail} fallaron`);

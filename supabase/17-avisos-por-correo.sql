@@ -9,7 +9,7 @@
 -- viven en user_prefs.prefs:
 --   emailOn    boolean   prendido (de fábrica: sí)
 --   emailWhen  text      'instant' | 'daily' | 'weekly' (de fábrica: daily)
---   emailHour  int       la hora del resumen, en Argentina (de fábrica: 8)
+--   emailHour  int       la hora del resumen, en Argentina (de fábrica: 9)
 --   emailDay   int       el día del resumen semanal, 1 = lunes (de fábrica: 1)
 --   emailWhat  text[]    'menciones','respuestas','nuevos','proximos','pedidos'
 --                        (de fábrica: menciones y respuestas; los admins
@@ -41,7 +41,7 @@ create or replace function public.prefs_de_correo(p_email text) returns jsonb
   select jsonb_build_object(
     'on',   coalesce((p.prefs ->> 'emailOn')::boolean, true),
     'when', coalesce(nullif(p.prefs ->> 'emailWhen', ''), 'daily'),
-    'hour', coalesce((p.prefs ->> 'emailHour')::int, 8),
+    'hour', coalesce((p.prefs ->> 'emailHour')::int, 9),
     'day',  coalesce((p.prefs ->> 'emailDay')::int, 1),
     'what', coalesce(p.prefs -> 'emailWhat',
               case when p_email = public.admin_fijo()
