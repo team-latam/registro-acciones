@@ -17,6 +17,9 @@ select lab.probar_valor('quien pidió entrar: corresponde, a los dos admins, con
   lab.como('nuevo@x.com'), $q$select 1$q$,
   $q$select (r->'para')::text || ' ' || (r->>'nombre') || ' ' || (r->>'correo') from (select lab.aviso(public.pedir_aviso_al_admin()) r) x$q$,
   '["benny@team-latam.com", "otra.admin@x.com"] Nuevo <b> nuevo@x.com');
+select lab.probar_valor('a cada admin en su idioma (de fábrica, español)',
+  lab.como('nuevo@x.com'), $q$select 1$q$,
+  $q$select (lab.aviso(public.pedir_aviso_al_admin()) -> 'idiomas')::text$q$, '{"otra.admin@x.com": "es", "benny@team-latam.com": "es"}');
 -- Hasta el 7/10/2026 la función devolvía la lista entera a quien pedía
 -- entrar: cualquiera con una cuenta de Google veía los correos de los admins.
 select lab.probar_valor('pero quien pidió entrar no ve a quién le llega: recibe solo un turno',

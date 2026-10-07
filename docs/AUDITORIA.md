@@ -64,9 +64,10 @@ Lo que se encontró, y ya está arreglado:
    paquetes de Ubuntu para las pruebas. Ahora espera un tiempo máximo y
    reintenta sola.
 
-Lo que queda son **tres decisiones del usuario** sobre los correos (en
-qué idioma salen, a qué hora para la gente de Israel, y a quién le llega
-si alguien contesta uno), y cuatro cosas chicas anotadas abajo.
+Las tres decisiones sobre los correos ya están tomadas (7/10): cada uno
+los recibe **en su idioma** y el resumen **a su hora** (hechas), y las
+respuestas **siguen llegándole a Benny**. Quedan cuatro cosas chicas,
+anotadas abajo.
 
 ---
 
@@ -96,9 +97,9 @@ Nada.
 |---|---|---|---|
 | C4 | ~~Quien pide entrar ve, llamando a la base, los correos de los admins (y un integrante, a quién le llegan avisos)~~ ✅ 7/10 (la base devuelve un turno; lo lee la función con la llave de servicio) | datos de otros a la vista | Claude |
 | C3 | ~~Sin tope de avisos por persona, y el nombre del correo es la firma del posteo~~ ✅ 7/10 (30 por hora por autor; el nombre sale de su cuenta) | un integrante agota los 100 correos del día; un correo «de Benny (admin)» que no es de Benny | Claude |
-| **C5** | **Los correos salen siempre en español**, sin derecha a izquierda para el hebreo | a la gente de Israel le llegan en español, y un comentario en hebreo se desordena | **usuario** |
-| **C6** | **Las horas del resumen son de Argentina**: en Israel, la más temprana es la 1 de la tarde | el resumen «de la mañana» no existe para ellos | **usuario** |
-| **C7** | **Responder cualquier aviso le llega a Benny** (el `reply_to`) | quien contesta una mención cree que le escribe al colega | **usuario** |
+| C5 | ~~Los correos salen siempre en español, sin derecha a izquierda para el hebreo~~ ✅ 7/10: el usuario eligió **A**, cada uno en el idioma que eligió en la app (español, inglés, portugués o hebreo, este de derecha a izquierda); lo que escribió alguien va con `dir="auto"` | a la gente de Israel le llegaban en español, y un comentario en hebreo se desordenaba | usuario → Claude |
+| C6 | ~~Las horas del resumen son de Argentina: en Israel, la más temprana es la 1 de la tarde~~ ✅ 7/10: el usuario eligió **A**, cada uno elige la hora en SU hora (la zona del aparato, que la app guarda) | el resumen «de la mañana» no existía para ellos | usuario → Claude |
+| C7 | Responder cualquier aviso le llega a Benny (el `reply_to`) — el usuario eligió **C**, dejarlo como está (7/10) | quien contesta una mención le escribe a Benny | usuario |
 | E3 | ~~Si la ventanita de Google no se abre, no queda otra forma de entrar~~ ✅ 7/10 («¿No se abre? Entrar de otra forma») | la portada con un solo botón que no anda | Claude |
 | E4 | ~~Cambiar el ID del calendario sin compartírselo a la cuenta de la app corta la lectura, y el error dice «Not Found»~~ ✅ 7/10 (la ayuda lo dice, y el error con palabras) | nadie entiende por qué dejó de sincronizar | Claude |
 | P4 | ~~Un nombre larguísimo en Participantes se sale del formulario y esconde la ✕~~ ✅ 7/10 | no se puede sacar | Claude |

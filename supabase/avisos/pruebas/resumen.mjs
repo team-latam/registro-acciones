@@ -9,7 +9,7 @@ const eq = (n, g, w) => { const a = JSON.stringify(g), x = JSON.stringify(w);
 process.env.SUPABASE_URL = "https://falso.supabase.co";
 process.env.SUPABASE_SERVICE_ROLE_KEY = "llave-de-mentira";
 process.env.RESEND_API_KEY = "re_de_mentira";
-const { main, leToca, desdeDe, relojArgentino, armarResumen } = await import("../resumen.mjs");
+const { main, leToca, desdeDe, relojArgentino, relojDe, armarResumen } = await import("../resumen.mjs");
 
 // Miércoles 7/10/2026, 9:30 en Argentina (12:30 UTC): la hora de fábrica.
 const AHORA = Date.parse("2026-10-07T12:30:00Z");
@@ -87,7 +87,7 @@ eq("desde el último que salió, pero no más atrás que su período más una se
   const c = reg.correos[0] || {};
   eq("a Benny, a las 9, su resumen del día", [r.enviados, c.to, c.from, c.reply_to], [1, [BENNY], "Registro de Acciones <info@team-latam.com>", BENNY]);
   eq("con la mención de las últimas 24 horas y la respuesta a su posteo (no la vieja, no la del sistema)",
-     [c.subject, c.html.includes("Visita a Rosario"), c.html.includes("Viejo"), c.html.includes("1 respuesta en «Programa de becas»"), c.html.includes("Google Calendar")],
+     [c.subject, c.html.includes("Visita a Rosario"), c.html.includes("Viejo"), c.html.replace(/<[^>]+>/g, "").includes("1 respuesta en «Programa de becas»"), c.html.includes("Google Calendar")],
      ["Tu resumen del día: 1 mención, 1 respuesta", true, false, true, false]);
   eq("y queda anotado cuándo", reg.ultimos.map(x => x.email), [BENNY]);
 }
@@ -155,6 +155,26 @@ eq("desde el último que salió, pero no más atrás que su período más una se
   const r = await callado(() => main(AHORA));
   const c = reg.correos[0] || { subject: "", html: "" };
   eq("semanal atrasado un día: llega, y con lo de hace 9 días", [r.enviados, c.subject.startsWith("Tu resumen de la semana"), c.html.includes("Charla en Lima")], [1, true, true]);
+}
+
+/* ---------- Cada uno en su hora y en su idioma (decisión del 7/10/2026) ---------- */
+eq("el reloj de Israel: a las 9:30 de Argentina son las 15:30 en Jerusalén; una zona que no existe cuenta como Argentina",
+   [relojDe(AHORA, "Asia/Jerusalem").hora, relojDe(AHORA, "Marte/Olympus").hora], [15, 9]);
+{
+  const israel = mundo({ prefs: { [BENNY]: { hour: 15, tz: "Asia/Jerusalem" } } });
+  const ri = await callado(() => main(AHORA));
+  const arg = mundo({ prefs: { [BENNY]: { hour: 15 } } });
+  const ra = await callado(() => main(AHORA));
+  eq("quien eligió las 15 en Israel lo recibe a las 15 de Israel (9 de Argentina); en Argentina, todavía no", [ri.enviados, ra.enviados], [1, 0]);
+}
+{
+  const reg = mundo({ prefs: { [BENNY]: { lang: "he" } } });
+  await callado(() => main(AHORA));
+  const c = reg.correos[0] || { subject: "", html: "" };
+  eq("en hebreo: el asunto en hebreo y el correo de derecha a izquierda", [c.subject.startsWith("הסיכום היומי שלך"), /<html lang="he" dir="rtl">/.test(c.html)], [true, true]);
+  const en = mundo({ prefs: { [BENNY]: { lang: "en" } } });
+  await callado(() => main(AHORA));
+  eq("en inglés", (en.correos[0] || {}).subject, "Your daily summary: 1 mention, 1 reply");
 }
 
 console.log(`${pass} pasaron, ${fail} fallaron`);

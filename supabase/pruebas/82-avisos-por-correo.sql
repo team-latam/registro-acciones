@@ -97,6 +97,24 @@ insert into public.avisos_enviados(tipo, objeto, email, autor, enviado_el)
 select lab.probar_valor('el correo de prueba: como mucho tres por día',
   lab.como('benny@team-latam.com'), $q$select 1$q$, $q$select coalesce(public.preparar_prueba()::text, 'nada')$q$, 'nada');
 delete from public.avisos_enviados;
+-- Cada uno en su idioma y en su hora (decisión del usuario del 7/10/2026).
+insert into lab.resultados(nombre, esperado, obtenido, detalle)
+select 'de fábrica, español y la hora de Argentina', true,
+  (select x ->> 'lang' = 'es' and x ->> 'tz' = 'America/Argentina/Buenos_Aires' from (select public.prefs_de_correo('juan@x.com') x) y), '';
+update public.user_prefs set prefs = '{"emailWhen":"instant","emailLang":"he","emailTz":"Asia/Jerusalem"}' where email = 'benny@team-latam.com';
+insert into lab.resultados(nombre, esperado, obtenido, detalle)
+select 'el idioma y la zona que guardó la app', true,
+  (select x ->> 'lang' = 'he' and x ->> 'tz' = 'Asia/Jerusalem' from (select public.prefs_de_correo('benny@team-latam.com') x) y), '';
+select lab.probar_valor('y el aviso al momento lleva el idioma de quien lo recibe',
+  lab.como('ana@x.com'), $q$select 1$q$,
+  $q$select lab.aviso(public.preparar_aviso('posteo', 'p1')) -> 'para' -> 0 ->> 'lang'$q$, 'he');
+update public.user_prefs set prefs = '{"emailWhen":"instant","emailLang":"klingon","emailTz":"x; drop table"}' where email = 'benny@team-latam.com';
+insert into lab.resultados(nombre, esperado, obtenido, detalle)
+select 'un idioma o una zona que no son, valen lo de fábrica', true,
+  (select x ->> 'lang' = 'es' and x ->> 'tz' = 'America/Argentina/Buenos_Aires' from (select public.prefs_de_correo('benny@team-latam.com') x) y), '';
+update public.user_prefs set prefs = '{"emailWhen":"instant"}' where email = 'benny@team-latam.com';
+delete from public.avisos_enviados;
+
 insert into lab.resultados(nombre, esperado, obtenido, detalle)
 select 'lo que hay que mandar lo lee solo la llave de servicio (tomar_aviso), no la app', true,
   not has_table_privilege('authenticated', 'public.avisos_listos', 'select')
