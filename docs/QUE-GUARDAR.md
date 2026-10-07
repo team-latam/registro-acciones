@@ -67,6 +67,15 @@ Si alguna aparece alguna vez en un chat, un mail o una captura, se cambia
 por una nueva desde su panel y se vuelve a cargar donde va — no se
 "borra" de donde haya quedado.
 
+## 4 bis. El dominio `team-latam.com`
+
+Está en **Squarespace** (account.squarespace.com/domains, lo que era
+Google Domains) y **vence el 12/12/2026** (renovación automática). Ahí
+vive su DNS: el correo de Google del equipo y, desde el 7/10/2026, los
+registros de Resend para los avisos (`resend._domainkey`, `send`,
+`rsend`, `_dmarc`). Sin el dominio no hay correo `@team-latam.com`, y sin
+ese correo el admin fijo no puede entrar a la app.
+
 ## 5. Dónde están las claves de conexión
 
 Todas dentro de `index.html`:

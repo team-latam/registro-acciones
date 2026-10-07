@@ -39,7 +39,13 @@ decisiones de arquitectura.
   días). **El token `SUPABASE_ACCESS_TOKEN`** (publica la función
   `calendario`, `supabase/functions/LEEME.md`) **vence el 30/9/2027**:
   renovarlo junto con el otro; si vence, la función sigue andando y solo
-  falla publicar un cambio. Claude no puede crear repos en la cuenta `team-latam` (es una
+  falla publicar un cambio. **El dominio `team-latam.com`** (el correo del
+  equipo, y desde el 7/10/2026 el remitente de los avisos de Resend) está
+  en **Squarespace** (account.squarespace.com/domains, la ex Google
+  Domains) y **vence el 12/12/2026**, con renovación automática: confirmar
+  antes de esa fecha que se renovó y que la tarjeta sigue vigente. Si se
+  cae el dominio, se cae el correo `@team-latam.com` y con él el login del
+  admin. Claude no puede crear repos en la cuenta `team-latam` (es una
   cuenta de usuario; la conexión de GitHub no tiene ese permiso).
 
 ## Auditorías — `auditoria/`
