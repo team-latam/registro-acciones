@@ -1309,14 +1309,22 @@
   .participant-chip .rm:hover{ opacity:1; }
   .participant-chip-avatar{ width:16px; height:16px; border-radius:50%; object-fit:cover; flex-shrink:0; }
   /* Personas sin cuenta (18-personas.sql): el borde punteado las distingue
-     de la gente del equipo en los chips, los avatares y las sugerencias. */
-  .participant-chip.sin-cuenta{ border-style:dashed; }
+     de la gente del equipo en los chips, los avatares y las sugerencias.
+     La clase es «sc-persona» y no «sin-cuenta»: esa ya es la tarjeta
+     «Correos que ya no están en el equipo» (renderCorreosSinCuenta), y
+     los chips heredaban su fondo, su relleno y su sombra (captura del
+     usuario, 7/10). */
+  .participant-chip.sc-persona{ border-style:dashed; }
   .participant-chip small{ font-weight:600; color:var(--text-muted); }
   .participant-chip-sc{ width:16px; height:16px; border-radius:50%; border:1.5px dashed var(--text-muted); font-size:9px; font-weight:800; display:inline-flex; align-items:center; justify-content:center; color:var(--text-muted); flex-shrink:0; box-sizing:border-box; }
   .person-sin-cuenta{ border-bottom:1px dashed var(--text-muted); }
-  .lp-av.sin-cuenta, .avatar-fallback.sin-cuenta{ background:var(--surface-sunken); color:var(--text-muted); border:2px dashed var(--border); box-sizing:border-box; }
-  .mention-avatar.sin-cuenta{ background:var(--surface-sunken); color:var(--text-muted); border:1.5px dashed var(--border); box-sizing:border-box; }
-  .mention-avatar.nueva{ background:var(--celeste-soft); color:var(--celeste-dark); }
+  .lp-av.sc-persona, .avatar-fallback.sc-persona{ background:var(--surface-sunken); color:var(--text-muted); border:2px dashed var(--border); box-sizing:border-box; }
+  /* Con tres clases: la regla general del avatar de relleno (.mention-avatar
+     .mention-avatar-fallback, más abajo) tiene dos y pisaba el fondo claro;
+     quedaba un círculo oscuro con el borde punteado encima, como dentado
+     (captura del usuario, 7/10). */
+  .mention-avatar.mention-avatar-fallback.sc-persona{ background:var(--surface-sunken); color:var(--text-muted); border:1.5px dashed var(--text-muted); box-sizing:border-box; }
+  .mention-avatar.mention-avatar-fallback.nueva{ background:var(--celeste-soft); color:var(--celeste-dark); border:1.5px solid var(--celeste); box-sizing:border-box; }
   .sc-nueva{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:0 0 12px; }
   .sc-nueva input{ flex:1 1 220px; width:auto; }
   .sc-lead{ margin:0 0 12px; }
@@ -2773,6 +2781,11 @@
   .rep-bloque-ancho{ grid-column:span 1; }
   .rep-extras{ display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:14px; margin-top:14px; }
   .rep-lista{ list-style:none; margin:0; padding:0; max-height:320px; overflow:auto; }
+  /* «Por persona del equipo» con las personas sin cuenta se hacía larguísima
+     (captura del usuario, 7/10): misma altura que la lista de al lado y
+     barra para seguir, con el encabezado pegado arriba mientras se baja. */
+  .rep-equipo .rep-tabla-envoltorio{ max-height:320px; overflow:auto; }
+  .rep-equipo .rep-tabla thead th{ position:sticky; top:0; background:var(--card); z-index:1; box-shadow:inset 0 -1px 0 var(--border); }
   .rep-lista li{ display:flex; justify-content:space-between; gap:10px; padding:6px 0; border-top:1px solid var(--border); font-size:13px; font-weight:600; }
   .rep-viejo{ color:var(--danger, #b91c1c); font-weight:800; }
   .rep-sugerencias{ margin-top:14px; background:var(--card); border:1px solid var(--border); border-inline-start:5px solid var(--celeste); border-radius:var(--radius-md); padding:14px 18px; box-shadow:var(--shadow); }
@@ -2842,7 +2855,7 @@
     .rep-riel{ height:8px; }
     .rep-cols{ height:120px; }
     .rep-col .rep-etiqueta{ font-size:9.5px; }
-    .rep-tabla-envoltorio{ overflow:visible; }
+    .rep-tabla-envoltorio, .rep-equipo .rep-tabla-envoltorio{ overflow:visible; max-height:none; }
     .rep-tabla{ font-size:10.5px; }
     .rep-tabla th{ font-size:9.5px; padding:3px 6px; }
     .rep-tabla td{ padding:3px 6px; }
@@ -11368,7 +11381,7 @@ let personaUnirCon = "", personaVincularCon = "";
 let personaOcupada = false;      // mientras se une, vincula o borra
 const cuantasActividades = n => n === 1 ? t("1 actividad","1 activity","1 atividade","פעילות אחת") : t("{n} actividades","{n} activities","{n} atividades","{n} פעילויות",{n});
 function avatarSinCuenta(nombre, px){
-  return `<div class="avatar-fallback lp-av sin-cuenta" style="width:${px}px;height:${px}px">${esc((nombre||"?")[0].toUpperCase())}</div>`;
+  return `<div class="avatar-fallback lp-av sc-persona" style="width:${px}px;height:${px}px">${esc((nombre||"?")[0].toUpperCase())}</div>`;
 }
 function renderSinCuentaSection(){
   const f = state.usuariosFilters;
@@ -11516,7 +11529,7 @@ function fotoSegura(url){
 }
 function avatarDe(u, px){
   return fotoSegura(u.photoURL) ? `<img class="lp-av" src="${esc(fotoSegura(u.photoURL))}" alt="" style="width:${px}px;height:${px}px">`
-    : `<div class="avatar-fallback lp-av${u.sinCuenta ? " sin-cuenta" : ""}" style="width:${px}px;height:${px}px"${u.sinCuenta ? ` title="${esc(ETIQUETA_SIN_CUENTA())}"` : ""}>${esc((u.name||u.nickname||"?")[0].toUpperCase())}</div>`;
+    : `<div class="avatar-fallback lp-av${u.sinCuenta ? " sc-persona" : ""}" style="width:${px}px;height:${px}px"${u.sinCuenta ? ` title="${esc(ETIQUETA_SIN_CUENTA())}"` : ""}>${esc((u.name||u.nickname||"?")[0].toUpperCase())}</div>`;
 }
 function renderUsuariosSection(){
   const f = state.usuariosFilters;
@@ -15488,10 +15501,13 @@ function calcularReporte(desdeISO, hastaISO, filtro){
         if(sc.type === "ciudad" && sc.city) ciudades.add(sc.country + "|" + normalize(sc.city));
       }
     });
-    if(correo){
-      const ps = paisesDePersona[correo] || (paisesDePersona[correo] = new Set());
+    // Los países de cada uno: los de lo que cargó y los de lo que participó.
+    // Antes solo lo cargado: quien solo participa (una persona sin cuenta,
+    // siempre) figuraba con 0 países al lado de 40 actividades (7/10/2026).
+    new Set([correo, ...gente].filter(Boolean)).forEach(c => {
+      const ps = paisesDePersona[c] || (paisesDePersona[c] = new Set());
       paises.forEach(n => ps.add(n));
-    }
+    });
     if(esLatam) latam += veces;
     if(!paises.size && !zonas.size && !esLatam) sinLugar += veces;
     paises.forEach(n=>{ porPais[n] = (porPais[n] || 0) + veces; });
@@ -20720,7 +20736,7 @@ function renderParticipantChip(p, idx){
   const nombre = participanteNombre(p) || p.email || "";
   const avatar = fotoSegura(p.photoURL) ? `<img class="participant-chip-avatar" src="${esc(fotoSegura(p.photoURL))}" alt="">`
     : sinCuenta ? `<span class="participant-chip-sc" aria-hidden="true">${esc((nombre || "?")[0].toUpperCase())}</span>` : "";
-  return `<span class="participant-chip${sinCuenta ? " sin-cuenta" : ""}"${sinCuenta ? ` title="${esc(ETIQUETA_SIN_CUENTA())}"` : ""}>${avatar}${esc(nombre)}${p.nueva ? ` <small>${esc(t("nueva","new","nova","חדש/ה"))}</small>` : ""}<span role="button" tabindex="0" class="rm" aria-label="${esc(t("Quitar","Remove","Remover","הסרה"))}" data-action="rm-participant" data-idx="${idx}">✕</span></span>`;
+  return `<span class="participant-chip${sinCuenta ? " sc-persona" : ""}"${sinCuenta ? ` title="${esc(ETIQUETA_SIN_CUENTA())}"` : ""}>${avatar}${esc(nombre)}${p.nueva ? ` <small>${esc(t("nueva","new","nova","חדש/ה"))}</small>` : ""}<span role="button" tabindex="0" class="rm" aria-label="${esc(t("Quitar","Remove","Remover","הסרה"))}" data-action="rm-participant" data-idx="${idx}">✕</span></span>`;
 }
 function renderParticipantSuggestions(draft){
   const matches = getParticipantMatches(draft);
@@ -20728,7 +20744,7 @@ function renderParticipantSuggestions(draft){
   return `<div class="autocomplete-list">${matches.map((m,i)=>{
     const avatar = m.isLoose ? `<span class="mention-avatar mention-avatar-fallback">✉️</span>`
       : m.nueva ? `<span class="mention-avatar mention-avatar-fallback nueva">+</span>`
-      : m.sinCuenta ? `<span class="mention-avatar mention-avatar-fallback sin-cuenta">${esc((m.name||"?")[0].toUpperCase())}</span>`
+      : m.sinCuenta ? `<span class="mention-avatar mention-avatar-fallback sc-persona">${esc((m.name||"?")[0].toUpperCase())}</span>`
       : fotoSegura(m.photoURL) ? `<img class="mention-avatar" src="${esc(fotoSegura(m.photoURL))}" alt="">`
       : `<span class="mention-avatar mention-avatar-fallback">${esc((m.name||m.email)[0].toUpperCase())}</span>`;
     const gris = x => `<span style="color:var(--text-muted); font-weight:500;">${x}</span>`;
