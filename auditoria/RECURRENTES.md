@@ -163,9 +163,11 @@ lo notara. *Regla:* al revisar una prueba, preguntarse si lo que espera
 es lo que el usuario querría; en un recorrido, que cada paso llegue a
 donde dice (si el botón no está, decirlo, no seguir de largo).
 
-**Una herramienta que se marca a sí misma.** La de seguridad buscaba
-«sk_live_» y su propia línea lo contenía. *Regla:* el patrón que busca
-una herramienta se escribe de forma que no se encuentre a sí mismo.
+**Una herramienta que se marca a sí misma.** La de seguridad buscaba el
+prefijo de las llaves de pago de Stripe y su propia línea lo contenía (y
+este mismo archivo, al contarlo). *Regla:* el patrón que busca una
+herramienta se escribe de forma que no se encuentre a sí mismo, y al
+documentarlo no se copia literal.
 
 **Un paso de CI sin tiempo propio.** `playwright install --with-deps`
 quedó 20 minutos esperando un servidor de paquetes y se comió el trabajo
