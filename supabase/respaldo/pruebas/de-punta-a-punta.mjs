@@ -13,13 +13,16 @@ const eq=(n,g,w)=>{ const a=JSON.stringify(g), x=JSON.stringify(w);
 
 const RAIZ = new URL("../../../", import.meta.url);
 const URL_DE_LA_APP = (/const SUPABASE_URL\s*=\s*"([^"]+)"/.exec(readFileSync(new URL("index.html", RAIZ), "utf8")) || [])[1];
-const { main, TABLAS } = await import("../respaldar.mjs");
+const { main, TABLAS, SIN_COPIA } = await import("../respaldar.mjs");
 
 // Toda tabla de supabase/*.sql tiene que estar en TABLAS, o la copia la
-// dejaría afuera sin avisar.
+// dejaría afuera sin avisar. Las que se dejan afuera a propósito están
+// dichas en SIN_COPIA, con el porqué.
 const enElSql = readdirSync(new URL("supabase/", RAIZ)).filter(f => /^\d\d-.*\.sql$/.test(f))
   .flatMap(f => [...readFileSync(new URL("supabase/" + f, RAIZ), "utf8").matchAll(/create table if not exists public\.(\w+)/g)].map(m => m[1]));
-eq("la copia conoce todas las tablas del esquema", [...new Set(enElSql)].sort(), Object.keys(TABLAS).sort());
+eq("la copia conoce todas las tablas del esquema (o dice cuáles deja afuera y por qué)",
+   [...new Set(enElSql)].sort(), [...Object.keys(TABLAS), ...SIN_COPIA].sort());
+eq("ninguna tabla está en las dos listas", SIN_COPIA.filter(t => TABLAS[t]), []);
 // Y el botón de la app (Administración › Copia de seguridad) copia las mismas.
 const enLaApp = (/const TABLAS_DE_LA_COPIA = \{([^}]+)\}/.exec(readFileSync(new URL("index.html", RAIZ), "utf8")) || [])[1] || "";
 eq("el botón de la app copia las mismas tablas, con las mismas claves", Object.fromEntries([...enLaApp.matchAll(/(\w+): "(\w+)"/g)].map(m => [m[1], m[2]])), TABLAS);

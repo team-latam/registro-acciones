@@ -33,6 +33,12 @@ export const TABLAS = {
   access_requests: "email", user_prefs: "email", app_config: "key", audit_log: "id",
   calendar_sugerencias: "evento", calendar_sacados: "evento", personas: "id",
 };
+// Las que a propósito NO van en la copia: anotaciones de qué correo ya
+// salió (17-avisos-por-correo.sql), que solo lee la llave de servicio.
+// Restauradas en una base nueva no aportan nada: el resumen siguiente
+// cubre el último día o la última semana igual, y un aviso al momento
+// solo podría repetirse por algo de los últimos 15 minutos.
+export const SIN_COPIA = ["avisos_enviados", "resumenes_enviados"];
 const BUCKET = "adjuntos";
 const PAGINA = 1000;
 
