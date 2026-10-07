@@ -64,7 +64,7 @@ const POSTS = [
   post({ title: "Reunión virtual con Lima", d: 5, a: 3, type: "virtual", scopes: [ciudad("Perú", "Lima")], content: "Seguimiento del plan de emergencia.", extra: { start_time: "15:00:00", end_time: "16:00:00", liked_by: [ADMIN] } }),
   post({ title: "Visita a San Pablo", d: 20, start: dia(20), end: dia(17), a: 0, type: "visita", scopes: [ciudad("Brasil", "São Paulo")], content: "Recorrida por tres instituciones. Faltó una.",
     extra: { images: ["posts/p6/img0_1.jpg"], files: [{ path: "posts/p6/plan.docx", name: "Plan de viaje SP.docx", doc: "plan", uploaded_at: hace(25) }], participants: [per(2)], last_edited_by: PERS[1].name, last_edited_by_email: PERS[1].email, last_edited_at: hace(3) } }),
-  post({ title: "Visita a Santiago", d: 60, start: dia(60), end: dia(58), a: 1, type: "visita", scopes: [ciudad("Chile", "Santiago")], content: "Primera visita del año.", extra: { images: ["posts/p7/img0_1.jpg"] } }),
+  post({ title: "Visita a Santiago", d: 60, start: dia(60), end: dia(58), a: 1, type: "visita", scopes: [ciudad("Chile", "Santiago")], content: "Primera visita del año.", extra: { images: ["posts/p7/img0_1.jpg"], participants: [{ persona: "per_guypo", name: "Guypo" }] } }),
   post({ title: "Curso de primeros auxilios", d: 75, start: dia(75), end: dia(75), a: 2, type: "curso", scopes: [ciudad("Argentina", "Córdoba")], content: "", extra: { participants: [per(1)] } }),
   post({ title: "Visita a Montevideo", d: 130, start: dia(130), end: dia(128), a: 0, type: "visita", scopes: [ciudad("Uruguay", "Montevideo")], content: "Reunión con los directores.", extra: { images: ["posts/p9/img0_1.jpg"] } }),
   post({ title: "Visita a Ciudad de México", d: 200, start: dia(200), end: dia(196), a: 3, type: "visita", scopes: [ciudad("México", "Ciudad de México")], content: "Cuatro instituciones en tres días.", extra: { participants: [per(0)] } }),
@@ -117,6 +117,9 @@ export const BASE = () => ({
     { key: "otro", label: "Otro", icon: "✨", calendarSync: true, docs: [] },
   ] } }],
   user_prefs: [],
+  // Personas sin cuenta (18-personas.sql): una en un evento y una sola.
+  personas: [{ id: "per_guypo", name: "Guypo", email: null, note: "Coordinador local en Santiago", created_by: ADMIN, created_at: hace(30) },
+    { id: "per_dario", name: "Darío", email: "dario@x.com", note: null, created_by: PERS[1].email, created_at: hace(8) }],
 });
 
 // Abre el navegador (uno para toda la corrida).
@@ -272,11 +275,18 @@ export async function recorrerApp(p, paso){
   if(await click(p, '[data-action="reporte-filtros"]')){ await p.waitForTimeout(200); await paso(p, ("Reportes filtros")); await cerrar(p); }
   if(await click(p, '[data-action="reporte-modo"][data-key="comparar"]')){ await p.waitForTimeout(300); await paso(p, ("Reportes comparar")); }
   await irAdmin(p);
-  for(const [v, k] of [["admin"], ["revisarcal"], ["solicitudes", "usuarios"], ["auditoria"], ["preferencias", "tipos"], ["preferencias", "avanzado"], ["preferencias", "zonas"], ["preferencias", "lugares"], ["preferencias", "adjuntos"], ["preferencias", "calendar"], ["preferencias", "copia"]]){
+  for(const [v, k] of [["admin"], ["revisarcal"], ["solicitudes", "usuarios"], ["auditoria"], ["preferencias", "tipos"], ["preferencias", "avanzado"], ["preferencias", "zonas"], ["preferencias", "lugares"], ["preferencias", "adjuntos"], ["preferencias", "calendar"], ["preferencias", "copia"], ["preferencias", "correos"]]){
     await p.evaluate(([v, k]) => { const b = document.querySelector(`[data-action="admin-go"][data-view="${v}"]${k ? `[data-key="${k}"]` : ""}`); b && b.click(); }, [v, k || ""]);
     await p.waitForTimeout(350); await paso(p, ("Admin " + (k || v)));
   }
+  // Volver a Personas: el recorrido de arriba termina en otra sección, y sin
+  // esto la «ficha persona» (hasta el 7/10/2026) era la copia de seguridad.
+  const personas = () => p.evaluate(() => { const b = document.querySelector('[data-action="admin-go"][data-view="solicitudes"][data-key="usuarios"]'); b && b.click(); }).then(() => p.waitForTimeout(350));
+  await personas();
   await p.evaluate(() => { const b = document.querySelector('.lp-row[data-action="usuario-abrir"]'); b && b.click(); }); await p.waitForTimeout(300); await paso(p, ("Admin ficha persona"));
+  await personas();
+  await p.evaluate(() => { const b = document.querySelector('[data-action="acceso-section"][data-key="sincuenta"]'); b && b.click(); }); await p.waitForTimeout(300); await paso(p, ("Admin sin cuenta"));
+  await p.evaluate(() => { const b = document.querySelector('.lp-row[data-action="persona-abrir"]'); b && b.click(); }); await p.waitForTimeout(300); await paso(p, ("Admin ficha sin cuenta"));
   await p.evaluate(() => { const b = document.querySelector('[data-action="admin-go"][data-view="preferencias"][data-key="tipos"]'); b && b.click(); }); await p.waitForTimeout(300);
   await p.evaluate(() => { const b = document.querySelector('[data-action="tipo-abrir"], .lp-row'); b && b.click(); }); await p.waitForTimeout(300); await paso(p, ("Admin ficha tipo"));
   await p.evaluate(() => { const b = document.querySelector('.user-menu [data-action="goto-view"][data-view="configuracion"], [data-action="goto-view"][data-view="configuracion"]'); b && b.click(); });

@@ -699,10 +699,11 @@ carga eventos puede sumar (A), una ficha por persona (A), y básico
 
 ## Fuera de alcance (necesitan algo que la app no tiene)
 
-- Mandar correos (resumen semanal, invitaciones): no hay servicio de
-  envío.
-- Estado de las copias de seguridad: primero tienen que existir
-  (REVISION.md, punto 13).
+- ~~Mandar correos (resumen semanal, invitaciones): no hay servicio de
+  envío.~~ Desde el 7/10/2026 hay: Resend, con la función `avisar` y los
+  resúmenes (`17-avisos-por-correo.sql`).
+- ~~Estado de las copias de seguridad: primero tienen que existir~~
+  Existen desde el 5/10/2026: Administración → Copia de seguridad.
 
 ## Decisiones pendientes del usuario
 

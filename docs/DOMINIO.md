@@ -92,10 +92,28 @@ puede iniciar sesión.
 > ésa no tiene restricción de dominio a propósito, porque la usa el
 > workflow de Calendar desde un servidor.
 
+## 4. Sumar el dominio nuevo en dos lugares del código
+
+Desde el 6 y 7/10/2026 hay dos listas que aceptan solo
+`https://team-latam.github.io`. Sin sumar el dominio nuevo, la app abre
+pero el calendario y los avisos por correo dejan de andar sin un error
+claro (el navegador bloquea las respuestas de las funciones), y el botón
+de Google de la portada no aparece:
+
+1. **`supabase/functions/_compartido/web.mjs`** → `ORIGENES`: sumar
+   `/^https:\/\/registro\.team-latam\.com$/`. Al pushearlo a `main`, el
+   workflow «Funciones de Supabase» vuelve a publicar `calendario` y
+   `avisar` solo.
+2. **`index.html`** → `ORIGENES_DEL_BOTON_DE_GOOGLE`: sumar
+   `"https://registro.team-latam.com"`.
+
+Las dos van **antes** de mudar (con las dos direcciones a la vez no se
+rompe nada).
+
 ## Qué NO hay que tocar
 
-- **`index.html`**: no tiene ni una sola mención a `github.io`. El
-  redirect de Supabase sale de `location.href`, así que se adapta solo.
+- **El resto de `index.html`**: el redirect de Supabase sale de
+  `location.href`, así que se adapta solo.
 - **El SQL**: tampoco.
 
 ## Comprobarlo

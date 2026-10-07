@@ -131,3 +131,43 @@ escribe al lado, en la misma fila.
 **Código muerto después de reemplazar algo.** El selector de lugar paso a
 paso quedó entero al pasar al buscador. *Se detecta:* `codigo`. *Regla:*
 al reemplazar, borrar lo viejo en el mismo cambio.
+
+## Agregado en la auditoría del 7/10/2026
+
+**Una función de la base que le devuelve a quien la llama más de lo que
+le toca.** `pedir_aviso_al_admin()` y `preparar_aviso()` estaban hechas
+para la función de Supabase, pero cualquiera con sesión las podía llamar
+directo y recibía los correos de los destinatarios. *Por qué:* se pensó
+en quién la llama «de verdad» (la función), no en quién PUEDE llamarla
+(todo `authenticated`). *Se detecta:* a mano, leyendo qué devuelve cada
+función `grant … to authenticated`. *Regla:* lo que el que llama no
+debería ver queda detrás de la llave de servicio (un turno y
+`tomar_aviso()`); una función abierta devuelve solo lo suyo.
+
+**Lo que todavía no pasó, contado como hecho — otra vez.** (Ya estaba en
+«Datos».) Volvió en las personas sin cuenta y en «Quiénes trabajaron
+acá». *Regla:* toda pantalla nueva que diga «N actividades», «estuvo» o
+«trabajó» corta en `todayISO()` (`yaPaso`) y muestra lo que viene aparte.
+Sube de nivel la próxima vez.
+
+**Un trabajo programado que tiene que caer justo en su hora.** GitHub
+atrasa (o se saltea) los que corren solos, sobre todo a la hora en punto.
+*Regla:* lo que corre «a la hora de cada uno» toca si la hora ya pasó
+hace menos de un margen y todavía no salió (`leToca` en
+`supabase/avisos/resumen.mjs`), nunca «si es exactamente esta hora».
+
+**Una prueba que guarda el comportamiento malo.** `personas_test` daba
+por bueno vincular aunque el admin dijo «No es», y la herramienta de
+capturas sacaba «la ficha de una persona» de otra pantalla sin que nadie
+lo notara. *Regla:* al revisar una prueba, preguntarse si lo que espera
+es lo que el usuario querría; en un recorrido, que cada paso llegue a
+donde dice (si el botón no está, decirlo, no seguir de largo).
+
+**Una herramienta que se marca a sí misma.** La de seguridad buscaba
+«sk_live_» y su propia línea lo contenía. *Regla:* el patrón que busca
+una herramienta se escribe de forma que no se encuentre a sí mismo.
+
+**Un paso de CI sin tiempo propio.** `playwright install --with-deps`
+quedó 20 minutos esperando un servidor de paquetes y se comió el trabajo
+entero. *Regla:* todo paso que baja cosas de afuera lleva su
+`timeout-minutes` y reintento.

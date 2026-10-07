@@ -25,8 +25,11 @@ echo "Auditoría → $SALIDA"
   echo "· Copias:"; bash "$RAIZ/supabase/respaldo/pruebas/correr.sh" 2>&1 | tail -1
   if command -v psql >/dev/null && [ -x /usr/lib/postgresql/16/bin/pg_ctl ]; then
     echo "· Base de datos:"
-    bash "$RAIZ/supabase/pruebas/levantar.sh" >/dev/null 2>&1 \
-      && bash "$RAIZ/supabase/pruebas/correr.sh" "postgresql:///registro?host=/var/run/postgresql&user=postgres" 2>&1 | tail -1
+    if bash "$RAIZ/supabase/pruebas/levantar.sh" >/dev/null 2>&1; then
+      bash "$RAIZ/supabase/pruebas/correr.sh" "postgresql:///registro?host=/var/run/postgresql&user=postgres" 2>&1 | tail -1
+    else
+      echo "✗ no se pudo levantar la base local (supabase/pruebas/levantar.sh): las pruebas SQL NO corrieron"
+    fi
   else
     echo "· Base de datos: sin Postgres local (la corre GitHub en «Base de datos»)"
   fi

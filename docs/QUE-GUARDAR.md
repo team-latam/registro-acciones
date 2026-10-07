@@ -39,9 +39,19 @@ Anotá en algún lado seguro con qué cuenta entrás a cada cosa:
   Revisá a nombre de qué cuenta está: si se pierde ese acceso, se pierden
   los datos.
 - **Google Cloud** — el proyecto que antes era de Firebase (número
-  40280679854). Ahí viven el cliente de OAuth con el que se pide el permiso
-  de Calendar y la clave de la API de Calendar. **No se borra** aunque
-  Firebase ya no se use.
+  40280679854). Ahí viven el cliente de OAuth con el que se entra a la
+  app y se pide el permiso de Calendar, la clave de la API de Calendar y
+  la cuenta de servicio `registro-calendario@…` (con el calendario LatAm
+  compartido, solo para ver: es la que lo lee desde el 6/10/2026). **No
+  se borra** aunque Firebase ya no se use. En el cliente de OAuth,
+  «Orígenes de JavaScript autorizados» tiene que incluir
+  `https://team-latam.github.io`: desde el 6/10/2026 sostiene también
+  el botón de Google de la portada.
+- **Supabase → Authentication → Providers → Google**: el mismo cliente
+  (`40280679854-…`) tiene que estar en «Client IDs», y «Skip nonce
+  check» apagado. Si se cambian, el botón de Google de la portada deja
+  de andar y todos entran por el camino viejo (la pantalla de
+  supabase.co), sin más aviso que uno en la consola.
 - **Google Calendar** — el calendario compartido de LatAm (su dirección
   está en `index.html`, buscá `CALENDAR_ID`).
 - **GitHub** — el repositorio `team-latam/registro-acciones`, que además es
@@ -92,8 +102,9 @@ Y en los secretos de GitHub (no en `index.html`), desde el 6/10/2026:
 `GOOGLE_CUENTA_DE_SERVICIO` (la llave de la cuenta de Google con la que
 la app lee el calendario, que ya no es público) y `SUPABASE_ACCESS_TOKEN`
 (para publicar la función de Supabase que la usa), y `RESEND_API_KEY`
-(la llave de Resend con la que sale el correo al admin cuando alguien
-pide entrar; desde el 7/10/2026). Si se pierden, se
+(la llave de Resend con la que salen los avisos por correo; desde el
+7/10/2026). La función `avisar` usa además `SUPABASE_SERVICE_ROLE_KEY`,
+que el workflow le carga como `LLAVE_DE_SERVICIO`. Si se pierden, se
 crean de nuevo: los pasos están en `supabase/functions/LEEME.md`.
 
 Los de `index.html` no son secretos (viajan al navegador de cualquiera que entre a la página):

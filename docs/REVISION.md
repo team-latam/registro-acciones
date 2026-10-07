@@ -423,11 +423,14 @@ pasar al plan pago, y que con Supabase se pueden hacer mejor.
 
 **A decidir con el usuario** (necesitan que él cree algo):
 
-1. **Avisos por correo** (una mención, un resumen semanal): una función de
-   Supabase más un servicio de envío gratis (Resend, 3.000 por mes).
+1. ~~**Avisos por correo** (una mención, un resumen semanal): una función de
+   Supabase más un servicio de envío gratis (Resend, 3.000 por mes).~~
+   Hecho el 7/10/2026 (`17-avisos-por-correo.sql`, `supabase/functions/LEEME.md`).
 2. **Calendar desde el servidor**, con una sola cuenta de servicio de
    Google: nadie necesitaría invitación ni permiso, y el evento llegaría
    aunque se cierre la pestaña. Cambia cómo se usa la app: avisar antes.
+   La mitad de **leer** está hecha desde el 6/10/2026 (U5); queda
+   **escribir**.
 3. **Avisos en el celular** (push): en iPhone solo si se agrega la app a
    la pantalla de inicio.
 4. **Quién ve qué del equipo**: hoy cualquier aprobado lee la fila entera
