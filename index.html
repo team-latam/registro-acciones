@@ -187,10 +187,34 @@
     html[data-theme="dark"] ::-webkit-scrollbar-thumb{ background-color:rgba(198,228,230,.30); }
     html[data-theme="dark"] ::-webkit-scrollbar-thumb:hover{ background-color:var(--celeste-dark); }
     html[data-theme="dark"] ::-webkit-scrollbar-thumb:active{ background-color:var(--ink); }
+    /* La barra grande, la de la página (en claro; en oscuro gana la de
+       arriba). El 8/10/2026 el usuario la vio gris: el 30 % de petróleo
+       sobre el fondo casi blanco queda apagado, como algo desactivado.
+       Eligió petróleo pleno, el color del encabezado. Y al lado del
+       encabezado (fijo arriba) la barra dejaba una franja clara, como un
+       corte: ese tramo va pintado del color del encabezado y el riel
+       arranca debajo (margin-top), así el pulgar nunca se mete ahí.
+       --header-h lo escribe syncHeaderHeight(); en la portada no hay
+       encabezado (y la variable puede haber quedado de antes de salir),
+       por eso el :not(.en-portada). Chrome toma la barra de
+       la página del body, no del html (html::-webkit-scrollbar no hace
+       nada ahí); Firefox, del html. */
+    body:not(.en-portada)::-webkit-scrollbar{ background:linear-gradient(to bottom, var(--petroleo-dark) var(--header-h, 0px), transparent var(--header-h, 0px)); }
+    body:not(.en-portada)::-webkit-scrollbar-track{ margin-top:var(--header-h, 0px); }
+    body::-webkit-scrollbar-thumb{ background-color:var(--petroleo); }
+    body::-webkit-scrollbar-thumb:active{ background-color:var(--petroleo-dark); }
+    /* La portada tiene fondo petróleo, pero no llega abajo de la barra
+       (quedaba una franja blanca al costado): la columna va en petróleo y
+       el pulgar en blanco suave. */
+    body.en-portada::-webkit-scrollbar{ background:var(--petroleo-dark); }
+    body.en-portada::-webkit-scrollbar-thumb{ background-color:rgba(255,255,255,.35); }
+    body.en-portada::-webkit-scrollbar-thumb:hover{ background-color:var(--celeste); }
+    body.en-portada::-webkit-scrollbar-thumb:active{ background-color:#fff; }
     @supports not selector(::-webkit-scrollbar){
       *{ scrollbar-width:thin; }
-      html{ scrollbar-color:rgba(13,59,62,.35) transparent; }
-      html[data-theme="dark"]{ scrollbar-color:rgba(198,228,230,.35) transparent; }
+      html{ scrollbar-color:var(--petroleo) transparent; }
+      body{ scrollbar-color:rgba(13,59,62,.35) transparent; }
+      html[data-theme="dark"], html[data-theme="dark"] body{ scrollbar-color:rgba(198,228,230,.35) transparent; }
     }
   }
   /* Si el navegador necesita hacer scroll solo (ej. para mantener a la

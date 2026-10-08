@@ -766,6 +766,17 @@ También se le propuso un **extra**: que la última columna de una tabla se
 desvanezca en el borde mientras la tabla sigue de costado, para que se
 note que hay más. **Dijo que no**: solo la barra.
 
+**Ajuste el mismo día:** la barra grande, la de la página, en claro se le
+veía gris (el 30 % de petróleo sobre el fondo casi blanco queda apagado).
+Se le mostraron tres tonos solo para esa (petróleo pleno, petróleo medio,
+celeste) y **eligió petróleo pleno**, el color del encabezado. Y al lado
+del encabezado, que queda fijo arriba, la barra dejaba una franja clara,
+como un corte: ahora ese tramo va del color del encabezado y la barra
+arranca debajo (también lo eligió). Las barras de adentro y el modo
+oscuro quedaron como estaban. De paso, en la portada (fondo petróleo) la
+columna de la barra salía blanca y la barra no se veía: va en petróleo,
+con la barra clara.
+
 ## Fuera de alcance (necesitan algo que la app no tiene)
 
 - ~~Mandar correos (resumen semanal, invitaciones): no hay servicio de
