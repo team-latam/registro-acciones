@@ -43,7 +43,10 @@ const conHora = (tabla, f, nueva) => {
   Object.keys(o).forEach(k => { if(o[k] === MARCA) o[k] = new Date().toISOString(); });
   if(nueva && ["posts","replies","audit_log"].includes(tabla) && !o.created_at) o.created_at = new Date().toISOString();
   if(nueva && tabla === "access_requests" && !o.requested_at) o.requested_at = new Date().toISOString();
-  if(nueva && tabla === "personas"){ if(!o.created_by) o.created_by = quien(); if(!o.created_at) o.created_at = new Date().toISOString(); }
+  if(nueva && ["personas", "agenda_listas", "instituciones", "contactos"].includes(tabla)){ if(!o.created_by) o.created_by = quien(); if(!o.created_at) o.created_at = new Date().toISOString(); }
+  // Quién tocó por última vez una ficha de la Agenda (personas_controlar
+  // y agenda_controlar, 18-personas.sql y 19-agenda.sql).
+  if(!nueva && ["personas", "instituciones"].includes(tabla)){ o.tocado_por = quien(); o.tocado_el = new Date().toISOString(); }
   return o;
 };
 function ejecutar(q){
@@ -91,6 +94,11 @@ function ejecutar(q){
     if(q.tabla === "posts"){
       const idos = t.filter(cumple).map(f => f.id);
       estado.tablas.replies = (estado.tablas.replies || []).filter(r => !idos.includes(r.post_id));
+    }
+    // Lo de la Agenda se va con su institución o con su persona (on delete cascade).
+    if(q.tabla === "instituciones" || q.tabla === "personas"){
+      const idos = t.filter(cumple).map(f => f.id), col = q.tabla === "personas" ? "persona" : "institucion";
+      estado.tablas.contactos = (estado.tablas.contactos || []).filter(c => !idos.includes(c[col]));
     }
     estado.tablas[q.tabla] = quedan;
     return { data: null, error: null };
@@ -230,8 +238,42 @@ export function createClient(url, clave){
           });
           f.participants = out; n++;
         });
-        estado.tablas.personas = personas.filter(x => x !== de);
+        // Con lugar en la Agenda, la ficha se queda y toma el correo (vincular_persona).
+        if(nombre === "vincular_persona" && (estado.tablas.contactos || []).some(c => c.persona === de.id)) de.email = nuevo.email;
+        else estado.tablas.personas = personas.filter(x => x !== de);
         return { data: n, error: null };
+      }
+      // Traer una lista entera a la Agenda (agenda_traer, 19-agenda.sql):
+      // solo un admin; la gente se busca por nombre (sin tildes ni
+      // mayúsculas) y, si ya estaba, suma los teléfonos que le faltan.
+      if(nombre === "agenda_traer"){
+        const yo = (estado.tablas.members || []).find(m => m.email === quien());
+        if(!yo || yo.role !== "admin") return { data: null, error: { code: "42501", message: "Solo un admin puede traer una lista" } };
+        if(estado.fallarTraer) return { data: null, error: { code: "23514", message: estado.fallarTraer } };
+        const ahora = new Date().toISOString(), lid = "lista_" + Math.random().toString(36).slice(2, 10);
+        const llave = s => [...String(s || "").normalize("NFD")].filter(c => c.charCodeAt(0) < 0x300 || c.charCodeAt(0) > 0x36f).join("").trim().toLowerCase();
+        const digitos = s => [...String(s || "")].filter(c => c >= "0" && c <= "9").join("");
+        const T = n => (estado.tablas[n] = estado.tablas[n] || []);
+        T("agenda_listas").push({ id: lid, name: args.p_nombre, created_by: quien(), created_at: ahora });
+        let ni = 0, nc = 0, k = 0; const creadas = new Set(), yaEstaban = new Set();
+        for(const i of args.p_instituciones){
+          const iid = lid + "_i" + (ni++);
+          T("instituciones").push({ id: iid, name: i.name, country: i.country, city: i.city || null, address: i.address || null, tipo: i.tipo || null,
+            estado: i.estado || "activa", nota: null, lista: lid, created_by: quien(), created_at: ahora, tocado_por: null, tocado_el: null });
+          (i.gente || []).forEach((g, orden) => {
+            let per = T("personas").find(x => llave(x.name) === llave(g.name));
+            if(per){ if(!creadas.has(per.id)) yaEstaban.add(per.id);
+              (g.telefonos || []).forEach(tel => { const d = digitos(tel.n); per.telefonos = per.telefonos || [];
+                if(per.telefonos.length < 6 && !per.telefonos.some(y => digitos(y.n) === d)) per.telefonos.push(tel); });
+            } else {
+              per = { id: lid + "_p" + (k++), name: g.name, email: null, note: null, telefonos: copia(g.telefonos || []), idiomas: [], lista: lid, created_by: quien(), created_at: ahora };
+              T("personas").push(per); creadas.add(per.id);
+            }
+            if(T("contactos").some(c => c.institucion === iid && c.persona === per.id)) return;
+            T("contactos").push({ id: lid + "_c" + (nc++), institucion: iid, persona: per.id, cargo: g.cargo || null, orden, created_by: quien(), created_at: ahora });
+          });
+        }
+        return { data: { lista: lid, instituciones: ni, contactos: nc, personas_nuevas: creadas.size, personas_que_ya_estaban: yaEstaban.size }, error: null };
       }
       return { data: null, error: { code: "PGRST202", message: "no existe la función " + nombre } };
     },
@@ -500,7 +542,7 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   eq("admin: el Resumen de Administración muestra el pedido pendiente", await esperarTexto(p, "Nueva Persona", 3000), true);
   const secciones = await p.$$eval('.admin-menu [data-action="admin-go"]', bs => bs.map(b => b.dataset.view + (b.dataset.key ? ":" + b.dataset.key : "")));
   eq("admin: el menú de Administración tiene todas las secciones", secciones,
-     ["admin","revisarcal","solicitudes:usuarios","auditoria","preferencias:tipos","preferencias:avanzado","preferencias:calendar","preferencias:copia","preferencias:correos"]);
+     ["admin","revisarcal","solicitudes:usuarios","auditoria","preferencias:tipos","preferencias:agenda","preferencias:avanzado","preferencias:calendar","preferencias:copia","preferencias:correos"]);
   for(const s of secciones){
     const [v, k] = s.split(":");
     await p.click(`.admin-menu [data-action="admin-go"][data-view="${v}"]${k ? `[data-key="${k}"]` : ""}`);

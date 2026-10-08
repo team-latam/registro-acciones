@@ -885,6 +885,44 @@ pantalla) y su título trae las dos formas, la de la compu y el renglón
 (`tituloDeLado`) (`pruebas/ficha_celular_test.mjs`, que falla con el
 código de antes).
 
+### 45. La Agenda — HECHO (8 oct 2026)
+
+Lo que eligió en cuatro vueltas (ver «Decisiones pendientes», más abajo):
+la **C1** simple, que **ven todos** (también quien observa) y que **suma y
+corrige cualquiera que carga eventos; borrar, solo un admin**.
+
+- **Base** (`19-agenda.sql`, y `18-personas.sql` con teléfonos, idiomas y
+  quién tocó cada ficha): instituciones, quién está en cada una
+  (`contactos`) y de qué lista vino cada cosa, en vivo y en las copias.
+  La gente son las fichas de las personas sin cuenta.
+- **«📇 Agenda»** en Países, con la forma de Lista y Mapa: una ventana
+  grande con el buscador (nombre, lugar o teléfono), país, tipo, lista
+  (cuando haya más de una), «Bajar planilla» y «+ Sumar». Por país y
+  ciudad, cada institución con su gente, el WhatsApp a un toque.
+- **La ficha de una persona** (teléfonos, WhatsApp, llamar, copiar el
+  número, correo, idiomas, dónde está y lo que hizo con el equipo) y la
+  de **una institución** (su gente, dirección, «Ver la ficha de
+  Rosario»), con «Editar» para quien carga eventos y «Borrar» para un
+  admin. Al pie: de qué lista vino o quién la corrigió.
+- **«Contactos en …»** en la ficha de cada país y ciudad, con «Ver en la
+  Agenda» y «+ Sumar»; en el celular, plegada arriba de «Lo que pasó».
+- **«Buscar en todo»** encuentra contactos e instituciones.
+- **Administración › Agenda**: traer una lista entera, con la vista
+  previa de lo que va a hacer antes de guardar (probado con el
+  Directorio: 188 instituciones en 102 ciudades de 32 países, 173
+  personas; dos filas eran la misma institución).
+
+Pruebas: `pruebas/agenda_test.mjs` (83: abrir, buscar, filtrar, la
+ficha de alguien, Escape y el foco, la tarjeta de Rosario, buscar en
+todo, sumar a alguien que ya estaba y a alguien nuevo, un teléfono mal
+escrito, corregir y quién fue, lo que ve quien observa, traer una lista
+con todas sus advertencias, el celular y el hebreo), y
+`supabase/pruebas/79-agenda.sql` (32).
+
+Lo que queda para más adelante, sin pedido todavía: las otras listas que
+va a mandar el usuario; un punto por institución en el mapa; avisar de
+contactos que hace mucho nadie revisa.
+
 ## Fuera de alcance (necesitan algo que la app no tiene)
 
 - ~~Mandar correos (resumen semanal, invitaciones): no hay servicio de
@@ -938,6 +976,10 @@ código de antes).
   la ventana se titula «Agenda»; la tarjeta de cada lugar es «Contactos en
   …» (como «Proyectos en …»), con «Ver en la Agenda»; el filtro por lista
   aparece recién cuando haya más de una lista. Versión 3 de la página.
+  **Cuarta respuesta (8/10/2026):** quién ve teléfonos y correos:
+  **todos** (también quien observa); quién suma y corrige: **lo
+  sugerido** (cualquiera que carga eventos; borrar, solo un admin; vale
+  también para las personas sin cuenta). **Hecha: tanda 45.**
 
 - **La ficha de un lugar en el celular** (8/10/2026, captura del
   usuario): en el celular el costado (Proyectos, Ciudades, Ritmo, Quiénes
