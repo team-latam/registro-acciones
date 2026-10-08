@@ -709,6 +709,20 @@ región del alcance, en el idioma de la app y como quedó guardado
 Inicio filtrado ahí, como ya hacía con los países
 (`pruebas/buscar_lugar_test.mjs`).
 
+### 38. «Próximos eventos» abre la tarjeta del evento — HECHO (8 oct 2026)
+
+Tocar un evento de la columna «Próximos eventos» del Inicio llevaba
+directo a su tarjeta en el Feed. El usuario pidió que se abra la
+tarjetita del Calendario, con lo básico a la vista: **Ver historia**
+(la de siempre: el posteo en el Feed), **Ver calendario** (el Calendario
+parado en ese día, marcado; en uno que se repite, la repetición que se
+veía en la lista), **Editar** y un **⋯** con lo que tiene el ⋯ del Feed
+(Repetir este evento, Convertir en proyecto o Ver proyecto, Cancelar
+evento, Borrar). Cada opción cierra la tarjeta antes de seguir. Un
+observador ve solo Ver historia y Ver calendario. La tarjeta que se abre
+desde el Calendario quedó como estaba
+(`pruebas/proximos_tarjeta_test.mjs`).
+
 ## Fuera de alcance (necesitan algo que la app no tiene)
 
 - ~~Mandar correos (resumen semanal, invitaciones): no hay servicio de
