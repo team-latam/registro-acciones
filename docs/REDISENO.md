@@ -895,6 +895,18 @@ usaban la barra vieja.
   Barth»); 60 nombres traen «Rabbi»/«Rab» delante; «Centro Juvenil» y
   «Centro de Jóvenes» parecen el mismo tipo. El usuario va a mandar las
   otras listas.
+  **Segunda vuelta (8/10/2026):** eligió la **C** (la gente en la ficha de
+  cada país y ciudad, y «Buscar en todo»), pero quiere además un lugar
+  para ver la agenda completa que **no sea una solapa aparte**. Se le
+  mostraron tres maneras en la misma página (versión 2; la primera
+  vuelta queda en el historial): **C1** un botón «📇 Agenda completa»
+  arriba de Países que la abre en una ventana grande (también desde la
+  tarjeta de cada lugar y desde «Buscar en todo»; lo que se abre desde
+  ahí vuelve a la agenda al cerrarse) — la recomendada; **C2** «Agenda»
+  en el menú de la foto (☰ en el celular), como Administración, con
+  página propia; **C3** plegada al pie de Países, como los países sin
+  actividad propia. Siguen abiertas las otras dos decisiones (quién ve
+  los teléfonos, quién corrige).
 
 - **Clasificar lo que vino de Google Calendar**: la herramienta está
   (tanda 19); falta que el usuario la use. Empezar por Actividades →
