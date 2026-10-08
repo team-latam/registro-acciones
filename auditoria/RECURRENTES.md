@@ -109,6 +109,16 @@ al agregar una función que usan otras, buscar quién las arma
 (`grep -rn nombreDeLaQueLaUsa pruebas/ supabase/`) y correr también
 `supabase/sync-calendar/pruebas/correr.sh`.
 
+**Lo que entra justo acá y en GitHub no.** Las pruebas no cargan
+Montserrat (los pedidos afuera se cortan): acá la letra de reemplazo es
+Inter, en GitHub una más ancha. El 8/10/2026 los cuatro botones de la
+tarjeta de «Próximos eventos» entraban en una fila acá (376 de 376 px) y
+en GitHub el ⋯ bajó de renglón y su menú se salió de la tarjeta.
+*Regla:* lo que depende del ancho del texto se mide con Montserrat
+(bajarla de fonts.gstatic.com y cargarla con `@font-face` en `data:`), se
+deja margen, y la prueba fuerza el caso apretado con una letra ancha
+(`font-family:monospace`, ver `proximos_tarjeta_test.mjs`).
+
 ## GitHub
 
 **Las acciones de los workflows quedan viejas sin que nadie se entere.**

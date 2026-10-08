@@ -30,6 +30,12 @@ const vista = p => p.$eval("nav.tabs button.active", e => e.dataset.view);
 const botones = p => p.$$eval("#eventCardBody .ev-actions > button, #eventCardBody .ev-actions > .ev-mas > button", l => l.map(e => e.dataset.action));
 const opciones = p => p.$$eval("#eventCardBody .ev-mas .post-menu-item", l => l.map(e => e.dataset.action));
 const enfocado = p => p.evaluate(() => document.activeElement && document.activeElement.dataset.action);
+// El menú del ⋯, entero adentro de la tarjeta (medido ya sin la animación).
+const menuAdentro = p => p.evaluate(() => {
+  const m = document.querySelector("#eventCardBody .ev-mas .post-menu").getBoundingClientRect();
+  const c = document.querySelector("#eventCardOverlay .event-card").getBoundingClientRect();
+  return m.top >= c.top && m.bottom <= c.bottom && m.left >= c.left && m.right <= c.right;
+});
 async function abrir(p, texto){
   await p.click(`.feed-side [data-action="proximo-abrir"]:has-text("${texto}")`);
   await p.waitForTimeout(250);
@@ -48,15 +54,11 @@ const b = await abrirNavegador();
   eq("el ⋯ arranca cerrado", await p.$$eval("#eventCardBody .ev-mas .post-menu", l => l.length), 0);
 
   await p.click('#eventCardBody [data-action="event-card-mas"]');
-  await p.waitForTimeout(150);
+  await p.waitForTimeout(350);
   eq("el ⋯ trae Repetir, Convertir en proyecto, Cancelar y Borrar (admin)", await opciones(p),
      ["event-card-repetir", "event-card-project", "event-card-cancelar", "event-card-borrar"]);
   eq("el foco pasa a la primera opción", await enfocado(p), "event-card-repetir");
-  eq("el menú entra en la tarjeta (se abre hacia arriba)", await p.evaluate(() => {
-    const m = document.querySelector("#eventCardBody .ev-mas .post-menu").getBoundingClientRect();
-    const c = document.querySelector("#eventCardOverlay .event-card").getBoundingClientRect();
-    return m.top >= c.top && m.bottom <= c.bottom && m.left >= c.left && m.right <= c.right;
-  }), true);
+  eq("el menú entra en la tarjeta (se abre hacia arriba)", await menuAdentro(p), true);
   eq("las opciones del ⋯ no son píldoras con borde", await p.$eval("#eventCardBody .ev-mas .post-menu-item", e => getComputedStyle(e).borderTopWidth), "0px");
   await p.keyboard.press("Escape");
   await p.waitForTimeout(150);
@@ -129,13 +131,24 @@ const b = await abrirNavegador();
   await abrir(p, CURSO);
   eq("hebreo: Ver calendario traducido", await p.$eval('#eventCardBody [data-action="event-card-calendario"]', e => e.textContent.trim()), "📅 הצגת היומן");
   await p.click('#eventCardBody [data-action="event-card-mas"]');
-  await p.waitForTimeout(150);
-  eq("hebreo: el menú entra en la tarjeta", await p.evaluate(() => {
-    const m = document.querySelector("#eventCardBody .ev-mas .post-menu").getBoundingClientRect();
-    const c = document.querySelector("#eventCardOverlay .event-card").getBoundingClientRect();
-    return m.top >= c.top && m.bottom <= c.bottom && m.left >= c.left && m.right <= c.right;
-  }), true);
+  await p.waitForTimeout(350);
+  eq("hebreo: el menú entra en la tarjeta", await menuAdentro(p), true);
   eq("hebreo: sin errores", errores, []);
+  await p.close();
+}
+{
+  // Con una letra más ancha la fila se parte y el ⋯ baja solo a otro
+  // renglón, pegado al otro borde: el menú igual queda adentro. En GitHub
+  // pasó el 8/10/2026 (su letra de reemplazo es más ancha que la de acá).
+  const { p, errores } = await entrar(b, ADMIN, "Benny Rosenthal", { viewport: { width: 1280, height: 900 }, base: conSemanal() });
+  await p.addStyleTag({ content: "#eventCardOverlay *{ font-family:monospace !important; }" });
+  await abrir(p, CURSO);
+  await p.click('#eventCardBody [data-action="event-card-mas"]');
+  await p.waitForTimeout(350);
+  eq("letra ancha: la fila se parte (lo que se prueba)", await p.$$eval("#eventCardBody .ev-actions > button, #eventCardBody .ev-actions > .ev-mas",
+     l => new Set(l.map(e => Math.round(e.getBoundingClientRect().top))).size > 1), true);
+  eq("letra ancha: el menú sigue adentro de la tarjeta", await menuAdentro(p), true);
+  eq("letra ancha: sin errores", errores, []);
   await p.close();
 }
 
