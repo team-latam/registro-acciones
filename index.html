@@ -3484,6 +3484,21 @@
      relleno, así que el que tenía borde terminaba 2px más ancho que el
      que no. Medido: 186,5 contra 184,5. */
   .ev-actions-even .btn-primary{ border:1px solid transparent; }
+  /* Abierta desde «Próximos eventos»: Ver historia, Ver calendario, Editar
+     y el ⋯ de la tarjeta del Feed. Su menú se abre hacia ARRIBA (la fila
+     de botones es lo último de la tarjeta) y sus opciones no son las
+     píldoras de la fila: son las del menú del Feed. */
+  .ev-mas{ position:relative; flex:none; }
+  .ev-actions .ev-mas-btn{ font-size:17px; line-height:1; padding:5px 12px; min-height:100%; }
+  .ev-actions .ev-mas-btn.open{ background:var(--surface-alt); color:var(--ink-strong); }
+  .ev-mas .post-menu{ top:auto; bottom:calc(100% + 6px); transform-origin:bottom right; }
+  html[dir="rtl"] .ev-mas .post-menu{ transform-origin:bottom left; }
+  .ev-actions .post-menu button.post-menu-item{
+    display:flex; align-items:center; gap:10px; width:100%; text-align:start; padding:10px 12px; min-height:42px;
+    border:none; background:none; border-radius:var(--radius-sm); font-size:13px; font-weight:normal; color:var(--text); white-space:normal;
+  }
+  .ev-actions .post-menu button.post-menu-item:hover{ background:var(--surface-hover); color:var(--ink-strong); }
+  .ev-actions .post-menu button.post-menu-item.danger{ color:var(--danger); }
 
   /* ---------- Vista previa de adjuntos (PDF) ---------- */
   .visor-doc{ position:fixed; inset:0; z-index:200; background:rgba(13,59,62,.14); display:flex; align-items:center; justify-content:center; padding:12px 72px 44px; }
@@ -14060,7 +14075,9 @@ function renderFeedSide(){
       ${proximos.length ? proximos.map(({p,f})=>{
         const type = ACTIVITY_BY_KEY[p.activityType] || { icon:"✨" };
         const when = fmtISO(f, { weekday:"short", day:"numeric", month:"short" }) + (p.startTime ? ` · ${esc(fmtHHMM(p.startTime))}` : "");
-        return `<button type="button" class="fs-item" data-action="goto-mention" data-post-id="${esc(p.id)}">
+        // Abre la tarjeta del evento (la del Calendario), no el Feed: desde
+        // ahí se elige adónde ir (lo pidió el usuario el 8/10/2026).
+        return `<button type="button" class="fs-item" data-action="proximo-abrir" data-post-id="${esc(p.id)}"${isRecurring(p) ? ` data-occ="${esc(f)}"` : ""}>
           <span class="fs-when">${when}</span><span class="fs-what" dir="auto">${esc(type.icon)} ${esc(calendarioLabel(p))}</span>
         </button>`;
       }).join("") : `<p class="fs-empty">${t("Nada en los próximos 30 días.","Nothing in the next 30 days.","Nada nos próximos 30 dias.","אין כלום ב-30 הימים הקרובים.")}</p>`}
@@ -20153,12 +20170,14 @@ fichaPostOverlay.addEventListener("click", e=>{ if(e.target === fichaPostOverlay
 userProfileOverlay.addEventListener("click", e=>{ if(e.target === userProfileOverlay) closeUserProfile(); });
 
 /* ======================================================================
-   TARJETA DEL EVENTO (click en el Calendario)
+   TARJETA DEL EVENTO (click en el Calendario o en «Próximos eventos»)
    Tocar un evento del Calendario abría el Feed y scrolleaba hasta el
    posteo: se perdía el mes que se estaba mirando para ver cuatro datos.
    Ahora abre esta tarjeta — lo básico, sin salir del calendario — y desde
    ahí un botón lleva a la historia completa (con comentarios, adjuntos y
-   el hilo) para quien la quiera.
+   el hilo) para quien la quiera. Desde el 8/10/2026 la abre también la
+   columna «Próximos eventos» del Inicio, con sus propios botones (ver
+   accionesDeProximo).
 
    Se guarda el ID, no el posteo: si mientras está abierta alguien lo
    edita o lo cancela, el próximo render() la redibuja con lo nuevo, y si
@@ -20173,6 +20192,10 @@ let eventCardOcc = null; // qué repetición se tocó en el Calendario
 // la posición en holidaysOn(fecha) — no con un id.
 let eventCardHoliday = null;
 let eventCardReturnFocus = null;
+// Desde dónde se abrió: "proximos" (la columna del Inicio) trae «Ver
+// calendario» y deja lo de todos los días a la vista y el resto en ⋯.
+let eventCardDesde = null;
+let eventCardMenu = false; // el ⋯ de la tarjeta, abierto
 // "19 – 27 de septiembre de 2026" en vez de repetir mes y año dos veces,
 // como muestra Google Calendar. Solo se compacta si caen en el mismo mes:
 // cruzando meses hace falta el mes en las dos puntas para que se entienda.
@@ -20235,7 +20258,7 @@ function renderEventCard(){
     <div class="ev-rows">
       ${rows.map(r=>`<div class="ev-row"><span class="ev-icon">${r.icon}</span><div class="ev-val">${r.html}</div></div>`).join("")}
     </div>
-    <div class="ev-actions">
+    ${eventCardDesde === "proximos" ? accionesDeProximo(post) : `<div class="ev-actions">
       <button type="button" class="btn-primary" data-action="event-card-goto" data-post-id="${esc(post.id)}">
         ${t("Ver historia","View history","Ver histórico","היסטוריה")} ${isRTL() ? "←" : "→"}
       </button>
@@ -20243,6 +20266,31 @@ function renderEventCard(){
         ? `<button type="button" data-action="event-card-project" data-post-id="${esc(post.id)}">📋 ${t("Ver proyecto","View project","Ver projeto","הצגת פרויקט")}</button>`
         : (post.activityType !== "rutina" && canManageProject(post) ? `<button type="button" data-action="event-card-project" data-post-id="${esc(post.id)}">📋 ${t("Crear proyecto","Create project","Criar projeto","יצירת פרויקט")}</button>` : "")}
       ${canEditPost(post) ? `<button type="button" data-action="event-card-edit" data-post-id="${esc(post.id)}">✏️ ${t("Editar","Edit","Editar","עריכה")}</button>` : ""}
+    </div>`}`;
+}
+// Los botones de la tarjeta abierta desde «Próximos eventos»: Ver
+// historia, Ver calendario y Editar a la vista; lo demás que tiene el ⋯
+// de la tarjeta del Feed (Repetir, proyecto, Cancelar, Borrar), en su ⋯.
+// Cada opción cierra la tarjeta antes de seguir: si no, quedaba detrás
+// del formulario o de la confirmación que abre.
+function accionesDeProximo(post){
+  const id = esc(post.id);
+  const mas = [];
+  if(canWrite() && post.activityType !== "rutina") mas.push(`<button type="button" class="post-menu-item" role="menuitem" data-action="event-card-repetir" data-post-id="${id}">🔁 ${t("Repetir este evento","Repeat this event","Repetir este evento","לחזור על האירוע הזה")}</button>`);
+  if(post.isProject) mas.push(`<button type="button" class="post-menu-item" role="menuitem" data-action="event-card-project" data-post-id="${id}">📋 ${t("Ver proyecto","View project","Ver projeto","הצגת פרויקט")}</button>`);
+  else if(post.activityType !== "rutina" && canManageProject(post)) mas.push(`<button type="button" class="post-menu-item" role="menuitem" data-action="event-card-project" data-post-id="${id}">📋 ${t("Convertir en proyecto","Turn into a project","Converter em projeto","להפוך לפרויקט")}</button>`);
+  if(canCancelPost(post)) mas.push(`<button type="button" class="post-menu-item" role="menuitem" data-action="event-card-cancelar" data-post-id="${id}">🚫 ${t("Cancelar evento","Cancel event","Cancelar evento","ביטול האירוע")}</button>`);
+  if(isFixedAdmin()) mas.push(`<div class="post-menu-sep" role="separator"></div><button type="button" class="post-menu-item danger" role="menuitem" data-action="event-card-borrar" data-post-id="${id}">🗑️ ${t("Borrar…","Delete…","Apagar…","מחיקה…")}</button>`);
+  return `<div class="ev-actions ev-actions-proximo">
+      <button type="button" class="btn-primary" data-action="event-card-goto" data-post-id="${id}">
+        ${t("Ver historia","View history","Ver histórico","היסטוריה")} ${isRTL() ? "←" : "→"}
+      </button>
+      <button type="button" data-action="event-card-calendario" data-post-id="${id}">📅 ${t("Ver calendario","See calendar","Ver calendário","הצגת היומן")}</button>
+      ${canEditPost(post) ? `<button type="button" data-action="event-card-edit" data-post-id="${id}">✏️ ${t("Editar","Edit","Editar","עריכה")}</button>` : ""}
+      ${mas.length ? `<div class="ev-mas">
+        <button type="button" class="ev-mas-btn${eventCardMenu ? " open" : ""}" data-action="event-card-mas" aria-haspopup="menu" aria-expanded="${eventCardMenu}" aria-label="${esc(t("Más acciones","More actions","Mais ações","פעולות נוספות"))}">⋯</button>
+        ${eventCardMenu ? `<div class="post-menu" role="menu">${mas.join("")}</div>` : ""}
+      </div>` : ""}
     </div>`;
 }
 // Misma tarjeta que la de un evento, con lo que un feriado SÍ tiene
@@ -20298,16 +20346,18 @@ function openHolidayCard(iso, idx){
   eventCardHoliday = { iso, idx };
   eventCardPostId = null;
   eventCardOcc = null;
+  eventCardDesde = null; eventCardMenu = false;
   renderEventCard();
   eventCardReturnFocus = document.activeElement;
   eventCardOverlay.hidden = false;
   document.getElementById("eventCardClose").focus();
 }
-function openEventCard(postId, occ){
+function openEventCard(postId, occ, desde){
   if(!getPostById(postId)) return;
   eventCardPostId = postId;
   eventCardOcc = occ || null;
   eventCardHoliday = null;
+  eventCardDesde = desde || null; eventCardMenu = false;
   renderEventCard();
   eventCardReturnFocus = document.activeElement;
   eventCardOverlay.hidden = false;
@@ -20318,6 +20368,7 @@ function closeEventCard(){
   eventCardPostId = null;
   eventCardOcc = null;
   eventCardHoliday = null;
+  eventCardDesde = null; eventCardMenu = false;
   if(eventCardReturnFocus && typeof eventCardReturnFocus.focus === "function") eventCardReturnFocus.focus();
   eventCardReturnFocus = null;
 }
@@ -20387,7 +20438,10 @@ document.addEventListener("keydown", e=>{
   if(!likesOverlay.hidden){ closeLikes(); return; }
   if(!cumpleOverlay.hidden){ closeCumple(); return; }
   if(!fichaPostOverlay.hidden){ closeFichaPost(); return; }
-  if(!eventCardOverlay.hidden){ closeEventCard(); return; }
+  if(!eventCardOverlay.hidden){
+    if(eventCardMenu){ eventCardMenu = false; renderEventCard(); enfocarComo(eventCardBody.querySelector('[data-action="event-card-mas"]'), null, true); return; }
+    closeEventCard(); return;
+  }
   if(!tourLayer.hidden){ closeTour(); return; }
   if(!calendarInviteOverlay.hidden){ dismissCalendarInviteOverlay(); return; }
   if(fabOpen){ closeFab(); fabMainEl.focus(); return; }
@@ -21079,6 +21133,9 @@ document.addEventListener("click", async e=>{
   // elegir algo adentro: la acción sigue su curso con el menú ya cerrado.
   if(postMenuOpen && (!e.target.closest(".post-menu-wrap") || e.target.closest(".post-menu-item"))){
     postMenuOpen = null; render();
+  }
+  if(eventCardMenu && (!e.target.closest(".ev-mas") || e.target.closest(".post-menu-item"))){
+    eventCardMenu = false; if(!eventCardOverlay.hidden) renderEventCard();
   }
   if(moreMenuOpen && !e.target.closest("#bottomNav")){
     moreMenuOpen = false; renderBottomNav();
@@ -22013,6 +22070,44 @@ document.addEventListener("click", async e=>{
     const id = el.dataset.postId, occ = eventCardOcc;
     if(occ) occView[id] = occ;
     closeEventCard(); gotoMention(id);
+  },
+    "proximo-abrir": async (el, e, action, postId) => {
+    openEventCard(postId, el.dataset.occ, "proximos");
+  },
+    "event-card-calendario": async (el, e, action, postId) => {
+    // Al día del evento (la repetición que se mostraba, si se repite), en
+    // la vista del Calendario que la persona use, con el día marcado.
+    const post = getPostById(postId);
+    const iso = eventCardOcc || (post && (post.startDate || post.date));
+    eventCardReturnFocus = null;
+    closeEventCard();
+    if(!iso) return;
+    state.view = "calendario"; state.countryDrill = null; state.zonaDrill = null; fichaOrigen = null;
+    scrollToTop();
+    calIrA(iso);
+  },
+    "event-card-mas": async (el) => {
+    // El foco sigue adentro de la tarjeta (redibujarla se lleva el botón):
+    // a la primera opción al abrir, al ⋯ al cerrar; con anillo solo si se
+    // llegó con el teclado.
+    const anillo = tieneAnillo(el);
+    eventCardMenu = !eventCardMenu; renderEventCard();
+    enfocarComo(eventCardBody.querySelector(eventCardMenu ? ".ev-mas .post-menu-item" : '[data-action="event-card-mas"]'), null, anillo);
+  },
+    "event-card-repetir": async (el, e, action, postId) => {
+    const post = getPostById(postId);
+    closeEventCard();
+    if(post && canWrite()) openDuplicateComposer(post);
+  },
+    "event-card-cancelar": async (el, e, action, postId) => {
+    const post = getPostById(postId);
+    closeEventCard();
+    if(post && canCancelPost(post)) cancelPost(post);
+  },
+    "event-card-borrar": async (el, e, action, postId) => {
+    const post = getPostById(postId);
+    closeEventCard();
+    if(post && isFixedAdmin()) deletePostHard(post);
   },
     "event-card-edit": async (el, e, action, postId) => {
     const post = getPostById(el.dataset.postId);

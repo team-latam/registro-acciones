@@ -53,9 +53,12 @@ await toca('[data-action="feed-order"]');
 eq("⇅ en «Lo que pasó»: lo más antiguo primero", [ordenada(await fechas(), true), await p.$eval('[data-action="feed-order"]', e => e.getAttribute("aria-label"))], [true, "Más antiguos primero"]);
 await toca('[data-action="feed-order"]');
 
-// Ir a un evento que viene (desde «Próximos eventos» de la columna) pasa de solapa.
-const prox = await p.$eval('.feed-side .fs-item[data-action="goto-mention"]', e => e.dataset.postId);
+// Ir a un evento que viene (desde «Próximos eventos» de la columna) pasa de
+// solapa. Desde el 8/10/2026 el renglón abre la tarjeta del evento y la
+// historia se abre con su «Ver historia» (proximos_tarjeta_test.mjs).
+const prox = await p.$eval('.feed-side .fs-item[data-action="proximo-abrir"]', e => e.dataset.postId);
 await toca(`.feed-side .fs-item[data-post-id="${prox}"]`);
+await toca('#eventCardBody [data-action="event-card-goto"]');
 eq("abrir un evento que viene cambia a «Próximos» y lo muestra", [await p.$eval('.feed-solapas [aria-pressed="true"]', e => e.dataset.key), (await vistos()).includes(prox)], ["futuro", true]);
 
 // «Actualizar» se fue del Inicio y vive en el Calendario, con su nombre.
