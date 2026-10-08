@@ -777,6 +777,17 @@ oscuro quedaron como estaban. De paso, en la portada (fondo petróleo) la
 columna de la barra salía blanca y la barra no se veía: va en petróleo,
 con la barra clara.
 
+### 41. Las tablas de «Todos los años» en modo oscuro — HECHO (8 oct 2026)
+
+El usuario mostró en modo oscuro «Evolución por país» y «Evolución por
+tipo»: las celdas van de menos a más con un tono, pero los tonos eran
+fijos y claros, pensados para el modo claro. En oscuro la letra es clara,
+así que los números quedaban claro sobre claro, invisibles, y la tabla
+eran manchones blancos sobre la tarjeta oscura. Ahora en oscuro la escala
+va de petróleo (poco) a celeste (mucho) y todos los números se leen. El
+modo claro y el papel (que sale siempre en claro) no cambiaron
+(`pruebas/calor_oscuro_test.mjs`, que mide el contraste de cada tono).
+
 ## Fuera de alcance (necesitan algo que la app no tiene)
 
 - ~~Mandar correos (resumen semanal, invitaciones): no hay servicio de
