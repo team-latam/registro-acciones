@@ -5855,6 +5855,7 @@ const state = {
     place: null,            // {kind:'country'|'city'|'zone', country?, city?, zone?}
     quick: null,            // acceso directo de la columna lateral: mine | participo | docs | mes
     author: null,           // email: solo lo que cargó esa persona ("Ver lo que cargó", en Administración › Personas)
+    periodo: null,          // {desde, hasta, anio, tri}: el año o trimestre de una fila de Reportes (ver pasaFiltroPeriodo)
   },
   paisesSubview: "lista",   // lista | mapa
   configSection: "calendario", // sección abierta en la solapa Configuración
@@ -13899,6 +13900,10 @@ function renderFilterBar(prefix){
     <span role="button" tabindex="0" class="chip-toggle active" data-action="clear-quick">
       ⚡ ${esc(etiquetaFiltroRapido(state.filters.quick))} ✕
     </span>` : "";
+  const periodoChip = state.filters.periodo ? `
+    <span role="button" tabindex="0" class="chip-toggle active" data-action="clear-periodo">
+      📅 ${esc(etiquetaPeriodo(state.filters.periodo))} ✕
+    </span>` : "";
   const autor = state.filters.author ? (state.roster.find(u => u.email === state.filters.author) || { name: state.filters.author }) : null;
   const authorChip = autor ? `
     <span role="button" tabindex="0" class="chip-toggle active" data-action="clear-author">
@@ -13922,19 +13927,23 @@ function renderFilterBar(prefix){
         </button>
         ${zoneFilterOpen ? `<div class="filter-dropdown-panel">${zoneChips}</div>` : ""}
       </div>
-      ${placeChip}${quickChip}${authorChip}
+      ${placeChip}${periodoChip}${quickChip}${authorChip}
       ${anyFilter ? `<button class="filter-clear" data-action="clear-filters">${t("Limpiar filtros","Clear filters","Limpar filtros","ניקוי מסננים")}</button>` : ""}
     </div>`;
 }
 // Cuántos posteos tocan al lugar filtrado en cada nivel, con los demás
-// filtros (texto, tipo, zona) ya aplicados, para que los números del
-// selector coincidan con lo que se lista.
+// filtros (texto, tipo, zona, quién cargó, acceso directo y período) ya
+// aplicados, para que los números del selector coincidan con lo que se
+// lista. Sin los tres últimos, al llegar desde una fila de Reportes de
+// 2026 decía «Solo acá 74» (todos los años) con 13 en la lista (8/10/2026).
 function placeLevelCounts(){
   const f = state.filters;
   const out = { own:0, region:0, latam:0 };
   if(!f.place) return out;
   state.posts.forEach(p=>{
     if(f.types.size && !f.types.has(p.activityType)) return;
+    if(f.author && String(p.authorEmail||"").toLowerCase() !== f.author) return;
+    if(!pasaFiltroRapido(p) || !pasaFiltroPeriodo(p)) return;
     const replies = state.repliesByPost[p.id] || [];
     if(!(matchesTextFilter(f.text, p) || replies.some(r=>matchesTextFilter(f.text, r)))) return;
     if(f.zones.size && ![p, ...replies].some(r=>(r.scopes||[]).some(sc=>zoneOfScope(sc) && f.zones.has(zoneOfScope(sc))))) return;
@@ -14031,6 +14040,24 @@ function pasaFiltroRapido(p){
   }
   return true;
 }
+// El período que trae una fila de Reportes (pedido del usuario el
+// 8/10/2026: tocar «Argentina» en el reporte de 2026 traía Argentina de
+// todos los años). Entra lo que ese número cuenta, con la misma regla que
+// el reporte: lo hecho en ese año o trimestre (hasta hoy, si está en
+// curso), y lo cancelado no.
+function pasaFiltroPeriodo(p){
+  const per = state.filters.periodo;
+  if(!per) return true;
+  const hoy = todayISO();
+  const hasta = per.hasta < hoy ? per.hasta : hoy;
+  return per.desde <= hasta && vecesEnVentana(p, per.desde, hasta) > 0;
+}
+// «2026», «1.er trimestre 2026»; si todavía no terminó, «· hasta hoy».
+function etiquetaPeriodo(per){
+  const tri = per.tri && trimestresDelReporte()[per.tri];
+  const base = tri ? `${tri.label} ${per.anio}` : String(per.anio);
+  return per.hasta >= todayISO() ? `${base} · ${t("hasta hoy","so far","até hoje","עד היום")}` : base;
+}
 // Devuelve los posts visibles según filtros, cada uno con sus replies ordenadas
 function getVisiblePosts(){
   const f = state.filters;
@@ -14038,6 +14065,7 @@ function getVisiblePosts(){
     .filter(p=> !f.types.size || f.types.has(p.activityType))
     .filter(p=> !f.author || String(p.authorEmail||"").toLowerCase() === f.author)
     .filter(pasaFiltroRapido)
+    .filter(pasaFiltroPeriodo)
     .filter(p=>{
       const replies = state.repliesByPost[p.id] || [];
       const postMatchesText = matchesTextFilter(f.text, p) || replies.some(r=>matchesTextFilter(f.text, r));
@@ -14140,7 +14168,7 @@ function renderFeedView(){
 }
 function anyActiveFilter(){
   const f = state.filters;
-  return !!(f.text || f.types.size || f.zones.size || f.place || f.quick || f.author);
+  return !!(f.text || f.types.size || f.zones.size || f.place || f.quick || f.author || f.periodo);
 }
 // La columna lateral del Inicio en escritorio (en angosto no se dibuja,
 // ver .feed-side): lo que se viene en 30 días, los hitos por vencer y los
@@ -14279,7 +14307,7 @@ function guardarFiltroActual(){
   const name = savingFilterName.trim().slice(0, 40);
   if(!name) return;
   const f = state.filters;
-  const nuevo = { name, text:f.text || "", types:[...f.types], zones:[...f.zones], place:f.place || null, quick:f.quick || null };
+  const nuevo = { name, text:f.text || "", types:[...f.types], zones:[...f.zones], place:f.place || null, quick:f.quick || null, periodo:f.periodo || null };
   const lista = filtrosGuardados().filter(g => g.name !== name).concat([nuevo]).slice(-12);
   savingFilter = false; savingFilterName = "";
   savePrefs({ savedFilters: lista });
@@ -21293,6 +21321,9 @@ document.addEventListener("click", async e=>{
     "clear-quick": async (el, e, action, postId) => {
     state.filters.quick = null; feedVisibleCount = PAGE_SIZE; render();
   },
+    "clear-periodo": async (el, e, action, postId) => {
+    state.filters.periodo = null; feedVisibleCount = PAGE_SIZE; render();
+  },
     "clear-author": async (el, e, action, postId) => {
     state.filters.author = null; feedVisibleCount = PAGE_SIZE; render();
   },
@@ -21344,7 +21375,11 @@ document.addEventListener("click", async e=>{
     "feed-saved-apply": async (el, e, action, postId) => {
     const g = filtrosGuardados()[Number(el.dataset.idx)];
     if(!g) return;
-    state.filters = { text:g.text || "", types:new Set(g.types || []), zones:new Set(g.zones || []), place:g.place || null, quick:g.quick || null, author:null };
+    // El período, solo si sus fechas tienen forma de fecha: viene de las
+    // preferencias guardadas.
+    const per = g.periodo, iso = x => /^\d{4}-\d{2}-\d{2}$/.test(String(x || ""));
+    const periodo = per && iso(per.desde) && iso(per.hasta) ? { desde:per.desde, hasta:per.hasta, anio:String(per.anio || per.desde.slice(0,4)), tri:Number(per.tri) || 0 } : null;
+    state.filters = { text:g.text || "", types:new Set(g.types || []), zones:new Set(g.zones || []), place:g.place || null, quick:g.quick || null, author:null, periodo };
     feedVisibleCount = PAGE_SIZE; state.view = "feed"; render(); scrollToTop();
   },
     "feed-saved-delete": async (el, e, action, postId) => {
@@ -21898,9 +21933,14 @@ document.addEventListener("click", async e=>{
     state.paisesSubview = el.dataset.key; state.countryDrill = null; state.zonaDrill = null; render();
   },
     "reporte-ir": async (el, e, action, postId) => {
-    // Una fila del reporte abre el Feed con ESE filtro (y ningún otro).
+    // Una fila del reporte abre el Feed con ESE filtro (y ningún otro),
+    // en el período del reporte: lo que cuenta ese número. En la solapa de
+    // lo hecho, que es donde está.
     const { kind, key } = el.dataset;
     state.filters.text = ""; state.filters.types = new Set(); state.filters.zones = new Set(); state.filters.place = null; state.filters.quick = null; state.filters.author = null;
+    const v = ventanaDelReporte();
+    state.filters.periodo = { desde:v.desde, hasta:v.hasta, anio:v.anio, tri:v.tri };
+    feedSolapa = "pasado"; feedVisibleCount = PAGE_SIZE;
     if(kind === "pais") state.filters.place = { kind:"country", country:key };
     else if(kind === "latam") state.filters.place = { kind:"latam" };
     else if(kind === "zona") state.filters.zones = new Set([key]);
