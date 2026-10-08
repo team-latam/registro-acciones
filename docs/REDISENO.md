@@ -823,7 +823,19 @@ una persona): antes decía «Solo acá 74» con 13 en la lista
   usuario): **A** cuatro menús Actividad · Lugar · Fecha · Persona que
   muestran lo elegido (la recomendada), **B** un botón «⚙ Filtros» como
   el de Reportes con lo puesto como fichas, **C** una frase con las
-  partes que se tocan. Falta que elija.
+  partes que se tocan.
+  Segunda vuelta (misma página, versión 2): dudó entre A y B; de la B le
+  gusta tener todos los filtros juntos, pero el panel desplegado es muy
+  grande (640 × 642 en la compu, más alto que la pantalla en el
+  celular), y a la A le falta ajustar el celular. Se le mostraron tres
+  maneras de achicar la B: **B1** una lista que se abre de a una parte
+  (390 × 480 como mucho), **B2** dos columnas, los filtros con lo elegido
+  a la izquierda y las opciones a la derecha, que mide siempre 600 × 436
+  y en el celular sube desde abajo hasta la mitad (la recomendada), y
+  **B3** sin panel: «＋ Filtro» y cada ficha abre lo suyo. En las tres,
+  tocar una ficha abre ese filtro, hay una ficha por filtro, «Volver a
+  Reportes» y «Limpiar» van en un renglón finito, y los accesos directos
+  quedan arriba del panel. Falta que elija.
 
 - **Clasificar lo que vino de Google Calendar**: la herramienta está
   (tanda 19); falta que el usuario la use. Empezar por Actividades →
