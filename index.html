@@ -2723,9 +2723,17 @@
   .rep-seccion-cabeza{ display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:4px 12px; margin-bottom:10px; }
   .rep-seccion-cabeza h3{ margin:0; font-size:15.5px; font-weight:800; color:var(--ink-strong, var(--ink)); }
   .rep-seccion-cabeza span{ font-size:12.5px; font-weight:600; color:var(--text-muted); }
-  /* "Mes a mes" a todo el ancho y debajo, de a tres, lo demás. */
+  /* "Mes a mes" a todo el ancho y debajo, de a tres, lo demás. De a tres
+     o una debajo de la otra, nunca de a cuatro ni de a dos: con
+     minmax(260px) en una pantalla ancha entraban cuatro columnas y la
+     cuarta quedaba vacía, y en una mediana la tercera tarjeta quedaba
+     sola con un hueco al lado (8/10/2026; el usuario eligió no llenarlo
+     con una tarjeta más). El mínimo es un tercio menos un poco: entran
+     tres justas y nunca cuatro. auto-fit y no repeat(3): si falta una
+     tarjeta (Todos los años sin países), las otras se estiran. */
   .rep-grilla .rep-bloque-mensual{ grid-column:1 / -1; }
-  .rep-grilla-3{ grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); }
+  .rep-grilla-3{ grid-template-columns:repeat(auto-fit, minmax(calc(33.33% - 10px), 1fr)); }
+  @media (max-width:820px){ .rep-grilla-3{ grid-template-columns:minmax(0,1fr); } }
   .rep-cols{ display:flex; align-items:stretch; gap:4px; height:180px; }
   .rep-col{ flex:1; min-width:0; display:flex; flex-direction:column; align-items:center; gap:4px; margin:0; }
   .rep-col .rep-num{ min-width:0; font-size:11px; color:var(--text-muted); text-align:center; }
@@ -2785,8 +2793,10 @@
     .rep-tabla td:first-child{ white-space:normal; overflow-wrap:anywhere; }
     .rep-tabla th, .rep-tabla td{ padding:5px 5px; }
   }
-  .rep-grilla-ancha{ grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); }
-  @media (max-width:520px){ .rep-grilla-ancha{ grid-template-columns:minmax(0,1fr); } }
+  /* Las tres tablas de Comparar: lo mismo que .rep-grilla-3, con más
+     ancho por tabla (de a dos dejaba la tercera sola). */
+  .rep-grilla-ancha{ grid-template-columns:repeat(auto-fit, minmax(max(340px, calc(33.33% - 10px)), 1fr)); }
+  @media (max-width:1100px){ .rep-grilla-ancha{ grid-template-columns:minmax(0,1fr); } }
   .rep-evolucion td:not(:first-child){ border-inline-start:2px solid var(--card); }
   .rep-h0{ color:var(--text-muted); font-weight:600; } .rep-h1{ background:#e6f6f9; } .rep-h2{ background:#bfe9f2; } .rep-h3{ background:#7fd3e6; } .rep-h4{ background:#1a9fb8; color:#fff; }
   .rep-bloque-ancho{ grid-column:span 1; }
@@ -2850,6 +2860,14 @@
     /* "Tocá una fila…" no sirve en papel. */
     .rep-seccion-cabeza span{ display:none; }
     .rep-grilla, .rep-grilla-3, .rep-grilla-ancha, .rep-extras{ grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px; }
+    /* En papel tampoco quedan huecos (de a dos, la tercera tarjeta quedaba
+       sola en media hoja): Zona, País y Tipo de a tres, como en pantalla;
+       en Todos los años, todo a lo ancho (las dos tablas ya lo estaban y
+       «Año por año» quedaba sola); en Comparar, Tipo y Zona lado a lado y
+       País abajo, a lo ancho. */
+    .rep-grilla-3{ grid-template-columns:repeat(3, minmax(0, 1fr)); }
+    .rep-grilla-historia{ grid-template-columns:minmax(0, 1fr); }
+    .rep-grilla-ancha > :last-child{ grid-column:1 / -1; }
     .rep-extras{ margin-top:0; }
     .rep-grilla .rep-bloque-mensual{ grid-column:1 / -1; }
     /* Las tablas de evolución año por año, a todo el ancho: en media hoja
@@ -16044,7 +16062,7 @@ function renderReporteHistorico(f){
   return cabezaDelReporte(t("Todos los años","All years","Todos os anos","כל השנים"), `${esc(primero)} – ${esc(anios[anios.length - 1])}`, f)
     + kpis
     + seccionDelReporte(t("La historia, año por año","The history, year by year","A história, ano a ano","ההיסטוריה, שנה אחר שנה"), "", `
-    <div class="rep-grilla">
+    <div class="rep-grilla rep-grilla-3 rep-grilla-historia">
       ${bloqueDeBarras(t("Año por año","Year by year","Ano a ano","שנה אחר שנה"), filasAnio, "")}
       ${tablaEvolucion(t("Evolución por país","Evolution by country","Evolução por país","התפתחות לפי מדינה"), paises, (r, k) => r.porPais[k] || 0, k => esc(countryLabel(k)))}
       ${tablaEvolucion(t("Evolución por tipo","Evolution by type","Evolução por tipo","התפתחות לפי סוג"), tipos, (r, k) => r.porTipo[k] || 0, etiquetaTipo)}
