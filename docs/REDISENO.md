@@ -835,7 +835,22 @@ una persona): antes decía «Solo acá 74» con 13 en la lista
   **B3** sin panel: «＋ Filtro» y cada ficha abre lo suyo. En las tres,
   tocar una ficha abre ese filtro, hay una ficha por filtro, «Volver a
   Reportes» y «Limpiar» van en un renglón finito, y los accesos directos
-  quedan arriba del panel. Falta que elija.
+  quedan arriba del panel.
+  Tercera vuelta (versión 3): **eligió la B2** y pidió dos ajustes, ya
+  hechos en la maqueta. (1) Al pasar de un filtro a otro «parece que se
+  vuelve a cargar»: cada toque vuelve a dibujar el panel entero y repetía
+  la animación de abrir (medido contando `animationstart`: 5 toques en
+  la compu, 5 animaciones; en el celular, 8). Ahora el panel se anima
+  solo al abrirse, la columna derecha cambia con un fundido corto y en el
+  celular las opciones entran de costado. **La app de hoy tiene lo
+  mismo** en el menú «Actividades» (3 toques, 3 animaciones): al hacer la
+  B2 en la app, animar solo al abrir y una prueba en `pruebas/` que haga
+  esa cuenta. (2) Elegir todo primero y aplicar al final: lo que se toca
+  adentro del panel es un borrador, el Inicio no cambia hasta «Ver N
+  posteos» o Enter; Cancelar, Escape o tocar afuera lo descartan; un
+  punto marca cada filtro cambiado. Las fichas de la barra, «Limpiar» y
+  el buscador se siguen aplicando al toque. Falta que confirme para
+  hacerla en la app.
 
 - **Clasificar lo que vino de Google Calendar**: la herramienta está
   (tanda 19); falta que el usuario la use. Empezar por Actividades →
