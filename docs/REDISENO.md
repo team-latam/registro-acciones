@@ -788,6 +788,20 @@ va de petróleo (poco) a celeste (mucho) y todos los números se leen. El
 modo claro y el papel (que sale siempre en claro) no cambiaron
 (`pruebas/calor_oscuro_test.mjs`, que mide el contraste de cada tono).
 
+### 42. Las filas de Reportes llevan al Inicio en ese período — HECHO (8 oct 2026)
+
+Tocar una fila de Por zona, Por país o Por tipo abría el Inicio con ese
+filtro, pero de todos los años: «Argentina 34» en el reporte de 2026
+mostraba Argentina desde siempre. Ahora también filtra por el período del
+reporte, con la misma regla que el número: lo hecho en ese año o
+trimestre (hasta hoy, si está en curso), y lo cancelado no. Aparece un
+chip **📅 2026 · hasta hoy ✕** (o **📅 2025**, **📅 2.º trimestre 2025**)
+para sacarlo, y entra en «Guardar este filtro». De paso, el selector
+«Solo acá · + Región · + Toda LatAm» ahora cuenta con todos los filtros
+puestos (período, «Mis posteos» y demás accesos directos, lo que cargó
+una persona): antes decía «Solo acá 74» con 13 en la lista
+(`pruebas/reporte_ir_periodo_test.mjs`).
+
 ## Fuera de alcance (necesitan algo que la app no tiene)
 
 - ~~Mandar correos (resumen semanal, invitaciones): no hay servicio de
