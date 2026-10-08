@@ -3486,12 +3486,19 @@
   .ev-actions-even .btn-primary{ border:1px solid transparent; }
   /* Abierta desde «Próximos eventos»: Ver historia, Ver calendario, Editar
      y el ⋯ de la tarjeta del Feed. Su menú se abre hacia ARRIBA (la fila
-     de botones es lo último de la tarjeta) y sus opciones no son las
-     píldoras de la fila: son las del menú del Feed. */
-  .ev-mas{ position:relative; flex:none; }
-  .ev-actions .ev-mas-btn{ font-size:17px; line-height:1; padding:5px 12px; min-height:100%; }
+     de botones es lo último de la tarjeta), colgado de la FILA y no del ⋯:
+     con una letra más ancha (la de GitHub, el 8/10/2026) el ⋯ bajaba solo
+     a un segundo renglón, pegado al otro borde, y el menú se salía de la
+     tarjeta. Sus opciones no son las píldoras de la fila: son las del
+     menú del Feed. */
+  .ev-actions-proximo{ position:relative; }
+  /* Cuatro botones en 376 px: con Montserrat, en portugués, entraban con
+     7 px de sobra. Un poco menos de relleno les da margen. */
+  .ev-actions-proximo > button{ padding-inline:9px; }
+  .ev-mas{ flex:none; display:flex; }
+  .ev-actions .ev-mas-btn{ font-size:17px; line-height:1; padding:5px 8px; }
   .ev-actions .ev-mas-btn.open{ background:var(--surface-alt); color:var(--ink-strong); }
-  .ev-mas .post-menu{ top:auto; bottom:calc(100% + 6px); transform-origin:bottom right; }
+  .ev-mas .post-menu{ top:auto; bottom:calc(100% - 8px); max-width:100%; transform-origin:bottom right; }
   html[dir="rtl"] .ev-mas .post-menu{ transform-origin:bottom left; }
   .ev-actions .post-menu button.post-menu-item{
     display:flex; align-items:center; gap:10px; width:100%; text-align:start; padding:10px 12px; min-height:42px;
