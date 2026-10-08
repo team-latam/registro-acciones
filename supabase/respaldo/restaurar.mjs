@@ -39,9 +39,11 @@ import { pathToFileURL } from "node:url";
 import { TABLAS } from "./respaldar.mjs";
 
 // En este orden: los comentarios (replies) apuntan a su posteo, que tiene
-// que estar antes. El resto no depende de nada.
+// que estar antes; en la Agenda, una institución apunta a su lista y un
+// contacto a su institución y a su persona. El resto no depende de nada.
 export const ORDEN = ["members", "former_members", "access_requests", "app_config", "user_prefs", "personas",
-  "posts", "replies", "audit_log", "calendar_sugerencias", "calendar_sacados"];
+  "posts", "replies", "audit_log", "calendar_sugerencias", "calendar_sacados",
+  "agenda_listas", "instituciones", "contactos"];
 const BUCKET = "adjuntos";
 const LOTE = 500;
 

@@ -23,7 +23,9 @@ CARPETA="$(cd "$(dirname "$0")" && pwd)"
 PSQL="${PSQL:-psql}"
 
 total=0; malas=0; archivos=0
-for f in "$CARPETA"/[89][0-9]-*.sql; do
+# Del 10 al 99 (el 00 es el laboratorio): hasta el 8/10/2026 eran solo
+# 80–99, ya estaban todos usados, y un 79- se habría salteado sin aviso.
+for f in "$CARPETA"/[1-9][0-9]-*.sql; do
   [ -f "$f" ] || continue
   archivos=$((archivos + 1))
   nombre="$(basename "$f")"
