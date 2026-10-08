@@ -745,6 +745,27 @@ Si algún día se quiere sumar una cuarta tarjeta, las dos ideas de la
 propuesta quedan anotadas: «Por ciudad» (las 12 ciudades con más
 actividad: arriba ya figura cuántas son, pero no cuáles) y «Lo que viene».
 
+### 40. La barra de desplazamiento con el estilo de la app — HECHO (8 oct 2026)
+
+La barra para desplazarse (hacia abajo y de costado) era la del
+navegador: gris, con flechitas, igual que en cualquier página. Al
+usuario no le gustaba. Se le mostraron tres opciones con capturas, en
+reposo, con el mouse encima, arrastrando y en oscuro: **A** petróleo fina
+(la recomendada), **B** celeste con degradé sobre un riel, **C** invisible
+hasta pasar el mouse. **Eligió A.**
+
+Fina, en petróleo suave, con las puntas redondeadas y sin flechitas. Al
+pasar el mouse se engrosa y se pone celeste, y arrastrándola, petróleo. En
+oscuro va en claro. Es la misma en toda la app: página, listas, tablas y
+ventanas. Solo en la computadora: en el celular sigue la del teléfono
+(si no, Android la volvía fija y le comía 12 px a cada lista). En Firefox,
+los mismos colores con la forma más simple del navegador
+(`pruebas/barra_test.mjs`).
+
+También se le propuso un **extra**: que la última columna de una tabla se
+desvanezca en el borde mientras la tabla sigue de costado, para que se
+note que hay más. **Dijo que no**: solo la barra.
+
 ## Fuera de alcance (necesitan algo que la app no tiene)
 
 - ~~Mandar correos (resumen semanal, invitaciones): no hay servicio de
