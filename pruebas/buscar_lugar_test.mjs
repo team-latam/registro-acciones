@@ -55,8 +55,8 @@ const b = await abrirNavegador();
   await p.click('#globalResults [data-action="gs-city"]');
   await p.waitForTimeout(400);
   eq("arriba: elegir la ciudad abre el Inicio filtrado ahí",
-     [await p.$eval("nav.tabs button.active", e => e.dataset.view), await p.$eval('[data-action="clear-place"]', e => e.textContent.trim()), await visibles(p)],
-     ["feed", "📍 La Habana, Cuba ✕", ["r_habana"]]);
+     [await p.$eval("nav.tabs button.active", e => e.dataset.view), await p.$eval('.fb-ficha-abrir[data-cat="lugar"]', e => e.textContent.trim()), await visibles(p)],
+     ["feed", "📍 La Habana, Cuba", ["r_habana"]]);
   eq("sin errores", errores, []);
   await p.close();
 }

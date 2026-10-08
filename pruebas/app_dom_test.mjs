@@ -618,8 +618,8 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   await p.click('#userProfileOverlay [data-action="ver-posteos-de"]');
   await p.waitForTimeout(200);
   eq("perfil: 'Ver todo lo que cargó' cierra el cuadro y deja el Inicio filtrado por esa persona",
-    await p.evaluate(() => [document.getElementById("userProfileOverlay").hidden, !!document.querySelector('[data-action="clear-author"]')]), [true, true]);
-  await p.click('[data-action="clear-author"]');
+    await p.evaluate(() => [document.getElementById("userProfileOverlay").hidden, !!document.querySelector('.fb-ficha-abrir[data-cat="persona"]')]), [true, true]);
+  await p.click('.fb-ficha-x[data-cat="persona"]');
   await p.waitForTimeout(150);
   // De vuelta a Mis preferencias › Calendario, que es donde sigue la prueba.
   await p.click('[data-action="toggle-user-menu"]');
@@ -1632,8 +1632,8 @@ const hasta = async (p, fn, arg, ms = 5000) => {
     ["🧳 Taller de pasado mañana", "Primera entrega"]);
   // Acceso directo "Mis posteos": del admin es solo el proyecto.
   await p.click('.feed-side [data-action="feed-quick"][data-key="mine"]');
-  eq("escritorio: 'Mis posteos' deja solo lo del admin, con su chip en la barra de filtros",
-    [await cuantas(), await p.$eval('[data-action="clear-quick"]', e => e.textContent.trim())], [1, "⚡ Mis posteos ✕"]);
+  eq("escritorio: 'Mis posteos' deja solo lo del admin, con su ficha en la barra de filtros",
+    [await cuantas(), await p.$eval('.fb-ficha-abrir[data-cat="persona"]', e => e.textContent.trim())], [1, "👤 Mis posteos"]);
   // Guardar ese filtro con nombre: queda en la columna y en las preferencias.
   await p.click('[data-action="feed-saved-start"]');
   await p.type("#savedFilterName", "Lo mío");
@@ -1643,7 +1643,7 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   // mira la foto de inmediato (con la máquina cargada llegaba después).
   await hasta(p, email => (window.__sb.tablas.user_prefs || []).some(u => u.email === email && u.prefs && Array.isArray(u.prefs.savedFilters) && u.prefs.savedFilters.length), ADMIN);
   const guardado = ((await base()).user_prefs.find(u => u.email === ADMIN) || { prefs: {} }).prefs.savedFilters;
-  eq("escritorio: y en las preferencias de la persona, con el acceso directo adentro", guardado && guardado.map(g => [g.name, g.quick]), [["Lo mío", "mine"]]);
+  eq("escritorio: y en las preferencias de la persona, con el acceso directo adentro", guardado && guardado.map(g => [g.name, g.quien]), [["Lo mío", "mine"]]);
   await p.click('[data-action="clear-filters"]');
   // Son 3: dos que ya pasaron y el taller de pasado mañana, que desde el
   // 6/10/2026 va en la solapa «Próximos» (M4).
@@ -1666,7 +1666,7 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   eq("buscador: con 'argent' ofrece el país", await hasta(p, () => !!document.querySelector('#globalResults [data-action="gs-country"][data-country="Argentina"]')), true);
   await p.click('#globalResults [data-action="gs-country"]');
   eq("buscador: elegir el país abre el Feed filtrado por Argentina",
-    [await p.$eval("nav.tabs button.active", e => e.dataset.view), await p.$eval('[data-action="clear-place"]', e => e.textContent.trim())], ["feed", "📍 Argentina ✕"]);
+    [await p.$eval("nav.tabs button.active", e => e.dataset.view), await p.$eval('.fb-ficha-abrir[data-cat="lugar"]', e => e.textContent.trim())], ["feed", "📍 Argentina"]);
   eq("escritorio: sin un solo error", errores, []);
   await p.close();
 }

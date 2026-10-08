@@ -802,6 +802,64 @@ puestos (período, «Mis posteos» y demás accesos directos, lo que cargó
 una persona): antes decía «Solo acá 74» con 13 en la lista
 (`pruebas/reporte_ir_periodo_test.mjs`).
 
+### 43. Los filtros del Inicio: la B2 — HECHO (8 oct 2026)
+
+Lo que llegaba de otra pantalla (📍 Argentina y 📅 2026 desde Reportes,
+lo que cargó alguien desde Personas) aparecía como fichas sueltas al lado
+de los menús «Actividades» y «Zonas», y solo se podía sacar: para pasar
+de 2026 a 2025 había que volver a Reportes. El lugar se elegía en tres
+sitios, en el celular eran cinco renglones antes del primer posteo, y los
+accesos directos y los guardados no estaban (vivían en la columna de la
+compu). El usuario pidió propuestas **que se pudieran tocar**, no
+capturas: se le armó una página con maquetas en vivo
+(https://claude.ai/artifact/EvbV2yqiNp48BUTvEqTh9i, privada; sus tres
+versiones son las tres vueltas). Primera vuelta: A cuatro menús, B un
+botón «Filtros» como en Reportes, C una frase. Dudó entre A y B («la B
+desplegada es muy grande»: 640 × 642, y en el celular más alta que la
+pantalla); segunda vuelta, tres maneras de achicar la B; eligió la
+**B2**, y en la tercera vuelta pidió dos ajustes que se probaron en la
+maqueta antes de hacerla.
+
+Cómo quedó (`renderFilterBar`, `renderPanelDeFiltros`):
+- **La barra**: el buscador y «⚙ Filtros» con cuántos hay, y debajo **una
+  ficha por filtro** (🗂️ Actividad, 📍 Lugar, 📅 Fecha, 👤 Persona). Tocar
+  la ficha abre el panel en ese filtro; su ✕ lo saca al toque. Si se
+  llegó desde Reportes o Personas, un renglón finito dice «← Volver a
+  Reportes · 2026», con «Limpiar» al lado (`filtroOrigen`).
+- **El panel**, en la compu: los filtros a la izquierda con lo elegido en
+  cada uno, las opciones del que se tocó a la derecha; mide siempre 600 ×
+  436. Arriba, los accesos directos. «Qué incluir» (Solo acá · + Región
+  · + Toda LatAm) pasó adentro de Lugar; «Este mes», a Fecha; «Mis
+  posteos» y «Donde participo», a Persona; «Les falta documentación», a
+  Actividad. En el celular **sube desde abajo** sobre todo lo demás: la
+  lista y, al tocar un filtro, sus opciones, con «← Filtros» para volver.
+- **Elegir todo y después ver** (pedido del usuario): lo que se toca
+  adentro es un borrador (`fp.b`). El Inicio no cambia hasta **«Ver N
+  posteos»** (que ya dice cuántos van a quedar) o **Enter**; Cancelar,
+  Escape o tocar afuera lo descartan. Un punto marca cada filtro
+  cambiado y arriba dice «· 2 cambios».
+- **Sin el efecto de «volver a cargar»**: como toda la vista, el panel se
+  vuelve a dibujar con cada toque, y la animación de abrir se repetía en
+  cada uno (se midió contando `animationstart`). Ahora se anima solo al
+  abrirse (`fp.entra`); al cambiar de filtro se mueve solo lo que cambia
+  (un fundido en la compu, de costado en el celular) y lo desplazado
+  adentro del panel no se pierde. Los menús del Calendario (vista, capas)
+  todavía tienen el efecto viejo.
+- **Los accesos directos se combinan**: antes era uno solo a la vez
+  (`state.filters.quick`); ahora cada uno es parte de su filtro (`quien`,
+  `mes`, `docs`), así que «Mis posteos de este mes» se puede. Los filtros
+  guardados antes siguen andando (`filtrosDeGuardado` entiende `quick`), y
+  desde el panel se guarda también lo elegido (Guardados).
+- La columna de la compu (próximos, hitos, accesos directos, guardados)
+  quedó igual. Un año en Fecha cuenta lo hecho hasta hoy, como Reportes:
+  por eso solo se ofrecen los años que ya empezaron.
+
+Pruebas: `pruebas/filtros_inicio_test.mjs` (borrador, Ver/Enter/Escape/
+afuera, el ✕ de las fichas, atajos juntos, guardar, Volver, la hoja del
+celular, hebreo, un guardado viejo, y que tocar adentro **no** repita la
+animación de abrir; falla con el código de antes). Se adaptaron las que
+usaban la barra vieja.
+
 ## Fuera de alcance (necesitan algo que la app no tiene)
 
 - ~~Mandar correos (resumen semanal, invitaciones): no hay servicio de
@@ -811,46 +869,6 @@ una persona): antes decía «Solo acá 74» con 13 en la lista
   Existen desde el 5/10/2026: Administración → Copia de seguridad.
 
 ## Decisiones pendientes del usuario
-
-- **Cómo ordenar la barra de filtros del Inicio** (8 oct 2026). El usuario
-  pidió propuestas que se puedan tocar, no capturas: lo que llega de otra
-  pantalla (📍 Argentina y 📅 2026 desde Reportes, lo que cargó alguien
-  desde Personas) aparece como fichas sueltas que solo se sacan; el lugar
-  se elige en tres sitios; en el celular son cinco renglones antes del
-  primer posteo, y los accesos directos y los guardados no están. Se le
-  mostraron en una página con maquetas en vivo
-  (https://claude.ai/artifact/EvbV2yqiNp48BUTvEqTh9i, privada del
-  usuario): **A** cuatro menús Actividad · Lugar · Fecha · Persona que
-  muestran lo elegido (la recomendada), **B** un botón «⚙ Filtros» como
-  el de Reportes con lo puesto como fichas, **C** una frase con las
-  partes que se tocan.
-  Segunda vuelta (misma página, versión 2): dudó entre A y B; de la B le
-  gusta tener todos los filtros juntos, pero el panel desplegado es muy
-  grande (640 × 642 en la compu, más alto que la pantalla en el
-  celular), y a la A le falta ajustar el celular. Se le mostraron tres
-  maneras de achicar la B: **B1** una lista que se abre de a una parte
-  (390 × 480 como mucho), **B2** dos columnas, los filtros con lo elegido
-  a la izquierda y las opciones a la derecha, que mide siempre 600 × 436
-  y en el celular sube desde abajo hasta la mitad (la recomendada), y
-  **B3** sin panel: «＋ Filtro» y cada ficha abre lo suyo. En las tres,
-  tocar una ficha abre ese filtro, hay una ficha por filtro, «Volver a
-  Reportes» y «Limpiar» van en un renglón finito, y los accesos directos
-  quedan arriba del panel.
-  Tercera vuelta (versión 3): **eligió la B2** y pidió dos ajustes, ya
-  hechos en la maqueta. (1) Al pasar de un filtro a otro «parece que se
-  vuelve a cargar»: cada toque vuelve a dibujar el panel entero y repetía
-  la animación de abrir (medido contando `animationstart`: 5 toques en
-  la compu, 5 animaciones; en el celular, 8). Ahora el panel se anima
-  solo al abrirse, la columna derecha cambia con un fundido corto y en el
-  celular las opciones entran de costado. **La app de hoy tiene lo
-  mismo** en el menú «Actividades» (3 toques, 3 animaciones): al hacer la
-  B2 en la app, animar solo al abrir y una prueba en `pruebas/` que haga
-  esa cuenta. (2) Elegir todo primero y aplicar al final: lo que se toca
-  adentro del panel es un borrador, el Inicio no cambia hasta «Ver N
-  posteos» o Enter; Cancelar, Escape o tocar afuera lo descartan; un
-  punto marca cada filtro cambiado. Las fichas de la barra, «Limpiar» y
-  el buscador se siguen aplicando al toque. Falta que confirme para
-  hacerla en la app.
 
 - **Clasificar lo que vino de Google Calendar**: la herramienta está
   (tanda 19); falta que el usuario la use. Empezar por Actividades →
