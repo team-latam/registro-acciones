@@ -870,6 +870,32 @@ usaban la barra vieja.
 
 ## Decisiones pendientes del usuario
 
+- **Agenda de contactos** (pedido del 8/10/2026): sumar los contactos más
+  importantes de cada lugar, a partir del «Directorio Chabad LatAm» (un
+  HTML con 189 instituciones en 102 ciudades de 32 países, un rab y un
+  teléfono por institución: 173 personas) y de otras listas parecidas que
+  el usuario tiene. Propuesta con maqueta que se puede tocar, armada con
+  los datos del Directorio (teléfonos con los últimos 4 números tapados):
+  https://claude.ai/artifact/9YhvpSXRbJLDnV36vZRWE8 (privada). Lo
+  propuesto: instituciones con su gente (cargo, teléfonos con WhatsApp,
+  correo, idiomas, nota); cada contacto es la misma ficha que una persona
+  sin cuenta (`personas`, tanda 36), así cuenta si participa de un evento;
+  las listas se traen enteras desde Administración › Agenda, con una
+  vista previa de lo que va a hacer. Tres decisiones suyas, con lo
+  recomendado primero: **dónde vive** (A dentro de Países, como tercera
+  vista al lado de Lista y Mapa, más una tarjeta en la ficha de cada país
+  y ciudad · B pestaña propia · C solo en la ficha de cada lugar), **quién
+  ve teléfonos y correos** (A todos los aprobados · B sin observadores) y
+  **quién suma y corrige** (A cualquiera que carga eventos, borrar solo un
+  admin, también para las personas sin cuenta · B como hoy las personas
+  sin cuenta · C solo admins). Datos para cuando se haga: las ciudades
+  del Directorio ya están en `CITY_PRESETS` (de ahí salieron); cinco
+  nombres se escriben distinto y se pasan al de la app («Hollbox» →
+  Holbox, «Rep. Dominicana», «St. Martin», «Turks and Caicos», «St.
+  Barth»); 60 nombres traen «Rabbi»/«Rab» delante; «Centro Juvenil» y
+  «Centro de Jóvenes» parecen el mismo tipo. El usuario va a mandar las
+  otras listas.
+
 - **Clasificar lo que vino de Google Calendar**: la herramienta está
   (tanda 19); falta que el usuario la use. Empezar por Actividades →
   "Solo los seguros" → "Elegir todos" → "Usar lo sugerido". Las
