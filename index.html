@@ -6087,7 +6087,9 @@ try{
    necesita OAuth. GIS permite pedir el token con prompt:"" — devuelve uno
    en silencio si esa cuenta YA dio el consentimiento antes. Resultado:
    consentimiento una sola vez (por la ventana de abajo), y de ahí en más
-   nada de ventanas.
+   nada que tocar. Ojo: "en silencio" no es "sin ventana" — GIS abre igual
+   la ventana de Google y se cierra sola al instante (un parpadeo, cada vez
+   que no hay token vigente). Es lo esperado, no una falla.
 
    Esto ya se intentó una vez y se revirtió (ver el commit "Revertir la
    renovación silenciosa del token de Calendar (GIS)"): el origen de GitHub
