@@ -42,7 +42,7 @@ function armar(){
     const clearTimeout = id => { if(id && reg.relojes[id-1]) reg.relojes[id-1].vivo = false; };
     let unsubscribeData=null, unsubscribeRequests=null, unsubAllowlist=null, unsubOwnRequest=null,
         unsubAuditLog=null, unsubRoster=null, unsubTerritoryConfig=null, unsubPreferences=null,
-        unsubUserPrefs=null, unsubFormerMembers=null, unsubPersonas=null;
+        unsubUserPrefs=null, unsubFormerMembers=null, unsubPersonas=null, unsubAgenda=null;
     let auditLoginLoggedThisSession = false;
     let prefsPropiasLeidas = false;   // 7/10/2026: el idioma y la zona de los correos
     let composerDraft=null, rutinaDraft=null, zonasDraft=null, tiposDraft=null, calendarDraft=null, adjuntosDraft=null;
@@ -55,6 +55,9 @@ function armar(){
     let filtroOrigen = null;
     const fp = { abierto:false, b:null };
     const postModalOverlay = { hidden:true };
+    // La Agenda (8/10/2026): la ventana y una lista a medio traer se olvidan al salir.
+    const agendaOverlay = { hidden:true };
+    let agendaPila = [], agendaImport = null;
     const state = { auth:{ status:"loading", user:null }, posts:[], repliesByPost:{}, loaded:false,
       accessRequests:[], auditLog:[], roster:[], formerMembers:[], personas:[], prefs:{}, filters:null,
       preferenciasSection:"zonas", view:"feed" };
@@ -72,7 +75,7 @@ function armar(){
           subscribeAuditLog = anotar("auditoria"), subscribeRoster = anotar("padron"),
           subscribeTerritoryConfig = anotar("config"), subscribePreferences = anotar("preferencias"),
           subscribeUserPrefs = anotar("mis-preferencias"), subscribeFormerMembers = anotar("ex"),
-          subscribePersonas = anotar("personas");
+          subscribePersonas = anotar("personas"), subscribeAgenda = anotar("agenda");
     ${grab("recomputeAuthStatus")}
     ${grab("onAuthChanged")}
     return { onAuthChanged, state };
@@ -228,7 +231,7 @@ for(const [role, esperado] of [[undefined,"approved"],["member","approved"],["ob
   a.padron(FICHA);
   await tic();
   eq("recién con la ficha se abren los datos",
-     a.reg.suscripciones, ["posts","padron","config","preferencias","mis-preferencias","ex","personas"]);
+     a.reg.suscripciones, ["posts","padron","config","preferencias","mis-preferencias","ex","personas","agenda"]);
   eq("y como no es admin, ni solicitudes ni auditoría",
      a.reg.suscripciones.filter(x=>x==="solicitudes"||x==="auditoria"), []);
 }
