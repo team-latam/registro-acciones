@@ -907,6 +907,23 @@ usaban la barra vieja.
   página propia; **C3** plegada al pie de Países, como los países sin
   actividad propia. Siguen abiertas las otras dos decisiones (quién ve
   los teléfonos, quién corrige).
+  **Tercera vuelta (8/10/2026): eligió la C1**, «lo más simple posible,
+  que no rompa la armonía»: el botón se llama **«📇 Agenda»** (no «Agenda
+  completa») y tiene la misma forma que Lista y Mapa, sin colores nuevos;
+  la ventana se titula «Agenda»; la tarjeta de cada lugar es «Contactos en
+  …» (como «Proyectos en …»), con «Ver en la Agenda»; el filtro por lista
+  aparece recién cuando haya más de una lista. Versión 3 de la página.
+
+- **La ficha de un lugar en el celular** (8/10/2026, captura del
+  usuario): en el celular el costado (Proyectos, Ciudades, Ritmo, Quiénes
+  trabajaron acá, Documentos) va debajo de «Lo que pasó», que se carga de
+  a 30 y suma 30 más al llegar abajo (`FICHA_TANDA`, `feedMoreObserver`):
+  en un lugar con mucha actividad, el costado casi no se alcanza. Opciones
+  en la misma página (versión 3): **A** el costado arriba de la historia,
+  entero; **B** arriba de la historia, cada tarjeta plegada en un renglón
+  con su resumen, que se abre ahí y se acuerda de lo abierto — la
+  recomendada; **C** la historia arranca con 10 y «Ver toda la historia».
+  En la compu no cambia nada en ninguna. Pendiente de que elija.
 
 - **Clasificar lo que vino de Google Calendar**: la herramienta está
   (tanda 19); falta que el usuario la use. Empezar por Actividades →
