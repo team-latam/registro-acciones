@@ -812,6 +812,19 @@ una persona): antes decía «Solo acá 74» con 13 en la lista
 
 ## Decisiones pendientes del usuario
 
+- **Cómo ordenar la barra de filtros del Inicio** (8 oct 2026). El usuario
+  pidió propuestas que se puedan tocar, no capturas: lo que llega de otra
+  pantalla (📍 Argentina y 📅 2026 desde Reportes, lo que cargó alguien
+  desde Personas) aparece como fichas sueltas que solo se sacan; el lugar
+  se elige en tres sitios; en el celular son cinco renglones antes del
+  primer posteo, y los accesos directos y los guardados no están. Se le
+  mostraron en una página con maquetas en vivo
+  (https://claude.ai/artifact/EvbV2yqiNp48BUTvEqTh9i, privada del
+  usuario): **A** cuatro menús Actividad · Lugar · Fecha · Persona que
+  muestran lo elegido (la recomendada), **B** un botón «⚙ Filtros» como
+  el de Reportes con lo puesto como fichas, **C** una frase con las
+  partes que se tocan. Falta que elija.
+
 - **Clasificar lo que vino de Google Calendar**: la herramienta está
   (tanda 19); falta que el usuario la use. Empezar por Actividades →
   "Solo los seguros" → "Elegir todos" → "Usar lo sugerido". Las
