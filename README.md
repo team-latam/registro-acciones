@@ -908,7 +908,17 @@ por el mismo camino (`requestCalendarTokenPopup()`). (En la época de
 Firebase el popup era `signInWithPopup`, que abría ventana siempre.)
 
 Entonces: **una sola pantalla de consentimiento** (la primera vez, por el
-popup de los botones de Calendar) y de ahí en más nada de ventanas.
+popup de los botones de Calendar) y de ahí en más nada que tocar. Pero
+**no "nada de ventanas"**: el pedido silencioso de GIS también abre la
+ventana de Google, que ve que no hay nada que preguntar y se cierra sola
+en un instante. Ese parpadeo aparece cada vez que hace falta un token y no
+hay uno vigente: la primera escritura en Calendar de cada pestaña, y de
+nuevo cuando vence (~55 min, `storeGisToken()`). Es normal, no una falla.
+(El 8/10/2026 el usuario preguntó por ese parpadeo creyendo que con la
+mudanza a Supabase iba a desaparecer, porque esta sección lo prometía; se
+le explicó y eligió dejarlo así. La única forma de sacarlo del todo sería
+que la cuenta de servicio escriba en el Calendar, con sus costos: eventos
+creados por la cuenta de la app, una llave con permiso de modificar.)
 
 Esto ya se intentó y se revirtió una vez (commit *"Revertir la renovación
 silenciosa del token de Calendar (GIS)"*). No falló por GIS: el origen de
@@ -923,7 +933,7 @@ origin_mismatch`, bloqueando acciones reales. Dos cosas cambian ahora:
 2. El intento silencioso tiene **timeout de 4 s y cae al popup ante
    cualquier error**. Esa era la falla de fondo: quedarse colgado en vez de
    seguir de largo. Probado cortando el script de GIS: responde en
-   milisegundos, sin abrir nada y sin romper la página.
+   milisegundos y sin romper la página.
 
 **`silentOnly`**: aprobar y revocar pasan `{silentOnly:true}` a
 `shareCalendarWith`/`unshareCalendarWith` — si el token no sale en silencio
@@ -1407,15 +1417,10 @@ quien publica para crear el evento.
   cancelar) dura ~1 hora, y se guarda en `sessionStorage` para sobrevivir
   a recargar la página dentro de la misma pestaña (se pierde si se cierra
   la pestaña, si vence, o al cerrar sesión). Si hace falta y no hay uno
-  vigente, la app vuelve a pedir el login de Google automáticamente antes
-  de escribir en Calendar — normalmente un click rápido, no un login
-  completo de nuevo. (Se probó renovarlo en segundo plano con Google
-  Identity Services antes de este popup, para evitar interrumpir — se
-  sacó porque requiere agregar a mano el origen de esta página a
-  "Authorized JavaScript origins" del Client ID en Google Cloud Console,
-  y sin eso el intento silencioso queda trabado mostrando una pantalla de
-  error de Google en vez de resolverse solo. Mejor un popup confiable que
-  uno silencioso que a veces se rompe.) La **lectura** (sincronizar
+  vigente, la app lo pide primero en silencio y, si no sale, con la
+  ventana de Google — ver «Popups de Google: token silencioso con GIS»
+  más arriba (el pedido silencioso se sacó una vez y volvió, con el
+  origen autorizado y un timeout). La **lectura** (sincronizar
   Calendar → Feed) no usa este token — ver más abajo.
 - Si falla la sincronización (permiso denegado, sin conexión, etc.) el
   posteo **igual se guarda** en el Feed — el Calendar es un agregado, nunca
