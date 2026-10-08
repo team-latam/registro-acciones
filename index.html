@@ -2855,6 +2855,17 @@
   @media (max-width:1100px){ .rep-grilla-ancha{ grid-template-columns:minmax(0,1fr); } }
   .rep-evolucion td:not(:first-child){ border-inline-start:2px solid var(--card); }
   .rep-h0{ color:var(--text-muted); font-weight:600; } .rep-h1{ background:#e6f6f9; } .rep-h2{ background:#bfe9f2; } .rep-h3{ background:#7fd3e6; } .rep-h4{ background:#1a9fb8; color:#fff; }
+  /* En oscuro, la misma escala de menos a más, pero de petróleo a
+     celeste: los fondos claros de arriba con la letra clara del modo
+     oscuro dejaban los números invisibles, y la tabla quedaba como
+     manchones blancos sobre la tarjeta (lo mostró el usuario el
+     8/10/2026). Solo en pantalla: en papel va siempre en claro. */
+  @media screen{
+    html[data-theme="dark"] .rep-h1{ background:#16424a; }
+    html[data-theme="dark"] .rep-h2{ background:#1b5a64; }
+    html[data-theme="dark"] .rep-h3{ background:#1f7f8f; color:#fff; }
+    html[data-theme="dark"] .rep-h4{ background:#4fc7e0; color:#082a2c; }
+  }
   .rep-bloque-ancho{ grid-column:span 1; }
   .rep-extras{ display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:14px; margin-top:14px; }
   .rep-lista{ list-style:none; margin:0; padding:0; max-height:320px; overflow:auto; }
