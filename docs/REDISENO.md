@@ -723,6 +723,28 @@ observador ve solo Ver historia y Ver calendario. La tarjeta que se abre
 desde el Calendario quedó como estaba
 (`pruebas/proximos_tarjeta_test.mjs`).
 
+### 39. Reportes sin lugares vacíos — HECHO (8 oct 2026)
+
+En Reportes, debajo de «Mes a mes», al lado de Por zona, Por país y Por
+tipo quedaba un cuarto lugar vacío en las pantallas anchas: la grilla
+hacía lugar para cuatro tarjetas y había tres. Se le propusieron tres
+opciones con capturas: **A** una tarjeta «Por ciudad» (la recomendada),
+**B** «Lo que viene» (lo planificado), **C** no agregar nada y que las
+tres ocupen el ancho. **Eligió C.**
+
+Ahora esas tarjetas van de a tres o una debajo de la otra, nunca de a
+cuatro ni de a dos. Al revisar se vio que pasaba lo mismo en otros
+anchos y pantallas: en una pantalla mediana la tercera tarjeta quedaba
+sola, con medio renglón vacío (Un período, Todos los años, Comparar), y en
+el PDF también. Se arregló en todos esos casos. En el PDF: Zona, País y
+Tipo de a tres; Todos los años, todo a lo ancho; Comparar, Tipo y Zona
+lado a lado y País abajo
+(`pruebas/reportes_huecos_test.mjs`, que recorre 14 anchos y el papel).
+
+Si algún día se quiere sumar una cuarta tarjeta, las dos ideas de la
+propuesta quedan anotadas: «Por ciudad» (las 12 ciudades con más
+actividad: arriba ya figura cuántas son, pero no cuáles) y «Lo que viene».
+
 ## Fuera de alcance (necesitan algo que la app no tiene)
 
 - ~~Mandar correos (resumen semanal, invitaciones): no hay servicio de
