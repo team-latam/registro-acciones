@@ -673,11 +673,11 @@ Dónde se aplica:
 - **Vistas › país**: después de las ciudades, dos filas punteadas ("Región
   Norte" en su color, "Toda LatAm" en gris) que abren el Feed ya
   filtrado en ese nivel.
-- **El Feed con un lugar filtrado**: un selector de tres
-  posiciones, "Solo acá N · + Región Norte N · + Toda LatAm N"
-  (`renderPlaceLevelSeg`, con los conteos ya pasados por los otros
-  filtros). Cada nivel incluye al anterior: ver LatAm sin la región no
-  tiene sentido. Lo que entra por región o LatAm lleva `.post-cross` (borde
+- **El Feed con un lugar filtrado**: en el panel de filtros, adentro de
+  Lugar, un selector de tres posiciones, "Solo acá N · + Región Norte N
+  · + Toda LatAm N" (`fpOpcionesLugar` y `placeLevelCounts`, con los
+  conteos ya pasados por los otros filtros). Cada nivel incluye al
+  anterior: ver LatAm sin la región no tiene sentido. Lo que entra por región o LatAm lleva `.post-cross` (borde
   punteado, la región en su color). El nivel elegido es una **preferencia personal**
   (`userPrefs.placeLevel`, también en Configuración › Calendario como "Al
   abrir un lugar, incluir"): primero vivió en localStorage, pero eso lo
@@ -1775,8 +1775,8 @@ scrolleaba de costado**. Lo que quedó, y por qué:
   no entran; sin envolver, el último se salía y los otros partían su
   texto ("Me / gusta").
 - **`fitDropdownPanels()`** corre con `translate` cualquier desplegable
-  que se salga de la pantalla (selector de vista del Calendario, filtro de
-  Zonas del Feed). Mide con la animación de apertura apagada: arranca en
+  que se salga de la pantalla (selector de vista y capas del
+  Calendario). Mide con la animación de apertura apagada: arranca en
   `scale(.85)` y medir el primer cuadro daba una caja más chica que la
   real. Es `translate` y no `transform` porque la animación ya usa
   transform y lo pisaría.

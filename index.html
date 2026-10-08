@@ -1251,8 +1251,125 @@
     padding:18px; margin-bottom:16px; border:1px solid var(--border);
   }
 
-  /* ---------- Filter bar ---------- */
-  .filterbar{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:16px; }
+  /* ---------- Los filtros del Inicio (la B2, 8/10/2026; ver
+     renderFilterBar). Una tarjeta con el buscador y «⚙ Filtros», y debajo
+     una ficha por filtro puesto. El panel: en escritorio cuelga de la
+     tarjeta, con los filtros a la izquierda y las opciones del elegido a
+     la derecha, siempre del mismo tamaño; en angosto sube desde abajo. ---------- */
+  .fb{ position:relative; background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md); box-shadow:var(--shadow); padding:10px 12px; display:flex; flex-direction:column; gap:9px; margin-bottom:16px; }
+  .fb-origen{ display:flex; flex-wrap:wrap; align-items:center; gap:6px 14px; }
+  .fb-volver{ background:none; border:none; padding:0; font-family:inherit; font-size:12.5px; font-weight:700; color:var(--celeste-dark); cursor:pointer; text-align:start; }
+  .fb-volver:hover{ text-decoration:underline; }
+  .fb-espacio{ flex:1; }
+  .fb-fila{ display:flex; gap:10px; align-items:center; }
+  .fb-buscar{ flex:1 1 auto; min-width:0; padding:10px 12px; border:1px solid var(--border); border-radius:var(--radius-sm); font-family:inherit; font-size:13.5px; background:var(--card); color:var(--text); }
+  .fb-boton{ flex:none; display:inline-flex; align-items:center; gap:6px; min-height:40px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--card); padding:0 14px; font-family:inherit; font-size:13px; font-weight:700; color:var(--celeste-dark); cursor:pointer; white-space:nowrap; }
+  .fb-boton:hover{ background:var(--surface-alt); }
+  .fb-boton.con-filtro{ border-color:var(--petroleo); color:var(--ink); }
+  .fb-cuenta{ background:var(--petroleo); color:#fff; border-radius:999px; font-size:11px; padding:1px 7px; }
+  .fb-fichas{ display:flex; flex-wrap:wrap; gap:6px; align-items:center; min-width:0; }
+  /* Un nombre larguísimo (una ciudad, una persona) se corta con «…» en vez
+     de estirar la página. */
+  .fb-ficha{ display:inline-flex; align-items:stretch; min-width:0; max-width:100%; border:1px solid var(--border); background:var(--surface-alt); border-radius:999px; }
+  .fb-ficha.abierta{ box-shadow:0 0 0 3px rgba(79,199,224,.35); }
+  .fb-ficha-abrir{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; background:none; border:none; border-radius:999px; padding-block:5px; padding-inline:11px 4px; font-family:inherit; font-size:12.5px; font-weight:700; color:var(--ink); cursor:pointer; }
+  .fb-ficha-x{ flex:none; background:none; border:none; border-radius:999px; padding-block:5px; padding-inline:4px 10px; font-family:inherit; font-size:12px; color:var(--text-muted); cursor:pointer; }
+  .fb-ficha-x:hover{ color:var(--danger); }
+
+  .fp-velo, .fp-agarre, .fp-atras, .fp-t-cat, .fp-item-flecha{ display:none; }
+  .fp-panel{
+    position:absolute; top:calc(100% + 8px); inset-inline-end:0; z-index:60; width:min(600px, 100%);
+    background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md); box-shadow:0 14px 36px rgba(8,42,44,.26);
+    display:flex; flex-direction:column; overflow:hidden; text-align:start;
+  }
+  .fp-cabeza{ display:flex; align-items:center; gap:10px; padding:12px 14px 8px; }
+  .fp-titulo{ flex:1; min-width:0; margin:0; font-size:14.5px; font-weight:800; color:var(--ink-strong); }
+  .fp-pend{ margin-inline-start:6px; font-size:12px; font-weight:700; color:var(--celeste-dark); }
+  .fp-cancelar{ background:none; border:none; padding:4px 0; font-family:inherit; font-size:12.5px; font-weight:600; color:var(--text-muted); text-decoration:underline; cursor:pointer; }
+  .fp-atras{ background:none; border:none; padding:4px 0; font-family:inherit; font-size:13px; font-weight:700; color:var(--celeste-dark); cursor:pointer; }
+  .fp-atajos{ display:flex; flex-wrap:wrap; gap:6px; padding:0 14px 12px; }
+  .fp-atajos .chip-toggle, .fp-opts .chip-toggle{ padding:6px 11px; font-size:12px; }
+  .fp-cuerpo{ display:grid; grid-template-columns:186px minmax(0,1fr); height:300px; border-top:1px solid var(--border); }
+  .fp-lista{ display:flex; flex-direction:column; gap:2px; padding:6px; overflow:auto; border-inline-end:1px solid var(--border); background:var(--surface-soft); }
+  .fp-item{ display:grid; grid-template-columns:minmax(0,1fr); gap:1px; width:100%; text-align:start; background:none; border:none; border-radius:var(--radius-sm); padding:8px 10px; font-family:inherit; color:var(--ink); cursor:pointer; }
+  .fp-item:hover{ background:var(--surface-alt); }
+  .fp-item.sel{ background:var(--card); box-shadow:0 1px 4px rgba(8,42,44,.14); }
+  .fp-item-nombre{ font-size:13px; font-weight:800; }
+  .fp-item-valor{ font-size:11.5px; font-weight:600; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .fp-item-valor.on{ color:var(--celeste-dark); font-weight:800; }
+  .fp-punto{ display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--celeste-dark); margin-inline-start:6px; vertical-align:middle; }
+  .fp-opts{ display:flex; flex-direction:column; gap:12px; padding:12px 14px; overflow:auto; min-width:0; }
+  .fp-opts h3{ margin:0 0 6px; font-size:10.5px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--text-muted); }
+  .fp-chips{ display:flex; flex-wrap:wrap; gap:6px; }
+  .fp-sep{ height:1px; background:var(--border); flex:none; }
+  .fp-ops{ display:flex; flex-direction:column; gap:1px; }
+  .fp-op{ display:flex; justify-content:space-between; align-items:center; gap:10px; width:100%; min-width:0; text-align:start; background:none; border:none; border-radius:var(--radius-sm); padding:8px 10px; font-family:inherit; font-size:13px; font-weight:600; color:var(--text); cursor:pointer; overflow-wrap:anywhere; }
+  .fp-op:hover{ background:var(--surface-alt); }
+  .fp-op.on{ background:var(--celeste-soft); color:var(--ink); font-weight:800; }
+  .fp-op.on::after{ content:"✓"; flex:none; color:var(--celeste-dark); }
+  .fp-op small{ color:var(--text-muted); font-weight:600; }
+  .fp-tris{ display:flex; flex-wrap:wrap; gap:6px; padding:2px 10px 6px; }
+  .fp-lugar-ahora{ display:flex; align-items:center; justify-content:space-between; gap:8px; background:var(--surface-alt); border-radius:var(--radius-sm); padding:8px 10px; font-size:13px; font-weight:700; color:var(--ink); overflow-wrap:anywhere; }
+  .fp-texto{ width:100%; padding:9px 12px; border:1px solid var(--border); border-radius:var(--radius-sm); font-family:inherit; font-size:13px; background:var(--card); color:var(--text); }
+  .fp-sugs{ display:flex; flex-direction:column; gap:1px; }
+  .fp-nada{ margin:0; padding:4px 10px; font-size:12.5px; color:var(--text-muted); }
+  .fp-niveles{ display:flex; flex-direction:column; gap:2px; padding:4px; border:1px solid var(--border); border-radius:12px; }
+  .fp-nivel{ display:flex; align-items:center; gap:6px; width:100%; text-align:start; background:none; border:none; border-radius:9px; padding:8px 10px; font-family:inherit; font-size:12.5px; font-weight:700; color:var(--text-muted); cursor:pointer; }
+  .fp-nivel b{ margin-inline-start:auto; font-weight:800; }
+  .fp-nivel .dot{ width:9px; height:9px; border-radius:50%; display:inline-block; flex:none; }
+  .fp-nivel.on{ background:var(--petroleo); color:#fff; }
+  .fp-guardado{ display:flex; align-items:center; gap:4px; }
+  .fp-guardado .fp-op{ flex:1; }
+  .fp-guardar{ display:flex; gap:6px; }
+  .fp-guardar .fp-texto{ flex:1; min-width:0; }
+  .fp-pie{ display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 14px; border-top:1px solid var(--border); background:var(--card); }
+  .fp-ver{ padding:9px 18px; }
+  /* Se anima al ABRIR y nada más: el panel se vuelve a dibujar con cada
+     toque (como toda la vista) y antes repetía la animación de apertura
+     en cada uno, «como si se volviera a cargar» (lo notó el usuario). Al
+     cambiar de filtro se mueve solo lo que cambia. */
+  .fp-panel.fp-entra{ animation:fpEntra .18s ease-out; }
+  .fp-opts.fp-cambia{ animation:fpFundido .16s ease-out; }
+  @keyframes fpEntra{ from{ opacity:0; transform:translateY(-6px); } to{ opacity:1; transform:none; } }
+  @keyframes fpFundido{ from{ opacity:0; } to{ opacity:1; } }
+  @keyframes fpSube{ from{ opacity:.5; transform:translateY(40px); } to{ opacity:1; transform:none; } }
+  @keyframes fpVelo{ from{ opacity:0; } to{ opacity:1; } }
+  @keyframes fpDeCostado{ from{ opacity:.25; transform:translateX(calc(28px * var(--fp-dir, 1))); } to{ opacity:1; transform:none; } }
+  @media (max-width:640px){
+    /* Solo el html: en el body lo volvía una caja que recorta (el anillo
+       del enlace «Saltar al contenido» quedaba cortado, recortes_test). */
+    html.fp-abierto{ overflow:hidden; }
+    .fp-velo{ display:block; position:fixed; inset:0; z-index:94; background:rgba(8,42,44,.42); }
+    html[data-theme="dark"] .fp-velo{ background:rgba(0,0,0,.55); }
+    .fp-panel{
+      position:fixed; top:auto; bottom:0; inset-inline:0; width:auto; z-index:95; max-height:78vh; max-height:78dvh;
+      border-radius:22px 22px 0 0; border-bottom:none; box-shadow:0 -10px 36px rgba(8,42,44,.22);
+    }
+    .fp-agarre{ display:block; flex:none; width:40px; height:4px; border-radius:2px; background:var(--border); margin:8px auto 2px; }
+    .fp-cuerpo{ display:block; height:auto; flex:1 1 auto; min-height:0; overflow:auto; }
+    .fp-lista{ padding:0; gap:0; overflow:visible; border-inline-end:none; background:none; }
+    .fp-item{ grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:10px; padding:13px 16px; border-radius:0; border-bottom:1px solid var(--border); }
+    .fp-item.sel{ background:none; box-shadow:none; }
+    .fp-item-nombre{ font-size:13.5px; }
+    .fp-item-valor{ text-align:end; font-size:12.5px; }
+    .fp-item-flecha{ display:block; color:var(--text-muted); font-size:15px; }
+    html[dir="rtl"] .fp-item-flecha{ transform:scaleX(-1); }
+    .fp-opts{ overflow:visible; padding:12px 16px 16px; }
+    .fp-panel[data-paso="lista"] .fp-opts{ display:none; }
+    .fp-panel[data-paso="opciones"] .fp-lista, .fp-panel[data-paso="opciones"] .fp-atajos, .fp-panel[data-paso="opciones"] .fp-t-lista{ display:none; }
+    .fp-panel[data-paso="opciones"] .fp-atras, .fp-panel[data-paso="opciones"] .fp-t-cat{ display:inline; }
+    .fp-pie{ padding:10px 16px calc(10px + env(safe-area-inset-bottom)); }
+    .fp-panel.fp-entra{ animation:fpSube .22s ease-out; }
+    .fp-velo.fp-entra{ animation:fpVelo .2s ease-out; }
+    .fp-opts.fp-cambia{ animation:none; }
+    /* Entrar a un filtro: sus opciones llegan desde el costado; «← Filtros»
+       vuelve hacia el otro lado (en hebreo, espejado). */
+    .fp-cuerpo.fp-cambia{ --fp-dir:1; animation:fpDeCostado .2s ease-out; }
+    .fp-cuerpo.fp-atras-anim{ --fp-dir:-1; animation:fpDeCostado .2s ease-out; }
+    html[dir="rtl"] .fp-cuerpo.fp-cambia{ --fp-dir:-1; }
+    html[dir="rtl"] .fp-cuerpo.fp-atras-anim{ --fp-dir:1; }
+  }
+  @media (prefers-reduced-motion:reduce){ .fp-panel, .fp-velo, .fp-opts, .fp-cuerpo{ animation:none !important; } }
 
   /* El Inicio en escritorio: el Feed a la izquierda y una columna
      lateral (ver renderFeedSide) con lo que se viene, los hitos por
@@ -1292,10 +1409,6 @@
   /* "Ver traducción" vive en la fila de acciones (Me gusta · Responder …),
      no como renglón suelto debajo del texto. */
   .post-actions .translate-toggle{ font-size:12.5px; margin-top:0; padding:4px 0; }
-  .filterbar input[type=text]{
-    flex:1 1 220px; padding:11px 14px; border-radius:999px; border:1.5px solid var(--border);
-    font-size:13.5px; background:var(--card);
-  }
   .chip-toggle{
     display:inline-flex; align-items:center; gap:6px; padding:7px 13px; border-radius:999px;
     border:1.5px solid var(--border); background:var(--card); font-size:12.5px; font-weight:600;
@@ -1306,8 +1419,9 @@
   .chipgroup{ display:flex; flex-wrap:wrap; gap:6px; }
   .filter-clear{ background:none; border:none; color:var(--text-muted); font-size:12px; text-decoration:underline; cursor:pointer; }
 
-  /* ---------- Desplegables "Actividades" / "Zonas" del filtro (ver
-     renderFilterBar): mismas clases genéricas para los dos. ---------- */
+  /* ---------- Desplegables (selector de vista y capas del Calendario):
+     las mismas clases genéricas. Nacieron para «Actividades» y «Zonas» del
+     Inicio, que el 8/10/2026 pasaron al panel de filtros. ---------- */
   .filter-dropdown{ position:relative; }
   .filter-dropdown-btn{ border:1.5px solid var(--border); }
   .filter-dropdown-count{
@@ -1323,25 +1437,10 @@
     transform-origin:top left;
     animation:filterDropdownPop .2s cubic-bezier(.34,1.56,.64,1);
   }
-  /* El de Zonas va segundo en la barra: si se abriera pegado al lado de
-     inicio como el de Actividades, en pantallas angostas se saldría por
-     el otro borde. Se cuelga del lado de cierre de su botón. */
-  .zone-filter .filter-dropdown-panel{ inset-inline-start:auto; inset-inline-end:0; transform-origin:top right; }
-  /* transform-origin no tiene equivalente lógico en CSS (solo acepta
-     top/left/right físicos) — se corrige a mano para RTL, donde
-     inset-inline-start:0 ancla el panel de Actividades al borde DERECHO
-     físico (y el de Zonas, al izquierdo): la animación tiene que nacer
-     del mismo borde donde el panel queda pegado, o se ve rara. */
-  html[dir="rtl"] .type-filter .filter-dropdown-panel{ transform-origin:top right; }
-  html[dir="rtl"] .zone-filter .filter-dropdown-panel{ transform-origin:top left; }
   /* En hebreo, un panel que asoma por la izquierda aunque sea un instante
-     (antes de que fitDropdownPanels lo corra) hace que Chrome agrande la
-     página hacia ese lado y la deje corrida de costado, con todo lo de la
-     derecha afuera (barrido del 6/10/2026). Ahí el panel se cuelga del
-     borde de la barra entera, que ocupa todo el ancho: no puede asomar. */
-  html[dir="rtl"] .filterbar{ position:relative; }
-  html[dir="rtl"] .filterbar .filter-dropdown{ position:static; }
-  html[dir="rtl"] .filterbar .filter-dropdown-panel{ inset-inline-start:0; inset-inline-end:auto; max-width:100%; transform-origin:top right; }
+     hace que Chrome agrande la página hacia ese lado y la deje corrida de
+     costado (barrido del 6/10/2026): el de Reportes se cuelga del borde de
+     la barra entera. */
   html[dir="rtl"] .rep-filtros-envoltorio{ position:static; }
   html[dir="rtl"] .rep-filtros-pop{ inset-inline-start:0; inset-inline-end:auto; max-width:calc(100% - 20px); }
   @keyframes filterDropdownPop{
@@ -5843,20 +5942,29 @@ function achicarDataUrl(dataUrl, maxDim, quality, tipo = "image/jpeg"){
 /* ======================================================================
    ESTADO GLOBAL
    ====================================================================== */
+// De dónde se llegó al Inicio con los filtros puestos ({ view, anio, tri }),
+// para el «← Volver a Reportes · 2026» de la barra. Se va con «Limpiar».
+let filtroOrigen = null;
+// El panel de filtros del Inicio (ver renderFilterBar): abierto, el filtro
+// elegido (null = la lista, en angosto), el borrador (b) y lo que tiene
+// que animarse UNA vez en el próximo dibujado (entra, mov).
+const fp = { abierto:false, cat:null, b:null, entra:false, mov:null, ancla:null, guardando:false, nombre:"" };
 const state = {
   view: "feed",           // feed | paises | memoria
   posts: [],               // [{id, ...data, replies:[...]}]
   repliesByPost: {},        // postId -> [reply,...] (ordenados por fecha)
   loaded: false,
-  filters: {
-    text: "",
-    types: new Set(),       // activityType keys activos
-    zones: new Set(),       // zone keys activos
-    place: null,            // {kind:'country'|'city'|'zone', country?, city?, zone?}
-    quick: null,            // acceso directo de la columna lateral: mine | participo | docs | mes
-    author: null,           // email: solo lo que cargó esa persona ("Ver lo que cargó", en Administración › Personas)
-    periodo: null,          // {desde, hasta, anio, tri}: el año o trimestre de una fila de Reportes (ver pasaFiltroPeriodo)
-  },
+  // Los filtros del Inicio (ver filtrosVacios y renderFilterBar):
+  //   text     lo escrito en el buscador
+  //   types    activityType keys activos
+  //   zones    zone keys activos
+  //   place    {kind:'country'|'city'|'latam', country?, city?}
+  //   quien    'mine' (Mis posteos) | 'participo' (Donde participo) | null
+  //   author   email: solo lo que cargó esa persona (Administración › Personas, su perfil)
+  //   periodo  {desde, hasta, anio, tri}: un año o trimestre (Reportes, o elegido en Fecha)
+  //   mes      Este mes (lo de este mes, también lo que falta)
+  //   docs     solo lo que tiene documentación pendiente
+  filters: filtrosVacios(),
   paisesSubview: "lista",   // lista | mapa
   configSection: "calendario", // sección abierta en la solapa Configuración
   prefs: null,              // preferencias de ESTA persona; se llena abajo con DEFAULT_PREFS
@@ -7522,7 +7630,7 @@ async function onAuthChanged(user){
   userMenuOpen = false;
   mentionsMenuOpen = false;
   postModalOverlay.hidden = true;
-  state.filters = { text:"", types:new Set(), zones:new Set(), place:null };
+  state.filters = filtrosVacios(); filtroOrigen = null; fp.abierto = false; fp.b = null;
 
   if(!user){
     // Acá y no en doSignOut: también se sale desde otra pestaña, o porque
@@ -10595,13 +10703,23 @@ function cerrarFichaTipo(conAnillo = tieneAnillo(document.activeElement)){
   const key = tipoAbierto; tipoAbierto = null; render();
   volverAFila(key && key !== "__nuevo__" ? `.lp-row[data-action="tipo-abrir"][data-key="${CSS.escape(key)}"]` : '[data-action="tipo-nuevo"]', conAnillo);
 }
+const FP_CON_SCROLL = [".fp-lista", ".fp-opts", ".fp-cuerpo"];
 function render(){
   const active = document.activeElement;
   const focusSel = focusSelectorOf(active);
   const anilloVisible = tieneAnillo(active);
   const selStart = active && typeof active.selectionStart === "number" ? active.selectionStart : null;
   const selEnd = active && typeof active.selectionEnd === "number" ? active.selectionEnd : null;
+  // Lo desplazado adentro del panel de filtros sobrevive al dibujado (cada
+  // toque vuelve a armar la vista); al pasar a otro filtro, sus opciones
+  // arrancan arriba.
+  const fpScroll = fp.abierto ? FP_CON_SCROLL.map(sel => { const x = document.querySelector(sel); return x ? x.scrollTop : 0; }) : null;
+  const fpOtroFiltro = !!fp.mov;
   doRender();
+  if(fpScroll && fp.abierto) FP_CON_SCROLL.forEach((sel, i) => {
+    const x = document.querySelector(sel);
+    if(x) x.scrollTop = fpOtroFiltro && sel !== ".fp-lista" ? 0 : fpScroll[i];
+  });
   montarBotonDeGoogle();
   abrirEnlaceDeCorreo();
   // Igual que el foco: doRender() reconstruye la fila del hito de cero, así
@@ -10807,6 +10925,26 @@ function setLang(lang){
 // doRender() (header, pestañas, footer, el brindis del Calendar). Todo
 // lo demás (el 99% de la app) se traduce solo con cada render() normal,
 // porque ya reconstruye su innerHTML desde cero en cada pasada.
+// El nombre de cada pantalla (las solapas, y el «← Volver a …» de los
+// filtros del Inicio).
+function etiquetasDeVistas(){
+  return {
+    feed: t("Inicio", "Home", "Início", "ראשי"),
+    paises: t("Países", "Countries", "Países", "מדינות"),
+    calendario: t("Calendario", "Calendar", "Calendário", "יומן"),
+    memoria: t("Memoria", "Memory", "Memória", "זיכרון"),
+    proyectos: t("Proyectos", "Projects", "Projetos", "פרויקטים"),
+    reportes: t("Reportes", "Reports", "Relatórios", "דוחות"),
+    configuracion: t("Configuración", "Settings", "Configurações", "הגדרות"),
+    auditoria: t("Actividad", "Activity", "Atividade", "פעילות"),
+    solicitudes: t("Usuarios", "Users", "Usuários", "משתמשים"),
+    preferencias: t("Administrar", "Manage", "Administrar", "ניהול"),
+    admin: t("Administración", "Administration", "Administração", "ניהול"),
+  };
+}
+function etiquetaDeVista(view){
+  return etiquetasDeVistas()[view] || t("la pantalla anterior","the previous screen","a tela anterior","המסך הקודם");
+}
 function applyStaticI18n(){
   document.title = t(
     "Registro de Acciones — Team LatAm", "Action Log — Team LatAm",
@@ -10827,18 +10965,7 @@ function applyStaticI18n(){
     "Memória histórica · Team LatAm", "זיכרון היסטורי · Team LatAm"
   );
 
-  const tabLabels = {
-    feed: t("Inicio", "Home", "Início", "ראשי"),
-    paises: t("Países", "Countries", "Países", "מדינות"),
-    calendario: t("Calendario", "Calendar", "Calendário", "יומן"),
-    memoria: t("Memoria", "Memory", "Memória", "זיכרון"),
-    proyectos: t("Proyectos", "Projects", "Projetos", "פרויקטים"),
-    reportes: t("Reportes", "Reports", "Relatórios", "דוחות"),
-    configuracion: t("Configuración", "Settings", "Configurações", "הגדרות"),
-    auditoria: t("Actividad", "Activity", "Atividade", "פעילות"),
-    solicitudes: t("Usuarios", "Users", "Usuários", "משתמשים"),
-    preferencias: t("Administrar", "Manage", "Administrar", "ניהול"),
-  };
+  const tabLabels = etiquetasDeVistas();
   document.querySelectorAll("#tabs button[data-view]").forEach(btn=>{
     const label = tabLabels[btn.dataset.view];
     if(!label) return;
@@ -11264,6 +11391,9 @@ function doRender(){
   // cualquier camino que llegue ahí (un atajo viejo, un enlace guardado)
   // cae en el Feed.
   if(isAuthorized() && state.view === "memoria") state.view = "feed";
+  if(fp.abierto && (state.view !== "feed" || !isAuthorized())){ fp.abierto = false; fp.b = null; fp.cat = null; }
+  // En angosto el panel de filtros tapa todo: la página de atrás no se mueve.
+  document.documentElement.classList.toggle("fp-abierto", fp.abierto);
   document.querySelectorAll("#tabs button[data-view]").forEach(b=>{
     b.classList.toggle("active", b.dataset.view === state.view);
   });
@@ -13869,81 +13999,374 @@ function afterRenderView(){
   }
 }
 
-/* ---------- Filtro compartido (Feed / Memoria) ---------- */
-// El filtro por tipo de actividad (Rutina/Visita/Curso/...) y el de zona
-// (Norte/Central/Sur) viven plegados bajo sendos desplegables en vez de
-// diez chips sueltos en la barra: son los que más lugar ocupaban y los
-// que menos se tocan de a varios a la vez. El estado de abierto/cerrado
-// de cada uno es global (no por prefix/vista) a propósito: Feed y
-// Memoria nunca están montadas las dos a la vez, así que no hace falta
-// una variable por cada una.
-let typeFilterOpen = false;
-let zoneFilterOpen = false;
-function renderFilterBar(prefix){
-  const activeTypes = state.filters.types.size;
-  const activeZones = state.filters.zones.size;
-  // Un tipo archivado se ofrece como filtro solo si todavía hay posteos
-  // con él: para filtrar lo viejo sirve; si no queda nada, es ruido.
-  const typeChips = ACTIVITY_TYPES.filter(ty => !ty.archived || countPostsByType(ty.key)).map(ty=>`
-    <span role="button" tabindex="0" class="chip-toggle ${state.filters.types.has(ty.key)?"active":""}" data-action="toggle-type" data-key="${esc(ty.key)}">
-      ${esc(ty.icon)} ${esc(ty.label)}
-    </span>`).join("");
-  const zoneChips = Object.values(ZONES).map(z=>`
-    <span role="button" tabindex="0" class="chip-toggle ${state.filters.zones.has(z.key)?"active":""}" data-action="toggle-zone" data-key="${esc(z.key)}">
-      <span class="dot" style="background:${safeColor(z.color)}"></span> ${esc(z.label)}
-    </span>`).join("");
-  const placeChip = state.filters.place ? `
-    <span role="button" tabindex="0" class="chip-toggle active" data-action="clear-place">
-      📍 ${esc(placeFilterLabel(state.filters.place))} ✕
-    </span>` : "";
-  const quickChip = state.filters.quick ? `
-    <span role="button" tabindex="0" class="chip-toggle active" data-action="clear-quick">
-      ⚡ ${esc(etiquetaFiltroRapido(state.filters.quick))} ✕
-    </span>` : "";
-  const periodoChip = state.filters.periodo ? `
-    <span role="button" tabindex="0" class="chip-toggle active" data-action="clear-periodo">
-      📅 ${esc(etiquetaPeriodo(state.filters.periodo))} ✕
-    </span>` : "";
-  const autor = state.filters.author ? (state.roster.find(u => u.email === state.filters.author) || { name: state.filters.author }) : null;
-  const authorChip = autor ? `
-    <span role="button" tabindex="0" class="chip-toggle active" data-action="clear-author">
-      ✍️ ${esc(autor.name || autor.nickname || autor.email)} ✕
-    </span>` : "";
-  const anyFilter = anyActiveFilter();
-  return `
-    <div class="filterbar">
-      <input type="text" id="${prefix}Search" placeholder="${esc(t("Buscar por texto…","Search by text…","Buscar por texto…","...חיפוש לפי טקסט"))}" value="${esc(state.filters.text)}">
-      <div class="filter-dropdown type-filter">
-        <button type="button" class="chip-toggle filter-dropdown-btn ${activeTypes ? "active" : ""} ${typeFilterOpen ? "open" : ""}" data-action="toggle-type-filter">
-          🗂️ ${t("Actividades","Activities","Atividades","פעילויות")}${activeTypes ? `<span class="filter-dropdown-count">${activeTypes}</span>` : ""}
-          <span class="filter-dropdown-chevron">▾</span>
-        </button>
-        ${typeFilterOpen ? `<div class="filter-dropdown-panel">${typeChips}</div>` : ""}
+/* ---------- Los filtros del Inicio (la B2, 8/10/2026) ---------- */
+// Una tarjeta con el buscador y «⚙ Filtros», y debajo una ficha por cada
+// filtro puesto: tocarla abre el panel en ese filtro y su ✕ lo saca al
+// toque. El panel tiene los filtros a la izquierda, con lo elegido en
+// cada uno, y las opciones del que se tocó a la derecha; siempre mide lo
+// mismo. En angosto sube desde abajo: primero la lista y, al tocar un
+// filtro, sus opciones (con «← Filtros» para volver).
+// Lo que se toca adentro es un BORRADOR (fp.b): el Inicio no cambia hasta
+// «Ver N posteos» o Enter, y Cancelar, Escape o tocar afuera lo descartan.
+// Así lo pidió el usuario: elegir todo primero y recién después ver.
+// Antes eran dos desplegables (Actividades, Zonas) y una ficha suelta por
+// cada cosa que llegaba de otra pantalla (📍 Argentina, 📅 2026), que solo
+// se podía sacar: para pasar de 2026 a 2025 había que volver a Reportes.
+// Lo eligió entre tres propuestas que se podían tocar (docs/REDISENO.md).
+function filtrosVacios(){
+  return { text:"", types:new Set(), zones:new Set(), place:null, quien:null, author:null, periodo:null, mes:false, docs:false };
+}
+function clonarFiltros(f){
+  return { ...filtrosVacios(), ...f, types:new Set(f.types || []), zones:new Set(f.zones || []),
+    place: f.place ? { ...f.place } : null, periodo: f.periodo ? { ...f.periodo } : null };
+}
+
+function fpCategorias(){
+  return [
+    { k:"actividad", i:"🗂️", n:t("Actividad","Activity","Atividade","פעילות"), vacio:t("Todas","All","Todas","הכול") },
+    { k:"lugar", i:"📍", n:t("Lugar","Place","Lugar","מקום"), vacio:t("Toda LatAm","All of LatAm","Toda a LatAm","כל LatAm") },
+    { k:"fecha", i:"📅", n:t("Fecha","Date","Data","תאריך"), vacio:t("Cualquier fecha","Any date","Qualquer data","כל תאריך") },
+    { k:"persona", i:"👤", n:t("Persona","Person","Pessoa","אדם"), vacio:t("Todo el equipo","Whole team","Toda a equipe","כל הצוות") },
+    { k:"guardados", i:"💾", n:t("Guardados","Saved","Salvos","שמורים"), vacio:t("Ninguno","None","Nenhum","אין") },
+  ];
+}
+function nombreDeAutor(email){
+  const u = state.roster.find(r => String(r.email || "").toLowerCase() === email);
+  if(u) return u.name || u.nickname || u.email;
+  const p = state.posts.find(x => String(x.authorEmail || "").toLowerCase() === email);
+  return (p && p.authorName) || email;
+}
+// Lo elegido en cada filtro, corto («2026 · hasta hoy», «Argentina +
+// región»); null si no hay nada.
+function valorDelFiltro(k, f, nivel){
+  if(k === "actividad"){
+    const tipos = [...f.types].map(key => ACTIVITY_BY_KEY[key]).filter(Boolean);
+    let v = f.types.size === 1 && tipos.length ? `${tipos[0].icon} ${tipos[0].label}`
+      : f.types.size ? t("{n} tipos","{n} types","{n} tipos","{n} סוגים",{ n:f.types.size }) : null;
+    if(f.docs) v = v ? `${v} · 📎` : `📎 ${etiquetaFiltroRapido("docs")}`;
+    return v;
+  }
+  if(k === "lugar"){
+    const partes = [];
+    if(f.place){
+      let v = placeFilterLabel(f.place);
+      if(f.place.kind !== "latam" && nivel === 1) v += " + " + t("región","region","região","אזור");
+      else if(f.place.kind !== "latam" && nivel === 2) v += " + LatAm";
+      partes.push(v);
+    }
+    if(f.zones.size){
+      const zs = [...f.zones].map(z => ZONES[z] ? ZONES[z].label : z).join(", ");
+      partes.push(f.zones.size === 1 ? t("Zona {z}","{z} zone","Zona {z}","אזור {z}",{ z:zs }) : t("Zonas {z}","{z} zones","Zonas {z}","אזורים {z}",{ z:zs }));
+    }
+    return partes.length ? partes.join(" · ") : null;
+  }
+  if(k === "fecha") return f.mes ? etiquetaFiltroRapido("mes") : f.periodo ? etiquetaPeriodo(f.periodo) : null;
+  if(k === "persona") return f.quien ? etiquetaFiltroRapido(f.quien) : f.author ? nombreDeAutor(f.author) : null;
+  return null;
+}
+// La ficha de la barra: con el ícono del filtro adelante, salvo que lo
+// elegido ya traiga el suyo (🧳 Visita, 📎 Les falta documentación).
+function textoDeFicha(k, v){
+  if(k === "actividad" && /^\p{Extended_Pictographic}/u.test(v)) return v;
+  const c = fpCategorias().find(x => x.k === k);
+  return `${c ? c.i : ""} ${v}`.trim();
+}
+// Para saber qué cambió en el borrador (el punto al lado de cada filtro).
+function firmaDelFiltro(k, f, nivel){
+  if(k === "actividad") return JSON.stringify([[...f.types].sort(), !!f.docs]);
+  if(k === "lugar") return JSON.stringify([f.place ? [f.place.kind, f.place.country || "", f.place.city || ""] : null, [...f.zones].sort(), f.place && f.place.kind !== "latam" ? nivel : 0]);
+  if(k === "fecha") return JSON.stringify([!!f.mes, f.periodo ? [String(f.periodo.anio), Number(f.periodo.tri) || 0] : null]);
+  if(k === "persona") return JSON.stringify([f.quien || null, f.author || null]);
+  return "";
+}
+function filtrosCambiados(){
+  const out = new Set();
+  if(!fp.b) return out;
+  ["actividad","lugar","fecha","persona"].forEach(k => {
+    if(firmaDelFiltro(k, state.filters, placeLevel()) !== firmaDelFiltro(k, fp.b.f, fp.b.nivel)) out.add(k);
+  });
+  return out;
+}
+const FILTROS_CON_FICHA = ["actividad","lugar","fecha","persona"];
+function cuantosFiltrosPuestos(f, nivel){ return FILTROS_CON_FICHA.filter(k => valorDelFiltro(k, f, nivel)).length; }
+function primerFiltroPuesto(f, nivel){ return FILTROS_CON_FICHA.find(k => valorDelFiltro(k, f, nivel)) || "actividad"; }
+function etiquetaDelOrigen(o){
+  if(o.view === "reportes"){
+    const tri = Number(o.tri) || 0;
+    const per = tri ? `${trimestresDelReporte()[tri].label} ${o.anio}` : String(o.anio || "");
+    return per ? `${etiquetaDeVista("reportes")} · ${per}` : etiquetaDeVista("reportes");
+  }
+  if(o.view === "solicitudes") return t("Personas","People","Pessoas","אנשים");
+  return etiquetaDeVista(o.view);
+}
+
+function renderFilterBar(){
+  const f = state.filters, nivel = placeLevel();
+  if(filtroOrigen && !anyActiveFilter()) filtroOrigen = null;
+  const fichas = FILTROS_CON_FICHA.map(k => {
+    const v = valorDelFiltro(k, f, nivel);
+    if(!v) return "";
+    const txt = textoDeFicha(k, v);
+    const abierta = fp.abierto && fp.cat === k;
+    return `<span class="fb-ficha${abierta ? " abierta" : ""}"><button type="button" class="fb-ficha-abrir" data-action="fp-abrir" data-cat="${k}" aria-haspopup="dialog" aria-expanded="${abierta}" dir="auto">${esc(txt)}</button><button type="button" class="fb-ficha-x" data-action="fp-quitar" data-cat="${k}" aria-label="${esc(t("Quitar {x}","Remove {x}","Tirar {x}","הסרת {x}",{ x:v }))}" title="${esc(t("Quitar","Remove","Tirar","הסרה"))}">✕</button></span>`;
+  }).join("");
+  const n = cuantosFiltrosPuestos(f, nivel);
+  const limpiar = anyActiveFilter() ? `<button type="button" class="filter-clear" data-action="clear-filters">${t("Limpiar","Clear","Limpar","ניקוי")}</button>` : "";
+  const volver = filtroOrigen ? `<button type="button" class="fb-volver" data-action="fp-volver">${isRTL() ? "→" : "←"} ${esc(t("Volver a {x}","Back to {x}","Voltar para {x}","חזרה אל {x}",{ x:etiquetaDelOrigen(filtroOrigen) }))}</button>` : "";
+  return `<div class="fb">
+      ${volver ? `<div class="fb-origen">${volver}<span class="fb-espacio"></span>${limpiar}</div>` : ""}
+      <div class="fb-fila">
+        <input type="text" id="feedSearch" class="fb-buscar" placeholder="${esc(t("Buscar por texto…","Search by text…","Buscar por texto…","...חיפוש לפי טקסט"))}" aria-label="${esc(t("Buscar por texto","Search by text","Buscar por texto","חיפוש לפי טקסט"))}" value="${esc(f.text)}" autocomplete="off">
+        <button type="button" id="fbFiltros" class="fb-boton${n ? " con-filtro" : ""}" data-action="fp-abrir" aria-haspopup="dialog" aria-expanded="${fp.abierto}">⚙ ${t("Filtros","Filters","Filtros","מסננים")}${n ? ` <span class="fb-cuenta">${n}</span>` : ""}</button>
       </div>
-      <div class="filter-dropdown zone-filter">
-        <button type="button" class="chip-toggle filter-dropdown-btn ${activeZones ? "active" : ""} ${zoneFilterOpen ? "open" : ""}" data-action="toggle-zone-filter">
-          🌎 ${t("Zonas","Zones","Zonas","אזורים")}${activeZones ? `<span class="filter-dropdown-count">${activeZones}</span>` : ""}
-          <span class="filter-dropdown-chevron">▾</span>
-        </button>
-        ${zoneFilterOpen ? `<div class="filter-dropdown-panel">${zoneChips}</div>` : ""}
-      </div>
-      ${placeChip}${periodoChip}${quickChip}${authorChip}
-      ${anyFilter ? `<button class="filter-clear" data-action="clear-filters">${t("Limpiar filtros","Clear filters","Limpar filtros","ניקוי מסננים")}</button>` : ""}
+      ${fichas ? `<div class="fb-fichas">${fichas}${volver ? "" : limpiar}</div>` : ""}
+      ${fp.abierto && fp.b ? renderPanelDeFiltros() : ""}
     </div>`;
 }
+
+function renderPanelDeFiltros(){
+  const b = fp.b, f = b.f;
+  const cats = fpCategorias();
+  const cat = fp.cat || primerFiltroPuesto(f, b.nivel);
+  const catInfo = cats.find(c => c.k === cat) || cats[0];
+  const cambiados = filtrosCambiados();
+  // Lo que se anima, una sola vez (ver .fp-entra / .fp-cambia en el CSS).
+  const entra = fp.entra ? " fp-entra" : "";
+  const mov = fp.mov === "cambia" ? " fp-cambia" : fp.mov === "atras" ? " fp-atras-anim" : "";
+  fp.entra = false; fp.mov = null;
+  const nGuardados = filtrosGuardados().length;
+  const lista = cats.map(c => {
+    const v = c.k === "guardados" ? (nGuardados ? t("{n} guardados","{n} saved","{n} salvos","{n} שמורים",{ n:nGuardados }) : null) : valorDelFiltro(c.k, f, b.nivel);
+    const sel = c.k === cat;
+    return `<button type="button" class="fp-item${sel ? " sel" : ""}" data-action="fp-cat" data-cat="${c.k}" aria-pressed="${sel}">
+        <span class="fp-item-nombre">${c.i} ${esc(c.n)}${cambiados.has(c.k) ? `<span class="fp-punto" title="${esc(t("Cambiado","Changed","Alterado","שונה"))}"></span>` : ""}</span>
+        <span class="fp-item-valor${v ? " on" : ""}" dir="auto">${esc(v || c.vacio)}</span>
+        <span class="fp-item-flecha" aria-hidden="true">›</span>
+      </button>`;
+  }).join("");
+  const nCamb = cambiados.size;
+  const pend = nCamb ? `<span class="fp-pend">· ${nCamb === 1 ? t("1 cambio","1 change","1 mudança","שינוי אחד") : t("{n} cambios","{n} changes","{n} mudanças","{n} שינויים",{ n:nCamb })}</span>` : "";
+  const total = getVisiblePosts(f, b.nivel).length;
+  const ver = total === 1 ? t("Ver 1 posteo","See 1 post","Ver 1 postagem","הצגת פוסט אחד") : t("Ver {n} posteos","See {n} posts","Ver {n} postagens","הצגת {n} פוסטים",{ n:total });
+  const hayAlgo = FILTROS_CON_FICHA.some(k => valorDelFiltro(k, f, b.nivel));
+  const opciones = { actividad:fpOpcionesActividad, lugar:fpOpcionesLugar, fecha:fpOpcionesFecha, persona:fpOpcionesPersona, guardados:fpOpcionesGuardados }[cat](b);
+  return `<div class="fp-velo${entra}" data-action="fp-cerrar"></div>
+    <div class="fp-panel${entra}" role="dialog" aria-modal="true" aria-labelledby="fpTitulo" data-paso="${fp.cat ? "opciones" : "lista"}">
+      <div class="fp-agarre" aria-hidden="true"></div>
+      <div class="fp-cabeza">
+        <button type="button" class="fp-atras" data-action="fp-lista">${isRTL() ? "→" : "←"} ${t("Filtros","Filters","Filtros","מסננים")}</button>
+        <h2 class="fp-titulo" id="fpTitulo"><span class="fp-t-lista">${t("Filtros","Filters","Filtros","מסננים")}</span><span class="fp-t-cat">${catInfo.i} ${esc(catInfo.n)}</span>${pend}</h2>
+        <button type="button" class="fp-cancelar" data-action="fp-cerrar">${nCamb ? t("Cancelar","Cancel","Cancelar","ביטול") : t("Cerrar","Close","Fechar","סגירה")}</button>
+      </div>
+      <div class="fp-atajos" role="group" aria-label="${esc(t("Accesos directos","Shortcuts","Atalhos","קיצורי דרך"))}">${fpAtajos(f)}</div>
+      <div class="fp-cuerpo${mov}">
+        <div class="fp-lista">${lista}</div>
+        <div class="fp-opts${mov}" role="group" aria-label="${esc(catInfo.n)}">${opciones}</div>
+      </div>
+      <div class="fp-pie">
+        ${hayAlgo ? `<button type="button" class="filter-clear" data-action="fp-quitar-todo">${t("Quitar filtros","Clear filters","Tirar filtros","ניקוי מסננים")}</button>` : "<span></span>"}
+        <button type="button" class="btn-primary fp-ver" data-action="fp-aplicar">${ver}</button>
+      </div>
+    </div>`;
+}
+// Los accesos directos de la columna lateral, también acá arriba (y así
+// llegan al celular, donde la columna no está). Cada uno vive en su
+// filtro: Mis posteos y Donde participo en Persona, Este mes en Fecha,
+// Les falta documentación en Actividad.
+function atajoPuesto(k, f){
+  return k === "docs" ? !!f.docs : k === "mes" ? !!f.mes : f.quien === k;
+}
+function fpAtajos(f){
+  return [["mine","✍️"],["participo","👥"],["mes","🗓️"],["docs","📎"]].map(([k, ico]) =>
+    `<button type="button" class="chip-toggle${atajoPuesto(k, f) ? " active" : ""}" data-action="fp-atajo" data-key="${k}" aria-pressed="${atajoPuesto(k, f)}">${ico} ${esc(etiquetaFiltroRapido(k))}</button>`).join("");
+}
+// Un atajo, sobre unos filtros (el borrador o los puestos): se prende y
+// se apaga, y saca lo que choca con él en su mismo filtro.
+function alternarAtajo(f, k){
+  if(k === "docs") f.docs = !f.docs;
+  else if(k === "mes"){ f.mes = !f.mes; if(f.mes) f.periodo = null; }
+  else if(k === "mine" || k === "participo"){ f.quien = f.quien === k ? null : k; if(f.quien) f.author = null; }
+}
+function fpOpcionesActividad(b){
+  const f = b.f;
+  // Un tipo archivado se ofrece solo si todavía hay posteos con él.
+  const tipos = ACTIVITY_TYPES.filter(ty => !ty.archived || countPostsByType(ty.key) || f.types.has(ty.key)).map(ty =>
+    `<button type="button" class="chip-toggle${f.types.has(ty.key) ? " active" : ""}" data-action="fp-tipo" data-key="${esc(ty.key)}" aria-pressed="${f.types.has(ty.key)}">${esc(ty.icon)} ${esc(ty.label)}</button>`).join("");
+  return `<div><h3>${t("Tipo de actividad","Activity type","Tipo de atividade","סוג פעילות")}</h3><div class="fp-chips">${tipos}</div></div>
+    <div class="fp-sep"></div>
+    <div class="fp-chips"><button type="button" class="chip-toggle${f.docs ? " active" : ""}" data-action="fp-atajo" data-key="docs" aria-pressed="${!!f.docs}">📎 ${esc(etiquetaFiltroRapido("docs"))}</button></div>`;
+}
+// Los países y ciudades donde hay algo cargado, con cuántos posteos.
+function lugaresConDatos(){
+  const paises = new Map(), ciudades = new Map();
+  state.posts.forEach(p => (p.scopes || []).forEach(sc => {
+    if(!sc || !sc.country) return;
+    paises.set(sc.country, (paises.get(sc.country) || 0) + 1);
+    if(sc.type === "ciudad" && sc.city){
+      const k = sc.country + "|" + sc.city;
+      const c = ciudades.get(k) || { country:sc.country, city:sc.city, n:0 };
+      c.n++; ciudades.set(k, c);
+    }
+  }));
+  return { paises, ciudades:[...ciudades.values()] };
+}
+function fpOpcionesLugar(b){
+  const f = b.f;
+  const zonas = Object.values(ZONES).map(z =>
+    `<button type="button" class="chip-toggle${f.zones.has(z.key) ? " active" : ""}" data-action="fp-zona" data-key="${esc(z.key)}" aria-pressed="${f.zones.has(z.key)}"><span class="dot" style="background:${safeColor(z.color)}"></span> ${esc(z.label)}</button>`).join("");
+  let lugar;
+  if(f.place){
+    lugar = `<div class="fp-lugar-ahora"><span dir="auto">📍 ${esc(placeFilterLabel(f.place))}</span><button type="button" class="filter-clear" data-action="fp-lugar-quitar">${t("Cambiar","Change","Mudar","שינוי")}</button></div>`;
+  } else {
+    const q = normalize(b.lugarQ || "");
+    const { paises, ciudades } = lugaresConDatos();
+    let sugs;
+    if(q){
+      const ps = [...paises.keys()].filter(x => normalize(x).includes(q) || normalize(countryLabel(x)).includes(q))
+        .sort((x, y) => countryLabel(x).localeCompare(countryLabel(y), currentLang())).slice(0, 5)
+        .map(x => `<button type="button" class="fp-op" data-action="fp-lugar" data-country="${esc(x)}">🗺️ ${esc(countryLabel(x))}</button>`);
+      const cs = ciudades.filter(c => normalize(c.city).includes(q) || normalize(cityLabel(c.country, c.city)).includes(q))
+        .sort((x, y) => y.n - x.n).slice(0, 6)
+        .map(c => `<button type="button" class="fp-op" data-action="fp-lugar" data-country="${esc(c.country)}" data-city="${esc(c.city)}"><span dir="auto">📍 ${esc(cityLabel(c.country, c.city))}</span><small>${esc(countryLabel(c.country))}</small></button>`);
+      sugs = ps.concat(cs).join("") || `<p class="fp-nada">${t("No hay nada cargado con ese nombre.","Nothing is recorded with that name.","Não há nada registrado com esse nome.","אין שום דבר רשום בשם הזה.")}</p>`;
+      sugs = `<div class="fp-sugs">${sugs}</div>`;
+    } else {
+      const top = [...paises.entries()].sort((x, y) => y[1] - x[1]).slice(0, 8).map(([x]) =>
+        `<button type="button" class="chip-toggle" data-action="fp-lugar" data-country="${esc(x)}">${esc(countryLabel(x))}</button>`).join("");
+      sugs = `<div class="fp-chips">${top}<button type="button" class="chip-toggle" data-action="fp-lugar" data-kind="latam">🌎 ${t("Lo de toda LatAm","All-LatAm items","O de toda a LatAm","מה ששייך לכל LatAm")}</button></div>`;
+    }
+    lugar = `<input type="text" id="fpLugarQ" class="fp-texto" placeholder="${esc(t("Escribí un país o una ciudad…","Type a country or a city…","Escreva um país ou uma cidade…","...הקלד/י מדינה או עיר"))}" aria-label="${esc(t("País o ciudad","Country or city","País ou cidade","מדינה או עיר"))}" value="${esc(b.lugarQ || "")}" autocomplete="off">${sugs}`;
+  }
+  let niveles = "";
+  if(f.place && f.place.kind !== "latam" && f.place.country){
+    const c = placeLevelCounts(f);
+    const zk = zoneOfCountry(f.place.country);
+    const btn = (n, label, count, extra = "") => `<button type="button" class="fp-nivel${b.nivel === n ? " on" : ""}" role="radio" aria-checked="${b.nivel === n}" data-action="fp-nivel" data-level="${n}">${extra}<span>${label}</span><b>${count}</b></button>`;
+    niveles = `<div><h3>${t("Qué incluir","What to include","O que incluir","מה לכלול")}</h3><div class="fp-niveles" role="radiogroup" aria-label="${esc(t("Qué incluir","What to include","O que incluir","מה לכלול"))}">
+      ${btn(0, esc(t("Solo acá","Only here","Só aqui","רק כאן")), c.own)}
+      ${btn(1, "+ " + esc(regionLabel(zk)), c.region, `<span class="dot" style="background:${safeColor(ZONES[zk]?.color)}"></span>`)}
+      ${btn(2, "+ " + esc(t("Toda LatAm","All of LatAm","Toda a LatAm","כל LatAm")), c.latam)}
+    </div></div>`;
+  }
+  return `<div><h3>${t("Zona","Zone","Zona","אזור")}</h3><div class="fp-chips">${zonas}</div></div>
+    <div class="fp-sep"></div>
+    <div><h3>${t("País o ciudad","Country or city","País ou cidade","מדינה או עיר")}</h3>${lugar}</div>
+    ${niveles}`;
+}
+function fpOpcionesFecha(b){
+  const f = b.f, hoyAnio = todayISO().slice(0,4);
+  const op = (k, label, on) => `<button type="button" class="fp-op${on ? " on" : ""}" data-action="fp-fecha" data-key="${k}" aria-pressed="${on}">${label}</button>`;
+  const anioPuesto = !f.mes && f.periodo ? String(f.periodo.anio) : null;
+  // Los años que ya empezaron: un año cuenta lo hecho hasta hoy (como
+  // Reportes), así que uno que todavía no llegó daría siempre nada; lo
+  // que viene está en «Próximos».
+  const anios = aniosConDatos().filter(a => a <= hoyAnio).reverse().map(a => {
+    const on = anioPuesto === a;
+    const tris = on ? `<div class="fp-tris" role="group" aria-label="${esc(t("Período","Period","Período","תקופה"))}">${trimestresDelReporte().map(q =>
+      `<button type="button" class="chip-toggle${(Number(f.periodo.tri) || 0) === q.n ? " active" : ""}" data-action="fp-tri" data-tri="${q.n}" aria-pressed="${(Number(f.periodo.tri) || 0) === q.n}">${esc(q.label)}</button>`).join("")}</div>` : "";
+    return op(a, a === hoyAnio ? `<span>${a} <small>· ${t("hasta hoy","so far","até hoje","עד היום")}</small></span>` : a, on) + tris;
+  }).join("");
+  return `<div class="fp-ops">${op("", esc(t("Cualquier fecha","Any date","Qualquer data","כל תאריך")), !f.mes && !f.periodo)}${op("mes", esc(etiquetaFiltroRapido("mes")), !!f.mes)}</div>
+    <div class="fp-sep"></div>
+    <div><h3>${t("Un año","A year","Um ano","שנה")}</h3><div class="fp-ops">${anios}</div></div>`;
+}
+function fpOpcionesPersona(b){
+  const f = b.f;
+  const yo = String(state.auth.user && state.auth.user.email || "").toLowerCase();
+  const op = (attrs, label, on) => `<button type="button" class="fp-op${on ? " on" : ""}" data-action="fp-persona" ${attrs} aria-pressed="${on}">${label}</button>`;
+  // Quienes cargaron algo (sin una misma: para eso está «Lo que cargué yo»).
+  const autores = new Set();
+  state.posts.forEach(p => { const e = String(p.authorEmail || "").toLowerCase(); if(e && e !== yo) autores.add(e); });
+  if(f.author) autores.add(f.author);
+  const gente = [...autores].map(e => [e, nombreDeAutor(e)]).sort((x, y) => x[1].localeCompare(y[1], currentLang()))
+    .map(([e, nombre]) => op(`data-key="autor" data-email="${esc(e)}"`, `<span dir="auto">${esc(nombre)}</span>`, f.author === e)).join("");
+  return `<div class="fp-ops">
+      ${op('data-key=""', esc(t("Todo el equipo","Whole team","Toda a equipe","כל הצוות")), !f.quien && !f.author)}
+      ${op('data-key="mine"', `✍️ ${esc(t("Lo que cargué yo","What I posted","O que eu carreguei","מה שאני העליתי"))}`, f.quien === "mine")}
+      ${op('data-key="participo"', `👥 ${esc(etiquetaFiltroRapido("participo"))}`, f.quien === "participo")}
+    </div>
+    ${gente ? `<div class="fp-sep"></div><div><h3>${t("Lo que cargó…","Posted by…","Carregado por…","מה שהעלה/תה…")}</h3><div class="fp-ops">${gente}</div></div>` : ""}`;
+}
+function fpOpcionesGuardados(b){
+  const lista = filtrosGuardados();
+  const filas = lista.length ? lista.map((g, i) => `<div class="fp-guardado">
+      <button type="button" class="fp-op" data-action="fp-guardado" data-idx="${i}"><span dir="auto">💾 ${esc(g.name)}</span></button>
+      <button type="button" class="fs-x" data-action="feed-saved-delete" data-idx="${i}" aria-label="${esc(t("Borrar {x}","Delete {x}","Excluir {x}","מחיקת {x}",{ x:g.name }))}" title="${esc(t("Borrar","Delete","Excluir","מחיקה"))}">✕</button>
+    </div>`).join("") : `<p class="fp-nada">${t("Todavía no guardaste ningún filtro.","You haven't saved any filters yet.","Você ainda não salvou nenhum filtro.","עדיין לא שמרת אף מסנן.")}</p>`;
+  const hayAlgo = FILTROS_CON_FICHA.some(k => valorDelFiltro(k, b.f, b.nivel));
+  const guardar = !hayAlgo ? "" : fp.guardando
+    ? `<div class="fp-guardar"><input type="text" id="fpGuardarNombre" class="fp-texto" maxlength="40" placeholder="${esc(t("Nombre del filtro","Filter name","Nome do filtro","שם המסנן"))}" aria-label="${esc(t("Nombre del filtro","Filter name","Nome do filtro","שם המסנן"))}" value="${esc(fp.nombre)}" autocomplete="off"><button type="button" class="btn-mini" data-action="fp-guardar">${t("Guardar","Save","Salvar","שמירה")}</button></div>`
+    : `<div class="fp-chips"><button type="button" class="chip-toggle" data-action="fp-guardar-empezar">＋ ${t("Guardar lo elegido","Save this selection","Salvar o escolhido","שמירת הבחירה")}</button></div>`;
+  return `<div><h3>${t("Mis filtros guardados","My saved filters","Meus filtros salvos","המסננים השמורים שלי")}</h3><div class="fp-ops">${filas}</div></div>
+    ${guardar ? `<div class="fp-sep"></div>${guardar}` : ""}`;
+}
+
+// Abrir, cerrar y aplicar. El foco entra al panel al abrir y vuelve a lo
+// que lo abrió al cerrar (la ficha o «⚙ Filtros»).
+function abrirFiltros(cat, origen){
+  const conAnillo = tieneAnillo(origen);
+  fp.abierto = true; fp.cat = cat || null; fp.entra = true; fp.mov = null; fp.guardando = false; fp.nombre = "";
+  fp.b = { f:clonarFiltros(state.filters), nivel:placeLevel(), lugarQ:"" };
+  fp.ancla = cat ? `.fb-ficha-abrir[data-cat="${cat}"]` : "#fbFiltros";
+  render();
+  enfocarEnElPanel(conAnillo);
+}
+function enfocarEnElPanel(conAnillo){
+  const panel = document.querySelector(".fp-panel");
+  if(!panel) return;
+  const visible = el => el && el.offsetParent !== null;
+  const destino = fp.cat
+    ? [...panel.querySelectorAll(".fp-opts button, .fp-opts input")].find(visible)
+    : (visible(panel.querySelector(".fp-item.sel")) ? panel.querySelector(".fp-item.sel") : [...panel.querySelectorAll(".fp-item")].find(visible));
+  enfocarComo(destino || panel.querySelector(".fp-cancelar"), null, conAnillo);
+}
+function cerrarFiltros(devolverFoco = true){
+  if(!fp.abierto) return;
+  const conAnillo = tieneAnillo(document.activeElement);
+  const ancla = fp.ancla;
+  fp.abierto = false; fp.b = null; fp.cat = null; fp.guardando = false;
+  render();
+  if(devolverFoco){
+    let el = null;
+    try{ el = ancla && document.querySelector(ancla); }catch(e){}
+    enfocarComo(el || document.getElementById("fbFiltros"), null, conAnillo);
+  }
+}
+function aplicarFiltros(){
+  const b = fp.b;
+  if(!b) return cerrarFiltros();
+  const nuevo = b.f;
+  nuevo.text = state.filters.text; // el buscador está afuera del panel
+  state.filters = nuevo;
+  feedVisibleCount = PAGE_SIZE;
+  if(!anyActiveFilter()) filtroOrigen = null;
+  const nivel = b.nivel;
+  cerrarFiltros();
+  // «Qué incluir» es una preferencia de la persona (ver placeLevel): se
+  // guarda solo si cambió (savePrefs ya vuelve a dibujar).
+  if(nivel !== placeLevel()) setPlaceLevel(nivel);
+}
+// «Guardar lo elegido» (en Guardados): guarda el borrador con su nombre,
+// sin aplicarlo; queda en la lista de arriba.
+function guardarDesdeElPanel(){
+  if(!fp.b) return;
+  const nombre = fp.nombre;
+  fp.guardando = false; fp.nombre = "";
+  if(!guardarFiltro(nombre, fp.b.f)) render();
+}
+
 // Cuántos posteos tocan al lugar filtrado en cada nivel, con los demás
 // filtros (texto, tipo, zona, quién cargó, acceso directo y período) ya
 // aplicados, para que los números del selector coincidan con lo que se
 // lista. Sin los tres últimos, al llegar desde una fila de Reportes de
 // 2026 decía «Solo acá 74» (todos los años) con 13 en la lista (8/10/2026).
-function placeLevelCounts(){
-  const f = state.filters;
+function placeLevelCounts(f = state.filters){
   const out = { own:0, region:0, latam:0 };
   if(!f.place) return out;
   state.posts.forEach(p=>{
     if(f.types.size && !f.types.has(p.activityType)) return;
     if(f.author && String(p.authorEmail||"").toLowerCase() !== f.author) return;
-    if(!pasaFiltroRapido(p) || !pasaFiltroPeriodo(p)) return;
+    if(!pasaAtajos(p, f) || !pasaFiltroPeriodo(p, f)) return;
     const replies = state.repliesByPost[p.id] || [];
     if(!(matchesTextFilter(f.text, p) || replies.some(r=>matchesTextFilter(f.text, r)))) return;
     if(f.zones.size && ![p, ...replies].some(r=>(r.scopes||[]).some(sc=>zoneOfScope(sc) && f.zones.has(zoneOfScope(sc))))) return;
@@ -13951,23 +14374,6 @@ function placeLevelCounts(){
     if(l) out[l]++;
   });
   return out;
-}
-// "Solo acá 1 · + Región Norte 1 · + Toda LatAm 3": tres posiciones,
-// cada una incluye a la anterior. Solo aparece con un lugar filtrado.
-function renderPlaceLevelSeg(){
-  const place = state.filters.place;
-  if(!place || place.kind === "latam") return "";
-  const c = placeLevelCounts();
-  const lvl = placeLevel();
-  const zk = zoneOfCountry(place.country);
-  const zcolor = safeColor(ZONES[zk]?.color);
-  const btn = (n, label, count, extra="") =>
-    `<button type="button" class="place-seg-btn${lvl===n?" active":""}" role="radio" aria-checked="${lvl===n}" data-action="place-level" data-level="${n}">${extra}<span>${label}</span><b>${count}</b></button>`;
-  return `<div class="place-seg" role="radiogroup" aria-label="${esc(t("Qué incluir","What to include","O que incluir","מה לכלול"))}">
-    ${btn(0, esc(t("Solo acá","Only here","Só aqui","רק כאן")), c.own)}
-    ${btn(1, "+ " + esc(regionLabel(zk)), c.region, `<span class="dot" style="background:${zcolor}"></span>`)}
-    ${btn(2, "+ " + esc(t("Toda LatAm","All of LatAm","Toda a LatAm","כל LatAm")), c.latam)}
-  </div>`;
 }
 function placeFilterLabel(place){
   if(place.kind==="latam") return t("Toda LatAm","All of LatAm","Toda a LatAm","כל LatAm");
@@ -14000,8 +14406,7 @@ function textoDeLugares(scopes){
     return `${scopeLabel(sc)} ${guardado || ""}`;
   }).join(" · ");
 }
-function matchesPlaceOrZoneFilter(record){
-  const f = state.filters;
+function matchesPlaceOrZoneFilter(record, f = state.filters, nivel = placeLevel()){
   const scopes = record.scopes || [];
   if(f.zones.size && !scopes.some(sc=>zoneOfScope(sc) && f.zones.has(zoneOfScope(sc)))) return false;
   if(f.place){
@@ -14009,13 +14414,15 @@ function matchesPlaceOrZoneFilter(record){
     // placeLevel): con 0, un posteo "Toda LatAm" no aparece en la
     // memoria de Islas Caimán aunque, estrictamente, la afecte.
     const level = recordLevelFor(scopes, f.place);
-    if(level === null || PLACE_LEVELS.indexOf(level) > placeLevel()) return false;
+    if(level === null || PLACE_LEVELS.indexOf(level) > nivel) return false;
   }
   return true;
 }
 
-// Los accesos directos de la columna lateral (ver renderFeedSide): un
-// filtro de un toque que se suma a los demás.
+// Los accesos directos (la columna lateral y arriba del panel de
+// filtros): un filtro de un toque que se suma a los demás. Desde el
+// 8/10/2026 cada uno vive en su filtro y se pueden combinar (Mis posteos
+// de este mes); antes era uno solo a la vez (state.filters.quick).
 function etiquetaFiltroRapido(k){
   return {
     mine: t("Mis posteos","My posts","Minhas postagens","הפוסטים שלי"),
@@ -14024,19 +14431,18 @@ function etiquetaFiltroRapido(k){
     mes: t("Este mes","This month","Este mês","החודש"),
   }[k] || "";
 }
-function pasaFiltroRapido(p){
-  const q = state.filters.quick;
-  if(!q) return true;
+function pasaAtajos(p, f = state.filters){
+  if(!f.quien && !f.docs && !f.mes) return true;
   const me = String(state.auth.user && state.auth.user.email || "").toLowerCase();
-  if(q === "mine") return String(p.authorEmail||"").toLowerCase() === me;
-  if(q === "participo") return isMineOrParticipant(p, me);
-  if(q === "docs"){
+  if(f.quien === "mine" && String(p.authorEmail||"").toLowerCase() !== me) return false;
+  if(f.quien === "participo" && !isMineOrParticipant(p, me)) return false;
+  if(f.docs){
     const d = docsEsperados(p.activityType).length ? cuantosDocsHay(p) : null;
-    return !!d && d.hay < d.total;
+    if(!(d && d.hay < d.total)) return false;
   }
-  if(q === "mes"){
+  if(f.mes){
     const fecha = occurrenceOf(p) || String(p.startDate || p.date || "");
-    return fecha.slice(0,7) === todayISO().slice(0,7);
+    if(fecha.slice(0,7) !== todayISO().slice(0,7)) return false;
   }
   return true;
 }
@@ -14045,8 +14451,8 @@ function pasaFiltroRapido(p){
 // todos los años). Entra lo que ese número cuenta, con la misma regla que
 // el reporte: lo hecho en ese año o trimestre (hasta hoy, si está en
 // curso), y lo cancelado no.
-function pasaFiltroPeriodo(p){
-  const per = state.filters.periodo;
+function pasaFiltroPeriodo(p, f = state.filters){
+  const per = f.periodo;
   if(!per) return true;
   const hoy = todayISO();
   const hasta = per.hasta < hoy ? per.hasta : hoy;
@@ -14058,20 +14464,21 @@ function etiquetaPeriodo(per){
   const base = tri ? `${tri.label} ${per.anio}` : String(per.anio);
   return per.hasta >= todayISO() ? `${base} · ${t("hasta hoy","so far","até hoje","עד היום")}` : base;
 }
-// Devuelve los posts visibles según filtros, cada uno con sus replies ordenadas
-function getVisiblePosts(){
-  const f = state.filters;
+// Devuelve los posts visibles según filtros, cada uno con sus replies
+// ordenadas. Con otros filtros (el borrador del panel), lo que quedaría:
+// así «Ver N posteos» dice cuántos antes de aplicar.
+function getVisiblePosts(f = state.filters, nivel = placeLevel()){
   return state.posts
     .filter(p=> !f.types.size || f.types.has(p.activityType))
     .filter(p=> !f.author || String(p.authorEmail||"").toLowerCase() === f.author)
-    .filter(pasaFiltroRapido)
-    .filter(pasaFiltroPeriodo)
+    .filter(p=> pasaAtajos(p, f))
+    .filter(p=> pasaFiltroPeriodo(p, f))
     .filter(p=>{
       const replies = state.repliesByPost[p.id] || [];
       const postMatchesText = matchesTextFilter(f.text, p) || replies.some(r=>matchesTextFilter(f.text, r));
       if(!postMatchesText) return false;
       if(!f.zones.size && !f.place) return true;
-      const postMatchesPZ = matchesPlaceOrZoneFilter(p) || replies.some(r=>matchesPlaceOrZoneFilter(r));
+      const postMatchesPZ = matchesPlaceOrZoneFilter(p, f, nivel) || replies.some(r=>matchesPlaceOrZoneFilter(r, f, nivel));
       return postMatchesPZ;
     })
     .map(p=>({ post:p, replies: state.repliesByPost[p.id] || [] }));
@@ -14160,15 +14567,14 @@ function renderFeedView(){
               : t("Todavía no hay posteos.","There are no posts yet.","Ainda não há postagens.","עדיין אין פוסטים."));
   return `<div class="feed-layout"><div class="feed-main">
     ${canWrite() ? renderRutinaComposer() : ""}
-    ${renderFilterBar("feed")}${renderPlaceLevelSeg()}
+    ${renderFilterBar()}
     ${renderSolapasDelFeed(pasados, futuros)}
     ${items.length ? items.map(({post,replies})=>renderPostCard(post,replies)).join("") + renderLoadMore("feed-load-more", all.length - items.length) :
       `<div class="empty-state"><div class="big">${feedSolapa === "futuro" ? "📅" : "🗒️"}</div>${vacio}<br>${t('Usá "+ Nuevo evento" para sumar uno.','Use "+ New event" to add one.','Use "+ Novo evento" para somar um.','.כדי להוסיף אחד "+ אירוע חדש" השתמש/י ב')}</div>`}
   </div>${renderFeedSide()}</div>`;
 }
-function anyActiveFilter(){
-  const f = state.filters;
-  return !!(f.text || f.types.size || f.zones.size || f.place || f.quick || f.author || f.periodo);
+function anyActiveFilter(f = state.filters){
+  return !!(f.text || f.types.size || f.zones.size || f.place || f.quien || f.author || f.periodo || f.mes || f.docs);
 }
 // La columna lateral del Inicio en escritorio (en angosto no se dibuja,
 // ver .feed-side): lo que se viene en 30 días, los hitos por vencer y los
@@ -14187,9 +14593,8 @@ function renderFeedSide(){
     .filter(it => !it.milestone.done && ["overdue","today","soon"].includes(milestoneStatus(it.milestone)))
     .sort((a,b)=> String(a.milestone.date||"").localeCompare(String(b.milestone.date||"")))
     .slice(0, 4);
-  const q = state.filters.quick;
   const flecha = isRTL() ? "←" : "→";
-  const rapido = (k, icon) => `<button type="button" class="fs-link${q===k?" active":""}" data-action="feed-quick" data-key="${k}">${icon} ${esc(etiquetaFiltroRapido(k))}</button>`;
+  const rapido = (k, icon) => `<button type="button" class="fs-link${atajoPuesto(k, state.filters)?" active":""}" data-action="feed-quick" data-key="${k}" aria-pressed="${atajoPuesto(k, state.filters)}">${icon} ${esc(etiquetaFiltroRapido(k))}</button>`;
   const guardados = filtrosGuardados();
   return `<aside class="feed-side">
     <section class="fs-box">
@@ -14297,20 +14702,43 @@ function cerrarBuscadorGlobal(limpiar){
 function buscarEnElFeed(){
   const q = globalQuery.trim();
   cerrarBuscadorGlobal(true);
-  state.filters.text = q; state.filters.quick = null;
+  state.filters = filtrosVacios(); state.filters.text = q; filtroOrigen = null;
   feedVisibleCount = PAGE_SIZE; state.view = "feed"; render(); scrollToTop();
 }
-// Guarda el filtro que está puesto con el nombre escrito (Enter en el
-// campo o el botón "Guardar"). Mismo nombre, se reemplaza; y como mucho
-// 12: son atajos, no un archivo.
-function guardarFiltroActual(){
-  const name = savingFilterName.trim().slice(0, 40);
-  if(!name) return;
-  const f = state.filters;
-  const nuevo = { name, text:f.text || "", types:[...f.types], zones:[...f.zones], place:f.place || null, quick:f.quick || null, periodo:f.periodo || null };
+// Guarda unos filtros con el nombre escrito: los puestos (la columna
+// lateral) o lo elegido en el panel. Mismo nombre, se reemplaza; y como
+// mucho 12: son atajos, no un archivo.
+function guardarFiltro(nombre, f){
+  const name = String(nombre || "").trim().slice(0, 40);
+  if(!name) return false;
+  const nuevo = { name, text:f.text || "", types:[...f.types], zones:[...f.zones], place:f.place || null,
+    quien:f.quien || null, author:f.author || null, docs:!!f.docs, mes:!!f.mes, periodo:f.periodo || null };
   const lista = filtrosGuardados().filter(g => g.name !== name).concat([nuevo]).slice(-12);
-  savingFilter = false; savingFilterName = "";
   savePrefs({ savedFilters: lista });
+  return true;
+}
+function guardarFiltroActual(){
+  const nombre = savingFilterName;
+  savingFilter = false; savingFilterName = "";
+  if(!guardarFiltro(nombre, state.filters)) render();
+}
+// Un filtro guardado, de vuelta a filtros. Los guardados antes del
+// 8/10/2026 traen un solo acceso directo en «quick»; el período, solo si
+// sus fechas tienen forma de fecha (viene de las preferencias guardadas).
+function filtrosDeGuardado(g){
+  const f = filtrosVacios();
+  const q = g.quick;
+  f.text = typeof g.text === "string" ? g.text : "";
+  f.types = new Set(Array.isArray(g.types) ? g.types : []);
+  f.zones = new Set(Array.isArray(g.zones) ? g.zones : []);
+  f.place = g.place && typeof g.place === "object" ? g.place : null;
+  f.quien = ["mine","participo"].includes(g.quien) ? g.quien : ["mine","participo"].includes(q) ? q : null;
+  f.author = !f.quien && typeof g.author === "string" && g.author ? g.author.toLowerCase() : null;
+  f.docs = !!g.docs || q === "docs";
+  f.mes = !!g.mes || q === "mes";
+  const per = g.periodo, iso = x => /^\d{4}-\d{2}-\d{2}$/.test(String(x || ""));
+  f.periodo = !f.mes && per && iso(per.desde) && iso(per.hasta) ? { desde:per.desde, hasta:per.hasta, anio:String(per.anio || per.desde.slice(0,4)), tri:Number(per.tri) || 0 } : null;
+  return f;
 }
 
 /* ======================================================================
@@ -15281,7 +15709,7 @@ function gotoMention(postId, replyId){
   if(String(postId).includes("#m:")) return openProjectMilestone(postId);
   state.view = "feed";
   state.countryDrill = null; state.zonaDrill = null;
-  state.filters = { text:"", types:new Set(), zones:new Set(), place:null };
+  state.filters = filtrosVacios(); filtroOrigen = null;
   if(replyId){
     openThreads.add(postId);
     // Si el comentario es de una fecha puntual de una serie que se repite,
@@ -20572,7 +21000,7 @@ document.addEventListener("keydown", e=>{
   // lo maneja el input).
   if(mentionsMenuOpen){ const o = document.activeElement; mentionsMenuOpen = false; render(); enfocarComo(document.querySelector('[data-action="toggle-mentions-menu"]'), o); return; }
   if(userMenuOpen && !nicknameEditing){ const o = document.activeElement; userMenuOpen = false; render(); enfocarComo(document.querySelector('[data-action="toggle-user-menu"]'), o); return; }
-  if(typeFilterOpen || zoneFilterOpen){ typeFilterOpen = false; zoneFilterOpen = false; render(); return; }
+  if(fp.abierto){ cerrarFiltros(); return; }
   { const gs = document.getElementById("globalResults"); if(gs && !gs.hidden){ cerrarBuscadorGlobal(true); return; } }
   if(postMenuOpen){ postMenuOpen = null; render(); return; }
   if(moreMenuOpen){ moreMenuOpen = false; renderBottomNav(); return; }
@@ -20609,6 +21037,38 @@ document.addEventListener("keydown", e=>{
   state.calendarioSubview = view;
   calViewMenuOpen = false;
   render();
+});
+// El panel de filtros del Inicio: Tab cicla adentro (es un diálogo) y
+// Enter es «Ver N posteos». Enter sobre un botón al que se llegó con el
+// teclado lo aprieta, como siempre; si el foco quedó ahí por un toque con
+// el mouse (sin anillo), Enter aplica: el usuario pidió «elegir todo y
+// después Enter». En «País o ciudad», Enter elige la primera sugerencia.
+document.addEventListener("keydown", e=>{
+  if(!fp.abierto) return;
+  const panel = document.querySelector(".fp-panel");
+  if(!panel) return;
+  const el = e.target;
+  if(e.key === "Tab"){
+    const focos = [...panel.querySelectorAll("button, input")].filter(x => !x.disabled && x.offsetParent !== null);
+    if(!focos.length) return;
+    const primero = focos[0], ultimo = focos[focos.length - 1];
+    if(!panel.contains(document.activeElement)){ e.preventDefault(); (e.shiftKey ? ultimo : primero).focus(); }
+    else if(e.shiftKey && document.activeElement === primero){ e.preventDefault(); ultimo.focus(); }
+    else if(!e.shiftKey && document.activeElement === ultimo){ e.preventDefault(); primero.focus(); }
+    return;
+  }
+  if(e.key !== "Enter" || e.ctrlKey || e.metaKey || e.altKey) return;
+  if(el && el.id === "fpLugarQ"){
+    e.preventDefault();
+    const primera = panel.querySelector('.fp-sugs [data-action="fp-lugar"]');
+    if(primera) primera.click();
+    return;
+  }
+  if(el && el.id === "fpGuardarNombre"){ e.preventDefault(); guardarDesdeElPanel(); return; }
+  if(el && ["INPUT","TEXTAREA","SELECT"].includes(el.tagName)) return;
+  if(el && el.tagName === "BUTTON" && panel.contains(el) && tieneAnillo(el) && !el.classList.contains("sin-anillo")) return;
+  e.preventDefault();
+  aplicarFiltros();
 });
 // "Ir a una fecha": Enter en el campo va; Tab cicla dentro de la ventanita.
 document.addEventListener("keydown", e=>{
@@ -21262,11 +21722,11 @@ document.addEventListener("click", async e=>{
   if(moreMenuOpen && !e.target.closest("#bottomNav")){
     moreMenuOpen = false; renderBottomNav();
   }
-  if(typeFilterOpen && !e.target.closest(".type-filter")){
-    typeFilterOpen = false; render();
-  }
-  if(zoneFilterOpen && !e.target.closest(".zone-filter")){
-    zoneFilterOpen = false; render();
+  // El panel de filtros se cierra SIN aplicar al tocar afuera (el velo
+  // del celular también es afuera). «⚙ Filtros» y las fichas se manejan
+  // solas: con el panel abierto lo cierran o pasan a su filtro.
+  if(fp.abierto && !e.target.closest(".fp-panel") && !e.target.closest('[data-action="fp-abrir"]')){
+    cerrarFiltros(false);
   }
   if(calIrAbierto && !e.target.closest(".cal-ir-envoltorio")){
     calIrAbierto = false; calIrError = ""; render();
@@ -21294,44 +21754,135 @@ document.addEventListener("click", async e=>{
     "cancel-composer": async (el, e, action, postId) => {
     requestCloseComposer();
   },
-    "toggle-type-filter": async (el, e, action, postId) => {
-    typeFilterOpen = !typeFilterOpen;
-    render();
-  },
-    "toggle-zone-filter": async (el, e, action, postId) => {
-    zoneFilterOpen = !zoneFilterOpen;
-    render();
-  },
-    "toggle-type": async (el, e, action, postId) => {
-    const key = el.dataset.key;
-    state.filters.types.has(key) ? state.filters.types.delete(key) : state.filters.types.add(key);
-    render();
-  },
-    "toggle-zone": async (el, e, action, postId) => {
-    const key = el.dataset.key;
-    state.filters.zones.has(key) ? state.filters.zones.delete(key) : state.filters.zones.add(key);
-    render();
-  },
-    "clear-place": async (el, e, action, postId) => {
-    state.filters.place = null; render();
-  },
     "clear-filters": async (el, e, action, postId) => {
-    state.filters = { text:"", types:new Set(), zones:new Set(), place:null, quick:null, author:null }; render();
+    state.filters = filtrosVacios(); filtroOrigen = null; feedVisibleCount = PAGE_SIZE; render();
   },
-    "clear-quick": async (el, e, action, postId) => {
-    state.filters.quick = null; feedVisibleCount = PAGE_SIZE; render();
+    // ---- Los filtros del Inicio (ver renderFilterBar) ----
+    // «⚙ Filtros» abre (o cierra) el panel; una ficha lo abre en su filtro,
+    // y con el panel abierto pasa a ese filtro sin perder lo elegido.
+    "fp-abrir": async (el, e, action, postId) => {
+    const cat = el.dataset.cat || null;
+    if(fp.abierto && (!cat || cat === fp.cat)){ cerrarFiltros(); return; }
+    if(fp.abierto){ fp.cat = cat; fp.mov = "cambia"; fp.b.lugarQ = ""; render(); enfocarEnElPanel(tieneAnillo(el)); return; }
+    abrirFiltros(cat, el);
   },
-    "clear-periodo": async (el, e, action, postId) => {
-    state.filters.periodo = null; feedVisibleCount = PAGE_SIZE; render();
+    "fp-cerrar": async (el, e, action, postId) => {
+    cerrarFiltros();
   },
-    "clear-author": async (el, e, action, postId) => {
-    state.filters.author = null; feedVisibleCount = PAGE_SIZE; render();
+    "fp-aplicar": async (el, e, action, postId) => {
+    aplicarFiltros();
+  },
+    "fp-cat": async (el, e, action, postId) => {
+    const cat = el.dataset.cat;
+    if(!fp.b) return;
+    const conAnillo = tieneAnillo(el);
+    // En angosto la lista se va y entran las opciones: el foco va con ellas.
+    const enLista = !fp.cat;
+    if(cat !== fp.cat || enLista) fp.mov = "cambia";
+    fp.cat = cat; fp.b.lugarQ = ""; fp.guardando = false;
+    render();
+    const visible = document.querySelector(`.fp-item[data-cat="${cat}"]`);
+    if(enLista && !(visible && visible.offsetParent !== null)) enfocarEnElPanel(conAnillo);
+  },
+    "fp-lista": async (el, e, action, postId) => {
+    // «← Filtros» (en angosto): de las opciones a la lista, con el foco en
+    // el filtro del que se venía.
+    const conAnillo = tieneAnillo(el), cat = fp.cat;
+    fp.cat = null; fp.mov = "atras"; render();
+    enfocarComo(document.querySelector(`.fp-item[data-cat="${cat}"]`), null, conAnillo);
+  },
+    "fp-atajo": async (el, e, action, postId) => {
+    if(fp.b){ alternarAtajo(fp.b.f, el.dataset.key); render(); }
+  },
+    "fp-tipo": async (el, e, action, postId) => {
+    if(!fp.b) return;
+    const ts = fp.b.f.types, key = el.dataset.key;
+    ts.has(key) ? ts.delete(key) : ts.add(key);
+    render();
+  },
+    "fp-zona": async (el, e, action, postId) => {
+    if(!fp.b) return;
+    const zs = fp.b.f.zones, key = el.dataset.key;
+    zs.has(key) ? zs.delete(key) : zs.add(key);
+    render();
+  },
+    "fp-lugar": async (el, e, action, postId) => {
+    if(!fp.b) return;
+    const { kind, country, city } = el.dataset;
+    fp.b.f.place = kind === "latam" ? { kind:"latam" } : city ? { kind:"city", country, city } : { kind:"country", country };
+    fp.b.lugarQ = "";
+    render();
+  },
+    "fp-lugar-quitar": async (el, e, action, postId) => {
+    if(!fp.b) return;
+    fp.b.f.place = null; render();
+    const inp = document.getElementById("fpLugarQ"); if(inp) enfocarComo(inp, el);
+  },
+    "fp-nivel": async (el, e, action, postId) => {
+    if(fp.b){ fp.b.nivel = Number(el.dataset.level) || 0; render(); }
+  },
+    "fp-fecha": async (el, e, action, postId) => {
+    if(!fp.b) return;
+    const f = fp.b.f, k = el.dataset.key;
+    if(!k){ f.periodo = null; f.mes = false; }
+    else if(k === "mes"){ f.mes = true; f.periodo = null; }
+    else { f.mes = false; f.periodo = ventanaDe(k, 0); }
+    render();
+  },
+    "fp-tri": async (el, e, action, postId) => {
+    if(fp.b && fp.b.f.periodo){ fp.b.f.periodo = ventanaDe(String(fp.b.f.periodo.anio), Number(el.dataset.tri) || 0); render(); }
+  },
+    "fp-persona": async (el, e, action, postId) => {
+    if(!fp.b) return;
+    const f = fp.b.f, k = el.dataset.key;
+    f.quien = k === "mine" || k === "participo" ? k : null;
+    f.author = k === "autor" ? String(el.dataset.email || "").toLowerCase() : null;
+    render();
+  },
+    "fp-quitar-todo": async (el, e, action, postId) => {
+    if(!fp.b) return;
+    const texto = fp.b.f.text;
+    fp.b.f = filtrosVacios(); fp.b.f.text = texto;
+    render();
+  },
+    "fp-guardado": async (el, e, action, postId) => {
+    // Un filtro guardado se aplica entero y al toque (es uno ya armado).
+    const g = filtrosGuardados()[Number(el.dataset.idx)];
+    if(!g) return;
+    state.filters = filtrosDeGuardado(g); filtroOrigen = null; feedVisibleCount = PAGE_SIZE;
+    cerrarFiltros();
+  },
+    "fp-guardar-empezar": async (el, e, action, postId) => {
+    fp.guardando = true; fp.nombre = ""; render();
+    const inp = document.getElementById("fpGuardarNombre"); if(inp) enfocarComo(inp, el);
+  },
+    "fp-guardar": async (el, e, action, postId) => {
+    guardarDesdeElPanel();
+  },
+    // El ✕ de una ficha de la barra: saca ese filtro al toque (es un solo cambio).
+    "fp-quitar": async (el, e, action, postId) => {
+    const f = state.filters, k = el.dataset.cat;
+    if(k === "actividad"){ f.types = new Set(); f.docs = false; }
+    else if(k === "lugar"){ f.place = null; f.zones = new Set(); }
+    else if(k === "fecha"){ f.periodo = null; f.mes = false; }
+    else if(k === "persona"){ f.quien = null; f.author = null; }
+    feedVisibleCount = PAGE_SIZE; render();
+    enfocarComo(document.getElementById("fbFiltros"), el);
+  },
+    "fp-volver": async (el, e, action, postId) => {
+    // «← Volver a Reportes · 2026»: a la pantalla de la que se vino, tal
+    // como quedó (los filtros del Inicio siguen puestos hasta «Limpiar»).
+    const o = filtroOrigen;
+    if(!o) return;
+    filtroOrigen = null;
+    state.view = o.view; render(); scrollToTop();
   },
     "ver-posteos-de": async (el, e, action, postId) => {
     // Desde la ficha de una persona (Administración › Personas) o su
     // perfil: el Feed con solo lo que cargó ella, y ningún otro filtro.
     if(!userProfileOverlay.hidden) closeUserProfile();
-    state.filters = { text:"", types:new Set(), zones:new Set(), place:null, quick:null, author:String(el.dataset.email||"").toLowerCase() };
+    state.filters = filtrosVacios(); state.filters.author = String(el.dataset.email||"").toLowerCase();
+    filtroOrigen = state.view !== "feed" ? { view:state.view } : null;
     feedVisibleCount = PAGE_SIZE; state.view = "feed"; render(); scrollToTop();
   },
     "usuario-abrir": async (el, e, action, postId) => {
@@ -21361,8 +21912,8 @@ document.addEventListener("click", async e=>{
     const input = document.getElementById("tiposNewLabel"); if(input) input.focus();
   },
     "feed-quick": async (el, e, action, postId) => {
-    // El mismo acceso directo otra vez lo apaga.
-    state.filters.quick = state.filters.quick === el.dataset.key ? null : el.dataset.key;
+    // El mismo acceso directo otra vez lo apaga; se suma a los demás.
+    alternarAtajo(state.filters, el.dataset.key);
     feedVisibleCount = PAGE_SIZE; render();
   },
     "feed-saved-start": async (el, e, action, postId) => {
@@ -21375,11 +21926,7 @@ document.addEventListener("click", async e=>{
     "feed-saved-apply": async (el, e, action, postId) => {
     const g = filtrosGuardados()[Number(el.dataset.idx)];
     if(!g) return;
-    // El período, solo si sus fechas tienen forma de fecha: viene de las
-    // preferencias guardadas.
-    const per = g.periodo, iso = x => /^\d{4}-\d{2}-\d{2}$/.test(String(x || ""));
-    const periodo = per && iso(per.desde) && iso(per.hasta) ? { desde:per.desde, hasta:per.hasta, anio:String(per.anio || per.desde.slice(0,4)), tri:Number(per.tri) || 0 } : null;
-    state.filters = { text:g.text || "", types:new Set(g.types || []), zones:new Set(g.zones || []), place:g.place || null, quick:g.quick || null, author:null, periodo };
+    state.filters = filtrosDeGuardado(g); filtroOrigen = null;
     feedVisibleCount = PAGE_SIZE; state.view = "feed"; render(); scrollToTop();
   },
     "feed-saved-delete": async (el, e, action, postId) => {
@@ -21396,12 +21943,12 @@ document.addEventListener("click", async e=>{
   },
     "gs-country": async (el, e, action, postId) => {
     cerrarBuscadorGlobal(true);
-    state.filters = { text:"", types:new Set(), zones:new Set(), place:{ kind:"country", country:el.dataset.country }, quick:null, author:null };
+    state.filters = filtrosVacios(); state.filters.place = { kind:"country", country:el.dataset.country }; filtroOrigen = null;
     feedVisibleCount = PAGE_SIZE; state.view = "feed"; state.countryDrill = null; state.zonaDrill = null; render(); scrollToTop();
   },
     "gs-city": async (el, e, action, postId) => {
     cerrarBuscadorGlobal(true);
-    state.filters = { text:"", types:new Set(), zones:new Set(), place:{ kind:"city", country:el.dataset.country, city:el.dataset.city }, quick:null, author:null };
+    state.filters = filtrosVacios(); state.filters.place = { kind:"city", country:el.dataset.country, city:el.dataset.city }; filtroOrigen = null;
     feedVisibleCount = PAGE_SIZE; state.view = "feed"; state.countryDrill = null; state.zonaDrill = null; render(); scrollToTop();
   },
     "gs-feed": async (el, e, action, postId) => {
@@ -21937,9 +22484,11 @@ document.addEventListener("click", async e=>{
     // en el período del reporte: lo que cuenta ese número. En la solapa de
     // lo hecho, que es donde está.
     const { kind, key } = el.dataset;
-    state.filters.text = ""; state.filters.types = new Set(); state.filters.zones = new Set(); state.filters.place = null; state.filters.quick = null; state.filters.author = null;
+    state.filters = filtrosVacios();
     const v = ventanaDelReporte();
     state.filters.periodo = { desde:v.desde, hasta:v.hasta, anio:v.anio, tri:v.tri };
+    // «← Volver a Reportes · 2026» en la barra del Inicio.
+    filtroOrigen = { view:"reportes", anio:v.anio, tri:v.tri };
     feedSolapa = "pasado"; feedVisibleCount = PAGE_SIZE;
     if(kind === "pais") state.filters.place = { kind:"country", country:key };
     else if(kind === "latam") state.filters.place = { kind:"latam" };
@@ -22339,7 +22888,7 @@ document.addEventListener("click", async e=>{
     "goto-latam": async (el, e, action, postId) => {
     // Del pie de Vistas: lo que es de toda LatAm, sin país ni ciudad de
     // por medio (ver scopeLevelFor con kind "latam").
-    state.filters.place = { kind:"latam" };
+    state.filters.place = { kind:"latam" }; filtroOrigen = null;
     state.view = "feed"; state.countryDrill = null; state.zonaDrill = null; render();
   },
     "feed-order": async (el, e, action, postId) => {
@@ -22353,9 +22902,6 @@ document.addEventListener("click", async e=>{
     if(k === feedSolapa) return;
     feedSolapa = k; feedVisibleCount = PAGE_SIZE;
     render();
-  },
-    "place-level": async (el, e, action, postId) => {
-    setPlaceLevel(Number(el.dataset.level)); // savePrefs ya re-renderiza
   },
     "dismiss-calendar-notice": async (el, e, action, postId) => {
     clearTimeout(calendarNoticeTimer);
@@ -22985,6 +23531,10 @@ document.addEventListener("input", e=>{
     feedVisibleCount = PAGE_SIZE;
     clearTimeout(searchRenderTimer);
     searchRenderTimer = setTimeout(render, 150);
+  } else if(el.id === "fpLugarQ"){
+    if(fp.b){ fp.b.lugarQ = el.value; render(); }
+  } else if(el.id === "fpGuardarNombre"){
+    fp.nombre = el.value;
   } else if(el.id === "globalSearchInput"){
     globalQuery = el.value;
     clearTimeout(globalSearchTimer);

@@ -50,6 +50,10 @@ function armar(){
     const openReplyForms = new Set(), openThreads = new Set(), openNestedReplyForms = new Set();
     const docsAbiertos = new Map();
     let userMenuOpen=false, mentionsMenuOpen=false;
+    // Los filtros del Inicio y su panel (8/10/2026): al salir se vacían.
+    const filtrosVacios = ()=>({ text:"" });
+    let filtroOrigen = null;
+    const fp = { abierto:false, b:null };
     const postModalOverlay = { hidden:true };
     const state = { auth:{ status:"loading", user:null }, posts:[], repliesByPost:{}, loaded:false,
       accessRequests:[], auditLog:[], roster:[], formerMembers:[], personas:[], prefs:{}, filters:null,

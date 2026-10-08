@@ -261,7 +261,9 @@ export async function recorrerApp(p, paso){
   }
   if(await click(p, '.post[data-post-id="p1"] [data-action="toggle-post-menu"]')){ await click(p, '.post[data-post-id="p1"] [data-action="edit-post"]'); await p.waitForTimeout(600); await paso(p, ("Editar evento")); await cerrar(p); }
   if(await click(p, '.post[data-post-id="p1"] [data-action="toggle-reply"], .post[data-post-id="p1"] [data-action="toggle-thread"]')){ await p.waitForTimeout(300); await paso(p, ("Responder")); }
-  await click(p, '[data-action="toggle-type-filter"]'); await p.waitForTimeout(200); await paso(p, ("Filtro tipos")); await cerrar(p);
+  if(await click(p, '#fbFiltros')){ await p.waitForTimeout(300); await paso(p, ("Filtros"));
+    if(await click(p, '.fp-item[data-cat="lugar"]')){ await p.waitForTimeout(250); await paso(p, ("Filtros: lugar")); }
+    await cerrar(p); }
   await tab(p, "calendario"); await p.waitForTimeout(400); await paso(p, ("Calendario mes"));
   for(const v of ["semana", "agenda", "anio", "dia"]){
     if(await click(p, '[data-action="toggle-cal-view"]')){ await click(p, `[data-action="cal-subview"][data-key="${v}"]`); await p.waitForTimeout(300); await paso(p, ("Calendario " + v)); }
