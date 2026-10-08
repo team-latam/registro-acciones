@@ -697,6 +697,18 @@ carga eventos puede sumar (A), una ficha por persona (A), y básico
   estaban). «Nombres sueltos» de Revisar lo de Calendar se fue: lo
   reemplaza esta sección. Detalle en README, «Personas sin cuenta».
 
+### 37. Buscar por lugar — HECHO (8 oct 2026)
+
+El usuario cargó dos rutinas con alcance La Habana y, al buscar «La
+Habana», no aparecían: los buscadores miraban título, texto, quién cargó,
+participantes y «dónde», pero no el alcance. Ahora el del Inicio y el de
+arriba («Buscar en todo») encuentran también por la ciudad, el país o la
+región del alcance, en el idioma de la app y como quedó guardado
+(«Havana» y «La Habana» traen lo mismo). Y el de arriba suma el grupo
+**Ciudades**: las ciudades donde hay algo cargado; elegir una abre el
+Inicio filtrado ahí, como ya hacía con los países
+(`pruebas/buscar_lugar_test.mjs`).
+
 ## Fuera de alcance (necesitan algo que la app no tiene)
 
 - ~~Mandar correos (resumen semanal, invitaciones): no hay servicio de

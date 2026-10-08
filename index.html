@@ -13865,7 +13865,22 @@ function matchesTextFilter(text, record){
     normalize(record.content||"").includes(n) ||
     normalize(record.authorName||"").includes(n) ||
     normalize(participantsLabel(record.participants) || record.organizer||"").includes(n) ||
-    normalize(record.location||"").includes(n);
+    normalize(record.location||"").includes(n) ||
+    normalize(textoDeLugares(record.scopes)).includes(n);
+}
+// El alcance de un posteo, como texto para buscar: la ciudad, el país o
+// la región, como se ven en la tarjeta (en el idioma de la app) y como
+// quedaron guardados. Hasta el 8/10/2026 buscar «La Habana» no traía una
+// rutina con alcance La Habana si el texto no la nombraba (pedido del
+// usuario). Las respuestas no tienen alcance: queda vacío.
+function textoDeLugares(scopes){
+  if(!Array.isArray(scopes) || !scopes.length) return "";
+  return scopes.map(sc => {
+    if(!sc) return "";
+    const guardado = sc.type === "ciudad" ? `${sc.city} ${sc.country}` : sc.type === "pais" ? sc.country
+      : sc.type === "region" ? (ZONES[sc.region]?.label || sc.region) : "";
+    return `${scopeLabel(sc)} ${guardado || ""}`;
+  }).join(" · ");
 }
 function matchesPlaceOrZoneFilter(record){
   const f = state.filters;
@@ -14092,8 +14107,18 @@ function resultadosGlobales(q){
   const posts = state.posts.filter(p=> !p.isProject && matchesTextFilter(q, p)).sort(porFecha).slice(0, 5);
   const proyectos = state.posts.filter(p=> p.isProject && matchesTextFilter(q, p)).sort(porFecha).slice(0, 3);
   const paises = COUNTRIES.filter(c => normalize(c.name).includes(n) || normalize(countryLabel(c.name)).includes(n)).slice(0, 4);
+  // Las ciudades donde hay algo cargado, por su nombre (en el idioma de la
+  // app o como quedó guardado): elegir una abre el Inicio filtrado ahí.
+  const vistas = new Map();
+  state.posts.forEach(p => (p.scopes || []).forEach(sc => {
+    if(!sc || sc.type !== "ciudad") return;
+    const k = sc.country + "|" + sc.city;
+    if(vistas.has(k)) return;
+    if(normalize(sc.city).includes(n) || normalize(cityLabel(sc.country, sc.city)).includes(n)) vistas.set(k, { country: sc.country, city: sc.city });
+  }));
+  const ciudades = [...vistas.values()].sort((a, b) => cityLabel(a.country, a.city).localeCompare(cityLabel(b.country, b.city))).slice(0, 4);
   const personas = state.roster.filter(r => normalize(r.name||"").includes(n) || normalize(r.nickname||"").includes(n) || normalize(r.email||"").includes(n)).slice(0, 3);
-  return { posts, proyectos, paises, personas };
+  return { posts, proyectos, paises, ciudades, personas };
 }
 function renderGlobalSearch(){
   const panel = document.getElementById("globalResults");
@@ -14112,6 +14137,7 @@ function renderGlobalSearch(){
   const html =
     grupo(t("Posteos","Posts","Postagens","פוסטים"), r.posts.map(p=>ficha(p, "gs-post"))) +
     grupo(t("Proyectos","Projects","Projetos","פרויקטים"), r.proyectos.map(p=>ficha(p, "gs-project"))) +
+    grupo(t("Ciudades","Cities","Cidades","ערים"), r.ciudades.map(c=>`<button type="button" class="gs-item" data-action="gs-city" data-country="${esc(c.country)}" data-city="${esc(c.city)}"><span class="gs-ico">📍</span><span class="gs-txt"><b>${esc(cityLabel(c.country, c.city))}</b><small>${esc(countryLabel(c.country))}</small></span></button>`)) +
     grupo(t("Países","Countries","Países","מדינות"), r.paises.map(c=>`<button type="button" class="gs-item" data-action="gs-country" data-country="${esc(c.name)}"><span class="gs-ico">🗺️</span><span class="gs-txt"><b>${esc(countryLabel(c.name))}</b></span></button>`)) +
     grupo(t("Personas","People","Pessoas","אנשים"), r.personas.map(p=>`<button type="button" class="gs-item" data-action="show-user-profile" data-nick="${esc(String(p.nickname||"").toLowerCase())}"><span class="gs-ico">👤</span><span class="gs-txt"><b>${esc(p.name || p.email)}</b><small>@${esc(p.nickname||"")}</small></span></button>`));
   panel.innerHTML = (html || `<div class="gs-empty">${t("Sin resultados para “{q}”","No results for “{q}”","Sem resultados para “{q}”","אין תוצאות עבור “{q}”",{q:esc(q)})}</div>`) +
@@ -21185,6 +21211,11 @@ document.addEventListener("click", async e=>{
     "gs-country": async (el, e, action, postId) => {
     cerrarBuscadorGlobal(true);
     state.filters = { text:"", types:new Set(), zones:new Set(), place:{ kind:"country", country:el.dataset.country }, quick:null, author:null };
+    feedVisibleCount = PAGE_SIZE; state.view = "feed"; state.countryDrill = null; state.zonaDrill = null; render(); scrollToTop();
+  },
+    "gs-city": async (el, e, action, postId) => {
+    cerrarBuscadorGlobal(true);
+    state.filters = { text:"", types:new Set(), zones:new Set(), place:{ kind:"city", country:el.dataset.country, city:el.dataset.city }, quick:null, author:null };
     feedVisibleCount = PAGE_SIZE; state.view = "feed"; state.countryDrill = null; state.zonaDrill = null; render(); scrollToTop();
   },
     "gs-feed": async (el, e, action, postId) => {
