@@ -860,6 +860,31 @@ celular, hebreo, un guardado viejo, y que tocar adentro **no** repita la
 animación de abrir; falla con el código de antes). Se adaptaron las que
 usaban la barra vieja.
 
+### 44. La ficha de un lugar en el celular — HECHO (8 oct 2026)
+
+El usuario mostró en el celular que para ver Ritmo, Quiénes trabajaron
+acá y Documentos tenía que bajar hasta el final de «Lo que pasó». Peor de
+lo que parecía: la historia se carga de a 30 y trae 30 más al llegar
+abajo, así que en un lugar con mucha actividad no se llegaba nunca. Se le
+mostraron tres arreglos en la página de la Agenda (versión 3): **A** el
+costado arriba de la historia, entero; **B** arriba de la historia,
+plegado; **C** la historia arranca con 10. **Eligió B.**
+
+En el celular (hasta 760 px de ancho), las tarjetas del costado
+(Proyectos, Ciudades o Países, Ritmo, Quiénes trabajaron acá, Documentos)
+van entre «Lo que sigue» y «Lo que pasó», cada una plegada en un renglón
+con lo importante: «1 abierto · 1 hito vencido», «Rosario, Córdoba y 1
+más», «34 registros en 12 meses», «Ana Pérez, Diego Martínez y 1 más», «2
+· el último, 6 oct». Se toca y se abre ahí mismo, sin que la pantalla
+salte; se vuelve a tocar y se pliega. Lo que se deja abierto queda abierto
+en ese aparato, en cualquier ficha (`fichaAbiertas`, en el navegador). En
+la compu y en el papel («Reporte del lugar») no cambió nada: el costado
+sigue a la derecha y todo sale desplegado. No se duplica nada: la misma
+tarjeta se ordena distinto con CSS (`display:contents` y `order`, solo en
+pantalla) y su título trae las dos formas, la de la compu y el renglón
+(`tituloDeLado`) (`pruebas/ficha_celular_test.mjs`, que falla con el
+código de antes).
+
 ## Fuera de alcance (necesitan algo que la app no tiene)
 
 - ~~Mandar correos (resumen semanal, invitaciones): no hay servicio de
@@ -923,7 +948,8 @@ usaban la barra vieja.
   entero; **B** arriba de la historia, cada tarjeta plegada en un renglón
   con su resumen, que se abre ahí y se acuerda de lo abierto — la
   recomendada; **C** la historia arranca con 10 y «Ver toda la historia».
-  En la compu no cambia nada en ninguna. Pendiente de que elija.
+  En la compu no cambia nada en ninguna. **Eligió B** y está hecha
+  (tanda 44).
 
 - **Clasificar lo que vino de Google Calendar**: la herramienta está
   (tanda 19); falta que el usuario la use. Empezar por Actividades →

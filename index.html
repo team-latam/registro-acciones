@@ -2514,6 +2514,35 @@
   @media (min-width:761px){
     .fl-lado{ position:sticky; top:calc(var(--header-h, 110px) + 12px); max-height:calc(100vh - var(--header-h, 110px) - 28px); overflow:auto; }
   }
+  /* En el celular, el costado va arriba de «Lo que pasó» y cada tarjeta se
+     pliega en un renglón con su resumen (opción B, elegida por el usuario
+     el 8/10/2026; ver fichaAbiertas). Antes iba debajo de la historia, que
+     se carga de a tandas, y en un lugar con mucha actividad no se llegaba.
+     display:contents deja las tarjetas de las dos columnas como hijas de
+     la grilla, y `order` las ordena: Lo que sigue, el costado, Lo que
+     pasó. Solo en pantalla: en el papel («Reporte del lugar») sale todo
+     desplegado, como siempre. En la compu, el título de siempre. */
+  .fl-pliegue{ display:none; }
+  @media screen and (max-width:760px){
+    .fl-grid{ row-gap:0; }
+    .fl-main, .fl-lado{ display:contents; }
+    .fl-sigue{ order:1; }
+    .fl-lado > .fl-card{ order:2; }
+    .fl-historia{ order:3; margin-top:8px; }
+    .fl-plegable .fl-lado-t{ display:none; }
+    .fl-pliegue{ display:grid; grid-template-columns:minmax(0,1fr) auto; column-gap:10px; row-gap:2px; flex:1 1 auto; min-width:0; min-height:40px; align-content:center;
+      margin:-4px 0; padding:4px 0; border:none; background:none; color:inherit; font:inherit; letter-spacing:inherit; text-transform:inherit; text-align:start; cursor:pointer; }
+    .fl-pliegue .t{ grid-column:1; }
+    .fl-pliegue .r{ grid-column:1; text-transform:none; letter-spacing:0; font-size:13px; font-weight:600; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .fl-pliegue .chev{ grid-column:2; grid-row:1 / span 2; align-self:center; font-size:20px; line-height:1; color:var(--text-muted); transition:transform .15s ease; }
+    .fl-plegable:not(.abierta){ padding:10px 14px; margin-bottom:8px; }
+    .fl-plegable:not(.abierta) h3{ margin-bottom:0; }
+    .fl-plegable:not(.abierta) > :not(h3), .fl-plegable:not(.abierta) h3 > :not(.fl-pliegue){ display:none; }
+    .fl-plegable.abierta .fl-pliegue .r{ display:none; }
+    .fl-plegable.abierta .fl-pliegue .chev{ transform:rotate(90deg); }
+    html[dir="rtl"] .fl-plegable.abierta .fl-pliegue .chev{ transform:rotate(-90deg); }
+  }
+  @media screen and (max-width:760px) and (prefers-reduced-motion: reduce){ .fl-pliegue .chev{ transition:none; } }
   @media (max-width:760px){
     .fl-grid{ grid-template-columns:minmax(0,1fr); }
     .fl-stats{ grid-template-columns:repeat(2,minmax(0,1fr)); }
@@ -20231,6 +20260,20 @@ cumpleOverlay.addEventListener("click", e=>{ if(e.target === cumpleOverlay) clos
 let fichaIncluye = 0;
 const fichaOcultos = new Set();
 const fichaDesplegado = new Set(); // "pasos", "docs", "hijos"
+// En el celular, las tarjetas del costado (Proyectos, Ciudades, Ritmo,
+// Quiénes trabajaron acá, Documentos) van arriba de «Lo que pasó», cada una
+// plegada en un renglón con su resumen, y se abren ahí mismo (opción B,
+// elegida por el usuario el 8/10/2026). Antes iban debajo de la historia,
+// que se carga de a tandas: en un lugar con mucha actividad no se llegaba
+// nunca. Las que se abren quedan abiertas en ese aparato, en cualquier
+// ficha. En la compu no cambia nada (ver .fl-plegable en el CSS).
+const fichaAbiertas = new Set((() => {
+  try{ const v = JSON.parse(localStorage.getItem("ra_ficha_abiertas") || "[]"); return Array.isArray(v) ? v.filter(k => typeof k === "string") : []; }
+  catch(e){ return []; }
+})());
+function guardarFichaAbiertas(){
+  try{ localStorage.setItem("ra_ficha_abiertas", JSON.stringify([...fichaAbiertas])); }catch(e){ /* sin localStorage: vale para esta visita */ }
+}
 // Cuántas ciudades (o países) se ven al costado antes del «Ver más».
 const HIJOS_A_LA_VISTA = 5;
 // Mientras se imprime la ficha («Reporte del lugar»): todo desplegado.
@@ -20289,11 +20332,22 @@ const esDeCalendar = p => !p.authorEmail && /google calendar/i.test(p.authorName
 // autor.
 function quienDe(p){
   if(p.activityType === "rutina") return esDeCalendar(p) ? "" : (p.authorName || "");
-  const ps = [...new Set((Array.isArray(p.participants) ? p.participants : [])
-    .map(participanteNombre).filter(Boolean))];
+  return dosYMas([...new Set((Array.isArray(p.participants) ? p.participants : [])
+    .map(participanteNombre).filter(Boolean))]);
+}
+// «Ana y Diego», o «Ana, Diego y 3 más».
+function dosYMas(ps){
   if(ps.length <= 2) return ps.join(t(" y "," and "," e "," ו"));
   return t("{a}, {b} y {n} más","{a}, {b} and {n} more","{a}, {b} e mais {n}","{a}, {b} ועוד {n}",{ a: ps[0], b: ps[1], n: ps.length - 2 });
 }
+// El título de una tarjeta del costado de la ficha. En la compu, el de
+// siempre (.fl-lado-t); en el celular, un renglón que se toca para abrirla
+// o plegarla, con su resumen (.fl-pliegue). El CSS muestra uno u otro.
+// `titulo` ya viene escapado; `extra` es lo que va a la derecha del título.
+function tituloDeLado(k, titulo, resumen, extra){
+  return `<h3><span class="fl-lado-t">${titulo}</span><button type="button" class="fl-pliegue" data-action="ficha-plegar" data-que="${esc(k)}" aria-expanded="${fichaAbiertas.has(k)}"><span class="t">${titulo}</span><span class="r" dir="auto">${esc(resumen)}</span><span class="chev" aria-hidden="true">${isRTL() ? "‹" : "›"}</span></button>${extra || ""}</h3>`;
+}
+const claseDeLado = k => `fl-card fl-plegable${fichaAbiertas.has(k) ? " abierta" : ""}`;
 // Todo lo que la ficha necesita, ya contado.
 function datosDeFicha(L){
   const niveles = nivelesDeFicha(L);
@@ -20487,7 +20541,7 @@ function renderFichaLugar(L){
   // Lo que sigue.
   const todosPasos = fichaDesplegado.has("pasos") || fichaImprimiendo;
   const listaPasos = todosPasos ? [...D.pendientes, ...D.hechos] : D.pendientes.slice(0, 4);
-  const pasos = D.pendientes.length || D.hechos.length ? `<div class="fl-card">
+  const pasos = D.pendientes.length || D.hechos.length ? `<div class="fl-card fl-sigue">
     <h3>${t("Lo que sigue","What's next","O que segue","מה הלאה")}${D.pendientes.length > 4 || D.hechos.length ? `<button type="button" class="fl-mas" data-action="ficha-desplegar" data-que="pasos">${fichaDesplegado.has("pasos") ? t("Mostrar menos","Show less","Mostrar menos","הצג פחות") : t("Ver los {n}","See all {n}","Ver os {n}","הצגת כל ה-{n}",{ n: D.pendientes.length + D.hechos.length })}</button>` : ""}</h3>
     <ul class="rs-pasos">${listaPasos.map(({ p, post, parte }) => {
       const hecho = p.estado === "hecho";
@@ -20576,7 +20630,7 @@ function renderFichaLugar(L){
       <span class="fl-cuerpo"><span class="tt" dir="auto">${esc(titulo)}</span><span class="mt">${meta}</span>${ej ? `<span class="rs" dir="auto">${esc(recortar(ej, 220))}</span>` : ""}</span>
       ${marca}</button>`;
   }).join("");
-  const linea = `<div class="fl-card">
+  const linea = `<div class="fl-card fl-historia">
     <h3>${t("Lo que pasó","What happened","O que aconteceu","מה קרה")}</h3>
     ${chips}${proyRow}
     ${items.length ? `<div class="fl-tl">${lineas}</div>${renderLoadMore("ficha-ver-mas", items.length - tope)}`
@@ -20585,7 +20639,10 @@ function renderFichaLugar(L){
   // Al costado, primero los proyectos del lugar: cuánto avanzó cada uno,
   // los vencidos en rojo y el próximo hito. Tocar uno filtra la línea.
   const abiertos = D.proyectos.filter(p => !projectDone(p)).length;
-  const ladoProy = D.proyectos.length ? `<div class="fl-card"><h3>${esc(t("Proyectos en {l}","Projects in {l}","Projetos em {l}","פרויקטים ב{l}",{ l: nombre }))}<span class="fl-h3-nota">${esc(abiertos === 1 ? t("1 abierto","1 open","1 aberto","1 פתוח") : t("{n} abiertos","{n} open","{n} abertos","{n} פתוחים",{ n: abiertos }))}</span></h3><div class="fl-pj">${D.proyectos.map(p => {
+  const abiertosTxt = abiertos === 1 ? t("1 abierto","1 open","1 aberto","1 פתוח") : t("{n} abiertos","{n} open","{n} abertos","{n} פתוחים",{ n: abiertos });
+  const vencidos = D.hitos.filter(h => h.st === "overdue").length;
+  const resumenProy = abiertosTxt + (vencidos ? " · " + (vencidos === 1 ? t("1 hito vencido","1 overdue milestone","1 marco vencido","אבן דרך 1 באיחור") : t("{v} hitos vencidos","{v} overdue milestones","{v} marcos vencidos","{v} אבני דרך באיחור",{ v: vencidos })) : "");
+  const ladoProy = D.proyectos.length ? `<div class="${claseDeLado("proy")}">${tituloDeLado("proy", esc(t("Proyectos en {l}","Projects in {l}","Projetos em {l}","פרויקטים ב{l}",{ l: nombre })), resumenProy, `<span class="fl-h3-nota">${esc(abiertosTxt)}</span>`)}<div class="fl-pj">${D.proyectos.map(p => {
     const hs = hitosDe(p);
     const d = hs.filter(h => h.st === "done").length, v = hs.filter(h => h.st === "overdue").length;
     const prox = hs.find(h => h.st === "today" || h.st === "soon" || h.st === "upcoming");
@@ -20606,7 +20663,8 @@ function renderFichaLugar(L){
   // mientras se mira y se elige (captura del usuario).
   const todosHijos = fichaDesplegado.has("hijos") || fichaImprimiendo;
   const hijosConScroll = todosHijos && !fichaImprimiendo && hijos.length > HIJOS_A_LA_VISTA;
-  const ladoHijos = hijos.length ? `<div class="fl-card"><h3>${L.zona ? t("Países","Countries","Países","מדינות") : t("Ciudades","Cities","Cidades","ערים")}${hijos.length > HIJOS_A_LA_VISTA ? `<button type="button" class="fl-mas" data-action="ficha-desplegar" data-que="hijos">${fichaDesplegado.has("hijos") ? t("Ver menos","Show less","Ver menos","הצג פחות") : t("Ver más","See more","Ver mais","הצגת עוד")}</button>` : ""}</h3><div class="fl-hijos${hijosConScroll ? " con-scroll" : ""}">${(todosHijos ? hijos : hijos.slice(0, HIJOS_A_LA_VISTA)).map(h => {
+  const ladoHijos = hijos.length ? `<div class="${claseDeLado("hijos")}">${tituloDeLado("hijos", L.zona ? t("Países","Countries","Países","מדינות") : t("Ciudades","Cities","Cidades","ערים"), dosYMas(hijos.map(h => h.nombre)),
+    hijos.length > HIJOS_A_LA_VISTA ? `<button type="button" class="fl-mas" data-action="ficha-desplegar" data-que="hijos">${fichaDesplegado.has("hijos") ? t("Ver menos","Show less","Ver menos","הצג פחות") : t("Ver más","See more","Ver mais","הצגת עוד")}</button>` : "")}<div class="fl-hijos${hijosConScroll ? " con-scroll" : ""}">${(todosHijos ? hijos : hijos.slice(0, HIJOS_A_LA_VISTA)).map(h => {
     const ult = h.posts.map(fechaDePost).sort().pop();
     const pend = h.posts.reduce((n, p) => n + pasosPendientes(partesDeLugar(p, h.L)).length, 0);
     return `<button type="button" class="fl-hijo" ${h.accion}>
@@ -20616,7 +20674,9 @@ function renderFichaLugar(L){
   for(let i = 11; i >= 0; i--){ const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - i); meses.push(mesLocalDe(d.getTime())); }
   const porMes = meses.map(m => ({ m, n: D.visibles.filter(p => fechaDePost(p).startsWith(m)).length, v: D.visibles.some(p => p.activityType === "visita" && fechaDePost(p).startsWith(m)) }));
   const topeMes = Math.max(1, ...porMes.map(x => x.n));
-  const ritmo = porMes.some(x => x.n) ? `<div class="fl-card"><h3>${t("Ritmo · últimos 12 meses","Pace · last 12 months","Ritmo · últimos 12 meses","קצב · 12 החודשים האחרונים")}</h3>
+  const enElAnio = porMes.reduce((n, x) => n + x.n, 0);
+  const ritmo = porMes.some(x => x.n) ? `<div class="${claseDeLado("ritmo")}">${tituloDeLado("ritmo", t("Ritmo · últimos 12 meses","Pace · last 12 months","Ritmo · últimos 12 meses","קצב · 12 החודשים האחרונים"),
+    enElAnio === 1 ? t("1 registro en 12 meses","1 record in 12 months","1 registro em 12 meses","רישום 1 ב-12 חודשים") : t("{n} registros en 12 meses","{n} records in 12 months","{n} registros em 12 meses","{n} רישומים ב-12 חודשים",{ n: enElAnio }))}
     <div class="fl-ritmo">${porMes.map(x => `<i class="${x.v ? "v" : ""}" style="height:${x.n ? Math.max(6, Math.round(x.n * 100 / topeMes)) : 0}%" title="${esc(fmtISO(x.m + "-01", { month:"long", year:"numeric" }))}: ${x.n}"></i>`).join("")}</div>
     <div class="fl-ritmo-ej"><span>${esc(fmtISO(meses[0] + "-01", { month:"short" }))}</span><span>${esc(fmtISO(meses[11] + "-01", { month:"short" }))}</span></div>
     <div class="hint fl-ritmo-ley"><i class="v"></i> ${t("con visita","with a visit","com visita","עם ביקור")}</div></div>` : "";
@@ -20643,7 +20703,9 @@ function renderFichaLugar(L){
       else if(x && x.persona){ const f = personaPorId(x.persona); if(f) sumar(null, "persona:" + f.id, f.name); }
     });
   });
-  const quienes = gente.size ? `<div class="fl-card"><h3>${t("Quiénes trabajaron acá","Who worked here","Quem trabalhou aqui","מי עבד כאן")}</h3><div class="fl-gente">${[...gente.values()].sort((a, b) => b.n - a.n).slice(0, 6).map(g => {
+  const genteOrden = [...gente.values()].sort((a, b) => b.n - a.n);
+  const nombreDeGente = g => { const m = g.email ? memberByEmail(g.email) : null; return m ? (m.name || "@" + m.nickname) : (g.nombre || g.email || ""); };
+  const quienes = gente.size ? `<div class="${claseDeLado("quienes")}">${tituloDeLado("quienes", t("Quiénes trabajaron acá","Who worked here","Quem trabalhou aqui","מי עבד כאן"), dosYMas(genteOrden.map(nombreDeGente)))}<div class="fl-gente">${genteOrden.slice(0, 6).map(g => {
     const m = g.email ? memberByEmail(g.email) : null;
     const u = m || { name: g.nombre || g.email, photoURL: "", sinCuenta: String(g.email || "").startsWith("persona:") };
     return `<div>${avatarDe(u, 28)}<span class="nm">${m ? `<button type="button" class="fl-persona" data-action="show-user-profile" data-nick="${esc(String(m.nickname || "").toLowerCase())}">${esc(m.name || "@" + m.nickname)}</button>` : esc(u.name || "")}</span><span class="cn">${g.n}</span></div>`; }).join("")}</div></div>` : "";
@@ -20651,9 +20713,12 @@ function renderFichaLugar(L){
     .filter(x => x.f && seAbreEnVisor(x.f) && safeFileDataUrl(x.f.dataUrl))
     .sort((a, b) => String(b.f.subidoEl || fechaDePost(b.p)).localeCompare(String(a.f.subidoEl || fechaDePost(a.p))));
   const todosDocs = fichaDesplegado.has("docs") || fichaImprimiendo;
-  const documentos = docs.length ? `<div class="fl-card"><h3>${t("Documentos","Documents","Documentos","מסמכים")}${docs.length > 4 ? `<button type="button" class="fl-mas" data-action="ficha-desplegar" data-que="docs">${fichaDesplegado.has("docs") ? t("Mostrar menos","Show less","Mostrar menos","הצג פחות") : t("Ver los {n}","See all {n}","Ver os {n}","הצגת כל ה-{n}",{ n: docs.length })}</button>` : ""}</h3>
+  const fechaDeDoc = x => fechaDeArchivo(x.f) || fmtISO(fechaDePost(x.p), { day:"numeric", month:"short" });
+  const resumenDocs = docs.length === 1 ? docs[0].f.name : docs.length ? t("{n} · el último, {f}","{n} · latest, {f}","{n} · o último, {f}","{n} · האחרון, {f}",{ n: docs.length, f: fechaDeDoc(docs[0]) }) : "";
+  const documentos = docs.length ? `<div class="${claseDeLado("docs")}">${tituloDeLado("docs", t("Documentos","Documents","Documentos","מסמכים"), resumenDocs,
+    docs.length > 4 ? `<button type="button" class="fl-mas" data-action="ficha-desplegar" data-que="docs">${fichaDesplegado.has("docs") ? t("Mostrar menos","Show less","Mostrar menos","הצג פחות") : t("Ver los {n}","See all {n}","Ver os {n}","הצגת כל ה-{n}",{ n: docs.length })}</button>` : "")}
     <div class="fl-docs">${(todosDocs ? docs : docs.slice(0, 4)).map(x => { const fi = fichaDeArchivo(x.f); return `<button type="button" class="fl-doc" data-action="resumen-abrir" data-post-id="${esc(x.p.id)}" data-pos="${x.pos}" title="${esc(x.f.name)}">
-      <i style="background:${fi.color}">${esc(fi.sigla)}</i><span>${esc(x.f.name)}</span><small>${esc(fechaDeArchivo(x.f) || fmtISO(fechaDePost(x.p), { day:"numeric", month:"short" }))}</small></button>`; }).join("")}</div></div>` : "";
+      <i style="background:${fi.color}">${esc(fi.sigla)}</i><span>${esc(x.f.name)}</span><small>${esc(fechaDeDoc(x))}</small></button>`; }).join("")}</div></div>` : "";
   return `<div class="ficha-lugar">${tituloPrint}${migas}${head}${seg}${incluyePrint}
     ${lectura.length ? `<div class="fl-card fl-lectura"><h3>${t("Lectura rápida","At a glance","Leitura rápida","במבט מהיר")}</h3><ul>${lectura.map(x => `<li class="${x.alerta ? "alerta" : ""}"><span class="ic" aria-hidden="true">${x.ic}</span><span>${x.html}</span></li>`).join("")}</ul></div>` : ""}
     ${stats}
@@ -22856,6 +22921,17 @@ document.addEventListener("click", async e=>{
     const k = el.dataset.que;
     fichaDesplegado.has(k) ? fichaDesplegado.delete(k) : fichaDesplegado.add(k);
     render();
+  },
+    // Celular: abrir o plegar una tarjeta del costado. Queda donde estaba y
+    // con el foco en el mismo renglón (después del render es otro botón).
+    "ficha-plegar": async (el) => {
+    const k = el.dataset.que, y = window.scrollY;
+    fichaAbiertas.has(k) ? fichaAbiertas.delete(k) : fichaAbiertas.add(k);
+    guardarFichaAbiertas();
+    render();
+    window.scrollTo({ top:y, behavior:"auto" });
+    const b = viewRoot.querySelector(`[data-action="ficha-plegar"][data-que="${CSS.escape(k)}"]`);
+    if(b) b.focus({ preventScroll:true });
   },
     "ficha-abrir": async (el, e, action, postId) => { openFichaPost(postId); },
     // Un hito: se abre el proyecto con su panel de hitos ya a la vista.
