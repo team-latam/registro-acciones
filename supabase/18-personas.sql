@@ -28,12 +28,37 @@ grant select, insert, update, delete on public.personas to authenticated;
 grant all on public.personas to service_role;
 revoke all on public.personas from anon;
 
+-- La Agenda (8/10/2026, ver 19-agenda.sql): una persona puede ser contacto
+-- de una o más instituciones. Suma sus teléfonos ({n, wa}: el número como se
+-- escribe y si tiene WhatsApp), los idiomas que habla, de qué lista vino
+-- (null: sumada a mano) y quién la tocó por última vez y cuándo.
+alter table public.personas add column if not exists telefonos jsonb not null default '[]'::jsonb;
+alter table public.personas add column if not exists idiomas text[] not null default '{}';
+alter table public.personas add column if not exists lista text;
+alter table public.personas add column if not exists tocado_por text;
+alter table public.personas add column if not exists tocado_el timestamptz;
+create or replace function public.telefonos_ok(v jsonb) returns boolean
+  language sql immutable as $$
+  select public.lista_ok(v, 6) and (v is null or not exists (
+    select 1 from jsonb_array_elements(v) e
+     where jsonb_typeof(e) <> 'object'
+        or coalesce(jsonb_typeof(e -> 'n'), '') <> 'string'
+        or coalesce(e ->> 'n', '') !~ '^[+0-9 ()./-]{3,40}$'
+        or (e ? 'wa' and coalesce(jsonb_typeof(e -> 'wa'), '') <> 'boolean')))
+$$;
+alter table public.personas drop constraint if exists personas_telefonos_ok,
+  drop constraint if exists personas_idiomas_ok, drop constraint if exists personas_lista_ok;
+alter table public.personas add constraint personas_telefonos_ok check (public.telefonos_ok(telefonos)),
+  add constraint personas_idiomas_ok check (public.textos_ok(idiomas, 6, 20)),
+  add constraint personas_lista_ok check (lista is null or lista ~ '^[A-Za-z0-9_-]{1,40}$');
+
 -- Las lee todo aprobado (para sugerirlas al cargar un evento); las crea
 -- cualquiera que carga eventos (lo decidió el usuario: la sugerencia evita
--- duplicados y lo que se cuele lo ordena el admin); las corrige o borra
--- un admin, o quien la creó mientras siga pudiendo escribir (hasta el
--- 7/10/2026 la seguía tocando aunque ya fuera observador o hubiera
--- salido del equipo).
+-- duplicados y lo que se cuele lo ordena el admin). Desde el 8/10/2026 (la
+-- Agenda) también las corrige cualquiera que carga eventos —el que acaba de
+-- hablar con alguien es el que sabe que cambió de número— y las borra solo
+-- un admin (decisión del usuario). Hasta entonces las corregía y borraba
+-- quien la creó o un admin.
 drop policy if exists personas_leer on public.personas;
 create policy personas_leer on public.personas for select
   using ((select public.es_admin_fijo()) or (select public.esta_aprobado()));
@@ -42,14 +67,11 @@ create policy personas_crear on public.personas for insert
   with check ((select public.puede_escribir()) and created_by = (select public.mi_correo()));
 drop policy if exists personas_editar on public.personas;
 create policy personas_editar on public.personas for update
-  using ((select public.es_admin_fijo()) or (select public.es_admin_rol())
-         or (created_by = (select public.mi_correo()) and (select public.puede_escribir())))
-  with check ((select public.es_admin_fijo()) or (select public.es_admin_rol())
-         or (created_by = (select public.mi_correo()) and (select public.puede_escribir())));
+  using ((select public.es_admin_fijo()) or (select public.puede_escribir()))
+  with check ((select public.es_admin_fijo()) or (select public.puede_escribir()));
 drop policy if exists personas_borrar on public.personas;
 create policy personas_borrar on public.personas for delete
-  using ((select public.es_admin_fijo()) or (select public.es_admin_rol())
-         or (created_by = (select public.mi_correo()) and (select public.puede_escribir())));
+  using ((select public.es_admin_fijo()) or (select public.es_admin_rol()));
 
 -- Una ficha que figura en algún posteo (también uno cancelado) no se
 -- borra: el evento quedaría apuntando a nadie y en Reportes saldría «?».
@@ -78,9 +100,13 @@ begin
   new.email := nullif(lower(btrim(coalesce(new.email, ''))), '');
   new.note := nullif(btrim(coalesce(new.note, '')), '');
   if tg_op = 'INSERT' then
-    if not public.sin_sesion_de_persona() then new.created_by := public.mi_correo(); new.created_at := now(); end if;
+    if not public.sin_sesion_de_persona() then
+      new.created_by := public.mi_correo(); new.created_at := now(); new.tocado_por := null; new.tocado_el := null;
+    end if;
   elsif not public.sin_sesion_de_persona() then
+    -- Quién la tocó por última vez (la Agenda lo muestra en su ficha).
     new.created_by := old.created_by; new.created_at := old.created_at;
+    new.tocado_por := public.mi_correo(); new.tocado_el := now();
   end if;
   return new;
 end $$;
@@ -166,7 +192,21 @@ begin
     raise exception 'Hay que elegir dos personas distintas' using errcode = 'check_violation';
   end if;
   n := public.reemplazar_persona(p_de, jsonb_build_object('persona', a.id, 'name', a.name));
-  update public.personas set email = coalesce(email, de.email), note = coalesce(note, de.note) where id = a.id;
+  -- Sus lugares en la Agenda pasan a la que queda (sin repetir institución),
+  -- y se queda con los teléfonos e idiomas que no tenía (hasta seis).
+  delete from public.contactos c where c.persona = p_de
+     and exists (select 1 from public.contactos o where o.persona = p_a and o.institucion = c.institucion);
+  update public.contactos set persona = p_a where persona = p_de;
+  update public.personas set email = coalesce(email, de.email), note = coalesce(note, de.note),
+    telefonos = (select coalesce(jsonb_agg(x.t order by x.o), '[]'::jsonb) from (
+      select t, o from jsonb_array_elements(a.telefonos) with ordinality e(t, o)
+      union all
+      select t, 100 + o from jsonb_array_elements(de.telefonos) with ordinality e(t, o)
+       where not exists (select 1 from jsonb_array_elements(a.telefonos) y
+                          where regexp_replace(y ->> 'n', '[^0-9]', '', 'g') = regexp_replace(t ->> 'n', '[^0-9]', '', 'g'))
+      order by 2 limit 6) x),
+    idiomas = array(select distinct i from unnest(a.idiomas || de.idiomas) i order by i limit 6)
+  where id = a.id;
   delete from public.personas where id = p_de;
   return n;
 end $$;
@@ -191,7 +231,13 @@ begin
     raise exception 'Esa persona no existe' using errcode = 'check_violation';
   end if;
   n := public.reemplazar_persona(p_id, jsonb_build_object('email', m.email, 'name', coalesce(nullif(m.name, ''), m.email)));
-  delete from public.personas where id = p_id;
+  -- Si está en la Agenda (un rab que entra a la app), la ficha se queda con
+  -- su correo: sus instituciones y teléfonos no se pierden.
+  if exists (select 1 from public.contactos where persona = p_id) then
+    update public.personas set email = lower(m.email) where id = p_id;
+  else
+    delete from public.personas where id = p_id;
+  end if;
   return n;
 end $$;
 revoke execute on function public.vincular_persona(text, text) from public, anon;

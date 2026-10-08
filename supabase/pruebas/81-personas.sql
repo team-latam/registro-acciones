@@ -45,8 +45,10 @@ select lab.probar('sin sesión, nadie', '{"role":"anon"}'::jsonb,
   $q$insert into public.personas(id, name) values ('anon', 'Alguien')$q$, false);
 select lab.probar('quien la creó la corrige', lab.como('ana@x.com'),
   $q$update public.personas set note = 'Rabino de la comunidad' where id = 'rabino'$q$, true);
-select lab.probar('otra integrante no', lab.como('dario@x.com'),
-  $q$update public.personas set name = 'Otro' where id = 'rabino'$q$, false);
+-- Desde el 8/10/2026 (la Agenda) corrige cualquiera que carga eventos:
+-- el que acaba de hablar con alguien es el que sabe que cambió de número.
+select lab.probar('otra integrante también (desde la Agenda)', lab.como('dario@x.com'),
+  $q$update public.personas set name = 'Otro' where id = 'rabino'$q$, true);
 select lab.probar('un admin sí', lab.como('benny@team-latam.com'),
   $q$update public.personas set note = 'Rabino' where id = 'rabino'$q$, true);
 select lab.probar_valor('quién la creó no se cambia', lab.como('ana@x.com'),
@@ -114,7 +116,10 @@ insert into lab.resultados(nombre, esperado, obtenido, detalle)
 select 'sin tildes también en portugués (João = Joao, Conceição = Conceicao)', true,
   public.sin_tildes('João Conceição') = 'Joao Conceicao', public.sin_tildes('João Conceição');
 
-select lab.probar('borrar una ficha: quien la creó o un admin', lab.como('ana@x.com'),
+-- Borrar, desde el 8/10/2026, solo un admin (antes también quien la creó).
+select lab.probar('borrar una ficha: quien la creó ya no', lab.como('ana@x.com'),
+  $q$delete from public.personas where id = 'rabino'$q$, false);
+select lab.probar('borrar una ficha: un admin sí', lab.como('benny@team-latam.com'),
   $q$delete from public.personas where id = 'rabino'$q$, true);
 
 \set QUIET off

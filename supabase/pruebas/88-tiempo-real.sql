@@ -2,7 +2,7 @@
 truncate lab.resultados;
 \set QUIET off
 insert into lab.resultados(nombre, esperado, obtenido, detalle)
-  select 'las nueve tablas mandan sus cambios en vivo (las ocho de siempre y personas)', true, count(*) = 9,
+  select 'las doce tablas mandan sus cambios en vivo (las ocho de siempre, personas y las tres de la Agenda)', true, count(*) = 12,
          'son ' || count(*)
   from pg_publication_tables where pubname='supabase_realtime' and schemaname='public';
 insert into lab.resultados(nombre, esperado, obtenido, detalle)

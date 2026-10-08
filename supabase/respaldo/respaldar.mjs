@@ -32,6 +32,7 @@ export const TABLAS = {
   posts: "id", replies: "id", members: "email", former_members: "email",
   access_requests: "email", user_prefs: "email", app_config: "key", audit_log: "id",
   calendar_sugerencias: "evento", calendar_sacados: "evento", personas: "id",
+  agenda_listas: "id", instituciones: "id", contactos: "id",
 };
 // Las que a propósito NO van en la copia: anotaciones de qué correo ya
 // salió (17-avisos-por-correo.sql), que solo lee la llave de servicio.
