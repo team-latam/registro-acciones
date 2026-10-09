@@ -1010,6 +1010,21 @@ generar múltiples copias».
   rota. `pages.yml` y `app.yml` miran también `herramientas/`.
 - Queda para después, cuando la planilla esté confirmada: subirla a la
   Agenda de la app.
+- **El Sheet de Google** (segunda vuelta, 9/10/2026): el original es una
+  hoja de cálculo de Google en Drive. Se le mostraron tres caminos para
+  volcar ahí lo revisado: **A** importar el Excel exportado desde el
+  Sheet (Archivo → Importar → «Reemplazar la hoja de cálculo»; mismo
+  enlace, historial de versiones como respaldo) — la recomendada; **B**
+  un botón «Actualizar en Google Drive» en la página (login de Google,
+  API de Drive y elegir el archivo una vez); **C** hacerlo Claude desde
+  acá (no se puede: la conexión con Drive solo renombra y mueve).
+  **Eligió la A**, y preguntó si en vez de reemplazar puede entrar como
+  pestaña nueva para guardar la vieja de copia: sí («Insertar hojas
+  nuevas»). Para eso la página ahora **pregunta qué pestaña abrir**
+  cuando el Excel trae varias, y al exportar las otras salen intactas
+  (las cadenas compartidas del libro no se renumeran: quedan donde
+  estaban y las nuevas van al final). Prueba: `mapeo_test.mjs` con
+  `mapeo_dos_hojas.py`.
 
 ### 57. «+ Sumar» en una ciudad: sus instituciones primero — HECHO (9 oct 2026)
 
