@@ -13,7 +13,9 @@ Quiero que hagas una revisión completa de todo eso para poder tener una
 buena funcionalidad».
 
 El detalle de cada hallazgo (cómo se midió, el arreglo) está en
-`docs/auditoria/2026-10-09-agenda.md`.
+`docs/auditoria/2026-10-09-agenda.md`. La página para el usuario, con capturas
+de antes y ahora: https://claude.ai/artifact/CTFYVdZVsYzrsHbQcKUngw
+(privada).
 
 **Cómo se hizo.** Sobre `4e43ab3` de `main`. Primero se le enseñó la
 Agenda a las herramientas de la auditoría, que no la miraban (datos en la
