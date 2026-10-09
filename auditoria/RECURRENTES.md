@@ -118,6 +118,12 @@ en GitHub el ⋯ bajó de renglón y su menú se salió de la tarjeta.
 (bajarla de fonts.gstatic.com y cargarla con `@font-face` en `data:`), se
 deja margen, y la prueba fuerza el caso apretado con una letra ancha
 (`font-family:monospace`, ver `proximos_tarjeta_test.mjs`).
+**Volvió el 9/10/2026:** el WhatsApp chico de la Agenda quedó al pie de
+la lista en el celular con la letra de GitHub, y su anillo de foco (hacia
+afuera, por ser un enlace) se cortaba: «Publicar el sitio» no publicó.
+Acá pasaba con `DejaVu Sans` o `monospace`. Ahora `pantallas` mide una
+combinación con letra ancha (`390x844:es:ancha`), y un enlace con forma de
+botón lleva el anillo hacia adentro, como los botones.
 
 ## GitHub
 

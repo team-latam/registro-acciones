@@ -21,8 +21,11 @@
 import { abrirNavegador, entrar, ADMIN, BASE, revisarRecortes, recorrerApp, tab, click, cerrar } from "../../pruebas/app_de_mentira.mjs";
 import { hallazgo, entregar } from "./comun.mjs";
 
-const TODAS = "1440x900:es,1024x768:es,768x1024:es,390x844:es,320x640:es,1280x800:en,390x844:en,1280x800:pt,390x844:pt,1280x800:he,390x844:he,390x844:es:oscuro";
-const COMBOS = (process.env.AUDITORIA_PANTALLAS || TODAS).split(",").map(x => { const [tam, lang, modo] = x.split(":"); const [w, h] = tam.split("x").map(Number); return { vp: { width: w, height: h }, lang, oscuro: modo === "oscuro", nombre: x }; });
+// «ancha»: con una letra más ancha que la de acá (la de GitHub es otra, y
+// dos veces algo que entraba justo acá se cortó allá: RECURRENTES).
+const TODAS = "1440x900:es,1024x768:es,768x1024:es,390x844:es,320x640:es,1280x800:en,390x844:en,1280x800:pt,390x844:pt,1280x800:he,390x844:he,390x844:es:oscuro,390x844:es:ancha";
+const COMBOS = (process.env.AUDITORIA_PANTALLAS || TODAS).split(",").map(x => { const [tam, lang, modo] = x.split(":"); const [w, h] = tam.split("x").map(Number); return { vp: { width: w, height: h }, lang, oscuro: modo === "oscuro", ancha: modo === "ancha", nombre: x }; });
+const LETRA_ANCHA = `*{ font-family:"DejaVu Sans", Verdana, monospace !important; }`;
 const BASURA = /\bundefined\b|\bNaN\b|\[object Object\]|Invalid Date|\{(n|x|d|m|a|b|p|f|e|z|l|msg|email|v|t)\}/;
 
 const out = [];
@@ -30,6 +33,7 @@ const b = await abrirNavegador();
 for(const c of COMBOS){
   const { p, errores } = await entrar(b, ADMIN, "Benny Rosenthal", { viewport: c.vp, lang: c.lang === "es" ? "" : c.lang, dark: c.oscuro });
   const recortes = [];
+  if(c.ancha) await p.addStyleTag({ content: LETRA_ANCHA });
   await recorrerApp(p, async (p, n) => {
     recortes.push(...await revisarRecortes(p, c.nombre + " · " + n));
     const txt = await p.evaluate(() => document.body.innerText);

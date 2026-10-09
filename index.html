@@ -145,9 +145,12 @@
      de arriba, el formulario de un evento, el mes del Calendario, una
      tarjeta) le cortaba los bordes al que estaba de punta (barrido del
      6/10/2026: 20 casos distintos, en todas las pantallas). Los enlaces de
-     texto lo llevan afuera, para no tapar las letras. */
+     texto lo llevan afuera, para no tapar las letras; un enlace con forma
+     de botón (el WhatsApp de la Agenda), adentro: en el celular, al pie de
+     la lista, la lista le cortaba el anillo (9/10/2026, solo con la letra
+     de GitHub). */
   :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible{ outline:2px solid var(--celeste-dark); outline-offset:-2px; }
-  :where(a[href]:not([role=button]):not([class*="btn"])):focus-visible{ outline-offset:2px; }
+  :where(a[href]:not([role=button]):not([class*="btn"]):not(.ag-wa)):focus-visible{ outline-offset:2px; }
   /* Los campos (lo que se escribe o se elige) llevan el anillo HACIA
      ADENTRO de su borde: hacia afuera, toda zona que se desplaza (el
      formulario de un evento, una ficha, una tarjeta de configuración) le
