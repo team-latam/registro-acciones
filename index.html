@@ -2946,7 +2946,8 @@
   .ag-campo > span i{ font-style:normal; font-weight:600; color:var(--text-muted); }
   .ag-campo input:not([type=checkbox]), .ag-campo select, .ag-campo textarea, .ag-donde input, .ag-tel-in input:not([type=checkbox]){
     width:100%; min-width:0; padding:10px 12px; border-radius:var(--radius-sm); border:1.5px solid var(--border); font-size:14px; background:var(--surface-soft); color:var(--text); font-family:inherit; }
-  .ag-campo textarea{ resize:vertical; min-height:60px; }
+  .ag-campo textarea{ resize:vertical; min-height:48px; }
+  .ag-form .ag-chip{ padding:4px 10px; font-size:12px; }   /* los cuatro idiomas entran en media fila */
   .ag-campo .ag-link{ align-self:flex-start; }
   .ag-tel-in, .ag-donde{ display:flex; gap:8px; align-items:center; }
   .ag-donde b{ flex:0 1 45%; min-width:0; font-size:13px; color:var(--ink); overflow-wrap:anywhere; }
@@ -3010,6 +3011,7 @@
     .ag-ciudad{ padding:10px 12px 2px; }
     .ag-pais-h{ padding:10px 12px; flex-wrap:wrap; }
     .ag-dl{ grid-template-columns:88px minmax(0,1fr); }
+    .ag-dos{ grid-template-columns:minmax(0,1fr); }
   }
   /* ----- Reportes ----- */
   .rep-chips{ display:flex; flex-wrap:wrap; gap:6px; }
@@ -20693,13 +20695,14 @@ function agendaVistaLista(){
   return agendaCabecera(titulo, "", "", sumar)
     + `<div class="ag-cuerpo">${barra}${resumen}<div class="ag-lista">${filas}</div></div>`;
 }
-function pieDeFirma(x, cuandoTrajo){
-  const lista = x.lista ? state.agendaListas.find(l => l.id === x.lista) : null;
-  const quien = email => { const m = memberByEmail(email); return m ? (m.name || m.nickname || email) : (email || ""); };
-  if(x.tocadoPor && x.tocadoEl) return esc(t("Corregido por {q} el {f}","Edited by {q} on {f}","Corrigido por {q} em {f}","עודכן על ידי {q} ב-{f}",{ q: quien(x.tocadoPor), f: fmtISO(x.tocadoEl.slice(0, 10), { day:"numeric", month:"short", year:"numeric" }) }));
-  if(lista) return esc(t("De «{l}» · traída el {f}","From “{l}” · imported on {f}","De «{l}» · trazida em {f}","מתוך «{l}» · יובא ב-{f}",{ l: lista.name, f: fmtISO(String(lista.createdAt || cuandoTrajo || "").slice(0, 10) || todayISO(), { day:"numeric", month:"short", year:"numeric" }) }));
-  if(x.createdBy) return esc(t("Sumado por {q}","Added by {q}","Adicionado por {q}","נוסף על ידי {q}",{ q: quien(x.createdBy) }));
-  return "";
+// Al pie de una ficha: quién la corrigió por última vez, si alguien lo
+// hizo. Antes decía también de qué lista vino y cuándo («De «Directorio
+// Chabad LatAm» · traída el 9 de oct de 2026») o quién la sumó: el usuario
+// pidió sacarlo (9/10/2026).
+function pieDeFirma(x){
+  if(!(x.tocadoPor && x.tocadoEl)) return "";
+  const m = memberByEmail(x.tocadoPor), quien = m ? (m.name || m.nickname || x.tocadoPor) : x.tocadoPor;
+  return esc(t("Corregido por {q} el {f}","Edited by {q} on {f}","Corrigido por {q} em {f}","עודכן על ידי {q} ב-{f}",{ q: quien, f: fmtISO(x.tocadoEl.slice(0, 10), { day:"numeric", month:"short", year:"numeric" }) }));
 }
 function agendaVistaPersona(pid){
   const p = agendaDatos().personas.get(pid);
@@ -20784,18 +20787,20 @@ function agendaVistaForm(v){
       ${!editar ? `<label class="ag-campo"><span>${t("Institución","Organization","Instituição","מוסד")}</span>
         <select id="agFInst" data-ag-campo="inst">${v.inst ? "" : `<option value="" selected disabled>${esc(t("Elegí la institución…","Choose the organization…","Escolha a instituição…","בחירת מוסד…"))}</option>`}${instOps}</select>
         <button type="button" class="ag-link" data-action="agenda-inst-nueva">+ ${t("Otra institución","Another organization","Outra instituição","מוסד אחר")}</button>${err("inst")}</label>` : ""}
+      ${!editar ? `<div class="ag-dos">` : ""}
       ${usada ? `<div class="ag-usada"><span>${t("Se suma <b>{n}</b>, que ya está en la app.","Adding <b>{n}</b>, already in the app.","Adiciona <b>{n}</b>, que já está no app.","מוסיפים את <b>{n}</b>, שכבר קיים/ת באפליקציה.",{ n: esc(usada.name) })}</span>
         <button type="button" class="ag-link" data-action="agenda-form-no-usar">${t("No, es otra persona","No, someone else","Não, é outra pessoa","לא, מישהו אחר")}</button></div>`
         : `<div class="ag-celda"><label class="ag-campo"><span>${t("Nombre","Name","Nome","שם")}</span><input id="agFNombre" data-ag-campo="nombre" maxlength="120" autocomplete="off" dir="auto" value="${esc(v.nombre)}" placeholder="${esc(t("Ej.: Daniel Kohan","E.g.: Daniel Kohan","Ex.: Daniel Kohan","לדוגמה: דניאל כהן"))}">${err("nombre")}</label>${sugerencias}</div>`}
-      ${!editar ? `<label class="ag-campo"><span>${t("Cargo","Role","Cargo","תפקיד")}</span><input id="agFCargo" data-ag-campo="cargo" maxlength="60" list="agCargos" dir="auto" value="${esc(v.cargo || "")}" placeholder="${esc(cargosSugeridos()[0])}"></label>` : ""}
+      ${!editar ? `<label class="ag-campo"><span>${t("Cargo","Role","Cargo","תפקיד")}</span><input id="agFCargo" data-ag-campo="cargo" maxlength="60" list="agCargos" dir="auto" value="${esc(v.cargo || "")}" placeholder="${esc(cargosSugeridos()[0])}"></label>` : ""}${!editar ? `</div>` : ""}
       <datalist id="agCargos">${cargosSugeridos().map(c => `<option value="${esc(c)}">`).join("")}</datalist>
       ${usada ? "" : `<div class="ag-campo"><span>${t("Teléfono","Phone","Telefone","טלפון")} <i>${t("· con el código del país","· with the country code","· com o código do país","· עם קידומת המדינה")}</i></span>
         ${v.tels.map((x, i) => `<div class="ag-tel-in"><input id="agFTel-${i}" data-ag-tel="${i}" inputmode="tel" dir="ltr" maxlength="40" value="${esc(x.n)}" placeholder="+54 9 11 …" aria-label="${esc(t("Teléfono {n}","Phone {n}","Telefone {n}","טלפון {n}",{ n: i + 1 }))}">
           <label class="ag-check"><input type="checkbox" id="agFWa-${i}" data-ag-wa="${i}"${x.wa ? " checked" : ""}> WhatsApp</label>
           ${v.tels.length > 1 ? `<button type="button" class="ag-quitar" data-action="agenda-form-tel-quitar" data-i="${i}" aria-label="${esc(t("Quitar este teléfono","Remove this phone","Remover este telefone","הסרת הטלפון"))}">✕</button>` : ""}</div>`).join("")}
         ${err("tels")}${v.tels.length < 6 ? `<button type="button" class="ag-link" data-action="agenda-form-tel-mas">+ ${t("Otro teléfono","Another phone","Outro telefone","טלפון נוסף")}</button>` : ""}</div>
+      <div class="ag-dos">
       <label class="ag-campo"><span>${t("Correo","Email","E-mail","דוא״ל")} <i>${t("· opcional","· optional","· opcional","· לא חובה")}</i></span><input id="agFCorreo" data-ag-campo="correo" type="email" dir="ltr" maxlength="200" value="${esc(v.correo)}" placeholder="${esc(t("nombre@ejemplo.org","name@example.org","nome@exemplo.org","name@example.org"))}">${err("correo")}</label>
-      <div class="ag-campo"><span>${t("Idiomas","Languages","Idiomas","שפות")} <i>${t("· opcional","· optional","· opcional","· לא חובה")}</i></span><div class="ag-chips">${IDIOMAS_AGENDA.map(([k, l]) => `<button type="button" class="ag-chip${v.idiomas.includes(k) ? " on" : ""}" data-action="agenda-form-idioma" data-k="${k}" aria-pressed="${v.idiomas.includes(k)}">${esc(l)}</button>`).join("")}</div></div>
+      <div class="ag-campo"><span>${t("Idiomas","Languages","Idiomas","שפות")} <i>${t("· opcional","· optional","· opcional","· לא חובה")}</i></span><div class="ag-chips">${IDIOMAS_AGENDA.map(([k, l]) => `<button type="button" class="ag-chip${v.idiomas.includes(k) ? " on" : ""}" data-action="agenda-form-idioma" data-k="${k}" aria-pressed="${v.idiomas.includes(k)}">${esc(l)}</button>`).join("")}</div></div></div>
       ${editar && (dondeEsta.length || v.sacar.length) ? `<div class="ag-campo"><span>${t("Dónde está","Where","Onde está","היכן")}</span>${dondeEsta.map(z => `<div class="ag-donde"><b dir="auto">${esc(z.x.name)}</b>
           <input id="agFCargo-${esc(z.c.id)}" data-ag-cargo="${esc(z.c.id)}" maxlength="60" list="agCargos" dir="auto" value="${esc(v.cargos[z.c.id] || "")}" aria-label="${esc(t("Cargo en {i}","Role at {i}","Cargo em {i}","תפקיד ב-{i}",{ i: z.x.name }))}" placeholder="${esc(t("Cargo","Role","Cargo","תפקיד"))}">
           <button type="button" class="ag-quitar" data-action="agenda-form-sacar" data-contacto="${esc(z.c.id)}" title="${esc(t("Ya no está ahí","No longer there","Não está mais lá","כבר לא שם"))}" aria-label="${esc(t("Sacar de {i}","Remove from {i}","Remover de {i}","הסרה מ-{i}",{ i: z.x.name }))}">✕</button></div>`).join("")}
@@ -21779,7 +21784,7 @@ function renderFichaLugar(L){
     if(!L.city || (!agendaAca.length && !canWrite())) return "";
     const r = resumenAgenda(agendaAca);
     const todos = fichaDesplegado.has("contactos") || fichaImprimiendo;
-    const verMas = n => n > HIJOS_A_LA_VISTA ? `<button type="button" class="fl-mas" data-action="ficha-desplegar" data-que="contactos">${fichaDesplegado.has("contactos") ? t("Ver menos","Show less","Ver menos","הצג פחות") : t("Ver los {n}","See all {n}","Ver os {n}","הצגת כל ה-{n}",{ n })}</button>` : "";
+    const verMas = n => n > HIJOS_A_LA_VISTA ? `<button type="button" class="fl-mas" data-action="ficha-desplegar" data-que="contactos">${fichaDesplegado.has("contactos") ? t("Ver menos","Show less","Ver menos","הצג פחות") : t("Ver más","See more","Ver mais","הצגת עוד")}</button>` : "";
     const enAgenda = agendaAca.length ? `<div class="fl-ag-pie"><button type="button" class="btn-secondary" data-action="agenda-abrir" data-country="${esc(L.country)}" data-city="${esc(L.city)}">${t("Ver Agenda","See Directory","Ver Agenda","לספר הטלפונים")}</button></div>` : "";
     const ver = todos ? agendaAca : agendaAca.slice(0, HIJOS_A_LA_VISTA);
     const cuerpo = agendaAca.length ? `<div class="fl-ag">${ver.map(x => `<div class="fl-ag-inst${x.estado === "cerrada" ? " cerrada" : ""}">

@@ -969,6 +969,26 @@ eligió **unirlas así**:
 Pruebas: `agenda_test.mjs` (país, región y ciudad; fallan con el código
 de antes) y `ficha_celular_test.mjs` vuelve a esperar cinco tarjetas.
 
+### 51. Tres retoques más a la Agenda — HECHO (9 oct 2026)
+
+Con una captura del celular (la tarjeta «Contactos en Buenos Aires
+(CABA)»):
+
+- **Al pie de una ficha ya no dice de qué lista vino** («De «Directorio
+  Chabad LatAm» · traída el 9 de oct de 2026») **ni quién la sumó**. Queda
+  solo «Corregido por … el …» cuando alguien la corrigió (lo que se
+  decidió el 8/10: la ficha muestra quién la tocó por última vez).
+- **«Sumar a alguien» sin barra de desplazamiento** en pantallas más
+  bajas: Nombre | Cargo y Correo | Idiomas van de a dos (en el celular,
+  uno debajo del otro), los chips de idioma un poco más chicos y la nota
+  más baja. Entra entero con 800 px de alto de pantalla.
+- **«Ver más»** en la tarjeta de contactos de una ciudad (decía «Ver los
+  40», que en el celular se partía en dos renglones), como en las demás
+  tarjetas del costado.
+
+Pruebas: `agenda_ventanas_test.mjs` (fallan con el código de antes) y
+`agenda_test.mjs` (el pie vacío).
+
 ### 50. El tamaño de las ventanas de la Agenda: la chica — HECHO (9 oct 2026)
 
 Después de las tandas 46 y 48 el usuario siguió sin estar conforme: «son
