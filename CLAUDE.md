@@ -31,7 +31,14 @@ decisiones de arquitectura.
   `docs/auditoria/historial/`) y
   `docs/RESTAURAR.md` (cómo volver atrás con una copia: workflow
   «Restaurar una copia», `supabase/respaldo/restaurar.mjs`). En la
-  raíz quedan solo `index.html`, `README.md` y este archivo.
+  raíz quedan solo `index.html`, `README.md` y este archivo. En
+  `herramientas/` van páginas sueltas que se publican con la app (hoy
+  `mapeo.html`, «Revisar el Mapeo»: abre el Excel de comunidades, lo
+  revisa como fichas y lo exporta con el mismo formato; ver
+  `herramientas/LEEME.md`). **El Excel del Mapeo tiene nombres y
+  teléfonos de personas: no se commitea ni se embebe en ninguna página**
+  (el repo y el sitio son públicos); la prueba usa una copia con gente
+  inventada, `pruebas/mapeo_de_prueba.xlsx`.
   Copias de seguridad (docs/REVISION.md, punto 13): andando desde el
   5/10/2026 — workflow «Copia de seguridad» (`supabase/respaldo/`) cada
   domingo al repo privado `team-latam/registro-respaldos`, y
@@ -132,7 +139,8 @@ reglas, sin que lo pida:
 
 Corre todas las pruebas de `index.html` (más de mil comprobaciones), la
 carga de la página y la app entera con la sesión iniciada contra un
-Supabase de mentira (`app_dom_test.mjs`). **Tiene que terminar en verde antes de
+Supabase de mentira (`app_dom_test.mjs`), y también las de
+`herramientas/` (`mapeo_test.mjs`). **Tiene que terminar en verde antes de
 cada commit que toque la app.** GitHub lo corre igual en cada push
 (`.github/workflows/app.yml`; en `main`, adentro de «Publicar el sitio»),
 y un push en rojo ya no se publica: queda en línea la versión anterior.

@@ -23,6 +23,7 @@ on:
     branches: [main]
     paths:
       - "index.html"
+      - "herramientas/**"
       - "supabase/**"
       - "pruebas/**"
       - ".github/workflows/app.yml"
@@ -87,14 +88,16 @@ jobs:
         if: steps.modo.outputs.listo == 'si'
         with: { persist-credentials: false }
 
-      # El sitio es index.html y nada más. Con la publicación desde la
-      # rama, GitHub servía también README, docs/, supabase/ y pruebas/
+      # El sitio es index.html y las páginas de herramientas/ (desde el
+      # 9/10/2026, «Revisar el Mapeo»), nada más. Con la publicación desde
+      # la rama, GitHub servía también README, docs/, supabase/ y pruebas/
       # pasados por Jekyll; nadie los abría desde ahí (se leen en el repo).
       - name: Armar lo que se publica
         if: steps.modo.outputs.listo == 'si'
         run: |
-          mkdir -p _sitio
+          mkdir -p _sitio/herramientas
           cp index.html _sitio/
+          cp herramientas/*.html _sitio/herramientas/
           touch _sitio/.nojekyll
 
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0

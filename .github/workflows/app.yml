@@ -13,6 +13,7 @@ on:
     branches-ignore: [main]
     paths:
       - "index.html"
+      - "herramientas/**"          # y mapeo_test, «Revisar el Mapeo»
       - "supabase/**"              # y sb_test, el adaptador de Supabase
       - "pruebas/**"
       - ".github/workflows/**"       # y workflows_test, las reglas de todos

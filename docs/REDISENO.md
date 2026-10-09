@@ -969,6 +969,61 @@ eligió **unirlas así**:
 Pruebas: `agenda_test.mjs` (país, región y ciudad; fallan con el código
 de antes) y `ficha_celular_test.mjs` vuelve a esperar cinco tarjetas.
 
+### 58. Revisar el Mapeo: el Excel de comunidades, ficha por ficha — HECHO (9 oct 2026)
+
+El usuario mandó «Mapeo - LatAm.xlsx» (una hoja: 81 comunidades en tres
+regiones —la primera sin nombre, NORTE y BRASIL—, cada una con ciudad,
+país, miembros, entidades, tamaño y la gente de diez áreas con su
+teléfono; listas desplegables, formato condicional, filas de TOTAL con
+fórmulas y un comentario) para «ordenar, confirmar y/o corregir la
+información» antes de subirla al sistema, y pidió hacerlo «en html, con
+una opción que luego permita exportarlo a excel, en exactamente el mismo
+formato … básicamente sería para actualizar el documento excel y no
+generar múltiples copias».
+
+- **`herramientas/mapeo.html`**, publicada con la app
+  (https://team-latam.github.io/registro-acciones/herramientas/mapeo.html)
+  y usable también abierta desde la compu. Sin datos adentro: el Excel
+  tiene nombres y teléfonos de personas y el sitio es público, así que
+  se abre desde el dispositivo y nada sale de él; el avance queda en el
+  navegador hasta exportar. Ver `herramientas/LEEME.md`.
+- Una ficha por comunidad, agrupadas por región con los colores de la
+  planilla; las listas desplegables son las del archivo; avisos en
+  amarillo con «Aplicar» cuando el arreglo es seguro (caracteres
+  invisibles de WhatsApp, espacios, «+» que falta, paréntesis sin
+  cerrar) y sin él cuando hay que mirar (dígitos de más o de menos para
+  el país del número, SI sin nadie, NO con alguien, país mal escrito,
+  ciudad repetida, datos vacíos); «Revisada» por ficha; buscar y
+  filtrar; sumar, quitar, mover y ordenar dentro de cada región.
+- **Exportar** reescribe los valores adentro del archivo original (un
+  zip con XML, abierto y cerrado por el navegador sin bibliotecas):
+  mismo nombre, mismos estilos, listas, formato condicional, filas
+  combinadas, comentario y tema. Si cambia el largo de una región, los
+  rangos y las fórmulas de los totales se estiran o acortan como en
+  Excel; los totales salen calculados y el archivo pide recalcular al
+  abrirse. Comprobado con el archivo real: sin cambios, idéntico celda
+  por celda y estilo por estilo; con cambios, LibreOffice lo abre y
+  recalcula sin errores.
+- Pruebas: `mapeo_test.mjs` con `mapeo_de_prueba.xlsx` (misma estructura,
+  gente inventada) y `mapeo_revisar_xlsx.py` (Python de serie, mira lo
+  exportado sin nada del código de la página); fallan con la página
+  rota. `pages.yml` y `app.yml` miran también `herramientas/`.
+- Queda para después, cuando la planilla esté confirmada: subirla a la
+  Agenda de la app.
+
+### 57. «+ Sumar» en una ciudad: sus instituciones primero — HECHO (9 oct 2026)
+
+Decisión chica que había quedado abierta: en una ciudad con varias
+instituciones, «+ Sumar» pedía elegirla entre todas las de la Agenda. Si
+se toca en la ficha de una ciudad, el desplegable arranca con un grupo
+«En Rosario» (la ciudad que sea) con las suyas, y sigue con las demás
+por país, sin repetir. Desde la Agenda en sí no cambia nada (no hay una
+ciudad de la que partir). Las otras dos decisiones chicas quedaron como
+estaban, como pidió el usuario: la lista «Ciudades» en la compu con su
+barra propia, y la Agenda cambiando de alto entre pantallas con el
+centro quieto. Prueba: `agenda_test.mjs` (el primer grupo es el de la
+ciudad, ninguna institución dos veces).
+
 ### 56. El logo de WhatsApp en el botón de WhatsApp — HECHO (9 oct 2026)
 
 El usuario preguntó si se podía poner el logo de WhatsApp en el botón que
