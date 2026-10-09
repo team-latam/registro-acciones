@@ -923,6 +923,32 @@ Lo que queda para más adelante, sin pedido todavía: las otras listas que
 va a mandar el usuario; un punto por institución en el mapa; avisar de
 contactos que hace mucho nadie revisa.
 
+### 46. La Agenda revisada: el teclado y las ventanas — HECHO (9 oct 2026)
+
+El usuario la probó en el celular y pidió «una revisión completa» del
+diseño, de cómo se abren las ventanas y del teclado que se abría solo. Se
+hizo con el método de la auditoría (`docs/AUDITORIA.md`, códigos A1 a
+A18) y se arregló todo lo encontrado:
+
+- **El teclado**: en el celular la Agenda abre con el foco en la ✕ o en
+  «Volver», no en el buscador (tampoco «Otra institución», «Limpiar» ni
+  «Es esta»).
+- **Las ventanas no cambian de tamaño al navegar**: con «📇 Agenda», la
+  ventana grande para todo (la ficha a dos columnas, el formulario
+  centrado); desde la ficha de un lugar o «Buscar en todo», la chica,
+  colgada de arriba; en el celular, siempre pantalla completa.
+- **«+ Sumar»** va al lado del título y no elige sola una institución
+  entre varias; la planilla, al final de la lista; la Agenda vacía dice
+  qué es y cómo se empieza.
+- En hebreo, una ciudad larguísima ya no se sale y la raya de lo vacío
+  queda del lado correcto; «Copiar» corto; el teléfono de la tarjeta
+  «Contactos en …» en su renglón.
+
+Las herramientas de la auditoría ahora miran la Agenda y revisan en cada
+ventana que el celular no abra el teclado solo. Pruebas:
+`pruebas/agenda_ventanas_test.mjs` (43; con el código de antes fallan 30).
+Falta que el usuario lo pruebe en su teléfono (A18).
+
 ## Fuera de alcance (necesitan algo que la app no tiene)
 
 - ~~Mandar correos (resumen semanal, invitaciones): no hay servicio de

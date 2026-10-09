@@ -25,9 +25,10 @@ decisiones de arquitectura.
   lo que queda), `docs/QUE-GUARDAR.md` (qué tener a mano para reconstruir)
   `docs/DOMINIO.md` (el plan, no ejecutado, de mudar el sitio a un
   dominio propio si `*.github.io` vuelve a bloquearse en Argentina) y
-  `docs/AUDITORIA.md` (la última auditoría, la de lo nuevo del 7/10/2026,
-  con la lista por prioridad; el detalle en `docs/auditoria/`, y la
-  completa del 6/10/2026 en `docs/auditoria/historial/`) y
+  `docs/AUDITORIA.md` (la última auditoría, la de la Agenda del 9/10/2026,
+  con la lista por prioridad; el detalle en `docs/auditoria/`, y las
+  anteriores, la completa del 6/10 y la de lo nuevo del 7/10, en
+  `docs/auditoria/historial/`) y
   `docs/RESTAURAR.md` (cómo volver atrás con una copia: workflow
   «Restaurar una copia», `supabase/respaldo/restaurar.mjs`). En la
   raíz quedan solo `index.html`, `README.md` y este archivo.

@@ -54,7 +54,7 @@ const BASE = () => ({
 });
 
 const b = await chromium.launch();
-async function entrar(email, nombre, { viewport, lang } = {}){
+async function entrar(email, nombre, { viewport, lang, retocar = x => x } = {}){
   const p = await b.newPage({ viewport: viewport || { width: 1280, height: 900 }, ...(viewport && viewport.width < 800 ? { hasTouch: true, isMobile: true } : {}) });
   const errores = [];
   p.on("pageerror", e => errores.push(String(e)));
@@ -68,7 +68,7 @@ async function entrar(email, nombre, { viewport, lang } = {}){
     window.__sb = { tablas: base, sesion, oyentes: [], rpc: [], escrituras: [], subidas: [], borradas: [], logins: [], canales: 0 };
     window.__pruebasSinIntegridad = true;
     try{ if(lang) localStorage.setItem("ra_lang", lang); }catch(e){}
-  }, [BASE(), { user: { id: "uuid-" + email, email, user_metadata: { full_name: nombre } } }, lang || ""]);
+  }, [retocar(BASE()), { user: { id: "uuid-" + email, email, user_metadata: { full_name: nombre } } }, lang || ""]);
   await p.goto("file://" + RUTA);
   await p.waitForSelector('[data-action="toggle-user-menu"]', { timeout: 8000 });
   return { p, errores };

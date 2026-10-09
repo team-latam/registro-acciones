@@ -12,7 +12,10 @@
    - que se anuncie como ventana (role="dialog" y aria-modal);
    - que el foco entre al abrirla, que Tab no se escape, que Escape la
      cierre y que el foco vuelva al botón que la abrió (CLAUDE.md, «Modales
-     accesibles»).
+     accesibles»);
+   - y en el celular, que al abrirla el foco no caiga en un campo de texto:
+     eso abre el teclado solo y tapa media ventana (lo mostró el usuario en
+     la Agenda, 9/10/2026; la regla de la app es la ✕, ver focusIntoComposer).
    AUDITORIA_PANTALLAS limita las combinaciones ("1280x800:es,390x844:he").
    ====================================================================== */
 import { abrirNavegador, entrar, ADMIN, BASE, revisarRecortes, recorrerApp, tab, click, cerrar } from "../../pruebas/app_de_mentira.mjs";
@@ -50,27 +53,46 @@ const VENTANAS = [
     () => { const base = BASE(); base.posts[0].files = (base.posts[0].files || []).concat([{ name: "Nota suelta.pdf", path: `posts/${base.posts[0].id}/nota.pdf` }]); return base; }],
   ["Evento del Calendario", async p => { await tab(p, "calendario"); await p.waitForTimeout(300); return '[data-action="cal-open"]'; }],
   ["Ficha de un posteo (desde un lugar)", async p => { await tab(p, "paises"); await click(p, '[data-action="drill-country"]'); await p.waitForTimeout(400); return '[data-action="ficha-abrir"]'; }],
+  // La Agenda (8/10/2026): la ventana, y lo que se abre desde la ficha de un lugar.
+  ["Agenda", async p => { await tab(p, "paises"); await p.waitForTimeout(300); return ".paises-agenda"; }],
+  ["Agenda: una persona (desde la ficha de un lugar)", async p => { await rosario(p); return '.fl-ag-inst [data-action="agenda-ver-persona"]'; }],
+  ["Agenda: sumar a alguien (desde la ficha de un lugar)", async p => { await rosario(p); return '.fl-ag-inst [data-action="agenda-sumar"]'; }],
+  // «Buscar en todo» no está en pantallas angostas (menos de 900 px): ahí no se revisa.
+  ["Agenda: una institución (desde Buscar en todo)", async p => { if(!await p.isVisible("#globalSearchInput")) return null; await p.fill("#globalSearchInput", "Rosario"); await p.waitForTimeout(300); return '[data-action="gs-institucion"]'; }],
 ];
+// La ficha de Rosario, con la tarjeta de contactos abierta (en el celular viene plegada).
+async function rosario(p){
+  await tab(p, "paises"); await click(p, '[data-action="drill-country"][data-country="Argentina"]'); await p.waitForTimeout(400);
+  // Con un clic de la página: en el celular la tarjeta «Ciudades» viene plegada.
+  await p.evaluate(() => { const b = document.querySelector('[data-action="drill-city"][data-city="Rosario"]'); b && b.click(); }); await p.waitForTimeout(400);
+  await p.evaluate(() => { const b = document.querySelector('.fl-pliegue[data-que="contactos"][aria-expanded="false"]'); if(b && b.offsetParent) b.click(); }); await p.waitForTimeout(200);
+}
 for(const vp of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]){
   for(const [nombre, preparar, datos] of VENTANAS){
     const { p } = await entrar(b, ADMIN, "Benny Rosenthal", { viewport: vp, base: datos ? datos() : undefined });
     const donde = `${nombre} (${vp.width})`;
     const sel = await preparar(p);
+    if(sel === null){ await p.close(); continue; }   // no aplica en este tamaño
     const boton = await p.$(sel);
     if(!boton){ out.push(hallazgo("ventanas", "dato", "No se pudo abrir para revisar", donde, sel)); await p.close(); continue; }
+    await boton.evaluate(e => e.setAttribute("data-auditoria-abre", "1"));
     await boton.focus(); await p.keyboard.press("Enter"); await p.waitForTimeout(500);
     const r = await p.evaluate(() => {
       const seVe = e => e.getClientRects().length > 0 && getComputedStyle(e).visibility !== "hidden";
       const d = [...document.querySelectorAll('[role="dialog"], .modal-overlay:not([hidden]), #lightbox.show, .visor-doc:not([hidden])')].filter(seVe).pop();
       if(!d) return null;
       const dlg = d.matches('[role="dialog"]') ? d : d.querySelector('[role="dialog"]') || d;
-      return { rol: dlg.getAttribute("role"), modal: dlg.getAttribute("aria-modal"), nombre: !!(dlg.getAttribute("aria-label") || dlg.getAttribute("aria-labelledby")), foco: dlg.contains(document.activeElement) };
+      const a = document.activeElement;
+      const deTexto = !!a && (a.isContentEditable || a.tagName === "TEXTAREA" || (a.tagName === "INPUT" && !/^(checkbox|radio|button|submit|reset|file|range|color|hidden)$/i.test(a.type)));
+      return { rol: dlg.getAttribute("role"), modal: dlg.getAttribute("aria-modal"), nombre: !!(dlg.getAttribute("aria-label") || dlg.getAttribute("aria-labelledby")), foco: dlg.contains(a), deTexto,
+        tactil: matchMedia("(hover: none) and (pointer: coarse)").matches };
     });
     if(!r){ out.push(hallazgo("ventanas", "medio", "Con Enter no se abre", donde, sel)); await p.close(); continue; }
     if(r.rol !== "dialog") out.push(hallazgo("ventanas", "medio", "No se anuncia como ventana (role=dialog)", donde));
     if(r.modal !== "true") out.push(hallazgo("ventanas", "bajo", "Le falta aria-modal", donde));
     if(!r.nombre) out.push(hallazgo("ventanas", "bajo", "La ventana no tiene nombre para lectores de pantalla", donde));
     if(!r.foco) out.push(hallazgo("ventanas", "medio", "Al abrir, el foco no entra a la ventana", donde));
+    if(r.tactil && r.deTexto) out.push(hallazgo("ventanas", "importante", "En el celular, al abrirla se abre el teclado solo (el foco cae en un campo de texto)", donde));
     // Tab 25 veces: el foco no se tiene que ir afuera.
     let escapo = false;
     for(let i = 0; i < 25 && !escapo; i++){
@@ -80,7 +102,11 @@ for(const vp of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]){
     if(escapo) out.push(hallazgo("ventanas", "medio", "Con Tab, el foco se escapa de la ventana", donde));
     await p.keyboard.press("Escape"); await p.waitForTimeout(350);
     const despues = await p.evaluate(sel => ({ abierta: [...document.querySelectorAll('[role="dialog"]')].some(e => e.getClientRects().length > 0 && getComputedStyle(e).visibility !== "hidden"),
-      volvio: !!document.activeElement && (document.activeElement.matches(sel) || !!document.activeElement.closest(sel.split(",")[0])) }), sel);
+      // Si el botón que la abrió ya no existe (un resultado de «Buscar en
+      // todo», que se cierra al elegir), alcanza con que el foco no se pierda.
+      volvio: !!document.activeElement && (document.querySelector("[data-auditoria-abre]")
+        ? (document.activeElement.matches(sel) || !!document.activeElement.closest(sel.split(",")[0]))
+        : document.activeElement !== document.body) }), sel);
     if(despues.abierta) out.push(hallazgo("ventanas", "medio", "Escape no la cierra", donde));
     else if(!despues.volvio) out.push(hallazgo("ventanas", "bajo", "Al cerrar, el foco no vuelve al botón que la abrió", donde));
     await p.close();

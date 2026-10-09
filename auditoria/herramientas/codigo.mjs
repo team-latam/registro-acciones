@@ -33,7 +33,9 @@ for(const d of decl){
 /* --- data-action contra el despachador --- */
 const emitidas = new Set([...html.matchAll(/data-action="([a-z0-9-]+)"/g)].map(x => x[1]));
 const dinamicas = [...html.matchAll(/data-action="([a-z0-9-]*)\$\{/g)].map(x => x[1]);   // "rm-scope-${...}"
-const ramas = new Set([...js.matchAll(/^\s{4}"([a-z0-9-]+)":\s*async/gm)].map(x => x[1]));
+// Las ramas del despachador (CLICK_ACTIONS, con cuatro espacios) y las de
+// la Agenda (AGENDA_ACCIONES y su Object.assign, con dos; 8/10/2026).
+const ramas = new Set([...js.matchAll(/^\s{4}"([a-z0-9-]+)":\s*async/gm), ...js.matchAll(/^\s{2}"([a-z0-9-]+)":\s*(?:async\s*)?\(/gm)].map(x => x[1]));
 const otras = new Set([...js.matchAll(/action\s*===\s*"([a-z0-9-]+)"|dataset\.action\s*===\s*"([a-z0-9-]+)"/g)].map(x => x[1] || x[2]));
 for(const a of emitidas){
   if(!ramas.has(a) && !otras.has(a)) out.push(hallazgo("código", "medio", `El botón «${a}» no tiene quién lo atienda`, "", "data-action sin rama en el despachador ni en los listeners de change/input"));

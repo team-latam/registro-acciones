@@ -67,6 +67,29 @@ export function datos(){
     base.replies.push({ id: "vr" + i, post_id: "v" + entre(0, VOLUMEN - 1), content: raro() + " " + texto(0, 30), author_name: uno(PERS).name,
       author_email: uno(PERS).email, scopes: [], links: [], images: [], files: [], mentions: [], liked_by: [], system: false, created_at: hace(entre(0, 100)) });
   }
+  // La Agenda (8/10/2026): instituciones y gente con nombres raros y HTML
+  // metido en cada campo. Los teléfonos, con la forma que deja la base
+  // (telefonos_ok): solo números, +, espacios, guiones, puntos, paréntesis.
+  const nInst = Math.min(400, Math.round(VOLUMEN / 4)), nGente = Math.round(nInst * 0.8);
+  for(let i = 0; i < nGente; i++){
+    base.personas.push({ id: "vp" + i, name: (raro() || "Nadie").slice(0, 120), email: azar() < 0.2 ? "p" + i + "@ejemplo.org" : null, note: azar() < 0.2 ? raro() : null,
+      telefonos: Array.from({ length: entre(0, 3) }, () => ({ n: uno(["+54 9 11 ", "+972-52-", "(598) 99 ", "+1.305."]) + entre(1000000, 9999999), wa: azar() < 0.7 })),
+      idiomas: azar() < 0.3 ? ["es", uno(["he", "pt", "en"])] : [], lista: azar() < 0.6 ? "lista1" : null, created_by: uno(PERS).email, created_at: hace(entre(0, 60)),
+      tocado_por: azar() < 0.2 ? uno(PERS).email : null, tocado_el: azar() < 0.2 ? hace(entre(0, 30)) : null });
+  }
+  for(let i = 0; i < nInst; i++){
+    base.instituciones.push({ id: "vi" + i, name: (raro() || "Sin nombre").slice(0, 160), country: uno(PAISES.concat(["País " + uno(VENENO)])),
+      city: uno(["Rosario", "Córdoba", "Montevideo", raro(), null]), address: azar() < 0.5 ? raro() : null,
+      tipo: azar() < 0.8 ? uno(["Centro Comunitario", "Sinagoga", raro().slice(0, 60)]) : null, estado: uno(["activa", "activa", "temporada", "cerrada"]),
+      nota: azar() < 0.2 ? raro() : null, lista: azar() < 0.7 ? "lista1" : null, created_by: uno(PERS).email, created_at: hace(entre(0, 60)) });
+    const vistos = new Set();
+    for(let k = entre(0, 3); k > 0; k--){
+      const per = "vp" + entre(0, nGente - 1);
+      if(vistos.has(per)) continue; vistos.add(per);
+      base.contactos.push({ id: "vc" + i + "_" + k, institucion: "vi" + i, persona: per, cargo: azar() < 0.7 ? raro().slice(0, 60) : null, orden: k, created_at: hace(1) });
+    }
+  }
+  base.agenda_listas.push({ id: "lista2", name: raro() || "Lista", created_by: PERS[0].email, created_at: hace(1) });
   return base;
 }
 
