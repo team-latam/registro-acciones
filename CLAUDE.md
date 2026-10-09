@@ -45,9 +45,11 @@ decisiones de arquitectura.
   equipo, y desde el 7/10/2026 el remitente de los avisos de Resend) está
   en **Squarespace** (account.squarespace.com/domains, la ex Google
   Domains) y **vence el 12/12/2026**, con renovación automática: confirmar
-  antes de esa fecha que se renovó y que la tarjeta sigue vigente. Si se
-  cae el dominio, se cae el correo `@team-latam.com` y con él el login del
-  admin. Claude no puede crear repos en la cuenta `team-latam` (es una
+  antes de esa fecha que se renovó y que la tarjeta sigue vigente. El
+  usuario pidió (9/10/2026) que Claude lo ayude a renovarlo: desde el
+  1/12/2026, al empezar cualquier sesión, recordárselo y guiarlo paso a
+  paso. Si se cae el dominio, se cae el correo `@team-latam.com` y con él
+  el login del admin. Claude no puede crear repos en la cuenta `team-latam` (es una
   cuenta de usuario; la conexión de GitHub no tiene ese permiso).
 
 ## Auditorías — `auditoria/`
