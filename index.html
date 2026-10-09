@@ -2845,12 +2845,13 @@
   .paises-agenda{ border:1px solid var(--border); background:var(--card); color:var(--ink); border-radius:999px; padding:8px 16px; font-weight:700; font-size:13px; cursor:pointer; }
   .paises-agenda:hover{ background:var(--surface-alt); }
   /* ----- La Agenda (8/10/2026): la ventana ----- */
-  /* Siempre del mismo tamaño, se abra desde donde se abra y vaya a la
-     vista que vaya: antes saltaba de 1040 a 620 de ancho y de alto con cada
-     ficha, y después una ficha abierta desde un lugar iba en una ventana
-     más chica; el usuario pidió que todo tenga el tamaño de la Agenda
-     (9/10/2026). */
-  .agenda-modal{ max-width:1040px; height:min(880px, 92vh); padding:0; overflow:hidden; }
+  /* Chica y a medida (la C de tres que vio el usuario el 9/10/2026; antes
+     fue grande para todo y «abarcaba todo a la vista»): 620 de ancho,
+     siempre en el mismo lugar (arranca arriba) y con el alto que necesita
+     cada vista, hasta un tope; la lista, siempre alta, así no cambia con
+     cada letra que se busca. Todo en una columna, como en el celular. */
+  .agenda-modal{ max-width:620px; height:auto; max-height:min(720px, 85vh); margin:16px 0 auto; padding:0; overflow:hidden; }
+  @media (min-width:641px){ .agenda-modal:has(.ag-lista){ height:min(720px, 85vh); } }   /* en el celular, pantalla completa como todo lo demás */
   .ag-cab-acc{ flex:none; align-self:center; padding:8px 16px; }
   .agenda-body{ display:flex; flex-direction:column; min-height:0; flex:1; }
   .ag-cab{ display:flex; gap:12px; align-items:flex-start; padding:18px 22px 12px; padding-inline-end:56px; border-bottom:1px solid var(--border); flex:none; }
@@ -2862,19 +2863,8 @@
   .ag-acc .btn-secondary{ padding:7px 13px; font-size:12.5px; text-decoration:none; }
   .ag-cuerpo{ padding:14px 22px 18px; overflow:auto; min-height:0; flex:1; display:flex; flex-direction:column; gap:12px; }
   .agenda-modal .ag-cuerpo{ background:var(--bg); }
-  /* Una ficha o un formulario dentro de la ventana grande: en blanco, y a
-     dos columnas (la ficha) o en una columna centrada (el formulario), en
-     vez de renglones de punta a punta. */
+  /* Una ficha o un formulario: en blanco (la lista va sobre gris). */
   .agenda-modal .ag-ficha, .agenda-modal .ag-form{ background:var(--card); }
-  @media (min-width:900px){
-    .agenda-modal .ag-ficha{ display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); align-content:start; gap:18px 32px; }
-    .agenda-modal .ag-ficha > section:nth-child(n+3){ grid-column:1 / -1; }
-    /* El formulario a lo ancho, en dos columnas: centrado en una columna de
-       620 px dejaba blanco a los costados y había que desplazarlo para
-       llegar a Guardar (lo mostró el usuario el 9/10/2026). */
-    .agenda-modal .ag-form{ display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); align-content:start; gap:14px 28px; }
-    .agenda-modal .ag-form > .ag-ancho{ grid-column:1 / -1; }
-  }
   /* La Agenda vacía */
   .ag-vacia{ margin:auto; max-width:420px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:8px; padding:24px 8px; }
   .ag-vacia-ic{ font-size:34px; }
@@ -2883,8 +2873,8 @@
   .ag-vacia-acc{ display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin-top:8px; }
   .ag-planilla{ display:flex; justify-content:center; padding:4px 0 2px; }
   .ag-barra{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
-  .ag-barra input[type=search]{ flex:1 1 220px; min-width:0; padding:10px 12px; border-radius:var(--radius-sm); border:1.5px solid var(--border); font-size:14px; background:var(--card); color:var(--text); }
-  .ag-barra select{ max-width:190px; padding:9px 10px; border-radius:var(--radius-sm); border:1.5px solid var(--border); font-size:13px; font-weight:600; background:var(--card); color:var(--ink); }
+  .ag-barra input[type=search]{ flex:1 1 100%; min-width:0; padding:10px 12px; border-radius:var(--radius-sm); border:1.5px solid var(--border); font-size:14px; background:var(--card); color:var(--text); }
+  .ag-barra select{ flex:1 1 40%; padding:9px 10px; border-radius:var(--radius-sm); border:1.5px solid var(--border); font-size:13px; font-weight:600; background:var(--card); color:var(--ink); }
   .ag-resumen{ font-size:13.5px; display:flex; flex-wrap:wrap; gap:6px 12px; align-items:center; color:var(--text); }
   .ag-resumen b{ color:var(--ink-strong); }
   .ag-link{ background:none; border:none; padding:0; font:inherit; font-size:12.5px; font-weight:700; color:var(--celeste-dark); cursor:pointer; text-decoration:none; text-align:start; }
@@ -2903,7 +2893,7 @@
   .ag-ciudad button, .ag-ciudad span{ background:none; border:none; padding:0; font:inherit; font-size:11.5px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--text-muted); max-width:100%; min-width:0; overflow-wrap:anywhere; text-align:start; }
   .ag-ciudad button{ cursor:pointer; }
   .ag-ciudad button:hover{ color:var(--celeste-dark); text-decoration:underline; }
-  .ag-fila{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.2fr); gap:6px 16px; padding:10px 16px; border-top:1px solid var(--border); align-items:start; }
+  .ag-fila{ display:grid; grid-template-columns:minmax(0,1fr); gap:6px 16px; padding:10px 16px; border-top:1px solid var(--border); align-items:start; }
   .ag-fila.cerrada, .fl-ag-inst.cerrada{ opacity:.6; }
   .ag-inst{ display:flex; flex-direction:column; gap:1px; background:none; border:none; padding:2px 0; text-align:start; cursor:pointer; color:inherit; font:inherit; min-width:0; }
   .ag-inst b{ font-size:14px; color:var(--ink); overflow-wrap:anywhere; }
@@ -2948,8 +2938,9 @@
   .ag-pie-acc button{ padding:9px 16px; }
   .btn-secondary.peligro{ color:var(--danger-text); }
   /* Los formularios */
-  .ag-form{ gap:14px; }
+  .ag-form{ gap:12px; }   /* con 14, «Sumar a alguien» quedaba 8 px más alto que la ventana y aparecía la barra */
   .ag-campo, .ag-celda{ display:flex; flex-direction:column; gap:5px; min-width:0; }
+  .ag-dos{ display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:12px; }
   .ag-celda{ gap:8px; }
   .ag-campo > span{ font-size:12px; font-weight:800; color:var(--ink); }
   .ag-campo > span i{ font-style:normal; font-weight:600; color:var(--text-muted); }
@@ -3010,15 +3001,14 @@
   @media (max-width:640px){
     /* En el celular, toda vista de la Agenda ocupa la pantalla: antes la
        lista sí y una ficha era una tarjeta flotando sobre la página. */
-    .agenda-modal{ height:calc(var(--vvh, 100dvh) - 20px); max-height:calc(var(--vvh, 100dvh) - 20px); }
+    .agenda-modal{ height:calc(var(--vvh, 100dvh) - 20px); max-height:calc(var(--vvh, 100dvh) - 20px); margin:0; }
     .ag-cab-acc{ padding:7px 12px; font-size:13px; }
     .ag-cab{ padding:14px 16px 10px; padding-inline-end:48px; }
     .ag-cuerpo{ padding:12px 14px 16px; }
     .ag-pie{ padding:10px 14px; }
-    .ag-fila{ grid-template-columns:minmax(0,1fr); padding:10px 12px; }
+    .ag-fila{ padding:10px 12px; }
     .ag-ciudad{ padding:10px 12px 2px; }
     .ag-pais-h{ padding:10px 12px; flex-wrap:wrap; }
-    .ag-barra select{ flex:1 1 40%; max-width:none; }
     .ag-dl{ grid-template-columns:88px minmax(0,1fr); }
   }
   /* ----- Reportes ----- */
@@ -20806,11 +20796,11 @@ function agendaVistaForm(v){
         ${err("tels")}${v.tels.length < 6 ? `<button type="button" class="ag-link" data-action="agenda-form-tel-mas">+ ${t("Otro teléfono","Another phone","Outro telefone","טלפון נוסף")}</button>` : ""}</div>
       <label class="ag-campo"><span>${t("Correo","Email","E-mail","דוא״ל")} <i>${t("· opcional","· optional","· opcional","· לא חובה")}</i></span><input id="agFCorreo" data-ag-campo="correo" type="email" dir="ltr" maxlength="200" value="${esc(v.correo)}" placeholder="${esc(t("nombre@ejemplo.org","name@example.org","nome@exemplo.org","name@example.org"))}">${err("correo")}</label>
       <div class="ag-campo"><span>${t("Idiomas","Languages","Idiomas","שפות")} <i>${t("· opcional","· optional","· opcional","· לא חובה")}</i></span><div class="ag-chips">${IDIOMAS_AGENDA.map(([k, l]) => `<button type="button" class="ag-chip${v.idiomas.includes(k) ? " on" : ""}" data-action="agenda-form-idioma" data-k="${k}" aria-pressed="${v.idiomas.includes(k)}">${esc(l)}</button>`).join("")}</div></div>
-      ${editar && (dondeEsta.length || v.sacar.length) ? `<div class="ag-campo ag-ancho"><span>${t("Dónde está","Where","Onde está","היכן")}</span>${dondeEsta.map(z => `<div class="ag-donde"><b dir="auto">${esc(z.x.name)}</b>
+      ${editar && (dondeEsta.length || v.sacar.length) ? `<div class="ag-campo"><span>${t("Dónde está","Where","Onde está","היכן")}</span>${dondeEsta.map(z => `<div class="ag-donde"><b dir="auto">${esc(z.x.name)}</b>
           <input id="agFCargo-${esc(z.c.id)}" data-ag-cargo="${esc(z.c.id)}" maxlength="60" list="agCargos" dir="auto" value="${esc(v.cargos[z.c.id] || "")}" aria-label="${esc(t("Cargo en {i}","Role at {i}","Cargo em {i}","תפקיד ב-{i}",{ i: z.x.name }))}" placeholder="${esc(t("Cargo","Role","Cargo","תפקיד"))}">
           <button type="button" class="ag-quitar" data-action="agenda-form-sacar" data-contacto="${esc(z.c.id)}" title="${esc(t("Ya no está ahí","No longer there","Não está mais lá","כבר לא שם"))}" aria-label="${esc(t("Sacar de {i}","Remove from {i}","Remover de {i}","הסרה מ-{i}",{ i: z.x.name }))}">✕</button></div>`).join("")}
           ${v.sacar.length ? `<small class="ag-nota">${esc(t("Al guardar, deja de figurar en {n}.","When saved, they'll no longer be listed in {n}.","Ao salvar, deixa de constar em {n}.","בשמירה, יוסר/תוסר מ-{n}.",{ n: cuantasInstituciones(v.sacar.length) }))} <button type="button" class="ag-link" data-action="agenda-form-no-sacar">${t("Deshacer","Undo","Desfazer","ביטול")}</button></small>` : ""}</div>` : ""}
-      <label class="ag-campo ag-ancho"><span>${t("Nota","Note","Nota","הערה")} <i>${t("· opcional, hasta 300 letras","· optional, up to 300 characters","· opcional, até 300 letras","· לא חובה, עד 300 תווים")}</i></span><textarea id="agFNota" data-ag-campo="nota" maxlength="300" rows="2" dir="auto" placeholder="${esc(t("Ej.: prefiere que le escriban antes de llamar","E.g.: prefers a message before a call","Ex.: prefere mensagem antes de ligar","לדוגמה: מעדיף/ה הודעה לפני שיחה"))}">${esc(v.nota)}</textarea></label>`}
+      <label class="ag-campo"><span>${t("Nota","Note","Nota","הערה")} <i>${t("· opcional, hasta 300 letras","· optional, up to 300 characters","· opcional, até 300 letras","· לא חובה, עד 300 תווים")}</i></span><textarea id="agFNota" data-ag-campo="nota" maxlength="300" rows="2" dir="auto" placeholder="${esc(t("Ej.: prefiere que le escriban antes de llamar","E.g.: prefers a message before a call","Ex.: prefere mensagem antes de ligar","לדוגמה: מעדיף/ה הודעה לפני שיחה"))}">${esc(v.nota)}</textarea></label>`}
     </form>
     <div class="ag-pie"><span></span><span class="ag-pie-acc"><button type="button" class="btn-secondary" data-action="agenda-volver">${t("Cancelar","Cancel","Cancelar","ביטול")}</button>
       <button type="button" class="btn-primary" data-action="agenda-guardar"${agendaGuardando ? " disabled" : ""}>${agendaGuardando ? t("Guardando…","Saving…","Salvando…","שומר…") : t("Guardar","Save","Salvar","שמירה")}</button></span></div>`;
@@ -20876,11 +20866,15 @@ function agendaVistaFormInst(v){
     + `<form class="ag-cuerpo ag-form" id="agendaFormInst" novalidate>
       <label class="ag-campo"><span>${t("Nombre","Name","Nome","שם")}</span><input id="agINombre" data-ag-campo="name" maxlength="160" dir="auto" value="${esc(v.name)}" placeholder="${esc(t("Ej.: Beit Chabad Rosario","E.g.: Beit Chabad Rosario","Ex.: Beit Chabad Rosario","לדוגמה: בית חב״ד רוסאריו"))}">${err("name")}</label>
       <label class="ag-campo"><span>${t("Dirección","Address","Endereço","כתובת")} <i>${t("· opcional","· optional","· opcional","· לא חובה")}</i></span><input id="agIDir" data-ag-campo="address" maxlength="300" dir="auto" value="${esc(v.address)}"></label>
-      <label class="ag-campo"><span>${t("País","Country","País","מדינה")}</span><select id="agIPais" data-ag-campo="country"><option value="">—</option>${todosLosPaises().map(c => `<option value="${esc(c)}"${c === v.country ? " selected" : ""}>${esc(countryLabel(c))}</option>`).join("")}</select>${err("country")}</label>
-      <label class="ag-campo"><span>${t("Ciudad","City","Cidade","עיר")}</span><select id="agICiudad" data-ag-campo="city"${v.country ? "" : " disabled"}><option value="">—</option>${ciudades.map(c => `<option value="${esc(c)}"${normalize(c) === normalize(v.city) ? " selected" : ""}>${esc(cityLabel(v.country, c))}</option>`).join("")}</select></label>
-      <label class="ag-campo"><span>${t("Tipo","Type","Tipo","סוג")}</span><input id="agITipo" data-ag-campo="tipo" maxlength="60" list="agTipos" dir="auto" value="${esc(v.tipo)}"><datalist id="agTipos">${[...new Set(state.instituciones.map(x => x.tipo).filter(Boolean))].sort().map(x => `<option value="${esc(x)}">`).join("")}</datalist></label>
-      <label class="ag-campo"><span>${t("Estado","Status","Situação","מצב")}</span><select id="agIEstado" data-ag-campo="estado">${["activa", "temporada", "cerrada"].map(e => `<option value="${e}"${e === v.estado ? " selected" : ""}>${esc(estadoDeInstitucion(e))}</option>`).join("")}</select></label>
-      <label class="ag-campo ag-ancho"><span>${t("Nota","Note","Nota","הערה")} <i>${t("· opcional, hasta 300 letras","· optional, up to 300 characters","· opcional, até 300 letras","· לא חובה, עד 300 תווים")}</i></span><textarea id="agINota" data-ag-campo="nota" maxlength="300" rows="2" dir="auto">${esc(v.nota)}</textarea></label>
+      <div class="ag-dos">
+        <label class="ag-campo"><span>${t("País","Country","País","מדינה")}</span><select id="agIPais" data-ag-campo="country"><option value="">—</option>${todosLosPaises().map(c => `<option value="${esc(c)}"${c === v.country ? " selected" : ""}>${esc(countryLabel(c))}</option>`).join("")}</select>${err("country")}</label>
+        <label class="ag-campo"><span>${t("Ciudad","City","Cidade","עיר")}</span><select id="agICiudad" data-ag-campo="city"${v.country ? "" : " disabled"}><option value="">—</option>${ciudades.map(c => `<option value="${esc(c)}"${normalize(c) === normalize(v.city) ? " selected" : ""}>${esc(cityLabel(v.country, c))}</option>`).join("")}</select></label>
+      </div>
+      <div class="ag-dos">
+        <label class="ag-campo"><span>${t("Tipo","Type","Tipo","סוג")}</span><input id="agITipo" data-ag-campo="tipo" maxlength="60" list="agTipos" dir="auto" value="${esc(v.tipo)}"><datalist id="agTipos">${[...new Set(state.instituciones.map(x => x.tipo).filter(Boolean))].sort().map(x => `<option value="${esc(x)}">`).join("")}</datalist></label>
+        <label class="ag-campo"><span>${t("Estado","Status","Situação","מצב")}</span><select id="agIEstado" data-ag-campo="estado">${["activa", "temporada", "cerrada"].map(e => `<option value="${e}"${e === v.estado ? " selected" : ""}>${esc(estadoDeInstitucion(e))}</option>`).join("")}</select></label>
+      </div>
+      <label class="ag-campo"><span>${t("Nota","Note","Nota","הערה")} <i>${t("· opcional, hasta 300 letras","· optional, up to 300 characters","· opcional, até 300 letras","· לא חובה, עד 300 תווים")}</i></span><textarea id="agINota" data-ag-campo="nota" maxlength="300" rows="2" dir="auto">${esc(v.nota)}</textarea></label>
     </form>
     <div class="ag-pie"><span></span><span class="ag-pie-acc"><button type="button" class="btn-secondary" data-action="agenda-volver">${t("Cancelar","Cancel","Cancelar","ביטול")}</button>
       <button type="button" class="btn-primary" data-action="agenda-inst-guardar"${agendaGuardando ? " disabled" : ""}>${agendaGuardando ? t("Guardando…","Saving…","Salvando…","שומר…") : t("Guardar","Save","Salvar","שמירה")}</button></span></div>`;
