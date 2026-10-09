@@ -126,6 +126,11 @@
   .grupo.solo{ grid-template-columns:minmax(110px, 36%); }
   .grupo .titulo{ grid-column:1 / -1; font-size:11px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:var(--petroleo); }
   .grupo .campo > span{ display:none; }
+  .grupo.nuevo{ outline:2px dashed var(--cambio); outline-offset:-2px; }
+  .grupo .titulo i{ font-style:normal; font-weight:600; color:var(--cambio); text-transform:none; letter-spacing:0; }
+  .quitar-posicion{ background:none; border:0; color:var(--text-muted); font-size:13px; padding:0 4px; vertical-align:middle; }
+  .quitar-posicion:hover{ color:var(--danger-text); }
+  .otra-persona{ align-self:flex-end; font-size:12px; padding:0 2px; margin-top:-1px; }
   .grupo .campo .avisos{ grid-column:1 / -1; }
   .avisos{ display:flex; flex-direction:column; gap:4px; margin-top:4px; }
   .aviso{ display:flex; gap:6px; align-items:center; flex-wrap:wrap; font-size:12px; color:var(--warn-text); background:var(--warn-bg); border:1px solid var(--warn-border); border-radius:var(--radius-sm); padding:3px 8px; }
@@ -378,6 +383,104 @@ function moverTodo(xml, desde, delta, expandirFin){
   return moverSqrefs(xml, desde, delta, expandirFin).replace(/(\sref="|<formula>|<f[^>]*>|<definedName\b[^>]*>|activeCell="|topLeftCell=")([^"<]*)/g, (m, pre, cuerpo) => pre + moverTexto(cuerpo, desde, delta, expandirFin));
 }
 
+// Lo mismo, en columnas: todo lo que esté en la columna `desde` o más a la
+// derecha se corre `delta`; un rango que termina en `expandirFin` se estira.
+function moverRangoCol(ref, desde, delta, expandirFin){
+  const partes = ref.split(":").map(partirRef);
+  if(partes.some(p => !p)) return ref;
+  const [a, b] = partes.length === 2 ? partes : [partes[0], partes[0]];
+  const ca = letraACol(a.col), cb = letraACol(b.col);
+  // Se estira lo que abarca la mitad entera: el encabezado de la fila 1 y los
+  // rangos de datos (varias filas). Un par de encabezado de la fila 2 (M2:N2)
+  // termina ahí mismo y no se estira: la posición nueva trae el suyo.
+  const estirar = cb === expandirFin && (a.fila !== b.fila || a.fila === 1);
+  const na = ca >= desde ? ca + delta : ca, nb = (cb >= desde || estirar) ? cb + delta : cb;
+  const arma = (orig, n) => orig.replace(/^(\$?)[A-Z]{1,3}/, (m, d) => d + colALetra(n));
+  if(partes.length === 1) return arma(ref, na);
+  const [s1, s2] = ref.split(":");
+  return arma(s1, na) + ":" + arma(s2, nb);
+}
+const moverTextoCol = (texto, desde, delta, expandirFin) => texto.replace(/\$?[A-Z]{1,3}\$?\d+(?::\$?[A-Z]{1,3}\$?\d+)?/g, m => moverRangoCol(m, desde, delta, expandirFin));
+function moverTodoCol(xml, desde, delta, expandirFin){
+  return xml.replace(/(\sref="|\ssqref="|<formula>|<f[^>]*>|<definedName\b[^>]*>|activeCell="|topLeftCell=")([^"<]*)/g, (m, pre, cuerpo) => pre + moverTextoCol(cuerpo, desde, delta, expandirFin));
+}
+
+// Una posición nueva: dos columnas (SI/NO y nombre) al final de una mitad
+// (COMUNIDAD u ORGANIZACIÓN, los rangos combinados de la fila 1), clonadas
+// de las dos últimas columnas de esa mitad: estilos, anchos, lista
+// desplegable, formato condicional y las fórmulas de los TOTAL. Lo de la
+// derecha se corre dos columnas. Devuelve dónde quedó la última columna
+// de la mitad antes de insertar (lo que estaba después se corrió +2).
+function agregarPosicion(ctx, titulo, mitad){
+  const { hoja } = ctx;
+  const fila1 = hoja.filas.find(f => f.r === 1), fila2 = hoja.filas.find(f => f.r === 2);
+  const textoDe = c => c ? (c.texto != null ? c.texto : String(valorDeCelda(c, ctx.cadenas) ?? "")) : "";
+  const merges = () => [...ctx.despues.matchAll(/<mergeCell\b[^>]*\sref="([^"]+)"/g)].map(m => m[1]);
+  let d = null;
+  for(const r of merges()){
+    const [a, b] = r.split(":").map(partirRef);
+    if(a && b && a.fila === 1 && b.fila === 1 && fila1 && textoDe(fila1.celdas.find(c => c.ref === a.col + "1")).trim() === String(mitad).trim()) d = letraACol(b.col);
+  }
+  if(d == null){
+    // Sin esa mitad: después de la última columna con encabezado en la fila 2 (sin contar la del borde).
+    d = Math.max(...(fila2 ? fila2.celdas.filter(c => textoDe(c).trim()).map(c => letraACol(partirRef(c.ref).col)) : [2]));
+    const r2 = merges().map(r => r.split(":").map(partirRef)).filter(([a, b]) => a && b && a.fila === 2 && b.fila === 2 && letraACol(a.col) <= d && letraACol(b.col) >= d)[0];
+    if(r2) d = letraACol(r2[1].col);
+  }
+  const moldeA = d - 1, moldeB = d, nuevaA = d + 1, nuevaB = d + 2;
+  // 1. Lo de la derecha se corre; los rangos que terminaban en d se estiran.
+  for(const f of hoja.filas){
+    for(const c of f.celdas){
+      const p = partirRef(c.ref);
+      if(letraACol(p.col) > d){ const nr = colALetra(letraACol(p.col) + 2) + p.fila; c.ref = nr; c.attrs = c.attrs.replace(/\br="[^"]*"/, 'r="' + nr + '"'); }
+      if(esFormula(c)) c.inner = moverTextoCol(c.inner, d + 1, 2, d);
+    }
+  }
+  ctx.antes = moverTodoCol(ctx.antes, d + 1, 2, d).replace(/<col\b([^>]*)\/>/g, (m, a) => {
+    let min = Number(atributo(a, "min")), max = Number(atributo(a, "max"));
+    if(min > d){ min += 2; max += 2; } else if(max > d) max += 2;
+    return "<col" + a.replace(/\bmin="\d+"/, 'min="' + min + '"').replace(/\bmax="\d+"/, 'max="' + max + '"') + "/>";
+  });
+  ctx.despues = moverTodoCol(ctx.despues, d + 1, 2, d);
+  for(const n of Object.keys(ctx.otros)) if(ctx.otros[n]) ctx.otros[n] = moverTodoCol(ctx.otros[n], d + 1, 2, d);
+  if(ctx.comentariosXml) ctx.comentariosXml = moverTodoCol(ctx.comentariosXml, d + 1, 2, d);
+  if(ctx.vmlTexto) ctx.vmlTexto = ctx.vmlTexto.replace(/<v:shape\b[\s\S]*?<\/v:shape>/g, forma => {
+    const col0 = Number((/<x:Column>(\d+)<\/x:Column>/.exec(forma) || [])[1]);
+    if(!(col0 + 1 > d)) return forma;
+    return forma.replace(/<x:Anchor>([^<]*)<\/x:Anchor>/, (a, lista) => { const n = lista.split(",").map(x => Number(x.trim())); if(n.length === 8){ n[0] += 2; n[4] += 2; } return "<x:Anchor>" + n.join(", ") + "</x:Anchor>"; })
+      .replace(/<x:Column>\d+<\/x:Column>/, "<x:Column>" + (col0 + 2) + "</x:Column>");
+  });
+  // 2. Las celdas nuevas, fila por fila, clonadas de las del molde.
+  for(const f of hoja.filas){
+    const ca = f.celdas.find(c => partirRef(c.ref).col === colALetra(moldeA)), cb = f.celdas.find(c => partirRef(c.ref).col === colALetra(moldeB));
+    const clon = (c, n, primera) => {
+      if(!c) return null;
+      const ref = colALetra(n) + f.r, nuevo = { ref, attrs: c.attrs.replace(/\br="[^"]*"/, 'r="' + ref + '"').replace(/\s*\bt="[^"]*"/, ""), inner: "" };
+      if(esFormula(c)){
+        const m = /<f\b([^>]*)>([\s\S]*?)<\/f>/.exec(c.inner);
+        if(m && !/\bt="shared"/.test(m[1])) nuevo.inner = "<f" + m[1] + ">" + aXml(correrColumnas(desXml(m[2]), n - letraACol(partirRef(c.ref).col))) + "</f>";
+      } else if(f.r === 2 && primera){ nuevo.attrs += ' t="s"'; nuevo.texto = titulo; nuevo.inner = "<v>0</v>"; }
+      return nuevo;
+    };
+    const nuevos = [clon(ca, nuevaA, true), clon(cb, nuevaB, false)].filter(Boolean);
+    if(!nuevos.length) continue;
+    const i = f.celdas.findIndex(c => letraACol(partirRef(c.ref).col) > d);
+    f.celdas.splice(i < 0 ? f.celdas.length : i, 0, ...nuevos);
+  }
+  // 3. Combinadas: el par del encabezado (fila 2), si el molde lo tenía.
+  const parMolde = merges().find(r => { const [a, b] = r.split(":").map(partirRef); return a && b && a.fila === 2 && b.fila === 2 && letraACol(a.col) === moldeA && letraACol(b.col) === moldeB; });
+  if(parMolde) ctx.despues = ctx.despues.replace(/<mergeCell\b[^>]*\sref="[^"]+"[^>]*\/>/, m => m + '<mergeCell ref="' + colALetra(nuevaA) + "2:" + colALetra(nuevaB) + '2"/>');
+  ctx.despues = ctx.despues.replace(/<mergeCells count="\d+"/, '<mergeCells count="' + merges().length + '"');
+  // 4. Listas desplegables y formato condicional: los rangos de una sola columna del molde, repetidos para la nueva.
+  const repetir = (sqref, de, a) => { const extra = sqref.split(/\s+/).filter(r => { const [x, y] = r.split(":").map(partirRef); return x && (y || x).col === colALetra(de) && x.col === colALetra(de); }).map(r => r.replace(new RegExp("\\b" + colALetra(de) + "(?=\\d)", "g"), colALetra(a))); return extra.length ? sqref + " " + extra.join(" ") : sqref; };
+  ctx.despues = ctx.despues.replace(/(<(?:dataValidation|conditionalFormatting)\b[^>]*\ssqref=")([^"]*)/g, (m, pre, sqref) => pre + repetir(repetir(sqref, moldeA, nuevaA), moldeB, nuevaB));
+  // 5. Los anchos de las dos columnas nuevas, como los del molde.
+  const anchoDe = n => { const m = new RegExp('<col\\b[^>]*\\bmin="' + n + '"[^>]*\\/>').exec(ctx.antes); return m ? m[0] : null; };
+  const cols = [anchoDe(moldeA), anchoDe(moldeB)].map((c, k) => c && c.replace(/\bmin="\d+"/, 'min="' + (nuevaA + k) + '"').replace(/\bmax="\d+"/, 'max="' + (nuevaA + k) + '"')).filter(Boolean).join("");
+  if(cols){ const ancla = anchoDe(moldeB); ctx.antes = ancla ? ctx.antes.replace(ancla, ancla + cols) : ctx.antes.replace("</cols>", cols + "</cols>"); }
+  return d;
+}
+
 // ---------- Los totales: SUM y COUNTIF, para que el archivo salga con los números al día ----------
 function evaluarFormula(texto, valor){
   const rango = r => { const p = r.split(":").map(partirRef); if(p.some(x => !x)) return [];
@@ -444,7 +547,9 @@ async function leerLibro(bytes, nombreHoja){
 // las filas de cada región en el orden final (origen = número de fila en el
 // archivo original, o null si es nueva). `columnasNumericas`: letras que
 // guardan números. Devuelve los bytes del .xlsx nuevo.
-async function escribirLibro(libro, regiones, columnasNumericas){
+// `posiciones`: [{ idA, idB, titulo, mitad }] columnas nuevas (SI/NO y nombre)
+// que todavía no existen en el archivo; en `valores` sus claves son idA e idB.
+async function escribirLibro(libro, regiones, columnasNumericas, posiciones = []){
   const { partes, ruta, cadenas } = libro;
   if(!partes.some(p => p.nombre === "xl/sharedStrings.xml")) throw new Error("El archivo no tiene cadenas compartidas; no lo sé escribir.");
   const hoja = partirHoja(new TextDecoder().decode(partes.find(p => p.nombre === ruta).datos));
@@ -453,7 +558,7 @@ async function escribirLibro(libro, regiones, columnasNumericas){
   const filasPorNumero = () => new Map(hoja.filas.map(f => [f.r, f]));
   let despues = hoja.despues, antes = hoja.antes;
   const otros = { "xl/workbook.xml": null };
-  const comentariosXml = (() => { const p = partes.find(x => x.nombre === "xl/comments1.xml"); return p ? new TextDecoder().decode(p.datos) : null; })();
+  let comentariosXml = (() => { const p = partes.find(x => x.nombre === "xl/comments1.xml"); return p ? new TextDecoder().decode(p.datos) : null; })();
   // Dónde empezaba y terminaba cada región antes de tocar nada (las filas de
   // afuera —encabezados, TOTAL— se corren según cuántas filas cambió cada región de arriba).
   const originales = regiones.map(r => ({ inicio: r.inicio, fin: r.fin, delta: r.filas.length - (r.fin - r.inicio + 1) }));
@@ -461,6 +566,17 @@ async function escribirLibro(libro, regiones, columnasNumericas){
   const vml = partes.find(p => /^xl\/drawings\/vmlDrawing\d+\.vml$/.test(p.nombre));
   let vmlTexto = vml ? new TextDecoder().decode(vml.datos) : null;
 
+  // 0. Las posiciones nuevas (columnas), antes que nada: después, cada
+  // columna original se escribe en su letra final.
+  const letras = new Map(); for(let n = 1; n <= 200; n++) letras.set(colALetra(n), colALetra(n));
+  const ctx = { hoja, cadenas, antes, despues, otros, comentariosXml, vmlTexto };
+  for(const pos of posiciones){
+    const d = agregarPosicion(ctx, pos.titulo, pos.mitad);
+    for(const [k, v] of letras) if(letraACol(v) > d) letras.set(k, colALetra(letraACol(v) + 2));
+    letras.set(pos.idA, colALetra(d + 1)); letras.set(pos.idB, colALetra(d + 2));
+  }
+  ({ antes, despues, comentariosXml, vmlTexto } = { antes: ctx.antes, despues: ctx.despues, comentariosXml: ctx.comentariosXml, vmlTexto: ctx.vmlTexto });
+  const letraFinal = k => letras.get(k) || k;
   // Dónde cae cada fila original en el archivo nuevo (para los comentarios).
   const destino = new Map();
   // 1. Agregar o sacar filas al final de cada región, de abajo para arriba.
@@ -520,17 +636,17 @@ async function escribirLibro(libro, regiones, columnasNumericas){
     if(esFormula(c)) return;
     const base = c.attrs.replace(/\s*\bt="[^"]*"/, "");
     if(valor === "" || valor == null){ c.attrs = base; c.inner = ""; c.texto = null; return; }
-    if(columnasNumericas.has(col) && typeof valor === "number" && Number.isFinite(valor)){ c.attrs = base; c.inner = "<v>" + String(valor) + "</v>"; c.texto = null; return; }
+    if(numericasFinales.has(col) && typeof valor === "number" && Number.isFinite(valor)){ c.attrs = base; c.inner = "<v>" + String(valor) + "</v>"; c.texto = null; return; }
     c.attrs = base + ' t="s"'; c.texto = String(valor); c.inner = "<v>0</v>";
   };
+  const numericasFinales = new Set([...columnasNumericas].map(letraFinal));
   const valorFinal = new Map();
-  const filaOriginalDeDestino = new Map();
   for(const reg of regiones){
     let fila = reg.inicio;
     poner(reg.inicio, "A", reg.etiqueta ?? "");
     for(const r of reg.filas){
-      if(r.origen != null){ destino.set(r.origen, fila); filaOriginalDeDestino.set(fila, r.origen); }
-      for(const [col, v] of Object.entries(r.valores)){ poner(fila, col, v); valorFinal.set(col + fila, v); }
+      if(r.origen != null) destino.set(r.origen, fila);
+      for(const [col, v] of Object.entries(r.valores)){ const lf = letraFinal(col); poner(fila, lf, v); valorFinal.set(lf + fila, v); }
       fila++;
     }
   }
@@ -665,7 +781,27 @@ function armarModelo(libro){
     }
   }
   const numericas = new Set(columnas.filter(c => c.tipo === "numero").map(c => c.col));
-  return { columnas, grupos, basicas, regiones, numericas };
+  return { columnas, grupos, basicas, regiones, numericas, posiciones: [], contadorPosiciones: 0 };
+}
+// Una posición nueva en el modelo (todavía no en el archivo): dos columnas,
+// SI/NO y nombre, al final de la mitad que se eligió, igual que las demás.
+function sumarPosicion(modelo, titulo, mitad){
+  const n = ++modelo.contadorPosiciones, idA = "p" + n + "a", idB = "p" + n + "b";
+  const a = { col: idA, titulo, grupo: idA, segunda: false, mitad: mitad || "", tipo: "lista", opciones: ["SI", "NO"], nueva: true };
+  const b = { col: idB, titulo, grupo: idA, segunda: true, mitad: mitad || "", tipo: "texto", opciones: null, nueva: true };
+  modelo.columnas.push(a, b);
+  modelo.grupos.push({ col: idA, titulo, mitad: mitad || "", cols: [a, b], nueva: true });
+  for(const reg of modelo.regiones) for(const f of reg.filas){ f.valores[idA] = ""; f.valores[idB] = ""; f.original[idA] = ""; f.original[idB] = ""; }
+  const pos = { idA, idB, titulo, mitad: mitad || "" };
+  modelo.posiciones.push(pos);
+  return pos;
+}
+function quitarPosicion(modelo, idA){
+  const pos = modelo.posiciones.find(p => p.idA === idA); if(!pos) return;
+  modelo.posiciones = modelo.posiciones.filter(p => p !== pos);
+  modelo.columnas = modelo.columnas.filter(c => c.col !== pos.idA && c.col !== pos.idB);
+  modelo.grupos = modelo.grupos.filter(g => g.col !== pos.idA);
+  for(const reg of modelo.regiones) for(const f of reg.filas){ delete f.valores[pos.idA]; delete f.valores[pos.idB]; delete f.original[pos.idA]; delete f.original[pos.idB]; }
 }
 const limpiar = v => String(v ?? "").trim();
 const esNada = v => { const s = limpiar(v); return s === "" || s === "-"; };
@@ -837,7 +973,7 @@ function guardarYa(){
   guardarPendiente = null;
   if(!estado) return;
   try{
-    localStorage.setItem(CLAVE, JSON.stringify({ nombre: estado.nombre, base64: estado.base64, hoja: estado.hoja, guardado: Date.now(),
+    localStorage.setItem(CLAVE, JSON.stringify({ nombre: estado.nombre, base64: estado.base64, hoja: estado.hoja, guardado: Date.now(), posiciones: estado.modelo.posiciones, contadorPosiciones: estado.modelo.contadorPosiciones,
       regiones: estado.modelo.regiones.map(r => ({ etiqueta: r.etiqueta, filas: r.filas.map(f => ({ id: f.id, origen: f.origen, valores: f.valores, revisada: f.revisada, nueva: f.nueva })) })) }));
   } catch(e){ aviso("No pude guardar el avance en este navegador (" + e.message + ").", true); }
 }
@@ -857,6 +993,8 @@ async function cargar(bytes, nombre, guardado, hojaElegida){
   const revisadasPrevias = new Set();
   if(guardado) for(const r of guardado.regiones || []) for(const f of r.filas || []) if(f.revisada) revisadasPrevias.add(sinAcentos(f.valores?.B) + "|" + sinAcentos(f.valores?.C));
   if(guardado && guardado.base64 === base64){
+    for(const pos of guardado.posiciones || []){ const p = sumarPosicion(modelo, pos.titulo, pos.mitad); p.idA = pos.idA; p.idB = pos.idB; renombrarPosicion(modelo, p, pos.idA, pos.idB); }
+    modelo.contadorPosiciones = Math.max(modelo.contadorPosiciones, guardado.contadorPosiciones || 0);
     modelo.regiones.forEach((reg, i) => {
       const g = guardado.regiones[i]; if(!g) return;
       reg.etiqueta = g.etiqueta ?? reg.etiqueta;
@@ -889,6 +1027,15 @@ function preguntarHoja(bytes, nombre, guardado, hojas){
     catch(err){ console.error(err); aviso("No pude abrir esa pestaña: " + err.message, true); }
   };
 }
+// Al volver de lo guardado, la posición recupera sus claves de antes (las
+// de los valores guardados): se renombra la que sumarPosicion acaba de crear.
+function renombrarPosicion(modelo, pos, idA, idB){
+  const viejoA = modelo.grupos[modelo.grupos.length - 1].col, viejoB = modelo.grupos[modelo.grupos.length - 1].cols[1].col;
+  if(viejoA === idA && viejoB === idB) return;
+  for(const c of modelo.columnas){ if(c.col === viejoA){ c.col = idA; c.grupo = idA; } if(c.col === viejoB){ c.col = idB; c.grupo = idA; } }
+  const g = modelo.grupos[modelo.grupos.length - 1]; g.col = idA;
+  for(const reg of modelo.regiones) for(const f of reg.filas) for(const o of [f.valores, f.original]){ o[idA] = o[viejoA]; o[idB] = o[viejoB]; delete o[viejoA]; delete o[viejoB]; }
+}
 async function abrirArchivo(archivo){
   if(!archivo) return;
   if(!/\.xlsx$/i.test(archivo.name)){ aviso("Tiene que ser un archivo .xlsx (Excel).", true); return; }
@@ -917,7 +1064,7 @@ async function exportar(){
   const regs = modelo.regiones.map(r => ({ inicio: r.inicio, fin: r.fin, etiqueta: r.etiqueta, filas: r.filas.map(f => ({ origen: f.origen, valores: valoresParaExportar(f, modelo) })) }));
   const boton = $("#btnExportar"); boton.disabled = true; boton.textContent = "Armando el Excel…";
   try{
-    const bytes = await escribirLibro(libro, regs, modelo.numericas);
+    const bytes = await escribirLibro(libro, regs, modelo.numericas, modelo.posiciones);
     const url = URL.createObjectURL(new Blob([bytes], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
     const a = document.createElement("a"); a.href = url; a.download = estado.nombre; document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 60000);
@@ -931,7 +1078,8 @@ async function exportar(){
 const todasLasFilas = () => estado ? estado.modelo.regiones.flatMap(r => r.filas) : [];
 // Fichas cambiadas o nuevas, regiones renombradas y filas del archivo que ya no están.
 const contarCambios = () => todasLasFilas().filter(filaCambiada).length + estado.modelo.regiones.filter(r => r.etiqueta !== r.etiquetaOriginal).length
-  + estado.modelo.regiones.reduce((n, r) => n + (r.fin - r.inicio + 1) - r.filas.filter(f => f.origen != null).length, 0);
+  + estado.modelo.regiones.reduce((n, r) => n + (r.fin - r.inicio + 1) - r.filas.filter(f => f.origen != null).length, 0)
+  + estado.modelo.posiciones.length;
 const avisosDe = f => avisosDeFila(f, estado.modelo, todasLasFilas());
 function arreglosSeguros(){ return todasLasFilas().flatMap(f => avisosDe(f).filter(a => a.seguro && a.arreglo != null).map(a => ({ fila: f, aviso: a }))); }
 
@@ -973,6 +1121,7 @@ function renderContadores(){
     <span class="pastilla${conAvisos ? " aviso" : " ok"}">${conAvisos ? conAvisos + " con avisos" : "sin avisos"}</span>
     <span class="pastilla${cambios ? " cambio" : ""}">${cambios} cambio${cambios === 1 ? "" : "s"}</span>
     ${seguros ? `<span class="pastilla aviso"><button type="button" data-action="arreglar-todo">Aplicar ${seguros} arreglo${seguros === 1 ? "" : "s"} seguro${seguros === 1 ? "" : "s"}</button></span>` : ""}
+    <span class="pastilla"><button type="button" data-action="sumar-posicion">+ Sumar una posición</button></span>
     <span class="pastilla"><button type="button" data-action="empezar-de-nuevo">Cerrar este archivo</button></span>`;
   $("#pieMovilTexto").textContent = `${cambios} cambio${cambios === 1 ? "" : "s"} · ${revisadas}/${filas.length} revisadas`;
 }
@@ -1016,7 +1165,8 @@ function campo(f, c, conTitulo){
   } else if(c.tipo === "numero"){
     control = `<input id="${id}" type="text" inputmode="numeric" data-fila="${esc(f.id)}" data-col="${c.col}" class="${cambiado ? "cambiado" : ""}" value="${esc(v === "" || v == null ? "" : (typeof v === "number" ? fmtNum(v) : v))}" autocomplete="off">`;
   } else {
-    control = `<input id="${id}" type="text" data-fila="${esc(f.id)}" data-col="${c.col}" class="${cambiado ? "cambiado " : ""}${!esNada(v) ? "con-valor" : ""}" value="${esc(v)}" autocomplete="off" dir="auto" placeholder="${c.segunda ? "Nombre (+teléfono)" : ""}">`;
+    control = `<input id="${id}" type="text" data-fila="${esc(f.id)}" data-col="${c.col}" class="${cambiado ? "cambiado " : ""}${!esNada(v) ? "con-valor" : ""}" value="${esc(v)}" autocomplete="off" dir="auto" placeholder="${c.segunda ? "Nombre (+teléfono)" : ""}">`
+      + (c.segunda ? `<button type="button" class="btn-link chico otra-persona" data-action="otra-persona" data-fila="${esc(f.id)}" data-col="${c.col}" title="Varias personas en la misma posición van separadas con /">+ Otra persona</button>` : "");
   }
   return `<label class="campo${c.col === "B" ? " ancho" : ""}" for="${id}"><span>${esc(c.titulo)}</span>${control}<div class="avisos" data-col="${c.col}">${htmlAvisos(f, c.col, avisosDe(f))}</div></label>`;
 }
@@ -1027,7 +1177,7 @@ function renderFicha(f, reg, i){
   const grupos = modelo.grupos.filter(g => !g.cols.every(c => COLS_BASICAS.includes(c.col)));
   const secciones = (mitades.length ? mitades : [""]).map((m, k) => {
     const de = grupos.filter(g => (g.mitad || "") === m); if(!de.length) return "";
-    return `<div class="seccion" data-mitad="${k}">${m ? `<h3>${esc(m)}</h3>` : ""}<div class="grupos">${de.map(g => `<div class="grupo${g.cols.length === 1 ? " solo" : ""}"><span class="titulo">${esc(g.titulo)}</span>${g.cols.map(c => campo(f, c)).join("")}</div>`).join("")}</div></div>`;
+    return `<div class="seccion" data-mitad="${k}">${m ? `<h3>${esc(m)}</h3>` : ""}<div class="grupos">${de.map(g => `<div class="grupo${g.cols.length === 1 ? " solo" : ""}${g.nueva ? " nuevo" : ""}"><span class="titulo">${esc(g.titulo)}${g.nueva ? ` <i>nueva</i> <button type="button" class="quitar-posicion" data-action="quitar-posicion" data-posicion="${esc(g.col)}" title="Quitar esta posición de todas las fichas" aria-label="Quitar la posición ${esc(g.titulo)}">✕</button>` : ""}</span>${g.cols.map(c => campo(f, c)).join("")}</div>`).join("")}</div></div>`;
   }).join("");
   return `<article class="ficha${f.revisada ? " revisada" : ""}${f.nueva ? " nueva" : ""}" data-ficha="${esc(f.id)}">
     <div class="ficha-cab">${modelo.basicas.map(c => campo(f, c)).join("")}</div>
@@ -1122,6 +1272,34 @@ const acciones = {
     }
     guardar(); renderRegiones(); renderContadores();
     aviso(n ? `Apliqué ${n} arreglo${n === 1 ? "" : "s"}: caracteres raros, espacios y el «+» de los teléfonos.` : "No había nada seguro para arreglar.");
+  },
+  "sumar-posicion"(){
+    const { modelo } = estado;
+    const mitades = [...new Set(modelo.grupos.map(g => g.mitad))].filter(Boolean);
+    const nombre = limpiar(prompt("¿Cómo se llama la posición nueva? (por ejemplo: TESORERO, RABINO, JUVENTUD)") || "");
+    if(!nombre) return;
+    if(modelo.grupos.some(g => sinAcentos(g.titulo) === sinAcentos(nombre))){ aviso(`Ya hay una posición «${nombre}».`, true); return; }
+    let mitad = "";
+    if(mitades.length > 1){
+      const r = prompt(`¿En qué mitad va «${nombre}»?\n${mitades.map((m, i) => `${i + 1} = ${m}`).join("\n")}\n\nEscribí el número.`, "2");
+      if(r == null) return;
+      mitad = mitades[Number(r) - 1] || mitades[mitades.length - 1];
+    } else mitad = mitades[0] || "";
+    sumarPosicion(modelo, nombre, mitad); guardar(); renderTodo();
+    aviso(`Sumé «${nombre}» en ${mitad || "todas las fichas"}: aparece al final de cada ficha, y en el Excel como dos columnas nuevas.`);
+  },
+  "quitar-posicion"(el){
+    const { modelo } = estado, pos = modelo.posiciones.find(p => p.idA === el.dataset.posicion); if(!pos) return;
+    const cargadas = todasLasFilas().filter(f => !esNada(f.valores[pos.idA]) || !esNada(f.valores[pos.idB])).length;
+    if(!confirm(`¿Quitar la posición «${pos.titulo}» de todas las fichas?${cargadas ? ` Hay ${cargadas} con algo cargado ahí, que se pierde.` : ""}`)) return;
+    quitarPosicion(modelo, pos.idA); guardar(); renderTodo();
+  },
+  "otra-persona"(el){
+    const f = filaPorId(el.dataset.fila), col = el.dataset.col, inp = document.querySelector(`[data-fila="${CSS.escape(f.id)}"][data-col="${col}"]`); if(!inp) return;
+    const v = limpiar(inp.value);
+    inp.value = esNada(v) ? "" : v + " / ";
+    f.valores[col] = inp.value; guardar(); refrescarFicha(f.id);
+    inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length);
   },
   "empezar-de-nuevo"(){
     const cambios = contarCambios();

@@ -179,7 +179,50 @@ eq("exportado: la fila nueva no inventa valores en las columnas vacías", Object
   await q.close();
 }
 
-/* ---------- 5. Arreglar todo lo seguro, filtros, cerrar ---------- */
+/* ---------- 5. Posiciones nuevas (columnas) y más de una persona en una posición ---------- */
+{
+  const q = await ctx.newPage(); const erroresQ = []; q.on("pageerror", e => erroresQ.push(String(e)));
+  await q.goto("file://" + PAGINA); await q.evaluate(() => localStorage.clear()); await q.reload();
+  await q.setInputFiles("#archivo", FIXTURE); await q.waitForSelector(".ficha");
+  // «+ Sumar una posición» pregunta el nombre y la mitad (1 = COMUNIDAD, 2 = ORGANIZACIÓN).
+  const respuestas = ["RABINO", "1"];
+  q.on("dialog", d => d.accept(d.type() === "prompt" ? respuestas.shift() : undefined));
+  await q.click('[data-action="sumar-posicion"]'); await q.waitForSelector(".grupo.nuevo");
+  eq("posición nueva: aparece en cada ficha, al final de su mitad, con SI/NO y nombre", [await q.$$eval(".ficha", l => l.length), await q.$$eval('.ficha[data-ficha="3"] .seccion[data-mitad="0"] .grupo', l => l.map(e => e.querySelector(".titulo").textContent.trim())), await q.$eval('.ficha[data-ficha="3"] .grupo.nuevo select', e => [...e.options].map(o => o.value))],
+    [81, ["COMUNIDAD", "SEGURIDAD", "CARE", "MODA", "RABINO nueva ✕"], ["", "SI", "NO"]]);
+  respuestas.push("TESORERO", "2");
+  await q.click('[data-action="sumar-posicion"]'); await q.waitForTimeout(100);
+  eq("dos posiciones nuevas: la segunda en Organización", await q.$$eval('.ficha[data-ficha="3"] .seccion[data-mitad="1"] .grupo', l => l.map(e => e.querySelector(".titulo").firstChild.textContent.trim())), ["ORGANIZACIÓN", "RM", "R HABTAJA", "R HADRAJA", "R KM", "R SWIMMERS", "TESORERO"]);
+  respuestas.push("rabino");
+  await q.click('[data-action="sumar-posicion"]'); await q.waitForTimeout(100);
+  eq("una posición repetida no se suma dos veces", await q.$$eval(".grupo.nuevo .titulo", l => new Set(l.map(e => e.firstChild.textContent.trim())).size), 2);
+  await q.selectOption('[data-fila="3"][data-col="p1a"]', "SI"); await q.fill('[data-fila="3"][data-col="p1b"]', "Rab Fulano (+54 9 11 1234-5678)");
+  await q.selectOption('[data-fila="4"][data-col="p2a"]', "SI"); await q.fill('[data-fila="4"][data-col="p2b"]', "Tesorera (+54 9 351 000-0000)");
+  // «+ Otra persona» en CARE de Buenos Aires: se suma con «/» en la misma celda.
+  await q.click('[data-action="otra-persona"][data-fila="3"][data-col="L"]');
+  await q.keyboard.type("Persona Dos (+54 9 11 9999-9999)");
+  eq("otra persona: queda en la misma celda, separada con /", await q.inputValue('[data-fila="3"][data-col="L"]'), "Persona 3 (+1 555 174 9779) / Persona Dos (+54 9 11 9999-9999)");
+  eq("cambios: 2 posiciones + 2 fichas", /4 cambios/.test(await q.$eval("#contadores", e => e.textContent)), true);
+  await q.reload(); await q.waitForSelector(".ficha");
+  eq("al recargar siguen las posiciones nuevas y lo cargado", [await q.$$eval(".grupo.nuevo", l => l.length), await q.inputValue('[data-fila="3"][data-col="p1b"]'), await q.inputValue('[data-fila="4"][data-col="p2b"]')], [162, "Rab Fulano (+54 9 11 1234-5678)", "Tesorera (+54 9 351 000-0000)"]);
+  const [bajadaP] = await Promise.all([q.waitForEvent("download"), q.click("#btnExportar")]);
+  const salidaP = path.join(tmp, "posiciones.xlsx"); await bajadaP.saveAs(salidaP);
+  const d = revisar(salidaP);
+  eq("exportado: RABINO entró después de MODA (O:P) y TESORERO al final (AB:AC); lo demás se corrió", [d.celdas.O2, d.celdas.Q2, d.celdas.R2, d.celdas.Z2, d.celdas.AB2, d.celdas.AA3, d.celdas.AC4], ["RABINO", "ORGANIZACIÓN", "RM", "R SWIMMERS", "TESORERO", antes.celdas.Y3, "Tesorera (+54 9 351 000-0000)"]);
+  eq("exportado: las mitades de la fila 1 y los pares de la fila 2 combinados como corresponde", d.combinadas.filter(r => /^[A-Z]+[12]:[A-Z]+[12]$/.test(r)).sort(), ["A1:C1", "AB2:AC2", "D1:P1", "G2:H2", "I2:J2", "K2:L2", "M2:N2", "O2:P2", "Q1:AC1", "R2:S2", "T2:U2", "V2:W2", "X2:Y2", "Z2:AA2"].sort());
+  eq("exportado: la columna del borde se corrió hasta el final", d.combinadas.find(r => /^A[A-Z]1:A[A-Z]\d+$/.test(r)), "AD1:AD87");
+  eq("exportado: SI/NO con su lista en las columnas nuevas, y los TOTAL con su COUNTIF", [d.listas.find(l => /SI,NO/.test(l.formula)).sqref.split(" ").filter(r => /^(O|AB)\d/.test(r)), d.formulas.O28?.f, d.formulas.AB28?.f, d.formulas.O87?.f, Number(d.formulas.O28?.v)],
+    [["O3:O27", "O29:O67", "O69:O85", "AB3:AB27", "AB29:AB67", "AB69:AB85"], 'COUNTIF(O3:O27,"si")', 'COUNTIF(AB3:AB27,"si")', "SUM(O28,O68,O86)", 1]);
+  eq("exportado: los valores en su lugar, y la otra persona con su /", [d.celdas.O3, d.celdas.P3, d.celdas.L3, d.celdas.AB4, d.autoFilter, d.nombres[0][1]], ["SI", "Rab Fulano (+54 9 11 1234-5678)", "Persona 3 (+1 555 174 9779) / Persona Dos (+54 9 11 9999-9999)", "SI", "$A$1:$AC$87", "Mapping!$A$1:$AC$87"]);
+  eq("exportado: las partes, bien formadas, y las cadenas cierran", [d.mal_formados, d.indices_rotos, d.sst_count === d.refs_sst, d.sst_unique === d.cadenas], [[], [], true, true]);
+  // Quitar una posición nueva.
+  await q.click('.ficha[data-ficha="3"] [data-action="quitar-posicion"][data-posicion="p1a"]'); await q.waitForTimeout(100);
+  eq("quitar la posición: desaparece de todas las fichas", await q.$$eval(".grupo.nuevo .titulo", l => new Set(l.map(e => e.firstChild.textContent.trim())).size), 1);
+  eq("sin errores de página con posiciones nuevas", erroresQ, []);
+  await q.close();
+}
+
+/* ---------- 6. Arreglar todo lo seguro, filtros, cerrar ---------- */
 const seguros = Number((await contadores()).match(/Aplicar (\d+) arreglos? seguros?/)[1]);
 await p.click('[data-action="arreglar-todo"]');
 eq("arreglar todo: después no queda ningún arreglo seguro y los cambios suben", [/Aplicar \d+ arreglo/.test(await contadores()), seguros > 10], [false, true]);
