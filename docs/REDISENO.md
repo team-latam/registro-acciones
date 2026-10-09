@@ -969,6 +969,27 @@ eligió **unirlas así**:
 Pruebas: `agenda_test.mjs` (país, región y ciudad; fallan con el código
 de antes) y `ficha_celular_test.mjs` vuelve a esperar cinco tarjetas.
 
+### 56. El logo de WhatsApp en el botón de WhatsApp — HECHO (9 oct 2026)
+
+El usuario preguntó si se podía poner el logo de WhatsApp en el botón que
+abre WhatsApp Web (traía uno encontrado por él, y dejó libre elegir uno
+más propicio). Hasta entonces el botón llevaba un 💬.
+
+- **El logo** (el glifo verde de la burbuja con el teléfono, el mismo que
+  trajo el usuario) en el botón grande «WhatsApp» de la ficha de una
+  persona y en el chico, solo el logo, de las listas y de la tarjeta
+  «Contactos en …».
+- **En vector** (el dibujo de Simple Icons, CC0, tal cual, dentro de la
+  página: nada se baja de afuera), con el verde oficial: nítido a
+  cualquier tamaño y bien en claro y en oscuro sobre la pastilla verde de
+  siempre. No se cambió nada del logo.
+- **Para quien no lo ve**: el logo es adorno y el botón dice «Escribir por
+  WhatsApp» (`aria-label`); antes el nombre salía del 💬.
+
+Pruebas: `agenda_ventanas_test.mjs` (el logo y no el 💬, el nombre del
+botón y el verde, en el grande y en el chico; fallan con el código de
+antes).
+
 ### 55. La Agenda en el celular de verdad: sin blanco y sin desplazarse — HECHO (9 oct 2026)
 
 El usuario mandó tres capturas de su iPhone y dijo qué ve:

@@ -213,6 +213,9 @@ const sumarDeLaLista = async p => { if(!await tocar(p, '.ag-cab [data-action="ag
   await vistaEs(p, /^persona/);
   eq("compu: la ficha de una persona, en el medio, del mismo ancho y con el alto a medida", [mismoLugar(await rect(p), grande), await centrada(p)], [[grande[0], grande[2], true], true]);
   eq("compu: la ficha, en una columna", await p.$eval(".ag-ficha", e => getComputedStyle(e).gridTemplateColumns), "none");
+  // El logo de WhatsApp en el botón que lo abre, en vez del 💬 (pedido del 9/10/2026).
+  eq("compu: el botón de WhatsApp lleva el logo (y no el 💬), con su nombre para quien no lo ve", await p.$eval(".ag-acc .ag-wa", e => [!!e.querySelector("svg.ag-wa-ic path"), (e.querySelector("svg") || e).getAttribute("aria-hidden"), e.textContent.trim(), e.getAttribute("aria-label")]), [true, "true", "WhatsApp", "Escribir por WhatsApp"]);
+  eq("compu: el logo, en el verde oficial y a la vista", await p.$eval(".ag-acc .ag-wa .ag-wa-ic", e => { const r = e.getBoundingClientRect(); return [r.width >= 14 && r.height >= 14, getComputedStyle(e).fill]; }).catch(() => "sin logo"), [true, "rgb(37, 211, 102)"]);
   eq("compu: «Copiar», corto, y el número en el título", [await texto(p, '[data-action="agenda-copiar"]'), await p.$eval('[data-action="agenda-copiar"]', e => e.title)], ["⧉ Copiar", "Copiar número"]);
   await p.click('#agendaBody [data-action="agenda-ver-inst"]');
   await vistaEs(p, /^inst/);
@@ -249,6 +252,7 @@ const sumarDeLaLista = async p => { if(!await tocar(p, '.ag-cab [data-action="ag
   // El WhatsApp chico tiene forma de botón: su anillo de foco va hacia adentro, como el de los
   // botones; hacia afuera, la lista se lo cortaba al pie (en GitHub, recortes_test, 9/10/2026).
   await p.keyboard.press("Tab");
+  eq("el WhatsApp chico: el logo y nada de texto, con su nombre", await p.$eval(".fl-ag .ag-wa.chico", e => [!!e.querySelector("svg.ag-wa-ic path"), e.textContent.trim(), e.getAttribute("aria-label")]), [true, "", "Escribir por WhatsApp"]);
   eq("el WhatsApp chico: anillo de foco hacia adentro", await p.$eval(".fl-ag .ag-wa.chico", e => { e.focus(); return [e.matches(":focus-visible"), getComputedStyle(e).outlineOffset]; }), [true, "-2px"]);
   eq("ficha: en la tarjeta angosta, el teléfono en su renglón, sin un «·» colgando", await p.$eval('.fl-ag .ag-fila-p small', e => [[...e.querySelectorAll(".ag-sep")].every(s => getComputedStyle(s).display === "none"), getComputedStyle(e.querySelector(".ag-tel")).display]), [true, "block"]);
   await p.click('.fl-ag-inst [data-action="agenda-ver-persona"][data-id="per_tawil"]');
