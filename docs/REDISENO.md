@@ -668,8 +668,8 @@ capturas (A/B/C, después D/E/F, después ajustes), el diseño elegido:
 - **Ciudades (y Países) al costado de la ficha**: hasta cinco y «Ver
   más» / «Ver menos» (pedido del usuario). Desplegada, la lista se
   desplaza adentro de la tarjeta con su propia barra, no la columna
-  entera (segunda captura del usuario). En el reporte impreso salen
-  todas.
+  entera (segunda captura del usuario); en el celular, desde la tanda 52,
+  ya no: crece entera. En el reporte impreso salen todas.
 
 ### 36. Personas sin cuenta — HECHO (7 oct 2026)
 
@@ -968,6 +968,29 @@ eligió **unirlas así**:
 
 Pruebas: `agenda_test.mjs` (país, región y ciudad; fallan con el código
 de antes) y `ficha_celular_test.mjs` vuelve a esperar cinco tarjetas.
+
+### 52. «Ciudades» sin barra propia en el celular — HECHO (9 oct 2026)
+
+Con dos capturas del celular (la tarjeta «Ciudades» desplegada y la de
+«Contactos en Buenos Aires (CABA)»): «¿por qué acá se genera una doble
+barra de scroll y en la segunda alcanza con una para toda la sección?».
+La tarjeta «Ciudades» (o «Países») desplegada con «Ver más» llevaba un
+recuadro de 380 px que se desplazaba por dentro, adentro de la página que
+también se desplaza; «Contactos en …» nunca lo tuvo.
+
+- **En el celular**, la lista desplegada crece entera y se baja con la
+  barra de la página, como «Contactos en …».
+- **En la compu no cambia**: sigue como la pidió el usuario el 6/10
+  (tanda 35), con la lista desplazándose adentro de la tarjeta y no toda
+  la columna pegada del costado. El corte es el mismo del costado pegado
+  (761 px). Si el usuario prefiere lo mismo que en el celular, es sacar
+  la regla de `.fl-hijos.con-scroll`.
+
+Pruebas: `ficha_celular_test.mjs` (la lista sin barra propia, nada de
+adentro de la tarjeta que se desplace por su cuenta, la tarjeta más alta
+que los 380 px de antes; fallan con el código de antes) y
+`agenda_ventanas_test.mjs` (la de contactos, abierta, tampoco la tiene).
+`app_dom_test.mjs` sigue cuidando la barra propia de la compu.
 
 ### 51. Tres retoques más a la Agenda — HECHO (9 oct 2026)
 

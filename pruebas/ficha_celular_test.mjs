@@ -120,6 +120,31 @@ const b = await abrirNavegador();
   await p.close();
 }
 
+// ---------- Ciudades desplegada: una sola barra (9/10/2026) ----------
+// La tarjeta desplegada llevaba una barra propia (380 px de alto) adentro de la
+// de la página: dos barras, una adentro de la otra (captura del usuario).
+// «Contactos en …» nunca la tuvo. Ahora la lista crece con la página.
+{
+  const OTRAS = ["Bahía Blanca", "Bariloche", "Córdoba", "Mendoza", "Salta", "Tucumán", "Neuquén", "Mar del Plata"];
+  const base = conMucha();
+  OTRAS.forEach((c, i) => base.posts.push(post({ id: "otra" + i, d: 10 + i * 5, a: 0, type: "rutina", title: "", content: "Rutina en " + c, scopes: [ciudad("Argentina", c)] })));
+  const { p, errores } = await entrar(b, ADMIN, "Benny Rosenthal", { viewport: { width: 390, height: 844 }, base });
+  await aArgentina(p);
+  const tarjeta = '.fl-card:has(.fl-pliegue[data-que="hijos"])';
+  await p.click('.fl-pliegue[data-que="hijos"]'); await p.waitForTimeout(200);
+  eq("Ciudades en el celular: más de cinco, ofrece «Ver más»", await p.$eval(`${tarjeta} .fl-mas`, e => e.textContent.trim()), "Ver más");
+  await p.$eval(`${tarjeta} .fl-mas`, e => e.click()); await p.waitForTimeout(200);
+  eq("Ciudades desplegada: se ven más que las cinco de antes", await p.$$eval(`${tarjeta} .fl-hijo`, l => l.length > 5), true);
+  eq("Ciudades desplegada: la lista no tiene barra propia", await p.$eval(`${tarjeta} .fl-hijos`, e => ({ scroll: getComputedStyle(e).overflowY, hayMas: e.scrollHeight > e.clientHeight + 1 })), { scroll: "visible", hayMas: false });
+  eq("Ciudades desplegada: nada de adentro de la tarjeta se desplaza por su cuenta", await p.$eval(tarjeta, c =>
+    [c, ...c.querySelectorAll("*")].filter(e => /auto|scroll/.test(getComputedStyle(e).overflowY) && e.scrollHeight > e.clientHeight + 1).length), 0);
+  eq("Ciudades desplegada: la tarjeta crece con la lista (más que los 380 px de antes)", await p.$eval(tarjeta, c => c.getBoundingClientRect().height > 600), true);
+  eq("Ciudades desplegada: la última se alcanza con la página", await p.evaluate(sel => { const u = document.querySelector(sel + " .fl-hijos").lastElementChild; u.scrollIntoView({ block: "end", behavior: "instant" }); const r = u.getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight + 1; }, tarjeta), true);
+  eq("Ciudades desplegada: todo entra a lo ancho", await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  eq("Ciudades desplegada: sin errores", errores, []);
+  await p.close();
+}
+
 // ---------- En hebreo (de derecha a izquierda) ----------
 {
   const { p, errores } = await entrar(b, ADMIN, "Benny Rosenthal", { viewport: { width: 390, height: 844 }, base: conMucha(), lang: "he" });

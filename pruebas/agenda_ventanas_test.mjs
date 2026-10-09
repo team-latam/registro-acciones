@@ -279,6 +279,8 @@ for(const [quien, nombre, botones] of [[ADMIN, "Benny", ["agenda-a-administracio
   eq("ficha: la tarjeta de contactos dice «Ver más», como las demás", await texto(p, '.fl-card:has(.fl-pliegue[data-que="contactos"]) .fl-mas'), "Ver más");
   await p.click('.fl-card:has(.fl-pliegue[data-que="contactos"]) .fl-mas');
   eq("y abierta, «Ver menos»", await texto(p, '.fl-card:has(.fl-pliegue[data-que="contactos"]) .fl-mas'), "Ver menos");
+  eq("y abierta, sin barra propia: crece con la página, como «Ciudades»", await p.$eval('.fl-card:has(.fl-pliegue[data-que="contactos"])', c =>
+    [c, ...c.querySelectorAll("*")].filter(e => /auto|scroll/.test(getComputedStyle(e).overflowY) && e.scrollHeight > e.clientHeight + 1).length), 0);
   eq("sin errores (ver más)", errores, []);
   await p.close();
 }
