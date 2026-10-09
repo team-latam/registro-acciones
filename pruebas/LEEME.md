@@ -38,7 +38,8 @@ cp index.html /tmp/roto.html            # romper a mano lo que la prueba cuida
 INDEX=/tmp/roto.html ./pruebas/correr.sh
 ```
 
-`INDEX` lo leen todos: las pruebas y los armadores.
+`INDEX` lo leen todos: las pruebas y los armadores. (`mapeo_test.mjs`
+prueba otra página, `herramientas/mapeo.html`, y lee `MAPEO`.)
 
 ## Qué hay
 
@@ -51,6 +52,8 @@ INDEX=/tmp/roto.html ./pruebas/correr.sh
 | `app_dom_test.mjs` | la app entera con la sesión iniciada, en un Chromium de verdad, con un Supabase de mentira: el admin, un integrante y alguien nuevo la usan como de verdad. |
 | `workflows_test.mjs` | los workflows de GitHub, no la app: acciones fijadas por huella y en versiones vigentes, permisos, tiempo máximo, llaves solo desde main, nada que escribe una persona pegado en un `run:`. `WORKFLOWS=/otra/carpeta` la corre contra una copia. |
 | `miniatura_test.mjs` | la miniatura de una foto, armada en un Chromium de verdad: un canvas no existe fuera del navegador, y `sb_test.mjs` usa una de mentira. |
+| `mapeo_test.mjs` | `herramientas/mapeo.html` («Revisar el Mapeo»), no la app: abre `mapeo_de_prueba.xlsx` en Chromium, edita, suma, saca y mueve filas, recarga, y exporta; lo exportado lo revisa `mapeo_revisar_xlsx.py` con Python de serie. `MAPEO=/otra/copia.html` la corre contra otra copia. |
+| `mapeo_de_prueba.xlsx` | el Excel del Mapeo con la misma estructura que el real (regiones, totales, listas, formato condicional, comentario) y gente inventada. Se versiona a propósito: es el único binario, y no tiene a nadie de verdad. |
 
 ## Para correrlas
 
