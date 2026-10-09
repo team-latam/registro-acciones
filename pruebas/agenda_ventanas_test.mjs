@@ -167,6 +167,9 @@ const sumarDeLaLista = async p => { if(!await tocar(p, '.ag-cab [data-action="ag
   // «+ Sumar» con varias instituciones a la vista: se elige, no viene elegida la primera.
   await sumarDeLaLista(p);
   eq("compu: el formulario, en la misma ventana", await rect(p), grande);
+  // Pedido del 9/10/2026: el formulario a lo ancho, en dos columnas, sin blanco a los costados ni barra de desplazamiento.
+  eq("compu: el formulario ocupa todo el ancho (el primer campo arranca pegado al borde)", await p.evaluate(() => { const m = document.querySelector(".agenda-modal").getBoundingClientRect(), c = document.getElementById("agFInst").getBoundingClientRect(); return [c.left - m.left < 40, m.right - c.right > 300]; }), [true, true]);
+  eq("compu: en dos columnas y sin desplazamiento", await p.evaluate(() => { const f = document.querySelector(".ag-form"); return [getComputedStyle(f).gridTemplateColumns.split(" ").length, f.scrollHeight <= f.clientHeight + 1]; }), [2, true]);
   eq("sumar desde toda la lista: la institución no viene elegida sola", await p.inputValue("#agFInst"), "");
   eq("y dice que hay que elegirla", await p.$eval("#agFInst", e => e.options[e.selectedIndex].textContent), "Elegí la institución…");
   await p.fill("#agFNombre", "Alguien Nuevo");

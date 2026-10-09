@@ -2864,7 +2864,11 @@
   @media (min-width:900px){
     .agenda-modal .ag-ficha{ display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); align-content:start; gap:18px 32px; }
     .agenda-modal .ag-ficha > section:nth-child(n+3){ grid-column:1 / -1; }
-    .agenda-modal .ag-form{ padding-inline:max(22px, calc((100% - 620px) / 2)); }
+    /* El formulario a lo ancho, en dos columnas: centrado en una columna de
+       620 px dejaba blanco a los costados y había que desplazarlo para
+       llegar a Guardar (lo mostró el usuario el 9/10/2026). */
+    .agenda-modal .ag-form{ display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); align-content:start; gap:14px 28px; }
+    .agenda-modal .ag-form > .ag-ancho{ grid-column:1 / -1; }
   }
   /* La Agenda vacía */
   .ag-vacia{ margin:auto; max-width:420px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:8px; padding:24px 8px; }
@@ -2940,14 +2944,14 @@
   .btn-secondary.peligro{ color:var(--danger-text); }
   /* Los formularios */
   .ag-form{ gap:14px; }
-  .ag-campo{ display:flex; flex-direction:column; gap:5px; min-width:0; }
+  .ag-campo, .ag-celda{ display:flex; flex-direction:column; gap:5px; min-width:0; }
+  .ag-celda{ gap:8px; }
   .ag-campo > span{ font-size:12px; font-weight:800; color:var(--ink); }
   .ag-campo > span i{ font-style:normal; font-weight:600; color:var(--text-muted); }
   .ag-campo input:not([type=checkbox]), .ag-campo select, .ag-campo textarea, .ag-donde input, .ag-tel-in input:not([type=checkbox]){
     width:100%; min-width:0; padding:10px 12px; border-radius:var(--radius-sm); border:1.5px solid var(--border); font-size:14px; background:var(--surface-soft); color:var(--text); font-family:inherit; }
   .ag-campo textarea{ resize:vertical; min-height:60px; }
   .ag-campo .ag-link{ align-self:flex-start; }
-  .ag-dos{ display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:12px; }
   .ag-tel-in, .ag-donde{ display:flex; gap:8px; align-items:center; }
   .ag-donde b{ flex:0 1 45%; min-width:0; font-size:13px; color:var(--ink); overflow-wrap:anywhere; }
   .ag-check{ display:inline-flex; align-items:center; gap:6px; font-size:12.5px; font-weight:600; white-space:nowrap; cursor:pointer; }
@@ -3011,7 +3015,6 @@
     .ag-pais-h{ padding:10px 12px; flex-wrap:wrap; }
     .ag-barra select{ flex:1 1 40%; max-width:none; }
     .ag-dl{ grid-template-columns:88px minmax(0,1fr); }
-    .ag-dos{ grid-template-columns:minmax(0,1fr); }
   }
   /* ----- Reportes ----- */
   .rep-chips{ display:flex; flex-wrap:wrap; gap:6px; }
@@ -20778,6 +20781,8 @@ function agendaVistaForm(v){
   const instOps = [...new Set(agendaDatos().ordenadas.map(x => x.country))].map(c => `<optgroup label="${esc(countryLabel(c))}">${agendaDatos().ordenadas.filter(x => x.country === c)
     .map(x => `<option value="${esc(x.id)}"${x.id === v.inst ? " selected" : ""}>${esc(x.name)}${x.city ? " · " + esc(cityLabel(x.country, x.city)) : ""}</option>`).join("")}</optgroup>`).join("");
   const dondeEsta = editar ? institucionesDePersona(v.id).filter(z => z.x && !v.sacar.includes(z.c.id)) : [];
+  // En la compu el formulario va en dos columnas (Nombre | Teléfono, Correo | Idiomas);
+  // «Dónde está» y la nota, a lo ancho, después.
   return agendaCabecera(esc(editar ? t("Corregir a {n}","Edit {n}","Corrigir {n}","עריכת {n}",{ n: v.nombre || "" }) : t("Sumar a alguien","Add someone","Adicionar alguém","הוספת איש קשר")),
       esc(editar ? t("Queda anotado quién lo cambió y cuándo.","Who changed it and when is recorded.","Fica registrado quem mudou e quando.","נרשם מי שינה ומתי.") : t("Si ya está en la app, te lo muestra para no cargarlo dos veces.","If they're already in the app, it shows them so you don't add them twice.","Se já estiver no app, mostra para não cadastrar duas vezes.","אם כבר קיים באפליקציה, יוצג כדי לא להוסיף פעמיים.")))
     + `<form class="ag-cuerpo ag-form" id="agendaForm" novalidate>
@@ -20786,12 +20791,8 @@ function agendaVistaForm(v){
         <button type="button" class="ag-link" data-action="agenda-inst-nueva">+ ${t("Otra institución","Another organization","Outra instituição","מוסד אחר")}</button>${err("inst")}</label>` : ""}
       ${usada ? `<div class="ag-usada"><span>${t("Se suma <b>{n}</b>, que ya está en la app.","Adding <b>{n}</b>, already in the app.","Adiciona <b>{n}</b>, que já está no app.","מוסיפים את <b>{n}</b>, שכבר קיים/ת באפליקציה.",{ n: esc(usada.name) })}</span>
         <button type="button" class="ag-link" data-action="agenda-form-no-usar">${t("No, es otra persona","No, someone else","Não, é outra pessoa","לא, מישהו אחר")}</button></div>`
-        : `<label class="ag-campo"><span>${t("Nombre","Name","Nome","שם")}</span><input id="agFNombre" data-ag-campo="nombre" maxlength="120" autocomplete="off" dir="auto" value="${esc(v.nombre)}" placeholder="${esc(t("Ej.: Daniel Kohan","E.g.: Daniel Kohan","Ex.: Daniel Kohan","לדוגמה: דניאל כהן"))}">${err("nombre")}</label>${sugerencias}`}
+        : `<div class="ag-celda"><label class="ag-campo"><span>${t("Nombre","Name","Nome","שם")}</span><input id="agFNombre" data-ag-campo="nombre" maxlength="120" autocomplete="off" dir="auto" value="${esc(v.nombre)}" placeholder="${esc(t("Ej.: Daniel Kohan","E.g.: Daniel Kohan","Ex.: Daniel Kohan","לדוגמה: דניאל כהן"))}">${err("nombre")}</label>${sugerencias}</div>`}
       ${!editar ? `<label class="ag-campo"><span>${t("Cargo","Role","Cargo","תפקיד")}</span><input id="agFCargo" data-ag-campo="cargo" maxlength="60" list="agCargos" dir="auto" value="${esc(v.cargo || "")}" placeholder="${esc(cargosSugeridos()[0])}"></label>` : ""}
-      ${editar && (dondeEsta.length || v.sacar.length) ? `<div class="ag-campo"><span>${t("Dónde está","Where","Onde está","היכן")}</span>${dondeEsta.map(z => `<div class="ag-donde"><b dir="auto">${esc(z.x.name)}</b>
-          <input id="agFCargo-${esc(z.c.id)}" data-ag-cargo="${esc(z.c.id)}" maxlength="60" list="agCargos" dir="auto" value="${esc(v.cargos[z.c.id] || "")}" aria-label="${esc(t("Cargo en {i}","Role at {i}","Cargo em {i}","תפקיד ב-{i}",{ i: z.x.name }))}" placeholder="${esc(t("Cargo","Role","Cargo","תפקיד"))}">
-          <button type="button" class="ag-quitar" data-action="agenda-form-sacar" data-contacto="${esc(z.c.id)}" title="${esc(t("Ya no está ahí","No longer there","Não está mais lá","כבר לא שם"))}" aria-label="${esc(t("Sacar de {i}","Remove from {i}","Remover de {i}","הסרה מ-{i}",{ i: z.x.name }))}">✕</button></div>`).join("")}
-          ${v.sacar.length ? `<small class="ag-nota">${esc(t("Al guardar, deja de figurar en {n}.","When saved, they'll no longer be listed in {n}.","Ao salvar, deixa de constar em {n}.","בשמירה, יוסר/תוסר מ-{n}.",{ n: cuantasInstituciones(v.sacar.length) }))} <button type="button" class="ag-link" data-action="agenda-form-no-sacar">${t("Deshacer","Undo","Desfazer","ביטול")}</button></small>` : ""}</div>` : ""}
       <datalist id="agCargos">${cargosSugeridos().map(c => `<option value="${esc(c)}">`).join("")}</datalist>
       ${usada ? "" : `<div class="ag-campo"><span>${t("Teléfono","Phone","Telefone","טלפון")} <i>${t("· con el código del país","· with the country code","· com o código do país","· עם קידומת המדינה")}</i></span>
         ${v.tels.map((x, i) => `<div class="ag-tel-in"><input id="agFTel-${i}" data-ag-tel="${i}" inputmode="tel" dir="ltr" maxlength="40" value="${esc(x.n)}" placeholder="+54 9 11 …" aria-label="${esc(t("Teléfono {n}","Phone {n}","Telefone {n}","טלפון {n}",{ n: i + 1 }))}">
@@ -20800,7 +20801,11 @@ function agendaVistaForm(v){
         ${err("tels")}${v.tels.length < 6 ? `<button type="button" class="ag-link" data-action="agenda-form-tel-mas">+ ${t("Otro teléfono","Another phone","Outro telefone","טלפון נוסף")}</button>` : ""}</div>
       <label class="ag-campo"><span>${t("Correo","Email","E-mail","דוא״ל")} <i>${t("· opcional","· optional","· opcional","· לא חובה")}</i></span><input id="agFCorreo" data-ag-campo="correo" type="email" dir="ltr" maxlength="200" value="${esc(v.correo)}" placeholder="${esc(t("nombre@ejemplo.org","name@example.org","nome@exemplo.org","name@example.org"))}">${err("correo")}</label>
       <div class="ag-campo"><span>${t("Idiomas","Languages","Idiomas","שפות")} <i>${t("· opcional","· optional","· opcional","· לא חובה")}</i></span><div class="ag-chips">${IDIOMAS_AGENDA.map(([k, l]) => `<button type="button" class="ag-chip${v.idiomas.includes(k) ? " on" : ""}" data-action="agenda-form-idioma" data-k="${k}" aria-pressed="${v.idiomas.includes(k)}">${esc(l)}</button>`).join("")}</div></div>
-      <label class="ag-campo"><span>${t("Nota","Note","Nota","הערה")} <i>${t("· opcional, hasta 300 letras","· optional, up to 300 characters","· opcional, até 300 letras","· לא חובה, עד 300 תווים")}</i></span><textarea id="agFNota" data-ag-campo="nota" maxlength="300" rows="2" dir="auto" placeholder="${esc(t("Ej.: prefiere que le escriban antes de llamar","E.g.: prefers a message before a call","Ex.: prefere mensagem antes de ligar","לדוגמה: מעדיף/ה הודעה לפני שיחה"))}">${esc(v.nota)}</textarea></label>`}
+      ${editar && (dondeEsta.length || v.sacar.length) ? `<div class="ag-campo ag-ancho"><span>${t("Dónde está","Where","Onde está","היכן")}</span>${dondeEsta.map(z => `<div class="ag-donde"><b dir="auto">${esc(z.x.name)}</b>
+          <input id="agFCargo-${esc(z.c.id)}" data-ag-cargo="${esc(z.c.id)}" maxlength="60" list="agCargos" dir="auto" value="${esc(v.cargos[z.c.id] || "")}" aria-label="${esc(t("Cargo en {i}","Role at {i}","Cargo em {i}","תפקיד ב-{i}",{ i: z.x.name }))}" placeholder="${esc(t("Cargo","Role","Cargo","תפקיד"))}">
+          <button type="button" class="ag-quitar" data-action="agenda-form-sacar" data-contacto="${esc(z.c.id)}" title="${esc(t("Ya no está ahí","No longer there","Não está mais lá","כבר לא שם"))}" aria-label="${esc(t("Sacar de {i}","Remove from {i}","Remover de {i}","הסרה מ-{i}",{ i: z.x.name }))}">✕</button></div>`).join("")}
+          ${v.sacar.length ? `<small class="ag-nota">${esc(t("Al guardar, deja de figurar en {n}.","When saved, they'll no longer be listed in {n}.","Ao salvar, deixa de constar em {n}.","בשמירה, יוסר/תוסר מ-{n}.",{ n: cuantasInstituciones(v.sacar.length) }))} <button type="button" class="ag-link" data-action="agenda-form-no-sacar">${t("Deshacer","Undo","Desfazer","ביטול")}</button></small>` : ""}</div>` : ""}
+      <label class="ag-campo ag-ancho"><span>${t("Nota","Note","Nota","הערה")} <i>${t("· opcional, hasta 300 letras","· optional, up to 300 characters","· opcional, até 300 letras","· לא חובה, עד 300 תווים")}</i></span><textarea id="agFNota" data-ag-campo="nota" maxlength="300" rows="2" dir="auto" placeholder="${esc(t("Ej.: prefiere que le escriban antes de llamar","E.g.: prefers a message before a call","Ex.: prefere mensagem antes de ligar","לדוגמה: מעדיף/ה הודעה לפני שיחה"))}">${esc(v.nota)}</textarea></label>`}
     </form>
     <div class="ag-pie"><span></span><span class="ag-pie-acc"><button type="button" class="btn-secondary" data-action="agenda-volver">${t("Cancelar","Cancel","Cancelar","ביטול")}</button>
       <button type="button" class="btn-primary" data-action="agenda-guardar"${agendaGuardando ? " disabled" : ""}>${agendaGuardando ? t("Guardando…","Saving…","Salvando…","שומר…") : t("Guardar","Save","Salvar","שמירה")}</button></span></div>`;
@@ -20865,16 +20870,12 @@ function agendaVistaFormInst(v){
   return agendaCabecera(esc(editar ? t("Corregir la institución","Edit organization","Corrigir a instituição","עריכת המוסד") : t("Otra institución","Another organization","Outra instituição","מוסד חדש")), "")
     + `<form class="ag-cuerpo ag-form" id="agendaFormInst" novalidate>
       <label class="ag-campo"><span>${t("Nombre","Name","Nome","שם")}</span><input id="agINombre" data-ag-campo="name" maxlength="160" dir="auto" value="${esc(v.name)}" placeholder="${esc(t("Ej.: Beit Chabad Rosario","E.g.: Beit Chabad Rosario","Ex.: Beit Chabad Rosario","לדוגמה: בית חב״ד רוסאריו"))}">${err("name")}</label>
-      <div class="ag-dos">
-        <label class="ag-campo"><span>${t("País","Country","País","מדינה")}</span><select id="agIPais" data-ag-campo="country"><option value="">—</option>${todosLosPaises().map(c => `<option value="${esc(c)}"${c === v.country ? " selected" : ""}>${esc(countryLabel(c))}</option>`).join("")}</select>${err("country")}</label>
-        <label class="ag-campo"><span>${t("Ciudad","City","Cidade","עיר")}</span><select id="agICiudad" data-ag-campo="city"${v.country ? "" : " disabled"}><option value="">—</option>${ciudades.map(c => `<option value="${esc(c)}"${normalize(c) === normalize(v.city) ? " selected" : ""}>${esc(cityLabel(v.country, c))}</option>`).join("")}</select></label>
-      </div>
       <label class="ag-campo"><span>${t("Dirección","Address","Endereço","כתובת")} <i>${t("· opcional","· optional","· opcional","· לא חובה")}</i></span><input id="agIDir" data-ag-campo="address" maxlength="300" dir="auto" value="${esc(v.address)}"></label>
-      <div class="ag-dos">
-        <label class="ag-campo"><span>${t("Tipo","Type","Tipo","סוג")}</span><input id="agITipo" data-ag-campo="tipo" maxlength="60" list="agTipos" dir="auto" value="${esc(v.tipo)}"><datalist id="agTipos">${[...new Set(state.instituciones.map(x => x.tipo).filter(Boolean))].sort().map(x => `<option value="${esc(x)}">`).join("")}</datalist></label>
-        <label class="ag-campo"><span>${t("Estado","Status","Situação","מצב")}</span><select id="agIEstado" data-ag-campo="estado">${["activa", "temporada", "cerrada"].map(e => `<option value="${e}"${e === v.estado ? " selected" : ""}>${esc(estadoDeInstitucion(e))}</option>`).join("")}</select></label>
-      </div>
-      <label class="ag-campo"><span>${t("Nota","Note","Nota","הערה")} <i>${t("· opcional, hasta 300 letras","· optional, up to 300 characters","· opcional, até 300 letras","· לא חובה, עד 300 תווים")}</i></span><textarea id="agINota" data-ag-campo="nota" maxlength="300" rows="2" dir="auto">${esc(v.nota)}</textarea></label>
+      <label class="ag-campo"><span>${t("País","Country","País","מדינה")}</span><select id="agIPais" data-ag-campo="country"><option value="">—</option>${todosLosPaises().map(c => `<option value="${esc(c)}"${c === v.country ? " selected" : ""}>${esc(countryLabel(c))}</option>`).join("")}</select>${err("country")}</label>
+      <label class="ag-campo"><span>${t("Ciudad","City","Cidade","עיר")}</span><select id="agICiudad" data-ag-campo="city"${v.country ? "" : " disabled"}><option value="">—</option>${ciudades.map(c => `<option value="${esc(c)}"${normalize(c) === normalize(v.city) ? " selected" : ""}>${esc(cityLabel(v.country, c))}</option>`).join("")}</select></label>
+      <label class="ag-campo"><span>${t("Tipo","Type","Tipo","סוג")}</span><input id="agITipo" data-ag-campo="tipo" maxlength="60" list="agTipos" dir="auto" value="${esc(v.tipo)}"><datalist id="agTipos">${[...new Set(state.instituciones.map(x => x.tipo).filter(Boolean))].sort().map(x => `<option value="${esc(x)}">`).join("")}</datalist></label>
+      <label class="ag-campo"><span>${t("Estado","Status","Situação","מצב")}</span><select id="agIEstado" data-ag-campo="estado">${["activa", "temporada", "cerrada"].map(e => `<option value="${e}"${e === v.estado ? " selected" : ""}>${esc(estadoDeInstitucion(e))}</option>`).join("")}</select></label>
+      <label class="ag-campo ag-ancho"><span>${t("Nota","Note","Nota","הערה")} <i>${t("· opcional, hasta 300 letras","· optional, up to 300 characters","· opcional, até 300 letras","· לא חובה, עד 300 תווים")}</i></span><textarea id="agINota" data-ag-campo="nota" maxlength="300" rows="2" dir="auto">${esc(v.nota)}</textarea></label>
     </form>
     <div class="ag-pie"><span></span><span class="ag-pie-acc"><button type="button" class="btn-secondary" data-action="agenda-volver">${t("Cancelar","Cancel","Cancelar","ביטול")}</button>
       <button type="button" class="btn-primary" data-action="agenda-inst-guardar"${agendaGuardando ? " disabled" : ""}>${agendaGuardando ? t("Guardando…","Saving…","Salvando…","שומר…") : t("Guardar","Save","Salvar","שמירה")}</button></span></div>`;
