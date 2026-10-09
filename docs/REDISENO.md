@@ -969,6 +969,30 @@ eligió **unirlas así**:
 Pruebas: `agenda_test.mjs` (país, región y ciudad; fallan con el código
 de antes) y `ficha_celular_test.mjs` vuelve a esperar cinco tarjetas.
 
+### 54. «Contactos en …»: un solo «+ Sumar», al pie — HECHO (9 oct 2026)
+
+Con una captura de «Contactos en São Paulo»: «quiero que saquemos el
+"+ Sumar a alguien más" de cada uno y que a lo sumo, a la misma altura que
+"Ver Agenda", pongamos "+ Sumar", así como ya lo tenemos dentro de la
+Agenda».
+
+- **Cada institución** de la tarjeta ya no lleva su «+ Sumar a alguien
+  más».
+- **Al pie**, en el mismo renglón, a la izquierda de «Ver Agenda» (con el
+  mismo aspecto que el «+ Sumar» de la ventana de la Agenda, oscuro y
+  del mismo alto que «Ver Agenda»): «+ Sumar», solo para quien carga
+  eventos. Si la ciudad no tiene a nadie todavía, es lo único que queda
+  al pie; quien observa ve solo «Ver Agenda».
+- El «+ Sumar» que había en el título (cuando no había «Ver más») se
+  fue: ya está al pie.
+- Con una sola institución en la ciudad, el formulario la trae elegida;
+  con varias, hay que elegirla, igual que al sumar desde la Agenda.
+
+Pruebas: `agenda_ventanas_test.mjs`, `ficha_celular_test.mjs` (los dos
+botones en un renglón, también en el celular, y ninguno en cada
+institución ni en el título; fallan con el código de antes) y
+`agenda_test.mjs` (suma desde el botón del pie).
+
 ### 53. Las ventanas, en el medio de la pantalla — HECHO (9 oct 2026)
 
 Con dos capturas (la ventana de un evento del Calendario y la de la

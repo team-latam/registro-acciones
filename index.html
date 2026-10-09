@@ -2977,13 +2977,12 @@
   /* «Contactos en …», en la ficha de un lugar */
   .fl-ag{ display:flex; flex-direction:column; gap:8px; }
   .fl-ag-inst{ border:1px solid var(--border); border-radius:12px; padding:9px 12px; display:flex; flex-direction:column; gap:6px; }
-  .fl-ag-inst .ag-link{ align-self:flex-start; }
   /* En la tarjeta angosta del costado, el teléfono en su renglón: si bajaba
      solo, dejaba un «·» colgando al final del de arriba (9/10/2026). */
   .fl-ag .ag-sep{ display:none; }
   .fl-ag .ag-tel{ display:block; }
-  .fl-ag-pie{ display:flex; justify-content:flex-end; margin-top:10px; }
-  .fl-ag-pie .btn-secondary{ padding:7px 14px; font-size:12.5px; }
+  .fl-ag-pie{ display:flex; flex-wrap:wrap; justify-content:flex-end; gap:8px; margin-top:10px; }
+  .fl-ag-pie .btn-secondary, .fl-ag-pie .btn-primary{ padding:7px 14px; font-size:12.5px; }
   /* Administración › Agenda: traer una lista */
   .ag-admin .settings-card + .settings-card{ margin-top:14px; }
   .settings-card > .ag-nota, .settings-card > .ag-error{ display:block; margin:0; padding:16px 18px; }
@@ -21800,19 +21799,22 @@ function renderFichaLugar(L){
     const r = resumenAgenda(agendaAca);
     const todos = fichaDesplegado.has("contactos") || fichaImprimiendo;
     const verMas = n => n > HIJOS_A_LA_VISTA ? `<button type="button" class="fl-mas" data-action="ficha-desplegar" data-que="contactos">${fichaDesplegado.has("contactos") ? t("Ver menos","Show less","Ver menos","הצג פחות") : t("Ver más","See more","Ver mais","הצגת עוד")}</button>` : "";
-    const enAgenda = agendaAca.length ? `<div class="fl-ag-pie"><button type="button" class="btn-secondary" data-action="agenda-abrir" data-country="${esc(L.country)}" data-city="${esc(L.city)}">${t("Ver Agenda","See Directory","Ver Agenda","לספר הטלפונים")}</button></div>` : "";
+    // Al pie, en un mismo renglón: «+ Sumar» (quien carga eventos) y «Ver Agenda». Antes cada
+    // institución llevaba su «+ Sumar a alguien más»: el usuario pidió sacarlos (9/10/2026).
+    const sumar = canWrite() ? `<button type="button" class="btn-primary" data-action="agenda-sumar">+ ${t("Sumar","Add","Adicionar","הוספה")}</button>` : "";
+    const verAgenda = agendaAca.length ? `<button type="button" class="btn-secondary" data-action="agenda-abrir" data-country="${esc(L.country)}" data-city="${esc(L.city)}">${t("Ver Agenda","See Directory","Ver Agenda","לספר הטלפונים")}</button>` : "";
+    const enAgenda = sumar || verAgenda ? `<div class="fl-ag-pie">${sumar}${verAgenda}</div>` : "";
     const ver = todos ? agendaAca : agendaAca.slice(0, HIJOS_A_LA_VISTA);
     const cuerpo = agendaAca.length ? `<div class="fl-ag">${ver.map(x => `<div class="fl-ag-inst${x.estado === "cerrada" ? " cerrada" : ""}">
         <button type="button" class="ag-inst" data-action="agenda-ver-inst" data-id="${esc(x.id)}"><b dir="auto">${esc(x.name)} ${pastillaDeEstado(x)}</b><small dir="auto">${esc([x.tipo, x.address].filter(Boolean).join(" · "))}</small></button>
-        ${genteDe(x.id).map(c => filaDePersona(c, true)).join("")}
-        ${canWrite() ? `<button type="button" class="ag-link" data-action="agenda-sumar" data-inst="${esc(x.id)}">+ ${t("Sumar a alguien más","Add someone else","Adicionar mais alguém","הוספת מישהו נוסף")}</button>` : ""}</div>`).join("")}</div>`
+        ${genteDe(x.id).map(c => filaDePersona(c, true)).join("")}</div>`).join("")}</div>`
       : `<p class="fl-nada">${esc(t("Todavía no hay nadie en la Agenda de {l}.","No one in the Directory for {l} yet.","Ainda não há ninguém na Agenda de {l}.","עדיין אין אף אחד בספר הטלפונים של {l}.",{ l: nombre }))}</p>`;
     // Con una sola institución, su nombre; y con una sola persona ahí, también el de ella.
     const gente1 = agendaAca.length === 1 ? genteDe(agendaAca[0].id) : [];
     const resumen = !agendaAca.length ? t("Nadie todavía","No one yet","Ninguém ainda","עדיין אין אף אחד")
       : agendaAca.length === 1 ? [agendaAca[0].name, gente1.length === 1 ? agendaDatos().personas.get(gente1[0].persona).name : gente1.length ? cuantosContactos(gente1.length) : ""].filter(Boolean).join(" · ")
       : `${cuantasInstituciones(r.inst)} · ${cuantosContactos(r.gente)}`;
-    const extra = verMas(agendaAca.length) || (canWrite() ? `<button type="button" class="fl-mas" data-action="agenda-sumar">+ ${t("Sumar","Add","Adicionar","הוספה")}</button>` : "");
+    const extra = verMas(agendaAca.length);
     return `<div class="${claseDeLado("contactos")}">${tituloDeLado("contactos", esc(t("Contactos en {l}","Contacts in {l}","Contatos em {l}","אנשי קשר ב{l}",{ l: nombre })), resumen, extra)}${cuerpo}${enAgenda}</div>`;
   })();
   const meses = [];

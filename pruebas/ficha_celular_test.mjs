@@ -145,6 +145,26 @@ const b = await abrirNavegador();
   await p.close();
 }
 
+// ---------- «Contactos en …»: «+ Sumar» al pie, al lado de «Ver Agenda» (9/10/2026) ----------
+// Cada institución llevaba su «+ Sumar a alguien más» (el usuario pidió sacarlos): ahora hay uno al pie,
+// en el mismo renglón que «Ver Agenda», y entran los dos en la tarjeta angosta del celular.
+{
+  const { p, errores } = await entrar(b, ADMIN, "Benny Rosenthal", { viewport: { width: 390, height: 844 }, base: conMucha() });
+  await aArgentina(p);
+  await p.click('.fl-pliegue[data-que="hijos"]'); await p.waitForTimeout(200);
+  await p.evaluate(() => document.querySelector('.fl-hijo[data-city="Rosario"]').click());
+  await p.waitForSelector(".fl-historia"); await p.waitForTimeout(250);
+  const tarjeta = '.fl-card:has(.fl-pliegue[data-que="contactos"])';
+  await p.evaluate(sel => { const x = document.querySelector(sel + " .fl-pliegue"); if(x.getAttribute("aria-expanded") !== "true") x.click(); }, tarjeta);
+  await p.waitForTimeout(250);
+  eq("contactos en el celular: al pie, «+ Sumar» y «Ver Agenda», uno al lado del otro y dentro de la tarjeta", await p.evaluate(sel => {
+    const c = document.querySelector(sel).getBoundingClientRect(), l = [...document.querySelectorAll(sel + " .fl-ag-pie > button")], r = l.map(e => e.getBoundingClientRect());
+    return [l.map(e => e.textContent.trim()), r.length === 2 && Math.abs(r[0].top - r[1].top) < 1 && r[0].right <= r[1].left && r[0].left >= c.left && r[1].right <= c.right]; }, tarjeta), [["+ Sumar", "Ver Agenda"], true]);
+  eq("contactos en el celular: ninguna institución con su «+ Sumar a alguien más», ni «+ Sumar» en el título", await p.$$eval(`${tarjeta} .fl-ag-inst [data-action="agenda-sumar"], ${tarjeta} h3 [data-action="agenda-sumar"]`, l => l.length), 0);
+  eq("contactos en el celular: sin errores", errores, []);
+  await p.close();
+}
+
 // ---------- En hebreo (de derecha a izquierda) ----------
 {
   const { p, errores } = await entrar(b, ADMIN, "Benny Rosenthal", { viewport: { width: 390, height: 844 }, base: conMucha(), lang: "he" });

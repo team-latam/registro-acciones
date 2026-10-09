@@ -1198,7 +1198,8 @@ cuenta, y su ficha muestra lo que hizo con el equipo.
   el medio de la pantalla como las demás ventanas, con el alto que
   necesita cada vista (la lista, siempre alta) y todo en una columna,
   como en el celular. En la ficha de una ciudad,
-  la tarjeta «Contactos en …» con su gente y «Ver Agenda»; en la de
+  la tarjeta «Contactos en …» con su gente y, al pie, «+ Sumar» (quien
+  carga eventos) y «Ver Agenda» en un mismo renglón; en la de
   un país o una región, la gente va adentro de «Ciudades» o «Países»
   (desde el 9/10/2026, pedido del usuario: eran dos tarjetas que nombraban
   las mismas ciudades): cada renglón dice lo hecho ahí y su gente (📇), y
