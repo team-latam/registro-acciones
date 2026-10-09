@@ -19,6 +19,9 @@
    - y que, si entra en la pantalla, quede en el medio y no pegada arriba
      (lo pidió el usuario con dos capturas, 9/10/2026: la del Calendario
      sí, la Agenda y la ficha de un posteo no).
+   - y, en el celular, que una ventana con poco adentro no crezca con la
+     pantalla (al esconderse la barra del navegador): dejaba un blanco
+     abajo (capturas del iPhone del usuario, 9/10/2026).
    AUDITORIA_PANTALLAS limita las combinaciones ("1280x800:es,390x844:he").
    ====================================================================== */
 import { abrirNavegador, entrar, ADMIN, BASE, revisarRecortes, recorrerApp, tab, click, cerrar } from "../../pruebas/app_de_mentira.mjs";
@@ -106,6 +109,24 @@ for(const vp of [{ width: 1280, height: 800 }, { width: 1440, height: 1000 }, { 
     // En el medio de la pantalla (pedido del usuario, 9/10/2026: la Agenda y la ficha de un posteo
     // abrían pegadas arriba): si entra con su respiro de 24 px, queda a la misma distancia de los dos bordes.
     if(r.alto + 48 <= r.pantalla && Math.abs(r.arriba - r.abajo) > 4) out.push(hallazgo("ventanas", "medio", `La ventana no queda en el medio de la pantalla (${r.arriba} px del borde de arriba y ${r.abajo} del de abajo)`, donde));
+    // En el celular, con poco adentro, la ventana no tiene que crecer con la pantalla: al esconderse la
+    // barra del navegador crece lo visible, y una ventana a pantalla completa deja un blanco abajo que
+    // se agranda (captura del usuario, 9/10/2026). Se mide con 100 px más de alto; si algo adentro sigue
+    // desplazándose (una lista larga), que crezca es lo esperado. El visor y la foto ocupan todo a propósito.
+    if(vp.width < 800){
+      const medida = () => p.evaluate(() => {
+        const seVe = e => e.getClientRects().length > 0 && getComputedStyle(e).visibility !== "hidden";
+        const d = [...document.querySelectorAll('[role="dialog"], .modal-overlay:not([hidden]), #lightbox.show, .visor-doc:not([hidden])')].filter(seVe).pop();
+        if(!d || d.matches("#lightbox, .visor-doc")) return null;
+        const dlg = d.matches('[role="dialog"]') ? d : d.querySelector('[role="dialog"]') || d;
+        return { alto: Math.round(dlg.getBoundingClientRect().height), desplaza: [dlg, ...dlg.querySelectorAll("*")].some(e => /auto|scroll/.test(getComputedStyle(e).overflowY) && e.scrollHeight > e.clientHeight + 1) };
+      });
+      const antes = await medida();
+      await p.setViewportSize({ width: vp.width, height: vp.height + 100 }); await p.waitForTimeout(400);
+      const despues = await medida();
+      await p.setViewportSize(vp); await p.waitForTimeout(300);
+      if(antes && despues && despues.alto > antes.alto + 20 && !despues.desplaza) out.push(hallazgo("ventanas", "medio", `La ventana crece con la pantalla y deja un blanco abajo (${antes.alto} px de alto; ${despues.alto} con 100 px más de pantalla)`, donde));
+    }
     // Tab 25 veces: el foco no se tiene que ir afuera.
     let escapo = false;
     for(let i = 0; i < 25 && !escapo; i++){

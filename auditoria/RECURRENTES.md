@@ -67,6 +67,31 @@ compu y solo donde reemplaza a la de la columna
 (`@media (min-width:761px)`). Las ventanas y los desplegables sí llevan
 barra propia.
 
+**Una ventana a pantalla completa con poco adentro, en el celular.** Una
+ficha o un formulario de la Agenda ocupaba toda la pantalla y dejaba un
+blanco abajo, que se agrandaba al desplazarse (captura del iPhone del
+usuario, 9/10). *Por qué:* el navegador esconde sus barras al bajar, lo
+visible crece (de unos 660 a unos 760 px) y la ventana, atada a ese alto
+(`--vvh`), crece con él. *Se detecta:* `pantallas` (agranda la pantalla 100
+px con la ventana abierta y avisa si crece sin que nada adentro se
+desplace) y `agenda_ventanas_test.mjs` (con 661 y con 760). *Regla:* en el
+celular solo lo largo (una lista) ocupa la pantalla entera; lo demás mide
+lo que necesita, hasta la pantalla, y queda en el medio.
+
+**Un formulario que entra en la prueba y no en el celular de verdad.** Con
+844 px de alto «Sumar a alguien» entraba; en el iPhone del usuario, con la
+barra del navegador a la vista, quedan unos 660 y había que desplazarse.
+*Por qué:* las pruebas y la auditoría usaban un alto de pantalla que ningún
+celular tiene con el navegador abierto. *Regla:* lo que tiene que entrar sin
+desplazarse en el celular se prueba con unos 660 px de alto (`390 × 661`).
+
+**Un botón que se parte en dos renglones.** «Ver más» al lado de un título
+largo («Contactos en Buenos Aires (CABA)») quedaba «Ver / más». *Por qué:* un
+botón dentro de un renglón flexible se achica y parte su texto. *Se
+detecta:* `ficha_celular_test.mjs` (con 390 y con 320 de ancho). *Regla:* el
+botón de una sola palabra o dos lleva `white-space:nowrap; flex:none`; lo
+que se parte es el título.
+
 ## Datos
 
 **Fechas corridas un día.** *Por qué:* `toISOString()` da la fecha en UTC;

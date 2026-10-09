@@ -1197,7 +1197,9 @@ cuenta, y su ficha muestra lo que hizo con el equipo.
   (lo eligió el usuario entre tres tamaños, 9/10/2026): 620 de ancho, en
   el medio de la pantalla como las demás ventanas, con el alto que
   necesita cada vista (la lista, siempre alta) y todo en una columna,
-  como en el celular. En la ficha de una ciudad,
+  como en el celular. En el celular solo la lista ocupa la pantalla; una
+  ficha o un formulario miden lo que necesitan (y «Sumar a alguien» entra
+  entero, sin desplazarse, con unos 660 px de alto). En la ficha de una ciudad,
   la tarjeta «Contactos en …» con su gente y, al pie, «+ Sumar» (quien
   carga eventos) y «Ver Agenda» en un mismo renglón; en la de
   un país o una región, la gente va adentro de «Ciudades» o «Países»
@@ -1209,8 +1211,8 @@ cuenta, y su ficha muestra lo que hizo con el equipo.
 - **Quién**: la ve todo aprobado, también quien observa, con teléfonos y
   correos (decisión del usuario); la completa y corrige cualquiera que
   carga eventos; borrar una institución, y traer una lista entera, es de
-  un admin. Cada ficha dice al pie de qué lista vino o quién la corrigió
-  por última vez.
+  un admin. Cada ficha dice al pie quién la corrigió por última vez (ya no
+  de qué lista vino).
 - **Navegación adentro de la ventana**: una pila de vistas
   (`agendaPila`: la lista, una persona, una institución, los
   formularios). «Volver» y Escape sacan una; lo de abajo queda como

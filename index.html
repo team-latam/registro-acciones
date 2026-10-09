@@ -802,6 +802,7 @@
   .ach-sort:hover{ color:var(--ink); }
   .ach-date{ text-align:end; }
   .audit-more{ text-align:center; margin-top:14px; }
+  .audit-more .btn-secondary{ white-space:nowrap; }
   .audit-filters{ margin-bottom:14px; }
   .audit-filters input{
     width:100%; box-sizing:border-box; padding:9px 14px; border-radius:999px; border:1.5px solid var(--border);
@@ -2376,7 +2377,10 @@
   .place-seg.fl-seg .place-seg-btn{ flex:1 1 auto; min-width:auto; padding:8px 12px; }
   .fl-card{ background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px 18px; box-shadow:var(--shadow); margin-bottom:16px; min-width:0; }
   .fl-card h3{ margin:0 0 10px; font-size:11px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--text-muted); display:flex; justify-content:space-between; align-items:baseline; gap:10px; }
-  .fl-mas{ background:none; border:none; padding:0; font:inherit; text-transform:none; letter-spacing:0; font-weight:700; font-size:12.5px; color:var(--celeste-dark); cursor:pointer; }
+  /* «Ver más» / «Ver menos» siempre en un solo renglón: con un título largo al lado
+     («Contactos en Buenos Aires (CABA)») se achicaba y se partía en dos (captura del
+     usuario, 9/10/2026); el que se parte es el título. */
+  .fl-mas{ background:none; border:none; padding:0; font:inherit; text-transform:none; letter-spacing:0; font-weight:700; font-size:12.5px; color:var(--celeste-dark); cursor:pointer; white-space:nowrap; flex:none; }
   .fl-lectura{ background:linear-gradient(180deg, var(--celeste-soft), var(--card)); }
   .fl-lectura ul{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:9px; }
   .fl-lectura li{ display:flex; gap:10px; font-size:14px; line-height:1.45; color:var(--ink); }
@@ -3014,18 +3018,33 @@
     .fl-card .ag-wa, .fl-card .ag-link, .fl-ag-pie{ display:none !important; }
   }
   @media (max-width:640px){
-    /* En el celular, toda vista de la Agenda ocupa la pantalla: antes la
-       lista sí y una ficha era una tarjeta flotando sobre la página. */
-    .agenda-modal{ height:calc(var(--vvh, 100dvh) - 20px); max-height:calc(var(--vvh, 100dvh) - 20px); margin:0; }
+    /* En el celular, la lista ocupa la pantalla (es larga, y si no cambiaría de alto
+       con cada letra que se busca); una ficha o un formulario miden lo que necesitan,
+       hasta la pantalla y en el medio, como las demás ventanas. Antes toda vista
+       ocupaba la pantalla entera: una corta dejaba un blanco abajo, y ese blanco
+       crecía al esconderse la barra del navegador (captura del usuario, 9/10/2026). */
+    .agenda-modal{ height:auto; max-height:calc(var(--vvh, 100dvh) - 20px); margin:auto 0; }
+    .agenda-modal:has(.ag-lista){ height:calc(var(--vvh, 100dvh) - 20px); }
     .ag-cab-acc{ padding:7px 12px; font-size:13px; }
-    .ag-cab{ padding:14px 16px 10px; padding-inline-end:48px; }
+    .ag-cab{ padding:12px 16px 8px; padding-inline-end:48px; }
     .ag-cuerpo{ padding:12px 14px 16px; }
+    .ag-form{ gap:10px; padding-top:10px; padding-bottom:14px; }
     .ag-pie{ padding:10px 14px; }
     .ag-fila{ padding:10px 12px; }
     .ag-ciudad{ padding:10px 12px 2px; }
     .ag-pais-h{ padding:10px 12px; flex-wrap:wrap; }
     .ag-dl{ grid-template-columns:88px minmax(0,1fr); }
     .ag-dos{ grid-template-columns:minmax(0,1fr); }
+    /* Nombre | Cargo, de a dos también en el celular: así «Sumar a alguien» entra sin
+       desplazarse. Si aparece una persona parecida o ya elegida, ocupan todo el ancho. */
+    .ag-dos.ag-nc{ grid-template-columns:minmax(0,5fr) minmax(0,4fr); }   /* con 3 y 2, «Rab a cargo» se cortaba (el campo reserva lugar para la flechita de sugerencias) */
+    .ag-dos.ag-nc:has(.ag-sug, .ag-usada){ grid-template-columns:minmax(0,1fr); }
+    /* «+ Otra institución» y «+ Otro teléfono» van en el renglón del título del campo, a la
+       derecha, y no debajo: dos renglones menos. */
+    .ag-campo.ag-conlink{ display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:baseline; column-gap:10px; row-gap:5px; }
+    .ag-campo.ag-conlink > *{ grid-column:1 / -1; min-width:0; }
+    .ag-campo.ag-conlink > span:first-child{ grid-column:1; grid-row:1; }
+    .ag-campo.ag-conlink > .ag-link{ grid-column:2; grid-row:1; justify-self:end; white-space:nowrap; }
   }
   /* ----- Reportes ----- */
   .rep-chips{ display:flex; flex-wrap:wrap; gap:6px; }
@@ -20793,21 +20812,24 @@ function agendaVistaForm(v){
   const instOps = [...new Set(agendaDatos().ordenadas.map(x => x.country))].map(c => `<optgroup label="${esc(countryLabel(c))}">${agendaDatos().ordenadas.filter(x => x.country === c)
     .map(x => `<option value="${esc(x.id)}"${x.id === v.inst ? " selected" : ""}>${esc(x.name)}${x.city ? " · " + esc(cityLabel(x.country, x.city)) : ""}</option>`).join("")}</optgroup>`).join("");
   const dondeEsta = editar ? institucionesDePersona(v.id).filter(z => z.x && !v.sacar.includes(z.c.id)) : [];
+  // «Sumar a alguien» no lleva texto de ayuda arriba («Si ya está en la app, te lo muestra
+  // para no cargarlo dos veces»): en el celular el formulario tenía que desplazarse y el aviso
+  // ya aparece solo, cuando hay un parecido, bajo el nombre (pedido del usuario, 9/10/2026).
   // En la compu el formulario va en dos columnas (Nombre | Teléfono, Correo | Idiomas);
   // «Dónde está» y la nota, a lo ancho, después.
   return agendaCabecera(esc(editar ? t("Corregir a {n}","Edit {n}","Corrigir {n}","עריכת {n}",{ n: v.nombre || "" }) : t("Sumar a alguien","Add someone","Adicionar alguém","הוספת איש קשר")),
-      esc(editar ? t("Queda anotado quién lo cambió y cuándo.","Who changed it and when is recorded.","Fica registrado quem mudou e quando.","נרשם מי שינה ומתי.") : t("Si ya está en la app, te lo muestra para no cargarlo dos veces.","If they're already in the app, it shows them so you don't add them twice.","Se já estiver no app, mostra para não cadastrar duas vezes.","אם כבר קיים באפליקציה, יוצג כדי לא להוסיף פעמיים.")))
+      esc(editar ? t("Queda anotado quién lo cambió y cuándo.","Who changed it and when is recorded.","Fica registrado quem mudou e quando.","נרשם מי שינה ומתי.") : ""))
     + `<form class="ag-cuerpo ag-form" id="agendaForm" novalidate>
-      ${!editar ? `<label class="ag-campo"><span>${t("Institución","Organization","Instituição","מוסד")}</span>
+      ${!editar ? `<label class="ag-campo ag-conlink"><span>${t("Institución","Organization","Instituição","מוסד")}</span>
         <select id="agFInst" data-ag-campo="inst">${v.inst ? "" : `<option value="" selected disabled>${esc(t("Elegí la institución…","Choose the organization…","Escolha a instituição…","בחירת מוסד…"))}</option>`}${instOps}</select>
         <button type="button" class="ag-link" data-action="agenda-inst-nueva">+ ${t("Otra institución","Another organization","Outra instituição","מוסד אחר")}</button>${err("inst")}</label>` : ""}
-      ${!editar ? `<div class="ag-dos">` : ""}
+      ${!editar ? `<div class="ag-dos ag-nc">` : ""}
       ${usada ? `<div class="ag-usada"><span>${t("Se suma <b>{n}</b>, que ya está en la app.","Adding <b>{n}</b>, already in the app.","Adiciona <b>{n}</b>, que já está no app.","מוסיפים את <b>{n}</b>, שכבר קיים/ת באפליקציה.",{ n: esc(usada.name) })}</span>
         <button type="button" class="ag-link" data-action="agenda-form-no-usar">${t("No, es otra persona","No, someone else","Não, é outra pessoa","לא, מישהו אחר")}</button></div>`
         : `<div class="ag-celda"><label class="ag-campo"><span>${t("Nombre","Name","Nome","שם")}</span><input id="agFNombre" data-ag-campo="nombre" maxlength="120" autocomplete="off" dir="auto" value="${esc(v.nombre)}" placeholder="${esc(t("Ej.: Daniel Kohan","E.g.: Daniel Kohan","Ex.: Daniel Kohan","לדוגמה: דניאל כהן"))}">${err("nombre")}</label>${sugerencias}</div>`}
       ${!editar ? `<label class="ag-campo"><span>${t("Cargo","Role","Cargo","תפקיד")}</span><input id="agFCargo" data-ag-campo="cargo" maxlength="60" list="agCargos" dir="auto" value="${esc(v.cargo || "")}" placeholder="${esc(cargosSugeridos()[0])}"></label>` : ""}${!editar ? `</div>` : ""}
       <datalist id="agCargos">${cargosSugeridos().map(c => `<option value="${esc(c)}">`).join("")}</datalist>
-      ${usada ? "" : `<div class="ag-campo"><span>${t("Teléfono","Phone","Telefone","טלפון")} <i>${t("· con el código del país","· with the country code","· com o código do país","· עם קידומת המדינה")}</i></span>
+      ${usada ? "" : `<div class="ag-campo ag-conlink"><span>${t("Teléfono","Phone","Telefone","טלפון")} <i>${t("· con el código del país","· with the country code","· com o código do país","· עם קידומת המדינה")}</i></span>
         ${v.tels.map((x, i) => `<div class="ag-tel-in"><input id="agFTel-${i}" data-ag-tel="${i}" inputmode="tel" dir="ltr" maxlength="40" value="${esc(x.n)}" placeholder="+54 9 11 …" aria-label="${esc(t("Teléfono {n}","Phone {n}","Telefone {n}","טלפון {n}",{ n: i + 1 }))}">
           <label class="ag-check"><input type="checkbox" id="agFWa-${i}" data-ag-wa="${i}"${x.wa ? " checked" : ""}> WhatsApp</label>
           ${v.tels.length > 1 ? `<button type="button" class="ag-quitar" data-action="agenda-form-tel-quitar" data-i="${i}" aria-label="${esc(t("Quitar este teléfono","Remove this phone","Remover este telefone","הסרת הטלפון"))}">✕</button>` : ""}</div>`).join("")}

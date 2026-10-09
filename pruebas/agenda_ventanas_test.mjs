@@ -98,6 +98,21 @@ const escribir = async (p, sel, valor) => { await p.fill(sel, valor); await p.wa
 const rect = p => p.$eval(".agenda-modal", e => { const r = e.getBoundingClientRect(); return [Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height)]; });
 // En el medio de la pantalla, como las demás ventanas (9/10/2026): la misma distancia al borde de arriba que al de abajo.
 const centrada = p => p.$eval(".agenda-modal", e => { const r = e.getBoundingClientRect(); return Math.abs(r.top - (innerHeight - r.bottom)) <= 2; });
+// A medida y en el medio (en el celular, lo que no es la lista): más baja que la pantalla, a la
+// misma distancia de arriba y de abajo, y sin blanco entre lo último del cuerpo y el pie. Ocupando
+// la pantalla entera dejaba un blanco abajo, que crecía al esconderse la barra del navegador
+// (captura del usuario, 9/10/2026).
+const aMedida = p => p.evaluate(() => {
+  const m = document.querySelector(".agenda-modal"), r = m.getBoundingClientRect(), c = m.querySelector(".ag-cuerpo"), cb = c.getBoundingClientRect();
+  const u = [...c.children].filter(e => getComputedStyle(e).display !== "none" && e.getClientRects().length).pop(), ub = u.getBoundingClientRect();
+  const blanco = cb.bottom - ub.bottom - parseFloat(getComputedStyle(c).paddingBottom);
+  return r.height < innerHeight - 30 && Math.abs(r.top - (innerHeight - r.bottom)) <= 2 && blanco <= 2;
+});
+const sinBlanco = p => p.evaluate(() => {
+  const c = document.querySelector(".agenda-modal .ag-cuerpo"), cb = c.getBoundingClientRect();
+  const u = [...c.children].filter(e => getComputedStyle(e).display !== "none" && e.getClientRects().length).pop();
+  return cb.bottom - u.getBoundingClientRect().bottom - parseFloat(getComputedStyle(c).paddingBottom) <= 2;
+});
 const enCampo = p => p.evaluate(() => { const a = document.activeElement; return !!a && (a.tagName === "TEXTAREA" || (a.tagName === "INPUT" && !/^(checkbox|radio|button|submit)$/i.test(a.type))); });
 // Espera a que la ventana muestre esa vista (hasta 4 segundos).
 const vistaEs = async (p, re) => { try{ await p.waitForFunction(src => new RegExp(src).test(document.getElementById("agendaBody").dataset.vista || ""), re.source, { timeout: 4000 }); return true; }catch(e){ return false; } };
@@ -117,10 +132,10 @@ const sumarDeLaLista = async p => { if(!await tocar(p, '.ag-cab [data-action="ag
   eq("celular: la lista ocupa la pantalla", lista[3] >= 844 - 30 && lista[1] >= 0, true);
   await tocar(p, '.ag-fila [data-action="agenda-ver-persona"]');
   await vistaEs(p, /^persona/);
-  eq("celular: la ficha de una persona ocupa lo mismo que la lista (antes, una tarjeta flotando)", await rect(p), lista);
+  eq("celular: la ficha de una persona, a medida y en el medio, sin blanco abajo", await aMedida(p), true);
   await tocar(p, '[data-action="agenda-ver-inst"]');
   await vistaEs(p, /^inst/);
-  eq("celular: la de una institución, también", await rect(p), lista);
+  eq("celular: la de una institución, también", await aMedida(p), true);
   await tocar(p, '[data-action="agenda-volver"]'); await tocar(p, '[data-action="agenda-volver"]');
   await vistaEs(p, /^lista$/);
   await p.fill("#agendaBuscar", "rosario"); await p.waitForTimeout(150);
@@ -130,7 +145,7 @@ const sumarDeLaLista = async p => { if(!await tocar(p, '.ag-cab [data-action="ag
   eq("celular: «+ Sumar» arriba, al lado del título", await cuantos(p, '.ag-cab [data-action="agenda-sumar"]'), 1);
   await sumarDeLaLista(p);
   eq("celular: el formulario no abre el teclado", await enCampo(p), false);
-  eq("celular: y es del mismo tamaño", await rect(p), lista);
+  eq("celular: y es a medida y en el medio", await aMedida(p), true);
   await tocar(p, '[data-action="agenda-inst-nueva"]');
   await p.waitForSelector("#agINombre");
   eq("celular: «Otra institución» tampoco abre el teclado", await enCampo(p), false);
@@ -140,8 +155,41 @@ const sumarDeLaLista = async p => { if(!await tocar(p, '.ag-cab [data-action="ag
   await tocar(p, '[data-action="drill-city"][data-city="Rosario"]'); await p.waitForSelector('.fl-pliegue[data-que="contactos"]', { state: "attached" });
   await tocar(p, '.fl-ag-inst [data-action="agenda-ver-persona"]');
   await vistaEs(p, /^persona/);
-  eq("celular: abierta desde la ficha de un lugar, también ocupa la pantalla", await rect(p), lista);
+  eq("celular: abierta desde la ficha de un lugar, también a medida y en el medio", await aMedida(p), true);
   eq("sin errores (celular, revisión)", errores, []);
+  await p.close();
+}
+{
+  // Con la barra del navegador a la vista, el celular del usuario deja unos 660 px de alto (sus capturas
+  // del 9/10/2026): «Sumar a alguien» tenía que desplazarse. Ahora entra entero, sin el texto de arriba,
+  // con Nombre y Cargo de a dos y los enlaces «+ …» en el renglón del título de su campo.
+  const { p, errores } = await entrar(ADMIN, "Benny", { viewport: { width: 390, height: 661 } });
+  await tocar(p, '.bn-item[data-view="paises"]');
+  await p.waitForSelector(".paises-agenda");
+  await tocar(p, ".paises-agenda");
+  await p.waitForSelector(".ag-fila");
+  await sumarDeLaLista(p);
+  eq("celular (661 de alto): «Sumar a alguien» entra entero, sin desplazarse", await p.$eval(".ag-cuerpo", e => e.scrollHeight <= e.clientHeight + 1), true);
+  eq("celular: «Sumar a alguien» sin el texto de ayuda de arriba", await cuantos(p, ".ag-cab small"), 0);
+  eq("celular: Nombre y Cargo en el mismo renglón", await p.evaluate(() => { const n = document.getElementById("agFNombre").getBoundingClientRect(), c = document.getElementById("agFCargo").getBoundingClientRect(); return Math.abs(n.top - c.top) < 1 && n.right <= c.left; }), true);
+  eq("celular: «Rab a cargo» se lee entero en su campo", await p.$eval("#agFCargo", e => { const c = document.createElement("canvas").getContext("2d"), cs = getComputedStyle(e); c.font = cs.fontWeight + " " + cs.fontSize + " " + cs.fontFamily; return c.measureText(e.placeholder).width <= e.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - 20; }), true);
+  eq("celular: «+ Otra institución» y «+ Otro teléfono» en el renglón del título de su campo", await p.evaluate(() => [...document.querySelectorAll(".ag-conlink")].map(c => {
+    const t = c.querySelector(":scope > span:first-child").getBoundingClientRect(), l = c.querySelector(":scope > .ag-link").getBoundingClientRect();
+    return Math.abs((t.top + t.bottom) / 2 - (l.top + l.bottom) / 2) < 8 && l.left > t.left; })), [true, true]);
+  // Escribir un nombre parecido: la sugerencia pasa a ocupar todo el ancho, y Cargo baja.
+  await p.fill("#agFNombre", "Guyp"); await p.waitForTimeout(200);
+  eq("celular: con una persona parecida, Nombre y Cargo pasan a un renglón cada uno", await p.evaluate(() => { const n = document.getElementById("agFNombre").getBoundingClientRect(), c = document.getElementById("agFCargo").getBoundingClientRect(); return c.top >= n.bottom - 1; }), true);
+  await tocar(p, '.ag-pie [data-action="agenda-volver"]');
+  await vistaEs(p, /^lista$/);
+  // Corregir: sin blanco abajo, tampoco cuando se esconde la barra del navegador y crece lo visible.
+  await tocar(p, '.ag-fila [data-action="agenda-ver-persona"]');
+  await vistaEs(p, /^persona/);
+  await tocar(p, '[data-action="agenda-editar"]');
+  await p.waitForSelector("#agFNombre");
+  eq("celular (661 de alto): «Corregir a …», sin blanco abajo", await sinBlanco(p), true);
+  await p.setViewportSize({ width: 390, height: 760 }); await p.waitForTimeout(500);
+  eq("celular: y sigue sin blanco abajo al esconderse la barra del navegador (760 de alto)", await sinBlanco(p), true);
+  eq("sin errores (celular, 661)", errores, []);
   await p.close();
 }
 {
@@ -177,6 +225,7 @@ const sumarDeLaLista = async p => { if(!await tocar(p, '.ag-cab [data-action="ag
   // Sin blanco a los costados: los campos van de borde a borde, en una columna.
   eq("compu: el formulario ocupa todo el ancho", await p.evaluate(() => { const m = document.querySelector(".agenda-modal").getBoundingClientRect(), c = document.getElementById("agFInst").getBoundingClientRect(); return [c.left - m.left < 40, m.right - c.right < 40]; }), [true, true]);
   eq("compu: en una columna", await p.$eval(".ag-form", e => getComputedStyle(e).gridTemplateColumns), "none");
+  eq("compu: «Sumar a alguien» sin el texto de ayuda de arriba", await cuantos(p, ".ag-cab small"), 0);
   eq("sumar desde toda la lista: la institución no viene elegida sola", await p.inputValue("#agFInst"), "");
   eq("y dice que hay que elegirla", await p.$eval("#agFInst", e => e.options[e.selectedIndex].textContent), "Elegí la institución…");
   await p.fill("#agFNombre", "Alguien Nuevo");
