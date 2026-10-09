@@ -1194,7 +1194,7 @@ cuenta, y su ficha muestra lo que hizo con el equipo.
   «📇 Agenda» en Países, al lado de Lista y Mapa, la abre en una ventana
   grande (`agendaOverlay`: buscar por nombre, lugar o teléfono, filtrar
   por país, tipo y lista, bajar la planilla). En la ficha de una ciudad,
-  la tarjeta «Contactos en …» con su gente y «Ver en la Agenda»; en la de
+  la tarjeta «Contactos en …» con su gente y «Ver Agenda»; en la de
   un país o una región, la gente va adentro de «Ciudades» o «Países»
   (desde el 9/10/2026, pedido del usuario: eran dos tarjetas que nombraban
   las mismas ciudades): cada renglón dice lo hecho ahí y su gente (📇), y
