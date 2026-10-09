@@ -88,6 +88,7 @@ Nada.
 | A10 | ~~El ejemplo de correo, en español en los cuatro idiomas~~ ✅ 9/10 | Claude |
 | A11 | ~~Tres clases de CSS que ya no usa nada (de tandas anteriores)~~ ✅ 9/10 | Claude |
 | A16 | ~~En la tarjeta «Contactos en …» de la compu, el teléfono baja de renglón y deja un «·» colgando~~ ✅ 9/10 | Claude |
+| A19 | ~~Con la letra de GitHub, el anillo de foco del WhatsApp chico se cortaba al pie de la lista en el celular, y «Publicar el sitio» no publicó~~ ✅ 9/10 (un enlace con forma de botón lleva el anillo hacia adentro; `pantallas` mide ahora una combinación con letra ancha) | Claude |
 | A17 | `actions/setup-node` tiene la 7.1.0 (de antes, no de la Agenda) | Claude, cuando se toquen los workflows |
 
 ### Herramientas y pruebas

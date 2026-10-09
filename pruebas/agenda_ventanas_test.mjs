@@ -179,6 +179,10 @@ const sumarDeLaLista = async p => { if(!await tocar(p, '.ag-cab [data-action="ag
   await p.click('[data-action="agenda-cerrar"]');
   // Abierta desde la ficha de un lugar: chica, y no cambia de tamaño al ir a la institución.
   await irARosario(p);
+  // El WhatsApp chico tiene forma de botón: su anillo de foco va hacia adentro, como el de los
+  // botones; hacia afuera, la lista se lo cortaba al pie (en GitHub, recortes_test, 9/10/2026).
+  await p.keyboard.press("Tab");
+  eq("el WhatsApp chico: anillo de foco hacia adentro", await p.$eval(".fl-ag .ag-wa.chico", e => { e.focus(); return [e.matches(":focus-visible"), getComputedStyle(e).outlineOffset]; }), [true, "-2px"]);
   eq("ficha: en la tarjeta angosta, el teléfono en su renglón, sin un «·» colgando", await p.$eval('.fl-ag .ag-fila-p small', e => [[...e.querySelectorAll(".ag-sep")].every(s => getComputedStyle(s).display === "none"), getComputedStyle(e.querySelector(".ag-tel")).display]), [true, "block"]);
   await p.click('.fl-ag-inst [data-action="agenda-ver-persona"][data-id="per_tawil"]');
   await vistaEs(p, /^persona/);
