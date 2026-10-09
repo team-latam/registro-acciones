@@ -1222,7 +1222,11 @@ cuenta, y su ficha muestra lo que hizo con el equipo.
   parecida (de la Agenda o una persona sin cuenta) la ofrece («Es esta»)
   para no duplicarla. Un teléfono lleva solo números, +, espacios,
   guiones, puntos o paréntesis (`telefonos_ok` en la base); WhatsApp
-  abre `https://wa.me/<los números>`.
+  abre `https://wa.me/<los números>`. El botón lleva el logo de WhatsApp
+  (desde el 9/10/2026, pedido del usuario): el dibujo es el de [Simple
+  Icons](https://simpleicons.org) (CC0), en vector y con el verde oficial
+  (`ICONO_WHATSAPP`); la marca es de WhatsApp. Es adorno (`aria-hidden`):
+  el botón tiene su `aria-label`.
 - **Traer una lista: Administración › Agenda** (solo admins). Se elige
   el archivo (el HTML del Directorio, que trae los datos adentro en
   `SEED_DATA`; un `.json`; o una planilla `.xlsx`/`.csv` con una fila por
