@@ -20820,8 +20820,14 @@ function agendaVistaForm(v){
       return `<button type="button" class="ag-item" data-action="agenda-form-usar" data-id="${esc(p.id)}"><span><b dir="auto">${esc(p.name)}</b><small>${esc(donde.length ? donde.slice(0, 2).join(", ") + (donde.length > 2 ? "…" : "") : t("persona sin cuenta","person without an account","pessoa sem conta","אדם ללא חשבון"))}</small></span><span>${esc(t("Es esta","That's them","É essa","זה/זו"))}</span></button>`; }).join("")}</div>`;
   }
   const usada = v.usar ? agendaDatos().personas.get(v.usar) : null;
-  const instOps = [...new Set(agendaDatos().ordenadas.map(x => x.country))].map(c => `<optgroup label="${esc(countryLabel(c))}">${agendaDatos().ordenadas.filter(x => x.country === c)
-    .map(x => `<option value="${esc(x.id)}"${x.id === v.inst ? " selected" : ""}>${esc(x.name)}${x.city ? " · " + esc(cityLabel(x.country, x.city)) : ""}</option>`).join("")}</optgroup>`).join("");
+  // Si «+ Sumar» se tocó en la ficha de una ciudad, sus instituciones van primero, en un grupo
+  // aparte; el resto sigue por país (pedido del usuario, 9/10/2026).
+  const opcionDeInst = x => `<option value="${esc(x.id)}"${x.id === v.inst ? " selected" : ""}>${esc(x.name)}${x.city ? " · " + esc(cityLabel(x.country, x.city)) : ""}</option>`;
+  const deAca = v.lugar ? institucionesDeLugar(v.lugar) : [];
+  const idsAca = new Set(deAca.map(x => x.id));
+  const resto = agendaDatos().ordenadas.filter(x => !idsAca.has(x.id));
+  const instOps = (deAca.length ? `<optgroup label="${esc(t("En {c}","In {c}","Em {c}","ב{c}",{ c: cityLabel(v.lugar.country, v.lugar.city) }))}">${deAca.map(opcionDeInst).join("")}</optgroup>` : "")
+    + [...new Set(resto.map(x => x.country))].map(c => `<optgroup label="${esc(countryLabel(c))}">${resto.filter(x => x.country === c).map(opcionDeInst).join("")}</optgroup>`).join("");
   const dondeEsta = editar ? institucionesDePersona(v.id).filter(z => z.x && !v.sacar.includes(z.c.id)) : [];
   // «Sumar a alguien» no lleva texto de ayuda arriba («Si ya está en la app, te lo muestra
   // para no cargarlo dos veces»): en el celular el formulario tenía que desplazarse y el aviso
@@ -21018,7 +21024,8 @@ const AGENDA_ACCIONES = {
     if(!inst && v && v.t === "lista") inst = unaSola(agendaFiltradas());
     const enFicha = agendaOverlay.hidden && state.view === "paises" && state.countryDrill;
     if(!inst && enFicha) inst = unaSola(institucionesDeLugar({ country: state.countryDrill, city: state.ciudadDrill }));
-    const form = { t:"form", modo:"nuevo", inst, nombre:"", cargo:"", correo:"", nota:"", idiomas:[], tels:[{ n:"", wa:true }], errores:{}, usar:null };
+    const lugar = enFicha && state.ciudadDrill ? { country: state.countryDrill, city: state.ciudadDrill } : null;
+    const form = { t:"form", modo:"nuevo", inst, lugar, nombre:"", cargo:"", correo:"", nota:"", idiomas:[], tels:[{ n:"", wa:true }], errores:{}, usar:null };
     if(!agendaDatos().ordenadas.length){ abrirAgendaInstNueva(form); return; }
     if(agendaOverlay.hidden) abrirAgenda(form); else { agendaPila.push(form); renderAgenda(); enfocarAgenda(el); }
   },

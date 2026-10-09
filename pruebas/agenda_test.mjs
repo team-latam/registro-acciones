@@ -216,6 +216,11 @@ const escribir = async (p, sel, valor) => { await p.fill(sel, valor); await p.wa
   await p.click('.fl-ag-pie [data-action="agenda-sumar"]');
   await p.waitForSelector("#agFNombre");
   eq("sumar: la institución ya viene elegida", await p.inputValue("#agFInst"), "i_ros");
+  // Las instituciones de la ciudad van primero, en su grupo, y no se repiten más abajo (9/10/2026).
+  const grupos = await p.$$eval("#agFInst optgroup", l => l.map(g => [g.label, [...g.querySelectorAll("option")].map(o => o.value)]));
+  eq("sumar: el primer grupo es el de Rosario, con su institución", [/Rosario/.test(grupos[0][0]), grupos[0][1].includes("i_ros")], [true, true]);
+  const todas = grupos.flatMap(g => g[1]);
+  eq("sumar: ninguna institución aparece dos veces", todas.length, new Set(todas).size);
   // Alguien que ya está en la app: se ofrece, para no duplicarlo.
   await p.fill("#agFNombre", "Guyp"); await p.waitForTimeout(200);
   eq("sumar: ofrece a la persona sin cuenta que ya está", await cuantos(p, '[data-action="agenda-form-usar"][data-id="per_guypo"]'), 1);
