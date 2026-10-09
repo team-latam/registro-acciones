@@ -969,6 +969,38 @@ eligió **unirlas así**:
 Pruebas: `agenda_test.mjs` (país, región y ciudad; fallan con el código
 de antes) y `ficha_celular_test.mjs` vuelve a esperar cinco tarjetas.
 
+### 53. Las ventanas, en el medio de la pantalla — HECHO (9 oct 2026)
+
+Con dos capturas (la ventana de un evento del Calendario y la de la
+Agenda): «me gustaría que este tipo de ventana se abra como la imagen 1,
+más centrada en el medio y no pegada arriba. Creo que hay algunas ventanas
+que revisar». Se midió dónde queda **cada** ventana de la app, en tres
+tamaños de pantalla (1280×800, 1440×900 y celular). Las comunes (el
+evento del Calendario, el perfil, «Me gusta», «Nuevo evento»,
+cumpleaños, la invitación a Calendar y las confirmaciones) ya quedaban
+en el medio. Pegadas arriba había dos: **la Agenda** (en sus cuatro
+entradas) y **la ficha de un posteo** (la que se abre desde un lugar).
+
+- **La Agenda abre en el medio de la pantalla.** Al pasar de la lista a
+  una persona o al formulario queda el mismo centro; cambia el alto (la
+  lista, siempre alta; lo demás, a medida). Antes se colgaba de arriba
+  para no moverse entre pasos (tanda 50): el usuario prefirió el medio.
+- **La ficha de un posteo**, en el medio si es más baja que la pantalla;
+  si es más alta, arranca a 24 px del borde y se desplaza la ventana
+  entera, como antes. Para eso un separador flexible arriba y otro abajo
+  (nunca de menos de 24 px) reemplazan al margen fijo: la cabecera pegada
+  sigue sin franja arriba.
+- **En el celular no cambia**: la Agenda ocupa la pantalla y la ficha, casi
+  siempre más alta que ella, arranca arriba.
+
+Pruebas: `agenda_ventanas_test.mjs` (la Agenda en el medio en la lista, una
+persona, una institución, el formulario y desde la ficha de un lugar;
+fallan con el código de antes) y `app_dom_test.mjs` (la ficha, en el medio
+si es baja y a 24 px del borde si es alta). La auditoría `pantallas` mide
+ahora que toda ventana que entra en la pantalla quede a la misma distancia
+de los dos bordes, y suma una pantalla más alta (1440×1000) para las que
+no entran en la baja.
+
 ### 52. «Ciudades» sin barra propia en el celular — HECHO (9 oct 2026)
 
 Con dos capturas del celular (la tarjeta «Ciudades» desplegada y la de
@@ -1023,7 +1055,8 @@ vista, la ficha y el formulario en dos columnas; la recomendada), **B**
 un panel al costado derecho (520, de arriba abajo, la página a la vista)
 y **C** chica (620, todo en una columna). **Eligió la C.**
 
-- 620 de ancho, siempre en el mismo lugar (arranca a 40 px de arriba) y
+- 620 de ancho, siempre en el mismo lugar (arrancaba a 40 px de arriba;
+  desde la tanda 53, en el medio de la pantalla) y
   con el alto que necesita cada vista, hasta `min(720px, 85vh)`. La
   lista va siempre alta (si no, cambiaría de alto con cada letra que se
   busca); la ficha de una persona, una institución y los formularios, lo

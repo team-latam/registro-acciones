@@ -2500,12 +2500,17 @@
      llegó desde la ventana de una ficha. */
   .volver-ficha{ display:inline-flex; align-items:center; gap:6px; margin:0 0 12px; padding:6px 12px; border-radius:999px; border:1px solid var(--border); background:var(--card); box-shadow:var(--shadow); font:inherit; font-size:12.5px; font-weight:700; color:var(--celeste-dark); cursor:pointer; }
   .volver-ficha:hover{ border-color:var(--celeste); text-decoration:underline; }
-  .ficha-post-modal{ max-width:760px; max-height:none; padding:0 22px 22px; margin:24px 0; }
-  /* El respiro alrededor va en la ventana y no en la capa oscura: la
-     capa es lo que scrollea, y con su relleno la cabecera pegada quedaba
-     24px abajo del borde, dejando una franja por la que asomaba lo que ya
-     había pasado (captura del usuario, 6/10/2026). */
-  #fichaPostOverlay{ padding-top:0; padding-bottom:0; }
+  .ficha-post-modal{ max-width:760px; max-height:none; padding:0 22px 22px; margin:0; flex:none; }
+  /* El respiro alrededor no va en la capa oscura: la capa es lo que
+     scrollea, y con su relleno la cabecera pegada quedaba 24px abajo del
+     borde, dejando una franja por la que asomaba lo que ya había pasado
+     (captura del usuario, 6/10/2026). Va en dos separadores, uno arriba y
+     otro abajo de la ventana: se reparten lo que sobra, así que una
+     ventana más baja que la pantalla queda en el medio (como las demás,
+     9/10/2026), y nunca miden menos de 24px, así que una más alta arranca
+     24px abajo del borde y se desplaza entera. */
+  #fichaPostOverlay{ padding-top:0; padding-bottom:0; flex-direction:column; align-items:center; justify-content:flex-start; }
+  #fichaPostOverlay::before, #fichaPostOverlay::after{ content:""; flex:1 0 24px; }
   .ficha-post-modal .fp-cabeza{
     position:sticky; top:0; z-index:5; display:flex; align-items:center; justify-content:space-between; gap:10px;
     margin:0 -22px 12px; padding:12px 22px 10px; background:var(--card); border-bottom:1px solid var(--border);
@@ -2516,7 +2521,8 @@
   .ficha-post-modal #fichaPostBody{ overflow:visible; }
   .ficha-post-modal .card.post{ box-shadow:none; border:none; padding:0; margin:0; }
   @media (max-width:640px){
-    .ficha-post-modal{ max-height:none; padding:0 14px 16px; margin:10px 0; }
+    .ficha-post-modal{ max-height:none; padding:0 14px 16px; margin:0; }
+    #fichaPostOverlay::before, #fichaPostOverlay::after{ flex-basis:10px; }
     .ficha-post-modal .fp-cabeza{ margin:0 -14px 10px; padding:8px 8px 6px 14px; }
   }
   /* El costado acompaña al bajar (pedido del usuario, 6/10/2026): se
@@ -2852,11 +2858,14 @@
   .paises-agenda:hover{ background:var(--surface-alt); }
   /* ----- La Agenda (8/10/2026): la ventana ----- */
   /* Chica y a medida (la C de tres que vio el usuario el 9/10/2026; antes
-     fue grande para todo y «abarcaba todo a la vista»): 620 de ancho,
-     siempre en el mismo lugar (arranca arriba) y con el alto que necesita
-     cada vista, hasta un tope; la lista, siempre alta, así no cambia con
-     cada letra que se busca. Todo en una columna, como en el celular. */
-  .agenda-modal{ max-width:620px; height:auto; max-height:min(720px, 85vh); margin:16px 0 auto; padding:0; overflow:hidden; }
+     fue grande para todo y «abarcaba todo a la vista»): 620 de ancho, con
+     el alto que necesita cada vista, hasta un tope; la lista, siempre alta,
+     así no cambia con cada letra que se busca. Todo en una columna, como en
+     el celular. En el medio de la pantalla, como las demás ventanas
+     (margin:auto la centra y, si no entra, la deja arriba): arrancaba
+     pegada arriba y el usuario pidió que abra como la del Calendario
+     (9/10/2026). Entre una vista y otra cambia el alto, no el centro. */
+  .agenda-modal{ max-width:620px; height:auto; max-height:min(720px, 85vh); margin:auto 0; padding:0; overflow:hidden; }
   @media (min-width:641px){ .agenda-modal:has(.ag-lista){ height:min(720px, 85vh); } }   /* en el celular, pantalla completa como todo lo demás */
   .ag-cab-acc{ flex:none; align-self:center; padding:8px 16px; }
   .agenda-body{ display:flex; flex-direction:column; min-height:0; flex:1; }

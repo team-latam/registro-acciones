@@ -222,8 +222,25 @@ de la lista a una ficha; en el celular la lista ocupaba la pantalla y la
 ficha era una tarjeta flotando. *Por qué:* el tamaño salía de la vista de
 ahora, no de cómo se abrió. *Se detecta:* a mano, midiendo la ventana en
 cada paso (`agenda_ventanas_test.mjs` lo cuida). *Regla:* una ventana con
-pasos adentro decide su tamaño al abrirse; si no, cuelga de arriba y
-crece hacia abajo. En el celular, pantalla completa.
+pasos adentro decide su tamaño al abrirse; entre paso y paso cambia el
+alto, no el centro (colgarla de arriba para que no se mueva se probó y el
+usuario prefirió el medio: ver la siguiente). En el celular, pantalla
+completa.
+
+**Una ventana que abre pegada arriba.** La Agenda (a 40 px del borde) y la
+ficha de un posteo (a 24 px) abrían arriba, mientras el evento del
+Calendario, el perfil y «Nuevo evento» abren en el medio (dos capturas del
+usuario, 9/10). *Por qué:* un margen fijo en la ventana (`margin:16px 0
+auto`, `margin:24px 0`) le gana al `margin:auto` con que se centran todas
+las `.modal`; uno se puso para que una ventana con pasos no se moviera, el
+otro para dejar un respiro cuando la ficha es más alta que la pantalla.
+*Se detecta:* `pantallas` (si una ventana entra con 24 px de respiro, tiene
+que estar a la misma distancia de arriba y de abajo; mide en 1440×1000
+para las altas), `agenda_ventanas_test.mjs` y `app_dom_test.mjs`.
+*Regla:* una ventana nueva usa el centrado de `.modal` (`margin:auto 0`);
+si además necesita un respiro mínimo y desplazarse entera, va con dos
+separadores flexibles arriba y abajo (`flex:1 0 24px`), no con un margen
+fijo.
 
 **Una prueba que mira la tarjeta equivocada.** `ficha_celular_test`
 contaba las ciudades con `.fl-hijos .fl-hijo`, y la tarjeta nueva de

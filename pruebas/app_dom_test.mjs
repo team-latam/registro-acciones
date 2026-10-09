@@ -1223,6 +1223,13 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   eq("ventana: sin alto tope ni barra propia, y dice de qué ficha se vino", await p.evaluate(() => [
     getComputedStyle(document.querySelector(".ficha-post-modal")).maxHeight, getComputedStyle(document.getElementById("fichaPostBody")).overflowY,
     (document.getElementById("fichaPostDesde") || {}).textContent || null]), ["none", "visible", "De la ficha de Uruguay"]);
+  // En el medio de la pantalla si es más baja (9/10/2026, como las demás ventanas: arrancaba
+  // pegada arriba); si no entra, arranca 24 px abajo del borde y se desplaza entera.
+  await p.setViewportSize({ width: 1280, height: 1000 });
+  eq("ventana: más baja que la pantalla, queda en el medio", await hasta(p, () => { const r = document.querySelector(".ficha-post-modal").getBoundingClientRect(); return r.height + 48 < innerHeight && Math.abs(r.top - (innerHeight - r.bottom)) <= 2; }), true);
+  await p.setViewportSize({ width: 1280, height: 300 });
+  eq("ventana: más alta que la pantalla, arranca 24 px abajo del borde y se desplaza entera", await hasta(p, () => { const o = document.getElementById("fichaPostOverlay"), r = document.querySelector(".ficha-post-modal").getBoundingClientRect(); return r.height > innerHeight && Math.round(r.top) === 24 && o.scrollHeight > o.clientHeight; }), true);
+  await p.setViewportSize({ width: 1280, height: 720 });
   await p.click('#fichaPostBody [data-action="toggle-post-menu"]');
   eq("ventana: el menú ⋯ se ve entero", await p.evaluate(() => {
     const it = document.querySelector('#fichaPostBody .post-menu-item[data-action="edit-post"]');
