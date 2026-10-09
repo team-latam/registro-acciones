@@ -53,6 +53,20 @@ campos van a 16 px (ya global).
 formulario en tres renglones, el ⋯ solo abajo. *Se detecta:* a mano, con
 capturas de celular. *Regla:* en el celular, grilla de columnas iguales.
 
+**Una zona con barra propia adentro de la página, en el celular.** La
+tarjeta «Ciudades» desplegada tenía un recuadro de 380 px que se
+desplazaba por dentro (así se pidió para la compu, 6/10); en el celular
+quedaban dos barras, una adentro de la otra, mientras «Contactos en …»
+(sin recuadro) se movía con una sola (captura del usuario, 9/10). *Por
+qué:* una regla pensada para la compu, donde el costado es una columna
+que se desplaza, se heredó tal cual en el celular, donde esa columna no
+existe. *Se detecta:* `ficha_celular_test.mjs` (esta tarjeta); en general,
+a mano con capturas del celular. *Regla:* en el celular una lista que
+crece va entera y se baja con la página; la barra propia, solo en la
+compu y solo donde reemplaza a la de la columna
+(`@media (min-width:761px)`). Las ventanas y los desplegables sí llevan
+barra propia.
+
 ## Datos
 
 **Fechas corridas un día.** *Por qué:* `toISOString()` da la fecha en UTC;
