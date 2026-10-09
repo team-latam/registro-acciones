@@ -48,6 +48,17 @@ eso a la Agenda de la app.
    **mover arriba/abajo** (menú ⋯ de la ficha) y **ordenar** una región
    (por país y ciudad, por miembros, o como estaba). Deshacer los cambios
    de una ficha.
+   **Sumar una posición** (en los contadores): una columna nueva con
+   nombre libre (TESORERO, RABINO…), en la mitad que se elija (Comunidad
+   u Organización). Aparece al final de cada ficha con su SI/NO y su
+   nombre y teléfono, como las demás, y en el Excel entra como dos
+   columnas nuevas clonadas de las dos últimas de esa mitad: estilos,
+   anchos, lista desplegable SI/NO, formato condicional y el COUNTIF en
+   las filas de TOTAL; lo que estaba a la derecha se corre. Se puede
+   quitar (✕ en su título) mientras no se exportó. **+ Otra persona**
+   debajo de cada nombre suma otra en la misma celda, separada con «/»
+   (como ya hace la planilla en La Plata); los avisos revisan cada
+   teléfono por separado.
 6. **Exportar a Excel** baja un archivo **con el mismo nombre y el mismo
    formato**: no se arma un Excel nuevo, se reescriben los valores
    adentro del original (colores, bordes, anchos, listas desplegables,
@@ -94,5 +105,6 @@ correrla contra otra copia de la página:
 
 **Lo que no hace (todavía).** No sube nada a la app: eso es el paso
 siguiente, cuando la planilla esté confirmada. No agrega ni saca
-regiones ni columnas: si la planilla cambia de forma, se abre igual
-(lee lo que hay), pero las fichas pueden quedar raras.
+regiones, ni saca columnas que ya estaban en el archivo: si la planilla
+cambia de forma, se abre igual (lee lo que hay), pero las fichas pueden
+quedar raras.

@@ -1025,6 +1025,18 @@ generar múltiples copias».
   (las cadenas compartidas del libro no se renumeran: quedan donde
   estaban y las nuevas van al final). Prueba: `mapeo_test.mjs` con
   `mapeo_dos_hojas.py`.
+- **Posiciones nuevas y más personas** (tercera vuelta, 9/10/2026): «el
+  actual documento no me permite agregar nuevos registros … más
+  posiciones, por un lado, o más personas. Más posiciones tiene que ser
+  libre». **«+ Sumar una posición»** (nombre libre y la mitad, Comunidad
+  u Organización) suma una columna a todas las fichas, con SI/NO y
+  nombre como las demás; al exportar entra en el Excel como dos columnas
+  clonadas de las dos últimas de esa mitad (estilos, anchos, lista
+  desplegable, formato condicional, COUNTIF en los TOTAL), corriendo lo
+  de la derecha —el mismo mecanismo de correr referencias de las filas,
+  en columnas—. **«+ Otra persona»** bajo cada nombre suma otra en la
+  misma celda con «/». Comprobado con el archivo real (LibreOffice abre
+  y recalcula sin errores) y en `mapeo_test.mjs`.
 
 ### 57. «+ Sumar» en una ciudad: sus instituciones primero — HECHO (9 oct 2026)
 
