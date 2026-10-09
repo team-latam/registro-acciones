@@ -119,7 +119,30 @@ export const BASE = () => ({
   user_prefs: [],
   // Personas sin cuenta (18-personas.sql): una en un evento y una sola.
   personas: [{ id: "per_guypo", name: "Guypo", email: null, note: "Coordinador local en Santiago", created_by: ADMIN, created_at: hace(30) },
-    { id: "per_dario", name: "Darío", email: "dario@x.com", note: null, created_by: PERS[1].email, created_at: hace(8) }],
+    { id: "per_dario", name: "Darío", email: "dario@x.com", note: null, created_by: PERS[1].email, created_at: hace(8) },
+    // La Agenda (19-agenda.sql): gente inventada, con teléfonos de mentira.
+    { id: "per_rab1", name: "Shlomo Rabinovich", email: null, note: null, telefonos: [{ n: "+54 9 341 555 0101", wa: true }], idiomas: ["es", "he"], lista: "lista1", created_by: ADMIN, created_at: hace(5) },
+    { id: "per_rab2", name: "Tzvi Goldman", email: "tzvi@ejemplo.org", note: "Atiende de 9 a 13", telefonos: [{ n: "+54 9 11 5555 0102", wa: true }, { n: "+54 11 4444 0103", wa: false }], idiomas: ["es"], lista: "lista1", created_by: ADMIN, created_at: hace(5),
+      tocado_por: PERS[1].email, tocado_el: hace(2) },
+    { id: "per_pres", name: "Daniel Kohan", email: null, note: null, telefonos: [{ n: "+54 9 341 555 0104", wa: true }], idiomas: [], lista: null, created_by: PERS[1].email, created_at: hace(3) },
+    { id: "per_rab3", name: "Menachem Levy", email: null, note: null, telefonos: [{ n: "+598 99 555 105", wa: true }], idiomas: [], lista: "lista1", created_by: ADMIN, created_at: hace(5) }],
+  agenda_listas: [{ id: "lista1", name: "Directorio de prueba", created_by: ADMIN, created_at: hace(5) }],
+  instituciones: [
+    { id: "ins_ros", name: "Beit Jabad Rosario", country: "Argentina", city: "Rosario", address: "Calle Falsa 123", tipo: "Centro Comunitario", estado: "activa", nota: null, lista: "lista1", created_by: ADMIN, created_at: hace(5) },
+    { id: "ins_ba1", name: "Jabad Central", country: "Argentina", city: "Buenos Aires", address: "Avenida Siempreviva 742", tipo: "Centro Comunitario", estado: "activa", nota: null, lista: "lista1", created_by: ADMIN, created_at: hace(5) },
+    { id: "ins_ba2", name: "Beit Jabad Belgrano", country: "Argentina", city: "Buenos Aires", address: null, tipo: "Sinagoga", estado: "cerrada", nota: "Cerró en 2025", lista: "lista1", created_by: ADMIN, created_at: hace(5) },
+    { id: "ins_bar", name: "Beit Jabad Bariloche", country: "Argentina", city: "Bariloche", address: "Calle del Lago 9", tipo: "Jabad para Israelíes", estado: "temporada", nota: null, lista: "lista1", created_by: ADMIN, created_at: hace(5) },
+    { id: "ins_mvd", name: "Jabad Uruguay", country: "Uruguay", city: "Montevideo", address: "Rambla 100", tipo: "Centro Comunitario", estado: "activa", nota: null, lista: "lista1", created_by: ADMIN, created_at: hace(5) },
+    { id: "ins_cba", name: "Centro Juvenil Córdoba", country: "Argentina", city: "Córdoba", address: null, tipo: "Centro Juvenil", estado: "activa", nota: null, lista: null, created_by: PERS[1].email, created_at: hace(2) },
+  ],
+  contactos: [
+    { id: "con1", institucion: "ins_ros", persona: "per_rab1", cargo: "Rab a cargo", orden: 0, created_at: hace(5) },
+    { id: "con2", institucion: "ins_ros", persona: "per_pres", cargo: "Presidente", orden: 1, created_at: hace(3) },
+    { id: "con3", institucion: "ins_ba1", persona: "per_rab2", cargo: "Rab a cargo", orden: 0, created_at: hace(5) },
+    { id: "con4", institucion: "ins_ba2", persona: "per_rab2", cargo: "Rab a cargo", orden: 0, created_at: hace(5) },
+    { id: "con5", institucion: "ins_bar", persona: "per_rab1", cargo: "Rab a cargo", orden: 0, created_at: hace(5) },
+    { id: "con6", institucion: "ins_mvd", persona: "per_rab3", cargo: "Rab a cargo", orden: 0, created_at: hace(5) },
+  ],
 });
 
 // Abre el navegador (uno para toda la corrida).
@@ -271,13 +294,27 @@ export async function recorrerApp(p, paso){
   if(await click(p, '[data-action="cal-ir-abrir"]')){ await p.waitForTimeout(200); await paso(p, ("Ir a una fecha")); await cerrar(p); }
   await tab(p, "paises"); await p.waitForTimeout(400); await paso(p, ("Países"));
   if(await click(p, '[data-action="drill-country"]')){ await p.waitForTimeout(500); await paso(p, ("Ficha país")); }
+  // La Agenda (8/10/2026): la ficha de una ciudad con sus contactos, y la
+  // ventana con cada una de sus vistas. En el celular, la tarjeta de
+  // contactos viene plegada: se abre para medirla.
+  // Con un clic de la página: en el celular la tarjeta «Ciudades» viene plegada y el botón no se ve.
+  if(await p.evaluate(() => { const b = document.querySelector('[data-action="drill-city"][data-city="Rosario"]'); if(b) b.click(); return !!b; })){ await p.waitForTimeout(500);
+    await p.evaluate(() => { const b = document.querySelector('.fl-pliegue[data-que="contactos"][aria-expanded="false"]'); if(b && b.offsetParent) b.click(); }); await p.waitForTimeout(200);
+    await paso(p, ("Ficha ciudad")); }
+  await tab(p, "paises"); await p.waitForTimeout(300);
+  if(await click(p, '.paises-agenda')){ await p.waitForTimeout(400); await paso(p, ("Agenda"));
+    if(await click(p, '.ag-fila [data-action="agenda-ver-persona"]')){ await p.waitForTimeout(300); await paso(p, ("Agenda: persona")); await click(p, '[data-action="agenda-volver"]'); await p.waitForTimeout(200); }
+    if(await click(p, '.ag-fila [data-action="agenda-ver-inst"]')){ await p.waitForTimeout(300); await paso(p, ("Agenda: institución")); await click(p, '[data-action="agenda-volver"]'); await p.waitForTimeout(200); }
+    if(await click(p, '.ag-cab [data-action="agenda-sumar"]')){ await p.waitForTimeout(300); await paso(p, ("Agenda: sumar"));
+      if(await click(p, '[data-action="agenda-inst-nueva"]')){ await p.waitForTimeout(300); await paso(p, ("Agenda: otra institución")); } }
+    await cerrar(p); }
   await tab(p, "proyectos"); await p.waitForTimeout(400); await paso(p, ("Proyectos"));
   if(await click(p, '[data-action="project-open"]')){ await p.waitForTimeout(400); await paso(p, ("Proyecto abierto")); await cerrar(p); }
   await tab(p, "reportes"); await p.waitForTimeout(500); await paso(p, ("Reportes"));
   if(await click(p, '[data-action="reporte-filtros"]')){ await p.waitForTimeout(200); await paso(p, ("Reportes filtros")); await cerrar(p); }
   if(await click(p, '[data-action="reporte-modo"][data-key="comparar"]')){ await p.waitForTimeout(300); await paso(p, ("Reportes comparar")); }
   await irAdmin(p);
-  for(const [v, k] of [["admin"], ["revisarcal"], ["solicitudes", "usuarios"], ["auditoria"], ["preferencias", "tipos"], ["preferencias", "avanzado"], ["preferencias", "zonas"], ["preferencias", "lugares"], ["preferencias", "adjuntos"], ["preferencias", "calendar"], ["preferencias", "copia"], ["preferencias", "correos"]]){
+  for(const [v, k] of [["admin"], ["revisarcal"], ["solicitudes", "usuarios"], ["auditoria"], ["preferencias", "tipos"], ["preferencias", "avanzado"], ["preferencias", "zonas"], ["preferencias", "lugares"], ["preferencias", "adjuntos"], ["preferencias", "calendar"], ["preferencias", "copia"], ["preferencias", "correos"], ["preferencias", "agenda"]]){
     await p.evaluate(([v, k]) => { const b = document.querySelector(`[data-action="admin-go"][data-view="${v}"]${k ? `[data-key="${k}"]` : ""}`); b && b.click(); }, [v, k || ""]);
     await p.waitForTimeout(350); await paso(p, ("Admin " + (k || v)));
   }

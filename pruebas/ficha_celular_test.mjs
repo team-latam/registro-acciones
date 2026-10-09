@@ -43,7 +43,8 @@ const b = await abrirNavegador();
   const { p, errores } = await entrar(b, ADMIN, "Benny Rosenthal", { viewport: { width: 390, height: 844 }, base: conMucha() });
   await aArgentina(p);
   eq("celular: la historia arranca con una tanda (lo que se prueba)", await p.$$eval(".fl-it", l => l.length), 30);
-  eq("celular: están las cinco tarjetas del costado", await lados(p), ["proy", "hijos", "ritmo", "quienes", "docs"]);
+  // Con «Contactos en …» de la Agenda (8/10/2026), son seis.
+  eq("celular: están las seis tarjetas del costado", await lados(p), ["proy", "hijos", "contactos", "ritmo", "quienes", "docs"]);
   eq("celular: el costado va arriba de «Lo que pasó», después de «Lo que sigue»", await p.evaluate(() => {
     const top = e => e.getBoundingClientRect().top;
     if(!document.querySelector(".fl-sigue") || !document.querySelector(".fl-historia")) return false;
@@ -85,8 +86,9 @@ const b = await abrirNavegador();
   eq("plegar: vuelve a quedar plegada", await abiertas(p), []);
   // Ciudades: abierta, muestra las ciudades; el resumen nombra las primeras.
   await p.click('.fl-pliegue[data-que="hijos"]'); await p.waitForTimeout(200);
-  const ciudades = await p.$$eval(".fl-hijos .fl-hijo b", l => l.map(e => e.textContent.trim()));
-  eq("Ciudades: abierta, se ven las ciudades", ciudades.length > 0 && await visible(p, ".fl-hijos"), true);
+  // Solo los de la tarjeta Ciudades: «Contactos en …» usa las mismas clases.
+  const ciudades = await p.$$eval('.fl-card:has(.fl-pliegue[data-que="hijos"]) .fl-hijos .fl-hijo b', l => l.map(e => e.textContent.trim()));
+  eq("Ciudades: abierta, se ven las ciudades", ciudades.length > 0 && await visible(p, '.fl-card:has(.fl-pliegue[data-que="hijos"]) .fl-hijos'), true);
   await p.click('.fl-pliegue[data-que="hijos"]'); await p.waitForTimeout(200);
   eq("Ciudades: el resumen nombra las primeras", await resumen(p, "hijos"),
      ciudades.length > 2 ? `${ciudades[0]}, ${ciudades[1]} y ${ciudades.length - 2} más` : ciudades.join(" y "));

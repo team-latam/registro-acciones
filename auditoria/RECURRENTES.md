@@ -183,3 +183,42 @@ documentarlo no se copia literal.
 quedó 20 minutos esperando un servidor de paquetes y se comió el trabajo
 entero. *Regla:* todo paso que baja cosas de afuera lleva su
 `timeout-minutes` y reintento.
+
+## Agregado en la auditoría de la Agenda (9/10/2026)
+
+**Una ventana nueva que en el celular abre el teclado sola.** La Agenda
+mandaba el foco al buscador al abrirse: en un celular el teclado tapaba
+media ventana antes de que la persona hiciera nada. La app ya tenía la
+regla (el formulario de un evento, el selector de fecha, los colores) y
+la ventana nueva no la siguió. *Se detecta:* `pantallas` lo revisa en
+cada ventana (nivel importante). *Regla:* al abrir algo, el foco va a un
+campo solo si `!isTouchDevice()`; en una pantalla táctil, a la ✕ o a
+«Volver». Lo que la persona pidió escribir (tocó «+ Otro teléfono», un
+error al guardar) sí lleva el foco al campo.
+
+**Una ventana que cambia de tamaño con cada paso.** La Agenda pasaba de
+1040 a 620 px de ancho y de una altura a otra (centrada, saltaba) al ir
+de la lista a una ficha; en el celular la lista ocupaba la pantalla y la
+ficha era una tarjeta flotando. *Por qué:* el tamaño salía de la vista de
+ahora, no de cómo se abrió. *Se detecta:* a mano, midiendo la ventana en
+cada paso (`agenda_ventanas_test.mjs` lo cuida). *Regla:* una ventana con
+pasos adentro decide su tamaño al abrirse; si no, cuelga de arriba y
+crece hacia abajo. En el celular, pantalla completa.
+
+**Una prueba que mira la tarjeta equivocada.** `ficha_celular_test`
+contaba las ciudades con `.fl-hijos .fl-hijo`, y la tarjeta nueva de
+contactos usa las mismas clases. *Regla:* en una pantalla con varias
+tarjetas, la prueba se limita a la suya (`.fl-card:has(...)`).
+
+**Un recorrido que no llega a lo plegado.** En el celular la tarjeta
+«Ciudades» viene plegada; el clic de Playwright no toca lo que no se ve y
+el recorrido seguía de largo sin la ficha de la ciudad (ya estaba la
+regla de «que cada paso llegue a donde dice»). *Regla:* para llegar a
+algo que puede estar plegado, el clic es de la página
+(`p.evaluate(() => el.click())`), y el paso se mide solo si llegó.
+
+**Una espera sin tope.** Un ayudante de prueba le pasaba a
+`waitForFunction` su argumento en el lugar del tiempo máximo; a veces
+esperaba para siempre y el corredor lo daba por colgado a los 5 minutos.
+*Regla:* los ayudantes que esperan llevan su tope escrito
+(`{ timeout: 4000 }`) y devuelven `false` al vencer.

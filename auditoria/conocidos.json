@@ -18,5 +18,15 @@
     "que": "Texto visible escrito directo, sin t()",
     "contiene": "Registro de Acciones",
     "porque": "Es el nombre de la app: va igual en los cuatro idiomas."
+  },
+  {
+    "que": "Parece un teléfono",
+    "contiene": "+54 11 4444 5555",
+    "porque": "Número inventado de pruebas/agenda_test.mjs (el segundo teléfono, sin WhatsApp). Revisado el 9/10/2026."
+  },
+  {
+    "que": "Parece un teléfono",
+    "contiene": "+54 11 4444 0103",
+    "porque": "Número inventado de la app de mentira (pruebas/app_de_mentira.mjs), para la Agenda. Revisado el 9/10/2026."
   }
 ]
