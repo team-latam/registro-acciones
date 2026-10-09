@@ -984,7 +984,13 @@ Con capturas de la compu:
 - **Todas las ventanas de la Agenda del tamaño de la Agenda**: «Sumar a
   alguien» y una ficha abiertas desde la ficha de un lugar iban en una
   ventana más chica (la tanda 46 lo había hecho a propósito); ahora es
-  siempre la grande, con el formulario en una columna al medio.
+  siempre la grande. Primero el formulario quedó en una columna al
+  medio, con blanco a los costados y barra de desplazamiento; el usuario
+  lo mostró y **va a lo ancho, en dos columnas** (Institución | Nombre,
+  Cargo | Teléfono, Correo | Idiomas, la nota a lo ancho; al corregir,
+  «Dónde está» después de los idiomas; la institución, Nombre |
+  Dirección, País | Ciudad, Tipo | Estado): entra entero sin desplazar.
+  En el celular, una columna como siempre.
 
 Pruebas: `agenda_ventanas_test.mjs` (las cuatro cosas; fallan con el
 código de antes).
