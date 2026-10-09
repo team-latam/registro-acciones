@@ -2368,7 +2368,11 @@
   .fl-zona i{ width:9px; height:9px; border-radius:50%; display:inline-block; }
   /* El mismo selector del Inicio, pero los nombres son largos ("Solo
      Montego Bay", "+ Jamaica en general"): baja de renglón si no entra. */
-  .place-seg.fl-seg{ margin:0 0 14px; flex-wrap:wrap; width:fit-content; max-width:100%; border-radius:20px; }
+  /* El selector y la botonera («Reporte del lugar», «+ Cargar algo acá») en
+     una misma fila, al mismo nivel (pedido del usuario, 9/10/2026). */
+  .fl-barra{ display:flex; justify-content:space-between; align-items:center; gap:10px 16px; flex-wrap:wrap; margin:0 0 14px; }
+  .fl-barra .fl-acciones{ margin-inline-start:auto; }
+  .place-seg.fl-seg{ margin:0; flex-wrap:wrap; width:fit-content; max-width:100%; border-radius:20px; }
   .place-seg.fl-seg .place-seg-btn{ flex:1 1 auto; min-width:auto; padding:8px 12px; }
   .fl-card{ background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px 18px; box-shadow:var(--shadow); margin-bottom:16px; min-width:0; }
   .fl-card h3{ margin:0 0 10px; font-size:11px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--text-muted); display:flex; justify-content:space-between; align-items:baseline; gap:10px; }
@@ -2555,6 +2559,7 @@
     /* Los dos botones lado a lado, y las tres opciones de «qué incluir»
        en una fila: antes los botones iban apilados a lo ancho y la
        última opción se caía sola a un segundo renglón (AUDITORIA B7). */
+    .fl-barra{ flex-direction:column-reverse; align-items:stretch; gap:10px; }
     .fl-acciones{ display:flex; gap:8px; width:100%; }
     .fl-acciones > button{ flex:1 1 0; min-width:0; padding-inline:10px; font-size:13px; }
     .place-seg.fl-seg{ width:100%; flex-wrap:nowrap; border-radius:16px; }
@@ -3282,7 +3287,7 @@
        una columna, con las tarjetas del costado en dos, y sin partir un
        ítem de la línea de tiempo entre dos hojas. */
     .ficha-lugar{ max-width:none; }
-    .fl-migas, .fl-acciones, .fl-seg, .fl-chips, .fl-proy, .fl-nota, .fl-mas, .rs-no, .fl-hijo .fl-ir, .fl-main .audit-more{ display:none !important; }
+    .fl-migas, .fl-barra, .fl-acciones, .fl-seg, .fl-chips, .fl-proy, .fl-nota, .fl-mas, .rs-no, .fl-hijo .fl-ir, .fl-main .audit-more{ display:none !important; }
     .fl-incluye-print{ display:block; font-size:10px; font-weight:700; color:var(--text-muted); margin:-6px 0 10px; }
     .fl-head{ margin-bottom:6px; }
     .fl-head h1{ font-size:19px; }
@@ -21579,13 +21584,16 @@ function renderFichaLugar(L){
     ? `<span class="fl-zona"><i style="background:${zcolor}"></i>${esc(countryLabel(L.country))} · ${esc(regionLabel(zk))}</span>`
     : `<span class="fl-zona"><i style="background:${zcolor}"></i>${esc(L.zona ? t("{n} países con actividad","{n} countries with activity","{n} países com atividade","{n} מדינות עם פעילות",{ n: hijos.length }) : regionLabel(zk))}</span>${hijos.length ? " · " + hijos.map(h => esc(h.nombre)).join(" · ") : ""}`;
   const lugarAttrs = L.zona ? `data-zona="${esc(L.zona)}"` : `data-country="${esc(L.country)}"${L.city ? ` data-city="${esc(L.city)}"` : ""}`;
+  // La botonera va en la fila del selector «qué incluir», a la derecha, al
+  // mismo nivel que «Solo … / + Región …» (pedido del usuario, 9/10/2026);
+  // antes iba arriba, a la altura del título.
   const head = `<div class="fl-head">
     <div><h1>${esc(nombre)}</h1><div class="fl-sub">${sub}</div></div>
-    <div class="fl-acciones">
+  </div>`;
+  const acciones = `<div class="fl-acciones">
       <button type="button" class="btn-secondary" data-action="ficha-imprimir" title="${esc(t("Imprimir o guardar en PDF esta ficha","Print or save this page as PDF","Imprimir ou salvar esta ficha em PDF","הדפסה או שמירה כ-PDF"))}">🖨️ ${t("Reporte del lugar","Place report","Relatório do lugar","דוח המקום")}</button>
       ${canWrite() ? `<button type="button" class="btn-primary" data-action="ficha-cargar" ${lugarAttrs}>+ ${t("Cargar algo acá","Log something here","Registrar algo aqui","להוסיף משהו כאן")}</button>` : ""}
-    </div>
-  </div>`;
+    </div>`;
   // Qué incluir: solo lo de acá, o también lo más amplio.
   const etiquetas = { own: t("Solo {l}","Only {l}","Só {l}","רק {l}",{ l: nombre }), pais: "+ " + t("{p} en general","{p} in general","{p} em geral","{p} באופן כללי",{ p: L.zona ? "" : countryLabel(L.country) }),
     region: "+ " + regionLabel(zk), latam: "+ " + t("Toda LatAm","All of LatAm","Toda a LatAm","כל LatAm") };
@@ -21842,7 +21850,7 @@ function renderFichaLugar(L){
     docs.length > 4 ? `<button type="button" class="fl-mas" data-action="ficha-desplegar" data-que="docs">${fichaDesplegado.has("docs") ? t("Mostrar menos","Show less","Mostrar menos","הצג פחות") : t("Ver los {n}","See all {n}","Ver os {n}","הצגת כל ה-{n}",{ n: docs.length })}</button>` : "")}
     <div class="fl-docs">${(todosDocs ? docs : docs.slice(0, 4)).map(x => { const fi = fichaDeArchivo(x.f); return `<button type="button" class="fl-doc" data-action="resumen-abrir" data-post-id="${esc(x.p.id)}" data-pos="${x.pos}" title="${esc(x.f.name)}">
       <i style="background:${fi.color}">${esc(fi.sigla)}</i><span>${esc(x.f.name)}</span><small>${esc(fechaDeDoc(x))}</small></button>`; }).join("")}</div></div>` : "";
-  return `<div class="ficha-lugar">${tituloPrint}${migas}${head}${seg}${incluyePrint}
+  return `<div class="ficha-lugar">${tituloPrint}${migas}${head}<div class="fl-barra">${seg}${acciones}</div>${incluyePrint}
     ${lectura.length ? `<div class="fl-card fl-lectura"><h3>${t("Lectura rápida","At a glance","Leitura rápida","במבט מהיר")}</h3><ul>${lectura.map(x => `<li class="${x.alerta ? "alerta" : ""}"><span class="ic" aria-hidden="true">${x.ic}</span><span>${x.html}</span></li>`).join("")}</ul></div>` : ""}
     ${stats}
     <div class="fl-grid"><div class="fl-main">${pasos}${linea}</div><div class="fl-lado">${ladoProy}${ladoHijos}${ladoContactos}${ritmo}${quienes}${documentos}</div></div>

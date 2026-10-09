@@ -43,6 +43,9 @@ const b = await abrirNavegador();
   const { p, errores } = await entrar(b, ADMIN, "Benny Rosenthal", { viewport: { width: 390, height: 844 }, base: conMucha() });
   await aArgentina(p);
   eq("celular: la historia arranca con una tanda (lo que se prueba)", await p.$$eval(".fl-it", l => l.length), 30);
+  eq("celular: la botonera debajo del título y el selector después, como siempre", await p.evaluate(() => {
+    const a = document.querySelector(".fl-acciones").getBoundingClientRect(), s = document.querySelector(".fl-seg").getBoundingClientRect();
+    return a.bottom <= s.top + 1 && Math.abs(a.width - s.width) < 2; }), true);
   // Los contactos de la Agenda van adentro de «Ciudades» (9/10/2026): son cinco.
   eq("celular: están las cinco tarjetas del costado", await lados(p), ["proy", "hijos", "ritmo", "quienes", "docs"]);
   eq("celular: el costado va arriba de «Lo que pasó», después de «Lo que sigue»", await p.evaluate(() => {
@@ -137,6 +140,10 @@ const b = await abrirNavegador();
   eq("compu: las tarjetas, enteras (aunque en el celular estén plegadas)", await p.$$eval(".fl-lado > .fl-card", l => l.every(c =>
     [...c.children].filter(x => x.tagName !== "H3").some(x => getComputedStyle(x).display !== "none"))), true);
   eq("compu: el título de siempre, sin el renglón", [await visible(p, ".fl-lado .fl-lado-t"), await p.$$eval(".fl-lado .fl-pliegue", l => l.every(e => getComputedStyle(e).display === "none"))], [true, true]);
+  // La botonera al nivel del selector «qué incluir», a la derecha (pedido del usuario, 9/10/2026).
+  eq("compu: «Reporte del lugar / + Cargar algo acá» en la fila de «Solo … / + Región …», a la derecha", await p.evaluate(() => {
+    const s = document.querySelector(".fl-seg").getBoundingClientRect(), a = document.querySelector(".fl-acciones").getBoundingClientRect();
+    return [Math.abs((s.top + s.bottom) / 2 - (a.top + a.bottom) / 2) < 6, a.left > s.right]; }), [true, true]);
   eq("compu: sin errores", errores, []);
   await p.close();
 }

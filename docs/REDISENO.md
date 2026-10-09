@@ -969,6 +969,16 @@ eligió **unirlas así**:
 Pruebas: `agenda_test.mjs` (país, región y ciudad; fallan con el código
 de antes) y `ficha_celular_test.mjs` vuelve a esperar cinco tarjetas.
 
+### 49. La botonera de la ficha, al nivel del selector — HECHO (9 oct 2026)
+
+Pedido del usuario: «Reporte del lugar» y «+ Cargar algo acá» siempre al
+mismo nivel que «Solo Argentina / + Región Sur / + Toda LatAm». Antes
+iban arriba, a la altura del título. Ahora el selector y la botonera van
+en una misma fila (`.fl-barra`): el selector a la izquierda, los botones
+a la derecha. En el celular, como siempre: los botones debajo del título
+y el selector después. Prueba en `ficha_celular_test.mjs` (falla con el
+código de antes).
+
 ### 48. Retoques de la Agenda que pidió el usuario — HECHO (9 oct 2026)
 
 Con capturas de la compu:
