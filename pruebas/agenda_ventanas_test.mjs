@@ -250,6 +250,39 @@ for(const [quien, nombre, botones] of [[ADMIN, "Benny", ["agenda-a-administracio
   await p.close();
 }
 
+// Los retoques del 9/10/2026 a la noche: «Sumar a alguien» entra sin barra también en una
+// pantalla más baja; la tarjeta de contactos dice «Ver más»; al pie de una ficha, nada.
+{
+  const { p, errores } = await entrar(ADMIN, "Benny", { viewport: { width: 1280, height: 800 } });
+  await irAPaises(p);
+  await p.click(".paises-agenda");
+  await p.waitForSelector(".ag-fila");
+  await sumarDeLaLista(p);
+  eq("compu baja (800): «Sumar a alguien» entra entero, sin barra", await p.evaluate(() => { const f = document.querySelector(".ag-form"); return [f.scrollHeight <= f.clientHeight + 1, innerHeight]; }), [true, 800]);
+  eq("compu: Nombre | Cargo y Correo | Idiomas van de a dos", await p.$$eval(".ag-form .ag-dos", l => l.map(d => [...d.querySelectorAll(":scope > .ag-campo > span, :scope > .ag-celda > .ag-campo > span")].map(e => e.textContent.trim().split(" ")[0]))), [["Nombre", "Cargo"], ["Correo", "Idiomas"]]);
+  await p.click('[data-action="agenda-cerrar"]');
+  const base = await p.evaluate(() => window.__sb.tablas);
+  await p.evaluate(() => { const b = document.querySelector(".paises-agenda"); b.click(); });
+  await p.waitForSelector(".ag-fila");
+  await p.click('.ag-fila [data-action="agenda-ver-persona"][data-id="per_grum"]');
+  await vistaEs(p, /^persona/);
+  eq("persona traída de una lista: al pie, nada (ni «De qué lista» ni «Sumado por»)", [await texto(p, ".ag-pie small"), base.personas.find(x => x.id === "per_grum").lista], ["", "l1"]);
+  await p.click('[data-action="agenda-cerrar"]');
+  eq("sin errores (retoques)", errores, []);
+  await p.close();
+}
+{
+  // Con más de cinco instituciones en la ciudad, la tarjeta de contactos ofrece «Ver más» (decía «Ver los 11»).
+  const seis = base => { for(let i = 0; i < 6; i++) base.instituciones.push({ id: "extra" + i, name: "Institución " + i, country: "Argentina", city: "Rosario", address: null, tipo: null, estado: "activa", nota: null, lista: null, created_by: ADMIN, created_at: hace(1) }); return base; };
+  const { p, errores } = await entrar(ADMIN, "Benny", { retocar: seis });
+  await irARosario(p);
+  eq("ficha: la tarjeta de contactos dice «Ver más», como las demás", await texto(p, '.fl-card:has(.fl-pliegue[data-que="contactos"]) .fl-mas'), "Ver más");
+  await p.click('.fl-card:has(.fl-pliegue[data-que="contactos"]) .fl-mas');
+  eq("y abierta, «Ver menos»", await texto(p, '.fl-card:has(.fl-pliegue[data-que="contactos"]) .fl-mas'), "Ver menos");
+  eq("sin errores (ver más)", errores, []);
+  await p.close();
+}
+
 await b.close();
 console.log(`\n${pass} pasaron, ${fail} fallaron`);
 process.exit(fail ? 1 : 0);

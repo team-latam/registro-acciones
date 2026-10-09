@@ -134,7 +134,7 @@ const escribir = async (p, sel, valor) => { await p.fill(sel, valor); await p.wa
   eq("persona: el enlace a WhatsApp abre aparte y sin referencia", await p.$eval('#agendaBody a[href^="https://wa.me/"]', a => [a.target, /noopener/.test(a.rel)]), ["_blank", true]);
   eq("persona: los dos teléfonos", await p.$$eval('#agendaBody a[href^="tel:"]', l => [...new Set(l.map(a => a.getAttribute("href")))]), ["tel:+5491153161698", "tel:+541144445555"]);
   eq("persona: dónde está", await p.$$eval('#agendaBody [data-action="agenda-ver-inst"] b', l => l.map(e => e.textContent.trim()).sort()), ["Beit Jabad Uruguay De temporada", "Chabad Central"]);
-  eq("persona: de qué lista vino", /De «Directorio Chabad LatAm»/.test(await texto(p, ".ag-pie small")), true);
+  eq("persona: al pie no dice de qué lista vino ni quién la sumó (lo pidió el usuario, 9/10/2026)", await texto(p, ".ag-pie small"), "");
   await p.click('[data-action="agenda-volver"]');
   await hasta(p, () => document.getElementById("agendaBody").dataset.vista === "lista");
   eq("volver: la lista con la búsqueda como estaba", await p.inputValue("#agendaBuscar"), "grumb");
