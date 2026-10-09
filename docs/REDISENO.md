@@ -949,6 +949,26 @@ ventana que el celular no abra el teclado solo. Pruebas:
 `pruebas/agenda_ventanas_test.mjs` (43; con el código de antes fallan 30).
 Falta que el usuario lo pruebe en su teléfono (A18).
 
+### 47. «Ciudades» y «Contactos en …», una sola tarjeta — HECHO (9 oct 2026)
+
+Con el Directorio ya cargado, el usuario mostró desde el celular la ficha
+de Argentina: «Ciudades — Buenos Aires (CABA), Córdoba y 26 más» y
+«Contactos en Argentina — 60 instituciones · 52 contactos», una debajo de
+la otra, y preguntó si podían ser lo mismo. Se le mostró con capturas y
+eligió **unirlas así**:
+
+- En un país, «Ciudades» lista cada ciudad con lo hecho ahí (último,
+  pendientes, cuántos registros) y, abajo, su gente (📇 «Beit Chabad
+  Rosario · Shlomo Tawil», o «3 instituciones · 4 contactos»). Primero
+  las que tienen actividad, como antes; al final, en gris, las que solo
+  tienen contactos («Sin actividad todavía»), y abajo «Ver en la Agenda».
+  Plegada en el celular: «Rosario, Córdoba y 19 más · 52 contactos».
+- En una región, lo mismo con «Países».
+- En una ciudad no cambia nada: «Contactos en …» con su gente.
+
+Pruebas: `agenda_test.mjs` (país, región y ciudad; fallan con el código
+de antes) y `ficha_celular_test.mjs` vuelve a esperar cinco tarjetas.
+
 ## Fuera de alcance (necesitan algo que la app no tiene)
 
 - ~~Mandar correos (resumen semanal, invitaciones): no hay servicio de

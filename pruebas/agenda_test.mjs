@@ -152,6 +152,7 @@ const escribir = async (p, sel, valor) => { await p.fill(sel, valor); await p.wa
   // La ficha de Rosario: «Contactos en Rosario» y «Ver en la Agenda».
   await irARosario(p);
   eq("ficha: la tarjeta de contactos con su resumen", await texto(p, '.fl-pliegue[data-que="contactos"] .r'), "Beit Chabad Rosario · Shlomo Tawil");
+  eq("ficha de una ciudad: sin «Ciudades» (su gente va en «Contactos en …»)", await cuantos(p, '.fl-pliegue[data-que="hijos"]'), 0);
   eq("ficha: la gente de la institución", await p.$$eval('.fl-ag-inst [data-action="agenda-ver-persona"]', l => l.map(e => e.textContent.replace(/\s+/g, " ").trim())).then(l => l.some(x => /Shlomo Tawil/.test(x))), true);
   await p.click('.fl-ag-pie [data-action="agenda-abrir"]');
   await p.waitForSelector("#agendaBuscar");
@@ -168,6 +169,41 @@ const escribir = async (p, sel, valor) => { await p.fill(sel, valor); await p.wa
   eq("persona: lo que pasó con él, de los eventos", await p.$$eval('#agendaBody [data-action="agenda-ver-post"]', l => l.map(e => e.dataset.postId)), ["p_ros"]);
   await p.click('[data-action="agenda-cerrar"]');
   eq("sin errores (admin)", errores, []);
+  await p.close();
+}
+
+/* ---------- 1b. Un país y una región: «Ciudades» / «Países» con su gente (9/10/2026) ----------
+   Eran dos tarjetas que nombraban las mismas ciudades; el usuario pidió
+   que fuera una. Primero las que tienen actividad; al final, en gris, las
+   que solo tienen contactos. */
+{
+  const { p, errores } = await entrar(ADMIN, "Benny");
+  await irAPaises(p);
+  await p.click('[data-action="drill-country"][data-country="Argentina"]');
+  await p.waitForSelector('.fl-pliegue[data-que="hijos"]', { state: "attached" });
+  const tarjeta = '.fl-card:has(.fl-pliegue[data-que="hijos"])';
+  eq("país: una sola tarjeta (sin «Contactos en Argentina» aparte)", await cuantos(p, '.fl-pliegue[data-que="contactos"]'), 0);
+  eq("país: las ciudades, primero la que tiene actividad", await p.$$eval(`${tarjeta} .fl-hijo b`, l => l.map(e => e.textContent.trim())), ["Rosario", "Buenos Aires"]);
+  eq("país: cada una con su gente", await p.$$eval(`${tarjeta} .fl-hijo .fl-hijo-ag`, l => l.map(e => e.textContent.trim())), ["📇 Beit Chabad Rosario · Shlomo Tawil", "📇 Chabad Central · Tzvi Grumblat"]);
+  eq("país: la que solo tiene contactos, en gris y dice que no hubo actividad", await p.$$eval(`${tarjeta} .fl-hijo.sin-act`, l => l.map(e => [e.querySelector("b").textContent.trim(), e.querySelector("small").textContent.trim()])), [["Buenos Aires", "Sin actividad todavía"]]);
+  eq("país: el resumen, las ciudades y cuántos contactos", await texto(p, '.fl-pliegue[data-que="hijos"] .r'), "Rosario y Buenos Aires · 2 contactos");
+  await p.click(`${tarjeta} .fl-ag-pie [data-action="agenda-abrir"]`);
+  await p.waitForSelector(".ag-fila");
+  eq("país: «Ver en la Agenda» la abre en ese país", await cuantos(p, ".ag-fila"), 2);
+  await p.click('[data-action="agenda-cerrar"]');
+  await p.click(`${tarjeta} .fl-hijo.sin-act`);
+  await p.waitForSelector('.fl-pliegue[data-que="contactos"]', { state: "attached" });
+  eq("una ciudad sin actividad lleva a su ficha, con «Contactos en …»", await texto(p, '.fl-pliegue[data-que="contactos"] .r'), "Chabad Central · Tzvi Grumblat");
+  // Una región: «Países», igual.
+  await irAPaises(p);
+  await p.click('[data-action="drill-country"][data-country="Argentina"]');
+  await p.waitForSelector('.fl-migas [data-action="drill-zone"]');
+  await p.click('.fl-migas [data-action="drill-zone"]');
+  await p.waitForSelector('.fl-pliegue[data-que="hijos"]', { state: "attached" });
+  eq("región: los países, cada uno con su gente; Uruguay solo con contactos", await p.$$eval(`${tarjeta} .fl-hijo`, l => l.map(e => [e.querySelector("b").textContent.trim(), e.classList.contains("sin-act"), (e.querySelector(".fl-hijo-ag") || {}).textContent || ""])),
+    [["Argentina", false, "📇 2 instituciones · 2 contactos"], ["Uruguay", true, "📇 Beit Jabad Uruguay · Tzvi Grumblat"]]);
+  eq("región: sin «Contactos en …» aparte", await cuantos(p, '.fl-pliegue[data-que="contactos"]'), 0);
+  eq("sin errores (país y región)", errores, []);
   await p.close();
 }
 

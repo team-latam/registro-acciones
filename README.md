@@ -1193,9 +1193,13 @@ cuenta, y su ficha muestra lo que hizo con el equipo.
 - **Dónde se ve** (eligió la C1, «lo más simple posible»): el botón
   «📇 Agenda» en Países, al lado de Lista y Mapa, la abre en una ventana
   grande (`agendaOverlay`: buscar por nombre, lugar o teléfono, filtrar
-  por país, tipo y lista, bajar la planilla). La ficha de cada país y
-  ciudad tiene la tarjeta «Contactos en …» con «Ver en la Agenda»; en el
-  celular va plegada arriba de «Lo que pasó» como el resto del costado.
+  por país, tipo y lista, bajar la planilla). En la ficha de una ciudad,
+  la tarjeta «Contactos en …» con su gente y «Ver en la Agenda»; en la de
+  un país o una región, la gente va adentro de «Ciudades» o «Países»
+  (desde el 9/10/2026, pedido del usuario: eran dos tarjetas que nombraban
+  las mismas ciudades): cada renglón dice lo hecho ahí y su gente (📇), y
+  al final, en gris, los lugares que solo tienen contactos. En el celular
+  van plegadas arriba de «Lo que pasó» como el resto del costado.
   «Buscar en todo» encuentra contactos e instituciones.
 - **Quién**: la ve todo aprobado, también quien observa, con teléfonos y
   correos (decisión del usuario); la completa y corrige cualquiera que

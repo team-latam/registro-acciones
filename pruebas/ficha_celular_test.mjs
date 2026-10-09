@@ -43,8 +43,8 @@ const b = await abrirNavegador();
   const { p, errores } = await entrar(b, ADMIN, "Benny Rosenthal", { viewport: { width: 390, height: 844 }, base: conMucha() });
   await aArgentina(p);
   eq("celular: la historia arranca con una tanda (lo que se prueba)", await p.$$eval(".fl-it", l => l.length), 30);
-  // Con «Contactos en …» de la Agenda (8/10/2026), son seis.
-  eq("celular: están las seis tarjetas del costado", await lados(p), ["proy", "hijos", "contactos", "ritmo", "quienes", "docs"]);
+  // Los contactos de la Agenda van adentro de «Ciudades» (9/10/2026): son cinco.
+  eq("celular: están las cinco tarjetas del costado", await lados(p), ["proy", "hijos", "ritmo", "quienes", "docs"]);
   eq("celular: el costado va arriba de «Lo que pasó», después de «Lo que sigue»", await p.evaluate(() => {
     const top = e => e.getBoundingClientRect().top;
     if(!document.querySelector(".fl-sigue") || !document.querySelector(".fl-historia")) return false;
@@ -86,11 +86,12 @@ const b = await abrirNavegador();
   eq("plegar: vuelve a quedar plegada", await abiertas(p), []);
   // Ciudades: abierta, muestra las ciudades; el resumen nombra las primeras.
   await p.click('.fl-pliegue[data-que="hijos"]'); await p.waitForTimeout(200);
-  // Solo los de la tarjeta Ciudades: «Contactos en …» usa las mismas clases.
+  // Solo los de la tarjeta Ciudades.
   const ciudades = await p.$$eval('.fl-card:has(.fl-pliegue[data-que="hijos"]) .fl-hijos .fl-hijo b', l => l.map(e => e.textContent.trim()));
   eq("Ciudades: abierta, se ven las ciudades", ciudades.length > 0 && await visible(p, '.fl-card:has(.fl-pliegue[data-que="hijos"]) .fl-hijos'), true);
   await p.click('.fl-pliegue[data-que="hijos"]'); await p.waitForTimeout(200);
-  eq("Ciudades: el resumen nombra las primeras", await resumen(p, "hijos"),
+  // …y después cuántos contactos hay en la Agenda (« · 4 contactos»).
+  eq("Ciudades: el resumen nombra las primeras", (await resumen(p, "hijos")).split(" · ")[0],
      ciudades.length > 2 ? `${ciudades[0]}, ${ciudades[1]} y ${ciudades.length - 2} más` : ciudades.join(" y "));
 
   // Lo abierto queda abierto en ese aparato: en otra ficha y al volver a entrar.

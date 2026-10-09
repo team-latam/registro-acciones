@@ -2449,7 +2449,9 @@
   .fl-hijo:hover, .fl-hijo:focus-visible{ border-color:var(--celeste); }
   .fl-hijo b{ font-size:14px; color:var(--ink); }
   .fl-hijo small{ grid-column:1; font-size:11.5px; color:var(--text-muted); }
-  .fl-hijo .n{ grid-row:1 / span 2; grid-column:2; align-self:center; font-weight:800; color:var(--ink); }
+  .fl-hijo .n{ grid-row:1 / span 3; grid-column:2; align-self:center; font-weight:800; color:var(--ink); }
+  .fl-hijo .fl-hijo-ag{ color:var(--ink); }
+  .fl-hijo.sin-act b{ color:var(--text-muted); }
   .fl-incluye-print{ display:none; }
   /* Las tres zonas arriba de la lista de países, cada una con su ficha. */
   .paises-zonas{ display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:10px; margin-bottom:14px; }
@@ -21742,51 +21744,66 @@ function renderFichaLugar(L){
   // barra), no la columna entera: así el resto del costado se queda quieto
   // mientras se mira y se elige (captura del usuario).
   const todosHijos = fichaDesplegado.has("hijos") || fichaImprimiendo;
-  const hijosConScroll = todosHijos && !fichaImprimiendo && hijos.length > HIJOS_A_LA_VISTA;
-  const ladoHijos = hijos.length ? `<div class="${claseDeLado("hijos")}">${tituloDeLado("hijos", L.zona ? t("Países","Countries","Países","מדינות") : t("Ciudades","Cities","Cidades","ערים"), dosYMas(hijos.map(h => h.nombre)),
-    hijos.length > HIJOS_A_LA_VISTA ? `<button type="button" class="fl-mas" data-action="ficha-desplegar" data-que="hijos">${fichaDesplegado.has("hijos") ? t("Ver menos","Show less","Ver menos","הצג פחות") : t("Ver más","See more","Ver mais","הצגת עוד")}</button>` : "")}<div class="fl-hijos${hijosConScroll ? " con-scroll" : ""}">${(todosHijos ? hijos : hijos.slice(0, HIJOS_A_LA_VISTA)).map(h => {
-    const ult = h.posts.map(fechaDePost).sort().pop();
-    const pend = h.posts.reduce((n, p) => n + pasosPendientes(partesDeLugar(p, h.L)).length, 0);
-    return `<button type="button" class="fl-hijo" ${h.accion}>
-      <b>${esc(h.nombre)}</b><small>${esc(t("último: hace {d} días","latest: {d} days ago","último: há {d} dias","אחרון: לפני {d} ימים",{ d: Math.max(0, diasDesde(ult)) }))}${pend ? " · " + esc(t("{n} pendientes","{n} pending","{n} pendentes","{n} ממתינים",{ n: pend })) : ""}</small>
-      <span class="n">${h.posts.length} <span class="fl-ir" aria-hidden="true">${isRTL() ? "‹" : "›"}</span></span></button>`; }).join("")}</div></div>` : "";
+  // «Ciudades» (o «Países», en una región) con lo hecho y la gente de cada
+  // una: eran dos tarjetas que nombraban las mismas ciudades (pedido del
+  // usuario, 9/10/2026). Primero las que tienen actividad, como antes;
+  // después las que solo tienen contactos.
+  const claveAg = x => L.zona ? x.country : normalize(x.city || "");
+  const agPorLugar = new Map();
+  agendaAca.forEach(x => { const k = claveAg(x); if(!agPorLugar.has(k)) agPorLugar.set(k, []); agPorLugar.get(k).push(x); });
+  const claveHijo = h => L.zona ? h.L.country : normalize(h.L.city || "");
+  // En una ciudad no hay «Ciudades»: su gente va en «Contactos en …».
+  const filasLugar = L.city ? [] : [...hijos.map(h => ({ h, insts: agPorLugar.get(claveHijo(h)) || [] })),
+    ...[...agPorLugar.entries()].filter(([k]) => !hijos.some(h => claveHijo(h) === k)).map(([, insts]) => ({ h: null, insts }))
+      .sort((a, b) => b.insts.length - a.insts.length || (L.zona ? countryLabel(a.insts[0].country).localeCompare(countryLabel(b.insts[0].country), "es") : cityLabel(a.insts[0].country, a.insts[0].city || "").localeCompare(cityLabel(b.insts[0].country, b.insts[0].city || ""), "es")))];
+  const nombreFila = f => f.h ? f.h.nombre : L.zona ? countryLabel(f.insts[0].country) : f.insts[0].city ? cityLabel(f.insts[0].country, f.insts[0].city) : t("Sin ciudad","No city","Sem cidade","ללא עיר");
+  const filaLugar = f => {
+    const h = f.h, x = f.insts[0];
+    const accion = h ? h.accion : L.zona ? `data-action="drill-country" data-country="${esc(x.country)}"` : x.city ? `data-action="drill-city" data-country="${esc(x.country)}" data-city="${esc(x.city)}"` : `data-action="agenda-abrir" data-country="${esc(x.country)}"`;
+    let act;
+    if(h){
+      const ult = h.posts.map(fechaDePost).sort().pop();
+      const pend = h.posts.reduce((n, p) => n + pasosPendientes(partesDeLugar(p, h.L)).length, 0);
+      act = t("último: hace {d} días","latest: {d} days ago","último: há {d} dias","אחרון: לפני {d} ימים",{ d: Math.max(0, diasDesde(ult)) }) + (pend ? " · " + t("{n} pendientes","{n} pending","{n} pendentes","{n} ממתינים",{ n: pend }) : "");
+    } else act = t("Sin actividad todavía","No activity yet","Sem atividade ainda","אין עדיין פעילות");
+    let gente = "";
+    if(f.insts.length){
+      const r = resumenAgenda(f.insts), g1 = f.insts.length === 1 ? genteDe(x.id) : [];
+      gente = f.insts.length === 1 ? [x.name, g1.length === 1 ? agendaDatos().personas.get(g1[0].persona).name : g1.length ? cuantosContactos(g1.length) : ""].filter(Boolean).join(" · ")
+        : `${cuantasInstituciones(r.inst)} · ${cuantosContactos(r.gente)}`;
+    }
+    return `<button type="button" class="fl-hijo${h ? "" : " sin-act"}" ${accion}>
+      <b>${esc(nombreFila(f))}</b><small>${esc(act)}</small>${gente ? `<small class="fl-hijo-ag" dir="auto">📇 ${esc(gente)}</small>` : ""}
+      <span class="n">${h ? h.posts.length : ""} <span class="fl-ir" aria-hidden="true">${isRTL() ? "‹" : "›"}</span></span></button>`;
+  };
+  const hijosConScroll = todosHijos && !fichaImprimiendo && filasLugar.length > HIJOS_A_LA_VISTA;
+  const rAg = resumenAgenda(agendaAca);
+  const resumenLugares = [dosYMas(filasLugar.map(nombreFila)), agendaAca.length ? cuantosContactos(rAg.gente) : ""].filter(Boolean).join(" · ");
+  const ladoHijos = filasLugar.length ? `<div class="${claseDeLado("hijos")}">${tituloDeLado("hijos", L.zona ? t("Países","Countries","Países","מדינות") : t("Ciudades","Cities","Cidades","ערים"), resumenLugares,
+    filasLugar.length > HIJOS_A_LA_VISTA ? `<button type="button" class="fl-mas" data-action="ficha-desplegar" data-que="hijos">${fichaDesplegado.has("hijos") ? t("Ver menos","Show less","Ver menos","הצג פחות") : t("Ver más","See more","Ver mais","הצגת עוד")}</button>` : "")}<div class="fl-hijos${hijosConScroll ? " con-scroll" : ""}">${(todosHijos ? filasLugar : filasLugar.slice(0, HIJOS_A_LA_VISTA)).map(filaLugar).join("")}</div>
+    ${agendaAca.length ? `<div class="fl-ag-pie"><button type="button" class="btn-secondary" data-action="agenda-abrir"${L.zona ? "" : ` data-country="${esc(L.country)}"`}>${t("Ver en la Agenda","See in the Directory","Ver na Agenda","בספר הטלפונים")}</button></div>` : ""}</div>` : "";
   // Contactos en … (la Agenda, 8/10/2026): en una ciudad, sus instituciones
-  // con su gente; en un país o una región, por ciudad o por país. «Ver en la
-  // Agenda» abre la agenda entera ya filtrada. En el celular se pliega como
-  // las demás (fichaAbiertas).
+  // con su gente. En un país o una región va adentro de «Ciudades» o
+  // «Países» (9/10/2026). «Ver en la Agenda» abre la agenda ya filtrada. En
+  // el celular se pliega como las demás (fichaAbiertas).
   const ladoContactos = (() => {
-    if(!agendaAca.length && !(L.city && canWrite())) return "";
+    if(!L.city || (!agendaAca.length && !canWrite())) return "";
     const r = resumenAgenda(agendaAca);
     const todos = fichaDesplegado.has("contactos") || fichaImprimiendo;
     const verMas = n => n > HIJOS_A_LA_VISTA ? `<button type="button" class="fl-mas" data-action="ficha-desplegar" data-que="contactos">${fichaDesplegado.has("contactos") ? t("Ver menos","Show less","Ver menos","הצג פחות") : t("Ver los {n}","See all {n}","Ver os {n}","הצגת כל ה-{n}",{ n })}</button>` : "";
-    const enAgenda = agendaAca.length ? `<div class="fl-ag-pie"><button type="button" class="btn-secondary" data-action="agenda-abrir"${L.zona ? "" : ` data-country="${esc(L.country)}"`}${L.city ? ` data-city="${esc(L.city)}"` : ""}>${t("Ver en la Agenda","See in the Directory","Ver na Agenda","בספר הטלפונים")}</button></div>` : "";
-    let cuerpo, resumen, extra;
-    if(L.city){
-      const ver = todos ? agendaAca : agendaAca.slice(0, HIJOS_A_LA_VISTA);
-      cuerpo = agendaAca.length ? `<div class="fl-ag">${ver.map(x => `<div class="fl-ag-inst${x.estado === "cerrada" ? " cerrada" : ""}">
-          <button type="button" class="ag-inst" data-action="agenda-ver-inst" data-id="${esc(x.id)}"><b dir="auto">${esc(x.name)} ${pastillaDeEstado(x)}</b><small dir="auto">${esc([x.tipo, x.address].filter(Boolean).join(" · "))}</small></button>
-          ${genteDe(x.id).map(c => filaDePersona(c, true)).join("")}
-          ${canWrite() ? `<button type="button" class="ag-link" data-action="agenda-sumar" data-inst="${esc(x.id)}">+ ${t("Sumar a alguien más","Add someone else","Adicionar mais alguém","הוספת מישהו נוסף")}</button>` : ""}</div>`).join("")}</div>`
-        : `<p class="fl-nada">${esc(t("Todavía no hay nadie en la Agenda de {l}.","No one in the Directory for {l} yet.","Ainda não há ninguém na Agenda de {l}.","עדיין אין אף אחד בספר הטלפונים של {l}.",{ l: nombre }))}</p>`;
-      // Con una sola institución, su nombre; y con una sola persona ahí, también el de ella.
-      const gente1 = agendaAca.length === 1 ? genteDe(agendaAca[0].id) : [];
-      resumen = !agendaAca.length ? t("Nadie todavía","No one yet","Ninguém ainda","עדיין אין אף אחד")
-        : agendaAca.length === 1 ? [agendaAca[0].name, gente1.length === 1 ? agendaDatos().personas.get(gente1[0].persona).name : gente1.length ? cuantosContactos(gente1.length) : ""].filter(Boolean).join(" · ")
-        : `${cuantasInstituciones(r.inst)} · ${cuantosContactos(r.gente)}`;
-      extra = verMas(agendaAca.length) || (canWrite() ? `<button type="button" class="fl-mas" data-action="agenda-sumar">+ ${t("Sumar","Add","Adicionar","הוספה")}</button>` : "");
-    } else {
-      // Por ciudad (un país) o por país (una región), los que más tienen primero.
-      const grupos = new Map();
-      agendaAca.forEach(x => { const k = L.zona ? x.country : normalize(x.city); if(!grupos.has(k)) grupos.set(k, []); grupos.get(k).push(x); });
-      const filas = [...grupos.values()].sort((a, b) => b.length - a.length || (L.zona ? countryLabel(a[0].country).localeCompare(countryLabel(b[0].country), "es") : cityLabel(a[0].country, a[0].city).localeCompare(cityLabel(b[0].country, b[0].city), "es")));
-      const ver = todos ? filas : filas.slice(0, HIJOS_A_LA_VISTA);
-      cuerpo = `<p class="fl-nada">${t("<b>{i}</b> y {c} en {d}.","<b>{i}</b> and {c} in {d}.","<b>{i}</b> e {c} em {d}.","<b>{i}</b> ו-{c} ב-{d}.",{ i: esc(cuantasInstituciones(r.inst)), c: esc(cuantosContactos(r.gente)), d: esc(L.zona ? cuantosPaises(r.paises) : cuantasCiudades(r.ciudades)) })}</p>
-        <div class="fl-hijos">${ver.map(g => { const x = g[0];
-          const accion = L.zona ? `data-action="drill-country" data-country="${esc(x.country)}"` : x.city ? `data-action="drill-city" data-country="${esc(x.country)}" data-city="${esc(x.city)}"` : `data-action="agenda-abrir" data-country="${esc(x.country)}"`;
-          return `<button type="button" class="fl-hijo" ${accion}><b>${esc(L.zona ? countryLabel(x.country) : x.city ? cityLabel(x.country, x.city) : t("Sin ciudad","No city","Sem cidade","ללא עיר"))}</b><small dir="auto">${esc(g.length === 1 ? x.name : cuantasInstituciones(g.length))}</small><span class="n">${g.length} <span class="fl-ir" aria-hidden="true">${isRTL() ? "‹" : "›"}</span></span></button>`; }).join("")}</div>`;
-      resumen = `${cuantasInstituciones(r.inst)} · ${cuantosContactos(r.gente)}`;
-      extra = verMas(filas.length);
-    }
+    const enAgenda = agendaAca.length ? `<div class="fl-ag-pie"><button type="button" class="btn-secondary" data-action="agenda-abrir" data-country="${esc(L.country)}" data-city="${esc(L.city)}">${t("Ver en la Agenda","See in the Directory","Ver na Agenda","בספר הטלפונים")}</button></div>` : "";
+    const ver = todos ? agendaAca : agendaAca.slice(0, HIJOS_A_LA_VISTA);
+    const cuerpo = agendaAca.length ? `<div class="fl-ag">${ver.map(x => `<div class="fl-ag-inst${x.estado === "cerrada" ? " cerrada" : ""}">
+        <button type="button" class="ag-inst" data-action="agenda-ver-inst" data-id="${esc(x.id)}"><b dir="auto">${esc(x.name)} ${pastillaDeEstado(x)}</b><small dir="auto">${esc([x.tipo, x.address].filter(Boolean).join(" · "))}</small></button>
+        ${genteDe(x.id).map(c => filaDePersona(c, true)).join("")}
+        ${canWrite() ? `<button type="button" class="ag-link" data-action="agenda-sumar" data-inst="${esc(x.id)}">+ ${t("Sumar a alguien más","Add someone else","Adicionar mais alguém","הוספת מישהו נוסף")}</button>` : ""}</div>`).join("")}</div>`
+      : `<p class="fl-nada">${esc(t("Todavía no hay nadie en la Agenda de {l}.","No one in the Directory for {l} yet.","Ainda não há ninguém na Agenda de {l}.","עדיין אין אף אחד בספר הטלפונים של {l}.",{ l: nombre }))}</p>`;
+    // Con una sola institución, su nombre; y con una sola persona ahí, también el de ella.
+    const gente1 = agendaAca.length === 1 ? genteDe(agendaAca[0].id) : [];
+    const resumen = !agendaAca.length ? t("Nadie todavía","No one yet","Ninguém ainda","עדיין אין אף אחד")
+      : agendaAca.length === 1 ? [agendaAca[0].name, gente1.length === 1 ? agendaDatos().personas.get(gente1[0].persona).name : gente1.length ? cuantosContactos(gente1.length) : ""].filter(Boolean).join(" · ")
+      : `${cuantasInstituciones(r.inst)} · ${cuantosContactos(r.gente)}`;
+    const extra = verMas(agendaAca.length) || (canWrite() ? `<button type="button" class="fl-mas" data-action="agenda-sumar">+ ${t("Sumar","Add","Adicionar","הוספה")}</button>` : "");
     return `<div class="${claseDeLado("contactos")}">${tituloDeLado("contactos", esc(t("Contactos en {l}","Contacts in {l}","Contatos em {l}","אנשי קשר ב{l}",{ l: nombre })), resumen, extra)}${cuerpo}${enAgenda}</div>`;
   })();
   const meses = [];
