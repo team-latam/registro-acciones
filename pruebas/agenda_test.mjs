@@ -149,14 +149,14 @@ const escribir = async (p, sel, valor) => { await p.fill(sel, valor); await p.wa
   eq("Escape otra vez la cierra", await abierta(p), false);
   eq("el foco vuelve al botón de la Agenda", await p.evaluate(() => document.activeElement.classList.contains("paises-agenda")), true);
 
-  // La ficha de Rosario: «Contactos en Rosario» y «Ver en la Agenda».
+  // La ficha de Rosario: «Contactos en Rosario» y «Ver Agenda».
   await irARosario(p);
   eq("ficha: la tarjeta de contactos con su resumen", await texto(p, '.fl-pliegue[data-que="contactos"] .r'), "Beit Chabad Rosario · Shlomo Tawil");
   eq("ficha de una ciudad: sin «Ciudades» (su gente va en «Contactos en …»)", await cuantos(p, '.fl-pliegue[data-que="hijos"]'), 0);
   eq("ficha: la gente de la institución", await p.$$eval('.fl-ag-inst [data-action="agenda-ver-persona"]', l => l.map(e => e.textContent.replace(/\s+/g, " ").trim())).then(l => l.some(x => /Shlomo Tawil/.test(x))), true);
   await p.click('.fl-ag-pie [data-action="agenda-abrir"]');
   await p.waitForSelector("#agendaBuscar");
-  eq("«Ver en la Agenda»: abre filtrada en Rosario", [await cuantos(p, ".ag-fila"), /Rosario/.test(await texto(p, '[data-action="agenda-sin-ciudad"]'))], [1, true]);
+  eq("«Ver Agenda»: abre filtrada en Rosario", [await cuantos(p, ".ag-fila"), /Rosario/.test(await texto(p, '[data-action="agenda-sin-ciudad"]'))], [1, true]);
   await p.click('[data-action="agenda-cerrar"]');
 
   // Buscar en todo: contactos e instituciones.
@@ -189,7 +189,7 @@ const escribir = async (p, sel, valor) => { await p.fill(sel, valor); await p.wa
   eq("país: el resumen, las ciudades y cuántos contactos", await texto(p, '.fl-pliegue[data-que="hijos"] .r'), "Rosario y Buenos Aires · 2 contactos");
   await p.click(`${tarjeta} .fl-ag-pie [data-action="agenda-abrir"]`);
   await p.waitForSelector(".ag-fila");
-  eq("país: «Ver en la Agenda» la abre en ese país", await cuantos(p, ".ag-fila"), 2);
+  eq("país: «Ver Agenda» la abre en ese país", await cuantos(p, ".ag-fila"), 2);
   await p.click('[data-action="agenda-cerrar"]');
   await p.click(`${tarjeta} .fl-hijo.sin-act`);
   await p.waitForSelector('.fl-pliegue[data-que="contactos"]', { state: "attached" });
@@ -331,7 +331,7 @@ const escribir = async (p, sel, valor) => { await p.fill(sel, valor); await p.wa
   eq("traer: ahora hay dos listas", /Directorio del Caribe/.test(await texto(p, ".ag-admin")), true);
   await p.click('.ag-listo [data-action="agenda-abrir"]');
   await p.waitForSelector(".ag-fila");
-  eq("«Ver en la Agenda»: solo lo de esa lista", [await cuantos(p, ".ag-fila"), await p.inputValue("#agendaLista").then(v => !!v)], [3, true]);
+  eq("«Ver Agenda»: solo lo de esa lista", [await cuantos(p, ".ag-fila"), await p.inputValue("#agendaLista").then(v => !!v)], [3, true]);
   await p.selectOption("#agendaLista", ""); await p.waitForTimeout(120);
   eq("todas las listas: 6 instituciones", await cuantos(p, ".ag-fila"), 6);
   eq("sin errores (traer)", errores, []);

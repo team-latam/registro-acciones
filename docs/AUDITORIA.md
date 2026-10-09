@@ -67,7 +67,7 @@ Nada.
 | # | Qué | Por qué | Quién |
 |---|---|---|---|
 | A1 | ~~En el celular, al abrir la Agenda se abre el teclado solo (el foco cae en el buscador; también en «Otra institución», «Limpiar», «Es esta»)~~ ✅ 9/10 (en pantalla táctil el foco entra por «Volver» o la ✕; en la compu sigue al buscador) | tapa media ventana antes de que se decida hacer algo; cada vez que se abre | Claude |
-| A2 | ~~La ventana cambia de tamaño y de lugar con cada paso~~ ✅ 9/10 (el tamaño lo decide cómo se abrió: con «📇 Agenda», grande para todo, con la ficha a dos columnas y el formulario centrado; desde un lugar o «Buscar en todo», chica y colgada de arriba; en el celular, siempre pantalla completa) | se ve inestable; en el celular, una ficha flotando sobre la página con la barra de abajo asomando | Claude |
+| A2 | ~~La ventana cambia de tamaño y de lugar con cada paso~~ ✅ 9/10 (con la ficha a dos columnas y el formulario centrado; en el celular, siempre pantalla completa. Primero, abierta desde un lugar o «Buscar en todo» iba chica; el mismo día el usuario pidió que sea siempre del tamaño de la Agenda: tanda 48) | se ve inestable; en el celular, una ficha flotando sobre la página con la barra de abajo asomando | Claude |
 
 ### Medio
 

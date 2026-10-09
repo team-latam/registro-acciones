@@ -969,6 +969,26 @@ eligió **unirlas así**:
 Pruebas: `agenda_test.mjs` (país, región y ciudad; fallan con el código
 de antes) y `ficha_celular_test.mjs` vuelve a esperar cinco tarjetas.
 
+### 48. Retoques de la Agenda que pidió el usuario — HECHO (9 oct 2026)
+
+Con capturas de la compu:
+
+- **«Lectura rápida» sin «📇 En la Agenda: 71 instituciones y 69
+  contactos»**: lo dice la tarjeta de al lado. Se sacó también en la
+  ficha de una ciudad, donde nombraba la institución y su gente (lo mismo
+  que «Contactos en …»).
+- **«Ver Agenda»** en vez de «Ver en la Agenda», en todos lados.
+- **La lista de la Agenda, pareja**: una raya arriba de cada institución.
+  Antes la primera de cada ciudad no la tenía, y en las ciudades con una
+  sola institución no se veía ninguna.
+- **Todas las ventanas de la Agenda del tamaño de la Agenda**: «Sumar a
+  alguien» y una ficha abiertas desde la ficha de un lugar iban en una
+  ventana más chica (la tanda 46 lo había hecho a propósito); ahora es
+  siempre la grande, con el formulario en una columna al medio.
+
+Pruebas: `agenda_ventanas_test.mjs` (las cuatro cosas; fallan con el
+código de antes).
+
 ## Fuera de alcance (necesitan algo que la app no tiene)
 
 - ~~Mandar correos (resumen semanal, invitaciones): no hay servicio de

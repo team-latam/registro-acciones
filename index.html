@@ -2840,14 +2840,12 @@
   .paises-agenda{ border:1px solid var(--border); background:var(--card); color:var(--ink); border-radius:999px; padding:8px 16px; font-weight:700; font-size:13px; cursor:pointer; }
   .paises-agenda:hover{ background:var(--surface-alt); }
   /* ----- La Agenda (8/10/2026): la ventana ----- */
-  /* El tamaño se decide al abrirla y no cambia al ir de una vista a otra
-     (9/10/2026: saltaba de 1040 a 620 de ancho, y de alto con cada ficha).
-     Abierta con «📇 Agenda», grande; abierta en una ficha (desde un lugar o
-     desde «Buscar en todo»), chica, con un alto mínimo y colgada de arriba:
-     si una vista es más larga, crece hacia abajo en vez de saltar. */
-  .agenda-modal{ max-width:620px; padding:0; overflow:hidden; }
-  .agenda-modal:not(.ancha){ min-height:min(560px, 84vh); margin:max(0px, calc(8vh - 24px)) 0 auto; }
-  .agenda-modal.ancha{ max-width:1040px; height:min(880px, 92vh); }
+  /* Siempre del mismo tamaño, se abra desde donde se abra y vaya a la
+     vista que vaya: antes saltaba de 1040 a 620 de ancho y de alto con cada
+     ficha, y después una ficha abierta desde un lugar iba en una ventana
+     más chica; el usuario pidió que todo tenga el tamaño de la Agenda
+     (9/10/2026). */
+  .agenda-modal{ max-width:1040px; height:min(880px, 92vh); padding:0; overflow:hidden; }
   .ag-cab-acc{ flex:none; align-self:center; padding:8px 16px; }
   .agenda-body{ display:flex; flex-direction:column; min-height:0; flex:1; }
   .ag-cab{ display:flex; gap:12px; align-items:flex-start; padding:18px 22px 12px; padding-inline-end:56px; border-bottom:1px solid var(--border); flex:none; }
@@ -2858,15 +2856,15 @@
   .ag-acc{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
   .ag-acc .btn-secondary{ padding:7px 13px; font-size:12.5px; text-decoration:none; }
   .ag-cuerpo{ padding:14px 22px 18px; overflow:auto; min-height:0; flex:1; display:flex; flex-direction:column; gap:12px; }
-  .agenda-modal.ancha .ag-cuerpo{ background:var(--bg); }
+  .agenda-modal .ag-cuerpo{ background:var(--bg); }
   /* Una ficha o un formulario dentro de la ventana grande: en blanco, y a
      dos columnas (la ficha) o en una columna centrada (el formulario), en
      vez de renglones de punta a punta. */
-  .agenda-modal.ancha .ag-ficha, .agenda-modal.ancha .ag-form{ background:var(--card); }
+  .agenda-modal .ag-ficha, .agenda-modal .ag-form{ background:var(--card); }
   @media (min-width:900px){
-    .agenda-modal.ancha .ag-ficha{ display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); align-content:start; gap:18px 32px; }
-    .agenda-modal.ancha .ag-ficha > section:nth-child(n+3){ grid-column:1 / -1; }
-    .agenda-modal.ancha .ag-form{ padding-inline:max(22px, calc((100% - 620px) / 2)); }
+    .agenda-modal .ag-ficha{ display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); align-content:start; gap:18px 32px; }
+    .agenda-modal .ag-ficha > section:nth-child(n+3){ grid-column:1 / -1; }
+    .agenda-modal .ag-form{ padding-inline:max(22px, calc((100% - 620px) / 2)); }
   }
   /* La Agenda vacía */
   .ag-vacia{ margin:auto; max-width:420px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:8px; padding:24px 8px; }
@@ -2897,7 +2895,6 @@
   .ag-ciudad button{ cursor:pointer; }
   .ag-ciudad button:hover{ color:var(--celeste-dark); text-decoration:underline; }
   .ag-fila{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.2fr); gap:6px 16px; padding:10px 16px; border-top:1px solid var(--border); align-items:start; }
-  .ag-ciudad + .ag-fila{ border-top:none; }
   .ag-fila.cerrada, .fl-ag-inst.cerrada{ opacity:.6; }
   .ag-inst{ display:flex; flex-direction:column; gap:1px; background:none; border:none; padding:2px 0; text-align:start; cursor:pointer; color:inherit; font:inherit; min-width:0; }
   .ag-inst b{ font-size:14px; color:var(--ink); overflow-wrap:anywhere; }
@@ -3004,7 +3001,7 @@
   @media (max-width:640px){
     /* En el celular, toda vista de la Agenda ocupa la pantalla: antes la
        lista sí y una ficha era una tarjeta flotando sobre la página. */
-    .agenda-modal, .agenda-modal.ancha, .agenda-modal:not(.ancha){ height:calc(var(--vvh, 100dvh) - 20px); max-height:calc(var(--vvh, 100dvh) - 20px); min-height:0; margin:0; }
+    .agenda-modal{ height:calc(var(--vvh, 100dvh) - 20px); max-height:calc(var(--vvh, 100dvh) - 20px); }
     .ag-cab-acc{ padding:7px 12px; font-size:13px; }
     .ag-cab{ padding:14px 16px 10px; padding-inline-end:48px; }
     .ag-cuerpo{ padding:12px 14px 16px; }
@@ -4124,7 +4121,7 @@
        arriba, al cerrarse el teclado todo subía 30 px justo mientras se
        tocaba un nombre de la lista, y el toque caía en otro lado. */
     html.teclado .agenda-modal{ padding:0; }
-    html.teclado .agenda-modal, html.teclado .agenda-modal.ancha{ height:calc(var(--vvh, 100dvh) - 12px); }
+    html.teclado .agenda-modal{ height:calc(var(--vvh, 100dvh) - 12px); }
     html.teclado .rv-flota{ bottom:auto; top:calc(var(--vvtop, 0px) + 6px); width:calc(100vw - 12px); }
     html.teclado .rv-flota .rv-panel{ max-height:calc(var(--vvh, 100dvh) - 12px); }
     html.teclado .rv-flota-espacio{ height:0; }
@@ -20615,9 +20612,6 @@ function renderAgenda(){
   const selFoco = activo ? focusSelectorOf(activo) : null, anillo = tieneAnillo(activo);
   const selIni = activo && typeof activo.selectionStart === "number" ? activo.selectionStart : null, selFin = activo ? activo.selectionEnd : null;
   const cuerpo = agendaBody.querySelector(".ag-cuerpo"), desplazado = cuerpo && agendaBody.dataset.vista === v.t + (v.id || "") ? cuerpo.scrollTop : 0;
-  // El tamaño lo decide la vista con que se abrió, no la de ahora: antes la
-  // ventana saltaba de ancho y de alto con cada paso (9/10/2026).
-  agendaOverlay.querySelector(".agenda-modal").classList.toggle("ancha", agendaPila[0].t === "lista");
   agendaBody.innerHTML = v.t === "lista" ? agendaVistaLista() : v.t === "persona" ? agendaVistaPersona(v.id)
     : v.t === "inst" ? agendaVistaInstitucion(v.id) : v.t === "form" ? agendaVistaForm(v) : agendaVistaFormInst(v);
   agendaBody.dataset.vista = v.t + (v.id || "");
@@ -21174,7 +21168,7 @@ function renderAgendaAdminSection(){
     const quien = memberByEmail(l.createdBy);
     return `<div class="setting-row"><span class="setting-icon">📇</span><div class="setting-text"><div class="setting-label" dir="auto">${esc(l.name)}</div>
       <div class="setting-sub">${esc(cuantasInstituciones(n))} · ${esc(t("traída el {f}","imported on {f}","trazida em {f}","יובא ב-{f}",{ f: fmtISO(String(l.createdAt || todayISO()).slice(0, 10), { day:"numeric", month:"short", year:"numeric" }) }))}${quien ? " · " + esc(quien.name || quien.email) : ""}</div></div>
-      <button type="button" class="btn-secondary" data-action="agenda-abrir" data-lista="${esc(l.id)}">${t("Ver en la Agenda","See in the Directory","Ver na Agenda","בספר הטלפונים")}</button></div>`;
+      <button type="button" class="btn-secondary" data-action="agenda-abrir" data-lista="${esc(l.id)}">${t("Ver Agenda","See Directory","Ver Agenda","לספר הטלפונים")}</button></div>`;
   }).join("");
   const elegir = `<div class="setting-row ag-traer">
       <span class="setting-icon">⬆️</span>
@@ -21196,7 +21190,7 @@ function renderAgendaAdminSection(){
       : t("{n} ya estaban en la app y se usó su ficha.","{n} were already in the app and their record was used.","{n} já estavam no app e se usou a ficha delas.","{n} כבר היו באפליקציה ונעשה שימוש בכרטיס שלהם.",{ n: r.personas_que_ya_estaban });
     vista = `<div class="settings-card ag-listo"><p>✓ ${t("Listo: se trajeron <b>{i}</b> de «{l}», con <b>{c}</b>.","Done: imported <b>{i}</b> from “{l}”, with <b>{c}</b>.","Pronto: foram trazidas <b>{i}</b> de «{l}», com <b>{c}</b>.","בוצע: יובאו <b>{i}</b> מתוך «{l}», עם <b>{c}</b>.",
       { i: esc(cuantasInstituciones(r.instituciones)), l: esc(im.nombreLista), c: esc(cuantosContactos(gente)) })}${yaEstaban ? " " + esc(yaEstaban) : ""}</p>
-      <button type="button" class="btn-secondary" data-action="agenda-abrir" data-lista="${esc(r.lista)}">${t("Ver en la Agenda","See in the Directory","Ver na Agenda","בספר הטלפונים")}</button></div>`;
+      <button type="button" class="btn-secondary" data-action="agenda-abrir" data-lista="${esc(r.lista)}">${t("Ver Agenda","See Directory","Ver Agenda","לספר הטלפונים")}</button></div>`;
   } else if(im && im.lista){
     const av = im.av;
     const li = (ic, html, sub) => `<li${ic === "?" ? ` class="pregunta"` : ""}><span class="ag-ic">${ic}</span><span><span>${html}</span>${sub ? `<small>${sub}</small>` : ""}</span></li>`;
@@ -21604,14 +21598,6 @@ function renderFichaLugar(L){
   const incluyePrint = `<div class="fl-incluye-print">${esc(t("Incluye","Includes","Inclui","כולל"))}: ${esc(D.niveles.slice(0, incluye + 1).map(n => etiquetas[n].replace(/^\+ /, "")).join(" + "))}${ocultosTxt.length ? ` · ${esc(t("sin","without","sem","ללא"))} ${esc(ocultosTxt.join(", "))}` : ""}${proyPrint}</div>`;
   const tituloPrint = `<div class="rep-print-title"><span>Team LatAm · ${t("Registro de Acciones","Activity Log","Registro de Ações","יומן פעולות")} · ${esc(t("Ficha de {l}","{l} page","Ficha de {l}","כרטיס {l}",{ l: nombre }))}</span><span>${esc(t("Impreso el {d}","Printed on {d}","Impresso em {d}","הודפס ב-{d}",{ d: fmtDate(todayISO()) }))}</span></div>`;
   const lectura = lecturaDeFicha(D, L);
-  if(agendaAca.length){
-    const r = resumenAgenda(agendaAca);
-    const conQuien = x => genteDe(x.id).map(c => { const p = agendaDatos().personas.get(c.persona); return `<b>${esc(p.name)}</b>${c.cargo ? ` (${esc(c.cargo)})` : ""}`; });
-    lectura.push({ ic:"📇", html: agendaAca.length === 1
-      ? (conQuien(agendaAca[0]).length ? t("En la Agenda: <b>{i}</b>, con {g}.","In the Directory: <b>{i}</b>, with {g}.","Na Agenda: <b>{i}</b>, com {g}.","בספר הטלפונים: <b>{i}</b>, עם {g}.",{ i: esc(agendaAca[0].name), g: dosYMas(conQuien(agendaAca[0])) })
-        : t("En la Agenda: <b>{i}</b>, todavía sin contactos.","In the Directory: <b>{i}</b>, no contacts yet.","Na Agenda: <b>{i}</b>, ainda sem contatos.","בספר הטלפונים: <b>{i}</b>, עדיין בלי אנשי קשר.",{ i: esc(agendaAca[0].name) }))
-      : t("En la Agenda: <b>{i}</b> y <b>{c}</b>.","In the Directory: <b>{i}</b> and <b>{c}</b>.","Na Agenda: <b>{i}</b> e <b>{c}</b>.","בספר הטלפונים: <b>{i}</b> ו-<b>{c}</b>.",{ i: esc(cuantasInstituciones(r.inst)), c: esc(cuantosContactos(r.gente)) }) });
-  }
   const ultima = D.visitas[0];
   const primera = D.visitas[D.visitas.length - 1];
   const stats = `<div class="fl-stats">
@@ -21781,17 +21767,17 @@ function renderFichaLugar(L){
   const resumenLugares = [dosYMas(filasLugar.map(nombreFila)), agendaAca.length ? cuantosContactos(rAg.gente) : ""].filter(Boolean).join(" · ");
   const ladoHijos = filasLugar.length ? `<div class="${claseDeLado("hijos")}">${tituloDeLado("hijos", L.zona ? t("Países","Countries","Países","מדינות") : t("Ciudades","Cities","Cidades","ערים"), resumenLugares,
     filasLugar.length > HIJOS_A_LA_VISTA ? `<button type="button" class="fl-mas" data-action="ficha-desplegar" data-que="hijos">${fichaDesplegado.has("hijos") ? t("Ver menos","Show less","Ver menos","הצג פחות") : t("Ver más","See more","Ver mais","הצגת עוד")}</button>` : "")}<div class="fl-hijos${hijosConScroll ? " con-scroll" : ""}">${(todosHijos ? filasLugar : filasLugar.slice(0, HIJOS_A_LA_VISTA)).map(filaLugar).join("")}</div>
-    ${agendaAca.length ? `<div class="fl-ag-pie"><button type="button" class="btn-secondary" data-action="agenda-abrir"${L.zona ? "" : ` data-country="${esc(L.country)}"`}>${t("Ver en la Agenda","See in the Directory","Ver na Agenda","בספר הטלפונים")}</button></div>` : ""}</div>` : "";
+    ${agendaAca.length ? `<div class="fl-ag-pie"><button type="button" class="btn-secondary" data-action="agenda-abrir"${L.zona ? "" : ` data-country="${esc(L.country)}"`}>${t("Ver Agenda","See Directory","Ver Agenda","לספר הטלפונים")}</button></div>` : ""}</div>` : "";
   // Contactos en … (la Agenda, 8/10/2026): en una ciudad, sus instituciones
   // con su gente. En un país o una región va adentro de «Ciudades» o
-  // «Países» (9/10/2026). «Ver en la Agenda» abre la agenda ya filtrada. En
+  // «Países» (9/10/2026). «Ver Agenda» la abre ya filtrada. En
   // el celular se pliega como las demás (fichaAbiertas).
   const ladoContactos = (() => {
     if(!L.city || (!agendaAca.length && !canWrite())) return "";
     const r = resumenAgenda(agendaAca);
     const todos = fichaDesplegado.has("contactos") || fichaImprimiendo;
     const verMas = n => n > HIJOS_A_LA_VISTA ? `<button type="button" class="fl-mas" data-action="ficha-desplegar" data-que="contactos">${fichaDesplegado.has("contactos") ? t("Ver menos","Show less","Ver menos","הצג פחות") : t("Ver los {n}","See all {n}","Ver os {n}","הצגת כל ה-{n}",{ n })}</button>` : "";
-    const enAgenda = agendaAca.length ? `<div class="fl-ag-pie"><button type="button" class="btn-secondary" data-action="agenda-abrir" data-country="${esc(L.country)}" data-city="${esc(L.city)}">${t("Ver en la Agenda","See in the Directory","Ver na Agenda","בספר הטלפונים")}</button></div>` : "";
+    const enAgenda = agendaAca.length ? `<div class="fl-ag-pie"><button type="button" class="btn-secondary" data-action="agenda-abrir" data-country="${esc(L.country)}" data-city="${esc(L.city)}">${t("Ver Agenda","See Directory","Ver Agenda","לספר הטלפונים")}</button></div>` : "";
     const ver = todos ? agendaAca : agendaAca.slice(0, HIJOS_A_LA_VISTA);
     const cuerpo = agendaAca.length ? `<div class="fl-ag">${ver.map(x => `<div class="fl-ag-inst${x.estado === "cerrada" ? " cerrada" : ""}">
         <button type="button" class="ag-inst" data-action="agenda-ver-inst" data-id="${esc(x.id)}"><b dir="auto">${esc(x.name)} ${pastillaDeEstado(x)}</b><small dir="auto">${esc([x.tipo, x.address].filter(Boolean).join(" · "))}</small></button>

@@ -148,6 +148,8 @@ const sumarDeLaLista = async p => { if(!await tocar(p, '.ag-cab [data-action="ag
   await p.click(".paises-agenda");
   await p.waitForSelector(".ag-fila");
   eq("compu: el foco sí va al buscador (con teclado físico no molesta)", await p.evaluate(() => document.activeElement.id), "agendaBuscar");
+  // Pedido del 9/10/2026: una raya arriba de cada institución, también de la primera de cada ciudad.
+  eq("compu: todas las instituciones con su raya arriba (antes, la primera de cada ciudad no)", await p.$$eval(".ag-fila", l => l.every(e => getComputedStyle(e).borderTopStyle === "solid")), true);
   eq("compu: «+ Sumar» arriba y no en la barra", [await cuantos(p, '.ag-cab [data-action="agenda-sumar"]'), await cuantos(p, '.ag-barra [data-action="agenda-sumar"]')], [1, 0]);
   eq("compu: la planilla, al final de la lista", await texto(p, '.ag-lista .ag-planilla [data-action="agenda-planilla"]'), "⬇ Bajar en planilla (3 instituciones)");
   eq("compu: arriba ya no se repite «3 instituciones · 2 contactos»", await cuantos(p, ".ag-cab small"), 0);
@@ -177,8 +179,10 @@ const sumarDeLaLista = async p => { if(!await tocar(p, '.ag-cab [data-action="ag
   await sumarDeLaLista(p);
   eq("con una sola a la vista, viene elegida esa", await p.inputValue("#agFInst"), "i_ros");
   await p.click('[data-action="agenda-cerrar"]');
-  // Abierta desde la ficha de un lugar: chica, y no cambia de tamaño al ir a la institución.
+  // Abierta desde la ficha de un lugar: del tamaño de la Agenda, y no cambia al ir a la institución.
   await irARosario(p);
+  eq("ficha: «Lectura rápida» sin la línea de la Agenda (ya la dice su tarjeta)", await p.$$eval(".fl-lectura li", l => l.some(e => /En la Agenda/.test(e.textContent))), false);
+  eq("ficha: el botón dice «Ver Agenda»", await texto(p, '.fl-ag-pie [data-action="agenda-abrir"]'), "Ver Agenda");
   // El WhatsApp chico tiene forma de botón: su anillo de foco va hacia adentro, como el de los
   // botones; hacia afuera, la lista se lo cortaba al pie (en GitHub, recortes_test, 9/10/2026).
   await p.keyboard.press("Tab");
@@ -186,11 +190,12 @@ const sumarDeLaLista = async p => { if(!await tocar(p, '.ag-cab [data-action="ag
   eq("ficha: en la tarjeta angosta, el teléfono en su renglón, sin un «·» colgando", await p.$eval('.fl-ag .ag-fila-p small', e => [[...e.querySelectorAll(".ag-sep")].every(s => getComputedStyle(s).display === "none"), getComputedStyle(e.querySelector(".ag-tel")).display]), [true, "block"]);
   await p.click('.fl-ag-inst [data-action="agenda-ver-persona"][data-id="per_tawil"]');
   await vistaEs(p, /^persona/);
-  const chica = await rect(p);
-  eq("compu: desde la ficha de un lugar, la ventana chica", chica[2], 620);
+  const desdeLugar = await rect(p);
+  // Del mismo tamaño que la Agenda, se abra de donde se abra (pedido del usuario, 9/10/2026).
+  eq("compu: desde la ficha de un lugar, la misma ventana que la Agenda", desdeLugar, grande);
   await p.click('#agendaBody [data-action="agenda-ver-inst"]');
   await vistaEs(p, /^inst/);
-  eq("compu: y al pasar a la institución no salta", await rect(p), chica);
+  eq("compu: y al pasar a la institución no salta", await rect(p), desdeLugar);
   await p.click('[data-action="agenda-cerrar"]');
   // Desde «Buscar en todo»: al cerrar, el foco vuelve al buscador.
   await p.fill("#globalSearchInput", "rosario"); await p.waitForTimeout(250);
