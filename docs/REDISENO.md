@@ -969,6 +969,36 @@ eligió **unirlas así**:
 Pruebas: `agenda_test.mjs` (país, región y ciudad; fallan con el código
 de antes) y `ficha_celular_test.mjs` vuelve a esperar cinco tarjetas.
 
+### 50. El tamaño de las ventanas de la Agenda: la chica — HECHO (9 oct 2026)
+
+Después de las tandas 46 y 48 el usuario siguió sin estar conforme: «son
+muy grandes y no están bien aprovechadas, deberían ser más pequeñas …
+que no termine abarcando todo a la vista». Se le mostraron tres tamaños
+con los datos del Directorio (https://claude.ai/artifact/JChzyYk6v3cs5eLz3yGjQS,
+privada): **A** mediana y a medida (760 de ancho, el alto el de cada
+vista, la ficha y el formulario en dos columnas; la recomendada), **B**
+un panel al costado derecho (520, de arriba abajo, la página a la vista)
+y **C** chica (620, todo en una columna). **Eligió la C.**
+
+- 620 de ancho, siempre en el mismo lugar (arranca a 40 px de arriba) y
+  con el alto que necesita cada vista, hasta `min(720px, 85vh)`. La
+  lista va siempre alta (si no, cambiaría de alto con cada letra que se
+  busca); la ficha de una persona, una institución y los formularios, lo
+  que miden. Nada queda vacío ni hay blanco a los costados.
+- Todo en una columna, como en el celular: en la lista cada institución
+  con su gente debajo; el buscador en su renglón y los dos filtros en el
+  de abajo; la ficha y «Sumar a alguien» en una columna (el espacio entre
+  campos bajó de 14 a 12 px para que el formulario entre sin barra);
+  en «Otra institución», País | Ciudad y Tipo | Estado de a dos, como al
+  principio.
+- En el celular no cambia nada: pantalla completa (la regla de «la lista
+  siempre alta» se limita a la compu, porque le ganaba a la de pantalla
+  completa).
+
+Pruebas: `agenda_ventanas_test.mjs` (620 de ancho, mismo lugar y ancho
+en cada vista, una columna, de borde a borde; fallan con el código de
+antes).
+
 ### 49. La botonera de la ficha, al nivel del selector — HECHO (9 oct 2026)
 
 Pedido del usuario: «Reporte del lugar» y «+ Cargar algo acá» siempre al

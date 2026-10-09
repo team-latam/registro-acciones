@@ -154,22 +154,25 @@ const sumarDeLaLista = async p => { if(!await tocar(p, '.ag-cab [data-action="ag
   eq("compu: la planilla, al final de la lista", await texto(p, '.ag-lista .ag-planilla [data-action="agenda-planilla"]'), "⬇ Bajar en planilla (3 instituciones)");
   eq("compu: arriba ya no se repite «3 instituciones · 2 contactos»", await cuantos(p, ".ag-cab small"), 0);
   const grande = await rect(p);
+  // La C de las tres opciones (9/10/2026): 620 de ancho, arrancando arriba, la lista alta.
+  eq("compu: la Agenda, chica: 620 de ancho y alta", [grande[2], grande[3] >= 600], [620, true]);
+  const mismoLugar = (r, g) => [r[0], r[1], r[2], r[3] <= g[3]];   // mismo lado, mismo arranque, mismo ancho; no más alta
   await p.click('.ag-fila [data-action="agenda-ver-persona"][data-id="per_grum"]');
   await vistaEs(p, /^persona/);
-  eq("compu: la ficha de una persona, en la misma ventana grande (antes se achicaba)", await rect(p), grande);
-  eq("compu: en la ventana grande, la ficha va en dos columnas", await p.$eval(".ag-ficha", e => getComputedStyle(e).gridTemplateColumns.split(" ").length), 2);
+  eq("compu: la ficha de una persona, en el mismo lugar y ancho, con el alto a medida", mismoLugar(await rect(p), grande), [grande[0], grande[1], grande[2], true]);
+  eq("compu: la ficha, en una columna", await p.$eval(".ag-ficha", e => getComputedStyle(e).gridTemplateColumns), "none");
   eq("compu: «Copiar», corto, y el número en el título", [await texto(p, '[data-action="agenda-copiar"]'), await p.$eval('[data-action="agenda-copiar"]', e => e.title)], ["⧉ Copiar", "Copiar número"]);
   await p.click('#agendaBody [data-action="agenda-ver-inst"]');
   await vistaEs(p, /^inst/);
-  eq("compu: la de una institución, igual", await rect(p), grande);
+  eq("compu: la de una institución, igual", mismoLugar(await rect(p), grande), [grande[0], grande[1], grande[2], true]);
   await p.click('[data-action="agenda-volver"]'); await p.click('[data-action="agenda-volver"]');
   await vistaEs(p, /^lista$/);
   // «+ Sumar» con varias instituciones a la vista: se elige, no viene elegida la primera.
   await sumarDeLaLista(p);
-  eq("compu: el formulario, en la misma ventana", await rect(p), grande);
-  // Pedido del 9/10/2026: el formulario a lo ancho, en dos columnas, sin blanco a los costados ni barra de desplazamiento.
-  eq("compu: el formulario ocupa todo el ancho (el primer campo arranca pegado al borde)", await p.evaluate(() => { const m = document.querySelector(".agenda-modal").getBoundingClientRect(), c = document.getElementById("agFInst").getBoundingClientRect(); return [c.left - m.left < 40, m.right - c.right > 300]; }), [true, true]);
-  eq("compu: en dos columnas y sin desplazamiento", await p.evaluate(() => { const f = document.querySelector(".ag-form"); return [getComputedStyle(f).gridTemplateColumns.split(" ").length, f.scrollHeight <= f.clientHeight + 1]; }), [2, true]);
+  eq("compu: el formulario, en el mismo lugar y ancho", mismoLugar(await rect(p), grande), [grande[0], grande[1], grande[2], true]);
+  // Sin blanco a los costados: los campos van de borde a borde, en una columna.
+  eq("compu: el formulario ocupa todo el ancho", await p.evaluate(() => { const m = document.querySelector(".agenda-modal").getBoundingClientRect(), c = document.getElementById("agFInst").getBoundingClientRect(); return [c.left - m.left < 40, m.right - c.right < 40]; }), [true, true]);
+  eq("compu: en una columna", await p.$eval(".ag-form", e => getComputedStyle(e).gridTemplateColumns), "none");
   eq("sumar desde toda la lista: la institución no viene elegida sola", await p.inputValue("#agFInst"), "");
   eq("y dice que hay que elegirla", await p.$eval("#agFInst", e => e.options[e.selectedIndex].textContent), "Elegí la institución…");
   await p.fill("#agFNombre", "Alguien Nuevo");
@@ -182,7 +185,7 @@ const sumarDeLaLista = async p => { if(!await tocar(p, '.ag-cab [data-action="ag
   await sumarDeLaLista(p);
   eq("con una sola a la vista, viene elegida esa", await p.inputValue("#agFInst"), "i_ros");
   await p.click('[data-action="agenda-cerrar"]');
-  // Abierta desde la ficha de un lugar: del tamaño de la Agenda, y no cambia al ir a la institución.
+  // Abierta desde la ficha de un lugar: en el mismo lugar y ancho que la Agenda, y no cambia al ir a la institución.
   await irARosario(p);
   eq("ficha: «Lectura rápida» sin la línea de la Agenda (ya la dice su tarjeta)", await p.$$eval(".fl-lectura li", l => l.some(e => /En la Agenda/.test(e.textContent))), false);
   eq("ficha: el botón dice «Ver Agenda»", await texto(p, '.fl-ag-pie [data-action="agenda-abrir"]'), "Ver Agenda");
@@ -195,10 +198,10 @@ const sumarDeLaLista = async p => { if(!await tocar(p, '.ag-cab [data-action="ag
   await vistaEs(p, /^persona/);
   const desdeLugar = await rect(p);
   // Del mismo tamaño que la Agenda, se abra de donde se abra (pedido del usuario, 9/10/2026).
-  eq("compu: desde la ficha de un lugar, la misma ventana que la Agenda", desdeLugar, grande);
+  eq("compu: desde la ficha de un lugar, el mismo lugar y ancho que la Agenda", mismoLugar(desdeLugar, grande), [grande[0], grande[1], grande[2], true]);
   await p.click('#agendaBody [data-action="agenda-ver-inst"]');
   await vistaEs(p, /^inst/);
-  eq("compu: y al pasar a la institución no salta", await rect(p), desdeLugar);
+  eq("compu: y al pasar a la institución no se mueve ni cambia de ancho", (await rect(p)).slice(0, 3), desdeLugar.slice(0, 3));
   await p.click('[data-action="agenda-cerrar"]');
   // Desde «Buscar en todo»: al cerrar, el foco vuelve al buscador.
   await p.fill("#globalSearchInput", "rosario"); await p.waitForTimeout(250);

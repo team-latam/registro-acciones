@@ -1192,8 +1192,11 @@ cuenta, y su ficha muestra lo que hizo con el equipo.
 
 - **Dónde se ve** (eligió la C1, «lo más simple posible»): el botón
   «📇 Agenda» en Países, al lado de Lista y Mapa, la abre en una ventana
-  grande (`agendaOverlay`: buscar por nombre, lugar o teléfono, filtrar
-  por país, tipo y lista, bajar la planilla). En la ficha de una ciudad,
+  (`agendaOverlay`: buscar por nombre, lugar o teléfono, filtrar por
+  país, tipo y lista, bajar la planilla). La ventana es chica a propósito
+  (lo eligió el usuario entre tres tamaños, 9/10/2026): 620 de ancho,
+  siempre en el mismo lugar, con el alto que necesita cada vista (la
+  lista, siempre alta) y todo en una columna, como en el celular. En la ficha de una ciudad,
   la tarjeta «Contactos en …» con su gente y «Ver Agenda»; en la de
   un país o una región, la gente va adentro de «Ciudades» o «Países»
   (desde el 9/10/2026, pedido del usuario: eran dos tarjetas que nombraban
