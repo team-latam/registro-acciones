@@ -10,7 +10,7 @@
    papel, como siempre.
    Con la app de verdad y el Supabase de mentira (app_de_mentira.mjs).
    ====================================================================== */
-import { abrirNavegador, entrar, tab, ADMIN, BASE, post, ciudad } from "./app_de_mentira.mjs";
+import { abrirNavegador, entrar, tab, ADMIN, BASE, post, ciudad, hace } from "./app_de_mentira.mjs";
 
 let pass = 0, fail = 0;
 const eq = (n, g, w) => { const a = JSON.stringify(g), x = JSON.stringify(w);
@@ -163,6 +163,29 @@ const b = await abrirNavegador();
   eq("contactos en el celular: ninguna institución con su «+ Sumar a alguien más», ni «+ Sumar» en el título", await p.$$eval(`${tarjeta} .fl-ag-inst [data-action="agenda-sumar"], ${tarjeta} h3 [data-action="agenda-sumar"]`, l => l.length), 0);
   eq("contactos en el celular: sin errores", errores, []);
   await p.close();
+}
+
+// ---------- «Ver más» siempre en un solo renglón (9/10/2026) ----------
+// Al lado de un título largo («Contactos en Buenos Aires (CABA)») el botón se achicaba y se partía en
+// dos renglones (captura del usuario); ahora el que se parte es el título.
+{
+  const base = conMucha();
+  ["Almagro", "Belgrano", "Palermo", "Recoleta", "Caballito", "Once"].forEach((n, i) => base.instituciones.push({ id: "caba" + i, name: "Beit Chabad " + n, country: "Argentina", city: "Buenos Aires (CABA)", address: "Calle " + (100 + i), tipo: "Sinagoga", estado: "activa", nota: null, lista: "lista1", created_by: ADMIN, created_at: hace(5) }));
+  for(const [ancho, alto] of [[390, 844], [320, 640]]){
+    const { p, errores } = await entrar(b, ADMIN, "Benny Rosenthal", { viewport: { width: ancho, height: alto }, base: JSON.parse(JSON.stringify(base)) });
+    await aArgentina(p);
+    await p.evaluate(() => { const x = document.createElement("button"); x.dataset.action = "drill-city"; x.dataset.country = "Argentina"; x.dataset.city = "Buenos Aires (CABA)"; document.body.appendChild(x); x.click(); x.remove(); });
+    await p.waitForSelector(".fl-historia"); await p.waitForTimeout(250);
+    const tarjeta = '.fl-card:has(.fl-pliegue[data-que="contactos"])';
+    await p.evaluate(sel => { const x = document.querySelector(sel + " .fl-pliegue"); if(x.getAttribute("aria-expanded") !== "true") x.click(); }, tarjeta);
+    await p.waitForTimeout(250);
+    const renglones = () => p.$eval(`${tarjeta} .fl-mas`, e => { const r = document.createRange(); r.selectNodeContents(e); return [e.textContent.trim(), new Set([...r.getClientRects()].map(c => Math.round(c.top))).size]; });
+    eq(`«Ver más» de «Contactos en …» en un renglón (${ancho} de ancho)`, await renglones(), ["Ver más", 1]);
+    await p.$eval(`${tarjeta} .fl-mas`, e => e.click()); await p.waitForTimeout(250);
+    eq(`y «Ver menos», también (${ancho} de ancho)`, await renglones(), ["Ver menos", 1]);
+    eq(`«Ver más»: sin errores (${ancho} de ancho)`, errores, []);
+    await p.close();
+  }
 }
 
 // ---------- En hebreo (de derecha a izquierda) ----------

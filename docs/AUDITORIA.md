@@ -67,7 +67,7 @@ Nada.
 | # | Qué | Por qué | Quién |
 |---|---|---|---|
 | A1 | ~~En el celular, al abrir la Agenda se abre el teclado solo (el foco cae en el buscador; también en «Otra institución», «Limpiar», «Es esta»)~~ ✅ 9/10 (en pantalla táctil el foco entra por «Volver» o la ✕; en la compu sigue al buscador) | tapa media ventana antes de que se decida hacer algo; cada vez que se abre | Claude |
-| A2 | ~~La ventana cambia de tamaño y de lugar con cada paso~~ ✅ 9/10 (con la ficha a dos columnas y el formulario centrado; en el celular, siempre pantalla completa. Primero, abierta desde un lugar o «Buscar en todo» iba chica; el mismo día el usuario pidió que sea siempre del tamaño de la Agenda (tanda 48) y a la noche, con tres opciones a la vista, eligió la chica para todo: 620 de ancho, en el mismo lugar, con el alto a medida y en una columna (tanda 50); después pidió que abra en el medio de la pantalla, como la del Calendario: A20) | se ve inestable; en el celular, una ficha flotando sobre la página con la barra de abajo asomando | Claude |
+| A2 | ~~La ventana cambia de tamaño y de lugar con cada paso~~ ✅ 9/10 (con la ficha a dos columnas y el formulario centrado; en el celular, siempre pantalla completa. Primero, abierta desde un lugar o «Buscar en todo» iba chica; el mismo día el usuario pidió que sea siempre del tamaño de la Agenda (tanda 48) y a la noche, con tres opciones a la vista, eligió la chica para todo: 620 de ancho, en el mismo lugar, con el alto a medida y en una columna (tanda 50); después pidió que abra en el medio de la pantalla, como la del Calendario: A20; y con capturas de su iPhone, que en el celular solo la lista ocupe la pantalla y lo demás vaya a medida: A22) | se ve inestable; en el celular, una ficha flotando sobre la página con la barra de abajo asomando | Claude |
 
 ### Medio
 
@@ -90,6 +90,9 @@ Nada.
 | A16 | ~~En la tarjeta «Contactos en …» de la compu, el teléfono baja de renglón y deja un «·» colgando~~ ✅ 9/10 | Claude |
 | A19 | ~~Con la letra de GitHub, el anillo de foco del WhatsApp chico se cortaba al pie de la lista en el celular, y «Publicar el sitio» no publicó~~ ✅ 9/10 (un enlace con forma de botón lleva el anillo hacia adentro; `pantallas` mide ahora una combinación con letra ancha) | Claude |
 | A20 | ~~La Agenda y la ficha de un posteo abrían pegadas arriba (a 40 y 24 px del borde), mientras las demás ventanas abren en el medio~~ ✅ 9/10 (pedido del usuario con dos capturas; se midieron todas las ventanas: eran las únicas dos; la ficha, en el medio si es más baja que la pantalla y a 24 px del borde si es más alta; tanda 53) | se ve distinto del resto; la Agenda quedaba con la mitad de abajo de la pantalla vacía | Claude |
+| A22 | ~~En el celular, una ficha o un formulario de la Agenda ocupaba la pantalla entera y dejaba un blanco abajo, que crecía al esconderse la barra del navegador~~ ✅ 9/10 (capturas del iPhone del usuario; ahora miden lo que necesitan y quedan en el medio; solo la lista ocupa la pantalla; tanda 55) | un blanco que aparece al desplazarse | Claude |
+| A23 | ~~«Sumar a alguien» se desplazaba en un celular de unos 660 px de alto~~ ✅ 9/10 (sin el texto de ayuda, Nombre y Cargo de a dos, «+ Otra institución» y «+ Otro teléfono» en el renglón del título) | había que bajar para llegar a «Guardar» | Claude |
+| A24 | ~~«Ver más» se partía en dos renglones al lado de un título largo~~ ✅ 9/10 | «Ver / más» | Claude |
 | A17 | `actions/setup-node` tiene la 7.1.0 (de antes, no de la Agenda) | Claude, cuando se toquen los workflows |
 
 ### Herramientas y pruebas
@@ -101,6 +104,7 @@ Nada.
 | A14 | ~~En el celular, el recorrido no llegaba a la ficha de una ciudad (la tarjeta «Ciudades» viene plegada) y seguía sin decirlo~~ ✅ 9/10 | Claude |
 | A15 | ~~`ficha_celular_test` contaba las ciudades sumando las de la tarjeta de contactos~~ ✅ 9/10 | Claude |
 | A21 | ~~La auditoría no medía dónde queda una ventana~~ ✅ 9/10 (`pantallas`: si entra con su respiro de 24 px, tiene que estar a la misma distancia del borde de arriba y del de abajo; suma 1440×1000) | Claude |
+| A25 | ~~La auditoría probaba el celular con 844 px de alto, más que el del usuario (unos 660 con la barra del navegador a la vista), y no medía si una ventana crece con la pantalla~~ ✅ 9/10 (`pantallas` agranda la pantalla 100 px y avisa si una ventana con poco adentro crece y deja blanco) | Claude |
 
 ### Para el usuario
 

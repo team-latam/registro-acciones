@@ -969,6 +969,46 @@ eligió **unirlas así**:
 Pruebas: `agenda_test.mjs` (país, región y ciudad; fallan con el código
 de antes) y `ficha_celular_test.mjs` vuelve a esperar cinco tarjetas.
 
+### 55. La Agenda en el celular de verdad: sin blanco y sin desplazarse — HECHO (9 oct 2026)
+
+El usuario mandó tres capturas de su iPhone y dijo qué ve:
+
+1. **Blanco abajo.** En «Corregir a …» no había nada más abajo, pero al
+   desplazarse aparecía «todo este espacio». Era la ventana a pantalla
+   entera: al bajar, el navegador esconde sus barras, lo visible crece
+   (de unos 660 px a unos 760) y la ventana crecía con él, dejando un
+   blanco entre la última línea y los botones.
+2. **«Ver más» partido en dos renglones** («Ver / más») al lado del título
+   «Contactos en Buenos Aires (CABA)».
+3. **«Sumar a alguien» se desplazaba**; propuso, por ejemplo, sacar el
+   texto «Si ya está en la app, …».
+
+Lo hecho:
+
+- **Una ficha o un formulario miden lo que necesitan** (hasta la pantalla)
+  **y quedan en el medio**, como las demás ventanas del celular. Solo la
+  lista ocupa la pantalla entera (es larga y no puede cambiar de alto con
+  cada letra que se busca). Así el blanco no existe, y no crece cuando se
+  esconde la barra del navegador.
+- **«Ver más» y «Ver menos» siempre en un renglón**: el botón no se achica,
+  se parte el título.
+- **«Sumar a alguien» entra entero, sin desplazarse**, con 660 px de alto
+  (el celular del usuario con la barra a la vista; también con 600): sin
+  el texto de ayuda de arriba (el aviso de «¿Es alguno de estos?» aparece
+  solo cuando hay un parecido), Nombre y Cargo de a dos, y «+ Otra
+  institución» y «+ Otro teléfono» en el renglón del título de su campo,
+  a la derecha. Si aparece una persona parecida, Nombre y Cargo vuelven a
+  ir uno debajo del otro. «Corregir a …» también entra con 660 de alto.
+  Con un celular chico (320 × 568) sigue desplazándose: no hay manera.
+
+Pruebas: `agenda_ventanas_test.mjs` (a medida y en el medio, sin blanco
+con 661 y con 760 de alto, el formulario entero con 661, Nombre | Cargo,
+los enlaces en el renglón del título; fallan con el código de antes) y
+`ficha_celular_test.mjs` («Ver más» en un renglón, con 390 y 320 de
+ancho). La auditoría `pantallas` mide ahora si una ventana del celular
+crece con la pantalla dejando blanco (con el código de antes marca la
+persona y «Sumar» de la Agenda).
+
 ### 54. «Contactos en …»: un solo «+ Sumar», al pie — HECHO (9 oct 2026)
 
 Con una captura de «Contactos en São Paulo»: «quiero que saquemos el
@@ -1091,7 +1131,8 @@ y **C** chica (620, todo en una columna). **Eligió la C.**
   campos bajó de 14 a 12 px para que el formulario entre sin barra);
   en «Otra institución», País | Ciudad y Tipo | Estado de a dos, como al
   principio.
-- En el celular no cambia nada: pantalla completa (la regla de «la lista
+- En el celular, pantalla completa (desde la tanda 55, solo la lista; lo
+  demás va a medida) (la regla de «la lista
   siempre alta» se limita a la compu, porque le ganaba a la de pantalla
   completa).
 
