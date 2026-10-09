@@ -397,36 +397,46 @@ function correrColumnas(texto, cuantas){
 }
 
 // ---------- Leer el libro ----------
-function rutaDeLaHoja(partes){
+// Las hojas del libro, en orden, con la ruta de cada una adentro del zip.
+function hojasDelLibro(partes){
   const texto = n => { const p = partes.find(x => x.nombre === n); return p ? new TextDecoder().decode(p.datos) : ""; };
-  const libro = texto("xl/workbook.xml");
-  const id = (/<sheet\b[^>]*\sr:id="([^"]+)"/.exec(libro) || [])[1];
-  const rel = id && new RegExp('<Relationship\\b[^>]*\\sId="' + id + '"[^>]*>').exec(texto("xl/_rels/workbook.xml.rels"));
-  const destino = rel && (/Target="([^"]+)"/.exec(rel[0]) || [])[1];
-  if(destino) return destino.startsWith("/") ? destino.slice(1) : "xl/" + destino.replace(/^\.\//, "");
-  return partes.some(p => p.nombre === "xl/worksheets/sheet1.xml") ? "xl/worksheets/sheet1.xml" : null;
+  const rels = texto("xl/_rels/workbook.xml.rels");
+  const hojas = [...texto("xl/workbook.xml").matchAll(/<sheet\b([^>]*)\/?>/g)].map(m => {
+    const id = atributo(m[1], "r:id"), nombre = atributo(m[1], "name") || "";
+    const rel = id && new RegExp('<Relationship\\b[^>]*\\sId="' + id + '"[^>]*>').exec(rels);
+    const destino = rel && (/Target="([^"]+)"/.exec(rel[0]) || [])[1];
+    return { nombre, ruta: destino ? (destino.startsWith("/") ? destino.slice(1) : "xl/" + destino.replace(/^\.\//, "")) : null };
+  }).filter(h => h.ruta && partes.some(p => p.nombre === h.ruta));
+  if(!hojas.length && partes.some(p => p.nombre === "xl/worksheets/sheet1.xml")) hojas.push({ nombre: "Hoja 1", ruta: "xl/worksheets/sheet1.xml" });
+  return hojas;
 }
-async function leerLibro(bytes){
+// `nombreHoja`: cuál abrir si el libro tiene varias (por ejemplo, una
+// pestaña vieja guardada de copia). Sin elegir y con más de una, el error
+// trae la lista (e.hojas) para que la página pregunte.
+async function leerLibro(bytes, nombreHoja){
   const partes = await leerZip(bytes);
   const texto = n => { const p = partes.find(x => x.nombre === n); return p ? new TextDecoder().decode(p.datos) : ""; };
-  const ruta = rutaDeLaHoja(partes);
-  if(!ruta) throw new Error("No encontré ninguna hoja adentro del archivo.");
+  const hojas = hojasDelLibro(partes);
+  if(!hojas.length) throw new Error("No encontré ninguna hoja adentro del archivo.");
+  let hoja = nombreHoja != null ? hojas.find(h => h.nombre === nombreHoja) : (hojas.length === 1 ? hojas[0] : null);
+  if(!hoja){ const e = new Error("El archivo tiene varias hojas: hay que elegir una."); e.hojas = hojas.map(h => h.nombre); throw e; }
+  const ruta = hoja.ruta;
   const cadenas = leerCadenas(texto("xl/sharedStrings.xml"));
-  const hoja = partirHoja(texto(ruta));
+  const hojaPartida = partirHoja(texto(ruta));
   const celdas = new Map();
-  for(const f of hoja.filas) for(const c of f.celdas) if(c.ref){
+  for(const f of hojaPartida.filas) for(const c of f.celdas) if(c.ref){
     const m = esFormula(c) ? /<f\b([^>]*)>([\s\S]*?)<\/f>|<f\b([^>]*)\/>/.exec(c.inner) : null;
     celdas.set(c.ref, { fila: f.r, formula: !!m, textoFormula: m ? desXml(m[2] ?? "") : null, si: m ? atributo(m[1] ?? m[3] ?? "", "si") : null, valor: valorDeCelda(c, cadenas) });
   }
-  const combinadas = [...hoja.despues.matchAll(/<mergeCell\b[^>]*\sref="([^"]+)"/g)].map(m => m[1]);
-  const listas = [...hoja.despues.matchAll(/<dataValidation\b([^>]*)>([\s\S]*?)<\/dataValidation>/g)]
+  const combinadas = [...hojaPartida.despues.matchAll(/<mergeCell\b[^>]*\sref="([^"]+)"/g)].map(m => m[1]);
+  const listas = [...hojaPartida.despues.matchAll(/<dataValidation\b([^>]*)>([\s\S]*?)<\/dataValidation>/g)]
     .filter(m => atributo(m[1], "type") === "list").map(m => ({
       rangos: (atributo(m[1], "sqref") || "").split(/\s+/).filter(Boolean),
       opciones: desXml((/<formula1>([\s\S]*?)<\/formula1>/.exec(m[2]) || [])[1] || "").replace(/^"|"$/g, "").split(",").map(s => s.trim()).filter(Boolean) }));
   // Los comentarios de las celdas (ref → texto): viajan con su fila.
   const comentarios = [...texto("xl/comments1.xml").matchAll(/<comment\b[^>]*\sref="([^"]+)"[^>]*>([\s\S]*?)<\/comment>/g)]
     .map(m => ({ ref: m[1], texto: m[2].split(/<t(?:\s[^>]*)?>/).slice(1).map(x => desXml(x.slice(0, x.indexOf("</t>")))).join("") }));
-  return { partes, ruta, cadenas, hoja, celdas, combinadas, listas, comentarios };
+  return { partes, ruta, nombreHoja: hoja.nombre, hojas: hojas.map(h => h.nombre), cadenas, hoja: hojaPartida, celdas, combinadas, listas, comentarios };
 }
 
 // ---------- Escribir el libro: los mismos bytes, con los valores nuevos ----------
@@ -438,6 +448,8 @@ async function escribirLibro(libro, regiones, columnasNumericas){
   const { partes, ruta, cadenas } = libro;
   if(!partes.some(p => p.nombre === "xl/sharedStrings.xml")) throw new Error("El archivo no tiene cadenas compartidas; no lo sé escribir.");
   const hoja = partirHoja(new TextDecoder().decode(partes.find(p => p.nombre === ruta).datos));
+  // Cuántas celdas de esta hoja usaban cadenas compartidas, antes de tocar nada (para dejar bien el `count`).
+  const refsAntes = hoja.filas.reduce((n, f) => n + f.celdas.filter(c => atributo(c.attrs, "t") === "s" && /<v>/.test(c.inner)).length, 0);
   const filasPorNumero = () => new Map(hoja.filas.map(f => [f.r, f]));
   let despues = hoja.despues, antes = hoja.antes;
   const otros = { "xl/workbook.xml": null };
@@ -485,8 +497,16 @@ async function escribirLibro(libro, regiones, columnasNumericas){
   }
   // 2. Los valores, fila por fila.
   const mapa = filasPorNumero();
-  const nuevasCadenas = [], indice = new Map();
-  let cuantasRefs = 0;
+  // Las cadenas compartidas: las de antes quedan donde estaban, una por una
+  // (otra hoja del libro puede estar usándolas por su número), y las nuevas
+  // van al final. Las que ya nadie usa quedan de más; Excel y Google las
+  // limpian al guardar. `count` (cuántas celdas las usan) se ajusta por lo
+  // que esta hoja usaba antes y usa ahora.
+  const sstViejo = new TextDecoder().decode(partes.find(p => p.nombre === "xl/sharedStrings.xml").datos);
+  const cuentaVieja = Number((/\bcount="(\d+)"/.exec(sstViejo) || [])[1]) || refsAntes;
+  const nuevasCadenas = [...cadenas], indice = new Map();
+  cadenas.forEach((s, i) => { if(!indice.has(s)) indice.set(s, i); });
+  let cuantasRefs = Math.max(0, cuentaVieja - refsAntes);
   const idxDe = s => { if(!indice.has(s)){ indice.set(s, nuevasCadenas.length); nuevasCadenas.push(s); } cuantasRefs++; return indice.get(s); };
   const poner = (fila, col, valor) => {
     const f = mapa.get(fila); if(!f) return;
@@ -514,11 +534,10 @@ async function escribirLibro(libro, regiones, columnasNumericas){
       fila++;
     }
   }
-  // 3. Las cadenas compartidas, rearmadas enteras (las que ya nadie usa se van).
-  const viejas = cadenas;
+  // 3. Cada celda de texto de esta hoja apunta a su cadena (las de otras hojas no se tocan).
   for(const f of hoja.filas) for(const c of f.celdas){
     if(atributo(c.attrs, "t") !== "s") continue;
-    if(c.texto == null){ const v = (/<v>([\s\S]*?)<\/v>/.exec(c.inner) || [])[1]; c.texto = viejas[Number(v)] ?? ""; }
+    if(c.texto == null){ const v = (/<v>([\s\S]*?)<\/v>/.exec(c.inner) || [])[1]; c.texto = cadenas[Number(v)] ?? ""; }
     c.inner = "<v>" + idxDe(c.texto) + "</v>";
   }
   // 4. Los totales con el valor al día (y fullCalcOnLoad por si Excel no confía).
@@ -818,7 +837,7 @@ function guardarYa(){
   guardarPendiente = null;
   if(!estado) return;
   try{
-    localStorage.setItem(CLAVE, JSON.stringify({ nombre: estado.nombre, base64: estado.base64, guardado: Date.now(),
+    localStorage.setItem(CLAVE, JSON.stringify({ nombre: estado.nombre, base64: estado.base64, hoja: estado.hoja, guardado: Date.now(),
       regiones: estado.modelo.regiones.map(r => ({ etiqueta: r.etiqueta, filas: r.filas.map(f => ({ id: f.id, origen: f.origen, valores: f.valores, revisada: f.revisada, nueva: f.nueva })) })) }));
   } catch(e){ aviso("No pude guardar el avance en este navegador (" + e.message + ").", true); }
 }
@@ -827,8 +846,10 @@ addEventListener("pagehide", () => { if(guardarPendiente) guardarYa(); });
 document.addEventListener("visibilitychange", () => { if(document.hidden && guardarPendiente) guardarYa(); });
 function leerGuardado(){ try{ return JSON.parse(localStorage.getItem(CLAVE) || "null"); } catch(e){ return null; } }
 
-async function cargar(bytes, nombre, guardado){
-  const libro = await leerLibro(bytes);
+// `hojaElegida`: la pestaña, si el Excel trae varias (una copia vieja, por
+// ejemplo). Sin elegir, leerLibro avisa con la lista y la portada pregunta.
+async function cargar(bytes, nombre, guardado, hojaElegida){
+  const libro = await leerLibro(bytes, hojaElegida);
   const modelo = armarModelo(libro);
   const base64 = aBase64(bytes);
   // Lo revisado antes, por ciudad y país, sobrevive aunque el archivo sea otro
@@ -850,9 +871,23 @@ async function cargar(bytes, nombre, guardado){
   } else if(revisadasPrevias.size){
     for(const reg of modelo.regiones) for(const f of reg.filas) if(revisadasPrevias.has(sinAcentos(f.valores.B) + "|" + sinAcentos(f.valores.C))) f.revisada = true;
   }
-  estado = { nombre, bytes, base64, libro, modelo };
+  estado = { nombre, bytes, base64, libro, modelo, hoja: libro.nombreHoja };
   guardar();
   renderTodo();
+}
+// El Excel tiene varias pestañas: la portada pregunta cuál es el Mapeo.
+function preguntarHoja(bytes, nombre, guardado, hojas){
+  $("#principal").innerHTML = `<section class="portada">
+    <h2>¿Qué pestaña abro?</h2>
+    <p>«${esc(nombre)}» tiene ${hojas.length} pestañas. Elegí la que tiene el Mapeo para revisar (las demás quedan como están y salen igual al exportar).</p>
+    <div class="acciones" id="eleccionHoja">${hojas.map(h => `<button type="button" class="btn btn-primario" data-hoja="${esc(h)}">${esc(h)}</button>`).join("")}</div>
+    <p class="gris chico" style="margin-top:14px"><button type="button" class="btn-link" data-action="abrir">Abrir otro archivo…</button></p>
+  </section>`;
+  $("#eleccionHoja").onclick = async e => {
+    const b = e.target.closest("[data-hoja]"); if(!b) return;
+    try{ await cargar(bytes, nombre, guardado, b.dataset.hoja); aviso(`Abrí la pestaña «${b.dataset.hoja}» de «${nombre}».`); }
+    catch(err){ console.error(err); aviso("No pude abrir esa pestaña: " + err.message, true); }
+  };
 }
 async function abrirArchivo(archivo){
   if(!archivo) return;
@@ -864,7 +899,8 @@ async function abrirArchivo(archivo){
       const cambios = contarCambiosGuardados(guardado);
       if(cambios && !confirm(`En este navegador hay una revisión empezada de «${guardado.nombre}» con ${cambios} cambio${cambios === 1 ? "" : "s"} sin exportar. Si abrís este archivo, esa revisión se pierde (lo marcado como revisado se conserva). ¿Seguir?`)) return;
     }
-    await cargar(bytes, archivo.name, guardado);
+    try{ await cargar(bytes, archivo.name, guardado); }
+    catch(e){ if(!e.hojas) throw e; estado = null; renderTodo(); preguntarHoja(bytes, archivo.name, guardado, e.hojas); return; }
     aviso(`Abrí «${archivo.name}».`);
   } catch(e){ console.error(e); aviso("No pude abrir ese archivo: " + e.message, true); }
 }
@@ -921,7 +957,7 @@ function renderTodo(){
     </section>`;
     return;
   }
-  $("#nombreArchivo").textContent = estado.nombre;
+  $("#nombreArchivo").textContent = estado.nombre + (estado.libro.hojas.length > 1 ? ` · pestaña «${estado.hoja}»` : "");
   $("#barra").hidden = false; $("#contadores").hidden = false; $("#btnExportar").disabled = false; $("#pieMovil").hidden = false;
   const paises = [...new Set(todasLasFilas().map(f => limpiar(f.valores.C)).filter(Boolean))].sort((a, b) => a.localeCompare(b, "es"));
   const fPais = $("#fPais"), elegido = fPais.value;
@@ -1134,7 +1170,7 @@ document.addEventListener("drop", e => { if(e.dataTransfer?.files?.length){ e.pr
   if(typeof DecompressionStream !== "function"){ $("#principal").innerHTML = `<section class="portada"><h2>Este navegador es muy viejo</h2><p>Para abrir el Excel hace falta un navegador más nuevo (Chrome, Safari o Firefox de 2023 en adelante).</p></section>`; return; }
   const g = leerGuardado();
   if(g && g.base64){
-    try{ await cargar(deBase64(g.base64), g.nombre, g); aviso("Seguís donde lo dejaste."); return; }
+    try{ await cargar(deBase64(g.base64), g.nombre, g, g.hoja); aviso("Seguís donde lo dejaste."); return; }
     catch(e){ console.error(e); }
   }
   renderTodo();

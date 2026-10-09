@@ -53,6 +53,7 @@ prueba otra página, `herramientas/mapeo.html`, y lee `MAPEO`.)
 | `workflows_test.mjs` | los workflows de GitHub, no la app: acciones fijadas por huella y en versiones vigentes, permisos, tiempo máximo, llaves solo desde main, nada que escribe una persona pegado en un `run:`. `WORKFLOWS=/otra/carpeta` la corre contra una copia. |
 | `miniatura_test.mjs` | la miniatura de una foto, armada en un Chromium de verdad: un canvas no existe fuera del navegador, y `sb_test.mjs` usa una de mentira. |
 | `mapeo_test.mjs` | `herramientas/mapeo.html` («Revisar el Mapeo»), no la app: abre `mapeo_de_prueba.xlsx` en Chromium, edita, suma, saca y mueve filas, recarga, y exporta; lo exportado lo revisa `mapeo_revisar_xlsx.py` con Python de serie. `MAPEO=/otra/copia.html` la corre contra otra copia. |
+| `mapeo_dos_hojas.py` | arma, desde el de prueba, un Excel con dos pestañas (la copia vieja a la izquierda), para probar que la página pregunta cuál abrir y deja la otra intacta. |
 | `mapeo_de_prueba.xlsx` | el Excel del Mapeo con la misma estructura que el real (regiones, totales, listas, formato condicional, comentario) y gente inventada. Se versiona a propósito: es el único binario, y no tiene a nadie de verdad. |
 
 ## Para correrlas

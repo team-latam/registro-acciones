@@ -59,6 +59,19 @@ eso a la Agenda de la app.
    salen ya calculados y además el archivo le pide a Excel recalcular al
    abrirlo.
 
+**El Sheet de Google y las copias.** El original vive en Google Drive
+(«Mapeo - LatAm», una hoja de cálculo de Google). El Excel exportado desde
+acá se vuelca ahí con Archivo → Importar → Subir: con **«Reemplazar la
+hoja de cálculo»** queda igual que el Excel, mismo enlace y mismos
+permisos, y la versión anterior se recupera desde Archivo → Historial de
+versiones (conviene **nombrar la versión** antes de importar). Con
+**«Insertar hojas nuevas»** el Excel entra como una pestaña más y la vieja
+queda de copia. Si el Sheet tiene varias pestañas, el Excel que se baja
+de él también, y la página **pregunta cuál abrir** (las otras salen
+intactas al exportar; en el archivo de salida solo cambia la elegida). Lo
+que no conviene es importar con «Insertar hojas nuevas» un Excel que ya
+trae la copia: cada vuelta duplicaría las pestañas.
+
 **Cómo está hecha.** Una sola página con todo adentro y sin bibliotecas:
 un `.xlsx` es un zip con XML, y el navegador ya sabe descomprimir y
 comprimir (`DecompressionStream`/`CompressionStream` con `deflate-raw`,
@@ -74,8 +87,10 @@ corra en Node.
 **Pruebas.** `pruebas/mapeo_test.mjs` la recorre en Chromium con
 `pruebas/mapeo_de_prueba.xlsx` (el archivo real con la misma estructura
 y gente inventada; `pruebas/mapeo_revisar_xlsx.py` mira lo exportado con
-Python de serie, sin nada del código de la página). Para correrla contra
-otra copia de la página: `MAPEO=/ruta/otra.html node pruebas/mapeo_test.mjs`.
+Python de serie, sin nada del código de la página, y
+`pruebas/mapeo_dos_hojas.py` arma un Excel con dos pestañas). Para
+correrla contra otra copia de la página:
+`MAPEO=/ruta/otra.html node pruebas/mapeo_test.mjs`.
 
 **Lo que no hace (todavía).** No sube nada a la app: eso es el paso
 siguiente, cuando la planilla esté confirmada. No agrega ni saca

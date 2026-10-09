@@ -7,7 +7,7 @@
 # que existe). mapeo_test.mjs lo corre sobre el archivo de prueba y sobre lo
 # que exporta herramientas/mapeo.html, y compara.
 #
-#   python3 -I pruebas/mapeo_revisar_xlsx.py archivo.xlsx
+#   python3 -I pruebas/mapeo_revisar_xlsx.py archivo.xlsx [xl/worksheets/sheetN.xml]
 import json, re, sys, zipfile
 import xml.etree.ElementTree as ET
 
@@ -34,7 +34,7 @@ else:
 libro = ET.fromstring(z.read("xl/workbook.xml"))
 calc = libro.find("m:calcPr", NS)
 nombres = [(d.get("name"), d.text) for d in libro.iter("{%s}definedName" % NS["m"])]
-hoja = ET.fromstring(z.read("xl/worksheets/sheet1.xml"))
+hoja = ET.fromstring(z.read(sys.argv[2] if len(sys.argv) > 2 else "xl/worksheets/sheet1.xml"))
 celdas, formulas, refs_sst, indices_rotos = {}, {}, 0, []
 filas = []
 for fila in hoja.iter("{%s}row" % NS["m"]):

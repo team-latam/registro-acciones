@@ -31,7 +31,7 @@ const eq = (n, g, w) => { const a = JSON.stringify(g), x = JSON.stringify(w);
 const PAGINA = process.env.MAPEO || path.join(RAIZ, "herramientas", "mapeo.html");
 const FIXTURE = path.resolve("mapeo_de_prueba.xlsx");
 const html = fs.readFileSync(PAGINA, "utf8");
-const revisar = ruta => JSON.parse(execFileSync("python3", ["-I", "mapeo_revisar_xlsx.py", ruta], { encoding: "utf8" }));
+const revisar = (ruta, hoja) => JSON.parse(execFileSync("python3", ["-I", "mapeo_revisar_xlsx.py", ruta, ...(hoja ? [hoja] : [])], { encoding: "utf8" }));
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "mapeo-"));
 
 /* ---------- 1. El núcleo, suelto en Node ---------- */
@@ -157,7 +157,29 @@ eq("exportado: la fila nueva no inventa valores en las columnas vacías", Object
   eq("sin cambios: exporta las mismas celdas, fórmulas, rangos y comentarios", [r.celdas, sinV(r.formulas), r.combinadas, r.listas, r.condicional, r.comentarios, r.vml], [antes.celdas, sinV(antes.formulas), antes.combinadas, antes.listas, antes.condicional, antes.comentarios, antes.vml]);
   await q.close();
 }
-/* ---------- 4. Arreglar todo lo seguro, filtros, cerrar ---------- */
+/* ---------- 4. Un Excel con dos pestañas (la copia vieja a la izquierda) ---------- */
+{
+  const dos = path.join(tmp, "dos_hojas.xlsx");
+  execFileSync("python3", ["-I", "mapeo_dos_hojas.py", FIXTURE, dos]);
+  const q = await ctx.newPage(); const erroresQ = []; q.on("pageerror", e => erroresQ.push(String(e)));
+  await q.goto("file://" + PAGINA); await q.evaluate(() => localStorage.clear()); await q.reload();
+  await q.setInputFiles("#archivo", dos);
+  await q.waitForSelector("#eleccionHoja");
+  eq("dos pestañas: la portada pregunta cuál, con las dos, y no abre ninguna sola", [await q.$$eval("#eleccionHoja button", l => l.map(b => b.textContent)), await q.$$eval(".ficha", l => l.length)], [["Mapping viejo", "Mapping"], 0]);
+  await q.click('#eleccionHoja [data-hoja="Mapping"]'); await q.waitForSelector(".ficha");
+  eq("elegida la segunda: abre esa y lo dice arriba", [await q.$$eval(".ficha", l => l.length), await q.$eval("#nombreArchivo", e => e.textContent)], [81, "dos_hojas.xlsx · pestaña «Mapping»"]);
+  await q.fill('[data-fila="3"][data-col="B"]', "Buenos Aires (capital)");
+  await q.reload(); await q.waitForSelector(".ficha");
+  eq("al recargar se acuerda de la pestaña y del cambio", [await q.$eval("#nombreArchivo", e => e.textContent), await q.inputValue('[data-fila="3"][data-col="B"]')], ["dos_hojas.xlsx · pestaña «Mapping»", "Buenos Aires (capital)"]);
+  const [bajadaDos] = await Promise.all([q.waitForEvent("download"), q.click("#btnExportar")]);
+  const salidaDos = path.join(tmp, "salida_dos.xlsx"); await bajadaDos.saveAs(salidaDos);
+  const r = revisar(salidaDos, "xl/worksheets/sheet1.xml"), v = revisar(salidaDos, "xl/worksheets/sheet2.xml"), antesDos = revisar(dos, "xl/worksheets/sheet1.xml");
+  eq("exportado con dos pestañas: la elegida cambió, la otra quedó igual, y las cadenas sirven para las dos", [r.celdas.B3, v.celdas.B3, v.celdas, r.indices_rotos, v.indices_rotos, r.sst_unique === r.cadenas, r.partes.includes("xl/worksheets/sheet2.xml")], ["Buenos Aires (capital)", "Buenos Aires", antesDos.celdas, [], [], true, true]);
+  eq("sin errores de página con dos pestañas", erroresQ, []);
+  await q.close();
+}
+
+/* ---------- 5. Arreglar todo lo seguro, filtros, cerrar ---------- */
 const seguros = Number((await contadores()).match(/Aplicar (\d+) arreglos? seguros?/)[1]);
 await p.click('[data-action="arreglar-todo"]');
 eq("arreglar todo: después no queda ningún arreglo seguro y los cambios suben", [/Aplicar \d+ arreglo/.test(await contadores()), seguros > 10], [false, true]);
