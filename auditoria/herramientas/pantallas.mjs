@@ -63,7 +63,7 @@ const VENTANAS = [
   // La Agenda (8/10/2026): la ventana, y lo que se abre desde la ficha de un lugar.
   ["Agenda", async p => { await tab(p, "paises"); await p.waitForTimeout(300); return ".paises-agenda"; }],
   ["Agenda: una persona (desde la ficha de un lugar)", async p => { await rosario(p); return '.fl-ag-inst [data-action="agenda-ver-persona"]'; }],
-  ["Agenda: sumar a alguien (desde la ficha de un lugar)", async p => { await rosario(p); return '.fl-ag-inst [data-action="agenda-sumar"]'; }],
+  ["Agenda: sumar a alguien (desde la ficha de un lugar)", async p => { await rosario(p); return '.fl-ag-pie [data-action="agenda-sumar"]'; }],
   // «Buscar en todo» no está en pantallas angostas (menos de 900 px): ahí no se revisa.
   ["Agenda: una institución (desde Buscar en todo)", async p => { if(!await p.isVisible("#globalSearchInput")) return null; await p.fill("#globalSearchInput", "Rosario"); await p.waitForTimeout(300); return '[data-action="gs-institucion"]'; }],
 ];

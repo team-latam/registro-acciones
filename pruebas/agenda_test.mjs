@@ -211,8 +211,9 @@ const escribir = async (p, sel, valor) => { await p.fill(sel, valor); await p.wa
 {
   const { p, errores } = await entrar("ana@x.com", "Ana Pérez");
   await irARosario(p);
-  eq("ficha: quien carga eventos ve «+ Sumar»", await cuantos(p, '.fl-plegable [data-action="agenda-sumar"][data-inst="i_ros"]') > 0, true);
-  await p.click('.fl-plegable [data-action="agenda-sumar"][data-inst="i_ros"]');
+  // «+ Sumar» al pie de la tarjeta, al lado de «Ver Agenda» (9/10/2026); ya no uno por institución.
+  eq("ficha: quien carga eventos ve un «+ Sumar» al pie, y ninguno en cada institución", [await cuantos(p, '.fl-ag-pie [data-action="agenda-sumar"]'), await cuantos(p, '.fl-ag-inst [data-action="agenda-sumar"]')], [1, 0]);
+  await p.click('.fl-ag-pie [data-action="agenda-sumar"]');
   await p.waitForSelector("#agFNombre");
   eq("sumar: la institución ya viene elegida", await p.inputValue("#agFInst"), "i_ros");
   // Alguien que ya está en la app: se ofrece, para no duplicarlo.
@@ -228,7 +229,7 @@ const escribir = async (p, sel, valor) => { await p.fill(sel, valor); await p.wa
   eq("con dos, el resumen de la tarjeta los cuenta", await texto(p, '.fl-pliegue[data-que="contactos"] .r'), "Beit Chabad Rosario · 2 contactos");
 
   // Alguien nuevo, con un teléfono mal escrito primero.
-  await p.click('.fl-plegable [data-action="agenda-sumar"][data-inst="i_ros"]');
+  await p.click('.fl-ag-pie [data-action="agenda-sumar"]');
   await p.waitForSelector("#agFNombre");
   await p.fill("#agFNombre", "Daniel Kohan");
   await p.fill("#agFCargo", "Presidente");
@@ -271,6 +272,7 @@ const escribir = async (p, sel, valor) => { await p.fill(sel, valor); await p.wa
   await irARosario(p);
   eq("observador: la tarjeta de contactos está", await cuantos(p, '.fl-pliegue[data-que="contactos"]'), 1);
   eq("observador: sin «+ Sumar» en la ficha", await cuantos(p, '.fl-plegable [data-action="agenda-sumar"]'), 0);
+  eq("observador: al pie de la tarjeta, solo «Ver Agenda»", await p.$$eval(".fl-ag-pie > button", l => l.map(e => e.textContent.trim())), ["Ver Agenda"]);
   await p.click('.fl-ag-pie [data-action="agenda-abrir"]');
   await p.waitForSelector(".ag-fila");
   eq("observador: ve el WhatsApp (decisión del 8/10: todos ven los teléfonos)", await cuantos(p, '#agendaBody a[href^="https://wa.me/"]') > 0, true);

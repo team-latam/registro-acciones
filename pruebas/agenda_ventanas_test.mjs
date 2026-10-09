@@ -193,6 +193,10 @@ const sumarDeLaLista = async p => { if(!await tocar(p, '.ag-cab [data-action="ag
   await irARosario(p);
   eq("ficha: «Lectura rápida» sin la línea de la Agenda (ya la dice su tarjeta)", await p.$$eval(".fl-lectura li", l => l.some(e => /En la Agenda/.test(e.textContent))), false);
   eq("ficha: el botón dice «Ver Agenda»", await texto(p, '.fl-ag-pie [data-action="agenda-abrir"]'), "Ver Agenda");
+  // Al pie de «Contactos en …», en un mismo renglón: «+ Sumar» y «Ver Agenda». Ya no hay un
+  // «+ Sumar a alguien más» en cada institución ni un «+ Sumar» en el título (pedido del 9/10/2026).
+  eq("ficha: al pie, «+ Sumar» y «Ver Agenda» en un mismo renglón", await p.$$eval(".fl-ag-pie > button", l => { const r = l.map(e => e.getBoundingClientRect()); return [l.map(e => e.textContent.trim()), r.length === 2 && Math.abs(r[0].top - r[1].top) < 1 && r[0].right <= r[1].left]; }), [["+ Sumar", "Ver Agenda"], true]);
+  eq("ficha: ninguna institución con su «+ Sumar a alguien más», ni «+ Sumar» en el título", [await cuantos(p, '.fl-ag-inst [data-action="agenda-sumar"]'), await cuantos(p, '.fl-card:has(.fl-pliegue[data-que="contactos"]) h3 [data-action="agenda-sumar"]')], [0, 0]);
   // El WhatsApp chico tiene forma de botón: su anillo de foco va hacia adentro, como el de los
   // botones; hacia afuera, la lista se lo cortaba al pie (en GitHub, recortes_test, 9/10/2026).
   await p.keyboard.press("Tab");
@@ -288,6 +292,28 @@ for(const [quien, nombre, botones] of [[ADMIN, "Benny", ["agenda-a-administracio
     [c, ...c.querySelectorAll("*")].filter(e => /auto|scroll/.test(getComputedStyle(e).overflowY) && e.scrollHeight > e.clientHeight + 1).length), 0);
   eq("sin errores (ver más)", errores, []);
   await p.close();
+}
+
+{
+  // Una ciudad con actividad y sin nadie en la Agenda: quien carga eventos tiene «+ Sumar» al pie (y
+  // solo ese); a quien observa no le sirve y no ve la tarjeta.
+  const sinGente = base => { base.posts.push({ ...base.posts[0], id: "p_men", title: "Visita a Mendoza", scopes: [{ type: "ciudad", country: "Argentina", city: "Mendoza" }] }); return base; };
+  for(const [quien, nombre, pie] of [[ADMIN, "Benny", ["+ Sumar"]], ["obs@x.com", "Olga Obs", null]]){
+    const { p, errores } = await entrar(quien, nombre, { retocar: sinGente });
+    await irAPaises(p);
+    await p.click('[data-action="drill-country"][data-country="Argentina"]');
+    await p.waitForSelector('[data-action="drill-city"][data-city="Mendoza"]');
+    await p.click('[data-action="drill-city"][data-city="Mendoza"]');
+    await p.waitForSelector(".fl-historia");
+    await p.waitForTimeout(250);
+    const t = '.fl-card:has(.fl-pliegue[data-que="contactos"])';
+    if(pie){
+      eq(`sin nadie en la ciudad (${nombre}): lo dice y deja «+ Sumar» al pie, solo`, [await texto(p, `${t} .fl-nada`), await p.$$eval(`${t} .fl-ag-pie > button`, l => l.map(e => e.textContent.trim()))], ["Todavía no hay nadie en la Agenda de Mendoza.", pie]);
+      eq(`sin nadie en la ciudad (${nombre}): y ninguno en el título`, await cuantos(p, `${t} h3 [data-action="agenda-sumar"]`), 0);
+    } else eq(`sin nadie en la ciudad (${nombre}): no hay tarjeta de contactos`, await cuantos(p, ".fl-pliegue[data-que=\"contactos\"]"), 0);
+    eq(`sin errores (${nombre}, ciudad sin gente)`, errores, []);
+    await p.close();
+  }
 }
 
 await b.close();
