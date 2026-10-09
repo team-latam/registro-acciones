@@ -67,7 +67,7 @@ Nada.
 | # | Qué | Por qué | Quién |
 |---|---|---|---|
 | A1 | ~~En el celular, al abrir la Agenda se abre el teclado solo (el foco cae en el buscador; también en «Otra institución», «Limpiar», «Es esta»)~~ ✅ 9/10 (en pantalla táctil el foco entra por «Volver» o la ✕; en la compu sigue al buscador) | tapa media ventana antes de que se decida hacer algo; cada vez que se abre | Claude |
-| A2 | ~~La ventana cambia de tamaño y de lugar con cada paso~~ ✅ 9/10 (con la ficha a dos columnas y el formulario centrado; en el celular, siempre pantalla completa. Primero, abierta desde un lugar o «Buscar en todo» iba chica; el mismo día el usuario pidió que sea siempre del tamaño de la Agenda (tanda 48) y a la noche, con tres opciones a la vista, eligió la chica para todo: 620 de ancho, en el mismo lugar, con el alto a medida y en una columna (tanda 50)) | se ve inestable; en el celular, una ficha flotando sobre la página con la barra de abajo asomando | Claude |
+| A2 | ~~La ventana cambia de tamaño y de lugar con cada paso~~ ✅ 9/10 (con la ficha a dos columnas y el formulario centrado; en el celular, siempre pantalla completa. Primero, abierta desde un lugar o «Buscar en todo» iba chica; el mismo día el usuario pidió que sea siempre del tamaño de la Agenda (tanda 48) y a la noche, con tres opciones a la vista, eligió la chica para todo: 620 de ancho, en el mismo lugar, con el alto a medida y en una columna (tanda 50); después pidió que abra en el medio de la pantalla, como la del Calendario: A20) | se ve inestable; en el celular, una ficha flotando sobre la página con la barra de abajo asomando | Claude |
 
 ### Medio
 
@@ -89,6 +89,7 @@ Nada.
 | A11 | ~~Tres clases de CSS que ya no usa nada (de tandas anteriores)~~ ✅ 9/10 | Claude |
 | A16 | ~~En la tarjeta «Contactos en …» de la compu, el teléfono baja de renglón y deja un «·» colgando~~ ✅ 9/10 | Claude |
 | A19 | ~~Con la letra de GitHub, el anillo de foco del WhatsApp chico se cortaba al pie de la lista en el celular, y «Publicar el sitio» no publicó~~ ✅ 9/10 (un enlace con forma de botón lleva el anillo hacia adentro; `pantallas` mide ahora una combinación con letra ancha) | Claude |
+| A20 | ~~La Agenda y la ficha de un posteo abrían pegadas arriba (a 40 y 24 px del borde), mientras las demás ventanas abren en el medio~~ ✅ 9/10 (pedido del usuario con dos capturas; se midieron todas las ventanas: eran las únicas dos; la ficha, en el medio si es más baja que la pantalla y a 24 px del borde si es más alta; tanda 53) | se ve distinto del resto; la Agenda quedaba con la mitad de abajo de la pantalla vacía | Claude |
 | A17 | `actions/setup-node` tiene la 7.1.0 (de antes, no de la Agenda) | Claude, cuando se toquen los workflows |
 
 ### Herramientas y pruebas
@@ -99,6 +100,7 @@ Nada.
 | A13 | ~~`codigo` contaba como «sin quién lo atienda» los 33 botones de la Agenda~~ ✅ 9/10 | Claude |
 | A14 | ~~En el celular, el recorrido no llegaba a la ficha de una ciudad (la tarjeta «Ciudades» viene plegada) y seguía sin decirlo~~ ✅ 9/10 | Claude |
 | A15 | ~~`ficha_celular_test` contaba las ciudades sumando las de la tarjeta de contactos~~ ✅ 9/10 | Claude |
+| A21 | ~~La auditoría no medía dónde queda una ventana~~ ✅ 9/10 (`pantallas`: si entra con su respiro de 24 px, tiene que estar a la misma distancia del borde de arriba y del de abajo; suma 1440×1000) | Claude |
 
 ### Para el usuario
 

@@ -16,6 +16,9 @@
    - y en el celular, que al abrirla el foco no caiga en un campo de texto:
      eso abre el teclado solo y tapa media ventana (lo mostró el usuario en
      la Agenda, 9/10/2026; la regla de la app es la ✕, ver focusIntoComposer).
+   - y que, si entra en la pantalla, quede en el medio y no pegada arriba
+     (lo pidió el usuario con dos capturas, 9/10/2026: la del Calendario
+     sí, la Agenda y la ficha de un posteo no).
    AUDITORIA_PANTALLAS limita las combinaciones ("1280x800:es,390x844:he").
    ====================================================================== */
 import { abrirNavegador, entrar, ADMIN, BASE, revisarRecortes, recorrerApp, tab, click, cerrar } from "../../pruebas/app_de_mentira.mjs";
@@ -71,7 +74,8 @@ async function rosario(p){
   await p.evaluate(() => { const b = document.querySelector('[data-action="drill-city"][data-city="Rosario"]'); b && b.click(); }); await p.waitForTimeout(400);
   await p.evaluate(() => { const b = document.querySelector('.fl-pliegue[data-que="contactos"][aria-expanded="false"]'); if(b && b.offsetParent) b.click(); }); await p.waitForTimeout(200);
 }
-for(const vp of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]){
+// 1440×1000 además de 1280×800: en la más alta entran ventanas (la ficha de un posteo, de unos 830 px) que en la baja no, y así se mide si quedan en el medio.
+for(const vp of [{ width: 1280, height: 800 }, { width: 1440, height: 1000 }, { width: 390, height: 844 }]){
   for(const [nombre, preparar, datos] of VENTANAS){
     const { p } = await entrar(b, ADMIN, "Benny Rosenthal", { viewport: vp, base: datos ? datos() : undefined });
     const donde = `${nombre} (${vp.width})`;
@@ -88,8 +92,10 @@ for(const vp of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]){
       const dlg = d.matches('[role="dialog"]') ? d : d.querySelector('[role="dialog"]') || d;
       const a = document.activeElement;
       const deTexto = !!a && (a.isContentEditable || a.tagName === "TEXTAREA" || (a.tagName === "INPUT" && !/^(checkbox|radio|button|submit|reset|file|range|color|hidden)$/i.test(a.type)));
+      const rc = dlg.getBoundingClientRect();
       return { rol: dlg.getAttribute("role"), modal: dlg.getAttribute("aria-modal"), nombre: !!(dlg.getAttribute("aria-label") || dlg.getAttribute("aria-labelledby")), foco: dlg.contains(a), deTexto,
-        tactil: matchMedia("(hover: none) and (pointer: coarse)").matches };
+        tactil: matchMedia("(hover: none) and (pointer: coarse)").matches,
+        arriba: Math.round(rc.top), abajo: Math.round(innerHeight - rc.bottom), alto: Math.round(rc.height), pantalla: innerHeight };
     });
     if(!r){ out.push(hallazgo("ventanas", "medio", "Con Enter no se abre", donde, sel)); await p.close(); continue; }
     if(r.rol !== "dialog") out.push(hallazgo("ventanas", "medio", "No se anuncia como ventana (role=dialog)", donde));
@@ -97,6 +103,9 @@ for(const vp of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]){
     if(!r.nombre) out.push(hallazgo("ventanas", "bajo", "La ventana no tiene nombre para lectores de pantalla", donde));
     if(!r.foco) out.push(hallazgo("ventanas", "medio", "Al abrir, el foco no entra a la ventana", donde));
     if(r.tactil && r.deTexto) out.push(hallazgo("ventanas", "importante", "En el celular, al abrirla se abre el teclado solo (el foco cae en un campo de texto)", donde));
+    // En el medio de la pantalla (pedido del usuario, 9/10/2026: la Agenda y la ficha de un posteo
+    // abrían pegadas arriba): si entra con su respiro de 24 px, queda a la misma distancia de los dos bordes.
+    if(r.alto + 48 <= r.pantalla && Math.abs(r.arriba - r.abajo) > 4) out.push(hallazgo("ventanas", "medio", `La ventana no queda en el medio de la pantalla (${r.arriba} px del borde de arriba y ${r.abajo} del de abajo)`, donde));
     // Tab 25 veces: el foco no se tiene que ir afuera.
     let escapo = false;
     for(let i = 0; i < 25 && !escapo; i++){
