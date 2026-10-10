@@ -10696,7 +10696,7 @@ function renderProjectPanel(post, opts={}){
         <span class="pj-grip" data-pj-grip data-post-id="${esc(post.id)}" title="${esc(t("Arrastrá para reordenar","Drag to reorder","Arraste para reordenar","גרירה לסידור מחדש"))}" aria-hidden="true"><svg viewBox="0 0 10 16" width="10" height="16"><circle cx="3" cy="3" r="1.4"/><circle cx="7" cy="3" r="1.4"/><circle cx="3" cy="8" r="1.4"/><circle cx="7" cy="8" r="1.4"/><circle cx="3" cy="13" r="1.4"/><circle cx="7" cy="13" r="1.4"/></svg></span>
         <input type="text" class="pj-label-input" data-ms-field="label" data-post-id="${esc(post.id)}" data-ms-id="${esc(m.id)}" value="${esc(m.label)}" maxlength="120">
         <button type="button" class="status-pill ${st}" data-action="ms-done" data-post-id="${esc(post.id)}" data-ms-id="${esc(m.id)}">${esc(milestoneStatusLabel(st))}</button>
-        <button type="button" class="rm" data-action="ms-remove" data-post-id="${esc(post.id)}" data-ms-id="${esc(m.id)}" title="${esc(t("Quitar hito","Remove milestone","Remover marco","הסרת אבן דרך"))}">✕</button>
+        <button type="button" class="rm" data-action="ms-remove" data-post-id="${esc(post.id)}" data-ms-id="${esc(m.id)}" title="${esc(t("Quitar hito","Remove milestone","Remover marco","הסרת אבן דרך"))}" aria-label="${esc(t("Quitar hito","Remove milestone","Remover marco","הסרת אבן דרך"))}">✕</button>
       </div>
       <div class="pj-bottom">
         ${dateTrigger("date", m.date)}
@@ -13519,7 +13519,7 @@ function renderZonasSection(){
                            t("la zona {z}","the {z} zone","a zona {z}","אזור {z}",{z:z.label}))}
             <input type="text" class="zone-name" data-action="zonas-label" data-key="${esc(key)}" value="${esc(z.label)}" maxlength="30">
             <span class="zone-count">${count === 1 ? t("1 país","1 country","1 país","מדינה אחת") : t("{n} países","{n} countries","{n} países","{n} מדינות",{n:count})}</span>
-            <button type="button" class="zone-rm" data-action="zonas-remove-zone" data-key="${esc(key)}" ${count>0?`disabled title="${esc(t("Reasigná primero los países de esta zona","First reassign this zone's countries","Reatribua primeiro os países desta zona",".קודם הקצה/י מחדש את המדינות של אזור זה"))}"`:`title="${esc(t("Eliminar zona","Delete zone","Excluir zona","מחיקת אזור"))}"`}>✕</button>
+            <button type="button" class="zone-rm" data-action="zonas-remove-zone" data-key="${esc(key)}" aria-label="${esc(t("Eliminar zona","Delete zone","Excluir zona","מחיקת אזור"))}" ${count>0?`disabled title="${esc(t("Reasigná primero los países de esta zona","First reassign this zone's countries","Reatribua primeiro os países desta zona",".קודם הקצה/י מחדש את המדינות של אזור זה"))}"`:`title="${esc(t("Eliminar zona","Delete zone","Excluir zona","מחיקת אזור"))}"`}>✕</button>
           </div>
           <div class="zone-chips" data-zone-key="${esc(key)}">
             ${countries.map(name=>`
@@ -15492,7 +15492,7 @@ function renderDocumentacion(post, parte){
       : `<button type="button" class="doc-archivo" data-action="open-doc" data-post-id="${esc(post.id)}" data-pos="${pos}" title="${esc(titulo)}">${icono} ${esc(f.name)}</button>`;
     return `${abrir}
       ${cuando ? `<span class="doc-fecha">${esc(cuando)}</span>` : ""}
-      ${puede ? `<button type="button" class="rm" data-action="quitar-doc" data-post-id="${esc(post.id)}" data-pos="${pos}" title="${esc(t("Quitar este archivo del evento","Remove this file from the event","Remover este arquivo do evento","הסרת הקובץ הזה מהאירוע"))}">✕</button>` : ""}`;
+      ${puede ? `<button type="button" class="rm" data-action="quitar-doc" data-post-id="${esc(post.id)}" data-pos="${pos}" title="${esc(t("Quitar este archivo del evento","Remove this file from the event","Remover este arquivo do evento","הסרת הקובץ הזה מהאירוע"))}" aria-label="${esc(t("Quitar este archivo del evento","Remove this file from the event","Remover este arquivo do evento","הסרת הקובץ הזה מהאירוע"))}">✕</button>` : ""}`;
   };
   const filas = esperados.map(d=>{
     // Varios archivos por documento (6/10/2026): se ve el último subido
@@ -16328,7 +16328,7 @@ function renderLinkRows(scope, ownerId, links){
     <div class="attach-row">
       <input type="text" placeholder="${esc(t("Etiqueta","Label","Etiqueta","תווית"))}" data-link-field="label" data-scope="${scope}" data-owner-id="${esc(ownerId)}" data-idx="${i}" value="${esc(l.label)}">
       <input type="url" placeholder="https://..." data-link-field="url" data-scope="${scope}" data-owner-id="${esc(ownerId)}" data-idx="${i}" value="${esc(l.url)}">
-      <button type="button" class="btn-mini" data-action="rm-link" data-scope="${scope}" data-owner-id="${esc(ownerId)}" data-idx="${i}">✕</button>
+      <button type="button" class="btn-mini" data-action="rm-link" data-scope="${scope}" data-owner-id="${esc(ownerId)}" data-idx="${i}" aria-label="${esc(t("Quitar este enlace","Remove this link","Remover este link","הסרת הקישור"))}">✕</button>
     </div>`).join("")}</div>`;
 }
 
@@ -20228,6 +20228,8 @@ function renderLightboxFrame(){
   const ext = (String(src).split("?")[0].match(/\.(jpe?g|png|gif|webp)$/i) || [, "jpg"])[1].toLowerCase();
   bajar.href = src; bajar.download = `${lightboxNombre || t("Foto","Photo","Foto","תמונה")} - ${t("foto","photo","foto","תמונה")} ${lightboxIndex+1}.${ext}`;
   lightboxPrev.hidden = lightboxNext.hidden = lightboxCounter.hidden = !multi;
+  // El nombre de la foto para el lector de pantalla es ese mismo título.
+  lightboxImg.alt = document.getElementById("lightboxTitle").textContent;
   if(multi){
     // ‹ › SÍ los invierte solo dir="rtl" (son puntuación, a diferencia de
     // ←/→) pero se elige el glyph a mano igual, mismo criterio que el
@@ -20245,7 +20247,7 @@ function lightboxStep(delta){
 }
 function closeLightbox(){
   lightbox.classList.remove("show");
-  lightboxImg.src = "";
+  lightboxImg.src = ""; lightboxImg.alt = "";
   lightboxItems = [];
   if(lightboxReturnFocus && typeof lightboxReturnFocus.focus === "function") lightboxReturnFocus.focus();
   lightboxReturnFocus = null;
@@ -22760,7 +22762,7 @@ function renderPostedFiles(files, owner){
   const todos = owner && owner.todos;
   const puede = !!(owner && owner.puede && Array.isArray(todos));
   const quitarDe = f => puede
-    ? `<button type="button" class="rm" data-action="quitar-adjunto" ${ownerAttrs(owner)} data-pos="${todos.indexOf(f)}" title="${esc(t("Quitar este archivo del evento","Remove this file from the event","Remover este arquivo do evento","הסרת הקובץ הזה מהאירוע"))}">✕</button>`
+    ? `<button type="button" class="rm" data-action="quitar-adjunto" ${ownerAttrs(owner)} data-pos="${todos.indexOf(f)}" title="${esc(t("Quitar este archivo del evento","Remove this file from the event","Remover este arquivo do evento","הסרת הקובץ הזה מהאירוע"))}" aria-label="${esc(t("Quitar este archivo del evento","Remove this file from the event","Remover este arquivo do evento","הסרת הקובץ הזה מהאירוע"))}">✕</button>`
     : "";
   return `<div class="post-files">${files.map(f => {
     const dataUrl = safeFileDataUrl(f && f.dataUrl);
