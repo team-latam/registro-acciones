@@ -58,8 +58,6 @@ las respuestas.
 
 **Queda para vos:**
 
-- **D9**: ¿cualquiera puede sumarse solo como participante de un evento
-  ajeno? (cambio de R3; recomendación en la fila).
 - **D8**: probar la Agenda en el teléfono (el teclado de verdad no se
   puede simular).
 - **D4, un clic**: apagar «Block force pushes» unos minutos (Settings →
@@ -132,7 +130,7 @@ Nada.
 |---|---|---|---|
 | R1 | ~~La ficha de un lugar cuenta lo planificado: «N registros en 12 meses» y las barras del Ritmo suman lo de este mes que todavía no pasó; «N visitas en los últimos 12 meses» y «Última visita» de la lectura rápida toman fechas futuras~~ ✅ 10/10 (la ficha, el Ritmo, «Última visita» y «último: hace N días» cuentan solo lo hecho; `ficha_planificado_test`) | tercera vez que vuelve (RECURRENTES: «lo que todavía no pasó, contado como hecho»); por regla sube de nivel | Claude |
 | R2 | ~~«Próximos eventos» esconde lo que se repite: usa la repetición *más cercana* a hoy, que puede ser la de ayer, y la descarta. Una rutina de los lunes desaparece de la columna de martes a jueves~~ ✅ 10/10 (`proximaFecha()`: la primera repetición que viene; `proximos_que_viene_test`) | la columna del Inicio, todos los días | Claude |
-| R3 | ~~Un integrante puede cancelar un evento ajeno en dos escrituras (primero se suma como editor o participante, después cancela). La auditoría del 6/10 (I6) dijo que `editors` quedaba restringido: no lo está~~ ✅ 10/10 (los editores los suma solo quien maneja el posteo y nadie se suma solo como participante de un evento ajeno; `90-permisos.sql`. Cambia algo de la vida diaria: ver D9) | cancelar saca el evento del Calendar de todos; la regla que decidiste (tanda 17) no se cumple | Claude |
+| R3 | ~~Un integrante puede cancelar un evento ajeno en dos escrituras (primero se suma como editor o participante, después cancela). La auditoría del 6/10 (I6) dijo que `editors` quedaba restringido: no lo está~~ ✅ 10/10 (los editores los suma solo quien maneja el posteo y nadie se suma solo como participante de un evento ajeno; `90-permisos.sql`. Cambia algo de la vida diaria; D9: el usuario eligió dejarlo así) | cancelar saca el evento del Calendar de todos; la regla que decidiste (tanda 17) no se cumple | Claude |
 | R4 | ~~Ninguna copia automática todavía: la única es la manual del 5/10; la primera dominical sería el 11/10 (y GitHub la atrasa 5–7 horas)~~ ✅ 10/10 (copia manual disparada y en verde a las 16:12 UTC, corrida 13; falta ver la del domingo) | cinco días de cambios sin copia, la Agenda entera entre ellos | **usuario** (Actions → «Copia de seguridad» → Run workflow) o Claude, si lo pedís |
 | R5 | ~~`ubuntu-latest` pasa a Ubuntu 26 el 19/10 (aviso en los 14 jobs de la última corrida de los 10 workflows). Fijar `ubuntu-24.04`~~ ✅ 10/10 (`runs-on: ubuntu-24.04` en los 10 workflows; `workflows_test` rechaza cualquier «-latest») | puede romper bajar el navegador de las pruebas y el volcado de la base del domingo 25/10 | Claude |
 | R6 | ~~Los enlaces y «links de texto» en celeste (`--celeste-dark`) dan 3,1 de contraste en claro (mínimo 4,5): Agenda, ficha de un lugar, solapas, Calendario~~ ✅ 10/10 (`--link`, 5,8 de contraste; `accesibilidad_test`) | baja visión, en toda la app; en oscuro pasa holgado | Claude (un celeste un poco más oscuro solo para el texto) |
@@ -188,7 +186,7 @@ Nada.
 | D5 | ~~**Dos personas distintas con el mismo nombre** quedan en una sola ficha al traer una lista (`agenda_traer` une por nombre sin tildes)~~ ✅ 10/10: se acepta por ahora; se revisa la vista previa al traer una lista | **usuario** decide si lo acepta |
 | D6 | ~~**Proteger `main`** contra `push --force` y borrado (un ruleset; el push directo sigue andando)~~ ✅ 10/10: la rama `main` ya está protegida (lo hizo el usuario) | **usuario**, opcional |
 | D7 | ~~**Settings de GitHub** que la API no deja leer: Secret scanning y Push protection prendidos; Actions → permisos en «Read»; Pages ya está en «GitHub Actions» (verificado por los logs)~~ ✅ 10/10: Secret scanning, Push protection, permisos de Actions y Pages, confirmados por el usuario | **usuario** confirma |
-| D9 | **¿Cualquiera puede sumarse solo como participante de un evento de otro?** Desde R3 no: lo suma el autor, un editor o un admin (sumar a OTROS sigue abierto). Quien lo intenta ve el aviso de error con el motivo. Si la gente se suma sola a eventos del equipo, hay que dejarlo abierto y cerrar la cancelación de otra manera. Recomendación: dejarlo cerrado, que es lo que decidiste en la tanda 17 (cancela solo quien creó el evento, sus participantes, editores o un admin) | **usuario** |
+| D9 | ~~**¿Cualquiera puede sumarse solo como participante de un evento de otro?** Desde R3 no: lo suma el autor, un editor o un admin (sumar a OTROS sigue abierto). Quien lo intenta ve el aviso de error con el motivo. Si la gente se suma sola a eventos del equipo, hay que dejarlo abierto y cerrar la cancelación de otra manera. Recomendación: dejarlo cerrado, que es lo que decidiste en la tanda 17 (cancela solo quien creó el evento, sus participantes, editores o un admin)~~ ✅ 10/10: el usuario eligió dejarlo cerrado, como en la tanda 17 | **usuario** |
 | D8 | **Probar en el teléfono** (A18, sigue): la Agenda, «+ Sumar», una foto desde la cámara | **usuario** |
 
 ---
@@ -263,4 +261,4 @@ registro de actividad se guarda siempre (M1, 6/10); «Ver traducción» queda
    «Block force pushes».
 2. **Después:** R15 en su propia tanda; R12 cuando tengas el proyecto de
    prueba; lo bajo cuando se toque cada parte.
-3. **Vos:** D9 y D8, cuando puedas.
+3. **Vos:** D8, cuando puedas.
