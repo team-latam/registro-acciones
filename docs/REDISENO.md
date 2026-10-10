@@ -969,6 +969,50 @@ eligió **unirlas así**:
 Pruebas: `agenda_test.mjs` (país, región y ciudad; fallan con el código
 de antes) y `ficha_celular_test.mjs` vuelve a esperar cinco tarjetas.
 
+### 59. Contactos por lugar: una ciudad, un país, una región o toda LatAm — HECHO (10 oct 2026)
+
+El usuario mandó su planilla de comunidades (una fila por ciudad, con los
+cargos de la comunidad y de la organización; «Brasil» sin ciudad, con
+quien cubre el país) y pidió que la Agenda deje de obligar a elegir una
+institución: «hay gente que podría ir asociada a una ciudad, país, región
+o todo LatAm». Cargar la planilla queda para después. Se le propuso la
+opción A (un «dónde» por contacto, cinco posibilidades) contra la B
+(instituciones de mentira, «Argentina en general»), con maquetas armadas
+sobre la app real; eligió la A, y que el título sea el lugar a secas
+(«Argentina», no «Argentina en general») y que el renglón de abajo no
+diga «sin institución» («no es un problema que no haya una institución,
+es algo posible»): dice «Contactos del país», «Contactos de la ciudad»,
+«Contactos de la región», «Contactos de toda LatAm».
+
+- **Base** (`supabase/20-contactos-por-lugar.sql`): `contactos.nivel`
+  (institucion, ciudad, pais, region, latam) con `country`, `city`,
+  `zona`; la institución deja de ser obligatoria; una restricción no deja
+  nada a medias y la misma persona no se repite en el mismo lugar. Unir
+  dos fichas tampoco repite lugares. Permisos, los de siempre.
+- **La lista**: toda LatAm y las regiones arriba de todo, con la forma
+  de un país; la gente de un país debajo de su nombre, antes de las
+  ciudades; la de una ciudad antes de sus instituciones. Misma forma que
+  una institución (título, renglón gris, la gente con WhatsApp), pero el
+  título no se toca. Brasil aparece aunque no tenga instituciones.
+- **Sumar a alguien**: «Dónde está» con cinco pastillas (como las de los
+  idiomas) y, según cuál, el selector que corresponde. Desde la ficha de
+  Rosario viene en Ciudad · Rosario; desde un país, en País; desde una
+  región, en Región; desde una institución o la lista, en Institución (y
+  al pasar a Institución desde una ciudad, la de esa ciudad ya viene
+  elegida, como antes). Las fichas de país y región suman «+ Sumar» al
+  pie de «Ciudades»/«Países».
+- **La ficha de una persona**: «Dónde está» mezcla instituciones y
+  lugares («Argentina · RM · País»); tocar un lugar lleva a su ficha.
+- **Las fichas de lugar**: en una ciudad, su gente primero en «Contactos
+  en …»; en un país y una región, su propia gente es el primer renglón
+  de «Ciudades»/«Países». El buscador, «Buscar en todo» y la planilla
+  (columna «Dónde») los encuentran. Traer una lista no cambia.
+
+Pruebas: `supabase/pruebas/79-agenda.sql` (+16) y `pruebas/agenda_test.mjs`
+(un bloque nuevo; con el código de antes se cae en la primera pastilla).
+La app de mentira y los datos variados de la auditoría traen gente de un
+lugar.
+
 ### 58. Revisar el Mapeo: el Excel de comunidades, ficha por ficha — HECHO (9 oct 2026)
 
 El usuario mandó «Mapeo - LatAm.xlsx» (una hoja: 81 comunidades en tres

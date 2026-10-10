@@ -2918,6 +2918,9 @@
   .ag-inst b{ font-size:14px; color:var(--ink); overflow-wrap:anywhere; }
   .ag-inst small{ font-size:12px; color:var(--text-muted); overflow-wrap:anywhere; }
   .ag-inst:hover b, .ag-p:hover b{ text-decoration:underline; text-decoration-color:var(--celeste); }
+  /* La gente de un lugar (ciudad, país, región, LatAm): el título no se toca. */
+  .ag-lugar, .ag-pais-h-fija{ cursor:default; }
+  .ag-lugar:hover b{ text-decoration:none; }
   .ag-gente{ display:flex; flex-direction:column; gap:6px; min-width:0; }
   .ag-fila-p{ display:flex; align-items:center; gap:8px; min-width:0; }
   .ag-p{ display:flex; align-items:center; gap:10px; flex:1; min-width:0; background:none; border:none; padding:2px 0; text-align:start; cursor:pointer; color:inherit; font:inherit; }
@@ -9335,7 +9338,9 @@ function subscribeAgenda(){
     state.instituciones = d.instituciones.map(x => ({ id: x.id, name: String(x.name || "").trim(), country: x.country || "", city: x.city || "",
       address: x.address || "", tipo: x.tipo || "", estado: x.estado || "activa", nota: x.nota || "", lista: x.lista || null,
       createdBy: x.createdBy || null, createdAt: x.createdAt || null, tocadoPor: x.tocadoPor || null, tocadoEl: x.tocadoEl || null }));
-    state.contactos = d.contactos.map(x => ({ id: x.id, institucion: x.institucion, persona: x.persona, cargo: x.cargo || "", orden: x.orden || 0 }));
+    // Un contacto es de una institución o de un lugar (20-contactos-por-lugar.sql).
+    state.contactos = d.contactos.map(x => ({ id: x.id, institucion: x.institucion || null, persona: x.persona, cargo: x.cargo || "", orden: x.orden || 0,
+      nivel: x.nivel || (x.institucion ? "institucion" : "latam"), country: x.country || "", city: x.city || "", zona: x.zona || "" }));
     agendaIndice = null;
     scheduleRender();
   }, err=>console.error("Error leyendo la Agenda:", err));
@@ -20544,6 +20549,28 @@ const cuantosPaises = n => n === 1 ? t("1 país","1 country","1 país","מדינ
 const inicialesDe = n => String(n || "").split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join("").toUpperCase() || "?";
 const lugarTexto = x => [x.city ? cityLabel(x.country, x.city) : "", countryLabel(x.country)].filter(Boolean).join(", ");
 
+// Un contacto puede ser de una institución o de un lugar: una ciudad, un
+// país, una región o toda LatAm (20-contactos-por-lugar.sql, 10/10/2026:
+// el presidente de la comunidad de Rosario, quien cubre Brasil). Los de un
+// lugar se juntan en una «entrada» con la forma de una institución (id,
+// name, country, city, estado) para que la lista, las fichas y la planilla
+// los traten igual; se distinguen por `lugar: true` y su `nivel`.
+const NIVELES_AGENDA = ["institucion", "ciudad", "pais", "region", "latam"];
+const nivelLabel = k => k === "ciudad" ? t("Ciudad","City","Cidade","עיר") : k === "pais" ? t("País","Country","País","מדינה")
+  : k === "region" ? t("Región","Region","Região","אזור") : k === "latam" ? t("Toda LatAm","All of LatAm","Toda a LatAm","כל LatAm")
+  : t("Institución","Organization","Instituição","מוסד");
+const nivelDeContacto = c => c.institucion ? "institucion" : (NIVELES_AGENDA.includes(c.nivel) ? c.nivel : "latam");
+// La clave de la entrada: la institución, o el lugar («Rosario» y «rosario» son el mismo).
+const claveDeLugar = c => { const n = nivelDeContacto(c); return n === "institucion" ? (c.institucion || "")
+  : "lugar:" + n + "|" + (n === "ciudad" || n === "pais" ? c.country : "") + "|" + (n === "ciudad" ? normalize(c.city) : "") + "|" + (n === "region" ? c.zona : ""); };
+const tituloDeLugar = c => { const n = nivelDeContacto(c); return n === "latam" ? nivelLabel("latam") : n === "region" ? regionLabel(c.zona)
+  : n === "pais" ? countryLabel(c.country) : cityLabel(c.country, c.city); };
+const subtituloDeLugar = x => x.nivel === "latam" ? t("Contactos de toda LatAm","Contacts for all of LatAm","Contatos de toda a LatAm","אנשי קשר של כל LatAm")
+  : x.nivel === "region" ? t("Contactos de la región","Contacts for the region","Contatos da região","אנשי קשר של האזור")
+  : x.nivel === "pais" ? t("Contactos del país","Contacts for the country","Contatos do país","אנשי קשר של המדינה")
+  : t("Contactos de la ciudad","Contacts for the city","Contatos da cidade","אנשי קשר של העיר");
+const cuantosLugares = n => n === 1 ? t("1 lugar","1 place","1 lugar","מקום אחד") : t("{n} lugares","{n} places","{n} lugares","{n} מקומות",{ n });
+
 // Todo junto y ya ordenado, recalculado solo cuando cambia algo.
 let agendaIndice = null;
 function agendaDatos(){
@@ -20551,31 +20578,54 @@ function agendaDatos(){
   if(agendaIndice && agendaIndice.llave.every((x, i) => x === llave[i])) return agendaIndice;
   const personas = new Map(state.personas.map(p => [p.id, p]));
   const inst = new Map(state.instituciones.map(x => [x.id, x]));
-  const gente = new Map(), lugares = new Map();
+  const lugaresAg = new Map(), gente = new Map(), lugares = new Map();
   state.contactos.forEach(c => {
-    if(!inst.has(c.institucion) || !personas.has(c.persona)) return;
-    if(!gente.has(c.institucion)) gente.set(c.institucion, []);
-    gente.get(c.institucion).push(c);
+    if(!personas.has(c.persona)) return;
+    const n = nivelDeContacto(c);
+    if(n === "institucion" ? !inst.has(c.institucion) : n === "ciudad" ? !(c.country && c.city) : n === "pais" ? !c.country : n === "region" ? !ZONES[c.zona] : false) return;
+    const k = claveDeLugar(c);
+    if(n !== "institucion" && !lugaresAg.has(k)) lugaresAg.set(k, { id: k, lugar: true, nivel: n, name: tituloDeLugar(c), country: n === "ciudad" || n === "pais" ? c.country : "",
+      city: n === "ciudad" ? c.city : "", zona: n === "region" ? c.zona : "", estado: "activa", tipo: "", address: "", nota: "", lista: null });
+    if(!gente.has(k)) gente.set(k, []);
+    gente.get(k).push(c);
     if(!lugares.has(c.persona)) lugares.set(c.persona, []);
     lugares.get(c.persona).push(c);
   });
   gente.forEach(l => l.sort((a, b) => a.orden - b.orden || personas.get(a.persona).name.localeCompare(personas.get(b.persona).name, "es")));
-  const ordenadas = [...state.instituciones].sort((a, b) => countryLabel(a.country).localeCompare(countryLabel(b.country), "es")
-    || (a.city ? cityLabel(a.country, a.city) : "").localeCompare(b.city ? cityLabel(b.country, b.city) : "", "es") || a.name.localeCompare(b.name, "es"));
-  agendaIndice = { llave, personas, inst, gente, lugares, ordenadas };
+  // El orden: toda LatAm, las regiones, y después por país. Adentro de un
+  // país, primero su gente (la del país, sin ciudad), después cada ciudad
+  // con su gente antes que sus instituciones (lo eligió el usuario, 10/10/2026).
+  const zonas = Object.keys(ZONES);
+  const claveOrden = x => [x.lugar && x.nivel === "latam" ? 0 : x.lugar && x.nivel === "region" ? 1 : 2, x.lugar && x.nivel === "region" ? zonas.indexOf(x.zona) : 0,
+    countryLabel(x.country || ""), x.lugar && x.nivel === "pais" ? "" : x.city ? cityLabel(x.country, x.city) : "", x.lugar ? 0 : 1, x.name];
+  const ordenadas = [...state.instituciones, ...lugaresAg.values()].map(x => ({ x, k: claveOrden(x) })).sort((a, b) => {
+    for(let i = 0; i < a.k.length; i++){ if(a.k[i] === b.k[i]) continue; return typeof a.k[i] === "number" ? a.k[i] - b.k[i] : String(a.k[i]).localeCompare(String(b.k[i]), "es"); }
+    return 0; }).map(e => e.x);
+  agendaIndice = { llave, personas, inst, lugaresAg, gente, lugares, ordenadas };
   return agendaIndice;
 }
-const genteDe = instId => agendaDatos().gente.get(instId) || [];
-const institucionesDePersona = pid => (agendaDatos().lugares.get(pid) || []).map(c => ({ c, x: agendaDatos().inst.get(c.institucion) }));
-// Las instituciones de un lugar de la ficha: { zona } | { country } | { country, city }.
+const genteDe = id => agendaDatos().gente.get(id) || [];
+const entradaDe = id => agendaDatos().inst.get(id) || agendaDatos().lugaresAg.get(id) || null;
+// Dónde está una persona: cada contacto con su entrada (institución o lugar).
+const institucionesDePersona = pid => (agendaDatos().lugares.get(pid) || []).map(c => ({ c, x: entradaDe(claveDeLugar(c)) }));
+// Las entradas de un lugar de la ficha: { zona } | { country } | { country, city }.
+// En una región entran sus países y su propia gente; en un país, la del país
+// y la de sus ciudades; en una ciudad, la de la ciudad.
 function institucionesDeLugar(L){
   const ciudad = L.city ? normalize(L.city) : null;
-  return agendaDatos().ordenadas.filter(x => L.zona ? zoneOfCountry(x.country) === L.zona
+  return agendaDatos().ordenadas.filter(x => L.zona ? (x.lugar && x.nivel === "region" ? x.zona === L.zona : !!x.country && zoneOfCountry(x.country) === L.zona)
     : x.country === L.country && (!ciudad || normalize(x.city) === ciudad));
+}
+// El título de una entrada en la lista o en una tarjeta: una institución se
+// toca y abre su ficha; un lugar no (su gente ya está a la vista).
+function cabeceraDeEntrada(x, sinTitulo){
+  if(!x.lugar) return `<button type="button" class="ag-inst" data-action="agenda-ver-inst" data-id="${esc(x.id)}"><b dir="auto">${esc(x.name)} ${pastillaDeEstado(x)}</b><small dir="auto">${esc([x.tipo, x.address].filter(Boolean).join(" · "))}</small></button>`;
+  return `<div class="ag-inst ag-lugar">${sinTitulo ? "" : `<b dir="auto">${esc(x.name)}</b>`}<small dir="auto">${esc(subtituloDeLugar(x))}</small></div>`;
 }
 function resumenAgenda(lista){
   const gente = new Set(lista.flatMap(x => genteDe(x.id).map(c => c.persona)));
-  return { inst: lista.length, gente: gente.size, ciudades: new Set(lista.filter(x => x.city).map(x => x.country + "|" + normalize(x.city))).size, paises: new Set(lista.map(x => x.country)).size };
+  return { inst: lista.filter(x => !x.lugar).length, gente: gente.size, ciudades: new Set(lista.filter(x => x.city).map(x => x.country + "|" + normalize(x.city))).size,
+    paises: new Set(lista.filter(x => x.country).map(x => x.country)).size };
 }
 function agendaFiltradas(){
   const f = agendaFiltro, q = normalize(f.q).trim(), num = digitosDe(f.q);
@@ -20583,11 +20633,12 @@ function agendaFiltradas(){
   return agendaDatos().ordenadas.filter(x => {
     if(f.pais && x.country !== f.pais) return false;
     if(f.ciudad && normalize(x.city) !== normalize(f.ciudad)) return false;
+    // Tipo y lista son de las instituciones: con ese filtro, la gente de un lugar no entra.
     if(f.tipo && x.tipo !== f.tipo) return false;
     if(f.lista && x.lista !== f.lista) return false;
     if(!q) return true;
     const gente = genteDe(x.id).map(c => personas.get(c.persona));
-    if([x.name, x.address, x.tipo, countryLabel(x.country), x.country, x.city, x.city ? cityLabel(x.country, x.city) : "", ...gente.map(p => p.name), ...gente.map(p => p.email || ""),
+    if([x.name, x.address, x.tipo, countryLabel(x.country), x.country, x.city, x.city ? cityLabel(x.country, x.city) : "", x.lugar ? subtituloDeLugar(x) : "", ...gente.map(p => p.name), ...gente.map(p => p.email || ""),
         ...genteDe(x.id).map(c => c.cargo)].some(s => normalize(s || "").includes(q))) return true;
     return num.length >= 3 && gente.some(p => p.telefonos.some(tel => digitosDe(tel.n).includes(num)));
   });
@@ -20628,10 +20679,10 @@ function cerrarAgenda(){
   agendaReturnFocus = null;
 }
 // Ir a la ficha de un lugar (cierra la Agenda: la ficha está atrás).
-function agendaIrAlLugar(country, city){
+function agendaIrAlLugar(country, city, zona){
   cerrarAgenda();
-  state.view = "paises"; fichaOrigen = null; reiniciarFicha(); state.zonaDrill = null;
-  state.countryDrill = country || null; state.ciudadDrill = city || null;
+  state.view = "paises"; fichaOrigen = null; reiniciarFicha(); state.zonaDrill = zona || null;
+  state.countryDrill = zona ? null : country || null; state.ciudadDrill = zona ? null : city || null;
   render(); scrollToTop();
 }
 
@@ -20686,7 +20737,7 @@ function filaDePersona(c, conTel){
 }
 function agendaVistaLista(){
   const f = agendaFiltro, lista = agendaFiltradas(), r = resumenAgenda(lista);
-  const paises = [...new Set(state.instituciones.map(x => x.country))].sort((a, b) => countryLabel(a).localeCompare(countryLabel(b), "es"));
+  const paises = [...new Set(agendaDatos().ordenadas.map(x => x.country).filter(Boolean))].sort((a, b) => countryLabel(a).localeCompare(countryLabel(b), "es"));
   const tipos = [...new Set(state.instituciones.map(x => x.tipo).filter(Boolean))].sort((a, b) => a.localeCompare(b, "es"));
   const sel = (id, todos, valor, ops) => `<select id="${id}" aria-label="${esc(todos)}"><option value="">${esc(todos)}</option>${ops.map(([v, l]) => `<option value="${esc(v)}"${v === valor ? " selected" : ""}>${esc(l)}</option>`).join("")}</select>`;
   const barra = `<div class="ag-barra">
@@ -20704,7 +20755,7 @@ function agendaVistaLista(){
     <span>${t("<b>{i}</b> y <b>{c}</b> en {ci} de {p}","<b>{i}</b> and <b>{c}</b> in {ci} of {p}","<b>{i}</b> e <b>{c}</b> em {ci} de {p}","<b>{i}</b> ו-<b>{c}</b> ב-{ci} ב-{p}",{ i: esc(cuantasInstituciones(r.inst)), c: esc(cuantosContactos(r.gente)), ci: esc(cuantasCiudades(r.ciudades)), p: esc(cuantosPaises(r.paises)) })}</span>
     ${hayFiltro ? `<button type="button" class="ag-link" data-action="agenda-limpiar">${t("Limpiar","Clear","Limpar","ניקוי")}</button>` : ""}</div>`;
   // Vacía: solo qué es y cómo se empieza, sin buscador, filtros ni «0 instituciones en 0 ciudades».
-  if(!state.instituciones.length) return agendaCabecera(titulo, "") + `<div class="ag-cuerpo"><div class="ag-vacia">
+  if(!agendaDatos().ordenadas.length) return agendaCabecera(titulo, "") + `<div class="ag-cuerpo"><div class="ag-vacia">
       <span class="ag-vacia-ic" aria-hidden="true">📇</span>
       <b>${esc(t("Todavía no hay nadie en la Agenda.","The Directory is still empty.","Ainda não há ninguém na Agenda.","ספר הטלפונים עדיין ריק."))}</b>
       <p>${esc(t("Acá van las instituciones de cada lugar y su gente, con teléfono y WhatsApp.","This is for each place's organizations and their people, with phone and WhatsApp.","Aqui ficam as instituições de cada lugar e sua gente, com telefone e WhatsApp.","כאן נמצאים המוסדות של כל מקום והאנשים שלהם, עם טלפון ו-WhatsApp."))}</p>
@@ -20714,21 +20765,32 @@ function agendaVistaLista(){
   if(!lista.length){
     filas = `<div class="empty-state">${esc(t("No hay nada con eso. Probá con otro nombre, una ciudad o parte de un teléfono.","Nothing matches. Try another name, a city or part of a phone number.","Nada com isso. Tente outro nome, uma cidade ou parte de um telefone.","לא נמצא דבר. נסו שם אחר, עיר או חלק ממספר טלפון."))}</div>`;
   } else {
-    let pais = null, ciudad = null;
+    // Cada sección es un país, una región o toda LatAm (cada lugar con su gente, 10/10/2026).
+    const seccionDe = x => x.lugar && x.nivel === "latam" ? "latam" : x.lugar && x.nivel === "region" ? "region:" + x.zona : "pais:" + x.country;
+    let seccion = null, ciudad = null;
     lista.slice(0, f.mostrar).forEach(x => {
-      if(x.country !== pais){
-        if(pais !== null) filas += `</section>`;
-        pais = x.country; ciudad = null;
-        const rp = resumenAgenda(lista.filter(y => y.country === x.country));
-        filas += `<section class="ag-pais"><button type="button" class="ag-pais-h" data-action="agenda-ir-lugar" data-country="${esc(x.country)}"><i style="background:${safeColor(ZONES[zoneOfCountry(x.country)]?.color)}"></i><b>${esc(countryLabel(x.country))}</b><small>${esc(cuantasInstituciones(rp.inst))}</small><span class="ag-ir">${esc(t("Ver la ficha","See its page","Ver a ficha","לכרטיס"))} ${isRTL() ? "‹" : "›"}</span></button>`;
+      const sec = seccionDe(x);
+      if(sec !== seccion){
+        if(seccion !== null) filas += `</section>`;
+        seccion = sec; ciudad = null;
+        const rp = resumenAgenda(lista.filter(y => seccionDe(y) === sec));
+        const cuanto = rp.inst ? cuantasInstituciones(rp.inst) : cuantosContactos(rp.gente);
+        if(x.lugar && x.nivel === "latam")
+          filas += `<section class="ag-pais"><div class="ag-pais-h ag-pais-h-fija"><i style="background:var(--text-muted)"></i><b>${esc(x.name)}</b><small>${esc(cuanto)}</small></div>`;
+        else if(x.lugar && x.nivel === "region")
+          filas += `<section class="ag-pais"><button type="button" class="ag-pais-h" data-action="agenda-ir-lugar" data-zona="${esc(x.zona)}"><i style="background:${safeColor(ZONES[x.zona]?.color)}"></i><b>${esc(x.name)}</b><small>${esc(cuanto)}</small><span class="ag-ir">${esc(t("Ver la ficha","See its page","Ver a ficha","לכרטיס"))} ${isRTL() ? "‹" : "›"}</span></button>`;
+        else
+          filas += `<section class="ag-pais"><button type="button" class="ag-pais-h" data-action="agenda-ir-lugar" data-country="${esc(x.country)}"><i style="background:${safeColor(ZONES[zoneOfCountry(x.country)]?.color)}"></i><b>${esc(countryLabel(x.country))}</b><small>${esc(cuanto)}</small><span class="ag-ir">${esc(t("Ver la ficha","See its page","Ver a ficha","לכרטיס"))} ${isRTL() ? "‹" : "›"}</span></button>`;
       }
-      if(normalize(x.city) !== ciudad){
+      // El renglón de la ciudad: no para la gente del país (va antes de las ciudades), ni en LatAm o una región.
+      const sinCiudad = x.lugar && x.nivel !== "ciudad";
+      if(!sinCiudad && normalize(x.city) !== ciudad){
         ciudad = normalize(x.city);
         filas += `<div class="ag-ciudad">${x.city ? `<button type="button" data-action="agenda-ir-lugar" data-country="${esc(x.country)}" data-city="${esc(x.city)}">${esc(cityLabel(x.country, x.city))}</button>` : `<span>${esc(t("Sin ciudad","No city","Sem cidade","ללא עיר"))}</span>`}</div>`;
       }
       const gente = genteDe(x.id);
       filas += `<article class="ag-fila${x.estado === "cerrada" ? " cerrada" : ""}">
-        <button type="button" class="ag-inst" data-action="agenda-ver-inst" data-id="${esc(x.id)}"><b dir="auto">${esc(x.name)} ${pastillaDeEstado(x)}</b><small dir="auto">${esc([x.tipo, x.address].filter(Boolean).join(" · "))}</small></button>
+        ${cabeceraDeEntrada(x, x.lugar && (x.nivel === "latam" || x.nivel === "region"))}
         <div class="ag-gente">${gente.length ? gente.map(c => filaDePersona(c, true)).join("") : `<span class="ag-nadie">${esc(t("Sin contactos todavía","No contacts yet","Sem contatos ainda","עדיין אין אנשי קשר"))}</span>`}</div></article>`;
     });
     filas += `</section>`;
@@ -20758,11 +20820,16 @@ function agendaVistaPersona(pid){
     ${p.email ? `<a class="btn-secondary" href="mailto:${esc(p.email)}">✉️ ${t("Escribir","Email","Escrever","דוא״ל")}</a>` : ""}</div>`;
   const posteos = state.posts.filter(x => !x.cancelled && (x.participants || []).some(y => y && y.persona === pid)).sort((a, b) => fechaDePost(b).localeCompare(fechaDePost(a)));
   const vacio = s => `<span class="ag-vacio">${s || "—"}</span>`;
-  return agendaCabecera(esc(p.name), esc([cargos.join(" · "), insts.length > 1 ? cuantasInstituciones(insts.length) : insts[0] ? insts[0].x.name : ""].filter(Boolean).join(" · ")), acciones)
+  const hayLugar = insts.some(z => z.x.lugar);
+  // Una institución se toca y abre su ficha; un lugar lleva a la ficha del lugar.
+  const item = ({ c, x }) => x.lugar
+    ? `<button type="button" class="ag-item" data-action="agenda-ir-lugar" data-country="${esc(x.country)}" data-city="${esc(x.city)}" data-zona="${esc(x.zona)}"><span><b dir="auto">${esc(x.name)}</b><small dir="auto">${esc([c.cargo, nivelLabel(x.nivel)].filter(Boolean).join(" · "))}</small></span><span aria-hidden="true">${isRTL() ? "‹" : "›"}</span></button>`
+    : `<button type="button" class="ag-item" data-action="agenda-ver-inst" data-id="${esc(x.id)}"><span><b dir="auto">${esc(x.name)} ${pastillaDeEstado(x)}</b><small dir="auto">${esc([c.cargo, lugarTexto(x)].filter(Boolean).join(" · "))}</small></span><span aria-hidden="true">${isRTL() ? "‹" : "›"}</span></button>`;
+  return agendaCabecera(esc(p.name), esc([cargos.join(" · "), insts.length > 1 ? (hayLugar ? cuantosLugares(insts.length) : cuantasInstituciones(insts.length)) : insts[0] ? insts[0].x.name : ""].filter(Boolean).join(" · ")), acciones)
     + `<div class="ag-cuerpo ag-ficha">
-      <section><h3>${insts.length > 1 ? t("Dónde está","Where","Onde está","היכן") : t("Institución","Organization","Instituição","מוסד")}</h3>
-        ${insts.length ? `<div class="ag-items">${insts.map(({ c, x }) => `<button type="button" class="ag-item" data-action="agenda-ver-inst" data-id="${esc(x.id)}"><span><b dir="auto">${esc(x.name)} ${pastillaDeEstado(x)}</b><small dir="auto">${esc([c.cargo, lugarTexto(x)].filter(Boolean).join(" · "))}</small></span><span aria-hidden="true">${isRTL() ? "‹" : "›"}</span></button>`).join("")}</div>`
-          : `<p class="ag-nota">${esc(t("No está en ninguna institución de la Agenda.","Not in any organization of the Directory.","Não está em nenhuma instituição da Agenda.","לא משויך לאף מוסד בספר הטלפונים."))}</p>`}</section>
+      <section><h3>${insts.length > 1 || hayLugar ? t("Dónde está","Where","Onde está","היכן") : t("Institución","Organization","Instituição","מוסד")}</h3>
+        ${insts.length ? `<div class="ag-items">${insts.map(item).join("")}</div>`
+          : `<p class="ag-nota">${esc(t("Todavía no está en ningún lugar de la Agenda.","Not in any place of the Directory yet.","Ainda não está em nenhum lugar da Agenda.","עדיין לא משויך לאף מקום בספר הטלפונים."))}</p>`}</section>
       <section><h3>${t("Datos","Details","Dados","פרטים")}</h3><dl class="ag-dl">
         <dt>${p.telefonos.length > 1 ? t("Teléfonos","Phones","Telefones","טלפונים") : t("Teléfono","Phone","Telefone","טלפון")}</dt><dd class="ag-col">${p.telefonos.length ? p.telefonos.map(x => `<span class="ag-tel-fila"><a class="ag-tel" dir="ltr" href="tel:${esc("+" + digitosDe(x.n))}">${esc(x.n)}</a>${x.wa !== false ? `<span class="ag-wa-tag">WhatsApp</span>` : ""}</span>`).join("") : vacio()}</dd>
         <dt>${t("Correo","Email","E-mail","דוא״ל")}</dt><dd>${p.email ? `<a href="mailto:${esc(p.email)}" dir="ltr">${esc(p.email)}</a>` : vacio()}</dd>
@@ -20813,7 +20880,7 @@ function agendaVistaForm(v){
   let sugerencias = "";
   if(!editar && !v.usar && normalize(v.nombre).trim().length >= 3){
     const q = normalize(v.nombre).trim();
-    const yaEn = new Set(v.inst ? genteDe(v.inst).map(c => c.persona) : []);
+    const yaEn = new Set(genteDe(claveDeLugar(contactoDelFormulario(v))).map(c => c.persona));
     const hay = state.personas.filter(p => normalize(p.name).includes(q) && !yaEn.has(p.id)).slice(0, 3);
     if(hay.length) sugerencias = `<div class="ag-sug"><small>${t("¿Es alguno de estos? Ya está en la app:","Is it one of these? Already in the app:","É algum destes? Já está no app:","האם זה אחד מאלה? כבר קיים באפליקציה:")}</small>${hay.map(p => {
       const donde = institucionesDePersona(p.id).filter(z => z.x).map(z => z.x.name);
@@ -20823,12 +20890,17 @@ function agendaVistaForm(v){
   // Si «+ Sumar» se tocó en la ficha de una ciudad, sus instituciones van primero, en un grupo
   // aparte; el resto sigue por país (pedido del usuario, 9/10/2026).
   const opcionDeInst = x => `<option value="${esc(x.id)}"${x.id === v.inst ? " selected" : ""}>${esc(x.name)}${x.city ? " · " + esc(cityLabel(x.country, x.city)) : ""}</option>`;
-  const deAca = v.lugar ? institucionesDeLugar(v.lugar) : [];
+  const deAca = v.lugar ? institucionesDeLugar(v.lugar).filter(x => !x.lugar) : [];
   const idsAca = new Set(deAca.map(x => x.id));
-  const resto = agendaDatos().ordenadas.filter(x => !idsAca.has(x.id));
+  const resto = agendaDatos().ordenadas.filter(x => !x.lugar && !idsAca.has(x.id));
   const instOps = (deAca.length ? `<optgroup label="${esc(t("En {c}","In {c}","Em {c}","ב{c}",{ c: cityLabel(v.lugar.country, v.lugar.city) }))}">${deAca.map(opcionDeInst).join("")}</optgroup>` : "")
     + [...new Set(resto.map(x => x.country))].map(c => `<optgroup label="${esc(countryLabel(c))}">${resto.filter(x => x.country === c).map(opcionDeInst).join("")}</optgroup>`).join("");
   const dondeEsta = editar ? institucionesDePersona(v.id).filter(z => z.x && !v.sacar.includes(z.c.id)) : [];
+  // Dónde está (10/10/2026): una institución, o una ciudad, un país, una región o toda LatAm.
+  const nivel = NIVELES_AGENDA.includes(v.nivel) ? v.nivel : "institucion";
+  const selPais = `<select id="agFPais" data-ag-campo="country" aria-label="${esc(t("País","Country","País","מדינה"))}">${v.country ? "" : `<option value="" selected disabled>${esc(t("Elegí el país…","Choose the country…","Escolha o país…","בחירת מדינה…"))}</option>`}${todosLosPaises().map(c => `<option value="${esc(c)}"${c === v.country ? " selected" : ""}>${esc(countryLabel(c))}</option>`).join("")}</select>`;
+  const ciudades = v.country ? cityPresetsFor(v.country).map(c => c.name) : [];
+  if(v.city && !ciudades.some(c => normalize(c) === normalize(v.city))) ciudades.unshift(v.city);
   // «Sumar a alguien» no lleva texto de ayuda arriba («Si ya está en la app, te lo muestra
   // para no cargarlo dos veces»): en el celular el formulario tenía que desplazarse y el aviso
   // ya aparece solo, cuando hay un parecido, bajo el nombre (pedido del usuario, 9/10/2026).
@@ -20837,9 +20909,14 @@ function agendaVistaForm(v){
   return agendaCabecera(esc(editar ? t("Corregir a {n}","Edit {n}","Corrigir {n}","עריכת {n}",{ n: v.nombre || "" }) : t("Sumar a alguien","Add someone","Adicionar alguém","הוספת איש קשר")),
       esc(editar ? t("Queda anotado quién lo cambió y cuándo.","Who changed it and when is recorded.","Fica registrado quem mudou e quando.","נרשם מי שינה ומתי.") : ""))
     + `<form class="ag-cuerpo ag-form" id="agendaForm" novalidate>
-      ${!editar ? `<label class="ag-campo ag-conlink"><span>${t("Institución","Organization","Instituição","מוסד")}</span>
-        <select id="agFInst" data-ag-campo="inst">${v.inst ? "" : `<option value="" selected disabled>${esc(t("Elegí la institución…","Choose the organization…","Escolha a instituição…","בחירת מוסד…"))}</option>`}${instOps}</select>
-        <button type="button" class="ag-link" data-action="agenda-inst-nueva">+ ${t("Otra institución","Another organization","Outra instituição","מוסד אחר")}</button>${err("inst")}</label>` : ""}
+      ${!editar ? `<div class="ag-campo ag-conlink"><span>${t("Dónde está","Where","Onde está","היכן")}</span>
+        <div class="ag-chips" role="radiogroup" aria-label="${esc(t("Dónde está","Where","Onde está","היכן"))}">${NIVELES_AGENDA.map(k => `<button type="button" class="ag-chip${nivel === k ? " on" : ""}" role="radio" aria-checked="${nivel === k}" data-action="agenda-form-nivel" data-k="${k}">${esc(nivelLabel(k))}</button>`).join("")}</div>
+        ${nivel === "institucion" ? `<select id="agFInst" data-ag-campo="inst" aria-label="${esc(t("Institución","Organization","Instituição","מוסד"))}">${v.inst ? "" : `<option value="" selected disabled>${esc(t("Elegí la institución…","Choose the organization…","Escolha a instituição…","בחירת מוסד…"))}</option>`}${instOps}</select>
+        <button type="button" class="ag-link" data-action="agenda-inst-nueva">+ ${t("Otra institución","Another organization","Outra instituição","מוסד אחר")}</button>${err("inst")}`
+        : nivel === "ciudad" ? `<div class="ag-dos">${selPais}<select id="agFCiudad" data-ag-campo="city" aria-label="${esc(t("Ciudad","City","Cidade","עיר"))}"${v.country ? "" : " disabled"}>${v.city ? "" : `<option value="" selected disabled>${esc(t("Elegí la ciudad…","Choose the city…","Escolha a cidade…","בחירת עיר…"))}</option>`}${ciudades.map(c => `<option value="${esc(c)}"${normalize(c) === normalize(v.city) ? " selected" : ""}>${esc(cityLabel(v.country, c))}</option>`).join("")}</select></div>${err("lugar")}`
+        : nivel === "pais" ? `${selPais}${err("lugar")}`
+        : nivel === "region" ? `<select id="agFZona" data-ag-campo="zona" aria-label="${esc(t("Región","Region","Região","אזור"))}">${v.zona ? "" : `<option value="" selected disabled>${esc(t("Elegí la región…","Choose the region…","Escolha a região…","בחירת אזור…"))}</option>`}${Object.keys(ZONES).map(z => `<option value="${z}"${z === v.zona ? " selected" : ""}>${esc(regionLabel(z))}</option>`).join("")}</select>${err("lugar")}`
+        : `<small class="ag-nota">${esc(t("Para quien trabaja con toda LatAm, sin un país en particular.","For someone who works across all of LatAm, with no particular country.","Para quem trabalha com toda a LatAm, sem um país em particular.","למי שעובד/ת עם כל LatAm, ללא מדינה מסוימת."))}</small>`}</div>` : ""}
       ${!editar ? `<div class="ag-dos ag-nc">` : ""}
       ${usada ? `<div class="ag-usada"><span>${t("Se suma <b>{n}</b>, que ya está en la app.","Adding <b>{n}</b>, already in the app.","Adiciona <b>{n}</b>, que já está no app.","מוסיפים את <b>{n}</b>, שכבר קיים/ת באפליקציה.",{ n: esc(usada.name) })}</span>
         <button type="button" class="ag-link" data-action="agenda-form-no-usar">${t("No, es otra persona","No, someone else","Não, é outra pessoa","לא, מישהו אחר")}</button></div>`
@@ -20863,6 +20940,16 @@ function agendaVistaForm(v){
     <div class="ag-pie"><span></span><span class="ag-pie-acc"><button type="button" class="btn-secondary" data-action="agenda-volver">${t("Cancelar","Cancel","Cancelar","ביטול")}</button>
       <button type="button" class="btn-primary" data-action="agenda-guardar"${agendaGuardando ? " disabled" : ""}>${agendaGuardando ? t("Guardando…","Saving…","Salvando…","שומר…") : t("Guardar","Save","Salvar","שמירה")}</button></span></div>`;
 }
+// Lo que el formulario dice de dónde va el contacto, como va a la base
+// (20-contactos-por-lugar.sql): a cada nivel, exactamente lo suyo.
+function contactoDelFormulario(v){
+  const nivel = NIVELES_AGENDA.includes(v.nivel) ? v.nivel : "institucion";
+  return nivel === "institucion" ? { nivel, institucion: v.inst || null, country: null, city: null, zona: null }
+    : nivel === "ciudad" ? { nivel, institucion: null, country: v.country || null, city: v.city || null, zona: null }
+    : nivel === "pais" ? { nivel, institucion: null, country: v.country || null, city: null, zona: null }
+    : nivel === "region" ? { nivel, institucion: null, country: null, city: null, zona: v.zona || null }
+    : { nivel, institucion: null, country: null, city: null, zona: null };
+}
 async function agendaGuardar(){
   const v = agendaPila[agendaPila.length - 1];
   if(!v || v.t !== "form" || agendaGuardando) return;
@@ -20874,7 +20961,11 @@ async function agendaGuardar(){
   const tels = v.tels.filter(x => String(x.n || "").trim()).map(x => ({ n: limpiarTelefono(x.n), wa: !!x.wa }));
   const correo = String(v.correo || "").trim().toLowerCase();
   if(!v.usar && !nombre) v.errores.nombre = t("Falta el nombre.","The name is missing.","Falta o nome.","חסר שם.");
-  if(!editar && !v.inst) v.errores.inst = t("Elegí la institución.","Choose the organization.","Escolha a instituição.","יש לבחור מוסד.");
+  const nivel = editar ? null : (NIVELES_AGENDA.includes(v.nivel) ? v.nivel : "institucion");
+  if(nivel === "institucion" && !v.inst) v.errores.inst = t("Elegí la institución.","Choose the organization.","Escolha a instituição.","יש לבחור מוסד.");
+  if(nivel === "ciudad" && !(v.country && v.city)) v.errores.lugar = t("Elegí el país y la ciudad.","Choose the country and the city.","Escolha o país e a cidade.","יש לבחור מדינה ועיר.");
+  if(nivel === "pais" && !v.country) v.errores.lugar = t("Elegí el país.","Choose the country.","Escolha o país.","יש לבחור מדינה.");
+  if(nivel === "region" && !ZONES[v.zona]) v.errores.lugar = t("Elegí la región.","Choose the region.","Escolha a região.","יש לבחור אזור.");
   if(!v.usar && tels.some(x => !telefonoValido(x.n))) v.errores.tels = t("Un teléfono lleva solo números (y +, espacios, guiones o paréntesis).","A phone can only have digits (and +, spaces, dashes or parentheses).","Um telefone leva só números (e +, espaços, hífens ou parênteses).","טלפון יכול להכיל רק ספרות (ו-+, רווחים, מקפים או סוגריים).");
   if(!v.usar && correo && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) v.errores.correo = t("Ese correo no parece bien escrito.","That email doesn't look right.","Esse e-mail não parece correto.","כתובת הדוא״ל לא נראית תקינה.");
   if(Object.keys(v.errores).length){ renderAgenda(); const e = agendaBody.querySelector(".ag-error"); if(e){ const c = e.closest(".ag-campo"); const i = c && c.querySelector("input, select"); if(i) i.focus(); } return; }
@@ -20892,11 +20983,12 @@ async function agendaGuardar(){
     } else {
       if(v.usar) pid = v.usar;
       else pid = await store.personas.add(datos);
-      if(!genteDe(v.inst).some(c => c.persona === pid))
-        await store.agenda.sumarContacto({ institucion: v.inst, persona: pid, cargo: String(v.cargo || "").trim().slice(0, 60) || null, orden: genteDe(v.inst).length });
+      const contacto = contactoDelFormulario(v), clave = claveDeLugar(contacto);
+      if(!genteDe(clave).some(c => c.persona === pid))
+        await store.agenda.sumarContacto({ ...contacto, persona: pid, cargo: String(v.cargo || "").trim().slice(0, 60) || null, orden: genteDe(clave).length });
     }
     agendaGuardando = false;
-    const p = agendaDatos().personas.get(pid), x = agendaDatos().inst.get(v.inst);
+    const p = agendaDatos().personas.get(pid), x = editar ? null : (nivel === "institucion" ? agendaDatos().inst.get(v.inst) : { name: tituloDeLugar(contactoDelFormulario(v)) });
     showCalendarNotice({ ok:true, message: editar ? t("Guardado: {n}.","Saved: {n}.","Salvo: {n}.","נשמר: {n}.",{ n: p ? p.name : nombre })
       : t("Listo: {n} quedó en {i}.","Done: {n} is now in {i}.","Pronto: {n} ficou em {i}.","בוצע: {n} נוסף/ה ל-{i}.",{ n: p ? p.name : nombre, i: x ? x.name : "" }) });
     agendaPila.pop();
@@ -20968,12 +21060,12 @@ async function agendaGuardarInst(){
 
 /* ---------- La planilla ---------- */
 function csvDeLaAgenda(lista){
-  const filas = [[t("País","Country","País","מדינה"), t("Ciudad","City","Cidade","עיר"), t("Institución","Organization","Instituição","מוסד"), t("Tipo","Type","Tipo","סוג"),
+  const filas = [[t("País","Country","País","מדינה"), t("Ciudad","City","Cidade","עיר"), t("Dónde","Where","Onde","היכן"), t("Institución","Organization","Instituição","מוסד"), t("Tipo","Type","Tipo","סוג"),
     t("Estado","Status","Situação","מצב"), t("Dirección","Address","Endereço","כתובת"), t("Nombre","Name","Nome","שם"), t("Cargo","Role","Cargo","תפקיד"),
     t("Teléfonos","Phones","Telefones","טלפונים"), "WhatsApp", t("Correo","Email","E-mail","דוא״ל"), t("Idiomas","Languages","Idiomas","שפות"), t("Nota","Note","Nota","הערה")]];
   const { personas } = agendaDatos();
   lista.forEach(x => {
-    const base = [countryLabel(x.country), x.city ? cityLabel(x.country, x.city) : "", x.name, x.tipo, estadoDeInstitucion(x.estado), x.address];
+    const base = [x.country ? countryLabel(x.country) : "", x.city ? cityLabel(x.country, x.city) : "", x.lugar ? nivelLabel(x.nivel) : nivelLabel("institucion"), x.lugar ? "" : x.name, x.tipo, x.lugar ? "" : estadoDeInstitucion(x.estado), x.address];
     const gente = genteDe(x.id);
     if(!gente.length) filas.push([...base, "", "", "", "", "", "", x.nota]);
     gente.forEach(c => { const p = personas.get(c.persona);
@@ -21002,7 +21094,7 @@ const AGENDA_ACCIONES = {
   "agenda-volver": () => agendaVolver(),
   "agenda-ver-persona": (el) => { if(agendaOverlay.hidden) abrirAgenda({ t:"persona", id: el.dataset.id }); else { agendaPila.push({ t:"persona", id: el.dataset.id }); renderAgenda(); enfocarAgenda(el); } },
   "agenda-ver-inst": (el) => { if(agendaOverlay.hidden) abrirAgenda({ t:"inst", id: el.dataset.id }); else { agendaPila.push({ t:"inst", id: el.dataset.id }); renderAgenda(); enfocarAgenda(el); } },
-  "agenda-ir-lugar": (el) => agendaIrAlLugar(el.dataset.country, el.dataset.city),
+  "agenda-ir-lugar": (el) => agendaIrAlLugar(el.dataset.country, el.dataset.city, el.dataset.zona),
   "agenda-ver-post": (el) => { cerrarAgenda(); gotoMention(realPostId(el.dataset.postId), null); },
   "agenda-mas": () => { agendaFiltro.mostrar += AGENDA_TANDA; renderAgenda(); },
   "agenda-limpiar": () => { agendaFiltro = { q:"", pais:"", ciudad:"", tipo:"", lista:"", mostrar:AGENDA_TANDA }; renderAgenda(); if(!isTouchDevice()) document.getElementById("agendaBuscar")?.focus(); },
@@ -21020,17 +21112,23 @@ const AGENDA_ACCIONES = {
     // formulario (antes quedaba elegida la primera de la lista sin que nadie
     // la eligiera, y se podía guardar a alguien en otra institución).
     let inst = el.dataset.inst || (v && v.t === "inst" ? v.id : "");
-    const unaSola = l => l.length === 1 ? l[0].id : "";
+    const unaSola = l => { l = l.filter(x => !x.lugar); return l.length === 1 ? l[0].id : ""; };
     if(!inst && v && v.t === "lista") inst = unaSola(agendaFiltradas());
     const enFicha = agendaOverlay.hidden && state.view === "paises" && state.countryDrill;
+    const enRegion = agendaOverlay.hidden && state.view === "paises" && !state.countryDrill && state.zonaDrill;
     if(!inst && enFicha) inst = unaSola(institucionesDeLugar({ country: state.countryDrill, city: state.ciudadDrill }));
     const lugar = enFicha && state.ciudadDrill ? { country: state.countryDrill, city: state.ciudadDrill } : null;
-    const form = { t:"form", modo:"nuevo", inst, lugar, nombre:"", cargo:"", correo:"", nota:"", idiomas:[], tels:[{ n:"", wa:true }], errores:{}, usar:null };
+    // Dónde (10/10/2026): desde la ficha de una ciudad viene en «Ciudad» con esa ciudad; desde un
+    // país, en «País»; desde una región, en «Región». Desde una institución o la lista, «Institución».
+    const nivel = el.dataset.inst || (v && v.t === "inst") ? "institucion" : lugar ? "ciudad" : enFicha ? "pais" : enRegion ? "region" : "institucion";
+    const form = { t:"form", modo:"nuevo", inst, lugar, nivel, country: enFicha ? state.countryDrill : "", city: lugar ? lugar.city : "", zona: enRegion ? state.zonaDrill : "",
+      nombre:"", cargo:"", correo:"", nota:"", idiomas:[], tels:[{ n:"", wa:true }], errores:{}, usar:null };
     if(!agendaDatos().ordenadas.length){ abrirAgendaInstNueva(form); return; }
     if(agendaOverlay.hidden) abrirAgenda(form); else { agendaPila.push(form); renderAgenda(); enfocarAgenda(el); }
   },
   "agenda-editar": (el) => { agendaPila.push(borradorDePersona(el.dataset.id)); renderAgenda(); enfocarAgenda(el); },
   "agenda-guardar": () => agendaGuardar(),
+  "agenda-form-nivel": (el) => { const v = agendaPila[agendaPila.length - 1]; v.nivel = el.dataset.k; delete v.errores.inst; delete v.errores.lugar; renderAgenda(); agendaBody.querySelector(`[data-action="agenda-form-nivel"][data-k="${v.nivel}"]`)?.focus(); },
   "agenda-form-usar": (el) => { const v = agendaPila[agendaPila.length - 1]; v.usar = el.dataset.id; renderAgenda(); if(!isTouchDevice()) agendaBody.querySelector("#agFCargo")?.focus(); },
   "agenda-form-no-usar": () => { const v = agendaPila[agendaPila.length - 1]; v.usar = null; renderAgenda(); document.getElementById("agFNombre")?.focus(); },
   "agenda-form-tel-mas": () => { const v = agendaPila[agendaPila.length - 1]; if(v.tels.length < 6) v.tels.push({ n:"", wa:false }); renderAgenda(); document.getElementById("agFTel-" + (v.tels.length - 1))?.focus(); },
@@ -21796,7 +21894,8 @@ function renderFichaLugar(L){
   // una: eran dos tarjetas que nombraban las mismas ciudades (pedido del
   // usuario, 9/10/2026). Primero las que tienen actividad, como antes;
   // después las que solo tienen contactos.
-  const claveAg = x => L.zona ? x.country : normalize(x.city || "");
+  // La gente del país mismo (o de la región misma) va en su propia fila, primero.
+  const claveAg = x => x.lugar && x.nivel === (L.zona ? "region" : "pais") ? "\u0000" : L.zona ? x.country : normalize(x.city || "");
   const agPorLugar = new Map();
   agendaAca.forEach(x => { const k = claveAg(x); if(!agPorLugar.has(k)) agPorLugar.set(k, []); agPorLugar.get(k).push(x); });
   const claveHijo = h => L.zona ? h.L.country : normalize(h.L.city || "");
@@ -21804,12 +21903,16 @@ function renderFichaLugar(L){
   const filasLugar = L.city ? [] : [...hijos.map(h => ({ h, insts: agPorLugar.get(claveHijo(h)) || [] })),
     ...[...agPorLugar.entries()].filter(([k]) => !hijos.some(h => claveHijo(h) === k)).map(([, insts]) => ({ h: null, insts }))
       .sort((a, b) => b.insts.length - a.insts.length || (L.zona ? countryLabel(a.insts[0].country).localeCompare(countryLabel(b.insts[0].country), "es") : cityLabel(a.insts[0].country, a.insts[0].city || "").localeCompare(cityLabel(b.insts[0].country, b.insts[0].city || ""), "es")))];
-  const nombreFila = f => f.h ? f.h.nombre : L.zona ? countryLabel(f.insts[0].country) : f.insts[0].city ? cityLabel(f.insts[0].country, f.insts[0].city) : t("Sin ciudad","No city","Sem cidade","ללא עיר");
+  const esDelLugar = f => !f.h && f.insts[0].lugar && f.insts[0].nivel === (L.zona ? "region" : "pais");
+  const nombreFila = f => f.h ? f.h.nombre : esDelLugar(f) ? f.insts[0].name : L.zona ? countryLabel(f.insts[0].country) : f.insts[0].city ? cityLabel(f.insts[0].country, f.insts[0].city) : t("Sin ciudad","No city","Sem cidade","ללא עיר");
+  const delLugar = filasLugar.filter(esDelLugar);
+  if(delLugar.length) filasLugar.splice(0, filasLugar.length, ...delLugar, ...filasLugar.filter(f => !esDelLugar(f)));
   const filaLugar = f => {
     const h = f.h, x = f.insts[0];
-    const accion = h ? h.accion : L.zona ? `data-action="drill-country" data-country="${esc(x.country)}"` : x.city ? `data-action="drill-city" data-country="${esc(x.country)}" data-city="${esc(x.city)}"` : `data-action="agenda-abrir" data-country="${esc(x.country)}"`;
+    const accion = h ? h.accion : esDelLugar(f) ? `data-action="agenda-abrir"${L.zona ? "" : ` data-country="${esc(x.country)}"`}` : L.zona ? `data-action="drill-country" data-country="${esc(x.country)}"` : x.city ? `data-action="drill-city" data-country="${esc(x.country)}" data-city="${esc(x.city)}"` : `data-action="agenda-abrir" data-country="${esc(x.country)}"`;
     let act;
-    if(h){
+    if(esDelLugar(f)) act = subtituloDeLugar(x);
+    else if(h){
       const ult = h.posts.map(fechaDePost).sort().pop();
       const pend = h.posts.reduce((n, p) => n + pasosPendientes(partesDeLugar(p, h.L)).length, 0);
       act = t("último: hace {d} días","latest: {d} days ago","último: há {d} dias","אחרון: לפני {d} ימים",{ d: Math.max(0, diasDesde(ult)) }) + (pend ? " · " + t("{n} pendientes","{n} pending","{n} pendentes","{n} ממתינים",{ n: pend }) : "");
@@ -21817,8 +21920,8 @@ function renderFichaLugar(L){
     let gente = "";
     if(f.insts.length){
       const r = resumenAgenda(f.insts), g1 = f.insts.length === 1 ? genteDe(x.id) : [];
-      gente = f.insts.length === 1 ? [x.name, g1.length === 1 ? agendaDatos().personas.get(g1[0].persona).name : g1.length ? cuantosContactos(g1.length) : ""].filter(Boolean).join(" · ")
-        : `${cuantasInstituciones(r.inst)} · ${cuantosContactos(r.gente)}`;
+      gente = f.insts.length === 1 ? [x.lugar ? "" : x.name, g1.length === 1 ? agendaDatos().personas.get(g1[0].persona).name : g1.length ? cuantosContactos(g1.length) : ""].filter(Boolean).join(" · ")
+        : [r.inst ? cuantasInstituciones(r.inst) : "", cuantosContactos(r.gente)].filter(Boolean).join(" · ");
     }
     return `<button type="button" class="fl-hijo${h ? "" : " sin-act"}" ${accion}>
       <b>${esc(nombreFila(f))}</b><small>${esc(act)}</small>${gente ? `<small class="fl-hijo-ag" dir="auto">📇 ${esc(gente)}</small>` : ""}
@@ -21829,7 +21932,7 @@ function renderFichaLugar(L){
   const resumenLugares = [dosYMas(filasLugar.map(nombreFila)), agendaAca.length ? cuantosContactos(rAg.gente) : ""].filter(Boolean).join(" · ");
   const ladoHijos = filasLugar.length ? `<div class="${claseDeLado("hijos")}">${tituloDeLado("hijos", L.zona ? t("Países","Countries","Países","מדינות") : t("Ciudades","Cities","Cidades","ערים"), resumenLugares,
     filasLugar.length > HIJOS_A_LA_VISTA ? `<button type="button" class="fl-mas" data-action="ficha-desplegar" data-que="hijos">${fichaDesplegado.has("hijos") ? t("Ver menos","Show less","Ver menos","הצג פחות") : t("Ver más","See more","Ver mais","הצגת עוד")}</button>` : "")}<div class="fl-hijos${hijosConScroll ? " con-scroll" : ""}">${(todosHijos ? filasLugar : filasLugar.slice(0, HIJOS_A_LA_VISTA)).map(filaLugar).join("")}</div>
-    ${agendaAca.length ? `<div class="fl-ag-pie"><button type="button" class="btn-secondary" data-action="agenda-abrir"${L.zona ? "" : ` data-country="${esc(L.country)}"`}>${t("Ver Agenda","See Directory","Ver Agenda","לספר הטלפונים")}</button></div>` : ""}</div>` : "";
+    ${agendaAca.length || canWrite() ? `<div class="fl-ag-pie">${canWrite() ? `<button type="button" class="btn-primary" data-action="agenda-sumar">+ ${t("Sumar","Add","Adicionar","הוספה")}</button>` : ""}${agendaAca.length ? `<button type="button" class="btn-secondary" data-action="agenda-abrir"${L.zona ? "" : ` data-country="${esc(L.country)}"`}>${t("Ver Agenda","See Directory","Ver Agenda","לספר הטלפונים")}</button>` : ""}</div>` : ""}</div>` : "";
   // Contactos en … (la Agenda, 8/10/2026): en una ciudad, sus instituciones
   // con su gente. En un país o una región va adentro de «Ciudades» o
   // «Países» (9/10/2026). «Ver Agenda» la abre ya filtrada. En
@@ -21846,14 +21949,14 @@ function renderFichaLugar(L){
     const enAgenda = sumar || verAgenda ? `<div class="fl-ag-pie">${sumar}${verAgenda}</div>` : "";
     const ver = todos ? agendaAca : agendaAca.slice(0, HIJOS_A_LA_VISTA);
     const cuerpo = agendaAca.length ? `<div class="fl-ag">${ver.map(x => `<div class="fl-ag-inst${x.estado === "cerrada" ? " cerrada" : ""}">
-        <button type="button" class="ag-inst" data-action="agenda-ver-inst" data-id="${esc(x.id)}"><b dir="auto">${esc(x.name)} ${pastillaDeEstado(x)}</b><small dir="auto">${esc([x.tipo, x.address].filter(Boolean).join(" · "))}</small></button>
+        ${cabeceraDeEntrada(x)}
         ${genteDe(x.id).map(c => filaDePersona(c, true)).join("")}</div>`).join("")}</div>`
       : `<p class="fl-nada">${esc(t("Todavía no hay nadie en la Agenda de {l}.","No one in the Directory for {l} yet.","Ainda não há ninguém na Agenda de {l}.","עדיין אין אף אחד בספר הטלפונים של {l}.",{ l: nombre }))}</p>`;
     // Con una sola institución, su nombre; y con una sola persona ahí, también el de ella.
     const gente1 = agendaAca.length === 1 ? genteDe(agendaAca[0].id) : [];
     const resumen = !agendaAca.length ? t("Nadie todavía","No one yet","Ninguém ainda","עדיין אין אף אחד")
-      : agendaAca.length === 1 ? [agendaAca[0].name, gente1.length === 1 ? agendaDatos().personas.get(gente1[0].persona).name : gente1.length ? cuantosContactos(gente1.length) : ""].filter(Boolean).join(" · ")
-      : `${cuantasInstituciones(r.inst)} · ${cuantosContactos(r.gente)}`;
+      : agendaAca.length === 1 ? [agendaAca[0].lugar ? "" : agendaAca[0].name, gente1.length === 1 ? agendaDatos().personas.get(gente1[0].persona).name : gente1.length ? cuantosContactos(gente1.length) : ""].filter(Boolean).join(" · ")
+      : [r.inst ? cuantasInstituciones(r.inst) : "", cuantosContactos(r.gente)].filter(Boolean).join(" · ");
     const extra = verMas(agendaAca.length);
     return `<div class="${claseDeLado("contactos")}">${tituloDeLado("contactos", esc(t("Contactos en {l}","Contacts in {l}","Contatos em {l}","אנשי קשר ב{l}",{ l: nombre })), resumen, extra)}${cuerpo}${enAgenda}</div>`;
   })();

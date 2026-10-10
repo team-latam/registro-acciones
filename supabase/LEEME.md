@@ -101,6 +101,7 @@ Se aplican en orden. Todos se pueden correr más de una vez sin romper nada
 | `12` a `17` | Revisar lo de Calendar y sus sugerencias, los títulos sin el tipo adelante, unificar cuentas, el aviso al admin y los avisos por correo (cada uno se explica en su encabezado) |
 | `18-personas.sql` | Personas sin cuenta: la tabla `personas`, unirlas, vincularlas a una cuenta, y pasar a fichas los nombres sueltos que ya estaban |
 | `19-agenda.sql` | La Agenda: instituciones de cada lugar y quién está en cada una (`agenda_listas`, `instituciones`, `contactos`; la gente son las fichas de `personas`, que suman teléfonos e idiomas en `18`), y `agenda_traer` para traer una lista entera |
+| `20-contactos-por-lugar.sql` | Un contacto de la Agenda puede ser de un lugar y no de una institución: `nivel` (institucion, ciudad, pais, region, latam) con `country`, `city` o `zona` según el caso; la institución deja de ser obligatoria y una restricción no deja nada a medias |
 
 **Cada cosa se define en UN solo archivo.** Como se vuelven a aplicar
 todos en cada push, dos archivos que definen lo mismo distinto se pisan
