@@ -53,8 +53,10 @@ El detalle está en [`supabase/LEEME.md`](./supabase/LEEME.md). En corto:
 4. En `index.html`, `SUPABASE_URL` y `SUPABASE_KEY` (la clave
    *publishable*, que está hecha para viajar al navegador).
 5. Los trabajos automáticos (el sincronizador de Calendar y la limpieza del
-   bucket) necesitan además `SUPABASE_SERVICE_ROLE_KEY` y
-   `CALENDAR_API_KEY` como secretos de GitHub.
+   bucket) necesitan además `SUPABASE_SERVICE_ROLE_KEY` y, desde el
+   6/10/2026, `GOOGLE_CUENTA_DE_SERVICIO` (la llave de la cuenta con la que
+   se lee el calendario, ver `supabase/functions/LEEME.md`) como secretos de
+   GitHub. La `CALENDAR_API_KEY` de la página queda solo para los feriados.
 
 ### Acceso privado (login + aprobación manual)
 
@@ -166,8 +168,12 @@ aprobación" hasta que el administrador lo apruebe desde la propia app
 
 Es un archivo estático, así que sirve cualquier hosting simple:
 
-- **GitHub Pages**, que es como se publica hoy: Settings → Pages → Deploy
-  from branch → `main` y la raíz (`/`). Cada push a `main` publica. Importante: **tiene que servirse por HTTP(S)**, no abrirse
+- **GitHub Pages**, que es como se publica hoy: Settings → Pages → Source
+  en «GitHub Actions», y el workflow «Publicar el sitio»
+  (`.github/workflows/pages.yml`) publica `index.html` en cada push a
+  `main`, recién después de que todas las pruebas dan verde (desde el
+  6/10/2026; antes publicaba directo desde la rama, sin esperar a nadie).
+  Importante: **tiene que servirse por HTTP(S)**, no abrirse
   como `file://` local, porque usa módulos ES (`<script type="module">`) que
   el navegador bloquea en local por CORS.
 - Cualquier otro hosting estático (Netlify, Vercel, un servidor propio, etc.)

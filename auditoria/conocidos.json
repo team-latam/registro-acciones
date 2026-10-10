@@ -28,5 +28,15 @@
     "que": "Parece un teléfono",
     "contiene": "+54 11 4444 0103",
     "porque": "Número inventado de la app de mentira (pruebas/app_de_mentira.mjs), para la Agenda. Revisado el 9/10/2026."
+  },
+  {
+    "que": "El hebreo no está en hebreo",
+    "contiene": "name@example.org",
+    "porque": "Es el ejemplo de un correo en el formulario de la Agenda: un correo se escribe en letras latinas también en hebreo. Revisado el 10/10/2026."
+  },
+  {
+    "que": "Parece un teléfono",
+    "contiene": "11 99478 1099",
+    "porque": "Número inventado de supabase/pruebas/79-agenda.sql (la ficha «julia» de la prueba). Revisado el 10/10/2026."
   }
 ]

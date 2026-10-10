@@ -52,6 +52,15 @@ out.push(hallazgo("seguridad", "dato", `Asignaciones a innerHTML: ${(js.match(/\
 [...js.matchAll(/cargarScript\(\s*([\w.]+)\s*(?:,\s*([\w.]+))?\s*\)/g)].forEach(x => {
   if(!x[2]) out.push(hallazgo("seguridad", "medio", "Librería que se carga sin integridad", x[1], "cargarScript sin el segundo argumento"));
 });
+// Un import() de una URL de afuera no admite integrity: la huella va en un
+// <link rel="modulepreload" integrity="…"> con la misma URL, y el import()
+// reusa esa carga. Sin ese link, la librería (supabase-js, la que maneja la
+// sesión) entra sin huella. Lo vio a mano la auditoría del 10/10/2026: la
+// herramienta solo miraba <script src> y cargarScript().
+[...js.matchAll(/import\(\s*"(https?:[^"]+)"\s*\)/g)].forEach(x => {
+  const preload = new RegExp(`<link[^>]*rel="modulepreload"[^>]*href="${x[1].replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"[^>]*integrity=`);
+  if(!preload.test(html)) out.push(hallazgo("seguridad", "medio", "Librería que se carga sin integridad", x[1], "import() sin un <link rel=\"modulepreload\" integrity=…> para esa URL"));
+});
 
 /* --- Servicios de afuera --- */
 const hosts = new Set([...html.matchAll(/https:\/\/([a-z0-9.-]+\.[a-z]{2,})/gi)].map(x => x[1].toLowerCase()));

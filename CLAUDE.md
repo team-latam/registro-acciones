@@ -25,10 +25,10 @@ decisiones de arquitectura.
   lo que queda), `docs/QUE-GUARDAR.md` (qué tener a mano para reconstruir)
   `docs/DOMINIO.md` (el plan, no ejecutado, de mudar el sitio a un
   dominio propio si `*.github.io` vuelve a bloquearse en Argentina) y
-  `docs/AUDITORIA.md` (la última auditoría, la de la Agenda del 9/10/2026,
+  `docs/AUDITORIA.md` (la última auditoría, la completa del 10/10/2026,
   con la lista por prioridad; el detalle en `docs/auditoria/`, y las
-  anteriores, la completa del 6/10 y la de lo nuevo del 7/10, en
-  `docs/auditoria/historial/`) y
+  anteriores, la completa del 6/10, la de lo nuevo del 7/10 y la de la
+  Agenda del 9/10, en `docs/auditoria/historial/`) y
   `docs/RESTAURAR.md` (cómo volver atrás con una copia: workflow
   «Restaurar una copia», `supabase/respaldo/restaurar.mjs`). En la
   raíz quedan solo `index.html`, `README.md` y este archivo.
@@ -78,8 +78,10 @@ del repo y la ÚNICA conectada al deploy: cada push ahí dispara el workflow
 pruebas de la app y **recién si dan verde** publica `index.html` en GitHub
 Pages (desde el 6/10/2026; antes publicaba el «pages build and deployment»
 automático, sin esperar a nadie). Para eso Settings → Pages → Source tiene
-que estar en «GitHub Actions»; mientras siga en «Deploy from a branch», el
-trabajo lo avisa en su resumen y GitHub publica por su cuenta como antes.
+que estar en «GitHub Actions» (lo está desde el 6/10/2026 a la noche: el
+automático «pages build and deployment» no volvió a correr desde entonces);
+si alguna vez vuelve a «Deploy from a branch», el trabajo lo avisa en su
+resumen y GitHub publica por su cuenta como antes.
 Un push a cualquier otra rama NO despliega nada.
 
 Claude Code on the web crea una rama nueva (`claude/...`) por cada sesión —
