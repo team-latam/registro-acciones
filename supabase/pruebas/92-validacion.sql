@@ -269,6 +269,35 @@ select lab.probar_valor('volver a pedir después de un rechazo sí es un pedido 
   $q$update public.access_requests set status = 'pending' where email = 'rech9@x.com'$q$,
   $q$select (requested_at > now() - interval '1 minute')::text from public.access_requests where email = 'rech9@x.com'$q$, 'true');
 
+-- ---------- La foto de una ficha del equipo (docs/AUDITORIA.md, R27) ----------
+-- members.photo_url solo tiene tope de largo (500). La forma de la foto de
+-- Google se exige a quien PIDE entrar (solicitudes_foto, arriba), que es
+-- quien no es del equipo todavía; la de una ficha la escribe solo un admin
+-- (copiando la de la solicitud, o la de su propia cuenta de Google), y la
+-- app solo muestra las que son de Google (fotoSegura). No se agrega una
+-- restricción de forma acá a propósito: en datos-al-limite.sql hay una
+-- ficha con otra dirección (lo que dejó la importación de Firebase) y una
+-- restricción que no la admite haría fallar la aplicación del esquema.
+-- Lo que sí se prueba es QUIÉN la puede cambiar y el tope.
+insert into public.members(email, name, nickname, role) values ('ana@x.com', 'Ana', 'ana', 'admin')
+  on conflict (email) do nothing;
+select lab.probar('el admin fijo pone la foto de Google de un integrante', :YO,
+  $q$update public.members set photo_url = 'https://lh3.googleusercontent.com/a/abc=s96-c' where email = 'juan@x.com'$q$, true);
+select lab.probar('un admin por rol también', lab.como('ana@x.com'),
+  $q$update public.members set photo_url = 'https://lh3.googleusercontent.com/a/abc=s96-c' where email = 'juan@x.com'$q$, true);
+select lab.probar('una de exactamente 500 caracteres entra', :YO,
+  $q$update public.members set photo_url = 'https://lh3.googleusercontent.com/' || repeat('f', 466) where email = 'juan@x.com'$q$, true);
+select lab.probar('una de 501 NO', :YO,
+  $q$update public.members set photo_url = 'https://lh3.googleusercontent.com/' || repeat('f', 467) where email = 'juan@x.com'$q$, false);
+select lab.probar('un integrante NO se cambia la foto (solo su @nickname)', lab.como('juan@x.com'),
+  $q$update public.members set photo_url = 'https://lh3.googleusercontent.com/a/mia' where email = 'juan@x.com'$q$, false);
+select lab.probar('ni la de otro', lab.como('juan@x.com'),
+  $q$update public.members set photo_url = 'https://lh3.googleusercontent.com/a/ajena' where email = 'ana@x.com'$q$, false);
+select lab.probar('un admin la copia de la solicitud al aprobar: la ficha nueva entra con su foto', lab.como('ana@x.com'),
+  $q$insert into public.members(email, name, nickname, photo_url) values ('nuevo1@x.com', 'Nuevo', 'nuevo1', 'https://lh3.googleusercontent.com/a/abc=s96-c')$q$, true);
+select lab.probar('y la de ex integrante también tiene tope (500)', lab.como('ana@x.com'),
+  $q$insert into public.former_members(email, name, photo_url) values ('fue@x.com', 'Fue', 'https://lh3.googleusercontent.com/' || repeat('f', 467))$q$, false);
+
 \set QUIET off
 select n, '  FALLA  ' || nombre as falla from lab.resultados where esperado <> obtenido order by n;
 select count(*) filter (where esperado = obtenido) || ' pasaron, ' ||

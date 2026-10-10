@@ -42,6 +42,23 @@ alter table public.calendar_sugerencias
     and coalesce(array_length(personas, 1), 0) <= 10
   );
 
+-- El id del evento tiene tope, como el de calendar_sacados (abajo): Google
+-- los hace de hasta 1024 caracteres, y los reales miden menos de 200. Nadie
+-- las escribe desde el navegador, pero un campo sin tope es un campo que el
+-- día que alguien los escriba se llena de cualquier cosa (10/10/2026,
+-- docs/AUDITORIA.md, R27). NOT VALID + validar, como el id de un posteo
+-- (03-validacion.sql): lo que ya estuviera guardado no frena la aplicación.
+alter table public.calendar_sugerencias drop constraint if exists sugerencias_evento;
+alter table public.calendar_sugerencias
+  add constraint sugerencias_evento check (length(evento) between 1 and 1024) not valid;
+do $$
+begin
+  alter table public.calendar_sugerencias validate constraint sugerencias_evento;
+exception when check_violation then
+  raise notice 'Hay sugerencias con un id de evento de otro largo: sugerencias_evento vale solo para lo nuevo.';
+end
+$$;
+
 create table if not exists public.calendar_sacados (
   evento     text primary key,
   titulo     text not null default '',

@@ -122,6 +122,44 @@ select lab.probar('borrar una ficha: quien la creó ya no', lab.como('ana@x.com'
 select lab.probar('borrar una ficha: un admin sí', lab.como('benny@team-latam.com'),
   $q$delete from public.personas where id = 'rabino'$q$, true);
 
+-- ---------- De qué lista de la Agenda vino (19-agenda.sql, docs/AUDITORIA.md, R20) ----------
+-- `personas.lista` aceptaba cualquier texto con forma de id. Ahora tiene que
+-- ser null o una lista que existe, pero solo se mira lo que se escribe: lo
+-- que ya estaba guardado con una lista que no existe (o que se restaura de
+-- una copia, que carga personas antes que listas) no se frena.
+truncate public.agenda_listas cascade;
+insert into public.agenda_listas(id, name) values ('lis1', 'Directorio Chabad LatAm');
+select lab.probar('una persona sin lista (como siempre) entra', lab.como('ana@x.com'),
+  $q$insert into public.personas(id, name) values ('sinlista', 'Sin Lista')$q$, true);
+select lab.probar('con la lista de una que existe, también', lab.como('ana@x.com'),
+  $q$insert into public.personas(id, name, lista) values ('conlista', 'Con Lista', 'lis1')$q$, true);
+select lab.probar('con una lista que NO existe, no', lab.como('ana@x.com'),
+  $q$insert into public.personas(id, name, lista) values ('listafalsa', 'Lista Falsa', 'lista_inventada')$q$, false);
+select lab.probar('ni siendo admin', lab.como('benny@team-latam.com'),
+  $q$insert into public.personas(id, name, lista) values ('listafalsa2', 'Lista Falsa', 'lista_inventada')$q$, false);
+select lab.probar('editar una ficha para que apunte a una lista que no existe, no', lab.como('dario@x.com'),
+  $q$update public.personas set lista = 'lista_inventada' where id = 'deobs'$q$, false);
+select lab.probar('para que apunte a una que existe, sí', lab.como('dario@x.com'),
+  $q$update public.personas set lista = 'lis1' where id = 'deobs'$q$, true);
+-- Una ficha con la lista colgada (la lista se borró, o se restauró una copia):
+-- como la deja el dueño de la base, sin persona detrás.
+insert into public.personas(id, name, lista) values ('colgada', 'Ficha Vieja', 'lista_borrada');
+select lab.probar('corregirle el teléfono a una ficha con la lista colgada anda igual', lab.como('dario@x.com'),
+  $q$update public.personas set telefonos = '[{"n":"+54 11 4444 0000","wa":false}]' where id = 'colgada'$q$, true);
+select lab.probar('sacarle la lista colgada (null) también', lab.como('dario@x.com'),
+  $q$update public.personas set lista = null where id = 'colgada'$q$, true);
+select lab.probar('pero cambiársela a otra que tampoco existe, no', lab.como('dario@x.com'),
+  $q$update public.personas set lista = 'otra_inventada' where id = 'colgada'$q$, false);
+select lab.probar('unir la ficha colgada con otra, igual', lab.como('benny@team-latam.com'),
+  $q$select public.unir_personas('colgada', 'deobs')$q$, true);
+select lab.probar_valor_servicio('el restaurador (llave de servicio, sin persona) guarda la lista que venga en la copia',
+  $q$insert into public.personas(id, name, lista) values ('restaurada', 'Restaurada', 'lista_que_aun_no_se_cargo')$q$,
+  $q$select lista from public.personas where id = 'restaurada'$q$, 'lista_que_aun_no_se_cargo');
+select lab.probar_valor('traer una lista entera (agenda_traer crea la lista y sus personas juntas) anda', lab.como('benny@team-latam.com'),
+  $q$select public.agenda_traer('Otra lista', '[{"name":"Beit X","country":"Chile","gente":[{"name":"Persona Traida","cargo":"Rab"}]}]')$q$,
+  $q$select (select count(*) from public.personas p join public.agenda_listas l on l.id = p.lista
+              where p.name = 'Persona Traida' and l.name = 'Otra lista')::text$q$, '1');
+
 \set QUIET off
 select n, '  FALLA  ' || nombre || '  ' || detalle as falla from lab.resultados where esperado <> obtenido order by n;
 select count(*) filter (where esperado = obtenido) || ' pasaron, ' ||

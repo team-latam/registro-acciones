@@ -201,6 +201,52 @@ select lab.probar('pero el me gusta de un comentario sí', lab.como('ana@x.com')
 select lab.probar('y no el de otro', lab.como('ana@x.com'),
   $q$update public.replies set liked_by = liked_by || 'juan@x.com'::text where id = 'r1'$q$, false);
 
+-- ---------- MENSAJES DE SISTEMA (docs/AUDITORIA.md, R20) ----------
+-- «✏️ editó…», «🚫 canceló…», «📅 Google Calendar»: la constancia de algo que
+-- quien lo escribe acaba de hacer sobre el posteo (la app lo escribe
+-- siempre después de editarlo). Solo lo escribe quien puede editar ese
+-- posteo: hasta el 10/10/2026 cualquiera podía hacerlo, con la firma
+-- «Google Calendar», en la Rutina de otra persona. (p_rutina es de Juan;
+-- Pedro es integrante común, Ana admin por rol.)
+select lab.probar('un integrante NO escribe un mensaje de sistema «Google Calendar» en la Rutina de otra persona', lab.como('pedro@x.com'),
+  $q$insert into public.replies(id,post_id,content,author_name,author_email,system,icon)
+     values ('s1','p_rutina','Se actualizó desde Google Calendar: título','Google Calendar',null,true,'📅')$q$, false);
+select lab.probar('ni uno firmado con su nombre', lab.como('pedro@x.com'),
+  $q$insert into public.replies(id,post_id,content,author_name,author_email,system,icon)
+     values ('s2','p_rutina','✏️ Pedro editó la rutina','Pedro','pedro@x.com',true,'✏️')$q$, false);
+select lab.probar('ni un admin por rol (no puede editar la Rutina de otro)', lab.como('ana@x.com'),
+  $q$insert into public.replies(id,post_id,content,author_name,author_email,system,icon)
+     values ('s3','p_rutina','📅','Google Calendar',null,true,'📅')$q$, false);
+select lab.probar('ni el admin fijo (tampoco la edita)', lab.como('benny@team-latam.com'),
+  $q$insert into public.replies(id,post_id,content,author_name,author_email,system,icon)
+     values ('s4','p_rutina','📅','Google Calendar',null,true,'📅')$q$, false);
+select lab.probar('el autor de la Rutina sí (lo escribe al editarla)', lab.como('juan@x.com'),
+  $q$insert into public.replies(id,post_id,content,author_name,author_email,system,icon)
+     values ('s5','p_rutina','✏️ Juan editó la rutina','Juan','juan@x.com',true,'✏️')$q$, true);
+select lab.probar('con la firma de Calendar también', lab.como('juan@x.com'),
+  $q$insert into public.replies(id,post_id,content,author_name,author_email,system,icon)
+     values ('s6','p_rutina','📅','Google Calendar',null,true,'📅')$q$, true);
+update public.posts set editors = array['pedro@x.com'] where id = 'p_rutina';
+select lab.probar('un editor de la Rutina que su autor sumó, sí', lab.como('pedro@x.com'),
+  $q$insert into public.replies(id,post_id,content,author_name,author_email,system,icon)
+     values ('s7','p_rutina','✏️ Pedro editó la rutina','Pedro','pedro@x.com',true,'✏️')$q$, true);
+update public.posts set editors = '{}' where id = 'p_rutina';
+select lab.probar('en un EVENTO de otro (lo puede editar todo el equipo), sí: «canceló»', lab.como('pedro@x.com'),
+  $q$insert into public.replies(id,post_id,content,author_name,author_email,system,icon)
+     values ('s8','p_evento','🚫 Pedro canceló este evento.','Pedro','pedro@x.com',true,'🚫')$q$, true);
+select lab.probar('y el de Calendar, sin correo', lab.como('pedro@x.com'),
+  $q$insert into public.replies(id,post_id,content,author_name,author_email,system,icon)
+     values ('s9','p_evento','Este evento se canceló directamente en Google Calendar.','Google Calendar',null,true,'📅')$q$, true);
+select lab.probar('un comentario común en la Rutina de otra persona sigue abierto', lab.como('pedro@x.com'),
+  $q$insert into public.replies(id,post_id,content,author_name,author_email)
+     values ('s10','p_rutina','Me gusta la rutina','Pedro','pedro@x.com')$q$, true);
+select lab.probar('un observador no escribe ni un mensaje de sistema', lab.como('obs@x.com'),
+  $q$insert into public.replies(id,post_id,content,author_name,author_email,system,icon)
+     values ('s11','p_evento','📅','Google Calendar',null,true,'📅')$q$, false);
+select lab.probar('uno de sistema en un posteo que no existe, no', lab.como('pedro@x.com'),
+  $q$insert into public.replies(id,post_id,content,author_name,author_email,system,icon)
+     values ('s12','no_existe','📅','Google Calendar',null,true,'📅')$q$, false);
+
 -- ---------- EL EQUIPO ----------
 select lab.probar('cada uno cambia su propio @nickname', lab.como('juan@x.com'),
   $q$update public.members set nickname = 'juancito' where email = 'juan@x.com'$q$, true);
@@ -349,6 +395,88 @@ select lab.probar('y un tipo inventado no entra ni para el admin', lab.como('ana
   $q$insert into public.audit_log(id, type, actor_email, actor_name) values ('pc8','post_liked','ana@x.com','Ana')$q$, false);
 
 
+-- ---------- TEXTO LIBRE EN LA AUDITORÍA (docs/AUDITORIA.md, R20) ----------
+-- Alguien de afuera (o un integrante) puede anotar su login y su pedido de
+-- acceso, y hasta el 10/10/2026 escribía a gusto en `detail`: lo que lee el
+-- admin en Actividad. Sin ser admin, `detail` va vacío salvo el texto que
+-- la app manda de verdad al volver a pedir acceso tras un rechazo
+-- (index.html, requestAccessAgain), en sus cuatro idiomas. Si ese texto
+-- cambia en la app, hay que cambiarlo en audit_crear (02-politicas.sql).
+-- El nombre y el navegador ya tienen tope (audit_textos): 120 y 60.
+select lab.probar('el primer pedido de acceso, sin texto (como lo manda la app)', lab.como('intruso@x.com'),
+  $q$insert into public.audit_log(id, type, actor_email, actor_name, device)
+     values ('intruso@x.com_access_requested_' || to_char(now() at time zone 'utc', 'YYYY-MM-DD'), 'access_requested', 'intruso@x.com', 'Intruso', 'Chrome · Windows')$q$, true);
+select lab.probar('el pedido de nuevo tras un rechazo, en español', lab.como('intruso@x.com'),
+  $q$insert into public.audit_log(id, type, actor_email, actor_name, detail, device)
+     values ('intruso@x.com_access_requested_' || to_char(now() at time zone 'utc', 'YYYY-MM-DD'), 'access_requested', 'intruso@x.com', 'Intruso',
+             'pidió de nuevo tras un rechazo', 'Chrome · Windows')$q$, true);
+select lab.probar('en inglés', lab.como('intruso@x.com'),
+  $q$insert into public.audit_log(id, type, actor_email, actor_name, detail, device)
+     values ('intruso@x.com_access_requested_' || to_char(now() at time zone 'utc', 'YYYY-MM-DD'), 'access_requested', 'intruso@x.com', 'Intruso',
+             'requested again after a rejection', 'Safari · iOS')$q$, true);
+select lab.probar('en portugués', lab.como('intruso@x.com'),
+  $q$insert into public.audit_log(id, type, actor_email, actor_name, detail, device)
+     values ('intruso@x.com_access_requested_' || to_char(now() at time zone 'utc', 'YYYY-MM-DD'), 'access_requested', 'intruso@x.com', 'Intruso',
+             'pediu de novo após uma rejeição', 'Firefox · Linux')$q$, true);
+select lab.probar('y en hebreo (con el navegador en hebreo)', lab.como('intruso@x.com'),
+  $q$insert into public.audit_log(id, type, actor_email, actor_name, detail, device)
+     values ('intruso@x.com_access_requested_' || to_char(now() at time zone 'utc', 'YYYY-MM-DD'), 'access_requested', 'intruso@x.com', 'Intruso',
+             'ביקש/ה שוב אחרי דחייה', 'דפדפן · Android')$q$, true);
+select lab.probar('un texto inventado en el pedido de acceso, NO', lab.como('intruso@x.com'),
+  $q$insert into public.audit_log(id, type, actor_email, actor_name, detail)
+     values ('intruso@x.com_access_requested_' || to_char(now() at time zone 'utc', 'YYYY-MM-DD'), 'access_requested', 'intruso@x.com', 'Intruso',
+             'Benny aprobó este acceso por teléfono')$q$, false);
+select lab.probar('ni el texto de verdad con una palabra de más', lab.como('intruso@x.com'),
+  $q$insert into public.audit_log(id, type, actor_email, actor_name, detail)
+     values ('intruso@x.com_access_requested_' || to_char(now() at time zone 'utc', 'YYYY-MM-DD'), 'access_requested', 'intruso@x.com', 'Intruso',
+             'pidió de nuevo tras un rechazo y es urgente')$q$, false);
+select lab.probar('un login no lleva texto, ni el de verdad', lab.como('intruso@x.com'),
+  $q$insert into public.audit_log(id, type, actor_email, actor_name, detail)
+     values ('intruso@x.com_login_' || to_char(now() at time zone 'utc', 'YYYY-MM-DD'), 'login', 'intruso@x.com', 'Intruso',
+             'pidió de nuevo tras un rechazo')$q$, false);
+-- Y sin ser admin, solo esos dos tipos: los de administración (aprobar,
+-- rechazar, revocar, cambiar un rol, compartir el Calendar) los anota un
+-- admin desde su panel, a nombre propio, sobre otra persona.
+select lab.probar(q.quien || ' · NO anota «' || t || '» (es de administración)', lab.como(q.quien),
+       format($f$insert into public.audit_log(id, type, actor_email, actor_name, target_email)
+                 values ('x_%s', %L, %L, 'X', 'pedro@x.com')$f$, t, t, q.quien), false)
+  from unnest(array['access_approved', 'access_rejected', 'access_revoked', 'role_changed', 'calendar_shared', 'calendar_unshared']) t,
+       (values ('juan@x.com'), ('intruso@x.com'), ('obs@x.com')) q(quien);
+select lab.probar('ni un pedido de acceso «sobre» otra persona (con target_email)', lab.como('intruso@x.com'),
+  $q$insert into public.audit_log(id, type, actor_email, actor_name, target_email)
+     values ('intruso@x.com_access_requested_' || to_char(now() at time zone 'utc', 'YYYY-MM-DD'), 'access_requested', 'intruso@x.com', 'Intruso', 'juan@x.com')$q$, false);
+select lab.probar('un login común, sin texto, sigue entrando', lab.como('intruso@x.com'),
+  $q$insert into public.audit_log(id, type, actor_email, actor_name, device)
+     values ('intruso@x.com_login_' || to_char(now() at time zone 'utc', 'YYYY-MM-DD'), 'login', 'intruso@x.com', 'Intruso', 'Edge · Windows')$q$, true);
+select lab.probar('un integrante tampoco escribe texto libre en su login', lab.como('juan@x.com'),
+  $q$insert into public.audit_log(id, type, actor_email, actor_name, detail)
+     values ('juan@x.com_login_' || to_char(now() at time zone 'utc', 'YYYY-MM-DD'), 'login', 'juan@x.com', 'Juan', '<img src=x onerror=alert(1)>')$q$, false);
+select lab.probar('un observador anota su login como todos', lab.como('obs@x.com'),
+  $q$insert into public.audit_log(id, type, actor_email, actor_name, device)
+     values ('obs@x.com_login_' || to_char(now() at time zone 'utc', 'YYYY-MM-DD'), 'login', 'obs@x.com', 'Obs', 'Chrome · Mac')$q$, true);
+select lab.probar('un navegador de 5.000 caracteres, NO', lab.como('intruso@x.com'),
+  $q$insert into public.audit_log(id, type, actor_email, actor_name, device)
+     values ('intruso@x.com_login_' || to_char(now() at time zone 'utc', 'YYYY-MM-DD'), 'login', 'intruso@x.com', 'Intruso', repeat('x', 5000))$q$, false);
+select lab.probar('ni uno de 61 (el tope es 60)', lab.como('intruso@x.com'),
+  $q$insert into public.audit_log(id, type, actor_email, actor_name, device)
+     values ('intruso@x.com_login_' || to_char(now() at time zone 'utc', 'YYYY-MM-DD'), 'login', 'intruso@x.com', 'Intruso', repeat('x', 61))$q$, false);
+select lab.probar('un nombre de 5.000 caracteres, NO', lab.como('intruso@x.com'),
+  $q$insert into public.audit_log(id, type, actor_email, actor_name)
+     values ('intruso@x.com_login_' || to_char(now() at time zone 'utc', 'YYYY-MM-DD'), 'login', 'intruso@x.com', repeat('N', 5000))$q$, false);
+select lab.probar('ni uno de 121 (el tope es 120, el de una ficha)', lab.como('intruso@x.com'),
+  $q$insert into public.audit_log(id, type, actor_email, actor_name)
+     values ('intruso@x.com_login_' || to_char(now() at time zone 'utc', 'YYYY-MM-DD'), 'login', 'intruso@x.com', repeat('N', 121))$q$, false);
+select lab.probar('uno de 120 sí (una ficha lo permite)', lab.como('intruso@x.com'),
+  $q$insert into public.audit_log(id, type, actor_email, actor_name)
+     values ('intruso@x.com_login_' || to_char(now() at time zone 'utc', 'YYYY-MM-DD'), 'login', 'intruso@x.com', repeat('N', 120))$q$, true);
+select lab.probar('un admin sí lleva el rol en el texto (así lo manda la app)', lab.como('ana@x.com'),
+  $q$insert into public.audit_log(id, type, actor_email, actor_name, target_email, detail)
+     values ('r1x','role_changed','ana@x.com','Ana','juan@x.com','observer')$q$, true);
+select lab.probar('y «por adelantado» al aprobar a alguien antes de que pida', lab.como('ana@x.com'),
+  $q$insert into public.audit_log(id, type, actor_email, actor_name, target_email, detail)
+     values ('r2x','access_approved','ana@x.com','Ana','nuevo@x.com','por adelantado')$q$, true);
+
+
 -- ---------- A qué carpeta del bucket se sube (docs/AUDITORIA.md, I6) ----------
 -- En Supabase `authenticated` puede insertar en storage.objects (lo que
 -- filtra es la política); el permiso lo da el laboratorio
@@ -385,6 +513,48 @@ select lab.probar('ni el admin fijo la papelera (es de la limpieza)', lab.como('
   $q$create temp table s6 as select * from storage.objects where name like 'papelera/%'$q$, false);
 select lab.probar('alguien de afuera no lee nada', lab.como('intruso@x.com'),
   $q$create temp table s7 as select * from storage.objects where name like 'posts/%'$q$, false);
+-- Otro bucket (el esquema solo habla de `adjuntos`): ni se lee ni se sube.
+insert into storage.buckets(id, name) values ('otro', 'otro') on conflict do nothing;
+insert into storage.objects(bucket_id, name) values ('otro', 'posts/p_evento/foto.jpg');
+select lab.probar('un archivo de OTRO bucket, aunque se llame posts/…, no se lee', lab.como('juan@x.com'),
+  $q$create temp table s8 as select * from storage.objects where bucket_id = 'otro'$q$, false);
+select lab.probar('ni el admin fijo lo lee', lab.como('benny@team-latam.com'),
+  $q$create temp table s9 as select * from storage.objects where bucket_id = 'otro'$q$, false);
+select lab.probar('ni se sube a otro bucket', lab.como('benny@team-latam.com'),
+  $q$insert into storage.objects(bucket_id, name) values ('otro', 'posts/abc/img0_1.jpg')$q$, false);
+delete from storage.objects where bucket_id = 'otro';
+delete from storage.buckets where id = 'otro';
+
+-- ---------- Cambiar y borrar lo subido ----------
+-- «Un archivo subido no se pisa» (02-politicas.sql): no hay política de
+-- update, así que nadie lo cambia, ni renombra, ni el admin fijo. Borrar,
+-- solo el admin fijo (y la llave de servicio, que es la limpieza semanal).
+-- Las filas se ven (la política de leer las deja pasar): si el update o el
+-- delete no tocan nada es por la falta de permiso, no por no encontrarlas.
+select lab.probar('el control: un aprobado VE el archivo que sigue', lab.como('juan@x.com'),
+  $q$create temp table s10 as select * from storage.objects where name = 'posts/p_evento/foto.jpg'$q$, true);
+select lab.probar('un aprobado NO cambia un archivo subido', lab.como('juan@x.com'),
+  $q$update storage.objects set metadata = '{"size": 1}' where name = 'posts/p_evento/foto.jpg'$q$, false);
+select lab.probar('ni lo renombra', lab.como('juan@x.com'),
+  $q$update storage.objects set name = 'posts/p_evento/otra.jpg' where name = 'posts/p_evento/foto.jpg'$q$, false);
+select lab.probar('ni un admin por rol', lab.como('ana@x.com'),
+  $q$update storage.objects set name = 'posts/p_evento/otra.jpg' where name = 'posts/p_evento/foto.jpg'$q$, false);
+select lab.probar('ni el admin fijo (no hay política de cambiar)', lab.como('benny@team-latam.com'),
+  $q$update storage.objects set name = 'posts/p_evento/otra.jpg' where name = 'posts/p_evento/foto.jpg'$q$, false);
+select lab.probar('un observador tampoco', lab.como('obs@x.com'),
+  $q$update storage.objects set name = 'posts/p_evento/otra.jpg' where name = 'posts/p_evento/foto.jpg'$q$, false);
+select lab.probar('un aprobado NO borra un archivo', lab.como('juan@x.com'),
+  $q$delete from storage.objects where name = 'posts/p_evento/foto.jpg'$q$, false);
+select lab.probar('ni uno de replies/', lab.como('juan@x.com'),
+  $q$delete from storage.objects where name = 'replies/r1/doc.pdf'$q$, false);
+select lab.probar('ni un admin por rol', lab.como('ana@x.com'),
+  $q$delete from storage.objects where name = 'posts/p_evento/foto.jpg'$q$, false);
+select lab.probar('ni un observador', lab.como('obs@x.com'),
+  $q$delete from storage.objects where name = 'posts/p_evento/foto.jpg'$q$, false);
+select lab.probar('ni alguien de afuera', lab.como('intruso@x.com'),
+  $q$delete from storage.objects where name = 'posts/p_evento/foto.jpg'$q$, false);
+select lab.probar('el admin fijo sí borra un archivo', lab.como('benny@team-latam.com'),
+  $q$delete from storage.objects where name = 'posts/p_evento/foto.jpg'$q$, true);
 delete from storage.objects;
 
 \set QUIET off

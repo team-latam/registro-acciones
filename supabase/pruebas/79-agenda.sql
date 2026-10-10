@@ -151,6 +151,34 @@ select lab.probar('una región que no existe, no', lab.como('ana@x.com'),
   $q$insert into public.contactos(id, nivel, zona, persona) values ('l9', 'region', 'caribe', 'julia')$q$, false);
 select lab.probar('un nivel que no existe, no', lab.como('ana@x.com'),
   $q$insert into public.contactos(id, nivel, country, persona) values ('l10', 'provincia', 'Argentina', 'julia')$q$, false);
+-- Los largos de país y ciudad (contactos_lugar_ok, 20-contactos-por-lugar.sql;
+-- docs/AUDITORIA.md, R27): hasta 80 caracteres cada uno, y no pueden quedar
+-- vacíos (un renglón en blanco se vuelve null y a ese nivel le falta lo suyo).
+select lab.probar('un país de 80 caracteres entra', lab.como('ana@x.com'),
+  $q$insert into public.contactos(id, nivel, country, persona) values ('lg1', 'pais', repeat('P', 80), 'julia')$q$, true);
+select lab.probar('uno de 81, NO', lab.como('ana@x.com'),
+  $q$insert into public.contactos(id, nivel, country, persona) values ('lg2', 'pais', repeat('P', 81), 'julia')$q$, false);
+select lab.probar('una ciudad de 80 caracteres entra', lab.como('ana@x.com'),
+  $q$insert into public.contactos(id, nivel, country, city, persona) values ('lg3', 'ciudad', 'Chile', repeat('C', 80), 'julia')$q$, true);
+select lab.probar('una de 81, NO', lab.como('ana@x.com'),
+  $q$insert into public.contactos(id, nivel, country, city, persona) values ('lg4', 'ciudad', 'Chile', repeat('C', 81), 'julia')$q$, false);
+select lab.probar('un país en blanco, NO (queda sin país)', lab.como('ana@x.com'),
+  $q$insert into public.contactos(id, nivel, country, persona) values ('lg5', 'pais', '   ', 'julia')$q$, false);
+select lab.probar('una ciudad en blanco, NO (queda sin ciudad)', lab.como('ana@x.com'),
+  $q$insert into public.contactos(id, nivel, country, city, persona) values ('lg6', 'ciudad', 'Chile', '   ', 'julia')$q$, false);
+insert into public.contactos(id, nivel, country, persona) values ('lg0', 'pais', 'Peru', 'julia');
+select lab.probar('editar un contacto de un país para dejarlo en 80, sí', lab.como('ana@x.com'),
+  $q$update public.contactos set country = repeat('P', 80) where id = 'lg0'$q$, true);
+select lab.probar('y en 81, NO', lab.como('ana@x.com'),
+  $q$update public.contactos set country = repeat('P', 81) where id = 'lg0'$q$, false);
+delete from public.contactos where id = 'lg0';
+-- Y las instituciones, que tienen el mismo tope (19-agenda.sql).
+select lab.probar('una institución con país de 81 caracteres, NO', lab.como('ana@x.com'),
+  $q$insert into public.instituciones(id, name, country) values ('lgi1', 'X', repeat('P', 81))$q$, false);
+select lab.probar('con ciudad de 81, NO', lab.como('ana@x.com'),
+  $q$insert into public.instituciones(id, name, country, city) values ('lgi2', 'X', 'Chile', repeat('C', 81))$q$, false);
+select lab.probar('con ciudad de 80, sí', lab.como('ana@x.com'),
+  $q$insert into public.instituciones(id, name, country, city) values ('lgi3', 'X', 'Chile', repeat('C', 80))$q$, true);
 -- Lo que probar() deja, se vuelve atrás: lo que tiene que quedar se inserta de una.
 insert into public.contactos(id, nivel, country, city, persona, cargo) values ('l1', 'ciudad', 'Argentina', 'Rosario', 'dobkin', 'Presidente');
 insert into public.contactos(id, nivel, country, persona, cargo) values ('l2', 'pais', 'Brasil', 'julia', 'R Hadraja');

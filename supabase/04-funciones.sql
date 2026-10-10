@@ -428,6 +428,13 @@ begin
   if not (public.es_admin_fijo() or public.es_admin_rol()) then
     raise exception 'Esto lo hace un admin' using errcode = 'insufficient_privilege';
   end if;
+  -- Las del admin fijo las toca solo él (10/10/2026): a él nadie lo puede
+  -- tocar (02-politicas.sql), y unificar_cuentas ya lo exige igual. La app
+  -- llama a esto al quitarle el acceso a alguien, y al admin fijo no se lo
+  -- quita nadie.
+  if lower(btrim(p_email)) = lower(public.admin_fijo()) and not public.es_admin_fijo() then
+    raise exception 'Lo del admin fijo lo toca solo el admin fijo' using errcode = 'insufficient_privilege';
+  end if;
   delete from public.user_prefs where email = lower(p_email);
 end $$;
 revoke execute on function public.olvidar_preferencias(text) from public, anon;
