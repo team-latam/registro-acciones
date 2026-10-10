@@ -160,10 +160,14 @@ export async function main(ahora = Date.now()){
     if(periodo) tocan.push({ email, pr, periodo, fecha: suyo.fecha, desde: desdeDe(ultimos.get(email), periodo, ahora) });
   }
   console.log(`Hora de Argentina: ${reloj.hora}:${String(reloj.min).padStart(2, "0")}. Les toca a ${tocan.length}.`);
-  // Una vez por día (a las 4 de Argentina), lo viejo de los avisos: las
-  // marcas de lo enviado sirven unos días (para no repetir y para el
-  // resumen de quien eligió «al momento»), no para siempre.
-  if(reloj.hora === 4 && !cfg.seco){
+  // En cada corrida, lo viejo de los avisos: las marcas de lo enviado
+  // sirven unos días (para no repetir y para el resumen de quien eligió
+  // «al momento»), no para siempre. Hasta el 10/10/2026 era «una vez por
+  // día, a las 4 de Argentina»; pero GitHub corre esto cuando puede (horas
+  // tarde) y en tres días ninguna corrida cayó a las 4: no se limpiaba
+  // nunca (docs/AUDITORIA.md, R10). Borrar lo de hace más de 30 días es
+  // barato y da lo mismo repetirlo.
+  if(!cfg.seco){
     try{
       await rest(`avisos_enviados?enviado_el=lt.${encodeURIComponent(new Date(ahora - 30 * 86400000).toISOString())}`, { method: "DELETE" });
       await rest(`avisos_listos?creado=lt.${encodeURIComponent(new Date(ahora - 86400000).toISOString())}`, { method: "DELETE" });

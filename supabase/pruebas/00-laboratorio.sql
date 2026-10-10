@@ -59,6 +59,12 @@ create table if not exists storage.objects (
 create or replace function storage.foldername(name text) returns text[]
   language sql immutable as $$ select string_to_array(name, '/') $$;
 alter table storage.objects enable row level security;
+-- Como en Supabase, `authenticated` tiene permiso sobre los objetos del
+-- bucket (leer, subir, cambiar, borrar): lo que filtra son las políticas
+-- de 02-politicas.sql (parte 11). Hasta el 10/10/2026 el laboratorio daba
+-- solo insert (desde 90-permisos.sql), así que «quién puede pedir la
+-- firma de qué ruta» no se podía probar (docs/AUDITORIA.md, R20, R27).
+grant select, insert, update, delete on storage.objects to authenticated;
 
 -- ---------- El banco de pruebas ----------
 -- Vive acá y no adentro de cada archivo de pruebas: así cualquiera de
@@ -173,6 +179,26 @@ begin
     when others then obtenido := left(sqlerrm, 70);
   end;
   execute 'reset role';
+  ok := obtenido = espera;
+  insert into lab.resultados(nombre, esperado, obtenido, detalle)
+    values (nombre, true, ok, case when ok then '' else 'dio: ' || obtenido end);
+end $$;
+
+-- Comprueba un VALOR sin hacerse pasar por nadie (con los permisos de la
+-- base): para las funciones que la app no puede llamar y que corren
+-- adentro de otras (prefs_de_correo, puede_recibir_correos). Si la
+-- consulta se cae, cuenta como FALLA con el mensaje: una comprobación
+-- suelta (`insert into lab.resultados … select …`) que se cae no se
+-- anota, y el resumen dice «0 fallaron» con una prueba menos (10/10/2026).
+create or replace function lab.comprobar(nombre text, consulta text, espera text)
+returns void language plpgsql as $$
+declare obtenido text; ok boolean;
+begin
+  begin
+    execute consulta into obtenido;
+  exception when others then obtenido := 'ERROR: ' || left(sqlerrm, 80);
+  end;
+  obtenido := coalesce(obtenido, '(nulo)');
   ok := obtenido = espera;
   insert into lab.resultados(nombre, esperado, obtenido, detalle)
     values (nombre, true, ok, case when ok then '' else 'dio: ' || obtenido end);

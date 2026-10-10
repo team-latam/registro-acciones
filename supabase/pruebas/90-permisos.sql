@@ -18,6 +18,7 @@ insert into public.members(email, name, nickname, role) values
   ('benny@team-latam.com', 'Benny', 'benny', 'member'),   -- admin fijo, a propósito SIN rol admin
   ('ana@x.com',  'Ana',  'ana',  'admin'),
   ('juan@x.com', 'Juan', 'juan', 'member'),
+  ('pedro@x.com', 'Pedro', 'pedro', 'member'),   -- otro integrante común, sin posteos
   ('obs@x.com',  'Obs',  'obs',  'observer');
 insert into public.former_members(email, name, nickname) values ('vieja@x.com', 'Vieja', 'vieja');
 insert into public.posts(id, title, content, date, start_date, end_date, activity_type, author_name, author_email) values
@@ -72,6 +73,14 @@ select lab.probar('un observador NO crea posteos', lab.como('obs@x.com'),
 select lab.probar('alguien de afuera NO crea posteos', lab.como('intruso@x.com'),
   $q$insert into public.posts(id,title,content,date,start_date,end_date,activity_type,author_name,author_email)
      values ('nuevo4','T','C','2026-09-10','2026-09-10','2026-09-10','evento','X','intruso@x.com')$q$, false);
+-- Nace sin me gusta (docs/AUDITORIA.md, R20): al editar ya no se podía
+-- poner el de otro, pero al crear entraba cualquier lista.
+select lab.probar('un posteo nuevo NO trae puestos los me gusta de otros', lab.como('juan@x.com'),
+  $q$insert into public.posts(id,title,content,date,start_date,end_date,activity_type,author_name,author_email,liked_by)
+     values ('nuevo5','T','C','2026-09-10','2026-09-10','2026-09-10','evento','Juan','juan@x.com',array['ana@x.com','obs@x.com'])$q$, false);
+select lab.probar('ni el propio (se pone después, de a uno)', lab.como('juan@x.com'),
+  $q$insert into public.posts(id,title,content,date,start_date,end_date,activity_type,author_name,author_email,liked_by)
+     values ('nuevo6','T','C','2026-09-10','2026-09-10','2026-09-10','evento','Juan','juan@x.com',array['juan@x.com'])$q$, false);
 
 -- ---------- EDITAR POSTEOS ----------
 select lab.probar('un aprobado edita un EVENTO de otro (son del equipo)', lab.como('ana@x.com'),
@@ -116,6 +125,43 @@ select lab.probar('NADIE cambia de quién es un posteo', lab.como('ana@x.com'),
   $q$update public.posts set author_email = 'ana@x.com' where id = 'p_evento'$q$, false);
 select lab.probar('ni cuándo se creó', lab.como('benny@team-latam.com'),
   $q$update public.posts set created_at = now() - interval '1 year' where id = 'p_evento'$q$, false);
+
+-- ---------- SUMARSE PARA CANCELAR (docs/AUDITORIA.md, R3) ----------
+-- Hasta el 10/10/2026 un integrante se sumaba a sí mismo como editor o
+-- participante de un evento ajeno (editarlo está abierto a todo el
+-- equipo) y en la escritura siguiente lo cancelaba. Los editores los suma
+-- quien maneja el posteo (autor, editor, admin); como participante nadie
+-- se suma solo a un evento ajeno. (Pedro es integrante común, sin
+-- posteos; p_de_ana es de Ana, admin por rol; p_evento es de Juan.)
+select lab.probar('un integrante NO se suma como editor de un evento ajeno', lab.como('pedro@x.com'),
+  $q$update public.posts set editors = array['pedro@x.com'] where id = 'p_de_ana'$q$, false);
+select lab.probar('ni suma a otro como editor', lab.como('pedro@x.com'),
+  $q$update public.posts set editors = array['juan@x.com'] where id = 'p_de_ana'$q$, false);
+select lab.probar('ni se suma a sí mismo como participante', lab.como('pedro@x.com'),
+  $q$update public.posts set participants = '[{"email":"pedro@x.com","name":"Pedro"}]' where id = 'p_de_ana'$q$, false);
+select lab.probar('ni con el correo en otras mayúsculas', lab.como('pedro@x.com'),
+  $q$update public.posts set participants = '[{"email":"Pedro@X.com","name":"Pedro"}]' where id = 'p_de_ana'$q$, false);
+select lab.probar('sumarse y cancelar, en dos escrituras: NO', lab.como('pedro@x.com'),
+  $q$update public.posts set editors = array['pedro@x.com'] where id = 'p_de_ana';
+     update public.posts set cancelled = true where id = 'p_de_ana'$q$, false);
+select lab.probar('pero SÍ carga a OTRO como participante (es editar un evento del equipo)', lab.como('pedro@x.com'),
+  $q$update public.posts set participants = '[{"email":"juan@x.com","name":"Juan"}]' where id = 'p_de_ana'$q$, true);
+select lab.probar('el autor SÍ suma un editor', lab.como('juan@x.com'),
+  $q$update public.posts set editors = array['pedro@x.com'] where id = 'p_evento'$q$, true);
+update public.posts set editors = array['pedro@x.com'] where id = 'p_evento';
+select lab.probar('y ese editor cancela', lab.como('pedro@x.com'),
+  $q$update public.posts set cancelled = true where id = 'p_evento'$q$, true);
+select lab.probar('y suma otro editor', lab.como('pedro@x.com'),
+  $q$update public.posts set editors = array['pedro@x.com','obs@x.com'] where id = 'p_evento'$q$, true);
+select lab.probar('y se suma como participante', lab.como('pedro@x.com'),
+  $q$update public.posts set participants = '[{"email":"pedro@x.com","name":"Pedro"}]' where id = 'p_evento'$q$, true);
+update public.posts set editors = '{}' where id = 'p_evento';
+select lab.probar('un admin por rol suma un editor a un evento ajeno', lab.como('ana@x.com'),
+  $q$update public.posts set editors = array['pedro@x.com'] where id = 'p_evento'$q$, true);
+select lab.probar('el admin fijo también', lab.como('benny@team-latam.com'),
+  $q$update public.posts set editors = array['pedro@x.com'] where id = 'p_evento'$q$, true);
+select lab.probar('y un admin se suma como participante donde quiera', lab.como('ana@x.com'),
+  $q$update public.posts set participants = '[{"email":"ana@x.com","name":"Ana"}]' where id = 'p_evento'$q$, true);
 
 -- ---------- ME GUSTA ----------
 select lab.probar('un aprobado pone su me gusta', lab.como('juan@x.com'),
@@ -305,8 +351,8 @@ select lab.probar('y un tipo inventado no entra ni para el admin', lab.como('ana
 
 -- ---------- A qué carpeta del bucket se sube (docs/AUDITORIA.md, I6) ----------
 -- En Supabase `authenticated` puede insertar en storage.objects (lo que
--- filtra es la política); el laboratorio no se lo daba.
-grant insert on storage.objects to authenticated;
+-- filtra es la política); el permiso lo da el laboratorio
+-- (00-laboratorio.sql), como el de leer.
 select lab.probar('subir a posts/<id>/ se puede', lab.como('juan@x.com'),
   $q$insert into storage.objects(bucket_id, name) values ('adjuntos', 'posts/abc/img0_1.jpg')$q$, true);
 select lab.probar('y a replies/<id>/ también', lab.como('juan@x.com'),
@@ -317,6 +363,29 @@ select lab.probar('a la raíz NO', lab.como('juan@x.com'),
   $q$insert into storage.objects(bucket_id, name) values ('adjuntos', 'suelto.jpg')$q$, false);
 select lab.probar('ni el admin fijo a otra carpeta', lab.como('benny@team-latam.com'),
   $q$insert into storage.objects(bucket_id, name) values ('adjuntos', 'otra/x.jpg')$q$, false);
+
+-- ---------- Y qué se puede leer, o sea pedir la firma de (docs/AUDITORIA.md, R20) ----------
+-- Solo lo que la app nombra. La papelera (lo que apartó la limpieza
+-- semanal) la ve solo la llave de servicio.
+delete from storage.objects;
+insert into storage.objects(bucket_id, name) values
+  ('adjuntos', 'posts/p_evento/foto.jpg'), ('adjuntos', 'replies/r1/doc.pdf'),
+  ('adjuntos', 'papelera/2026-10-04/posts/viejo/foto.jpg'), ('adjuntos', 'suelto.jpg');
+select lab.probar('un aprobado lee posts/…', lab.como('juan@x.com'),
+  $q$create temp table s1 as select * from storage.objects where name like 'posts/%'$q$, true);
+select lab.probar('y replies/…', lab.como('juan@x.com'),
+  $q$create temp table s2 as select * from storage.objects where name like 'replies/%'$q$, true);
+select lab.probar('un observador también (ve todo, no escribe)', lab.como('obs@x.com'),
+  $q$create temp table s3 as select * from storage.objects where name like 'posts/%'$q$, true);
+select lab.probar('pero la papelera NO', lab.como('juan@x.com'),
+  $q$create temp table s4 as select * from storage.objects where name like 'papelera/%'$q$, false);
+select lab.probar('ni lo suelto en la raíz', lab.como('juan@x.com'),
+  $q$create temp table s5 as select * from storage.objects where name = 'suelto.jpg'$q$, false);
+select lab.probar('ni el admin fijo la papelera (es de la limpieza)', lab.como('benny@team-latam.com'),
+  $q$create temp table s6 as select * from storage.objects where name like 'papelera/%'$q$, false);
+select lab.probar('alguien de afuera no lee nada', lab.como('intruso@x.com'),
+  $q$create temp table s7 as select * from storage.objects where name like 'posts/%'$q$, false);
+delete from storage.objects;
 
 \set QUIET off
 \echo ''

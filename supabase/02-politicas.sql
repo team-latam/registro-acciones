@@ -204,6 +204,9 @@ create policy posts_leer on public.posts for select
 -- sigue siendo falsificable por alguien aprobado — sin un servidor propio
 -- no hay manera de distinguirla — pero ya no se puede firmar como OTRA
 -- persona real, que es lo que importa.
+-- Y nace sin me gusta: el disparador de abajo cuida que nadie ponga el
+-- de otro al editar, pero hasta el 10/10/2026 al crear entraba cualquier
+-- lista (docs/AUDITORIA.md, R20). Los me gusta se ponen de a uno, después.
 drop policy if exists posts_crear on public.posts;
 create policy posts_crear on public.posts for insert
   with check (
@@ -213,6 +216,7 @@ create policy posts_crear on public.posts for insert
       or (author_name = 'Google Calendar' and coalesce(author_email, '') = ''
           and calendar_event_id is not null)
     )
+    and liked_by = '{}'
   );
 
 -- La política deja pasar a cualquiera que pueda escribir; QUÉ puede
@@ -239,7 +243,8 @@ create policy replies_leer on public.replies for select
   using ((select public.es_admin_fijo()) or (select public.esta_aprobado()));
 
 -- Igual que los posteos, con una excepción: los mensajes de sistema que
--- escribe la sincronización con Calendar van sin correo.
+-- escribe la sincronización con Calendar van sin correo. Y, como un
+-- posteo, nace sin me gusta (10/10/2026).
 drop policy if exists replies_crear on public.replies;
 create policy replies_crear on public.replies for insert
   with check (
@@ -248,6 +253,7 @@ create policy replies_crear on public.replies for insert
       author_email = (select public.mi_correo())
       or (system = true and author_name = 'Google Calendar' and author_email is null)
     )
+    and liked_by = '{}'
   );
 
 -- Lo único editable de un comentario es el me gusta (lo asegura el
@@ -449,9 +455,16 @@ create policy audit_crear on public.audit_log for insert
 -- El bucket es privado: no hay enlace público, se sirve con una URL
 -- firmada que caduca. Estas políticas dicen quién puede pedir esa firma y
 -- quién puede subir.
+-- Solo lo que la app nombra (posts/<id>/… y replies/<id>/…): hasta el
+-- 10/10/2026 un aprobado podía pedir la firma de cualquier ruta, también
+-- de papelera/, lo que la limpieza semanal apartó (docs/AUDITORIA.md,
+-- R20). Lo de la papelera lo ve solo la llave de servicio (la limpieza,
+-- que lo devuelve o lo borra).
 drop policy if exists adjuntos_leer on storage.objects;
 create policy adjuntos_leer on storage.objects for select
-  using (bucket_id = 'adjuntos' and ((select public.es_admin_fijo()) or (select public.esta_aprobado())));
+  using (bucket_id = 'adjuntos'
+         and split_part(name, '/', 1) in ('posts', 'replies')
+         and ((select public.es_admin_fijo()) or (select public.esta_aprobado())));
 
 drop policy if exists adjuntos_subir on storage.objects;
 -- Solo a las dos carpetas que usa la app (posts/<id>/… y replies/<id>/…).
@@ -483,11 +496,25 @@ create policy adjuntos_borrar on storage.objects for delete
 -- fila", el disparador dice "pero solo estas columnas".
 
 -- ---------- Posteos ----------
+-- ¿Este correo figura entre los participantes de un posteo? Los
+-- participantes son [{email, name, ...}]; se compara sin mayúsculas.
+create or replace function public.es_participante(participantes jsonb, correo text) returns boolean
+  language sql immutable as $$
+  select exists (
+    select 1 from jsonb_array_elements(case when jsonb_typeof(participantes) = 'array' then participantes else '[]'::jsonb end) p
+     where lower(coalesce(p ->> 'email', '')) = lower(coalesce(correo, '')) and coalesce(correo, '') <> '')
+$$;
+
 create or replace function public.posts_controlar_update() returns trigger
   language plpgsql security definer set search_path = '' as $$
 declare
   cambios text[] := public.campos_cambiados(to_jsonb(old), to_jsonb(new));
   yo text := public.mi_correo();
+  -- Quién MANEJA el posteo (distinto de quién puede editarlo, que en un
+  -- evento es todo el equipo): quien lo creó, sus editores y un admin.
+  maneja boolean := public.es_admin_fijo() or public.es_admin_rol()
+                    or coalesce(old.author_email = yo, false)
+                    or coalesce(yo = any(coalesce(old.editors, '{}')), false);
 begin
   if public.sin_sesion_de_persona() then return new; end if;
   -- Ordenar desde una función que es solo de admins (Revisar lo de
@@ -543,16 +570,32 @@ begin
       using errcode = 'insufficient_privilege';
   end if;
 
+  -- Quién puede cancelar lo deciden `editors` y `participants` (abajo), y
+  -- hasta el 10/10/2026 cualquier aprobado podía cambiar las dos columnas
+  -- de un evento ajeno: se sumaba a sí mismo en una escritura y cancelaba
+  -- en la siguiente (docs/AUDITORIA.md, R3; la del 6/10, I6, lo dio por
+  -- cerrado y no lo estaba). Ahora los editores los suma o saca solo
+  -- quien maneja el posteo (el autor, un editor, un admin), y nadie se
+  -- suma a sí mismo como participante de un evento ajeno: lo suma el
+  -- autor, un editor o un admin. Sumar a OTROS sigue abierto (cargar quién
+  -- estuvo es parte de editar un evento del equipo).
+  if 'editors' = any(cambios) and not maneja then
+    raise exception 'Los editores los suma o saca quien creó el posteo, un editor o un admin'
+      using errcode = 'insufficient_privilege';
+  end if;
+  if 'participants' = any(cambios) and not maneja
+     and public.es_participante(new.participants, yo)
+     and not public.es_participante(old.participants, yo) then
+    raise exception 'Sumarte como participante de un evento de otro: lo hace quien lo creó, un editor o un admin'
+      using errcode = 'insufficient_privilege';
+  end if;
+
   -- Cancelar (o volver a activar) saca el evento del Calendar de todos:
   -- lo hace quien lo creó, sus participantes, sus editores o un admin.
   -- Editar sigue abierto a todo el equipo. Lo decidió el usuario el
   -- 3/10/2026 (REDISENO.md, tanda 17).
   if 'cancelled' = any(cambios) then
-    if not (public.es_admin_fijo() or public.es_admin_rol()
-            or coalesce(old.author_email, '') = yo
-            or yo = any(coalesce(old.editors, '{}'))
-            or exists (select 1 from jsonb_array_elements(case when jsonb_typeof(old.participants) = 'array' then old.participants else '[]'::jsonb end) p
-                        where lower(coalesce(p->>'email', '')) = lower(yo))) then
+    if not (maneja or public.es_participante(old.participants, yo)) then
       raise exception 'Cancelar un evento: solo quien lo creó, sus participantes, sus editores o un admin'
         using errcode = 'insufficient_privilege';
     end if;

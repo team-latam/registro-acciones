@@ -120,12 +120,20 @@ eq("desde el último que salió, pero no más atrás que su período más una se
   eq("«al momento»: la que ya le llegó no se repite", [otro.correos.length], [0]);
 }
 {
+  // Hasta el 10/10/2026 las marcas viejas se limpiaban solo si la corrida
+  // caía a las 4 de Argentina, y GitHub (que atrasa horas los trabajos
+  // programados) nunca la dejó caer ahí (docs/AUDITORIA.md, R10).
+  const tarde = mundo();
+  await callado(() => main(Date.parse("2026-10-07T18:00:00Z")));   // 15:00 en Argentina
+  eq("en cada corrida (a las 15 también) se limpian las marcas viejas de avisos", tarde.borrados.map(x => x.split("?")[0]), ["avisos_enviados", "avisos_listos"]);
   const reg = mundo();
   await callado(() => main(Date.parse("2026-10-07T07:20:00Z")));   // 4:20 en Argentina
-  eq("a las 4, una vez por día, se limpian las marcas viejas de avisos", reg.borrados.map(x => x.split("?")[0]), ["avisos_enviados", "avisos_listos"]);
-  const tarde = mundo();
+  eq("y a las 4, como antes", reg.borrados.map(x => x.split("?")[0]), ["avisos_enviados", "avisos_listos"]);
+  process.env.EN_SECO = "1";
+  const seco = mundo();
   await callado(() => main(AHORA));
-  eq("a otra hora, no", tarde.borrados.length, 0);
+  delete process.env.EN_SECO;
+  eq("en seco, no se borra nada", seco.borrados.length, 0);
 }
 {
   const reg = mundo({ prefs: { [BENNY]: { what: ["nuevos"] } } });

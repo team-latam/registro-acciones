@@ -393,6 +393,30 @@ drop trigger if exists solicitudes_hora on public.access_requests;
 create trigger solicitudes_hora before insert on public.access_requests
   for each row execute function public.hora_del_servidor('requested_at');
 
+-- Y al editar un pedido, la fecha tampoco la pone quien pide: hasta el
+-- 10/10/2026 solo el insert pasaba por hora_del_servidor, y en un PATCH
+-- (o en el upsert con que la app vuelve a pedir) entraba la que viniera.
+-- Con eso un rechazado volvía a la cola sin esperar la hora
+-- (solicitudes_reintento mira old.requested_at) y cada vuelta era otro
+-- correo al admin (docs/AUDITORIA.md, R20). Ahora la que estaba queda;
+-- la única que se renueva es la de volver a pedir (de rechazado a
+-- pendiente): es un pedido nuevo, y así sube arriba en la cola del admin.
+-- Sin una persona detrás (restaurar una copia) se respeta lo que venga.
+create or replace function public.solicitudes_hora_al_editar() returns trigger
+  language plpgsql security definer set search_path = '' as $$
+begin
+  if public.sin_sesion_de_persona() then return new; end if;
+  if old.status is distinct from 'pending' and new.status = 'pending' then
+    new.requested_at := now();
+  else
+    new.requested_at := old.requested_at;
+  end if;
+  return new;
+end $$;
+drop trigger if exists solicitudes_hora_al_editar on public.access_requests;
+create trigger solicitudes_hora_al_editar before update on public.access_requests
+  for each row execute function public.solicitudes_hora_al_editar();
+
 -- Volver a pedir acceso después de un rechazo: una vez por hora como
 -- mucho. Sin tope, alguien rechazado podía reaparecer en la cola del admin
 -- cada minuto (docs/AUDITORIA.md, B6). El admin, sin tope.

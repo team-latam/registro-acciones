@@ -115,6 +115,27 @@ select 'un idioma o una zona que no son, valen lo de fábrica', true,
 update public.user_prefs set prefs = '{"emailWhen":"instant"}' where email = 'benny@team-latam.com';
 delete from public.avisos_enviados;
 
+-- ---------- Una preferencia mal formada no rompe los avisos de nadie (docs/AUDITORIA.md, R8) ----------
+-- La app escribe enteros y sí/no; por la API se puede guardar cualquier
+-- cosa (user_prefs.prefs no tiene forma). Hasta el 10/10/2026 un
+-- `"emailHour":"nueve"` hacía fallar el aviso de quien mencionara a esa
+-- persona y la corrida horaria de los resúmenes de todo el equipo.
+update public.user_prefs set prefs = '{"emailWhen":"instant","emailHour":"nueve","emailOn":"si","emailDay":"lunes","emailWhat":"menciones"}' where email = 'benny@team-latam.com';
+select lab.comprobar('una hora, un día, un prendido o unos temas que no tienen la forma que escribe la app valen lo de fábrica',
+  $q$select (x ->> 'on') || ' ' || (x ->> 'hour') || ' ' || (x ->> 'day') || ' ' || (x -> 'what')::text from (select public.prefs_de_correo('benny@team-latam.com') x) y$q$,
+  'true 9 1 ["menciones", "respuestas", "pedidos"]');
+select lab.probar_valor('y el aviso al momento de quien menciona a esa persona sale igual',
+  lab.como('ana@x.com'), $q$select 1$q$,
+  $q$select lab.aviso(public.preparar_aviso('posteo', 'p1')) -> 'para' -> 0 ->> 'email'$q$, 'benny@team-latam.com');
+delete from public.avisos_enviados;
+update public.user_prefs set prefs = '{"emailHour":99,"emailDay":0}' where email = 'benny@team-latam.com';
+select lab.comprobar('fuera de rango (hora 99, día 0): lo de fábrica',
+  $q$select (x ->> 'hour') || ' ' || (x ->> 'day') from (select public.prefs_de_correo('benny@team-latam.com') x) y$q$, '9 1');
+update public.user_prefs set prefs = '{"emailHour":18.5,"emailDay":7,"emailOn":false}' where email = 'benny@team-latam.com';
+select lab.comprobar('con decimales no; 7 (domingo) y apagado, sí',
+  $q$select (x ->> 'on') || ' ' || (x ->> 'hour') || ' ' || (x ->> 'day') from (select public.prefs_de_correo('benny@team-latam.com') x) y$q$, 'false 9 7');
+update public.user_prefs set prefs = '{"emailWhen":"instant"}' where email = 'benny@team-latam.com';
+
 insert into lab.resultados(nombre, esperado, obtenido, detalle)
 select 'lo que hay que mandar lo lee solo la llave de servicio (tomar_aviso), no la app', true,
   not has_table_privilege('authenticated', 'public.avisos_listos', 'select')
