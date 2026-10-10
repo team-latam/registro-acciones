@@ -129,6 +129,18 @@ const SEMANAL = { recurrence:["RRULE:FREQ=WEEKLY;BYDAY=MO"], startDate:"2026-01-
      [api.ventanaDelReporte().desde, api.ventanaDelReporte().hasta], ["2024-01-01","2024-03-31"]);
   api.state.reportes = { anio:"", trimestre:0 };
   eq("sin año elegido, el de hoy", api.ventanaDelReporte().anio, "2026");
+  // R21: ventanaDelReporte no repite la cuenta de ventanaDe: da lo mismo para todo año y trimestre
+  // (también con el trimestre como texto, que es como lo deja el selector), y la llama.
+  const iguales = [];
+  for(const anio of ["2023", "2024", "2025", "2026", "2100"]) for(const tri of [0, 1, 2, 3, 4, "0", "2", "4", undefined, null]){
+    api.state.reportes = { anio, trimestre:tri };
+    const a = JSON.stringify(api.ventanaDelReporte()), b = JSON.stringify(api.ventanaDe(anio, tri));
+    if(a !== b) iguales.push([anio, tri, a, b]);
+  }
+  eq("ventanaDelReporte da lo mismo que ventanaDe(año, trimestre) del estado, para todo año y trimestre", iguales, []);
+  const cuerpo = grab("ventanaDelReporte");
+  eq("y la cuenta de los meses vive en un solo lugar: ventanaDelReporte llama a ventanaDe y no la repite",
+     [/ventanaDe\(/.test(cuerpo), /padStart|Date\.UTC/.test(cuerpo), /padStart/.test(grab("ventanaDe"))], [true, false, true]);
 }
 {
   const api = armar([]);

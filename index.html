@@ -169,6 +169,8 @@
   /* "Saltar al contenido": invisible hasta que el teclado lo enfoca. */
   .skip-link{ position:absolute; top:-80px; inset-inline-start:12px; z-index:200; padding:8px 14px; border-radius:999px; background:var(--card); color:var(--ink-strong); font-weight:700; box-shadow:var(--shadow); text-decoration:none; }
   .skip-link:focus{ top:12px; }
+  /* Texto solo para el lector de pantalla (el mismo recurso que .bn-txt): no se ve ni ocupa lugar. */
+  .solo-lector{ position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
   html,body{margin:0;padding:0;}
   /* La barra de desplazamiento (opción A, elegida por el usuario el
      8/10/2026): fina, petróleo suave, con las puntas redondeadas y sin
@@ -970,9 +972,10 @@
   .lp-switch{ display:flex; align-items:center; gap:12px; padding:12px 14px; border:1px solid var(--border); border-radius:var(--radius-md); cursor:pointer; position:relative; }
   .lp-switch input{ position:absolute; opacity:0; width:0; height:0; }
   .lp-sw{ width:38px; height:22px; border-radius:999px; background:var(--border); position:relative; flex:none; transition:background .15s; }
-  .lp-sw::after{ content:""; position:absolute; top:3px; left:3px; width:16px; height:16px; border-radius:50%; background:#fff; transition:transform .15s; box-shadow:0 1px 3px rgba(0,0,0,.25); }
+  .lp-sw::after{ content:""; position:absolute; top:3px; inset-inline-start:3px; width:16px; height:16px; border-radius:50%; background:#fff; transition:transform .15s; box-shadow:0 1px 3px rgba(0,0,0,.25); }
   .lp-switch input:checked + .lp-sw{ background:var(--celeste-dark); }
   .lp-switch input:checked + .lp-sw::after{ transform:translateX(16px); }
+  html[dir="rtl"] .lp-switch input:checked + .lp-sw::after{ transform:translateX(-16px); }
   .lp-switch input:focus-visible + .lp-sw{ outline:2px solid var(--celeste-dark); outline-offset:2px; }
   .lp-switch-txt{ display:flex; flex-direction:column; }
   .lp-switch-txt b{ font-size:13.5px; }
@@ -2375,7 +2378,7 @@
   .fl-migas a:hover{ text-decoration:underline; }
   .fl-migas b{ color:var(--ink); }
   .fl-head{ display:flex; justify-content:space-between; align-items:flex-start; gap:12px 16px; flex-wrap:wrap; margin-bottom:12px; }
-  .fl-head h1{ margin:0; font-size:24px; color:var(--ink); }
+  .fl-head h2{ margin:0; font-size:24px; color:var(--ink); }
   .fl-sub{ font-size:13px; color:var(--text-muted); margin-top:2px; }
   .fl-zona{ display:inline-flex; align-items:center; gap:6px; }
   .fl-zona i{ width:9px; height:9px; border-radius:50%; display:inline-block; }
@@ -2388,7 +2391,11 @@
   .place-seg.fl-seg{ margin:0; flex-wrap:wrap; width:fit-content; max-width:100%; border-radius:20px; }
   .place-seg.fl-seg .place-seg-btn{ flex:1 1 auto; min-width:auto; padding:8px 12px; }
   .fl-card{ background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px 18px; box-shadow:var(--shadow); margin-bottom:16px; min-width:0; }
-  .fl-card h3{ margin:0 0 10px; font-size:11px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--text-muted); display:flex; justify-content:space-between; align-items:baseline; gap:10px; }
+  .fl-card h3, .fl-card .fl-tit{ margin:0 0 10px; font-size:11px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--text-muted); display:flex; justify-content:space-between; align-items:baseline; gap:10px; }
+  /* El título de una tarjeta con un «Ver más» al lado: el botón va FUERA del
+     <h3> (adentro, el lector de pantalla lo leía como parte del encabezado) y
+     .fl-tit es la caja que antes era el h3 (mismo aspecto); el h3 solo lleva el título. */
+  .fl-card .fl-tit > h3{ margin:0; flex:1 1 auto; min-width:0; }
   /* «Ver más» / «Ver menos» siempre en un solo renglón: con un título largo al lado
      («Contactos en Buenos Aires (CABA)») se achicaba y se partía en dos (captura del
      usuario, 9/10/2026); el que se parte es el título. */
@@ -2569,8 +2576,8 @@
     .fl-pliegue .r{ grid-column:1; text-transform:none; letter-spacing:0; font-size:13px; font-weight:600; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .fl-pliegue .chev{ grid-column:2; grid-row:1 / span 2; align-self:center; font-size:20px; line-height:1; color:var(--text-muted); transition:transform .15s ease; }
     .fl-plegable:not(.abierta){ padding:10px 14px; margin-bottom:8px; }
-    .fl-plegable:not(.abierta) h3{ margin-bottom:0; }
-    .fl-plegable:not(.abierta) > :not(h3), .fl-plegable:not(.abierta) h3 > :not(.fl-pliegue){ display:none; }
+    .fl-plegable:not(.abierta) h3, .fl-plegable:not(.abierta) .fl-tit{ margin-bottom:0; }
+    .fl-plegable:not(.abierta) > :not(.fl-tit), .fl-plegable:not(.abierta) .fl-tit > :not(h3), .fl-plegable:not(.abierta) h3 > :not(.fl-pliegue){ display:none; }
     .fl-plegable.abierta .fl-pliegue .r{ display:none; }
     .fl-plegable.abierta .fl-pliegue .chev{ transform:rotate(90deg); }
     html[dir="rtl"] .fl-plegable.abierta .fl-pliegue .chev{ transform:rotate(-90deg); }
@@ -2583,7 +2590,7 @@
     .fl-fecha{ grid-column:2; grid-row:1; }
     .fl-cuerpo{ grid-column:2; grid-row:2; }
     .fl-it > .rs-ok{ grid-column:3; grid-row:1; }
-    .fl-head h1{ font-size:21px; }
+    .fl-head h2{ font-size:21px; }
     /* Los dos botones lado a lado, y las tres opciones de «qué incluir»
        en una fila: antes los botones iban apilados a lo ancho y la
        última opción se caía sola a un segundo renglón (AUDITORIA B7). */
@@ -2957,6 +2964,8 @@
   .ag-items{ display:flex; flex-direction:column; gap:6px; }
   .ag-item{ display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%; text-align:start; border:1px solid var(--border); border-radius:12px; padding:9px 12px; background:var(--card); cursor:pointer; color:inherit; font:inherit; }
   .ag-item:hover{ border-color:var(--celeste); }
+  .ag-item-fija{ cursor:default; }
+  .ag-item-fija:hover{ border-color:var(--border); }
   .ag-item > span:first-child{ display:flex; flex-direction:column; min-width:0; }
   .ag-item b{ font-size:13.5px; color:var(--ink); overflow-wrap:anywhere; }
   .ag-item small{ font-size:11.5px; color:var(--text-muted); font-weight:600; }
@@ -3232,6 +3241,10 @@
   .rep-grilla-ancha{ grid-template-columns:repeat(auto-fit, minmax(max(340px, calc(33.33% - 10px)), 1fr)); }
   @media (max-width:1100px){ .rep-grilla-ancha{ grid-template-columns:minmax(0,1fr); } }
   .rep-evolucion td:not(:first-child){ border-inline-start:2px solid var(--card); }
+  /* El nombre de cada fila es un <th scope="row"> (el lector lo une a cada número),
+     con el mismo aspecto que tenía como celda: sin lo del encabezado de arriba. */
+  .rep-tabla.rep-evolucion tbody th{ font-size:inherit; font-weight:700; color:inherit; text-align:start; padding:6px 8px; border-top:1px solid var(--border); white-space:normal; overflow-wrap:anywhere; min-width:0; }
+  @media (max-width:520px){ .rep-tabla.rep-evolucion tbody th{ padding:5px 5px; } }
   .rep-h0{ color:var(--text-muted); font-weight:600; } .rep-h1{ background:#e6f6f9; } .rep-h2{ background:#bfe9f2; } .rep-h3{ background:#7fd3e6; } .rep-h4{ background:#1a9fb8; color:#082a2c; }   /* el número oscuro: en blanco sobre este celeste daba 3,1 (R17); en oscuro ya era así */
   /* En oscuro, la misma escala de menos a más, pero de petróleo a
      celeste: los fondos claros de arriba con la letra clara del modo
@@ -3332,7 +3345,7 @@
     .rep-tabla-envoltorio, .rep-equipo .rep-tabla-envoltorio{ overflow:visible; max-height:none; }
     .rep-tabla{ font-size:10.5px; }
     .rep-tabla th{ font-size:9.5px; padding:3px 6px; }
-    .rep-tabla td{ padding:3px 6px; }
+    .rep-tabla td, .rep-tabla.rep-evolucion tbody th{ padding:3px 6px; }
     .rep-tabla tr, .rep-lista li, .rep-sugerencias li{ break-inside:avoid; }
     .rep-tabla thead{ display:table-header-group; }
     .rep-lista{ max-height:none; overflow:visible; }
@@ -3351,10 +3364,10 @@
     .fl-migas, .fl-barra, .fl-acciones, .fl-seg, .fl-chips, .fl-proy, .fl-nota, .fl-mas, .rs-no, .fl-hijo .fl-ir, .fl-main .audit-more{ display:none !important; }
     .fl-incluye-print{ display:block; font-size:10px; font-weight:700; color:var(--text-muted); margin:-6px 0 10px; }
     .fl-head{ margin-bottom:6px; }
-    .fl-head h1{ font-size:19px; }
+    .fl-head h2{ font-size:19px; }
     .fl-sub{ font-size:10.5px; }
     .fl-card{ box-shadow:none; padding:9px 12px; margin-bottom:9px; border-radius:8px; }
-    .fl-card h3{ font-size:9.5px; margin-bottom:6px; }
+    .fl-card h3, .fl-card .fl-tit{ font-size:9.5px; margin-bottom:6px; }
     .fl-lectura{ background:#eafbfd; break-inside:avoid; }
     .fl-lectura li{ font-size:10.5px; gap:7px; }
     .fl-stats{ gap:8px; margin-bottom:9px; break-inside:avoid; }
@@ -4222,8 +4235,9 @@
       </div>
       <div class="header-actions">
         <div class="global-search" id="globalSearch" hidden>
-          <input type="search" id="globalSearchInput" placeholder="Buscar en todo…" autocomplete="off" aria-label="Buscar en todo">
-          <div class="gs-panel" id="globalResults" hidden></div>
+          <input type="search" id="globalSearchInput" placeholder="Buscar en todo…" autocomplete="off" aria-label="Buscar en todo" role="combobox" aria-haspopup="listbox" aria-autocomplete="list" aria-expanded="false" aria-controls="globalResults">
+          <div class="gs-panel" id="globalResults" role="listbox" aria-label="Resultados" hidden></div>
+          <div class="solo-lector" id="globalStatus" role="status" aria-live="polite"></div>
         </div>
         <div id="mentionsBell" class="mentions-bell-wrap"></div>
         <div id="userBadge" class="user-badge"></div>
@@ -4934,6 +4948,21 @@ function cityLabel(country, city){
   const row = byCity && hasOwn(byCity, city) ? byCity[city] : null;
   const dicho = row ? row[currentLang()] : city;
   return dicho === city && hasOwn(CIUDAD_BIEN_ESCRITA, city) ? CIUDAD_BIEN_ESCRITA[city] : dicho;
+}
+// «Cordoba» y «Córdoba» son la misma ciudad para la app (nivelDeAlcance las junta
+// con normalize): en una lista de ciudades, una sola entrada. De las escrituras
+// que haya queda la que la app sabe mostrar bien —la de las listas de ciudades,
+// que cityLabel corrige y traduce—, y si ninguna, la primera. `mapa` va de
+// «país|ciudad normalizada» a { country, city, n }.
+function ciudadConocida(country, city){
+  return hasOwn(CIUDAD_BIEN_ESCRITA, city) || (hasOwn(DEFAULT_CITY_LABELS, country) && hasOwn(DEFAULT_CITY_LABELS[country], city));
+}
+function sumarCiudad(mapa, country, city, n = 1){
+  const k = country + "|" + normalize(city);
+  const previa = mapa.get(k);
+  if(!previa){ mapa.set(k, { country, city, n }); return; }
+  previa.n += n;
+  if(!ciudadConocida(previa.country, previa.city) && ciudadConocida(country, city)) previa.city = city;
 }
 // Lookups con claves que vienen de la base (país/ciudad de un scope):
 // con `obj[key]` a secas, "__proto__"/"constructor" devuelven cosas
@@ -10486,7 +10515,7 @@ function openProjectMilestone(compoundId){
   requestAnimationFrame(()=>{
     const el = document.querySelector(`.pj-row[data-ms-id="${CSS.escape(msId)}"]`);
     if(!el) return;
-    el.scrollIntoView({ behavior:"smooth", block:"center" });
+    el.scrollIntoView({ behavior:comportamientoDeScroll(), block:"center" });
     el.classList.add("mention-highlight");
     setTimeout(()=>el.classList.remove("mention-highlight"), 2000);
   });
@@ -10694,7 +10723,7 @@ function renderProjectPanel(post, opts={}){
         <span class="pj-grip" data-pj-grip data-post-id="${esc(post.id)}" title="${esc(t("Arrastrá para reordenar","Drag to reorder","Arraste para reordenar","גרירה לסידור מחדש"))}" aria-hidden="true"><svg viewBox="0 0 10 16" width="10" height="16"><circle cx="3" cy="3" r="1.4"/><circle cx="7" cy="3" r="1.4"/><circle cx="3" cy="8" r="1.4"/><circle cx="7" cy="8" r="1.4"/><circle cx="3" cy="13" r="1.4"/><circle cx="7" cy="13" r="1.4"/></svg></span>
         <input type="text" class="pj-label-input" data-ms-field="label" data-post-id="${esc(post.id)}" data-ms-id="${esc(m.id)}" value="${esc(m.label)}" maxlength="120">
         <button type="button" class="status-pill ${st}" data-action="ms-done" data-post-id="${esc(post.id)}" data-ms-id="${esc(m.id)}">${esc(milestoneStatusLabel(st))}</button>
-        <button type="button" class="rm" data-action="ms-remove" data-post-id="${esc(post.id)}" data-ms-id="${esc(m.id)}" title="${esc(t("Quitar hito","Remove milestone","Remover marco","הסרת אבן דרך"))}">✕</button>
+        <button type="button" class="rm" data-action="ms-remove" data-post-id="${esc(post.id)}" data-ms-id="${esc(m.id)}" title="${esc(t("Quitar hito","Remove milestone","Remover marco","הסרת אבן דרך"))}" aria-label="${esc(t("Quitar hito","Remove milestone","Remover marco","הסרת אבן דרך"))}">✕</button>
       </div>
       <div class="pj-bottom">
         ${dateTrigger("date", m.date)}
@@ -11337,6 +11366,8 @@ function applyStaticI18n(){
     const l = t("Buscar en todo…","Search everything…","Buscar em tudo…","חיפוש בהכול…");
     gsInput.placeholder = l; gsInput.setAttribute("aria-label", l);
   }
+  const gsLista = document.getElementById("globalResults");
+  if(gsLista) gsLista.setAttribute("aria-label", t("Resultados de la búsqueda","Search results","Resultados da busca","תוצאות החיפוש"));
   const brandSub = document.querySelector(".brand .sub");
   if(brandSub) brandSub.textContent = t(
     "Memoria histórica · Team LatAm", "Historical record · Team LatAm",
@@ -11524,6 +11555,28 @@ function contenidoVisible(texto){
   return RELLENO_CALENDAR.includes(String(texto == null ? "" : texto).trim()) ? "" : texto;
 }
 
+// Lo que "Ver traducción" manda a traducir, buscado en vivo por scope + id
+// (el botón no lleva el texto). Lo mismo que muestra la tarjeta: el contenido
+// sin el relleno de Calendar (contenidoVisible), y el título solo en el
+// posteo que lo muestra (no en las respuestas, ni en las rutinas).
+function textoParaTraducir(scope, id){
+  if(scope === "reply"){
+    const r = getReplyById(id);
+    return r ? { titulo: "", contenido: contenidoVisible(r.content) || "" } : null;
+  }
+  const post = getPostById(id);
+  if(!post) return null;
+  const conTitulo = post.title && post.activityType !== "rutina";
+  return { titulo: conTitulo ? post.title : "", contenido: contenidoVisible(post.content) || "" };
+}
+function getReplyById(id){
+  for(const lista of Object.values(state.repliesByPost)){
+    const r = lista.find(x => x.id === id);
+    if(r) return r;
+  }
+  return null;
+}
+
 // Arma el pie con el link "Ver traducción"/"Ver original" y devuelve
 // también el título/contenido a mostrar (traducidos si corresponde) —
 // se usa igual en renderPostCard y en renderReply.
@@ -11541,13 +11594,13 @@ function withContentTranslation(scope, id, title, content){
     } else if(entry && entry.error && entry.lang === currentLang()){
       // El error queda visible (sobrevive a renders de fondo) hasta que
       // la persona reintenta o cambia de idioma.
-      toggleHtml = `<button type="button" class="translate-toggle" data-action="toggle-translation" data-scope="${scope}" data-id="${esc(id)}" data-title="${esc(title||"")}" data-content="${esc(content)}">⚠️ ${t("No se pudo traducir. Reintentar","Couldn't translate. Retry","Não foi possível traduzir. Tentar de novo","לא ניתן היה לתרגם. ניסיון חוזר")}</button>`;
+      toggleHtml = `<button type="button" class="translate-toggle" data-action="toggle-translation" data-scope="${scope}" data-id="${esc(id)}">⚠️ ${t("No se pudo traducir. Reintentar","Couldn't translate. Retry","Não foi possível traduzir. Tentar de novo","לא ניתן היה לתרגם. ניסיון חוזר")}</button>`;
     } else if(showTranslated && entry && !entry.loading && !entry.error){
       displayTitle = title ? entry.title : title;
       displayContent = entry.content;
       toggleHtml = `<button type="button" class="translate-toggle" data-action="toggle-translation" data-scope="${scope}" data-id="${esc(id)}">↩️ ${t("Ver original","See original","Ver original","הצגת המקור")}</button>`;
     } else {
-      toggleHtml = `<button type="button" class="translate-toggle" data-action="toggle-translation" data-scope="${scope}" data-id="${esc(id)}" data-title="${esc(title||"")}" data-content="${esc(content)}">🌐 ${t("Ver traducción","See translation","Ver tradução","הצגת התרגום")}</button>`;
+      toggleHtml = `<button type="button" class="translate-toggle" data-action="toggle-translation" data-scope="${scope}" data-id="${esc(id)}">🌐 ${t("Ver traducción","See translation","Ver tradução","הצגת התרגום")}</button>`;
     }
   }
   return { displayTitle, displayContent, toggleHtml };
@@ -13493,7 +13546,7 @@ function renderZonasSection(){
                            t("la zona {z}","the {z} zone","a zona {z}","אזור {z}",{z:z.label}))}
             <input type="text" class="zone-name" data-action="zonas-label" data-key="${esc(key)}" value="${esc(z.label)}" maxlength="30">
             <span class="zone-count">${count === 1 ? t("1 país","1 country","1 país","מדינה אחת") : t("{n} países","{n} countries","{n} países","{n} מדינות",{n:count})}</span>
-            <button type="button" class="zone-rm" data-action="zonas-remove-zone" data-key="${esc(key)}" ${count>0?`disabled title="${esc(t("Reasigná primero los países de esta zona","First reassign this zone's countries","Reatribua primeiro os países desta zona",".קודם הקצה/י מחדש את המדינות של אזור זה"))}"`:`title="${esc(t("Eliminar zona","Delete zone","Excluir zona","מחיקת אזור"))}"`}>✕</button>
+            <button type="button" class="zone-rm" data-action="zonas-remove-zone" data-key="${esc(key)}" aria-label="${esc(t("Eliminar zona","Delete zone","Excluir zona","מחיקת אזור"))}" ${count>0?`disabled title="${esc(t("Reasigná primero los países de esta zona","First reassign this zone's countries","Reatribua primeiro os países desta zona",".קודם הקצה/י מחדש את המדינות של אזור זה"))}"`:`title="${esc(t("Eliminar zona","Delete zone","Excluir zona","מחיקת אזור"))}"`}>✕</button>
           </div>
           <div class="zone-chips" data-zone-key="${esc(key)}">
             ${countries.map(name=>`
@@ -14538,7 +14591,10 @@ function renderPanelDeFiltros(){
   }).join("");
   const nCamb = cambiados.size;
   const pend = nCamb ? `<span class="fp-pend">· ${nCamb === 1 ? t("1 cambio","1 change","1 mudança","שינוי אחד") : t("{n} cambios","{n} changes","{n} mudanças","{n} שינויים",{ n:nCamb })}</span>` : "";
-  const total = getVisiblePosts(f, b.nivel).length;
+  // Lo que el Inicio va a mostrar en la solapa en que se está («Lo que pasó» o «Próximos»),
+  // no la suma de las dos: con el número de las dos, el botón prometía más de lo que se veía.
+  const hoy = todayISO(), enProximos = solapaAlAplicar(f, b.nivel) === "futuro";
+  const total = getVisiblePosts(f, b.nivel).filter(({ post }) => esProximo(post, hoy) === enProximos).length;
   const ver = total === 1 ? t("Ver 1 posteo","See 1 post","Ver 1 postagem","הצגת פוסט אחד") : t("Ver {n} posteos","See {n} posts","Ver {n} postagens","הצגת {n} פוסטים",{ n:total });
   const hayAlgo = FILTROS_CON_FICHA.some(k => valorDelFiltro(k, f, b.nivel));
   const opciones = { actividad:fpOpcionesActividad, lugar:fpOpcionesLugar, fecha:fpOpcionesFecha, persona:fpOpcionesPersona, guardados:fpOpcionesGuardados }[cat](b);
@@ -14595,9 +14651,7 @@ function lugaresConDatos(){
     if(!sc || !sc.country) return;
     paises.set(sc.country, (paises.get(sc.country) || 0) + 1);
     if(sc.type === "ciudad" && sc.city){
-      const k = sc.country + "|" + sc.city;
-      const c = ciudades.get(k) || { country:sc.country, city:sc.city, n:0 };
-      c.n++; ciudades.set(k, c);
+      sumarCiudad(ciudades, sc.country, sc.city);
     }
   }));
   return { paises, ciudades:[...ciudades.values()] };
@@ -14646,7 +14700,7 @@ function fpOpcionesLugar(b){
     ${niveles}`;
 }
 function fpOpcionesFecha(b){
-  const f = b.f, hoyAnio = todayISO().slice(0,4);
+  const f = b.f, hoy = todayISO(), hoyAnio = hoy.slice(0,4);
   const op = (k, label, on) => `<button type="button" class="fp-op${on ? " on" : ""}" data-action="fp-fecha" data-key="${k}" aria-pressed="${on}">${label}</button>`;
   const anioPuesto = !f.mes && f.periodo ? String(f.periodo.anio) : null;
   // Los años que ya empezaron: un año cuenta lo hecho hasta hoy (como
@@ -14654,7 +14708,8 @@ function fpOpcionesFecha(b){
   // que viene está en «Próximos».
   const anios = aniosConDatos().filter(a => a <= hoyAnio).reverse().map(a => {
     const on = anioPuesto === a;
-    const tris = on ? `<div class="fp-tris" role="group" aria-label="${esc(t("Período","Period","Período","תקופה"))}">${trimestresDelReporte().map(q =>
+    // Solo los trimestres que ya empezaron (uno que falta daría una lista vacía), y siempre el que ya está elegido.
+    const tris = on ? `<div class="fp-tris" role="group" aria-label="${esc(t("Período","Period","Período","תקופה"))}">${trimestresDelReporte().filter(q => (Number(f.periodo.tri) || 0) === q.n || ventanaDe(a, q.n).desde <= hoy).map(q =>
       `<button type="button" class="chip-toggle${(Number(f.periodo.tri) || 0) === q.n ? " active" : ""}" data-action="fp-tri" data-tri="${q.n}" aria-pressed="${(Number(f.periodo.tri) || 0) === q.n}">${esc(q.label)}</button>`).join("")}</div>` : "";
     return op(a, a === hoyAnio ? `<span>${a} <small>· ${t("hasta hoy","so far","até hoje","עד היום")}</small></span>` : a, on) + tris;
   }).join("");
@@ -14724,11 +14779,22 @@ function cerrarFiltros(devolverFoco = true){
     enfocarComo(el || document.getElementById("fbFiltros"), null, conAnillo);
   }
 }
+// En qué solapa queda el Inicio al aplicar los filtros `f`: en la que estaba, salvo
+// que haya un período puesto y se mirara «Próximos». Un período es siempre de lo que
+// ya pasó (pasaFiltroPeriodo corta en hoy): sus posteos quedaban escondidos en «Lo que
+// pasó» detrás de «Nada de lo que viene coincide». Si el período tiene posteos y
+// ninguno de lo que viene, pasa a «Lo que pasó» (como hace reporte-ir).
+function solapaAlAplicar(f, nivel){
+  if(feedSolapa !== "futuro" || !f.periodo) return feedSolapa;
+  const hoy = todayISO(), hay = getVisiblePosts(f, nivel);
+  return hay.length && !hay.some(({ post }) => esProximo(post, hoy)) ? "pasado" : "futuro";
+}
 function aplicarFiltros(){
   const b = fp.b;
   if(!b) return cerrarFiltros();
   const nuevo = b.f;
   nuevo.text = state.filters.text; // el buscador está afuera del panel
+  feedSolapa = solapaAlAplicar(nuevo, b.nivel);
   state.filters = nuevo;
   feedVisibleCount = PAGE_SIZE;
   if(!anyActiveFilter()) filtroOrigen = null;
@@ -15050,9 +15116,7 @@ function resultadosGlobales(q){
   const vistas = new Map();
   state.posts.forEach(p => (p.scopes || []).forEach(sc => {
     if(!sc || sc.type !== "ciudad") return;
-    const k = sc.country + "|" + sc.city;
-    if(vistas.has(k)) return;
-    if(normalize(sc.city).includes(n) || normalize(cityLabel(sc.country, sc.city)).includes(n)) vistas.set(k, { country: sc.country, city: sc.city });
+    if(normalize(sc.city).includes(n) || normalize(cityLabel(sc.country, sc.city)).includes(n)) sumarCiudad(vistas, sc.country, sc.city);
   }));
   const ciudades = [...vistas.values()].sort((a, b) => cityLabel(a.country, a.city).localeCompare(cityLabel(b.country, b.city))).slice(0, 4);
   const personas = state.roster.filter(r => normalize(r.name||"").includes(n) || normalize(r.nickname||"").includes(n) || normalize(r.email||"").includes(n)).slice(0, 3);
@@ -15065,9 +15129,9 @@ function renderGlobalSearch(){
   const panel = document.getElementById("globalResults");
   if(!panel) return;
   const q = globalQuery.trim();
-  if(q.length < 2 || !isAuthorized()){ panel.hidden = true; panel.innerHTML = ""; return; }
+  if(q.length < 2 || !isAuthorized()){ panel.hidden = true; panel.innerHTML = ""; anunciarBuscadorGlobal(null); return; }
   const r = resultadosGlobales(q);
-  const grupo = (titulo, items) => items.length ? `<div class="gs-group">${titulo}</div>${items.join("")}` : "";
+  const grupo = (titulo, items) => items.length ? `<div role="group" aria-label="${esc(titulo)}"><div class="gs-group" aria-hidden="true">${titulo}</div>${items.join("")}</div>` : "";
   const ficha = (p, action) => {
     const type = ACTIVITY_BY_KEY[p.activityType] || { icon:"✨" };
     return `<button type="button" class="gs-item" data-action="${action}" data-post-id="${esc(p.id)}">
@@ -15087,15 +15151,40 @@ function renderGlobalSearch(){
   panel.innerHTML = (html || `<div class="gs-empty">${t("Sin resultados para “{q}”","No results for “{q}”","Sem resultados para “{q}”","אין תוצאות עבור “{q}”",{q:esc(q)})}</div>`) +
     (state.instituciones.length ? `<button type="button" class="gs-item gs-all" data-action="gs-agenda" data-q="${esc(q)}"><span class="gs-ico">📇</span><span class="gs-txt"><b>${t("Buscar “{q}” en la Agenda","Search “{q}” in the Directory","Buscar “{q}” na Agenda","חיפוש “{q}” בספר הטלפונים",{q:esc(q)})}</b></span></button>` : "") +
     `<button type="button" class="gs-item gs-all" data-action="gs-feed"><span class="gs-ico">🔎</span><span class="gs-txt"><b>${t("Buscar “{q}” en el Feed","Search “{q}” in the Feed","Buscar “{q}” no Feed","חיפוש “{q}” בפיד",{q:esc(q)})}</b></span></button>`;
+  // Cada resultado es una opción de la lista (siguen siendo botones: la opción
+  // es un rol permitido en un <button>).
+  panel.querySelectorAll(".gs-item").forEach(b => b.setAttribute("role", "option"));
   panel.hidden = false;
+  anunciarBuscadorGlobal(panel.querySelectorAll(".gs-item:not(.gs-all)").length);
 }
-function cerrarBuscadorGlobal(limpiar){
+// El estado del buscador para el lector de pantalla: el campo dice si el panel
+// está abierto (aria-expanded) y una línea oculta cuenta los resultados.
+// `n` null = el panel está cerrado.
+function anunciarBuscadorGlobal(n){
+  const input = document.getElementById("globalSearchInput"), estado = document.getElementById("globalStatus");
+  if(input) input.setAttribute("aria-expanded", n == null ? "false" : "true");
+  if(!estado) return;
+  const texto = n == null ? "" : n === 0 ? t("Sin resultados","No results","Sem resultados","אין תוצאות")
+    : n === 1 ? t("1 resultado","1 result","1 resultado","תוצאה אחת") : t("{n} resultados","{n} results","{n} resultados","{n} תוצאות",{ n });
+  if(estado.textContent !== texto) estado.textContent = texto;
+}
+// `enCampo`: Escape cierra y deja el foco en el campo (si no, el foco caía al
+// <body>); quien elige un resultado, en cambio, suelta el campo.
+function cerrarBuscadorGlobal(limpiar, enCampo){
   const panel = document.getElementById("globalResults");
   if(panel){ panel.hidden = true; panel.innerHTML = ""; }
+  anunciarBuscadorGlobal(null);
   if(limpiar){
     globalQuery = "";
     const input = document.getElementById("globalSearchInput");
-    if(input){ input.value = ""; input.blur(); }
+    if(input){
+      input.value = "";
+      // El foco vuelve al campo si estaba en el buscador (o se perdió al cerrarse el panel con el foco adentro);
+      // si la persona ya se fue a otro control con Tab, ahí se queda.
+      const a = document.activeElement;
+      if(!enCampo) input.blur();
+      else if(!a || a === document.body || (input.parentElement && input.parentElement.contains(a))) input.focus();
+    }
   }
 }
 // Lo escrito en el buscador general pasa a ser el filtro de texto del
@@ -15448,7 +15537,7 @@ function renderDocumentacion(post, parte){
       : `<button type="button" class="doc-archivo" data-action="open-doc" data-post-id="${esc(post.id)}" data-pos="${pos}" title="${esc(titulo)}">${icono} ${esc(f.name)}</button>`;
     return `${abrir}
       ${cuando ? `<span class="doc-fecha">${esc(cuando)}</span>` : ""}
-      ${puede ? `<button type="button" class="rm" data-action="quitar-doc" data-post-id="${esc(post.id)}" data-pos="${pos}" title="${esc(t("Quitar este archivo del evento","Remove this file from the event","Remover este arquivo do evento","הסרת הקובץ הזה מהאירוע"))}">✕</button>` : ""}`;
+      ${puede ? `<button type="button" class="rm" data-action="quitar-doc" data-post-id="${esc(post.id)}" data-pos="${pos}" title="${esc(t("Quitar este archivo del evento","Remove this file from the event","Remover este arquivo do evento","הסרת הקובץ הזה מהאירוע"))}" aria-label="${esc(t("Quitar este archivo del evento","Remove this file from the event","Remover este arquivo do evento","הסרת הקובץ הזה מהאירוע"))}">✕</button>` : ""}`;
   };
   const filas = esperados.map(d=>{
     // Varios archivos por documento (6/10/2026): se ve el último subido
@@ -16133,7 +16222,7 @@ function gotoMention(postId, replyId){
   requestAnimationFrame(()=>{
     const el = document.querySelector(`.post[data-post-id="${CSS.escape(postId)}"]`);
     if(!el) return;
-    el.scrollIntoView({ behavior:"smooth", block:"center" });
+    el.scrollIntoView({ behavior:comportamientoDeScroll(), block:"center" });
     el.classList.add("mention-highlight");
     setTimeout(()=>el.classList.remove("mention-highlight"), 2000);
   });
@@ -16284,7 +16373,7 @@ function renderLinkRows(scope, ownerId, links){
     <div class="attach-row">
       <input type="text" placeholder="${esc(t("Etiqueta","Label","Etiqueta","תווית"))}" data-link-field="label" data-scope="${scope}" data-owner-id="${esc(ownerId)}" data-idx="${i}" value="${esc(l.label)}">
       <input type="url" placeholder="https://..." data-link-field="url" data-scope="${scope}" data-owner-id="${esc(ownerId)}" data-idx="${i}" value="${esc(l.url)}">
-      <button type="button" class="btn-mini" data-action="rm-link" data-scope="${scope}" data-owner-id="${esc(ownerId)}" data-idx="${i}">✕</button>
+      <button type="button" class="btn-mini" data-action="rm-link" data-scope="${scope}" data-owner-id="${esc(ownerId)}" data-idx="${i}" aria-label="${esc(t("Quitar este enlace","Remove this link","Remover este link","הסרת הקישור"))}">✕</button>
     </div>`).join("")}</div>`;
 }
 
@@ -16432,19 +16521,10 @@ function ventanaDe(anio, tri){
     anio, tri,
   };
 }
-// El período elegido, en fechas. Trimestre 0 = el año entero.
+// El período elegido, en fechas. Trimestre 0 = el año entero. La cuenta es la
+// de ventanaDe; acá solo se lee qué eligió la persona.
 function ventanaDelReporte(){
-  const anio = state.reportes.anio || todayISO().slice(0,4);
-  const tri = Number(state.reportes.trimestre) || 0;
-  if(!tri) return { desde: `${anio}-01-01`, hasta: `${anio}-12-31`, anio, tri };
-  const primerMes = (tri - 1) * 3 + 1;
-  const ultimoMes = primerMes + 2;
-  const dd = new Date(Date.UTC(Number(anio), ultimoMes, 0)).getUTCDate();
-  return {
-    desde: `${anio}-${String(primerMes).padStart(2,"0")}-01`,
-    hasta: `${anio}-${String(ultimoMes).padStart(2,"0")}-${String(dd).padStart(2,"0")}`,
-    anio, tri,
-  };
+  return ventanaDe(state.reportes.anio || todayISO().slice(0,4), state.reportes.trimestre);
 }
 
 // El período de antes, para poder decir "subió" o "bajó": el trimestre
@@ -16933,7 +17013,7 @@ function tablaComparada(titulo, etiquetaA, etiquetaB, filas, vacio){
   if(!filas.length) return `<div class="rep-bloque"><h3>${titulo}</h3><div class="rep-vacio">${vacio || ""}</div></div>`;
   return `<div class="rep-bloque"><h3>${titulo}</h3>
     <div class="rep-tabla-envoltorio"><table class="rep-tabla">
-      <thead><tr><th></th><th>${esc(etiquetaA)}</th><th>${esc(etiquetaB)}</th><th>${t("Diferencia","Difference","Diferença","הפרש")}</th></tr></thead>
+      <thead><tr><th scope="col"><span class="solo-lector">${titulo}</span></th><th scope="col">${esc(etiquetaA)}</th><th scope="col">${esc(etiquetaB)}</th><th scope="col">${t("Diferencia","Difference","Diferença","הפרש")}</th></tr></thead>
       <tbody>${filas.map(fl => `<tr><td>${fl.etiqueta}</td><td>${fl.a}</td><td>${fl.b}</td><td>${deltaDelReporte(fl.a, fl.b)}</td></tr>`).join("")}</tbody>
     </table></div></div>`;
 }
@@ -16970,8 +17050,8 @@ function renderReporteHistorico(f){
     const tono = n => !n ? "rep-h0" : n / maximo > .75 ? "rep-h4" : n / maximo > .5 ? "rep-h3" : n / maximo > .25 ? "rep-h2" : "rep-h1";
     return `<div class="rep-bloque rep-bloque-ancho"><h3>${titulo}</h3>
       <div class="rep-tabla-envoltorio"><table class="rep-tabla rep-evolucion">
-        <thead><tr><th></th>${columnas.map(c => `<th>${esc(c.anio)}</th>`).join("")}</tr></thead>
-        <tbody>${claves.map(k => `<tr><td>${etiqueta(k)}</td>${columnas.map(c => { const n = valor(c.r, k); return `<td class="${tono(n)}">${n}</td>`; }).join("")}</tr>`).join("")}</tbody>
+        <thead><tr><th scope="col"><span class="solo-lector">${titulo}</span></th>${columnas.map(c => `<th scope="col">${esc(c.anio)}</th>`).join("")}</tr></thead>
+        <tbody>${claves.map(k => `<tr><th scope="row">${etiqueta(k)}</th>${columnas.map(c => { const n = valor(c.r, k); return `<td class="${tono(n)}">${n}</td>`; }).join("")}</tr>`).join("")}</tbody>
       </table></div></div>`;
   };
   const paises = Object.keys(todo.porPais).sort((a, b) => todo.porPais[b] - todo.porPais[a]).slice(0, 15);
@@ -17111,7 +17191,7 @@ function renderEquipoDelReporte(r){
     .sort((a, b) => (b.cargo + b.estuvo) - (a.cargo + a.estuvo));
   return `<div class="rep-bloque rep-equipo"><h3>${t("Por persona del equipo","By team member","Por pessoa da equipe","לפי חבר צוות")}</h3>
     <div class="rep-tabla-envoltorio"><table class="rep-tabla">
-      <thead><tr><th></th><th>${t("Cargó","Logged","Carregou","רשם")}</th><th>${t("Participó","Took part","Participou","השתתף")}</th><th>${t("Países","Countries","Países","מדינות")}</th></tr></thead>
+      <thead><tr><th scope="col"><span class="solo-lector">${t("Persona del equipo","Team member","Pessoa da equipe","חבר צוות")}</span></th><th scope="col">${t("Cargó","Logged","Carregou","רשם")}</th><th scope="col">${t("Participó","Took part","Participou","השתתף")}</th><th scope="col">${t("Países","Countries","Países","מדינות")}</th></tr></thead>
       <tbody>${filas.map(x => `<tr><td>${esc(nombreEnReporte(x.c))}</td><td>${x.cargo}</td><td>${x.estuvo}</td><td>${x.paises}</td></tr>`).join("")}</tbody>
     </table></div></div>`;
 }
@@ -19790,9 +19870,14 @@ function updateScrollTop(){
 }
 window.addEventListener("scroll", updateScrollTop, { passive:true });
 window.addEventListener("resize", updateScrollTop);
+// «smooth», salvo que la persona haya pedido menos movimiento: el CSS global
+// (scroll-behavior:auto bajo prefers-reduced-motion) no alcanza a los
+// desplazamientos que se piden desde el código.
+function comportamientoDeScroll(){
+  return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+}
 function scrollToTop(){
-  const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  window.scrollTo({ top:0, behavior: reduce ? "auto" : "smooth" });
+  window.scrollTo({ top:0, behavior: comportamientoDeScroll() });
 }
 // ---- "↑ N publicaciones nuevas" (como en X) ----
 // Se guardan los ids ya vistos; en cada snapshot, lo que no estaba y no es
@@ -19857,7 +19942,7 @@ function startRutina(){
   requestAnimationFrame(()=>{
     const ta = document.getElementById("rutinaContent");
     if(!ta) return;
-    ta.scrollIntoView({ behavior:"smooth", block:"center" });
+    ta.scrollIntoView({ behavior:comportamientoDeScroll(), block:"center" });
     if(!isTouchDevice()) ta.focus(); // en el celular: a la vista, sin teclado (ver isTouchDevice)
   });
 }
@@ -20179,6 +20264,8 @@ function renderLightboxFrame(){
   document.getElementById("lightboxTitle").textContent = multi
     ? t("Foto {a} de {b}","Photo {a} of {b}","Foto {a} de {b}","תמונה {a} מתוך {b}",{a:lightboxIndex+1, b:lightboxItems.length})
     : t("Foto","Photo","Foto","תמונה");
+  // El nombre de la foto para el lector de pantalla es ese mismo título.
+  lightboxImg.alt = document.getElementById("lightboxTitle").textContent;
   const bajar = document.getElementById("lightboxDownload");
   // Las fotos no guardan su nombre original: bajan como "<evento> - foto N".
   const ext = (String(src).split("?")[0].match(/\.(jpe?g|png|gif|webp)$/i) || [, "jpg"])[1].toLowerCase();
@@ -20201,7 +20288,7 @@ function lightboxStep(delta){
 }
 function closeLightbox(){
   lightbox.classList.remove("show");
-  lightboxImg.src = "";
+  lightboxImg.src = ""; lightboxImg.alt = "";
   lightboxItems = [];
   if(lightboxReturnFocus && typeof lightboxReturnFocus.focus === "function") lightboxReturnFocus.focus();
   lightboxReturnFocus = null;
@@ -20299,7 +20386,22 @@ function openFilePreview(items, index){
   renderFilePreviewFrame();
   filePreviewReturnFocus = document.activeElement;
   filePreviewOverlay.hidden = false;
+  document.addEventListener("focusin", filePreviewTraerFoco);
   (filePreviewItems.length > 1 ? filePreviewNext : document.getElementById("filePreviewClose")).focus();
+}
+// Si el foco entra al PDF del marco (un clic adentro), el Tab siguiente sale
+// de la ventana: trapTabWithin solo oye los Tab que pasan por la página, no
+// los de adentro del PDF. Mientras el visor está abierto, un foco que cae en
+// la página de atrás vuelve al primer control del visor. Solo en este visor
+// y solo mientras está abierto (hay otras ventanas apiladas, y un oyente
+// general se pelearía con ellas); el confirm/alert propio, que puede estar
+// encima, queda afuera.
+function filePreviewTraerFoco(e){
+  if(filePreviewOverlay.hidden) return;
+  const el = e.target;
+  if(!el || !el.closest || filePreviewOverlay.contains(el) || confirmOverlay.contains(el)) return;
+  const primero = enfocablesDe(filePreviewOverlay)[0];
+  if(primero) primero.focus();
 }
 function renderFilePreviewFrame(){
   const item = filePreviewItems[filePreviewIndex];
@@ -20406,6 +20508,7 @@ function filePreviewStep(delta){
 }
 function closeFilePreview(){
   filePreviewOverlay.hidden = true;
+  document.removeEventListener("focusin", filePreviewTraerFoco);
   filePreviewVuelta++;
   filePreviewFrame.src = ""; // no queda el archivo cargado en memoria mientras está cerrado
   filePreviewWord.innerHTML = "";
@@ -20733,11 +20836,27 @@ function enfocarAgenda(origen){
     : agendaBody.querySelector(".ag-volver, .close");
   enfocarComo(el, origen);
 }
+// Al abrir una ficha (o un formulario) desde una fila, se anota en la vista
+// de abajo qué se tocó —solo la acción, el id y cuál de las filas iguales
+// era (una misma persona figura en varias instituciones)—: al volver, el
+// foco cae de nuevo en esa fila y no en el buscador.
+function agendaRecordarToque(el){
+  const v = agendaPila[agendaPila.length - 1];
+  if(!v || !el || !el.dataset || !el.dataset.id) return;
+  const igual = f => `[data-action="${f.a}"][data-id="${CSS.escape(f.id)}"]`;
+  const filaDe = { a: el.dataset.action, id: el.dataset.id };
+  v.volverA = { ...filaDe, n: Math.max(0, [...agendaBody.querySelectorAll(igual(filaDe))].indexOf(el)) };
+}
 function agendaVolver(){
+  const conAnillo = tieneAnillo(document.activeElement);
   agendaPila.pop();
   if(!agendaPila.length){ cerrarAgenda(); return; }
   renderAgenda();
-  enfocarAgenda(null);
+  // En una pantalla táctil no: el foco entra por «Volver» o la ✕ (ver enfocarAgenda).
+  const v = agendaPila[agendaPila.length - 1], r = v && v.volverA;
+  const filas = r && !isTouchDevice() ? agendaBody.querySelectorAll(`[data-action="${r.a}"][data-id="${CSS.escape(r.id)}"]`) : [];
+  if(filas.length) enfocarComo(filas[r.n] || filas[0], null, conAnillo);
+  else enfocarAgenda(null);
 }
 function cerrarAgenda(){
   agendaOverlay.hidden = true;
@@ -20891,7 +21010,10 @@ function agendaVistaPersona(pid){
   const vacio = s => `<span class="ag-vacio">${s || "—"}</span>`;
   const hayLugar = insts.some(z => z.x.lugar);
   // Una institución se toca y abre su ficha; un lugar lleva a la ficha del lugar.
-  const item = ({ c, x }) => x.lugar
+  // «Toda LatAm» no tiene ficha: el renglón no se toca ni lleva la flecha (como su título en la lista).
+  const item = ({ c, x }) => x.lugar && x.nivel === "latam"
+    ? `<div class="ag-item ag-item-fija"><span><b dir="auto">${esc(x.name)}</b><small dir="auto">${esc([c.cargo, nivelLabel(x.nivel)].filter(Boolean).join(" · "))}</small></span></div>`
+    : x.lugar
     ? `<button type="button" class="ag-item" data-action="agenda-ir-lugar" data-country="${esc(x.country)}" data-city="${esc(x.city)}" data-zona="${esc(x.zona)}"><span><b dir="auto">${esc(x.name)}</b><small dir="auto">${esc([c.cargo, nivelLabel(x.nivel)].filter(Boolean).join(" · "))}</small></span><span aria-hidden="true">${isRTL() ? "‹" : "›"}</span></button>`
     : `<button type="button" class="ag-item" data-action="agenda-ver-inst" data-id="${esc(x.id)}"><span><b dir="auto">${esc(x.name)} ${pastillaDeEstado(x)}</b><small dir="auto">${esc([c.cargo, lugarTexto(x)].filter(Boolean).join(" · "))}</small></span><span aria-hidden="true">${isRTL() ? "‹" : "›"}</span></button>`;
   return agendaCabecera(esc(p.name), esc([cargos.join(" · "), insts.length > 1 ? (hayLugar ? cuantosLugares(insts.length) : cuantasInstituciones(insts.length)) : insts[0] ? insts[0].x.name : ""].filter(Boolean).join(" · ")), acciones)
@@ -20922,7 +21044,7 @@ function agendaVistaInstitucion(iid){
         ${gente.length ? `<div class="ag-items">${gente.map(c => filaDePersona(c, true)).join("")}</div>` : `<p class="ag-nota">${esc(t("Todavía no hay nadie.","No one yet.","Ainda não há ninguém.","עדיין אין אף אחד."))}</p>`}
         ${canWrite() ? `<button type="button" class="ag-link" data-action="agenda-sumar" data-inst="${esc(x.id)}">+ ${esc(t("Sumar a alguien (presidente, director, seguridad…)","Add someone (president, director, security…)","Adicionar alguém (presidente, diretor, segurança…)","הוספת מישהו (יו״ר, מנהל, ביטחון…)"))}</button>` : ""}</section>
       <section><h3>${t("Datos","Details","Dados","פרטים")}</h3><dl class="ag-dl">
-        <dt>${t("Dirección","Address","Endereço","כתובת")}</dt><dd>${x.address ? `<span dir="auto">${esc(x.address)}</span> <a class="ag-link" href="${esc(mapa)}" target="_blank" rel="noopener">${t("Ver en el mapa","See on the map","Ver no mapa","במפה")} ↗</a>` : vacio}</dd>
+        <dt>${t("Dirección","Address","Endereço","כתובת")}</dt><dd>${x.address ? `<span dir="auto">${esc(x.address)}</span> <a class="ag-link" href="${esc(mapa)}" target="_blank" rel="noopener">${t("Ver en el mapa","See on the map","Ver no mapa","במפה")} ${isRTL() ? "↖" : "↗"}</a>` : vacio}</dd>
         <dt>${t("Tipo","Type","Tipo","סוג")}</dt><dd>${x.tipo ? esc(x.tipo) : vacio}</dd>
         <dt>${t("Estado","Status","Situação","מצב")}</dt><dd>${esc(estadoDeInstitucion(x.estado))}</dd>
         ${x.nota ? `<dt>${t("Nota","Note","Nota","הערה")}</dt><dd dir="auto">${esc(x.nota)}</dd>` : ""}
@@ -21161,8 +21283,8 @@ const AGENDA_ACCIONES = {
   "gs-institucion": (el) => { desdeElBuscador(() => abrirAgenda({ t:"inst", id: el.dataset.id })); },
   "gs-agenda": (el) => { desdeElBuscador(() => abrirAgenda({ t:"lista" }, { q: el.dataset.q || "" })); },
   "agenda-volver": () => agendaVolver(),
-  "agenda-ver-persona": (el) => { if(agendaOverlay.hidden) abrirAgenda({ t:"persona", id: el.dataset.id }); else { agendaPila.push({ t:"persona", id: el.dataset.id }); renderAgenda(); enfocarAgenda(el); } },
-  "agenda-ver-inst": (el) => { if(agendaOverlay.hidden) abrirAgenda({ t:"inst", id: el.dataset.id }); else { agendaPila.push({ t:"inst", id: el.dataset.id }); renderAgenda(); enfocarAgenda(el); } },
+  "agenda-ver-persona": (el) => { if(agendaOverlay.hidden) abrirAgenda({ t:"persona", id: el.dataset.id }); else { agendaRecordarToque(el); agendaPila.push({ t:"persona", id: el.dataset.id }); renderAgenda(); enfocarAgenda(el); } },
+  "agenda-ver-inst": (el) => { if(agendaOverlay.hidden) abrirAgenda({ t:"inst", id: el.dataset.id }); else { agendaRecordarToque(el); agendaPila.push({ t:"inst", id: el.dataset.id }); renderAgenda(); enfocarAgenda(el); } },
   "agenda-ir-lugar": (el) => agendaIrAlLugar(el.dataset.country, el.dataset.city, el.dataset.zona),
   "agenda-ver-post": (el) => { cerrarAgenda(); gotoMention(realPostId(el.dataset.postId), null); },
   "agenda-mas": () => { agendaFiltro.mostrar += AGENDA_TANDA; renderAgenda(); },
@@ -21192,10 +21314,12 @@ const AGENDA_ACCIONES = {
     const nivel = el.dataset.inst || (v && v.t === "inst") ? "institucion" : lugar ? "ciudad" : enFicha ? "pais" : enRegion ? "region" : "institucion";
     const form = { t:"form", modo:"nuevo", inst, lugar, nivel, country: enFicha ? state.countryDrill : "", city: lugar ? lugar.city : "", zona: enRegion ? state.zonaDrill : "",
       nombre:"", cargo:"", correo:"", nota:"", idiomas:[], tels:[{ n:"", wa:true }], errores:{}, usar:null };
-    if(!agendaDatos().ordenadas.length){ abrirAgendaInstNueva(form); return; }
+    // Con la Agenda vacía, una persona de una institución necesita primero la institución; la de un
+    // lugar (ciudad, país, región o toda LatAm) no: se suma directo.
+    if(nivel === "institucion" && !agendaDatos().ordenadas.length){ abrirAgendaInstNueva(form); return; }
     if(agendaOverlay.hidden) abrirAgenda(form); else { agendaPila.push(form); renderAgenda(); enfocarAgenda(el); }
   },
-  "agenda-editar": (el) => { agendaPila.push(borradorDePersona(el.dataset.id)); renderAgenda(); enfocarAgenda(el); },
+  "agenda-editar": (el) => { agendaRecordarToque(el); agendaPila.push(borradorDePersona(el.dataset.id)); renderAgenda(); enfocarAgenda(el); },
   "agenda-guardar": () => agendaGuardar(),
   "agenda-form-nivel": (el) => { const v = agendaPila[agendaPila.length - 1]; v.nivel = el.dataset.k; delete v.errores.inst; delete v.errores.lugar; renderAgenda(); agendaBody.querySelector(`[data-action="agenda-form-nivel"][data-k="${v.nivel}"]`)?.focus(); },
   "agenda-form-usar": (el) => { const v = agendaPila[agendaPila.length - 1]; v.usar = el.dataset.id; renderAgenda(); if(!isTouchDevice()) agendaBody.querySelector("#agFCargo")?.focus(); },
@@ -21207,6 +21331,7 @@ const AGENDA_ACCIONES = {
   "agenda-form-no-sacar": () => { const v = agendaPila[agendaPila.length - 1]; v.sacar = []; renderAgenda(); },
   "agenda-inst-nueva": () => abrirAgendaInstNueva(null),
   "agenda-inst-editar": (el) => { const x = agendaDatos().inst.get(el.dataset.id); if(!x) return;
+    agendaRecordarToque(el);
     agendaPila.push({ t:"inst-form", modo:"editar", id:x.id, name:x.name, country:x.country, city:x.city, address:x.address, tipo:x.tipo, estado:x.estado, nota:x.nota, errores:{} }); renderAgenda(); enfocarAgenda(el); },
   "agenda-inst-guardar": () => agendaGuardarInst(),
   "agenda-inst-borrar": async (el) => {
@@ -21445,7 +21570,7 @@ function renderAgendaAdminSection(){
       <p class="ag-arch">📄 <b>${esc(im.archivo.nombre)}</b> <small>${Math.max(1, Math.round(im.archivo.peso / 1024))} KB</small> <button type="button" class="ag-link" data-action="agenda-import-cancelar">${t("Elegir otro","Choose another","Escolher outro","בחירת קובץ אחר")}</button></p>
       <ul class="ag-checks">${checks}</ul>
       <label class="ag-campo"><span>${t("Nombre de la lista","List name","Nome da lista","שם הרשימה")}</span><input id="agendaNombreLista" maxlength="120" dir="auto" value="${esc(im.nombreLista)}"></label>
-      <div class="ag-tabla"><table><thead><tr><th>${t("Institución","Organization","Instituição","מוסד")}</th><th>${t("Lugar","Place","Lugar","מקום")}</th><th>${t("Contacto","Contact","Contato","איש קשר")}</th><th>${t("Cargo","Role","Cargo","תפקיד")}</th><th>${t("Teléfono","Phone","Telefone","טלפון")}</th></tr></thead>
+      <div class="ag-tabla"><table><thead><tr><th scope="col">${t("Institución","Organization","Instituição","מוסד")}</th><th scope="col">${t("Lugar","Place","Lugar","מקום")}</th><th scope="col">${t("Contacto","Contact","Contato","איש קשר")}</th><th scope="col">${t("Cargo","Role","Cargo","תפקיד")}</th><th scope="col">${t("Teléfono","Phone","Telefone","טלפון")}</th></tr></thead>
         <tbody>${muestra}${im.lista.length > 6 ? `<tr><td colspan="5" class="ag-nota">${esc(t("… y {n} más","… and {n} more","… e mais {n}","… ועוד {n}",{ n: im.lista.length - 6 }))}</td></tr>` : ""}</tbody></table></div>
       <div class="ag-pie-acc"><button type="button" class="btn-secondary" data-action="agenda-import-cancelar">${t("Cancelar","Cancel","Cancelar","ביטול")}</button>
         <button type="button" class="btn-primary" data-action="agenda-import-traer"${im.trayendo ? " disabled" : ""}>${im.trayendo ? t("Trayendo…","Importing…","Trazendo…","מייבא…") : esc(t("Traer {i} y {c}","Import {i} and {c}","Trazer {i} e {c}","ייבוא {i} ו-{c}",{ i: cuantasInstituciones(im.lista.length), c: cuantosContactos(im.personas) }))}</button></div></div>`
@@ -21637,7 +21762,7 @@ function dosYMas(ps){
 // o plegarla, con su resumen (.fl-pliegue). El CSS muestra uno u otro.
 // `titulo` ya viene escapado; `extra` es lo que va a la derecha del título.
 function tituloDeLado(k, titulo, resumen, extra){
-  return `<h3><span class="fl-lado-t">${titulo}</span><button type="button" class="fl-pliegue" data-action="ficha-plegar" data-que="${esc(k)}" aria-expanded="${fichaAbiertas.has(k)}"><span class="t">${titulo}</span><span class="r" dir="auto">${esc(resumen)}</span><span class="chev" aria-hidden="true">${isRTL() ? "‹" : "›"}</span></button>${extra || ""}</h3>`;
+  return `<div class="fl-tit"><h3><span class="fl-lado-t">${titulo}</span><button type="button" class="fl-pliegue" data-action="ficha-plegar" data-que="${esc(k)}" aria-expanded="${fichaAbiertas.has(k)}"><span class="t">${titulo}</span><span class="r" dir="auto">${esc(resumen)}</span><span class="chev" aria-hidden="true">${isRTL() ? "‹" : "›"}</span></button></h3>${extra || ""}</div>`;
 }
 const claseDeLado = k => `fl-card fl-plegable${fichaAbiertas.has(k) ? " abierta" : ""}`;
 // Todo lo que la ficha necesita, ya contado.
@@ -21810,7 +21935,7 @@ function renderFichaLugar(L){
   // mismo nivel que «Solo … / + Región …» (pedido del usuario, 9/10/2026);
   // antes iba arriba, a la altura del título.
   const head = `<div class="fl-head">
-    <div><h1>${esc(nombre)}</h1><div class="fl-sub">${sub}</div></div>
+    <div><h2>${esc(nombre)}</h2><div class="fl-sub">${sub}</div></div>
   </div>`;
   const acciones = `<div class="fl-acciones">
       <button type="button" class="btn-secondary" data-action="ficha-imprimir" title="${esc(t("Imprimir o guardar en PDF esta ficha","Print or save this page as PDF","Imprimir ou salvar esta ficha em PDF","הדפסה או שמירה כ-PDF"))}">🖨️ ${t("Reporte del lugar","Place report","Relatório do lugar","דוח המקום")}</button>
@@ -21841,7 +21966,7 @@ function renderFichaLugar(L){
   const todosPasos = fichaDesplegado.has("pasos") || fichaImprimiendo;
   const listaPasos = todosPasos ? [...D.pendientes, ...D.hechos] : D.pendientes.slice(0, 4);
   const pasos = D.pendientes.length || D.hechos.length ? `<div class="fl-card fl-sigue">
-    <h3>${t("Lo que sigue","What's next","O que segue","מה הלאה")}${D.pendientes.length > 4 || D.hechos.length ? `<button type="button" class="fl-mas" data-action="ficha-desplegar" data-que="pasos">${fichaDesplegado.has("pasos") ? t("Mostrar menos","Show less","Mostrar menos","הצג פחות") : t("Ver los {n}","See all {n}","Ver os {n}","הצגת כל ה-{n}",{ n: D.pendientes.length + D.hechos.length })}</button>` : ""}</h3>
+    <div class="fl-tit"><h3>${t("Lo que sigue","What's next","O que segue","מה הלאה")}</h3>${D.pendientes.length > 4 || D.hechos.length ? `<button type="button" class="fl-mas" data-action="ficha-desplegar" data-que="pasos" aria-expanded="${fichaDesplegado.has("pasos")}">${fichaDesplegado.has("pasos") ? t("Mostrar menos","Show less","Mostrar menos","הצג פחות") : t("Ver los {n}","See all {n}","Ver os {n}","הצגת כל ה-{n}",{ n: D.pendientes.length + D.hechos.length })}</button>` : ""}</div>
     <ul class="rs-pasos">${listaPasos.map(({ p, post, parte }) => {
       const hecho = p.estado === "hecho";
       const puede = canEditPost(post);
@@ -22003,7 +22128,7 @@ function renderFichaLugar(L){
   const rAg = resumenAgenda(agendaAca);
   const resumenLugares = [dosYMas(filasLugar.map(nombreFila)), agendaAca.length ? cuantosContactos(rAg.gente) : ""].filter(Boolean).join(" · ");
   const ladoHijos = filasLugar.length ? `<div class="${claseDeLado("hijos")}">${tituloDeLado("hijos", L.zona ? t("Países","Countries","Países","מדינות") : t("Ciudades","Cities","Cidades","ערים"), resumenLugares,
-    filasLugar.length > HIJOS_A_LA_VISTA ? `<button type="button" class="fl-mas" data-action="ficha-desplegar" data-que="hijos">${fichaDesplegado.has("hijos") ? t("Ver menos","Show less","Ver menos","הצג פחות") : t("Ver más","See more","Ver mais","הצגת עוד")}</button>` : "")}<div class="fl-hijos${hijosConScroll ? " con-scroll" : ""}">${(todosHijos ? filasLugar : filasLugar.slice(0, HIJOS_A_LA_VISTA)).map(filaLugar).join("")}</div>
+    filasLugar.length > HIJOS_A_LA_VISTA ? `<button type="button" class="fl-mas" data-action="ficha-desplegar" data-que="hijos" aria-expanded="${fichaDesplegado.has("hijos")}">${fichaDesplegado.has("hijos") ? t("Ver menos","Show less","Ver menos","הצג פחות") : t("Ver más","See more","Ver mais","הצגת עוד")}</button>` : "")}<div class="fl-hijos${hijosConScroll ? " con-scroll" : ""}">${(todosHijos ? filasLugar : filasLugar.slice(0, HIJOS_A_LA_VISTA)).map(filaLugar).join("")}</div>
     ${agendaAca.length || canWrite() ? `<div class="fl-ag-pie">${canWrite() ? `<button type="button" class="btn-primary" data-action="agenda-sumar">+ ${t("Sumar","Add","Adicionar","הוספה")}</button>` : ""}${agendaAca.length ? `<button type="button" class="btn-secondary" data-action="agenda-abrir"${L.zona ? "" : ` data-country="${esc(L.country)}"`}>${t("Ver Agenda","See Directory","Ver Agenda","לספר הטלפונים")}</button>` : ""}</div>` : ""}</div>` : "";
   // Contactos en … (la Agenda, 8/10/2026): en una ciudad, sus instituciones
   // con su gente. En un país o una región va adentro de «Ciudades» o
@@ -22013,7 +22138,7 @@ function renderFichaLugar(L){
     if(!L.city || (!agendaAca.length && !canWrite())) return "";
     const r = resumenAgenda(agendaAca);
     const todos = fichaDesplegado.has("contactos") || fichaImprimiendo;
-    const verMas = n => n > HIJOS_A_LA_VISTA ? `<button type="button" class="fl-mas" data-action="ficha-desplegar" data-que="contactos">${fichaDesplegado.has("contactos") ? t("Ver menos","Show less","Ver menos","הצג פחות") : t("Ver más","See more","Ver mais","הצגת עוד")}</button>` : "";
+    const verMas = n => n > HIJOS_A_LA_VISTA ? `<button type="button" class="fl-mas" data-action="ficha-desplegar" data-que="contactos" aria-expanded="${fichaDesplegado.has("contactos")}">${fichaDesplegado.has("contactos") ? t("Ver menos","Show less","Ver menos","הצג פחות") : t("Ver más","See more","Ver mais","הצגת עוד")}</button>` : "";
     // Al pie, en un mismo renglón: «+ Sumar» (quien carga eventos) y «Ver Agenda». Antes cada
     // institución llevaba su «+ Sumar a alguien más»: el usuario pidió sacarlos (9/10/2026).
     const sumar = canWrite() ? `<button type="button" class="btn-primary" data-action="agenda-sumar">+ ${t("Sumar","Add","Adicionar","הוספה")}</button>` : "";
@@ -22082,7 +22207,7 @@ function renderFichaLugar(L){
   const fechaDeDoc = x => fechaDeArchivo(x.f) || fmtISO(fechaDePost(x.p), { day:"numeric", month:"short" });
   const resumenDocs = docs.length === 1 ? docs[0].f.name : docs.length ? t("{n} · el último, {f}","{n} · latest, {f}","{n} · o último, {f}","{n} · האחרון, {f}",{ n: docs.length, f: fechaDeDoc(docs[0]) }) : "";
   const documentos = docs.length ? `<div class="${claseDeLado("docs")}">${tituloDeLado("docs", t("Documentos","Documents","Documentos","מסמכים"), resumenDocs,
-    docs.length > 4 ? `<button type="button" class="fl-mas" data-action="ficha-desplegar" data-que="docs">${fichaDesplegado.has("docs") ? t("Mostrar menos","Show less","Mostrar menos","הצג פחות") : t("Ver los {n}","See all {n}","Ver os {n}","הצגת כל ה-{n}",{ n: docs.length })}</button>` : "")}
+    docs.length > 4 ? `<button type="button" class="fl-mas" data-action="ficha-desplegar" data-que="docs" aria-expanded="${fichaDesplegado.has("docs")}">${fichaDesplegado.has("docs") ? t("Mostrar menos","Show less","Mostrar menos","הצג פחות") : t("Ver los {n}","See all {n}","Ver os {n}","הצגת כל ה-{n}",{ n: docs.length })}</button>` : "")}
     <div class="fl-docs">${(todosDocs ? docs : docs.slice(0, 4)).map(x => { const fi = fichaDeArchivo(x.f); return `<button type="button" class="fl-doc" data-action="resumen-abrir" data-post-id="${esc(x.p.id)}" data-pos="${x.pos}" title="${esc(x.f.name)}">
       <i style="background:${fi.color}">${esc(fi.sigla)}</i><span>${esc(x.f.name)}</span><small>${esc(fechaDeDoc(x))}</small></button>`; }).join("")}</div></div>` : "";
   return `<div class="ficha-lugar">${tituloPrint}${migas}${head}<div class="fl-barra">${seg}${acciones}</div>${incluyePrint}
@@ -22433,7 +22558,7 @@ document.addEventListener("keydown", e=>{
   if(mentionsMenuOpen){ const o = document.activeElement; mentionsMenuOpen = false; render(); enfocarComo(document.querySelector('[data-action="toggle-mentions-menu"]'), o); return; }
   if(userMenuOpen && !nicknameEditing){ const o = document.activeElement; userMenuOpen = false; render(); enfocarComo(document.querySelector('[data-action="toggle-user-menu"]'), o); return; }
   if(fp.abierto){ cerrarFiltros(); return; }
-  { const gs = document.getElementById("globalResults"); if(gs && !gs.hidden){ cerrarBuscadorGlobal(true); return; } }
+  { const gs = document.getElementById("globalResults"); if(gs && !gs.hidden){ cerrarBuscadorGlobal(true, true); return; } }
   if(postMenuOpen){ postMenuOpen = null; render(); return; }
   if(moreMenuOpen){ moreMenuOpen = false; renderBottomNav(); return; }
   if(calIrAbierto){ cerrarCalIr(true); return; }
@@ -22522,11 +22647,14 @@ postForm.addEventListener("keydown", e=>{
 });
 // Tab dentro de un modal abierto cicla entre sus propios controles en
 // vez de irse a la página de atrás (que está tapada).
+function enfocablesDe(overlayEl){
+  return [...overlayEl.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')]
+    .filter(el=>!el.disabled && !el.hidden && el.offsetParent !== null);
+}
 function trapTabWithin(overlayEl){
   overlayEl.addEventListener("keydown", e=>{
     if(e.key !== "Tab") return;
-    const focusables = [...overlayEl.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')]
-      .filter(el=>!el.disabled && !el.hidden && el.offsetParent !== null);
+    const focusables = enfocablesDe(overlayEl);
     if(!focusables.length) return;
     const first = focusables[0], last = focusables[focusables.length-1];
     if(e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
@@ -22680,7 +22808,7 @@ function renderPostedFiles(files, owner){
   const todos = owner && owner.todos;
   const puede = !!(owner && owner.puede && Array.isArray(todos));
   const quitarDe = f => puede
-    ? `<button type="button" class="rm" data-action="quitar-adjunto" ${ownerAttrs(owner)} data-pos="${todos.indexOf(f)}" title="${esc(t("Quitar este archivo del evento","Remove this file from the event","Remover este arquivo do evento","הסרת הקובץ הזה מהאירוע"))}">✕</button>`
+    ? `<button type="button" class="rm" data-action="quitar-adjunto" ${ownerAttrs(owner)} data-pos="${todos.indexOf(f)}" title="${esc(t("Quitar este archivo del evento","Remove this file from the event","Remover este arquivo do evento","הסרת הקובץ הזה מהאירוע"))}" aria-label="${esc(t("Quitar este archivo del evento","Remove this file from the event","Remover este arquivo do evento","הסרת הקובץ הזה מהאירוע"))}">✕</button>`
     : "";
   return `<div class="post-files">${files.map(f => {
     const dataUrl = safeFileDataUrl(f && f.dataUrl);
@@ -22992,6 +23120,19 @@ function handleAutocompleteKeydown(e, { getMatches, getHighlight, setHighlight, 
 document.addEventListener("keydown", e=>{
   const el = e.target;
   if(!el || !el.dataset) return; // teclas con target document/window (no un elemento)
+  // ↑ ↓ (y Inicio / Fin) recorren los resultados de «Buscar en todo»; ↑ en el
+  // primero vuelve al campo. (Escape lo cierra otro manejador, arriba, y deja
+  // el foco en el campo.)
+  if(el.classList && el.classList.contains("gs-item") && ["ArrowDown","ArrowUp","Home","End"].includes(e.key)){
+    const items = [...document.querySelectorAll("#globalResults .gs-item")];
+    const i = items.indexOf(el);
+    if(i >= 0){
+      e.preventDefault();
+      if(e.key === "ArrowUp" && i === 0){ document.getElementById("globalSearchInput").focus(); return; }
+      items[e.key === "Home" ? 0 : e.key === "End" ? items.length - 1 : Math.min(items.length - 1, Math.max(0, i + (e.key === "ArrowDown" ? 1 : -1)))].focus();
+    }
+    return;
+  }
   // ↑ ↓ (y Inicio / Fin) para moverse por las filas de una lista (Personas,
   // Tipos) y por el menú de secciones (en angosto es una tira: también ← →).
   if(el.classList && (el.classList.contains("lp-row") || el.classList.contains("admin-item"))){
@@ -23058,9 +23199,11 @@ document.addEventListener("keydown", e=>{
     return;
   }
   if(el.id === "globalSearchInput"){
-    // Enter busca eso mismo en el Feed; Escape cierra y limpia.
+    // Enter busca eso mismo en el Feed; Escape cierra y limpia (el foco se
+    // queda en el campo); la flecha de abajo baja al primer resultado.
     if(e.key === "Enter"){ e.preventDefault(); if(globalQuery.trim()) buscarEnElFeed(); }
-    else if(e.key === "Escape"){ cerrarBuscadorGlobal(true); }
+    else if(e.key === "Escape"){ cerrarBuscadorGlobal(true, true); }
+    else if(e.key === "ArrowDown"){ const primero = document.querySelector("#globalResults:not([hidden]) .gs-item"); if(primero){ e.preventDefault(); primero.focus(); } }
     return;
   }
   if(el.id === "cParticipantQuery"){
@@ -24384,7 +24527,13 @@ document.addEventListener("click", async e=>{
     setLang(el.dataset.lang);
   },
     "toggle-translation": async (el, e, action, postId) => {
-    toggleContentTranslation(el.dataset.scope, el.dataset.id, el.dataset.title, el.dataset.content);
+    // El botón trae solo scope + id; el título y el contenido se buscan en
+    // vivo (antes iban enteros en data-*, hasta 5.000 caracteres por tarjeta).
+    const scope = el.dataset.scope, id = el.dataset.id;
+    const q = textoParaTraducir(scope, id);
+    // "Ver original" no necesita el texto; "Ver traducción" de algo que ya no está, tampoco tiene qué traducir.
+    if(!q && !translationsShown.has(translationKey(scope, id))) return;
+    toggleContentTranslation(scope, id, q ? q.titulo : "", q ? q.contenido : "");
   },
     "edit-nickname": async (el, e, action, postId) => {
     nicknameEditing = true;
