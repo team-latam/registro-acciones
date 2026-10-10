@@ -53,6 +53,21 @@ publicación (en línea) y la base (aplicada) dieron verde.
 3. **R26**: jszip 3.10.2 y supabase-js 2.117.3, cuando se toquen.
 4. **R18**: el peso del archivo (ya decidido: todavía no).
 
+**Decisiones tuyas, con maqueta** (10/10; la página para el usuario las
+muestra con capturas y recomendación; falta que conteste, p. ej. «1 A, 2 A, 3 A»):
+
+1. **Chip «Región Sur ✕» en la Agenda** (R21): abrirla desde una región
+   la abre sin filtrar; con una ciudad ya sale con su chip. A (recomendada):
+   el mismo chip para la región. B: dejarlo.
+2. **Quién cambia el correo de una ficha de `personas`** (R20, P13): A
+   (recomendada): todos corrigen, y la tarjeta «¿Es …, que figura sin
+   cuenta?» muestra el correo de la ficha y quién lo cargó (`tocado_por`).
+   B: solo un admin cambia el correo (campo bloqueado para el resto). C:
+   como está. Aparte, P13: hoy cualquier aprobado lee el correo de una
+   persona sin cuenta; se recomienda dejarlo igual que los teléfonos.
+3. **El nombre libre en el login de quien no es admin** (R20): A
+   (recomendada): dejarlo; B: que salga siempre de la cuenta de Google.
+
 **Queda para vos:**
 
 - **D4, lo que falta** («Block force pushes» ya lo volviste a tildar):
@@ -60,7 +75,7 @@ publicación (en línea) y la base (aplicada) dieron verde.
   https://support.github.com/contact (motivo «quitar datos sensibles de un
   repositorio»); sin eso, quien tenga el enlace exacto a un commit viejo lo
   sigue viendo un tiempo. Y si tenés el repositorio clonado en otra
-  computadora, clonarlo de nuevo.
+  computadora, clonarlo de nuevo. (Dijo que sí, 10/10.)
 - **R12, para el ensayo completo de restauración** (media hora, una vez;
   los pasos largos están en `docs/RESTAURAR.md`, caso 2): crear en
   supabase.com un proyecto gratis aparte (por ejemplo «registro-ensayo»),
@@ -69,13 +84,17 @@ publicación (en línea) y la base (aplicada) dieron verde.
   `PRUEBA_SUPABASE_SERVICE_ROLE_KEY` y `PRUEBA_SUPABASE_DB_URL`. **Nunca se
   pegan en el chat.** Después avisarme y yo lanzo el ensayo y comparo los
   números con los de la copia. Al terminar, el proyecto de prueba se borra
-  (solo ese).
-- **D8**: probar la Agenda en el teléfono (el teclado de verdad no se
-  puede simular).
-- **R4**: mirar el lunes 12/10 que la copia del domingo esté en verde.
-- **D1** queda decidida (todavía no); se vuelve a mirar al pasar los 600 KB.
-- **El dominio** `team-latam.com` vence el 12/12/2026; desde el 1/12 se te
-  recuerda al empezar cada sesión.
+  (solo ese). El 10/10 dijo «dejemos para dentro de un rato».
+- ~~**D8**: probar la Agenda en el teléfono~~ ✅ 10/10 (la probó: «parece
+  funcionar bien»). También abrió el sitio en incógnito tras R15: abre como
+  siempre.
+- **R4**: Claude le avisa el lunes 12/10 cómo salió la copia del domingo
+  (pedido el 10/10; hay un recordatorio programado en la sesión).
+- **D1** queda decidida (todavía no); se vuelve a mirar al pasar los 600 KB
+  (hoy 519 KB comprimidos).
+- **El dominio** `team-latam.com` vence el 12/12/2026. El 10/10 pidió que
+  se le avise **el 5/12** (recordatorio programado; si no llega, hacerlo al
+  empezar la primera sesión desde el 1/12, como ya estaba).
 
 ---
 

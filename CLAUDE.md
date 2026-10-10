@@ -55,7 +55,8 @@ decisiones de arquitectura.
   antes de esa fecha que se renovó y que la tarjeta sigue vigente. El
   usuario pidió (9/10/2026) que Claude lo ayude a renovarlo: desde el
   1/12/2026, al empezar cualquier sesión, recordárselo y guiarlo paso a
-  paso. Si se cae el dominio, se cae el correo `@team-latam.com` y con él
+  paso; y el 10/10/2026 pidió que se le avise puntualmente **el 5/12**
+  (hay un recordatorio programado; si no llega, hacerlo igual). Si se cae el dominio, se cae el correo `@team-latam.com` y con él
   el login del admin. Claude no puede crear repos en la cuenta `team-latam` (es una
   cuenta de usuario; la conexión de GitHub no tiene ese permiso).
 
