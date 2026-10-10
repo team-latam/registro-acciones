@@ -120,3 +120,20 @@ insert into public.audit_log (id, type, actor_email, actor_name, target_email, d
 values ('limiteAuditoria00001', 'access_approved', repeat('a', 200), repeat('A', 120), repeat('t', 200),
         repeat('d', 300), repeat('v', 60), repeat('9', 45))
 on conflict (id) do nothing;
+
+-- Lo de la Agenda y las sugerencias de Calendar (10/10/2026). Una persona
+-- con la lista de la que vino, y una con la lista COLGADA (que ya no existe:
+-- la lista se borró, o se restauró una copia que carga las personas antes
+-- que las listas). personas_controlar_lista (19-agenda.sql) mira solo lo
+-- que se escribe, así que volver a aplicar el esquema con una así guardada
+-- tiene que andar. Y el id de evento más largo que acepta
+-- sugerencias_evento (12-revisar-calendar.sql).
+insert into public.agenda_listas (id, name) values ('limiteLista0000001', repeat('L', 120))
+on conflict (id) do nothing;
+insert into public.personas (id, name, email, note, telefonos, idiomas, lista, created_by) values
+  ('limitePersona0001', repeat('N', 120), 'limite.persona@ejemplo.com', repeat('n', 300),
+   '[{"n":"+54 9 11 5555 0001","wa":true},{"n":"011 4444-0002","wa":false}]', '{Español,עברית}', 'limiteLista0000001', 'limite@ejemplo.com'),
+  ('limitePersona0002', 'Ficha con la lista colgada', null, null, '[]', '{}', 'lista_que_ya_no_existe', null)
+on conflict (id) do nothing;
+insert into public.calendar_sugerencias (evento, grupo) values (repeat('e', 1024), 'actividad')
+on conflict (evento) do nothing;

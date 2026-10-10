@@ -245,6 +245,18 @@ create policy replies_leer on public.replies for select
 -- Igual que los posteos, con una excepción: los mensajes de sistema que
 -- escribe la sincronización con Calendar van sin correo. Y, como un
 -- posteo, nace sin me gusta (10/10/2026).
+--
+-- Un mensaje de sistema («✏️ editó…», «🚫 canceló…», «📅 Google Calendar»)
+-- es la constancia de algo que quien lo escribe acaba de hacer sobre el
+-- posteo, y la app lo escribe SIEMPRE después de haberlo editado. Así que
+-- se acepta solo de quien puede editar ese posteo (puede_editar_posteo,
+-- lo mismo que exige el disparador del update): hasta el 10/10/2026
+-- cualquiera podía escribir `system = true` con la firma «Google
+-- Calendar» en la Rutina de otra persona, que es lo único que un no-autor
+-- no puede tocar (docs/AUDITORIA.md, R20). Sin una persona detrás (el
+-- sincronizador nocturno) las políticas no corren: escribe con la llave de
+-- servicio. Un comentario común (system = false) sigue abierto a todos los
+-- que escriben, también en una Rutina ajena.
 drop policy if exists replies_crear on public.replies;
 create policy replies_crear on public.replies for insert
   with check (
@@ -254,6 +266,12 @@ create policy replies_crear on public.replies for insert
       or (system = true and author_name = 'Google Calendar' and author_email is null)
     )
     and liked_by = '{}'
+    and (
+      not system
+      or exists (select 1 from public.posts p
+                  where p.id = post_id
+                    and public.puede_editar_posteo(p.author_email, p.activity_type, p.editors))
+    )
   );
 
 -- Lo único editable de un comentario es el me gusta (lo asegura el
@@ -280,11 +298,16 @@ drop policy if exists members_leer on public.members;
 create policy members_leer on public.members for select
   using ((select public.es_admin_fijo()) or (select public.esta_aprobado()) or email = (select public.mi_correo()));
 
+-- Lo del admin fijo se compara SIN mayúsculas (10/10/2026): hasta hoy era
+-- `email <> admin_fijo()`, y un admin por rol podía dar de alta una ficha
+-- «Benny@Team-Latam.com» que se hacía pasar por la suya en el padrón. El
+-- login siempre trae el correo en minúsculas, así que esa ficha no le
+-- servía a nadie para entrar, pero sí para confundir.
 drop policy if exists members_crear on public.members;
 create policy members_crear on public.members for insert
   with check (
     (select public.es_admin_fijo())
-    or ((select public.es_admin_rol()) and email <> public.admin_fijo())
+    or ((select public.es_admin_rol()) and lower(email) <> lower(public.admin_fijo()))
   );
 
 -- Tres puertas distintas, y el disparador decide qué puede tocar cada
@@ -294,12 +317,12 @@ drop policy if exists members_editar on public.members;
 create policy members_editar on public.members for update
   using (
     (select public.es_admin_fijo())
-    or ((select public.es_admin_rol()) and email <> public.admin_fijo())
+    or ((select public.es_admin_rol()) and lower(email) <> lower(public.admin_fijo()))
     or email = (select public.mi_correo())
   )
   with check (
     (select public.es_admin_fijo())
-    or ((select public.es_admin_rol()) and email <> public.admin_fijo())
+    or ((select public.es_admin_rol()) and lower(email) <> lower(public.admin_fijo()))
     or email = (select public.mi_correo())
   );
 
@@ -308,7 +331,7 @@ drop policy if exists members_borrar on public.members;
 create policy members_borrar on public.members for delete
   using (
     (select public.es_admin_fijo())
-    or ((select public.es_admin_rol()) and email <> public.admin_fijo() and email <> (select public.mi_correo()))
+    or ((select public.es_admin_rol()) and lower(email) <> lower(public.admin_fijo()) and email <> (select public.mi_correo()))
   );
 
 
@@ -430,14 +453,32 @@ drop policy if exists audit_leer on public.audit_log;
 create policy audit_leer on public.audit_log for select
   using ((select public.es_admin_fijo()) or (select public.es_admin_rol()));
 
+-- Y esa puerta, que se abre para alguien de afuera, no deja escribir lo que
+-- uno quiera en el registro que lee el admin (10/10/2026, docs/AUDITORIA.md,
+-- R20): `detail` va vacío, salvo el único texto que la app manda de verdad
+-- sin ser admin, el del segundo pedido de acceso tras un rechazo (logAudit
+-- en index.html, requestAccessAgain, en los cuatro idiomas). SI SE CAMBIA
+-- ESE TEXTO EN index.html HAY QUE CAMBIARLO ACÁ TAMBIÉN: la app anota la
+-- auditoría sin frenar lo que está haciendo, así que un texto que no
+-- coincida se pierde en silencio (supabase/pruebas/90-permisos.sql lo prueba
+-- con los cuatro). El nombre y el navegador ya tienen su tope de largo
+-- (audit_textos, en 03-validacion.sql: 120 y 60 caracteres, y la app manda
+-- menos de 40 en el navegador).
 drop policy if exists audit_crear on public.audit_log;
 create policy audit_crear on public.audit_log for insert
   with check (
     actor_email = (select public.mi_correo())
     and (
       (select public.es_admin_fijo()) or (select public.es_admin_rol())
-      -- Sin ser admin: solo sobre uno mismo, y solo estos dos tipos.
-      or (type in ('login', 'access_requested') and target_email is null)
+      -- Sin ser admin: solo sobre uno mismo, solo estos dos tipos y sin
+      -- texto libre.
+      or (type in ('login', 'access_requested') and target_email is null
+          and (detail is null
+               or (type = 'access_requested' and detail in (
+                    'pidió de nuevo tras un rechazo',
+                    'requested again after a rejection',
+                    'pediu de novo após uma rejeição',
+                    'ביקש/ה שוב אחרי דחייה'))))
     )
     -- Quién cargó, editó, canceló o borró un posteo lo anota SOLO la base
     -- (registrar_posteo, en 04-funciones.sql), ni siquiera un admin: si no,

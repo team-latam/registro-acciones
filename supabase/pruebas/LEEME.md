@@ -16,17 +16,35 @@ Los archivos:
   `auth.jwt()`, su bucket, y que una función nueva se pueda llamar desde
   el navegador si no se le saca el permiso). En Supabase esto ya existe;
   acá hay que fabricarlo.
-- `88-tiempo-real.sql` — que las ocho tablas estén habilitadas para mandar
-  sus cambios en vivo. Viene apagado de fábrica y es fácil no enterarse:
-  todo anda, uno escribe algo, y a los demás no les aparece hasta recargar.
+- `75-funciones-ejecutables.sql` — qué funciones puede llamar cada rol: una
+  lista blanca de las del esquema `public` que `anon` y `authenticated`
+  pueden ejecutar. Si alguien suma una función que cualquiera pueda llamar,
+  la prueba falla y dice cómo actualizar la lista (mirando antes qué
+  devuelve y qué escribe). También que ninguna función `security definer`
+  tenga el `search_path` sin fijar, y que los disparadores no se llamen a mano.
+- `76-observador.sql` — el rol `observer`: ve todo lo del equipo y no escribe
+  nada (ni posteos, ni comentarios, ni la Agenda, ni el bucket), no lee la
+  auditoría ni lo de administración, y sí guarda sus preferencias y cambia su
+  @nickname.
+- `77-sin-aprobar.sql` — alguien con sesión de Google que no está en el
+  equipo (sin ficha, ex integrante, con un pedido pendiente): todo rebota
+  salvo anotar su login y su pedido y leer su propia solicitud.
+- `78-admin-rol-y-fijo.sql` — un admin por rol contra el admin fijo: quién
+  borra comentarios, una ficha que se hace pasar por la del fijo con otras
+  mayúsculas, y sus preferencias, que solo él borra.
+- `88-tiempo-real.sql` — que las doce tablas estén habilitadas para mandar
+  sus cambios en vivo (viene apagado de fábrica y es fácil no enterarse:
+  todo anda, uno escribe algo, y a los demás no les aparece hasta recargar),
+  y que las de los avisos, los resúmenes y Calendar NO lo estén.
 - `89-adjuntos-huerfanos.sql` — qué archivos del bucket ya no nombra
   nadie: que una foto en uso, su miniatura y sus adjuntos NUNCA aparezcan
   como sobrantes, que lo recién subido espere, y que solo la llave de
   servicio pueda preguntarlo.
 - `90-permisos.sql` — quién puede hacer qué: los seis roles, y también
   alguien que se cambió el correo de su cuenta por el de otra persona (el
-  correo tiene que ser el que autenticó Google), y que un login se anote
-  una vez por día.
+  correo tiene que ser el que autenticó Google), que un login se anote
+  una vez por día y sin texto libre, quién escribe un mensaje de sistema en
+  un hilo, y quién lee, cambia y borra del bucket.
 - `91-base-vacia.sql` — el estado del proyecto recién creado (permisos
   puestos, equipo vacío): que el admin fijo pueda arrancar y que nadie más
   pueda absolutamente nada.

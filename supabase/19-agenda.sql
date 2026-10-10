@@ -150,6 +150,32 @@ drop trigger if exists contactos_controlar on public.contactos;
 create trigger contactos_controlar before insert or update on public.contactos
   for each row execute function public.agenda_controlar();
 
+-- De qué lista vino una persona (`personas.lista`, 18-personas.sql) tiene
+-- que ser una lista de la Agenda que existe (10/10/2026, docs/AUDITORIA.md,
+-- R20): hasta hoy aceptaba cualquier texto con la forma de un id. Es un
+-- disparador y no una clave foránea a propósito: con una clave, restaurar
+-- una copia (supabase/respaldo/restaurar.mjs, que carga `personas` antes
+-- que `agenda_listas`) se caería, y lo que ya esté guardado con una lista
+-- que no existe haría fallar al aplicar el esquema. El disparador mira solo
+-- lo que se escribe: una ficha nueva, o una editada que CAMBIA su lista;
+-- corregirle el teléfono a una ficha con la lista colgada anda igual. Sin
+-- una persona detrás (restaurar una copia, el esquema, el editor SQL) no
+-- se controla. La que escribe la Agenda al traer una lista (agenda_traer)
+-- crea la lista un renglón antes que sus personas, y la ve.
+create or replace function public.personas_controlar_lista() returns trigger
+  language plpgsql security definer set search_path = '' as $$
+begin
+  if public.sin_sesion_de_persona() or new.lista is null then return new; end if;
+  if tg_op = 'UPDATE' and new.lista is not distinct from old.lista then return new; end if;
+  if not exists (select 1 from public.agenda_listas l where l.id = new.lista) then
+    raise exception 'Esa lista de la Agenda no existe' using errcode = 'check_violation';
+  end if;
+  return new;
+end $$;
+drop trigger if exists personas_lista on public.personas;
+create trigger personas_lista before insert or update on public.personas
+  for each row execute function public.personas_controlar_lista();
+
 -- En vivo, como las demás (supabase/pruebas/88-tiempo-real.sql las cuenta).
 do $$
 declare t text;

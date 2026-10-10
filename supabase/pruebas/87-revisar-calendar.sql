@@ -26,6 +26,40 @@ select lab.probar_valor('un integrante no', lab.como('juan@x.com'),
   'select 1', 'select count(*)::text from public.calendar_sugerencias', '0');
 select lab.probar('y nadie las escribe desde el navegador, ni el admin fijo', lab.como('benny@team-latam.com'),
   $q$insert into public.calendar_sugerencias(evento,grupo) values ('evX','actividad')$q$, false);
+-- El id del evento tiene tope (sugerencias_evento, como el de lo sacado):
+-- las sugerencias las escribe un archivo del repo con la llave del dueño,
+-- no el navegador, pero un campo sin tope es un campo que se llena de
+-- cualquier cosa el día que alguien las escriba (docs/AUDITORIA.md, R27).
+-- Los ids de verdad: los de la app de mentira (abc123, gc_1), un id de
+-- Google de los de la tanda 19 (de 59 caracteres, empieza con «_») y el
+-- más largo que trae 13-sugerencias-calendar.sql (181).
+select lab.probar('un id de evento como los de la app (abc123, gc_1) entra', lab.como('ana@x.com'),
+  $q$set local role postgres; insert into public.calendar_sugerencias(evento,grupo) values ('abc123','actividad'), ('gc_1','reunion'), ('gc_2','personal');
+     set local role authenticated; select 1$q$, true);
+select lab.probar('uno de Google de 59 caracteres, con guion bajo al principio, también', lab.como('ana@x.com'),
+  $q$set local role postgres; insert into public.calendar_sugerencias(evento,grupo) values ('_6cs3gga3611j4b9o8gs36b9k6h13eb9p6ss3iba289344d2360q3gdi360','actividad');
+     set local role authenticated; select 1$q$, true);
+select lab.probar('y uno de 181 caracteres (el más largo de los reales)', lab.como('ana@x.com'),
+  $q$set local role postgres; insert into public.calendar_sugerencias(evento,grupo) values (repeat('a', 181),'actividad');
+     set local role authenticated; select 1$q$, true);
+select lab.probar('uno de 1.024 caracteres (el máximo que usa Google) sí', lab.como('ana@x.com'),
+  $q$set local role postgres; insert into public.calendar_sugerencias(evento,grupo) values (repeat('a', 1024),'actividad');
+     set local role authenticated; select 1$q$, true);
+select lab.probar('uno de 1.025, NO', lab.como('ana@x.com'),
+  $q$set local role postgres; insert into public.calendar_sugerencias(evento,grupo) values (repeat('a', 1025),'actividad');
+     set local role authenticated; select 1$q$, false);
+select lab.probar('uno de 100.000 caracteres, NO', lab.como('ana@x.com'),
+  $q$set local role postgres; insert into public.calendar_sugerencias(evento,grupo) values (repeat('a', 100000),'actividad');
+     set local role authenticated; select 1$q$, false);
+select lab.probar('uno vacío, NO', lab.como('ana@x.com'),
+  $q$set local role postgres; insert into public.calendar_sugerencias(evento,grupo) values ('','actividad');
+     set local role authenticated; select 1$q$, false);
+select lab.probar('la llave de servicio (la copia que restaura) tampoco se salta el tope', lab.como('ana@x.com'),
+  $q$set local role service_role; insert into public.calendar_sugerencias(evento,grupo) values (repeat('a', 1025),'actividad');
+     set local role authenticated; select 1$q$, false);
+select lab.probar('y con un id de los de siempre, la restauración entra', lab.como('ana@x.com'),
+  $q$set local role service_role; insert into public.calendar_sugerencias(evento,grupo) values ('abc123','actividad');
+     set local role authenticated; select 1$q$, true);
 
 -- ---------- Clasificar ----------
 select lab.probar_valor('un admin les pone tipo, lugar y personas de a muchos', lab.como('ana@x.com'),
