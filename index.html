@@ -11514,6 +11514,28 @@ function contenidoVisible(texto){
   return RELLENO_CALENDAR.includes(String(texto == null ? "" : texto).trim()) ? "" : texto;
 }
 
+// Lo que "Ver traducción" manda a traducir, buscado en vivo por scope + id
+// (el botón no lleva el texto). Lo mismo que muestra la tarjeta: el contenido
+// sin el relleno de Calendar (contenidoVisible), y el título solo en el
+// posteo que lo muestra (no en las respuestas, ni en las rutinas).
+function textoParaTraducir(scope, id){
+  if(scope === "reply"){
+    const r = getReplyById(id);
+    return r ? { titulo: "", contenido: contenidoVisible(r.content) || "" } : null;
+  }
+  const post = getPostById(id);
+  if(!post) return null;
+  const conTitulo = post.title && post.activityType !== "rutina";
+  return { titulo: conTitulo ? post.title : "", contenido: contenidoVisible(post.content) || "" };
+}
+function getReplyById(id){
+  for(const lista of Object.values(state.repliesByPost)){
+    const r = lista.find(x => x.id === id);
+    if(r) return r;
+  }
+  return null;
+}
+
 // Arma el pie con el link "Ver traducción"/"Ver original" y devuelve
 // también el título/contenido a mostrar (traducidos si corresponde) —
 // se usa igual en renderPostCard y en renderReply.
@@ -11531,13 +11553,13 @@ function withContentTranslation(scope, id, title, content){
     } else if(entry && entry.error && entry.lang === currentLang()){
       // El error queda visible (sobrevive a renders de fondo) hasta que
       // la persona reintenta o cambia de idioma.
-      toggleHtml = `<button type="button" class="translate-toggle" data-action="toggle-translation" data-scope="${scope}" data-id="${esc(id)}" data-title="${esc(title||"")}" data-content="${esc(content)}">⚠️ ${t("No se pudo traducir. Reintentar","Couldn't translate. Retry","Não foi possível traduzir. Tentar de novo","לא ניתן היה לתרגם. ניסיון חוזר")}</button>`;
+      toggleHtml = `<button type="button" class="translate-toggle" data-action="toggle-translation" data-scope="${scope}" data-id="${esc(id)}">⚠️ ${t("No se pudo traducir. Reintentar","Couldn't translate. Retry","Não foi possível traduzir. Tentar de novo","לא ניתן היה לתרגם. ניסיון חוזר")}</button>`;
     } else if(showTranslated && entry && !entry.loading && !entry.error){
       displayTitle = title ? entry.title : title;
       displayContent = entry.content;
       toggleHtml = `<button type="button" class="translate-toggle" data-action="toggle-translation" data-scope="${scope}" data-id="${esc(id)}">↩️ ${t("Ver original","See original","Ver original","הצגת המקור")}</button>`;
     } else {
-      toggleHtml = `<button type="button" class="translate-toggle" data-action="toggle-translation" data-scope="${scope}" data-id="${esc(id)}" data-title="${esc(title||"")}" data-content="${esc(content)}">🌐 ${t("Ver traducción","See translation","Ver tradução","הצגת התרגום")}</button>`;
+      toggleHtml = `<button type="button" class="translate-toggle" data-action="toggle-translation" data-scope="${scope}" data-id="${esc(id)}">🌐 ${t("Ver traducción","See translation","Ver tradução","הצגת התרגום")}</button>`;
     }
   }
   return { displayTitle, displayContent, toggleHtml };
@@ -20289,7 +20311,22 @@ function openFilePreview(items, index){
   renderFilePreviewFrame();
   filePreviewReturnFocus = document.activeElement;
   filePreviewOverlay.hidden = false;
+  document.addEventListener("focusin", filePreviewTraerFoco);
   (filePreviewItems.length > 1 ? filePreviewNext : document.getElementById("filePreviewClose")).focus();
+}
+// Si el foco entra al PDF del marco (un clic adentro), el Tab siguiente sale
+// de la ventana: trapTabWithin solo oye los Tab que pasan por la página, no
+// los de adentro del PDF. Mientras el visor está abierto, un foco que cae en
+// la página de atrás vuelve al primer control del visor. Solo en este visor
+// y solo mientras está abierto (hay otras ventanas apiladas, y un oyente
+// general se pelearía con ellas); el confirm/alert propio, que puede estar
+// encima, queda afuera.
+function filePreviewTraerFoco(e){
+  if(filePreviewOverlay.hidden) return;
+  const el = e.target;
+  if(!el || !el.closest || filePreviewOverlay.contains(el) || confirmOverlay.contains(el)) return;
+  const primero = enfocablesDe(filePreviewOverlay)[0];
+  if(primero) primero.focus();
 }
 function renderFilePreviewFrame(){
   const item = filePreviewItems[filePreviewIndex];
@@ -20311,23 +20348,8 @@ function renderFilePreviewFrame(){
     filePreviewWord.hidden = true; filePreviewWord.innerHTML = "";
     filePreviewFrame.hidden = false;
     filePreviewFrame.src = item.dataUrl;
-  document.addEventListener("focusin", filePreviewTraerFoco);
     filePreviewFrame.title = item.name;
     return;
-// Si el foco entra al PDF del marco (un clic adentro), el Tab siguiente sale
-// de la ventana: trapTabWithin solo oye los Tab que pasan por la página, no
-// los de adentro del PDF. Mientras el visor está abierto, un foco que cae en
-// la página de atrás vuelve al primer control del visor. Solo en este visor
-// y solo mientras está abierto (hay otras ventanas apiladas, y un oyente
-// general se pelearía con ellas); el confirm/alert propio, que puede estar
-// encima, queda afuera.
-function filePreviewTraerFoco(e){
-  if(filePreviewOverlay.hidden) return;
-  const el = e.target;
-  if(!el || !el.closest || filePreviewOverlay.contains(el) || confirmOverlay.contains(el)) return;
-  const primero = enfocablesDe(filePreviewOverlay)[0];
-  if(primero) primero.focus();
-}
   }
   filePreviewFrame.hidden = true; filePreviewFrame.src = "about:blank";
   filePreviewWord.hidden = false;
@@ -20411,6 +20433,7 @@ function filePreviewStep(delta){
 }
 function closeFilePreview(){
   filePreviewOverlay.hidden = true;
+  document.removeEventListener("focusin", filePreviewTraerFoco);
   filePreviewVuelta++;
   filePreviewFrame.src = ""; // no queda el archivo cargado en memoria mientras está cerrado
   filePreviewWord.innerHTML = "";
@@ -20433,7 +20456,6 @@ filePreviewNext.addEventListener("click", e=>{ e.stopPropagation(); filePreviewS
 // aprobado ya puede leer entero — no es un dato nuevo, solo se muestra
 // junto en un solo lugar.
 const userProfileOverlay = document.getElementById("userProfileOverlay");
-  document.removeEventListener("focusin", filePreviewTraerFoco);
 const userProfileBody = document.getElementById("userProfileBody");
 let userProfileEmail = null;
 let userProfileReturnFocus = null;
@@ -22528,6 +22550,10 @@ postForm.addEventListener("keydown", e=>{
 });
 // Tab dentro de un modal abierto cicla entre sus propios controles en
 // vez de irse a la página de atrás (que está tapada).
+function enfocablesDe(overlayEl){
+  return [...overlayEl.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')]
+    .filter(el=>!el.disabled && !el.hidden && el.offsetParent !== null);
+}
 function trapTabWithin(overlayEl){
   overlayEl.addEventListener("keydown", e=>{
     if(e.key !== "Tab") return;
@@ -22549,10 +22575,6 @@ trapTabWithin(agendaOverlay);
 trapTabWithin(cumpleOverlay);
 trapTabWithin(fichaPostOverlay);
 trapTabWithin(confirmOverlay);
-function enfocablesDe(overlayEl){
-  return [...overlayEl.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')]
-    .filter(el=>!el.disabled && !el.hidden && el.offsetParent !== null);
-}
 trapTabWithin(eventCardOverlay);
 
 // Los topes duros son los de la base (LIMITES_DE_LA_BASE, en la capa de
@@ -24393,7 +24415,13 @@ document.addEventListener("click", async e=>{
     setLang(el.dataset.lang);
   },
     "toggle-translation": async (el, e, action, postId) => {
-    toggleContentTranslation(el.dataset.scope, el.dataset.id, el.dataset.title, el.dataset.content);
+    // El botón trae solo scope + id; el título y el contenido se buscan en
+    // vivo (antes iban enteros en data-*, hasta 5.000 caracteres por tarjeta).
+    const scope = el.dataset.scope, id = el.dataset.id;
+    const q = textoParaTraducir(scope, id);
+    // "Ver original" no necesita el texto; "Ver traducción" de algo que ya no está, tampoco tiene qué traducir.
+    if(!q && !translationsShown.has(translationKey(scope, id))) return;
+    toggleContentTranslation(scope, id, q ? q.titulo : "", q ? q.contenido : "");
   },
     "edit-nickname": async (el, e, action, postId) => {
     nicknameEditing = true;
