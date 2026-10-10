@@ -14581,7 +14581,10 @@ function renderPanelDeFiltros(){
   }).join("");
   const nCamb = cambiados.size;
   const pend = nCamb ? `<span class="fp-pend">· ${nCamb === 1 ? t("1 cambio","1 change","1 mudança","שינוי אחד") : t("{n} cambios","{n} changes","{n} mudanças","{n} שינויים",{ n:nCamb })}</span>` : "";
-  const total = getVisiblePosts(f, b.nivel).length;
+  // Lo que el Inicio va a mostrar en la solapa en que se está («Lo que pasó» o «Próximos»),
+  // no la suma de las dos: con el número de las dos, el botón prometía más de lo que se veía.
+  const hoy = todayISO(), enProximos = feedSolapa === "futuro";
+  const total = getVisiblePosts(f, b.nivel).filter(({ post }) => esProximo(post, hoy) === enProximos).length;
   const ver = total === 1 ? t("Ver 1 posteo","See 1 post","Ver 1 postagem","הצגת פוסט אחד") : t("Ver {n} posteos","See {n} posts","Ver {n} postagens","הצגת {n} פוסטים",{ n:total });
   const hayAlgo = FILTROS_CON_FICHA.some(k => valorDelFiltro(k, f, b.nivel));
   const opciones = { actividad:fpOpcionesActividad, lugar:fpOpcionesLugar, fecha:fpOpcionesFecha, persona:fpOpcionesPersona, guardados:fpOpcionesGuardados }[cat](b);
