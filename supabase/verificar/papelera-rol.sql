@@ -1,10 +1,13 @@
+-- Un integrante o un observador NO es el admin fijo (aunque figure con ese rol: el admin fijo lo es siempre).
 -- Lo que papelera.sql repite para cada rol (:rol). Va aparte porque psql no tiene bucles.
 \echo
 \echo == Como :rol ==
 select coalesce((select i.user_id::text from auth.identities i join public.members m on lower(m.email) = lower(i.identity_data ->> 'email')
-                  where i.provider = 'google' and m.role = :'rol' order by m.email limit 1), '') as uid,
+                  where i.provider = 'google' and ((:'rol' = 'admin' and (m.role = 'admin' or lower(m.email) = lower(public.admin_fijo())))
+                    or (:'rol' <> 'admin' and m.role = :'rol' and lower(m.email) <> lower(public.admin_fijo()))) order by m.email limit 1), '') as uid,
        coalesce((select lower(i.identity_data ->> 'email') from auth.identities i join public.members m on lower(m.email) = lower(i.identity_data ->> 'email')
-                  where i.provider = 'google' and m.role = :'rol' order by m.email limit 1), '') as correo \gset
+                  where i.provider = 'google' and ((:'rol' = 'admin' and (m.role = 'admin' or lower(m.email) = lower(public.admin_fijo())))
+                    or (:'rol' <> 'admin' and m.role = :'rol' and lower(m.email) <> lower(public.admin_fijo()))) order by m.email limit 1), '') as correo \gset
 select (:'uid' <> '') as hay \gset
 \if :hay
   select set_config('request.jwt.claims', json_build_object('sub', :'uid', 'email', :'correo', 'role', 'authenticated', 'aud', 'authenticated',
