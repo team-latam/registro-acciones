@@ -20714,8 +20714,9 @@ const agendaOverlay = document.getElementById("agendaOverlay");
 const agendaBody = document.getElementById("agendaBody");
 let agendaPila = [];
 const AGENDA_TANDA = 40;
-// `zona` es una región (sur, central, norte): sus países y su propia gente.
-const agendaFiltroVacio = extra => ({ q:"", pais:"", ciudad:"", zona:"", tipo:"", lista:"", mostrar:AGENDA_TANDA, ...extra });
+// `zonas` son regiones (sur, central, norte): sus países y su propia gente. Pueden ser varias,
+// como los chips de zona de Países.
+const agendaFiltroVacio = extra => ({ q:"", pais:"", ciudad:"", zonas:[], tipo:"", lista:"", mostrar:AGENDA_TANDA, ...extra });
 let agendaFiltro = agendaFiltroVacio();
 let agendaReturnFocus = null;
 let agendaGuardando = false;
@@ -20828,7 +20829,7 @@ function agendaFiltradas(){
   return agendaDatos().ordenadas.filter(x => {
     if(f.pais && x.country !== f.pais) return false;
     if(f.ciudad && normalize(x.city) !== normalize(f.ciudad)) return false;
-    if(f.zona && !enLaZona(x, f.zona)) return false;
+    if(f.zonas.length && !f.zonas.some(z => enLaZona(x, z))) return false;
     // Tipo y lista son de las instituciones: con ese filtro, la gente de un lugar no entra.
     if(f.tipo && x.tipo !== f.tipo) return false;
     if(f.lista && x.lista !== f.lista) return false;
@@ -20962,10 +20963,10 @@ function agendaVistaLista(){
   // contacto (9/10/2026).
   const sumar = canWrite() ? `<button type="button" class="btn-primary ag-cab-acc" data-action="agenda-sumar">+ ${t("Sumar","Add","Adicionar","הוספה")}</button>` : "";
   const titulo = `📇 ${esc(t("Agenda","Directory","Agenda","ספר טלפונים"))}`;
-  const hayFiltro = f.q || f.pais || f.ciudad || f.zona || f.tipo || f.lista;
+  const hayFiltro = f.q || f.pais || f.ciudad || f.zonas.length || f.tipo || f.lista;
   // El chip de un lugar (una ciudad o una región) que se abrió desde su ficha: tocarlo saca ese filtro.
-  const chipDeLugar = (accion, nombre) => `<button type="button" class="ag-chip" data-action="${accion}" title="${esc(t("Sacar","Remove","Remover","הסרה"))}" aria-label="${esc(t("Sacar el filtro: {x}","Remove filter: {x}","Remover o filtro: {x}","הסרת הסינון: {x}",{ x: nombre }))}">📍 ${esc(nombre)} ✕</button>`;
-  const resumen = `<div class="ag-resumen">${f.ciudad ? chipDeLugar("agenda-sin-ciudad", cityLabel(f.pais, f.ciudad)) : ""}${f.zona ? chipDeLugar("agenda-sin-zona", regionLabel(f.zona)) : ""}
+  const chipDeLugar = (accion, nombre, dato = "") => `<button type="button" class="ag-chip" data-action="${accion}" ${dato} title="${esc(t("Sacar","Remove","Remover","הסרה"))}" aria-label="${esc(t("Sacar el filtro: {x}","Remove filter: {x}","Remover o filtro: {x}","הסרת הסינון: {x}",{ x: nombre }))}">📍 ${esc(nombre)} ✕</button>`;
+  const resumen = `<div class="ag-resumen">${f.ciudad ? chipDeLugar("agenda-sin-ciudad", cityLabel(f.pais, f.ciudad)) : ""}${f.zonas.map(z => chipDeLugar("agenda-sin-zona", regionLabel(z), `data-zona="${esc(z)}"`)).join("")}
     <span>${t("<b>{i}</b> y <b>{c}</b> en {ci} de {p}","<b>{i}</b> and <b>{c}</b> in {ci} of {p}","<b>{i}</b> e <b>{c}</b> em {ci} de {p}","<b>{i}</b> ו-<b>{c}</b> ב-{ci} ב-{p}",{ i: esc(cuantasInstituciones(r.inst)), c: esc(cuantosContactos(r.gente)), ci: esc(cuantasCiudades(r.ciudades)), p: esc(cuantosPaises(r.paises)) })}</span>
     ${hayFiltro ? `<button type="button" class="ag-link" data-action="agenda-limpiar">${t("Limpiar","Clear","Limpar","ניקוי")}</button>` : ""}</div>`;
   // Vacía: solo qué es y cómo se empieza, sin buscador, filtros ni «0 instituciones en 0 ciudades».
@@ -21299,9 +21300,13 @@ function desdeElBuscador(abrir){
   abrir();
   if(buscador) agendaReturnFocus = buscador;
 }
+// Con qué regiones se abre la Agenda: la de la ficha de una región, o las que están marcadas
+// arriba en Países (se leen en vivo al tocar, no se guardan en el botón).
+const zonasParaLaAgenda = el => { const marcadas = el.dataset.zona ? [el.dataset.zona] : el.classList.contains("paises-agenda") ? [...state.paisesZoneFilter] : [];
+  return Object.keys(ZONES).filter(z => marcadas.includes(z)); };
 const AGENDA_ACCIONES = {
   // Con una sola lista, filtrar por ella es lo mismo que no filtrar (y dejaría un «Limpiar» de más).
-  "agenda-abrir": (el) => abrirAgenda({ t:"lista" }, { pais: el.dataset.country || "", ciudad: el.dataset.city || "", zona: ZONES[el.dataset.zona] ? el.dataset.zona : "", q: el.dataset.q || "", lista: state.agendaListas.length > 1 ? el.dataset.lista || "" : "" }),
+  "agenda-abrir": (el) => abrirAgenda({ t:"lista" }, { pais: el.dataset.country || "", ciudad: el.dataset.city || "", zonas: zonasParaLaAgenda(el), q: el.dataset.q || "", lista: state.agendaListas.length > 1 ? el.dataset.lista || "" : "" }),
   "agenda-cerrar": () => cerrarAgenda(),
   // Desde «Buscar en todo»
   // Desde «Buscar en todo»: al cerrar, el foco vuelve al buscador (el
@@ -21317,7 +21322,7 @@ const AGENDA_ACCIONES = {
   "agenda-mas": () => { agendaFiltro.mostrar += AGENDA_TANDA; renderAgenda(); },
   "agenda-limpiar": () => { agendaFiltro = agendaFiltroVacio(); renderAgenda(); if(!isTouchDevice()) document.getElementById("agendaBuscar")?.focus(); },
   "agenda-sin-ciudad": () => { agendaFiltro.ciudad = ""; agendaFiltro.mostrar = AGENDA_TANDA; renderAgenda(); },
-  "agenda-sin-zona": () => { agendaFiltro.zona = ""; agendaFiltro.mostrar = AGENDA_TANDA; renderAgenda(); },
+  "agenda-sin-zona": (el) => { agendaFiltro.zonas = agendaFiltro.zonas.filter(z => z !== el.dataset.zona); agendaFiltro.mostrar = AGENDA_TANDA; renderAgenda(); },
   "agenda-planilla": () => { if(canWrite()) descargarTexto(`agenda-${todayISO()}.csv`, csvDeLaAgenda(agendaFiltradas())); },
   "agenda-copiar": async (el) => {
     try{ await navigator.clipboard.writeText(el.dataset.n); showCalendarNotice({ ok:true, message: t("Número copiado.","Number copied.","Número copiado.","המספר הועתק.") }); }
@@ -21393,7 +21398,7 @@ function agendaAlEscribir(el){
   if(el.dataset.agTel != null){ v.tels[Number(el.dataset.agTel)].n = el.value; return true; }
   if(el.dataset.agWa != null){ v.tels[Number(el.dataset.agWa)].wa = el.checked; return true; }
   if(el.dataset.agCargo != null){ v.cargos[el.dataset.agCargo] = el.value; return true; }
-  if(el.id === "agendaPais"){ agendaFiltro.pais = el.value; agendaFiltro.ciudad = ""; agendaFiltro.zona = ""; agendaFiltro.mostrar = AGENDA_TANDA; renderAgenda(); return true; }
+  if(el.id === "agendaPais"){ agendaFiltro.pais = el.value; agendaFiltro.ciudad = ""; agendaFiltro.zonas = []; agendaFiltro.mostrar = AGENDA_TANDA; renderAgenda(); return true; }
   if(el.id === "agendaTipo"){ agendaFiltro.tipo = el.value; agendaFiltro.mostrar = AGENDA_TANDA; renderAgenda(); return true; }
   if(el.id === "agendaLista"){ agendaFiltro.lista = el.value; agendaFiltro.mostrar = AGENDA_TANDA; renderAgenda(); return true; }
   return false;

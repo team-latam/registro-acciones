@@ -152,6 +152,35 @@ const chip = (p, accion) => p.$eval(`[data-action="${accion}"]`, e => ({ texto: 
   await p.close();
 }
 
+/* ---------- El botón «📇 Agenda» de Países respeta las zonas marcadas arriba (captura del usuario) ---------- */
+{
+  const { p, errores } = await entrar(ADMIN, "Benny");
+  await irAPaises(p);
+  const chips = () => p.$$eval('[data-action="agenda-sin-zona"]', l => l.map(e => e.textContent.replace(/\s+/g, " ").trim()));
+  const abrir = async () => { await p.click(".paises-agenda"); await p.waitForSelector("#agendaBuscar"); };
+  const cerrar = () => p.click('[data-action="agenda-cerrar"]');
+  const zona = k => p.click(`[data-action="toggle-paises-zone"][data-key="${k}"]`);
+
+  await abrir();
+  eq("Países sin zonas marcadas: la Agenda entera, sin chips", [await encabezados(p), await chips()], [["Toda LatAm", "Región Sur", "Argentina", "México", "Uruguay"], []]);
+  await cerrar();
+
+  await zona("norte"); await abrir();
+  eq("con «Norte» marcada: solo lo de Norte, con su chip", [await encabezados(p), await chips()], [["México"], ["📍 Región Norte ✕"]]);
+  await cerrar();
+
+  await zona("sur"); await abrir();
+  eq("con «Sur» y «Norte»: las dos, cada una con su chip (en el orden de las zonas)", [await encabezados(p), await chips()], [["Región Sur", "Argentina", "México", "Uruguay"], ["📍 Región Sur ✕", "📍 Región Norte ✕"]]);
+  await p.click('[data-action="agenda-sin-zona"][data-zona="sur"]');
+  eq("sacar un chip deja el otro", [await encabezados(p), await chips()], [["México"], ["📍 Región Norte ✕"]]);
+  await cerrar();
+
+  await zona("sur"); await zona("norte"); await abrir();
+  eq("sin zonas marcadas otra vez: entera (se lee al tocar, no se queda con la vez anterior)", [await encabezados(p), await chips()], [["Toda LatAm", "Región Sur", "Argentina", "México", "Uruguay"], []]);
+  eq("sin errores", errores, []);
+  await p.close();
+}
+
 /* ---------- El chip de una ciudad también se anuncia por su nombre ---------- */
 {
   const { p, errores } = await entrar(ADMIN, "Benny");

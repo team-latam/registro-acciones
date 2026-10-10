@@ -979,6 +979,12 @@ Países: «Ver Agenda» y la fila con la gente de la región) se abría entera.
 - Ahora la región filtra igual: sus países y su propia gente (sin toda
   LatAm ni los países de otra región), con el chip «📍 Región Sur ✕». El
   chip, «Limpiar» y elegir un país sacan la región.
+- **También desde el botón «📇 Agenda» de Países** (lo señaló el usuario con
+  una captura: tenía «Central» marcada arriba y la Agenda se abrió entera):
+  abre filtrada por las zonas marcadas, una o varias, cada una con su chip
+  («📍 Región Sur ✕», «📍 Región Norte ✕»), que se sacan de a una. Las zonas
+  se leen al tocar el botón, no se guardan en él. El filtro de la Agenda
+  pasó de `zona` a `zonas` (lista). Sin zonas marcadas, abre entera.
 - Los dos chips (ciudad y región) dicen por su nombre qué sacan
   («Sacar el filtro: Rosario»), en los cuatro idiomas.
 - Una sola función (`enLaZona`) decide quién está en una región, para la
