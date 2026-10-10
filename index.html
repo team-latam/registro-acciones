@@ -10488,7 +10488,7 @@ function openProjectMilestone(compoundId){
   requestAnimationFrame(()=>{
     const el = document.querySelector(`.pj-row[data-ms-id="${CSS.escape(msId)}"]`);
     if(!el) return;
-    el.scrollIntoView({ behavior:"smooth", block:"center" });
+    el.scrollIntoView({ behavior:comportamientoDeScroll(), block:"center" });
     el.classList.add("mention-highlight");
     setTimeout(()=>el.classList.remove("mention-highlight"), 2000);
   });
@@ -16177,7 +16177,7 @@ function gotoMention(postId, replyId){
   requestAnimationFrame(()=>{
     const el = document.querySelector(`.post[data-post-id="${CSS.escape(postId)}"]`);
     if(!el) return;
-    el.scrollIntoView({ behavior:"smooth", block:"center" });
+    el.scrollIntoView({ behavior:comportamientoDeScroll(), block:"center" });
     el.classList.add("mention-highlight");
     setTimeout(()=>el.classList.remove("mention-highlight"), 2000);
   });
@@ -19834,9 +19834,14 @@ function updateScrollTop(){
 }
 window.addEventListener("scroll", updateScrollTop, { passive:true });
 window.addEventListener("resize", updateScrollTop);
+// «smooth», salvo que la persona haya pedido menos movimiento: el CSS global
+// (scroll-behavior:auto bajo prefers-reduced-motion) no alcanza a los
+// desplazamientos que se piden desde el código.
+function comportamientoDeScroll(){
+  return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+}
 function scrollToTop(){
-  const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  window.scrollTo({ top:0, behavior: reduce ? "auto" : "smooth" });
+  window.scrollTo({ top:0, behavior: comportamientoDeScroll() });
 }
 // ---- "↑ N publicaciones nuevas" (como en X) ----
 // Se guardan los ids ya vistos; en cada snapshot, lo que no estaba y no es
@@ -19901,7 +19906,7 @@ function startRutina(){
   requestAnimationFrame(()=>{
     const ta = document.getElementById("rutinaContent");
     if(!ta) return;
-    ta.scrollIntoView({ behavior:"smooth", block:"center" });
+    ta.scrollIntoView({ behavior:comportamientoDeScroll(), block:"center" });
     if(!isTouchDevice()) ta.focus(); // en el celular: a la vista, sin teclado (ver isTouchDevice)
   });
 }
@@ -20223,13 +20228,13 @@ function renderLightboxFrame(){
   document.getElementById("lightboxTitle").textContent = multi
     ? t("Foto {a} de {b}","Photo {a} of {b}","Foto {a} de {b}","תמונה {a} מתוך {b}",{a:lightboxIndex+1, b:lightboxItems.length})
     : t("Foto","Photo","Foto","תמונה");
+  // El nombre de la foto para el lector de pantalla es ese mismo título.
+  lightboxImg.alt = document.getElementById("lightboxTitle").textContent;
   const bajar = document.getElementById("lightboxDownload");
   // Las fotos no guardan su nombre original: bajan como "<evento> - foto N".
   const ext = (String(src).split("?")[0].match(/\.(jpe?g|png|gif|webp)$/i) || [, "jpg"])[1].toLowerCase();
   bajar.href = src; bajar.download = `${lightboxNombre || t("Foto","Photo","Foto","תמונה")} - ${t("foto","photo","foto","תמונה")} ${lightboxIndex+1}.${ext}`;
   lightboxPrev.hidden = lightboxNext.hidden = lightboxCounter.hidden = !multi;
-  // El nombre de la foto para el lector de pantalla es ese mismo título.
-  lightboxImg.alt = document.getElementById("lightboxTitle").textContent;
   if(multi){
     // ‹ › SÍ los invierte solo dir="rtl" (son puntuación, a diferencia de
     // ←/→) pero se elige el glyph a mano igual, mismo criterio que el
