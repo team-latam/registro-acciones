@@ -969,7 +969,26 @@ eligió **unirlas así**:
 Pruebas: `agenda_test.mjs` (país, región y ciudad; fallan con el código
 de antes) y `ficha_celular_test.mjs` vuelve a esperar cinco tarjetas.
 
-### 58. Revisar el Mapeo: el Excel de comunidades, ficha por ficha — HECHO (9 oct 2026)
+### 58. Revisar el Mapeo: el Excel de comunidades, ficha por ficha — HECHA Y RETIRADA (9 y 10 oct 2026)
+
+**Retirada el 10/10/2026 a pedido del usuario** («borrá todo lo que se
+hizo para generar la herramienta … eso ya no va a servir más; todo lo
+referido a Mapeo ya lo tengo guardado offline y en Drive»): terminó la
+revisión y se queda con el Excel y el Sheet. Se sacaron
+`herramientas/mapeo.html` y su LEEME, `pruebas/mapeo_test.mjs`,
+`mapeo_revisar_xlsx.py`, `mapeo_dos_hojas.py` y `mapeo_de_prueba.xlsx`,
+y los workflows volvieron a publicar solo `index.html`. Todo sigue en
+el historial de Git (commits `b0bbd3f`, `b5eb0ff` y `7371ca7`), por si
+algo sirve para lo que viene: **subir ese Mapeo a la Agenda de la app,
+en otra conversación**. Para ese día, lo que se aprendió del archivo:
+una hoja «Mapping», 81 comunidades en tres regiones (sin nombre, NORTE
+y BRASIL; la fila 69 «Brasil» es nacional y no entra en el total), cada
+una con ciudad, país, miembros, entidades, tamaño y diez áreas (cargo o
+SI/NO más «Nombre (+teléfono)»; varias personas van con «/»); muchos
+teléfonos sin «+», con marcas invisibles de WhatsApp o con un dígito de
+menos; «El Salvadro»; «Mexico City», «Rep. Dominicana» y otros nombres
+distintos a los de `CITY_PRESETS`. Lo que sigue es lo que se hizo.
+
 
 El usuario mandó «Mapeo - LatAm.xlsx» (una hoja: 81 comunidades en tres
 regiones —la primera sin nombre, NORTE y BRASIL—, cada una con ciudad,

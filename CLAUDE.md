@@ -31,14 +31,14 @@ decisiones de arquitectura.
   `docs/auditoria/historial/`) y
   `docs/RESTAURAR.md` (cómo volver atrás con una copia: workflow
   «Restaurar una copia», `supabase/respaldo/restaurar.mjs`). En la
-  raíz quedan solo `index.html`, `README.md` y este archivo. En
-  `herramientas/` van páginas sueltas que se publican con la app (hoy
-  `mapeo.html`, «Revisar el Mapeo»: abre el Excel de comunidades, lo
-  revisa como fichas y lo exporta con el mismo formato; ver
-  `herramientas/LEEME.md`). **El Excel del Mapeo tiene nombres y
-  teléfonos de personas: no se commitea ni se embebe en ninguna página**
-  (el repo y el sitio son públicos); la prueba usa una copia con gente
-  inventada, `pruebas/mapeo_de_prueba.xlsx`.
+  raíz quedan solo `index.html`, `README.md` y este archivo.
+  **El Excel del Mapeo de comunidades («Mapeo - LatAm», un Sheet de
+  Google del usuario) tiene nombres y teléfonos de personas: no se
+  commitea ni se embebe en ninguna página** (el repo y el sitio son
+  públicos). La herramienta que lo revisaba (`herramientas/mapeo.html`,
+  9/10/2026) se retiró a pedido del usuario el 10/10/2026; queda en el
+  historial de Git (docs/REDISENO.md, tanda 58) y lo que sigue —subir
+  ese Mapeo a la Agenda— es para otra conversación.
   Copias de seguridad (docs/REVISION.md, punto 13): andando desde el
   5/10/2026 — workflow «Copia de seguridad» (`supabase/respaldo/`) cada
   domingo al repo privado `team-latam/registro-respaldos`, y
@@ -139,8 +139,7 @@ reglas, sin que lo pida:
 
 Corre todas las pruebas de `index.html` (más de mil comprobaciones), la
 carga de la página y la app entera con la sesión iniciada contra un
-Supabase de mentira (`app_dom_test.mjs`), y también las de
-`herramientas/` (`mapeo_test.mjs`). **Tiene que terminar en verde antes de
+Supabase de mentira (`app_dom_test.mjs`). **Tiene que terminar en verde antes de
 cada commit que toque la app.** GitHub lo corre igual en cada push
 (`.github/workflows/app.yml`; en `main`, adentro de «Publicar el sitio»),
 y un push en rojo ya no se publica: queda en línea la versión anterior.
