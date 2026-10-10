@@ -284,3 +284,73 @@ algo que puede estar plegado, el clic es de la página
 esperaba para siempre y el corredor lo daba por colgado a los 5 minutos.
 *Regla:* los ayudantes que esperan llevan su tope escrito
 (`{ timeout: 4000 }`) y devuelven `false` al vencer.
+
+## Agregado en la auditoría completa (10/10/2026)
+
+**Lo que todavía no pasó, contado como hecho — tercera vez.** Volvió en la
+ficha de un lugar: «N registros en 12 meses» y las barras del Ritmo suman
+lo planificado de este mes; «N visitas en los últimos 12 meses» y «Última
+visita» de la lectura rápida toman fechas futuras. *Regla:* la de siempre,
+y ahora con nivel importante de entrada (METODO.md: lo que se repite sube).
+*Se detecta:* a mano; falta una herramienta: buscar en el JS los
+`startsWith(mes)` y `diasDesde(...) <= N` que no van precedidos de un
+corte en `todayISO()`.
+
+**La repetición «más cercana» no es la próxima.** «Próximos eventos» usaba
+`occurrenceOf()` (la repetición más cercana a hoy en valor absoluto, que
+puede ser la de ayer) y la descartaba por pasada: una rutina de los lunes
+desaparecía de martes a jueves. *Regla:* para «lo que viene» se toma la
+primera repetición con fecha `>= hoy` de `postOccurrenceList()`;
+`occurrenceOf()` es para pararse en una tarjeta, no para listar lo próximo.
+
+**Un punto tachado que no estaba hecho del todo — volvió.** I6 (6/10)
+quedó tachado con «`editors` … solo autor/editor/admin» y el disparador
+nunca controló quién cambia `editors`: un integrante se suma como editor y
+cancela un evento ajeno. *Regla:* al tachar algo de la base, la prueba SQL
+que lo demuestra va en el mismo commit; sin prueba no se tacha.
+
+**Un trabajo que tiene que caer justo en su hora — volvió.** La limpieza
+de las marcas de avisos (`resumen.mjs`) corre «si `reloj.hora === 4`», y
+con el atraso de GitHub (5–7 horas, medido) nunca cayó a las 4. La regla
+del 7/10 se escribió para los resúmenes y no se aplicó al resto del mismo
+archivo. *Regla:* en un trabajo programado nada depende de la hora exacta;
+lo periódico se hace en cada corrida si es idempotente, o «si hace más de
+N horas que no se hizo».
+
+**Un color de marca usado como texto.** El celeste `--celeste-dark`
+(#1a9fb8) sirve para fondos y bordes, pero como color de letra chica sobre
+blanco da 3,1 de contraste (mínimo 4,5), y la Agenda, la ficha de un lugar
+y las solapas lo usan para «Ver la ficha ›», «Volver», el teléfono, los
+contadores. *Se detecta:* a mano con el cálculo WCAG; conviene sumarlo a
+`codigo` (cada par color/fondo de las variables). *Regla:* el texto lleva
+un token propio (`--link`) con contraste calculado en claro y oscuro; los
+colores de marca, solo en fondos y bordes.
+
+**Una herramienta que solo mira lo que ya mira.** `seguridad` revisaba
+`<script src>` y `cargarScript()`, y el `import()` de supabase-js (la
+librería que maneja la sesión) entraba sin huella desde el 6/10 sin que
+nadie lo viera; el 6/10 se había propuesto el `modulepreload` y quedó sin
+hacer ni anotar. *Regla:* cada forma nueva de traer código de afuera se
+suma a la herramienta el mismo día; lo que se propone y no se hace se
+anota en `docs/AUDITORIA.md` como abierto, nunca se deja implícito.
+
+**Una medición que no se repite.** `pantallas` marcó que en el visor de
+archivos (390) Tab se escapaba y el foco no volvía; reproducido dos veces
+a mano, no pasa. *Regla:* un hallazgo de una herramienta que no se
+reproduce dos veces va a «dudas» con lo que se intentó, no a la lista; y
+la herramienta anota el camino del foco (qué elemento en cada Tab) para
+que la próxima vez se vea qué pasó.
+
+**Lo que GitHub cambia por debajo.** `ubuntu-latest` pasa a Ubuntu 26 el
+19/10/2026, y lo avisa solo en una anotación de cada corrida. Lo mismo que
+las acciones (6/10): lo que no se fija, cambia solo. *Regla:* `runs-on` con
+versión (`ubuntu-24.04`), `pruebas/workflows_test.mjs` lo exige, y subirla
+es una decisión con prueba, como subir una acción.
+
+**Tres cuentas que no cierran entre dos pantallas.** Reportes → Inicio
+prometía «la lista da lo mismo que la fila» y falla con la preferencia
+«+ Región», con un alcance puesto en un comentario y con las repeticiones.
+*Regla:* cuando dos pantallas cuentan lo mismo, cuentan con la misma
+función (una sola regla de «alcances efectivos» y una sola de «cuántas
+veces»); la prueba que compara los números incluye una preferencia
+distinta de la de fábrica, un alcance en una respuesta y una rutina.
