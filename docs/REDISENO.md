@@ -969,6 +969,35 @@ eligió **unirlas así**:
 Pruebas: `agenda_test.mjs` (país, región y ciudad; fallan con el código
 de antes) y `ficha_celular_test.mjs` vuelve a esperar cinco tarjetas.
 
+### 61. La Agenda abierta desde una región sale filtrada, y la barra de Países pareja — HECHO (10 oct 2026)
+
+Salió de la auditoría del 10/10 (R21). El usuario eligió la opción A de
+la página de decisiones (con capturas): desde una ciudad la Agenda ya se
+abría filtrada, con un chip «📍 Rosario ✕»; desde una región (su ficha en
+Países: «Ver Agenda» y la fila con la gente de la región) se abría entera.
+
+- Ahora la región filtra igual: sus países y su propia gente (sin toda
+  LatAm ni los países de otra región), con el chip «📍 Región Sur ✕». El
+  chip, «Limpiar» y elegir un país sacan la región.
+- Los dos chips (ciudad y región) dicen por su nombre qué sacan
+  («Sacar el filtro: Rosario»), en los cuatro idiomas.
+- Una sola función (`enLaZona`) decide quién está en una región, para la
+  ficha del lugar y para el filtro de la Agenda; el filtro vacío vive en
+  `agendaFiltroVacio()`.
+
+- **La barra de Países, pareja** (captura del usuario: «los botones no
+  tienen el mismo tamaño»): «Lista · Mapa» medía 40 px de alto, «📇 Agenda»
+  34 y los chips de zona 31. Ahora los cinco miden 36, en la compu y en el
+  celular; la píldora de Lista/Mapa por dentro sigue en 32 y solo cambió
+  su borde (de 4 a 2 px). Se probó entre 30 y 40 px y 36 fue el que menos
+  cambia el aire de la barra.
+
+Pruebas: `pruebas/agenda_region_test.mjs` y `pruebas/paises_barra_test.mjs`
+(las dos fallan con el código de antes).
+Las otras dos decisiones de esa página: el correo de las fichas (sigue
+abierta, el usuario pidió que se la explique mejor) y el nombre libre en
+el login (opción A: se deja como está).
+
 ### 60. Tanda 1 de la auditoría completa del 10/10 — HECHO (10 oct 2026)
 
 Lo que la auditoría (`docs/AUDITORIA.md`, códigos R) dejó para Claude sin

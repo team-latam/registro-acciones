@@ -2873,11 +2873,17 @@
   .subview-toggle button.active{ background:var(--petroleo); color:#fff; }
   .paises-toolbar{ display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:16px; }
   .paises-toolbar .subview-toggle, .paises-toolbar .zone-legend{ margin-bottom:0; }
+  /* Lista · Mapa, «Agenda» y las zonas, de una misma altura (36 px): eran 40,
+     34 y 31 y no se veían parejos (captura del usuario, 10/10/2026). El
+     píldora de Lista y Mapa por dentro sigue en 32; solo cambia su borde. */
+  .paises-toolbar .subview-toggle{ padding:2px; }
+  .paises-toolbar .subview-toggle button{ padding:0 18px; min-height:32px; display:inline-flex; align-items:center; }
+  .paises-toolbar .chip-toggle{ min-height:36px; box-sizing:border-box; }
   /* «📇 Agenda» (8/10/2026): al lado de Lista y Mapa, con su misma forma
      de píldora y sin colores nuevos (pedido del usuario: «que no rompa la
      armonía»). */
   .paises-izq{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-  .paises-agenda{ border:1px solid var(--border); background:var(--card); color:var(--ink); border-radius:999px; padding:8px 16px; font-weight:700; font-size:13px; cursor:pointer; }
+  .paises-agenda{ border:1px solid var(--border); background:var(--card); color:var(--ink); border-radius:999px; padding:0 16px; min-height:36px; box-sizing:border-box; display:inline-flex; align-items:center; gap:6px; font-weight:700; font-size:13px; cursor:pointer; }
   .paises-agenda:hover{ background:var(--surface-alt); }
   /* ----- La Agenda (8/10/2026): la ventana ----- */
   /* Chica y a medida (la C de tres que vio el usuario el 9/10/2026; antes
@@ -20693,10 +20699,12 @@ likesOverlay.addEventListener("click", e=>{ if(e.target === likesOverlay) closeL
 const agendaOverlay = document.getElementById("agendaOverlay");
 const agendaBody = document.getElementById("agendaBody");
 let agendaPila = [];
-let agendaFiltro = { q:"", pais:"", ciudad:"", tipo:"", lista:"", mostrar:40 };
+const AGENDA_TANDA = 40;
+// `zona` es una región (sur, central, norte): sus países y su propia gente.
+const agendaFiltroVacio = extra => ({ q:"", pais:"", ciudad:"", zona:"", tipo:"", lista:"", mostrar:AGENDA_TANDA, ...extra });
+let agendaFiltro = agendaFiltroVacio();
 let agendaReturnFocus = null;
 let agendaGuardando = false;
-const AGENDA_TANDA = 40;
 // Lo que se escribe en un teléfono: el número como se marca. Sin letras ni
 // los caracteres invisibles que trae lo copiado de WhatsApp (la base no los
 // acepta: personas_telefonos_ok).
@@ -20784,9 +20792,11 @@ const institucionesDePersona = pid => (agendaDatos().lugares.get(pid) || []).map
 // y la de sus ciudades; en una ciudad, la de la ciudad.
 function institucionesDeLugar(L){
   const ciudad = L.city ? normalize(L.city) : null;
-  return agendaDatos().ordenadas.filter(x => L.zona ? (x.lugar && x.nivel === "region" ? x.zona === L.zona : !!x.country && zoneOfCountry(x.country) === L.zona)
+  return agendaDatos().ordenadas.filter(x => L.zona ? enLaZona(x, L.zona)
     : x.country === L.country && (!ciudad || normalize(x.city) === ciudad));
 }
+// Una entrada está en una región si es la gente de la región misma o de uno de sus países.
+const enLaZona = (x, zona) => x.lugar && x.nivel === "region" ? x.zona === zona : !!x.country && zoneOfCountry(x.country) === zona;
 // El título de una entrada en la lista o en una tarjeta: una institución se
 // toca y abre su ficha; un lugar no (su gente ya está a la vista).
 function cabeceraDeEntrada(x, sinTitulo){
@@ -20804,6 +20814,7 @@ function agendaFiltradas(){
   return agendaDatos().ordenadas.filter(x => {
     if(f.pais && x.country !== f.pais) return false;
     if(f.ciudad && normalize(x.city) !== normalize(f.ciudad)) return false;
+    if(f.zona && !enLaZona(x, f.zona)) return false;
     // Tipo y lista son de las instituciones: con ese filtro, la gente de un lugar no entra.
     if(f.tipo && x.tipo !== f.tipo) return false;
     if(f.lista && x.lista !== f.lista) return false;
@@ -20817,7 +20828,7 @@ function agendaFiltradas(){
 
 /* ---------- Abrir, navegar, cerrar ---------- */
 function abrirAgenda(vista, filtro){
-  if(filtro) agendaFiltro = { q:"", pais:"", ciudad:"", tipo:"", lista:"", mostrar:AGENDA_TANDA, ...filtro };
+  if(filtro) agendaFiltro = agendaFiltroVacio(filtro);
   const yaAbierta = !agendaOverlay.hidden;
   if(!yaAbierta){ agendaReturnFocus = document.activeElement; agendaPila = []; }
   agendaPila.push(vista);
@@ -20937,8 +20948,10 @@ function agendaVistaLista(){
   // contacto (9/10/2026).
   const sumar = canWrite() ? `<button type="button" class="btn-primary ag-cab-acc" data-action="agenda-sumar">+ ${t("Sumar","Add","Adicionar","הוספה")}</button>` : "";
   const titulo = `📇 ${esc(t("Agenda","Directory","Agenda","ספר טלפונים"))}`;
-  const hayFiltro = f.q || f.pais || f.ciudad || f.tipo || f.lista;
-  const resumen = `<div class="ag-resumen">${f.ciudad ? `<button type="button" class="ag-chip" data-action="agenda-sin-ciudad" title="${esc(t("Sacar","Remove","Remover","הסרה"))}">📍 ${esc(cityLabel(f.pais, f.ciudad))} ✕</button>` : ""}
+  const hayFiltro = f.q || f.pais || f.ciudad || f.zona || f.tipo || f.lista;
+  // El chip de un lugar (una ciudad o una región) que se abrió desde su ficha: tocarlo saca ese filtro.
+  const chipDeLugar = (accion, nombre) => `<button type="button" class="ag-chip" data-action="${accion}" title="${esc(t("Sacar","Remove","Remover","הסרה"))}" aria-label="${esc(t("Sacar el filtro: {x}","Remove filter: {x}","Remover o filtro: {x}","הסרת הסינון: {x}",{ x: nombre }))}">📍 ${esc(nombre)} ✕</button>`;
+  const resumen = `<div class="ag-resumen">${f.ciudad ? chipDeLugar("agenda-sin-ciudad", cityLabel(f.pais, f.ciudad)) : ""}${f.zona ? chipDeLugar("agenda-sin-zona", regionLabel(f.zona)) : ""}
     <span>${t("<b>{i}</b> y <b>{c}</b> en {ci} de {p}","<b>{i}</b> and <b>{c}</b> in {ci} of {p}","<b>{i}</b> e <b>{c}</b> em {ci} de {p}","<b>{i}</b> ו-<b>{c}</b> ב-{ci} ב-{p}",{ i: esc(cuantasInstituciones(r.inst)), c: esc(cuantosContactos(r.gente)), ci: esc(cuantasCiudades(r.ciudades)), p: esc(cuantosPaises(r.paises)) })}</span>
     ${hayFiltro ? `<button type="button" class="ag-link" data-action="agenda-limpiar">${t("Limpiar","Clear","Limpar","ניקוי")}</button>` : ""}</div>`;
   // Vacía: solo qué es y cómo se empieza, sin buscador, filtros ni «0 instituciones en 0 ciudades».
@@ -21274,7 +21287,7 @@ function desdeElBuscador(abrir){
 }
 const AGENDA_ACCIONES = {
   // Con una sola lista, filtrar por ella es lo mismo que no filtrar (y dejaría un «Limpiar» de más).
-  "agenda-abrir": (el) => abrirAgenda({ t:"lista" }, { pais: el.dataset.country || "", ciudad: el.dataset.city || "", q: el.dataset.q || "", lista: state.agendaListas.length > 1 ? el.dataset.lista || "" : "" }),
+  "agenda-abrir": (el) => abrirAgenda({ t:"lista" }, { pais: el.dataset.country || "", ciudad: el.dataset.city || "", zona: ZONES[el.dataset.zona] ? el.dataset.zona : "", q: el.dataset.q || "", lista: state.agendaListas.length > 1 ? el.dataset.lista || "" : "" }),
   "agenda-cerrar": () => cerrarAgenda(),
   // Desde «Buscar en todo»
   // Desde «Buscar en todo»: al cerrar, el foco vuelve al buscador (el
@@ -21288,8 +21301,9 @@ const AGENDA_ACCIONES = {
   "agenda-ir-lugar": (el) => agendaIrAlLugar(el.dataset.country, el.dataset.city, el.dataset.zona),
   "agenda-ver-post": (el) => { cerrarAgenda(); gotoMention(realPostId(el.dataset.postId), null); },
   "agenda-mas": () => { agendaFiltro.mostrar += AGENDA_TANDA; renderAgenda(); },
-  "agenda-limpiar": () => { agendaFiltro = { q:"", pais:"", ciudad:"", tipo:"", lista:"", mostrar:AGENDA_TANDA }; renderAgenda(); if(!isTouchDevice()) document.getElementById("agendaBuscar")?.focus(); },
+  "agenda-limpiar": () => { agendaFiltro = agendaFiltroVacio(); renderAgenda(); if(!isTouchDevice()) document.getElementById("agendaBuscar")?.focus(); },
   "agenda-sin-ciudad": () => { agendaFiltro.ciudad = ""; agendaFiltro.mostrar = AGENDA_TANDA; renderAgenda(); },
+  "agenda-sin-zona": () => { agendaFiltro.zona = ""; agendaFiltro.mostrar = AGENDA_TANDA; renderAgenda(); },
   "agenda-planilla": () => { if(canWrite()) descargarTexto(`agenda-${todayISO()}.csv`, csvDeLaAgenda(agendaFiltradas())); },
   "agenda-copiar": async (el) => {
     try{ await navigator.clipboard.writeText(el.dataset.n); showCalendarNotice({ ok:true, message: t("Número copiado.","Number copied.","Número copiado.","המספר הועתק.") }); }
@@ -21365,7 +21379,7 @@ function agendaAlEscribir(el){
   if(el.dataset.agTel != null){ v.tels[Number(el.dataset.agTel)].n = el.value; return true; }
   if(el.dataset.agWa != null){ v.tels[Number(el.dataset.agWa)].wa = el.checked; return true; }
   if(el.dataset.agCargo != null){ v.cargos[el.dataset.agCargo] = el.value; return true; }
-  if(el.id === "agendaPais"){ agendaFiltro.pais = el.value; agendaFiltro.ciudad = ""; agendaFiltro.mostrar = AGENDA_TANDA; renderAgenda(); return true; }
+  if(el.id === "agendaPais"){ agendaFiltro.pais = el.value; agendaFiltro.ciudad = ""; agendaFiltro.zona = ""; agendaFiltro.mostrar = AGENDA_TANDA; renderAgenda(); return true; }
   if(el.id === "agendaTipo"){ agendaFiltro.tipo = el.value; agendaFiltro.mostrar = AGENDA_TANDA; renderAgenda(); return true; }
   if(el.id === "agendaLista"){ agendaFiltro.lista = el.value; agendaFiltro.mostrar = AGENDA_TANDA; renderAgenda(); return true; }
   return false;
@@ -22105,7 +22119,7 @@ function renderFichaLugar(L){
   if(delLugar.length) filasLugar.splice(0, filasLugar.length, ...delLugar, ...filasLugar.filter(f => !esDelLugar(f)));
   const filaLugar = f => {
     const h = f.h, x = f.insts[0];
-    const accion = h ? h.accion : esDelLugar(f) ? `data-action="agenda-abrir"${L.zona ? "" : ` data-country="${esc(x.country)}"`}` : L.zona ? `data-action="drill-country" data-country="${esc(x.country)}"` : x.city ? `data-action="drill-city" data-country="${esc(x.country)}" data-city="${esc(x.city)}"` : `data-action="agenda-abrir" data-country="${esc(x.country)}"`;
+    const accion = h ? h.accion : esDelLugar(f) ? `data-action="agenda-abrir"${L.zona ? ` data-zona="${esc(L.zona)}"` : ` data-country="${esc(x.country)}"`}` : L.zona ? `data-action="drill-country" data-country="${esc(x.country)}"` : x.city ? `data-action="drill-city" data-country="${esc(x.country)}" data-city="${esc(x.city)}"` : `data-action="agenda-abrir" data-country="${esc(x.country)}"`;
     let act;
     if(esDelLugar(f)) act = subtituloDeLugar(x);
     else if(h){
@@ -22129,7 +22143,7 @@ function renderFichaLugar(L){
   const resumenLugares = [dosYMas(filasLugar.map(nombreFila)), agendaAca.length ? cuantosContactos(rAg.gente) : ""].filter(Boolean).join(" · ");
   const ladoHijos = filasLugar.length ? `<div class="${claseDeLado("hijos")}">${tituloDeLado("hijos", L.zona ? t("Países","Countries","Países","מדינות") : t("Ciudades","Cities","Cidades","ערים"), resumenLugares,
     filasLugar.length > HIJOS_A_LA_VISTA ? `<button type="button" class="fl-mas" data-action="ficha-desplegar" data-que="hijos" aria-expanded="${fichaDesplegado.has("hijos")}">${fichaDesplegado.has("hijos") ? t("Ver menos","Show less","Ver menos","הצג פחות") : t("Ver más","See more","Ver mais","הצגת עוד")}</button>` : "")}<div class="fl-hijos${hijosConScroll ? " con-scroll" : ""}">${(todosHijos ? filasLugar : filasLugar.slice(0, HIJOS_A_LA_VISTA)).map(filaLugar).join("")}</div>
-    ${agendaAca.length || canWrite() ? `<div class="fl-ag-pie">${canWrite() ? `<button type="button" class="btn-primary" data-action="agenda-sumar">+ ${t("Sumar","Add","Adicionar","הוספה")}</button>` : ""}${agendaAca.length ? `<button type="button" class="btn-secondary" data-action="agenda-abrir"${L.zona ? "" : ` data-country="${esc(L.country)}"`}>${t("Ver Agenda","See Directory","Ver Agenda","לספר הטלפונים")}</button>` : ""}</div>` : ""}</div>` : "";
+    ${agendaAca.length || canWrite() ? `<div class="fl-ag-pie">${canWrite() ? `<button type="button" class="btn-primary" data-action="agenda-sumar">+ ${t("Sumar","Add","Adicionar","הוספה")}</button>` : ""}${agendaAca.length ? `<button type="button" class="btn-secondary" data-action="agenda-abrir"${L.zona ? ` data-zona="${esc(L.zona)}"` : ` data-country="${esc(L.country)}"`}>${t("Ver Agenda","See Directory","Ver Agenda","לספר הטלפונים")}</button>` : ""}</div>` : ""}</div>` : "";
   // Contactos en … (la Agenda, 8/10/2026): en una ciudad, sus instituciones
   // con su gente. En un país o una región va adentro de «Ciudades» o
   // «Países» (9/10/2026). «Ver Agenda» la abre ya filtrada. En
