@@ -89,6 +89,13 @@ for(const f of archivos){
   if(/service_role["']?\s*[:=]\s*["']ey|sk_(?:live)_|-----BEGIN [A-Z ]*PRIVATE KEY/.test(txt)) out.push(hallazgo("seguridad", "urgente", "Parece una llave secreta en el repo", f));
   for(const t of txt.matchAll(/(?<![\d.])\+?\d{2,3}[\s-]?\(?\d{2,4}\)?[\s-]?\d{3,4}[\s-]\d{3,4}(?![\d.])/g))
     if(!/\d{4}-\d{2}-\d{2}/.test(t[0])) { out.push(hallazgo("datos personales", "bajo", "Parece un teléfono", f, t[0])); break; }
+  // El formato de Estados Unidos y Canadá, «(NNN) NNN-NNNN», con el código de
+  // área entre paréntesis: el patrón de arriba no lo veía, y el 10/10/2026 un
+  // teléfono real que estaba en un comentario del código viejo se copió, por
+  // error, a los documentos de la auditoría sin que nada lo marcara. Los
+  // inventados llevan 555 (como en pruebas/ y en los ejemplos).
+  for(const t of txt.matchAll(/(?<![\d.])(?:\+?1[\s-]?)?\(\d{3}\)\s?\d{3}[\s-]\d{4}(?![\d.])/g))
+    if(!/\b555\b/.test(t[0])) { out.push(hallazgo("datos personales", "bajo", "Parece un teléfono", f, t[0])); break; }
 }
 vistosCorreo.forEach((f, c) => out.push(hallazgo("datos personales", "bajo", "Un correo en el repo público", f, c)));
 

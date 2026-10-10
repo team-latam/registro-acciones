@@ -354,3 +354,19 @@ prometía «la lista da lo mismo que la fila» y falla con la preferencia
 función (una sola regla de «alcances efectivos» y una sola de «cuántas
 veces»); la prueba que compara los números incluye una preferencia
 distinta de la de fábrica, un alcance en una respuesta y una rutina.
+
+**Un dato personal real copiado a un documento al anotar un hallazgo.**
+Al documentar que un teléfono real había quedado en un comentario del
+código retirado del Mapeo, se copió entero a `docs/AUDITORIA.md` y al
+detalle (que están en el repo público), y después otra vez al comentario
+de la herramienta que lo busca: el hallazgo sobre el dato filtró el dato.
+*Por qué:* anotar «qué hay» se hace pegando lo que hay. *Se detecta:*
+`seguridad` mira ahora también el formato `(NNN) NNN-NNNN` (el 10/10/2026
+no lo veía) y no marca los inventados (con 555). *Regla:* en un
+documento, en una página, en un comentario o en un mensaje de commit, un
+dato personal real se escribe **siempre recortado** («1 (929) …»,
+«+54 11 …»); lo que se necesita para encontrarlo es el archivo y el
+commit, no el valor. Si se filtró: se saca de los archivos, se reescribe
+el historial (los commits cambian de código), se revisan todas las
+revisiones y los pull requests, y se le pide a GitHub que borre las
+copias sueltas.
