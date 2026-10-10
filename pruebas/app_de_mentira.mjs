@@ -125,7 +125,10 @@ export const BASE = () => ({
     { id: "per_rab2", name: "Tzvi Goldman", email: "tzvi@ejemplo.org", note: "Atiende de 9 a 13", telefonos: [{ n: "+54 9 11 5555 0102", wa: true }, { n: "+54 11 4444 0103", wa: false }], idiomas: ["es"], lista: "lista1", created_by: ADMIN, created_at: hace(5),
       tocado_por: PERS[1].email, tocado_el: hace(2) },
     { id: "per_pres", name: "Daniel Kohan", email: null, note: null, telefonos: [{ n: "+54 9 341 555 0104", wa: true }], idiomas: [], lista: null, created_by: PERS[1].email, created_at: hace(3) },
-    { id: "per_rab3", name: "Menachem Levy", email: null, note: null, telefonos: [{ n: "+598 99 555 105", wa: true }], idiomas: [], lista: "lista1", created_by: ADMIN, created_at: hace(5) }],
+    { id: "per_rab3", name: "Menachem Levy", email: null, note: null, telefonos: [{ n: "+598 99 555 105", wa: true }], idiomas: [], lista: "lista1", created_by: ADMIN, created_at: hace(5) },
+    // Gente de un lugar, sin institución (20-contactos-por-lugar.sql).
+    { id: "per_julia", name: "Julia Lerner", email: null, note: null, telefonos: [{ n: "+55 11 5555 1099", wa: true }], idiomas: ["pt"], lista: null, created_by: ADMIN, created_at: hace(1) },
+    { id: "per_dana", name: "Dana Bergman", email: null, note: null, telefonos: [{ n: "+56 9 5555 0101", wa: true }], idiomas: ["es", "en"], lista: null, created_by: PERS[1].email, created_at: hace(1) }],
   agenda_listas: [{ id: "lista1", name: "Directorio de prueba", created_by: ADMIN, created_at: hace(5) }],
   instituciones: [
     { id: "ins_ros", name: "Beit Jabad Rosario", country: "Argentina", city: "Rosario", address: "Calle Falsa 123", tipo: "Centro Comunitario", estado: "activa", nota: null, lista: "lista1", created_by: ADMIN, created_at: hace(5) },
@@ -142,6 +145,10 @@ export const BASE = () => ({
     { id: "con4", institucion: "ins_ba2", persona: "per_rab2", cargo: "Rab a cargo", orden: 0, created_at: hace(5) },
     { id: "con5", institucion: "ins_bar", persona: "per_rab1", cargo: "Rab a cargo", orden: 0, created_at: hace(5) },
     { id: "con6", institucion: "ins_mvd", persona: "per_rab3", cargo: "Rab a cargo", orden: 0, created_at: hace(5) },
+    { id: "con7", institucion: null, nivel: "pais", country: "Brasil", city: null, zona: null, persona: "per_julia", cargo: "R Hadraja", orden: 0, created_at: hace(1) },
+    { id: "con8", institucion: null, nivel: "latam", country: null, city: null, zona: null, persona: "per_julia", cargo: "Directora", orden: 0, created_at: hace(1) },
+    { id: "con9", institucion: null, nivel: "region", country: null, city: null, zona: "sur", persona: "per_dana", cargo: "R KM", orden: 0, created_at: hace(1) },
+    { id: "con10", institucion: null, nivel: "ciudad", country: "Argentina", city: "Rosario", zona: null, persona: "per_pres", cargo: "Presidente de la comunidad", orden: 0, created_at: hace(1) },
   ],
 });
 
