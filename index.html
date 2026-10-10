@@ -4947,6 +4947,21 @@ function cityLabel(country, city){
   const dicho = row ? row[currentLang()] : city;
   return dicho === city && hasOwn(CIUDAD_BIEN_ESCRITA, city) ? CIUDAD_BIEN_ESCRITA[city] : dicho;
 }
+// «Cordoba» y «Córdoba» son la misma ciudad para la app (nivelDeAlcance las junta
+// con normalize): en una lista de ciudades, una sola entrada. De las escrituras
+// que haya queda la que la app sabe mostrar bien —la de las listas de ciudades,
+// que cityLabel corrige y traduce—, y si ninguna, la primera. `mapa` va de
+// «país|ciudad normalizada» a { country, city, n }.
+function ciudadConocida(country, city){
+  return hasOwn(CIUDAD_BIEN_ESCRITA, city) || (hasOwn(DEFAULT_CITY_LABELS, country) && hasOwn(DEFAULT_CITY_LABELS[country], city));
+}
+function sumarCiudad(mapa, country, city, n = 1){
+  const k = country + "|" + normalize(city);
+  const previa = mapa.get(k);
+  if(!previa){ mapa.set(k, { country, city, n }); return; }
+  previa.n += n;
+  if(!ciudadConocida(previa.country, previa.city) && ciudadConocida(country, city)) previa.city = city;
+}
 // Lookups con claves que vienen de la base (país/ciudad de un scope):
 // con `obj[key]` a secas, "__proto__"/"constructor" devuelven cosas
 // heredadas de Object.prototype en vez de undefined.
@@ -14621,9 +14636,7 @@ function lugaresConDatos(){
     if(!sc || !sc.country) return;
     paises.set(sc.country, (paises.get(sc.country) || 0) + 1);
     if(sc.type === "ciudad" && sc.city){
-      const k = sc.country + "|" + sc.city;
-      const c = ciudades.get(k) || { country:sc.country, city:sc.city, n:0 };
-      c.n++; ciudades.set(k, c);
+      sumarCiudad(ciudades, sc.country, sc.city);
     }
   }));
   return { paises, ciudades:[...ciudades.values()] };
@@ -15076,9 +15089,7 @@ function resultadosGlobales(q){
   const vistas = new Map();
   state.posts.forEach(p => (p.scopes || []).forEach(sc => {
     if(!sc || sc.type !== "ciudad") return;
-    const k = sc.country + "|" + sc.city;
-    if(vistas.has(k)) return;
-    if(normalize(sc.city).includes(n) || normalize(cityLabel(sc.country, sc.city)).includes(n)) vistas.set(k, { country: sc.country, city: sc.city });
+    if(normalize(sc.city).includes(n) || normalize(cityLabel(sc.country, sc.city)).includes(n)) sumarCiudad(vistas, sc.country, sc.city);
   }));
   const ciudades = [...vistas.values()].sort((a, b) => cityLabel(a.country, a.city).localeCompare(cityLabel(b.country, b.city))).slice(0, 4);
   const personas = state.roster.filter(r => normalize(r.name||"").includes(n) || normalize(r.nickname||"").includes(n) || normalize(r.email||"").includes(n)).slice(0, 3);
