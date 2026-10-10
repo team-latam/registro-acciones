@@ -90,6 +90,12 @@ capturas y recomendación):
   siempre.
 - **R4**: Claude le avisa el lunes 12/10 cómo salió la copia del domingo
   (pedido el 10/10; hay un recordatorio programado en la sesión).
+- **Permiso de la papelera, en la base real** (R20): el usuario pidió
+  verificarlo el 10/10 (opción A). `supabase/verificar/papelera.sql` + workflow
+  «Verificar la papelera» (a mano, solo lectura, `SUPABASE_DB_URL`): hace pasar
+  a una cuenta real de cada rol y cuenta qué ve de `papelera/`. Probado en el
+  laboratorio (verde con la regla nueva, rojo con la vieja). Resultado de la
+  corrida real: ver abajo, cuando se lance.
 - **D1** queda decidida (todavía no); se vuelve a mirar al pasar los 600 KB
   (hoy 519 KB comprimidos).
 - **El dominio** `team-latam.com` vence el 12/12/2026. El 10/10 pidió que
