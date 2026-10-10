@@ -426,7 +426,7 @@ const escribir = async (p, sel, valor) => { await p.fill(sel, valor); await p.wa
   eq("persona: «Dónde está», cada lugar con su cargo y qué es", await p.$$eval('#agendaBody .ag-items [data-action="agenda-ir-lugar"]', l => l.map(e => e.textContent.replace(/\s+/g, " ").trim())), ["ArgentinaRM · País›", "Región SurR KM · Región›"]);
   await p.click('#agendaBody .ag-items [data-action="agenda-ir-lugar"][data-zona="sur"]');
   await p.waitForSelector('.fl-pliegue[data-que="hijos"]', { state: "attached" });
-  eq("tocar la región lleva a su ficha, y se cierra la Agenda", [await abierta(p), await texto(p, ".fl-head h1")], [false, "Región Sur"]);
+  eq("tocar la región lleva a su ficha, y se cierra la Agenda", [await abierta(p), await texto(p, ".fl-head h2")], [false, "Región Sur"]);
   const tarjeta = '.fl-card:has(.fl-pliegue[data-que="hijos"])';
   eq("región: su propia gente va primero en «Países», y después cada país", await p.$$eval(`${tarjeta} .fl-hijo`, l => l.map(e => [e.querySelector("b").textContent.trim(), e.querySelector("small").textContent.trim(), (e.querySelector(".fl-hijo-ag") || {}).textContent || ""])),
     [["Región Sur", "Contactos de la región", "📇 Dana Bergman"], ["Argentina", "último: hace 3 días", "📇 2 instituciones · 4 contactos"], ["Uruguay", "Sin actividad todavía", "📇 Beit Jabad Uruguay · Tzvi Grumblat"]]);

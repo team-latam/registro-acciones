@@ -56,7 +56,7 @@ const b = await abrirNavegador();
   }), true);
   eq("celular: de entrada, todas plegadas", await abiertas(p), []);
   eq("celular: plegadas, no se ve lo de adentro", await p.$$eval(".fl-lado > .fl-card", l => l.every(c =>
-    [...c.children].filter(x => x.tagName !== "H3").every(x => getComputedStyle(x).display === "none"))), true);
+    [...c.children].filter(x => x.tagName !== "H3" && !x.classList.contains("fl-tit")).every(x => getComputedStyle(x).display === "none"))), true);
   eq("celular: el título de la compu no se ve; el renglón sí", [await visible(p, ".fl-lado .fl-lado-t"), await visible(p, ".fl-lado .fl-pliegue")], [false, true]);
   eq("celular: «Lo que sigue» y «Lo que pasó» no se pliegan", await p.$$eval(".fl-sigue .fl-pliegue, .fl-historia .fl-pliegue", l => l.length), 0);
   eq("celular: cada renglón trae un resumen", await p.$$eval(".fl-lado .fl-pliegue .r", l => l.every(e => e.textContent.trim().length > 0 && !!e.offsetParent)), true);
@@ -160,7 +160,7 @@ const b = await abrirNavegador();
   eq("contactos en el celular: al pie, «+ Sumar» y «Ver Agenda», uno al lado del otro y dentro de la tarjeta", await p.evaluate(sel => {
     const c = document.querySelector(sel).getBoundingClientRect(), l = [...document.querySelectorAll(sel + " .fl-ag-pie > button")], r = l.map(e => e.getBoundingClientRect());
     return [l.map(e => e.textContent.trim()), r.length === 2 && Math.abs(r[0].top - r[1].top) < 1 && r[0].right <= r[1].left && r[0].left >= c.left && r[1].right <= c.right]; }, tarjeta), [["+ Sumar", "Ver Agenda"], true]);
-  eq("contactos en el celular: ninguna institución con su «+ Sumar a alguien más», ni «+ Sumar» en el título", await p.$$eval(`${tarjeta} .fl-ag-inst [data-action="agenda-sumar"], ${tarjeta} h3 [data-action="agenda-sumar"]`, l => l.length), 0);
+  eq("contactos en el celular: ninguna institución con su «+ Sumar a alguien más», ni «+ Sumar» en el título", await p.$$eval(`${tarjeta} .fl-ag-inst [data-action="agenda-sumar"], ${tarjeta} .fl-tit [data-action="agenda-sumar"]`, l => l.length), 0);
   eq("contactos en el celular: sin errores", errores, []);
   await p.close();
 }
