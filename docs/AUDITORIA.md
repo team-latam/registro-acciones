@@ -53,20 +53,22 @@ publicación (en línea) y la base (aplicada) dieron verde.
 3. **R26**: jszip 3.10.2 y supabase-js 2.117.3, cuando se toquen.
 4. **R18**: el peso del archivo (ya decidido: todavía no).
 
-**Decisiones tuyas, con maqueta** (10/10; la página para el usuario las
-muestra con capturas y recomendación; falta que conteste, p. ej. «1 A, 2 A, 3 A»):
+**Decisiones tuyas, con maqueta** (la página para el usuario las muestra con
+capturas y recomendación):
 
-1. **Chip «Región Sur ✕» en la Agenda** (R21): abrirla desde una región
-   la abre sin filtrar; con una ciudad ya sale con su chip. A (recomendada):
-   el mismo chip para la región. B: dejarlo.
-2. **Quién cambia el correo de una ficha de `personas`** (R20, P13): A
-   (recomendada): todos corrigen, y la tarjeta «¿Es …, que figura sin
-   cuenta?» muestra el correo de la ficha y quién lo cargó (`tocado_por`).
-   B: solo un admin cambia el correo (campo bloqueado para el resto). C:
-   como está. Aparte, P13: hoy cualquier aprobado lee el correo de una
-   persona sin cuenta; se recomienda dejarlo igual que los teléfonos.
-3. **El nombre libre en el login de quien no es admin** (R20): A
-   (recomendada): dejarlo; B: que salga siempre de la cuenta de Google.
+1. ~~**Chip «Región Sur ✕» en la Agenda** (R21)~~ ✅ 10/10: eligió A y está
+   hecho (tanda 61, `agenda_region_test`).
+2. **Quién cambia el correo de una ficha de `personas`** (R20, P13): **sin
+   contestar**: dijo «no entendí a qué te referís». Hay que explicarlo con
+   un ejemplo cotidiano, sin la palabra «ficha»/«vincular», y volver a
+   preguntar. Opciones: A (recomendada): todos corrigen, y la tarjeta «¿Es …,
+   que figura sin cuenta?» muestra el correo de la ficha y quién lo cargó
+   (`tocado_por`). B: solo un admin cambia el correo (campo bloqueado para
+   el resto). C: como está. Aparte, P13: hoy cualquier aprobado lee el
+   correo de una persona sin cuenta; se recomienda dejarlo igual que los
+   teléfonos.
+3. ~~**El nombre libre en el login de quien no es admin** (R20)~~ ✅ 10/10:
+   eligió A, dejarlo como está.
 
 **Queda para vos:**
 
@@ -183,7 +185,7 @@ Nada.
 | # | Qué | Quién |
 |---|---|---|
 | R20 | Base, bajos. ~~Me gusta ajenos al crear un posteo o un comentario; `requested_at` lo cambia quien pide; `papelera/` legible por todo aprobado; `personas.lista` sin control; texto libre en el registro de actividad; un mensaje de sistema «Google Calendar» en una rutina ajena~~ ✅ 10/10 (`90-permisos.sql`, `81-personas.sql`, `92-validacion.sql`). **Quedan, a propósito:** el correo de una ficha de `personas` lo cambia cualquiera (decisión de producto tuya: que todos corrijan; cruza con «aprobar y vincular»); y quien no es admin todavía puede poner el nombre que quiera, de hasta 120 caracteres, en su propio login | Claude, con sus pruebas SQL |
-| R21 | Lógica chica. ~~Ciudades duplicadas por ortografía; `ventanaDelReporte` repetido; «+ Sumar» con la Agenda vacía; «Toda LatAm» en «Dónde está»; «Ver N posteos» sumaba las dos solapas; trimestres que no empezaron; un período aplicado desde «Próximos»~~ ✅ 10/10 (`ciudades_unicas_test`, `agenda_sumar_vacia_test`, `agenda_toda_latam_test`, `filtros_cuenta_solapa_test`, `filtros_fecha_test`, `filtros_periodo_solapa_test`, `reportes_test`). **Quedan, porque piden un control nuevo (o sea, diseño):** la fila de una región y «Ver Agenda» abren la Agenda sin filtrar (haría falta un chip «Región Sur ✕» como el de ciudad); y el buscador de lugar del panel de filtros redibuja en cada tecla (no cambia lo que se ve, solo el momento) | Claude, cuando se toque |
+| R21 | Lógica chica. ~~Ciudades duplicadas por ortografía; `ventanaDelReporte` repetido; «+ Sumar» con la Agenda vacía; «Toda LatAm» en «Dónde está»; «Ver N posteos» sumaba las dos solapas; trimestres que no empezaron; un período aplicado desde «Próximos»~~ ✅ 10/10 (`ciudades_unicas_test`, `agenda_sumar_vacia_test`, `agenda_toda_latam_test`, `filtros_cuenta_solapa_test`, `filtros_fecha_test`, `filtros_periodo_solapa_test`, `reportes_test`). ~~la fila de una región y «Ver Agenda» abrían la Agenda sin filtrar~~ ✅ 10/10 (chip «Región Sur ✕» como el de ciudad; `agenda_region_test`; tanda 61). **Queda:** el buscador de lugar del panel de filtros redibuja en cada tecla (no cambia lo que se ve, solo el momento) | Claude, cuando se toque |
 | R22 | ~~Accesibilidad menor~~ ✅ 10/10 todo: foco que vuelve a la fila que se abrió en la Agenda; «Buscar en todo» como desplegable de resultados (flechas, `aria-expanded`, «N resultados», Escape que deja el foco en el campo); `aria-expanded` en «Ver más»; un solo `h1`; `scope` en las tablas; flecha del mapa y perilla del interruptor espejadas en hebreo; `alt` del visor de fotos; nombre en las cinco ✕; «Ver más» fuera del encabezado; los desplazamientos suaves respetan «menos movimiento». Con capturas de antes y después, píxel a píxel, en compu, celular, hebreo, oscuro y papel: idénticas salvo lo que se quería cambiar | Claude |
 | R23 | ~~El visor de archivos: si el foco entra al PDF (un clic adentro), Tab puede salir de la ventana (el iframe no está en la trampa). Con teclado desde los botones no se reproduce; `pantallas` lo vio una vez en 390~~ ✅ 10/10 (el foco que cae afuera del visor vuelve adentro; se saca al cerrar; `visor_foco_test`) | Claude, cuando se toque |
 | R24 | ~~`data-title` y `data-content` llevan el texto entero del posteo en «Ver traducción» (escapado, pero contra la convención)~~ ✅ 10/10 (el botón lleva solo el identificador; el texto se busca en vivo; `traduccion_datos_test`) | Claude, cuando se toque |
