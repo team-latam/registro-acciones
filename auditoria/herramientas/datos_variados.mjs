@@ -90,6 +90,13 @@ export function datos(){
     }
   }
   base.agenda_listas.push({ id: "lista2", name: raro() || "Lista", created_by: PERS[0].email, created_at: hace(1) });
+  // Gente de un lugar, sin institución (20-contactos-por-lugar.sql): de una
+  // ciudad, un país, una región y toda LatAm, con cargos raros.
+  const niveles = [["ciudad", { country: "Argentina", city: "Rosario" }], ["pais", { country: "Brasil" }], ["region", { zona: "sur" }], ["latam", {}]];
+  for(let i = 0; i < Math.min(12, nGente); i++){
+    const [nivel, donde] = niveles[i % niveles.length];
+    base.contactos.push({ id: "vl" + i, institucion: null, nivel, country: null, city: null, zona: null, ...donde, persona: "vp" + i, cargo: azar() < 0.7 ? raro().slice(0, 60) : null, orden: i, created_at: hace(1) });
+  }
   return base;
 }
 
