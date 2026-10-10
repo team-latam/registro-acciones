@@ -14583,7 +14583,7 @@ function renderPanelDeFiltros(){
   const pend = nCamb ? `<span class="fp-pend">· ${nCamb === 1 ? t("1 cambio","1 change","1 mudança","שינוי אחד") : t("{n} cambios","{n} changes","{n} mudanças","{n} שינויים",{ n:nCamb })}</span>` : "";
   // Lo que el Inicio va a mostrar en la solapa en que se está («Lo que pasó» o «Próximos»),
   // no la suma de las dos: con el número de las dos, el botón prometía más de lo que se veía.
-  const hoy = todayISO(), enProximos = feedSolapa === "futuro";
+  const hoy = todayISO(), enProximos = solapaAlAplicar(f, b.nivel) === "futuro";
   const total = getVisiblePosts(f, b.nivel).filter(({ post }) => esProximo(post, hoy) === enProximos).length;
   const ver = total === 1 ? t("Ver 1 posteo","See 1 post","Ver 1 postagem","הצגת פוסט אחד") : t("Ver {n} posteos","See {n} posts","Ver {n} postagens","הצגת {n} פוסטים",{ n:total });
   const hayAlgo = FILTROS_CON_FICHA.some(k => valorDelFiltro(k, f, b.nivel));
@@ -14769,11 +14769,22 @@ function cerrarFiltros(devolverFoco = true){
     enfocarComo(el || document.getElementById("fbFiltros"), null, conAnillo);
   }
 }
+// En qué solapa queda el Inicio al aplicar los filtros `f`: en la que estaba, salvo
+// que haya un período puesto y se mirara «Próximos». Un período es siempre de lo que
+// ya pasó (pasaFiltroPeriodo corta en hoy): sus posteos quedaban escondidos en «Lo que
+// pasó» detrás de «Nada de lo que viene coincide». Si el período tiene posteos y
+// ninguno de lo que viene, pasa a «Lo que pasó» (como hace reporte-ir).
+function solapaAlAplicar(f, nivel){
+  if(feedSolapa !== "futuro" || !f.periodo) return feedSolapa;
+  const hoy = todayISO(), hay = getVisiblePosts(f, nivel);
+  return hay.length && !hay.some(({ post }) => esProximo(post, hoy)) ? "pasado" : "futuro";
+}
 function aplicarFiltros(){
   const b = fp.b;
   if(!b) return cerrarFiltros();
   const nuevo = b.f;
   nuevo.text = state.filters.text; // el buscador está afuera del panel
+  feedSolapa = solapaAlAplicar(nuevo, b.nivel);
   state.filters = nuevo;
   feedVisibleCount = PAGE_SIZE;
   if(!anyActiveFilter()) filtroOrigen = null;
