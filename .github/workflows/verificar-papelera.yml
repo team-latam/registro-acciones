@@ -1,0 +1,74 @@
+# ============================================================
+# Verificar en la base de verdad qué ve cada rol de la papelera
+# ============================================================
+# SOLO LECTURA, a mano (pestaña Actions → «Verificar la papelera» → Run
+# workflow). La regla que impide que un integrante, un observador o un admin
+# abran un archivo de papelera/ (lo que la limpieza aparta antes de borrar)
+# se probó en el laboratorio, pero nunca en la base real (docs/AUDITORIA.md,
+# R20). Esto hace pasar a una cuenta real de cada rol y cuenta qué archivos
+# ve: no escribe nada, no muestra correos ni identificadores, solo cantidades.
+# El detalle, en supabase/verificar/LEEME.md.
+#
+# Usa la misma dirección de la base que «Base de datos» (SUPABASE_DB_URL).
+# ============================================================
+name: Verificar la papelera
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verificar:
+    name: Qué ve cada rol de la papelera
+    # Las llaves de verdad solo corren desde main (pruebas/workflows_test.mjs).
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    # En la misma cola que la copia y la limpieza: mientras una mueve archivos
+    # no tiene sentido contarlos.
+    concurrency:
+      group: respaldo
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+
+      - name: Que haya psql
+        run: |
+          if ! command -v psql >/dev/null; then
+            sudo apt-get update && sudo apt-get install -y postgresql-client
+          fi
+
+      - name: ¿Está puesta la dirección de la base?
+        id: revisar
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "hay=no" >> "$GITHUB_OUTPUT"
+            echo "### Falta el secreto SUPABASE_DB_URL" >> "$GITHUB_STEP_SUMMARY"
+            echo "Se carga en Settings → Secrets and variables → Actions." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "hay=si" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Mirar qué ve cada rol (solo lectura)
+        if: steps.revisar.outputs.hay == 'si'
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -o pipefail
+          psql "$SUPABASE_DB_URL" -X -q -f supabase/verificar/papelera.sql 2>&1 | tee salida.txt
+
+      - name: Dejarlo dicho
+        if: always() && steps.revisar.outputs.hay == 'si'
+        run: |
+          {
+            echo "### La papelera, vista desde cada rol"
+            echo ""
+            echo '```'
+            cat salida.txt 2>/dev/null || echo "(la corrida no llegó a dar resultado)"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
