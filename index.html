@@ -57,6 +57,11 @@
     --petroleo-dark:#082a2c;
     --celeste:#4fc7e0;
     --celeste-dark:#1a9fb8;
+    /* El celeste de la marca sirve para fondos y bordes, pero como letra
+       chica sobre blanco da 3,1 de contraste (el mínimo es 4,5). Lo que es
+       texto («Ver la ficha ›», «Volver», el teléfono, «Ver más», los
+       contadores) va con este, 5,8 sobre blanco (auditoría 10/10/2026, R6). */
+    --link:#146f82;
     --bg:#f4f8f8;
     --card:#ffffff;
     --text:#0d2a2c;
@@ -101,6 +106,7 @@
     --petroleo:#14494e;
     --petroleo-dark:#0e3a3e;
     --celeste-dark:#6fd8ec;
+    --link:#6fd8ec;
     --bg:#0a1719;
     --card:#102b2e;
     --text:#e6f2f2;
@@ -270,7 +276,7 @@
     .dp-month-select, .dp-year-select, .zc-select{ gap:2px; }
     .dp-month-select::picker-icon, .dp-year-select::picker-icon, .zc-select::picker-icon{ font-size:.7em; }
   }
-  a{ color:var(--celeste-dark); }
+  a{ color:var(--link); }
   #app{ min-height:100vh; display:flex; flex-direction:column; }
 
   /* ---------- Header ---------- */
@@ -336,13 +342,13 @@
     display:flex; gap:10px; align-items:center; width:100%; text-align:start; background:none; border:none; padding:8px 10px;
     border-radius:var(--radius-sm); font-family:inherit; font-size:13px; font-weight:600; color:var(--text); cursor:pointer;
   }
-  .gs-item:hover, .gs-item:focus{ background:var(--surface-alt); color:var(--ink-strong); outline:none; }
+  .gs-item:hover, .gs-item:focus{ background:var(--surface-alt); color:var(--ink-strong); }
   .gs-ico{ flex:none; width:22px; text-align:center; }
   .gs-txt{ display:flex; flex-direction:column; min-width:0; }
   .gs-txt b{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .gs-txt small{ color:var(--text-muted); font-weight:600; }
   .gs-empty{ padding:10px; color:var(--text-muted); font-size:13px; }
-  .gs-all{ border-top:1px solid var(--border); border-radius:0; margin-top:4px; padding-top:10px; color:var(--celeste-dark); }
+  .gs-all{ border-top:1px solid var(--border); border-radius:0; margin-top:4px; padding-top:10px; color:var(--link); }
   @media (max-width:900px){ .global-search{ display:none; } }
 
   /* Botón flotante de crear, en todas las solapas. Queda debajo de los
@@ -592,7 +598,7 @@
   .aar-txt small{ font-size:12.5px; color:var(--text-muted); }
   .admin-ok{ background:var(--ok-bg); border:1px solid var(--ok-border); color:var(--ok-text); border-radius:var(--radius-md); padding:12px 16px; margin-bottom:16px; font-weight:700; }
   .admin-cifras{ display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:12px; margin-bottom:16px; }
-  .rep-kpi-num.alerta{ color:var(--danger); }
+  .rep-kpi-num.alerta{ color:var(--danger-text); }
   .admin-tarjetas{ display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:12px; }
   .admin-tarjetas p{ margin:0 0 10px; font-size:13.5px; line-height:1.5; }
   @media (max-width:760px){
@@ -926,7 +932,7 @@
   .lp-chev{ color:var(--text-muted); opacity:.6; flex:none; }
   .lp-row.on .lp-chev{ color:var(--petroleo); opacity:1; }
   .lp-when{ width:112px; text-align:end; font-size:13px; color:var(--text-muted); flex:none; white-space:nowrap; }
-  .lp-when.nunca, .lp-when.ausente, .lp-kv b.nunca, .lp-kv b.ausente{ color:var(--danger); font-weight:800; }
+  .lp-when.nunca, .lp-when.ausente, .lp-kv b.nunca, .lp-kv b.ausente{ color:var(--danger-text); font-weight:800; }
   .status-pill.integrante{ background:var(--surface-alt); color:var(--text); }
   .lp-row .status-pill{ white-space:nowrap; font-size:11px; flex:none; }
   .lp-panel{
@@ -941,7 +947,7 @@
   .lp-back{ display:none; }
   .lp-pb{ padding:16px 18px; display:flex; flex-direction:column; gap:16px; }
   .lp-pf{ padding:12px 18px 16px; border-top:1px solid var(--border); display:flex; flex-direction:column; gap:4px; align-items:flex-start; }
-  .lp-cuidado{ font-size:11px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:var(--danger); margin-bottom:2px; }
+  .lp-cuidado{ font-size:11px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:var(--danger-text); margin-bottom:2px; }
   .lp-peligro{ padding:6px 0; }
   .lp-field{ display:flex; flex-direction:column; gap:6px; }
   .lp-field > label{ font-size:11px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:var(--text-muted); }
@@ -1396,13 +1402,14 @@
     border-radius:var(--radius-sm); font-family:inherit; font-size:13px; color:var(--text); cursor:pointer; line-height:1.35;
   }
   .fs-item:hover, .fs-link:hover{ background:var(--surface-alt); color:var(--ink-strong); }
-  .fs-when{ font-size:11.5px; font-weight:700; color:var(--celeste-dark); }
+  .fs-when{ font-size:11.5px; font-weight:700; color:var(--link); }
   .fs-what{ font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .fs-item .pl-st{ font-size:11px; }
   .fs-link{ flex-direction:row; align-items:center; gap:8px; font-weight:700; }
   .fs-link.active{ background:var(--celeste-soft); color:var(--petroleo); }
+  html[data-theme="dark"] .fs-link.active{ color:var(--celeste-dark); }   /* petróleo sobre el celeste oscuro daba 1,3 (R17) */
   .fs-empty{ margin:0 0 6px; color:var(--text-muted); font-size:13px; }
-  .fs-more{ background:none; border:none; padding:6px 0 4px; font-family:inherit; font-size:12.5px; font-weight:700; color:var(--celeste-dark); cursor:pointer; }
+  .fs-more{ background:none; border:none; padding:6px 0 4px; font-family:inherit; font-size:12.5px; font-weight:700; color:var(--link); cursor:pointer; }
   .fs-more:hover{ text-decoration:underline; }
   .fs-saved{ display:flex; align-items:center; gap:4px; }
   .fs-saved .fs-link{ flex:1; }
@@ -1413,6 +1420,10 @@
   /* "Ver traducción" vive en la fila de acciones (Me gusta · Responder …),
      no como renglón suelto debajo del texto. */
   .post-actions .translate-toggle{ font-size:12.5px; margin-top:0; padding:4px 0; }
+  /* En una respuesta, igual: en su fila de acciones (Me gusta · Responder ·
+     Ver traducción · Borrar), con la letra de esa fila. Antes era un renglón
+     suelto y más chico debajo del texto (pedido del usuario, 10/10/2026). */
+  .reply-actions .translate-toggle{ font-size:12px; margin-top:0; padding:0; }
   .chip-toggle{
     display:inline-flex; align-items:center; gap:6px; padding:7px 13px; border-radius:999px;
     border:1.5px solid var(--border); background:var(--card); font-size:12.5px; font-weight:600;
@@ -1704,7 +1715,7 @@
   }
   .pl-bar-antes{ border-top-left-radius:0; border-bottom-left-radius:0; }
   .pl-bar-despues{ border-top-right-radius:0; border-bottom-right-radius:0; }
-  .pl-bar.cancelled{ text-decoration:line-through; opacity:.6; }
+  .pl-bar.cancelled{ text-decoration:line-through; opacity:.85; }
   .pl-diamond{
     display:inline-block; width:14px; height:14px; transform:rotate(45deg); flex:none; box-sizing:border-box;
     background:#9db3b5; border:2px solid var(--card); box-shadow:0 1px 3px rgba(0,0,0,.25);
@@ -1729,8 +1740,9 @@
   .pl-due-txt{ flex:1 1 220px; min-width:0; display:flex; flex-direction:column; gap:2px; }
   .pl-due-txt b{ font-size:14px; }
   .pl-due-txt small{ font-size:12px; color:var(--text-muted); font-weight:600; }
-  .pl-st.overdue{ color:var(--danger); font-weight:800; }
+  .pl-st.overdue{ color:var(--danger-text); font-weight:800; }
   .pl-st.soon, .pl-st.today{ color:#b45309; font-weight:800; }
+  html[data-theme="dark"] .pl-st.soon, html[data-theme="dark"] .pl-st.today{ color:#f0b46a; }
   @media (max-width:640px){ .pl-name{ flex-basis:150px; padding:8px 10px; } .pl{ min-width:560px; } }
   .projects-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:14px; }
   .project-card{ text-align:start; font-family:inherit; background:var(--card); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow); padding:14px 16px; cursor:pointer; display:flex; flex-direction:column; gap:8px; color:var(--ink); }
@@ -1887,7 +1899,7 @@
   .occ-today-sep::after{ content:""; flex:1; height:1px; background:var(--border); }
   /* Una fecha suspendida sigue en la lista (si no, no habría forma de
      volver a activarla) pero se lee tachada. */
-  .occ-date.off .occ-when{ text-decoration:line-through; opacity:.6; }
+  .occ-date.off .occ-when{ text-decoration:line-through; color:var(--text-muted); }
   .occ-tag.occ-off{ color:var(--danger); }
   /* Pie: lo que se le puede hacer a la fecha elegida. Separado de la
      lista a propósito — en cada fila serían tres botones por renglón. */
@@ -2359,7 +2371,7 @@
   /* ----- La ficha de un lugar (Países → un país → una ciudad) ----- */
   .ficha-lugar{ max-width:1100px; margin:0 auto; }
   .fl-migas{ font-size:13px; color:var(--text-muted); margin:2px 0 12px; display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
-  .fl-migas a{ color:var(--celeste-dark); font-weight:700; cursor:pointer; text-decoration:none; }
+  .fl-migas a{ color:var(--link); font-weight:700; cursor:pointer; text-decoration:none; }
   .fl-migas a:hover{ text-decoration:underline; }
   .fl-migas b{ color:var(--ink); }
   .fl-head{ display:flex; justify-content:space-between; align-items:flex-start; gap:12px 16px; flex-wrap:wrap; margin-bottom:12px; }
@@ -2380,7 +2392,7 @@
   /* «Ver más» / «Ver menos» siempre en un solo renglón: con un título largo al lado
      («Contactos en Buenos Aires (CABA)») se achicaba y se partía en dos (captura del
      usuario, 9/10/2026); el que se parte es el título. */
-  .fl-mas{ background:none; border:none; padding:0; font:inherit; text-transform:none; letter-spacing:0; font-weight:700; font-size:12.5px; color:var(--celeste-dark); cursor:pointer; white-space:nowrap; flex:none; }
+  .fl-mas{ background:none; border:none; padding:0; font:inherit; text-transform:none; letter-spacing:0; font-weight:700; font-size:12.5px; color:var(--link); cursor:pointer; white-space:nowrap; flex:none; }
   .fl-lectura{ background:linear-gradient(180deg, var(--celeste-soft), var(--card)); }
   .fl-lectura ul{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:9px; }
   .fl-lectura li{ display:flex; gap:10px; font-size:14px; line-height:1.45; color:var(--ink); }
@@ -2396,8 +2408,8 @@
   .fl-grid{ display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:16px; align-items:start; }
   .fl-chips{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; align-items:center; }
   .fl-chip{ border:1px solid var(--border); background:var(--card); border-radius:999px; padding:4px 11px; font:inherit; font-size:12.5px; font-weight:700; color:var(--ink); cursor:pointer; max-width:100%; min-width:0; overflow-wrap:anywhere; white-space:normal; text-align:start; }
-  .fl-chip.fuera{ color:var(--text-muted); text-decoration:line-through; opacity:.6; border-style:dashed; }
-  .fl-chip-todo{ background:none; border:none; font:inherit; font-size:12.5px; font-weight:700; color:var(--celeste-dark); cursor:pointer; }
+  .fl-chip.fuera{ color:var(--text-muted); text-decoration:line-through; border-style:dashed; }
+  .fl-chip-todo{ background:none; border:none; font:inherit; font-size:12.5px; font-weight:700; color:var(--link); cursor:pointer; }
   .fl-anio{ font-size:13px; font-weight:800; color:var(--ink); margin:8px 0 2px; }
   .fl-mes{ font-size:11px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--text-muted); margin:10px 0 4px 26px; }
   .fl-it{ position:relative; display:grid; grid-template-columns:18px 104px minmax(0,1fr) auto; gap:10px; align-items:start; width:100%; padding:8px 8px 8px 0; border:none; background:none; border-radius:10px; cursor:pointer; text-align:start; font:inherit; color:inherit; }
@@ -2877,7 +2889,7 @@
   .ag-cab-txt{ display:flex; flex-direction:column; gap:3px; min-width:0; flex:1; }
   .modal .ag-cab h2{ margin:0; font-size:19px; color:var(--ink-strong); overflow-wrap:anywhere; }
   .ag-cab small{ font-size:12.5px; color:var(--text-muted); font-weight:600; }
-  .ag-volver{ align-self:flex-start; background:none; border:none; padding:0 0 2px; font:inherit; font-size:12.5px; font-weight:700; color:var(--celeste-dark); cursor:pointer; }
+  .ag-volver{ align-self:flex-start; background:none; border:none; padding:0 0 2px; font:inherit; font-size:12.5px; font-weight:700; color:var(--link); cursor:pointer; }
   .ag-acc{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
   .ag-acc .btn-secondary{ padding:7px 13px; font-size:12.5px; text-decoration:none; }
   .ag-cuerpo{ padding:14px 22px 18px; overflow:auto; min-height:0; flex:1; display:flex; flex-direction:column; gap:12px; }
@@ -2896,7 +2908,7 @@
   .ag-barra select{ flex:1 1 40%; padding:9px 10px; border-radius:var(--radius-sm); border:1.5px solid var(--border); font-size:13px; font-weight:600; background:var(--card); color:var(--ink); }
   .ag-resumen{ font-size:13.5px; display:flex; flex-wrap:wrap; gap:6px 12px; align-items:center; color:var(--text); }
   .ag-resumen b{ color:var(--ink-strong); }
-  .ag-link{ background:none; border:none; padding:0; font:inherit; font-size:12.5px; font-weight:700; color:var(--celeste-dark); cursor:pointer; text-decoration:none; text-align:start; }
+  .ag-link{ background:none; border:none; padding:0; font:inherit; font-size:12.5px; font-weight:700; color:var(--link); cursor:pointer; text-decoration:none; text-align:start; }
   .ag-link:hover, .ag-volver:hover{ text-decoration:underline; }
   .ag-chip{ display:inline-flex; align-items:center; gap:5px; border:1.5px solid var(--border); background:var(--card); color:var(--ink); border-radius:999px; padding:5px 12px; font:inherit; font-size:12.5px; font-weight:700; cursor:pointer; }
   .ag-chip.on{ background:var(--petroleo); border-color:var(--petroleo); color:#fff; }
@@ -2907,13 +2919,13 @@
   .ag-pais-h i{ width:9px; height:9px; border-radius:50%; flex:none; }
   .ag-pais-h b{ font-size:15px; min-width:0; overflow-wrap:anywhere; }
   .ag-pais-h small{ color:var(--text-muted); font-weight:600; font-size:12.5px; }
-  .ag-ir{ margin-inline-start:auto; color:var(--celeste-dark); font-size:12.5px; font-weight:700; white-space:nowrap; }
+  .ag-ir{ margin-inline-start:auto; color:var(--link); font-size:12.5px; font-weight:700; white-space:nowrap; }
   .ag-ciudad{ padding:10px 16px 2px; }
   .ag-ciudad button, .ag-ciudad span{ background:none; border:none; padding:0; font:inherit; font-size:11.5px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--text-muted); max-width:100%; min-width:0; overflow-wrap:anywhere; text-align:start; }
   .ag-ciudad button{ cursor:pointer; }
   .ag-ciudad button:hover{ color:var(--celeste-dark); text-decoration:underline; }
   .ag-fila{ display:grid; grid-template-columns:minmax(0,1fr); gap:6px 16px; padding:10px 16px; border-top:1px solid var(--border); align-items:start; }
-  .ag-fila.cerrada, .fl-ag-inst.cerrada{ opacity:.6; }
+  .ag-fila.cerrada, .fl-ag-inst.cerrada{ opacity:.9; }   /* al 60 % el renglón chico daba 2,5 de contraste; la pastilla «Cerrada» ya lo dice (R17) */
   .ag-inst{ display:flex; flex-direction:column; gap:1px; background:none; border:none; padding:2px 0; text-align:start; cursor:pointer; color:inherit; font:inherit; min-width:0; }
   .ag-inst b{ font-size:14px; color:var(--ink); overflow-wrap:anywhere; }
   .ag-inst small{ font-size:12px; color:var(--text-muted); overflow-wrap:anywhere; }
@@ -2933,7 +2945,8 @@
   .ag-wa{ display:inline-flex; align-items:center; gap:5px; border:1px solid var(--ok-border); background:var(--ok-bg); color:var(--ok-text); border-radius:999px; padding:7px 13px; font-size:12.5px; font-weight:800; text-decoration:none; white-space:nowrap; flex:none; }
   .ag-wa.chico{ padding:4px 9px; font-size:13px; }
   /* El logo de WhatsApp (ver ICONO_WHATSAPP): el verde oficial, también en oscuro. */
-  .ag-wa-ic{ width:16px; height:16px; flex:none; fill:#25d366; }
+  .ag-wa-ic{ width:16px; height:16px; flex:none; fill:var(--ok-text); }   /* el verde de WhatsApp (#25d366) sobre el fondo verde claro daba 1,8 de contraste (R17); en oscuro sí se ve */
+  html[data-theme="dark"] .ag-wa-ic{ fill:#25d366; }
   .ag-wa.chico .ag-wa-ic{ width:18px; height:18px; }
   .ag-nadie, .ag-vacio{ color:var(--text-muted); font-size:12.5px; }
   .ag-estado{ display:inline-block; font-size:10.5px; font-weight:800; border-radius:999px; padding:1px 8px; vertical-align:middle; white-space:nowrap; }
@@ -2953,7 +2966,7 @@
   .ag-dl dd{ margin:0; min-width:0; overflow-wrap:anywhere; }
   .ag-col{ display:flex; flex-direction:column; gap:4px; align-items:flex-start; }
   .ag-tel-fila{ display:inline-flex; gap:8px; align-items:center; flex-wrap:wrap; }
-  .ag-dl a.ag-tel{ color:var(--celeste-dark); font-weight:700; text-decoration:none; }
+  .ag-dl a.ag-tel{ color:var(--link); font-weight:700; text-decoration:none; }
   .ag-dl a.ag-tel:hover{ text-decoration:underline; }
   .ag-wa-tag{ font-size:10.5px; font-weight:800; border-radius:999px; padding:1px 8px; background:var(--ok-bg); color:var(--ok-text); }
   .ag-nota{ margin:0; font-size:12.5px; color:var(--text-muted); }
@@ -2978,6 +2991,18 @@
   .ag-donde b{ flex:0 1 45%; min-width:0; font-size:13px; color:var(--ink); overflow-wrap:anywhere; }
   .ag-check{ display:inline-flex; align-items:center; gap:6px; font-size:12.5px; font-weight:600; white-space:nowrap; cursor:pointer; }
   .ag-check input{ width:16px; height:16px; accent-color:var(--celeste-dark); }
+  /* En una pantalla táctil, lo que se toca mide al menos 40 px (auditoría
+     10/10/2026, R19): el WhatsApp chico de cada fila medía 28, la ✕ de las
+     ventanas 24, el ✕ de un teléfono 32. Los chips y los links de acción, 32.
+     Los chips de los formularios de la Agenda quedan como están: «Sumar a
+     alguien» tiene que entrar en un celular de 660 px sin desplazarse. */
+  @media (pointer:coarse){
+    .ag-wa.chico{ min-height:40px; padding:6px 12px; }
+    .ag-quitar{ width:40px; height:40px; }
+    .modal .close{ min-width:40px; min-height:40px; display:inline-flex; align-items:center; justify-content:center; top:6px; inset-inline-end:8px; }
+    .fl-chip, .chip-toggle, .feed-solapas button{ min-height:32px; }
+    .fl-mas, .fs-more, .fl-chip-todo{ min-height:32px; display:inline-flex; align-items:center; }   /* «Volver» no: con 32 px «Sumar a alguien» dejaba de entrar en 660 */
+  }
   .ag-quitar{ flex:none; width:32px; height:32px; border-radius:50%; border:none; background:var(--surface-alt); color:var(--text-muted); cursor:pointer; font-size:13px; }
   .ag-chips{ display:flex; flex-wrap:wrap; gap:6px; }
   .ag-error{ font-size:12px; font-weight:700; color:var(--danger-text); }
@@ -3057,7 +3082,7 @@
   .rep-total-num{ font-size:34px; font-weight:800; color:var(--petroleo); line-height:1; }
   .rep-comparacion{ margin-inline-start:auto; font-size:13px; font-weight:700; }
   .rep-comparacion.sube{ color:var(--ok-text); }
-  .rep-comparacion.baja{ color:var(--danger); }
+  .rep-comparacion.baja{ color:var(--danger-text); }
   .rep-grilla{ display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:14px; }
   .rep-bloque{
     background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md);
@@ -3088,7 +3113,7 @@
   .rep-bloque-nota{ font-size:11.5px; color:var(--text-muted); margin-top:8px; }
   /* Una fila que lleva a algún lado se nota al pasar por encima. */
   .rep-fila-ir{ cursor:pointer; border-radius:8px; margin-inline:-6px; padding-inline:6px; }
-  .rep-fila-ir:hover, .rep-fila-ir:focus-visible{ background:var(--celeste-soft); outline:none; }
+  .rep-fila-ir:hover, .rep-fila-ir:focus-visible{ background:var(--celeste-soft); }
   .rep-print-title{ display:none; }
   /* ---- Reportes, opción A (5/10/2026): una barra de control, un título,
      una tira de números y secciones con nombre. ---- */
@@ -3181,20 +3206,25 @@
   }
   .rep-filtros-tit{ font-size:11.5px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:var(--text-muted); margin-inline-end:4px; }
   .rep-delta{ font-size:12px; font-weight:800; color:var(--text-muted); white-space:nowrap; }
-  .rep-delta.sube{ color:var(--ok-text, #15803d); } .rep-delta.baja{ color:var(--danger, #b91c1c); }
+  .rep-delta.sube{ color:var(--ok-text, #15803d); } .rep-delta.baja{ color:var(--danger-text, #b91c1c); }
   .rep-kpi .rep-delta{ display:block; margin-top:4px; }
   .rep-tabla-envoltorio{ overflow-x:auto; }
   .rep-tabla{ width:100%; border-collapse:collapse; font-size:13px; font-variant-numeric:tabular-nums; }
   .rep-tabla th{ font-size:11.5px; font-weight:800; color:var(--text-muted); text-align:end; padding:5px 8px; white-space:nowrap; }
   .rep-tabla td{ padding:6px 8px; border-top:1px solid var(--border); text-align:end; font-weight:700; }
   .rep-tabla th:first-child, .rep-tabla td:first-child{ text-align:start; }
-  .rep-tabla td:first-child{ white-space:nowrap; }
+  /* El nombre se parte si hace falta y las columnas de números toman solo lo
+     justo: con la letra del navegador del usuario (Montserrat, más ancha que
+     la de acá) «Por país» de Comparar se salía de la tarjeta, con barra
+     lateral y la columna «Diferencia» cortada (captura del usuario,
+     10/10/2026). Antes el nombre iba en un solo renglón. */
+  .rep-tabla td:first-child{ white-space:normal; overflow-wrap:anywhere; min-width:0; }
+  .rep-tabla th:not(:first-child), .rep-tabla td:not(:first-child){ white-space:nowrap; width:1%; }
   /* En el celular «Por persona del equipo» medía 426px en una pantalla de
      390 y las últimas columnas quedaban fuera, sin nada que avisara que se
      desplazaba (docs/AUDITORIA.md, I9): el nombre se parte en dos renglones
      y la tabla entra entera. */
   @media (max-width:520px){
-    .rep-tabla td:first-child{ white-space:normal; overflow-wrap:anywhere; }
     .rep-tabla th, .rep-tabla td{ padding:5px 5px; }
   }
   /* Las tres tablas de Comparar: lo mismo que .rep-grilla-3, con más
@@ -3202,7 +3232,7 @@
   .rep-grilla-ancha{ grid-template-columns:repeat(auto-fit, minmax(max(340px, calc(33.33% - 10px)), 1fr)); }
   @media (max-width:1100px){ .rep-grilla-ancha{ grid-template-columns:minmax(0,1fr); } }
   .rep-evolucion td:not(:first-child){ border-inline-start:2px solid var(--card); }
-  .rep-h0{ color:var(--text-muted); font-weight:600; } .rep-h1{ background:#e6f6f9; } .rep-h2{ background:#bfe9f2; } .rep-h3{ background:#7fd3e6; } .rep-h4{ background:#1a9fb8; color:#fff; }
+  .rep-h0{ color:var(--text-muted); font-weight:600; } .rep-h1{ background:#e6f6f9; } .rep-h2{ background:#bfe9f2; } .rep-h3{ background:#7fd3e6; } .rep-h4{ background:#1a9fb8; color:#082a2c; }   /* el número oscuro: en blanco sobre este celeste daba 3,1 (R17); en oscuro ya era así */
   /* En oscuro, la misma escala de menos a más, pero de petróleo a
      celeste: los fondos claros de arriba con la letra clara del modo
      oscuro dejaban los números invisibles, y la tabla quedaba como
@@ -3503,9 +3533,9 @@
   .cal-ir-leyenda{ display:flex; align-items:center; gap:6px; font-size:10.5px; font-weight:600; color:var(--text-muted); margin-top:8px; }
   .cal-ir-leyenda i{ flex:none; width:22px; height:4px; border-radius:4px; background:var(--celeste); }
   .cal-ir-pie{ display:flex; flex-wrap:wrap; gap:6px; margin-top:12px; padding-top:10px; border-top:1px solid var(--border); }
-  .cal-nav .cal-ir-pie button{ padding:4px 11px; font-size:12px; color:var(--celeste-dark); }
+  .cal-nav .cal-ir-pie button{ padding:4px 11px; font-size:12px; color:var(--link); }
   /* El día al que se fue, marcado un momento para que el ojo lo encuentre. */
-  .cal-cell.cal-destino{ animation:calDestino 2.2s ease-out; }
+  .cal-cell.cal-destino, .cal-gcol-head.cal-destino{ animation:calDestino 2.2s ease-out; }
   @keyframes calDestino{ 0%, 40%{ box-shadow:inset 0 0 0 3px var(--celeste); background:var(--celeste-soft); } }
   @media (max-width:640px){
     /* En el celular, a todo el ancho de la barra (colgada de .cal-nav). */
@@ -3573,7 +3603,8 @@
   .ymd{ border-radius:5px; }
   .ymd.l1{ background:color-mix(in srgb, var(--celeste-dark) 18%, var(--card)); color:var(--ink-strong); }
   .ymd.l2{ background:color-mix(in srgb, var(--celeste-dark) 40%, var(--card)); color:var(--ink-strong); font-weight:700; }
-  .ymd.l3{ background:color-mix(in srgb, var(--celeste-dark) 68%, var(--card)); color:#fff; font-weight:700; }
+  .ymd.l3{ background:color-mix(in srgb, var(--celeste-dark) 68%, var(--card)); color:var(--ink-strong); font-weight:700; }   /* en blanco daba 2,1 (R17) */
+  html[data-theme="dark"] .ymd.l3{ color:#082a2c; }   /* en oscuro el fondo del tono 3 es claro: va con número oscuro (5,8) */
   .ymd.l4{ background:color-mix(in srgb, var(--petroleo) 92%, var(--card)); color:#fff; font-weight:800; }
   .ymd.today{ box-shadow:inset 0 0 0 2px var(--ink-strong); font-weight:800; }
   .year-leyenda{ display:flex; align-items:center; justify-content:flex-end; gap:4px; margin-top:12px; font-size:11.5px; font-weight:700; color:var(--text-muted); }
@@ -3626,7 +3657,7 @@
   /* Punta cuadrada del lado por el que el evento sigue fuera de la semana. */
   .cal-bar.cont-start{ border-start-start-radius:0; border-end-start-radius:0; }
   .cal-bar.cont-end{ border-start-end-radius:0; border-end-end-radius:0; }
-  .cal-bar.cancelled{ text-decoration:line-through; opacity:0.6; }
+  .cal-bar.cancelled{ text-decoration:line-through; opacity:.85; }
   .cal-bar .cal-dot{ width:7px; height:7px; border-radius:50%; flex:none; }
   .cal-bar .cal-txt{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; }
   .cal-bar b{ font-weight:800; }
@@ -3672,7 +3703,7 @@
     min-width:0; max-width:100%; overflow:hidden;
   }
   .cal-chip:hover{ background:var(--celeste-soft); }
-  .cal-chip.cancelled{ text-decoration:line-through; opacity:0.6; }
+  .cal-chip.cancelled{ text-decoration:line-through; color:var(--text-muted); }
   .cal-chip .cal-dot{ width:7px; height:7px; border-radius:50%; flex:none; }
   /* min-width:0 para que el ellipsis funcione adentro de un flex item */
   .cal-chip .cal-txt{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -4172,7 +4203,7 @@
   .feed-solapas{ display:flex; background:var(--card); border:1px solid var(--border); border-radius:999px; padding:3px; width:max-content; max-width:100%; min-width:0; }
   .feed-solapas button{ border:0; background:none; border-radius:999px; padding:7px 16px; font:inherit; font-weight:700; font-size:13.5px; color:var(--text-muted); cursor:pointer; display:flex; gap:6px; align-items:center; justify-content:center; }
   .feed-solapas button.on{ background:var(--petroleo); color:#fff; }
-  .feed-solapas .fs-n{ background:var(--celeste-soft); color:var(--celeste-dark); border-radius:999px; padding:1px 7px; font-size:11px; }
+  .feed-solapas .fs-n{ background:var(--celeste-soft); color:var(--link); border-radius:999px; padding:1px 7px; font-size:11px; }
   .feed-solapas button.on .fs-n{ background:rgba(255,255,255,.2); color:#fff; }
   @media (max-width:520px){ .feed-solapas{ flex:1; } .feed-solapas button{ flex:1; padding:7px 10px; } }
 </style>
@@ -4244,7 +4275,7 @@
   </div>
 </div>
 
-<div class="calendar-notice" id="calendarToast" hidden>
+<div class="calendar-notice" id="calendarToast" role="status" aria-live="polite" hidden>
   <span id="calendarToastText"></span>
   <button class="filter-clear" data-action="dismiss-calendar-notice">Cerrar</button>
 </div>
@@ -6107,6 +6138,11 @@ function postLevelFor(post, place){
 function placeLevel(){
   const v = Number(prefs().placeLevel);
   return v === 1 || v === 2 ? v : 0;
+}
+// El nivel con que se lista AHORA: el que trae el filtro (una fila de
+// Reportes lo fija en 0, lo propio) o, si no, la preferencia de la persona.
+function nivelDeAhora(f = state.filters){
+  return f && (f.nivel === 0 || f.nivel === 1 || f.nivel === 2) ? f.nivel : placeLevel();
 }
 function setPlaceLevel(n){ savePrefs({ placeLevel: n === 1 || n === 2 ? n : 0 }); }
 function zoneOfCountry(name){ const c = COUNTRY_BY_NAME[name]; return c ? c.zone : null; }
@@ -11727,7 +11763,10 @@ function doRender(){
   // En angosto el panel de filtros tapa todo: la página de atrás no se mueve.
   document.documentElement.classList.toggle("fp-abierto", fp.abierto);
   document.querySelectorAll("#tabs button[data-view]").forEach(b=>{
-    b.classList.toggle("active", b.dataset.view === state.view);
+    const activa = b.dataset.view === state.view;
+    b.classList.toggle("active", activa);
+    // El lector de pantalla también tiene que saber en qué pestaña está (R22).
+    if(activa) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
   });
 
   // La ventana de un ítem de la ficha solo tiene sentido con su ficha
@@ -14354,7 +14393,10 @@ function afterRenderView(){
 // se podía sacar: para pasar de 2026 a 2025 había que volver a Reportes.
 // Lo eligió entre tres propuestas que se podían tocar (docs/REDISENO.md).
 function filtrosVacios(){
-  return { text:"", types:new Set(), zones:new Set(), place:null, quien:null, author:null, periodo:null, mes:false, docs:false };
+  // nivel y soloPosteo los pone una fila de Reportes (reporte-ir): la lista
+  // tiene que dar el mismo número que la fila, que cuenta solo lo propio del
+  // lugar y solo por el alcance del posteo (auditoría 10/10/2026, R7).
+  return { text:"", types:new Set(), zones:new Set(), place:null, quien:null, author:null, periodo:null, mes:false, docs:false, nivel:null, soloPosteo:false };
 }
 function clonarFiltros(f){
   return { ...filtrosVacios(), ...f, types:new Set(f.types || []), zones:new Set(f.zones || []),
@@ -14423,7 +14465,7 @@ function filtrosCambiados(){
   const out = new Set();
   if(!fp.b) return out;
   ["actividad","lugar","fecha","persona"].forEach(k => {
-    if(firmaDelFiltro(k, state.filters, placeLevel()) !== firmaDelFiltro(k, fp.b.f, fp.b.nivel)) out.add(k);
+    if(firmaDelFiltro(k, state.filters, nivelDeAhora()) !== firmaDelFiltro(k, fp.b.f, fp.b.nivel)) out.add(k);
   });
   return out;
 }
@@ -14456,7 +14498,7 @@ function renderFilterBar(){
   return `<div class="fb">
       ${volver ? `<div class="fb-origen">${volver}<span class="fb-espacio"></span>${limpiar}</div>` : ""}
       <div class="fb-fila">
-        <input type="text" id="feedSearch" class="fb-buscar" placeholder="${esc(t("Buscar por texto…","Search by text…","Buscar por texto…","...חיפוש לפי טקסט"))}" aria-label="${esc(t("Buscar por texto","Search by text","Buscar por texto","חיפוש לפי טקסט"))}" value="${esc(f.text)}" autocomplete="off">
+        <input type="search" id="feedSearch" class="fb-buscar" placeholder="${esc(t("Buscar por texto…","Search by text…","Buscar por texto…","...חיפוש לפי טקסט"))}" aria-label="${esc(t("Buscar por texto","Search by text","Buscar por texto","חיפוש לפי טקסט"))}" value="${esc(f.text)}" autocomplete="off">
         <button type="button" id="fbFiltros" class="fb-boton${n ? " con-filtro" : ""}" data-action="fp-abrir" aria-haspopup="dialog" aria-expanded="${fp.abierto}">⚙ ${t("Filtros","Filters","Filtros","מסננים")}${n ? ` <span class="fb-cuenta">${n}</span>` : ""}</button>
       </div>
       ${fichas ? `<div class="fb-fichas">${fichas}${volver ? "" : limpiar}</div>` : ""}
@@ -14575,7 +14617,7 @@ function fpOpcionesLugar(b){
         `<button type="button" class="chip-toggle" data-action="fp-lugar" data-country="${esc(x)}">${esc(countryLabel(x))}</button>`).join("");
       sugs = `<div class="fp-chips">${top}<button type="button" class="chip-toggle" data-action="fp-lugar" data-kind="latam">🌎 ${t("Lo de toda LatAm","All-LatAm items","O de toda a LatAm","מה ששייך לכל LatAm")}</button></div>`;
     }
-    lugar = `<input type="text" id="fpLugarQ" class="fp-texto" placeholder="${esc(t("Escribí un país o una ciudad…","Type a country or a city…","Escreva um país ou uma cidade…","...הקלד/י מדינה או עיר"))}" aria-label="${esc(t("País o ciudad","Country or city","País ou cidade","מדינה או עיר"))}" value="${esc(b.lugarQ || "")}" autocomplete="off">${sugs}`;
+    lugar = `<input type="search" id="fpLugarQ" class="fp-texto" placeholder="${esc(t("Escribí un país o una ciudad…","Type a country or a city…","Escreva um país ou uma cidade…","...הקלד/י מדינה או עיר"))}" aria-label="${esc(t("País o ciudad","Country or city","País ou cidade","מדינה או עיר"))}" value="${esc(b.lugarQ || "")}" autocomplete="off">${sugs}`;
   }
   let niveles = "";
   if(f.place && f.place.kind !== "latam" && f.place.country){
@@ -14646,7 +14688,7 @@ function fpOpcionesGuardados(b){
 function abrirFiltros(cat, origen){
   const conAnillo = tieneAnillo(origen);
   fp.abierto = true; fp.cat = cat || null; fp.entra = true; fp.mov = null; fp.guardando = false; fp.nombre = "";
-  fp.b = { f:clonarFiltros(state.filters), nivel:placeLevel(), lugarQ:"" };
+  fp.b = { f:clonarFiltros(state.filters), nivel:nivelDeAhora(), lugarQ:"" };
   fp.ancla = cat ? `.fb-ficha-abrir[data-cat="${cat}"]` : "#fbFiltros";
   render();
   enfocarEnElPanel(conAnillo);
@@ -14684,6 +14726,8 @@ function aplicarFiltros(){
   cerrarFiltros();
   // «Qué incluir» es una preferencia de la persona (ver placeLevel): se
   // guarda solo si cambió (savePrefs ya vuelve a dibujar).
+  // Lo que se elige en el panel le gana al nivel que fijó una fila de Reportes.
+  state.filters.nivel = null;
   if(nivel !== placeLevel()) setPlaceLevel(nivel);
 }
 // «Guardar lo elegido» (en Guardados): guarda el borrador con su nombre,
@@ -14709,8 +14753,8 @@ function placeLevelCounts(f = state.filters){
     if(!pasaAtajos(p, f) || !pasaFiltroPeriodo(p, f)) return;
     const replies = state.repliesByPost[p.id] || [];
     if(!(matchesTextFilter(f.text, p) || replies.some(r=>matchesTextFilter(f.text, r)))) return;
-    if(f.zones.size && ![p, ...replies].some(r=>(r.scopes||[]).some(sc=>zoneOfScope(sc) && f.zones.has(zoneOfScope(sc))))) return;
-    const l = postLevelFor(p, f.place);
+    if(f.zones.size && ![p, ...(f.soloPosteo ? [] : replies)].some(r=>(r.scopes||[]).some(sc=>zoneOfScope(sc) && f.zones.has(zoneOfScope(sc))))) return;
+    const l = f.soloPosteo ? recordLevelFor(p.scopes || [], f.place) : postLevelFor(p, f.place);
     if(l) out[l]++;
   });
   return out;
@@ -14807,7 +14851,7 @@ function etiquetaPeriodo(per){
 // Devuelve los posts visibles según filtros, cada uno con sus replies
 // ordenadas. Con otros filtros (el borrador del panel), lo que quedaría:
 // así «Ver N posteos» dice cuántos antes de aplicar.
-function getVisiblePosts(f = state.filters, nivel = placeLevel()){
+function getVisiblePosts(f = state.filters, nivel = nivelDeAhora(f)){
   return state.posts
     .filter(p=> !f.types.size || f.types.has(p.activityType))
     .filter(p=> !f.author || String(p.authorEmail||"").toLowerCase() === f.author)
@@ -14818,7 +14862,7 @@ function getVisiblePosts(f = state.filters, nivel = placeLevel()){
       const postMatchesText = matchesTextFilter(f.text, p) || replies.some(r=>matchesTextFilter(f.text, r));
       if(!postMatchesText) return false;
       if(!f.zones.size && !f.place) return true;
-      const postMatchesPZ = matchesPlaceOrZoneFilter(p, f, nivel) || replies.some(r=>matchesPlaceOrZoneFilter(r, f, nivel));
+      const postMatchesPZ = matchesPlaceOrZoneFilter(p, f, nivel) || (!f.soloPosteo && replies.some(r=>matchesPlaceOrZoneFilter(r, f, nivel)));
       return postMatchesPZ;
     })
     .map(p=>({ post:p, replies: state.repliesByPost[p.id] || [] }));
@@ -14925,7 +14969,7 @@ function filtrosGuardados(){ return Array.isArray(prefs().savedFilters) ? prefs(
 function renderFeedSide(){
   const hoy = todayISO(), limite = addDaysISO(hoy, 30);
   const proximos = calendarioPosts().filter(p=>!p.cancelled)
-    .map(p=>({ p, f: occurrenceOf(p) || String(p.startDate || p.date) }))
+    .map(p=>({ p, ...proximaFecha(p) }))
     .filter(x=> x.f >= hoy && x.f <= limite)
     .sort((a,b)=> a.f.localeCompare(b.f) || String(a.p.startTime||"").localeCompare(String(b.p.startTime||"")))
     .slice(0, 5);
@@ -14939,12 +14983,12 @@ function renderFeedSide(){
   return `<aside class="feed-side">
     <section class="fs-box">
       <h4>📅 ${t("Próximos eventos","Upcoming events","Próximos eventos","אירועים קרובים")}</h4>
-      ${proximos.length ? proximos.map(({p,f})=>{
+      ${proximos.length ? proximos.map(({p,f,occ})=>{
         const type = ACTIVITY_BY_KEY[p.activityType] || { icon:"✨" };
         const when = fmtISO(f, { weekday:"short", day:"numeric", month:"short" }) + (p.startTime ? ` · ${esc(fmtHHMM(p.startTime))}` : "");
         // Abre la tarjeta del evento (la del Calendario), no el Feed: desde
         // ahí se elige adónde ir (lo pidió el usuario el 8/10/2026).
-        return `<button type="button" class="fs-item" data-action="proximo-abrir" data-post-id="${esc(p.id)}"${isRecurring(p) ? ` data-occ="${esc(f)}"` : ""}>
+        return `<button type="button" class="fs-item" data-action="proximo-abrir" data-post-id="${esc(p.id)}"${isRecurring(p) ? ` data-occ="${esc(occ || f)}"` : ""}>
           <span class="fs-when">${when}</span><span class="fs-what" dir="auto">${esc(type.icon)} ${esc(calendarioLabel(p))}</span>
         </button>`;
       }).join("") : `<p class="fs-empty">${t("Nada en los próximos 30 días.","Nothing in the next 30 days.","Nada nos próximos 30 dias.","אין כלום ב-30 הימים הקרובים.")}</p>`}
@@ -16135,15 +16179,15 @@ function renderReply(r){
         <span class="reply-date">${fmtDateTime(r.createdAt)}</span>
       </div>
       <div class="reply-content" dir="auto">${nl2br(tr.displayContent)}</div>
-      ${tr.toggleHtml}
       ${scopesHtml ? `<div class="reply-scopes">${scopesHtml}</div>` : ""}
       ${linksHtml ? `<div class="reply-links">${linksHtml}</div>` : ""}
       ${imagesHtml ? `<div class="reply-images">${imagesHtml}</div>` : ""}
       ${renderPostedFiles(r.files, {postId: r.postId, replyId: r.id})}
-      ${(!r.system && canWrite()) || isFixedAdmin() ? `
+      ${(!r.system && canWrite()) || isFixedAdmin() || tr.toggleHtml ? `
       <div class="reply-actions">
         ${!r.system && canWrite() ? `<span class="gusta"><button data-action="toggle-like" data-post-id="${esc(r.postId)}" data-reply-id="${esc(r.id)}" class="${liked?"liked":""}" aria-pressed="${liked}">${liked?"👍":"🤍"} ${t("Me gusta","Like","Curtir","לייק")}</button>${gustanHtml(likedBy, r.postId, r.id)}</span>
         <button data-action="toggle-nested-reply" data-reply-id="${esc(r.id)}">↩ ${t("Responder","Reply","Responder","תגובה")}</button>` : ""}
+        ${tr.toggleHtml}
         ${isFixedAdmin() ? `<button class="danger" data-action="delete-reply" data-post-id="${esc(r.postId)}" data-reply-id="${esc(r.id)}">🗑️ ${t("Borrar","Delete","Apagar","מחיקה")}</button>` : ""}
       </div>` : ""}
       ${nestedOpen ? renderNestedReplyForm(r.postId, r.id) : ""}
@@ -18326,6 +18370,20 @@ function nearestOccurrence(dates){
 // reales porque la regla puede haber cambiado desde Calendar mientras
 // tanto (y ahí la elegida ya no existe).
 const occView = {}; // postId -> fecha ISO elegida a mano
+// La fecha que viene de un posteo, para «lo que viene»: en uno que se
+// repite, la primera repetición no suspendida que todavía no pasó (por el
+// día en que PASA, `date`; `occ` es su fecha original, la que entiende la
+// tarjeta). Antes se usaba occurrenceOf(), que da la MÁS CERCANA a hoy, y
+// puede ser la de ayer: una rutina de los lunes desaparecía de «Próximos
+// eventos» de martes a jueves (auditoría del 10/10/2026, R2).
+function proximaFecha(post){
+  const hoy = todayISO();
+  if(isRecurring(post)){
+    const o = postOccurrenceList(post).find(o => !o.skipped && o.date >= hoy);
+    if(o) return { f: o.date, occ: o.iso };
+  }
+  return { f: String(post.startDate || post.date || ""), occ: null };
+}
 function occurrenceOf(post){
   if(!isRecurring(post)) return null;
   const list = postOccurrenceList(post).filter(o=>!o.skipped);
@@ -18955,7 +19013,7 @@ function calIrA(iso, vista){
   calIrTexto = "";
   cerrarCalIr(true);
   if(!vista){
-    const celda = document.querySelector(`.cal-cell[data-date="${iso}"]`);
+    const celda = document.querySelector(`.cal-cell[data-date="${iso}"], .cal-gcol-head[data-date="${iso}"]`);
     if(celda){ celda.classList.add("cal-destino"); celda.scrollIntoView({ block:"nearest" }); }
   }
 }
@@ -19351,7 +19409,7 @@ function renderCalendarioGrid(days){
   const { byDate, largos } = separarLargos(calendarioEventsByDate(days[0], days[days.length-1]), days[0], days[days.length-1]);
   const today = todayISO();
   const heads = days.map(iso=>`
-      <div class="cal-gcol-head${iso===today?" today":""}">
+      <div class="cal-gcol-head${iso===today?" today":""}" data-date="${iso}">
         <span class="dow">${esc(fmtISO(iso,{weekday:"short"}))}</span>
         <span class="dnum">${Number(iso.slice(8,10))}</span>
       </div>`).join("");
@@ -20731,7 +20789,7 @@ function filaDePersona(c, conTel){
   const p = agendaDatos().personas.get(c.persona);
   const tel = p.telefonos[0];
   return `<div class="ag-fila-p">
-    <button type="button" class="ag-p" data-action="agenda-ver-persona" data-id="${esc(p.id)}"><span class="ag-av">${esc(inicialesDe(p.name))}</span>
+    <button type="button" class="ag-p" data-action="agenda-ver-persona" data-id="${esc(p.id)}"><span class="ag-av" aria-hidden="true">${esc(inicialesDe(p.name))}</span>
       <span class="ag-p-t"><b dir="auto">${esc(p.name)}</b><small dir="auto">${esc(c.cargo || "")}${conTel && tel ? `${c.cargo ? `<span class="ag-sep"> · </span>` : ""}<span class="ag-tel">${esc(tel.n)}</span>` : ""}</small></span></button>
     ${tel && tel.wa !== false ? botonWhatsApp(tel, true) : ""}</div>`;
 }
@@ -20795,7 +20853,8 @@ function agendaVistaLista(){
     });
     filas += `</section>`;
     if(lista.length > f.mostrar) filas += `<div class="ag-mas"><button type="button" class="btn-secondary" data-action="agenda-mas">${esc(t("Ver más · quedan {n}","See more · {n} left","Ver mais · faltam {n}","להציג עוד · נשארו {n}",{ n: lista.length - f.mostrar }))}</button></div>`;
-    filas += `<div class="ag-planilla"><button type="button" class="ag-link" data-action="agenda-planilla">⬇ ${esc(t("Bajar en planilla ({n})","Download as a spreadsheet ({n})","Baixar em planilha ({n})","הורדה כגיליון ({n})",{ n: cuantasInstituciones(lista.length) }))}</button></div>`;
+    // Solo para quien carga eventos: ver la Agenda es de todos, bajarla entera con los teléfonos no (lo decidió el usuario el 10/10/2026, D2).
+    if(canWrite()) filas += `<div class="ag-planilla"><button type="button" class="ag-link" data-action="agenda-planilla">⬇ ${esc(t("Bajar en planilla ({n})","Download as a spreadsheet ({n})","Baixar em planilha ({n})","הורדה כגיליון ({n})",{ n: cuantasInstituciones(lista.length) }))}</button></div>`;
   }
   // Sin el «6 instituciones · 4 contactos» de arriba: lo dice el renglón de abajo del buscador, que además sigue a los filtros.
   return agendaCabecera(titulo, "", "", sumar)
@@ -20924,12 +20983,12 @@ function agendaVistaForm(v){
       ${!editar ? `<label class="ag-campo"><span>${t("Cargo","Role","Cargo","תפקיד")}</span><input id="agFCargo" data-ag-campo="cargo" maxlength="60" list="agCargos" dir="auto" value="${esc(v.cargo || "")}" placeholder="${esc(cargosSugeridos()[0])}"></label>` : ""}${!editar ? `</div>` : ""}
       <datalist id="agCargos">${cargosSugeridos().map(c => `<option value="${esc(c)}">`).join("")}</datalist>
       ${usada ? "" : `<div class="ag-campo ag-conlink"><span>${t("Teléfono","Phone","Telefone","טלפון")} <i>${t("· con el código del país","· with the country code","· com o código do país","· עם קידומת המדינה")}</i></span>
-        ${v.tels.map((x, i) => `<div class="ag-tel-in"><input id="agFTel-${i}" data-ag-tel="${i}" inputmode="tel" dir="ltr" maxlength="40" value="${esc(x.n)}" placeholder="+54 9 11 …" aria-label="${esc(t("Teléfono {n}","Phone {n}","Telefone {n}","טלפון {n}",{ n: i + 1 }))}">
+        ${v.tels.map((x, i) => `<div class="ag-tel-in"><input id="agFTel-${i}" data-ag-tel="${i}" inputmode="tel" autocomplete="tel" dir="ltr" maxlength="40" value="${esc(x.n)}" placeholder="+54 9 11 …" aria-label="${esc(t("Teléfono {n}","Phone {n}","Telefone {n}","טלפון {n}",{ n: i + 1 }))}">
           <label class="ag-check"><input type="checkbox" id="agFWa-${i}" data-ag-wa="${i}"${x.wa ? " checked" : ""}> WhatsApp</label>
           ${v.tels.length > 1 ? `<button type="button" class="ag-quitar" data-action="agenda-form-tel-quitar" data-i="${i}" aria-label="${esc(t("Quitar este teléfono","Remove this phone","Remover este telefone","הסרת הטלפון"))}">✕</button>` : ""}</div>`).join("")}
         ${err("tels")}${v.tels.length < 6 ? `<button type="button" class="ag-link" data-action="agenda-form-tel-mas">+ ${t("Otro teléfono","Another phone","Outro telefone","טלפון נוסף")}</button>` : ""}</div>
       <div class="ag-dos">
-      <label class="ag-campo"><span>${t("Correo","Email","E-mail","דוא״ל")} <i>${t("· opcional","· optional","· opcional","· לא חובה")}</i></span><input id="agFCorreo" data-ag-campo="correo" type="email" dir="ltr" maxlength="200" value="${esc(v.correo)}" placeholder="${esc(t("nombre@ejemplo.org","name@example.org","nome@exemplo.org","name@example.org"))}">${err("correo")}</label>
+      <label class="ag-campo"><span>${t("Correo","Email","E-mail","דוא״ל")} <i>${t("· opcional","· optional","· opcional","· לא חובה")}</i></span><input id="agFCorreo" data-ag-campo="correo" type="email" autocomplete="email" dir="ltr" maxlength="200" value="${esc(v.correo)}" placeholder="${esc(t("nombre@ejemplo.org","name@example.org","nome@exemplo.org","name@example.org"))}">${err("correo")}</label>
       <div class="ag-campo"><span>${t("Idiomas","Languages","Idiomas","שפות")} <i>${t("· opcional","· optional","· opcional","· לא חובה")}</i></span><div class="ag-chips">${IDIOMAS_AGENDA.map(([k, l]) => `<button type="button" class="ag-chip${v.idiomas.includes(k) ? " on" : ""}" data-action="agenda-form-idioma" data-k="${k}" aria-pressed="${v.idiomas.includes(k)}">${esc(l)}</button>`).join("")}</div></div></div>
       ${editar && (dondeEsta.length || v.sacar.length) ? `<div class="ag-campo"><span>${t("Dónde está","Where","Onde está","היכן")}</span>${dondeEsta.map(z => `<div class="ag-donde"><b dir="auto">${esc(z.x.name)}</b>
           <input id="agFCargo-${esc(z.c.id)}" data-ag-cargo="${esc(z.c.id)}" maxlength="60" list="agCargos" dir="auto" value="${esc(v.cargos[z.c.id] || "")}" aria-label="${esc(t("Cargo en {i}","Role at {i}","Cargo em {i}","תפקיד ב-{i}",{ i: z.x.name }))}" placeholder="${esc(t("Cargo","Role","Cargo","תפקיד"))}">
@@ -21099,7 +21158,7 @@ const AGENDA_ACCIONES = {
   "agenda-mas": () => { agendaFiltro.mostrar += AGENDA_TANDA; renderAgenda(); },
   "agenda-limpiar": () => { agendaFiltro = { q:"", pais:"", ciudad:"", tipo:"", lista:"", mostrar:AGENDA_TANDA }; renderAgenda(); if(!isTouchDevice()) document.getElementById("agendaBuscar")?.focus(); },
   "agenda-sin-ciudad": () => { agendaFiltro.ciudad = ""; agendaFiltro.mostrar = AGENDA_TANDA; renderAgenda(); },
-  "agenda-planilla": () => descargarTexto(`agenda-${todayISO()}.csv`, csvDeLaAgenda(agendaFiltradas())),
+  "agenda-planilla": () => { if(canWrite()) descargarTexto(`agenda-${todayISO()}.csv`, csvDeLaAgenda(agendaFiltradas())); },
   "agenda-copiar": async (el) => {
     try{ await navigator.clipboard.writeText(el.dataset.n); showCalendarNotice({ ok:true, message: t("Número copiado.","Number copied.","Número copiado.","המספר הועתק.") }); }
     catch(e){ appAlert(el.dataset.n); }
@@ -21611,13 +21670,15 @@ function datosDeFicha(L){
 // "La lectura rápida": frases armadas con cuentas, solo las que dicen algo.
 function lecturaDeFicha(D, L){
   const out = [];
-  const ultimaVisita = D.visitas[0];
-  const ultimoRegistro = D.visibles[0];
+  // La última que YA PASÓ: una visita planificada no es «la última visita»
+  // ni cuenta entre las de los últimos 12 meses (auditoría 10/10/2026, R1).
+  const ultimaVisita = D.visitas.find(yaPaso);
+  const ultimoRegistro = D.visibles.find(yaPaso);
   if(ultimaVisita){
     const fin = ultimaVisita.endDate || ultimaVisita.startDate || ultimaVisita.date;
     const dias = Math.max(0, diasDesde(fin));
     const quien = quienDe(ultimaVisita);
-    const anio = D.visitas.filter(p => diasDesde(fechaDePost(p)) <= 365).length;
+    const anio = D.visitas.filter(p => yaPaso(p) && diasDesde(fechaDePost(p)) <= 365).length;
     let txt = t("Última visita hace <b>{d} días</b> ({f}){q}.","Last visit <b>{d} days</b> ago ({f}){q}.","Última visita há <b>{d} dias</b> ({f}){q}.","ביקור אחרון לפני <b>{d} ימים</b> ({f}){q}.",
       { d: dias, f: esc(fechaDeTarjeta(fechaDePost(ultimaVisita), ultimaVisita.endDate, null, null).dias), q: quien ? t(", por <b>{n}</b>",", by <b>{n}</b>",", por <b>{n}</b>",", על ידי <b>{n}</b>",{ n: esc(quien) }) : "" });
     txt += " " + (anio === 1 ? t("Fue la única de los últimos 12 meses.","It was the only one in the last 12 months.","Foi a única dos últimos 12 meses.","היחיד ב-12 החודשים האחרונים.")
@@ -21913,9 +21974,10 @@ function renderFichaLugar(L){
     let act;
     if(esDelLugar(f)) act = subtituloDeLugar(x);
     else if(h){
-      const ult = h.posts.map(fechaDePost).sort().pop();
+      // Solo lo hecho: con una visita planificada decía «último: hace 0 días» (10/10/2026, R1).
+      const ult = h.posts.filter(yaPaso).map(fechaDePost).sort().pop();
       const pend = h.posts.reduce((n, p) => n + pasosPendientes(partesDeLugar(p, h.L)).length, 0);
-      act = t("último: hace {d} días","latest: {d} days ago","último: há {d} dias","אחרון: לפני {d} ימים",{ d: Math.max(0, diasDesde(ult)) }) + (pend ? " · " + t("{n} pendientes","{n} pending","{n} pendentes","{n} ממתינים",{ n: pend }) : "");
+      act = (ult ? t("último: hace {d} días","latest: {d} days ago","último: há {d} dias","אחרון: לפני {d} ימים",{ d: Math.max(0, diasDesde(ult)) }) : t("todavía nada hecho","nothing done yet","ainda nada feito","עדיין לא נעשה דבר")) + (pend ? " · " + t("{n} pendientes","{n} pending","{n} pendentes","{n} ממתינים",{ n: pend }) : "");
     } else act = t("Sin actividad todavía","No activity yet","Sem atividade ainda","אין עדיין פעילות");
     let gente = "";
     if(f.insts.length){
@@ -21962,7 +22024,11 @@ function renderFichaLugar(L){
   })();
   const meses = [];
   for(let i = 11; i >= 0; i--){ const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - i); meses.push(mesLocalDe(d.getTime())); }
-  const porMes = meses.map(m => ({ m, n: D.visibles.filter(p => fechaDePost(p).startsWith(m)).length, v: D.visibles.some(p => p.activityType === "visita" && fechaDePost(p).startsWith(m)) }));
+  // Solo lo que ya pasó: una visita planificada para la semana que viene no es
+  // un «registro en 12 meses» (tercera vez que vuelve esta falla: auditoría
+  // del 10/10/2026, R1; la regla está en auditoria/RECURRENTES.md).
+  const hechos = D.visibles.filter(yaPaso);
+  const porMes = meses.map(m => ({ m, n: hechos.filter(p => fechaDePost(p).startsWith(m)).length, v: hechos.some(p => p.activityType === "visita" && fechaDePost(p).startsWith(m)) }));
   const topeMes = Math.max(1, ...porMes.map(x => x.n));
   const enElAnio = porMes.reduce((n, x) => n + x.n, 0);
   const ritmo = porMes.some(x => x.n) ? `<div class="${claseDeLado("ritmo")}">${tituloDeLado("ritmo", t("Ritmo · últimos 12 meses","Pace · last 12 months","Ritmo · últimos 12 meses","קצב · 12 החודשים האחרונים"),
@@ -23842,6 +23908,10 @@ document.addEventListener("click", async e=>{
     // lo hecho, que es donde está.
     const { kind, key } = el.dataset;
     state.filters = filtrosVacios();
+    // Como cuenta la fila: solo lo propio del lugar (sin «+ Región» aunque la
+    // preferencia esté puesta) y solo por el alcance del posteo, no el de sus
+    // comentarios. Si no, la lista daba más que el número (10/10/2026, R7).
+    state.filters.nivel = 0; state.filters.soloPosteo = true;
     const v = ventanaDelReporte();
     state.filters.periodo = { desde:v.desde, hasta:v.hasta, anio:v.anio, tri:v.tri };
     // «← Volver a Reportes · 2026» en la barra del Inicio.
@@ -24123,6 +24193,9 @@ document.addEventListener("click", async e=>{
     closeEventCard();
     if(!iso) return;
     state.view = "calendario"; state.countryDrill = null; state.zonaDrill = null; fichaOrigen = null;
+    // En Año o Agenda no hay un día para marcar: se pasa a Mes (Semana y Día
+    // sí lo tienen). Antes iba a la fecha sin marcar nada (10/10/2026, R16).
+    if(!["mes","semana","dia"].includes(state.calendarioSubview)) state.calendarioSubview = "mes";
     scrollToTop();
     calIrA(iso);
   },

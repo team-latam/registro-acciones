@@ -969,6 +969,78 @@ eligió **unirlas así**:
 Pruebas: `agenda_test.mjs` (país, región y ciudad; fallan con el código
 de antes) y `ficha_celular_test.mjs` vuelve a esperar cinco tarjetas.
 
+### 60. Tanda 1 de la auditoría completa del 10/10 — HECHO (10 oct 2026)
+
+Lo que la auditoría (`docs/AUDITORIA.md`, códigos R) dejó para Claude sin
+esperar decisiones, más las decisiones que el usuario tomó ese mismo día
+(D1 a D8) y una captura suya de la tabla «Por país» de Comparar.
+
+- **La ficha de un lugar cuenta solo lo hecho** (R1): «N registros en 12
+  meses», las barras del Ritmo, «Última visita», «N visitas en los últimos
+  12 meses» y el «último: hace N días» de cada ciudad ignoran lo
+  planificado. Tercera vez que volvía esta falla.
+  `pruebas/ficha_planificado_test.mjs`.
+- **«Próximos eventos» mira la repetición que viene** (R2): una rutina
+  de los lunes ya no desaparece de martes a jueves (`proximaFecha()`).
+  **«Ver calendario» desde la tarjeta marca el día** también en Semana y
+  Día, y desde Año o Agenda pasa a Mes (R16).
+  `pruebas/proximos_que_viene_test.mjs`.
+- **Reportes → Inicio da el mismo número que la fila** (R7): la fila fija
+  en el filtro «solo lo propio» y «solo por el alcance del posteo», aunque
+  la preferencia esté en «+ Región» o un comentario lleve otro alcance; lo
+  que se elige en el panel le gana. `pruebas/reporte_ir_nivel_test.mjs`.
+- **Accesibilidad** (R6, R13, R14, R17, R19, R22): un color propio para
+  el texto en celeste (`--link`, 5,8 de contraste; el celeste de la marca
+  queda para fondos y bordes); los avisos «Número copiado» y «Guardado» se
+  anuncian al lector de pantalla; «Buscar en todo» y las filas de Reportes
+  recuperan el anillo de foco; el logo de WhatsApp chico, el tono 3 del
+  mapa de calor, el tono alto de «Todos los años», el rojo de alerta y el
+  atajo activo en oscuro, lo cancelado o cerrado, y la barra de
+  desplazamiento en oscuro pasan el mínimo; en pantalla táctil el WhatsApp
+  chico y la ✕ de las ventanas miden 40 px y los chips y solapas 32; la
+  pestaña activa lleva `aria-current`; los buscadores son `type=search`;
+  teléfono y correo con `autocomplete`; el avatar de iniciales no se lee
+  dos veces. `pruebas/accesibilidad_test.mjs`.
+- **La planilla de la Agenda, solo para quien carga eventos** (D2, lo
+  decidió el usuario): un observador no la ve.
+  `pruebas/agenda_planilla_test.mjs`.
+- **«Ver traducción» en las respuestas, en su fila de acciones** (pedido
+  del usuario el mismo día: «no está incluido en las respuestas»): estaba,
+  pero como un renglón suelto y más chico debajo del texto, fácil de no
+  ver. Ahora va donde en el posteo: Me gusta · Responder · Ver traducción
+  · Borrar, con la letra de esa fila; también para quien solo observa.
+  `pruebas/traduccion_respuestas_test.mjs`.
+- **Lo que se probó y se dejó como estaba:** la barra de desplazamiento
+  en reposo (la auditoría la marcó por contraste, R17) se oscureció y
+  `barra_test` lo frenó: es el diseño que el usuario eligió el 8/10 («A»,
+  suave en reposo, fuerte al pasar el mouse). Queda así, anotado. El tono
+  alto de «Todos los años» conserva su celeste y lleva el número oscuro
+  (5,5 de contraste) en vez de cambiar de color.
+- **Las tablas de Reportes entran en su tarjeta** (captura del usuario:
+  en «Comparar», «Por país» quedaba con barra lateral y «Diferencia»
+  cortada con la letra de su navegador, Montserrat, más ancha que la de
+  acá): el nombre se parte si hace falta y las columnas de números toman
+  solo lo justo. Se mide con letra ancha.
+  `pruebas/reportes_tabla_ancha_test.mjs`.
+- **Base, avisos y workflows** (R3, R5, R8, R9, R10, R11 y los bajos de
+  la base, R20): ver el detalle en
+  `docs/auditoria/2026-10-10-completa.md`, «Arreglado el 10/10».
+
+Decisiones del usuario (10/10): el archivo no se publica sin comentarios
+todavía (D1, se mira al pasar los 600 KB); la planilla de la Agenda solo
+para quien carga eventos (D2); los nombres de prueba no son reales (D3); el
+teléfono del comentario viejo es real y **se reescribe el historial** (D4);
+dos personas con el mismo nombre en una lista se aceptan por ahora (D5);
+`main` quedó protegida contra borrado y push forzado (D6, lo hizo él);
+los Settings de GitHub están bien (D7).
+
+Quedó sin hacer de la tanda, con su porqué: **R15** (supabase-js con
+huella): el `+esm` de jsDelivr se genera en el servidor y puede cambiar
+con una versión nueva del empaquetador, con lo que una huella fija
+rompería la app entera; el camino es pasar a la build UMD del paquete con
+`cargarScript` y huella, que toca también las pruebas que simulan el CDN:
+tanda aparte. Y el sandbox no llega a jsDelivr para calcular la huella.
+
 ### 59. Contactos por lugar: una ciudad, un país, una región o toda LatAm — HECHO (10 oct 2026)
 
 El usuario mandó su planilla de comunidades (una fila por ciudad, con los
