@@ -95,7 +95,14 @@ capturas y recomendación):
   «Verificar la papelera» (a mano, solo lectura, `SUPABASE_DB_URL`): hace pasar
   a una cuenta real de cada rol y cuenta qué ve de `papelera/`. Probado en el
   laboratorio (verde con la regla nueva, rojo con la vieja). Resultado de la
-  corrida real: ver abajo, cuando se lance.
+  corrida real (10/10, 23:33 UTC, workflow «Verificar la papelera» n.º 1,
+  verde): en el bucket hay 1 archivo en `papelera/` y 47 en `posts/` +
+  `replies/`; la regla `adjuntos_leer` puesta limita la lectura a `posts/` y
+  `replies/`; como **admin** y como **integrante** se ven 0 de la papelera y los
+  47 de las otras carpetas (el control da bien). Como **observador** no se pudo
+  probar: ninguna cuenta con ese rol entró con Google; la regla no distingue
+  roles (usa `esta_aprobado()`), así que vale igual. ✅ R20 verificado en la
+  base real.
 - **D1** queda decidida (todavía no); se vuelve a mirar al pasar los 600 KB
   (hoy 519 KB comprimidos).
 - **El dominio** `team-latam.com` vence el 12/12/2026. El 10/10 pidió que
