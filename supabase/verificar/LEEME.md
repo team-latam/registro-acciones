@@ -58,7 +58,8 @@ pone la transacción en solo lectura y termina en `rollback`. Comprueba:
 7. El bucket `adjuntos` es privado, con tope de tamaño y de tipos de archivo.
 8. Lo que ve de las tablas delicadas una cuenta real de cada rol: un integrante y
    un observador no ven el registro de actividad ni las sugerencias de Calendar ni
-   pedidos de acceso, y un observador no ve lo sacado del Registro. (Una cuenta
+   los pedidos de acceso de otras personas (el suyo sí lo ven), y un observador no
+   ve lo sacado del Registro. (Una cuenta
    «de integrante» o «de observador» nunca es el admin fijo, que lo es siempre.)
    Si una tabla está vacía lo dice: que un rol no vea nada de una tabla sin filas
    no prueba que la regla ande.
