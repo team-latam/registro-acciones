@@ -2930,6 +2930,17 @@
   .ag-pais{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md); overflow:hidden; }
   .ag-pais-h{ display:flex; align-items:center; gap:10px; width:100%; padding:11px 16px; background:var(--surface-soft); border:none; border-bottom:1px solid var(--border); font:inherit; cursor:pointer; text-align:start; color:var(--ink); }
   .ag-pais-h:hover{ background:var(--surface-alt); }
+  /* Las tiras de los niveles de arriba (toda LatAm, la región, el país) con un filtro de lugar: una por nivel, cerradas, juntas. */
+  .ag-tiras{ display:flex; flex-direction:column; gap:4px; margin-bottom:10px; }
+  .ag-tira{ border:1px dashed var(--border); border-radius:12px; overflow:hidden; }
+  .ag-tira-h{ display:flex; align-items:center; gap:10px; width:100%; padding:8px 14px; background:transparent; border:none; font:inherit; cursor:pointer; text-align:start; color:var(--ink); }
+  .ag-tira-h:hover{ background:var(--surface-alt); }
+  .ag-tira-h i{ width:9px; height:9px; border-radius:50%; flex:none; }
+  .ag-tira-h b{ font-size:14px; min-width:0; overflow-wrap:anywhere; }
+  .ag-tira-h small{ color:var(--text-muted); font-weight:600; font-size:12.5px; }
+  .ag-tira-fl{ margin-inline-start:auto; color:var(--link); font-weight:800; }
+  .ag-tira-cuerpo{ border-top:1px dashed var(--border); background:var(--card); }
+  .ag-tira-cuerpo .ag-pais{ margin:0; border:none; border-radius:0; box-shadow:none; }
   .ag-pais-h i{ width:9px; height:9px; border-radius:50%; flex:none; }
   .ag-pais-h b{ font-size:15px; min-width:0; overflow-wrap:anywhere; }
   .ag-pais-h small{ color:var(--text-muted); font-weight:600; font-size:12.5px; }
@@ -20716,7 +20727,8 @@ let agendaPila = [];
 const AGENDA_TANDA = 40;
 // `zonas` son regiones (sur, central, norte): sus países y su propia gente. Pueden ser varias,
 // como los chips de zona de Países.
-const agendaFiltroVacio = extra => ({ q:"", pais:"", ciudad:"", zonas:[], tipo:"", lista:"", mostrar:AGENDA_TANDA, ...extra });
+// `tiras` son las de los niveles de arriba que están abiertas (empiezan todas cerradas).
+const agendaFiltroVacio = extra => ({ q:"", pais:"", ciudad:"", zonas:[], tipo:"", lista:"", mostrar:AGENDA_TANDA, tiras:[], ...extra });
 let agendaFiltro = agendaFiltroVacio();
 let agendaReturnFocus = null;
 let agendaGuardando = false;
@@ -20823,13 +20835,11 @@ function resumenAgenda(lista){
   return { inst: lista.filter(x => !x.lugar).length, gente: gente.size, ciudades: new Set(lista.filter(x => x.city).map(x => x.country + "|" + normalize(x.city))).size,
     paises: new Set(lista.filter(x => x.country).map(x => x.country)).size };
 }
-function agendaFiltradas(){
-  const f = agendaFiltro, q = normalize(f.q).trim(), num = digitosDe(f.q);
+// Lo que se busca, sin el lugar: tipo, lista y el buscador. Lo comparten la lista y las tiras de arriba.
+function agendaCoincide(f){
+  const q = normalize(f.q).trim(), num = digitosDe(f.q);
   const { personas } = agendaDatos();
-  return agendaDatos().ordenadas.filter(x => {
-    if(f.pais && x.country !== f.pais) return false;
-    if(f.ciudad && normalize(x.city) !== normalize(f.ciudad)) return false;
-    if(f.zonas.length && !f.zonas.some(z => enLaZona(x, z))) return false;
+  return x => {
     // Tipo y lista son de las instituciones: con ese filtro, la gente de un lugar no entra.
     if(f.tipo && x.tipo !== f.tipo) return false;
     if(f.lista && x.lista !== f.lista) return false;
@@ -20838,7 +20848,40 @@ function agendaFiltradas(){
     if([x.name, x.address, x.tipo, countryLabel(x.country), x.country, x.city, x.city ? cityLabel(x.country, x.city) : "", x.lugar ? subtituloDeLugar(x) : "", ...gente.map(p => p.name), ...gente.map(p => p.email || ""),
         ...genteDe(x.id).map(c => c.cargo)].some(s => normalize(s || "").includes(q))) return true;
     return num.length >= 3 && gente.some(p => p.telefonos.some(tel => digitosDe(tel.n).includes(num)));
+  };
+}
+function agendaFiltradas(){
+  const f = agendaFiltro, coincide = agendaCoincide(f);
+  return agendaDatos().ordenadas.filter(x => {
+    if(f.pais && x.country !== f.pais) return false;
+    if(f.ciudad && normalize(x.city) !== normalize(f.ciudad)) return false;
+    if(f.zonas.length && !f.zonas.some(z => enLaZona(x, z))) return false;
+    return coincide(x);
   });
+}
+// Con un filtro de lugar, la gente de los niveles de arriba (toda LatAm, la región, el país) no entra en
+// la lista, que es la del nivel en el que se entró; va en una tira cerrada por nivel, cada una por su
+// cuenta (10/10/2026, a pedido del usuario). Una tira solo existe si hay gente en ese nivel que
+// coincida con lo buscado.
+function agendaTiras(){
+  const f = agendaFiltro;
+  if(!(f.pais || f.ciudad || f.zonas.length)) return [];
+  const zona = f.pais ? zoneOfCountry(f.pais) : null;
+  const niveles = [{ k:"latam", es: x => x.nivel === "latam", nombre: nivelLabel("latam"), color:"var(--text-muted)" }];
+  if(f.pais && zona) niveles.push({ k:"region:" + zona, es: x => x.nivel === "region" && x.zona === zona, nombre: regionLabel(zona), color: safeColor(ZONES[zona]?.color) });
+  if(f.pais && f.ciudad) niveles.push({ k:"pais:" + f.pais, es: x => x.nivel === "pais" && x.country === f.pais, nombre: countryLabel(f.pais), color: safeColor(ZONES[zona]?.color) });
+  const coincide = agendaCoincide(f);
+  return niveles.map(n => { const entradas = agendaDatos().ordenadas.filter(x => x.lugar && n.es(x) && coincide(x)); return { ...n, entradas, gente: resumenAgenda(entradas).gente }; })
+    .filter(n => n.entradas.length);
+}
+function agendaHtmlTiras(){
+  const tiras = agendaTiras();
+  if(!tiras.length) return "";
+  return `<div class="ag-tiras">${tiras.map(n => {
+    const abierta = agendaFiltro.tiras.includes(n.k), id = "agTira" + n.k.replace(/\W/g, "_");
+    return `<section class="ag-tira"><button type="button" class="ag-tira-h" data-action="agenda-tira" data-k="${esc(n.k)}" aria-expanded="${abierta}"${abierta ? ` aria-controls="${id}"` : ""}><i style="background:${n.color}"></i><b>${esc(n.nombre)}</b><small>${esc(cuantosContactos(n.gente))}</small><span class="ag-tira-fl" aria-hidden="true">${abierta ? "▾" : isRTL() ? "◂" : "▸"}</span></button>`
+      + (abierta ? `<div class="ag-tira-cuerpo" id="${id}"><section class="ag-pais">${n.entradas.map(x => `<article class="ag-fila">${cabeceraDeEntrada(x, true)}<div class="ag-gente">${genteDe(x.id).map(c => filaDePersona(c, true)).join("")}</div></article>`).join("")}</section></div>` : "")
+      + `</section>`; }).join("")}</div>`;
 }
 
 /* ---------- Abrir, navegar, cerrar ---------- */
@@ -21015,7 +21058,7 @@ function agendaVistaLista(){
   }
   // Sin el «6 instituciones · 4 contactos» de arriba: lo dice el renglón de abajo del buscador, que además sigue a los filtros.
   return agendaCabecera(titulo, "", "", sumar)
-    + `<div class="ag-cuerpo">${barra}${resumen}<div class="ag-lista">${filas}</div></div>`;
+    + `<div class="ag-cuerpo">${barra}${resumen}<div class="ag-lista">${agendaHtmlTiras()}${filas}</div></div>`;
 }
 // Al pie de una ficha: quién la corrigió por última vez, si alguien lo
 // hizo. Antes decía también de qué lista vino y cuándo («De «Directorio
@@ -21321,6 +21364,7 @@ const AGENDA_ACCIONES = {
   "agenda-ver-post": (el) => { cerrarAgenda(); gotoMention(realPostId(el.dataset.postId), null); },
   "agenda-mas": () => { agendaFiltro.mostrar += AGENDA_TANDA; renderAgenda(); },
   "agenda-limpiar": () => { agendaFiltro = agendaFiltroVacio(); renderAgenda(); if(!isTouchDevice()) document.getElementById("agendaBuscar")?.focus(); },
+  "agenda-tira": (el) => { const k = el.dataset.k, t = agendaFiltro.tiras, i = t.indexOf(k); if(i < 0) t.push(k); else t.splice(i, 1); renderAgenda(); },
   "agenda-sin-ciudad": () => { agendaFiltro.ciudad = ""; agendaFiltro.mostrar = AGENDA_TANDA; renderAgenda(); },
   "agenda-sin-zona": (el) => { agendaFiltro.zonas = agendaFiltro.zonas.filter(z => z !== el.dataset.zona); agendaFiltro.mostrar = AGENDA_TANDA; renderAgenda(); },
   "agenda-planilla": () => { if(canWrite()) descargarTexto(`agenda-${todayISO()}.csv`, csvDeLaAgenda(agendaFiltradas())); },

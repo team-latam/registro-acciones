@@ -985,6 +985,18 @@ Países: «Ver Agenda» y la fila con la gente de la región) se abría entera.
   («📍 Región Sur ✕», «📍 Región Norte ✕»), que se sacan de a una. Las zonas
   se leen al tocar el botón, no se guardan en él. El filtro de la Agenda
   pasó de `zona` a `zonas` (lista). Sin zonas marcadas, abre entera.
+- **Las personas de los niveles de arriba, en tiras plegadas** (el usuario
+  señaló que con un filtro de lugar desaparecían las de «Toda LatAm», y
+  descartó «siempre arriba», «solo con regiones», un aviso y un filtro de
+  «Nivel»; dijo que lo relevante es el nivel en el que se entra y que si
+  hay más gente arriba no puede ocupar la pantalla): con un filtro de
+  región, país o ciudad, arriba de la lista hay una tira por nivel (toda
+  LatAm; la región, si se filtra por país o ciudad; el país, si se filtra
+  por ciudad), todas **cerradas** al empezar y cada una por su cuenta, con
+  su cuenta de contactos. Solo existen si hay gente en ese nivel que
+  coincida con el buscador; con un tipo o una lista elegidos no hay tiras
+  (son de las instituciones). 4 px entre una y otra. Igual en el celular y
+  en la compu (es la misma ventana). `agendaTiras()`, `agendaCoincide()`.
 - Los dos chips (ciudad y región) dicen por su nombre qué sacan
   («Sacar el filtro: Rosario»), en los cuatro idiomas.
 - Una sola función (`enLaZona`) decide quién está en una región, para la
@@ -1009,8 +1021,8 @@ Países: «Ver Agenda» y la fila con la gente de la región) se abría entera.
 - El nombre libre en el login de quien no es admin (decisión 3): opción A,
   se deja como está.
 
-Pruebas: `pruebas/agenda_region_test.mjs`, `pruebas/paises_barra_test.mjs`
-y las tarjetas nuevas en `pruebas/personas_test.mjs` (fallan con el código
+Pruebas: `pruebas/agenda_region_test.mjs`, `pruebas/agenda_tiras_test.mjs`,
+`pruebas/paises_barra_test.mjs` y las tarjetas nuevas en `pruebas/personas_test.mjs` (fallan con el código
 de antes).
 
 ### 60. Tanda 1 de la auditoría completa del 10/10 — HECHO (10 oct 2026)
