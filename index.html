@@ -20311,8 +20311,23 @@ function renderFilePreviewFrame(){
     filePreviewWord.hidden = true; filePreviewWord.innerHTML = "";
     filePreviewFrame.hidden = false;
     filePreviewFrame.src = item.dataUrl;
+  document.addEventListener("focusin", filePreviewTraerFoco);
     filePreviewFrame.title = item.name;
     return;
+// Si el foco entra al PDF del marco (un clic adentro), el Tab siguiente sale
+// de la ventana: trapTabWithin solo oye los Tab que pasan por la página, no
+// los de adentro del PDF. Mientras el visor está abierto, un foco que cae en
+// la página de atrás vuelve al primer control del visor. Solo en este visor
+// y solo mientras está abierto (hay otras ventanas apiladas, y un oyente
+// general se pelearía con ellas); el confirm/alert propio, que puede estar
+// encima, queda afuera.
+function filePreviewTraerFoco(e){
+  if(filePreviewOverlay.hidden) return;
+  const el = e.target;
+  if(!el || !el.closest || filePreviewOverlay.contains(el) || confirmOverlay.contains(el)) return;
+  const primero = enfocablesDe(filePreviewOverlay)[0];
+  if(primero) primero.focus();
+}
   }
   filePreviewFrame.hidden = true; filePreviewFrame.src = "about:blank";
   filePreviewWord.hidden = false;
@@ -20418,6 +20433,7 @@ filePreviewNext.addEventListener("click", e=>{ e.stopPropagation(); filePreviewS
 // aprobado ya puede leer entero — no es un dato nuevo, solo se muestra
 // junto en un solo lugar.
 const userProfileOverlay = document.getElementById("userProfileOverlay");
+  document.removeEventListener("focusin", filePreviewTraerFoco);
 const userProfileBody = document.getElementById("userProfileBody");
 let userProfileEmail = null;
 let userProfileReturnFocus = null;
@@ -22515,8 +22531,7 @@ postForm.addEventListener("keydown", e=>{
 function trapTabWithin(overlayEl){
   overlayEl.addEventListener("keydown", e=>{
     if(e.key !== "Tab") return;
-    const focusables = [...overlayEl.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')]
-      .filter(el=>!el.disabled && !el.hidden && el.offsetParent !== null);
+    const focusables = enfocablesDe(overlayEl);
     if(!focusables.length) return;
     const first = focusables[0], last = focusables[focusables.length-1];
     if(e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
@@ -22534,6 +22549,10 @@ trapTabWithin(agendaOverlay);
 trapTabWithin(cumpleOverlay);
 trapTabWithin(fichaPostOverlay);
 trapTabWithin(confirmOverlay);
+function enfocablesDe(overlayEl){
+  return [...overlayEl.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')]
+    .filter(el=>!el.disabled && !el.hidden && el.offsetParent !== null);
+}
 trapTabWithin(eventCardOverlay);
 
 // Los topes duros son los de la base (LIMITES_DE_LA_BASE, en la capa de
