@@ -1207,7 +1207,7 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   await p.evaluate(() => { const x = document.createElement("button"); x.dataset.action = "paises-subview"; x.dataset.key = "lista"; document.body.appendChild(x); x.click(); x.remove(); });
   await p.click('[data-action="drill-country"][data-country="Uruguay"]');
   // La ficha del país (6/10/2026): todo sin salir de Países.
-  eq("ficha: el país tiene su ficha", await hasta(p, () => (document.querySelector(".ficha-lugar h1") || {}).textContent === "Uruguay"), true);
+  eq("ficha: el país tiene su ficha", await hasta(p, () => (document.querySelector(".ficha-lugar h2") || {}).textContent === "Uruguay"), true);
   eq("ficha: visitas, objetivos y lo que sigue", await p.$$eval(".fl-stat b", bs => bs.map(x => x.textContent.trim())).then(v => [v[0], v[2], v[3]]), ["1", "1 de 2", "2"]);
   eq("ficha: la lectura rápida cuenta los objetivos de la última visita",
     await p.$$eval(".fl-lectura li", ls => ls.some(l => /1 de 2 objetivos/.test(l.textContent))), true);
@@ -1304,7 +1304,7 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   await p.click('nav.tabs button[data-view="paises"]');
   await p.evaluate(() => { const x = document.createElement("button"); x.dataset.action = "paises-subview"; x.dataset.key = "lista"; document.body.appendChild(x); x.click(); x.remove(); });
   await p.click('[data-action="drill-country"][data-country="Argentina"]');
-  await hasta(p, () => (document.querySelector(".ficha-lugar h1") || {}).textContent === "Argentina");
+  await hasta(p, () => (document.querySelector(".ficha-lugar h2") || {}).textContent === "Argentina");
   const stats = () => p.$$eval(".fl-stat b", bs => bs.map(x => x.textContent.trim()));
   eq("viaje: sin leer, la visita dice «sin Cierre»", await p.$eval('.fl-it[data-post-id="p_viaje"] .rs-ok', e => e.textContent.trim()), "sin Cierre");
   await p.click('.fl-it[data-post-id="p_viaje"]');
@@ -1338,13 +1338,13 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   eq("ciudades: la ficha del país lista sus ciudades", await p.$$eval('.fl-hijo[data-action="drill-city"]', es => es.map(e => e.dataset.city).sort()), ["Montevideo", "Punta Del Este"]);
   await p.click('.fl-hijo[data-city="Punta Del Este"]');
   eq("ciudades: al entrar a Punta del Este, su ficha (sin ir al Inicio)", await hasta(p, () =>
-    (document.querySelector(".ficha-lugar h1") || {}).textContent === "Punta del Este" && /Uruguay/.test(document.querySelector(".fl-migas").textContent)), true);
+    (document.querySelector(".ficha-lugar h2") || {}).textContent === "Punta del Este" && /Uruguay/.test(document.querySelector(".fl-migas").textContent)), true);
   eq("ciudades: solo con lo suyo", await stats().then(v => [v[0], v[2], v[3]]), ["1", "1 de 1", "1"]);
   await p.click('.fl-migas [data-action="drill-country"]');
   await p.click('.fl-hijo[data-city="Montevideo"]');
   eq("ciudades: Montevideo, solo el Cierre que la nombra", await hasta(p, () => {
     const v = [...document.querySelectorAll(".fl-stat b")].map(x => x.textContent.trim());
-    return (document.querySelector(".ficha-lugar h1") || {}).textContent === "Montevideo" && v[2] === "1 de 2";
+    return (document.querySelector(".ficha-lugar h2") || {}).textContent === "Montevideo" && v[2] === "1 de 2";
   }), true);
   // Los proyectos y sus hitos en «Lo que pasó» (pedido del usuario,
   // 6/10/2026): rombos con su estado, un filtro por proyecto que atenúa al
@@ -1415,7 +1415,7 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   // un país, o desde la fila de zonas de la lista.
   await p.click('.fl-migas [data-action="drill-zone"]');
   eq("zona: desde las migas del país se llega a la ficha de la región", await hasta(p, () =>
-    (document.querySelector(".ficha-lugar h1") || {}).textContent === "Región Sur"), true);
+    (document.querySelector(".ficha-lugar h2") || {}).textContent === "Región Sur"), true);
   // En esta sesión hay dos visitas con Cierre: la de dos países (1/2 en
   // Montevideo + 1/1 en Buenos Aires) y la de Punta del Este (1/1).
   eq("zona: junta los Cierres de todos sus países", await stats().then(v => [v[2], v[3]]), ["3 de 4", "6"]);
@@ -1430,12 +1430,12 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   eq("zona: qué incluir es solo la región o también toda LatAm", await p.$$eval(".fl-seg .place-seg-btn span", ss => ss.map(x => x.textContent.trim())), ["Solo Región Sur", "+ Toda LatAm"]);
   await p.click('.fl-hijo[data-country="Argentina"]');
   eq("zona: tocar un país abre su ficha, con la región en las migas", await hasta(p, () =>
-    (document.querySelector(".ficha-lugar h1") || {}).textContent === "Argentina" && !!document.querySelector('.fl-migas [data-action="drill-zone"][data-zona="sur"]')), true);
+    (document.querySelector(".ficha-lugar h2") || {}).textContent === "Argentina" && !!document.querySelector('.fl-migas [data-action="drill-zone"][data-zona="sur"]')), true);
   await p.click('.fl-migas [data-action="drill-clear"]');
   eq("zona: la lista de Países arranca con las tres zonas", await p.$$eval(".paises-zona", es => es.map(e => e.dataset.zona)), ["sur", "central", "norte"]);
   eq("zona: con cuántos registros tiene cada una", await p.$eval('.paises-zona[data-zona="sur"] small', e => /^\d+ registros$/.test(e.textContent.trim())), true);
   await p.click('.paises-zona[data-zona="sur"]');
-  eq("zona: y cada una lleva a su ficha", await hasta(p, () => (document.querySelector(".ficha-lugar h1") || {}).textContent === "Región Sur"), true);
+  eq("zona: y cada una lleva a su ficha", await hasta(p, () => (document.querySelector(".ficha-lugar h2") || {}).textContent === "Región Sur"), true);
   // «Reporte del lugar»: se imprime con todo desplegado y sin botones.
   await p.evaluate(() => { window.print = () => { window.__impreso = { pasos: document.querySelectorAll(".fl-main .rs-pasos li").length, botones: !!document.querySelector(".fl-mas") }; }; });
   const antesDeImprimir = await p.$$eval(".fl-main .rs-pasos li", ls => ls.length);
@@ -1462,7 +1462,7 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   // camino de vuelta a la ficha.
   await p.click('nav.tabs button[data-view="paises"]');
   await p.click('[data-action="drill-country"][data-country="Uruguay"]');
-  await hasta(p, () => (document.querySelector(".ficha-lugar h1") || {}).textContent === "Uruguay");
+  await hasta(p, () => (document.querySelector(".ficha-lugar h2") || {}).textContent === "Uruguay");
   await p.click('.fl-it[data-post-id="p_pde"]');
   await p.click('#fichaPostBody [data-action="toggle-post-menu"]');
   await p.click('#fichaPostBody [data-action="project-create"]');
@@ -1472,12 +1472,12 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   eq("ventana: y deja el camino de vuelta", await p.$eval(".volver-ficha", e => e.textContent.trim()), "← Volver a la ficha de Uruguay");
   await p.click(".volver-ficha");
   eq("ventana: «Volver» abre de nuevo la ficha de Uruguay, y el camino se va", await hasta(p, () =>
-    (document.querySelector(".ficha-lugar h1") || {}).textContent === "Uruguay" && !document.querySelector(".volver-ficha")), true);
+    (document.querySelector(".ficha-lugar h2") || {}).textContent === "Uruguay" && !document.querySelector(".volver-ficha")), true);
   // «Gestionar proyecto» desde la ventana: lo mismo, aunque Proyectos ya
   // fuera la sección de abajo.
   await p.click('nav.tabs button[data-view="paises"]');
   await p.click('[data-action="drill-country"][data-country="Uruguay"]');
-  await hasta(p, () => (document.querySelector(".ficha-lugar h1") || {}).textContent === "Uruguay");
+  await hasta(p, () => (document.querySelector(".ficha-lugar h2") || {}).textContent === "Uruguay");
   await p.click('.fl-it[data-post-id="p_viaje"]');
   if(!(await p.$('#fichaPostBody [data-action="project-manage"]'))) await p.click('#fichaPostBody [data-action="toggle-project"]');
   await p.click('#fichaPostBody [data-action="project-manage"]');
@@ -1516,7 +1516,7 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   await esperarTexto(p, "Reunión traída del calendario");
   await p.click('nav.tabs button[data-view="paises"]');
   await p.evaluate(() => { const x = document.createElement("button"); x.dataset.action = "drill-city"; x.dataset.country = "Uruguay"; x.dataset.city = "Montevideo"; document.body.appendChild(x); x.click(); x.remove(); });
-  await hasta(p, () => (document.querySelector(".ficha-lugar h1") || {}).textContent === "Montevideo");
+  await hasta(p, () => (document.querySelector(".ficha-lugar h2") || {}).textContent === "Montevideo");
   eq("tandas: arranca con 30 filas y el botón «Ver más»", await p.evaluate(() => [document.querySelectorAll(".fl-it").length, !!document.querySelector('.fl-main [data-action="ficha-ver-mas"]')]), [30, true]);
   await p.evaluate(() => document.querySelector('[data-action="ficha-ver-mas"]').scrollIntoView());
   eq("tandas: al bajar hasta el botón se liberan solas las que faltan", await hasta(p, () => document.querySelectorAll(".fl-it").length === 38 && !document.querySelector('[data-action="ficha-ver-mas"]')), true);
@@ -1618,7 +1618,7 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   await esperarTexto(p, "Rutina en Avellaneda");
   await p.click('nav.tabs button[data-view="paises"]');
   await p.evaluate(() => { const x = document.createElement("button"); x.dataset.action = "drill-country"; x.dataset.country = "Argentina"; document.body.appendChild(x); x.click(); x.remove(); });
-  await hasta(p, () => (document.querySelector(".ficha-lugar h1") || {}).textContent === "Argentina");
+  await hasta(p, () => (document.querySelector(".ficha-lugar h2") || {}).textContent === "Argentina");
   eq("ciudades: hasta cinco a la vista, y «Ver más»", [await p.$$eval(".fl-hijos .fl-hijo", es => es.map(e => e.dataset.city)), await p.$eval('.fl-mas[data-que="hijos"]', e => e.textContent.trim())], [CIUDADES.slice(0, 5), "Ver más"]);
   await p.click('.fl-mas[data-que="hijos"]');
   eq("ciudades: «Ver más» muestra todas, y ofrece «Ver menos»", await hasta(p, () => document.querySelectorAll(".fl-hijos .fl-hijo").length === 9 && document.querySelector('.fl-mas[data-que="hijos"]').textContent.trim() === "Ver menos"), true);
