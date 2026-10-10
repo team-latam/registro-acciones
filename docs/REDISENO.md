@@ -1034,6 +1034,15 @@ dos personas con el mismo nombre en una lista se aceptan por ahora (D5);
 `main` quedó protegida contra borrado y push forzado (D6, lo hizo él);
 los Settings de GitHub están bien (D7).
 
+**El historial se reescribió el 10/10/2026** (D4): el número real de un
+teléfono quedó, como ejemplo de formato, en un comentario del código
+retirado del Mapeo y, por un error al anotarlo, en dos documentos de la
+auditoría. Se cambió por uno inventado en los 10 commits que lo llevaban
+(de `3c7c8ac`, antes `b0bbd3f`, a la punta); los códigos de esos commits
+cambiaron y los documentos nuevos ya citan los de ahora. El árbol de la
+punta quedó idéntico. Desde acá, en documentos y páginas un teléfono real
+se escribe siempre recortado.
+
 Quedó sin hacer de la tanda, con su porqué: **R15** (supabase-js con
 huella): el `+esm` de jsDelivr se genera en el servidor y puede cambiar
 con una versión nueva del empaquetador, con lo que una huella fija
@@ -1094,7 +1103,7 @@ revisión y se queda con el Excel y el Sheet. Se sacaron
 `herramientas/mapeo.html` y su LEEME, `pruebas/mapeo_test.mjs`,
 `mapeo_revisar_xlsx.py`, `mapeo_dos_hojas.py` y `mapeo_de_prueba.xlsx`,
 y los workflows volvieron a publicar solo `index.html`. Todo sigue en
-el historial de Git (commits `b0bbd3f`, `b5eb0ff` y `7371ca7`), por si
+el historial de Git (commits `3c7c8ac`, `d0302df` y `c2a2b2a`), por si
 algo sirve para lo que viene: **subir ese Mapeo a la Agenda de la app,
 en otra conversación**. Para ese día, lo que se aprendió del archivo:
 una hoja «Mapping», 81 comunidades en tres regiones (sin nombre, NORTE

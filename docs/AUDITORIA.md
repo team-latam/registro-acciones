@@ -14,7 +14,7 @@ arreglaría) está en `docs/auditoria/2026-10-10-completa.md`. La página
 para el usuario, en palabras simples:
 https://claude.ai/artifact/WU63mH5TcT2TrJQbQqsA92 (privada).
 
-**Cómo se hizo.** Sobre `4b31799` de `main` (lo último: la Agenda con
+**Cómo se hizo.** Sobre `3adb02c` de `main` (lo último: la Agenda con
 contactos por lugar, y el retiro de «Revisar el Mapeo»). Las herramientas
 (`./auditoria/correr.sh`, completa): **2.194 comprobaciones de la app en
 verde**, Calendar, copias y las 486 de la base en verde; pantallas en 13
@@ -46,26 +46,24 @@ las respuestas.
 
 **Queda para Claude** (sin decisiones tuyas, en orden):
 
-1. **R31 + D4: sacar el teléfono real del historial.** Está listo para
-   hacerse; necesita que apagues un momento «Block force pushes» (abajo).
-2. **R15**: la huella de supabase-js. No es un cambio chico: el `+esm` de
+1. **R15**: la huella de supabase-js. No es un cambio chico: el `+esm` de
    jsDelivr se genera en el servidor y una huella fija podría romper la app
    entera. El camino es pasar a la build UMD con `cargarScript` y huella, y
    tocar las pruebas que simulan el CDN. Tanda aparte, con cuidado.
-3. **R12** (ensayo de restauración) cuando tengas el proyecto de prueba.
-4. **Lo que quedó de R20, R22 y R27** (listado en cada fila), **R21, R23,
+2. **R12** (ensayo de restauración) cuando tengas el proyecto de prueba.
+3. **Lo que quedó de R20, R22 y R27** (listado en cada fila), **R21, R23,
    R24, R26 y R30**: bajos, cuando se toque cada parte.
 
 **Queda para vos:**
 
+- **D4, dos cosas:** volver a tildar «Block force pushes» (Settings →
+  Rules → Rulesets → el de `main`), y pedirle a GitHub que borre las copias
+  sueltas de los commits viejos: https://support.github.com/contact (motivo
+  «quitar datos sensibles de un repositorio»); sin eso, quien tenga el
+  enlace exacto a un commit viejo lo sigue viendo un tiempo. Y si tenés el
+  repositorio clonado en otra computadora, clonarlo de nuevo.
 - **D8**: probar la Agenda en el teléfono (el teclado de verdad no se
   puede simular).
-- **D4, un clic**: apagar «Block force pushes» unos minutos (Settings →
-  Rules → Rulesets → el de `main`) para la reescritura, y volver a
-  prenderlo. Después, pedirle a GitHub que borre las copias sueltas de los
-  commits viejos: https://support.github.com/contact (motivo «Remove
-  cached views / sensitive data»); sin eso, quien tenga el enlace exacto a
-  un commit viejo lo sigue viendo un tiempo.
 - **R4**: mirar el lunes 12/10 que la copia del domingo esté en verde.
 - **D1** queda decidida (todavía no); se vuelve a mirar al pasar los 600 KB.
 - **El dominio** `team-latam.com` vence el 12/12/2026; desde el 1/12 se te
@@ -172,7 +170,7 @@ Nada.
 |---|---|---|
 | R28 | ~~`seguridad` no veía un `import()` de afuera sin huella~~ ✅ 10/10 (mira que haya un `modulepreload` con `integrity` para esa URL) | Claude |
 | R29 | ~~Dos falsos positivos: el ejemplo de correo «en hebreo» y un teléfono inventado de una prueba SQL~~ ✅ 10/10 (`conocidos.json`) | Claude |
-| R31 | **El teléfono real se había copiado a los documentos de esta auditoría** (los dos de hoy; error mío al anotarlo, ya subidos a `main` y a la rama de la sesión). Se sacó de los archivos de hoy; sigue en el historial y se saca con la reescritura de D4. En los documentos y en la página se escribe siempre recortado | Claude, con la reescritura |
+| R31 | ~~**El teléfono real se había copiado a los documentos de esta auditoría** (los dos de hoy; error mío al anotarlo, ya subidos a `main` y a la rama de la sesión). Se sacó de los archivos de hoy; sigue en el historial y se saca con la reescritura de D4. En los documentos y en la página se escribe siempre recortado~~ ✅ 10/10 (sacado de los archivos y del historial con la reescritura de D4) | Claude, con la reescritura |
 | R30 | `pantallas` dio un hallazgo que no se repite (R23): cuando una medición no se reproduce dos veces va a «dudas», y la herramienta tendría que anotar el camino del foco | Claude, cuando se toque |
 
 ### Para el usuario
@@ -182,7 +180,7 @@ Nada.
 | D1 | ~~**El peso del archivo** (R18): ¿publicar una copia sin comentarios (O5)? El fuente no cambia; lo publicado sería otro archivo, un tercio más liviano. Recomendación: sí, cuando el archivo pase los 600 KB; hoy todavía carga en unos segundos en 4G~~ ✅ 10/10: todavía no; se vuelve a mirar al pasar los 600 KB | **usuario** |
 | D2 | ~~**¿Un observador puede bajar la Agenda entera en planilla?** Hoy sí (decidiste que todos ven teléfonos; ver y exportar son cosas distintas). Recomendación: la planilla solo para quien carga eventos~~ ✅ 10/10: solo quien carga eventos (`agenda_planilla_test`) | **usuario** |
 | D3 | ~~**Los nombres de prueba** del repositorio público: Ana Pérez, Diego Martínez, Lucía Fernández Goldberg y Moshe Levi con casillas `@team-latam.com`. Si alguno coincide con alguien real del equipo, su correo queda adivinable: se cambian por nombres claramente inventados~~ ✅ 10/10: ninguno es real; quedan como están | **usuario** confirma |
-| D4 | **Un número con forma real en el historial**: en un comentario del `mapeo.html` retirado (commits `b0bbd3f` y `7371ca7`) quedó `1 (929) …` como ejemplo de formato; 929 es Nueva York. Si está en tu Excel es un teléfono real público; si no, no hay nada. El Excel de prueba de esos commits está anonimizado (Persona 1…159, teléfonos `+1 555`), pero trae la estructura real: ~90 ciudades con cantidad de miembros y entidades — **En curso**: el número es real. Se reescribe el historial (hace falta que apagues un momento «Block force pushes»; ver «Lo que queda») | **usuario** mira en «Mapeo - LatAm» |
+| D4 | ~~**Un número con forma real en el historial**: en un comentario del `mapeo.html` retirado (commits `3c7c8ac` y `c2a2b2a`) quedó `1 (929) …` como ejemplo de formato; 929 es Nueva York. Si está en tu Excel es un teléfono real público; si no, no hay nada. El Excel de prueba de esos commits está anonimizado (Persona 1…159, teléfonos `+1 555`), pero trae la estructura real: ~90 ciudades con cantidad de miembros y entidades — **En curso**: el número es real. Se reescribe el historial (hace falta que apagues un momento «Block force pushes»; ver «Lo que queda»)~~ ✅ 10/10: el número era real. Se reescribió el historial de `main` (10 commits, de `3c7c8ac` en adelante, con un número inventado en su lugar); se revisaron las 536 revisiones, ninguna lo conserva, y los dos pull requests viejos (de septiembre) tampoco. Los árboles de la punta quedaron idénticos. Los códigos de esos commits cambiaron | **usuario** mira en «Mapeo - LatAm» |
 | D5 | ~~**Dos personas distintas con el mismo nombre** quedan en una sola ficha al traer una lista (`agenda_traer` une por nombre sin tildes)~~ ✅ 10/10: se acepta por ahora; se revisa la vista previa al traer una lista | **usuario** decide si lo acepta |
 | D6 | ~~**Proteger `main`** contra `push --force` y borrado (un ruleset; el push directo sigue andando)~~ ✅ 10/10: la rama `main` ya está protegida (lo hizo el usuario) | **usuario**, opcional |
 | D7 | ~~**Settings de GitHub** que la API no deja leer: Secret scanning y Push protection prendidos; Actions → permisos en «Read»; Pages ya está en «GitHub Actions» (verificado por los logs)~~ ✅ 10/10: Secret scanning, Push protection, permisos de Actions y Pages, confirmados por el usuario | **usuario** confirma |
@@ -257,8 +255,8 @@ registro de actividad se guarda siempre (M1, 6/10); «Ver traducción» queda
 
 ## Cómo seguir
 
-1. **Ahora:** la reescritura del historial (R31 y D4), en cuanto apagues
-   «Block force pushes».
+1. **Vos, ahora:** volver a tildar «Block force pushes» y el pedido a
+   GitHub (D4).
 2. **Después:** R15 en su propia tanda; R12 cuando tengas el proyecto de
    prueba; lo bajo cuando se toque cada parte.
 3. **Vos:** D8, cuando puedas.
