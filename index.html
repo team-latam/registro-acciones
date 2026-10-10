@@ -1511,6 +1511,7 @@
   .users-toolbar .sc-sumar{ border-radius:999px; padding:9px 18px; white-space:nowrap; }
   .parece-persona{ margin:-6px 0 14px; padding:12px 14px; border-radius:14px; background:var(--celeste-soft); border:1px solid var(--border); display:flex; flex-direction:column; gap:8px; font-size:13.5px; line-height:1.45; }
   .parece-persona b{ font-weight:800; }
+  .parece-persona .parece-correo{ color:var(--text-muted); }
 
   .type-badge{
     display:inline-flex; align-items:center; gap:5px; padding:4px 11px; border-radius:999px;
@@ -12235,11 +12236,24 @@ function renderPareceSerPersona(r){
   if(!x) return "";
   const acts = hechasDePersona(x.id);
   const ultima = acts[0];
+  // El correo que tiene anotado la ficha y quién lo puso, para que el admin lo mire justo antes de
+  // aprobar: el correo es lo que pasa el historial a la cuenta y lo puede cambiar cualquiera que
+  // cargue datos (10/10/2026, auditoría R20; el usuario eligió esta opción).
+  const correoDeLaFicha = (() => {
+    if(!x.email) return esc(t("La ficha no tiene correo anotado.","The record has no email on file.","A ficha não tem email anotado.","אין אימייל רשום בכרטיס."));
+    const dado = esc(t("Correo anotado: {e}.","Email on file: {e}.","Email anotado: {e}.","אימייל רשום: {e}.",{ e: x.email }));
+    const corregida = pieDeFirma(x);
+    if(corregida) return dado + " " + corregida + ".";
+    if(!(x.createdBy && x.createdAt)) return dado;
+    const m = memberByEmail(x.createdBy), quien = m ? (m.name || m.nickname || x.createdBy) : x.createdBy;
+    return dado + " " + esc(t("Cargado por {q} el {f}","Added by {q} on {f}","Cadastrado por {q} em {f}","נוסף על ידי {q} ב-{f}",{ q: quien, f: fmtISO(String(x.createdAt).slice(0, 10), { day:"numeric", month:"short", year:"numeric" }) })) + ".";
+  })();
   return `<div class="parece-persona" data-persona="${esc(x.id)}">
     <b>${t("¿Es «{n}», que figura sin cuenta?","Is this “{n}”, listed without an account?","É «{n}», que aparece sem conta?","האם זה/זו «{n}», שמופיע/ה ללא חשבון?",{n: esc(x.name)})}</b>
     <span>${acts.length
       ? t("Aparece en {n} (la última: {t}). Si es, al aprobarlo todo eso pasa a su cuenta: lo ve en su perfil y le llegan los avisos.","Listed in {n} (latest: {t}). If so, approving moves all of it to their account: they see it in their profile and get the notifications.","Aparece em {n} (a última: {t}). Se for, ao aprovar tudo isso passa para a sua conta: vê no perfil e recebe os avisos.","מופיע/ה ב-{n} (האחרונה: {t}). אם כן, באישור הכול עובר לחשבון: רואים בפרופיל ומקבלים התראות.",{ n: esc(cuantasActividades(acts.length)), t: esc(ultima.title || recortar(ultima.content, 40)) })
       : t("Figura sin cuenta, todavía sin actividades.","Listed without an account, no activities yet.","Aparece sem conta, ainda sem atividades.","מופיע/ה ללא חשבון, עדיין ללא פעילויות.")}</span>
+    <span class="parece-correo">${correoDeLaFicha}</span>
     <div class="lp-botones">
       <button type="button" class="btn-primary" data-action="aprobar-y-vincular" data-email="${esc(r.email)}" data-id="${esc(x.id)}" ${savingRoster.has(r.email) ? "disabled" : ""}>${t("Sí: aprobar y pasarle su historial","Yes: approve and move their history","Sim: aprovar e passar o histórico","כן: לאשר ולהעביר את ההיסטוריה")}</button>
       <button type="button" class="btn-secondary" data-action="parecido-no" data-email="${esc(r.email)}">${t("No es","It's not","Não é","לא")}</button>

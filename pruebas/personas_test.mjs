@@ -229,6 +229,7 @@ const confirmar = async p => { await p.waitForSelector("#confirmOk", { state: "v
   eq("solicitudes: si quien pide entrar se parece a una persona sin cuenta, se le pregunta al admin",
      await p.$eval(".parece-persona", e => [e.querySelector("b").textContent, /Aparece en 1 actividad \(la última: Visita al club\)/.test(e.textContent)]),
      ["¿Es «Guypo», que figura sin cuenta?", true]);
+  eq("solicitudes: la tarjeta dice si la ficha no tiene correo (10/10/2026, auditoría R20)", await p.$eval(".parece-persona .parece-correo", e => e.textContent.replace(/\s+/g, " ").trim()), "La ficha no tiene correo anotado.");
   await p.click('[data-action="aprobar-y-vincular"]');
   eq("solicitudes: «Sí» aprueba, pasa su historial a la cuenta nueva y la ficha se va",
      await hasta(p, () => (window.__sb.tablas.members || []).some(m => m.email === "guypo@x.com") && !(window.__sb.tablas.personas || []).some(x => x.id === "per_guypo")).then(async () => {
@@ -239,6 +240,17 @@ const confirmar = async p => { await p.waitForSelector("#confirmOk", { state: "v
   await p.close();
 }
 
+/* ---------- 4b. La tarjeta dice quién corrigió la ficha, si la corrigieron ---------- */
+{
+  const { p, errores } = await entrar(ADMIN, "Benny", t => { const x = t.personas.find(y => y.id === "per_dario2"); x.email = "guypo@x.com"; x.tocado_por = ADMIN; x.tocado_el = hace(2); return t; });
+  await irASinCuenta(p);
+  await p.click('[data-action="acceso-section"][data-key="pendientes"]');
+  await p.waitForSelector(".parece-persona");
+  eq("solicitudes: una ficha corregida dice quién la corrigió y cuándo", /^Correo anotado: guypo@x\.com\. Corregido por Benny el \d{1,2} de \S+ de 20\d\d\.$/.test(await p.$eval(".parece-persona .parece-correo", e => e.textContent.replace(/\s+/g, " ").trim())), true);
+  eq("sin errores en la página (4b)", errores, []);
+  await p.close();
+}
+
 /* ---------- 5. «No es»: se descarta la pregunta, y la ficha queda como estaba ---------- */
 {
   const { p, errores } = await entrar(ADMIN, "Benny", t => { t.personas.find(x => x.id === "per_dario2").email = "guypo@x.com"; return t; });
@@ -246,6 +258,7 @@ const confirmar = async p => { await p.waitForSelector("#confirmOk", { state: "v
   await p.click('[data-action="acceso-section"][data-key="pendientes"]');
   await p.waitForSelector(".parece-persona");
   eq("solicitudes: el correo de la ficha manda sobre el nombre", await p.$eval(".parece-persona b", e => e.textContent), "¿Es «Dario», que figura sin cuenta?");
+  eq("solicitudes: la tarjeta muestra el correo de la ficha y quién la cargó", /^Correo anotado: guypo@x\.com\. Cargado por Ana Pérez el \d{1,2} de \S+ de 20\d\d\.$/.test(await p.$eval(".parece-persona .parece-correo", e => e.textContent.replace(/\s+/g, " ").trim())), true);
   await p.click('[data-action="parecido-no"]');
   eq("solicitudes: «No es» saca la pregunta y deja los botones de siempre",
      [await p.$$eval(".parece-persona", l => l.length), await p.$$eval('[data-action="approve-request"]', l => l.length)], [0, 1]);
