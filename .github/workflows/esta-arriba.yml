@@ -149,6 +149,56 @@ jobs:
           fi
           echo "✓ Supabase contesta."
 
+      # La app carga de afuera la librería de la sesión (supabase-js), la de
+      # los Word y las planillas y las del mapa, cada una con su huella (SRI):
+      # si el CDN sirve un solo byte distinto, el navegador la frena y la app
+      # no entra o no abre. Desde el sandbox de Claude no se llega a esos CDN,
+      # así que acá, que sí llegan, se comprueba de verdad que cada archivo
+      # sirva lo que la huella espera (docs/AUDITORIA.md, R15). Sale en rojo
+      # —y por mail— antes de que alguien se encuentre con la pantalla de error.
+      - name: ¿Las librerías de afuera llegan con la huella que la app espera?
+        run: |
+          set -o pipefail
+          pares=$(
+            for n in SUPABASE JSZIP DOCX_PREVIEW; do
+              u=$(grep -oE "const ${n}_CDN = \"[^\"]+\"" index.html | cut -d'"' -f2)
+              h=$(grep -oE "const ${n}_SRI = \"[^\"]+\"" index.html | cut -d'"' -f2)
+              echo "$u $h"
+            done
+            grep -oE '\["https://[^"]+", "sha(256|384)-[A-Za-z0-9+/=]+"\]' index.html \
+              | sed -E 's/^\["([^"]+)", "([^"]+)"\]$/\1 \2/'
+          )
+          total=$(echo "$pares" | grep -c .)
+          if [ "$total" -lt 8 ]; then
+            echo "✗ Encontré $total pares dirección/huella en index.html y esperaba 8 (supabase-js, JSZip, docx-preview y las cinco del mapa)."
+            exit 1
+          fi
+          falla=0
+          while read -r url huella; do
+            [ -n "$url" ] || continue
+            algoritmo=${huella%%-*}
+            if ! curl -sSL --max-time 60 -o libreria.bin "$url"; then
+              echo "✗ No se pudo bajar $url"; falla=1; continue
+            fi
+            real="$algoritmo-$(openssl dgst -"$algoritmo" -binary libreria.bin | openssl base64 -A)"
+            if [ "$real" = "$huella" ]; then
+              echo "✓ ${url#https://}"
+            else
+              echo "✗ ${url#https://}"
+              echo "    la app espera: $huella"
+              echo "    el CDN sirve:  $real"
+              falla=1
+            fi
+          done <<< "$pares"
+          if [ "$falla" != "0" ]; then
+            echo
+            echo "✗ Alguna librería de afuera NO llega como la app la espera: el navegador la va a frenar."
+            echo "  Si es supabase-js, nadie puede entrar. Ver docs/AUDITORIA.md (R15) y pruebas/supabase_integridad_test.mjs."
+            exit 1
+          fi
+          echo
+          echo "✓ Las $total librerías de afuera llegan con la huella que la app espera."
+
       # Si github.io está bloqueado en el camino hacia él, el archivo sigue
       # existiendo en otro lado: jsDelivr sirve cualquier archivo de un repo
       # público, por otro CDN y otro dominio. No reemplaza al sitio —el login
