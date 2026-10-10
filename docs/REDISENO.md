@@ -992,11 +992,20 @@ Países: «Ver Agenda» y la fila con la gente de la región) se abría entera.
   su borde (de 4 a 2 px). Se probó entre 30 y 40 px y 36 fue el que menos
   cambia el aire de la barra.
 
-Pruebas: `pruebas/agenda_region_test.mjs` y `pruebas/paises_barra_test.mjs`
-(las dos fallan con el código de antes).
-Las otras dos decisiones de esa página: el correo de las fichas (sigue
-abierta, el usuario pidió que se la explique mejor) y el nombre libre en
-el login (opción A: se deja como está).
+- **El correo de una persona sin cuenta, a la vista al aprobar** (decisión 2
+  de la auditoría, R20; eligió la opción A tras una explicación con
+  ejemplo): todos siguen pudiendo corregir ese correo, y en la tarjeta
+  «¿Es «Dana Bergman», que figura sin cuenta?» del pedido de acceso ahora
+  se lee «Correo anotado: … Cargado por … el …» (o «Corregido por …» si la
+  corrigieron, o «La ficha no tiene correo anotado»). El admin lo revisa
+  justo antes de aprobar y pasarle su historial. Los correos los siguen
+  viendo todos, como los teléfonos.
+- El nombre libre en el login de quien no es admin (decisión 3): opción A,
+  se deja como está.
+
+Pruebas: `pruebas/agenda_region_test.mjs`, `pruebas/paises_barra_test.mjs`
+y las tarjetas nuevas en `pruebas/personas_test.mjs` (fallan con el código
+de antes).
 
 ### 60. Tanda 1 de la auditoría completa del 10/10 — HECHO (10 oct 2026)
 

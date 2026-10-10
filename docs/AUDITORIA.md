@@ -58,15 +58,13 @@ capturas y recomendación):
 
 1. ~~**Chip «Región Sur ✕» en la Agenda** (R21)~~ ✅ 10/10: eligió A y está
    hecho (tanda 61, `agenda_region_test`).
-2. **Quién cambia el correo de una ficha de `personas`** (R20, P13): **sin
-   contestar**: dijo «no entendí a qué te referís». Hay que explicarlo con
-   un ejemplo cotidiano, sin la palabra «ficha»/«vincular», y volver a
-   preguntar. Opciones: A (recomendada): todos corrigen, y la tarjeta «¿Es …,
-   que figura sin cuenta?» muestra el correo de la ficha y quién lo cargó
-   (`tocado_por`). B: solo un admin cambia el correo (campo bloqueado para
-   el resto). C: como está. Aparte, P13: hoy cualquier aprobado lee el
-   correo de una persona sin cuenta; se recomienda dejarlo igual que los
-   teléfonos.
+2. ~~**Quién cambia el correo de una ficha de `personas`** (R20, P13)~~ ✅
+   10/10: eligió A (explicada con un ejemplo, la primera vez no se había
+   entendido): todos corrigen, y la tarjeta «¿Es …, que figura sin cuenta?»
+   muestra el correo de la ficha y quién lo puso (`tocado_por` o, si nunca
+   la corrigieron, quién la cargó). Los correos los siguen viendo todos
+   (P13 queda como está, igual que los teléfonos). Prueba en
+   `personas_test`.
 3. ~~**El nombre libre en el login de quien no es admin** (R20)~~ ✅ 10/10:
    eligió A, dejarlo como está.
 
@@ -184,7 +182,7 @@ Nada.
 
 | # | Qué | Quién |
 |---|---|---|
-| R20 | Base, bajos. ~~Me gusta ajenos al crear un posteo o un comentario; `requested_at` lo cambia quien pide; `papelera/` legible por todo aprobado; `personas.lista` sin control; texto libre en el registro de actividad; un mensaje de sistema «Google Calendar» en una rutina ajena~~ ✅ 10/10 (`90-permisos.sql`, `81-personas.sql`, `92-validacion.sql`). **Quedan, a propósito:** el correo de una ficha de `personas` lo cambia cualquiera (decisión de producto tuya: que todos corrijan; cruza con «aprobar y vincular»); y quien no es admin todavía puede poner el nombre que quiera, de hasta 120 caracteres, en su propio login | Claude, con sus pruebas SQL |
+| R20 | Base, bajos. ~~Me gusta ajenos al crear un posteo o un comentario; `requested_at` lo cambia quien pide; `papelera/` legible por todo aprobado; `personas.lista` sin control; texto libre en el registro de actividad; un mensaje de sistema «Google Calendar» en una rutina ajena~~ ✅ 10/10 (`90-permisos.sql`, `81-personas.sql`, `92-validacion.sql`). **Decidido el 10/10, queda como está:** el correo de una ficha de `personas` lo cambia cualquiera (ahora el admin ve quién lo puso al aprobar a alguien, tanda 61); y quien no es admin puede poner el nombre que quiera, de hasta 120 caracteres, en su propio login | Claude, con sus pruebas SQL |
 | R21 | Lógica chica. ~~Ciudades duplicadas por ortografía; `ventanaDelReporte` repetido; «+ Sumar» con la Agenda vacía; «Toda LatAm» en «Dónde está»; «Ver N posteos» sumaba las dos solapas; trimestres que no empezaron; un período aplicado desde «Próximos»~~ ✅ 10/10 (`ciudades_unicas_test`, `agenda_sumar_vacia_test`, `agenda_toda_latam_test`, `filtros_cuenta_solapa_test`, `filtros_fecha_test`, `filtros_periodo_solapa_test`, `reportes_test`). ~~la fila de una región y «Ver Agenda» abrían la Agenda sin filtrar~~ ✅ 10/10 (chip «Región Sur ✕» como el de ciudad; `agenda_region_test`; tanda 61). **Queda:** el buscador de lugar del panel de filtros redibuja en cada tecla (no cambia lo que se ve, solo el momento) | Claude, cuando se toque |
 | R22 | ~~Accesibilidad menor~~ ✅ 10/10 todo: foco que vuelve a la fila que se abrió en la Agenda; «Buscar en todo» como desplegable de resultados (flechas, `aria-expanded`, «N resultados», Escape que deja el foco en el campo); `aria-expanded` en «Ver más»; un solo `h1`; `scope` en las tablas; flecha del mapa y perilla del interruptor espejadas en hebreo; `alt` del visor de fotos; nombre en las cinco ✕; «Ver más» fuera del encabezado; los desplazamientos suaves respetan «menos movimiento». Con capturas de antes y después, píxel a píxel, en compu, celular, hebreo, oscuro y papel: idénticas salvo lo que se quería cambiar | Claude |
 | R23 | ~~El visor de archivos: si el foco entra al PDF (un clic adentro), Tab puede salir de la ventana (el iframe no está en la trampa). Con teclado desde los botones no se reproduce; `pantallas` lo vio una vez en 390~~ ✅ 10/10 (el foco que cae afuera del visor vuelve adentro; se saca al cerrar; `visor_foco_test`) | Claude, cuando se toque |
