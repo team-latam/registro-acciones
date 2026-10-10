@@ -15167,7 +15167,14 @@ function cerrarBuscadorGlobal(limpiar, enCampo){
   if(limpiar){
     globalQuery = "";
     const input = document.getElementById("globalSearchInput");
-    if(input){ input.value = ""; if(enCampo) input.focus(); else input.blur(); }
+    if(input){
+      input.value = "";
+      // El foco vuelve al campo si estaba en el buscador (o se perdió al cerrarse el panel con el foco adentro);
+      // si la persona ya se fue a otro control con Tab, ahí se queda.
+      const a = document.activeElement;
+      if(!enCampo) input.blur();
+      else if(!a || a === document.body || (input.parentElement && input.parentElement.contains(a))) input.focus();
+    }
   }
 }
 // Lo escrito en el buscador general pasa a ser el filtro de texto del
