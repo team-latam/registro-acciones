@@ -972,9 +972,10 @@
   .lp-switch{ display:flex; align-items:center; gap:12px; padding:12px 14px; border:1px solid var(--border); border-radius:var(--radius-md); cursor:pointer; position:relative; }
   .lp-switch input{ position:absolute; opacity:0; width:0; height:0; }
   .lp-sw{ width:38px; height:22px; border-radius:999px; background:var(--border); position:relative; flex:none; transition:background .15s; }
-  .lp-sw::after{ content:""; position:absolute; top:3px; left:3px; width:16px; height:16px; border-radius:50%; background:#fff; transition:transform .15s; box-shadow:0 1px 3px rgba(0,0,0,.25); }
+  .lp-sw::after{ content:""; position:absolute; top:3px; inset-inline-start:3px; width:16px; height:16px; border-radius:50%; background:#fff; transition:transform .15s; box-shadow:0 1px 3px rgba(0,0,0,.25); }
   .lp-switch input:checked + .lp-sw{ background:var(--celeste-dark); }
   .lp-switch input:checked + .lp-sw::after{ transform:translateX(16px); }
+  html[dir="rtl"] .lp-switch input:checked + .lp-sw::after{ transform:translateX(-16px); }
   .lp-switch input:focus-visible + .lp-sw{ outline:2px solid var(--celeste-dark); outline-offset:2px; }
   .lp-switch-txt{ display:flex; flex-direction:column; }
   .lp-switch-txt b{ font-size:13.5px; }
@@ -20997,7 +20998,7 @@ function agendaVistaInstitucion(iid){
         ${gente.length ? `<div class="ag-items">${gente.map(c => filaDePersona(c, true)).join("")}</div>` : `<p class="ag-nota">${esc(t("Todavía no hay nadie.","No one yet.","Ainda não há ninguém.","עדיין אין אף אחד."))}</p>`}
         ${canWrite() ? `<button type="button" class="ag-link" data-action="agenda-sumar" data-inst="${esc(x.id)}">+ ${esc(t("Sumar a alguien (presidente, director, seguridad…)","Add someone (president, director, security…)","Adicionar alguém (presidente, diretor, segurança…)","הוספת מישהו (יו״ר, מנהל, ביטחון…)"))}</button>` : ""}</section>
       <section><h3>${t("Datos","Details","Dados","פרטים")}</h3><dl class="ag-dl">
-        <dt>${t("Dirección","Address","Endereço","כתובת")}</dt><dd>${x.address ? `<span dir="auto">${esc(x.address)}</span> <a class="ag-link" href="${esc(mapa)}" target="_blank" rel="noopener">${t("Ver en el mapa","See on the map","Ver no mapa","במפה")} ↗</a>` : vacio}</dd>
+        <dt>${t("Dirección","Address","Endereço","כתובת")}</dt><dd>${x.address ? `<span dir="auto">${esc(x.address)}</span> <a class="ag-link" href="${esc(mapa)}" target="_blank" rel="noopener">${t("Ver en el mapa","See on the map","Ver no mapa","במפה")} ${isRTL() ? "↖" : "↗"}</a>` : vacio}</dd>
         <dt>${t("Tipo","Type","Tipo","סוג")}</dt><dd>${x.tipo ? esc(x.tipo) : vacio}</dd>
         <dt>${t("Estado","Status","Situação","מצב")}</dt><dd>${esc(estadoDeInstitucion(x.estado))}</dd>
         ${x.nota ? `<dt>${t("Nota","Note","Nota","הערה")}</dt><dd dir="auto">${esc(x.nota)}</dd>` : ""}
