@@ -215,7 +215,10 @@ const sumarDeLaLista = async p => { if(!await tocar(p, '.ag-cab [data-action="ag
   eq("compu: la ficha, en una columna", await p.$eval(".ag-ficha", e => getComputedStyle(e).gridTemplateColumns), "none");
   // El logo de WhatsApp en el botón que lo abre, en vez del 💬 (pedido del 9/10/2026).
   eq("compu: el botón de WhatsApp lleva el logo (y no el 💬), con su nombre para quien no lo ve", await p.$eval(".ag-acc .ag-wa", e => [!!e.querySelector("svg.ag-wa-ic path"), (e.querySelector("svg") || e).getAttribute("aria-hidden"), e.textContent.trim(), e.getAttribute("aria-label")]), [true, "true", "WhatsApp", "Escribir por WhatsApp"]);
-  eq("compu: el logo, en el verde oficial y a la vista", await p.$eval(".ag-acc .ag-wa .ag-wa-ic", e => { const r = e.getBoundingClientRect(); return [r.width >= 14 && r.height >= 14, getComputedStyle(e).fill]; }).catch(() => "sin logo"), [true, "rgb(37, 211, 102)"]);
+  // Desde el 10/10/2026 (auditoría, R17) en claro va en el verde oscuro de
+  // WhatsApp (--ok-text): el oficial (#25d366) sobre el fondo verde claro del
+  // botón daba 1,8 de contraste. En oscuro sigue el oficial (6,9).
+  eq("compu: el logo, en el verde oscuro (legible sobre el botón) y a la vista", await p.$eval(".ag-acc .ag-wa .ag-wa-ic", e => { const r = e.getBoundingClientRect(); const ok = getComputedStyle(document.documentElement).getPropertyValue("--ok-text").trim(); return [r.width >= 14 && r.height >= 14, getComputedStyle(e).fill === "rgb(22, 101, 52)" && ok === "#166534"]; }).catch(() => "sin logo"), [true, true]);
   eq("compu: «Copiar», corto, y el número en el título", [await texto(p, '[data-action="agenda-copiar"]'), await p.$eval('[data-action="agenda-copiar"]', e => e.title)], ["⧉ Copiar", "Copiar número"]);
   await p.click('#agendaBody [data-action="agenda-ver-inst"]');
   await vistaEs(p, /^inst/);
