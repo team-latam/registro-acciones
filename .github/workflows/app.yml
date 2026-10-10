@@ -27,7 +27,10 @@ permissions:
 jobs:
   pruebas:
     name: Correr todas
-    runs-on: ubuntu-latest
+    # ubuntu-24.04 y no «latest»: el 19/10/2026 GitHub mueve ubuntu-latest a
+    # Ubuntu 26 (actions/runner-images#14748) y cambiar de sistema se decide y
+    # se prueba, como subir una acción (docs/AUDITORIA.md, R5).
+    runs-on: ubuntu-24.04
     # Pruebas ~6 min + Playwright (lo normal, 30 s; lo peor, su tope de 20).
     timeout-minutes: 30
     steps:

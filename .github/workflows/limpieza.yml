@@ -52,7 +52,10 @@ permissions:
 jobs:
   probar:
     name: La prueba de la limpieza
-    runs-on: ubuntu-latest
+    # ubuntu-24.04 y no «latest»: el 19/10/2026 GitHub mueve ubuntu-latest a
+    # Ubuntu 26 (actions/runner-images#14748) y cambiar de sistema se decide y
+    # se prueba, como subir una acción (docs/AUDITORIA.md, R5).
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -68,11 +71,17 @@ jobs:
     # En un push solo se prueba. Se limpia los domingos y cuando se pide.
     # Solo el código de main corre con la llave de servicio (docs/AUDITORIA.md, U2).
     if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
-    # Una limpieza por vez: dos a la par moverían los mismos archivos.
+    # Una limpieza por vez (dos a la par moverían los mismos archivos), y
+    # nunca a la par de la copia ni de una restauración: el mismo grupo que
+    # respaldo.yml y restaurar.yml. Correr dos horas después de la copia
+    # (B9) no alcanzaba: GitHub atrasa cada trabajo programado lo que se le
+    # ocurre, y si atrasaba más a la copia, la limpieza movía archivos a la
+    # papelera mientras la copia los bajaba (docs/AUDITORIA.md, R11). Con el
+    # mismo grupo, la que llega segunda espera a que termine la primera.
     concurrency:
-      group: limpieza-del-bucket
+      group: respaldo
       cancel-in-progress: false
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

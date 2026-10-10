@@ -50,7 +50,10 @@ jobs:
     # Solo desde main: el botón «Run workflow» deja elegir otra rama, y
     # una rama a medio hacer no tiene que salir a producción.
     if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    # ubuntu-24.04 y no «latest»: el 19/10/2026 GitHub mueve ubuntu-latest a
+    # Ubuntu 26 (actions/runner-images#14748) y cambiar de sistema se decide y
+    # se prueba, como subir una acción (docs/AUDITORIA.md, R5).
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: read

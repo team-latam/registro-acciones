@@ -45,7 +45,10 @@ permissions:
 jobs:
   probar:
     name: Las pruebas de la función y de la cuenta de servicio
-    runs-on: ubuntu-latest
+    # ubuntu-24.04 y no «latest»: el 19/10/2026 GitHub mueve ubuntu-latest a
+    # Ubuntu 26 (actions/runner-images#14748) y cambiar de sistema se decide y
+    # se prueba, como subir una acción (docs/AUDITORIA.md, R5).
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -65,7 +68,7 @@ jobs:
     concurrency:
       group: funciones-publicar
       cancel-in-progress: false
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

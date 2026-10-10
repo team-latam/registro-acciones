@@ -249,6 +249,26 @@ select lab.probar('con una foto de otro sitio NO', lab.como('nuevo3@x.com'),
 select lab.probar('ni haciéndose pasar por Google en el nombre', lab.como('nuevo4@x.com'),
   $q$insert into public.access_requests(email, name, status, photo_url) values ('nuevo4@x.com','Nuevo','pending','https://googleusercontent.com.example.com/x.gif')$q$, false);
 
+-- ---------- La fecha de un pedido la pone la base, también al editarlo (docs/AUDITORIA.md, R20) ----------
+-- Hasta el 10/10/2026 solo el insert pasaba por la hora del servidor: en
+-- un PATCH entraba la fecha que viniera, y con eso un rechazado volvía a
+-- la cola sin esperar la hora. Sin sesión de persona (restaurar una
+-- copia) entra la que venga: así se arman los dos pedidos de abajo.
+insert into public.access_requests(email, name, status, requested_at) values
+  ('pide@x.com', 'Pide', 'pending', now() - interval '3 days'),
+  ('rech9@x.com', 'Rech', 'rejected', now() - interval '3 days');
+select lab.probar_valor('quien pide no cambia la fecha de su pedido (queda la que estaba)', lab.como('pide@x.com'),
+  $q$update public.access_requests set requested_at = now(), name = 'Pide otra vez' where email = 'pide@x.com'$q$,
+  $q$select (requested_at between now() - interval '4 days' and now() - interval '2 days')::text || ' ' || name
+     from public.access_requests where email = 'pide@x.com'$q$, 'true Pide otra vez');
+select lab.probar_valor('ni con la marca «poné vos la hora» (1/1/1970) del upsert de la app', lab.como('pide@x.com'),
+  $q$update public.access_requests set requested_at = 'epoch', status = 'pending' where email = 'pide@x.com'$q$,
+  $q$select (requested_at between now() - interval '4 days' and now() - interval '2 days')::text
+     from public.access_requests where email = 'pide@x.com'$q$, 'true');
+select lab.probar_valor('volver a pedir después de un rechazo sí es un pedido nuevo: con la fecha de ahora', lab.como('rech9@x.com'),
+  $q$update public.access_requests set status = 'pending' where email = 'rech9@x.com'$q$,
+  $q$select (requested_at > now() - interval '1 minute')::text from public.access_requests where email = 'rech9@x.com'$q$, 'true');
+
 \set QUIET off
 select n, '  FALLA  ' || nombre as falla from lab.resultados where esperado <> obtenido order by n;
 select count(*) filter (where esperado = obtenido) || ' pasaron, ' ||

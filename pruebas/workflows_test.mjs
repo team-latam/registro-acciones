@@ -87,5 +87,27 @@ for(const { f, y } of flujos)
     if(/secrets\.(?!GITHUB_TOKEN)/.test(t) && !/github\.ref\s*==\s*'refs\/heads\/main'/.test(t)) llavesFueraDeMain.push(`${f}: ${nombre}`);
 eq("los trabajos con llaves de verdad solo corren desde main", llavesFueraDeMain, []);
 
+// El sistema de cada runner, fijado (ubuntu-24.04), nunca «-latest»:
+// GitHub mueve ubuntu-latest a Ubuntu 26 el 19/10/2026 (lo avisa en cada
+// corrida: actions/runner-images#14748) y un cambio de sistema puede
+// romper bajar el navegador de las pruebas o el volcado de la base. Subir
+// de versión se decide y se prueba, como subir una acción
+// (docs/AUDITORIA.md, R5).
+const flotantes = [];
+for(const { f, y } of flujos)
+  for(const m of y.matchAll(/^\s*runs-on:\s*(.+?)\s*$/gm))
+    if(/-latest\b/.test(m[1])) flotantes.push(`${f}: ${m[1]}`);
+eq("ningún runs-on en «-latest»: el sistema del runner va fijado", flotantes, []);
+
+// Lo que toca el bucket y la base con la llave de servicio (la limpieza
+// del bucket, la copia, la restauración) hace cola en el MISMO grupo de
+// concurrency: si GitHub atrasa más a la copia que a la limpieza, la
+// limpieza movía archivos a la papelera mientras la copia los bajaba
+// (docs/AUDITORIA.md, R11). Con el mismo grupo, la segunda espera.
+const grupos = f => [...((flujos.find(x => x.f === f) || { y: "" }).y.matchAll(/^\s*group:\s*(\S+)/gm))].map(m => m[1]).join(",");
+eq("la limpieza del bucket, la copia y la restauración hacen cola en el mismo grupo (respaldo)",
+   ["limpieza.yml", "respaldo.yml", "restaurar.yml"].map(f => `${f}: ${grupos(f)}`),
+   ["limpieza.yml: respaldo", "respaldo.yml: respaldo", "restaurar.yml: respaldo"]);
+
 console.log(`${pass} pasaron, ${fail} fallaron`);
 process.exit(fail ? 1 : 0);

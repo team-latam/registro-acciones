@@ -42,18 +42,37 @@ create or replace function public.puede_recibir_correos(p_email text) returns bo
 $$;
 revoke execute on function public.puede_recibir_correos(text) from public, anon, authenticated;
 
+-- Un entero guardado en las preferencias, si es un número entero y está
+-- en el rango; si no (falta, es un texto, tiene decimales, se pasa), el
+-- valor de fábrica. `user_prefs.prefs` no tiene forma fija: la app escribe
+-- enteros, pero por la API se puede guardar cualquier cosa.
+create or replace function public.entero_de_pref(v jsonb, desde int, hasta int, fabrica int) returns int
+  language sql immutable as $$
+  select case when jsonb_typeof(v) = 'number'
+                   and (v #>> '{}')::numeric = floor((v #>> '{}')::numeric)
+                   and (v #>> '{}')::numeric between desde and hasta
+              then (v #>> '{}')::int else fabrica end
+$$;
+
 -- Las preferencias de correo de alguien, con los valores de fábrica.
+-- Cada valor se toma solo si tiene el tipo y el rango que la app escribe;
+-- hasta el 10/10/2026 `emailHour` y `emailOn` se casteaban a ciegas, y
+-- una preferencia mal formada (guardada por la API, no desde la app)
+-- hacía fallar el aviso de cualquiera que mencionara a esa persona y la
+-- corrida horaria de los resúmenes de todo el equipo (docs/AUDITORIA.md,
+-- R8). La hora va de 0 a 23; el día, de 1 (lunes) a 7 (domingo), que es
+-- lo que escribe la app y lo que espera supabase/avisos/resumen.mjs.
 create or replace function public.prefs_de_correo(p_email text) returns jsonb
   language sql stable security definer set search_path = '' as $$
   select jsonb_build_object(
-    'on',   coalesce((p.prefs ->> 'emailOn')::boolean, true),
+    'on',   case when jsonb_typeof(p.prefs -> 'emailOn') = 'boolean' then (p.prefs ->> 'emailOn')::boolean else true end,
     'when', coalesce(nullif(p.prefs ->> 'emailWhen', ''), 'daily'),
-    'hour', coalesce((p.prefs ->> 'emailHour')::int, 9),
-    'day',  coalesce((p.prefs ->> 'emailDay')::int, 1),
+    'hour', public.entero_de_pref(p.prefs -> 'emailHour', 0, 23, 9),
+    'day',  public.entero_de_pref(p.prefs -> 'emailDay', 1, 7, 1),
     'lang', case when p.prefs ->> 'emailLang' in ('es', 'en', 'pt', 'he') then p.prefs ->> 'emailLang' else 'es' end,
     'tz',   case when coalesce(p.prefs ->> 'emailTz', '') ~ '^[A-Za-z][A-Za-z0-9_+/-]{1,60}$' then p.prefs ->> 'emailTz'
                  else 'America/Argentina/Buenos_Aires' end,
-    'what', coalesce(p.prefs -> 'emailWhat',
+    'what', coalesce(case when jsonb_typeof(p.prefs -> 'emailWhat') = 'array' then p.prefs -> 'emailWhat' end,
               case when p_email = public.admin_fijo()
                      or exists (select 1 from public.members m where m.email = p_email and m.role = 'admin')
                    then '["menciones","respuestas","pedidos"]'::jsonb

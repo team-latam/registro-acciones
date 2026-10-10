@@ -104,6 +104,20 @@ select lab.probar_valor('lo devuelto conserva su fecha de creación (no aparece 
      select public.devolver_al_registro(array['ev1'])$q$,
   $q$select to_char(created_at at time zone 'utc', 'YYYY-MM-DD') || ' / ' || coalesce(last_edited_at::text, 'sin editar') from public.posts where id = 'cal_ev1'$q$,
   '2026-01-02 / sin editar');
+-- Una copia guardada antes de que existiera una columna obligatoria no la
+-- trae (sin_calendar nació el 4/10/2026; lo sacado el 3/10 no la tiene) y
+-- hasta el 10/10/2026 devolverla fallaba con «null value in column
+-- sin_calendar» (docs/AUDITORIA.md, R9). Vuelve con lo de fábrica en lo que
+-- falta, sea cual sea la columna.
+select lab.probar_valor('una copia de antes de una columna obligatoria vuelve igual, con lo de fábrica en lo que no trae', lab.como('ana@x.com'),
+  $q$select public.sacar_del_registro(array['cal_ev1']);
+     set local role postgres;
+     update public.calendar_sacados set fila = fila - 'sin_calendar' - 'liked_by' - 'cancelled' where evento = 'ev1';
+     set local role authenticated;
+     select public.devolver_al_registro(array['ev1'])$q$,
+  $q$select sin_calendar::text || ' ' || cancelled::text || ' ' || liked_by::text || ' ' || title || ' / sacados: ' || (select count(*) from public.calendar_sacados)
+     from public.posts where id = 'cal_ev1'$q$,
+  'false false {} Visita Tucumán - Ran / sacados: 0');
 select lab.probar_valor('uno sacado sin copia (de antes) deja de estar sacado y se avisa para traerlo de Calendar', lab.como('ana@x.com'),
   $q$set local role postgres; insert into public.calendar_sacados(evento,titulo,sacado_por) values ('evViejo','Viejo','ana@x.com'); set local role authenticated;
      create temp table r as select public.devolver_al_registro(array['evViejo']) as v$q$,

@@ -209,6 +209,32 @@ grant execute on function public.sacar_del_registro(text[]) to authenticated;
 -- como llegaron la primera vez ("Otro", sin lugar). Los comentarios que
 -- tenía no vuelven.
 --
+-- Los valores de fábrica de las columnas obligatorias de `posts`, como
+-- jsonb ({"cancelled": false, "sin_calendar": false, "liked_by": [], …}).
+-- Para devolver una copia guardada ANTES de que existiera una columna:
+-- jsonb_populate_record deja en null lo que la copia no trae, y una
+-- columna `not null` lo rechaza. Pasó con sin_calendar (del 4/10/2026):
+-- «Devolver al Registro» fallaba con lo sacado el 3/10 (docs/AUDITORIA.md,
+-- R9). Se leen del catálogo, no de una lista a mano, para que la próxima
+-- columna obligatoria no repita el problema. Los default son los del
+-- esquema (false, '[]', now()…), no texto de nadie.
+create or replace function public.posts_de_fabrica() returns jsonb
+  language plpgsql stable set search_path = '' as $$
+declare r record; v jsonb; fabrica jsonb := '{}'::jsonb;
+begin
+  for r in select a.attname, pg_get_expr(d.adbin, d.adrelid) as expr
+             from pg_attribute a
+             join pg_attrdef d on d.adrelid = a.attrelid and d.adnum = a.attnum
+            where a.attrelid = 'public.posts'::regclass and a.attnum > 0
+              and not a.attisdropped and a.attnotnull
+  loop
+    execute 'select to_jsonb(' || r.expr || ')' into v;
+    fabrica := fabrica || jsonb_build_object(r.attname, v);
+  end loop;
+  return fabrica;
+end $$;
+revoke execute on function public.posts_de_fabrica() from public, anon, authenticated;
+
 -- Devuelve { "devueltos": n, "aTraer": [eventos sin copia] }.
 create or replace function public.devolver_al_registro(p_eventos text[])
 returns jsonb language plpgsql security definer set search_path = '' as $$
@@ -217,6 +243,7 @@ declare
   n integer := 0;
   traer text[] := '{}';
   sesion text := current_setting('request.jwt.claims', true);
+  fabrica jsonb := public.posts_de_fabrica();
 begin
   if not (public.es_admin_fijo() or public.es_admin_rol()) then
     raise exception 'Devolver al Registro lo hace un admin'
@@ -234,7 +261,9 @@ begin
   perform set_config('request.jwt.claims', '{}', true);
   for s in select * from public.calendar_sacados where evento = any(p_eventos) loop
     if s.fila is not null then
-      insert into public.posts select * from jsonb_populate_record(null::public.posts, s.fila)
+      -- Lo de fábrica debajo de la copia: lo que la copia trae manda, y
+      -- lo que no trae (una columna nacida después) no queda en null.
+      insert into public.posts select * from jsonb_populate_record(null::public.posts, fabrica || s.fila)
       on conflict (id) do nothing;
       n := n + 1;
     else
