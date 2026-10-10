@@ -3,6 +3,11 @@
 
    - «Ver más / Ver menos» (.fl-mas) dice con aria-expanded si la tarjeta
      está desplegada.
+   - El «Ver más» ya no está adentro del <h3> del título (el lector de
+     pantalla anunciaba «encabezado, botón, botón»): va al lado, en una caja
+     (.fl-tit) con el mismo aspecto que tenía el h3. Capturas de la ficha de
+     un país y de una ciudad (compu, celular de 390 × 661, hebreo y papel)
+     idénticas píxel a píxel.
    - Un solo <h1> por pantalla: el de la cabecera fija de la app. El nombre
      del lugar era un segundo <h1>; ahora es un <h2> con el mismo aspecto
      (mismo tamaño en la compu, en el celular y en el papel).
@@ -38,6 +43,8 @@ for(const [lang, vista] of [["", { width: 1280, height: 900 }], ["he", { width: 
   const antes = await mas(p);
   eq(`[${nombre}] la ficha de Argentina trae los «Ver más» de pasos, ciudades y documentos (la prueba mide algo)`, antes.map(x => x.que).sort(), ["docs", "hijos", "pasos"]);
   eq(`[${nombre}] cada «Ver más» dice con aria-expanded que está plegado`, antes.every(x => x.expandido === "false"), true);
+  // En el celular, con la tarjeta plegada, el «Ver más» no se ve (como antes, cuando iba adentro del h3).
+  if(vista.width < 800) eq(`[${nombre}] plegadas, ningún «Ver más» de las tarjetas del costado se ve`, await p.$$eval(".fl-lado .fl-mas", l => l.map(e => e.offsetParent !== null)), antes.filter(x => x.que !== "pasos").map(() => false));
   // Se despliegan de a uno: el DOM se rehace en cada clic.
   for(const k of ["pasos", "hijos", "docs"]){
     if(vista.width < 800) await p.evaluate(k => { const x = document.querySelector(`.fl-pliegue[data-que="${k}"]`); if(x && x.getAttribute("aria-expanded") === "false") x.click(); }, k);
@@ -57,6 +64,9 @@ for(const [lang, vista] of [["", { width: 1280, height: 900 }], ["he", { width: 
   eq(`[${nombre}] el nombre del lugar es un h2`, h.h2, lang ? "ארגנטינה" : "Argentina");
   eq(`[${nombre}] con el mismo tamaño de siempre (24 px en la compu, 21 en el celular)`, h.tam, vista.width < 800 ? "21px" : "24px");
 
+  // El «Ver más» no está adentro del encabezado: el lector no lo lee como parte del título.
+  eq(`[${nombre}] ningún «Ver más» queda adentro de un <h3>`, await p.$$eval("h3 .fl-mas", l => l.length), 0);
+  eq(`[${nombre}] y cada «Ver más» sigue pegado a su título, en la misma fila`, await p.$$eval(".fl-card .fl-mas", l => l.map(e => { const tit = e.closest(".fl-tit"), h = tit && tit.querySelector("h3"); if(!h) return false; const a = h.getBoundingClientRect(), b = e.getBoundingClientRect(); return a.top < b.bottom && b.top < a.bottom; })), (await mas(p)).map(() => true));
   // En el papel («Reporte del lugar») también conserva su tamaño y sin márgenes.
   await p.emulateMedia({ media: "print" });
   eq(`[${nombre}] en el papel: 19 px y sin margen`, await p.$eval(".fl-head h2", e => [getComputedStyle(e).fontSize, getComputedStyle(e).marginTop, getComputedStyle(e).marginBottom]), ["19px", "0px", "0px"]);

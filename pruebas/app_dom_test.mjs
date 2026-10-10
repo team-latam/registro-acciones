@@ -1362,7 +1362,7 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   eq("hitos: al costado, cada proyecto con su avance, sus vencidos y el próximo hito",
     await p.$$eval(".fl-pj-item", es => es.map(e => [e.dataset.id, e.querySelector(".fl-pj-bar i").style.width, e.querySelector("small").textContent.replace(/\s+/g, " ").trim()])).then(v => [v[0][0], v[0][1], /^0\/1 hitos · próximo: Instalar las cámaras, \d{1,2} \S+$/.test(v[0][2]), v[1]]),
     ["p_proy2", "0%", true, ["p_viaje", "50%", "1/2 hitos · 1 vencido"]]);
-  eq("hitos: la tarjeta dice cuántos siguen abiertos", await p.$eval(".fl-pj", e => { const h = e.closest(".fl-card").querySelector("h3"); return [h.firstChild.textContent.trim(), h.querySelector(".fl-h3-nota").textContent.trim()]; }), ["Proyectos en Montevideo", "2 abiertos"]);
+  eq("hitos: la tarjeta dice cuántos siguen abiertos", await p.$eval(".fl-pj", e => { const h = e.closest(".fl-card").querySelector(".fl-tit"); return [h.querySelector(".fl-lado-t").textContent.trim(), h.querySelector(".fl-h3-nota").textContent.trim()]; }), ["Proyectos en Montevideo", "2 abiertos"]);
   await p.click('.fl-proy .fl-chip[data-id="p_viaje"]');
   eq("hitos: elegir un proyecto deja sus hitos y atenúa a los demás proyectos y sus hitos", await hasta(p, () =>
     document.querySelector('.fl-it.t-hito[data-proyecto="p_proy2"]').classList.contains("apagado")
