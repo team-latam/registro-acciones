@@ -113,11 +113,11 @@ await p.waitForTimeout(150);
 eq("todos los años: los bloques de la historia", await p.$$eval(".rep-grilla > .rep-bloque h3", els => els.map(e => e.textContent.trim())),
    ["Año por año", "Evolución por país", "Evolución por tipo"]);
 eq("y una barra por año con datos (2025 y 2026)", await p.$$eval(".rep-grilla > .rep-bloque:first-child .rep-fila", l => l.length), 2);
-eq("la tabla de evolución tiene una columna por año", await p.$eval(".rep-evolucion", tb => [...tb.querySelectorAll("thead th")].map(e => e.textContent)), ["", "2025", "2026"]);
+eq("la tabla de evolución tiene una columna por año (y la primera dice qué es, para el lector de pantalla)", await p.$eval(".rep-evolucion", tb => [...tb.querySelectorAll("thead th")].map(e => e.textContent)), ["Evolución por país", "2025", "2026"]);
 await p.evaluate(()=> window.__pintar(window.__datos, { anio:"2026", trimestre:0, modo:"comparar", compA:"2025", compB:"2026", compTri:0, filtro:{} }));
 await p.waitForTimeout(150);
 eq("comparar: 2025 contra 2026, con el total de cada uno", await p.$eval(".rep-kpi .rep-kpi-num", e => /^\d+ → \d+$/.test(e.textContent.trim())), true);
-eq("y las tablas lado a lado, con la diferencia", await p.$$eval(".rep-tabla thead tr:first-child", l => l[0] && [...l[0].children].map(e => e.textContent)), ["", "2025", "2026", "Diferencia"]);
+eq("y las tablas lado a lado, con la diferencia", await p.$$eval(".rep-tabla thead tr:first-child", l => l[0] && [...l[0].children].map(e => e.textContent)), ["Por tipo", "2025", "2026", "Diferencia"]);
 await p.evaluate(()=> window.__pintar(window.__datos, { anio:"2026", trimestre:0, modo:"periodo", filtro:{ pais:"Perú" } }));
 await p.waitForTimeout(150);
 eq("ver solo un país: la columna por país tiene solo ese", await p.$$eval(".rep-grilla > .rep-bloque:nth-child(3) .rep-etiqueta", l => l.map(e => e.textContent.trim())), ["Perú"]);
