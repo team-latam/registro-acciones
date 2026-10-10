@@ -1,0 +1,78 @@
+# ============================================================
+# Verificar los permisos de toda la base de verdad
+# ============================================================
+# SOLO LECTURA, a mano (pestaña Actions → «Verificar los permisos» → Run
+# workflow). Las pruebas de supabase/pruebas/ comprueban los permisos contra
+# una base de laboratorio; esto lo comprueba contra la de verdad, donde
+# Supabase pone sus propios permisos de entrada y alguien pudo tocar algo
+# desde el panel (docs/AUDITORIA.md, R27): las políticas por fila prendidas, anon
+# sin permisos, las tablas internas cerradas, qué va en vivo, qué funciones
+# se pueden llamar desde el navegador (la lista de
+# supabase/pruebas/funciones-esperadas.sql), el camino de búsqueda fijo,
+# el bucket privado y lo que ve cada rol de las tablas delicadas. No escribe
+# nada ni muestra correos: solo nombres de tablas y funciones, y cantidades.
+# El detalle, en supabase/verificar/LEEME.md.
+#
+# Usa la misma dirección de la base que «Base de datos» (SUPABASE_DB_URL).
+# ============================================================
+name: Verificar los permisos
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verificar:
+    name: Los permisos de la base, contra la de verdad
+    # Las llaves de verdad solo corren desde main (pruebas/workflows_test.mjs).
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    # En la misma cola que la copia y la limpieza: no se mira la base mientras
+    # otra cosa la está moviendo.
+    concurrency:
+      group: respaldo
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+
+      - name: Que haya psql
+        run: |
+          if ! command -v psql >/dev/null; then
+            sudo apt-get update && sudo apt-get install -y postgresql-client
+          fi
+
+      - name: ¿Está puesta la dirección de la base?
+        id: revisar
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "hay=no" >> "$GITHUB_OUTPUT"
+            echo "### Falta el secreto SUPABASE_DB_URL" >> "$GITHUB_STEP_SUMMARY"
+            echo "Se carga en Settings → Secrets and variables → Actions." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "hay=si" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Comprobar los permisos (solo lectura)
+        if: steps.revisar.outputs.hay == 'si'
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -o pipefail
+          psql "$SUPABASE_DB_URL" -X -q -f supabase/verificar/permisos.sql 2>&1 | tee salida.txt
+
+      - name: Dejarlo dicho
+        if: always() && steps.revisar.outputs.hay == 'si'
+        run: |
+          {
+            echo "### Los permisos de la base de verdad"
+            echo ""
+            echo '```'
+            cat salida.txt 2>/dev/null || echo "(la corrida no llegó a dar resultado)"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

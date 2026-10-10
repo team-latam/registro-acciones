@@ -203,7 +203,7 @@ Nada.
 | R24 | ~~`data-title` y `data-content` llevan el texto entero del posteo en «Ver traducción» (escapado, pero contra la convención)~~ ✅ 10/10 (el botón lleva solo el identificador; el texto se busca en vivo; `traduccion_datos_test`) | Claude, cuando se toque |
 | R25 | ~~Documentación desfasada: README decía que se publica «desde la rama» y que el sincronizador usa `CALENDAR_API_KEY`; CLAUDE.md ponía Pages en condicional~~ ✅ 10/10 | Claude |
 | R26 | Versiones. ~~`actions/setup-node` 7.1.0~~ ✅ 10/10 (en los 7 trabajos que lo usan, fijado por huella). **Quedan:** jszip 3.10.2 y supabase-js 2.117.3, que ninguna parte del código necesita todavía; se suben cuando se toque, cada una con su huella nueva | Claude, cuando se toquen |
-| R27 | Pruebas SQL que faltan. ~~Las de R3, R8, R9 y lo hecho de R20~~ ✅ 10/10. **Quedan:** qué funciones puede llamar `anon`; observador sobre `audit_log`, `access_requests` y el bucket; admin por rol vs fijo en comentarios; `search_path` fijo en las `security definer`; que `avisos_*` no estén en Realtime | Claude, junto con R3 y R20 |
+| R27 | Pruebas SQL que faltan. ~~Las de R3, R8, R9 y lo hecho de R20; qué funciones puede llamar `anon`; observador sobre `audit_log`, `access_requests` y el bucket; admin por rol vs fijo; `search_path` fijo; que `avisos_*` no estén en Realtime~~ ✅ 10/10 en el laboratorio (`75` a `78` y `88`) **y contra la base de verdad** (`supabase/verificar/permisos.sql`, workflow «Verificar los permisos», a mano, solo lectura; ver `supabase/verificar/LEEME.md`) | Claude |
 
 ### Herramientas y pruebas
 

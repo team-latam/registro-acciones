@@ -37,3 +37,41 @@ dar de alta tres miembros (admin, integrante, observador) con
 `lab.como(correo)`, un bucket `adjuntos` y archivos en `posts/` y `papelera/`, y
 correr `psql … -f supabase/verificar/papelera.sql`. Con la regla de antes (sin
 el límite de carpetas) sale en rojo.
+
+## `permisos.sql` — los permisos de toda la base
+
+Las comprobaciones de la auditoría (R27) que el laboratorio hace contra una base de
+mentira, pero contra la de verdad, donde Supabase pone sus propios permisos de
+entrada y alguien pudo tocar algo desde el panel. Crea unas tablas temporales,
+pone la transacción en solo lectura y termina en `rollback`. Comprueba:
+
+1. Todas las tablas de `public` tienen las políticas por fila (RLS) prendidas.
+2. Quien no inició sesión (`anon`) no tiene permiso sobre ninguna tabla.
+3. Las tablas internas (`avisos_enviados`, `avisos_listos`, `resumenes_enviados`)
+   no las toca ninguna sesión de persona.
+4. En vivo (Realtime) van solo las doce tablas de siempre.
+5. Las funciones que se pueden llamar desde el navegador son exactamente las de la
+   lista `supabase/pruebas/funciones-esperadas.sql` (la misma que usa la prueba 75 del
+   laboratorio: una sola lista), ni una más ni con más permiso.
+6. Toda función con permisos de dueño (`security definer`) lleva el camino de
+   búsqueda fijo y vacío.
+7. El bucket `adjuntos` es privado, con tope de tamaño y de tipos de archivo.
+8. Lo que ve de las tablas delicadas una cuenta real de cada rol: un integrante y
+   un observador no ven el registro de actividad ni las sugerencias de Calendar ni
+   pedidos de acceso, y un observador no ve lo sacado del Registro. (Una cuenta
+   «de integrante» o «de observador» nunca es el admin fijo, que lo es siempre.)
+   Si una tabla está vacía lo dice: que un rol no vea nada de una tabla sin filas
+   no prueba que la regla ande.
+
+Sale en rojo si algo no coincide. **Cómo correrlo:** GitHub → Actions → «Verificar
+los permisos» → Run workflow (`.github/workflows/verificar-permisos.yml`).
+**Si falla por una función nueva:** mirar qué devuelve y qué escribe; si es a propósito,
+sumarla a `funciones-esperadas.sql` con una línea que diga por qué es segura (eso
+también la autoriza en el laboratorio); si no, sacarle el permiso de ejecución.
+
+**Probarlo en el laboratorio:** después de `levantar.sh`, dar de alta miembros (admin,
+integrante, observador y el admin fijo con rol de integrante) con `lab.como(correo)`,
+el bucket `adjuntos` y una fila en el registro de actividad. Se comprobó que sale en
+rojo con: anon con permiso de una tabla, una tabla sin RLS, una función con permisos de
+dueño sin camino de búsqueda, una tabla interna publicada en vivo, el bucket público,
+una función nueva ejecutable desde el navegador y el registro de actividad abierto a todos.
