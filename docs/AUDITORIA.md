@@ -37,28 +37,30 @@ al WhatsApp de un contacto desde Países.
 
 ## Estado al cerrar la tanda 1 (10/10/2026)
 
-**Hecho (con su prueba, en verde: 2.273 de la app y 516 de la base):**
-R1, R2, R3, R4, R5, R6, R7 (a y b), R8, R9, R10, R11, R13, R14, R16, R17,
-R19, parte de R20, R22 y R27, más R25, R28 y R29 de antes; y de lo que
-pediste ese día: la planilla de la Agenda solo para quien carga eventos,
-la tabla «Por país» de Comparar sin barra lateral, y «Ver traducción» en
-las respuestas.
+**Hecho (con su prueba, en verde: 2.6 mil de la app y 872 de la base):**
+casi todo: R1 a R11, R13 a R17, R19 a R24, R25, R27 a R31 y D1 a D9; R12 en
+seco; y de lo que pediste ese día: la planilla de la Agenda solo para quien
+carga eventos, la tabla «Por país» de Comparar sin barra lateral y «Ver
+traducción» en las respuestas. El historial quedó limpio (D4) y la
+publicación (en línea) y la base (aplicada) dieron verde.
 
-**Queda para Claude** (sin decisiones tuyas):
+**Queda para Claude** (poco, y casi todo pide una decisión o un dato tuyo):
 
 1. **R12**: el ensayo completo de restauración, cuando tengas el proyecto de
    prueba (los pasos, abajo). Lo parcial ya está hecho.
-2. **Lo que quedó de R20, R21 y R22** (cada fila dice qué), y **R26**
-   (jszip y supabase-js, cuando se toquen).
+2. **R21, lo que pide diseño**: el chip de región en la Agenda y el debounce
+   del buscador de lugar. Te lo propongo con captura cuando quieras.
+3. **R26**: jszip 3.10.2 y supabase-js 2.117.3, cuando se toquen.
+4. **R18**: el peso del archivo (ya decidido: todavía no).
 
 **Queda para vos:**
 
-- **D4, dos cosas:** volver a tildar «Block force pushes» (Settings →
-  Rules → Rulesets → el de `main`), y pedirle a GitHub que borre las copias
-  sueltas de los commits viejos: https://support.github.com/contact (motivo
-  «quitar datos sensibles de un repositorio»); sin eso, quien tenga el
-  enlace exacto a un commit viejo lo sigue viendo un tiempo. Y si tenés el
-  repositorio clonado en otra computadora, clonarlo de nuevo.
+- **D4, lo que falta** («Block force pushes» ya lo volviste a tildar):
+  pedirle a GitHub que borre las copias sueltas de los commits viejos, en
+  https://support.github.com/contact (motivo «quitar datos sensibles de un
+  repositorio»); sin eso, quien tenga el enlace exacto a un commit viejo lo
+  sigue viendo un tiempo. Y si tenés el repositorio clonado en otra
+  computadora, clonarlo de nuevo.
 - **R12, para el ensayo completo de restauración** (media hora, una vez;
   los pasos largos están en `docs/RESTAURAR.md`, caso 2): crear en
   supabase.com un proyecto gratis aparte (por ejemplo «registro-ensayo»),
@@ -161,11 +163,11 @@ Nada.
 
 | # | Qué | Quién |
 |---|---|---|
-| R20 | Base, bajos. ~~Me gusta ajenos al crear un posteo o un comentario; `requested_at` lo cambia quien pide; `papelera/` legible por todo aprobado~~ ✅ 10/10 (`90-permisos.sql`, `92-validacion.sql`). **Quedan:** `personas.lista` sin clave foránea y el correo de una ficha lo cambia cualquiera (cruza con «aprobar y vincular»); campos libres en el login de alguien de afuera; un comentario «Google Calendar» en una rutina ajena | Claude, con sus pruebas SQL |
-| R21 | Lógica chica: ciudades duplicadas por ortografía en «Buscar en todo» (se ven idénticas); `ventanaDelReporte` repite `ventanaDe`; «+ Sumar» en un país con la Agenda vacía pide crear una institución; la fila de una región y «Ver Agenda» abren la Agenda sin filtro; «Toda LatAm» en la ficha de una persona lleva a Países; «Ver N posteos» suma las dos solapas; se ofrece un trimestre que no empezó; un período aplicado desde «Próximos» deja la solapa vacía | Claude, cuando se toque |
-| R22 | Accesibilidad menor. ~~La pestaña activa con `aria-current`; buscadores con `type=search`; `autocomplete` en teléfono y correo; el avatar de iniciales con `aria-hidden`~~ ✅ 10/10. **Quedan:** al volver de una ficha de la Agenda el foco va al buscador y no a la fila; «Buscar en todo» sin flechas ni `aria-expanded`, y con Escape el foco cae al fondo; «Ver más» sin `aria-expanded`; dos `h1` en la ficha; `th` sin `scope`; «↗» y el interruptor de Personas/Tipos sin espejar en hebreo; `alt` vacío en el visor de fotos; cinco ✕ sin nombre; tres `scrollIntoView` suaves que no miran «reducir movimiento» | Claude |
-| R23 | El visor de archivos: si el foco entra al PDF (un clic adentro), Tab puede salir de la ventana (el iframe no está en la trampa). Con teclado desde los botones no se reproduce; `pantallas` lo vio una vez en 390 | Claude, cuando se toque |
-| R24 | `data-title` y `data-content` llevan el texto entero del posteo en «Ver traducción» (escapado, pero contra la convención) | Claude, cuando se toque |
+| R20 | Base, bajos. ~~Me gusta ajenos al crear un posteo o un comentario; `requested_at` lo cambia quien pide; `papelera/` legible por todo aprobado; `personas.lista` sin control; texto libre en el registro de actividad; un mensaje de sistema «Google Calendar» en una rutina ajena~~ ✅ 10/10 (`90-permisos.sql`, `81-personas.sql`, `92-validacion.sql`). **Quedan, a propósito:** el correo de una ficha de `personas` lo cambia cualquiera (decisión de producto tuya: que todos corrijan; cruza con «aprobar y vincular»); y quien no es admin todavía puede poner el nombre que quiera, de hasta 120 caracteres, en su propio login | Claude, con sus pruebas SQL |
+| R21 | Lógica chica. ~~Ciudades duplicadas por ortografía; `ventanaDelReporte` repetido; «+ Sumar» con la Agenda vacía; «Toda LatAm» en «Dónde está»; «Ver N posteos» sumaba las dos solapas; trimestres que no empezaron; un período aplicado desde «Próximos»~~ ✅ 10/10 (`ciudades_unicas_test`, `agenda_sumar_vacia_test`, `agenda_toda_latam_test`, `filtros_cuenta_solapa_test`, `filtros_fecha_test`, `filtros_periodo_solapa_test`, `reportes_test`). **Quedan, porque piden un control nuevo (o sea, diseño):** la fila de una región y «Ver Agenda» abren la Agenda sin filtrar (haría falta un chip «Región Sur ✕» como el de ciudad); y el buscador de lugar del panel de filtros redibuja en cada tecla (no cambia lo que se ve, solo el momento) | Claude, cuando se toque |
+| R22 | ~~Accesibilidad menor~~ ✅ 10/10 todo: foco que vuelve a la fila que se abrió en la Agenda; «Buscar en todo» como desplegable de resultados (flechas, `aria-expanded`, «N resultados», Escape que deja el foco en el campo); `aria-expanded` en «Ver más»; un solo `h1`; `scope` en las tablas; flecha del mapa y perilla del interruptor espejadas en hebreo; `alt` del visor de fotos; nombre en las cinco ✕; «Ver más» fuera del encabezado; los desplazamientos suaves respetan «menos movimiento». Con capturas de antes y después, píxel a píxel, en compu, celular, hebreo, oscuro y papel: idénticas salvo lo que se quería cambiar | Claude |
+| R23 | ~~El visor de archivos: si el foco entra al PDF (un clic adentro), Tab puede salir de la ventana (el iframe no está en la trampa). Con teclado desde los botones no se reproduce; `pantallas` lo vio una vez en 390~~ ✅ 10/10 (el foco que cae afuera del visor vuelve adentro; se saca al cerrar; `visor_foco_test`) | Claude, cuando se toque |
+| R24 | ~~`data-title` y `data-content` llevan el texto entero del posteo en «Ver traducción» (escapado, pero contra la convención)~~ ✅ 10/10 (el botón lleva solo el identificador; el texto se busca en vivo; `traduccion_datos_test`) | Claude, cuando se toque |
 | R25 | ~~Documentación desfasada: README decía que se publica «desde la rama» y que el sincronizador usa `CALENDAR_API_KEY`; CLAUDE.md ponía Pages en condicional~~ ✅ 10/10 | Claude |
 | R26 | Versiones. ~~`actions/setup-node` 7.1.0~~ ✅ 10/10 (en los 7 trabajos que lo usan, fijado por huella). **Quedan:** jszip 3.10.2 y supabase-js 2.117.3, que ninguna parte del código necesita todavía; se suben cuando se toque, cada una con su huella nueva | Claude, cuando se toquen |
 | R27 | Pruebas SQL que faltan. ~~Las de R3, R8, R9 y lo hecho de R20~~ ✅ 10/10. **Quedan:** qué funciones puede llamar `anon`; observador sobre `audit_log`, `access_requests` y el bucket; admin por rol vs fijo en comentarios; `search_path` fijo en las `security definer`; que `avisos_*` no estén en Realtime | Claude, junto con R3 y R20 |
@@ -261,8 +263,8 @@ registro de actividad se guarda siempre (M1, 6/10); «Ver traducción» queda
 
 ## Cómo seguir
 
-1. **Vos, ahora:** volver a tildar «Block force pushes» y el pedido a
-   GitHub (D4).
-2. **Después:** R15 en su propia tanda; R12 cuando tengas el proyecto de
-   prueba; lo bajo cuando se toque cada parte.
-3. **Vos:** D8, cuando puedas.
+1. **Vos:** entrar una vez al sitio con tu cuenta (la librería del login
+   cambió, R15), el pedido a GitHub (D4) y probar la Agenda en el teléfono
+   (D8).
+2. **Después:** R12 cuando tengas el proyecto de prueba, y el chip de región
+   de la Agenda si lo querés.
