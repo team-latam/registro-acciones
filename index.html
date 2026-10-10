@@ -3238,6 +3238,10 @@
   .rep-grilla-ancha{ grid-template-columns:repeat(auto-fit, minmax(max(340px, calc(33.33% - 10px)), 1fr)); }
   @media (max-width:1100px){ .rep-grilla-ancha{ grid-template-columns:minmax(0,1fr); } }
   .rep-evolucion td:not(:first-child){ border-inline-start:2px solid var(--card); }
+  /* El nombre de cada fila es un <th scope="row"> (el lector lo une a cada número),
+     con el mismo aspecto que tenía como celda: sin lo del encabezado de arriba. */
+  .rep-tabla.rep-evolucion tbody th{ font-size:inherit; font-weight:700; color:inherit; text-align:start; padding:6px 8px; border-top:1px solid var(--border); white-space:normal; overflow-wrap:anywhere; min-width:0; }
+  @media (max-width:520px){ .rep-tabla.rep-evolucion tbody th{ padding:5px 5px; } }
   .rep-h0{ color:var(--text-muted); font-weight:600; } .rep-h1{ background:#e6f6f9; } .rep-h2{ background:#bfe9f2; } .rep-h3{ background:#7fd3e6; } .rep-h4{ background:#1a9fb8; color:#082a2c; }   /* el número oscuro: en blanco sobre este celeste daba 3,1 (R17); en oscuro ya era así */
   /* En oscuro, la misma escala de menos a más, pero de petróleo a
      celeste: los fondos claros de arriba con la letra clara del modo
@@ -3338,7 +3342,7 @@
     .rep-tabla-envoltorio, .rep-equipo .rep-tabla-envoltorio{ overflow:visible; max-height:none; }
     .rep-tabla{ font-size:10.5px; }
     .rep-tabla th{ font-size:9.5px; padding:3px 6px; }
-    .rep-tabla td{ padding:3px 6px; }
+    .rep-tabla td, .rep-tabla.rep-evolucion tbody th{ padding:3px 6px; }
     .rep-tabla tr, .rep-lista li, .rep-sugerencias li{ break-inside:avoid; }
     .rep-tabla thead{ display:table-header-group; }
     .rep-lista{ max-height:none; overflow:visible; }
@@ -16972,7 +16976,7 @@ function tablaComparada(titulo, etiquetaA, etiquetaB, filas, vacio){
   if(!filas.length) return `<div class="rep-bloque"><h3>${titulo}</h3><div class="rep-vacio">${vacio || ""}</div></div>`;
   return `<div class="rep-bloque"><h3>${titulo}</h3>
     <div class="rep-tabla-envoltorio"><table class="rep-tabla">
-      <thead><tr><th></th><th>${esc(etiquetaA)}</th><th>${esc(etiquetaB)}</th><th>${t("Diferencia","Difference","Diferença","הפרש")}</th></tr></thead>
+      <thead><tr><th scope="col"><span class="solo-lector">${titulo}</span></th><th scope="col">${esc(etiquetaA)}</th><th scope="col">${esc(etiquetaB)}</th><th scope="col">${t("Diferencia","Difference","Diferença","הפרש")}</th></tr></thead>
       <tbody>${filas.map(fl => `<tr><td>${fl.etiqueta}</td><td>${fl.a}</td><td>${fl.b}</td><td>${deltaDelReporte(fl.a, fl.b)}</td></tr>`).join("")}</tbody>
     </table></div></div>`;
 }
@@ -17009,8 +17013,8 @@ function renderReporteHistorico(f){
     const tono = n => !n ? "rep-h0" : n / maximo > .75 ? "rep-h4" : n / maximo > .5 ? "rep-h3" : n / maximo > .25 ? "rep-h2" : "rep-h1";
     return `<div class="rep-bloque rep-bloque-ancho"><h3>${titulo}</h3>
       <div class="rep-tabla-envoltorio"><table class="rep-tabla rep-evolucion">
-        <thead><tr><th></th>${columnas.map(c => `<th>${esc(c.anio)}</th>`).join("")}</tr></thead>
-        <tbody>${claves.map(k => `<tr><td>${etiqueta(k)}</td>${columnas.map(c => { const n = valor(c.r, k); return `<td class="${tono(n)}">${n}</td>`; }).join("")}</tr>`).join("")}</tbody>
+        <thead><tr><th scope="col"><span class="solo-lector">${titulo}</span></th>${columnas.map(c => `<th scope="col">${esc(c.anio)}</th>`).join("")}</tr></thead>
+        <tbody>${claves.map(k => `<tr><th scope="row">${etiqueta(k)}</th>${columnas.map(c => { const n = valor(c.r, k); return `<td class="${tono(n)}">${n}</td>`; }).join("")}</tr>`).join("")}</tbody>
       </table></div></div>`;
   };
   const paises = Object.keys(todo.porPais).sort((a, b) => todo.porPais[b] - todo.porPais[a]).slice(0, 15);
@@ -17150,7 +17154,7 @@ function renderEquipoDelReporte(r){
     .sort((a, b) => (b.cargo + b.estuvo) - (a.cargo + a.estuvo));
   return `<div class="rep-bloque rep-equipo"><h3>${t("Por persona del equipo","By team member","Por pessoa da equipe","לפי חבר צוות")}</h3>
     <div class="rep-tabla-envoltorio"><table class="rep-tabla">
-      <thead><tr><th></th><th>${t("Cargó","Logged","Carregou","רשם")}</th><th>${t("Participó","Took part","Participou","השתתף")}</th><th>${t("Países","Countries","Países","מדינות")}</th></tr></thead>
+      <thead><tr><th scope="col"><span class="solo-lector">${t("Persona del equipo","Team member","Pessoa da equipe","חבר צוות")}</span></th><th scope="col">${t("Cargó","Logged","Carregou","רשם")}</th><th scope="col">${t("Participó","Took part","Participou","השתתף")}</th><th scope="col">${t("Países","Countries","Países","מדינות")}</th></tr></thead>
       <tbody>${filas.map(x => `<tr><td>${esc(nombreEnReporte(x.c))}</td><td>${x.cargo}</td><td>${x.estuvo}</td><td>${x.paises}</td></tr>`).join("")}</tbody>
     </table></div></div>`;
 }
@@ -21517,7 +21521,7 @@ function renderAgendaAdminSection(){
       <p class="ag-arch">📄 <b>${esc(im.archivo.nombre)}</b> <small>${Math.max(1, Math.round(im.archivo.peso / 1024))} KB</small> <button type="button" class="ag-link" data-action="agenda-import-cancelar">${t("Elegir otro","Choose another","Escolher outro","בחירת קובץ אחר")}</button></p>
       <ul class="ag-checks">${checks}</ul>
       <label class="ag-campo"><span>${t("Nombre de la lista","List name","Nome da lista","שם הרשימה")}</span><input id="agendaNombreLista" maxlength="120" dir="auto" value="${esc(im.nombreLista)}"></label>
-      <div class="ag-tabla"><table><thead><tr><th>${t("Institución","Organization","Instituição","מוסד")}</th><th>${t("Lugar","Place","Lugar","מקום")}</th><th>${t("Contacto","Contact","Contato","איש קשר")}</th><th>${t("Cargo","Role","Cargo","תפקיד")}</th><th>${t("Teléfono","Phone","Telefone","טלפון")}</th></tr></thead>
+      <div class="ag-tabla"><table><thead><tr><th scope="col">${t("Institución","Organization","Instituição","מוסד")}</th><th scope="col">${t("Lugar","Place","Lugar","מקום")}</th><th scope="col">${t("Contacto","Contact","Contato","איש קשר")}</th><th scope="col">${t("Cargo","Role","Cargo","תפקיד")}</th><th scope="col">${t("Teléfono","Phone","Telefone","טלפון")}</th></tr></thead>
         <tbody>${muestra}${im.lista.length > 6 ? `<tr><td colspan="5" class="ag-nota">${esc(t("… y {n} más","… and {n} more","… e mais {n}","… ועוד {n}",{ n: im.lista.length - 6 }))}</td></tr>` : ""}</tbody></table></div>
       <div class="ag-pie-acc"><button type="button" class="btn-secondary" data-action="agenda-import-cancelar">${t("Cancelar","Cancel","Cancelar","ביטול")}</button>
         <button type="button" class="btn-primary" data-action="agenda-import-traer"${im.trayendo ? " disabled" : ""}>${im.trayendo ? t("Trayendo…","Importing…","Trazendo…","מייבא…") : esc(t("Traer {i} y {c}","Import {i} and {c}","Trazer {i} e {c}","ייבוא {i} ו-{c}",{ i: cuantasInstituciones(im.lista.length), c: cuantosContactos(im.personas) }))}</button></div></div>`
