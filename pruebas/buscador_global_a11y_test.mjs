@@ -88,6 +88,16 @@ for(const [lang, sinResultados, unoOVarios] of [["", "Sin resultados", n => `${n
   const e3 = await estado(p);
   eq(`[${idioma}] Escape con el panel ya cerrado: limpia y deja el foco en el campo`, [e3.valor, e3.foco], ["", "campo"]);
 
+  // Si con Tab se fue a otro control, Escape cierra el panel pero no le roba el foco.
+  await buscar(p, "ro");
+  await p.keyboard.press("ArrowDown"); await p.keyboard.press("End");
+  await p.keyboard.press("Tab"); await p.waitForTimeout(150);
+  const fuera = await p.evaluate(() => { const a = document.activeElement; return { dentro: !!a.closest(".global-search"), id: a.id || a.className || a.tagName }; });
+  eq(`[${idioma}] con Tab desde el último resultado el foco sale del buscador (la prueba mide algo)`, fuera.dentro, false);
+  await p.keyboard.press("Escape"); await p.waitForTimeout(150);
+  const e5 = await estado(p);
+  eq(`[${idioma}] Escape ahí cierra el panel pero el foco se queda en el otro control`, [e5.abierto, e5.valor, e5.foco === "campo"], [false, "", false]);
+
   // ---- Sin resultados ----
   await buscar(p, "zzqx");
   eq(`[${idioma}] sin resultados lo dice la línea de estado`, await p.evaluate(() => (document.getElementById("globalStatus") || {}).textContent), sinResultados);
