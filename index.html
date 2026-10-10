@@ -21277,7 +21277,9 @@ const AGENDA_ACCIONES = {
     const nivel = el.dataset.inst || (v && v.t === "inst") ? "institucion" : lugar ? "ciudad" : enFicha ? "pais" : enRegion ? "region" : "institucion";
     const form = { t:"form", modo:"nuevo", inst, lugar, nivel, country: enFicha ? state.countryDrill : "", city: lugar ? lugar.city : "", zona: enRegion ? state.zonaDrill : "",
       nombre:"", cargo:"", correo:"", nota:"", idiomas:[], tels:[{ n:"", wa:true }], errores:{}, usar:null };
-    if(!agendaDatos().ordenadas.length){ abrirAgendaInstNueva(form); return; }
+    // Con la Agenda vacía, una persona de una institución necesita primero la institución; la de un
+    // lugar (ciudad, país, región o toda LatAm) no: se suma directo.
+    if(nivel === "institucion" && !agendaDatos().ordenadas.length){ abrirAgendaInstNueva(form); return; }
     if(agendaOverlay.hidden) abrirAgenda(form); else { agendaPila.push(form); renderAgenda(); enfocarAgenda(el); }
   },
   "agenda-editar": (el) => { agendaRecordarToque(el); agendaPila.push(borradorDePersona(el.dataset.id)); renderAgenda(); enfocarAgenda(el); },
