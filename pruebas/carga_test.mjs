@@ -16,7 +16,7 @@ const RAIZ = __aRuta(new URL("..", import.meta.url));
 let pass=0, fail=0;
 const eq=(n,g,w)=>{ const a=JSON.stringify(g), x=JSON.stringify(w);
   if(a===x) pass++; else { fail++; console.log(`✗ ${n}\n   esperado: ${x}\n   obtenido: ${a}`); } };
-const deRed = t => /ERR_TUNNEL_CONNECTION_FAILED|ERR_NAME_NOT_RESOLVED|ERR_INTERNET_DISCONNECTED|ERR_CONNECTION|Failed to load resource|net::ERR_|Failed to fetch dynamically imported module|Failed to fetch/.test(t);
+const deRed = t => /no cargó https?:|ERR_TUNNEL_CONNECTION_FAILED|ERR_NAME_NOT_RESOLVED|ERR_INTERNET_DISCONNECTED|ERR_CONNECTION|Failed to load resource|net::ERR_|Failed to fetch dynamically imported module|Failed to fetch/.test(t);
 
 const pagina = "file://" + (process.env.INDEX || RAIZ + "index.html");
 const b = await chromium.launch();

@@ -6402,13 +6402,23 @@ function roleLabel(role){
 /* ======================================================================
    EL ARRANQUE
    ====================================================================== */
+// La librería que maneja la sesión de cada persona, con la versión FIJA y
+// la huella (SRI) de su archivo: con `@2` se cargaba la última 2.x que
+// hubiera en ese momento, así que una versión nueva rota —o comprometida—
+// entraba sola a la app, con acceso a la sesión de cada persona. Subirla es
+// una decisión, no algo que pasa. Es el archivo UMD del paquete de npm (un
+// archivo fijo, el mismo de siempre) y NO la dirección «+esm» de jsDelivr: esa
+// la arma el servidor de jsDelivr al pedirla, y no admite huella (un import()
+// no tiene integrity); el 10/10/2026 la auditoría la marcó como lo único que
+// entraba sin huella (R15). Al subir la versión hay que cambiar la huella:
+// `pruebas/supabase_integridad_test.mjs` baja el paquete de npm y comprueba
+// que coincidan, y que el navegador la haga cumplir.
+const SUPABASE_CDN = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js";
+const SUPABASE_SRI = "sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok";
 async function arrancar(){
   try{
-    // Con la versión FIJA: con `@2` se cargaba la última 2.x que hubiera
-    // en ese momento, así que una versión nueva rota —o comprometida—
-    // entraba sola a la app, con acceso a la sesión de cada persona.
-    // Subirla es una decisión, no algo que pasa.
-    const { createClient } = await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/+esm");
+    await cargarScript(SUPABASE_CDN, SUPABASE_SRI);
+    const { createClient } = window.supabase;
     const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
     store = crearSupabaseStore(sb, { achicar: achicarDataUrl });
     sesion = crearSupabaseSesion(sb);

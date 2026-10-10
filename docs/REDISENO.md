@@ -1043,12 +1043,19 @@ cambiaron y los documentos nuevos ya citan los de ahora. El árbol de la
 punta quedó idéntico. Desde acá, en documentos y páginas un teléfono real
 se escribe siempre recortado.
 
-Quedó sin hacer de la tanda, con su porqué: **R15** (supabase-js con
-huella): el `+esm` de jsDelivr se genera en el servidor y puede cambiar
-con una versión nueva del empaquetador, con lo que una huella fija
-rompería la app entera; el camino es pasar a la build UMD del paquete con
-`cargarScript` y huella, que toca también las pruebas que simulan el CDN:
-tanda aparte. Y el sandbox no llega a jsDelivr para calcular la huella.
+**R15, la huella de supabase-js** (misma fecha, tanda aparte): era lo
+único que entraba sin huella. Una huella fija sobre la dirección «+esm» de
+jsDelivr habría sido peligrosa: la arma el servidor al pedirla y puede
+cambiar con una versión nueva de su empaquetador, y con eso la app entera
+dejaría de entrar. Se pasó al archivo UMD del paquete de npm
+(`dist/umd/supabase.js`, un archivo fijo), con versión fija y huella, igual
+que JSZip y docx-preview. Se validó el método antes de usarlo: las huellas
+de esos dos, calculadas a partir de sus paquetes de npm, coinciden con las
+que ya andan en el sitio. `pruebas/supabase_integridad_test.mjs` baja el
+paquete de esa versión, comprueba que la huella del código es la de su
+archivo, y en el navegador que con la librería de verdad la app llega a la
+portada y con una adulterada en un byte la frena. Las nueve pruebas que
+simulaban el CDN sirven ahora la librería de mentira como script clásico.
 
 ### 59. Contactos por lugar: una ciudad, un país, una región o toda LatAm — HECHO (10 oct 2026)
 

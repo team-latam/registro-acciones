@@ -25,7 +25,10 @@ const eq=(n,g,w)=>{ const a=JSON.stringify(g), x=JSON.stringify(w);
 const deRed = t => /ERR_TUNNEL_CONNECTION_FAILED|ERR_NAME_NOT_RESOLVED|ERR_INTERNET_DISCONNECTED|ERR_CONNECTION|ERR_FAILED|ERR_ABORTED|Failed to load resource|net::ERR_|Failed to fetch dynamically imported module|Failed to fetch/.test(t);
 
 const PAGINA = "file://" + (process.env.INDEX || RAIZ + "index.html");
-const CDN = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/+esm";
+// La librería de Supabase se carga como script con huella (UMD, ver SUPABASE_CDN
+// en index.html): acá se sirve la de mentira como script clásico que deja `supabase`.
+const CDN = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js";
+const FALSO_UMD = () => FALSO.replace("export function createClient", "function createClient") + "\nvar supabase = { createClient };";
 const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64");
 
 // El Supabase de mentira. Lo que hay en la base vive en window.__sb, que
@@ -376,7 +379,7 @@ async function entrar(email, nombre, mod, viewport, pedidos){
   await p.route(/^https?:\/\//, ruta => {
     const u = ruta.request().url();
     if(pedidos) pedidos.push(u);
-    if(u === CDN) return ruta.fulfill({ contentType: "application/javascript", body: FALSO });
+    if(u === CDN) return ruta.fulfill({ contentType: "application/javascript", body: FALSO_UMD() });
     // La herramienta del .zip, de mentira: el "zip" es la lista de lo que
     // se le metió, para poder mirarla.
     // La herramienta que dibuja los Word, de mentira: escribe cuántos bytes le llegaron.
