@@ -19,7 +19,10 @@ const RAIZ = __aRuta(new URL("..", import.meta.url));
 const src = fs.readFileSync(RAIZ + "pruebas/app_dom_test.mjs", "utf8");
 const FALSO = src.slice(src.indexOf("const FALSO = `") + "const FALSO = `".length, src.indexOf("}`;\n\nconst ADMIN") + 1);
 const PAGINA = "file://" + (process.env.INDEX || RAIZ + "index.html");
-const CDN = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/+esm";
+// La librería de Supabase se carga como script con huella (UMD, ver SUPABASE_CDN
+// en index.html): acá se sirve la de mentira como script clásico que deja `supabase`.
+const CDN = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js";
+const FALSO_UMD = () => FALSO.replace("export function createClient", "function createClient") + "\nvar supabase = { createClient };";
 // Una foto de 480x320 (JPEG gris con un rectángulo) para que las tarjetas tengan imagen real.
 const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64");
 
@@ -164,7 +167,7 @@ export async function entrar(b, email, nombre, { viewport, dark, lang, sinSesion
   p.on("console", m => { if(m.type() === "error" && !/ERR_|Failed to load resource|Failed to fetch/.test(m.text())) errores.push(m.text()); });
   await p.route(/^https?:\/\//, ruta => {
     const u = ruta.request().url();
-    if (u === CDN) return ruta.fulfill({ contentType: "application/javascript", body: FALSO });
+    if (u === CDN) return ruta.fulfill({ contentType: "application/javascript", body: FALSO_UMD() });
     if (/\/storage\/v1\/object\/sign\//.test(u)) return ruta.fulfill({ contentType: "image/png", body: PNG });
     if (u.includes("/functions/v1/calendario")) return ruta.fulfill({ contentType: "application/json", body: JSON.stringify({ estado: 200, cuerpo: { items: [] } }) });
     if (/googleapis\.com\/calendar\//.test(u)) return ruta.fulfill({ contentType: "application/json", body: JSON.stringify({ items: [] }) });
@@ -172,6 +175,7 @@ export async function entrar(b, email, nombre, { viewport, dark, lang, sinSesion
   });
   await p.addInitScript(([base, sesion, lang, dark]) => {
     window.__sb = { tablas: base, sesion, oyentes: [], rpc: [], escrituras: [], subidas: [], borradas: [], logins: [], canales: 0 };
+    window.__pruebasSinIntegridad = true;   // la librería de mentira no es la de verdad: su huella no cuadra (ver supabase_integridad_test)
     try { if (lang) localStorage.setItem("ra_lang", lang); if (dark) localStorage.setItem("ra_theme", "dark"); } catch (e) {}
   }, [base, sinSesion ? null : { user: { id: "uuid-" + email, email, user_metadata: { full_name: nombre } } }, lang || "", !!dark]);
   await p.goto(PAGINA);

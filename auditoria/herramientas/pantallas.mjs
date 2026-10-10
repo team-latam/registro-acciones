@@ -127,13 +127,23 @@ for(const vp of [{ width: 1280, height: 800 }, { width: 1440, height: 1000 }, { 
       await p.setViewportSize(vp); await p.waitForTimeout(300);
       if(antes && despues && despues.alto > antes.alto + 20 && !despues.desplaza) out.push(hallazgo("ventanas", "medio", `La ventana crece con la pantalla y deja un blanco abajo (${antes.alto} px de alto; ${despues.alto} con 100 px más de pantalla)`, donde));
     }
-    // Tab 25 veces: el foco no se tiene que ir afuera.
-    let escapo = false;
-    for(let i = 0; i < 25 && !escapo; i++){
-      await p.keyboard.press("Tab");
-      escapo = await p.evaluate(() => { const d = [...document.querySelectorAll('[role="dialog"]')].filter(e => e.getClientRects().length > 0 && getComputedStyle(e).visibility !== "hidden").pop(); return !!d && !d.contains(document.activeElement); });
+    // Tab 25 veces: el foco no se tiene que ir afuera. Se anota el camino del
+    // foco (qué elemento, en cada Tab) y, si se escapa, se repite UNA vez
+    // desde adentro: una medición que no se repite no es un hallazgo (el
+    // 10/10/2026 «el foco se escapa» del visor de archivos en el celular no
+    // volvió a pasar ni a mano ni en una segunda corrida; docs/AUDITORIA.md, R30).
+    const dentro = () => p.evaluate(() => { const d = [...document.querySelectorAll('[role="dialog"]')].filter(e => e.getClientRects().length > 0 && getComputedStyle(e).visibility !== "hidden").pop(); return !!d && d.contains(document.activeElement); });
+    const quien = () => p.evaluate(() => { const a = document.activeElement; if(!a) return "ninguno"; const c = typeof a.className === "string" ? a.className.trim().split(/\s+/)[0] : ""; return a.tagName.toLowerCase() + (a.id ? "#" + a.id : "") + (c ? "." + c : ""); });
+    const recorrerConTab = async () => { const camino = []; for(let i = 0; i < 25; i++){ await p.keyboard.press("Tab"); camino.push(await quien()); if(!(await dentro())) return { escapo: true, camino }; } return { escapo: false, camino }; };
+    const primera = await recorrerConTab();
+    let noSeRepitio = false;
+    if(primera.escapo){
+      // De nuevo, empezando con el foco adentro (después de achicar o agrandar la pantalla pudo quedar afuera).
+      await p.evaluate(() => { const d = [...document.querySelectorAll('[role="dialog"]')].filter(e => e.getClientRects().length > 0 && getComputedStyle(e).visibility !== "hidden").pop(); const f = d && d.querySelector('button:not([disabled]), [href], input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])'); f && f.focus(); });
+      const segunda = await recorrerConTab();
+      if(segunda.escapo) out.push(hallazgo("ventanas", "medio", "Con Tab, el foco se escapa de la ventana", donde, "recorrido: " + segunda.camino.slice(-6).join(" → ")));
+      else { noSeRepitio = true; out.push(hallazgo("ventanas", "dato", "Con Tab, el foco se escapó una vez y no se repitió", donde, "1.ª: " + primera.camino.slice(-6).join(" → ") + " · 2.ª: sin escapar")); }
     }
-    if(escapo) out.push(hallazgo("ventanas", "medio", "Con Tab, el foco se escapa de la ventana", donde));
     await p.keyboard.press("Escape"); await p.waitForTimeout(350);
     const despues = await p.evaluate(sel => ({ abierta: [...document.querySelectorAll('[role="dialog"]')].some(e => e.getClientRects().length > 0 && getComputedStyle(e).visibility !== "hidden"),
       // Si el botón que la abrió ya no existe (un resultado de «Buscar en
@@ -142,7 +152,7 @@ for(const vp of [{ width: 1280, height: 800 }, { width: 1440, height: 1000 }, { 
         ? (document.activeElement.matches(sel) || !!document.activeElement.closest(sel.split(",")[0]))
         : document.activeElement !== document.body) }), sel);
     if(despues.abierta) out.push(hallazgo("ventanas", "medio", "Escape no la cierra", donde));
-    else if(!despues.volvio) out.push(hallazgo("ventanas", "bajo", "Al cerrar, el foco no vuelve al botón que la abrió", donde));
+    else if(!despues.volvio) out.push(hallazgo("ventanas", noSeRepitio ? "dato" : "bajo", "Al cerrar, el foco no vuelve al botón que la abrió", donde, noSeRepitio ? "después de un Tab que se escapó una vez y no se repitió" : ""));
     await p.close();
   }
 }

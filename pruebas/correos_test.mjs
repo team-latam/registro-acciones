@@ -21,7 +21,10 @@ const RAIZ = __aRuta(new URL("..", import.meta.url));
 const src = fs.readFileSync(RAIZ + "pruebas/app_dom_test.mjs", "utf8");
 const FALSO = src.slice(src.indexOf("const FALSO = `") + "const FALSO = `".length, src.indexOf("}`;\n\nconst ADMIN") + 1);
 const RUTA = process.env.INDEX || RAIZ + "index.html";
-const CDN = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/+esm";
+// La librería de Supabase se carga como script con huella (UMD, ver SUPABASE_CDN
+// en index.html): acá se sirve la de mentira como script clásico que deja `supabase`.
+const CDN = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js";
+const FALSO_UMD = () => FALSO.replace("export function createClient", "function createClient") + "\nvar supabase = { createClient };";
 const ADMIN = "benny@team-latam.com";
 const hoy = new Date().toISOString().slice(0, 10);
 const BASE = (prefsEquipo = {}) => ({
@@ -42,7 +45,7 @@ async function entrar(email, nombre, { prefsEquipo, query = "", lang = null, zon
   p.on("pageerror", e => errores.push(String(e)));
   await p.route(/^https?:\/\//, ruta => {
     const req = ruta.request(), u = req.url();
-    if(u === CDN) return ruta.fulfill({ contentType: "application/javascript", body: FALSO });
+    if(u === CDN) return ruta.fulfill({ contentType: "application/javascript", body: FALSO_UMD() });
     if(u.includes("/functions/v1/avisar")){
       avisos.push(JSON.parse(req.postData() || "{}"));
       return ruta.fulfill({ contentType: "application/json", body: JSON.stringify({ enviado: true }) });

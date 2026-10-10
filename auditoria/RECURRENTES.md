@@ -370,3 +370,14 @@ commit, no el valor. Si se filtró: se saca de los archivos, se reescribe
 el historial (los commits cambian de código), se revisan todas las
 revisiones y los pull requests, y se le pide a GitHub que borre las
 copias sueltas.
+
+**Una huella (SRI) hay que poder calcularla sin el CDN.** Desde el sandbox
+no se llega a jsDelivr, y una huella puesta a ciegas sobre una dirección que
+el servidor arma al pedirla (la «+esm») puede dejar a la app entera sin
+entrar. *Regla:* una librería de afuera entra como un archivo fijo de su
+paquete de npm (los de /npm/ de jsDelivr se sirven tal cual), con la
+huella calculada de ese archivo y una prueba que baja el paquete de esa
+versión y compara (`supabase_integridad_test`). Al subir una versión se
+cambia la huella en el mismo commit; la prueba lo exige. Se validó con
+JSZip y docx-preview: las huellas que ya andan en producción coinciden con
+las calculadas desde npm.

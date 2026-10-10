@@ -44,15 +44,12 @@ pediste ese día: la planilla de la Agenda solo para quien carga eventos,
 la tabla «Por país» de Comparar sin barra lateral, y «Ver traducción» en
 las respuestas.
 
-**Queda para Claude** (sin decisiones tuyas, en orden):
+**Queda para Claude** (sin decisiones tuyas):
 
-1. **R15**: la huella de supabase-js. No es un cambio chico: el `+esm` de
-   jsDelivr se genera en el servidor y una huella fija podría romper la app
-   entera. El camino es pasar a la build UMD con `cargarScript` y huella, y
-   tocar las pruebas que simulan el CDN. Tanda aparte, con cuidado.
-2. **R12** (ensayo de restauración) cuando tengas el proyecto de prueba.
-3. **Lo que quedó de R20, R22 y R27** (listado en cada fila), **R21, R23,
-   R24, R26 y R30**: bajos, cuando se toque cada parte.
+1. **R12**: el ensayo completo de restauración, cuando tengas el proyecto de
+   prueba (los pasos, abajo). Lo parcial ya está hecho.
+2. **Lo que quedó de R20, R21 y R22** (cada fila dice qué), y **R26**
+   (jszip y supabase-js, cuando se toquen).
 
 **Queda para vos:**
 
@@ -62,6 +59,15 @@ las respuestas.
   «quitar datos sensibles de un repositorio»); sin eso, quien tenga el
   enlace exacto a un commit viejo lo sigue viendo un tiempo. Y si tenés el
   repositorio clonado en otra computadora, clonarlo de nuevo.
+- **R12, para el ensayo completo de restauración** (media hora, una vez;
+  los pasos largos están en `docs/RESTAURAR.md`, caso 2): crear en
+  supabase.com un proyecto gratis aparte (por ejemplo «registro-ensayo»),
+  y cargar en GitHub (Settings → Secrets and variables → Actions) tres
+  secretos con sus datos: `PRUEBA_SUPABASE_URL`,
+  `PRUEBA_SUPABASE_SERVICE_ROLE_KEY` y `PRUEBA_SUPABASE_DB_URL`. **Nunca se
+  pegan en el chat.** Después avisarme y yo lanzo el ensayo y comparo los
+  números con los de la copia. Al terminar, el proyecto de prueba se borra
+  (solo ese).
 - **D8**: probar la Agenda en el teléfono (el teclado de verdad no se
   puede simular).
 - **R4**: mirar el lunes 12/10 que la copia del domingo esté en verde.
@@ -142,10 +148,10 @@ Nada.
 | R9 | ~~«Devolver al Registro» falla con copias guardadas antes del 4/10 (la columna `sin_calendar` quedó `null`); cada columna obligatoria nueva repite el problema~~ ✅ 10/10 (`posts_de_fabrica()` rellena las columnas obligatorias, leídas del catálogo; `87-revisar-calendar.sql`) | el camino de vuelta de «Sacar del Registro» | Claude |
 | R10 | ~~La limpieza de las marcas de avisos solo corre si la corrida cae a las 4 de la mañana de Argentina; con el atraso de GitHub nunca cayó~~ ✅ 10/10 (la limpieza corre en cada corrida; `supabase/avisos/pruebas/resumen.mjs`) | la regla de «nunca si es exactamente esta hora» ya estaba (7/10) y se repitió | Claude |
 | R11 | ~~La limpieza del bucket y la copia del domingo no comparten cola: si GitHub atrasa más a la copia, la limpieza mueve archivos mientras la copia los baja~~ ✅ 10/10 (la limpieza del bucket usa el mismo grupo que la copia) | B9 las separó dos horas, pero el atraso varía | Claude (dos líneas) |
-| R12 | «Restaurar una copia» nunca se ejecutó de verdad (6 corridas, todas por push): I7 sigue abierto | el camino de vuelta no está probado | **usuario** crea un proyecto gratis de prueba; Claude hace el resto |
+| R12 | «Restaurar una copia» nunca se ejecutó de verdad. **Parcial 10/10:** se corrió en seco contra producción (sin escribir; corrida 9): el token lee el repositorio de copias y la restauración entiende la copia de esa tarde, 3.758 filas de 14 tablas (la Agenda incluida: 188 instituciones y 193 contactos) y 47 archivos para subir. **Queda el ensayo completo**, escribiendo en un proyecto de Supabase aparte (`docs/RESTAURAR.md`, caso 2) | el camino de vuelta no está probado | **usuario** crea un proyecto gratis de prueba; Claude hace el resto |
 | R13 | ~~Los avisos nuevos de la Agenda («Número copiado», «Guardado: N») y los de Calendar no se anuncian al lector de pantalla~~ ✅ 10/10 (`role=status aria-live=polite`) | quien usa lector aprieta «Copiar» y no oye nada | Claude |
 | R14 | ~~Los resultados de «Buscar en todo» y las filas de Reportes que llevan al Inicio pierden el anillo de foco (`outline:none`)~~ ✅ 10/10 (sin `outline:none`) | con teclado es como no tener foco | Claude |
-| R15 | supabase-js entra por `import()` sin huella (SRI): es la librería que maneja la sesión. Quedó del 6/10 (hallazgo 4 de seguridad) sin cerrar y la herramienta no lo veía | si el CDN sirviera otra cosa, corre con la sesión de cada persona | Claude (`modulepreload` con `integrity`; la herramienta ya lo mira) |
+| R15 | ~~supabase-js entra por `import()` sin huella (SRI): es la librería que maneja la sesión. Quedó del 6/10 (hallazgo 4 de seguridad) sin cerrar y la herramienta no lo veía~~ ✅ 10/10 (supabase-js se carga como el archivo UMD del paquete de npm, con versión fija y huella, como JSZip y docx-preview; no con la dirección «+esm», que arma el servidor y no admite huella. `pruebas/supabase_integridad_test.mjs` baja el paquete de esa versión, comprueba que la huella es la de su archivo y que el navegador la hace cumplir, con la librería de verdad y con una adulterada) | si el CDN sirviera otra cosa, corre con la sesión de cada persona | Claude (`modulepreload` con `integrity`; la herramienta ya lo mira) |
 | R16 | ~~«Ver calendario» desde la tarjeta de «Próximos eventos» marca el día solo si el Calendario está en Mes; en Semana, Año o Agenda va a la fecha sin marcar~~ ✅ 10/10 (desde Año o Agenda pasa a Mes; en Semana y Día marca la columna del día; `proximos_que_viene_test`) | la tanda 38 prometió «con el día marcado» | Claude |
 | R17 | ~~Contraste en lo nuevo: el logo de WhatsApp chico sobre su fondo verde en claro (1,8); el número blanco del tono 3 del mapa de calor de Año (2,1); el tono más alto de «Todos los años» en claro (3,1); el rojo de alerta (4,0) y el atajo rápido activo del Inicio (1,3) en oscuro; lo cancelado o cerrado al 60 % (2,5)~~ ✅ 10/10, salvo la barra de desplazamiento: la oscurecí y `barra_test` frenó el cambio, porque es el diseño que elegiste el 8/10; queda como estaba | baja visión | Claude |
 | R18 | El archivo pesa 514 KB comprimidos (414 el 6/10, 458 el 7/10): +24 % en cuatro días; 165 KB son comentarios. Es la opción O5 (publicar sin comentarios, el fuente igual) que dejaste para después | cada visita baja el archivo entero | **usuario** decide O5 |
@@ -161,7 +167,7 @@ Nada.
 | R23 | El visor de archivos: si el foco entra al PDF (un clic adentro), Tab puede salir de la ventana (el iframe no está en la trampa). Con teclado desde los botones no se reproduce; `pantallas` lo vio una vez en 390 | Claude, cuando se toque |
 | R24 | `data-title` y `data-content` llevan el texto entero del posteo en «Ver traducción» (escapado, pero contra la convención) | Claude, cuando se toque |
 | R25 | ~~Documentación desfasada: README decía que se publica «desde la rama» y que el sincronizador usa `CALENDAR_API_KEY`; CLAUDE.md ponía Pages en condicional~~ ✅ 10/10 | Claude |
-| R26 | Versiones: `actions/setup-node` 7.1.0 (A17), jszip 3.10.2, supabase-js 2.117.3. Nada que estos workflows o la app usen | Claude, cuando se toquen |
+| R26 | Versiones. ~~`actions/setup-node` 7.1.0~~ ✅ 10/10 (en los 7 trabajos que lo usan, fijado por huella). **Quedan:** jszip 3.10.2 y supabase-js 2.117.3, que ninguna parte del código necesita todavía; se suben cuando se toque, cada una con su huella nueva | Claude, cuando se toquen |
 | R27 | Pruebas SQL que faltan. ~~Las de R3, R8, R9 y lo hecho de R20~~ ✅ 10/10. **Quedan:** qué funciones puede llamar `anon`; observador sobre `audit_log`, `access_requests` y el bucket; admin por rol vs fijo en comentarios; `search_path` fijo en las `security definer`; que `avisos_*` no estén en Realtime | Claude, junto con R3 y R20 |
 
 ### Herramientas y pruebas
@@ -171,7 +177,7 @@ Nada.
 | R28 | ~~`seguridad` no veía un `import()` de afuera sin huella~~ ✅ 10/10 (mira que haya un `modulepreload` con `integrity` para esa URL) | Claude |
 | R29 | ~~Dos falsos positivos: el ejemplo de correo «en hebreo» y un teléfono inventado de una prueba SQL~~ ✅ 10/10 (`conocidos.json`) | Claude |
 | R31 | ~~**El teléfono real se había copiado a los documentos de esta auditoría** (los dos de hoy; error mío al anotarlo, ya subidos a `main` y a la rama de la sesión). Se sacó de los archivos de hoy; sigue en el historial y se saca con la reescritura de D4. En los documentos y en la página se escribe siempre recortado~~ ✅ 10/10 (sacado de los archivos y del historial con la reescritura de D4) | Claude, con la reescritura |
-| R30 | `pantallas` dio un hallazgo que no se repite (R23): cuando una medición no se reproduce dos veces va a «dudas», y la herramienta tendría que anotar el camino del foco | Claude, cuando se toque |
+| R30 | ~~`pantallas` dio un hallazgo que no se repite (R23): cuando una medición no se reproduce dos veces va a «dudas», y la herramienta tendría que anotar el camino del foco~~ ✅ 10/10 (`pantallas` repite una vez lo que se escapa, desde adentro, y anota el recorrido del foco; lo que no se repite pasa a «dato». El del visor de archivos no volvió a aparecer) | Claude, cuando se toque |
 
 ### Para el usuario
 
