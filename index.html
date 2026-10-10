@@ -2377,7 +2377,7 @@
   .fl-migas a:hover{ text-decoration:underline; }
   .fl-migas b{ color:var(--ink); }
   .fl-head{ display:flex; justify-content:space-between; align-items:flex-start; gap:12px 16px; flex-wrap:wrap; margin-bottom:12px; }
-  .fl-head h1{ margin:0; font-size:24px; color:var(--ink); }
+  .fl-head h2{ margin:0; font-size:24px; color:var(--ink); }
   .fl-sub{ font-size:13px; color:var(--text-muted); margin-top:2px; }
   .fl-zona{ display:inline-flex; align-items:center; gap:6px; }
   .fl-zona i{ width:9px; height:9px; border-radius:50%; display:inline-block; }
@@ -2585,7 +2585,7 @@
     .fl-fecha{ grid-column:2; grid-row:1; }
     .fl-cuerpo{ grid-column:2; grid-row:2; }
     .fl-it > .rs-ok{ grid-column:3; grid-row:1; }
-    .fl-head h1{ font-size:21px; }
+    .fl-head h2{ font-size:21px; }
     /* Los dos botones lado a lado, y las tres opciones de «qué incluir»
        en una fila: antes los botones iban apilados a lo ancho y la
        última opción se caía sola a un segundo renglón (AUDITORIA B7). */
@@ -3353,7 +3353,7 @@
     .fl-migas, .fl-barra, .fl-acciones, .fl-seg, .fl-chips, .fl-proy, .fl-nota, .fl-mas, .rs-no, .fl-hijo .fl-ir, .fl-main .audit-more{ display:none !important; }
     .fl-incluye-print{ display:block; font-size:10px; font-weight:700; color:var(--text-muted); margin:-6px 0 10px; }
     .fl-head{ margin-bottom:6px; }
-    .fl-head h1{ font-size:19px; }
+    .fl-head h2{ font-size:19px; }
     .fl-sub{ font-size:10.5px; }
     .fl-card{ box-shadow:none; padding:9px 12px; margin-bottom:9px; border-radius:8px; }
     .fl-card h3{ font-size:9.5px; margin-bottom:6px; }
@@ -21878,7 +21878,7 @@ function renderFichaLugar(L){
   // mismo nivel que «Solo … / + Región …» (pedido del usuario, 9/10/2026);
   // antes iba arriba, a la altura del título.
   const head = `<div class="fl-head">
-    <div><h1>${esc(nombre)}</h1><div class="fl-sub">${sub}</div></div>
+    <div><h2>${esc(nombre)}</h2><div class="fl-sub">${sub}</div></div>
   </div>`;
   const acciones = `<div class="fl-acciones">
       <button type="button" class="btn-secondary" data-action="ficha-imprimir" title="${esc(t("Imprimir o guardar en PDF esta ficha","Print or save this page as PDF","Imprimir ou salvar esta ficha em PDF","הדפסה או שמירה כ-PDF"))}">🖨️ ${t("Reporte del lugar","Place report","Relatório do lugar","דוח המקום")}</button>
@@ -21909,7 +21909,7 @@ function renderFichaLugar(L){
   const todosPasos = fichaDesplegado.has("pasos") || fichaImprimiendo;
   const listaPasos = todosPasos ? [...D.pendientes, ...D.hechos] : D.pendientes.slice(0, 4);
   const pasos = D.pendientes.length || D.hechos.length ? `<div class="fl-card fl-sigue">
-    <h3>${t("Lo que sigue","What's next","O que segue","מה הלאה")}${D.pendientes.length > 4 || D.hechos.length ? `<button type="button" class="fl-mas" data-action="ficha-desplegar" data-que="pasos">${fichaDesplegado.has("pasos") ? t("Mostrar menos","Show less","Mostrar menos","הצג פחות") : t("Ver los {n}","See all {n}","Ver os {n}","הצגת כל ה-{n}",{ n: D.pendientes.length + D.hechos.length })}</button>` : ""}</h3>
+    <h3>${t("Lo que sigue","What's next","O que segue","מה הלאה")}${D.pendientes.length > 4 || D.hechos.length ? `<button type="button" class="fl-mas" data-action="ficha-desplegar" data-que="pasos" aria-expanded="${fichaDesplegado.has("pasos")}">${fichaDesplegado.has("pasos") ? t("Mostrar menos","Show less","Mostrar menos","הצג פחות") : t("Ver los {n}","See all {n}","Ver os {n}","הצגת כל ה-{n}",{ n: D.pendientes.length + D.hechos.length })}</button>` : ""}</h3>
     <ul class="rs-pasos">${listaPasos.map(({ p, post, parte }) => {
       const hecho = p.estado === "hecho";
       const puede = canEditPost(post);
@@ -22071,7 +22071,7 @@ function renderFichaLugar(L){
   const rAg = resumenAgenda(agendaAca);
   const resumenLugares = [dosYMas(filasLugar.map(nombreFila)), agendaAca.length ? cuantosContactos(rAg.gente) : ""].filter(Boolean).join(" · ");
   const ladoHijos = filasLugar.length ? `<div class="${claseDeLado("hijos")}">${tituloDeLado("hijos", L.zona ? t("Países","Countries","Países","מדינות") : t("Ciudades","Cities","Cidades","ערים"), resumenLugares,
-    filasLugar.length > HIJOS_A_LA_VISTA ? `<button type="button" class="fl-mas" data-action="ficha-desplegar" data-que="hijos">${fichaDesplegado.has("hijos") ? t("Ver menos","Show less","Ver menos","הצג פחות") : t("Ver más","See more","Ver mais","הצגת עוד")}</button>` : "")}<div class="fl-hijos${hijosConScroll ? " con-scroll" : ""}">${(todosHijos ? filasLugar : filasLugar.slice(0, HIJOS_A_LA_VISTA)).map(filaLugar).join("")}</div>
+    filasLugar.length > HIJOS_A_LA_VISTA ? `<button type="button" class="fl-mas" data-action="ficha-desplegar" data-que="hijos" aria-expanded="${fichaDesplegado.has("hijos")}">${fichaDesplegado.has("hijos") ? t("Ver menos","Show less","Ver menos","הצג פחות") : t("Ver más","See more","Ver mais","הצגת עוד")}</button>` : "")}<div class="fl-hijos${hijosConScroll ? " con-scroll" : ""}">${(todosHijos ? filasLugar : filasLugar.slice(0, HIJOS_A_LA_VISTA)).map(filaLugar).join("")}</div>
     ${agendaAca.length || canWrite() ? `<div class="fl-ag-pie">${canWrite() ? `<button type="button" class="btn-primary" data-action="agenda-sumar">+ ${t("Sumar","Add","Adicionar","הוספה")}</button>` : ""}${agendaAca.length ? `<button type="button" class="btn-secondary" data-action="agenda-abrir"${L.zona ? "" : ` data-country="${esc(L.country)}"`}>${t("Ver Agenda","See Directory","Ver Agenda","לספר הטלפונים")}</button>` : ""}</div>` : ""}</div>` : "";
   // Contactos en … (la Agenda, 8/10/2026): en una ciudad, sus instituciones
   // con su gente. En un país o una región va adentro de «Ciudades» o
@@ -22081,7 +22081,7 @@ function renderFichaLugar(L){
     if(!L.city || (!agendaAca.length && !canWrite())) return "";
     const r = resumenAgenda(agendaAca);
     const todos = fichaDesplegado.has("contactos") || fichaImprimiendo;
-    const verMas = n => n > HIJOS_A_LA_VISTA ? `<button type="button" class="fl-mas" data-action="ficha-desplegar" data-que="contactos">${fichaDesplegado.has("contactos") ? t("Ver menos","Show less","Ver menos","הצג פחות") : t("Ver más","See more","Ver mais","הצגת עוד")}</button>` : "";
+    const verMas = n => n > HIJOS_A_LA_VISTA ? `<button type="button" class="fl-mas" data-action="ficha-desplegar" data-que="contactos" aria-expanded="${fichaDesplegado.has("contactos")}">${fichaDesplegado.has("contactos") ? t("Ver menos","Show less","Ver menos","הצג פחות") : t("Ver más","See more","Ver mais","הצגת עוד")}</button>` : "";
     // Al pie, en un mismo renglón: «+ Sumar» (quien carga eventos) y «Ver Agenda». Antes cada
     // institución llevaba su «+ Sumar a alguien más»: el usuario pidió sacarlos (9/10/2026).
     const sumar = canWrite() ? `<button type="button" class="btn-primary" data-action="agenda-sumar">+ ${t("Sumar","Add","Adicionar","הוספה")}</button>` : "";
@@ -22150,7 +22150,7 @@ function renderFichaLugar(L){
   const fechaDeDoc = x => fechaDeArchivo(x.f) || fmtISO(fechaDePost(x.p), { day:"numeric", month:"short" });
   const resumenDocs = docs.length === 1 ? docs[0].f.name : docs.length ? t("{n} · el último, {f}","{n} · latest, {f}","{n} · o último, {f}","{n} · האחרון, {f}",{ n: docs.length, f: fechaDeDoc(docs[0]) }) : "";
   const documentos = docs.length ? `<div class="${claseDeLado("docs")}">${tituloDeLado("docs", t("Documentos","Documents","Documentos","מסמכים"), resumenDocs,
-    docs.length > 4 ? `<button type="button" class="fl-mas" data-action="ficha-desplegar" data-que="docs">${fichaDesplegado.has("docs") ? t("Mostrar menos","Show less","Mostrar menos","הצג פחות") : t("Ver los {n}","See all {n}","Ver os {n}","הצגת כל ה-{n}",{ n: docs.length })}</button>` : "")}
+    docs.length > 4 ? `<button type="button" class="fl-mas" data-action="ficha-desplegar" data-que="docs" aria-expanded="${fichaDesplegado.has("docs")}">${fichaDesplegado.has("docs") ? t("Mostrar menos","Show less","Mostrar menos","הצג פחות") : t("Ver los {n}","See all {n}","Ver os {n}","הצגת כל ה-{n}",{ n: docs.length })}</button>` : "")}
     <div class="fl-docs">${(todosDocs ? docs : docs.slice(0, 4)).map(x => { const fi = fichaDeArchivo(x.f); return `<button type="button" class="fl-doc" data-action="resumen-abrir" data-post-id="${esc(x.p.id)}" data-pos="${x.pos}" title="${esc(x.f.name)}">
       <i style="background:${fi.color}">${esc(fi.sigla)}</i><span>${esc(x.f.name)}</span><small>${esc(fechaDeDoc(x))}</small></button>`; }).join("")}</div></div>` : "";
   return `<div class="ficha-lugar">${tituloPrint}${migas}${head}<div class="fl-barra">${seg}${acciones}</div>${incluyePrint}
