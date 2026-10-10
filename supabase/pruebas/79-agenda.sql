@@ -123,6 +123,60 @@ select lab.probar_valor('vincular a alguien que no está en la Agenda: la ficha 
   $q$select public.vincular_persona('pres', 'ana@x.com')$q$,
   $q$select count(*)::text from public.personas where id = 'pres'$q$, '0');
 
+-- ---------- Contactos por lugar (20-contactos-por-lugar.sql) ----------
+-- Gente que no va con una institución: con una ciudad, un país, una región
+-- o toda LatAm. Lo suma cualquiera que carga eventos, como a una institución.
+insert into public.personas(id, name, telefonos, created_by) values
+  ('dobkin', 'Gabriel Dobkin', '[{"n":"+54 9 341 368 9150","wa":true}]', 'ana@x.com'),
+  ('julia', 'Julia', '[{"n":"+55 11 99478 1099","wa":true}]', 'ana@x.com');
+select lab.probar_valor('una integrante suma al presidente de la comunidad de Rosario, sin institución', lab.como('ana@x.com'),
+  $q$insert into public.contactos(id, nivel, country, city, persona, cargo) values ('l1', 'ciudad', 'Argentina', ' Rosario ', 'dobkin', 'Presidente')$q$,
+  $q$select nivel || ' ' || country || ' «' || city || '» ' || coalesce(institucion, '-') || ' ' || created_by from public.contactos where id = 'l1'$q$,
+  'ciudad Argentina «Rosario» - ana@x.com');
+select lab.probar('a alguien de todo Brasil', lab.como('ana@x.com'),
+  $q$insert into public.contactos(id, nivel, country, persona, cargo) values ('l2', 'pais', 'Brasil', 'julia', 'R Hadraja')$q$, true);
+select lab.probar('a alguien de la región Sur', lab.como('ana@x.com'),
+  $q$insert into public.contactos(id, nivel, zona, persona, cargo) values ('l3', 'region', 'sur', 'julia', 'R KM')$q$, true);
+select lab.probar('y a alguien de toda LatAm', lab.como('ana@x.com'),
+  $q$insert into public.contactos(id, nivel, persona, cargo) values ('l4', 'latam', 'julia', 'Director General')$q$, true);
+select lab.probar('un observador no suma', lab.como('obs@x.com'),
+  $q$insert into public.contactos(id, nivel, country, persona) values ('l5', 'pais', 'Chile', 'julia')$q$, false);
+select lab.probar('nada a medias: de una ciudad sin decir cuál, no', lab.como('ana@x.com'),
+  $q$insert into public.contactos(id, nivel, country, persona) values ('l6', 'ciudad', 'Argentina', 'julia')$q$, false);
+select lab.probar('de un país y además con institución, no', lab.como('ana@x.com'),
+  $q$insert into public.contactos(id, nivel, country, institucion, persona) values ('l7', 'pais', 'Argentina', 'cba', 'julia')$q$, false);
+select lab.probar('de una institución sin institución, no', lab.como('ana@x.com'),
+  $q$insert into public.contactos(id, nivel, persona) values ('l8', 'institucion', 'julia')$q$, false);
+select lab.probar('una región que no existe, no', lab.como('ana@x.com'),
+  $q$insert into public.contactos(id, nivel, zona, persona) values ('l9', 'region', 'caribe', 'julia')$q$, false);
+select lab.probar('un nivel que no existe, no', lab.como('ana@x.com'),
+  $q$insert into public.contactos(id, nivel, country, persona) values ('l10', 'provincia', 'Argentina', 'julia')$q$, false);
+-- Lo que probar() deja, se vuelve atrás: lo que tiene que quedar se inserta de una.
+insert into public.contactos(id, nivel, country, city, persona, cargo) values ('l1', 'ciudad', 'Argentina', 'Rosario', 'dobkin', 'Presidente');
+insert into public.contactos(id, nivel, country, persona, cargo) values ('l2', 'pais', 'Brasil', 'julia', 'R Hadraja');
+insert into public.contactos(id, nivel, zona, persona, cargo) values ('l3', 'region', 'sur', 'julia', 'R KM');
+insert into public.contactos(id, nivel, persona, cargo) values ('l4', 'latam', 'julia', 'Director General');
+insert into public.contactos(id, nivel, country, city, persona, cargo) values ('l12', 'ciudad', 'Argentina', 'Santa Fe', 'dobkin', 'Asesor');
+insert into public.contactos(id, institucion, persona, cargo) values ('l13', 'cba', 'dobkin', 'Director');
+select lab.probar('la misma persona dos veces en la misma ciudad (aunque se escriba distinto), no', lab.como('ana@x.com'),
+  $q$insert into public.contactos(id, nivel, country, city, persona) values ('l11', 'ciudad', 'Argentina', 'rosario', 'dobkin')$q$, false);
+select lab.probar('pero sí en otra ciudad', lab.como('ana@x.com'),
+  $q$insert into public.contactos(id, nivel, country, city, persona, cargo) values ('l16', 'ciudad', 'Argentina', 'Córdoba', 'dobkin', 'Asesor')$q$, true);
+select lab.probar('lo de siempre sigue igual: a una institución, sin decir el nivel', lab.como('ana@x.com'),
+  $q$insert into public.contactos(id, institucion, persona, cargo) values ('l17', 'cba', 'julia', 'Director')$q$, true);
+select lab.probar_valor('y queda como de institución', lab.como('ana@x.com'), $q$select 1$q$,
+  $q$select nivel from public.contactos where id = 'l13'$q$, 'institucion');
+select lab.probar('sacar a alguien de un lugar es corregir: una integrante puede', lab.como('dario@x.com'),
+  $q$delete from public.contactos where id = 'l12'$q$, true);
+-- Unir dos fichas que están en el mismo lugar: queda una sola vez ahí.
+insert into public.personas(id, name, created_by) values ('julia2', 'Júlia', 'ana@x.com');
+insert into public.contactos(id, nivel, country, persona, cargo) values ('l14', 'pais', 'Brasil', 'julia2', 'R Hadraja');
+insert into public.contactos(id, nivel, country, city, persona, cargo) values ('l15', 'ciudad', 'Brasil', 'Recife', 'julia2', 'Referente');
+select lab.probar_valor('unir: el mismo país no se repite, la otra ciudad pasa', lab.como('benny@team-latam.com'),
+  $q$select public.unir_personas('julia2', 'julia')$q$,
+  $q$select string_agg(nivel || ':' || coalesce(city, country, zona, '*'), ' ' order by id) from public.contactos where persona = 'julia'$q$,
+  'ciudad:Recife pais:Brasil region:sur latam:*');
+
 \set QUIET off
 select n, '  FALLA  ' || nombre || '  ' || detalle as falla from lab.resultados where esperado <> obtenido order by n;
 select count(*) filter (where esperado = obtenido) || ' pasaron, ' ||

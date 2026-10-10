@@ -215,7 +215,12 @@ const escribir = async (p, sel, valor) => { await p.fill(sel, valor); await p.wa
   eq("ficha: quien carga eventos ve un «+ Sumar» al pie, y ninguno en cada institución", [await cuantos(p, '.fl-ag-pie [data-action="agenda-sumar"]'), await cuantos(p, '.fl-ag-inst [data-action="agenda-sumar"]')], [1, 0]);
   await p.click('.fl-ag-pie [data-action="agenda-sumar"]');
   await p.waitForSelector("#agFNombre");
-  eq("sumar: la institución ya viene elegida", await p.inputValue("#agFInst"), "i_ros");
+  // Desde la ficha de una ciudad, «Dónde está» viene en «Ciudad» con esa ciudad (10/10/2026).
+  eq("sumar desde Rosario: «Dónde está» viene en Ciudad · Rosario", [await p.$eval('[data-action="agenda-form-nivel"].on', e => e.dataset.k), await p.inputValue("#agFPais"), await p.inputValue("#agFCiudad")], ["ciudad", "Argentina", "Rosario"]);
+  eq("sumar: las cinco opciones de dónde", await p.$$eval('[data-action="agenda-form-nivel"]', l => l.map(e => e.textContent.trim())), ["Institución", "Ciudad", "País", "Región", "Toda LatAm"]);
+  await p.click('[data-action="agenda-form-nivel"][data-k="institucion"]');
+  await p.waitForSelector("#agFInst");
+  eq("sumar: al pasar a Institución, la de la ciudad ya viene elegida", await p.inputValue("#agFInst"), "i_ros");
   // Las instituciones de la ciudad van primero, en su grupo, y no se repiten más abajo (9/10/2026).
   const grupos = await p.$$eval("#agFInst optgroup", l => l.map(g => [g.label, [...g.querySelectorAll("option")].map(o => o.value)]));
   eq("sumar: el primer grupo es el de Rosario, con su institución", [/Rosario/.test(grupos[0][0]), grupos[0][1].includes("i_ros")], [true, true]);
@@ -233,7 +238,7 @@ const escribir = async (p, sel, valor) => { await p.fill(sel, valor); await p.wa
   eq("y la tarjeta de Rosario ya lo muestra", await hasta(p, () => [...document.querySelectorAll('.fl-ag-inst [data-action="agenda-ver-persona"]')].some(e => /Guypo/.test(e.textContent))), true);
   eq("con dos, el resumen de la tarjeta los cuenta", await texto(p, '.fl-pliegue[data-que="contactos"] .r'), "Beit Chabad Rosario · 2 contactos");
 
-  // Alguien nuevo, con un teléfono mal escrito primero.
+  // Alguien nuevo, de la ciudad (sin institución), con un teléfono mal escrito primero.
   await p.click('.fl-ag-pie [data-action="agenda-sumar"]');
   await p.waitForSelector("#agFNombre");
   await p.fill("#agFNombre", "Daniel Kohan");
@@ -245,9 +250,11 @@ const escribir = async (p, sel, valor) => { await p.fill(sel, valor); await p.wa
   await p.fill("#agFTel-0", "+54 9 341 777-8888");
   await p.click('[data-action="agenda-guardar"]');
   await hasta(p, () => (window.__sb.tablas.personas || []).some(x => x.name === "Daniel Kohan") && (window.__sb.tablas.contactos || []).length === 5);
-  eq("alguien nuevo: su ficha con el teléfono, y el contacto en Rosario", await p.evaluate(() => {
+  eq("alguien nuevo: su ficha con el teléfono, y el contacto de la ciudad de Rosario, sin institución", await p.evaluate(() => {
     const x = window.__sb.tablas.personas.find(y => y.name === "Daniel Kohan"), c = window.__sb.tablas.contactos.find(y => y.persona === x.id);
-    return [x.telefonos, c.institucion, c.cargo, c.orden]; }), [[{ n: "+54 9 341 777-8888", wa: true }], "i_ros", "Presidente", 2]);
+    return [x.telefonos, c.institucion, c.nivel, c.country, c.city, c.zona, c.cargo, c.orden]; }), [[{ n: "+54 9 341 777-8888", wa: true }], null, "ciudad", "Argentina", "Rosario", null, "Presidente", 0]);
+  eq("y en la tarjeta de Rosario, su gente va primero, antes de la institución", await hasta(p, () => { const l = [...document.querySelectorAll(".fl-ag-inst")]; return l.length === 2 && /Rosario[\s\S]*Contactos de la ciudad[\s\S]*Daniel Kohan/.test(l[0].textContent) && /Beit Chabad Rosario/.test(l[1].textContent); }), true);
+  eq("la tarjeta cuenta la institución y los tres", await texto(p, '.fl-pliegue[data-que="contactos"] .r'), "1 institución · 3 contactos");
 
   // Corregir: el teléfono de Shlomo; queda quién lo tocó.
   await p.click('.fl-ag-inst [data-action="agenda-ver-persona"][data-id="per_tawil"]');
@@ -369,6 +376,88 @@ const escribir = async (p, sel, valor) => { await p.fill(sel, valor); await p.wa
   eq("hebreo: la página de derecha a izquierda", await p.evaluate(() => document.documentElement.dir), "rtl");
   eq("hebreo: el resumen traducido", /מוסדות/.test(await texto(p, ".ag-resumen")), true);
   eq("sin errores (hebreo)", errores, []);
+  await p.close();
+}
+
+
+/* ---------- 6. Contactos por lugar: una ciudad, un país, una región o toda LatAm (10/10/2026) ----------
+   El usuario mostró su planilla: hay gente que no va con una institución
+   (el presidente de la comunidad, quien cubre Brasil, quien cubre toda
+   LatAm). Cada lugar con su gente, con la misma forma que una institución. */
+{
+  const conLugares = base => ({ ...base,
+    personas: [...base.personas,
+      { id: "per_julia", name: "Julia Lerner", email: null, note: null, telefonos: [{ n: "+55 11 99478 1099", wa: true }], idiomas: ["pt"], lista: null, created_by: ADMIN, created_at: hace(1) },
+      { id: "per_dobkin", name: "Gabriel Dobkin", email: null, note: null, telefonos: [{ n: "+54 9 341 368 9150", wa: true }], idiomas: [], lista: null, created_by: ADMIN, created_at: hace(1) },
+      { id: "per_dana", name: "Dana Bergman", email: null, note: null, telefonos: [{ n: "+56 9 9874 0101", wa: true }], idiomas: [], lista: null, created_by: ADMIN, created_at: hace(1) }],
+    contactos: [...base.contactos,
+      { id: "c_bra", institucion: null, nivel: "pais", country: "Brasil", city: null, zona: null, persona: "per_julia", cargo: "R Hadraja", orden: 0, created_at: hace(1) },
+      { id: "c_lat", institucion: null, nivel: "latam", country: null, city: null, zona: null, persona: "per_julia", cargo: "Directora", orden: 0, created_at: hace(1) },
+      { id: "c_arg", institucion: null, nivel: "pais", country: "Argentina", city: null, zona: null, persona: "per_dana", cargo: "RM", orden: 0, created_at: hace(1) },
+      { id: "c_sur", institucion: null, nivel: "region", country: null, city: null, zona: "sur", persona: "per_dana", cargo: "R KM", orden: 0, created_at: hace(1) },
+      { id: "c_ros", institucion: null, nivel: "ciudad", country: "Argentina", city: "Rosario", persona: "per_dobkin", cargo: "Presidente", orden: 0, created_at: hace(1) }] });
+  const { p, errores } = await entrar(ADMIN, "Benny", { retocar: conLugares });
+  await irAPaises(p);
+  await p.click(".paises-agenda");
+  await p.waitForSelector("#agendaBuscar");
+  eq("lista: el resumen cuenta solo las instituciones como instituciones, y a toda la gente", await texto(p, ".ag-resumen"), "3 instituciones y 5 contactos en 3 ciudades de 3 países");
+  eq("lista: toda LatAm, la región y después los países (Brasil solo con su gente)", await p.$$eval(".ag-pais-h b", l => l.map(e => e.textContent)), ["Toda LatAm", "Región Sur", "Argentina", "Brasil", "Uruguay"]);
+  eq("lista: LatAm y la región dicen cuánta gente; un país, sus instituciones o su gente", await p.$$eval(".ag-pais-h small", l => l.map(e => e.textContent)), ["1 contacto", "1 contacto", "2 instituciones", "1 contacto", "1 institución"]);
+  eq("lista: toda LatAm no lleva a ninguna ficha; la región y los países sí", await p.$$eval(".ag-pais-h", l => l.map(e => e.tagName + ":" + (e.dataset.zona || e.dataset.country || ""))), ["DIV:", "BUTTON:sur", "BUTTON:Argentina", "BUTTON:Brasil", "BUTTON:Uruguay"]);
+  eq("lista: en Argentina, la gente del país va antes de las ciudades, y la de Rosario antes de su institución", await p.$$eval(".ag-pais:nth-of-type(3) .ag-fila, .ag-pais:nth-of-type(3) .ag-ciudad", l => l.map(e => e.classList.contains("ag-ciudad") ? "· " + e.textContent.trim() : e.querySelector(".ag-inst").textContent.replace(/\s+/g, " ").trim())),
+    ["ArgentinaContactos del país", "· Buenos Aires", "Chabad Central Centro Comunitario · Agüero 1164", "· Rosario", "RosarioContactos de la ciudad", "Beit Chabad Rosario Centro Comunitario · Paraguay 1234"]);
+  eq("lista: la gente de un lugar no es un botón (no hay ficha de institución que abrir)", await p.$$eval(".ag-lugar", l => l.map(e => e.tagName)), ["DIV", "DIV", "DIV", "DIV", "DIV"]);
+  eq("lista: en LatAm y la región no se repite el título (ya está en el encabezado)", await p.$$eval(".ag-pais:nth-of-type(-n+2) .ag-lugar", l => l.map(e => e.textContent.replace(/\s+/g, " ").trim())), ["Contactos de toda LatAm", "Contactos de la región"]);
+  await escribir(p, "#agendaBuscar", "hadraja");
+  eq("buscar por cargo encuentra a la gente de un lugar", await p.$$eval(".ag-fila .ag-lugar b", l => l.map(e => e.textContent.trim())), ["Brasil"]);
+  await escribir(p, "#agendaBuscar", "");
+  await p.selectOption("#agendaPais", "Argentina"); await p.waitForTimeout(120);
+  eq("filtrar por país: su gente y la de sus ciudades; LatAm y la región no", await p.$$eval(".ag-pais-h b", l => l.map(e => e.textContent)), ["Argentina"]);
+  await p.selectOption("#agendaPais", ""); await p.selectOption("#agendaTipo", "Sinagoga"); await p.waitForTimeout(120);
+  eq("filtrar por tipo: solo instituciones (la gente de un lugar no tiene tipo)", await cuantos(p, ".ag-lugar"), 0);
+  await p.click('[data-action="agenda-limpiar"]'); await p.waitForTimeout(120);
+  // La ficha de una persona que está en dos lugares.
+  await p.click('.ag-fila [data-action="agenda-ver-persona"][data-id="per_dana"]');
+  await hasta(p, () => document.getElementById("agendaBody").dataset.vista === "personaper_dana");
+  eq("persona: el subtítulo cuenta lugares, no instituciones", await texto(p, ".ag-cab-txt > small"), "RM · R KM · 2 lugares");
+  eq("persona: «Dónde está», cada lugar con su cargo y qué es", await p.$$eval('#agendaBody .ag-items [data-action="agenda-ir-lugar"]', l => l.map(e => e.textContent.replace(/\s+/g, " ").trim())), ["ArgentinaRM · País›", "Región SurR KM · Región›"]);
+  await p.click('#agendaBody .ag-items [data-action="agenda-ir-lugar"][data-zona="sur"]');
+  await p.waitForSelector('.fl-pliegue[data-que="hijos"]', { state: "attached" });
+  eq("tocar la región lleva a su ficha, y se cierra la Agenda", [await abierta(p), await texto(p, ".fl-head h1")], [false, "Región Sur"]);
+  const tarjeta = '.fl-card:has(.fl-pliegue[data-que="hijos"])';
+  eq("región: su propia gente va primero en «Países», y después cada país", await p.$$eval(`${tarjeta} .fl-hijo`, l => l.map(e => [e.querySelector("b").textContent.trim(), e.querySelector("small").textContent.trim(), (e.querySelector(".fl-hijo-ag") || {}).textContent || ""])),
+    [["Región Sur", "Contactos de la región", "📇 Dana Bergman"], ["Argentina", "último: hace 3 días", "📇 2 instituciones · 4 contactos"], ["Uruguay", "Sin actividad todavía", "📇 Beit Jabad Uruguay · Tzvi Grumblat"]]);
+  // Sumar desde la ficha de una región: viene en «Región».
+  await p.click(`${tarjeta} .fl-ag-pie [data-action="agenda-sumar"]`);
+  await p.waitForSelector("#agFNombre");
+  eq("sumar desde una región: «Dónde está» viene en Región · Sur", [await p.$eval('[data-action="agenda-form-nivel"].on', e => e.dataset.k), await p.inputValue("#agFZona")], ["region", "sur"]);
+  await p.click('[data-action="agenda-form-nivel"][data-k="latam"]');
+  await p.fill("#agFNombre", "Marcos Kohan"); await p.fill("#agFCargo", "Director General");
+  await p.click('[data-action="agenda-guardar"]');
+  await hasta(p, () => (window.__sb.tablas.contactos || []).some(c => c.nivel === "latam" && c.cargo === "Director General"));
+  eq("sumar a toda LatAm: el contacto sin institución ni lugar", await p.evaluate(() => { const c = window.__sb.tablas.contactos.find(c => c.cargo === "Director General"); return [c.institucion, c.nivel, c.country, c.city, c.zona, c.orden]; }), [null, "latam", null, null, null, 1]);
+  // La ficha de Argentina: su gente primero en «Ciudades».
+  await irAPaises(p);
+  await p.click('[data-action="drill-country"][data-country="Argentina"]');
+  await p.waitForSelector('.fl-pliegue[data-que="hijos"]', { state: "attached" });
+  eq("país: su propia gente va primero en «Ciudades», con lo que es", await p.$$eval(`${tarjeta} .fl-hijo`, l => l.slice(0, 2).map(e => [e.querySelector("b").textContent.trim(), e.querySelector("small").textContent.trim()])), [["Argentina", "Contactos del país"], ["Rosario", "último: hace 3 días"]]);
+  eq("país: Rosario cuenta su institución y sus dos", await p.$$eval(`${tarjeta} .fl-hijo .fl-hijo-ag`, l => l.map(e => e.textContent.trim())).then(l => l[1]), "📇 1 institución · 2 contactos");
+  await p.click(`${tarjeta} .fl-ag-pie [data-action="agenda-sumar"]`);
+  await p.waitForSelector("#agFNombre");
+  eq("sumar desde un país: viene en País · Argentina", [await p.$eval('[data-action="agenda-form-nivel"].on', e => e.dataset.k), await p.inputValue("#agFPais")], ["pais", "Argentina"]);
+  await p.click('[data-action="agenda-form-nivel"][data-k="ciudad"]');
+  eq("al pasar a Ciudad, el país queda y falta la ciudad", [await p.inputValue("#agFPais"), await p.inputValue("#agFCiudad")], ["Argentina", ""]);
+  await p.fill("#agFNombre", "Alguien");
+  await p.click('[data-action="agenda-guardar"]'); await p.waitForTimeout(200);
+  eq("sin ciudad no guarda: avisa", await p.$$eval("#agendaBody .ag-error", l => l.map(e => e.textContent)), ["Elegí el país y la ciudad."]);
+  await p.click('[data-action="agenda-cerrar"]');
+  // La planilla dice dónde está cada uno.
+  await irAPaises(p);
+  await p.click(".paises-agenda");
+  await p.waitForSelector("#agendaBuscar");
+  const csv = await p.evaluate(() => { const l = []; const orig = URL.createObjectURL; URL.createObjectURL = b => { l.push(b); return "blob:x"; }; document.querySelector('[data-action="agenda-planilla"]').click(); URL.createObjectURL = orig; return l[0] ? l[0].text() : ""; });
+  eq("planilla: la columna «Dónde» y una fila por contacto de lugar", [csv.split("\r\n")[0].replace(/^\uFEFF/, "").replace(/"/g, "").split(";").slice(0, 4).join("|"), csv.split("\r\n").map(f => f.replace(/"/g, "")).filter(f => /^;;Toda LatAm|^Brasil;;País/.test(f)).length], ["País|Ciudad|Dónde|Institución", 3]);
+  eq("sin errores (por lugar)", errores, []);
   await p.close();
 }
 

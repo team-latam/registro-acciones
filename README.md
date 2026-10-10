@@ -1243,6 +1243,24 @@ cuenta, y su ficha muestra lo que hizo con el equipo.
   (`agenda_traer`, `19-agenda.sql`), y quien ya estaba en la app (mismo
   nombre, sin tildes ni mayúsculas) no se duplica: se usa su ficha y se
   le suman los teléfonos que no tenía.
+- **Contactos por lugar** (10/10/2026, `20-contactos-por-lugar.sql`):
+  un contacto no va siempre con una institución. El usuario mostró su
+  planilla de comunidades: el presidente de la comunidad de Rosario, quien
+  cubre Brasil, quien cubre toda LatAm. Cada contacto tiene un «dónde»
+  (`nivel`): una institución, una ciudad, un país, una región o toda
+  LatAm, con lo que corresponde (`country`, `city`, `zona`) y nada a
+  medias (una restricción lo controla). En la app, la gente de un lugar
+  se junta en una «entrada» con la forma de una institución (`lugar:
+  true`, `agendaDatos()`), así la lista, las fichas, el buscador y la
+  planilla (columna «Dónde») la tratan igual: en la lista, toda LatAm y
+  las regiones van arriba; la gente de un país, debajo de su nombre y
+  antes de las ciudades; la de una ciudad, antes de sus instituciones.
+  El título es el lugar («Argentina», «Rosario») y debajo qué es
+  («Contactos del país»); no se toca, porque no hay ficha de institución
+  que abrir. Al sumar, «Dónde está» son cinco pastillas (Institución ·
+  Ciudad · País · Región · Toda LatAm); desde la ficha de una ciudad
+  viene en Ciudad, desde un país en País, desde una región en Región.
+  Traer una lista sigue siendo solo de instituciones.
 - Las tres tablas van en las copias (la semanal, la de Administración y
   la restauración). Pruebas: `supabase/pruebas/79-agenda.sql`,
   `pruebas/agenda_test.mjs`.

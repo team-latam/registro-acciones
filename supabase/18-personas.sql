@@ -192,10 +192,15 @@ begin
     raise exception 'Hay que elegir dos personas distintas' using errcode = 'check_violation';
   end if;
   n := public.reemplazar_persona(p_de, jsonb_build_object('persona', a.id, 'name', a.name));
-  -- Sus lugares en la Agenda pasan a la que queda (sin repetir institución),
-  -- y se queda con los teléfonos e idiomas que no tenía (hasta seis).
+  -- Sus lugares en la Agenda pasan a la que queda (sin repetir institución
+  -- ni lugar: desde el 10/10/2026 un contacto puede ser de una ciudad, un
+  -- país, una región o toda LatAm, 20-contactos-por-lugar.sql), y se queda
+  -- con los teléfonos e idiomas que no tenía (hasta seis).
   delete from public.contactos c where c.persona = p_de
-     and exists (select 1 from public.contactos o where o.persona = p_a and o.institucion = c.institucion);
+     and exists (select 1 from public.contactos o where o.persona = p_a and o.nivel = c.nivel
+                   and o.institucion is not distinct from c.institucion and o.country is not distinct from c.country
+                   and lower(public.sin_tildes(coalesce(o.city, ''))) = lower(public.sin_tildes(coalesce(c.city, '')))
+                   and o.zona is not distinct from c.zona);
   update public.contactos set persona = p_a where persona = p_de;
   update public.personas set email = coalesce(email, de.email), note = coalesce(note, de.note),
     telefonos = (select coalesce(jsonb_agg(x.t order by x.o), '[]'::jsonb) from (
