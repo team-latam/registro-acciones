@@ -20761,11 +20761,27 @@ function enfocarAgenda(origen){
     : agendaBody.querySelector(".ag-volver, .close");
   enfocarComo(el, origen);
 }
+// Al abrir una ficha (o un formulario) desde una fila, se anota en la vista
+// de abajo qué se tocó —solo la acción, el id y cuál de las filas iguales
+// era (una misma persona figura en varias instituciones)—: al volver, el
+// foco cae de nuevo en esa fila y no en el buscador.
+function agendaRecordarToque(el){
+  const v = agendaPila[agendaPila.length - 1];
+  if(!v || !el || !el.dataset || !el.dataset.id) return;
+  const igual = f => `[data-action="${f.a}"][data-id="${CSS.escape(f.id)}"]`;
+  const filaDe = { a: el.dataset.action, id: el.dataset.id };
+  v.volverA = { ...filaDe, n: Math.max(0, [...agendaBody.querySelectorAll(igual(filaDe))].indexOf(el)) };
+}
 function agendaVolver(){
+  const conAnillo = tieneAnillo(document.activeElement);
   agendaPila.pop();
   if(!agendaPila.length){ cerrarAgenda(); return; }
   renderAgenda();
-  enfocarAgenda(null);
+  // En una pantalla táctil no: el foco entra por «Volver» o la ✕ (ver enfocarAgenda).
+  const v = agendaPila[agendaPila.length - 1], r = v && v.volverA;
+  const filas = r && !isTouchDevice() ? agendaBody.querySelectorAll(`[data-action="${r.a}"][data-id="${CSS.escape(r.id)}"]`) : [];
+  if(filas.length) enfocarComo(filas[r.n] || filas[0], null, conAnillo);
+  else enfocarAgenda(null);
 }
 function cerrarAgenda(){
   agendaOverlay.hidden = true;
@@ -21189,8 +21205,8 @@ const AGENDA_ACCIONES = {
   "gs-institucion": (el) => { desdeElBuscador(() => abrirAgenda({ t:"inst", id: el.dataset.id })); },
   "gs-agenda": (el) => { desdeElBuscador(() => abrirAgenda({ t:"lista" }, { q: el.dataset.q || "" })); },
   "agenda-volver": () => agendaVolver(),
-  "agenda-ver-persona": (el) => { if(agendaOverlay.hidden) abrirAgenda({ t:"persona", id: el.dataset.id }); else { agendaPila.push({ t:"persona", id: el.dataset.id }); renderAgenda(); enfocarAgenda(el); } },
-  "agenda-ver-inst": (el) => { if(agendaOverlay.hidden) abrirAgenda({ t:"inst", id: el.dataset.id }); else { agendaPila.push({ t:"inst", id: el.dataset.id }); renderAgenda(); enfocarAgenda(el); } },
+  "agenda-ver-persona": (el) => { if(agendaOverlay.hidden) abrirAgenda({ t:"persona", id: el.dataset.id }); else { agendaRecordarToque(el); agendaPila.push({ t:"persona", id: el.dataset.id }); renderAgenda(); enfocarAgenda(el); } },
+  "agenda-ver-inst": (el) => { if(agendaOverlay.hidden) abrirAgenda({ t:"inst", id: el.dataset.id }); else { agendaRecordarToque(el); agendaPila.push({ t:"inst", id: el.dataset.id }); renderAgenda(); enfocarAgenda(el); } },
   "agenda-ir-lugar": (el) => agendaIrAlLugar(el.dataset.country, el.dataset.city, el.dataset.zona),
   "agenda-ver-post": (el) => { cerrarAgenda(); gotoMention(realPostId(el.dataset.postId), null); },
   "agenda-mas": () => { agendaFiltro.mostrar += AGENDA_TANDA; renderAgenda(); },
@@ -21223,7 +21239,7 @@ const AGENDA_ACCIONES = {
     if(!agendaDatos().ordenadas.length){ abrirAgendaInstNueva(form); return; }
     if(agendaOverlay.hidden) abrirAgenda(form); else { agendaPila.push(form); renderAgenda(); enfocarAgenda(el); }
   },
-  "agenda-editar": (el) => { agendaPila.push(borradorDePersona(el.dataset.id)); renderAgenda(); enfocarAgenda(el); },
+  "agenda-editar": (el) => { agendaRecordarToque(el); agendaPila.push(borradorDePersona(el.dataset.id)); renderAgenda(); enfocarAgenda(el); },
   "agenda-guardar": () => agendaGuardar(),
   "agenda-form-nivel": (el) => { const v = agendaPila[agendaPila.length - 1]; v.nivel = el.dataset.k; delete v.errores.inst; delete v.errores.lugar; renderAgenda(); agendaBody.querySelector(`[data-action="agenda-form-nivel"][data-k="${v.nivel}"]`)?.focus(); },
   "agenda-form-usar": (el) => { const v = agendaPila[agendaPila.length - 1]; v.usar = el.dataset.id; renderAgenda(); if(!isTouchDevice()) agendaBody.querySelector("#agFCargo")?.focus(); },
@@ -21235,6 +21251,7 @@ const AGENDA_ACCIONES = {
   "agenda-form-no-sacar": () => { const v = agendaPila[agendaPila.length - 1]; v.sacar = []; renderAgenda(); },
   "agenda-inst-nueva": () => abrirAgendaInstNueva(null),
   "agenda-inst-editar": (el) => { const x = agendaDatos().inst.get(el.dataset.id); if(!x) return;
+    agendaRecordarToque(el);
     agendaPila.push({ t:"inst-form", modo:"editar", id:x.id, name:x.name, country:x.country, city:x.city, address:x.address, tipo:x.tipo, estado:x.estado, nota:x.nota, errores:{} }); renderAgenda(); enfocarAgenda(el); },
   "agenda-inst-guardar": () => agendaGuardarInst(),
   "agenda-inst-borrar": async (el) => {
