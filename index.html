@@ -14690,7 +14690,7 @@ function fpOpcionesLugar(b){
     ${niveles}`;
 }
 function fpOpcionesFecha(b){
-  const f = b.f, hoyAnio = todayISO().slice(0,4);
+  const f = b.f, hoy = todayISO(), hoyAnio = hoy.slice(0,4);
   const op = (k, label, on) => `<button type="button" class="fp-op${on ? " on" : ""}" data-action="fp-fecha" data-key="${k}" aria-pressed="${on}">${label}</button>`;
   const anioPuesto = !f.mes && f.periodo ? String(f.periodo.anio) : null;
   // Los años que ya empezaron: un año cuenta lo hecho hasta hoy (como
@@ -14698,7 +14698,8 @@ function fpOpcionesFecha(b){
   // que viene está en «Próximos».
   const anios = aniosConDatos().filter(a => a <= hoyAnio).reverse().map(a => {
     const on = anioPuesto === a;
-    const tris = on ? `<div class="fp-tris" role="group" aria-label="${esc(t("Período","Period","Período","תקופה"))}">${trimestresDelReporte().map(q =>
+    // Solo los trimestres que ya empezaron (uno que falta daría una lista vacía), y siempre el que ya está elegido.
+    const tris = on ? `<div class="fp-tris" role="group" aria-label="${esc(t("Período","Period","Período","תקופה"))}">${trimestresDelReporte().filter(q => (Number(f.periodo.tri) || 0) === q.n || ventanaDe(a, q.n).desde <= hoy).map(q =>
       `<button type="button" class="chip-toggle${(Number(f.periodo.tri) || 0) === q.n ? " active" : ""}" data-action="fp-tri" data-tri="${q.n}" aria-pressed="${(Number(f.periodo.tri) || 0) === q.n}">${esc(q.label)}</button>`).join("")}</div>` : "";
     return op(a, a === hoyAnio ? `<span>${a} <small>· ${t("hasta hoy","so far","até hoje","עד היום")}</small></span>` : a, on) + tris;
   }).join("");
