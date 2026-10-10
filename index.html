@@ -169,6 +169,8 @@
   /* "Saltar al contenido": invisible hasta que el teclado lo enfoca. */
   .skip-link{ position:absolute; top:-80px; inset-inline-start:12px; z-index:200; padding:8px 14px; border-radius:999px; background:var(--card); color:var(--ink-strong); font-weight:700; box-shadow:var(--shadow); text-decoration:none; }
   .skip-link:focus{ top:12px; }
+  /* Texto solo para el lector de pantalla (el mismo recurso que .bn-txt): no se ve ni ocupa lugar. */
+  .solo-lector{ position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
   html,body{margin:0;padding:0;}
   /* La barra de desplazamiento (opción A, elegida por el usuario el
      8/10/2026): fina, petróleo suave, con las puntas redondeadas y sin
@@ -4222,8 +4224,9 @@
       </div>
       <div class="header-actions">
         <div class="global-search" id="globalSearch" hidden>
-          <input type="search" id="globalSearchInput" placeholder="Buscar en todo…" autocomplete="off" aria-label="Buscar en todo">
-          <div class="gs-panel" id="globalResults" hidden></div>
+          <input type="search" id="globalSearchInput" placeholder="Buscar en todo…" autocomplete="off" aria-label="Buscar en todo" role="combobox" aria-haspopup="listbox" aria-autocomplete="list" aria-expanded="false" aria-controls="globalResults">
+          <div class="gs-panel" id="globalResults" role="listbox" aria-label="Resultados" hidden></div>
+          <div class="solo-lector" id="globalStatus" role="status" aria-live="polite"></div>
         </div>
         <div id="mentionsBell" class="mentions-bell-wrap"></div>
         <div id="userBadge" class="user-badge"></div>
@@ -11327,6 +11330,8 @@ function applyStaticI18n(){
     const l = t("Buscar en todo…","Search everything…","Buscar em tudo…","חיפוש בהכול…");
     gsInput.placeholder = l; gsInput.setAttribute("aria-label", l);
   }
+  const gsLista = document.getElementById("globalResults");
+  if(gsLista) gsLista.setAttribute("aria-label", t("Resultados de la búsqueda","Search results","Resultados da busca","תוצאות החיפוש"));
   const brandSub = document.querySelector(".brand .sub");
   if(brandSub) brandSub.textContent = t(
     "Memoria histórica · Team LatAm", "Historical record · Team LatAm",
@@ -15077,9 +15082,9 @@ function renderGlobalSearch(){
   const panel = document.getElementById("globalResults");
   if(!panel) return;
   const q = globalQuery.trim();
-  if(q.length < 2 || !isAuthorized()){ panel.hidden = true; panel.innerHTML = ""; return; }
+  if(q.length < 2 || !isAuthorized()){ panel.hidden = true; panel.innerHTML = ""; anunciarBuscadorGlobal(null); return; }
   const r = resultadosGlobales(q);
-  const grupo = (titulo, items) => items.length ? `<div class="gs-group">${titulo}</div>${items.join("")}` : "";
+  const grupo = (titulo, items) => items.length ? `<div role="group" aria-label="${esc(titulo)}"><div class="gs-group" aria-hidden="true">${titulo}</div>${items.join("")}</div>` : "";
   const ficha = (p, action) => {
     const type = ACTIVITY_BY_KEY[p.activityType] || { icon:"✨" };
     return `<button type="button" class="gs-item" data-action="${action}" data-post-id="${esc(p.id)}">
@@ -15099,15 +15104,33 @@ function renderGlobalSearch(){
   panel.innerHTML = (html || `<div class="gs-empty">${t("Sin resultados para “{q}”","No results for “{q}”","Sem resultados para “{q}”","אין תוצאות עבור “{q}”",{q:esc(q)})}</div>`) +
     (state.instituciones.length ? `<button type="button" class="gs-item gs-all" data-action="gs-agenda" data-q="${esc(q)}"><span class="gs-ico">📇</span><span class="gs-txt"><b>${t("Buscar “{q}” en la Agenda","Search “{q}” in the Directory","Buscar “{q}” na Agenda","חיפוש “{q}” בספר הטלפונים",{q:esc(q)})}</b></span></button>` : "") +
     `<button type="button" class="gs-item gs-all" data-action="gs-feed"><span class="gs-ico">🔎</span><span class="gs-txt"><b>${t("Buscar “{q}” en el Feed","Search “{q}” in the Feed","Buscar “{q}” no Feed","חיפוש “{q}” בפיד",{q:esc(q)})}</b></span></button>`;
+  // Cada resultado es una opción de la lista (siguen siendo botones: la opción
+  // es un rol permitido en un <button>).
+  panel.querySelectorAll(".gs-item").forEach(b => b.setAttribute("role", "option"));
   panel.hidden = false;
+  anunciarBuscadorGlobal(panel.querySelectorAll(".gs-item:not(.gs-all)").length);
 }
-function cerrarBuscadorGlobal(limpiar){
+// El estado del buscador para el lector de pantalla: el campo dice si el panel
+// está abierto (aria-expanded) y una línea oculta cuenta los resultados.
+// `n` null = el panel está cerrado.
+function anunciarBuscadorGlobal(n){
+  const input = document.getElementById("globalSearchInput"), estado = document.getElementById("globalStatus");
+  if(input) input.setAttribute("aria-expanded", n == null ? "false" : "true");
+  if(!estado) return;
+  const texto = n == null ? "" : n === 0 ? t("Sin resultados","No results","Sem resultados","אין תוצאות")
+    : n === 1 ? t("1 resultado","1 result","1 resultado","תוצאה אחת") : t("{n} resultados","{n} results","{n} resultados","{n} תוצאות",{ n });
+  if(estado.textContent !== texto) estado.textContent = texto;
+}
+// `enCampo`: Escape cierra y deja el foco en el campo (si no, el foco caía al
+// <body>); quien elige un resultado, en cambio, suelta el campo.
+function cerrarBuscadorGlobal(limpiar, enCampo){
   const panel = document.getElementById("globalResults");
   if(panel){ panel.hidden = true; panel.innerHTML = ""; }
+  anunciarBuscadorGlobal(null);
   if(limpiar){
     globalQuery = "";
     const input = document.getElementById("globalSearchInput");
-    if(input){ input.value = ""; input.blur(); }
+    if(input){ input.value = ""; if(enCampo) input.focus(); else input.blur(); }
   }
 }
 // Lo escrito en el buscador general pasa a ser el filtro de texto del
@@ -22478,7 +22501,7 @@ document.addEventListener("keydown", e=>{
   if(mentionsMenuOpen){ const o = document.activeElement; mentionsMenuOpen = false; render(); enfocarComo(document.querySelector('[data-action="toggle-mentions-menu"]'), o); return; }
   if(userMenuOpen && !nicknameEditing){ const o = document.activeElement; userMenuOpen = false; render(); enfocarComo(document.querySelector('[data-action="toggle-user-menu"]'), o); return; }
   if(fp.abierto){ cerrarFiltros(); return; }
-  { const gs = document.getElementById("globalResults"); if(gs && !gs.hidden){ cerrarBuscadorGlobal(true); return; } }
+  { const gs = document.getElementById("globalResults"); if(gs && !gs.hidden){ cerrarBuscadorGlobal(true, true); return; } }
   if(postMenuOpen){ postMenuOpen = null; render(); return; }
   if(moreMenuOpen){ moreMenuOpen = false; renderBottomNav(); return; }
   if(calIrAbierto){ cerrarCalIr(true); return; }
@@ -23040,6 +23063,19 @@ function handleAutocompleteKeydown(e, { getMatches, getHighlight, setHighlight, 
 document.addEventListener("keydown", e=>{
   const el = e.target;
   if(!el || !el.dataset) return; // teclas con target document/window (no un elemento)
+  // ↑ ↓ (y Inicio / Fin) recorren los resultados de «Buscar en todo»; ↑ en el
+  // primero vuelve al campo. (Escape lo cierra otro manejador, arriba, y deja
+  // el foco en el campo.)
+  if(el.classList && el.classList.contains("gs-item") && ["ArrowDown","ArrowUp","Home","End"].includes(e.key)){
+    const items = [...document.querySelectorAll("#globalResults .gs-item")];
+    const i = items.indexOf(el);
+    if(i >= 0){
+      e.preventDefault();
+      if(e.key === "ArrowUp" && i === 0){ document.getElementById("globalSearchInput").focus(); return; }
+      items[e.key === "Home" ? 0 : e.key === "End" ? items.length - 1 : Math.min(items.length - 1, Math.max(0, i + (e.key === "ArrowDown" ? 1 : -1)))].focus();
+    }
+    return;
+  }
   // ↑ ↓ (y Inicio / Fin) para moverse por las filas de una lista (Personas,
   // Tipos) y por el menú de secciones (en angosto es una tira: también ← →).
   if(el.classList && (el.classList.contains("lp-row") || el.classList.contains("admin-item"))){
@@ -23106,9 +23142,11 @@ document.addEventListener("keydown", e=>{
     return;
   }
   if(el.id === "globalSearchInput"){
-    // Enter busca eso mismo en el Feed; Escape cierra y limpia.
+    // Enter busca eso mismo en el Feed; Escape cierra y limpia (el foco se
+    // queda en el campo); la flecha de abajo baja al primer resultado.
     if(e.key === "Enter"){ e.preventDefault(); if(globalQuery.trim()) buscarEnElFeed(); }
-    else if(e.key === "Escape"){ cerrarBuscadorGlobal(true); }
+    else if(e.key === "Escape"){ cerrarBuscadorGlobal(true, true); }
+    else if(e.key === "ArrowDown"){ const primero = document.querySelector("#globalResults:not([hidden]) .gs-item"); if(primero){ e.preventDefault(); primero.focus(); } }
     return;
   }
   if(el.id === "cParticipantQuery"){
