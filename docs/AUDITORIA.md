@@ -50,7 +50,7 @@ publicación (en línea) y la base (aplicada) dieron verde.
    prueba (los pasos, abajo). Lo parcial ya está hecho.
 2. **R21, lo que pide diseño**: el chip de región en la Agenda y el debounce
    del buscador de lugar. Te lo propongo con captura cuando quieras.
-3. **R26**: jszip 3.10.2 y supabase-js 2.117.3, cuando se toquen.
+3. ~~**R26**: jszip 3.10.2 y supabase-js 2.117.3~~ ✅ 11/10 (tanda 63).
 4. **R18**: el peso del archivo (ya decidido: todavía no).
 
 **Decisiones tuyas, con maqueta** (la página para el usuario las muestra con
@@ -203,7 +203,7 @@ Nada.
 | R23 | ~~El visor de archivos: si el foco entra al PDF (un clic adentro), Tab puede salir de la ventana (el iframe no está en la trampa). Con teclado desde los botones no se reproduce; `pantallas` lo vio una vez en 390~~ ✅ 10/10 (el foco que cae afuera del visor vuelve adentro; se saca al cerrar; `visor_foco_test`) | Claude, cuando se toque |
 | R24 | ~~`data-title` y `data-content` llevan el texto entero del posteo en «Ver traducción» (escapado, pero contra la convención)~~ ✅ 10/10 (el botón lleva solo el identificador; el texto se busca en vivo; `traduccion_datos_test`) | Claude, cuando se toque |
 | R25 | ~~Documentación desfasada: README decía que se publica «desde la rama» y que el sincronizador usa `CALENDAR_API_KEY`; CLAUDE.md ponía Pages en condicional~~ ✅ 10/10 | Claude |
-| R26 | Versiones. ~~`actions/setup-node` 7.1.0~~ ✅ 10/10 (en los 7 trabajos que lo usan, fijado por huella). **Quedan:** jszip 3.10.2 y supabase-js 2.117.3, que ninguna parte del código necesita todavía; se suben cuando se toque, cada una con su huella nueva | Claude, cuando se toquen |
+| R26 | Versiones. ~~`actions/setup-node` 7.1.0~~ ✅ 10/10 (en los 7 trabajos que lo usan, fijado por huella). ~~jszip 3.10.2 y supabase-js 2.117.3~~ ✅ 11/10 (los dos subidos, cada uno con su huella nueva; antes de subir se leyó lo que cambió: arreglos chicos de Blob/ArrayBuffer en jszip y de subida de archivos y tiempo de espera en supabase-js, sin direcciones nuevas; `jszip_integridad_test` baja el paquete y compara la huella; tanda 63). Docx-preview 0.4.1, Leaflet 1.9.4 y markercluster 1.5.3 ya eran las últimas; SheetJS 0.20.3 no se pudo comparar desde acá (su servidor no responde en el sandbox) | Claude |
 | R27 | Pruebas SQL que faltan. ~~Las de R3, R8, R9 y lo hecho de R20; qué funciones puede llamar `anon`; observador sobre `audit_log`, `access_requests` y el bucket; admin por rol vs fijo; `search_path` fijo; que `avisos_*` no estén en Realtime~~ ✅ 10/10 en el laboratorio (`75` a `78` y `88`) **y contra la base de verdad** (`supabase/verificar/permisos.sql`, workflow «Verificar los permisos», a mano, solo lectura; ver `supabase/verificar/LEEME.md`). Corrida real (10/10, n.º 2, verde): las 12 comprobaciones de estructura bien (RLS en todas las tablas, `anon` sin permisos, tablas de avisos cerradas, Realtime con las doce de siempre, funciones ejecutables = la lista, `search_path` fijo en todas las de dueño, bucket privado) y lo que ve cada rol: admin 973 posteos, 1143 filas del registro de actividad, 925 sugerencias de Calendar, 32 sacados, 5 pedidos; integrante 973 posteos, **0** registro, **0** sugerencias, 32 sacados, 1 pedido (el suyo); observador 973 posteos, **0**, **0**, **0** sacados, 1 pedido (el suyo). La primera corrida (n.º 1) dio rojo por una regla mía demasiado estricta (veía mal que alguien viera su propio pedido de acceso), no por la base | Claude |
 
 ### Herramientas y pruebas
