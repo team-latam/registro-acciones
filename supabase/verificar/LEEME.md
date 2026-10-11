@@ -76,3 +76,23 @@ el bucket `adjuntos` y una fila en el registro de actividad. Se comprobó que sa
 rojo con: anon con permiso de una tabla, una tabla sin RLS, una función con permisos de
 dueño sin camino de búsqueda, una tabla interna publicada en vivo, el bucket público,
 una función nueva ejecutable desde el navegador y el registro de actividad abierto a todos.
+
+## `calendar.sql` — cómo va lo que llegó de Google Calendar
+
+Cuenta, contra la base de verdad, cuánto de lo importado de Calendar sigue como
+vino (pendiente) y cuánto ya está ordenado, con la definición de la pantalla
+Administración › Revisar lo de Calendar (autor «Google Calendar», sin correo,
+con id de evento; «ordenado» = alguien le puso tipo, lugar, personas o un
+«dónde fue»). Da: el total y los sacados del Registro; lo pendiente por
+pestaña (Actividades, Reuniones, Personales, Recordatorios, Sin sugerencia) y
+por confianza de la sugerencia (seguro, más o menos, dudoso); lo ya ordenado
+por tipo; y si lo ordenado coincide con lo que se había sugerido.
+
+No escribe nada (transacción de solo lectura que termina en `rollback`) y no
+imprime títulos, fechas ni nombres de personas, solo cantidades: los registros
+de Actions son públicos.
+
+**Cómo correrlo:** GitHub → Actions → «Mirar lo de Calendar» → Run workflow
+(`.github/workflows/verificar-calendar.yml`, solo desde `main`). Usa el mismo
+secreto que «Base de datos» (`SUPABASE_DB_URL`); el resultado queda en el
+resumen de la corrida.
