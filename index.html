@@ -2934,6 +2934,7 @@
   .ag-pais-h{ display:flex; align-items:center; gap:10px; width:100%; padding:11px 16px; background:var(--surface-soft); border:none; border-bottom:1px solid var(--border); font:inherit; cursor:pointer; text-align:start; color:var(--ink); }
   .ag-pais-h:hover{ background:var(--surface-alt); }
   /* Las tiras de los niveles de arriba (toda LatAm, la región, el país) con un filtro de lugar: una por nivel, cerradas, juntas. */
+  body.cambiando-vista #viewRoot{ opacity:.55; transition:opacity .08s linear; }
   .ag-tiras{ display:flex; flex-direction:column; gap:4px; margin-bottom:10px; }
   .ag-tira{ border:1px dashed var(--border); border-radius:12px; overflow:hidden; }
   .ag-tira-h{ display:flex; align-items:center; gap:10px; width:100%; padding:8px 14px; background:transparent; border:none; font:inherit; cursor:pointer; text-align:start; color:var(--ink); }
@@ -6939,7 +6940,20 @@ async function unshareCalendarWith(email, opts={}){
 // LOCAL (new Date("...T00:00:00")) con toISOString() (UTC) devolvía el
 // día anterior para cualquiera al este de Greenwich — en Israel,
 // addDaysISO(x, 1) daba x, y Calendar rechazaba los eventos de un día.
+// Con aritmética entera (días desde 1970-01-01 y de vuelta) y sin helpers sueltos: varias pruebas sacan
+// esta función sola del archivo. Armar un Date, moverlo y pasarlo a texto por cada paso era lo que más
+// tardaba al expandir las repeticiones, y en un celular se notaba (11/10/2026).
 function addDaysISO(dateStr, days){
+  if(typeof dateStr === "string" && /^[1-9]\d{3}-\d{2}-\d{2}$/.test(dateStr)){
+    // «civil_from_days» de Howard Hinnant: del día número n a año, mes y día, sin Date.
+    const n = Date.UTC(+dateStr.slice(0, 4), +dateStr.slice(5, 7) - 1, +dateStr.slice(8, 10)) / 86400000 + days + 719468;
+    const era = Math.floor(n / 146097), doe = n - era * 146097;
+    const yoe = Math.floor((doe - Math.floor(doe / 1460) + Math.floor(doe / 36524) - Math.floor(doe / 146096)) / 365);
+    const doy = doe - (365 * yoe + Math.floor(yoe / 4) - Math.floor(yoe / 100));
+    const mp = Math.floor((5 * doy + 2) / 153);
+    const d = doy - Math.floor((153 * mp + 2) / 5) + 1, m = mp < 10 ? mp + 3 : mp - 9;
+    return (yoe + era * 400 + (m <= 2 ? 1 : 0)) + "-" + (m < 10 ? "0" : "") + m + "-" + (d < 10 ? "0" : "") + d;
+  }
   const dt = new Date(dateStr + "T00:00:00Z");
   dt.setUTCDate(dt.getUTCDate() + days);
   return dt.toISOString().slice(0,10);
@@ -16673,17 +16687,21 @@ function calcularReporte(desdeISO, hastaISO, filtro){
 
   state.posts.forEach(p=>{
     if(!pasaFiltroDelReporte(p, filtro)) return;
+    // Una sola expansión por posteo (una serie semanal de años se expandía tres veces: lo planificado, las
+    // veces y las fechas): lo hecho es lo que cae hasta hoy, y lo planificado, lo que cae después.
+    const fechas = fechasEnVentana(p, desdeISO, hastaISO);
     if(hastaISO > hoy){
-      fechasEnVentana(p, desdeISO, hastaISO).filter(iso => iso > hoy).forEach(iso=>{
+      fechas.filter(iso => iso > hoy).forEach(iso=>{
         planificadas++;
         porMesPlan[iso.slice(0,7)] = (porMesPlan[iso.slice(0,7)] || 0) + 1;
       });
     }
-    const veces = desdeISO <= hastaHecho ? vecesEnVentana(p, desdeISO, hastaHecho) : 0;
+    const hechas = desdeISO <= hastaHecho ? fechas.filter(iso => iso <= hastaHecho) : [];
+    const veces = hechas.length;
     if(!veces) return;
     total += veces;
 
-    fechasEnVentana(p, desdeISO, hastaHecho).forEach(iso=>{
+    hechas.forEach(iso=>{
       const mes = iso.slice(0,7);
       porMes[mes] = (porMes[mes] || 0) + 1;
     });
@@ -17206,8 +17224,11 @@ function ultimaActividadPorPais(f){
     if(!paises.size) return;
     let fecha = "";
     if(p.recurrence && p.recurrence.length){
-      const fechas = fechasEnVentana(p, desde, hoy);
-      fecha = fechas.length ? fechas[fechas.length - 1] : "";
+      // La última vez que fue: una semanal la tiene en las últimas semanas, así que se mira una ventana corta
+      // y recién si no hay se agranda (expandir tres años por cada serie era lo que más tardaba, 11/10/2026).
+      let fechas = [];
+      for(const dias of [100, 400, 1100]){ fechas = fechasEnVentana(p, dias >= 1100 ? desde : addDaysISO(hoy, -dias), hoy); if(fechas.length) break; }
+      fecha = fechas.reduce((a, b) => a > b ? a : b, "");
     } else {
       const inicio = p.startDate || p.date || "";
       if(inicio && inicio <= hoy) fecha = inicio;
@@ -18451,6 +18472,7 @@ function recurrenceLabel(post){
 // `occ` son de la serie entera — los de antes de que esto existiera y
 // los que escribe la sincronización con Calendar cuando cambia la regla.
 const OCC_BACK_MONTHS = 18, OCC_FWD_MONTHS = 12;
+const PANTALLA_PESADA = 400;   // desde cuántos posteos dibujar una pantalla se nota en un celular (ver goto-view)
 function isRecurring(post){ return !!(post && parseRecurrence(post.recurrence)); }
 // Una fecha corrida a otro día ("este lunes lo hacemos el miércoles").
 // La CLAVE es siempre la fecha original de la serie, no la nueva: esa es
@@ -18503,12 +18525,14 @@ function calcularOcurrencias(post){
 // se corre sola. Empate: la que viene.
 function nearestOccurrence(dates){
   if(!dates.length) return null;
-  const hoy = todayISO();
-  const dist = iso => Math.abs(Math.round((isoDate(iso) - isoDate(hoy)) / 86400000));
-  let best = dates[0];
+  // Los días de cada fecha se calculan una vez (antes eran tres Date por vuelta, por cada posteo que se
+  // repite, en cada dibujado del Inicio: lo que más tardaba en un celular, 11/10/2026).
+  const dia = iso => Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10)) / 86400000;
+  const hoy = dia(todayISO());
+  let best = dates[0], mejor = Math.abs(dia(best) - hoy);
   for(const iso of dates){
-    const d = dist(iso), b = dist(best);
-    if(d < b || (d === b && iso > best)) best = iso;
+    const d = Math.abs(dia(iso) - hoy);
+    if(d < mejor || (d === mejor && iso > best)){ best = iso; mejor = d; }
   }
   return best;
 }
@@ -18857,6 +18881,8 @@ function calendarioEventsByDate(fromISO, toISO){
       if(skip.has(occId)) return;
       const occStart = moves[occId] || occId;
       const occEnd = lenDays > 0 ? addDaysISO(occStart, lenDays) : occStart;
+      // Lo que cae afuera de la ventana no se copia (el mes de más de cada punta es para las fechas corridas).
+      if(occEnd < fromISO || occStart > toISO) return;
       pushRange({ ...p, startDate:occStart, endDate:occEnd, date:occStart, occId }, occStart, occEnd);
     });
   });
@@ -23820,6 +23846,16 @@ document.addEventListener("click", async e=>{
     // Desde el menú del avatar, la barra de abajo o un atajo del Resumen.
     state.view = el.dataset.view; state.countryDrill = null; state.zonaDrill = null; fichaOrigen = null;
     userMenuOpen = false; nicknameEditing = false; nicknameError = null; moreMenuOpen = false;
+    // Con muchos posteos dibujar una pantalla puede llevar cientos de milisegundos en un celular, y el menú
+    // «Más» se quedaba abierto con el botón apretado sin que pasara nada (grabación del usuario, 10/10/2026).
+    // Primero se lo cierra y se marca el cambio; se dibuja en el cuadro siguiente.
+    if(state.posts.length >= PANTALLA_PESADA){
+      document.querySelector(".bn-sheet, .user-menu")?.remove();
+      document.body.classList.add("cambiando-vista");
+      await new Promise(r => requestAnimationFrame(() => setTimeout(r, 0)));
+      try{ render(); scrollToTop(); } finally { document.body.classList.remove("cambiando-vista"); }
+      return;
+    }
     render(); scrollToTop();
   },
     "admin-go": async (el, e, action, postId) => {
