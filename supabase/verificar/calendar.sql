@@ -74,4 +74,12 @@ select coalesce(s.grupo, 'sin sugerencia') as pestana_sugerida,
  group by 1
  order by 2 desc;
 
+\echo
+\echo '== Lo ya ordenado: qué tipo le pusiste a cada pestaña sugerida'
+select coalesce(s.grupo, 'sin sugerencia') as pestana_sugerida, i.activity_type as tipo_puesto, count(*) as cuantos
+  from imp i left join public.calendar_sugerencias s on s.evento = i.evento
+ where i.tocado
+ group by 1, 2
+ order by 1, 3 desc;
+
 rollback;
