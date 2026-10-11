@@ -1002,6 +1002,16 @@ Países: «Ver Agenda» y la fila con la gente de la región) se abría entera.
   buscador de texto, y Enter dibuja ya lo último escrito antes de elegir la
   primera sugerencia (sin eso elegía la de lo escrito 150 ms antes: «Toda
   LatAm» en vez de «Córdoba»). `pruebas/filtros_lugar_tecla_test.mjs`.
+- **Las rutinas que se repiten, en Reportes y en el Inicio** (auditoría R7,
+  caso c; el usuario eligió la opción A y pidió que lo de cada serie se vea
+  recién al tocar, «como Ciudades»): Reportes cuenta cada vez que ocurre una
+  reunión semanal (15 en lo que va del año) y el Inicio la muestra en una
+  tarjeta. Al venir de Reportes con un período, una línea debajo de las
+  fichas dice «17 actividades en 3 posteos. Lo que se repite cuenta cada vez:
+  tocá «se repite…» en su tarjeta para ver cuántas»; solo si la cuenta
+  difiere de los posteos y solo en «Lo que pasó». Y al tocar «se repite…»,
+  arriba de las fechas de la serie: «15 veces en 2026 · hasta hoy».
+  `notaDeActividades()`, `vecesDelPeriodo()`, `pruebas/rutinas_veces_test.mjs`.
 - Los dos chips (ciudad y región) dicen por su nombre qué sacan
   («Sacar el filtro: Rosario»), en los cuatro idiomas.
 - Una sola función (`enLaZona`) decide quién está en una región, para la

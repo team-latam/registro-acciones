@@ -1280,6 +1280,8 @@
   .fb-boton:hover{ background:var(--surface-alt); }
   .fb-boton.con-filtro{ border-color:var(--petroleo); color:var(--ink); }
   .fb-cuenta{ background:var(--petroleo); color:#fff; border-radius:999px; font-size:11px; padding:1px 7px; }
+  .fb-nota{ margin-top:8px; padding:8px 12px; border:1px dashed var(--border); border-radius:10px; font-size:13px; line-height:1.45; color:var(--text-muted); }
+  .fb-nota b{ color:var(--ink); }
   .fb-fichas{ display:flex; flex-wrap:wrap; gap:6px; align-items:center; min-width:0; }
   /* Un nombre larguísimo (una ciudad, una persona) se corta con «…» en vez
      de estirar la página. */
@@ -1881,6 +1883,7 @@
     font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase;
     letter-spacing:.04em; padding:2px 6px 8px 6px;
   }
+  .occ-pop-veces{ margin:0 0 6px; padding:6px 8px; border-radius:8px; background:var(--surface-soft); font-size:12.5px; font-weight:700; color:var(--ink); }
   .occ-list{ display:flex; flex-direction:column; gap:1px; max-height:270px; overflow-y:auto; }
   .occ-date{
     display:flex; align-items:center; gap:8px; width:100%; text-align:start;
@@ -14576,7 +14579,7 @@ function etiquetaDelOrigen(o){
   return etiquetaDeVista(o.view);
 }
 
-function renderFilterBar(){
+function renderFilterBar(nota = ""){
   const f = state.filters, nivel = placeLevel();
   if(filtroOrigen && !anyActiveFilter()) filtroOrigen = null;
   const fichas = FILTROS_CON_FICHA.map(k => {
@@ -14596,6 +14599,7 @@ function renderFilterBar(){
         <button type="button" id="fbFiltros" class="fb-boton${n ? " con-filtro" : ""}" data-action="fp-abrir" aria-haspopup="dialog" aria-expanded="${fp.abierto}">⚙ ${t("Filtros","Filters","Filtros","מסננים")}${n ? ` <span class="fb-cuenta">${n}</span>` : ""}</button>
       </div>
       ${fichas ? `<div class="fb-fichas">${fichas}${volver ? "" : limpiar}</div>` : ""}
+      ${nota}
       ${fp.abierto && fp.b ? renderPanelDeFiltros() : ""}
     </div>`;
 }
@@ -15046,6 +15050,27 @@ function renderSolapasDelFeed(pasados, futuros){
     ${b("futuro", t("Próximos","Upcoming","Próximos","בקרוב"), futuros.length)}
   </div>${renderChipDeOrden()}</div>`;
 }
+// Reportes cuenta cada vez que se repite una rutina (una reunión semanal son 15 en el año) y el Inicio la
+// muestra en una sola tarjeta: tocás «Argentina 17» y la lista tiene 3 posteos. Con un período puesto (al
+// venir de Reportes), una línea lo explica; cuántas veces es cada serie se ve al tocar «se repite…» en su
+// tarjeta (10/10/2026, auditoría R7; lo pidió así el usuario: lo de cada serie, recién al tocar).
+function vecesDelPeriodo(post){
+  const per = state.filters.periodo;
+  if(!per) return 0;
+  const hoy = todayISO();
+  return vecesEnVentana(post, per.desde, per.hasta < hoy ? per.hasta : hoy);
+}
+function notaDeActividades(pasados){
+  const per = state.filters.periodo;
+  if(!per || feedSolapa !== "pasado" || !pasados.length) return "";
+  const veces = pasados.reduce((n, it) => n + vecesDelPeriodo(it.post), 0);
+  if(veces === pasados.length) return "";
+  const posteos = pasados.length === 1 ? t("1 posteo","1 post","1 postagem","פוסט אחד") : t("{n} posteos","{n} posts","{n} postagens","{n} פוסטים",{ n: pasados.length });
+  return `<div class="fb-nota" role="note">${t("<b>{a}</b> en <b>{b}</b>. Lo que se repite cuenta cada vez: tocá «se repite…» en su tarjeta para ver cuántas.",
+    "<b>{a}</b> in <b>{b}</b>. Anything that repeats counts every time: tap “repeats…” on its card to see how many.",
+    "<b>{a}</b> em <b>{b}</b>. O que se repete conta a cada vez: toque em «repete-se…» no cartão para ver quantas.",
+    "<b>{a}</b> ב-<b>{b}</b>. מה שחוזר נספר בכל פעם: לחצו על «חוזר…» בכרטיס כדי לראות כמה.", { a: esc(cuantasActividades(veces)), b: esc(posteos) })}</div>`;
+}
 function renderFeedView(){
   // El composer de Rutina va SIEMPRE arriba, sin importar la solapa.
   const { pasados, futuros } = partesDelFeed();
@@ -15059,7 +15084,7 @@ function renderFeedView(){
               : t("Todavía no hay posteos.","There are no posts yet.","Ainda não há postagens.","עדיין אין פוסטים."));
   return `<div class="feed-layout"><div class="feed-main">
     ${canWrite() ? renderRutinaComposer() : ""}
-    ${renderFilterBar()}
+    ${renderFilterBar(notaDeActividades(pasados))}
     ${renderSolapasDelFeed(pasados, futuros)}
     ${items.length ? items.map(({post,replies})=>renderPostCard(post,replies)).join("") + renderLoadMore("feed-load-more", all.length - items.length) :
       `<div class="empty-state"><div class="big">${feedSolapa === "futuro" ? "📅" : "🗒️"}</div>${vacio}<br>${t('Usá "+ Nuevo evento" para sumar uno.','Use "+ New event" to add one.','Use "+ Novo evento" para somar um.','.כדי להוסיף אחד "+ אירוע חדש" השתמש/י ב')}</div>`}
@@ -18611,12 +18636,15 @@ function renderOccurrencePicker(post, occ){
           : ""}
       </div>
     </div>`;
+  // Con un período puesto (al venir de Reportes): cuántas veces fue la serie en él, lo que Reportes cuenta.
+  const nPeriodo = abierto && state.view === "feed" && state.filters.periodo ? vecesDelPeriodo(post) : 0;
+  const vecesEnElPeriodo = nPeriodo > 1 ? `<div class="occ-pop-veces">${esc(t("{n} veces en {p}","{n} times in {p}","{n} vezes em {p}","{n} פעמים ב-{p}",{ n: nPeriodo, p: etiquetaPeriodo(state.filters.periodo) }))}</div>` : "";
   return ` · <span class="occ-picker">
       <button type="button" class="occ-chip" data-action="occ-toggle" data-post-id="${esc(post.id)}"
         aria-expanded="${abierto ? "true" : "false"}" aria-haspopup="dialog"
         title="${esc(t("Elegí qué fecha de la serie ver","Choose which date of the series to view","Escolha qual data da série ver","בחר/י איזה תאריך מהסדרה להציג"))}">🔁 ${esc(label)}<span class="occ-chev">▾</span></button>
       <div class="occ-pop" role="dialog" aria-label="${esc(t("Fechas de la serie","Dates in the series","Datas da série","תאריכי הסדרה"))}" hidden>
-        ${abierto ? `<div class="occ-pop-head">${t("Fechas de la serie","Dates in the series","Datas da série","תאריכי הסדרה")}</div>
+        ${abierto ? `<div class="occ-pop-head">${t("Fechas de la serie","Dates in the series","Datas da série","תאריכי הסדרה")}</div>${vecesEnElPeriodo}
         <div class="occ-list">${rows}</div>${pie}` : ""}
       </div>
     </span>`;
