@@ -6464,8 +6464,8 @@ function roleLabel(role){
 // entraba sin huella (R15). Al subir la versión hay que cambiar la huella:
 // `pruebas/supabase_integridad_test.mjs` baja el paquete de npm y comprueba
 // que coincidan, y que el navegador la haga cumplir.
-const SUPABASE_CDN = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js";
-const SUPABASE_SRI = "sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok";
+const SUPABASE_CDN = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js";
+const SUPABASE_SRI = "sha384-BWcjm9OdFth9TbhCxZPdm+gAOUMAzQy9nmTs12ioXdCcbVnJaPMn+fMUoQCLt60R";
 async function arrancar(){
   try{
     await cargarScript(SUPABASE_CDN, SUPABASE_SRI);
@@ -14053,8 +14053,8 @@ const TABLAS_DE_LA_COPIA = {
 };
 // Desde jsDelivr (el mismo archivo que publica npm) y con su huella:
 // si el CDN sirviera otra cosa, el navegador no la corre.
-const JSZIP_CDN = "https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js";
-const JSZIP_SRI = "sha384-+mbV2IY1Zk/X1p/nWllGySJSUN8uMs+gUAN10Or95UBH0fpj6GfKgPmgC5EXieXG";
+const JSZIP_CDN = "https://cdn.jsdelivr.net/npm/jszip@3.10.2/dist/jszip.min.js";
+const JSZIP_SRI = "sha384-DdGlNq+wVXAn83gXqwyeFHB7iyXy6L0rLrNzgDmhKWPjiJLg9vj6qosYmZmkMfQ+";
 let copiaEstado = { corriendo: false, texto: "", error: "", listo: "", tamano: undefined };
 // El plan gratis de Supabase: 1 GB guardado y 5 GB por mes de descarga.
 const BUCKET_TOPE_BYTES = 1024 ** 3;

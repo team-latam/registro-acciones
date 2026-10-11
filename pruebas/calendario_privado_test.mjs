@@ -21,7 +21,7 @@ const FALSO = src.slice(src.indexOf("const FALSO = `") + "const FALSO = `".lengt
 const PAGINA = "file://" + (process.env.INDEX || RAIZ + "index.html");
 // La librería de Supabase se carga como script con huella (UMD, ver SUPABASE_CDN
 // en index.html): acá se sirve la de mentira como script clásico que deja `supabase`.
-const CDN = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js";
+const CDN = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js";
 const FALSO_UMD = () => FALSO.replace("export function createClient", "function createClient") + "\nvar supabase = { createClient };";
 const ADMIN = "benny@team-latam.com";
 const hoy = new Date().toISOString().slice(0, 10);

@@ -969,6 +969,33 @@ eligió **unirlas así**:
 Pruebas: `agenda_test.mjs` (país, región y ciudad; fallan con el código
 de antes) y `ficha_celular_test.mjs` vuelve a esperar cinco tarjetas.
 
+### 63. Las librerías de afuera, al día (R26) — HECHO (11 oct 2026)
+
+El usuario pidió ver las versiones de las librerías. La app carga de afuera
+ocho cosas, todas con versión fija y huella (SRI): supabase-js, JSZip,
+docx-preview, SheetJS, Leaflet y el agrupador del mapa (más el login de Google).
+Se compararon con lo último que hay en npm:
+
+- **supabase-js 2.117.2 → 2.117.3** (la última, del 7/10) y **JSZip 3.10.1 →
+  3.10.2** (la primera en cuatro años, del 8/9). Antes de subirlas se bajaron
+  los dos paquetes y se leyó la diferencia: en JSZip, tres arreglos chicos
+  (leer un Blob y un ArrayBuffer de otra ventana, tipos); en supabase-js, el
+  tipo de contenido de un Blob, un corte por tiempo de espera y la forma de
+  armar el formulario de una subida de archivos. Ninguna dirección nueva, ni
+  `eval`, ni pedidos de red agregados.
+- Siguen como estaban porque ya son las últimas: docx-preview 0.4.1, Leaflet
+  1.9.4 y leaflet.markercluster 1.5.3. **SheetJS 0.20.3** no se pudo
+  comparar (su servidor no contesta desde acá).
+- Cambió en `index.html` la dirección y la huella de las dos, y la dirección
+  de la de mentira en las pruebas. La prueba nueva `jszip_integridad_test.mjs`
+  baja el paquete de npm, compara su huella con la de la página y usa JSZip de
+  verdad en un Chromium (arma un zip y lo lee desde un ArrayBuffer y desde un
+  Blob); con la huella vieja falla. `supabase_integridad_test.mjs` ya hacía lo
+  mismo con la otra. El workflow «¿Está arriba la página?» (corre solo cada
+  6 horas; se apretó a mano al publicar) compara las ocho huellas fijas
+  (supabase-js, JSZip, docx-preview y las cinco del mapa) contra lo que sirve
+  el CDN en vivo.
+
 ### 62. El celular que se quedaba colgado — HECHO (11 oct 2026)
 
 El usuario mandó una grabación de pantalla del celular (10/10): tocaba
