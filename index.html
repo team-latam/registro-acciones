@@ -14990,6 +14990,7 @@ let feedVisibleCount = PAGE_SIZE;
 // los meses que vienen, y lo hecho esta semana quedaba abajo).
 let feedSolapa = "pasado";
 let searchRenderTimer = null;
+let lugarRenderTimer = null;   // el buscador de «País o ciudad» del panel de filtros (igual que el de texto)
 function renderLoadMore(action, remaining){
   // Solo "Ver más", sin números (a pedido): el conteo de lo que queda
   // era ruido. Quien quiere todo, sigue apretando.
@@ -22694,7 +22695,9 @@ document.addEventListener("keydown", e=>{
   if(e.key !== "Enter" || e.ctrlKey || e.metaKey || e.altKey) return;
   if(el && el.id === "fpLugarQ"){
     e.preventDefault();
-    const primera = panel.querySelector('.fp-sugs [data-action="fp-lugar"]');
+    // Si todavía no se dibujaron las sugerencias de lo último que se escribió, se dibujan ya: Enter elige la primera DE LO ESCRITO.
+    if(lugarRenderTimer !== null){ clearTimeout(lugarRenderTimer); lugarRenderTimer = null; render(); }
+    const primera = document.querySelector('.fp-panel .fp-sugs [data-action="fp-lugar"]');
     if(primera) primera.click();
     return;
   }
@@ -25209,7 +25212,8 @@ document.addEventListener("input", e=>{
     clearTimeout(searchRenderTimer);
     searchRenderTimer = setTimeout(render, 150);
   } else if(el.id === "fpLugarQ"){
-    if(fp.b){ fp.b.lugarQ = el.value; render(); }
+    // Con un respiro de 150 ms, como el buscador de texto: el Inicio entero se redibujaba por cada letra (R21).
+    if(fp.b){ fp.b.lugarQ = el.value; clearTimeout(lugarRenderTimer); lugarRenderTimer = setTimeout(() => { lugarRenderTimer = null; render(); }, 150); }
   } else if(el.id === "fpGuardarNombre"){
     fp.nombre = el.value;
   } else if(el.id === "globalSearchInput"){
