@@ -997,6 +997,11 @@ Países: «Ver Agenda» y la fila con la gente de la región) se abría entera.
   coincida con el buscador; con un tipo o una lista elegidos no hay tiras
   (son de las instituciones). 4 px entre una y otra. Igual en el celular y
   en la compu (es la misma ventana). `agendaTiras()`, `agendaCoincide()`.
+- **El buscador de «País o ciudad» del panel de filtros** (auditoría R21): el
+  Inicio entero se redibujaba por cada letra; ahora espera 150 ms como el
+  buscador de texto, y Enter dibuja ya lo último escrito antes de elegir la
+  primera sugerencia (sin eso elegía la de lo escrito 150 ms antes: «Toda
+  LatAm» en vez de «Córdoba»). `pruebas/filtros_lugar_tecla_test.mjs`.
 - Los dos chips (ciudad y región) dicen por su nombre qué sacan
   («Sacar el filtro: Rosario»), en los cuatro idiomas.
 - Una sola función (`enLaZona`) decide quién está en una región, para la
