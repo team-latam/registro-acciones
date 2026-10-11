@@ -469,3 +469,26 @@ miniaturas + firmas estables + `lazy`, carga a demanda de JSZip/SheetJS/
 docx-preview/GIS, `scheduleRender` por rAF, restauración de foco y selección
 tras el render, limpieza de listeners de arrastre y de canales, tema e idioma
 aplicados en el `<head>` antes de pintar, heap chico.
+
+---
+
+## Actualización del 11/10/2026 — el celular que se quedaba colgado
+
+El usuario grabó la pantalla: tocar «Reportes» en «Más» dejaba el menú abierto
+más de 3 s. Se reprodujo con 973 posteos inventados (35 % se repiten; es una
+suposición, no un dato de la base) y la CPU frenada ×4 (`Emulation.
+setCPUThrottlingRate`), midiendo las tareas largas de cada pantalla.
+
+Lo que más tardaba era contar fechas, no dibujar: `addDaysISO` armaba un `Date`
+por paso; `nearestOccurrence` tres por vuelta; `calcularReporte` expandía cada
+serie tres veces; `ultimaActividadPorPais` tres años por serie;
+`calendarioEventsByDate` copiaba hasta lo que caía afuera. Con ~1.000 posteos
+eso era 0,7–1,5 s por pantalla en un celular (Reportes 1.515 ms, Inicio
+685 ms, Calendario 703 ms). Arreglado (tanda 62 de `docs/REDISENO.md`):
+Reportes 469 ms, Inicio 294 ms, Calendario 261 ms, y con 400 posteos o más el
+toque cierra el menú y atenúa la pantalla en el mismo cuadro.
+
+Lo que queda para otra vuelta, si el celular lo pide: guardar las fechas ya
+expandidas de cada serie por ventana (`fechasEnVentana` sigue siendo ≈ 30 % de
+Reportes), dibujar el Calendario por partes, y el costo de armar y acomodar el
+HTML de las pantallas grandes (hoy ≈ 250–500 ms ×4 CPU).

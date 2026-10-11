@@ -969,6 +969,66 @@ eligió **unirlas así**:
 Pruebas: `agenda_test.mjs` (país, región y ciudad; fallan con el código
 de antes) y `ficha_celular_test.mjs` vuelve a esperar cinco tarjetas.
 
+### 62. El celular que se quedaba colgado — HECHO (11 oct 2026)
+
+El usuario mandó una grabación de pantalla del celular (10/10): tocaba
+«Reportes» en el menú «Más» y el menú seguía abierto, con el botón
+apretado, más de tres segundos, sin que pasara nada. Dijo que pasa mucho.
+
+- **Cómo se reprodujo.** Un Chromium con la CPU frenada 4 veces (como un
+  celular de gama media: `Emulation.setCPUThrottlingRate`) y 973 posteos
+  inventados con la forma de los reales (35 % se repiten, repartidos en
+  tres años). Los tiempos son de ese laboratorio; el porcentaje de series
+  es una suposición, no un dato de la base.
+- **Qué tardaba.** No era dibujar: era *contar fechas*. Cada paso de una
+  serie armaba un `Date`, lo movía y lo pasaba a texto (`addDaysISO`), y
+  eso se hacía miles de veces por pantalla: `nearestOccurrence` (tres
+  `Date` por vuelta, por cada posteo que se repite, en cada dibujado del
+  Inicio), `calcularReporte` (expandía cada serie tres veces: lo planificado,
+  las veces y las fechas), `ultimaActividadPorPais` (tres años de cada serie
+  para saber cuándo fue la última vez) y `calendarioEventsByDate` (copiaba
+  cada vez, hasta las que caían afuera del mes que se mira).
+- **Qué se hizo.**
+  - `addDaysISO` suma con números enteros (días desde 1970 y de vuelta,
+    `diaNumeroISO` / `isoDeDiaNumero`), sin `Date`. Lo que no es una fecha
+    simple sigue por el camino de antes.
+  - `nearestOccurrence` calcula el día de cada fecha una sola vez.
+  - `calcularReporte` expande una sola vez por posteo.
+  - `ultimaActividadPorPais` mira primero las últimas 14 semanas, y recién si
+    no hay nada, un año y después tres.
+  - `calendarioEventsByDate` no copia lo que cae afuera de la ventana.
+  - **Lo que se siente.** Con 400 posteos o más, tocar una pantalla (menú
+    «Más», barra de abajo, atajos) cierra el menú y atenúa la pantalla *en el
+    mismo toque*, y dibuja en el cuadro siguiente (`PANTALLA_PESADA`,
+    `body.cambiando-vista`). Antes el menú se quedaba abierto hasta que
+    terminaba de dibujar. Con menos posteos se dibuja en el momento, como siempre.
+- **Medido** (973 posteos inventados, tarea larga de cada pantalla, antes →
+  después; compu / celular con la CPU ×4):
+
+  | Pantalla | Compu | Celular ×4 |
+  |---|---|---|
+  | Reportes (desde «Más») | 286 → 112 ms | 1.515 → 469 ms |
+  | Inicio (desde Países) | 123 → menos de 50 ms | 685 → 294 ms |
+  | Reportes → Inicio | 138 → 70 ms | 644 → 350 ms |
+  | Calendario | 89 → 66 ms | 703 → 261 ms |
+
+  Y el toque responde en 1–5 ms: el menú se cierra al instante.
+- **Pruebas:** `rendimiento_celular_test.mjs` — las cuentas nuevas contra
+  las de antes día por día (1990–2060, 389.000 sumas, bisiestos y fines de
+  mes), 1.600 listas al azar para la fecha más cercana, los números de
+  Reportes contra una cuenta hecha a mano, «Última actividad por país» contra
+  un posteo suelto puesto el mismo día (las tres ventanas), y lo del toque.
+  Las de cuentas y el toque fallan con el código de antes; la de números
+  pasa con los dos (es justamente lo que tiene que quedar igual).
+- **Queda:** en un celular lento cada pantalla grande sigue tardando
+  entre 250 y 500 ms en dibujarse (ahora con el menú ya cerrado y la
+  pantalla atenuada, no con todo congelado). Lo que más pesa ya no son las
+  fechas sino armar el HTML y que el navegador lo acomode
+  (`syncHeaderHeight` fuerza esa cuenta, pero se pagaría igual en el cuadro
+  siguiente). Si hiciera falta bajar más: guardar las fechas ya calculadas
+  de cada serie por ventana, o dibujar el Calendario por partes. Falta que
+  el usuario confirme en el teléfono.
+
 ### 61. La Agenda abierta desde una región sale filtrada, y la barra de Países pareja — HECHO (10 oct 2026)
 
 Salió de la auditoría del 10/10 (R21). El usuario eligió la opción A de
