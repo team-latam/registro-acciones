@@ -1,0 +1,73 @@
+# ============================================================
+# Mirar cómo va lo que llegó de Google Calendar (solo lectura)
+# ============================================================
+# SOLO LECTURA, a mano (pestaña Actions → «Mirar lo de Calendar» → Run
+# workflow). Cuenta cuánto de lo importado de Google Calendar sigue sin
+# ordenar y cuánto ya está ordenado, con la misma definición que la pantalla
+# Administración › Revisar lo de Calendar. No escribe nada y no muestra
+# títulos, fechas ni nombres: solo cantidades (los registros de Actions son
+# públicos). El detalle, en supabase/verificar/calendar.sql.
+#
+# Usa la misma dirección de la base que «Base de datos» (SUPABASE_DB_URL).
+# ============================================================
+name: Mirar lo de Calendar
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verificar:
+    name: Cómo va lo de Calendar, en la base de verdad
+    # Las llaves de verdad solo corren desde main (pruebas/workflows_test.mjs).
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    # En la misma cola que la copia y la limpieza: no se mira la base mientras
+    # otra cosa la está moviendo.
+    concurrency:
+      group: respaldo
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+
+      - name: Que haya psql
+        run: |
+          if ! command -v psql >/dev/null; then
+            sudo apt-get update && sudo apt-get install -y postgresql-client
+          fi
+
+      - name: ¿Está puesta la dirección de la base?
+        id: revisar
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "hay=no" >> "$GITHUB_OUTPUT"
+            echo "### Falta el secreto SUPABASE_DB_URL" >> "$GITHUB_STEP_SUMMARY"
+            echo "Se carga en Settings → Secrets and variables → Actions." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "hay=si" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Contar lo de Calendar (solo lectura)
+        if: steps.revisar.outputs.hay == 'si'
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -o pipefail
+          psql "$SUPABASE_DB_URL" -X -q -f supabase/verificar/calendar.sql 2>&1 | tee salida.txt
+
+      - name: Dejarlo dicho
+        if: always() && steps.revisar.outputs.hay == 'si'
+        run: |
+          {
+            echo "### Cómo va lo que llegó de Google Calendar"
+            echo ""
+            echo '```'
+            cat salida.txt 2>/dev/null || echo "(la corrida no llegó a dar resultado)"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
