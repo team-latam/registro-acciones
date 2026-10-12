@@ -21460,6 +21460,10 @@ function partesDeLugar(post, L){
 }
 const fechaDePost = p => String(p.startDate || p.date || "");
 const diasDesde = iso => iso ? Math.floor((isoDate(todayISO()) - isoDate(String(iso).slice(0, 10))) / 86400000) : null;
+// «N días» con su singular, para frases con «hace» o «ago»: sin esto salía «hace 1 días» / «1 days ago» (12/10/2026).
+const diasUnidad = d => d === 1 ? t("1 día","1 day","1 dia","יום") : t("{n} días","{n} days","{n} dias","{n} ימים",{ n: d });
+// «hace 3 días», «hace 1 día» y, el mismo día, «hoy» (nunca «hace 0 días»).
+const haceDiasTxt = d => d <= 0 ? t("hoy","today","hoje","היום") : t("hace {d}","{d} ago","há {d}","לפני {d}",{ d: diasUnidad(d) });
 const esDeCalendar = p => !p.authorEmail && /google calendar/i.test(p.authorName || "");
 // Quién FUE (a la visita, al curso…), no quién lo cargó. Hasta el 7/10/2026
 // era quien lo había cargado (o el organizador en Calendar), y la ficha de
@@ -21534,14 +21538,20 @@ function lecturaDeFicha(D, L){
     const dias = Math.max(0, diasDesde(fin));
     const quien = quienDe(ultimaVisita);
     const anio = D.visitas.filter(p => yaPaso(p) && diasDesde(fechaDePost(p)) <= 365).length;
-    let txt = t("Última visita hace <b>{d} días</b> ({f}){q}.","Last visit <b>{d} days</b> ago ({f}){q}.","Última visita há <b>{d} dias</b> ({f}){q}.","ביקור אחרון לפני <b>{d} ימים</b> ({f}){q}.",
-      { d: dias, f: esc(fechaDeTarjeta(fechaDePost(ultimaVisita), ultimaVisita.endDate, null, null).dias), q: quien ? t(", por <b>{n}</b>",", by <b>{n}</b>",", por <b>{n}</b>",", על ידי <b>{n}</b>",{ n: esc(quien) }) : "" });
+    const cuando = esc(fechaDeTarjeta(fechaDePost(ultimaVisita), ultimaVisita.endDate, null, null).dias);
+    const porQuien = quien ? t(", por <b>{n}</b>",", by <b>{n}</b>",", por <b>{n}</b>",", על ידי <b>{n}</b>",{ n: esc(quien) }) : "";
+    let txt = dias === 0
+      ? t("Última visita <b>hoy</b> ({f}){q}.","Last visit <b>today</b> ({f}){q}.","Última visita <b>hoje</b> ({f}){q}.","ביקור אחרון <b>היום</b> ({f}){q}.", { f: cuando, q: porQuien })
+      : t("Última visita hace <b>{d}</b> ({f}){q}.","Last visit <b>{d}</b> ago ({f}){q}.","Última visita há <b>{d}</b> ({f}){q}.","ביקור אחרון לפני <b>{d}</b> ({f}){q}.", { d: diasUnidad(dias), f: cuando, q: porQuien });
     txt += " " + (anio === 1 ? t("Fue la única de los últimos 12 meses.","It was the only one in the last 12 months.","Foi a única dos últimos 12 meses.","היחיד ב-12 החודשים האחרונים.")
       : t("<b>{n} visitas</b> en los últimos 12 meses.","<b>{n} visits</b> in the last 12 months.","<b>{n} visitas</b> nos últimos 12 meses.","<b>{n} ביקורים</b> ב-12 החודשים האחרונים.",{ n: anio }));
     out.push({ ic: "🕐", html: txt, alerta: dias > 180 });
     if(dias > 180) out.push({ ic: "⚠️", html: t("Hace más de <b>6 meses</b> que no hay una visita.","No visit in more than <b>6 months</b>.","Há mais de <b>6 meses</b> sem visita.","אין ביקור כבר יותר מ-<b>6 חודשים</b>."), alerta: true });
   } else if(ultimoRegistro){
-    out.push({ ic: "🕐", html: t("Todavía no hay visitas cargadas. Último registro hace <b>{d} días</b>.","No visits logged yet. Last record <b>{d} days</b> ago.","Ainda não há visitas. Último registro há <b>{d} dias</b>.","עדיין אין ביקורים. רשומה אחרונה לפני <b>{d} ימים</b>.",{ d: Math.max(0, diasDesde(fechaDePost(ultimoRegistro))) }) });
+    out.push({ ic: "🕐", html: (() => { const d = Math.max(0, diasDesde(fechaDePost(ultimoRegistro)));
+      return d === 0
+        ? t("Todavía no hay visitas cargadas. Último registro <b>hoy</b>.","No visits logged yet. Last record <b>today</b>.","Ainda não há visitas. Último registro <b>hoje</b>.","עדיין אין ביקורים. רשומה אחרונה <b>היום</b>.")
+        : t("Todavía no hay visitas cargadas. Último registro hace <b>{d}</b>.","No visits logged yet. Last record <b>{d}</b> ago.","Ainda não há visitas. Último registro há <b>{d}</b>.","עדיין אין ביקורים. רשומה אחרונה לפני <b>{d}</b>.",{ d: diasUnidad(d) }); })() });
   }
   if(D.objUltima && D.objUltima.total){
     out.push({ ic: "🎯", html: t("En la última visita con Cierre se lograron <b>{a} de {b} objetivos</b>.","The latest visit with a Closure achieved <b>{a} of {b} goals</b>.","Na última visita com Fechamento foram alcançados <b>{a} de {b} objetivos</b>.","בביקור האחרון עם סגירה הושגו <b>{a} מתוך {b} מטרות</b>.",{ a: D.objUltima.si, b: D.objUltima.total })
@@ -21575,7 +21585,8 @@ function lecturaDeFicha(D, L){
   const vienen = D.visibles.filter(p => fechaDePost(p).startsWith(anio) && fechaDePost(p).slice(0, 10) > hoyF && !p.cancelled).length;
   const anioPasado = D.visibles.filter(p => fechaDePost(p).startsWith(antes)).length;
   if(esteAnio || anioPasado){
-    let txt = t("Este año: <b>{n} registros</b>","This year: <b>{n} records</b>","Este ano: <b>{n} registros</b>","השנה: <b>{n} רשומות</b>",{ n: esteAnio });
+    let txt = esteAnio === 1 ? t("Este año: <b>1 registro</b>","This year: <b>1 record</b>","Este ano: <b>1 registro</b>","השנה: <b>רשומה אחת</b>")
+      : t("Este año: <b>{n} registros</b>","This year: <b>{n} records</b>","Este ano: <b>{n} registros</b>","השנה: <b>{n} רשומות</b>",{ n: esteAnio });
     if(anioPasado) txt += esteAnio > anioPasado ? t(", más que en {a} ({m}).",", more than in {a} ({m}).",", mais que em {a} ({m}).",", יותר מב-{a} ({m}).",{ a: antes, m: anioPasado })
       : esteAnio < anioPasado ? t(", menos que en {a} ({m}).",", fewer than in {a} ({m}).",", menos que em {a} ({m}).",", פחות מב-{a} ({m}).",{ a: antes, m: anioPasado })
       : t(", igual que en {a}.",", same as in {a}.",", igual a {a}.",", כמו ב-{a}.",{ a: antes });
@@ -21678,7 +21689,7 @@ function renderFichaLugar(L){
   const primera = D.visitas[D.visitas.length - 1];
   const stats = `<div class="fl-stats">
     <div class="fl-stat"><small>${t("Visitas","Visits","Visitas","ביקורים")}</small><b>${D.visitas.length}</b><span>${primera ? esc(t("desde {f}","since {f}","desde {f}","מאז {f}",{ f: fmtISO(fechaDePost(primera), { month:"short", year:"numeric" }) })) : esc(t("todavía ninguna","none yet","nenhuma ainda","עדיין אין"))}</span></div>
-    <div class="fl-stat"><small>${t("Última","Latest","Última","אחרון")}</small><b>${ultima ? esc(t("hace {d} días","{d} days ago","há {d} dias","לפני {d} ימים",{ d: Math.max(0, diasDesde(ultima.endDate || fechaDePost(ultima))) })) : "—"}</b><span>${ultima ? esc(fechaDeTarjeta(fechaDePost(ultima), ultima.endDate, null, null).dias) : ""}</span></div>
+    <div class="fl-stat"><small>${t("Última","Latest","Última","אחרון")}</small><b>${ultima ? esc(haceDiasTxt(Math.max(0, diasDesde(ultima.endDate || fechaDePost(ultima))))) : "—"}</b><span>${ultima ? esc(fechaDeTarjeta(fechaDePost(ultima), ultima.endDate, null, null).dias) : ""}</span></div>
     <div class="fl-stat"><small>${t("Objetivos","Goals","Objetivos","מטרות")}</small><b>${D.obj.total ? esc(t("{a} de {b}","{a} of {b}","{a} de {b}","{a} מתוך {b}",{ a: D.obj.si, b: D.obj.total })) : "—"}</b><span>${D.obj.total ? esc(t("logrados ({p}%)","achieved ({p}%)","alcançados ({p}%)","הושגו ({p}%)",{ p: Math.round(D.obj.si * 100 / D.obj.total) })) : esc(t("sin Cierres leídos","no Closures read","sem Fechamentos lidos","אין סגירות שנקראו"))}</span></div>
     <div class="fl-stat"><small>${t("Lo que sigue","What's next","O que segue","מה הלאה")}</small><b>${D.pendientes.length}</b><span>${esc(t("abiertos · {n} hechos","open · {n} done","abertos · {n} feitos","פתוחים · {n} בוצעו",{ n: D.hechos.length }))}</span></div>
   </div>`;
@@ -21832,7 +21843,7 @@ function renderFichaLugar(L){
       // Solo lo hecho: con una visita planificada decía «último: hace 0 días» (10/10/2026, R1).
       const ult = h.posts.filter(yaPaso).map(fechaDePost).sort().pop();
       const pend = h.posts.reduce((n, p) => n + pasosPendientes(partesDeLugar(p, h.L)).length, 0);
-      act = (ult ? t("último: hace {d} días","latest: {d} days ago","último: há {d} dias","אחרון: לפני {d} ימים",{ d: Math.max(0, diasDesde(ult)) }) : t("todavía nada hecho","nothing done yet","ainda nada feito","עדיין לא נעשה דבר")) + (pend ? " · " + t("{n} pendientes","{n} pending","{n} pendentes","{n} ממתינים",{ n: pend }) : "");
+      act = (ult ? t("último: {x}","latest: {x}","último: {x}","אחרון: {x}",{ x: haceDiasTxt(Math.max(0, diasDesde(ult))) }) : t("todavía nada hecho","nothing done yet","ainda nada feito","עדיין לא נעשה דבר")) + (pend ? " · " + t("{n} pendientes","{n} pending","{n} pendentes","{n} ממתינים",{ n: pend }) : "");
     } else act = t("Sin actividad todavía","No activity yet","Sem atividade ainda","אין עדיין פעילות");
     let gente = "";
     if(f.insts.length){
