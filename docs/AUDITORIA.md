@@ -250,13 +250,14 @@ Nada.
   de 1 GB).
 - **Ramas:** solo `main`; cero `claude/…` sueltas; cero PRs.
 - **Uso de las funciones:** no se puede medir desde acá sin tocar la base
-  real; queda como estaba (M3: 925 posteos de Calendar sin clasificar,
-  tiempo del usuario).
+  real; queda como estaba. ~~M3: 925 posteos de Calendar sin clasificar~~
+  ✅ 12/10: el usuario los ordenó con la herramienta (874 de 875 importados
+  ordenados, 1 pendiente, 42 sacados del Registro; `Mirar lo de Calendar`).
 
 ## Lo que sigue abierto de las anteriores
 
 De la del 9/10: A17 (= R26) y A18 (= D8). De la del 7/10: E8, P7, P8, P12
-(bajos), P13, E10, E11 (opcionales). De la del 6/10: I7 (= R12), M3, M4
+(bajos), P13, E10, E11 (opcionales). De la del 6/10: I7 (= R12), M4
 (un solo buscador en escritorio), B3, O1 (dominio propio), O2 (escribir en
 Calendar con la cuenta de servicio), O4 (instalable), O5 (= D1), O6, y la
 confirmación 6 (= D8). Decidido y no se vuelve a proponer: la IP en el
