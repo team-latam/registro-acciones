@@ -20,7 +20,7 @@ begin;
 \pset null '-'
 
 create temp view imp as
-  select p.id, p.calendar_event_id as evento, p.activity_type, p.cancelled,
+  select p.id, p.calendar_event_id as evento, p.activity_type, p.cancelled, p.created_at,
          (p.activity_type <> 'otro'
           or jsonb_array_length(p.scopes) > 0
           or jsonb_array_length(p.participants) > 0
@@ -81,5 +81,14 @@ select coalesce(s.grupo, 'sin sugerencia') as pestana_sugerida, i.activity_type 
  where i.tocado
  group by 1, 2
  order by 1, 3 desc;
+
+\echo
+\echo '== Lo que entró de Calendar, por semana de llegada (las últimas 8 semanas con algo)'
+select date_trunc('week', created_at)::date as semana, count(*) as llegaron,
+       count(*) filter (where not tocado) as todavia_sin_ordenar
+  from imp
+ group by 1
+ order by 1 desc
+ limit 8;
 
 rollback;
