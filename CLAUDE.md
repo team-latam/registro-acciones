@@ -178,5 +178,15 @@ antes.
 - **Modales accesibles**: `role="dialog"`, `aria-modal="true"`, el foco
   entra al abrir y vuelve al trigger al cerrar, `trapTabWithin()` cicla Tab,
   y Escape cierra en el orden de prioridad ya definido.
+- **El recorrido de bienvenida cuenta el sistema de hoy** (`tourSteps()`, el
+  que ve una cuenta recién aprobada la primera vez que entra). Al sumar,
+  sacar o cambiar algo grande que ve el equipo —una solapa, un ítem del
+  menú, lo que hace una pantalla, un botón principal— se revisa el
+  recorrido en la misma tanda: se suma, se saca o se reescribe el paso
+  (cuatro idiomas), y si una pantalla no necesita paso se anota en
+  `TOUR_SIN_PASO` con el motivo. `pruebas/tour_test.mjs` compara los pasos
+  con la navegación real (compu y celular, integrante, observador y admin)
+  y falla si una pantalla queda sin paso; lo que no puede ver es que una
+  pantalla existente cambie de función, y eso es de quien hace el cambio.
 - **Commits en español**, explicando el "por qué" del cambio, no sólo el
   "qué".

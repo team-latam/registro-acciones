@@ -969,6 +969,38 @@ eligió **unirlas así**:
 Pruebas: `agenda_test.mjs` (país, región y ciudad; fallan con el código
 de antes) y `ficha_celular_test.mjs` vuelve a esperar cinco tarjetas.
 
+### 66. El recorrido de bienvenida, al día y con un guardia — HECHO (12 oct 2026)
+
+El usuario pidió asegurarse de que quien entra por primera vez vea cómo
+funciona el sistema **de ahora**, y que eso se vaya ajustando a medida que la
+app cambia. Al mirarlo, el recorrido había quedado atrás: contaba Vistas,
+Calendario y Proyectos y nada más.
+
+- **Lo que estaba mal:** en el celular quedaba en dos paradas (las solapas de
+  arriba no existen ahí y el recorrido las saltaba), el observador no veía
+  ninguna, y faltaban Países, Reportes, Novedades y Tu cuenta.
+- **Ahora** (`tourSteps()`): quien escribe ve 9 paradas (Inicio, «¿Qué hiciste
+  hoy?», el +, Países, Calendario, Proyectos, Reportes, Novedades, Tu cuenta) y
+  el observador 7 (la que explica su rol y las comunes). En el celular,
+  Proyectos y Reportes señalan el botón «Más» y el texto lo dice. Cuatro
+  idiomas. Administración queda afuera a propósito (solo la ven los admins y
+  tiene su propia ayuda): está anotada en `TOUR_SIN_PASO` con el motivo.
+- **Cómo se mantiene al día:** cada paso declara qué pantallas explica
+  (`cubre`) y `pruebas/tour_test.mjs` las compara con la navegación real (solapas,
+  barra de abajo, «Más», menú del avatar; compu y celular; integrante,
+  observador y admin). Si alguien suma una solapa o un ítem de menú y ningún paso
+  la cubre, o un paso habla de algo que ya no existe, la prueba falla y dice
+  cuál. Lo que no puede detectar —que una pantalla existente cambie de
+  función— queda como regla en `CLAUDE.md` y como punto fijo en el método de
+  auditoría.
+- **Sin cambios:** quién lo ve (cuentas aprobadas desde el 11/9/2026, una sola
+  vez, anotado por cuenta). Sigue sin haber botón para volver a verlo (se sacó
+  el 11/9 para liberar el lugar en el menú del avatar); se le preguntó al
+  usuario si lo quiere de vuelta.
+- **Pruebas:** `tour_test.mjs` (79 comprobaciones). Falla con el recorrido de
+  antes, con una solapa nueva sin paso, sin el paso de Reportes, sin la
+  excepción de Administración y con un paso que cubre una pantalla inexistente.
+
 ### 65. Se retira la pantalla «Revisar lo de Calendar» — HECHO (12 oct 2026)
 
 El usuario terminó de ordenar lo que llegó de Google Calendar (875 de 875,

@@ -81,6 +81,7 @@ informe; «a mano» = criterio de quien audita.
 | **GitHub** | Acciones fijadas por huella y con versión nueva (sobre todo una mayor: suele venir porque la anterior quedó vieja); avisos amarillos en las corridas («deprecated»); sintaxis (actionlint); permisos, tiempos máximos, llaves solo desde main, nada pegado en un `run:`; lo que corre solo y cuándo; Settings: Pages, permisos de Actions, escaneo de secretos | `github`, `pruebas/workflows_test.mjs`; a mano: los avisos de la última corrida y los Settings |
 | **Privacidad** | Datos personales en el repo público; qué se manda a servicios de afuera; qué se guarda de cada persona y por cuánto | `seguridad`; a mano |
 | **Accesibilidad** | Teclado en todo; foco visible; contraste; movimiento reducido; lectores de pantalla | `pantallas`; a mano |
+| **Recorrido de bienvenida** | Lo primero que ve una cuenta nueva: ¿cuenta el sistema de hoy? Pantallas y menús sin paso; pasos que explican algo que cambió de función; que en el celular señale lo que de verdad hay | `pruebas/tour_test.mjs` (pantallas sin paso y pasos de pantallas que ya no están); a mano: que lo que dice cada paso siga siendo cierto |
 | **Uso de las funciones** | Qué se usa y qué no (en los datos de la base, sin sacar datos: solo cantidades); lo que confunde; duplicados | a mano |
 | **Crítica del uso** | Recorrer la app como alguien del equipo: cargar, buscar, revisar, reportar. Qué cuesta, qué sobra, qué falta | a mano |
 | **Operación** | Tokens y llaves que vencen; cuotas del plan gratis; Settings de Pages; dominio (`docs/DOMINIO.md`) | a mano |
@@ -102,8 +103,9 @@ Un mismo hallazgo sube de nivel si se repite (ver `RECURRENTES.md`).
 
 - [ ] Las políticas de la base (`supabase/02-politicas.sql`) con un rol por vez: afuera, observador, integrante, admin.
 - [ ] Capturas de cada vista en escritorio y celular, claro y oscuro, y en hebreo: ¿algo se ve raro, desalineado o sobrecargado?
+- [ ] El recorrido de bienvenida (`tourSteps()`): abrirlo como una cuenta nueva en compu y celular y leer cada paso contra la pantalla real — ¿algo cambió de función desde la última vez? (La prueba avisa de pantallas nuevas sin paso; no puede saber que Reportes, por ejemplo, ahora hace otra cosa.)
 - [ ] Sobrecarga: ¿qué pantalla tiene más de lo que se usa? ¿Qué botón sobra?
-- [ ] La crítica del uso: cargar un evento, una rutina, buscar algo viejo, armar un reporte, revisar lo de Calendar.
+- [ ] La crítica del uso: cargar un evento, una rutina, buscar algo viejo, armar un reporte, mirar el Calendario.
 - [ ] Almacenamiento: el medidor del bucket y la última limpieza.
 - [ ] Las corridas de Actions: copia del domingo, Calendar, «¿Está arriba?», «Base de datos». Y los avisos amarillos (*annotations*) de la última de cada una: ahí GitHub avisa lo que va a dejar de andar.
 - [ ] Settings de GitHub (los mira el usuario, con los pasos): Pages → Source en «GitHub Actions»; Actions → Workflow permissions en «Read»; Code security → Secret scanning y Push protection prendidos.

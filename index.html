@@ -19293,9 +19293,10 @@ confirmOverlay.addEventListener("click", e=>{ if(e.target === confirmOverlay) cl
 
 // Tutorial de bienvenida: en vez de un cartel centrado que explica la
 // app en abstracto, va señalando las partes reales de la pantalla con el
-// resto atenuado. Tres paradas, textos cortos y concretos a propósito:
-// la idea es que la persona sepa qué es cada cosa y salga a probarla,
-// no leer un manual — para eso está el README.
+// resto atenuado. Textos cortos y concretos a propósito: la idea es que la
+// persona sepa qué es cada cosa y salga a probarla, no leer un manual —
+// para eso está el README. Qué pasos tiene y cómo se mantiene al día: ver
+// TOUR_SIN_PASO y tourSteps() más abajo.
 //
 // Aparece SOLO para cuentas nuevas, una vez: la primera vez que entra
 // alguien aprobado a partir de TOUR_ELIGIBLE_FROM. Quien ya venía usando
@@ -19308,68 +19309,97 @@ confirmOverlay.addEventListener("click", e=>{ if(e.target === confirmOverlay) cl
 // cae a localStorage para no quedar mostrándolo en bucle.
 const TOUR_ELIGIBLE_FROM = Date.UTC(2026, 8, 11); // cuentas aprobadas desde el 11/9/2026
 const TOUR_FALLBACK_KEY = "ra_tour_seen";
-// Función y no array fijo: el título/texto depende del idioma actual en
-// cada render (mismo motivo que userRoleLabel/activityTiers), y el
-// recorrido en sí depende del rol — ver más abajo.
-// Cada solapa (salvo las de admin) se señala con su propio paso en vez
-// de un único "acá están todas" con las cuatro nombradas a mano: así no
-// queda desactualizado cuando se suma o saca una (pasó con Proyectos,
-// que no se mencionaba en ningún paso).
-function tabTourSteps(){
-  return [
-    { key:"paises", target:'nav.tabs button[data-view="paises"]',
-      title: t("Vistas","Views","Vistas","תצוגות"),
-      text: t("Lo cargado, agrupado por país y ciudad — en lista o en mapa.","What's logged, grouped by country and city — as a list or a map.","O que foi registrado, agrupado por país e cidade — em lista ou mapa.","מה שתועד, מקובץ לפי מדינה ועיר — כרשימה או כמפה.") },
-    { key:"calendario", target:'nav.tabs button[data-view="calendario"]',
-      title: t("Calendario","Calendar","Calendário","יומן"),
-      text: t("Los eventos por fecha, mes a mes, como el Google Calendar del equipo.","Events by date, month by month, like the team's Google Calendar.","Os eventos por data, mês a mês, como o Google Calendar da equipe.","האירועים לפי תאריך, חודש אחר חודש, כמו יומן Google של הצוות.") },
-    { key:"proyectos", target:'nav.tabs button[data-view="proyectos"]',
-      title: t("Proyectos","Projects","Projetos","פרויקטים"),
-      text: t("Cualquier Evento puede pasar a ser un proyecto, con hitos y fecha de cada uno — esta solapa junta todos los que tenés en marcha.","Any Event can become a project, with milestones and a date for each — this tab gathers all the ones you're running.","Qualquer Evento pode virar um projeto, com marcos e data de cada um — esta aba reúne todos os que você tem em andamento.","כל אירוע יכול להפוך לפרויקט, עם אבני דרך ותאריך לכל אחת — הלשונית הזו מרכזת את כל הפרויקטים הפעילים שלך.") },
-  ];
-}
+// QUÉ TIENE QUE EXPLICAR EL RECORRIDO — y cómo se mantiene al día.
+// El recorrido es lo primero que ve alguien nuevo: tiene que contar el sistema de HOY. Cada paso dice qué
+// pantallas de la navegación explica (`cubre`) y pruebas/tour_test.mjs compara eso con la navegación real, en
+// compu y en celular, para integrante y observador: si se suma una solapa o una pantalla del menú y ningún
+// paso la cubre, la prueba falla y dice cuál. Al sumar, sacar o cambiar algo grande que ve el equipo, se toca
+// acá (y al revés: si algo no necesita paso, se anota en TOUR_SIN_PASO con el porqué). Ver CLAUDE.md.
+const TOUR_SIN_PASO = {
+  admin: "Administración es solo de admins y tiene su propio menú con una línea de ayuda en cada sección; el recorrido es para todo el equipo.",
+};
+// El control que lleva a una pantalla: la solapa de arriba en la compu, la barra de abajo en el celular. Lo que en
+// el celular vive dentro de «Más» (Proyectos, Reportes) se señala con ese botón y el texto lo avisa.
+const tourNav = view => [`nav.tabs button[data-view="${view}"]`, `.bn-item[data-view="${view}"]`];
+const TOUR_MAS = '.bn-item[data-action="toggle-more-menu"]';
+// Función y no array fijo: el título/texto depende del idioma actual en cada render (mismo motivo que
+// userRoleLabel/activityTiers), y el recorrido en sí depende del rol — ver más abajo.
 function tourSteps(){
+  const enMas = txt => t("En «Más»: ","Under “More”: ","Em «Mais»: ","תחת «עוד»: ") + txt;
+  const inicio = { id:"inicio", cubre:["feed"], target: tourNav("feed"),
+    title: t("Inicio","Home","Início","ראשי"),
+    text: t("Todo lo que carga el equipo. «Lo que pasó» y «Próximos» van separados; con «Filtros» y el buscador llegás a lo que necesitás por lugar, fecha, tipo o persona.",
+      "Everything the team logs. “What happened” and “Upcoming” are kept apart; with “Filters” and the search you find what you need by place, date, type or person.",
+      "Tudo o que a equipe carrega. «O que aconteceu» e «Próximos» ficam separados; com «Filtros» e a busca você chega ao que precisa por lugar, data, tipo ou pessoa.",
+      "כל מה שהצוות מתעד. «מה קרה» ו«בקרוב» מופרדים; עם «מסננים» והחיפוש אפשר למצוא הכול לפי מקום, תאריך, סוג או אדם.") };
+  const comun = [
+    { id:"paises", cubre:["paises"], target: tourNav("paises"),
+      title: t("Países","Countries","Países","מדינות"),
+      text: t("Lo cargado por país y ciudad, en lista o en mapa. Cada lugar tiene su ficha, con lo que se hizo ahí y su Agenda de contactos.",
+        "What's logged by country and city, as a list or a map. Each place has its own page, with what was done there and its contact Directory.",
+        "O que foi carregado por país e cidade, em lista ou mapa. Cada lugar tem sua ficha, com o que foi feito lá e sua Agenda de contatos.",
+        "מה שתועד לפי מדינה ועיר, ברשימה או במפה. לכל מקום יש כרטיס, עם מה שנעשה שם וספר הטלפונים שלו.") },
+    { id:"calendario", cubre:["calendario"], target: tourNav("calendario"),
+      title: t("Calendario","Calendar","Calendário","יומן"),
+      text: t("Los eventos por fecha, como el Google Calendar del equipo: en mes, semana, año o agenda.",
+        "Events by date, like the team's Google Calendar: by month, week, year or agenda.",
+        "Os eventos por data, como o Google Calendar da equipe: em mês, semana, ano ou agenda.",
+        "האירועים לפי תאריך, כמו Google Calendar של הצוות: לפי חודש, שבוע, שנה או סדר יום.") },
+    { id:"proyectos", cubre:["proyectos"], target: [...tourNav("proyectos"), TOUR_MAS],
+      title: t("Proyectos","Projects","Projetos","פרויקטים"),
+      text: t("Cualquier Evento puede pasar a ser un proyecto, con hitos y fecha de cada uno — esta solapa junta todos los que tenés en marcha.",
+        "Any Event can become a project, with milestones and a date for each — this tab gathers all the ones you're running.",
+        "Qualquer Evento pode virar um projeto, com marcos e data de cada um — esta aba reúne todos os que você tem em andamento.",
+        "כל אירוע יכול להפוך לפרויקט, עם אבני דרך ותאריך לכל אחת — הלשונית הזו מרכזת את כל אלה שבתהליך אצלך."),
+      textoMas: true },
+    { id:"reportes", cubre:["reportes"], target: [...tourNav("reportes"), TOUR_MAS],
+      title: t("Reportes","Reports","Relatórios","דוחות"),
+      text: t("Cuántas actividades hubo por mes, país, tipo y persona, contra el período anterior. Tocá un mes del gráfico para ver su ficha.",
+        "How many activities there were by month, country, type and person, against the previous period. Tap a month in the chart to see its card.",
+        "Quantas atividades houve por mês, país, tipo e pessoa, em relação ao período anterior. Toque em um mês do gráfico para ver a ficha dele.",
+        "כמה פעילויות היו לפי חודש, מדינה, סוג ואדם, מול התקופה הקודמת. הקש/י על חודש בגרף כדי לראות את הכרטיס שלו."),
+      textoMas: true },
+    { id:"novedades", cubre:[], target: ["#mentionsBell .bell-btn"],
+      title: t("Novedades","Updates","Novidades","עדכונים"),
+      text: t("Acá ves si te mencionan, si te responden, si alguien cambia uno de tus eventos y qué viene en estos días.",
+        "Here you see if someone mentions you, replies to you, changes one of your events, and what's coming up.",
+        "Aqui você vê se alguém te menciona, responde, muda um dos seus eventos e o que vem por aí.",
+        "כאן רואים אם מזכירים אותך, עונים לך, משנים אחד מהאירועים שלך ומה מתקרב.") },
+    { id:"cuenta", cubre:["configuracion"], target: [".avatar-btn"],
+      title: t("Tu cuenta","Your account","Sua conta","החשבון שלך"),
+      text: t("Tus preferencias (avisos por correo, formato de fecha), el idioma y el tono claro u oscuro. Para salir, también.",
+        "Your preferences (email alerts, date format), the language and light or dark tone. And sign out, too.",
+        "Suas preferências (avisos por e-mail, formato de data), o idioma e o tom claro ou escuro. E também para sair.",
+        "ההעדפות שלך (התראות במייל, פורמט תאריך), השפה והגוון בהיר או כהה. וגם ההתנתקות.") },
+  ];
   if(!canWrite()){
-    // Observador: sin composer ni FAB (no existen en su pantalla), así
-    // que antes el recorrido se degradaba solo a un único paso genérico
-    // (los pasos de escritura no encontraban su target y se saltaban
-    // todos). Ahora tiene su propio recorrido real, por solapa.
+    // Observador: sin composer ni FAB (no existen en su pantalla). Su recorrido arranca explicando el rol,
+    // señalando el Inicio, y sigue con lo mismo que el resto (el Inicio ya está contado en ese primer paso).
     return [
-      {
-        target: 'nav.tabs button[data-view="feed"]',
+      { id:"observador", cubre:["feed"], target: tourNav("feed"),
         title: t("Tu cuenta ve todo, sin publicar","Your account sees everything, without posting","Sua conta vê tudo, sem publicar","החשבון שלך רואה הכול, בלי לפרסם"),
-        text: t(
-          "Entrás como observador: podés leer todo el registro del equipo, pero no cargar ni editar posteos. Este recorrido te muestra dónde encontrar cada cosa.",
+        text: t("Entrás como observador: podés leer todo el registro del equipo, pero no cargar ni editar posteos. Este recorrido te muestra dónde encontrar cada cosa.",
           "You're in as an observer: you can read the whole team log, but not create or edit posts. This tour shows you where to find everything.",
-          "Você entra como observador: pode ler todo o registro da equipe, mas não criar ou editar postagens. Este recorrido mostra onde encontrar cada coisa.",
-          "נכנסת כצופה/ה: אפשר לקרוא את כל יומן הצוות, אך לא ליצור או לערוך פרסומים. הסיור הזה מראה איפה למצוא הכול."
-        ),
-      },
-      ...tabTourSteps(),
+          "Você entra como observador: pode ler todo o registro da equipe, mas não criar ou editar postagens. Este tour mostra onde encontrar cada coisa.",
+          "נכנסת כמשקיף/ה: אפשר לקרוא את כל יומן הצוות, אך לא ליצור או לערוך פרסומים. הסיור הזה מראה איפה למצוא הכול.") },
+      ...comun,
     ];
   }
   return [
-    {
-      target: ".quick-composer",
+    inicio,
+    { id:"composer", cubre:[], target: [".quick-composer"],
       title: t("¿Qué hiciste hoy?","What did you do today?","O que você fez hoje?","?מה עשית היום"),
-      text: t(
-        "Contá tu día en una línea. Podés sumarle lugar, foto, PDF o link. Sale al Feed al instante.",
+      text: t("Contá tu día en una línea. Podés sumarle lugar, foto, PDF o link. Sale al Feed al instante.",
         "Tell your day in one line. You can add a place, photo, PDF or link. It goes straight to the Feed.",
         "Conte seu dia em uma linha. Você pode somar lugar, foto, PDF ou link. Sai no Feed na hora.",
-        "ספר/י על היום שלך בשורה אחת. אפשר להוסיף מקום, תמונה, PDF או קישור. זה עולה לפיד מיד."
-      ),
-    },
-    {
-      target: "#fab",
+        "ספר/י על היום שלך בשורה אחת. אפשר להוסיף מקום, תמונה, PDF או קישור. זה עולה לפיד מיד.") },
+    { id:"crear", cubre:[], target: ["#fab"],
       title: t("Crear","Create","Criar","יצירה"),
-      text: t(
-        "El + está en todas las solapas. Desde acá cargás un Evento —visita, curso, seminario o congreso, con fecha y participantes, sincronizado al Calendar de Team LatAm— o una Rutina.",
-        "The + is on every tab. From here you add an Event —visit, course, seminar or congress, with date and participants, synced to Team LatAm's Calendar— or a Routine.",
-        "O + está em todas as abas. Daqui você carrega um Evento —visita, curso, seminário ou congresso, com data e participantes, sincronizado ao Calendar do Team LatAm— ou uma Rotina.",
-        "ה-+ נמצא בכל הלשוניות. מכאן מוסיפים אירוע — ביקור, קורס, סמינר או כנס, עם תאריך ומשתתפים, מסונכרן ליומן של Team LatAm — או שגרה."
-      ),
-    },
-    ...tabTourSteps(),
+      text: t("El + está en todas las solapas. Desde acá cargás un Evento —con fecha, lugar y participantes, sincronizado al Calendar de Team LatAm— o una Rutina. Cada tipo de evento pide sus documentos; la tarjeta te dice cuántos faltan.",
+        "The + is on every tab. From here you add an Event —with date, place and participants, synced to Team LatAm's Calendar— or a Routine. Each type of event asks for its documents; the card tells you how many are missing.",
+        "O + está em todas as abas. Daqui você carrega um Evento —com data, lugar e participantes, sincronizado ao Calendar do Team LatAm— ou uma Rotina. Cada tipo de evento pede seus documentos; o cartão diz quantos faltam.",
+        "ה-+ נמצא בכל הלשוניות. מכאן מוסיפים אירוע — עם תאריך, מקום ומשתתפים, מסונכרן ליומן של Team LatAm — או שגרה. כל סוג אירוע מבקש את המסמכים שלו; הכרטיס אומר כמה חסרים.") },
+    ...comun,
   ];
 }
 const tourLayer = document.getElementById("tourLayer");
@@ -19398,7 +19428,11 @@ function markTourSeen(){
 function renderTourStep(){
   const steps = tourSteps();
   const step = steps[tourStep];
-  const el = step && document.querySelector(step.target);
+  // El destino puede tener varias opciones (la solapa de arriba o la barra de abajo): vale la primera que se ve.
+  const opciones = step ? [].concat(step.target) : [];
+  const visible = sel => { const e = document.querySelector(sel); const b = e && e.getBoundingClientRect(); return !!(b && b.width && b.height); };
+  const elegido = opciones.find(visible);
+  const el = elegido && document.querySelector(elegido);
   const r = el && el.getBoundingClientRect();
   // Si el elemento señalado no está en pantalla (o quedó oculto), seguí
   // de largo en vez de dibujar un globo apuntando a la nada.
@@ -19420,11 +19454,13 @@ function renderTourStep(){
   const arrowLeft = Math.max(16, Math.min(r.left + r.width / 2 - calloutLeft - 7, calloutW - 30));
   const vertical = below ? `top:${holeTop + holeH + 12}px` : `bottom:${vh - holeTop + 12}px`;
 
+  // Lo que está dentro de «Más» (celular) se señala con ese botón, y el texto lo dice.
+  const texto = step.textoMas && elegido === TOUR_MAS ? t("En «Más»: ","Under “More”: ","Em «Mais»: ","תחת «עוד»: ") + step.text : step.text;
   tourLayer.innerHTML = `
     <div class="tour-hole" style="top:${holeTop}px; left:${holeLeft}px; width:${holeW}px; height:${holeH}px;"></div>
-    <div class="tour-callout ${below ? "below" : "above"}" style="left:${calloutLeft}px; width:${calloutW}px; ${vertical}; --arrow:${arrowLeft}px;">
+    <div class="tour-callout ${below ? "below" : "above"}" data-paso="${esc(step.id)}" data-cubre="${esc((step.cubre || []).join(" "))}" style="left:${calloutLeft}px; width:${calloutW}px; ${vertical}; --arrow:${arrowLeft}px;">
       <div class="tour-ttl">${esc(step.title)}</div>
-      <p class="tour-txt">${esc(step.text)}</p>
+      <p class="tour-txt">${esc(texto)}</p>
       <div class="tour-foot">
         <div class="tour-dots">${steps.map((_, i)=>`<i class="${i === tourStep ? "active" : ""}"></i>`).join("")}</div>
         <div class="tour-btns">
