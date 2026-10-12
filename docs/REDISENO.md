@@ -969,6 +969,51 @@ eligió **unirlas así**:
 Pruebas: `agenda_test.mjs` (país, región y ciudad; fallan con el código
 de antes) y `ficha_celular_test.mjs` vuelve a esperar cinco tarjetas.
 
+### 64. «Mes a mes» con columnas que se tocan — HECHO (12 oct 2026)
+
+El usuario mostró el gráfico «Mes a mes» de Reportes con el globito del
+navegador («abr 26: 24 (antes: 20)») y pidió una propuesta para que fuera más
+interactivo al tocar las barras. Se le armó una página con tres maneras
+probables, con datos de ejemplo (artefacto «Mes a mes interactivo»): **A** la
+ficha del mes, **B** el mes manda (uno o varios meses recalculan todo el
+reporte), **C** cambiar la mirada (Total / Por tipo / Por zona con tramos de
+color). Eligió la **A**.
+
+- Cada columna es ahora un botón (`data-action="reporte-mes"`, la columna
+  entera es el blanco, no solo la barra fina). Tocarla la marca (las demás se
+  atenúan) y abre **debajo del gráfico la ficha del mes**: cuántas
+  actividades, contra el mismo mes del período anterior («▲ 2 más que abril de
+  2025 (3)»), lo hecho y lo que viene si es el mes en curso, **qué fueron**
+  (tipos) y **dónde** (países, los 4 primeros), y el botón «Ver 5 actividades
+  de abril →». La ficha cuenta con el mismo reporte y los mismos «Ver solo»
+  que el resto de la pantalla (`armarReporte` sobre ese mes, con su caché).
+- ‹ › pasan al mes de al lado (el foco se queda en la flecha); la ✕ o tocar
+  la misma columna cierra (el foco vuelve a la columna). Con el teclado: ← →
+  de una columna a otra (espejado en hebreo), Inicio y Fin a las puntas.
+  El lector de pantalla oye «abril 2026: 5 actividades. 2 más que antes (3).».
+- El mes de hoy lleva un puntito. El globito del navegador (`title`) se
+  reemplazó por uno propio (`.rep-tip`) que sale con el mouse o el teclado y no
+  existe en pantallas táctiles, donde el toque abre la ficha.
+- «Ver 5 actividades de abril» lleva al Inicio con el filtro de fecha en ese
+  mes: `reporte-ir` con `kind="mes"` y un período con la clave `mes`
+  (`ventanaDelMes`); el Inicio lo rotula «📅 abril 2026» (`etiquetaPeriodo`), el
+  panel de filtros lo muestra elegido, y los filtros guardados lo conservan.
+  Se llevan también el «Ver solo» de tipo, país o zona del reporte (con país y
+  zona a la vez vale el país). Con un filtro de **persona** el botón no
+  aparece y la ficha dice por qué: el Inicio no puede filtrar por «cargó o
+  participó». Un mes que todavía no pasó muestra lo planificado y no tiene
+  botón al Inicio (ahí no hay nada hecho que listar).
+- «← Volver a Reportes» deja la ficha abierta; cambiar el año o el trimestre
+  la cierra. El modo «Comparar» no cambia (columnas solo para mirar).
+- Pruebas: `reporte_mes_test.mjs` (55): las cuentas contra una hecha a mano
+  (con una reunión semanal de 4 veces en un mes, y lo planificado), mes a mes,
+  cerrar, el teclado, el camino al Inicio y que la lista dé lo que decía la
+  ficha, el «Ver solo», inglés, hebreo (flechas espejadas) y celular. Falla con
+  el código de antes y con dos roturas probadas a propósito.
+- **Queda para después, si lo pide:** la **B** (elegir varios meses y que todo el
+  reporte cuente solo eso) y la **C** (columnas partidas por tipo o zona); el
+  mismo toque en el modo «Comparar».
+
 ### 63. Las librerías de afuera, al día (R26) — HECHO (11 oct 2026)
 
 El usuario pidió ver las versiones de las librerías. La app carga de afuera
