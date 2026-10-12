@@ -421,6 +421,16 @@ const hasta = async (p, fn, arg, ms = 5000) => {
     eq("tarjeta: la ciudad sola, con el país al pasar el mouse", [/📍 Buenos Aires$/.test(tarjeta.chip.replace(", Argentina", "")), tarjeta.chipTitle], [true, "Buenos Aires, Argentina"]);
     await p.click('.post[data-post-id="p_reunion"] .post-chips .scope-chip');
     eq("tarjeta: al tocar la ciudad se ve el país", await p.$eval('.post[data-post-id="p_reunion"] .post-chips .scope-chip', e => e.classList.contains("completo") && getComputedStyle(e.querySelector(".sc-resto")).display !== "none"), true);
+    // «São Paulo , Brasil»: el chip es un flex con separación entre piezas, y el país como pieza aparte dejaba un
+    // espacio antes de la coma (12/10/2026). Se mide el hueco entre el fin de la ciudad y el principio de «, país».
+    const hueco = await p.$eval('.post[data-post-id="p_reunion"] .post-chips .scope-chip', chip => {
+      const textos = []; const w = document.createTreeWalker(chip, NodeFilter.SHOW_TEXT);
+      for(let n; (n = w.nextNode());) if(n.textContent.trim()) textos.push(n);
+      const ciudad = textos.find(n => /Buenos Aires/.test(n.textContent)), resto = textos.find(n => /^\s*,/.test(n.textContent));
+      const caja = n => { const r = document.createRange(); r.selectNodeContents(n); return r.getBoundingClientRect(); };
+      return { juntos: !!ciudad && !!resto, hueco: ciudad && resto ? Math.abs(caja(resto).left - caja(ciudad).right) : null, texto: chip.textContent.replace(/\s+/g, " ").trim() };
+    });
+    eq("tarjeta: la ciudad y «, país» quedan pegados (sin espacio antes de la coma)", [hueco.juntos, hueco.hueco !== null && hueco.hueco < 1.5, /Buenos Aires, Argentina$/.test(hueco.texto)], [true, true, true]);
   }
   // Las pestañas de arriba son cinco, las de todos los días. Lo de admin
   // (Administración) y lo personal (Mis preferencias) se llegan desde el

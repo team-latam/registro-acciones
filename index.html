@@ -15781,11 +15781,13 @@ function renderScopeChip(sc, removable, idx, ownerId){
   const color = zone && ZONES[zone] ? safeColor(ZONES[zone].color) : "#999999";
   // En las tarjetas, una ciudad va sola ("Asunción"): el país completo
   // queda al pasar el mouse, o al tocarla en el celular (6/10/2026). Al
-  // editar (removable) se ve entera, que ahí sí importa cuál es.
+  // editar (removable) se ve entera, que ahí sí importa cuál es. Ciudad y país van en UNA sola pieza
+  // (.sc-txt): el chip es un flex con separación entre piezas, y con el país como pieza aparte quedaba
+  // un espacio antes de la coma, «São Paulo , Brasil» (lo vio el usuario el 12/10/2026).
   if(!removable && sc.type === "ciudad"){
     const ciudad = cityLabel(sc.country, sc.city);
     return `<span role="button" tabindex="0" class="scope-chip ver-completo" data-action="ver-lugar" title="${esc(scopeLabel(sc))}">
-      <span class="zdot" style="background:${color}"></span>${scopeIcon(sc)} ${esc(ciudad)}<span class="sc-resto">, ${esc(countryLabel(sc.country))}</span>
+      <span class="zdot" style="background:${color}"></span><span class="sc-txt">${scopeIcon(sc)} ${esc(ciudad)}<span class="sc-resto">, ${esc(countryLabel(sc.country))}</span></span>
     </span>`;
   }
   return `<span class="scope-chip ${removable?"removable":""}">
