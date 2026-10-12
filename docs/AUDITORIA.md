@@ -251,8 +251,8 @@ Nada.
 - **Ramas:** solo `main`; cero `claude/…` sueltas; cero PRs.
 - **Uso de las funciones:** no se puede medir desde acá sin tocar la base
   real; queda como estaba. ~~M3: 925 posteos de Calendar sin clasificar~~
-  ✅ 12/10: el usuario los ordenó con la herramienta (874 de 875 importados
-  ordenados, 1 pendiente, 42 sacados del Registro; `Mirar lo de Calendar`).
+  ✅ 12/10: el usuario los ordenó con la herramienta (875 de 875 importados
+  ordenados, ninguno pendiente, 42 sacados del Registro; `Mirar lo de Calendar`).
 
 ## Lo que sigue abierto de las anteriores
 
