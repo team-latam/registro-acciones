@@ -2159,19 +2159,36 @@ en abstracto desde un cartel centrado. Los textos son cortos y
 concretos a propósito: que la persona sepa qué es cada cosa y salga a
 probarla, no leer un manual (para eso está este README).
 
-`tourSteps()` arma dos recorridos distintos según el rol (`canWrite()`),
-en vez de un único recorrido genérico que se degradaba mal para
-Observador (los pasos de escritura no encontraban su target en su
-pantalla y se saltaban todos, dejando un recorrido de un solo paso). Con
-permiso de escribir son 5 paradas: el composer, el botón `+` (`#fab`), y
-después una por pestaña (Vistas, Calendario, Proyectos). Observador tiene
-su propio recorrido de 4 paradas: una que explica el rol ("tu cuenta ve
-todo, sin publicar", señalando la pestaña activa) y las mismas tres
-paradas por pestaña. Esas tres últimas viven en `tabTourSteps()`,
-compartida por los dos recorridos — así no queda ninguna pestaña sin
-mencionar (pasó con Proyectos, agregada después y ausente del único paso
-"acá están las vistas" que había antes) sin tener que tocar dos listas
-cada vez que se suma o saca una solapa.
+`tourSteps()` arma el recorrido según el rol (`canWrite()`) y **cuenta el
+sistema de hoy** (reescrito el 12/10/2026; hasta entonces explicaba solo
+Vistas, Calendario y Proyectos, en el celular quedaba en dos paradas y el
+observador no veía ninguna). Quien escribe ve 9 paradas: Inicio, el
+composer («¿Qué hiciste hoy?»), el `+`, Países, Calendario, Proyectos,
+Reportes, Novedades (la campana) y Tu cuenta (el avatar: preferencias,
+idioma, tono, salir). El observador ve 7: una primera que explica el rol
+(«tu cuenta ve todo, sin publicar») y las mismas de arriba menos el
+composer y el `+`, que no existen en su pantalla. En el celular, Proyectos
+y Reportes viven dentro de «Más»: la parada señala ese botón y el texto
+empieza con «En «Más»: …», así lo que se ve en pantalla coincide con lo que
+se cuenta (cada paso lista varios destinos posibles, `target`, y vale el
+primero que se ve).
+
+**Cómo se mantiene al día.** Cada paso declara qué pantallas de la
+navegación explica (`cubre`, y queda en el globo como `data-cubre`).
+`pruebas/tour_test.mjs` abre la app como una cuenta recién aprobada —en
+compu y celular, integrante, observador y admin— lee del DOM qué pantallas
+existen de verdad (las solapas de arriba, la barra de abajo, la hoja «Más»
+y el menú del avatar) y falla si alguna no la cubre ningún paso, diciendo
+cuál; también si un paso dice cubrir algo que ya no existe. Lo que no
+necesita paso se anota en `TOUR_SIN_PASO` con el motivo (hoy,
+Administración: es solo de admins y tiene su propio menú con ayuda en cada
+sección). La prueba además verifica que los textos estén en los cuatro
+idiomas y entren en pantalla, que las cuentas de antes no lo vean y que
+quien lo termina o lo saltea no lo vuelva a ver. Lo que **no** puede
+detectar sola es que una pantalla existente cambie de función (por
+ejemplo, que Reportes sume algo importante): eso lo tiene que mirar quien
+haga el cambio, y por eso la regla está en `CLAUDE.md`: al sumar, sacar o
+cambiar algo grande que ve el equipo, se revisa `tourSteps()`.
 
 **Solo lo ven las cuentas nuevas, una vez, y no hay forma de reabrirlo a
 mano**: la primera vez que entra alguien aprobado a partir de
@@ -2195,9 +2212,10 @@ se mueve, se lo ilumina con una sombra gigante alrededor
 `getBoundingClientRect()`. La capa entera come los clics, así que
 mientras el recorrido está abierto no se toca la app por atrás. Si un
 objetivo no está en pantalla, esa parada se saltea sola en vez de dibujar
-un globo apuntando a la nada. Los objetivos de `tabTourSteps()` viven en
-el header, que es `sticky`, por eso no hace falta seguir el scroll (sí se
-reposiciona al cambiar el tamaño de la ventana).
+un globo apuntando a la nada. Los objetivos de las
+solapas, la campana y el avatar viven en el header (y la barra de abajo en
+el celular), que son fijos; el composer sí scrollea y el agujero lo sigue
+(se reposiciona también al cambiar el tamaño de la ventana).
 
 Que ya se vio se marca **por cuenta, no por dispositivo**: en el campo
 `tourSeenAt` de su fila en `members` (`store.roster.markTourSeen`), así
