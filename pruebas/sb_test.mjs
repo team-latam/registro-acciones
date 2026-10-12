@@ -165,6 +165,23 @@ eq("y al escribir, photoURL vuelve a ser photo_url",
    Object.keys(sb.reg.escrituras[0][2]).sort(), ["approved_at","email","nickname","photo_url"]);
 
 /* ---------------------------------------------------------------
+   Lo sacado del Registro (calendar_sacados): la sincronización con Calendar
+   lee esta lista para no volver a traer esos eventos. La pantalla de
+   Administración para ordenar, sacar y devolver se retiró el 12/10/2026;
+   la lista tiene que seguir leyéndose.
+   --------------------------------------------------------------- */
+{
+  const sbS = supabaseDeMentira();
+  const stS = crear(sbS);
+  sbS.ponerFilas("calendar_sacados", [
+    { evento:"evB", titulo:"Otro", sacado_por:"a@x.com", sacado_el:"2026-10-02T10:00:00Z" },
+    { evento:"evA", titulo:"Uno", sacado_por:"a@x.com", sacado_el:"2026-10-01T10:00:00Z" }]);
+  const sacados = await stS.calendarSacados();
+  eq("lo sacado del Registro se lee como un conjunto de ids de evento", [sacados instanceof Set, [...sacados].sort()], [true, ["evA", "evB"]]);
+  eq("y el adaptador ya no ofrece lo de la pantalla retirada", ["revisarCalendar", "clasificar", "sacarDelRegistro"].map(k => k in stS), [false, false, false]);
+}
+
+/* ---------------------------------------------------------------
    PARTE 2 — LO QUE MÁS CUESTA: la lista entera, a partir de cambios sueltos
    --------------------------------------------------------------- */
 const sb2 = supabaseDeMentira();

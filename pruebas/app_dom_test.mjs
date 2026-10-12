@@ -166,35 +166,6 @@ export function createClient(url, clave){
         if(f) f.value = { ...f.value, ...args.p_parche }; else t.push({ key: args.p_clave, value: { ...args.p_parche } });
         return { data: null, error: null };
       }
-      // Revisar lo de Calendar (12-revisar-calendar.sql): solo lo que vino
-      // de Calendar, y sin tocar la fecha de edición.
-      const importado = f => f && f.author_name === "Google Calendar" && !f.author_email && f.calendar_event_id;
-      if(nombre === "clasificar_importados"){
-        let n = 0;
-        for(const c of args.p_cambios){
-          const f = (estado.tablas.posts || []).find(x => x.id === c.id);
-          if(!importado(f)) continue;
-          ["activity_type", "scopes", "participants", "location"].forEach(k => { if(k in c) f[k] = copia(c[k]); });
-          n++;
-        }
-        return { data: n, error: null };
-      }
-      if(nombre === "sacar_del_registro"){
-        const idos = (estado.tablas.posts || []).filter(f => args.p_ids.includes(f.id) && importado(f));
-        const t = estado.tablas.calendar_sacados = estado.tablas.calendar_sacados || [];
-        idos.forEach(f => t.push({ evento: f.calendar_event_id, titulo: f.title, sacado_por: quien(), sacado_el: new Date().toISOString(), fila: copia(f) }));
-        estado.tablas.posts = estado.tablas.posts.filter(f => !idos.includes(f));
-        return { data: idos.length, error: null };
-      }
-      if(nombre === "devolver_al_registro"){
-        const t = estado.tablas.calendar_sacados = estado.tablas.calendar_sacados || [];
-        let devueltos = 0; const aTraer = [];
-        t.filter(x => args.p_eventos.includes(x.evento)).forEach(x => {
-          if(x.fila){ estado.tablas.posts.push(copia(x.fila)); devueltos++; } else aTraer.push(x.evento);
-        });
-        estado.tablas.calendar_sacados = t.filter(x => !args.p_eventos.includes(x.evento));
-        return { data: { devueltos, aTraer }, error: null };
-      }
       if(nombre === "olvidar_preferencias"){
         estado.tablas.user_prefs = (estado.tablas.user_prefs || []).filter(x => x.email !== args.p_email);
         return { data: null, error: null };
@@ -545,7 +516,7 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   eq("admin: el Resumen de Administración muestra el pedido pendiente", await esperarTexto(p, "Nueva Persona", 3000), true);
   const secciones = await p.$$eval('.admin-menu [data-action="admin-go"]', bs => bs.map(b => b.dataset.view + (b.dataset.key ? ":" + b.dataset.key : "")));
   eq("admin: el menú de Administración tiene todas las secciones", secciones,
-     ["admin","revisarcal","solicitudes:usuarios","auditoria","preferencias:tipos","preferencias:agenda","preferencias:avanzado","preferencias:calendar","preferencias:copia","preferencias:correos"]);
+     ["admin","solicitudes:usuarios","auditoria","preferencias:tipos","preferencias:agenda","preferencias:avanzado","preferencias:calendar","preferencias:copia","preferencias:correos"]);
   for(const s of secciones){
     const [v, k] = s.split(":");
     await p.click(`.admin-menu [data-action="admin-go"][data-view="${v}"]${k ? `[data-key="${k}"]` : ""}`);
@@ -748,158 +719,28 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   await p.close();
 }
 
-/* ---------- Revisar lo de Calendar (tanda 19) ---------- */
+/* ---------- Revisar lo de Calendar: la pantalla se retiró (12/10/2026) ---------- */
+// El usuario terminó de ordenar los 875 eventos que llegaron de Calendar y prefirió editarlos uno por uno:
+// la pantalla, sus botones y su ayuda ya no están. La lista de lo sacado y las funciones de la base quedan
+// (la sincronización la lee), y el menú de Administración sigue con todo lo demás.
 {
-  const importado = (id, titulo, fecha) => ({ id: "cal_" + id, title: titulo, content: "", date: fecha, start_date: fecha, end_date: fecha,
+  const importado = (id, titulo) => ({ id: "cal_" + id, title: titulo, content: "", date: "2025-02-04", start_date: "2025-02-04", end_date: "2025-02-04",
     activity_type: "otro", author_name: "Google Calendar", author_email: "", calendar_event_id: id, scopes: [], images: [], files: [],
     links: [], mentions: [], liked_by: [], milestones: [], editors: [], participants: [], recurrence_skip: [], recurrence_moves: {}, created_at: hace(30) });
-  const { p, errores, base, rpc } = await entrar(ADMIN, "Benny", base => {
-    base.posts.push(importado("ev1", "Visita Tucumán - Ana", "2025-02-04"), importado("ev2", "CB Mendoza (7 personas)", "2022-12-14"),
-      importado("ev3", "Glämsta", "2025-08-15"), importado("ev4", "Reunión semanal", "2025-03-03"));
-    base.calendar_sugerencias = [
-      { evento: "ev1", grupo: "actividad", tipo: "visita", lugares: [{ type: "ciudad", country: "Argentina", city: "Tucuman" }], personas: ["Ana", "Zeka"], confianza: "alta" },
-      { evento: "ev2", grupo: "actividad", tipo: "curso", lugares: [{ type: "ciudad", country: "Argentina", city: "Mendoza" }], personas: [], confianza: "alta" },
-      { evento: "ev3", grupo: "actividad", tipo: "otro", lugares: [], personas: [], confianza: "baja" },
-      { evento: "ev4", grupo: "reunion", tipo: null, lugares: [], personas: [], confianza: "alta" },
-    ];
+  const { p, errores } = await entrar(ADMIN, "Benny", base => {
+    base.posts.push(importado("ev1", "Visita Tucumán - Ana"), importado("ev2", "CB Mendoza (7 personas)"));
+    base.calendar_sugerencias = [{ evento: "ev1", grupo: "actividad", tipo: "visita", lugares: [], personas: [], confianza: "alta" }];
+    base.calendar_sacados = [{ evento: "ev9", titulo: "Algo que se sacó", sacado_por: ADMIN, sacado_el: hace(5) }];
   });
   await esperarTexto(p, "Reunión con la comunidad");
   await p.click('[data-action="toggle-user-menu"]');
   await p.click('.user-menu [data-action="goto-view"][data-view="admin"]');
-  await p.waitForSelector('.admin-item[data-view="revisarcal"]');
-  eq("revisar: en el menú de Administración, con cuántos faltan ordenar",
-     await p.$eval('.admin-item[data-view="revisarcal"]', e => [...e.children].map(c => c.textContent.trim())), ["Revisar lo de Calendar", "4"]);
-  await p.click('.admin-item[data-view="revisarcal"]');
-  await p.waitForSelector(".rv-row [data-action='rv-editar']");
-  const filas = () => p.$$eval(".admin-body > .lp-rows .rv-row:not(.rv-todos) .rv-tit b", l => l.map(e => e.textContent));
-  eq("revisar: la pestaña «Sacados» se ve siempre, aunque no se haya sacado nada",
-     await p.$eval('[data-action="rv-grupo"][data-key="sacados"]', e => e.textContent.replace(/\s+/g, " ").trim()).catch(() => null), "Sacados0");
-  eq("revisar: arranca en Actividades, lo más nuevo primero", await filas(), ["Glämsta", "Visita Tucumán - Ana", "CB Mendoza (7 personas)"]);
-  eq("revisar: cada fila con lo sugerido (tipo, lugar, personas)",
-     await p.$eval('.rv-row:has([data-post-id="cal_ev1"]) .rv-sug', e => [...e.children].map(c => c.textContent.trim())), ["Sugerido:", "🧳 Visita", "📍 Tucumán, Argentina", "👥 Ana, Zeka"]);
-  await p.click('[data-action="rv-seguros"]');
-  eq("revisar: «Solo los seguros» deja los de punto verde", await filas(), ["Visita Tucumán - Ana", "CB Mendoza (7 personas)"]);
-  await p.click('[data-action="rv-todos"]');
-  eq("revisar: «Elegir todos» elige la lista entera y aparece la barra",
-     await p.$eval(".rv-barra b", e => e.textContent), "2 elegidos");
-  await p.click('[data-action="rv-sugerido"]');
-  await hasta(p, () => !document.querySelector(".rv-barra"));
-  const llamada = (await rpc()).find(r => r[0] === "clasificar_importados");
-  eq("revisar: «Usar lo sugerido» manda tipo, lugar y personas en un solo pedido",
-     llamada && llamada[1].p_cambios.map(c => [c.id, c.activity_type, (c.scopes || []).length, (c.participants || []).map(x => x.email || x.name)]),
-     [["cal_ev1", "visita", 1, ["ana@x.com", "Zeka"]], ["cal_ev2", "curso", 1, []]]);
-  const posts = (await base()).posts;
-  eq("revisar: quedan ordenados en la base, sin fecha de edición (nadie recibe «Cambios en tus eventos»)",
-     ["cal_ev1", "cal_ev2"].map(id => { const f = posts.find(x => x.id === id); return [f.activity_type, f.last_edited_at || null]; }),
-     [["visita", null], ["curso", null]]);
-  // Zeka no tiene cuenta: pasa a ser una persona con su ficha (7/10/2026),
-  // no un nombre suelto que no contaba en ningún lado.
-  const fichaZeka = ((await base()).personas || []).find(x => x.name === "Zeka");
-  eq("revisar: el que no está en el equipo queda como persona sin cuenta (con ficha propia), y el del equipo vinculado",
-     posts.find(x => x.id === "cal_ev1").participants, [{ email: "ana@x.com", name: "Ana Pérez" }, { persona: fichaZeka && fichaZeka.id, name: "Zeka" }]);
-  await hasta(p, () => document.querySelector('.admin-item[data-view="revisarcal"]').textContent.includes("2"));
-  eq("revisar: lo guardado se queda en su lugar, marcado «✓ Guardado» y con lo que quedó (no lo sugerido)",
-     await p.$eval('.rv-row:has([data-post-id="cal_ev1"]) .rv-sug', e => [...e.children].map(c => c.textContent.trim())),
-     ["✓ Guardado", "🧳 Visita", "📍 Tucumán, Argentina", "👥 Ana Pérez, Zeka"]);
-  eq("revisar: la barra y el panel flotan abajo de la pantalla (acompañan al recorrer la lista)",
-     await p.evaluate(() => { document.querySelector('[data-action="rv-elegir"][data-post-id="cal_ev2"]').click(); return true; })
-       .then(() => p.waitForSelector(".rv-flota .rv-barra")).then(() => p.$eval(".rv-flota", e => getComputedStyle(e).position)), "fixed");
-  await p.click('[data-action="rv-ninguno"]');
-  // Varias cosas a la vez y sin borrar lo que ya tenían.
-  await p.click('[data-action="rv-elegir"][data-post-id="cal_ev1"]');
-  await p.click('[data-action="rv-elegir"][data-post-id="cal_ev2"]');
-  await p.click('[data-action="rv-abrir"][data-key="cambiar"]');
-  await p.waitForSelector(".rv-panel #rvTipo");
-  await p.selectOption("#rvTipo", "seminario");
-  await p.selectOption("#rvPais", "Uruguay");
-  await p.click('[data-action="rv-alcance-sumar"]');
-  await p.selectOption("#rvPais", "Chile");
-  await p.click('[data-action="rv-alcance-sumar"]');
-  // Israel: fuera de LatAm, pero se puede elegir como alcance.
-  await p.selectOption("#rvPais", "Israel");
-  await p.click('[data-action="rv-alcance-sumar"]');
-  eq("revisar: en un mismo panel se arman tipo y varios alcances (Israel incluido), sin que se borren al seguir eligiendo",
-     [await p.$eval("#rvTipo", e => e.value), await p.$$eval('[data-action="rv-alcance-quitar"]', l => l.length)], ["seminario", 3]);
-  await p.click('[data-action="rv-panel-aplicar"]');
-  await hasta(p, () => !document.querySelector(".rv-panel"));
-  const juntos = (await base()).posts.filter(x => ["cal_ev1", "cal_ev2"].includes(x.id)).map(x => [x.id, x.activity_type, x.scopes.map(sc => sc.city || sc.country)]);
-  eq("revisar: se aplica todo junto, y el alcance se SUMA al que ya tenían",
-     juntos, [["cal_ev1", "seminario", ["Tucuman", "Uruguay", "Chile", "Israel"]], ["cal_ev2", "seminario", ["Mendoza", "Uruguay", "Chile", "Israel"]]]);
-  eq("revisar: y los elegidos siguen elegidos, para seguir cambiándoles otra cosa",
-     await p.$eval(".rv-flota .rv-barra b", e => e.textContent), "2 elegidos");
-  await p.click('[data-action="rv-ninguno"]');
-  // Cuando la persona entra al equipo, su ficha se vincula a la cuenta
-  // desde Administración → Personas → Sin cuenta (el detalle en personas_test).
-  await p.click('.admin-menu [data-action="admin-go"][data-view="solicitudes"][data-key="usuarios"]');
-  await p.click('[data-action="acceso-section"][data-key="sincuenta"]');
-  eq("personas: «Sin cuenta» lista a Zeka con su única actividad",
-     await p.$$eval('.lp-row[data-action="persona-abrir"] .lp-who', l => l.map(e => [e.querySelector("b").textContent, /1 actividad/.test(e.textContent)])), [["Zeka", true]]);
-  await p.click('.lp-row[data-action="persona-abrir"]');
-  await p.waitForSelector(".sc-vincular");
-  await p.selectOption(".sc-vincular", "ana@x.com");
-  await p.click('[data-action="persona-vincular"]');
-  await p.waitForSelector("#confirmOk", { state: "visible" });
-  eq("personas: vincular pregunta antes, nombrando a los dos",
-     await p.$eval("#confirmOverlay", e => /«Zeka» es Ana Pérez/.test(e.textContent)), true);
-  await p.click("#confirmOk");
-  await hasta(p, () => !(window.__sb.tablas.personas || []).length);
-  eq("personas: vincular la ficha a la cuenta pasa sus eventos a la persona (sin duplicarla) y la ficha se va",
-     [(await base()).posts.find(x => x.id === "cal_ev1").participants, ((await base()).personas || []).length], [[{ email: "ana@x.com", name: "Ana Pérez" }], 0]);
-  // «Editar» algo ya ordenado deja a la gente que no se tocó como estaba:
-  // hasta el 7/10/2026 «Ana Pérez» no era ni un @ ni un primer nombre,
-  // quedaba como persona sin cuenta nueva y Ana salía del evento.
-  await p.click('.admin-item[data-view="revisarcal"]');
-  await p.waitForSelector('[data-action="rv-grupo"][data-key="ordenados"]');
-  await p.click('[data-action="rv-grupo"][data-key="ordenados"]');
-  await p.waitForSelector('[data-action="rv-editar"][data-post-id="cal_ev1"]');
-  await p.click('[data-action="rv-editar"][data-post-id="cal_ev1"]');
-  await p.waitForSelector(".rv-panel #rvDonde");
-  await p.fill("#rvDonde", "Club");
-  await p.click('[data-action="rv-panel-aplicar"]');
-  await hasta(p, () => !document.querySelector(".rv-panel"));
-  eq("revisar: «Editar» algo ya ordenado deja a la gente como estaba (una del equipo no pasa a «sin cuenta»)",
-     await hasta(p, () => (window.__sb.tablas.posts.find(x => x.id === "cal_ev1") || {}).location === "Club").then(async () =>
-       [(await base()).posts.find(x => x.id === "cal_ev1").participants, ((await base()).personas || []).length]), [[{ email: "ana@x.com", name: "Ana Pérez" }], 0]);
-  await p.click('[data-action="rv-grupo"][data-key="actividad"]');
-  await p.click('.admin-item[data-view="revisarcal"]');
-  await p.waitForSelector('[data-action="rv-seguros"]');
-  // Editar uno solo, a mano.
-  await p.click('[data-action="rv-seguros"]');
-  await p.click('[data-action="rv-editar"][data-post-id="cal_ev3"]');
-  await p.waitForSelector(".rv-panel #rvTipo");
-  eq("revisar: mientras se edita una fila no se ve la barra (ahí estaba «Sacar del Registro»)",
-     await p.evaluate(() => !!document.querySelector(".rv-barra")), false);
-  await p.selectOption("#rvTipo", "seminario");
-  await p.selectOption("#rvPais", "Chile");
-  await p.fill("#rvDonde", "Online");
-  await p.click('[data-action="rv-panel-aplicar"]');
-  await hasta(p, () => !document.querySelector(".rv-panel"));
-  const ev3 = (await base()).posts.find(x => x.id === "cal_ev3");
-  eq("revisar: «Editar» guarda tipo, a quién alcanza y, aparte, dónde fue",
-     [ev3.activity_type, ev3.scopes, ev3.location], ["seminario", [{ type: "pais", country: "Chile" }], "Online"]);
-  // Sacar del Registro: pregunta antes, y no vuelve.
-  await p.click('[data-action="rv-grupo"][data-key="reunion"]');
-  await p.click('[data-action="rv-elegir"][data-post-id="cal_ev4"]');
-  await p.click('[data-action="rv-sacar"]');
-  await p.waitForSelector("#confirmOk", { state: "visible" });
-  eq("revisar: «Sacar del Registro» pregunta antes, aclara que no es para marcar como listo y que en Calendar sigue",
-     await p.$eval("#confirmMessage, .confirm-message, [role=alertdialog] p, #confirmOverlay", e => /NO es para marcarlos como listos/.test(e.textContent) && /Siguen en Google Calendar/.test(e.textContent)).catch(() => null), true);
-  await p.click("#confirmOk");
-  await hasta(p, () => !(window.__sb.tablas.posts || []).some(x => x.id === "cal_ev4"));
-  eq("revisar: se va de la base y queda anotado como sacado",
-     [(await base()).posts.some(x => x.id === "cal_ev4"), ((await base()).calendar_sacados || []).map(x => x.evento)], [false, ["ev4"]]);
-  // Y se puede deshacer: "Sacados" › Devolver al Registro.
-  await p.waitForSelector('[data-action="rv-grupo"][data-key="sacados"]');
-  await p.click('[data-action="rv-grupo"][data-key="sacados"]');
-  await p.waitForSelector('.rv-row [data-action="rv-elegir"][data-post-id="ev4"]');
-  eq("revisar: «Sacados» lista lo que se sacó, con quién lo sacó",
-     await p.$eval('.rv-row:has([data-post-id="ev4"]) .rv-tit', e => [...e.children].map(c => c.textContent.trim())), ["Reunión semanal", "Lo sacó benny"]);
-  await p.click('[data-action="rv-elegir"][data-post-id="ev4"]');
-  await p.click('[data-action="rv-devolver"]');
-  await hasta(p, () => (window.__sb.tablas.posts || []).some(x => x.id === "cal_ev4"));
-  eq("revisar: «Devolver al Registro» lo trae de vuelta y deja de estar sacado",
-     [(await base()).posts.some(x => x.id === "cal_ev4"), ((await base()).calendar_sacados || []).length], [true, 0]);
-  eq("revisar: sin un solo error", errores, []);
+  await p.waitForSelector('.admin-menu [data-action="admin-go"]');
+  eq("Calendar: el menú de Administración ya no tiene «Revisar lo de Calendar»",
+     [await p.$$eval('.admin-item[data-view="revisarcal"]', l => l.length), await p.$$eval(".admin-menu", l => l.map(m => /Revisar lo de Calendar/.test(m.textContent)))], [0, [false]]);
+  eq("Calendar: ni la ayuda ni los botones de la pantalla quedaron en ningún lado",
+     await p.evaluate(() => [document.querySelectorAll('[data-action^="rv-"]').length, /Usar lo sugerido|Sacar del Registro/.test(document.body.innerText)]), [0, false]);
+  eq("Calendar: sin un solo error en todo el camino", errores, []);
   await p.close();
 }
 

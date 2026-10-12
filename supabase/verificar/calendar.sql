@@ -2,9 +2,9 @@
 -- Cómo va lo que llegó de Google Calendar (SOLO LECTURA)
 -- ============================================================
 -- Cuenta, contra la base de verdad, cuánto de lo importado de Calendar sigue
--- como vino y cuánto ya está ordenado, con la misma definición que usa la
--- pantalla Administración › Revisar lo de Calendar (index.html: esImportado,
--- rvTocado, rvPendiente):
+-- como vino y cuánto ya está ordenado, con la definición de la pantalla
+-- Administración › Revisar lo de Calendar (retirada el 12/10/2026; sus
+-- funciones eran esImportado, rvTocado y rvPendiente):
 --   importado = autor «Google Calendar», sin correo, con id de evento
 --   tocado    = alguien le puso un tipo, un lugar, personas o un «dónde fue»
 --   pendiente = importado y no tocado

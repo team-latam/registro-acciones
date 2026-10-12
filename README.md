@@ -1648,16 +1648,21 @@ individuales (para no generar un aluvión de posteos por cada repetición):
 una serie recurrente cuenta como un solo evento. No debería ser un
 problema real, ya que cada acción del equipo tiene sus propias fechas.
 
-### Revisar lo de Calendar (solo admins)
+### Lo que llega de Google Calendar (sin pantalla desde el 12/10/2026)
 
-Administración › Revisar lo de Calendar: lo que entró de Google Calendar
-como "Otro" y sin lugar, para ordenarlo de a muchos (tipo, lugar,
-personas) o sacarlo del Registro. Ver docs/REDISENO.md, tanda 19, y
-`supabase/12-revisar-calendar.sql`. Las sugerencias de cada evento están
-en `calendar_sugerencias` (`13-sugerencias-calendar.sql`); lo sacado, en
-`calendar_sacados`, que los dos sincronizadores saltean. Clasificar no
-toca `last_edited_*` (no es una edición del contenido) y sacar deja su
-entrada `post_deleted` en el registro de actividad.
+Lo que se crea directo en Google Calendar entra al Registro como «Otro» y sin
+lugar, a nombre de «Google Calendar»; se corrige como cualquier evento, desde
+su ficha (editar). Hasta el 12/10/2026 había una pantalla, Administración ›
+Revisar lo de Calendar, para ordenar de a muchos los 875 que llegaron en la
+carga inicial (ver docs/REDISENO.md, tanda 19); el usuario las ordenó todas y
+la pantalla se retiró (tanda 65). **Lo que queda en la base**, a propósito:
+`calendar_sacados` (lo que se sacó del Registro: los dos sincronizadores lo
+saltean para no volver a traerlo), `calendar_sugerencias` y las funciones
+`clasificar_importados`, `sacar_del_registro` y `devolver_al_registro`
+(`supabase/12-revisar-calendar.sql`, `13-sugerencias-calendar.sql`). Para
+devolver algo sacado ya no hay botón: se hace con esa función desde la base.
+El workflow «Mirar lo de Calendar» (`supabase/verificar/calendar.sql`) sigue
+contando, sin mostrar títulos, cuánto de lo importado quedó sin tocar.
 
 ### Actividad (solo admins)
 

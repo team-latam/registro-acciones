@@ -300,7 +300,7 @@ del nombre.
   y fecha). Queda una tarjeta con "Espacio privado del equipo", el botón
   de Google, "¿Es tu primera vez?" en una línea y los idiomas.
 
-### 19. Revisar lo de Calendar — HECHO (3 oct 2026)
+### 19. Revisar lo de Calendar — HECHO (3 oct 2026) · pantalla retirada el 12 oct 2026 (tanda 65)
 
 Todo lo creado directo en Google Calendar entraba como "Otro" y sin
 lugar. Se clasificaron los 925 eventos del calendario "LatAm" (2019 →
@@ -968,6 +968,32 @@ eligió **unirlas así**:
 
 Pruebas: `agenda_test.mjs` (país, región y ciudad; fallan con el código
 de antes) y `ficha_celular_test.mjs` vuelve a esperar cinco tarjetas.
+
+### 65. Se retira la pantalla «Revisar lo de Calendar» — HECHO (12 oct 2026)
+
+El usuario terminó de ordenar lo que llegó de Google Calendar (875 de 875,
+42 sacados, medido con «Mirar lo de Calendar») y propuso sacar la pantalla:
+los eventos nuevos se corrigen editándolos directamente. Se le dijo lo que
+costaba (con datos: siguen llegando unos pocos por semana, 6 desde el 5/10; se
+pierde el numerito de aviso en el menú, ordenar de a varios y el botón para
+devolver los sacados) y eligió sacarla.
+
+- **Se fue de la app:** la pantalla entera, su ítem del menú de Administración
+  (con su numerito de pendientes), sus acciones, sus estilos, su ayuda y el
+  adaptador que ordenaba, sacaba y devolvía; también `fetchCalendarEvent`, que
+  solo usaba «devolver». ~670 líneas de `index.html`.
+- **Quedó, a propósito:** la lista de lo sacado, que la sincronización con
+  Calendar lee para saltear esos eventos (el adaptador pasó a
+  `store.calendarSacados()`), y toda la base (`calendar_sacados`,
+  `calendar_sugerencias`, `clasificar_importados`, `sacar_del_registro`,
+  `devolver_al_registro`). Para devolver algún evento sacado ya no hay botón:
+  se hace con la función de la base (pedírselo a Claude).
+- Al editar un evento de Calendar «a mano» corre el camino de siempre: cambia
+  la fecha de edición y se sincroniza con Google Calendar.
+- Pruebas: `app_dom_test` (el menú ya no la tiene, ni sus botones; las
+  secciones de Administración sin ella) y `sb_test` (la lista de sacados se
+  sigue leyendo y el adaptador ya no ofrece lo retirado); fallan con la app de
+  antes. Las pruebas de la base y de la sincronización no cambian.
 
 ### 64. «Mes a mes» con columnas que se tocan — HECHO (12 oct 2026)
 
