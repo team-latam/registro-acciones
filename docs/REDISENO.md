@@ -1703,12 +1703,14 @@ código de antes).
   En la compu no cambia nada en ninguna. **Eligió B** y está hecha
   (tanda 44).
 
-- **Clasificar lo que vino de Google Calendar**: la herramienta está
-  (tanda 19); falta que el usuario la use. Empezar por Actividades →
-  "Solo los seguros" → "Elegir todos" → "Usar lo sugerido". Las
-  reuniones, personales y recordatorios quedan para cuando decida.
-  Las planillas de Drive ("Clasificación – Actividades / Personas") que
-  se armaron antes quedaron sin uso: la herramienta las reemplaza.
+- ~~**Clasificar lo que vino de Google Calendar**~~ ✅ **Hecho el 12 oct
+  2026**: el usuario usó la herramienta (tanda 19). Según el workflow de
+  solo lectura «Mirar lo de Calendar» (`supabase/verificar/calendar.sql`, que
+  cuenta sin mostrar títulos): de 875 eventos importados, 874 ordenados y 1
+  pendiente (una actividad con sugerencia segura), y 42 sacados del Registro.
+  Las 384 reuniones quedaron 258 como Virtual, 120 como Otro y 6 con otro
+  tipo. Las planillas de Drive ("Clasificación – Actividades / Personas") que
+  se armaron antes quedaron sin uso: la herramienta las reemplazó.
 
 - ~~¿Un integrante común puede editar o cancelar eventos de otros?~~
   Decidido el 3 oct 2026: editar sí, cancelar solo autor / participantes /
