@@ -293,7 +293,7 @@ registro de actividad se guarda siempre (M1, 6/10); «Ver traducción» queda
   la compu; en el celular el botón queda a la vista), una rutina desde el +,
   buscar «Caracas» (lo encuentra en el Inicio, en «Buscar en todo» con el
   lugar, la Agenda y el Feed), Reportes → Inicio (6 = 6 en el caso simple),
-  Revisar lo de Calendar solo para admins, el WhatsApp de un contacto a
+  Revisar lo de Calendar solo para admins (pantalla retirada el 12/10), el WhatsApp de un contacto a
   tres toques desde Países.
 
 ## Cómo seguir

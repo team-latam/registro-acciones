@@ -81,7 +81,7 @@ una función nueva ejecutable desde el navegador y el registro de actividad abie
 
 Cuenta, contra la base de verdad, cuánto de lo importado de Calendar sigue como
 vino (pendiente) y cuánto ya está ordenado, con la definición de la pantalla
-Administración › Revisar lo de Calendar (autor «Google Calendar», sin correo,
+la pantalla Administración › Revisar lo de Calendar, retirada el 12/10/2026 (autor «Google Calendar», sin correo,
 con id de evento; «ordenado» = alguien le puso tipo, lugar, personas o un
 «dónde fue»). Da: el total y los sacados del Registro; lo pendiente por
 pestaña (Actividades, Reuniones, Personales, Recordatorios, Sin sugerencia) y

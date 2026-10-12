@@ -98,7 +98,7 @@ Se aplican en orden. Todos se pueden correr más de una vez sin romper nada
 | `09-contenido-vacio.sql` | Saca el relleno de los eventos de Calendar sin descripción |
 | `10-fechas-de-1970.sql` | Corrige lo que el sincronizador nocturno haya fechado en 1970 |
 | `11-firmas-guardadas.sql` | Corrige las fotos que quedaron guardadas con su firma vencida en vez de su ruta |
-| `12` a `17` | Revisar lo de Calendar y sus sugerencias, los títulos sin el tipo adelante, unificar cuentas, el aviso al admin y los avisos por correo (cada uno se explica en su encabezado) |
+| `12` a `17` | Lo que llegó de Calendar (sacados, sugerencias y las funciones de ordenar; la pantalla de Administración se retiró el 12/10/2026, la base queda), los títulos sin el tipo adelante, unificar cuentas, el aviso al admin y los avisos por correo (cada uno se explica en su encabezado) |
 | `18-personas.sql` | Personas sin cuenta: la tabla `personas`, unirlas, vincularlas a una cuenta, y pasar a fichas los nombres sueltos que ya estaban |
 | `19-agenda.sql` | La Agenda: instituciones de cada lugar y quién está en cada una (`agenda_listas`, `instituciones`, `contactos`; la gente son las fichas de `personas`, que suman teléfonos e idiomas en `18`), y `agenda_traer` para traer una lista entera |
 | `20-contactos-por-lugar.sql` | Un contacto de la Agenda puede ser de un lugar y no de una institución: `nivel` (institucion, ciudad, pais, region, latam) con `country`, `city` o `zona` según el caso; la institución deja de ser obligatoria y una restricción no deja nada a medias |

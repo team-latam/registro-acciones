@@ -325,7 +325,7 @@ export async function recorrerApp(p, paso){
   if(await click(p, '[data-action="reporte-filtros"]')){ await p.waitForTimeout(200); await paso(p, ("Reportes filtros")); await cerrar(p); }
   if(await click(p, '[data-action="reporte-modo"][data-key="comparar"]')){ await p.waitForTimeout(300); await paso(p, ("Reportes comparar")); }
   await irAdmin(p);
-  for(const [v, k] of [["admin"], ["revisarcal"], ["solicitudes", "usuarios"], ["auditoria"], ["preferencias", "tipos"], ["preferencias", "avanzado"], ["preferencias", "zonas"], ["preferencias", "lugares"], ["preferencias", "adjuntos"], ["preferencias", "calendar"], ["preferencias", "copia"], ["preferencias", "correos"], ["preferencias", "agenda"]]){
+  for(const [v, k] of [["admin"], ["solicitudes", "usuarios"], ["auditoria"], ["preferencias", "tipos"], ["preferencias", "avanzado"], ["preferencias", "zonas"], ["preferencias", "lugares"], ["preferencias", "adjuntos"], ["preferencias", "calendar"], ["preferencias", "copia"], ["preferencias", "correos"], ["preferencias", "agenda"]]){
     await p.evaluate(([v, k]) => { const b = document.querySelector(`[data-action="admin-go"][data-view="${v}"]${k ? `[data-key="${k}"]` : ""}`); b && b.click(); }, [v, k || ""]);
     await p.waitForTimeout(350); await paso(p, ("Admin " + (k || v)));
   }
