@@ -2,7 +2,9 @@
    «Mi año»: el resumen personal de cada integrante y la tarjeta para
    compartir (13/10/2026, propuesta 6-B)
 
-   - En el menú de la cuenta (y en «Más», en el celular): «✨ Mi año».
+   - En Reportes, un botón «✨ Mi año» antes de «Presentar» (el usuario lo pidió así el
+     13/10/2026: el menú de la cuenta queda para Mis preferencias, Administración y
+     «Algo no anda»). Mientras se mira, Reportes sigue marcado y hay un enlace para volver.
    - Cuenta lo que cargaste o donde figurás como participante, sin las rutinas,
      sin lo cancelado y sin lo de otras personas: actividades, visitas, países,
      días viajando (cada día una vez, y solo los del año) y personas.
@@ -15,7 +17,7 @@
 import { fileURLToPath as __aRuta } from "node:url";
 import fs from "node:fs";
 process.chdir(__aRuta(new URL(".", import.meta.url)));
-import { abrirNavegador, entrar, PERS, BASE, post, ciudad, pais } from "./app_de_mentira.mjs";
+import { abrirNavegador, entrar, PERS, BASE, post, ciudad, pais, tab, dia } from "./app_de_mentira.mjs";
 
 let pass = 0, fail = 0;
 const eq = (n, g, w) => { const a = JSON.stringify(g), x = JSON.stringify(w); if(a === x) pass++; else { fail++; console.log(`✗ ${n}\n   esperado: ${x}\n   obtenido: ${a}`); } };
@@ -46,8 +48,9 @@ const vp = { width: 1280, height: 900 };
 const b = await abrirNavegador();
 
 async function irAMiAnio(p){
-  await p.click('[data-action="toggle-user-menu"]');
-  await p.click('.user-menu [data-action="goto-view"][data-view="mianio"]');
+  await tab(p, "reportes");
+  await p.waitForSelector('.rep-barra-control [data-action="goto-view"][data-view="mianio"]');
+  await p.click('.rep-barra-control [data-action="goto-view"][data-view="mianio"]');
   await p.waitForSelector(".mia-view");
 }
 const numeros = p => p.$$eval(".mia-view .rep-kpi", l => l.map(k => k.querySelector(".rep-kpi-num").textContent.trim() + " " + k.querySelector(".rep-kpi-txt").textContent.trim()));
@@ -57,7 +60,8 @@ const anio = async (p, a) => { await p.click(`[data-action="mianio-anio"][data-y
 {
   const { p, errores } = await entrar(b, ANA.email, ANA.name, { viewport: vp, lang: "es", base: datos() });
   await irAMiAnio(p);
-  eq("«Mi año» está en el menú de la cuenta y abre la pantalla, que dice que es solo de ella", await p.$eval(".mia-view .admin-lead", e => /Solo lo ves vos/.test(e.textContent)), true);
+  eq("«Mi año» abre la pantalla, que dice que es solo de ella; y Reportes sigue marcado arriba", [await p.$eval(".mia-view .admin-lead", e => /Solo lo ves vos/.test(e.textContent)), await p.$eval('nav.tabs button.active', e => e.dataset.view)], [true, "reportes"]);
+  eq("hay un enlace para volver a Reportes", await p.$eval(".mia-volver", e => e.textContent.trim().endsWith("Reportes")), true);
   eq("los años con algo cargado, el más nuevo primero", await p.$$eval(".mia-anios [data-action=\"mianio-anio\"]", l => l.map(x => x.dataset.year)).then(l => l.slice(0, 3)), [String(new Date().getFullYear()), "2025", "2024"].filter((x, i, a) => a.indexOf(x) === i).slice(0, 3));
   // El año de hoy no tiene nada a su nombre (los posteos de prueba son de 2024 y 2025).
   eq("un año sin nada a su nombre dice que todavía no hay nada, y no ofrece la tarjeta", [await p.$eval(".mia-view .empty-state", e => /Todavía no hay nada cargado a tu nombre/.test(e.textContent)), await p.$$('[data-action="mianio-bajar"]').then(l => l.length)], [true, 0]);
@@ -84,6 +88,19 @@ const anio = async (p, a) => { await p.click(`[data-action="mianio-anio"][data-y
   await p.close();
 }
 
+/* ---- Dónde está el botón, y que el menú de la cuenta ya no lo lleva ---- */
+{
+  // Con algo de este año, para que Reportes tenga qué presentar.
+  const base = datos(); base.posts.push(post({ id: "hoy", title: "Algo de este año", start: dia(1), a: 1, type: "visita", scopes: [pais("Chile")] }));
+  const { p } = await entrar(b, ANA.email, ANA.name, { viewport: vp, lang: "es", base });
+  await tab(p, "reportes");
+  await p.waitForSelector('.rep-barra-control [data-action="reporte-presentar"]');
+  eq("en Reportes, «✨ Mi año» está justo antes de «Presentar»", await p.$$eval(".rep-barra-control .rep-boton", l => l.map(x => x.dataset.action + (x.dataset.view ? ":" + x.dataset.view : "")).filter(x => /mianio|presentar/.test(x))), ["goto-view:mianio", "reporte-presentar"]);
+  await p.click('[data-action="toggle-user-menu"]');
+  eq("el menú de la cuenta queda con Mis preferencias y Algo no anda (y Administración para un admin), sin «Mi año»", await p.$$eval(".user-menu .um-link", l => l.map(x => x.dataset.view || x.dataset.action)), ["configuracion", "problema-abrir"]);
+  await p.close();
+}
+
 /* ---- Diego: cada uno ve lo suyo ---- */
 {
   const { p } = await entrar(b, DIEGO.email, DIEGO.name, { viewport: vp, lang: "es", base: datos() });
@@ -104,12 +121,14 @@ const anio = async (p, a) => { await p.click(`[data-action="mianio-anio"][data-y
   await p.close();
 }
 
-/* ---- En el celular: «Más» ---- */
+/* ---- En el celular: Reportes ---- */
 {
   const { p } = await entrar(b, ANA.email, ANA.name, { viewport: { width: 390, height: 800 }, lang: "es", base: datos() });
   await p.click('[data-action="toggle-more-menu"]');
-  eq("en el celular, «Mi año» está en «Más»", await p.$$eval('.bn-sheet [data-view="mianio"]', l => l.length), 1);
-  await p.click('.bn-sheet [data-view="mianio"]');
+  eq("en el celular, «Más» ya no lleva «Mi año»", await p.$$eval('.bn-sheet [data-view="mianio"]', l => l.length), 0);
+  await p.click('.bn-sheet [data-view="reportes"]');
+  await p.waitForSelector('.rep-barra-control [data-action="goto-view"][data-view="mianio"]');
+  await p.click('.rep-barra-control [data-action="goto-view"][data-view="mianio"]');
   await p.waitForSelector(".mia-view");
   await p.click('[data-action="mianio-anio"][data-year="2025"]'); await p.waitForTimeout(250);
   eq("y abre la pantalla, sin que nada se salga de la pantalla del celular", [await p.$eval("#miaTarjeta", e => e.getBoundingClientRect().width <= 320), await p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)], [true, true]);
