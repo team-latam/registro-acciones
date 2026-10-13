@@ -73,9 +73,13 @@ const otro = '.post:not([data-post-id="p1"]) [data-action="toggle-like"]';     /
      await p.evaluate(() => ["r3", "r1"].map(id => { const e = document.querySelector(`[data-action="toggle-like"][data-reply-id="${id}"]`); return [!!e.querySelector("svg.ico-gusta" + (id === "r3" ? ".on" : ":not(.on)")), /👍|🤍/.test(e.textContent)]; })), [[true, false], [true, false]]);
 
   // La estrella es un agujero: sobre un fondo rojo, el centro de la estrella es rojo y la hoja, verde.
+  // Antes, la página quieta arriba de todo: un desplazamiento suave en marcha corre la captura.
+  await p.evaluate(() => { document.documentElement.style.scrollBehavior = "auto"; window.scrollTo(0, 0); });
+  await p.waitForFunction(() => window.scrollY === 0);
   await p.evaluate(() => {
     document.body.insertAdjacentHTML("beforeend", '<div id="prueba" style="position:fixed;left:20px;top:20px;width:200px;height:200px;background:#f00;z-index:99999"><svg class="ico-gusta on" style="width:200px;height:200px;margin:0;stroke-width:0" viewBox="0 0 580 569"><use href="#icoOlivo"/></svg></div>');
   });
+  await p.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
   const png = (await (await p.$("#prueba")).screenshot()).toString("base64");
   const px = await p.evaluate(async b64 => {
     const img = new Image(); img.src = "data:image/png;base64," + b64; await img.decode();
