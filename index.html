@@ -9,7 +9,7 @@
      (entrar, Calendar, fotos de perfil), los CDN de las librerías con
      versión fija, los mapas y la búsqueda de lugares de OpenStreetMap y la
      traducción. Un servicio nuevo hay que sumarlo acá, o el navegador lo
-     frena (pruebas/integridad_test.mjs avisa si falta). 'unsafe-inline'
+     frena (herramientas/pruebas/integridad_test.mjs avisa si falta). 'unsafe-inline'
      porque toda la app es un script dentro de la página. -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://cdn.sheetjs.com https://accounts.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com https://accounts.google.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://benonmzlgdjkhzauamrz.supabase.co https://*.googleusercontent.com https://*.tile.openstreetmap.org https://unpkg.com; media-src 'self' data: blob: https://benonmzlgdjkhzauamrz.supabase.co; connect-src 'self' data: blob: https://benonmzlgdjkhzauamrz.supabase.co wss://benonmzlgdjkhzauamrz.supabase.co https://www.googleapis.com https://accounts.google.com https://nominatim.openstreetmap.org https://api.mymemory.translated.net; frame-src 'self' data: blob: https://benonmzlgdjkhzauamrz.supabase.co https://accounts.google.com; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
@@ -256,7 +256,7 @@
      hacia arriba sola. En Safari, Firefox y el iPhone queda la del
      sistema, que anda igual. Cómo se ve CERRADO lo sigue decidiendo cada
      lugar (la píldora de Preferencias, el borde fino de Reportes…): acá
-     solo lo que todos comparten. pruebas/selectores_test.mjs abre cada
+     solo lo que todos comparten. herramientas/pruebas/selectores_test.mjs abre cada
      uno, en compu y en celular, y comprueba que entre en la pantalla. */
   @supports (appearance: base-select){
     select, ::picker(select){ appearance:base-select; }
@@ -4390,7 +4390,7 @@
    LA BASE: SUPABASE
 
    La base del equipo desde el 3 de octubre de 2026 (antes fue Firebase,
-   que quedó cerrado: ver supabase/LEEME.md).
+   que quedó cerrado: ver supabase/README.md).
 
    Estos dos valores son públicos a propósito: viajan a cualquiera que
    abra la página, y así tiene que ser. La clave "publishable" solo deja
@@ -6094,7 +6094,7 @@ function scopeLevelFor(sc, place){
   }
   return sc.type === "todo" ? "latam" : null;
 }
-// La regla de una sola vez (docs/auditoria/codigo.md, 17): con qué nivel
+// La regla de una sola vez (docs/informes/codigo.md, 17): con qué nivel
 // un alcance guardado toca un lugar L = { zona } | { country } |
 // { country, city }. "own" (el lugar), "pais" (en una ciudad: lo cargado
 // para todo el país), "region" o "latam"; null si no lo toca. En una zona,
@@ -6412,7 +6412,7 @@ function roleLabel(role){
 // la arma el servidor de jsDelivr al pedirla, y no admite huella (un import()
 // no tiene integrity); el 10/10/2026 la auditoría la marcó como lo único que
 // entraba sin huella (R15). Al subir la versión hay que cambiar la huella:
-// `pruebas/supabase_integridad_test.mjs` baja el paquete de npm y comprueba
+// `herramientas/pruebas/supabase_integridad_test.mjs` baja el paquete de npm y comprueba
 // que coincidan, y que el navegador la haga cumplir.
 const SUPABASE_CDN = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js";
 const SUPABASE_SRI = "sha384-BWcjm9OdFth9TbhCxZPdm+gAOUMAzQy9nmTs12ioXdCcbVnJaPMn+fMUoQCLt60R";
@@ -9478,7 +9478,7 @@ function recordarIdiomaYZona(){
 //
 // Hasta el 3 de octubre de 2026 acá también se pedía la conexión con
 // Firestore, y en la pestaña de Supabase no la había nunca: el cambio se
-// veía, pero no se guardaba (ver pruebas/preferencias_test.mjs).
+// veía, pero no se guardaba (ver herramientas/pruebas/preferencias_test.mjs).
 function savePrefs(patch){
   state.prefs = { ...prefs(), ...patch };
   render();
@@ -19352,7 +19352,7 @@ const TOUR_ELIGIBLE_FROM = Date.UTC(2026, 8, 11); // cuentas aprobadas desde el 
 const TOUR_FALLBACK_KEY = "ra_tour_seen";
 // QUÉ TIENE QUE EXPLICAR EL RECORRIDO — y cómo se mantiene al día.
 // El recorrido es lo primero que ve alguien nuevo: tiene que contar el sistema de HOY. Cada paso dice qué
-// pantallas de la navegación explica (`cubre`) y pruebas/tour_test.mjs compara eso con la navegación real, en
+// pantallas de la navegación explica (`cubre`) y herramientas/pruebas/tour_test.mjs compara eso con la navegación real, en
 // compu y en celular, para integrante y observador: si se suma una solapa o una pantalla del menú y ningún
 // paso la cubre, la prueba falla y dice cuál. Al sumar, sacar o cambiar algo grande que ve el equipo, se toca
 // acá (y al revés: si algo no necesita paso, se anota en TOUR_SIN_PASO con el porqué). Ver CLAUDE.md.
@@ -21933,7 +21933,7 @@ function renderFichaLugar(L){
   for(let i = 11; i >= 0; i--){ const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - i); meses.push(mesLocalDe(d.getTime())); }
   // Solo lo que ya pasó: una visita planificada para la semana que viene no es
   // un «registro en 12 meses» (tercera vez que vuelve esta falla: auditoría
-  // del 10/10/2026, R1; la regla está en auditoria/RECURRENTES.md).
+  // del 10/10/2026, R1; la regla está en herramientas/auditoria/RECURRENTES.md).
   const hechos = D.visibles.filter(yaPaso);
   const porMes = meses.map(m => ({ m, n: hechos.filter(p => fechaDePost(p).startsWith(m)).length, v: hechos.some(p => p.activityType === "visita" && fechaDePost(p).startsWith(m)) }));
   const topeMes = Math.max(1, ...porMes.map(x => x.n));

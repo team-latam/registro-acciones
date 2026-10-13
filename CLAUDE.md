@@ -3,7 +3,7 @@
 SPA de una sola página (`index.html`) sin backend propio ni build step:
 HTML + CSS + JS (`<script type="module">` inline) que se edita y publica tal
 cual. El backend es **Supabase** (Postgres + Auth con Google + Storage, ver
-`supabase/LEEME.md`) más la API de Google Calendar. Firebase fue la base
+`supabase/README.md`) más la API de Google Calendar. Firebase fue la base
 hasta el 3 de octubre de 2026: quedó cerrado y fuera del código, y la rama
 `firebase-v1` que guardaba cómo era la borró el usuario el 5/10/2026 (lo
 de entonces sigue en el historial de `main`). Ver `README.md` para las
@@ -20,23 +20,28 @@ decisiones de arquitectura.
 - No es técnico: hablarle en español, en palabras simples y paso a paso.
   Las propuestas van con capturas; las decisiones que son suyas se le
   presentan con opciones y una recomendación.
+- **Cómo está ordenado el repo** (desde el 13/10/2026): en la raíz, `index.html`
+  (la app), `supabase/`, `docs/` y `herramientas/` (con `pruebas/`, `auditoria/` y
+  `video/` adentro), más `.github/` y `.claude/`, que van ahí por exigencia de
+  GitHub y de Claude. La portada, `README.md`, tiene el mapa. Cada carpeta
+  importante tiene su `README.md`, que es lo que GitHub muestra al entrar: al
+  sumar una carpeta nueva, se le pone el suyo. Los commits y notas de antes del
+  13/10 hablan de `pruebas/`, `auditoria/` y `video/` en la raíz.
 - El estado del trabajo vive en el repo, en `docs/`: `docs/REDISENO.md`
   (tandas hechas y decisiones), `docs/REVISION.md` (la revisión técnica y
   lo que queda), `docs/QUE-GUARDAR.md` (qué tener a mano para reconstruir)
   `docs/DOMINIO.md` (el plan, no ejecutado, de mudar el sitio a un
   dominio propio si `*.github.io` vuelve a bloquearse en Argentina) y
   `docs/AUDITORIA.md` (la última auditoría, la completa del 10/10/2026,
-  con la lista por prioridad; el detalle en `docs/auditoria/`, y las
+  con la lista por prioridad; el detalle en `docs/informes/`, y las
   anteriores, la completa del 6/10, la de lo nuevo del 7/10 y la de la
-  Agenda del 9/10, en `docs/auditoria/historial/`) y
+  Agenda del 9/10, en `docs/informes/historial/`) y
   `docs/RESTAURAR.md` (cómo volver atrás con una copia: workflow
-  «Restaurar una copia», `supabase/respaldo/restaurar.mjs`). En la
-  raíz quedan `index.html`, `README.md`, este archivo y la carpeta
-  `video/`.
+  «Restaurar una copia», `supabase/respaldo/restaurar.mjs`).
   **El video de presentación** (en inglés, ~74 s, celular y compu; el
   usuario aprobó la v5 como final el 13/10/2026) se rehace entero con
-  `bash video/hacer_video.sh`; todo el proceso, las decisiones y lo que
-  hay que revisar cuando la app cambie están en `video/LEEME.md`. Los MP4 no
+  `bash herramientas/video/hacer_video.sh`; todo el proceso, las decisiones y lo que
+  hay que revisar cuando la app cambie están en `herramientas/video/README.md`. Los MP4 no
   están en el repo (los tiene el usuario). Los datos de la demo son
   inventados: nunca ponerle datos reales.
   **El Excel del Mapeo de comunidades («Mapeo - LatAm», un Sheet de
@@ -67,16 +72,16 @@ decisiones de arquitectura.
   el login del admin. Claude no puede crear repos en la cuenta `team-latam` (es una
   cuenta de usuario; la conexión de GitHub no tiene ese permiso).
 
-## Auditorías — `auditoria/`
+## Auditorías — `herramientas/auditoria/`
 
 Cuando el usuario pida una auditoría (o «revisá todo»), se arranca de
-`auditoria/METODO.md`: los pasos, las áreas, los niveles y lo que se revisa
-a mano. `auditoria/RECURRENTES.md` es lo que ya falló más de una vez;
-`auditoria/correr.sh` corre las herramientas (textos, código, seguridad,
+`herramientas/auditoria/METODO.md`: los pasos, las áreas, los niveles y lo que se revisa
+a mano. `herramientas/auditoria/RECURRENTES.md` es lo que ya falló más de una vez;
+`herramientas/auditoria/correr.sh` corre las herramientas (textos, código, seguridad,
 pantallas en todos los tamaños e idiomas, ventanas, datos variados con
 semilla) y arma un informe. Queda abierto: cada auditoría suma lo que
 aprendió. La skill `.claude/skills/auditoria/` es la entrada. A diferencia
-de `pruebas/`, la auditoría no falla: busca y anota.
+de `herramientas/pruebas/`, la auditoría no falla: busca y anota.
 
 ## Ramas — LEER ANTES DE EMPEZAR
 
@@ -144,7 +149,7 @@ reglas, sin que lo pida:
 ## Verificación antes de cada commit
 
 ```
-./pruebas/correr.sh
+./herramientas/pruebas/correr.sh
 ```
 
 Corre todas las pruebas de `index.html` (más de mil comprobaciones), la
@@ -157,11 +162,11 @@ Pero igual queda roto en `main` hasta el próximo push, así que se prueba
 antes.
 
 - Las pruebas sacan el código del `index.html` real en cada corrida, nunca
-  de una copia. Una prueba nueva va en `pruebas/` y sigue esa regla; las
+  de una copia. Una prueba nueva va en `herramientas/pruebas/` y sigue esa regla; las
   páginas de prueba se arman solas y no se versionan. Ver
-  `pruebas/LEEME.md`.
+  `herramientas/pruebas/README.md`.
 - **Comprobar que una prueba nueva falla contra el código roto** antes de
-  darla por buena: `INDEX=/ruta/a/copia/rota.html ./pruebas/correr.sh`.
+  darla por buena: `INDEX=/ruta/a/copia/rota.html ./herramientas/pruebas/correr.sh`.
 - En este sandbox Playwright y Chromium ya están (`/opt/pw-browsers`, con
   `PLAYWRIGHT_BROWSERS_PATH` seteado): **no correr `playwright install`**.
   El corredor resuelve solo el `node_modules`.
@@ -191,7 +196,7 @@ antes.
   menú, lo que hace una pantalla, un botón principal— se revisa el
   recorrido en la misma tanda: se suma, se saca o se reescribe el paso
   (cuatro idiomas), y si una pantalla no necesita paso se anota en
-  `TOUR_SIN_PASO` con el motivo. `pruebas/tour_test.mjs` compara los pasos
+  `TOUR_SIN_PASO` con el motivo. `herramientas/pruebas/tour_test.mjs` compara los pasos
   con la navegación real (compu y celular, integrante, observador y admin)
   y falla si una pantalla queda sin paso; lo que no puede ver es que una
   pantalla existente cambie de función, y eso es de quien hace el cambio.

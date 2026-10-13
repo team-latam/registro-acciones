@@ -22,7 +22,7 @@ permissions:
 jobs:
   verificar:
     name: Qué ve cada rol de la papelera
-    # Las llaves de verdad solo corren desde main (pruebas/workflows_test.mjs).
+    # Las llaves de verdad solo corren desde main (herramientas/pruebas/workflows_test.mjs).
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 10

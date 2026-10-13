@@ -193,7 +193,7 @@ jobs:
           if [ "$falla" != "0" ]; then
             echo
             echo "✗ Alguna librería de afuera NO llega como la app la espera: el navegador la va a frenar."
-            echo "  Si es supabase-js, nadie puede entrar. Ver docs/AUDITORIA.md (R15) y pruebas/supabase_integridad_test.mjs."
+            echo "  Si es supabase-js, nadie puede entrar. Ver docs/AUDITORIA.md (R15) y herramientas/pruebas/supabase_integridad_test.mjs."
             exit 1
           fi
           echo

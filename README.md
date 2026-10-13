@@ -11,8 +11,20 @@ se sirve como archivo estático. La persistencia es compartida entre todo el
 equipo vía **Supabase** (Postgres, login con Google y archivos; los cambios
 llegan solos a todas las pantallas abiertas).
 
+## Mapa del repositorio
+
+| Dónde | Qué hay |
+|---|---|
+| [`index.html`](./index.html) | **La app entera** (HTML, CSS y JS en un solo archivo). Es lo que se publica. |
+| [`supabase/`](./supabase/) | La base de datos (esquema, permisos, funciones) y los procesos que corren solos: copias de seguridad, avisos por correo, sincronización con Google Calendar. |
+| [`docs/`](./docs/) | Los documentos: decisiones, revisiones, auditorías y planes. |
+| [`herramientas/`](./herramientas/) | Para cuidar y mostrar la app: [`pruebas/`](./herramientas/pruebas/) (pruebas automáticas), [`auditoria/`](./herramientas/auditoria/) (la auditoría completa) y [`video/`](./herramientas/video/) (el video de presentación). |
+| [`.github/workflows/`](./.github/workflows/) | Los procesos automáticos de GitHub: publicar el sitio, correr las pruebas, aplicar la base de datos, copias. (GitHub exige que esté acá.) |
+| [`.claude/`](./.claude/) | Habilidades de Claude para este proyecto. (Claude exige que esté acá.) |
+| [`CLAUDE.md`](./CLAUDE.md) | Las reglas del proyecto para quien trabaja en él con Claude. |
+
 > **Historia:** la app nació sobre Firebase (Firestore + Auth) y se mudó a
-> Supabase el 3 de octubre de 2026 (ver `supabase/LEEME.md`). Lo que
+> Supabase el 3 de octubre de 2026 (ver `supabase/README.md`). Lo que
 > describe cómo funciona hoy ya habla de Supabase; las notas de historia
 > (bugs viejos, decisiones de entonces) todavía nombran cosas de Firebase.
 > Para leerlas, estas equivalencias:
@@ -39,7 +51,7 @@ llegan solos a todas las pantallas abiertas).
 
 ## 1. Poner en marcha el backend (Supabase)
 
-El detalle está en [`supabase/LEEME.md`](./supabase/LEEME.md). En corto:
+El detalle está en [`supabase/README.md`](./supabase/README.md). En corto:
 
 1. Un proyecto en [supabase.com](https://supabase.com).
 2. El esquema (`supabase/NN-*.sql`) no se pega a mano: lo aplica GitHub
@@ -1183,7 +1195,7 @@ solo en lo traído de Calendar, y no contaban en ningún lado.
   las corrige quien puede cargar eventos (desde el 8/10/2026, por la
   Agenda); las borra un admin. Cada cambio deja quién la tocó y cuándo
   (`tocado_por`, `tocado_el`).
-  Pruebas: `supabase/pruebas/81-personas.sql`, `pruebas/personas_test.mjs`.
+  Pruebas: `supabase/pruebas/81-personas.sql`, `herramientas/pruebas/personas_test.mjs`.
 
 ### Agenda (`instituciones`, `contactos`, `agenda_listas`)
 
@@ -1269,7 +1281,7 @@ cuenta, y su ficha muestra lo que hizo con el equipo.
   Traer una lista sigue siendo solo de instituciones.
 - Las tres tablas van en las copias (la semanal, la de Administración y
   la restauración). Pruebas: `supabase/pruebas/79-agenda.sql`,
-  `pruebas/agenda_test.mjs`.
+  `herramientas/pruebas/agenda_test.mjs`.
 
 ### Ex integrantes (`former_members`)
 
@@ -1492,7 +1504,7 @@ quien publica para crear el evento.
   propio, que entra por Supabase como antes; y si Supabase rechaza la
   identidad (por ejemplo, porque en Supabase → Authentication → Google el
   cliente `40280679854-p7k3…` no figura entre los «Client IDs»), se sigue
-  por ese mismo camino. Prueba: `pruebas/login_google_test.mjs`.
+  por ese mismo camino. Prueba: `herramientas/pruebas/login_google_test.mjs`.
 - El login con Google pide SOLO identidad (perfil/email). El permiso de
   `calendar.events` se pide recién la primera vez que hace falta escribir
   en Calendar (crear/editar/cancelar un evento, compartir el calendario)
@@ -1611,7 +1623,7 @@ tiene que estar configurado como **público para lectura**:
    con "Ver solo la disponibilidad (ocultar detalles)" desactivado, o sea
    que se vean los detalles, no solo si está libre/ocupado).
 2. Google Cloud Console → el mismo proyecto de siempre (el que quedó del
-   de Firebase, ver `supabase/LEEME.md`) → "Credenciales"
+   de Firebase, ver `supabase/README.md`) → "Credenciales"
    → "Crear credenciales" → "Clave de API".
 3. Restringirla (recomendado): "Restricciones de API" → solo **Calendar
    API**; "Restricciones de aplicación" → "Referentes HTTP" → agregar
@@ -2175,7 +2187,7 @@ primero que se ve).
 
 **Cómo se mantiene al día.** Cada paso declara qué pantallas de la
 navegación explica (`cubre`, y queda en el globo como `data-cubre`).
-`pruebas/tour_test.mjs` abre la app como una cuenta recién aprobada —en
+`herramientas/pruebas/tour_test.mjs` abre la app como una cuenta recién aprobada —en
 compu y celular, integrante, observador y admin— lee del DOM qué pantallas
 existen de verdad (las solapas de arriba, la barra de abajo, la hoja «Más»
 y el menú del avatar) y falla si alguna no la cubre ningún paso, diciendo
@@ -2352,7 +2364,7 @@ historia de por qué se hizo así):
   (Supabase, Google, los CDN, OpenStreetMap, MyMemory), sin comodines ni
   `'unsafe-eval'`. Lleva `'unsafe-inline'` porque la app entera es un
   script dentro de la página. Un servicio nuevo hay que sumarlo ahí:
-  `pruebas/integridad_test.mjs` avisa si el código nombra uno que falta,
+  `herramientas/pruebas/integridad_test.mjs` avisa si el código nombra uno que falta,
   y las pruebas que recorren la app fallan si el navegador frena algo.
 - **Privacidad de terceros**: la traducción bajo demanda manda a
   MyMemory, en el query string, el texto de lo que se está traduciendo

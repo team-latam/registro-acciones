@@ -132,7 +132,7 @@ sincronizador.
 > nada se pisa. Cada foto sube con su miniatura. Una fila rota no frena a
 > las demás. Trae también el estado de la sincronización de Calendar, y no
 > trae los topes de adjuntos de Firebase. El paso a paso está en
-> `supabase/LEEME.md`, «La mudanza».
+> `supabase/README.md`, «La mudanza».
 >
 > **Encontrado al arreglarlo:** sin sacar lo que ya no está, un posteo
 > borrado en Firebase después de la primera importación volvía a aparecer,
@@ -325,10 +325,10 @@ la nombra a través de su foto, y se va con ella.
   no reconoce (pasa en Windows y Android) se leía como
   `application/octet-stream`, que el bucket no acepta: el archivo
   rebotaba. **Resuelto:** el tipo sale de la extensión.
-- **Encontrado también:** `pruebas/` tenía copias de las dos pruebas del
+- **Encontrado también:** `herramientas/pruebas/` tenía copias de las dos pruebas del
   sincronizador, y una ya se había desviado del original. **Resuelto:** se
   sacaron; las originales corren en su workflow con cada cambio a la app.
-- ~~`pruebas/levantar.sh` usa una copia del laboratorio guardada aparte.~~
+- ~~`supabase/pruebas/levantar.sh` usa una copia del laboratorio guardada aparte.~~
   **Resuelto.** ~~Hay dos pruebas numeradas `98`.~~ **Resuelto:** la de
   tiempo real pasó a ser la `88`.
 
@@ -465,7 +465,7 @@ Firestore.
 Al sacarlo apareció un error que venía de antes: en Supabase las
 preferencias personales no se guardaban (`savePrefs` pedía la conexión de
 Firestore). Arreglado, con una prueba de la app entera con la sesión
-iniciada (`pruebas/app_dom_test.mjs`) para que no vuelva a pasar algo así.
+iniciada (`herramientas/pruebas/app_dom_test.mjs`) para que no vuelva a pasar algo así.
 
 ---
 

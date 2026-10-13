@@ -1,22 +1,22 @@
 # Auditoría completa — 10 de octubre de 2026
 
-> Las anteriores están en `docs/auditoria/historial/`: la completa del
+> Las anteriores están en `docs/informes/historial/`: la completa del
 > 6/10/2026 (códigos U, I, M, B y O), la de lo nuevo del 7/10 (C, E, P y G)
 > y la de la Agenda del 9/10 (A). Los de esta van con **R**. El método:
-> `auditoria/METODO.md`.
+> `herramientas/auditoria/METODO.md`.
 
 Pedido del usuario: «una revisión completa del sistema, como ya sabes que
 se realiza, junto con toda la batería de puntos, entre ellos diseño,
 funcionalidades, etc.».
 
 El detalle de cada hallazgo (archivo y línea, cómo se dispara, cómo se
-arreglaría) está en `docs/auditoria/2026-10-10-completa.md`. La página
+arreglaría) está en `docs/informes/2026-10-10-completa.md`. La página
 para el usuario, en palabras simples:
 https://claude.ai/artifact/WU63mH5TcT2TrJQbQqsA92 (privada).
 
 **Cómo se hizo.** Sobre `3adb02c` de `main` (lo último: la Agenda con
 contactos por lugar, y el retiro de «Revisar el Mapeo»). Las herramientas
-(`./auditoria/correr.sh`, completa): **2.194 comprobaciones de la app en
+(`./herramientas/auditoria/correr.sh`, completa): **2.194 comprobaciones de la app en
 verde**, Calendar, copias y las 486 de la base en verde; pantallas en 13
 combinaciones de tamaño, idioma, oscuro y letra ancha; datos variados con
 dos semillas (20261010 con 1.500 posteos y 14839 con 800) sin un solo error
@@ -187,7 +187,7 @@ Nada.
 | R12 | «Restaurar una copia» nunca se ejecutó de verdad. **Parcial 10/10:** se corrió en seco contra producción (sin escribir; corrida 9): el token lee el repositorio de copias y la restauración entiende la copia de esa tarde, 3.758 filas de 14 tablas (la Agenda incluida: 188 instituciones y 193 contactos) y 47 archivos para subir. **Queda el ensayo completo**, escribiendo en un proyecto de Supabase aparte (`docs/RESTAURAR.md`, caso 2) | el camino de vuelta no está probado | **usuario** crea un proyecto gratis de prueba; Claude hace el resto |
 | R13 | ~~Los avisos nuevos de la Agenda («Número copiado», «Guardado: N») y los de Calendar no se anuncian al lector de pantalla~~ ✅ 10/10 (`role=status aria-live=polite`) | quien usa lector aprieta «Copiar» y no oye nada | Claude |
 | R14 | ~~Los resultados de «Buscar en todo» y las filas de Reportes que llevan al Inicio pierden el anillo de foco (`outline:none`)~~ ✅ 10/10 (sin `outline:none`) | con teclado es como no tener foco | Claude |
-| R15 | ~~supabase-js entra por `import()` sin huella (SRI): es la librería que maneja la sesión. Quedó del 6/10 (hallazgo 4 de seguridad) sin cerrar y la herramienta no lo veía~~ ✅ 10/10 (supabase-js se carga como el archivo UMD del paquete de npm, con versión fija y huella, como JSZip y docx-preview; no con la dirección «+esm», que arma el servidor y no admite huella. `pruebas/supabase_integridad_test.mjs` baja el paquete de esa versión, comprueba que la huella es la de su archivo y que el navegador la hace cumplir, con la librería de verdad y con una adulterada) | si el CDN sirviera otra cosa, corre con la sesión de cada persona | Claude (`modulepreload` con `integrity`; la herramienta ya lo mira) |
+| R15 | ~~supabase-js entra por `import()` sin huella (SRI): es la librería que maneja la sesión. Quedó del 6/10 (hallazgo 4 de seguridad) sin cerrar y la herramienta no lo veía~~ ✅ 10/10 (supabase-js se carga como el archivo UMD del paquete de npm, con versión fija y huella, como JSZip y docx-preview; no con la dirección «+esm», que arma el servidor y no admite huella. `herramientas/pruebas/supabase_integridad_test.mjs` baja el paquete de esa versión, comprueba que la huella es la de su archivo y que el navegador la hace cumplir, con la librería de verdad y con una adulterada) | si el CDN sirviera otra cosa, corre con la sesión de cada persona | Claude (`modulepreload` con `integrity`; la herramienta ya lo mira) |
 | R16 | ~~«Ver calendario» desde la tarjeta de «Próximos eventos» marca el día solo si el Calendario está en Mes; en Semana, Año o Agenda va a la fecha sin marcar~~ ✅ 10/10 (desde Año o Agenda pasa a Mes; en Semana y Día marca la columna del día; `proximos_que_viene_test`) | la tanda 38 prometió «con el día marcado» | Claude |
 | R17 | ~~Contraste en lo nuevo: el logo de WhatsApp chico sobre su fondo verde en claro (1,8); el número blanco del tono 3 del mapa de calor de Año (2,1); el tono más alto de «Todos los años» en claro (3,1); el rojo de alerta (4,0) y el atajo rápido activo del Inicio (1,3) en oscuro; lo cancelado o cerrado al 60 % (2,5)~~ ✅ 10/10, salvo la barra de desplazamiento: la oscurecí y `barra_test` frenó el cambio, porque es el diseño que elegiste el 8/10; queda como estaba | baja visión | Claude |
 | R18 | El archivo pesa 514 KB comprimidos (414 el 6/10, 458 el 7/10): +24 % en cuatro días; 165 KB son comentarios. Es la opción O5 (publicar sin comentarios, el fuente igual) que dejaste para después | cada visita baja el archivo entero | **usuario** decide O5 |

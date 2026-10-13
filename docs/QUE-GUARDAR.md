@@ -64,7 +64,7 @@ archivo ni pueden estarlo:
 
 - **La dirección de la base con su contraseña** (`postgresql://…`). Está
   guardada en GitHub como el secreto `SUPABASE_DB_URL`, y es lo que permite
-  que el SQL se aplique solo (ver `supabase/LEEME.md`). Quien la tenga
+  que el SQL se aplique solo (ver `supabase/README.md`). Quien la tenga
   puede leer, cambiar y borrar todo sin pasar por los permisos.
 - **La llave de servicio de Supabase** (secret / service_role). Está en
   GitHub como `SUPABASE_SERVICE_ROLE_KEY`, y la usan el sincronizador de
