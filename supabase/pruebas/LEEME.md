@@ -16,6 +16,14 @@ Los archivos:
   `auth.jwt()`, su bucket, y que una función nueva se pueda llamar desde
   el navegador si no se le saca el permiso). En Supabase esto ya existe;
   acá hay que fabricarlo.
+- `73-problemas.sql` — «Algo no anda» y los errores que la app anota sola
+  (`22-problemas.sql`): se escribe solo con las dos funciones (con el correo
+  de quien llama), el mismo error se agrupa y suma a quien le pasó, los topes
+  por hora, y que solo un admin lea, cambie el estado y borre.
+- `74-avisos-de-pasos.sql` — el aviso por correo de un paso asignado
+  (`21-avisos-de-pasos.sql`): solo lo pide quien lo asignó, una vez por
+  asignación y en los primeros 15 minutos, a quien puede recibir correos y no
+  lo apagó; y las preferencias `emailPasos` y `emailVence`.
 - `75-funciones-ejecutables.sql` — qué funciones puede llamar cada rol: una
   lista blanca de las del esquema `public` que `anon` y `authenticated`
   pueden ejecutar. Si alguien suma una función que cualquiera pueda llamar,

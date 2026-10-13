@@ -166,6 +166,23 @@ export function createClient(url, clave){
         if(f) f.value = { ...f.value, ...args.p_parche }; else t.push({ key: args.p_clave, value: { ...args.p_parche } });
         return { data: null, error: null };
       }
+      // «Algo no anda» y los errores anotados solos (22-problemas.sql): lo de la base, sin los topes.
+      if(nombre === "contar_problema" || nombre === "anotar_error"){
+        const t = estado.tablas.problemas = estado.tablas.problemas || [];
+        const yo = quien(), ahora = new Date().toISOString();
+        if(nombre === "contar_problema"){
+          if(!String(args.p_mensaje || "").trim()) return { data: false, error: null };
+          const m = (estado.tablas.members || []).find(x => x.email === yo);
+          t.push({ id: "pr" + (t.length + 1), creado: ahora, ultimo: ahora, origen: "persona", autor: yo, nombre: m ? m.name : null, pantalla: args.p_pantalla, mensaje: args.p_mensaje,
+                   tecnico: args.p_tecnico, estado: "nuevo", huella: null, veces: 1, personas: [yo] });
+        } else {
+          const f = t.find(x => x.origen === "automatico" && x.huella === args.p_huella && x.estado !== "resuelto");
+          if(f){ f.veces++; f.ultimo = ahora; if(!f.personas.includes(yo)) f.personas.push(yo); }
+          else t.push({ id: "pr" + (t.length + 1), creado: ahora, ultimo: ahora, origen: "automatico", autor: yo, nombre: null, pantalla: args.p_pantalla, mensaje: args.p_mensaje,
+                        tecnico: args.p_tecnico, estado: "nuevo", huella: args.p_huella, veces: 1, personas: [yo] });
+        }
+        return { data: true, error: null };
+      }
       if(nombre === "olvidar_preferencias"){
         estado.tablas.user_prefs = (estado.tablas.user_prefs || []).filter(x => x.email !== args.p_email);
         return { data: null, error: null };

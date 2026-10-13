@@ -164,5 +164,22 @@ eq("el correo sin nombre usa la dirección", armarCorreo({ nombre: "", correo: "
      [["Nuevo pedido de acceso: Nuevo", "Novo pedido de acesso: Nuevo"], true, true]);
 }
 
+/* ---------- Un paso de «Lo que sigue» asignado (13/10/2026, propuesta 1-B) ---------- */
+{
+  const aviso = { para: [{ email: "diego@x.com", nombre: "Diego", lang: "pt" }], autor: "Ana", titulo: "Visita a Rosario", tipo: "visita",
+                  texto: "Mandar el plan de verano <b>por escrito</b>", cuando: "2026-10-15", post: "p1", en: "paso", id: "p1#x1" };
+  const m = mundo({ otros: { preparar_aviso_de_paso: aviso } });
+  const r = await leer(await atenderAviso(pedir({ cuerpo: { tipo: "paso", id: "p1#x1" } }), { env: entorno(), fetch: m.traer, esperar: m.esperar }));
+  eq("un paso asignado: se le pregunta a la base con la sesión de quien lo asignó, por el paso", [r, m.reg.rpc.map(x => x.nombre), m.reg.rpc[0].auth, m.reg.cuerpos[0]],
+     [[200, { enviado: true, enviados: 1 }], ["preparar_aviso_de_paso", "tomar_aviso"], "Bearer sesion-de-ana", { p_id: "p1#x1" }]);
+  const c = m.reg.correos[0];
+  eq("el correo: al responsable, en su idioma, con el asunto, la fecha y el enlace al posteo", [c.to, c.subject, c.text.includes("Para 15 de out"), c.text.includes(`${APP}?post=p1`)],
+     [["diego@x.com"], "Ana atribuiu uma pendência a você em «Visita a Rosario»", true, true]);
+  eq("lo que escribió quien lo asignó va escapado: no se cuela HTML", [c.html.includes("<b>por escrito</b>"), c.html.includes("&lt;b&gt;por escrito&lt;/b&gt;")], [false, true]);
+  const n = mundo({ otros: { preparar_aviso_de_paso: null } });
+  const rn = await leer(await atenderAviso(pedir({ cuerpo: { tipo: "paso", id: "p1#x1" } }), { env: entorno(), fetch: n.traer, esperar: n.esperar }));
+  eq("si a la base no le corresponde (no es suyo, ya salió, lo apagó), no sale nada", [rn[1], n.reg.correos.length], [{ enviado: false, motivo: "no-corresponde" }, 0]);
+}
+
 console.log(`${pass} pasaron, ${fail} fallaron`);
 process.exit(fail ? 1 : 0);
