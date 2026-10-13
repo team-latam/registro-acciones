@@ -2451,12 +2451,11 @@
   /* «+ Responsable»: la ventanita con buscador y lista (ver abrirRespPop). */
   .resp-pop{ position:fixed; inset:auto; margin:0; width:min(320px, calc(100vw - 24px)); max-height:360px; box-sizing:border-box; padding:8px; border:1px solid var(--border); border-radius:16px; background:var(--card); color:var(--text); box-shadow:0 12px 32px rgba(13,59,62,.16); overflow:hidden; flex-direction:column; gap:6px; }
   .resp-pop:popover-open{ display:flex; }
-  .resp-pop.hoja{ left:12px; right:12px; width:auto; top:calc(var(--vvtop, 0px) + 12px); bottom:auto; max-height:min(440px, calc(var(--vvh, 100dvh) - 24px)); }
   .rp-input{ width:100%; box-sizing:border-box; height:40px; border:1.5px solid var(--border); border-radius:12px; background:var(--card); color:var(--ink); padding:0 12px; font:inherit; font-size:14px; font-weight:600; }
   .rp-input:focus{ outline:none; border-color:var(--celeste-dark); }
   .rp-quitar{ all:unset; cursor:pointer; box-sizing:border-box; padding:6px 12px; border-radius:10px; font-size:12.5px; font-weight:700; color:var(--danger-text); }
   .rp-quitar:hover, .rp-quitar:focus-visible{ background:var(--danger-soft); }
-  .rp-lista{ flex:1 1 auto; min-height:0; overflow:auto; display:grid; align-content:start; gap:2px; }
+  .rp-lista{ flex:1 1 auto; min-height:0; overflow:auto; display:grid; align-content:start; gap:2px; overscroll-behavior:contain; }
   .rp-op{ all:unset; cursor:pointer; box-sizing:border-box; display:flex; align-items:center; gap:8px; padding:9px 12px; border-radius:10px; font-size:13.5px; font-weight:600; color:var(--text); }
   .rp-op[hidden]{ display:none; }
   .rp-ok{ width:14px; color:var(--celeste-dark); font-weight:800; flex:none; }
@@ -16078,27 +16077,38 @@ function abrirRespPop(btn){
     <p class="rp-vacio" hidden>${esc(t("No hay nadie con ese nombre.","Nobody with that name.","Ninguém com esse nome.","אין אף אחד בשם הזה."))}</p>`;
   respDisparador = btn; respAbiertoEn = Date.now();
   btn.setAttribute("aria-expanded", "true");
-  el.classList.remove("hoja");
-  el.style.top = el.style.left = el.style.bottom = el.style.maxHeight = "";
+  el.style.top = el.style.left = el.style.right = el.style.bottom = el.style.width = el.style.maxHeight = "";
   if(!el.matches(":popover-open")) el.showPopover();
   ubicarRespPop(btn);
   resaltarEnRespPop(el.querySelector(".rp-op.actual") || el.querySelector(".rp-op"), false);
-  // En el celular no se enfoca el campo al abrir: saldría el teclado y taparía la lista; se enfoca al tocarlo.
+  // En el celular no se enfoca el campo al abrir (saldría el teclado antes de ver la lista); se enfoca al tocarlo.
   if(!window.matchMedia("(pointer:coarse)").matches) el.querySelector("#respBuscar").focus({ preventScroll:true });
 }
-// En la compu, justo abajo del botón (o arriba si abajo no entra); en pantallas angostas, una hoja arriba de todo, que sigue
-// a la parte visible cuando sale el teclado (--vvtop y --vvh los escribe vigilarTeclado).
+// Pegada al botón (la ubicación que eligió el usuario con una maqueta, 13/10/2026): justo abajo (o arriba si abajo no entra), del ancho de la
+// pantalla menos un margen en el celular y de 320 px en la compu. Cuenta solo la parte visible: cuando en el celular sale el teclado
+// (la parte visible se achica, visualViewport) la página sube para que el botón siga a la vista y la ventanita se vuelve a acomodar.
 function ubicarRespPop(btn){
-  const el = respPopEl, r = btn.getBoundingClientRect();
-  if(window.innerWidth <= 760){ el.classList.add("hoja"); el.style.top = el.style.left = el.style.bottom = el.style.maxHeight = ""; return; }
-  el.classList.remove("hoja");
-  const ancho = Math.min(320, window.innerWidth - 24), rtl = isRTL();
-  let izq = rtl ? r.right - ancho : r.left;
-  izq = Math.max(12, Math.min(izq, window.innerWidth - ancho - 12));
-  const abajo = window.innerHeight - r.bottom - 14, arriba = r.top - 14, cabe = Math.min(360, Math.max(abajo, arriba));
-  el.style.left = izq + "px"; el.style.maxHeight = Math.max(180, cabe) + "px";
-  if(abajo >= 230 || abajo >= arriba){ el.style.top = (r.bottom + 6) + "px"; el.style.bottom = ""; }
-  else { el.style.top = ""; el.style.bottom = (window.innerHeight - r.top + 6) + "px"; }
+  const el = respPopEl, r = btn.getBoundingClientRect(), vv = window.visualViewport;
+  const visArriba = vv ? vv.offsetTop : 0, visAbajo = vv ? vv.offsetTop + vv.height : window.innerHeight;
+  if(window.innerWidth <= 760){ el.style.left = "12px"; el.style.right = "12px"; el.style.width = "auto"; }
+  else {
+    const ancho = Math.min(320, window.innerWidth - 24);
+    let izq = isRTL() ? r.right - ancho : r.left;
+    izq = Math.max(12, Math.min(izq, window.innerWidth - ancho - 12));
+    el.style.left = izq + "px"; el.style.right = ""; el.style.width = ancho + "px";
+  }
+  const abajo = visAbajo - r.bottom - 14, arriba = r.top - visArriba - 14;
+  if(abajo >= 230 || abajo >= arriba){ el.style.top = (r.bottom + 6) + "px"; el.style.bottom = ""; el.style.maxHeight = Math.max(150, Math.min(360, abajo - 6)) + "px"; }
+  else { el.style.top = ""; el.style.bottom = (window.innerHeight - r.top + 6) + "px"; el.style.maxHeight = Math.max(150, Math.min(360, arriba - 6)) + "px"; }
+}
+// Si el botón quedó tapado por el teclado (o arriba del todo), se sube o baja la página para dejarlo a la vista.
+function respBotonALaVista(btn){
+  const r = btn.getBoundingClientRect(), vv = window.visualViewport;
+  const visArriba = vv ? vv.offsetTop : 0, visAbajo = vv ? vv.offsetTop + vv.height : window.innerHeight;
+  if(r.bottom > visAbajo - 60 || r.top < visArriba + 40){
+    respAbiertoEn = Date.now();   // este desplazamiento es nuestro: no tiene que cerrarla
+    window.scrollBy({ top: r.top - (visArriba + 110), behavior: "instant" });
+  }
 }
 function cerrarRespPop(devolverFoco = true){
   if(!respPopAbierto()) return;
@@ -16156,9 +16166,13 @@ document.addEventListener("pointerdown", e => {
   cerrarRespPop(false);
 }, true);
 // En la compu sigue al botón: si se mueve la página, se cierra (salvo un desplazamiento que venía de antes y termina justo después de abrirla).
-window.addEventListener("scroll", e => { if(respPopAbierto() && !respPopEl.classList.contains("hoja") && !respPopEl.contains(e.target) && Date.now() - respAbiertoEn > 400) cerrarRespPop(false); }, true);
+window.addEventListener("scroll", e => { if(respPopAbierto() && !respPopEl.contains(e.target) && Date.now() - respAbiertoEn > 400) cerrarRespPop(false); }, true);
 // Al salir el teclado del celular la pantalla cambia de alto: no se cierra, se vuelve a ubicar.
-const reubicarRespPop = () => { if(respPopAbierto() && respDisparador && respDisparador.isConnected) ubicarRespPop(respDisparador); };
+const reubicarRespPop = () => {
+  if(!respPopAbierto() || !respDisparador || !respDisparador.isConnected) return;
+  if(window.matchMedia("(pointer:coarse)").matches) respBotonALaVista(respDisparador);
+  ubicarRespPop(respDisparador);
+};
 window.addEventListener("resize", reubicarRespPop);
 if(window.visualViewport) window.visualViewport.addEventListener("resize", reubicarRespPop);
 // Marca un paso (hecho / no es tarea / de nuevo pendiente). Va solo el
