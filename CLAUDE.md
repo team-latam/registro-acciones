@@ -31,7 +31,14 @@ decisiones de arquitectura.
   Agenda del 9/10, en `docs/auditoria/historial/`) y
   `docs/RESTAURAR.md` (cómo volver atrás con una copia: workflow
   «Restaurar una copia», `supabase/respaldo/restaurar.mjs`). En la
-  raíz quedan solo `index.html`, `README.md` y este archivo.
+  raíz quedan `index.html`, `README.md`, este archivo y la carpeta
+  `video/`.
+  **El video de presentación** (en inglés, ~74 s, celular y compu; el
+  usuario aprobó la v5 como final el 13/10/2026) se rehace entero con
+  `bash video/hacer_video.sh`; todo el proceso, las decisiones y lo que
+  hay que revisar cuando la app cambie están en `video/LEEME.md`. Los MP4 no
+  están en el repo (los tiene el usuario). Los datos de la demo son
+  inventados: nunca ponerle datos reales.
   **El Excel del Mapeo de comunidades («Mapeo - LatAm», un Sheet de
   Google del usuario) tiene nombres y teléfonos de personas: no se
   commitea ni se embebe en ninguna página** (el repo y el sitio son
