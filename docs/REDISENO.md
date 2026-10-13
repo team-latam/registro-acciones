@@ -969,6 +969,45 @@ eligió **unirlas así**:
 Pruebas: `agenda_test.mjs` (país, región y ciudad; fallan con el código
 de antes) y `ficha_celular_test.mjs` vuelve a esperar cinco tarjetas.
 
+### 72. «Temas» en Reportes: de qué se habló, sin etiquetar nada — HECHO (13 oct 2026)
+
+Propuesta 4-A de la segunda vuelta (reemplaza a las etiquetas por tema, que el usuario
+no quiso: pidió algo automático que mostrara «de qué se habla y qué tiene movimiento»).
+
+- En Reportes, una sección **«Temas»**: las palabras de los títulos y los textos de los
+  últimos 90 días, contadas contra los 90 anteriores, con **sube / baja / nuevo / igual**,
+  un minigráfico de seis tramos y hasta diez temas. Tocar uno abre el Inicio con ese texto
+  buscado. No depende del período elegido arriba y respeta «Ver solo».
+- Se calcula en el navegador con lo que ya está cargado: **nada sale de la app**.
+- Cuenta posteos (una palabra repetida en un texto es una mención), junta «cámara» y
+  «cámaras», deja afuera las palabras de relleno en los cuatro idiomas, las palabras que son
+  tipos de actividad, los lugares y la gente de cada posteo, lo cancelado, lo que todavía no
+  pasó y lo de hace más de 180 días. Con menos de 8 posteos en esa ventana no se dibuja.
+- Pruebas: `temas_test.mjs` (falla con el código de antes) y `armar_reportes.py` suma las
+  piezas nuevas a la pantalla de prueba de Reportes. El paso de Reportes del recorrido de
+  bienvenida lo cuenta.
+
+### 71. «Repetir» propone la fecha del año que viene — HECHO (13 oct 2026)
+
+Propuesta 2-A de la segunda vuelta. «Repetir este evento» ya existía (tanda 2); la propuesta
+anterior lo daba por inexistente, y fue un error. Lo que faltaba para los eventos de todos los
+años: si el evento original es de **hace más de 6 meses**, el evento nuevo arranca en la
+**próxima vez que cae ese día** (el 29 de febrero, el 28 si no es bisiesto), con la misma
+duración, y el formulario lo dice en una línea («Propuse el mismo día del año que viene: el
+evento original es del …»), que se va si la persona cambia la fecha. Uno más reciente sigue
+arrancando hoy. Prueba: `repetir_fecha_test.mjs` (falla con el código de antes). Los hitos de
+un proyecto siguen sin copiarse (la opción B de esa propuesta no se eligió).
+
+### 70. Planillas del Inicio y del año entero — HECHO (13 oct 2026)
+
+Propuesta 5-C. Reportes ya tenía «Planilla» (CSV con punto y coma); faltaban dos: un botón
+**«Planilla»** en el Inicio (baja lo que muestra la solapa, con los filtros puestos, entero y
+no solo las 15 tarjetas) para quien carga eventos, y **«Bajar todo <año>»** en Administración
+› Copia de seguridad, para el admin. Una fila por posteo (fecha, tipo, título, lugares,
+dónde, personas, quién la cargó, estado, cada cuánto se repite), con el mismo cuidado que las
+otras planillas (BOM, punto y coma y un apóstrofo delante de lo que Excel tomaría por fórmula).
+Prueba: `planillas_test.mjs`.
+
 ### 69. El repositorio, más ordenado: tres carpetas a la vista — HECHO (13 oct 2026)
 
 El usuario dijo que se veían demasiadas carpetas en la portada del repo y pidió

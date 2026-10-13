@@ -49,9 +49,9 @@ Ideas sueltas que le interesan (todavía sin maqueta): **el recorrido de un viaj
 | # | Propuesta | Elección | Estado |
 |---|---|---|---|
 | 1 | Pendientes con responsable y fecha | **B** · responsable y fecha en cada paso, y aviso por correo a quien lo recibe (apagable en Tu cuenta, otra vez el día que vence) | por hacer |
-| 2 | «Repetir» un evento | **A** · que «Repetir» proponga la fecha del año que viene si el evento es de hace más de 6 meses (misma duración); si es reciente, queda en hoy como ahora | por hacer |
+| 2 | «Repetir» un evento | **A** · que «Repetir» proponga la fecha del año que viene si el evento es de hace más de 6 meses (misma duración); si es reciente, queda en hoy como ahora | **hecha el 13/10/2026** (tanda 71) |
 | 3 | Informe mensual por correo, visible 48 h | **A** · el correo avisa y trae un botón; el informe se abre dentro del Registro con la cuenta del equipo y el enlace vence a las 48 horas; se puede bajar | por hacer (depende del informe de la 3-C) |
-| 4 | Tendencias de temas, automáticas | **A** · lista en Reportes de las palabras que suben, bajan o son nuevas (últimos 90 días contra los 90 anteriores); tocar un tema abre en el Inicio los eventos que lo mencionan; se calcula en el navegador, nada sale de la app | por hacer |
+| 4 | Tendencias de temas, automáticas | **A** · lista en Reportes de las palabras que suben, bajan o son nuevas (últimos 90 días contra los 90 anteriores); tocar un tema abre en el Inicio los eventos que lo mencionan; se calcula en el navegador, nada sale de la app | **hecha el 13/10/2026** (tanda 72) |
 | 5 | El recorrido de un viaje en el mapa | **No por ahora** («dejarlo para más adelante») | — |
 | 6 | «Mi año» | **B** · pantalla en Tu cuenta con los números del año más una **tarjeta para compartir** (imagen vertical que se baja); cuidar que no lleve nombres de otras personas | por hacer |
 
@@ -104,12 +104,12 @@ app se avisa antes de publicar.
 ## Orden que se sigue
 
 1. ~~**5-C** (planillas de Inicio y de Administración)~~ ✅ 13/10/2026.
-2. **2.ª vuelta 2-A**: «Repetir» propone la fecha del año que viene (lo más chico).
+2. ~~**2.ª vuelta 2-A**: «Repetir» propone la fecha del año que viene~~ ✅ 13/10/2026.
 3. **1-B**: pendientes con responsable, fecha y aviso por correo.
 4. **3-C**: modo presentación en Reportes, con impresión.
 5. **8-C**: «Algo no anda» y errores anotados solos (tabla nueva en Supabase).
 6. **2-A**: correo mensual de lugares sin actividad (usa el sistema de correos).
-7. **Tendencias de temas** (lista en Reportes).
+7. ~~**Tendencias de temas** (lista en Reportes)~~ ✅ 13/10/2026 (tanda 72).
 8. **Informe mensual con enlace de 48 h** (después de la 3-C).
 9. **«Mi año»** con tarjeta para compartir.
 
