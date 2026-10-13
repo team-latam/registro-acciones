@@ -969,6 +969,44 @@ eligió **unirlas así**:
 Pruebas: `agenda_test.mjs` (país, región y ciudad; fallan con el código
 de antes) y `ficha_celular_test.mjs` vuelve a esperar cinco tarjetas.
 
+### 87. «Tendencias»: lo que subió y bajó en 90 días, en Reportes y en el Inicio — HECHO (13 oct 2026)
+
+El usuario no estaba conforme con «Temas» (palabras sueltas que subían y bajaban: «no representa lo que se está hablando, lo que pasó»).
+Pidió que se llame «Tendencias», que combine **lo que pasó** (lugares y tipos) con **de qué se habló** (temas) y que se vea también en el
+Inicio. Se le mostró una propuesta con maquetas (compu y celular), la ajustó en varias vueltas y aprobó el diseño; lo último que pidió fue
+sacar el párrafo explicativo de abajo («me es más fácil y simple»): quedó solo el subtítulo, sin texto de más.
+- **La cuenta** (`calcularTendencias`, igual en las dos pantallas y sin depender del período que se mire en Reportes): los **últimos 90 días
+  contra los 90 anteriores**. Lugares y tipos salen de `armarReporte` (dan lo mismo que «Por país» y «Por tipo» de esa ventana); los temas, de
+  un diccionario. Solo se muestra lo que **cambió bastante**: 3 o más en alguno de los dos tramos y, o *nuevo* (antes 0), o *se apagó* (ahora 0),
+  o subió/bajó una vez y media **y por lo menos 2** (esto último lo sumé yo: sin él, un 3 contra 2 salía como «▲ +1»). Orden: los que más
+  cambiaron primero (después, los de más actividad, y por nombre). **Nunca más de 10** en ninguna pantalla. Con menos de 8 posteos en los 180 días no hay sección ni tarjeta;
+  con 8 o más pero sin cambios grandes, Reportes dice «Nada cambió lo suficiente.» y el Inicio no muestra la tarjeta.
+- **Reportes › Tendencias** (en el período y en «Todos los años»; reemplaza a «Temas»): subtítulo «Últimos 90 días, contra los 90 anteriores», categorías
+  **Todo / 📍 Lugares / 🏷 Tipos / 💬 Temas**, 6 fichas y «Ver las otras N» (hasta 10; «Mostrar menos»). **Compu** (tarjeta de más de 560 px): mosaico — la que
+  más cambió, grande (2×2, con el número de ahora, «antes N» y la barra), el resto con nombre, variación y una barra de «antes → ahora»; las columnas
+  van de 3 a 6 según el ancho y lo que sobra del último renglón se reparte entre sus fichas, así que no queda ningún hueco (`repartoDelMosaico`,
+  `ajustarTendencias`, con un `ResizeObserver` que mira solo el ancho). **Celular**: filas «nombre · 6 → 14 · variación» en tres tercios. Es el mismo
+  HTML; el reparto lo elige el ancho de la tarjeta, no el de la pantalla. Se imprime en dos columnas.
+- **Tocar una ficha** abre el Inicio con eso (lugar, tipo, o el tema) en **«📅 Últimos 90 días»** y con la misma regla que las filas de Reportes (solo lo propio del
+  lugar), para que la lista dé lo que decía el número; desde Reportes, con «← Volver a Reportes» y con el «Ver solo» que tenía el reporte. Para eso el filtro de fecha
+  aprendió un período «últimos N días» (`ventanaDeDias`, `periodo.dias`): lo rotula, se ve en el panel Fecha, se saca con su ✕ y los filtros guardados lo vuelven a contar desde hoy.
+- **El costado del Inicio** (solo en pantallas de 1024 px o más, entre «Hitos por vencer» y «Accesos directos»): «📈 TENDENCIAS» con la etiqueta «90 días» (la explicación,
+  al pasar el mouse) y «Reportes ↗»; 5 filas «nombre · 6 → 14 · variación», «Ver más» suma de a 5 hasta 10 y «Mostrar menos». La fila abre el Inicio; la **flecha ↗** de cada fila
+  abre Reportes: con un lugar o un tipo, el reporte «Ver solo» de ese lugar o tipo; con un tema, sin filtro y con esa ficha marcada un momento (baja sola hasta la sección).
+- **Los temas** (`preferences.temas` en `app_config`, sin cambios en la base: el equipo lo lee y solo los admins lo escriben): una lista de temas, cada uno con sus palabras
+  (el nombre ya cuenta como una). Se busca por **palabras enteras**, sin tildes, mayúsculas ni plural, y con frases («krav maga»); cuenta **posteos** (uno por posteo) por su título y texto;
+  los nombres de personas no son temas (solo cuenta lo que se escribe en la lista). Hasta que un admin arma la suya rige una **lista de ejemplo** (Seguridad, Krav magá,
+  Jóvenes, Becas, Fiestas), y cualquier cambio la guarda como la del equipo. **Escribir el nombre de un tema en el buscador del Inicio busca todas sus palabras** (así la lista da el número).
+- **Administración › Temas** (en «Cómo se carga», solo admins): una tarjeta por tema con su nombre (se renombra al salir del campo), sus palabras (con ✕), «+ palabra»
+  (varias separadas por coma; Enter), cuántas actividades lo mencionan ahora y antes, y «Quitar tema» con confirmación; arriba, «+ Agregar tema»; abajo, las
+  **palabras que se repiten en los textos y no están en ningún tema** (lo que antes contaba «Temas»), para sumarlas a un tema nuevo o a uno elegido con un toque, y
+  «Volver a la lista de ejemplo». Cada cambio se guarda al toque.
+- **Presentar**: la diapositiva «Quién lo hizo posible» / «De qué se habló» cambia las burbujas de palabras por las filas de Tendencias (hasta 6) y, sin nombres, se llama «Tendencias».
+- El recorrido de bienvenida: el paso de Inicio cuenta la tarjeta y el de Reportes, «Tendencias» (lugares, tipos y temas). La sección de Administración queda cubierta por `TOUR_SIN_PASO.admin`.
+- Pruebas: `tendencias_test.mjs` (79: la cuenta a mano con «hoy» fijo, los bordes de la regla, el tope de 10, las categorías, el mosaico sin huecos a varios anchos y las filas del celular,
+  tocar una ficha y la lista del Inicio, el costado y sus flechas, pocos datos y sin cambios, Administración, el buscador, inglés y hebreo; seis variantes rotas a propósito fallan),
+  reemplaza a `temas_test.mjs`; `presentacion_destacados_test.mjs` y `reportes_dom_test.mjs` al día; `armar_reportes.py` con los nombres nuevos.
+
 ### 86. «Mes a mes»: el número de lo planificado, adentro de su barra — HECHO (13 oct 2026)
 
 El usuario vio (captura de la compu, con las barras claras del año pasado al lado) que el «+12», «+9» y «+6» quedaba pegado debajo del

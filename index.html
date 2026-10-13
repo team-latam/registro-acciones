@@ -627,12 +627,14 @@
   .ps-av{ width:clamp(34px, 6.6vh, 54px); height:clamp(34px, 6.6vh, 54px); border-radius:50%; display:grid; place-items:center; color:#fff; font-size:clamp(12px, 2.3vh, 19px); font-weight:800; }
   .ps-nom{ overflow-wrap:anywhere; } .ps-gente b{ font-variant-numeric:tabular-nums; }
   .ps-leyenda-eq{ margin-top:clamp(8px, 1.6vh, 14px); font-size:clamp(11px, 1.9vh, 15px); color:var(--ps-mut); }
-  .ps-burb{ display:flex; flex-wrap:wrap; gap:clamp(6px, 1.2vh, 12px); align-items:center; justify-content:center; }
-  .ps-bu{ --k:16; width:calc(var(--k) * 1vh); height:calc(var(--k) * 1vh); border-radius:50%; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:4px; box-sizing:border-box; font-style:normal; background:rgba(255,255,255,.2); line-height:1.1; }
-  .ps-bu b{ font-size:clamp(11px, calc(var(--k) * .16vh), 22px); font-weight:800; overflow-wrap:anywhere; } .ps-bu small{ font-size:clamp(10px, 1.8vh, 15px); font-weight:700; }
-  .ps-burb + .ps-leyenda-eq{ text-align:center; }
-  .ps-bu b{ color:inherit; } .ps-bu.sube{ background:#4fc7e0; color:#0d3b3e; } .ps-bu.nuevo{ background:#fde047; color:#0d3b3e; } .ps-bu.baja{ background:#fca5a5; color:#0d3b3e; }
-  @media (max-width:720px){ .ps-cards{ grid-template-columns:1fr; gap:10px; } .ps-card{ display:grid; grid-template-columns:minmax(0, 40%) minmax(0, 1fr); } .ps-foto{ height:auto; min-height:104px; } .ps-ico{ font-size:44px; } .ps-tag{ top:6px; inset-inline-start:6px; padding:2px 8px; font-size:11px; } .ps-card-txt{ align-self:center; } .ps-bu{ width:calc(var(--k) * .8vh); height:calc(var(--k) * .8vh); } }
+  .ps-tend{ list-style:none; margin:0; padding:0; display:grid; gap:clamp(8px, 2vh, 16px); }
+  .ps-tend li{ display:grid; grid-template-columns:minmax(0, 1.5fr) minmax(0, 1fr) auto; gap:clamp(10px, 1.8vh, 16px); align-items:center; font-size:clamp(14px, 2.9vh, 24px); font-weight:700; }
+  .ps-tn{ overflow-wrap:anywhere; }
+  .ps-tm{ text-align:center; color:var(--ps-mut); font-variant-numeric:tabular-nums; white-space:nowrap; } .ps-tm b{ color:#fff; }
+  .ps-td{ font-weight:800; white-space:nowrap; text-align:end; }
+  .ps-tend .sube .ps-td{ color:#9ae6b4; } .ps-tend .baja .ps-td{ color:#fca5a5; } .ps-tend .nuevo .ps-td{ color:#fde047; }
+  .ps-tend + .ps-leyenda-eq{ text-align:start; }
+  @media (max-width:720px){ .ps-cards{ grid-template-columns:1fr; gap:10px; } .ps-card{ display:grid; grid-template-columns:minmax(0, 40%) minmax(0, 1fr); } .ps-foto{ height:auto; min-height:104px; } .ps-ico{ font-size:44px; } .ps-tag{ top:6px; inset-inline-start:6px; padding:2px 8px; font-size:11px; } .ps-card-txt{ align-self:center; } }
   .ps-nota{ margin-top:clamp(14px, 3vh, 28px); font-size:clamp(11px, 2vh, 16px); color:var(--ps-mut); }
   .ps-barras{ list-style:none; margin:0; padding:0; display:grid; gap:clamp(7px, 1.8vh, 16px); }
   .ps-barras li{ display:grid; grid-template-columns:minmax(90px, 24%) minmax(0, 1fr) auto; gap:14px; align-items:center; font-size:clamp(13px, 2.7vh, 24px); }
@@ -672,8 +674,8 @@
     .pres-pagina .ps-cards{ grid-template-columns:repeat(3, 1fr); gap:5mm; } .pres-pagina .ps-card{ background:#f1f7f7; border-color:#cfe0e1; } .pres-pagina .ps-foto{ height:48mm; } .pres-pagina .ps-foto.sin{ background:linear-gradient(135deg, #bfe6ee, #4fc7e0); }
     .pres-pagina .ps-card-t{ font-size:13pt; } .pres-pagina .ps-card-m{ font-size:10pt; } .pres-pagina .ps-ico{ font-size:34pt; } .pres-pagina .ps-tag{ font-size:9pt; }
     .pres-pagina .ps-dos{ grid-template-columns:1fr 1fr; gap:10mm; } .pres-pagina .ps-gente li{ font-size:13pt; } .pres-pagina .ps-av{ width:11mm; height:11mm; font-size:10pt; } .pres-pagina .ps-leyenda-eq{ font-size:9pt; }
-    .pres-pagina .ps-bu{ width:calc(var(--k) * 2mm); height:calc(var(--k) * 2mm); background:#d9ecef; color:#0d3b3e; } .pres-pagina .ps-bu b{ font-size:10pt; } .pres-pagina .ps-bu small{ font-size:8pt; }
-    .pres-pagina .ps-bu.sube{ background:#bfe6ee; } .pres-pagina .ps-bu.nuevo{ background:#fde68a; } .pres-pagina .ps-bu.baja{ background:#fbd5d5; }
+    .pres-pagina .ps-tend li{ font-size:13pt; } .pres-pagina .ps-tm b{ color:#0d3b3e; }
+    .pres-pagina .ps-tend .sube .ps-td{ color:#166534; } .pres-pagina .ps-tend .baja .ps-td{ color:#991b1b; } .pres-pagina .ps-tend .nuevo .ps-td{ color:#146f82; }
   }
   .avatar-pending{
     position:absolute; top:-5px; inset-inline-end:-5px; min-width:18px; height:18px; padding:0 4px; border-radius:999px; pointer-events:none;
@@ -1465,6 +1467,23 @@
   html[data-theme="dark"] .fs-link.active{ color:var(--celeste-dark); }   /* petróleo sobre el celeste oscuro daba 1,3 (R17) */
   .fs-empty{ margin:0 0 6px; color:var(--text-muted); font-size:13px; }
   .fs-more{ background:none; border:none; padding:6px 0 4px; font-family:inherit; font-size:12.5px; font-weight:700; color:var(--link); cursor:pointer; }
+  /* Tendencias en el costado del Inicio (13/10/2026) */
+  .fs-cab{ display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
+  .fs-cab h4{ margin:0 0 4px; }
+  .fs-rep{ all:unset; cursor:pointer; box-sizing:border-box; font-size:12px; font-weight:700; color:var(--link); white-space:nowrap; border-radius:6px; padding:0 2px; }
+  .fs-90{ display:inline-block; margin-inline-start:6px; padding:1px 8px; border-radius:999px; background:var(--surface-alt); color:var(--text-muted); font-size:10.5px; font-weight:800; letter-spacing:.02em; text-transform:none; vertical-align:1px; cursor:help; }
+  .fs-tend{ display:grid; margin-top:2px; }
+  .fs-tend .fila{ display:grid; grid-template-columns:minmax(0,1fr) 26px; align-items:center; border-top:1px solid var(--border); }
+  .fs-tend .fila:first-child{ border-top:0; }
+  .fs-tend .tr{ all:unset; box-sizing:border-box; display:grid; grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) minmax(0,.85fr); gap:6px; align-items:center; padding:8px 2px; font-size:13px; cursor:pointer; border-radius:6px; }
+  .fs-tend .tr:hover, .fs-tend .ir:hover{ background:var(--surface-hover); }
+  .fs-tend .nn{ font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .fs-tend .md{ text-align:center; color:var(--text-muted); font-weight:700; font-variant-numeric:tabular-nums; white-space:nowrap; } .fs-tend .md b{ color:var(--text); }
+  .fs-tend .dd{ text-align:end; font-weight:800; font-size:12.5px; white-space:nowrap; } .fs-tend .dd.sube{ color:var(--ok-text); } .fs-tend .dd.baja{ color:var(--danger-text); } .fs-tend .dd.nuevo{ color:var(--link); }
+  .fs-tend .ir{ all:unset; box-sizing:border-box; display:grid; place-items:center; width:24px; height:24px; border-radius:50%; color:var(--link); font-size:14px; font-weight:800; cursor:pointer; }
+  .fs-vermas{ all:unset; cursor:pointer; box-sizing:border-box; display:flex; justify-content:space-between; align-items:center; width:100%; padding:8px 2px 4px; color:var(--link); font-weight:700; font-size:12.5px; border-top:1px solid var(--border); }
+  .fs-vermas small{ color:var(--text-muted); font-weight:600; font-size:11.5px; }
+  .fs-rep:focus-visible, .fs-tend .tr:focus-visible, .fs-tend .ir:focus-visible, .fs-vermas:focus-visible{ outline:2px solid var(--celeste-dark); outline-offset:1px; }
   .fs-more:hover{ text-decoration:underline; }
   .fs-saved{ display:flex; align-items:center; gap:4px; }
   .fs-saved .fs-link{ flex:1; }
@@ -2765,6 +2784,31 @@
   /* La casilla "Opcional" de cada documento, en Administración. */
   .doc-fila .doc-opc{ display:inline-flex; align-items:center; gap:6px; margin-inline-start:auto; font-size:12px; font-weight:700; color:var(--text-muted); white-space:nowrap; cursor:pointer; }
   .doc-fila .doc-opc input{ accent-color:var(--celeste-dark); margin:0; width:15px; height:15px; }
+  /* Administración › Temas (13/10/2026) */
+  .tm-seccion{ display:grid; gap:14px; max-width:820px; }
+  .tm-aviso{ background:var(--celeste-soft); border:1px solid var(--celeste); border-radius:12px; padding:10px 14px; font-size:13px; font-weight:600; }
+  .tm-nuevo{ display:flex; gap:8px; flex-wrap:wrap; }
+  .tm-nuevo .lp-inp{ flex:1 1 220px; width:auto; }
+  .tm-lista{ display:grid; gap:12px; }
+  .tm-card{ background:var(--card); border:1px solid var(--border); border-radius:16px; padding:14px 16px; display:grid; gap:10px; }
+  .tm-cab{ display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; }
+  .tm-nombre{ flex:1 1 200px; width:auto; font-weight:800; }
+  .tm-cuenta{ font-size:12px; color:var(--text-muted); font-weight:600; }
+  .tm-chips{ display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  .tm-chip{ display:inline-flex; align-items:center; gap:4px; background:var(--surface-alt); color:var(--text); border:0; border-radius:999px; padding:3px 5px 3px 11px; font:inherit; font-size:12.5px; font-weight:600; }
+  .tm-chip.fijo{ background:var(--celeste-soft); padding-inline-end:11px; font-weight:800; }
+  .tm-chip button{ all:unset; cursor:pointer; box-sizing:border-box; width:18px; height:18px; text-align:center; line-height:18px; border-radius:50%; color:var(--text-muted); font-size:11px; }
+  .tm-chip button:hover{ background:var(--surface-hover); color:var(--text); }
+  .tm-chip button:focus-visible, button.tm-chip:focus-visible{ outline:2px solid var(--celeste-dark); outline-offset:1px; }
+  button.tm-chip.sug{ cursor:pointer; padding:3px 11px; border:1px dashed var(--border); background:transparent; }
+  button.tm-chip.sug:hover{ background:var(--celeste-soft); border-color:var(--celeste-dark); }
+  .tm-chip small{ color:var(--text-muted); font-weight:700; font-size:11px; }
+  .tm-add{ display:flex; align-items:center; gap:8px; }
+  .tm-sug{ display:grid; gap:8px; }
+  .tm-sug h3{ margin:6px 0 0; font-size:13px; font-weight:800; color:var(--ink); }
+  .tm-sug-dest label{ display:flex; flex-wrap:wrap; align-items:center; gap:8px; font-size:13px; font-weight:600; }
+  .tm-sug-dest .lp-sel{ width:auto; min-width:160px; }
+  .tm-pie{ display:flex; justify-content:flex-end; }
   .doc-add{ display:flex; align-items:center; gap:8px; margin-top:2px; }
   .doc-nuevo-input{
     flex:1 1 0; min-width:0; height:38px; padding:0 12px; font-family:inherit; font-size:13px; font-weight:600; box-sizing:border-box;
@@ -3353,17 +3397,56 @@
   .rep-delta.sube{ color:var(--ok-text, #15803d); } .rep-delta.baja{ color:var(--danger-text, #b91c1c); }
   .rep-kpi .rep-delta{ display:block; margin-top:4px; }
   /* Temas: una fila por palabra con su minigráfico de 90 días en seis tramos. */
-  .rep-lista-temas{ list-style:none; margin:0; padding:0; display:grid; }
-  .rep-lista-temas li{ border-top:1px solid var(--border); }
-  .rep-lista-temas li:first-child{ border-top:0; }
-  .rep-tema{ all:unset; box-sizing:border-box; width:100%; display:grid; grid-template-columns:minmax(0,1fr) 54px auto; gap:10px; align-items:center; padding:9px 4px; cursor:pointer; border-radius:8px; }
-  .rep-tema:hover{ background:var(--surface-hover); }
-  .rep-tema:focus-visible{ outline:2px solid var(--celeste-dark); outline-offset:-2px; }
-  .rep-tema-txt{ display:grid; gap:1px; min-width:0; }
-  .rep-tema-txt b{ font-size:13.5px; overflow-wrap:anywhere; }
-  .rep-tema-txt small{ font-size:11.5px; color:var(--text-muted); }
-  .rep-spark{ display:flex; align-items:flex-end; gap:2px; height:20px; }
-  .rep-spark i{ flex:1; background:var(--celeste-dark); border-radius:1px; min-height:2px; opacity:.85; }
+  /* Tendencias (13/10/2026). El mismo HTML sirve para dos dibujos, y ajustarTendencias() elige cuál según el ancho de la
+     tarjeta (data-modo): en la compu, un mosaico donde lo que más cambió va grande y no queda ningún hueco; en el celular,
+     filas «nombre · 6 → 14 · variación» en tres tercios. Antes de que corra (o sin JS) se ve la versión de filas. */
+  .rep-tend-cab{ display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px 12px; margin-bottom:10px; }
+  .rep-tend-chips{ display:flex; flex-wrap:wrap; gap:6px; }
+  .rep-tend-chips .chip-toggle{ padding:4px 11px; font-size:12px; }
+  .rep-tend-ver{ background:none; border:0; padding:4px 0; font:inherit; font-size:12px; font-weight:700; color:var(--link); cursor:pointer; white-space:nowrap; }
+  .rep-tend-vacio{ margin:12px 0 6px; font-size:13px; color:var(--text-muted); }
+  .rep-mov{ --t-sube:#3aa86a; --t-baja:#d9534f; --t-nuevo:#4fa8c0; list-style:none; margin:0; padding:0; display:grid; grid-template-columns:minmax(0,1fr); }
+  .rep-mov-it{ cursor:pointer; min-width:0; -webkit-tap-highlight-color:transparent; }
+  .rep-mov-it:focus-visible{ outline:2px solid var(--celeste-dark); outline-offset:2px; }
+  .mv-nom{ grid-area:nom; font-weight:800; min-width:0; }
+  .mv-ico{ font-style:normal; }
+  .mv-pil{ grid-area:pil; white-space:nowrap; font-weight:800; font-variant-numeric:tabular-nums; }
+  .mv-n{ grid-area:n; color:var(--text-muted); font-weight:700; white-space:nowrap; font-variant-numeric:tabular-nums; } .mv-n b{ color:var(--text); }
+  .mv-pil.sube{ color:var(--ok-text); } .mv-pil.baja{ color:var(--danger-text); } .mv-pil.nuevo{ color:var(--link); }
+  /* En filas (el celular) */
+  .rep-mov:not([data-modo="mosaico"]) .rep-mov-it{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,.75fr); grid-template-areas:"nom n pil"; align-items:center; column-gap:8px; padding:9px 4px; border-top:1px solid var(--border); border-radius:0; }
+  .rep-mov:not([data-modo="mosaico"]) .rep-mov-it:first-child{ border-top:0; }
+  .rep-mov:not([data-modo="mosaico"]) .rep-mov-it:hover{ background:var(--surface-hover); }
+  .rep-mov:not([data-modo="mosaico"]) .mv-nom{ display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; font-size:13px; overflow-wrap:anywhere; }
+  .rep-mov:not([data-modo="mosaico"]) .mv-n{ text-align:center; font-size:12.5px; }
+  .rep-mov:not([data-modo="mosaico"]) .mv-pil{ text-align:end; font-size:12.5px; }
+  .rep-mov:not([data-modo="mosaico"]) :is(.mv-rg, .mv-gr, .mv-antes){ display:none; }
+  /* En mosaico (la compu) */
+  .rep-mov[data-modo="mosaico"]{ grid-template-columns:repeat(var(--cols, 4), minmax(0,1fr)); grid-auto-rows:minmax(78px, auto); grid-auto-flow:dense; gap:10px; }
+  .rep-mov[data-modo="mosaico"] .rep-mov-it{ display:grid; grid-template-columns:minmax(0,1fr) auto; grid-template-rows:auto auto; grid-template-areas:"nom pil" "rg n"; align-content:space-between; align-items:center; gap:8px 10px; padding:10px 14px; border:1px solid var(--border); border-radius:14px; background:var(--card); }
+  .rep-mov[data-modo="mosaico"] .rep-mov-it:hover{ background:var(--surface-hover); }
+  .rep-mov[data-modo="mosaico"] .mv-nom{ font-size:13.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .rep-mov[data-modo="mosaico"] .mv-pil{ border-radius:999px; padding:2px 9px; font-size:12px; }
+  .rep-mov[data-modo="mosaico"] .mv-pil.sube{ background:var(--ok-bg); } .rep-mov[data-modo="mosaico"] .mv-pil.baja{ background:var(--danger-soft); } .rep-mov[data-modo="mosaico"] .mv-pil.nuevo{ background:var(--celeste-soft); }
+  .rep-mov[data-modo="mosaico"] .mv-n{ font-size:12px; }
+  .mv-rg{ grid-area:rg; position:relative; height:8px; border-radius:99px; background:var(--surface-alt); min-width:40px; }
+  .mv-rg i{ position:absolute; top:0; height:8px; border-radius:99px; background:var(--t-sube); } .mv-rg i.baja{ background:var(--t-baja); } .mv-rg i.nuevo{ background:var(--t-nuevo); }
+  .mv-rg b{ position:absolute; top:-2px; width:12px; height:12px; border-radius:50%; background:var(--card); border:2px solid var(--ink); box-sizing:border-box; transform:translateX(-50%); }
+  [dir="rtl"] .mv-rg b{ transform:translateX(50%); }
+  /* La que más cambió: grande, con el número de ahora. */
+  .rep-mov[data-modo="mosaico"] .rep-mov-it.hero{ grid-template-rows:auto 1fr auto auto; grid-template-areas:"nom pil" "gr gr" "antes antes" "rg rg"; padding:16px 20px; border-color:transparent; }
+  .rep-mov[data-modo="mosaico"] .rep-mov-it.hero.sube{ background:var(--ok-bg); } .rep-mov[data-modo="mosaico"] .rep-mov-it.hero.baja{ background:var(--danger-soft); } .rep-mov[data-modo="mosaico"] .rep-mov-it.hero.nuevo{ background:var(--celeste-soft); }
+  .rep-mov[data-modo="mosaico"] .rep-mov-it.hero:hover{ filter:brightness(.97); }
+  .rep-mov[data-modo="mosaico"] .hero .mv-nom{ font-size:18px; }
+  .rep-mov[data-modo="mosaico"] .hero .mv-pil{ background:var(--card); }
+  .rep-mov[data-modo="mosaico"] .hero .mv-n{ display:none; }
+  .mv-gr{ grid-area:gr; align-self:end; font-size:44px; line-height:1; font-weight:800; color:var(--ink); font-variant-numeric:tabular-nums; }
+  .hero.sube .mv-gr{ color:var(--ok-text); } .hero.baja .mv-gr{ color:var(--danger-text); } .hero.nuevo .mv-gr{ color:var(--link); }
+  .mv-antes{ grid-area:antes; font-size:14px; font-weight:700; color:var(--text-muted); }
+  .rep-mov[data-modo="mosaico"] .hero .mv-rg{ margin-top:2px; }
+  @keyframes tendLatido{ 0%,100%{ box-shadow:0 0 0 0 transparent; } 35%{ box-shadow:0 0 0 4px var(--celeste-dark); } }
+  .rep-mov-it.resaltada{ animation:tendLatido 1.3s ease 2; }
+  @media (prefers-reduced-motion:reduce){ .rep-mov-it.resaltada{ animation:none; outline:3px solid var(--celeste-dark); outline-offset:2px; } }
   .rep-tabla-envoltorio{ overflow-x:auto; }
   .rep-tabla{ width:100%; border-collapse:collapse; font-size:13px; font-variant-numeric:tabular-nums; }
   .rep-tabla th{ font-size:11.5px; font-weight:800; color:var(--text-muted); text-align:end; padding:5px 8px; white-space:nowrap; }
@@ -3462,6 +3545,10 @@
     .rep-seccion{ margin-top:14px; break-inside:auto; }
     .rep-seccion-cabeza{ margin-bottom:6px; break-after:avoid; }
     .rep-seccion-cabeza h3{ font-size:13px; }
+    /* Tendencias en papel: sin los botones, en dos columnas y sin el reparto del mosaico (que depende del ancho de la pantalla). */
+    .rep-tend-chips, .rep-tend-ver{ display:none !important; }
+    .rep-mov{ grid-template-columns:repeat(2, minmax(0,1fr)) !important; gap:6px !important; }
+    .rep-mov-it{ grid-column:auto !important; grid-row:auto !important; break-inside:avoid; }
     /* "Tocá una fila…" no sirve en papel. */
     .rep-seccion-cabeza span{ display:none; }
     .rep-grilla, .rep-grilla-3, .rep-grilla-ancha, .rep-extras{ grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px; }
@@ -9777,6 +9864,7 @@ function applyPreferencesConfig(cfg){
   applyCalendarIdConfig(cfg && cfg.calendarId);
   applyCalendarImportFromConfig(cfg && cfg.calendarImportFrom);
   applyAttachmentLimitsConfig(cfg);
+  applyTemasConfig(cfg && cfg.temas);
 }
 // Se mutan EVENTO_TYPES/ACTIVITY_TYPES/ACTIVITY_BY_KEY/CALENDAR_SYNC_TYPES
 // en el lugar (mismo motivo que ZONES/COUNTRIES): todo el resto del
@@ -12867,6 +12955,7 @@ function adminMenuItems(){
     { grupo:t("Cómo se carga","How things are logged","Como se carrega","איך רושמים"), items:[
       { key:"tipos", view:"preferencias", sub:"tipos", label:t("Tipos de actividad","Activity types","Tipos de atividade","סוגי פעילות") },
       { key:"agenda", view:"preferencias", sub:"agenda", label:t("Agenda","Directory","Agenda","ספר טלפונים") },
+      { key:"temas", view:"preferencias", sub:"temas", label:t("Temas","Topics","Temas","נושאים") },
       // Zonas, Lugares y Adjuntos se tocan una vez al año: juntas en
       // «Avanzado», que se despliega solo estando adentro (AUDITORIA M12).
       // Las ciudades por sumar se cuentan igual, en «Avanzado».
@@ -12937,6 +13026,10 @@ function adminSeccionTextos(key){
     agenda: {
       lead: t("Las listas de contactos que se trajeron a la Agenda, y para traer otra.","The contact lists imported into the Directory, and a way to import another.","As listas de contatos trazidas para a Agenda, e para trazer outra.","רשימות אנשי הקשר שיובאו לספר הטלפונים, והאפשרות לייבא רשימה נוספת."),
       ayuda: t("La Agenda la ve todo el equipo y la completa cualquiera que pueda cargar eventos. Traer una lista suma sus instituciones y su gente de una vez; si alguien ya estaba en la app (como persona sin cuenta o en otra lista), se usa esa misma ficha. Lo que ya está en la Agenda con el mismo nombre y lugar no se vuelve a traer.","The whole team sees the Directory, and anyone who can log events can fill it in. Importing a list adds its organizations and people at once; if someone was already in the app (as a person without an account or on another list), that same record is used. What's already in the Directory with the same name and place isn't imported again.","Toda a equipe vê a Agenda, e qualquer um que possa carregar eventos a completa. Trazer uma lista soma suas instituições e sua gente de uma vez; se alguém já estava no app (como pessoa sem conta ou em outra lista), usa-se essa mesma ficha. O que já está na Agenda com o mesmo nome e lugar não é trazido de novo.","כל הצוות רואה את ספר הטלפונים, וכל מי שיכול לרשום אירועים יכול להשלים אותו. ייבוא רשימה מוסיף את המוסדות והאנשים שלה בבת אחת; אם מישהו כבר היה באפליקציה (כאדם בלי חשבון או ברשימה אחרת), נעשה שימוש באותו כרטיס. מה שכבר נמצא בספר הטלפונים באותו שם ומקום לא ייובא שוב."),
+    },
+    temas: {
+      lead: t("Los temas que cuenta «Tendencias»: de qué se habló más o menos que antes.","The topics «Trends» counts: what was talked about more or less than before.","Os temas que «Tendências» conta: do que se falou mais ou menos que antes.","הנושאים ש«מגמות» סופר: על מה דובר יותר או פחות מקודם."),
+      ayuda: t("Cada tema es una idea y las palabras con que se la nombra: «Seguridad» puede incluir «cámaras» y «alarma». «Tendencias» cuenta, por tema, cuántas actividades lo mencionan (en el título o en el texto) ahora contra antes. Se buscan palabras enteras, sin importar tildes, mayúsculas ni plural; el nombre del tema ya cuenta como una de sus palabras. Los nombres de personas no son temas: solo cuenta lo que se escribe acá. Abajo aparecen las palabras que se repiten en los textos y todavía no están en ningún tema.","Each topic is an idea and the words that name it: “Security” can include “cameras” and “alarm”. “Trends” counts, per topic, how many activities mention it (in the title or the text) now against before. Whole words are searched, regardless of accents, capitals or plural; the topic's name already counts as one of its words. People's names aren't topics: only what's written here counts. Below you'll see the words that keep coming up in the texts and aren't in any topic yet.","Cada tema é uma ideia e as palavras que a nomeiam: «Segurança» pode incluir «câmeras» e «alarme». «Tendências» conta, por tema, quantas atividades o mencionam (no título ou no texto) agora contra antes. Buscam-se palavras inteiras, sem importar acentos, maiúsculas nem plural; o nome do tema já conta como uma de suas palavras. Nomes de pessoas não são temas: só conta o que se escreve aqui. Abaixo aparecem as palavras que se repetem nos textos e ainda não estão em nenhum tema.","כל נושא הוא רעיון והמילים שמכנות אותו: «ביטחון» יכול לכלול «מצלמות» ו«אזעקה». «מגמות» סופר, לכל נושא, כמה פעילויות מזכירות אותו (בכותרת או בטקסט) עכשיו מול קודם. מחפשים מילים שלמות, בלי קשר לניקוד, לאותיות גדולות או לרבים; שם הנושא כבר נחשב כאחת ממילותיו. שמות של אנשים אינם נושאים: נספר רק מה שנכתב כאן. למטה מופיעות המילים שחוזרות בטקסטים ועדיין אינן באף נושא."),
     },
     avanzado: { lead: t("Lo que se configura una vez y casi no se toca: las zonas, las ciudades escritas a mano y los adjuntos.","What's set up once and rarely touched: zones, hand-typed cities and attachments.","O que se configura uma vez e quase não se mexe: as zonas, as cidades digitadas à mão e os anexos.","מה שמגדירים פעם אחת וכמעט לא נוגעים: האזורים, הערים שהוקלדו ידנית והקבצים המצורפים.") },
     adjuntos: { lead: t("Cuántos archivos, y de qué tamaño, se pueden adjuntar a un posteo (evento, rutina o respuesta).","How many files, and how big, can be attached to a post (event, routine or reply).","Quantos arquivos, e de que tamanho, podem ser anexados a uma postagem (evento, rotina ou resposta).","כמה קבצים, ובאיזה גודל, אפשר לצרף לפוסט (אירוע, שגרה או תגובה).") },
@@ -14030,6 +14123,7 @@ function renderPreferenciasView(){
     : sec==="problemas" ? renderProblemasSection()
     : sec==="avanzado" ? renderAvanzadoSection()
     : sec==="agenda" ? renderAgendaAdminSection()
+    : sec==="temas" ? renderTemasSection()
     : renderZonasSection();
   // Sin la fila de chips de antes: el menú de Administración (ver
   // renderAdminShell) ya dice en qué sección se está.
@@ -14216,6 +14310,7 @@ function sinCorrimientoLateral(){
   if(window.scrollX) window.scrollTo({ left:0, top:window.scrollY, behavior:"instant" });
 }
 function afterRenderView(){
+  despuesDeTendencias();
   revisarPasosLargos();
   syncHeaderHeight();
   syncTabsScroll();
@@ -14345,7 +14440,7 @@ function textoDeFicha(k, v){
 function firmaDelFiltro(k, f, nivel){
   if(k === "actividad") return JSON.stringify([[...f.types].sort(), !!f.docs]);
   if(k === "lugar") return JSON.stringify([f.place ? [f.place.kind, f.place.country || "", f.place.city || ""] : null, [...f.zones].sort(), f.place && f.place.kind !== "latam" ? nivel : 0]);
-  if(k === "fecha") return JSON.stringify([!!f.mes, f.periodo ? [String(f.periodo.anio), Number(f.periodo.tri) || 0, f.periodo.mes || ""] : null]);
+  if(k === "fecha") return JSON.stringify([!!f.mes, f.periodo ? [String(f.periodo.anio), Number(f.periodo.tri) || 0, f.periodo.mes || "", Number(f.periodo.dias) || 0] : null]);
   if(k === "persona") return JSON.stringify([f.quien || null, f.author || null]);
   return "";
 }
@@ -14529,7 +14624,8 @@ function fpOpcionesFecha(b){
   const f = b.f, hoy = todayISO(), hoyAnio = hoy.slice(0,4);
   const op = (k, label, on) => `<button type="button" class="fp-op${on ? " on" : ""}" data-action="fp-fecha" data-key="${k}" aria-pressed="${on}">${label}</button>`;
   const mesPuesto = !f.mes && f.periodo && f.periodo.mes ? f.periodo : null;   // llegó de «Mes a mes» en Reportes
-  const anioPuesto = !f.mes && f.periodo && !mesPuesto ? String(f.periodo.anio) : null;
+  const diasPuestos = !f.mes && f.periodo && f.periodo.dias ? f.periodo : null;   // llegó de «Tendencias»: los últimos 90 días
+  const anioPuesto = !f.mes && f.periodo && !mesPuesto && !diasPuestos ? String(f.periodo.anio) : null;
   // Los años que ya empezaron: un año cuenta lo hecho hasta hoy (como
   // Reportes), así que uno que todavía no llegó daría siempre nada; lo
   // que viene está en «Próximos».
@@ -14540,7 +14636,7 @@ function fpOpcionesFecha(b){
       `<button type="button" class="chip-toggle${(Number(f.periodo.tri) || 0) === q.n ? " active" : ""}" data-action="fp-tri" data-tri="${q.n}" aria-pressed="${(Number(f.periodo.tri) || 0) === q.n}">${esc(q.label)}</button>`).join("")}</div>` : "";
     return op(a, a === hoyAnio ? `<span>${a} <small>· ${t("hasta hoy","so far","até hoje","עד היום")}</small></span>` : a, on) + tris;
   }).join("");
-  return `<div class="fp-ops">${op("", esc(t("Cualquier fecha","Any date","Qualquer data","כל תאריך")), !f.mes && !f.periodo)}${op("mes", esc(etiquetaFiltroRapido("mes")), !!f.mes)}${mesPuesto ? op("m:" + mesPuesto.mes, esc(etiquetaPeriodo(mesPuesto)), true) : ""}</div>
+  return `<div class="fp-ops">${op("", esc(t("Cualquier fecha","Any date","Qualquer data","כל תאריך")), !f.mes && !f.periodo)}${op("mes", esc(etiquetaFiltroRapido("mes")), !!f.mes)}${mesPuesto ? op("m:" + mesPuesto.mes, esc(etiquetaPeriodo(mesPuesto)), true) : ""}${diasPuestos ? op("d:" + diasPuestos.dias, esc(etiquetaPeriodo(diasPuestos)), true) : ""}</div>
     <div class="fp-sep"></div>
     <div><h3>${t("Un año","A year","Um ano","שנה")}</h3><div class="fp-ops">${anios}</div></div>`;
 }
@@ -14671,6 +14767,9 @@ function placeFilterLabel(place){
 
 function matchesTextFilter(text, record){
   if(!text) return true;
+  // El nombre de un tema («Seguridad») busca todas sus palabras («cámaras», «alarma»…): es lo que cuenta «Tendencias».
+  const tema = temaConEseNombre(text);
+  if(tema) return posteoHabla(record, tema);
   const n = normalize(text);
   return normalize(record.title||"").includes(n) ||
     normalize(record.content||"").includes(n) ||
@@ -14747,6 +14846,8 @@ function pasaFiltroPeriodo(p, f = state.filters){
 }
 // «2026», «1.er trimestre 2026»; si todavía no terminó, «· hasta hoy».
 function etiquetaPeriodo(per){
+  // Los últimos N días contados hacia atrás desde hoy (Tendencias): no es un año ni un trimestre.
+  if(per.dias) return t("Últimos {n} días","Last {n} days","Últimos {n} dias","{n} הימים האחרונים",{ n:per.dias });
   const tri = per.tri && trimestresDelReporte()[per.tri];
   const base = per.mes ? `${fmtISO(per.mes + "-01", { month:"long" })} ${per.anio}` : tri ? `${tri.label} ${per.anio}` : String(per.anio);
   return per.hasta >= todayISO() ? `${base} · ${t("hasta hoy","so far","até hoje","עד היום")}` : base;
@@ -14947,6 +15048,7 @@ function renderFeedSide(){
       }).join("")}
       <button type="button" class="fs-more" data-action="goto-view" data-view="proyectos">${t("Ver proyectos","See projects","Ver projetos","הצגת הפרויקטים")} ${flecha}</button>
     </section>` : ""}
+    ${renderTendenciasLateral()}
     <section class="fs-box">
       <h4>⚡ ${t("Accesos directos","Shortcuts","Atalhos","קיצורי דרך")}</h4>
       ${rapido("mine","✍️")}${rapido("participo","👥")}${rapido("docs","📎")}${rapido("mes","🗓️")}
@@ -15092,7 +15194,8 @@ function filtrosDeGuardado(g){
   f.docs = !!g.docs || q === "docs";
   f.mes = !!g.mes || q === "mes";
   const per = g.periodo, iso = x => /^\d{4}-\d{2}-\d{2}$/.test(String(x || ""));
-  f.periodo = !f.mes && per && iso(per.desde) && iso(per.hasta) ? { desde:per.desde, hasta:per.hasta, anio:String(per.anio || per.desde.slice(0,4)), tri:Number(per.tri) || 0,
+  f.periodo = !f.mes && per && Number(per.dias) >= 7 && Number(per.dias) <= 400 ? ventanaDeDias(Math.round(Number(per.dias)))   // «Últimos 90 días» sigue siendo los 90 de hoy
+    : !f.mes && per && iso(per.desde) && iso(per.hasta) ? { desde:per.desde, hasta:per.hasta, anio:String(per.anio || per.desde.slice(0,4)), tri:Number(per.tri) || 0,
     ...(/^\d{4}-(0[1-9]|1[0-2])$/.test(String(per.mes)) && per.desde === per.mes + "-01" ? { mes:per.mes } : {}) } : null;
   return f;
 }
@@ -16861,6 +16964,12 @@ function graficoMensual(titulo, meses, nota, ficha){
     }).join("")}</div>
     ${nota ? `<div class="rep-bloque-nota">${nota}</div>` : ""}${ficha || ""}</div>`;
 }
+// Los últimos `n` días contando hoy, con la forma de un período de Reportes; `dias` lo distingue de un año o un
+// trimestre: así el Inicio lo rotula «Últimos 90 días» (Tendencias).
+function ventanaDeDias(n){
+  const hoy = todayISO();
+  return { desde: addDaysISO(hoy, -(n - 1)), hasta: hoy, anio: hoy.slice(0, 4), tri: 0, dias: n };
+}
 // Primer y último día de un mes («2026-04»), con la forma de un período de Reportes (`mes` lo distingue
 // de un año o un trimestre: así el Inicio sabe rotularlo «abril 2026»).
 function ventanaDelMes(mes){
@@ -17086,7 +17195,7 @@ function renderReportePeriodo(f){
       ${bloqueDeBarras(t("Por tipo","By type","Por tipo","לפי סוג"), tipos, "")}
     </div>`)
     + renderSugerencias(v, r, rAnterior, f)
-    + renderTemas(f)
+    + renderTendencias(f)
     + seccionDelReporte(t("Equipo y cobertura","Team and coverage","Equipe e cobertura","צוות וכיסוי"), "",
         `<div class="rep-extras">${renderEquipoDelReporte(r)}${renderCobertura(f)}</div>`) + `
     <div class="rep-notas">${notas.map(n=>`<div>· ${esc(n)}</div>`).join("")}</div>`;
@@ -17178,7 +17287,7 @@ function renderReporteHistorico(f){
       ${tablaEvolucion(t("Evolución por país","Evolution by country","Evolução por país","התפתחות לפי מדינה"), paises, (r, k) => r.porPais[k] || 0, k => esc(countryLabel(k)))}
       ${tablaEvolucion(t("Evolución por tipo","Evolution by type","Evolução por tipo","התפתחות לפי סוג"), tipos, (r, k) => r.porTipo[k] || 0, etiquetaTipo)}
     </div>`)
-    + renderTemas(f)
+    + renderTendencias(f)
     + seccionDelReporte(t("Equipo y cobertura","Team and coverage","Equipe e cobertura","צוות וכיסוי"), "",
         `<div class="rep-extras">${renderEquipoDelReporte(todo)}${renderCobertura(f)}</div>`);
 }
@@ -17357,7 +17466,7 @@ function palabrasDeTema(texto){ return tirasDeTema(texto).flat(); }
 // Los temas, de los más hablados a los menos. `posts` ya viene filtrado (el
 // «Ver solo» del reporte). Cada tema: { k, palabra, ahora, antes, tramos, tipo }
 // con tipo «sube» / «baja» / «nuevo» / «igual».
-function temasDelReporte(posts, hoy){
+function temasDelReporte(posts, hoy, max = TEMAS_MAX){
   const desde = addDaysISO(hoy, -(TEMAS_DIAS - 1)), desdeAntes = addDaysISO(hoy, -(2 * TEMAS_DIAS - 1));
   // 1. Los posteos de los 180 días, cada uno con sus tiras de palabras (sin lo propio: lugares, gente).
   const docs = [];
@@ -17420,7 +17529,7 @@ function temasDelReporte(posts, hoy){
         : c.ahora >= 2 * c.antes && c.ahora - c.antes >= 2 ? "sube"
         : c.antes >= 2 * c.ahora && c.antes - c.ahora >= 2 ? "baja" : "igual" }))
     .sort((a, b) => (b.ahora + b.antes) - (a.ahora + a.antes) || a.k.localeCompare(b.k))
-    .slice(0, TEMAS_MAX);
+    .slice(0, max);
 }
 // Cómo se muestra el tema: en minúscula si alguna vez se escribió así (una
 // palabra al principio de un título viene con mayúscula sin serlo), y como
@@ -17432,31 +17541,361 @@ function formaDeTema(formas){
   return orden(chicas.length ? chicas : todas);
 }
 function diasEntre(desdeISO, hastaISO){ return Math.round((isoDate(hastaISO) - isoDate(desdeISO)) / 86400000); }
-let temasCache = null;
-// Los temas con el «Ver solo» de f. Se guardan por filtro y por datos, como el reporte (si no hay
-// firma, en las páginas de prueba, se arma siempre). Los usan Reportes y el modo presentación.
-function listaDeTemas(f){
-  const firma = JSON.stringify([f || null]), datos = typeof firmaDeDatos === "function" ? firmaDeDatos() : null;
-  if(!datos || !temasCache || temasCache.firma !== firma || datos.some((x, i) => x !== temasCache.datos[i]))
-    temasCache = { firma, datos, lista: temasDelReporte(state.posts.filter(p => pasaFiltroDelReporte(p, f)), todayISO()) };
-  return temasCache.lista;
+// ---- Tendencias ----
+// Qué cambió en los últimos 90 días, contra los 90 anteriores (pedido del usuario, 13/10/2026): lugares, tipos
+// y temas que subieron, bajaron, aparecieron o se apagaron. Es la misma cuenta en Reportes y en el costado del
+// Inicio, y no depende del período que se esté mirando en Reportes.
+//  - Lugares y tipos salen del reporte de siempre (armarReporte): dan lo mismo que «Por país» y «Por tipo» de
+//    esa ventana, y tocar una fila abre el Inicio con la misma regla que las filas de Reportes.
+//  - Los temas salen de un diccionario que arman los administradores (Administración › Temas): contar
+//    palabras sueltas no distingue una idea de otra («seguridad» y «cámaras» son un mismo tema). Cuenta
+//    posteos (uno por posteo, no por aparición) y se queda con lo que dice el título y el texto.
+// Solo se muestra lo que cambió bastante, y nunca más de 10.
+const TENDENCIAS_DIAS = 90;
+const TENDENCIAS_MIN_POSTS = 8;     // con menos posteos en los 180 días no hay de qué hablar
+const TENDENCIAS_MIN = 3;           // lo que sube o baja llega a 3 en alguno de los dos tramos
+const TENDENCIAS_MAX = 10;          // nunca se muestran más de 10, en ninguna parte
+const TENDENCIAS_PRIMERAS = 6;      // en Reportes: las que se ven antes de «Ver las otras»
+const TENDENCIAS_LATERAL = 5;       // en el Inicio: las primeras, y «Ver más» suma de a 5
+const TEMA_NOMBRE_MAX = 40, TEMA_PALABRA_MAX = 40, TEMA_PALABRAS_MAX = 30, TEMAS_TOPE = 40;
+// La lista con la que se arranca, hasta que un administrador arma la suya. El nombre del tema ya cuenta
+// como palabra: acá van las otras formas de decirlo, en los cuatro idiomas.
+const TEMAS_DE_ARRANQUE = [
+  { n:"Seguridad", w:["cámaras","alarma","vigilancia","protección","security","segurança","אבטחה"] },
+  { n:"Krav magá", w:["defensa personal","self defense","autodefesa","קרב מגע"] },
+  { n:"Jóvenes", w:["juventud","adolescentes","youth","jovens","נוער"] },
+  { n:"Becas", w:["scholarship","bolsas de estudo","מלגות"] },
+  { n:"Fiestas", w:["festividades","pésaj","purim","janucá","rosh hashaná","yom kipur","sucot","shavuot","holidays","feriados"] },
+];
+let temasConfig = null;      // lo guardado en preferences.temas; null: nadie lo armó todavía y rige TEMAS_DE_ARRANQUE
+let temasVersion = 0;        // sube cada vez que cambia el diccionario: lo que se calculó con el anterior ya no vale
+function limpiarTemas(lista){
+  if(!Array.isArray(lista)) return null;
+  const nombres = new Set(), out = [];
+  lista.forEach(x => {
+    const n = String(x && x.n || "").replace(/\s+/g, " ").trim().slice(0, TEMA_NOMBRE_MAX);
+    if(!n || nombres.has(normalize(n)) || out.length >= TEMAS_TOPE) return;
+    nombres.add(normalize(n));
+    const w = [];
+    (Array.isArray(x.w) ? x.w : []).forEach(p => {
+      const s = String(p || "").replace(/\s+/g, " ").trim().slice(0, TEMA_PALABRA_MAX);
+      if(s && normalize(s) !== normalize(n) && !w.some(y => normalize(y) === normalize(s)) && w.length < TEMA_PALABRAS_MAX) w.push(s);
+    });
+    out.push({ n, w });
+  });
+  return out;
 }
-function renderTemas(f){
-  const lista = listaDeTemas(f);
-  if(!lista.length) return "";
-  const etiqueta = { sube: t("sube","rising","sobe","עולה"), baja: t("baja","falling","cai","יורד"), nuevo: t("nuevo","new","novo","חדש"), igual: t("igual","steady","igual","יציב") };
-  const fila = x => {
-    const tope = Math.max(1, ...x.tramos);
-    return `<li><button type="button" class="rep-tema" data-action="tema-ir" data-tema="${esc(x.palabra)}" title="${esc(t("Ver en el Inicio las actividades que hablan de «{w}»","See on Home the activities that mention “{w}”","Ver no Início as atividades que falam de «{w}»","הצגת הפעילויות שמזכירות את «{w}» בדף הבית",{ w: x.palabra }))}">
-      <span class="rep-tema-txt"><b dir="auto">${esc(x.palabra)}</b><small>${esc(t("{a} ahora · {b} antes","{a} now · {b} before","{a} agora · {b} antes","{a} עכשיו · {b} קודם",{ a: x.ahora, b: x.antes }))}</small></span>
-      <span class="rep-spark" aria-hidden="true">${x.tramos.map(n => `<i style="height:${Math.max(8, Math.round(n * 100 / tope))}%"></i>`).join("")}</span>
-      <span class="rep-delta ${x.tipo === "sube" || x.tipo === "nuevo" ? "sube" : x.tipo === "baja" ? "baja" : ""}">${x.tipo === "sube" ? "▲ " : x.tipo === "baja" ? "▼ " : ""}${esc(etiqueta[x.tipo])}</span>
-    </button></li>`;
+function applyTemasConfig(lista){
+  const nueva = limpiarTemas(lista);
+  if(JSON.stringify(nueva) === JSON.stringify(temasConfig)) return;
+  temasConfig = nueva; temasVersion++;
+}
+function temasDelDiccionario(){ return temasConfig || TEMAS_DE_ARRANQUE; }
+// Una palabra en su forma de comparar: sin tildes, en minúscula y sin la s del plural («cámaras» y
+// «cámara» son lo mismo; «krav magá» y «Krav Maga» también). En hebreo, sin las vocales.
+function tokenDePalabra(w){
+  const hebreo = /[֐-׿]/.test(w);
+  let k = hebreo ? w.replace(/[֑-ׇ]/g, "") : normalize(w);
+  if(!hebreo && k.length > 4 && k.endsWith("s") && !k.endsWith("ss")) k = k.slice(0, -1);
+  return k;
+}
+function tokensDeTexto(texto){ return (String(texto || "").match(/[\p{L}\p{M}][\p{L}\p{M}'’]*/gu) || []).map(tokenDePalabra); }
+let temasCompilados = null;
+// Cada tema, con sus frases ya en forma de comparar. El nombre cuenta como una frase más.
+function compilarTemas(){
+  if(temasCompilados && temasCompilados.v === temasVersion) return temasCompilados.lista;
+  const lista = temasDelDiccionario().map(tm => ({ n: tm.n, frases: [...new Set([tm.n, ...tm.w].map(w => tokensDeTexto(w).join(" ")).filter(Boolean))] }));
+  temasCompilados = { v: temasVersion, lista };
+  return lista;
+}
+// Las palabras de un posteo (o de una respuesta), una sola vez mientras no cambie su texto. El «·» del medio
+// impide que una frase empiece en el título y termine en el texto.
+const tokensDePosteo = new WeakMap();
+function textoDeUnPosteo(r){
+  const hecho = tokensDePosteo.get(r);
+  if(hecho && hecho.t === r.title && hecho.c === r.content) return hecho.texto;
+  const texto = " " + tokensDeTexto(r.title).concat(["·"], tokensDeTexto(r.content)).join(" ") + " ";
+  tokensDePosteo.set(r, { t: r.title, c: r.content, texto });
+  return texto;
+}
+function posteoHabla(r, tema){
+  const texto = textoDeUnPosteo(r);
+  return tema.frases.some(fr => texto.includes(" " + fr + " "));
+}
+// Si lo que se escribió en el buscador es justo el nombre de un tema, se buscan todas sus palabras (y solo
+// esas): así la lista del Inicio da lo mismo que el número de «Tendencias».
+let temaDelTexto = { v: -1, texto: null, tema: null };
+function temaConEseNombre(texto){
+  if(temaDelTexto.v === temasVersion && temaDelTexto.texto === texto) return temaDelTexto.tema;
+  const n = normalize(texto).replace(/\s+/g, " ");
+  const tema = n ? compilarTemas().find(tm => normalize(tm.n).replace(/\s+/g, " ") === n) || null : null;
+  temaDelTexto = { v: temasVersion, texto, tema };
+  return tema;
+}
+// ¿Cambió lo bastante como para destacarlo? Hay que llegar a TENDENCIAS_MIN en alguno de los dos tramos y que
+// sea nuevo, que se haya apagado, o que haya subido o bajado una vez y media (y por lo menos 2). null si no.
+function cambioDeTendencia(ahora, antes){
+  if(Math.max(ahora, antes) < TENDENCIAS_MIN) return null;
+  if(!antes) return "nuevo";
+  if(!ahora) return "apagado";
+  if(Math.abs(ahora - antes) < 2) return null;
+  if(ahora >= 1.5 * antes) return "sube";
+  if(antes >= 1.5 * ahora) return "baja";
+  return null;
+}
+// { poca, items, temas }: `poca` si hay muy pocos posteos para decir algo; `items` son los cambios notables, de
+// los que más cambiaron a los que menos (todos: cada pantalla corta en 10 después de elegir qué categoría
+// mostrar); `temas`, cuántos posteos habló cada tema de la lista (para Administración).
+function calcularTendencias(f){
+  const hoy = todayISO();
+  const ahora = { desde: addDaysISO(hoy, -(TENDENCIAS_DIAS - 1)), hasta: hoy };
+  const antes = { desde: addDaysISO(hoy, -(2 * TENDENCIAS_DIAS - 1)), hasta: addDaysISO(hoy, -TENDENCIAS_DIAS) };
+  const comp = compilarTemas(), cuentas = new Map(comp.map(tm => [tm.n, { ahora:0, antes:0 }]));
+  let total = 0;
+  state.posts.forEach(p => {
+    if(p.cancelled || !pasaFiltroDelReporte(p, f)) return;
+    const fecha = String(p.startDate || p.date || "");
+    if(!fecha || fecha > hoy || fecha < antes.desde) return;
+    total++;
+    const lado = fecha >= ahora.desde ? "ahora" : "antes";
+    comp.forEach(tm => { if(posteoHabla(p, tm)) cuentas.get(tm.n)[lado]++; });
+  });
+  if(total < TENDENCIAS_MIN_POSTS) return { poca:true, items:[], temas:cuentas, total };
+  const rAhora = armarReporte(ahora.desde, ahora.hasta, f), rAntes = armarReporte(antes.desde, antes.hasta, f);
+  const items = [];
+  const sumar = (kind, key, label, icono, a, b) => {
+    const tipo = cambioDeTendencia(a, b);
+    if(tipo) items.push({ kind, key, label, icono, ahora:a, antes:b, tipo, dif:a - b });
   };
-  return seccionDelReporte(t("Tendencias","Trends","Tendências","מגמות"),
-    t("De qué se habló en los últimos 90 días, contra los 90 anteriores. Se cuenta con los títulos y textos ya cargados; nada sale de la app.","What was talked about in the last 90 days, against the 90 before. Counted from the titles and texts already in the app; nothing leaves it.","Do que se falou nos últimos 90 dias, contra os 90 anteriores. Contado com os títulos e textos já carregados; nada sai do app.","על מה דובר ב-90 הימים האחרונים, מול 90 הימים שלפניהם. נספר מהכותרות והטקסטים שכבר נטענו; שום דבר לא יוצא מהאפליקציה."),
-    `<div class="rep-bloque rep-temas"><ul class="rep-lista rep-lista-temas">${lista.map(fila).join("")}</ul>
-      <div class="rep-bloque-nota">${esc(t("Junta las palabras que casi siempre van pegadas (como «krav maga») en un solo tema, pero no entiende lo que significan: «seguridad» y «protección» siguen siendo dos temas. Tocá uno para ver en el Inicio las actividades que lo mencionan.","It joins words that almost always go together (like “krav maga”) into one topic, but it doesn't understand what they mean: “security” and “protection” are still two topics. Tap one to see the activities that mention it on Home.","Junta as palavras que quase sempre vão coladas (como «krav maga») em um só tema, mas não entende o que significam: «segurança» e «proteção» continuam sendo dois temas. Toque em um para ver no Início as atividades que o mencionam.","מחבר מילים שכמעט תמיד באות יחד (כמו «קרב מגע») לנושא אחד, אבל לא מבין מה הן אומרות: «ביטחון» ו«הגנה» נשארים שני נושאים. הקש/י על אחד כדי לראות בדף הבית את הפעילויות שמזכירות אותו."))}</div></div>`);
+  new Set([...Object.keys(rAhora.porPais), ...Object.keys(rAntes.porPais)]).forEach(n =>
+    sumar("lugar", n, countryLabel(n), "📍", rAhora.porPais[n] || 0, rAntes.porPais[n] || 0));
+  new Set([...Object.keys(rAhora.porTipo), ...Object.keys(rAntes.porTipo)]).forEach(k => {
+    const ty = ACTIVITY_BY_KEY[k];
+    sumar("tipo", k, ty ? ty.label : k, "🏷", rAhora.porTipo[k] || 0, rAntes.porTipo[k] || 0);
+  });
+  cuentas.forEach((c, n) => sumar("tema", n, n, "💬", c.ahora, c.antes));
+  items.sort((a, b) => Math.abs(b.dif) - Math.abs(a.dif) || (b.ahora + b.antes) - (a.ahora + a.antes) || a.label.localeCompare(b.label, currentLang()));
+  return { poca:false, items, temas:cuentas, total };
+}
+let tendenciasCache = { datos: null, mapa: new Map() };
+// Se guarda por filtro, por día y por diccionario hasta que cambien los datos (como el reporte).
+function tendenciasDe(f){
+  const datos = typeof firmaDeDatos === "function" ? firmaDeDatos() : null;
+  if(!datos) return calcularTendencias(f);
+  if(!tendenciasCache.datos || datos.some((x, i) => x !== tendenciasCache.datos[i])) tendenciasCache = { datos, mapa: new Map() };
+  const clave = JSON.stringify([f || null, todayISO(), temasVersion]);
+  if(!tendenciasCache.mapa.has(clave)) tendenciasCache.mapa.set(clave, calcularTendencias(f));
+  return tendenciasCache.mapa.get(clave);
+}
+function etiquetaDelCambio(x){
+  if(x.tipo === "sube") return `▲ +${x.dif}`;
+  if(x.tipo === "baja") return `▼ −${-x.dif}`;
+  return x.tipo === "nuevo" ? t("nuevo","new","novo","חדש") : t("se apagó","went quiet","se apagou","דעך");
+}
+const claseDelCambio = x => x.tipo === "sube" ? "sube" : x.tipo === "nuevo" ? "nuevo" : "baja";
+const flechaDelCambio = () => isRTL() ? "←" : "→";
+const tituloDeTendencia = x => t("Ver en el Inicio las actividades de «{x}»","See on Home the activities of “{x}”","Ver no Início as atividades de «{x}»","הצגת הפעילויות של «{x}» בדף הבית",{ x:x.label });
+const ariaDeTendencia = x => `${x.label}: ${x.antes} ${flechaDelCambio()} ${x.ahora}, ${etiquetaDelCambio(x)}`;
+
+// ---- Tendencias en Reportes ----
+// Una ficha por cambio. En la compu (más de 560 px de ancho) es un mosaico: lo que más cambió, grande, y el
+// resto se acomoda sin dejar huecos (ajustarTendencias() reparte las columnas según el ancho); en el celular,
+// filas «nombre · 6 → 14 · variación». Es el mismo HTML: la compu muestra la barra de «antes → ahora» y el
+// celular la esconde.
+let tendFiltro = "todo", tendAbierta = false, tendResaltar = null, tendIrA = false, tendLateral = TENDENCIAS_LATERAL;
+function fichaDeTendencia(x, max, hero){
+  const cl = claseDelCambio(x), mx = Math.max(1, max), lo = Math.min(x.ahora, x.antes), hi = Math.max(x.ahora, x.antes);
+  const rango = `<span class="mv-rg" aria-hidden="true"><i class="${cl}" style="inset-inline-start:${lo * 100 / mx}%;width:${Math.max(2, (hi - lo) * 100 / mx)}%"></i><b style="inset-inline-start:${x.ahora * 100 / mx}%"></b></span>`;
+  return `<li class="rep-mov-it${hero ? " hero" : ""}${tendResaltar === x.kind + "|" + x.key ? " resaltada" : ""} ${cl}" role="button" tabindex="0" data-action="tendencia-ir" data-kind="${x.kind}" data-key="${esc(x.key)}" title="${esc(tituloDeTendencia(x))}" aria-label="${esc(ariaDeTendencia(x))}">
+    <span class="mv-nom"><span class="mv-ico" aria-hidden="true">${x.icono}</span> <b dir="auto">${esc(x.label)}</b></span>
+    <span class="mv-pil ${cl}">${esc(etiquetaDelCambio(x))}</span>
+    ${hero ? `<span class="mv-gr" aria-hidden="true">${x.ahora}</span><span class="mv-antes" aria-hidden="true">${esc(t("antes {n}","before {n}","antes {n}","לפני {n}",{ n:x.antes }))}</span>` : ""}
+    ${rango}<span class="mv-n" aria-hidden="true">${x.antes} ${flechaDelCambio()} <b>${x.ahora}</b></span>
+  </li>`;
+}
+function cuerpoDeTendencias(T){
+  const filtro = ["lugar", "tipo", "tema"].includes(tendFiltro) ? tendFiltro : "todo";
+  const todos = (filtro === "todo" ? T.items : T.items.filter(x => x.kind === filtro)).slice(0, TENDENCIAS_MAX);
+  const verTodo = tendAbierta || todos.length <= TENDENCIAS_PRIMERAS;
+  const vistos = verTodo ? todos : todos.slice(0, TENDENCIAS_PRIMERAS);
+  const max = Math.max(1, ...vistos.map(x => Math.max(x.ahora, x.antes)));
+  const chip = (k, txt) => `<button type="button" class="chip-toggle${filtro === k ? " active" : ""}" data-action="tendencias-filtro" data-key="${k}" aria-pressed="${filtro === k}">${txt}</button>`;
+  const sinNada = t("Nada cambió lo suficiente.","Nothing changed enough.","Nada mudou o bastante.","שום דבר לא השתנה מספיק.");
+  const resto = todos.length - TENDENCIAS_PRIMERAS;
+  return `<div class="rep-tend-cab"><div class="rep-tend-chips" role="group" aria-label="${esc(t("Qué mostrar","What to show","O que mostrar","מה להציג"))}">
+      ${chip("todo", esc(t("Todo","All","Tudo","הכול")))}${chip("lugar", "📍 " + esc(t("Lugares","Places","Lugares","מקומות")))}${chip("tipo", "🏷 " + esc(t("Tipos","Types","Tipos","סוגים")))}${chip("tema", "💬 " + esc(t("Temas","Topics","Temas","נושאים")))}</div>
+      ${resto > 0 ? `<button type="button" class="rep-tend-ver" data-action="tendencias-ver-mas" aria-expanded="${verTodo}">${esc(verTodo ? verMenosFilas() : t("Ver las otras {n}","See the other {n}","Ver as outras {n}","הצגת {n} הנוספים",{ n:resto }))}</button>` : ""}</div>
+    ${vistos.length ? `<ul class="rep-mov" data-n="${vistos.length}">${vistos.map((x, i) => fichaDeTendencia(x, max, i === 0)).join("")}</ul>` : `<p class="rep-tend-vacio">${esc(sinNada)}</p>`}`;
+}
+function renderTendencias(f){
+  const T = tendenciasDe(f);
+  if(T.poca) return "";
+  return `<div id="repTendencias">` + seccionDelReporte(t("Tendencias","Trends","Tendências","מגמות"),
+    t("Últimos 90 días, contra los 90 anteriores","Last 90 days, against the 90 before","Últimos 90 dias, contra os 90 anteriores","90 הימים האחרונים, מול 90 הקודמים"),
+    `<div class="rep-bloque rep-tend">${cuerpoDeTendencias(T)}</div>`) + `</div>`;
+}
+// Elegir una categoría o desplegar no rehace todo el reporte: solo esta tarjeta.
+function repintarTendencias(){
+  const caja = document.querySelector("#repTendencias .rep-tend");
+  if(!caja) return;
+  const T = tendenciasDe(state.reportes.filtro || {});
+  const foco = document.activeElement && document.activeElement.dataset ? [document.activeElement.dataset.action, document.activeElement.dataset.key] : null;
+  caja.innerHTML = cuerpoDeTendencias(T);
+  ajustarTendencias();
+  if(foco && foco[0]){ const b = caja.querySelector(`[data-action="${foco[0]}"]${foco[1] ? `[data-key="${foco[1]}"]` : ""}`); if(b) b.focus(); }
+}
+// El reparto del mosaico, según el ancho de la tarjeta (no el de la pantalla). Con n fichas la primera ocupa
+// 2×2 y las otras 1×1; las columnas son las justas para dos renglones, hasta 4, 5 o 6 según el ancho, y lo
+// que sobra del último renglón se reparte entre sus fichas (se hacen más anchas) para que no quede ni un hueco.
+// Devuelve { modo, cols, spans } con `spans`: el ancho en columnas y el alto en renglones de cada ficha.
+function repartoDelMosaico(n, ancho){
+  if(ancho < 561 || n < 1) return { modo:"filas", cols:1, spans:[] };
+  const tope = ancho >= 1050 ? 6 : ancho >= 800 ? 5 : 4;
+  if(n === 1) return { modo:"mosaico", cols:2, spans:[[2, 2]] };
+  const cols = Math.max(3, Math.min(tope, Math.ceil((n + 3) / 2)));
+  const spans = [[2, 2]], m = n - 1, libres = cols - 2;
+  // Los renglones al lado de la primera ficha (2) tienen `libres` lugares; los de abajo, `cols`.
+  const filas = [];
+  let resto = m;
+  for(let r = 0; resto > 0; r++){ const cap = r < 2 ? libres : cols, k = Math.min(cap, resto); filas.push({ cap, k }); resto -= k; }
+  // Si todas caben en el primer renglón de al lado, ocupan los dos renglones de alto.
+  const altas = filas.length === 1;
+  filas.forEach(({ cap, k }) => {
+    // Lo que sobra del renglón se reparte entre sus fichas: a todas lo mismo y el resto, a las primeras.
+    const extra = cap - k, base = Math.floor(extra / k), mas = extra % k;
+    for(let i = 0; i < k; i++) spans.push([1 + base + (i < mas ? 1 : 0), altas ? 2 : 1]);
+  });
+  return { modo:"mosaico", cols, spans };
+}
+function ajustarTendencias(){
+  document.querySelectorAll(".rep-mov").forEach(ul => {
+    const fichas = [...ul.children], r = repartoDelMosaico(fichas.length, ul.clientWidth);
+    ul.dataset.modo = r.modo;
+    ul.style.setProperty("--cols", r.cols);
+    fichas.forEach((li, i) => {
+      const s = r.spans[i];
+      li.style.gridColumn = s ? `span ${s[0]}` : "";
+      li.style.gridRow = s ? `span ${s[1]}` : "";
+    });
+  });
+  vigilarTendencias();
+}
+let tendenciasRO = null;
+function vigilarTendencias(){
+  if(typeof ResizeObserver === "undefined") return;
+  if(!tendenciasRO){
+    tendenciasRO = new ResizeObserver(entradas => {
+      // Solo cuenta el ancho: el alto cambia al repartir, y mirarlo haría un ciclo.
+      const cambiaron = entradas.filter(e => e.target._ancho !== Math.round(e.contentRect.width));
+      if(!cambiaron.length) return;
+      requestAnimationFrame(ajustarTendencias);
+    });
+  }
+  tendenciasRO.disconnect();
+  document.querySelectorAll(".rep-mov").forEach(ul => { ul._ancho = Math.round(ul.clientWidth); tendenciasRO.observe(ul); });
+}
+// Después de dibujar Reportes: reparte el mosaico y, si se llegó desde el Inicio («↗»), baja a esta sección y
+// marca la ficha pedida un momento.
+function despuesDeTendencias(){
+  if(state.view !== "reportes") return;
+  ajustarTendencias();
+  if(!tendIrA) return;
+  tendIrA = false;
+  const sec = document.getElementById("repTendencias");
+  if(!sec) return;
+  sec.scrollIntoView({ block:"start", behavior:"auto" });
+  const marcada = sec.querySelector(".rep-mov-it.resaltada");
+  if(marcada){ marcada.focus({ preventScroll:true }); setTimeout(() => { tendResaltar = null; marcada.classList.remove("resaltada"); }, 2600); }
+  else tendResaltar = null;
+}
+
+// ---- Tendencias en el costado del Inicio ----
+// La tarjeta entre «Hitos por vencer» y «Accesos directos»: 5 filas y «Ver más» suma de a 5 hasta 10. Tocar la
+// fila abre el Inicio con eso; la flecha ↗ de la fila (y «Reportes ↗») abre Reportes ahí.
+function renderTendenciasLateral(){
+  const T = tendenciasDe(null);
+  if(T.poca || !T.items.length) return "";
+  const todos = T.items.slice(0, TENDENCIAS_MAX), n = Math.min(todos.length, Math.max(TENDENCIAS_LATERAL, tendLateral));
+  const arriba = isRTL() ? "↖" : "↗";
+  const fila = x => {
+    const cl = claseDelCambio(x);
+    return `<div class="fila"><button type="button" class="tr" data-action="tendencia-ir" data-kind="${x.kind}" data-key="${esc(x.key)}" title="${esc(tituloDeTendencia(x))}" aria-label="${esc(ariaDeTendencia(x))}">
+        <span class="nn" dir="auto"><span aria-hidden="true">${x.icono}</span> ${esc(x.label)}</span><span class="md">${x.antes} ${flechaDelCambio()} <b>${x.ahora}</b></span><span class="dd ${cl}">${esc(etiquetaDelCambio(x))}</span></button>
+      <button type="button" class="ir" data-action="tendencia-reporte" data-kind="${x.kind}" data-key="${esc(x.key)}" title="${esc(t("Ver en Reportes","See in Reports","Ver em Relatórios","הצגה בדוחות"))}" aria-label="${esc(t("Ver {x} en Reportes","See {x} in Reports","Ver {x} em Relatórios","הצגת {x} בדוחות",{ x:x.label }))}">${arriba}</button></div>`;
+  };
+  const faltan = todos.length - n;
+  const boton = todos.length <= TENDENCIAS_LATERAL ? ""
+    : faltan > 0 ? `<button type="button" class="fs-vermas" data-action="tendencias-lateral" data-mas="1">${esc(t("Ver más","See more","Ver mais","עוד"))} <small>${esc(t("{n} más","{n} more","mais {n}","עוד {n}",{ n:Math.min(TENDENCIAS_LATERAL, faltan) }))}</small></button>`
+    : `<button type="button" class="fs-vermas" data-action="tendencias-lateral" data-mas="0">${esc(verMenosFilas())} <small>${esc(t("{n} de {m}","{n} of {m}","{n} de {m}","{n} מתוך {m}",{ n, m:todos.length }))}</small></button>`;
+  return `<section class="fs-box fs-tendencias">
+      <div class="fs-cab"><h4>📈 ${esc(t("Tendencias","Trends","Tendências","מגמות"))} <span class="fs-90" title="${esc(t("Los últimos 90 días, contra los 90 anteriores","The last 90 days, against the 90 before","Os últimos 90 dias, contra os 90 anteriores","90 הימים האחרונים, מול 90 הקודמים"))}">${esc(t("90 días","90 days","90 dias","90 יום"))}</span></h4>
+        <button type="button" class="fs-rep" data-action="tendencia-reporte">${esc(t("Reportes","Reports","Relatórios","דוחות"))} ${arriba}</button></div>
+      <div class="fs-tend">${todos.slice(0, n).map(fila).join("")}</div>${boton}
+    </section>`;
+}
+
+// ---- Administración › Temas ----
+// La lista de temas que cuenta «Tendencias»: cada uno con las palabras que lo nombran. La arman los administradores
+// (preferences.temas); hasta que alguien la arma rige TEMAS_DE_ARRANQUE. Cada cambio se guarda al toque. Abajo, las
+// palabras que se repiten en los textos y todavía no están en ningún tema, para sumarlas con un toque.
+let temaDestino = "";   // a qué tema se suma una palabra sugerida; "" = uno nuevo
+async function guardarTemas(lista){
+  const limpia = limpiarTemas(lista) || [];
+  applyTemasConfig(limpia);
+  render();
+  try{ await store.config.merge("preferences", { temas: limpia }); }
+  catch(err){
+    console.error("No se pudieron guardar los temas:", err);
+    appAlert(t("No se pudo guardar: {m}","Couldn't save: {m}","Não foi possível salvar: {m}","השמירה נכשלה: {m}",{ m: (err && err.message) || err }));
+  }
+}
+const copiaDeTemas = () => temasDelDiccionario().map(tm => ({ n: tm.n, w: [...tm.w] }));
+// Palabras sueltas o frases separadas por coma o salto de línea.
+const palabrasEscritas = txt => String(txt || "").split(/[,;\n]/).map(x => x.replace(/\s+/g, " ").trim()).filter(Boolean);
+function sugerenciasDeTemas(){
+  const comp = compilarTemas();
+  const cubierta = palabra => { const fr = tokensDeTexto(palabra).join(" "); return comp.some(tm => tm.frases.includes(fr)); };
+  return temasDelReporte(state.posts.filter(p => !p.cancelled), todayISO(), 60).filter(x => !cubierta(x.palabra)).slice(0, 12);
+}
+function renderTemasSection(){
+  const lista = temasDelDiccionario(), T = tendenciasDe(null);
+  const sugeridas = sugerenciasDeTemas();
+  const aviso = temasConfig ? "" : `<div class="tm-aviso">${esc(t("Todavía nadie armó esta lista: se usa una de ejemplo. Cualquier cambio que hagas la guarda como la del equipo.","Nobody has set up this list yet: an example list is used. Any change you make saves it as the team's.","Ainda ninguém montou esta lista: usa-se uma de exemplo. Qualquer mudança que você fizer a salva como a da equipe.","עדיין אף אחד לא הכין את הרשימה הזו: משתמשים ברשימת דוגמה. כל שינוי ישמור אותה כרשימת הצוות."))}</div>`;
+  const tarjeta = (tm, i) => {
+    const c = T.temas.get(tm.n) || { ahora:0, antes:0 };
+    const cuenta = t("Ahora: {a} · antes: {b}","Now: {a} · before: {b}","Agora: {a} · antes: {b}","עכשיו: {a} · קודם: {b}",{ a:c.ahora, b:c.antes });
+    return `<section class="tm-card" aria-label="${esc(tm.n)}">
+      <div class="tm-cab">
+        <input type="text" class="lp-inp tm-nombre" data-tema-campo="nombre" data-idx="${i}" value="${esc(tm.n)}" maxlength="${TEMA_NOMBRE_MAX}" aria-label="${esc(t("Nombre del tema","Topic name","Nome do tema","שם הנושא"))}">
+        <span class="tm-cuenta">${esc(cuenta)}</span>
+        <button type="button" class="btn-ghost danger" data-action="tema-borrar" data-idx="${i}">${esc(t("Quitar tema","Remove topic","Remover tema","הסרת נושא"))}</button>
+      </div>
+      <div class="tm-chips">
+        <span class="tm-chip fijo" title="${esc(t("El nombre del tema ya cuenta como una de sus palabras.","The topic's name already counts as one of its words.","O nome do tema já conta como uma de suas palavras.","שם הנושא כבר נחשב כאחת ממילותיו."))}" dir="auto">${esc(tm.n)}</span>
+        ${tm.w.map((w, j) => `<span class="tm-chip" dir="auto">${esc(w)}<button type="button" data-action="tema-palabra-quitar" data-idx="${i}" data-j="${j}" aria-label="${esc(t("Quitar «{w}»","Remove “{w}”","Remover «{w}»","הסרת «{w}»",{ w }))}" title="${esc(t("Quitar","Remove","Remover","הסרה"))}">✕</button></span>`).join("")}
+      </div>
+      <div class="tm-add">
+        <input type="text" class="doc-nuevo-input" data-tema-campo="palabra" data-idx="${i}" maxlength="${TEMA_PALABRA_MAX}" placeholder="${esc(t("Otra forma de decirlo (separá con comas)…","Another way to say it (separate with commas)…","Outra forma de dizer (separe com vírgulas)…","דרך נוספת לומר זאת (הפרדה בפסיקים)…"))}" aria-label="${esc(t("Agregar palabras al tema {x}","Add words to the topic {x}","Adicionar palavras ao tema {x}","הוספת מילים לנושא {x}",{ x:tm.n }))}">
+        <button type="button" class="btn-doc-add" data-action="tema-palabra-agregar" data-idx="${i}" aria-label="${esc(t("Agregar","Add","Adicionar","הוספה"))}" title="${esc(t("Agregar","Add","Adicionar","הוספה"))}">+</button>
+      </div>
+    </section>`;
+  };
+  const destinos = `<option value=""${temaDestino === "" ? " selected" : ""}>${esc(t("un tema nuevo","a new topic","um tema novo","נושא חדש"))}</option>${lista.map(tm => `<option value="${esc(tm.n)}"${temaDestino === tm.n ? " selected" : ""}>${esc(tm.n)}</option>`).join("")}`;
+  return `<div class="tm-seccion">
+    ${aviso}
+    <div class="tm-nuevo">
+      <input type="text" class="lp-inp" id="temaNuevoNombre" maxlength="${TEMA_NOMBRE_MAX}" placeholder="${esc(t("Nombre del tema nuevo…","New topic name…","Nome do tema novo…","שם הנושא החדש…"))}" aria-label="${esc(t("Nombre del tema nuevo","New topic name","Nome do tema novo","שם הנושא החדש"))}">
+      <button type="button" class="btn-primary" data-action="tema-agregar"${lista.length >= TEMAS_TOPE ? " disabled" : ""}>+ ${esc(t("Agregar tema","Add topic","Adicionar tema","הוספת נושא"))}</button>
+    </div>
+    <div class="tm-lista">${lista.length ? lista.map(tarjeta).join("") : `<p class="hint">${esc(t("No hay temas: «Tendencias» solo mostrará lugares y tipos.","No topics: “Trends” will only show places and types.","Não há temas: «Tendências» só mostrará lugares e tipos.","אין נושאים: «מגמות» יציג רק מקומות וסוגים."))}</p>`}</div>
+    <section class="tm-sug">
+      <h3>${esc(t("Palabras que se repiten y no están en ningún tema","Words that keep coming up and aren't in any topic","Palavras que se repetem e não estão em nenhum tema","מילים שחוזרות ואינן באף נושא"))}</h3>
+      ${sugeridas.length ? `<div class="tm-sug-dest"><label>${esc(t("Al tocar una, sumarla a:","When tapping one, add it to:","Ao tocar em uma, somá-la a:","בלחיצה על מילה, להוסיף אותה אל:"))} <select id="temaDestino" class="lp-sel">${destinos}</select></label></div>
+      <div class="tm-chips">${sugeridas.map(x => `<button type="button" class="tm-chip sug" data-action="tema-sugerida" data-palabra="${esc(x.palabra)}" dir="auto" title="${esc(t("{a} ahora, {b} antes","{a} now, {b} before","{a} agora, {b} antes","{a} עכשיו, {b} קודם",{ a:x.ahora, b:x.antes }))}">+ ${esc(x.palabra)} <small>${x.ahora + x.antes}</small></button>`).join("")}</div>`
+        : `<p class="hint">${esc(t("Nada por ahora: lo que más se repite en los textos ya está en algún tema.","Nothing for now: what comes up most in the texts is already in a topic.","Nada por enquanto: o que mais se repete nos textos já está em algum tema.","אין כרגע: מה שחוזר הכי הרבה בטקסטים כבר נמצא בנושא."))}</p>`}
+    </section>
+    ${temasConfig ? `<div class="tm-pie"><button type="button" class="btn-ghost" data-action="temas-restablecer">${esc(t("Volver a la lista de ejemplo","Go back to the example list","Voltar à lista de exemplo","חזרה לרשימת הדוגמה"))}</button></div>` : ""}
+  </div>`;
 }
 
 // ---- Equipo ----
@@ -20030,10 +20469,10 @@ function tourSteps(){
   const enMas = txt => t("En «Más»: ","Under “More”: ","Em «Mais»: ","תחת «עוד»: ") + txt;
   const inicio = { id:"inicio", cubre:["feed"], target: tourNav("feed"),
     title: t("Inicio","Home","Início","ראשי"),
-    text: t("Todo lo que carga el equipo. «Lo que pasó» y «Próximos» van separados; con «Filtros» y el buscador llegás a lo que necesitás por lugar, fecha, tipo o persona.",
-      "Everything the team logs. “What happened” and “Upcoming” are kept apart; with “Filters” and the search you find what you need by place, date, type or person.",
-      "Tudo o que a equipe carrega. «O que aconteceu» e «Próximos» ficam separados; com «Filtros» e a busca você chega ao que precisa por lugar, data, tipo ou pessoa.",
-      "כל מה שהצוות מתעד. «מה קרה» ו«בקרוב» מופרדים; עם «מסננים» והחיפוש אפשר למצוא הכול לפי מקום, תאריך, סוג או אדם.") };
+    text: t("Todo lo que carga el equipo. «Lo que pasó» y «Próximos» van separados; con «Filtros» y el buscador llegás a lo que necesitás por lugar, fecha, tipo o persona. En la compu, a un costado, «Tendencias» muestra qué subió o bajó en los últimos 90 días.",
+      "Everything the team logs. “What happened” and “Upcoming” are kept apart; with “Filters” and the search you find what you need by place, date, type or person. On a computer, on the side, “Trends” shows what went up or down in the last 90 days.",
+      "Tudo o que a equipe carrega. «O que aconteceu» e «Próximos» ficam separados; com «Filtros» e a busca você chega ao que precisa por lugar, data, tipo ou pessoa. No computador, ao lado, «Tendências» mostra o que subiu ou desceu nos últimos 90 dias.",
+      "כל מה שהצוות מתעד. «מה קרה» ו«בקרוב» מופרדים; עם «מסננים» והחיפוש אפשר למצוא הכול לפי מקום, תאריך, סוג או אדם. במחשב, בצד, «מגמות» מראה מה עלה או ירד ב-90 הימים האחרונים.") };
   const comun = [
     { id:"paises", cubre:["paises"], target: tourNav("paises"),
       title: t("Países","Countries","Países","מדינות"),
@@ -20056,10 +20495,10 @@ function tourSteps(){
       textoMas: true },
     { id:"reportes", cubre:["reportes"], target: [...tourNav("reportes"), TOUR_MAS],
       title: t("Reportes","Reports","Relatórios","דוחות"),
-      text: t("Cuántas actividades hubo por mes, país, tipo y persona, contra el período anterior, y las tendencias de los últimos 90 días. Tocá un mes del gráfico para ver su ficha, «✨ Mi año» para tu resumen personal con una tarjeta para compartir, o «Presentar» para mostrar el reporte en pantalla completa, como diapositivas, o imprimirlo.",
-        "How many activities there were by month, country, type and person, against the previous period, and the trends of the last 90 days. Tap a month in the chart to see its card, “✨ My year” for your personal summary with a card to share, or “Present” to show the report full screen, as slides, or print it.",
-        "Quantas atividades houve por mês, país, tipo e pessoa, em relação ao período anterior, e as tendências dos últimos 90 dias. Toque em um mês do gráfico para ver a ficha dele, em «✨ Meu ano» para o seu resumo pessoal com um cartão para compartilhar, ou em «Apresentar» para mostrar o relatório em tela cheia, como slides, ou imprimi-lo.",
-        "כמה פעילויות היו לפי חודש, מדינה, סוג ואדם, מול התקופה הקודמת, ועל המגמות ב-90 הימים האחרונים. הקש/י על חודש בגרף כדי לראות את הכרטיס שלו, על «✨ השנה שלי» לסיכום האישי שלך עם כרטיס לשיתוף, או על «הצגה» כדי להציג את הדוח במסך מלא, כשקופיות, או להדפיס אותו."),
+      text: t("Cuántas actividades hubo por mes, país, tipo y persona, contra el período anterior, y en «Tendencias» qué lugares, tipos y temas subieron o bajaron en los últimos 90 días. Tocá un mes del gráfico para ver su ficha, «✨ Mi año» para tu resumen personal con una tarjeta para compartir, o «Presentar» para mostrar el reporte en pantalla completa, como diapositivas, o imprimirlo.",
+        "How many activities there were by month, country, type and person, against the previous period, and in “Trends” which places, types and topics went up or down in the last 90 days. Tap a month in the chart to see its card, “✨ My year” for your personal summary with a card to share, or “Present” to show the report full screen, as slides, or print it.",
+        "Quantas atividades houve por mês, país, tipo e pessoa, em relação ao período anterior, e em «Tendências» quais lugares, tipos e temas subiram ou desceram nos últimos 90 dias. Toque em um mês do gráfico para ver a ficha dele, em «✨ Meu ano» para o seu resumo pessoal com um cartão para compartilhar, ou em «Apresentar» para mostrar o relatório em tela cheia, como slides, ou imprimi-lo.",
+        "כמה פעילויות היו לפי חודש, מדינה, סוג ואדם, מול התקופה הקודמת, וב«מגמות» אילו מקומות, סוגים ונושאים עלו או ירדו ב-90 הימים האחרונים. הקש/י על חודש בגרף כדי לראות את הכרטיס שלו, על «✨ השנה שלי» לסיכום האישי שלך עם כרטיס לשיתוף, או על «הצגה» כדי להציג את הדוח במסך מלא, כשקופיות, או להדפיס אותו."),
       textoMas: true },
     { id:"novedades", cubre:[], target: ["#mentionsBell .bell-btn"],
       title: t("Novedades","Updates","Novidades","עדכונים"),
@@ -22191,16 +22630,15 @@ function diapositivasDelReporte(r = reporteEnPantalla, { equipo = presEquipo } =
   {
     const gente = equipo ? ((r.secciones || []).find(x => x.id === "personas") || {}).filas || [] : [];
     const top = gente.filter(f => f.n > 0).slice(0, 5);
-    const temas = listaDeTemas(pr.filtro).slice(0, 6);
-    if(top.length || temas.length){
-      const maxTema = Math.max(1, ...temas.map(x => x.ahora + x.antes));
-      const burbuja = x => { const k = Math.round(9 + 8 * Math.sqrt((x.ahora + x.antes) / maxTema)); return `<i class="ps-bu ${x.tipo}" style="--k:${k}"><b dir="auto">${esc(x.palabra)}</b><small>${x.tipo === "sube" ? "▲" : x.tipo === "baja" ? "▼" : x.tipo === "nuevo" ? esc(t("nuevo","new","novo","חדש")) : ""}</small></i>`; };
+    const T = tendenciasDe(pr.filtro), tend = T.poca ? [] : T.items.slice(0, 6);
+    if(top.length || tend.length){
+      const filaT = x => `<li class="${claseDelCambio(x)}"><span class="ps-tn" dir="auto"><span aria-hidden="true">${x.icono}</span> ${esc(x.label)}</span><span class="ps-tm">${x.antes} ${flechaDelCambio()} <b>${x.ahora}</b></span><span class="ps-td">${esc(etiquetaDelCambio(x))}</span></li>`;
       const fila = (f, i) => `<li><span class="ps-av" style="background:${COLORES_DE_PERSONA[i % COLORES_DE_PERSONA.length]}" aria-hidden="true">${esc(f.etiqueta.replace(/&[#\w]+;/g, " ").trim().split(/\s+/).slice(0, 2).map(w => w[0] || "").join("").toUpperCase())}</span><span class="ps-nom" dir="auto">${f.etiqueta}</span><b>${f.n}</b></li>`;
-      const titulo = top.length ? t("Quién lo hizo posible","Who made it possible","Quem tornou isso possível","מי איפשר את זה") : t("De qué se habló","What was talked about","Do que se falou","על מה דובר");
-      const cap = top.length && temas.length ? t("El equipo y de qué se habló","The team and what was talked about","A equipe e do que se falou","הצוות ועל מה דובר") : "";
+      const titulo = top.length ? t("Quién lo hizo posible","Who made it possible","Quem tornou isso possível","מי איפשר את זה") : t("Tendencias","Trends","Tendências","מגמות");
+      const cap = top.length && tend.length ? t("El equipo y las tendencias","The team and the trends","A equipe e as tendências","הצוות והמגמות") : "";
       out.push({ id: "equipo", titulo, html: `<section class="ps-slide">${marca}${cap ? `<div class="ps-sub">${esc(cap)}</div>` : ""}<h2 class="ps-tit">${esc(titulo)}</h2>
         <div class="ps-dos">${top.length ? `<div><ul class="ps-gente">${top.map(fila).join("")}</ul><div class="ps-leyenda-eq">${esc(t("actividades cargadas","activities logged","atividades registradas","פעילויות שנרשמו"))}</div></div>` : ""}
-        ${temas.length ? `<div><div class="ps-burb">${temas.map(burbuja).join("")}</div><div class="ps-leyenda-eq">${esc(t("Tendencias de los últimos 90 días","Trends from the last 90 days","Tendências dos últimos 90 dias","מגמות מ-90 הימים האחרונים"))}</div></div>` : ""}</div></section>` });
+        ${tend.length ? `<div><ul class="ps-tend">${tend.map(filaT).join("")}</ul><div class="ps-leyenda-eq">${esc(t("Tendencias de los últimos 90 días","Trends from the last 90 days","Tendências dos últimos 90 dias","מגמות מ-90 הימים האחרונים"))}</div></div>` : ""}</div></section>` });
     }
   }
   const lg = logradoDelPeriodo(r.desde, r.hasta, pr.filtro);
@@ -24464,6 +24902,11 @@ document.addEventListener("keydown", e=>{
     if(e.key === "Enter"){ e.preventDefault(); darAccesoPorAdelantado(); }
     return;
   }
+  if(el.dataset.temaCampo === "palabra" || el.id === "temaNuevoNombre"){
+    // Enter suma la palabra (o el tema), igual que el botón de al lado.
+    if(e.key === "Enter"){ e.preventDefault(); const b = el.id === "temaNuevoNombre" ? document.querySelector('[data-action="tema-agregar"]') : el.parentElement && el.parentElement.querySelector('[data-action="tema-palabra-agregar"]'); if(b) b.click(); }
+    return;
+  }
   if(el.dataset.action === "tipo-doc-nuevo"){
     // Enter suma el documento, igual que el + de al lado.
     if(e.key === "Enter"){ e.preventDefault(); const b = el.parentElement && el.parentElement.querySelector('[data-action="tipo-doc-add"]'); if(b) b.click(); }
@@ -24683,6 +25126,7 @@ document.addEventListener("click", async e=>{
     if(!k){ f.periodo = null; f.mes = false; }
     else if(k === "mes"){ f.mes = true; f.periodo = null; }
     else if(/^m:\d{4}-(0[1-9]|1[0-2])$/.test(k)){ f.mes = false; f.periodo = ventanaDelMes(k.slice(2)); }   // el mes de Reportes, ya elegido
+    else if(/^d:\d+$/.test(k)){ f.mes = false; f.periodo = ventanaDeDias(Number(k.slice(2))); }   // los últimos 90 días de Tendencias, ya elegidos
     else { f.mes = false; f.periodo = ventanaDe(k, 0); }
     render();
   },
@@ -25364,12 +25808,105 @@ document.addEventListener("click", async e=>{
     "anio-planilla": async () => {
     if(isAdmin()){ const anio = todayISO().slice(0, 4); await bajarPlanilla(actividadesDelAnio(anio), `registro-${anio}`); }
   },
-    "tema-ir": async (el) => {
-    const palabra = String(el.dataset.tema || "").trim();
-    if(!palabra) return;
-    state.filters = filtrosVacios(); state.filters.text = palabra; filtroOrigen = null;
-    feedSolapa = "pasado"; feedVisibleCount = PAGE_SIZE; state.view = "feed"; render(); scrollToTop();
+    "tendencia-ir": async (el) => {
+    // Una ficha de «Tendencias» (en Reportes o en el costado del Inicio) abre el Inicio con eso, en los últimos
+    // 90 días que cuenta: el lugar, el tipo o el tema (el nombre del tema busca todas sus palabras). Con la
+    // misma regla que las filas de Reportes (solo lo propio del lugar), para que la lista dé lo que dice el número.
+    const { kind, key } = el.dataset;
+    if(!["lugar", "tipo", "tema"].includes(kind) || !key) return;
+    const R = state.reportes, rf = state.view === "reportes" ? (R.filtro || {}) : {};
+    state.filters = filtrosVacios();
+    state.filters.nivel = 0; state.filters.soloPosteo = true;
+    state.filters.periodo = ventanaDeDias(TENDENCIAS_DIAS);
+    // Lo que el reporte estaba mirando («Ver solo»), para que la lista dé lo que decía la ficha.
+    if(rf.tipo) state.filters.types = new Set([rf.tipo]);
+    if(rf.pais) state.filters.place = { kind:"country", country:rf.pais };
+    else if(rf.zona) state.filters.zones = new Set([rf.zona]);
+    if(kind === "lugar") state.filters.place = { kind:"country", country:key };
+    else if(kind === "tipo") state.filters.types = new Set([key]);
+    else state.filters.text = key;
+    filtroOrigen = state.view === "reportes" ? { view:"reportes", anio: R.anio || todayISO().slice(0, 4), tri: Number(R.trimestre) || 0 } : null;
+    feedSolapa = "pasado"; feedVisibleCount = PAGE_SIZE; state.view = "feed"; state.countryDrill = null; state.zonaDrill = null;
+    render(); scrollToTop();
   },
+    "tendencia-reporte": async (el) => {
+    // La flecha ↗ de la tarjeta del Inicio: Reportes, en «Tendencias». Con un lugar o un tipo, el reporte «Ver solo»
+    // de ese lugar o tipo; con un tema, sin filtro y con ese tema marcado.
+    const { kind, key } = el.dataset, R = state.reportes;
+    R.modo = "periodo"; R.mes = ""; R.filtro = {};
+    if(kind === "lugar" && key) R.filtro = { pais:key };
+    else if(kind === "tipo" && key) R.filtro = { tipo:key };
+    tendFiltro = "todo"; tendAbierta = false;
+    tendResaltar = kind && key ? kind + "|" + key : null;
+    if(tendResaltar){
+      // Que la ficha pedida se vea aunque quede entre «las otras».
+      const T = tendenciasDe(R.filtro), i = T.items.slice(0, TENDENCIAS_MAX).findIndex(x => x.kind === kind && x.key === key);
+      if(i >= TENDENCIAS_PRIMERAS) tendAbierta = true;
+    }
+    tendIrA = true; fichaOrigen = null;
+    state.view = "reportes"; state.countryDrill = null; state.zonaDrill = null; render();
+  },
+    "tema-agregar": async () => {
+    if(!isAdmin()) return;
+    const inp = document.getElementById("temaNuevoNombre"), n = String(inp && inp.value || "").replace(/\s+/g, " ").trim();
+    if(!n){ if(inp) inp.focus(); return; }
+    const lista = copiaDeTemas();
+    if(lista.some(x => normalize(x.n) === normalize(n))){
+      appAlert(t("Ya hay un tema con ese nombre.","There's already a topic with that name.","Já há um tema com esse nome.","כבר יש נושא בשם הזה."));
+      return;
+    }
+    lista.push({ n, w: [] });
+    await guardarTemas(lista);
+  },
+    "tema-borrar": async (el) => {
+    if(!isAdmin()) return;
+    const lista = copiaDeTemas(), i = Number(el.dataset.idx), tm = lista[i];
+    if(!tm) return;
+    if(!(await appConfirm(t("¿Quitar el tema «{n}»? Las actividades no cambian: solo deja de contarse en «Tendencias».","Remove the topic “{n}”? The activities don't change: it just stops being counted in “Trends”.","Remover o tema «{n}»? As atividades não mudam: só deixa de ser contado em «Tendências».","להסיר את הנושא «{n}»? הפעילויות לא משתנות: הוא רק מפסיק להיספר ב«מגמות».",{ n: tm.n }), { danger:true, okLabel: t("Quitar","Remove","Remover","הסרה") }))) return;
+    lista.splice(i, 1);
+    if(temaDestino === tm.n) temaDestino = "";
+    await guardarTemas(lista);
+  },
+    "tema-palabra-agregar": async (el) => {
+    if(!isAdmin()) return;
+    const lista = copiaDeTemas(), tm = lista[Number(el.dataset.idx)];
+    const inp = el.parentElement && el.parentElement.querySelector("input"), nuevas = palabrasEscritas(inp && inp.value);
+    if(!tm || !nuevas.length) return;
+    tm.w.push(...nuevas);
+    await guardarTemas(lista);
+  },
+    "tema-palabra-quitar": async (el) => {
+    if(!isAdmin()) return;
+    const lista = copiaDeTemas(), tm = lista[Number(el.dataset.idx)];
+    if(!tm) return;
+    tm.w.splice(Number(el.dataset.j), 1);
+    await guardarTemas(lista);
+  },
+    "tema-sugerida": async (el) => {
+    if(!isAdmin()) return;
+    const palabra = String(el.dataset.palabra || "").trim();
+    if(!palabra) return;
+    const lista = copiaDeTemas(), destino = lista.find(x => x.n === temaDestino);
+    if(destino) destino.w.push(palabra);
+    else {
+      const n = palabra.charAt(0).toUpperCase() + palabra.slice(1);
+      if(!lista.some(x => normalize(x.n) === normalize(n))) lista.push({ n, w: [] });
+    }
+    await guardarTemas(lista);
+  },
+    "temas-restablecer": async () => {
+    if(!isAdmin()) return;
+    if(!(await appConfirm(t("¿Volver a la lista de ejemplo? Se pierde la lista que armó el equipo.","Go back to the example list? The list the team set up is lost.","Voltar à lista de exemplo? Perde-se a lista que a equipe montou.","לחזור לרשימת הדוגמה? הרשימה שהצוות הכין תאבד."), { danger:true, okLabel: t("Volver","Go back","Voltar","חזרה") }))) return;
+    applyTemasConfig(null); temaDestino = ""; render();
+    try{ await store.config.merge("preferences", { temas: null }); }
+    catch(err){ console.error("No se pudo restablecer los temas:", err); appAlert(t("No se pudo guardar: {m}","Couldn't save: {m}","Não foi possível salvar: {m}","השמירה נכשלה: {m}",{ m: (err && err.message) || err })); }
+  },
+    "tendencias-filtro": async (el) => {
+    tendFiltro = ["lugar", "tipo", "tema"].includes(el.dataset.key) ? el.dataset.key : "todo"; tendAbierta = false; tendResaltar = null;
+    repintarTendencias();
+  },
+    "tendencias-ver-mas": async () => { tendAbierta = !tendAbierta; repintarTendencias(); },
+    "tendencias-lateral": async (el) => { tendLateral = el.dataset.mas === "1" ? Math.min(TENDENCIAS_MAX, tendLateral + TENDENCIAS_LATERAL) : TENDENCIAS_LATERAL; render(); },
     "reporte-presentar": async () => { abrirPresentacion(); },
     "pres-ant": async () => { presIr(presIndice - 1); },
     "pres-sig": async () => { presIr(presIndice + 1); },
@@ -26600,6 +27137,21 @@ document.addEventListener("change", e=>{
   const el = e.target;
   // Administración › Agenda: el archivo de la lista por traer.
   if(el.id === "agendaArchivo"){ leerArchivoAgenda(el.files && el.files[0]); el.value = ""; return; }
+  // Administración › Temas: renombrar un tema (se guarda al salir del campo) y a cuál sumar las palabras sugeridas.
+  if(el.id === "temaDestino"){ temaDestino = el.value; return; }
+  if(el.dataset && el.dataset.temaCampo === "nombre"){
+    if(!isAdmin()) return;
+    const lista = copiaDeTemas(), i = Number(el.dataset.idx), tm = lista[i], n = String(el.value || "").replace(/\s+/g, " ").trim();
+    if(!tm || n === tm.n) return;
+    if(!n || lista.some((x, j) => j !== i && normalize(x.n) === normalize(n))){
+      if(n) appAlert(t("Ya hay un tema con ese nombre.","There's already a topic with that name.","Já há um tema com esse nome.","כבר יש נושא בשם הזה."));
+      el.value = tm.n; return;
+    }
+    if(temaDestino === tm.n) temaDestino = n;
+    tm.n = n;
+    guardarTemas(lista);
+    return;
+  }
   // La ficha de una persona sin cuenta: cada campo se guarda al salir de él.
   if(el.dataset && el.dataset.personaCampo){
     const campo = el.dataset.personaCampo, id = el.dataset.id, valor = String(el.value || "").trim();

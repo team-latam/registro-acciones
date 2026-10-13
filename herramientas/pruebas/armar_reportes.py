@@ -19,7 +19,11 @@ codigo = "\n".join(grab(n) for n in [
     "ultimaActividadPorPais","haceCuanto","renderCobertura","renderEquipoDelReporte",
     "sugerenciasDelReporte","renderSugerencias",
     "TEMAS_DIAS","TEMAS_TRAMOS","TEMAS_MIN","TEMAS_MAX","TEMAS_JUNTAS","TEMAS_RELLENO","TEMAS_RELLENO_HE","formaCanonicaDeTema","tirasDeTema","palabrasDeTema","formaDeTema",
-    "diasEntre","temasDelReporte","temasCache","listaDeTemas","renderTemas"])
+    "diasEntre","temasDelReporte",
+    "TENDENCIAS_DIAS","TENDENCIAS_MIN_POSTS","TENDENCIAS_MIN","TENDENCIAS_MAX","TENDENCIAS_PRIMERAS","TENDENCIAS_LATERAL","TEMA_NOMBRE_MAX",
+    "TEMAS_DE_ARRANQUE","temasConfig","temasVersion","limpiarTemas","applyTemasConfig","temasDelDiccionario","tokenDePalabra","tokensDeTexto","temasCompilados","compilarTemas",
+    "tokensDePosteo","textoDeUnPosteo","posteoHabla","cambioDeTendencia","calcularTendencias","tendenciasCache","tendenciasDe",
+    "etiquetaDelCambio","claseDelCambio","flechaDelCambio","tituloDeTendencia","ariaDeTendencia","tendFiltro","fichaDeTendencia","cuerpoDeTendencias","renderTendencias"])
 
 pagina = """<!doctype html><html lang="es"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -29,6 +33,7 @@ pagina = """<!doctype html><html lang="es"><head><meta charset="utf-8">
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const t = (es, en, pt, he, vars) => String(es).replace(/\\{(\\w+)\\}/g, (todo, k) => (vars && k in vars) ? vars[k] : todo);
 const currentLang = ()=> "es";
+const isRTL = ()=> false;
 const dateLocale = ()=> "es-AR";
 const fmtISO = (iso, opts)=> isoDate(iso).toLocaleDateString(dateLocale(), { ...opts, timeZone:"UTC" });
 const fmtDate = d => fmtISO(String(d).slice(0,10), { day:"2-digit", month:"short", year:"numeric" });

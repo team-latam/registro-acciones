@@ -8,10 +8,12 @@
      foto, gente, días, me gusta, un Cierre con objetivos. Nunca una rutina,
      una cancelada ni algo que todavía no pasó; con el mismo «Ver solo» del
      reporte.
-   - «Quién lo hizo posible» / «De qué se habló»: las personas que más
-     cargaron y los temas de los últimos 90 días como burbujas. El botón
-     «👥 Mostrar al equipo» saca o pone los nombres (se acuerda); sin nombres
-     queda solo lo que se habló, y sin nombres ni temas la diapositiva no está.
+   - «Quién lo hizo posible» / «Tendencias»: las personas que más cargaron y
+     las filas de «Tendencias» de los últimos 90 días (lo mismo que ve
+     Reportes: lugares, tipos y temas que subieron o bajaron; antes eran
+     burbujas de palabras sueltas). El botón «👥 Mostrar al equipo» saca o
+     pone los nombres (se acuerda); sin nombres quedan solo las tendencias,
+     y sin nombres ni tendencias la diapositiva no está.
    Y lo mismo en el informe mensual, y en la hoja que se imprime.
    Con la app de verdad y el Supabase de mentira (app_de_mentira.mjs).
    ====================================================================== */
@@ -45,7 +47,7 @@ const datos = (extra = []) => {
   ];
   return base;
 };
-// Con temas: más de 8 posteos en los 180 días y una palabra que se repite.
+// Con tendencias: 8 o más posteos en los 180 días, y un tema («Seguridad», de la lista de ejemplo) que aparece de golpe.
 const conTemas = () => datos([
   ...[2, 12, 18, 25, 33, 41].map((n, i) => post({ id: "t" + i, title: "Plan de seguridad " + (i + 1), content: "Seguridad en la sede.", start: dia(n), end: dia(n), a: 1 + (i % 3), type: "otro", scopes: rosario })),
 ]);
@@ -75,7 +77,7 @@ const titulos = p => p.$$eval("#presPuntos .pres-punto", l => l.map(e => e.getAt
   await p.close();
 }
 
-/* ---- El equipo y los temas, con y sin nombres ---- */
+/* ---- El equipo y las tendencias, con y sin nombres ---- */
 {
   const { p, errores } = await entrar(b, ADMIN, "Benny Rosenthal", { viewport: vp, lang: "es", base: conTemas() });
   await abrir(p);
@@ -86,30 +88,32 @@ const titulos = p => p.$$eval("#presPuntos .pres-punto", l => l.map(e => e.getAt
     sub: (document.querySelector("#presEscena .ps-sub") || {}).textContent || "",
     gente: [...document.querySelectorAll("#presEscena .ps-gente li")].map(li => li.querySelector(".ps-nom").textContent.trim() + ":" + li.querySelector("b").textContent),
     ini: [...document.querySelectorAll("#presEscena .ps-av")].map(e => e.textContent),
-    temas: [...document.querySelectorAll("#presEscena .ps-bu b")].map(e => e.textContent),
+    temas: [...document.querySelectorAll("#presEscena .ps-tend .ps-tn")].map(e => e.textContent.trim()),
+    filas: [...document.querySelectorAll("#presEscena .ps-tend li")].map(li => [li.querySelector(".ps-tm").textContent.replace(/\s+/g, " ").trim(), li.querySelector(".ps-td").textContent.trim()]),
   }));
   let e = await equipo();
   eq("con nombres: el título, el rótulo que dice las dos cosas y las personas con lo que cargaron (de mayor a menor)", [e.tit, e.sub, e.gente.length >= 3, e.gente.every(x => /:\d+$/.test(x)), e.gente.map(x => +x.split(":").pop()).every((n, i, l) => !i || l[i - 1] >= n)],
-    ["Quién lo hizo posible", "El equipo y de qué se habló", true, true, true]);
+    ["Quién lo hizo posible", "El equipo y las tendencias", true, true, true]);
   eq("…con las iniciales en cada círculo", e.ini.every(x => /^\p{Lu}{1,2}$/u.test(x)), true);
-  eq("…y las burbujas de los temas, con «seguridad» entre ellos", e.temas.includes("seguridad"), true);
+  eq("…y las filas de Tendencias, con el tema «Seguridad» (6 posteos y ninguno antes: nuevo) entre ellas", [e.temas.includes("💬 Seguridad"), e.filas[e.temas.indexOf("💬 Seguridad")]], [true, ["0 → 6", "nuevo"]]);
+  eq("…y no más de 6 filas", e.temas.length >= 1 && e.temas.length <= 6, true);
   const antes = await p.$eval("#presCuenta", x => x.textContent);
   await p.click("#presEquipo");
-  eq("«Mostrar al equipo» apagado: sin personas, solo los temas, y la diapositiva se queda donde estaba", await p.evaluate(() => [document.getElementById("presEquipo").getAttribute("aria-pressed"), document.querySelectorAll("#presEscena .ps-gente").length, document.querySelectorAll("#presEscena .ps-bu").length > 0, document.querySelector("#presEscena .ps-tit").textContent.trim(), document.getElementById("presCuenta").textContent.trim()]),
-    ["false", 0, true, "De qué se habló", antes]);
+  eq("«Mostrar al equipo» apagado: sin personas, solo los temas, y la diapositiva se queda donde estaba", await p.evaluate(() => [document.getElementById("presEquipo").getAttribute("aria-pressed"), document.querySelectorAll("#presEscena .ps-gente").length, document.querySelectorAll("#presEscena .ps-tend li").length > 0, document.querySelector("#presEscena .ps-tit").textContent.trim(), document.getElementById("presCuenta").textContent.trim()]),
+    ["false", 0, true, "Tendencias", antes]);
   eq("…y no queda ningún nombre de persona en la diapositiva", await p.$eval("#presEscena", x => /Ana|Diego|Lucía|Moshe|Benny|Pérez|Martínez/.test(x.textContent)), false);
   eq("se acuerda para la próxima vez", await p.evaluate(() => localStorage.getItem("ra_pres_equipo")), "0");
   // Cerrar y volver a abrir: sigue apagado.
   await p.keyboard.press("Escape"); await p.waitForTimeout(300);
   await abrir(p);
   eq("al abrir de nuevo sigue sin nombres", await p.$eval("#presEquipo", x => x.getAttribute("aria-pressed")), "false");
-  await ir(p, "De qué se habló");
-  eq("…y la diapositiva se llama «De qué se habló»", await p.$eval("#presEscena .ps-tit", x => x.textContent.trim()), "De qué se habló");
+  await ir(p, "Tendencias");
+  eq("…y la diapositiva se llama «Tendencias»", await p.$eval("#presEscena .ps-tit", x => x.textContent.trim()), "Tendencias");
   // Imprimir sin nombres: lo mismo en la hoja.
-  await p.evaluate(() => { window.__imp = null; window.print = () => { window.__imp = { hojas: document.querySelectorAll("#presPrint .pres-pagina").length, nombres: document.querySelectorAll("#presPrint .ps-gente").length, burbujas: document.querySelectorAll("#presPrint .ps-bu").length };
+  await p.evaluate(() => { window.__imp = null; window.print = () => { window.__imp = { hojas: document.querySelectorAll("#presPrint .pres-pagina").length, nombres: document.querySelectorAll("#presPrint .ps-gente").length, filas: document.querySelectorAll("#presPrint .ps-tend li").length };
     setTimeout(() => window.dispatchEvent(new Event("afterprint")), 0); }; });
   await p.click('[data-action="pres-imprimir"]'); await p.waitForFunction(() => window.__imp);
-  eq("la hoja impresa también va sin personas y con las burbujas, una hoja por diapositiva", await p.evaluate(() => [window.__imp.hojas, window.__imp.nombres, window.__imp.burbujas > 0]), [8, 0, true]);
+  eq("la hoja impresa también va sin personas y con las filas de Tendencias, una hoja por diapositiva", await p.evaluate(() => [window.__imp.hojas, window.__imp.nombres, window.__imp.filas > 0]), [8, 0, true]);
   await p.waitForTimeout(200);
   // Volver a prender.
   await p.click("#presEquipo"); await p.waitForTimeout(100);
@@ -118,15 +122,15 @@ const titulos = p => p.$$eval("#presPuntos .pres-punto", l => l.map(e => e.getAt
   await p.close();
 }
 
-/* ---- Sin temas: solo las personas; y sin nombres ni temas, la diapositiva no está ---- */
+/* ---- Sin tendencias: solo las personas; y sin nombres ni tendencias, la diapositiva no está ---- */
 {
   const { p } = await entrar(b, ADMIN, "Benny Rosenthal", { viewport: vp, lang: "es", base: datos() });
   await abrir(p);
-  eq("hay menos de 8 posteos: sin temas, la diapositiva es solo de las personas (un solo bloque)", await titulos(p).then(t => t.slice(4, 6)), ["Lo más destacado", "Quién lo hizo posible"]);
+  eq("hay menos de 8 posteos: sin tendencias, la diapositiva es solo de las personas (un solo bloque)", await titulos(p).then(t => t.slice(4, 6)), ["Lo más destacado", "Quién lo hizo posible"]);
   await ir(p, "Quién lo hizo posible");
-  eq("…con personas y sin burbujas", await p.evaluate(() => [document.querySelectorAll("#presEscena .ps-gente li").length > 0, document.querySelectorAll("#presEscena .ps-bu").length, !!document.querySelector("#presEscena .ps-sub")]), [true, 0, false]);
+  eq("…con personas y sin filas de tendencias", await p.evaluate(() => [document.querySelectorAll("#presEscena .ps-gente li").length > 0, document.querySelectorAll("#presEscena .ps-tend li").length, !!document.querySelector("#presEscena .ps-sub")]), [true, 0, false]);
   await p.click("#presEquipo"); await p.waitForTimeout(100);
-  eq("apagar los nombres, sin temas: la diapositiva desaparece y la presentación queda con 7", await p.evaluate(() => [document.querySelectorAll("#presPuntos .pres-punto").length, [...document.querySelectorAll("#presPuntos .pres-punto")].some(e => /hizo posible|habló/.test(e.getAttribute("aria-label")))]), [7, false]);
+  eq("apagar los nombres, sin tendencias: la diapositiva desaparece y la presentación queda con 7", await p.evaluate(() => [document.querySelectorAll("#presPuntos .pres-punto").length, [...document.querySelectorAll("#presPuntos .pres-punto")].some(e => /hizo posible|Tendencias/.test(e.getAttribute("aria-label")))]), [7, false]);
   await p.close();
 }
 
@@ -163,7 +167,7 @@ const titulos = p => p.$$eval("#presPuntos .pres-punto", l => l.map(e => e.getAt
   await ir(p, "Lo más destacado");
   eq("celular: «Lo más destacado» entra en la pantalla", await caben(), [true, true, true]);
   await ir(p, "Quién lo hizo posible");
-  eq("celular: el equipo y los temas entran en la pantalla", await caben(), [true, true, true]);
+  eq("celular: el equipo y las tendencias entran en la pantalla", await caben(), [true, true, true]);
   eq("celular: el botón «Mostrar al equipo» se ve en la barra", await p.$eval("#presEquipo", e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.left >= 0 && r.right <= innerWidth; }), true);
   await p.close();
 }
