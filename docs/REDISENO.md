@@ -969,6 +969,30 @@ eligió **unirlas así**:
 Pruebas: `agenda_test.mjs` (país, región y ciudad; fallan con el código
 de antes) y `ficha_celular_test.mjs` vuelve a esperar cinco tarjetas.
 
+### 82. «Presentar» con más para mostrar: «Lo más destacado» y «El equipo y de qué se habló» — HECHO (13 oct 2026)
+
+Pedido del usuario: «la sección Presentar puede tener más información, algo más grande y más llamativo». Se le mostraron tres
+opciones y eligió la **2** («me encantó lo del punto 2»): más información, sin cambiar el estilo de las diapositivas de hoy.
+
+- **Dos diapositivas nuevas**, entre «Mes a mes» y «Lo logrado» (en el reporte y en el informe mensual, que usan las mismas):
+  - **«Lo más destacado»**: hasta tres tarjetas, cada una con la foto de la actividad (la primera que tenga) o, si no tiene,
+    el ícono de su tipo sobre un degradé; arriba el tipo, abajo el título y «Lugar · fecha». Se eligen por puntos: foto 3, gente
+    que participó (hasta 8) 1 c/u, me gusta ½ c/u (hasta 6), días ½ c/u (hasta 6), un Cierre con objetivos 2, y 1 si es visita,
+    congreso, seminario o curso; a igualdad, la más reciente. Nunca una rutina, una cancelada ni algo que todavía no pasó, y con el
+    mismo «Ver solo» del reporte. En el celular las tarjetas pasan a ser horizontales (foto a la izquierda) para que entren tres.
+  - **«Quién lo hizo posible»** (si hay equipo y temas, con el rótulo «El equipo y de qué se habló»): a la izquierda las personas que
+    más cargaron, con un círculo de color con sus iniciales y la cantidad; a la derecha **burbujas** con los temas de los últimos
+    90 días (los mismos de «Temas» en Reportes, ya con las frases juntas), del tamaño de cuántas veces se habló, amarillas si son
+    nuevas, celestes si suben, rosadas si bajan. Con menos de 8 posteos no hay temas y queda solo el equipo.
+- **«👥 Mostrar al equipo»** (botón en la barra): pone o saca los nombres. **De fábrica prendido**, porque Reportes ya les muestra los
+  nombres a todos los del equipo (en la maqueta se había dicho apagado; es una decisión fácil de cambiar si prefiere lo otro). Se
+  acuerda en el navegador (`ra_pres_equipo`) y al apagarlo la presentación se rearma sin moverse de diapositiva. Sin nombres queda
+  «De qué se habló» solo con las burbujas, y sin nombres ni temas la diapositiva no está.
+- La hoja que se imprime (A4 apaisada, una por diapositiva) lleva lo mismo, en claro y con las burbujas más chicas.
+- Pruebas: `presentacion_destacados_test.mjs` (28: el orden, quién entra y quién no, foto e ícono, con y sin nombres, que se acuerda, la
+  hoja impresa, «Ver solo», inglés, hebreo y celular) y ajustes en `presentacion_test.mjs` (8 diapositivas) e `informe_mensual_test.mjs`
+  (las dos nuevas del informe). Las nuevas fallan con el código de antes.
+
 ### 81. La planilla de actividades: una tabla de Excel, con ventana para elegir qué bajar — HECHO (13 oct 2026)
 
 Pedido del usuario sobre la planilla del Inicio (tanda 70): «que funcione como una tabla con columnas que tiene separada la

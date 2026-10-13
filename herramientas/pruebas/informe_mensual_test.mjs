@@ -66,6 +66,12 @@ const b = await abrirNavegador();
   eq("la siguiente: los países del mes", await p.$$eval("#presEscena .ps-barras li", l => l.map(li => li.querySelector(".ps-et").textContent.trim() + ":" + li.querySelector("b").textContent).sort()), ["Argentina:1", "Chile:2"]);
   await p.keyboard.press("ArrowRight"); await p.keyboard.press("ArrowRight");
   eq("«Mes a mes»: los últimos 12 meses, y el del informe, el último, con sus 3", await p.evaluate(() => [document.querySelector("#presEscena .ps-tit").textContent.trim(), document.querySelectorAll("#presEscena .ps-col").length, [...document.querySelectorAll("#presEscena .ps-col b")].pop().textContent]), ["Mes a mes", 12, "3"]);
+  await p.keyboard.press("ArrowRight");
+  eq("«Lo más destacado» del mes: las tres actividades del mes, a igualdad la más reciente primero (ni la cancelada ni las de otros meses)",
+     await p.evaluate(() => [document.querySelector("#presEscena .ps-tit").textContent.trim(), [...document.querySelectorAll("#presEscena .ps-card-t")].map(e => e.textContent.trim())]), ["Lo más destacado", ["Visita a Rosario", "Charla en Chile", "Reunión en Santiago"]]);
+  await p.keyboard.press("ArrowRight");
+  eq("«Quién lo hizo posible»: Ana con 2 y Benny con 1 (con el botón «Mostrar al equipo» a mano)",
+     await p.evaluate(() => [document.querySelector("#presEscena .ps-tit").textContent.trim(), [...document.querySelectorAll("#presEscena .ps-gente li")].map(li => li.querySelector(".ps-nom").textContent.trim() + ":" + li.querySelector("b").textContent), !document.getElementById("presEquipo").hidden]), ["Quién lo hizo posible", ["Ana Pérez:2", "Benny Rosenthal:1"], true]);
   eq("tiene «Planilla» e «Imprimir / PDF»", await p.evaluate(() => [!document.getElementById("presPlanilla").hidden, document.getElementById("presPlanilla").textContent.trim(), document.getElementById("presImprimir").textContent.trim()]), [true, "⬇ Planilla", "🖨 Imprimir / PDF"]);
   // La planilla del mes: lo que cayó en ese mes (con lo cancelado marcado), no lo de otros meses.
   const bajada = p.waitForEvent("download", { timeout: 5000 });

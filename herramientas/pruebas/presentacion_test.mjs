@@ -53,8 +53,8 @@ const abrir = async p => { await tab(p, "reportes"); await p.waitForSelector(".r
   eq("la primera diapositiva: el título del reporte y el período", await p.evaluate(() => [document.querySelector("#presEscena .ps-tit").textContent.trim(), /Registro de Acciones/.test(document.querySelector("#presEscena .ps-cap").textContent)]), [`Reporte ${anio}`, true]);
   eq("…con los mismos cuatro números que el reporte de atrás", await p.$$eval("#presEscena .ps-nums b", l => l.map(e => e.textContent.trim())), numerosDelReporte);
   const t = await titulos(p);
-  eq("las diapositivas: números, dónde, qué se hizo, mes a mes, lo logrado y lo que viene", t.length, 6);
-  eq("«Diapositiva 1 de 6»", (await actual(p))[0], "Diapositiva 1 de 6");
+  eq("las diapositivas: números, dónde, qué se hizo, mes a mes, lo más destacado, el equipo, lo logrado y lo que viene", t.length, 8);
+  eq("«Diapositiva 1 de 8»", (await actual(p))[0], "Diapositiva 1 de 8");
   eq("el botón de atrás está apagado en la primera", await p.$eval("#presAnt", e => e.disabled), true);
 
   await p.keyboard.press("ArrowRight");
@@ -66,28 +66,32 @@ const abrir = async p => { await tab(p, "reportes"); await p.waitForSelector(".r
   eq("«Mes a mes»: doce columnas", await p.evaluate(() => [document.querySelector("#presEscena .ps-tit").textContent.trim(), document.querySelectorAll("#presEscena .ps-col").length]), ["Mes a mes", 12]);
   eq("…y como hay una planeada (barra rayada), una leyenda dice qué es lo rayado", await p.evaluate(() => [document.querySelectorAll("#presEscena .ps-barra.plan").length > 0, /Rayado: actividades planeadas/.test((document.querySelector("#presEscena .ps-leyenda") || {}).textContent || "")]), [true, true]);
   await p.keyboard.press("ArrowRight");
+  eq("«Lo más destacado»: tarjetas de las actividades (sin foto: el ícono del tipo)", await p.evaluate(() => [document.querySelector("#presEscena .ps-tit").textContent.trim(), document.querySelectorAll("#presEscena .ps-card").length, document.querySelectorAll("#presEscena .ps-card img").length, document.querySelectorAll("#presEscena .ps-card .ps-ico").length]), ["Lo más destacado", 3, 0, 3]);
+  await p.keyboard.press("ArrowRight");
+  eq("«Quién lo hizo posible»: las personas que más cargaron, con su cantidad", await p.evaluate(() => [document.querySelector("#presEscena .ps-tit").textContent.trim(), [...document.querySelectorAll("#presEscena .ps-gente li")].map(li => li.querySelector(".ps-nom").textContent.trim() + ":" + li.querySelector("b").textContent)]).then(([t, l]) => [t, l.length > 0, l.every(x => /:\d+$/.test(x))]), ["Quién lo hizo posible", true, true]);
+  await p.keyboard.press("ArrowRight");
   eq("«Lo logrado»: 2 de 3 objetivos, y cuáles", await p.evaluate(() => [document.querySelector("#presEscena .ps-tit").textContent.trim(), document.querySelector("#presEscena .ps-nums b").textContent, document.querySelector("#presEscena .ps-nums span").textContent.trim(), [...document.querySelectorAll("#presEscena .ps-lista li")].map(e => e.textContent.trim())]),
     ["Lo logrado", "2", "de 3 objetivos logrados", ["✓ Conocer a los jóvenes del club", "✓ Presentar el curso de verano"]]);
   await p.keyboard.press("ArrowRight");
   eq("«Lo que viene»: la visita de dentro de 20 días", await p.evaluate(() => [document.querySelector("#presEscena .ps-tit").textContent.trim(), [...document.querySelectorAll("#presEscena .ps-lista li")].map(e => /Visita a San Pablo/.test(e.textContent))]), ["Lo que viene", [true]]);
   eq("en la última, el botón de adelante está apagado", await p.$eval("#presSig", e => e.disabled), true);
   await p.keyboard.press("ArrowRight");
-  eq("y más allá de la última no pasa nada", (await actual(p))[0], "Diapositiva 6 de 6");
+  eq("y más allá de la última no pasa nada", (await actual(p))[0], "Diapositiva 8 de 8");
   await p.keyboard.press("Home");
-  eq("Inicio vuelve a la primera", (await actual(p))[0], "Diapositiva 1 de 6");
+  eq("Inicio vuelve a la primera", (await actual(p))[0], "Diapositiva 1 de 8");
   await p.keyboard.press("End");
-  eq("Fin va a la última", (await actual(p))[0], "Diapositiva 6 de 6");
+  eq("Fin va a la última", (await actual(p))[0], "Diapositiva 8 de 8");
   await p.click('#presPuntos .pres-punto:nth-child(3)');
-  eq("un punto lleva a esa diapositiva", await actual(p), ["Diapositiva 3 de 6", "Qué hicimos"]);
+  eq("un punto lleva a esa diapositiva", await actual(p), ["Diapositiva 3 de 8", "Qué hicimos"]);
   await p.click("#presSig"); await p.click("#presAnt"); await p.click("#presAnt");
-  eq("los botones ‹ › también", (await actual(p))[0], "Diapositiva 2 de 6");
+  eq("los botones ‹ › también", (await actual(p))[0], "Diapositiva 2 de 8");
 
   // Imprimir / PDF: una hoja por diapositiva, y se vuelve a lo de antes.
   await p.evaluate(() => { window.__imp = null; window.print = () => { window.__imp = { hojas: document.querySelectorAll("#presPrint .pres-pagina").length, clase: document.body.classList.contains("pres-imprimiendo"), titulos: [...document.querySelectorAll("#presPrint .ps-tit")].map(e => e.textContent.trim()) };
     setTimeout(() => window.dispatchEvent(new Event("afterprint")), 0); }; });
   await p.click('[data-action="pres-imprimir"]');
   await p.waitForFunction(() => window.__imp);
-  eq("«Imprimir / PDF»: una hoja por diapositiva, con la app escondida", await p.evaluate(() => window.__imp.hojas + " " + window.__imp.clase + " " + window.__imp.titulos[0]), `6 true Reporte ${anio}`);
+  eq("«Imprimir / PDF»: una hoja por diapositiva, con la app escondida", await p.evaluate(() => window.__imp.hojas + " " + window.__imp.clase + " " + window.__imp.titulos[0]), `8 true Reporte ${anio}`);
   await p.waitForTimeout(200);
   eq("…y después queda todo como antes", await p.evaluate(() => [!!document.getElementById("presPrint"), document.body.classList.contains("pres-imprimiendo"), document.getElementById("presOverlay").hidden]), [false, false, false]);
 
@@ -138,13 +142,13 @@ const abrir = async p => { await tab(p, "reportes"); await p.waitForSelector(".r
     const toque = (tipo, x) => { const t = new Touch({ identifier: 1, target: el, clientX: x, clientY: 300 }); el.dispatchEvent(new TouchEvent(tipo, { touches: tipo === "touchend" ? [] : [t], changedTouches: [t], bubbles: true })); };
     toque("touchstart", 300); toque("touchend", 80);
   });
-  eq("deslizar el dedo hacia la izquierda pasa a la siguiente", (await actual(p))[0], "Diapositiva 2 de 6");
+  eq("deslizar el dedo hacia la izquierda pasa a la siguiente", (await actual(p))[0], "Diapositiva 2 de 8");
   await p.evaluate(() => {
     const el = document.getElementById("presEscena");
     const toque = (tipo, x) => { const t = new Touch({ identifier: 1, target: el, clientX: x, clientY: 300 }); el.dispatchEvent(new TouchEvent(tipo, { touches: tipo === "touchend" ? [] : [t], changedTouches: [t], bubbles: true })); };
     toque("touchstart", 80); toque("touchend", 300);
   });
-  eq("y hacia la derecha, a la anterior", (await actual(p))[0], "Diapositiva 1 de 6");
+  eq("y hacia la derecha, a la anterior", (await actual(p))[0], "Diapositiva 1 de 8");
   await p.close();
 }
 
