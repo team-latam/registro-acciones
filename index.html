@@ -547,6 +547,25 @@
     border:1px solid var(--border); background:var(--surface-soft); color:var(--ink-strong); font-family:inherit; font-size:13px; font-weight:700; cursor:pointer;
   }
   .um-link:hover{ background:var(--surface-hover); }
+  /* «Algo no anda» y Administración → Problemas (13/10/2026). */
+  .problema-texto{ width:100%; box-sizing:border-box; font:inherit; font-size:14px; padding:10px 12px; border:1px solid var(--border); border-radius:12px; background:var(--card); color:var(--text); resize:vertical; }
+  .problema-texto:focus-visible{ outline:2px solid var(--celeste-dark); outline-offset:1px; }
+  .problema-tecnico{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:12px; font-size:13px; font-weight:600; }
+  .pb-lista{ list-style:none; margin:0; padding:0; display:grid; gap:12px; }
+  .pb-fila{ border:1px solid var(--border); border-radius:12px; padding:10px 12px; display:grid; gap:6px; background:var(--card); }
+  .pb-cabeza{ display:flex; gap:8px; align-items:flex-start; }
+  .pb-tit{ font-size:14px; overflow-wrap:anywhere; min-width:0; }
+  .pb-estado{ flex:none; border-radius:999px; padding:1px 9px; font-size:11px; font-weight:800; }
+  .pb-estado.nuevo{ background:var(--danger-bg); color:var(--danger-text); }
+  .pb-estado.visto{ background:var(--warn-bg); color:var(--warn-text); }
+  .pb-estado.resuelto{ background:var(--ok-bg); color:var(--ok-text); }
+  .pb-sub{ font-size:12px; color:var(--text-muted); }
+  .pb-error{ font-family:ui-monospace,Menlo,Consolas,monospace; font-size:12px; background:var(--surface-soft); border-radius:8px; padding:6px 8px; overflow-wrap:anywhere; }
+  .pb-det summary{ cursor:pointer; font-size:12px; color:var(--text-muted); }
+  .pb-det ul{ margin:6px 0 0; padding-inline-start:18px; font-size:12px; color:var(--text-muted); display:grid; gap:2px; overflow-wrap:anywhere; }
+  .pb-acciones{ display:flex; flex-wrap:wrap; gap:6px; }
+  .btn-mini.danger{ background:var(--danger-bg); color:var(--danger-text); }
+  .btn-mini.danger:hover{ background:var(--danger-text); color:#fff; }
   .avatar-pending{
     position:absolute; top:-5px; inset-inline-end:-5px; min-width:18px; height:18px; padding:0 4px; border-radius:999px; pointer-events:none;
     background:var(--danger); color:#fff; font-size:10.5px; font-weight:800; display:flex; align-items:center; justify-content:center; border:2px solid var(--petroleo-dark);
@@ -2284,6 +2303,14 @@
   .rs-pasos input{ flex:none; margin-top:2px; accent-color:var(--celeste-dark); width:16px; height:16px; }
   .rs-paso{ flex:1; min-width:0; }
   .rs-paso small{ color:var(--text-muted); display:block; font-size:11.5px; }
+  /* Quién y para cuándo, debajo de cada paso (propuesta 1-B). */
+  .rs-asig{ display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-top:4px; }
+  .rs-chip{ display:inline-block; background:var(--surface-hover); color:var(--text); border-radius:999px; padding:1px 9px; font-size:11.5px; font-weight:600; }
+  .rs-chip.vencido, .date-trigger.rs-fecha.vencido{ background:var(--danger-bg); color:var(--danger-text); border-color:transparent; }
+  .rs-resp{ font:inherit; font-size:11.5px; font-weight:600; max-width:100%; border:1px solid var(--border); border-radius:999px; padding:2px 8px; background:var(--card); color:var(--text); cursor:pointer; }
+  .rs-resp.vacio{ border-style:dashed; color:var(--text-muted); font-weight:500; }
+  .rs-resp:hover, .rs-resp:focus-visible{ border-color:var(--celeste-dark); }
+  .date-trigger.rs-fecha{ font-size:11.5px; padding:2px 9px; }
   .rs-pasos li.hecho .t{ text-decoration:line-through; opacity:.6; }
   /* "No es tarea": al final del renglón, chiquito. En la compu aparece al
      pasar el mouse por el paso; en el celular está siempre, apenas gris. */
@@ -4311,6 +4338,13 @@
     <button class="volver" id="userProfileBack" aria-label="Volver" hidden>‹</button>
     <button class="close" id="userProfileClose" aria-label="Cerrar">✕</button>
     <div id="userProfileBody"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="problemaOverlay" hidden>
+  <div class="modal modal-wrap" style="max-width:440px;" role="dialog" aria-modal="true" aria-labelledby="problemaTitle">
+    <button class="close" id="problemaClose" aria-label="Cerrar">✕</button>
+    <div id="problemaBody" style="display:flex;flex-direction:column;min-height:0;"></div>
   </div>
 </div>
 
@@ -7985,6 +8019,7 @@ async function onAuthChanged(user){
     subscribeData();
     subscribeAccessRequests();
     subscribeAuditLog();
+    cargarProblemas();
     subscribeRoster();
     subscribeTerritoryConfig();
     subscribePreferences();
@@ -8028,7 +8063,7 @@ async function onAuthChanged(user){
   let adminSubscribed = false;
   const syncAdminSubs = ()=>{
     if(state.auth.status === "admin" && !adminSubscribed){
-      adminSubscribed = true; subscribeAccessRequests(); subscribeAuditLog();
+      adminSubscribed = true; subscribeAccessRequests(); subscribeAuditLog(); cargarProblemas();
     } else if(state.auth.status !== "admin" && adminSubscribed){
       adminSubscribed = false;
       if(unsubscribeRequests){ unsubscribeRequests(); unsubscribeRequests = null; }
@@ -8993,6 +9028,29 @@ function crearSupabaseStore(sb, opciones = {}){
       },
     },
 
+    // ---- «Algo no anda» y los errores anotados solos (22-problemas.sql) ----
+    // Escribir, solo por las dos funciones de la base (con el correo de quien
+    // llama); leer, cambiar el estado y borrar, solo un admin.
+    problemas: {
+      async listar(){
+        const { data, error } = await sb.from("problemas").select("*").order("ultimo", { ascending: false }).limit(300);
+        if(error) throw error;
+        return (data || []).map(aObjeto);
+      },
+      async estado(id, estado){ revienta(await sb.from("problemas").update({ estado }).eq("id", id)); },
+      async borrar(id){ revienta(await sb.from("problemas").delete().eq("id", id)); },
+      async contar({ pantalla, mensaje, tecnico }){
+        const { data, error } = await sb.rpc("contar_problema", { p_pantalla: pantalla || "", p_mensaje: mensaje, p_tecnico: tecnico || null });
+        if(error) throw error;
+        return !!data;
+      },
+      async anotarError({ huella, pantalla, mensaje, tecnico }){
+        const { data, error } = await sb.rpc("anotar_error", { p_huella: huella, p_pantalla: pantalla || "", p_mensaje: mensaje || "", p_tecnico: tecnico || null });
+        if(error) throw error;
+        return !!data;
+      },
+    },
+
     // ---- La Agenda (19-agenda.sql) ----
     // Instituciones y quién está en cada una (contactos). Las ven todos los
     // aprobados; las suma y corrige cualquiera que carga eventos; borrar una
@@ -9321,6 +9379,12 @@ function crearSupabaseSesion(sb){
 // nada que mostrar ni botón de entrar: la pantalla está en "Cargando".
 let sesion = null;
 let store = null;
+// Administración → Problemas (22-problemas.sql). Arriba de todo: se pide al entrar un admin,
+// que puede pasar mientras todavía se está leyendo el resto del script.
+let problemasLista = null, problemasTab = "persona", problemasVerResueltos = false;
+const erroresRecientes = [];             // los últimos errores de la app, ya limpios: viajan con «Algo no anda»
+const erroresYaAnotados = new Set();     // las huellas de esta sesión: cada error, una vez
+let erroresAnotados = 0;
 
 // Ex integrantes: lo lee cualquier aprobado, igual que el roster y por el
 // mismo motivo — resolver el @nickname de quien escribió algo.
@@ -9975,6 +10039,14 @@ const DATE_FIELD_SPECS = {
     // deshabilitados en la grilla y un tipeo así se rechaza.
     min: (ds) => { if(ds.field !== "endDate") return null; const post = getPostById(ds.postId); const m = post && postMilestones(post).find(x=>x.id===ds.msId); return (m && m.date) || null; },
     fallbackView: (ds) => { const post = getPostById(ds.postId); const m = post && postMilestones(post).find(x=>x.id===ds.msId); return (m && m.date) || null; },
+  },
+  // La fecha de un paso de «Lo que sigue»: se guarda al elegirla.
+  paso: {
+    dfId: (ds) => `paso:${ds.postId}:${ds.pasoId}`,
+    canEdit: (ds) => { const post = getPostById(ds.postId); return !!post && canEditPost(post); },
+    get: (ds) => { const post = getPostById(ds.postId); const p = post && (resumenDe(post) || []).flatMap(x => x.pasos || []).find(x => x.id === ds.pasoId); return (p && p.para) || null; },
+    set: (ds, iso) => { asignarPaso(ds.postId, ds.pasoId, { para: iso || "" }); },
+    allowClear: () => true,
   },
   "composer-start": {
     dfId: () => "composer:start",
@@ -11600,6 +11672,7 @@ function renderUserBadge(){
   const links = isAuthorized() ? `
         <div class="um-links">
           <button type="button" class="um-link" data-action="goto-view" data-view="configuracion">⚙️ ${t("Mis preferencias","My preferences","Minhas preferências","ההעדפות שלי")}</button>
+          <button type="button" class="um-link" data-action="problema-abrir">🛟 ${t("Algo no anda","Something's wrong","Algo não está funcionando","משהו לא עובד")}</button>
           ${isAdmin() ? `<button type="button" class="um-link" data-action="goto-view" data-view="admin">🛠️ ${t("Administración","Administration","Administração","ניהול")}${pend ? `<span class="pending-count">${pend}</span>` : ""}</button>` : ""}
         </div>` : "";
   userBadgeEl.innerHTML = `
@@ -12610,6 +12683,7 @@ function adminMenuItems(){
       { key:"calendar", view:"preferencias", sub:"calendar", label:"Google Calendar" },
       { key:"copia", view:"preferencias", sub:"copia", label:t("Copia de seguridad","Backup","Cópia de segurança","גיבוי") },
       { key:"correos", view:"preferencias", sub:"correos", label:t("Correos","Emails","E-mails","מיילים") },
+      { key:"problemas", view:"preferencias", sub:"problemas", label:t("Problemas","Problems","Problemas","בעיות"), badge:problemasNuevos() },
     ] },
   ];
 }
@@ -12672,6 +12746,7 @@ function adminSeccionTextos(key){
     },
     avanzado: { lead: t("Lo que se configura una vez y casi no se toca: las zonas, las ciudades escritas a mano y los adjuntos.","What's set up once and rarely touched: zones, hand-typed cities and attachments.","O que se configura uma vez e quase não se mexe: as zonas, as cidades digitadas à mão e os anexos.","מה שמגדירים פעם אחת וכמעט לא נוגעים: האזורים, הערים שהוקלדו ידנית והקבצים המצורפים.") },
     adjuntos: { lead: t("Cuántos archivos, y de qué tamaño, se pueden adjuntar a un posteo (evento, rutina o respuesta).","How many files, and how big, can be attached to a post (event, routine or reply).","Quantos arquivos, e de que tamanho, podem ser anexados a uma postagem (evento, rotina ou resposta).","כמה קבצים, ובאיזה גודל, אפשר לצרף לפוסט (אירוע, שגרה או תגובה).") },
+    problemas: { lead: t("Lo que contó la gente con «Algo no anda» y los errores que la app anotó sola, con cuántas veces y a cuántas personas les pasó.","What people reported with “Something's wrong” and the errors the app logged by itself, with how many times and to how many people.","O que as pessoas contaram com «Algo não está funcionando» e os erros que o app anotou sozinho, com quantas vezes e a quantas pessoas aconteceu.","מה שאנשים דיווחו ב«משהו לא עובד» והשגיאות שהאפליקציה רשמה לבד, עם כמה פעמים ולכמה אנשים זה קרה.") },
     copia: { lead: t("Todo lo cargado, guardado fuera de la app: una copia automática cada domingo y, cuando quieras, una para bajar a tu computadora.","Everything logged, kept outside the app: an automatic copy every Sunday and, whenever you want, one to download to your computer.","Tudo o que foi carregado, guardado fora do app: uma cópia automática todo domingo e, quando quiser, uma para baixar no seu computador.","כל מה שנרשם, שמור מחוץ לאפליקציה: עותק אוטומטי בכל יום ראשון, ומתי שתרצו, עותק להורדה למחשב.") },
     calendar: { lead: t("El Google Calendar al que van los eventos (la Rutina no). Si lo cambiás, los ya cargados se quedan donde están.","The Google Calendar where events go (Routines don't). If you change it, the ones already created stay where they are.","O Google Calendar para onde vão os eventos (a Rotina não). Se trocar, os já criados ficam onde estão.","ה-Google Calendar שאליו נשלחים האירועים (שגרה לא). אם משנים אותו, הקיימים נשארים במקומם.") },
   };
@@ -13758,6 +13833,7 @@ function renderPreferenciasView(){
     : sec==="adjuntos" ? renderAdjuntosSection()
     : sec==="copia" ? renderCopiaSection()
     : sec==="correos" ? renderCorreosSection()
+    : sec==="problemas" ? renderProblemasSection()
     : sec==="avanzado" ? renderAvanzadoSection()
     : sec==="agenda" ? renderAgendaAdminSection()
     : renderZonasSection();
@@ -15507,7 +15583,7 @@ function renderPasos(post, pasos, puede, conOrigen){
     const quien = hecho && p.rutina ? `<small>✓ ${esc(t("con la rutina «{r}»","with the routine “{r}”","com a rotina «{r}»","עם השגרה «{r}»",{ r: recortar((getPostById(p.rutina) || {}).content || "", 60) }))}</small>` : "";
     return `<li class="${hecho ? "hecho" : ""}">
       <input type="checkbox" ${hecho ? "checked" : ""} ${puede(de) ? "" : "disabled"} data-action="resumen-paso" data-post-id="${esc(de.id)}" data-paso="${esc(p.id)}" aria-label="${esc(t("Hecho","Done","Feito","בוצע"))}">
-      <span class="rs-paso"><span class="t">${esc(p.t)}</span>${origen}${quien}${!hecho && puede(de) ? `<button type="button" class="rs-no" data-action="resumen-no-tarea" data-post-id="${esc(de.id)}" data-paso="${esc(p.id)}" title="${esc(t("No es una tarea: que no figure como pendiente","Not a task: don't list it as pending","Não é uma tarefa: que não figure como pendente","לא משימה: שלא יופיע כממתין"))}">${esc(t("No es tarea","Not a task","Não é tarefa","לא משימה"))}</button>` : ""}</span>
+      <span class="rs-paso"><span class="t">${esc(p.t)}</span>${origen}${quien}${renderAsignacionDePaso(de, p, puede(de))}${!hecho && puede(de) ? `<button type="button" class="rs-no" data-action="resumen-no-tarea" data-post-id="${esc(de.id)}" data-paso="${esc(p.id)}" title="${esc(t("No es una tarea: que no figure como pendiente","Not a task: don't list it as pending","Não é uma tarefa: que não figure como pendente","לא משימה: שלא יופיע כממתין"))}">${esc(t("No es tarea","Not a task","Não é tarefa","לא משימה"))}</button>` : ""}</span>
     </li>`; }).join("")}</ul>`;
 }
 // Un formulario leído, dentro del panel de la tarjeta. Con varios (un
@@ -15548,6 +15624,79 @@ function renderResumenPanel(post){
     ${memoriaPos >= 0 ? `<div class="rs-pie"><span></span><button type="button" class="rs-link" data-action="resumen-abrir" data-post-id="${esc(post.id)}" data-pos="${memoriaPos}">${esc(t("Abrir la Memoria completa","Open the Complete Memory","Abrir a Memória completa","פתיחת התיעוד המלא"))} ${isRTL() ? "←" : "→"}</button></div>` : ""}
   </div>`;
 }
+/* ---------- Responsable y fecha de cada paso de «Lo que sigue» ----------
+   Pedido del usuario el 13/10/2026 (propuesta 1-B): cada paso puede tener
+   quien se encarga (`resp`, su correo) y para cuándo (`para`, YYYY-MM-DD),
+   con `asigPor` y `asigEl` de quién lo asignó y cuándo. Viven adentro del
+   paso, en el resumen del posteo, como lo marcado (hecho, no es tarea):
+   quien puede editar el evento puede asignar, igual que puede tildar. Lo
+   vencido, pendiente con la fecha ya pasada, se ve en rojo. */
+const datosDeAsignacion = p => Object.fromEntries(["resp", "para", "asigPor", "asigEl"].filter(k => p[k]).map(k => [k, p[k]]));
+const pasoPendiente = p => !p.estado || p.estado === "pendiente";
+function fechaCortaDelPaso(iso){
+  const esteAnio = String(iso).slice(0, 4) === todayISO().slice(0, 4);
+  return fmtISO(iso, esteAnio ? { day: "numeric", month: "short" } : { day: "numeric", month: "short", year: "numeric" });
+}
+// A quién se le puede dar un paso: el equipo que puede cargar (los observadores
+// no), y quien ya lo tiene aunque se haya ido.
+function candidatosParaPaso(actual){
+  const lista = state.roster.filter(u => u.email && u.role !== "observer").map(u => ({ email: String(u.email).toLowerCase(), nombre: nombreDe(u) }));
+  if(actual && !lista.some(x => x.email === actual)) lista.push({ email: actual, nombre: nombreDe(memberByEmail(actual), actual) });
+  return lista.sort((a, b) => a.nombre.localeCompare(b.nombre, currentLang()));
+}
+// Lo que se ve debajo de cada paso. Quien puede editar y el paso sigue
+// pendiente: un menú de personas y la fecha (cada cambio se guarda al
+// elegirlo, como en los hitos de un proyecto). Para el resto, las mismas
+// dos cosas como etiquetas.
+function renderAsignacionDePaso(de, p, editable){
+  const resp = p.resp ? String(p.resp).toLowerCase() : "";
+  const vencido = pasoPendiente(p) && !!p.para && p.para < todayISO();
+  if(!editable || !pasoPendiente(p)){
+    const etiquetas = [resp ? `<span class="rs-chip">👤 ${esc(nombreDe(memberByEmail(resp), resp))}</span>` : "",
+      p.para ? `<span class="rs-chip${vencido ? " vencido" : ""}">📅 ${esc(fechaCortaDelPaso(p.para))}${vencido ? " · " + esc(t("vencido","overdue","vencido","באיחור")) : ""}</span>` : ""].filter(Boolean);
+    return etiquetas.length ? `<span class="rs-asig">${etiquetas.join("")}</span>` : "";
+  }
+  const dfId = DATE_FIELD_SPECS.paso.dfId({ postId: de.id, pasoId: p.id });
+  const fecha = p.para ? esc(fechaCortaDelPaso(p.para)) + (vencido ? " · " + esc(t("vencido","overdue","vencido","באיחור")) : "") : esc(t("+ Fecha","+ Date","+ Data","+ תאריך"));
+  return `<span class="rs-asig">
+    <select class="rs-resp${resp ? "" : " vacio"}" data-action="paso-resp" data-post-id="${esc(de.id)}" data-paso="${esc(p.id)}" aria-label="${esc(t("Quién se encarga","Who is in charge","Quem se encarrega","מי אחראי"))}">
+      <option value="">${esc(t("+ Responsable","+ Owner","+ Responsável","+ אחראי"))}</option>
+      ${candidatosParaPaso(resp).map(c => `<option value="${esc(c.email)}"${c.email === resp ? " selected" : ""}>👤 ${esc(c.nombre)}</option>`).join("")}
+    </select>
+    <span class="date-field">
+      <button type="button" class="date-trigger rs-fecha${p.para ? "" : " empty"}${vencido ? " vencido" : ""}" data-action="date-open" data-df-kind="paso" data-df-id="${esc(dfId)}" data-post-id="${esc(de.id)}" data-paso="${esc(p.id)}" aria-haspopup="dialog" aria-expanded="false" aria-label="${esc(t("Fecha para el paso","Date for the step","Data para o passo","תאריך לשלב"))}"><span class="cal-ic" aria-hidden="true">📅</span>${fecha}</button>
+      <div class="date-pop" hidden role="dialog" aria-label="${esc(t("Fecha para el paso","Date for the step","Data para o passo","תאריך לשלב"))}"></div>
+    </span>
+  </span>`;
+}
+// Cambia el responsable y/o la fecha de un paso, y lo guarda. Un valor vacío lo
+// saca. Va solo el resumen: no cuenta como edición del evento.
+async function asignarPaso(postId, pasoId, cambios){
+  const post = getPostById(postId);
+  const partes = resumenDe(post);
+  if(!partes || !canEditPost(post)) return false;
+  const yo = String(state.auth.user.email || "").toLowerCase();
+  const nuevas = partes.map(x => ({ ...x, pasos: (x.pasos || []).map(p => {
+    if(p.id !== pasoId) return p;
+    const n = { ...p, ...cambios };
+    if(!n.resp) delete n.resp;
+    if(!n.para) delete n.para;
+    if(n.resp || n.para){ n.asigPor = yo; n.asigEl = new Date().toISOString(); } else { delete n.asigPor; delete n.asigEl; }
+    return n;
+  }) }));
+  try{ await updatePostDoc(postId, { resumen: { v:2, partes: nuevas } }); }
+  catch(err){
+    console.error("No se pudo guardar el paso:", err);
+    showCalendarNotice({ ok:false, message: t("No se pudo guardar: {m}","Couldn't save: {m}","Não foi possível salvar: {m}","השמירה נכשלה: {m}",{ m: err.message || err.code }) });
+    return false;
+  }
+  // Si se le dio a otra persona, le llega un correo (la base decide si
+  // corresponde: si puede recibirlos, si los tiene prendidos). Sin esperar.
+  const antes = String(((partes.flatMap(x => x.pasos || []).find(p => p.id === pasoId) || {}).resp) || "").toLowerCase();
+  const ahora = String((cambios && cambios.resp) || "").toLowerCase();
+  if(ahora && ahora !== antes && ahora !== yo) avisarPorCorreo("paso", `${postId}#${pasoId}`);
+  return true;
+}
 // Marca un paso (hecho / no es tarea / de nuevo pendiente). Va solo el
 // resumen: no cuenta como edición del evento.
 async function marcarPaso(postId, pasoId, estado, extra){
@@ -15555,7 +15704,7 @@ async function marcarPaso(postId, pasoId, estado, extra){
   const partes = resumenDe(post);
   if(!partes || !canEditPost(post)) return;
   const nuevas = partes.map(x => ({ ...x, pasos: (x.pasos || []).map(p => p.id !== pasoId ? p
-    : estado === "pendiente" ? { id: p.id, t: p.t, estado: "pendiente" }
+    : estado === "pendiente" ? { id: p.id, t: p.t, estado: "pendiente", ...datosDeAsignacion(p) }
     : { ...p, estado, por: state.auth.user.email, el: new Date().toISOString(), ...(extra || {}) }) }));
   try{ await updatePostDoc(postId, { resumen: { v:2, partes: nuevas } }); }
   catch(err){
@@ -17810,6 +17959,12 @@ function renderAvisosPorCorreo(p){
         <div class="setting-sub" style="margin-bottom:10px;">${t("Marcá lo que te interesa.","Pick what you care about.","Marque o que te interessa.","סמנו מה מעניין אתכם.")}</div>
         <div class="pref-chips">${TEMAS_DE_CORREO().map(it => `<button type="button" class="chip-toggle${temas.includes(it.key)?" active":""}" data-action="correo-tema" data-key="${it.key}" aria-pressed="${temas.includes(it.key)}">${esc(it.label)}</button>`).join("")}</div>
       </div>
+      ${prefRow("📌", t("Pendientes que me asignan","To-dos assigned to me","Pendências atribuídas a mim","משימות שהוקצו לי"),
+        t("Te avisamos al momento cuando alguien te da un paso de «Lo que sigue».","We let you know right away when someone gives you a step from “What's next”.","Avisamos na hora quando alguém atribui a você um passo de «O que segue».","נעדכן אותך מיד כשמישהו/י מקצה לך שלב מתוך «מה הלאה»."),
+        prefSwitch("emailPasos", p.emailPasos !== false))}
+      ${prefRow("📅", t("El día que vence","The day it's due","No dia em que vence","ביום שבו זה מסתיים"),
+        t("Otro aviso, a primera hora de ese día, por cada pendiente tuyo que tenga fecha.","Another notice, first thing that day, for each of your to-dos with a date.","Outro aviso, logo cedo nesse dia, para cada pendência sua com data.","עוד התראה, בבוקר אותו יום, על כל משימה שלך עם תאריך."),
+        prefSwitch("emailVence", p.emailVence !== false))}
       <div class="setting-row" style="display:block;">
         <button type="button" class="btn-secondary" data-action="correo-prueba" ${prueba.mandando ? "disabled" : ""}>${prueba.mandando ? t("Mandando…","Sending…","Enviando…","שולח…") : t("Mandarme un correo de prueba","Send me a test email","Enviar-me um e-mail de teste","שלחו לי מייל ניסיון")}</button>
         ${prueba.msg ? `<span class="setting-sub" role="status" style="margin-inline-start:10px;">${esc(prueba.msg)}</span>` : ""}
@@ -19459,10 +19614,10 @@ function tourSteps(){
         "כאן רואים אם מזכירים אותך, עונים לך, משנים אחד מהאירועים שלך ומה מתקרב.") },
     { id:"cuenta", cubre:["configuracion"], target: [".avatar-btn"],
       title: t("Tu cuenta","Your account","Sua conta","החשבון שלך"),
-      text: t("Tus preferencias (avisos por correo, formato de fecha), el idioma y el tono claro u oscuro. Para salir, también.",
-        "Your preferences (email alerts, date format), the language and light or dark tone. And sign out, too.",
-        "Suas preferências (avisos por e-mail, formato de data), o idioma e o tom claro ou escuro. E também para sair.",
-        "ההעדפות שלך (התראות במייל, פורמט תאריך), השפה והגוון בהיר או כהה. וגם ההתנתקות.") },
+      text: t("Tus preferencias (avisos por correo, formato de fecha), el idioma y el tono claro u oscuro. Si algo no anda, avisá desde acá. Para salir, también.",
+        "Your preferences (email alerts, date format), the language and light or dark tone. If something's wrong, tell us from here. And sign out, too.",
+        "Suas preferências (avisos por e-mail, formato de data), o idioma e o tom claro ou escuro. Se algo não funcionar, avise daqui. E também para sair.",
+        "ההעדפות שלך (התראות במייל, פורמט תאריך), השפה והגוון בהיר או כהה. אם משהו לא עובד, אפשר לדווח מכאן. וגם ההתנתקות.") },
   ];
   if(!canWrite()){
     // Observador: sin composer ni FAB (no existen en su pantalla). Su recorrido arranca explicando el rol,
@@ -21466,6 +21621,198 @@ document.getElementById("cumpleClose").addEventListener("click", closeCumple);
 cumpleOverlay.addEventListener("click", e=>{ if(e.target === cumpleOverlay) closeCumple(); });
 
 /* ======================================================================
+   «ALGO NO ANDA» y los errores que la app anota sola (13/10/2026, 8-C)
+
+   Dos maneras de enterarse cuando algo falla en el celular de alguien:
+   - un botón en el menú del avatar: la persona cuenta qué pasó y, si quiere,
+     lo técnico viaja solo (pantalla, tipo de teléfono y navegador, idioma y
+     los últimos errores);
+   - la app anota sola los errores que le saltan, agrupados en la base (el
+     mismo error en la misma pantalla es una fila: cuántas veces y a cuántas
+     personas).
+   Lo lee un admin en Administración → Problemas (22-problemas.sql).
+   LO QUE NUNCA VIAJA: el contenido de los posteos, de los comentarios ni de
+   la Agenda. Un error se anota sin lo que tenga entre comillas (un JSON mal
+   formado muestra un pedazo del texto), sin correos y sin direcciones web.
+   ====================================================================== */
+const problemaOverlay = document.getElementById("problemaOverlay");
+let problemaEstado = null, problemaReturnFocus = null;
+const TOPE_DE_ERRORES_POR_SESION = 5;
+// El texto de un error, sin nada que pueda ser de alguien.
+function textoDeErrorSeguro(m){
+  let s = String(m == null ? "" : m).replace(/\s+/g, " ").trim();
+  s = s.replace(/https?:\/\/\S+|www\.\S+/gi, "…").replace(/[\w.+-]+@[\w-]+\.[\w.-]+/g, "…");
+  // Lo que va entre comillas: se deja solo si parece un nombre de código
+  // («reading 'title'»); si no, podría ser un pedazo de un texto.
+  for(const [a, b] of [['"', '"'], ["'", "'"], ["`", "`"], ["“", "”"], ["‘", "’"], ["«", "»"]]){
+    const quoted = new RegExp(a + "([^" + a + b + "]*)" + b, "g");
+    s = s.replace(quoted, (todo, dentro) => /^[A-Za-z_$][\w$.\-]{0,40}$/.test(dentro) ? todo : a + "…" + b);
+  }
+  return s.slice(0, 200);
+}
+// Una huella corta para agrupar: la misma pantalla, el mismo error, el mismo lugar del código.
+function huellaDeError(texto){
+  let h = 5381;
+  for(let i = 0; i < texto.length; i++) h = ((h * 33) ^ texto.charCodeAt(i)) >>> 0;
+  return h.toString(36);
+}
+function datosTecnicos(){
+  return { navegador: String(navigator.userAgent || "").slice(0, 200), pantalla: innerWidth + "x" + innerHeight, tactil: isTouchDevice(),
+    idioma: currentLang(), tono: currentTheme(), vista: String(state.view || ""), errores: erroresRecientes.map(x => ({ t: x.t, v: x.v, el: x.el })) };
+}
+// Los ruidos que no son de la app: otro script, el navegador quejándose de su
+// propio redibujado, o la red caída (sin conexión no es un error nuestro).
+const ERRORES_QUE_NO_SON_NUESTROS = /^(script error\.?|resizeobserver loop|failed to fetch|load failed|networkerror|the network connection was lost|network request failed|cancelled|canceled|the operation was aborted|aborterror)/i;
+function anotarErrorDeLaApp(mensaje, lugar){
+  try{
+    const texto = textoDeErrorSeguro(mensaje);
+    if(!texto || ERRORES_QUE_NO_SON_NUESTROS.test(texto)) return;
+    const pantalla = String(state.view || "");
+    erroresRecientes.push({ t: texto, v: pantalla, el: new Date().toISOString() });
+    if(erroresRecientes.length > 5) erroresRecientes.shift();
+    const huella = huellaDeError(`${pantalla}|${texto}|${lugar || ""}`);
+    if(erroresYaAnotados.has(huella) || erroresAnotados >= TOPE_DE_ERRORES_POR_SESION) return;
+    erroresYaAnotados.add(huella);
+    if(!store || !store.problemas || !isAuthorized()) return;
+    erroresAnotados++;
+    store.problemas.anotarError({ huella, pantalla, mensaje: texto + (lugar ? ` (${lugar})` : ""), tecnico: datosTecnicos() }).catch(() => {});
+  }catch(e){ /* anotar un error nunca puede dar otro */ }
+}
+window.addEventListener("error", e => {
+  // Un script de afuera, o sin dato de dónde: no es de la app.
+  if(!e || (!e.error && !e.filename)) return;
+  if(e.filename && !String(e.filename).startsWith(location.origin + location.pathname.replace(/[^/]*$/, "")) && !String(e.filename).startsWith("file:")) return;
+  anotarErrorDeLaApp((e.error && e.error.message) || e.message, e.lineno ? `${e.lineno}:${e.colno || 0}` : "");
+});
+window.addEventListener("unhandledrejection", e => {
+  const r = e && e.reason;
+  const lugar = r && r.stack ? ((/:(\d+:\d+)\)?\s*$/m.exec(String(r.stack).split("\n").find(l => /:\d+:\d+/.test(l)) || "") || [])[1] || "") : "";
+  anotarErrorDeLaApp(r && r.message ? r.message : r, lugar);
+});
+
+const NOMBRE_DE_PANTALLA = () => ({ feed: t("Inicio","Home","Início","בית"), calendario: t("Calendario","Calendar","Calendário","יומן"), paises: t("Países","Countries","Países","מדינות"),
+  proyectos: t("Proyectos","Projects","Projetos","פרויקטים"), reportes: t("Reportes","Reports","Relatórios","דוחות"), configuracion: t("Mis preferencias","My preferences","Minhas preferências","ההעדפות שלי"),
+  preferencias: t("Administración","Administration","Administração","ניהול"), solicitudes: t("Administración","Administration","Administração","ניהול"), auditoria: t("Administración","Administration","Administração","ניהול"),
+  admin: t("Administración","Administration","Administração","ניהול") });
+const nombreDePantalla = k => (NOMBRE_DE_PANTALLA()[k] || String(k || ""));
+
+function abrirProblema(){
+  problemaEstado = { texto: "", tecnico: true, enviando: false, listo: false, error: "" };
+  userMenuOpen = false; render();
+  // El foco vuelve al avatar: el menú que lo abrió ya no está.
+  problemaReturnFocus = document.querySelector(".avatar-btn");
+  renderProblema();
+  problemaOverlay.hidden = false;
+  enfocarComo(document.getElementById("problemaTexto"), problemaReturnFocus);
+}
+function cerrarProblema(){
+  problemaOverlay.hidden = true;
+  problemaEstado = null;
+  if(problemaReturnFocus && typeof problemaReturnFocus.focus === "function") problemaReturnFocus.focus();
+  problemaReturnFocus = null;
+}
+function renderProblema(){
+  const p = problemaEstado;
+  if(!p) return;
+  if(p.listo){
+    document.getElementById("problemaBody").innerHTML = `
+      <h2 id="problemaTitle" class="cp-tit">✅ ${t("Listo, gracias","Done, thank you","Pronto, obrigado","מוכן, תודה")}</h2>
+      <p class="setting-sub">${t("Ya le llegó al admin. Si hace falta, te va a escribir.","The admin already has it. If needed, they'll write to you.","O admin já recebeu. Se for preciso, vai escrever para você.","המנהל/ת כבר קיבל/ה. אם צריך, יכתבו לך.")}</p>
+      <div class="modal-actions"><button type="button" class="btn-primary" data-action="problema-cerrar">${t("Cerrar","Close","Fechar","סגירה")}</button></div>`;
+    return;
+  }
+  document.getElementById("problemaBody").innerHTML = `
+    <h2 id="problemaTitle" class="cp-tit">🛟 ${t("Algo no anda","Something's wrong","Algo não está funcionando","משהו לא עובד")}</h2>
+    <p class="setting-sub" style="margin:0 0 10px;">${t("Contanos qué pasó con tus palabras: en qué pantalla estabas y qué esperabas ver. Le llega al admin.","Tell us what happened in your own words: which screen you were on and what you expected to see. It goes to the admin.","Conte o que aconteceu com suas palavras: em que tela você estava e o que esperava ver. Chega ao admin.","ספרו מה קרה במילים שלכם: באיזה מסך הייתם ומה ציפיתם לראות. זה מגיע למנהל/ת.")}</p>
+    <textarea id="problemaTexto" class="problema-texto" maxlength="600" rows="4" aria-label="${esc(t("Qué pasó","What happened","O que aconteceu","מה קרה"))}" placeholder="${esc(t("Por ejemplo: al tocar Reportes se queda en blanco.","For example: when I tap Reports it goes blank.","Por exemplo: ao tocar em Relatórios fica em branco.","למשל: כשאני לוחץ על דוחות המסך נשאר ריק."))}">${esc(p.texto)}</textarea>
+    <label class="problema-tecnico"><span>${t("Mandar también los datos técnicos","Also send the technical details","Mandar também os dados técnicos","לשלוח גם את הפרטים הטכניים")}</span>
+      <span class="pref-switch"><input type="checkbox" id="problemaTecnico" ${p.tecnico ? "checked" : ""}><span class="pref-slider"></span></span></label>
+    <p class="setting-sub" style="margin:6px 0 0;">${t("Son la pantalla, el tipo de teléfono y navegador, el idioma y los últimos errores. Nunca lo que escribiste en un posteo ni lo de la Agenda.","They're the screen, the phone and browser type, the language and the latest errors. Never what you wrote in a post or anything from the Directory.","São a tela, o tipo de celular e navegador, o idioma e os últimos erros. Nunca o que você escreveu numa postagem nem o da Agenda.","אלה המסך, סוג הטלפון והדפדפן, השפה והשגיאות האחרונות. לעולם לא מה שכתבתם בפוסט או מה שבספר הטלפונים.")}</p>
+    ${p.error ? `<div class="form-error" role="alert">${esc(p.error)}</div>` : ""}
+    <div class="modal-actions">
+      <button type="button" class="btn-secondary" data-action="problema-cerrar">${t("Cancelar","Cancel","Cancelar","ביטול")}</button>
+      <button type="button" class="btn-primary" data-action="problema-enviar" ${p.enviando ? "disabled" : ""}>${p.enviando ? t("Enviando…","Sending…","Enviando…","שולח…") : t("Enviar","Send","Enviar","שליחה")}</button>
+    </div>`;
+}
+async function enviarProblema(){
+  const p = problemaEstado;
+  if(!p || p.enviando) return;
+  const caja = document.getElementById("problemaTexto"), tec = document.getElementById("problemaTecnico");
+  p.texto = caja ? caja.value : p.texto; p.tecnico = tec ? tec.checked : p.tecnico;
+  if(!p.texto.trim()){
+    p.error = t("Escribí qué pasó, aunque sea en una línea.","Write what happened, even in one line.","Escreva o que aconteceu, nem que seja numa linha.","כתבו מה קרה, אפילו בשורה אחת.");
+    renderProblema(); enfocarComo(document.getElementById("problemaTexto"), null); return;
+  }
+  p.enviando = true; p.error = ""; renderProblema();
+  try{
+    const ok = await store.problemas.contar({ pantalla: String(state.view || ""), mensaje: p.texto.trim(), tecnico: p.tecnico ? datosTecnicos() : null });
+    if(!problemaEstado) return;
+    if(ok){ p.listo = true; p.enviando = false; renderProblema(); enfocarComo(problemaOverlay.querySelector('[data-action="problema-cerrar"]'), null); }
+    else { p.enviando = false; p.error = t("No se pudo mandar ahora: se llegó al tope de avisos por hora. Probá más tarde.","Couldn't send it now: the hourly limit was reached. Try again later.","Não foi possível enviar agora: chegou-se ao limite de avisos por hora. Tente mais tarde.","לא ניתן לשלוח כרגע: הגעתם למגבלת ההתראות לשעה. נסו מאוחר יותר."); renderProblema(); }
+  }catch(err){
+    console.error("No se pudo mandar el aviso de problema:", err);
+    if(!problemaEstado) return;
+    p.enviando = false; p.error = t("No se pudo mandar: {m}","Couldn't send: {m}","Não foi possível enviar: {m}","השליחה נכשלה: {m}", { m: (err && err.message) || err });
+    renderProblema();
+  }
+}
+document.getElementById("problemaClose").addEventListener("click", cerrarProblema);
+problemaOverlay.addEventListener("click", e=>{ if(e.target === problemaOverlay) cerrarProblema(); });
+
+// Administración → Problemas: lo que contó la gente y los errores anotados solos.
+async function cargarProblemas(){
+  if(!isAdmin() || !store || !store.problemas) return;
+  try{ problemasLista = await store.problemas.listar(); }
+  catch(err){ console.warn("No se pudieron leer los problemas:", err && err.message); if(problemasLista === null) problemasLista = []; }
+  if(state.view === "preferencias" && state.preferenciasSection === "problemas") render();
+}
+const problemasNuevos = () => (problemasLista || []).filter(x => x.estado === "nuevo").length;
+function renderProblemasSection(){
+  if(problemasLista === null){ cargarProblemas(); return `<div class="settings-card"><div class="setting-row"><div class="setting-text"><div class="setting-sub">${t("Cargando…","Loading…","Carregando…","...טוען")}</div></div></div></div>`; }
+  const todos = problemasLista;
+  const de = origen => todos.filter(x => x.origen === origen);
+  const lista = de(problemasTab).filter(x => problemasVerResueltos || x.estado !== "resuelto");
+  const nuevos = origen => de(origen).filter(x => x.estado === "nuevo").length;
+  const pestana = (k, txt) => `<button type="button" class="${problemasTab === k ? "active" : ""}" data-action="problemas-tab" data-key="${k}" aria-pressed="${problemasTab === k}">${esc(txt)}${nuevos(k) ? ` <span class="pending-count">${nuevos(k)}</span>` : ""}</button>`;
+  const estadoTxt = { nuevo: t("Nuevo","New","Novo","חדש"), visto: t("Visto","Seen","Visto","נראה"), resuelto: t("Resuelto","Resolved","Resolvido","נפתר") };
+  const fila = x => {
+    const tec = x.tecnico || {};
+    const detalle = [tec.navegador && `${t("Navegador","Browser","Navegador","דפדפן")}: ${tec.navegador}`, tec.pantalla && `${t("Pantalla","Screen","Tela","מסך")}: ${tec.pantalla}${tec.tactil ? " · " + t("táctil","touch","toque","מגע") : ""}`,
+      tec.idioma && `${t("Idioma","Language","Idioma","שפה")}: ${tec.idioma}`, ...((tec.errores || []).map(e => `⚠ ${e.t}`))].filter(Boolean);
+    const personas = (x.personas || []).length;
+    const titulo = x.origen === "persona" ? esc(x.mensaje || "")
+      : esc(x.veces === 1 ? t("Falló 1 vez · {n}","Failed 1 time · {n}","Falhou 1 vez · {n}","נכשל פעם אחת · {n}", { n: personas === 1 ? t("1 persona","1 person","1 pessoa","אדם אחד") : t("{n} personas","{n} people","{n} pessoas","{n} אנשים", { n: personas }) })
+        : t("Falló {v} veces · {n}","Failed {v} times · {n}","Falhou {v} vezes · {n}","נכשל {v} פעמים · {n}", { v: x.veces, n: personas === 1 ? t("1 persona","1 person","1 pessoa","אדם אחד") : t("{n} personas","{n} people","{n} pessoas","{n} אנשים", { n: personas }) }));
+    const sub = [x.origen === "persona" ? esc(x.nombre || x.autor) : "", esc(nombreDePantalla(x.pantalla)), esc(fmtDate(x.ultimo || x.creado))].filter(Boolean).join(" · ");
+    return `<li class="pb-fila" data-id="${esc(x.id)}">
+      <div class="pb-cabeza"><span class="pb-estado ${esc(x.estado)}">${esc(estadoTxt[x.estado] || x.estado)}</span><b class="pb-tit" dir="auto">${titulo}</b></div>
+      <div class="pb-sub">${sub}</div>
+      ${x.origen === "automatico" && x.mensaje ? `<div class="pb-error" dir="auto">${esc(x.mensaje)}</div>` : ""}
+      ${detalle.length ? `<details class="pb-det"><summary>${t("Datos técnicos","Technical details","Dados técnicos","פרטים טכניים")}</summary><ul>${detalle.map(d => `<li dir="auto">${esc(d)}</li>`).join("")}</ul></details>` : ""}
+      <div class="pb-acciones">
+        ${x.estado !== "visto" ? `<button type="button" class="btn-mini" data-action="problema-estado" data-id="${esc(x.id)}" data-estado="visto">${t("Marcar visto","Mark seen","Marcar visto","סימון כנראה")}</button>` : ""}
+        ${x.estado !== "resuelto" ? `<button type="button" class="btn-mini" data-action="problema-estado" data-id="${esc(x.id)}" data-estado="resuelto">${t("Resuelto","Resolved","Resolvido","נפתר")}</button>` : `<button type="button" class="btn-mini" data-action="problema-estado" data-id="${esc(x.id)}" data-estado="nuevo">${t("Reabrir","Reopen","Reabrir","פתיחה מחדש")}</button>`}
+        <button type="button" class="btn-mini danger" data-action="problema-borrar" data-id="${esc(x.id)}">${t("Borrar","Delete","Apagar","מחיקה")}</button>
+      </div></li>`;
+  };
+  const resueltos = de(problemasTab).filter(x => x.estado === "resuelto").length;
+  return `<div class="settings-card">
+    <div class="setting-row" style="display:block;">
+      <div class="um-segmented" role="group" aria-label="${esc(t("Qué ver","What to see","O que ver","מה להציג"))}" style="display:inline-flex;">
+        ${pestana("persona", t("Avisos de personas","Reports from people","Avisos de pessoas","דיווחים מאנשים"))}${pestana("automatico", t("Errores anotados solos","Errors logged automatically","Erros anotados sozinhos","שגיאות שנרשמו אוטומטית"))}
+      </div>
+      <button type="button" class="btn-secondary" data-action="problemas-recargar" style="margin-inline-start:10px;">↻ ${t("Actualizar","Refresh","Atualizar","רענון")}</button>
+      ${resueltos ? `<button type="button" class="btn-text-add" data-action="problemas-resueltos" aria-pressed="${problemasVerResueltos}" style="margin-inline-start:10px;">${problemasVerResueltos ? t("Esconder los resueltos","Hide the resolved ones","Esconder os resolvidos","הסתרת הפתורים") : (resueltos === 1 ? t("Ver el resuelto","Show the resolved one","Ver o resolvido","הצגת הפתור") : t("Ver los {n} resueltos","Show the {n} resolved ones","Ver os {n} resolvidos","הצגת {n} הפתורים", { n: resueltos }))}</button>` : ""}
+    </div>
+    <div class="setting-row" style="display:block;">
+      ${lista.length ? `<ul class="pb-lista">${lista.map(fila).join("")}</ul>`
+        : `<div class="setting-sub">${problemasTab === "persona" ? t("Nadie avisó de nada todavía. Cuando alguien toque «Algo no anda» en el menú de su foto, aparece acá.","Nobody has reported anything yet. When someone taps “Something's wrong” in their photo menu, it shows up here.","Ninguém avisou nada ainda. Quando alguém tocar em «Algo não está funcionando» no menu da foto, aparece aqui.","אף אחד עוד לא דיווח. כשמישהו/י ילחץ על «משהו לא עובד» בתפריט התמונה, זה יופיע כאן.")
+          : t("La app no anotó ningún error. Cuando le salte uno a alguien, aparece acá, agrupado: cuántas veces y a cuántas personas.","The app hasn't logged any errors. When someone hits one, it shows up here, grouped: how many times and to how many people.","O app não anotou nenhum erro. Quando alguém tiver um, aparece aqui, agrupado: quantas vezes e a quantas pessoas.","האפליקציה לא רשמה שגיאות. כשתהיה שגיאה למישהו/י, היא תופיע כאן, מקובצת: כמה פעמים ולכמה אנשים.")}</div>`}
+    </div>
+  </div>`;
+}
+
+/* ======================================================================
    LA FICHA DE UN LUGAR (Países → un país → una ciudad), 6/10/2026
 
    Antes, entrar a una ciudad llevaba al Inicio con un filtro y se perdía
@@ -21798,6 +22145,7 @@ function renderFichaLugar(L){
       return `<li class="${hecho ? "hecho" : ""}"><input type="checkbox" ${hecho ? "checked" : ""} ${puede ? "" : "disabled"} data-action="resumen-paso" data-post-id="${esc(post.id)}" data-paso="${esc(p.id)}" aria-label="${esc(t("Hecho","Done","Feito","בוצע"))}">
         <span class="rs-paso"><span class="t" dir="auto">${esc(p.t)}</span>
         <small>${dondeTxt ? esc(dondeTxt) + " · " : ""}${esc(t("de «{v}»","from “{v}”","de «{v}»","מתוך «{v}»",{ v: recortar(post.title, 50) }))}${!hecho && dias > 90 ? ` · <span class="fl-viejo">${esc(t("hace {m} meses","{m} months ago","há {m} meses","לפני {m} חודשים",{ m: Math.floor(dias / 30) }))}</span>` : ""}</small>
+        ${renderAsignacionDePaso(post, p, puede)}
         ${!hecho && puede ? `<button type="button" class="rs-no" data-action="resumen-no-tarea" data-post-id="${esc(post.id)}" data-paso="${esc(p.id)}">${esc(t("No es tarea","Not a task","Não é tarefa","לא משימה"))}</button>` : ""}</span></li>`; }).join("")}</ul>
   </div>` : "";
   // Lo que pasó: tipos (para ocultar) y la línea de tiempo.
@@ -22366,6 +22714,7 @@ document.addEventListener("keydown", e=>{
   if(!userProfileOverlay.hidden){ userProfileVolver ? volverDelPerfil() : closeUserProfile(); return; }
   if(!likesOverlay.hidden){ closeLikes(); return; }
   if(!agendaOverlay.hidden){ agendaVolver(); return; }
+  if(!problemaOverlay.hidden){ cerrarProblema(); return; }
   if(!cumpleOverlay.hidden){ closeCumple(); return; }
   if(!fichaPostOverlay.hidden){ closeFichaPost(); return; }
   if(!eventCardOverlay.hidden){
@@ -22495,6 +22844,7 @@ trapTabWithin(userProfileOverlay);
 trapTabWithin(likesOverlay);
 trapTabWithin(agendaOverlay);
 trapTabWithin(cumpleOverlay);
+trapTabWithin(problemaOverlay);
 trapTabWithin(fichaPostOverlay);
 trapTabWithin(confirmOverlay);
 trapTabWithin(eventCardOverlay);
@@ -23657,7 +24007,7 @@ document.addEventListener("click", async e=>{
     if(!abrir){ closeDateFields(); return; }
     const kind = el.dataset.dfKind;
     const spec = dateFieldSpec(kind);
-    const ds = { postId, msId: el.dataset.msId, field: el.dataset.field, occ: el.dataset.occ };
+    const ds = { postId, msId: el.dataset.msId, field: el.dataset.field, occ: el.dataset.occ, pasoId: el.dataset.paso };
     if(!spec.canEdit(ds)) return;
     closeDateFields();
     const viewMonth = spec.get(ds) || (spec.fallbackView && spec.fallbackView(ds)) || todayISO();
@@ -23885,6 +24235,27 @@ document.addEventListener("click", async e=>{
   },
     "anio-planilla": async () => {
     if(isAdmin()){ const anio = todayISO().slice(0, 4); descargarTexto(`registro-${anio}.csv`, csvDeActividades(actividadesDelAnio(anio))); }
+  },
+    "problema-abrir": async () => { if(isAuthorized()) abrirProblema(); },
+    "problema-cerrar": async () => { cerrarProblema(); },
+    "problema-enviar": async () => { await enviarProblema(); },
+    "problemas-tab": async (el) => { problemasTab = el.dataset.key === "automatico" ? "automatico" : "persona"; render(); },
+    "problemas-recargar": async () => { await cargarProblemas(); render(); },
+    "problemas-resueltos": async () => { problemasVerResueltos = !problemasVerResueltos; render(); },
+    "problema-estado": async (el) => {
+    if(!isAdmin()) return;
+    const estado = el.dataset.estado;
+    if(!["nuevo", "visto", "resuelto"].includes(estado)) return;
+    try{ await store.problemas.estado(el.dataset.id, estado); }
+    catch(err){ appAlert(t("No se pudo guardar: {m}","Couldn't save: {m}","Não foi possível salvar: {m}","השמירה נכשלה: {m}",{ m: (err && err.message) || err })); }
+    await cargarProblemas(); render();
+  },
+    "problema-borrar": async (el) => {
+    if(!isAdmin()) return;
+    if(!(await appConfirm(t("¿Borrar este aviso? No se puede deshacer.","Delete this report? It can't be undone.","Apagar este aviso? Não dá para desfazer.","למחוק את הדיווח? אי אפשר לבטל."), { danger:true, okLabel: t("Borrar","Delete","Apagar","מחיקה") }))) return;
+    try{ await store.problemas.borrar(el.dataset.id); }
+    catch(err){ appAlert(t("No se pudo borrar: {m}","Couldn't delete: {m}","Não foi possível apagar: {m}","המחיקה נכשלה: {m}",{ m: (err && err.message) || err })); }
+    await cargarProblemas(); render();
   },
     "reporte-imprimir": async (el, e, action, postId) => {
     window.print();
@@ -25160,6 +25531,7 @@ document.addEventListener("change", e=>{
     dateFieldOpen.viewMonth = `${newYear}-${String(newMonth).padStart(2,"0")}-01`;
     syncDateFieldOpenState();
   }
+  else if(el.dataset.action === "paso-resp"){ asignarPaso(el.dataset.postId, el.dataset.paso, { resp: String(el.value || "").toLowerCase() }); }
   else if(el.dataset.action === "set-role"){ const email = el.dataset.email, value = el.value; withRosterGuard(email, ()=> changeRole(email, value)); }
   else if(el.dataset.msField === "label"){
     const post = getPostById(el.dataset.postId);

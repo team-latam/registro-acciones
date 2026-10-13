@@ -102,6 +102,8 @@ Se aplican en orden. Todos se pueden correr más de una vez sin romper nada
 | `18-personas.sql` | Personas sin cuenta: la tabla `personas`, unirlas, vincularlas a una cuenta, y pasar a fichas los nombres sueltos que ya estaban |
 | `19-agenda.sql` | La Agenda: instituciones de cada lugar y quién está en cada una (`agenda_listas`, `instituciones`, `contactos`; la gente son las fichas de `personas`, que suman teléfonos e idiomas en `18`), y `agenda_traer` para traer una lista entera |
 | `20-contactos-por-lugar.sql` | Un contacto de la Agenda puede ser de un lugar y no de una institución: `nivel` (institucion, ciudad, pais, region, latam) con `country`, `city` o `zona` según el caso; la institución deja de ser obligatoria y una restricción no deja nada a medias |
+| `21-avisos-de-pasos.sql` | El aviso por correo de un paso de «Lo que sigue» que le asignaron a alguien (`preparar_aviso_de_paso`): solo lo pide quien lo asignó, en los primeros 15 minutos, una vez por asignación, y llega al momento a quien puede recibir correos y no apagó «Pendientes que me asignan». Suma `emailPasos` y `emailVence` a las preferencias de correo |
+| `22-problemas.sql` | «Algo no anda» y los errores que la app anota sola (`problemas`): se escribe solo con `contar_problema` y `anotar_error` (con el correo de quien llama y topes por hora), el mismo error se agrupa en una fila; lo lee, marca y borra un admin |
 
 **Cada cosa se define en UN solo archivo.** Como se vuelven a aplicar
 todos en cada push, dos archivos que definen lo mismo distinto se pisan
