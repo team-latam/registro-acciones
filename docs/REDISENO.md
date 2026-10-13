@@ -969,6 +969,24 @@ eligió **unirlas así**:
 Pruebas: `agenda_test.mjs` (país, región y ciudad; fallan con el código
 de antes) y `ficha_celular_test.mjs` vuelve a esperar cinco tarjetas.
 
+### 80. «Temas» junta las palabras que van pegadas: «krav maga» es una sola idea — HECHO (13 oct 2026)
+
+El usuario vio la tanda 72 y no le gustó que cuente palabras sueltas: «cuenta "krav" y "maga" como ideas
+separadas, y al final no llega al objetivo».
+
+- Un par de palabras pegadas (sin signo ni palabra de relleno en el medio) **se junta en un solo tema** si aparece en
+  al menos 3 posteos de los 180 días y la menos usada de las dos casi no aparece fuera del par (60% o más de sus
+  posteos). «krav» y «maga» pasan a ser «krav maga»; «defensa» y «personal», que solo a veces coinciden, siguen
+  siendo dos. Si cada par de una cadena cumple la regla, pueden ser hasta tres palabras («arte marcial israelí»).
+  Una palabra de relleno o un signo corta: «plan de verano» no es «plan verano».
+- El tema se muestra como se escribió y, al tocarlo, el Inicio busca la frase entera. La nota de la sección lo dice.
+- **Lo que sigue sin hacer, a propósito**: no entiende el significado, así que «seguridad» y «protección» siguen siendo dos
+  temas. Dos caminos si hace falta ir más lejos: un **glosario** que arma un admin («seguridad = protección = cuidado»),
+  que da control total y no manda nada afuera, o que lo lea una IA, que sí junta sinónimos pero implica mandar los textos
+  del Registro a un servicio de terceros (no se hizo ni se hará sin decidirlo con el usuario).
+- Pruebas: `temas_test.mjs` suma 7 comprobaciones (pares que se juntan, que no, tres palabras, relleno en el medio, tocar una
+  frase); falla con el código de antes.
+
 ### 78. «Mi año»: el resumen personal, con una tarjeta para compartir — HECHO (13 oct 2026)
 
 Propuesta 6-B de la segunda vuelta (una idea que el usuario había marcado como «me interesa» en la primera): la

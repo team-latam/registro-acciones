@@ -109,6 +109,37 @@ eq("…y la solapa «Lo que pasó» activa", await p.$eval('.feed-solapas button
   await en.p.close();
 }
 
+// Las palabras que van juntas son UNA idea (13/10/2026, pedido del usuario: «krav» y «maga» no son dos
+// temas). Un par que casi siempre aparece pegado se junta; uno que solo a veces coincide, no; una palabra
+// de relleno o un signo en el medio corta («plan de verano» no es «plan verano»); y pueden ser tres.
+{
+  const frases = [
+    P(3, "Clase de krav maga", "Sumamos krav maga."), P(9, "Krav maga para jóvenes", "Mañana."), P(16, "Instructor de krav maga", "Llega pronto."),
+    P(23, "Seguimos con krav maga", "Todos juntos."), P(30, "Krav maga: balance", "Terminamos."),
+    // «defensa» y «personal» coinciden en 3 de sus 6 posteos cada una: no son una frase.
+    P(4, "Curso de defensa personal", "Primero."), P(11, "Defensa personal otra vez", "Segundo."), P(18, "Más defensa personal", "Tercero."),
+    P(25, "Taller de defensa", "Cuarto."), P(32, "Defensa en la escuela", "Quinto."), P(39, "Defensa de la comunidad", "Sexto."),
+    P(5, "Atención personal", "Uno."), P(12, "Cuidado personal", "Dos."), P(19, "Charla personal", "Tres."),
+    // tres palabras pegadas
+    P(6, "Arte marcial israelí", "Introducción."), P(13, "Arte marcial israelí en el barrio", "Segunda."), P(20, "Más arte marcial israelí", "Tercera."), P(27, "Cierre del arte marcial israelí", "Cuarta."),
+    // con una palabra de relleno en el medio no se juntan
+    P(7, "Plan de verano", "Primero."), P(14, "Armar el plan de verano", "Segundo."), P(21, "Plan de verano listo", "Tercero."), P(28, "Revisar el plan de verano", "Cuarto."),
+  ];
+  const f = await entrar(b, ADMIN, "Benny Rosenthal", { viewport: { width: 1280, height: 900 }, lang: "es", base: datos(frases) });
+  await tab(f.p, "reportes"); await f.p.waitForTimeout(500);
+  const fr = Object.fromEntries((await f.p.$$eval(".rep-tema", l => l.map(e => [e.querySelector("b").textContent, e.querySelector("small").textContent]))));
+  eq("«krav maga» es un solo tema, con los 5 posteos, en minúscula", fr["krav maga"], "5 ahora · 0 antes");
+  eq("…y «krav» y «maga» no aparecen por separado", [fr["krav"], fr["maga"], fr["Krav"], fr["Maga"]], [undefined, undefined, undefined, undefined]);
+  eq("«defensa» y «personal» coinciden solo a veces: siguen siendo dos temas, y no hay «defensa personal»", [fr["defensa"], fr["personal"], fr["defensa personal"]], ["6 ahora · 0 antes", "6 ahora · 0 antes", undefined]);
+  eq("tres palabras pegadas son un solo tema: «arte marcial israelí»", [fr["arte marcial israelí"], fr["arte"], fr["marcial"]], ["4 ahora · 0 antes", undefined, undefined]);
+  eq("una palabra de relleno en el medio corta: «plan» y «verano» son dos temas, no «plan verano»", [fr["plan"], fr["verano"], fr["plan verano"], fr["plan de verano"]], ["4 ahora · 0 antes", "4 ahora · 0 antes", undefined, undefined]);
+  eq("la nota dice que junta las palabras que van pegadas y que no entiende el significado", await f.p.$eval(".rep-temas .rep-bloque-nota", e => [/krav maga/.test(e.textContent), /seguridad/.test(e.textContent)]), [true, true]);
+  // Tocar la frase abre el Inicio con la frase buscada.
+  await f.p.click('.rep-tema[data-tema="krav maga"]'); await f.p.waitForTimeout(600);
+  eq("tocar «krav maga» abre el Inicio con la frase buscada y sus posteos", [await f.p.$eval("#feedSearch", e => e.value), await f.p.$$eval("#viewRoot article.post[data-post-id]", l => l.length) >= 1], ["krav maga", true]);
+  await f.p.close();
+}
+
 // Con pocos posteos no hay nada que contar: la sección no aparece.
 {
   const poco = await entrar(b, ADMIN, "Benny Rosenthal", { viewport: { width: 1280, height: 900 }, lang: "es", base: datos([P(2, "Seguridad", "Seguridad."), P(4, "Seguridad otra", "Seguridad."), P(8, "Seguridad más", "Seguridad.")]) });
