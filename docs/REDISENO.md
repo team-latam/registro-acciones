@@ -1036,6 +1036,22 @@ separadas, y al final no llega al objetivo».
 - Pruebas: `temas_test.mjs` suma 7 comprobaciones (pares que se juntan, que no, tres palabras, relleno en el medio, tocar una
   frase); falla con el código de antes.
 
+### 79. Los pasos de «Lo que sigue»: «No es tarea» a la derecha y «más / menos» en los textos largos — HECHO (13 oct 2026)
+
+Dos pedidos del usuario al ver la tanda 73 en la app.
+
+- **«No es tarea» pasa a la misma fila que el responsable y la fecha, pegado al lado derecho** (en hebreo, al
+  izquierdo). Antes quedaba solo en un renglón de abajo. Sigue apareciendo al pasar el mouse por el paso en la
+  compu, y siempre (apenas gris) en el celular. Va igual en el panel «Resumen» de la tarjeta y en la ficha del lugar.
+- **Un texto largo se corta en dos renglones, con «más» para leerlo entero y «menos» para volver.** Antes lo que
+  pasaba de dos renglones se cortaba con «…» y no había cómo leerlo. El botón aparece solo si el texto de verdad se
+  corta en ese ancho (se revisa al dibujar y al cambiar el tamaño de la ventana: un mismo texto puede llevar «más» en
+  el celular y no en la compu); un texto corto no lleva nada. Lo desplegado se queda así aunque se redibuje la
+  pantalla, y el foco queda en el botón. Al imprimir la ficha, los textos salen enteros y sin el botón.
+- Pruebas: `pasos_texto_largo_test.mjs` (12: largo, mediano y corto en compu y celular, hebreo, ficha del lugar) y
+  `pasos_responsable_test.mjs` (la posición de «No es tarea» en la compu, en hebreo y en la ficha). Las dos fallan con
+  el código de antes.
+
 ### 78. «Mi año»: el resumen personal, con una tarjeta para compartir — HECHO (13 oct 2026)
 
 Propuesta 6-B de la segunda vuelta (una idea que el usuario había marcado como «me interesa» en la primera): la

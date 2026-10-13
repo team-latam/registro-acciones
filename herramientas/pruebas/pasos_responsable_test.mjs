@@ -93,7 +93,21 @@ const vp = { width: 1280, height: 900 };
   await abrirFecha(p, primero + " .rs-fecha");
   await p.click(".date-pop:not([hidden]) [data-action='dp-clear']");
   eq("sin responsable ni fecha, el paso queda como era", await hasta(p, () => { const x = window.__sb.tablas.posts.find(y => y.id === "p1").resumen.partes[0].pasos[0]; return !x.resp && !x.para && !x.asigPor && !x.asigEl; }), true);
+  // «No es tarea» (13/10/2026): en la misma fila que el responsable y la fecha, del lado derecho.
+  const fila = (p, sel) => p.evaluate(sel => { const li = document.querySelector(sel); const f = li.querySelector(".rs-fecha").getBoundingClientRect(), n = li.querySelector(".rs-no").getBoundingClientRect(),
+    r = li.querySelector(".rs-resp").getBoundingClientRect(); return { adentro: !!li.querySelector(".rs-asig .rs-no"), mismaFila: Math.abs((n.top + n.bottom) / 2 - (f.top + f.bottom) / 2) < 8 && Math.abs((r.top + r.bottom) / 2 - (f.top + f.bottom) / 2) < 8,
+      aLaDerecha: n.left >= f.right - 1, pegadoAlBorde: Math.abs(li.querySelector(".rs-asig").getBoundingClientRect().right - n.right) < 2 }; }, sel);
+  eq("«No es tarea» va adentro de la fila del responsable y la fecha, en la misma línea, y pegado al lado derecho", await fila(p, primero), { adentro: true, mismaFila: true, aLaDerecha: true, pegadoAlBorde: true });
+  eq("y sigue andando: quita el paso de los pendientes", await p.$eval(primero + ' [data-action="resumen-no-tarea"]', e => e.dataset.paso), "x1");
   eq("sin errores en la consola", errores, []);
+  await p.close();
+}
+/* ---- En hebreo, de derecha a izquierda: «No es tarea» queda del lado izquierdo ---- */
+{
+  const { p } = await entrar(b, ANA.email, ANA.name, { viewport: vp, lang: "he", base: datos() });
+  await p.click(tarjeta + " .rs-pill"); await p.waitForSelector(tarjeta + " .rs-panel");
+  const r = await p.evaluate(sel => { const li = document.querySelector(sel); const f = li.querySelector(".rs-fecha").getBoundingClientRect(), n = li.querySelector(".rs-no").getBoundingClientRect(); return { mismaFila: Math.abs((n.top + n.bottom) / 2 - (f.top + f.bottom) / 2) < 8, aLaIzquierda: n.right <= f.left + 1 }; }, primero);
+  eq("en hebreo, «No es tarea» queda a la izquierda de la fecha y en la misma línea", r, { mismaFila: true, aLaIzquierda: true });
   await p.close();
 }
 
@@ -114,6 +128,7 @@ const vp = { width: 1280, height: 900 };
   await tab(p, "paises");
   await p.evaluate(() => { const x = document.createElement("button"); x.dataset.action = "paises-subview"; x.dataset.key = "lista"; document.body.appendChild(x); x.click(); x.remove(); });
   await p.click('[data-action="drill-country"][data-country="Argentina"]'); await p.waitForSelector(".ficha-lugar .fl-sigue");
+  eq("en la ficha, «No es tarea» también va en la fila del responsable y la fecha", await p.$$eval(".fl-sigue .rs-pasos li", l => l.map(li => !!li.querySelector(".rs-asig .rs-no") && !li.querySelector(".rs-paso > .rs-no"))), [true, true]);
   eq("en la ficha, cada paso de «Lo que sigue» también tiene su responsable y su fecha", await p.$$eval(".fl-sigue .rs-pasos li", l => l.map(e => [!!e.querySelector(".rs-resp"), !!e.querySelector(".rs-fecha")])), [[true, true], [true, true]]);
   await p.selectOption(".fl-sigue .rs-pasos li:first-child .rs-resp", DIEGO.email);
   eq("…y elegirlo desde ahí también lo guarda", await hasta(p, (d) => window.__sb.tablas.posts.find(y => y.id === "p1").resumen.partes[0].pasos[0].resp === d, DIEGO.email), true);
