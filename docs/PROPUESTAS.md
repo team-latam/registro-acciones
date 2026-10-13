@@ -12,6 +12,11 @@ otra conversación.
   app. Lo que elige queda guardado en la propia página (colección `elecciones`, un documento
   por propuesta `p1` a `p16` con la opción en `o` y la nota en `n`); si no pudo guardar, el
   botón «Copiar mis elecciones» arma el texto para pegar en el chat. Esta vez las eligió así.
+- **La segunda vuelta** (13/10/2026, también privada y con su propia colección `elecciones2`):
+  https://claude.ai/artifact/6Gd5PfWbcoETQvFS8J32sK — salió de las notas de la primera: cómo
+  funcionaría la 1, qué falta de la 11 y cómo cumplir la condición de las 48 horas de la 14, más
+  tres propuestas nuevas (tendencias de temas, recorrido de un viaje en el mapa, «Mi año»).
+  Todavía sin elegir.
 - **Este documento** guarda las propuestas por si la página se pierde. Las maquetas viven solo
   en la página.
 
@@ -23,13 +28,13 @@ otra conversación.
 | 2 | Aviso de lugares sin actividad | **A** · correo mensual para admins | por hacer |
 | 3 | Informe de una hoja para los jefes | **C** · modo presentación, y que **además se pueda imprimir / exportar** lo que genera | por hacer |
 | 4 | Metas por año | No por ahora | — |
-| 5 | Bajar a planilla (Excel) | **C** · las dos, y «todo el año» | por hacer (ver nota) |
+| 5 | Bajar a planilla (Excel) | **C** · las dos, y «todo el año» | hecha el 13/10/2026: «Planilla» en el Inicio y «Bajar todo <año>» en Administración › Copia de seguridad (Reportes ya la tenía) |
 | 6 | Instalarla como app en el celular | No por ahora | — |
 | 7 | Cargar sin señal | No por ahora | — |
 | 8 | Botón «Algo no anda» | **C** · las dos (botón y anotado automático) | por hacer |
 | 9 | Cierre rápido en la app, sin Word | No por ahora | — |
 | 10 | ¿Dónde está el equipo esta semana? | No por ahora | — |
-| 11 | Repetir un evento como el del año pasado | **A** · «Repetir» en el menú del evento | por hacer |
+| 11 | Repetir un evento como el del año pasado | **A** · «Repetir» en el menú del evento | **ya existía** desde el 3/10/2026 (ver nota); falta decidir qué mejorar, en la segunda vuelta |
 | 12 | Aviso de documentos que faltan | No por ahora | — |
 | 13 | Aviso de choques de agenda | No por ahora | — |
 | 14 | Informe mensual por correo para los jefes | No por ahora, pero con una nota: le gustaría la **A** con una condición de seguridad (ver abajo) | guardada para después |
@@ -54,6 +59,13 @@ Ideas sueltas que le interesan (todavía sin maqueta): **el recorrido de un viaj
   que Excel abre, con punto y coma), igual que el registro de actividad y la lista de personas:
   la propuesta decía que solo la Agenda se podía bajar, y eso no era cierto. Queda por sumar el
   de **Inicio** (lo filtrado) y el de **Administración** («Bajar todo 2026»).
+- **Propuesta 11.** Al mirar el código se vio que **«Repetir este evento» ya está** en el menú ⋯
+  de cada evento desde el 3/10/2026 (`duplicate-post`, `openDuplicateComposer`): copia tipo,
+  lugar, personas y texto, conserva la duración y abre el evento nuevo fechado hoy, sin fotos,
+  archivos ni enlaces. La propuesta lo presentaba como algo que no existía; fue un error de la
+  primera tanda de maquetas. Lo que falta de verdad: proponer la fecha del año que viene para
+  los eventos de hace más de 6 meses, y copiar los hitos si es un proyecto. Queda en la segunda
+  vuelta.
 - **Propuesta 14.** Quiere la opción A (correo con los números, sin cuenta ni enlaces) pero que
   ese reporte **solo se pueda ver 48 horas desde el correo**, con un aviso en el correo; si la
   persona lo baja, está bien. Ojo técnico a explicarle cuando se retome: un correo ya entregado
@@ -63,6 +75,9 @@ Ideas sueltas que le interesan (todavía sin maqueta): **el recorrido de un viaj
 - **Propuesta 16.** Pidió, en lugar de las etiquetas manuales, una propuesta sobre **cómo ver
   las tendencias de los temas de forma automática**: de qué se está hablando o qué «tiene
   movimiento». Armar maquetas.
+
+- **Propuesta 1, respuesta.** En la segunda vuelta se explica con un «hoy» y un «con la propuesta»
+  lado a lado, y qué cambia y qué no en el flujo de hoy. Sigue sin elegir.
 
 ## Cómo retomarlo en una conversación nueva
 
@@ -74,8 +89,8 @@ app se avisa antes de publicar.
 
 ## Orden que se sigue
 
-1. **5-C** (planillas de Inicio y de Administración): lo más chico y sin riesgo.
-2. **11-A** («Repetir» en el menú del evento).
+1. ~~**5-C** (planillas de Inicio y de Administración)~~ ✅ 13/10/2026.
+2. ~~**11-A**~~ ya existía; se decide qué mejorar en la segunda vuelta.
 3. **8-C** («Algo no anda» y errores anotados solos): tabla nueva en Supabase.
 4. **2-A** (correo mensual de lugares sin actividad): workflow nuevo con el sistema de correos.
 5. **3-C** (modo presentación, con impresión).
