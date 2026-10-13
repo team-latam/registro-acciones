@@ -159,7 +159,7 @@ export const BASE = () => ({
 export const abrirNavegador = () => chromium.launch();
 // Entra a la app con quien se le diga. `base` reemplaza los datos (por
 // ejemplo, los variados de herramientas/auditoria/herramientas/datos.mjs).
-export async function entrar(b, email, nombre, { viewport, dark, lang, sinSesion, base: otra } = {}) {
+export async function entrar(b, email, nombre, { viewport, dark, lang, sinSesion, base: otra, query = "", falla } = {}) {
   const base = otra || BASE();
   const p = await b.newPage({ viewport: viewport || { width: 1440, height: 900 }, colorScheme: dark ? "dark" : "light", deviceScaleFactor: 1, hasTouch: !!(viewport && viewport.width < 800), isMobile: !!(viewport && viewport.width < 800) });
   const errores = [];
@@ -173,12 +173,13 @@ export async function entrar(b, email, nombre, { viewport, dark, lang, sinSesion
     if (/googleapis\.com\/calendar\//.test(u)) return ruta.fulfill({ contentType: "application/json", body: JSON.stringify({ items: [] }) });
     return ruta.abort();
   });
-  await p.addInitScript(([base, sesion, lang, dark]) => {
+  await p.addInitScript(([base, sesion, lang, dark, falla]) => {
     window.__sb = { tablas: base, sesion, oyentes: [], rpc: [], escrituras: [], subidas: [], borradas: [], logins: [], canales: 0 };
+    if(falla) window.__sb[falla] = true;
     window.__pruebasSinIntegridad = true;   // la librería de mentira no es la de verdad: su huella no cuadra (ver supabase_integridad_test)
     try { if (lang) localStorage.setItem("ra_lang", lang); if (dark) localStorage.setItem("ra_theme", "dark"); } catch (e) {}
-  }, [base, sinSesion ? null : { user: { id: "uuid-" + email, email, user_metadata: { full_name: nombre } } }, lang || "", !!dark]);
-  await p.goto(PAGINA);
+  }, [base, sinSesion ? null : { user: { id: "uuid-" + email, email, user_metadata: { full_name: nombre } } }, lang || "", !!dark, falla || ""]);
+  await p.goto(PAGINA + query);
   await p.waitForTimeout(1200);
   return { p, errores };
 }

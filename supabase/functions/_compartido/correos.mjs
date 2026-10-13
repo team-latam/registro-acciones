@@ -294,6 +294,53 @@ export function correoLugares({ lugares, meses, lang, url = `${APP}?ir=reportes`
   };
 }
 
+/* ---------- El informe mensual (el día 1, a quienes eligió un admin) ---------- */
+// datos: { mes ("2026-10"), vence (cuándo deja de andar el enlace, un instante), lang, zona, prueba }
+// A propósito NO lleva ningún número: el informe se abre dentro del Registro, con la cuenta del equipo,
+// y el enlace vence a las 48 horas (23-informe-mensual.sql). Lo que queda en la casilla es el aviso.
+const INF = {
+  es: { asunto:"Ya está el informe de {m}", etiqueta:"Informe mensual", titulo:"El informe de {m} ya está listo",
+    parrafo:"Se abre dentro del Registro de Acciones: hace falta entrar con tu cuenta del equipo. Desde ahí lo podés ver como presentación, imprimir, guardar como PDF o bajar la planilla.",
+    vence:"Este enlace deja de funcionar el {f} (48 horas después de enviado este correo).", despues:"Después de ese momento el correo ya no abre el informe: por seguridad, los números no viajan dentro del correo.",
+    prueba:"Es un correo de prueba, para que veas cómo llega.", boton:"Abrir el informe", pie:"Te llega porque un administrador te sumó al informe mensual." },
+  en: { asunto:"The {m} report is ready", etiqueta:"Monthly report", titulo:"The {m} report is ready",
+    parrafo:"It opens inside the Action Log: you need to sign in with your team account. From there you can view it as a presentation, print it, save it as a PDF or download the spreadsheet.",
+    vence:"This link stops working on {f} (48 hours after this email was sent).", despues:"After that, this email no longer opens the report: for security, the numbers don't travel inside the email.",
+    prueba:"This is a test email, so you can see how it arrives.", boton:"Open the report", pie:"You're getting this because an administrator added you to the monthly report." },
+  pt: { asunto:"O relatório de {m} está pronto", etiqueta:"Relatório mensal", titulo:"O relatório de {m} está pronto",
+    parrafo:"Abre dentro do Registro de Ações: é preciso entrar com a sua conta da equipe. De lá você pode ver como apresentação, imprimir, salvar como PDF ou baixar a planilha.",
+    vence:"Este link deixa de funcionar em {f} (48 horas depois do envio deste e-mail).", despues:"Depois disso, o e-mail não abre mais o relatório: por segurança, os números não viajam dentro do e-mail.",
+    prueba:"É um e-mail de teste, para você ver como chega.", boton:"Abrir o relatório", pie:"Chega porque um administrador incluiu você no relatório mensal." },
+  he: { asunto:"הדוח של {m} מוכן", etiqueta:"דוח חודשי", titulo:"הדוח של {m} מוכן",
+    parrafo:"הוא נפתח בתוך יומן הפעולות: צריך להתחבר עם חשבון הצוות. משם אפשר לראות אותו כמצגת, להדפיס, לשמור כ-PDF או להוריד את הגיליון.",
+    vence:"הקישור הזה יפסיק לעבוד ב{f} (48 שעות אחרי שליחת המייל).", despues:"אחרי הזמן הזה המייל כבר לא פותח את הדוח: מטעמי אבטחה, המספרים לא מועברים בתוך המייל.",
+    prueba:"זה מייל ניסיון, כדי שתראו איך זה מגיע.", boton:"פתיחת הדוח", pie:"זה מגיע אליך כי מנהל/ת הוסיף/ה אותך לדוח החודשי." },
+};
+export const textosDelInforme = lang => INF[idioma(lang)];
+export const enlaceAlInforme = mes => `${APP}?informe=${encodeURIComponent(mes)}`;
+export function correoInforme({ mes, vence, lang, zona, prueba = false }){
+  const L = idioma(lang), T = INF[L], x = lado(L);
+  const m = mesYAnio(`${mes}-01`, L), url = enlaceAlInforme(mes);
+  // «el martes, 3 de noviembre, 09:30»: fechaLarga empieza con mayúscula, que en una frase en
+  // español o portugués sobra.
+  const larga = fechaLarga(vence, L, zona), hasta = L === "es" || L === "pt" ? larga.charAt(0).toLowerCase() + larga.slice(1) : larga;
+  const linea = asunto(conVars(T.asunto, { m }));
+  const aviso = conVars(T.vence, { f: hasta });
+  return {
+    subject: linea,
+    text: `${linea}\n\n${T.parrafo}\n\n⏳ ${aviso}\n${T.despues}\n${prueba ? `\n${T.prueba}\n` : ""}\n${T.boton}: ${url}\n`,
+    html: marco({ lang: L,
+      pre: `${linea}. ${aviso}`, etiqueta: T.etiqueta, titulo: conVars(T.titulo, { m }),
+      cuerpo: `<p style="font-size:15px;line-height:1.6;margin:0 0 16px;">${esc(T.parrafo)}</p>
+      <div style="margin:0 0 6px;padding:14px 18px;border-${x.ini}:4px solid ${C.celesteOsc};background:${C.suave};border-radius:${x.dir === "rtl" ? "12px 0 0 12px" : "0 12px 12px 0"};font-size:14px;line-height:1.6;">
+        <b style="color:${C.petroleo};">⏳ ${esc(aviso)}</b><br><span style="color:${C.gris};">${esc(T.despues)}</span></div>
+      ${prueba ? `<p style="font-size:13px;line-height:1.6;margin:12px 0 0;color:${C.gris};">🧪 ${esc(T.prueba)}</p>` : ""}
+      ${boton(T.boton, url, L)}`,
+      pie: `${T.pie} ${TX[L].prefs}`,
+    }),
+  };
+}
+
 /* ---------- Correo de prueba ---------- */
 export function correoPrueba({ nombre, lang }){
   const L = idioma(lang), T = TX[L];

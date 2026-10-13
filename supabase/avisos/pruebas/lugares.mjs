@@ -172,8 +172,8 @@ const callado = async fn => { const l = console.log, e = console.error; console.
 // La zona de cada uno: a las 9:30 de Argentina todavía es de madrugada en Israel? No: allá son las 15:30. Pero el 1/11 en Israel ya es lunes 2.
 {
   const reg = mundo({ prefs: { "otra@x.com": { tz: "Asia/Jerusalem", hour: 9, lang: "he" } }, puede: { "otra@x.com": true } });
-  // 1/11 21:30 UTC = 2/11 06:30 en Jerusalén (UTC+2 en noviembre): ya es lunes, pero todavía no son las 9.
-  await callado(() => main(Date.parse("2026-11-01T21:30:00Z")));
+  // 1/11 22:30 UTC = 2/11 00:30 en Jerusalén (UTC+2 en noviembre): ya es lunes, pero todavía no son las 9.
+  await callado(() => main(Date.parse("2026-11-01T22:30:00Z")));
   eq("en Israel ya es lunes 2/11 pero no son las 9: todavía no", reg.correos.length, 0);
   await callado(() => main(Date.parse("2026-11-02T07:30:00Z")));
   eq("a las 9:30 de allá, le llega, en hebreo y con el país en hebreo", [reg.correos.length, /lang="he"/.test(reg.correos[0].html), reg.correos[0].text.includes("צ'ילה"), reg.correos[0].text.includes("• Chile")], [1, true, true, false]);

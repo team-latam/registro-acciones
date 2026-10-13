@@ -183,6 +183,13 @@ export function createClient(url, clave){
         }
         return { data: true, error: null };
       }
+      // El enlace del informe mensual (23-informe-mensual.sql): vale 48 horas desde la marca de ESA persona.
+      if(nombre === "informe_vigente"){
+        if(estado.informeFalla) return { data: null, error: { message: "sin conexión" } };
+        const m = (estado.tablas.informe_marcas || []).filter(x => x.email === quien() && x.mes === args.p_mes).map(x => Date.parse(x.enviado_el)).sort((a, b) => b - a)[0];
+        const vigente = m != null && Date.now() - m < 48 * 3600000;
+        return { data: vigente ? { vigente: true, vence: new Date(m + 48 * 3600000).toISOString() } : { vigente: false }, error: null };
+      }
       if(nombre === "olvidar_preferencias"){
         estado.tablas.user_prefs = (estado.tablas.user_prefs || []).filter(x => x.email !== args.p_email);
         return { data: null, error: null };

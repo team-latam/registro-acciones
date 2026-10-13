@@ -194,6 +194,43 @@ const misPrefs = (p, email) => p.evaluate(e => ((window.__sb.tablas.user_prefs |
   await p.close();
 }
 
+{
+  // El informe mensual (propuesta 3-A): Administración → Correos → «Informe mensual».
+  const { p, avisos, errores } = await entrar(ADMIN, "Benny");
+  await p.click('[data-action="toggle-user-menu"]');
+  await p.click('.user-menu [data-action="goto-view"][data-view="admin"]');
+  await p.click('.admin-menu [data-action="admin-go"][data-view="preferencias"][data-key="correos"]');
+  const informe = () => p.evaluate(() => ((window.__sb.tablas.app_config || []).find(c => c.key === "preferences") || {}).value.correos.informe);
+  eq("Administración → Correos: «Informe mensual», apagado de fábrica, sin lista de personas", [await p.$$eval('.correos-informe [data-action="informe-modo"][aria-checked="true"]', l => l.map(e => e.dataset.key)), await p.$$('.correos-informe [data-action="informe-persona"]').then(l => l.length)], [["off"], 0]);
+  await p.click('[data-action="informe-modo"][data-key="on"]'); await p.waitForTimeout(300);
+  eq("prenderlo se guarda, y aparecen las personas del equipo para elegir", [await informe(), await p.$$eval('.correos-informe [data-action="informe-persona"]', l => l.map(e => e.dataset.email).sort())], [{ on: true, para: [] }, ["ana@x.com", ADMIN]]);
+  await p.click('[data-action="informe-persona"][data-email="ana@x.com"]'); await p.waitForTimeout(300);
+  eq("elegir a Ana la suma a la lista, y se ve marcada", [await informe(), await p.$eval('[data-action="informe-persona"][data-email="ana@x.com"]', e => e.getAttribute("aria-pressed"))], [{ on: true, para: ["ana@x.com"] }, "true"]);
+  await p.click('[data-action="informe-persona"][data-email="ana@x.com"]'); await p.waitForTimeout(300);
+  eq("elegirla de nuevo la saca", (await informe()).para, []);
+  await p.click('[data-action="informe-persona"][data-email="ana@x.com"]'); await p.waitForTimeout(300);
+  await p.click('[data-action="informe-modo"][data-key="off"]'); await p.waitForTimeout(300);
+  eq("apagarlo guarda y recuerda a quiénes", await informe(), { on: false, para: ["ana@x.com"] });
+  eq("lo demás de Correos sigue como estaba: quién recibe, de fábrica «Solo yo», y lugares sin actividad sin tocar",
+     await p.evaluate(() => { const c = ((window.__sb.tablas.app_config || []).find(c => c.key === "preferences") || {}).value.correos; return [c.quienes, c.lugares === undefined]; }), ["admin", true]);
+  // El informe de prueba, a sí mismo: le pide a la función de avisos el último mes completo.
+  const hoyD = new Date(); const antes = new Date(Date.UTC(hoyD.getUTCFullYear(), hoyD.getUTCMonth() - 1, 1)).toISOString().slice(0, 7);
+  await p.click('[data-action="informe-prueba"]');
+  await p.waitForFunction(() => /Listo|No salió/.test(document.querySelector(".correos-informe")?.textContent || ""), null, { timeout: 5000 });
+  eq("«Mandarme un informe de prueba» le pide la función de avisos el último mes completo", [avisos, /Listo: revisá tu correo/.test(await p.$eval(".correos-informe", e => e.textContent))], [[{ tipo: "informe", mes: antes }], true]);
+  eq("sin errores", errores, []);
+  await p.close();
+}
+{
+  // A quien eligieron para el informe, la base le tiene que saber el idioma y la zona (para el correo y la hora de vencimiento),
+  // aunque no reciba los otros avisos.
+  const { p } = await entrar("ana@x.com", "Ana Pérez", { prefsEquipo: { correos: { informe: { on: true, para: ["ana@x.com"] } } }, lang: "pt" });
+  const guardadas = await p.waitForFunction(e => { const f = (window.__sb.tablas.user_prefs || []).find(x => x.email === e); return f && f.prefs.emailLang && f.prefs; }, "ana@x.com", { timeout: 5000 }).then(h => h.jsonValue()).catch(() => ({}));
+  eq("a una persona elegida para el informe se le guarda el idioma y la zona, aunque no reciba los otros correos", [guardadas.emailLang, !!guardadas.emailTz], ["pt", true]);
+  eq("…y no le aparece la tarjeta de los otros avisos", await p.$(".avisos-correo"), null);
+  await p.close();
+}
+
 /* ---------- El idioma y la hora de cada uno (decisión del usuario del 7/10/2026) ---------- */
 {
   // Alguien en Israel, con la app en hebreo: la base tiene que saberlo

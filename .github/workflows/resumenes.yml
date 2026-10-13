@@ -1,6 +1,6 @@
 # ============================================================
-# Resúmenes por correo, diarios y semanales, el recordatorio de lo que vence hoy
-# y el aviso mensual de los lugares sin actividad
+# Resúmenes por correo, diarios y semanales, el recordatorio de lo que vence hoy,
+# el aviso mensual de los lugares sin actividad y el aviso del informe mensual
 # ============================================================
 # Corre cada hora. A cada persona que puede recibir correos (Administración
 # → Correos) y eligió un resumen, se lo manda a SU hora y SU día (hora de
@@ -49,6 +49,7 @@ jobs:
           node supabase/avisos/pruebas/resumen.mjs
           node supabase/avisos/pruebas/vencimientos.mjs
           node supabase/avisos/pruebas/lugares.mjs
+          node supabase/avisos/pruebas/informe.mjs
           node supabase/functions/_pruebas/avisos.mjs
 
   mandar:
@@ -108,3 +109,13 @@ jobs:
         run: |
           set -o pipefail
           node supabase/avisos/lugares.mjs | tee -a "$GITHUB_STEP_SUMMARY"
+      # El aviso del informe del mes que terminó, los días 1 a 3, a quienes eligió el admin
+      # (propuesta 3-A). El correo no lleva números: trae el enlace, que vence a las 48 horas.
+      - name: Avisar del informe mensual
+        if: steps.revisar.outputs.hay == 'si' && !cancelled()
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+        run: |
+          set -o pipefail
+          node supabase/avisos/informe.mjs | tee -a "$GITHUB_STEP_SUMMARY"
