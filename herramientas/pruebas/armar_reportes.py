@@ -18,8 +18,8 @@ codigo = "\n".join(grab(n) for n in [
     "nombreDe","nombreEnReporte","deltaDelReporte","tablaComparada","etqPaises","etqCiudades","renderReporteHistorico","renderReporteComparar",
     "ultimaActividadPorPais","haceCuanto","renderCobertura","renderEquipoDelReporte",
     "sugerenciasDelReporte","renderSugerencias",
-    "TEMAS_DIAS","TEMAS_TRAMOS","TEMAS_MIN","TEMAS_MAX","TEMAS_RELLENO","TEMAS_RELLENO_HE","palabrasDeTema","formaDeTema",
-    "diasEntre","temasDelReporte","temasCache","renderTemas"])
+    "TEMAS_DIAS","TEMAS_TRAMOS","TEMAS_MIN","TEMAS_MAX","TEMAS_JUNTAS","TEMAS_RELLENO","TEMAS_RELLENO_HE","formaCanonicaDeTema","tirasDeTema","palabrasDeTema","formaDeTema",
+    "diasEntre","temasDelReporte","temasCache","listaDeTemas","renderTemas"])
 
 pagina = """<!doctype html><html lang="es"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
