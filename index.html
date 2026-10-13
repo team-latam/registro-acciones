@@ -17219,6 +17219,7 @@ const TEMAS_DIAS = 90;
 const TEMAS_TRAMOS = 6;
 const TEMAS_MIN = 3;
 const TEMAS_MAX = 10;
+const TEMAS_JUNTAS = 0.6;   // desde qué parte de los posteos de la palabra menos usada deben tener el par para juntarlos
 const TEMAS_RELLENO = new Set(normalize(`
   para como pero sino este esta esto estos estas entre cuando muy sobre tambien hasta donde quien quienes desde todo todos todas toda nos durante
   otros otras otro otra ese esa eso esos esas ante ellos ellas antes despues algunos algunas algo unos unas tanto mucho muchos mucha muchas nada cual
@@ -17239,48 +17240,92 @@ const TEMAS_RELLENO = new Set(normalize(`
 const TEMAS_RELLENO_HE = new Set("של את על עם כל לא גם או אבל אם כי זה זאת הוא היא הם הן אני אנחנו היה היו יש אין מה מי איך למה מאוד עוד רק כבר אחרי לפני בין ליד אל מן עד פגישה ביקור קורס אירוע".split(" "));
 // Las palabras de un texto, en forma canónica: sin tildes, en minúscula y sin la
 // s final («cámara» y «cámaras» son un mismo tema). Devuelve [clave, como se escribió].
-function palabrasDeTema(texto){
-  const limpio = String(texto || "").replace(/https?:\/\/\S+|www\.\S+|\S+@\S+|@\w+/gi, " ");
-  const salida = [];
-  (limpio.match(/[\p{L}][\p{L}'’]*/gu) || []).forEach(w => {
-    const hebreo = /[\u0590-\u05FF]/.test(w);
-    if(w.length < (hebreo ? 3 : 4)) return;
-    let k = hebreo ? w.replace(/[\u0591-\u05C7]/g, "") : normalize(w);
-    if(hebreo ? TEMAS_RELLENO_HE.has(k) : TEMAS_RELLENO.has(k)) return;
-    if(!hebreo && k.length > 4 && k.endsWith("s") && !k.endsWith("ss")) k = k.slice(0, -1);
-    if(!hebreo && TEMAS_RELLENO.has(k)) return;
-    salida.push([k, w]);
-  });
-  return salida;
+function formaCanonicaDeTema(w){
+  const hebreo = /[\u0590-\u05FF]/.test(w);
+  if(w.length < (hebreo ? 3 : 4)) return null;
+  let k = hebreo ? w.replace(/[\u0591-\u05C7]/g, "") : normalize(w);
+  if(hebreo ? TEMAS_RELLENO_HE.has(k) : TEMAS_RELLENO.has(k)) return null;
+  if(!hebreo && k.length > 4 && k.endsWith("s") && !k.endsWith("ss")) k = k.slice(0, -1);
+  if(!hebreo && TEMAS_RELLENO.has(k)) return null;
+  return k;
 }
+// El texto cortado en «tiras» de palabras que van pegadas: una tira termina en cualquier
+// signo, número o salto de línea, y en una palabra de relleno o muy corta («plan de verano»
+// no es «plan verano»). Sirve para reconocer lo que se dice con dos o tres palabras («krav
+// maga», «defensa personal»). Cada palabra: [clave, como se escribió].
+function tirasDeTema(texto){
+  const limpio = String(texto || "").replace(/https?:\/\/\S+|www\.\S+|\S+@\S+|@\w+/gi, " . ");
+  const tiras = []; let actual = [];
+  const corta = () => { if(actual.length) tiras.push(actual); actual = []; };
+  (limpio.match(/[\p{L}][\p{L}'’]*|[^\p{L}]+/gu) || []).forEach(trozo => {
+    if(!/^[\p{L}]/u.test(trozo)){ if(/[^ \t]/.test(trozo)) corta(); return; }
+    const k = formaCanonicaDeTema(trozo);
+    if(k) actual.push([k, trozo]); else corta();
+  });
+  corta();
+  return tiras;
+}
+function palabrasDeTema(texto){ return tirasDeTema(texto).flat(); }
 // Los temas, de los más hablados a los menos. `posts` ya viene filtrado (el
 // «Ver solo» del reporte). Cada tema: { k, palabra, ahora, antes, tramos, tipo }
 // con tipo «sube» / «baja» / «nuevo» / «igual».
 function temasDelReporte(posts, hoy){
   const desde = addDaysISO(hoy, -(TEMAS_DIAS - 1)), desdeAntes = addDaysISO(hoy, -(2 * TEMAS_DIAS - 1));
-  const cuentas = new Map();
-  let enVentana = 0;
+  // 1. Los posteos de los 180 días, cada uno con sus tiras de palabras (sin lo propio: lugares, gente).
+  const docs = [];
   posts.forEach(p => {
     if(p.cancelled) return;
     const fecha = String(p.startDate || p.date || "");
     if(!fecha || fecha > hoy || fecha < desdeAntes) return;
-    enVentana++;
-    const ahora = fecha >= desde;
     // Lo propio del posteo no es un tema: sus lugares, la gente y quien lo cargó.
     const nombres = [...(p.scopes || []).flatMap(sc => sc ? [sc.city, sc.country, sc.region] : []), ...(p.participants || []).map(x => x && x.name), p.authorName, p.location];
     const propios = new Set(palabrasDeTema(nombres.filter(Boolean).join(" ")).map(x => x[0]));
-    const tramo = ahora ? Math.min(TEMAS_TRAMOS - 1, Math.floor(diasEntre(desde, fecha) / (TEMAS_DIAS / TEMAS_TRAMOS))) : -1;
+    // Una palabra propia corta la tira, como una de relleno.
+    const tiras = [];
+    tirasDeTema(`${p.title || ""} . ${p.content || ""}`).forEach(tira => {
+      let actual = [];
+      tira.forEach(w => { if(propios.has(w[0])){ if(actual.length) tiras.push(actual); actual = []; } else actual.push(w); });
+      if(actual.length) tiras.push(actual);
+    });
+    docs.push({ fecha, ahora: fecha >= desde, tiras });
+  });
+  if(docs.length < 8) return [];
+  // 2. Las palabras que casi siempre van juntas son UN tema: «krav» y «maga» no son dos ideas.
+  // Un par de palabras pegadas se junta si aparece en al menos TEMAS_MIN posteos y la menos
+  // frecuente de las dos casi no se usa fuera de ese par (60% o más de sus posteos).
+  const porPalabra = new Map(), porPar = new Map();
+  docs.forEach(d => {
+    const palabras = new Set(), pares = new Set();
+    d.tiras.forEach(tira => tira.forEach(([k], i) => { palabras.add(k); if(i) pares.add(tira[i - 1][0] + " " + k); }));
+    palabras.forEach(k => porPalabra.set(k, (porPalabra.get(k) || 0) + 1));
+    pares.forEach(k => porPar.set(k, (porPar.get(k) || 0) + 1));
+  });
+  const juntas = new Set();
+  porPar.forEach((n, par) => {
+    if(n < TEMAS_MIN) return;
+    const [a, b] = par.split(" ");
+    if(n >= TEMAS_JUNTAS * Math.min(porPalabra.get(a), porPalabra.get(b))) juntas.add(par);
+  });
+  // 3. Se cuenta: cada posteo suma una vez a cada tema (una palabra o una frase de hasta tres).
+  const cuentas = new Map();
+  docs.forEach(d => {
+    const tramo = d.ahora ? Math.min(TEMAS_TRAMOS - 1, Math.floor(diasEntre(desde, d.fecha) / (TEMAS_DIAS / TEMAS_TRAMOS))) : -1;
     const vistas = new Set();
-    palabrasDeTema(`${p.title || ""} ${p.content || ""}`).forEach(([k, w]) => {
-      if(propios.has(k) || vistas.has(k)) return;
-      vistas.add(k);
-      let c = cuentas.get(k);
-      if(!c){ c = { k, formas: new Map(), ahora: 0, antes: 0, tramos: new Array(TEMAS_TRAMOS).fill(0) }; cuentas.set(k, c); }
-      c.formas.set(w, (c.formas.get(w) || 0) + 1);
-      if(ahora){ c.ahora++; c.tramos[tramo]++; } else c.antes++;
+    d.tiras.forEach(tira => {
+      for(let i = 0; i < tira.length;){
+        let j = i;
+        while(j + 1 < tira.length && j - i < 2 && juntas.has(tira[j][0] + " " + tira[j + 1][0])) j++;
+        const unidad = tira.slice(i, j + 1), k = unidad.map(x => x[0]).join(" "), w = unidad.map(x => x[1]).join(" ");
+        i = j + 1;
+        if(vistas.has(k)) continue;
+        vistas.add(k);
+        let c = cuentas.get(k);
+        if(!c){ c = { k, formas: new Map(), ahora: 0, antes: 0, tramos: new Array(TEMAS_TRAMOS).fill(0) }; cuentas.set(k, c); }
+        c.formas.set(w, (c.formas.get(w) || 0) + 1);
+        if(d.ahora){ c.ahora++; c.tramos[tramo]++; } else c.antes++;
+      }
     });
   });
-  if(enVentana < 8) return [];
   return [...cuentas.values()].filter(c => c.ahora >= TEMAS_MIN || c.antes >= TEMAS_MIN)
     .map(c => ({ k: c.k, palabra: formaDeTema(c.formas), ahora: c.ahora, antes: c.antes, tramos: c.tramos,
       tipo: !c.antes && c.ahora >= TEMAS_MIN ? "nuevo"
@@ -17319,7 +17364,7 @@ function renderTemas(f){
   return seccionDelReporte(t("Temas","Topics","Temas","נושאים"),
     t("De qué se habló en los últimos 90 días, contra los 90 anteriores. Se cuenta con los títulos y textos ya cargados; nada sale de la app.","What was talked about in the last 90 days, against the 90 before. Counted from the titles and texts already in the app; nothing leaves it.","Do que se falou nos últimos 90 dias, contra os 90 anteriores. Contado com os títulos e textos já carregados; nada sai do app.","על מה דובר ב-90 הימים האחרונים, מול 90 הימים שלפניהם. נספר מהכותרות והטקסטים שכבר נטענו; שום דבר לא יוצא מהאפליקציה."),
     `<div class="rep-bloque rep-temas"><ul class="rep-lista rep-lista-temas">${lista.map(fila).join("")}</ul>
-      <div class="rep-bloque-nota">${esc(t("Cuenta las veces que aparece cada palabra en un posteo, no lo que significa: «seguridad» y «protección» son dos temas. Tocá uno para ver en el Inicio las actividades que lo mencionan.","It counts how many posts use each word, not what it means: “security” and “protection” are two topics. Tap one to see the activities that mention it on Home.","Conta em quantas postagens aparece cada palavra, não o que significa: «segurança» e «proteção» são dois temas. Toque em um para ver no Início as atividades que o mencionam.","סופר בכמה פוסטים מופיעה כל מילה, לא מה היא אומרת: «ביטחון» ו«הגנה» הם שני נושאים. הקש/י על אחד כדי לראות בדף הבית את הפעילויות שמזכירות אותו."))}</div></div>`);
+      <div class="rep-bloque-nota">${esc(t("Junta las palabras que casi siempre van pegadas (como «krav maga») en un solo tema, pero no entiende lo que significan: «seguridad» y «protección» siguen siendo dos temas. Tocá uno para ver en el Inicio las actividades que lo mencionan.","It joins words that almost always go together (like “krav maga”) into one topic, but it doesn't understand what they mean: “security” and “protection” are still two topics. Tap one to see the activities that mention it on Home.","Junta as palavras que quase sempre vão coladas (como «krav maga») em um só tema, mas não entende o que significam: «segurança» e «proteção» continuam sendo dois temas. Toque em um para ver no Início as atividades que o mencionam.","מחבר מילים שכמעט תמיד באות יחד (כמו «קרב מגע») לנושא אחד, אבל לא מבין מה הן אומרות: «ביטחון» ו«הגנה» נשארים שני נושאים. הקש/י על אחד כדי לראות בדף הבית את הפעילויות שמזכירות אותו."))}</div></div>`);
 }
 
 // ---- Equipo ----
