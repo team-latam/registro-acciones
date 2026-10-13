@@ -107,7 +107,7 @@ Con lo ya hecho a la vista, pidió retoques; todos hechos, en las tandas 79 a 83
 - **Temas**: que junte las palabras que van pegadas («krav maga» es una sola idea) en lugar de contar palabras sueltas (tanda 80).
   No entiende sinónimos; un glosario propio o una IA serían un paso aparte y lo decide él.
 - **La planilla**: una tabla de Excel de verdad, con una columna por dato, que baje todo (también los posteos) y que al filtrar deje
-  elegir qué actividades y qué columnas; el botón del Inicio, solo la flecha ⬇ (tanda 81).
+  elegir qué actividades y qué columnas; el botón del Inicio, solo la flecha ⬇ (tanda 81). Después criticó la ventana de opciones y se sacó: la flecha baja de un clic lo que están filtrando (tanda 84).
 - **«Mi año»** pasa del menú de la cuenta a Reportes, antes de «Presentar»; el menú queda con Mis preferencias, Administración y
   «Algo no anda» (tandas 78 y 81). No se aplicaron las variantes de encabezado más chico del menú que se le mostraron.
 - **«Presentar» con más para mostrar** (opción 2 de lo que se le propuso): diapositivas «Lo más destacado» y «El equipo y de qué se

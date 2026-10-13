@@ -1,14 +1,17 @@
 /* ======================================================================
-   La planilla de actividades: una tabla de Excel, con ventana para elegir
-   (13/10/2026; pedido del usuario sobre la propuesta 5-C)
+   La planilla de actividades: una tabla de Excel, de un clic (13/10/2026;
+   pedido del usuario sobre la propuesta 5-C)
 
    Pidió: que la planilla sea de verdad una TABLA, con cada dato en su columna;
-   que baje todo, también el texto de los posteos; que, si hay filtros puestos, se
-   pueda elegir qué sí y qué no; y que el botón sea solo la flecha ⬇, con la
-   leyenda al pasar el mouse.
-   - En el Inicio, el botón ⬇ abre «Bajar planilla»: qué actividades (todo el
-     Registro, lo que se está filtrando, o solo la solapa), qué columnas (por
-     grupos) y el formato (.xlsx o CSV). Se acuerda de lo elegido.
+   que baje todo, también el texto de los posteos; y que el botón sea solo la
+   flecha ⬇, con la leyenda al pasar el mouse. Primero se hizo con una ventana
+   para elegir actividades, columnas y formato; el usuario la vio y la criticó
+   («poco profesional», y repite lo que ya hacen los filtros): se sacó.
+   - En el Inicio, la flecha ⬇ baja un .xlsx de una, con las 25 columnas. Sin
+     filtros, todo el Registro (también lo cancelado y lo que viene, que la
+     columna «Estado» distingue); con filtros, lo que ellos dejan, de las dos
+     solapas juntas. La leyenda dice cuántas; con filtros, un puntito; al bajar,
+     un aviso. No hay ventana.
    - Solo para quien carga eventos: un observador no lo ve.
    - En Administración › Copia de seguridad, «Bajar todo <año>» baja un .xlsx
      con todas las columnas.
@@ -35,38 +38,25 @@ const datos = () => {
 };
 const TITULOS = ["Desde", "Hasta", "Año", "Mes", "Tipo", "Título", "Texto del posteo", "Países", "Ciudades", "Zonas", "Alcance", "Dónde", "Cargó", "Correo de quien cargó", "Participantes", "Cantidad de participantes", "Estado", "Proyecto", "Se repite", "Objetivos", "Objetivos logrados", "Pasos pendientes", "Pasos hechos", "Cargado el", "Enlace"];
 
-// CSV con punto y coma y celdas entre comillas.
-function leerCsv(texto){
-  const filas = []; let fila = [], celda = "", dentro = false;
-  for(let i = 0; i < texto.length; i++){
-    const c = texto[i];
-    if(dentro){ if(c === '"' && texto[i + 1] === '"'){ celda += '"'; i++; } else if(c === '"') dentro = false; else celda += c; }
-    else if(c === '"') dentro = true;
-    else if(c === ";"){ fila.push(celda); celda = ""; }
-    else if(c === "\r" && texto[i + 1] === "\n"){ fila.push(celda); filas.push(fila); fila = []; celda = ""; i++; }
-    else celda += c;
-  }
-  if(celda || fila.length){ fila.push(celda); filas.push(fila); }
-  return filas;
-}
-// Baja lo que dispara `hacer` y lo lee: { nombre, filas } (de un .xlsx o de un CSV según la extensión).
+// Baja lo que dispara `hacer` y lo lee: { nombre, zip, filas, tabla }.
 async function bajar(p, hacer){
   const [bajada] = await Promise.all([p.waitForEvent("download", { timeout: 8000 }), hacer()]);
   const buffer = fs.readFileSync(await bajada.path()), nombre = bajada.suggestedFilename();
-  if(nombre.endsWith(".xlsx")){ const zip = abrirZip(buffer); return { nombre, zip, filas: leerHoja(zip), tabla: leerTabla(zip) }; }
-  const texto = buffer.toString("utf8");
-  return { nombre, texto, filas: leerCsv(texto.replace(/^﻿/, "")) };
+  const zip = abrirZip(buffer);
+  return { nombre, zip, filas: leerHoja(zip), tabla: leerTabla(zip) };
 }
-// Si el clic no baja nada ni abre nada, no hay evento de descarga ni ventana.
+// Si el clic no baja nada, no hay evento de descarga (ni aviso).
 async function noPasaNada(p, accion){
   let bajo = false; const oyente = () => { bajo = true; }; p.on("download", oyente);
   await p.evaluate(a => { const b = document.createElement("button"); b.dataset.action = a; document.body.appendChild(b); b.click(); b.remove(); }, accion);
   await p.waitForTimeout(500); p.off("download", oyente);
-  return !bajo && await p.evaluate(() => document.getElementById("planillaOverlay").hidden);
+  return !bajo && await p.evaluate(() => document.getElementById("calendarToast").hidden);
 }
-const abierta = p => p.evaluate(() => !document.getElementById("planillaOverlay").hidden);
-const opciones = (p, accion) => p.$$eval(`#planillaBody [data-action="${accion}"]`, l => l.map(e => ({ k: e.dataset.key, on: e.classList.contains("active"), t: e.querySelector("b").textContent, d: (e.querySelector("small") || {}).textContent || "" })));
-const boton = p => p.$eval('#planillaBody [data-action="planilla-bajar"]', e => ({ txt: e.textContent.trim(), off: e.disabled }));
+const flecha = '[data-action="feed-planilla"]';
+const aviso = p => p.evaluate(() => { const e = document.getElementById("calendarToast"); return e.hidden ? "" : e.textContent.replace(/\s+/g, " ").trim().replace(/ Cerrar$/, ""); });
+const leyenda = p => p.$eval(flecha, e => [e.title, e.getAttribute("aria-label")]);
+const hayPunto = p => p.$$eval(flecha + " .fp-punto", l => l.length);
+const nDelFeed = async p => await p.$eval('[data-key="pasado"] .fs-n', e => Number(e.textContent)) + await p.$eval('[data-key="futuro"] .fs-n', e => Number(e.textContent));
 
 const b = await abrirNavegador();
 const vp = { width: 1280, height: 900 };
@@ -75,33 +65,25 @@ const total = datos().posts.length;
 /* ---- Inicio: quién lo ve y cómo es el botón ---- */
 for(const [quien, nombre, espera] of [[OBS, "Olga Observa", 0], [PERS[1].email, PERS[1].name, 1], [ADMIN, "Benny Rosenthal", 1]]){
   const { p } = await entrar(b, quien, nombre, { viewport: vp, lang: "es", base: datos() });
-  eq(`${nombre}: ${espera ? "ve" : "no ve"} el botón de planilla en el Inicio`, await p.$$eval('[data-action="feed-planilla"]', l => l.length), espera);
-  if(!espera) eq(`${nombre}: la acción no abre ni baja nada`, await noPasaNada(p, "feed-planilla"), true);
-  if(espera) eq("el botón es solo la flecha, con la leyenda al pasar el mouse y para el lector de pantalla", await p.$eval('[data-action="feed-planilla"]', e => [e.textContent.trim(), e.title, e.getAttribute("aria-label")]), ["⬇", "Bajar planilla", "Bajar planilla"]);
+  eq(`${nombre}: ${espera ? "ve" : "no ve"} la flecha de la planilla en el Inicio`, await p.$$eval(flecha, l => l.length), espera);
+  if(!espera) eq(`${nombre}: la acción no baja nada ni avisa nada`, await noPasaNada(p, "feed-planilla"), true);
+  if(espera){
+    eq("la flecha es un dibujo, sin texto, y su leyenda dice cuántas actividades baja", await p.$eval(flecha, e => [e.textContent.trim(), !!e.querySelector("svg"), e.title, e.getAttribute("aria-label"), e.hasAttribute("aria-haspopup")]), ["", true, `Bajar planilla: ${total} actividades`, `Bajar planilla: ${total} actividades`, false]);
+    eq("sin filtros no lleva el puntito", await hayPunto(p), 0);
+  }
   await p.close();
 }
 
-/* ---- La ventana, sin filtros ---- */
+/* ---- Sin filtros: baja todo, de un clic ---- */
 {
   const { p, errores } = await entrar(b, PERS[1].email, PERS[1].name, { viewport: vp, lang: "es", base: datos() });
-  const pasadas = await p.$eval('[data-key="pasado"] .fs-n', e => Number(e.textContent));
-  await p.click('[data-action="feed-planilla"]'); await p.waitForSelector("#planillaOverlay:not([hidden])");
-  eq("la ventana tiene su título y es un diálogo", await p.$eval("#planillaOverlay .modal", e => [e.getAttribute("role"), e.getAttribute("aria-modal"), document.getElementById("planillaTitle").textContent.trim()]), ["dialog", "true", "⬇ Bajar planilla"]);
-  const alc = await opciones(p, "planilla-alcance");
-  eq("sin filtros: «Todo el Registro» (con todo, también lo cancelado y lo que viene) y «Solo Lo que pasó»; no se ofrece «filtrando»",
-    alc.map(x => [x.k, x.on, x.t, x.d.match(/^\d+/)[0]]), [["todo", true, "Todo el Registro", String(total)], ["solapa", false, "Solo «Lo que pasó»", String(pasadas)]]);
-  const cols = await opciones(p, "planilla-grupo");
-  eq("ocho grupos de columnas, todos marcados", [cols.map(x => x.k), cols.every(x => x.on)], [["fechas", "actividad", "texto", "lugares", "personas", "estado", "cierre", "extra"], true]);
-  eq("dice cuántas columnas se bajan", await p.$eval("#planillaBody .rs-h b", e => e.textContent), "25 columnas");
-  eq("el formato de fábrica es Excel", (await opciones(p, "planilla-formato")).map(x => [x.k, x.on]), [["xlsx", true], ["csv", false]]);
-  eq("el foco entra a la ventana", await p.evaluate(() => document.getElementById("planillaOverlay").contains(document.activeElement)), true);
-
-  // Bajar todo.
-  const r = await bajar(p, () => p.click('[data-action="planilla-bajar"]'));
-  eq("baja un .xlsx con la fecha de hoy", r.nombre, `registro-${hoy}.xlsx`);
-  eq("la ventana se cierra y el foco vuelve a la flecha", [await abierta(p), await p.evaluate(() => document.activeElement && document.activeElement.dataset.action)], [false, "feed-planilla"]);
+  eq("no hay ventana de planilla en la página", await p.evaluate(() => [!!document.getElementById("planillaOverlay"), !!document.querySelector('[data-action^="planilla-"]')]), [false, false]);
+  const r = await bajar(p, () => p.click(flecha));
+  eq("un clic baja un .xlsx con la fecha de hoy", r.nombre, `registro-${hoy}.xlsx`);
+  eq("el aviso dice qué se bajó y cuántas", await aviso(p), `✓ Se bajó registro-${hoy}.xlsx · ${total} actividades.`);
+  eq("el foco queda en la flecha", await p.evaluate(() => document.activeElement && document.activeElement.dataset.action), "feed-planilla");
   eq("es una tabla de Excel con los 25 títulos, un rango que cubre todo y filtros", [r.filas[0], r.tabla.columnas, r.tabla.ref, r.tabla.filtro], [TITULOS, TITULOS, `A1:Y${total + 1}`, `A1:Y${total + 1}`]);
-  eq("una fila por actividad: todas", [r.filas.length - 1, r.zip.crcBien], [total, true]);
+  eq("una fila por actividad: todas, también lo cancelado y lo que viene", [r.filas.length - 1, r.zip.crcBien, r.filas.slice(1).some(f => f[16] === "Cancelada"), r.filas.slice(1).some(f => f[16] === "Planificada")], [total, true, true, true]);
   const col = n => TITULOS.indexOf(n);
   const rosario = r.filas.find(f => f && f[col("Título")] === "Visita a la comunidad de Rosario");
   eq("la visita a Rosario, cada dato en su columna: tipo, país, ciudad, zona, cargó, correo, participantes, cuántos, estado, proyecto",
@@ -114,76 +96,89 @@ for(const [quien, nombre, espera] of [[OBS, "Olga Observa", 0], [PERS[1].email, 
   const formula = r.filas.find(f => f && f[col("Título")] === '=HYPERLINK("http://x")');
   eq("un título que empieza con = queda como texto, no como fórmula; y su texto con ; y comillas, igual", formula && [formula[col("Título")], formula[col("Texto del posteo")]], ['=HYPERLINK("http://x")', 'Texto con ; punto y coma y "comillas".']);
   eq("de la más vieja a la más nueva", r.filas.slice(1).map(f => f[0]).every((d, i, l) => i === 0 || l[i - 1] <= d), true);
+  // En «Próximos», sin filtros, baja lo mismo: todo.
+  await p.click('[data-action="feed-solapa"][data-key="futuro"]'); await p.waitForTimeout(400);
+  const r2 = await bajar(p, () => p.click(flecha));
+  eq("en la solapa «Próximos» y sin filtros, también baja todo el Registro", [r2.nombre, r2.filas.length - 1], [`registro-${hoy}.xlsx`, total]);
   eq("sin errores en la consola", errores, []);
   await p.close();
 }
 
-/* ---- Con un filtro puesto: se puede elegir ---- */
+/* ---- Con filtros: lo que ellos dejan, de las dos solapas ---- */
 {
   const { p } = await entrar(b, PERS[1].email, PERS[1].name, { viewport: vp, lang: "es", base: datos() });
-  await p.fill("#feedSearch", "Rosario"); await p.waitForTimeout(600);
-  const filtradas = await p.$eval('[data-key="pasado"] .fs-n', e => Number(e.textContent)) + await p.$eval('[data-key="futuro"] .fs-n', e => Number(e.textContent));
-  await p.click('[data-action="feed-planilla"]'); await p.waitForSelector("#planillaOverlay:not([hidden])");
-  const alc = await opciones(p, "planilla-alcance");
-  eq("con un filtro puesto aparece «Lo que estoy filtrando», marcado de fábrica, con las dos solapas juntas", alc.map(x => [x.k, x.on]), [["todo", false], ["filtradas", true], ["solapa", false]]);
-  eq("…y su cuenta es la de las dos solapas con el filtro", alc[1].d.match(/^\d+/)[0], String(filtradas));
-  const f = await bajar(p, () => p.click('[data-action="planilla-bajar"]'));
-  eq("baja lo filtrado: el archivo lo dice, y está lo de Rosario y no lo de Quito", [f.nombre, f.filas.length - 1, f.filas.some(x => x && x[5] === "Visita a la comunidad de Rosario"), f.filas.some(x => x && x[5] === "Visita a Quito")], [`registro-filtrado-${hoy}.xlsx`, filtradas, true, false]);
-  // Y se puede decidir bajar todo igual.
-  await p.click('[data-action="feed-planilla"]'); await p.waitForSelector("#planillaOverlay:not([hidden])");
-  await p.click('#planillaBody [data-action="planilla-alcance"][data-key="todo"]');
-  eq("elegir «Todo el Registro» marca esa y sigue ofreciendo las otras", (await opciones(p, "planilla-alcance")).map(x => [x.k, x.on]), [["todo", true], ["filtradas", false], ["solapa", false]]);
-  const t = await bajar(p, () => p.click('[data-action="planilla-bajar"]'));
-  eq("…y baja todo, filtro o no", [t.nombre, t.filas.length - 1], [`registro-${hoy}.xlsx`, total]);
-  // La solapa «Próximos».
-  await p.fill("#feedSearch", ""); await p.waitForTimeout(500);
+  await p.fill("#feedSearch", "Rosario"); await p.waitForTimeout(700);
+  const filtradas = await nDelFeed(p);
+  eq("con un filtro, la leyenda dice cuántas de cuántas, y la flecha lleva el puntito", [await leyenda(p), await hayPunto(p)], [[`Bajar lo filtrado: ${filtradas} de ${total} actividades`, `Bajar lo filtrado: ${filtradas} de ${total} actividades`], 1]);
+  const f = await bajar(p, () => p.click(flecha));
+  eq("baja solo lo filtrado: el archivo lo dice, y está lo de Rosario y no lo de Quito", [f.nombre, f.filas.length - 1, f.filas.some(x => x && x[5] === "Visita a la comunidad de Rosario"), f.filas.some(x => x && x[5] === "Visita a Quito")], [`registro-filtrado-${hoy}.xlsx`, filtradas, true, false]);
+  eq("el aviso lo repite: son las filtradas, con los filtros puestos", await aviso(p), `✓ Se bajó registro-filtrado-${hoy}.xlsx · ${filtradas === 1 ? "1 actividad" : filtradas + " actividades"}, con los filtros puestos.`);
+  // Desde la otra solapa baja lo mismo (las dos juntas).
   await p.click('[data-action="feed-solapa"][data-key="futuro"]'); await p.waitForTimeout(400);
-  const proximas = await p.$eval('[data-key="futuro"] .fs-n', e => Number(e.textContent));
-  await p.click('[data-action="feed-planilla"]'); await p.waitForSelector("#planillaOverlay:not([hidden])");
-  const alc2 = await opciones(p, "planilla-alcance");
-  eq("sin filtros y en «Próximos»: «Solo Próximos» con su cuenta", alc2.filter(x => x.k === "solapa").map(x => [x.t, x.d.match(/^\d+/)[0]]), [["Solo «Próximos»", String(proximas)]]);
-  await p.click('#planillaBody [data-action="planilla-alcance"][data-key="solapa"]');
-  const pr = await bajar(p, () => p.click('[data-action="planilla-bajar"]'));
-  eq("«Próximos»: una fila por cada una, y figuran como planificadas (o canceladas)", [pr.nombre, pr.filas.length - 1, [...new Set(pr.filas.slice(1).map(x => x[16]))].sort()], [`actividades-proximas-${hoy}.xlsx`, proximas, ["Cancelada", "Planificada"]]);
+  const g = await bajar(p, () => p.click(flecha));
+  eq("lo filtrado es lo mismo vista la solapa que vista", [g.nombre, g.filas.length - 1], [`registro-filtrado-${hoy}.xlsx`, filtradas]);
+  // Sacar el filtro: vuelve la leyenda de siempre y se va el puntito.
+  await p.fill("#feedSearch", ""); await p.waitForTimeout(700);
+  eq("sin filtro otra vez: la leyenda de todo y sin puntito", [(await leyenda(p))[0], await hayPunto(p)], [`Bajar planilla: ${total} actividades`, 0]);
   await p.close();
 }
 
-/* ---- Elegir columnas y el formato; se acuerda ---- */
+/* ---- Con filtros de los de la barra (país y período, llegando desde Reportes), no solo el texto ---- */
+{
+  const { p } = await entrar(b, ADMIN, "Benny Rosenthal", { viewport: vp, lang: "es", base: datos() });
+  await tab(p, "reportes"); await p.waitForTimeout(300);
+  await p.selectOption("#repAnio", anio); await p.waitForTimeout(200);
+  await p.click('[data-action="reporte-ir"][data-kind="pais"][data-key="Argentina"]'); await p.waitForTimeout(500);
+  const filtradas = await nDelFeed(p);
+  eq("con país y período puestos desde Reportes, la flecha lo sabe: puntito y cuántas de cuántas", [(await leyenda(p))[0], await hayPunto(p)], [`Bajar lo filtrado: ${filtradas} de ${total} actividades`, 1]);
+  const f = await bajar(p, () => p.click(flecha));
+  eq("baja solo lo de Argentina: tantas como las solapas, con Rosario y sin Quito", [f.nombre, f.filas.length - 1, f.filas.some(x => x && x[5] === "Visita a la comunidad de Rosario"), f.filas.some(x => x && x[5] === "Visita a Quito")], [`registro-filtrado-${hoy}.xlsx`, filtradas, true, false]);
+  await p.close();
+}
+
+/* ---- Sin resultados, un clic doble y un fallo ---- */
 {
   const { p } = await entrar(b, PERS[1].email, PERS[1].name, { viewport: vp, lang: "es", base: datos() });
-  await p.click('[data-action="feed-planilla"]'); await p.waitForSelector("#planillaOverlay:not([hidden])");
-  await p.click('#planillaBody [data-action="planilla-grupo"][data-key="texto"]');
-  await p.click('#planillaBody [data-action="planilla-grupo"][data-key="personas"]');
-  await p.click('#planillaBody [data-action="planilla-grupo"][data-key="cierre"]');
-  eq("desmarcar tres grupos: quedan 5 grupos y 16 columnas", [(await opciones(p, "planilla-grupo")).filter(x => x.on).map(x => x.k), await p.$eval("#planillaBody .rs-h b", e => e.textContent)], [["fechas", "actividad", "lugares", "estado", "extra"], "16 columnas"]);
-  eq("los chips son botones que dicen si están marcados (para el lector de pantalla)", await p.$$eval('#planillaBody [data-action="planilla-grupo"]', l => l.map(e => e.getAttribute("aria-pressed") + e.getAttribute("role")).slice(0, 3)), ["truecheckbox", "truecheckbox", "falsecheckbox"]);
-  await p.click('#planillaBody [data-action="planilla-formato"][data-key="csv"]');
-  const r = await bajar(p, () => p.click('[data-action="planilla-bajar"]'));
-  eq("baja un CSV con solo las columnas elegidas, separadas, con BOM para los acentos", [r.nombre, r.texto.charCodeAt(0), r.filas[0]],
-    [`registro-${hoy}.csv`, 0xFEFF, ["Desde", "Hasta", "Año", "Mes", "Tipo", "Título", "Países", "Ciudades", "Zonas", "Alcance", "Dónde", "Estado", "Proyecto", "Se repite", "Cargado el", "Enlace"].map(x => x)]);
-  eq("en el CSV, un título que empieza con = lleva un apóstrofo delante", r.filas.some(f => f[5] === `'=HYPERLINK("http://x")`), true);
-  // Lo elegido se recuerda.
-  await p.click('[data-action="feed-planilla"]'); await p.waitForSelector("#planillaOverlay:not([hidden])");
-  eq("al volver a abrir, se acuerda de las columnas y del formato", [(await opciones(p, "planilla-grupo")).filter(x => !x.on).map(x => x.k), (await opciones(p, "planilla-formato")).find(x => x.on).k], [["texto", "personas", "cierre"], "csv"]);
-  // Sin ninguna columna, no se puede bajar.
-  for(const g of ["fechas", "actividad", "lugares", "estado", "extra"]) await p.click(`#planillaBody [data-action="planilla-grupo"][data-key="${g}"]`);
-  eq("sin ninguna columna: el botón de bajar se apaga y lo explica", [(await boton(p)).off, await p.$eval("#planillaBody .form-error", e => e.textContent.trim())], [true, "Marcá al menos un grupo de columnas."]);
-  // Escape y Cancelar.
-  await p.keyboard.press("Escape");
-  eq("Escape cierra la ventana y el foco vuelve a la flecha", [await abierta(p), await p.evaluate(() => document.activeElement && document.activeElement.dataset.action)], [false, "feed-planilla"]);
-  await p.click('[data-action="feed-planilla"]'); await p.waitForSelector("#planillaOverlay:not([hidden])");
-  await p.click('#planillaBody [data-action="planilla-cerrar"]');
-  eq("Cancelar también la cierra", await abierta(p), false);
+  await p.fill("#feedSearch", "zzzzzz-nada"); await p.waitForTimeout(700);
+  eq("con un filtro que no deja nada: la leyenda dice 0 de todas", (await leyenda(p))[0], `Bajar lo filtrado: 0 de ${total} actividades`);
+  let sinBajar = true; const oyente = () => { sinBajar = false; }; p.on("download", oyente);
+  await p.click(flecha); await p.waitForTimeout(500); p.off("download", oyente);
+  eq("…y el clic no baja nada: avisa que no hay", [sinBajar, await aviso(p)], [true, "⚠️ No hay actividades para bajar con estos filtros."]);
+  await p.fill("#feedSearch", ""); await p.waitForTimeout(700);
+
+  // Dos clics seguidos: baja una sola vez.
+  let bajadas = 0; p.on("download", () => { bajadas++; });
+  await p.evaluate(sel => { const e = document.querySelector(sel); e.click(); e.click(); e.click(); }, flecha);
+  await p.waitForTimeout(1500);
+  eq("tres clics seguidos bajan un solo archivo", bajadas, 1);
+
+  // Un fallo al armar el archivo: un aviso, y se puede volver a probar.
+  await p.evaluate(() => { window.__crear = URL.createObjectURL; URL.createObjectURL = () => { throw new Error("sin lugar"); }; });
+  await p.click(flecha);
+  await p.waitForFunction(() => { const o = document.getElementById("confirmOverlay"); return o && !o.hidden; });
+  eq("si falla armarlo, avisa con el motivo", await p.evaluate(() => document.getElementById("confirmOverlay").textContent.replace(/\s+/g, " ").trim().includes("No se pudo armar la planilla (sin lugar)")), true);
+  await p.keyboard.press("Escape"); await p.waitForTimeout(300);
+  await p.evaluate(() => { URL.createObjectURL = window.__crear; });
+  const r = await bajar(p, () => p.click(flecha));
+  eq("…y después de un fallo vuelve a bajar", r.filas.length - 1, total);
+  await p.close();
+}
+
+/* ---- Lo que alguien dejó guardado de la ventana de antes no cambia nada ---- */
+{
+  const { p } = await entrar(b, PERS[1].email, PERS[1].name, { viewport: vp, lang: "es", base: datos() });
+  await p.evaluate(() => localStorage.setItem("ra_planilla", JSON.stringify({ sin: ["texto", "personas"], formato: "csv" })));
+  const r = await bajar(p, () => p.click(flecha));
+  eq("con columnas y formato guardados por la ventana vieja, igual baja el .xlsx con las 25 columnas", [r.nombre, r.filas[0].length], [`registro-${hoy}.xlsx`, 25]);
   await p.close();
 }
 
 /* ---- En hebreo y en el celular ---- */
 {
   const { p } = await entrar(b, PERS[1].email, PERS[1].name, { viewport: { width: 390, height: 800 }, lang: "he", base: datos() });
-  eq("en hebreo la leyenda del botón está traducida", await p.$eval('[data-action="feed-planilla"]', e => [e.textContent.trim(), e.title]), ["⬇", "הורדת גיליון"]);
-  await p.click('[data-action="feed-planilla"]'); await p.waitForSelector("#planillaOverlay:not([hidden])");
-  eq("en el celular la ventana entra en la pantalla y no se corre de costado", await p.evaluate(() => { const m = document.querySelector("#planillaOverlay .modal").getBoundingClientRect(); return [m.left >= 0 && m.right <= innerWidth + 1, document.documentElement.scrollWidth <= innerWidth + 1]; }), [true, true]);
-  const r = await bajar(p, () => p.click('[data-action="planilla-bajar"]'));
+  eq("en hebreo la leyenda de la flecha está traducida", (await leyenda(p))[0].startsWith("הורדת גיליון"), true);
+  eq("en el celular la flecha se ve entera y la página no se corre de costado", await p.evaluate(sel => { const r = document.querySelector(sel).getBoundingClientRect(); return [r.left >= 0 && r.right <= innerWidth + 1 && r.width >= 32, document.documentElement.scrollWidth <= window.innerWidth + 1]; }, flecha), [true, true]);
+  const r = await bajar(p, () => p.click(flecha));
   eq("en hebreo, el .xlsx se abre de derecha a izquierda y los títulos están en hebreo", [/rightToLeft="1"/.test(r.zip.archivos["xl/worksheets/sheet1.xml"]), r.filas[0].slice(0, 3)], [true, ["מתאריך", "עד תאריך", "שנה"]]);
   await p.close();
 }
