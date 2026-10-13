@@ -101,7 +101,7 @@ quedó resuelta como la 4 (tendencias automáticas, sin etiquetas a mano).
 
 ## Ajustes que pidió el usuario después (13/10/2026)
 
-Con lo ya hecho a la vista, pidió retoques; todos hechos, en las tandas 79 a 82 de `docs/REDISENO.md`:
+Con lo ya hecho a la vista, pidió retoques; todos hechos, en las tandas 79 a 83 de `docs/REDISENO.md`:
 
 - **Pasos de «Lo que sigue»**: «No es tarea» a la derecha, en la fila de la fecha, y los textos largos con «más / menos» (tanda 79).
 - **Temas**: que junte las palabras que van pegadas («krav maga» es una sola idea) en lugar de contar palabras sueltas (tanda 80).
@@ -113,6 +113,7 @@ Con lo ya hecho a la vista, pidió retoques; todos hechos, en las tandas 79 a 82
 - **«Presentar» con más para mostrar** (opción 2 de lo que se le propuso): diapositivas «Lo más destacado» y «El equipo y de qué se
   habló», con un botón para mostrar u ocultar los nombres (tanda 82). La opción 1 (un diseño más colorido en todas las diapositivas)
   no se eligió.
+- **El «Me gusta»**: un solo ícono, la ramita de olivo del logo de Sala Segura, en lugar del corazón/pulgar (tanda 83).
 - **Ejemplos de los correos**: el workflow «Ejemplos de los correos» le manda al admin un ejemplo de «Lugares sin actividad» y del
   «Informe mensual» sin esperar al primer lunes ni al día 1.
 

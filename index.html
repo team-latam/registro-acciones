@@ -57,6 +57,7 @@
     --petroleo-dark:#082a2c;
     --celeste:#4fc7e0;
     --celeste-dark:#1a9fb8;
+    --olivo:#009869;
     /* El celeste de la marca sirve para fondos y bordes, pero como letra
        chica sobre blanco da 3,1 de contraste (el mínimo es 4,5). Lo que es
        texto («Ver la ficha ›», «Volver», el teléfono, «Ver más», los
@@ -1663,6 +1664,10 @@
   .post-actions button.liked{ color:var(--celeste-dark); }
   /* "Me gusta" + "(2)": dos botones que se leen como uno. El número abre
      la lista; al pasar el mouse, la burbuja con los primeros cuatro. */
+  /* La ramita del «Me gusta»: un poco más grande que la letra y con un borde fino del mismo color, para que se lea chica, sobre todo en el
+     celular, donde es lo único que queda del botón. Apagada: el color del texto, más suave; encendida: el verde del logo. */
+  .ico-gusta{ width:1.8em; height:1.8em; vertical-align:-.4em; margin:-.15em 0; fill:currentColor; stroke:currentColor; stroke-width:14; stroke-linejoin:round; opacity:.62; }
+  .ico-gusta.on{ fill:var(--olivo); stroke:var(--olivo); opacity:1; }
   .gusta{ display:inline-flex; align-items:center; gap:4px; }
   .post-actions .gusta .gustan, .reply-actions .gusta .gustan{ position:relative; text-decoration:underline dotted transparent; text-underline-offset:3px; }
   .post-actions .gusta .gustan:hover, .reply-actions .gusta .gustan:hover{ text-decoration-color:currentColor; color:var(--celeste-dark); }
@@ -4349,6 +4354,10 @@
 </style>
 </head>
 <body>
+  <!-- La ramita de olivo del «Me gusta» (el logo de Sala Segura): un solo dibujo que se reusa con <use>. La estrella es un
+       recorte (clip-path con regla evenodd), no una forma de otro color: así se ve el fondo por la estrella en claro, en oscuro y con el
+       ícono apagado, y el borde que engorda las hojas no se la come. -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs><clipPath id="icoOlivoCorte"><path clip-rule="evenodd" d="M0 0H700V700H0Z M 425.57 112.99 L 449.09 92.72 L 442.67 62.78 C 442.51 62.08 443.20 61.49 443.90 61.71 L 473.86 71.37 L 493.89 54.11 L 493.89 54.10 L 496.93 51.49 C 497.48 51.02 498.34 51.30 498.49 51.99 L 504.80 81.35 L 534.76 91.01 C 535.28 91.18 535.51 91.72 535.37 92.17 C 535.32 92.32 535.22 92.47 535.09 92.59 L 511.57 112.86 L 518.00 142.79 C 518.15 143.49 517.46 144.09 516.77 143.86 L 512.90 142.61 L 486.81 134.20 L 463.73 154.09 C 463.19 154.56 462.32 154.28 462.17 153.59 L 461.34 149.72 L 455.86 124.23 L 425.90 114.56 C 425.21 114.34 425.02 113.46 425.57 112.99"/></clipPath><symbol id="icoOlivo" viewBox="15 15 580 569"><path d="M 568.804688 378.691406 C 529.199219 333.621094 485.515625 309.441406 438.964844 306.828125 C 432.699219 306.476562 426.625 306.546875 420.753906 306.941406 C 429.292969 294.027344 437.167969 280.707031 444.332031 267.003906 C 460.617188 259.917969 502.066406 238.0625 523.484375 192.011719 C 542.644531 150.804688 540.808594 102.082031 518.019531 47.1875 L 507.980469 23.007812 L 484.96875 36.371094 C 432.726562 66.703125 401.007812 104.445312 390.6875 148.542969 C 380.722656 191.125 393.886719 228.09375 403.179688 247.1875 C 395.289062 262.21875 386.464844 276.734375 376.757812 290.699219 C 375.453125 279.8125 372.820312 268.371094 368.234375 256.71875 C 351.5625 214.359375 314.566406 181.222656 258.269531 158.230469 L 233.472656 148.101562 L 227.085938 173.523438 C 212.675781 230.859375 218.023438 279.28125 242.988281 317.4375 C 260.625 344.394531 284.746094 360.722656 304.476562 370.328125 C 288.207031 384.171875 270.832031 396.855469 252.425781 408.257812 C 246.40625 411.988281 240.285156 415.546875 234.097656 418.96875 C 235.496094 400.082031 233.75 377.40625 224.125 354.035156 C 206.78125 311.933594 169.257812 279.355469 112.609375 257.207031 L 87.648438 247.449219 L 81.667969 272.96875 C 68.171875 330.519531 74.296875 378.855469 99.863281 416.632812 C 111.964844 434.515625 126.910156 447.585938 141.433594 457.070312 C 103.074219 467.9375 63.234375 473.648438 23.234375 473.871094 L 23.234375 518.550781 C 79.699219 518.261719 135.878906 508.113281 188.738281 488.808594 C 198.410156 508.769531 216.707031 536.3125 249.222656 555.109375 C 273.085938 568.902344 300.496094 575.808594 331.164062 575.808594 C 352.007812 575.808594 374.359375 572.617188 398.117188 566.226562 L 424.125 559.234375 L 412.863281 535.367188 C 387.476562 481.570312 352.292969 446.738281 308.28125 431.835938 C 306.019531 431.070312 303.769531 430.390625 301.53125 429.753906 C 316.074219 419.460938 329.949219 408.386719 343.140625 396.609375 C 358.371094 412.746094 382.816406 432.335938 417.136719 441.175781 C 429.414062 444.339844 441.996094 445.917969 454.863281 445.917969 C 489.183594 445.917969 525.503906 434.675781 563.289062 412.300781 L 586.339844 398.648438 Z M 568.804688 378.691406 " clip-path="url(#icoOlivoCorte)"/></symbol></defs></svg>
   <a class="skip-link" id="skipLink" href="#viewRoot">Saltar al contenido</a>
 <div id="app">
   <header class="topbar">
@@ -6028,6 +6037,9 @@ function personaQueGusta(email){
 // me gusta; el número abre la lista de quiénes, sin darlo. Al pasar el
 // mouse por el número, los primeros tres, uno por renglón.
 const GUSTAN_EN_LA_BURBUJA = 3;
+// El «Me gusta»: la ramita de olivo, siempre la misma; apagada (gris) si todavía no te gustó y verde si ya (pedido del usuario,
+// 13/10/2026: antes cambiaba de un corazón a un pulgar).
+function iconoGusta(on){ return `<svg class="ico-gusta${on ? " on" : ""}" viewBox="0 0 580 569" aria-hidden="true" focusable="false"><use href="#icoOlivo"/></svg>`; }
 function gustanHtml(likedBy, postId, replyId){
   const n = (likedBy||[]).length;
   if(!n) return "";
@@ -16092,8 +16104,8 @@ function renderPostCard(post, replies){
       ${imagesHtml ? `<div class="post-images">${imagesHtml}</div>` : ""}
       ${renderPostedFiles(archivosSueltos(post.files, post.activityType), {postId: post.id, todos: post.files || [], puede: canEditPost(post)})}
       <div class="post-actions">
-        ${canWrite() ? `<span class="gusta"><button data-action="toggle-like" data-post-id="${esc(post.id)}" class="${postLiked?"liked":""}" aria-label="${esc(t("Me gusta","Like","Curtir","לייק"))}" aria-pressed="${postLiked}">${postLiked?"👍":"🤍"}<span class="pa-l"> ${t("Me gusta","Like","Curtir","לייק")}</span></button>${gustanHtml(postLikedBy, post.id)}</span>
-        <button data-action="toggle-reply" data-post-id="${esc(post.id)}" class="${replies.length && !threadOpen ? "pa-pc" : ""}" aria-label="${esc(t("Responder","Reply","Responder","תגובה"))}">💬<span class="pa-l"> ${t("Responder","Reply","Responder","תגובה")}</span></button>` : (postLikedBy.length ? `<span class="gusta post-likes-ro">👍 ${gustanHtml(postLikedBy, post.id)}</span>` : "")}
+        ${canWrite() ? `<span class="gusta"><button data-action="toggle-like" data-post-id="${esc(post.id)}" class="${postLiked?"liked":""}" aria-label="${esc(t("Me gusta","Like","Curtir","לייק"))}" aria-pressed="${postLiked}">${iconoGusta(postLiked)}<span class="pa-l"> ${t("Me gusta","Like","Curtir","לייק")}</span></button>${gustanHtml(postLikedBy, post.id)}</span>
+        <button data-action="toggle-reply" data-post-id="${esc(post.id)}" class="${replies.length && !threadOpen ? "pa-pc" : ""}" aria-label="${esc(t("Responder","Reply","Responder","תגובה"))}">💬<span class="pa-l"> ${t("Responder","Reply","Responder","תגובה")}</span></button>` : (postLikedBy.length ? `<span class="gusta post-likes-ro">${iconoGusta(true)} ${gustanHtml(postLikedBy, post.id)}</span>` : "")}
         ${replies.length ? `<button data-action="toggle-thread" data-post-id="${esc(post.id)}" aria-label="${esc(commentsLabel)}" aria-expanded="${threadOpen}"><span class="pa-pc">${threadOpen ? "▲ " + t("Ocultar","Hide","Ocultar","הסתרה") : "▼ " + t("Ver","View","Ver","הצגה")} ${commentsLabel}</span><span class="pa-cel" aria-hidden="true">💬 ${replies.length}${threadOpen ? " ▲" : ""}</span></button>` : ""}
         ${post.isProject
           ? `<button data-action="toggle-project" data-post-id="${esc(post.id)}" class="${openProjects.has(post.id)?"active":""}">📋 ${openProjects.has(post.id) ? t("Ocultar proyecto","Hide project","Ocultar projeto","הסתרת פרויקט") : t("Ver proyecto","View project","Ver projeto","הצגת פרויקט")}${postMilestones(post).length ? ` (${postMilestones(post).filter(m=>m.done).length}/${postMilestones(post).length})` : ""}</button>`
@@ -16234,7 +16246,7 @@ function renderReply(r){
       ${renderPostedFiles(r.files, {postId: r.postId, replyId: r.id})}
       ${(!r.system && canWrite()) || isFixedAdmin() || tr.toggleHtml ? `
       <div class="reply-actions">
-        ${!r.system && canWrite() ? `<span class="gusta"><button data-action="toggle-like" data-post-id="${esc(r.postId)}" data-reply-id="${esc(r.id)}" class="${liked?"liked":""}" aria-pressed="${liked}">${liked?"👍":"🤍"} ${t("Me gusta","Like","Curtir","לייק")}</button>${gustanHtml(likedBy, r.postId, r.id)}</span>
+        ${!r.system && canWrite() ? `<span class="gusta"><button data-action="toggle-like" data-post-id="${esc(r.postId)}" data-reply-id="${esc(r.id)}" class="${liked?"liked":""}" aria-pressed="${liked}">${iconoGusta(liked)} ${t("Me gusta","Like","Curtir","לייק")}</button>${gustanHtml(likedBy, r.postId, r.id)}</span>
         <button data-action="toggle-nested-reply" data-reply-id="${esc(r.id)}">↩ ${t("Responder","Reply","Responder","תגובה")}</button>` : ""}
         ${tr.toggleHtml}
         ${isFixedAdmin() ? `<button class="danger" data-action="delete-reply" data-post-id="${esc(r.postId)}" data-reply-id="${esc(r.id)}">🗑️ ${t("Borrar","Delete","Apagar","מחיקה")}</button>` : ""}
