@@ -4184,6 +4184,7 @@
   /* Las dos solapas del Inicio (M4) */
   .feed-solapas-fila{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:14px; }
   .feed-solapas-fila .feed-orden{ flex:none; }
+  .feed-chips{ display:flex; align-items:center; gap:6px; flex:none; }
   .feed-solapas{ display:flex; background:var(--card); border:1px solid var(--border); border-radius:999px; padding:3px; width:max-content; max-width:100%; min-width:0; }
   .feed-solapas button{ border:0; background:none; border-radius:999px; padding:7px 16px; font:inherit; font-weight:700; font-size:13.5px; color:var(--text-muted); cursor:pointer; display:flex; gap:6px; align-items:center; justify-content:center; }
   .feed-solapas button.on{ background:var(--petroleo); color:#fff; }
@@ -13590,6 +13591,18 @@ function renderCopiaSection(){
           </div>
         </div>
         <div class="setting-row">
+          <span class="setting-icon">📊</span>
+          <div class="setting-text">
+            <div class="setting-label">${t("Todo {a} en planilla","All of {a} as a spreadsheet","Todo {a} em planilha","כל {a} כגיליון",{ a: todayISO().slice(0, 4) })}</div>
+            <div class="setting-sub">${t(
+              "Las actividades del año, una fila cada una (fecha, tipo, lugares, personas, quién la cargó), en una planilla que abre Excel. Lo que se repite va en una sola fila. No incluye fotos ni archivos.",
+              "The year's activities, one row each (date, type, places, people, who logged it), in a spreadsheet Excel opens. Anything that repeats takes a single row. No photos or files.",
+              "As atividades do ano, uma linha cada (data, tipo, lugares, pessoas, quem registrou), numa planilha que o Excel abre. O que se repete vai numa só linha. Sem fotos nem arquivos.",
+              "פעילויות השנה, שורה לכל אחת (תאריך, סוג, מקומות, אנשים, מי רשם), בגיליון ש-Excel פותח. מה שחוזר מופיע בשורה אחת. בלי תמונות וקבצים.")}</div>
+            <div class="copia-botones"><button type="button" class="btn-secondary" data-action="anio-planilla">⬇ ${t("Bajar todo {a}","Download all of {a}","Baixar todo {a}","הורדת כל {a}",{ a: todayISO().slice(0, 4) })}</button></div>
+          </div>
+        </div>
+        <div class="setting-row">
           <span class="setting-icon">💾</span>
           <div class="setting-text">${renderMedidorBucket()}</div>
         </div>
@@ -14556,7 +14569,15 @@ function renderSolapasDelFeed(pasados, futuros){
   return `<div class="feed-solapas-fila"><div class="feed-solapas" role="group" aria-label="${esc(t("Qué mostrar","What to show","O que mostrar","מה להציג"))}">
     ${b("pasado", t("Lo que pasó","What happened","O que aconteceu","מה קרה"), pasados.length)}
     ${b("futuro", t("Próximos","Upcoming","Próximos","בקרוב"), futuros.length)}
-  </div>${renderChipDeOrden()}</div>`;
+  </div><div class="feed-chips">${renderChipDeOrden()}${renderChipDePlanilla(feedSolapa === "futuro" ? futuros : pasados)}</div></div>`;
+}
+// «Planilla» (propuesta 5, 13/10/2026): baja lo que la solapa muestra con los
+// filtros puestos, entero y no solo las 15 tarjetas pintadas. Solo para quien
+// carga eventos, igual que la planilla de la Agenda.
+function renderChipDePlanilla(lista){
+  if(!canWrite() || !lista.length) return "";
+  const largo = t("Bajar en planilla lo que se ve ({n})","Download what you see as a spreadsheet ({n})","Baixar em planilha o que você vê ({n})","הורדת מה שמוצג כגיליון ({n})",{ n: lista.length });
+  return `<button type="button" class="chip-toggle feed-planilla" data-action="feed-planilla" title="${esc(largo)}" aria-label="${esc(largo)}">⬇<span class="lp-ancho"> ${t("Planilla","Spreadsheet","Planilha","גיליון")}</span></button>`;
 }
 // Reportes cuenta cada vez que se repite una rutina (una reunión semanal son 15 en el año) y el Inicio la
 // muestra en una sola tarjeta: tocás «Argentina 17» y la lista tiene 3 posteos. Con un período puesto (al
@@ -16306,6 +16327,36 @@ function descargarTexto(nombre, texto, tipo){
   const a = document.createElement("a");
   a.href = url; a.download = nombre; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(()=> URL.revokeObjectURL(url), 1000);
+}
+// Las actividades como planilla (propuesta 5, 13/10/2026): una fila por
+// posteo, con lo que dice la tarjeta. Lo bajan quienes cargan eventos desde
+// el Inicio (lo que muestra la solapa, con los filtros puestos) y el admin
+// desde Administración (un año entero). Una serie que se repite es una sola
+// fila: «Se repite» dice cada cuánto, no se multiplica por las veces.
+function csvDeActividades(posts){
+  const hoy = todayISO();
+  const filas = [[t("Fecha","Date","Data","תאריך"), t("Hasta","Until","Até","עד"), t("Tipo","Type","Tipo","סוג"), t("Título","Title","Título","כותרת"),
+    t("Lugares","Places","Lugares","מקומות"), t("Dónde","Where","Onde","היכן"), t("Personas","People","Pessoas","אנשים"), t("Cargó","Logged by","Registrou","נרשם על ידי"),
+    t("Estado","Status","Situação","מצב"), t("Se repite","Repeats","Repete","חוזר")]];
+  posts.forEach(p => {
+    const ini = p.startDate || p.date || "";
+    const ty = ACTIVITY_BY_KEY[p.activityType];
+    filas.push([ini, p.endDate && p.endDate !== ini ? p.endDate : "", ty ? ty.label : (p.activityType || ""), p.title || "",
+      (Array.isArray(p.scopes) ? p.scopes : []).map(scopeLabel).filter(Boolean).join(" / "), p.location || "",
+      (Array.isArray(p.participants) ? p.participants : []).map(x => x && x.name).filter(Boolean).join(", "), p.authorName || p.authorEmail || "",
+      p.cancelled ? t("Cancelada","Cancelled","Cancelada","בוטל") : esProximo(p, hoy) ? t("Planificada","Planned","Planejada","מתוכנן") : t("Hecha","Done","Feita","בוצע"),
+      isRecurring(p) ? recurrenceLabel(p) : ""]);
+  });
+  return filas.map(f => f.map(celdaCsv).join(";")).join("\r\n");
+}
+// Todo lo de un año, para la planilla del admin: lo que cae adentro (una
+// serie que se repite entra si alguna de sus fechas cae), y también lo
+// cancelado, que figura como tal.
+function actividadesDelAnio(anio){
+  const d = `${anio}-01-01`, h = `${anio}-12-31`;
+  const ini = p => String(p.startDate || p.date || "");
+  return state.posts.filter(p => ini(p) && (p.cancelled ? ini(p) <= h && String(p.endDate || ini(p)) >= d : vecesEnVentana(p, d, h) > 0))
+    .sort((a, b) => ini(a).localeCompare(ini(b)) || String(a.title || "").localeCompare(String(b.title || "")));
 }
 
 function trimestresDelReporte(){
@@ -23828,6 +23879,12 @@ document.addEventListener("click", async e=>{
     "reporte-csv": async (el, e, action, postId) => {
     const r = reporteEnPantalla;
     if(r) descargarTexto(`registro-reporte-${r.desde}-${r.hasta}.csv`, csvDelReporte());
+  },
+    "feed-planilla": async () => {
+    if(canWrite()) descargarTexto(`actividades-${feedSolapa === "futuro" ? "proximas-" : ""}${todayISO()}.csv`, csvDeActividades(sortedFeedPosts().map(it => it.post)));
+  },
+    "anio-planilla": async () => {
+    if(isAdmin()){ const anio = todayISO().slice(0, 4); descargarTexto(`registro-${anio}.csv`, csvDeActividades(actividadesDelAnio(anio))); }
   },
     "reporte-imprimir": async (el, e, action, postId) => {
     window.print();
