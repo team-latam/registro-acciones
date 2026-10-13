@@ -3193,6 +3193,18 @@
   .rep-delta{ font-size:12px; font-weight:800; color:var(--text-muted); white-space:nowrap; }
   .rep-delta.sube{ color:var(--ok-text, #15803d); } .rep-delta.baja{ color:var(--danger-text, #b91c1c); }
   .rep-kpi .rep-delta{ display:block; margin-top:4px; }
+  /* Temas: una fila por palabra con su minigráfico de 90 días en seis tramos. */
+  .rep-lista-temas{ list-style:none; margin:0; padding:0; display:grid; }
+  .rep-lista-temas li{ border-top:1px solid var(--border); }
+  .rep-lista-temas li:first-child{ border-top:0; }
+  .rep-tema{ all:unset; box-sizing:border-box; width:100%; display:grid; grid-template-columns:minmax(0,1fr) 54px auto; gap:10px; align-items:center; padding:9px 4px; cursor:pointer; border-radius:8px; }
+  .rep-tema:hover{ background:var(--surface-hover); }
+  .rep-tema:focus-visible{ outline:2px solid var(--celeste-dark); outline-offset:-2px; }
+  .rep-tema-txt{ display:grid; gap:1px; min-width:0; }
+  .rep-tema-txt b{ font-size:13.5px; overflow-wrap:anywhere; }
+  .rep-tema-txt small{ font-size:11.5px; color:var(--text-muted); }
+  .rep-spark{ display:flex; align-items:flex-end; gap:2px; height:20px; }
+  .rep-spark i{ flex:1; background:var(--celeste-dark); border-radius:1px; min-height:2px; opacity:.85; }
   .rep-tabla-envoltorio{ overflow-x:auto; }
   .rep-tabla{ width:100%; border-collapse:collapse; font-size:13px; font-variant-numeric:tabular-nums; }
   .rep-tabla th{ font-size:11.5px; font-weight:800; color:var(--text-muted); text-align:end; padding:5px 8px; white-space:nowrap; }
@@ -9984,6 +9996,7 @@ const DATE_FIELD_SPECS = {
     // antes del nuevo inicio, se corre junto.
     set: (ds, iso) => {
       composerDraft.startDate = iso;
+      composerDraft.fechaPropuestaDe = "";   // ya la eligió la persona: el aviso de «la propuse yo» sobra
       if(composerDraft.endDate < iso) composerDraft.endDate = iso;
       // Si los días de la repetición todavía son los que se pusieron
       // solos, siguen a la fecha. Sin esto, elegir "cada semana" un lunes
@@ -16699,6 +16712,7 @@ function renderReportePeriodo(f){
       ${bloqueDeBarras(t("Por tipo","By type","Por tipo","לפי סוג"), tipos, "")}
     </div>`)
     + renderSugerencias(v, r, rAnterior, f)
+    + renderTemas(f)
     + seccionDelReporte(t("Equipo y cobertura","Team and coverage","Equipe e cobertura","צוות וכיסוי"), "",
         `<div class="rep-extras">${renderEquipoDelReporte(r)}${renderCobertura(f)}</div>`) + `
     <div class="rep-notas">${notas.map(n=>`<div>· ${esc(n)}</div>`).join("")}</div>`;
@@ -16790,6 +16804,7 @@ function renderReporteHistorico(f){
       ${tablaEvolucion(t("Evolución por país","Evolution by country","Evolução por país","התפתחות לפי מדינה"), paises, (r, k) => r.porPais[k] || 0, k => esc(countryLabel(k)))}
       ${tablaEvolucion(t("Evolución por tipo","Evolution by type","Evolução por tipo","התפתחות לפי סוג"), tipos, (r, k) => r.porTipo[k] || 0, etiquetaTipo)}
     </div>`)
+    + renderTemas(f)
     + seccionDelReporte(t("Equipo y cobertura","Team and coverage","Equipe e cobertura","צוות וכיסוי"), "",
         `<div class="rep-extras">${renderEquipoDelReporte(todo)}${renderCobertura(f)}</div>`);
 }
@@ -16903,6 +16918,122 @@ function renderCobertura(f){
   return `<div class="rep-bloque rep-cobertura"><h3>${t("Última actividad por país","Latest activity by country","Última atividade por país","פעילות אחרונה לפי מדינה")}</h3>
     <div class="rep-bloque-nota" style="margin:-4px 0 8px">${t("Primero los que hace más tiempo que no tienen nada propio.","Those with the longest gap first.","Primeiro os que há mais tempo não têm nada próprio.","קודם אלה שהכי הרבה זמן אין בהם כלום.")}</div>
     <ul class="rep-lista">${filas.map(([n, fecha]) => `<li><span>${esc(countryLabel(n))}</span><span class="${fecha < anioAtras ? "rep-viejo" : ""}" title="${esc(fmtDate(fecha))}">${esc(haceCuanto(fecha))}</span></li>`).join("")}</ul></div>`;
+}
+
+// ---- Temas ----
+// De qué se habló, sin etiquetar nada (pedido del usuario el 13/10/2026,
+// propuesta 4-A de la segunda vuelta): las palabras de los títulos y los
+// textos de los últimos 90 días, contadas contra las de los 90 anteriores.
+// Se calcula acá, en el navegador, con lo que ya está cargado: nada sale de la
+// app. Cuenta posteos (una palabra repetida diez veces en un texto es una
+// mención), no apariciones, y deja afuera lo que no es un tema: palabras de
+// relleno en los cuatro idiomas, los nombres de los lugares y de la gente del
+// propio posteo, direcciones web y @menciones.
+const TEMAS_DIAS = 90;
+const TEMAS_TRAMOS = 6;
+const TEMAS_MIN = 3;
+const TEMAS_MAX = 10;
+const TEMAS_RELLENO = new Set(normalize(`
+  para como pero sino este esta esto estos estas entre cuando muy sobre tambien hasta donde quien quienes desde todo todos todas toda nos durante
+  otros otras otro otra ese esa eso esos esas ante ellos ellas antes despues algunos algunas algo unos unas tanto mucho muchos mucha muchas nada cual
+  cuales poco pocos ella estar estaba estaban esta estan estamos fue fueron sera seran hace hacer hizo hacen quedo quedaron tiene tienen tuvo tuvieron
+  habia hay puede pueden podemos cada nuevo nueva nuevos nuevas hacia segun tras contra sin con por los las del que una uno unos lo les mas ya mis sus
+  nuestro nuestra nuestros nuestras vamos van vez veces manera forma parte partes tema temas punto puntos dia dias semana semanas mes meses ano anos
+  hoy ayer manana tarde noche primero primera primeros segundo segunda tercera ademas asi aun aunque porque pues luego entonces mientras solo sola
+  tambien tras ver vio vimos hablamos hablo hablaron quedamos acordamos acordo acordaron pendiente pendientes falta faltan faltaron
+  visita visitas reunion reuniones curso cursos seminario seminarios congreso congresos evento eventos actividad actividades llamado llamados virtual
+  rutina rutinas equipo charla charlas
+  the and for with that this from have has had were was are been will would should could about into over after before their there them they what when
+  where which while also than then them these those your you our not but all any can did does done get got its just more most much other some such
+  only same very each both few many make made new now off one out own per see she him her his how who why use used using way
+  com uma uns umas dos das nos nas pelo pela pelos pelas isso isto essa esse essas esses aquele aquela entre sobre ate quando muito mais mas porque
+  tambem ainda depois antes foram esta estao estava tem tinha tinham pode podem cada outro outra outros outras toda todo todas todos nosso nossa
+  reuniao reunioes visitas curso cursos evento eventos atividade atividades
+`).split(/\s+/).filter(Boolean));
+const TEMAS_RELLENO_HE = new Set("של את על עם כל לא גם או אבל אם כי זה זאת הוא היא הם הן אני אנחנו היה היו יש אין מה מי איך למה מאוד עוד רק כבר אחרי לפני בין ליד אל מן עד פגישה ביקור קורס אירוע".split(" "));
+// Las palabras de un texto, en forma canónica: sin tildes, en minúscula y sin la
+// s final («cámara» y «cámaras» son un mismo tema). Devuelve [clave, como se escribió].
+function palabrasDeTema(texto){
+  const limpio = String(texto || "").replace(/https?:\/\/\S+|www\.\S+|\S+@\S+|@\w+/gi, " ");
+  const salida = [];
+  (limpio.match(/[\p{L}][\p{L}'’]*/gu) || []).forEach(w => {
+    const hebreo = /[\u0590-\u05FF]/.test(w);
+    if(w.length < (hebreo ? 3 : 4)) return;
+    let k = hebreo ? w.replace(/[\u0591-\u05C7]/g, "") : normalize(w);
+    if(hebreo ? TEMAS_RELLENO_HE.has(k) : TEMAS_RELLENO.has(k)) return;
+    if(!hebreo && k.length > 4 && k.endsWith("s") && !k.endsWith("ss")) k = k.slice(0, -1);
+    if(!hebreo && TEMAS_RELLENO.has(k)) return;
+    salida.push([k, w]);
+  });
+  return salida;
+}
+// Los temas, de los más hablados a los menos. `posts` ya viene filtrado (el
+// «Ver solo» del reporte). Cada tema: { k, palabra, ahora, antes, tramos, tipo }
+// con tipo «sube» / «baja» / «nuevo» / «igual».
+function temasDelReporte(posts, hoy){
+  const desde = addDaysISO(hoy, -(TEMAS_DIAS - 1)), desdeAntes = addDaysISO(hoy, -(2 * TEMAS_DIAS - 1));
+  const cuentas = new Map();
+  let enVentana = 0;
+  posts.forEach(p => {
+    if(p.cancelled) return;
+    const fecha = String(p.startDate || p.date || "");
+    if(!fecha || fecha > hoy || fecha < desdeAntes) return;
+    enVentana++;
+    const ahora = fecha >= desde;
+    // Lo propio del posteo no es un tema: sus lugares, la gente y quien lo cargó.
+    const nombres = [...(p.scopes || []).flatMap(sc => sc ? [sc.city, sc.country, sc.region] : []), ...(p.participants || []).map(x => x && x.name), p.authorName, p.location];
+    const propios = new Set(palabrasDeTema(nombres.filter(Boolean).join(" ")).map(x => x[0]));
+    const tramo = ahora ? Math.min(TEMAS_TRAMOS - 1, Math.floor(diasEntre(desde, fecha) / (TEMAS_DIAS / TEMAS_TRAMOS))) : -1;
+    const vistas = new Set();
+    palabrasDeTema(`${p.title || ""} ${p.content || ""}`).forEach(([k, w]) => {
+      if(propios.has(k) || vistas.has(k)) return;
+      vistas.add(k);
+      let c = cuentas.get(k);
+      if(!c){ c = { k, formas: new Map(), ahora: 0, antes: 0, tramos: new Array(TEMAS_TRAMOS).fill(0) }; cuentas.set(k, c); }
+      c.formas.set(w, (c.formas.get(w) || 0) + 1);
+      if(ahora){ c.ahora++; c.tramos[tramo]++; } else c.antes++;
+    });
+  });
+  if(enVentana < 8) return [];
+  return [...cuentas.values()].filter(c => c.ahora >= TEMAS_MIN || c.antes >= TEMAS_MIN)
+    .map(c => ({ k: c.k, palabra: formaDeTema(c.formas), ahora: c.ahora, antes: c.antes, tramos: c.tramos,
+      tipo: !c.antes && c.ahora >= TEMAS_MIN ? "nuevo"
+        : c.ahora >= 2 * c.antes && c.ahora - c.antes >= 2 ? "sube"
+        : c.antes >= 2 * c.ahora && c.antes - c.ahora >= 2 ? "baja" : "igual" }))
+    .sort((a, b) => (b.ahora + b.antes) - (a.ahora + a.antes) || a.k.localeCompare(b.k))
+    .slice(0, TEMAS_MAX);
+}
+// Cómo se muestra el tema: en minúscula si alguna vez se escribió así (una
+// palabra al principio de un título viene con mayúscula sin serlo), y como
+// se escribió si siempre fue con mayúscula («Pésaj»).
+function formaDeTema(formas){
+  const orden = l => l.sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0][0];
+  const todas = [...formas.entries()];
+  const chicas = todas.filter(([w]) => w === w.toLowerCase());
+  return orden(chicas.length ? chicas : todas);
+}
+function diasEntre(desdeISO, hastaISO){ return Math.round((isoDate(hastaISO) - isoDate(desdeISO)) / 86400000); }
+let temasCache = null;
+function renderTemas(f){
+  // Se guarda por filtro y por datos, como el reporte (si no hay firma, en las páginas de prueba, se arma siempre).
+  const firma = JSON.stringify([f || null]), datos = typeof firmaDeDatos === "function" ? firmaDeDatos() : null;
+  if(!datos || !temasCache || temasCache.firma !== firma || datos.some((x, i) => x !== temasCache.datos[i]))
+    temasCache = { firma, datos, lista: temasDelReporte(state.posts.filter(p => pasaFiltroDelReporte(p, f)), todayISO()) };
+  const lista = temasCache.lista;
+  if(!lista.length) return "";
+  const etiqueta = { sube: t("sube","rising","sobe","עולה"), baja: t("baja","falling","cai","יורד"), nuevo: t("nuevo","new","novo","חדש"), igual: t("igual","steady","igual","יציב") };
+  const fila = x => {
+    const tope = Math.max(1, ...x.tramos);
+    return `<li><button type="button" class="rep-tema" data-action="tema-ir" data-tema="${esc(x.palabra)}" title="${esc(t("Ver en el Inicio las actividades que hablan de «{w}»","See on Home the activities that mention “{w}”","Ver no Início as atividades que falam de «{w}»","הצגת הפעילויות שמזכירות את «{w}» בדף הבית",{ w: x.palabra }))}">
+      <span class="rep-tema-txt"><b dir="auto">${esc(x.palabra)}</b><small>${esc(t("{a} ahora · {b} antes","{a} now · {b} before","{a} agora · {b} antes","{a} עכשיו · {b} קודם",{ a: x.ahora, b: x.antes }))}</small></span>
+      <span class="rep-spark" aria-hidden="true">${x.tramos.map(n => `<i style="height:${Math.max(8, Math.round(n * 100 / tope))}%"></i>`).join("")}</span>
+      <span class="rep-delta ${x.tipo === "sube" || x.tipo === "nuevo" ? "sube" : x.tipo === "baja" ? "baja" : ""}">${x.tipo === "sube" ? "▲ " : x.tipo === "baja" ? "▼ " : ""}${esc(etiqueta[x.tipo])}</span>
+    </button></li>`;
+  };
+  return seccionDelReporte(t("Temas","Topics","Temas","נושאים"),
+    t("De qué se habló en los últimos 90 días, contra los 90 anteriores. Se cuenta con los títulos y textos ya cargados; nada sale de la app.","What was talked about in the last 90 days, against the 90 before. Counted from the titles and texts already in the app; nothing leaves it.","Do que se falou nos últimos 90 dias, contra os 90 anteriores. Contado com os títulos e textos já carregados; nada sai do app.","על מה דובר ב-90 הימים האחרונים, מול 90 הימים שלפניהם. נספר מהכותרות והטקסטים שכבר נטענו; שום דבר לא יוצא מהאפליקציה."),
+    `<div class="rep-bloque rep-temas"><ul class="rep-lista rep-lista-temas">${lista.map(fila).join("")}</ul>
+      <div class="rep-bloque-nota">${esc(t("Cuenta las veces que aparece cada palabra en un posteo, no lo que significa: «seguridad» y «protección» son dos temas. Tocá uno para ver en el Inicio las actividades que lo mencionan.","It counts how many posts use each word, not what it means: “security” and “protection” are two topics. Tap one to see the activities that mention it on Home.","Conta em quantas postagens aparece cada palavra, não o que significa: «segurança» e «proteção» são dois temas. Toque em um para ver no Início as atividades que o mencionam.","סופר בכמה פוסטים מופיעה כל מילה, לא מה היא אומרת: «ביטחון» ו«הגנה» הם שני נושאים. הקש/י על אחד כדי לראות בדף הבית את הפעילויות שמזכירות אותו."))}</div></div>`);
 }
 
 // ---- Equipo ----
@@ -19446,10 +19577,10 @@ function tourSteps(){
       textoMas: true },
     { id:"reportes", cubre:["reportes"], target: [...tourNav("reportes"), TOUR_MAS],
       title: t("Reportes","Reports","Relatórios","דוחות"),
-      text: t("Cuántas actividades hubo por mes, país, tipo y persona, contra el período anterior. Tocá un mes del gráfico para ver su ficha.",
-        "How many activities there were by month, country, type and person, against the previous period. Tap a month in the chart to see its card.",
-        "Quantas atividades houve por mês, país, tipo e pessoa, em relação ao período anterior. Toque em um mês do gráfico para ver a ficha dele.",
-        "כמה פעילויות היו לפי חודש, מדינה, סוג ואדם, מול התקופה הקודמת. הקש/י על חודש בגרף כדי לראות את הכרטיס שלו."),
+      text: t("Cuántas actividades hubo por mes, país, tipo y persona, contra el período anterior, y de qué se habló en los últimos 90 días. Tocá un mes del gráfico para ver su ficha.",
+        "How many activities there were by month, country, type and person, against the previous period, and what was talked about in the last 90 days. Tap a month in the chart to see its card.",
+        "Quantas atividades houve por mês, país, tipo e pessoa, em relação ao período anterior, e do que se falou nos últimos 90 dias. Toque em um mês do gráfico para ver a ficha dele.",
+        "כמה פעילויות היו לפי חודש, מדינה, סוג ואדם, מול התקופה הקודמת, ועל מה דובר ב-90 הימים האחרונים. הקש/י על חודש בגרף כדי לראות את הכרטיס שלו."),
       textoMas: true },
     { id:"novedades", cubre:[], target: ["#mentionsBell .bell-btn"],
       title: t("Novedades","Updates","Novidades","עדכונים"),
@@ -19813,13 +19944,31 @@ function composerIsDirty(){ return snapshotComposer() !== composerSnapshot; }
 // gente, título, texto), pero como evento NUEVO: fechado hoy con la misma
 // duración, sin adjuntos, sin repetición y sin editingPost, así se
 // publica aparte y el original queda como estaba.
+// Repetir un evento de hace más de 6 meses casi siempre es repetir el de
+// todos los años (el curso, el congreso): en vez de hoy se propone la próxima
+// vez que cae ese día, la misma fecha del año que viene (13/10/2026, segunda
+// vuelta de propuestas, 2-A). Uno más reciente se repite desde hoy, como
+// siempre. Devuelve null si no corresponde proponer nada.
+function fechaParaRepetir(inicio, hoy){
+  if(!/^[1-9]\d{3}-\d{2}-\d{2}$/.test(String(inicio || "")) || inicio > addDaysISO(hoy, -183)) return null;
+  const md = inicio.slice(5);
+  const bisiesto = a => (a % 4 === 0 && a % 100 !== 0) || a % 400 === 0;
+  // Un 29 de febrero cae el 28 en los años que no son bisiestos.
+  const cae = a => md === "02-29" && !bisiesto(a) ? `${a}-02-28` : `${a}-${md}`;
+  let anio = Number(hoy.slice(0, 4));
+  if(cae(anio) < hoy) anio++;
+  return cae(anio);
+}
 function openDuplicateComposer(post){
   openEditComposer(post);
   const d = composerDraft;
   const today = todayISO();
   const inicio = post.startDate || post.date;
   const dias = post.endDate && post.endDate > inicio ? Math.round((isoDate(post.endDate) - isoDate(inicio)) / 86400000) : 0;
-  d.startDate = today; d.endDate = addDaysISO(today, dias);
+  const propuesta = fechaParaRepetir(inicio, today);
+  const desde = propuesta || today;
+  d.startDate = desde; d.endDate = addDaysISO(desde, dias);
+  d.fechaPropuestaDe = propuesta ? inicio : "";
   d.images = []; d.files = []; d.links = [];
   d.recur = recurDraftFrom(null, today); d.recurrence = null;
   d.legacyOrganizer = "";
@@ -19895,6 +20044,7 @@ function renderComposer(){
           </span>
           ${renderRecurrenceField(d)}
         </div>
+        ${d.fechaPropuestaDe ? `<div class="field-hint" id="cFechaPropuesta">${t("Propuse el mismo día del año que viene: el evento original es del {f}. Cambiá la fecha si hace falta.","I suggested the same day next year: the original event was on {f}. Change the date if needed.","Sugeri o mesmo dia do ano que vem: o evento original foi em {f}. Mude a data se for preciso.","הצעתי את אותו יום בשנה הבאה: האירוע המקורי היה ב-{f}. אפשר לשנות את התאריך.",{ f: fmtTypedDate(d.fechaPropuestaDe) })}</div>` : ""}
         ${!d.allDay ? `
         <div class="dt-row">
           <input type="text" inputmode="${uses12h() ? "text" : "numeric"}" autocomplete="off" class="dt-time-input" id="cStartTime" data-time-field="start" placeholder="${esc(typedTimePlaceholder())}" aria-label="${esc(t("Hora de inicio","Start time","Hora de início","שעת התחלה"))}" value="${esc(fmtTypedTime(d.startTime))}">
@@ -23885,6 +24035,12 @@ document.addEventListener("click", async e=>{
   },
     "anio-planilla": async () => {
     if(isAdmin()){ const anio = todayISO().slice(0, 4); descargarTexto(`registro-${anio}.csv`, csvDeActividades(actividadesDelAnio(anio))); }
+  },
+    "tema-ir": async (el) => {
+    const palabra = String(el.dataset.tema || "").trim();
+    if(!palabra) return;
+    state.filters = filtrosVacios(); state.filters.text = palabra; filtroOrigen = null;
+    feedSolapa = "pasado"; feedVisibleCount = PAGE_SIZE; state.view = "feed"; render(); scrollToTop();
   },
     "reporte-imprimir": async (el, e, action, postId) => {
     window.print();
