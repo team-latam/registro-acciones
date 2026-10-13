@@ -38,9 +38,16 @@ decisiones de arquitectura.
   Agenda del 9/10, en `docs/informes/historial/`) y
   `docs/RESTAURAR.md` (cómo volver atrás con una copia: workflow
   «Restaurar una copia», `supabase/respaldo/restaurar.mjs`).
-  **Las 16 propuestas de mejoras** (13/10/2026): `docs/PROPUESTAS.md` — qué eligió el usuario,
-  qué falta decidir (la 1) y el orden en que se hacen; la página con las maquetas está enlazada
-  ahí. Si pide «las propuestas», arrancar de ahí.
+  **Las 16 propuestas de mejoras** (13/10/2026): `docs/PROPUESTAS.md` — qué eligió el usuario
+  (en dos vueltas), cómo se leyó cada nota y el orden en que se hicieron; la página con las
+  maquetas está enlazada ahí. **Todo lo elegido ya está hecho** (tandas 70 a 78 de
+  `docs/REDISENO.md`): planillas, «Repetir» con la fecha del año que viene, «Temas» en Reportes,
+  pasos con responsable y fecha, «Algo no anda», modo presentación, correo mensual de lugares sin
+  actividad, informe mensual con enlace de 48 horas y «Mi año». Falta que el usuario **prenda** en
+  Administración › Correos el aviso de lugares sin actividad (viene prendido, 6 meses) y el
+  **informe mensual** (viene apagado: hay que elegir a quién le llega); los correos nuevos solo
+  salen a quienes Administración › Correos habilita. Lo que dijo «no por ahora» y el recorrido de
+  un viaje en el mapa siguen en ese documento. Si pide «las propuestas», arrancar de ahí.
   **El video de presentación** (en inglés, ~74 s, celular y compu; el
   usuario aprobó la v5 como final el 13/10/2026) se rehace entero con
   `bash herramientas/video/hacer_video.sh`; todo el proceso, las decisiones y lo que
