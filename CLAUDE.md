@@ -38,6 +38,9 @@ decisiones de arquitectura.
   Agenda del 9/10, en `docs/informes/historial/`) y
   `docs/RESTAURAR.md` (cómo volver atrás con una copia: workflow
   «Restaurar una copia», `supabase/respaldo/restaurar.mjs`).
+  **Las 16 propuestas de mejoras** (13/10/2026): `docs/PROPUESTAS.md` — qué eligió el usuario,
+  qué falta decidir (la 1) y el orden en que se hacen; la página con las maquetas está enlazada
+  ahí. Si pide «las propuestas», arrancar de ahí.
   **El video de presentación** (en inglés, ~74 s, celular y compu; el
   usuario aprobó la v5 como final el 13/10/2026) se rehace entero con
   `bash herramientas/video/hacer_video.sh`; todo el proceso, las decisiones y lo que

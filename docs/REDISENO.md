@@ -1772,6 +1772,11 @@ código de antes).
 
 ## Decisiones pendientes del usuario
 
+- **Propuestas de mejoras** (13/10/2026): 16 propuestas; el usuario eligió 2-A, 3-C, 5-C, 8-C y
+  11-A, dejó la 1 sin decidir (preguntó cómo funcionaría) y pidió maquetas de tendencias de
+  temas, del recorrido de un viaje en el mapa y de «Mi año». El detalle, las notas y el orden:
+  `docs/PROPUESTAS.md`.
+
 - **Agenda de contactos** (pedido del 8/10/2026): sumar los contactos más
   importantes de cada lugar, a partir del «Directorio Chabad LatAm» (un
   HTML con 189 instituciones en 102 ciudades de 32 países, un rab y un
