@@ -41,7 +41,9 @@ const TX = {
     mencion:["mención","menciones"], respuesta:["respuesta","respuestas"], nueva:["actividad nueva","actividades nuevas"], proximo:["evento próximo","eventos próximos"],
     reTituloSem:"Lo que pasó del {a} al {b}", reTituloDia:"Lo que pasó desde ayer", reSem:"Tu resumen de la semana", reDia:"Tu resumen del día",
     reMenc:"Te mencionaron", reResp:"Respuestas a tus posteos", reNuevo:"Nuevo en el Registro", reProx:"Empiezan pronto",
-    yMas:"y {n} más", respEn:"{n} {r} en «{t}»", rango:"{a} al {b}", rePieSem:"Te llega porque elegiste un resumen semanal. Si no pasó nada, no llega.", rePieDia:"Te llega porque elegiste un resumen diario. Si no pasó nada, no llega." },
+    yMas:"y {n} más", respEn:"{n} {r} en «{t}»", rango:"{a} al {b}", rePieSem:"Te llega porque elegiste un resumen semanal. Si no pasó nada, no llega.", rePieDia:"Te llega porque elegiste un resumen diario. Si no pasó nada, no llega.",
+    pasAsunto:"{a} te asignó un pendiente en «{t}»", pasEtiqueta:"Pendiente asignado", pasTitulo:"{a} te asignó un pendiente", pasPara:"Para el {f}", pasBoton:"Ver el pendiente",
+    pasPie:"Te llega porque alguien te asignó un paso de «Lo que sigue».", venAsunto:"Hoy vence: {p}", venEtiqueta:"Vence hoy", venTitulo:"Un pendiente tuyo vence hoy", venPie:"Te llega porque tenés un pendiente con fecha de hoy.", cadaPaso:"Lo que sigue" },
   en: { marca:"Action Log", prefs:"To change what you get and when: <b>My preferences → Notifications</b>.",
     pedAsunto:"New access request: {q}", pedTexto:"{q} ({c}) asked to join the Action Log.\n\nUntil you approve them, they can't see anything in the Log. To approve or reject: open the app → Administration → Requests.",
     pedPre:"{q} asked to join the Log.", pedEtiqueta:"Access request", pedTitulo:"Someone wants to join the Log",
@@ -57,7 +59,9 @@ const TX = {
     mencion:["mention","mentions"], respuesta:["reply","replies"], nueva:["new activity","new activities"], proximo:["upcoming event","upcoming events"],
     reTituloSem:"What happened from {a} to {b}", reTituloDia:"What happened since yesterday", reSem:"Your weekly summary", reDia:"Your daily summary",
     reMenc:"You were mentioned", reResp:"Replies to your posts", reNuevo:"New in the Log", reProx:"Starting soon",
-    yMas:"and {n} more", respEn:"{n} {r} on “{t}”", rango:"{a} to {b}", rePieSem:"You're getting this because you chose a weekly summary. If nothing happened, none is sent.", rePieDia:"You're getting this because you chose a daily summary. If nothing happened, none is sent." },
+    yMas:"and {n} more", respEn:"{n} {r} on “{t}”", rango:"{a} to {b}", rePieSem:"You're getting this because you chose a weekly summary. If nothing happened, none is sent.", rePieDia:"You're getting this because you chose a daily summary. If nothing happened, none is sent.",
+    pasAsunto:"{a} assigned you a to-do on “{t}”", pasEtiqueta:"Assigned to-do", pasTitulo:"{a} assigned you a to-do", pasPara:"Due {f}", pasBoton:"View the to-do",
+    pasPie:"You're getting this because someone assigned you a step from “What's next”.", venAsunto:"Due today: {p}", venEtiqueta:"Due today", venTitulo:"One of your to-dos is due today", venPie:"You're getting this because you have a to-do dated today.", cadaPaso:"What's next" },
   pt: { marca:"Registro de Ações", prefs:"Para mudar o que chega e quando: <b>Minhas preferências → Notificações</b>.",
     pedAsunto:"Novo pedido de acesso: {q}", pedTexto:"{q} ({c}) pediu para entrar no Registro de Ações.\n\nEnquanto você não aprovar, não vê nada do Registro. Para aprovar ou rejeitar: entre no app → Administração → Solicitações.",
     pedPre:"{q} pediu para entrar no Registro.", pedEtiqueta:"Pedido de acesso", pedTitulo:"Alguém quer entrar no Registro",
@@ -73,7 +77,9 @@ const TX = {
     mencion:["menção","menções"], respuesta:["resposta","respostas"], nueva:["atividade nova","atividades novas"], proximo:["evento próximo","eventos próximos"],
     reTituloSem:"O que aconteceu de {a} a {b}", reTituloDia:"O que aconteceu desde ontem", reSem:"Seu resumo da semana", reDia:"Seu resumo do dia",
     reMenc:"Mencionaram você", reResp:"Respostas às suas postagens", reNuevo:"Novo no Registro", reProx:"Começam em breve",
-    yMas:"e mais {n}", respEn:"{n} {r} em «{t}»", rango:"{a} a {b}", rePieSem:"Chega porque você escolheu um resumo semanal. Se nada aconteceu, não chega.", rePieDia:"Chega porque você escolheu um resumo diário. Se nada aconteceu, não chega." },
+    yMas:"e mais {n}", respEn:"{n} {r} em «{t}»", rango:"{a} a {b}", rePieSem:"Chega porque você escolheu um resumo semanal. Se nada aconteceu, não chega.", rePieDia:"Chega porque você escolheu um resumo diário. Se nada aconteceu, não chega.",
+    pasAsunto:"{a} atribuiu uma pendência a você em «{t}»", pasEtiqueta:"Pendência atribuída", pasTitulo:"{a} atribuiu uma pendência a você", pasPara:"Para {f}", pasBoton:"Ver a pendência",
+    pasPie:"Chega porque alguém atribuiu a você um passo de «O que segue».", venAsunto:"Vence hoje: {p}", venEtiqueta:"Vence hoje", venTitulo:"Uma pendência sua vence hoje", venPie:"Chega porque você tem uma pendência com data de hoje.", cadaPaso:"O que segue" },
   he: { marca:"יומן הפעילויות", prefs:"כדי לשנות מה מגיע ומתי: <b>ההעדפות שלי ← התראות</b>.",
     pedAsunto:"בקשת גישה חדשה: {q}", pedTexto:"{q} ({c}) ביקש/ה להצטרף ליומן הפעילויות.\n\nכל עוד לא תאשר/י, אין לו/ה גישה לשום דבר ביומן. לאישור או לדחייה: באפליקציה ← ניהול ← בקשות.",
     pedPre:"{q} ביקש/ה להצטרף ליומן.", pedEtiqueta:"בקשת גישה", pedTitulo:"מישהו/י רוצה להצטרף ליומן",
@@ -89,7 +95,9 @@ const TX = {
     mencion:["אזכור","אזכורים"], respuesta:["תגובה","תגובות"], nueva:["פעילות חדשה","פעילויות חדשות"], proximo:["אירוע קרוב","אירועים קרובים"],
     reTituloSem:"מה קרה בין {a} ל־{b}", reTituloDia:"מה קרה מאתמול", reSem:"הסיכום השבועי שלך", reDia:"הסיכום היומי שלך",
     reMenc:"הזכירו אותך", reResp:"תגובות לפוסטים שלך", reNuevo:"חדש ביומן", reProx:"מתחילים בקרוב",
-    yMas:"ועוד {n}", respEn:"{n} {r} ב«{t}»", rango:"{a} עד {b}", rePieSem:"זה מגיע אליך כי בחרת בסיכום שבועי. אם לא קרה כלום, לא נשלח מייל.", rePieDia:"זה מגיע אליך כי בחרת בסיכום יומי. אם לא קרה כלום, לא נשלח מייל." },
+    yMas:"ועוד {n}", respEn:"{n} {r} ב«{t}»", rango:"{a} עד {b}", rePieSem:"זה מגיע אליך כי בחרת בסיכום שבועי. אם לא קרה כלום, לא נשלח מייל.", rePieDia:"זה מגיע אליך כי בחרת בסיכום יומי. אם לא קרה כלום, לא נשלח מייל.",
+    pasAsunto:"{a} שייך/ת לך משימה ב«{t}»", pasEtiqueta:"משימה שהוקצתה", pasTitulo:"{a} שייך/ת לך משימה", pasPara:"עד {f}", pasBoton:"לצפייה במשימה",
+    pasPie:"זה מגיע אליך כי מישהו/י שייך/ת לך שלב מתוך «מה הלאה».", venAsunto:"מועד היעד היום: {p}", venEtiqueta:"מסתיים היום", venTitulo:"משימה שלך מסתיימת היום", venPie:"זה מגיע אליך כי יש לך משימה עם תאריך של היום.", cadaPaso:"מה הלאה" },
 };
 export const textos = lang => TX[idioma(lang)];
 
@@ -191,6 +199,48 @@ export function correoAviso({ autor, titulo, tipo, texto, post, en, id, motivo, 
       <div dir="auto" style="margin:16px 0 0;padding:14px 18px;border-${x.ini}:4px solid ${C.celeste};background:${C.suave};border-radius:${x.dir === "rtl" ? "12px 0 0 12px" : "0 12px 12px 0"};font-size:15px;line-height:1.6;">${resaltar(recortar(texto, 600))}</div>
       ${boton(T.avBoton, url, L)}`,
       pie: `${motivo === "respuestas" ? T.avPieResp : T.avPieMenc} ${T.prefs}`,
+    }),
+  };
+}
+
+/* ---------- Un paso de «Lo que sigue»: asignado, y el día que vence ---------- */
+// datos: { autor (quien lo asignó), titulo (del posteo), tipo, texto (el paso), post, cuando (YYYY-MM-DD o vacío), lang }
+const tarjetaDePaso = ({ L, x, autor, titulo, tipo, texto, cuando, vence }) => {
+  const T = TX[L], icono = ICONOS[tipo] || "📌";
+  const fecha = cuando ? `<div style="font-size:13px;font-weight:700;color:${vence ? C.petroleo : C.gris};margin-top:10px;">📅 ${esc(conVars(T.pasPara, { f: fechaCorta(cuando, L) }))}</div>` : "";
+  return `${autor ? `<table role="presentation" cellpadding="0" cellspacing="0" width="100%" dir="${x.dir}" style="margin:0 0 14px;"><tr>${avatar(autor)}
+      <td style="padding-${x.ini}:14px;"><div style="font-size:15px;font-weight:700;">${suyo(esc(autor))}</div>
+      <div style="font-size:12px;color:${C.gris};margin-top:2px;">${T.cadaPaso} · <b style="color:${C.texto};">${icono} ${suyo(esc(titulo))}</b></div></td></tr></table>` : `<div style="font-size:12px;color:${C.gris};margin:0 0 10px;">${T.cadaPaso} · <b style="color:${C.texto};">${icono} ${suyo(esc(titulo))}</b></div>`}
+    <div dir="auto" style="margin:0;padding:14px 18px;border-${x.ini}:4px solid ${C.celeste};background:${C.suave};border-radius:${x.dir === "rtl" ? "12px 0 0 12px" : "0 12px 12px 0"};font-size:15px;line-height:1.6;">${suyo(esc(recortar(texto, 300)))}${fecha}</div>`;
+};
+export function correoPaso({ autor, titulo, tipo, texto, post, cuando, lang }){
+  const L = idioma(lang), T = TX[L], x = lado(L);
+  const linea = asunto(conVars(T.pasAsunto, { a: autor, t: titulo }));
+  const url = enlaceAPosteo(post);
+  return {
+    subject: linea,
+    text: `${linea}:\n\n${recortar(texto, 300)}${cuando ? `\n${conVars(T.pasPara, { f: fechaCorta(cuando, L) })}` : ""}\n\n${T.pasBoton}: ${url}\n`,
+    html: marco({ lang: L,
+      pre: `${linea}.`, etiqueta: T.pasEtiqueta, titulo: conVars(T.pasTitulo, { a: suyo(esc(autor)) }),
+      cuerpo: `${tarjetaDePaso({ L, x, autor, titulo, tipo, texto, cuando })}
+      ${boton(T.pasBoton, url, L)}`,
+      pie: `${T.pasPie} ${T.prefs}`,
+    }),
+  };
+}
+// El recordatorio del día en que vence (lo manda supabase/avisos/vencimientos.mjs).
+export function correoVence({ titulo, tipo, texto, post, cuando, lang }){
+  const L = idioma(lang), T = TX[L], x = lado(L);
+  const linea = asunto(conVars(T.venAsunto, { p: recortar(texto, 100) }));
+  const url = enlaceAPosteo(post);
+  return {
+    subject: linea,
+    text: `${linea}\n\n${T.cadaPaso}: ${titulo}\n${recortar(texto, 300)}\n\n${T.pasBoton}: ${url}\n`,
+    html: marco({ lang: L,
+      pre: `${linea}.`, etiqueta: T.venEtiqueta, titulo: T.venTitulo,
+      cuerpo: `${tarjetaDePaso({ L, x, autor: "", titulo, tipo, texto, cuando, vence: true })}
+      ${boton(T.pasBoton, url, L)}`,
+      pie: `${T.venPie} ${T.prefs}`,
     }),
   };
 }

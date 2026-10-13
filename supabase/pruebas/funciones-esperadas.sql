@@ -58,11 +58,14 @@ insert into esperadas values
   -- adentro si no sos admin; las de avisos, si no es tu pedido.
   ('agenda_traer(text, jsonb)',             false, true),  -- admin
   ('aviso_al_admin_enviado()',              false, true),  -- solo sobre SU pedido de acceso
+  ('anotar_error(text, text, text, jsonb)', false, true),  -- solo anota con el correo de quien llama; tope por hora
   ('clasificar_importados(jsonb)',          false, true),  -- admin (security invoker)
+  ('contar_problema(text, text, jsonb)',    false, true),  -- solo con el correo de quien llama; tope por hora
   ('devolver_al_registro(text[])',          false, true),  -- admin
   ('olvidar_preferencias(text)',            false, true),  -- admin; las del admin fijo, solo él
   ('pedir_aviso_al_admin()',                false, true),  -- solo sobre SU pedido de acceso; devuelve un turno, no destinatarios
   ('preparar_aviso(text, text)',            false, true),  -- solo sobre lo que escribió quien llama; devuelve un turno
+  ('preparar_aviso_de_paso(text)',          false, true),  -- solo sobre el paso que asignó quien llama; devuelve un turno
   ('preparar_prueba()',                     false, true),  -- solo a su propio correo; devuelve un turno
   ('reemplazar_correo(text[], text, text)', false, true),  -- pura
   ('sacar_del_registro(text[])',            false, true),  -- admin
