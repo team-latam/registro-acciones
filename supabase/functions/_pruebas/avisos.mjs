@@ -180,6 +180,21 @@ eq("el correo sin nombre usa la dirección", armarCorreo({ nombre: "", correo: "
   const rn = await leer(await atenderAviso(pedir({ cuerpo: { tipo: "paso", id: "p1#x1" } }), { env: entorno(), fetch: n.traer, esperar: n.esperar }));
   eq("si a la base no le corresponde (no es suyo, ya salió, lo apagó), no sale nada", [rn[1], n.reg.correos.length], [{ enviado: false, motivo: "no-corresponde" }, 0]);
 }
+{
+  // «Mandarme un informe de prueba» (propuesta 3-A): lo pide un admin, la base le contesta un turno.
+  const aviso = { para: [{ email: "benny@team-latam.com", nombre: "Benny", lang: "en", tz: "Asia/Jerusalem" }], mes: "2026-10", vence: "2026-11-03T12:30:00Z" };
+  const m = mundo({ otros: { preparar_informe_de_prueba: aviso } });
+  const r = await leer(await atenderAviso(pedir({ cuerpo: { tipo: "informe", mes: "2026-10" } }), { env: entorno(), fetch: m.traer, esperar: m.esperar }));
+  eq("un informe de prueba: se le pregunta a la base con la sesión de quien lo pide, por el mes", [r, m.reg.rpc.map(x => x.nombre), m.reg.cuerpos[0]],
+     [[200, { enviado: true, enviados: 1 }], ["preparar_informe_de_prueba", "tomar_aviso"], { p_mes: "2026-10" }]);
+  const c = m.reg.correos[0];
+  eq("el correo: a él, en su idioma, con el enlace al informe, cuándo vence en su hora, y avisando que es de prueba",
+     [c.to, c.subject, c.text.includes(`${APP}?informe=2026-10`), c.text.includes("Tuesday 3 November at 14:30"), /test email/.test(c.text)],
+     [["benny@team-latam.com"], "The October 2026 report is ready", true, true, true]);
+  const n = mundo({ otros: { preparar_informe_de_prueba: null } });
+  const rn = await leer(await atenderAviso(pedir({ cuerpo: { tipo: "informe", mes: "2026-10" } }), { env: entorno(), fetch: n.traer, esperar: n.esperar }));
+  eq("si a la base no le corresponde (no es admin, muy seguido, tope del día), no sale nada", [rn[1], n.reg.correos.length], [{ enviado: false, motivo: "no-corresponde" }, 0]);
+}
 
 console.log(`${pass} pasaron, ${fail} fallaron`);
 process.exit(fail ? 1 : 0);

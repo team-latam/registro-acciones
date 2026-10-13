@@ -593,6 +593,7 @@
   .ps-nums span{ display:block; margin-top:6px; font-size:clamp(13px, 2.3vh, 20px); color:var(--ps-mut); }
   .ps-cmp{ font-size:clamp(14px, 2.6vh, 22px); font-weight:700; color:var(--ps-mut); }
   .ps-cmp.sube{ color:#86efac; } .ps-cmp.baja{ color:#fca5a5; }
+  .ps-nota{ margin-top:clamp(14px, 3vh, 28px); font-size:clamp(11px, 2vh, 16px); color:var(--ps-mut); }
   .ps-barras{ list-style:none; margin:0; padding:0; display:grid; gap:clamp(7px, 1.8vh, 16px); }
   .ps-barras li{ display:grid; grid-template-columns:minmax(90px, 24%) minmax(0, 1fr) auto; gap:14px; align-items:center; font-size:clamp(13px, 2.7vh, 24px); }
   .ps-et{ overflow-wrap:anywhere; }
@@ -627,6 +628,7 @@
     .pres-pagina .ps-tit{ font-size:34pt; } .pres-pagina .ps-nums b{ font-size:54pt; } .pres-pagina .ps-sub, .pres-pagina .ps-cmp{ font-size:13pt; } .pres-pagina .ps-nums span{ font-size:11pt; }
     .pres-pagina .ps-barras li{ font-size:12pt; } .pres-pagina .ps-riel{ height:5mm; } .pres-pagina .ps-lista{ font-size:14pt; } .pres-pagina .ps-cols{ height:90mm; }
     .pres-pagina .ps-cmp.sube{ color:#166534; } .pres-pagina .ps-cmp.baja{ color:#991b1b; }
+    .pres-pagina .ps-nota{ display:none; }
   }
   .avatar-pending{
     position:absolute; top:-5px; inset-inline-end:-5px; min-width:18px; height:18px; padding:0 4px; border-radius:999px; pointer-events:none;
@@ -4420,6 +4422,7 @@
   <div class="pres-barra">
     <span class="pres-cuenta" id="presCuenta" role="status" aria-live="polite"></span>
     <span class="pres-espacio"></span>
+    <button type="button" class="pres-btn" data-action="pres-planilla" id="presPlanilla" hidden></button>
     <button type="button" class="pres-btn" data-action="pres-imprimir" id="presImprimir"></button>
     <button type="button" class="pres-btn" data-action="pres-cerrar" id="presCerrar"></button>
   </div>
@@ -9139,6 +9142,17 @@ function crearSupabaseStore(sb, opciones = {}){
       },
     },
 
+    // ---- El informe mensual (23-informe-mensual.sql) ----
+    // ¿El enlace del correo de ese mes sigue valiendo para quien está usando la app?
+    // Lo decide la base (a las 48 horas de salido el correo deja de valer).
+    informes: {
+      async vigente(mes){
+        const { data, error } = await sb.rpc("informe_vigente", { p_mes: mes });
+        if(error) throw error;
+        return data || { vigente: false };
+      },
+    },
+
     // ---- La Agenda (19-agenda.sql) ----
     // Instituciones y quién está en cada una (contactos). Las ven todos los
     // aprobados; las suma y corrige cualquiera que carga eventos; borrar una
@@ -9616,7 +9630,7 @@ let prefsPropiasLeidas = false;
 function zonaDelAparato(){ try{ return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; }catch(e){ return ""; } }
 function recordarIdiomaYZona(){
   const email = state.auth.user && state.auth.user.email;
-  if(!email || !prefsPropiasLeidas || !puedoRecibirCorreos(email)) return;
+  if(!email || !prefsPropiasLeidas || !(puedoRecibirCorreos(email) || esDelInforme(email))) return;
   const p = prefs(), patch = {};
   if(p.emailLang !== currentLang()) patch.emailLang = currentLang();
   const zona = zonaDelAparato();
@@ -9663,6 +9677,17 @@ function puedoRecibirCorreos(email){
   const c = correosConfig || {};
   if(!state.auth.allowlisted) return false;
   return c.quienes === "todos" || (c.quienes === "elegidos" && (c.elegidos || []).includes(yo));
+}
+// ¿El admin eligió a esta persona para el informe mensual (Administración → Correos)?
+// Aunque no pueda recibir los otros avisos, la base necesita saber su idioma y su zona
+// para mandarle el informe en su idioma y decirle a qué hora vence el enlace.
+function informeConfig(){
+  const i = (correosConfig && correosConfig.informe) || {};
+  return { on: i.on === true, para: Array.isArray(i.para) ? i.para.filter(e => typeof e === "string") : [] };
+}
+function esDelInforme(email){
+  const { on, para } = informeConfig();
+  return on && para.some(e => e.toLowerCase() === String(email || "").toLowerCase());
 }
 function applyPreferencesConfig(cfg){
   configVersion++;
@@ -16017,14 +16042,17 @@ let enlaceDeCorreo = (()=>{
     const q = new URLSearchParams(location.search);
     if(q.get("post")) return { post: q.get("post"), r: q.get("r") || null };
     // «Ver los reportes» del correo de lugares sin actividad (13/10/2026).
-    return q.get("ir") === "reportes" ? { ir: "reportes" } : null;
+    if(q.get("ir") === "reportes") return { ir: "reportes" };
+    // «Abrir el informe» del correo mensual (13/10/2026): ?informe=2026-10, vale 48 horas.
+    return /^\d{4}-(0[1-9]|1[0-2])$/.test(q.get("informe") || "") ? { informe: q.get("informe") } : null;
   }catch(e){ return null; }
 })();
 function abrirEnlaceDeCorreo(){
   if(!enlaceDeCorreo || !state.loaded || !state.auth.allowlisted) return;
-  const { post, r, ir } = enlaceDeCorreo;
+  const { post, r, ir, informe } = enlaceDeCorreo;
   enlaceDeCorreo = null;
   try{ history.replaceState(null, "", location.pathname + location.hash); }catch(e){}
+  if(informe){ setTimeout(()=> abrirInformeDelMes(informe), 0); return; }
   if(ir === "reportes"){
     setTimeout(()=>{ state.view = "reportes"; state.countryDrill = null; state.zonaDrill = null; fichaOrigen = null; render(); scrollToTop(); }, 0);
     return;
@@ -16597,7 +16625,9 @@ function csvDeActividades(posts){
 // serie que se repite entra si alguna de sus fechas cae), y también lo
 // cancelado, que figura como tal.
 function actividadesDelAnio(anio){
-  const d = `${anio}-01-01`, h = `${anio}-12-31`;
+  return actividadesEnVentana(`${anio}-01-01`, `${anio}-12-31`);
+}
+function actividadesEnVentana(d, h){
   const ini = p => String(p.startDate || p.date || "");
   return state.posts.filter(p => ini(p) && (p.cancelled ? ini(p) <= h && String(p.endDate || ini(p)) >= d : vecesEnVentana(p, d, h) > 0))
     .sort((a, b) => ini(a).localeCompare(ini(b)) || String(a.title || "").localeCompare(String(b.title || "")));
@@ -18232,7 +18262,7 @@ function renderCorreosSection(){
         <div class="setting-label">${t("Personas","People","Pessoas","אנשים")}</div>
         <div class="pref-chips" style="margin-top:8px;">${personas.map(m => `<button type="button" class="chip-toggle${elegidos.includes(m.email)?" active":""}" data-action="correos-elegir" data-email="${esc(m.email)}" aria-pressed="${elegidos.includes(m.email)}">${esc(m.name || m.email)}</button>`).join("") || `<span class="setting-sub">${t("Todavía no hay nadie más en el equipo.","There's nobody else on the team yet.","Ainda não há mais ninguém na equipe.","עדיין אין עוד אנשים בצוות.")}</span>`}</div>
       </div>` : ""}
-    </div>${renderLugaresDeCorreo()}`;
+    </div>${renderLugaresDeCorreo()}${renderInformeDeCorreo()}`;
 }
 // El aviso del primer lunes de cada mes con los países sin actividad (propuesta 2-A):
 // apagado, o el plazo en meses. Lo manda supabase/avisos/lugares.mjs; lo guardado
@@ -18250,6 +18280,34 @@ function renderLugaresDeCorreo(){
         <div class="setting-label">🌎 ${t("Lugares sin actividad","Places with no activity","Lugares sem atividade","מקומות ללא פעילות")}</div>
         <div class="setting-sub" style="margin-bottom:12px;">${t("El primer lunes de cada mes, a los administradores que reciben correos les llega la lista de los países donde la última actividad hecha es de hace más que este plazo. No cuenta lo que está planificado.","On the first Monday of each month, the administrators who get emails receive the list of countries whose last completed activity is older than this period. Planned activities don't count.","Na primeira segunda-feira de cada mês, os administradores que recebem e-mails recebem a lista dos países cuja última atividade realizada é mais antiga que este prazo. O que está planejado não conta.","ביום שני הראשון בכל חודש, מנהלים/ות שמקבלים מיילים מקבלים את רשימת המדינות שבהן הפעילות האחרונה שבוצעה ישנה מהתקופה הזו. מה שמתוכנן לא נחשב.")}</div>
         <div role="radiogroup" aria-label="${esc(t("Cada cuánto sin actividad avisar","How long without activity before notifying","Quanto tempo sem atividade para avisar","אחרי כמה זמן ללא פעילות להתריע"))}" class="pref-chips">${opciones.map(([k, l, act]) => `<button type="button" role="radio" aria-checked="${act}" class="chip-toggle${act ? " active" : ""}" data-action="correos-lugares" data-key="${k}">${esc(l)}</button>`).join("")}</div>
+      </div>
+    </div>`;
+}
+// El informe mensual (propuesta 3-A): el día 1 de cada mes, a las personas que se elijan acá,
+// un aviso sin números con un botón al informe del mes que terminó; el enlace vence a las 48
+// horas. Lo manda supabase/avisos/informe.mjs; lo guardado es correos.informe = {on, para}.
+const informePrueba = { mandando:false, msg:"" };
+const mesDelInformeDeAhora = () => addMonthsISO(todayISO().slice(0, 7) + "-01", -1).slice(0, 7);
+function renderInformeDeCorreo(){
+  const { on, para } = informeConfig();
+  const personas = (state.roster || []).filter(m => m.email).sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email));
+  const eleg = new Set(para.map(e => e.toLowerCase()));
+  const modo = (k, txt, act) => `<button type="button" role="radio" aria-checked="${act}" class="chip-toggle${act ? " active" : ""}" data-action="informe-modo" data-key="${k}">${esc(txt)}</button>`;
+  return `<div class="settings-card correos-informe" style="margin-top:16px;">
+      <div class="setting-row" style="display:block;">
+        <div class="setting-label">📊 ${t("Informe mensual","Monthly report","Relatório mensal","דוח חודשי")}</div>
+        <div class="setting-sub" style="margin-bottom:12px;">${t("El día 1 de cada mes, a las personas que elijas les llega un aviso del informe del mes que terminó. El correo no lleva números: trae un botón que abre el informe dentro del Registro, con su cuenta, y el enlace deja de andar a las 48 horas. Desde ahí lo pueden ver como presentación, imprimir, guardar como PDF o bajar la planilla.","On the 1st of each month, the people you pick get a notice about the report for the month that just ended. The email has no numbers: it brings a button that opens the report inside the Log, with their account, and the link stops working after 48 hours. From there they can view it as a presentation, print it, save it as PDF or download the spreadsheet.","No dia 1 de cada mês, as pessoas que você escolher recebem um aviso do relatório do mês que terminou. O e-mail não traz números: traz um botão que abre o relatório dentro do Registro, com a conta de cada um, e o link deixa de funcionar após 48 horas. De lá podem ver como apresentação, imprimir, salvar como PDF ou baixar a planilha.","ב-1 בכל חודש, האנשים שתבחרו יקבלו הודעה על הדוח של החודש שהסתיים. המייל לא כולל מספרים: הוא מביא כפתור שפותח את הדוח בתוך היומן, עם החשבון של כל אחד, והקישור מפסיק לעבוד אחרי 48 שעות. משם אפשר לראות אותו כמצגת, להדפיס, לשמור כ-PDF או להוריד את הגיליון.")}</div>
+        <div role="radiogroup" aria-label="${esc(t("Informe mensual","Monthly report","Relatório mensal","דוח חודשי"))}" class="pref-chips">${modo("off", t("Apagado","Off","Desligado","כבוי"), !on)}${modo("on", t("Prendido","On","Ligado","פעיל"), on)}</div>
+      </div>
+      ${on ? `<div class="setting-row" style="display:block;">
+        <div class="setting-label">${t("Quiénes lo reciben","Who gets it","Quem recebe","מי מקבל")}</div>
+        <div class="setting-sub" style="margin-bottom:8px;">${t("Tienen que ser del equipo (también sirven los observadores). Cada una entra con su cuenta para verlo.","They have to be on the team (observers work too). Each one signs in with their own account to see it.","Têm que ser da equipe (observadores também servem). Cada um entra com a própria conta para ver.","צריכים להיות בצוות (גם משקיפים). כל אחד נכנס עם החשבון שלו כדי לראות.")}</div>
+        <div class="pref-chips">${personas.map(m => `<button type="button" class="chip-toggle${eleg.has(m.email.toLowerCase()) ? " active" : ""}" data-action="informe-persona" data-email="${esc(m.email)}" aria-pressed="${eleg.has(m.email.toLowerCase())}">${esc(m.name || m.email)}</button>`).join("")}</div>
+      </div>` : ""}
+      <div class="setting-row" style="display:block;">
+        <button type="button" class="btn-secondary" data-action="informe-prueba" ${informePrueba.mandando ? "disabled" : ""}>${informePrueba.mandando ? t("Mandando…","Sending…","Enviando…","שולח…") : t("Mandarme un informe de prueba","Send me a test report","Enviar-me um relatório de teste","שלחו לי דוח ניסיון")}</button>
+        ${informePrueba.msg ? `<span class="setting-sub" role="status" style="margin-inline-start:10px;">${esc(informePrueba.msg)}</span>` : ""}
+        <div class="setting-sub" style="margin-top:8px;">${t("Te llega el informe de {m} (el último mes completo), con el enlace valiendo 48 horas.","You get the {m} report (the last full month), with the link working for 48 hours.","Você recebe o relatório de {m} (o último mês completo), com o link valendo por 48 horas.","תקבלו את הדוח של {m} (החודש המלא האחרון), והקישור יעבוד 48 שעות.",{ m: fmtISO(mesDelInformeDeAhora() + "-01", { month:"long", year:"numeric" }) })}</div>
       </div>
     </div>`;
 }
@@ -21896,6 +21954,7 @@ cumpleOverlay.addEventListener("click", e=>{ if(e.target === cumpleOverlay) clos
    ====================================================================== */
 const presOverlay = document.getElementById("presOverlay");
 let presDiapositivas = [], presIndice = 0, presReturnFocus = null, presImprimiendo = false, presEnPantallaCompleta = false;
+let presInforme = null;   // si es el informe mensual de un mes: { mes, desde, hasta } (suma «Planilla»)
 function barrasDePres(filas, max = 8){
   const lista = (filas || []).filter(f => f.n > 0).slice(0, max);
   if(!lista.length) return "";
@@ -21922,15 +21981,16 @@ function proximosParaPresentar(f){
   return state.posts.filter(p => !p.cancelled && p.activityType !== "rutina" && pasaFiltroDelReporte(p, f) && ini(p) > hoy && ini(p) <= tope)
     .sort((a, b) => ini(a).localeCompare(ini(b))).slice(0, 6);
 }
-function diapositivasDelReporte(){
-  const r = reporteEnPantalla, pr = r && r.presentacion;
+function diapositivasDelReporte(r = reporteEnPantalla){
+  const pr = r && r.presentacion;
   if(!r || !pr) return [];
   const sec = id => ((r.secciones || []).find(x => x.id === id) || {}).filas || [];
   const marca = `<div class="ps-cap">Team LatAm · ${esc(t("Registro de Acciones","Activity Log","Registro de Ações","יומן פעולות"))}</div>`;
   const out = [];
   out.push({ id: "numeros", titulo: pr.titulo, html: `<section class="ps-slide">${marca}<h2 class="ps-tit">${pr.titulo}</h2><div class="ps-sub">${pr.subtitulo}</div>
     <div class="ps-nums">${pr.numeros.map(([n, txt]) => `<div><b>${n}</b><span>${txt}</span></div>`).join("")}</div>
-    ${pr.comparacion ? `<div class="ps-cmp ${pr.comparacionClase}">${pr.comparacionClase === "sube" ? "▲ " : pr.comparacionClase === "baja" ? "▼ " : ""}${esc(pr.comparacion.replace(/^[▲▼]\s*/, ""))}</div>` : ""}</section>` });
+    ${pr.comparacion ? `<div class="ps-cmp ${pr.comparacionClase}">${pr.comparacionClase === "sube" ? "▲ " : pr.comparacionClase === "baja" ? "▼ " : ""}${esc(pr.comparacion.replace(/^[▲▼]\s*/, ""))}</div>` : ""}
+    ${pr.nota ? `<div class="ps-nota">⏳ ${esc(pr.nota)}</div>` : ""}</section>` });
   const paises = barrasDePres(sec("paises"));
   if(paises) out.push({ id: "paises", titulo: t("Dónde estuvimos","Where we were","Onde estivemos","איפה היינו"), html: `<section class="ps-slide">${marca}<h2 class="ps-tit">${esc(t("Dónde estuvimos","Where we were","Onde estivemos","איפה היינו"))}</h2>${paises}</section>` });
   const tipos = barrasDePres(sec("tipos"));
@@ -21950,6 +22010,63 @@ function diapositivasDelReporte(){
     <ul class="ps-lista">${prox.map(p => { const d = String(p.startDate || p.date); const lugar = (p.scopes || []).map(scopeLabel).filter(Boolean)[0] || ""; return `<li dir="auto"><b>${esc(fmtISO(d, { day: "numeric", month: "short" }))}</b> ${esc(calendarioLabel(p))}${lugar ? ` <span>· ${esc(lugar)}</span>` : ""}</li>`; }).join("")}</ul></section>` });
   return out;
 }
+// El informe de un mes (propuesta 3-A, 13/10/2026): las mismas diapositivas del modo
+// presentación, para el mes completo, sin «Ver solo»: el mes contra el anterior, los
+// países y los tipos del mes, y los últimos 12 meses con el de este informe al final.
+// Se arma con lo que ya está cargado, igual que Reportes: nada viaja por el correo.
+function informeDelMes(mes, vence){
+  const desde = `${mes}-01`, hasta = addDaysISO(addMonthsISO(desde, 1), -1);
+  const antes = addMonthsISO(desde, -1);
+  const r = armarReporte(desde, hasta, null), rAnt = armarReporte(antes, addDaysISO(desde, -1), null);
+  const r12 = armarReporte(addMonthsISO(desde, -11), hasta, null);
+  const cuenta = o => Object.keys(o).length;
+  const nombreMes = fmtISO(desde, { month:"long", year:"numeric" });
+  const meses = [];
+  for(let i = 11; i >= 0; i--){
+    const m = addMonthsISO(desde, -i).slice(0, 7), hechas = r12.porMes[m] || 0, plan = r12.porMesPlan[m] || 0;
+    meses.push({ clave: m, etiqueta: esc(fmtISO(m + "-01", { month:"short" }).replace(".", "").slice(0, 3)), n: hechas, plan,
+      titulo: `${mesCortoDe(m)}: ${hechas}` });
+  }
+  const paises = Object.entries(r.porPais).map(([n, v]) => ({ etiqueta: esc(countryLabel(n)), n: v, color: safeColor((ZONES[zoneOfCountry(n)] || {}).color) }))
+    .sort((a, b) => b.n - a.n || a.etiqueta.localeCompare(b.etiqueta, currentLang()));
+  const tipos = Object.entries(r.porTipo).map(([k, v]) => { const ty = ACTIVITY_BY_KEY[k]; return { etiqueta: `${esc(ty ? ty.icon : "✨")} ${esc(ty ? ty.label : k)}`, n: v }; }).sort((a, b) => b.n - a.n);
+  // Contra el mes anterior, con las mismas reglas que Reportes: sin nada antes no se dice nada.
+  const dif = r.total - rAnt.total;
+  const contra = t("que el mes anterior","than the previous month","que o mês anterior","מהחודש הקודם");
+  const comparacion = !rAnt.total ? "" : dif === 0 ? `= ${t("igual","the same","igual","זהה")} ${contra}`
+    : `${dif > 0 ? "▲" : "▼"} ${rAnt.total >= 10 ? Math.abs(Math.round(dif * 100 / rAnt.total)) + "%" : Math.abs(dif)} ${dif > 0 ? t("más","more","mais","יותר") : t("menos","fewer","menos","פחות")} ${contra}`;
+  const personas = cuenta(r.porPersona), paisesN = cuenta(r.porPais);
+  return { desde, hasta, total: r.total, totalAnterior: rAnt.total,
+    secciones: [{ id:"meses", titulo:t("Mes a mes","Month by month","Mês a mês","חודש אחר חודש"), filas: meses }, { id:"paises", titulo:t("Por país","By country","Por país","לפי מדינה"), filas: paises },
+      { id:"tipos", titulo:t("Por tipo","By type","Por tipo","לפי סוג"), filas: tipos }],
+    presentacion: { titulo: esc(t("Informe de {m}","{m} report","Relatório de {m}","דוח {m}",{ m: nombreMes })), subtitulo: `${esc(fmtDate(desde))} – ${esc(fmtDate(hasta))}`, filtro: null,
+      comparacion: comparacion, comparacionClase: !comparacion || dif === 0 ? "" : dif > 0 ? "sube" : "baja",
+      nota: vence ? t("Este informe se abre desde el enlace del correo, que vence el {f}.","This report opens from the link in the email, which expires on {f}.","Este relatório abre pelo link do e-mail, que vence em {f}.","הדוח הזה נפתח מהקישור במייל, שפג תוקפו ב-{f}.",{ f: fmtDateTime(vence) }) : "",
+      numeros: [
+        [r.total, r.planificadas ? (r.total === 1 ? t("actividad hecha","activity done","atividade feita","פעילות שבוצעה") : t("actividades hechas","activities done","atividades feitas","פעילויות שבוצעו"))
+          : (r.total === 1 ? t("actividad","activity","atividade","פעילות") : t("actividades","activities","atividades","פעילויות"))],
+        [paisesN, etqPaises(paisesN)], [r.ciudades.size, etqCiudades(r.ciudades.size)],
+        [personas, personas === 1 ? t("persona que cargó","person who logged","pessoa que carregou","אדם שרשם") : t("personas que cargaron","people who logged","pessoas que carregaram","אנשים שרשמו")],
+      ] } };
+}
+// El botón del correo: se pregunta a la base si el enlace de ese mes sigue valiendo para esta
+// cuenta (48 horas desde que salió el correo) y recién ahí se abre el informe.
+async function abrirInformeDelMes(mes){
+  if(!store || !store.informes) return;
+  let v = null;
+  try{ v = await store.informes.vigente(mes); }
+  catch(err){ console.warn("No se pudo comprobar el enlace del informe:", err && err.message); }
+  if(!v){
+    appAlert(t("No pude comprobar el enlace del informe. Probá abrirlo de nuevo en un rato.","I couldn't check the report link. Try opening it again in a while.","Não consegui verificar o link do relatório. Tente abri-lo de novo daqui a pouco.","לא הצלחתי לבדוק את קישור הדוח. נסו לפתוח אותו שוב עוד מעט."));
+    return;
+  }
+  if(!v.vigente){
+    appAlert(t("Este enlace venció: pasaron más de 48 horas desde que te llegó el correo. Los números siguen en Reportes.","This link has expired: more than 48 hours have passed since the email reached you. The numbers are still in Reports.","Este link venceu: passaram mais de 48 horas desde que o e-mail chegou. Os números continuam em Relatórios.","הקישור פג תוקף: עברו יותר מ-48 שעות מאז שהמייל הגיע אליך. המספרים עדיין בדוחות."));
+    return;
+  }
+  const rep = informeDelMes(mes, v.vence);
+  abrirPresentacion({ reporte: rep, informe: { mes, desde: rep.desde, hasta: rep.hasta } });
+}
 function dibujarPresentacion(){
   const d = presDiapositivas[presIndice];
   if(!d) return;
@@ -21964,10 +22081,13 @@ function presIr(i){
   if(n === presIndice) return;
   presIndice = n; dibujarPresentacion();
 }
-function abrirPresentacion(){
-  const lista = diapositivasDelReporte();
+function abrirPresentacion({ reporte, informe } = {}){
+  const lista = diapositivasDelReporte(reporte || reporteEnPantalla);
   if(!lista.length) return;
-  presDiapositivas = lista; presIndice = 0;
+  presDiapositivas = lista; presIndice = 0; presInforme = informe || null;
+  const planilla = document.getElementById("presPlanilla");
+  planilla.hidden = !presInforme;
+  planilla.textContent = "⬇ " + t("Planilla","Spreadsheet","Planilha","גיליון");
   presReturnFocus = document.activeElement;
   const rtl = isRTL();
   document.getElementById("presAnt").textContent = rtl ? "›" : "‹";
@@ -21989,7 +22109,7 @@ function abrirPresentacion(){
 function cerrarPresentacion(){
   if(presOverlay.hidden) return;
   presOverlay.hidden = true;
-  presDiapositivas = [];
+  presDiapositivas = []; presInforme = null;
   if(document.fullscreenElement){ try{ document.exitFullscreen(); }catch(e){} }
   presEnPantallaCompleta = false;
   // Al salir de la pantalla completa el navegador cambia el tamaño y la página se redibuja: el foco vuelve
@@ -24644,6 +24764,9 @@ document.addEventListener("click", async e=>{
     "usuarios-csv": async (el, e, action, postId) => {
     descargarTexto(`registro-personas-${todayISO()}.csv`, csvDePersonas());
   },
+    "pres-planilla": async () => {
+    if(presInforme) descargarTexto(`informe-${presInforme.mes}.csv`, csvDeActividades(actividadesEnVentana(presInforme.desde, presInforme.hasta)));
+  },
     "reporte-csv": async (el, e, action, postId) => {
     const r = reporteEnPantalla;
     if(r) descargarTexto(`registro-reporte-${r.desde}-${r.hasta}.csv`, csvDelReporte());
@@ -24743,6 +24866,27 @@ document.addEventListener("click", async e=>{
     if(!isAdmin()) return;
     const k = el.dataset.key, actual = lugaresConfig();
     guardarCorreosConfig({ lugares: k === "off" ? { on:false, meses:actual.meses } : { on:true, meses:Number(k) } });
+  },
+    "informe-modo": async (el, e, action, postId) => {
+    if(!isAdmin()) return;
+    guardarCorreosConfig({ informe: { on: el.dataset.key === "on", para: informeConfig().para } });
+  },
+    "informe-persona": async (el, e, action, postId) => {
+    if(!isAdmin()) return;
+    const { on, para } = informeConfig(), m = el.dataset.email, ya = para.some(x => x.toLowerCase() === m.toLowerCase());
+    guardarCorreosConfig({ informe: { on, para: ya ? para.filter(x => x.toLowerCase() !== m.toLowerCase()) : [...para, m] } });
+  },
+    "informe-prueba": async (el, e, action, postId) => {
+    if(!isAdmin() || informePrueba.mandando) return;
+    informePrueba.mandando = true; informePrueba.msg = ""; render();
+    try{
+      const r = await store.avisar({ tipo:"informe", mes: mesDelInformeDeAhora() });
+      informePrueba.msg = r.enviado
+        ? t("Listo: revisá tu correo (y Spam, la primera vez).","Done: check your inbox (and Spam, the first time).","Pronto: confira seu e-mail (e o Spam, da primeira vez).","בוצע: בדקו את תיבת הדואר (ואת הספאם, בפעם הראשונה).")
+        : t("No salió: se puede pedir uno por minuto y hasta 5 por día.","Not sent: you can ask for one per minute and up to 5 per day.","Não saiu: dá para pedir um por minuto e até 5 por dia.","לא נשלח: אפשר לבקש אחד בדקה ועד 5 ביום.");
+    }catch(err){
+      informePrueba.msg = t("No se pudo mandar ({m}).","Couldn't send it ({m}).","Não foi possível enviar ({m}).","({m}) לא ניתן היה לשלוח.",{ m: err.message });
+    }finally{ informePrueba.mandando = false; render(); }
   },
     "correos-elegir": async (el, e, action, postId) => {
     if(!isAdmin()) return;

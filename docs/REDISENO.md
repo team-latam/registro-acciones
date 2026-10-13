@@ -969,6 +969,42 @@ eligió **unirlas así**:
 Pruebas: `agenda_test.mjs` (país, región y ciudad; fallan con el código
 de antes) y `ficha_celular_test.mjs` vuelve a esperar cinco tarjetas.
 
+### 77. Informe mensual por correo, con enlace que vence a las 48 horas — HECHO (13 oct 2026)
+
+Propuesta 3-A de la segunda vuelta, la opción A: el correo avisa y trae un botón; el informe se abre dentro del
+Registro, con la cuenta del equipo, y el enlace vence a las 48 horas. Vino de la nota del usuario en la primera
+vuelta: «que ese reporte, desde el correo, solo se pueda ver 48 horas… si lo descarga está bien… tiene que haber un
+aviso en el correo».
+
+- **Lo que se le explicó** (hay que repetirlo si se lo pregunta): un correo que ya llegó no se puede borrar ni apagar
+  desde acá. Por eso **el correo no lleva ningún número**: dice qué es, cuándo vence el enlace y trae el botón; lo que
+  queda en la casilla es un aviso y, a las 48 horas, un enlace que ya no abre nada. Y los números del informe son los
+  del Registro, que cada integrante puede ver en Reportes cuando quiera: el vencimiento es del enlace, no un secreto
+  sobre los datos.
+- **Administración → Correos → «Informe mensual»**: apagado de fábrica; prendido, se eligen las personas que lo reciben
+  (cualquiera del equipo, también los observadores: los «jefes»). Se guarda en `app_config 'preferences'` →
+  `correos.informe = {on, para: [correos]}`. «Mandarme un informe de prueba» manda el del último mes completo, con el
+  enlace valiendo 48 horas, para verlo sin esperar al día 1 (solo un admin, uno por minuto y 5 por día).
+- **El día 1 de cada mes**, a las 9 de cada persona (su zona, su hora) y hasta el día 3 por si GitHub atrasa, sale el
+  aviso del mes que terminó (`supabase/avisos/informe.mjs`, en el mismo workflow de cada hora). Una marca por persona
+  y mes (`avisos_enviados`, tipo `informe`); si Resend falla, se reintenta a la hora siguiente. Quienes se eligen acá
+  reciben el informe aunque no estén habilitados para los otros avisos: no es lo mismo.
+- **El enlace** es `?informe=2026-10`. Al abrirlo (con la sesión iniciada) la app le pregunta a la base
+  `informe_vigente(mes)` (`supabase/23-informe-mensual.sql`): vale si la marca de ESA cuenta tiene menos de 48 horas.
+  Lo decide el servidor, no la pantalla. Vencido, o nunca enviado a esa cuenta: un aviso («Este enlace venció… los
+  números siguen en Reportes») y la app de siempre. Si la base no contesta: «No pude comprobar el enlace».
+- **El informe en pantalla** son las diapositivas del modo presentación (tanda 75) para el mes completo, sin «Ver solo»:
+  los cuatro números contra el mes anterior, los países, los tipos, los últimos 12 meses con este al final, lo logrado y
+  lo que viene; en la portada, hasta cuándo vale el enlace. **«Imprimir / PDF»** y **«⬇ Planilla»** (las actividades de
+  ese mes, con lo cancelado marcado) son la parte de «si lo descarga, está bien».
+- Quien está en la lista y entra a la app deja anotado su idioma y su zona (como quien recibe los otros correos), para que
+  el correo salga en su idioma y diga el vencimiento en su hora.
+- Pruebas: `informe_mensual_test.mjs` (25: abrir, observador, inglés, vencido, 47 horas, de otra persona, base caída, mes
+  mal escrito), `correos_test.mjs` (la tarjeta, las personas, el informe de prueba, idioma y zona),
+  `supabase/avisos/pruebas/informe.mjs` (40), `supabase/functions/_pruebas/avisos.mjs` (el informe de prueba) y
+  `supabase/pruebas/72-informe-mensual.sql` (28: a las 47 h 59 sí y a las 48 h 1 no, solo para quien lo recibió,
+  el informe de prueba del admin).
+
 ### 76. Correo mensual de «Lugares sin actividad», para los admins — HECHO (13 oct 2026)
 
 Propuesta 2-A de la primera vuelta («correo mensual para admins»; el plazo se elige en Administración).

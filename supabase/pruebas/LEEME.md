@@ -16,6 +16,10 @@ Los archivos:
   `auth.jwt()`, su bucket, y que una función nueva se pueda llamar desde
   el navegador si no se le saca el permiso). En Supabase esto ya existe;
   acá hay que fabricarlo.
+- `72-informe-mensual.sql` — el informe mensual con enlace que vence a las 48
+  horas (`23-informe-mensual.sql`): quién ve «vigente», que a las 48 horas
+  deje de valer, que sea solo de quien lo recibió, y el correo de prueba del admin
+  (solo admin, a sí mismo, con topes).
 - `73-problemas.sql` — «Algo no anda» y los errores que la app anota sola
   (`22-problemas.sql`): se escribe solo con las dos funciones (con el correo
   de quien llama), el mismo error se agrupa y suma a quien le pasó, los topes
