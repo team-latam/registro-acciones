@@ -595,6 +595,7 @@
   .ps-cmp.sube{ color:#86efac; } .ps-cmp.baja{ color:#fca5a5; }
   /* «Mi año» (6-B): la tarjeta para compartir, en 3:4, como la imagen que se baja */
   .mia-view .mia-anios{ margin:0 0 16px; }
+  .mia-volver{ display:inline-block; margin:0 0 6px !important; font-size:12.5px !important; }
   .mia-tarjeta{ aspect-ratio:3/4; width:min(100%, 320px); margin:0 0 14px; border-radius:18px; padding:26px 20px 18px; box-sizing:border-box; color:#fff; text-align:center; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
     background:linear-gradient(150deg, #0d3b3e, #082427); position:relative; overflow:hidden; }
   .mia-tarjeta small{ font-size:13px; font-weight:800; letter-spacing:.04em; color:#4fc7e0; }
@@ -603,6 +604,13 @@
   .mia-tarjeta em{ font-style:normal; font-size:17px; font-weight:700; color:#4fc7e0; margin-top:18px; }
   .mia-tarjeta i{ font-style:normal; font-size:13px; font-weight:600; color:rgba(255,255,255,.82); margin-top:6px; }
   .mia-tarjeta u{ text-decoration:none; font-size:10px; font-weight:600; color:rgba(255,255,255,.6); position:absolute; bottom:12px; left:0; right:0; }
+  /* La ventana «Bajar planilla» */
+  .pl-grupo{ display:flex; flex-wrap:wrap; gap:8px; margin:6px 0 14px; }
+  .pl-opcion{ display:flex; flex-direction:column; align-items:flex-start; gap:1px; text-align:start; border-radius:14px; padding:8px 12px; max-width:100%; }
+  .pl-opcion b{ font-size:13px; } .pl-opcion small{ font-size:11.5px; font-weight:500; color:var(--text-muted); white-space:normal; }
+  .pl-opcion.active small{ color:inherit; opacity:.85; }
+  .pl-dos .pl-opcion{ flex:1 1 150px; }
+  .feed-planilla{ min-width:34px; justify-content:center; font-size:15px; }
   .ps-nota{ margin-top:clamp(14px, 3vh, 28px); font-size:clamp(11px, 2vh, 16px); color:var(--ps-mut); }
   .ps-barras{ list-style:none; margin:0; padding:0; display:grid; gap:clamp(7px, 1.8vh, 16px); }
   .ps-barras li{ display:grid; grid-template-columns:minmax(90px, 24%) minmax(0, 1fr) auto; gap:14px; align-items:center; font-size:clamp(13px, 2.7vh, 24px); }
@@ -4440,6 +4448,13 @@
   <button type="button" class="pres-flecha pres-ant" data-action="pres-ant" id="presAnt"></button>
   <button type="button" class="pres-flecha pres-sig" data-action="pres-sig" id="presSig"></button>
   <div class="pres-puntos" id="presPuntos"></div>
+</div>
+
+<div class="modal-overlay" id="planillaOverlay" hidden>
+  <div class="modal modal-wrap" style="max-width:520px;" role="dialog" aria-modal="true" aria-labelledby="planillaTitle">
+    <button class="close" id="planillaClose" aria-label="Cerrar">✕</button>
+    <div id="planillaBody" style="display:flex;flex-direction:column;min-height:0;"></div>
+  </div>
 </div>
 
 <div class="modal-overlay" id="problemaOverlay" hidden>
@@ -11795,7 +11810,6 @@ function renderUserBadge(){
   const pend = isAdmin() ? solicitudesPendientes().length : 0;
   const links = isAuthorized() ? `
         <div class="um-links">
-          <button type="button" class="um-link" data-action="goto-view" data-view="mianio">✨ ${t("Mi año","My year","Meu ano","השנה שלי")}</button>
           <button type="button" class="um-link" data-action="goto-view" data-view="configuracion">⚙️ ${t("Mis preferencias","My preferences","Minhas preferências","ההעדפות שלי")}</button>
           <button type="button" class="um-link" data-action="problema-abrir">🛟 ${t("Algo no anda","Something's wrong","Algo não está funcionando","משהו לא עובד")}</button>
           ${isAdmin() ? `<button type="button" class="um-link" data-action="goto-view" data-view="admin">🛠️ ${t("Administración","Administration","Administração","ניהול")}${pend ? `<span class="pending-count">${pend}</span>` : ""}</button>` : ""}
@@ -11969,7 +11983,8 @@ function doRender(){
   // En angosto el panel de filtros tapa todo: la página de atrás no se mueve.
   document.documentElement.classList.toggle("fp-abierto", fp.abierto);
   document.querySelectorAll("#tabs button[data-view]").forEach(b=>{
-    const activa = b.dataset.view === state.view;
+    // «Mi año» vive adentro de Reportes (botón al lado de «Presentar»): mientras se mira, Reportes sigue marcado.
+    const activa = b.dataset.view === state.view || (b.dataset.view === "reportes" && state.view === "mianio");
     b.classList.toggle("active", activa);
     // El lector de pantalla también tiene que saber en qué pestaña está (R22).
     if(activa) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
@@ -12974,7 +12989,7 @@ function renderBottomNav(){
   if(!isAuthorized()){ bottomNavEl.hidden = true; moreMenuOpen = false; return; }
   bottomNavEl.hidden = false;
   const item = (view, icon, label) => `<button type="button" class="bn-item${state.view===view?" active":""}" data-action="goto-view" data-view="${view}"${state.view===view ? ' aria-current="page"' : ""}><span class="bn-ico" aria-hidden="true">${icon}</span><span class="bn-txt">${label}</span></button>`;
-  const enMas = ["proyectos","reportes","mianio","configuracion", ...ADMIN_VIEWS];
+  const enMas = ["proyectos","reportes","configuracion", ...ADMIN_VIEWS];
   const pend = isAdmin() ? solicitudesPendientes().length : 0;
   const hoja = (view, icon, label, extra) => `<button type="button" class="bn-sheet-item${state.view===view?" active":""}" data-action="goto-view" data-view="${view}">${icon} ${label}${extra || ""}</button>`;
   bottomNavEl.innerHTML = `
@@ -12988,7 +13003,6 @@ function renderBottomNav(){
     ${moreMenuOpen ? `<div class="bn-sheet" role="menu">
         ${hoja("proyectos", "📋", t("Proyectos","Projects","Projetos","פרויקטים"))}
         ${hoja("reportes", "📊", t("Reportes","Reports","Relatórios","דוחות"))}
-        ${hoja("mianio", "✨", t("Mi año","My year","Meu ano","השנה שלי"))}
         ${hoja("configuracion", "⚙️", t("Mis preferencias","My preferences","Minhas preferências","ההעדפות שלי"))}
         ${isAdmin() ? hoja("admin", "🛠️", t("Administración","Administration","Administração","ניהול"), pend ? `<span class="pending-count">${pend}</span>` : "") : ""}
       </div>` : ""}`;
@@ -14772,15 +14786,15 @@ function renderSolapasDelFeed(pasados, futuros){
   return `<div class="feed-solapas-fila"><div class="feed-solapas" role="group" aria-label="${esc(t("Qué mostrar","What to show","O que mostrar","מה להציג"))}">
     ${b("pasado", t("Lo que pasó","What happened","O que aconteceu","מה קרה"), pasados.length)}
     ${b("futuro", t("Próximos","Upcoming","Próximos","בקרוב"), futuros.length)}
-  </div><div class="feed-chips">${renderChipDeOrden()}${renderChipDePlanilla(feedSolapa === "futuro" ? futuros : pasados)}</div></div>`;
+  </div><div class="feed-chips">${renderChipDeOrden()}${renderChipDePlanilla()}</div></div>`;
 }
-// «Planilla» (propuesta 5, 13/10/2026): baja lo que la solapa muestra con los
-// filtros puestos, entero y no solo las 15 tarjetas pintadas. Solo para quien
-// carga eventos, igual que la planilla de la Agenda.
-function renderChipDePlanilla(lista){
-  if(!canWrite() || !lista.length) return "";
-  const largo = t("Bajar en planilla lo que se ve ({n})","Download what you see as a spreadsheet ({n})","Baixar em planilha o que você vê ({n})","הורדת מה שמוצג כגיליון ({n})",{ n: lista.length });
-  return `<button type="button" class="chip-toggle feed-planilla" data-action="feed-planilla" title="${esc(largo)}" aria-label="${esc(largo)}">⬇<span class="lp-ancho"> ${t("Planilla","Spreadsheet","Planilha","גיליון")}</span></button>`;
+// «Planilla»: un botón con solo la flecha (la leyenda aparece al pasar el mouse) que abre la ventana
+// «Bajar planilla», donde se elige qué bajar (pedido del usuario, 13/10/2026). Solo para quien carga
+// eventos, igual que la planilla de la Agenda.
+function renderChipDePlanilla(){
+  if(!canWrite() || !state.posts.length) return "";
+  const largo = t("Bajar planilla","Download spreadsheet","Baixar planilha","הורדת גיליון");
+  return `<button type="button" class="chip-toggle feed-planilla" data-action="feed-planilla" title="${esc(largo)}" aria-label="${esc(largo)}" aria-haspopup="dialog">⬇</button>`;
 }
 // Reportes cuenta cada vez que se repite una rutina (una reunión semanal son 15 en el año) y el Inicio la
 // muestra en una sola tarjeta: tocás «Argentina 17» y la lista tiene 3 posteos. Con un período puesto (al
@@ -16614,27 +16628,7 @@ function descargarTexto(nombre, texto, tipo){
   a.href = url; a.download = nombre; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(()=> URL.revokeObjectURL(url), 1000);
 }
-// Las actividades como planilla (propuesta 5, 13/10/2026): una fila por
-// posteo, con lo que dice la tarjeta. Lo bajan quienes cargan eventos desde
-// el Inicio (lo que muestra la solapa, con los filtros puestos) y el admin
-// desde Administración (un año entero). Una serie que se repite es una sola
-// fila: «Se repite» dice cada cuánto, no se multiplica por las veces.
-function csvDeActividades(posts){
-  const hoy = todayISO();
-  const filas = [[t("Fecha","Date","Data","תאריך"), t("Hasta","Until","Até","עד"), t("Tipo","Type","Tipo","סוג"), t("Título","Title","Título","כותרת"),
-    t("Lugares","Places","Lugares","מקומות"), t("Dónde","Where","Onde","היכן"), t("Personas","People","Pessoas","אנשים"), t("Cargó","Logged by","Registrou","נרשם על ידי"),
-    t("Estado","Status","Situação","מצב"), t("Se repite","Repeats","Repete","חוזר")]];
-  posts.forEach(p => {
-    const ini = p.startDate || p.date || "";
-    const ty = ACTIVITY_BY_KEY[p.activityType];
-    filas.push([ini, p.endDate && p.endDate !== ini ? p.endDate : "", ty ? ty.label : (p.activityType || ""), p.title || "",
-      (Array.isArray(p.scopes) ? p.scopes : []).map(scopeLabel).filter(Boolean).join(" / "), p.location || "",
-      (Array.isArray(p.participants) ? p.participants : []).map(x => x && x.name).filter(Boolean).join(", "), p.authorName || p.authorEmail || "",
-      p.cancelled ? t("Cancelada","Cancelled","Cancelada","בוטל") : esProximo(p, hoy) ? t("Planificada","Planned","Planejada","מתוכנן") : t("Hecha","Done","Feita","בוצע"),
-      isRecurring(p) ? recurrenceLabel(p) : ""]);
-  });
-  return filas.map(f => f.map(celdaCsv).join(";")).join("\r\n");
-}
+// (La planilla de actividades vive en «PLANILLA DE ACTIVIDADES», más abajo.)
 // Todo lo de un año, para la planilla del admin: lo que cae adentro (una
 // serie que se repite entra si alguna de sus fechas cae), y también lo
 // cancelado, que figura como tal.
@@ -16728,6 +16722,7 @@ function renderSelectorDelReporte(modo, f){
       ${pop}
     </div>`;
   const acciones = `<span class="rep-espacio"></span>
+      <button type="button" class="rep-boton" data-action="goto-view" data-view="mianio" title="${esc(t("Tu resumen personal del año, con una tarjeta para compartir","Your personal summary of the year, with a card to share","Seu resumo pessoal do ano, com um cartão para compartilhar","הסיכום האישי שלך לשנה, עם כרטיס לשיתוף"))}">✨ ${t("Mi año","My year","Meu ano","השנה שלי")}</button>
       ${reporteEnPantalla && reporteEnPantalla.presentacion ? `<button type="button" class="rep-boton" data-action="reporte-presentar" title="${esc(t("Mostrar el reporte en pantalla completa, una diapositiva por tema","Show the report full screen, one slide per topic","Mostrar o relatório em tela cheia, um slide por tema","הצגת הדוח במסך מלא, שקופית לכל נושא"))}">▶ ${t("Presentar","Present","Apresentar","הצגה")}</button>` : ""}
       <button type="button" class="rep-boton" data-action="reporte-csv" title="${esc(t("Bajar planilla","Download spreadsheet","Baixar planilha","הורדת גיליון"))}">⬇ ${t("Planilla","Spreadsheet","Planilha","גיליון")}</button>
       <button type="button" class="rep-boton" data-action="reporte-imprimir" title="${esc(t("Imprimir o guardar en PDF","Print or save as PDF","Imprimir ou salvar em PDF","הדפסה או שמירה כ-PDF"))}">🖨 PDF</button>`;
@@ -19964,10 +19959,10 @@ function tourSteps(){
       textoMas: true },
     { id:"reportes", cubre:["reportes"], target: [...tourNav("reportes"), TOUR_MAS],
       title: t("Reportes","Reports","Relatórios","דוחות"),
-      text: t("Cuántas actividades hubo por mes, país, tipo y persona, contra el período anterior, y de qué se habló en los últimos 90 días. Tocá un mes del gráfico para ver su ficha, o «Presentar» para mostrar el reporte en pantalla completa, como diapositivas, o imprimirlo.",
-        "How many activities there were by month, country, type and person, against the previous period, and what was talked about in the last 90 days. Tap a month in the chart to see its card, or “Present” to show the report full screen, as slides, or print it.",
-        "Quantas atividades houve por mês, país, tipo e pessoa, em relação ao período anterior, e do que se falou nos últimos 90 dias. Toque em um mês do gráfico para ver a ficha dele, ou em «Apresentar» para mostrar o relatório em tela cheia, como slides, ou imprimi-lo.",
-        "כמה פעילויות היו לפי חודש, מדינה, סוג ואדם, מול התקופה הקודמת, ועל מה דובר ב-90 הימים האחרונים. הקש/י על חודש בגרף כדי לראות את הכרטיס שלו, או על «הצגה» כדי להציג את הדוח במסך מלא, כשקופיות, או להדפיס אותו."),
+      text: t("Cuántas actividades hubo por mes, país, tipo y persona, contra el período anterior, y de qué se habló en los últimos 90 días. Tocá un mes del gráfico para ver su ficha, «✨ Mi año» para tu resumen personal con una tarjeta para compartir, o «Presentar» para mostrar el reporte en pantalla completa, como diapositivas, o imprimirlo.",
+        "How many activities there were by month, country, type and person, against the previous period, and what was talked about in the last 90 days. Tap a month in the chart to see its card, “✨ My year” for your personal summary with a card to share, or “Present” to show the report full screen, as slides, or print it.",
+        "Quantas atividades houve por mês, país, tipo e pessoa, em relação ao período anterior, e do que se falou nos últimos 90 dias. Toque em um mês do gráfico para ver a ficha dele, em «✨ Meu ano» para o seu resumo pessoal com um cartão para compartilhar, ou em «Apresentar» para mostrar o relatório em tela cheia, como slides, ou imprimi-lo.",
+        "כמה פעילויות היו לפי חודש, מדינה, סוג ואדם, מול התקופה הקודמת, ועל מה דובר ב-90 הימים האחרונים. הקש/י על חודש בגרף כדי לראות את הכרטיס שלו, על «✨ השנה שלי» לסיכום האישי שלך עם כרטיס לשיתוף, או על «הצגה» כדי להציג את הדוח במסך מלא, כשקופיות, או להדפיס אותו."),
       textoMas: true },
     { id:"novedades", cubre:[], target: ["#mentionsBell .bell-btn"],
       title: t("Novedades","Updates","Novidades","עדכונים"),
@@ -19975,12 +19970,12 @@ function tourSteps(){
         "Here you see if someone mentions you, replies to you, changes one of your events, and what's coming up.",
         "Aqui você vê se alguém te menciona, responde, muda um dos seus eventos e o que vem por aí.",
         "כאן רואים אם מזכירים אותך, עונים לך, משנים אחד מהאירועים שלך ומה מתקרב.") },
-    { id:"cuenta", cubre:["configuracion","mianio"], target: [".avatar-btn"],
+    { id:"cuenta", cubre:["configuracion"], target: [".avatar-btn"],
       title: t("Tu cuenta","Your account","Sua conta","החשבון שלך"),
-      text: t("Tus preferencias (avisos por correo, formato de fecha), el idioma y el tono claro u oscuro, y «Mi año»: tu resumen del año, con una tarjeta para compartir. Si algo no anda, avisá desde acá. Para salir, también.",
-        "Your preferences (email alerts, date format), the language and light or dark tone, and “My year”: your summary of the year, with a card to share. If something's wrong, tell us from here. And sign out, too.",
-        "Suas preferências (avisos por e-mail, formato de data), o idioma e o tom claro ou escuro, e «Meu ano»: seu resumo do ano, com um cartão para compartilhar. Se algo não funcionar, avise daqui. E também para sair.",
-        "ההעדפות שלך (התראות במייל, פורמט תאריך), השפה והגוון בהיר או כהה, ו«השנה שלי»: סיכום השנה שלך, עם כרטיס לשיתוף. אם משהו לא עובד, אפשר לדווח מכאן. וגם ההתנתקות.") },
+      text: t("Tus preferencias (avisos por correo, formato de fecha), el idioma y el tono claro u oscuro. Si algo no anda, avisá desde acá. Para salir, también.",
+        "Your preferences (email alerts, date format), the language and light or dark tone. If something's wrong, tell us from here. And sign out, too.",
+        "Suas preferências (avisos por e-mail, formato de data), o idioma e o tom claro ou escuro. Se algo não funcionar, avise daqui. E também para sair.",
+        "ההעדפות שלך (התראות במייל, פורמט תאריך), השפה והגוון בהיר או כהה. אם משהו לא עובד, אפשר לדווח מכאן. וגם ההתנתקות.") },
   ];
   if(!canWrite()){
     // Observador: sin composer ni FAB (no existen en su pantalla). Su recorrido arranca explicando el rol,
@@ -22279,7 +22274,7 @@ function renderMiAnioView(){
   const txt = textosDeLaTarjeta(d);
   const kpi = (n, etiqueta) => `<div class="rep-kpi"><div class="rep-kpi-num">${n}</div><div class="rep-kpi-txt">${etiqueta}</div></div>`;
   const selector = `<div class="pref-chips mia-anios" role="group" aria-label="${esc(t("Año","Year","Ano","שנה"))}">${anios.slice().reverse().map(a => `<button type="button" class="chip-toggle${a === miAnio.anio ? " active" : ""}" data-action="mianio-anio" data-year="${esc(a)}" aria-pressed="${a === miAnio.anio}">${esc(a)}</button>`).join("")}</div>`;
-  const cabeza = `<header class="admin-cabecera"><div class="admin-cab-txt"><h2 class="admin-h2">✨ ${t("Mi año","My year","Meu ano","השנה שלי")}</h2>
+  const cabeza = `<header class="admin-cabecera"><div class="admin-cab-txt"><button type="button" class="rs-link mia-volver" data-action="goto-view" data-view="reportes">${isRTL() ? "→" : "←"} ${t("Reportes","Reports","Relatórios","דוחות")}</button><h2 class="admin-h2">✨ ${t("Mi año","My year","Meu ano","השנה שלי")}</h2>
       <p class="admin-lead">${t("Lo que cargaste o donde figurás como participante, sin las rutinas. Solo lo ves vos: nada de esto se guarda ni se manda a nadie.","What you logged or where you appear as a participant, without routines. Only you see it: none of this is saved or sent to anyone.","O que você registrou ou onde aparece como participante, sem as rotinas. Só você vê: nada disso é guardado nem enviado a ninguém.","מה שרשמת או שבו את/ה מופיע/ה כמשתתף/ת, בלי השגרה. רק את/ה רואה: שום דבר מזה לא נשמר ולא נשלח לאף אחד.")}</p></div></header>`;
   if(!d.total) return `<div class="mia-view">${cabeza}${selector}<div class="empty-state"><div class="big">✨</div>${t("Todavía no hay nada cargado a tu nombre en {a}.","There's nothing logged under your name in {a} yet.","Ainda não há nada registrado no seu nome em {a}.","עדיין אין שום דבר שרשום על שמך ב-{a}.",{ a: esc(d.anio) })}</div></div>`;
   const kpis = tiraDeNumeros([
@@ -22329,6 +22324,304 @@ async function bajarMiAnio(){
   a.href = url; a.download = `mi-${d.anio}.png`; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+
+/* ======================================================================
+   PLANILLA DE ACTIVIDADES (13/10/2026)
+   ======================================================================
+   El usuario pidió que la planilla del Inicio sea de verdad una TABLA: una
+   fila por actividad y cada dato en su columna (no todo junto en una celda),
+   que baje todo —también el texto de los posteos— y que, si hay filtros
+   puestos, se pueda elegir qué sí y qué no. El botón es solo la flecha ⬇.
+   - Se baja un .xlsx de verdad, con una «Tabla» de Excel (filtros en cada
+     encabezado, filas con rayas, la primera fila fija) y las fechas como
+     fechas, no como texto, para poder ordenar y filtrar. Se arma acá, en el
+     navegador, escribiendo el archivo a mano (un .xlsx es un .zip de XML):
+     sin librerías de afuera, anda sin conexión y nada sale de la app.
+   - Quien prefiera otro programa baja un CSV con las mismas columnas.
+   - La ventana «Bajar planilla» deja elegir qué actividades (todo el
+     Registro, lo que se está filtrando, o solo la solapa) y qué columnas,
+     por grupos; se acuerda de lo que se eligió.
+   ====================================================================== */
+const XLSX_TIPO = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+const xmlEsc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+// Lo que XML no admite (caracteres de control) se saca: un solo carácter así deja el archivo ilegible.
+const sinControl = s => String(s == null ? "" : s).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F￾￿]/g, "");
+// 0 → A, 25 → Z, 26 → AA.
+function letraDeColumna(n){ let s = ""; for(n++; n > 0; n = Math.floor((n - 1) / 26)) s = String.fromCharCode(65 + (n - 1) % 26) + s; return s; }
+// Los días desde el 30/12/1899, que es como Excel guarda una fecha.
+function serialDeFecha(iso){
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || ""));
+  return m ? Math.round((Date.UTC(+m[1], +m[2] - 1, +m[3]) - Date.UTC(1899, 11, 30)) / 86400000) : null;
+}
+const CRC_TABLA = (() => { const tb = new Uint32Array(256); for(let n = 0; n < 256; n++){ let c = n; for(let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; tb[n] = c >>> 0; } return tb; })();
+function crc32(bytes){ let c = 0xFFFFFFFF; for(let i = 0; i < bytes.length; i++) c = CRC_TABLA[(c ^ bytes[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+async function comprimirRaw(bytes){
+  if(typeof CompressionStream === "undefined") return null;
+  try{ return new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new CompressionStream("deflate-raw"))).arrayBuffer()); }
+  catch(e){ return null; }
+}
+// Un .zip de archivos de texto: comprimido si el navegador sabe (casi siempre) y, si no, guardado tal cual.
+async function zipDe(archivos){
+  const enc = new TextEncoder(), partes = [], central = [];
+  const ahora = new Date();
+  const hora = (ahora.getHours() << 11) | (ahora.getMinutes() << 5) | (ahora.getSeconds() >> 1);
+  const fecha = ((ahora.getFullYear() - 1980) << 9) | ((ahora.getMonth() + 1) << 5) | ahora.getDate();
+  let desplazamiento = 0;
+  for(const a of archivos){
+    const nombre = enc.encode(a.nombre), datos = enc.encode(a.texto), crc = crc32(datos);
+    const comp = await comprimirRaw(datos), usa = !!comp && comp.length < datos.length;
+    const cuerpo = usa ? comp : datos, metodo = usa ? 8 : 0;
+    const local = new DataView(new ArrayBuffer(30));
+    local.setUint32(0, 0x04034b50, true); local.setUint16(4, 20, true); local.setUint16(6, 0x0800, true); local.setUint16(8, metodo, true);
+    local.setUint16(10, hora, true); local.setUint16(12, fecha, true); local.setUint32(14, crc, true);
+    local.setUint32(18, cuerpo.length, true); local.setUint32(22, datos.length, true); local.setUint16(26, nombre.length, true);
+    partes.push(new Uint8Array(local.buffer), nombre, cuerpo);
+    const reg = new DataView(new ArrayBuffer(46));
+    reg.setUint32(0, 0x02014b50, true); reg.setUint16(4, 20, true); reg.setUint16(6, 20, true); reg.setUint16(8, 0x0800, true); reg.setUint16(10, metodo, true);
+    reg.setUint16(12, hora, true); reg.setUint16(14, fecha, true); reg.setUint32(16, crc, true);
+    reg.setUint32(20, cuerpo.length, true); reg.setUint32(24, datos.length, true); reg.setUint16(28, nombre.length, true); reg.setUint32(42, desplazamiento, true);
+    central.push(new Uint8Array(reg.buffer), nombre);
+    desplazamiento += 30 + nombre.length + cuerpo.length;
+  }
+  const tamCentral = central.reduce((n, x) => n + x.length, 0);
+  const fin = new DataView(new ArrayBuffer(22));
+  fin.setUint32(0, 0x06054b50, true); fin.setUint16(8, archivos.length, true); fin.setUint16(10, archivos.length, true);
+  fin.setUint32(12, tamCentral, true); fin.setUint32(16, desplazamiento, true);
+  return new Blob([...partes, ...central, new Uint8Array(fin.buffer)], { type: XLSX_TIPO });
+}
+// Cómo se ve una fecha en Excel: la del formato elegido en Mis preferencias (si no, «10 oct 2026»).
+function formatoDeFechaExcel(){ return ({ dmy: "dd/mm/yyyy", mdy: "mm/dd/yyyy", ymd: "yyyy-mm-dd" })[dateFormatPref()] || "dd mmm yyyy"; }
+const URL_DE_ENLACE = /^(https?|file):\/\/[^\s"<>]+$/;
+// tabla: { hoja, columnas: [{ titulo, tipo: "texto" | "fecha" | "numero" | "enlace", ancho }], filas: [[valor, …]] }
+//   texto: un texto · fecha: «2026-03-10» · numero: un número · enlace: { url, texto }.
+// Devuelve el .xlsx como Blob: una hoja con una Tabla de Excel, la fila de títulos fija y las fechas como fechas.
+async function xlsxDeTabla(tabla, { derechaAIzquierda = false, formatoDeFecha = "dd/mm/yyyy" } = {}){
+  const cols = tabla.columnas, filas = tabla.filas, n = cols.length;
+  // Títulos únicos (una tabla de Excel no admite dos columnas con el mismo nombre).
+  const usados = new Set();
+  const titulos = cols.map(c => {
+    const base = sinControl(c.titulo).replace(/[\r\n]+/g, " ").trim() || "Columna";
+    let x = base, i = 2; while(usados.has(x.toLowerCase())) x = `${base} (${i++})`;
+    usados.add(x.toLowerCase()); return x;
+  });
+  const compartidas = [], indice = new Map();
+  const cadena = s => {
+    s = sinControl(s); if(s.length > 32000) s = s.slice(0, 31999) + "…";
+    let i = indice.get(s); if(i == null){ i = compartidas.length; compartidas.push(s); indice.set(s, i); }
+    return i;
+  };
+  const celda = (ref, tipo, v) => {
+    if(v == null || v === "") return "";
+    if(tipo === "fecha"){ const d = serialDeFecha(v); return d == null ? "" : `<c r="${ref}" s="1"><v>${d}</v></c>`; }
+    if(tipo === "numero") return typeof v === "number" && isFinite(v) ? `<c r="${ref}"><v>${v}</v></c>` : "";
+    if(tipo === "enlace"){
+      const texto = sinControl(v && v.texto), url = String((v && v.url) || "");
+      if(!URL_DE_ENLACE.test(url)) return texto ? `<c r="${ref}" t="s"><v>${cadena(texto)}</v></c>` : "";
+      return `<c r="${ref}" s="3" t="str"><f>${xmlEsc(`HYPERLINK("${url.replace(/"/g, '""')}","${texto.replace(/"/g, '""')}")`)}</f><v>${xmlEsc(texto)}</v></c>`;
+    }
+    return `<c r="${ref}" t="s"><v>${cadena(v)}</v></c>`;
+  };
+  let filasXml = `<row r="1">${titulos.map((tt, j) => `<c r="${letraDeColumna(j)}1" t="s"><v>${cadena(tt)}</v></c>`).join("")}</row>`;
+  filas.forEach((fila, i) => {
+    const r = i + 2;
+    filasXml += `<row r="${r}">${cols.map((c, j) => celda(letraDeColumna(j) + r, c.tipo, fila[j])).join("")}</row>`;
+  });
+  const ultima = `${letraDeColumna(n - 1)}${filas.length + 1}`;
+  const conTabla = filas.length > 0;
+  const hoja = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><dimension ref="A1:${ultima}"/><sheetViews><sheetView workbookViewId="0"${derechaAIzquierda ? ' rightToLeft="1"' : ""}><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/><selection pane="bottomLeft" activeCell="A2" sqref="A2"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="15"/><cols>${cols.map((c, j) => `<col min="${j + 1}" max="${j + 1}" width="${c.ancho || 14}" customWidth="1"/>`).join("")}</cols><sheetData>${filasXml}</sheetData>${conTabla ? '<tableParts count="1"><tablePart r:id="rId1"/></tableParts>' : ""}</worksheet>`;
+  const nombreTabla = "Actividades";
+  const tablaXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<table xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" id="1" name="${nombreTabla}" displayName="${nombreTabla}" ref="A1:${ultima}" totalsRowShown="0"><autoFilter ref="A1:${ultima}"/><tableColumns count="${n}">${titulos.map((tt, j) => `<tableColumn id="${j + 1}" name="${xmlEsc(tt)}"/>`).join("")}</tableColumns><tableStyleInfo name="TableStyleMedium2" showFirstColumn="0" showLastColumn="0" showRowStripes="1" showColumnStripes="0"/></table>`;
+  const estilos = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="${xmlEsc(formatoDeFecha)}"/></numFmts><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><sz val="11"/><color rgb="FF0563C1"/><u/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="4"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyAlignment="1"><alignment horizontal="left"/></xf><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles><dxfs count="0"/><tableStyles count="0" defaultTableStyle="TableStyleMedium2" defaultPivotStyle="PivotStyleLight16"/></styleSheet>`;
+  const nombreHoja = (sinControl(tabla.hoja || "Actividades").replace(/[\[\]:*?\/\\]/g, " ").trim() || "Actividades").slice(0, 31);
+  const textos = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="${compartidas.length}" uniqueCount="${compartidas.length}">${compartidas.map(x => `<si><t xml:space="preserve">${xmlEsc(x)}</t></si>`).join("")}</sst>`;
+  const R = "http://schemas.openxmlformats.org/officeDocument/2006/relationships", P = "http://schemas.openxmlformats.org/package/2006/relationships";
+  const archivos = [
+    { nombre: "[Content_Types].xml", texto: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/>${conTabla ? '<Override PartName="/xl/tables/table1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.table+xml"/>' : ""}</Types>` },
+    { nombre: "_rels/.rels", texto: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="${P}"><Relationship Id="rId1" Type="${R}/officeDocument" Target="xl/workbook.xml"/></Relationships>` },
+    { nombre: "xl/workbook.xml", texto: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="${R}"><sheets><sheet name="${xmlEsc(nombreHoja)}" sheetId="1" r:id="rId1"/></sheets></workbook>` },
+    { nombre: "xl/_rels/workbook.xml.rels", texto: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="${P}"><Relationship Id="rId1" Type="${R}/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="${R}/styles" Target="styles.xml"/><Relationship Id="rId3" Type="${R}/sharedStrings" Target="sharedStrings.xml"/></Relationships>` },
+    { nombre: "xl/worksheets/sheet1.xml", texto: hoja },
+    ...(conTabla ? [
+      { nombre: "xl/worksheets/_rels/sheet1.xml.rels", texto: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="${P}"><Relationship Id="rId1" Type="${R}/table" Target="../tables/table1.xml"/></Relationships>` },
+      { nombre: "xl/tables/table1.xml", texto: tablaXml }] : []),
+    { nombre: "xl/styles.xml", texto: estilos },
+    { nombre: "xl/sharedStrings.xml", texto: textos },
+  ];
+  return zipDe(archivos);
+}
+// El mismo contenido como CSV (punto y coma y BOM, para que Excel lea los acentos).
+function csvDeTabla(tabla){
+  const fila = (valores, tipos) => valores.map((v, j) => {
+    if(tipos[j] === "enlace") return celdaCsv(v && v.url);
+    if(tipos[j] === "numero") return v == null ? "" : String(v);
+    return celdaCsv(v);
+  }).join(";");
+  const tipos = tabla.columnas.map(c => c.tipo);
+  return [tabla.columnas.map(c => celdaCsv(c.titulo)).join(";"), ...tabla.filas.map(f => fila(f, tipos))].join("\r\n");
+}
+
+// Las columnas, por grupos (lo que se elige en la ventana). `valor(p)` saca el dato de un posteo.
+function lugaresDePosteo(p){
+  const paises = new Set(), ciudades = new Set(), zonas = new Set();
+  (Array.isArray(p.scopes) ? p.scopes : []).forEach(sc => {
+    if(!sc) return;
+    if(sc.type === "todo"){ zonas.add(t("Toda LatAm","All LatAm","Toda a LatAm","כל אמריקה הלטינית")); return; }
+    if(sc.type === "region"){ if(sc.region && ZONES[sc.region]) zonas.add(ZONES[sc.region].label); return; }
+    if(sc.country){
+      paises.add(countryLabel(sc.country));
+      const z = zoneOfCountry(sc.country); if(z && ZONES[z]) zonas.add(ZONES[z].label);
+      if(sc.type === "ciudad" && sc.city) ciudades.add(cityLabel(sc.country, sc.city));
+    }
+  });
+  return { paises: [...paises].join("; "), ciudades: [...ciudades].join("; "), zonas: [...zonas].join("; ") };
+}
+function cierreDePosteo(p){
+  const partes = resumenDe(p);
+  if(!partes) return { objetivos: null, logrados: null, pendientes: null, hechos: null };
+  const c = cuentaObjetivos(partes), pasos = pasosDe(partes);
+  return { objetivos: c.total, logrados: c.si, pendientes: pasos.filter(pasoPendiente).length, hechos: pasos.filter(x => x.estado === "hecho").length };
+}
+const iniDePosteo = p => String(p.startDate || p.date || "");
+const GRUPOS_DE_PLANILLA = () => {
+  const hoy = todayISO(), sinAsignar = null;
+  const base = location.href.split(/[?#]/)[0];
+  const de = (id, titulo, detalle, columnas) => ({ id, titulo, detalle, columnas });
+  const c = (titulo, tipo, ancho, valor) => ({ titulo, tipo, ancho, valor });
+  return [
+    de("fechas", t("Fechas","Dates","Datas","תאריכים"), t("desde, hasta, año y mes","from, until, year and month","de, até, ano e mês","מתאריך, עד תאריך, שנה וחודש"), [
+      c(t("Desde","From","De","מתאריך"), "fecha", 13, p => iniDePosteo(p)),
+      c(t("Hasta","Until","Até","עד תאריך"), "fecha", 13, p => String(p.endDate || iniDePosteo(p))),
+      c(t("Año","Year","Ano","שנה"), "numero", 8, p => Number(iniDePosteo(p).slice(0, 4)) || null),
+      c(t("Mes","Month","Mês","חודש"), "numero", 8, p => Number(iniDePosteo(p).slice(5, 7)) || null)]),
+    de("actividad", t("Tipo y título","Type and title","Tipo e título","סוג וכותרת"), t("qué actividad es","which activity it is","qual é a atividade","איזו פעילות"), [
+      c(t("Tipo","Type","Tipo","סוג"), "texto", 14, p => { const ty = ACTIVITY_BY_KEY[p.activityType]; return ty ? ty.label : (p.activityType || ""); }),
+      c(t("Título","Title","Título","כותרת"), "texto", 44, p => p.title || "")]),
+    de("texto", t("Texto del posteo","Post text","Texto da postagem","טקסט הפוסט"), t("lo que se escribió, entero","what was written, in full","o que foi escrito, inteiro","מה שנכתב, במלואו"), [
+      c(t("Texto del posteo","Post text","Texto da postagem","טקסט הפוסט"), "texto", 70, p => p.content || "")]),
+    de("lugares", t("Lugares","Places","Lugares","מקומות"), t("países, ciudades, zonas y dirección","countries, cities, zones and address","países, cidades, zonas e endereço","מדינות, ערים, אזורים וכתובת"), [
+      c(t("Países","Countries","Países","מדינות"), "texto", 22, p => lugaresDePosteo(p).paises),
+      c(t("Ciudades","Cities","Cidades","ערים"), "texto", 22, p => lugaresDePosteo(p).ciudades),
+      c(t("Zonas","Zones","Zonas","אזורים"), "texto", 18, p => lugaresDePosteo(p).zonas),
+      c(t("Alcance","Scope","Alcance","היקף"), "texto", 30, p => (Array.isArray(p.scopes) ? p.scopes : []).map(scopeLabel).filter(Boolean).join(" / ")),
+      c(t("Dónde","Where","Onde","היכן"), "texto", 26, p => p.location || "")]),
+    de("personas", t("Personas","People","Pessoas","אנשים"), t("quién cargó y quiénes participaron","who logged it and who took part","quem registrou e quem participou","מי רשם ומי השתתף"), [
+      c(t("Cargó","Logged by","Registrou","נרשם על ידי"), "texto", 22, p => p.authorName || p.authorEmail || ""),
+      c(t("Correo de quien cargó","Email of who logged it","E-mail de quem registrou","מייל של הרושם"), "texto", 26, p => p.authorEmail || ""),
+      c(t("Participantes","Participants","Participantes","משתתפים"), "texto", 34, p => (Array.isArray(p.participants) ? p.participants : []).map(x => x && (x.name || x.email)).filter(Boolean).join("; ")),
+      c(t("Cantidad de participantes","Number of participants","Quantidade de participantes","מספר משתתפים"), "numero", 14, p => (Array.isArray(p.participants) ? p.participants : []).filter(Boolean).length)]),
+    de("estado", t("Estado","Status","Situação","מצב"), t("hecha, planificada o cancelada; si es un proyecto; si se repite","done, planned or cancelled; whether it's a project; whether it repeats","feita, planejada ou cancelada; se é um projeto; se se repete","בוצע, מתוכנן או בוטל; אם זה פרויקט; אם זה חוזר"), [
+      c(t("Estado","Status","Situação","מצב"), "texto", 13, p => p.cancelled ? t("Cancelada","Cancelled","Cancelada","בוטל") : esProximo(p, hoy) ? t("Planificada","Planned","Planejada","מתוכנן") : t("Hecha","Done","Feita","בוצע")),
+      c(t("Proyecto","Project","Projeto","פרויקט"), "texto", 10, p => p.isProject ? t("Sí","Yes","Sim","כן") : t("No","No","Não","לא")),
+      c(t("Se repite","Repeats","Repete","חוזר"), "texto", 22, p => isRecurring(p) ? recurrenceLabel(p) : "")]),
+    de("cierre", t("Cierre y pasos","Closure and steps","Fechamento e passos","סגירה ושלבים"), t("objetivos logrados y pasos de «Lo que sigue»","goals achieved and “What's next” steps","objetivos alcançados e passos de «O que segue»","מטרות שהושגו ושלבי «מה הלאה»"), [
+      c(t("Objetivos","Goals","Objetivos","מטרות"), "numero", 11, p => cierreDePosteo(p).objetivos),
+      c(t("Objetivos logrados","Goals achieved","Objetivos alcançados","מטרות שהושגו"), "numero", 14, p => cierreDePosteo(p).logrados),
+      c(t("Pasos pendientes","Pending steps","Passos pendentes","שלבים ממתינים"), "numero", 14, p => cierreDePosteo(p).pendientes),
+      c(t("Pasos hechos","Steps done","Passos feitos","שלבים שבוצעו"), "numero", 12, p => cierreDePosteo(p).hechos)]),
+    de("extra", t("Cargado el y enlace","Logged on and link","Registrado em e link","נרשם בתאריך וקישור"), t("cuándo se cargó y un enlace al posteo","when it was logged and a link to the post","quando foi registrado e um link para a postagem","מתי נרשם וקישור לפוסט"), [
+      c(t("Cargado el","Logged on","Registrado em","נרשם בתאריך"), "fecha", 13, p => { const ms = tsToMillis(p.createdAt); return ms ? new Date(ms).toISOString().slice(0, 10) : ""; }),
+      c(t("Enlace","Link","Link","קישור"), "enlace", 10, p => /^[\w-]+$/.test(String(p.id || "")) ? { url: `${base}?post=${encodeURIComponent(p.id)}`, texto: t("Abrir","Open","Abrir","פתיחה") } : null)]),
+  ];
+};
+const todosLosGrupos = () => new Set(GRUPOS_DE_PLANILLA().map(g => g.id));
+// La tabla de unas actividades con los grupos de columnas elegidos, de la más vieja a la más nueva.
+function tablaDeActividades(posts, grupos){
+  const columnas = GRUPOS_DE_PLANILLA().filter(g => grupos.has(g.id)).flatMap(g => g.columnas);
+  const ordenadas = posts.slice().sort((a, b) => iniDePosteo(a).localeCompare(iniDePosteo(b)) || String(a.title || "").localeCompare(String(b.title || "")));
+  return { hoja: t("Actividades","Activities","Atividades","פעילויות"), columnas, filas: ordenadas.map(p => columnas.map(c => c.valor(p))) };
+}
+async function bajarPlanilla(posts, grupos, formato, nombreBase){
+  const tabla = tablaDeActividades(posts, grupos);
+  if(formato === "csv") descargarTexto(`${nombreBase}.csv`, csvDeTabla(tabla));
+  else descargarBlob(`${nombreBase}.xlsx`, await xlsxDeTabla(tabla, { derechaAIzquierda: isRTL(), formatoDeFecha: formatoDeFechaExcel() }));
+}
+
+// ---- La ventana «Bajar planilla» ----
+const planillaOverlay = document.getElementById("planillaOverlay");
+let planillaEstado = null, planillaReturnFocus = null;
+function guardadoDePlanilla(){ try{ return JSON.parse(localStorage.getItem("ra_planilla") || "null") || {}; }catch(e){ return {}; } }
+function actividadesParaPlanilla(alcance){
+  if(alcance === "todo") return state.posts.slice();
+  const { pasados, futuros } = partesDelFeed();
+  if(alcance === "solapa") return (feedSolapa === "futuro" ? futuros : pasados).map(it => it.post);
+  return [...pasados, ...futuros].map(it => it.post);
+}
+function hayFiltrosEnElInicio(){
+  const f = state.filters;
+  return !!(f && (f.text || cuantosFiltrosPuestos(f, nivelDeAhora(f)) > 0));
+}
+function abrirPlanilla(){
+  const g = guardadoDePlanilla();
+  const todos = todosLosGrupos();
+  const grupos = Array.isArray(g.sin) ? new Set([...todos].filter(x => !g.sin.includes(x))) : todos;
+  planillaEstado = { alcance: hayFiltrosEnElInicio() ? "filtradas" : "todo", grupos, formato: g.formato === "csv" ? "csv" : "xlsx", bajando: false };
+  planillaReturnFocus = document.querySelector('[data-action="feed-planilla"]');
+  renderPlanilla();
+  planillaOverlay.hidden = false;
+  enfocarComo(planillaOverlay.querySelector('[data-action="planilla-bajar"]'), planillaReturnFocus);
+}
+function cerrarPlanilla(){
+  planillaOverlay.hidden = true; planillaEstado = null;
+  if(planillaReturnFocus && typeof planillaReturnFocus.focus === "function") planillaReturnFocus.focus();
+  planillaReturnFocus = null;
+}
+function renderPlanilla(){
+  const e = planillaEstado; if(!e) return;
+  const grupos = GRUPOS_DE_PLANILLA();
+  const filtrado = hayFiltrosEnElInicio();
+  const cuantas = k => actividadesParaPlanilla(k).length;
+  const alcances = [
+    ["todo", t("Todo el Registro","The whole Log","Todo o Registro","כל היומן"), t("{n} actividades, también lo cancelado y lo que viene","{n} activities, including cancelled ones and upcoming","{n} atividades, também o cancelado e o que vem","{n} פעילויות, כולל מבוטלות ומה שמתקרב",{ n: cuantas("todo") })],
+    ...(filtrado ? [["filtradas", t("Lo que estoy filtrando","What I'm filtering","O que estou filtrando","מה שאני מסנן"), t("{n} actividades, «Lo que pasó» y «Próximos» juntos, con los filtros puestos","{n} activities, “What happened” and “Upcoming” together, with the filters on","{n} atividades, «O que aconteceu» e «Próximos» juntos, com os filtros","{n} פעילויות, «מה קרה» ו«בקרוב» יחד, עם הסינון",{ n: cuantas("filtradas") })]] : []),
+    ["solapa", feedSolapa === "futuro" ? t("Solo «Próximos»","Only “Upcoming”","Só «Próximos»","רק «בקרוב»") : t("Solo «Lo que pasó»","Only “What happened”","Só «O que aconteceu»","רק «מה קרה»"), t("{n} actividades, lo que muestra la solapa de ahora","{n} activities, what the current tab shows","{n} atividades, o que a aba atual mostra","{n} פעילויות, מה שהלשונית הנוכחית מציגה",{ n: cuantas("solapa") })],
+  ];
+  if(!alcances.some(a => a[0] === e.alcance)) e.alcance = alcances[0][0];
+  const n = cuantas(e.alcance), nCols = grupos.filter(g => e.grupos.has(g.id)).reduce((s, g) => s + g.columnas.length, 0);
+  const chip = (accion, key, activo, titulo, detalle, rol) => `<button type="button" role="${rol}" ${rol === "radio" ? `aria-checked="${activo}"` : `aria-pressed="${activo}"`} class="chip-toggle pl-opcion${activo ? " active" : ""}" data-action="${accion}" data-key="${esc(key)}"><b>${esc(titulo)}</b>${detalle ? `<small>${esc(detalle)}</small>` : ""}</button>`;
+  const puede = n > 0 && nCols > 0 && !e.bajando;
+  document.getElementById("planillaBody").innerHTML = `
+    <h2 id="planillaTitle" class="cp-tit">⬇ ${t("Bajar planilla","Download spreadsheet","Baixar planilha","הורדת גיליון")}</h2>
+    <p class="setting-sub" style="margin:0 0 12px;">${t("Una tabla con una fila por actividad y cada dato en su propia columna, lista para filtrar y ordenar.","A table with one row per activity and each piece of data in its own column, ready to filter and sort.","Uma tabela com uma linha por atividade e cada dado na sua coluna, pronta para filtrar e ordenar.","טבלה עם שורה לכל פעילות וכל נתון בעמודה משלו, מוכנה לסינון ולמיון.")}</p>
+    <div class="rs-h">${t("Qué actividades","Which activities","Quais atividades","אילו פעילויות")}</div>
+    <div class="pl-grupo" role="radiogroup" aria-label="${esc(t("Qué actividades","Which activities","Quais atividades","אילו פעילויות"))}">${alcances.map(([k, ti, de]) => chip("planilla-alcance", k, e.alcance === k, ti, de, "radio")).join("")}</div>
+    <div class="rs-h">${t("Qué columnas","Which columns","Quais colunas","אילו עמודות")} <b>${esc(t("{n} columnas","{n} columns","{n} colunas","{n} עמודות",{ n: nCols }))}</b></div>
+    <div class="pl-grupo" role="group" aria-label="${esc(t("Qué columnas","Which columns","Quais colunas","אילו עמודות"))}">${grupos.map(g => chip("planilla-grupo", g.id, e.grupos.has(g.id), g.titulo, g.detalle, "checkbox")).join("")}</div>
+    <div class="rs-h">${t("Formato","Format","Formato","פורמט")}</div>
+    <div class="pl-grupo pl-dos" role="radiogroup" aria-label="${esc(t("Formato","Format","Formato","פורמט"))}">${chip("planilla-formato", "xlsx", e.formato === "xlsx", "Excel (.xlsx)", t("una tabla con filtros","a table with filters","uma tabela com filtros","טבלה עם סינון"), "radio")}${chip("planilla-formato", "csv", e.formato === "csv", "CSV", t("para otros programas","for other programs","para outros programas","לתוכנות אחרות"), "radio")}</div>
+    ${n ? "" : `<div class="form-error" role="status">${esc(t("No hay actividades para bajar con esta elección.","There are no activities to download with this choice.","Não há atividades para baixar com esta escolha.","אין פעילויות להורדה בבחירה הזו."))}</div>`}
+    ${nCols ? "" : `<div class="form-error" role="status">${esc(t("Marcá al menos un grupo de columnas.","Pick at least one group of columns.","Marque pelo menos um grupo de colunas.","יש לבחור לפחות קבוצת עמודות אחת."))}</div>`}
+    <div class="modal-actions">
+      <button type="button" class="btn-secondary" data-action="planilla-cerrar">${t("Cancelar","Cancel","Cancelar","ביטול")}</button>
+      <button type="button" class="btn-primary" data-action="planilla-bajar" ${puede ? "" : "disabled"}>${e.bajando ? t("Armando…","Building…","Montando…","בונה…") : esc(n === 1 ? t("Bajar 1 actividad","Download 1 activity","Baixar 1 atividade","הורדת פעילות אחת") : t("Bajar {n} actividades","Download {n} activities","Baixar {n} atividades","הורדת {n} פעילויות",{ n }))}</button>
+    </div>`;
+}
+async function bajarDesdeLaVentana(){
+  const e = planillaEstado; if(!e || e.bajando) return;
+  const posts = actividadesParaPlanilla(e.alcance);
+  if(!posts.length || !e.grupos.size) return;
+  e.bajando = true; renderPlanilla();
+  const hoy = todayISO();
+  const nombre = e.alcance === "todo" ? `registro-${hoy}` : e.alcance === "filtradas" ? `registro-filtrado-${hoy}` : `actividades-${feedSolapa === "futuro" ? "proximas-" : ""}${hoy}`;
+  try{
+    await bajarPlanilla(posts, e.grupos, e.formato, nombre);
+    try{ localStorage.setItem("ra_planilla", JSON.stringify({ sin: [...todosLosGrupos()].filter(x => !e.grupos.has(x)), formato: e.formato })); }catch(err){ /* sin guardar lo elegido: sigue andando */ }
+    cerrarPlanilla();
+  }catch(err){
+    e.bajando = false; renderPlanilla();
+    appAlert(t("No se pudo armar la planilla ({m}).","Couldn't build the spreadsheet ({m}).","Não foi possível montar a planilha ({m}).","({m}) לא ניתן היה לבנות את הגיליון.",{ m: err.message }));
+  }
+}
+planillaOverlay.addEventListener("click", ev => { if(ev.target === planillaOverlay) cerrarPlanilla(); });
+document.getElementById("planillaClose").addEventListener("click", cerrarPlanilla);
 
 /* ======================================================================
    «ALGO NO ANDA» y los errores que la app anota sola (13/10/2026, 8-C)
@@ -23425,6 +23718,7 @@ document.addEventListener("keydown", e=>{
   if(!likesOverlay.hidden){ closeLikes(); return; }
   if(!agendaOverlay.hidden){ agendaVolver(); return; }
   if(!presOverlay.hidden){ cerrarPresentacion(); return; }
+  if(!planillaOverlay.hidden){ cerrarPlanilla(); return; }
   if(!problemaOverlay.hidden){ cerrarProblema(); return; }
   if(!cumpleOverlay.hidden){ closeCumple(); return; }
   if(!fichaPostOverlay.hidden){ closeFichaPost(); return; }
@@ -23556,6 +23850,7 @@ trapTabWithin(likesOverlay);
 trapTabWithin(agendaOverlay);
 trapTabWithin(cumpleOverlay);
 trapTabWithin(problemaOverlay);
+trapTabWithin(planillaOverlay);
 trapTabWithin(presOverlay);
 trapTabWithin(fichaPostOverlay);
 trapTabWithin(confirmOverlay);
@@ -24943,17 +25238,24 @@ document.addEventListener("click", async e=>{
   },
     "mianio-bajar": async () => { await bajarMiAnio(); },
     "pres-planilla": async () => {
-    if(presInforme) descargarTexto(`informe-${presInforme.mes}.csv`, csvDeActividades(actividadesEnVentana(presInforme.desde, presInforme.hasta)));
+    if(presInforme) await bajarPlanilla(actividadesEnVentana(presInforme.desde, presInforme.hasta), todosLosGrupos(), "xlsx", `informe-${presInforme.mes}`);
   },
     "reporte-csv": async (el, e, action, postId) => {
     const r = reporteEnPantalla;
     if(r) descargarTexto(`registro-reporte-${r.desde}-${r.hasta}.csv`, csvDelReporte());
   },
-    "feed-planilla": async () => {
-    if(canWrite()) descargarTexto(`actividades-${feedSolapa === "futuro" ? "proximas-" : ""}${todayISO()}.csv`, csvDeActividades(sortedFeedPosts().map(it => it.post)));
-  },
+    "feed-planilla": async () => { if(canWrite()) abrirPlanilla(); },
+    "planilla-alcance": async (el) => { if(planillaEstado){ planillaEstado.alcance = el.dataset.key; renderPlanilla(); enfocarComo(planillaOverlay.querySelector(`[data-action="planilla-alcance"][data-key="${el.dataset.key}"]`), null); } },
+    "planilla-grupo": async (el) => {
+      if(!planillaEstado) return;
+      planillaEstado.grupos.has(el.dataset.key) ? planillaEstado.grupos.delete(el.dataset.key) : planillaEstado.grupos.add(el.dataset.key);
+      renderPlanilla(); enfocarComo(planillaOverlay.querySelector(`[data-action="planilla-grupo"][data-key="${el.dataset.key}"]`), null);
+    },
+    "planilla-formato": async (el) => { if(planillaEstado){ planillaEstado.formato = el.dataset.key === "csv" ? "csv" : "xlsx"; renderPlanilla(); enfocarComo(planillaOverlay.querySelector(`[data-action="planilla-formato"][data-key="${planillaEstado.formato}"]`), null); } },
+    "planilla-bajar": async () => { await bajarDesdeLaVentana(); },
+    "planilla-cerrar": async () => { cerrarPlanilla(); },
     "anio-planilla": async () => {
-    if(isAdmin()){ const anio = todayISO().slice(0, 4); descargarTexto(`registro-${anio}.csv`, csvDeActividades(actividadesDelAnio(anio))); }
+    if(isAdmin()){ const anio = todayISO().slice(0, 4); await bajarPlanilla(actividadesDelAnio(anio), todosLosGrupos(), "xlsx", `registro-${anio}`); }
   },
     "tema-ir": async (el) => {
     const palabra = String(el.dataset.tema || "").trim();

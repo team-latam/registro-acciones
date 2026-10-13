@@ -969,6 +969,31 @@ eligió **unirlas así**:
 Pruebas: `agenda_test.mjs` (país, región y ciudad; fallan con el código
 de antes) y `ficha_celular_test.mjs` vuelve a esperar cinco tarjetas.
 
+### 81. La planilla de actividades: una tabla de Excel, con ventana para elegir qué bajar — HECHO (13 oct 2026)
+
+Pedido del usuario sobre la planilla del Inicio (tanda 70): «que funcione como una tabla con columnas que tiene separada la
+información; que baje todo, incluso los posts, pero si filtrás, poder decidir qué sí y qué no; y el botón solo con la flecha,
+con la leyenda al pasar por arriba».
+
+- **El botón del Inicio es solo la flecha ⬇**, con «Bajar planilla» al pasar el mouse (y para el lector de pantalla). Abre la
+  ventana **«Bajar planilla»**: *qué actividades* (**Todo el Registro**, también lo cancelado y lo que viene; **Lo que estoy filtrando**,
+  las dos solapas juntas, solo si hay filtros puestos y marcada de fábrica en ese caso; o **Solo la solapa** de ahora), *qué columnas*
+  (ocho grupos, todos marcados: fechas, tipo y título, **texto del posteo entero**, lugares, personas, estado, cierre y pasos, cargado
+  el y enlace) y *formato* (Excel o CSV). Cada opción dice cuántas actividades son. Se acuerda de las columnas y el formato.
+- **Es un .xlsx de verdad**, con una **Tabla de Excel**: una fila por actividad, **25 columnas** con cada dato separado (desde, hasta,
+  año, mes, tipo, título, texto, países, ciudades, zonas, alcance, dónde, quién cargó y su correo, participantes y cuántos, estado,
+  proyecto, se repite, objetivos, pasos, cargado el y un **enlace** al posteo), filtros en cada título, filas con rayas, la primera
+  fila fija y las **fechas como fechas** (para ordenar y filtrar). De la más vieja a la más nueva.
+- Se escribe **a mano en el navegador** (un .xlsx es un .zip de XML; el zip, también, con CRC y deflate si el navegador sabe): sin
+  librerías de afuera, anda sin conexión y nada sale de la app. Un texto que parece fórmula queda como texto; los caracteres de control
+  se sacan; un texto enorme se corta a 32.000. En hebreo la hoja se abre de derecha a izquierda.
+- «Bajar todo <año>» (Administración › Copia de seguridad) y la planilla del **informe mensual** ahora también bajan este .xlsx, con todas
+  las columnas. El botón «Planilla» de **Reportes** (los números del reporte) y la Agenda no cambiaron.
+- Pruebas: `xlsx_test.mjs` (24: el .zip, la tabla, textos con <, & y emoji, fórmulas, enlaces, sin filas, hebreo, 3.000 filas, el CSV, y
+  **openpyxl** lo abre si está) con un lector propio (`xlsx_lector.mjs`); `planillas_test.mjs` reescrita (47: la ventana, las tres
+  opciones de actividades, columnas, formato, que se acuerda, Escape, hebreo, celular y el año del admin). Además se abrió el
+  archivo con LibreOffice a mano.
+
 ### 80. «Temas» junta las palabras que van pegadas: «krav maga» es una sola idea — HECHO (13 oct 2026)
 
 El usuario vio la tanda 72 y no le gustó que cuente palabras sueltas: «cuenta "krav" y "maga" como ideas
@@ -992,7 +1017,9 @@ separadas, y al final no llega al objetivo».
 Propuesta 6-B de la segunda vuelta (una idea que el usuario había marcado como «me interesa» en la primera): la
 pantalla de cada integrante con su año, y una tarjeta vertical que se baja como imagen.
 
-- En el **menú de la cuenta** (y en «Más», en el celular): **✨ Mi año**. Cuenta lo que cargó o donde figura como
+- **Dónde está** (cambiado el 13/10/2026 a pedido del usuario: «el menú queda para preferencias, administrar y algo no funciona»):
+  un botón **✨ Mi año** en **Reportes, justo antes de «Presentar»**. Antes estaba en el menú de la cuenta y en «Más». Mientras se
+  mira, Reportes sigue marcado arriba y hay un enlace «← Reportes» para volver. Cuenta lo que cargó o donde figura como
   participante, **sin las rutinas** (la bitácora del día a día inflaría todo) y sin lo cancelado: actividades, visitas,
   países, **días viajando** (los días de las visitas que ya pasaron en ese año, cada día una vez; una visita que empezó
   en diciembre cuenta sus días en cada año) y **cuántas personas** (las que estuvieron en lo suyo y quienes cargaron
@@ -1004,7 +1031,7 @@ pantalla de cada integrante con su año, y una tarjeta vertical que se baja como
   personas; se baja como `mi-2025.png` y se dibuja en el navegador (canvas), en el idioma de la app (también en
   hebreo, de derecha a izquierda). **No lleva el nombre de nadie más: solo cuántas personas** (lo pidió así). Se ve
   la misma tarjeta en la pantalla antes de bajarla.
-- Recorrido de bienvenida: el paso «Tu cuenta» ahora lo cuenta (`cubre` suma `mianio`).
+- Recorrido de bienvenida: el paso «Reportes» lo cuenta (el de «Tu cuenta» quedó como estaba).
 - Pruebas: `mi_anio_test.mjs` (16: el menú, los números con casos de borde —rutina, cancelada, ajena, visita a
   caballo de dos años—, el gráfico, la tarjeta sin nombres ajenos, la imagen PNG de 1080×1350, cada persona ve lo suyo,
   inglés y celular).

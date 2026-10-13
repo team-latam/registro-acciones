@@ -17,6 +17,7 @@
 import { fileURLToPath as __aRuta } from "node:url";
 process.chdir(__aRuta(new URL(".", import.meta.url)));
 import { abrirNavegador, entrar, ADMIN, BASE, post, ciudad, pais, hace } from "./app_de_mentira.mjs";
+import { abrirZip, leerHoja } from "./xlsx_lector.mjs";
 
 let pass = 0, fail = 0;
 const eq = (n, g, w) => { const a = JSON.stringify(g), x = JSON.stringify(w); if(a === x) pass++; else { fail++; console.log(`✗ ${n}\n   esperado: ${x}\n   obtenido: ${a}`); } };
@@ -70,10 +71,12 @@ const b = await abrirNavegador();
   const bajada = p.waitForEvent("download", { timeout: 5000 });
   await p.click("#presPlanilla");
   const d = await bajada;
-  const csv = (await import("node:fs")).readFileSync(await d.path(), "utf8");
-  eq("la planilla se llama informe-<mes>.csv y trae las del mes, la cancelada marcada, y nada de otros meses",
-     [d.suggestedFilename(), ["Reunión en Santiago", "Charla en Chile", "Visita a Rosario"].every(t => csv.includes(t)), /Cancelada del mes[^\r\n]*Cancelada/.test(csv), csv.includes("Cosa del mes de antes"), csv.includes("Algo de este mes")],
-     [`informe-${MES}.csv`, true, true, false, false]);
+  const zip = abrirZip((await import("node:fs")).readFileSync(await d.path()));
+  const filas = leerHoja(zip).slice(1), titulos = filas.map(f => f[5]);
+  const estado = f => f[16];
+  eq("la planilla es un .xlsx llamado informe-<mes>, y trae las del mes (la cancelada marcada) y nada de otros meses",
+     [d.suggestedFilename(), ["Reunión en Santiago", "Charla en Chile", "Visita a Rosario"].every(t => titulos.includes(t)), estado(filas[titulos.indexOf("Cancelada del mes")]), titulos.includes("Cosa del mes de antes"), titulos.includes("Algo de este mes")],
+     [`informe-${MES}.xlsx`, true, "Cancelada", false, false]);
   await p.keyboard.press("Escape"); await p.waitForTimeout(300);
   eq("Escape cierra el informe y queda la app", [await abierto(p), await p.$('[data-action="toggle-user-menu"]').then(x => !!x)], [false, true]);
   eq("sin errores en la consola", errores, []);
