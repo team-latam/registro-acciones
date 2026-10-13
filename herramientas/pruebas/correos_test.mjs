@@ -96,6 +96,14 @@ const misPrefs = (p, email) => p.evaluate(e => ((window.__sb.tablas.user_prefs |
   await p.click('.avisos-correo input[data-pref="emailPasos"] + .pref-slider');
   await p.waitForTimeout(300);
   eq("y prenderla de nuevo", await misPrefs(p, ADMIN).then(x => x.emailPasos), true);
+  // Lugares sin actividad (propuesta 2-A, 13/10/2026): una llave más, solo para admins.
+  eq("el admin ve «Lugares sin actividad», prendida de fábrica", await p.$eval('.avisos-correo input[data-pref="emailLugares"]', x => x.checked), true);
+  await p.click('.avisos-correo input[data-pref="emailLugares"] + .pref-slider');
+  await p.waitForTimeout(300);
+  eq("apagarla se guarda, sin tocar las otras", await misPrefs(p, ADMIN).then(x => [x.emailLugares, x.emailPasos]), [false, true]);
+  await p.click('.avisos-correo input[data-pref="emailLugares"] + .pref-slider');
+  await p.waitForTimeout(300);
+  eq("y prenderla de nuevo", await misPrefs(p, ADMIN).then(x => x.emailLugares), true);
   await p.click('[data-action="correo-hora"][data-key="18"]');
   await p.click('[data-action="correo-cuando"][data-key="weekly"]');
   await p.click('[data-action="correo-dia"][data-key="3"]');
@@ -121,6 +129,7 @@ const misPrefs = (p, email) => p.evaluate(e => ((window.__sb.tablas.user_prefs |
   await irANotificaciones(p);
   eq("si el admin la eligió, le aparece, sin «pedidos de acceso»",
      await p.$$eval('.avisos-correo [data-action="correo-tema"]', l => l.map(x => x.dataset.key)), ["menciones", "respuestas", "nuevos", "proximos"]);
+  eq("y tampoco la llave de «Lugares sin actividad»: es de los admins", await p.$$('.avisos-correo input[data-pref="emailLugares"]').then(l => l.length), 0);
   await p.close();
 }
 {
@@ -136,6 +145,18 @@ const misPrefs = (p, email) => p.evaluate(e => ((window.__sb.tablas.user_prefs |
   eq("elegir personas se guarda en la configuración del equipo",
      await p.evaluate(() => ((window.__sb.tablas.app_config || []).find(c => c.key === "preferences") || {}).value.correos),
      { quienes: "elegidos", elegidos: ["ana@x.com"] });
+  // «Lugares sin actividad»: apagado o el plazo; de fábrica, 6 meses.
+  const lugares = () => p.evaluate(() => ((window.__sb.tablas.app_config || []).find(c => c.key === "preferences") || {}).value.correos.lugares);
+  const marcado = () => p.$$eval('.correos-lugares [data-action="correos-lugares"][aria-checked="true"]', l => l.map(e => e.dataset.key));
+  eq("Administración → Correos: «Lugares sin actividad», de fábrica a los 6 meses, con cuatro botones", [await marcado(), await p.$$eval('.correos-lugares [data-action="correos-lugares"]', l => l.map(e => e.dataset.key))], [["6"], ["off", "3", "6", "12"]]);
+  await p.click('[data-action="correos-lugares"][data-key="12"]'); await p.waitForTimeout(300);
+  eq("elegir 12 meses se guarda en la configuración del equipo, sin pisar quién recibe", [await lugares(), await marcado()], [{ on: true, meses: 12 }, ["12"]]);
+  await p.click('[data-action="correos-lugares"][data-key="off"]'); await p.waitForTimeout(300);
+  eq("«No avisar» lo apaga y recuerda el plazo", [await lugares(), await marcado()], [{ on: false, meses: 12 }, ["off"]]);
+  await p.click('[data-action="correos-lugares"][data-key="3"]'); await p.waitForTimeout(300);
+  eq("y con 3 meses vuelve a prenderlo", [await lugares(), await marcado()], [{ on: true, meses: 3 }, ["3"]]);
+  eq("quién recibe sigue como estaba",
+     await p.evaluate(() => { const c = ((window.__sb.tablas.app_config || []).find(c => c.key === "preferences") || {}).value.correos; return [c.quienes, c.elegidos]; }), ["elegidos", ["ana@x.com"]]);
   eq("sin errores", errores, []);
   await p.close();
 }
@@ -155,6 +176,21 @@ const misPrefs = (p, email) => p.evaluate(e => ((window.__sb.tablas.user_prefs |
   const salto = await p.waitForFunction(() => { const c = document.querySelector('.post[data-post-id="p_ana"]'); return c && c.classList.contains("flash") || location.search === ""; }, null, { timeout: 5000 }).then(() => true, () => false);
   eq("el enlace de un correo (?post=…) lleva a ese posteo y se limpia la dirección",
      [salto, await p.evaluate(() => location.search)], [true, ""]);
+  await p.close();
+}
+
+{
+  // El botón «Ver los reportes» del correo de lugares sin actividad (?ir=reportes) abre Reportes.
+  const { p, errores } = await entrar(ADMIN, "Benny", { query: "?ir=reportes" });
+  const llego = await p.waitForSelector('[data-action="reporte-modo"]', { timeout: 5000 }).then(() => true, () => false);
+  eq("el enlace de un correo (?ir=reportes) abre Reportes y se limpia la dirección", [llego, await p.evaluate(() => location.search), errores], [true, "", []]);
+  await p.close();
+}
+{
+  // Otros valores no hacen nada.
+  const { p } = await entrar(ADMIN, "Benny", { query: "?ir=admin" });
+  await p.waitForTimeout(800);
+  eq("?ir=lo-que-sea no lleva a ningún lado (solo Reportes)", await p.evaluate(() => document.querySelector('[data-action="reporte-modo"]') === null), true);
   await p.close();
 }
 

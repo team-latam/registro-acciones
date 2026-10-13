@@ -543,7 +543,7 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   eq("admin: el Resumen de Administración muestra el pedido pendiente", await esperarTexto(p, "Nueva Persona", 3000), true);
   const secciones = await p.$$eval('.admin-menu [data-action="admin-go"]', bs => bs.map(b => b.dataset.view + (b.dataset.key ? ":" + b.dataset.key : "")));
   eq("admin: el menú de Administración tiene todas las secciones", secciones,
-     ["admin","solicitudes:usuarios","auditoria","preferencias:tipos","preferencias:agenda","preferencias:avanzado","preferencias:calendar","preferencias:copia","preferencias:correos"]);
+     ["admin","solicitudes:usuarios","auditoria","preferencias:tipos","preferencias:agenda","preferencias:avanzado","preferencias:calendar","preferencias:copia","preferencias:correos","preferencias:problemas"]);
   for(const s of secciones){
     const [v, k] = s.split(":");
     await p.click(`.admin-menu [data-action="admin-go"][data-view="${v}"]${k ? `[data-key="${k}"]` : ""}`);

@@ -245,6 +245,55 @@ export function correoVence({ titulo, tipo, texto, post, cuando, lang }){
   };
 }
 
+/* ---------- Lugares sin actividad (el primer lunes de cada mes, a los admin) ---------- */
+// datos: { lugares: [{ pais (ya en el idioma), ultima (YYYY-MM-DD), hace (meses enteros), plan (YYYY-MM-DD o "") }], meses (el plazo), lang }
+// Los textos con singular y plural van de a dos: [uno, varios].
+const LU = {
+  es: { asunto:["Lugares sin actividad: 1 país lleva {m} meses o más sin nada hecho", "Lugares sin actividad: {n} países llevan {m} meses o más sin nada hecho"],
+    etiqueta:"Lugares sin actividad", titulo:["Hay 1 país sin actividad desde hace {m} meses o más", "Hay {n} países sin actividad desde hace {m} meses o más"],
+    intro:"Es el aviso del primer lunes de cada mes. Cuenta como actividad una ya hecha (no una planificada) en el país o en una ciudad suya.",
+    ultima:"Última actividad: {f} (hace {n} meses)", planeado:"Ya hay algo planeado: {f}", boton:"Ver los reportes",
+    pie:"Te llega porque sos administrador del Registro. El plazo ({m} meses) se elige en <b>Administración → Correos</b>." },
+  en: { asunto:["Places with no activity: 1 country has had nothing done for {m} months or more", "Places with no activity: {n} countries have had nothing done for {m} months or more"],
+    etiqueta:"Places with no activity", titulo:["1 country has had no activity for {m} months or more", "{n} countries have had no activity for {m} months or more"],
+    intro:"This is the notice of the first Monday of each month. An activity counts if it was already done (not just planned) in the country or in one of its cities.",
+    ultima:"Last activity: {f} ({n} months ago)", planeado:"Something is already planned: {f}", boton:"See the reports",
+    pie:"You're getting this because you're an administrator of the Log. The period ({m} months) is set in <b>Administration → Emails</b>." },
+  pt: { asunto:["Lugares sem atividade: 1 país está há {m} meses ou mais sem nada feito", "Lugares sem atividade: {n} países estão há {m} meses ou mais sem nada feito"],
+    etiqueta:"Lugares sem atividade", titulo:["1 país está sem atividade há {m} meses ou mais", "{n} países estão sem atividade há {m} meses ou mais"],
+    intro:"É o aviso da primeira segunda-feira de cada mês. Conta como atividade uma já realizada (não uma planejada) no país ou em uma cidade dele.",
+    ultima:"Última atividade: {f} (há {n} meses)", planeado:"Já há algo planejado: {f}", boton:"Ver os relatórios",
+    pie:"Chega porque você é administrador do Registro. O prazo ({m} meses) é escolhido em <b>Administração → E-mails</b>." },
+  he: { asunto:["מקומות ללא פעילות: מדינה אחת בלי שום פעילות כבר {m} חודשים או יותר", "מקומות ללא פעילות: {n} מדינות בלי שום פעילות כבר {m} חודשים או יותר"],
+    etiqueta:"מקומות ללא פעילות", titulo:["מדינה אחת ללא פעילות כבר {m} חודשים או יותר", "{n} מדינות ללא פעילות כבר {m} חודשים או יותר"],
+    intro:"זו ההתראה של יום שני הראשון בכל חודש. נחשבת פעילות כזו שכבר התבצעה (לא רק מתוכננת) במדינה או באחת מעריה.",
+    ultima:"פעילות אחרונה: {f} (לפני {n} חודשים)", planeado:"כבר מתוכנן משהו: {f}", boton:"לצפייה בדוחות",
+    pie:"זה מגיע אליך כי את/ה מנהל/ת של הרישום. התקופה ({m} חודשים) נקבעת ב<b>ניהול → מיילים</b>." },
+};
+export const textosDeLugares = lang => LU[idioma(lang)];
+const mesYAnio = (iso, lang = "es") => new Intl.DateTimeFormat(LOCALE[idioma(lang)], { timeZone: "UTC", month: "long", year: "numeric" }).format(new Date(`${iso}T12:00:00Z`));
+export function correoLugares({ lugares, meses, lang, url = `${APP}?ir=reportes` }){
+  const L = idioma(lang), T = LU[L], x = lado(L), M = TX[L];
+  const n = lugares.length, i = n === 1 ? 0 : 1;
+  const linea = asunto(conVars(T.asunto[i], { n, m: meses }));
+  const titulo = conVars(T.titulo[i], { n, m: meses });
+  const filas = lugares.map(l => ({ pais: String(l.pais), ult: conVars(T.ultima, { f: mesYAnio(l.ultima, L), n: l.hace }), plan: l.plan ? conVars(T.planeado, { f: fechaCorta(l.plan, L) }) : "" }));
+  return {
+    subject: linea,
+    text: `${linea}\n\n${T.intro}\n\n${filas.map(f => `• ${f.pais}: ${f.ult}${f.plan ? `. ${f.plan}` : ""}`).join("\n")}\n\n${T.boton}: ${url}\n`,
+    html: marco({ lang: L,
+      pre: `${linea}.`, etiqueta: T.etiqueta, titulo,
+      cuerpo: `<p style="font-size:14px;line-height:1.6;margin:0 0 16px;color:${C.gris};">${esc(T.intro)}</p>
+      <table role="presentation" cellpadding="0" cellspacing="0" width="100%" dir="${x.dir}">${filas.map(f => `<tr><td style="padding:12px 16px;margin:0;border-${x.ini}:4px solid ${C.celeste};background:${C.suave};">
+        <div style="font-size:16px;font-weight:800;color:${C.petroleo};">🌎 ${suyo(esc(f.pais))}</div>
+        <div style="font-size:13px;color:${C.texto};margin-top:3px;">${esc(f.ult)}</div>
+        ${f.plan ? `<div style="font-size:13px;font-weight:700;color:${C.celesteOsc};margin-top:3px;">📅 ${esc(f.plan)}</div>` : ""}</td></tr><tr><td style="height:8px;line-height:8px;font-size:0;">&nbsp;</td></tr>`).join("")}</table>
+      ${boton(T.boton, url, L)}`,
+      pie: `${conVars(T.pie, { m: meses })} ${M.prefs}`,
+    }),
+  };
+}
+
 /* ---------- Correo de prueba ---------- */
 export function correoPrueba({ nombre, lang }){
   const L = idioma(lang), T = TX[L];

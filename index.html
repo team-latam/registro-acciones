@@ -566,6 +566,68 @@
   .pb-acciones{ display:flex; flex-wrap:wrap; gap:6px; }
   .btn-mini.danger{ background:var(--danger-bg); color:var(--danger-text); }
   .btn-mini.danger:hover{ background:var(--danger-text); color:#fff; }
+  /* El modo presentación de Reportes (13/10/2026): pantalla completa, en oscuro, una diapositiva por tema. */
+  .pres-overlay{ position:fixed; inset:0; z-index:400; display:flex; flex-direction:column; background:#082a2c; color:#fff; font-family:inherit; }
+  .pres-overlay[hidden]{ display:none; }
+  .pres-barra{ display:flex; align-items:center; gap:10px; padding:calc(10px + env(safe-area-inset-top, 0px)) 16px 10px; }
+  .pres-cuenta{ font-size:13px; opacity:.75; font-variant-numeric:tabular-nums; }
+  .pres-espacio{ flex:1; }
+  .pres-btn{ font:inherit; font-size:13px; font-weight:700; color:#fff; background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.25); border-radius:999px; padding:8px 14px; cursor:pointer; }
+  .pres-btn:hover{ background:rgba(255,255,255,.22); }
+  .pres-btn:focus-visible, .pres-flecha:focus-visible, .pres-punto:focus-visible{ outline:2px solid #4fc7e0; outline-offset:2px; }
+  .pres-escena{ flex:1; min-height:0; display:grid; place-items:center; padding:0 clamp(52px, 9vw, 130px); overflow:auto; }
+  .pres-flecha{ position:absolute; top:50%; transform:translateY(-50%); width:44px; height:64px; font:inherit; font-size:34px; line-height:1; color:#fff; background:rgba(255,255,255,.1); border:0; border-radius:12px; cursor:pointer; }
+  .pres-flecha:hover:not(:disabled){ background:rgba(255,255,255,.22); }
+  .pres-flecha:disabled{ opacity:.25; cursor:default; }
+  .pres-ant{ inset-inline-start:max(6px, env(safe-area-inset-left, 0px)); }
+  .pres-sig{ inset-inline-end:max(6px, env(safe-area-inset-right, 0px)); }
+  .pres-puntos{ display:flex; justify-content:center; gap:10px; padding:10px 16px calc(14px + env(safe-area-inset-bottom, 0px)); }
+  .pres-punto{ width:12px; height:12px; padding:0; border:0; border-radius:50%; background:rgba(255,255,255,.3); cursor:pointer; }
+  .pres-punto.on{ background:#4fc7e0; transform:scale(1.25); }
+  .ps-slide{ --ps-fg:#fff; --ps-acc:#4fc7e0; --ps-mut:rgba(255,255,255,.74); --ps-riel:rgba(255,255,255,.14); color:var(--ps-fg); width:min(1100px, 100%); display:grid; gap:clamp(12px, 2.6vh, 30px); align-content:center; padding:12px 0; }
+  .ps-cap{ font-size:clamp(11px, 1.7vh, 14px); font-weight:800; letter-spacing:.16em; text-transform:uppercase; color:var(--ps-acc); }
+  .ps-tit{ margin:0; font-size:clamp(28px, 7vh, 66px); line-height:1.05; font-weight:800; letter-spacing:-.01em; text-wrap:balance; }
+  .ps-sub{ font-size:clamp(14px, 2.5vh, 22px); color:var(--ps-mut); }
+  .ps-nums{ display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:clamp(14px, 3.4vh, 36px); }
+  .ps-nums b{ display:block; font-size:clamp(40px, 12vh, 112px); line-height:1; font-weight:800; color:var(--ps-acc); font-variant-numeric:tabular-nums; }
+  .ps-nums span{ display:block; margin-top:6px; font-size:clamp(13px, 2.3vh, 20px); color:var(--ps-mut); }
+  .ps-cmp{ font-size:clamp(14px, 2.6vh, 22px); font-weight:700; color:var(--ps-mut); }
+  .ps-cmp.sube{ color:#86efac; } .ps-cmp.baja{ color:#fca5a5; }
+  .ps-barras{ list-style:none; margin:0; padding:0; display:grid; gap:clamp(7px, 1.8vh, 16px); }
+  .ps-barras li{ display:grid; grid-template-columns:minmax(90px, 24%) minmax(0, 1fr) auto; gap:14px; align-items:center; font-size:clamp(13px, 2.7vh, 24px); }
+  .ps-et{ overflow-wrap:anywhere; }
+  .ps-riel{ height:clamp(10px, 2.4vh, 22px); border-radius:999px; background:var(--ps-riel); overflow:hidden; }
+  .ps-riel i{ display:block; height:100%; border-radius:999px; background:var(--ps-acc); }
+  .ps-barras b{ font-variant-numeric:tabular-nums; min-width:2ch; text-align:end; }
+  .ps-cols{ display:flex; align-items:flex-end; gap:clamp(4px, 1.2vw, 14px); height:clamp(160px, 42vh, 380px); }
+  .ps-col{ flex:1; min-width:0; height:100%; display:flex; flex-direction:column-reverse; align-items:center; gap:4px; text-align:center; }
+  .ps-col em{ font-style:normal; font-size:clamp(10px, 1.9vh, 16px); color:var(--ps-mut); }
+  .ps-col b{ order:3; font-size:clamp(11px, 2vh, 18px); font-variant-numeric:tabular-nums; }
+  .ps-barra{ width:100%; max-width:46px; min-height:0; border-radius:6px 6px 0 0; background:var(--ps-acc); }
+  .ps-barra.plan{ background:repeating-linear-gradient(135deg, var(--ps-acc) 0 3px, transparent 3px 7px); opacity:.6; }
+  .ps-leyenda{ display:flex; align-items:center; gap:10px; margin:14px 0 0; font-size:clamp(11px, 2vh, 16px); color:var(--ps-mut); }
+  .ps-leyenda .ps-barra{ display:inline-block; width:22px; height:12px; border-radius:3px; flex:none; }
+  .ps-lista{ list-style:none; margin:0; padding:0; display:grid; gap:clamp(8px, 2vh, 18px); font-size:clamp(14px, 2.8vh, 26px); line-height:1.35; }
+  .ps-lista li b{ color:var(--ps-acc); } .ps-lista li span{ color:var(--ps-mut); }
+  @media (max-width:600px){
+    .pres-escena{ padding:0 14px; }
+    .pres-flecha{ top:auto; bottom:calc(52px + env(safe-area-inset-bottom, 0px)); transform:none; width:48px; height:48px; font-size:28px; }
+    .ps-barras li{ grid-template-columns:minmax(70px, 30%) minmax(0, 1fr) auto; gap:8px; }
+  }
+  /* En papel: una diapositiva por hoja, apaisada y en claro. */
+  #presPrint{ display:none; }
+  @page presentacion{ size:A4 landscape; margin:0; }
+  @media print{
+    body.pres-imprimiendo > *:not(#presPrint){ display:none !important; }
+    body.pres-imprimiendo{ background:#fff !important; }
+    body.pres-imprimiendo #presPrint{ display:block; }
+    .pres-pagina{ page:presentacion; box-sizing:border-box; width:297mm; height:209mm; padding:16mm 20mm; display:grid; align-items:center; page-break-after:always; break-after:page; overflow:hidden; background:#fff; }
+    .pres-pagina:last-child{ page-break-after:auto; break-after:auto; }
+    .pres-pagina .ps-slide{ --ps-fg:#0d3b3e; --ps-acc:#1a9fb8; --ps-mut:#4f6c6e; --ps-riel:#e1edee; width:100%; gap:5mm; }
+    .pres-pagina .ps-tit{ font-size:34pt; } .pres-pagina .ps-nums b{ font-size:54pt; } .pres-pagina .ps-sub, .pres-pagina .ps-cmp{ font-size:13pt; } .pres-pagina .ps-nums span{ font-size:11pt; }
+    .pres-pagina .ps-barras li{ font-size:12pt; } .pres-pagina .ps-riel{ height:5mm; } .pres-pagina .ps-lista{ font-size:14pt; } .pres-pagina .ps-cols{ height:90mm; }
+    .pres-pagina .ps-cmp.sube{ color:#166534; } .pres-pagina .ps-cmp.baja{ color:#991b1b; }
+  }
   .avatar-pending{
     position:absolute; top:-5px; inset-inline-end:-5px; min-width:18px; height:18px; padding:0 4px; border-radius:999px; pointer-events:none;
     background:var(--danger); color:#fff; font-size:10.5px; font-weight:800; display:flex; align-items:center; justify-content:center; border:2px solid var(--petroleo-dark);
@@ -4351,6 +4413,20 @@
     <button class="close" id="userProfileClose" aria-label="Cerrar">✕</button>
     <div id="userProfileBody"></div>
   </div>
+</div>
+
+<!-- El modo presentación de Reportes (13/10/2026): pantalla completa, una diapositiva por tema. -->
+<div class="pres-overlay" id="presOverlay" hidden role="dialog" aria-modal="true" aria-roledescription="presentación" aria-label="Presentación">
+  <div class="pres-barra">
+    <span class="pres-cuenta" id="presCuenta" role="status" aria-live="polite"></span>
+    <span class="pres-espacio"></span>
+    <button type="button" class="pres-btn" data-action="pres-imprimir" id="presImprimir"></button>
+    <button type="button" class="pres-btn" data-action="pres-cerrar" id="presCerrar"></button>
+  </div>
+  <div class="pres-escena" id="presEscena"></div>
+  <button type="button" class="pres-flecha pres-ant" data-action="pres-ant" id="presAnt"></button>
+  <button type="button" class="pres-flecha pres-sig" data-action="pres-sig" id="presSig"></button>
+  <div class="pres-puntos" id="presPuntos"></div>
 </div>
 
 <div class="modal-overlay" id="problemaOverlay" hidden>
@@ -15939,14 +16015,20 @@ function getPostById(id){ return state.posts.find(p=>p.id===id); }
 let enlaceDeCorreo = (()=>{
   try{
     const q = new URLSearchParams(location.search);
-    return q.get("post") ? { post: q.get("post"), r: q.get("r") || null } : null;
+    if(q.get("post")) return { post: q.get("post"), r: q.get("r") || null };
+    // «Ver los reportes» del correo de lugares sin actividad (13/10/2026).
+    return q.get("ir") === "reportes" ? { ir: "reportes" } : null;
   }catch(e){ return null; }
 })();
 function abrirEnlaceDeCorreo(){
   if(!enlaceDeCorreo || !state.loaded || !state.auth.allowlisted) return;
-  const { post, r } = enlaceDeCorreo;
+  const { post, r, ir } = enlaceDeCorreo;
   enlaceDeCorreo = null;
   try{ history.replaceState(null, "", location.pathname + location.hash); }catch(e){}
+  if(ir === "reportes"){
+    setTimeout(()=>{ state.view = "reportes"; state.countryDrill = null; state.zonaDrill = null; fichaOrigen = null; render(); scrollToTop(); }, 0);
+    return;
+  }
   if(getPostById(post)) setTimeout(()=> gotoMention(post, r), 0);
 }
 function gotoMention(postId, replyId){
@@ -16602,6 +16684,7 @@ function renderSelectorDelReporte(modo, f){
       ${pop}
     </div>`;
   const acciones = `<span class="rep-espacio"></span>
+      ${reporteEnPantalla && reporteEnPantalla.presentacion ? `<button type="button" class="rep-boton" data-action="reporte-presentar" title="${esc(t("Mostrar el reporte en pantalla completa, una diapositiva por tema","Show the report full screen, one slide per topic","Mostrar o relatório em tela cheia, um slide por tema","הצגת הדוח במסך מלא, שקופית לכל נושא"))}">▶ ${t("Presentar","Present","Apresentar","הצגה")}</button>` : ""}
       <button type="button" class="rep-boton" data-action="reporte-csv" title="${esc(t("Bajar planilla","Download spreadsheet","Baixar planilha","הורדת גיליון"))}">⬇ ${t("Planilla","Spreadsheet","Planilha","גיליון")}</button>
       <button type="button" class="rep-boton" data-action="reporte-imprimir" title="${esc(t("Imprimir o guardar en PDF","Print or save as PDF","Imprimir ou salvar em PDF","הדפסה או שמירה כ-PDF"))}">🖨 PDF</button>`;
   return `<div class="rep-barra-control">${seg}${elegir}${filtros}${acciones}</div>`;
@@ -16836,13 +16919,23 @@ function renderReportePeriodo(f){
   ]);
 
   reporteEnPantalla = { desde:v.desde, hasta:v.hasta, total:r.total, totalAnterior:rAnterior.total, secciones:[
-    { titulo:t("Mes a mes","Month by month","Mês a mês","חודש אחר חודש"), filas:meses },
-    { titulo:t("Por zona","By zone","Por zona","לפי אזור"), filas:zonas },
-    { titulo:t("Por país","By country","Por país","לפי מדינה"), filas:paises },
-    { titulo:t("Por tipo","By type","Por tipo","לפי סוג"), filas:tipos },
-    { titulo:t("Quién cargó","Who logged it","Quem carregou","מי רשם"), filas:personas },
-    { titulo:t("Quién participó","Who took part","Quem participou","מי השתתף"), filas:quienesParticiparon },
-  ] };
+    { id:"meses", titulo:t("Mes a mes","Month by month","Mês a mês","חודש אחר חודש"), filas:meses },
+    { id:"zonas", titulo:t("Por zona","By zone","Por zona","לפי אזור"), filas:zonas },
+    { id:"paises", titulo:t("Por país","By country","Por país","לפי מדינה"), filas:paises },
+    { id:"tipos", titulo:t("Por tipo","By type","Por tipo","לפי סוג"), filas:tipos },
+    { id:"personas", titulo:t("Quién cargó","Who logged it","Quem carregou","מי רשם"), filas:personas },
+    { id:"participantes", titulo:t("Quién participó","Who took part","Quem participou","מי השתתף"), filas:quienesParticiparon },
+  ],
+  // Para el modo presentación (propuesta 3-C): lo mismo que la tira de números, ya escapado.
+  presentacion: { titulo, subtitulo: `${esc(fmtDate(v.desde))} – ${esc(fmtDate(v.hasta))}`, filtro: f,
+    comparacion: comparacion.replace(/<[^>]+>/g, "").trim(), comparacionClase: / sube"/.test(comparacion) ? "sube" : / baja"/.test(comparacion) ? "baja" : "",
+    numeros: [
+      [r.total, r.planificadas ? (r.total === 1 ? t("actividad hecha","activity done","atividade feita","פעילות שבוצעה") : t("actividades hechas","activities done","atividades feitas","פעילויות שבוצעו"))
+        : (r.total === 1 ? t("actividad","activity","atividade","פעילות") : t("actividades","activities","atividades","פעילויות"))],
+      [cuenta(r.porPais), etqPaises(cuenta(r.porPais))],
+      [r.ciudades.size, etqCiudades(r.ciudades.size)],
+      [cuenta(r.porPersona), cuenta(r.porPersona) === 1 ? t("persona que cargó","person who logged","pessoa que carregou","אדם שרשם") : t("personas que cargaron","people who logged","pessoas que carregaram","אנשים שרשמו")],
+    ] } };
 
   const antes = v.tri ? t("el trimestre anterior","the previous quarter","o trimestre anterior","הרבעון הקודם") : String(Number(v.anio) - 1);
   return selector + kpis
@@ -18096,6 +18189,9 @@ function renderAvisosPorCorreo(p){
       ${prefRow("📅", t("El día que vence","The day it's due","No dia em que vence","ביום שבו זה מסתיים"),
         t("Otro aviso, a primera hora de ese día, por cada pendiente tuyo que tenga fecha.","Another notice, first thing that day, for each of your to-dos with a date.","Outro aviso, logo cedo nesse dia, para cada pendência sua com data.","עוד התראה, בבוקר אותו יום, על כל משימה שלך עם תאריך."),
         prefSwitch("emailVence", p.emailVence !== false))}
+      ${isAdmin() ? prefRow("🌎", t("Lugares sin actividad","Places with no activity","Lugares sem atividade","מקומות ללא פעילות"),
+        t("El primer lunes de cada mes, los países donde hace tiempo no se hizo nada. El plazo lo elige quien administra, en Administración → Correos.","On the first Monday of each month, the countries where nothing has been done for a while. The period is set by the admin, in Administration → Emails.","Na primeira segunda-feira de cada mês, os países onde faz tempo que nada é feito. O prazo é escolhido por quem administra, em Administração → E-mails.","ביום שני הראשון בכל חודש, המדינות שבהן לא נעשה דבר כבר זמן. את התקופה קובע/ת המנהל/ת, בניהול → מיילים."),
+        prefSwitch("emailLugares", p.emailLugares !== false)) : ""}
       <div class="setting-row" style="display:block;">
         <button type="button" class="btn-secondary" data-action="correo-prueba" ${prueba.mandando ? "disabled" : ""}>${prueba.mandando ? t("Mandando…","Sending…","Enviando…","שולח…") : t("Mandarme un correo de prueba","Send me a test email","Enviar-me um e-mail de teste","שלחו לי מייל ניסיון")}</button>
         ${prueba.msg ? `<span class="setting-sub" role="status" style="margin-inline-start:10px;">${esc(prueba.msg)}</span>` : ""}
@@ -18136,6 +18232,25 @@ function renderCorreosSection(){
         <div class="setting-label">${t("Personas","People","Pessoas","אנשים")}</div>
         <div class="pref-chips" style="margin-top:8px;">${personas.map(m => `<button type="button" class="chip-toggle${elegidos.includes(m.email)?" active":""}" data-action="correos-elegir" data-email="${esc(m.email)}" aria-pressed="${elegidos.includes(m.email)}">${esc(m.name || m.email)}</button>`).join("") || `<span class="setting-sub">${t("Todavía no hay nadie más en el equipo.","There's nobody else on the team yet.","Ainda não há mais ninguém na equipe.","עדיין אין עוד אנשים בצוות.")}</span>`}</div>
       </div>` : ""}
+    </div>${renderLugaresDeCorreo()}`;
+}
+// El aviso del primer lunes de cada mes con los países sin actividad (propuesta 2-A):
+// apagado, o el plazo en meses. Lo manda supabase/avisos/lugares.mjs; lo guardado
+// (correos.lugares = {on, meses}) lo lee ese script, y de fábrica es «6 meses».
+const PLAZOS_DE_LUGARES = [3, 6, 12];
+function lugaresConfig(){
+  const l = (correosConfig && correosConfig.lugares) || {};
+  return { on: l.on !== false, meses: PLAZOS_DE_LUGARES.includes(l.meses) ? l.meses : 6 };
+}
+function renderLugaresDeCorreo(){
+  const { on, meses } = lugaresConfig();
+  const opciones = [["off", t("No avisar","Don't notify","Não avisar","לא להתריע"), !on], ...PLAZOS_DE_LUGARES.map(m => [String(m), t("{n} meses","{n} months","{n} meses","{n} חודשים",{ n:m }), on && meses === m])];
+  return `<div class="settings-card correos-lugares" style="margin-top:16px;">
+      <div class="setting-row" style="display:block;">
+        <div class="setting-label">🌎 ${t("Lugares sin actividad","Places with no activity","Lugares sem atividade","מקומות ללא פעילות")}</div>
+        <div class="setting-sub" style="margin-bottom:12px;">${t("El primer lunes de cada mes, a los administradores que reciben correos les llega la lista de los países donde la última actividad hecha es de hace más que este plazo. No cuenta lo que está planificado.","On the first Monday of each month, the administrators who get emails receive the list of countries whose last completed activity is older than this period. Planned activities don't count.","Na primeira segunda-feira de cada mês, os administradores que recebem e-mails recebem a lista dos países cuja última atividade realizada é mais antiga que este prazo. O que está planejado não conta.","ביום שני הראשון בכל חודש, מנהלים/ות שמקבלים מיילים מקבלים את רשימת המדינות שבהן הפעילות האחרונה שבוצעה ישנה מהתקופה הזו. מה שמתוכנן לא נחשב.")}</div>
+        <div role="radiogroup" aria-label="${esc(t("Cada cuánto sin actividad avisar","How long without activity before notifying","Quanto tempo sem atividade para avisar","אחרי כמה זמן ללא פעילות להתריע"))}" class="pref-chips">${opciones.map(([k, l, act]) => `<button type="button" role="radio" aria-checked="${act}" class="chip-toggle${act ? " active" : ""}" data-action="correos-lugares" data-key="${k}">${esc(l)}</button>`).join("")}</div>
+      </div>
     </div>`;
 }
 function guardarCorreosConfig(patch){
@@ -19732,10 +19847,10 @@ function tourSteps(){
       textoMas: true },
     { id:"reportes", cubre:["reportes"], target: [...tourNav("reportes"), TOUR_MAS],
       title: t("Reportes","Reports","Relatórios","דוחות"),
-      text: t("Cuántas actividades hubo por mes, país, tipo y persona, contra el período anterior, y de qué se habló en los últimos 90 días. Tocá un mes del gráfico para ver su ficha.",
-        "How many activities there were by month, country, type and person, against the previous period, and what was talked about in the last 90 days. Tap a month in the chart to see its card.",
-        "Quantas atividades houve por mês, país, tipo e pessoa, em relação ao período anterior, e do que se falou nos últimos 90 dias. Toque em um mês do gráfico para ver a ficha dele.",
-        "כמה פעילויות היו לפי חודש, מדינה, סוג ואדם, מול התקופה הקודמת, ועל מה דובר ב-90 הימים האחרונים. הקש/י על חודש בגרף כדי לראות את הכרטיס שלו."),
+      text: t("Cuántas actividades hubo por mes, país, tipo y persona, contra el período anterior, y de qué se habló en los últimos 90 días. Tocá un mes del gráfico para ver su ficha, o «Presentar» para mostrar el reporte en pantalla completa, como diapositivas, o imprimirlo.",
+        "How many activities there were by month, country, type and person, against the previous period, and what was talked about in the last 90 days. Tap a month in the chart to see its card, or “Present” to show the report full screen, as slides, or print it.",
+        "Quantas atividades houve por mês, país, tipo e pessoa, em relação ao período anterior, e do que se falou nos últimos 90 dias. Toque em um mês do gráfico para ver a ficha dele, ou em «Apresentar» para mostrar o relatório em tela cheia, como slides, ou imprimi-lo.",
+        "כמה פעילויות היו לפי חודש, מדינה, סוג ואדם, מול התקופה הקודמת, ועל מה דובר ב-90 הימים האחרונים. הקש/י על חודש בגרף כדי לראות את הכרטיס שלו, או על «הצגה» כדי להציג את הדוח במסך מלא, כשקופיות, או להדפיס אותו."),
       textoMas: true },
     { id:"novedades", cubre:[], target: ["#mentionsBell .bell-btn"],
       title: t("Novedades","Updates","Novidades","עדכונים"),
@@ -21771,6 +21886,157 @@ document.getElementById("cumpleClose").addEventListener("click", closeCumple);
 cumpleOverlay.addEventListener("click", e=>{ if(e.target === cumpleOverlay) closeCumple(); });
 
 /* ======================================================================
+   MODO PRESENTACIÓN de Reportes (13/10/2026, propuesta 3-C)
+
+   «▶ Presentar» arma, con lo que el reporte tiene en pantalla (el período y
+   los filtros puestos), una diapositiva por tema: los números, dónde, qué se
+   hizo, mes a mes, lo logrado (los objetivos de los Cierres) y lo que viene.
+   Pantalla completa, con flechas, Esc para salir; y «Imprimir / PDF» saca
+   las mismas diapositivas una por hoja (en claro, para no gastar tinta).
+   ====================================================================== */
+const presOverlay = document.getElementById("presOverlay");
+let presDiapositivas = [], presIndice = 0, presReturnFocus = null, presImprimiendo = false, presEnPantallaCompleta = false;
+function barrasDePres(filas, max = 8){
+  const lista = (filas || []).filter(f => f.n > 0).slice(0, max);
+  if(!lista.length) return "";
+  const tope = Math.max(1, ...lista.map(f => f.n));
+  return `<ul class="ps-barras">${lista.map(f => `<li><span class="ps-et" dir="auto">${f.etiqueta}</span><span class="ps-riel"><i style="width:${Math.max(3, Math.round(f.n * 100 / tope))}%${f.color ? `;background:${f.color}` : ""}"></i></span><b>${f.n}</b></li>`).join("")}</ul>`;
+}
+// Los objetivos de los Cierres de lo que pasó en el período.
+function logradoDelPeriodo(desde, hasta, f){
+  let si = 0, parcial = 0, total = 0; const ejemplos = [];
+  state.posts.filter(p => !p.cancelled && p.activityType !== "rutina" && pasaFiltroDelReporte(p, f)).forEach(p => {
+    const d = String(p.startDate || p.date || "");
+    if(!d || d < desde || d > hasta) return;
+    const partes = resumenDe(p); if(!partes) return;
+    const c = cuentaObjetivos(partes); si += c.si; parcial += c.parcial; total += c.total;
+    partes.filter(x => x.tipo === "cierre").forEach(x => (x.objetivos || []).forEach(o => { if(o.logrado === "si" && o.t) ejemplos.push({ t: o.t, d }); }));
+  });
+  ejemplos.sort((a, b) => b.d.localeCompare(a.d));
+  return { si, parcial, total, ejemplos: ejemplos.slice(0, 4) };
+}
+// Lo que viene en los próximos 60 días (con el mismo «Ver solo» del reporte).
+function proximosParaPresentar(f){
+  const hoy = todayISO(), tope = addDaysISO(hoy, 60);
+  const ini = p => String(p.startDate || p.date || "");
+  return state.posts.filter(p => !p.cancelled && p.activityType !== "rutina" && pasaFiltroDelReporte(p, f) && ini(p) > hoy && ini(p) <= tope)
+    .sort((a, b) => ini(a).localeCompare(ini(b))).slice(0, 6);
+}
+function diapositivasDelReporte(){
+  const r = reporteEnPantalla, pr = r && r.presentacion;
+  if(!r || !pr) return [];
+  const sec = id => ((r.secciones || []).find(x => x.id === id) || {}).filas || [];
+  const marca = `<div class="ps-cap">Team LatAm · ${esc(t("Registro de Acciones","Activity Log","Registro de Ações","יומן פעולות"))}</div>`;
+  const out = [];
+  out.push({ id: "numeros", titulo: pr.titulo, html: `<section class="ps-slide">${marca}<h2 class="ps-tit">${pr.titulo}</h2><div class="ps-sub">${pr.subtitulo}</div>
+    <div class="ps-nums">${pr.numeros.map(([n, txt]) => `<div><b>${n}</b><span>${txt}</span></div>`).join("")}</div>
+    ${pr.comparacion ? `<div class="ps-cmp ${pr.comparacionClase}">${pr.comparacionClase === "sube" ? "▲ " : pr.comparacionClase === "baja" ? "▼ " : ""}${esc(pr.comparacion.replace(/^[▲▼]\s*/, ""))}</div>` : ""}</section>` });
+  const paises = barrasDePres(sec("paises"));
+  if(paises) out.push({ id: "paises", titulo: t("Dónde estuvimos","Where we were","Onde estivemos","איפה היינו"), html: `<section class="ps-slide">${marca}<h2 class="ps-tit">${esc(t("Dónde estuvimos","Where we were","Onde estivemos","איפה היינו"))}</h2>${paises}</section>` });
+  const tipos = barrasDePres(sec("tipos"));
+  if(tipos) out.push({ id: "tipos", titulo: t("Qué hicimos","What we did","O que fizemos","מה עשינו"), html: `<section class="ps-slide">${marca}<h2 class="ps-tit">${esc(t("Qué hicimos","What we did","O que fizemos","מה עשינו"))}</h2>${tipos}</section>` });
+  const meses = sec("meses");
+  if(meses.some(m => m.n || m.plan)){
+    const tope = Math.max(1, ...meses.map(m => (m.n || 0) + (m.plan || 0)));
+    out.push({ id: "meses", titulo: t("Mes a mes","Month by month","Mês a mês","חודש אחר חודש"), html: `<section class="ps-slide">${marca}<h2 class="ps-tit">${esc(t("Mes a mes","Month by month","Mês a mês","חודש אחר חודש"))}</h2>
+      <div class="ps-cols" role="img" aria-label="${esc(meses.map(m => `${m.titulo || ""}`.replace(/<[^>]+>/g, "")).join(", "))}">${meses.map(m => `<div class="ps-col"><b>${m.n}</b><span class="ps-barra" style="height:${Math.max(m.n ? 4 : 0, Math.round((m.n || 0) * 100 / tope))}%"></span>${m.plan ? `<span class="ps-barra plan" style="height:${Math.round(m.plan * 100 / tope)}%"></span>` : ""}<em>${m.etiqueta}</em></div>`).join("")}</div>${meses.some(m => m.plan) ? `<p class="ps-leyenda"><i class="ps-barra plan"></i>${esc(t("Rayado: actividades planeadas, todavía por hacerse","Striped: planned activities, still to be done","Listrado: atividades planejadas, ainda por fazer","מפוספס: פעילויות מתוכננות שעוד לא בוצעו"))}</p>` : ""}</section>` });
+  }
+  const lg = logradoDelPeriodo(r.desde, r.hasta, pr.filtro);
+  if(lg.total) out.push({ id: "logrado", titulo: t("Lo logrado","What was achieved","O que foi alcançado","מה הושג"), html: `<section class="ps-slide">${marca}<h2 class="ps-tit">${esc(t("Lo logrado","What was achieved","O que foi alcançado","מה הושג"))}</h2>
+    <div class="ps-nums"><div><b>${lg.si}</b><span>${esc(t("de {b} objetivos logrados","of {b} goals achieved","de {b} objetivos alcançados","מתוך {b} מטרות הושגו",{ b: lg.total }))}</span></div>${lg.parcial ? `<div><b>${lg.parcial}</b><span>${esc(t("en parte","partly","em parte","חלקית"))}</span></div>` : ""}</div>
+    ${lg.ejemplos.length ? `<ul class="ps-lista">${lg.ejemplos.map(x => `<li dir="auto">✓ ${esc(x.t)}</li>`).join("")}</ul>` : ""}</section>` });
+  const prox = proximosParaPresentar(pr.filtro);
+  if(prox.length) out.push({ id: "proximos", titulo: t("Lo que viene","What's coming","O que vem","מה בא"), html: `<section class="ps-slide">${marca}<h2 class="ps-tit">${esc(t("Lo que viene","What's coming","O que vem","מה בא"))}</h2>
+    <ul class="ps-lista">${prox.map(p => { const d = String(p.startDate || p.date); const lugar = (p.scopes || []).map(scopeLabel).filter(Boolean)[0] || ""; return `<li dir="auto"><b>${esc(fmtISO(d, { day: "numeric", month: "short" }))}</b> ${esc(calendarioLabel(p))}${lugar ? ` <span>· ${esc(lugar)}</span>` : ""}</li>`; }).join("")}</ul></section>` });
+  return out;
+}
+function dibujarPresentacion(){
+  const d = presDiapositivas[presIndice];
+  if(!d) return;
+  document.getElementById("presEscena").innerHTML = d.html;
+  document.getElementById("presCuenta").textContent = t("Diapositiva {a} de {b}","Slide {a} of {b}","Slide {a} de {b}","שקופית {a} מתוך {b}",{ a: presIndice + 1, b: presDiapositivas.length });
+  document.getElementById("presPuntos").innerHTML = presDiapositivas.map((x, i) => `<button type="button" class="pres-punto${i === presIndice ? " on" : ""}" data-action="pres-ir" data-i="${i}" aria-label="${esc(t("Ir a la diapositiva {a}: {t}","Go to slide {a}: {t}","Ir para o slide {a}: {t}","מעבר לשקופית {a}: {t}",{ a: i + 1, t: String(x.titulo).replace(/<[^>]+>/g, "") }))}" aria-current="${i === presIndice}"></button>`).join("");
+  document.getElementById("presAnt").disabled = presIndice === 0;
+  document.getElementById("presSig").disabled = presIndice === presDiapositivas.length - 1;
+}
+function presIr(i){
+  const n = Math.max(0, Math.min(presDiapositivas.length - 1, i));
+  if(n === presIndice) return;
+  presIndice = n; dibujarPresentacion();
+}
+function abrirPresentacion(){
+  const lista = diapositivasDelReporte();
+  if(!lista.length) return;
+  presDiapositivas = lista; presIndice = 0;
+  presReturnFocus = document.activeElement;
+  const rtl = isRTL();
+  document.getElementById("presAnt").textContent = rtl ? "›" : "‹";
+  document.getElementById("presSig").textContent = rtl ? "‹" : "›";
+  document.getElementById("presAnt").setAttribute("aria-label", t("Diapositiva anterior","Previous slide","Slide anterior","שקופית קודמת"));
+  document.getElementById("presSig").setAttribute("aria-label", t("Diapositiva siguiente","Next slide","Próximo slide","שקופית הבאה"));
+  document.getElementById("presImprimir").textContent = "🖨 " + t("Imprimir / PDF","Print / PDF","Imprimir / PDF","הדפסה / PDF");
+  document.getElementById("presCerrar").textContent = "✕ " + t("Salir","Exit","Sair","יציאה");
+  presOverlay.hidden = false;
+  dibujarPresentacion();
+  // Pantalla completa si el navegador deja (en el celular a veces no): si no, la ventana ya tapa todo.
+  presEnPantallaCompleta = false;
+  try{
+    const pedido = presOverlay.requestFullscreen && presOverlay.requestFullscreen();
+    if(pedido && pedido.then) pedido.then(() => { presEnPantallaCompleta = true; }).catch(() => {});
+  }catch(e){ /* sin pantalla completa: sigue andando */ }
+  enfocarComo(document.getElementById("presSig"), presReturnFocus);
+}
+function cerrarPresentacion(){
+  if(presOverlay.hidden) return;
+  presOverlay.hidden = true;
+  presDiapositivas = [];
+  if(document.fullscreenElement){ try{ document.exitFullscreen(); }catch(e){} }
+  presEnPantallaCompleta = false;
+  // Al salir de la pantalla completa el navegador cambia el tamaño y la página se redibuja: el foco vuelve
+  // un instante después, al botón de ahora (que puede no ser el mismo elemento), si nadie lo movió.
+  presReturnFocus = null;
+  setTimeout(() => {
+    const vuelta = document.querySelector('[data-action="reporte-presentar"]');
+    if(vuelta && (document.activeElement === document.body || !document.activeElement)) vuelta.focus();
+  }, 150);
+}
+// Escape saca de la pantalla completa sin avisarle a la página: cuando se sale, se sale de todo.
+document.addEventListener("fullscreenchange", () => { if(!document.fullscreenElement && presEnPantallaCompleta && !presOverlay.hidden) cerrarPresentacion(); });
+document.addEventListener("keydown", e => {
+  if(presOverlay.hidden || e.altKey || e.ctrlKey || e.metaKey) return;
+  const rtl = isRTL();
+  const sig = e.key === (rtl ? "ArrowLeft" : "ArrowRight") || e.key === "PageDown" || e.key === " ";
+  const ant = e.key === (rtl ? "ArrowRight" : "ArrowLeft") || e.key === "PageUp";
+  if(sig || ant){ if(e.target && e.target.closest && e.target.closest("button") && e.key === " ") return; e.preventDefault(); presIr(presIndice + (sig ? 1 : -1)); }
+  else if(e.key === "Home"){ e.preventDefault(); presIr(0); }
+  else if(e.key === "End"){ e.preventDefault(); presIr(presDiapositivas.length - 1); }
+});
+{
+  let x0 = null;
+  const escena = document.getElementById("presEscena");
+  escena.addEventListener("touchstart", e => { x0 = e.touches.length === 1 ? e.touches[0].clientX : null; }, { passive: true });
+  escena.addEventListener("touchend", e => {
+    if(x0 == null) return;
+    const dx = e.changedTouches[0].clientX - x0; x0 = null;
+    if(Math.abs(dx) < 50) return;
+    presIr(presIndice + ((dx < 0) === !isRTL() ? 1 : -1));
+  }, { passive: true });
+}
+// «Imprimir / PDF»: todas las diapositivas una debajo de otra, una por hoja, y se vuelve a lo de antes.
+function imprimirPresentacion(){
+  if(presImprimiendo || !presDiapositivas.length) return;
+  presImprimiendo = true;
+  const cont = document.createElement("div");
+  cont.id = "presPrint";
+  cont.innerHTML = presDiapositivas.map(d => `<div class="pres-pagina">${d.html}</div>`).join("");
+  document.body.appendChild(cont);
+  document.body.classList.add("pres-imprimiendo");
+  const fin = () => { if(!presImprimiendo) return; presImprimiendo = false; cont.remove(); document.body.classList.remove("pres-imprimiendo"); };
+  window.addEventListener("afterprint", fin, { once: true });
+  setTimeout(() => { try{ window.print(); } finally { setTimeout(fin, 10000); } }, 60);
+}
+
+/* ======================================================================
    «ALGO NO ANDA» y los errores que la app anota sola (13/10/2026, 8-C)
 
    Dos maneras de enterarse cuando algo falla en el celular de alguien:
@@ -22864,6 +23130,7 @@ document.addEventListener("keydown", e=>{
   if(!userProfileOverlay.hidden){ userProfileVolver ? volverDelPerfil() : closeUserProfile(); return; }
   if(!likesOverlay.hidden){ closeLikes(); return; }
   if(!agendaOverlay.hidden){ agendaVolver(); return; }
+  if(!presOverlay.hidden){ cerrarPresentacion(); return; }
   if(!problemaOverlay.hidden){ cerrarProblema(); return; }
   if(!cumpleOverlay.hidden){ closeCumple(); return; }
   if(!fichaPostOverlay.hidden){ closeFichaPost(); return; }
@@ -22995,6 +23262,7 @@ trapTabWithin(likesOverlay);
 trapTabWithin(agendaOverlay);
 trapTabWithin(cumpleOverlay);
 trapTabWithin(problemaOverlay);
+trapTabWithin(presOverlay);
 trapTabWithin(fichaPostOverlay);
 trapTabWithin(confirmOverlay);
 trapTabWithin(eventCardOverlay);
@@ -24392,6 +24660,12 @@ document.addEventListener("click", async e=>{
     state.filters = filtrosVacios(); state.filters.text = palabra; filtroOrigen = null;
     feedSolapa = "pasado"; feedVisibleCount = PAGE_SIZE; state.view = "feed"; render(); scrollToTop();
   },
+    "reporte-presentar": async () => { abrirPresentacion(); },
+    "pres-ant": async () => { presIr(presIndice - 1); },
+    "pres-sig": async () => { presIr(presIndice + 1); },
+    "pres-ir": async (el) => { presIr(Number(el.dataset.i)); },
+    "pres-cerrar": async () => { cerrarPresentacion(); },
+    "pres-imprimir": async () => { imprimirPresentacion(); },
     "problema-abrir": async () => { if(isAuthorized()) abrirProblema(); },
     "problema-cerrar": async () => { cerrarProblema(); },
     "problema-enviar": async () => { await enviarProblema(); },
@@ -24464,6 +24738,11 @@ document.addEventListener("click", async e=>{
     "correos-quienes": async (el, e, action, postId) => {
     if(!isAdmin()) return;
     guardarCorreosConfig({ quienes: el.dataset.key });
+  },
+    "correos-lugares": async (el, e, action, postId) => {
+    if(!isAdmin()) return;
+    const k = el.dataset.key, actual = lugaresConfig();
+    guardarCorreosConfig({ lugares: k === "off" ? { on:false, meses:actual.meses } : { on:true, meses:Number(k) } });
   },
     "correos-elegir": async (el, e, action, postId) => {
     if(!isAdmin()) return;

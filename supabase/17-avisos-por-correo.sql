@@ -25,6 +25,12 @@
 --                        (de fábrica: sí; 13/10/2026, ver 21-avisos-de-pasos.sql)
 --   emailVence boolean   y otra vez el día que vence ese paso (de fábrica: sí;
 --                        lo manda supabase/avisos/vencimientos.mjs)
+--   emailLugares boolean el aviso del primer lunes de cada mes con los países
+--                        sin actividad (solo lo reciben los admin; de fábrica:
+--                        sí; lo manda supabase/avisos/lugares.mjs, y el plazo
+--                        y si está prendido para todos se eligen en
+--                        Administración → Correos: app_config 'preferences' →
+--                        correos.lugares = {on, meses})
 --
 -- QUIÉN puede recibir correos lo decide el admin (Administración →
 -- Correos), en app_config 'preferences' → correos: {quienes: 'admin' |
@@ -75,6 +81,7 @@ create or replace function public.prefs_de_correo(p_email text) returns jsonb
     'day',  public.entero_de_pref(p.prefs -> 'emailDay', 1, 7, 1),
     'pasos', case when jsonb_typeof(p.prefs -> 'emailPasos') = 'boolean' then (p.prefs ->> 'emailPasos')::boolean else true end,
     'vence', case when jsonb_typeof(p.prefs -> 'emailVence') = 'boolean' then (p.prefs ->> 'emailVence')::boolean else true end,
+    'lugares', case when jsonb_typeof(p.prefs -> 'emailLugares') = 'boolean' then (p.prefs ->> 'emailLugares')::boolean else true end,
     'lang', case when p.prefs ->> 'emailLang' in ('es', 'en', 'pt', 'he') then p.prefs ->> 'emailLang' else 'es' end,
     'tz',   case when coalesce(p.prefs ->> 'emailTz', '') ~ '^[A-Za-z][A-Za-z0-9_+/-]{1,60}$' then p.prefs ->> 'emailTz'
                  else 'America/Argentina/Buenos_Aires' end,
