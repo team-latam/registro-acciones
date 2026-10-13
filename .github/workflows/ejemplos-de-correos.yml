@@ -1,0 +1,52 @@
+# ============================================================
+# Ejemplos de los correos nuevos (a mano)
+# ============================================================
+# Botón «Run workflow»: le manda al administrador DOS correos de ejemplo —
+# «Lugares sin actividad» e «Informe mensual»— para ver cómo llegan sin
+# esperar al primer lunes ni al día 1. Solo a él (benny@team-latam.com), con
+# los datos de hoy; el informe trae un enlace que abre 48 horas.
+# Ver supabase/avisos/ejemplos.mjs. Usa SUPABASE_SERVICE_ROLE_KEY y
+# RESEND_API_KEY; sin alguno, avisa y termina en verde.
+# ============================================================
+name: Ejemplos de los correos
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mandar:
+    name: Mandarme los dos ejemplos
+    # Solo desde main y con las llaves de verdad.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with: { node-version: '22', package-manager-cache: false }
+      - name: ¿Están los secretos?
+        id: revisar
+        env:
+          LLAVE: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          RESEND: ${{ secrets.RESEND_API_KEY }}
+        run: |
+          if [ -z "$LLAVE" ] || [ -z "$RESEND" ]; then
+            echo "hay=no" >> "$GITHUB_OUTPUT"
+            echo "### Faltan SUPABASE_SERVICE_ROLE_KEY o RESEND_API_KEY: no se manda nada." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "hay=si" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Probar el script
+        run: node supabase/avisos/pruebas/ejemplos.mjs
+      - name: Mandar los ejemplos
+        if: steps.revisar.outputs.hay == 'si'
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+        run: |
+          set -o pipefail
+          node supabase/avisos/ejemplos.mjs | tee -a "$GITHUB_STEP_SUMMARY"
