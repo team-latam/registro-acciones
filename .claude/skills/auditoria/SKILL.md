@@ -6,27 +6,27 @@ description: Auditoría del Registro de Acciones (bugs, código muerto, segurida
 # Auditoría del Registro
 
 El método completo vive en el repo, no acá: **leer primero
-`auditoria/METODO.md`**, después `auditoria/RECURRENTES.md` y la última
+`herramientas/auditoria/METODO.md`**, después `herramientas/auditoria/RECURRENTES.md` y la última
 `docs/AUDITORIA.md`. Esta skill solo es la entrada.
 
 ## En corto
 
 1. `git pull` de `main`. Leer METODO.md, RECURRENTES.md, la última
    docs/AUDITORIA.md (lo que el usuario ya decidió no se vuelve a
-   proponer) y `auditoria/conocidos.json`.
-2. `./auditoria/correr.sh` (o `RAPIDO=1 ./auditoria/correr.sh` si el
-   usuario quiere algo rápido). Leer `auditoria/salida/<fecha>/informe.md`.
+   proponer) y `herramientas/auditoria/conocidos.json`.
+2. `./herramientas/auditoria/correr.sh` (o `RAPIDO=1 ./herramientas/auditoria/correr.sh` si el
+   usuario quiere algo rápido). Leer `herramientas/auditoria/salida/<fecha>/informe.md`.
 3. Verificar cada hallazgo antes de contarlo. Falso positivo → mejorar la
    herramienta o anotarlo en `conocidos.json` con el porqué.
 4. Revisar a mano lo que dice «Lo que se revisa a mano» en METODO.md, con
    capturas (escritorio, celular, claro, oscuro, hebreo) armadas con
-   `pruebas/app_de_mentira.mjs`.
+   `herramientas/pruebas/app_de_mentira.mjs`.
 5. Escribir `docs/AUDITORIA.md` (la anterior a
-   `docs/auditoria/historial/`), el detalle en `docs/auditoria/`, y una
+   `docs/informes/historial/`), el detalle en `docs/informes/`, y una
    página (Artifact) para el usuario con capturas y en palabras simples.
 6. Decisiones del usuario: opciones + recomendación; con el celular, como
    preguntas para tocar (AskUserQuestion), de a cuatro.
-7. Al arreglar: prueba que falle sin el arreglo, `./pruebas/correr.sh` en
+7. Al arreglar: prueba que falle sin el arreglo, `./herramientas/pruebas/correr.sh` en
    verde, push a `main`, tachar en el documento y en la página.
 8. Al terminar: sumar lo nuevo a RECURRENTES.md y a las herramientas.
 

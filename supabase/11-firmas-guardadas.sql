@@ -3,7 +3,7 @@
 -- ============================================================
 -- Hasta el 2 de octubre, editar un posteo en Supabase podía guardar en la
 -- fila la URL FIRMADA de una foto en lugar de su ruta (ver «Subir a
--- Supabase no puede perder la mitad del archivo» en pruebas/sb_test.mjs).
+-- Supabase no puede perder la mitad del archivo» en herramientas/pruebas/sb_test.mjs).
 -- La firma vence a las horas: esas fotos se ven rotas desde entonces. Y
 -- la limpieza semanal del bucket no las reconocería como usadas —la fila
 -- no nombra su ruta— y las mandaría a la papelera.

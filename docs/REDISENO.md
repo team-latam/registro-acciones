@@ -14,7 +14,7 @@ algo que de verdad necesite una decisión suya.
 - Mismos colores, misma letra (Montserrat), mismo petróleo/celeste: tiene
   que seguir sintiéndose la misma app.
 - Todo texto nuevo en los 4 idiomas (`t(es, en, pt, he)`).
-- `./pruebas/correr.sh` en verde antes de cada commit; las pruebas que
+- `./herramientas/pruebas/correr.sh` en verde antes de cada commit; las pruebas que
   comprueban un comportamiento viejo se actualizan al nuevo, con el
   porqué en el comentario.
 - Nada de lo que hoy puede hacer alguien deja de poder hacerse: lo que se
@@ -707,7 +707,7 @@ región del alcance, en el idioma de la app y como quedó guardado
 («Havana» y «La Habana» traen lo mismo). Y el de arriba suma el grupo
 **Ciudades**: las ciudades donde hay algo cargado; elegir una abre el
 Inicio filtrado ahí, como ya hacía con los países
-(`pruebas/buscar_lugar_test.mjs`).
+(`herramientas/pruebas/buscar_lugar_test.mjs`).
 
 ### 38. «Próximos eventos» abre la tarjeta del evento — HECHO (8 oct 2026)
 
@@ -721,7 +721,7 @@ veía en la lista), **Editar** y un **⋯** con lo que tiene el ⋯ del Feed
 evento, Borrar). Cada opción cierra la tarjeta antes de seguir. Un
 observador ve solo Ver historia y Ver calendario. La tarjeta que se abre
 desde el Calendario quedó como estaba
-(`pruebas/proximos_tarjeta_test.mjs`).
+(`herramientas/pruebas/proximos_tarjeta_test.mjs`).
 
 ### 39. Reportes sin lugares vacíos — HECHO (8 oct 2026)
 
@@ -739,7 +739,7 @@ sola, con medio renglón vacío (Un período, Todos los años, Comparar), y en
 el PDF también. Se arregló en todos esos casos. En el PDF: Zona, País y
 Tipo de a tres; Todos los años, todo a lo ancho; Comparar, Tipo y Zona
 lado a lado y País abajo
-(`pruebas/reportes_huecos_test.mjs`, que recorre 14 anchos y el papel).
+(`herramientas/pruebas/reportes_huecos_test.mjs`, que recorre 14 anchos y el papel).
 
 Si algún día se quiere sumar una cuarta tarjeta, las dos ideas de la
 propuesta quedan anotadas: «Por ciudad» (las 12 ciudades con más
@@ -760,7 +760,7 @@ oscuro va en claro. Es la misma en toda la app: página, listas, tablas y
 ventanas. Solo en la computadora: en el celular sigue la del teléfono
 (si no, Android la volvía fija y le comía 12 px a cada lista). En Firefox,
 los mismos colores con la forma más simple del navegador
-(`pruebas/barra_test.mjs`).
+(`herramientas/pruebas/barra_test.mjs`).
 
 También se le propuso un **extra**: que la última columna de una tabla se
 desvanezca en el borde mientras la tabla sigue de costado, para que se
@@ -786,7 +786,7 @@ así que los números quedaban claro sobre claro, invisibles, y la tabla
 eran manchones blancos sobre la tarjeta oscura. Ahora en oscuro la escala
 va de petróleo (poco) a celeste (mucho) y todos los números se leen. El
 modo claro y el papel (que sale siempre en claro) no cambiaron
-(`pruebas/calor_oscuro_test.mjs`, que mide el contraste de cada tono).
+(`herramientas/pruebas/calor_oscuro_test.mjs`, que mide el contraste de cada tono).
 
 ### 42. Las filas de Reportes llevan al Inicio en ese período — HECHO (8 oct 2026)
 
@@ -800,7 +800,7 @@ para sacarlo, y entra en «Guardar este filtro». De paso, el selector
 «Solo acá · + Región · + Toda LatAm» ahora cuenta con todos los filtros
 puestos (período, «Mis posteos» y demás accesos directos, lo que cargó
 una persona): antes decía «Solo acá 74» con 13 en la lista
-(`pruebas/reporte_ir_periodo_test.mjs`).
+(`herramientas/pruebas/reporte_ir_periodo_test.mjs`).
 
 ### 43. Los filtros del Inicio: la B2 — HECHO (8 oct 2026)
 
@@ -854,7 +854,7 @@ Cómo quedó (`renderFilterBar`, `renderPanelDeFiltros`):
   quedó igual. Un año en Fecha cuenta lo hecho hasta hoy, como Reportes:
   por eso solo se ofrecen los años que ya empezaron.
 
-Pruebas: `pruebas/filtros_inicio_test.mjs` (borrador, Ver/Enter/Escape/
+Pruebas: `herramientas/pruebas/filtros_inicio_test.mjs` (borrador, Ver/Enter/Escape/
 afuera, el ✕ de las fichas, atajos juntos, guardar, Volver, la hoja del
 celular, hebreo, un guardado viejo, y que tocar adentro **no** repita la
 animación de abrir; falla con el código de antes). Se adaptaron las que
@@ -882,7 +882,7 @@ la compu y en el papel («Reporte del lugar») no cambió nada: el costado
 sigue a la derecha y todo sale desplegado. No se duplica nada: la misma
 tarjeta se ordena distinto con CSS (`display:contents` y `order`, solo en
 pantalla) y su título trae las dos formas, la de la compu y el renglón
-(`tituloDeLado`) (`pruebas/ficha_celular_test.mjs`, que falla con el
+(`tituloDeLado`) (`herramientas/pruebas/ficha_celular_test.mjs`, que falla con el
 código de antes).
 
 ### 45. La Agenda — HECHO (8 oct 2026)
@@ -912,7 +912,7 @@ corrige cualquiera que carga eventos; borrar, solo un admin**.
   Directorio: 188 instituciones en 102 ciudades de 32 países, 173
   personas; dos filas eran la misma institución).
 
-Pruebas: `pruebas/agenda_test.mjs` (83: abrir, buscar, filtrar, la
+Pruebas: `herramientas/pruebas/agenda_test.mjs` (83: abrir, buscar, filtrar, la
 ficha de alguien, Escape y el foco, la tarjeta de Rosario, buscar en
 todo, sumar a alguien que ya estaba y a alguien nuevo, un teléfono mal
 escrito, corregir y quién fue, lo que ve quien observa, traer una lista
@@ -946,7 +946,7 @@ A18) y se arregló todo lo encontrado:
 
 Las herramientas de la auditoría ahora miran la Agenda y revisan en cada
 ventana que el celular no abra el teclado solo. Pruebas:
-`pruebas/agenda_ventanas_test.mjs` (43; con el código de antes fallan 30).
+`herramientas/pruebas/agenda_ventanas_test.mjs` (43; con el código de antes fallan 30).
 Falta que el usuario lo pruebe en su teléfono (A18).
 
 ### 47. «Ciudades» y «Contactos en …», una sola tarjeta — HECHO (9 oct 2026)
@@ -969,6 +969,32 @@ eligió **unirlas así**:
 Pruebas: `agenda_test.mjs` (país, región y ciudad; fallan con el código
 de antes) y `ficha_celular_test.mjs` vuelve a esperar cinco tarjetas.
 
+### 69. El repositorio, más ordenado: tres carpetas a la vista — HECHO (13 oct 2026)
+
+El usuario dijo que se veían demasiadas carpetas en la portada del repo y pidió
+más orden y mejores etiquetas. Se le presentaron tres opciones con una vista de
+cómo quedaría cada una y **eligió la de tres carpetas**.
+
+- **Antes:** `auditoria/`, `docs/`, `pruebas/`, `supabase/` y `video/` en la raíz,
+  y dos carpetas llamadas «auditoria» (la herramienta y los informes).
+- **Ahora:** la raíz tiene `docs/`, `herramientas/` y `supabase/` (más
+  `.github/` y `.claude/`, que GitHub y Claude exigen ahí, e `index.html`,
+  `README.md` y `CLAUDE.md`). `pruebas/`, `auditoria/` y `video/` pasaron a
+  `herramientas/`, y los informes de auditoría a `docs/informes/` (ya no hay dos
+  «auditoria»). `supabase/` e `index.html` no se movieron: la base de datos, sus
+  procesos automáticos y la página publicada dependen de ese lugar.
+- **Etiquetas:** `README.md` nuevo en la portada con el mapa del repo, y un
+  `README.md` en `docs/`, `herramientas/` y en cada herramienta (GitHub muestra el
+  `README.md` al entrar a una carpeta; los `LEEME.md` de esas carpetas pasaron a
+  llamarse así). Los `LEEME.md` de las subcarpetas de `supabase/` quedan como estaban.
+- **Rutas:** se corrigieron en los procesos automáticos (`app.yml`, `pages.yml`),
+  las pruebas, la auditoría, el video y todos los documentos. Las referencias
+  de los documentos viejos a `pruebas/…` apuntan ahora a `herramientas/pruebas/…`
+  para que sigan llevando al archivo; los mensajes de commit de antes, claro,
+  conservan los nombres de entonces.
+- **Cómo se comprobó:** la suite completa desde la ubicación nueva, y los
+  procesos de GitHub corridos sobre la rama antes de pasar a `main`.
+
 ### 68. El video de presentación, registrado en el proyecto — HECHO (13 oct 2026)
 
 El usuario pidió un video para mostrarles el sistema a sus jefes (inglés, sin
@@ -976,11 +1002,11 @@ voz, con música, celular y compu). Se hizo en cinco versiones con sus
 comentarios y el **13/10/2026 aprobó la quinta como final**. Pidió dejarlo
 registrado «de manera que en el futuro sabemos cómo hacer el video con todo».
 
-- **Qué quedó en el repo:** la carpeta `video/` con todo lo que hace falta para
-  rehacerlo con un solo comando (`bash video/hacer_video.sh`): los datos
+- **Qué quedó en el repo:** la carpeta `herramientas/video/` con todo lo que hace falta para
+  rehacerlo con un solo comando (`bash herramientas/video/hacer_video.sh`): los datos
   inventados de la demo, el guion que maneja la app y la graba, los carteles y
   tarjetas, el armado con ffmpeg, la música (sintetizada, original) y una guía,
-  `video/LEEME.md`, con las escenas, los textos, lo que el usuario pidió y no hay
+  `herramientas/video/README.md`, con las escenas, los textos, lo que el usuario pidió y no hay
   que deshacer (sin fundidos entre pantallas, hasta 74 s, cierre musical con
   cadencia, hebreo solo en hebreo…) y qué revisar cuando la app cambie.
 - **Qué no quedó:** los MP4 (son de ~10 MB cada uno y el repo es público; los
@@ -1031,7 +1057,7 @@ Calendario y Proyectos y nada más.
   idiomas. Administración queda afuera a propósito (solo la ven los admins y
   tiene su propia ayuda): está anotada en `TOUR_SIN_PASO` con el motivo.
 - **Cómo se mantiene al día:** cada paso declara qué pantallas explica
-  (`cubre`) y `pruebas/tour_test.mjs` las compara con la navegación real (solapas,
+  (`cubre`) y `herramientas/pruebas/tour_test.mjs` las compara con la navegación real (solapas,
   barra de abajo, «Más», menú del avatar; compu y celular; integrante,
   observador y admin). Si alguien suma una solapa o un ítem de menú y ningún paso
   la cubre, o un paso habla de algo que ya no existe, la prueba falla y dice
@@ -1236,7 +1262,7 @@ Países: «Ver Agenda» y la fila con la gente de la región) se abría entera.
   Inicio entero se redibujaba por cada letra; ahora espera 150 ms como el
   buscador de texto, y Enter dibuja ya lo último escrito antes de elegir la
   primera sugerencia (sin eso elegía la de lo escrito 150 ms antes: «Toda
-  LatAm» en vez de «Córdoba»). `pruebas/filtros_lugar_tecla_test.mjs`.
+  LatAm» en vez de «Córdoba»). `herramientas/pruebas/filtros_lugar_tecla_test.mjs`.
 - **Las rutinas que se repiten, en Reportes y en el Inicio** (auditoría R7,
   caso c; el usuario eligió la opción A y pidió que lo de cada serie se vea
   recién al tocar, «como Ciudades»): Reportes cuenta cada vez que ocurre una
@@ -1246,7 +1272,7 @@ Países: «Ver Agenda» y la fila con la gente de la región) se abría entera.
   tocá «se repite…» en su tarjeta para ver cuántas»; solo si la cuenta
   difiere de los posteos y solo en «Lo que pasó». Y al tocar «se repite…»,
   arriba de las fechas de la serie: «15 veces en 2026 · hasta hoy».
-  `notaDeActividades()`, `vecesDelPeriodo()`, `pruebas/rutinas_veces_test.mjs`.
+  `notaDeActividades()`, `vecesDelPeriodo()`, `herramientas/pruebas/rutinas_veces_test.mjs`.
 - Los dos chips (ciudad y región) dicen por su nombre qué sacan
   («Sacar el filtro: Rosario»), en los cuatro idiomas.
 - Una sola función (`enLaZona`) decide quién está en una región, para la
@@ -1271,8 +1297,8 @@ Países: «Ver Agenda» y la fila con la gente de la región) se abría entera.
 - El nombre libre en el login de quien no es admin (decisión 3): opción A,
   se deja como está.
 
-Pruebas: `pruebas/agenda_region_test.mjs`, `pruebas/agenda_tiras_test.mjs`,
-`pruebas/paises_barra_test.mjs` y las tarjetas nuevas en `pruebas/personas_test.mjs` (fallan con el código
+Pruebas: `herramientas/pruebas/agenda_region_test.mjs`, `herramientas/pruebas/agenda_tiras_test.mjs`,
+`herramientas/pruebas/paises_barra_test.mjs` y las tarjetas nuevas en `herramientas/pruebas/personas_test.mjs` (fallan con el código
 de antes).
 
 ### 60. Tanda 1 de la auditoría completa del 10/10 — HECHO (10 oct 2026)
@@ -1285,16 +1311,16 @@ esperar decisiones, más las decisiones que el usuario tomó ese mismo día
   meses», las barras del Ritmo, «Última visita», «N visitas en los últimos
   12 meses» y el «último: hace N días» de cada ciudad ignoran lo
   planificado. Tercera vez que volvía esta falla.
-  `pruebas/ficha_planificado_test.mjs`.
+  `herramientas/pruebas/ficha_planificado_test.mjs`.
 - **«Próximos eventos» mira la repetición que viene** (R2): una rutina
   de los lunes ya no desaparece de martes a jueves (`proximaFecha()`).
   **«Ver calendario» desde la tarjeta marca el día** también en Semana y
   Día, y desde Año o Agenda pasa a Mes (R16).
-  `pruebas/proximos_que_viene_test.mjs`.
+  `herramientas/pruebas/proximos_que_viene_test.mjs`.
 - **Reportes → Inicio da el mismo número que la fila** (R7): la fila fija
   en el filtro «solo lo propio» y «solo por el alcance del posteo», aunque
   la preferencia esté en «+ Región» o un comentario lleve otro alcance; lo
-  que se elige en el panel le gana. `pruebas/reporte_ir_nivel_test.mjs`.
+  que se elige en el panel le gana. `herramientas/pruebas/reporte_ir_nivel_test.mjs`.
 - **Accesibilidad** (R6, R13, R14, R17, R19, R22): un color propio para
   el texto en celeste (`--link`, 5,8 de contraste; el celeste de la marca
   queda para fondos y bordes); los avisos «Número copiado» y «Guardado» se
@@ -1306,16 +1332,16 @@ esperar decisiones, más las decisiones que el usuario tomó ese mismo día
   chico y la ✕ de las ventanas miden 40 px y los chips y solapas 32; la
   pestaña activa lleva `aria-current`; los buscadores son `type=search`;
   teléfono y correo con `autocomplete`; el avatar de iniciales no se lee
-  dos veces. `pruebas/accesibilidad_test.mjs`.
+  dos veces. `herramientas/pruebas/accesibilidad_test.mjs`.
 - **La planilla de la Agenda, solo para quien carga eventos** (D2, lo
   decidió el usuario): un observador no la ve.
-  `pruebas/agenda_planilla_test.mjs`.
+  `herramientas/pruebas/agenda_planilla_test.mjs`.
 - **«Ver traducción» en las respuestas, en su fila de acciones** (pedido
   del usuario el mismo día: «no está incluido en las respuestas»): estaba,
   pero como un renglón suelto y más chico debajo del texto, fácil de no
   ver. Ahora va donde en el posteo: Me gusta · Responder · Ver traducción
   · Borrar, con la letra de esa fila; también para quien solo observa.
-  `pruebas/traduccion_respuestas_test.mjs`.
+  `herramientas/pruebas/traduccion_respuestas_test.mjs`.
 - **Lo que se probó y se dejó como estaba:** la barra de desplazamiento
   en reposo (la auditoría la marcó por contraste, R17) se oscureció y
   `barra_test` lo frenó: es el diseño que el usuario eligió el 8/10 («A»,
@@ -1327,10 +1353,10 @@ esperar decisiones, más las decisiones que el usuario tomó ese mismo día
   cortada con la letra de su navegador, Montserrat, más ancha que la de
   acá): el nombre se parte si hace falta y las columnas de números toman
   solo lo justo. Se mide con letra ancha.
-  `pruebas/reportes_tabla_ancha_test.mjs`.
+  `herramientas/pruebas/reportes_tabla_ancha_test.mjs`.
 - **Base, avisos y workflows** (R3, R5, R8, R9, R10, R11 y los bajos de
   la base, R20): ver el detalle en
-  `docs/auditoria/2026-10-10-completa.md`, «Arreglado el 10/10».
+  `docs/informes/2026-10-10-completa.md`, «Arreglado el 10/10».
 
 Decisiones del usuario (10/10): el archivo no se publica sin comentarios
 todavía (D1, se mira al pasar los 600 KB); la planilla de la Agenda solo
@@ -1357,7 +1383,7 @@ dejaría de entrar. Se pasó al archivo UMD del paquete de npm
 (`dist/umd/supabase.js`, un archivo fijo), con versión fija y huella, igual
 que JSZip y docx-preview. Se validó el método antes de usarlo: las huellas
 de esos dos, calculadas a partir de sus paquetes de npm, coinciden con las
-que ya andan en el sitio. `pruebas/supabase_integridad_test.mjs` baja el
+que ya andan en el sitio. `herramientas/pruebas/supabase_integridad_test.mjs` baja el
 paquete de esa versión, comprueba que la huella del código es la de su
 archivo, y en el navegador que con la librería de verdad la app llega a la
 portada y con una adulterada en un byte la frena. Las nueve pruebas que
@@ -1402,7 +1428,7 @@ es algo posible»): dice «Contactos del país», «Contactos de la ciudad»,
   de «Ciudades»/«Países». El buscador, «Buscar en todo» y la planilla
   (columna «Dónde») los encuentran. Traer una lista no cambia.
 
-Pruebas: `supabase/pruebas/79-agenda.sql` (+16) y `pruebas/agenda_test.mjs`
+Pruebas: `supabase/pruebas/79-agenda.sql` (+16) y `herramientas/pruebas/agenda_test.mjs`
 (un bloque nuevo; con el código de antes se cae en la primera pastilla).
 La app de mentira y los datos variados de la auditoría traen gente de un
 lugar.
@@ -1413,7 +1439,7 @@ lugar.
 hizo para generar la herramienta … eso ya no va a servir más; todo lo
 referido a Mapeo ya lo tengo guardado offline y en Drive»): terminó la
 revisión y se queda con el Excel y el Sheet. Se sacaron
-`herramientas/mapeo.html` y su LEEME, `pruebas/mapeo_test.mjs`,
+`herramientas/mapeo.html` y su LEEME, `herramientas/pruebas/mapeo_test.mjs`,
 `mapeo_revisar_xlsx.py`, `mapeo_dos_hojas.py` y `mapeo_de_prueba.xlsx`,
 y los workflows volvieron a publicar solo `index.html`. Todo sigue en
 el historial de Git (commits `3c7c8ac`, `d0302df` y `c2a2b2a`), por si

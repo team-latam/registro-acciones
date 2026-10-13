@@ -26,7 +26,7 @@ permissions:
 jobs:
   verificar:
     name: Los permisos de la base, contra la de verdad
-    # Las llaves de verdad solo corren desde main (pruebas/workflows_test.mjs).
+    # Las llaves de verdad solo corren desde main (herramientas/pruebas/workflows_test.mjs).
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 10

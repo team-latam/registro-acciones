@@ -24,7 +24,7 @@ on:
     paths:
       - "index.html"
       - "supabase/**"
-      - "pruebas/**"
+      - "herramientas/pruebas/**"
       - ".github/workflows/app.yml"
       - ".github/workflows/pages.yml"
   # Para volver a publicar a mano: Actions → «Publicar el sitio» → Run workflow.
@@ -91,7 +91,7 @@ jobs:
         with: { persist-credentials: false }
 
       # El sitio es index.html y nada más. Con la publicación desde la
-      # rama, GitHub servía también README, docs/, supabase/ y pruebas/
+      # rama, GitHub servía también README, docs/, supabase/ y herramientas/pruebas/
       # pasados por Jekyll; nadie los abría desde ahí (se leen en el repo).
       - name: Armar lo que se publica
         if: steps.modo.outputs.listo == 'si'

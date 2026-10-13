@@ -2,7 +2,7 @@
 #
 # Hasta el 3 de octubre de 2026 estas pruebas vivían fuera del repo, en la
 # sesión de trabajo que las escribió, y se perdían con ella: lo que
-# protegía la app entera no lo corría nadie. Ver pruebas/LEEME.md.
+# protegía la app entera no lo corría nadie. Ver herramientas/pruebas/README.md.
 name: Pruebas de la app
 
 on:
@@ -14,7 +14,7 @@ on:
     paths:
       - "index.html"
       - "supabase/**"              # y sb_test, el adaptador de Supabase
-      - "pruebas/**"
+      - "herramientas/pruebas/**"
       - ".github/workflows/**"       # y workflows_test, las reglas de todos
   pull_request:
   workflow_dispatch:
@@ -41,10 +41,10 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: pruebas/package-lock.json
+          cache-dependency-path: herramientas/pruebas/package-lock.json
 
       - name: Playwright
-        working-directory: pruebas
+        working-directory: herramientas/pruebas
         # El 7/10/2026 (corrida 49 de «Publicar el sitio») este paso se
         # quedó 20 minutos esperando un servidor de paquetes de Ubuntu y se
         # comió el tiempo del trabajo entero, sin llegar a las pruebas. Ahora
@@ -66,4 +66,4 @@ jobs:
           exit 1
 
       - name: Las pruebas
-        run: ./pruebas/correr.sh
+        run: ./herramientas/pruebas/correr.sh
