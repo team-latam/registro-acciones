@@ -969,6 +969,21 @@ eligió **unirlas así**:
 Pruebas: `agenda_test.mjs` (país, región y ciudad; fallan con el código
 de antes) y `ficha_celular_test.mjs` vuelve a esperar cinco tarjetas.
 
+### 85. Reportes: «Por país» llega hasta 7 filas, y «Temas» pasa a llamarse «Tendencias» — HECHO (13 oct 2026)
+
+Dos pedidos del usuario, con capturas de Reportes:
+- **«Por país» hasta la altura de Congreso incluido, es decir 7.** Con 25 países, la tarjeta estiraba a «Por zona» (4) y «Por tipo» (7) y
+  quedaba la mitad vacía. Ahora un bloque de barras muestra **7 filas** (`FILAS_DEL_BLOQUE`, lo que mide «Por tipo» con los siete tipos),
+  las de más actividades, y un botón **«Ver los 25 países» / «Mostrar menos»**, arriba a la derecha en el renglón del título (abajo sumaba una
+  fila y la tarjeta dejaba de cortar justo a la altura de la última de «Por tipo», que fue lo que pidió), despliega el resto. Se acuerda mientras la página siga
+  abierta, **al imprimir salen todos** (sin el botón) y la planilla del reporte (CSV) lleva siempre todos. Con 7 países o menos no hay
+  botón. Solo el período («Cuándo y dónde»): las tablas de «Todos los años» y «Comparar» no cambiaron.
+- **«Temas» se llama «Tendencias»** (Trends / Tendências / מגמות), en la sección, en el recorrido de bienvenida y en la leyenda de la
+  diapositiva del equipo. **Solo el nombre**: el usuario dijo que todavía no está conforme con el concepto («no representa lo que se está
+  hablando, lo que pasó»); queda una propuesta aparte, esperando su elección.
+- Prueba: `reportes_paises_test.mjs` (16: la misma altura que «Por tipo», 7 filas y el botón, sin botón con 7 o menos, plegar y desplegar, que se acuerda al redibujar, el
+  CSV con todos, la impresión, inglés, hebreo y celular; falla con el código de antes) y `temas_test.mjs` con el nombre nuevo.
+
 ### 84. La planilla del Inicio, de un clic: se saca la ventana «Bajar planilla» — HECHO (13 oct 2026)
 
 El usuario vio la ventana de la tanda 81 y la criticó: «visualmente es muy poco profesional», y pidió revisar «por qué necesitamos tener
