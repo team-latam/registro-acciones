@@ -101,7 +101,7 @@ quedó resuelta como la 4 (tendencias automáticas, sin etiquetas a mano).
 
 ## Ajustes que pidió el usuario después (13/10/2026)
 
-Con lo ya hecho a la vista, pidió retoques; todos hechos, en las tandas 79 a 87 de `docs/REDISENO.md`:
+Con lo ya hecho a la vista, pidió retoques; todos hechos, en las tandas 79 a 88 de `docs/REDISENO.md`:
 
 - **Pasos de «Lo que sigue»**: «No es tarea» a la derecha, en la fila de la fecha, y los textos largos con «más / menos» (tanda 79).
 - **Temas → «Tendencias»**: primero que junte las palabras que van pegadas («krav maga», tanda 80); después pidió otro concepto —«no representa lo que se
@@ -116,6 +116,7 @@ Con lo ya hecho a la vista, pidió retoques; todos hechos, en las tandas 79 a 87
   no se eligió.
 - **El «Me gusta»**: un solo ícono, la ramita de olivo del logo de Sala Segura, en lugar del corazón/pulgar (tanda 83).
 - **Reportes, «Por país»**: 7 filas (la altura de «Por tipo») y «Ver los N países» en el renglón del título (tanda 85).
+- **Pasos de «Lo que sigue»**: «+ Responsable» se ve del mismo tamaño que «+ Fecha» y se elige en una ventanita con buscador y la lista (tanda 88).
 - **Reportes, «Mes a mes»**: el «+12», «+9» y «+6» de lo planificado pasa de abajo del número de lo hecho a adentro de su barra
   punteada, sin tocar las barras; en el celular con letra más chica (tanda 86).
 - **Ejemplos de los correos**: el workflow «Ejemplos de los correos» le manda al admin un ejemplo de «Lugares sin actividad» y del

@@ -44,7 +44,8 @@ const b = await abrirNavegador();
   eq("tocar «más» lo muestra entero y el botón pasa a «menos»", await hasta(p, (t) => { const li = document.querySelector('.post[data-post-id="p1"] .rs-pasos li:first-child'); const x = li.querySelector(".t"); return x.classList.contains("entero") && x.scrollHeight <= x.clientHeight + 1 && li.querySelector(".rs-mas-paso").textContent.trim() === t; }, "menos"), true);
   eq("…con aria-expanded para el lector de pantalla, y el foco queda en el botón", await p.evaluate(() => { const bt = document.querySelector('.post[data-post-id="p1"] .rs-pasos li:first-child .rs-mas-paso'); return [bt.getAttribute("aria-expanded"), document.activeElement === bt]; }), ["true", true]);
   // Lo desplegado se queda así aunque otra cosa vuelva a dibujar la pantalla (por ejemplo, elegir un responsable en el paso de al lado).
-  await p.selectOption(tarjeta + " .rs-pasos li:nth-child(2) .rs-resp", ANA.email);
+  await p.click(tarjeta + " .rs-pasos li:nth-child(2) .rs-resp"); await p.waitForSelector("#respPop:popover-open");
+  await p.click('#respPop .rp-op[data-email="' + ANA.email + '"]');
   await hasta(p, (a) => window.__sb.tablas.posts.find(y => y.id === "p1").resumen.partes[0].pasos[1].resp === a, ANA.email);
   eq("lo desplegado sigue desplegado cuando se redibuja", (await estado(p, tarjeta))[0].entero, true);
   await p.click(tarjeta + " .rs-pasos li:first-child .rs-mas-paso");
