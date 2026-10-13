@@ -969,6 +969,31 @@ eligió **unirlas así**:
 Pruebas: `agenda_test.mjs` (país, región y ciudad; fallan con el código
 de antes) y `ficha_celular_test.mjs` vuelve a esperar cinco tarjetas.
 
+### 67. «1 hitos», «1 planificadas»: el singular en todos los textos con cantidad — HECHO (13 oct 2026)
+
+Al armar el video apareció «Last visit 1 days ago» (se arregló el 12/10, ver
+`dias_singular_test.mjs`). Se mandó un barrido por todo `index.html` buscando textos
+con un número que con 1 salen mal, y cada hallazgo lo verificaron dos lecturas
+independientes. Quedaron arreglados unos 45, en los cuatro idiomas, con la
+forma de siempre del código: `n === 1 ? t(singular…) : t(plural…)`. (Se probó un
+ayudante `tn()`, pero las pruebas arman sus páginas con un `t()` de mentira que
+no lo conocía; la forma de siempre no necesita nada más.)
+
+- **Los más visibles:** «0 de 1 hitos» en Proyectos (línea de tiempo, tarjetas y
+  panel), «1 planificadas» (ficha de lugar, Reportes y el gráfico mes a mes),
+  «1 pedidos de acceso esperando» (el globito del avatar de un admin), las cuatro
+  cifras de Administración → Resumen («1 entraron este mes», «1 no entran hace
+  más de 30 días»), «1 países con actividad» / «1 ciudades distintas» / «1 personas
+  que cargaron» en Reportes, «1 actividades» (Reportes), «1 guardados» (filtros),
+  «1 posteos en total» (Tipos de actividad) y los avisos de Calendar y de la copia
+  de seguridad («1 evento(s) revisado(s)», «1 no se pudieron bajar»).
+- **Sin tocar a propósito:** el caso de «unificar cuentas» (una operación rara que
+  dice «N cosas pasaron»), «0/1 documentos» (es una fracción) y los títulos de la
+  comparación «A → B».
+- **Pruebas:** `singular_plural_test.mjs` (68 comprobaciones en cuatro idiomas;
+  falla con el código de antes: 49 fallas) y `agenda_test.mjs` espera ahora
+  «1 cerrada».
+
 ### 66. El recorrido de bienvenida, al día y con un guardia — HECHO (12 oct 2026)
 
 El usuario pidió asegurarse de que quien entra por primera vez vea cómo

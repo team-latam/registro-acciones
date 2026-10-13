@@ -325,7 +325,7 @@ const escribir = async (p, sel, valor) => { await p.fill(sel, valor); await p.wa
   eq("previa: la misma persona en dos lugares, una sola ficha; y la que ya estaba en la app", hay(/2 personas: una está en más de una institución.*Shimon Pelman \(2\).*Una ya estaba en la app/), true);
   eq("previa: «Rabbi»/«Rab» fuera del nombre", hay(/2 nombres empiezan con «Rabbi» o «Rab»/), true);
   eq("previa: el teléfono con un carácter invisible", hay(/Un teléfono traía caracteres invisibles/), true);
-  eq("previa: temporada y cerradas", hay(/1 de temporada y 1 cerradas/), true);
+  eq("previa: temporada y cerradas", hay(/1 de temporada y 1 cerrada(?!s)/), true);
   eq("previa: dos tipos que parecen el mismo, con la pregunta", [hay(/Dos tipos parecen el mismo: «Centro Juvenil» \(1\) y «Centro de Jóvenes» \(1\)/), await cuantos(p, '[data-action="agenda-import-unir"]')], [true, 2]);
   eq("previa: el nombre de la lista sale del título", await p.inputValue("#agendaNombreLista"), "Directorio de prueba");
   eq("previa: el botón dice qué va a traer", await texto(p, '[data-action="agenda-import-traer"]'), "Traer 3 instituciones y 2 contactos");
