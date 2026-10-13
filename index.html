@@ -2403,6 +2403,9 @@
   .rs-obj, .rs-pasos{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:7px; }
   .rs-obj li, .rs-pasos li{ display:flex; gap:9px; align-items:flex-start; font-size:13px; line-height:1.4; color:var(--ink); }
   .rs-obj .t, .rs-pasos .t{ display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .rs-pasos .t.entero{ display:block; -webkit-line-clamp:unset; }
+  .rs-pasos .rs-mas-paso{ display:block; margin-top:1px; font-size:11.5px; }
+  .rs-pasos .rs-mas-paso[hidden]{ display:none; }
   .rs-ok{ flex:none; font-size:10.5px; font-weight:800; border-radius:999px; padding:2px 8px; margin-top:1px; white-space:nowrap; }
   .rs-ok.si{ background:#e3f4ea; color:#1f7a45; }
   .rs-ok.par{ background:#fdf1dc; color:#9a6200; }
@@ -2423,9 +2426,10 @@
   .rs-resp:hover, .rs-resp:focus-visible{ border-color:var(--celeste-dark); }
   .date-trigger.rs-fecha{ font-size:11.5px; padding:2px 9px; }
   .rs-pasos li.hecho .t{ text-decoration:line-through; opacity:.6; }
-  /* "No es tarea": al final del renglón, chiquito. En la compu aparece al
-     pasar el mouse por el paso; en el celular está siempre, apenas gris. */
-  .rs-no{ display:inline; background:none; border:none; padding:0; margin-inline-start:8px; font:inherit; font-size:11px; font-weight:700; color:var(--text-muted); cursor:pointer; opacity:0; transition:opacity .12s; }
+  /* "No es tarea": en la misma fila que el responsable y la fecha, pegado al lado
+     derecho (pedido del usuario, 13/10/2026). En la compu aparece al pasar el mouse
+     por el paso; en el celular está siempre, apenas gris. */
+  .rs-no{ display:inline; background:none; border:none; padding:2px 0; margin-inline-start:auto; font:inherit; font-size:11px; font-weight:700; color:var(--text-muted); cursor:pointer; opacity:0; transition:opacity .12s; }
   .rs-pasos li:hover .rs-no, .rs-no:focus-visible{ opacity:1; }
   .rs-no:hover{ color:var(--ink); text-decoration:underline; }
   @media (hover:none){ .rs-no{ opacity:.75; } }
@@ -3487,7 +3491,8 @@
        una columna, con las tarjetas del costado en dos, y sin partir un
        ítem de la línea de tiempo entre dos hojas. */
     .ficha-lugar{ max-width:none; }
-    .fl-migas, .fl-barra, .fl-acciones, .fl-seg, .fl-chips, .fl-proy, .fl-nota, .fl-mas, .rs-no, .fl-hijo .fl-ir, .fl-main .audit-more{ display:none !important; }
+    .fl-migas, .fl-barra, .fl-acciones, .fl-seg, .fl-chips, .fl-proy, .fl-nota, .fl-mas, .rs-no, .rs-mas-paso, .fl-hijo .fl-ir, .fl-main .audit-more{ display:none !important; }
+    .ficha-lugar .rs-pasos .t{ display:block; -webkit-line-clamp:unset; }
     .fl-incluye-print{ display:block; font-size:10px; font-weight:700; color:var(--text-muted); margin:-6px 0 10px; }
     .fl-head{ margin-bottom:6px; }
     .fl-head h2{ font-size:19px; }
@@ -14193,6 +14198,7 @@ function sinCorrimientoLateral(){
   if(window.scrollX) window.scrollTo({ left:0, top:window.scrollY, behavior:"instant" });
 }
 function afterRenderView(){
+  revisarPasosLargos();
   syncHeaderHeight();
   syncTabsScroll();
   sinCorrimientoLateral();
@@ -15729,6 +15735,8 @@ const pasosDe = partes => (Array.isArray(partes) ? partes : [partes]).flatMap(x 
 const pasosPendientes = partes => pasosDe(partes).filter(p => p.estado !== "hecho" && p.estado !== "no");
 // Qué tiene desplegado cada tarjeta: el panel, el resumen entero, todos los pasos.
 const resumenAbiertos = new Set(), resumenEntero = new Set(), resumenTodosLosPasos = new Set();
+// Los pasos de «Lo que sigue» con el texto desplegado («más» / «menos»): «<posteo>#<paso>».
+const pasosEnteros = new Set();
 function etiquetaLogrado(v){
   return v === "si" ? `<span class="rs-ok si">${esc(t("Sí","Yes","Sim","כן"))}</span>`
     : v === "parcial" ? `<span class="rs-ok par">${esc(t("Parcial","Partial","Parcial","חלקי"))}</span>`
@@ -15747,6 +15755,24 @@ function renderResumenPill(post){
   const cuenta = hayCierre ? (c.total ? `${c.si}/${c.total}` : "") : String(partes.reduce((n, x) => n + (x.objetivos || []).length, 0) || "");
   return `<button type="button" class="rs-pill${abierto ? " on" : ""}" data-action="toggle-resumen" data-post-id="${esc(post.id)}" aria-expanded="${abierto}" aria-label="${esc(palabra + (cuenta ? " " + cuenta : ""))}">📋<span class="pa-l"> ${esc(palabra)}${cuenta ? " ·" : ""}</span>${cuenta ? " " + esc(cuenta) : ""}</button>`;
 }
+// El texto de un paso: dos renglones y, si es más largo, «más» para leerlo entero y «menos»
+// para volver (pedido del usuario, 13/10/2026). El botón sale escondido y revisarPasosLargos()
+// lo muestra solo si el texto de verdad se corta en ese ancho de pantalla.
+function textoDePaso(postId, p, atributos = ""){
+  const entero = pasosEnteros.has(postId + "#" + p.id);
+  return `<span class="t${entero ? " entero" : ""}"${atributos}>${esc(p.t)}</span><button type="button" class="rs-mas rs-mas-paso" data-action="paso-entero" data-post-id="${esc(postId)}" data-paso="${esc(p.id)}" aria-expanded="${entero}"${entero ? "" : " hidden"}>${entero ? t("menos","less","menos","פחות") : t("más","more","mais","עוד")}</button>`;
+}
+function revisarPasosLargos(){
+  document.querySelectorAll(".rs-pasos .rs-mas-paso").forEach(b => {
+    const texto = b.previousElementSibling;
+    if(!texto) return;
+    b.hidden = !texto.classList.contains("entero") && texto.scrollHeight <= texto.clientHeight + 1;
+  });
+}
+{
+  let espera = null;
+  window.addEventListener("resize", () => { clearTimeout(espera); espera = setTimeout(revisarPasosLargos, 120); });
+}
 function renderPasos(post, pasos, puede, conOrigen){
   return `<ul class="rs-pasos">${pasos.map(({ p, post: de }) => {
     const hecho = p.estado === "hecho";
@@ -15754,7 +15780,7 @@ function renderPasos(post, pasos, puede, conOrigen){
     const quien = hecho && p.rutina ? `<small>✓ ${esc(t("con la rutina «{r}»","with the routine “{r}”","com a rotina «{r}»","עם השגרה «{r}»",{ r: recortar((getPostById(p.rutina) || {}).content || "", 60) }))}</small>` : "";
     return `<li class="${hecho ? "hecho" : ""}">
       <input type="checkbox" ${hecho ? "checked" : ""} ${puede(de) ? "" : "disabled"} data-action="resumen-paso" data-post-id="${esc(de.id)}" data-paso="${esc(p.id)}" aria-label="${esc(t("Hecho","Done","Feito","בוצע"))}">
-      <span class="rs-paso"><span class="t">${esc(p.t)}</span>${origen}${quien}${renderAsignacionDePaso(de, p, puede(de))}${!hecho && puede(de) ? `<button type="button" class="rs-no" data-action="resumen-no-tarea" data-post-id="${esc(de.id)}" data-paso="${esc(p.id)}" title="${esc(t("No es una tarea: que no figure como pendiente","Not a task: don't list it as pending","Não é uma tarefa: que não figure como pendente","לא משימה: שלא יופיע כממתין"))}">${esc(t("No es tarea","Not a task","Não é tarefa","לא משימה"))}</button>` : ""}</span>
+      <span class="rs-paso">${textoDePaso(de.id, p)}${origen}${quien}${renderAsignacionDePaso(de, p, puede(de))}</span>
     </li>`; }).join("")}</ul>`;
 }
 // Un formulario leído, dentro del panel de la tarjeta. Con varios (un
@@ -15838,6 +15864,7 @@ function renderAsignacionDePaso(de, p, editable){
       <button type="button" class="date-trigger rs-fecha${p.para ? "" : " empty"}${vencido ? " vencido" : ""}" data-action="date-open" data-df-kind="paso" data-df-id="${esc(dfId)}" data-post-id="${esc(de.id)}" data-paso="${esc(p.id)}" aria-haspopup="dialog" aria-expanded="false" aria-label="${esc(t("Fecha para el paso","Date for the step","Data para o passo","תאריך לשלב"))}"><span class="cal-ic" aria-hidden="true">📅</span>${fecha}</button>
       <div class="date-pop" hidden role="dialog" aria-label="${esc(t("Fecha para el paso","Date for the step","Data para o passo","תאריך לשלב"))}"></div>
     </span>
+    <button type="button" class="rs-no" data-action="resumen-no-tarea" data-post-id="${esc(de.id)}" data-paso="${esc(p.id)}" title="${esc(t("No es una tarea: que no figure como pendiente","Not a task: don't list it as pending","Não é uma tarefa: que não figure como pendente","לא משימה: שלא יופיע כממתין"))}">${esc(t("No es tarea","Not a task","Não é tarefa","לא משימה"))}</button>
   </span>`;
 }
 // Cambia el responsable y/o la fecha de un paso, y lo guarda. Un valor vacío lo
@@ -23241,10 +23268,9 @@ function renderFichaLugar(L){
       const dias = diasDesde(post.endDate || fechaDePost(post));
       const dondeTxt = lugarDeParte(parte, L, post);
       return `<li class="${hecho ? "hecho" : ""}"><input type="checkbox" ${hecho ? "checked" : ""} ${puede ? "" : "disabled"} data-action="resumen-paso" data-post-id="${esc(post.id)}" data-paso="${esc(p.id)}" aria-label="${esc(t("Hecho","Done","Feito","בוצע"))}">
-        <span class="rs-paso"><span class="t" dir="auto">${esc(p.t)}</span>
+        <span class="rs-paso">${textoDePaso(post.id, p, ' dir="auto"')}
         <small>${dondeTxt ? esc(dondeTxt) + " · " : ""}${esc(t("de «{v}»","from “{v}”","de «{v}»","מתוך «{v}»",{ v: recortar(post.title, 50) }))}${!hecho && dias > 90 ? ` · <span class="fl-viejo">${esc(t("hace {m} meses","{m} months ago","há {m} meses","לפני {m} חודשים",{ m: Math.floor(dias / 30) }))}</span>` : ""}</small>
-        ${renderAsignacionDePaso(post, p, puede)}
-        ${!hecho && puede ? `<button type="button" class="rs-no" data-action="resumen-no-tarea" data-post-id="${esc(post.id)}" data-paso="${esc(p.id)}">${esc(t("No es tarea","Not a task","Não é tarefa","לא משימה"))}</button>` : ""}</span></li>`; }).join("")}</ul>
+        ${renderAsignacionDePaso(post, p, puede)}</span></li>`; }).join("")}</ul>
   </div>` : "";
   // Lo que pasó: tipos (para ocultar) y la línea de tiempo.
   const tipos = [...D.porTipo.entries()].sort((a, b) => b[1] - a[1]);
@@ -24953,6 +24979,13 @@ document.addEventListener("click", async e=>{
     "resumen-entero": async (el, e, action, postId) => {
     resumenEntero.has(postId) ? resumenEntero.delete(postId) : resumenEntero.add(postId);
     render();
+  },
+    "paso-entero": async (el) => {
+    const k = el.dataset.postId + "#" + el.dataset.paso;
+    pasosEnteros.has(k) ? pasosEnteros.delete(k) : pasosEnteros.add(k);
+    render();
+    const otra = [...document.querySelectorAll('[data-action="paso-entero"]')].find(b => b.dataset.postId === el.dataset.postId && b.dataset.paso === el.dataset.paso);
+    if(otra) otra.focus();
   },
     "resumen-todos-pasos": async (el, e, action, postId) => {
     resumenTodosLosPasos.has(postId) ? resumenTodosLosPasos.delete(postId) : resumenTodosLosPasos.add(postId);
