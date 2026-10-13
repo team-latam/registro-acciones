@@ -980,12 +980,12 @@ vea bien, sobre todo chica», y eligió la versión **«más grande y firme, con
 - Un solo dibujo (el trazo del `.ai`, 3 KB, pasado a SVG con `pdftocairo`) vive una vez al principio del `<body>` como `<symbol id="icoOlivo">`
   y se reusa con `<use>` en `iconoGusta(on)`: **los posteos, las respuestas y el conteo que ven los observadores** (antes 👍).
 - Apagada (todavía no te gustó): el color del texto del botón, al 62 %. Encendida: el verde del logo (`--olivo: #009869`), igual en claro
-  y en oscuro. Mide **1,8 em (unos 22 px)**, contra los 15 del emoji, y lleva un borde del mismo color de 14 unidades (sobre 580) que
+  y en oscuro. Mide **1,4 em (unos 17 px)**: salió a 1,8 em (22 px) y el usuario pidió achicarla para que guardara relación con los emojis de los botones de al lado (💬, 📋); de las tres medidas que se le mostraron (19, 17 y 16 px) preguntó cuál se sugería y se aplicó la recomendada, la de 17. Lleva un borde del mismo color de 14 unidades (sobre 580) que
   junta las hojas y el tallo en una mancha firme; en el celular, donde la palabra se esconde y el ícono es todo el botón, es lo que más se nota.
 - **La estrella es un recorte**, no una forma blanca: un `clip-path` con `clip-rule="evenodd"` (un rectángulo grande y la estrella agrandada
   un 12 %), así se ve el fondo por ella en claro, en oscuro y con el ícono apagado, y el borde que engorda el dibujo no se la come (con
   el borde puesto como trazo, el agujero perdía casi un séptimo). Agrandada un 25 % tocaba el borde de la hoja; el 12 % es lo que entra.
-  A 22 px sigue siendo una estrella chica (unos 4 px): se ve entera recién en un lugar grande.
+  A 17 px sigue siendo una estrella chica (unos 3 px): se ve entera recién en un lugar grande.
 - Cuando se pida un lugar grande para el logo (por ejemplo la bienvenida), se reusa el mismo `<symbol>`.
 - Prueba: `me_gusta_test.mjs` (17: un solo dibujo y su recorte; encendida/apagada en posteos, respuestas y observador; los colores; el tamaño; tocar
   y destocar; sin 👍 ni 🤍; celular claro y oscuro; y que **el centro de la estrella deja ver el fondo**, mirando los píxeles). Falla con la

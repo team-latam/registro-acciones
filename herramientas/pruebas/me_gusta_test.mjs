@@ -9,7 +9,7 @@
      observadores; ya no hay ningún 👍 ni 🤍;
    - se enciende y se apaga al tocarlo, con el botón avisando su estado;
    - apagado toma el color del texto, más suave; encendido, el verde del logo;
-   - se lee: unos 21 píxeles, y en el celular, donde la palabra se esconde,
+   - se lee: unos 17 píxeles (como el emoji de los botones de al lado), y en el celular, donde la palabra se esconde,
      sigue ahí;
    - la estrella de la hoja de arriba es un recorte de verdad (se ve el fondo
      por ella) y el borde no se la come.
@@ -51,7 +51,7 @@ const otro = '.post:not([data-post-id="p1"]) [data-action="toggle-like"]';     /
   eq("apagada: el color del texto del botón, más suave", [off[0] === off[3], off[1] === off[3], Number(off[2]) < 1 && Number(off[2]) >= .5], [true, true, true]);
   // El tamaño: un poco más grande que la letra.
   const caja = await p.$eval(boton + " svg", e => { const r = e.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)]; });
-  eq("mide unos 22 píxeles, no los 15 de antes", [caja[0] >= 20 && caja[0] <= 24, caja[0] === caja[1]], [true, true]);
+  eq("mide unos 17 píxeles: el alto del 💬 de al lado y un pelo más (no los 15 de antes, ni los 22 de la primera versión)", [caja[0] >= 16 && caja[0] <= 19, caja[0] === caja[1]], [true, true]);
 
   // Tocar: se enciende y se apaga.
   await p.$eval(otro, e => e.scrollIntoView({ block: "center" }));
@@ -106,7 +106,7 @@ for (const tema of ["claro", "oscuro"]) {
   if(tema === "oscuro") await p.evaluate(() => { document.documentElement.dataset.theme = "dark"; });
   await p.waitForSelector(boton);
   eq(`celular (${tema}): la palabra se esconde y la ramita sigue ahí, del mismo tamaño`,
-     await p.$eval(boton, e => { const l = e.querySelector(".pa-l"), r = e.querySelector("svg").getBoundingClientRect(); return [getComputedStyle(l).display, Math.round(r.width) >= 20, e.getAttribute("aria-label")]; }), ["none", true, "Me gusta"]);
+     await p.$eval(boton, e => { const l = e.querySelector(".pa-l"), r = e.querySelector("svg").getBoundingClientRect(); return [getComputedStyle(l).display, Math.round(r.width) >= 16, e.getAttribute("aria-label")]; }), ["none", true, "Me gusta"]);
   eq(`celular (${tema}): no se sale de la pantalla`, await p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), true);
   await p.close();
 }
