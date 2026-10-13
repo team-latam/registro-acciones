@@ -593,6 +593,16 @@
   .ps-nums span{ display:block; margin-top:6px; font-size:clamp(13px, 2.3vh, 20px); color:var(--ps-mut); }
   .ps-cmp{ font-size:clamp(14px, 2.6vh, 22px); font-weight:700; color:var(--ps-mut); }
   .ps-cmp.sube{ color:#86efac; } .ps-cmp.baja{ color:#fca5a5; }
+  /* «Mi año» (6-B): la tarjeta para compartir, en 3:4, como la imagen que se baja */
+  .mia-view .mia-anios{ margin:0 0 16px; }
+  .mia-tarjeta{ aspect-ratio:3/4; width:min(100%, 320px); margin:0 0 14px; border-radius:18px; padding:26px 20px 18px; box-sizing:border-box; color:#fff; text-align:center; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+    background:linear-gradient(150deg, #0d3b3e, #082427); position:relative; overflow:hidden; }
+  .mia-tarjeta small{ font-size:13px; font-weight:800; letter-spacing:.04em; color:#4fc7e0; }
+  .mia-tarjeta b{ font-size:96px; line-height:1; font-weight:800; font-variant-numeric:tabular-nums; margin-top:14px; }
+  .mia-tarjeta span{ font-size:20px; font-weight:700; }
+  .mia-tarjeta em{ font-style:normal; font-size:17px; font-weight:700; color:#4fc7e0; margin-top:18px; }
+  .mia-tarjeta i{ font-style:normal; font-size:13px; font-weight:600; color:rgba(255,255,255,.82); margin-top:6px; }
+  .mia-tarjeta u{ text-decoration:none; font-size:10px; font-weight:600; color:rgba(255,255,255,.6); position:absolute; bottom:12px; left:0; right:0; }
   .ps-nota{ margin-top:clamp(14px, 3vh, 28px); font-size:clamp(11px, 2vh, 16px); color:var(--ps-mut); }
   .ps-barras{ list-style:none; margin:0; padding:0; display:grid; gap:clamp(7px, 1.8vh, 16px); }
   .ps-barras li{ display:grid; grid-template-columns:minmax(90px, 24%) minmax(0, 1fr) auto; gap:14px; align-items:center; font-size:clamp(13px, 2.7vh, 24px); }
@@ -11785,6 +11795,7 @@ function renderUserBadge(){
   const pend = isAdmin() ? solicitudesPendientes().length : 0;
   const links = isAuthorized() ? `
         <div class="um-links">
+          <button type="button" class="um-link" data-action="goto-view" data-view="mianio">✨ ${t("Mi año","My year","Meu ano","השנה שלי")}</button>
           <button type="button" class="um-link" data-action="goto-view" data-view="configuracion">⚙️ ${t("Mis preferencias","My preferences","Minhas preferências","ההעדפות שלי")}</button>
           <button type="button" class="um-link" data-action="problema-abrir">🛟 ${t("Algo no anda","Something's wrong","Algo não está funcionando","משהו לא עובד")}</button>
           ${isAdmin() ? `<button type="button" class="um-link" data-action="goto-view" data-view="admin">🛠️ ${t("Administración","Administration","Administração","ניהול")}${pend ? `<span class="pending-count">${pend}</span>` : ""}</button>` : ""}
@@ -12012,6 +12023,7 @@ function doRender(){
   else if(state.view === "proyectos") html += renderVolverAFicha() + renderProyectosView();
   else if(state.view === "reportes") html += renderReportesView();
   else if(state.view === "configuracion") html += renderConfiguracionView();
+  else if(state.view === "mianio") html += renderMiAnioView();
   // Las tres vistas de admin siguen siendo las de siempre (así cada
   // atajo que llega a ellas sigue andando); el cascarón de Administración
   // las envuelve con el menú al costado.
@@ -12962,7 +12974,7 @@ function renderBottomNav(){
   if(!isAuthorized()){ bottomNavEl.hidden = true; moreMenuOpen = false; return; }
   bottomNavEl.hidden = false;
   const item = (view, icon, label) => `<button type="button" class="bn-item${state.view===view?" active":""}" data-action="goto-view" data-view="${view}"${state.view===view ? ' aria-current="page"' : ""}><span class="bn-ico" aria-hidden="true">${icon}</span><span class="bn-txt">${label}</span></button>`;
-  const enMas = ["proyectos","reportes","configuracion", ...ADMIN_VIEWS];
+  const enMas = ["proyectos","reportes","mianio","configuracion", ...ADMIN_VIEWS];
   const pend = isAdmin() ? solicitudesPendientes().length : 0;
   const hoja = (view, icon, label, extra) => `<button type="button" class="bn-sheet-item${state.view===view?" active":""}" data-action="goto-view" data-view="${view}">${icon} ${label}${extra || ""}</button>`;
   bottomNavEl.innerHTML = `
@@ -12976,6 +12988,7 @@ function renderBottomNav(){
     ${moreMenuOpen ? `<div class="bn-sheet" role="menu">
         ${hoja("proyectos", "📋", t("Proyectos","Projects","Projetos","פרויקטים"))}
         ${hoja("reportes", "📊", t("Reportes","Reports","Relatórios","דוחות"))}
+        ${hoja("mianio", "✨", t("Mi año","My year","Meu ano","השנה שלי"))}
         ${hoja("configuracion", "⚙️", t("Mis preferencias","My preferences","Minhas preferências","ההעדפות שלי"))}
         ${isAdmin() ? hoja("admin", "🛠️", t("Administración","Administration","Administração","ניהול"), pend ? `<span class="pending-count">${pend}</span>` : "") : ""}
       </div>` : ""}`;
@@ -16423,6 +16436,7 @@ function ventanaAnterior(v){
 function pasaFiltroDelReporte(p, f){
   if(!f) return true;
   if(f.tipo && (p.activityType || "otro") !== f.tipo) return false;
+  if(f.sinRutina && p.activityType === "rutina") return false;   // «Mi año»: la bitácora del día a día no es una actividad
   if(f.persona){
     // Una persona sin cuenta viene como «persona:<id>» (18-personas.sql):
     // hasta el 7/10/2026 se comparaba con el correo y el reporte salía vacío.
@@ -19916,12 +19930,12 @@ function tourSteps(){
         "Here you see if someone mentions you, replies to you, changes one of your events, and what's coming up.",
         "Aqui você vê se alguém te menciona, responde, muda um dos seus eventos e o que vem por aí.",
         "כאן רואים אם מזכירים אותך, עונים לך, משנים אחד מהאירועים שלך ומה מתקרב.") },
-    { id:"cuenta", cubre:["configuracion"], target: [".avatar-btn"],
+    { id:"cuenta", cubre:["configuracion","mianio"], target: [".avatar-btn"],
       title: t("Tu cuenta","Your account","Sua conta","החשבון שלך"),
-      text: t("Tus preferencias (avisos por correo, formato de fecha), el idioma y el tono claro u oscuro. Si algo no anda, avisá desde acá. Para salir, también.",
-        "Your preferences (email alerts, date format), the language and light or dark tone. If something's wrong, tell us from here. And sign out, too.",
-        "Suas preferências (avisos por e-mail, formato de data), o idioma e o tom claro ou escuro. Se algo não funcionar, avise daqui. E também para sair.",
-        "ההעדפות שלך (התראות במייל, פורמט תאריך), השפה והגוון בהיר או כהה. אם משהו לא עובד, אפשר לדווח מכאן. וגם ההתנתקות.") },
+      text: t("Tus preferencias (avisos por correo, formato de fecha), el idioma y el tono claro u oscuro, y «Mi año»: tu resumen del año, con una tarjeta para compartir. Si algo no anda, avisá desde acá. Para salir, también.",
+        "Your preferences (email alerts, date format), the language and light or dark tone, and “My year”: your summary of the year, with a card to share. If something's wrong, tell us from here. And sign out, too.",
+        "Suas preferências (avisos por e-mail, formato de data), o idioma e o tom claro ou escuro, e «Meu ano»: seu resumo do ano, com um cartão para compartilhar. Se algo não funcionar, avise daqui. E também para sair.",
+        "ההעדפות שלך (התראות במייל, פורמט תאריך), השפה והגוון בהיר או כהה, ו«השנה שלי»: סיכום השנה שלך, עם כרטיס לשיתוף. אם משהו לא עובד, אפשר לדווח מכאן. וגם ההתנתקות.") },
   ];
   if(!canWrite()){
     // Observador: sin composer ni FAB (no existen en su pantalla). Su recorrido arranca explicando el rol,
@@ -22154,6 +22168,121 @@ function imprimirPresentacion(){
   const fin = () => { if(!presImprimiendo) return; presImprimiendo = false; cont.remove(); document.body.classList.remove("pres-imprimiendo"); };
   window.addEventListener("afterprint", fin, { once: true });
   setTimeout(() => { try{ window.print(); } finally { setTimeout(fin, 10000); } }, 60);
+}
+
+/* ======================================================================
+   «MI AÑO» (13/10/2026, propuesta 6-B del usuario)
+   ======================================================================
+   Una pantalla en el menú de la cuenta con el resumen del año de cada
+   integrante: lo que cargó o donde figura como participante —sin las
+   rutinas, que son la bitácora del día a día—, sus números y un gráfico por
+   mes. Y una tarjeta vertical (1080×1350) que se baja como imagen para
+   compartirla con quien quiera. Es PRIVADO por diseño: se arma en el
+   navegador con lo que ya está cargado, solo para quien la mira; nada se
+   guarda ni viaja. Y la tarjeta no lleva ningún nombre de otras personas:
+   solo cuántas son (el usuario lo pidió así: «cuidar que no incluya nombres»).
+   Los números salen del mismo reporte que Reportes con «Ver solo» esa
+   persona (armarReporte), así que lo que se ve acá se puede comprobar allá.
+   ====================================================================== */
+const miAnio = { anio: "" };
+function filtroDeMiAnio(){ return { persona: String((state.auth.user && state.auth.user.email) || "").toLowerCase(), sinRutina: true }; }
+function datosDeMiAnio(anio){
+  const f = filtroDeMiAnio(), desde = `${anio}-01-01`, hasta = `${anio}-12-31`, yo = f.persona;
+  const r = armarReporte(desde, hasta, f);
+  const hoy = todayISO(), tope = hasta < hoy ? hasta : hoy;
+  // Días viajando: los días de las visitas que ya pasaron en el año, cada día una sola vez
+  // (dos visitas el mismo día no suman dos).
+  const dias = new Set();
+  const sumar = (ini, fin) => { for(let d = ini < desde ? desde : ini; d <= fin && d <= tope; d = addDaysISO(d, 1)) dias.add(d); };
+  state.posts.forEach(p => {
+    if(p.cancelled || p.activityType !== "visita" || !pasaFiltroDelReporte(p, f)) return;
+    const ini = String(p.startDate || p.date || ""), fin = String(p.endDate || ini);
+    if(!ini) return;
+    if(isRecurring(p)){
+      const dur = Math.max(0, Math.round((isoDate(fin) - isoDate(ini)) / 86400000));
+      fechasEnVentana(p, desde, tope).forEach(d => sumar(d, addDaysISO(d, dur)));
+    } else sumar(ini, fin);
+  });
+  // Cuántas personas: las que estuvieron en lo suyo y quienes cargaron lo que ella integró; sin ella misma.
+  const gente = new Set([...Object.keys(r.participantes), ...Object.keys(r.porPersona)]); gente.delete(yo);
+  const meses = [];
+  for(let m = 1; m <= 12; m++){ const k = `${anio}-${String(m).padStart(2, "0")}`; meses.push({ clave: "", etiqueta: esc(fmtISO(k + "-01", { month:"short" }).replace(".", "").slice(0, 3)), n: r.porMes[k] || 0, hoy: k === hoy.slice(0, 7), titulo: `${mesCortoDe(k)}: ${r.porMes[k] || 0}` }); }
+  return { anio, total: r.total, visitas: r.porTipo.visita || 0, paises: Object.keys(r.porPais).length, ciudades: r.ciudades.size, dias: dias.size, personas: gente.size, meses };
+}
+// Lo que dice la tarjeta (en la pantalla y en la imagen): sin nombres de nadie.
+function textosDeLaTarjeta(d){
+  const n = (k, uno, otro) => k === 1 ? uno : otro;
+  const lineas = [];
+  if(d.paises) lineas.push(n(d.paises, t("en 1 país","in 1 country","em 1 país","במדינה אחת"), t("en {n} países","in {n} countries","em {n} países","ב-{n} מדינות",{ n: d.paises })));
+  const resto = [];
+  if(d.dias) resto.push(n(d.dias, t("1 día viajando","1 day on the road","1 dia viajando","יום אחד בדרכים"), t("{n} días viajando","{n} days on the road","{n} dias viajando","{n} ימים בדרכים",{ n: d.dias })));
+  if(d.personas) resto.push(n(d.personas, t("1 persona","1 person","1 pessoa","אדם אחד"), t("{n} personas","{n} people","{n} pessoas","{n} אנשים",{ n: d.personas })));
+  return {
+    arriba: t("Mi {a} en Team LatAm","My {a} at Team LatAm","Meu {a} na Team LatAm","ה-{a} שלי ב-Team LatAm",{ a: d.anio }),
+    numero: String(d.total),
+    unidad: n(d.total, t("actividad","activity","atividade","פעילות"), t("actividades","activities","atividades","פעילויות")),
+    lugares: lineas[0] || "", resto: resto.join(" · "),
+    pie: t("Registro de Acciones","Activity Log","Registro de Ações","יומן פעולות"),
+  };
+}
+function renderMiAnioView(){
+  if(!state.loaded) return `<div class="empty-state"><div class="big">⏳</div>${t("Cargando…","Loading…","Carregando…","...טוען")}</div>`;
+  const anios = aniosConDatos();
+  const actual = todayISO().slice(0, 4);
+  if(!anios.includes(miAnio.anio)) miAnio.anio = anios.includes(actual) ? actual : anios[anios.length - 1];
+  const d = datosDeMiAnio(miAnio.anio);
+  const txt = textosDeLaTarjeta(d);
+  const kpi = (n, etiqueta) => `<div class="rep-kpi"><div class="rep-kpi-num">${n}</div><div class="rep-kpi-txt">${etiqueta}</div></div>`;
+  const selector = `<div class="pref-chips mia-anios" role="group" aria-label="${esc(t("Año","Year","Ano","שנה"))}">${anios.slice().reverse().map(a => `<button type="button" class="chip-toggle${a === miAnio.anio ? " active" : ""}" data-action="mianio-anio" data-year="${esc(a)}" aria-pressed="${a === miAnio.anio}">${esc(a)}</button>`).join("")}</div>`;
+  const cabeza = `<header class="admin-cabecera"><div class="admin-cab-txt"><h2 class="admin-h2">✨ ${t("Mi año","My year","Meu ano","השנה שלי")}</h2>
+      <p class="admin-lead">${t("Lo que cargaste o donde figurás como participante, sin las rutinas. Solo lo ves vos: nada de esto se guarda ni se manda a nadie.","What you logged or where you appear as a participant, without routines. Only you see it: none of this is saved or sent to anyone.","O que você registrou ou onde aparece como participante, sem as rotinas. Só você vê: nada disso é guardado nem enviado a ninguém.","מה שרשמת או שבו את/ה מופיע/ה כמשתתף/ת, בלי השגרה. רק את/ה רואה: שום דבר מזה לא נשמר ולא נשלח לאף אחד.")}</p></div></header>`;
+  if(!d.total) return `<div class="mia-view">${cabeza}${selector}<div class="empty-state"><div class="big">✨</div>${t("Todavía no hay nada cargado a tu nombre en {a}.","There's nothing logged under your name in {a} yet.","Ainda não há nada registrado no seu nome em {a}.","עדיין אין שום דבר שרשום על שמך ב-{a}.",{ a: esc(d.anio) })}</div></div>`;
+  const kpis = tiraDeNumeros([
+    kpi(d.total, d.total === 1 ? t("actividad","activity","atividade","פעילות") : t("actividades","activities","atividades","פעילויות")),
+    kpi(d.visitas, d.visitas === 1 ? t("visita","visit","visita","ביקור") : t("visitas","visits","visitas","ביקורים")),
+    kpi(d.paises, d.paises === 1 ? t("país","country","país","מדינה") : t("países","countries","países","מדינות")),
+    kpi(d.dias, d.dias === 1 ? t("día viajando","day on the road","dia viajando","יום בדרכים") : t("días viajando","days on the road","dias viajando","ימים בדרכים")),
+    kpi(d.personas, d.personas === 1 ? t("persona con quien trabajaste","person you worked with","pessoa com quem trabalhou","אדם שעבדת איתו") : t("personas con quienes trabajaste","people you worked with","pessoas com quem trabalhou","אנשים שעבדת איתם")),
+  ]);
+  return `<div class="mia-view">${cabeza}${selector}${kpis}
+    ${graficoMensual(t("Actividades por mes","Activities by month","Atividades por mês","פעילויות לפי חודש"), d.meses, "")}
+    <div class="rep-bloque mia-compartir"><h3>${t("Una tarjeta para compartir","A card to share","Um cartão para compartilhar","כרטיס לשיתוף")}</h3>
+      <div class="rep-bloque-nota" style="margin:-4px 0 12px">${t("Una imagen vertical con tus números, lista para mandar. Lleva solo cuántas personas, nunca sus nombres. Se baja a tu dispositivo: no se sube a ningún lado.","A vertical image with your numbers, ready to send. It only says how many people, never their names. It downloads to your device: it isn't uploaded anywhere.","Uma imagem vertical com seus números, pronta para enviar. Leva só quantas pessoas, nunca os nomes. É baixada no seu dispositivo: não é enviada a lugar nenhum.","תמונה אנכית עם המספרים שלך, מוכנה לשליחה. כוללת רק כמה אנשים, אף פעם לא שמות. היא יורדת למכשיר שלך: לא מועלית לשום מקום.")}</div>
+      <div class="mia-tarjeta" id="miaTarjeta" role="img" aria-label="${esc([txt.arriba, `${txt.numero} ${txt.unidad}`, txt.lugares, txt.resto].filter(Boolean).join(". "))}">
+        <small>${esc(txt.arriba)}</small><b>${esc(txt.numero)}</b><span>${esc(txt.unidad)}</span>${txt.lugares ? `<em>${esc(txt.lugares)}</em>` : ""}${txt.resto ? `<i>${esc(txt.resto)}</i>` : ""}<u>${esc(txt.pie)}</u></div>
+      <button type="button" class="btn-primary" data-action="mianio-bajar">⬇ ${t("Bajar la imagen","Download the image","Baixar a imagem","הורדת התמונה")}</button>
+    </div></div>`;
+}
+// La imagen de la tarjeta: 1080×1350, dibujada con lo mismo que dice la tarjeta de la pantalla.
+async function imagenDeMiAnio(d){
+  const txt = textosDeLaTarjeta(d), W = 1080, H = 1350;
+  const lienzo = document.createElement("canvas"); lienzo.width = W; lienzo.height = H;
+  const c = lienzo.getContext("2d");
+  try{ if(document.fonts && document.fonts.ready) await document.fonts.ready; }catch(e){ /* sin tipografía propia: sigue con la del sistema */ }
+  const letra = "Montserrat, 'Segoe UI', Arial, sans-serif";
+  const fondo = c.createLinearGradient(0, 0, W, H); fondo.addColorStop(0, "#0d3b3e"); fondo.addColorStop(1, "#082427");
+  c.fillStyle = fondo; c.fillRect(0, 0, W, H);
+  c.fillStyle = "rgba(79,199,224,.10)"; c.beginPath(); c.arc(W - 120, 140, 360, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.arc(80, H - 90, 300, 0, Math.PI * 2); c.fill();
+  c.direction = isRTL() ? "rtl" : "ltr"; c.textAlign = "center"; c.textBaseline = "alphabetic";
+  const linea = (texto, y, tam, color, peso = 700) => { if(!texto) return; c.font = `${peso} ${tam}px ${letra}`; c.fillStyle = color;
+    // Si no entra de ancho, se achica hasta que entre.
+    let x = tam; while(c.measureText(texto).width > W - 140 && x > 24){ x -= 2; c.font = `${peso} ${x}px ${letra}`; } c.fillText(texto, W / 2, y); };
+  linea(txt.arriba, 250, 58, "#4fc7e0", 800);
+  linea(txt.numero, 700, 360, "#ffffff", 800);
+  linea(txt.unidad, 800, 74, "#ffffff", 700);
+  linea(txt.lugares, 930, 62, "#4fc7e0", 700);
+  linea(txt.resto, 1030, 48, "rgba(255,255,255,.82)", 600);
+  linea(txt.pie, H - 90, 36, "rgba(255,255,255,.6)", 600);
+  return new Promise(ok => lienzo.toBlob(ok, "image/png"));
+}
+async function bajarMiAnio(){
+  const d = datosDeMiAnio(miAnio.anio);
+  const blob = await imagenDeMiAnio(d);
+  if(!blob) return;
+  const url = URL.createObjectURL(blob), a = document.createElement("a");
+  a.href = url; a.download = `mi-${d.anio}.png`; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 /* ======================================================================
@@ -24764,6 +24893,10 @@ document.addEventListener("click", async e=>{
     "usuarios-csv": async (el, e, action, postId) => {
     descargarTexto(`registro-personas-${todayISO()}.csv`, csvDePersonas());
   },
+    "mianio-anio": async (el) => {
+    miAnio.anio = String(el.dataset.year || ""); render();
+  },
+    "mianio-bajar": async () => { await bajarMiAnio(); },
     "pres-planilla": async () => {
     if(presInforme) descargarTexto(`informe-${presInforme.mes}.csv`, csvDeActividades(actividadesEnVentana(presInforme.desde, presInforme.hasta)));
   },

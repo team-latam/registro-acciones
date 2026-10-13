@@ -2,8 +2,11 @@
 
 El usuario pidió ideas de mejoras y funcionalidades; se armaron 16 propuestas con tres opciones
 cada una y una recomendación, en una página con maquetas. **El 13/10/2026 el usuario eligió**
-(ver «Lo elegido»); este documento guarda las propuestas y lo elegido para poder retomarlo en
-otra conversación.
+(ver «Lo elegido») y **ese mismo día se hizo todo lo elegido** (tandas 70 a 78 de
+`docs/REDISENO.md`; ver «Orden que se sigue»). Lo único que queda por delante es lo que dijo
+«no por ahora» (que sigue en «Las propuestas», por si cambia de idea) y el recorrido de un
+viaje en el mapa («dejarlo para más adelante»). Este documento guarda las propuestas y lo
+elegido para poder retomarlo en otra conversación.
 
 ## Dónde está todo
 
@@ -53,7 +56,7 @@ Ideas sueltas que le interesan (todavía sin maqueta): **el recorrido de un viaj
 | 3 | Informe mensual por correo, visible 48 h | **A** · el correo avisa y trae un botón; el informe se abre dentro del Registro con la cuenta del equipo y el enlace vence a las 48 horas; se puede bajar | **hecha el 13/10/2026** (tanda 77): se elige quién lo recibe en Administración › Correos; el día 1 de cada mes llega el aviso, sin números |
 | 4 | Tendencias de temas, automáticas | **A** · lista en Reportes de las palabras que suben, bajan o son nuevas (últimos 90 días contra los 90 anteriores); tocar un tema abre en el Inicio los eventos que lo mencionan; se calcula en el navegador, nada sale de la app | **hecha el 13/10/2026** (tanda 72) |
 | 5 | El recorrido de un viaje en el mapa | **No por ahora** («dejarlo para más adelante») | — |
-| 6 | «Mi año» | **B** · pantalla en Tu cuenta con los números del año más una **tarjeta para compartir** (imagen vertical que se baja); cuidar que no lleve nombres de otras personas | por hacer |
+| 6 | «Mi año» | **B** · pantalla en Tu cuenta con los números del año más una **tarjeta para compartir** (imagen vertical que se baja); cuidar que no lleve nombres de otras personas | **hecha el 13/10/2026** (tanda 78): «✨ Mi año» en el menú de la cuenta; la tarjeta lleva solo cuántas personas, nunca sus nombres |
 
 La 14 de la primera vuelta quedó así resuelta como la 3 de la segunda; la 16 (etiquetas por tema)
 quedó resuelta como la 4 (tendencias automáticas, sin etiquetas a mano).
@@ -91,7 +94,10 @@ quedó resuelta como la 4 (tendencias automáticas, sin etiquetas a mano).
   movimiento». Armar maquetas.
 
 - **Propuesta 1, respuesta.** En la segunda vuelta se explica con un «hoy» y un «con la propuesta»
-  lado a lado, y qué cambia y qué no en el flujo de hoy. Sigue sin elegir.
+  lado a lado, y qué cambia y qué no en el flujo de hoy. **Eligió la B** (responsable y fecha en
+  cada paso, y aviso por correo): hecha en la tanda 73. Dos límites que se le dijeron: los
+  correos de pasos solo llegan a quienes ya están habilitados en Administración › Correos, y
+  quién puede asignar es una regla de la pantalla (quien puede editar el evento), no del servidor.
 
 ## Cómo retomarlo en una conversación nueva
 
@@ -111,7 +117,7 @@ app se avisa antes de publicar.
 6. ~~**2-A**: correo mensual de lugares sin actividad~~ ✅ 13/10/2026 (tanda 76).
 7. ~~**Tendencias de temas** (lista en Reportes)~~ ✅ 13/10/2026 (tanda 72).
 8. ~~**Informe mensual con enlace de 48 h**~~ ✅ 13/10/2026 (tanda 77).
-9. **«Mi año»** con tarjeta para compartir.
+9. ~~**«Mi año»** con tarjeta para compartir~~ ✅ 13/10/2026 (tanda 78).
 
 ## Descartado
 

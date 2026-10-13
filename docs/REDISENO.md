@@ -969,6 +969,28 @@ eligió **unirlas así**:
 Pruebas: `agenda_test.mjs` (país, región y ciudad; fallan con el código
 de antes) y `ficha_celular_test.mjs` vuelve a esperar cinco tarjetas.
 
+### 78. «Mi año»: el resumen personal, con una tarjeta para compartir — HECHO (13 oct 2026)
+
+Propuesta 6-B de la segunda vuelta (una idea que el usuario había marcado como «me interesa» en la primera): la
+pantalla de cada integrante con su año, y una tarjeta vertical que se baja como imagen.
+
+- En el **menú de la cuenta** (y en «Más», en el celular): **✨ Mi año**. Cuenta lo que cargó o donde figura como
+  participante, **sin las rutinas** (la bitácora del día a día inflaría todo) y sin lo cancelado: actividades, visitas,
+  países, **días viajando** (los días de las visitas que ya pasaron en ese año, cada día una vez; una visita que empezó
+  en diciembre cuenta sus días en cada año) y **cuántas personas** (las que estuvieron en lo suyo y quienes cargaron
+  lo que integró). Un gráfico por mes y los años con algo cargado, para cambiar de año.
+- Los números salen de `armarReporte` con «Ver solo» esa persona (más un `sinRutina` nuevo en el filtro), así que se
+  pueden comprobar en Reportes. Es **privado por diseño**: se arma en el navegador para quien la mira; no se guarda ni
+  se manda nada.
+- **La tarjeta**: una imagen de 1080×1350 (3:4) con «Mi 2025 en Team LatAm», el número grande, los países, los días y las
+  personas; se baja como `mi-2025.png` y se dibuja en el navegador (canvas), en el idioma de la app (también en
+  hebreo, de derecha a izquierda). **No lleva el nombre de nadie más: solo cuántas personas** (lo pidió así). Se ve
+  la misma tarjeta en la pantalla antes de bajarla.
+- Recorrido de bienvenida: el paso «Tu cuenta» ahora lo cuenta (`cubre` suma `mianio`).
+- Pruebas: `mi_anio_test.mjs` (16: el menú, los números con casos de borde —rutina, cancelada, ajena, visita a
+  caballo de dos años—, el gráfico, la tarjeta sin nombres ajenos, la imagen PNG de 1080×1350, cada persona ve lo suyo,
+  inglés y celular).
+
 ### 77. Informe mensual por correo, con enlace que vence a las 48 horas — HECHO (13 oct 2026)
 
 Propuesta 3-A de la segunda vuelta, la opción A: el correo avisa y trae un botón; el informe se abre dentro del
