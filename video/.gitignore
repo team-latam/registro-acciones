@@ -1,0 +1,4 @@
+# Todo lo que arma hacer_video.sh (cuadros grabados, piezas, música, videos): se regenera en cada corrida.
+salida/
+node_modules
+__pycache__/

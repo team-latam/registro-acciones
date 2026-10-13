@@ -969,6 +969,26 @@ eligió **unirlas así**:
 Pruebas: `agenda_test.mjs` (país, región y ciudad; fallan con el código
 de antes) y `ficha_celular_test.mjs` vuelve a esperar cinco tarjetas.
 
+### 68. El video de presentación, registrado en el proyecto — HECHO (13 oct 2026)
+
+El usuario pidió un video para mostrarles el sistema a sus jefes (inglés, sin
+voz, con música, celular y compu). Se hizo en cinco versiones con sus
+comentarios y el **13/10/2026 aprobó la quinta como final**. Pidió dejarlo
+registrado «de manera que en el futuro sabemos cómo hacer el video con todo».
+
+- **Qué quedó en el repo:** la carpeta `video/` con todo lo que hace falta para
+  rehacerlo con un solo comando (`bash video/hacer_video.sh`): los datos
+  inventados de la demo, el guion que maneja la app y la graba, los carteles y
+  tarjetas, el armado con ffmpeg, la música (sintetizada, original) y una guía,
+  `video/LEEME.md`, con las escenas, los textos, lo que el usuario pidió y no hay
+  que deshacer (sin fundidos entre pantallas, hasta 74 s, cierre musical con
+  cadencia, hebreo solo en hebreo…) y qué revisar cuando la app cambie.
+- **Qué no quedó:** los MP4 (son de ~10 MB cada uno y el repo es público; los
+  tiene el usuario). Si se pierden, se rehacen con el comando de arriba.
+- **Qué hay que recordar:** la grabación va en tiempo real, así que no se puede
+  correr otra cosa pesada al mismo tiempo; y cuando cambie una pantalla grande,
+  mirar el video además del recorrido de bienvenida (`tourSteps()`).
+
 ### 67. «1 hitos», «1 planificadas»: el singular en todos los textos con cantidad — HECHO (13 oct 2026)
 
 Al armar el video apareció «Last visit 1 days ago» (se arregló el 12/10, ver
