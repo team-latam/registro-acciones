@@ -1,5 +1,5 @@
 # ============================================================
-# Resúmenes por correo, diarios y semanales
+# Resúmenes por correo, diarios y semanales, y el recordatorio de lo que vence hoy
 # ============================================================
 # Corre cada hora. A cada persona que puede recibir correos (Administración
 # → Correos) y eligió un resumen, se lo manda a SU hora y SU día (hora de
@@ -46,6 +46,7 @@ jobs:
       - name: Probar
         run: |
           node supabase/avisos/pruebas/resumen.mjs
+          node supabase/avisos/pruebas/vencimientos.mjs
           node supabase/functions/_pruebas/avisos.mjs
 
   mandar:
@@ -85,3 +86,12 @@ jobs:
         run: |
           set -o pipefail
           node supabase/avisos/resumen.mjs | tee -a "$GITHUB_STEP_SUMMARY"
+      # El recordatorio del día en que vence un paso de «Lo que sigue» (propuesta 1-B).
+      - name: Recordar lo que vence hoy
+        if: steps.revisar.outputs.hay == 'si' && !cancelled()
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+        run: |
+          set -o pipefail
+          node supabase/avisos/vencimientos.mjs | tee -a "$GITHUB_STEP_SUMMARY"

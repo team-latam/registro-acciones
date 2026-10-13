@@ -19,7 +19,7 @@
    de espera.
    ====================================================================== */
 import { encabezados } from "./web.mjs";
-import { correoPedido, correoAviso, correoPrueba } from "./correos.mjs";
+import { correoPedido, correoAviso, correoPaso, correoPrueba } from "./correos.mjs";
 export { APP } from "./correos.mjs";
 
 // El remitente: info@team-latam.com (pedido del usuario el 7/10/2026),
@@ -35,6 +35,7 @@ export const RESPONDER_A = "benny@team-latam.com";
 // Lo que arma cada tipo de aviso. El cuerpo del pedido dice cuál:
 //   (nada) o {tipo:"pedido"}              el pedido de acceso de quien llama
 //   {tipo:"posteo"|"respuesta", id}       menciones y respuestas, al momento
+//   {tipo:"paso", id: "<posteo>#<paso>"}  un paso de «Lo que sigue» que le asignaron a alguien
 //   {tipo:"prueba"}                       «Mandarme un correo de prueba»
 // A quién y si corresponde lo decide SIEMPRE la base (16 y 17-*.sql).
 export const armarCorreo = correoPedido;
@@ -45,6 +46,7 @@ const TIPOS = {
   pedido:    { rpc: "pedir_aviso_al_admin", cuerpo: () => ({}), para: d => d.para, correo: (d, para) => correoPedido({ ...d, lang: (d.idiomas || {})[para], zona: (d.zonas || {})[para] }), anotar: "aviso_al_admin_enviado" },
   posteo:    { rpc: "preparar_aviso", cuerpo: p => ({ p_tipo: "posteo", p_id: String(p.id || "") }), para: d => d.para.map(x => x.email), correo: (d, para) => correoAviso({ ...d, id: d.id, motivo: de(d, para).motivo, lang: de(d, para).lang }) },
   respuesta: { rpc: "preparar_aviso", cuerpo: p => ({ p_tipo: "respuesta", p_id: String(p.id || "") }), para: d => d.para.map(x => x.email), correo: (d, para) => correoAviso({ ...d, motivo: de(d, para).motivo, lang: de(d, para).lang }) },
+  paso:      { rpc: "preparar_aviso_de_paso", cuerpo: p => ({ p_id: String(p.id || "") }), para: d => d.para.map(x => x.email), correo: (d, para) => correoPaso({ ...d, lang: de(d, para).lang }) },
   prueba:    { rpc: "preparar_prueba", cuerpo: () => ({}), para: d => d.para.map(x => x.email), correo: d => correoPrueba({ nombre: d.para[0].nombre, lang: d.para[0].lang }) },
 };
 

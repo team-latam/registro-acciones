@@ -18,9 +18,9 @@ import { correoResumen, zonaValida } from "../functions/_compartido/correos.mjs"
 import { DESDE, DESDE_DE_PRUEBA, RESPONDER_A } from "../functions/_compartido/avisos.mjs";
 
 const ZONA = "America/Argentina/Buenos_Aires";
-const cfg = { url: "", llave: "", resend: "", admin: "", seco: false };
+export const cfg = { url: "", llave: "", resend: "", admin: "", seco: false };
 
-function leerConfiguracion(){
+export function leerConfiguracion(){
   const app = readFileSync(new URL("../../index.html", import.meta.url), "utf8");
   const sacar = n => (new RegExp(`const ${n}\\s*=\\s*["']([^"']+)["']`).exec(app) || [])[1] || "";
   cfg.url = process.env.SUPABASE_URL || sacar("SUPABASE_URL");
@@ -32,7 +32,7 @@ function leerConfiguracion(){
     if(!v) throw new Error(`Falta ${n}.`);
 }
 
-async function rest(camino, op = {}){
+export async function rest(camino, op = {}){
   const res = await fetch(`${cfg.url}/rest/v1/${camino}`, { ...op,
     headers: { apikey: cfg.llave, Authorization: `Bearer ${cfg.llave}`, "Content-Type": "application/json", ...(op.headers || {}) } });
   const texto = await res.text();
@@ -40,7 +40,7 @@ async function rest(camino, op = {}){
   if(!res.ok) throw new Error(`Supabase contestó ${res.status} en ${String(camino).split("?")[0]}`);
   return texto ? JSON.parse(texto) : null;
 }
-const rpc = (n, args) => rest(`rpc/${n}`, { method: "POST", body: JSON.stringify(args) });
+export const rpc = (n, args) => rest(`rpc/${n}`, { method: "POST", body: JSON.stringify(args) });
 
 // La hora, el minuto, el día de la semana (1 = lunes) y la fecha, en una
 // zona (la de cada persona; una que no existe cuenta como Argentina).
@@ -134,7 +134,7 @@ export function armarResumen({ email, pr, periodo, desde, hasta, posts, replies,
   return vacio ? null : d;
 }
 
-async function mandar(para, correo){
+export async function mandar(para, correo){
   const enviar = from => fetch("https://api.resend.com/emails", { method: "POST",
     headers: { Authorization: `Bearer ${cfg.resend}`, "Content-Type": "application/json" },
     body: JSON.stringify({ from, to: [para], reply_to: RESPONDER_A, ...correo }) });

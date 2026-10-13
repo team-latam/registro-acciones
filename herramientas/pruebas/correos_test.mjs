@@ -87,6 +87,15 @@ const misPrefs = (p, email) => p.evaluate(e => ((window.__sb.tablas.user_prefs |
      await p.$$eval('.avisos-correo [data-action="correo-hora"]', l => [l.map(x => x.dataset.key), l.filter(x => x.classList.contains("active")).map(x => x.dataset.key)]),
      [["7", "9", "13", "18", "21"], ["9"]]);
   eq("y ningún selector de lista en la tarjeta", await p.$$eval(".avisos-correo select", l => l.length), 0);
+  // Los pendientes (propuesta 1-B, 13/10/2026): dos llaves, prendidas de fábrica.
+  eq("los pendientes: «Pendientes que me asignan» y «El día que vence», prendidas de fábrica",
+     await p.$$eval('.avisos-correo input[data-pref="emailPasos"], .avisos-correo input[data-pref="emailVence"]', l => l.map(x => [x.dataset.pref, x.checked])), [["emailPasos", true], ["emailVence", true]]);
+  await p.click('.avisos-correo input[data-pref="emailPasos"] + .pref-slider');
+  await p.waitForTimeout(300);
+  eq("apagar «Pendientes que me asignan» lo guarda, y la otra sigue", await misPrefs(p, ADMIN).then(x => [x.emailPasos, x.emailVence === undefined ? null : x.emailVence]), [false, null]);
+  await p.click('.avisos-correo input[data-pref="emailPasos"] + .pref-slider');
+  await p.waitForTimeout(300);
+  eq("y prenderla de nuevo", await misPrefs(p, ADMIN).then(x => x.emailPasos), true);
   await p.click('[data-action="correo-hora"][data-key="18"]');
   await p.click('[data-action="correo-cuando"][data-key="weekly"]');
   await p.click('[data-action="correo-dia"][data-key="3"]');
