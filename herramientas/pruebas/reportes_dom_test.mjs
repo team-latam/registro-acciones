@@ -37,9 +37,9 @@ const desbordes = await p.evaluate(()=> [...document.querySelectorAll(".rep-barr
 eq("ninguna barra se sale de su riel", desbordes, 0);
 
 const vacias = await p.evaluate(()=> [...document.querySelectorAll(".rep-num")]
-  .filter(e => { const x = e.textContent.trim(); return !x || !/^(\d+)?(\+\d+)?$/.test(x); }).length);
-// Un mes con algo planificado suma «+n» al lado (AUDITORIA I2).
-eq("todos los números son números (con «+n» si hay algo planificado)", vacias, 0);
+  .filter(e => { const x = e.textContent.trim(); return !x || !/^\d+$/.test(x); }).length);
+// Lo planificado de un mes (AUDITORIA I2) va adentro de su barra punteada, no suma «+n» al número de lo hecho.
+eq("todos los números son números, sin «+n» pegado", vacias, 0);
 
 // Cambiar de período tiene que cambiar el total.
 const totalAnio = total;

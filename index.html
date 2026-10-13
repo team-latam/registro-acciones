@@ -3280,7 +3280,16 @@
   .rep-col-plan{ display:block; width:100%; min-height:3px; border:1.5px dashed var(--petroleo); border-bottom:none; border-radius:4px 4px 0 0; background:color-mix(in srgb, var(--petroleo) 7%, transparent); box-sizing:border-box; }
   .rep-col-pila:not(:has(.rep-col-barra)) .rep-col-plan{ border-bottom:1.5px dashed var(--petroleo); border-radius:4px 4px 1px 1px; }
   .rep-col-pila:has(.rep-col-plan) .rep-col-barra{ border-radius:0 0 1px 1px; }
-  .rep-num-plan{ display:block; font-size:9.5px; font-weight:700; color:var(--text-muted); line-height:1; }
+  /* Lo planificado se cuenta adentro de su barra punteada (13/10/2026): antes iba como «+12» pegado debajo del
+     número de lo hecho y parecía una comparación con el año pasado. Si la barra es muy baja y no entra el
+     número, sube arriba de ella; y si arriba tampoco hay lugar (el mes más alto), queda en el globito y en la
+     ficha del mes. */
+  .rep-col-plan{ position:relative; container-type:size; }
+  .rep-plan-n{ position:absolute; left:50%; transform:translateX(-50%); top:0; padding-top:3px; font-size:10px; font-weight:700; font-style:normal; line-height:1; white-space:nowrap; color:var(--ink); font-variant-numeric:tabular-nums; pointer-events:none; }
+  @container (max-height:15px){
+    .rep-plan-n{ top:auto; bottom:calc(100% + 1.5px); padding:0 0 2px; }
+    .rep-plan-tope .rep-plan-n{ display:none; }
+  }
   .rep-col-futuro .rep-etiqueta{ color:var(--text-muted); }
   .rep-plan{ display:inline-block; margin-top:8px; padding:3px 10px; border:1px dashed var(--border); border-radius:999px; font-size:12px; font-weight:700; color:var(--text-muted); }
   .rep-col .rep-etiqueta{ flex:none; font-size:11px; font-weight:700; color:var(--text-muted); text-transform:capitalize; overflow:visible; }
@@ -3337,6 +3346,7 @@
     .rep-kpis .rep-kpi-num{ font-size:24px; }
     .rep-cols{ height:150px; gap:2px; }
     .rep-col .rep-etiqueta{ font-size:9.5px; }
+    .rep-plan-n{ font-size:8px; letter-spacing:-.03em; padding-top:2px; }
   }
   .rep-filtros-tit{ font-size:11.5px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:var(--text-muted); margin-inline-end:4px; }
   .rep-delta{ font-size:12px; font-weight:800; color:var(--text-muted); white-space:nowrap; }
@@ -16833,15 +16843,16 @@ function tiraDeNumeros(items){
 // columna clara al lado.
 // Lo planificado (m.plan, lo que todavía no pasó) va encima de la barra
 // del mes, con borde punteado y sin relleno: se ve que viene, sin
-// confundirse con lo hecho (AUDITORIA I2).
+// confundirse con lo hecho (AUDITORIA I2). Su número va adentro de esa
+// barra punteada, no debajo del de lo hecho.
 function graficoMensual(titulo, meses, nota, ficha){
   const maximo = Math.max(1, ...meses.map(m => Math.max(m.n + (m.plan || 0), m.prev || 0)));
   const alto = n => n ? Math.max(3, Math.round(n * 100 / maximo)) : 0;
   const tocable = meses.some(m => m.clave);
   return `<div class="rep-bloque rep-bloque-mensual"><h3>${titulo}</h3>
     <div class="rep-cols${meses.some(m => m.sel) ? " hay-sel" : ""}"${tocable ? ` role="group" aria-label="${esc(t("Actividades por mes: tocá un mes para ver su ficha","Activities by month: tap a month to see its card","Atividades por mês: toque em um mês para ver a ficha dele","פעילויות לפי חודש: הקש/י על חודש כדי לראות את הכרטיס שלו"))}"` : ""}>${meses.map(m => {
-      const cuerpo = `<span class="rep-num">${m.n || (m.plan ? "" : 0)}${m.plan ? `<small class="rep-num-plan">+${m.plan}</small>` : ""}</span>
-        <div class="rep-col-par">${m.prev != null ? `<i class="rep-col-prev" style="height:${alto(m.prev)}%"></i>` : ""}<span class="rep-col-pila" style="height:${alto(m.n + (m.plan || 0))}%">${m.plan ? `<i class="rep-col-plan" style="flex:${m.plan}"></i>` : ""}${m.n ? `<i class="rep-col-barra" style="flex:${m.n}"></i>` : ""}</span></div>
+      const cuerpo = `<span class="rep-num">${m.n || (m.plan ? "" : 0)}</span>
+        <div class="rep-col-par">${m.prev != null ? `<i class="rep-col-prev" style="height:${alto(m.prev)}%"></i>` : ""}<span class="rep-col-pila" style="height:${alto(m.n + (m.plan || 0))}%">${m.plan ? `<i class="rep-col-plan${alto(m.n + m.plan) >= 80 ? " rep-plan-tope" : ""}" style="flex:${m.plan}"><b class="rep-plan-n">${m.plan}</b></i>` : ""}${m.n ? `<i class="rep-col-barra" style="flex:${m.n}"></i>` : ""}</span></div>
         <span class="rep-etiqueta">${m.etiqueta}</span>`;
       const clase = `rep-fila rep-col${m.plan && !m.n ? " rep-col-futuro" : ""}`;
       // Sin clave (el modo Comparar) la columna sigue siendo solo para mirar.

@@ -969,6 +969,22 @@ eligió **unirlas así**:
 Pruebas: `agenda_test.mjs` (país, región y ciudad; fallan con el código
 de antes) y `ficha_celular_test.mjs` vuelve a esperar cinco tarjetas.
 
+### 86. «Mes a mes»: el número de lo planificado, adentro de su barra — HECHO (13 oct 2026)
+
+El usuario vio (captura de la compu, con las barras claras del año pasado al lado) que el «+12», «+9» y «+6» quedaba pegado debajo del
+número de lo hecho —el «13»— y que, solo, parecía una comparación con el año pasado. Pidió cambiar **la posición** y no tocar el gráfico.
+Se mostró «hoy» contra «propuesta» (compu y celular) y eligió esta, con un pedido: que en el celular la letra no sea tan grande.
+- El renglón de arriba lleva **solo lo hecho** (sin «+n»; vacío si el mes solo tiene lo planificado). El número de lo planificado va
+  **adentro de su barra punteada**, arriba, sin el «+» (`.rep-plan-n`, en `graficoMensual`). Las barras no cambian: alto, ancho y borde
+  punteado son los de antes (solo ganan unos píxeles porque ya no hay un segundo renglón de texto).
+- **Celular: letra de 8 px** (10 px en la compu), en una línea, centrada sobre la barra (que ahí mide ~11 px) y no cursiva (la barra es
+  un `<i>`: la letra heredaba la cursiva).
+- **Si la barra es muy baja** (menos de ~16 px: 1 o 2 por venir en un año con muchas), el número sube arriba de la barra. **Si arriba
+  tampoco hay lugar** (el mes más alto, que ya llega al techo; `rep-plan-tope`) no se dibuja: queda en el globito, en lo que lee el lector de
+  pantalla y en la ficha del mes. Se resuelve con una consulta de contenedor (`@container (max-height:15px)`) sobre la barra.
+- Prueba: `reportes_planificadas_test.mjs` (18: compu, celular de 390 y 360, barra baja, mes más alto, inglés, hebreo y tema oscuro;
+  falla con el código de antes). `reportes_dom_test.mjs` ya no espera el «+n».
+
 ### 85. Reportes: «Por país» llega hasta 7 filas, y «Temas» pasa a llamarse «Tendencias» — HECHO (13 oct 2026)
 
 Dos pedidos del usuario, con capturas de Reportes:
