@@ -70,6 +70,8 @@ function armar(){
     const ensureAdminInRoster = ()=>{};
     // El correo al admin (I10): acá solo se cuenta cuándo se pide.
     const avisarAlAdminUnaVez = ()=>{ reg.avisos = (reg.avisos || 0) + 1; };
+    // La lista de «Algo no anda» (13/10/2026) se trae una vez al entrar el admin: acá no importa.
+    const cargarProblemas = ()=>{};
     const anotar = n => ()=>{ reg.suscripciones.push(n); return ()=>{}; };
     const subscribeData = anotar("posts"), subscribeAccessRequests = anotar("solicitudes"),
           subscribeAuditLog = anotar("auditoria"), subscribeRoster = anotar("padron"),

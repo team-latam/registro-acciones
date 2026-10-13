@@ -969,6 +969,109 @@ eligió **unirlas así**:
 Pruebas: `agenda_test.mjs` (país, región y ciudad; fallan con el código
 de antes) y `ficha_celular_test.mjs` vuelve a esperar cinco tarjetas.
 
+### 76. Correo mensual de «Lugares sin actividad», para los admins — HECHO (13 oct 2026)
+
+Propuesta 2-A de la primera vuelta («correo mensual para admins»; el plazo se elige en Administración).
+El criterio es el que se propuso: **ninguna actividad hecha (no planificada) en ese país dentro del plazo**.
+
+- **El primer lunes de cada mes**, a las 9 de cada admin (la hora de sus resúmenes) y hasta el jueves de esa
+  semana por si GitHub atrasa la corrida, llega una lista de los países donde la última actividad hecha es de hace
+  más que el plazo, con «Última actividad: febrero de 2026 (hace 8 meses)» y, si ya hay algo planeado, la fecha.
+  Un botón lleva a Reportes (`?ir=reportes`, enlace nuevo que solo abre esa pantalla). Si no hay ningún país en esa
+  situación, no llega nada. Va en los cuatro idiomas, con el nombre del país en el idioma de quien lo recibe.
+- **Administración → Correos → «Lugares sin actividad»**: «No avisar», «3 meses», «6 meses» (de fábrica) o «12 meses»,
+  guardado en `app_config 'preferences'` → `correos.lugares = {on, meses}`. En **Notificaciones**, cada admin tiene
+  además su propia llave («Lugares sin actividad», nueva `emailLugares` en `prefs_de_correo`, de fábrica sí).
+- Cuenta lo mismo que «Última actividad por país» de Reportes: lo que ya pasó, con el país o una ciudad suya como
+  alcance, sin lo cancelado, y solo los países que **alguna vez** tuvieron actividad (uno que nunca tuvo nada no
+  «se quedó sin»). Las series que se repiten cuentan hasta su última fecha: el código para expandirlas está copiado
+  de `index.html` en `supabase/avisos/lugares.mjs` y `lugares_serie_test.mjs` lo obliga a dar lo mismo que el de la app
+  con 22 reglas distintas. No se miran las fechas corridas ni las excepciones sueltas de Calendar.
+- Corre en el mismo workflow de cada hora («Resúmenes por correo», paso «Avisar de los lugares sin actividad»);
+  casi siempre no le toca a nadie y termina enseguida. Una marca por persona y mes evita el repetido; si Resend falla,
+  se reintenta a la hora siguiente. Solo recibe quien está habilitado en Administración → Correos (de fábrica, el
+  admin fijo), igual que el resto de los avisos.
+- Pruebas: `supabase/avisos/pruebas/lugares.mjs` (60: el primer lunes de cada mes, qué países cuentan, a quién le toca,
+  la zona de cada admin, el reintento), `lugares_serie_test.mjs` (133), `correos_test.mjs` (la tarjeta, la llave y el
+  enlace) y `supabase/pruebas/74-avisos-de-pasos.sql` (la llave nueva).
+
+### 75. Modo presentación: el reporte como diapositivas, para mostrar o imprimir — HECHO (13 oct 2026)
+
+Propuesta 3-C de la primera vuelta («Informe de una hoja para los jefes»). El usuario pidió el
+modo presentación **y** que esa presentación se pueda imprimir o bajar.
+
+- En Reportes, al lado de «Planilla», un botón **▶ Presentar**. Arma, con lo que el reporte
+  tiene en pantalla (el período, el «Ver solo» y la comparación), hasta seis diapositivas a
+  pantalla completa: portada con los cuatro números, «Dónde estuvimos» (países), «Qué
+  hicimos» (tipos), «Mes a mes» (con una leyenda para lo rayado, que son las planeadas), «Lo
+  logrado» (los objetivos de las visitas del período) y «Lo que viene» (lo próximo). Una
+  diapositiva que no tiene nada que mostrar no se arma.
+- Se maneja con flechas, Re Pág / Av Pág, espacio, Inicio y Fin (al revés en hebreo), con los
+  botones de los costados o deslizando el dedo en el celular. Escape o «Salir» vuelve a
+  Reportes con el foco en el botón de siempre. Pide pantalla completa donde se puede; si el
+  aparato no la da, queda igual a ventana completa.
+- **Imprimir / PDF** (adentro de la presentación): una diapositiva por hoja A4 apaisada, con
+  fondo claro para no gastar tinta; desde el diálogo de impresión se elige «Guardar como PDF».
+- Todo se arma en el navegador con lo que ya está cargado: **nada sale de la app**, y no lleva
+  datos de personas más que los números.
+- Es la base de lo que sigue en el orden de las propuestas: el informe mensual por correo
+  apunta a esta misma presentación.
+- Pruebas: `presentacion_test.mjs` (32 comprobaciones: abrir, cada diapositiva, teclado, RTL,
+  celular, imprimir, foco, Escape). El paso de Reportes del recorrido de bienvenida lo cuenta.
+
+### 74. «Algo no anda»: avisar un problema, y los errores que la app anota sola — HECHO (13 oct 2026)
+
+Propuesta 8-C de la primera vuelta («las dos»: el botón y el registro automático).
+
+- En el menú de la cuenta, **🛟 Algo no anda**: una ventana con un cuadro para contar qué
+  pasó (hasta 600 letras) y un interruptor «Mandar también los datos técnicos» (la pantalla, el
+  tipo de teléfono y navegador, el idioma y los últimos errores; nunca lo escrito en un
+  posteo ni lo de la Agenda). Lo puede usar cualquiera de la cuenta, también un observador.
+- La app **anota sola** los errores que se le escapan (`error` y `unhandledrejection`), con el
+  mensaje **limpiado** antes de salir: se sacan los textos entre comillas que no parecen un
+  identificador, los correos y las direcciones web. Nunca viaja el contenido de un posteo ni
+  de la Agenda. Un mismo error se agrupa por una huella (una fila con «veces» y «personas»),
+  como mucho 5 por sesión, y los ruidos conocidos (extensiones del navegador, cortes de red)
+  se ignoran.
+- **Administración → Problemas** (solo admin, con globito de «nuevos» en el menú): la lista
+  con las pestañas «Avisos de personas» y «Errores anotados solos», estado (nuevo / visto /
+  resuelto) y borrar. Si un error ya resuelto vuelve a pasar, se abre uno nuevo.
+- Base: `supabase/22-problemas.sql` — tabla `problemas` que solo leen, cambian (el estado) y
+  borran los admin; nadie escribe directo, solo las dos funciones `contar_problema` y
+  `anotar_error`, con tope por persona (10 avisos por hora; 20 errores nuevos por hora; el
+  contador no pasa de un millón) y recorte de textos.
+- Pruebas: `problemas_test.mjs` (29) y `supabase/pruebas/73-problemas.sql` (42);
+  `app_dom_test.mjs` y el recorrido de bienvenida (paso «Tu cuenta») lo suman.
+
+### 73. Pasos de «Lo que sigue» con responsable, fecha y aviso por correo — HECHO (13 oct 2026)
+
+Propuesta 1-B de la segunda vuelta («A + aviso por correo»). Los pasos que salen del Formulario
+de Cierre solo se tildaban; ahora dicen quién se encarga y para cuándo, en los dos lugares de
+siempre (el panel «Resumen» de la tarjeta y la ficha de cada lugar).
+
+- Quien **puede editar el evento** elige un **responsable** (un menú con el equipo que carga,
+  sin observadores) y una **fecha** (el selector de fechas de la app). Cada cambio se guarda
+  al elegirlo, con quién lo asignó y cuándo (`resp`, `para`, `asigPor`, `asigEl` dentro del paso).
+  Un paso pendiente con la fecha pasada se ve **«vencido»**. Quien no puede editar ve lo mismo
+  como etiquetas. Tildar y destildar conserva todo; sin responsable ni fecha el paso queda
+  como era.
+- **Aviso por correo** cuando alguien le da un paso a otra persona (no a sí misma): pasa por
+  la función `avisar` y la base decide a quién (`preparar_aviso_de_paso`, `supabase/21`),
+  con los mismos topes y el mismo pie de «dejar de recibir» de los demás correos.
+- **Recordatorio «Hoy vence»**: una vez por hora el workflow «Resúmenes por correo» (paso «Recordar lo que vence hoy») corre
+  `supabase/avisos/vencimientos.mjs`; a cada persona, el día que vence EN SU zona horaria y a
+  partir de SU hora, un correo por paso (como mucho cinco por persona y por corrida). No
+  avisa lo que le dieron ese mismo día, ni a quien apagó el correo.
+- Dos interruptores nuevos en Notificaciones: «Cuando me dan un paso» y «El día que vence»
+  (`prefs_de_correo` suma `pasos` y `vence`).
+- **Límites a tener presentes** (dichos al usuario): los correos de pasos solo llegan a quienes
+  ya están habilitados en Administración → Correos (lo mismo que el resto de los avisos), y
+  quién puede asignar es una regla de la pantalla —quien puede editar el evento—, no del
+  servidor: el servidor ya valida el formato del resumen, no quién lo cambia.
+- Pruebas: `pasos_responsable_test.mjs` (21), `correos_test.mjs` (22),
+  `supabase/pruebas/74-avisos-de-pasos.sql` (24), `supabase/functions/_pruebas/avisos.mjs`
+  (32) y `supabase/avisos/pruebas/vencimientos.mjs` (20).
+
 ### 72. «Temas» en Reportes: de qué se habló, sin etiquetar nada — HECHO (13 oct 2026)
 
 Propuesta 4-A de la segunda vuelta (reemplaza a las etiquetas por tema, que el usuario

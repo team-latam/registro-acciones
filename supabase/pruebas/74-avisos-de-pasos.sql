@@ -110,6 +110,18 @@ select 'una preferencia que no es sí/no (guardada por la API) vale lo de fábri
   (select (x ->> 'pasos')::boolean and (x ->> 'vence')::boolean from (select public.prefs_de_correo('diego@x.com') x) y), '';
 delete from public.user_prefs;
 
+-- «Lugares sin actividad» (el correo del primer lunes, para admins): de fábrica sí;
+-- apagada vale apagada; mal formada vale lo de fábrica.
+insert into lab.resultados(nombre, esperado, obtenido, detalle)
+select 'de fábrica, «lugares» está prendido', true, (select (x ->> 'lugares')::boolean from (select public.prefs_de_correo('diego@x.com') x) y), '';
+insert into public.user_prefs(email, prefs) values ('diego@x.com', '{"emailLugares":false}');
+insert into lab.resultados(nombre, esperado, obtenido, detalle)
+select 'apagada, vale apagada', false, (select (x ->> 'lugares')::boolean from (select public.prefs_de_correo('diego@x.com') x) y), '';
+update public.user_prefs set prefs = '{"emailLugares":"no"}' where email = 'diego@x.com';
+insert into lab.resultados(nombre, esperado, obtenido, detalle)
+select 'mal formada (guardada por la API), vale lo de fábrica', true, (select (x ->> 'lugares')::boolean from (select public.prefs_de_correo('diego@x.com') x) y), '';
+delete from public.user_prefs;
+
 -- El tope de 30 avisos por hora de quien asigna.
 insert into public.avisos_enviados(tipo, objeto, email, autor)
   select 'paso', 'otro' || g, 'diego@x.com', 'ana@x.com' from generate_series(1, 30) g;

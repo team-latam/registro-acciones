@@ -25,13 +25,13 @@ otra conversación.
 | # | Propuesta | Elección | Estado |
 |---|---|---|---|
 | 1 | Pendientes con responsable, fecha y recordatorio | **Sin decidir.** Preguntó dónde se vería y qué cambia en el flujo de hoy (respuesta en el chat; ver abajo) | pendiente de su decisión |
-| 2 | Aviso de lugares sin actividad | **A** · correo mensual para admins | por hacer |
-| 3 | Informe de una hoja para los jefes | **C** · modo presentación, y que **además se pueda imprimir / exportar** lo que genera | por hacer |
+| 2 | Aviso de lugares sin actividad | **A** · correo mensual para admins | **hecha el 13/10/2026** (tanda 76): el primer lunes de cada mes; el plazo (3, 6 o 12 meses) se elige en Administración › Correos |
+| 3 | Informe de una hoja para los jefes | **C** · modo presentación, y que **además se pueda imprimir / exportar** lo que genera | **hecha el 13/10/2026** (tanda 75): «▶ Presentar» en Reportes, con «Imprimir / PDF» |
 | 4 | Metas por año | No por ahora | — |
 | 5 | Bajar a planilla (Excel) | **C** · las dos, y «todo el año» | hecha el 13/10/2026: «Planilla» en el Inicio y «Bajar todo <año>» en Administración › Copia de seguridad (Reportes ya la tenía) |
 | 6 | Instalarla como app en el celular | No por ahora | — |
 | 7 | Cargar sin señal | No por ahora | — |
-| 8 | Botón «Algo no anda» | **C** · las dos (botón y anotado automático) | por hacer |
+| 8 | Botón «Algo no anda» | **C** · las dos (botón y anotado automático) | **hecha el 13/10/2026** (tanda 74): botón en el menú de la cuenta y Administración › Problemas |
 | 9 | Cierre rápido en la app, sin Word | No por ahora | — |
 | 10 | ¿Dónde está el equipo esta semana? | No por ahora | — |
 | 11 | Repetir un evento como el del año pasado | **A** · «Repetir» en el menú del evento | **ya existía** desde el 3/10/2026 (ver nota); falta decidir qué mejorar, en la segunda vuelta |
@@ -48,7 +48,7 @@ Ideas sueltas que le interesan (todavía sin maqueta): **el recorrido de un viaj
 
 | # | Propuesta | Elección | Estado |
 |---|---|---|---|
-| 1 | Pendientes con responsable y fecha | **B** · responsable y fecha en cada paso, y aviso por correo a quien lo recibe (apagable en Tu cuenta, otra vez el día que vence) | por hacer |
+| 1 | Pendientes con responsable y fecha | **B** · responsable y fecha en cada paso, y aviso por correo a quien lo recibe (apagable en Tu cuenta, otra vez el día que vence) | **hecha el 13/10/2026** (tanda 73) |
 | 2 | «Repetir» un evento | **A** · que «Repetir» proponga la fecha del año que viene si el evento es de hace más de 6 meses (misma duración); si es reciente, queda en hoy como ahora | **hecha el 13/10/2026** (tanda 71) |
 | 3 | Informe mensual por correo, visible 48 h | **A** · el correo avisa y trae un botón; el informe se abre dentro del Registro con la cuenta del equipo y el enlace vence a las 48 horas; se puede bajar | por hacer (depende del informe de la 3-C) |
 | 4 | Tendencias de temas, automáticas | **A** · lista en Reportes de las palabras que suben, bajan o son nuevas (últimos 90 días contra los 90 anteriores); tocar un tema abre en el Inicio los eventos que lo mencionan; se calcula en el navegador, nada sale de la app | **hecha el 13/10/2026** (tanda 72) |
@@ -105,10 +105,10 @@ app se avisa antes de publicar.
 
 1. ~~**5-C** (planillas de Inicio y de Administración)~~ ✅ 13/10/2026.
 2. ~~**2.ª vuelta 2-A**: «Repetir» propone la fecha del año que viene~~ ✅ 13/10/2026.
-3. **1-B**: pendientes con responsable, fecha y aviso por correo.
-4. **3-C**: modo presentación en Reportes, con impresión.
-5. **8-C**: «Algo no anda» y errores anotados solos (tabla nueva en Supabase).
-6. **2-A**: correo mensual de lugares sin actividad (usa el sistema de correos).
+3. ~~**1-B**: pendientes con responsable, fecha y aviso por correo~~ ✅ 13/10/2026 (tanda 73).
+4. ~~**3-C**: modo presentación en Reportes, con impresión~~ ✅ 13/10/2026 (tanda 75).
+5. ~~**8-C**: «Algo no anda» y errores anotados solos~~ ✅ 13/10/2026 (tanda 74).
+6. ~~**2-A**: correo mensual de lugares sin actividad~~ ✅ 13/10/2026 (tanda 76).
 7. ~~**Tendencias de temas** (lista en Reportes)~~ ✅ 13/10/2026 (tanda 72).
 8. **Informe mensual con enlace de 48 h** (después de la 3-C).
 9. **«Mi año»** con tarjeta para compartir.
