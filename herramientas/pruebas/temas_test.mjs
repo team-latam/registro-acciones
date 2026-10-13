@@ -77,7 +77,7 @@ const filas = () => p.$$eval(".rep-tema", l => l.map(e => ({ palabra: e.querySel
 const t1 = await filas();
 const por = Object.fromEntries(t1.map(x => [x.palabra, x]));
 
-eq("la sección se llama «Temas»", await p.$$eval(".rep-seccion-cabeza h3", l => l.map(e => e.textContent.trim()).includes("Temas")), true);
+eq("la sección se llama «Tendencias»", await p.$$eval(".rep-seccion-cabeza h3", l => l.map(e => e.textContent.trim()).includes("Tendencias")), true);
 eq("«seguridad» sube: 4 posteos ahora (uno la repite cuatro veces y cuenta uno), 1 antes, y se muestra en minúscula", [por["seguridad"] && por["seguridad"].cuentas, por["seguridad"] && por["seguridad"].tipo], ["4 ahora · 1 antes", "▲ sube"]);
 eq("«cámara» y «cámaras» son un solo tema: 3 posteos ahora, 1 antes", [Object.keys(por).filter(k => /^c[aá]mara/i.test(k)).length, Object.entries(por).find(([k]) => /^c[aá]mara/i.test(k))[1].cuentas], [1, "3 ahora · 1 antes"]);
 eq("…que sube", Object.entries(por).find(([k]) => /^c[aá]mara/i.test(k))[1].tipo, "▲ sube");

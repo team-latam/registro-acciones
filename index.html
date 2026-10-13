@@ -3208,6 +3208,11 @@
   .rep-riel.doble .rep-barra{ height:8px; }
   .rep-riel.doble .rep-barra.prev{ height:4px; background:var(--text-muted); opacity:.45; }
   .rep-bloque-nota{ font-size:11.5px; color:var(--text-muted); margin-top:8px; }
+  .rep-bloque:not(.abierto) .rep-fila-extra{ display:none; }
+  .rep-bloque-cab{ display:flex; align-items:baseline; justify-content:space-between; gap:8px; margin-bottom:10px; }
+  .rep-bloque-cab h3{ margin:0; }
+  .rep-ver-todo{ padding:0; background:none; border:0; font:inherit; font-size:12px; font-weight:700; color:var(--link); cursor:pointer; white-space:nowrap; }
+  .rep-ver-todo:hover{ text-decoration:underline; }
   /* Una fila que lleva a algún lado se nota al pasar por encima. */
   .rep-fila-ir{ cursor:pointer; border-radius:8px; margin-inline:-6px; padding-inline:6px; }
   .rep-fila-ir:hover, .rep-fila-ir:focus-visible{ background:var(--celeste-soft); }
@@ -3467,6 +3472,7 @@
     .rep-bloque{ padding:10px 12px; break-inside:avoid; }
     .rep-bloque h3{ font-size:10px; margin-bottom:7px; }
     .rep-fila{ margin-bottom:4px; break-inside:avoid; }
+    .rep-bloque .rep-fila-extra{ display:flex !important; } .rep-ver-todo{ display:none !important; }
     /* Los nombres largos enteros, en dos renglones si hace falta, en vez
        de "República Domi…". */
     .rep-etiqueta{ font-size:10.5px; white-space:normal; overflow:visible; text-overflow:clip; line-height:1.2; }
@@ -16653,22 +16659,31 @@ function mesCortoDe(mesISO){
 // `prev`: el mismo renglón en el período anterior, como una barra fina
 // debajo (solo en "Mes a mes"). `ir`: a dónde lleva tocar la fila (ver
 // "reporte-ir"): el Feed filtrado por ese país, zona o tipo.
-function filaDeBarra(etiqueta, n, maximo, color, { prev, ir } = {}){
+function filaDeBarra(etiqueta, n, maximo, color, { prev, ir, extra } = {}){
   const ancho = maximo > 0 ? Math.max(2, Math.round(n * 100 / maximo)) : 0;
   const anchoPrev = prev != null && maximo > 0 ? Math.max(prev ? 2 : 0, Math.round(prev * 100 / maximo)) : 0;
   const titulo = prev != null ? ` title="${esc(t("Período anterior: {n}","Previous period: {n}","Período anterior: {n}","התקופה הקודמת: {n}",{n:prev}))}"` : "";
   const clic = ir ? ` role="button" tabindex="0" data-action="reporte-ir" data-kind="${esc(ir.kind)}" data-key="${esc(ir.key)}"` : "";
-  return `<div class="rep-fila${ir ? " rep-fila-ir" : ""}"${clic}${titulo}>
+  return `<div class="rep-fila${ir ? " rep-fila-ir" : ""}${extra ? " rep-fila-extra" : ""}"${clic}${titulo}>
       <div class="rep-etiqueta">${etiqueta}</div>
       <div class="rep-riel${prev != null ? " doble" : ""}"><div class="rep-barra" style="width:${ancho}%;background:${color || "var(--petroleo)"}"></div>${prev != null ? `<div class="rep-barra prev" style="width:${anchoPrev}%"></div>` : ""}</div>
       <div class="rep-num">${n}</div>
     </div>`;
 }
-function bloqueDeBarras(titulo, filas, vacio, nota){
+// Un bloque no pasa de siete filas, lo que mide «Por tipo» con los siete tipos: «Por país» llegaba a 25 y estiraba a los dos de al
+// lado (pedido del usuario, 13/10/2026). Si hay más, el resto queda detrás de «Ver los N países»; al imprimir sale entero.
+const FILAS_DEL_BLOQUE = 7;
+const bloquesAbiertos = new Set();   // los bloques que se desplegaron («paises»), mientras la página siga abierta
+const verTodosLosPaises = n => t("Ver los {n} países","See all {n} countries","Ver os {n} países","הצגת כל {n} המדינות",{ n });
+const verMenosFilas = () => t("Mostrar menos","Show less","Mostrar menos","הצג פחות");
+function bloqueDeBarras(titulo, filas, vacio, nota, id){
   if(!filas.length) return `<div class="rep-bloque"><h3>${titulo}</h3><div class="rep-vacio">${vacio}</div></div>`;
   const maximo = Math.max(...filas.map(f=>Math.max(f.n, f.prev || 0)));
-  return `<div class="rep-bloque"><h3>${titulo}</h3>
-    ${filas.map(f=>filaDeBarra(f.etiqueta, f.n, maximo, f.color, { prev:f.prev, ir:f.ir })).join("")}${nota ? `<div class="rep-bloque-nota">${nota}</div>` : ""}</div>`;
+  const recorta = !!id && filas.length > FILAS_DEL_BLOQUE, abierto = recorta && bloquesAbiertos.has(id);
+  // El botón va arriba, en el renglón del título: abajo sumaba una fila y la tarjeta dejaba de cortar justo a la altura de la última de «Por tipo».
+  const boton = recorta ? `<button type="button" class="rep-ver-todo" data-action="reporte-ver-todo" data-id="${esc(id)}" data-n="${filas.length}" aria-expanded="${abierto}">${esc(abierto ? verMenosFilas() : verTodosLosPaises(filas.length))}</button>` : "";
+  return `<div class="rep-bloque${abierto ? " abierto" : ""}">${recorta ? `<div class="rep-bloque-cab"><h3>${titulo}</h3>${boton}</div>` : `<h3>${titulo}</h3>`}
+    ${filas.map((f, i) => filaDeBarra(f.etiqueta, f.n, maximo, f.color, { prev:f.prev, ir:f.ir, extra: recorta && i >= FILAS_DEL_BLOQUE })).join("")}${nota ? `<div class="rep-bloque-nota">${nota}</div>` : ""}</div>`;
 }
 // Lo último que dibujó renderReportesView, para bajarlo como planilla:
 // las mismas secciones y los mismos números que están en pantalla.
@@ -17056,7 +17071,7 @@ function renderReportePeriodo(f){
       ${bloqueDeBarras(t("Por zona","By zone","Por zona","לפי אזור"), zonas,
         t("Nada con zona cargada.","Nothing with a zone set.","Nada com zona carregada.","אין דבר עם אזור."))}
       ${bloqueDeBarras(t("Por país","By country","Por país","לפי מדינה"), paises,
-        t("Nada con país cargado.","Nothing with a country set.","Nada com país carregado.","אין דבר עם מדינה."))}
+        t("Nada con país cargado.","Nothing with a country set.","Nada com país carregado.","אין דבר עם מדינה."), "", "paises")}
       ${bloqueDeBarras(t("Por tipo","By type","Por tipo","לפי סוג"), tipos, "")}
     </div>`)
     + renderSugerencias(v, r, rAnterior, f)
@@ -17427,7 +17442,7 @@ function renderTemas(f){
       <span class="rep-delta ${x.tipo === "sube" || x.tipo === "nuevo" ? "sube" : x.tipo === "baja" ? "baja" : ""}">${x.tipo === "sube" ? "▲ " : x.tipo === "baja" ? "▼ " : ""}${esc(etiqueta[x.tipo])}</span>
     </button></li>`;
   };
-  return seccionDelReporte(t("Temas","Topics","Temas","נושאים"),
+  return seccionDelReporte(t("Tendencias","Trends","Tendências","מגמות"),
     t("De qué se habló en los últimos 90 días, contra los 90 anteriores. Se cuenta con los títulos y textos ya cargados; nada sale de la app.","What was talked about in the last 90 days, against the 90 before. Counted from the titles and texts already in the app; nothing leaves it.","Do que se falou nos últimos 90 dias, contra os 90 anteriores. Contado com os títulos e textos já carregados; nada sai do app.","על מה דובר ב-90 הימים האחרונים, מול 90 הימים שלפניהם. נספר מהכותרות והטקסטים שכבר נטענו; שום דבר לא יוצא מהאפליקציה."),
     `<div class="rep-bloque rep-temas"><ul class="rep-lista rep-lista-temas">${lista.map(fila).join("")}</ul>
       <div class="rep-bloque-nota">${esc(t("Junta las palabras que casi siempre van pegadas (como «krav maga») en un solo tema, pero no entiende lo que significan: «seguridad» y «protección» siguen siendo dos temas. Tocá uno para ver en el Inicio las actividades que lo mencionan.","It joins words that almost always go together (like “krav maga”) into one topic, but it doesn't understand what they mean: “security” and “protection” are still two topics. Tap one to see the activities that mention it on Home.","Junta as palavras que quase sempre vão coladas (como «krav maga») em um só tema, mas não entende o que significam: «segurança» e «proteção» continuam sendo dois temas. Toque em um para ver no Início as atividades que o mencionam.","מחבר מילים שכמעט תמיד באות יחד (כמו «קרב מגע») לנושא אחד, אבל לא מבין מה הן אומרות: «ביטחון» ו«הגנה» נשארים שני נושאים. הקש/י על אחד כדי לראות בדף הבית את הפעילויות שמזכירות אותו."))}</div></div>`);
@@ -20030,10 +20045,10 @@ function tourSteps(){
       textoMas: true },
     { id:"reportes", cubre:["reportes"], target: [...tourNav("reportes"), TOUR_MAS],
       title: t("Reportes","Reports","Relatórios","דוחות"),
-      text: t("Cuántas actividades hubo por mes, país, tipo y persona, contra el período anterior, y de qué se habló en los últimos 90 días. Tocá un mes del gráfico para ver su ficha, «✨ Mi año» para tu resumen personal con una tarjeta para compartir, o «Presentar» para mostrar el reporte en pantalla completa, como diapositivas, o imprimirlo.",
-        "How many activities there were by month, country, type and person, against the previous period, and what was talked about in the last 90 days. Tap a month in the chart to see its card, “✨ My year” for your personal summary with a card to share, or “Present” to show the report full screen, as slides, or print it.",
-        "Quantas atividades houve por mês, país, tipo e pessoa, em relação ao período anterior, e do que se falou nos últimos 90 dias. Toque em um mês do gráfico para ver a ficha dele, em «✨ Meu ano» para o seu resumo pessoal com um cartão para compartilhar, ou em «Apresentar» para mostrar o relatório em tela cheia, como slides, ou imprimi-lo.",
-        "כמה פעילויות היו לפי חודש, מדינה, סוג ואדם, מול התקופה הקודמת, ועל מה דובר ב-90 הימים האחרונים. הקש/י על חודש בגרף כדי לראות את הכרטיס שלו, על «✨ השנה שלי» לסיכום האישי שלך עם כרטיס לשיתוף, או על «הצגה» כדי להציג את הדוח במסך מלא, כשקופיות, או להדפיס אותו."),
+      text: t("Cuántas actividades hubo por mes, país, tipo y persona, contra el período anterior, y las tendencias de los últimos 90 días. Tocá un mes del gráfico para ver su ficha, «✨ Mi año» para tu resumen personal con una tarjeta para compartir, o «Presentar» para mostrar el reporte en pantalla completa, como diapositivas, o imprimirlo.",
+        "How many activities there were by month, country, type and person, against the previous period, and the trends of the last 90 days. Tap a month in the chart to see its card, “✨ My year” for your personal summary with a card to share, or “Present” to show the report full screen, as slides, or print it.",
+        "Quantas atividades houve por mês, país, tipo e pessoa, em relação ao período anterior, e as tendências dos últimos 90 dias. Toque em um mês do gráfico para ver a ficha dele, em «✨ Meu ano» para o seu resumo pessoal com um cartão para compartilhar, ou em «Apresentar» para mostrar o relatório em tela cheia, como slides, ou imprimi-lo.",
+        "כמה פעילויות היו לפי חודש, מדינה, סוג ואדם, מול התקופה הקודמת, ועל המגמות ב-90 הימים האחרונים. הקש/י על חודש בגרף כדי לראות את הכרטיס שלו, על «✨ השנה שלי» לסיכום האישי שלך עם כרטיס לשיתוף, או על «הצגה» כדי להציג את הדוח במסך מלא, כשקופיות, או להדפיס אותו."),
       textoMas: true },
     { id:"novedades", cubre:[], target: ["#mentionsBell .bell-btn"],
       title: t("Novedades","Updates","Novidades","עדכונים"),
@@ -22174,7 +22189,7 @@ function diapositivasDelReporte(r = reporteEnPantalla, { equipo = presEquipo } =
       const cap = top.length && temas.length ? t("El equipo y de qué se habló","The team and what was talked about","A equipe e do que se falou","הצוות ועל מה דובר") : "";
       out.push({ id: "equipo", titulo, html: `<section class="ps-slide">${marca}${cap ? `<div class="ps-sub">${esc(cap)}</div>` : ""}<h2 class="ps-tit">${esc(titulo)}</h2>
         <div class="ps-dos">${top.length ? `<div><ul class="ps-gente">${top.map(fila).join("")}</ul><div class="ps-leyenda-eq">${esc(t("actividades cargadas","activities logged","atividades registradas","פעילויות שנרשמו"))}</div></div>` : ""}
-        ${temas.length ? `<div><div class="ps-burb">${temas.map(burbuja).join("")}</div><div class="ps-leyenda-eq">${esc(t("Temas de los últimos 90 días","Topics from the last 90 days","Temas dos últimos 90 dias","נושאים מ-90 הימים האחרונים"))}</div></div>` : ""}</div></section>` });
+        ${temas.length ? `<div><div class="ps-burb">${temas.map(burbuja).join("")}</div><div class="ps-leyenda-eq">${esc(t("Tendencias de los últimos 90 días","Trends from the last 90 days","Tendências dos últimos 90 dias","מגמות מ-90 הימים האחרונים"))}</div></div>` : ""}</div></section>` });
     }
   }
   const lg = logradoDelPeriodo(r.desde, r.hasta, pr.filtro);
@@ -25377,6 +25392,13 @@ document.addEventListener("click", async e=>{
     "reporte-modo": async (el) => {
     state.reportes.modo = el.dataset.key === "comparar" ? "comparar" : "periodo"; render();
   },
+    "reporte-ver-todo": async (el) => {
+      const id = el.dataset.id, abierto = !bloquesAbiertos.has(id);
+      if(abierto) bloquesAbiertos.add(id); else bloquesAbiertos.delete(id);
+      el.closest(".rep-bloque").classList.toggle("abierto", abierto);
+      el.setAttribute("aria-expanded", String(abierto));
+      el.textContent = abierto ? verMenosFilas() : verTodosLosPaises(Number(el.dataset.n));
+    },
     "reporte-sin-filtro": async () => {
     state.reportes.filtro = { zona:"", pais:"", tipo:"", persona:"" }; render();
   },
