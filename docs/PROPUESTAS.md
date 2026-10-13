@@ -101,11 +101,12 @@ quedó resuelta como la 4 (tendencias automáticas, sin etiquetas a mano).
 
 ## Ajustes que pidió el usuario después (13/10/2026)
 
-Con lo ya hecho a la vista, pidió retoques; todos hechos, en las tandas 79 a 86 de `docs/REDISENO.md`:
+Con lo ya hecho a la vista, pidió retoques; todos hechos, en las tandas 79 a 87 de `docs/REDISENO.md`:
 
 - **Pasos de «Lo que sigue»**: «No es tarea» a la derecha, en la fila de la fecha, y los textos largos con «más / menos» (tanda 79).
-- **Temas**: que junte las palabras que van pegadas («krav maga» es una sola idea) en lugar de contar palabras sueltas (tanda 80).
-  No entiende sinónimos; un glosario propio o una IA serían un paso aparte y lo decide él.
+- **Temas → «Tendencias»**: primero que junte las palabras que van pegadas («krav maga», tanda 80); después pidió otro concepto —«no representa lo que se
+  está hablando, lo que pasó»— y se rehízo como **«Tendencias»** (tanda 87): lo que subió y bajó en lugares, tipos y temas (de una lista que arman los administradores) en
+  Reportes y en el costado del Inicio.
 - **La planilla**: una tabla de Excel de verdad, con una columna por dato, que baje todo (también los posteos) y que al filtrar deje
   elegir qué actividades y qué columnas; el botón del Inicio, solo la flecha ⬇ (tanda 81). Después criticó la ventana de opciones y se sacó: la flecha baja de un clic lo que están filtrando (tanda 84).
 - **«Mi año»** pasa del menú de la cuenta a Reportes, antes de «Presentar»; el menú queda con Mis preferencias, Administración y
