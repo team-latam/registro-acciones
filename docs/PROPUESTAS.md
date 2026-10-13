@@ -56,7 +56,7 @@ Ideas sueltas que le interesan (todavía sin maqueta): **el recorrido de un viaj
 | 3 | Informe mensual por correo, visible 48 h | **A** · el correo avisa y trae un botón; el informe se abre dentro del Registro con la cuenta del equipo y el enlace vence a las 48 horas; se puede bajar | **hecha el 13/10/2026** (tanda 77): se elige quién lo recibe en Administración › Correos; el día 1 de cada mes llega el aviso, sin números |
 | 4 | Tendencias de temas, automáticas | **A** · lista en Reportes de las palabras que suben, bajan o son nuevas (últimos 90 días contra los 90 anteriores); tocar un tema abre en el Inicio los eventos que lo mencionan; se calcula en el navegador, nada sale de la app | **hecha el 13/10/2026** (tanda 72) |
 | 5 | El recorrido de un viaje en el mapa | **No por ahora** («dejarlo para más adelante») | — |
-| 6 | «Mi año» | **B** · pantalla en Tu cuenta con los números del año más una **tarjeta para compartir** (imagen vertical que se baja); cuidar que no lleve nombres de otras personas | **hecha el 13/10/2026** (tanda 78): «✨ Mi año» en el menú de la cuenta; la tarjeta lleva solo cuántas personas, nunca sus nombres |
+| 6 | «Mi año» | **B** · pantalla en Tu cuenta con los números del año más una **tarjeta para compartir** (imagen vertical que se baja); cuidar que no lleve nombres de otras personas | **hecha el 13/10/2026** (tanda 78): «✨ Mi año» en Reportes, justo antes de «Presentar» (el usuario sacó el botón del menú de la cuenta); la tarjeta lleva solo cuántas personas, nunca sus nombres |
 
 La 14 de la primera vuelta quedó así resuelta como la 3 de la segunda; la 16 (etiquetas por tema)
 quedó resuelta como la 4 (tendencias automáticas, sin etiquetas a mano).
@@ -98,6 +98,23 @@ quedó resuelta como la 4 (tendencias automáticas, sin etiquetas a mano).
   cada paso, y aviso por correo): hecha en la tanda 73. Dos límites que se le dijeron: los
   correos de pasos solo llegan a quienes ya están habilitados en Administración › Correos, y
   quién puede asignar es una regla de la pantalla (quien puede editar el evento), no del servidor.
+
+## Ajustes que pidió el usuario después (13/10/2026)
+
+Con lo ya hecho a la vista, pidió retoques; todos hechos, en las tandas 79 a 82 de `docs/REDISENO.md`:
+
+- **Pasos de «Lo que sigue»**: «No es tarea» a la derecha, en la fila de la fecha, y los textos largos con «más / menos» (tanda 79).
+- **Temas**: que junte las palabras que van pegadas («krav maga» es una sola idea) en lugar de contar palabras sueltas (tanda 80).
+  No entiende sinónimos; un glosario propio o una IA serían un paso aparte y lo decide él.
+- **La planilla**: una tabla de Excel de verdad, con una columna por dato, que baje todo (también los posteos) y que al filtrar deje
+  elegir qué actividades y qué columnas; el botón del Inicio, solo la flecha ⬇ (tanda 81).
+- **«Mi año»** pasa del menú de la cuenta a Reportes, antes de «Presentar»; el menú queda con Mis preferencias, Administración y
+  «Algo no anda» (tandas 78 y 81). No se aplicaron las variantes de encabezado más chico del menú que se le mostraron.
+- **«Presentar» con más para mostrar** (opción 2 de lo que se le propuso): diapositivas «Lo más destacado» y «El equipo y de qué se
+  habló», con un botón para mostrar u ocultar los nombres (tanda 82). La opción 1 (un diseño más colorido en todas las diapositivas)
+  no se eligió.
+- **Ejemplos de los correos**: el workflow «Ejemplos de los correos» le manda al admin un ejemplo de «Lugares sin actividad» y del
+  «Informe mensual» sin esperar al primer lunes ni al día 1.
 
 ## Cómo retomarlo en una conversación nueva
 

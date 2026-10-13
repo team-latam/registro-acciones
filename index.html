@@ -611,6 +611,30 @@
   .pl-opcion.active small{ color:inherit; opacity:.85; }
   .pl-dos .pl-opcion{ flex:1 1 150px; }
   .feed-planilla{ min-width:34px; justify-content:center; font-size:15px; }
+  /* Lo más destacado, y el equipo con los temas (Presentar, opción 2) */
+  .pres-btn.on{ background:rgba(79,199,224,.28); border-color:#4fc7e0; }
+  .ps-cards{ display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:clamp(12px, 2.4vh, 22px); }
+  .ps-card{ min-width:0; border-radius:clamp(12px, 2.4vh, 22px); overflow:hidden; background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.18); }
+  .ps-foto{ position:relative; height:clamp(110px, 27vh, 230px); background:rgba(255,255,255,.08); }
+  .ps-foto img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .ps-foto.sin{ display:grid; place-items:center; background:linear-gradient(135deg, #2a6f77, #4fc7e0 60%, #a5e6f3); }
+  .ps-ico{ font-size:clamp(40px, 11vh, 90px); line-height:1; }
+  .ps-tag{ position:absolute; top:10px; inset-inline-start:10px; background:#0d3b3e; color:#fff; padding:3px 11px; border-radius:999px; font-size:clamp(11px, 1.9vh, 15px); font-weight:800; }
+  .ps-card-txt{ padding:clamp(10px, 2vh, 18px) clamp(12px, 2vh, 18px) clamp(12px, 2.4vh, 20px); }
+  .ps-card-t{ font-size:clamp(14px, 2.9vh, 24px); font-weight:800; line-height:1.2; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+  .ps-card-m{ margin-top:5px; font-size:clamp(11px, 2vh, 16px); color:var(--ps-mut); }
+  .ps-dos{ display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap:clamp(18px, 4vh, 40px); align-items:start; }
+  .ps-gente{ list-style:none; margin:0; padding:0; display:grid; gap:clamp(8px, 2vh, 16px); }
+  .ps-gente li{ display:grid; grid-template-columns:auto minmax(0, 1fr) auto; gap:clamp(10px, 1.8vh, 16px); align-items:center; font-size:clamp(14px, 2.9vh, 24px); font-weight:700; }
+  .ps-av{ width:clamp(34px, 6.6vh, 54px); height:clamp(34px, 6.6vh, 54px); border-radius:50%; display:grid; place-items:center; color:#fff; font-size:clamp(12px, 2.3vh, 19px); font-weight:800; }
+  .ps-nom{ overflow-wrap:anywhere; } .ps-gente b{ font-variant-numeric:tabular-nums; }
+  .ps-leyenda-eq{ margin-top:clamp(8px, 1.6vh, 14px); font-size:clamp(11px, 1.9vh, 15px); color:var(--ps-mut); }
+  .ps-burb{ display:flex; flex-wrap:wrap; gap:clamp(6px, 1.2vh, 12px); align-items:center; justify-content:center; }
+  .ps-bu{ --k:16; width:calc(var(--k) * 1vh); height:calc(var(--k) * 1vh); border-radius:50%; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:4px; box-sizing:border-box; font-style:normal; background:rgba(255,255,255,.2); line-height:1.1; }
+  .ps-bu b{ font-size:clamp(11px, calc(var(--k) * .16vh), 22px); font-weight:800; overflow-wrap:anywhere; } .ps-bu small{ font-size:clamp(10px, 1.8vh, 15px); font-weight:700; }
+  .ps-burb + .ps-leyenda-eq{ text-align:center; }
+  .ps-bu b{ color:inherit; } .ps-bu.sube{ background:#4fc7e0; color:#0d3b3e; } .ps-bu.nuevo{ background:#fde047; color:#0d3b3e; } .ps-bu.baja{ background:#fca5a5; color:#0d3b3e; }
+  @media (max-width:720px){ .ps-cards{ grid-template-columns:1fr; gap:10px; } .ps-card{ display:grid; grid-template-columns:minmax(0, 40%) minmax(0, 1fr); } .ps-foto{ height:auto; min-height:104px; } .ps-ico{ font-size:44px; } .ps-tag{ top:6px; inset-inline-start:6px; padding:2px 8px; font-size:11px; } .ps-card-txt{ align-self:center; } .ps-bu{ width:calc(var(--k) * .8vh); height:calc(var(--k) * .8vh); } }
   .ps-nota{ margin-top:clamp(14px, 3vh, 28px); font-size:clamp(11px, 2vh, 16px); color:var(--ps-mut); }
   .ps-barras{ list-style:none; margin:0; padding:0; display:grid; gap:clamp(7px, 1.8vh, 16px); }
   .ps-barras li{ display:grid; grid-template-columns:minmax(90px, 24%) minmax(0, 1fr) auto; gap:14px; align-items:center; font-size:clamp(13px, 2.7vh, 24px); }
@@ -647,6 +671,11 @@
     .pres-pagina .ps-barras li{ font-size:12pt; } .pres-pagina .ps-riel{ height:5mm; } .pres-pagina .ps-lista{ font-size:14pt; } .pres-pagina .ps-cols{ height:90mm; }
     .pres-pagina .ps-cmp.sube{ color:#166534; } .pres-pagina .ps-cmp.baja{ color:#991b1b; }
     .pres-pagina .ps-nota{ display:none; }
+    .pres-pagina .ps-cards{ grid-template-columns:repeat(3, 1fr); gap:5mm; } .pres-pagina .ps-card{ background:#f1f7f7; border-color:#cfe0e1; } .pres-pagina .ps-foto{ height:48mm; } .pres-pagina .ps-foto.sin{ background:linear-gradient(135deg, #bfe6ee, #4fc7e0); }
+    .pres-pagina .ps-card-t{ font-size:13pt; } .pres-pagina .ps-card-m{ font-size:10pt; } .pres-pagina .ps-ico{ font-size:34pt; } .pres-pagina .ps-tag{ font-size:9pt; }
+    .pres-pagina .ps-dos{ grid-template-columns:1fr 1fr; gap:10mm; } .pres-pagina .ps-gente li{ font-size:13pt; } .pres-pagina .ps-av{ width:11mm; height:11mm; font-size:10pt; } .pres-pagina .ps-leyenda-eq{ font-size:9pt; }
+    .pres-pagina .ps-bu{ width:calc(var(--k) * 2mm); height:calc(var(--k) * 2mm); background:#d9ecef; color:#0d3b3e; } .pres-pagina .ps-bu b{ font-size:10pt; } .pres-pagina .ps-bu small{ font-size:8pt; }
+    .pres-pagina .ps-bu.sube{ background:#bfe6ee; } .pres-pagina .ps-bu.nuevo{ background:#fde68a; } .pres-pagina .ps-bu.baja{ background:#fbd5d5; }
   }
   .avatar-pending{
     position:absolute; top:-5px; inset-inline-end:-5px; min-width:18px; height:18px; padding:0 4px; border-radius:999px; pointer-events:none;
@@ -4440,6 +4469,7 @@
   <div class="pres-barra">
     <span class="pres-cuenta" id="presCuenta" role="status" aria-live="polite"></span>
     <span class="pres-espacio"></span>
+    <button type="button" class="pres-btn" data-action="pres-equipo" id="presEquipo" aria-pressed="true" hidden></button>
     <button type="button" class="pres-btn" data-action="pres-planilla" id="presPlanilla" hidden></button>
     <button type="button" class="pres-btn" data-action="pres-imprimir" id="presImprimir"></button>
     <button type="button" class="pres-btn" data-action="pres-cerrar" id="presCerrar"></button>
@@ -17340,12 +17370,16 @@ function formaDeTema(formas){
 }
 function diasEntre(desdeISO, hastaISO){ return Math.round((isoDate(hastaISO) - isoDate(desdeISO)) / 86400000); }
 let temasCache = null;
-function renderTemas(f){
-  // Se guarda por filtro y por datos, como el reporte (si no hay firma, en las páginas de prueba, se arma siempre).
+// Los temas con el «Ver solo» de f. Se guardan por filtro y por datos, como el reporte (si no hay
+// firma, en las páginas de prueba, se arma siempre). Los usan Reportes y el modo presentación.
+function listaDeTemas(f){
   const firma = JSON.stringify([f || null]), datos = typeof firmaDeDatos === "function" ? firmaDeDatos() : null;
   if(!datos || !temasCache || temasCache.firma !== firma || datos.some((x, i) => x !== temasCache.datos[i]))
     temasCache = { firma, datos, lista: temasDelReporte(state.posts.filter(p => pasaFiltroDelReporte(p, f)), todayISO()) };
-  const lista = temasCache.lista;
+  return temasCache.lista;
+}
+function renderTemas(f){
+  const lista = listaDeTemas(f);
   if(!lista.length) return "";
   const etiqueta = { sube: t("sube","rising","sobe","עולה"), baja: t("baja","falling","cai","יורד"), nuevo: t("nuevo","new","novo","חדש"), igual: t("igual","steady","igual","יציב") };
   const fila = x => {
@@ -22009,6 +22043,10 @@ cumpleOverlay.addEventListener("click", e=>{ if(e.target === cumpleOverlay) clos
 const presOverlay = document.getElementById("presOverlay");
 let presDiapositivas = [], presIndice = 0, presReturnFocus = null, presImprimiendo = false, presEnPantallaCompleta = false;
 let presInforme = null;   // si es el informe mensual de un mes: { mes, desde, hasta } (suma «Planilla»)
+let presReporte = null;   // el reporte que se está presentando (para armar de nuevo las diapositivas)
+// «Mostrar al equipo»: si la diapositiva del equipo lleva los nombres de las personas. De fábrica sí (Reportes ya los
+// muestra a todo el equipo); se apaga para presentar afuera, y se acuerda.
+let presEquipo = (() => { try{ return localStorage.getItem("ra_pres_equipo") !== "0"; }catch(e){ return true; } })();
 function barrasDePres(filas, max = 8){
   const lista = (filas || []).filter(f => f.n > 0).slice(0, max);
   if(!lista.length) return "";
@@ -22035,7 +22073,24 @@ function proximosParaPresentar(f){
   return state.posts.filter(p => !p.cancelled && p.activityType !== "rutina" && pasaFiltroDelReporte(p, f) && ini(p) > hoy && ini(p) <= tope)
     .sort((a, b) => ini(a).localeCompare(ini(b))).slice(0, 6);
 }
-function diapositivasDelReporte(r = reporteEnPantalla){
+// Las tres actividades más destacadas del período (propuesta de «Presentar», 13/10/2026): lo que ya pasó, sin
+// rutinas ni cancelado, con el mismo «Ver solo» del reporte. Se prefiere lo que tiene fotos, más gente, más
+// días, más me gusta y un Cierre con objetivos; a igualdad, lo más reciente.
+function destacadosDelPeriodo(desde, hasta, filtro){
+  const hoy = todayISO(), tope = hasta < hoy ? hasta : hoy;
+  const puntos = p => {
+    const ini = iniDePosteo(p), fin = String(p.endDate || ini);
+    const dias = Math.max(1, Math.round((isoDate(fin) - isoDate(ini)) / 86400000) + 1);
+    const partes = resumenDe(p), objetivos = partes ? cuentaObjetivos(partes).total : 0;
+    return (srcDeFoto(p) ? 3 : 0) + Math.min((p.participants || []).length, 8) + Math.min((p.likedBy || []).length, 6) * 0.5 + Math.min(dias, 6) * 0.5 + (objetivos ? 2 : 0) + (["visita","congreso","seminario","curso"].includes(p.activityType) ? 1 : 0);
+  };
+  return state.posts.filter(p => !p.cancelled && p.activityType !== "rutina" && pasaFiltroDelReporte(p, filtro) && iniDePosteo(p) >= desde && iniDePosteo(p) <= tope)
+    .map(p => ({ p, pt: puntos(p) })).sort((a, b) => b.pt - a.pt || iniDePosteo(b.p).localeCompare(iniDePosteo(a.p))).slice(0, 3).map(x => x.p);
+}
+const srcDeFoto = p => (Array.isArray(p.images) ? p.images : []).map(srcMiniatura).find(Boolean) || "";
+function hayEquipoParaMostrar(r){ return !!(r && ((r.secciones || []).find(x => x.id === "personas") || {}).filas && r.secciones.find(x => x.id === "personas").filas.some(f => f.n > 0)); }
+const COLORES_DE_PERSONA = ["#2563eb", "#16a34a", "#9333ea", "#ea580c", "#0d9488"];
+function diapositivasDelReporte(r = reporteEnPantalla, { equipo = presEquipo } = {}){
   const pr = r && r.presentacion;
   if(!r || !pr) return [];
   const sec = id => ((r.secciones || []).find(x => x.id === id) || {}).filas || [];
@@ -22054,6 +22109,36 @@ function diapositivasDelReporte(r = reporteEnPantalla){
     const tope = Math.max(1, ...meses.map(m => (m.n || 0) + (m.plan || 0)));
     out.push({ id: "meses", titulo: t("Mes a mes","Month by month","Mês a mês","חודש אחר חודש"), html: `<section class="ps-slide">${marca}<h2 class="ps-tit">${esc(t("Mes a mes","Month by month","Mês a mês","חודש אחר חודש"))}</h2>
       <div class="ps-cols" role="img" aria-label="${esc(meses.map(m => `${m.titulo || ""}`.replace(/<[^>]+>/g, "")).join(", "))}">${meses.map(m => `<div class="ps-col"><b>${m.n}</b><span class="ps-barra" style="height:${Math.max(m.n ? 4 : 0, Math.round((m.n || 0) * 100 / tope))}%"></span>${m.plan ? `<span class="ps-barra plan" style="height:${Math.round(m.plan * 100 / tope)}%"></span>` : ""}<em>${m.etiqueta}</em></div>`).join("")}</div>${meses.some(m => m.plan) ? `<p class="ps-leyenda"><i class="ps-barra plan"></i>${esc(t("Rayado: actividades planeadas, todavía por hacerse","Striped: planned activities, still to be done","Listrado: atividades planejadas, ainda por fazer","מפוספס: פעילויות מתוכננות שעוד לא בוצעו"))}</p>` : ""}</section>` });
+  }
+  // Lo más destacado: hasta tres actividades, con su foto si la tienen.
+  const dest = destacadosDelPeriodo(r.desde, r.hasta, pr.filtro);
+  if(dest.length){
+    const masDeUnAnio = r.desde.slice(0, 4) !== r.hasta.slice(0, 4);
+    const tarjeta = p => {
+      const ty = ACTIVITY_BY_KEY[p.activityType], foto = srcDeFoto(p);
+      const lugar = (p.scopes || []).map(scopeLabel).filter(Boolean)[0] || "";
+      const d = iniDePosteo(p);
+      return `<div class="ps-card"><div class="ps-foto${foto ? "" : " sin"}">${foto ? `<img src="${esc(foto)}" alt="">` : `<span class="ps-ico" aria-hidden="true">${esc(ty ? ty.icon : "✨")}</span>`}<span class="ps-tag">${esc(ty ? ty.label : (p.activityType || ""))}</span></div>
+        <div class="ps-card-txt"><div class="ps-card-t" dir="auto">${esc(p.title || "")}</div><div class="ps-card-m" dir="auto">${esc([lugar, fmtISO(d, masDeUnAnio ? { day: "numeric", month: "short", year: "numeric" } : { day: "numeric", month: "long" })].filter(Boolean).join(" · "))}</div></div></div>`;
+    };
+    out.push({ id: "destacados", titulo: t("Lo más destacado","The highlights","Os destaques","הדגשים"), html: `<section class="ps-slide">${marca}<h2 class="ps-tit">${esc(dest.length === 1 ? t("Lo más destacado","The highlight","O destaque","הדגש") : t("Lo más destacado","The highlights","Os destaques","הדגשים"))}</h2>
+      <div class="ps-cards">${dest.map(tarjeta).join("")}</div></section>` });
+  }
+  // El equipo y de qué se habló: quién cargó más (si se muestran los nombres) y los temas que suben y bajan.
+  {
+    const gente = equipo ? ((r.secciones || []).find(x => x.id === "personas") || {}).filas || [] : [];
+    const top = gente.filter(f => f.n > 0).slice(0, 5);
+    const temas = listaDeTemas(pr.filtro).slice(0, 6);
+    if(top.length || temas.length){
+      const maxTema = Math.max(1, ...temas.map(x => x.ahora + x.antes));
+      const burbuja = x => { const k = Math.round(9 + 8 * Math.sqrt((x.ahora + x.antes) / maxTema)); return `<i class="ps-bu ${x.tipo}" style="--k:${k}"><b dir="auto">${esc(x.palabra)}</b><small>${x.tipo === "sube" ? "▲" : x.tipo === "baja" ? "▼" : x.tipo === "nuevo" ? esc(t("nuevo","new","novo","חדש")) : ""}</small></i>`; };
+      const fila = (f, i) => `<li><span class="ps-av" style="background:${COLORES_DE_PERSONA[i % COLORES_DE_PERSONA.length]}" aria-hidden="true">${esc(f.etiqueta.replace(/&[#\w]+;/g, " ").trim().split(/\s+/).slice(0, 2).map(w => w[0] || "").join("").toUpperCase())}</span><span class="ps-nom" dir="auto">${f.etiqueta}</span><b>${f.n}</b></li>`;
+      const titulo = top.length ? t("Quién lo hizo posible","Who made it possible","Quem tornou isso possível","מי איפשר את זה") : t("De qué se habló","What was talked about","Do que se falou","על מה דובר");
+      const cap = top.length && temas.length ? t("El equipo y de qué se habló","The team and what was talked about","A equipe e do que se falou","הצוות ועל מה דובר") : "";
+      out.push({ id: "equipo", titulo, html: `<section class="ps-slide">${marca}${cap ? `<div class="ps-sub">${esc(cap)}</div>` : ""}<h2 class="ps-tit">${esc(titulo)}</h2>
+        <div class="ps-dos">${top.length ? `<div><ul class="ps-gente">${top.map(fila).join("")}</ul><div class="ps-leyenda-eq">${esc(t("actividades cargadas","activities logged","atividades registradas","פעילויות שנרשמו"))}</div></div>` : ""}
+        ${temas.length ? `<div><div class="ps-burb">${temas.map(burbuja).join("")}</div><div class="ps-leyenda-eq">${esc(t("Temas de los últimos 90 días","Topics from the last 90 days","Temas dos últimos 90 dias","נושאים מ-90 הימים האחרונים"))}</div></div>` : ""}</div></section>` });
+    }
   }
   const lg = logradoDelPeriodo(r.desde, r.hasta, pr.filtro);
   if(lg.total) out.push({ id: "logrado", titulo: t("Lo logrado","What was achieved","O que foi alcançado","מה הושג"), html: `<section class="ps-slide">${marca}<h2 class="ps-tit">${esc(t("Lo logrado","What was achieved","O que foi alcançado","מה הושג"))}</h2>
@@ -22092,7 +22177,8 @@ function informeDelMes(mes, vence){
   const personas = cuenta(r.porPersona), paisesN = cuenta(r.porPais);
   return { desde, hasta, total: r.total, totalAnterior: rAnt.total,
     secciones: [{ id:"meses", titulo:t("Mes a mes","Month by month","Mês a mês","חודש אחר חודש"), filas: meses }, { id:"paises", titulo:t("Por país","By country","Por país","לפי מדינה"), filas: paises },
-      { id:"tipos", titulo:t("Por tipo","By type","Por tipo","לפי סוג"), filas: tipos }],
+      { id:"tipos", titulo:t("Por tipo","By type","Por tipo","לפי סוג"), filas: tipos },
+      { id:"personas", titulo:t("Quién cargó","Who logged it","Quem carregou","מי רשם"), filas: Object.entries(r.porPersona).map(([c, v]) => ({ etiqueta: esc(nombreEnReporte(c)), n: v })).sort((a, b) => b.n - a.n) }],
     presentacion: { titulo: esc(t("Informe de {m}","{m} report","Relatório de {m}","דוח {m}",{ m: nombreMes })), subtitulo: `${esc(fmtDate(desde))} – ${esc(fmtDate(hasta))}`, filtro: null,
       comparacion: comparacion, comparacionClase: !comparacion || dif === 0 ? "" : dif > 0 ? "sube" : "baja",
       nota: vence ? t("Este informe se abre desde el enlace del correo, que vence el {f}.","This report opens from the link in the email, which expires on {f}.","Este relatório abre pelo link do e-mail, que vence em {f}.","הדוח הזה נפתח מהקישור במייל, שפג תוקפו ב-{f}.",{ f: fmtDateTime(vence) }) : "",
@@ -22135,10 +22221,19 @@ function presIr(i){
   if(n === presIndice) return;
   presIndice = n; dibujarPresentacion();
 }
+function actualizarBotonEquipo(){
+  const b = document.getElementById("presEquipo");
+  b.hidden = !hayEquipoParaMostrar(presReporte);
+  b.textContent = "👥 " + t("Mostrar al equipo","Show the team","Mostrar a equipe","הצגת הצוות");
+  b.setAttribute("aria-pressed", String(presEquipo)); b.classList.toggle("on", presEquipo);
+  b.title = t("Pone o saca los nombres de las personas en la diapositiva del equipo","Shows or hides people's names on the team slide","Mostra ou esconde os nomes das pessoas no slide da equipe","מציג או מסתיר את שמות האנשים בשקופית הצוות");
+}
 function abrirPresentacion({ reporte, informe } = {}){
-  const lista = diapositivasDelReporte(reporte || reporteEnPantalla);
+  presReporte = reporte || reporteEnPantalla;
+  const lista = diapositivasDelReporte(presReporte);
   if(!lista.length) return;
   presDiapositivas = lista; presIndice = 0; presInforme = informe || null;
+  actualizarBotonEquipo();
   const planilla = document.getElementById("presPlanilla");
   planilla.hidden = !presInforme;
   planilla.textContent = "⬇ " + t("Planilla","Spreadsheet","Planilha","גיליון");
@@ -22163,7 +22258,7 @@ function abrirPresentacion({ reporte, informe } = {}){
 function cerrarPresentacion(){
   if(presOverlay.hidden) return;
   presOverlay.hidden = true;
-  presDiapositivas = []; presInforme = null;
+  presDiapositivas = []; presInforme = null; presReporte = null;
   if(document.fullscreenElement){ try{ document.exitFullscreen(); }catch(e){} }
   presEnPantallaCompleta = false;
   // Al salir de la pantalla completa el navegador cambia el tamaño y la página se redibuja: el foco vuelve
@@ -25232,6 +25327,17 @@ document.addEventListener("click", async e=>{
   },
     "usuarios-csv": async (el, e, action, postId) => {
     descargarTexto(`registro-personas-${todayISO()}.csv`, csvDePersonas());
+  },
+    "pres-equipo": async () => {
+    if(presOverlay.hidden || !presReporte) return;
+    presEquipo = !presEquipo;
+    try{ localStorage.setItem("ra_pres_equipo", presEquipo ? "1" : "0"); }catch(e){}
+    const id = (presDiapositivas[presIndice] || {}).id;
+    presDiapositivas = diapositivasDelReporte(presReporte);
+    const i = presDiapositivas.findIndex(x => x.id === id);
+    presIndice = i >= 0 ? i : Math.min(presIndice, presDiapositivas.length - 1);
+    actualizarBotonEquipo(); dibujarPresentacion();
+    enfocarComo(document.getElementById("presEquipo"), null);
   },
     "mianio-anio": async (el) => {
     miAnio.anio = String(el.dataset.year || ""); render();
