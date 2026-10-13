@@ -2442,10 +2442,28 @@
   .rs-asig{ display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-top:4px; }
   .rs-chip{ display:inline-block; background:var(--surface-hover); color:var(--text); border-radius:999px; padding:1px 9px; font-size:11.5px; font-weight:600; }
   .rs-chip.vencido, .date-trigger.rs-fecha.vencido{ background:var(--danger-bg); color:var(--danger-text); border-color:transparent; }
-  .rs-resp{ font:inherit; font-size:11.5px; font-weight:600; max-width:100%; border:1px solid var(--border); border-radius:999px; padding:2px 8px; background:var(--card); color:var(--text); cursor:pointer; }
+  .rs-resp{ font:inherit; font-size:11.5px; font-weight:600; display:inline-flex; align-items:center; gap:4px; max-width:100%; border:1px solid var(--border); border-radius:999px; padding:2px 9px; background:var(--card); color:var(--text); cursor:pointer; }
+  .rs-resp::after{ content:"▾"; color:var(--celeste-dark); font-size:.9em; }
+  .rs-resp span{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .rs-resp.vacio{ border-style:dashed; color:var(--text-muted); font-weight:500; }
-  .rs-resp:hover, .rs-resp:focus-visible{ border-color:var(--celeste-dark); }
+  .rs-resp:hover, .rs-resp:focus-visible, .rs-resp[aria-expanded="true"]{ border-color:var(--celeste-dark); }
   .date-trigger.rs-fecha{ font-size:11.5px; padding:2px 9px; }
+  /* «+ Responsable»: la ventanita con buscador y lista (ver abrirRespPop). */
+  .resp-pop{ position:fixed; inset:auto; margin:0; width:min(320px, calc(100vw - 24px)); max-height:360px; box-sizing:border-box; padding:8px; border:1px solid var(--border); border-radius:16px; background:var(--card); color:var(--text); box-shadow:0 12px 32px rgba(13,59,62,.16); overflow:hidden; flex-direction:column; gap:6px; }
+  .resp-pop:popover-open{ display:flex; }
+  .resp-pop.hoja{ left:12px; right:12px; width:auto; top:calc(var(--vvtop, 0px) + 12px); bottom:auto; max-height:min(440px, calc(var(--vvh, 100dvh) - 24px)); }
+  .rp-input{ width:100%; box-sizing:border-box; height:40px; border:1.5px solid var(--border); border-radius:12px; background:var(--card); color:var(--ink); padding:0 12px; font:inherit; font-size:14px; font-weight:600; }
+  .rp-input:focus{ outline:none; border-color:var(--celeste-dark); }
+  .rp-quitar{ all:unset; cursor:pointer; box-sizing:border-box; padding:6px 12px; border-radius:10px; font-size:12.5px; font-weight:700; color:var(--danger-text); }
+  .rp-quitar:hover, .rp-quitar:focus-visible{ background:var(--danger-soft); }
+  .rp-lista{ flex:1 1 auto; min-height:0; overflow:auto; display:grid; align-content:start; gap:2px; }
+  .rp-op{ all:unset; cursor:pointer; box-sizing:border-box; display:flex; align-items:center; gap:8px; padding:9px 12px; border-radius:10px; font-size:13.5px; font-weight:600; color:var(--text); }
+  .rp-op[hidden]{ display:none; }
+  .rp-ok{ width:14px; color:var(--celeste-dark); font-weight:800; flex:none; }
+  .rp-op:hover, .rp-op.on{ background:var(--celeste-soft); }
+  .rp-op.actual{ background:var(--chip-bg); font-weight:800; color:var(--ink-strong); }
+  .rp-op:focus-visible, .rp-quitar:focus-visible{ outline:2px solid var(--celeste-dark); outline-offset:-2px; }
+  .rp-vacio{ margin:4px 6px 6px; font-size:13px; color:var(--text-muted); }
   .rs-pasos li.hecho .t{ text-decoration:line-through; opacity:.6; }
   /* "No es tarea": en la misma fila que el responsable y la fecha, pegado al lado
      derecho (pedido del usuario, 13/10/2026). En la compu aparece al pasar el mouse
@@ -15984,11 +16002,9 @@ function renderAsignacionDePaso(de, p, editable){
   }
   const dfId = DATE_FIELD_SPECS.paso.dfId({ postId: de.id, pasoId: p.id });
   const fecha = p.para ? esc(fechaCortaDelPaso(p.para)) + (vencido ? " · " + esc(t("vencido","overdue","vencido","באיחור")) : "") : esc(t("+ Fecha","+ Date","+ Data","+ תאריך"));
+  const elegido = resp ? candidatosParaPaso(resp).find(c => c.email === resp) : null;
   return `<span class="rs-asig">
-    <select class="rs-resp${resp ? "" : " vacio"}" data-action="paso-resp" data-post-id="${esc(de.id)}" data-paso="${esc(p.id)}" aria-label="${esc(t("Quién se encarga","Who is in charge","Quem se encarrega","מי אחראי"))}">
-      <option value="">${esc(t("+ Responsable","+ Owner","+ Responsável","+ אחראי"))}</option>
-      ${candidatosParaPaso(resp).map(c => `<option value="${esc(c.email)}"${c.email === resp ? " selected" : ""}>👤 ${esc(c.nombre)}</option>`).join("")}
-    </select>
+    <button type="button" class="rs-resp${resp ? "" : " vacio"}" data-action="paso-resp-abrir" data-post-id="${esc(de.id)}" data-paso="${esc(p.id)}" aria-haspopup="dialog" aria-expanded="false" aria-label="${esc(t("Quién se encarga","Who is in charge","Quem se encarrega","מי אחראי"))}: ${esc(elegido ? elegido.nombre : t("sin asignar","unassigned","sem atribuir","לא הוקצה"))}"><span dir="auto">${esc(elegido ? "👤 " + elegido.nombre : t("+ Responsable","+ Owner","+ Responsável","+ אחראי"))}</span></button>
     <span class="date-field">
       <button type="button" class="date-trigger rs-fecha${p.para ? "" : " empty"}${vencido ? " vencido" : ""}" data-action="date-open" data-df-kind="paso" data-df-id="${esc(dfId)}" data-post-id="${esc(de.id)}" data-paso="${esc(p.id)}" aria-haspopup="dialog" aria-expanded="false" aria-label="${esc(t("Fecha para el paso","Date for the step","Data para o passo","תאריך לשלב"))}"><span class="cal-ic" aria-hidden="true">📅</span>${fecha}</button>
       <div class="date-pop" hidden role="dialog" aria-label="${esc(t("Fecha para el paso","Date for the step","Data para o passo","תאריך לשלב"))}"></div>
@@ -16024,6 +16040,127 @@ async function asignarPaso(postId, pasoId, cambios){
   if(ahora && ahora !== antes && ahora !== yo) avisarPorCorreo("paso", `${postId}#${pasoId}`);
   return true;
 }
+// ---- «+ Responsable»: un buscador y la lista de personas (13/10/2026) ----
+// Antes era un menú del navegador. El usuario pidió que arriba de la lista haya un buscador para escribir un nombre, y que
+// la lista siga a la vista, con scroll. Un <select> no puede tener un campo adentro, así que es una ventanita propia (un
+// popover del navegador, que queda por encima de todo, también encima de la ficha de un lugar). Una sola para toda la
+// página: se arma al abrir, con lo que dice el estado en ese momento, y no se pierde cuando la pantalla se redibuja.
+// Para sacar al responsable, una fila «Quitar responsable» aparece solo si hay uno.
+let respPopEl = null, respDisparador = null, respAbiertoEn = 0;
+function respPop(){
+  if(respPopEl) return respPopEl;
+  const el = document.createElement("div");
+  el.id = "respPop"; el.className = "resp-pop"; el.setAttribute("popover", "manual"); el.setAttribute("role", "dialog");
+  document.body.appendChild(el);
+  trapTabWithin(el);
+  respPopEl = el;
+  return el;
+}
+const respPopAbierto = () => !!respPopEl && respPopEl.matches(":popover-open");
+function disparadorDelPaso(postId, pasoId){
+  return [...document.querySelectorAll('[data-action="paso-resp-abrir"]')].find(b => b.dataset.postId === postId && b.dataset.paso === pasoId) || null;
+}
+function pasoDelResumen(postId, pasoId){
+  const partes = resumenDe(getPostById(postId));
+  return partes ? partes.flatMap(x => x.pasos || []).find(p => p.id === pasoId) || null : null;
+}
+function abrirRespPop(btn){
+  const postId = btn.dataset.postId, pasoId = btn.dataset.paso, paso = pasoDelResumen(postId, pasoId);
+  if(!paso) return;
+  const resp = paso.resp ? String(paso.resp).toLowerCase() : "";
+  const el = respPop();
+  el.dataset.postId = postId; el.dataset.paso = pasoId;
+  el.setAttribute("aria-label", t("Quién se encarga","Who is in charge","Quem se encarrega","מי אחראי"));
+  el.innerHTML = `<div class="rp-buscar"><input type="search" id="respBuscar" class="rp-input" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="true" aria-controls="respLista" placeholder="${esc(t("Buscar a alguien…","Search for someone…","Buscar alguém…","חיפוש אדם…"))}" aria-label="${esc(t("Buscar a alguien","Search for someone","Buscar alguém","חיפוש אדם"))}"></div>
+    ${resp ? `<button type="button" class="rp-quitar" data-action="paso-resp-quitar">✕ ${esc(t("Quitar responsable","Remove owner","Remover responsável","הסרת אחראי"))}</button>` : ""}
+    <div class="rp-lista" id="respLista" role="listbox" aria-label="${esc(t("Equipo","Team","Equipe","צוות"))}">${candidatosParaPaso(resp).map(c =>
+      `<button type="button" role="option" class="rp-op${c.email === resp ? " actual" : ""}" data-action="paso-resp-elegir" data-email="${esc(c.email)}" data-nombre="${esc(normalize(c.nombre))}" aria-selected="${c.email === resp}"><span class="rp-ok" aria-hidden="true">${c.email === resp ? "✓" : ""}</span><span dir="auto">👤 ${esc(c.nombre)}</span></button>`).join("")}</div>
+    <p class="rp-vacio" hidden>${esc(t("No hay nadie con ese nombre.","Nobody with that name.","Ninguém com esse nome.","אין אף אחד בשם הזה."))}</p>`;
+  respDisparador = btn; respAbiertoEn = Date.now();
+  btn.setAttribute("aria-expanded", "true");
+  el.classList.remove("hoja");
+  el.style.top = el.style.left = el.style.bottom = el.style.maxHeight = "";
+  if(!el.matches(":popover-open")) el.showPopover();
+  ubicarRespPop(btn);
+  resaltarEnRespPop(el.querySelector(".rp-op.actual") || el.querySelector(".rp-op"), false);
+  // En el celular no se enfoca el campo al abrir: saldría el teclado y taparía la lista; se enfoca al tocarlo.
+  if(!window.matchMedia("(pointer:coarse)").matches) el.querySelector("#respBuscar").focus({ preventScroll:true });
+}
+// En la compu, justo abajo del botón (o arriba si abajo no entra); en pantallas angostas, una hoja arriba de todo, que sigue
+// a la parte visible cuando sale el teclado (--vvtop y --vvh los escribe vigilarTeclado).
+function ubicarRespPop(btn){
+  const el = respPopEl, r = btn.getBoundingClientRect();
+  if(window.innerWidth <= 760){ el.classList.add("hoja"); el.style.top = el.style.left = el.style.bottom = el.style.maxHeight = ""; return; }
+  el.classList.remove("hoja");
+  const ancho = Math.min(320, window.innerWidth - 24), rtl = isRTL();
+  let izq = rtl ? r.right - ancho : r.left;
+  izq = Math.max(12, Math.min(izq, window.innerWidth - ancho - 12));
+  const abajo = window.innerHeight - r.bottom - 14, arriba = r.top - 14, cabe = Math.min(360, Math.max(abajo, arriba));
+  el.style.left = izq + "px"; el.style.maxHeight = Math.max(180, cabe) + "px";
+  if(abajo >= 230 || abajo >= arriba){ el.style.top = (r.bottom + 6) + "px"; el.style.bottom = ""; }
+  else { el.style.top = ""; el.style.bottom = (window.innerHeight - r.top + 6) + "px"; }
+}
+function cerrarRespPop(devolverFoco = true){
+  if(!respPopAbierto()) return;
+  const btn = respDisparador && respDisparador.isConnected ? respDisparador : disparadorDelPaso(respPopEl.dataset.postId, respPopEl.dataset.paso);
+  respPopEl.hidePopover();
+  if(btn){ btn.setAttribute("aria-expanded", "false"); if(devolverFoco) btn.focus(); }
+  respDisparador = null;
+}
+// Las que se ven con lo escrito (sin tildes ni mayúsculas), y la primera marcada para que Enter la elija.
+function filtrarRespPop(){
+  const el = respPopEl, q = normalize(el.querySelector("#respBuscar").value).replace(/\s+/g, " ");
+  let vistas = 0;
+  el.querySelectorAll(".rp-op").forEach(b => { const ok = !q || b.dataset.nombre.includes(q); b.hidden = !ok; if(ok) vistas++; });
+  el.querySelector(".rp-vacio").hidden = vistas > 0;
+  resaltarEnRespPop(vistas ? [...el.querySelectorAll(".rp-op")].find(b => !b.hidden) : null, true);
+}
+function resaltarEnRespPop(b, desplazar){
+  const el = respPopEl; if(!el) return;
+  el.querySelectorAll(".rp-op.on").forEach(x => x.classList.remove("on"));
+  const inp = el.querySelector("#respBuscar");
+  if(!b){ if(inp) inp.removeAttribute("aria-activedescendant"); return; }
+  b.classList.add("on");
+  if(!b.id) b.id = "rp-" + Math.random().toString(36).slice(2, 8);
+  if(inp) inp.setAttribute("aria-activedescendant", b.id);
+  if(desplazar) b.scrollIntoView({ block:"nearest" });
+}
+async function elegirResponsable(email){
+  const el = respPopEl, postId = el.dataset.postId, pasoId = el.dataset.paso;
+  cerrarRespPop(false);
+  const ok = await asignarPaso(postId, pasoId, { resp: String(email || "").toLowerCase() });
+  // La pantalla se redibujó con el cambio: el foco vuelve al botón nuevo.
+  requestAnimationFrame(() => { const b = disparadorDelPaso(postId, pasoId); if(b) b.focus(); });
+  return ok;
+}
+// Flechas, Enter y Escape dentro de la ventanita; Escape antes que cualquier otro (cerrar la ficha de un lugar, por ejemplo).
+document.addEventListener("keydown", e => {
+  if(!respPopAbierto()) return;
+  if(e.key === "Escape"){ e.preventDefault(); e.stopPropagation(); cerrarRespPop(); return; }
+  if(!respPopEl.contains(e.target)) return;
+  const vistas = () => [...respPopEl.querySelectorAll(".rp-op")].filter(b => !b.hidden);
+  if(e.key === "ArrowDown" || e.key === "ArrowUp"){
+    e.preventDefault();
+    const l = vistas(); if(!l.length) return;
+    const i = l.findIndex(b => b.classList.contains("on"));
+    resaltarEnRespPop(l[e.key === "ArrowDown" ? Math.min(l.length - 1, i + 1) : Math.max(0, i - 1)], true);
+  } else if(e.key === "Enter" && e.target.id === "respBuscar"){
+    e.preventDefault();
+    const b = respPopEl.querySelector(".rp-op.on:not([hidden])") || vistas()[0];
+    if(b) elegirResponsable(b.dataset.email);
+  }
+}, true);
+// Tocar afuera la cierra (sin devolver el foco: se tocó otra cosa).
+document.addEventListener("pointerdown", e => {
+  if(!respPopAbierto() || respPopEl.contains(e.target) || (e.target.closest && e.target.closest('[data-action="paso-resp-abrir"]'))) return;
+  cerrarRespPop(false);
+}, true);
+// En la compu sigue al botón: si se mueve la página, se cierra (salvo un desplazamiento que venía de antes y termina justo después de abrirla).
+window.addEventListener("scroll", e => { if(respPopAbierto() && !respPopEl.classList.contains("hoja") && !respPopEl.contains(e.target) && Date.now() - respAbiertoEn > 400) cerrarRespPop(false); }, true);
+// Al salir el teclado del celular la pantalla cambia de alto: no se cierra, se vuelve a ubicar.
+const reubicarRespPop = () => { if(respPopAbierto() && respDisparador && respDisparador.isConnected) ubicarRespPop(respDisparador); };
+window.addEventListener("resize", reubicarRespPop);
+if(window.visualViewport) window.visualViewport.addEventListener("resize", reubicarRespPop);
 // Marca un paso (hecho / no es tarea / de nuevo pendiente). Va solo el
 // resumen: no cuenta como edición del evento.
 async function marcarPaso(postId, pasoId, estado, extra){
@@ -25808,6 +25945,13 @@ document.addEventListener("click", async e=>{
     "anio-planilla": async () => {
     if(isAdmin()){ const anio = todayISO().slice(0, 4); await bajarPlanilla(actividadesDelAnio(anio), `registro-${anio}`); }
   },
+    "paso-resp-abrir": async (el) => {
+    // El mismo botón abre y cierra la ventanita.
+    if(respPopAbierto() && respDisparador === el){ cerrarRespPop(); return; }
+    abrirRespPop(el);
+  },
+    "paso-resp-elegir": async (el) => { await elegirResponsable(el.dataset.email); },
+    "paso-resp-quitar": async () => { await elegirResponsable(""); },
     "tendencia-ir": async (el) => {
     // Una ficha de «Tendencias» (en Reportes o en el costado del Inicio) abre el Inicio con eso, en los últimos
     // 90 días que cuenta: el lugar, el tipo o el tema (el nombre del tema busca todas sus palabras). Con la
@@ -27010,6 +27154,7 @@ document.addEventListener("focusin", e=>{
 });
 document.addEventListener("input", e=>{
   const el = e.target;
+  if(el.id === "respBuscar"){ filtrarRespPop(); return; }
   if(el.dataset.mentionScope) syncMentionBackdrop(el);
   if(el.id === "feedSearch" || el.id === "memoriaSearch"){
     // Con un respiro de 150 ms: el feed entero se reconstruye por cada
@@ -27256,7 +27401,6 @@ document.addEventListener("change", e=>{
     dateFieldOpen.viewMonth = `${newYear}-${String(newMonth).padStart(2,"0")}-01`;
     syncDateFieldOpenState();
   }
-  else if(el.dataset.action === "paso-resp"){ asignarPaso(el.dataset.postId, el.dataset.paso, { resp: String(el.value || "").toLowerCase() }); }
   else if(el.dataset.action === "set-role"){ const email = el.dataset.email, value = el.value; withRosterGuard(email, ()=> changeRole(email, value)); }
   else if(el.dataset.msField === "label"){
     const post = getPostById(el.dataset.postId);

@@ -969,6 +969,22 @@ eligió **unirlas así**:
 Pruebas: `agenda_test.mjs` (país, región y ciudad; fallan con el código
 de antes) y `ficha_celular_test.mjs` vuelve a esperar cinco tarjetas.
 
+### 88. «+ Responsable» de un paso: del tamaño de «+ Fecha» y con buscador — HECHO (13 oct 2026, sin publicar todavía)
+
+Dos pedidos del usuario sobre los pasos de «Lo que sigue», en el celular:
+- **Achicar «+ Responsable»**: se veía mucho más grande que «+ Fecha» (opción A que eligió). La causa: en pantallas táctiles todo menú va a 16 px (si no, el iPhone
+  agranda la página al tocarlo; ver el comentario de `@media (pointer:coarse)`), así que no se podía bajar la letra del menú.
+- **Un buscador en vez de «+ Responsable» como primera fila** del menú, para escribir un nombre, con la lista debajo y su scroll (lo pidió viendo el menú abierto con
+  5 personas y con 36).
+Un `<select>` no puede tener un campo adentro, así que ahora es **una ventanita propia** (un popover del navegador, por encima de todo, también de la ficha de un lugar;
+`#respPop`, una sola para toda la página, `abrirRespPop`): el botón «+ Responsable ▾» (11,5 px, igual que «+ Fecha», con el trazo punteado si está vacío) la abre; adentro, un
+campo «Buscar a alguien…» (sin tildes ni mayúsculas, por cualquier parte del nombre), «✕ Quitar responsable» (solo si ya hay uno), y la lista con ✓ en el actual; «No hay nadie con ese nombre.»
+si no hay coincidencias. Flechas y Enter eligen, Escape o tocar afuera la cierran, el foco vuelve al botón. En la compu se abre pegada abajo del botón (o arriba si no entra) y
+con el campo enfocado; en el celular, como una hoja arriba de la pantalla, que sigue a la parte visible cuando sale el teclado, y sin enfocar el campo al abrir (saldría el
+teclado y taparía la lista). Es la misma en la ficha de un lugar. Los observadores siguen viendo etiquetas, sin menú.
+- Pruebas: `pasos_responsable_test.mjs` (49) y `pasos_texto_largo_test.mjs` al día: el buscador (tildes, mayúsculas, sin coincidencias, Enter), la lista larga con scroll, «Quitar»,
+  Escape / tocar afuera / el mismo botón, las flechas, la compu, el hebreo y el tamaño del botón (falla con el código de antes).
+
 ### 87. «Tendencias»: lo que subió y bajó en 90 días, en Reportes y en el Inicio — HECHO (13 oct 2026)
 
 El usuario no estaba conforme con «Temas» (palabras sueltas que subían y bajaban: «no representa lo que se está hablando, lo que pasó»).
