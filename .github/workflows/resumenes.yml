@@ -50,6 +50,7 @@ jobs:
           node supabase/avisos/pruebas/vencimientos.mjs
           node supabase/avisos/pruebas/lugares.mjs
           node supabase/avisos/pruebas/informe.mjs
+          node supabase/avisos/pruebas/ejemplos.mjs
           node supabase/functions/_pruebas/avisos.mjs
 
   mandar:
