@@ -969,6 +969,31 @@ eligió **unirlas así**:
 Pruebas: `agenda_test.mjs` (país, región y ciudad; fallan con el código
 de antes) y `ficha_celular_test.mjs` vuelve a esperar cinco tarjetas.
 
+### 84. La planilla del Inicio, de un clic: se saca la ventana «Bajar planilla» — HECHO (13 oct 2026)
+
+El usuario vio la ventana de la tanda 81 y la criticó: «visualmente es muy poco profesional», y pidió revisar «por qué necesitamos tener
+algo así, cuando con los filtros ya funciona de manera correcta para bajar la información». Tenía razón en las dos cosas: la ventana
+repetía, con una herramienta peor, lo que ya hacen los filtros del Inicio (se había leído «decidir qué sí y qué no» al pie de la letra);
+las píldoras eran de anchos desparejos y lo no elegido se veía apagado, como deshabilitado; y para bajar un archivo eran tres preguntas
+(qué actividades, qué columnas, qué formato). Se le mostró una maqueta (artefacto) antes de construir y dijo «vamos con esos cambios».
+
+- **La flecha ⬇ baja de una**: un .xlsx con las 25 columnas. **Sin filtros**, todo el Registro (también lo cancelado y lo que viene,
+  que la columna «Estado» distingue: Hecha, Planificada, Cancelada), `registro-<hoy>.xlsx`. **Con filtros**, lo que ellos dejan, de las dos
+  solapas juntas, `registro-filtrado-<hoy>.xlsx`. Vale cualquier filtro del Inicio (texto, país, persona, período, venir de Reportes).
+- **Se ve qué va a pasar**: la leyenda (al pasar el mouse y para el lector de pantalla) dice «Bajar planilla: 971 actividades» o, con
+  filtros, «Bajar lo filtrado: 23 de 971 actividades»; con filtros la flecha lleva un **puntito celeste**, para que no se baje menos de lo
+  que se cree por un filtro olvidado; y al terminar, un aviso («✓ Se bajó registro-filtrado-… · 23 actividades, con los filtros puestos»)
+  con el aviso de siempre de la app (`showCalendarNotice`, que ahora acepta un `icono` propio). Sin resultados, avisa que no hay y no baja
+  nada; tres clics seguidos bajan un solo archivo; si falla armar el archivo, un aviso con el motivo.
+- **La flecha es un dibujo SVG**, no el emoji ⬇ (que pesa distinto en cada teléfono).
+- **Se saca**: la ventana, elegir columnas (en Excel se ocultan o se filtran desde la flecha de cada título; no hay nada secreto: es
+  lo que cualquiera del equipo ya ve en la app), «solo la solapa» (en Excel, filtrando la columna «Estado»), el CSV y lo que se
+  acordaba (`ra_planilla`: lo que alguien tenga guardado queda sin efecto). `GRUPOS_DE_PLANILLA` pasó a `COLUMNAS_DE_PLANILLA`, una lista
+  plana. «Bajar todo <año>» (Administración) y la planilla del informe mensual no cambian.
+- Prueba: `planillas_test.mjs` reescrita (44): quién ve la flecha, que no hay ventana, un clic sin filtros (las 25 columnas, todas las
+  actividades, el aviso), con filtro de texto y con país y período, la leyenda y el puntito, sin resultados, clics seguidos, un fallo, lo
+  guardado por la ventana vieja, hebreo y celular, y el año del admin. Falla con el código de antes.
+
 ### 83. El «Me gusta» es la ramita de olivo, siempre la misma — HECHO (13 oct 2026)
 
 El usuario vio que el «Me gusta» cambiaba de un corazón blanco 🤍 (todavía no) a un pulgar 👍 (ya te gustó), sin ninguna razón de diseño,
@@ -1015,7 +1040,7 @@ opciones y eligió la **2** («me encantó lo del punto 2»): más información,
   hoja impresa, «Ver solo», inglés, hebreo y celular) y ajustes en `presentacion_test.mjs` (8 diapositivas) e `informe_mensual_test.mjs`
   (las dos nuevas del informe). Las nuevas fallan con el código de antes.
 
-### 81. La planilla de actividades: una tabla de Excel, con ventana para elegir qué bajar — HECHO (13 oct 2026)
+### 81. La planilla de actividades: una tabla de Excel, con ventana para elegir qué bajar — HECHO (13 oct 2026); la ventana se sacó en la tanda 84
 
 Pedido del usuario sobre la planilla del Inicio (tanda 70): «que funcione como una tabla con columnas que tiene separada la
 información; que baje todo, incluso los posts, pero si filtrás, poder decidir qué sí y qué no; y el botón solo con la flecha,
