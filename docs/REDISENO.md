@@ -969,6 +969,28 @@ eligió **unirlas así**:
 Pruebas: `agenda_test.mjs` (país, región y ciudad; fallan con el código
 de antes) y `ficha_celular_test.mjs` vuelve a esperar cinco tarjetas.
 
+### 83. El «Me gusta» es la ramita de olivo, siempre la misma — HECHO (13 oct 2026)
+
+El usuario vio que el «Me gusta» cambiaba de un corazón blanco 🤍 (todavía no) a un pulgar 👍 (ya te gustó), sin ninguna razón de diseño,
+y pidió un solo ícono y que fuera algo propio de LatAm: **la hoja de olivo**. Mandó el archivo del sticker de Sala Segura
+(`Adesivo_Sala_Segura.ai`, no se commitea: es de él): una ramita verde con una estrella de David en la hoja de arriba. Se le mostraron
+tres pruebas (contorno, silueta gris que pasa a verde, emoji 🌿) y eligió la **silueta**; después pidió «no cambiar la hoja, pero que se
+vea bien, sobre todo chica», y eligió la versión **«más grande y firme, con la estrella»**, y que la estrella se defina más.
+
+- Un solo dibujo (el trazo del `.ai`, 3 KB, pasado a SVG con `pdftocairo`) vive una vez al principio del `<body>` como `<symbol id="icoOlivo">`
+  y se reusa con `<use>` en `iconoGusta(on)`: **los posteos, las respuestas y el conteo que ven los observadores** (antes 👍).
+- Apagada (todavía no te gustó): el color del texto del botón, al 62 %. Encendida: el verde del logo (`--olivo: #009869`), igual en claro
+  y en oscuro. Mide **1,8 em (unos 22 px)**, contra los 15 del emoji, y lleva un borde del mismo color de 14 unidades (sobre 580) que
+  junta las hojas y el tallo en una mancha firme; en el celular, donde la palabra se esconde y el ícono es todo el botón, es lo que más se nota.
+- **La estrella es un recorte**, no una forma blanca: un `clip-path` con `clip-rule="evenodd"` (un rectángulo grande y la estrella agrandada
+  un 12 %), así se ve el fondo por ella en claro, en oscuro y con el ícono apagado, y el borde que engorda el dibujo no se la come (con
+  el borde puesto como trazo, el agujero perdía casi un séptimo). Agrandada un 25 % tocaba el borde de la hoja; el 12 % es lo que entra.
+  A 22 px sigue siendo una estrella chica (unos 4 px): se ve entera recién en un lugar grande.
+- Cuando se pida un lugar grande para el logo (por ejemplo la bienvenida), se reusa el mismo `<symbol>`.
+- Prueba: `me_gusta_test.mjs` (17: un solo dibujo y su recorte; encendida/apagada en posteos, respuestas y observador; los colores; el tamaño; tocar
+  y destocar; sin 👍 ni 🤍; celular claro y oscuro; y que **el centro de la estrella deja ver el fondo**, mirando los píxeles). Falla con la
+  versión de antes, sin el recorte y con el borde mal puesto.
+
 ### 82. «Presentar» con más para mostrar: «Lo más destacado» y «El equipo y de qué se habló» — HECHO (13 oct 2026)
 
 Pedido del usuario: «la sección Presentar puede tener más información, algo más grande y más llamativo». Se le mostraron tres
