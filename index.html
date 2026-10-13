@@ -22650,7 +22650,7 @@ const GRUPOS_DE_PLANILLA = () => {
       c(t("Pasos pendientes","Pending steps","Passos pendentes","שלבים ממתינים"), "numero", 14, p => cierreDePosteo(p).pendientes),
       c(t("Pasos hechos","Steps done","Passos feitos","שלבים שבוצעו"), "numero", 12, p => cierreDePosteo(p).hechos)]),
     de("extra", t("Cargado el y enlace","Logged on and link","Registrado em e link","נרשם בתאריך וקישור"), t("cuándo se cargó y un enlace al posteo","when it was logged and a link to the post","quando foi registrado e um link para a postagem","מתי נרשם וקישור לפוסט"), [
-      c(t("Cargado el","Logged on","Registrado em","נרשם בתאריך"), "fecha", 13, p => { const ms = tsToMillis(p.createdAt); return ms ? new Date(ms).toISOString().slice(0, 10) : ""; }),
+      c(t("Cargado el","Logged on","Registrado em","נרשם בתאריך"), "fecha", 13, p => { const ms = tsToMillis(p.createdAt); return ms ? isoLocalDe(ms) : ""; }),
       c(t("Enlace","Link","Link","קישור"), "enlace", 10, p => /^[\w-]+$/.test(String(p.id || "")) ? { url: `${base}?post=${encodeURIComponent(p.id)}`, texto: t("Abrir","Open","Abrir","פתיחה") } : null)]),
   ];
 };
