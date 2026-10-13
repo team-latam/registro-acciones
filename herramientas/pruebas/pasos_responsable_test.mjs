@@ -132,6 +132,13 @@ const vp = { width: 1280, height: 900 };
     eq("celular: se abre la ventanita, con el buscador arriba (sin «+ Responsable» como primera fila) y sin «Quitar» porque no hay responsable", await p.evaluate(() => { const el = document.getElementById("respPop"); return [el.firstElementChild.querySelector("#respBuscar") !== null, el.querySelectorAll(".rp-quitar").length, el.querySelector("#respBuscar").placeholder, !/\+ Responsable/.test(el.textContent)]; }), [true, 0, "Buscar a alguien…", true]);
     eq("…entra en la pantalla y se ven todos (35) con scroll adentro de la lista", await p.evaluate(() => { const l = document.getElementById("respLista"); return [document.querySelectorAll("#respPop .rp-op").length, l.scrollHeight > l.clientHeight, getComputedStyle(l).overflowY]; }), [35, true, "auto"]);
     eq("…y entra entera en la pantalla", await estaEnLaPantalla(p), true);
+    eq("celular: queda pegada al botón (justo abajo o justo arriba) y a lo ancho de la pantalla, con 12 px de margen a cada lado", await p.evaluate(() => { const b = document.querySelector('.post[data-post-id="p1"] .rs-pasos li:first-child .rs-resp').getBoundingClientRect(), r = document.getElementById("respPop").getBoundingClientRect();
+      return [Math.abs(r.top - b.bottom) < 12 || Math.abs(b.top - r.bottom) < 12, Math.round(r.left), Math.round(innerWidth - r.right)]; }), [true, 12, 12]);
+    // Con el teclado la parte visible se achica: se simula con una pantalla más baja. La ventanita sigue abierta, entera en la pantalla, y el botón a la vista.
+    await p.setViewportSize({ width: 390, height: 500 }); await p.waitForTimeout(500);
+    eq("celular, con la pantalla más baja (el teclado): sigue abierta, entera en la pantalla y con el botón a la vista", await p.evaluate(() => { const b = document.querySelector('.post[data-post-id="p1"] .rs-pasos li:first-child .rs-resp').getBoundingClientRect(), r = document.getElementById("respPop").getBoundingClientRect();
+      return [document.getElementById("respPop").matches(":popover-open"), r.top >= 0 && r.bottom <= innerHeight, b.top >= 0 && b.bottom <= innerHeight]; }), [true, true, true]);
+    await p.setViewportSize({ width: 390, height: 844 }); await p.waitForTimeout(400);
     eq("el foco no salta al campo (saldría el teclado y taparía la lista): se enfoca al tocarlo", await p.evaluate(() => document.activeElement.id !== "respBuscar"), true);
     await p.click("#respBuscar"); await p.keyboard.type("ma");
     eq("escribir «ma» deja solo los que la tienen (sin tildes ni mayúsculas): Débora, Diego, Elena, Ilana, Judith, Leandro, Marina, Tamara", await vistas(p), ["Débora Fridman", "Diego Martínez", "Elena Berman", "Ilana Zimerman", "Judith Perelman", "Leandro Edelman", "Marina Grinberg", "Tamara Waserman"]);
