@@ -505,7 +505,7 @@ const hasta = async (p, fn, arg, ms = 5000) => {
     const adentro = JSON.parse(fs.readFileSync(await zip.path(), "utf8"));
     eq("copia completa: un .zip con los datos y las fotos y adjuntos que nombran los posteos", [/\.zip$/.test(zip.suggestedFilename()), adentro],
        [true, ["archivos/posts/p_reunion/acta.pdf", "archivos/posts/p_reunion/img0_1.jpg", "datos.json"]]);
-    eq("copia completa: el que no se pudo bajar no corta el resto, y se avisa", await hasta(p, () => /1 no se pudieron bajar/.test(document.querySelector(".copia-estado").textContent)), true);
+    eq("copia completa: el que no se pudo bajar no corta el resto, y se avisa", await hasta(p, () => /1 no se pudo bajar/.test(document.querySelector(".copia-estado").textContent)), true);
   }
   // Países (4/10/2026): en la tarjeta, el número no se monta sobre el
   // nombre, y todas llevan la serie de 12 meses (aunque esté vacía), así
@@ -1214,7 +1214,7 @@ const hasta = async (p, fn, arg, ms = 5000) => {
     await p.$$eval(".fl-proy .fl-chip", es => es.map(e => [e.dataset.id, e.textContent.trim(), e.classList.contains("on")])),
     [["", "📋 Todos los hitos · 3", true], ["p_proy2", "Plan de cámaras de Montevideo · 0/1", false], ["p_viaje", "Montevideo y Buenos Aires · 1/2", false], ["ninguno", "Sin hitos", false]]);
   eq("hitos: al costado, cada proyecto con su avance, sus vencidos y el próximo hito",
-    await p.$$eval(".fl-pj-item", es => es.map(e => [e.dataset.id, e.querySelector(".fl-pj-bar i").style.width, e.querySelector("small").textContent.replace(/\s+/g, " ").trim()])).then(v => [v[0][0], v[0][1], /^0\/1 hitos · próximo: Instalar las cámaras, \d{1,2} \S+$/.test(v[0][2]), v[1]]),
+    await p.$$eval(".fl-pj-item", es => es.map(e => [e.dataset.id, e.querySelector(".fl-pj-bar i").style.width, e.querySelector("small").textContent.replace(/\s+/g, " ").trim()])).then(v => [v[0][0], v[0][1], /^0\/1 hito · próximo: Instalar las cámaras, \d{1,2} \S+$/.test(v[0][2]), v[1]]),
     ["p_proy2", "0%", true, ["p_viaje", "50%", "1/2 hitos · 1 vencido"]]);
   eq("hitos: la tarjeta dice cuántos siguen abiertos", await p.$eval(".fl-pj", e => { const h = e.closest(".fl-card").querySelector(".fl-tit"); return [h.querySelector(".fl-lado-t").textContent.trim(), h.querySelector(".fl-h3-nota").textContent.trim()]; }), ["Proyectos en Montevideo", "2 abiertos"]);
   await p.click('.fl-proy .fl-chip[data-id="p_viaje"]');

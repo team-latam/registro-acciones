@@ -7710,19 +7710,31 @@ async function syncFromCalendar(opts){
     // cambió.
     if(!failed && debeGuardarSyncToken(meta, result, releido, Date.now())) await setSyncMeta({ syncToken: result.nextSyncToken });
     if(failed && !silent){
-      showCalendarNotice({ ok:false, message:t(
-        "{n} evento(s) de Calendar no se pudieron aplicar: {msg}. Se van a reintentar la próxima vez que actualices.",
-        "{n} Calendar event(s) couldn't be applied: {msg}. They'll be retried next time you refresh.",
-        "{n} evento(s) do Calendar não puderam ser aplicados: {msg}. Serão tentados novamente na próxima atualização.",
-        "{msg} :{n} אירועים מהיומן לא הוחלו. ננסה שוב בפעם הבאה שתעדכן/י",
-        {n:failed, msg:failedMessages.join("; ").slice(0, 300)}
-      ) });
+      showCalendarNotice({ ok:false, message:(failed === 1 ? t(
+        "Un evento de Calendar no se pudo aplicar: {msg}. Se va a reintentar la próxima vez que actualices.",
+        "A Calendar event couldn't be applied: {msg}. It'll be retried next time you refresh.",
+        "Um evento do Calendar não pôde ser aplicado: {msg}. Será tentado novamente na próxima atualização.",
+        "{msg} :אירוע אחד מהיומן לא הוחל. ננסה שוב בפעם הבאה שתעדכן/י", {n:failed, msg:failedMessages.join("; ").slice(0, 300)}
+      ) : t(
+        "{n} eventos de Calendar no se pudieron aplicar: {msg}. Se van a reintentar la próxima vez que actualices.",
+        "{n} Calendar events couldn't be applied: {msg}. They'll be retried next time you refresh.",
+        "{n} eventos do Calendar não puderam ser aplicados: {msg}. Serão tentados novamente na próxima atualização.",
+        "{msg} :{n} אירועים מהיומן לא הוחלו. ננסה שוב בפעם הבאה שתעדכן/י", {n:failed, msg:failedMessages.join("; ").slice(0, 300)}
+      )) });
       return;
     }
     const reviewed = (result.events||[]).length;
     if(!silent){ showCalendarNotice({ ok:true, message: applied
-      ? t("Sincronizado con Calendar: {a} de {n} evento(s) revisado(s) se aplicaron.","Synced with Calendar: {a} of {n} reviewed event(s) were applied.","Sincronizado com o Calendar: {a} de {n} evento(s) revisado(s) foram aplicados.","{n} מתוך {a} :סונכרן עם היומן אירועים שנבדקו הוחלו.",{a:applied,n:reviewed})
-      : t("Sincronizado con Calendar: {n} evento(s) revisado(s), sin cambios para aplicar.","Synced with Calendar: {n} event(s) reviewed, nothing to apply.","Sincronizado com o Calendar: {n} evento(s) revisado(s), nada para aplicar.","{n} :סונכרן עם היומן אירועים שנבדקו, אין מה להחיל.",{n:reviewed})
+      ? (reviewed === 1 ? t(
+        "Sincronizado con Calendar: el evento revisado se aplicó.","Synced with Calendar: the reviewed event was applied.","Sincronizado com o Calendar: o evento revisado foi aplicado.","סונכרן עם היומן: האירוע שנבדק הוחל.", {a:applied,n:reviewed}
+      ) : t(
+        "Sincronizado con Calendar: {a} de {n} eventos revisados se aplicaron.","Synced with Calendar: {a} of {n} reviewed events were applied.","Sincronizado com o Calendar: {a} de {n} eventos revisados foram aplicados.","{n} מתוך {a} :סונכרן עם היומן אירועים שנבדקו הוחלו.", {a:applied,n:reviewed}
+      ))
+      : (reviewed === 1 ? t(
+        "Sincronizado con Calendar: 1 evento revisado, sin cambios para aplicar.","Synced with Calendar: 1 event reviewed, nothing to apply.","Sincronizado com o Calendar: 1 evento revisado, nada para aplicar.","סונכרן עם היומן: נבדק אירוע אחד, אין מה להחיל.", {n:reviewed}
+      ) : t(
+        "Sincronizado con Calendar: {n} eventos revisados, sin cambios para aplicar.","Synced with Calendar: {n} events reviewed, nothing to apply.","Sincronizado com o Calendar: {n} eventos revisados, nada para aplicar.","{n} :סונכרן עם היומן אירועים שנבדקו, אין מה להחיל.", {n:reviewed}
+      ))
     }); }
     // Llegar hasta acá significa que se habló con Calendar sin errores
     // (aunque algún evento suelto no se haya podido aplicar): se reinicia
@@ -9864,6 +9876,10 @@ function canCancelPost(post){
    una ayuda que se edita, no una plantilla administrada.
    ====================================================================== */
 function postEditors(post){ return Array.isArray(post.editors) ? post.editors : []; }
+// «2 de 5 hitos», y «0 de 1 hito» cuando el proyecto tiene uno solo.
+function hitosCuenta(hechos, n){
+  return (n === 1 ? t("{d} de 1 hito","{d} of 1 milestone","{d} de 1 marco","{d} מתוך אבן דרך אחת", {d:hechos, n}) : t("{d} de {n} hitos","{d} of {n} milestones","{d} de {n} marcos","{d} מתוך {n} אבני דרך", {d:hechos, n}));
+}
 // Orden de la LISTA: por fecha (los sin fecha al final), salvo que se
 // hayan movido a mano (entonces todos tienen `order` y manda eso). Mover
 // un hito es una comodidad para leer la lista; la línea de tiempo NO lo
@@ -10220,7 +10236,7 @@ async function createProject(post){
 // editores y notas). Pide confirmación porque no hay vuelta atrás.
 async function removeProject(post){
   const n = postMilestones(post).length;
-  if(!(await appConfirm(t("¿Quitar el proyecto de \"{t}\"? El evento queda como estaba; se pierden sus {n} hito(s), editores y notas.","Remove the project from \"{t}\"? The event stays as it was; its {n} milestone(s), editors and notes are lost.","Remover o projeto de \"{t}\"? O evento fica como estava; perdem-se seus {n} marco(s), editores e notas.","להסיר את הפרויקט מ-\"{t}\"? האירוע נשאר כפי שהיה; {n} אבני הדרך, העורכים וההערות יאבדו.",{t:calendarioLabel(post), n}), { danger:true, okLabel: t("Quitar proyecto","Remove project","Remover projeto","הסרת הפרויקט") }))) return;
+  if(!(await appConfirm(n === 1 ? t("¿Quitar el proyecto de \"{t}\"? El evento queda como estaba; se pierden su hito, editores y notas.","Remove the project from \"{t}\"? The event stays as it was; its milestone, editors and notes are lost.","Remover o projeto de \"{t}\"? O evento fica como estava; perdem-se seu marco, editores e notas.","להסיר את הפרויקט מ-\"{t}\"? האירוע נשאר כפי שהיה; אבן הדרך, העורכים וההערות יאבדו.", {t:calendarioLabel(post), n}) : t("¿Quitar el proyecto de \"{t}\"? El evento queda como estaba; se pierden sus {n} hitos, editores y notas.","Remove the project from \"{t}\"? The event stays as it was; its {n} milestones, editors and notes are lost.","Remover o projeto de \"{t}\"? O evento fica como estava; perdem-se seus {n} marcos, editores e notas.","להסיר את הפרויקט מ-\"{t}\"? האירוע נשאר כפי שהיה; {n} אבני הדרך, העורכים וההערות יאבדו.", {t:calendarioLabel(post), n}), { danger:true, okLabel: t("Quitar proyecto","Remove project","Remover projeto","הסרת הפרויקט") }))) return;
   try{
     await updatePostDoc(post.id, { isProject:false, milestones:[], editors:[], projectNotes:"" });
     projectOpen = null; openProjects.delete(post.id); render();
@@ -10300,7 +10316,7 @@ function renderProyectosLinea(list){
     return `<div class="pl-row">
         <button type="button" class="pl-name" data-action="project-open" data-post-id="${esc(p.id)}">
           <b dir="auto">${esc(calendarioLabel(p))}</b>
-          <small>${ms.length ? t("{d} de {n} hitos","{d} of {n} milestones","{d} de {n} marcos","{d} מתוך {n} אבני דרך",{d:done,n:ms.length}) : t("Sin hitos todavía","No milestones yet","Sem marcos ainda","עדיין אין אבני דרך")}${projectDone(p) ? " · ✅" : ""}</small>
+          <small>${ms.length ? hitosCuenta(done, ms.length) : t("Sin hitos todavía","No milestones yet","Sem marcos ainda","עדיין אין אבני דרך")}${projectDone(p) ? " · ✅" : ""}</small>
         </button>
         <div class="pl-lane"${laneStyle}>
           <span class="pl-bar${s < from ? " pl-bar-antes" : ""}${e > to ? " pl-bar-despues" : ""}${p.cancelled ? " cancelled" : ""}" style="left:${left.toFixed(2)}%;width:${width.toFixed(2)}%;background:${color};color:${readableOn(color)}" title="${esc(fmtDate(s))} – ${esc(fmtDate(e))}">${esc(fmtISO(s,{day:"numeric",month:"short"}))} – ${esc(fmtISO(e,{day:"numeric",month:"short"}))}</span>
@@ -10354,7 +10370,7 @@ function renderProyectosTarjetas(list){
       <div class="pc-top"><span class="type-badge">${esc(type.icon)} ${esc(type.label)}</span><span class="pc-dates">${esc(fmtDate(start))}${end!==start?` – ${esc(fmtDate(end))}`:""}</span></div>
       <div class="pc-title">${esc(calendarioLabel(p))}${projectDone(p) ? ` <span class="pj-done-badge">✅ ${t("Completado","Completed","Concluído","הושלם")}</span>` : ""}</div>
       <div class="pc-bar"><span style="width:${pct}%"></span></div>
-      <div class="pc-meta">${ms.length ? t("{d} de {n} hitos","{d} of {n} milestones","{d} de {n} marcos","{d} מתוך {n} אבני דרך",{d:done,n:ms.length}) : t("Sin hitos todavía","No milestones yet","Sem marcos ainda","עדיין אין אבני דרך")}${overdue ? ` · <span class="pc-overdue">${overdue === 1 ? t("1 vencido","1 overdue","1 vencido","1 באיחור") : t("{n} vencidos","{n} overdue","{n} vencidos","{n} באיחור",{n:overdue})}</span>` : ""}</div>
+      <div class="pc-meta">${ms.length ? hitosCuenta(done, ms.length) : t("Sin hitos todavía","No milestones yet","Sem marcos ainda","עדיין אין אבני דרך")}${overdue ? ` · <span class="pc-overdue">${overdue === 1 ? t("1 vencido","1 overdue","1 vencido","1 באיחור") : t("{n} vencidos","{n} overdue","{n} vencidos","{n} באיחור",{n:overdue})}</span>` : ""}</div>
       ${next ? `<div class="pc-next">${t("Próximo","Next","Próximo","הבא")}: <b>${esc(next.label)}</b>${next.date ? " · " + esc(fmtDate(next.date)) : ""}${ownerChips(msOwners(next))}</div>` : ""}
     </button>`;
   }).join("")}</div>`;
@@ -10573,7 +10589,7 @@ function renderProjectPanel(post, opts={}){
   const next = nextMilestone(post);
   const today = todayISO();
   const head = list.length
-    ? `${t("{d} de {n} hitos","{d} of {n} milestones","{d} de {n} marcos","{d} מתוך {n} אבני דרך",{d:done, n:list.length})}${next ? ` · ${t("próximo","next","próximo","הבא")}: <b>${esc(next.label)}</b>${next.date ? ", " + esc(fmtDate(next.date)) : ""}${ownerChips(msOwners(next))}` : ` · ${t("todo cumplido","all done","tudo cumprido","הכול הושלם")} ✅`}`
+    ? `${hitosCuenta(done, list.length)}${next ? ` · ${t("próximo","next","próximo","הבא")}: <b>${esc(next.label)}</b>${next.date ? ", " + esc(fmtDate(next.date)) : ""}${ownerChips(msOwners(next))}` : ` · ${t("todo cumplido","all done","tudo cumprido","הכול הושלם")} ✅`}`
     : t("Este evento todavía no tiene hitos.","This event has no milestones yet.","Este evento ainda não tem marcos.","לאירוע הזה עדיין אין אבני דרך.");
   // Línea de tiempo horizontal (escritorio), como la de referencia del
   // equipo: los puntos van a distancia PAREJA en orden de fecha, no en
@@ -10873,12 +10889,16 @@ async function updatePostAndSync(postId, original, newData){
 async function deletePostHard(post){
   const replies = state.repliesByPost[post.id] || [];
   const nombre = post.title || String(post.content||"").slice(0, 60);
-  if(!(await appConfirm(t(
-    `¿Borrar "{title}" del todo? Se van el posteo y sus {n} respuesta(s). No queda ninguna marca y no se puede deshacer.`,
-    `Delete "{title}" for good? The post and its {n} repl(y/ies) go away. No trace is left and it can't be undone.`,
-    `Apagar "{title}" de vez? Vão-se a postagem e suas {n} resposta(s). Não fica nenhuma marca e não dá para desfazer.`,
-    `למחוק את "{title}" לצמיתות? הפוסט ו-{n} התגובות שלו יימחקו. לא יישאר סימן ואי אפשר לבטל.`,
-    { title: nombre, n: replies.length }
+  if(!(await appConfirm(replies.length === 1 ? t(
+    `¿Borrar "{title}" del todo? Se van el posteo y su respuesta. No queda ninguna marca y no se puede deshacer.`,
+    `Delete "{title}" for good? The post and its reply go away. No trace is left and it can't be undone.`,
+    `Apagar "{title}" de vez? Vão-se a postagem e sua resposta. Não fica nenhuma marca e não dá para desfazer.`,
+    `למחוק את "{title}" לצמיתות? הפוסט והתגובה שלו יימחקו. לא יישאר סימן ואי אפשר לבטל.`, { title: nombre, n: replies.length }
+  ) : t(
+    `¿Borrar "{title}" del todo? Se van el posteo y sus {n} respuestas. No queda ninguna marca y no se puede deshacer.`,
+    `Delete "{title}" for good? The post and its {n} replies go away. No trace is left and it can't be undone.`,
+    `Apagar "{title}" de vez? Vão-se a postagem e suas {n} respostas. Não fica nenhuma marca e não dá para desfazer.`,
+    `למחוק את "{title}" לצמיתות? הפוסט ו-{n} התגובות שלו יימחקו. לא יישאר סימן ואי אפשר לבטל.`, { title: nombre, n: replies.length }
   ), { danger:true, okLabel: t("Borrar","Delete","Apagar","מחיקה") }))) return;
   try{
     await Promise.all(replies.map(r=> store.replies.remove(post.id, r.id)));
@@ -11583,7 +11603,7 @@ function renderUserBadge(){
         </div>` : "";
   userBadgeEl.innerHTML = `
     <button class="avatar-btn${userMenuOpen ? " open" : ""}" data-action="toggle-user-menu" title="${esc(u.displayName)}" aria-label="${esc(t("Cuenta","Account","Conta","חשבון"))}">${avatar}</button>
-    ${pend ? `<span class="avatar-pending" title="${esc(t("{n} pedidos de acceso esperando","{n} access requests waiting","{n} pedidos de acesso esperando","{n} בקשות גישה ממתינות",{n:pend}))}">${pend}</span>` : ""}
+    ${pend ? `<span class="avatar-pending" title="${esc(pend === 1 ? t("1 pedido de acceso esperando","1 access request waiting","1 pedido de acesso esperando","בקשת גישה אחת ממתינה", {n:pend}) : t("{n} pedidos de acceso esperando","{n} access requests waiting","{n} pedidos de acesso esperando","{n} בקשות גישה ממתינות", {n:pend}))}">${pend}</span>` : ""}
     ${userMenuOpen ? `
       <div class="user-menu">
         ${menuAvatar}
@@ -12724,10 +12744,10 @@ function renderAdminResumen(){
       ${ahora}
       <h3 class="admin-h3">${t("El equipo este mes","The team this month","A equipe este mês","הצוות החודש")}</h3>
       <section class="admin-cifras">
-        ${cifra(state.roster.length, t("integrantes","members","integrantes","חברי צוות"))}
-        ${cifra(entraron, t("entraron este mes","signed in this month","entraram este mês","נכנסו החודש"))}
-        ${cifra(cargadas, t("actividades cargadas este mes","activities logged this month","atividades carregadas este mês","פעילויות שנרשמו החודש"))}
-        ${cifra(ausentes, t("no entran hace más de 30 días","haven't signed in for 30+ days","não entram há mais de 30 dias","לא נכנסו יותר מ-30 יום"), true)}
+        ${cifra(state.roster.length, state.roster.length === 1 ? t("integrante","member","integrante","חבר/ת צוות") : t("integrantes","members","integrantes","חברי צוות"))}
+        ${cifra(entraron, entraron === 1 ? t("entró este mes","signed in this month","entrou este mês","נכנס/ה החודש") : t("entraron este mes","signed in this month","entraram este mês","נכנסו החודש"))}
+        ${cifra(cargadas, cargadas === 1 ? t("actividad cargada este mes","activity logged this month","atividade carregada este mês","פעילות אחת נרשמה החודש") : t("actividades cargadas este mes","activities logged this month","atividades carregadas este mês","פעילויות שנרשמו החודש"))}
+        ${cifra(ausentes, ausentes === 1 ? t("no entra hace más de 30 días","hasn't signed in for 30+ days","não entra há mais de 30 dias","לא נכנס/ה יותר מ-30 יום") : t("no entran hace más de 30 días","haven't signed in for 30+ days","não entram há mais de 30 dias","לא נכנסו יותר מ-30 יום"), true)}
       </section>
       <section class="admin-tarjetas">
         <div class="rep-bloque"><h3>Google Calendar</h3>
@@ -13111,13 +13131,13 @@ function tiposFootnote(d){
   const rutinas = countPostsByType("rutina");
   const huerfanos = state.posts.filter(p=> p.activityType !== "rutina" && !keys.has(p.activityType));
   const parts = [];
-  parts.push(t("{n} posteos en total.","{n} posts in total.","{n} postagens no total.","{n} פוסטים בסך הכול.",{n:state.posts.length}));
+  parts.push(state.posts.length === 1 ? t("1 posteo en total.","1 post in total.","1 postagem no total.","פוסט אחד בסך הכול.", {n:state.posts.length}) : t("{n} posteos en total.","{n} posts in total.","{n} postagens no total.","{n} פוסטים בסך הכול.", {n:state.posts.length}));
   if(rutinas) parts.push(rutinas === 1
     ? t("1 es Rutina (no se cuenta acá).","1 is a Routine (not counted here).","1 é Rotina (não conta aqui).","1 הוא שגרה (לא נספר כאן).")
     : t("{n} son Rutinas (no se cuentan acá).","{n} are Routines (not counted here).","{n} são Rotinas (não contam aqui).","{n} הם שגרות (לא נספרים כאן).",{n:rutinas}));
   if(huerfanos.length){
     const raw = [...new Set(huerfanos.map(p=>String(p.activityType||"—")))].join(", ");
-    parts.push(t("{n} tienen un tipo que ya no existe ({k}): editalos para asignarles uno.","{n} have a type that no longer exists ({k}): edit them to assign one.","{n} têm um tipo que já não existe ({k}): edite-os para atribuir um.","ל-{n} יש סוג שכבר לא קיים ({k}): ערכו אותם כדי להקצות סוג.",{n:huerfanos.length, k:esc(raw)}));
+    parts.push(huerfanos.length === 1 ? t("1 tiene un tipo que ya no existe ({k}): editalo para asignarle uno.","1 has a type that no longer exists ({k}): edit it to assign one.","1 tem um tipo que já não existe ({k}): edite-o para atribuir um.","לפוסט אחד יש סוג שכבר לא קיים ({k}): ערכו אותו כדי להקצות סוג.", {n:huerfanos.length, k:esc(raw)}) : t("{n} tienen un tipo que ya no existe ({k}): editalos para asignarles uno.","{n} have a type that no longer exists ({k}): edit them to assign one.","{n} têm um tipo que já não existe ({k}): edite-os para atribuir um.","ל-{n} יש סוג שכבר לא קיים ({k}): ערכו אותם כדי להקצות סוג.", {n:huerfanos.length, k:esc(raw)}));
   }
   // A la derecha, debajo de la columna de los conteos (a pedido).
   return `<div class="hint" style="margin-top:10px;text-align:end;">${parts.join(" ")}</div>`;
@@ -13378,7 +13398,7 @@ function renderCalendarFaltantes(){
         <div class="hint cal-faltantes-ok" role="status">${f.pasados.length === 1
           ? t("Se pasó 1 evento al Calendar, sin avisos.","1 event was added to the Calendar, without notifications.","1 evento foi passado ao Calendar, sem avisos.","אירוע אחד נוסף ליומן, ללא התראות.")
           : t("Se pasaron {n} eventos al Calendar, sin avisos.","{n} events were added to the Calendar, without notifications.","{n} eventos foram passados ao Calendar, sem avisos.","{n} אירועים נוספו ליומן, ללא התראות.",{n:f.pasados.length})}${f.fallados.length
-          ? " " + t("No se pudieron pasar {n} ({m}).","{n} couldn't be added ({m}).","Não foi possível passar {n} ({m}).","{n} לא נוספו ({m}).",{n:f.fallados.length, m:esc(f.fallados[0].motivo)}) : ""}</div>` : "";
+          ? " " + (f.fallados.length === 1 ? t("No se pudo pasar 1 ({m}).","1 couldn't be added ({m}).","Não foi possível passar 1 ({m}).","אחד לא נוסף ({m}).", {n:f.fallados.length, m:esc(f.fallados[0].motivo)}) : t("No se pudieron pasar {n} ({m}).","{n} couldn't be added ({m}).","Não foi possível passar {n} ({m}).","{n} לא נוספו ({m}).", {n:f.fallados.length, m:esc(f.fallados[0].motivo)})) : ""}</div>` : "";
   return `
       <div class="field cal-faltantes" style="margin-top:22px;">
         <label>${t("En el Registro pero no en el Calendar","In the Registro but not in the Calendar","No Registro mas não no Calendar","ביומן הפעילויות אבל לא ביומן")}</label>
@@ -13705,8 +13725,8 @@ async function bajarCopiaCompleta(){
     copiaAvisar({ texto: t("Armando el archivo…","Packing the file…","Montando o arquivo…","...אורז את הקובץ") });
     const blob = await zip.generateAsync({ type: "blob" });
     descargarBlob(nombreDeLaCopia("zip"), blob);
-    copiaAvisar({ texto: "", listo: "✅ " + t("Listo: {a}, con {n} fotos y archivos.","Done: {a}, with {n} photos and files.","Pronto: {a}, com {n} fotos e arquivos.","מוכן: {a}, עם {n} תמונות וקבצים.",{a:nombreDeLaCopia("zip"), n:rutas.length - sinBajar})
-      + (sinBajar ? " " + t("{n} no se pudieron bajar.","{n} couldn't be downloaded.","{n} não puderam ser baixados.","{n} לא ניתן היה להוריד.",{n:sinBajar}) : "") + avisoFallas(fallas) });
+    copiaAvisar({ texto: "", listo: "✅ " + ((rutas.length - sinBajar) === 1 ? t("Listo: {a}, con 1 foto o archivo.","Done: {a}, with 1 photo or file.","Pronto: {a}, com 1 foto ou arquivo.","מוכן: {a}, עם תמונה או קובץ אחד.", {a:nombreDeLaCopia("zip"), n:rutas.length - sinBajar}) : t("Listo: {a}, con {n} fotos y archivos.","Done: {a}, with {n} photos and files.","Pronto: {a}, com {n} fotos e arquivos.","מוכן: {a}, עם {n} תמונות וקבצים.", {a:nombreDeLaCopia("zip"), n:rutas.length - sinBajar}))
+      + (sinBajar ? " " + (sinBajar === 1 ? t("1 no se pudo bajar.","1 couldn't be downloaded.","1 não pôde ser baixado.","1 לא ניתן היה להוריד.", {n:sinBajar}) : t("{n} no se pudieron bajar.","{n} couldn't be downloaded.","{n} não puderam ser baixados.","{n} לא ניתן היה להוריד.", {n:sinBajar})) : "") + avisoFallas(fallas) });
   }catch(err){
     console.error(err);
     copiaAvisar({ texto: "", error: t("No se pudo armar la copia: {m}","Couldn't build the copy: {m}","Não foi possível montar a cópia: {m}","לא ניתן היה להכין את העותק: {m}",{m:err.message || String(err)}) });
@@ -14103,7 +14123,7 @@ function renderPanelDeFiltros(){
   fp.entra = false; fp.mov = null;
   const nGuardados = filtrosGuardados().length;
   const lista = cats.map(c => {
-    const v = c.k === "guardados" ? (nGuardados ? t("{n} guardados","{n} saved","{n} salvos","{n} שמורים",{ n:nGuardados }) : null) : valorDelFiltro(c.k, f, b.nivel);
+    const v = c.k === "guardados" ? (nGuardados ? (nGuardados === 1 ? t("1 guardado","1 saved","1 salvo","1 שמור", { n:nGuardados }) : t("{n} guardados","{n} saved","{n} salvos","{n} שמורים", { n:nGuardados })) : null) : valorDelFiltro(c.k, f, b.nivel);
     const sel = c.k === cat;
     return `<button type="button" class="fp-item${sel ? " sel" : ""}" data-action="fp-cat" data-cat="${c.k}" aria-pressed="${sel}">
         <span class="fp-item-nombre">${c.i} ${esc(c.n)}${cambiados.has(c.k) ? `<span class="fp-punto" title="${esc(t("Cambiado","Changed","Alterado","שונה"))}"></span>` : ""}</span>
@@ -15138,12 +15158,17 @@ async function adjuntarDocumento(postId, docId, file){
   // (antes el nuevo pisaba al anterior).
   const resto = post.files || [];
   if(resto.length >= maxArchivos()){
-    await appAlert(t(
+    await appAlert(maxArchivos() === 1 ? t(
+      "Este posteo ya tiene 1 archivo, que es el máximo. Quitalo para poder sumar este.",
+      "This post already has 1 file, which is the maximum. Remove it to add this one.",
+      "Esta postagem já tem 1 arquivo, que é o máximo. Remova-o para somar este.",
+      "לפוסט הזה כבר יש קובץ אחד, שזה המקסימום. הסר/י אותו כדי להוסיף את זה.", { n: maxArchivos() }
+    ) : t(
       "Este posteo ya tiene {n} archivos, que es el máximo. Quitá uno para poder sumar este.",
       "This post already has {n} files, which is the maximum. Remove one to add this.",
       "Esta postagem já tem {n} arquivos, que é o máximo. Remova um para somar este.",
-      "לפוסט הזה כבר יש {n} קבצים, שזה המקסימום. הסר/י אחד כדי להוסיף את זה.",
-      { n: maxArchivos() }));
+      "לפוסט הזה כבר יש {n} קבצים, שזה המקסימום. הסר/י אחד כדי להוסיף את זה.", { n: maxArchivos() }
+    ));
     return;
   }
   const subidoEl = new Date().toISOString();
@@ -15477,7 +15502,7 @@ function renderParteDelResumen(post, parte, conLugar){
   const fuentePos = (post.files || []).findIndex(f => f.name === (parte.fuente || {}).name && seAbreEnVisor(f) && safeFileDataUrl(f.dataUrl));
   const de = parte.tipo === "cierre" ? t("Sacado del Formulario de Cierre","Taken from the Closure Form","Tirado do Formulário de Fechamento","נלקח מטופס הסגירה") : t("Sacado del Formulario de Viaje","Taken from the Travel Form","Tirado do Formulário de Viagem","נלקח מטופס הנסיעה");
   const titulo = parte.tipo === "cierre"
-    ? t("{a} de {b} logrados","{a} of {b} achieved","{a} de {b} alcançados","{a} מתוך {b} הושגו",{ a: c.si, b: c.total }) + (c.parcial ? " · " + t("{n} en parte","{n} partly","{n} em parte","{n} חלקית",{ n: c.parcial }) : "")
+    ? (c.total === 1 ? t("{a} de 1 logrado","{a} of 1 achieved","{a} de 1 alcançado","{a} מתוך 1 הושג", { a: c.si, b: c.total }) : t("{a} de {b} logrados","{a} of {b} achieved","{a} de {b} alcançados","{a} מתוך {b} הושגו", { a: c.si, b: c.total })) + (c.parcial ? " · " + t("{n} en parte","{n} partly","{n} em parte","{n} חלקית",{ n: c.parcial }) : "")
     : t("planeados (todavía sin Cierre)","planned (no Closure yet)","planejados (ainda sem Fechamento)","מתוכננות (עדיין בלי סגירה)");
   const objetivos = parte.objetivos || [];
   return `<div class="rs-parte">
@@ -15487,7 +15512,7 @@ function renderParteDelResumen(post, parte, conLugar){
       <button type="button" class="rs-mas" data-action="resumen-entero" data-post-id="${esc(post.id)}">${entero ? t("Mostrar menos","Show less","Mostrar menos","הצג פחות") : t("Leer completo","Read it all","Ler completo","קריאה מלאה")}</button></div>` : ""}
     ${objetivos.length ? `<div><div class="rs-h">${t("Objetivos","Goals","Objetivos","מטרות")} <b>${esc(titulo)}</b></div>
       <ul class="rs-obj">${objetivos.map(o => `<li>${etiquetaLogrado(o.logrado)}<span class="t" dir="auto">${esc(o.t)}</span></li>`).join("")}</ul></div>` : ""}
-    ${(parte.pasos || []).length ? `<div><div class="rs-h">${t("Lo que sigue","What's next","O que segue","מה הלאה")} <b>${esc(pend.length === 1 ? t("1 pendiente","1 pending","1 pendente","1 ממתין") : t("{n} pendientes","{n} pending","{n} pendentes","{n} ממתינים",{ n: pend.length }))}${hechos.length ? " · " + esc(t("{n} hechos","{n} done","{n} feitos","{n} בוצעו",{ n: hechos.length })) : ""}</b></div>
+    ${(parte.pasos || []).length ? `<div><div class="rs-h">${t("Lo que sigue","What's next","O que segue","מה הלאה")} <b>${esc(pend.length === 1 ? t("1 pendiente","1 pending","1 pendente","1 ממתין") : t("{n} pendientes","{n} pending","{n} pendentes","{n} ממתינים",{ n: pend.length }))}${hechos.length ? " · " + esc(hechos.length === 1 ? t("1 hecho","1 done","1 feito","1 בוצע", { n: hechos.length }) : t("{n} hechos","{n} done","{n} feitos","{n} בוצעו", { n: hechos.length })) : ""}</b></div>
       ${renderPasos(post, lista.map(p => ({ p, post })), puede, false)}
       ${pend.length > 3 || hechos.length ? `<button type="button" class="rs-mas" data-action="resumen-todos-pasos" data-post-id="${esc(post.id)}">${todos ? t("Mostrar menos","Show less","Mostrar menos","הצג פחות") : pend.length > 3 ? t("+{n} más","+{n} more","+{n} mais","+{n} נוספים",{ n: pend.length - 3 }) : t("Ver los hechos","See the done ones","Ver os feitos","הצגת אלה שבוצעו")}</button>` : ""}</div>` : ""}
     <div class="rs-de">${fuentePos >= 0 ? `<button type="button" class="rs-link" data-action="resumen-abrir" data-post-id="${esc(post.id)}" data-pos="${fuentePos}">${esc(de)}</button>` : esc(de)}${parte.fuente && parte.fuente.subidoEl ? " · " + esc(fmtDate(new Date(parte.fuente.subidoEl))) : ""}</div>
@@ -16446,7 +16471,7 @@ function fichaDelMes(lista, mes, f, esTrimestre){
   }
   const grande = n || !plan
     ? `<div class="rep-mes-grande"><span class="rep-mes-n">${n}</span><span class="rep-mes-t">${esc(n === 1 ? t("actividad hecha","activity done","atividade feita","פעילות שבוצעה") : t("actividades hechas","activities done","atividades feitas","פעילויות שבוצעו"))}</span>${delta}</div>`
-    : `<div class="rep-mes-grande"><span class="rep-mes-n">${plan}</span><span class="rep-mes-t">${esc(t("planificadas","planned","planejadas","מתוכננות"))}</span></div>`;
+    : `<div class="rep-mes-grande"><span class="rep-mes-n">${plan}</span><span class="rep-mes-t">${esc(plan === 1 ? t("planificada","planned","planejada","מתוכננת") : t("planificadas","planned","planejadas","מתוכננות"))}</span></div>`;
   const aviso = plan
     ? `<div class="rep-mes-aviso">${esc(n
         ? t("Hechas: {n} · por venir: {p} (con borde punteado en el gráfico).","Done: {n} · still to come: {p} (dotted outline in the chart).","Feitas: {n} · por vir: {p} (com borda pontilhada no gráfico).","בוצעו: {n} · בדרך: {p} (במסגרת מנוקדת בגרף).", { n, p:plan })
@@ -16459,7 +16484,7 @@ function fichaDelMes(lista, mes, f, esTrimestre){
   const mas = paisesTodos.length - 4;
   const listas = n ? `<div class="rep-mes-dos">
       <div><h5>${esc(t("Qué fueron","What they were","O que foram","מה היו"))}</h5>${filas(tipos)}</div>
-      <div><h5>${esc(t("Dónde","Where","Onde","איפה"))}</h5>${paisesTodos.length ? filas(paisesTodos.slice(0, 4)) + (mas > 0 ? `<div class="rep-bloque-nota">${esc(t("y {n} países más","and {n} more countries","e mais {n} países","ועוד {n} מדינות", { n:mas }))}</div>` : "")
+      <div><h5>${esc(t("Dónde","Where","Onde","איפה"))}</h5>${paisesTodos.length ? filas(paisesTodos.slice(0, 4)) + (mas > 0 ? `<div class="rep-bloque-nota">${esc(mas === 1 ? t("y 1 país más","and 1 more country","e mais 1 país","ועוד מדינה אחת", { n:mas }) : t("y {n} países más","and {n} more countries","e mais {n} países","ועוד {n} מדינות", { n:mas }))}</div>` : "")
         : `<div class="rep-vacio">${esc(t("Nada con país cargado.","Nothing with a country set.","Nada com país carregado.","אין דבר עם מדינה."))}</div>`}</div></div>` : "";
   const vacio = !n && !plan ? `<div class="rep-vacio">${esc(t("No hay nada cargado en este mes.","Nothing logged in this month.","Não há nada carregado neste mês.","לא נרשם דבר בחודש הזה."))}</div>` : "";
   const ir = !n ? "" : f && f.persona
@@ -16529,7 +16554,7 @@ function renderReportePeriodo(f){
       + (prev != null && (hechas || !plan) ? ` ${dMes === 0 ? t("Igual que antes ({p}).","Same as before ({p}).","Igual a antes ({p}).","זהה לקודם ({p}).",{p:prev}) : dMes > 0 ? t("{d} más que antes ({p}).","{d} more than before ({p}).","{d} a mais que antes ({p}).","{d} יותר מקודם ({p}).",{d:dMes,p:prev}) : t("{d} menos que antes ({p}).","{d} fewer than before ({p}).","{d} a menos que antes ({p}).","{d} פחות מקודם ({p}).",{d:-dMes,p:prev})}` : "");
     meses.push({ clave: m, sel: m === state.reportes.mes, hoy: m === hoy.slice(0, 7), aria,
       etiqueta: esc(fmtISO(m + "-01", { month:"short" }).replace(".", "").slice(0, 3)), n: hechas, prev, plan,
-      titulo: `${mesCortoDe(m)}: ${hechas}${plan ? ` + ${t("{n} planificadas","{n} planned","{n} planejadas","{n} מתוכננות",{n:plan})}` : ""}${prev != null ? ` (${t("antes","before","antes","לפני")}: ${prev})` : ""}` });
+      titulo: `${mesCortoDe(m)}: ${hechas}${plan ? ` + ${plan === 1 ? t("1 planificada","1 planned","1 planejada","1 מתוכננת", {n:plan}) : t("{n} planificadas","{n} planned","{n} planejadas","{n} מתוכננות", {n:plan})}` : ""}${prev != null ? ` (${t("antes","before","antes","לפני")}: ${prev})` : ""}` });
   }
 
   const zonas = Object.values(ZONES).map(z=>({
@@ -16557,11 +16582,17 @@ function renderReportePeriodo(f){
     .sort((a,b)=>b.n-a.n);
 
   const notas = [];
-  if(r.sinLugar) notas.push(t(
+  if(r.sinLugar) notas.push(r.sinLugar === 1 ? t(
+    "1 sin lugar cargado — no aparece en zona ni en país.",
+    "1 with no place set — it doesn't show up under zone or country.",
+    "1 sem lugar carregado — não aparece em zona nem em país.",
+    "1 ללא מקום — לא מופיעה באזור או במדינה.", { n: r.sinLugar }
+  ) : t(
     "{n} sin lugar cargado — no aparecen en zona ni en país.",
     "{n} with no place set — they don't show up under zone or country.",
     "{n} sem lugar carregado — não aparecem em zona nem em país.",
-    "{n} ללא מקום — אינן מופיעות באזור או במדינה.", { n: r.sinLugar }));
+    "{n} ללא מקום — אינן מופיעות באזור או במדינה.", { n: r.sinLugar }
+  ));
   notas.push(t(
     "Una actividad con dos países suma en los dos, así que esa columna puede dar más que el total.",
     "An activity in two countries counts in both, so that column can add up to more than the total.",
@@ -16583,10 +16614,12 @@ function renderReportePeriodo(f){
   };
   const kpi = (n, txt, extra) => `<div class="rep-kpi"><div class="rep-kpi-num">${n}</div><div class="rep-kpi-txt">${txt}</div>${extra}</div>`;
   const kpis = tiraDeNumeros([
-    `<div class="rep-kpi"><div class="rep-kpi-num rep-total-num">${r.total}</div><div class="rep-kpi-txt">${r.planificadas ? t("actividades hechas","activities done","atividades feitas","פעילויות שבוצעו") : t("actividades","activities","atividades","פעילויות")}</div>${comparacion}${r.planificadas ? `<div class="rep-plan" title="${esc(t("Todavía no pasaron: no entran en ningún otro número del reporte.","They haven't happened yet: they're not in any other number of the report.","Ainda não aconteceram: não entram em nenhum outro número do relatório.","הן עוד לא קרו: הן לא נכללות באף מספר אחר בדוח."))}">+ ${esc(t("{n} planificadas","{n} planned","{n} planejadas","{n} מתוכננות",{n:r.planificadas}))}</div>` : ""}</div>`,
-    kpi(cuenta(r.porPais), t("países con actividad","countries with activity","países com atividade","מדינות עם פעילות"), delta(cuenta(r.porPais), cuenta(rAnterior.porPais))),
-    kpi(r.ciudades.size, t("ciudades distintas","different cities","cidades diferentes","ערים שונות"), delta(r.ciudades.size, rAnterior.ciudades.size)),
-    kpi(cuenta(r.porPersona), t("personas que cargaron","people who logged","pessoas que carregaram","אנשים שרשמו"), delta(cuenta(r.porPersona), cuenta(rAnterior.porPersona))),
+    `<div class="rep-kpi"><div class="rep-kpi-num rep-total-num">${r.total}</div><div class="rep-kpi-txt">${r.planificadas
+      ? (r.total === 1 ? t("actividad hecha","activity done","atividade feita","פעילות שבוצעה") : t("actividades hechas","activities done","atividades feitas","פעילויות שבוצעו"))
+      : (r.total === 1 ? t("actividad","activity","atividade","פעילות") : t("actividades","activities","atividades","פעילויות"))}</div>${comparacion}${r.planificadas ? `<div class="rep-plan" title="${esc(t("Todavía no pasaron: no entran en ningún otro número del reporte.","They haven't happened yet: they're not in any other number of the report.","Ainda não aconteceram: não entram em nenhum outro número do relatório.","הן עוד לא קרו: הן לא נכללות באף מספר אחר בדוח."))}">+ ${esc(r.planificadas === 1 ? t("1 planificada","1 planned","1 planejada","1 מתוכננת", {n:r.planificadas}) : t("{n} planificadas","{n} planned","{n} planejadas","{n} מתוכננות", {n:r.planificadas}))}</div>` : ""}</div>`,
+    kpi(cuenta(r.porPais), etqPaises(cuenta(r.porPais)), delta(cuenta(r.porPais), cuenta(rAnterior.porPais))),
+    kpi(r.ciudades.size, etqCiudades(r.ciudades.size), delta(r.ciudades.size, rAnterior.ciudades.size)),
+    kpi(cuenta(r.porPersona), cuenta(r.porPersona) === 1 ? t("persona que cargó","person who logged","pessoa que carregou","אדם שרשם") : t("personas que cargaron","people who logged","pessoas que carregaram","אנשים שרשמו"), delta(cuenta(r.porPersona), cuenta(rAnterior.porPersona))),
   ]);
 
   reporteEnPantalla = { desde:v.desde, hasta:v.hasta, total:r.total, totalAnterior:rAnterior.total, secciones:[
@@ -16645,6 +16678,14 @@ function tablaComparada(titulo, etiquetaA, etiquetaB, filas, vacio){
     </table></div></div>`;
 }
 
+// Las etiquetas de las cifras del reporte: «1 país con actividad», «1 ciudad distinta».
+function etqPaises(n){
+  return (n === 1 ? t("país con actividad","country with activity","país com atividade","מדינה עם פעילות") : t("países con actividad","countries with activity","países com atividade","מדינות עם פעילות"));
+}
+function etqCiudades(n){
+  return (n === 1 ? t("ciudad distinta","different city","cidade diferente","עיר שונה") : t("ciudades distintas","different cities","cidades diferentes","ערים שונות"));
+}
+
 // ---- Todos los años ----
 // La historia entera: cuánto cada año, y cómo evolucionó cada país y cada
 // tipo, año por año.
@@ -16661,9 +16702,9 @@ function renderReporteHistorico(f){
   const primero = conDatos.length ? conDatos[0].anio : anios[0];
   const kpi = (num, txt) => `<div class="rep-kpi"><div class="rep-kpi-num">${num}</div><div class="rep-kpi-txt">${txt}</div></div>`;
   const kpis = tiraDeNumeros([
-      kpi(todo.total, t("actividades en total","activities in total","atividades no total","פעילויות בסך הכול")),
-      kpi(Object.keys(todo.porPais).length, t("países con actividad","countries with activity","países com atividade","מדינות עם פעילות")),
-      kpi(todo.ciudades.size, t("ciudades distintas","different cities","cidades diferentes","ערים שונות")),
+      kpi(todo.total, todo.total === 1 ? t("actividad en total","activity in total","atividade no total","פעילות בסך הכול") : t("actividades en total","activities in total","atividades no total","פעילויות בסך הכול")),
+      kpi(Object.keys(todo.porPais).length, etqPaises(Object.keys(todo.porPais).length)),
+      kpi(todo.ciudades.size, etqCiudades(todo.ciudades.size)),
       mejor ? kpi(esc(mejor.anio), t("el año con más actividad ({n})","the busiest year ({n})","o ano com mais atividade ({n})","השנה הפעילה ביותר ({n})",{n:mejor.r.total})) : "" ]);
   const filasAnio = conDatos.map(x => ({
     etiqueta: x.anio === hoyAnio ? `${esc(x.anio)} <small>${t("(en curso)","(in progress)","(em andamento)","(בתהליך)")}</small>` : esc(x.anio),
@@ -16862,7 +16903,7 @@ function sugerenciasDelReporte(v, r, rAnt, f){
   for(let m = v.desde.slice(0, 7); m <= v.hasta.slice(0, 7) && m < hoyMes; m = addMonthsISO(m + "-01", 1).slice(0, 7)){
     if(!r.porMes[m]) vacios.push(fmtISO(m + "-01", { month:"long" }));
   }
-  if(vacios.length && vacios.length < 12) out.push({ ico:"🗓️", txt: t("No hubo actividad en {m}: conviene planificar algo para esos meses.","There was no activity in {m}: worth planning something for those months.","Não houve atividade em {m}: convém planejar algo para esses meses.","לא הייתה פעילות ב-{m}: כדאי לתכנן משהו לחודשים האלה.",{ m: lista(vacios) }) });
+  if(vacios.length && vacios.length < 12) out.push({ ico:"🗓️", txt: (vacios.length === 1 ? t("No hubo actividad en {m}: conviene planificar algo para ese mes.","There was no activity in {m}: worth planning something for that month.","Não houve atividade em {m}: convém planejar algo para esse mês.","לא הייתה פעילות ב-{m}: כדאי לתכנן משהו לחודש הזה.", { m: lista(vacios) }) : t("No hubo actividad en {m}: conviene planificar algo para esos meses.","There was no activity in {m}: worth planning something for those months.","Não houve atividade em {m}: convém planejar algo para esses meses.","לא הייתה פעילות ב-{m}: כדאי לתכנן משהו לחודשים האלה.", { m: lista(vacios) })) });
   // 5. Una zona con muy poco del total.
   const zonasCon = Object.values(ZONES).map(z => ({ z, n: r.porZona[z.key] || 0 }));
   const sumaZonas = zonasCon.reduce((s, x) => s + x.n, 0);
@@ -16976,9 +17017,9 @@ function renderPaisesView(){
   const resumen = `<p class="paises-resumen">${activos.length === 1
       ? t("<b>1 país</b> con actividad propia","<b>1 country</b> with activity of its own","<b>1 país</b> com atividade própria","<b>מדינה אחת</b> עם פעילות משלה")
       : t("<b>{n} países</b> con actividad propia","<b>{n} countries</b> with activity of their own","<b>{n} países</b> com atividade própria","<b>{n} מדינות</b> עם פעילות משלהן",{n:activos.length})}${quietos.length
-      ? ` · ${t("{n} sin actividad propia","{n} with none of their own","{n} sem atividade própria","{n} ללא פעילות משלהן",{n:quietos.length})}` : ""}</p>`;
+      ? ` · ${quietos.length === 1 ? t("1 sin actividad propia","1 with none of its own","1 sem atividade própria","1 ללא פעילות משלה", {n:quietos.length}) : t("{n} sin actividad propia","{n} with none of their own","{n} sem atividade própria","{n} ללא פעילות משלהן", {n:quietos.length})}` : ""}</p>`;
   const plegados = quietos.length ? `<details class="paises-quietos"${activos.length ? "" : " open"}>
-      <summary>${t("{n} países sin actividad propia","{n} countries with none of their own","{n} países sem atividade própria","{n} מדינות ללא פעילות משלהן",{n:quietos.length})}</summary>
+      <summary>${quietos.length === 1 ? t("1 país sin actividad propia","1 country with none of its own","1 país sem atividade própria","מדינה אחת ללא פעילות משלה", {n:quietos.length}) : t("{n} países sin actividad propia","{n} countries with none of their own","{n} países sem atividade própria","{n} מדינות ללא פעילות משלהן", {n:quietos.length})}</summary>
       <div class="paises-quietos-lista">${quietos.map(c=>`<button type="button" class="country-mini" data-action="drill-country" data-country="${esc(c.name)}"><span class="dot" style="background:${safeColor(ZONES[c.zone]?.color)}"></span>${esc(countryLabel(c.name))}</button>`).join("")}</div>
     </details>` : "";
   // Las zonas, cada una con su ficha (las que el filtro de arriba deja ver).
@@ -20695,7 +20736,7 @@ function agendaVistaLista(){
         <div class="ag-gente">${gente.length ? gente.map(c => filaDePersona(c, true)).join("") : `<span class="ag-nadie">${esc(t("Sin contactos todavía","No contacts yet","Sem contatos ainda","עדיין אין אנשי קשר"))}</span>`}</div></article>`;
     });
     filas += `</section>`;
-    if(lista.length > f.mostrar) filas += `<div class="ag-mas"><button type="button" class="btn-secondary" data-action="agenda-mas">${esc(t("Ver más · quedan {n}","See more · {n} left","Ver mais · faltam {n}","להציג עוד · נשארו {n}",{ n: lista.length - f.mostrar }))}</button></div>`;
+    if(lista.length > f.mostrar) filas += `<div class="ag-mas"><button type="button" class="btn-secondary" data-action="agenda-mas">${esc((lista.length - f.mostrar) === 1 ? t("Ver más · queda 1","See more · 1 left","Ver mais · falta 1","להציג עוד · נשארה 1", { n: lista.length - f.mostrar }) : t("Ver más · quedan {n}","See more · {n} left","Ver mais · faltam {n}","להציג עוד · נשארו {n}", { n: lista.length - f.mostrar }))}</button></div>`;
     // Solo para quien carga eventos: ver la Agenda es de todos, bajarla entera con los teléfonos no (lo decidió el usuario el 10/10/2026, D2).
     if(canWrite()) filas += `<div class="ag-planilla"><button type="button" class="ag-link" data-action="agenda-planilla">⬇ ${esc(t("Bajar en planilla ({n})","Download as a spreadsheet ({n})","Baixar em planilha ({n})","הורדה כגיליון ({n})",{ n: cuantasInstituciones(lista.length) }))}</button></div>`;
   }
@@ -21281,7 +21322,7 @@ function renderAgendaAdminSection(){
       av.sinRabbi > 1 ? li("✓", t("<b>{n} nombres empiezan con «Rabbi» o «Rab»</b>: se guarda el nombre solo, con el cargo «Rab a cargo».","<b>{n} names start with “Rabbi” or “Rab”</b>: the name is kept alone, with the role “Rabbi in charge”.","<b>{n} nomes começam com «Rabbi» ou «Rab»</b>: guarda-se só o nome, com o cargo «Rabino responsável».","<b>{n} שמות מתחילים ב-«Rabbi» או «Rab»</b>: נשמר השם לבד, עם התפקיד «הרב האחראי».",{ n: av.sinRabbi })) : "",
       av.telLimpios === 1 ? li("✓", t("<b>Un teléfono</b> traía caracteres invisibles o letras: se limpia.","<b>One phone</b> had invisible characters or letters: it gets cleaned.","<b>Um telefone</b> tinha caracteres invisíveis ou letras: é limpo.","<b>טלפון אחד</b> הכיל תווים נסתרים או אותיות: ינוקה.")) : "",
       av.telLimpios > 1 ? li("✓", t("<b>{n} teléfonos</b> traían caracteres invisibles o letras: se limpian.","<b>{n} phones</b> had invisible characters or letters: they get cleaned.","<b>{n} telefones</b> tinham caracteres invisíveis ou letras: são limpos.","<b>{n} טלפונים</b> הכילו תווים נסתרים או אותיות: ינוקו.",{ n: av.telLimpios })) : "",
-      av.estados.temporada || av.estados.cerrada ? li("✓", t("<b>{a} de temporada y {b} cerradas</b>: entran con ese estado.","<b>{a} seasonal and {b} closed</b>: they come in with that status.","<b>{a} de temporada e {b} fechadas</b>: entram com essa situação.","<b>{a} עונתיים ו-{b} סגורים</b>: נכנסים במצב הזה.",{ a: av.estados.temporada, b: av.estados.cerrada })) : "",
+      av.estados.temporada || av.estados.cerrada ? li("✓", t("<b>{a} de temporada y {b} {c}</b>: entran con ese estado.","<b>{a} seasonal and {b} closed</b>: they come in with that status.","<b>{a} de temporada e {b} {c}</b>: entram com essa situação.","<b>{a} עונתיים ו-{b} סגורים</b>: נכנסים במצב הזה.",{ a: av.estados.temporada, b: av.estados.cerrada, c: av.estados.cerrada === 1 ? t("cerrada","closed","fechada","סגור") : t("cerradas","closed","fechadas","סגורים") })) : "",
       ...im.parecidos.map(([a, b], i) => li("?", t("<b>Dos tipos parecen el mismo</b>: «{a}» ({na}) y «{b}» ({nb}).","<b>Two types look like the same</b>: “{a}” ({na}) and “{b}” ({nb}).","<b>Dois tipos parecem o mesmo</b>: «{a}» ({na}) e «{b}» ({nb}).","<b>שני סוגים נראים זהים</b>: «{a}» ({na}) ו-«{b}» ({nb}).",{ a: esc(a), b: esc(b), na: im.tipos.get(a), nb: im.tipos.get(b) }),
         `<span class="ag-chips"><button type="button" class="ag-chip${im.unir ? " on" : ""}" data-action="agenda-import-unir" data-k="1">${esc(t("Unir en «{a}»","Merge into “{a}”","Unir em «{a}»","איחוד ל-«{a}»",{ a }))}</button><button type="button" class="ag-chip${im.unir ? "" : " on"}" data-action="agenda-import-unir" data-k="0">${esc(t("Dejar los dos","Keep both","Deixar os dois","להשאיר את שניהם"))}</button></span>`)),
     ].filter(Boolean).join("");
@@ -21554,7 +21595,7 @@ function lecturaDeFicha(D, L){
         : t("Todavía no hay visitas cargadas. Último registro hace <b>{d}</b>.","No visits logged yet. Last record <b>{d}</b> ago.","Ainda não há visitas. Último registro há <b>{d}</b>.","עדיין אין ביקורים. רשומה אחרונה לפני <b>{d}</b>.",{ d: diasUnidad(d) }); })() });
   }
   if(D.objUltima && D.objUltima.total){
-    out.push({ ic: "🎯", html: t("En la última visita con Cierre se lograron <b>{a} de {b} objetivos</b>.","The latest visit with a Closure achieved <b>{a} of {b} goals</b>.","Na última visita com Fechamento foram alcançados <b>{a} de {b} objetivos</b>.","בביקור האחרון עם סגירה הושגו <b>{a} מתוך {b} מטרות</b>.",{ a: D.objUltima.si, b: D.objUltima.total })
+    out.push({ ic: "🎯", html: (D.objUltima.total === 1 ? t("En la última visita con Cierre se logró <b>{a} de 1 objetivo</b>.","The latest visit with a Closure achieved <b>{a} of 1 goal</b>.","Na última visita com Fechamento foi alcançado <b>{a} de 1 objetivo</b>.","בביקור האחרון עם סגירה הושג <b>{a} מתוך מטרה אחת</b>.", { a: D.objUltima.si, b: D.objUltima.total }) : t("En la última visita con Cierre se lograron <b>{a} de {b} objetivos</b>.","The latest visit with a Closure achieved <b>{a} of {b} goals</b>.","Na última visita com Fechamento foram alcançados <b>{a} de {b} objetivos</b>.","בביקור האחרון עם סגירה הושגו <b>{a} מתוך {b} מטרות</b>.", { a: D.objUltima.si, b: D.objUltima.total }))
       + (D.obj.total > D.objUltima.total ? " " + t("En total, {a} de {b} ({p}%).","Overall, {a} of {b} ({p}%).","No total, {a} de {b} ({p}%).","בסך הכול, {a} מתוך {b} ({p}%).",{ a: D.obj.si, b: D.obj.total, p: Math.round(D.obj.si * 100 / D.obj.total) }) : "") });
   }
   if(D.pendientes.length){
@@ -21562,7 +21603,7 @@ function lecturaDeFicha(D, L){
     out.push({ ic: viejos ? "⚠️" : "📌", alerta: !!viejos,
       html: (D.pendientes.length === 1 ? t("<b>1 pendiente abierto</b>","<b>1 open item</b>","<b>1 pendente aberto</b>","<b>פריט פתוח אחד</b>") : t("<b>{n} pendientes abiertos</b>","<b>{n} open items</b>","<b>{n} pendentes abertos</b>","<b>{n} פריטים פתוחים</b>",{ n: D.pendientes.length }))
         + (viejos ? t(", {v} desde hace más de <b>3 meses</b>.",", {v} for more than <b>3 months</b>.",", {v} há mais de <b>3 meses</b>.",", {v} כבר יותר מ-<b>3 חודשים</b>.",{ v: viejos }) : ".")
-        + (D.hechos.length ? " " + t("Ya se cumplieron {n}.","{n} already done.","Já foram cumpridos {n}.","{n} כבר בוצעו.",{ n: D.hechos.length }) : "") });
+        + (D.hechos.length ? " " + (D.hechos.length === 1 ? t("Ya se cumplió 1.","1 already done.","Já foi cumprido 1.","1 כבר בוצע.", { n: D.hechos.length }) : t("Ya se cumplieron {n}.","{n} already done.","Já foram cumpridos {n}.","{n} כבר בוצעו.", { n: D.hechos.length })) : "") });
   }
   // Los proyectos abiertos y cómo vienen sus hitos.
   const abiertos = D.proyectos.filter(p => !projectDone(p));
@@ -21591,7 +21632,7 @@ function lecturaDeFicha(D, L){
       : esteAnio < anioPasado ? t(", menos que en {a} ({m}).",", fewer than in {a} ({m}).",", menos que em {a} ({m}).",", פחות מב-{a} ({m}).",{ a: antes, m: anioPasado })
       : t(", igual que en {a}.",", same as in {a}.",", igual a {a}.",", כמו ב-{a}.",{ a: antes });
     else txt += ".";
-    if(vienen) txt = txt.replace(/\.$/, "") + t(", y <b>{n} planificados</b> para lo que queda del año.",", and <b>{n} planned</b> for the rest of the year.",", e <b>{n} planejados</b> para o resto do ano.",", ועוד <b>{n} מתוכננות</b> לשארית השנה.",{ n: vienen });
+    if(vienen) txt = txt.replace(/\.$/, "") + (vienen === 1 ? t(", y <b>1 planificado</b> para lo que queda del año.",", and <b>1 planned</b> for the rest of the year.",", e <b>1 planejado</b> para o resto do ano.",", ועוד <b>1 מתוכננת</b> לשארית השנה.", { n: vienen }) : t(", y <b>{n} planificados</b> para lo que queda del año.",", and <b>{n} planned</b> for the rest of the year.",", e <b>{n} planejados</b> para o resto do ano.",", ועוד <b>{n} מתוכננות</b> לשארית השנה.", { n: vienen }));
     // Qué parte concentra la actividad: en una zona, el país; en un país,
     // la ciudad.
     if(!L.city){
@@ -21660,7 +21701,7 @@ function renderFichaLugar(L){
   const agendaAca = institucionesDeLugar(L);
   const sub = L.city
     ? `<span class="fl-zona"><i style="background:${zcolor}"></i>${esc(countryLabel(L.country))} · ${esc(regionLabel(zk))}</span>`
-    : `<span class="fl-zona"><i style="background:${zcolor}"></i>${esc(L.zona ? t("{n} países con actividad","{n} countries with activity","{n} países com atividade","{n} מדינות עם פעילות",{ n: hijos.length }) : regionLabel(zk))}</span>${hijos.length ? " · " + hijos.map(h => esc(h.nombre)).join(" · ") : ""}`;
+    : `<span class="fl-zona"><i style="background:${zcolor}"></i>${esc(L.zona ? (hijos.length === 1 ? t("1 país con actividad","1 country with activity","1 país com atividade","מדינה אחת עם פעילות", { n: hijos.length }) : t("{n} países con actividad","{n} countries with activity","{n} países com atividade","{n} מדינות עם פעילות", { n: hijos.length })) : regionLabel(zk))}</span>${hijos.length ? " · " + hijos.map(h => esc(h.nombre)).join(" · ") : ""}`;
   const lugarAttrs = L.zona ? `data-zona="${esc(L.zona)}"` : `data-country="${esc(L.country)}"${L.city ? ` data-city="${esc(L.city)}"` : ""}`;
   // La botonera va en la fila del selector «qué incluir», a la derecha, al
   // mismo nivel que «Solo … / + Región …» (pedido del usuario, 9/10/2026);
@@ -21691,13 +21732,13 @@ function renderFichaLugar(L){
     <div class="fl-stat"><small>${t("Visitas","Visits","Visitas","ביקורים")}</small><b>${D.visitas.length}</b><span>${primera ? esc(t("desde {f}","since {f}","desde {f}","מאז {f}",{ f: fmtISO(fechaDePost(primera), { month:"short", year:"numeric" }) })) : esc(t("todavía ninguna","none yet","nenhuma ainda","עדיין אין"))}</span></div>
     <div class="fl-stat"><small>${t("Última","Latest","Última","אחרון")}</small><b>${ultima ? esc(haceDiasTxt(Math.max(0, diasDesde(ultima.endDate || fechaDePost(ultima))))) : "—"}</b><span>${ultima ? esc(fechaDeTarjeta(fechaDePost(ultima), ultima.endDate, null, null).dias) : ""}</span></div>
     <div class="fl-stat"><small>${t("Objetivos","Goals","Objetivos","מטרות")}</small><b>${D.obj.total ? esc(t("{a} de {b}","{a} of {b}","{a} de {b}","{a} מתוך {b}",{ a: D.obj.si, b: D.obj.total })) : "—"}</b><span>${D.obj.total ? esc(t("logrados ({p}%)","achieved ({p}%)","alcançados ({p}%)","הושגו ({p}%)",{ p: Math.round(D.obj.si * 100 / D.obj.total) })) : esc(t("sin Cierres leídos","no Closures read","sem Fechamentos lidos","אין סגירות שנקראו"))}</span></div>
-    <div class="fl-stat"><small>${t("Lo que sigue","What's next","O que segue","מה הלאה")}</small><b>${D.pendientes.length}</b><span>${esc(t("abiertos · {n} hechos","open · {n} done","abertos · {n} feitos","פתוחים · {n} בוצעו",{ n: D.hechos.length }))}</span></div>
+    <div class="fl-stat"><small>${t("Lo que sigue","What's next","O que segue","מה הלאה")}</small><b>${D.pendientes.length}</b><span>${esc(D.hechos.length === 1 ? t("abiertos · 1 hecho","open · 1 done","abertos · 1 feito","פתוחים · 1 בוצע", { n: D.hechos.length }) : t("abiertos · {n} hechos","open · {n} done","abertos · {n} feitos","פתוחים · {n} בוצעו", { n: D.hechos.length }))}</span></div>
   </div>`;
   // Lo que sigue.
   const todosPasos = fichaDesplegado.has("pasos") || fichaImprimiendo;
   const listaPasos = todosPasos ? [...D.pendientes, ...D.hechos] : D.pendientes.slice(0, 4);
   const pasos = D.pendientes.length || D.hechos.length ? `<div class="fl-card fl-sigue">
-    <div class="fl-tit"><h3>${t("Lo que sigue","What's next","O que segue","מה הלאה")}</h3>${D.pendientes.length > 4 || D.hechos.length ? `<button type="button" class="fl-mas" data-action="ficha-desplegar" data-que="pasos" aria-expanded="${fichaDesplegado.has("pasos")}">${fichaDesplegado.has("pasos") ? t("Mostrar menos","Show less","Mostrar menos","הצג פחות") : t("Ver los {n}","See all {n}","Ver os {n}","הצגת כל ה-{n}",{ n: D.pendientes.length + D.hechos.length })}</button>` : ""}</div>
+    <div class="fl-tit"><h3>${t("Lo que sigue","What's next","O que segue","מה הלאה")}</h3>${D.pendientes.length > 4 || D.hechos.length ? `<button type="button" class="fl-mas" data-action="ficha-desplegar" data-que="pasos" aria-expanded="${fichaDesplegado.has("pasos")}">${fichaDesplegado.has("pasos") ? t("Mostrar menos","Show less","Mostrar menos","הצג פחות") : ((D.pendientes.length + D.hechos.length) === 1 ? t("Ver el hecho","See the done one","Ver o feito","הצגת הפריט שבוצע", { n: D.pendientes.length + D.hechos.length }) : t("Ver los {n}","See all {n}","Ver os {n}","הצגת כל ה-{n}", { n: D.pendientes.length + D.hechos.length }))}</button>` : ""}</div>
     <ul class="rs-pasos">${listaPasos.map(({ p, post, parte }) => {
       const hecho = p.estado === "hecho";
       const puede = canEditPost(post);
@@ -21770,7 +21811,7 @@ function renderFichaLugar(L){
     const ms = p.isProject ? postMilestones(p) : [];
     const meta = [
       `${esc(ty.icon)} ${esc(ty.label)}`,
-      p.isProject ? `📋 ${esc(t("Proyecto","Project","Projeto","פרויקט"))}${ms.length ? ` · ${ms.filter(m => m.done).length}/${ms.length} ${esc(t("hitos","milestones","marcos","אבני דרך"))}` : ""}` : "",
+      p.isProject ? `📋 ${esc(t("Proyecto","Project","Projeto","פרויקט"))}${ms.length ? ` · ${ms.filter(m => m.done).length}/${ms.length} ${esc(ms.length === 1 ? t("hito","milestone","marco","אבן דרך") : t("hitos","milestones","marcos","אבני דרך"))}` : ""}` : "",
       nivel === "own" ? esc(dondeDe(p).join(" · ")) : `<span class="fl-amplio">${esc(etiquetas[nivel].replace(/^\+ /, ""))}</span>`,
       esc(quienDe(p)),
       (p.files || []).length ? `📎 ${(p.files || []).length}` : "",
@@ -21804,7 +21845,7 @@ function renderFichaLugar(L){
     const cerrado = projectDone(p);
     const partes = [
       cerrado ? esc(t("Completado","Completed","Concluído","הושלם")) : "",
-      hs.length ? esc(t("{d}/{n} hitos","{d}/{n} milestones","{d}/{n} marcos","{d}/{n} אבני דרך",{ d, n: hs.length })) : esc(t("sin hitos con fecha","no dated milestones","sem marcos com data","אין אבני דרך עם תאריך")),
+      hs.length ? esc(hs.length === 1 ? t("{d}/1 hito","{d}/1 milestone","{d}/1 marco","{d}/אבן דרך אחת", { d, n: hs.length }) : t("{d}/{n} hitos","{d}/{n} milestones","{d}/{n} marcos","{d}/{n} אבני דרך", { d, n: hs.length })) : esc(t("sin hitos con fecha","no dated milestones","sem marcos com data","אין אבני דרך עם תאריך")),
       v ? `<span class="v">${esc(v === 1 ? t("1 vencido","1 overdue","1 vencido","1 באיחור") : t("{v} vencidos","{v} overdue","{v} vencidos","{v} באיחור",{ v }))}</span>` : "",
       prox && !cerrado ? esc(t("próximo: {h}, {f}","next: {h}, {f}","próximo: {h}, {f}","הבא: {h}, {f}",{ h: recortar(prox.m.label, 40), f: fmtISO(prox.f, { day:"numeric", month:"short" }) })) : "",
     ].filter(Boolean).join(" · ");
@@ -21843,7 +21884,7 @@ function renderFichaLugar(L){
       // Solo lo hecho: con una visita planificada decía «último: hace 0 días» (10/10/2026, R1).
       const ult = h.posts.filter(yaPaso).map(fechaDePost).sort().pop();
       const pend = h.posts.reduce((n, p) => n + pasosPendientes(partesDeLugar(p, h.L)).length, 0);
-      act = (ult ? t("último: {x}","latest: {x}","último: {x}","אחרון: {x}",{ x: haceDiasTxt(Math.max(0, diasDesde(ult))) }) : t("todavía nada hecho","nothing done yet","ainda nada feito","עדיין לא נעשה דבר")) + (pend ? " · " + t("{n} pendientes","{n} pending","{n} pendentes","{n} ממתינים",{ n: pend }) : "");
+      act = (ult ? t("último: {x}","latest: {x}","último: {x}","אחרון: {x}",{ x: haceDiasTxt(Math.max(0, diasDesde(ult))) }) : t("todavía nada hecho","nothing done yet","ainda nada feito","עדיין לא נעשה דבר")) + (pend ? " · " + (pend === 1 ? t("1 pendiente","1 pending","1 pendente","1 ממתין", { n: pend }) : t("{n} pendientes","{n} pending","{n} pendentes","{n} ממתינים", { n: pend })) : "");
     } else act = t("Sin actividad todavía","No activity yet","Sem atividade ainda","אין עדיין פעילות");
     let gente = "";
     if(f.insts.length){
@@ -23509,7 +23550,7 @@ document.addEventListener("click", async e=>{
     if(!post || !canCloseProject(post)) return;
     const pend = postMilestones(post).filter(m=>!m.done).length;
     const msg = pend
-      ? t("¿Dar por completado \"{t}\"? Quedan {n} hito(s) sin tildar; quedan así. El proyecto pasa a solo lectura.","Mark \"{t}\" as completed? {n} milestone(s) remain unticked; they stay that way. The project becomes read-only.","Dar por concluído \"{t}\"? Restam {n} marco(s) sem marcar; ficam assim. O projeto passa a somente leitura.","לסמן את \"{t}\" כהושלם? נותרו {n} אבני דרך לא מסומנות; הן נשארות כך. הפרויקט עובר לקריאה בלבד.",{t:calendarioLabel(post), n:pend})
+      ? (pend === 1 ? t("¿Dar por completado \"{t}\"? Queda 1 hito sin tildar; queda así. El proyecto pasa a solo lectura.","Mark \"{t}\" as completed? 1 milestone remains unticked; it stays that way. The project becomes read-only.","Dar por concluído \"{t}\"? Resta 1 marco sem marcar; fica assim. O projeto passa a somente leitura.","לסמן את \"{t}\" כהושלם? נותרה אבן דרך אחת לא מסומנת; היא נשארת כך. הפרויקט עובר לקריאה בלבד.", {t:calendarioLabel(post), n:pend}) : t("¿Dar por completado \"{t}\"? Quedan {n} hitos sin tildar; quedan así. El proyecto pasa a solo lectura.","Mark \"{t}\" as completed? {n} milestones remain unticked; they stay that way. The project becomes read-only.","Dar por concluído \"{t}\"? Restam {n} marcos sem marcar; ficam assim. O projeto passa a somente leitura.","לסמן את \"{t}\" כהושלם? נותרו {n} אבני דרך לא מסומנות; הן נשארות כך. הפרויקט עובר לקריאה בלבד.", {t:calendarioLabel(post), n:pend}))
       : t("¿Dar por completado \"{t}\"? El proyecto pasa a solo lectura.","Mark \"{t}\" as completed? The project becomes read-only.","Dar por concluído \"{t}\"? O projeto passa a somente leitura.","לסמן את \"{t}\" כהושלם? הפרויקט עובר לקריאה בלבד.",{t:calendarioLabel(post)});
     if(await appConfirm(msg, { okLabel: t("Dar por completado","Mark as completed","Dar por concluído","סימון כהושלם") })) setProjectStatus(post, true);
   },
@@ -24379,11 +24420,17 @@ document.addEventListener("click", async e=>{
     // perfil y sin que sus @menciones resuelvan. No se borra nada de lo
     // que escribió, y volver a darle acceso lo revive con un nickname nuevo.
     const aviso = posteos
-      ? t("Dejó {n} posteos: van a quedar firmados con su nombre de Google, sin @{nick} ni perfil.",
+      ? (posteos === 1 ? t(
+          "Dejó 1 posteo: va a quedar firmado con su nombre de Google, sin @{nick} ni perfil.",
+          "They left 1 post: it will be signed with their Google name, without @{nick} or a profile.",
+          "Deixou 1 postagem: vai ficar assinada com o nome do Google, sem @{nick} nem perfil.",
+          ".פוסט אחד שהשאיר/ה ייחתם בשם מ-Google, בלי @{nick} ובלי פרופיל", { n:posteos, nick:String(u.nickname||"").toLowerCase() }
+        ) : t(
+          "Dejó {n} posteos: van a quedar firmados con su nombre de Google, sin @{nick} ni perfil.",
           "They left {n} posts: those will be signed with their Google name, without @{nick} or a profile.",
           "Deixou {n} postagens: vão ficar assinadas com o nome do Google, sem @{nick} nem perfil.",
-          ".{n} פוסטים שהשאיר/ה ייחתמו בשם מ-Google, בלי @{nick} ובלי פרופיל",
-          { n:posteos, nick:String(u.nickname||"").toLowerCase() })
+          ".{n} פוסטים שהשאיר/ה ייחתמו בשם מ-Google, בלי @{nick} ובלי פרופיל", { n:posteos, nick:String(u.nickname||"").toLowerCase() }
+        ))
       : t("No dejó posteos.","They left no posts.","Não deixou postagens.",".לא השאיר/ה פוסטים");
     const ok = await appConfirm(
       t("¿Borrar a {email} de la lista de ex integrantes? Es para siempre. {aviso}",

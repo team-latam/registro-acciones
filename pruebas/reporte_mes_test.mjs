@@ -84,7 +84,7 @@ const enfocado = p => p.evaluate(() => document.activeElement && (document.activ
   await click(p, col("2026-11")); await p.waitForTimeout(150);
   eq("noviembre, que todavía no pasó: solo lo planificado y ningún botón al Inicio",
      [await texto(p, ".rep-mes-n"), await texto(p, ".rep-mes-t"), await texto(p, ".rep-mes-aviso"), await cuantos(p, ".rep-mes-ir")],
-     ["1", "planificadas", "Todavía no pasó nada de este mes. Planificadas: 1.", 0]);
+     ["1", "planificada", "Todavía no pasó nada de este mes. Planificadas: 1.", 0]);
   await click(p, col("2026-01")); await p.waitForTimeout(150);
   eq("enero, sin nada: lo dice, sin listas ni botón", [await texto(p, ".rep-mes-n"), await texto(p, ".rep-vacio"), await cuantos(p, ".rep-mes-dos, .rep-mes-ir")], ["0", "No hay nada cargado en este mes.", 0]);
   eq("en enero no hay mes anterior, y en diciembre no hay siguiente", [await p.$eval('.rep-mes-ficha [data-nav="ant"]', e => e.disabled), await p.$eval('.rep-mes-ficha [data-nav="sig"]', e => e.disabled)], [true, false]);
