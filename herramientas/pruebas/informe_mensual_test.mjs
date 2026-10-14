@@ -24,7 +24,8 @@ const eq = (n, g, w) => { const a = JSON.stringify(g), x = JSON.stringify(w); if
 
 const JEFE = "jefe@team-latam.com";
 // El mes que terminó, y el de antes, y el que sigue: las fechas fijas para que no dependan del día de hoy.
-const hoy = new Date().toISOString().slice(0, 7) + "-01";
+const HOY = new Date().toISOString().slice(0, 10);   // el día de hoy: el nombre del archivo lo lleva
+const hoy = HOY.slice(0, 7) + "-01";
 const mesDe = (iso, n) => { const d = new Date(Date.parse(iso + "T12:00:00Z")); d.setUTCMonth(d.getUTCMonth() + n); return d.toISOString().slice(0, 7); };
 const MES = mesDe(hoy, -1), ANTES = mesDe(hoy, -2), DESPUES = mesDe(hoy, 0);
 const datos = ({ marca = hace(1 / 24), observador = true } = {}) => {
@@ -80,9 +81,9 @@ const b = await abrirNavegador();
   const zip = abrirZip((await import("node:fs")).readFileSync(await d.path()));
   const filas = leerHoja(zip).slice(1), titulos = filas.map(f => f[5]);
   const estado = f => f[16];
-  eq("la planilla es un .xlsx llamado informe-<mes>, y trae las del mes (la cancelada marcada) y nada de otros meses",
+  eq("la planilla es un .xlsx llamado «Registro - día-mes-año» como todas, y trae las del mes (la cancelada marcada) y nada de otros meses",
      [d.suggestedFilename(), ["Reunión en Santiago", "Charla en Chile", "Visita a Rosario"].every(t => titulos.includes(t)), estado(filas[titulos.indexOf("Cancelada del mes")]), titulos.includes("Cosa del mes de antes"), titulos.includes("Algo de este mes")],
-     [`informe-${MES}.xlsx`, true, "Cancelada", false, false]);
+     [`Registro - ${HOY.slice(8)}-${HOY.slice(5, 7)}-${HOY.slice(0, 4)}.xlsx`, true, "Cancelada", false, false]);
   await p.keyboard.press("Escape"); await p.waitForTimeout(300);
   eq("Escape cierra el informe y queda la app", [await abierto(p), await p.$('[data-action="toggle-user-menu"]').then(x => !!x)], [false, true]);
   eq("sin errores en la consola", errores, []);

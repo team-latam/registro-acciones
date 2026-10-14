@@ -23276,8 +23276,21 @@ function tablaDeActividades(posts){
   const ordenadas = posts.slice().sort((a, b) => iniDePosteo(a).localeCompare(iniDePosteo(b)) || String(a.title || "").localeCompare(String(b.title || "")));
   return { hoja: t("Actividades","Activities","Atividades","פעילויות"), columnas, filas: ordenadas.map(p => columnas.map(c => c.valor(p))) };
 }
-async function bajarPlanilla(posts, nombreBase){
-  descargarBlob(`${nombreBase}.xlsx`, await xlsxDeTabla(tablaDeActividades(posts), { derechaAIzquierda: isRTL(), formatoDeFecha: formatoDeFechaExcel() }));
+// El archivo se llama siempre igual, haya o no filtros y baje lo que baje (14/10/2026,
+// pedido del usuario): «Registro - 14-10-2026». La palabra va en el idioma de la app y la
+// fecha en el orden que cada uno lee: el de Configuración › Calendario, o el del idioma
+// si está en «automático» (día-mes-año; en inglés, mes-día-año).
+function nombreDePlanilla(){
+  const f = dateFormatPref(), orden = f === "auto" ? (currentLang() === "en" ? "mdy" : "dmy") : f;
+  const [a, m, d] = todayISO().split("-");
+  const fecha = orden === "ymd" ? `${a}-${m}-${d}` : orden === "mdy" ? `${m}-${d}-${a}` : `${d}-${m}-${a}`;
+  return `${t("Registro","Log","Registro","יומן")} - ${fecha}.xlsx`;
+}
+// Baja la planilla y devuelve cómo se llamó el archivo.
+async function bajarPlanilla(posts){
+  const nombre = nombreDePlanilla();
+  descargarBlob(nombre, await xlsxDeTabla(tablaDeActividades(posts), { derechaAIzquierda: isRTL(), formatoDeFecha: formatoDeFechaExcel() }));
+  return nombre;
 }
 
 // ---- Bajar la planilla del Inicio ----
@@ -23300,12 +23313,11 @@ async function bajarPlanillaDelInicio(){
     return;
   }
   planillaBajando = true;
-  const nombre = `registro${filtrado ? "-filtrado" : ""}-${todayISO()}`;
   try{
-    await bajarPlanilla(posts, nombre);
+    const nombre = await bajarPlanilla(posts);
     showCalendarNotice({ ok:true, icono:"✓", message: filtrado
-      ? t("Se bajó {a} · {n}, con los filtros puestos.","Downloaded {a} · {n}, with the filters on.","Baixou {a} · {n}, com os filtros ligados.","{a} ירד · {n}, עם המסננים פעילים.",{ a: `${nombre}.xlsx`, n: cuantasActividades(posts.length) })
-      : t("Se bajó {a} · {n}.","Downloaded {a} · {n}.","Baixou {a} · {n}.","{a} ירד · {n}.",{ a: `${nombre}.xlsx`, n: cuantasActividades(posts.length) }) });
+      ? t("Se bajó {a} · {n}, con los filtros puestos.","Downloaded {a} · {n}, with the filters on.","Baixou {a} · {n}, com os filtros ligados.","{a} ירד · {n}, עם המסננים פעילים.",{ a: nombre, n: cuantasActividades(posts.length) })
+      : t("Se bajó {a} · {n}.","Downloaded {a} · {n}.","Baixou {a} · {n}.","{a} ירד · {n}.",{ a: nombre, n: cuantasActividades(posts.length) }) });
   }catch(err){
     appAlert(t("No se pudo armar la planilla ({m}).","Couldn't build the spreadsheet ({m}).","Não foi possível montar a planilha ({m}).","({m}) לא ניתן היה לבנות את הגיליון.",{ m: err.message }));
   }finally{
@@ -25949,7 +25961,7 @@ document.addEventListener("click", async e=>{
   },
     "mianio-bajar": async () => { await bajarMiAnio(); },
     "pres-planilla": async () => {
-    if(presInforme) await bajarPlanilla(actividadesEnVentana(presInforme.desde, presInforme.hasta), `informe-${presInforme.mes}`);
+    if(presInforme) await bajarPlanilla(actividadesEnVentana(presInforme.desde, presInforme.hasta));
   },
     "reporte-csv": async (el, e, action, postId) => {
     const r = reporteEnPantalla;
@@ -25957,7 +25969,7 @@ document.addEventListener("click", async e=>{
   },
     "feed-planilla": async () => { await bajarPlanillaDelInicio(); },
     "anio-planilla": async () => {
-    if(isAdmin()){ const anio = todayISO().slice(0, 4); await bajarPlanilla(actividadesDelAnio(anio), `registro-${anio}`); }
+    if(isAdmin()) await bajarPlanilla(actividadesDelAnio(todayISO().slice(0, 4)));
   },
     "paso-resp-abrir": async (el) => {
     // El mismo botón abre y cierra la ventanita.
