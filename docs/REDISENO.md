@@ -969,6 +969,15 @@ eligió **unirlas así**:
 Pruebas: `agenda_test.mjs` (país, región y ciudad; fallan con el código
 de antes) y `ficha_celular_test.mjs` vuelve a esperar cinco tarjetas.
 
+### 91. La descripción del evento de Calendar no dice «en Registro de Acciones» — HECHO (14 oct 2026, sin publicar todavía)
+
+El usuario mandó una captura de un evento en Google Calendar (invitada una persona de afuera) y pidió sacar la parte «…en Registro de Acciones» de la descripción: quien recibe la invitación no tiene por qué saber de dónde viene.
+La última línea que arma `buildCalendarEvent` pasa de «Cargado por Benny LatAm en Registro de Acciones.» a «**Cargado por Benny LatAm.**» (en inglés «Added by …», en portugués «Adicionado por …», en hebreo «נוסף על ידי …»).
+- Los eventos que ya están en Calendar conservan la descripción vieja hasta que se editen desde la app (cada edición rearma la descripción).
+- Lo que **no** cambia: el «Creado por» de Calendar es siempre la cuenta de Google de quien lo carga (cada persona escribe con su propio permiso, ver `supabase/functions/LEEME.md`); la app no puede cambiarlo.
+  Se le ofreció, y por ahora no pidió, una cuenta compartida «LatAm» que cree todos los eventos (hay que crear esa cuenta y autorizarla una vez).
+- Prueba: `calendar_test.mjs` (la descripción termina en «Cargado por Benny.» y no nombra el Registro; falla con el código de antes).
+
 ### 90. Los temas de «Tendencias» salen solos de lo que escribe el equipo — HECHO (14 oct 2026, sin publicar todavía)
 
 El usuario aprobó el diseño de «Tendencias» pero no el **contenido** de los temas: «no quiero que el administrador defina ningún tipo de palabras; quiero que el sistema vaya leyendo
