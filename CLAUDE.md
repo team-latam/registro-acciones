@@ -78,7 +78,9 @@ decisiones de arquitectura.
   usuario pidió (9/10/2026) que Claude lo ayude a renovarlo: desde el
   1/12/2026, al empezar cualquier sesión, recordárselo y guiarlo paso a
   paso; y el 10/10/2026 pidió que se le avise puntualmente **el 5/12**
-  (hay un recordatorio programado; si no llega, hacerlo igual). Si se cae el dominio, se cae el correo `@team-latam.com` y con él
+  (hay un recordatorio programado; si no llega, hacerlo igual). **Antes del 1/12 no
+  mencionarle el dominio, ni siquiera de pasada en los cierres de cada tanda**: lo
+  tiene presente y pidió explícitamente (14/10/2026) que no se lo repitan. Si se cae el dominio, se cae el correo `@team-latam.com` y con él
   el login del admin. Claude no puede crear repos en la cuenta `team-latam` (es una
   cuenta de usuario; la conexión de GitHub no tiene ese permiso).
 
