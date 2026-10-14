@@ -18,11 +18,10 @@ codigo = "\n".join(grab(n) for n in [
     "nombreDe","nombreEnReporte","deltaDelReporte","tablaComparada","etqPaises","etqCiudades","renderReporteHistorico","renderReporteComparar",
     "ultimaActividadPorPais","haceCuanto","renderCobertura","renderEquipoDelReporte",
     "sugerenciasDelReporte","renderSugerencias",
-    "TEMAS_DIAS","TEMAS_TRAMOS","TEMAS_MIN","TEMAS_MAX","TEMAS_JUNTAS","TEMAS_RELLENO","TEMAS_RELLENO_HE","formaCanonicaDeTema","tirasDeTema","palabrasDeTema","formaDeTema",
-    "diasEntre","temasDelReporte",
-    "TENDENCIAS_DIAS","TENDENCIAS_MIN_POSTS","TENDENCIAS_MIN","TENDENCIAS_MAX","TENDENCIAS_PRIMERAS","TENDENCIAS_LATERAL","TEMA_NOMBRE_MAX",
-    "TEMAS_DE_ARRANQUE","temasConfig","temasVersion","limpiarTemas","applyTemasConfig","temasDelDiccionario","tokenDePalabra","tokensDeTexto","temasCompilados","compilarTemas",
-    "tokensDePosteo","textoDeUnPosteo","posteoHabla","cambioDeTendencia","calcularTendencias","tendenciasCache","tendenciasDe",
+    "TEMAS_MIN","TEMAS_JUNTAS","TEMAS_MISMO","TEMAS_SUBTEMA","TEMAS_COMUN","TEMAS_Z","TEMAS_RELLENO","TEMAS_RELLENO_HE","TEMAS_CHARLA","esVerboDeTema","claveDePalabra",
+    "formaCanonicaDeTema","tirasDeTema","formaDeTema","conMayuscula","temasDeLosTextos","zDelCambio","diasEntre",
+    "TENDENCIAS_DIAS","TENDENCIAS_MIN_POSTS","TENDENCIAS_MIN","TENDENCIAS_MAX","TENDENCIAS_PRIMERAS","TENDENCIAS_LATERAL",
+    "fueraCalculado","fueraDeTemas","tokensDePosteo","textoDeUnPosteo","posteoHabla","temaElegido","temaConEseNombre","cambioDeTendencia","calcularTendencias","tendenciasCache","tendenciasDe",
     "etiquetaDelCambio","claseDelCambio","flechaDelCambio","tituloDeTendencia","ariaDeTendencia","tendFiltro","fichaDeTendencia","cuerpoDeTendencias","renderTendencias"])
 
 pagina = """<!doctype html><html lang="es"><head><meta charset="utf-8">
@@ -38,6 +37,7 @@ const dateLocale = ()=> "es-AR";
 const fmtISO = (iso, opts)=> isoDate(iso).toLocaleDateString(dateLocale(), { ...opts, timeZone:"UTC" });
 const fmtDate = d => fmtISO(String(d).slice(0,10), { day:"2-digit", month:"short", year:"numeric" });
 const todayISO = ()=> "2026-09-17";
+let configVersion = 0;
 const COUNTRIES = [
   { name:"Perú", zone:"sur" }, { name:"Chile", zone:"sur" }, { name:"Argentina", zone:"sur" },
   { name:"México", zone:"norte" }, { name:"Costa Rica", zone:"central" }, { name:"Panamá", zone:"central" },
@@ -50,10 +50,10 @@ const memberByEmail = e => EQUIPO[e] ? { email:e, name:EQUIPO[e] } : null;
 %s
 const ACTIVITY_BY_KEY = Object.fromEntries(ACTIVITY_TYPES.map(ty=>[ty.key,ty]));
 window.__pintar = (posts, reportes) => {
-  state = { posts, loaded:true, reportes };
+  state = { posts, loaded:true, reportes, repliesByPost:{} };
   document.getElementById("viewRoot").innerHTML = renderReportesView();
 };
-let state = { posts:[], loaded:true, reportes:{ anio:"", trimestre:0 } };
+let state = { posts:[], loaded:true, reportes:{ anio:"", trimestre:0 }, repliesByPost:{} };
 let reporteEnPantalla = null;
 window.__datos = %s;
 window.__pintar(window.__datos, { anio:"2026", trimestre:0 });

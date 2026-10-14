@@ -47,9 +47,11 @@ const datos = (extra = []) => {
   ];
   return base;
 };
-// Con tendencias: 8 o más posteos en los 180 días, y un tema («Seguridad», de la lista de ejemplo) que aparece de golpe.
+// Con tendencias: 8 o más posteos en los 180 días, y un tema («Seguridad», que el sistema descubre solo en los textos) que aparece de golpe: 9 posteos, para que no pueda ser casualidad.
 const conTemas = () => datos([
-  ...[2, 12, 18, 25, 33, 41].map((n, i) => post({ id: "t" + i, title: "Plan de seguridad " + (i + 1), content: "Seguridad en la sede.", start: dia(n), end: dia(n), a: 1 + (i % 3), type: "otro", scopes: rosario })),
+  ...[2, 6, 12, 18, 25, 33, 41, 50, 60].map((n, i) => post({ id: "t" + i, title: "Plan de seguridad " + (i + 1), content: "Seguridad en la sede.", start: dia(n), end: dia(n), a: 1 + (i % 3), type: "otro", scopes: rosario })),
+  // Lo que se habló antes: un tema que ocupa más de la mitad de los posteos no distingue nada, así que hace falta más actividad.
+  ...[100, 110, 120, 130, 140, 150, 160, 170].map((n, i) => post({ id: "u" + i, title: "Actividad de antes " + (i + 1), start: dia(n), end: dia(n), a: 1 + (i % 3), type: "otro", scopes: rosario })),
 ]);
 const vp = { width: 1280, height: 800 };
 const b = await abrirNavegador();
@@ -95,7 +97,7 @@ const titulos = p => p.$$eval("#presPuntos .pres-punto", l => l.map(e => e.getAt
   eq("con nombres: el título, el rótulo que dice las dos cosas y las personas con lo que cargaron (de mayor a menor)", [e.tit, e.sub, e.gente.length >= 3, e.gente.every(x => /:\d+$/.test(x)), e.gente.map(x => +x.split(":").pop()).every((n, i, l) => !i || l[i - 1] >= n)],
     ["Quién lo hizo posible", "El equipo y las tendencias", true, true, true]);
   eq("…con las iniciales en cada círculo", e.ini.every(x => /^\p{Lu}{1,2}$/u.test(x)), true);
-  eq("…y las filas de Tendencias, con el tema «Seguridad» (6 posteos y ninguno antes: nuevo) entre ellas", [e.temas.includes("💬 Seguridad"), e.filas[e.temas.indexOf("💬 Seguridad")]], [true, ["0 → 6", "nuevo"]]);
+  eq("…y las filas de Tendencias, con el tema «Seguridad» (9 posteos y ninguno antes: nuevo) entre ellas", [e.temas.includes("💬 Seguridad"), e.filas[e.temas.indexOf("💬 Seguridad")]], [true, ["0 → 9", "nuevo"]]);
   eq("…y no más de 6 filas", e.temas.length >= 1 && e.temas.length <= 6, true);
   const antes = await p.$eval("#presCuenta", x => x.textContent);
   await p.click("#presEquipo");

@@ -101,12 +101,11 @@ quedó resuelta como la 4 (tendencias automáticas, sin etiquetas a mano).
 
 ## Ajustes que pidió el usuario después (13/10/2026)
 
-Con lo ya hecho a la vista, pidió retoques; todos hechos, en las tandas 79 a 89 de `docs/REDISENO.md`:
+Con lo ya hecho a la vista, pidió retoques; todos hechos, en las tandas 79 a 90 de `docs/REDISENO.md`:
 
 - **Pasos de «Lo que sigue»**: «No es tarea» a la derecha, en la fila de la fecha, y los textos largos con «más / menos» (tanda 79).
-- **Temas → «Tendencias»**: primero que junte las palabras que van pegadas («krav maga», tanda 80); después pidió otro concepto —«no representa lo que se
-  está hablando, lo que pasó»— y se rehízo como **«Tendencias»** (tanda 87): lo que subió y bajó en lugares, tipos y temas (de una lista que arman los administradores) en
-  Reportes y en el costado del Inicio.
+- **Temas → «Tendencias»**: primero que junte las palabras que van pegadas («krav maga», tanda 80); después pidió otro concepto —«no representa lo que se está hablando, lo que pasó»— y se rehízo como **«Tendencias»** (tanda 87): lo que subió y bajó en lugares, tipos y temas en
+  Reportes y en el costado del Inicio. Los temas salían de una lista que armaban los administradores; el usuario no quiso eso (14/10) y ahora **salen solos de lo que el equipo escribe**, posteos y conversaciones (tanda 90).
 - **La planilla**: una tabla de Excel de verdad, con una columna por dato, que baje todo (también los posteos) y que al filtrar deje
   elegir qué actividades y qué columnas; el botón del Inicio, solo la flecha ⬇ (tanda 81). Después criticó la ventana de opciones y se sacó: la flecha baja de un clic lo que están filtrando (tanda 84).
 - **«Mi año»** pasa del menú de la cuenta a Reportes, antes de «Presentar»; el menú queda con Mis preferencias, Administración y

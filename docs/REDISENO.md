@@ -969,6 +969,32 @@ eligió **unirlas así**:
 Pruebas: `agenda_test.mjs` (país, región y ciudad; fallan con el código
 de antes) y `ficha_celular_test.mjs` vuelve a esperar cinco tarjetas.
 
+### 90. Los temas de «Tendencias» salen solos de lo que escribe el equipo — HECHO (14 oct 2026, sin publicar todavía)
+
+El usuario aprobó el diseño de «Tendencias» pero no el **contenido** de los temas: «no quiero que el administrador defina ningún tipo de palabras; quiero que el sistema vaya leyendo
+lo que pasa, de qué se está hablando, qué temas se están trabajando —en reportes, en conversaciones, en general— y a partir de eso se muestren las tendencias». Se sacó el diccionario
+de la tanda 87 (`TEMAS_DE_ARRANQUE`, `preferences.temas`, **Administración › Temas** con sus palabras sugeridas y su pantalla); lo que quedó guardado en `preferences.temas` ya no se lee.
+El diseño (Reportes, el costado del Inicio, el mosaico, los números «antes → ahora») no se tocó.
+- **Cómo se descubren los temas** (`temasDeLosTextos`, todo en el navegador, con lo que ya está cargado; nada sale de la app). Cada posteo cuenta **con sus respuestas** (las del sistema no):
+  1. Se corta el texto en palabras y se descartan las que no dicen de qué se habla: relleno en los cuatro idiomas (más palabras de papel como «plan», «informe», «proyecto», «jornada»),
+     charla («gracias», «excelente»), verbos conjugados («instalamos», «participaron», «armó»), direcciones web y @menciones, y **los nombres de lugares, de gente y de tipos de actividad**
+     (eso ya lo cuentan «Lugares», «Tipos» y el equipo; `fueraDeTemas`).
+  2. Las palabras que casi siempre van pegadas son una frase («krav maga», «rosh hashaná»); plural y tildes no cuentan («beca» y «becas», «reunión» y «reuniones»).
+  3. Las palabras o frases que aparecen en **los mismos posteos** son un solo tema («seguridad» + «cámaras»): 50 % o más de coincidencia, o una palabra que está casi solo dentro de los posteos de otra.
+     El tema se llama como la palabra del grupo que más veces está en un **título** (a igual, la más usada, y la más larga). Lo que dice más de la mitad de los posteos no distingue nada y no es un tema.
+  4. Un posteo cuenta **una vez** por tema aunque lo nombre diez veces. El tema tiene que estar en 3 posteos por lo menos.
+- **Solo se muestra lo que no puede ser casualidad.** Además de la regla de siempre (3 o más, nuevo / se apagó / una vez y media, con 2 de diferencia), el cambio de un tema tiene que apartarse del azar
+  (`zDelCambio`, prueba z de dos proporciones, mínimo 2): se compara qué parte de los posteos de cada tramo habla del tema, así que si todo sube porque se cargó más, nada «sube». Lo medí con datos de mentira
+  donde nada cambia: sin esta prueba salían unas 7 «tendencias» falsas por corrida; con ella, menos de una. Efecto a la vista: con pocos posteos hace falta más para que algo cuente (con ~60 posteos, un tema nuevo
+  necesita unos 7); en la prueba, «Capacitación» 0 → 3 no aparece. **Lugares y tipos no cambian** (ya estaban aprobados).
+- **Tocar un tema** abre el Inicio con su nombre en el buscador y en «Últimos 90 días»; como ese nombre representa varias palabras, el Inicio busca **todas las del grupo** (en el posteo o en sus respuestas) y la lista da
+  lo que decía el número (`temaElegido`, que se anota al tocar la ficha). Escribir a mano esa misma palabra es una búsqueda de texto de siempre. Al pasar el mouse por la ficha se ve con qué otras palabras se juntó («también: cámaras»).
+- **Límites que conviene saber**: el sistema no «entiende» el significado: junta palabras que aparecen en los mismos posteos, así que «seguridad» y «alarma» son un tema solo si se escriben juntas; el hebreo se corta
+  sin separar prefijos (ה, ב, ל); y no hay una lista de «palabras prohibidas» a pedido de nadie: si algún día sale un tema que no sirve, la salida es afinar las reglas de arriba, no una lista a mano.
+- Pruebas: `tendencias_test.mjs` (70; los datos ya no traen ninguna lista: los temas salen de títulos, textos y respuestas), `presentacion_destacados_test.mjs` (9 posteos de «Seguridad» y más actividad antes),
+  `reportes_dom_test.mjs` / `armar_reportes.py` (el motor nuevo), `app_dom_test.mjs` (Administración sin «Temas»). Se comprobó que cada regla falla si se la saca (sin la prueba z, sin los nombres de lugares, de gente o de
+  tipos, sin charla, sin verbos, con las respuestas del sistema, sin las respuestas, sin juntar subtemas).
+
 ### 89. La planilla se llama siempre «Registro - día-mes-año» — HECHO (14 oct 2026, sin publicar todavía)
 
 Pedido del usuario: el Excel que se baja tiene que llamarse **siempre igual, haya o no filtros**: «Registro - DD-MM-AAAA», cambiando con el idioma. Antes el nombre dependía de qué se bajaba
@@ -1000,7 +1026,7 @@ margen en el celular. En la compu el campo ya tiene el foco; en el celular no (s
 - Pruebas: `pasos_responsable_test.mjs` (51) y `pasos_texto_largo_test.mjs` al día: el buscador (tildes, mayúsculas, sin coincidencias, Enter), la lista larga con scroll, «Quitar»,
   Escape / tocar afuera / el mismo botón, las flechas, la compu, el hebreo, pegada al botón con margen de 12 px, la pantalla más baja (el teclado) y el tamaño del botón (falla con el código de antes).
 
-### 87. «Tendencias»: lo que subió y bajó en 90 días, en Reportes y en el Inicio — HECHO (13 oct 2026)
+### 87. «Tendencias»: lo que subió y bajó en 90 días, en Reportes y en el Inicio — HECHO (13 oct 2026; los temas con diccionario de admin los reemplazó la tanda 90)
 
 El usuario no estaba conforme con «Temas» (palabras sueltas que subían y bajaban: «no representa lo que se está hablando, lo que pasó»).
 Pidió que se llame «Tendencias», que combine **lo que pasó** (lugares y tipos) con **de qué se habló** (temas) y que se vea también en el
