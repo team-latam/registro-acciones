@@ -41,7 +41,7 @@ decisiones de arquitectura.
   **Las 16 propuestas de mejoras** (13/10/2026): `docs/PROPUESTAS.md` — qué eligió el usuario
   (en dos vueltas), cómo se leyó cada nota y el orden en que se hicieron; la página con las
   maquetas está enlazada ahí. **Todo lo elegido ya está hecho** (tandas 70 a 78 de
-  `docs/REDISENO.md`): planillas, «Repetir» con la fecha del año que viene, «Tendencias» en Reportes y en el Inicio (con los temas que arma un admin en Administración › Temas),
+  `docs/REDISENO.md`): planillas, «Repetir» con la fecha del año que viene, «Tendencias» en Reportes y en el Inicio (los temas salen solos de lo que el equipo escribe; el admin no define palabras: lo pidió así el 14/10/2026),
   pasos con responsable y fecha, «Algo no anda», modo presentación, correo mensual de lugares sin
   actividad, informe mensual con enlace de 48 horas y «Mi año». Falta que el usuario **prenda** en
   Administración › Correos el aviso de lugares sin actividad (viene prendido, 6 meses) y el

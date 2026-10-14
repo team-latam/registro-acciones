@@ -2801,31 +2801,6 @@
   /* La casilla "Opcional" de cada documento, en Administración. */
   .doc-fila .doc-opc{ display:inline-flex; align-items:center; gap:6px; margin-inline-start:auto; font-size:12px; font-weight:700; color:var(--text-muted); white-space:nowrap; cursor:pointer; }
   .doc-fila .doc-opc input{ accent-color:var(--celeste-dark); margin:0; width:15px; height:15px; }
-  /* Administración › Temas (13/10/2026) */
-  .tm-seccion{ display:grid; gap:14px; max-width:820px; }
-  .tm-aviso{ background:var(--celeste-soft); border:1px solid var(--celeste); border-radius:12px; padding:10px 14px; font-size:13px; font-weight:600; }
-  .tm-nuevo{ display:flex; gap:8px; flex-wrap:wrap; }
-  .tm-nuevo .lp-inp{ flex:1 1 220px; width:auto; }
-  .tm-lista{ display:grid; gap:12px; }
-  .tm-card{ background:var(--card); border:1px solid var(--border); border-radius:16px; padding:14px 16px; display:grid; gap:10px; }
-  .tm-cab{ display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; }
-  .tm-nombre{ flex:1 1 200px; width:auto; font-weight:800; }
-  .tm-cuenta{ font-size:12px; color:var(--text-muted); font-weight:600; }
-  .tm-chips{ display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
-  .tm-chip{ display:inline-flex; align-items:center; gap:4px; background:var(--surface-alt); color:var(--text); border:0; border-radius:999px; padding:3px 5px 3px 11px; font:inherit; font-size:12.5px; font-weight:600; }
-  .tm-chip.fijo{ background:var(--celeste-soft); padding-inline-end:11px; font-weight:800; }
-  .tm-chip button{ all:unset; cursor:pointer; box-sizing:border-box; width:18px; height:18px; text-align:center; line-height:18px; border-radius:50%; color:var(--text-muted); font-size:11px; }
-  .tm-chip button:hover{ background:var(--surface-hover); color:var(--text); }
-  .tm-chip button:focus-visible, button.tm-chip:focus-visible{ outline:2px solid var(--celeste-dark); outline-offset:1px; }
-  button.tm-chip.sug{ cursor:pointer; padding:3px 11px; border:1px dashed var(--border); background:transparent; }
-  button.tm-chip.sug:hover{ background:var(--celeste-soft); border-color:var(--celeste-dark); }
-  .tm-chip small{ color:var(--text-muted); font-weight:700; font-size:11px; }
-  .tm-add{ display:flex; align-items:center; gap:8px; }
-  .tm-sug{ display:grid; gap:8px; }
-  .tm-sug h3{ margin:6px 0 0; font-size:13px; font-weight:800; color:var(--ink); }
-  .tm-sug-dest label{ display:flex; flex-wrap:wrap; align-items:center; gap:8px; font-size:13px; font-weight:600; }
-  .tm-sug-dest .lp-sel{ width:auto; min-width:160px; }
-  .tm-pie{ display:flex; justify-content:flex-end; }
   .doc-add{ display:flex; align-items:center; gap:8px; margin-top:2px; }
   .doc-nuevo-input{
     flex:1 1 0; min-width:0; height:38px; padding:0 12px; font-family:inherit; font-size:13px; font-weight:600; box-sizing:border-box;
@@ -9881,7 +9856,6 @@ function applyPreferencesConfig(cfg){
   applyCalendarIdConfig(cfg && cfg.calendarId);
   applyCalendarImportFromConfig(cfg && cfg.calendarImportFrom);
   applyAttachmentLimitsConfig(cfg);
-  applyTemasConfig(cfg && cfg.temas);
 }
 // Se mutan EVENTO_TYPES/ACTIVITY_TYPES/ACTIVITY_BY_KEY/CALENDAR_SYNC_TYPES
 // en el lugar (mismo motivo que ZONES/COUNTRIES): todo el resto del
@@ -12972,7 +12946,6 @@ function adminMenuItems(){
     { grupo:t("Cómo se carga","How things are logged","Como se carrega","איך רושמים"), items:[
       { key:"tipos", view:"preferencias", sub:"tipos", label:t("Tipos de actividad","Activity types","Tipos de atividade","סוגי פעילות") },
       { key:"agenda", view:"preferencias", sub:"agenda", label:t("Agenda","Directory","Agenda","ספר טלפונים") },
-      { key:"temas", view:"preferencias", sub:"temas", label:t("Temas","Topics","Temas","נושאים") },
       // Zonas, Lugares y Adjuntos se tocan una vez al año: juntas en
       // «Avanzado», que se despliega solo estando adentro (AUDITORIA M12).
       // Las ciudades por sumar se cuentan igual, en «Avanzado».
@@ -14140,7 +14113,6 @@ function renderPreferenciasView(){
     : sec==="problemas" ? renderProblemasSection()
     : sec==="avanzado" ? renderAvanzadoSection()
     : sec==="agenda" ? renderAgendaAdminSection()
-    : sec==="temas" ? renderTemasSection()
     : renderZonasSection();
   // Sin la fila de chips de antes: el menú de Administración (ver
   // renderAdminShell) ya dice en qué sección se está.
@@ -17555,19 +17527,22 @@ function renderCobertura(f){
 }
 
 // ---- Temas ----
-// De qué se habló, sin etiquetar nada (pedido del usuario el 13/10/2026,
-// propuesta 4-A de la segunda vuelta): las palabras de los títulos y los
-// textos de los últimos 90 días, contadas contra las de los 90 anteriores.
-// Se calcula acá, en el navegador, con lo que ya está cargado: nada sale de la
-// app. Cuenta posteos (una palabra repetida diez veces en un texto es una
-// mención), no apariciones, y deja afuera lo que no es un tema: palabras de
-// relleno en los cuatro idiomas, los nombres de los lugares y de la gente del
-// propio posteo, direcciones web y @menciones.
-const TEMAS_DIAS = 90;
-const TEMAS_TRAMOS = 6;
-const TEMAS_MIN = 3;
-const TEMAS_MAX = 10;
-const TEMAS_JUNTAS = 0.6;   // desde qué parte de los posteos de la palabra menos usada deben tener el par para juntarlos
+// De qué se habla, sin que nadie lo defina (pedido del usuario, 14/10/2026): lo deciden los textos que el equipo
+// va cargando —títulos, textos y respuestas de los posteos—, no una lista de palabras de un administrador.
+// Se calcula acá, en el navegador, con lo que ya está cargado: nada sale de la app.
+//  1. Cada posteo (con sus respuestas) se corta en palabras y se descartan las que no dicen de qué se habla: relleno
+//     en los cuatro idiomas, verbos conjugados, charla («gracias», «excelente»), direcciones web, @menciones y los
+//     nombres de lugares, de gente y de tipos de actividad (eso ya lo cuentan «Lugares» y «Tipos»).
+//  2. Las palabras que casi siempre van pegadas son una sola frase («krav maga»).
+//  3. Las palabras o frases que casi siempre aparecen en los mismos posteos son UN tema («seguridad», «cámaras» y
+//     «protocolo»). Se llama como la que más veces está en un título: los títulos dicen de qué se trata.
+//  4. Cuenta posteos, no apariciones: un posteo cuenta una vez por tema aunque lo nombre diez veces.
+const TEMAS_MIN = 3;        // un tema tiene que estar en 3 posteos por lo menos
+const TEMAS_JUNTAS = 0.6;   // desde qué parte de los posteos de la palabra menos usada deben tener el par para juntarlo
+const TEMAS_MISMO = 0.5;    // cuánto tienen que coincidir los posteos de dos palabras para que sean el mismo tema
+const TEMAS_SUBTEMA = 0.3;   // una palabra que está casi solo dentro de los posteos de otra se suma a ella si tiene al menos esta parte
+const TEMAS_COMUN = 0.5;    // lo que dice más de la mitad de los posteos no distingue nada: no es un tema
+const TEMAS_Z = 2;          // cuánto tiene que apartarse el cambio de lo que pasaría por azar (ver zDelCambio)
 const TEMAS_RELLENO = new Set(normalize(`
   para como pero sino este esta esto estos estas entre cuando muy sobre tambien hasta donde quien quienes desde todo todos todas toda nos durante
   otros otras otro otra ese esa eso esos esas ante ellos ellas antes despues algunos algunas algo unos unas tanto mucho muchos mucha muchas nada cual
@@ -17577,7 +17552,8 @@ const TEMAS_RELLENO = new Set(normalize(`
   hoy ayer manana tarde noche primero primera primeros segundo segunda tercera ademas asi aun aunque porque pues luego entonces mientras solo sola
   tambien tras ver vio vimos hablamos hablo hablaron quedamos acordamos acordo acordaron pendiente pendientes falta faltan faltaron
   visita visitas reunion reuniones curso cursos seminario seminarios congreso congresos evento eventos actividad actividades llamado llamados virtual
-  rutina rutinas equipo charla charlas
+  rutina rutinas equipo charla charlas plan planes informe informes proyecto proyectos programa programas propuesta propuestas jornada jornadas
+  encuentro encuentros iniciativa iniciativas trabajo trabajos grupo grupos
   the and for with that this from have has had were was are been will would should could about into over after before their there them they what when
   where which while also than then them these those your you our not but all any can did does done get got its just more most much other some such
   only same very each both few many make made new now off one out own per see she him her his how who why use used using way
@@ -17586,61 +17562,68 @@ const TEMAS_RELLENO = new Set(normalize(`
   reuniao reunioes visitas curso cursos evento eventos atividade atividades
 `).split(/\s+/).filter(Boolean));
 const TEMAS_RELLENO_HE = new Set("של את על עם כל לא גם או אבל אם כי זה זאת הוא היא הם הן אני אנחנו היה היו יש אין מה מי איך למה מאוד עוד רק כבר אחרי לפני בין ליד אל מן עד פגישה ביקור קורס אירוע".split(" "));
-// Las palabras de un texto, en forma canónica: sin tildes, en minúscula y sin la
-// s final («cámara» y «cámaras» son un mismo tema). Devuelve [clave, como se escribió].
-function formaCanonicaDeTema(w){
-  const hebreo = /[\u0590-\u05FF]/.test(w);
-  if(w.length < (hebreo ? 3 : 4)) return null;
-  let k = hebreo ? w.replace(/[\u0591-\u05C7]/g, "") : normalize(w);
-  if(hebreo ? TEMAS_RELLENO_HE.has(k) : TEMAS_RELLENO.has(k)) return null;
-  if(!hebreo && k.length > 4 && k.endsWith("s") && !k.endsWith("ss")) k = k.slice(0, -1);
-  if(!hebreo && TEMAS_RELLENO.has(k)) return null;
+// Palabras de charla que no dicen de qué se habla: agradecer, saludar, elogiar.
+const TEMAS_CHARLA = new Set(normalize(`
+  gracias excelente genial buenisimo buenisima felicitaciones felicidades hermoso hermosa lindo linda buena bueno buenas buenos saludos abrazo abrazos
+  mandame avisame perfecto perfecta dale listo thanks thank great congrats congratulations amazing awesome obrigado obrigada parabens otimo
+`).split(/\s+/).filter(Boolean));
+// Un verbo conjugado («instalamos», «participaron», «armó») no es un tema.
+const esVerboDeTema = w => /(amos|emos|aron|aram|ieron)$/.test(normalize(w)) || /[a-zñ]ó$/i.test(w);
+// La palabra en forma de comparar: sin tildes, en minúscula y sin el plural («cámaras» y «cámara» son lo
+// mismo, «reuniones» y «reunión» también). En hebreo, sin las vocales.
+function claveDePalabra(w){
+  const hebreo = /[֐-׿]/.test(w);
+  let k = hebreo ? w.replace(/[֑-ׇ]/g, "") : normalize(w);
+  if(!hebreo){
+    if(k.length > 5 && /[nrdlz]es$/.test(k)) k = k.slice(0, -2);
+    else if(k.length > 4 && k.endsWith("s") && !k.endsWith("ss")) k = k.slice(0, -1);
+  }
   return k;
 }
-// El texto cortado en «tiras» de palabras que van pegadas: una tira termina en cualquier
-// signo, número o salto de línea, y en una palabra de relleno o muy corta («plan de verano»
-// no es «plan verano»). Sirve para reconocer lo que se dice con dos o tres palabras («krav
-// maga», «defensa personal»). Cada palabra: [clave, como se escribió].
-function tirasDeTema(texto){
+// La clave de una palabra que puede ser parte de un tema, o null si no lo es. `fuera`: las claves que no cuentan
+// (nombres de lugares, de gente y de tipos).
+function formaCanonicaDeTema(w, fuera){
+  const hebreo = /[֐-׿]/.test(w);
+  if(w.length < (hebreo ? 3 : 4)) return null;
+  if(!hebreo && (esVerboDeTema(w) || TEMAS_CHARLA.has(normalize(w)))) return null;
+  const crudo = hebreo ? w.replace(/[֑-ׇ]/g, "") : normalize(w);
+  if(hebreo ? TEMAS_RELLENO_HE.has(crudo) : TEMAS_RELLENO.has(crudo)) return null;
+  const k = claveDePalabra(w);
+  if(!hebreo && TEMAS_RELLENO.has(k)) return null;
+  if(fuera && fuera.has(k)) return null;
+  return k;
+}
+// El texto cortado en «tiras» de palabras que van pegadas: una tira termina en cualquier signo, número o salto
+// de línea, y en una palabra de relleno o muy corta («plan de verano» no es «plan verano»). Sirve para reconocer
+// lo que se dice con dos o tres palabras («krav maga», «defensa personal»). Cada palabra: [clave, como se escribió].
+function tirasDeTema(texto, fuera){
   const limpio = String(texto || "").replace(/https?:\/\/\S+|www\.\S+|\S+@\S+|@\w+/gi, " . ");
   const tiras = []; let actual = [];
   const corta = () => { if(actual.length) tiras.push(actual); actual = []; };
   (limpio.match(/[\p{L}][\p{L}'’]*|[^\p{L}]+/gu) || []).forEach(trozo => {
     if(!/^[\p{L}]/u.test(trozo)){ if(/[^ \t]/.test(trozo)) corta(); return; }
-    const k = formaCanonicaDeTema(trozo);
+    const k = formaCanonicaDeTema(trozo, fuera);
     if(k) actual.push([k, trozo]); else corta();
   });
   corta();
   return tiras;
 }
-function palabrasDeTema(texto){ return tirasDeTema(texto).flat(); }
-// Los temas, de los más hablados a los menos. `posts` ya viene filtrado (el
-// «Ver solo» del reporte). Cada tema: { k, palabra, ahora, antes, tramos, tipo }
-// con tipo «sube» / «baja» / «nuevo» / «igual».
-function temasDelReporte(posts, hoy, max = TEMAS_MAX){
-  const desde = addDaysISO(hoy, -(TEMAS_DIAS - 1)), desdeAntes = addDaysISO(hoy, -(2 * TEMAS_DIAS - 1));
-  // 1. Los posteos de los 180 días, cada uno con sus tiras de palabras (sin lo propio: lugares, gente).
-  const docs = [];
-  posts.forEach(p => {
-    if(p.cancelled) return;
-    const fecha = String(p.startDate || p.date || "");
-    if(!fecha || fecha > hoy || fecha < desdeAntes) return;
-    // Lo propio del posteo no es un tema: sus lugares, la gente y quien lo cargó.
-    const nombres = [...(p.scopes || []).flatMap(sc => sc ? [sc.city, sc.country, sc.region] : []), ...(p.participants || []).map(x => x && x.name), p.authorName, p.location];
-    const propios = new Set(palabrasDeTema(nombres.filter(Boolean).join(" ")).map(x => x[0]));
-    // Una palabra propia corta la tira, como una de relleno.
-    const tiras = [];
-    tirasDeTema(`${p.title || ""} . ${p.content || ""}`).forEach(tira => {
-      let actual = [];
-      tira.forEach(w => { if(propios.has(w[0])){ if(actual.length) tiras.push(actual); actual = []; } else actual.push(w); });
-      if(actual.length) tiras.push(actual);
-    });
-    docs.push({ fecha, ahora: fecha >= desde, tiras });
-  });
-  if(docs.length < 8) return [];
-  // 2. Las palabras que casi siempre van juntas son UN tema: «krav» y «maga» no son dos ideas.
-  // Un par de palabras pegadas se junta si aparece en al menos TEMAS_MIN posteos y la menos
-  // frecuente de las dos casi no se usa fuera de ese par (60% o más de sus posteos).
+// Cómo se muestra el tema: en minúscula si alguna vez se escribió así (una palabra al principio de un título
+// viene con mayúscula sin serlo), y como se escribió si siempre fue con mayúscula («Pésaj»).
+function formaDeTema(formas){
+  const orden = l => l.sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0][0];
+  const todas = [...formas.entries()];
+  const chicas = todas.filter(([w]) => w === w.toLowerCase());
+  return orden(chicas.length ? chicas : todas);
+}
+const conMayuscula = w => w.charAt(0).toLocaleUpperCase() + w.slice(1);
+// Los temas de unos posteos. `docs`: [{ tiras, titulo }] con `titulo`, el Set de claves de las palabras del título.
+// Devuelve [{ k, palabra, docs, miembros }]: `docs`, los índices de los posteos que hablan del tema; `miembros`, las
+// palabras o frases que lo forman, de la más a la menos usada.
+function temasDeLosTextos(docs){
+  const N = docs.length;
+  // Las palabras que casi siempre van pegadas son UNA frase: un par se junta si aparece en TEMAS_MIN posteos por
+  // lo menos y en la parte TEMAS_JUNTAS o más de los posteos de la menos usada de las dos.
   const porPalabra = new Map(), porPar = new Map();
   docs.forEach(d => {
     const palabras = new Set(), pares = new Set();
@@ -17651,45 +17634,55 @@ function temasDelReporte(posts, hoy, max = TEMAS_MAX){
   const juntas = new Set();
   porPar.forEach((n, par) => {
     if(n < TEMAS_MIN) return;
-    const [a, b] = par.split(" ");
-    if(n >= TEMAS_JUNTAS * Math.min(porPalabra.get(a), porPalabra.get(b))) juntas.add(par);
+    const [x, y] = par.split(" ");
+    if(n >= TEMAS_JUNTAS * Math.min(porPalabra.get(x), porPalabra.get(y))) juntas.add(par);
   });
-  // 3. Se cuenta: cada posteo suma una vez a cada tema (una palabra o una frase de hasta tres).
-  const cuentas = new Map();
-  docs.forEach(d => {
-    const tramo = d.ahora ? Math.min(TEMAS_TRAMOS - 1, Math.floor(diasEntre(desde, d.fecha) / (TEMAS_DIAS / TEMAS_TRAMOS))) : -1;
+  // Cada posteo cuenta una vez por palabra o frase de hasta tres palabras.
+  const unidades = new Map();
+  docs.forEach((d, idx) => {
     const vistas = new Set();
     d.tiras.forEach(tira => {
       for(let i = 0; i < tira.length;){
         let j = i;
         while(j + 1 < tira.length && j - i < 2 && juntas.has(tira[j][0] + " " + tira[j + 1][0])) j++;
-        const unidad = tira.slice(i, j + 1), k = unidad.map(x => x[0]).join(" "), w = unidad.map(x => x[1]).join(" ");
+        const u = tira.slice(i, j + 1), k = u.map(x => x[0]).join(" "), w = u.map(x => x[1]).join(" ");
         i = j + 1;
-        if(vistas.has(k)) continue;
-        vistas.add(k);
-        let c = cuentas.get(k);
-        if(!c){ c = { k, formas: new Map(), ahora: 0, antes: 0, tramos: new Array(TEMAS_TRAMOS).fill(0) }; cuentas.set(k, c); }
+        let c = unidades.get(k);
+        if(!c){ c = { k, formas: new Map(), docs: new Set(), titulos: 0 }; unidades.set(k, c); }
         c.formas.set(w, (c.formas.get(w) || 0) + 1);
-        if(d.ahora){ c.ahora++; c.tramos[tramo]++; } else c.antes++;
+        if(!vistas.has(k)){ vistas.add(k); c.docs.add(idx); if(d.titulo && u.every(x => d.titulo.has(x[0]))) c.titulos++; }
       }
     });
   });
-  return [...cuentas.values()].filter(c => c.ahora >= TEMAS_MIN || c.antes >= TEMAS_MIN)
-    .map(c => ({ k: c.k, palabra: formaDeTema(c.formas), ahora: c.ahora, antes: c.antes, tramos: c.tramos,
-      tipo: !c.antes && c.ahora >= TEMAS_MIN ? "nuevo"
-        : c.ahora >= 2 * c.antes && c.ahora - c.antes >= 2 ? "sube"
-        : c.antes >= 2 * c.ahora && c.antes - c.ahora >= 2 ? "baja" : "igual" }))
-    .sort((a, b) => (b.ahora + b.antes) - (a.ahora + a.antes) || a.k.localeCompare(b.k))
-    .slice(0, max);
+  // Se descartan las que casi nadie dice y las que dice casi todo el mundo (no distinguen nada).
+  const candidatas = [...unidades.values()].filter(c => c.docs.size >= TEMAS_MIN && c.docs.size <= TEMAS_COMUN * N)
+    .sort((x, y) => y.docs.size - x.docs.size || x.k.localeCompare(y.k));
+  // Una que casi siempre está en los mismos posteos que otra más usada se junta con ella en un tema.
+  const coincidencia = (A, B) => { let n = 0; const [c, g] = A.size < B.size ? [A, B] : [B, A]; c.forEach(x => { if(g.has(x)) n++; }); return [n, n / (A.size + B.size - n)]; };
+  const temas = [];
+  candidatas.forEach(c => {
+    for(const tm of temas){
+      const [juntos, parecido] = coincidencia(c.docs, tm.base);
+      // Casi los mismos posteos; o una palabra que aparece casi solo dentro de los de otra más usada («cámaras» dentro
+      // de «seguridad»), siempre que no sea una rareza suelta (TEMAS_SUBTEMA: al menos esa parte de los de la otra).
+      const chica = Math.min(c.docs.size, tm.base.size), grande = Math.max(c.docs.size, tm.base.size);
+      if(juntos >= TEMAS_MIN && (parecido >= TEMAS_MISMO || (juntos >= 0.8 * chica && chica >= TEMAS_SUBTEMA * grande))){ tm.miembros.push(c); c.docs.forEach(i => tm.docs.add(i)); return; }
+    }
+    temas.push({ base: c.docs, docs: new Set(c.docs), miembros: [c] });
+  });
+  // El tema se llama como la palabra del grupo que más veces está en un título (a igual, la más usada; a igual, la más larga: suele ser la más específica).
+  return temas.map(tm => {
+    const nombre = tm.miembros.slice().sort((x, y) => y.titulos - x.titulos || y.docs.size - x.docs.size || y.k.length - x.k.length || x.k.localeCompare(y.k))[0];
+    return { k: nombre.k, palabra: formaDeTema(nombre.formas), docs: tm.docs,
+      miembros: tm.miembros.map(m => ({ k: m.k, palabra: formaDeTema(m.formas), n: m.docs.size })).sort((x, y) => y.n - x.n || x.k.localeCompare(y.k)) };
+  });
 }
-// Cómo se muestra el tema: en minúscula si alguna vez se escribió así (una
-// palabra al principio de un título viene con mayúscula sin serlo), y como
-// se escribió si siempre fue con mayúscula («Pésaj»).
-function formaDeTema(formas){
-  const orden = l => l.sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0][0];
-  const todas = [...formas.entries()];
-  const chicas = todas.filter(([w]) => w === w.toLowerCase());
-  return orden(chicas.length ? chicas : todas);
+// ¿Es más de lo que se esperaría por azar? Compara qué parte de los posteos de cada tramo habla de algo (la prueba
+// z de dos proporciones). Sin esto, con unos cientos de palabras, siempre hay alguna que «sube» solo por casualidad.
+function zDelCambio(a, b, nAhora, nAntes){
+  const p = (a + b) / (nAhora + nAntes);
+  if(!p || p >= 1) return 0;
+  return (a / nAhora - b / nAntes) / Math.sqrt(p * (1 - p) * (1 / nAhora + 1 / nAntes));
 }
 function diasEntre(desdeISO, hastaISO){ return Math.round((isoDate(hastaISO) - isoDate(desdeISO)) / 86400000); }
 // ---- Tendencias ----
@@ -17698,9 +17691,8 @@ function diasEntre(desdeISO, hastaISO){ return Math.round((isoDate(hastaISO) - i
 // Inicio, y no depende del período que se esté mirando en Reportes.
 //  - Lugares y tipos salen del reporte de siempre (armarReporte): dan lo mismo que «Por país» y «Por tipo» de
 //    esa ventana, y tocar una fila abre el Inicio con la misma regla que las filas de Reportes.
-//  - Los temas salen de un diccionario que arman los administradores (Administración › Temas): contar
-//    palabras sueltas no distingue una idea de otra («seguridad» y «cámaras» son un mismo tema). Cuenta
-//    posteos (uno por posteo, no por aparición) y se queda con lo que dice el título y el texto.
+//  - Los temas salen solos de lo que el equipo escribe (ver «Temas» más arriba): nadie arma una lista. Cuenta
+//    posteos (uno por posteo, no por aparición), con sus respuestas, y solo cuenta lo que se aparta del azar.
 // Solo se muestra lo que cambió bastante, y nunca más de 10.
 const TENDENCIAS_DIAS = 90;
 const TENDENCIAS_MIN_POSTS = 8;     // con menos posteos en los 180 días no hay de qué hablar
@@ -17708,80 +17700,48 @@ const TENDENCIAS_MIN = 3;           // lo que sube o baja llega a 3 en alguno de
 const TENDENCIAS_MAX = 10;          // nunca se muestran más de 10, en ninguna parte
 const TENDENCIAS_PRIMERAS = 6;      // en Reportes: las que se ven antes de «Ver las otras»
 const TENDENCIAS_LATERAL = 5;       // en el Inicio: las primeras, y «Ver más» suma de a 5
-const TEMA_NOMBRE_MAX = 40, TEMA_PALABRA_MAX = 40, TEMA_PALABRAS_MAX = 30, TEMAS_TOPE = 40;
-// La lista con la que se arranca, hasta que un administrador arma la suya. El nombre del tema ya cuenta
-// como palabra: acá van las otras formas de decirlo, en los cuatro idiomas.
-const TEMAS_DE_ARRANQUE = [
-  { n:"Seguridad", w:["cámaras","alarma","vigilancia","protección","security","segurança","אבטחה"] },
-  { n:"Krav magá", w:["defensa personal","self defense","autodefesa","קרב מגע"] },
-  { n:"Jóvenes", w:["juventud","adolescentes","youth","jovens","נוער"] },
-  { n:"Becas", w:["scholarship","bolsas de estudo","מלגות"] },
-  { n:"Fiestas", w:["festividades","pésaj","purim","janucá","rosh hashaná","yom kipur","sucot","shavuot","holidays","feriados"] },
-];
-let temasConfig = null;      // lo guardado en preferences.temas; null: nadie lo armó todavía y rige TEMAS_DE_ARRANQUE
-let temasVersion = 0;        // sube cada vez que cambia el diccionario: lo que se calculó con el anterior ya no vale
-function limpiarTemas(lista){
-  if(!Array.isArray(lista)) return null;
-  const nombres = new Set(), out = [];
-  lista.forEach(x => {
-    const n = String(x && x.n || "").replace(/\s+/g, " ").trim().slice(0, TEMA_NOMBRE_MAX);
-    if(!n || nombres.has(normalize(n)) || out.length >= TEMAS_TOPE) return;
-    nombres.add(normalize(n));
-    const w = [];
-    (Array.isArray(x.w) ? x.w : []).forEach(p => {
-      const s = String(p || "").replace(/\s+/g, " ").trim().slice(0, TEMA_PALABRA_MAX);
-      if(s && normalize(s) !== normalize(n) && !w.some(y => normalize(y) === normalize(s)) && w.length < TEMA_PALABRAS_MAX) w.push(s);
-    });
-    out.push({ n, w });
+// Las claves de las palabras que no cuentan como tema porque ya las cuentan otras partes de «Tendencias»: lugares
+// (países, ciudades, regiones, zonas), gente (de los posteos, del equipo) y tipos de actividad. Se rehace si cambian
+// los datos o el idioma.
+let fueraCalculado = { firma: null, set: null, v: 0 };
+function fueraDeTemas(){
+  const firma = [state.posts, state.roster, state.formerMembers, currentLang(), configVersion];
+  if(fueraCalculado.firma && firma.every((x, i) => x === fueraCalculado.firma[i])) return fueraCalculado.set;
+  const nombres = [];
+  COUNTRIES.forEach(c => nombres.push(c.name, countryLabel(c.name)));
+  Object.values(ZONES).forEach(z => nombres.push(z.label));
+  ACTIVITY_TYPES.forEach(ty => nombres.push(ty.label));
+  state.posts.forEach(p => {
+    (p.scopes || []).forEach(sc => { if(sc) nombres.push(sc.city, sc.country, sc.region); });
+    nombres.push(p.authorName);
+    (p.participants || []).forEach(x => { if(x) nombres.push(x.name); });
   });
-  return out;
+  (state.roster || []).concat(state.formerMembers || []).forEach(m => { if(m) nombres.push(m.name, m.nickname); });
+  const set = new Set();
+  nombres.forEach(n => String(n || "").split(/[^\p{L}'’]+/u).forEach(w => { if(w.length >= 3) set.add(claveDePalabra(w)); }));
+  fueraCalculado = { firma, set, v: fueraCalculado.v + 1 };
+  return set;
 }
-function applyTemasConfig(lista){
-  const nueva = limpiarTemas(lista);
-  if(JSON.stringify(nueva) === JSON.stringify(temasConfig)) return;
-  temasConfig = nueva; temasVersion++;
-}
-function temasDelDiccionario(){ return temasConfig || TEMAS_DE_ARRANQUE; }
-// Una palabra en su forma de comparar: sin tildes, en minúscula y sin la s del plural («cámaras» y
-// «cámara» son lo mismo; «krav magá» y «Krav Maga» también). En hebreo, sin las vocales.
-function tokenDePalabra(w){
-  const hebreo = /[֐-׿]/.test(w);
-  let k = hebreo ? w.replace(/[֑-ׇ]/g, "") : normalize(w);
-  if(!hebreo && k.length > 4 && k.endsWith("s") && !k.endsWith("ss")) k = k.slice(0, -1);
-  return k;
-}
-function tokensDeTexto(texto){ return (String(texto || "").match(/[\p{L}\p{M}][\p{L}\p{M}'’]*/gu) || []).map(tokenDePalabra); }
-let temasCompilados = null;
-// Cada tema, con sus frases ya en forma de comparar. El nombre cuenta como una frase más.
-function compilarTemas(){
-  if(temasCompilados && temasCompilados.v === temasVersion) return temasCompilados.lista;
-  const lista = temasDelDiccionario().map(tm => ({ n: tm.n, frases: [...new Set([tm.n, ...tm.w].map(w => tokensDeTexto(w).join(" ")).filter(Boolean))] }));
-  temasCompilados = { v: temasVersion, lista };
-  return lista;
-}
-// Las palabras de un posteo (o de una respuesta), una sola vez mientras no cambie su texto. El «·» del medio
-// impide que una frase empiece en el título y termine en el texto.
+// Lo que dice un posteo (o una respuesta), una sola vez mientras no cambie su texto, con " · " entre un trozo y otro:
+// así una frase no puede empezar en el título y terminar en el texto.
 const tokensDePosteo = new WeakMap();
 function textoDeUnPosteo(r){
-  const hecho = tokensDePosteo.get(r);
-  if(hecho && hecho.t === r.title && hecho.c === r.content) return hecho.texto;
-  const texto = " " + tokensDeTexto(r.title).concat(["·"], tokensDeTexto(r.content)).join(" ") + " ";
-  tokensDePosteo.set(r, { t: r.title, c: r.content, texto });
+  const fuera = fueraDeTemas(), hecho = tokensDePosteo.get(r);
+  if(hecho && hecho.t === r.title && hecho.c === r.content && hecho.v === fueraCalculado.v) return hecho.texto;
+  const texto = " " + tirasDeTema(`${r.title || ""} . ${r.content || ""}`, fuera).map(tira => tira.map(x => x[0]).join(" ")).join(" · ") + " ";
+  tokensDePosteo.set(r, { t: r.title, c: r.content, v: fueraCalculado.v, texto });
   return texto;
 }
 function posteoHabla(r, tema){
   const texto = textoDeUnPosteo(r);
   return tema.frases.some(fr => texto.includes(" " + fr + " "));
 }
-// Si lo que se escribió en el buscador es justo el nombre de un tema, se buscan todas sus palabras (y solo
-// esas): así la lista del Inicio da lo mismo que el número de «Tendencias».
-let temaDelTexto = { v: -1, texto: null, tema: null };
+// El tema que se acaba de tocar en «Tendencias»: si lo que hay en el buscador del Inicio es justo su nombre, se
+// buscan todas sus palabras (y solo esas), así la lista da lo mismo que el número de la ficha.
+let temaElegido = null;     // { n, frases }
 function temaConEseNombre(texto){
-  if(temaDelTexto.v === temasVersion && temaDelTexto.texto === texto) return temaDelTexto.tema;
-  const n = normalize(texto).replace(/\s+/g, " ");
-  const tema = n ? compilarTemas().find(tm => normalize(tm.n).replace(/\s+/g, " ") === n) || null : null;
-  temaDelTexto = { v: temasVersion, texto, tema };
-  return tema;
+  if(!temaElegido || !texto) return null;
+  return normalize(texto).replace(/\s+/g, " ") === temaElegido.n ? temaElegido : null;
 }
 // ¿Cambió lo bastante como para destacarlo? Hay que llegar a TENDENCIAS_MIN en alguno de los dos tramos y que
 // sea nuevo, que se haya apagado, o que haya subido o bajado una vez y media (y por lo menos 2). null si no.
@@ -17794,29 +17754,31 @@ function cambioDeTendencia(ahora, antes){
   if(antes >= 1.5 * ahora) return "baja";
   return null;
 }
-// { poca, items, temas }: `poca` si hay muy pocos posteos para decir algo; `items` son los cambios notables, de
-// los que más cambiaron a los que menos (todos: cada pantalla corta en 10 después de elegir qué categoría
-// mostrar); `temas`, cuántos posteos habló cada tema de la lista (para Administración).
+// { poca, items, total }: `poca` si hay muy pocos posteos para decir algo; `items` son los cambios notables, de los
+// que más cambiaron a los que menos (todos: cada pantalla corta en 10 después de elegir qué categoría mostrar).
 function calcularTendencias(f){
   const hoy = todayISO();
   const ahora = { desde: addDaysISO(hoy, -(TENDENCIAS_DIAS - 1)), hasta: hoy };
   const antes = { desde: addDaysISO(hoy, -(2 * TENDENCIAS_DIAS - 1)), hasta: addDaysISO(hoy, -TENDENCIAS_DIAS) };
-  const comp = compilarTemas(), cuentas = new Map(comp.map(tm => [tm.n, { ahora:0, antes:0 }]));
-  let total = 0;
+  const fuera = fueraDeTemas(), docs = [];
   state.posts.forEach(p => {
     if(p.cancelled || !pasaFiltroDelReporte(p, f)) return;
     const fecha = String(p.startDate || p.date || "");
     if(!fecha || fecha > hoy || fecha < antes.desde) return;
-    total++;
-    const lado = fecha >= ahora.desde ? "ahora" : "antes";
-    comp.forEach(tm => { if(posteoHabla(p, tm)) cuentas.get(tm.n)[lado]++; });
+    // El posteo y lo que se conversó en él.
+    const respuestas = (state.repliesByPost[p.id] || []).filter(r => !r.system).map(r => r.content);
+    docs.push({ ahora: fecha >= ahora.desde,
+      tiras: tirasDeTema([p.title, p.content, ...respuestas].join(" . "), fuera),
+      titulo: new Set(tirasDeTema(p.title, fuera).flat().map(x => x[0])) });
   });
-  if(total < TENDENCIAS_MIN_POSTS) return { poca:true, items:[], temas:cuentas, total };
+  const total = docs.length;
+  if(total < TENDENCIAS_MIN_POSTS) return { poca:true, items:[], total };
+  const nAhora = docs.filter(d => d.ahora).length, nAntes = total - nAhora;
   const rAhora = armarReporte(ahora.desde, ahora.hasta, f), rAntes = armarReporte(antes.desde, antes.hasta, f);
   const items = [];
-  const sumar = (kind, key, label, icono, a, b) => {
+  const sumar = (kind, key, label, icono, a, b, extra) => {
     const tipo = cambioDeTendencia(a, b);
-    if(tipo) items.push({ kind, key, label, icono, ahora:a, antes:b, tipo, dif:a - b });
+    if(tipo) items.push({ kind, key, label, icono, ahora:a, antes:b, tipo, dif:a - b, ...extra });
   };
   new Set([...Object.keys(rAhora.porPais), ...Object.keys(rAntes.porPais)]).forEach(n =>
     sumar("lugar", n, countryLabel(n), "📍", rAhora.porPais[n] || 0, rAntes.porPais[n] || 0));
@@ -17824,17 +17786,23 @@ function calcularTendencias(f){
     const ty = ACTIVITY_BY_KEY[k];
     sumar("tipo", k, ty ? ty.label : k, "🏷", rAhora.porTipo[k] || 0, rAntes.porTipo[k] || 0);
   });
-  cuentas.forEach((c, n) => sumar("tema", n, n, "💬", c.ahora, c.antes));
+  temasDeLosTextos(docs).forEach(tm => {
+    let a = 0, b = 0;
+    tm.docs.forEach(i => { if(docs[i].ahora) a++; else b++; });
+    if(Math.abs(zDelCambio(a, b, nAhora, nAntes)) < TEMAS_Z) return;
+    sumar("tema", tm.k, conMayuscula(tm.palabra), "💬", a, b,
+      { frases: tm.miembros.map(m => m.k), mas: tm.miembros.filter(m => m.k !== tm.k).slice(0, 3).map(m => m.palabra) });
+  });
   items.sort((a, b) => Math.abs(b.dif) - Math.abs(a.dif) || (b.ahora + b.antes) - (a.ahora + a.antes) || a.label.localeCompare(b.label, currentLang()));
-  return { poca:false, items, temas:cuentas, total };
+  return { poca:false, items, total };
 }
 let tendenciasCache = { datos: null, mapa: new Map() };
-// Se guarda por filtro, por día y por diccionario hasta que cambien los datos (como el reporte).
+// Se guarda por filtro y por día hasta que cambien los datos (como el reporte).
 function tendenciasDe(f){
   const datos = typeof firmaDeDatos === "function" ? firmaDeDatos() : null;
   if(!datos) return calcularTendencias(f);
   if(!tendenciasCache.datos || datos.some((x, i) => x !== tendenciasCache.datos[i])) tendenciasCache = { datos, mapa: new Map() };
-  const clave = JSON.stringify([f || null, todayISO(), temasVersion]);
+  const clave = JSON.stringify([f || null, todayISO()]);
   if(!tendenciasCache.mapa.has(clave)) tendenciasCache.mapa.set(clave, calcularTendencias(f));
   return tendenciasCache.mapa.get(clave);
 }
@@ -17845,7 +17813,8 @@ function etiquetaDelCambio(x){
 }
 const claseDelCambio = x => x.tipo === "sube" ? "sube" : x.tipo === "nuevo" ? "nuevo" : "baja";
 const flechaDelCambio = () => isRTL() ? "←" : "→";
-const tituloDeTendencia = x => t("Ver en el Inicio las actividades de «{x}»","See on Home the activities of “{x}”","Ver no Início as atividades de «{x}»","הצגת הפעילויות של «{x}» בדף הבית",{ x:x.label });
+const tituloDeTendencia = x => t("Ver en el Inicio las actividades de «{x}»","See on Home the activities of “{x}”","Ver no Início as atividades de «{x}»","הצגת הפעילויות של «{x}» בדף הבית",{ x:x.label })
+  + (x.mas && x.mas.length ? ` · ${t("también: {x}","also: {x}","também: {x}","גם: {x}",{ x:x.mas.join(", ") })}` : "");
 const ariaDeTendencia = x => `${x.label}: ${x.antes} ${flechaDelCambio()} ${x.ahora}, ${etiquetaDelCambio(x)}`;
 
 // ---- Tendencias en Reportes ----
@@ -17983,70 +17952,6 @@ function renderTendenciasLateral(){
         <button type="button" class="fs-rep" data-action="tendencia-reporte">${esc(t("Reportes","Reports","Relatórios","דוחות"))} ${arriba}</button></div>
       <div class="fs-tend">${todos.slice(0, n).map(fila).join("")}</div>${boton}
     </section>`;
-}
-
-// ---- Administración › Temas ----
-// La lista de temas que cuenta «Tendencias»: cada uno con las palabras que lo nombran. La arman los administradores
-// (preferences.temas); hasta que alguien la arma rige TEMAS_DE_ARRANQUE. Cada cambio se guarda al toque. Abajo, las
-// palabras que se repiten en los textos y todavía no están en ningún tema, para sumarlas con un toque.
-let temaDestino = "";   // a qué tema se suma una palabra sugerida; "" = uno nuevo
-async function guardarTemas(lista){
-  const limpia = limpiarTemas(lista) || [];
-  applyTemasConfig(limpia);
-  render();
-  try{ await store.config.merge("preferences", { temas: limpia }); }
-  catch(err){
-    console.error("No se pudieron guardar los temas:", err);
-    appAlert(t("No se pudo guardar: {m}","Couldn't save: {m}","Não foi possível salvar: {m}","השמירה נכשלה: {m}",{ m: (err && err.message) || err }));
-  }
-}
-const copiaDeTemas = () => temasDelDiccionario().map(tm => ({ n: tm.n, w: [...tm.w] }));
-// Palabras sueltas o frases separadas por coma o salto de línea.
-const palabrasEscritas = txt => String(txt || "").split(/[,;\n]/).map(x => x.replace(/\s+/g, " ").trim()).filter(Boolean);
-function sugerenciasDeTemas(){
-  const comp = compilarTemas();
-  const cubierta = palabra => { const fr = tokensDeTexto(palabra).join(" "); return comp.some(tm => tm.frases.includes(fr)); };
-  return temasDelReporte(state.posts.filter(p => !p.cancelled), todayISO(), 60).filter(x => !cubierta(x.palabra)).slice(0, 12);
-}
-function renderTemasSection(){
-  const lista = temasDelDiccionario(), T = tendenciasDe(null);
-  const sugeridas = sugerenciasDeTemas();
-  const aviso = temasConfig ? "" : `<div class="tm-aviso">${esc(t("Todavía nadie armó esta lista: se usa una de ejemplo. Cualquier cambio que hagas la guarda como la del equipo.","Nobody has set up this list yet: an example list is used. Any change you make saves it as the team's.","Ainda ninguém montou esta lista: usa-se uma de exemplo. Qualquer mudança que você fizer a salva como a da equipe.","עדיין אף אחד לא הכין את הרשימה הזו: משתמשים ברשימת דוגמה. כל שינוי ישמור אותה כרשימת הצוות."))}</div>`;
-  const tarjeta = (tm, i) => {
-    const c = T.temas.get(tm.n) || { ahora:0, antes:0 };
-    const cuenta = t("Ahora: {a} · antes: {b}","Now: {a} · before: {b}","Agora: {a} · antes: {b}","עכשיו: {a} · קודם: {b}",{ a:c.ahora, b:c.antes });
-    return `<section class="tm-card" aria-label="${esc(tm.n)}">
-      <div class="tm-cab">
-        <input type="text" class="lp-inp tm-nombre" data-tema-campo="nombre" data-idx="${i}" value="${esc(tm.n)}" maxlength="${TEMA_NOMBRE_MAX}" aria-label="${esc(t("Nombre del tema","Topic name","Nome do tema","שם הנושא"))}">
-        <span class="tm-cuenta">${esc(cuenta)}</span>
-        <button type="button" class="btn-ghost danger" data-action="tema-borrar" data-idx="${i}">${esc(t("Quitar tema","Remove topic","Remover tema","הסרת נושא"))}</button>
-      </div>
-      <div class="tm-chips">
-        <span class="tm-chip fijo" title="${esc(t("El nombre del tema ya cuenta como una de sus palabras.","The topic's name already counts as one of its words.","O nome do tema já conta como uma de suas palavras.","שם הנושא כבר נחשב כאחת ממילותיו."))}" dir="auto">${esc(tm.n)}</span>
-        ${tm.w.map((w, j) => `<span class="tm-chip" dir="auto">${esc(w)}<button type="button" data-action="tema-palabra-quitar" data-idx="${i}" data-j="${j}" aria-label="${esc(t("Quitar «{w}»","Remove “{w}”","Remover «{w}»","הסרת «{w}»",{ w }))}" title="${esc(t("Quitar","Remove","Remover","הסרה"))}">✕</button></span>`).join("")}
-      </div>
-      <div class="tm-add">
-        <input type="text" class="doc-nuevo-input" data-tema-campo="palabra" data-idx="${i}" maxlength="${TEMA_PALABRA_MAX}" placeholder="${esc(t("Otra forma de decirlo (separá con comas)…","Another way to say it (separate with commas)…","Outra forma de dizer (separe com vírgulas)…","דרך נוספת לומר זאת (הפרדה בפסיקים)…"))}" aria-label="${esc(t("Agregar palabras al tema {x}","Add words to the topic {x}","Adicionar palavras ao tema {x}","הוספת מילים לנושא {x}",{ x:tm.n }))}">
-        <button type="button" class="btn-doc-add" data-action="tema-palabra-agregar" data-idx="${i}" aria-label="${esc(t("Agregar","Add","Adicionar","הוספה"))}" title="${esc(t("Agregar","Add","Adicionar","הוספה"))}">+</button>
-      </div>
-    </section>`;
-  };
-  const destinos = `<option value=""${temaDestino === "" ? " selected" : ""}>${esc(t("un tema nuevo","a new topic","um tema novo","נושא חדש"))}</option>${lista.map(tm => `<option value="${esc(tm.n)}"${temaDestino === tm.n ? " selected" : ""}>${esc(tm.n)}</option>`).join("")}`;
-  return `<div class="tm-seccion">
-    ${aviso}
-    <div class="tm-nuevo">
-      <input type="text" class="lp-inp" id="temaNuevoNombre" maxlength="${TEMA_NOMBRE_MAX}" placeholder="${esc(t("Nombre del tema nuevo…","New topic name…","Nome do tema novo…","שם הנושא החדש…"))}" aria-label="${esc(t("Nombre del tema nuevo","New topic name","Nome do tema novo","שם הנושא החדש"))}">
-      <button type="button" class="btn-primary" data-action="tema-agregar"${lista.length >= TEMAS_TOPE ? " disabled" : ""}>+ ${esc(t("Agregar tema","Add topic","Adicionar tema","הוספת נושא"))}</button>
-    </div>
-    <div class="tm-lista">${lista.length ? lista.map(tarjeta).join("") : `<p class="hint">${esc(t("No hay temas: «Tendencias» solo mostrará lugares y tipos.","No topics: “Trends” will only show places and types.","Não há temas: «Tendências» só mostrará lugares e tipos.","אין נושאים: «מגמות» יציג רק מקומות וסוגים."))}</p>`}</div>
-    <section class="tm-sug">
-      <h3>${esc(t("Palabras que se repiten y no están en ningún tema","Words that keep coming up and aren't in any topic","Palavras que se repetem e não estão em nenhum tema","מילים שחוזרות ואינן באף נושא"))}</h3>
-      ${sugeridas.length ? `<div class="tm-sug-dest"><label>${esc(t("Al tocar una, sumarla a:","When tapping one, add it to:","Ao tocar em uma, somá-la a:","בלחיצה על מילה, להוסיף אותה אל:"))} <select id="temaDestino" class="lp-sel">${destinos}</select></label></div>
-      <div class="tm-chips">${sugeridas.map(x => `<button type="button" class="tm-chip sug" data-action="tema-sugerida" data-palabra="${esc(x.palabra)}" dir="auto" title="${esc(t("{a} ahora, {b} antes","{a} now, {b} before","{a} agora, {b} antes","{a} עכשיו, {b} קודם",{ a:x.ahora, b:x.antes }))}">+ ${esc(x.palabra)} <small>${x.ahora + x.antes}</small></button>`).join("")}</div>`
-        : `<p class="hint">${esc(t("Nada por ahora: lo que más se repite en los textos ya está en algún tema.","Nothing for now: what comes up most in the texts is already in a topic.","Nada por enquanto: o que mais se repete nos textos já está em algum tema.","אין כרגע: מה שחוזר הכי הרבה בטקסטים כבר נמצא בנושא."))}</p>`}
-    </section>
-    ${temasConfig ? `<div class="tm-pie"><button type="button" class="btn-ghost" data-action="temas-restablecer">${esc(t("Volver a la lista de ejemplo","Go back to the example list","Voltar à lista de exemplo","חזרה לרשימת הדוגמה"))}</button></div>` : ""}
-  </div>`;
 }
 
 // ---- Equipo ----
@@ -25065,11 +24970,6 @@ document.addEventListener("keydown", e=>{
     if(e.key === "Enter"){ e.preventDefault(); darAccesoPorAdelantado(); }
     return;
   }
-  if(el.dataset.temaCampo === "palabra" || el.id === "temaNuevoNombre"){
-    // Enter suma la palabra (o el tema), igual que el botón de al lado.
-    if(e.key === "Enter"){ e.preventDefault(); const b = el.id === "temaNuevoNombre" ? document.querySelector('[data-action="tema-agregar"]') : el.parentElement && el.parentElement.querySelector('[data-action="tema-palabra-agregar"]'); if(b) b.click(); }
-    return;
-  }
   if(el.dataset.action === "tipo-doc-nuevo"){
     // Enter suma el documento, igual que el + de al lado.
     if(e.key === "Enter"){ e.preventDefault(); const b = el.parentElement && el.parentElement.querySelector('[data-action="tipo-doc-add"]'); if(b) b.click(); }
@@ -25994,7 +25894,12 @@ document.addEventListener("click", async e=>{
     else if(rf.zona) state.filters.zones = new Set([rf.zona]);
     if(kind === "lugar") state.filters.place = { kind:"country", country:key };
     else if(kind === "tipo") state.filters.types = new Set([key]);
-    else state.filters.text = key;
+    else {
+      // El nombre del tema busca todas sus palabras: se anota cuáles son, tal como las contó la ficha.
+      const x = tendenciasDe(state.view === "reportes" ? (R.filtro || {}) : null).items.find(it => it.kind === "tema" && it.key === key);
+      state.filters.text = x ? x.label : key;
+      temaElegido = x ? { n: normalize(x.label).replace(/\s+/g, " "), frases: x.frases } : null;
+    }
     filtroOrigen = state.view === "reportes" ? { view:"reportes", anio: R.anio || todayISO().slice(0, 4), tri: Number(R.trimestre) || 0 } : null;
     feedSolapa = "pasado"; feedVisibleCount = PAGE_SIZE; state.view = "feed"; state.countryDrill = null; state.zonaDrill = null;
     render(); scrollToTop();
@@ -26015,61 +25920,6 @@ document.addEventListener("click", async e=>{
     }
     tendIrA = true; fichaOrigen = null;
     state.view = "reportes"; state.countryDrill = null; state.zonaDrill = null; render();
-  },
-    "tema-agregar": async () => {
-    if(!isAdmin()) return;
-    const inp = document.getElementById("temaNuevoNombre"), n = String(inp && inp.value || "").replace(/\s+/g, " ").trim();
-    if(!n){ if(inp) inp.focus(); return; }
-    const lista = copiaDeTemas();
-    if(lista.some(x => normalize(x.n) === normalize(n))){
-      appAlert(t("Ya hay un tema con ese nombre.","There's already a topic with that name.","Já há um tema com esse nome.","כבר יש נושא בשם הזה."));
-      return;
-    }
-    lista.push({ n, w: [] });
-    await guardarTemas(lista);
-  },
-    "tema-borrar": async (el) => {
-    if(!isAdmin()) return;
-    const lista = copiaDeTemas(), i = Number(el.dataset.idx), tm = lista[i];
-    if(!tm) return;
-    if(!(await appConfirm(t("¿Quitar el tema «{n}»? Las actividades no cambian: solo deja de contarse en «Tendencias».","Remove the topic “{n}”? The activities don't change: it just stops being counted in “Trends”.","Remover o tema «{n}»? As atividades não mudam: só deixa de ser contado em «Tendências».","להסיר את הנושא «{n}»? הפעילויות לא משתנות: הוא רק מפסיק להיספר ב«מגמות».",{ n: tm.n }), { danger:true, okLabel: t("Quitar","Remove","Remover","הסרה") }))) return;
-    lista.splice(i, 1);
-    if(temaDestino === tm.n) temaDestino = "";
-    await guardarTemas(lista);
-  },
-    "tema-palabra-agregar": async (el) => {
-    if(!isAdmin()) return;
-    const lista = copiaDeTemas(), tm = lista[Number(el.dataset.idx)];
-    const inp = el.parentElement && el.parentElement.querySelector("input"), nuevas = palabrasEscritas(inp && inp.value);
-    if(!tm || !nuevas.length) return;
-    tm.w.push(...nuevas);
-    await guardarTemas(lista);
-  },
-    "tema-palabra-quitar": async (el) => {
-    if(!isAdmin()) return;
-    const lista = copiaDeTemas(), tm = lista[Number(el.dataset.idx)];
-    if(!tm) return;
-    tm.w.splice(Number(el.dataset.j), 1);
-    await guardarTemas(lista);
-  },
-    "tema-sugerida": async (el) => {
-    if(!isAdmin()) return;
-    const palabra = String(el.dataset.palabra || "").trim();
-    if(!palabra) return;
-    const lista = copiaDeTemas(), destino = lista.find(x => x.n === temaDestino);
-    if(destino) destino.w.push(palabra);
-    else {
-      const n = palabra.charAt(0).toUpperCase() + palabra.slice(1);
-      if(!lista.some(x => normalize(x.n) === normalize(n))) lista.push({ n, w: [] });
-    }
-    await guardarTemas(lista);
-  },
-    "temas-restablecer": async () => {
-    if(!isAdmin()) return;
-    if(!(await appConfirm(t("¿Volver a la lista de ejemplo? Se pierde la lista que armó el equipo.","Go back to the example list? The list the team set up is lost.","Voltar à lista de exemplo? Perde-se a lista que a equipe montou.","לחזור לרשימת הדוגמה? הרשימה שהצוות הכין תאבד."), { danger:true, okLabel: t("Volver","Go back","Voltar","חזרה") }))) return;
-    applyTemasConfig(null); temaDestino = ""; render();
-    try{ await store.config.merge("preferences", { temas: null }); }
-    catch(err){ console.error("No se pudo restablecer los temas:", err); appAlert(t("No se pudo guardar: {m}","Couldn't save: {m}","Não foi possível salvar: {m}","השמירה נכשלה: {m}",{ m: (err && err.message) || err })); }
   },
     "tendencias-filtro": async (el) => {
     tendFiltro = ["lugar", "tipo", "tema"].includes(el.dataset.key) ? el.dataset.key : "todo"; tendAbierta = false; tendResaltar = null;
@@ -27308,21 +27158,6 @@ document.addEventListener("change", e=>{
   const el = e.target;
   // Administración › Agenda: el archivo de la lista por traer.
   if(el.id === "agendaArchivo"){ leerArchivoAgenda(el.files && el.files[0]); el.value = ""; return; }
-  // Administración › Temas: renombrar un tema (se guarda al salir del campo) y a cuál sumar las palabras sugeridas.
-  if(el.id === "temaDestino"){ temaDestino = el.value; return; }
-  if(el.dataset && el.dataset.temaCampo === "nombre"){
-    if(!isAdmin()) return;
-    const lista = copiaDeTemas(), i = Number(el.dataset.idx), tm = lista[i], n = String(el.value || "").replace(/\s+/g, " ").trim();
-    if(!tm || n === tm.n) return;
-    if(!n || lista.some((x, j) => j !== i && normalize(x.n) === normalize(n))){
-      if(n) appAlert(t("Ya hay un tema con ese nombre.","There's already a topic with that name.","Já há um tema com esse nome.","כבר יש נושא בשם הזה."));
-      el.value = tm.n; return;
-    }
-    if(temaDestino === tm.n) temaDestino = n;
-    tm.n = n;
-    guardarTemas(lista);
-    return;
-  }
   // La ficha de una persona sin cuenta: cada campo se guarda al salir de él.
   if(el.dataset && el.dataset.personaCampo){
     const campo = el.dataset.personaCampo, id = el.dataset.id, valor = String(el.value || "").trim();
