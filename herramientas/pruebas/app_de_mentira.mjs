@@ -155,8 +155,12 @@ export const BASE = () => ({
   ],
 });
 
-// Abre el navegador (uno para toda la corrida).
-export const abrirNavegador = () => chromium.launch();
+// Abre el navegador (uno para toda la corrida). Con `utf8: true` arranca en un
+// idioma de sistema UTF-8: sin él (LANG vacío, como en este sandbox) Chromium
+// llama «download» a cualquier archivo cuyo nombre tenga una letra que no sea
+// ASCII (ñ, tildes, hebreo), y no se puede probar el nombre de lo que se baja.
+export const abrirNavegador = ({ utf8 = false } = {}) =>
+  chromium.launch(utf8 ? { env: { ...process.env, LANG: "C.UTF-8", LC_ALL: "C.UTF-8" } } : {});
 // Entra a la app con quien se le diga. `base` reemplaza los datos (por
 // ejemplo, los variados de herramientas/auditoria/herramientas/datos.mjs).
 export async function entrar(b, email, nombre, { viewport, dark, lang, sinSesion, base: otra, query = "", falla } = {}) {

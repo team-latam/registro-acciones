@@ -969,6 +969,20 @@ eligió **unirlas así**:
 Pruebas: `agenda_test.mjs` (país, región y ciudad; fallan con el código
 de antes) y `ficha_celular_test.mjs` vuelve a esperar cinco tarjetas.
 
+### 89. La planilla se llama siempre «Registro - día-mes-año» — HECHO (14 oct 2026, sin publicar todavía)
+
+Pedido del usuario: el Excel que se baja tiene que llamarse **siempre igual, haya o no filtros**: «Registro - DD-MM-AAAA», cambiando con el idioma. Antes el nombre dependía de qué se bajaba
+(`registro-<fecha>`, `registro-filtrado-<fecha>`, `registro-<año>` para «Bajar todo» de Administración, `informe-<mes>` en «Presentar»). Ahora las cuatro salidas pasan por
+`nombreDePlanilla()` y se llaman, por ejemplo, `Registro - 14-10-2026.xlsx`:
+- **La palabra** sigue el idioma de la app: Registro (es), Log (en, como la app llama al Registro en inglés), Registro (pt), יומן (he).
+- **La fecha** es la de hoy, con guiones, en el orden de cada persona: el de Configuración › Calendario si lo eligió (día-mes-año, mes-día-año o año-mes-día) y, si está en «automático», el del idioma
+  (día-mes-año; en inglés, mes-día-año). Lo decidí yo al leer «cambiar dependiendo el idioma»; si prefiere día-mes-año siempre, es cambiar una línea.
+- El aviso del Inicio («✓ Se bajó Registro - 14-10-2026.xlsx · 23 actividades, con los filtros puestos») sigue diciendo si eran las filtradas: eso ya no va en el nombre.
+- Dos bajadas el mismo día quedan «… (1).xlsx» por el navegador; es lo normal de cualquier descarga.
+- Pruebas: `planillas_test.mjs` (el nombre con y sin filtros, desde el Inicio, desde Administración, en es / pt / he / en y con cada formato de fecha; falla con el código de antes) e
+  `informe_mensual_test.mjs` (la planilla de «Presentar»). Detalle de la herramienta: `abrirNavegador({ utf8: true })` arranca Chromium con un idioma de sistema UTF-8, porque en este sandbox
+  (LANG vacío) Chromium le pone «download» a cualquier archivo con una letra que no sea ASCII (ñ, tildes, hebreo) y no se podía probar el nombre.
+
 ### 88. «+ Responsable» de un paso: del tamaño de «+ Fecha» y con buscador — HECHO (13 oct 2026, sin publicar todavía)
 
 Dos pedidos del usuario sobre los pasos de «Lo que sigue», en el celular:

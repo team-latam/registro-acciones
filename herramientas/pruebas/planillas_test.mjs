@@ -29,6 +29,8 @@ const eq = (n, g, w) => { const a = JSON.stringify(g), x = JSON.stringify(w); if
 const OBS = "obs@team-latam.com";
 const anio = new Date().toISOString().slice(0, 4);
 const hoy = new Date().toISOString().slice(0, 10);
+// Así se llama SIEMPRE el archivo (14/10/2026): «Registro - día-mes-año», con o sin filtros.
+const NOMBRE = `Registro - ${hoy.slice(8)}-${hoy.slice(5, 7)}-${hoy.slice(0, 4)}.xlsx`;
 // Los datos de siempre más un observador y un título que Excel tomaría por fórmula.
 const datos = () => {
   const base = BASE();
@@ -58,7 +60,7 @@ const leyenda = p => p.$eval(flecha, e => [e.title, e.getAttribute("aria-label")
 const hayPunto = p => p.$$eval(flecha + " .fp-punto", l => l.length);
 const nDelFeed = async p => await p.$eval('[data-key="pasado"] .fs-n', e => Number(e.textContent)) + await p.$eval('[data-key="futuro"] .fs-n', e => Number(e.textContent));
 
-const b = await abrirNavegador();
+const b = await abrirNavegador({ utf8: true });
 const vp = { width: 1280, height: 900 };
 const total = datos().posts.length;
 
@@ -79,8 +81,8 @@ for(const [quien, nombre, espera] of [[OBS, "Olga Observa", 0], [PERS[1].email, 
   const { p, errores } = await entrar(b, PERS[1].email, PERS[1].name, { viewport: vp, lang: "es", base: datos() });
   eq("no hay ventana de planilla en la página", await p.evaluate(() => [!!document.getElementById("planillaOverlay"), !!document.querySelector('[data-action^="planilla-"]')]), [false, false]);
   const r = await bajar(p, () => p.click(flecha));
-  eq("un clic baja un .xlsx con la fecha de hoy", r.nombre, `registro-${hoy}.xlsx`);
-  eq("el aviso dice qué se bajó y cuántas", await aviso(p), `✓ Se bajó registro-${hoy}.xlsx · ${total} actividades.`);
+  eq("un clic baja un .xlsx con la fecha de hoy", r.nombre, NOMBRE);
+  eq("el aviso dice qué se bajó y cuántas", await aviso(p), `✓ Se bajó ${NOMBRE} · ${total} actividades.`);
   eq("el foco queda en la flecha", await p.evaluate(() => document.activeElement && document.activeElement.dataset.action), "feed-planilla");
   eq("es una tabla de Excel con los 25 títulos, un rango que cubre todo y filtros", [r.filas[0], r.tabla.columnas, r.tabla.ref, r.tabla.filtro], [TITULOS, TITULOS, `A1:Y${total + 1}`, `A1:Y${total + 1}`]);
   eq("una fila por actividad: todas, también lo cancelado y lo que viene", [r.filas.length - 1, r.zip.crcBien, r.filas.slice(1).some(f => f[16] === "Cancelada"), r.filas.slice(1).some(f => f[16] === "Planificada")], [total, true, true, true]);
@@ -99,7 +101,7 @@ for(const [quien, nombre, espera] of [[OBS, "Olga Observa", 0], [PERS[1].email, 
   // En «Próximos», sin filtros, baja lo mismo: todo.
   await p.click('[data-action="feed-solapa"][data-key="futuro"]'); await p.waitForTimeout(400);
   const r2 = await bajar(p, () => p.click(flecha));
-  eq("en la solapa «Próximos» y sin filtros, también baja todo el Registro", [r2.nombre, r2.filas.length - 1], [`registro-${hoy}.xlsx`, total]);
+  eq("en la solapa «Próximos» y sin filtros, también baja todo el Registro", [r2.nombre, r2.filas.length - 1], [NOMBRE, total]);
   eq("sin errores en la consola", errores, []);
   await p.close();
 }
@@ -111,12 +113,12 @@ for(const [quien, nombre, espera] of [[OBS, "Olga Observa", 0], [PERS[1].email, 
   const filtradas = await nDelFeed(p);
   eq("con un filtro, la leyenda dice cuántas de cuántas, y la flecha lleva el puntito", [await leyenda(p), await hayPunto(p)], [[`Bajar lo filtrado: ${filtradas} de ${total} actividades`, `Bajar lo filtrado: ${filtradas} de ${total} actividades`], 1]);
   const f = await bajar(p, () => p.click(flecha));
-  eq("baja solo lo filtrado: el archivo lo dice, y está lo de Rosario y no lo de Quito", [f.nombre, f.filas.length - 1, f.filas.some(x => x && x[5] === "Visita a la comunidad de Rosario"), f.filas.some(x => x && x[5] === "Visita a Quito")], [`registro-filtrado-${hoy}.xlsx`, filtradas, true, false]);
-  eq("el aviso lo repite: son las filtradas, con los filtros puestos", await aviso(p), `✓ Se bajó registro-filtrado-${hoy}.xlsx · ${filtradas === 1 ? "1 actividad" : filtradas + " actividades"}, con los filtros puestos.`);
+  eq("baja solo lo filtrado: el archivo se llama igual que sin filtros, y está lo de Rosario y no lo de Quito", [f.nombre, f.filas.length - 1, f.filas.some(x => x && x[5] === "Visita a la comunidad de Rosario"), f.filas.some(x => x && x[5] === "Visita a Quito")], [NOMBRE, filtradas, true, false]);
+  eq("el aviso lo repite: son las filtradas, con los filtros puestos", await aviso(p), `✓ Se bajó ${NOMBRE} · ${filtradas === 1 ? "1 actividad" : filtradas + " actividades"}, con los filtros puestos.`);
   // Desde la otra solapa baja lo mismo (las dos juntas).
   await p.click('[data-action="feed-solapa"][data-key="futuro"]'); await p.waitForTimeout(400);
   const g = await bajar(p, () => p.click(flecha));
-  eq("lo filtrado es lo mismo vista la solapa que vista", [g.nombre, g.filas.length - 1], [`registro-filtrado-${hoy}.xlsx`, filtradas]);
+  eq("lo filtrado es lo mismo vista la solapa que vista", [g.nombre, g.filas.length - 1], [NOMBRE, filtradas]);
   // Sacar el filtro: vuelve la leyenda de siempre y se va el puntito.
   await p.fill("#feedSearch", ""); await p.waitForTimeout(700);
   eq("sin filtro otra vez: la leyenda de todo y sin puntito", [(await leyenda(p))[0], await hayPunto(p)], [`Bajar planilla: ${total} actividades`, 0]);
@@ -132,7 +134,7 @@ for(const [quien, nombre, espera] of [[OBS, "Olga Observa", 0], [PERS[1].email, 
   const filtradas = await nDelFeed(p);
   eq("con país y período puestos desde Reportes, la flecha lo sabe: puntito y cuántas de cuántas", [(await leyenda(p))[0], await hayPunto(p)], [`Bajar lo filtrado: ${filtradas} de ${total} actividades`, 1]);
   const f = await bajar(p, () => p.click(flecha));
-  eq("baja solo lo de Argentina: tantas como las solapas, con Rosario y sin Quito", [f.nombre, f.filas.length - 1, f.filas.some(x => x && x[5] === "Visita a la comunidad de Rosario"), f.filas.some(x => x && x[5] === "Visita a Quito")], [`registro-filtrado-${hoy}.xlsx`, filtradas, true, false]);
+  eq("baja solo lo de Argentina: tantas como las solapas, con Rosario y sin Quito", [f.nombre, f.filas.length - 1, f.filas.some(x => x && x[5] === "Visita a la comunidad de Rosario"), f.filas.some(x => x && x[5] === "Visita a Quito")], [NOMBRE, filtradas, true, false]);
   await p.close();
 }
 
@@ -169,7 +171,7 @@ for(const [quien, nombre, espera] of [[OBS, "Olga Observa", 0], [PERS[1].email, 
   const { p } = await entrar(b, PERS[1].email, PERS[1].name, { viewport: vp, lang: "es", base: datos() });
   await p.evaluate(() => localStorage.setItem("ra_planilla", JSON.stringify({ sin: ["texto", "personas"], formato: "csv" })));
   const r = await bajar(p, () => p.click(flecha));
-  eq("con columnas y formato guardados por la ventana vieja, igual baja el .xlsx con las 25 columnas", [r.nombre, r.filas[0].length], [`registro-${hoy}.xlsx`, 25]);
+  eq("con columnas y formato guardados por la ventana vieja, igual baja el .xlsx con las 25 columnas", [r.nombre, r.filas[0].length], [NOMBRE, 25]);
   await p.close();
 }
 
@@ -192,7 +194,7 @@ for(const [quien, nombre, espera] of [[OBS, "Olga Observa", 0], [PERS[1].email, 
   await irAdmin(p); await admin(p, "preferencias", "copia");
   eq("el admin ve «Bajar todo <año>»", await p.$eval('[data-action="anio-planilla"]', e => e.textContent.trim()), `⬇ Bajar todo ${anio}`);
   const r = await bajar(p, () => p.click('[data-action="anio-planilla"]'));
-  eq("el archivo lleva el año y es un .xlsx con todas las columnas", [r.nombre, r.filas[0].length], [`registro-${anio}.xlsx`, 25]);
+  eq("el archivo se llama como siempre (con la fecha de hoy) y es un .xlsx con todas las columnas", [r.nombre, r.filas[0].length], [NOMBRE, 25]);
   eq("están las actividades del año y solo ésas", r.filas.slice(1).map(f => f[5]).sort(), esperado);
   eq("de la más vieja a la más nueva", r.filas.slice(1).map(f => f[0]).every((d, i, l) => i === 0 || l[i - 1] <= d), true);
   await p.close();
@@ -202,6 +204,29 @@ for(const [quien, nombre, espera] of [[OBS, "Olga Observa", 0], [PERS[1].email, 
   const { p } = await entrar(b, PERS[1].email, PERS[1].name, { viewport: vp, lang: "es", base: datos() });
   eq("un integrante no baja el año", await noPasaNada(p, "anio-planilla"), true);
   await p.close();
+}
+
+/* ---- El nombre sigue al idioma y al formato de fecha de cada uno ---- */
+{
+  const [a, m, d] = [hoy.slice(0, 4), hoy.slice(5, 7), hoy.slice(8)];
+  const casos = [
+    ["es", null, `Registro - ${d}-${m}-${a}.xlsx`],
+    ["pt", null, `Registro - ${d}-${m}-${a}.xlsx`],
+    ["he", null, `יומן - ${d}-${m}-${a}.xlsx`],
+    ["en", null, `Log - ${m}-${d}-${a}.xlsx`],
+    // Lo que cada uno eligió en Configuración › Calendario manda sobre el idioma.
+    ["es", "mdy", `Registro - ${m}-${d}-${a}.xlsx`],
+    ["en", "dmy", `Log - ${d}-${m}-${a}.xlsx`],
+    ["es", "ymd", `Registro - ${a}-${m}-${d}.xlsx`]
+  ];
+  for(const [lang, formato, esperado] of casos){
+    const base = datos();
+    if(formato) base.user_prefs = [{ email: PERS[1].email, prefs: { dateFormat: formato } }];
+    const { p } = await entrar(b, PERS[1].email, PERS[1].name, { viewport: vp, lang, base });
+    const r = await bajar(p, () => p.click(flecha));
+    eq(`en ${lang}${formato ? ` con fecha ${formato}` : ""} el archivo se llama «${esperado}»`, r.nombre, esperado);
+    await p.close();
+  }
 }
 
 await b.close();
