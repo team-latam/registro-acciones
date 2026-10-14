@@ -241,6 +241,7 @@ eq("ninguna de las dos pasa por otro lado que no sea Google",
   eq("a Google van como invitados solo los que tienen correo (sin correo, Google rechazaba el evento entero)",
      ev.attendees, [{ email:"ana@x.com", displayName:"Ana" }]);
   eq("y los demás siguen nombrados en la descripción", /Participantes: Zeka, Ana, Sin dato/.test(ev.description), true);
+  eq("la descripción termina con quién lo cargó, sin «en Registro de Acciones» (lo ven los invitados)", [ev.description.split("\n").pop(), /Registro de Acciones/.test(ev.description)], ["Cargado por Benny.", false]);
 }
 
 /* ---------- Pasar al Calendar lo que solo está en el Registro (5/10/2026) ---------- */
