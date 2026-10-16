@@ -253,25 +253,42 @@ export function createClient(url, clave){
         const digitos = s => [...String(s || "")].filter(c => c >= "0" && c <= "9").join("");
         const T = n => (estado.tablas[n] = estado.tablas[n] || []);
         T("agenda_listas").push({ id: lid, name: args.p_nombre, created_by: quien(), created_at: ahora });
-        let ni = 0, nc = 0, k = 0; const creadas = new Set(), yaEstaban = new Set();
-        for(const i of args.p_instituciones){
+        let ni = 0, nl = 0, nc = 0, k = 0; const creadas = new Set(), yaEstaban = new Set();
+        // La persona de una lista: la que ya estaba (mismo nombre) o una nueva (agenda_persona_traida, 24-agenda-lugares-al-traer.sql).
+        const personaDe = g => {
+          let per = T("personas").find(x => llave(x.name) === llave(g.name));
+          if(per){ if(!creadas.has(per.id)) yaEstaban.add(per.id);
+            (g.telefonos || []).forEach(tel => { const d = digitos(tel.n); per.telefonos = per.telefonos || [];
+              if(per.telefonos.length < 6 && !per.telefonos.some(y => digitos(y.n) === d)) per.telefonos.push(tel); });
+          } else {
+            per = { id: lid + "_p" + (k++), name: g.name, email: null, note: null, telefonos: copia(g.telefonos || []), idiomas: [], lista: lid, created_by: quien(), created_at: ahora };
+            T("personas").push(per); creadas.add(per.id);
+          }
+          return per;
+        };
+        if(!(args.p_instituciones || []).length && !(args.p_lugares || []).length) return { data: null, error: { code: "23514", message: "La lista viene vacía" } };
+        for(const i of (args.p_instituciones || [])){
           const iid = lid + "_i" + (ni++);
           T("instituciones").push({ id: iid, name: i.name, country: i.country, city: i.city || null, address: i.address || null, tipo: i.tipo || null,
             estado: i.estado || "activa", nota: null, lista: lid, created_by: quien(), created_at: ahora, tocado_por: null, tocado_el: null });
           (i.gente || []).forEach((g, orden) => {
-            let per = T("personas").find(x => llave(x.name) === llave(g.name));
-            if(per){ if(!creadas.has(per.id)) yaEstaban.add(per.id);
-              (g.telefonos || []).forEach(tel => { const d = digitos(tel.n); per.telefonos = per.telefonos || [];
-                if(per.telefonos.length < 6 && !per.telefonos.some(y => digitos(y.n) === d)) per.telefonos.push(tel); });
-            } else {
-              per = { id: lid + "_p" + (k++), name: g.name, email: null, note: null, telefonos: copia(g.telefonos || []), idiomas: [], lista: lid, created_by: quien(), created_at: ahora };
-              T("personas").push(per); creadas.add(per.id);
-            }
+            const per = personaDe(g);
             if(T("contactos").some(c => c.institucion === iid && c.persona === per.id)) return;
             T("contactos").push({ id: lid + "_c" + (nc++), institucion: iid, persona: per.id, cargo: g.cargo || null, orden, created_by: quien(), created_at: ahora });
           });
         }
-        return { data: { lista: lid, instituciones: ni, contactos: nc, personas_nuevas: creadas.size, personas_que_ya_estaban: yaEstaban.size }, error: null };
+        // La gente de una ciudad o de un país, sin institución (agenda_traer, p_lugares): no se repite en el mismo lugar.
+        for(const l of (args.p_lugares || [])){
+          nl++;
+          (l.gente || []).forEach((g, orden) => {
+            const per = personaDe(g);
+            nc++;
+            if(T("contactos").some(c => !c.institucion && c.persona === per.id && c.nivel === l.nivel && (c.country || "") === (l.country || "") && llave(c.city) === llave(l.city))) return;
+            T("contactos").push({ id: lid + "_c" + (nc), institucion: null, persona: per.id, cargo: g.cargo || null, orden, nivel: l.nivel, country: l.country || null, city: l.city || null,
+              zona: l.zona || null, lista: lid, created_by: quien(), created_at: ahora });
+          });
+        }
+        return { data: { lista: lid, instituciones: ni, lugares: nl, contactos: nc, personas_nuevas: creadas.size, personas_que_ya_estaban: yaEstaban.size }, error: null };
       }
       return { data: null, error: { code: "PGRST202", message: "no existe la función " + nombre } };
     },

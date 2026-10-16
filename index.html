@@ -9354,8 +9354,8 @@ function crearSupabaseStore(sb, opciones = {}){
         revienta(await sb.from("contactos").delete().eq("id", id));
         await refrescar("contactos", id);
       },
-      async traer(nombre, instituciones){
-        const { data, error } = await sb.rpc("agenda_traer", { p_nombre: nombre, p_instituciones: instituciones });
+      async traer(nombre, instituciones, lugares = []){
+        const { data, error } = await sb.rpc("agenda_traer", { p_nombre: nombre, p_instituciones: instituciones, p_lugares: lugares });
         if(error) throw error;
         await Promise.all(["agenda_listas", "instituciones", "contactos", "personas"].map(recargarTabla));
         return data;
@@ -9678,7 +9678,7 @@ function subscribeAgenda(){
       createdBy: x.createdBy || null, createdAt: x.createdAt || null, tocadoPor: x.tocadoPor || null, tocadoEl: x.tocadoEl || null }));
     // Un contacto es de una institución o de un lugar (20-contactos-por-lugar.sql).
     state.contactos = d.contactos.map(x => ({ id: x.id, institucion: x.institucion || null, persona: x.persona, cargo: x.cargo || "", orden: x.orden || 0,
-      nivel: x.nivel || (x.institucion ? "institucion" : "latam"), country: x.country || "", city: x.city || "", zona: x.zona || "" }));
+      nivel: x.nivel || (x.institucion ? "institucion" : "latam"), country: x.country || "", city: x.city || "", zona: x.zona || "", lista: x.lista || null }));
     agendaIndice = null;
     scheduleRender();
   }, err=>console.error("Error leyendo la Agenda:", err));
@@ -21725,7 +21725,7 @@ function agendaCoincide(f){
   return x => {
     // Tipo y lista son de las instituciones: con ese filtro, la gente de un lugar no entra.
     if(f.tipo && x.tipo !== f.tipo) return false;
-    if(f.lista && x.lista !== f.lista) return false;
+    if(f.lista && (x.lugar ? !genteDe(x.id).some(c => c.lista === f.lista) : x.lista !== f.lista)) return false;
     if(!q) return true;
     const gente = genteDe(x.id).map(c => personas.get(c.persona));
     if([x.name, x.address, x.tipo, countryLabel(x.country), x.country, x.city, x.city ? cityLabel(x.country, x.city) : "", x.lugar ? subtituloDeLugar(x) : "", ...gente.map(p => p.name), ...gente.map(p => p.email || ""),
@@ -21893,7 +21893,9 @@ function agendaVistaLista(){
   // El chip de un lugar (una ciudad o una región) que se abrió desde su ficha: tocarlo saca ese filtro.
   const chipDeLugar = (accion, nombre, dato = "") => `<button type="button" class="ag-chip" data-action="${accion}" ${dato} title="${esc(t("Sacar","Remove","Remover","הסרה"))}" aria-label="${esc(t("Sacar el filtro: {x}","Remove filter: {x}","Remover o filtro: {x}","הסרת הסינון: {x}",{ x: nombre }))}">📍 ${esc(nombre)} ✕</button>`;
   const resumen = `<div class="ag-resumen">${f.ciudad ? chipDeLugar("agenda-sin-ciudad", cityLabel(f.pais, f.ciudad)) : ""}${f.zonas.map(z => chipDeLugar("agenda-sin-zona", regionLabel(z), `data-zona="${esc(z)}"`)).join("")}
-    <span>${t("<b>{i}</b> y <b>{c}</b> en {ci} de {p}","<b>{i}</b> and <b>{c}</b> in {ci} of {p}","<b>{i}</b> e <b>{c}</b> em {ci} de {p}","<b>{i}</b> ו-<b>{c}</b> ב-{ci} ב-{p}",{ i: esc(cuantasInstituciones(r.inst)), c: esc(cuantosContactos(r.gente)), ci: esc(cuantasCiudades(r.ciudades)), p: esc(cuantosPaises(r.paises)) })}</span>
+    <span>${r.inst ? t("<b>{i}</b> y <b>{c}</b> en {ci} de {p}","<b>{i}</b> and <b>{c}</b> in {ci} of {p}","<b>{i}</b> e <b>{c}</b> em {ci} de {p}","<b>{i}</b> ו-<b>{c}</b> ב-{ci} ב-{p}",{ i: esc(cuantasInstituciones(r.inst)), c: esc(cuantosContactos(r.gente)), ci: esc(cuantasCiudades(r.ciudades)), p: esc(cuantosPaises(r.paises)) })
+      // Sin instituciones (una lista de gente de ciudades y países): no se dice «0 instituciones».
+      : t("<b>{c}</b> en {ci} de {p}","<b>{c}</b> in {ci} of {p}","<b>{c}</b> em {ci} de {p}","<b>{c}</b> ב-{ci} ב-{p}",{ c: esc(cuantosContactos(r.gente)), ci: esc(cuantasCiudades(r.ciudades)), p: esc(cuantosPaises(r.paises)) })}</span>
     ${hayFiltro ? `<button type="button" class="ag-link" data-action="agenda-limpiar">${t("Limpiar","Clear","Limpar","ניקוי")}</button>` : ""}</div>`;
   // Vacía: solo qué es y cómo se empieza, sin buscador, filtros ni «0 instituciones en 0 ciudades».
   if(!agendaDatos().ordenadas.length) return agendaCabecera(titulo, "") + `<div class="ag-cuerpo"><div class="ag-vacia">
@@ -22390,7 +22392,8 @@ function leerFilasAgenda(filas){
     // El teléfono como se lee («54 9 11 5316 1698»); el de los enlaces (phone_tel) solo si no hay otro.
     tel: campoDe(f, ["phone", "telefono", "tel", "celular", "whatsapp", "telefone", "movil", "phonetel"]),
     correo: campoDe(f, ["email", "correo", "mail", "email1"]),
-  })).filter(x => x.inst && x.pais);
+  // Una fila sin institución pero con una persona es un contacto de la ciudad (o del país, si no trae ciudad).
+  })).filter(x => x.pais && (x.inst || x.nombre));
 }
 async function leerArchivoAgenda(archivo){
   if(!archivo) return;
@@ -22427,15 +22430,39 @@ async function leerArchivoAgenda(archivo){
   render();
 }
 function prepararImport(archivo, filas, nombreLista){
-  const av = { sinRabbi:0, telLimpios:0, paisCambiado:new Map(), ciudadCambiada:new Map(), paisDesconocido:new Set(), ciudadDesconocida:new Set(), estados:{ temporada:0, cerrada:0 }, yaEstan:0 };
-  const insts = new Map();
+  const av = { sinRabbi:0, telLimpios:0, paisCambiado:new Map(), ciudadCambiada:new Map(), paisDesconocido:new Set(), ciudadDesconocida:new Set(), estados:{ temporada:0, cerrada:0 }, yaEstan:0, yaEnSuLugar:0 };
+  const insts = new Map(), lugares = new Map();
   const yaEnAgenda = new Set(state.instituciones.map(x => [normalize(x.name), x.country, normalize(x.city)].join("|")));
+  // Quién ya es contacto de cada ciudad o país (por nombre, sin tildes ni mayúsculas): no se vuelve a traer.
+  const nombreDe0 = new Map(state.personas.map(p => [p.id, normalize(p.name)]));
+  const yaEnLugar = new Set(state.contactos.filter(c => !c.institucion && nombreDe0.has(c.persona)).map(c => [nivelDeContacto(c), c.country || "", normalize(c.city || ""), nombreDe0.get(c.persona)].join("|")));
+  // De una fila a la persona que se guarda: sin «Rabbi», con el teléfono limpio.
+  const personaDe = f => {
+    if(!f.nombre) return null;
+    const sinPrefijo = f.nombre.replace(/^(rabbi|rab|rav)\.?\s+/i, "").trim();
+    if(sinPrefijo !== f.nombre) av.sinRabbi++;
+    let tel = limpiarTelefono(f.tel);
+    if(tel && tel !== f.tel.replace(/^\+/, "").trim() && tel !== f.tel.trim()) av.telLimpios++;
+    if(tel && !tel.startsWith("+") && digitosDe(tel).length >= 8) tel = "+" + tel;
+    return { name:sinPrefijo.slice(0, 120), cargo:f.cargo.slice(0, 60) || null, telefonos: tel && telefonoValido(tel) ? [{ n:tel, wa:true }] : [] };
+  };
   filas.forEach(f => {
-    const p = paisDeLaApp(f.pais), c = ciudadDeLaApp(p.pais, f.ciudad);
+    const p = paisDeLaApp(f.pais), c = f.ciudad ? ciudadDeLaApp(p.pais, f.ciudad) : { ciudad:"", conocida:true };
     if(p.cambio) av.paisCambiado.set(f.pais, p.pais);
     if(!p.conocido) av.paisDesconocido.add(p.pais);
     if(c.cambio) av.ciudadCambiada.set(f.ciudad, c.ciudad);
     if(!c.conocida) av.ciudadDesconocida.add(`${c.ciudad} (${countryLabel(p.pais)})`);
+    // Sin institución: la persona es contacto de la ciudad (o del país) y nada más.
+    if(!f.inst){
+      const nivel = c.ciudad ? "ciudad" : "pais", clave = [nivel, p.pais, normalize(c.ciudad)].join("|");
+      const g = personaDe(f);
+      if(!g) return;
+      if(yaEnLugar.has(clave + "|" + normalize(g.name))){ av.yaEnSuLugar++; return; }
+      if(!lugares.has(clave)) lugares.set(clave, { nivel, country:p.pais, city:c.ciudad || null, gente:[] });
+      const lugar = lugares.get(clave);
+      if(!lugar.gente.some(x => normalize(x.name) === normalize(g.name))) lugar.gente.push(g);
+      return;
+    }
     const clave = [normalize(f.inst), p.pais, normalize(c.ciudad)].join("|");
     if(yaEnAgenda.has(clave)){ av.yaEstan++; return; }
     if(!insts.has(clave)){
@@ -22443,23 +22470,18 @@ function prepararImport(archivo, filas, nombreLista){
       if(estado !== "activa") av.estados[estado]++;
       insts.set(clave, { name:f.inst.slice(0, 160), country:p.pais, city:c.ciudad || null, address:f.dir.slice(0, 300) || null, tipo:f.tipo.slice(0, 60) || null, estado, gente:[] });
     }
-    if(!f.nombre) return;
-    const sinPrefijo = f.nombre.replace(/^(rabbi|rab|rav)\.?\s+/i, "").trim();
-    if(sinPrefijo !== f.nombre) av.sinRabbi++;
-    let tel = limpiarTelefono(f.tel);
-    if(tel && tel !== f.tel.replace(/^\+/, "").trim() && tel !== f.tel.trim()) av.telLimpios++;
-    if(tel && !tel.startsWith("+") && digitosDe(tel).length >= 8) tel = "+" + tel;
+    const g = personaDe(f);
+    if(!g) return;
     const inst = insts.get(clave);
-    if(!inst.gente.some(g => normalize(g.name) === normalize(sinPrefijo)))
-      inst.gente.push({ name:sinPrefijo.slice(0, 120), cargo:f.cargo.slice(0, 60) || null, telefonos: tel && telefonoValido(tel) ? [{ n:tel, wa:true }] : [] });
+    if(!inst.gente.some(x => normalize(x.name) === normalize(g.name))) inst.gente.push(g);
   });
-  const lista = [...insts.values()];
-  // La misma persona en varias instituciones (y las que ya están en la app).
+  const lista = [...insts.values()], dondes = [...lugares.values()], todos = [...lista, ...dondes];
+  // La misma persona en varios lugares o instituciones (y las que ya están en la app).
   const vecesPorPersona = new Map();
-  lista.forEach(x => x.gente.forEach(g => { const k = normalize(g.name); vecesPorPersona.set(k, (vecesPorPersona.get(k) || 0) + 1); }));
+  todos.forEach(x => x.gente.forEach(g => { const k = normalize(g.name); vecesPorPersona.set(k, (vecesPorPersona.get(k) || 0) + 1); }));
   const enLaApp = new Set(state.personas.map(p => normalize(p.name)));
   const repetidas = [...vecesPorPersona.entries()].filter(([, n]) => n > 1).sort((a, b) => b[1] - a[1]);
-  const nombreDe = k => { for(const x of lista) for(const g of x.gente) if(normalize(g.name) === k) return g.name; return k; };
+  const nombreDe = k => { for(const x of todos) for(const g of x.gente) if(normalize(g.name) === k) return g.name; return k; };
   // Tipos que parecen el mismo.
   const tipos = new Map();
   lista.forEach(x => { if(x.tipo) tipos.set(x.tipo, (tipos.get(x.tipo) || 0) + 1); });
@@ -22467,27 +22489,34 @@ function prepararImport(archivo, filas, nombreLista){
   const porNormal = new Map();
   [...tipos.keys()].forEach(tp => { const k = normalize(tp); if(porNormal.has(k)) parecidos.push([porNormal.get(k), tp]); else porNormal.set(k, tp); });
   TIPOS_PARECIDOS.forEach(([a, b]) => { const ta = porNormal.get(a), tb = porNormal.get(b); if(ta && tb) parecidos.push([ta, tb]); });
-  return { archivo:{ nombre:archivo.name, peso:archivo.size }, lista, nombreLista, av, tipos, parecidos, unir:true,
+  return { archivo:{ nombre:archivo.name, peso:archivo.size }, lista, lugares:dondes, nombreLista, av, tipos, parecidos, unir:true,
     personas: vecesPorPersona.size, repetidas: repetidas.map(([k, n]) => [nombreDe(k), n]),
     yaEnLaApp: [...vecesPorPersona.keys()].filter(k => enLaApp.has(k)).length,
-    ciudades: new Set(lista.map(x => x.country + "|" + normalize(x.city))).size, paises: new Set(lista.map(x => x.country)).size };
+    ciudades: new Set(lista.map(x => x.country + "|" + normalize(x.city))).size, paises: new Set(lista.map(x => x.country)).size,
+    lugaresCiudades: dondes.filter(x => x.nivel === "ciudad").length, lugaresPaises: dondes.filter(x => x.nivel === "pais").length,
+    paisesDeLugares: new Set(dondes.map(x => x.country)).size };
 }
+// Lo que trae una lista: «3 instituciones», «82 lugares» o «3 instituciones, 2 lugares».
+const queTrae = (instituciones, lugares) => [instituciones ? cuantasInstituciones(instituciones) : "", lugares ? cuantosLugares(lugares) : ""].filter(Boolean).join(", ") || cuantasInstituciones(0);
+// «81 ciudades y 1 país».
+const desgloseDeLugares = (ciudades, paises) => [ciudades ? cuantasCiudades(ciudades) : "", paises ? cuantosPaises(paises) : ""].filter(Boolean).join(` ${t("y","and","e","ו")} `);
 function renderAgendaAdminSection(){
   const im = agendaImport;
   const listas = state.agendaListas.map(l => {
     const n = state.instituciones.filter(x => x.lista === l.id).length;
+    const nLugares = new Set(state.contactos.filter(c => !c.institucion && c.lista === l.id).map(claveDeLugar)).size;
     const quien = memberByEmail(l.createdBy);
     return `<div class="setting-row"><span class="setting-icon">📇</span><div class="setting-text"><div class="setting-label" dir="auto">${esc(l.name)}</div>
-      <div class="setting-sub">${esc(cuantasInstituciones(n))} · ${esc(t("traída el {f}","imported on {f}","trazida em {f}","יובא ב-{f}",{ f: fmtISO(String(l.createdAt || todayISO()).slice(0, 10), { day:"numeric", month:"short", year:"numeric" }) }))}${quien ? " · " + esc(quien.name || quien.email) : ""}</div></div>
+      <div class="setting-sub">${esc(queTrae(n, nLugares))} · ${esc(t("traída el {f}","imported on {f}","trazida em {f}","יובא ב-{f}",{ f: fmtISO(String(l.createdAt || todayISO()).slice(0, 10), { day:"numeric", month:"short", year:"numeric" }) }))}${quien ? " · " + esc(quien.name || quien.email) : ""}</div></div>
       <button type="button" class="btn-secondary" data-action="agenda-abrir" data-lista="${esc(l.id)}">${t("Ver Agenda","See Directory","Ver Agenda","לספר הטלפונים")}</button></div>`;
   }).join("");
   const elegir = `<div class="setting-row ag-traer">
       <span class="setting-icon">⬆️</span>
       <div class="setting-text"><div class="setting-label">${state.agendaListas.length ? t("Traer otra lista","Import another list","Trazer outra lista","ייבוא רשימה נוספת") : t("Traer una lista","Import a list","Trazer uma lista","ייבוא רשימה")}</div>
-        <div class="setting-sub">${t("Sirve el HTML de un directorio como el de Chabad LatAm, el archivo .json que baja su botón «Exportar», o una planilla de Excel (.xlsx o .csv) con una fila por institución o por persona. Antes de guardar nada, te muestra qué va a hacer.",
-          "Works with a directory HTML like Chabad LatAm's, the .json its “Export” button downloads, or an Excel sheet (.xlsx or .csv) with one row per organization or per person. Before saving anything, it shows you what it will do.",
-          "Serve o HTML de um diretório como o do Chabad LatAm, o .json que o botão «Exportar» baixa, ou uma planilha do Excel (.xlsx ou .csv) com uma linha por instituição ou por pessoa. Antes de salvar, mostra o que vai fazer.",
-          "אפשר קובץ HTML של מדריך כמו של חב״ד LatAm, קובץ ה-json שכפתור «ייצוא» מוריד, או גיליון Excel‏ (xlsx או csv) עם שורה לכל מוסד או אדם. לפני השמירה מוצג מה ייעשה.")}</div></div>
+        <div class="setting-sub">${t("Sirve el HTML de un directorio como el de Chabad LatAm, el archivo .json que baja su botón «Exportar», o una planilla de Excel (.xlsx o .csv) con una fila por institución o por persona (una fila sin institución es un contacto de la ciudad, o del país si no trae ciudad). Antes de guardar nada, te muestra qué va a hacer.",
+          "Works with a directory HTML like Chabad LatAm's, the .json its “Export” button downloads, or an Excel sheet (.xlsx or .csv) with one row per organization or per person (a row without an organization is a contact of the city, or of the country if it has no city). Before saving anything, it shows you what it will do.",
+          "Serve o HTML de um diretório como o do Chabad LatAm, o .json que o botão «Exportar» baixa, ou uma planilha do Excel (.xlsx ou .csv) com uma linha por instituição ou por pessoa (uma linha sem instituição é um contato da cidade, ou do país se não traz cidade). Antes de salvar, mostra o que vai fazer.",
+          "אפשר קובץ HTML של מדריך כמו של חב״ד LatAm, קובץ ה-json שכפתור «ייצוא» מוריד, או גיליון Excel‏ (xlsx או csv) עם שורה לכל מוסד או אדם (שורה בלי מוסד היא איש קשר של העיר, או של המדינה אם אין עיר). לפני השמירה מוצג מה ייעשה.")}</div></div>
       <label class="btn-primary ag-elegir">${t("Elegir archivo…","Choose file…","Escolher arquivo…","בחירת קובץ…")}<input type="file" id="agendaArchivo" accept=".html,.htm,.json,.xlsx,.xls,.csv" hidden></label></div>`;
   let vista = "";
   if(im && im.cargando) vista = `<div class="settings-card"><p class="ag-nota">${esc(t("Leyendo {a}…","Reading {a}…","Lendo {a}…","קורא את {a}…",{ a: im.archivo.nombre }))}</p></div>`;
@@ -22500,21 +22529,24 @@ function renderAgendaAdminSection(){
       ? t("Una ya estaba en la app y se usó su ficha.","One was already in the app and their record was used.","Uma já estava no app e se usou a ficha dela.","אחד כבר היה באפליקציה ונעשה שימוש בכרטיס שלו.")
       : t("{n} ya estaban en la app y se usó su ficha.","{n} were already in the app and their record was used.","{n} já estavam no app e se usou a ficha delas.","{n} כבר היו באפליקציה ונעשה שימוש בכרטיס שלהם.",{ n: r.personas_que_ya_estaban });
     vista = `<div class="settings-card ag-listo"><p>✓ ${t("Listo: se trajeron <b>{i}</b> de «{l}», con <b>{c}</b>.","Done: imported <b>{i}</b> from “{l}”, with <b>{c}</b>.","Pronto: foram trazidas <b>{i}</b> de «{l}», com <b>{c}</b>.","בוצע: יובאו <b>{i}</b> מתוך «{l}», עם <b>{c}</b>.",
-      { i: esc(cuantasInstituciones(r.instituciones)), l: esc(im.nombreLista), c: esc(cuantosContactos(gente)) })}${yaEstaban ? " " + esc(yaEstaban) : ""}</p>
+      { i: esc(queTrae(r.instituciones, r.lugares || 0)), l: esc(im.nombreLista), c: esc(cuantosContactos(gente)) })}${yaEstaban ? " " + esc(yaEstaban) : ""}</p>
       <button type="button" class="btn-secondary" data-action="agenda-abrir" data-lista="${esc(r.lista)}">${t("Ver Agenda","See Directory","Ver Agenda","לספר הטלפונים")}</button></div>`;
   } else if(im && im.lista){
     const av = im.av;
     const li = (ic, html, sub) => `<li${ic === "?" ? ` class="pregunta"` : ""}><span class="ag-ic">${ic}</span><span><span>${html}</span>${sub ? `<small>${sub}</small>` : ""}</span></li>`;
     const cambios = [...av.paisCambiado, ...av.ciudadCambiada].map(([a, b]) => `«${esc(a)}» → ${esc(b)}`).join(" · ");
     const checks = [
-      li("✓", t("<b>{i}</b> en <b>{ci}</b> de <b>{p}</b>.","<b>{i}</b> in <b>{ci}</b> of <b>{p}</b>.","<b>{i}</b> em <b>{ci}</b> de <b>{p}</b>.","<b>{i}</b> ב-<b>{ci}</b> ב-<b>{p}</b>.",{ i: esc(cuantasInstituciones(im.lista.length)), ci: esc(cuantasCiudades(im.ciudades)), p: esc(cuantosPaises(im.paises)) })),
+      im.lista.length ? li("✓", t("<b>{i}</b> en <b>{ci}</b> de <b>{p}</b>.","<b>{i}</b> in <b>{ci}</b> of <b>{p}</b>.","<b>{i}</b> em <b>{ci}</b> de <b>{p}</b>.","<b>{i}</b> ב-<b>{ci}</b> ב-<b>{p}</b>.",{ i: esc(cuantasInstituciones(im.lista.length)), ci: esc(cuantasCiudades(im.ciudades)), p: esc(cuantosPaises(im.paises)) })) : "",
+      im.lugares.length ? li("✓", t("<b>{l}</b> con contactos propios, sin institución, en <b>{p}</b>.","<b>{l}</b> with their own contacts, no organization, in <b>{p}</b>.","<b>{l}</b> com contatos próprios, sem instituição, em <b>{p}</b>.","<b>{l}</b> עם אנשי קשר משלהם, בלי מוסד, ב-<b>{p}</b>.",{ l: esc(desgloseDeLugares(im.lugaresCiudades, im.lugaresPaises)), p: esc(cuantosPaises(im.paisesDeLugares)) })) : "",
+      av.yaEnSuLugar ? li("✓", av.yaEnSuLugar === 1 ? t("<b>Una persona ya es contacto de su lugar</b>: no se vuelve a traer.","<b>One person is already a contact of their place</b>: they won't be imported again.","<b>Uma pessoa já é contato do seu lugar</b>: não é trazida de novo.","<b>אדם אחד כבר איש קשר של המקום שלו</b>: לא ייובא שוב.")
+        : t("<b>{n} personas ya son contacto de su lugar</b>: no se vuelven a traer.","<b>{n} people are already contacts of their place</b>: they won't be imported again.","<b>{n} pessoas já são contato do seu lugar</b>: não são trazidas de novo.","<b>{n} אנשים כבר אנשי קשר של המקום שלהם</b>: לא ייובאו שוב.",{ n: av.yaEnSuLugar })) : "",
       av.yaEstan === 1 ? li("✓", t("<b>Una ya está en la Agenda</b> (mismo nombre y lugar): no se vuelve a traer.","<b>One is already in the Directory</b> (same name and place): it won't be imported again.","<b>Uma já está na Agenda</b> (mesmo nome e lugar): não é trazida de novo.","<b>אחד כבר נמצא בספר הטלפונים</b> (אותו שם ומקום): לא ייובא שוב.")) : "",
       av.yaEstan > 1 ? li("✓", t("<b>{n} ya están en la Agenda</b> (mismo nombre y lugar): no se vuelven a traer.","<b>{n} are already in the Directory</b> (same name and place): they won't be imported again.","<b>{n} já estão na Agenda</b> (mesmo nome e lugar): não são trazidas de novo.","<b>{n} כבר נמצאים בספר הטלפונים</b> (אותו שם ומקום): לא ייובאו שוב.",{ n: av.yaEstan })) : "",
       cambios ? li("✓", t("Países y ciudades con el nombre que les da la app.","Countries and cities named as the app names them.","Países e cidades com o nome que o app usa.","מדינות וערים בשם שהאפליקציה נותנת להן."), cambios) : "",
       av.paisDesconocido.size || av.ciudadDesconocida.size ? li("?", t("Lugares que la app no tiene en su lista: entran igual, con el nombre como viene.","Places the app doesn't have on its list: they come in anyway, with their name as is.","Lugares que o app não tem na lista: entram igual, com o nome como vem.","מקומות שאין באפליקציה: נכנסים בכל זאת, בשם כפי שהוא."), esc([...av.paisDesconocido, ...av.ciudadDesconocida].slice(0, 8).join(" · ") + (av.paisDesconocido.size + av.ciudadDesconocida.size > 8 ? "…" : ""))) : "",
       li("✓", (im.personas === 1 ? t("<b>Una persona</b>{r}","<b>One person</b>{r}","<b>Uma pessoa</b>{r}","<b>אדם אחד</b>{r}",{ r: "." }) : t("<b>{p} personas</b>{r}","<b>{p} people</b>{r}","<b>{p} pessoas</b>{r}","<b>{p} אנשים</b>{r}",{ p: im.personas, r: !im.repetidas.length ? "."
-        : im.repetidas.length === 1 ? esc(t(": una está en más de una institución y queda con una sola ficha.",": one is in more than one organization and gets a single record.",": uma está em mais de uma instituição e fica com uma só ficha.",": אחד נמצא ביותר ממוסד אחד ויקבל כרטיס אחד."))
-        : esc(t(": {n} están en más de una institución y quedan con una sola ficha.",": {n} are in more than one organization and get a single record.",": {n} estão em mais de uma instituição e ficam com uma só ficha.",": {n} נמצאים ביותר ממוסד אחד ויקבלו כרטיס אחד.",{ n: im.repetidas.length })) })),
+        : im.repetidas.length === 1 ? esc(t(": una está en más de un lugar y queda con una sola ficha.",": one is in more than one place and gets a single record.",": uma está em mais de um lugar e fica com uma só ficha.",": אחד נמצא ביותר ממקום אחד ויקבל כרטיס אחד."))
+        : esc(t(": {n} están en más de un lugar y quedan con una sola ficha.",": {n} are in more than one place and get a single record.",": {n} estão em mais de um lugar e ficam com uma só ficha.",": {n} נמצאים ביותר ממקום אחד ויקבלו כרטיס אחד.",{ n: im.repetidas.length })) })),
         [im.repetidas.slice(0, 3).map(([n, k]) => `${esc(n)} (${k})`).join(" · "), im.yaEnLaApp === 1 ? esc(t("Una ya estaba en la app (como persona sin cuenta o en otra lista): se usa esa ficha.","One was already in the app: that record is used.","Uma já estava no app: usa-se essa ficha.","אחד כבר היה באפליקציה: ייעשה שימוש בכרטיס הקיים."))
           : im.yaEnLaApp ? esc(t("{n} ya estaban en la app (como persona sin cuenta o en otra lista): se usa esa ficha.","{n} were already in the app: that record is used.","{n} já estavam no app: usa-se essa ficha.","{n} כבר היו באפליקציה: ייעשה שימוש בכרטיס הקיים.",{ n: im.yaEnLaApp })) : ""].filter(Boolean).join(" — ")),
       av.sinRabbi === 1 ? li("✓", t("<b>Un nombre empieza con «Rabbi» o «Rab»</b>: se guarda el nombre solo, con el cargo «Rab a cargo».","<b>One name starts with “Rabbi” or “Rab”</b>: the name is kept alone, with the role “Rabbi in charge”.","<b>Um nome começa com «Rabbi» ou «Rab»</b>: guarda-se só o nome, com o cargo «Rabino responsável».","<b>שם אחד מתחיל ב-«Rabbi» או «Rab»</b>: נשמר השם לבד, עם התפקיד «הרב האחראי».")) : "",
@@ -22525,16 +22557,18 @@ function renderAgendaAdminSection(){
       ...im.parecidos.map(([a, b], i) => li("?", t("<b>Dos tipos parecen el mismo</b>: «{a}» ({na}) y «{b}» ({nb}).","<b>Two types look like the same</b>: “{a}” ({na}) and “{b}” ({nb}).","<b>Dois tipos parecem o mesmo</b>: «{a}» ({na}) e «{b}» ({nb}).","<b>שני סוגים נראים זהים</b>: «{a}» ({na}) ו-«{b}» ({nb}).",{ a: esc(a), b: esc(b), na: im.tipos.get(a), nb: im.tipos.get(b) }),
         `<span class="ag-chips"><button type="button" class="ag-chip${im.unir ? " on" : ""}" data-action="agenda-import-unir" data-k="1">${esc(t("Unir en «{a}»","Merge into “{a}”","Unir em «{a}»","איחוד ל-«{a}»",{ a }))}</button><button type="button" class="ag-chip${im.unir ? "" : " on"}" data-action="agenda-import-unir" data-k="0">${esc(t("Dejar los dos","Keep both","Deixar os dois","להשאיר את שניהם"))}</button></span>`)),
     ].filter(Boolean).join("");
-    const muestra = im.lista.slice(0, 6).map(x => `<tr><td dir="auto">${esc(x.name)}</td><td>${esc(lugarTexto(x))}</td><td dir="auto">${esc(x.gente.map(g => g.name).join(", "))}</td><td>${esc(x.gente.map(g => g.cargo || "").filter(Boolean).join(", "))}</td><td class="ag-tel">${esc(x.gente.map(g => (g.telefonos[0] || {}).n || "").join(", "))}</td></tr>`).join("");
-    vista = im.lista.length ? `<div class="settings-card ag-previa">
+    const sinInst = `<i>${esc(t("sin institución","no organization","sem instituição","בלי מוסד"))}</i>`;
+    const filasPrevia = [...im.lista.map(x => ({ x, nombre: esc(x.name) })), ...im.lugares.map(x => ({ x, nombre: sinInst }))];
+    const muestra = filasPrevia.slice(0, 6).map(({ x, nombre }) => `<tr><td dir="auto">${nombre}</td><td>${esc(lugarTexto(x))}</td><td dir="auto">${esc(x.gente.map(g => g.name).join(", "))}</td><td>${esc(x.gente.map(g => g.cargo || "").filter(Boolean).join(", "))}</td><td class="ag-tel">${esc(x.gente.map(g => (g.telefonos[0] || {}).n || "").join(", "))}</td></tr>`).join("");
+    vista = im.lista.length || im.lugares.length ? `<div class="settings-card ag-previa">
       <p class="ag-arch">📄 <b>${esc(im.archivo.nombre)}</b> <small>${Math.max(1, Math.round(im.archivo.peso / 1024))} KB</small> <button type="button" class="ag-link" data-action="agenda-import-cancelar">${t("Elegir otro","Choose another","Escolher outro","בחירת קובץ אחר")}</button></p>
       <ul class="ag-checks">${checks}</ul>
       <label class="ag-campo"><span>${t("Nombre de la lista","List name","Nome da lista","שם הרשימה")}</span><input id="agendaNombreLista" maxlength="120" dir="auto" value="${esc(im.nombreLista)}"></label>
       <div class="ag-tabla"><table><thead><tr><th scope="col">${t("Institución","Organization","Instituição","מוסד")}</th><th scope="col">${t("Lugar","Place","Lugar","מקום")}</th><th scope="col">${t("Contacto","Contact","Contato","איש קשר")}</th><th scope="col">${t("Cargo","Role","Cargo","תפקיד")}</th><th scope="col">${t("Teléfono","Phone","Telefone","טלפון")}</th></tr></thead>
-        <tbody>${muestra}${im.lista.length > 6 ? `<tr><td colspan="5" class="ag-nota">${esc(t("… y {n} más","… and {n} more","… e mais {n}","… ועוד {n}",{ n: im.lista.length - 6 }))}</td></tr>` : ""}</tbody></table></div>
+        <tbody>${muestra}${filasPrevia.length > 6 ? `<tr><td colspan="5" class="ag-nota">${esc(t("… y {n} más","… and {n} more","… e mais {n}","… ועוד {n}",{ n: filasPrevia.length - 6 }))}</td></tr>` : ""}</tbody></table></div>
       <div class="ag-pie-acc"><button type="button" class="btn-secondary" data-action="agenda-import-cancelar">${t("Cancelar","Cancel","Cancelar","ביטול")}</button>
-        <button type="button" class="btn-primary" data-action="agenda-import-traer"${im.trayendo ? " disabled" : ""}>${im.trayendo ? t("Trayendo…","Importing…","Trazendo…","מייבא…") : esc(t("Traer {i} y {c}","Import {i} and {c}","Trazer {i} e {c}","ייבוא {i} ו-{c}",{ i: cuantasInstituciones(im.lista.length), c: cuantosContactos(im.personas) }))}</button></div></div>`
-      : `<div class="settings-card"><p class="ag-nota">${esc(av.yaEstan ? t("Todo lo de ese archivo ya está en la Agenda.","Everything in that file is already in the Directory.","Tudo desse arquivo já está na Agenda.","כל מה שבקובץ כבר נמצא בספר הטלפונים.") : t("No encontré instituciones en ese archivo (hace falta al menos el nombre y el país).","No organizations found in that file (it needs at least the name and the country).","Não encontrei instituições nesse arquivo (é preciso ao menos o nome e o país).","לא נמצאו מוסדות בקובץ (צריך לפחות שם ומדינה)."))}</p></div>`;
+        <button type="button" class="btn-primary" data-action="agenda-import-traer"${im.trayendo ? " disabled" : ""}>${im.trayendo ? t("Trayendo…","Importing…","Trazendo…","מייבא…") : esc(t("Traer {i} y {c}","Import {i} and {c}","Trazer {i} e {c}","ייבוא {i} ו-{c}",{ i: queTrae(im.lista.length, im.lugares.length), c: cuantosContactos(im.personas) }))}</button></div></div>`
+      : `<div class="settings-card"><p class="ag-nota">${esc(av.yaEstan || av.yaEnSuLugar ? t("Todo lo de ese archivo ya está en la Agenda.","Everything in that file is already in the Directory.","Tudo desse arquivo já está na Agenda.","כל מה שבקובץ כבר נמצא בספר הטלפונים.") : t("No encontré instituciones ni contactos de un lugar en ese archivo (hace falta el país y el nombre de la institución o de la persona).","No organizations or place contacts found in that file (it needs the country and the name of the organization or the person).","Não encontrei instituições nem contatos de um lugar nesse arquivo (é preciso o país e o nome da instituição ou da pessoa).","לא נמצאו מוסדות או אנשי קשר של מקום בקובץ (צריך את המדינה ואת שם המוסד או האדם)."))}</p></div>`;
   }
   return `<div class="ag-admin">${vista}<div class="settings-card">${listas}${im && im.lista && !im.resultado ? "" : elegir}</div></div>`;
 }
@@ -22550,7 +22584,7 @@ async function agendaTraerLista(){
   });
   im.trayendo = true; render();
   try{
-    im.resultado = await store.agenda.traer(nombre, lista);
+    im.resultado = await store.agenda.traer(nombre, lista, im.lugares || []);
     im.trayendo = false; render();
   }catch(err){
     im.trayendo = false; render();

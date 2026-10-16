@@ -969,6 +969,21 @@ eligió **unirlas así**:
 Pruebas: `agenda_test.mjs` (país, región y ciudad; fallan con el código
 de antes) y `ficha_celular_test.mjs` vuelve a esperar cinco tarjetas.
 
+### 93. «Traer una lista» ahora trae gente de ciudades y de países, sin institución — HECHO (16 oct 2026, sin publicar todavía)
+
+El usuario pidió ver cómo se sumaría a la Agenda la solapa «Actualizado» de su Mapeo de comunidades. Primero lo armé como una institución «Comunidad de X» por ciudad (era lo único que sabía traer el importador); el usuario lo
+corrigió: **la Agenda ya tiene contactos que no van con una institución sino con una ciudad, un país, una región o toda LatAm** (tanda 59, `20-contactos-por-lugar.sql`), y el presidente de Córdoba es un contacto de la ciudad.
+Lo único que faltaba era que «traer una lista» supiera hacerlo (la tanda 59 dejó «cargar la planilla» para después).
+- **Base** (`supabase/24-agenda-lugares-al-traer.sql`): `agenda_traer(p_nombre, p_instituciones, p_lugares)` (la de dos parámetros se borra: con las dos, llamar con dos sería ambiguo). `p_lugares`: `[{nivel, country, city, zona, gente:[{name, cargo, telefonos}]}]`;
+  cada contacto queda como los que se suman a mano y la restricción de la tanda 59 no deja nada a medias. Nueva columna `contactos.lista` (de qué lista vino un contacto de un lugar) y una función aparte, `agenda_persona_traida`, para buscar o crear a la persona
+  (sin tildes ni mayúsculas; si ya estaba se usa su ficha y se le suman los teléfonos que no tenía), que usan las instituciones y los lugares. Se puede traer solo instituciones, solo lugares o las dos; quien ya es contacto de ese lugar no se repite; todo junto o nada.
+- **El importador** (Administración › Agenda): una fila **sin institución pero con persona** es un contacto de su ciudad, o de su país si no trae ciudad (columnas `País`, `Ciudad`, `Nombre`, `Cargo`, `Teléfono`). La vista previa dice «72 ciudades y 1 país con contactos propios, sin institución, en 17 países», la tabla muestra
+  «sin institución» y el botón «Traer 73 lugares y 254 contactos»; lo que ya es contacto de su lugar no se vuelve a traer. La lista traída dice cuántos lugares tiene y «Ver Agenda» la filtra (un lugar entra si alguno de sus contactos vino de esa lista). «Contactos en…» del resumen de la Agenda
+  ya no dice «0 instituciones» cuando no hay.
+- **Lo que no entra todavía**: los datos de la comunidad (miembros, entidades, tamaño): un contacto de un lugar no tiene dónde guardarlos (queda en las columnas extra del Excel, que el importador ignora). Una ciudad sin ningún contacto tampoco entra (sin contactos, la ciudad no existe en la Agenda).
+- Pruebas: `supabase/pruebas/79-agenda.sql` (+10: solo un admin, vacía no, ciudad sin ciudad no y no deja nada a medias, ficha que ya estaba, lugar repetido, instituciones y lugares juntos) y `herramientas/pruebas/agenda_test.mjs` (bloque 4b: vista previa, lo que se manda, el resultado, «Ver Agenda», traer lo mismo otra vez); la base de mentira de `app_dom_test.mjs` imita la función nueva.
+- **El Mapeo de verdad** sigue siendo del usuario (nombres y teléfonos: no va al repo ni a ninguna página): el Excel ya ordenado se le entregó por la conversación, para cargarlo desde Administración › Agenda.
+
 ### 92. La columna del costado del Inicio ya no lleva barra de scroll — HECHO (16 oct 2026, sin publicar todavía)
 
 El usuario mandó una captura del costado del Inicio (con las 10 «Tendencias» abiertas) y dijo que **la barra para hacer scroll no hacía falta**. Era la barra propia de la columna (`.feed-side` tenía `max-height` y `overflow:auto` para poder
