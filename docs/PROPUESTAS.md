@@ -101,7 +101,7 @@ quedó resuelta como la 4 (tendencias automáticas, sin etiquetas a mano).
 
 ## Ajustes que pidió el usuario después (13/10/2026)
 
-Con lo ya hecho a la vista, pidió retoques; todos hechos, en las tandas 79 a 91 de `docs/REDISENO.md`:
+Con lo ya hecho a la vista, pidió retoques; todos hechos, en las tandas 79 a 92 de `docs/REDISENO.md`:
 
 - **Pasos de «Lo que sigue»**: «No es tarea» a la derecha, en la fila de la fecha, y los textos largos con «más / menos» (tanda 79).
 - **Temas → «Tendencias»**: primero que junte las palabras que van pegadas («krav maga», tanda 80); después pidió otro concepto —«no representa lo que se está hablando, lo que pasó»— y se rehízo como **«Tendencias»** (tanda 87): lo que subió y bajó en lugares, tipos y temas en
@@ -117,6 +117,7 @@ Con lo ya hecho a la vista, pidió retoques; todos hechos, en las tandas 79 a 91
 - **Reportes, «Por país»**: 7 filas (la altura de «Por tipo») y «Ver los N países» en el renglón del título (tanda 85).
 - **Pasos de «Lo que sigue»**: «+ Responsable» se ve del mismo tamaño que «+ Fecha» y se elige en una ventanita con buscador y la lista (tanda 88).
 - **El nombre de la planilla**: siempre «Registro - día-mes-año» (en inglés «Log - mes-día-año»), con o sin filtros y desde cualquier lugar donde se baja (tanda 89).
+- **El costado del Inicio**: sin barra de scroll propia; si la columna es más alta que la pantalla baja con la página (tanda 92).
 - **Eventos en Calendar**: la descripción ya no dice «en Registro de Acciones», solo «Cargado por X» (tanda 91).
 - **Reportes, «Mes a mes»**: el «+12», «+9» y «+6» de lo planificado pasa de abajo del número de lo hecho a adentro de su barra
   punteada, sin tocar las barras; en el celular con letra más chica (tanda 86).

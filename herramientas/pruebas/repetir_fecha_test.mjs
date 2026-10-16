@@ -67,7 +67,8 @@ const cerrar = async () => { await p.click('[data-action="cancel-composer"]'); a
   // Si la persona cambia la fecha, la línea se va.
   await p.click('[data-df-kind="composer-start"]'); await p.waitForTimeout(300);
   const dias = await p.$$('.date-pop:not([hidden]) .dp-day:not(.out):not([disabled])');
-  if(dias.length){ await dias[10].click(); await p.waitForTimeout(300); }
+  // Un día distinto del propuesto, sea cual sea el de hoy (con «dias[10]» fijo, el 11 de cada mes daba justo la fecha propuesta y la prueba fallaba ese día).
+  if(dias.length){ await dias[(Number(prox.slice(8)) - 1 + 5) % 25].click(); await p.waitForTimeout(300); }
   eq("al elegir otra fecha, la línea se va", dias.length > 0 && await p.$("#cFechaPropuesta") === null, true);
   eq("…y la fecha cambió", (await p.$$eval(".date-trigger", l => l.map(e => e.textContent.trim())))[0] !== comoSeVe(prox), true);
   await p.click('[data-action="cancel-composer"]'); await p.waitForTimeout(300);

@@ -252,6 +252,24 @@ const solo = (p, sel) => p.evaluate(s => document.querySelector(s) ? document.qu
   eq("sin errores en la consola", [errores, r.errores], [[], []]);
   await r.p.close();
 }
+/* La columna del costado no lleva barra de scroll propia (16/10/2026): si entra en la pantalla se queda fija al bajar por el Feed, y si es más alta baja con la página. */
+{
+  const { p } = await abrir({ width: 1280, height: 600 }, datos(), { vista: "feed" });
+  const medir = () => p.evaluate(() => {
+    const a = document.querySelector(".feed-side"), cs = getComputedStyle(a), cab = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--header-h")) || 96;
+    return { overflow: cs.overflowY, posicion: cs.position, suelta: a.classList.contains("suelta"), masAltaQueLaPantalla: a.offsetHeight > innerHeight - cab - 32, barra: a.scrollHeight - a.clientHeight };
+  });
+  await p.click('[data-action="tendencias-lateral"]'); await p.waitForTimeout(300);
+  let m = await medir();
+  eq("con las 10 tendencias la columna es más alta que la pantalla: no se queda fija, baja con la página y no tiene barra de scroll", [m.masAltaQueLaPantalla, m.suelta, m.posicion, m.overflow, m.barra], [true, true, "static", "visible", 0]);
+  await p.setViewportSize({ width: 1280, height: 2400 }); await p.waitForTimeout(400);
+  m = await medir();
+  eq("en una pantalla alta donde entra entera sí se queda fija al bajar por el Feed (y tampoco lleva barra)", [m.masAltaQueLaPantalla, m.suelta, m.posicion, m.overflow, m.barra], [false, false, "sticky", "visible", 0]);
+  await p.setViewportSize({ width: 1280, height: 500 }); await p.waitForTimeout(400);
+  m = await medir();
+  eq("al achicar la ventana vuelve a soltarse sin recargar", [m.suelta, m.posicion, m.barra], [true, "static", 0]);
+  await p.close();
+}
 {
   const { p } = await abrir({ width: 900, height: 900 }, datos(), { vista: "feed" });
   eq("en pantallas angostas (menos de 1024 px) el costado no está", await p.$$eval(".fs-tendencias", l => l.filter(e => e.offsetParent !== null).length), 0);
