@@ -205,6 +205,66 @@ select lab.probar_valor('unir: el mismo país no se repite, la otra ciudad pasa'
   $q$select string_agg(nivel || ':' || coalesce(city, country, zona, '*'), ' ' order by id) from public.contactos where persona = 'julia'$q$,
   'ciudad:Recife pais:Brasil region:sur latam:*');
 
+-- ---------- Traer una lista con gente de ciudades y de un país (24-agenda-lugares-al-traer.sql) ----------
+-- El Mapeo de comunidades: el presidente de Córdoba, quien cubre Brasil… no van con una institución.
+-- «Júlia» (julia2) quedó de la prueba de unir (esa se vuelve atrás): se saca para que «Julia» sea una sola ficha.
+delete from public.personas where id = 'julia2';
+create temp table n_antes as select (select count(*) from public.agenda_listas) as listas, (select count(*) from public.contactos) as contactos;
+select lab.probar('traer gente de un lugar lo hace un admin, no una integrante', lab.como('ana@x.com'),
+  $q$select public.agenda_traer('Mapeo', '[]', '[{"nivel":"pais","country":"Chile","gente":[]}]')$q$, false);
+select lab.probar('sin instituciones ni lugares, no', lab.como('benny@team-latam.com'),
+  $q$select public.agenda_traer('Mapeo', '[]', '[]')$q$, false);
+select lab.probar('un lugar de una ciudad sin decir cuál no entra, y no queda nada a medias (ni la lista)', lab.como('benny@team-latam.com'),
+  $q$select public.agenda_traer('Mapeo', '[]', '[{"nivel":"ciudad","country":"Argentina","gente":[{"name":"Nadie"}]}]')$q$, false);
+insert into lab.resultados(nombre, esperado, obtenido, detalle)
+select 'ese intento fallido no dejó ni la lista, ni un contacto, ni la persona', true,
+  (select count(*) from public.agenda_listas) = (select listas from n_antes)
+  and (select count(*) from public.contactos) = (select contactos from n_antes)
+  and not exists (select 1 from public.personas where name = 'Nadie'), '';
+create temp table mapeo as select public.agenda_traer('Mapeo LatAm', '[]', $j$[
+  {"nivel":"ciudad","country":"Argentina","city":"Córdoba","gente":[
+    {"name":"Adrian Muestral","cargo":"Presidente","telefonos":[{"n":"+54 9 351 555-0101","wa":true}]},
+    {"name":"Gabriel Supuesto","cargo":"Seguridad · Kabat Kehila","telefonos":[{"n":"+54 9 341 555 9150","wa":true},{"n":"+54 9 341 555 0000","wa":true}]}]},
+  {"nivel":"ciudad","country":"Argentina","city":"Rosario","gente":[
+    {"name":"Gabriel Supuesto","cargo":"Presidente","telefonos":[]}]},
+  {"nivel":"pais","country":"Brasil","gente":[
+    {"name":"Júlia","cargo":"Presidente","telefonos":[{"n":"+55 11 95555 1099","wa":true}]},
+    {"name":"Rafael Imaginario","cargo":"R KM","telefonos":[]}]}
+]$j$::jsonb) as r
+from (select set_config('request.jwt.claims', lab.como('benny@team-latam.com')::text, true)) _;
+insert into lab.resultados(nombre, esperado, obtenido, detalle)
+select 'traer lugares: ninguna institución, tres lugares, y lo que dice que hizo', true,
+  (select r ->> 'instituciones' from mapeo) = '0' and (select r ->> 'lugares' from mapeo) = '3' and (select r ->> 'contactos' from mapeo) = '5'
+  and (select r ->> 'personas_nuevas' from mapeo) = '2' and (select r ->> 'personas_que_ya_estaban' from mapeo) = '2',
+  (select r::text from mapeo);
+insert into lab.resultados(nombre, esperado, obtenido, detalle)
+select 'traer lugares: cada contacto nuevo queda como los que se suman a mano (nivel, país, ciudad, sin institución) y firmado con la lista (3: Supuesto en Rosario y Júlia en Brasil ya estaban en esos lugares)', true,
+  (select count(*) from public.contactos where lista = (select r ->> 'lista' from mapeo) and institucion is null) = 3
+  and exists (select 1 from public.contactos c join public.personas p on p.id = c.persona where c.lista = (select r ->> 'lista' from mapeo)
+                 and c.nivel = 'ciudad' and c.country = 'Argentina' and c.city = 'Córdoba' and p.name = 'Adrian Muestral' and c.cargo = 'Presidente')
+  and exists (select 1 from public.contactos c join public.personas p on p.id = c.persona where c.lista = (select r ->> 'lista' from mapeo)
+                 and c.nivel = 'pais' and c.country = 'Brasil' and c.city is null and p.name = 'Rafael Imaginario'),
+  (select count(*) from public.contactos where lista = (select r ->> 'lista' from mapeo))::text;
+insert into lab.resultados(nombre, esperado, obtenido, detalle)
+select 'traer lugares: Supuesto y Júlia ya estaban (sin tildes ni mayúsculas): la misma ficha, y a Supuesto se le suma el teléfono que no tenía', true,
+  (select count(*) from public.personas where public.sin_tildes(name) in ('Gabriel Supuesto', 'Julia')) = 2
+  and (select jsonb_array_length(telefonos) from public.personas where id = 'dobkin') = 2
+  and (select lista from public.personas where name = 'Adrian Muestral') = (select r ->> 'lista' from mapeo),
+  (select count(*) from public.personas where public.sin_tildes(name) in ('Gabriel Supuesto', 'Julia'))::text || ' ' ||
+  (select jsonb_array_length(telefonos) from public.personas where id = 'dobkin')::text;
+insert into lab.resultados(nombre, esperado, obtenido, detalle)
+select 'traer lugares: Supuesto ya era el Presidente de Rosario: no se repite en ese lugar (y sigue siendo uno solo)', true,
+  (select count(*) from public.contactos where persona = 'dobkin' and nivel = 'ciudad' and lower(public.sin_tildes(city)) = 'rosario') = 1
+  and (select cargo from public.contactos where id = 'l1') = 'Presidente', '';
+select lab.probar_valor('traer lo mismo otra vez no repite a nadie en su lugar', lab.como('benny@team-latam.com'),
+  $q$select public.agenda_traer('Mapeo LatAm otra vez', '[]', '[{"nivel":"ciudad","country":"Argentina","city":"Córdoba","gente":[{"name":"Adrian Muestral","cargo":"Presidente"}]}]')$q$,
+  $q$select count(*)::text from public.contactos c join public.personas p on p.id = c.persona where p.name = 'Adrian Muestral'$q$, '1');
+-- Y las dos cosas juntas: una institución con su gente y un lugar con la suya.
+select lab.probar_valor('traer instituciones y lugares en la misma lista', lab.como('benny@team-latam.com'),
+  $q$select (public.agenda_traer('Mixta', '[{"name":"Escuela Mixta","country":"Chile","city":"Santiago","gente":[{"name":"Dana Mixta","cargo":"Directora"}]}]',
+          '[{"nivel":"pais","country":"Chile","gente":[{"name":"Dana Mixta","cargo":"Cubre el país"}]}]') ->> 'contactos')$q$,
+  $q$select count(*)::text from public.contactos c join public.personas p on p.id = c.persona where p.name = 'Dana Mixta'$q$, '2');
+
 \set QUIET off
 select n, '  FALLA  ' || nombre || '  ' || detalle as falla from lab.resultados where esperado <> obtenido order by n;
 select count(*) filter (where esperado = obtenido) || ' pasaron, ' ||

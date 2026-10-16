@@ -205,6 +205,7 @@ create or replace function public.agenda_id() returns text
 $$;
 revoke execute on function public.agenda_id() from public, anon, authenticated;
 
+-- (Desde el 14/10/2026 la reemplaza la de tres parámetros de 24-agenda-lugares-al-traer.sql, que también trae gente de ciudades y países.)
 create or replace function public.agenda_traer(p_nombre text, p_instituciones jsonb) returns jsonb
   language plpgsql security definer set search_path = '' as $$
 declare

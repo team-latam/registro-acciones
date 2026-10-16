@@ -322,7 +322,7 @@ const escribir = async (p, sel, valor) => { await p.fill(sel, valor); await p.wa
   eq("previa: cuántas y dónde", hay(/^✓3 instituciones en 3 ciudades de 2 países\.$/), true);
   eq("previa: la que ya está no se vuelve a traer", hay(/Una ya está en la Agenda/), true);
   eq("previa: el país con el nombre de la app", hay(/«Rep\. Dominicana» → República Dominicana/), true);
-  eq("previa: la misma persona en dos lugares, una sola ficha; y la que ya estaba en la app", hay(/2 personas: una está en más de una institución.*Shimon Pelman \(2\).*Una ya estaba en la app/), true);
+  eq("previa: la misma persona en dos lugares, una sola ficha; y la que ya estaba en la app", hay(/2 personas: una está en más de un lugar.*Shimon Pelman \(2\).*Una ya estaba en la app/), true);
   eq("previa: «Rabbi»/«Rab» fuera del nombre", hay(/2 nombres empiezan con «Rabbi» o «Rab»/), true);
   eq("previa: el teléfono con un carácter invisible", hay(/Un teléfono traía caracteres invisibles/), true);
   eq("previa: temporada y cerradas", hay(/1 de temporada y 1 cerrada(?!s)/), true);
@@ -352,6 +352,56 @@ const escribir = async (p, sel, valor) => { await p.fill(sel, valor); await p.wa
   await p.selectOption("#agendaLista", ""); await p.waitForTimeout(120);
   eq("todas las listas: 6 instituciones", await cuantos(p, ".ag-fila"), 6);
   eq("sin errores (traer)", errores, []);
+  await p.close();
+}
+
+/* ---------- 4b. Traer una lista con gente de ciudades y de un país, sin institución (14/10/2026) ---------- */
+// El Mapeo de comunidades: el presidente de Córdoba, quien cubre Brasil… son contactos de un lugar (20-contactos-por-lugar.sql),
+// no de una «Comunidad de Córdoba» inventada. Una fila sin institución es un contacto de su ciudad, o de su país si no trae ciudad.
+{
+  const { p, errores } = await entrar(ADMIN, "Benny");
+  await p.click('[data-action="toggle-user-menu"]');
+  await p.click('.user-menu [data-action="goto-view"][data-view="admin"]');
+  await p.click('.admin-menu [data-action="admin-go"][data-view="preferencias"][data-key="agenda"]');
+  await p.waitForSelector("#agendaArchivo", { state: "attached" });
+  const filas = [
+    { "Institución": "", "País": "Argentina", "Ciudad": "Córdoba", "Nombre": "Adrian Muestral", "Cargo": "Presidente", "Teléfono": "+54 9 351 555-0101" },
+    { "Institución": "", "País": "Argentina", "Ciudad": "Córdoba", "Nombre": "Joel Ensayo", "Cargo": "Seguridad · Kabat Kehila", "Teléfono": "+54 9 351 555-0102" },
+    { "Institución": "", "País": "Argentina", "Ciudad": "Rosario", "Nombre": "Adrian Muestral", "Cargo": "Asesor", "Teléfono": "" },
+    { "Institución": "", "País": "Brasil", "Ciudad": "", "Nombre": "Julia Prueba", "Cargo": "Presidente", "Teléfono": "55 11 95555 1099" },
+  ];
+  const archivo = { name: "Mapeo de prueba.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(filas)) };
+  await p.setInputFiles("#agendaArchivo", archivo);
+  await p.waitForSelector(".ag-checks");
+  const checks = await p.$$eval(".ag-checks li", l => l.map(e => e.textContent.replace(/\s+/g, " ").trim()));
+  const hay = re => checks.some(x => re.test(x));
+  eq("lugares: dice cuántos, de qué tipo y en cuántos países, sin hablar de instituciones", [hay(/^✓2 ciudades y 1 país con contactos propios, sin institución, en 2 países\.$/), hay(/instituciones en/)], [true, false]);
+  eq("lugares: la misma persona en dos lugares es una sola ficha", hay(/3 personas: una está en más de un lugar y queda con una sola ficha\.Adrian Muestral \(2\)/), true);
+  eq("lugares: el nombre de la lista sale del archivo y el botón dice qué va a traer", [await p.inputValue("#agendaNombreLista"), await texto(p, '[data-action="agenda-import-traer"]')], ["Mapeo de prueba", "Traer 3 lugares y 3 contactos"]);
+  eq("lugares: la tabla dice «sin institución» y el lugar de cada uno", await p.$$eval(".ag-tabla tbody tr", l => l.map(tr => [...tr.children].slice(0, 3).map(td => td.textContent.trim()).join(" | "))), [
+    "sin institución | Córdoba, Argentina | Adrian Muestral, Joel Ensayo", "sin institución | Rosario, Argentina | Adrian Muestral", "sin institución | Brasil | Julia Prueba"]);
+  await p.click('[data-action="agenda-import-traer"]');
+  await p.waitForSelector(".ag-listo");
+  const llamada = await p.evaluate(() => window.__sb.rpc.filter(r => r[0] === "agenda_traer").pop()[1]);
+  eq("traer: sin instituciones, y los lugares con su nivel, tal como la app nombra el país y la ciudad", [llamada.p_instituciones, llamada.p_lugares.map(x => [x.nivel, x.country, x.city, x.gente.map(g => [g.name, g.cargo, g.telefonos])])], [[], [
+    ["ciudad", "Argentina", "Cordoba", [["Adrian Muestral", "Presidente", [{ n: "+54 9 351 555-0101", wa: true }]], ["Joel Ensayo", "Seguridad · Kabat Kehila", [{ n: "+54 9 351 555-0102", wa: true }]]]],
+    ["ciudad", "Argentina", "Rosario", [["Adrian Muestral", "Asesor", []]]],
+    ["pais", "Brasil", null, [["Julia Prueba", "Presidente", [{ n: "+55 11 95555 1099", wa: true }]]]]]]);
+  eq("traer: el resultado habla de lugares", await texto(p, ".ag-listo p"), "✓ Listo: se trajeron 3 lugares de «Mapeo de prueba», con 3 contactos.");
+  eq("traer: la lista aparece con sus lugares", /Mapeo de prueba.*3 lugares/.test(await texto(p, ".ag-admin")), true);
+  await p.click('.ag-listo [data-action="agenda-abrir"]');
+  await p.waitForSelector(".ag-fila");
+  eq("«Ver Agenda»: los tres lugares de esa lista, con su gente (Argentina primero, y Brasil, que es de un país)", [await cuantos(p, ".ag-fila"),
+    await p.$$eval(".ag-fila", l => l.map(f => [...f.querySelectorAll(".ag-gente b")].map(e => e.textContent.trim())))], [3, [["Adrian Muestral", "Joel Ensayo"], ["Adrian Muestral"], ["Julia Prueba"]]]);
+  eq("el resumen de arriba cuenta gente, ciudades y países, sin decir «0 instituciones»", await texto(p, ".ag-resumen"), "3 contactos en 2 ciudades de 2 países Limpiar");
+  eq("…y el subtítulo de cada uno dice si es de la ciudad o del país", await p.$$eval(".ag-fila", l => l.map(e => /Contactos del país|Contactos de la ciudad/.exec(e.textContent)[0])), ["Contactos de la ciudad", "Contactos de la ciudad", "Contactos del país"]);
+  // Traerla otra vez: nadie es contacto dos veces de su lugar.
+  await p.evaluate(() => document.getElementById("agendaOverlay").querySelector('[data-action="agenda-cerrar"]') && document.getElementById("agendaOverlay").querySelector('[data-action="agenda-cerrar"]').click());
+  await p.keyboard.press("Escape"); await p.waitForTimeout(300);
+  await p.setInputFiles("#agendaArchivo", archivo);
+  await p.waitForSelector(".ag-nota, .ag-checks");
+  eq("la misma planilla otra vez: ya está todo, no se vuelve a traer", /Todo lo de ese archivo ya está en la Agenda/.test(await texto(p, ".ag-admin")), true);
+  eq("sin errores (lugares)", errores, []);
   await p.close();
 }
 
