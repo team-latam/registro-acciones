@@ -1448,8 +1448,10 @@
   @media (min-width:1024px){
     .feed-side{
       display:block; flex:0 0 276px; position:sticky; top:calc(var(--header-h, 96px) + 16px);
-      max-height:calc(100vh - var(--header-h, 96px) - 32px); overflow:auto;
     }
+    /* Si la columna no entra entera en la pantalla no se queda fija: baja con la página, sin barra de scroll
+       propia (ajustarColumnaLateral; pedido del usuario, 16/10/2026). */
+    .feed-side.suelta{ position:static; }
   }
   .fs-box{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow); padding:14px 14px 10px; margin-bottom:14px; }
   .fs-box h4{ margin:0 0 8px; font-size:11.5px; text-transform:uppercase; letter-spacing:.04em; color:var(--text-muted); }
@@ -14139,6 +14141,26 @@ function syncHeaderHeight(){
   document.documentElement.style.setProperty("--header-h", header.offsetHeight + "px");
 }
 window.addEventListener("resize", syncHeaderHeight);
+// La columna del costado del Inicio se queda a la vista mientras se baja por el Feed solo si entra entera en la
+// pantalla; si es más alta (con las 10 Tendencias, por ejemplo) baja con la página. Antes tenía su propia barra de
+// scroll, que el usuario no quiso (16/10/2026). Se mide cada vez que se dibuja, al cambiar el tamaño de la ventana y
+// cuando la columna cambia de alto.
+let costadoRO = null;
+function medirColumnaLateral(lado){
+  lado.classList.remove("suelta");   // se mide con la columna en su estado natural
+  const cabeza = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--header-h")) || 96;
+  lado.classList.toggle("suelta", lado.offsetHeight > window.innerHeight - cabeza - 32);
+}
+function ajustarColumnaLateral(){
+  const lado = document.querySelector(".feed-side");
+  if(!lado || getComputedStyle(lado).display === "none"){ if(costadoRO) costadoRO.disconnect(); return; }
+  medirColumnaLateral(lado);
+  if(typeof ResizeObserver === "undefined") return;
+  // Mirar la columna cuando cambia de alto (otra tarjeta, «Ver más»); el alto no depende de `suelta`, así que no hay ciclo.
+  if(!costadoRO) costadoRO = new ResizeObserver(() => { const l = document.querySelector(".feed-side"); if(l) medirColumnaLateral(l); });
+  costadoRO.disconnect(); costadoRO.observe(lado);
+}
+window.addEventListener("resize", ajustarColumnaLateral);
 // Las columnas de «Mes a mes» con el teclado: ← → pasan de un mes al otro (al revés en hebreo, donde el primer mes
 // queda a la derecha), Inicio y Fin van al primero y al último.
 document.addEventListener("keydown", e => {
@@ -14303,6 +14325,7 @@ function afterRenderView(){
   despuesDeTendencias();
   revisarPasosLargos();
   syncHeaderHeight();
+  ajustarColumnaLateral();
   syncTabsScroll();
   sinCorrimientoLateral();
   fitDropdownPanels();

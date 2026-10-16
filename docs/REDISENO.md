@@ -969,6 +969,15 @@ eligió **unirlas así**:
 Pruebas: `agenda_test.mjs` (país, región y ciudad; fallan con el código
 de antes) y `ficha_celular_test.mjs` vuelve a esperar cinco tarjetas.
 
+### 92. La columna del costado del Inicio ya no lleva barra de scroll — HECHO (16 oct 2026, sin publicar todavía)
+
+El usuario mandó una captura del costado del Inicio (con las 10 «Tendencias» abiertas) y dijo que **la barra para hacer scroll no hacía falta**. Era la barra propia de la columna (`.feed-side` tenía `max-height` y `overflow:auto` para poder
+quedarse fija sin importar lo alta que fuera). Ahora no tiene ninguna: `ajustarColumnaLateral` mide la columna cada vez que se dibuja, al cambiar el tamaño de la ventana y cuando cambia de alto, y
+- si **entra entera** en la pantalla, se queda fija al bajar por el Feed (como antes);
+- si es **más alta** (por ejemplo con las 10 tendencias en una pantalla baja), se «suelta» (`.suelta`, `position:static`) y baja con la página; todo se alcanza sin barra propia ni rueda atrapada.
+- De paso, `repetir_fecha_test.mjs` fallaba solo los días en que la fecha propuesta caía en el 11 del mes (elegía siempre «el día 11» para probar el cambio y a veces era justo la propuesta): ahora elige un día distinto del propuesto.
+- Prueba: `tendencias_test.mjs` (73): sin barra en ninguno de los dos casos, fija en una pantalla alta, suelta en una baja, y al achicar la ventana se suelta sin recargar; con el código de antes fallan 3.
+
 ### 91. La descripción del evento de Calendar no dice «en Registro de Acciones» — HECHO (14 oct 2026, sin publicar todavía)
 
 El usuario mandó una captura de un evento en Google Calendar (invitada una persona de afuera) y pidió sacar la parte «…en Registro de Acciones» de la descripción: quien recibe la invitación no tiene por qué saber de dónde viene.
