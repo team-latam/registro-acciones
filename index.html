@@ -22392,6 +22392,8 @@ function leerFilasAgenda(filas){
     // El teléfono como se lee («54 9 11 5555 1698»); el de los enlaces (phone_tel) solo si no hay otro.
     tel: campoDe(f, ["phone", "telefono", "tel", "celular", "whatsapp", "telefone", "movil", "phonetel"]),
     correo: campoDe(f, ["email", "correo", "mail", "email1"]),
+    // La nota va en la ficha de la persona (hasta 300 letras).
+    nota: campoDe(f, ["nota", "notas", "note", "notes", "observaciones", "comentarios"]),
   // Una fila sin institución pero con una persona es un contacto de la ciudad (o del país, si no trae ciudad).
   })).filter(x => x.pais && (x.inst || x.nombre));
 }
@@ -22430,7 +22432,7 @@ async function leerArchivoAgenda(archivo){
   render();
 }
 function prepararImport(archivo, filas, nombreLista){
-  const av = { sinRabbi:0, telLimpios:0, paisCambiado:new Map(), ciudadCambiada:new Map(), paisDesconocido:new Set(), ciudadDesconocida:new Set(), estados:{ temporada:0, cerrada:0 }, yaEstan:0, yaEnSuLugar:0 };
+  const av = { sinRabbi:0, telLimpios:0, paisCambiado:new Map(), ciudadCambiada:new Map(), paisDesconocido:new Set(), ciudadDesconocida:new Set(), estados:{ temporada:0, cerrada:0 }, yaEstan:0, yaEnSuLugar:0, conNota:0, notaCortada:0 };
   const insts = new Map(), lugares = new Map();
   const yaEnAgenda = new Set(state.instituciones.map(x => [normalize(x.name), x.country, normalize(x.city)].join("|")));
   // Quién ya es contacto de cada ciudad o país (por nombre, sin tildes ni mayúsculas): no se vuelve a traer.
@@ -22444,10 +22446,16 @@ function prepararImport(archivo, filas, nombreLista){
     let tel = limpiarTelefono(f.tel);
     if(tel && tel !== f.tel.replace(/^\+/, "").trim() && tel !== f.tel.trim()) av.telLimpios++;
     if(tel && !tel.startsWith("+") && digitosDe(tel).length >= 8) tel = "+" + tel;
-    return { name:sinPrefijo.slice(0, 120), cargo:f.cargo.slice(0, 60) || null, telefonos: tel && telefonoValido(tel) ? [{ n:tel, wa:true }] : [] };
+    const nota = f.nota.replace(/\s+/g, " ").trim();
+    if(nota) av.conNota++;
+    if(nota.length > 300) av.notaCortada++;
+    return { name:sinPrefijo.slice(0, 120), cargo:f.cargo.slice(0, 60) || null, telefonos: tel && telefonoValido(tel) ? [{ n:tel, wa:true }] : [], nota: nota.slice(0, 300) || null };
   };
   filas.forEach(f => {
-    const p = paisDeLaApp(f.pais), c = f.ciudad ? ciudadDeLaApp(p.pais, f.ciudad) : { ciudad:"", conocida:true };
+    const p = paisDeLaApp(f.pais);
+    // Un contacto sin institución con la ciudad igual al país («Argentina» en país y en ciudad) es del país entero.
+    if(!f.inst && f.ciudad && (normalize(f.ciudad) === normalize(f.pais) || normalize(f.ciudad) === normalize(p.pais))) f = { ...f, ciudad:"" };
+    const c = f.ciudad ? ciudadDeLaApp(p.pais, f.ciudad) : { ciudad:"", conocida:true };
     if(p.cambio) av.paisCambiado.set(f.pais, p.pais);
     if(!p.conocido) av.paisDesconocido.add(p.pais);
     if(c.cambio) av.ciudadCambiada.set(f.ciudad, c.ciudad);
@@ -22513,10 +22521,10 @@ function renderAgendaAdminSection(){
   const elegir = `<div class="setting-row ag-traer">
       <span class="setting-icon">⬆️</span>
       <div class="setting-text"><div class="setting-label">${state.agendaListas.length ? t("Traer otra lista","Import another list","Trazer outra lista","ייבוא רשימה נוספת") : t("Traer una lista","Import a list","Trazer uma lista","ייבוא רשימה")}</div>
-        <div class="setting-sub">${t("Sirve el HTML de un directorio como el de Chabad LatAm, el archivo .json que baja su botón «Exportar», o una planilla de Excel (.xlsx o .csv) con una fila por institución o por persona (una fila sin institución es un contacto de la ciudad, o del país si no trae ciudad). Antes de guardar nada, te muestra qué va a hacer.",
-          "Works with a directory HTML like Chabad LatAm's, the .json its “Export” button downloads, or an Excel sheet (.xlsx or .csv) with one row per organization or per person (a row without an organization is a contact of the city, or of the country if it has no city). Before saving anything, it shows you what it will do.",
-          "Serve o HTML de um diretório como o do Chabad LatAm, o .json que o botão «Exportar» baixa, ou uma planilha do Excel (.xlsx ou .csv) com uma linha por instituição ou por pessoa (uma linha sem instituição é um contato da cidade, ou do país se não traz cidade). Antes de salvar, mostra o que vai fazer.",
-          "אפשר קובץ HTML של מדריך כמו של חב״ד LatAm, קובץ ה-json שכפתור «ייצוא» מוריד, או גיליון Excel‏ (xlsx או csv) עם שורה לכל מוסד או אדם (שורה בלי מוסד היא איש קשר של העיר, או של המדינה אם אין עיר). לפני השמירה מוצג מה ייעשה.")}</div></div>
+        <div class="setting-sub">${t("Sirve el HTML de un directorio como el de Chabad LatAm, el archivo .json que baja su botón «Exportar», o una planilla de Excel (.xlsx o .csv) con una fila por institución o por persona (una fila sin institución es un contacto de la ciudad, o del país si no trae ciudad; una columna «Nota» se guarda en la ficha de la persona). Antes de guardar nada, te muestra qué va a hacer.",
+          "Works with a directory HTML like Chabad LatAm's, the .json its “Export” button downloads, or an Excel sheet (.xlsx or .csv) with one row per organization or per person (a row without an organization is a contact of the city, or of the country if it has no city; a “Note” column goes in the person's record). Before saving anything, it shows you what it will do.",
+          "Serve o HTML de um diretório como o do Chabad LatAm, o .json que o botão «Exportar» baixa, ou uma planilha do Excel (.xlsx ou .csv) com uma linha por instituição ou por pessoa (uma linha sem instituição é um contato da cidade, ou do país se não traz cidade; uma coluna «Nota» fica na ficha da pessoa). Antes de salvar, mostra o que vai fazer.",
+          "אפשר קובץ HTML של מדריך כמו של חב״ד LatAm, קובץ ה-json שכפתור «ייצוא» מוריד, או גיליון Excel‏ (xlsx או csv) עם שורה לכל מוסד או אדם (שורה בלי מוסד היא איש קשר של העיר, או של המדינה אם אין עיר; עמודת «הערה» נשמרת בכרטיס של האדם). לפני השמירה מוצג מה ייעשה.")}</div></div>
       <label class="btn-primary ag-elegir">${t("Elegir archivo…","Choose file…","Escolher arquivo…","בחירת קובץ…")}<input type="file" id="agendaArchivo" accept=".html,.htm,.json,.xlsx,.xls,.csv" hidden></label></div>`;
   let vista = "";
   if(im && im.cargando) vista = `<div class="settings-card"><p class="ag-nota">${esc(t("Leyendo {a}…","Reading {a}…","Lendo {a}…","קורא את {a}…",{ a: im.archivo.nombre }))}</p></div>`;
@@ -22549,6 +22557,10 @@ function renderAgendaAdminSection(){
         : esc(t(": {n} están en más de un lugar y quedan con una sola ficha.",": {n} are in more than one place and get a single record.",": {n} estão em mais de um lugar e ficam com uma só ficha.",": {n} נמצאים ביותר ממקום אחד ויקבלו כרטיס אחד.",{ n: im.repetidas.length })) })),
         [im.repetidas.slice(0, 3).map(([n, k]) => `${esc(n)} (${k})`).join(" · "), im.yaEnLaApp === 1 ? esc(t("Una ya estaba en la app (como persona sin cuenta o en otra lista): se usa esa ficha.","One was already in the app: that record is used.","Uma já estava no app: usa-se essa ficha.","אחד כבר היה באפליקציה: ייעשה שימוש בכרטיס הקיים."))
           : im.yaEnLaApp ? esc(t("{n} ya estaban en la app (como persona sin cuenta o en otra lista): se usa esa ficha.","{n} were already in the app: that record is used.","{n} já estavam no app: usa-se essa ficha.","{n} כבר היו באפליקציה: ייעשה שימוש בכרטיס הקיים.",{ n: im.yaEnLaApp })) : ""].filter(Boolean).join(" — ")),
+      av.conNota ? li("✓", av.conNota === 1 ? t("<b>Una persona trae una nota</b>: se guarda en su ficha (si ya tenía una, se suma al final).","<b>One person comes with a note</b>: it goes in their record (if they already had one, it's added at the end).","<b>Uma pessoa traz uma nota</b>: fica na ficha dela (se já tinha uma, soma-se ao final).","<b>אדם אחד מגיע עם הערה</b>: היא נשמרת בכרטיס שלו (אם כבר הייתה לו, היא מתווספת בסוף).")
+        : t("<b>{n} personas traen una nota</b>: se guarda en su ficha (si ya tenían una, se suma al final).","<b>{n} people come with a note</b>: it goes in their record (if they already had one, it's added at the end).","<b>{n} pessoas trazem uma nota</b>: fica na ficha delas (se já tinham uma, soma-se ao final).","<b>{n} אנשים מגיעים עם הערה</b>: היא נשמרת בכרטיס שלהם (אם כבר הייתה להם, היא מתווספת בסוף).",{ n: av.conNota })) : "",
+      av.notaCortada ? li("?", av.notaCortada === 1 ? t("<b>Una nota pasa de 300 letras</b>: se corta.","<b>One note is over 300 characters</b>: it gets cut.","<b>Uma nota passa de 300 letras</b>: é cortada.","<b>הערה אחת עוברת 300 תווים</b>: היא נחתכת.")
+        : t("<b>{n} notas pasan de 300 letras</b>: se cortan.","<b>{n} notes are over 300 characters</b>: they get cut.","<b>{n} notas passam de 300 letras</b>: são cortadas.","<b>{n} הערות עוברות 300 תווים</b>: הן נחתכות.",{ n: av.notaCortada })) : "",
       av.sinRabbi === 1 ? li("✓", t("<b>Un nombre empieza con «Rabbi» o «Rab»</b>: se guarda el nombre solo, con el cargo «Rab a cargo».","<b>One name starts with “Rabbi” or “Rab”</b>: the name is kept alone, with the role “Rabbi in charge”.","<b>Um nome começa com «Rabbi» ou «Rab»</b>: guarda-se só o nome, com o cargo «Rabino responsável».","<b>שם אחד מתחיל ב-«Rabbi» או «Rab»</b>: נשמר השם לבד, עם התפקיד «הרב האחראי».")) : "",
       av.sinRabbi > 1 ? li("✓", t("<b>{n} nombres empiezan con «Rabbi» o «Rab»</b>: se guarda el nombre solo, con el cargo «Rab a cargo».","<b>{n} names start with “Rabbi” or “Rab”</b>: the name is kept alone, with the role “Rabbi in charge”.","<b>{n} nomes começam com «Rabbi» ou «Rab»</b>: guarda-se só o nome, com o cargo «Rabino responsável».","<b>{n} שמות מתחילים ב-«Rabbi» או «Rab»</b>: נשמר השם לבד, עם התפקיד «הרב האחראי».",{ n: av.sinRabbi })) : "",
       av.telLimpios === 1 ? li("✓", t("<b>Un teléfono</b> traía caracteres invisibles o letras: se limpia.","<b>One phone</b> had invisible characters or letters: it gets cleaned.","<b>Um telefone</b> tinha caracteres invisíveis ou letras: é limpo.","<b>טלפון אחד</b> הכיל תווים נסתרים או אותיות: ינוקה.")) : "",

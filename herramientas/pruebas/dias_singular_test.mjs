@@ -13,7 +13,14 @@ import { abrirNavegador, entrar, ADMIN, BASE, post, ciudad, tab } from "./app_de
 let pass = 0, fail = 0;
 const eq = (n, g, w) => { const a = JSON.stringify(g), x = JSON.stringify(w); if(a === x) pass++; else { fail++; console.log(`✗ ${n}\n   esperado: ${x}\n   obtenido: ${a}`); } };
 
+// El mediodía (UTC) de hoy, fijo en Node y en el navegador: si la corrida cruza la medianoche a mitad de la
+// prueba, «ayer» no pasa a ser «hace 2 días» (pasó el 17/10/2026 a las 00:00 UTC, en el idioma hebreo).
+const MEDIODIA = (() => { const h = new Date(); return new Date(Date.UTC(h.getUTCFullYear(), h.getUTCMonth(), h.getUTCDate(), 12)); })();
 const base = () => {
+  const real = Date.now; Date.now = () => MEDIODIA.getTime();
+  try { return armar(); } finally { Date.now = real; }
+};
+const armar = () => {
   const b = BASE();
   b.posts = [
     post({ id: "hoy", title: "Visita de hoy", d: 0, a: 1, type: "visita", scopes: [ciudad("Argentina", "Bariloche")], content: "" }),
@@ -28,6 +35,7 @@ const base = () => {
 const b = await abrirNavegador();
 const abrir = async (lang, viewport) => {
   const r = await entrar(b, ADMIN, "Benny Rosenthal", { viewport: viewport || { width: 1280, height: 900 }, lang, base: base() });
+  await r.p.clock.setFixedTime(MEDIODIA);
   await tab(r.p, "paises");
   return r;
 };

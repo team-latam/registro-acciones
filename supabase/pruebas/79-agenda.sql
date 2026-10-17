@@ -265,6 +265,34 @@ select lab.probar_valor('traer instituciones y lugares en la misma lista', lab.c
           '[{"nivel":"pais","country":"Chile","gente":[{"name":"Dana Mixta","cargo":"Cubre el país"}]}]') ->> 'contactos')$q$,
   $q$select count(*)::text from public.contactos c join public.personas p on p.id = c.persona where p.name = 'Dana Mixta'$q$, '2');
 
+-- ---------- La nota de cada persona al traer una lista (25-agenda-notas-al-traer.sql) ----------
+update public.personas set note = 'Habla hebreo' where id = 'julia';
+create temp table notas as select public.agenda_traer('Con notas', '[]', $j$[
+  {"nivel":"pais","country":"Chile","gente":[
+    {"name":"Persona Nueva","cargo":"Presidente","nota":"  Cubre el sur  "},
+    {"name":"Gabriel Supuesto","cargo":"Asesor","nota":"Es de Rosario"},
+    {"name":"Julia","cargo":"Asesora","nota":"Cubre Brasil"},
+    {"name":"Sin Nota","cargo":"Asesor"}]}
+]$j$::jsonb) as r
+from (select set_config('request.jwt.claims', lab.como('benny@team-latam.com')::text, true)) _;
+create temp table nota_larga as select public.agenda_traer('Nota larga', '[]',
+  jsonb_build_array(jsonb_build_object('nivel', 'pais', 'country', 'Peru', 'gente', jsonb_build_array(jsonb_build_object('name', 'Persona Larga', 'cargo', 'X', 'nota', repeat('x', 400)))))) as r
+from (select set_config('request.jwt.claims', lab.como('benny@team-latam.com')::text, true)) _;
+insert into lab.resultados(nombre, esperado, obtenido, detalle)
+select 'notas: una persona nueva nace con su nota (sin espacios de más); sin nota, queda sin nota', true,
+  (select note from public.personas where name = 'Persona Nueva') = 'Cubre el sur' and (select note from public.personas where name = 'Sin Nota') is null,
+  coalesce((select note from public.personas where name = 'Persona Nueva'), '-');
+insert into lab.resultados(nombre, esperado, obtenido, detalle)
+select 'notas: a una que ya estaba sin nota se la recibe, y a una con nota se le suma al final (la suya queda)', true,
+  (select note from public.personas where id = 'dobkin') = 'Es de Rosario' and (select note from public.personas where id = 'julia') = 'Habla hebreo · Cubre Brasil',
+  coalesce((select note from public.personas where id = 'dobkin'), '-') || ' / ' || (select note from public.personas where id = 'julia');
+select lab.probar_valor('notas: traer lo mismo otra vez no repite la nota', lab.como('benny@team-latam.com'),
+  $q$select (public.agenda_traer('Con notas otra vez', '[]', '[{"nivel":"pais","country":"Chile","gente":[{"name":"Julia","nota":"Cubre Brasil"},{"name":"Gabriel Supuesto","nota":"es de rosario"}]}]') ->> 'lista') is not null$q$,
+  $q$select (select note from public.personas where id = 'julia') || ' / ' || (select note from public.personas where id = 'dobkin')$q$, 'Habla hebreo · Cubre Brasil / Es de Rosario');
+insert into lab.resultados(nombre, esperado, obtenido, detalle)
+select 'notas: una nota de más de 300 letras se corta en 300 (y la ficha la acepta)', true,
+  (select length(note) from public.personas where name = 'Persona Larga') = 300, (select length(note)::text from public.personas where name = 'Persona Larga');
+
 \set QUIET off
 select n, '  FALLA  ' || nombre || '  ' || detalle as falla from lab.resultados where esperado <> obtenido order by n;
 select count(*) filter (where esperado = obtenido) || ' pasaron, ' ||
