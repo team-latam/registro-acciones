@@ -969,6 +969,33 @@ eligió **unirlas así**:
 Pruebas: `agenda_test.mjs` (país, región y ciudad; fallan con el código
 de antes) y `ficha_celular_test.mjs` vuelve a esperar cinco tarjetas.
 
+### 97. Las reuniones: presenciales «Otro», por videollamada «Virtual» — HECHO (17 oct 2026)
+
+Al ver la tanda 96, el usuario dijo cómo clasifica él las reuniones: **«las presenciales las pongo como Otro; las
+reuniones por Google Meet, Zoom, Teams, etc. como Virtual»**, y que **no quiere el comentario** de «tipo deducido».
+
+- **La regla** (capa 4 de la deducción, `calendarTypeFrom` / `tipoSegunElTitulo`): un título con palabra de reunión es
+  **Virtual** si hay una videollamada o el título lo dice (zoom, meet, online, webex, videollamada…); si no, **Otro**.
+  Se sacó lo de «el tipo que más les puso el equipo a sus reuniones»: ya no se aprende de ahí. (Un título igual al de un
+  posteo ya cargado sigue mandando: la reunión de siempre, cargada como Virtual, sigue siendo Virtual.)
+- **Qué cuenta como videollamada** (`calHasVideoCall` / `tieneVideollamada`): un enlace de Zoom, Meet, Teams, Webex o
+  Whereby en el lugar o la descripción, **o la videollamada que el botón «Agregar videoconferencia» de Calendar le pone al
+  evento**. Eso último hacía falta pedirlo: la función `calendario` pedía a Google solo los campos de siempre, y el Meet
+  de un evento nuevo no está en el lugar ni en la descripción. Ahora `CAMPOS_DEL_EVENTO` suma
+  `conferenceData(entryPoints(entryPointType))`: **solo el tipo de cada entrada (video, teléfono), nunca el enlace ni el
+  número**, así lo decidido el 7/10/2026 («sin link de Meet» en el navegador) sigue igual. Cualquier evento con una
+  videollamada (con o sin la palabra «reunión») entra como Virtual, salvo que su título diga curso, seminario, congreso o
+  visita, o sea de la vida de cada día (cena, vacaciones).
+- **Lo que hay que saber**: de las 240 reuniones que el usuario ordenó en octubre, **solo 10 traían una videollamada en
+  Calendar**; el resto eran reuniones por Meet/Zoom que no se habían agendado con el botón. Esas, como no hay nada que lo
+  diga, entran ahora como «Otro» (antes de este cambio, la regla las habría puesto en Virtual por costumbre). Si el equipo
+  quiere que entren como Virtual por defecto y que «Otro» sea solo cuando el evento tiene un lugar físico, es una regla.
+- Se publica sola: `funciones.yml` vuelve a publicar la función `calendario` al llegar a `main`, y el trabajo de la
+  madrugada ya usa el pedido nuevo. Hasta que la función se republique, el navegador sigue sin ver el Meet de un evento
+  nuevo (el título y los enlaces en el lugar o la descripción siguen andando).
+- Pruebas: `calendar_tipo_test.mjs` (101) y la diferencial (192) con las reuniones presenciales y por videollamada, en los
+  cuatro idiomas, y `cuenta-de-servicio.mjs` (27: el pedido a Google pide el tipo de la videollamada y nunca el enlace).
+
 ### 96. Lo que se escribe directo en Google Calendar ya no entra siempre como «Otro»: se deduce qué es — HECHO (17 oct 2026)
 
 El usuario notó que un evento que nace en Google Calendar entra **sin tipo** (siempre «Otro») y preguntó si se podía
@@ -987,9 +1014,8 @@ reuniones cuyo título no dice «reunión» (solo el nombre de un grupo o de una
      «Curso: » escrito a mano;
   2. **un título igual** al de posteos ya cargados (3 de cada 4 con el mismo tipo) → ese tipo;
   3. palabras de la vida de cada día (cena, vacaciones, deadline, casamiento…) → «Otro»;
-  4. **palabras de reunión** (reunión, meeting, reunião, junta, פגישה…) → el tipo que el equipo les puso a sus reuniones
-     (el de la mayoría de los posteos que las nombran, con al menos 5; en la carga de octubre fue **Virtual**: 258 de
-     384), o «Otro» si todavía no hay de dónde saberlo. Una «Reunión de seminario» es una reunión, no un seminario;
+  4. **palabras de reunión** (reunión, meeting, reunião, junta, פגישה…) → *(cambiada el mismo día, ver la tanda 97:
+     presencial «Otro», por videollamada «Virtual»)*. Una «Reunión de seminario» es una reunión, no un seminario;
   5. **palabras que dicen el tipo**, en los cuatro idiomas: curso/course/קורס, seminario/charla/סמינר,
      congreso/congress/כנס, visita/viaje/viagem/ביקור, online/webinar/webex/zoom (si hay dos, gana la más específica:
      congreso > seminario > curso > visita > virtual);
@@ -1005,10 +1031,10 @@ reuniones cuyo título no dice «reunión» (solo el nombre de un grupo o de una
 - **Solo lo nuevo**: un evento que ya tiene posteo vinculado se actualiza como siempre (no se le cambia el tipo), y los
   «Otro» que ya habían entrado desde el 5/10 sin que nadie los ordenara **no se tocaron**.
 - **Qué no se usa, a propósito**: la ubicación en texto libre de los posteos para reconocer lugares (puede ser un enlace;
-  solo valen los países y ciudades del alcance), ni los invitados ni el `hangoutLink`: la función `calendario` no los pide a Google y sumarlos obligaría a publicarla de nuevo.
-- **Para decidir con el usuario**: las reuniones nuevas entran como **Virtual** porque así quedaron el 67 % de las que él
-  ordenó (el resto, «Otro»: presenciales y personales). Si prefiere «Otro», se cambia sacando la regla 4. Y si quiere
-  que quede escrito en el posteo que el tipo fue deducido (un comentario «📅 Tipo deducido del título»), son pocas líneas.
+  solo valen los países y ciudades del alcance) ni los invitados.
+- **Lo que se le preguntó al usuario** (y respondió el mismo día): si las reuniones nuevas deben entrar como Virtual (así
+  quedaron 258 de las 384 que ordenó) y si quiere un comentario «Tipo deducido del título» en cada posteo. Contestó que
+  **no quiere comentarios**, y lo de las reuniones, en la tanda 97.
 - Pruebas: `calendar_tipo_test.mjs` (89: cada capa, los cuatro idiomas, los bordes, tipo archivado o borrado, la lista que
   cambia; falla con la deducción apagada: 52 fallas) y la prueba diferencial de `supabase/sync-calendar/pruebas/` (de 48 a
   158 comprobaciones: las mismas capas contra la app y contra el servidor; se cae si se toca una sola de las dos copias).

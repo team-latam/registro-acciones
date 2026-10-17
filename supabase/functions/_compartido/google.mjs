@@ -91,7 +91,10 @@ const ID_DE_EVENTO = /^(?!\.+$)[A-Za-z0-9_@.\-]{1,1024}$/;
 // mucho más —los correos de los invitados, el link de Meet, los adjuntos,
 // quién lo creó— y nada de eso le hace falta a nadie en el navegador
 // (7/10/2026). Si la app empieza a usar otro campo, va acá.
-export const CAMPOS_DEL_EVENTO = "id,status,summary,description,location,start,end,recurrence,recurringEventId,originalStartTime,organizer,extendedProperties";
+// De la videollamada que Calendar le agrega a un evento se pide solo el
+// TIPO de cada entrada (video, teléfono…), nunca el enlace ni el teléfono:
+// alcanza para saber que la reunión es virtual (17/10/2026).
+export const CAMPOS_DEL_EVENTO = "id,status,summary,description,location,start,end,recurrence,recurringEventId,originalStartTime,organizer,extendedProperties,conferenceData(entryPoints(entryPointType))";
 export function urlDelPedido(calendarId, pedido){
   const cal = API + encodeURIComponent(calendarId);
   if(pedido && pedido.accion === "evento"){

@@ -7660,15 +7660,16 @@ function extractTitleFromSummary(summary, activityType){
 //   1. Un título igual al de posteos que ya están (3 de cada 4 con el
 //      mismo tipo, mirando los que nombra igual) → ese tipo.
 //   2. Palabras de la vida de cada día (cena, vacaciones, deadline) → Otro.
-//   3. Palabras de reunión → el tipo que el equipo les puso a sus
-//      reuniones (el de la mayoría de los posteos que las nombran; en
-//      2026 fue «Virtual»), o «Otro» si todavía no hay de dónde saberlo.
+//   3. Palabras de reunión → «Virtual» si es por videollamada (hay un
+//      enlace de Zoom, Meet, Teams o Webex, o el título lo dice); si no,
+//      «Otro»: así las pone el equipo (presenciales Otro, por Meet/Zoom/
+//      Teams Virtual; pedido del 17/10/2026).
 //   4. Palabras que dicen el tipo (curso, seminario, congreso, visita,
 //      online…) en los cuatro idiomas.
 //   5. Palabras que, en los posteos ya cargados, casi siempre van con un
 //      mismo tipo (una sigla que siempre fue de Curso vuelve a serlo).
-//   6. Un enlace de videollamada (Zoom, Meet, Teams, Webex) en el lugar o
-//      en la descripción → Virtual.
+//   6. Una videollamada (un enlace de Zoom, Meet, Teams o Webex en el lugar
+//      o la descripción, o la que Calendar le agrega a un evento) → Virtual.
 //   7. Un título que es solo un lugar —y a lo sumo personas— → Visita.
 // Lo que va entre paréntesis no cuenta (son las personas). Es la MISMA
 // lógica que tipoInferidoDeCalendario() en supabase/sync-calendar/
@@ -7681,7 +7682,7 @@ const CAL_PALABRAS = {
   seminario: "seminario seminarios seminar seminars charla charlas סמינר סמינרים",
   curso: "curso cursos course courses capacitacion capacitaciones capacitacao training workshop taller talleres certificacion certification קורס קורסים הכשרה",
   visita: "visita visitas visit visits visitar viaje viajes viagem viagens trip gira giras tour ביקור",
-  virtual: "virtual online webinar webex zoom וובקס ווביניר אונליין וירטואלי",
+  virtual: "virtual online webinar webex zoom meet videollamada videollamadas videoconferencia videochamada videocall hangout וובקס ווביניר אונליין וירטואלי",
 };
 const CAL_VIDEOLLAMADA = /zoom\.(us|com)\/|meet\.google\.com\/|teams\.(microsoft|live)\.com\/|webex\.com\/|whereby\.com\//i;
 const CAL_SETS = Object.fromEntries(Object.entries(CAL_PALABRAS).map(([k, v]) => [k, new Set(v.split(" "))]));
@@ -7699,15 +7700,15 @@ function calWordIs(kind, w){
   return set.has(w) || (w.length > 2 && /^[\u0590-\u05ff]/.test(w) && "והבלמש".includes(w[0]) && set.has(w.slice(1)));
 }
 // Lo que enseñan los posteos que ya están: qué títulos se repiten, qué
-// palabras casi siempre van con un tipo, qué tipo se les puso a las
-// reuniones, y qué palabras son lugares o personas. Se arma una vez por
+// palabras casi siempre van con un tipo, y qué palabras son lugares o
+// personas. Se arma una vez por
 // lista de posteos (state.posts se reemplaza entera cada vez que algo
 // cambia, y entonces se arma otra).
 const calKnowledgeCache = new WeakMap();
 function calendarKnowledge(posts){
   const hit = calKnowledgeCache.get(posts);
   if(hit && hit.n === posts.length) return hit.k;
-  const places = new Set(), people = new Set(), cuentas = new Map(), iguales = new Map(), reun = {};
+  const places = new Set(), people = new Set(), cuentas = new Map(), iguales = new Map();
   const suma = (mapa, clave, tipo) => { const c = mapa.get(clave) || {}; c[tipo] = (c[tipo] || 0) + 1; mapa.set(clave, c); };
   for(const p of posts){
     for(const sc of p.scopes || []){
@@ -7721,10 +7722,10 @@ function calendarKnowledge(posts){
     const todas = calWords(calNoParens(p.title));
     if(!todas.length) continue;
     suma(iguales, todas.join(" "), tipo);
-    // Un título de reunión es del tipo que es por la palabra, no dice nada
-    // de las demás: no entra a las palabras que se aprenden.
-    if(todas.some(w => calWordIs("reunion", w))){ reun[tipo] = (reun[tipo] || 0) + 1; continue; }
-    if(todas.some(w => calWordIs("suelto", w))) continue;
+    // Un título de reunión (o de la vida de cada día) es del tipo que es
+    // por la palabra, no dice nada de las demás: no entra a las palabras
+    // que se aprenden.
+    if(todas.some(w => calWordIs("reunion", w) || calWordIs("suelto", w))) continue;
     for(const w of new Set(todas)){
       if(w.length < 2 || /^\d+$/.test(w) || CAL_CONECTORES.has(w)) continue;
       suma(cuentas, w, tipo);
@@ -7736,9 +7737,7 @@ function calendarKnowledge(posts){
     for(const [tipo, v] of Object.entries(c)){ total += v; if(v > n){ n = v; mejor = tipo; } }
     if(mejor !== "otro" && total >= 3 && n / total >= 0.85) fuertes.set(w, { tipo: mejor, total });
   }
-  let nReun = 0, tReun = "otro", cReun = 0;
-  for(const [tipo, v] of Object.entries(reun)){ nReun += v; if(v > cReun){ cReun = v; tReun = tipo; } }
-  const k = { places, people, fuertes, iguales, reuniones: nReun >= 5 && cReun / nReun > 0.5 ? tReun : "otro" };
+  const k = { places, people, fuertes, iguales };
   calKnowledgeCache.set(posts, { n: posts.length, k });
   return k;
 }
@@ -7754,7 +7753,9 @@ function calendarTypeFrom(title, k, disponible, conEnlace){
     if(n / total >= 0.75) return ok(mejor);
   }
   if(ws.some(w => calWordIs("suelto", w))) return "otro";
-  if(ws.some(w => calWordIs("reunion", w))) return ok(k.reuniones);
+  if(ws.some(w => calWordIs("reunion", w))){
+    return ok(conEnlace || ws.some(w => calWordIs("virtual", w)) ? "virtual" : "otro");
+  }
   for(const tipo of CAL_PRIORIDAD){
     if(ws.some(w => calWordIs(tipo, w))) return ok(tipo);
   }
@@ -7772,10 +7773,18 @@ function calendarTypeFrom(title, k, disponible, conEnlace){
      claves.every(w => k.places.has(w) || k.people.has(w))) return ok("visita");
   return "otro";
 }
+// ¿El evento es por videollamada? Un enlace en el lugar o la descripción
+// (Zoom, Teams, Webex…), o la que Calendar le agrega con su botón de Meet:
+// la función `calendario` pide ese dato sin el enlace (entryPointType).
+function calHasVideoCall(ev){
+  if(!ev) return false;
+  if(CAL_VIDEOLLAMADA.test(`${ev.location || ""} ${ev.description || ""}`)) return true;
+  const puntos = ev.conferenceData && ev.conferenceData.entryPoints;
+  return Array.isArray(puntos) && puntos.some(x => x && x.entryPointType === "video");
+}
 function guessCalendarType(title, ev){
-  const conEnlace = !!ev && CAL_VIDEOLLAMADA.test(`${ev.location || ""} ${ev.description || ""}`);
   return calendarTypeFrom(title, calendarKnowledge(state.posts),
-    tipo => !!ACTIVITY_BY_KEY[tipo] && !ACTIVITY_BY_KEY[tipo].archived, conEnlace);
+    tipo => !!ACTIVITY_BY_KEY[tipo] && !ACTIVITY_BY_KEY[tipo].archived, calHasVideoCall(ev));
 }
 
 // De un evento de Calendar a (tipo, título) del posteo.

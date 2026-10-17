@@ -61,7 +61,7 @@ const codigo = ["addDaysISO","isoDate","isoDow","addMonthsISO","RRULE_MAX_STEPS"
   "originalOccurrenceISO","extractTitleFromSummary","importedTypeAndTitle","summaryMatchesPost",
   "activityLabelVariants","huellaDeId","importedPostDocId","createImportedPost","MAX_OCC_MOVES",
   "CALENDAR_SYNC_TYPES","ACTIVITY_TYPES","ACTIVITY_BY_KEY","DEFAULT_ACTIVITY_LABELS",
-  "CAL_PRIORIDAD","CAL_PALABRAS","CAL_VIDEOLLAMADA","CAL_SETS","CAL_CONECTORES","calWords","calNoParens","calWordIs",
+  "CAL_PRIORIDAD","CAL_PALABRAS","CAL_VIDEOLLAMADA","CAL_SETS","CAL_CONECTORES","calHasVideoCall","calWords","calNoParens","calWordIs",
   "calKnowledgeCache","calendarKnowledge","calendarTypeFrom","guessCalendarType",
   "indicePorEvento","postDeEvento","applyCalendarEventToPosts"].map(grab).join("\n");
 
@@ -286,19 +286,39 @@ await comparar("una excepción de una serie desconocida nace como posteo propio"
   await comparar("el prefijo gana sobre las palabras", nuevo("evQ", "Curso: Reunión de padres"), []);
   await comparar("«Actividad: » se saca y el resto se deduce", nuevo("evQ", "Actividad: Congreso Anual"), []);
 
-  // Lo que enseñan los posteos que ya están
-  const reuniones = hacer(["Reunión con Ana","Reunión con Beto","Reunión de equipo","Reunión semanal","Reunión de cierre","Reunión de planes"], "virtual");
-  await comparar("una reunión: el tipo que el equipo les puso", nuevo("evR", "Reunión con Marta"), reuniones);
-  await comparar("cinco reuniones alcanzan", nuevo("evR", "Reunión con Marta"), reuniones.slice(0, 5));
-  await comparar("cuatro no", nuevo("evR", "Reunión con Marta"), reuniones.slice(0, 4));
-  await comparar("reuniones mitad y mitad", nuevo("evR", "Reunión con Marta"),
-    [...reuniones.slice(0, 3), ...hacer(["Reunión x","Reunión y","Reunión z"], "otro")]);
-  await comparar("una cena es «Otro» aunque las reuniones sean Virtual", nuevo("evR", "Cena con Ana"), reuniones);
-  await comparar("en hebreo", nuevo("evR", "פגישה שבועית"), reuniones);
-  eq("las reuniones nuevas toman el tipo del equipo", tipoDelNuevo(nuevo("evR", "Reunión con Marta"), reuniones), "virtual");
-  eq("…y si el tipo se archivó, «otro»", tipoDelNuevo(nuevo("evR", "Reunión con Marta"), reuniones, ["virtual"]), "otro");
-  await comparar("el tipo que el equipo les puso, pero archivado", nuevo("evR", "Reunión con Marta"), reuniones, ["virtual"]);
-  await comparar("un tipo archivado no se asigna por palabras", nuevo("evR", "Curso de Soldadura"), [], ["curso"]);
+  // Las reuniones: presenciales «Otro», por videollamada «Virtual»
+  const MEET = { conferenceData:{ entryPoints:[{ entryPointType:"video" }, { entryPointType:"phone" }] } };
+  const virtuales = hacer(["Reunión con Ana","Reunión con Beto","Reunión de equipo","Reunión semanal","Reunión de cierre","Reunión de planes"], "virtual");
+  for(const [titulo, extra, esperado] of [
+    ["Reunión con Marta", {}, "otro"],
+    ["Reunión con Marta", { location:"https://us06web.zoom.us/j/1" }, "virtual"],
+    ["Reunión con Marta", MEET, "virtual"],
+    ["Reunión con Marta", { conferenceData:{ entryPoints:[{ entryPointType:"phone" }] } }, "otro"],
+    ["Reunión con Marta", { conferenceData:{ entryPoints:[] } }, "otro"],
+    ["Reunión con Marta", { conferenceData:{} }, "otro"],
+    ["Reunión por Zoom", {}, "virtual"],
+    ["Reunión online", {}, "virtual"],
+    ["Reunión por Meet", {}, "virtual"],
+    ["Weekly meeting", {}, "otro"],
+    ["Weekly meeting", MEET, "virtual"],
+    ["Reunião de equipe", MEET, "virtual"],
+    ["Reunión de seminario", {}, "otro"],
+    ["Reunión de seminario", MEET, "virtual"],
+    ["Cena con Ana", MEET, "otro"],
+    ["פגישה שבועית", {}, "otro"],
+    ["פגישה שבועית", MEET, "virtual"],
+    ["Presentación de resultados", MEET, "virtual"],
+    ["Curso de Soldadura", MEET, "curso"],
+  ]){
+    await comparar(`reunión: «${titulo}» ${JSON.stringify(extra)}`, nuevo("evR", titulo, extra), []);
+    eq(`reunión (servidor): «${titulo}» ${JSON.stringify(extra)} → ${esperado}`, tipoDelNuevo(nuevo("evR", titulo, extra), []), esperado);
+  }
+  await comparar("las reuniones ya cargadas como Virtual no cambian la regla", nuevo("evR", "Reunión con Marta"), virtuales);
+  eq("…una reunión nueva sin videollamada sigue siendo «Otro»", tipoDelNuevo(nuevo("evR", "Reunión con Marta"), virtuales), "otro");
+  await comparar("la reunión de siempre, ya cargada como Virtual", nuevo("evR", "Reunión con Ana"), virtuales);
+  eq("…sigue siendo Virtual", tipoDelNuevo(nuevo("evR", "Reunión con Ana"), virtuales), "virtual");
+  await comparar("una videollamada, con el tipo Virtual archivado", nuevo("evR", "Reunión con Marta", MEET), [], ["virtual"]);
+  eq("…queda «Otro»", tipoDelNuevo(nuevo("evR", "Reunión con Marta", MEET), [], ["virtual"]), "otro");
 
   const zk = hacer(["ZK Anual - Lima","ZK Anual - Quito","Repaso ZK","ZK especial"], "curso");
   await comparar("una sigla que siempre va con Curso", nuevo("evZ", "ZK - Bogotá"), zk);
