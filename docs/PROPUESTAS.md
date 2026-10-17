@@ -101,7 +101,7 @@ quedó resuelta como la 4 (tendencias automáticas, sin etiquetas a mano).
 
 ## Ajustes que pidió el usuario después (13/10/2026)
 
-Con lo ya hecho a la vista, pidió retoques; todos hechos, en las tandas 79 a 94 de `docs/REDISENO.md`:
+Con lo ya hecho a la vista, pidió retoques; todos hechos, en las tandas 79 a 95 de `docs/REDISENO.md`:
 
 - **Pasos de «Lo que sigue»**: «No es tarea» a la derecha, en la fila de la fecha, y los textos largos con «más / menos» (tanda 79).
 - **Temas → «Tendencias»**: primero que junte las palabras que van pegadas («krav maga», tanda 80); después pidió otro concepto —«no representa lo que se está hablando, lo que pasó»— y se rehízo como **«Tendencias»** (tanda 87): lo que subió y bajó en lugares, tipos y temas en
@@ -119,6 +119,7 @@ Con lo ya hecho a la vista, pidió retoques; todos hechos, en las tandas 79 a 94
 - **El nombre de la planilla**: siempre «Registro - día-mes-año» (en inglés «Log - mes-día-año»), con o sin filtros y desde cualquier lugar donde se baja (tanda 89).
 - **La Agenda trae gente de ciudades y países**: «traer una lista» acepta filas sin institución (contacto de la ciudad, o del país), para cargar el Mapeo de comunidades como pidió el usuario (tanda 93).
 - **Notas al traer una lista**: una columna «Nota» del Excel se guarda en la ficha de cada persona (tanda 94).
+- **Ciudades del Mapeo**: «Buenos Aires», «Santa Cruz» y «Antigua Guatemala» se reconocen con el nombre de la app, y Paysandú, Vitória, Natal, Macapá y Tandil se suman a la lista (tanda 95).
 - **El costado del Inicio**: sin barra de scroll propia; si la columna es más alta que la pantalla baja con la página (tanda 92).
 - **Eventos en Calendar**: la descripción ya no dice «en Registro de Acciones», solo «Cargado por X» (tanda 91).
 - **Reportes, «Mes a mes»**: el «+12», «+9» y «+6» de lo planificado pasa de abajo del número de lo hecho a adentro de su barra
