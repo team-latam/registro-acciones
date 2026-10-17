@@ -257,11 +257,14 @@ export function createClient(url, clave){
         // La persona de una lista: la que ya estaba (mismo nombre) o una nueva (agenda_persona_traida, 24-agenda-lugares-al-traer.sql).
         const personaDe = g => {
           let per = T("personas").find(x => llave(x.name) === llave(g.name));
+          const nota = String(g.nota || "").trim().slice(0, 300) || null;
           if(per){ if(!creadas.has(per.id)) yaEstaban.add(per.id);
+            // La nota se suma, no se pisa (25-agenda-notas-al-traer.sql).
+            if(nota) per.note = !String(per.note || "").trim() ? nota : per.note.toLowerCase().includes(nota.toLowerCase()) ? per.note : (per.note + " · " + nota).slice(0, 300);
             (g.telefonos || []).forEach(tel => { const d = digitos(tel.n); per.telefonos = per.telefonos || [];
               if(per.telefonos.length < 6 && !per.telefonos.some(y => digitos(y.n) === d)) per.telefonos.push(tel); });
           } else {
-            per = { id: lid + "_p" + (k++), name: g.name, email: null, note: null, telefonos: copia(g.telefonos || []), idiomas: [], lista: lid, created_by: quien(), created_at: ahora };
+            per = { id: lid + "_p" + (k++), name: g.name, email: null, note: nota, telefonos: copia(g.telefonos || []), idiomas: [], lista: lid, created_by: quien(), created_at: ahora };
             T("personas").push(per); creadas.add(per.id);
           }
           return per;

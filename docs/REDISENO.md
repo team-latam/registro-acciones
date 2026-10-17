@@ -969,6 +969,17 @@ eligió **unirlas así**:
 Pruebas: `agenda_test.mjs` (país, región y ciudad; fallan con el código
 de antes) y `ficha_celular_test.mjs` vuelve a esperar cinco tarjetas.
 
+### 94. «Traer una lista» trae la nota de cada persona — HECHO (17 oct 2026, sin publicar todavía)
+
+El usuario pidió que exista el campo «Notas» (para el Mapeo). La ficha de cada persona ya tenía una «Nota» (`personas.note`, hasta 300 letras) que se escribe a mano; lo que faltaba era traerla desde el Excel. Se le ofreció ponerla en la persona, en cada contacto en su ciudad o en la ciudad;
+**eligió la persona** (la nota de la ciudad, para miembros / entidades / tamaño, quedó «a futuro»).
+- **Importador**: una columna `Nota` / `Notas` (también `Note`, `Observaciones`, `Comentarios`) va a la ficha de la persona, con los espacios arreglados y cortada a 300 letras. La vista previa dice cuántas personas traen una nota y cuántas pasan de 300 letras.
+- **Base** (`supabase/25-agenda-notas-al-traer.sql`, reemplaza `agenda_persona_traida`): una persona nueva nace con su nota; a una que ya estaba sin nota se la da; a una que ya tenía se le **suma al final** («Habla hebreo · Cubre Brasil») salvo que ya la diga (traer lo mismo dos veces no la repite). **Nunca se pisa lo que alguien escribió.**
+- **Correcciones del Mapeo** (el Excel que se le entregó, no la app): «Moda» y no «MODA»; los teléfonos con paréntesis adentro («+1 (929) 363-9090») se habían quedado en el nombre de 7 personas y ahora van al teléfono (sin teléfono pasaron de 12 a 5, los que de verdad no lo traen).
+- **Ciudad igual al país = contacto del país**: al corregir su Excel (17/10), el usuario puso «Argentina» en la columna Ciudad del presidente de la DAIA, y el importador lo tomaba por una ciudad llamada Argentina («Argentina, Argentina»). Ahora una fila sin institución cuya ciudad es igual al país (sin tildes ni mayúsculas, o igual al nombre que la app le da al país) se trae como contacto del país entero.
+- **Una prueba que se rompía a la medianoche**: `dias_singular_test.mjs` armaba los datos con la hora real y la corrida de GitHub del 17/10 cruzó las 00:00 UTC en pleno hebreo («ayer» pasó a «hace 2 días»; la corrida de `main`, con el mismo código, pasó). Ahora fija el mediodía de hoy en Node y en el navegador (`page.clock.setFixedTime`) y no depende del reloj.
+- Pruebas: `supabase/pruebas/79-agenda.sql` (+4: nace con la nota, se da y se suma, no se repite, se corta en 300) y `agenda_test.mjs` (la columna Notas: vista previa, lo que se manda y la ficha; y un contacto con «Brasil» en país y en ciudad, que es del país).
+
 ### 93. «Traer una lista» ahora trae gente de ciudades y de países, sin institución — HECHO (16 oct 2026, sin publicar todavía)
 
 El usuario pidió ver cómo se sumaría a la Agenda la solapa «Actualizado» de su Mapeo de comunidades. Primero lo armé como una institución «Comunidad de X» por ciudad (era lo único que sabía traer el importador); el usuario lo

@@ -106,6 +106,7 @@ Se aplican en orden. Todos se pueden correr más de una vez sin romper nada
 | `22-problemas.sql` | «Algo no anda» y los errores que la app anota sola (`problemas`): se escribe solo con `contar_problema` y `anotar_error` (con el correo de quien llama y topes por hora), el mismo error se agrupa en una fila; lo lee, marca y borra un admin |
 | `23-informe-mensual.sql` | El informe mensual por correo, con enlace que vence a las 48 horas: `informe_vigente` (¿el enlace de ese mes sigue valiendo para quien llama?, según la marca de `avisos_enviados` que escribe `supabase/avisos/informe.mjs`) y `preparar_informe_de_prueba` (el admin se manda uno de prueba) |
 | `24-agenda-lugares-al-traer.sql` | Traer una lista a la Agenda con gente de una ciudad, un país, una región o toda LatAm, sin institución: `agenda_traer` recibe un tercer parámetro `p_lugares` (reemplaza a la de dos), `contactos.lista` (de qué lista vino cada contacto de un lugar) y `agenda_persona_traida` (buscar o crear a la persona, sin tildes ni mayúsculas, que usan las dos partes) |
+| `25-agenda-notas-al-traer.sql` | La nota de cada persona al traer una lista (`nota` en `p_instituciones` y `p_lugares`): una persona nueva nace con ella, a una que no tenía se le da y a una que ya tenía se le suma al final (nunca se pisa; no se repite; hasta 300 letras). Reemplaza `agenda_persona_traida` |
 
 **Cada cosa se define en UN solo archivo.** Como se vuelven a aplicar
 todos en cada push, dos archivos que definen lo mismo distinto se pisan
