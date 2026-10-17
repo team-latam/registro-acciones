@@ -22,7 +22,7 @@ const eq=(n,g,w)=>{ const a=JSON.stringify(g), x=JSON.stringify(w);
 
 const codigo = ["hasOwn","CALENDAR_SYNC_TYPES","ACTIVITY_TYPES","ACTIVITY_BY_KEY","DEFAULT_ACTIVITY_LABELS",
   "activityLabelVariants","extractTitleFromSummary","CAL_PRIORIDAD","CAL_PALABRAS","CAL_VIDEOLLAMADA","CAL_SETS","CAL_CONECTORES",
-  "calWords","calNoParens","calWordIs","calKnowledgeCache","calendarKnowledge","calendarTypeFrom",
+  "calHasVideoCall","calWords","calNoParens","calWordIs","calKnowledgeCache","calendarKnowledge","calendarTypeFrom",
   "guessCalendarType","importedTypeAndTitle"].map(grab).join("\n");
 
 function armar(posts){
@@ -80,22 +80,35 @@ const posteos = (titulos, activityType, extra) => titulos.map((title, i) => ({ i
     a.importedTypeAndTitle({ summary:"visita a LIMA" }), { activityType:"visita", title:"visita a LIMA" });
 }
 
-/* ---------- Las reuniones: lo que el equipo les puso ---------- */
+/* ---------- Las reuniones: presenciales «Otro», por videollamada «Virtual» ---------- */
 {
-  const seis = posteos(["Reunión con Ana","Reunión con Beto","Reunión de equipo","Reunión semanal","Reunión de cierre","Reunión de planes"], "virtual");
-  eq("la mayoría de las reuniones cargadas son Virtual → esta también",
-    tipo(armar([...seis, ...posteos(["Reunión en persona"], "otro")]), "Reunión con Marta"), "virtual");
-  eq("cinco reuniones alcanzan", tipo(armar(seis.slice(0, 5)), "Reunión con Marta"), "virtual");
-  eq("cuatro todavía no", tipo(armar(seis.slice(0, 4)), "Reunión con Marta"), "otro");
-  eq("si las reuniones están mitad y mitad, no se arriesga",
-    tipo(armar([...seis.slice(0, 3), ...posteos(["Reunión x","Reunión y","Reunión z"], "otro")]), "Reunión con Marta"), "otro");
-  eq("si lo que más tienen es «Otro», «Otro»",
-    tipo(armar([...seis.slice(0, 2), ...posteos(["Reunión x","Reunión y","Reunión z","Reunión w"], "otro")]), "Reunión con Marta"), "otro");
-  eq("«Meeting» y «reunião» cuentan como reunión (otro idioma, mismo equipo)",
-    tipo(armar(seis), "Weekly meeting"), "virtual");
-  eq("pero una cena sigue siendo «Otro» aunque las reuniones sean Virtual", tipo(armar(seis), "Cena con Ana"), "otro");
-  eq("y «Reunión de seminario» es reunión → Virtual, no seminario", tipo(armar(seis), "Reunión de seminario"), "virtual");
-  eq("lo que llama a una reunión se ve aunque esté en hebreo", tipo(armar(seis), "פגישה שבועית"), "virtual");
+  const a = armar([]);
+  const con = (titulo, ev) => a.importedTypeAndTitle({ summary:titulo, ...ev }).activityType;
+  const MEET = { conferenceData:{ entryPoints:[{ entryPointType:"video" }, { entryPointType:"phone" }] } };
+  eq("una reunión sin pista de videollamada es presencial → Otro", con("Reunión con Marta", {}), "otro");
+  eq("aunque las reuniones ya cargadas sean Virtual: no se aprende de ahí",
+    tipo(armar(posteos(["Reunión con Ana","Reunión con Beto","Reunión de equipo","Reunión semanal","Reunión de cierre","Reunión de planes"], "virtual")), "Reunión con Marta"), "otro");
+  eq("con un enlace de Zoom → Virtual", con("Reunión con Marta", { location:"https://us06web.zoom.us/j/1" }), "virtual");
+  eq("con la videollamada que Calendar agrega (Meet) → Virtual", con("Reunión con Marta", MEET), "virtual");
+  eq("solo con teléfono no es videollamada", con("Reunión con Marta", { conferenceData:{ entryPoints:[{ entryPointType:"phone" }] } }), "otro");
+  eq("una videollamada sin entradas, tampoco", con("Reunión con Marta", { conferenceData:{ entryPoints:[] } }), "otro");
+  eq("ni un conferenceData vacío", con("Reunión con Marta", { conferenceData:{} }), "otro");
+  eq("el título lo dice: «Reunión por Zoom»", con("Reunión por Zoom", {}), "virtual");
+  eq("el título lo dice: «Reunión online»", con("Reunión online", {}), "virtual");
+  eq("el título lo dice: «Reunión por Meet»", con("Reunión por Meet", {}), "virtual");
+  eq("«Meeting» y «reunião» cuentan como reunión: presenciales → Otro", [con("Weekly meeting", {}), con("Reunião de equipe", {})], ["otro", "otro"]);
+  eq("…y por videollamada → Virtual", [con("Weekly meeting", MEET), con("Reunião de equipe", MEET)], ["virtual", "virtual"]);
+  eq("una «Reunión de seminario» es una reunión, no un seminario: Otro", con("Reunión de seminario", {}), "otro");
+  eq("…y por Meet, Virtual", con("Reunión de seminario", MEET), "virtual");
+  eq("una cena con videollamada sigue siendo «Otro»", con("Cena con Ana", MEET), "otro");
+  eq("en hebreo: reunión presencial", con("פגישה שבועית", {}), "otro");
+  eq("en hebreo: reunión por videollamada", con("פגישה שבועית", MEET), "virtual");
+  eq("sin la palabra reunión, un evento con Meet también es Virtual", con("Presentación de resultados", MEET), "virtual");
+  eq("un curso con Meet sigue siendo Curso", con("Curso de Soldadura", MEET), "curso");
+  eq("un tipo Virtual archivado no se asigna ni con Meet", (() => { const b = armar([]); b.ACTIVITY_BY_KEY.virtual.archived = true;
+    return b.importedTypeAndTitle({ summary:"Reunión con Marta", ...MEET }).activityType; })(), "otro");
+  eq("la reunión de siempre, que ya estaba cargada como Virtual, sigue siéndolo",
+    tipo(armar(posteos(["Reunión con Marta"], "virtual")), "Reunión con Marta"), "virtual");
 }
 
 /* ---------- Palabras que casi siempre van con un tipo ---------- */

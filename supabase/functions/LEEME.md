@@ -19,7 +19,10 @@ para ver**. Con eso el calendario puede dejar de ser público.
   admin, no un observador; la misma regla de todas las tablas) y recién
   ahí lee con la cuenta de servicio. De cada evento devuelve solo los
   campos que usa la app (sin invitados, sin creador, sin link de Meet:
-  `CAMPOS_DEL_EVENTO` en `_compartido/google.mjs`).
+  `CAMPOS_DEL_EVENTO` en `_compartido/google.mjs`). De la videollamada que
+  Calendar le agrega a un evento se pide solo el tipo de cada entrada
+  (`conferenceData(entryPoints(entryPointType))`), nunca el enlace: alcanza
+  para que un evento nuevo con Meet entre como «Virtual» (17/10/2026).
 - **El trabajo de la madrugada** (`supabase/sync-calendar/`) lee con la
   misma cuenta, directo.
 - **Escribir** en el calendario (crear o mover un evento desde la app)

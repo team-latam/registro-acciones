@@ -1666,9 +1666,9 @@ problema real, ya que cada acción del equipo tiene sus propias fechas.
 
 Lo que se crea directo en Google Calendar entra al Registro sin lugar, a
 nombre de «Google Calendar», y con el tipo que se **deduce** del título y de lo
-que el equipo ya cargó (desde el 17/10/2026, tanda 96: «Curso de…» → Curso, una
-sigla que siempre fue de Curso → Curso, una reunión → el tipo que el equipo les
-puso, un enlace de Zoom o Meet → Virtual, un título que es solo un lugar → Visita); ante la duda, «Otro». Se corrige
+que el equipo ya cargó (desde el 17/10/2026, tandas 96 y 97: «Curso de…» → Curso, una
+sigla que siempre fue de Curso → Curso, una reunión → Otro, o Virtual si es por
+videollamada, un enlace de Zoom o Meet (o el Meet de Calendar) → Virtual, un título que es solo un lugar → Visita); ante la duda, «Otro». Se corrige
 como cualquier evento, desde su ficha (editar). Hasta el 12/10/2026 había una pantalla, Administración ›
 Revisar lo de Calendar, para ordenar de a muchos los 875 que llegaron en la
 carga inicial (ver docs/REDISENO.md, tanda 19); el usuario las ordenó todas y

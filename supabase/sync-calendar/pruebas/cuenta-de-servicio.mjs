@@ -72,7 +72,7 @@ function googleDeMentira(reg, { niega } = {}){
 /* ---------- Qué se le puede pedir ---------- */
 const CAL = "cal@group.calendar.google.com";
 const BASEC = "https://www.googleapis.com/calendar/v3/calendars/cal%40group.calendar.google.com";
-const CAMPOS = "id%2Cstatus%2Csummary%2Cdescription%2Clocation%2Cstart%2Cend%2Crecurrence%2CrecurringEventId%2CoriginalStartTime%2Corganizer%2CextendedProperties";
+const CAMPOS = "id%2Cstatus%2Csummary%2Cdescription%2Clocation%2Cstart%2Cend%2Crecurrence%2CrecurringEventId%2CoriginalStartTime%2Corganizer%2CextendedProperties%2CconferenceData%28entryPoints%28entryPointType%29%29";
 const LISTA = `${BASEC}/events?maxResults=250&showDeleted=true&fields=nextPageToken%2CnextSyncToken%2CtimeZone%2Citems%28${CAMPOS}%29`;
 eq("pedido: cambios con syncToken", urlDelPedido(CAL, { accion: "cambios", syncToken: "abc" }), `${LISTA}&syncToken=abc`);
 eq("pedido: completo desde una fecha, con página", urlDelPedido(CAL, { accion: "cambios", timeMin: "2024-01-01T00:00:00Z", pageToken: "p2" }),
@@ -85,8 +85,12 @@ eq("pedido: nada fuera de eso (otra acción, un id con barras o hecho de puntos,
    [null, null, null, null, null, LISTA, LISTA]);
 // Google devuelve los correos de los invitados, el link de Meet, quién lo
 // creó...: nada de eso le hace falta a la app (7/10/2026).
-eq("pedido: solo los campos que se usan (sin invitados, sin creador, sin Meet)",
-   ["attendees", "creator", "hangoutLink", "conferenceData", "attachments"].filter(c => decodeURIComponent(LISTA).includes(c)), []);
+eq("pedido: solo los campos que se usan (sin invitados, sin creador, sin el enlace de Meet)",
+   ["attendees", "creator", "hangoutLink", "attachments", "uri", "conferenceSolution"].filter(c => decodeURIComponent(LISTA).includes(c)), []);
+// De la videollamada que Calendar agrega se pide solo el TIPO de cada
+// entrada (para saber que es virtual), jamás el enlace (17/10/2026).
+eq("pedido: de la videollamada, solo el tipo de cada entrada",
+   decodeURIComponent(LISTA).includes(",conferenceData(entryPoints(entryPointType))"), true);
 
 /* ---------- La función de Supabase ---------- */
 const URL_SB = "https://proyecto.supabase.co";

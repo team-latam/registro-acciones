@@ -110,15 +110,16 @@ export function tituloSinPrefijo(summary, clave, tipos){
 //   1. Un título igual al de posteos que ya están (3 de cada 4 con el
 //      mismo tipo, mirando los que nombra igual) → ese tipo.
 //   2. Palabras de la vida de cada día (cena, vacaciones, deadline) → Otro.
-//   3. Palabras de reunión → el tipo que el equipo les puso a sus
-//      reuniones (el de la mayoría de los posteos que las nombran; en
-//      2026 fue «Virtual»), o «Otro» si todavía no hay de dónde saberlo.
+//   3. Palabras de reunión → «Virtual» si es por videollamada (hay un
+//      enlace de Zoom, Meet, Teams o Webex, o el título lo dice); si no,
+//      «Otro»: así las pone el equipo (presenciales Otro, por Meet/Zoom/
+//      Teams Virtual; pedido del 17/10/2026).
 //   4. Palabras que dicen el tipo (curso, seminario, congreso, visita,
 //      online…) en los cuatro idiomas.
 //   5. Palabras que, en los posteos ya cargados, casi siempre van con un
 //      mismo tipo (una sigla que siempre fue de Curso vuelve a serlo).
-//   6. Un enlace de videollamada (Zoom, Meet, Teams, Webex) en el lugar o
-//      en la descripción → Virtual.
+//   6. Una videollamada (un enlace de Zoom, Meet, Teams o Webex en el lugar
+//      o la descripción, o la que Calendar le agrega a un evento) → Virtual.
 //   7. Un título que es solo un lugar —y a lo sumo personas— → Visita.
 // Lo que va entre paréntesis no cuenta (son las personas). Es la MISMA
 // lógica que guessCalendarType() de index.html: la prueba diferencial las
@@ -131,7 +132,7 @@ export const PALABRAS_DE_TIPO = {
   seminario: "seminario seminarios seminar seminars charla charlas סמינר סמינרים",
   curso: "curso cursos course courses capacitacion capacitaciones capacitacao training workshop taller talleres certificacion certification קורס קורסים הכשרה",
   visita: "visita visitas visit visits visitar viaje viajes viagem viagens trip gira giras tour ביקור",
-  virtual: "virtual online webinar webex zoom וובקס ווביניר אונליין וירטואלי",
+  virtual: "virtual online webinar webex zoom meet videollamada videollamadas videoconferencia videochamada videocall hangout וובקס ווביניר אונליין וירטואלי",
 };
 const VIDEOLLAMADA = /zoom\.(us|com)\/|meet\.google\.com\/|teams\.(microsoft|live)\.com\/|webex\.com\/|whereby\.com\//i;
 const CONJUNTOS = Object.fromEntries(Object.entries(PALABRAS_DE_TIPO).map(([k, v]) => [k, new Set(v.split(" "))]));
@@ -149,15 +150,15 @@ export function esPalabraDe(clase, w){
   return set.has(w) || (w.length > 2 && /^[\u0590-\u05ff]/.test(w) && "והבלמש".includes(w[0]) && set.has(w.slice(1)));
 }
 // Lo que enseñan los posteos que ya están: qué títulos se repiten, qué
-// palabras casi siempre van con un tipo, qué tipo se les puso a las
-// reuniones, y qué palabras son lugares o personas. Se arma una vez por
+// palabras casi siempre van con un tipo, y qué palabras son lugares o
+// personas. Se arma una vez por
 // lista de posteos y se vuelve a armar si la lista cambió de largo (el
 // trabajo de la madrugada va sumando los posteos que crea).
 const SABER_EN_MEMORIA = new WeakMap();
 export function loQueEnsenan(posts){
   const hit = SABER_EN_MEMORIA.get(posts);
   if(hit && hit.n === posts.length) return hit.k;
-  const lugares = new Set(), personas = new Set(), cuentas = new Map(), iguales = new Map(), reun = {};
+  const lugares = new Set(), personas = new Set(), cuentas = new Map(), iguales = new Map();
   const suma = (mapa, clave, tipo) => { const c = mapa.get(clave) || {}; c[tipo] = (c[tipo] || 0) + 1; mapa.set(clave, c); };
   for(const p of posts){
     for(const sc of p.scopes || []){
@@ -171,10 +172,10 @@ export function loQueEnsenan(posts){
     const todas = palabrasDelTitulo(sinParentesis(p.title));
     if(!todas.length) continue;
     suma(iguales, todas.join(" "), tipo);
-    // Un título de reunión es del tipo que es por la palabra, no dice nada
-    // de las demás: no entra a las palabras que se aprenden.
-    if(todas.some(w => esPalabraDe("reunion", w))){ reun[tipo] = (reun[tipo] || 0) + 1; continue; }
-    if(todas.some(w => esPalabraDe("suelto", w))) continue;
+    // Un título de reunión (o de la vida de cada día) es del tipo que es
+    // por la palabra, no dice nada de las demás: no entra a las palabras
+    // que se aprenden.
+    if(todas.some(w => esPalabraDe("reunion", w) || esPalabraDe("suelto", w))) continue;
     for(const w of new Set(todas)){
       if(w.length < 2 || /^\d+$/.test(w) || CONECTORES.has(w)) continue;
       suma(cuentas, w, tipo);
@@ -186,9 +187,7 @@ export function loQueEnsenan(posts){
     for(const [tipo, v] of Object.entries(c)){ total += v; if(v > n){ n = v; mejor = tipo; } }
     if(mejor !== "otro" && total >= 3 && n / total >= 0.85) fuertes.set(w, { tipo: mejor, total });
   }
-  let nReun = 0, tReun = "otro", cReun = 0;
-  for(const [tipo, v] of Object.entries(reun)){ nReun += v; if(v > cReun){ cReun = v; tReun = tipo; } }
-  const k = { lugares, personas, fuertes, iguales, reuniones: nReun >= 5 && cReun / nReun > 0.5 ? tReun : "otro" };
+  const k = { lugares, personas, fuertes, iguales };
   SABER_EN_MEMORIA.set(posts, { n: posts.length, k });
   return k;
 }
@@ -204,7 +203,9 @@ export function tipoSegunElTitulo(titulo, k, disponible, conEnlace){
     if(n / total >= 0.75) return ok(mejor);
   }
   if(ws.some(w => esPalabraDe("suelto", w))) return "otro";
-  if(ws.some(w => esPalabraDe("reunion", w))) return ok(k.reuniones);
+  if(ws.some(w => esPalabraDe("reunion", w))){
+    return ok(conEnlace || ws.some(w => esPalabraDe("virtual", w)) ? "virtual" : "otro");
+  }
   for(const tipo of PRIORIDAD_DE_TIPOS){
     if(ws.some(w => esPalabraDe(tipo, w))) return ok(tipo);
   }
@@ -222,10 +223,18 @@ export function tipoSegunElTitulo(titulo, k, disponible, conEnlace){
      claves.every(w => k.lugares.has(w) || k.personas.has(w))) return ok("visita");
   return "otro";
 }
+// ¿El evento es por videollamada? Un enlace en el lugar o la descripción
+// (Zoom, Teams, Webex…), o la que Calendar le agrega con su botón de Meet:
+// la función `calendario` pide ese dato sin el enlace (entryPointType).
+export function tieneVideollamada(ev){
+  if(!ev) return false;
+  if(VIDEOLLAMADA.test(`${ev.location || ""} ${ev.description || ""}`)) return true;
+  const puntos = ev.conferenceData && ev.conferenceData.entryPoints;
+  return Array.isArray(puntos) && puntos.some(x => x && x.entryPointType === "video");
+}
 export function tipoInferidoDeCalendario(titulo, posts, tipos, ev){
-  const conEnlace = !!ev && VIDEOLLAMADA.test(`${ev.location || ""} ${ev.description || ""}`);
   return tipoSegunElTitulo(titulo, loQueEnsenan(posts),
-    tipo => !!(tipos.porClave && tipos.porClave[tipo]) && !tipos.porClave[tipo].archived, conEnlace);
+    tipo => !!(tipos.porClave && tipos.porClave[tipo]) && !tipos.porClave[tipo].archived, tieneVideollamada(ev));
 }
 
 // De un evento a (tipo, título), de lo más confiable a lo menos:
