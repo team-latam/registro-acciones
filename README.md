@@ -902,7 +902,9 @@ Se arregla en las dos puntas:
   que la app pega a cada evento que crea, inmune al idioma y a que el admin
   renombre el tipo — se escribía desde siempre y no la leía nadie), y si no
   está, por el texto del prefijo. Un evento escrito a mano en Calendar como
-  "Curso: Kashrut" entra ahora como Curso, no como "Otro".
+  "Curso: Kashrut" entra ahora como Curso, no como "Otro". Desde el 17/10/2026, si
+  tampoco hay prefijo, el tipo se deduce del título y de los posteos ya
+  cargados (`guessCalendarType`; ver docs/REDISENO.md, tanda 96).
 - `calendarSummary()` no antepone el prefijo si el título **ya** arranca con
   él. No repara los títulos que quedaron mal guardados —eso se edita a
   mano— pero corta el crecimiento.
@@ -1662,9 +1664,12 @@ problema real, ya que cada acción del equipo tiene sus propias fechas.
 
 ### Lo que llega de Google Calendar (sin pantalla desde el 12/10/2026)
 
-Lo que se crea directo en Google Calendar entra al Registro como «Otro» y sin
-lugar, a nombre de «Google Calendar»; se corrige como cualquier evento, desde
-su ficha (editar). Hasta el 12/10/2026 había una pantalla, Administración ›
+Lo que se crea directo en Google Calendar entra al Registro sin lugar, a
+nombre de «Google Calendar», y con el tipo que se **deduce** del título y de lo
+que el equipo ya cargó (desde el 17/10/2026, tanda 96: «Curso de…» → Curso, una
+sigla que siempre fue de Curso → Curso, una reunión → el tipo que el equipo les
+puso, un enlace de Zoom o Meet → Virtual, un título que es solo un lugar → Visita); ante la duda, «Otro». Se corrige
+como cualquier evento, desde su ficha (editar). Hasta el 12/10/2026 había una pantalla, Administración ›
 Revisar lo de Calendar, para ordenar de a muchos los 875 que llegaron en la
 carga inicial (ver docs/REDISENO.md, tanda 19); el usuario las ordenó todas y
 la pantalla se retiró (tanda 65). **Lo que queda en la base**, a propósito:

@@ -61,6 +61,8 @@ const codigo = ["addDaysISO","isoDate","isoDow","addMonthsISO","RRULE_MAX_STEPS"
   "originalOccurrenceISO","extractTitleFromSummary","importedTypeAndTitle","summaryMatchesPost",
   "activityLabelVariants","huellaDeId","importedPostDocId","createImportedPost","MAX_OCC_MOVES",
   "CALENDAR_SYNC_TYPES","ACTIVITY_TYPES","ACTIVITY_BY_KEY","DEFAULT_ACTIVITY_LABELS",
+  "CAL_PRIORIDAD","CAL_PALABRAS","CAL_VIDEOLLAMADA","CAL_SETS","CAL_CONECTORES","calWords","calNoParens","calWordIs",
+  "calKnowledgeCache","calendarKnowledge","calendarTypeFrom","guessCalendarType",
   "indicePorEvento","postDeEvento","applyCalendarEventToPosts"].map(grab).join("\n");
 
 // La app, con las escrituras interceptadas en vez de hechas.
@@ -90,11 +92,16 @@ const CTX_SERVIDOR = {
   etiquetaDeRepeticion: base.recurrenceLabel,
 };
 
-async function comparar(nombre, ev, posts){
+async function comparar(nombre, ev, posts, archivados = []){
   const reg = [];
   const api = laApp({ state:{ posts: JSON.parse(JSON.stringify(posts)) }, reg });
+  // Un tipo que el admin archivó: en la app es la misma ficha de ACTIVITY_BY_KEY;
+  // en el servidor, la que llega en `tipos.porClave`.
+  archivados.forEach(k => { api.ACTIVITY_BY_KEY[k].archived = true; });
   await api.applyCalendarEventToPosts(ev);
-  const delServidor = decidir(ev, JSON.parse(JSON.stringify(posts)), CTX_SERVIDOR);
+  const tipos = !archivados.length ? TIPOS : {
+    ...TIPOS, porClave: Object.fromEntries(Object.entries(TIPOS.porClave).map(([k, v]) => [k, { ...v, archived: archivados.includes(k) }])) };
+  const delServidor = decidir(ev, JSON.parse(JSON.stringify(posts)), { ...CTX_SERVIDOR, tipos });
   eq(nombre, delServidor, reg);
 }
 
@@ -248,6 +255,100 @@ await comparar("un tipo raro pegado por la app se ignora y queda 'otro'",
   dia("evQ","2026-09-01",{ summary:"Cosa", extendedProperties:{ private:{ raActivityType:"inventado" } } }), []);
 await comparar("una excepción de una serie desconocida nace como posteo propio",
   dia("desconocida_20260112T000000Z","2026-01-14",{ summary:"Suelta", recurringEventId:"desconocida" }), []);
+
+/* ---------- El tipo de un evento nuevo, deducido ---------- */
+// Cada capa de la deducción, contra la app y contra el servidor. Los
+// títulos y las personas son inventados (el repo es público).
+{
+  const hacer = (titulos, activityType, extra = {}) => titulos.map((title, i) => ({
+    id:`${activityType}-${title.slice(0, 6)}-${i}`, title, activityType, startDate:"2026-03-01", endDate:"2026-03-01", date:"2026-03-01", ...extra }));
+  const tipoDelNuevo = (ev, posts, archivados) => decidir(ev, posts, archivados
+    ? { ...CTX_SERVIDOR, tipos:{ ...TIPOS, porClave: Object.fromEntries(Object.entries(TIPOS.porClave).map(([k, v]) => [k, { ...v, archived: archivados.includes(k) }])) } }
+    : CTX_SERVIDOR).find(x => x.tipo === "crear").datos.activityType;
+  const nuevo = (id, summary, extra = {}) => dia(id, "2026-09-01", { summary, ...extra });
+
+  // Por las palabras del título
+  for(const [titulo, esperado] of [
+    ["Curso de Soldadura", "curso"], ["Seminario de Liderazgo", "seminario"], ["Congreso Anual", "congreso"],
+    ["Visita a Lima", "visita"], ["Clase de Cocina Online", "virtual"], ["Annual Congress", "congreso"],
+    ["Viagem a Lima", "visita"], ["CAPACITACIÓN DE GUARDIAS", "curso"], ["סמינר מדריכים", "seminario"],
+    ["בסמינר מדריכים", "seminario"], ["קורס מדריכים", "curso"], ["Seminario online de cocina", "seminario"],
+    ["Reunión de seminario", "otro"], ["Cena del curso", "otro"], ["Mover el cursor", "otro"],
+    ["Salida del grupo (curso de prueba)", "otro"], ["Taglit", "otro"], ["Reunión con Ana", "otro"],
+  ]){
+    await comparar(`tipo por palabras: «${titulo}»`, nuevo("evP", titulo), []);
+    eq(`tipo por palabras (servidor): «${titulo}» → ${esperado}`, tipoDelNuevo(nuevo("evP", titulo), []), esperado);
+  }
+
+  // Lo que dice el evento manda sobre lo deducido
+  await comparar("la marca de la app gana sobre las palabras",
+    nuevo("evQ", "Seminario de Liderazgo", { extendedProperties:{ private:{ raActivityType:"curso" } } }), []);
+  await comparar("el prefijo gana sobre las palabras", nuevo("evQ", "Curso: Reunión de padres"), []);
+  await comparar("«Actividad: » se saca y el resto se deduce", nuevo("evQ", "Actividad: Congreso Anual"), []);
+
+  // Lo que enseñan los posteos que ya están
+  const reuniones = hacer(["Reunión con Ana","Reunión con Beto","Reunión de equipo","Reunión semanal","Reunión de cierre","Reunión de planes"], "virtual");
+  await comparar("una reunión: el tipo que el equipo les puso", nuevo("evR", "Reunión con Marta"), reuniones);
+  await comparar("cinco reuniones alcanzan", nuevo("evR", "Reunión con Marta"), reuniones.slice(0, 5));
+  await comparar("cuatro no", nuevo("evR", "Reunión con Marta"), reuniones.slice(0, 4));
+  await comparar("reuniones mitad y mitad", nuevo("evR", "Reunión con Marta"),
+    [...reuniones.slice(0, 3), ...hacer(["Reunión x","Reunión y","Reunión z"], "otro")]);
+  await comparar("una cena es «Otro» aunque las reuniones sean Virtual", nuevo("evR", "Cena con Ana"), reuniones);
+  await comparar("en hebreo", nuevo("evR", "פגישה שבועית"), reuniones);
+  eq("las reuniones nuevas toman el tipo del equipo", tipoDelNuevo(nuevo("evR", "Reunión con Marta"), reuniones), "virtual");
+  eq("…y si el tipo se archivó, «otro»", tipoDelNuevo(nuevo("evR", "Reunión con Marta"), reuniones, ["virtual"]), "otro");
+  await comparar("el tipo que el equipo les puso, pero archivado", nuevo("evR", "Reunión con Marta"), reuniones, ["virtual"]);
+  await comparar("un tipo archivado no se asigna por palabras", nuevo("evR", "Curso de Soldadura"), [], ["curso"]);
+
+  const zk = hacer(["ZK Anual - Lima","ZK Anual - Quito","Repaso ZK","ZK especial"], "curso");
+  await comparar("una sigla que siempre va con Curso", nuevo("evZ", "ZK - Bogotá"), zk);
+  await comparar("con 3 posteos alcanza", nuevo("evZ", "ZK - Bogotá"), zk.slice(0, 3));
+  await comparar("con 2 no", nuevo("evZ", "ZK - Bogotá"), zk.slice(0, 2));
+  await comparar("tres de cuatro no alcanza", nuevo("evZ", "ZK - Bogotá"), [...zk.slice(0, 3), ...hacer(["ZK paseo"], "visita")]);
+  await comparar("dos siglas que empatan", nuevo("evZ", "ZK QY"), [...zk, ...hacer(["QY uno","QY dos","QY tres"], "visita")]);
+  await comparar("una sigla que duplica a la otra", nuevo("evZ", "ZK QY"), [...zk, ...hacer(["QY uno","QY dos"], "visita")]);
+  await comparar("los de Rutina no enseñan", nuevo("evZ", "ZK - Bogotá"), hacer(zk.map(p => p.title), "rutina"));
+  await comparar("ni los de un tipo del admin", nuevo("evZ", "ZK - Bogotá"), hacer(zk.map(p => p.title), "capacitacion"));
+  eq("una sigla que siempre va con Curso → Curso", tipoDelNuevo(nuevo("evZ", "ZK - Bogotá"), zk), "curso");
+  eq("tres de cuatro no alcanza → Otro", tipoDelNuevo(nuevo("evZ", "ZK - Bogotá"), [...zk.slice(0, 3), ...hacer(["ZK paseo"], "visita")]), "otro");
+
+  const mismo = hacer(["Tertulia de los jueves (Ana)"], "seminario");
+  await comparar("el mismo título que uno ya cargado", nuevo("evT", "TERTULIA de los jueves"), mismo);
+  await comparar("el mismo título con dos tipos a partes iguales",
+    nuevo("evT", "Tertulia"), [...hacer(["Tertulia"], "seminario"), ...hacer(["Tertulia"], "visita", { id:"otraTertulia" })]);
+  eq("el mismo título que uno ya cargado → su tipo", tipoDelNuevo(nuevo("evT", "TERTULIA de los jueves"), mismo), "seminario");
+
+  const lugares = [{ id:"l1", title:"Algo", activityType:"visita", startDate:"2026-03-01", endDate:"2026-03-01", date:"2026-03-01",
+    scopes:[{ type:"pais", country:"Chile" }, { type:"ciudad", country:"Argentina", city:"Salta" }],
+    participants:[{ name:"Pedro Gómez" }, { name:"Marta" }] }];
+  for(const [titulo, esperado] of [
+    ["Chile", "visita"], ["Salta", "visita"], ["Chile y Salta", "visita"], ["Pedro en Salta", "visita"], ["Salta (Beto y Ana)", "visita"],
+    ["🦆 Salta 🦆", "visita"], ["Kilo Salta", "otro"], ["Salta y Jujuy", "otro"], ["Reunión en Salta", "otro"],
+    ["Seminario Salta", "seminario"], ["Pedro y Marta", "otro"],
+  ]){
+    await comparar(`un título que es un lugar: «${titulo}»`, nuevo("evL", titulo), lugares);
+    eq(`un título que es un lugar (servidor): «${titulo}» → ${esperado}`, tipoDelNuevo(nuevo("evL", titulo), lugares), esperado);
+  }
+  await comparar("la ubicación en texto libre no se usa para reconocer lugares", nuevo("evL", "Hotel Central"),
+    [{ ...lugares[0], scopes:[], location:"https://zoom.us/j/123 Hotel Central" }]);
+
+  // Un enlace de videollamada
+  for(const [titulo, extra, esperado] of [
+    ["Presentación de resultados", { location:"https://us06web.zoom.us/j/89794409714?pwd=abc" }, "virtual"],
+    ["Presentación de resultados", { description:"Para entrar: https://meet.google.com/abc-defg-hij" }, "virtual"],
+    ["Presentación de resultados", { description:"https://teams.microsoft.com/l/meetup-join/123" }, "virtual"],
+    ["Presentación de resultados", { location:"https://latam.webex.com/meet/sala" }, "virtual"],
+    ["Presentación de resultados", {}, "otro"],
+    ["Presentación de resultados", { description:"Hacemos un zoom por la tarde" }, "otro"],
+    ["Curso de Soldadura", { location:"https://us06web.zoom.us/j/1" }, "curso"],
+    ["Chile", { location:"https://us06web.zoom.us/j/1" }, "virtual"],
+    ["Cena de fin de año", { location:"https://us06web.zoom.us/j/1" }, "otro"],
+  ]){
+    await comparar(`enlace de videollamada: «${titulo}» ${JSON.stringify(extra)}`, nuevo("evV", titulo, extra), lugares);
+    eq(`enlace de videollamada (servidor): «${titulo}» ${JSON.stringify(extra)} → ${esperado}`, tipoDelNuevo(nuevo("evV", titulo, extra), lugares), esperado);
+  }
+  await comparar("el enlace de un tipo archivado no se asigna", nuevo("evV", "Presentación", { location:"https://us06web.zoom.us/j/1" }), lugares, ["virtual"]);
+}
 
 console.log(`\n${pass} pasaron, ${fail} fallaron`);
 process.exit(fail ? 1 : 0);
