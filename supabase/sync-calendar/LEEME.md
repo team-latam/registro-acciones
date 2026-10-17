@@ -103,7 +103,12 @@ madrugada.
 
 **La lógica está escrita dos veces.** Una en `index.html`
 (`applyCalendarEventToPosts`, la que corre en el navegador) y otra en
-`decidir.mjs` (la que corre de noche). Son la misma decisión en dos
+`decidir.mjs` (la que corre de noche). Eso incluye **el tipo que se
+le deduce a un evento nuevo** (`guessCalendarType` en la app,
+`tipoInferidoDeCalendario` acá): las palabras, los umbrales y el orden de las
+capas tienen que ser idénticos, y la prueba diferencial los compara con
+posteos de ejemplo. Para sumar una palabra a «curso», «seminario» y los demás
+hay que sumarla en los dos lados. Son la misma decisión en dos
 lugares, y eso se eligió a ojos abiertos: llevarla a un solo lugar
 obligaría a partir `index.html` en varios archivos, que es justamente lo
 que este proyecto no hace.

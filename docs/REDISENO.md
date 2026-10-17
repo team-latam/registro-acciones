@@ -969,6 +969,50 @@ eligió **unirlas así**:
 Pruebas: `agenda_test.mjs` (país, región y ciudad; fallan con el código
 de antes) y `ficha_celular_test.mjs` vuelve a esperar cinco tarjetas.
 
+### 96. Lo que se escribe directo en Google Calendar ya no entra siempre como «Otro»: se deduce qué es — HECHO (17 oct 2026)
+
+El usuario notó que un evento que nace en Google Calendar entra **sin tipo** (siempre «Otro») y preguntó si se podía
+interpretar qué es «a partir de la información que trae, de otros eventos que ya están cargados, etc.». Se midió antes
+de escribir nada: se bajó el calendario «LatAm» entero (1.149 eventos, 2019 → 2027, **solo a una carpeta temporal del
+sandbox: ningún título ni nombre entró al repo**) y se lo cruzó con la clasificación del 3/10 (`calendar_sugerencias`) para
+probar cada regla como si el evento fuera nuevo y sus parecidos ya estuvieran cargados. Sobre los 630 eventos escritos
+a mano en Calendar: dejar todo en «Otro» (lo de antes) acierta ~10 % si las reuniones se cuentan como Virtual, como las
+dejó el equipo, y ~47 % si se cuentan como Otro; esta deducción, ~87 % y ~92 %, con precisión de 97 a 100 % en Visita,
+Curso, Seminario, Congreso y Virtual. Los errores que quedan son sobre todo lugares que ningún posteo nombra todavía y
+reuniones cuyo título no dice «reunión» (solo el nombre de un grupo o de unas personas).
+
+- **De lo más seguro a lo menos** (`guessCalendarType` en `index.html`; `tipoInferidoDeCalendario` en
+  `supabase/sync-calendar/decidir.mjs`; las dos son la misma lógica y la prueba diferencial las compara):
+  1. lo de siempre, que gana sobre todo: la marca `raActivityType` que la app pega a lo que ella crea, y el prefijo
+     «Curso: » escrito a mano;
+  2. **un título igual** al de posteos ya cargados (3 de cada 4 con el mismo tipo) → ese tipo;
+  3. palabras de la vida de cada día (cena, vacaciones, deadline, casamiento…) → «Otro»;
+  4. **palabras de reunión** (reunión, meeting, reunião, junta, פגישה…) → el tipo que el equipo les puso a sus reuniones
+     (el de la mayoría de los posteos que las nombran, con al menos 5; en la carga de octubre fue **Virtual**: 258 de
+     384), o «Otro» si todavía no hay de dónde saberlo. Una «Reunión de seminario» es una reunión, no un seminario;
+  5. **palabras que dicen el tipo**, en los cuatro idiomas: curso/course/קורס, seminario/charla/סמינר,
+     congreso/congress/כנס, visita/viaje/viagem/ביקור, online/webinar/webex/zoom (si hay dos, gana la más específica:
+     congreso > seminario > curso > visita > virtual);
+  6. **palabras que en los posteos ya cargados casi siempre van con un tipo** (al menos 3 posteos y 85 % del mismo tipo:
+     una sigla que siempre fue de Curso vuelve a serlo, sin que nadie la haya definido); dos tipos que empatan no se arriesgan;
+  7. **un enlace de videollamada** (Zoom, Meet, Teams, Webex, Whereby) en el lugar o la descripción → Virtual;
+  8. **un título que es solo un lugar** —país o ciudad que ya aparece en el alcance de algún posteo— y a lo sumo
+     personas (las que figuran como participantes) → Visita: «Salta», «Chile y Salta», «Pedro en Salta».
+  Ante la duda, «Otro», que es lo de siempre. Lo que va entre paréntesis no cuenta (son las personas).
+- **Aprende de los posteos, no de una lista que alguien tenga que mantener**: los títulos, las siglas, qué es una reunión,
+  qué es un lugar y quién es una persona salen de lo que el equipo ya cargó (no cuentan los de Rutina ni los tipos que
+  creó el admin; un tipo archivado o borrado no se asigna). Lo reconstruye una vez por cada cambio de la lista de posteos.
+- **Solo lo nuevo**: un evento que ya tiene posteo vinculado se actualiza como siempre (no se le cambia el tipo), y los
+  «Otro» que ya habían entrado desde el 5/10 sin que nadie los ordenara **no se tocaron**.
+- **Qué no se usa, a propósito**: la ubicación en texto libre de los posteos para reconocer lugares (puede ser un enlace;
+  solo valen los países y ciudades del alcance), ni los invitados ni el `hangoutLink`: la función `calendario` no los pide a Google y sumarlos obligaría a publicarla de nuevo.
+- **Para decidir con el usuario**: las reuniones nuevas entran como **Virtual** porque así quedaron el 67 % de las que él
+  ordenó (el resto, «Otro»: presenciales y personales). Si prefiere «Otro», se cambia sacando la regla 4. Y si quiere
+  que quede escrito en el posteo que el tipo fue deducido (un comentario «📅 Tipo deducido del título»), son pocas líneas.
+- Pruebas: `calendar_tipo_test.mjs` (89: cada capa, los cuatro idiomas, los bordes, tipo archivado o borrado, la lista que
+  cambia; falla con la deducción apagada: 52 fallas) y la prueba diferencial de `supabase/sync-calendar/pruebas/` (de 48 a
+  158 comprobaciones: las mismas capas contra la app y contra el servidor; se cae si se toca una sola de las dos copias).
+
 ### 95. Las ciudades del Mapeo con el nombre que les da la app — HECHO (17 oct 2026, sin publicar todavía)
 
 Antes de cargar su Excel, el usuario vio en la vista previa «Lugares que la app no tiene en su lista» (Buenos Aires, Paysandú, Santa Cruz, Antigua Guatemala, Vitória, Natal, Macapá) y pidió arreglarlos **«para que no haya problemas»**; Buenos Aires tiene que seguir siendo «Buenos Aires (CABA)».

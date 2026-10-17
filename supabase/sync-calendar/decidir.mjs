@@ -101,12 +101,142 @@ export function tituloSinPrefijo(summary, clave, tipos){
   }
   return s;
 }
+
+/* ---------- Qué tipo es un evento escrito directo en Calendar ---------- */
+// Un evento que se escribe en Calendar no trae tipo (la app le pega
+// raActivityType solo a los que crea ella), y entraba siempre como «Otro».
+// Ahora se lo deduce del título, de lo más seguro a lo menos; ante la
+// duda queda en «Otro», que es lo de siempre:
+//   1. Un título igual al de posteos que ya están (3 de cada 4 con el
+//      mismo tipo, mirando los que nombra igual) → ese tipo.
+//   2. Palabras de la vida de cada día (cena, vacaciones, deadline) → Otro.
+//   3. Palabras de reunión → el tipo que el equipo les puso a sus
+//      reuniones (el de la mayoría de los posteos que las nombran; en
+//      2026 fue «Virtual»), o «Otro» si todavía no hay de dónde saberlo.
+//   4. Palabras que dicen el tipo (curso, seminario, congreso, visita,
+//      online…) en los cuatro idiomas.
+//   5. Palabras que, en los posteos ya cargados, casi siempre van con un
+//      mismo tipo (una sigla que siempre fue de Curso vuelve a serlo).
+//   6. Un enlace de videollamada (Zoom, Meet, Teams, Webex) en el lugar o
+//      en la descripción → Virtual.
+//   7. Un título que es solo un lugar —y a lo sumo personas— → Visita.
+// Lo que va entre paréntesis no cuenta (son las personas). Es la MISMA
+// lógica que guessCalendarType() de index.html: la prueba diferencial las
+// compara, con las mismas palabras y los mismos umbrales.
+export const PRIORIDAD_DE_TIPOS = ["congreso","seminario","curso","visita","virtual"];
+export const PALABRAS_DE_TIPO = {
+  suelto: "deadline deadlines llamar llamada llamadas llamado llamados cena almuerzo almocinho lunch dinner cumpleanos casamiento boda vacaciones vacation holiday feriado vs",
+  reunion: "reunion reuniones reuniao reunioes meeting meetings junta juntas kickoff kick feedback sync call פגישה פגישות שיחה שיחות ישיבה",
+  congreso: "congreso congresos congress congresso congressos convencion convention כנס כנסים",
+  seminario: "seminario seminarios seminar seminars charla charlas סמינר סמינרים",
+  curso: "curso cursos course courses capacitacion capacitaciones capacitacao training workshop taller talleres certificacion certification קורס קורסים הכשרה",
+  visita: "visita visitas visit visits visitar viaje viajes viagem viagens trip gira giras tour ביקור",
+  virtual: "virtual online webinar webex zoom וובקס ווביניר אונליין וירטואלי",
+};
+const VIDEOLLAMADA = /zoom\.(us|com)\/|meet\.google\.com\/|teams\.(microsoft|live)\.com\/|webex\.com\/|whereby\.com\//i;
+const CONJUNTOS = Object.fromEntries(Object.entries(PALABRAS_DE_TIPO).map(([k, v]) => [k, new Set(v.split(" "))]));
+const CONECTORES = new Set("de del la el los las en in a e y o u and con with por para the of da do dos das no na nos nas al".split(" "));
+export function palabrasDelTitulo(s){
+  return String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().match(/[\p{L}\p{N}]+/gu) || [];
+}
+export function sinParentesis(s){
+  return String(s || "").replace(/\([^)]*\)/g, " ").replace(/\[[^\]]*\]/g, " ");
+}
+// En hebreo la ו, ה, ב, ל, מ y ש se pegan a la palabra («בסמינר» = en el
+// seminario): se prueba también sin esa primera letra.
+export function esPalabraDe(clase, w){
+  const set = CONJUNTOS[clase];
+  return set.has(w) || (w.length > 2 && /^[\u0590-\u05ff]/.test(w) && "והבלמש".includes(w[0]) && set.has(w.slice(1)));
+}
+// Lo que enseñan los posteos que ya están: qué títulos se repiten, qué
+// palabras casi siempre van con un tipo, qué tipo se les puso a las
+// reuniones, y qué palabras son lugares o personas. Se arma una vez por
+// lista de posteos y se vuelve a armar si la lista cambió de largo (el
+// trabajo de la madrugada va sumando los posteos que crea).
+const SABER_EN_MEMORIA = new WeakMap();
+export function loQueEnsenan(posts){
+  const hit = SABER_EN_MEMORIA.get(posts);
+  if(hit && hit.n === posts.length) return hit.k;
+  const lugares = new Set(), personas = new Set(), cuentas = new Map(), iguales = new Map(), reun = {};
+  const suma = (mapa, clave, tipo) => { const c = mapa.get(clave) || {}; c[tipo] = (c[tipo] || 0) + 1; mapa.set(clave, c); };
+  for(const p of posts){
+    for(const sc of p.scopes || []){
+      if(sc) [sc.country, sc.city].forEach(n => palabrasDelTitulo(n).forEach(w => lugares.add(w)));
+    }
+    for(const q of p.participants || []){
+      if(q) palabrasDelTitulo(q.name).forEach(w => personas.add(w));
+    }
+    const tipo = p.activityType;
+    if(tipo !== "otro" && !PRIORIDAD_DE_TIPOS.includes(tipo)) continue; // «Rutina» y los tipos que creó el admin no cuentan
+    const todas = palabrasDelTitulo(sinParentesis(p.title));
+    if(!todas.length) continue;
+    suma(iguales, todas.join(" "), tipo);
+    // Un título de reunión es del tipo que es por la palabra, no dice nada
+    // de las demás: no entra a las palabras que se aprenden.
+    if(todas.some(w => esPalabraDe("reunion", w))){ reun[tipo] = (reun[tipo] || 0) + 1; continue; }
+    if(todas.some(w => esPalabraDe("suelto", w))) continue;
+    for(const w of new Set(todas)){
+      if(w.length < 2 || /^\d+$/.test(w) || CONECTORES.has(w)) continue;
+      suma(cuentas, w, tipo);
+    }
+  }
+  const fuertes = new Map();
+  for(const [w, c] of cuentas){
+    let total = 0, mejor = "", n = 0;
+    for(const [tipo, v] of Object.entries(c)){ total += v; if(v > n){ n = v; mejor = tipo; } }
+    if(mejor !== "otro" && total >= 3 && n / total >= 0.85) fuertes.set(w, { tipo: mejor, total });
+  }
+  let nReun = 0, tReun = "otro", cReun = 0;
+  for(const [tipo, v] of Object.entries(reun)){ nReun += v; if(v > cReun){ cReun = v; tReun = tipo; } }
+  const k = { lugares, personas, fuertes, iguales, reuniones: nReun >= 5 && cReun / nReun > 0.5 ? tReun : "otro" };
+  SABER_EN_MEMORIA.set(posts, { n: posts.length, k });
+  return k;
+}
+// `disponible(tipo)`: si el tipo existe y no lo archivó el admin. Uno
+// que ya no se puede elegir no se asigna: queda «Otro».
+export function tipoSegunElTitulo(titulo, k, disponible, conEnlace){
+  const ok = tipo => (tipo === "otro" || disponible(tipo)) ? tipo : "otro";
+  const ws = palabrasDelTitulo(sinParentesis(titulo));
+  const igual = k.iguales.get(ws.join(" "));
+  if(igual){
+    let total = 0, mejor = "", n = 0;
+    for(const [tipo, v] of Object.entries(igual)){ total += v; if(v > n){ n = v; mejor = tipo; } }
+    if(n / total >= 0.75) return ok(mejor);
+  }
+  if(ws.some(w => esPalabraDe("suelto", w))) return "otro";
+  if(ws.some(w => esPalabraDe("reunion", w))) return ok(k.reuniones);
+  for(const tipo of PRIORIDAD_DE_TIPOS){
+    if(ws.some(w => esPalabraDe(tipo, w))) return ok(tipo);
+  }
+  const votos = {};
+  for(const w of ws){
+    const f = k.fuertes.get(w);
+    if(f) votos[f.tipo] = Math.max(votos[f.tipo] || 0, f.total);
+  }
+  const ordenados = Object.entries(votos).sort((a, b) => b[1] - a[1]);
+  // Dos tipos que empatan (o casi) no se arriesgan.
+  if(ordenados.length && (ordenados.length === 1 || ordenados[0][1] >= ordenados[1][1] * 2)) return ok(ordenados[0][0]);
+  if(conEnlace) return ok("virtual");
+  const claves = ws.filter(w => !CONECTORES.has(w) && !/^\d+$/.test(w));
+  if(claves.length && claves.length <= 6 && claves.some(w => k.lugares.has(w)) &&
+     claves.every(w => k.lugares.has(w) || k.personas.has(w))) return ok("visita");
+  return "otro";
+}
+export function tipoInferidoDeCalendario(titulo, posts, tipos, ev){
+  const conEnlace = !!ev && VIDEOLLAMADA.test(`${ev.location || ""} ${ev.description || ""}`);
+  return tipoSegunElTitulo(titulo, loQueEnsenan(posts),
+    tipo => !!(tipos.porClave && tipos.porClave[tipo]) && !tipos.porClave[tipo].archived, conEnlace);
+}
+
 // De un evento a (tipo, título), de lo más confiable a lo menos:
 //   1. extendedProperties.raActivityType, que la app le pega a cada evento
 //      que crea: es la clave del tipo, no cambia con el idioma.
 //   2. El prefijo del texto: quien titula "Curso: Kashrut" está diciendo
 //      el tipo, así que entra como Curso y no como "Otro".
-export function tipoYTituloImportados(ev, tipos){
+//   3. Sin ninguna de las dos, se deduce del título y de los posteos que
+//      ya están (tipoInferidoDeCalendario, arriba); si no hay de dónde,
+//      "otro".
+export function tipoYTituloImportados(ev, tipos, posts){
   const summary = String(ev.summary || "");
   const raType = ev.extendedProperties?.private?.raActivityType;
   if(raType && TIPOS_QUE_SINCRONIZAN.has(raType)){
@@ -119,10 +249,13 @@ export function tipoYTituloImportados(ev, tipos){
       if(summary.startsWith(`${nombre}: `)) return { activityType: clave, title: summary.slice(nombre.length + 2) };
     }
   }
-  // "Actividad: X" sí se limpia, pero sin tipo: es el fallback de un tipo
-  // que el admin borró, no dice cuál era.
-  if(summary.startsWith("Actividad: ")) return { activityType:"otro", title: summary.slice(11) };
-  return { activityType:"otro", title: summary };
+  // "Actividad: X" sí se limpia, pero el prefijo no dice el tipo: es el
+  // fallback de un tipo que el admin borró. Se deduce del resto.
+  if(summary.startsWith("Actividad: ")){
+    const title = summary.slice(11);
+    return { activityType: tipoInferidoDeCalendario(title, posts || [], tipos, ev), title };
+  }
+  return { activityType: tipoInferidoDeCalendario(summary, posts || [], tipos, ev), title: summary };
 }
 export function elSummaryEsDe(summary, post, tipos){
   if(post.title === summary) return true;
@@ -294,7 +427,7 @@ export function decidir(ev, posts, ctx){
   // Entra como posteo simple y SIN alcance — no "Toda LatAm", que sumaría
   // a los 43 países en los conteos antes de que alguien lo revise. Queda
   // "sin definir" hasta que alguien le ponga el lugar real.
-  const { activityType, title } = tipoYTituloImportados(ev, tipos);
+  const { activityType, title } = tipoYTituloImportados(ev, tipos, posts);
   acciones.push({ tipo:"crear", id: idDePosteoImportado(ev.id), datos: {
     title: (title || t("(Sin título)")).slice(0, 140),
     // Sin relleno, igual que en index.html (ver la prueba diferencial):

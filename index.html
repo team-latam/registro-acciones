@@ -7652,6 +7652,132 @@ function extractTitleFromSummary(summary, activityType){
   return s;
 }
 
+// ---- Qué tipo es un evento escrito directo en Calendar ----
+// Un evento que se escribe en Calendar no trae tipo (la app le pega
+// raActivityType solo a los que crea ella), y entraba siempre como «Otro».
+// Ahora se lo deduce del título, de lo más seguro a lo menos; ante la
+// duda queda en «Otro», que es lo de siempre:
+//   1. Un título igual al de posteos que ya están (3 de cada 4 con el
+//      mismo tipo, mirando los que nombra igual) → ese tipo.
+//   2. Palabras de la vida de cada día (cena, vacaciones, deadline) → Otro.
+//   3. Palabras de reunión → el tipo que el equipo les puso a sus
+//      reuniones (el de la mayoría de los posteos que las nombran; en
+//      2026 fue «Virtual»), o «Otro» si todavía no hay de dónde saberlo.
+//   4. Palabras que dicen el tipo (curso, seminario, congreso, visita,
+//      online…) en los cuatro idiomas.
+//   5. Palabras que, en los posteos ya cargados, casi siempre van con un
+//      mismo tipo (una sigla que siempre fue de Curso vuelve a serlo).
+//   6. Un enlace de videollamada (Zoom, Meet, Teams, Webex) en el lugar o
+//      en la descripción → Virtual.
+//   7. Un título que es solo un lugar —y a lo sumo personas— → Visita.
+// Lo que va entre paréntesis no cuenta (son las personas). Es la MISMA
+// lógica que tipoInferidoDeCalendario() en supabase/sync-calendar/
+// decidir.mjs: la prueba diferencial las compara.
+const CAL_PRIORIDAD = ["congreso","seminario","curso","visita","virtual"];
+const CAL_PALABRAS = {
+  suelto: "deadline deadlines llamar llamada llamadas llamado llamados cena almuerzo almocinho lunch dinner cumpleanos casamiento boda vacaciones vacation holiday feriado vs",
+  reunion: "reunion reuniones reuniao reunioes meeting meetings junta juntas kickoff kick feedback sync call פגישה פגישות שיחה שיחות ישיבה",
+  congreso: "congreso congresos congress congresso congressos convencion convention כנס כנסים",
+  seminario: "seminario seminarios seminar seminars charla charlas סמינר סמינרים",
+  curso: "curso cursos course courses capacitacion capacitaciones capacitacao training workshop taller talleres certificacion certification קורס קורסים הכשרה",
+  visita: "visita visitas visit visits visitar viaje viajes viagem viagens trip gira giras tour ביקור",
+  virtual: "virtual online webinar webex zoom וובקס ווביניר אונליין וירטואלי",
+};
+const CAL_VIDEOLLAMADA = /zoom\.(us|com)\/|meet\.google\.com\/|teams\.(microsoft|live)\.com\/|webex\.com\/|whereby\.com\//i;
+const CAL_SETS = Object.fromEntries(Object.entries(CAL_PALABRAS).map(([k, v]) => [k, new Set(v.split(" "))]));
+const CAL_CONECTORES = new Set("de del la el los las en in a e y o u and con with por para the of da do dos das no na nos nas al".split(" "));
+function calWords(s){
+  return String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().match(/[\p{L}\p{N}]+/gu) || [];
+}
+function calNoParens(s){
+  return String(s || "").replace(/\([^)]*\)/g, " ").replace(/\[[^\]]*\]/g, " ");
+}
+// En hebreo la ו, ה, ב, ל, מ y ש se pegan a la palabra («בסמינר» = en el
+// seminario): se prueba también sin esa primera letra.
+function calWordIs(kind, w){
+  const set = CAL_SETS[kind];
+  return set.has(w) || (w.length > 2 && /^[\u0590-\u05ff]/.test(w) && "והבלמש".includes(w[0]) && set.has(w.slice(1)));
+}
+// Lo que enseñan los posteos que ya están: qué títulos se repiten, qué
+// palabras casi siempre van con un tipo, qué tipo se les puso a las
+// reuniones, y qué palabras son lugares o personas. Se arma una vez por
+// lista de posteos (state.posts se reemplaza entera cada vez que algo
+// cambia, y entonces se arma otra).
+const calKnowledgeCache = new WeakMap();
+function calendarKnowledge(posts){
+  const hit = calKnowledgeCache.get(posts);
+  if(hit && hit.n === posts.length) return hit.k;
+  const places = new Set(), people = new Set(), cuentas = new Map(), iguales = new Map(), reun = {};
+  const suma = (mapa, clave, tipo) => { const c = mapa.get(clave) || {}; c[tipo] = (c[tipo] || 0) + 1; mapa.set(clave, c); };
+  for(const p of posts){
+    for(const sc of p.scopes || []){
+      if(sc) [sc.country, sc.city].forEach(n => calWords(n).forEach(w => places.add(w)));
+    }
+    for(const q of p.participants || []){
+      if(q) calWords(q.name).forEach(w => people.add(w));
+    }
+    const tipo = p.activityType;
+    if(tipo !== "otro" && !CAL_PRIORIDAD.includes(tipo)) continue; // «Rutina» y los tipos que creó el admin no cuentan
+    const todas = calWords(calNoParens(p.title));
+    if(!todas.length) continue;
+    suma(iguales, todas.join(" "), tipo);
+    // Un título de reunión es del tipo que es por la palabra, no dice nada
+    // de las demás: no entra a las palabras que se aprenden.
+    if(todas.some(w => calWordIs("reunion", w))){ reun[tipo] = (reun[tipo] || 0) + 1; continue; }
+    if(todas.some(w => calWordIs("suelto", w))) continue;
+    for(const w of new Set(todas)){
+      if(w.length < 2 || /^\d+$/.test(w) || CAL_CONECTORES.has(w)) continue;
+      suma(cuentas, w, tipo);
+    }
+  }
+  const fuertes = new Map();
+  for(const [w, c] of cuentas){
+    let total = 0, mejor = "", n = 0;
+    for(const [tipo, v] of Object.entries(c)){ total += v; if(v > n){ n = v; mejor = tipo; } }
+    if(mejor !== "otro" && total >= 3 && n / total >= 0.85) fuertes.set(w, { tipo: mejor, total });
+  }
+  let nReun = 0, tReun = "otro", cReun = 0;
+  for(const [tipo, v] of Object.entries(reun)){ nReun += v; if(v > cReun){ cReun = v; tReun = tipo; } }
+  const k = { places, people, fuertes, iguales, reuniones: nReun >= 5 && cReun / nReun > 0.5 ? tReun : "otro" };
+  calKnowledgeCache.set(posts, { n: posts.length, k });
+  return k;
+}
+// `disponible(tipo)`: si el tipo existe y no lo archivó el admin. Uno
+// que ya no se puede elegir no se asigna: queda «Otro».
+function calendarTypeFrom(title, k, disponible, conEnlace){
+  const ok = tipo => (tipo === "otro" || disponible(tipo)) ? tipo : "otro";
+  const ws = calWords(calNoParens(title));
+  const igual = k.iguales.get(ws.join(" "));
+  if(igual){
+    let total = 0, mejor = "", n = 0;
+    for(const [tipo, v] of Object.entries(igual)){ total += v; if(v > n){ n = v; mejor = tipo; } }
+    if(n / total >= 0.75) return ok(mejor);
+  }
+  if(ws.some(w => calWordIs("suelto", w))) return "otro";
+  if(ws.some(w => calWordIs("reunion", w))) return ok(k.reuniones);
+  for(const tipo of CAL_PRIORIDAD){
+    if(ws.some(w => calWordIs(tipo, w))) return ok(tipo);
+  }
+  const votos = {};
+  for(const w of ws){
+    const f = k.fuertes.get(w);
+    if(f) votos[f.tipo] = Math.max(votos[f.tipo] || 0, f.total);
+  }
+  const ordenados = Object.entries(votos).sort((a, b) => b[1] - a[1]);
+  // Dos tipos que empatan (o casi) no se arriesgan.
+  if(ordenados.length && (ordenados.length === 1 || ordenados[0][1] >= ordenados[1][1] * 2)) return ok(ordenados[0][0]);
+  if(conEnlace) return ok("virtual");
+  const claves = ws.filter(w => !CAL_CONECTORES.has(w) && !/^\d+$/.test(w));
+  if(claves.length && claves.length <= 6 && claves.some(w => k.places.has(w)) &&
+     claves.every(w => k.places.has(w) || k.people.has(w))) return ok("visita");
+  return "otro";
+}
+function guessCalendarType(title, ev){
+  const conEnlace = !!ev && CAL_VIDEOLLAMADA.test(`${ev.location || ""} ${ev.description || ""}`);
+  return calendarTypeFrom(title, calendarKnowledge(state.posts),
+    tipo => !!ACTIVITY_BY_KEY[tipo] && !ACTIVITY_BY_KEY[tipo].archived, conEnlace);
+}
+
 // De un evento de Calendar a (tipo, título) del posteo.
 //
 // El summary que escribía la app hasta el 5/10/2026 llevaba el prefijo
@@ -7661,14 +7787,16 @@ function extractTitleFromSummary(summary, activityType){
 // la app vuelve a anteponer el tipo al sincronizar, en Calendar terminaba
 // como "Visita: Visita: Quintana Roo" — y crecía un prefijo por vuelta.
 //
-// Se resuelve en dos pasos, de lo más confiable a lo menos:
+// Se resuelve en tres pasos, de lo más confiable a lo menos:
 //   1. extendedProperties.raActivityType, que la app pega a cada evento
 //      que crea. Es la KEY del tipo, no cambia con el idioma ni si el
 //      admin renombra el tipo.
 //   2. Si no está (evento escrito a mano en Calendar), el prefijo del
 //      texto: alguien que titula "Curso: Kashrut" está diciendo el tipo,
 //      así que se importa como Curso en vez de como "Otro".
-// Sin ninguna de las dos, queda "otro" y el título entero, como antes.
+//   3. Sin ninguna de las dos, se deduce del título y de los posteos que
+//      ya están (guessCalendarType, arriba); si no hay de dónde, "otro".
+// El título queda entero, salvo el prefijo que se acaba de reconocer.
 function importedTypeAndTitle(ev){
   const summary = String(ev.summary || "");
   const raType = ev.extendedProperties?.private?.raActivityType;
@@ -7682,10 +7810,13 @@ function importedTypeAndTitle(ev){
       if(summary.startsWith(`${label}: `)) return { activityType: key, title: summary.slice(label.length + 2) };
     }
   }
-  // "Actividad: X" sí se limpia, pero sin tipo: es el fallback de un tipo
-  // que el admin borró, no dice cuál era.
-  if(summary.startsWith("Actividad: ")) return { activityType:"otro", title: summary.slice(11) };
-  return { activityType:"otro", title: summary };
+  // "Actividad: X" sí se limpia, pero el prefijo no dice el tipo: es el
+  // fallback de un tipo que el admin borró. Se deduce del resto.
+  if(summary.startsWith("Actividad: ")){
+    const title = summary.slice(11);
+    return { activityType: guessCalendarType(title, ev), title };
+  }
+  return { activityType: guessCalendarType(summary, ev), title: summary };
 }
 
 // Los posteos importados desde Calendar usan un id de documento derivado
