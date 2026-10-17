@@ -969,6 +969,13 @@ eligió **unirlas así**:
 Pruebas: `agenda_test.mjs` (país, región y ciudad; fallan con el código
 de antes) y `ficha_celular_test.mjs` vuelve a esperar cinco tarjetas.
 
+### 95. Las ciudades del Mapeo con el nombre que les da la app — HECHO (17 oct 2026, sin publicar todavía)
+
+Antes de cargar su Excel, el usuario vio en la vista previa «Lugares que la app no tiene en su lista» (Buenos Aires, Paysandú, Santa Cruz, Antigua Guatemala, Vitória, Natal, Macapá) y pidió arreglarlos **«para que no haya problemas»**; Buenos Aires tiene que seguir siendo «Buenos Aires (CABA)».
+- **Tres ya existían con otro nombre** → se reconocen solos (`CIUDAD_ALIAS`, que solo vale donde el país tiene esa ciudad: la «Santa Cruz» argentina no es la de Bolivia): «Buenos Aires» (también «CABA», «Capital Federal», «Ciudad de Buenos Aires») → **Buenos Aires (CABA)**; «Santa Cruz» (Bolivia) → **Santa Cruz de la Sierra**; «Antigua Guatemala» → **Antigua**. La vista previa lo dice en «Países y ciudades con el nombre que les da la app».
+- **Cinco que faltaban** → se suman a la lista de la app, con su punto en el mapa y su nombre en los cuatro idiomas: **Paysandú** (Uruguay), **Vitória, Natal y Macapá** (Brasil) y **Tandil** (Argentina, también estaba en el Excel). Se guardan con su tilde, como Florianópolis o Neuquén; las más viejas sin tilde (Cordoba, Tucuman) siguen igual porque ya quedaron escritas así en los posteos.
+- Pruebas: `agenda_test.mjs`, bloque 4c (las tres renombradas, que lo único «desconocido» sea la Santa Cruz argentina y que cada contacto se mande a la ciudad con el nombre de la app).
+
 ### 94. «Traer una lista» trae la nota de cada persona — HECHO (17 oct 2026, sin publicar todavía)
 
 El usuario pidió que exista el campo «Notas» (para el Mapeo). La ficha de cada persona ya tenía una «Nota» (`personas.note`, hasta 300 letras) que se escribe a mano; lo que faltaba era traerla desde el Excel. Se le ofreció ponerla en la persona, en cada contacto en su ciudad o en la ciudad;
