@@ -1628,9 +1628,17 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   eq("documentación: el evento ya pasó y falta todo, así que va en amarillo y dice que faltan",
     await p.$eval('.post[data-post-id="p_reunion"] .doc-linea', e => [e.classList.contains("tarde"), e.textContent.replace(/\s+/g, " ").trim()]), [true, "📄 0/2 documentos · faltan"]);
   eq("documentación: cerrada, no ocupa la tarjeta", await p.$('.post[data-post-id="p_reunion"] .doc-abierto'), null);
+  // Como la ciudad con su país (19/10/2026): cerrada la pastilla dice solo «0/2»; el resto aparece al tocarla.
+  const visto = () => p.$eval('.post[data-post-id="p_reunion"] .doc-linea', e => e.innerText.replace(/\s+/g, " ").trim());
+  eq("documentación: cerrada, la pastilla muestra solo la cuenta", await visto(), "📄 0/2");
   await p.click('.post[data-post-id="p_reunion"] .doc-linea');
+  eq("documentación: al tocarla, la pastilla suma «documentos · faltan»", await hasta(p, () => {
+    const e = document.querySelector('.post[data-post-id="p_reunion"] .doc-linea'); return e.innerText.replace(/\s+/g, " ").trim() === "📄 0/2 documentos · faltan"; }), true);
   eq("documentación: al tocarla, la lista se abre debajo de las acciones",
     await hasta(p, () => { const c = document.querySelector('.post[data-post-id="p_reunion"]'); const d = c.querySelector(".doc-abierto"); return !!d && d.previousElementSibling.classList.contains("post-actions") && d.querySelectorAll(".doc-fila").length === 2; }), true);
+  await p.click('.post[data-post-id="p_reunion"] .doc-linea');
+  eq("documentación: al volver a tocarla, vuelve a mostrar solo la cuenta", await hasta(p, () => {
+    const e = document.querySelector('.post[data-post-id="p_reunion"] .doc-linea'); return e.innerText.replace(/\s+/g, " ").trim() === "📄 0/2"; }), true);
   // Varios archivos por documento y el visor (6/10/2026).
   await p.close();
   {

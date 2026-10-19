@@ -42,14 +42,15 @@ let v = await ver();
 eq("cerrado: no se dibuja la caja", v.abierto, false);
 eq("ni una sola fila de detalle", v.filas, 0);
 eq("pero sí la pastilla", v.hayLinea, true);
-eq("que dice la cuenta", v.texto, "📄 0/2 documentos");
+// Cerrada, solo la cuenta; «documentos · faltan» aparece al abrirla, como la ciudad con su país (19/10/2026).
+eq("que dice solo la cuenta", v.texto, "📄 0/2");
 eq("y cada documento con su estado al pasar el mouse", v.detalle, "Documentación: ○ Plan de viaje · ○ Reporte");
 eq("y se anuncia cerrado para un lector de pantalla", v.expandido, "false");
 eq("adentro del botón no hay otros botones (HTML inválido)", v.botonesAdentro, 0);
 
 await pintar(conPlan({ date: FUTURO }));
 v = await ver();
-eq("con uno subido, la cuenta sube", v.texto, "📄 1/2 documentos");
+eq("con uno subido, la cuenta sube", v.texto, "📄 1/2");
 eq("y el detalle marca ése con ✓", v.detalle, "Documentación: ✓ Plan de viaje · ○ Reporte");
 eq("y todavía no está completo", v.completo, false);
 
@@ -57,7 +58,7 @@ await pintar(post({ date: FUTURO, files:[
   { name:"a.pdf", kind:"pdf", doc:"plan", dataUrl:PDF },
   { name:"b.pdf", kind:"pdf", doc:"reporte", dataUrl:PDF }]}));
 v = await ver();
-eq("completo: 2/2", v.texto, "📄 2/2 documentos");
+eq("completo: 2/2", v.texto, "📄 2/2");
 eq("y la pastilla se marca como completa", v.completo, true);
 eq("completo y callado: sigue cerrado", v.abierto, false);
 eq("la cuenta también se marca", await p.$eval(".doc-cuenta", e=>e.classList.contains("completo")), true);
@@ -65,7 +66,7 @@ eq("la cuenta también se marca", await p.$eval(".doc-cuenta", e=>e.classList.co
 /* ====== En amarillo cuando el evento ya pasó y falta algo, sin abrirse ====== */
 await pintar(post({ date: PASADO }));
 v = await ver();
-eq("un evento que ya pasó con documentos faltando se pinta de amarillo", [v.tarde, v.texto], [true, "📄 0/2 documentos · faltan"]);
+eq("un evento que ya pasó con documentos faltando se pinta de amarillo", [v.tarde, v.texto], [true, "📄 0/2"]);
 eq("pero no se abre solo: ocupaba media tarjeta", v.abierto, false);
 
 await pintar(post({ date: FUTURO }));
@@ -93,6 +94,7 @@ await pintar(post({ date: FUTURO }));
 await p.click(".doc-linea");
 await p.waitForTimeout(80);
 eq("al tocarla se abre la lista", (await ver()).abierto, true);
+eq("y la pastilla suma lo que faltaba decir", (await ver()).texto, "📄 0/2 documentos");
 eq("con la elección guardada", await p.evaluate(()=>window.__estadoDocs("p1")), true);
 eq("con sus dos filas", (await ver()).filas, 2);
 await p.evaluate(()=>window.__repintar("p1"));
@@ -100,6 +102,7 @@ eq("y sobrevive a que se redibuje la pantalla", (await ver()).abierto, true);
 await p.click(".doc-linea");
 await p.waitForTimeout(80);
 eq("y volver a tocarla la cierra", (await ver()).abierto, false);
+eq("y la pastilla vuelve a la cuenta sola", (await ver()).texto, "📄 0/2");
 eq("también anotado", await p.evaluate(()=>window.__estadoDocs("p1")), false);
 
 /* ====== Abierta, está todo lo de antes ====== */

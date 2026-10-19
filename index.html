@@ -2733,6 +2733,11 @@
   .post-actions .doc-linea:hover, .doc-linea:hover, .doc-linea[aria-expanded="true"]{ color:var(--ink); border-style:solid; }
   .post-actions .doc-linea.tarde, .doc-linea.tarde{ color:var(--warn-text); background:var(--warn-bg); border:1px solid var(--warn-border); }
   .post-actions .doc-linea.ok, .doc-linea.ok{ color:var(--ok-text); }
+  /* Cerrada, solo la cuenta; abierta, el resto («documentos · faltan»). Con
+     el atributo en el selector gana también en el celular, donde .pa-l
+     esconde los nombres de las demás acciones. */
+  .doc-linea .doc-resto{ display:none; }
+  .doc-linea[aria-expanded="true"] .doc-resto{ display:inline; }
   .doc-panel-tit{ font-size:12px; font-weight:800; color:var(--text-muted); padding:6px 0 4px; }
   .doc-cuenta{ font-variant-numeric:tabular-nums; }
   .doc-cuenta.completo{ color:var(--ok-text); }
@@ -15638,15 +15643,19 @@ function renderDocumentacion(post, parte){
   const titulo = t("Documentación","Documentation","Documentação","תיעוד");
   const opcionalTxt = t("opcional","optional","opcional","אופציונלי");
   const cuenta = total ? `${hay}/${total}` : String(subidos);
-  const cuentaHtml = total ? `<span class="doc-cuenta${completo ? " completo" : ""}">${hay}/${total}</span><span class="pa-l"> ${t("documentos","documents","documentos","מסמכים")}</span>`
+  // Cerrada, la pastilla dice solo la cuenta ("0/3"); lo demás (.doc-resto:
+  // «documentos · faltan») aparece al abrirla, como la ciudad con su país
+  // (pedido del usuario, 19/10/2026). Sin cuenta que mostrar queda la
+  // palabra suelta, que si no sería un ícono sin explicación.
+  const cuentaHtml = total ? `<span class="doc-cuenta${completo ? " completo" : ""}">${hay}/${total}</span><span class="doc-resto"> ${t("documentos","documents","documentos","מסמכים")}</span>`
     : !subidos ? `<span class="pa-l">${t("documentos","documents","documentos","מסמכים")}</span>`
-    : `<span class="doc-cuenta">${subidos}</span><span class="pa-l"> ${subidos === 1 ? t("documento","document","documento","מסמך") : t("documentos","documents","documentos","מסמכים")}</span>`;
+    : `<span class="doc-cuenta">${subidos}</span><span class="doc-resto"> ${subidos === 1 ? t("documento","document","documento","מסמך") : t("documentos","documents","documentos","מסמכים")}</span>`;
   // Cada documento con su estado, al pasar el mouse: la pastilla dice
   // solo la cuenta, pero mirando un evento viejo se quiere saber cuál.
   const estado = esperados.map(d => `${archivoDelDoc(post, d.id) ? "✓" : "○"} ${d.label}${d.opcional ? ` (${opcionalTxt})` : ""}`).join(" · ");
   const linea = `<button type="button" class="doc-linea${completo ? " ok" : ""}${tarde ? " tarde" : ""}"
       data-action="toggle-docs" data-post-id="${esc(post.id)}" aria-expanded="${abierto}" title="${esc(titulo + ": " + estado)}"
-      aria-label="${esc(titulo + " " + cuenta)}">📄 ${cuentaHtml}${tarde ? `<span class="pa-l"> · ${t("faltan","missing","faltam","חסרים")}</span>` : ""}</button>`;
+      aria-label="${esc(titulo + " " + cuenta)}">📄 ${cuentaHtml}${tarde ? `<span class="doc-resto"> · ${t("faltan","missing","faltam","חסרים")}</span>` : ""}</button>`;
   if(parte === "linea") return linea;
   if(!abierto) return parte === "panel" ? "" : linea;
   // Un archivo de la lista: su nombre (recortado; entero al pasar el

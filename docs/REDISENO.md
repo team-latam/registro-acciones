@@ -969,6 +969,24 @@ eligió **unirlas así**:
 Pruebas: `agenda_test.mjs` (país, región y ciudad; fallan con el código
 de antes) y `ficha_celular_test.mjs` vuelve a esperar cinco tarjetas.
 
+### 98. La pastilla de documentos, cerrada, dice solo «0/3» — HECHO (19 oct 2026)
+
+Pedido del usuario (captura de «📄 0/1 documentos · faltan»): que la pastilla de documentación
+de la tarjeta funcione **como la ciudad y el país**: cerrada muestra lo mínimo y al tocarla
+aparece el resto.
+- **Cerrada**: `📄 0/3` (amarilla si el evento ya pasó y falta algo, verde si está completa, igual que antes).
+- **Abierta** (`aria-expanded="true"`): suma «documentos · faltan», y debajo, como siempre, la lista de cada
+  documento. No hay estado nuevo: el texto que se suma (`.doc-resto`) se prende con el mismo `docsAbiertos`
+  que ya abría la lista, así que tocar la pastilla otra vez la deja corta de nuevo. Con el atributo en el
+  selector, también gana en el celular, donde los nombres de las demás acciones siguen escondidos.
+- Un tipo cuyos documentos son **todos opcionales** y sin ninguno subido no tiene cuenta que mostrar:
+  ahí la palabra «documentos» queda a la vista en la compu (si no, la pastilla sería un ícono sin explicación).
+  En el celular sigue siendo solo el ícono, como antes.
+- El detalle de cada documento sigue en el `title`, al pasar el mouse, y el `aria-label` no cambia.
+- Pruebas: `app_dom_test.mjs` (cerrada dice «📄 0/2»; abierta, «📄 0/2 documentos · faltan»; al volver a
+  tocarla, de nuevo la cuenta sola; se mide con `innerText`, que respeta el CSS). Sin tocar el recorrido de
+  bienvenida: «la tarjeta te dice cuántos faltan» sigue siendo cierto.
+
 ### 97. Las reuniones: presenciales «Otro», por videollamada «Virtual» — HECHO (17 oct 2026)
 
 Al ver la tanda 96, el usuario dijo cómo clasifica él las reuniones: **«las presenciales las pongo como Otro; las
