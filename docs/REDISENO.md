@@ -969,6 +969,13 @@ eligió **unirlas así**:
 Pruebas: `agenda_test.mjs` (país, región y ciudad; fallan con el código
 de antes) y `ficha_celular_test.mjs` vuelve a esperar cinco tarjetas.
 
+### 99. Pembroke (Bermudas) en la lista de ciudades — HECHO (20 oct 2026)
+
+Pedido del usuario: «agregá al sistema Pembroke, Bermuda». **Bermudas ya era un país de la app** (zona Norte, con «Bermuda» y «Hamilton» como ciudades), así que lo que se suma es la ciudad:
+- **Pembroke** en `CITY_PRESETS["Bermudas"]`, con su punto en el mapa (la parroquia de Pembroke, pegada a Hamilton, que queda adentro), y su nombre en los cuatro idiomas en `DEFAULT_CITY_LABELS` (Pembroke / Pembroke / Pembroke / פמברוק).
+- Como las demás ciudades de la lista, se puede elegir al cargar un posteo («Ciudad específica») y la Agenda la reconoce al traer una planilla.
+- Pruebas: `agenda_test.mjs`, bloque 4c (un contacto en «Bermudas · Pembroke» se manda a esa ciudad y no aparece como «lugar que la app no tiene»; falla sin la ciudad en la lista).
+
 ### 98. La pastilla de documentos, cerrada, dice solo «0/3» — HECHO (19 oct 2026)
 
 Pedido del usuario (captura de «📄 0/1 documentos · faltan»): que la pastilla de documentación
