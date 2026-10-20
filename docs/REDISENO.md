@@ -969,12 +969,14 @@ eligió **unirlas así**:
 Pruebas: `agenda_test.mjs` (país, región y ciudad; fallan con el código
 de antes) y `ficha_celular_test.mjs` vuelve a esperar cinco tarjetas.
 
-### 99. Pembroke (Bermudas) en la lista de ciudades — HECHO (20 oct 2026)
+### 99. Pembroke y la lista de sinagogas del Caribe: ciudades y nombres que faltaban — HECHO (20 oct 2026, sin publicar todavía)
 
-Pedido del usuario: «agregá al sistema Pembroke, Bermuda». **Bermudas ya era un país de la app** (zona Norte, con «Bermuda» y «Hamilton» como ciudades), así que lo que se suma es la ciudad:
-- **Pembroke** en `CITY_PRESETS["Bermudas"]`, con su punto en el mapa (la parroquia de Pembroke, pegada a Hamilton, que queda adentro), y su nombre en los cuatro idiomas en `DEFAULT_CITY_LABELS` (Pembroke / Pembroke / Pembroke / פמברוק).
-- Como las demás ciudades de la lista, se puede elegir al cargar un posteo («Ciudad específica») y la Agenda la reconoce al traer una planilla.
-- Pruebas: `agenda_test.mjs`, bloque 4c (un contacto en «Bermudas · Pembroke» se manda a esa ciudad y no aparece como «lugar que la app no tiene»; falla sin la ciudad en la lista).
+Pedido del usuario: «agregá al sistema Pembroke, Bermuda»; después pasó la lista de las sinagogas y casas Jabad de Caribe y Centroamérica (22 renglones, 13 países) para ver qué lugares faltaban. **Bermudas ya era un país de la app** (zona Norte, con «Bermuda» y «Hamilton»); lo que se suma son ciudades y nombres:
+- **Pembroke** (Bermudas), **Holetown** (Barbados) y **Schœlcher** (Martinica) en `CITY_PRESETS`, con su punto en el mapa, y su nombre en los cuatro idiomas en `DEFAULT_CITY_LABELS` (en el bloque de abajo de cada país: la tabla repite países —Bermudas, Barbados, Martinica y otros 12— y en un objeto la última clave pisa a la anterior; lo que se sume tiene que ir en la última). Los nombres en hebreo (פמברוק, הולטאון, שלשר) son transliteraciones: que alguien de habla hebrea los mire.
+- La Agenda reconoce, al traer una planilla, «**San Bartolomé**» y «Saint-Barthélemy» (→ San Bartolomé (St. Barth)), «**Islas Turcas y Caicos**» (→ Turcas y Caicos) y «**Schoelcher**» sin la ligadura (→ Schœlcher) (`PAIS_ALIAS`, `CIUDAD_ALIAS`).
+- El **apóstrofo curvo** (’) de Word o de una planilla es el mismo que el recto: «St. George’s» entra como la «St. George's» de Granada (`ciudadDeLaApp`; sirve para cualquier ciudad con apóstrofo).
+- Con esto, los 22 renglones de la lista entran con el nombre de la app. Lo que **no** se guarda, a propósito (el usuario lo confirmó): la parroquia, departamento o isla de cada institución —la app no tiene nivel entre país y ciudad, y la base rechaza uno llamado «provincia»— y el barrio (Cable Beach, Grace Bay…), que no es una ciudad.
+- Pruebas: `agenda_test.mjs` bloque 4c (los cinco casos y que cada contacto se mande a la ciudad con el nombre de la app; falla contra el código anterior) y `forma_test.mjs` (los nombres en hebreo y español de las tres ciudades nuevas, que además avisa si una quedara en un bloque pisado).
 
 ### 98. La pastilla de documentos, cerrada, dice solo «0/3» — HECHO (19 oct 2026)
 

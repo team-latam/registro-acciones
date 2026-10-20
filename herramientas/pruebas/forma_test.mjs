@@ -66,7 +66,12 @@ idioma = "pt";
 eq("en otro idioma manda su traducción", llamar("cityLabel", "Brasil", "Sao Paulo"), "São Paulo");
 idioma = "he";
 eq("en hebreo, la suya", llamar("cityLabel", "Argentina", "Cordoba"), "קורדובה");
+// Las ciudades que se sumaron por pedido (Pembroke, Holetown, Schœlcher): DEFAULT_CITY_LABELS repite países
+// (Bermudas, Barbados, Martinica) y en un objeto la última clave pisa a la anterior; si la ciudad nueva
+// quedara en el bloque pisado, se vería sin traducir y nada más lo avisaría.
+eq("ciudades del Caribe sumadas: en hebreo, la suya", [llamar("cityLabel", "Bermudas", "Pembroke"), llamar("cityLabel", "Barbados", "Holetown"), llamar("cityLabel", "Martinica", "Schœlcher")], ["פמברוק", "הולטאון", "שלשר"]);
 idioma = "es";
+eq("ciudades del Caribe sumadas: en español, como se escriben", [llamar("cityLabel", "Bermudas", "Pembroke"), llamar("cityLabel", "Barbados", "Holetown"), llamar("cityLabel", "Martinica", "Schœlcher")], ["Pembroke", "Holetown", "Schœlcher"]);
 eq("una escrita por alguien queda como la escribió", llamar("cityLabel", "Argentina", "Villa Gesell"), "Villa Gesell");
 
 /* ---------- Mayúsculas en el correo ---------- */

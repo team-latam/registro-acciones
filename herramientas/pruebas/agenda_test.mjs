@@ -414,7 +414,8 @@ const escribir = async (p, sel, valor) => { await p.fill(sel, valor); await p.wa
 /* ---------- 4c. Las ciudades del Mapeo con el nombre de la app (17/10/2026) ----------
 El Mapeo dice «Buenos Aires», «Santa Cruz» y «Antigua Guatemala»; la app las tiene como «Buenos Aires (CABA)», «Santa Cruz de la Sierra» y «Antigua»,
 y no tenía Paysandú, Vitória, Natal, Macapá ni Tandil. Las tres primeras se reconocen solas (solo en el país que tiene esa ciudad: la «Santa Cruz» argentina no
-es la de Bolivia) y las otras ya están en la lista de la app, con su punto en el mapa. Pembroke (Bermudas, 20/10/2026) se sumó después, por pedido. */
+es la de Bolivia) y las otras ya están en la lista de la app, con su punto en el mapa. Pembroke (Bermudas, 20/10/2026) se sumó después, por pedido. Y con la lista de sinagogas del Caribe: Holetown (Barbados) y Schœlcher (Martinica) se suman;
+«San Bartolomé», «Islas Turcas y Caicos» y «Schoelcher» se reconocen con el nombre de la app; y «St. George’s» con apóstrofo curvo es la «St. George's» de Granada. */
 {
   const { p, errores } = await entrar(ADMIN, "Benny");
   await p.click('[data-action="toggle-user-menu"]');
@@ -425,19 +426,26 @@ es la de Bolivia) y las otras ya están en la lista de la app, con su punto en e
     ["Argentina", "Buenos Aires", "Persona Uno"], ["Argentina", "Tandil", "Persona Nueve"], ["Argentina", "Santa Cruz", "Persona Dos"], ["Bolivia", "Santa Cruz", "Persona Tres"],
     ["Guatemala", "Antigua Guatemala", "Persona Cuatro"], ["Uruguay", "Paysandú", "Persona Cinco"], ["Brasil", "Vitória", "Persona Seis"],
     ["Brasil", "Natal", "Persona Siete"], ["Brasil", "Macapá", "Persona Ocho"], ["Bermudas", "Pembroke", "Persona Diez"],
+    // La lista de sinagogas del Caribe (20/10/2026): dos ciudades que faltaban, dos países con otro nombre y un apóstrofo curvo.
+    ["Barbados", "Holetown", "Persona Once"], ["Martinica", "Schoelcher", "Persona Doce"], ["San Bartolomé", "Gustavia", "Persona Trece"],
+    ["Islas Turcas y Caicos", "Providenciales", "Persona Catorce"], ["Granada", "St. George’s", "Persona Quince"],
   ].map(([pais, ciudad, nombre]) => ({ "Institución": "", "País": pais, "Ciudad": ciudad, "Nombre": nombre, "Cargo": "Contacto", "Teléfono": "" }));
   await p.setInputFiles("#agendaArchivo", { name: "Ciudades.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(filas)) });
   await p.waitForSelector(".ag-checks");
   const checks = await p.$$eval(".ag-checks li", l => l.map(e => e.textContent.replace(/\s+/g, " ").trim()));
   const renombradas = checks.find(x => /con el nombre que les da la app/.test(x)) || "";
   eq("ciudades: las tres que la app ya tiene con otro nombre se reconocen", [/«Buenos Aires» → Buenos Aires \(CABA\)/.test(renombradas), /«Santa Cruz» → Santa Cruz de la Sierra/.test(renombradas), /«Antigua Guatemala» → Antigua/.test(renombradas)], [true, true, true]);
+  eq("sinagogas del Caribe: «San Bartolomé», «Islas Turcas y Caicos», «Schoelcher» y «St. George’s» se reconocen con el nombre de la app",
+    [/«San Bartolomé» → San Bartolomé \(St\. Barth\)/.test(renombradas), /«Islas Turcas y Caicos» → Turcas y Caicos/.test(renombradas),
+     /«Schoelcher» → Schœlcher/.test(renombradas), /«St\. George’s» → St\. George's/.test(renombradas)], [true, true, true, true]);
   const nuevas = checks.find(x => /Lugares que la app no tiene/.test(x)) || "";
-  eq("ciudades: lo único que la app no tiene es la «Santa Cruz» argentina (Paysandú, Vitória, Natal, Macapá, Tandil y Pembroke ya están)", nuevas.replace(/^.*?viene\.\s*/, ""), "Santa Cruz (Argentina)");
+  eq("ciudades: lo único que la app no tiene es la «Santa Cruz» argentina (Paysandú, Vitória, Natal, Macapá, Tandil, Pembroke, Holetown y Schœlcher ya están)", nuevas.replace(/^.*?viene\.\s*/, ""), "Santa Cruz (Argentina)");
   await p.click('[data-action="agenda-import-traer"]');
   await p.waitForSelector(".ag-listo");
   const llamada = await p.evaluate(() => window.__sb.rpc.filter(r => r[0] === "agenda_traer").pop()[1]);
   eq("traer: cada contacto va a la ciudad con el nombre de la app", llamada.p_lugares.map(x => `${x.country}: ${x.city}`).sort(), [
-    "Argentina: Buenos Aires (CABA)", "Argentina: Santa Cruz", "Argentina: Tandil", "Bermudas: Pembroke", "Bolivia: Santa Cruz de la Sierra", "Brasil: Macapá", "Brasil: Natal", "Brasil: Vitória", "Guatemala: Antigua", "Uruguay: Paysandú"]);
+    "Argentina: Buenos Aires (CABA)", "Argentina: Santa Cruz", "Argentina: Tandil", "Barbados: Holetown", "Bermudas: Pembroke", "Bolivia: Santa Cruz de la Sierra", "Brasil: Macapá", "Brasil: Natal", "Brasil: Vitória",
+    "Granada: St. George's", "Guatemala: Antigua", "Martinica: Schœlcher", "San Bartolomé (St. Barth): Gustavia", "Turcas y Caicos: Providenciales", "Uruguay: Paysandú"]);
   eq("sin errores (ciudades)", errores, []);
   await p.close();
 }
