@@ -673,6 +673,28 @@ hubiera pasado nada en Caimán, y lo propio de un lugar chico quedaba
 tapado. Lo transversal sigue siendo parte de la historia de cada lugar —
 **no se borra, se pliega**.
 
+**Un grupo («Caribe») no es una zona** (20 oct 2026, a pedido del usuario:
+poder poner «Caribe» como alcance de un posteo). `GRUPOS` en `index.html`
+es la lista de grupos y de los países de cada uno (hoy uno solo, «Caribe»,
+con 28: las 25 islas y territorios, más Belice, Guyana y Surinam); sumar o
+sacar un país es tocar esa lista y nada más. Cada país **sigue en su zona**
+y además está en el grupo: el grupo no se edita en Administración › Zonas
+ni cambia el color ni la zona de nadie. El alcance se guarda como
+`{ type:"grupo", grupo:"caribe" }` (la base lo acepta tal cual: `scopes` es
+un jsonb que solo valida el largo de la lista) y se elige en el mismo
+buscador de lugar que un país o una región. Cómo toca a cada lugar
+(`nivelDeAlcance`): para cada país del grupo es `region` —«de la
+región», no algo que pasó ahí, para no sumarle 1 a cada uno de los 28— y
+la línea de abajo lo dice aparte: «+1 de Región Norte» y «+1 del Caribe»
+(`crossLine`, con el contador `grupo` de `computePlaceCounts`); el selector
+«Qué incluir» de un país del grupo dice «+ Región Norte · Caribe». Como
+**lugar en sí** (`{ kind:"grupo", grupo:"caribe" }`, desde el panel de
+filtros o la fila «🌴 Caribe» de Reportes), lo propio del Caribe es lo
+cargado para el grupo y lo de cada uno de sus países, como una zona con
+los suyos. Un posteo viejo con un grupo que ya no existe se muestra con
+su clave y no toca a ningún país. Lo que no mira un grupo: los correos
+(`supabase/avisos/`) leen solo país y ciudad, igual que con las regiones.
+
 Dónde se aplica:
 
 - **Vistas › Lista y Mapa**: el número grande (y el círculo) es `own`;

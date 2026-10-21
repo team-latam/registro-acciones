@@ -969,7 +969,18 @@ eligió **unirlas así**:
 Pruebas: `agenda_test.mjs` (país, región y ciudad; fallan con el código
 de antes) y `ficha_celular_test.mjs` vuelve a esperar cinco tarjetas.
 
-### 99. Pembroke y la lista de sinagogas del Caribe: ciudades y nombres que faltaban — HECHO (20 oct 2026, sin publicar todavía)
+### 100. «Caribe» como lugar: un grupo de países que no es una zona — HECHO (21 oct 2026, sin publicar todavía)
+
+Pedido del usuario (con una captura del campo «¿Cuál es el alcance?» de «¿Qué hiciste hoy?»): poder escribir **«Caribe»** como ubicación, «más allá de que no es zona». Antes de hacerlo se le propuso la lista (28 países) y se le preguntó para qué lo quería: **para cargar**, es decir, como alcance de un posteo, no solo para mirar.
+- **Qué es**: un grupo (`GRUPOS`), no una zona. Cada país **sigue en su zona** y además está en el grupo; no se edita en Administración › Zonas. Son **28**: las 25 islas y territorios que ya sugería la zona Caribe de Administración, más **Belice, Guyana y Surinam** (continentales, pero de cultura y de CARICOM caribeñas; recomendación aceptada). Quedan afuera la costa del continente (Colombia, Venezuela, Panamá, Costa Rica, Honduras, Nicaragua, México, Guatemala) y el resto de LatAm; las ciudades caribeñas de esos países (San Andrés, Cartagena, Isla Margarita, Roatán, Cancún…) quedaron para después. Para sumar o sacar un país se toca esa lista y nada más.
+- **El alcance**: `{ type:"grupo", grupo:"caribe" }`, que se elige en el mismo buscador que un país o una región («carib», «Caribbean»…) y se ve como chip «🌴 Caribe». **No hubo que tocar la base**: `scopes` es un jsonb que solo valida el largo; los correos y la sincronización de Calendar leen país y ciudad, y un grupo les pasa de largo como pasa una región.
+- **Cómo toca a cada lugar** (decisión mía, a confirmar con el usuario; la que ya usa el resto de la app): para cada país del Caribe es de nivel **región**, «de la región», no algo que pasó ahí. Es la misma razón por la que «Toda LatAm» no suma 1 a cada país: un posteo para el Caribe no se cuenta 28 veces como propio. En Países la línea de abajo lo dice aparte, «+1 de Región Norte» y «+1 del Caribe», y el selector «Qué incluir» dice «+ Región Norte · Caribe». Si prefiere que cuente como propio de cada uno, es cambiar una línea de `nivelDeAlcance` (y los números de todos los países del Caribe suben).
+- **Como lugar en sí**: el panel de filtros ofrece «🌴 Caribe», y Reportes suma una fila «🌴 Caribe» en «Por zona» que lleva a la misma lista. Lo propio del Caribe es lo cargado para el grupo y lo de cada uno de sus países (como una zona con los suyos), y la fila cuenta igual que la lista.
+- **Textos**: los tres buscadores de lugar nombran al Caribe entre sus ejemplos, en cuatro idiomas.
+- **Sin cambios** en el recorrido de bienvenida: no hay pantalla ni botón nuevo.
+- Pruebas: `grupos_test.mjs` (27: la lista, las reglas, el formulario en español e inglés y lo que guarda, Países, el filtro y Reportes con la fila que lleva a la misma lista; falla contra el código anterior).
+
+### 99. Pembroke y la lista de sinagogas del Caribe: ciudades y nombres que faltaban — HECHO (20 oct 2026)
 
 Pedido del usuario: «agregá al sistema Pembroke, Bermuda»; después pasó la lista de las sinagogas y casas Jabad de Caribe y Centroamérica (22 renglones, 13 países) para ver qué lugares faltaban. **Bermudas ya era un país de la app** (zona Norte, con «Bermuda» y «Hamilton»); lo que se suma son ciudades y nombres:
 - **Pembroke** (Bermudas), **Holetown** (Barbados) y **Schœlcher** (Martinica) en `CITY_PRESETS`, con su punto en el mapa, y su nombre en los cuatro idiomas en `DEFAULT_CITY_LABELS` (en el bloque de abajo de cada país: la tabla repite países —Bermudas, Barbados, Martinica y otros 12— y en un objeto la última clave pisa a la anterior; lo que se sume tiene que ir en la última). Los nombres en hebreo (פמברוק, הולטאון, שלשר) son transliteraciones: que alguien de habla hebrea los mire.

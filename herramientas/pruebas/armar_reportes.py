@@ -22,7 +22,8 @@ codigo = "\n".join(grab(n) for n in [
     "formaCanonicaDeTema","tirasDeTema","formaDeTema","conMayuscula","temasDeLosTextos","zDelCambio","diasEntre",
     "TENDENCIAS_DIAS","TENDENCIAS_MIN_POSTS","TENDENCIAS_MIN","TENDENCIAS_MAX","TENDENCIAS_PRIMERAS","TENDENCIAS_LATERAL",
     "fueraCalculado","fueraDeTemas","tokensDePosteo","textoDeUnPosteo","posteoHabla","temaElegido","temaConEseNombre","cambioDeTendencia","calcularTendencias","tendenciasCache","tendenciasDe",
-    "etiquetaDelCambio","claseDelCambio","flechaDelCambio","tituloDeTendencia","ariaDeTendencia","tendFiltro","fichaDeTendencia","cuerpoDeTendencias","renderTendencias"])
+    "etiquetaDelCambio","claseDelCambio","flechaDelCambio","tituloDeTendencia","ariaDeTendencia","tendFiltro","fichaDeTendencia","cuerpoDeTendencias","renderTendencias",
+    "hasOwn","GRUPOS","grupoExiste","grupoPaises","gruposDe","grupoLabel","grupoIconoDe"])
 
 pagina = """<!doctype html><html lang="es"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">

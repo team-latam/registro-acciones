@@ -30,7 +30,8 @@ const eq=(n,g,w)=>{ const a=JSON.stringify(g), x=JSON.stringify(w);
 const codigo = ["addDaysISO","isoDate","isoDow","addMonthsISO","RRULE_MAX_STEPS","RRULE_DOW","isISODate","parseRecurrence",
   "expandRecurrence","recurrenceSkipDates","recurrenceMoves","vecesEnVentana","fechasEnVentana",
   "aniosConDatos","ventanaDe","ventanaDelReporte","ventanaAnterior","normalize","pasaFiltroDelReporte","calcularReporte","armarReporte","actividadPorPais",
-  "ultimaActividadPorPais","haceCuanto","sugerenciasDelReporte"].map(grab).join("\n");
+  "ultimaActividadPorPais","haceCuanto","sugerenciasDelReporte",
+  "hasOwn","GRUPOS","grupoExiste","grupoPaises","gruposDe","grupoLabel","grupoIconoDe"].map(grab).join("\n");
 
 // Los 43 países de verdad no hacen falta: alcanza con unos pocos, y así
 // la prueba dice qué espera sin depender de la tabla entera.

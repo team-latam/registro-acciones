@@ -5256,6 +5256,27 @@ const PAISES_FUERA_DE_LATAM = ["Israel"];
 const ZONE_COUNTRIES = { sur:[], central:[], norte:[] };
 COUNTRIES.forEach(c=>ZONE_COUNTRIES[c.zone].push(c.name));
 
+// Agrupaciones de lugares que NO son zonas (pedido del usuario, 20/10/2026: poder
+// poner «Caribe» como alcance de un posteo). Un país sigue en su zona (casi todos,
+// en Norte) y además puede estar en un grupo: el grupo no cambia la zona de nadie
+// ni se edita en Administración › Zonas. Un posteo con alcance
+// { type:"grupo", grupo:"caribe" } toca a cada país del grupo como uno de región:
+// es «de la región», no algo que pasó ahí (nivelDeAlcance), para no sumarle 1 a
+// cada uno de los 28. Para sumar o sacar un país, esta es la única lista.
+const GRUPOS = {
+  caribe: { icon:"🌴", buscar:"caribe caribbean", paises:["Cuba","República Dominicana","Haití","Jamaica","Trinidad y Tobago","Bahamas","Barbados","Puerto Rico",
+    "Guadalupe","Martinica","Aruba","Curazao","Bonaire","Islas Caimán","Islas Vírgenes","Santa Lucía","Granada","San Vicente y las Granadinas",
+    "Antigua y Barbuda","Dominica","San Cristóbal y Nieves","San Martín / Sint Maarten","Bermudas","San Bartolomé (St. Barth)","Turcas y Caicos",
+    "Belice","Guyana","Surinam"] },
+};
+const grupoExiste = key => hasOwn(GRUPOS, key);
+function grupoPaises(key){ return grupoExiste(key) ? GRUPOS[key].paises : []; }
+function gruposDe(country){ return Object.keys(GRUPOS).filter(k => GRUPOS[k].paises.includes(country)); }
+// Un grupo que ya no existe (quedó en un posteo viejo) se muestra con su clave, como una zona borrada.
+function grupoLabel(key){ return key === "caribe" ? t("Caribe","Caribbean","Caribe","הקריביים") : String(key || ""); }
+function grupoIconoDe(key){ return grupoExiste(key) ? GRUPOS[key].icon : "🌎"; }
+function grupoDeLabel(key){ return key === "caribe" ? t("del Caribe","from the Caribbean","do Caribe","מהקריביים") : t("de {g}","from {g}","de {g}","מ{g}",{ g:String(key || "") }); }
+
 // Índice plano de "lugares" elegibles (Toda LatAm, cada región, cada país,
 // cada ciudad con presencia conocida) para el buscador de lugar en forma
 // de chip del composer de Rutina — reusa el mismo modelo de "scope" que ya
@@ -5264,6 +5285,9 @@ function buildPlaceIndex(){
   const items = [{ label:t("Toda LatAm","All of LatAm","Toda a LatAm","כל LatAm"), icon:"🌎", scope:{ type:"todo" } }];
   Object.values(ZONES).forEach(z=>{
     items.push({ label:t("Región: {z}","Region: {z}","Região: {z}","אזור: {z}",{z:z.label}), icon:"🌎", scope:{ type:"region", region:z.key } });
+  });
+  Object.keys(GRUPOS).forEach(k=>{
+    items.push({ label:grupoLabel(k), icon:GRUPOS[k].icon, scope:{ type:"grupo", grupo:k } });
   });
   COUNTRIES.forEach(c=>{
     items.push({ label:countryLabel(c.name), icon:"🏳️", scope:{ type:"pais", country:c.name } });
@@ -5281,7 +5305,8 @@ function buildPlaceIndex(){
   // tiene que encontrar פרו igual.
   items.forEach(it=>{
     const raw = it.scope.type==="pais" ? it.scope.country
-      : it.scope.type==="ciudad" ? `${it.scope.city}, ${it.scope.country}` : "";
+      : it.scope.type==="ciudad" ? `${it.scope.city}, ${it.scope.country}`
+      : it.scope.type==="grupo" ? GRUPOS[it.scope.grupo].buscar : "";
     it.norm = normalize(it.label) + (raw ? " " + normalize(raw) : "");
   });
   return items;
@@ -6383,6 +6408,8 @@ function scopeLevelFor(sc, place){
   // "Toda LatAm" como lugar en sí (desde el pie de Vistas): lo propio es
   // justamente lo transversal, y nada más lo toca.
   if(place.kind === "latam") return sc.type === "todo" ? "own" : null;
+  // Un grupo como lugar en sí («Caribe», desde el filtro o una fila de Reportes).
+  if(place.kind === "grupo") return nivelDeAlcance(sc, { grupo: place.grupo });
   // País y ciudad, con la misma regla que la ficha (nivelDeAlcance). El
   // filtro no tiene el nivel «pais» de la ficha de una ciudad: lo cargado
   // para todo el país no entra al filtrar por la ciudad.
@@ -6400,8 +6427,21 @@ function scopeLevelFor(sc, place){
 function nivelDeAlcance(sc, L){
   if(!sc) return null;
   if(sc.type === "todo") return "latam";
-  if(L.zona) return (sc.type === "region" ? sc.region === L.zona : zoneOfCountry(sc.country) === L.zona) ? "own" : null;
+  // Un grupo («Caribe») como lugar: lo suyo es lo cargado para el grupo y lo de cada uno de sus países
+  // (como una zona con sus países); lo de una región que lo contiene es de la región.
+  if(L.grupo){
+    const miembros = grupoPaises(L.grupo);
+    if(sc.type === "grupo") return sc.grupo === L.grupo ? "own" : null;
+    if(sc.type === "region") return miembros.some(c => (ZONE_COUNTRIES[sc.region] || []).includes(c)) ? "region" : null;
+    return sc.country && miembros.includes(sc.country) ? "own" : null;
+  }
+  if(L.zona){
+    if(sc.type === "grupo") return grupoPaises(sc.grupo).some(c => zoneOfCountry(c) === L.zona) ? "own" : null;
+    return (sc.type === "region" ? sc.region === L.zona : zoneOfCountry(sc.country) === L.zona) ? "own" : null;
+  }
   if(sc.type === "region") return (ZONE_COUNTRIES[sc.region] || []).includes(L.country) ? "region" : null;
+  // Lo cargado para un grupo es «de la región» para cada país que tiene: no pasó ahí.
+  if(sc.type === "grupo") return grupoPaises(sc.grupo).includes(L.country) ? "region" : null;
   if(sc.country !== L.country) return null;
   // (ciudad:true: un filtro de ciudad aunque el nombre venga vacío.)
   if(!L.city && !L.ciudad) return (sc.type === "pais" || sc.type === "ciudad") ? "own" : null;
@@ -6453,6 +6493,7 @@ function scopeLabel(scope){
   // Zona borrada por el admin con posteos que todavía apuntan a ella: se
   // muestra la key cruda en vez de tirar TypeError y congelar el render.
   if(scope.type==="region") return t("Región {z}","{z} region","Região {z}","אזור {z}",{z:ZONES[scope.region]?.label || scope.region});
+  if(scope.type==="grupo") return grupoLabel(scope.grupo);
   if(scope.type==="pais") return countryLabel(scope.country);
   if(scope.type==="ciudad") return `${cityLabel(scope.country, scope.city)}, ${countryLabel(scope.country)}`;
   return "";
@@ -6469,6 +6510,7 @@ function formaDeLugares(lista){
     if(!sc || typeof sc !== "object") return [];
     if(sc.type === "todo") return [{ ...sc }];
     if(sc.type === "region") return textoSano(sc.region) ? [{ ...sc, region: textoSano(sc.region) }] : [];
+    if(sc.type === "grupo") return textoSano(sc.grupo) ? [{ ...sc, grupo: textoSano(sc.grupo) }] : [];
     if(sc.type === "pais") return textoSano(sc.country) ? [{ ...sc, country: textoSano(sc.country) }] : [];
     if(sc.type === "ciudad"){
       const country = textoSano(sc.country), city = textoSano(sc.city);
@@ -6491,6 +6533,7 @@ function formaDeHitos(lista){
 }
 function scopeIcon(scope){
   if(scope.type==="todo") return "🌐";
+  if(scope.type==="grupo") return grupoExiste(scope.grupo) ? GRUPOS[scope.grupo].icon : "🌎";
   return scope.type==="region" ? "🌎" : scope.type==="pais" ? "🏳️" : "📍";
 }
 
@@ -14605,7 +14648,7 @@ function textoDeFicha(k, v){
 // Para saber qué cambió en el borrador (el punto al lado de cada filtro).
 function firmaDelFiltro(k, f, nivel){
   if(k === "actividad") return JSON.stringify([[...f.types].sort(), !!f.docs]);
-  if(k === "lugar") return JSON.stringify([f.place ? [f.place.kind, f.place.country || "", f.place.city || ""] : null, [...f.zones].sort(), f.place && f.place.kind !== "latam" ? nivel : 0]);
+  if(k === "lugar") return JSON.stringify([f.place ? [f.place.kind, f.place.country || "", f.place.city || "", f.place.grupo || ""] : null, [...f.zones].sort(), f.place && f.place.kind !== "latam" ? nivel : 0]);
   if(k === "fecha") return JSON.stringify([!!f.mes, f.periodo ? [String(f.periodo.anio), Number(f.periodo.tri) || 0, f.periodo.mes || "", Number(f.periodo.dias) || 0] : null]);
   if(k === "persona") return JSON.stringify([f.quien || null, f.author || null]);
   return "";
@@ -14761,12 +14804,15 @@ function fpOpcionesLugar(b){
       const cs = ciudades.filter(c => normalize(c.city).includes(q) || normalize(cityLabel(c.country, c.city)).includes(q))
         .sort((x, y) => y.n - x.n).slice(0, 6)
         .map(c => `<button type="button" class="fp-op" data-action="fp-lugar" data-country="${esc(c.country)}" data-city="${esc(c.city)}"><span dir="auto">📍 ${esc(cityLabel(c.country, c.city))}</span><small>${esc(countryLabel(c.country))}</small></button>`);
-      sugs = ps.concat(cs).join("") || `<p class="fp-nada">${t("No hay nada cargado con ese nombre.","Nothing is recorded with that name.","Não há nada registrado com esse nome.","אין שום דבר רשום בשם הזה.")}</p>`;
+      const gs = Object.keys(GRUPOS).filter(g => normalize(grupoLabel(g)).includes(q) || GRUPOS[g].buscar.includes(q))
+        .map(g => `<button type="button" class="fp-op" data-action="fp-lugar" data-kind="grupo" data-grupo="${esc(g)}">${GRUPOS[g].icon} ${esc(grupoLabel(g))}</button>`);
+      sugs = gs.concat(ps, cs).join("") || `<p class="fp-nada">${t("No hay nada cargado con ese nombre.","Nothing is recorded with that name.","Não há nada registrado com esse nome.","אין שום דבר רשום בשם הזה.")}</p>`;
       sugs = `<div class="fp-sugs">${sugs}</div>`;
     } else {
       const top = [...paises.entries()].sort((x, y) => y[1] - x[1]).slice(0, 8).map(([x]) =>
         `<button type="button" class="chip-toggle" data-action="fp-lugar" data-country="${esc(x)}">${esc(countryLabel(x))}</button>`).join("");
-      sugs = `<div class="fp-chips">${top}<button type="button" class="chip-toggle" data-action="fp-lugar" data-kind="latam">🌎 ${t("Lo de toda LatAm","All-LatAm items","O de toda a LatAm","מה ששייך לכל LatAm")}</button></div>`;
+      const chipsGrupos = Object.keys(GRUPOS).map(g => `<button type="button" class="chip-toggle" data-action="fp-lugar" data-kind="grupo" data-grupo="${esc(g)}">${GRUPOS[g].icon} ${esc(grupoLabel(g))}</button>`).join("");
+      sugs = `<div class="fp-chips">${top}${chipsGrupos}<button type="button" class="chip-toggle" data-action="fp-lugar" data-kind="latam">🌎 ${t("Lo de toda LatAm","All-LatAm items","O de toda a LatAm","מה ששייך לכל LatAm")}</button></div>`;
     }
     lugar = `<input type="search" id="fpLugarQ" class="fp-texto" placeholder="${esc(t("Escribí un país o una ciudad…","Type a country or a city…","Escreva um país ou uma cidade…","...הקלד/י מדינה או עיר"))}" aria-label="${esc(t("País o ciudad","Country or city","País ou cidade","מדינה או עיר"))}" value="${esc(b.lugarQ || "")}" autocomplete="off">${sugs}`;
   }
@@ -14777,7 +14823,7 @@ function fpOpcionesLugar(b){
     const btn = (n, label, count, extra = "") => `<button type="button" class="fp-nivel${b.nivel === n ? " on" : ""}" role="radio" aria-checked="${b.nivel === n}" data-action="fp-nivel" data-level="${n}">${extra}<span>${label}</span><b>${count}</b></button>`;
     niveles = `<div><h3>${t("Qué incluir","What to include","O que incluir","מה לכלול")}</h3><div class="fp-niveles" role="radiogroup" aria-label="${esc(t("Qué incluir","What to include","O que incluir","מה לכלול"))}">
       ${btn(0, esc(t("Solo acá","Only here","Só aqui","רק כאן")), c.own)}
-      ${btn(1, "+ " + esc(regionLabel(zk)), c.region, `<span class="dot" style="background:${safeColor(ZONES[zk]?.color)}"></span>`)}
+      ${btn(1, "+ " + esc(regionLabel(zk)) + gruposDe(f.place.country).map(g => " · " + esc(grupoLabel(g))).join(""), c.region, `<span class="dot" style="background:${safeColor(ZONES[zk]?.color)}"></span>`)}
       ${btn(2, "+ " + esc(t("Toda LatAm","All of LatAm","Toda a LatAm","כל LatAm")), c.latam)}
     </div></div>`;
   }
@@ -14926,6 +14972,7 @@ function placeLevelCounts(f = state.filters){
 }
 function placeFilterLabel(place){
   if(place.kind==="latam") return t("Toda LatAm","All of LatAm","Toda a LatAm","כל LatAm");
+  if(place.kind==="grupo") return grupoLabel(place.grupo);
   if(place.kind==="country") return countryLabel(place.country);
   if(place.kind==="city") return `${cityLabel(place.country, place.city)}, ${countryLabel(place.country)}`;
   return "";
@@ -15411,7 +15458,7 @@ function renderRutinaComposer(){
         </div>
       </div>
       <div class="place-picker">
-        <input type="text" id="rutinaPlaceQuery" data-place-scope="rutina" data-place-owner="new" placeholder="🌎 ${esc(t("¿Cuál es el alcance? (ciudad, país, región)...","What's the reach? (city, country, region)...","Qual é o alcance? (cidade, país, região)...","(עיר, מדינה, אזור) ?מה ההיקף..."))}" autocomplete="off" value="${esc(d.placeQuery)}">
+        <input type="text" id="rutinaPlaceQuery" data-place-scope="rutina" data-place-owner="new" placeholder="🌎 ${esc(t("¿Cuál es el alcance? (ciudad, país, región, Caribe)...","What's the reach? (city, country, region, Caribbean)...","Qual é o alcance? (cidade, país, região, Caribe)...","(עיר, מדינה, אזור, הקריביים) ?מה ההיקף..."))}" autocomplete="off" value="${esc(d.placeQuery)}">
         ${d.placeQuery ? renderPlaceSuggestions(d, "rutina", "new") : ""}
       </div>
       ${d.scopes.length ? `<div class="post-scopes" style="margin-top:8px;">${d.scopes.map((sc,i)=>renderScopeChip(sc, "rm-scope-rutina", i, "new")).join("")}</div>` : ""}
@@ -16725,7 +16772,7 @@ function renderReplyForm(postId){
         </div>
       </div>
       <div class="place-picker place-picker-inline" style="margin-bottom:8px;">
-        <input type="text" id="replyPlaceQuery-${postId}" data-place-scope="reply" data-place-owner="${esc(postId)}" placeholder="📍 ${esc(t("¿Afectó a otro lugar? (país, ciudad, región)...","Did it involve another place? (country, city, region)...","Envolveu outro lugar? (país, cidade, região)...","(מדינה, עיר, אזור) ?נגע למקום אחר..."))}" autocomplete="off" value="${esc(d.placeQuery||"")}">
+        <input type="text" id="replyPlaceQuery-${postId}" data-place-scope="reply" data-place-owner="${esc(postId)}" placeholder="📍 ${esc(t("¿Afectó a otro lugar? (país, ciudad, región, Caribe)...","Did it involve another place? (country, city, region, Caribbean)...","Envolveu outro lugar? (país, cidade, região, Caribe)...","(מדינה, עיר, אזור, הקריביים) ?נגע למקום אחר..."))}" autocomplete="off" value="${esc(d.placeQuery||"")}">
         ${d.placeQuery ? renderPlaceSuggestions(d, "reply", postId) : ""}
       </div>
       ${d.scopes.length ? `<div class="post-scopes" style="margin-top:-2px;margin-bottom:8px;">${d.scopes.map((sc,i)=>renderScopeChip(sc, "rm-scope-reply", i, postId)).join("")}</div>` : ""}
@@ -16777,7 +16824,9 @@ function computePlaceCounts(){
   // aplica. total sigue siendo la suma, por compatibilidad; general es
   // solo lo propio "de todo el país" (antes metía también lo regional y
   // lo de LatAm, y por eso Islas Caimán mostraba 3 sin nada propio).
-  COUNTRIES.forEach(c=>{ byCountry[c.name] = { total:0, own:0, general:0, region:0, latam:0, cities:Object.create(null) }; });
+  // grupo: de los de nivel región, cuántos vienen SOLO de un grupo («Caribe») y no de la
+  // región de su zona; sirve para decir «+3 del Caribe» y no «+3 de Región Norte».
+  COUNTRIES.forEach(c=>{ byCountry[c.name] = { total:0, own:0, general:0, region:0, latam:0, grupo:0, cities:Object.create(null) }; });
   // general y cities se cuentan por ALCANCE (como siempre: una respuesta
   // que suma una ciudad, suma esa ciudad).
   function ingest(scopes){
@@ -16803,7 +16852,10 @@ function computePlaceCounts(){
     replies.forEach(r=> all.push(...(r.scopes||[])));
     COUNTRIES.forEach(c=>{
       const l = recordLevelFor(all, { kind:"country", country:c.name });
-      if(l){ byCountry[c.name][l]++; byCountry[c.name].total++; }
+      if(l){
+        byCountry[c.name][l]++; byCountry[c.name].total++;
+        if(l === "region" && !all.some(sc => sc && sc.type === "region" && (ZONE_COUNTRIES[sc.region] || []).includes(c.name))) byCountry[c.name].grupo++;
+      }
     });
   });
   placeCountsCache = byCountry;
@@ -16981,6 +17033,7 @@ function armarReporte(desdeISO, hastaISO, filtro){
 function calcularReporte(desdeISO, hastaISO, filtro){
   const porMes = Object.create(null);
   const porZona = Object.create(null);
+  const porGrupo = Object.create(null);
   const porPais = Object.create(null);
   const porTipo = Object.create(null);
   const porPersona = Object.create(null);
@@ -17032,15 +17085,18 @@ function calcularReporte(desdeISO, hastaISO, filtro){
 
     // Los alcances: de dónde es esta actividad.
     const alcances = p.scopes || [];
-    const paises = new Set(), zonas = new Set();
+    const paises = new Set(), zonas = new Set(), grupos = new Set();
     let esLatam = false;
     alcances.forEach(sc=>{
       if(!sc) return;
       if(sc.type === "todo"){ esLatam = true; return; }
       if(sc.type === "region"){ if(sc.region) zonas.add(sc.region); return; }
+      if(sc.type === "grupo"){ if(sc.grupo) grupos.add(sc.grupo); return; }
       if(sc.country && COUNTRY_BY_NAME[sc.country]){
         paises.add(sc.country);
         zonas.add(COUNTRY_BY_NAME[sc.country].zone);
+        // Como una zona, un grupo cuenta lo cargado para cada uno de sus países.
+        gruposDe(sc.country).forEach(g => grupos.add(g));
         if(sc.type === "ciudad" && sc.city) ciudades.add(sc.country + "|" + normalize(sc.city));
       }
     });
@@ -17052,12 +17108,13 @@ function calcularReporte(desdeISO, hastaISO, filtro){
       paises.forEach(n => ps.add(n));
     });
     if(esLatam) latam += veces;
-    if(!paises.size && !zonas.size && !esLatam) sinLugar += veces;
+    if(!paises.size && !zonas.size && !grupos.size && !esLatam) sinLugar += veces;
     paises.forEach(n=>{ porPais[n] = (porPais[n] || 0) + veces; });
     zonas.forEach(z=>{ porZona[z] = (porZona[z] || 0) + veces; });
+    grupos.forEach(g=>{ porGrupo[g] = (porGrupo[g] || 0) + veces; });
   });
 
-  return { total, porMes, porZona, porPais, porTipo, porPersona,
+  return { total, porMes, porZona, porGrupo, porPais, porTipo, porPersona,
            participantes, latam, sinLugar, conParticipantes, ciudades, paisesDePersona,
            planificadas, porMesPlan };
 }
@@ -17401,6 +17458,7 @@ function renderReportePeriodo(f){
   const zonas = Object.values(ZONES).map(z=>({
     etiqueta: esc(z.label), n: r.porZona[z.key] || 0, color: safeColor(z.color), ir:{ kind:"zona", key:z.key },
   })).filter(x=>x.n).sort((a,b)=>b.n-a.n);
+  Object.keys(r.porGrupo || {}).forEach(g => zonas.push({ etiqueta: `${esc(grupoIconoDe(g))} ${esc(grupoLabel(g))}`, n: r.porGrupo[g], color:"var(--text-muted)", ir:{ kind:"grupo", key:g } }));
   if(r.latam) zonas.push({ etiqueta: esc(t("Toda LatAm","All LatAm","Toda a LatAm","כל אמריקה הלטינית")), n: r.latam, color:"var(--text-muted)", ir:{ kind:"latam", key:"" } });
 
   const paises = Object.entries(r.porPais)
@@ -17630,6 +17688,7 @@ function renderReporteComparar(f){
   const etiquetaTipo = k => { const ty = ACTIVITY_BY_KEY[k]; return `${esc(ty ? ty.icon : "✨")} ${esc(ty ? ty.label : k)}`; };
   const tipos = unir(rA.porTipo, rB.porTipo, etiquetaTipo);
   const zonas = unir(rA.porZona, rB.porZona, k => esc((ZONES[k] || {}).label || k));
+  unir(rA.porGrupo || {}, rB.porGrupo || {}, g => `${esc(grupoIconoDe(g))} ${esc(grupoLabel(g))}`).forEach(x => zonas.push({ etiqueta: x.etiqueta, a: x.a, b: x.b }));
   if(rA.latam || rB.latam) zonas.push({ etiqueta: esc(t("Toda LatAm","All LatAm","Toda a LatAm","כל אמריקה הלטינית")), a: rA.latam, b: rB.latam });
   const paises = unir(rA.porPais, rB.porPais, k => esc(countryLabel(k)));
   reporteEnPantalla = { desde: vB.desde, hasta: vB.hasta, total: rB.total, totalAnterior: rA.total,
@@ -18356,7 +18415,10 @@ function byCountryExists(name){ return !!COUNTRY_BY_NAME[name]; }
 function crossLine(countryName, d, withLatam = true){
   const parts = [];
   const zk = zoneOfCountry(countryName);
-  if(d.region) parts.push(`<span class="cross-zone" style="color:${safeColor(ZONES[zk]?.color)}">+${d.region} ${t("de {z}","from {z}","de {z}","מ{z}",{ z: esc(regionLabel(zk)) })}</span>`);
+  // Lo de nivel región se reparte en lo de la zona («de Región Norte») y lo de un grupo («del Caribe»).
+  const delGrupo = Math.min(d.grupo || 0, d.region || 0), delaZona = (d.region || 0) - delGrupo;
+  if(delaZona) parts.push(`<span class="cross-zone" style="color:${safeColor(ZONES[zk]?.color)}">+${delaZona} ${t("de {z}","from {z}","de {z}","מ{z}",{ z: esc(regionLabel(zk)) })}</span>`);
+  if(delGrupo){ const g = gruposDe(countryName)[0]; parts.push(`<span class="cross-zone" style="color:var(--text-muted)">+${delGrupo} ${esc(grupoDeLabel(g))}</span>`); }
   if(withLatam && d.latam) parts.push(`<span class="cross-latam">+${d.latam} ${t("de toda LatAm","from all of LatAm","de toda a LatAm","מכל LatAm")}</span>`);
   return parts.length ? `<div class="cross-line">${parts.join("")}</div>` : "";
 }
@@ -18527,7 +18589,7 @@ function initOrUpdateMap(){
   const visibleCountries = visiblePaisesCountries();
   // Firma barata de lo que se dibuja (países visibles, conteos, ciudades
   // del popup e idioma): si no cambió, no se toca nada.
-  const sig = currentLang() + "|" + visibleCountries.map(c => c.name + ":" + counts[c.name].own + "/" + counts[c.name].region + "/" + counts[c.name].latam + ":" + Object.entries(counts[c.name].cities).map(([k,v])=>k+"="+v).join(",")).join(";");
+  const sig = currentLang() + "|" + visibleCountries.map(c => c.name + ":" + counts[c.name].own + "/" + counts[c.name].region + "/" + counts[c.name].latam + "/" + counts[c.name].grupo + ":" + Object.entries(counts[c.name].cities).map(([k,v])=>k+"="+v).join(",")).join(";");
   if(sig === mapMarkersSig) return;
   mapMarkersSig = sig;
   mapClusterGroup.clearLayers();
@@ -21212,7 +21274,7 @@ function renderComposer(){
       <span class="field-icon">🌎</span>
       <div class="field-icon-body">
         <div class="place-picker place-picker-inline">
-          <input type="text" id="cPlaceQuery" data-place-scope="post" data-place-owner="new" placeholder="${esc(t("Dónde: ciudad, país o región…","Where: city, country or region…","Onde: cidade, país ou região…","איפה: עיר, מדינה או אזור…"))}" autocomplete="off" value="${esc(d.placeQuery)}">
+          <input type="text" id="cPlaceQuery" data-place-scope="post" data-place-owner="new" placeholder="${esc(t("Dónde: ciudad, país, región o Caribe…","Where: city, country, region or Caribbean…","Onde: cidade, país, região ou Caribe…","איפה: עיר, מדינה, אזור או הקריביים…"))}" autocomplete="off" value="${esc(d.placeQuery)}">
           ${d.placeQuery ? renderPlaceSuggestions(d, "post", "new") : ""}
         </div>
         ${d.scopes.length ? `<div class="post-scopes" style="margin-top:8px;">${d.scopes.map((sc,i)=>renderScopeChip(sc, "rm-scope-post", i, "new")).join("")}</div>` : ""}
@@ -23362,6 +23424,7 @@ function lugaresDePosteo(p){
     if(!sc) return;
     if(sc.type === "todo"){ zonas.add(t("Toda LatAm","All LatAm","Toda a LatAm","כל אמריקה הלטינית")); return; }
     if(sc.type === "region"){ if(sc.region && ZONES[sc.region]) zonas.add(ZONES[sc.region].label); return; }
+    if(sc.type === "grupo"){ if(sc.grupo) zonas.add(grupoLabel(sc.grupo)); return; }
     if(sc.country){
       paises.add(countryLabel(sc.country));
       const z = zoneOfCountry(sc.country); if(z && ZONES[z]) zonas.add(ZONES[z].label);
@@ -25404,8 +25467,8 @@ document.addEventListener("click", async e=>{
   },
     "fp-lugar": async (el, e, action, postId) => {
     if(!fp.b) return;
-    const { kind, country, city } = el.dataset;
-    fp.b.f.place = kind === "latam" ? { kind:"latam" } : city ? { kind:"city", country, city } : { kind:"country", country };
+    const { kind, country, city, grupo } = el.dataset;
+    fp.b.f.place = kind === "latam" ? { kind:"latam" } : kind === "grupo" && grupoExiste(grupo) ? { kind:"grupo", grupo } : city ? { kind:"city", country, city } : { kind:"country", country };
     fp.b.lugarQ = "";
     render();
   },
@@ -26060,6 +26123,7 @@ document.addEventListener("click", async e=>{
     feedSolapa = "pasado"; feedVisibleCount = PAGE_SIZE;
     if(kind === "pais") state.filters.place = { kind:"country", country:key };
     else if(kind === "latam") state.filters.place = { kind:"latam" };
+    else if(kind === "grupo" && grupoExiste(key)) state.filters.place = { kind:"grupo", grupo:key };
     else if(kind === "zona") state.filters.zones = new Set([key]);
     else if(kind === "tipo") state.filters.types = new Set([key]);
     else if(kind === "mes" && /^\d{4}-(0[1-9]|1[0-2])$/.test(key)){
