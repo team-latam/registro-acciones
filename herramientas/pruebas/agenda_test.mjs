@@ -312,7 +312,7 @@ const escribir = async (p, sel, valor) => { await p.fill(sel, valor); await p.wa
     { institution: "Beit Chabad Rosario", city_display: "Rosario", country_display: "Argentina", rab: "Shlomo Ejemplar", phone: "54 9 341 555 1234", type: "Centro Comunitario", status: "activo" },
     { institution: "Chabad Santo Domingo", city_display: "Santo Domingo", country_display: "Rep. Dominicana", rab: "Rabbi Shimon Pelman", phone: "1 809 555 0101‬", type: "Centro Juvenil", status: "en_temporada" },
     { institution: "Chabad Punta Cana", city_display: "Punta Cana", country_display: "Rep. Dominicana", rab: "Shimon Pelman", phone: "1 809 555 0101", type: "Centro de Jóvenes", status: "activo" },
-    { institution: "Beit Chabad Funes", city_display: "Funes", country_display: "Argentina", rab: "Rab Shlomo Ejemplar", phone: "54 9 341 555 9999", type: "Sinagoga", status: "inactivo" },
+    { institution: "Beit Chabad Funes", city_display: "Funes", country_display: "Argentina", rab: "Rab Shlomo Ejemplar", phone: "54 9 341 555 9999", type: "Sinagoga", status: "Inactive" },
   ];
   const html = `<!doctype html><title>Directorio de prueba</title><script>const SEED_DATA = ${JSON.stringify(filas)};\nrender();</script>`;
   await p.setInputFiles("#agendaArchivo", { name: "directorio.html", mimeType: "text/html", buffer: Buffer.from(html) });

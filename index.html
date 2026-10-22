@@ -22598,7 +22598,7 @@ function ciudadDeLaApp(pais, texto){
   if(c) return { ciudad:c, conocida:true, cambio: c !== t2 };
   return { ciudad:t2, conocida:false };
 }
-const ESTADOS_ALIAS = { activo:"activa", activa:"activa", active:"activa", en_temporada:"temporada", temporada:"temporada", seasonal:"temporada", "de temporada":"temporada", inactivo:"cerrada", inactiva:"cerrada", cerrado:"cerrada", cerrada:"cerrada", closed:"cerrada" };
+const ESTADOS_ALIAS = { activo:"activa", activa:"activa", active:"activa", en_temporada:"temporada", temporada:"temporada", seasonal:"temporada", "de temporada":"temporada", inactivo:"cerrada", inactive:"cerrada", inactiva:"cerrada", cerrado:"cerrada", cerrada:"cerrada", closed:"cerrada" };
 // De una fila (del Directorio o de una planilla) a { institución, persona }.
 function campoDe(fila, nombres){
   const claves = Object.keys(fila);
