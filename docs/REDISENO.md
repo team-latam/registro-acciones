@@ -2467,3 +2467,14 @@ código de antes).
 - ~~¿Un integrante común puede editar o cancelar eventos de otros?~~
   Decidido el 3 oct 2026: editar sí, cancelar solo autor / participantes /
   editores / admins, borrar solo el admin fijo (tanda 17).
+
+### Tanda 101 — Sacar una lista de la Agenda (22/10/2026)
+
+El usuario no podía quitar una lista traída. Ahora cada lista de
+Administración › Agenda tiene una ✕ junto a «Ver Agenda» (`agenda-lista-sacar`).
+Antes de borrar se hace una pasada en seco (`agenda_sacar_lista(lista, false)`)
+y la app muestra cuántas instituciones, contactos y personas se van y cuántas
+se conservan, con aviso de que no se deshace y de bajar una copia. Elegido:
+se conserva a quien está en un evento, tiene nota, correo o idiomas, o figura
+en otro lugar; a quien no vino de esa lista no se lo toca. Pruebas:
+`supabase/pruebas/79-agenda.sql` y bloque 4b de `agenda_test.mjs`.

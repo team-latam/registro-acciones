@@ -3115,6 +3115,8 @@
   .ag-pie-acc{ display:flex; gap:8px; margin-inline-start:auto; flex-wrap:wrap; }
   .ag-pie-acc button{ padding:9px 16px; }
   .btn-secondary.peligro{ color:var(--danger-text); }
+  .ag-lista-acc{ display:flex; gap:8px; align-items:center; justify-content:flex-end; }   /* «Ver Agenda» y la ✕ en el renglón de cada lista */
+  .ag-lista-acc .ag-x{ min-width:44px; padding-left:0; padding-right:0; font-size:16px; line-height:1; }
   /* Los formularios */
   .ag-form{ gap:12px; }   /* con 14, «Sumar a alguien» quedaba 8 px más alto que la ventana y aparecía la barra */
   .ag-campo, .ag-celda{ display:flex; flex-direction:column; gap:5px; min-width:0; }
@@ -9554,6 +9556,14 @@ function crearSupabaseStore(sb, opciones = {}){
         const { data, error } = await sb.rpc("agenda_traer", { p_nombre: nombre, p_instituciones: instituciones, p_lugares: lugares });
         if(error) throw error;
         await Promise.all(["agenda_listas", "instituciones", "contactos", "personas"].map(recargarTabla));
+        return data;
+      },
+      // Sacar una lista (agenda_sacar_lista, 26-agenda-sacar-lista.sql): sin `ejecutar`
+      // solo cuenta qué pasaría, para el aviso; con `ejecutar` lo hace.
+      async sacarLista(id, ejecutar = false){
+        const { data, error } = await sb.rpc("agenda_sacar_lista", { p_lista: id, p_ejecutar: ejecutar });
+        if(error) throw error;
+        if(ejecutar) await Promise.all(["agenda_listas", "instituciones", "contactos", "personas"].map(recargarTabla));
         return data;
       },
     },
@@ -22742,7 +22752,8 @@ function renderAgendaAdminSection(){
     const quien = memberByEmail(l.createdBy);
     return `<div class="setting-row"><span class="setting-icon">📇</span><div class="setting-text"><div class="setting-label" dir="auto">${esc(l.name)}</div>
       <div class="setting-sub">${esc(queTrae(n, nLugares))} · ${esc(t("traída el {f}","imported on {f}","trazida em {f}","יובא ב-{f}",{ f: fmtISO(String(l.createdAt || todayISO()).slice(0, 10), { day:"numeric", month:"short", year:"numeric" }) }))}${quien ? " · " + esc(quien.name || quien.email) : ""}</div></div>
-      <button type="button" class="btn-secondary" data-action="agenda-abrir" data-lista="${esc(l.id)}">${t("Ver Agenda","See Directory","Ver Agenda","לספר הטלפונים")}</button></div>`;
+      <span class="ag-lista-acc"><button type="button" class="btn-secondary" data-action="agenda-abrir" data-lista="${esc(l.id)}">${t("Ver Agenda","See Directory","Ver Agenda","לספר הטלפונים")}</button>
+        <button type="button" class="btn-secondary peligro ag-x" data-action="agenda-lista-sacar" data-lista="${esc(l.id)}" title="${esc(t("Sacar esta lista…","Remove this list…","Tirar esta lista…","הסרת הרשימה…"))}" aria-label="${esc(t("Sacar la lista «{n}»","Remove the list “{n}”","Tirar a lista «{n}»","הסרת הרשימה «{n}»",{ n: l.name }))}">✕</button></span></div>`;
   }).join("");
   const elegir = `<div class="setting-row ag-traer">
       <span class="setting-icon">⬆️</span>
@@ -22834,6 +22845,27 @@ Object.assign(AGENDA_ACCIONES, {
   "agenda-import-unir": (el) => { if(agendaImport) agendaImport.unir = el.dataset.k === "1"; render(); },
   "agenda-import-cancelar": () => { agendaImport = null; render(); },
   "agenda-import-traer": () => agendaTraerLista(),
+  // Sacar una lista traída: primero cuenta qué pasaría (sin tocar nada) y recién ahí pide confirmar.
+  "agenda-lista-sacar": async (el) => {
+    const l = state.agendaListas.find(x => x.id === el.dataset.lista); if(!l) return;
+    let r;
+    try{ r = await store.agenda.sacarLista(l.id, false); }
+    catch(err){ console.error("No se pudo mirar la lista:", err); appAlert(t("No se pudo mirar la lista: {m}","Couldn't check the list: {m}","Não foi possível ver a lista: {m}","לא ניתן לבדוק את הרשימה: {m}",{ m: err.message || err })); return; }
+    const personas = n => n === 1 ? t("1 persona","1 person","1 pessoa","אדם אחד") : t("{n} personas","{n} people","{n} pessoas","{n} אנשים",{ n });
+    const partes = [t("¿Sacar la lista «{n}» de la Agenda?","Remove the list “{n}” from the Directory?","Tirar a lista «{n}» da Agenda?","להסיר את הרשימה «{n}» מספר הטלפונים?",{ n: l.name }),
+      t("Se sacan {q} y {c}.","This removes {q} and {c}.","Saem {q} e {c}.","יוסרו {q} ו-{c}.",{ q: queTrae(r.instituciones, r.lugares), c: cuantosContactos(r.contactos) })];
+    if(r.personas_conservar) partes.push(t("Se conservan {p}: tienen notas, correo o idiomas, participaron de un evento o figuran en otro lugar.","{p} stay: they have notes, an email or languages, took part in an event, or are listed somewhere else.","{p} ficam: têm notas, e-mail ou idiomas, participaram de um evento ou constam em outro lugar.","{p} נשארים: יש להם הערות, דוא״ל או שפות, השתתפו באירוע או מופיעים במקום אחר.",{ p: personas(r.personas_conservar) }));
+    if(r.personas_borrar) partes.push(t("Se borran {p} que quedaron sin nada.","{p} left with nothing are deleted.","Apagam-se {p} que ficaram sem nada.","יימחקו {p} שנשארו בלי כלום.",{ p: personas(r.personas_borrar) }));
+    partes.push(t("No se puede deshacer. Antes bajá la copia de seguridad (Administración › Copia de seguridad).","This can't be undone. Download the backup first (Administration › Backup).","Não dá para desfazer. Antes baixe a cópia de segurança (Administração › Cópia de segurança).","אי אפשר לבטל. קודם מורידים את הגיבוי (ניהול › גיבוי)."));
+    const ok = await appConfirm(partes.join("\n\n"), { okLabel: t("Sacar la lista","Remove the list","Tirar a lista","הסרת הרשימה"), danger: true });
+    if(!ok) return;
+    try{
+      await store.agenda.sacarLista(l.id, true);
+      if(agendaFiltro.lista === l.id) agendaFiltro.lista = "";
+      render();
+      showCalendarNotice({ ok:true, message: t("Listo: se sacó «{n}».","Done: “{n}” was removed.","Pronto: «{n}» foi retirada.","בוצע: «{n}» הוסרה.",{ n: l.name }) });
+    }catch(err){ console.error("No se pudo sacar la lista:", err); appAlert(t("No se pudo sacar la lista: {m}","Couldn't remove the list: {m}","Não foi possível tirar a lista: {m}","לא ניתן להסיר את הרשימה: {m}",{ m: err.message || err })); }
+  },
 });
 
 /* ---- «¿Esto cumple algo pendiente?» (6/10/2026) ----

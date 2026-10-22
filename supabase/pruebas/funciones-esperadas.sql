@@ -56,6 +56,7 @@ insert into esperadas values
   ('resumen_de_posteo(jsonb)',              true, true),   -- lee app_config con los permisos de quien llama
   -- Solo con sesión (anon no las ejecuta): las de administración cortan
   -- adentro si no sos admin; las de avisos, si no es tu pedido.
+  ('agenda_sacar_lista(text, boolean)',    false, true),  -- admin (26-agenda-sacar-lista.sql)
   ('agenda_traer(text, jsonb, jsonb)',      false, true),  -- admin (instituciones y lugares, 24-agenda-lugares-al-traer.sql)
   ('aviso_al_admin_enviado()',              false, true),  -- solo sobre SU pedido de acceso
   ('anotar_error(text, text, text, jsonb)', false, true),  -- solo anota con el correo de quien llama; tope por hora

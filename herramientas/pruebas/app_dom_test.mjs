@@ -293,6 +293,35 @@ export function createClient(url, clave){
         }
         return { data: { lista: lid, instituciones: ni, lugares: nl, contactos: nc, personas_nuevas: creadas.size, personas_que_ya_estaban: yaEstaban.size }, error: null };
       }
+      // Sacar una lista de la Agenda (agenda_sacar_lista, 26-agenda-sacar-lista.sql): solo un admin.
+      // Sin p_ejecutar cuenta qué pasaría; con él lo hace. De la gente de la lista se
+      // conserva a quien figura en un evento, tiene nota, correo o idiomas, o está en otro lugar.
+      if(nombre === "agenda_sacar_lista"){
+        const yo = (estado.tablas.members || []).find(m => m.email === quien());
+        if(!yo || yo.role !== "admin") return { data: null, error: { code: "42501", message: "Sacar una lista lo hace un admin" } };
+        const T = n => (estado.tablas[n] = estado.tablas[n] || []);
+        const lista = T("agenda_listas").find(l => l.id === args.p_lista);
+        if(!lista) return { data: null, error: { code: "23514", message: "Esa lista no existe" } };
+        const inst = T("instituciones").filter(i => i.lista === lista.id).map(i => i.id);
+        const sale = c => c.institucion ? inst.includes(c.institucion) : c.lista === lista.id;
+        const fuera = T("contactos").filter(sale);
+        const enEvento = id => T("posts").some(x => (x.participants || []).some(e => e.persona === id));
+        const cand = T("personas").filter(x => x.lista === lista.id).map(x => ({ id: x.id, ev: enEvento(x.id),
+          dato: !!(String(x.note || "").trim() || x.email || (x.idiomas || []).length), otro: T("contactos").some(c => c.persona === x.id && !sale(c)) }));
+        const borrar = cand.filter(x => !x.ev && !x.dato && !x.otro).map(x => x.id);
+        const r = { lista: lista.id, nombre: lista.name, instituciones: inst.length, contactos: fuera.length,
+          lugares: new Set(fuera.filter(c => !c.institucion).map(c => [c.nivel, c.country || "", String(c.city || "").toLowerCase(), c.zona || ""].join("|"))).size,
+          personas_borrar: borrar.length, personas_conservar: cand.length - borrar.length, por_evento: cand.filter(x => x.ev).length,
+          por_dato: cand.filter(x => x.dato && !x.ev).length, por_otro_lugar: cand.filter(x => x.otro && !x.ev && !x.dato).length,
+          de_otra_procedencia: new Set(fuera.filter(c => !cand.some(x => x.id === c.persona)).map(c => c.persona)).size, hecho: !!args.p_ejecutar };
+        if(args.p_ejecutar){
+          estado.tablas.contactos = T("contactos").filter(c => !sale(c));
+          estado.tablas.instituciones = T("instituciones").filter(i => i.lista !== lista.id);
+          estado.tablas.personas = T("personas").filter(x => !borrar.includes(x.id));
+          estado.tablas.agenda_listas = T("agenda_listas").filter(l => l.id !== lista.id);
+        }
+        return { data: r, error: null };
+      }
       return { data: null, error: { code: "PGRST202", message: "no existe la función " + nombre } };
     },
     storage: { from(){ return {

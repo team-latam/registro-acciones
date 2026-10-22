@@ -299,6 +299,48 @@ const escribir = async (p, sel, valor) => { await p.fill(sel, valor); await p.wa
   await p.close();
 }
 
+/* ---------- 4b. Administración › Agenda: sacar una lista (26-agenda-sacar-lista.sql) ---------- */
+{
+  // Una persona sin nada que vino de la lista (se borra), y otra sumada a mano a Rosario (se queda).
+  const { p, errores } = await entrar(ADMIN, "Benny", { retocar: d => {
+    d.personas.push({ id: "per_vacia", name: "Persona Vacía", email: null, note: null, telefonos: [], idiomas: [], lista: "l1", created_by: ADMIN, created_at: hace(5) });
+    d.contactos.push({ id: "c_vacia", institucion: "i_ros", persona: "per_vacia", cargo: "Director", orden: 1, created_at: hace(5) });
+    return d; } });
+  await p.click('[data-action="toggle-user-menu"]');
+  await p.click('.user-menu [data-action="goto-view"][data-view="admin"]');
+  await p.click('.admin-menu [data-action="admin-go"][data-view="preferencias"][data-key="agenda"]');
+  await p.waitForSelector("#agendaArchivo", { state: "attached" });
+  eq("sacar lista: una ✕ en el renglón de la lista, junto a «Ver Agenda», con su nombre para el lector de pantalla",
+    await p.$$eval('.ag-admin .setting-row:has([data-action="agenda-abrir"]) .ag-lista-acc > button', l => l.map(e => [e.textContent.trim(), e.getAttribute("data-action"), e.getAttribute("aria-label")])),
+    [["Ver Agenda", "agenda-abrir", null], ["✕", "agenda-lista-sacar", "Sacar la lista «Directorio Chabad LatAm»"]]);
+  // Primero cuenta qué pasaría, sin tocar nada, y pide confirmar.
+  await p.click('[data-action="agenda-lista-sacar"]');
+  await p.waitForSelector("#confirmOverlay:not([hidden])");
+  const aviso = await p.$eval("#confirmMessage", e => e.textContent);
+  eq("sacar lista: el aviso dice qué se saca y qué se conserva", [/«Directorio Chabad LatAm»/.test(aviso), /Se sacan 3 instituciones y 4 contactos\./.test(aviso), /Se conservan 2 personas: tienen notas, correo o idiomas, participaron de un evento o figuran en otro lugar\./.test(aviso),
+    /Se borra[n]? 1 persona que quedaron sin nada|Se borran 1 persona/.test(aviso), /No se puede deshacer\. Antes bajá la copia de seguridad/.test(aviso)], [true, true, true, true, true]);
+  eq("sacar lista: mirar no toca nada", await p.evaluate(() => [window.__sb.rpc.filter(r => r[0] === "agenda_sacar_lista").map(r => r[1].p_ejecutar), window.__sb.tablas.instituciones.length]), [[false], 3]);
+  await p.click("#confirmCancel");
+  eq("sacar lista: cancelar la deja como está", [await cuantos(p, '[data-action="agenda-lista-sacar"]'), await p.evaluate(() => window.__sb.rpc.filter(r => r[0] === "agenda_sacar_lista" && r[1].p_ejecutar).length)], [1, 0]);
+  await p.click('[data-action="agenda-lista-sacar"]');
+  await p.waitForSelector("#confirmOverlay:not([hidden])");
+  await p.click("#confirmOk");
+  await hasta(p, () => !document.querySelector('[data-action="agenda-lista-sacar"]'));
+  eq("sacar lista: se va el renglón, y con ella las instituciones; Rosario no (no era de la lista)",
+    await p.evaluate(() => [window.__sb.tablas.agenda_listas.length, window.__sb.tablas.instituciones.length, window.__sb.tablas.contactos.length]), [0, 0, 0]);
+  eq("sacar lista: se borra a quien quedó sin nada y se conserva al resto",
+    await p.evaluate(() => window.__sb.tablas.personas.map(x => x.name).sort()), ["Guypo", "Shlomo Ejemplar", "Tzvi Ficticio"]);
+  eq("sacar lista: sin errores", errores, []);
+  await p.close();
+}
+{
+  // Quien no es admin no ve la ✕ (ni siquiera entra a esta pantalla): la base además lo controla.
+  const { p, errores } = await entrar("ana@x.com", "Ana");
+  eq("sacar lista: sin sesión de admin, la ✕ no está", await cuantos(p, '[data-action="agenda-lista-sacar"]'), 0);
+  eq("sacar lista: sin errores (integrante)", errores, []);
+  await p.close();
+}
+
 /* ---------- 4. Administración › Agenda: traer una lista ---------- */
 {
   const { p, errores } = await entrar(ADMIN, "Benny");

@@ -293,6 +293,54 @@ insert into lab.resultados(nombre, esperado, obtenido, detalle)
 select 'notas: una nota de más de 300 letras se corta en 300 (y la ficha la acepta)', true,
   (select length(note) from public.personas where name = 'Persona Larga') = 300, (select length(note)::text from public.personas where name = 'Persona Larga');
 
+
+-- ---------- Sacar una lista (26-agenda-sacar-lista.sql) ----------
+-- Una lista con dos instituciones y un lugar. Entre su gente: alguien sin nada
+-- (se borra), con una nota (se queda), en un evento (se queda) y en otra
+-- institución que no es de la lista (se queda). Y alguien sumado a mano a una
+-- de esas instituciones, que no vino de la lista: deja de figurar y no se toca.
+create temp table para_sacar as select public.agenda_traer('Para sacar', $j$[
+  {"name":"Inst S1","country":"Chile","city":"Santiago","gente":[{"name":"Sin Nada Uno"},{"name":"Con Nota Uno","nota":"Habla hebreo"},{"name":"En Evento Uno"},{"name":"En Otra Uno"}]},
+  {"name":"Inst S2","country":"Chile","gente":[{"name":"Sin Nada Uno"}]}
+]$j$::jsonb, $j$[{"nivel":"ciudad","country":"Chile","city":"Santiago","gente":[{"name":"Lugar Uno"}]}]$j$::jsonb) as r
+from (select set_config('request.jwt.claims', lab.como('benny@team-latam.com')::text, true)) _;
+insert into public.personas(id, name, created_by) values ('mano', 'Mano Uno', 'benny@team-latam.com');
+insert into public.contactos(id, institucion, persona, cargo) select 'c_mano', i.id, 'mano', 'Director' from public.instituciones i where i.name = 'Inst S1';
+insert into public.contactos(id, institucion, persona, cargo) select 'c_otra', 'ros', p.id, 'Otro' from public.personas p where p.name = 'En Otra Uno';
+insert into public.posts(id, title, content, date, start_date, end_date, activity_type, author_name, author_email, participants)
+  select 'p_evento_s', 'Visita', '', current_date, current_date, current_date, 'visita', 'Benny', 'benny@team-latam.com',
+         jsonb_build_array(jsonb_build_object('persona', p.id, 'name', p.name)) from public.personas p where p.name = 'En Evento Uno';
+select lab.probar('sacar una lista lo hace un admin, no una integrante', lab.como('ana@x.com'),
+  format($q$select public.agenda_sacar_lista(%L)$q$, (select (r ->> 'lista') from para_sacar)), false);
+select lab.probar('ni mirando qué pasaría', lab.como('ana@x.com'),
+  format($q$select public.agenda_sacar_lista(%L, false)$q$, (select (r ->> 'lista') from para_sacar)), false);
+select lab.probar('una lista que no existe, no', lab.como('benny@team-latam.com'), $q$select public.agenda_sacar_lista('no_existe')$q$, false);
+create temp table mirar as select public.agenda_sacar_lista((select r ->> 'lista' from para_sacar)) as r
+from (select set_config('request.jwt.claims', lab.como('benny@team-latam.com')::text, true)) _;
+insert into lab.resultados(nombre, esperado, obtenido, detalle)
+select 'sacar: mirar cuenta lo que pasaría (2 instituciones, 7 contactos, 1 lugar; se borran 2 personas, se conservan 3: evento, nota y otro lugar; 1 de otra procedencia)', true,
+  (r ->> 'instituciones') || '|' || (r ->> 'contactos') || '|' || (r ->> 'lugares') || '|' || (r ->> 'personas_borrar') || '|' || (r ->> 'personas_conservar') || '|' ||
+  (r ->> 'por_evento') || '|' || (r ->> 'por_dato') || '|' || (r ->> 'por_otro_lugar') || '|' || (r ->> 'de_otra_procedencia') = '2|7|1|2|3|1|1|1|1' and (r ->> 'hecho') = 'false',
+  r::text from mirar;
+insert into lab.resultados(nombre, esperado, obtenido, detalle)
+select 'sacar: mirar no toca nada', true,
+  (select count(*) from public.instituciones where name in ('Inst S1', 'Inst S2')) = 2 and (select count(*) from public.agenda_listas where name = 'Para sacar') = 1
+  and (select count(*) from public.personas where name = 'Sin Nada Uno') = 1, '-';
+create temp table sacada as select public.agenda_sacar_lista((select r ->> 'lista' from para_sacar), true) as r
+from (select set_config('request.jwt.claims', lab.como('benny@team-latam.com')::text, true)) _;
+insert into lab.resultados(nombre, esperado, obtenido, detalle)
+select 'sacar: la lista y sus instituciones se van (la otra lista y Rosario se quedan)', true,
+  (select count(*) from public.agenda_listas where name = 'Para sacar') = 0 and (select count(*) from public.instituciones where name in ('Inst S1', 'Inst S2')) = 0
+  and (select count(*) from public.agenda_listas where name = 'Directorio Chabad LatAm') = 1 and (select count(*) from public.instituciones where id = 'ros') = 1
+  and (select count(*) from public.contactos where nivel = 'ciudad' and city = 'Santiago' and country = 'Chile') = 0, (r::text) from sacada;
+insert into lab.resultados(nombre, esperado, obtenido, detalle)
+select 'sacar: se borra a quien quedó sin nada y se conserva a quien tiene nota, evento, otro lugar o no vino de la lista', true,
+  (select count(*) from public.personas where name in ('Sin Nada Uno', 'Lugar Uno')) = 0
+  and (select count(*) from public.personas where name in ('Con Nota Uno', 'En Evento Uno', 'En Otra Uno', 'Mano Uno')) = 4
+  and (select note from public.personas where name = 'Con Nota Uno') = 'Habla hebreo'
+  and (select count(*) from public.contactos where id = 'c_otra') = 1 and (select count(*) from public.contactos where id = 'c_mano') = 0,
+  (select string_agg(name, ', ') from public.personas where name like '%Uno');
+
 \set QUIET off
 select n, '  FALLA  ' || nombre || '  ' || detalle as falla from lab.resultados where esperado <> obtenido order by n;
 select count(*) filter (where esperado = obtenido) || ' pasaron, ' ||

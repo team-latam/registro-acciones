@@ -1285,6 +1285,14 @@ cuenta, y su ficha muestra lo que hizo con el equipo.
   (`agenda_traer`, `19-agenda.sql`), y quien ya estaba en la app (mismo
   nombre, sin tildes ni mayúsculas) no se duplica: se usa su ficha y se
   le suman los teléfonos que no tenía.
+- **Sacar una lista** (22/10/2026, `26-agenda-sacar-lista.sql`): en
+  Administración › Agenda, cada lista tiene una ✕ junto a «Ver Agenda».
+  Antes de borrar, la app cuenta qué se va (instituciones, contactos,
+  personas) y avisa que no se deshace y que conviene bajar una copia.
+  Se van las instituciones de la lista, sus contactos y los contactos de
+  lugares que trajo; de las personas que vinieron de esa lista se conserva
+  la que figura en un evento, tiene nota, correo o idiomas, o está en otro
+  lugar. Gente de otra procedencia no se toca.
 - **Contactos por lugar** (10/10/2026, `20-contactos-por-lugar.sql`):
   un contacto no va siempre con una institución. El usuario mostró su
   planilla de comunidades: el presidente de la comunidad de Rosario, quien
