@@ -381,3 +381,46 @@ versión y compara (`supabase_integridad_test`). Al subir una versión se
 cambia la huella en el mismo commit; la prueba lo exige. Se validó con
 JSZip y docx-preview: las huellas que ya andan en producción coinciden con
 las calculadas desde npm.
+
+## Agregado en la auditoría de seguridad (24/10/2026)
+
+**Un dato personal real copiado a un documento — tercera vez.** Al contar
+en `docs/REDISENO.md` cómo se corrigió el Excel del Mapeo (17/10), se puso
+como ejemplo el teléfono entero de una persona del Excel. La regla del 10/10
+existía («siempre recortado») y no alcanzó: se escribió en una tanda, no en
+una auditoría. `seguridad` lo vio, pero en nivel «bajo», y nadie corrió la
+auditoría en esa semana. *Regla:* la de siempre, en cualquier documento o
+mensaje de commit, no solo al auditar; un ejemplo de formato se escribe con
+un número inventado (con 555). *Se detecta:* `seguridad`, ahora en nivel
+«importante» y con el número recortado en su propio informe (para que el
+informe no sea la próxima filtración).
+
+**Una prueba que solo corre cuando cambia su carpeta.** La prueba de las
+copias exige que la copia conozca cada tabla del esquema, y estuvo en rojo
+once días: la tabla nueva (`problemas`) estaba en `supabase/22-…sql`, y el
+workflow de las copias corría sus pruebas solo si cambiaba
+`supabase/respaldo/`. *Regla:* el `paths:` de un workflow de pruebas
+incluye todo lo que esas pruebas LEEN, no solo su carpeta (las del
+respaldo leen los `.sql` y `index.html`). *Se detecta:* la auditoría corre
+todas las suites enteras; a mano, al sumar una prueba que lee otra carpeta,
+mirar el `paths:` de su workflow.
+
+**Una herramienta que da «0 hallazgos» sin decir qué midió.** `pantallas`
+devolvió una lista vacía y no había forma de distinguir «todo bien» de «no
+llegó a ninguna pantalla» (ya estaba «Una comprobación vacía», para las
+pruebas). *Regla:* toda herramienta deja un «dato» con cuánto midió, y si
+midió cero lo marca como importante.
+
+**Lo que se carga de afuera sin huella porque «no está en npm».** SheetJS
+quedó sin huella el 6/10 por eso, y la decisión se anotó en `conocidos.json`
+y no se volvió a mirar. Pero un archivo fijo de cualquier servidor tiene
+huella. *Regla:* una excepción de `conocidos.json` sobre seguridad se
+revisa en cada auditoría; y si desde el sandbox no se llega al servidor, la
+huella la calcula GitHub (la prueba falla en GitHub mostrando la huella que
+sirve el archivo).
+
+**El tiempo de las pruebas se acerca al tope sin que nadie lo vea.** La
+suite pasó de ~6 a ~24 minutos en dos semanas y el trabajo tenía tope de 30:
+un poco más y «Publicar el sitio» se cortaba por tiempo. *Regla:* el
+corredor dice cuánto tardó; si pasa de la mitad del tope del workflow, se
+anota en la auditoría.

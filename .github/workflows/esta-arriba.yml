@@ -64,6 +64,14 @@ jobs:
           fi
 
           echo "✓ La página está arriba y es la de verdad ($bytes bytes)."
+          # La que publica «Publicar el sitio» lleva las huellas de sus scripts
+          # en la CSP (S2). Si no las trae, la publicó otro (Settings → Pages
+          # volvió a «Deploy from a branch»): anda igual, pero sin esa traba.
+          if grep -q "'sha256-" pagina.html; then
+            echo "✓ Y es la que publicó «Publicar el sitio»: la CSP trae las huellas de sus scripts."
+          else
+            echo "::warning::La página publicada no trae las huellas en la CSP: ¿Settings → Pages volvió a «Deploy from a branch»? (docs/AUDITORIA.md, S2)"
+          fi
 
       # Un navegador NO pide la página como curl: pide la versión
       # comprimida, por HTTP/2, y se presenta como Chrome. Si la copia
@@ -137,6 +145,13 @@ jobs:
           falla=0
           for camino in "/auth/v1/health" "/rest/v1/"; do
             codigo=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 -H "apikey: $SB_KEY" "$SB_URL$camino") || codigo="sin respuesta"
+            # Una sola demora no es «caído»: el 23/10/2026 /auth/v1/health tardó
+            # más de 30 s una vez y la alarma llegó por mail por nada
+            # (docs/AUDITORIA.md, S7). Se repite una vez antes de dar rojo.
+            case "$codigo" in 2*|401|403|404) ;; *)
+              echo "$camino → $codigo (se repite en 20 s)"; sleep 20
+              codigo=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 -H "apikey: $SB_KEY" "$SB_URL$camino") || codigo="sin respuesta" ;;
+            esac
             echo "$camino → $codigo"
             # La API sin sesión puede contestar 401/404 (bien: contestó). Un
             # 5xx o nada es Supabase caído o el proyecto en pausa.
@@ -150,7 +165,8 @@ jobs:
           echo "✓ Supabase contesta."
 
       # La app carga de afuera la librería de la sesión (supabase-js), la de
-      # los Word y las planillas y las del mapa, cada una con su huella (SRI):
+      # los Word y las planillas (SheetJS, con huella desde el 24/10/2026, S1) y
+      # las del mapa, cada una con su huella (SRI):
       # si el CDN sirve un solo byte distinto, el navegador la frena y la app
       # no entra o no abre. Desde el sandbox de Claude no se llega a esos CDN,
       # así que acá, que sí llegan, se comprueba de verdad que cada archivo
@@ -160,7 +176,7 @@ jobs:
         run: |
           set -o pipefail
           pares=$(
-            for n in SUPABASE JSZIP DOCX_PREVIEW; do
+            for n in SUPABASE JSZIP DOCX_PREVIEW SHEETJS; do
               u=$(grep -oE "const ${n}_CDN = \"[^\"]+\"" index.html | cut -d'"' -f2)
               h=$(grep -oE "const ${n}_SRI = \"[^\"]+\"" index.html | cut -d'"' -f2)
               echo "$u $h"
@@ -169,8 +185,8 @@ jobs:
               | sed -E 's/^\["([^"]+)", "([^"]+)"\]$/\1 \2/'
           )
           total=$(echo "$pares" | grep -c .)
-          if [ "$total" -lt 8 ]; then
-            echo "✗ Encontré $total pares dirección/huella en index.html y esperaba 8 (supabase-js, JSZip, docx-preview y las cinco del mapa)."
+          if [ "$total" -lt 9 ]; then
+            echo "✗ Encontré $total pares dirección/huella en index.html y esperaba 9 (supabase-js, JSZip, docx-preview, SheetJS y las cinco del mapa)."
             exit 1
           fi
           falla=0

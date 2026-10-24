@@ -25,12 +25,21 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
+    # Y los .sql y la app: la prueba exige que la copia conozca cada tabla
+    # del esquema y que el botón de la app copie las mismas. Hasta el
+    # 24/10/2026 corría solo si cambiaba esta carpeta, y una tabla nueva
+    # (problemas, 13/10) quedó afuera de la copia once días sin que nada
+    # se pusiera en rojo (docs/AUDITORIA.md, S5).
     paths:
       - 'supabase/respaldo/**'
+      - 'supabase/*.sql'
+      - 'index.html'
       - '.github/workflows/respaldo.yml'
   pull_request:
     paths:
       - 'supabase/respaldo/**'
+      - 'supabase/*.sql'
+      - 'index.html'
 
 # Una copia por vez: dos a la par se pisarían el push.
 concurrency:

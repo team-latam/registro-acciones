@@ -9,15 +9,34 @@
      (entrar, Calendar, fotos de perfil), los CDN de las librerías con
      versión fija, los mapas y la búsqueda de lugares de OpenStreetMap y la
      traducción. Un servicio nuevo hay que sumarlo acá, o el navegador lo
-     frena (herramientas/pruebas/integridad_test.mjs avisa si falta). 'unsafe-inline'
-     porque toda la app es un script dentro de la página. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://cdn.sheetjs.com https://accounts.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com https://accounts.google.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://benonmzlgdjkhzauamrz.supabase.co https://*.googleusercontent.com https://*.tile.openstreetmap.org https://unpkg.com; media-src 'self' data: blob: https://benonmzlgdjkhzauamrz.supabase.co; connect-src 'self' data: blob: https://benonmzlgdjkhzauamrz.supabase.co wss://benonmzlgdjkhzauamrz.supabase.co https://www.googleapis.com https://accounts.google.com https://nominatim.openstreetmap.org https://api.mymemory.translated.net; frame-src 'self' data: blob: https://benonmzlgdjkhzauamrz.supabase.co https://accounts.google.com; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'self'">
+     frena (herramientas/pruebas/integridad_test.mjs avisa si falta). Cada
+     librería se nombra por su archivo exacto, no por el CDN entero
+     (24/10/2026, S2): al subir una versión se cambia también acá.
+     'unsafe-inline' porque toda la app es un script dentro de la página;
+     el sitio publicado lo reemplaza por la huella de sus dos scripts
+     (herramientas/publicar/csp.mjs), y ahí no corre ningún otro. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js https://cdn.jsdelivr.net/npm/jszip@3.10.2/dist/jszip.min.js https://cdn.jsdelivr.net/npm/docx-preview@0.4.1/dist/docx-preview.min.js https://unpkg.com/leaflet@1.9.4/dist/leaflet.js https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js https://accounts.google.com/gsi/client; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com https://accounts.google.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://benonmzlgdjkhzauamrz.supabase.co https://*.googleusercontent.com https://*.tile.openstreetmap.org https://unpkg.com; media-src 'self' data: blob: https://benonmzlgdjkhzauamrz.supabase.co; connect-src 'self' data: blob: https://benonmzlgdjkhzauamrz.supabase.co wss://benonmzlgdjkhzauamrz.supabase.co https://www.googleapis.com https://accounts.google.com https://nominatim.openstreetmap.org https://api.mymemory.translated.net; frame-src 'self' data: blob: https://benonmzlgdjkhzauamrz.supabase.co https://accounts.google.com; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
 <title>Registro de Acciones — Team LatAm</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script>
+  // Adentro de un marco de OTRO sitio, la página no se muestra (24/10/2026,
+  // docs/AUDITORIA.md, S3). GitHub Pages no deja mandar el encabezado que
+  // lo prohíbe (X-Frame-Options; frame-ancestors en un <meta> no vale), y
+  // sin esto cualquier página podría mostrar el Registro en un marco
+  // invisible y hacer que alguien con la sesión abierta toque sin saberlo un
+  // botón de verdad («Aprobar», «Borrar»). Si el marco no deja correr
+  // scripts, la app tampoco corre: no queda nada que tocar.
+  if(window.top !== window.self){
+    var marcoAjeno = true;
+    try{ marcoAjeno = window.top.location.origin !== window.location.origin; }catch(e){ /* otro sitio: no deja leerlo */ }
+    if(marcoAjeno){
+      document.documentElement.style.setProperty("display", "none", "important");
+      try{ window.top.location = window.location.href; }catch(e){ /* el marco no deja salir: queda oculta */ }
+    }
+  }
   // Va acá, suelto y antes del CSS, a propósito: el script del módulo se
   // ejecuta recién después de pintar la página, así que si dejáramos esto
   // allá el modo oscuro se aplicaría con la página ya dibujada y se vería
@@ -14092,7 +14111,7 @@ const TABLAS_DE_LA_COPIA = {
   posts: "id", replies: "id", members: "email", former_members: "email",
   access_requests: "email", user_prefs: "email", app_config: "key", audit_log: "id",
   calendar_sugerencias: "evento", calendar_sacados: "evento", personas: "id",
-  agenda_listas: "id", instituciones: "id", contactos: "id",
+  agenda_listas: "id", instituciones: "id", contactos: "id", problemas: "id",
 };
 // Desde jsDelivr (el mismo archivo que publica npm) y con su huella:
 // si el CDN sirviera otra cosa, el navegador no la corre.
@@ -21491,9 +21510,14 @@ function cambiarZoom(paso){
 // Lo que lee las planillas (Excel, LibreOffice) para mostrarlas como tabla.
 // La 0.18.5 de cdnjs (la última que llegó a npm) tiene fallas conocidas al
 // leer un archivo armado a propósito (CVE-2023-30533, CVE-2024-22363). Las
-// versiones corregidas se publican solo en el CDN de SheetJS. Sin huella
-// de integridad: desde acá no se pudo bajar para calcularla.
+// versiones corregidas se publican solo en el CDN de SheetJS.
 const SHEETJS_CDN = "https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js";
+// Con su huella desde el 24/10/2026 (docs/AUDITORIA.md, S1): SheetJS no está en
+// npm, pero su servidor sirve cada versión como un archivo fijo, y la huella es
+// la de ese archivo (la calcula GitHub, que llega a ese servidor:
+// herramientas/pruebas/sheetjs_integridad_test.mjs). Subir la versión es
+// cambiar las dos constantes y la CSP a la vez.
+const SHEETJS_SRI = "sha384-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 const DOCX_PREVIEW_CDN = "https://cdn.jsdelivr.net/npm/docx-preview@0.4.1/dist/docx-preview.min.js";
 const DOCX_PREVIEW_SRI = "sha384-DifWB1GSGsQgwTegPEbGdEMnGZpmfhUsx9A3WuHv+rfQVCFXMhawW/v4AZcP1FzL";
 // Lo que dibujan los visores sale de un archivo que subió cualquiera del
@@ -21595,7 +21619,7 @@ function renderFilePreviewFrame(){
         filePreviewInicial = filePreviewEscala = escalaQueEntra();
       }else{
         // Una planilla: cada hoja como una tabla, con SheetJS.
-        if(!window.XLSX) await cargarScript(SHEETJS_CDN);
+        if(!window.XLSX) await cargarScript(SHEETJS_CDN, SHEETJS_SRI);
         if(!window.XLSX) throw new Error("SheetJS");
         const libro = window.XLSX.read(await blob.arrayBuffer(), { type: "array" });
         if(vuelta !== filePreviewVuelta) return;
@@ -22641,7 +22665,7 @@ async function leerArchivoAgenda(archivo){
     const ext = (archivo.name.split(".").pop() || "").toLowerCase();
     let filas = [], nombreLista = archivo.name.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").trim();
     if(ext === "xlsx" || ext === "xls" || ext === "csv"){
-      if(!window.XLSX) await cargarScript(SHEETJS_CDN);
+      if(!window.XLSX) await cargarScript(SHEETJS_CDN, SHEETJS_SRI);
       if(!window.XLSX) throw new Error("SheetJS");
       const libro = window.XLSX.read(await archivo.arrayBuffer(), { type:"array" });
       filas = window.XLSX.utils.sheet_to_json(libro.Sheets[libro.SheetNames[0]], { defval:"" });
@@ -22802,7 +22826,7 @@ function renderAgendaAdminSection(){
       av.sinRabbi > 1 ? li("✓", t("<b>{n} nombres empiezan con «Rabbi» o «Rab»</b>: se guarda el nombre solo, con el cargo «Rab a cargo».","<b>{n} names start with “Rabbi” or “Rab”</b>: the name is kept alone, with the role “Rabbi in charge”.","<b>{n} nomes começam com «Rabbi» ou «Rab»</b>: guarda-se só o nome, com o cargo «Rabino responsável».","<b>{n} שמות מתחילים ב-«Rabbi» או «Rab»</b>: נשמר השם לבד, עם התפקיד «הרב האחראי».",{ n: av.sinRabbi })) : "",
       av.telLimpios === 1 ? li("✓", t("<b>Un teléfono</b> traía caracteres invisibles o letras: se limpia.","<b>One phone</b> had invisible characters or letters: it gets cleaned.","<b>Um telefone</b> tinha caracteres invisíveis ou letras: é limpo.","<b>טלפון אחד</b> הכיל תווים נסתרים או אותיות: ינוקה.")) : "",
       av.telLimpios > 1 ? li("✓", t("<b>{n} teléfonos</b> traían caracteres invisibles o letras: se limpian.","<b>{n} phones</b> had invisible characters or letters: they get cleaned.","<b>{n} telefones</b> tinham caracteres invisíveis ou letras: são limpos.","<b>{n} טלפונים</b> הכילו תווים נסתרים או אותיות: ינוקו.",{ n: av.telLimpios })) : "",
-      av.estados.temporada || av.estados.cerrada ? li("✓", t("<b>{a} de temporada y {b} {c}</b>: entran con ese estado.","<b>{a} seasonal and {b} closed</b>: they come in with that status.","<b>{a} de temporada e {b} {c}</b>: entram com essa situação.","<b>{a} עונתיים ו-{b} סגורים</b>: נכנסים במצב הזה.",{ a: av.estados.temporada, b: av.estados.cerrada, c: av.estados.cerrada === 1 ? t("cerrada","closed","fechada","סגור") : t("cerradas","closed","fechadas","סגורים") })) : "",
+      av.estados.temporada || av.estados.cerrada ? li("✓", t("<b>{a} de temporada y {b} {c}</b>: entran con ese estado.","<b>{a} seasonal and {b} {c}</b>: they come in with that status.","<b>{a} de temporada e {b} {c}</b>: entram com essa situação.","<b>{a} עונתיים ו-{b} {c}</b>: נכנסים במצב הזה.",{ a: av.estados.temporada, b: av.estados.cerrada, c: av.estados.cerrada === 1 ? t("cerrada","closed","fechada","סגור") : t("cerradas","closed","fechadas","סגורים") })) : "",
       ...im.parecidos.map(([a, b], i) => li("?", t("<b>Dos tipos parecen el mismo</b>: «{a}» ({na}) y «{b}» ({nb}).","<b>Two types look like the same</b>: “{a}” ({na}) and “{b}” ({nb}).","<b>Dois tipos parecem o mesmo</b>: «{a}» ({na}) e «{b}» ({nb}).","<b>שני סוגים נראים זהים</b>: «{a}» ({na}) ו-«{b}» ({nb}).",{ a: esc(a), b: esc(b), na: im.tipos.get(a), nb: im.tipos.get(b) }),
         `<span class="ag-chips"><button type="button" class="ag-chip${im.unir ? " on" : ""}" data-action="agenda-import-unir" data-k="1">${esc(t("Unir en «{a}»","Merge into “{a}”","Unir em «{a}»","איחוד ל-«{a}»",{ a }))}</button><button type="button" class="ag-chip${im.unir ? "" : " on"}" data-action="agenda-import-unir" data-k="0">${esc(t("Dejar los dos","Keep both","Deixar os dois","להשאיר את שניהם"))}</button></span>`)),
     ].filter(Boolean).join("");

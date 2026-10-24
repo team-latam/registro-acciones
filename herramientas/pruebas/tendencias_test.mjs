@@ -326,7 +326,7 @@ const solo = (p, sel) => p.evaluate(s => document.querySelector(s) ? document.qu
   const b = vacia();
   // Un tipo de actividad que el equipo agregó («Voluntariado»): su nombre tampoco es un tema, lo cuenta «Tipos».
   b.app_config[0].value.activityTypes.push({ key: "voluntariado", label: "Voluntariado", icon: "🤝", calendarSync: true, docs: [] });
-  b.members = b.members.concat([{ email: "dana@team-latam.com", name: "Dana Katz", nickname: "dana", role: "member", approved_at: "2025-01-10T12:00:00Z" }]);
+  b.members = b.members.concat([{ email: "dana@x.com", name: "Dana Katz", nickname: "dana", role: "member", approved_at: "2025-01-10T12:00:00Z" }]);
   // Seis posteos que repiten, todos juntos, palabras que NO son un tema: charla (gracias, excelente), un verbo (instalamos), un tipo (el «Voluntariado» que agregó el equipo),
   // una persona del equipo (Dana) y un lugar (Rosario, el alcance de los posteos). Cada una sube de golpe: si alguna regla falla, aparece como tema.
   poner(b, 6, "ahora", { pais: "Chile", titulos: Array(6).fill("Gracias, excelente voluntariado: instalamos todo con Dana en Rosario"), contenido: "Llamado con Dana. Rosario." });

@@ -43,7 +43,7 @@ import { TABLAS } from "./respaldar.mjs";
 // contacto a su institución y a su persona. El resto no depende de nada.
 export const ORDEN = ["members", "former_members", "access_requests", "app_config", "user_prefs", "personas",
   "posts", "replies", "audit_log", "calendar_sugerencias", "calendar_sacados",
-  "agenda_listas", "instituciones", "contactos"];
+  "agenda_listas", "instituciones", "contactos", "problemas"];
 const BUCKET = "adjuntos";
 const LOTE = 500;
 

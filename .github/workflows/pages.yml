@@ -25,6 +25,7 @@ on:
       - "index.html"
       - "supabase/**"
       - "herramientas/pruebas/**"
+      - "herramientas/publicar/**"
       - ".github/workflows/app.yml"
       - ".github/workflows/pages.yml"
   # Para volver a publicar a mano: Actions → «Publicar el sitio» → Run workflow.
@@ -93,11 +94,17 @@ jobs:
       # El sitio es index.html y nada más. Con la publicación desde la
       # rama, GitHub servía también README, docs/, supabase/ y herramientas/pruebas/
       # pasados por Jekyll; nadie los abría desde ahí (se leen en el repo).
+      # Y sale con la CSP endurecida: en vez de dejar correr cualquier script
+      # escrito en la página ('unsafe-inline'), nombra la huella de los dos
+      # que tiene; uno que se colara por un XSS ya no corre (24/10/2026,
+      # docs/AUDITORIA.md, S2). Lo prueba herramientas/pruebas/csp_publicada_test.mjs,
+      # que corrió recién, en el trabajo de las pruebas.
       - name: Armar lo que se publica
         if: steps.modo.outputs.listo == 'si'
         run: |
           mkdir -p _sitio
-          cp index.html _sitio/
+          node herramientas/publicar/csp.mjs index.html > _sitio/index.html
+          grep -q "'sha256-" _sitio/index.html || { echo "✗ La CSP salió sin huellas: no se publica."; exit 1; }
           touch _sitio/.nojekyll
 
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0

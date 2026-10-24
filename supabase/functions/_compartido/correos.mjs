@@ -213,8 +213,14 @@ const tarjetaDePaso = ({ L, x, autor, titulo, tipo, texto, cuando, vence }) => {
       <div style="font-size:12px;color:${C.gris};margin-top:2px;">${T.cadaPaso} · <b style="color:${C.texto};">${icono} ${suyo(esc(titulo))}</b></div></td></tr></table>` : `<div style="font-size:12px;color:${C.gris};margin:0 0 10px;">${T.cadaPaso} · <b style="color:${C.texto};">${icono} ${suyo(esc(titulo))}</b></div>`}
     <div dir="auto" style="margin:0;padding:14px 18px;border-${x.ini}:4px solid ${C.celeste};background:${C.suave};border-radius:${x.dir === "rtl" ? "12px 0 0 12px" : "0 12px 12px 0"};font-size:15px;line-height:1.6;">${suyo(esc(recortar(texto, 300)))}${fecha}</div>`;
 };
-export function correoPaso({ autor, titulo, tipo, texto, post, cuando, lang }){
-  const L = idioma(lang), T = TX[L], x = lado(L);
+// La fecha del paso la escribe la app (siempre AAAA-MM-DD), pero por la API
+// puede llegar cualquier cosa, y una fecha que no existe hacía que el correo
+// no se pudiera armar: la función `avisar` se caía y el aviso se perdía
+// (docs/AUDITORIA.md, S6). Sin una fecha de verdad, el correo sale sin fecha.
+const fechaDePaso = c => /^\d{4}-\d{2}-\d{2}$/.test(String(c || "")) && !isNaN(Date.parse(`${c}T12:00:00Z`))
+  && new Date(`${c}T12:00:00Z`).toISOString().slice(0, 10) === c ? c : "";
+export function correoPaso({ autor, titulo, tipo, texto, post, cuando: pedida, lang }){
+  const L = idioma(lang), T = TX[L], x = lado(L), cuando = fechaDePaso(pedida);
   const linea = asunto(conVars(T.pasAsunto, { a: autor, t: titulo }));
   const url = enlaceAPosteo(post);
   return {
@@ -229,8 +235,8 @@ export function correoPaso({ autor, titulo, tipo, texto, post, cuando, lang }){
   };
 }
 // El recordatorio del día en que vence (lo manda supabase/avisos/vencimientos.mjs).
-export function correoVence({ titulo, tipo, texto, post, cuando, lang }){
-  const L = idioma(lang), T = TX[L], x = lado(L);
+export function correoVence({ titulo, tipo, texto, post, cuando: pedida, lang }){
+  const L = idioma(lang), T = TX[L], x = lado(L), cuando = fechaDePaso(pedida);
   const linea = asunto(conVars(T.venAsunto, { p: recortar(texto, 100) }));
   const url = enlaceAPosteo(post);
   return {

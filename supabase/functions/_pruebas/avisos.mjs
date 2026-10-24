@@ -179,6 +179,15 @@ eq("el correo sin nombre usa la dirección", armarCorreo({ nombre: "", correo: "
   const n = mundo({ otros: { preparar_aviso_de_paso: null } });
   const rn = await leer(await atenderAviso(pedir({ cuerpo: { tipo: "paso", id: "p1#x1" } }), { env: entorno(), fetch: n.traer, esperar: n.esperar }));
   eq("si a la base no le corresponde (no es suyo, ya salió, lo apagó), no sale nada", [rn[1], n.reg.correos.length], [{ enviado: false, motivo: "no-corresponde" }, 0]);
+  // Una fecha que no existe, escrita por la API (24/10/2026, docs/AUDITORIA.md,
+  // S6): antes la función se caía sin mandar nada; ahora sale sin la fecha.
+  for(const cuando of ["mañana", "2026-13-45", "2026-02-30"]){
+    const f = mundo({ otros: { preparar_aviso_de_paso: { ...aviso, cuando } } });
+    let rf;
+    try{ rf = await leer(await atenderAviso(pedir({ cuerpo: { tipo: "paso", id: "p1#x1" } }), { env: entorno(), fetch: f.traer, esperar: f.esperar })); }
+    catch(e){ rf = ["se cayó: " + e.message]; }
+    eq(`un paso con la fecha «${cuando}»: el correo sale igual, sin fecha`, [rf[0], f.reg.correos.length, (f.reg.correos[0] || {}).text && f.reg.correos[0].text.includes("Para ")], [200, 1, false]);
+  }
 }
 {
   // «Mandarme un informe de prueba» (propuesta 3-A): lo pide un admin, la base le contesta un turno.

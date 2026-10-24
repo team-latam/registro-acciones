@@ -35,12 +35,17 @@ const LETRA_ANCHA = `*{ font-family:"DejaVu Sans", Verdana, monospace !important
 const BASURA = /\bundefined\b|\bNaN\b|\[object Object\]|Invalid Date|\{(n|x|d|m|a|b|p|f|e|z|l|msg|email|v|t)\}/;
 
 const out = [];
+// Cuántas vistas se midieron: cero hallazgos con cero vistas no es «todo
+// bien» (RECURRENTES, «Una comprobación vacía»). La del 24/10/2026 dio 0
+// hallazgos y no había forma de saber si había medido algo.
+let vistas = 0;
 const b = await abrirNavegador();
 for(const c of COMBOS){
   const { p, errores } = await entrar(b, ADMIN, "Benny Rosenthal", { viewport: c.vp, lang: c.lang === "es" ? "" : c.lang, dark: c.oscuro });
   const recortes = [];
   if(c.ancha) await p.addStyleTag({ content: LETRA_ANCHA });
   await recorrerApp(p, async (p, n) => {
+    vistas++;
     recortes.push(...await revisarRecortes(p, c.nombre + " · " + n));
     const txt = await p.evaluate(() => document.body.innerText);
     const x = BASURA.exec(txt);
@@ -157,4 +162,6 @@ for(const vp of [{ width: 1280, height: 800 }, { width: 1440, height: 1000 }, { 
   }
 }
 await b.close();
+out.push(vistas ? hallazgo("pantallas", "dato", `Vistas medidas: ${vistas}, en ${COMBOS.length} combinaciones`)
+                : hallazgo("pantallas", "importante", "No se midió ninguna vista", "", "recorrerApp no llegó a ninguna pantalla: los 0 hallazgos no dicen nada"));
 entregar("pantallas", out);

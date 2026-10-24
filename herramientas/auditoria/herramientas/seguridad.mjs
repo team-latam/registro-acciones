@@ -72,9 +72,34 @@ nuevos.forEach(h => out.push(hallazgo("seguridad", "bajo", "Un servicio de afuer
 /* --- CSP --- */
 const csp = (/<meta[^>]+http-equiv="Content-Security-Policy"[^>]+content="([^"]+)"/i.exec(html) || [])[1];
 if(!csp) out.push(hallazgo("seguridad", "medio", "La página no tiene política de contenido (CSP)"));
-else { if(!/object-src 'none'/.test(csp)) out.push(hallazgo("seguridad", "bajo", "La CSP no prohíbe object-src")); if(!/base-uri/.test(csp)) out.push(hallazgo("seguridad", "bajo", "La CSP no fija base-uri")); }
+else {
+  if(!/object-src 'none'/.test(csp)) out.push(hallazgo("seguridad", "bajo", "La CSP no prohíbe object-src"));
+  if(!/base-uri/.test(csp)) out.push(hallazgo("seguridad", "bajo", "La CSP no fija base-uri"));
+  // Lo que la auditoría del 24/10/2026 vio a mano (S2): con 'unsafe-inline'
+  // en script-src un XSS corre igual, y un CDN entero (jsDelivr, unpkg)
+  // sirve cualquier paquete de cualquiera. Se mira lo que publica GitHub
+  // Pages (la CSP del sitio) si hay una copia armada para publicar.
+  const scriptSrc = ((/(?:^|;)\s*script-src ([^;]+)/.exec(csp) || [])[1] || "").trim().split(/\s+/);
+  if(scriptSrc.includes("'unsafe-inline'") && !scriptSrc.some(x => /^'sha(256|384|512)-/.test(x)))
+    out.push(hallazgo("seguridad", "medio", "La CSP deja correr cualquier script escrito en la página ('unsafe-inline' sin huellas)", "", "un XSS no encontraría ninguna traba"));
+  scriptSrc.filter(x => /^https:\/\/(cdn\.jsdelivr\.net|unpkg\.com)\/?$/.test(x))
+    .forEach(x => out.push(hallazgo("seguridad", "bajo", "La CSP deja cargar scripts de un CDN entero", x, "conviene nombrar el archivo de cada librería")));
+}
+// Que otra página no pueda meter la app en un marco (clickjacking): GitHub
+// Pages no manda X-Frame-Options y frame-ancestors en un <meta> no vale, así
+// que lo único que queda es el script de la página (S3).
+if(!/window\.top\s*!==\s*window\.self|self\s*!==\s*top|top\s*!==\s*self/.test(html))
+  out.push(hallazgo("seguridad", "medio", "Otra página puede mostrar la app adentro de un marco", "", "sin X-Frame-Options ni un control en el script"));
 
 /* --- Datos personales y llaves en el repo (es público) --- */
+// Un teléfono se informa RECORTADO: el informe se lee y se copia a los
+// documentos, y el 17/10/2026 un teléfono real del Mapeo quedó entero en
+// docs/REDISENO.md (S4; ya había pasado el 10/10 con D4/R31). Con el archivo
+// alcanza para encontrarlo. Y sube a «importante»: un teléfono real en el
+// repo público es un dato de una persona a la vista de cualquiera.
+const recortar = tel => tel.replace(/^(\D*\d+\D+\(?\d+\)?)[\s\S]*$/, "$1 …");
+// Los inventados de las pruebas y la demo llevan un grupo 555 o 5555.
+const INVENTADO = /(^|\D)5{3,4}(\D|$)/;
 const archivos = execSync("git ls-files", { cwd: RAIZ, encoding: "utf8" }).split("\n").filter(f => f && !/\.(png|jpg|gz|zip|docx?|xlsx?|pdf)$/.test(f));
 const CORREO_OK = /ciudad@gmail\.com|@adentro\.com|^atacante@|@(x\.com|example\.(com|org)|ejemplo\.|users\.noreply\.github\.com|noreply\.|anthropic\.com|group\.calendar\.google\.com|group\.v\.calendar\.google\.com|dominio\.com|pedro\.com|github\.com|y\.com|proyecto\.iam\.gserviceaccount\.com|resend\.dev)|^benny@team-latam\.com$|^-?info@team-latam\.com$|^(nueva|otra|ana|diego|lucia|moshe|juan|obs|nombre|name|nome|largo|veneno|pide|nadie)@/i;
 const vistosCorreo = new Map();
@@ -88,14 +113,14 @@ for(const f of archivos){
   // como llave (7/10/2026).
   if(/service_role["']?\s*[:=]\s*["']ey|sk_(?:live)_|-----BEGIN [A-Z ]*PRIVATE KEY/.test(txt)) out.push(hallazgo("seguridad", "urgente", "Parece una llave secreta en el repo", f));
   for(const t of txt.matchAll(/(?<![\d.])\+?\d{2,3}[\s-]?\(?\d{2,4}\)?[\s-]?\d{3,4}[\s-]\d{3,4}(?![\d.])/g))
-    if(!/\d{4}-\d{2}-\d{2}/.test(t[0])) { out.push(hallazgo("datos personales", "bajo", "Parece un teléfono", f, t[0])); break; }
+    if(!/\d{4}-\d{2}-\d{2}/.test(t[0]) && !INVENTADO.test(t[0]) && !/viewBox="$/.test(txt.slice(Math.max(0, t.index - 9), t.index))) { out.push(hallazgo("datos personales", "importante", "Parece un teléfono", f, recortar(t[0]))); break; }
   // El formato de Estados Unidos y Canadá, «(NNN) NNN-NNNN», con el código de
   // área entre paréntesis: el patrón de arriba no lo veía, y el 10/10/2026 un
   // teléfono real que estaba en un comentario del código viejo se copió, por
   // error, a los documentos de la auditoría sin que nada lo marcara. Los
   // inventados llevan 555 (como en herramientas/pruebas/ y en los ejemplos).
   for(const t of txt.matchAll(/(?<![\d.])(?:\+?1[\s-]?)?\(\d{3}\)\s?\d{3}[\s-]\d{4}(?![\d.])/g))
-    if(!/\b555\b/.test(t[0])) { out.push(hallazgo("datos personales", "bajo", "Parece un teléfono", f, t[0])); break; }
+    if(!INVENTADO.test(t[0])) { out.push(hallazgo("datos personales", "importante", "Parece un teléfono", f, recortar(t[0]))); break; }
 }
 vistosCorreo.forEach((f, c) => out.push(hallazgo("datos personales", "bajo", "Un correo en el repo público", f, c)));
 

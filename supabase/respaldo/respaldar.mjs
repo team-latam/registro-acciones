@@ -33,6 +33,10 @@ export const TABLAS = {
   access_requests: "email", user_prefs: "email", app_config: "key", audit_log: "id",
   calendar_sugerencias: "evento", calendar_sacados: "evento", personas: "id",
   agenda_listas: "id", instituciones: "id", contactos: "id",
+  // «Algo no anda» (22-problemas.sql, 13/10/2026): estuvo 11 días afuera de
+  // la copia sin que nadie lo viera, porque la prueba que lo exige solo
+  // corría cuando cambiaba esta carpeta (docs/AUDITORIA.md, S5).
+  problemas: "id",
 };
 // Las que a propósito NO van en la copia: anotaciones de qué correo ya
 // salió (17-avisos-por-correo.sql), que solo lee la llave de servicio.

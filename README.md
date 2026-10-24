@@ -18,7 +18,7 @@ llegan solos a todas las pantallas abiertas).
 | [`index.html`](./index.html) | **La app entera** (HTML, CSS y JS en un solo archivo). Es lo que se publica. |
 | [`supabase/`](./supabase/) | La base de datos (esquema, permisos, funciones) y los procesos que corren solos: copias de seguridad, avisos por correo, sincronización con Google Calendar. |
 | [`docs/`](./docs/) | Los documentos: decisiones, revisiones, auditorías y planes. |
-| [`herramientas/`](./herramientas/) | Para cuidar y mostrar la app: [`pruebas/`](./herramientas/pruebas/) (pruebas automáticas), [`auditoria/`](./herramientas/auditoria/) (la auditoría completa) y [`video/`](./herramientas/video/) (el video de presentación). |
+| [`herramientas/`](./herramientas/) | Para cuidar y mostrar la app: [`pruebas/`](./herramientas/pruebas/) (pruebas automáticas), [`auditoria/`](./herramientas/auditoria/) (la auditoría completa), [`publicar/`](./herramientas/publicar/) (lo que se le hace a la página al publicarla) y [`video/`](./herramientas/video/) (el video de presentación). |
 | [`.github/workflows/`](./.github/workflows/) | Los procesos automáticos de GitHub: publicar el sitio, correr las pruebas, aplicar la base de datos, copias. (GitHub exige que esté acá.) |
 | [`.claude/`](./.claude/) | Habilidades de Claude para este proyecto. (Claude exige que esté acá.) |
 | [`CLAUDE.md`](./CLAUDE.md) | Las reglas del proyecto para quien trabaja en él con Claude. |
