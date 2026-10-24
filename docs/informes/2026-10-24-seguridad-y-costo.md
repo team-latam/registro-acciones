@@ -54,7 +54,7 @@ Dos lugares, el mismo error:
    «Mapeo de prueba» (16 y 17/10, cuando se probó «Traer una lista» con
    filas como las del Mapeo) y otra del directorio de Chabad (los rabinos
    de cada casa, que ese directorio publica). Están desde el primer commit
-   del historial actual (12/10). No se contrastaron con el Excel del Mapeo
+   del 8/10 (cuando nació la Agenda). No se contrastaron con el Excel del Mapeo
    para no mover más datos personales: se tratan como reales.
 
 Es **la tercera vez** del mismo patrón (D4 y R31 el 10/10: RECURRENTES,
@@ -76,8 +76,10 @@ Es **la tercera vez** del mismo patrón (D4 y R31 el 10/10: RECURRENTES,
   informa todo **recortado** (su informe se copia a los documentos), lo
   sube a «importante», y no marca los inventados (con 555 o 5555) ni un
   `viewBox`.
-- *Queda (D10, del usuario):* siguen en el historial público (56 commits,
-  desde el 12/10). Lo mismo que D4: reescribir el historial de `main`
+- *Queda (D10, del usuario):* siguen en el historial público (639 commits;
+  los datos, desde el 8/10). Ensayado el 24/10 en una copia aparte con
+  `git filter-repo --replace-text`: ninguna de las 639 versiones conserva
+  los nombres ni los teléfonos, y la punta queda idéntica a la de hoy. Lo mismo que D4: reescribir el historial de `main`
   (necesita que destildes un momento «Block force pushes»), revisar todas
   las revisiones y la rama de la sesión del 22/10, y el pedido a GitHub de
   que borre las copias sueltas. Recomendación: sí.
