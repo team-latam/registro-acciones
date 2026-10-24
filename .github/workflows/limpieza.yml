@@ -71,6 +71,10 @@ jobs:
     # En un push solo se prueba. Se limpia los domingos y cuando se pide.
     # Solo el código de main corre con la llave de servicio (docs/AUDITORIA.md, U2).
     if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+    # Las dos llaves de Supabase salen del entorno «produccion», que GitHub
+    # solo entrega a main, diga lo que diga este archivo en otra rama
+    # (docs/AUDITORIA.md, S9 y D11).
+    environment: produccion
     # Una limpieza por vez (dos a la par moverían los mismos archivos), y
     # nunca a la par de la copia ni de una restauración: el mismo grupo que
     # respaldo.yml y restaurar.yml. Correr dos horas después de la copia

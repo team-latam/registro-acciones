@@ -25,6 +25,27 @@ Tres principios, siempre:
   tamaños, los cuatro idiomas, claro y oscuro: lo que se repite se vuelve
   herramienta.
 
+## Dos niveles (desde el 24/10/2026, decisión D13)
+
+Cada auditoría cuesta: lo que se lee, lo que se corre y cada vuelta de la
+sesión. Por eso hay dos, y se elige según el pedido:
+
+- **De lo nuevo** — la de siempre cuando el usuario pide «revisá esto» o
+  después de una tanda grande. Mira solo lo que cambió desde la última
+  auditoría (`git log` y `git diff` desde el commit que nombra
+  `docs/AUDITORIA.md`): `RAPIDO=1 ./herramientas/auditoria/correr.sh`, y a
+  mano solo las áreas que ese cambio toca. La revisión de seguridad a mano
+  va **solo si el cambio toca** la base (`supabase/*.sql`), las funciones de
+  Supabase, los workflows, cómo se carga código de afuera (CDN, huellas,
+  CSP) o datos de personas. El resultado se suma a la `docs/AUDITORIA.md`
+  vigente (con su propio código de letra), no la reemplaza.
+- **Completa** — una vez por mes, antes de algo grande, o cuando el usuario
+  dice «auditoría completa» o «revisá todo». Es lo que sigue: todos los
+  pasos, todas las áreas, `correr.sh` entero.
+
+En las dos: nada se reporta sin verificar, y lo que ya decidió el usuario
+no se vuelve a proponer.
+
 ## Los pasos
 
 1. **Ponerse al día.** Traer `main`. Leer `RECURRENTES.md` (lo que suele

@@ -59,6 +59,10 @@ jobs:
     # Solo desde main y con las llaves de verdad (docs/AUDITORIA.md, U2).
     # En un push solo se prueba.
     if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+    # Las dos llaves de Supabase salen del entorno «produccion», que GitHub
+    # solo entrega a main, diga lo que diga este archivo en otra rama
+    # (docs/AUDITORIA.md, S9 y D11).
+    environment: produccion
     concurrency:
       group: resumenes-mandar
       cancel-in-progress: false

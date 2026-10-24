@@ -110,6 +110,10 @@ jobs:
     # la base de verdad el SQL de una rama a medio hacer (docs/AUDITORIA.md,
     # U2). Lo que llega a producción es lo que está en main, por acá también.
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    # Las dos llaves de Supabase salen del entorno «produccion», que GitHub
+    # solo entrega a main, diga lo que diga este archivo en otra rama
+    # (docs/AUDITORIA.md, S9 y D11).
+    environment: produccion
     # De a una aplicación por vez, en el orden en que llegaron los push. Sin
     # esto, dos push seguidos aplicaban el SQL a la vez: se pisaban los
     # `drop policy` / `create policy` de una y otra, y la del commit viejo

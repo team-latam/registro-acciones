@@ -27,63 +27,26 @@ decisiones de arquitectura.
   importante tiene su `README.md`, que es lo que GitHub muestra al entrar: al
   sumar una carpeta nueva, se le pone el suyo. Los commits y notas de antes del
   13/10 hablan de `pruebas/`, `auditoria/` y `video/` en la raíz.
-- El estado del trabajo vive en el repo, en `docs/`: `docs/REDISENO.md`
-  (tandas hechas y decisiones), `docs/REVISION.md` (la revisión técnica y
-  lo que queda), `docs/QUE-GUARDAR.md` (qué tener a mano para reconstruir)
-  `docs/DOMINIO.md` (el plan, no ejecutado, de mudar el sitio a un
-  dominio propio si `*.github.io` vuelve a bloquearse en Argentina) y
-  `docs/AUDITORIA.md` (la última auditoría, la del 24/10/2026, completa
-  con énfasis en seguridad y en el costo de cada cambio, códigos S y
-  D10–D13; el detalle en `docs/informes/`, y las anteriores, la completa
-  del 6/10, la de lo nuevo del 7/10, la de la Agenda del 9/10 y la
-  completa del 10/10, en `docs/informes/historial/`) y
-  `docs/RESTAURAR.md` (cómo volver atrás con una copia: workflow
-  «Restaurar una copia», `supabase/respaldo/restaurar.mjs`).
-  **Las 16 propuestas de mejoras** (13/10/2026): `docs/PROPUESTAS.md` — qué eligió el usuario
-  (en dos vueltas), cómo se leyó cada nota y el orden en que se hicieron; la página con las
-  maquetas está enlazada ahí. **Todo lo elegido ya está hecho** (tandas 70 a 78 de
-  `docs/REDISENO.md`): planillas, «Repetir» con la fecha del año que viene, «Tendencias» en Reportes y en el Inicio (los temas salen solos de lo que el equipo escribe; el admin no define palabras: lo pidió así el 14/10/2026),
-  pasos con responsable y fecha, «Algo no anda», modo presentación, correo mensual de lugares sin
-  actividad, informe mensual con enlace de 48 horas y «Mi año». Falta que el usuario **prenda** en
-  Administración › Correos el aviso de lugares sin actividad (viene prendido, 6 meses) y el
-  **informe mensual** (viene apagado: hay que elegir a quién le llega); los correos nuevos solo
-  salen a quienes Administración › Correos habilita. Lo que dijo «no por ahora» y el recorrido de
-  un viaje en el mapa siguen en ese documento. Si pide «las propuestas», arrancar de ahí.
-  **El video de presentación** (en inglés, ~74 s, celular y compu; el
-  usuario aprobó la v5 como final el 13/10/2026) se rehace entero con
-  `bash herramientas/video/hacer_video.sh`; todo el proceso, las decisiones y lo que
-  hay que revisar cuando la app cambie están en `herramientas/video/README.md`. Los MP4 no
-  están en el repo (los tiene el usuario). Los datos de la demo son
-  inventados: nunca ponerle datos reales.
-  **El Excel del Mapeo de comunidades («Mapeo - LatAm», un Sheet de
-  Google del usuario) tiene nombres y teléfonos de personas: no se
-  commitea ni se embebe en ninguna página** (el repo y el sitio son
-  públicos). La herramienta que lo revisaba (`herramientas/mapeo.html`,
-  9/10/2026) se retiró a pedido del usuario el 10/10/2026; queda en el
-  historial de Git (docs/REDISENO.md, tanda 58) y lo que sigue —subir
-  ese Mapeo a la Agenda— es para otra conversación.
-  Copias de seguridad (docs/REVISION.md, punto 13): andando desde el
-  5/10/2026 — workflow «Copia de seguridad» (`supabase/respaldo/`) cada
-  domingo al repo privado `team-latam/registro-respaldos`, y
-  Administración → Copia de seguridad para bajar una. **El token
-  `RESPALDOS_TOKEN` vence el 5/10/2027**: hay que renovarlo antes (pasos
-  en `supabase/respaldo/LEEME.md`; la corrida avisa en rojo faltando 15
-  días). **El token `SUPABASE_ACCESS_TOKEN`** (publica la función
-  `calendario`, `supabase/functions/LEEME.md`) **vence el 30/9/2027**:
-  renovarlo junto con el otro; si vence, la función sigue andando y solo
-  falla publicar un cambio. **El dominio `team-latam.com`** (el correo del
-  equipo, y desde el 7/10/2026 el remitente de los avisos de Resend) está
-  en **Squarespace** (account.squarespace.com/domains, la ex Google
-  Domains) y **vence el 12/12/2026**, con renovación automática: confirmar
-  antes de esa fecha que se renovó y que la tarjeta sigue vigente. El
-  usuario pidió (9/10/2026) que Claude lo ayude a renovarlo: desde el
-  1/12/2026, al empezar cualquier sesión, recordárselo y guiarlo paso a
-  paso; y el 10/10/2026 pidió que se le avise puntualmente **el 5/12**
-  (hay un recordatorio programado; si no llega, hacerlo igual). **Antes del 1/12 no
-  mencionarle el dominio, ni siquiera de pasada en los cierres de cada tanda**: lo
-  tiene presente y pidió explícitamente (14/10/2026) que no se lo repitan. Si se cae el dominio, se cae el correo `@team-latam.com` y con él
-  el login del admin. Claude no puede crear repos en la cuenta `team-latam` (es una
-  cuenta de usuario; la conexión de GitHub no tiene ese permiso).
+- **El estado del trabajo vive en `docs/`** (el índice, `docs/README.md`).
+  Lo que hay que tener presente pero no hace falta en cada mensaje —los
+  documentos y para qué es cada uno, lo que el usuario tiene que prender,
+  las propuestas, el video, las copias y los tokens que vencen, el
+  dominio— está en **`docs/ESTADO.md`**: leerlo cuando el pedido toque
+  alguno de esos temas. «Las propuestas» → `docs/PROPUESTAS.md`; una
+  auditoría → la sección de abajo.
+- **El Excel del Mapeo** («Mapeo - LatAm», un Sheet de Google del usuario)
+  tiene nombres y teléfonos de personas: **no se commitea ni se embebe en
+  ninguna página** (el repo y el sitio son públicos). Los datos de la demo
+  del video son inventados: nunca ponerle datos reales.
+- **El dominio `team-latam.com` vence el 12/12/2026** (el correo del equipo
+  y el login del admin dependen de él; detalle en `docs/ESTADO.md`). **Antes
+  del 1/12 no mencionárselo, ni de pasada en los cierres de cada tanda**
+  (lo pidió explícitamente el 14/10/2026). Desde el 1/12, al empezar
+  cualquier sesión, recordárselo y guiarlo paso a paso para renovarlo; y
+  **el 5/12** avisarle puntualmente (hay un recordatorio programado; si no
+  llega, hacerlo igual).
+- Claude no puede crear repos en la cuenta `team-latam` (es una cuenta de
+  usuario; la conexión de GitHub no tiene ese permiso).
 - **Datos de personas y llaves, nunca enteros en el repo** (es público): ni en
   un documento, ni en un mensaje de commit, ni como ejemplo. Un teléfono real
   se escribe recortado («+1 (929) …»); un ejemplo de formato, con un número
@@ -108,43 +71,21 @@ de `herramientas/pruebas/`, la auditoría no falla: busca y anota.
 
 ## Ramas — LEER ANTES DE EMPEZAR
 
-**La rama de producción es `main`.** Es la rama default
-del repo y la ÚNICA conectada al deploy: cada push ahí dispara el workflow
-«Publicar el sitio» (`.github/workflows/pages.yml`), que corre todas las
-pruebas de la app y **recién si dan verde** publica `index.html` en GitHub
-Pages (desde el 6/10/2026; antes publicaba el «pages build and deployment»
-automático, sin esperar a nadie). Para eso Settings → Pages → Source tiene
-que estar en «GitHub Actions» (lo está desde el 6/10/2026 a la noche: el
-automático «pages build and deployment» no volvió a correr desde entonces);
-si alguna vez vuelve a «Deploy from a branch», el trabajo lo avisa en su
-resumen y GitHub publica por su cuenta como antes.
-Un push a cualquier otra rama NO despliega nada.
+**La rama de producción es `main`**, la única conectada al deploy: cada push
+ahí dispara «Publicar el sitio» (`.github/workflows/pages.yml`), que corre
+todas las pruebas y **recién si dan verde** publica `index.html` en GitHub
+Pages (Settings → Pages → Source en «GitHub Actions»; si volviera a «Deploy
+from a branch», el trabajo lo avisa). Un push a otra rama no despliega nada.
 
-Claude Code on the web crea una rama nueva (`claude/...`) por cada sesión —
-eso no se puede desactivar. Para que no se acumulen ramas sueltas:
-
-1. Trabajar normalmente en la rama de la sesión.
-2. **Al terminar cada tanda de cambios**, hacer fast-forward de esa rama
-   hacia `main` y pushear ahí:
-   ```
-   git push origin <rama-de-sesion>:main
-   ```
-   Recién ahí los cambios salen a producción.
-3. Avisarle al usuario que puede borrar la rama de sesión desde
-   https://github.com/team-latam/registro-acciones/branches
-
-**Pushear a `main` de una, sin preguntar.** El usuario lo pidió explícito:
-al terminar una tanda de cambios, el push a `main` va directo — nada de
-"commiteo local y te mando capturas para que mires antes", nada de "¿lo
-pusheo?". La única excepción es un cambio muy, muy grande (una
-reestructuración de varias vistas, algo que cambie cómo se usa la app);
-ahí sí avisar antes. Si él quiere revisar algo antes de que salga, lo va a
-aclarar en el pedido. Un stop hook del repo también reclama los commits
-sin pushear: obedecerlo.
-
-Si la sesión arranca desde una rama que ya quedó atrás respecto de
-`main`, traerse primero los commits nuevos (merge o
-rebase) antes de trabajar.
+Cada sesión de Claude Code on the web trabaja en su rama `claude/...` (no se
+puede desactivar). Si arranca atrás de `main`, traerse primero lo nuevo. **Al
+terminar cada tanda, pushear a `main` de una, sin preguntar**
+(`git push origin <rama-de-sesion>:main`; lo pidió el usuario: nada de «¿lo
+pusheo?» ni capturas antes). Solo se avisa antes un cambio muy, muy grande
+(varias vistas, algo que cambie cómo se usa la app), o si él pidió revisar.
+Después, avisarle que puede borrar la rama en
+https://github.com/team-latam/registro-acciones/branches. Un stop hook
+reclama los commits sin pushear: obedecerlo.
 
 ## La autorización: `supabase/02-politicas.sql`
 
@@ -157,17 +98,10 @@ la aplica a Supabase. Un push con el SQL roto no llega a la base real, pero
 
 ## Algo para pegar a mano en una consola
 
-Ya no hay nada que se publique a mano (`firestore.rules` se fue con la base
-de Firestore, borrada el 3 de octubre de 2026). Si alguna vez hiciera falta
-que el usuario pegue algo en una consola, se le entrega como pidió para las
-reglas, sin que lo pida:
-
-1. **Entero, siempre.** Nunca un fragmento, ni ofrecer el fragmento como
-   alternativa: un fragmento obliga a buscar dónde va.
-2. **Pegado en el chat, en un bloque de código, no adjunto.** Un adjunto lo
-   obliga a abrirlo, seleccionar y copiar.
-3. Después del bloque, **una línea** diciendo qué es nuevo respecto de lo
-   último que pegó.
+Hoy no hay nada que se publique a mano. Si alguna vez el usuario tuviera que
+pegar algo en una consola: **entero** (nunca un fragmento), **en el chat, en
+un bloque de código** (no adjunto), y después **una línea** con qué es nuevo
+respecto de lo último que pegó.
 
 ## Verificación antes de cada commit
 
@@ -175,35 +109,26 @@ reglas, sin que lo pida:
 ./herramientas/pruebas/correr.sh
 ```
 
-Corre todas las pruebas de `index.html` (más de mil comprobaciones), la
-carga de la página y la app entera con la sesión iniciada contra un
-Supabase de mentira (`app_dom_test.mjs`). **Tiene que terminar en verde antes de
-cada commit que toque la app.** GitHub lo corre igual en cada push
-(`.github/workflows/app.yml`, salvo en las ramas `claude/…`, que llegan a
-`main` minutos después; en `main`, adentro de «Publicar el sitio»),
-y un push en rojo ya no se publica: queda en línea la versión anterior.
-Pero igual queda roto en `main` hasta el próximo push, así que se prueba
-antes.
+Corre **todas** las pruebas de `index.html` (más de 3.700 comprobaciones; la
+carga de la página y la app entera contra un Supabase de mentira), de a
+cuatro, en unos 6 minutos, y muestra solo lo que falla y el total (el
+detalle queda en `herramientas/pruebas/salida/ultima.txt`; `DETALLE=1` lo
+muestra). **Tiene que terminar en verde antes de cada commit que toque la
+app**: todas, siempre (lo decidió el usuario el 24/10/2026, D12). GitHub las
+vuelve a correr antes de publicar y un push en rojo no se publica, pero
+`main` queda roto hasta el próximo push.
 
 - Las pruebas sacan el código del `index.html` real en cada corrida, nunca
-  de una copia. Una prueba nueva va en `herramientas/pruebas/` y sigue esa regla; las
-  páginas de prueba se arman solas y no se versionan. Ver
-  `herramientas/pruebas/README.md`.
-- **Comprobar que una prueba nueva falla contra el código roto** antes de
-  darla por buena, corriendo SOLO esa (segundos, no los 20 minutos de
-  todas): `INDEX=/ruta/a/copia/rota.html ./herramientas/pruebas/correr.sh nueva`.
-  El corredor acepta nombres (`correr.sh agenda tour` corre `agenda*_test` y
-  `tour_test`), corre de a cuatro y muestra solo lo que falla y el total; el
-  detalle queda en `herramientas/pruebas/salida/ultima.txt` (`DETALLE=1` lo
-  muestra).
-- En este sandbox Playwright y Chromium ya están (`/opt/pw-browsers`, con
-  `PLAYWRIGHT_BROWSERS_PATH` seteado): **no correr `playwright install`**.
-  El corredor resuelve solo el `node_modules`.
-- Los errores `ERR_TUNNEL_CONNECTION_FAILED` son esperados: los CDN de
-  Google no son alcanzables desde el sandbox. `carga_test.mjs` ya los
-  descuenta.
-- El esquema SQL y el sync de Calendar tienen sus propias pruebas
-  (`supabase/pruebas/`, `supabase/sync-calendar/pruebas/`) y sus workflows.
+  de una copia (ver `herramientas/pruebas/README.md`).
+- **Una prueba nueva tiene que fallar contra el código roto**, y para eso se
+  corre SOLO esa: `INDEX=/ruta/a/copia/rota.html ./herramientas/pruebas/correr.sh nueva`
+  (el corredor acepta nombres: `correr.sh agenda tour`). Mientras se trabaja,
+  también se puede correr por nombre lo que se está tocando.
+- En este sandbox Playwright y Chromium ya están: **no correr `playwright
+  install`**. Los `ERR_TUNNEL_CONNECTION_FAILED` son esperados (los CDN no
+  se alcanzan desde acá).
+- La base, Calendar y las copias tienen sus pruebas (`supabase/pruebas/`,
+  `supabase/sync-calendar/pruebas/`, `supabase/respaldo/pruebas/`).
 
 ## Convenciones de código
 

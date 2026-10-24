@@ -21,6 +21,10 @@ jobs:
     name: Mandarme los dos ejemplos
     # Solo desde main y con las llaves de verdad.
     if: github.ref == 'refs/heads/main'
+    # Las dos llaves de Supabase salen del entorno «produccion», que GitHub
+    # solo entrega a main, diga lo que diga este archivo en otra rama
+    # (docs/AUDITORIA.md, S9 y D11).
+    environment: produccion
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:

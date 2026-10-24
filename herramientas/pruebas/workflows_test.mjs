@@ -86,6 +86,15 @@ for(const { f, y } of flujos)
   for(const { nombre, t } of trabajos(y))
     if(/secrets\.(?!GITHUB_TOKEN)/.test(t) && !/github\.ref\s*==\s*'refs\/heads\/main'/.test(t)) llavesFueraDeMain.push(`${f}: ${nombre}`);
 eq("los trabajos con llaves de verdad solo corren desde main", llavesFueraDeMain, []);
+// Y las dos llaves de Supabase (la de servicio y la de la base) salen del
+// entorno «produccion», que GitHub solo entrega a main: la línea de arriba
+// está en el mismo archivo y una rama la puede borrar; el entorno no
+// (24/10/2026, docs/AUDITORIA.md, S9 y D11).
+const sinEntorno = [];
+for(const { f, y } of flujos)
+  for(const { nombre, t } of trabajos(y))
+    if(/secrets\.(SUPABASE_SERVICE_ROLE_KEY|SUPABASE_DB_URL)\b/.test(t) && !/^    environment:\s*produccion\s*$/m.test(t)) sinEntorno.push(`${f}: ${nombre}`);
+eq("los trabajos con las llaves de Supabase las piden al entorno «produccion»", sinEntorno, []);
 
 // El sistema de cada runner, fijado (ubuntu-24.04), nunca «-latest»:
 // GitHub mueve ubuntu-latest a Ubuntu 26 el 19/10/2026 (lo avisa en cada

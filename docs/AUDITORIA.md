@@ -71,7 +71,7 @@ siempre todas antes de publicar y, si algo falla, no publica**.
 
 ## La lista, por prioridad
 
-**Quién**: Claude lo hace solo, o el **usuario** decide.
+**Quién**: Claude lo hace solo, o el **usuario** decide. Las cuatro decisiones (D10 a D13) las tomó el 24/10, en la misma sesión.
 
 ### Urgente
 
@@ -115,10 +115,10 @@ siempre todas antes de publicar y, si algo falla, no publica**.
 
 | # | Qué | Recomendación |
 |---|---|---|
-| D10 | **Reescribir el historial** para sacar esos datos (S4), como el 10/10 con D4 (son los 56 commits desde el 12/10): destildar un momento «Block force pushes» en la protección de `main`, Claude reescribe y revisa todas las revisiones, se vuelve a tildar, y el pedido a GitHub de que borre las copias sueltas (https://support.github.com/contact, motivo «quitar datos sensibles»). Los códigos de todos los commits cambian. Y si alguno de esos ocho nombres no es real, decímelo: igual conviene reescribir | Sí |
-| D11 | **Las llaves de GitHub en un entorno que solo las da a `main`** (S9). A) las dos de Supabase ahora (se copian de nuevo del panel en un minuto) y las demás al renovar los tokens en 2027; B) todas ahora; C) dejarlo | A |
-| D12 | **Cuántas pruebas antes de cada cambio** (S10). A) según el cambio: las de esa pantalla más las generales, la entera solo en lo grande; B) la entera siempre, ahora en ~7 minutos; C) ninguna en la sesión, solo GitHub. En las tres, GitHub corre todas antes de publicar | A |
-| D13 | **Un `CLAUDE.md` más corto** (lo de estado e historia a `docs/ESTADO.md`) y **auditorías por nivel** («de lo nuevo» cuando pidas revisar; «completa» una vez por mes o antes de algo grande) | Sí |
+| D10 | ~~**Reescribir el historial** para sacar esos datos (S4)~~ **Elegido el 24/10: sí.** Claude reescribe los 56 commits en cuanto el usuario destilda «Block force pushes»; después él lo vuelve a tildar y hace el pedido a GitHub de borrar las copias sueltas | Sí |
+| D11 | ~~**Las llaves de GitHub en un entorno que solo las da a `main`** (S9)~~ **Elegido el 24/10: A.** Hecho de parte de Claude: los 11 trabajos que usan la llave de servicio o la de la base piden el entorno `produccion` (`workflows_test` lo exige). Falta del usuario: en Settings → Environments → `produccion`, la regla «solo `main`» y las dos llaves; después, borrar esas dos del repositorio. Las demás, al renovar los tokens en 2027 | A |
+| D12 | ~~**Cuántas pruebas antes de cada cambio** (S10)~~ **Elegido el 24/10: todas, siempre** (B): con el corredor nuevo son 6 minutos y una línea; lo que ahorraba de verdad ya está (no se repiten, la prueba contra lo roto es solo la nueva, no imprimen de más). En `CLAUDE.md` | B |
+| D13 | ~~**Un `CLAUDE.md` más corto** y **auditorías por nivel**~~ ✅ 24/10: `CLAUDE.md` de 13,3 a 9,5 KB (el estado y la historia, sin cambios, en `docs/ESTADO.md`); METODO.md y la skill con los dos niveles («de lo nuevo» y «completa») | Sí |
 
 ---
 
@@ -161,5 +161,9 @@ Todo lo de Claude está en `main` y publicado (24/10, «Publicar el sitio» en
 7 minutos; «¿Está arriba?» confirmó desde afuera que la página sale con las
 huellas en la CSP y que las 9 librerías llegan con la suya).
 
-1. **Vos**: las cuatro decisiones (D10 a D13), con las preguntas para tocar.
-2. **Claude**: lo que elijas; D10 en cuanto destildes «Block force pushes».
+1. **Vos** (una sola visita a GitHub, con los pasos que te dio Claude):
+   destildar «Block force pushes» para D10, y armar el entorno `produccion`
+   con las dos llaves de Supabase para D11.
+2. **Claude**: reescribir el historial (D10), revisar que no quede nada,
+   comprobar que los trabajos lean las llaves del entorno, y avisarte para
+   volver a tildar la protección y borrar las dos llaves viejas.

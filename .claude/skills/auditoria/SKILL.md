@@ -11,6 +11,13 @@ El método completo vive en el repo, no acá: **leer primero
 
 ## En corto
 
+Primero, el nivel (METODO.md, «Dos niveles»): **de lo nuevo** (lo que
+cambió desde la última, `RAPIDO=1`, seguridad a mano solo si el cambio toca
+la base, las funciones, los workflows, el código de afuera o datos de
+personas) o **completa** (una vez por mes, antes de algo grande, o si el
+usuario dice «completa» / «revisá todo»).
+
+
 1. `git pull` de `main`. Leer METODO.md, RECURRENTES.md, la última
    docs/AUDITORIA.md (lo que el usuario ya decidió no se vuelve a
    proponer) y `herramientas/auditoria/conocidos.json`.

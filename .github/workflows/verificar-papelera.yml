@@ -24,6 +24,10 @@ jobs:
     name: Qué ve cada rol de la papelera
     # Las llaves de verdad solo corren desde main (herramientas/pruebas/workflows_test.mjs).
     if: github.ref == 'refs/heads/main'
+    # Las dos llaves de Supabase salen del entorno «produccion», que GitHub
+    # solo entrega a main, diga lo que diga este archivo en otra rama
+    # (docs/AUDITORIA.md, S9 y D11).
+    environment: produccion
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     # En la misma cola que la copia y la limpieza: mientras una mueve archivos

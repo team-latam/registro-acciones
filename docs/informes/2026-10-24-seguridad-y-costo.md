@@ -311,7 +311,11 @@ sola prueba, paga otra vez todo lo que ya leyó. Por eso lo que más rinde es
   commit va a `main` minutos después y «Publicar el sitio» corre las
   mismas pruebas antes de publicar. (Un pull request la sigue corriendo.)
 
-### Lo que decidís vos (D12)
+### Lo que decidió el usuario (D12, 24/10: todas, siempre)
+
+Eligió que se sigan corriendo todas antes de cada cambio («no es tanto 6
+minutos»): con el corredor nuevo cuesta poco más que correr algunas, y es
+más seguro. Las opciones que se le dieron:
 
 Cuántas pruebas se corren en el sandbox antes de cada cambio. La red que
 protege a la gente no cambia en ninguna opción: **GitHub corre siempre la

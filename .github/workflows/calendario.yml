@@ -73,6 +73,10 @@ jobs:
     # Solo el código de main corre con las llaves de verdad: el botón «Run
     # workflow» deja elegir otra rama (docs/AUDITORIA.md, U2).
     if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+    # Las dos llaves de Supabase salen del entorno «produccion», que GitHub
+    # solo entrega a main, diga lo que diga este archivo en otra rama
+    # (docs/AUDITORIA.md, S9 y D11).
+    environment: produccion
     # Una sincronización por vez: una a mano mientras corre la nocturna se
     # pisaban el token de Google.
     concurrency:

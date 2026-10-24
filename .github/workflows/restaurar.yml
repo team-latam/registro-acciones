@@ -88,6 +88,10 @@ jobs:
     needs: probar
     # Solo a mano, y solo con el código de main (docs/AUDITORIA.md, U2).
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    # Las dos llaves de Supabase salen del entorno «produccion», que GitHub
+    # solo entrega a main, diga lo que diga este archivo en otra rama
+    # (docs/AUDITORIA.md, S9 y D11).
+    environment: produccion
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
