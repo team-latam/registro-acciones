@@ -13,7 +13,7 @@ todas las comprobaciones, cuando quizás pueden ser menos».
 
 El detalle de cada hallazgo (dónde, cómo se verificó, qué se hizo) está en
 `docs/informes/2026-10-24-seguridad-y-costo.md`. La página para el usuario,
-en palabras simples, está enlazada al final.
+en palabras simples: https://claude.ai/artifact/1tSArcG1rHue5DaCvRuKhi (privada).
 
 **Cómo se hizo.** Sobre `1ccc721` de `main`. Las herramientas completas:
 **3.697 comprobaciones de la app en 112 archivos, en verde**; Calendar y las
@@ -156,6 +156,10 @@ vuelve a proponer: lo de esa lista.
   nada.
 
 ## Cómo seguir
+
+Todo lo de Claude está en `main` y publicado (24/10, «Publicar el sitio» en
+7 minutos; «¿Está arriba?» confirmó desde afuera que la página sale con las
+huellas en la CSP y que las 9 librerías llegan con la suya).
 
 1. **Vos**: las cuatro decisiones (D10 a D13), con las preguntas para tocar.
 2. **Claude**: lo que elijas; D10 en cuanto destildes «Block force pushes».
