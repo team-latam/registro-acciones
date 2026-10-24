@@ -2478,3 +2478,17 @@ se conservan, con aviso de que no se deshace y de bajar una copia. Elegido:
 se conserva a quien está en un evento, tiene nota, correo o idiomas, o figura
 en otro lugar; a quien no vino de esa lista no se lo toca. Pruebas:
 `supabase/pruebas/79-agenda.sql` y bloque 4b de `agenda_test.mjs`.
+
+### Tanda 102 — Auditoría de seguridad y del costo de cada cambio (24/10/2026)
+
+El usuario pidió una auditoría completa con énfasis en seguridad, y entender
+si cada cambio puede gastar menos. Todo en `docs/AUDITORIA.md` (códigos S,
+decisiones D10–D13) y el detalle en
+`docs/informes/2026-10-24-seguridad-y-costo.md`. Hecho: datos de personas
+fuera de los archivos (S4; el historial, D10), SheetJS con huella (S1),
+«Algo no anda» en la copia (S5), la CSP publicada con las huellas de sus
+scripts (S2, `herramientas/publicar/`), la app no se muestra en un marco
+ajeno (S3), tres detalles (S6–S8), y el corredor de pruebas en paralelo,
+por nombre y callado (S10: 20 → 6 minutos, también en GitHub). Pruebas
+nuevas: `marco_test`, `csp_publicada_test`, `sheetjs_integridad_test`, y en
+`supabase/functions/_pruebas/avisos.mjs`.
