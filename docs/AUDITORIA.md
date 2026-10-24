@@ -84,7 +84,7 @@ siempre todas antes de publicar y, si algo falla, no publica**.
 | # | Qué | Por qué | Quién |
 |---|---|---|---|
 | S1 | ~~SheetJS (la librería de las planillas) se cargaba sin huella (SRI): el visor de un .xlsx (cualquiera) y «Traer una lista» (el admin, con su sesión)~~ ✅ 24/10 (`SHEETJS_SRI`, calculada en GitHub del archivo de su servidor; `sheetjs_integridad_test`; «¿Está arriba?» la verifica cada día) | si su servidor sirviera otra cosa, correría con la sesión del admin | Claude |
-| S5 | ~~La tabla de «Algo no anda» (`problemas`, 13/10) no estaba en la copia del domingo ni en el botón de la app; la prueba que lo exige estaba en rojo y GitHub no la corría (solo si cambia `supabase/respaldo/`)~~ ✅ 24/10 (en la copia, en la restauración y en el botón; la prueba corre también cuando cambia un `.sql` o la app) | una restauración la perdía; la próxima tabla podía ser una que importe | Claude |
+| S5 | ~~La tabla de «Algo no anda» (`problemas`, 13/10) no estaba en la copia del domingo ni en el botón de la app; la prueba que lo exige estaba en rojo y GitHub no la corría (solo si cambia `supabase/respaldo/`)~~ ✅ 24/10 (en la copia, en la restauración y en el botón; la prueba corre también cuando cambia un `.sql` o la app; y como eso la hace correr seguido, la fila que comparte con la limpieza y la restauración pasó a ser la del trabajo que copia, no la del workflow entero: si no, GitHub podía cancelar la copia del domingo, como canceló una corrida de prueba ese mismo día; `workflows_test` lo exige) | una restauración la perdía; la próxima tabla podía ser una que importe | Claude |
 
 ### Medio
 

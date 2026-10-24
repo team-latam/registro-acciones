@@ -123,6 +123,15 @@ entera y la vio.
   orden) y en el botón de la app; el workflow «Copia de seguridad» corre
   sus pruebas también cuando cambia un `.sql` o la app. Las pruebas de las
   copias, en verde.
+- *Y lo que eso destapó:* la copia, la limpieza y la restauración hacen fila
+  en el mismo grupo (R11, 10/10), pero la copia y la restauración lo hacían
+  con el workflow entero, también las corridas que solo prueban. Con las
+  pruebas corriendo en cada push que toca la app, la fila se llenaba, y
+  GitHub cancela lo que espera en una fila cuando llega otro: el mismo
+  24/10 canceló una corrida de prueba de «Copia de seguridad», y podía
+  cancelar la del domingo. Ahora la fila es la del trabajo que copia (y la
+  del que restaura), como ya era la de la limpieza; `workflows_test` lo
+  exige.
 - *A RECURRENTES:* «Una prueba que solo corre cuando cambia su carpeta».
 
 ### S2 — La CSP no frenaba un script colado (medio)

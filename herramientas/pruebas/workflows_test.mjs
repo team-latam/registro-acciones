@@ -118,5 +118,13 @@ eq("la limpieza del bucket, la copia y la restauración hacen cola en el mismo g
    ["limpieza.yml", "respaldo.yml", "restaurar.yml"].map(f => `${f}: ${grupos(f)}`),
    ["limpieza.yml: respaldo", "respaldo.yml: respaldo", "restaurar.yml: respaldo"]);
 
+// Y esa fila es la de los TRABAJOS que tocan la base, no la del workflow
+// entero: con la del workflow, las corridas que solo prueban (cada push que
+// toca la app o un .sql) entraban en la fila, y GitHub cancela lo que espera
+// en una fila cuando llega otro. El 24/10/2026 canceló así una corrida de
+// prueba de «Copia de seguridad»; podía ser la copia del domingo (S5).
+eq("la fila «respaldo» es de los trabajos que tocan la base, no del workflow entero",
+   flujos.filter(x => /^concurrency:\s*\n\s+group:\s*respaldo\b/m.test(x.y)).map(x => x.f), []);
+
 console.log(`${pass} pasaron, ${fail} fallaron`);
 process.exit(fail ? 1 : 0);

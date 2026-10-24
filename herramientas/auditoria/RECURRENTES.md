@@ -410,7 +410,10 @@ workflow de las copias corría sus pruebas solo si cambiaba
 incluye todo lo que esas pruebas LEEN, no solo su carpeta (las del
 respaldo leen los `.sql` y `index.html`). *Se detecta:* la auditoría corre
 todas las suites enteras; a mano, al sumar una prueba que lee otra carpeta,
-mirar el `paths:` de su workflow.
+mirar el `paths:` de su workflow. Y al ensanchar el `paths:`, mirar el
+`concurrency:` de ese workflow: si es del workflow entero, las corridas
+nuevas entran en la fila de las importantes, y GitHub cancela lo que espera
+(pasó el mismo 24/10 con «Copia de seguridad»).
 
 **Una herramienta que da «0 hallazgos» sin decir qué midió.** `pantallas`
 devolvió una lista vacía y no había forma de distinguir «todo bien» de «no

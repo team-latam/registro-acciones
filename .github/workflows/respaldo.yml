@@ -41,10 +41,6 @@ on:
       - 'supabase/*.sql'
       - 'index.html'
 
-# Una copia por vez: dos a la par se pisarían el push.
-concurrency:
-  group: respaldo
-  cancel-in-progress: false
 
 
 # Lo justo: leer el repo. Las llaves de verdad van por los secretos, no
@@ -78,6 +74,14 @@ jobs:
     # solo entrega a main, diga lo que diga este archivo en otra rama
     # (docs/AUDITORIA.md, S9 y D11).
     environment: produccion
+    # Una copia por vez: dos a la par se pisarían el push. La cola es la de
+    # este trabajo y no la del workflow entero: si no, las corridas que solo
+    # prueban (cada push que toca la app o un .sql) entraban en la misma fila,
+    # y GitHub cancela lo que espera en una fila cuando llega otro: podía
+    # cancelar la copia del domingo (24/10/2026, docs/AUDITORIA.md, S5).
+    concurrency:
+      group: respaldo
+      cancel-in-progress: false
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
