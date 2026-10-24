@@ -36,28 +36,53 @@ y todas las comprobaciones «cuando quizás pueden ser menos».
 
 ## Seguridad
 
-### S4 — Un teléfono real en el repositorio público (urgente)
+### S4 — Datos de personas en el repositorio público (urgente)
 
-`docs/REDISENO.md`, línea 1093, desde el commit `3167489` (17/10/2026,
-«Traer una lista trae la nota de cada persona…»): al contar cómo se
-corrigió el Excel del Mapeo se copió entero, como ejemplo, el teléfono de
-una persona de ese Excel («+1 (929) …», con el código de Nueva York). El
-repo es público. Es **la tercera vez** del mismo patrón (D4 y R31 el
-10/10: RECURRENTES, «Un dato personal real copiado a un documento al anotar
-un hallazgo»).
+Dos lugares, el mismo error:
 
-- *Cómo se vio:* `seguridad` lo marcó como «Parece un teléfono» (nivel
-  bajo: por eso la regla de que todo se verifica). Se buscó en todo el
-  árbol y en todo el historial: está en un solo archivo y entró en un solo
-  commit.
-- *Hecho:* sacado del archivo (queda «+1 (929) …»). `seguridad` ahora
-  informa los teléfonos **recortados** (nunca enteros: su informe se copia
-  a los documentos), los sube a «importante», y no marca los inventados
-  (con un grupo 555 o 5555) ni el `viewBox` de un dibujo.
-- *Queda (D10, del usuario):* sigue en el historial público. Lo mismo que
-  D4: reescribir el historial de `main` desde `3167489` (necesita que
-  destildes un momento «Block force pushes»), revisar todas las revisiones,
-  y el pedido a GitHub de que borre las copias sueltas. Recomendación: sí.
+1. `docs/REDISENO.md`, desde el commit `3167489` (17/10/2026, «Traer una
+   lista trae la nota de cada persona…»): al contar cómo se corrigió el
+   Excel del Mapeo se copió entero, como ejemplo, el teléfono de una
+   persona de ese Excel («+1 (929) …», código de Nueva York).
+2. Las pruebas de la Agenda (`herramientas/pruebas/agenda_test.mjs`,
+   `agenda_region_test`, `agenda_tiras_test`, `agenda_ventanas_test`,
+   `agenda_toda_latam_test`, `tablas_a11y_test`, `app_de_mentira.mjs`) y de
+   la base (`supabase/pruebas/79-agenda.sql`), un comentario de `index.html`
+   y el informe del 10/10: **ocho nombres con su teléfono, su ciudad y su
+   cargo** (Córdoba, Rosario, Buenos Aires, Brasil), uno con el cargo
+   «Seguridad · Kabat Kehila». Una parte viene de una prueba que se llama
+   «Mapeo de prueba» (16 y 17/10, cuando se probó «Traer una lista» con
+   filas como las del Mapeo) y otra del directorio de Chabad (los rabinos
+   de cada casa, que ese directorio publica). Están desde el primer commit
+   del historial actual (12/10). No se contrastaron con el Excel del Mapeo
+   para no mover más datos personales: se tratan como reales.
+
+Es **la tercera vez** del mismo patrón (D4 y R31 el 10/10: RECURRENTES,
+«Un dato personal real copiado a un documento al anotar un hallazgo»).
+
+- *Cómo se vio:* `seguridad` marcó el de `REDISENO.md` («Parece un
+  teléfono», nivel bajo: por eso la regla de que todo se verifica); al
+  revisar los otros que marcó, aparecieron los nombres de las pruebas. Los
+  teléfonos de las pruebas no los veía: el «9» de los celulares de
+  Argentina («+54 9 351 …») no entraba en su patrón. El 10/10 se anotó uno
+  de ellos como «inventado» en `conocidos.json` sin mirar los nombres que
+  iban al lado.
+- *Hecho:* cambiados en todos los archivos por nombres inventados
+  (Ficticio, Ejemplar, Muestral, Supuesto…) y teléfonos con 555, de forma
+  pareja (también escritos sin espacios, como van en los enlaces de
+  WhatsApp), así las pruebas siguen comparando lo mismo: la app (3.714) y la
+  base (990), en verde. `seguridad` ahora: ve esos formatos (en la versión
+  vieja de la prueba encuentra los 12 números; en la actual, ninguno),
+  informa todo **recortado** (su informe se copia a los documentos), lo
+  sube a «importante», y no marca los inventados (con 555 o 5555) ni un
+  `viewBox`.
+- *Queda (D10, del usuario):* siguen en el historial público (56 commits,
+  desde el 12/10). Lo mismo que D4: reescribir el historial de `main`
+  (necesita que destildes un momento «Block force pushes»), revisar todas
+  las revisiones y la rama de la sesión del 22/10, y el pedido a GitHub de
+  que borre las copias sueltas. Recomendación: sí.
+- *Regla nueva en `CLAUDE.md`:* nunca enteros, ni como ejemplo; una prueba
+  usa datos inventados aunque imite el formato del Mapeo.
 
 ### S1 — SheetJS se cargaba sin huella (importante)
 

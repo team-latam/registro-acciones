@@ -63,5 +63,10 @@
     "que": "Un correo en el repo público",
     "contiene": "nuevo@team-latam.com",
     "porque": "Inventado (la cuenta recién aprobada), de herramientas/pruebas/tour_test.mjs. Revisado el 24/10/2026."
+  },
+  {
+    "que": "Parece un teléfono",
+    "contiene": "supabase/pruebas/datos-al-limite.sql",
+    "porque": "Número inventado (011 4444-…) de los datos al límite de la base. Revisado el 24/10/2026."
   }
 ]

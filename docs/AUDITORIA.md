@@ -39,11 +39,13 @@ protege la página si algún día algo fallara.
 
 **Lo que más pesa:**
 
-1. **Un teléfono real, en el repositorio público** (urgente). Al contar en
+1. **Datos de personas en el repositorio público** (urgente). Al contar en
    `docs/REDISENO.md` cómo se corrigió el Excel del Mapeo (17/10) se copió
-   entero, como ejemplo, el teléfono de una persona. Es la tercera vez del
-   mismo error. Ya no está en el archivo; **sigue en el historial**: hace
-   falta reescribirlo, como el 10/10 (D10).
+   entero el teléfono de una persona; y las pruebas de la Agenda usaban
+   **ocho nombres con su teléfono, su ciudad y su cargo** que tienen toda la
+   pinta de ser del Mapeo y del directorio (uno, de seguridad de una
+   comunidad). Es la tercera vez del mismo error. Ya no están en los
+   archivos; **siguen en el historial**: hace falta reescribirlo (D10).
 2. **La librería de las planillas entraba sin verificar** (importante). Si
    su servidor sirviera otra cosa, correría con la sesión de quien abre un
    Excel, y con la del admin al traer una lista a la Agenda. Ahora va con
@@ -75,7 +77,7 @@ siempre todas antes de publicar y, si algo falla, no publica**.
 
 | # | Qué | Por qué | Quién |
 |---|---|---|---|
-| S4 | Un teléfono real de una persona del Mapeo («+1 (929) …») quedó escrito entero en `docs/REDISENO.md` (commit `3167489`, 17/10). ~~En el archivo~~ ✅ 24/10 (recortado; `seguridad` ahora informa los teléfonos recortados, los sube a «importante» y no marca los inventados). **Queda en el historial** (D10) | el repo es público; tercera vez (RECURRENTES) | Claude + **usuario** (D10) |
+| S4 | Datos de personas con toda la pinta de reales en el repo público: un teléfono del Mapeo («+1 (929) …») escrito entero en `docs/REDISENO.md` (17/10), y **en las pruebas de la Agenda y de la base, ocho nombres con su teléfono, su ciudad y su cargo** (de Córdoba, Rosario, Buenos Aires y Brasil; uno con el cargo «Seguridad · Kabat Kehila»), desde el primer commit del historial actual (12/10) y la mayoría del 16 y 17/10, cuando se probó «Traer una lista» con filas como las del Mapeo. ~~En los archivos~~ ✅ 24/10 (cambiados por nombres y teléfonos inventados, con 555, en las 11 partes donde estaban; las pruebas, en verde; `seguridad` ahora ve el «9» de los celulares, que antes se le escapaba, informa todo recortado y en nivel «importante»). **Queda en el historial** (D10) | el repo es público; datos privados del Mapeo y de una persona de seguridad; tercera vez (RECURRENTES) | Claude + **usuario** (D10) |
 
 ### Importante
 
@@ -113,7 +115,7 @@ siempre todas antes de publicar y, si algo falla, no publica**.
 
 | # | Qué | Recomendación |
 |---|---|---|
-| D10 | **Reescribir el historial** para sacar el teléfono (S4), como el 10/10 con D4: destildar un momento «Block force pushes» en la protección de `main`, Claude reescribe y revisa todas las revisiones, se vuelve a tildar, y el pedido a GitHub de que borre las copias sueltas (https://support.github.com/contact, motivo «quitar datos sensibles»). Los códigos de los commits desde el 17/10 cambian | Sí |
+| D10 | **Reescribir el historial** para sacar esos datos (S4), como el 10/10 con D4 (son los 56 commits desde el 12/10): destildar un momento «Block force pushes» en la protección de `main`, Claude reescribe y revisa todas las revisiones, se vuelve a tildar, y el pedido a GitHub de que borre las copias sueltas (https://support.github.com/contact, motivo «quitar datos sensibles»). Los códigos de todos los commits cambian. Y si alguno de esos ocho nombres no es real, decímelo: igual conviene reescribir | Sí |
 | D11 | **Las llaves de GitHub en un entorno que solo las da a `main`** (S9). A) las dos de Supabase ahora (se copian de nuevo del panel en un minuto) y las demás al renovar los tokens en 2027; B) todas ahora; C) dejarlo | A |
 | D12 | **Cuántas pruebas antes de cada cambio** (S10). A) según el cambio: las de esa pantalla más las generales, la entera solo en lo grande; B) la entera siempre, ahora en ~7 minutos; C) ninguna en la sesión, solo GitHub. En las tres, GitHub corre todas antes de publicar | A |
 | D13 | **Un `CLAUDE.md` más corto** (lo de estado e historia a `docs/ESTADO.md`) y **auditorías por nivel** («de lo nuevo» cuando pidas revisar; «completa» una vez por mes o antes de algo grande) | Sí |

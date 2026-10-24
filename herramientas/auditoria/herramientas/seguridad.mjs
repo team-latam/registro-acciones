@@ -17,6 +17,7 @@
 import fs from "node:fs";
 import { execSync } from "node:child_process";
 import { RAIZ, html, js, lineaDeJs, hallazgo, entregar } from "./comun.mjs";
+import { conHuellas } from "../../publicar/csp.mjs";
 
 const out = [];
 
@@ -77,9 +78,13 @@ else {
   if(!/base-uri/.test(csp)) out.push(hallazgo("seguridad", "bajo", "La CSP no fija base-uri"));
   // Lo que la auditoría del 24/10/2026 vio a mano (S2): con 'unsafe-inline'
   // en script-src un XSS corre igual, y un CDN entero (jsDelivr, unpkg)
-  // sirve cualquier paquete de cualquiera. Se mira lo que publica GitHub
-  // Pages (la CSP del sitio) si hay una copia armada para publicar.
-  const scriptSrc = ((/(?:^|;)\s*script-src ([^;]+)/.exec(csp) || [])[1] || "").trim().split(/\s+/);
+  // sirve cualquier paquete de cualquiera. Se mira la CSP que de verdad se
+  // publica: el fuente dice 'unsafe-inline' a propósito y «Publicar el
+  // sitio» le suma las huellas (herramientas/publicar/csp.mjs).
+  let publicada = csp;
+  try{ publicada = (/http-equiv="Content-Security-Policy" content="([^"]+)"/.exec(conHuellas(html)) || [])[1] || csp; }
+  catch(e){ out.push(hallazgo("seguridad", "importante", "No se pudo armar la CSP que se publica", "herramientas/publicar/csp.mjs", e.message)); }
+  const scriptSrc = ((/(?:^|;)\s*script-src ([^;]+)/.exec(publicada) || [])[1] || "").trim().split(/\s+/);
   if(scriptSrc.includes("'unsafe-inline'") && !scriptSrc.some(x => /^'sha(256|384|512)-/.test(x)))
     out.push(hallazgo("seguridad", "medio", "La CSP deja correr cualquier script escrito en la página ('unsafe-inline' sin huellas)", "", "un XSS no encontraría ninguna traba"));
   scriptSrc.filter(x => /^https:\/\/(cdn\.jsdelivr\.net|unpkg\.com)\/?$/.test(x))
@@ -99,7 +104,7 @@ if(!/window\.top\s*!==\s*window\.self|self\s*!==\s*top|top\s*!==\s*self/.test(ht
 // repo público es un dato de una persona a la vista de cualquiera.
 const recortar = tel => tel.replace(/^(\D*\d+\D+\(?\d+\)?)[\s\S]*$/, "$1 …");
 // Los inventados de las pruebas y la demo llevan un grupo 555 o 5555.
-const INVENTADO = /(^|\D)5{3,4}(\D|$)/;
+const INVENTADO = /(^|\D)9?5{3,4}/;
 const archivos = execSync("git ls-files", { cwd: RAIZ, encoding: "utf8" }).split("\n").filter(f => f && !/\.(png|jpg|gz|zip|docx?|xlsx?|pdf)$/.test(f));
 const CORREO_OK = /ciudad@gmail\.com|@adentro\.com|^atacante@|@(x\.com|example\.(com|org)|ejemplo\.|users\.noreply\.github\.com|noreply\.|anthropic\.com|group\.calendar\.google\.com|group\.v\.calendar\.google\.com|dominio\.com|pedro\.com|github\.com|y\.com|proyecto\.iam\.gserviceaccount\.com|resend\.dev)|^benny@team-latam\.com$|^-?info@team-latam\.com$|^(nueva|otra|ana|diego|lucia|moshe|juan|obs|nombre|name|nome|largo|veneno|pide|nadie)@/i;
 const vistosCorreo = new Map();
@@ -112,6 +117,12 @@ for(const f of archivos){
   // «sk_(?:live)_» y no la palabra junta: si no, esta misma línea se marcaba
   // como llave (7/10/2026).
   if(/service_role["']?\s*[:=]\s*["']ey|sk_(?:live)_|-----BEGIN [A-Z ]*PRIVATE KEY/.test(txt)) out.push(hallazgo("seguridad", "urgente", "Parece una llave secreta en el repo", f));
+  // Grupos de 1 a 5 cifras separados por espacios o guiones, de 10 a 13 cifras
+  // en total: así entra el «9» de los celulares de Argentina («+54 9 351 …»),
+  // que el patrón de antes no veía, y por eso nombres y teléfonos del Mapeo
+  // quedaron en las pruebas de la Agenda del 12 al 24/10/2026 (S4).
+  for(const t of txt.matchAll(/(?<![\w.:\/#-])\+?\d{1,4}(?:[ -]\(?\d{1,5}\)?){2,5}(?![\w.:\/-])/g))
+    if(t[0].replace(/\D/g, "").length >= 10 && t[0].replace(/\D/g, "").length <= 13 && !/\d{4}-\d{2}-\d{2}/.test(t[0]) && !INVENTADO.test(t[0]) && !/viewBox="$/.test(txt.slice(Math.max(0, t.index - 9), t.index)) && !/^0 0 /.test(t[0])) { out.push(hallazgo("datos personales", "importante", "Parece un teléfono", f, recortar(t[0]))); break; }
   for(const t of txt.matchAll(/(?<![\d.])\+?\d{2,3}[\s-]?\(?\d{2,4}\)?[\s-]?\d{3,4}[\s-]\d{3,4}(?![\d.])/g))
     if(!/\d{4}-\d{2}-\d{2}/.test(t[0]) && !INVENTADO.test(t[0]) && !/viewBox="$/.test(txt.slice(Math.max(0, t.index - 9), t.index))) { out.push(hallazgo("datos personales", "importante", "Parece un teléfono", f, recortar(t[0]))); break; }
   // El formato de Estados Unidos y Canadá, «(NNN) NNN-NNNN», con el código de

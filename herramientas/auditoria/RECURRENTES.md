@@ -394,6 +394,13 @@ mensaje de commit, no solo al auditar; un ejemplo de formato se escribe con
 un número inventado (con 555). *Se detecta:* `seguridad`, ahora en nivel
 «importante» y con el número recortado en su propio informe (para que el
 informe no sea la próxima filtración).
+Y en la misma auditoría: las pruebas de la Agenda usaban **ocho nombres con
+su teléfono, ciudad y cargo** con toda la pinta de reales (filas como las del
+Mapeo, y rabinos del directorio). El 10/10 uno de esos teléfonos se dio por
+«inventado» en `conocidos.json` mirando solo el número. *Regla:* un dato de
+prueba se inventa entero (nombre, teléfono, cargo); al aceptar un hallazgo
+de datos personales, se mira la fila completa, no solo lo marcado. `seguridad`
+ahora ve los celulares con «9» («+54 9 351 …»), que antes se le escapaban.
 
 **Una prueba que solo corre cuando cambia su carpeta.** La prueba de las
 copias exige que la copia conozca cada tabla del esquema, y estuvo en rojo
