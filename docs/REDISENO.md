@@ -2492,3 +2492,28 @@ ajeno (S3), tres detalles (S6–S8), y el corredor de pruebas en paralelo,
 por nombre y callado (S10: 20 → 6 minutos, también en GitHub). Pruebas
 nuevas: `marco_test`, `csp_publicada_test`, `sheetjs_integridad_test`, y en
 `supabase/functions/_pruebas/avisos.mjs`.
+
+### Tanda 103 — La letra celeste se lee (28/10/2026)
+
+Salió de una crítica de diseño que el usuario pidió («una review de mi
+sistema», con Impeccable): puntaje 31/40 y cinco problemas, el primero el
+contraste. El celeste de la marca (`--celeste-dark`, #1a9fb8: 3,1 sobre
+blanco, 2,9 sobre el fondo; el mínimo es 4,5) estaba como color de letra en
+57 reglas, aunque R6 (10/10) lo había dado por resuelto. Ahora la letra va
+con `--link` (#146f82, 5,8), que ya existía y en oscuro vale lo mismo que el
+celeste (la letra en oscuro queda igual). Seis reglas ponían letra blanca sobre el
+relleno celeste (el número de hoy del Calendario, «Se repite» y el día de la
+semana elegidos, y el `:hover` de `.btn-new`, `.fab-main` y `.btn-mini`):
+pasan al petróleo oscuro, como ya hacía el estado normal de esos botones y
+`.rep-h4`. El bloque de impresión también define `--link` claro (impreso desde
+el modo oscuro, los enlaces salían celestes sobre papel blanco). Nada cambia
+de lugar ni de tamaño: es el mismo tono, un poco más oscuro.
+`accesibilidad_test` (ahora 59 comprobaciones, 17 fallan contra el código de
+antes) lee el CSS entero y mide 11 clases en claro y en oscuro más la fecha de
+cada posteo en el celular; su medidor de fondo ahora mezcla los
+semitransparentes y entiende `color-mix`. **Queda de esa crítica:** el período
+cortado de Reportes en el celular, el buscador global que no existe en el
+celular, el Inicio con tres filas de controles, la letra de 9 a 11,5 px y un
+logo propio (a explorar). Y en modo oscuro, sin tocar: «Sin Dónde definido»,
+«1 vencido» y «hace N meses» (3,97), la ✕ de los chips (3,76) y los
+contadores rojo y gris de Administración (3,76 y 2,37).

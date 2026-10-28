@@ -5,7 +5,10 @@
 
    - El texto en celeste lleva un color propio (--link) con contraste de
      4,5 o más sobre el fondo, en claro y en oscuro; el celeste de la marca
-     (3,1 sobre blanco) queda para fondos y bordes.
+     (3,1 sobre blanco) queda para fondos y bordes. Ninguna regla de CSS
+     pinta letra con --celeste-dark (crítica de diseño del 28/10/2026: 57
+     reglas lo hacían, R6 había quedado a medias) y el texto que va SOBRE el
+     celeste es oscuro, no blanco (1,9 a 3,1).
    - Los avisos («Número copiado», «Guardado») se anuncian al lector de
      pantalla (role=status).
    - Los resultados de «Buscar en todo» y las filas de Reportes no apagan
@@ -27,6 +30,20 @@ const ok = (n, c, detalle) => { if(c) pass++; else { fail++; console.log(`✗ ${
 const INDEX = process.env.INDEX || __aRuta(new URL("../../index.html", import.meta.url));
 const html = fs.readFileSync(INDEX, "utf8");
 
+// El CSS (lo que está entre <style> y </style>), regla por regla.
+const css = html.slice(html.indexOf("<style>"), html.indexOf("</style>"));
+const reglas = css.split("}").map(r => r.replace(/\/\*[\s\S]*?\*\//g, " ").trim());
+// Letra pintada con el celeste de la marca (3,1 sobre blanco). La propiedad
+// tiene que ser `color`: border-color, outline-color, accent-color… son
+// bordes y rellenos, y ahí el celeste está bien.
+const conCeleste = reglas.filter(r => /(?<![-\w])color\s*:\s*var\(--celeste-dark\)/.test(r));
+ok("ninguna regla de CSS pinta letra con --celeste-dark (va --link: 5,8 sobre blanco)", conCeleste.length === 0,
+  `${conCeleste.length} reglas, por ejemplo: ${conCeleste.slice(0, 4).map(r => r.replace(/\s+/g, " ").slice(0, 90)).join(" || ")}`);
+// Letra blanca sobre el relleno celeste (3,1 en claro, 1,7 en oscuro, donde el celeste es claro).
+const blancoSobreCeleste = reglas.filter(r => /background\s*:\s*var\(--celeste(-dark)?\)/.test(r) && /(?<![-\w])color\s*:\s*(#fff\b|#ffffff|white)/i.test(r));
+ok("ninguna regla pone letra blanca sobre el relleno celeste (va el petróleo oscuro)", blancoSobreCeleste.length === 0,
+  `${blancoSobreCeleste.length} reglas, por ejemplo: ${blancoSobreCeleste.slice(0, 4).map(r => r.replace(/\s+/g, " ").slice(0, 90)).join(" || ")}`);
+
 // Contraste WCAG entre dos colores "rgb(r, g, b)" o "#rrggbb".
 const canal = v => { v /= 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; };
 // "rgb(r, g, b)", "#rrggbb" o "color(srgb r g b)" (lo que devuelve color-mix).
@@ -35,10 +52,18 @@ const rgb = c => { const m = /rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(c); if(m) ret
   const h = c.trim().replace("#", ""); return [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16)); };
 const lum = c => { const [r, g, b] = rgb(c).map(canal); return .2126 * r + .7152 * g + .0722 * b; };
 const contraste = (a, b) => { const x = lum(a), y = lum(b); return Math.round(((Math.max(x, y) + .05) / (Math.min(x, y) + .05)) * 100) / 100; };
-// El color de fondo que de verdad hay detrás de un elemento (el primero no transparente, subiendo).
-const fondoDe = `(el) => { for(let e = el; e; e = e.parentElement){ const c = getComputedStyle(e).backgroundColor; if(c && !/rgba\\(\\d+, \\d+, \\d+, 0\\)|transparent/.test(c)) return c; } return getComputedStyle(document.body).backgroundColor; }`;
+// El color de fondo que de verdad hay detrás de un elemento: sube hasta el
+// primer fondo opaco y mezcla encima los semitransparentes que haya en el
+// camino (un chip con rgba(…, .16) no se lee contra ese rgba, sino contra lo
+// que queda al ponerlo sobre la tarjeta). color-mix() devuelve «color(srgb r g
+// b)» con valores de 0 a 1, no «rgb(…)».
+const fondoDe = `(el) => { const capas = []; let base = null;
+  for(let e = el; e; e = e.parentElement){ const c = getComputedStyle(e).backgroundColor || "", n = c.match(/[0-9.]+/g); if(!n || n.length < 3) continue; if(c.startsWith("color(")) for(let i = 0; i < 3; i++) n[i] = n[i] * 255; const a = n.length > 3 ? +n[3] : 1; if(a === 0) continue; if(a === 1){ base = n.slice(0, 3).map(Number); break; } capas.push(n.map(Number)); }
+  if(!base) base = (getComputedStyle(document.body).backgroundColor.match(/[0-9.]+/g) || [255, 255, 255]).slice(0, 3).map(Number);
+  for(const c of capas.reverse()) base = base.map((v, i) => v * (1 - c[3]) + c[i] * c[3]);
+  return "rgb(" + base.map(Math.round).join(", ") + ")"; }`;
 // Sondas: elementos con esas clases, para leer el CSS sin buscarlos en cada pantalla.
-const SONDAS = `<div id="sondas"><a href="#" class="s-a">a</a><span class="ymd l3">5</span><table><tr><td class="rep-h4">9</td></tr></table><span class="fs-link active">x</span><span class="rep-kpi-num alerta">3</span><span class="pl-st overdue">v</span><span class="pl-st soon">s</span><span class="ag-wa chico"><svg class="ag-wa-ic"></svg></span><span class="feed-solapas"><button type="button">b</button></span></div>`;
+const SONDAS = `<div id="sondas"><a href="#" class="s-a">a</a><span class="ymd l3">5</span><table><tr><td class="rep-h4">9</td></tr></table><span class="fs-link active">x</span><span class="rep-kpi-num alerta">3</span><span class="pl-st overdue">v</span><span class="pl-st soon">s</span><span class="ag-wa chico"><svg class="ag-wa-ic"></svg></span><span class="feed-solapas"><button type="button">b</button></span><button type="button" class="fb-boton">f</button><button type="button" class="rep-boton">r</button><button type="button" class="btn-text-add">t</button><button type="button" class="btn-sync">s</button><span class="pj-owner">@a</span><span class="up-nick">@a</span><span class="status-pill observer">o</span><span class="participant-chip">p</span><button type="button" class="recur-opt sel">o</button><button type="button" class="recur-dow sel">d</button><span class="cal-cell today"><span class="cal-daynum">28</span></span></div>`;
 const medir = p => p.evaluate(([sondas, fondoDe]) => {
   document.body.insertAdjacentHTML("beforeend", sondas);
   const fondo = eval(fondoDe);
@@ -49,6 +74,8 @@ const medir = p => p.evaluate(([sondas, fondoDe]) => {
     link: css.getPropertyValue("--link").trim(), card: css.getPropertyValue("--card").trim(), bg: css.getPropertyValue("--bg").trim(), soft: css.getPropertyValue("--celeste-soft").trim(),
     a: par(".s-a"), l3: par(".ymd.l3"), h4: par(".rep-h4"), fsLink: par(".fs-link.active"), kpi: par(".rep-kpi-num.alerta"), overdue: par(".pl-st.overdue"), soon: par(".pl-st.soon"),
     wa: [getComputedStyle(q(".ag-wa-ic")).fill, getComputedStyle(q(".ag-wa.chico")).backgroundColor],
+    fbBoton: par(".fb-boton"), repBoton: par(".rep-boton"), btnTextAdd: par(".btn-text-add"), btnSync: par(".btn-sync"), pjOwner: par(".pj-owner"), upNick: par(".up-nick"),
+    observador: par(".status-pill.observer"), participante: par(".participant-chip"), recurOpt: par(".recur-opt.sel"), recurDow: par(".recur-dow.sel"), hoy: par(".cal-daynum"),
   };
   document.getElementById("sondas").remove();
   return r;
@@ -66,6 +93,11 @@ for(const oscuro of [false, true]){
   ok(`${modo}: un enlace se pinta con --link`, m.link && m.a[0] === `rgb(${rgb(m.link).join(", ")})`, `a: ${m.a[0]}, --link: ${m.link}`);
   for(const [k, n, min] of [["l3", "el tono 3 del mapa de calor del año", 4.5], ["h4", "el tono alto de «Todos los años»", 4.5], ["fsLink", "el atajo rápido activo del Inicio", 4.5], ["kpi", "el número en alerta de Reportes", 4.5], ["overdue", "un hito vencido", 4.5], ["soon", "un hito próximo", 4.5]]){
     ok(`${modo}: ${n} da ${min} o más`, contraste(m[k][0], m[k][1]) >= min, `${m[k][0]} sobre ${m[k][1]}: ${contraste(m[k][0], m[k][1])}`);
+  }
+  for(const [k, n] of [["fbBoton", "el botón «Filtros» del Inicio"], ["repBoton", "los botones de Reportes (Filtros, Mi año, Presentar, Planilla, PDF)"], ["btnTextAdd", "los «+ Agregar…» de los formularios"],
+    ["btnSync", "«Traer de Google Calendar» y «Bajar lista»"], ["pjOwner", "el @responsable de un hito"], ["upNick", "el @nickname del perfil"], ["observador", "la etiqueta «Observador»"],
+    ["participante", "el chip de un participante"], ["recurOpt", "la opción elegida de «Se repite»"], ["recurDow", "el día de la semana elegido de «Se repite»"], ["hoy", "el número de hoy en el Calendario"]]){
+    ok(`${modo}: ${n} da 4,5 o más`, contraste(m[k][0], m[k][1]) >= 4.5, `${m[k][0]} sobre ${m[k][1]}: ${contraste(m[k][0], m[k][1])}`);
   }
   ok(`${modo}: el logo de WhatsApp chico da 3 o más sobre su fondo`, contraste(m.wa[0], m.wa[1]) >= 3, `${m.wa[0]} sobre ${m.wa[1]}: ${contraste(m.wa[0], m.wa[1])}`);
   await p.close();
@@ -90,6 +122,8 @@ for(const sel of [".gs-item:hover, .gs-item:focus", ".rep-fila-ir:hover, .rep-fi
 {
   const { p } = await entrar(b, ADMIN, "Benny Rosenthal", { viewport: { width: 390, height: 661 } });
   const alto = (sel) => p.$$eval(sel, l => l.filter(e => e.offsetParent).map(e => Math.round(e.getBoundingClientRect().height)));
+  const cuando = await p.evaluate((fondoDe) => { const fondo = eval(fondoDe); const e = document.querySelector(".post-top .post-cuando"); return e && [getComputedStyle(e).color, fondo(e)]; }, fondoDe);
+  ok("celular: la fecha de cada posteo (en mayúsculas, 12 px) da 4,5 o más", cuando && contraste(cuando[0], cuando[1]) >= 4.5, JSON.stringify(cuando) + (cuando ? ": " + contraste(cuando[0], cuando[1]) : ""));
   const solapas = await alto(".feed-solapas button");
   ok("celular: las solapas «Lo que pasó / Próximos» miden 32 px o más", solapas.length && solapas.every(h => h >= 32), JSON.stringify(solapas));
   await tab(p, "paises"); await click(p, ".paises-agenda"); await p.waitForTimeout(500);

@@ -434,3 +434,27 @@ suite pasó de ~6 a ~24 minutos en dos semanas y el trabajo tenía tope de 30:
 un poco más y «Publicar el sitio» se cortaba por tiempo. *Regla:* el
 corredor dice cuánto tardó; si pasa de la mitad del tope del workflow, se
 anota en la auditoría.
+
+## Agregado en la crítica de diseño (28/10/2026)
+
+**El celeste de la marca usado como letra, otra vez.** R6 (10/10) cambió a
+`--link` los enlaces de la Agenda, la ficha de un lugar, las solapas y el
+Calendario, y se dio por resuelto, pero `--celeste-dark` (3,1 sobre blanco,
+2,9 sobre el fondo) siguió como `color:` en 57 reglas: «Filtros», los cinco
+botones de Reportes, «+ Agregar…», «Traer de Google Calendar» y la fecha de
+cada posteo en el celular. Además, seis reglas ponían letra blanca sobre el
+relleno celeste (el número de hoy del Calendario, «Se repite» elegido, los
+estados `:hover`): 3,1 en claro y 1,7 en oscuro, donde el celeste es claro.
+Lo nuevo que se sumó después usó el celeste porque estaba a mano. *Regla:*
+la letra va con `--link`; `--celeste-dark` es para bordes, rellenos y anillos
+de foco; y sobre un relleno celeste la letra es `--petroleo-dark`.
+*Se detecta:* `accesibilidad_test` lee el CSS entero (ninguna regla con
+`color:var(--celeste-dark)` ni con blanco sobre `background:var(--celeste…)`)
+y mide el contraste en la app, en claro y en oscuro. Al sumar una clase con
+color propio, sumarle su sonda en esa prueba.
+
+**Un «resuelto» sin una prueba que lo cuide.** R6 se tachó con una prueba
+que miraba unas pocas clases a mano; las demás reglas del mismo problema
+nunca tuvieron quién las vigilara. *Regla:* si el defecto es de un valor
+(un color, un tamaño), la prueba tiene que mirar **todas las reglas** que
+lo usan, no solo las que se arreglaron.

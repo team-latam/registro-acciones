@@ -281,7 +281,7 @@
   @supports (appearance: base-select){
     select, ::picker(select){ appearance:base-select; }
     select{ display:inline-flex; align-items:center; gap:6px; overflow:hidden; white-space:nowrap; cursor:pointer; }
-    select::picker-icon{ color:var(--celeste-dark); font-size:.8em; transition:rotate .2s; }
+    select::picker-icon{ color:var(--link); font-size:.8em; transition:rotate .2s; }
     select:open::picker-icon{ rotate:180deg; }
     ::picker(select){
       border:1px solid var(--border); border-radius:16px; background:var(--card); color:var(--text);
@@ -291,7 +291,7 @@
     option{ border-radius:10px; padding:9px 12px; font-size:13.5px; font-weight:600; color:var(--text); gap:8px; white-space:normal; }
     option:hover, option:focus-visible{ background:var(--celeste-soft); outline:none; }
     option:checked{ background:var(--chip-bg); font-weight:800; color:var(--ink-strong); }
-    option::checkmark{ color:var(--celeste-dark); }
+    option::checkmark{ color:var(--link); }
     option:disabled{ opacity:.5; }
     /* Los chiquitos (el mes y el año del calendario, la zona de un país):
        sin lugar para la flecha grande. */
@@ -339,7 +339,7 @@
     cursor:pointer; box-shadow:0 4px 12px rgba(79,199,224,0.4);
     white-space:nowrap;
   }
-  .btn-new:hover{ background:var(--celeste-dark); color:#fff; }
+  .btn-new:hover{ background:var(--celeste-dark); color:var(--petroleo-dark); }
   .header-actions{ display:flex; align-items:center; gap:10px; }
   /* Buscador general (ver renderGlobalSearch): un campo en la barra de
      arriba que busca posteos, proyectos, países y personas desde
@@ -396,7 +396,7 @@
     background:var(--celeste); color:var(--petroleo-dark); font-size:30px; line-height:1;
     box-shadow:0 6px 20px rgba(8,42,44,0.28); transition:transform .18s ease, background .18s ease;
   }
-  .fab-main:hover{ background:var(--celeste-dark); color:#fff; }
+  .fab-main:hover{ background:var(--celeste-dark); color:var(--petroleo-dark); }
   .fab-wrap.open .fab-main{ transform:rotate(45deg); }
   .fab-actions{
     display:flex; flex-direction:column; align-items:flex-end; gap:10px;
@@ -483,7 +483,7 @@
   .user-menu .um-role.role-admin{ background:var(--petroleo); color:#fff; }
   .user-menu .um-role.role-member{ background:var(--bg); color:var(--text-muted); border:1px solid var(--border); }
   .user-menu .um-role.role-pending{ background:var(--warn-bg); color:var(--warn-text); }
-  .user-menu .um-role.role-observer{ background:var(--celeste-soft); color:var(--celeste-dark); border:1px solid var(--border); }
+  .user-menu .um-role.role-observer{ background:var(--celeste-soft); color:var(--link); border:1px solid var(--border); }
   /* Aviso fijo arriba de cada vista para quien entra como observador. */
   .observer-banner{
     display:flex; align-items:center; gap:10px; margin-bottom:14px; padding:10px 14px;
@@ -496,10 +496,10 @@
     border:1.5px solid var(--border); background:var(--card); color:var(--text); border-radius:999px;
     padding:7px 12px; font-size:12.5px; font-weight:700; font-family:inherit; cursor:pointer;
   }
-  .status-pill.observer{ background:var(--celeste-soft); color:var(--celeste-dark); }
+  .status-pill.observer{ background:var(--celeste-soft); color:var(--link); }
   .user-menu .um-role.role-rejected{ background:var(--danger-bg); color:var(--danger-text); }
   .user-menu .um-email{ font-size:12px; color:var(--text-muted); margin:4px 0 6px; word-break:break-all; }
-  .um-nickname{ display:flex; align-items:center; justify-content:center; gap:6px; margin:-4px 0 14px; font-size:12.5px; font-weight:700; color:var(--celeste-dark); }
+  .um-nickname{ display:flex; align-items:center; justify-content:center; gap:6px; margin:-4px 0 14px; font-size:12.5px; font-weight:700; color:var(--link); }
   .um-nickname-edit{ background:none; border:none; cursor:pointer; font-size:12px; padding:2px; opacity:0.7; }
   .um-nickname-edit:hover{ opacity:1; }
   /* ---------- Tutorial guiado (ver renderTourStep) ----------
@@ -732,7 +732,7 @@
   .admin-h2{ margin:0 0 4px; font-size:22px; color:var(--ink-strong); }
   .admin-lead{ margin:0; font-size:13.5px; line-height:1.5; color:var(--text-muted); max-width:70ch; }
   .admin-ayuda{ margin-top:8px; max-width:72ch; }
-  .admin-ayuda summary{ cursor:pointer; list-style:none; font-size:12.5px; font-weight:700; color:var(--celeste-dark); width:max-content; }
+  .admin-ayuda summary{ cursor:pointer; list-style:none; font-size:12.5px; font-weight:700; color:var(--link); width:max-content; }
   .admin-ayuda summary::-webkit-details-marker{ display:none; }
   .admin-ayuda summary::before{ content:"▸ "; }
   .admin-ayuda[open] summary::before{ content:"▾ "; }
@@ -840,7 +840,7 @@
   .gate-pasos{ display:flex; flex-direction:column; gap:10px; margin:0; padding:0; list-style:none; }
   .gate-paso{ display:flex; gap:12px; align-items:flex-start; font-size:13.5px; color:var(--text); line-height:1.5; text-align:start; }
   .gate-paso small{ color:var(--text-muted); }
-  .gate-num{ width:26px; height:26px; border-radius:50%; background:var(--celeste-soft); color:var(--celeste-dark); font-weight:800; font-size:13px; display:flex; align-items:center; justify-content:center; flex:none; }
+  .gate-num{ width:26px; height:26px; border-radius:50%; background:var(--celeste-soft); color:var(--link); font-weight:800; font-size:13px; display:flex; align-items:center; justify-content:center; flex:none; }
   .gate-num.ok{ background:var(--ok-bg); color:var(--ok-text); }
   .gate-num.ahora{ background:var(--warn-bg); color:var(--warn-text); border:2px solid var(--warn-border); box-sizing:border-box; }
   .gate-idiomas{ display:flex; gap:14px; }
@@ -891,7 +891,7 @@
      nada nuevo. "pending" acá es "todavía falta", no tiene relación con
      el "pendiente" de aprobación de una solicitud de acceso. */
   .status-pill.soon{ background:var(--warn-bg); color:var(--warn-text); }
-  .status-pill.today{ background:var(--celeste-soft); color:var(--celeste-dark); }
+  .status-pill.today{ background:var(--celeste-soft); color:var(--link); }
   .status-pill.pending{ background:var(--surface-hover); color:var(--text-muted); }
   button.status-pill{ font-family:inherit; border:none; cursor:pointer; }
   button.status-pill:hover{ filter:brightness(0.95); }
@@ -1342,12 +1342,12 @@
      la derecha, siempre del mismo tamaño; en angosto sube desde abajo. ---------- */
   .fb{ position:relative; background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md); box-shadow:var(--shadow); padding:10px 12px; display:flex; flex-direction:column; gap:9px; margin-bottom:16px; }
   .fb-origen{ display:flex; flex-wrap:wrap; align-items:center; gap:6px 14px; }
-  .fb-volver{ background:none; border:none; padding:0; font-family:inherit; font-size:12.5px; font-weight:700; color:var(--celeste-dark); cursor:pointer; text-align:start; }
+  .fb-volver{ background:none; border:none; padding:0; font-family:inherit; font-size:12.5px; font-weight:700; color:var(--link); cursor:pointer; text-align:start; }
   .fb-volver:hover{ text-decoration:underline; }
   .fb-espacio{ flex:1; }
   .fb-fila{ display:flex; gap:10px; align-items:center; }
   .fb-buscar{ flex:1 1 auto; min-width:0; padding:10px 12px; border:1px solid var(--border); border-radius:var(--radius-sm); font-family:inherit; font-size:13.5px; background:var(--card); color:var(--text); }
-  .fb-boton{ flex:none; display:inline-flex; align-items:center; gap:6px; min-height:40px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--card); padding:0 14px; font-family:inherit; font-size:13px; font-weight:700; color:var(--celeste-dark); cursor:pointer; white-space:nowrap; }
+  .fb-boton{ flex:none; display:inline-flex; align-items:center; gap:6px; min-height:40px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--card); padding:0 14px; font-family:inherit; font-size:13px; font-weight:700; color:var(--link); cursor:pointer; white-space:nowrap; }
   .fb-boton:hover{ background:var(--surface-alt); }
   .fb-boton.con-filtro{ border-color:var(--petroleo); color:var(--ink); }
   .fb-cuenta{ background:var(--petroleo); color:#fff; border-radius:999px; font-size:11px; padding:1px 7px; }
@@ -1370,9 +1370,9 @@
   }
   .fp-cabeza{ display:flex; align-items:center; gap:10px; padding:12px 14px 8px; }
   .fp-titulo{ flex:1; min-width:0; margin:0; font-size:14.5px; font-weight:800; color:var(--ink-strong); }
-  .fp-pend{ margin-inline-start:6px; font-size:12px; font-weight:700; color:var(--celeste-dark); }
+  .fp-pend{ margin-inline-start:6px; font-size:12px; font-weight:700; color:var(--link); }
   .fp-cancelar{ background:none; border:none; padding:4px 0; font-family:inherit; font-size:12.5px; font-weight:600; color:var(--text-muted); text-decoration:underline; cursor:pointer; }
-  .fp-atras{ background:none; border:none; padding:4px 0; font-family:inherit; font-size:13px; font-weight:700; color:var(--celeste-dark); cursor:pointer; }
+  .fp-atras{ background:none; border:none; padding:4px 0; font-family:inherit; font-size:13px; font-weight:700; color:var(--link); cursor:pointer; }
   .fp-atajos{ display:flex; flex-wrap:wrap; gap:6px; padding:0 14px 12px; }
   .fp-atajos .chip-toggle, .fp-opts .chip-toggle{ padding:6px 11px; font-size:12px; }
   .fp-cuerpo{ display:grid; grid-template-columns:186px minmax(0,1fr); height:300px; border-top:1px solid var(--border); }
@@ -1382,7 +1382,7 @@
   .fp-item.sel{ background:var(--card); box-shadow:0 1px 4px rgba(8,42,44,.14); }
   .fp-item-nombre{ font-size:13px; font-weight:800; }
   .fp-item-valor{ font-size:11.5px; font-weight:600; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .fp-item-valor.on{ color:var(--celeste-dark); font-weight:800; }
+  .fp-item-valor.on{ color:var(--link); font-weight:800; }
   .fp-punto{ display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--celeste-dark); margin-inline-start:6px; vertical-align:middle; }
   .fp-opts{ display:flex; flex-direction:column; gap:12px; padding:12px 14px; overflow:auto; min-width:0; }
   .fp-opts h3{ margin:0 0 6px; font-size:10.5px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--text-muted); }
@@ -1392,7 +1392,7 @@
   .fp-op{ display:flex; justify-content:space-between; align-items:center; gap:10px; width:100%; min-width:0; text-align:start; background:none; border:none; border-radius:var(--radius-sm); padding:8px 10px; font-family:inherit; font-size:13px; font-weight:600; color:var(--text); cursor:pointer; overflow-wrap:anywhere; }
   .fp-op:hover{ background:var(--surface-alt); }
   .fp-op.on{ background:var(--celeste-soft); color:var(--ink); font-weight:800; }
-  .fp-op.on::after{ content:"✓"; flex:none; color:var(--celeste-dark); }
+  .fp-op.on::after{ content:"✓"; flex:none; color:var(--link); }
   .fp-op small{ color:var(--text-muted); font-weight:600; }
   .fp-tris{ display:flex; flex-wrap:wrap; gap:6px; padding:2px 10px 6px; }
   .fp-lugar-ahora{ display:flex; align-items:center; justify-content:space-between; gap:8px; background:var(--surface-alt); border-radius:var(--radius-sm); padding:8px 10px; font-size:13px; font-weight:700; color:var(--ink); overflow-wrap:anywhere; }
@@ -1485,7 +1485,7 @@
   .fs-item .pl-st{ font-size:11px; }
   .fs-link{ flex-direction:row; align-items:center; gap:8px; font-weight:700; }
   .fs-link.active{ background:var(--celeste-soft); color:var(--petroleo); }
-  html[data-theme="dark"] .fs-link.active{ color:var(--celeste-dark); }   /* petróleo sobre el celeste oscuro daba 1,3 (R17) */
+  html[data-theme="dark"] .fs-link.active{ color:var(--link); }   /* petróleo sobre el celeste oscuro daba 1,3 (R17) */
   .fs-empty{ margin:0 0 6px; color:var(--text-muted); font-size:13px; }
   .fs-more{ background:none; border:none; padding:6px 0 4px; font-family:inherit; font-size:12.5px; font-weight:700; color:var(--link); cursor:pointer; }
   /* Tendencias en el costado del Inicio (13/10/2026) */
@@ -1572,7 +1572,7 @@
   .participants-row{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px; }
   .participant-chip{
     display:inline-flex; align-items:center; gap:6px; padding:5px 10px; border-radius:999px;
-    font-size:11.5px; font-weight:700; background:rgba(79,199,224,0.16); color:var(--celeste-dark); border:1px solid var(--border);
+    font-size:11.5px; font-weight:700; background:rgba(79,199,224,0.16); color:var(--link); border:1px solid var(--border);
   }
   /* Un nombre larguísimo sin espacios no estira el formulario ni esconde
      la ✕ (RECURRENTES.md, «Una palabra larga estira la página»). */
@@ -1596,7 +1596,7 @@
      quedaba un círculo oscuro con el borde punteado encima, como dentado
      (captura del usuario, 7/10). */
   .mention-avatar.mention-avatar-fallback.sc-persona{ background:var(--surface-sunken); color:var(--text-muted); border:1.5px dashed var(--text-muted); box-sizing:border-box; }
-  .mention-avatar.mention-avatar-fallback.nueva{ background:var(--celeste-soft); color:var(--celeste-dark); border:1.5px solid var(--celeste); box-sizing:border-box; }
+  .mention-avatar.mention-avatar-fallback.nueva{ background:var(--celeste-soft); color:var(--link); border:1.5px solid var(--celeste); box-sizing:border-box; }
   .sc-nueva{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:0 0 12px; }
   .sc-nueva input{ flex:1 1 220px; width:auto; }
   .sc-lead{ margin:0 0 12px; }
@@ -1637,7 +1637,7 @@
   .pa-cel{ display:none; }
   @media (max-width:640px){
     .post-top{ flex-direction:column-reverse; align-items:flex-start; gap:2px; }
-    .post-top .post-cuando{ white-space:normal; text-align:start; font-size:12px; letter-spacing:.03em; text-transform:uppercase; color:var(--celeste-dark); }
+    .post-top .post-cuando{ white-space:normal; text-align:start; font-size:12px; letter-spacing:.03em; text-transform:uppercase; color:var(--link); }
     .post-top .post-cuando .hora{ color:inherit; opacity:.8; }
     /* Abajo, solo los íconos con su número: con los nombres el renglón
        se partía en tres. Cada botón conserva su nombre en aria-label. */
@@ -1696,9 +1696,9 @@
     background:none; border:none; color:var(--text-muted); font-weight:700; cursor:pointer; padding:4px 0;
     white-space:nowrap;
   }
-  .post-actions button:hover{ color:var(--celeste-dark); }
+  .post-actions button:hover{ color:var(--link); }
   .post-actions button.danger, .reply-actions button.danger{ color:var(--danger); }
-  .post-actions button.liked{ color:var(--celeste-dark); }
+  .post-actions button.liked{ color:var(--link); }
   /* "Me gusta" + "(2)": dos botones que se leen como uno. El número abre
      la lista; al pasar el mouse, la burbuja con los primeros cuatro. */
   /* La ramita del «Me gusta»: del alto del emoji de los botones de al lado (💬, 📋) y un pelo más, y con un borde fino del mismo color, para que
@@ -1707,7 +1707,7 @@
   .ico-gusta.on{ fill:var(--olivo); stroke:var(--olivo); opacity:1; }
   .gusta{ display:inline-flex; align-items:center; gap:4px; }
   .post-actions .gusta .gustan, .reply-actions .gusta .gustan{ position:relative; text-decoration:underline dotted transparent; text-underline-offset:3px; }
-  .post-actions .gusta .gustan:hover, .reply-actions .gusta .gustan:hover{ text-decoration-color:currentColor; color:var(--celeste-dark); }
+  .post-actions .gusta .gustan:hover, .reply-actions .gusta .gustan:hover{ text-decoration-color:currentColor; color:var(--link); }
   .post-likes-ro .gustan{ background:none; border:none; padding:0; font:inherit; color:inherit; cursor:pointer; position:relative; }
   .gustan-tip{
     display:none; position:absolute; bottom:calc(100% + 8px); inset-inline-start:50%; transform:translateX(-50%);
@@ -1743,7 +1743,7 @@
   .lk-txt b{ font-size:14px; color:var(--ink-strong, var(--ink)); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .lk-txt small{ font-size:12px; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .lk-ir{ flex:none; color:var(--text-muted); font-size:13px; font-weight:700; }
-  .lk-yo{ flex:none; font-size:11px; font-weight:700; color:var(--celeste-dark); background:var(--celeste-soft); border-radius:999px; padding:2px 8px; }
+  .lk-yo{ flex:none; font-size:11px; font-weight:700; color:var(--link); background:var(--celeste-soft); border-radius:999px; padding:2px 8px; }
   /* El menú ⋯ de la tarjeta: Editar, Repetir, Convertir en proyecto,
      Cancelar y Borrar viven acá adentro. Antes eran hasta siete botones
      en una fila (tres renglones en el celular) con Borrar al lado de Me
@@ -1777,7 +1777,7 @@
     display:inline-block; background:none; border:none; color:var(--text-muted); font-size:11.5px;
     font-weight:700; cursor:pointer; padding:4px 0; margin-top:2px;
   }
-  .translate-toggle:hover{ color:var(--celeste-dark); }
+  .translate-toggle:hover{ color:var(--link); }
   .translate-toggle:disabled{ cursor:default; opacity:0.7; }
 
   /* ---------- Proyecto (hitos dentro de un Evento) ---------- */
@@ -1797,7 +1797,7 @@
   }
   .pl-name b{ font-size:13.5px; font-weight:800; color:var(--ink-strong); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .pl-name small{ font-size:11.5px; color:var(--text-muted); font-weight:600; }
-  .pl-name:hover b{ color:var(--celeste-dark); }
+  .pl-name:hover b{ color:var(--link); }
   .pl-name-head{ cursor:default; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; color:var(--text-muted); justify-content:flex-end; }
   .pl-lane{
     flex:1; position:relative; min-height:58px; min-width:0; direction:ltr;
@@ -1868,7 +1868,7 @@
   .project-panel{ margin-top:12px; padding:12px 14px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--surface-soft); }
   .pj-head{ font-size:13px; color:var(--ink); }
   .pj-head b{ color:var(--ink-strong); }
-  .pj-owner{ display:inline-block; font-size:11.5px; font-weight:700; color:var(--celeste-dark); background:var(--celeste-soft); border-radius:999px; padding:1px 8px; }
+  .pj-owner{ display:inline-block; font-size:11.5px; font-weight:700; color:var(--link); background:var(--celeste-soft); border-radius:999px; padding:1px 8px; }
   .pj-timeline{ position:relative; height:150px; margin:14px 12px 6px; }
   .pj-line{ position:absolute; left:6%; right:6%; top:50%; height:3px; background:var(--ink); border-radius:2px; opacity:.8; }
   .pj-today{ position:absolute; top:calc(50% - 16px); width:2px; height:32px; background:var(--celeste-dark); transform:translateX(-1px); opacity:.7; }
@@ -1914,7 +1914,7 @@
     font-weight:600; cursor:pointer; padding:5px 11px; border-radius:999px;
     border:1px dashed var(--border); background:transparent; color:var(--text-muted);
   }
-  .recur-trigger:hover, .recur-field.open .recur-trigger{ border-color:var(--celeste-dark); color:var(--celeste-dark); }
+  .recur-trigger:hover, .recur-field.open .recur-trigger{ border-color:var(--celeste-dark); color:var(--link); }
   /* Con una repetición puesta deja de ser un botón "vacío": línea llena y
      color de tinta, para que se note de un vistazo que el evento se repite. */
   .recur-trigger.on{ border-style:solid; border-color:var(--celeste-dark); background:var(--celeste-soft); color:var(--petroleo); }
@@ -1935,7 +1935,7 @@
     background:var(--surface-soft); color:var(--ink);
   }
   .recur-opt:hover{ border-color:var(--celeste-dark); }
-  .recur-opt.sel{ background:var(--celeste-dark); border-color:var(--celeste-dark); color:#fff; }
+  .recur-opt.sel{ background:var(--celeste-dark); border-color:var(--celeste-dark); color:var(--petroleo-dark); }
   /* Los días de la semana: redondos y todos del mismo ancho, que es lo
      que los hace legibles con una sola letra. */
   .recur-dows{ display:flex; gap:4px; }
@@ -1946,7 +1946,7 @@
     display:flex; align-items:center; justify-content:center; padding:0;
   }
   .recur-dow:hover{ border-color:var(--celeste-dark); }
-  .recur-dow.sel{ background:var(--celeste-dark); border-color:var(--celeste-dark); color:#fff; }
+  .recur-dow.sel{ background:var(--celeste-dark); border-color:var(--celeste-dark); color:var(--petroleo-dark); }
 
   /* ---------- Selector de fecha de un evento que se repite ----------
      El texto "🔁 se repite todas las semanas" que ya estaba en la tarjeta
@@ -1964,7 +1964,7 @@
     text-decoration:underline; text-decoration-style:dotted; text-underline-offset:3px;
     text-decoration-color:var(--text-muted);
   }
-  .occ-chip:hover, .occ-picker.open .occ-chip{ color:var(--celeste-dark); text-decoration-color:var(--celeste-dark); }
+  .occ-chip:hover, .occ-picker.open .occ-chip{ color:var(--link); text-decoration-color:var(--celeste-dark); }
   .occ-chip .occ-chev{ font-size:9px; opacity:.7; }
   /* 129 y no 130: el selector de fecha de "Pasar a otro día" vive ADENTRO
      de este popup y tiene que quedar por encima. */
@@ -1989,13 +1989,13 @@
   .occ-date.past{ color:var(--text-muted); }
   .occ-date.current.past{ color:var(--ink); }
   .occ-when{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .occ-tag{ flex:none; font-size:10.5px; font-weight:700; color:var(--celeste-dark); }
+  .occ-tag{ flex:none; font-size:10.5px; font-weight:700; color:var(--link); }
   .occ-count{ flex:none; font-size:11px; color:var(--text-muted); }
   /* Separador "hoy": una línea fina entre lo que pasó y lo que viene, para
      poder ubicarse sin leer todas las fechas. */
   .occ-today-sep{
     display:flex; align-items:center; gap:6px; padding:5px 8px 3px 8px;
-    font-size:10px; font-weight:700; color:var(--celeste-dark); text-transform:uppercase; letter-spacing:.05em;
+    font-size:10px; font-weight:700; color:var(--link); text-transform:uppercase; letter-spacing:.05em;
   }
   .occ-today-sep::after{ content:""; flex:1; height:1px; background:var(--border); }
   /* Una fecha suspendida sigue en la lista (si no, no habría forma de
@@ -2088,7 +2088,7 @@
   .dp-foot{ display:flex; justify-content:space-between; margin-top:10px; padding-top:8px; border-top:1px solid var(--border); }
   .dp-foot button{
     font-family:inherit; font-size:11px; font-weight:700; cursor:pointer; background:none; border:none;
-    color:var(--celeste-dark); padding:4px 2px;
+    color:var(--link); padding:4px 2px;
   }
   .dp-foot button:hover{ text-decoration:underline; }
   .dp-foot .dp-clear{ color:var(--text-muted); }
@@ -2121,7 +2121,7 @@
   .pj-editor-chip{ display:inline-flex; align-items:center; gap:2px; }
   .pj-editor-chip button{ background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:11px; padding:0 2px; }
   .pj-editor-chip button:hover{ color:var(--danger); }
-  .post-actions button.active{ color:var(--celeste-dark); }
+  .post-actions button.active{ color:var(--link); }
   .cal-chip.hito .cal-txt, .cal-bar.hito .cal-txt{ font-style:italic; }
   .cal-bar.hito{ border:1px dashed currentColor; background:transparent !important; }
   @media (max-width:640px){ .pj-timeline{ display:none; } }
@@ -2141,7 +2141,7 @@
   .reply-actions{ display:flex; gap:2px 14px; margin-top:8px; flex-wrap:wrap; }
   .reply-actions button{ background:none; border:none; padding:0; font-size:12px; font-weight:700; color:var(--text-muted); cursor:pointer; white-space:nowrap; }
   .reply-actions button:hover{ color:var(--ink); }
-  .reply-actions button.liked{ color:var(--celeste-dark); }
+  .reply-actions button.liked{ color:var(--link); }
   .reply-children{ margin-top:10px; margin-inline-start:18px; padding-inline-start:12px; border-inline-start:2px solid var(--border); display:flex; flex-direction:column; gap:10px; }
   .reply-nested-form{ margin-top:8px; }
   .reply-nested-form textarea{ width:100%; min-height:60px; padding:8px 10px; border-radius:var(--radius-sm); border:1.5px solid var(--border); font-size:13px; font-family:inherit; }
@@ -2321,7 +2321,7 @@
   }
 
   .btn-mini{ background:var(--celeste); color:var(--petroleo-dark); border:none; padding:9px 14px; border-radius:var(--radius-sm); font-weight:700; font-size:12.5px; cursor:pointer; }
-  .btn-mini:hover{ background:var(--celeste-dark); color:#fff; }
+  .btn-mini:hover{ background:var(--celeste-dark); color:var(--petroleo-dark); }
 
   /* Composer de Rutina, arriba del Feed, estilo "¿Qué está pasando?" de X:
      avatar + texto libre + adjuntos + publicar, mucho más liviano que el
@@ -2362,7 +2362,7 @@
   .attach-row input[data-link-field="url"]{ flex:2 1 auto; }
   .attach-row .btn-mini{ flex:none; }
   .link-rows{ display:flex; flex-direction:column; gap:6px; margin-bottom:8px; }
-  .btn-text-add{ background:none; border:none; color:var(--celeste-dark); font-weight:700; font-size:12.5px; cursor:pointer; padding:4px 0; }
+  .btn-text-add{ background:none; border:none; color:var(--link); font-weight:700; font-size:12.5px; cursor:pointer; padding:4px 0; }
   .img-preview-list{ display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
   .img-preview{ position:relative; width:76px; height:76px; }
   .img-preview img{ width:100%; height:100%; object-fit:cover; border-radius:8px; border:1px solid var(--border); }
@@ -2432,14 +2432,14 @@
   .post-file-link:hover{ text-decoration-color:currentColor; }
 
   /* ----- El resumen de una visita (leído del Formulario de Cierre) ----- */
-  .post-actions .rs-pill{ color:var(--celeste-dark); }
+  .post-actions .rs-pill{ color:var(--link); }
   .post-actions .rs-pill.on{ color:var(--ink); }
   .rs-panel{ margin-top:10px; border:1px solid var(--border); border-radius:14px; padding:14px 16px; background:var(--surface-soft); display:flex; flex-direction:column; gap:14px; }
   .rs-h{ font-size:11px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:var(--text-muted); margin:0 0 6px; display:flex; flex-wrap:wrap; gap:4px 8px; align-items:baseline; }
   .rs-h b{ color:var(--ink); letter-spacing:0; text-transform:none; font-size:12.5px; }
   .rs-txt{ font-size:13.5px; line-height:1.5; color:var(--ink); display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; overflow:hidden; margin:0; }
   .rs-txt.entero{ display:block; -webkit-line-clamp:unset; }
-  .rs-mas, .rs-link{ background:none; border:none; padding:0; font:inherit; font-size:12.5px; font-weight:700; color:var(--celeste-dark); cursor:pointer; margin-top:4px; text-align:start; }
+  .rs-mas, .rs-link{ background:none; border:none; padding:0; font:inherit; font-size:12.5px; font-weight:700; color:var(--link); cursor:pointer; margin-top:4px; text-align:start; }
   .rs-link{ margin-top:0; font-size:11.5px; }
   .rs-mas:hover, .rs-link:hover{ text-decoration:underline; }
   .rs-obj, .rs-pasos{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:7px; }
@@ -2464,7 +2464,7 @@
   .rs-chip{ display:inline-block; background:var(--surface-hover); color:var(--text); border-radius:999px; padding:1px 9px; font-size:11.5px; font-weight:600; }
   .rs-chip.vencido, .date-trigger.rs-fecha.vencido{ background:var(--danger-bg); color:var(--danger-text); border-color:transparent; }
   .rs-resp{ font:inherit; font-size:11.5px; font-weight:600; display:inline-flex; align-items:center; gap:4px; max-width:100%; border:1px solid var(--border); border-radius:999px; padding:2px 9px; background:var(--card); color:var(--text); cursor:pointer; }
-  .rs-resp::after{ content:"▾"; color:var(--celeste-dark); font-size:.9em; }
+  .rs-resp::after{ content:"▾"; color:var(--link); font-size:.9em; }
   .rs-resp span{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .rs-resp.vacio{ border-style:dashed; color:var(--text-muted); font-weight:500; }
   .rs-resp:hover, .rs-resp:focus-visible, .rs-resp[aria-expanded="true"]{ border-color:var(--celeste-dark); }
@@ -2479,7 +2479,7 @@
   .rp-lista{ flex:1 1 auto; min-height:0; overflow:auto; display:grid; align-content:start; gap:2px; overscroll-behavior:contain; }
   .rp-op{ all:unset; cursor:pointer; box-sizing:border-box; display:flex; align-items:center; gap:8px; padding:9px 12px; border-radius:10px; font-size:13.5px; font-weight:600; color:var(--text); }
   .rp-op[hidden]{ display:none; }
-  .rp-ok{ width:14px; color:var(--celeste-dark); font-weight:800; flex:none; }
+  .rp-ok{ width:14px; color:var(--link); font-weight:800; flex:none; }
   .rp-op:hover, .rp-op.on{ background:var(--celeste-soft); }
   .rp-op.actual{ background:var(--chip-bg); font-weight:800; color:var(--ink-strong); }
   .rp-op:focus-visible, .rp-quitar:focus-visible{ outline:2px solid var(--celeste-dark); outline-offset:-2px; }
@@ -2496,7 +2496,7 @@
   .rs-parte + .rs-parte{ border-top:1px dashed var(--border); padding-top:14px; }
   .rs-lugar{ font-size:13.5px; font-weight:800; color:var(--ink); }
   .rs-de{ font-size:11.5px; color:var(--text-muted); margin-top:-6px; }
-  button.rs-ok.leer{ border:none; cursor:pointer; font:inherit; font-size:10.5px; font-weight:800; background:var(--celeste-soft); color:var(--celeste-dark); }
+  button.rs-ok.leer{ border:none; cursor:pointer; font:inherit; font-size:10.5px; font-weight:800; background:var(--celeste-soft); color:var(--link); }
   .rs-pie{ font-size:11.5px; color:var(--text-muted); display:flex; gap:6px 12px; flex-wrap:wrap; justify-content:space-between; align-items:center; border-top:1px solid var(--border); padding-top:10px; }
   /* ----- La ficha de un lugar (Países → un país → una ciudad) ----- */
   .ficha-lugar{ max-width:1100px; margin:0 auto; }
@@ -2634,7 +2634,7 @@
   .fl-gente .nm{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .fl-gente .cn{ margin-inline-start:auto; color:var(--text-muted); font-size:12px; }
   .fl-persona{ background:none; border:none; padding:0; font:inherit; color:inherit; cursor:pointer; max-width:100%; white-space:normal; overflow-wrap:anywhere; text-align:start; }
-  .fl-persona:hover{ color:var(--celeste-dark); text-decoration:underline; }
+  .fl-persona:hover{ color:var(--link); text-decoration:underline; }
   .fl-docs{ display:flex; flex-direction:column; gap:7px; }
   .fl-doc{ display:flex; gap:9px; align-items:center; font:inherit; font-size:12.5px; color:var(--ink); background:none; border:none; padding:2px; border-radius:8px; cursor:pointer; text-align:start; min-width:0; }
   .fl-doc:hover{ background:var(--surface-soft); }
@@ -2648,7 +2648,7 @@
      con una cabecera pegada arriba (de dónde se vino y la ✕). */
   /* «← Volver a la ficha de …», arriba del Feed o de Proyectos cuando se
      llegó desde la ventana de una ficha. */
-  .volver-ficha{ display:inline-flex; align-items:center; gap:6px; margin:0 0 12px; padding:6px 12px; border-radius:999px; border:1px solid var(--border); background:var(--card); box-shadow:var(--shadow); font:inherit; font-size:12.5px; font-weight:700; color:var(--celeste-dark); cursor:pointer; }
+  .volver-ficha{ display:inline-flex; align-items:center; gap:6px; margin:0 0 12px; padding:6px 12px; border-radius:999px; border:1px solid var(--border); background:var(--card); box-shadow:var(--shadow); font:inherit; font-size:12.5px; font-weight:700; color:var(--link); cursor:pointer; }
   .volver-ficha:hover{ border-color:var(--celeste); text-decoration:underline; }
   .ficha-post-modal{ max-width:760px; max-height:none; padding:0 22px 22px; margin:0; flex:none; }
   /* El respiro alrededor no va en la capa oscura: la capa es lo que
@@ -2765,7 +2765,7 @@
   .doc-archivos .doc-archivo, .doc-anterior .doc-archivo{ max-width:min(320px, 100%); }
   .doc-mas{ border:none; border-radius:999px; background:var(--petroleo); color:#fff; font:inherit; font-size:11px; font-weight:800; padding:2px 9px; cursor:pointer; white-space:nowrap; min-height:22px; }
   .doc-mas[aria-expanded="true"]{ background:var(--surface-hover); color:var(--ink); }
-  .doc-agregar{ border:1px dashed var(--celeste-dark); background:var(--card); color:var(--celeste-dark); border-radius:999px; font:inherit; font-size:13px; font-weight:800; line-height:1; padding:3px 10px; cursor:pointer; min-height:24px; }
+  .doc-agregar{ border:1px dashed var(--celeste-dark); background:var(--card); color:var(--link); border-radius:999px; font:inherit; font-size:13px; font-weight:800; line-height:1; padding:3px 10px; cursor:pointer; min-height:24px; }
   .doc-agregar:hover{ background:var(--celeste-soft); }
   .doc-anteriores{ display:flex; flex-direction:column; gap:2px; padding:0 0 4px; margin-inline-start:24px; border-inline-start:2px solid var(--border); padding-inline-start:10px; }
   .doc-anterior{ display:flex; align-items:center; gap:8px; min-width:0; flex-wrap:wrap; }
@@ -2835,7 +2835,7 @@
   .doc-nuevo-input::placeholder{ color:var(--text-muted); font-weight:600; }
   .doc-nuevo-input:focus{ outline:none; border-style:solid; border-color:var(--celeste-dark); background:var(--card); }
   .btn-doc-add{
-    width:30px; height:30px; border-radius:50%; border:1px solid var(--border); background:var(--card); color:var(--celeste-dark);
+    width:30px; height:30px; border-radius:50%; border:1px solid var(--border); background:var(--card); color:var(--link);
     font-size:16px; font-weight:800; line-height:1; padding:0; cursor:pointer; flex:none;
   }
   .btn-doc-add:hover{ background:var(--celeste-soft); border-color:var(--celeste-dark); }
@@ -2858,7 +2858,7 @@
   /* Opción "sumar como lugar nuevo" (ver getPlaceMatches): mismo look que
      una sugerencia normal, con el celeste de la app para diferenciarla de
      un lugar ya conocido. */
-  .autocomplete-option-new{ color:var(--celeste-dark); font-weight:700; }
+  .autocomplete-option-new{ color:var(--link); font-weight:700; }
   /* Fila de @mención: compacta, con avatar chico — más angosta que un
      .autocomplete-option de texto plano (place-picker). */
   .autocomplete-option.mention-option{ display:flex; align-items:center; gap:8px; padding:5px 12px; font-weight:600; }
@@ -2871,7 +2871,7 @@
      highlightMentions()) — mismo celeste de la app, no el verde de
      WhatsApp, pero con la misma idea de resaltar la mención del resto
      del texto. */
-  .mention-tag{ color:var(--celeste-dark); font-weight:700; cursor:pointer; }
+  .mention-tag{ color:var(--link); font-weight:700; cursor:pointer; }
   /* La @ es neutra: en hebreo el bidi la mandaba al final ("diego@"). */
   .mention-tag, .up-nick, .um-nickname > span{ direction:ltr; unicode-bidi:isolate; }
   .mention-tag:hover{ text-decoration:underline; }
@@ -2880,7 +2880,7 @@
      acá se sigue mostrando el nombre de la persona, solo con un afecto
      de link sutil en vez del resaltado en píldora. */
   .person-link{ cursor:pointer; text-decoration:underline; text-decoration-color:transparent; }
-  .person-link:hover{ text-decoration-color:currentColor; color:var(--celeste-dark); }
+  .person-link:hover{ text-decoration-color:currentColor; color:var(--link); }
   .place-picker{ position:relative; margin-top:8px; }
   .place-picker input{ width:100%; border:1.5px solid var(--border); border-radius:999px; padding:9px 14px; font-size:13px; background:var(--card); box-sizing:border-box; }
   .mention-anchor{ position:relative; flex:1; }
@@ -2961,7 +2961,7 @@
   .bell-filtros button{ background:var(--surface-alt); border:none; border-radius:999px; padding:5px 9px; font-family:inherit; font-size:11.5px; font-weight:700; color:var(--text-muted); cursor:pointer; }
   .bell-filtros button.active{ background:var(--petroleo); color:#fff; }
   .mention-item.nuevo{ background:var(--celeste-soft); }
-  .mi-nuevo{ display:inline-block; margin-inline-start:6px; font-size:9.5px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:var(--celeste-dark); background:var(--card); border:1px solid var(--border); border-radius:999px; padding:1px 6px; vertical-align:middle; }
+  .mi-nuevo{ display:inline-block; margin-inline-start:6px; font-size:9.5px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:var(--link); background:var(--card); border:1px solid var(--border); border-radius:999px; padding:1px 6px; vertical-align:middle; }
   .mi-faltan{ color:var(--warn-text) !important; font-weight:700; }
   /* El aviso de Calendar en la campanita NO se apaga solo con abrirlo (a
      diferencia de una @mención): necesita el botón "Ya la acepté" de acá
@@ -2972,7 +2972,7 @@
   .calendar-invite-item .mention-item:hover{ background:none; }
   .ci-dismiss{
     display:block; margin:0 0 4px auto; background:none; border:none; cursor:pointer;
-    font-size:11px; font-weight:700; color:var(--celeste-dark); padding:4px 8px;
+    font-size:11px; font-weight:700; color:var(--link); padding:4px 8px;
   }
   .ci-dismiss:hover{ text-decoration:underline; }
   .modal-actions{ display:flex; justify-content:flex-end; gap:10px; margin-top:6px; }
@@ -3080,7 +3080,7 @@
   .ag-ciudad{ padding:10px 16px 2px; }
   .ag-ciudad button, .ag-ciudad span{ background:none; border:none; padding:0; font:inherit; font-size:11.5px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--text-muted); max-width:100%; min-width:0; overflow-wrap:anywhere; text-align:start; }
   .ag-ciudad button{ cursor:pointer; }
-  .ag-ciudad button:hover{ color:var(--celeste-dark); text-decoration:underline; }
+  .ag-ciudad button:hover{ color:var(--link); text-decoration:underline; }
   .ag-fila{ display:grid; grid-template-columns:minmax(0,1fr); gap:6px 16px; padding:10px 16px; border-top:1px solid var(--border); align-items:start; }
   .ag-fila.cerrada, .fl-ag-inst.cerrada{ opacity:.9; }   /* al 60 % el renglón chico daba 2,5 de contraste; la pastilla «Cerrada» ya lo dice (R17) */
   .ag-inst{ display:flex; flex-direction:column; gap:1px; background:none; border:none; padding:2px 0; text-align:start; cursor:pointer; color:inherit; font:inherit; min-width:0; }
@@ -3292,7 +3292,7 @@
   .rep-menu select{ border:none; background:transparent; font:inherit; font-size:13.5px; font-weight:700; color:var(--ink); padding:8px 2px; cursor:pointer; max-width:220px; }
   .rep-menu select:focus{ outline:none; } .rep-menu:focus-within{ border-color:var(--celeste-dark); box-shadow:0 0 0 3px rgba(79,199,224,.25); }
   .rep-contra{ font-size:13px; font-weight:700; color:var(--text-muted); }
-  .rep-boton{ display:inline-flex; align-items:center; gap:6px; min-height:38px; border:1px solid var(--border); border-radius:10px; background:var(--card); padding:0 12px; font:inherit; font-size:13px; font-weight:700; color:var(--celeste-dark); cursor:pointer; }
+  .rep-boton{ display:inline-flex; align-items:center; gap:6px; min-height:38px; border:1px solid var(--border); border-radius:10px; background:var(--card); padding:0 12px; font:inherit; font-size:13px; font-weight:700; color:var(--link); cursor:pointer; }
   .rep-boton:hover{ background:var(--surface-alt); }
   .rep-boton.con-filtro{ border-color:var(--petroleo); color:var(--ink); }
   .rep-cuenta{ background:var(--petroleo); color:#fff; border-radius:999px; font-size:11px; padding:1px 7px; }
@@ -3542,7 +3542,7 @@
   @media print{
     /* El papel siempre en claro, aunque la app esté en modo oscuro. */
     html[data-theme="dark"]{
-      --petroleo:#0d3b3e; --celeste-dark:#1a9fb8; --bg:#fff; --card:#fff; --text:#0d2a2c; --text-muted:#4f6c6e;
+      --petroleo:#0d3b3e; --celeste-dark:#1a9fb8; --link:#146f82; --bg:#fff; --card:#fff; --text:#0d2a2c; --text-muted:#4f6c6e;
       --border:#e1edee; --ink:#0d3b3e; --ink-strong:#082a2c; --surface-alt:#eef4f4; --celeste-soft:#eafbfd;
       --ok-text:#166534; --danger:#dc2626; --acento-fuerte:#0d3b3e; color-scheme:light;
     }
@@ -3846,7 +3846,7 @@
   html[dir="rtl"] .cal-layers-filter .filter-dropdown-panel{ transform-origin:top left; }
   .cal-holidays-config-link{
     border:none; background:none; cursor:pointer; padding:6px 4px 2px; text-align:start;
-    font-size:12px; font-weight:700; color:var(--celeste-dark);
+    font-size:12px; font-weight:700; color:var(--link);
   }
   .cal-holidays-config-link:hover{ text-decoration:underline; }
   .cal-year{ display:grid; grid-template-columns:repeat(auto-fill, minmax(190px,1fr)); gap:14px; }
@@ -3855,7 +3855,7 @@
     display:block; width:100%; border:none; background:none; cursor:pointer; text-align:start;
     padding:0 0 6px; font-size:13px; font-weight:800; color:var(--ink-strong); text-transform:capitalize;
   }
-  .year-month-name:hover{ color:var(--celeste-dark); }
+  .year-month-name:hover{ color:var(--link); }
   .year-month-name{ display:flex; align-items:baseline; justify-content:space-between; gap:6px; }
   .year-month-name small{ font-size:10.5px; font-weight:700; color:var(--text-muted); text-transform:none; white-space:nowrap; }
   .year-dows, .year-days{ display:grid; grid-template-columns:repeat(7,1fr); gap:1px; }
@@ -3944,7 +3944,7 @@
      no comerle lugar a los eventos de abajo. */
   .cal-holiday{
     flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-    font-size:10px; font-weight:700; color:var(--celeste-dark);
+    font-size:10px; font-weight:700; color:var(--link);
     /* Se puede tocar: abre su tarjeta, como cualquier evento. Sigue sin
        verse como botón para no competir con los chips del día. */
     font-family:inherit; background:none; border:none; padding:0;
@@ -3957,7 +3957,7 @@
   .cal-cell.holiday{ background:var(--surface-alt); }
   /* "Ese día también: X · Y" dentro de la tarjeta de un feriado. */
   .ev-holiday-link{
-    font-family:inherit; font-size:inherit; font-weight:700; color:var(--celeste-dark);
+    font-family:inherit; font-size:inherit; font-weight:700; color:var(--link);
     background:none; border:none; padding:0; cursor:pointer; text-decoration:underline;
   }
   .cal-bar.holiday{ background:transparent; font-weight:700; cursor:pointer; }
@@ -3965,7 +3965,7 @@
      principal de la fila, no un detalle al costado de un nombre. */
   .setting-control-wide .zone-swatch{ width:30px; height:30px; border-radius:8px; }
   .pref-color-warn{ margin-top:6px; font-size:11.5px; font-weight:700; color:var(--danger); }
-  .cal-cell.today .cal-daynum{ background:var(--celeste-dark); color:#fff; border-radius:999px; }
+  .cal-cell.today .cal-daynum{ background:var(--celeste-dark); color:var(--petroleo-dark); border-radius:999px; }
   .cal-chip{
     display:flex; align-items:center; gap:4px; width:100%; text-align:start; border:none; cursor:pointer;
     background:var(--surface-alt); color:var(--text); border-radius:6px; padding:3px 6px; font-size:11.5px; font-weight:600;
@@ -4001,7 +4001,7 @@
   .cal-dia-elegido-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px; font-size:14px; }
   .cal-dia-elegido .agenda-events .cal-chip{ padding:8px 10px; font-size:12.5px; }
   .cal-scroll-hint{ font-size:11.5px; color:var(--text-muted); margin:-6px 0 8px; }
-  .cal-more:hover{ color:var(--celeste-dark); }
+  .cal-more:hover{ color:var(--link); }
   .cal-grid{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow); overflow:hidden; }
   /* overflow-x:hidden en las filas de encabezado y "todo el día": no
      scrollean solas, las mueve el JS a la par del cuerpo (ver
@@ -4031,7 +4031,7 @@
   .cal-gcol-head{ padding:8px 4px; text-align:center; border-inline-start:1px solid var(--border); }
   .cal-gcol-head .dow{ display:block; font-size:11px; font-weight:800; color:var(--text-muted); text-transform:uppercase; }
   .cal-gcol-head .dnum{ display:block; font-size:18px; font-weight:800; color:var(--ink-strong); }
-  .cal-gcol-head.today .dnum{ color:var(--celeste-dark); }
+  .cal-gcol-head.today .dnum{ color:var(--link); }
   .cal-gcol-allday{ min-height:38px; padding:4px; display:flex; flex-direction:column; gap:3px; border-inline-start:1px solid var(--border); }
   .cal-gcol-allday[data-action]{ cursor:pointer; }
   .cal-gcol-allday[data-action]:hover{ background:var(--celeste-soft); }
@@ -4137,7 +4137,7 @@
   .up-head-text{ min-width:0; display:flex; flex-direction:column; gap:4px; }
   .up-name{ font-size:17px; font-weight:800; color:var(--ink-strong); line-height:1.25; }
   .up-sub{ font-size:12.5px; color:var(--text-muted); word-break:break-word; }
-  .up-nick{ font-weight:700; color:var(--celeste-dark); }
+  .up-nick{ font-weight:700; color:var(--link); }
   .up-former{ display:inline-block; padding:2px 8px; border-radius:999px; background:var(--surface-alt); color:var(--text-muted); font-size:11px; font-weight:700; }
   .up-kv{ padding:12px 14px; background:var(--surface-soft); border-radius:var(--radius-sm); margin-bottom:12px; }
   .up-serie{ margin:0 0 14px; }
@@ -4319,7 +4319,7 @@
      invisible). Mismo alto/radio que .chip-toggle de al lado para que
      la fila se vea pareja. */
   .btn-sync{
-    display:inline-flex; align-items:center; gap:6px; background:var(--card); color:var(--celeste-dark);
+    display:inline-flex; align-items:center; gap:6px; background:var(--card); color:var(--link);
     border:1.5px solid var(--border); padding:7px 14px; border-radius:999px; font-weight:700;
     font-size:12.5px; cursor:pointer; white-space:nowrap;
   }
