@@ -74,7 +74,7 @@ const suave = await p.evaluate(()=>{
   const c = getComputedStyle(e);
   return { tam: parseFloat(c.fontSize), op: parseFloat(c.opacity) };
 });
-eq("es más chica que el texto normal", suave.tam <= 11, true);
+eq("es más chica que el texto normal (12 px, el piso del texto desde la tanda 104)", suave.tam <= 12, true);
 eq("y va atenuada", suave.op < 1, true);
 
 /* ====== El ✕ de la ranura: pregunta, y quita ====== */

@@ -458,3 +458,26 @@ que miraba unas pocas clases a mano; las demás reglas del mismo problema
 nunca tuvieron quién las vigilara. *Regla:* si el defecto es de un valor
 (un color, un tamaño), la prueba tiene que mirar **todas las reglas** que
 lo usan, no solo las que se arreglaron.
+
+**Un tamaño de letra sin piso.** El CSS llegó a 202 tamaños por debajo de
+12 px (8, 9, 10, 10,5, 11…): cada pantalla nueva trajo su 11 o su 10,5
+«porque era una nota». Y un `<small>` sin tamaño propio lo achica el navegador
+(10 px dentro de un texto de 12). *Regla:* el texto que se lee, 12 px o más;
+etiquetas en mayúsculas, píldoras y números dentro de un círculo o una celda,
+11; los dibujos hechos con letra y lo impreso, aparte. *Se detecta:*
+`letra_minima_test` lee el CSS y mide el texto en cada pantalla.
+
+**Lo que existe solo en la compu.** El buscador general se escondía con 900 px
+o menos (`display:none`, «ahí sigue el buscador del Feed») y en el teléfono no
+se podía buscar personas, lugares ni proyectos; nadie lo vio porque las
+pruebas corren a 1440. *Regla:* al esconder algo en angosto, dejar el camino
+a lo mismo (un botón, un menú), no solo una versión más pobre. *Se detecta:*
+buscar `display:none` dentro de `@media (max-width…)` en un control que no es
+un duplicado; y la prueba de cada cosa nueva corre también a 390 px.
+
+**Un selector que se achica hasta recortar su valor.** `flex:1 1 150px` con
+`min-width:0` repartía el ancho sin mirar el texto: «Todo el añ». *Regla:* un
+`<select>` no se achica por debajo de su opción más larga (`flex:1 0 auto`);
+si no entra, baja de renglón. *Se detecta:* `reportes_celular_test` compara
+cada selector con una copia suya sin límites.
+

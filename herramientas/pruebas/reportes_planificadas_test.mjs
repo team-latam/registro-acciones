@@ -76,12 +76,12 @@ const columna = (p, mes) => p.evaluate(m => {
   await p.close();
 }
 
-/* ---------------- Celular: la letra es más chica y entra en la barra ---------------- */
+/* ---------------- Celular: la letra (11 px, el piso de las etiquetas) entra en la barra ---------------- */
 {
   for(const ancho of [390, 360]){
     const { p } = await abrir({ width: ancho, height: 844 }, datos());
     const oct = await columna(p, "2026-10"), nov = await columna(p, "2026-11"), dic = await columna(p, "2026-12");
-    eq(`celular ${ancho}: letra de 8 px (más chica que en la compu), derecha, en una línea`, [oct.letra, nov.letra, dic.letra, oct.estilo, oct.renglones], [8, 8, 8, "normal", 1]);
+    eq(`celular ${ancho}: letra de 11 px (el piso de los números dentro de una barra; antes 8), derecha, en una línea`, [oct.letra, nov.letra, dic.letra, oct.estilo, oct.renglones], [11, 11, 11, "normal", 1]);
     eq(`celular ${ancho}: los tres números se leen adentro de su barra`, [oct, nov, dic].map(c => [c.nPlan, c.visible, c.adentro]), [["12", true, true], ["9", true, true], ["6", true, true]]);
     await p.close();
   }

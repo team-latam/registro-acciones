@@ -2517,3 +2517,53 @@ celular, el Inicio con tres filas de controles, la letra de 9 a 11,5 px y un
 logo propio (a explorar). Y en modo oscuro, sin tocar: «Sin Dónde definido»,
 «1 vencido» y «hace N meses» (3,97), la ✕ de los chips (3,76) y los
 contadores rojo y gris de Administración (3,76 y 2,37).
+
+### Tanda 104 — Lo que quedaba de la crítica de diseño (28/10/2026)
+
+Los otros cuatro problemas de la crítica de la tanda 103, más los textos
+oscuros que quedaron sin tocar. El usuario pidió seguir con todo y pasar a
+GitHub al final; el logo propio queda para mostrarle opciones con capturas.
+
+- **Reportes en el celular:** los selectores «Año» y «Período» miden lo que
+  mide su opción más larga y no se achican (`flex:1 0 auto`): si no entran
+  todos en el renglón, el que sobra baja al siguiente. Antes «Período» se
+  quedaba con 57 px y mostraba «Todo el añ» (en español, inglés y portugués;
+  14 de 24 casos, también en «Comparar»). `reportes_celular_test`.
+- **«Buscar en todo» en el celular:** con 900 px o menos desaparecía y no
+  había otro lugar (el comentario decía «ahí sigue el buscador del Feed»,
+  que solo filtra posteos). Ahora hay un botón 🔍 en la barra de arriba
+  (`#globalSearchToggle`); al tocarlo, el campo ocupa esa barra sin cambiarle
+  el alto (`.topbar-inner.buscando`), el teclado se abre solo (lo pidió la
+  persona) y los resultados bajan de borde a borde. Escape y la ✕ cierran y
+  devuelven el foco al 🔍; elegir un resultado cierra la barra; tocar afuera
+  con el campo vacío también. Sin acceso no hay botón. Funciona espejado en
+  hebreo y en la tableta (768). El recorrido de bienvenida no cambia: no
+  nombra este buscador ni en la compu (no es una pantalla).
+  `buscador_celular_test` (73 comprobaciones).
+- **El Inicio en el celular:** el cuadro «¿Qué hiciste hoy?» pasa de 86 a
+  60 px (avatar de 32, menos aire) y el primer posteo arranca en y=296 de
+  844 en vez de 328. En la compu y la tableta queda como estaba.
+  `inicio_celular_test`.
+- **El piso de la letra:** el CSS tenía 202 tamaños por debajo de 12 px. Ahora
+  el texto que se lee va a 12 px o más, y las etiquetas en mayúsculas, las
+  píldoras y los números dentro de un círculo o una celda, a 11 px o más
+  (117 declaraciones subieron; «+ Responsable» pasó a 12 para igualar a
+  «+ Fecha»); los dibujos hechos con letra (flechitas,
+  inicial de un avatar) y lo impreso quedan como estaban; y un `<small>` sin
+  tamaño propio no baja de 12 (el navegador lo achicaba a 10). La Vista Año
+  del celular **sigue con dos meses por fila** (decisión anterior, «uno solo
+  eran doce pantallas»): sube a 11 px y cada día pasa de 22 a 23,6 px.
+  Medido con las 578 vistas de `herramientas/auditoria/herramientas/pantallas.mjs`
+  (13 combinaciones): antes y después, ningún corte ni desborde nuevo.
+  `letra_minima_test` lee el CSS y mide el texto en las pantallas.
+- **Rojo en oscuro:** la letra roja va con `--danger-fg` (claro: #c81e1e,
+  5,7 sobre blanco; oscuro: #fca5a5, 5,3 o más sobre toda superficie), y
+  `--danger` en oscuro pasa a ser el de claro (#dc2626) para que la letra
+  blanca de los contadores rojos dé 4,8 (con #ef4444 daba 3,8). El contador
+  gris de Administración en oscuro lleva letra oscura (2,4 → 6,4).
+  `accesibilidad_test`, ahora de 74 comprobaciones.
+
+Pendiente de esa crítica: un logo propio (hoy es el emoji 🗺️, que cambia según
+el sistema operativo; el usuario quiere ver opciones) y, si se quiere, que los
+íconos dejen de ser emojis.
+

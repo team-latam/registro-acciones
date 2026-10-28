@@ -9,6 +9,10 @@
      pinta letra con --celeste-dark (crítica de diseño del 28/10/2026: 57
      reglas lo hacían, R6 había quedado a medias) y el texto que va SOBRE el
      celeste es oscuro, no blanco (1,9 a 3,1).
+   - La letra roja va con --danger-fg (5,7 sobre blanco; en oscuro, un rojo
+     claro de 5,3 o más): con --danger daba 3,97 en oscuro («1 vencido»,
+     «Sin Dónde definido», «hace 13 meses»). Y los contadores rojos y el gris
+     de Administración se leen en oscuro (3,8 y 2,4 antes).
    - Los avisos («Número copiado», «Guardado») se anuncian al lector de
      pantalla (role=status).
    - Los resultados de «Buscar en todo» y las filas de Reportes no apagan
@@ -41,6 +45,9 @@ ok("ninguna regla de CSS pinta letra con --celeste-dark (va --link: 5,8 sobre bl
   `${conCeleste.length} reglas, por ejemplo: ${conCeleste.slice(0, 4).map(r => r.replace(/\s+/g, " ").slice(0, 90)).join(" || ")}`);
 // Letra blanca sobre el relleno celeste (3,1 en claro, 1,7 en oscuro, donde el celeste es claro).
 const blancoSobreCeleste = reglas.filter(r => /background\s*:\s*var\(--celeste(-dark)?\)/.test(r) && /(?<![-\w])color\s*:\s*(#fff\b|#ffffff|white)/i.test(r));
+const conRojo = reglas.filter(r => /(?<![-\w])color\s*:\s*var\(--danger(, *#[0-9a-f]+)?\)/i.test(r));
+ok("ninguna regla pinta letra con --danger (va --danger-fg: se lee también en oscuro)", conRojo.length === 0,
+  `${conRojo.length} reglas, por ejemplo: ${conRojo.slice(0, 4).map(r => r.replace(/\s+/g, " ").slice(0, 90)).join(" || ")}`);
 ok("ninguna regla pone letra blanca sobre el relleno celeste (va el petróleo oscuro)", blancoSobreCeleste.length === 0,
   `${blancoSobreCeleste.length} reglas, por ejemplo: ${blancoSobreCeleste.slice(0, 4).map(r => r.replace(/\s+/g, " ").slice(0, 90)).join(" || ")}`);
 
@@ -63,7 +70,7 @@ const fondoDe = `(el) => { const capas = []; let base = null;
   for(const c of capas.reverse()) base = base.map((v, i) => v * (1 - c[3]) + c[i] * c[3]);
   return "rgb(" + base.map(Math.round).join(", ") + ")"; }`;
 // Sondas: elementos con esas clases, para leer el CSS sin buscarlos en cada pantalla.
-const SONDAS = `<div id="sondas"><a href="#" class="s-a">a</a><span class="ymd l3">5</span><table><tr><td class="rep-h4">9</td></tr></table><span class="fs-link active">x</span><span class="rep-kpi-num alerta">3</span><span class="pl-st overdue">v</span><span class="pl-st soon">s</span><span class="ag-wa chico"><svg class="ag-wa-ic"></svg></span><span class="feed-solapas"><button type="button">b</button></span><button type="button" class="fb-boton">f</button><button type="button" class="rep-boton">r</button><button type="button" class="btn-text-add">t</button><button type="button" class="btn-sync">s</button><span class="pj-owner">@a</span><span class="up-nick">@a</span><span class="status-pill observer">o</span><span class="participant-chip">p</span><button type="button" class="recur-opt sel">o</button><button type="button" class="recur-dow sel">d</button><span class="cal-cell today"><span class="cal-daynum">28</span></span></div>`;
+const SONDAS = `<div id="sondas"><a href="#" class="s-a">a</a><span class="ymd l3">5</span><table><tr><td class="rep-h4">9</td></tr></table><span class="fs-link active">x</span><span class="rep-kpi-num alerta">3</span><span class="pl-st overdue">v</span><span class="pl-st soon">s</span><span class="ag-wa chico"><svg class="ag-wa-ic"></svg></span><span class="feed-solapas"><button type="button">b</button></span><button type="button" class="fb-boton">f</button><button type="button" class="rep-boton">r</button><button type="button" class="btn-text-add">t</button><button type="button" class="btn-sync">s</button><span class="pj-owner">@a</span><span class="up-nick">@a</span><span class="status-pill observer">o</span><span class="participant-chip">p</span><span class="pc-overdue">v</span><span class="rep-viejo">v</span><span class="form-error">e</span><span class="pending-count">2</span><span class="pending-count suave">1</span><span class="mention-dot">1</span><span class="avatar-pending">2</span><button type="button" class="recur-opt sel">o</button><button type="button" class="recur-dow sel">d</button><span class="cal-cell today"><span class="cal-daynum">28</span></span></div>`;
 const medir = p => p.evaluate(([sondas, fondoDe]) => {
   document.body.insertAdjacentHTML("beforeend", sondas);
   const fondo = eval(fondoDe);
@@ -76,6 +83,7 @@ const medir = p => p.evaluate(([sondas, fondoDe]) => {
     wa: [getComputedStyle(q(".ag-wa-ic")).fill, getComputedStyle(q(".ag-wa.chico")).backgroundColor],
     fbBoton: par(".fb-boton"), repBoton: par(".rep-boton"), btnTextAdd: par(".btn-text-add"), btnSync: par(".btn-sync"), pjOwner: par(".pj-owner"), upNick: par(".up-nick"),
     observador: par(".status-pill.observer"), participante: par(".participant-chip"), recurOpt: par(".recur-opt.sel"), recurDow: par(".recur-dow.sel"), hoy: par(".cal-daynum"),
+    vencido: par(".pc-overdue"), viejo: par(".rep-viejo"), error: par(".form-error"), contador: par(".pending-count:not(.suave)"), contadorGris: par(".pending-count.suave"), globito: par(".mention-dot"), globitoAvatar: par(".avatar-pending"),
   };
   document.getElementById("sondas").remove();
   return r;
@@ -96,7 +104,9 @@ for(const oscuro of [false, true]){
   }
   for(const [k, n] of [["fbBoton", "el botón «Filtros» del Inicio"], ["repBoton", "los botones de Reportes (Filtros, Mi año, Presentar, Planilla, PDF)"], ["btnTextAdd", "los «+ Agregar…» de los formularios"],
     ["btnSync", "«Traer de Google Calendar» y «Bajar lista»"], ["pjOwner", "el @responsable de un hito"], ["upNick", "el @nickname del perfil"], ["observador", "la etiqueta «Observador»"],
-    ["participante", "el chip de un participante"], ["recurOpt", "la opción elegida de «Se repite»"], ["recurDow", "el día de la semana elegido de «Se repite»"], ["hoy", "el número de hoy en el Calendario"]]){
+    ["participante", "el chip de un participante"], ["recurOpt", "la opción elegida de «Se repite»"], ["recurDow", "el día de la semana elegido de «Se repite»"], ["hoy", "el número de hoy en el Calendario"],
+    ["vencido", "el «1 vencido» de un proyecto"], ["viejo", "el «hace N meses» de Reportes"], ["error", "el texto de error de un formulario"], ["contador", "el contador rojo de Administración"],
+    ["contadorGris", "el contador gris de Administración"], ["globito", "el globito rojo de la campanita"], ["globitoAvatar", "el globito rojo del avatar"]]){
     ok(`${modo}: ${n} da 4,5 o más`, contraste(m[k][0], m[k][1]) >= 4.5, `${m[k][0]} sobre ${m[k][1]}: ${contraste(m[k][0], m[k][1])}`);
   }
   ok(`${modo}: el logo de WhatsApp chico da 3 o más sobre su fondo`, contraste(m.wa[0], m.wa[1]) >= 3, `${m.wa[0]} sobre ${m.wa[1]}: ${contraste(m.wa[0], m.wa[1])}`);
