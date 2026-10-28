@@ -69,7 +69,15 @@ jobs:
     needs: probar
     # En un push solo se prueba. Se copia los domingos y cuando se pide.
     # Solo el código de main corre con las llaves (docs/AUDITORIA.md, U2).
-    if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+    #
+    # La copia NO espera a que la prueba salga en verde: `!cancelled()` la
+    # corre aunque la prueba haya fallado. El domingo 18/10/2026 la prueba
+    # estaba en rojo (faltaba una tabla en su lista) y, con solo `needs:
+    # probar`, «Copiar» se saltó: esa semana quedó sin copia y nada lo avisó
+    # más que un tilde rojo (T1 de la auditoría del 28/10, D14). Una copia
+    # con un detalle por corregir sirve más que ninguna; la corrida igual
+    # queda en rojo (por la prueba) y el primer paso lo dice en el resumen.
+    if: ${{ !cancelled() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' }}
     # Las dos llaves de Supabase salen del entorno «produccion», que GitHub
     # solo entrega a main, diga lo que diga este archivo en otra rama
     # (docs/AUDITORIA.md, S9 y D11).
@@ -89,6 +97,16 @@ jobs:
         with: { persist-credentials: false }
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with: { node-version: '22', package-manager-cache: false }
+
+      # Si la prueba de la copia falló, se copia igual (ver el `if:` de este
+      # trabajo) y acá queda escrito, para que quien abra la corrida sepa por
+      # qué está en rojo aunque la copia haya salido.
+      - name: ¿Falló la prueba de la copia?
+        if: needs.probar.result != 'success'
+        run: |
+          echo "### ⚠️ La prueba de la copia no salió en verde (${{ needs.probar.result }})" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "La copia se hace igual: una copia con un detalle sirve más que ninguna. Hay que mirar el trabajo «La prueba de la copia» y corregir lo que dice (docs/AUDITORIA.md, T1)." >> "$GITHUB_STEP_SUMMARY"
 
       # Sin el token o la llave no puede copiar. Mientras no estén, avisa
       # qué falta y termina bien (igual que los otros trabajos); el día que

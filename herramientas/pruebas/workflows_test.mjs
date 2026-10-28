@@ -126,5 +126,18 @@ eq("la limpieza del bucket, la copia y la restauración hacen cola en el mismo g
 eq("la fila «respaldo» es de los trabajos que tocan la base, no del workflow entero",
    flujos.filter(x => /^concurrency:\s*\n\s+group:\s*respaldo\b/m.test(x.y)).map(x => x.f), []);
 
+// La copia del domingo no espera a que su prueba salga en verde. Con solo
+// `needs: probar`, si la prueba falla «Copiar» se salta: el domingo 18/10/2026
+// la prueba estaba en rojo (faltaba una tabla en su lista), no hubo copia esa
+// semana y nada lo avisó más que un tilde rojo (T1 de la auditoría del 28/10,
+// D14). `!cancelled()` la corre igual; el resumen lo dice y la corrida queda en
+// rojo por la prueba.
+const copiar = trabajos((flujos.find(x => x.f === "respaldo.yml") || { y: "" }).y).find(j => j.nombre === "copiar");
+eq("respaldo.yml tiene el trabajo «copiar»", !!copiar, true);
+eq("la copia corre aunque su prueba haya fallado (`if:` con !cancelled())", !!copiar && /^    if:.*!cancelled\(\)/m.test(copiar.t), true);
+eq("y sigue esperando a la prueba (needs: probar), para no copiar mientras ella corre", !!copiar && /^    needs:\s*probar\s*$/m.test(copiar.t), true);
+eq("y no vuelve a exigir que la prueba haya salido en verde para copiar", !!copiar && /^    if:.*needs\.probar\.result\s*==\s*'success'/m.test(copiar.t), false);
+eq("el resumen avisa cuando la prueba de la copia no salió en verde", !!copiar && /if:\s*needs\.probar\.result\s*!=\s*'success'/.test(copiar.t), true);
+
 console.log(`${pass} pasaron, ${fail} fallaron`);
 process.exit(fail ? 1 : 0);
