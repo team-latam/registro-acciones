@@ -39,6 +39,10 @@ const estado = p => p.evaluate(() => {
     foco: a && a.id, marcados,
     describe: a && (a.getAttribute("aria-describedby") || "").split(/\s+/).includes(err && err.id),
     aLaVista: !!r && r.top >= 0 && r.bottom <= innerHeight && r.left >= 0 && r.right <= innerWidth,
+    // Qué tan lejos queda el aviso de su campo (antes, abajo de todo: más de 300 px) y si el campo se ve rojo.
+    distancia: err && a && a !== document.body ? Math.round(err.getBoundingClientRect().top - a.getBoundingClientRect().bottom) : null,
+    borde: a && a.id ? getComputedStyle(a).borderBottomColor : null,
+    avisoALaVista: !!err && err.getBoundingClientRect().top >= 0 && err.getBoundingClientRect().bottom <= innerHeight,
   };
 });
 // Se suelta el foco antes de tocar «Publicar»: al perderlo, el campo cambia de alto un poco y, en una ventana justa, el botón se corre bajo
@@ -59,12 +63,15 @@ for(const [nombre, vp] of [["compu", { width: 1440, height: 900 }], ["celular", 
   eq(`[${nombre}] el cursor cae en el título`, e.foco, "cTitle");
   eq(`[${nombre}] el título se marca inválido y apunta a su aviso`, [e.marcados, e.describe], [["cTitle"], true]);
   eq(`[${nombre}] y el campo queda a la vista`, e.aLaVista, true);
+  eq(`[${nombre}] el aviso queda pegado al título (a menos de 60 px) y también a la vista`, [e.distancia >= 0 && e.distancia < 60, e.avisoALaVista], [true, true]);
+  eq(`[${nombre}] y el título se ve rojo`, e.borde, "rgb(200, 30, 30)");
 
   // 2. Con título, sin lugar
   await p.fill("#cTitle", "Charla con padres"); await publicar(p);
   e = await estado(p);
   eq(`[${nombre}] sin lugar: el aviso y el cursor van al lugar`, [e.campo, e.foco, e.marcados], ["lugar", "cPlaceQuery", ["cPlaceQuery"]]);
   eq(`[${nombre}] y el título ya no está marcado`, e.marcados.includes("cTitle"), false);
+  eq(`[${nombre}] el aviso del lugar queda cerca de su campo (a menos de 120 px) y a la vista`, [e.distancia >= 0 && e.distancia < 120, e.avisoALaVista], [true, true]);
 
   // 3. Con lugar, sin las horas (se destilda «Todo el día»)
   await p.fill("#cPlaceQuery", "Rosario"); await p.waitForSelector('#postForm [data-action="pick-place"]'); await p.evaluate(() => document.querySelector('#postForm [data-action="pick-place"]').click()); await p.waitForTimeout(250);
@@ -73,6 +80,7 @@ for(const [nombre, vp] of [["compu", { width: 1440, height: 900 }], ["celular", 
   await publicar(p);
   e = await estado(p);
   eq(`[${nombre}] sin horas: el aviso y el cursor van a la hora de inicio`, [e.rol, e.campo, e.foco], ["alert", "horaInicio", "cStartTime"]);
+  eq(`[${nombre}] y el aviso de las horas queda cerca de ellas (a menos de 80 px) y a la vista`, [e.distancia >= 0 && e.distancia < 80, e.avisoALaVista], [true, true]);
   // Cerrar la ventana con datos cargados pregunta si se descarta.
   await p.keyboard.press("Escape"); await p.waitForTimeout(250);
   if(await p.evaluate(() => { const o = document.getElementById("confirmOverlay"); return !!o && !o.hidden; })){ await p.click("#confirmOk"); await p.waitForTimeout(250); }

@@ -163,7 +163,9 @@ export const abrirNavegador = ({ utf8 = false } = {}) =>
   chromium.launch(utf8 ? { env: { ...process.env, LANG: "C.UTF-8", LC_ALL: "C.UTF-8" } } : {});
 // Entra a la app con quien se le diga. `base` reemplaza los datos (por
 // ejemplo, los variados de herramientas/auditoria/herramientas/datos.mjs).
-export async function entrar(b, email, nombre, { viewport, dark, lang, sinSesion, base: otra, query = "", falla } = {}) {
+// Opciones: `cpu` = cuántas veces más lento el procesador (4 = un celular medio; la auditoría mide la carga así) y
+// `iniciar` = un texto de JS que corre en la página ANTES de que cargue (para medir desde el primer instante).
+export async function entrar(b, email, nombre, { viewport, dark, lang, sinSesion, base: otra, query = "", falla, cpu, iniciar } = {}) {
   const base = otra || BASE();
   const p = await b.newPage({ viewport: viewport || { width: 1440, height: 900 }, colorScheme: dark ? "dark" : "light", deviceScaleFactor: 1, hasTouch: !!(viewport && viewport.width < 800), isMobile: !!(viewport && viewport.width < 800) });
   const errores = [];
@@ -183,6 +185,8 @@ export async function entrar(b, email, nombre, { viewport, dark, lang, sinSesion
     window.__pruebasSinIntegridad = true;   // la librería de mentira no es la de verdad: su huella no cuadra (ver supabase_integridad_test)
     try { if (lang) localStorage.setItem("ra_lang", lang); if (dark) localStorage.setItem("ra_theme", "dark"); } catch (e) {}
   }, [base, sinSesion ? null : { user: { id: "uuid-" + email, email, user_metadata: { full_name: nombre } } }, lang || "", !!dark, falla || ""]);
+  if(cpu && cpu > 1){ const cdp = await p.context().newCDPSession(p); await cdp.send("Emulation.setCPUThrottlingRate", { rate: cpu }); }
+  if(iniciar) await p.addInitScript(iniciar);
   await p.goto(PAGINA + query);
   await p.waitForTimeout(1200);
   return { p, errores };

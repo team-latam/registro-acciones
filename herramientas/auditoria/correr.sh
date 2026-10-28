@@ -43,6 +43,8 @@ if [ "${RAPIDO:-}" = "1" ]; then
 else
   node "$CARPETA/herramientas/pantallas.mjs"
   node "$CARPETA/herramientas/datos.mjs"
+  # Cuánto tarda en verse el primer posteo con el procesador de un celular lento (1, 4 y 6 veces).
+  node "$CARPETA/herramientas/carga.mjs"
   # Una segunda semilla: otro azar destapa otras cosas.
   AUDITORIA_SEMILLA=$(( $(date +%s) % 100000 )) AUDITORIA_VOLUMEN=800 SALIDA="$SALIDA/semilla2" node "$CARPETA/herramientas/datos.mjs"
   [ -f "$SALIDA/semilla2/datos.json" ] && cp "$SALIDA/semilla2/datos.json" "$SALIDA/datos-semilla2.json"

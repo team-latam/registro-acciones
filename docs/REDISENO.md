@@ -2571,3 +2571,58 @@ Pendiente de esa crítica: un logo propio (hoy es el emoji 🗺️, que cambia s
 el sistema operativo; el usuario quiere ver opciones) y, si se quiere, que los
 íconos dejen de ser emojis.
 
+
+### Tanda 105 — Los arreglos de la auditoría completa (28/10/2026)
+
+La auditoría completa del 28/10 (`docs/AUDITORIA.md`, códigos T) encontró nueve
+cosas y dos decisiones del usuario (D14: la copia del domingo se hace igual si
+su prueba falla; D15: arreglos primero, el logo después). Todo con su prueba,
+verificada en rojo contra el código de antes.
+
+- **T1, la copia no espera a su prueba:** `copiar` corre con `!cancelled()` y un
+  paso escribe en el resumen por qué la corrida quedó en rojo. El domingo
+  18/10 «Copiar» se había saltado porque la prueba estaba en rojo y nada lo
+  avisó. `workflows_test`.
+- **T2, el hebreo en orden de lectura:** 112 textos (no los 105 contados al
+  principio: al arreglar aparecieron 21 más) tenían el signo o las partes «como
+  se ven» y no «como se leen»: «?מה עשית היום» (el cuadro del Inicio),
+  «{error} :הפרסום נכשל», «(עיר) ?מה ההיקף», «{d}-לא מתקיים ב», «שימוש ב-» al
+  final y la «ו-» de las listas de días. `hebreo_signos_test` lee todos los
+  `t(es, en, pt, he)` y mide en Chromium por qué importa.
+- **T3, el aviso de un formulario:** todo `.form-error` es `role="alert"`; en la
+  ventana del evento, el de un dato que falta va pegado debajo de su campo (que se
+  pinta en rojo y lleva `aria-invalid` y `aria-describedby`) y el cursor cae ahí. `htmlFormError`,
+  `falloEnFormulario`. `errores_formulario_test`.
+- **T5, los errores en palabras simples:** `detalleDeError()` (sin conexión, sin
+  permiso, sesión vencida, en los cuatro idiomas) en los ~50 avisos que
+  mostraban lo que contesta la base; la carga fallida ofrece Reintentar y
+  Cerrar sesión; y al perderse internet, un aviso «Sin conexión…» (y «Volvió la
+  conexión»). `errores_amables_test`, con interruptores nuevos en la base de
+  mentira (`fallo`, `falloLectura`, `demora`, `falloRpc`).
+- **T6, el aviso del celular:** flota por encima de la barra de abajo (84 px del
+  borde) y ya no tapa el «+». `aviso_celular_test`, con letra ancha.
+- **T4, el recorrido suma «Buscar en todo»** (corrige lo que decía la tanda 104):
+  la barra en la compu y la lupa en el celular, con el agujero medido por
+  `tour_test`. Son 10 pasos para integrantes y admins, 8 para observadores.
+- **T7, controles con nombre:** 14 campos de Administración y Mis preferencias
+  se anunciaban como «cuadro de texto». `prefRow()` nombra el control con el
+  título de su fila; los demás llevan `aria-label` o `aria-labelledby`.
+  `arbol_accesibilidad_test` mide el árbol de Chrome en 45 pantallas, compu y
+  celular. Los títulos que saltan de nivel (h1 → h3) no se tocaron: el CSS
+  depende de las etiquetas.
+- **T8, el foco tras «¿Borrar…?»:** cancelar el cartel devuelve el foco al «⋯» del
+  posteo (el menú se cierra antes de la acción y el botón ya no existía).
+  `foco_confirmar_test`.
+- **Herramientas:** `herramientas/auditoria/herramientas/carga.mjs` mide el primer
+  posteo con el procesador 4 y 6 veces más lento (`entrar()` suma `cpu` e
+  `iniciar`); METODO.md describe cómo se miran a mano los errores y la carga; y
+  RECURRENTES.md suma nueve patrones.
+- **Los harness que sacan funciones de `index.html`** suman las dependencias
+  nuevas (`detalleDeError`, `prefRowSeq`, `fatalError`): nueve pruebas se
+  rompieron en la primera corrida entera.
+
+Observado y sin arreglar (ver `docs/AUDITORIA.md`): la ventana del evento cambia
+de alto al soltar el foco del título; en un celular de pantalla corta, el
+botón «Publicar» se corre bajo el dedo y el toque puede no llegar. No se probó
+en un teléfono de verdad (va junto con D8).
+Pendiente de la crítica de diseño: el logo propio.

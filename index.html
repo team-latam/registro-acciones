@@ -2273,6 +2273,9 @@
     padding:8px 2px; font-size:20px; font-weight:700; color:var(--ink-strong);
   }
   .field.field-title-plain input.title-input-plain:focus{ outline:none; border-bottom-color:var(--celeste); }
+  /* Un dato que falta (T3 de la auditoría del 28/10/2026): el campo se ve rojo, y su aviso va pegado debajo. */
+  .field.field-title-plain input.title-input-plain[aria-invalid="true"]{ border-bottom-color:var(--danger-fg); }
+  .field-icon-row input[aria-invalid="true"], .dt-time-input[aria-invalid="true"]{ border-color:var(--danger-fg); }
   .field-icon-row{ display:flex; align-items:flex-start; gap:12px; margin-bottom:14px; }
   /* El tipo va primero: es lo primero que uno decide, y de él dependen
      la pista del texto y los documentos esperados. */
@@ -21420,6 +21423,10 @@ function closeComposer(){
 }
 function renderComposer(){
   const d = composerDraft;
+  // El aviso de un dato que falta va pegado a su campo (si no, en un celular quedaba fuera de la vista, abajo de todo);
+  // el que no es de un campo (la base rechazó guardar), arriba de los botones.
+  const campoConError = d.error && d.errorEn && d.errorEn.msg === d.error && CAMPOS_CON_ERROR[d.errorEn.campo] ? d.errorEn.campo : "";
+  const errDe = (...claves) => claves.includes(campoConError) ? htmlFormError(d.error, campoConError) : "";
   postForm.innerHTML = `
     ${/* Sin «Editás como X (el posteo sigue figurando de Y)»: el usuario lo
        pidió sacar el 7/10/2026. Quién editó qué queda igual en el registro
@@ -21442,6 +21449,7 @@ function renderComposer(){
     <div class="field field-title-plain">
       <input type="text" id="cTitle" maxlength="140" class="title-input-plain" placeholder="${esc(t("Agregar título","Add title","Adicionar título","הוספת כותרת"))}" value="${esc(d.title)}">
     </div>
+    ${errDe("titulo")}
     <div class="field-icon-row">
       <span class="field-icon">🕐</span>
       <div class="field-icon-body">
@@ -21465,6 +21473,7 @@ function renderComposer(){
           <span class="dt-sep">${isRTL()?"←":"→"}</span>
           <input type="text" inputmode="${uses12h() ? "text" : "numeric"}" autocomplete="off" class="dt-time-input" id="cEndTime" data-time-field="end" placeholder="${esc(typedTimePlaceholder())}" aria-label="${esc(t("Hora de fin","End time","Hora de fim","שעת סיום"))}" value="${esc(fmtTypedTime(d.endTime))}">
         </div>` : ""}
+        ${errDe("inicio", "fin", "horaInicio", "horaFin")}
       </div>
     </div>
     <div class="field-icon-row">
@@ -21478,6 +21487,7 @@ function renderComposer(){
         <div class="field-hint">${t("Ciudad, país o región. Con esto se filtra el Feed y se arma el mapa.","City, country or region. This is what filters the Feed and builds the map.","Cidade, país ou região. É o que filtra o Feed e monta o mapa.","עיר, מדינה או אזור. לפי זה מסננים את הפיד ובונים את המפה.")}
           ${(d.location || d.locationOpen) ? "" : `<button type="button" class="btn-text-add" data-action="composer-toggle-location">+ ${t("Agregar dirección exacta (opcional)","Add an exact address (optional)","Adicionar endereço exato (opcional)","הוספת כתובת מדויקת (אופציונלי)")}</button>`}
         </div>
+        ${errDe("lugar")}
       </div>
     </div>
     ${(d.location || d.locationOpen) ? `
@@ -21528,7 +21538,7 @@ function renderComposer(){
       `}
     </div>
     ${puedeQuedarSinCalendar(d) ? `<label class="allday-toggle sin-calendar"><input type="checkbox" id="cSinCalendar" ${d.sinCalendar?"checked":""}> ${t("No pasarlo a Google Calendar","Don't add it to Google Calendar","Não passar para o Google Calendar","לא להוסיף ל-Google Calendar")}</label>` : ""}
-    ${htmlFormError(d.error, d.errorEn && d.errorEn.msg === d.error ? d.errorEn.campo : "")}
+    ${campoConError ? "" : htmlFormError(d.error)}
     <div class="modal-actions">
       <button type="button" class="btn-secondary" data-action="cancel-composer">${t("Cancelar","Cancel","Cancelar","ביטול")}</button>
       <button type="submit" class="btn-primary" ${d.submitting ? "disabled" : ""}>${d.submitting ? t("Guardando…","Saving…","Salvando…","שומר...") : d.editingPost ? t("Guardar cambios","Save changes","Salvar alterações","שמירת השינויים") : t("Publicar","Post","Publicar","פרסום")}</button>

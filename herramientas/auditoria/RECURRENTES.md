@@ -493,3 +493,80 @@ un duplicado; y la prueba de cada cosa nueva corre también a 390 px.
 si no entra, baja de renglón. *Se detecta:* `reportes_celular_test` compara
 cada selector con una copia suya sin límites.
 
+
+## Agregado en la auditoría completa (28/10/2026)
+
+**Un texto en hebreo escrito «como se ve» y no «como se lee».** 112 textos
+tenían el signo (`? . : …`) o las partes en el orden en que se ven, no en el
+que se leen: «?מה עשית היום» (lo primero que veía quien usa la app en hebreo),
+«{error} :הפרסום נכשל», «(עיר) ?מה ההיקף», «{d}-לא מתקיים ב», «שימוש ב-» al
+final. En un párrafo de derecha a izquierda, un signo guardado primero se pinta
+en el borde derecho, al principio de la frase. Pasó en las tandas de siempre
+porque nadie que lea hebreo mira cada pantalla y el texto «se ve» bien en el
+editor. *Regla:* un texto se guarda en orden de lectura: la primera palabra que
+se lee es la primera que se escribe, el signo va al final, `{dato}` donde cae en
+la frase («frase: {dato}», no «{dato} :frase»). Un trozo que sigue a otro texto
+(«, por…», «: una está…», «… ועוד N») empieza con su signo a propósito.
+*Se detecta:* `hebreo_signos_test` lee todos los `t(es, en, pt, he)`. Al
+arreglar, mirar los textos nuevos **dibujados** de derecha a izquierda, no
+leerlos en el código.
+
+**El error de la base, tal cual, delante de quien no es técnico.** «Failed to
+fetch» (sin internet), «new row violates row-level security policy for table
+"posts"» (sin permiso), «JWT expired»; y la carga fallida dejaba el reloj de
+arena girando sin salida. *Regla:* un error que llega a una pantalla pasa por
+`detalleDeError()` (sin conexión, sin permiso, sesión vencida en palabras de
+la persona; lo demás, lo que dijo la base) y una pantalla de espera que falló
+ofrece **una salida** (Reintentar, Cerrar sesión). *Se detecta:*
+`errores_amables_test`, con los interruptores `fallo`, `falloLectura` y
+`falloRpc` de la base de mentira. Si un aviso nuevo muestra `err.message` a
+mano, es lo mismo.
+
+**Un aviso que nadie anuncia.** «Escribí un título.» salía abajo de todo, en
+letra chica, sin `role` y sin que el cursor fuera al campo: con un lector de
+pantalla no se oía y en el celular quedaba fuera de la vista. *Regla:* todo
+`.form-error` lleva `role="alert"`; si el aviso es de un campo, el campo se
+marca (`aria-invalid`, `aria-describedby`) y recibe el cursor
+(`htmlFormError`, `falloEnFormulario`). *Se detecta:* `errores_formulario_test`.
+
+**Dos cosas fijas que no se conocen.** El aviso flotante (`bottom:24px`) cayó
+sobre la barra de abajo del celular (`bottom:10px`, 62 px) y tapó el «+»; el de
+error no se va solo. *Regla:* lo que flota fijo al borde de abajo en angosto se
+ubica mirando a lo demás que también está fijo ahí. *Se detecta:*
+`aviso_celular_test` (con letra ancha).
+
+**Un control nuevo que el recorrido no cuenta.** La lupa del celular entró en la
+tanda 104 sin su paso en `tourSteps()`: CLAUDE.md lo pide y `tour_test` solo
+compara las pantallas del menú, no los controles de la barra de arriba.
+*Regla:* al sumar un control del cascarón fijo (buscador, campana, cuenta) se
+revisa el recorrido en la misma tanda. *Se detecta:* a mano; `tour_test` ahora
+espera el paso «buscar» y mide que el agujero caiga sobre el buscador.
+
+**Un control sin nombre que no se ve en el DOM.** Un `<label>` al lado de un
+campo no lo nombra si no está atado (`for`, `aria-labelledby`, envolviéndolo):
+14 campos de Administración y Mis preferencias se anunciaban como «cuadro de
+texto». *Regla:* todo control tiene nombre en el **árbol de accesibilidad**, no
+solo «algo de texto cerca». *Se detecta:* `arbol_accesibilidad_test` recorre las
+45 pantallas con `Accessibility.getFullAXTree` (el recuento por tipo de control
+subestima: 9 tipos eran 14 campos).
+
+**El foco que se pierde con el menú.** Elegir algo de un menú «⋯» cierra el menú
+antes de la acción; si la acción abre un cartel, al cerrarlo el foco no tiene
+adónde volver (cae en `<body>`). *Regla:* quien cierra un menú para abrir un
+cartel anota a qué botón volver y se busca en vivo. *Se detecta:*
+`foco_confirmar_test`.
+
+**La copia que no corre si su prueba falla.** `needs: probar` sin `!cancelled()`
+saltó la copia del domingo 18/10 (la prueba estaba en rojo por otra tabla) y
+nada lo avisó más que un tilde. *Regla:* un trabajo de respaldo no espera a que
+algo salga en verde: corre y deja la corrida en rojo si algo falló. *Se
+detecta:* `workflows_test`.
+
+**Las pruebas que arman su página con funciones de `index.html`.** Al sumar una
+función nueva que usan otras (`detalleDeError`, `prefRowSeq`, `fatalError`),
+las nueve pruebas que sacan funciones del archivo (`armar_*.py`, `build_*.mjs`,
+`acceso_test`) dieron «no está definida». *Regla:* una dependencia nueva en una
+función ya extraída se suma a la lista de cada armador; la suite entera lo
+dice. Y **antes de crear un archivo de prueba, `ls`**: un `Write` sobre un
+nombre que ya existe lo pisa sin preguntar (pasó con `nombres_accesibles_test`;
+se recuperó de git).

@@ -95,17 +95,29 @@ informe; «a mano» = criterio de quien audita.
 | **Idiomas** | Cuatro idiomas en cada texto; hebreo en hebreo; {marcadores} iguales; texto suelto sin t(); RTL: lo espejado y lo que asoma por la izquierda | `textos`, `pantallas` (en, pt, he) |
 | **Ventanas** | role="dialog", aria-modal, nombre; el foco entra, Tab no se escapa, Escape cierra, el foco vuelve | `pantallas` |
 | **Datos variados** | Títulos largos y cortos, palabras sin espacios, emojis, hebreo dentro de un texto en español, campos vacíos, formas raras de la base, mucho volumen | `datos` (semilla en el informe) |
-| **Rendimiento** | Tamaño del archivo; cuánto tarda en dibujar con mucho cargado; dibujados de más | `codigo`, `datos`; a mano: red lenta |
+| **Rendimiento** | Tamaño del archivo; cuánto tarda en dibujar con mucho cargado; dibujados de más | `codigo`, `datos`, `carga` (el procesador de un celular lento, 4 y 6 veces); a mano: red lenta |
 | **Almacenamiento** | Cuánto ocupa el bucket contra el plan gratis; huérfanos; miniaturas; la papelera | a mano: Administración › Copia de seguridad, `supabase/limpieza/` |
 | **Copias y restauración** | Que la copia del domingo corra; que se pueda restaurar (`docs/RESTAURAR.md`); cuándo vence el token | a mano: Actions |
 | **Integraciones** | Sincronización con Calendar; workflows en verde; «¿Está arriba?» | a mano: Actions; `supabase/sync-calendar/pruebas/` |
 | **GitHub** | Acciones fijadas por huella y con versión nueva (sobre todo una mayor: suele venir porque la anterior quedó vieja); avisos amarillos en las corridas («deprecated»); sintaxis (actionlint); permisos, tiempos máximos, llaves solo desde main, nada pegado en un `run:`; lo que corre solo y cuándo; Settings: Pages, permisos de Actions, escaneo de secretos | `github`, `herramientas/pruebas/workflows_test.mjs`; a mano: los avisos de la última corrida y los Settings |
 | **Privacidad** | Datos personales en el repo público; qué se manda a servicios de afuera; qué se guarda de cada persona y por cuánto | `seguridad`; a mano |
-| **Accesibilidad** | Teclado en todo; foco visible; contraste; movimiento reducido; lectores de pantalla | `pantallas`; a mano |
+| **Accesibilidad** | Teclado en todo; foco visible; contraste; movimiento reducido; lectores de pantalla | `pantallas`, `arbol_accesibilidad_test` (el árbol de Chrome: todo control con nombre); a mano: Tab por el Inicio y una ventana, avisos de error |
 | **Recorrido de bienvenida** | Lo primero que ve una cuenta nueva: ¿cuenta el sistema de hoy? Pantallas y menús sin paso; pasos que explican algo que cambió de función; que en el celular señale lo que de verdad hay | `herramientas/pruebas/tour_test.mjs` (pantallas sin paso y pasos de pantallas que ya no están); a mano: que lo que dice cada paso siga siendo cierto |
 | **Uso de las funciones** | Qué se usa y qué no (en los datos de la base, sin sacar datos: solo cantidades); lo que confunde; duplicados | a mano |
 | **Crítica del uso** | Recorrer la app como alguien del equipo: cargar, buscar, revisar, reportar. Qué cuesta, qué sobra, qué falta | a mano |
 | **Operación** | Tokens y llaves que vencen; cuotas del plan gratis; Settings de Pages; dominio (`docs/DOMINIO.md`) | a mano |
+
+**Los flujos de error y de carga, a mano.** La base de mentira de las pruebas
+(`herramientas/pruebas/app_dom_test.mjs`) sabe fallar a pedido, y `entrar()` lo
+acepta con `falla:` (o la prueba lo pone con `window.__sb`): `fallo` rechaza las
+escrituras (el valor es el código; `mensajeFallo`, su texto), `falloLectura`
+corta las lecturas como si no hubiera red, `falloRpc` hace fallar las funciones
+y `demora` retrasa cada pedido. Con eso se mira, en compu y celular: publicar
+una rutina y un evento que la base rechaza (¿se conserva el texto?, ¿qué dice el
+aviso?), la carga que falla o tarda (¿hay salida?), borrar con teclado y volver
+del cartel (¿adónde cae el foco?), perder internet con la app abierta, y la
+sesión que vence. Un recorrido de bienvenida se mira paso por paso con
+`entrar(...)` y una cuenta con `approved_at` de ayer y `tour_seen_at: null`.
 
 ## Los niveles
 
