@@ -15,7 +15,7 @@ codigo = "\n".join(grab(n) for n in [
   "DOCS_POR_TIPO","docsEsperados","docDeArchivo","archivosDelDoc","docsDesplegados","archivoDelDoc","archivosSueltos",
   "ownerAttrs","fechaDeArchivo","fmtDate","FICHA_POR_CLASE","fichaDeArchivo","renderPostedFiles",
   # La portada de entrada marca el idioma activo y lista los cuatro.
-  "LANGS","currentLang","renderAuthGate"])
+  "LANGS","currentLang","fatalError","renderAuthGate"])
 
 pagina = """<!doctype html><html lang="es"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">

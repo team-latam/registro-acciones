@@ -13,6 +13,9 @@ const bloque = src.slice(ini, fin);
 // de verdad, sacada del index.html.
 const fotoSegura = (src.match(/\nfunction fotoSegura\(url\)\{[\s\S]*?\n\}\n/) || [""])[0];
 if(!fotoSegura) throw new Error("no se encontró fotoSegura");
+// El texto de un error del servidor pasa por detalleDeError (T5, 28/10/2026): la de verdad.
+const detalleDeError = (src.match(/\nfunction detalleDeError\(err, conCodigo\)\{[\s\S]*?\n\}\n/) || [""])[0];
+if(!detalleDeError) throw new Error("no se encontró detalleDeError");
 // La rama nueva del dispatcher
 const a1 = src.indexOf('    "delete-former-member": async (el, e, action, postId) => {');
 const a2 = src.indexOf('    "revoke-access": async (el, e, action, postId) => {');
@@ -25,6 +28,7 @@ body{ padding:20px; margin:0; }
 <script>
 function esc(s){ return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 ${fotoSegura}
+${detalleDeError}
 function t(es,en,pt,he,vars){ let o=es; if(vars) for(const k in vars) o=o.split("{"+k+"}").join(String(vars[k])); return o; }
 function fmtDateTime(v){ return v ? "1 ene 2026" : ""; }
 function tsToMillis(v){ return Number(v) || 0; }

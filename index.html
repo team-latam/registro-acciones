@@ -4430,6 +4430,10 @@
        Reducir transparencia) ve la barra opaca (AUDITORIA B8). */
     @media (prefers-reduced-transparency: reduce){ .bottom-nav, .bn-sheet{ background:var(--card); -webkit-backdrop-filter:none; backdrop-filter:none; } }
     .bottom-nav[hidden]{ display:none; }
+    /* El aviso flotante (.calendar-notice, a 24 px del borde en la compu) caía justo sobre esta barra y tapaba el «+», Calendario
+       y Países; el de un error no se va solo. Acá flota por encima: la barra ocupa 10 + 62 px del borde y se deja un respiro
+       (T6 de la auditoría del 28/10/2026). */
+    .calendar-notice{ bottom:calc(84px + env(safe-area-inset-bottom)); }
     .bn-item{
       flex:1; display:flex; align-items:center; justify-content:center; position:relative; border-radius:999px;
       border:none; background:none; color:var(--text-muted); font-family:inherit; cursor:pointer; padding:0;
@@ -6857,7 +6861,7 @@ async function signIn(){
   }catch(err){
     if(err.code !== "auth/popup-closed-by-user" && err.code !== "auth/cancelled-popup-request"){
       console.error("Error al iniciar sesión:", err);
-      renderFatalError(t("No se pudo iniciar sesión con Google: {msg}","Couldn't sign in with Google: {msg}","Não foi possível entrar com o Google: {msg}","ההתחברות עם Google נכשלה: {msg}",{msg:err.message}));
+      renderFatalError(t("No se pudo iniciar sesión con Google: {msg}","Couldn't sign in with Google: {msg}","Não foi possível entrar com o Google: {msg}","ההתחברות עם Google נכשלה: {msg}",{msg:detalleDeError(err)}));
     }
   }
 }
@@ -8205,6 +8209,20 @@ function showCalendarNotice(notice){
   }, 4000);
 }
 
+// Se corta o vuelve internet con la app abierta: antes no decía nada hasta que algo fallaba (T5 de la auditoría
+// del 28/10/2026). El aviso de «sin conexión» no se va solo (como cualquier aviso de error); al volver, lo reemplaza
+// «Volvió la conexión», que sí se va. Solo se avisa que volvió si antes se avisó que se había ido.
+let avisoSinConexion = false;
+window.addEventListener("offline", ()=>{
+  avisoSinConexion = true;
+  showCalendarNotice({ ok:false, icono:"📡", message: t("Sin conexión a internet: por ahora no se puede guardar nada.","No internet connection: nothing can be saved for now.","Sem conexão com a internet: por enquanto não dá para salvar nada.","אין חיבור לאינטרנט: כרגע אי אפשר לשמור דבר.") });
+});
+window.addEventListener("online", ()=>{
+  if(!avisoSinConexion) return;
+  avisoSinConexion = false;
+  showCalendarNotice({ ok:true, icono:"✅", message: t("Volvió la conexión.","You're back online.","A conexão voltou.","החיבור חזר.") });
+});
+
 let calendarSyncInFlight = false;
 async function syncFromCalendar(opts){
   const silent = !!(opts && opts.silent);
@@ -8293,7 +8311,7 @@ async function syncFromCalendar(opts){
     calendarSyncFailStreak = 0; calendarSyncFailWarned = false;
   }catch(err){
     console.error("Error sincronizando desde Calendar:", err);
-    if(!silent){ showCalendarNotice({ ok:false, message:t("No se pudo sincronizar con Calendar: {msg}","Couldn't sync with Calendar: {msg}","Não foi possível sincronizar com o Calendar: {msg}","הסנכרון עם היומן נכשל: {msg}",{msg:err.message}) }); }
+    if(!silent){ showCalendarNotice({ ok:false, message:t("No se pudo sincronizar con Calendar: {msg}","Couldn't sync with Calendar: {msg}","Não foi possível sincronizar com o Calendar: {msg}","הסנכרון עם היומן נכשל: {msg}",{msg:detalleDeError(err)}) }); }
     else {
       // El sync automático corre callado a propósito (cada 2 min: avisar de
       // cada tropiezo sería insoportable). Pero si falla MUCHAS veces
@@ -8309,7 +8327,7 @@ async function syncFromCalendar(opts){
           "Syncing with Calendar has been failing for a while ({msg}). Check the Calendar settings.",
           "Faz tempo que não é possível sincronizar com o Calendar ({msg}). Revise a configuração do Calendário.",
           "כבר זמן מה שהסנכרון עם היומן נכשל ({msg}). בדוק/בדקי את הגדרות היומן.",
-          {msg:err.message}) });
+          {msg:detalleDeError(err)}) });
       }
     }
   }finally{
@@ -8665,7 +8683,7 @@ async function onAuthChanged(user){
     // dice qué falló, y es mejor que "está tardando".
     if(relojPadron){ clearTimeout(relojPadron); relojPadron = null; }
     console.error("Error chequeando si está en el equipo:", err);
-    renderFatalError(t("No se pudo verificar tu acceso ({msg}). Recargá la página; si sigue pasando, avisale al administrador.","Couldn't verify your access ({msg}). Reload the page; if it keeps happening, let the admin know.","Não foi possível verificar seu acesso ({msg}). Recarregue a página; se continuar, avise o administrador.","לא ניתן היה לאמת את הגישה שלך ({msg}). טען/י מחדש את הדף; אם זה נמשך, פנה/י למנהל/ת.",{msg:err.message}));
+    renderFatalError(t("No se pudo verificar tu acceso ({msg}). Recargá la página; si sigue pasando, avisale al administrador.","Couldn't verify your access ({msg}). Reload the page; if it keeps happening, let the admin know.","Não foi possível verificar seu acesso ({msg}). Recarregue a página; se continuar, avise o administrador.","לא ניתן היה לאמת את הגישה שלך ({msg}). טען/י מחדש את הדף; אם זה נמשך, פנה/י למנהל/ת.",{msg:detalleDeError(err)}));
   });
 
   unsubOwnRequest = store.accessRequests.watchOwn(profile.email, req=>{
@@ -8723,7 +8741,7 @@ async function requestAccessAgain(){
       appAlert(t("Ya pediste acceso hace poco. Probá de nuevo en una hora.","You asked for access a moment ago. Try again in an hour.","Você pediu acesso há pouco. Tente de novo em uma hora.","ביקשת גישה ממש עכשיו. נסה/י שוב בעוד שעה."));
       return;
     }
-    appAlert(t("No se pudo enviar el pedido de nuevo ({m}).","Couldn't send the request again ({m}).","Não foi possível enviar o pedido de novo ({m}).","לא ניתן היה לשלוח את הבקשה שוב ({m}).",{m:err.code||err.message}));
+    appAlert(t("No se pudo enviar el pedido de nuevo ({m}).","Couldn't send the request again ({m}).","Não foi possível enviar o pedido de novo ({m}).","לא ניתן היה לשלוח את הבקשה שוב ({m}).",{m:detalleDeError(err, true)}));
   }
 }
 
@@ -10343,7 +10361,7 @@ async function changeRole(email, role){
     }
   }catch(err){
     console.error("No se pudo cambiar el rol:", err);
-    showCalendarNotice({ ok:false, message: t("No se pudo cambiar el rol ({m}).","Couldn't change the role ({m}).","Não foi possível mudar o papel ({m}).","לא ניתן היה לשנות את התפקיד ({m}).",{m:err.code||err.message}) });
+    showCalendarNotice({ ok:false, message: t("No se pudo cambiar el rol ({m}).","Couldn't change the role ({m}).","Não foi possível mudar o papel ({m}).","לא ניתן היה לשנות את התפקיד ({m}).",{m:detalleDeError(err, true)}) });
     render();
   }
 }
@@ -10422,7 +10440,7 @@ function subscribeData(){
     startCalendarAutoSync();
   }, err=>{
     console.error("Error leyendo posts:", err);
-    renderFatalError(t("Error leyendo los posteos: {msg}","Error reading posts: {msg}","Erro ao ler os posteios: {msg}","שגיאה בקריאת הפוסטים: {msg}",{msg:err.message}));
+    renderFatalError(t("Error leyendo los posteos: {msg}","Error reading posts: {msg}","Erro ao ler os posteios: {msg}","שגיאה בקריאת הפוסטים: {msg}",{msg:detalleDeError(err)}));
   });
 
   unsubscribeData = ()=>{
@@ -10517,7 +10535,7 @@ function canCloseProject(post){ return post.activityType !== "rutina" && canEdit
 async function setProjectStatus(post, done){
   const me = state.auth.user.email;
   try{ await updatePostDoc(post.id, done ? { projectStatus:"done", projectDoneBy:me, projectDoneAt: store.horaDelServidor() } : { projectStatus:"open", projectDoneBy:null, projectDoneAt:null }); }
-  catch(err){ console.error(err); showCalendarNotice({ ok:false, message: t("No se pudo guardar ({m}).","Couldn't save ({m}).","Não foi possível salvar ({m}).","לא ניתן היה לשמור ({m}).",{m:err.code||err.message}) }); }
+  catch(err){ console.error(err); showCalendarNotice({ ok:false, message: t("No se pudo guardar ({m}).","Couldn't save ({m}).","Não foi possível salvar ({m}).","לא ניתן היה לשמור ({m}).",{m:detalleDeError(err, true)}) }); }
 }
 // done | overdue | today | soon | upcoming
 // Con cuántos días de anticipación un hito pasa a "Por vencer". Es una
@@ -10849,7 +10867,7 @@ async function createProject(post){
     projectOpen = post.id; state.view = "proyectos"; render(); scrollToTop();
   }catch(err){
     console.error("No se pudo crear el proyecto:", err);
-    showCalendarNotice({ ok:false, message: t("No se pudo crear el proyecto ({m}).","Couldn't create the project ({m}).","Não foi possível criar o projeto ({m}).","לא ניתן היה ליצור את הפרויקט ({m}).",{m:err.code||err.message}) });
+    showCalendarNotice({ ok:false, message: t("No se pudo crear el proyecto ({m}).","Couldn't create the project ({m}).","Não foi possível criar o projeto ({m}).","לא ניתן היה ליצור את הפרויקט ({m}).",{m:detalleDeError(err, true)}) });
   }
 }
 // Deshacer: el evento vuelve a ser un evento limpio (se van hitos,
@@ -10860,7 +10878,7 @@ async function removeProject(post){
   try{
     await updatePostDoc(post.id, { isProject:false, milestones:[], editors:[], projectNotes:"" });
     projectOpen = null; openProjects.delete(post.id); render();
-  }catch(err){ console.error(err); showCalendarNotice({ ok:false, message: t("No se pudo quitar ({m}).","Couldn't remove ({m}).","Não foi possível remover ({m}).","לא ניתן היה להסיר ({m}).",{m:err.code||err.message}) }); }
+  }catch(err){ console.error(err); showCalendarNotice({ ok:false, message: t("No se pudo quitar ({m}).","Couldn't remove ({m}).","Não foi possível remover ({m}).","לא ניתן היה להסיר ({m}).",{m:detalleDeError(err, true)}) }); }
 }
 function renderProyectosView(){
   const open = projectOpen ? getPostById(projectOpen) : null;
@@ -11041,12 +11059,12 @@ async function saveMilestones(post, list){
   try{ await updatePostDoc(post.id, { milestones: list }); }
   catch(err){
     console.error("No se pudo guardar el proyecto:", err);
-    showCalendarNotice({ ok:false, message: t("No se pudo guardar el proyecto ({m}).","Couldn't save the project ({m}).","Não foi possível salvar o projeto ({m}).","לא ניתן היה לשמור את הפרויקט ({m}).",{m:err.code||err.message}) });
+    showCalendarNotice({ ok:false, message: t("No se pudo guardar el proyecto ({m}).","Couldn't save the project ({m}).","Não foi possível salvar o projeto ({m}).","לא ניתן היה לשמור את הפרויקט ({m}).",{m:detalleDeError(err, true)}) });
   }
 }
 async function saveEditors(post, list){
   try{ await updatePostDoc(post.id, { editors: list }); }
-  catch(err){ console.error("No se pudo guardar los editores:", err); showCalendarNotice({ ok:false, message: t("No se pudo guardar ({m}).","Couldn't save ({m}).","Não foi possível salvar ({m}).","לא ניתן היה לשמור ({m}).",{m:err.code||err.message}) }); }
+  catch(err){ console.error("No se pudo guardar los editores:", err); showCalendarNotice({ ok:false, message: t("No se pudo guardar ({m}).","Couldn't save ({m}).","Não foi possível salvar ({m}).","לא ניתן היה לשמור ({m}).",{m:detalleDeError(err, true)}) }); }
 }
 // Un hito como ítem del Calendario y de la campanita: mismo objeto que un
 // posteo para lo que dibujan (fecha, título, color por zona), con id
@@ -11281,7 +11299,7 @@ function renderProjectPanel(post, opts={}){
     return `<li class="pj-row ${st}" data-ms-id="${esc(m.id)}">
       <div class="pj-top">
         <span class="pj-grip" data-pj-grip data-post-id="${esc(post.id)}" title="${esc(t("Arrastrá para reordenar","Drag to reorder","Arraste para reordenar","גרירה לסידור מחדש"))}" aria-hidden="true"><svg viewBox="0 0 10 16" width="10" height="16"><circle cx="3" cy="3" r="1.4"/><circle cx="7" cy="3" r="1.4"/><circle cx="3" cy="8" r="1.4"/><circle cx="7" cy="8" r="1.4"/><circle cx="3" cy="13" r="1.4"/><circle cx="7" cy="13" r="1.4"/></svg></span>
-        <input type="text" class="pj-label-input" data-ms-field="label" data-post-id="${esc(post.id)}" data-ms-id="${esc(m.id)}" value="${esc(m.label)}" maxlength="120">
+        <input type="text" class="pj-label-input" aria-label="${esc(t("Nombre del hito","Milestone name","Nome do marco","שם אבן הדרך"))}" data-ms-field="label" data-post-id="${esc(post.id)}" data-ms-id="${esc(m.id)}" value="${esc(m.label)}" maxlength="120">
         <button type="button" class="status-pill ${st}" data-action="ms-done" data-post-id="${esc(post.id)}" data-ms-id="${esc(m.id)}">${esc(milestoneStatusLabel(st))}</button>
         <button type="button" class="rm" data-action="ms-remove" data-post-id="${esc(post.id)}" data-ms-id="${esc(m.id)}" title="${esc(t("Quitar hito","Remove milestone","Remover marco","הסרת אבן דרך"))}" aria-label="${esc(t("Quitar hito","Remove milestone","Remover marco","הסרת אבן דרך"))}">✕</button>
       </div>
@@ -11423,7 +11441,7 @@ async function saveCalendarLinkOrWarn(postId, patch){
       "Saved, but the link to the Calendar event couldn't be updated ({msg}). Edit the post once to retry.",
       "Foi salvo, mas o vínculo com o evento do Calendar não pôde ser atualizado ({msg}). Edite a postagem uma vez para tentar de novo.",
       "נשמר, אך לא ניתן היה לעדכן את הקישור לאירוע ביומן ({msg}). ערכ/י את הפוסט פעם אחת כדי לנסות שוב.",
-      {msg:err.message}
+      {msg:detalleDeError(err)}
     ) });
   }
 }
@@ -11531,13 +11549,13 @@ async function deletePostHard(post){
     showCalendarNotice({ ok:!calMsg, message: t("Borrado.","Deleted.","Apagado.","נמחק.") + calMsg });
   }catch(err){
     console.error("No se pudo borrar:", err);
-    showCalendarNotice({ ok:false, message: t("No se pudo borrar ({m}).","Couldn't delete ({m}).","Não foi possível apagar ({m}).","לא ניתן היה למחוק ({m}).",{m:err.code||err.message}) });
+    showCalendarNotice({ ok:false, message: t("No se pudo borrar ({m}).","Couldn't delete ({m}).","Não foi possível apagar ({m}).","לא ניתן היה למחוק ({m}).",{m:detalleDeError(err, true)}) });
   }
 }
 async function deleteReplyHard(postId, replyId){
   if(!(await appConfirm(t("¿Borrar esta respuesta del todo? No queda marca y no se puede deshacer.","Delete this reply for good? No trace is left and it can't be undone.","Apagar esta resposta de vez? Não fica marca e não dá para desfazer.","למחוק את התגובה לצמיתות? לא יישאר סימן ואי אפשר לבטל."), { danger:true, okLabel: t("Borrar","Delete","Apagar","מחיקה") }))) return;
   try{ await store.replies.remove(postId, replyId); }
-  catch(err){ console.error("No se pudo borrar la respuesta:", err); showCalendarNotice({ ok:false, message: t("No se pudo borrar ({m}).","Couldn't delete ({m}).","Não foi possível apagar ({m}).","לא ניתן היה למחוק ({m}).",{m:err.code||err.message}) }); }
+  catch(err){ console.error("No se pudo borrar la respuesta:", err); showCalendarNotice({ ok:false, message: t("No se pudo borrar ({m}).","Couldn't delete ({m}).","Não foi possível apagar ({m}).","לא ניתן היה למחוק ({m}).",{m:detalleDeError(err, true)}) }); }
 }
 async function cancelPost(post){
   if(!(await appConfirm(t(
@@ -11586,7 +11604,7 @@ async function cancelPost(post){
         ) });
   }catch(err){
     console.error(err);
-    await appAlert(t("No se pudo cancelar: {msg}","Couldn't cancel: {msg}","Não foi possível cancelar: {msg}","הביטול נכשל: {msg}",{msg:err.message}));
+    await appAlert(t("No se pudo cancelar: {msg}","Couldn't cancel: {msg}","Não foi possível cancelar: {msg}","הביטול נכשל: {msg}",{msg:detalleDeError(err)}));
   }
 }
 
@@ -11596,6 +11614,54 @@ async function cancelPost(post){
 const viewRoot = document.getElementById("viewRoot");
 let fatalError = null;
 function renderFatalError(msg){ fatalError = msg; render(); }
+
+// Lo que sale de una falla, en palabras de quien usa la app (T5 de la auditoría del 28/10/2026). Los errores
+// mostraban lo que contesta la base, en inglés y sin explicar: «Failed to fetch», «new row violates row-level
+// security policy…». Los tres casos de siempre se dicen simple: sin conexión, sin permiso, sesión vencida.
+// Cualquier otro error sigue mostrando lo que dijo la base (código o mensaje): no se esconde nada.
+// `conCodigo`: los avisos que ya mostraban el código de la base (`err.code||err.message`) lo siguen mostrando.
+function detalleDeError(err, conCodigo){
+  const msg = String((err && err.message) || err || ""), code = String((err && err.code) || ""), status = err && (err.status || err.statusCode);
+  if((typeof navigator !== "undefined" && navigator.onLine === false) || /failed to fetch|networkerror|network request failed|load failed|fetch failed|err_internet/i.test(msg))
+    return t("no hay conexión a internet","there's no internet connection","não há conexão com a internet","אין חיבור לאינטרנט");
+  if(code === "PGRST301" || status === 401 || /jwt expired|invalid jwt|refresh token/i.test(msg))
+    return t("venció tu sesión: volvé a entrar","your session expired: sign in again","sua sessão expirou: entre de novo","תוקף ההתחברות פג: היכנס/י שוב");
+  if(code === "42501" || status === 403 || /row-level security|permission denied/i.test(msg))
+    return t("tu cuenta no tiene permiso para hacerlo","your account doesn't have permission to do this","sua conta não tem permissão para fazer isso","לחשבון שלך אין הרשאה לעשות זאת");
+  return conCodigo ? (code || msg) : msg;
+}
+
+// El aviso de un formulario (T3 de la misma auditoría): «Escribí un título.» salía como una línea chica abajo de
+// todo, lejos del campo que falta, y nada la anunciaba. Ahora es role="alert" (la lee el lector de pantalla) y,
+// si se sabe qué campo falla (`campo`, una clave de CAMPOS_CON_ERROR), queda atada a él: senalarCamposConError
+// marca el campo (aria-invalid, aria-describedby) y enfocarCampoConError lleva el cursor ahí, con el campo a la vista.
+const CAMPOS_CON_ERROR = {
+  titulo:"#cTitle", lugar:"#cPlaceQuery", inicio:'[data-df-id="composer:start"]', fin:'[data-df-id="composer:end"]',
+  horaInicio:"#cStartTime", horaFin:"#cEndTime",
+};
+function htmlFormError(msg, campo){
+  if(!msg) return "";
+  const k = CAMPOS_CON_ERROR[campo] ? campo : "";
+  return `<div class="form-error" role="alert"${k ? ` id="err-${k}" data-campo="${k}"` : ""}>${esc(msg)}</div>`;
+}
+function senalarCamposConError(){
+  document.querySelectorAll(".form-error[data-campo]").forEach(err => {
+    const campo = document.querySelector(CAMPOS_CON_ERROR[err.dataset.campo]);
+    if(!campo) return;
+    if(/^(INPUT|SELECT|TEXTAREA)$/.test(campo.tagName)) campo.setAttribute("aria-invalid", "true");
+    const ya = (campo.getAttribute("aria-describedby") || "").split(/\s+/).filter(Boolean);
+    if(!ya.includes(err.id)) campo.setAttribute("aria-describedby", [...ya, err.id].join(" "));
+  });
+}
+function enfocarCampoConError(campo){
+  const el = CAMPOS_CON_ERROR[campo] && document.querySelector(CAMPOS_CON_ERROR[campo]);
+  if(el) el.focus();   // focus() también lleva el campo a la vista, dentro de la ventana que scrollea
+}
+// Un dato que falta en el evento: el aviso y el cursor van al campo que corresponde.
+function falloEnFormulario(d, campo, msg){
+  d.error = msg; d.errorEn = { campo, msg };
+  render(); enfocarCampoConError(campo);
+}
 
 // Textareas marcadas con la clase "autogrow" (por ahora, la de Rutina)
 // crecen solas con el contenido en vez de quedar en una caja chica fija
@@ -11711,6 +11777,7 @@ function render(){
     }
   }
   document.querySelectorAll("textarea.autogrow").forEach(autoGrowTextarea);
+  senalarCamposConError();
   updateNewPostsPill(); // la píldora depende de la vista y del scroll
 }
 // Para los avisos que llegan en ráfaga (varios cambios seguidos, o la
@@ -12206,7 +12273,7 @@ function renderUserBadge(){
   const nicknameBlock = !canEditNickname ? "" : nicknameEditing ? `
     <div class="um-nickname-form">
       <input type="text" id="nicknameInput" value="${esc(nicknameDraft)}" maxlength="20" placeholder="${esc(t("tu-nickname","your-nickname","seu-nickname","הכינוי-שלך"))}" autocomplete="off">
-      ${nicknameError ? `<div class="form-error">${esc(nicknameError)}</div>` : ""}
+      ${nicknameError ? `<div class="form-error" role="alert">${esc(nicknameError)}</div>` : ""}
       <div class="modal-actions" style="justify-content:center; margin-top:8px;">
         <button type="button" class="btn-secondary" data-action="cancel-edit-nickname">${t("Cancelar","Cancel","Cancelar","ביטול")}</button>
         <button type="button" class="btn-primary" data-action="save-nickname">${t("Guardar","Save","Salvar","שמירה")}</button>
@@ -12518,7 +12585,16 @@ function renderObserverBanner(){
 function renderAuthGate(){
   const s = state.auth.status;
   if(s === "loading"){
-    if(!state.auth.demorado) return `<div class="auth-gate"><div class="big">⏳</div><p>${t("Cargando…","Loading…","Carregando…","טוען...")}</p></div>`;
+    if(!state.auth.demorado && !fatalError) return `<div class="auth-gate"><div class="big">⏳</div><p>${t("Cargando…","Loading…","Carregando…","טוען...")}</p></div>`;
+    // El padrón contestó con un error (renderFatalError): arriba queda el cartel con el motivo y acá, la salida.
+    // Antes seguía el reloj de arena «Cargando…» para siempre, sin ningún botón (T5 de la auditoría del 28/10/2026).
+    if(fatalError) return `<div class="auth-gate">
+      <div class="big">🔌</div>
+      <h2>${t("No pudimos abrir el Registro","We couldn't open the Log","Não conseguimos abrir o Registro","לא הצלחנו לפתוח את היומן")}</h2>
+      <button class="btn-mini" data-action="reload-page">🔄 ${t("Reintentar","Try again","Tentar de novo","ניסיון נוסף")}</button>
+      <div style="height:10px"></div>
+      <button class="btn-secondary" data-action="sign-out">${t("Cerrar sesión","Sign out","Sair","התנתקות")}</button>
+    </div>`;
     // Lo importante acá no es el texto: son los dos botones. Sin ellos
     // esta pantalla no tiene salida — ni recargar con un clic, ni probar
     // con otra cuenta.
@@ -13168,7 +13244,7 @@ function renderPreaprobar(){
         <input type="text" id="preName" placeholder="${esc(t("Nombre (opcional)","Name (optional)","Nome (opcional)","שם (לא חובה)"))}" maxlength="120" value="${esc(d.name)}" autocomplete="off">
         <button type="button" class="btn-mini" data-action="preaprobar" ${d.saving ? "disabled" : ""}>${d.saving ? t("Dando acceso…","Granting…","Dando acesso…","מעניק גישה...") : t("Dar acceso","Grant access","Dar acesso","מתן גישה")}</button>
       </div>
-      ${d.error ? `<div class="form-error">${esc(d.error)}</div>` : ""}
+      ${d.error ? `<div class="form-error" role="alert">${esc(d.error)}</div>` : ""}
       ${d.ok ? `<div class="hint preaprobar-ok">✅ ${esc(d.ok)}</div>` : ""}
     </div>`;
 }
@@ -13196,7 +13272,7 @@ async function darAccesoPorAdelantado(){
     d.email = ""; d.name = "";
   }catch(err){
     console.error(err);
-    d.error = t("No se pudo dar el acceso: {m}","Couldn't grant access: {m}","Não foi possível dar o acesso: {m}","לא ניתן היה להעניק גישה: {m}",{m:err.message});
+    d.error = t("No se pudo dar el acceso: {m}","Couldn't grant access: {m}","Não foi possível dar o acesso: {m}","לא ניתן היה להעניק גישה: {m}",{m:detalleDeError(err)});
   }
   d.saving = false; render();
 }
@@ -13707,7 +13783,7 @@ function renderZonasSection(){
           <div class="zone-bar" style="background:${safeColor(z.color)}14;">
             ${colorControl(z.color, `data-action="zonas-color" data-key="${esc(key)}"`,
                            t("la zona {z}","the {z} zone","a zona {z}","אזור {z}",{z:z.label}))}
-            <input type="text" class="zone-name" data-action="zonas-label" data-key="${esc(key)}" value="${esc(z.label)}" maxlength="30">
+            <input type="text" class="zone-name" aria-label="${esc(t("Nombre de la zona","Zone name","Nome da zona","שם האזור"))}" data-action="zonas-label" data-key="${esc(key)}" value="${esc(z.label)}" maxlength="30">
             <span class="zone-count">${count === 1 ? t("1 país","1 country","1 país","מדינה אחת") : t("{n} países","{n} countries","{n} países","{n} מדינות",{n:count})}</span>
             <button type="button" class="zone-rm" data-action="zonas-remove-zone" data-key="${esc(key)}" aria-label="${esc(t("Eliminar zona","Delete zone","Excluir zona","מחיקת אזור"))}" ${count>0?`disabled title="${esc(t("Reasigná primero los países de esta zona","First reassign this zone's countries","Reatribua primeiro os países desta zona","קודם הקצה/י מחדש את המדינות של אזור זה."))}"`:`title="${esc(t("Eliminar zona","Delete zone","Excluir zona","מחיקת אזור"))}"`}>✕</button>
           </div>
@@ -13729,7 +13805,7 @@ function renderZonasSection(){
         <input type="text" id="zonasNewZoneLabel" placeholder="${esc(t("Nombre de la zona nueva (ej: Caribe)","Name of the new zone (e.g. Caribbean)","Nome da zona nova (ex: Caribe)","שם האזור החדש (למשל: קריביים)"))}" maxlength="30" value="${esc(d.newZoneLabel)}">
         <button type="button" class="btn-mini" data-action="zonas-add-zone">+ ${t("Agregar zona","Add zone","Adicionar zona","הוספת אזור")}</button>
       </div>
-      ${d.error ? `<div class="form-error">${esc(d.error)}</div>` : ""}
+      ${d.error ? `<div class="form-error" role="alert">${esc(d.error)}</div>` : ""}
       <div class="modal-actions" style="margin-top:16px;">
         <button type="button" class="btn-secondary" data-action="zonas-reset">${t("Descartar cambios","Discard changes","Descartar alterações","ביטול השינויים")}</button>
         <button type="button" class="btn-primary" data-action="zonas-save" ${d.saving?"disabled":""}>${d.saving ? t("Guardando…","Saving…","Salvando…","שומר...") : t("Guardar cambios","Save changes","Salvar alterações","שמירת השינויים")}</button>
@@ -13809,7 +13885,7 @@ function renderTiposSection(){
       <div class="lp-list"><div class="lp-rows">${filas}</div>${tiposFootnote(d)}</div>
       ${panel}
     </div>
-    ${d.error ? `<div class="form-error">${esc(d.error)}</div>` : ""}
+    ${d.error ? `<div class="form-error" role="alert">${esc(d.error)}</div>` : ""}
     <div class="modal-actions tipos-acciones">
       ${tiposDirty(d) ? `<span class="zonas-cambios">${t("Cambios sin guardar","Unsaved changes","Alterações sem salvar","שינויים שלא נשמרו")}</span>` : ""}
       <button type="button" class="btn-secondary" data-action="tipos-reset">${t("Descartar cambios","Discard changes","Descartar alterações","ביטול השינויים")}</button>
@@ -13830,8 +13906,8 @@ function renderTipoPanel(d, ty){
     </div>
     <div class="lp-pb">
       <div class="lp-grid2">
-        <div class="lp-field"><label>${t("Nombre","Name","Nome","שם")}</label><input type="text" class="lp-inp" data-action="tipos-label" data-key="${esc(ty.key)}" value="${esc(ty.label)}" maxlength="30"></div>
-        <div class="lp-field"><label>${t("Ícono","Icon","Ícone","סמל")}</label><input type="text" class="lp-inp lp-inp-ico" data-action="tipos-icon" data-key="${esc(ty.key)}" value="${esc(ty.icon)}" maxlength="4"></div>
+        <div class="lp-field"><label>${t("Nombre","Name","Nome","שם")}</label><input type="text" class="lp-inp" aria-label="${esc(t("Nombre","Name","Nome","שם"))}" data-action="tipos-label" data-key="${esc(ty.key)}" value="${esc(ty.label)}" maxlength="30"></div>
+        <div class="lp-field"><label>${t("Ícono","Icon","Ícone","סמל")}</label><input type="text" class="lp-inp lp-inp-ico" aria-label="${esc(t("Ícono","Icon","Ícone","סמל"))}" data-action="tipos-icon" data-key="${esc(ty.key)}" value="${esc(ty.icon)}" maxlength="4"></div>
       </div>
       <label class="lp-switch"><input type="checkbox" data-action="tipos-sync" data-key="${esc(ty.key)}" ${ty.calendarSync?"checked":""}><span class="lp-sw" aria-hidden="true"></span><span class="lp-switch-txt"><b>${t("Se suma al Google Calendar","Goes to Google Calendar","Vai para o Google Calendar","נוסף ל-Google Calendar")}</b><small>${t("Cada evento de este tipo aparece en el Calendar compartido.","Every event of this type shows up in the shared Calendar.","Cada evento deste tipo aparece no Calendar compartilhado.","כל אירוע מסוג זה מופיע ביומן המשותף.")}</small></span></label>
       <div class="lp-field"><label>${t("Documentos esperados","Expected documents","Documentos esperados","מסמכים צפויים")}</label>
@@ -13974,7 +14050,7 @@ function renderCalendarSection(){
         ${t("Vas a cambiar el calendario del equipo. Para confirmar, escribí la palabra","You're about to change the team calendar. To confirm, type the word","Você vai trocar o calendário da equipe. Para confirmar, escreva a palavra","את/ה עומד/ת להחליף את יומן הצוות. לאישור, הקלד/י את המילה")} <b>${esc(d.confirmWord)}</b>
         <input type="text" id="calendarConfirmInput" value="${esc(d.typed)}" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="${esc(t("Palabra de confirmación","Confirmation word","Palavra de confirmação","מילת אישור"))}">
       </div>` : ""}
-      ${d.error ? `<div class="form-error">${esc(d.error)}</div>` : ""}
+      ${d.error ? `<div class="form-error" role="alert">${esc(d.error)}</div>` : ""}
       ${renderCalendarImportBlock(d)}
       ${renderCalendarFaltantes()}
       ${d.locked ? "" : `<div class="modal-actions" style="margin-top:16px;">
@@ -14111,31 +14187,31 @@ function renderAdjuntosSection(){
         <div class="setting-row">
           <span class="setting-icon">🖼️</span>
           <div class="setting-text">
-            <div class="setting-label">${t("Máximo de imágenes","Maximum images","Máximo de imagens","מקסימום תמונות")}</div>
+            <div class="setting-label" id="adjLbl1">${t("Máximo de imágenes","Maximum images","Máximo de imagens","מקסימום תמונות")}</div>
             <div class="setting-sub">${t("Por posteo — tope de la base: {n}","Per post — cap of the database: {n}","Por postagem — limite da base: {n}","לכל פוסט — תקרת מסד הנתונים: {n}",{n:LIMITES_DE_LA_BASE.imagenes})}</div>
           </div>
           <div class="setting-control">
-            <input type="number" id="adjMaxImages" min="1" max="${LIMITES_DE_LA_BASE.imagenes}" value="${d.maxImages}">
+            <input type="number" aria-labelledby="adjLbl1" id="adjMaxImages" min="1" max="${LIMITES_DE_LA_BASE.imagenes}" value="${d.maxImages}">
           </div>
         </div>
         <div class="setting-row">
           <span class="setting-icon">📄</span>
           <div class="setting-text">
-            <div class="setting-label">${t("Máximo de documentos","Maximum documents","Máximo de documentos","מקסימום מסמכים")}</div>
+            <div class="setting-label" id="adjLbl2">${t("Máximo de documentos","Maximum documents","Máximo de documentos","מקסימום מסמכים")}</div>
             <div class="setting-sub">${t("Por posteo — tope de la base: {n}","Per post — cap of the database: {n}","Por postagem — limite da base: {n}","לכל פוסט — תקרת מסד הנתונים: {n}",{n:LIMITES_DE_LA_BASE.archivos})}</div>
           </div>
           <div class="setting-control">
-            <input type="number" id="adjMaxFiles" min="1" max="${LIMITES_DE_LA_BASE.archivos}" value="${d.maxFiles}">
+            <input type="number" aria-labelledby="adjLbl2" id="adjMaxFiles" min="1" max="${LIMITES_DE_LA_BASE.archivos}" value="${d.maxFiles}">
           </div>
         </div>
         <div class="setting-row">
           <span class="setting-icon">⚖️</span>
           <div class="setting-text">
-            <div class="setting-label">${t("Tamaño máximo por archivo","Maximum size per file","Tamanho máximo por arquivo","גודל מקסימלי לכל קובץ")}</div>
+            <div class="setting-label" id="adjLbl3">${t("Tamaño máximo por archivo","Maximum size per file","Tamanho máximo por arquivo","גודל מקסימלי לכל קובץ")}</div>
             <div class="setting-sub">${t("Para cada documento adjunto — tope de la base: {n}","For each attached document — cap of the database: {n}","Para cada documento anexado — limite da base: {n}","לכל מסמך מצורף — תקרת מסד הנתונים: {n}",{n:topeLegible(LIMITES_DE_LA_BASE.bytesPorArchivo)})}</div>
           </div>
           <div class="setting-control setting-control-unit">
-            <input type="number" id="adjMaxFileSize" min="${u.min}" step="${u.paso}" max="${Math.round(LIMITES_DE_LA_BASE.bytesPorArchivo / u.factor)}" value="${d.maxFileSize}">
+            <input type="number" aria-labelledby="adjLbl3" id="adjMaxFileSize" min="${u.min}" step="${u.paso}" max="${Math.round(LIMITES_DE_LA_BASE.bytesPorArchivo / u.factor)}" value="${d.maxFileSize}">
             <span class="setting-unit">${u.nombre}</span>
           </div>
         </div>
@@ -14145,7 +14221,7 @@ function renderAdjuntosSection(){
         "The caps are whatever the database in use can hold, and the database enforces them on its side too — here you can shrink them, not raise them past that.",
         "Os limites são os que a base em uso aguenta, e a base também os exige do lado dela — aqui dá para diminuir, não aumentar além disso.",
         "התקרות הן מה שמסד הנתונים שבשימוש יכול להכיל, והוא אוכף אותן גם מצידו — כאן אפשר להקטין, לא להגדיל מעבר לכך.")}</div>
-      ${d.error ? `<div class="form-error">${esc(d.error)}</div>` : ""}
+      ${d.error ? `<div class="form-error" role="alert">${esc(d.error)}</div>` : ""}
       <div class="modal-actions" style="margin-top:16px;">
         <button type="button" class="btn-secondary" data-action="adjuntos-reset">${t("Descartar cambios","Discard changes","Descartar alterações","ביטול השינויים")}</button>
         <button type="button" class="btn-primary" data-action="adjuntos-save" ${d.saving?"disabled":""}>${d.saving ? t("Guardando…","Saving…","Salvando…","שומר...") : t("Guardar cambios","Save changes","Salvar alterações","שמירת השינויים")}</button>
@@ -14321,7 +14397,7 @@ async function bajarCopiaDatos(){
     copiaAvisar({ texto: "", listo: "✅ " + t("Listo: {n} filas en {a}.","Done: {n} rows in {a}.","Pronto: {n} linhas em {a}.","מוכן: {n} שורות ב-{a}.",{n:filas, a:nombreDeLaCopia("json")}) + avisoFallas(fallas) });
   }catch(err){
     console.error(err);
-    copiaAvisar({ texto: "", error: t("No se pudo armar la copia: {m}","Couldn't build the copy: {m}","Não foi possível montar a cópia: {m}","לא ניתן היה להכין את העותק: {m}",{m:err.message || String(err)}) });
+    copiaAvisar({ texto: "", error: t("No se pudo armar la copia: {m}","Couldn't build the copy: {m}","Não foi possível montar a cópia: {m}","לא ניתן היה להכין את העותק: {m}",{m:detalleDeError(err)}) });
   }finally{
     copiaEstado.corriendo = false;
     document.querySelectorAll('[data-action="copia-datos"], [data-action="copia-completa"]').forEach(b => b.disabled = false);
@@ -14375,7 +14451,7 @@ async function bajarCopiaCompleta(){
       + (sinBajar ? " " + (sinBajar === 1 ? t("1 no se pudo bajar.","1 couldn't be downloaded.","1 não pôde ser baixado.","1 לא ניתן היה להוריד.", {n:sinBajar}) : t("{n} no se pudieron bajar.","{n} couldn't be downloaded.","{n} não puderam ser baixados.","{n} לא ניתן היה להוריד.", {n:sinBajar})) : "") + avisoFallas(fallas) });
   }catch(err){
     console.error(err);
-    copiaAvisar({ texto: "", error: t("No se pudo armar la copia: {m}","Couldn't build the copy: {m}","Não foi possível montar a cópia: {m}","לא ניתן היה להכין את העותק: {m}",{m:err.message || String(err)}) });
+    copiaAvisar({ texto: "", error: t("No se pudo armar la copia: {m}","Couldn't build the copy: {m}","Não foi possível montar a cópia: {m}","לא ניתן היה להכין את העותק: {m}",{m:detalleDeError(err)}) });
   }finally{
     copiaEstado.corriendo = false;
     document.querySelectorAll('[data-action="copia-datos"], [data-action="copia-completa"]').forEach(b => b.disabled = false);
@@ -15569,7 +15645,7 @@ function renderRutinaComposer(){
         <div class="img-preview"><img src="${srcMiniatura(src)}" alt=""><button type="button" class="rm" aria-label="${esc(t("Quitar","Remove","Remover","הסרה"))}" data-action="rutina-rm-image" data-idx="${i}">✕</button></div>`).join("")}</div>` : ""}
       ${renderFileChips(d.files, "rutina-rm-file")}
       ${d.links.length ? `<div class="attach-panel">${renderLinkRows("rutina", "new", d.links)}</div>` : ""}
-      ${d.error ? `<div class="form-error">${esc(d.error)}</div>` : ""}
+      ${d.error ? `<div class="form-error" role="alert">${esc(d.error)}</div>` : ""}
       <div class="reply-form-footer">
         <div class="attach-toolbar">
           <label class="btn-attach" for="rutinaImages">📎 ${t("Imagen","Image","Imagem","תמונה")}</label>
@@ -15611,7 +15687,7 @@ async function submitRutina(){
   }catch(err){
     console.error(err);
     d.submitting = false;
-    d.error = t("No se pudo publicar: {msg}","Couldn't publish: {msg}","Não foi possível publicar: {msg}","הפרסום נכשל: {msg}",{msg:err.message});
+    d.error = t("No se pudo publicar: {msg}","Couldn't publish: {msg}","Não foi possível publicar: {msg}","הפרסום נכשל: {msg}",{msg:detalleDeError(err)});
     render();
   }
 }
@@ -15948,7 +16024,7 @@ async function quitarDocumento(postId, pos){
     docsAbiertos.set(postId, true);   // que se vea lo que quedó
   }catch(err){
     console.error("Error quitando el documento:", err);
-    await appAlert(t("No se pudo quitar: {m}","Couldn't remove it: {m}","Não foi possível remover: {m}","לא ניתן היה להסיר: {m}",{m:err.code||err.message}));
+    await appAlert(t("No se pudo quitar: {m}","Couldn't remove it: {m}","Não foi possível remover: {m}","לא ניתן היה להסיר: {m}",{m:detalleDeError(err, true)}));
   }
 }
 
@@ -15974,7 +16050,7 @@ async function quitarAdjunto(postId, pos){
     });
   }catch(err){
     console.error("Error quitando el adjunto:", err);
-    await appAlert(t("No se pudo quitar: {m}","Couldn't remove it: {m}","Não foi possível remover: {m}","לא ניתן היה להסיר: {m}",{m:err.code||err.message}));
+    await appAlert(t("No se pudo quitar: {m}","Couldn't remove it: {m}","Não foi possível remover: {m}","לא ניתן היה להסיר: {m}",{m:detalleDeError(err, true)}));
   }
 }
 
@@ -16839,7 +16915,7 @@ function renderNestedReplyForm(postId, replyId){
         <div class="img-preview"><img src="${srcMiniatura(src)}" alt=""><button type="button" class="rm" aria-label="${esc(t("Quitar","Remove","Remover","הסרה"))}" data-action="nested-reply-rm-image" data-reply-id="${esc(replyId)}" data-idx="${i}">✕</button></div>`).join("")}</div>` : ""}
       ${renderFileChips(d.files, "nested-reply-rm-file", `data-reply-id="${esc(replyId)}"`)}
       ${d.links.length ? `<div class="attach-panel">${renderLinkRows("nested-reply", replyId, d.links)}</div>` : ""}
-      ${d.scopeError ? `<div class="form-error">${esc(d.scopeError)}</div>` : ""}
+      ${d.scopeError ? `<div class="form-error" role="alert">${esc(d.scopeError)}</div>` : ""}
       <div class="reply-form-footer">
         <div class="attach-toolbar">
           <label class="btn-attach" for="nestedReplyImages-${replyId}">📎 ${t("Imagen","Image","Imagem","תמונה")}</label>
@@ -16877,7 +16953,7 @@ function renderReplyForm(postId){
         ${d.placeQuery ? renderPlaceSuggestions(d, "reply", postId) : ""}
       </div>
       ${d.scopes.length ? `<div class="post-scopes" style="margin-top:-2px;margin-bottom:8px;">${d.scopes.map((sc,i)=>renderScopeChip(sc, "rm-scope-reply", i, postId)).join("")}</div>` : ""}
-      ${d.scopeError ? `<div class="form-error">${esc(d.scopeError)}</div>` : ""}
+      ${d.scopeError ? `<div class="form-error" role="alert">${esc(d.scopeError)}</div>` : ""}
       <input type="file" id="replyImages-${postId}" accept="image/*" multiple hidden data-action="reply-images" data-post-id="${esc(postId)}">
       <input type="file" id="replyFiles-${postId}" accept="${ACEPTA_ARCHIVOS}" multiple hidden data-action="reply-files" data-post-id="${esc(postId)}">
       ${d.images.length ? `<div class="img-preview-list">${d.images.map((src,i)=>`
@@ -18951,14 +19027,19 @@ function prefColorRow(prefKey, icon, label, sub){
       </div>
     </div>`;
 }
+// El control (un selector o un interruptor) toma su nombre del título de su fila: sin eso un lector de pantalla
+// lo anuncia solo como «cuadro combinado» o «casilla» (T7 de la auditoría del 28/10/2026).
+let prefRowSeq = 0;
 function prefRow(icon, label, sub, control){
+  const id = "prefLbl" + (++prefRowSeq);
+  const nombrado = String(control).replace(/<(select|input)\b(?![^>]*\baria-label)/, `<$1 aria-labelledby="${id}"`);
   return `<div class="setting-row">
       <span class="setting-icon">${icon}</span>
       <div class="setting-text">
-        <div class="setting-label">${esc(label)}</div>
+        <div class="setting-label" id="${id}">${esc(label)}</div>
         ${sub ? `<div class="setting-sub">${esc(sub)}</div>` : ""}
       </div>
-      <div class="setting-control setting-control-wide">${control}</div>
+      <div class="setting-control setting-control-wide">${nombrado}</div>
     </div>`;
 }
 // Muestra de cómo queda una fecha/hora con cada formato, sin tocar las
@@ -20804,10 +20885,13 @@ const confirmMessageEl = document.getElementById("confirmMessage");
 const confirmOkBtn = document.getElementById("confirmOk");
 const confirmCancelBtn = document.getElementById("confirmCancel");
 let confirmResolve = null, confirmReturnFocus = null;
+let volverAlBotonDe = null;      // selector del ⋯ de un menú que se cerró al elegir un ítem (ver el clic general)
+let confirmReturnSelector = null;
 function openConfirmDialog(message, opts={}){
   return new Promise(resolve=>{
     confirmResolve = resolve;
     confirmReturnFocus = document.activeElement;
+    confirmReturnSelector = volverAlBotonDe; volverAlBotonDe = null;
     confirmMessageEl.textContent = message;
     confirmOkBtn.textContent = opts.okLabel || t("Aceptar","OK","Aceitar","אישור");
     confirmOkBtn.classList.toggle("danger", !!opts.danger);
@@ -20821,7 +20905,10 @@ function closeConfirmDialog(result){
   if(confirmOverlay.hidden) return;
   confirmOverlay.hidden = true;
   const resolve = confirmResolve; confirmResolve = null;
-  const rf = confirmReturnFocus; confirmReturnFocus = null;
+  let rf = confirmReturnFocus; confirmReturnFocus = null;
+  const sel = confirmReturnSelector; confirmReturnSelector = null;
+  // Quien lo abrió ya no está (el menú «⋯» se cerró al elegir): se vuelve a su botón, buscado en vivo.
+  if((!rf || !rf.isConnected || rf === document.body) && sel){ try{ rf = document.querySelector(sel) || rf; }catch(e){} }
   if(rf && typeof rf.focus === "function") rf.focus();
   if(resolve) resolve(result);
 }
@@ -20901,6 +20988,14 @@ function tourSteps(){
         "Quantas atividades houve por mês, país, tipo e pessoa, em relação ao período anterior, e em «Tendências» quais lugares, tipos e temas subiram ou desceram nos últimos 90 dias. Toque em um mês do gráfico para ver a ficha dele, em «✨ Meu ano» para o seu resumo pessoal com um cartão para compartilhar, ou em «Apresentar» para mostrar o relatório em tela cheia, como slides, ou imprimi-lo.",
         "כמה פעילויות היו לפי חודש, מדינה, סוג ואדם, מול התקופה הקודמת, וב«מגמות» אילו מקומות, סוגים ונושאים עלו או ירדו ב-90 הימים האחרונים. הקש/י על חודש בגרף כדי לראות את הכרטיס שלו, על «✨ השנה שלי» לסיכום האישי שלך עם כרטיס לשיתוף, או על «הצגה» כדי להציג את הדוח במסך מלא, כשקופיות, או להדפיס אותו."),
       textoMas: true },
+    // El buscador de arriba: en la compu es la barra; en el celular, la lupa que la abre (T4 de la auditoría del 28/10/2026: la
+    // lupa entró en la tanda 104 sin su paso). Busca en lo mismo que resultadosGlobales().
+    { id:"buscar", cubre:[], target: ["#globalSearch", "#globalSearchToggle"],
+      title: t("Buscar en todo","Search everything","Buscar em tudo","חיפוש בהכול"),
+      text: t("Buscá en todo el Registro desde cualquier solapa: posteos, proyectos, países y ciudades, personas del equipo y la Agenda de contactos. En el celular, es la lupa de arriba.",
+        "Search the whole Log from any tab: posts, projects, countries and cities, team members and the contact Directory. On a phone, it's the magnifier at the top.",
+        "Busque em todo o Registro de qualquer aba: postagens, projetos, países e cidades, pessoas da equipe e a Agenda de contatos. No celular, é a lupa no topo.",
+        "חיפוש בכל היומן מכל לשונית: פוסטים, פרויקטים, מדינות וערים, חברי הצוות וספר הטלפונים. בטלפון, זו המגדלת שבראש המסך.") },
     { id:"novedades", cubre:[], target: ["#mentionsBell .bell-btn"],
       title: t("Novedades","Updates","Novidades","עדכונים"),
       text: t("Acá ves si te mencionan, si te responden, si alguien cambia uno de tus eventos y qué viene en estos días.",
@@ -21433,12 +21528,13 @@ function renderComposer(){
       `}
     </div>
     ${puedeQuedarSinCalendar(d) ? `<label class="allday-toggle sin-calendar"><input type="checkbox" id="cSinCalendar" ${d.sinCalendar?"checked":""}> ${t("No pasarlo a Google Calendar","Don't add it to Google Calendar","Não passar para o Google Calendar","לא להוסיף ל-Google Calendar")}</label>` : ""}
-    ${d.error ? `<div class="form-error">${esc(d.error)}</div>` : ""}
+    ${htmlFormError(d.error, d.errorEn && d.errorEn.msg === d.error ? d.errorEn.campo : "")}
     <div class="modal-actions">
       <button type="button" class="btn-secondary" data-action="cancel-composer">${t("Cancelar","Cancel","Cancelar","ביטול")}</button>
       <button type="submit" class="btn-primary" ${d.submitting ? "disabled" : ""}>${d.submitting ? t("Guardando…","Saving…","Salvando…","שומר...") : d.editingPost ? t("Guardar cambios","Save changes","Salvar alterações","שמירת השינויים") : t("Publicar","Post","Publicar","פרסום")}</button>
     </div>
   `;
+  senalarCamposConError();
 }
 
 function getDraftFor(scope, ownerId){
@@ -25506,10 +25602,16 @@ document.addEventListener("click", async e=>{
   }
   // El menú ⋯ de un posteo se cierra al clickear afuera y también al
   // elegir algo adentro: la acción sigue su curso con el menú ya cerrado.
+  // Elegir algo del menú lo cierra ANTES de que corra la acción, y con él desaparece el botón que tenía el foco. Si la acción
+  // pide confirmar («¿Borrar…?»), al cerrar el cartel el foco tiene que volver al ⋯ de donde salió y no al principio de la página
+  // (T8 de la auditoría del 28/10/2026): se anota acá a qué botón volver (lo usa openConfirmDialog) y el próximo clic lo olvida.
+  volverAlBotonDe = null;
   if(postMenuOpen && (!e.target.closest(".post-menu-wrap") || e.target.closest(".post-menu-item"))){
+    if(e.target.closest(".post-menu-item")) volverAlBotonDe = `.post-menu-btn[data-post-id="${CSS.escape(postMenuOpen)}"]`;
     postMenuOpen = null; render();
   }
   if(eventCardMenu && (!e.target.closest(".ev-mas") || e.target.closest(".post-menu-item"))){
+    if(e.target.closest(".post-menu-item")) volverAlBotonDe = '[data-action="event-card-mas"]';
     eventCardMenu = false; if(!eventCardOverlay.hidden) renderEventCard();
   }
   if(moreMenuOpen && !e.target.closest("#bottomNav")){
@@ -25793,7 +25895,7 @@ document.addEventListener("click", async e=>{
       if(ya) showCalendarNotice({ ok:true, message: t("«{n}» ya estaba: es esta ficha.","“{n}” was already there: this is their record.","«{n}» já existia: é esta ficha.","«{n}» כבר היה/תה: זהו הכרטיס.",{n: ya.name}) });
     }catch(err){
       console.error("No se pudo crear la persona:", err);
-      appAlert(t("No se pudo crear: {m}","Couldn't create: {m}","Não foi possível criar: {m}","לא ניתן היה ליצור: {m}",{m: err.message}));
+      appAlert(t("No se pudo crear: {m}","Couldn't create: {m}","Não foi possível criar: {m}","לא ניתן היה ליצור: {m}",{m:detalleDeError(err)}));
     }
   },
     "persona-unir": async (el, e, action, postId) => {
@@ -25808,7 +25910,7 @@ document.addEventListener("click", async e=>{
       showCalendarNotice({ ok:true, message: t("Listo: «{a}» es «{b}» en {n}.","Done: “{a}” is “{b}” in {n}.","Pronto: «{a}» é «{b}» em {n}.","בוצע: «{a}» הוא/היא «{b}» ב-{n}.",{a: x.name, b: y.name, n: cuantasActividades(n)}) });
     }catch(err){
       console.error("No se pudo unir:", err);
-      appAlert(t("No se pudo unir: {m}","Couldn't merge: {m}","Não foi possível unir: {m}","לא ניתן היה לאחד: {m}",{m: err.message}));
+      appAlert(t("No se pudo unir: {m}","Couldn't merge: {m}","Não foi possível unir: {m}","לא ניתן היה לאחד: {m}",{m:detalleDeError(err)}));
     }finally{ personaOcupada = false; render(); }
   },
     "persona-vincular": async (el, e, action, postId) => {
@@ -25823,7 +25925,7 @@ document.addEventListener("click", async e=>{
       showCalendarNotice({ ok:true, message: t("Listo: «{a}» es {b} en {n}.","Done: “{a}” is {b} in {n}.","Pronto: «{a}» é {b} em {n}.","בוצע: «{a}» הוא/היא {b} ב-{n}.",{a: x.name, b: nombreDe(m), n: cuantasActividades(n)}) });
     }catch(err){
       console.error("No se pudo vincular:", err);
-      appAlert(t("No se pudo vincular: {m}","Couldn't link: {m}","Não foi possível vincular: {m}","לא ניתן היה לקשר: {m}",{m: err.message}));
+      appAlert(t("No se pudo vincular: {m}","Couldn't link: {m}","Não foi possível vincular: {m}","לא ניתן היה לקשר: {m}",{m:detalleDeError(err)}));
     }finally{ personaOcupada = false; render(); }
   },
     "persona-borrar": async (el, e, action, postId) => {
@@ -25832,7 +25934,7 @@ document.addEventListener("click", async e=>{
     if(!(await appConfirm(t("¿Borrar la ficha de «{n}»? No figura en ningún evento.","Delete “{n}”'s record? They're not in any event.","Apagar a ficha de «{n}»? Não aparece em nenhum evento.","למחוק את הכרטיס של «{n}»? לא מופיע/ה בשום אירוע.",{n: x.name}), { danger:true, okLabel: t("Borrar","Delete","Apagar","מחיקה") }))) return;
     personaOcupada = true; render();
     try{ await store.personas.remove(x.id); personaAbierta = null; }
-    catch(err){ console.error(err); appAlert(t("No se pudo borrar: {m}","Couldn't delete: {m}","Não foi possível apagar: {m}","לא ניתן היה למחוק: {m}",{m: err.message})); }
+    catch(err){ console.error(err); appAlert(t("No se pudo borrar: {m}","Couldn't delete: {m}","Não foi possível apagar: {m}","לא ניתן היה למחוק: {m}",{m:detalleDeError(err)})); }
     finally{ personaOcupada = false; render(); }
   },
     "aprobar-y-vincular": async (el, e, action, postId) => {
@@ -25843,7 +25945,7 @@ document.addEventListener("click", async e=>{
       // no, se vincula acá por el nombre que confirmó el admin.
       if(personaPorId(id)){ try{ await store.personas.vincular(id, email); }catch(err){ if(!/no existe/i.test(err.message || "")) throw err; } }
       shareCalendarWith(email, { silentOnly:true }).catch(()=>{});
-    }).catch(err => { console.error(err); appAlert(t("No se pudo aprobar: {m}","Couldn't approve: {m}","Não foi possível aprovar: {m}","לא ניתן היה לאשר: {m}",{m: err.message})); });
+    }).catch(err => { console.error(err); appAlert(t("No se pudo aprobar: {m}","Couldn't approve: {m}","Não foi possível aprovar: {m}","לא ניתן היה לאשר: {m}",{m:detalleDeError(err)})); });
   },
     "parecido-no": async (el, e, action, postId) => {
     parecidosDescartados.add(el.dataset.email); render();
@@ -26928,7 +27030,7 @@ document.addEventListener("click", async e=>{
       showCalendarNotice(res.ok
         ? { ok:true, message: t("Se reenvió la invitación del Calendar a {email}.","The Calendar invite was resent to {email}.","O convite do Calendar foi reenviado para {email}.","הזמנת היומן נשלחה מחדש אל {email}.",{email}) }
         : { ok:false, message: t("No se pudo reenviar la invitación a {email} ({reason}).","Couldn't resend the invite to {email} ({reason}).","Não foi possível reenviar o convite para {email} ({reason}).","לא ניתן היה לשלוח מחדש את ההזמנה אל {email} ({reason}).",{email,reason:res.reason}) });
-    }).catch(err=>{ console.error(err); appAlert(t("No se pudo reenviar la invitación: {msg}","Couldn't resend the invite: {msg}","Não foi possível reenviar o convite: {msg}","לא ניתן היה לשלוח מחדש את ההזמנה: {msg}",{msg:err.message})); });
+    }).catch(err=>{ console.error(err); appAlert(t("No se pudo reenviar la invitación: {msg}","Couldn't resend the invite: {msg}","Não foi possível reenviar o convite: {msg}","לא ניתן היה לשלוח מחדש את ההזמנה: {msg}",{msg:detalleDeError(err)})); });
   },
     "sign-out": async (el, e, action, postId) => {
     userMenuOpen = false;
@@ -26955,7 +27057,7 @@ document.addEventListener("click", async e=>{
             `{email} já pode usar o app. Para compartilhar também o Calendar, use "Compartilhar Calendar" na ficha em Usuários.`,
             `{email} יכול/ה כעת להשתמש באפליקציה. כדי לשתף גם את היומן, השתמש/י ב"שיתוף היומן" בכרטיס שלו/ה במשתמשים.`,
             { email }) });
-    }).catch(err=>{ console.error(err); appAlert(t("No se pudo aprobar: {msg}","Couldn't approve: {msg}","Não foi possível aprovar: {msg}","האישור נכשל: {msg}",{msg:err.message})); }));
+    }).catch(err=>{ console.error(err); appAlert(t("No se pudo aprobar: {msg}","Couldn't approve: {msg}","Não foi possível aprovar: {msg}","האישור נכשל: {msg}",{msg:detalleDeError(err)})); }));
   },
     "unshare-calendar": async (el, e, action, postId) => {
     const email = el.dataset.email;
@@ -26963,7 +27065,7 @@ document.addEventListener("click", async e=>{
       showCalendarNotice(res.ok
         ? { ok:true, message: t("Se sacó a {email} del Calendar compartido.","{email} was removed from the shared Calendar.","{email} foi tirado do Calendar compartilhado.","{email} הוסר/ה מהיומן המשותף.",{email}) }
         : { ok:false, message: t("No se pudo sacar a {email} del Calendar ({reason}).","Couldn't remove {email} from the Calendar ({reason}).","Não foi possível tirar {email} do Calendar ({reason}).","לא ניתן היה להסיר את {email} מהיומן ({reason}).",{email,reason:res.reason}) });
-    }).catch(err=>{ console.error(err); appAlert(t("No se pudo sacar del Calendar: {msg}","Couldn't remove from the Calendar: {msg}","Não foi possível tirar do Calendar: {msg}","ההסרה מהיומן נכשלה: {msg}",{msg:err.message})); });
+    }).catch(err=>{ console.error(err); appAlert(t("No se pudo sacar del Calendar: {msg}","Couldn't remove from the Calendar: {msg}","Não foi possível tirar do Calendar: {msg}","ההסרה מהיומן נכשלה: {msg}",{msg:detalleDeError(err)})); });
   },
     "share-calendar": async (el, e, action, postId) => {
     const email = el.dataset.email;
@@ -26971,12 +27073,12 @@ document.addEventListener("click", async e=>{
       showCalendarNotice(res.ok
         ? { ok:true, message: t("Se compartió el Calendar con {email}.","The Calendar was shared with {email}.","O Calendar foi compartilhado com {email}.","היומן שותף עם {email}.",{email}) }
         : { ok:false, message: t("No se pudo compartir el Calendar con {email} ({reason}).","Couldn't share the Calendar with {email} ({reason}).","Não foi possível compartilhar o Calendar com {email} ({reason}).","לא ניתן היה לשתף את היומן עם {email} ({reason}).",{email,reason:res.reason}) });
-    }).catch(err=>{ console.error(err); appAlert(t("No se pudo compartir: {msg}","Couldn't share: {msg}","Não foi possível compartilhar: {msg}","השיתוף נכשל: {msg}",{msg:err.message})); });
+    }).catch(err=>{ console.error(err); appAlert(t("No se pudo compartir: {msg}","Couldn't share: {msg}","Não foi possível compartilhar: {msg}","השיתוף נכשל: {msg}",{msg:detalleDeError(err)})); });
   },
     "reject-request": async (el, e, action, postId) => {
     const email = el.dataset.email;
     await withRosterGuard(email, ()=>
-    rejectRequest(email).catch(err=>{ console.error(err); appAlert(t("No se pudo rechazar: {msg}","Couldn't reject: {msg}","Não foi possível rejeitar: {msg}","הדחייה נכשלה: {msg}",{msg:err.message})); }));
+    rejectRequest(email).catch(err=>{ console.error(err); appAlert(t("No se pudo rechazar: {msg}","Couldn't reject: {msg}","Não foi possível rejeitar: {msg}","הדחייה נכשלה: {msg}",{msg:detalleDeError(err)})); }));
   },
     // Borra una solicitud RECHAZADA de la lista. Lo importante, y por eso
     // se avisa: la solicitud es lo que hace que esa persona vea "tu acceso
@@ -27001,7 +27103,7 @@ document.addEventListener("click", async e=>{
         await store.accessRequests.remove(email);
       }catch(err){
         console.error(err);
-        await appAlert(t("No se pudo borrar: {msg}","Couldn't delete: {msg}","Não foi possível apagar: {msg}","המחיקה נכשלה: {msg}",{msg:err.message}));
+        await appAlert(t("No se pudo borrar: {msg}","Couldn't delete: {msg}","Não foi possível apagar: {msg}","המחיקה נכשלה: {msg}",{msg:detalleDeError(err)}));
       }
     });
   },
@@ -27041,7 +27143,7 @@ document.addEventListener("click", async e=>{
         await store.formerMembers.remove(email);
       }catch(err){
         console.error(err);
-        await appAlert(t("No se pudo borrar: {msg}","Couldn't remove: {msg}","Não foi possível apagar: {msg}","המחיקה נכשלה: {msg}",{msg:err.message}));
+        await appAlert(t("No se pudo borrar: {msg}","Couldn't remove: {msg}","Não foi possível apagar: {msg}","המחיקה נכשלה: {msg}",{msg:detalleDeError(err)}));
       }
     });
   },
@@ -27098,7 +27200,7 @@ document.addEventListener("click", async e=>{
               `O acesso de {email} ao app foi revogado, mas o Calendar segue compartilhado: termine com "Tirar do Calendar", em Solicitações > Ex-integrantes.`,
               `הגישה של {email} לאפליקציה בוטלה, אך היומן עדיין משותף: סיים/י עם "הסרה מהיומן", בבקשות > חברים לשעבר.`,
               { email }) });
-      }).catch(err=>{ console.error(err); appAlert(t("No se pudo revocar: {msg}","Couldn't revoke: {msg}","Não foi possível revogar: {msg}","הביטול נכשל: {msg}",{msg:err.message})); }));
+      }).catch(err=>{ console.error(err); appAlert(t("No se pudo revocar: {msg}","Couldn't revoke: {msg}","Não foi possível revogar: {msg}","הביטול נכשל: {msg}",{msg:detalleDeError(err)})); }));
     }
   },
     "zonas-remove-zone": async (el, e, action, postId) => {
@@ -27189,7 +27291,7 @@ document.addEventListener("click", async e=>{
       d.saving = false; render();
     }).catch(err=>{
       console.error(err);
-      d.saving = false; d.error = t("No se pudo guardar: {msg}","Couldn't save: {msg}","Não foi possível salvar: {msg}","השמירה נכשלה: {msg}",{msg:err.message}); render();
+      d.saving = false; d.error = t("No se pudo guardar: {msg}","Couldn't save: {msg}","Não foi possível salvar: {msg}","השמירה נכשלה: {msg}",{msg:detalleDeError(err)}); render();
     });
   },
     "tipos-remove": async (el, e, action, postId) => {
@@ -27318,12 +27420,12 @@ document.addEventListener("click", async e=>{
       d.saving = false; d.original = JSON.stringify(d.types); render();
     }).catch(err=>{
       console.error(err);
-      d.saving = false; d.error = t("No se pudo guardar: {msg}","Couldn't save: {msg}","Não foi possível salvar: {msg}","השמירה נכשלה: {msg}",{msg:err.message}); render();
+      d.saving = false; d.error = t("No se pudo guardar: {msg}","Couldn't save: {msg}","Não foi possível salvar: {msg}","השמירה נכשלה: {msg}",{msg:detalleDeError(err)}); render();
     });
   },
     "lugares-promote": async (el, e, action, postId) => {
     promoteCustomCity(el.dataset.country, el.dataset.city).then(render).catch(err=>{
-      console.error(err); appAlert(t("No se pudo sumar el lugar: {msg}","Couldn't add the place: {msg}","Não foi possível somar o lugar: {msg}","לא ניתן היה להוסיף את המקום: {msg}",{msg:err.message}));
+      console.error(err); appAlert(t("No se pudo sumar el lugar: {msg}","Couldn't add the place: {msg}","Não foi possível somar o lugar: {msg}","לא ניתן היה להוסיף את המקום: {msg}",{msg:detalleDeError(err)}));
     });
   },
     "color-open": async (el, e, action, postId) => {
@@ -27364,7 +27466,7 @@ document.addEventListener("click", async e=>{
     store.config.merge("preferences", { calendarImportFrom: v || null }).then(()=>{
       d.importSaving = false; render();
       showCalendarNotice({ ok:true, message: v ? t("Se importa desde el {d}. Para traer lo anterior que falte, usá «Reimportar historial».","Importing from {d}. To bring in anything missing before that, use “Reimport history”.","Importa-se desde {d}. Para trazer o que falte de antes, use «Reimportar histórico».","מייבאים מ-{d}. כדי להביא מה שחסר, השתמש/י ב«ייבוא מחדש של ההיסטוריה».",{d:fmtDate(v)}) : t("Se importa todo el historial. Para traer lo que falte, usá «Reimportar historial».","Importing the whole history. To bring in what's missing, use “Reimport history”.","Importa-se todo o histórico. Para trazer o que falte, use «Reimportar histórico».","מייבאים את כל ההיסטוריה. כדי להביא מה שחסר, השתמש/י ב«ייבוא מחדש של ההיסטוריה».") });
-    }).catch(err=>{ d.importSaving = false; d.error = t("No se pudo guardar: {msg}","Couldn't save: {msg}","Não foi possível salvar: {msg}","השמירה נכשלה: {msg}",{msg:err.message}); render(); });
+    }).catch(err=>{ d.importSaving = false; d.error = t("No se pudo guardar: {msg}","Couldn't save: {msg}","Não foi possível salvar: {msg}","השמירה נכשלה: {msg}",{msg:detalleDeError(err)}); render(); });
   },
     "calendar-reimport-cancel": async (el, e, action, postId) => {
     const d = getCalendarDraft(); d.confirmWord = null; d.confirmMode = null; d.typed = ""; render();
@@ -27383,7 +27485,7 @@ document.addEventListener("click", async e=>{
     // Sin token, la próxima lectura es completa desde CALENDAR_IMPORT_FROM.
     setSyncMeta({ syncToken: null }).then(()=> syncFromCalendar({ silent:false })).then(()=>{
       d.reimporting = false; render();
-    }).catch(err=>{ d.reimporting = false; d.error = t("No se pudo reimportar: {msg}","Couldn't reimport: {msg}","Não foi possível reimportar: {msg}","הייבוא מחדש נכשל: {msg}",{msg:err.message}); render(); });
+    }).catch(err=>{ d.reimporting = false; d.error = t("No se pudo reimportar: {msg}","Couldn't reimport: {msg}","Não foi possível reimportar: {msg}","הייבוא מחדש נכשל: {msg}",{msg:detalleDeError(err)}); render(); });
   },
     "calendar-save": async (el, e, action, postId) => {
     const d = getCalendarDraft();
@@ -27414,7 +27516,7 @@ document.addEventListener("click", async e=>{
       showCalendarNotice({ ok:true, message: t("Calendario cambiado. Los eventos nuevos van a ir ahí.","Calendar changed. New events will go there.","Calendário trocado. Os eventos novos vão para lá.","היומן הוחלף. אירועים חדשים יעברו לשם.") });
     }).catch(err=>{
       console.error(err);
-      d.saving = false; d.error = t("No se pudo guardar: {msg}","Couldn't save: {msg}","Não foi possível salvar: {msg}","השמירה נכשלה: {msg}",{msg:err.message}); render();
+      d.saving = false; d.error = t("No se pudo guardar: {msg}","Couldn't save: {msg}","Não foi possível salvar: {msg}","השמירה נכשלה: {msg}",{msg:detalleDeError(err)}); render();
     });
   },
     "adjuntos-reset": async (el, e, action, postId) => {
@@ -27432,7 +27534,7 @@ document.addEventListener("click", async e=>{
       d.saving = false; render();
     }).catch(err=>{
       console.error(err);
-      d.saving = false; d.error = t("No se pudo guardar: {msg}","Couldn't save: {msg}","Não foi possível salvar: {msg}","השמירה נכשלה: {msg}",{msg:err.message}); render();
+      d.saving = false; d.error = t("No se pudo guardar: {msg}","Couldn't save: {msg}","Não foi possível salvar: {msg}","השמירה נכשלה: {msg}",{msg:detalleDeError(err)}); render();
     });
   },
   };
@@ -27607,7 +27709,7 @@ document.addEventListener("change", e=>{
       el.value = x.email || ""; return;
     }
     store.personas.update(id, { [campo]: valor.slice(0, campo === "note" ? 300 : campo === "email" ? 200 : 120) || null })
-      .catch(err => { console.error("No se pudo guardar la ficha:", err); appAlert(t("No se pudo guardar: {m}","Couldn't save: {m}","Não foi possível salvar: {m}","לא ניתן היה לשמור: {m}",{m: err.message})); });
+      .catch(err => { console.error("No se pudo guardar la ficha:", err); appAlert(t("No se pudo guardar: {m}","Couldn't save: {m}","Não foi possível salvar: {m}","לא ניתן היה לשמור: {m}",{m:detalleDeError(err)})); });
     return;
   }
   if(el.classList.contains("sc-unir")){ personaUnirCon = el.value; render(); return; }
@@ -27727,19 +27829,19 @@ postForm.addEventListener("submit", async e=>{
   e.preventDefault();
   const d = composerDraft;
   if(d.submitting) return; // doble click / doble Enter mientras se guarda
-  d.error = "";
+  d.error = ""; d.errorEn = null;
   const title = d.title.trim();
   const content = d.content.trim();
-  if(!title){ d.error = t("Escribí un título.","Type a title.","Escreva um título.","הקלד/י כותרת."); render(); return; }
+  if(!title){ return falloEnFormulario(d, "titulo", t("Escribí un título.","Type a title.","Escreva um título.","הקלד/י כותרת.")); }
   // Comentarios es opcional (pedido del usuario el 4/10/2026): un evento
   // con título, fecha y lugar ya dice lo que pasó. La base acepta el
   // contenido vacío desde el 3/10 (03-validacion.sql).
-  if(!d.scopes.length){ d.error = t("Agregá al menos un lugar (país, ciudad, región o toda LatAm).","Add at least one place (country, city, region or all of LatAm).","Adicione pelo menos um lugar (país, cidade, região ou toda a LatAm).","הוסף/הוסיפי לפחות מקום אחד (מדינה, עיר, אזור או כל LatAm)."); render(); return; }
-  if(!d.startDate){ d.error = t("Elegí una fecha de inicio.","Choose a start date.","Escolha uma data de início.","בחר/י תאריך התחלה."); render(); return; }
-  if(d.endDate < d.startDate){ d.error = t("La fecha de fin no puede ser anterior a la de inicio.","The end date can't be before the start date.","A data de término não pode ser anterior à de início.","תאריך הסיום לא יכול להיות לפני תאריך ההתחלה."); render(); return; }
+  if(!d.scopes.length){ return falloEnFormulario(d, "lugar", t("Agregá al menos un lugar (país, ciudad, región o toda LatAm).","Add at least one place (country, city, region or all of LatAm).","Adicione pelo menos um lugar (país, cidade, região ou toda a LatAm).","הוסף/הוסיפי לפחות מקום אחד (מדינה, עיר, אזור או כל LatAm).")); }
+  if(!d.startDate){ return falloEnFormulario(d, "inicio", t("Elegí una fecha de inicio.","Choose a start date.","Escolha uma data de início.","בחר/י תאריך התחלה.")); }
+  if(d.endDate < d.startDate){ return falloEnFormulario(d, "fin", t("La fecha de fin no puede ser anterior a la de inicio.","The end date can't be before the start date.","A data de término não pode ser anterior à de início.","תאריך הסיום לא יכול להיות לפני תאריך ההתחלה.")); }
   if(!d.allDay){
-    if(!d.startTime || !d.endTime){ d.error = t('Elegí hora de inicio y de fin, o marcá "Todo el día".','Choose a start and end time, or check "All day".','Escolha hora de início e término, ou marque "O dia todo".','בחר/י שעת התחלה וסיום, או סמן/י "כל היום".'); render(); return; }
-    if(d.startDate === d.endDate && d.endTime <= d.startTime){ d.error = t("La hora de fin tiene que ser posterior a la de inicio.","The end time has to be after the start time.","A hora de término tem que ser depois da de início.","שעת הסיום חייבת להיות אחרי שעת ההתחלה."); render(); return; }
+    if(!d.startTime || !d.endTime){ return falloEnFormulario(d, "horaInicio", t('Elegí hora de inicio y de fin, o marcá "Todo el día".','Choose a start and end time, or check "All day".','Escolha hora de início e término, ou marque "O dia todo".','בחר/י שעת התחלה וסיום, או סמן/י "כל היום".')); }
+    if(d.startDate === d.endDate && d.endTime <= d.startTime){ return falloEnFormulario(d, "horaFin", t("La hora de fin tiene que ser posterior a la de inicio.","The end time has to be after the start time.","A hora de término tem que ser depois da de início.","שעת הסיום חייבת להיות אחרי שעת ההתחלה.")); }
   }
   const links = d.links.filter(l=>safeUrl(l.url));
   const mentions = extractMentionsFromContent(content);
@@ -27774,7 +27876,7 @@ postForm.addEventListener("submit", async e=>{
           : { ok:false, message:t("Se guardaron los cambios, pero no se pudo actualizar el Calendar ({reason}).","Changes were saved, but the Calendar couldn't be updated ({reason}).","As alterações foram salvas, mas não foi possível atualizar o Calendar ({reason}).","השינויים נשמרו, אך לא ניתן היה לעדכן את היומן ({reason}).",{reason:res.reason}) });
       }).catch(err=>{
         console.error("Error guardando la edición:", err);
-        showCalendarNotice({ ok:false, message:t("No se pudo guardar la edición: {msg}","Couldn't save the edit: {msg}","Não foi possível salvar a edição: {msg}","לא ניתן היה לשמור את העריכה: {msg}",{msg:err.message}) });
+        showCalendarNotice({ ok:false, message:t("No se pudo guardar la edición: {msg}","Couldn't save the edit: {msg}","Não foi possível salvar a edição: {msg}","לא ניתן היה לשמור את העריכה: {msg}",{msg:detalleDeError(err)}) });
       });
     } else {
       const postId = await createPost(postData);
@@ -27788,7 +27890,7 @@ postForm.addEventListener("submit", async e=>{
           // en vez de tragarse el error.
           if(res.ok && res.eventId) updatePostDoc(postId, { calendarEventId: res.eventId }).catch(err=>{
             console.error("No se pudo guardar el vínculo con el evento de Calendar:", err);
-            showCalendarNotice({ ok:false, message:t("El evento se creó en Calendar pero no se pudo vincular al posteo ({msg}). Editá el posteo una vez para re-vincularlo.","The event was created in Calendar but couldn't be linked to the post ({msg}). Edit the post once to re-link it.","O evento foi criado no Calendar mas não foi possível vinculá-lo à postagem ({msg}). Edite a postagem uma vez para vinculá-lo de novo.","האירוע נוצר ביומן אך לא ניתן היה לקשר אותו לפוסט ({msg}). ערוך/ערכי את הפוסט פעם אחת כדי לקשר מחדש.",{msg:err.message}) });
+            showCalendarNotice({ ok:false, message:t("El evento se creó en Calendar pero no se pudo vincular al posteo ({msg}). Editá el posteo una vez para re-vincularlo.","The event was created in Calendar but couldn't be linked to the post ({msg}). Edit the post once to re-link it.","O evento foi criado no Calendar mas não foi possível vinculá-lo à postagem ({msg}). Edite a postagem uma vez para vinculá-lo de novo.","האירוע נוצר ביומן אך לא ניתן היה לקשר אותו לפוסט ({msg}). ערוך/ערכי את הפוסט פעם אחת כדי לקשר מחדש.",{msg:detalleDeError(err)}) });
           });
           showCalendarNotice(res.ok
             ? { ok:true, message:t("Se sumó también al Calendar compartido de LatAm.","It was also added to LatAm's shared Calendar.","Também foi somado ao Calendar compartilhado da LatAm.","הוא נוסף גם ליומן המשותף של LatAm.") }
@@ -27799,7 +27901,7 @@ postForm.addEventListener("submit", async e=>{
   }catch(err){
     console.error(err);
     d.submitting = false;
-    d.error = t("No se pudo publicar: {msg}","Couldn't publish: {msg}","Não foi possível publicar: {msg}","הפרסום נכשל: {msg}",{msg:err.message});
+    d.error = t("No se pudo publicar: {msg}","Couldn't publish: {msg}","Não foi possível publicar: {msg}","הפרסום נכשל: {msg}",{msg:detalleDeError(err)});
     render();
   }
 });
@@ -27831,7 +27933,7 @@ async function submitReply(postId){
   }catch(err){
     console.error(err);
     d.submitting = false;
-    d.scopeError = t("No se pudo publicar la respuesta: {msg}","Couldn't post the reply: {msg}","Não foi possível publicar a resposta: {msg}","פרסום התגובה נכשל: {msg}",{msg:err.message});
+    d.scopeError = t("No se pudo publicar la respuesta: {msg}","Couldn't post the reply: {msg}","Não foi possível publicar a resposta: {msg}","פרסום התגובה נכשל: {msg}",{msg:detalleDeError(err)});
     render();
   }
 }
@@ -27869,7 +27971,7 @@ async function submitNestedReply(postId, replyId){
   }catch(err){
     console.error(err);
     d.submitting = false; render();
-    await appAlert(t("No se pudo publicar la respuesta: {msg}","Couldn't post the reply: {msg}","Não foi possível publicar a resposta: {msg}","פרסום התגובה נכשל: {msg}",{msg:err.message}));
+    await appAlert(t("No se pudo publicar la respuesta: {msg}","Couldn't post the reply: {msg}","Não foi possível publicar a resposta: {msg}","פרסום התגובה נכשל: {msg}",{msg:detalleDeError(err)}));
   }
 }
 
@@ -27882,7 +27984,7 @@ async function togglePostLike(postId){
     await store.posts.setLike(postId, email, !liked);
   }catch(err){
     console.error("Error al dar me gusta:", err);
-    appAlert(t("No se pudo registrar el me gusta ({m}).","Couldn't register the like ({m}).","Não foi possível registrar o like ({m}).","לא ניתן היה לרשום את הלייק ({m}).",{m:err.code||err.message}));
+    appAlert(t("No se pudo registrar el me gusta ({m}).","Couldn't register the like ({m}).","Não foi possível registrar o like ({m}).","לא ניתן היה לרשום את הלייק ({m}).",{m:detalleDeError(err, true)}));
   }
 }
 
@@ -27895,7 +27997,7 @@ async function toggleReplyLike(postId, replyId){
     await store.replies.setLike(postId, replyId, email, !liked);
   }catch(err){
     console.error("Error al dar me gusta:", err);
-    appAlert(t("No se pudo registrar el me gusta ({m}).","Couldn't register the like ({m}).","Não foi possível registrar o like ({m}).","לא ניתן היה לרשום את הלייק ({m}).",{m:err.code||err.message}));
+    appAlert(t("No se pudo registrar el me gusta ({m}).","Couldn't register the like ({m}).","Não foi possível registrar o like ({m}).","לא ניתן היה לרשום את הלייק ({m}).",{m:detalleDeError(err, true)}));
   }
 }
 

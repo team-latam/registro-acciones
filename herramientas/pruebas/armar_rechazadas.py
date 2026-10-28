@@ -10,7 +10,7 @@ from extractor import grab, src, estilo, cuerpo_click
 
 codigo = "\n".join(grab(n) for n in [
     "esc", "fotoSegura", "tsToMillis", "pad2", "fmtDate", "uses12h", "fmtTime", "fmtDateTime",
-    "solicitudesPendientes", "withRosterGuard",
+    "solicitudesPendientes", "withRosterGuard", "detalleDeError",
     # «¿Es X, que figura sin cuenta?» (7/10/2026), abajo de cada pedido pendiente.
     "normalize", "recortar", "cuantasActividades", "actividadesDePersona",
     "parecidosDescartados", "personaQueParece", "renderPareceSerPersona",

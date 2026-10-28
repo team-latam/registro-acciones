@@ -92,8 +92,8 @@ async function pantallasReales(p){
   return [...vistas];
 }
 
-const ESPERADO_INTEGRANTE = ["inicio", "composer", "crear", "paises", "calendario", "proyectos", "reportes", "novedades", "cuenta"];
-const ESPERADO_OBSERVADOR = ["observador", "paises", "calendario", "proyectos", "reportes", "novedades", "cuenta"];
+const ESPERADO_INTEGRANTE = ["inicio", "composer", "crear", "paises", "calendario", "proyectos", "reportes", "buscar", "novedades", "cuenta"];
+const ESPERADO_OBSERVADOR = ["observador", "paises", "calendario", "proyectos", "reportes", "buscar", "novedades", "cuenta"];
 const todasLasPantallas = new Set();
 const cubiertasPorCombo = [];
 
@@ -115,6 +115,12 @@ for(const [rol, viewport, nombre] of [["member", COMPU, "integrante en la compu"
     const sobreMas = pasos.filter(x => ["proyectos", "reportes"].includes(x.paso)).map(x => Math.abs(x.agujero.x - centroMas.x) < 6 && Math.abs(x.agujero.y - centroMas.y) < 6);
     eq(`${nombre}: el agujero de Proyectos y Reportes está sobre «Más»`, sobreMas, [true, true]);
   }
+
+  // El paso del buscador señala el buscador de verdad: la barra en la compu, la lupa en el celular (T4 de la auditoría del 28/10/2026).
+  { const paso = pasos.find(x => x.paso === "buscar");
+    const centro = await p.$eval(viewport === CELU ? "#globalSearchToggle" : "#globalSearch", e => { const r = e.getBoundingClientRect(); return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) }; });
+    eq(`${nombre}: el agujero de «Buscar en todo» está sobre ${viewport === CELU ? "la lupa de arriba" : "la barra de búsqueda"}`,
+      !!paso && Math.abs(paso.agujero.x - centro.x) < 10 && Math.abs(paso.agujero.y - centro.y) < 10, true); }
 
   // Cobertura contra la navegación real.
   const reales = await pantallasReales(p);

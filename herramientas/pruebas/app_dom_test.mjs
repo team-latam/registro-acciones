@@ -123,7 +123,15 @@ function consulta(tabla){
     upsert(f, o){ q.op = "upsert"; q.datos = f; q.opciones = o || {}; return b; },
     delete(){ q.op = "delete"; return b; },
     then(ok, mal){ if(q.op === "select") (estado.consultas = estado.consultas || []).push(q.tabla);
-      return new Promise(r => setTimeout(r, 0)).then(() => ejecutar(q)).then(ok, mal); },
+      // Interruptores para probar lo que pasa cuando la base falla (los pone la prueba con window.__sb o con falla: de entrar()):
+      //   fallo         las escrituras se rechazan (el valor es el código del error; true = 42501, sin permiso); mensajeFallo, su texto
+      //   falloLectura  las lecturas fallan como si no hubiera red
+      //   demora        milisegundos que tarda cada pedido
+      return new Promise(r => setTimeout(r, estado.demora || 0)).then(() => {
+        if(estado.fallo && q.op !== "select") return { data: null, error: { code: estado.fallo === true ? "42501" : String(estado.fallo),
+          message: estado.mensajeFallo || (estado.fallo === true || estado.fallo === "42501" ? 'new row violates row-level security policy for table "' + q.tabla + '"' : "error de la base") } };
+        if(estado.falloLectura && q.op === "select") return { data: null, error: { code: "", message: "TypeError: Failed to fetch" } };
+        return ejecutar(q); }).then(ok, mal); },
   };
   return b;
 }
@@ -152,6 +160,7 @@ export function createClient(url, clave){
     async rpc(nombre, args){
       estado.rpc.push([nombre, copia(args)]);
       await new Promise(r => setTimeout(r, 0));
+      if(estado.falloRpc) return { data: null, error: { code: "42501", message: "permission denied for function " + nombre } };
       if(nombre === "me_gusta_posteo") return conMeGusta("posts", args.p_id, args.p_puesto);
       if(nombre === "me_gusta_comentario") return conMeGusta("replies", args.p_id, args.p_puesto);
       if(nombre === "guardar_preferencias"){

@@ -12,7 +12,9 @@ codigo = "\n".join(grab(n) for n in [
   # de uno nuevo y el aviso de "cambios sin guardar".
   "tipoAbierto","tiposDirty","renderTipoPanel","renderTipoNuevoPanel",
   "normalize","slugifyKey","fmtDate","docsAbiertos","eventoYaPaso","docsAbierto","fechaDeArchivo",
-  "quitarDocumento","quitarAdjunto","FICHA_POR_CLASE","fichaDeArchivo","renderPostedFiles","ownerAttrs"])
+  "quitarDocumento","quitarAdjunto","FICHA_POR_CLASE","fichaDeArchivo","renderPostedFiles","ownerAttrs",
+  # El texto de un error se dice en palabras de quien usa la app (T5, 28/10/2026).
+  "detalleDeError"])
 
 # Los handlers DE VERDAD, sacados del archivo. Una prueba que se escribe el
 # "+" a mano no prueba el "+" que aprieta él: el botón no andaba porque el

@@ -30,7 +30,7 @@ function grab(name){
 const css = src.slice(src.indexOf("<style>") + 7, src.indexOf("</style>"));
 const fns = ["MILESTONE_DUE_SOON_DAYS","MILESTONE_DUE_SOON_OPTIONS","milestoneDueSoonDays",
   "milestoneStatus","milestoneStatusLabel","addDaysISO","isoDate","todayISO","safeColor",
-  "configSections","prefSwitch","prefRow","prefColorRow","prefChips","similarColorTo",
+  "configSections","prefSwitch","prefRowSeq","prefRow","prefColorRow","prefChips","similarColorTo",
   "usedColors","colorDistance","hexToRgb","colorControl","countryLabel","hasOwn","DEFAULT_COUNTRY_LABELS","currentLang","holidayCountryOptions","renderConfigCapasSection","prefsSeccionTextos"].map(grab).join("\n")
   .replace(/function todayISO\(\)\{[\s\S]*?\n\}/, 'function todayISO(){ return "2026-09-15"; }');
 

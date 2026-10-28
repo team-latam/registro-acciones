@@ -78,6 +78,7 @@ function armar(){
           subscribeTerritoryConfig = anotar("config"), subscribePreferences = anotar("preferencias"),
           subscribeUserPrefs = anotar("mis-preferencias"), subscribeFormerMembers = anotar("ex"),
           subscribePersonas = anotar("personas"), subscribeAgenda = anotar("agenda");
+    ${grab("detalleDeError")}
     ${grab("recomputeAuthStatus")}
     ${grab("onAuthChanged")}
     return { onAuthChanged, state };
