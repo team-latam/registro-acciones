@@ -52,7 +52,7 @@ const b = await abrirNavegador();
 
 // Sin acceso: ni campo ni botón.
 {
-  const { p } = await entrar(b, "nuevo@gmail.com", "Nuevo Usuario", { viewport: { width: 390, height: 844 } });
+  const { p } = await entrar(b, "nuevo@x.com", "Nuevo Usuario", { viewport: { width: 390, height: 844 } });
   const e = await estado(p);
   ok("celular, cuenta esperando aprobación: no hay botón 🔍", !e.boton, JSON.stringify(e));
   await p.close();
