@@ -109,7 +109,7 @@ respecto de lo último que pegó.
 ./herramientas/pruebas/correr.sh
 ```
 
-Corre **todas** las pruebas de `index.html` (más de 3.700 comprobaciones; la
+Corre **todas** las pruebas de `index.html` (más de 4.000 comprobaciones; la
 carga de la página y la app entera contra un Supabase de mentira), de a
 cuatro, en unos 6 minutos, y muestra solo lo que falla y el total (el
 detalle queda en `herramientas/pruebas/salida/ultima.txt`; `DETALLE=1` lo

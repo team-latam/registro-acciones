@@ -2209,10 +2209,11 @@ probarla, no leer un manual (para eso está este README).
 `tourSteps()` arma el recorrido según el rol (`canWrite()`) y **cuenta el
 sistema de hoy** (reescrito el 12/10/2026; hasta entonces explicaba solo
 Vistas, Calendario y Proyectos, en el celular quedaba en dos paradas y el
-observador no veía ninguna). Quien escribe ve 9 paradas: Inicio, el
+observador no veía ninguna). Quien escribe ve 10 paradas: Inicio, el
 composer («¿Qué hiciste hoy?»), el `+`, Países, Calendario, Proyectos,
-Reportes, Novedades (la campana) y Tu cuenta (el avatar: preferencias,
-idioma, tono, salir). El observador ve 7: una primera que explica el rol
+Reportes, Buscar en todo (la barra de arriba; en el celular, la lupa;
+sumada el 28/10/2026), Novedades (la campana) y Tu cuenta (el avatar:
+preferencias, idioma, tono, salir). El observador ve 8: una primera que explica el rol
 («tu cuenta ve todo, sin publicar») y las mismas de arriba menos el
 composer y el `+`, que no existen en su pantalla. En el celular, Proyectos
 y Reportes viven dentro de «Más»: la parada señala ese botón y el texto
