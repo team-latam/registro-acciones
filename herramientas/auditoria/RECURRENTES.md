@@ -459,6 +459,18 @@ nunca tuvieron quién las vigilara. *Regla:* si el defecto es de un valor
 (un color, un tamaño), la prueba tiene que mirar **todas las reglas** que
 lo usan, no solo las que se arreglaron.
 
+**Lo que entra justo acá y en GitHub no — volvió (28/10/2026).** La tanda
+104 subió letras de 8–11 px a 11–12 y la suite de acá (con la letra de
+reemplazo angosta) dio verde; en GitHub fallaron dos pruebas: el número
+planificado de «Mes a mes» ya no entraba en su barra de 10 px con la letra
+ancha, y el primer posteo del Inicio (360 px) arrancó en 311 y no en 296.
+«Publicar el sitio» no publicó y `main` quedó en rojo ocho minutos más de lo
+necesario. *Regla:* subir un tamaño de letra o una medida que depende del
+texto se verifica **con una letra ancha** (`DejaVu Sans`, ver
+`reportes_planificadas_test`) antes de empujar, no después; y una prueba de
+posición o de tamaño lleva margen para la letra de GitHub (+15 px de
+alto en un renglón que se parte).
+
 **Un tamaño de letra sin piso.** El CSS llegó a 202 tamaños por debajo de
 12 px (8, 9, 10, 10,5, 11…): cada pantalla nueva trajo su 11 o su 10,5
 «porque era una nota». Y un `<small>` sin tamaño propio lo achica el navegador

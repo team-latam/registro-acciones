@@ -76,13 +76,18 @@ const columna = (p, mes) => p.evaluate(m => {
   await p.close();
 }
 
-/* ---------------- Celular: la letra (11 px, el piso de las etiquetas) entra en la barra ---------------- */
+/* ---------------- Celular: la letra (10 px) entra en la barra, también con una letra ancha ---------------- */
 {
   for(const ancho of [390, 360]){
     const { p } = await abrir({ width: ancho, height: 844 }, datos());
     const oct = await columna(p, "2026-10"), nov = await columna(p, "2026-11"), dic = await columna(p, "2026-12");
-    eq(`celular ${ancho}: letra de 11 px (el piso de los números dentro de una barra; antes 8), derecha, en una línea`, [oct.letra, nov.letra, dic.letra, oct.estilo, oct.renglones], [11, 11, 11, "normal", 1]);
+    eq(`celular ${ancho}: letra de 10 px (la que entra en la barra con una letra ancha; antes 8), derecha, en una línea`, [oct.letra, nov.letra, dic.letra, oct.estilo, oct.renglones], [10, 10, 10, "normal", 1]);
     eq(`celular ${ancho}: los tres números se leen adentro de su barra`, [oct, nov, dic].map(c => [c.nPlan, c.visible, c.adentro]), [["12", true, true], ["9", true, true], ["6", true, true]]);
+    // GitHub y las pantallas de verdad usan una letra más ancha que la de este entorno
+    // (RECURRENTES, «Lo que entra justo acá y en GitHub no»): con DejaVu Sans el «12» tiene que seguir adentro.
+    await p.addStyleTag({ content: '*{ font-family:"DejaVu Sans", Verdana, monospace !important; }' }); await p.waitForTimeout(200);
+    const ancha = await Promise.all(["2026-10", "2026-11", "2026-12"].map(m => columna(p, m)));
+    eq(`celular ${ancho}, con una letra ancha: los tres números siguen adentro de su barra`, ancha.map(c => [c.nPlan, c.visible, c.adentro]), [["12", true, true], ["9", true, true], ["6", true, true]]);
     await p.close();
   }
 }

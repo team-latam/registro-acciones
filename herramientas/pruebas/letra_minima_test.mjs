@@ -9,7 +9,8 @@
    - las etiquetas en MAYÚSCULAS, las píldoras y los números dentro de un
      círculo, una celda o una barra: 11 px o más;
    - la excepción: los dibujos hechos con letra (la flechita de un menú, la
-     inicial de un avatar), que no se leen como texto.
+     inicial de un avatar), que no se leen como texto; y el número de dos
+     cifras dentro de una barra de 10 px (Mes a mes, en 360 px): 10 px.
    Lo impreso (@media print, @page) tiene sus propias medidas.
 
    Esta prueba lee el CSS entero y falla si una regla nueva baja de su piso,
@@ -26,7 +27,9 @@ const INDEX = process.env.INDEX || __aRuta(new URL("../../index.html", import.me
 const html = fs.readFileSync(INDEX, "utf8");
 
 // Números y letras sueltas dentro de un círculo, una celda o una barra.
-const MICRO = new Set([".year-dows span", ".ymd", ".rep-plan-n", ".cal-mdot-more", ".avatar-pending", ".pending-count", ".cal-gutter"]);
+const MICRO = new Set([".year-dows span", ".ymd", ".cal-mdot-more", ".avatar-pending", ".pending-count", ".cal-gutter"]);
+// Un número de dos cifras dentro de una barra de 10 px de ancho (Reportes › Mes a mes, en 360 px): 10 px es lo que entra con una letra ancha.
+const DENTRO_DE_BARRA = new Set([".rep-plan-n"]);
 // Dibujos hechos con letra: no se leen como texto.
 const GLIFOS = new Set([".filter-dropdown-chevron", ".occ-chip .occ-chev", ".mention-avatar.mention-avatar-fallback", ".fl-doc i"]);
 
@@ -35,7 +38,7 @@ const css = html.slice(html.indexOf("<style>"), html.indexOf("</style>"));
 const reglas = [];
 { const pila = []; let ultimo = 0;
   for(const m of css.matchAll(/[{}]/g)){
-    if(m[0] === "{"){ pila.push(css.slice(ultimo, m.index).split("}").pop().trim()); ultimo = m.index + 1; }
+    if(m[0] === "{"){ pila.push(css.slice(ultimo, m.index).split("}").pop().replace(/\/\*[\s\S]*?\*\//g, "").trim()); ultimo = m.index + 1; }   // sin los comentarios que van antes de la regla
     else { const cuerpo = css.slice(ultimo, m.index), sel = pila[pila.length - 1];
       reglas.push({ sel, cuerpo, impresa: pila.slice(0, -1).some(c => c.startsWith("@media print") || c.startsWith("@page")) || /print/i.test(sel) || sel.startsWith("@") });
       pila.pop(); ultimo = m.index + 1; } } }
@@ -47,7 +50,7 @@ for(const r of reglas){
   if(selectores.every(x => GLIFOS.has(x))) continue;
   const micro = /text-transform\s*:\s*uppercase/.test(r.cuerpo) || /border-radius\s*:\s*(999px|50%)/.test(r.cuerpo) || selectores.some(x => MICRO.has(x));
   for(const m of r.cuerpo.matchAll(/font-size\s*:\s*([0-9.]+)px/g)){
-    const px = Number(m[1]), piso = micro ? 11 : 12;
+    const px = Number(m[1]), piso = selectores.some(x => DENTRO_DE_BARRA.has(x)) ? 10 : micro ? 11 : 12;
     if(px < piso) bajos.push(`${r.sel.split("\n").pop().trim().slice(0, 50)} {${px}px, piso ${piso}}`);
   }
 }
@@ -60,7 +63,7 @@ const chicos = p => p.evaluate(() => {
     const n = w.currentNode; if(!n.textContent.trim()) continue;
     const el = n.parentElement; if(!el || (!el.offsetParent && getComputedStyle(el).position !== "fixed")) continue;
     const r = el.getBoundingClientRect(); if(r.width < 2 || r.height < 2) continue;
-    if(el.closest(".solo-lector, .skip-link, .occ-chev, .filter-dropdown-chevron, .mention-avatar-fallback, .fl-doc i")) continue;
+    if(el.closest(".solo-lector, .skip-link, .occ-chev, .filter-dropdown-chevron, .mention-avatar-fallback, .fl-doc i, .rep-plan-n")) continue;
     const fs = parseFloat(getComputedStyle(el).fontSize);
     if(fs < 11) res.push(`${fs}px .${String(el.className || el.tagName).slice(0, 28)} «${n.textContent.trim().slice(0, 18)}»`);
   }

@@ -3442,7 +3442,10 @@
     .rep-kpis .rep-kpi-num{ font-size:24px; }
     .rep-cols{ height:150px; gap:2px; }
     .rep-col .rep-etiqueta{ font-size:12px; }
-    .rep-plan-n{ font-size:11px; letter-spacing:-.03em; padding-top:2px; }
+    /* 10 px y no 11: la barra mide 10 px en 360 de ancho y el «12» (dos cifras) a 11 px,
+       con una letra ancha como la de GitHub o la de Montserrat, se salía de ella
+       (la tanda 104 lo subió a 11 y falló «Publicar el sitio»). Antes, 8. */
+    .rep-plan-n{ font-size:10px; letter-spacing:-.03em; padding-top:2px; }
   }
   .rep-filtros-tit{ font-size:11.5px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:var(--text-muted); margin-inline-end:4px; }
   .rep-delta{ font-size:12px; font-weight:800; color:var(--text-muted); white-space:nowrap; }

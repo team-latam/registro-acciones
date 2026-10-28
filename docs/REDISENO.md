@@ -2548,7 +2548,11 @@ GitHub al final; el logo propio queda para mostrarle opciones con capturas.
   el texto que se lee va a 12 px o más, y las etiquetas en mayúsculas, las
   píldoras y los números dentro de un círculo o una celda, a 11 px o más
   (117 declaraciones subieron; «+ Responsable» pasó a 12 para igualar a
-  «+ Fecha»); los dibujos hechos con letra (flechitas,
+  «+ Fecha»; el número planificado de «Mes a mes» en el celular pasó de 8 a
+  10 y no a 11: la barra mide 10 px en 360 de ancho y el «12» a 11 px se
+  salía de ella con la letra de GitHub, que falló «Publicar el sitio» en la
+  primera subida de esta tanda, junto con el techo de 300 px de
+  `inicio_celular_test`, que pasó a 320); los dibujos hechos con letra (flechitas,
   inicial de un avatar) y lo impreso quedan como estaban; y un `<small>` sin
   tamaño propio no baja de 12 (el navegador lo achicaba a 10). La Vista Año
   del celular **sigue con dos meses por fila** (decisión anterior, «uno solo
