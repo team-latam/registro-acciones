@@ -6840,7 +6840,7 @@ async function arrancar(){
       "No se pudo conectar con la base de datos. Revisá la conexión y volvé a cargar la página.",
       "Couldn't connect to the database. Check your connection and reload the page.",
       "Não foi possível conectar à base de dados. Verifique a conexão e recarregue a página.",
-      ".לא ניתן היה להתחבר לבסיס הנתונים. בדוק/י את החיבור וטען/י מחדש את הדף"
+      "לא ניתן היה להתחבר לבסיס הנתונים. בדוק/י את החיבור וטען/י מחדש את הדף."
     ));
   }
 }
@@ -6857,7 +6857,7 @@ async function signIn(){
   }catch(err){
     if(err.code !== "auth/popup-closed-by-user" && err.code !== "auth/cancelled-popup-request"){
       console.error("Error al iniciar sesión:", err);
-      renderFatalError(t("No se pudo iniciar sesión con Google: {msg}","Couldn't sign in with Google: {msg}","Não foi possível entrar com o Google: {msg}","{msg} :ההתחברות עם Google נכשלה",{msg:err.message}));
+      renderFatalError(t("No se pudo iniciar sesión con Google: {msg}","Couldn't sign in with Google: {msg}","Não foi possível entrar com o Google: {msg}","ההתחברות עם Google נכשלה: {msg}",{msg:err.message}));
     }
   }
 }
@@ -7552,15 +7552,15 @@ async function moveOccurrence(postId, origenISO, destinoISO){
   await createReply(postId, {
     authorName: state.auth.user.displayName, authorEmail: state.auth.user.email,
     content: destinoISO === origenISO
-      ? t("Vuelve a su día de siempre: {d}.","Back to its usual day: {d}.","Volta ao seu dia de sempre: {d}.",".{d} :חוזר ליום הרגיל שלו",{d:fmtDate(origenISO)})
-      : t("Esta vez no se hace el {a}: pasa al {b}.","This time it's not on {a}: moved to {b}.","Desta vez não é no {a}: passa para {b}.","{b}-עובר ל :{a}-הפעם לא מתקיים ב",{a:fmtDate(origenISO),b:fmtDate(destinoISO)}),
+      ? t("Vuelve a su día de siempre: {d}.","Back to its usual day: {d}.","Volta ao seu dia de sempre: {d}.","חוזר ליום הרגיל שלו: {d}.",{d:fmtDate(origenISO)})
+      : t("Esta vez no se hace el {a}: pasa al {b}.","This time it's not on {a}: moved to {b}.","Desta vez não é no {a}: passa para {b}.","הפעם לא מתקיים ב-{a}: עובר ל-{b}.",{a:fmtDate(origenISO),b:fmtDate(destinoISO)}),
     system:true, icon:"📅", scopes:[], images:[], links:[], occ: origenISO,
   });
   // Y que lo vea el resto del equipo en el Calendar compartido.
   const inst = post.calendarEventId ? await findCalendarInstance(post.calendarEventId, origenISO) : null;
   if(inst){
     const r = await patchCalendarInstance(post, origenISO, calendarInstanceDates(post, inst, destinoISO));
-    if(!r.ok) showCalendarNotice({ ok:false, message:t("La fecha se cambió acá, pero no en Google Calendar: {msg}","The date changed here, but not in Google Calendar: {msg}","A data mudou aqui, mas não no Google Calendar: {msg}","{msg} :התאריך השתנה כאן, אך לא ב-Google Calendar",{msg:r.reason||""}) });
+    if(!r.ok) showCalendarNotice({ ok:false, message:t("La fecha se cambió acá, pero no en Google Calendar: {msg}","The date changed here, but not in Google Calendar: {msg}","A data mudou aqui, mas não no Google Calendar: {msg}","התאריך השתנה כאן, אך לא ב-Google Calendar: {msg}",{msg:r.reason||""}) });
   }
   render();
 }
@@ -7579,12 +7579,12 @@ async function setOccurrenceSkipped(postId, iso, skipped){
   await createReply(postId, {
     authorName: state.auth.user.displayName, authorEmail: state.auth.user.email,
     content: skipped
-      ? t("El {d} no se hace.","Not happening on {d}.","No dia {d} não acontece.",".{d}-לא מתקיים ב",{d:fmtDate(occurrenceDateOf(post, iso))})
-      : t("El {d} vuelve a hacerse.","Happening again on {d}.","No dia {d} volta a acontecer.",".{d}-מתקיים שוב ב",{d:fmtDate(occurrenceDateOf(post, iso))}),
+      ? t("El {d} no se hace.","Not happening on {d}.","No dia {d} não acontece.","לא מתקיים ב-{d}.",{d:fmtDate(occurrenceDateOf(post, iso))})
+      : t("El {d} vuelve a hacerse.","Happening again on {d}.","No dia {d} volta a acontecer.","מתקיים שוב ב-{d}.",{d:fmtDate(occurrenceDateOf(post, iso))}),
     system:true, icon:skipped ? "🚫" : "✅", scopes:[], images:[], links:[], occ: iso,
   });
   const r = await patchCalendarInstance(post, iso, { status: skipped ? "cancelled" : "confirmed" });
-  if(!r.ok && !r.skipped) showCalendarNotice({ ok:false, message:t("Se guardó acá, pero no se pudo actualizar Google Calendar: {msg}","Saved here, but Google Calendar couldn't be updated: {msg}","Foi salvo aqui, mas não foi possível atualizar o Google Calendar: {msg}","{msg} :נשמר כאן, אך לא ניתן היה לעדכן את Google Calendar",{msg:r.reason||""}) });
+  if(!r.ok && !r.skipped) showCalendarNotice({ ok:false, message:t("Se guardó acá, pero no se pudo actualizar Google Calendar: {msg}","Saved here, but Google Calendar couldn't be updated: {msg}","Foi salvo aqui, mas não foi possível atualizar o Google Calendar: {msg}","נשמר כאן, אך לא ניתן היה לעדכן את Google Calendar: {msg}",{msg:r.reason||""}) });
   render();
 }
 
@@ -8040,7 +8040,7 @@ async function applyCalendarEventToPosts(ev){
           "Este evento se canceló o se borró directamente en Google Calendar.",
           "This event was cancelled or deleted directly in Google Calendar.",
           "Este evento foi cancelado ou apagado diretamente no Google Calendar.",
-          ".האירוע הזה בוטל או נמחק ישירות ב-Google Calendar"
+          "האירוע הזה בוטל או נמחק ישירות ב-Google Calendar."
         ),
         system:true, icon:"📅", scopes:[], images:[], links:[],
       });
@@ -8068,15 +8068,15 @@ async function applyCalendarEventToPosts(ev){
     const changed = existing.startDate !== startDate || existing.endDate !== endDate || timeChanged || (existing.location||"") !== location || titleChanged || recurrenceChanged;
     if(!changed) return false;
     const parts = [];
-    if(titleChanged) parts.push(t(`título ("{old}" → "{new}")`,`title ("{old}" → "{new}")`,`título ("{old}" → "{new}")`,`("{new}" ← "{old}") כותרת`,{old:existing.title,new:newTitle}));
+    if(titleChanged) parts.push(t(`título ("{old}" → "{new}")`,`title ("{old}" → "{new}")`,`título ("{old}" → "{new}")`,`כותרת ("{old}" ← "{new}")`,{old:existing.title,new:newTitle}));
     if(existing.startDate !== startDate || existing.endDate !== endDate || timeChanged){
       const oldLabel = (existing.endDate||existing.startDate) !== existing.startDate ? `${fmtDate(existing.startDate)}–${fmtDate(existing.endDate)}` : fmtDate(existing.startDate);
       const newLabel = endDate !== startDate ? `${fmtDate(startDate)}–${fmtDate(endDate)}` : fmtDate(startDate);
-      parts.push(t("fecha ({old} → {new})","date ({old} → {new})","data ({old} → {new})","({new} ← {old}) תאריך",{old:oldLabel,new:newLabel}));
+      parts.push(t("fecha ({old} → {new})","date ({old} → {new})","data ({old} → {new})","תאריך ({old} ← {new})",{old:oldLabel,new:newLabel}));
     }
     if((existing.location||"") !== location) parts.push(location
-      ? t("lugar (ahora: {loc})","place (now: {loc})","lugar (agora: {loc})","({loc} :מקום (כעת",{loc:location})
-      : t("lugar (se quitó)","place (removed)","lugar (removido)","(מקום (הוסר"));
+      ? t("lugar (ahora: {loc})","place (now: {loc})","lugar (agora: {loc})","מקום (כעת: {loc})",{loc:location})
+      : t("lugar (se quitó)","place (removed)","lugar (removido)","מקום (הוסר)"));
     const patch = {
       startDate, endDate, date:startDate, startTime, endTime, location,
       lastEditedAt: store.horaDelServidor(), lastEditedBy:"Google Calendar",
@@ -8088,12 +8088,12 @@ async function applyCalendarEventToPosts(ev){
       // de tener sentido y esconderían días que ahora sí existen.
       if(existing.recurrenceSkip && existing.recurrenceSkip.length) patch.recurrenceSkip = [];
       parts.push(newRecurrence
-        ? t("repetición ({r})","repetition ({r})","repetição ({r})","({r}) חזרה",{r:recurrenceLabel({ recurrence:newRecurrence }) || t("cambió","changed","mudou","השתנתה")})
+        ? t("repetición ({r})","repetition ({r})","repetição ({r})","חזרה ({r})",{r:recurrenceLabel({ recurrence:newRecurrence }) || t("cambió","changed","mudou","השתנתה")})
         : t("dejó de repetirse","no longer repeats","deixou de se repetir","הפסיק לחזור"));
     }
     await updatePostDoc(existing.id, patch);
     await createReply(existing.id, {
-      authorName:"Google Calendar", content: t("Se actualizó desde Google Calendar: {changes}.","Updated from Google Calendar: {changes}.","Foi atualizado a partir do Google Calendar: {changes}.","{changes} :עודכן מ-Google Calendar",{changes:parts.join(", ")}),
+      authorName:"Google Calendar", content: t("Se actualizó desde Google Calendar: {changes}.","Updated from Google Calendar: {changes}.","Foi atualizado a partir do Google Calendar: {changes}.","עודכן מ-Google Calendar: {changes}",{changes:parts.join(", ")}),
       system:true, icon:"📅", scopes:[], images:[], links:[],
     });
     return true;
@@ -8138,8 +8138,8 @@ async function applyCalendarEventToPosts(ev){
       await updatePostDoc(master.id, { recurrenceMoves: nuevos, lastEditedAt: store.horaDelServidor(), lastEditedBy:"Google Calendar" });
       await createReply(master.id, {
         authorName:"Google Calendar", content: startDate === origISO
-          ? t("Vuelve a su día de siempre: {d}.","Back to its usual day: {d}.","Volta ao seu dia de sempre: {d}.",".{d} :חוזר ליום הרגיל שלו",{d:fmtDate(origISO)})
-          : t("Esta vez no se hace el {a}: pasa al {b}.","This time it's not on {a}: moved to {b}.","Desta vez não é no {a}: passa para {b}.","{b}-עובר ל :{a}-הפעם לא מתקיים ב",{a:fmtDate(origISO),b:fmtDate(startDate)}),
+          ? t("Vuelve a su día de siempre: {d}.","Back to its usual day: {d}.","Volta ao seu dia de sempre: {d}.","חוזר ליום הרגיל שלו: {d}.",{d:fmtDate(origISO)})
+          : t("Esta vez no se hace el {a}: pasa al {b}.","This time it's not on {a}: moved to {b}.","Desta vez não é no {a}: passa para {b}.","הפעם לא מתקיים ב-{a}: עובר ל-{b}.",{a:fmtDate(origISO),b:fmtDate(startDate)}),
         system:true, icon:"📅", scopes:[], images:[], links:[], occ: origISO,
       });
       return true;
@@ -8265,12 +8265,12 @@ async function syncFromCalendar(opts){
         "Un evento de Calendar no se pudo aplicar: {msg}. Se va a reintentar la próxima vez que actualices.",
         "A Calendar event couldn't be applied: {msg}. It'll be retried next time you refresh.",
         "Um evento do Calendar não pôde ser aplicado: {msg}. Será tentado novamente na próxima atualização.",
-        "{msg} :אירוע אחד מהיומן לא הוחל. ננסה שוב בפעם הבאה שתעדכן/י", {n:failed, msg:failedMessages.join("; ").slice(0, 300)}
+        "אירוע אחד מהיומן לא הוחל: {msg}. ננסה שוב בפעם הבאה שתעדכן/י.", {n:failed, msg:failedMessages.join("; ").slice(0, 300)}
       ) : t(
         "{n} eventos de Calendar no se pudieron aplicar: {msg}. Se van a reintentar la próxima vez que actualices.",
         "{n} Calendar events couldn't be applied: {msg}. They'll be retried next time you refresh.",
         "{n} eventos do Calendar não puderam ser aplicados: {msg}. Serão tentados novamente na próxima atualização.",
-        "{msg} :{n} אירועים מהיומן לא הוחלו. ננסה שוב בפעם הבאה שתעדכן/י", {n:failed, msg:failedMessages.join("; ").slice(0, 300)}
+        "{n} אירועים מהיומן לא הוחלו: {msg}. ננסה שוב בפעם הבאה שתעדכן/י.", {n:failed, msg:failedMessages.join("; ").slice(0, 300)}
       )) });
       return;
     }
@@ -8279,12 +8279,12 @@ async function syncFromCalendar(opts){
       ? (reviewed === 1 ? t(
         "Sincronizado con Calendar: el evento revisado se aplicó.","Synced with Calendar: the reviewed event was applied.","Sincronizado com o Calendar: o evento revisado foi aplicado.","סונכרן עם היומן: האירוע שנבדק הוחל.", {a:applied,n:reviewed}
       ) : t(
-        "Sincronizado con Calendar: {a} de {n} eventos revisados se aplicaron.","Synced with Calendar: {a} of {n} reviewed events were applied.","Sincronizado com o Calendar: {a} de {n} eventos revisados foram aplicados.","{n} מתוך {a} :סונכרן עם היומן אירועים שנבדקו הוחלו.", {a:applied,n:reviewed}
+        "Sincronizado con Calendar: {a} de {n} eventos revisados se aplicaron.","Synced with Calendar: {a} of {n} reviewed events were applied.","Sincronizado com o Calendar: {a} de {n} eventos revisados foram aplicados.","סונכרן עם היומן: {a} מתוך {n} אירועים שנבדקו הוחלו.", {a:applied,n:reviewed}
       ))
       : (reviewed === 1 ? t(
         "Sincronizado con Calendar: 1 evento revisado, sin cambios para aplicar.","Synced with Calendar: 1 event reviewed, nothing to apply.","Sincronizado com o Calendar: 1 evento revisado, nada para aplicar.","סונכרן עם היומן: נבדק אירוע אחד, אין מה להחיל.", {n:reviewed}
       ) : t(
-        "Sincronizado con Calendar: {n} eventos revisados, sin cambios para aplicar.","Synced with Calendar: {n} events reviewed, nothing to apply.","Sincronizado com o Calendar: {n} eventos revisados, nada para aplicar.","{n} :סונכרן עם היומן אירועים שנבדקו, אין מה להחיל.", {n:reviewed}
+        "Sincronizado con Calendar: {n} eventos revisados, sin cambios para aplicar.","Synced with Calendar: {n} events reviewed, nothing to apply.","Sincronizado com o Calendar: {n} eventos revisados, nada para aplicar.","סונכרן עם היומן: {n} אירועים שנבדקו, אין מה להחיל.", {n:reviewed}
       ))
     }); }
     // Llegar hasta acá significa que se habló con Calendar sin errores
@@ -8293,7 +8293,7 @@ async function syncFromCalendar(opts){
     calendarSyncFailStreak = 0; calendarSyncFailWarned = false;
   }catch(err){
     console.error("Error sincronizando desde Calendar:", err);
-    if(!silent){ showCalendarNotice({ ok:false, message:t("No se pudo sincronizar con Calendar: {msg}","Couldn't sync with Calendar: {msg}","Não foi possível sincronizar com o Calendar: {msg}","{msg} :הסנכרון עם היומן נכשל",{msg:err.message}) }); }
+    if(!silent){ showCalendarNotice({ ok:false, message:t("No se pudo sincronizar con Calendar: {msg}","Couldn't sync with Calendar: {msg}","Não foi possível sincronizar com o Calendar: {msg}","הסנכרון עם היומן נכשל: {msg}",{msg:err.message}) }); }
     else {
       // El sync automático corre callado a propósito (cada 2 min: avisar de
       // cada tropiezo sería insoportable). Pero si falla MUCHAS veces
@@ -9750,7 +9750,7 @@ function crearSupabaseStore(sb, opciones = {}){
     async leerCalendario(pedido){
       const { res, r } = await llamarFuncion("calendario", pedido);
       if(!res.ok || !r || typeof r.estado !== "number")
-        throw new Error(t("No se pudo leer el calendario ({e}).","Couldn't read the calendar ({e}).","Não foi possível ler o calendário ({e}).","({e}) לא ניתן היה לקרוא את היומן.",{e:(r && r.error) || res.status}));
+        throw new Error(t("No se pudo leer el calendario ({e}).","Couldn't read the calendar ({e}).","Não foi possível ler o calendário ({e}).","לא ניתן היה לקרוא את היומן ({e}).",{e:(r && r.error) || res.status}));
       return r;
     },
 
@@ -10422,7 +10422,7 @@ function subscribeData(){
     startCalendarAutoSync();
   }, err=>{
     console.error("Error leyendo posts:", err);
-    renderFatalError(t("Error leyendo los posteos: {msg}","Error reading posts: {msg}","Erro ao ler os posteios: {msg}","{msg} :שגיאה בקריאת הפוסטים",{msg:err.message}));
+    renderFatalError(t("Error leyendo los posteos: {msg}","Error reading posts: {msg}","Erro ao ler os posteios: {msg}","שגיאה בקריאת הפוסטים: {msg}",{msg:err.message}));
   });
 
   unsubscribeData = ()=>{
@@ -11198,7 +11198,7 @@ function renderProjectEditors(post){
       <span class="pj-editors-lbl">${t("Editores","Editors","Editores","עורכים")}:</span>
       ${ownerChip(post.authorEmail)}
       ${editors.map(e=>`<span class="pj-editor-chip">${ownerChip(e)}${manage ? `<button type="button" data-action="ms-editor-remove" data-post-id="${esc(post.id)}" data-email="${esc(e)}" aria-label="${esc(t("Quitar editor","Remove editor","Remover editor","הסרת עורך/ת"))}">✕</button>` : ""}</span>`).join("")}
-      ${manage ? renderPersonPicker(`ed:${post.id}`, "+ " + t("Sumar editor…","Add editor…","Adicionar editor…","…הוספת עורך/ת"), [post.authorEmail, ...editors]) : ""}
+      ${manage ? renderPersonPicker(`ed:${post.id}`, "+ " + t("Sumar editor…","Add editor…","Adicionar editor…","הוספת עורך/ת…"), [post.authorEmail, ...editors]) : ""}
     </div>`;
 }
 function renderProjectPanel(post, opts={}){
@@ -11289,7 +11289,7 @@ function renderProjectPanel(post, opts={}){
         ${dateTrigger("date", m.date)}
         <span class="date-sep">${isRTL() ? "←" : "→"}</span>
         ${dateTrigger("endDate", m.endDate)}
-        <span class="pj-owners">${owners.map(o=>`<span class="pj-owner-wrap">${ownerChip(o)}<button type="button" class="pj-owner-clear" data-action="ms-owner-remove" data-post-id="${esc(post.id)}" data-ms-id="${esc(m.id)}" data-email="${esc(o)}" aria-label="${esc(t("Quitar responsable","Remove owner","Remover responsável","הסרת אחראי/ת"))}">✕</button></span>`).join("")}${renderPersonPicker(`own:${post.id}:${m.id}`, "+ " + t("Responsable…","Owner…","Responsável…","…אחראי/ת"), owners)}</span>
+        <span class="pj-owners">${owners.map(o=>`<span class="pj-owner-wrap">${ownerChip(o)}<button type="button" class="pj-owner-clear" data-action="ms-owner-remove" data-post-id="${esc(post.id)}" data-ms-id="${esc(m.id)}" data-email="${esc(o)}" aria-label="${esc(t("Quitar responsable","Remove owner","Remover responsável","הסרת אחראי/ת"))}">✕</button></span>`).join("")}${renderPersonPicker(`own:${post.id}:${m.id}`, "+ " + t("Responsable…","Owner…","Responsável…","אחראי/ת…"), owners)}</span>
         ${doneBy}
       </div>
     </li>`;
@@ -11375,27 +11375,27 @@ function participantsLabel(participants){
 // español para dejarlo como respuesta automática en el hilo.
 function buildEditSummary(original, next){
   const parts = [];
-  if(original.title !== next.title) parts.push(t(`título ("{old}" → "{new}")`,`title ("{old}" → "{new}")`,`título ("{old}" → "{new}")`,`("{new}" ← "{old}") כותרת`,{old:original.title,new:next.title}));
+  if(original.title !== next.title) parts.push(t(`título ("{old}" → "{new}")`,`title ("{old}" → "{new}")`,`título ("{old}" → "{new}")`,`כותרת ("{old}" ← "{new}")`,{old:original.title,new:next.title}));
   const oldStart = original.startDate, oldEnd = original.endDate || oldStart;
   const timeChanged = (original.startTime||"") !== (next.startTime||"") || (original.endTime||"") !== (next.endTime||"");
   if(oldStart !== next.startDate || oldEnd !== next.endDate || timeChanged){
     const oldLabel = oldEnd !== oldStart ? `${fmtDate(oldStart)}–${fmtDate(oldEnd)}` : fmtDate(oldStart);
     const newLabel = next.endDate !== next.startDate ? `${fmtDate(next.startDate)}–${fmtDate(next.endDate)}` : fmtDate(next.startDate);
-    parts.push(t("fecha ({old} → {new})","date ({old} → {new})","data ({old} → {new})","({new} ← {old}) תאריך",{old:oldLabel,new:newLabel}));
+    parts.push(t("fecha ({old} → {new})","date ({old} → {new})","data ({old} → {new})","תאריך ({old} ← {new})",{old:oldLabel,new:newLabel}));
   }
   const oldParticipants = participantsLabel(original.participants) || (original.organizer||"");
   const newParticipants = participantsLabel(next.participants);
   if(oldParticipants !== newParticipants) parts.push(newParticipants
-    ? t("participantes (ahora: {p})","participants (now: {p})","participantes (agora: {p})","({p} :משתתפים (כעת",{p:newParticipants})
-    : t("participantes (se quitaron)","participants (removed)","participantes (removidos)","(משתתפים (הוסרו"));
+    ? t("participantes (ahora: {p})","participants (now: {p})","participantes (agora: {p})","משתתפים (כעת: {p})",{p:newParticipants})
+    : t("participantes (se quitaron)","participants (removed)","participantes (removidos)","משתתפים (הוסרו)"));
   if(original.activityType !== next.activityType) parts.push(t(
-    "tipo de actividad ({old} → {new})","activity type ({old} → {new})","tipo de atividade ({old} → {new})","({new} ← {old}) סוג פעילות",
+    "tipo de actividad ({old} → {new})","activity type ({old} → {new})","tipo de atividade ({old} → {new})","סוג פעילות ({old} ← {new})",
     {old:ACTIVITY_BY_KEY[original.activityType]?.label, new:ACTIVITY_BY_KEY[next.activityType]?.label}
   ));
   if(original.content !== next.content) parts.push(t("comentarios","comments","comentários","הערות"));
   if(JSON.stringify(original.scopes||[]) !== JSON.stringify(next.scopes||[])) parts.push(t("lugar","place","lugar","מקום"));
   if(JSON.stringify(original.recurrence || null) !== JSON.stringify(next.recurrence || null)) parts.push(next.recurrence
-    ? t("repetición ({r})","repetition ({r})","repetição ({r})","({r}) חזרה",{r:recurrenceLabel({ recurrence:next.recurrence })})
+    ? t("repetición ({r})","repetition ({r})","repetição ({r})","חזרה ({r})",{r:recurrenceLabel({ recurrence:next.recurrence })})
     : t("dejó de repetirse","no longer repeats","deixou de se repetir","הפסיק לחזור"));
   if(!parts.length) return null;
   return t("✏️ {n} editó este posteo: {changes}.","✏️ {n} edited this post: {changes}.","✏️ {n} editou esta postagem: {changes}.","✏️ {n} ערך/ה פוסט זה: {changes}.",{n:state.auth.user.displayName, changes:parts.join(", ")});
@@ -11586,7 +11586,7 @@ async function cancelPost(post){
         ) });
   }catch(err){
     console.error(err);
-    await appAlert(t("No se pudo cancelar: {msg}","Couldn't cancel: {msg}","Não foi possível cancelar: {msg}","{msg} :הביטול נכשל",{msg:err.message}));
+    await appAlert(t("No se pudo cancelar: {msg}","Couldn't cancel: {msg}","Não foi possível cancelar: {msg}","הביטול נכשל: {msg}",{msg:err.message}));
   }
 }
 
@@ -11805,7 +11805,7 @@ function validateNicknameDraft(raw){
       "Solo letras, números y guion bajo, sin espacios ni tildes (2 a 20 caracteres).",
       "Only letters, numbers and underscore, no spaces or accents (2 to 20 characters).",
       "Só letras, números e underline, sem espaços ou acentos (2 a 20 caracteres).",
-      "(אותיות, ספרות וקו תחתון בלבד, ללא רווחים (2 עד 20 תווים"
+      "אותיות, ספרות וקו תחתון בלבד, ללא רווחים (2 עד 20 תווים)."
     ) };
   }
   if(value.toLowerCase() === "all"){
@@ -11849,7 +11849,7 @@ async function saveNicknameEdit(){
     render();
   }catch(err){
     console.error("No se pudo guardar el nickname:", err);
-    nicknameError = t("No se pudo guardar. Probá de nuevo.","Couldn't save. Try again.","Não foi possível salvar. Tente de novo.",".לא ניתן היה לשמור. נסה/י שוב");
+    nicknameError = t("No se pudo guardar. Probá de nuevo.","Couldn't save. Try again.","Não foi possível salvar. Tente de novo.","לא ניתן היה לשמור. נסה/י שוב.");
     render();
   }
 }
@@ -12158,7 +12158,7 @@ function withContentTranslation(scope, id, title, content){
   // el que se escribe todo el contenido.
   if(currentLang() !== "es"){
     if(showTranslated && entry && entry.loading){
-      toggleHtml = `<button type="button" class="translate-toggle" disabled>🌐 ${t("Traduciendo…","Translating…","Traduzindo…","...מתרגם")}</button>`;
+      toggleHtml = `<button type="button" class="translate-toggle" disabled>🌐 ${t("Traduciendo…","Translating…","Traduzindo…","מתרגם...")}</button>`;
     } else if(entry && entry.error && entry.lang === currentLang()){
       // El error queda visible (sobrevive a renders de fondo) hasta que
       // la persona reintenta o cambia de idioma.
@@ -12440,7 +12440,7 @@ function doRender(){
   if(!isAdmin() && ADMIN_VIEWS.has(state.view)) state.view = "feed";
 
   if(!fatalError && !state.loaded){
-    html += `<div class="empty-state"><div class="big">⏳</div>${t("Cargando registro compartido…","Loading shared log…","Carregando registro compartilhado…","...טוען יומן משותף")}</div>`;
+    html += `<div class="empty-state"><div class="big">⏳</div>${t("Cargando registro compartido…","Loading shared log…","Carregando registro compartilhado…","טוען יומן משותף...")}</div>`;
     viewRoot.innerHTML = html;
     return;
   }
@@ -12518,7 +12518,7 @@ function renderObserverBanner(){
 function renderAuthGate(){
   const s = state.auth.status;
   if(s === "loading"){
-    if(!state.auth.demorado) return `<div class="auth-gate"><div class="big">⏳</div><p>${t("Cargando…","Loading…","Carregando…","...טוען")}</p></div>`;
+    if(!state.auth.demorado) return `<div class="auth-gate"><div class="big">⏳</div><p>${t("Cargando…","Loading…","Carregando…","טוען...")}</p></div>`;
     // Lo importante acá no es el texto: son los dos botones. Sin ellos
     // esta pantalla no tiene salida — ni recargar con un clic, ni probar
     // con otra cuenta.
@@ -12700,7 +12700,7 @@ function renderSinCuentaSection(){
     .filter(x => !n || normalize(x.name).includes(n) || normalize(x.email || "").includes(n))
     .sort((a, b) => b.n - a.n || a.name.localeCompare(b.name, "es"));
   const toolbar = `<div class="users-toolbar">
-    <input type="text" id="usuariosSearch" placeholder="${esc(t("Buscar por nombre o email...","Search by name or email...","Buscar por nome ou email...","...חיפוש לפי שם או אימייל"))}" value="${esc(f.text)}">
+    <input type="text" id="usuariosSearch" placeholder="${esc(t("Buscar por nombre o email...","Search by name or email...","Buscar por nome ou email...","חיפוש לפי שם או אימייל..."))}" value="${esc(f.text)}">
     ${canWrite() ? `<button type="button" class="btn-primary sc-sumar" data-action="persona-nueva">+ ${t("Sumar persona","Add person","Somar pessoa","הוספת אדם")}</button>` : ""}
   </div>`;
   const nueva = personaNuevaNombre === null ? "" : `<div class="sc-nueva">
@@ -12884,7 +12884,7 @@ function renderUsuariosSection(){
     return (a.name||a.nickname||"").localeCompare(b.name||b.nickname||"", "es");
   });
   const toolbar = `<div class="users-toolbar">
-    <input type="text" id="usuariosSearch" placeholder="${esc(t("Buscar por nombre o email...","Search by name or email...","Buscar por nome ou email...","...חיפוש לפי שם או אימייל"))}" value="${esc(f.text)}">
+    <input type="text" id="usuariosSearch" placeholder="${esc(t("Buscar por nombre o email...","Search by name or email...","Buscar por nome ou email...","חיפוש לפי שם או אימייל..."))}" value="${esc(f.text)}">
     <div class="chipgroup">${grupos.map(([k,l,n])=>`<button type="button" class="chip-toggle${f.grupo===k?" active":""}" data-action="usuarios-grupo" data-key="${k}">${l} (${n})</button>`).join("")}</div>
     <button type="button" class="btn-sync" data-action="usuarios-csv">⬇ ${t("Bajar lista","Download list","Baixar lista","הורדת רשימה")}</button>
   </div>`;
@@ -13108,7 +13108,7 @@ function renderSolicitudesQueueSection(){
   const pendingHtml = pending.length
     ? pending.map(r => renderRow(r, `${r.status !== "pending" ? `<span class="status-pill rejected" title="${esc(t("Figura como aprobada pero no tiene acceso: probablemente la sacaron del equipo directo en la base.","Marked as approved but has no access: they were probably removed from the team directly in the database.","Consta como aprovada mas não tem acesso: provavelmente foi tirada da equipe direto na base.","מסומן כמאושר אך ללא גישה: כנראה שהוסר/ה מהצוות ישירות במסד הנתונים."))}">${t("Sin acceso","No access","Sem acesso","ללא גישה")}</span>` : ""}
         <button class="btn-secondary" data-action="reject-request" data-email="${esc(r.email)}" ${savingRoster.has(r.email) ? "disabled" : ""}>${t("Rechazar","Reject","Rejeitar","דחייה")}</button>
-        <button class="btn-primary" data-action="approve-request" data-email="${esc(r.email)}" ${savingRoster.has(r.email) ? "disabled" : ""}>${savingRoster.has(r.email) ? t("Aprobando…","Approving…","Aprovando…","...מאשר") : t("Aprobar","Approve","Aprovar","אישור")}</button>`) + renderPareceSerPersona(r)).join("")
+        <button class="btn-primary" data-action="approve-request" data-email="${esc(r.email)}" ${savingRoster.has(r.email) ? "disabled" : ""}>${savingRoster.has(r.email) ? t("Aprobando…","Approving…","Aprovando…","מאשר...") : t("Aprobar","Approve","Aprovar","אישור")}</button>`) + renderPareceSerPersona(r)).join("")
     : `<div class="empty-state"><div class="big">📭</div>${t("No hay solicitudes pendientes.","There are no pending requests.","Não há solicitações pendentes.","אין בקשות ממתינות.")}</div>`;
   const rejectedHtml = rejected.length ? `
     <div class="rejected-section">
@@ -13166,7 +13166,7 @@ function renderPreaprobar(){
       <div class="zone-add-row">
         <input type="email" id="preEmail" placeholder="${esc(t("nombre@dominio.com","name@domain.com","nome@dominio.com","למשל name@domain.com"))}" value="${esc(d.email)}" autocomplete="off" aria-label="${esc(t("Correo","Email","E-mail","אימייל"))}">
         <input type="text" id="preName" placeholder="${esc(t("Nombre (opcional)","Name (optional)","Nome (opcional)","שם (לא חובה)"))}" maxlength="120" value="${esc(d.name)}" autocomplete="off">
-        <button type="button" class="btn-mini" data-action="preaprobar" ${d.saving ? "disabled" : ""}>${d.saving ? t("Dando acceso…","Granting…","Dando acesso…","...מעניק גישה") : t("Dar acceso","Grant access","Dar acesso","מתן גישה")}</button>
+        <button type="button" class="btn-mini" data-action="preaprobar" ${d.saving ? "disabled" : ""}>${d.saving ? t("Dando acceso…","Granting…","Dando acesso…","מעניק גישה...") : t("Dar acceso","Grant access","Dar acesso","מתן גישה")}</button>
       </div>
       ${d.error ? `<div class="form-error">${esc(d.error)}</div>` : ""}
       ${d.ok ? `<div class="hint preaprobar-ok">✅ ${esc(d.ok)}</div>` : ""}
@@ -13196,7 +13196,7 @@ async function darAccesoPorAdelantado(){
     d.email = ""; d.name = "";
   }catch(err){
     console.error(err);
-    d.error = t("No se pudo dar el acceso: {m}","Couldn't grant access: {m}","Não foi possível dar o acesso: {m}","{m} :לא ניתן היה להעניק גישה",{m:err.message});
+    d.error = t("No se pudo dar el acceso: {m}","Couldn't grant access: {m}","Não foi possível dar o acesso: {m}","לא ניתן היה להעניק גישה: {m}",{m:err.message});
   }
   d.saving = false; render();
 }
@@ -13360,7 +13360,7 @@ function renderAdminResumen(){
     t("{n} pidió entrar","{n} asked to join","{n} pediu para entrar","{n} ביקש/ה להצטרף",{n:esc(r.name||r.email)}),
     `${esc(r.email)} · ${esc(fmtDateTime(r.requestedAt))}`,
     `<button type="button" class="btn-secondary" data-action="reject-request" data-email="${esc(r.email)}" ${savingRoster.has(r.email) ? "disabled" : ""}>${t("Rechazar","Reject","Rejeitar","דחייה")}</button>
-     <button type="button" class="btn-primary" data-action="approve-request" data-email="${esc(r.email)}" ${savingRoster.has(r.email) ? "disabled" : ""}>${savingRoster.has(r.email) ? t("Aprobando…","Approving…","Aprovando…","...מאשר") : t("Aprobar","Approve","Aprovar","אישור")}</button>`
+     <button type="button" class="btn-primary" data-action="approve-request" data-email="${esc(r.email)}" ${savingRoster.has(r.email) ? "disabled" : ""}>${savingRoster.has(r.email) ? t("Aprobando…","Approving…","Aprovando…","מאשר...") : t("Aprobar","Approve","Aprovar","אישור")}</button>`
   )).join("");
   const otros = (lugares ? fila("📍",
       lugares === 1 ? t("1 lugar nuevo para sumar a la lista oficial","1 new place to add to the official list","1 lugar novo para somar à lista oficial","מקום חדש אחד להוספה לרשימה הרשמית")
@@ -13511,7 +13511,7 @@ function renderAuditFilters(){
   const anyFilter = f.text || f.types.size;
   return `
     <div class="audit-filters">
-      <input type="text" id="auditSearch" placeholder="${esc(t("Buscar por persona (nombre o email)...","Search by person (name or email)...","Buscar por pessoa (nome ou email)...","...חיפוש לפי אדם (שם או אימייל"))}" value="${esc(f.text)}">
+      <input type="text" id="auditSearch" placeholder="${esc(t("Buscar por persona (nombre o email)...","Search by person (name or email)...","Buscar por pessoa (nome ou email)...","חיפוש לפי אדם (שם או אימייל)..."))}" value="${esc(f.text)}">
       <div class="chipgroup">
         ${Object.entries(auditLabels()).map(([key,info])=>`
           <button type="button" class="chip-toggle${f.types.has(key)?" active":""}" data-action="audit-toggle-type" data-key="${key}">${info.icon} ${info.filterLabel}</button>`).join("")}
@@ -13709,7 +13709,7 @@ function renderZonasSection(){
                            t("la zona {z}","the {z} zone","a zona {z}","אזור {z}",{z:z.label}))}
             <input type="text" class="zone-name" data-action="zonas-label" data-key="${esc(key)}" value="${esc(z.label)}" maxlength="30">
             <span class="zone-count">${count === 1 ? t("1 país","1 country","1 país","מדינה אחת") : t("{n} países","{n} countries","{n} países","{n} מדינות",{n:count})}</span>
-            <button type="button" class="zone-rm" data-action="zonas-remove-zone" data-key="${esc(key)}" aria-label="${esc(t("Eliminar zona","Delete zone","Excluir zona","מחיקת אזור"))}" ${count>0?`disabled title="${esc(t("Reasigná primero los países de esta zona","First reassign this zone's countries","Reatribua primeiro os países desta zona",".קודם הקצה/י מחדש את המדינות של אזור זה"))}"`:`title="${esc(t("Eliminar zona","Delete zone","Excluir zona","מחיקת אזור"))}"`}>✕</button>
+            <button type="button" class="zone-rm" data-action="zonas-remove-zone" data-key="${esc(key)}" aria-label="${esc(t("Eliminar zona","Delete zone","Excluir zona","מחיקת אזור"))}" ${count>0?`disabled title="${esc(t("Reasigná primero los países de esta zona","First reassign this zone's countries","Reatribua primeiro os países desta zona","קודם הקצה/י מחדש את המדינות של אזור זה."))}"`:`title="${esc(t("Eliminar zona","Delete zone","Excluir zona","מחיקת אזור"))}"`}>✕</button>
           </div>
           <div class="zone-chips" data-zone-key="${esc(key)}">
             ${countries.map(name=>`
@@ -13732,7 +13732,7 @@ function renderZonasSection(){
       ${d.error ? `<div class="form-error">${esc(d.error)}</div>` : ""}
       <div class="modal-actions" style="margin-top:16px;">
         <button type="button" class="btn-secondary" data-action="zonas-reset">${t("Descartar cambios","Discard changes","Descartar alterações","ביטול השינויים")}</button>
-        <button type="button" class="btn-primary" data-action="zonas-save" ${d.saving?"disabled":""}>${d.saving ? t("Guardando…","Saving…","Salvando…","...שומר") : t("Guardar cambios","Save changes","Salvar alterações","שמירת השינויים")}</button>
+        <button type="button" class="btn-primary" data-action="zonas-save" ${d.saving?"disabled":""}>${d.saving ? t("Guardando…","Saving…","Salvando…","שומר...") : t("Guardar cambios","Save changes","Salvar alterações","שמירת השינויים")}</button>
       </div>`;
 }
 
@@ -13813,7 +13813,7 @@ function renderTiposSection(){
     <div class="modal-actions tipos-acciones">
       ${tiposDirty(d) ? `<span class="zonas-cambios">${t("Cambios sin guardar","Unsaved changes","Alterações sem salvar","שינויים שלא נשמרו")}</span>` : ""}
       <button type="button" class="btn-secondary" data-action="tipos-reset">${t("Descartar cambios","Discard changes","Descartar alterações","ביטול השינויים")}</button>
-      <button type="button" class="btn-primary" data-action="tipos-save" ${d.saving?"disabled":""}>${d.saving ? t("Guardando…","Saving…","Salvando…","...שומר") : t("Guardar cambios","Save changes","Salvar alterações","שמירת השינויים")}</button>
+      <button type="button" class="btn-primary" data-action="tipos-save" ${d.saving?"disabled":""}>${d.saving ? t("Guardando…","Saving…","Salvando…","שומר...") : t("Guardar cambios","Save changes","Salvar alterações","שמירת השינויים")}</button>
     </div>`;
 }
 // La ficha de un tipo (ver renderTiposSection).
@@ -13979,7 +13979,7 @@ function renderCalendarSection(){
       ${renderCalendarFaltantes()}
       ${d.locked ? "" : `<div class="modal-actions" style="margin-top:16px;">
         <button type="button" class="btn-secondary" data-action="calendar-reset">${t("Descartar cambios","Discard changes","Descartar alterações","ביטול השינויים")}</button>
-        <button type="button" class="btn-primary" data-action="calendar-save" ${d.saving || (d.confirmWord && d.typed.trim().toLowerCase() !== d.confirmWord.toLowerCase()) ? "disabled" : ""}>${d.saving ? t("Guardando…","Saving…","Salvando…","...שומר") : d.confirmWord ? t("Confirmar y guardar","Confirm and save","Confirmar e salvar","אישור ושמירה") : t("Guardar cambios","Save changes","Salvar alterações","שמירת השינויים")}</button>
+        <button type="button" class="btn-primary" data-action="calendar-save" ${d.saving || (d.confirmWord && d.typed.trim().toLowerCase() !== d.confirmWord.toLowerCase()) ? "disabled" : ""}>${d.saving ? t("Guardando…","Saving…","Salvando…","שומר...") : d.confirmWord ? t("Confirmar y guardar","Confirm and save","Confirmar e salvar","אישור ושמירה") : t("Guardar cambios","Save changes","Salvar alterações","שמירת השינויים")}</button>
       </div>`}`;
 }
 
@@ -13998,8 +13998,8 @@ function renderCalendarImportBlock(d){
             <button type="button" class="date-trigger ${d.importFrom ? "" : "empty"}" data-action="date-open" data-df-kind="calendar-import" data-df-id="calendar-import" aria-haspopup="dialog" aria-expanded="false"><span class="cal-ic" aria-hidden="true">📅</span>${d.importFrom ? esc(fmtTypedDate(d.importFrom)) : esc(t("todo el historial","entire history","todo o histórico","כל ההיסטוריה"))}</button>
             <div class="date-pop" hidden role="dialog" aria-label="${esc(t("Importar desde","Import from","Importar desde","ייבוא מתאריך"))}"></div>
           </span>
-          ${dirty ? `<button type="button" class="btn-secondary" data-action="calendar-importfrom-save" ${d.importSaving?"disabled":""}>${d.importSaving ? t("Guardando…","Saving…","Salvando…","...שומר") : t("Guardar fecha","Save date","Salvar data","שמירת תאריך")}</button>` : ""}
-          <button type="button" class="btn-secondary" data-action="calendar-reimport" ${d.reimporting||state.calendarSyncing?"disabled":""}>🔄 ${d.reimporting ? t("Reimportando…","Reimporting…","Reimportando…","...מייבא מחדש") : t("Reimportar historial","Reimport history","Reimportar histórico","ייבוא מחדש של ההיסטוריה")}</button>
+          ${dirty ? `<button type="button" class="btn-secondary" data-action="calendar-importfrom-save" ${d.importSaving?"disabled":""}>${d.importSaving ? t("Guardando…","Saving…","Salvando…","שומר...") : t("Guardar fecha","Save date","Salvar data","שמירת תאריך")}</button>` : ""}
+          <button type="button" class="btn-secondary" data-action="calendar-reimport" ${d.reimporting||state.calendarSyncing?"disabled":""}>🔄 ${d.reimporting ? t("Reimportando…","Reimporting…","Reimportando…","מייבא מחדש...") : t("Reimportar historial","Reimport history","Reimportar histórico","ייבוא מחדש של ההיסטוריה")}</button>
         </div>
         <div class="hint">${t("Desde qué fecha se traen los eventos del Calendar cuando se lee entero. Vacío = todo el historial. Los que ya están no se duplican.","From which date Calendar events are fetched on a full read. Empty = the whole history. Existing ones aren't duplicated.","A partir de que data os eventos do Calendar são trazidos numa leitura completa. Vazio = todo o histórico. Os que já existem não se duplicam.","מאיזה תאריך מובאים אירועי היומן בקריאה מלאה. ריק = כל ההיסטוריה. הקיימים לא משוכפלים.")}</div>
       </div>
@@ -14148,7 +14148,7 @@ function renderAdjuntosSection(){
       ${d.error ? `<div class="form-error">${esc(d.error)}</div>` : ""}
       <div class="modal-actions" style="margin-top:16px;">
         <button type="button" class="btn-secondary" data-action="adjuntos-reset">${t("Descartar cambios","Discard changes","Descartar alterações","ביטול השינויים")}</button>
-        <button type="button" class="btn-primary" data-action="adjuntos-save" ${d.saving?"disabled":""}>${d.saving ? t("Guardando…","Saving…","Salvando…","...שומר") : t("Guardar cambios","Save changes","Salvar alterações","שמירת השינויים")}</button>
+        <button type="button" class="btn-primary" data-action="adjuntos-save" ${d.saving?"disabled":""}>${d.saving ? t("Guardando…","Saving…","Salvando…","שומר...") : t("Guardar cambios","Save changes","Salvar alterações","שמירת השינויים")}</button>
       </div>`;
 }
 
@@ -14183,7 +14183,7 @@ function renderMedidorBucket(){
     store.copia.tamano().then(d => { copiaEstado.tamano = d || { archivos: 0, bytes: 0 }; render(); })
       .catch(err => { console.warn("No se pudo saber cuánto hay en el bucket:", err); copiaEstado.tamano = { error: true }; render(); });
   }
-  if(!tm || tm.error) return tm && tm.error ? "" : `<div class="hint">${t("Midiendo cuánto hay guardado…","Measuring how much is stored…","Medindo quanto há guardado…","…מודד כמה שמור")}</div>`;
+  if(!tm || tm.error) return tm && tm.error ? "" : `<div class="hint">${t("Midiendo cuánto hay guardado…","Measuring how much is stored…","Medindo quanto há guardado…","מודד כמה שמור…")}</div>`;
   const pct = Math.min(100, Math.round(tm.bytes * 100 / BUCKET_TOPE_BYTES));
   const lleno = pct >= 80;
   return `<div class="bucket-medidor${lleno ? " lleno" : ""}">
@@ -14304,7 +14304,7 @@ function rutasDeLaCopia(tablas){
   return [...rutas].sort();
 }
 async function armarDatosDeLaCopia(){
-  copiaAvisar({ texto: t("Leyendo los datos…","Reading the data…","Lendo os dados…","...קורא את הנתונים"), error: "", listo: "" });
+  copiaAvisar({ texto: t("Leyendo los datos…","Reading the data…","Lendo os dados…","קורא את הנתונים..."), error: "", listo: "" });
   const { tablas, fallas } = await store.copia.tablas();
   const datos = { app: "Registro de Acciones", creada: new Date().toISOString(), por: (state.auth && state.auth.user && state.auth.user.email) || "", tablas };
   return { datos, fallas };
@@ -14347,7 +14347,7 @@ async function bajarCopiaCompleta(){
   copiaEstado.corriendo = true; render();
   try{
     if(!window.JSZip){
-      copiaAvisar({ texto: t("Preparando…","Getting ready…","Preparando…","...מתכונן"), error: "", listo: "" });
+      copiaAvisar({ texto: t("Preparando…","Getting ready…","Preparando…","מתכונן..."), error: "", listo: "" });
       await cargarScript(JSZIP_CDN, JSZIP_SRI);
       if(!window.JSZip) throw new Error(t("no cargó la herramienta para armar el .zip","the .zip tool didn't load","a ferramenta do .zip não carregou","הכלי ליצירת ה-zip לא נטען"));
     }
@@ -14356,7 +14356,7 @@ async function bajarCopiaCompleta(){
     zip.file("datos.json", JSON.stringify(datos, null, 1));
     const rutas = rutasDeLaCopia(datos.tablas);
     let hechos = 0, sinBajar = 0;
-    const paso = () => copiaAvisar({ texto: t("Bajando fotos y archivos: {a} de {b}…","Downloading photos and files: {a} of {b}…","Baixando fotos e arquivos: {a} de {b}…","...מוריד תמונות וקבצים: {a} מתוך {b}",{a:hechos, b:rutas.length}) });
+    const paso = () => copiaAvisar({ texto: t("Bajando fotos y archivos: {a} de {b}…","Downloading photos and files: {a} of {b}…","Baixando fotos e arquivos: {a} de {b}…","מוריד תמונות וקבצים: {a} מתוך {b}...",{a:hechos, b:rutas.length}) });
     paso();
     // De a cuatro a la vez: más rápido que uno por uno, sin ahogar la conexión.
     const cola = [...rutas];
@@ -14368,7 +14368,7 @@ async function bajarCopiaCompleta(){
         hechos++; paso();
       }
     }));
-    copiaAvisar({ texto: t("Armando el archivo…","Packing the file…","Montando o arquivo…","...אורז את הקובץ") });
+    copiaAvisar({ texto: t("Armando el archivo…","Packing the file…","Montando o arquivo…","אורז את הקובץ...") });
     const blob = await zip.generateAsync({ type: "blob" });
     descargarBlob(nombreDeLaCopia("zip"), blob);
     copiaAvisar({ texto: "", listo: "✅ " + ((rutas.length - sinBajar) === 1 ? t("Listo: {a}, con 1 foto o archivo.","Done: {a}, with 1 photo or file.","Pronto: {a}, com 1 foto ou arquivo.","מוכן: {a}, עם תמונה או קובץ אחד.", {a:nombreDeLaCopia("zip"), n:rutas.length - sinBajar}) : t("Listo: {a}, con {n} fotos y archivos.","Done: {a}, with {n} photos and files.","Pronto: {a}, com {n} fotos e arquivos.","מוכן: {a}, עם {n} תמונות וקבצים.", {a:nombreDeLaCopia("zip"), n:rutas.length - sinBajar}))
@@ -14772,7 +14772,7 @@ function renderFilterBar(nota = ""){
   return `<div class="fb">
       ${volver ? `<div class="fb-origen">${volver}<span class="fb-espacio"></span>${limpiar}</div>` : ""}
       <div class="fb-fila">
-        <input type="search" id="feedSearch" class="fb-buscar" placeholder="${esc(t("Buscar por texto…","Search by text…","Buscar por texto…","...חיפוש לפי טקסט"))}" aria-label="${esc(t("Buscar por texto","Search by text","Buscar por texto","חיפוש לפי טקסט"))}" value="${esc(f.text)}" autocomplete="off">
+        <input type="search" id="feedSearch" class="fb-buscar" placeholder="${esc(t("Buscar por texto…","Search by text…","Buscar por texto…","חיפוש לפי טקסט..."))}" aria-label="${esc(t("Buscar por texto","Search by text","Buscar por texto","חיפוש לפי טקסט"))}" value="${esc(f.text)}" autocomplete="off">
         <button type="button" id="fbFiltros" class="fb-boton${n ? " con-filtro" : ""}" data-action="fp-abrir" aria-haspopup="dialog" aria-expanded="${fp.abierto}">⚙ ${t("Filtros","Filters","Filtros","מסננים")}${n ? ` <span class="fb-cuenta">${n}</span>` : ""}</button>
       </div>
       ${fichas ? `<div class="fb-fichas">${fichas}${volver ? "" : limpiar}</div>` : ""}
@@ -14896,7 +14896,7 @@ function fpOpcionesLugar(b){
       const chipsGrupos = Object.keys(GRUPOS).map(g => `<button type="button" class="chip-toggle" data-action="fp-lugar" data-kind="grupo" data-grupo="${esc(g)}">${GRUPOS[g].icon} ${esc(grupoLabel(g))}</button>`).join("");
       sugs = `<div class="fp-chips">${top}${chipsGrupos}<button type="button" class="chip-toggle" data-action="fp-lugar" data-kind="latam">🌎 ${t("Lo de toda LatAm","All-LatAm items","O de toda a LatAm","מה ששייך לכל LatAm")}</button></div>`;
     }
-    lugar = `<input type="search" id="fpLugarQ" class="fp-texto" placeholder="${esc(t("Escribí un país o una ciudad…","Type a country or a city…","Escreva um país ou uma cidade…","...הקלד/י מדינה או עיר"))}" aria-label="${esc(t("País o ciudad","Country or city","País ou cidade","מדינה או עיר"))}" value="${esc(b.lugarQ || "")}" autocomplete="off">${sugs}`;
+    lugar = `<input type="search" id="fpLugarQ" class="fp-texto" placeholder="${esc(t("Escribí un país o una ciudad…","Type a country or a city…","Escreva um país ou uma cidade…","הקלד/י מדינה או עיר..."))}" aria-label="${esc(t("País o ciudad","Country or city","País ou cidade","מדינה או עיר"))}" value="${esc(b.lugarQ || "")}" autocomplete="off">${sugs}`;
   }
   let niveles = "";
   if(f.place && f.place.kind !== "latam" && f.place.country){
@@ -15291,7 +15291,7 @@ function renderFeedView(){
     ${renderFilterBar(notaDeActividades(pasados))}
     ${renderSolapasDelFeed(pasados, futuros)}
     ${items.length ? items.map(({post,replies})=>renderPostCard(post,replies)).join("") + renderLoadMore("feed-load-more", all.length - items.length) :
-      `<div class="empty-state"><div class="big">${feedSolapa === "futuro" ? "📅" : "🗒️"}</div>${vacio}<br>${t('Usá "+ Nuevo evento" para sumar uno.','Use "+ New event" to add one.','Use "+ Novo evento" para somar um.','.כדי להוסיף אחד "+ אירוע חדש" השתמש/י ב')}</div>`}
+      `<div class="empty-state"><div class="big">${feedSolapa === "futuro" ? "📅" : "🗒️"}</div>${vacio}<br>${t('Usá "+ Nuevo evento" para sumar uno.','Use "+ New event" to add one.','Use "+ Novo evento" para somar um.','השתמש/י ב-"+ אירוע חדש" כדי להוסיף אחד.')}</div>`}
   </div>${renderFeedSide()}</div>`;
 }
 function anyActiveFilter(f = state.filters){
@@ -15554,12 +15554,12 @@ function renderRutinaComposer(){
         ${renderMiniAvatar(state.auth.user)}
         <div class="mention-anchor">
           <div class="mention-highlight-backdrop" id="rutinaContent-hl" aria-hidden="true">${highlightMentions(esc(d.content))}</div>
-          <textarea id="rutinaContent" class="autogrow mention-input" maxlength="${MAX_POST_CONTENT}" data-mention-scope="rutina" data-mention-owner="new" placeholder="${esc(t("¿Qué hiciste hoy?","What did you do today?","O que você fez hoje?","?מה עשית היום"))}" rows="1">${esc(d.content)}</textarea>
+          <textarea id="rutinaContent" class="autogrow mention-input" maxlength="${MAX_POST_CONTENT}" data-mention-scope="rutina" data-mention-owner="new" placeholder="${esc(t("¿Qué hiciste hoy?","What did you do today?","O que você fez hoje?","מה עשית היום?"))}" rows="1">${esc(d.content)}</textarea>
           ${renderMentionSuggestions(d, "rutina", "new", "rutinaContent")}
         </div>
       </div>
       <div class="place-picker">
-        <input type="text" id="rutinaPlaceQuery" data-place-scope="rutina" data-place-owner="new" placeholder="🌎 ${esc(t("¿Cuál es el alcance? (ciudad, país, región, Caribe)...","What's the reach? (city, country, region, Caribbean)...","Qual é o alcance? (cidade, país, região, Caribe)...","(עיר, מדינה, אזור, הקריביים) ?מה ההיקף..."))}" autocomplete="off" value="${esc(d.placeQuery)}">
+        <input type="text" id="rutinaPlaceQuery" data-place-scope="rutina" data-place-owner="new" placeholder="🌎 ${esc(t("¿Cuál es el alcance? (ciudad, país, región, Caribe)...","What's the reach? (city, country, region, Caribbean)...","Qual é o alcance? (cidade, país, região, Caribe)...","מה ההיקף? (עיר, מדינה, אזור, הקריביים)..."))}" autocomplete="off" value="${esc(d.placeQuery)}">
         ${d.placeQuery ? renderPlaceSuggestions(d, "rutina", "new") : ""}
       </div>
       ${d.scopes.length ? `<div class="post-scopes" style="margin-top:8px;">${d.scopes.map((sc,i)=>renderScopeChip(sc, "rm-scope-rutina", i, "new")).join("")}</div>` : ""}
@@ -15576,7 +15576,7 @@ function renderRutinaComposer(){
           <label class="btn-attach" for="rutinaFiles">📄 PDF/${t("Audio","Audio","Áudio","אודיו")}</label>
           <button type="button" class="btn-attach" data-action="rutina-add-link">🔗 Link</button>
         </div>
-        <button type="button" class="btn-new" id="rutinaPublish" data-action="submit-rutina" ${d.content.trim() && !d.submitting ? "" : "disabled"}>${d.submitting ? t("Publicando…","Posting…","Publicando…","...מפרסם") : t("Publicar","Post","Publicar","פרסום")}</button>
+        <button type="button" class="btn-new" id="rutinaPublish" data-action="submit-rutina" ${d.content.trim() && !d.submitting ? "" : "disabled"}>${d.submitting ? t("Publicando…","Posting…","Publicando…","מפרסם...") : t("Publicar","Post","Publicar","פרסום")}</button>
       </div>
     </div>`;
 }
@@ -15611,7 +15611,7 @@ async function submitRutina(){
   }catch(err){
     console.error(err);
     d.submitting = false;
-    d.error = t("No se pudo publicar: {msg}","Couldn't publish: {msg}","Não foi possível publicar: {msg}","{msg} :הפרסום נכשל",{msg:err.message});
+    d.error = t("No se pudo publicar: {msg}","Couldn't publish: {msg}","Não foi possível publicar: {msg}","הפרסום נכשל: {msg}",{msg:err.message});
     render();
   }
 }
@@ -15948,7 +15948,7 @@ async function quitarDocumento(postId, pos){
     docsAbiertos.set(postId, true);   // que se vea lo que quedó
   }catch(err){
     console.error("Error quitando el documento:", err);
-    await appAlert(t("No se pudo quitar: {m}","Couldn't remove it: {m}","Não foi possível remover: {m}","{m} :לא ניתן היה להסיר",{m:err.code||err.message}));
+    await appAlert(t("No se pudo quitar: {m}","Couldn't remove it: {m}","Não foi possível remover: {m}","לא ניתן היה להסיר: {m}",{m:err.code||err.message}));
   }
 }
 
@@ -15974,7 +15974,7 @@ async function quitarAdjunto(postId, pos){
     });
   }catch(err){
     console.error("Error quitando el adjunto:", err);
-    await appAlert(t("No se pudo quitar: {m}","Couldn't remove it: {m}","Não foi possível remover: {m}","{m} :לא ניתן היה להסיר",{m:err.code||err.message}));
+    await appAlert(t("No se pudo quitar: {m}","Couldn't remove it: {m}","Não foi possível remover: {m}","לא ניתן היה להסיר: {m}",{m:err.code||err.message}));
   }
 }
 
@@ -16668,7 +16668,7 @@ function renderPostCard(post, replies){
         ${metaBits.join("")}
       </div>
       ${showTitle && tr.displayContent ? `<div class="post-content" dir="auto">${nl2br(tr.displayContent)}</div>` : ""}
-      ${!scopesHtml && post.activityType !== "rutina" ? `<div class="hint" style="color:var(--danger-fg);">⚠️ ${t("Sin Dónde definido — editalo para asignarle un país/ciudad.","No Where set — edit it to assign a country/city.","Sem Onde definido — edite para atribuir um país/cidade.",".לא הוגדר \"איפה\" — ערוך/כי כדי להקצות מדינה/עיר")}</div>` : ""}
+      ${!scopesHtml && post.activityType !== "rutina" ? `<div class="hint" style="color:var(--danger-fg);">⚠️ ${t("Sin Dónde definido — editalo para asignarle un país/ciudad.","No Where set — edit it to assign a country/city.","Sem Onde definido — edite para atribuir um país/cidade.","לא הוגדר \"איפה\" — ערוך/כי כדי להקצות מדינה/עיר.")}</div>` : ""}
       ${linksHtml ? `<div class="post-links">${linksHtml}</div>` : ""}
       ${imagesHtml ? `<div class="post-images">${imagesHtml}</div>` : ""}
       ${renderPostedFiles(archivosSueltos(post.files, post.activityType), {postId: post.id, todos: post.files || [], puede: canEditPost(post)})}
@@ -16830,7 +16830,7 @@ function renderNestedReplyForm(postId, replyId){
     <div class="reply-nested-form">
       <div class="mention-anchor">
         <div class="mention-highlight-backdrop" id="${textareaId}-hl" aria-hidden="true">${highlightMentions(esc(d.content))}</div>
-        <textarea id="${esc(textareaId)}" class="mention-input" maxlength="${MAX_REPLY_CONTENT}" data-nested-reply-field="content" data-reply-id="${esc(replyId)}" data-mention-scope="nested-reply" data-mention-owner="${esc(replyId)}" placeholder="${esc(t("Responder... (@ para mencionar a alguien)","Reply... (@ to mention someone)","Responder... (@ para mencionar alguém)","(כדי לאזכר מישהו @) ...הגב/י"))}">${esc(d.content)}</textarea>
+        <textarea id="${esc(textareaId)}" class="mention-input" maxlength="${MAX_REPLY_CONTENT}" data-nested-reply-field="content" data-reply-id="${esc(replyId)}" data-mention-scope="nested-reply" data-mention-owner="${esc(replyId)}" placeholder="${esc(t("Responder... (@ para mencionar a alguien)","Reply... (@ to mention someone)","Responder... (@ para mencionar alguém)","הגב/י... (@ כדי לאזכר מישהו)"))}">${esc(d.content)}</textarea>
         ${renderMentionSuggestions(d, "nested-reply", replyId, textareaId)}
       </div>
       <input type="file" id="nestedReplyImages-${replyId}" accept="image/*" multiple hidden data-action="nested-reply-images" data-reply-id="${esc(replyId)}">
@@ -16848,7 +16848,7 @@ function renderNestedReplyForm(postId, replyId){
         </div>
         <div class="modal-actions" style="margin:0;">
           <button class="btn-secondary" data-action="cancel-nested-reply" data-reply-id="${esc(replyId)}">${t("Cancelar","Cancel","Cancelar","ביטול")}</button>
-          <button class="btn-primary" data-action="submit-nested-reply" data-post-id="${esc(postId)}" data-reply-id="${esc(replyId)}" ${d.submitting ? "disabled" : ""}>${d.submitting ? t("Publicando…","Posting…","Publicando…","...מפרסם") : t("Responder","Reply","Responder","תגובה")}</button>
+          <button class="btn-primary" data-action="submit-nested-reply" data-post-id="${esc(postId)}" data-reply-id="${esc(replyId)}" ${d.submitting ? "disabled" : ""}>${d.submitting ? t("Publicando…","Posting…","Publicando…","מפרסם...") : t("Responder","Reply","Responder","תגובה")}</button>
         </div>
       </div>
     </div>`;
@@ -16868,12 +16868,12 @@ function renderReplyForm(postId){
         <label>${t("Respuesta","Reply","Resposta","תגובה")}</label>
         <div class="mention-anchor">
           <div class="mention-highlight-backdrop" id="${textareaId}-hl" aria-hidden="true">${highlightMentions(esc(d.content))}</div>
-          <textarea id="${esc(textareaId)}" class="mention-input" maxlength="${MAX_REPLY_CONTENT}" data-reply-field="content" data-post-id="${esc(postId)}" data-mention-scope="reply" data-mention-owner="${esc(postId)}" placeholder="${esc(t("Sumá información... (@ para mencionar a alguien)","Add information... (@ to mention someone)","Some informações... (@ para mencionar alguém)","(כדי לאזכר מישהו @) ...הוסף/הוסיפי מידע"))}">${esc(d.content)}</textarea>
+          <textarea id="${esc(textareaId)}" class="mention-input" maxlength="${MAX_REPLY_CONTENT}" data-reply-field="content" data-post-id="${esc(postId)}" data-mention-scope="reply" data-mention-owner="${esc(postId)}" placeholder="${esc(t("Sumá información... (@ para mencionar a alguien)","Add information... (@ to mention someone)","Some informações... (@ para mencionar alguém)","הוסף/הוסיפי מידע... (@ כדי לאזכר מישהו)"))}">${esc(d.content)}</textarea>
           ${renderMentionSuggestions(d, "reply", postId, textareaId)}
         </div>
       </div>
       <div class="place-picker place-picker-inline" style="margin-bottom:8px;">
-        <input type="text" id="replyPlaceQuery-${postId}" data-place-scope="reply" data-place-owner="${esc(postId)}" placeholder="📍 ${esc(t("¿Afectó a otro lugar? (país, ciudad, región, Caribe)...","Did it involve another place? (country, city, region, Caribbean)...","Envolveu outro lugar? (país, cidade, região, Caribe)...","(מדינה, עיר, אזור, הקריביים) ?נגע למקום אחר..."))}" autocomplete="off" value="${esc(d.placeQuery||"")}">
+        <input type="text" id="replyPlaceQuery-${postId}" data-place-scope="reply" data-place-owner="${esc(postId)}" placeholder="📍 ${esc(t("¿Afectó a otro lugar? (país, ciudad, región, Caribe)...","Did it involve another place? (country, city, region, Caribbean)...","Envolveu outro lugar? (país, cidade, região, Caribe)...","נגע למקום אחר? (מדינה, עיר, אזור, הקריביים)..."))}" autocomplete="off" value="${esc(d.placeQuery||"")}">
         ${d.placeQuery ? renderPlaceSuggestions(d, "reply", postId) : ""}
       </div>
       ${d.scopes.length ? `<div class="post-scopes" style="margin-top:-2px;margin-bottom:8px;">${d.scopes.map((sc,i)=>renderScopeChip(sc, "rm-scope-reply", i, postId)).join("")}</div>` : ""}
@@ -16892,7 +16892,7 @@ function renderReplyForm(postId){
         </div>
         <div class="modal-actions" style="margin:0;">
           <button class="btn-secondary" data-action="cancel-reply" data-post-id="${esc(postId)}">${t("Cancelar","Cancel","Cancelar","ביטול")}</button>
-          <button class="btn-primary" data-action="submit-reply" data-post-id="${esc(postId)}" ${d.submitting ? "disabled" : ""}>${d.submitting ? t("Publicando…","Posting…","Publicando…","...מפרסם") : t("Publicar respuesta","Post reply","Publicar resposta","פרסום תגובה")}</button>
+          <button class="btn-primary" data-action="submit-reply" data-post-id="${esc(postId)}" ${d.submitting ? "disabled" : ""}>${d.submitting ? t("Publicando…","Posting…","Publicando…","מפרסם...") : t("Publicar respuesta","Post reply","Publicar resposta","פרסום תגובה")}</button>
         </div>
       </div>
     </div>`;
@@ -17312,7 +17312,7 @@ function trimestresDelReporte(){
 // mismo selector y el mismo "Ver solo" (pedido del usuario el 5/10/2026).
 function renderReportesView(){
   if(!state.loaded){
-    return `<div class="empty-state"><div class="big">⏳</div>${t("Cargando…","Loading…","Carregando…","...טוען")}</div>`;
+    return `<div class="empty-state"><div class="big">⏳</div>${t("Cargando…","Loading…","Carregando…","טוען...")}</div>`;
   }
   const R = state.reportes;
   const f = R.filtro || {};
@@ -19306,7 +19306,7 @@ function guardarCorreosConfig(patch){
   correosConfig = nuevo; render();
   store.config.merge("preferences", { correos: nuevo }).catch(err=>{
     console.error("No se pudo guardar quién recibe correos:", err);
-    appAlert(t("No se pudo guardar: {m}","Couldn't save: {m}","Não foi possível salvar: {m}","{m} :לא ניתן היה לשמור",{ m: err.message }));
+    appAlert(t("No se pudo guardar: {m}","Couldn't save: {m}","Não foi possível salvar: {m}","לא ניתן היה לשמור: {m}",{ m: err.message }));
   });
 }
 
@@ -19749,7 +19749,7 @@ function renderOccurrencePicker(post, occ){
             </span>
             <button type="button" class="occ-act danger" data-action="occ-skip" data-post-id="${esc(post.id)}" data-occ="${actual.iso}">🚫 ${t("No se hace","Not happening","Não acontece","לא מתקיים")}</button>`}
         ${actual.moved && !actual.skipped
-          ? `<button type="button" class="occ-act" data-action="occ-unmove" data-post-id="${esc(post.id)}" data-occ="${actual.iso}">↩️ ${t("Volver al {d}","Back to {d}","Voltar ao {d}","{d}-לחזור ל",{d:occDateLabel(actual.iso)})}</button>`
+          ? `<button type="button" class="occ-act" data-action="occ-unmove" data-post-id="${esc(post.id)}" data-occ="${actual.iso}">↩️ ${t("Volver al {d}","Back to {d}","Voltar ao {d}","לחזור ל-{d}",{d:occDateLabel(actual.iso)})}</button>`
           : ""}
       </div>
     </div>`;
@@ -19858,7 +19858,8 @@ function dowShort(dow){
 // "lunes y miércoles" / "lunes, miércoles y viernes"
 function listToText(items){
   if(items.length <= 1) return items[0] || "";
-  return items.slice(0,-1).join(", ") + ` ${t("y","and","e","-ו")} ` + items[items.length-1];
+  const y = t("y","and","e","ו-");   // en hebreo la «y» es un prefijo: ו-יום ג׳, sin espacio después
+  return items.slice(0,-1).join(", ") + ` ${y}${y.endsWith("-") ? "" : " "}` + items[items.length-1];
 }
 
 // El control del composer: una sola línea ("🔁 No se repite") que abre
@@ -19913,7 +19914,7 @@ function renderRecurrenceField(d){
               "Esta repetición se armó en Google Calendar y es más específica que lo que se puede elegir acá. Si tocás una opción, se reemplaza.",
               "This repetition was set in Google Calendar and is more specific than what can be chosen here. Picking an option replaces it.",
               "Esta repetição foi feita no Google Calendar e é mais específica do que o que dá para escolher aqui. Se tocar numa opção, é substituída.",
-              ".החזרה הזו הוגדרה ב-Google Calendar והיא ספציפית יותר ממה שאפשר לבחור כאן. בחירה באפשרות תחליף אותה")}</div>` : ""}
+              "החזרה הזו הוגדרה ב-Google Calendar והיא ספציפית יותר ממה שאפשר לבחור כאן. בחירה באפשרות תחליף אותה.")}</div>` : ""}
           </div>
           ${semanal ? `
           <div class="recur-sect">
@@ -20385,7 +20386,7 @@ function renderCalendarioAgenda(anchor){
     return true;
   }) })).filter(d => d.lista.length);
   if(!dias.length && !largos.length){
-    return `<div class="empty-state"><div class="big">📅</div>${t("No hay eventos en este mes.","There are no events this month.","Não há eventos neste mês.",".אין אירועים בחודש הזה")}</div>`;
+    return `<div class="empty-state"><div class="big">📅</div>${t("No hay eventos en este mes.","There are no events this month.","Não há eventos neste mês.","אין אירועים בחודש הזה.")}</div>`;
   }
   const today = todayISO();
   const cuerpo = dias.length
@@ -20397,7 +20398,7 @@ function renderCalendarioAgenda(anchor){
         </div>
         <div class="agenda-events">${lista.map(p=>calendarioChip(p, iso, { hasta:true })).join("")}</div>
       </div>`).join("")}</div>`
-    : `<div class="empty-state"><div class="big">📅</div>${t("No hay otros eventos en este mes.","There are no other events this month.","Não há outros eventos neste mês.",".אין אירועים אחרים בחודש הזה")}</div>`;
+    : `<div class="empty-state"><div class="big">📅</div>${t("No hay otros eventos en este mes.","There are no other events this month.","Não há outros eventos neste mês.","אין אירועים אחרים בחודש הזה.")}</div>`;
   return renderEnCurso(largos) + cuerpo;
 }
 
@@ -20929,7 +20930,7 @@ function tourSteps(){
   return [
     inicio,
     { id:"composer", cubre:[], target: [".quick-composer"],
-      title: t("¿Qué hiciste hoy?","What did you do today?","O que você fez hoje?","?מה עשית היום"),
+      title: t("¿Qué hiciste hoy?","What did you do today?","O que você fez hoje?","מה עשית היום?"),
       text: t("Contá tu día en una línea. Podés sumarle lugar, foto, PDF o link. Sale al Feed al instante.",
         "Tell your day in one line. You can add a place, photo, PDF or link. It goes straight to the Feed.",
         "Conte seu dia em uma linha. Você pode somar lugar, foto, PDF ou link. Sai no Feed na hora.",
@@ -21435,7 +21436,7 @@ function renderComposer(){
     ${d.error ? `<div class="form-error">${esc(d.error)}</div>` : ""}
     <div class="modal-actions">
       <button type="button" class="btn-secondary" data-action="cancel-composer">${t("Cancelar","Cancel","Cancelar","ביטול")}</button>
-      <button type="submit" class="btn-primary" ${d.submitting ? "disabled" : ""}>${d.submitting ? t("Guardando…","Saving…","Salvando…","...שומר") : d.editingPost ? t("Guardar cambios","Save changes","Salvar alterações","שמירת השינויים") : t("Publicar","Post","Publicar","פרסום")}</button>
+      <button type="submit" class="btn-primary" ${d.submitting ? "disabled" : ""}>${d.submitting ? t("Guardando…","Saving…","Salvando…","שומר...") : d.editingPost ? t("Guardar cambios","Save changes","Salvar alterações","שמירת השינויים") : t("Publicar","Post","Publicar","פרסום")}</button>
     </div>
   `;
 }
@@ -21674,7 +21675,7 @@ function renderFilePreviewFrame(){
       <span>${esc(t("Este tipo de archivo no se puede mostrar acá. Bajalo con «Descargar» para abrirlo.","This kind of file can't be shown here. Get it with “Download” to open it.","Este tipo de arquivo não pode ser mostrado aqui. Baixe com «Baixar» para abri-lo.","אי אפשר להציג כאן סוג קובץ כזה. הורידו אותו עם «הורדה» כדי לפתוח."))}</span></div>`;
     return;
   }
-  filePreviewWord.innerHTML = `<div class="visor-aviso">${esc(t("Abriendo el documento…","Opening the document…","Abrindo o documento…","...פותח את המסמך"))}</div>`;
+  filePreviewWord.innerHTML = `<div class="visor-aviso">${esc(t("Abriendo el documento…","Opening the document…","Abrindo o documento…","פותח את המסמך..."))}</div>`;
   (async () => {
     try{
       const res = await fetch(item.dataUrl);
@@ -23342,7 +23343,7 @@ function textosDeLaTarjeta(d){
   };
 }
 function renderMiAnioView(){
-  if(!state.loaded) return `<div class="empty-state"><div class="big">⏳</div>${t("Cargando…","Loading…","Carregando…","...טוען")}</div>`;
+  if(!state.loaded) return `<div class="empty-state"><div class="big">⏳</div>${t("Cargando…","Loading…","Carregando…","טוען...")}</div>`;
   const anios = aniosConDatos();
   const actual = todayISO().slice(0, 4);
   if(!anios.includes(miAnio.anio)) miAnio.anio = anios.includes(actual) ? actual : anios[anios.length - 1];
@@ -23649,7 +23650,7 @@ async function bajarPlanillaDelInicio(){
       ? t("Se bajó {a} · {n}, con los filtros puestos.","Downloaded {a} · {n}, with the filters on.","Baixou {a} · {n}, com os filtros ligados.","{a} ירד · {n}, עם המסננים פעילים.",{ a: nombre, n: cuantasActividades(posts.length) })
       : t("Se bajó {a} · {n}.","Downloaded {a} · {n}.","Baixou {a} · {n}.","{a} ירד · {n}.",{ a: nombre, n: cuantasActividades(posts.length) }) });
   }catch(err){
-    appAlert(t("No se pudo armar la planilla ({m}).","Couldn't build the spreadsheet ({m}).","Não foi possível montar a planilha ({m}).","({m}) לא ניתן היה לבנות את הגיליון.",{ m: err.message }));
+    appAlert(t("No se pudo armar la planilla ({m}).","Couldn't build the spreadsheet ({m}).","Não foi possível montar a planilha ({m}).","לא ניתן היה לבנות את הגיליון ({m}).",{ m: err.message }));
   }finally{
     planillaBajando = false;
   }
@@ -23803,7 +23804,7 @@ async function cargarProblemas(){
 }
 const problemasNuevos = () => (problemasLista || []).filter(x => x.estado === "nuevo").length;
 function renderProblemasSection(){
-  if(problemasLista === null){ cargarProblemas(); return `<div class="settings-card"><div class="setting-row"><div class="setting-text"><div class="setting-sub">${t("Cargando…","Loading…","Carregando…","...טוען")}</div></div></div></div>`; }
+  if(problemasLista === null){ cargarProblemas(); return `<div class="settings-card"><div class="setting-row"><div class="setting-text"><div class="setting-sub">${t("Cargando…","Loading…","Carregando…","טוען...")}</div></div></div></div>`; }
   const todos = problemasLista;
   const de = origen => todos.filter(x => x.origen === origen);
   const lista = de(problemasTab).filter(x => problemasVerResueltos || x.estado !== "resuelto");
@@ -24622,7 +24623,7 @@ function renderHolidayCard(){
       "Solo lectura: sale del calendario público de Google, no se edita desde acá.",
       "Read-only: it comes from Google's public calendar, it can't be edited here.",
       "Somente leitura: vem do calendário público do Google, não se edita aqui.",
-      ".לקריאה בלבד: מגיע מהיומן הציבורי של Google ולא ניתן לעריכה כאן")) },
+      "לקריאה בלבד: מגיע מהיומן הציבורי של Google ולא ניתן לעריכה כאן.")) },
   ];
   // El resto de los feriados del mismo día, para poder saltar entre ellos
   // (un 1° de mayo puede ser feriado en varios países a la vez).
@@ -24643,7 +24644,7 @@ function renderHolidayCard(){
     <div class="ev-rows">
       ${rows.map(r=>`<div class="ev-row"><span class="ev-icon">${r.icon}</span><div class="ev-val">${r.html}</div></div>`).join("")}
       ${otros.length ? `<div class="ev-row"><span class="ev-icon">🎌</span><div class="ev-val">
-        ${t("Ese día también:","That day also:","Nesse dia também:",":באותו יום גם")}
+        ${t("Ese día también:","That day also:","Nesse dia também:","באותו יום גם:")}
         ${otros.map(({x,i})=>`<button type="button" class="ev-holiday-link" data-action="cal-open-holiday" data-date="${iso}" data-hi="${i}">${esc(x.name)}</button>`).join(" · ")}
       </div></div>` : ""}
     </div>
@@ -25064,7 +25065,7 @@ function getPlaceMatches(query){
     const country = COUNTRIES.find(c => normalize(c.name) === normalize(countryPart));
     if(cityPart && country){
       const city = titleCase(cityPart);
-      const label = t(`Usar "{place}" (lugar nuevo)`,`Use "{place}" (new place)`,`Usar "{place}" (lugar novo)`,`(מקום חדש) "{place}" שימוש ב-`,{place:`${city}, ${countryLabel(country.name)}`});
+      const label = t(`Usar "{place}" (lugar nuevo)`,`Use "{place}" (new place)`,`Usar "{place}" (lugar novo)`,`שימוש ב-"{place}" (מקום חדש)`,{place:`${city}, ${countryLabel(country.name)}`});
       return [{ label, icon:"➕", scope:{type:"ciudad", country:country.name, city}, isNew:true }];
     }
   }
@@ -25073,7 +25074,7 @@ function getPlaceMatches(query){
 function renderPlaceSuggestions(draft, scope, ownerId){
   const matches = getPlaceMatches(draft.placeQuery);
   if(!draft.placeQuery.trim()) return "";
-  if(!matches.length) return `<div class="autocomplete-list"><div class="autocomplete-empty">${t('Sin resultados. Para sumar un lugar nuevo, escribí "Ciudad, País".','No results. To add a new place, type "City, Country".','Sem resultados. Para somar um lugar novo, escreva "Cidade, País".','.אין תוצאות. כדי להוסיף מקום חדש, הקלד/י "עיר, מדינה"')}</div></div>`;
+  if(!matches.length) return `<div class="autocomplete-list"><div class="autocomplete-empty">${t('Sin resultados. Para sumar un lugar nuevo, escribí "Ciudad, País".','No results. To add a new place, type "City, Country".','Sem resultados. Para somar um lugar novo, escreva "Cidade, País".','אין תוצאות. כדי להוסיף מקום חדש, הקלד/י "עיר, מדינה".')}</div></div>`;
   return `<div class="autocomplete-list">${matches.map((it,i)=>`
     <button type="button" class="autocomplete-option${it.isNew?" autocomplete-option-new":""}${i===draft.placeHighlight?" active":""}" data-action="pick-place" data-scope="${scope}" data-owner-id="${esc(ownerId)}" data-match-idx="${i}">${esc(it.icon)} ${esc(it.label)}</button>`).join("")}</div>`;
 }
@@ -25126,10 +25127,10 @@ async function fetchLocationSuggestions(draft, query){
 }
 function renderLocationSuggestions(draft){
   if(draft.locationSuggestions == null) return "";
-  if(!draft.locationSuggestions.length) return `<div class="autocomplete-list"><div class="autocomplete-empty">${t("Sin resultados. Podés escribirlo igual: se guarda como texto.","No results. You can still type it in: it saves as plain text.","Sem resultados. Pode escrever assim mesmo: salva como texto.",".אין תוצאות. אפשר להקליד בכל זאת: זה נשמר כטקסט")}</div></div>`;
+  if(!draft.locationSuggestions.length) return `<div class="autocomplete-list"><div class="autocomplete-empty">${t("Sin resultados. Podés escribirlo igual: se guarda como texto.","No results. You can still type it in: it saves as plain text.","Sem resultados. Pode escrever assim mesmo: salva como texto.","אין תוצאות. אפשר להקליד בכל זאת: זה נשמר כטקסט.")}</div></div>`;
   return `<div class="autocomplete-list">${draft.locationSuggestions.map((it,i)=>`
     <button type="button" class="autocomplete-option${i===draft.locationHighlight?" active":""}" data-action="pick-location" data-match-idx="${i}">📍 ${esc(it.label)}</button>`).join("")}
-    <div class="autocomplete-empty">${t("Direcciones de OpenStreetMap","Addresses from OpenStreetMap","Endereços do OpenStreetMap","(מ-OpenStreetMap (כתובות")}</div></div>`;
+    <div class="autocomplete-empty">${t("Direcciones de OpenStreetMap","Addresses from OpenStreetMap","Endereços do OpenStreetMap","כתובות מ-OpenStreetMap")}</div></div>`;
 }
 function selectLocationMatch(match){
   if(!match) return;
@@ -25239,13 +25240,13 @@ function renderParticipantsField(draft){
   return `
     <div class="participants-field">
       ${draft.participants.length ? `<div class="participants-row">${draft.participants.map((p,i)=>renderParticipantChip(p,i)).join("")}</div>` : ""}
-      <input type="text" id="cParticipantQuery" class="field-icon-input" placeholder="${esc(t("Sumar participante (nombre o email)...","Add participant (name or email)...","Somar participante (nome ou email)...","(הוספת משתתף/ת (שם או אימייל..."))}" autocomplete="off" value="${esc(draft.participantQuery)}">
+      <input type="text" id="cParticipantQuery" class="field-icon-input" placeholder="${esc(t("Sumar participante (nombre o email)...","Add participant (name or email)...","Somar participante (nome ou email)...","הוספת משתתף/ת (שם או אימייל)..."))}" autocomplete="off" value="${esc(draft.participantQuery)}">
       ${draft.participantQuery ? renderParticipantSuggestions(draft) : ""}
       ${draft.legacyOrganizer ? `<div class="hint" style="margin-top:4px;">${t(
         `Antes decía "Creado por: {name}" — se reemplaza al guardar por lo que sumes acá.`,
         `It used to say "Created by: {name}" — it gets replaced when you save by whoever you add here.`,
         `Antes dizia "Criado por: {name}" — é substituído ao salvar pelo que você somar aqui.`,
-        `.{name} :קודם היה כתוב "נוצר על ידי" — זה יוחלף בשמירה במה שתוסיף/י כאן`,
+        `קודם היה כתוב "נוצר על ידי: {name}" — זה יוחלף בשמירה במה שתוסיף/י כאן.`,
         { name: esc(draft.legacyOrganizer) }
       )}</div>` : ""}
     </div>`;
@@ -25792,7 +25793,7 @@ document.addEventListener("click", async e=>{
       if(ya) showCalendarNotice({ ok:true, message: t("«{n}» ya estaba: es esta ficha.","“{n}” was already there: this is their record.","«{n}» já existia: é esta ficha.","«{n}» כבר היה/תה: זהו הכרטיס.",{n: ya.name}) });
     }catch(err){
       console.error("No se pudo crear la persona:", err);
-      appAlert(t("No se pudo crear: {m}","Couldn't create: {m}","Não foi possível criar: {m}","{m} :לא ניתן היה ליצור",{m: err.message}));
+      appAlert(t("No se pudo crear: {m}","Couldn't create: {m}","Não foi possível criar: {m}","לא ניתן היה ליצור: {m}",{m: err.message}));
     }
   },
     "persona-unir": async (el, e, action, postId) => {
@@ -25807,7 +25808,7 @@ document.addEventListener("click", async e=>{
       showCalendarNotice({ ok:true, message: t("Listo: «{a}» es «{b}» en {n}.","Done: “{a}” is “{b}” in {n}.","Pronto: «{a}» é «{b}» em {n}.","בוצע: «{a}» הוא/היא «{b}» ב-{n}.",{a: x.name, b: y.name, n: cuantasActividades(n)}) });
     }catch(err){
       console.error("No se pudo unir:", err);
-      appAlert(t("No se pudo unir: {m}","Couldn't merge: {m}","Não foi possível unir: {m}","{m} :לא ניתן היה לאחד",{m: err.message}));
+      appAlert(t("No se pudo unir: {m}","Couldn't merge: {m}","Não foi possível unir: {m}","לא ניתן היה לאחד: {m}",{m: err.message}));
     }finally{ personaOcupada = false; render(); }
   },
     "persona-vincular": async (el, e, action, postId) => {
@@ -25822,7 +25823,7 @@ document.addEventListener("click", async e=>{
       showCalendarNotice({ ok:true, message: t("Listo: «{a}» es {b} en {n}.","Done: “{a}” is {b} in {n}.","Pronto: «{a}» é {b} em {n}.","בוצע: «{a}» הוא/היא {b} ב-{n}.",{a: x.name, b: nombreDe(m), n: cuantasActividades(n)}) });
     }catch(err){
       console.error("No se pudo vincular:", err);
-      appAlert(t("No se pudo vincular: {m}","Couldn't link: {m}","Não foi possível vincular: {m}","{m} :לא ניתן היה לקשר",{m: err.message}));
+      appAlert(t("No se pudo vincular: {m}","Couldn't link: {m}","Não foi possível vincular: {m}","לא ניתן היה לקשר: {m}",{m: err.message}));
     }finally{ personaOcupada = false; render(); }
   },
     "persona-borrar": async (el, e, action, postId) => {
@@ -25831,7 +25832,7 @@ document.addEventListener("click", async e=>{
     if(!(await appConfirm(t("¿Borrar la ficha de «{n}»? No figura en ningún evento.","Delete “{n}”'s record? They're not in any event.","Apagar a ficha de «{n}»? Não aparece em nenhum evento.","למחוק את הכרטיס של «{n}»? לא מופיע/ה בשום אירוע.",{n: x.name}), { danger:true, okLabel: t("Borrar","Delete","Apagar","מחיקה") }))) return;
     personaOcupada = true; render();
     try{ await store.personas.remove(x.id); personaAbierta = null; }
-    catch(err){ console.error(err); appAlert(t("No se pudo borrar: {m}","Couldn't delete: {m}","Não foi possível apagar: {m}","{m} :לא ניתן היה למחוק",{m: err.message})); }
+    catch(err){ console.error(err); appAlert(t("No se pudo borrar: {m}","Couldn't delete: {m}","Não foi possível apagar: {m}","לא ניתן היה למחוק: {m}",{m: err.message})); }
     finally{ personaOcupada = false; render(); }
   },
     "aprobar-y-vincular": async (el, e, action, postId) => {
@@ -25842,7 +25843,7 @@ document.addEventListener("click", async e=>{
       // no, se vincula acá por el nombre que confirmó el admin.
       if(personaPorId(id)){ try{ await store.personas.vincular(id, email); }catch(err){ if(!/no existe/i.test(err.message || "")) throw err; } }
       shareCalendarWith(email, { silentOnly:true }).catch(()=>{});
-    }).catch(err => { console.error(err); appAlert(t("No se pudo aprobar: {m}","Couldn't approve: {m}","Não foi possível aprovar: {m}","{m} :לא ניתן היה לאשר",{m: err.message})); });
+    }).catch(err => { console.error(err); appAlert(t("No se pudo aprobar: {m}","Couldn't approve: {m}","Não foi possível aprovar: {m}","לא ניתן היה לאשר: {m}",{m: err.message})); });
   },
     "parecido-no": async (el, e, action, postId) => {
     parecidosDescartados.add(el.dataset.email); render();
@@ -26437,7 +26438,7 @@ document.addEventListener("click", async e=>{
         ? t("Listo: revisá tu correo (y Spam, la primera vez).","Done: check your inbox (and Spam, the first time).","Pronto: confira seu e-mail (e o Spam, da primeira vez).","בוצע: בדקו את תיבת הדואר (וגם ספאם, בפעם הראשונה).")
         : t("No salió: se puede pedir uno cada 10 minutos.","Not sent: you can ask for one every 10 minutes.","Não saiu: dá para pedir um a cada 10 minutos.","לא נשלח: אפשר לבקש אחד כל 10 דקות.");
     }catch(err){
-      correoPrueba.msg = t("No se pudo mandar ({m}).","Couldn't send it ({m}).","Não foi possível enviar ({m}).","({m}) לא ניתן היה לשלוח.",{ m: err.message });
+      correoPrueba.msg = t("No se pudo mandar ({m}).","Couldn't send it ({m}).","Não foi possível enviar ({m}).","לא ניתן היה לשלוח ({m}).",{ m: err.message });
     }finally{ correoPrueba.mandando = false; render(); }
   },
     "correos-quienes": async (el, e, action, postId) => {
@@ -26467,7 +26468,7 @@ document.addEventListener("click", async e=>{
         ? t("Listo: revisá tu correo (y Spam, la primera vez).","Done: check your inbox (and Spam, the first time).","Pronto: confira seu e-mail (e o Spam, da primeira vez).","בוצע: בדקו את תיבת הדואר (ואת הספאם, בפעם הראשונה).")
         : t("No salió: se puede pedir uno por minuto y hasta 5 por día.","Not sent: you can ask for one per minute and up to 5 per day.","Não saiu: dá para pedir um por minuto e até 5 por dia.","לא נשלח: אפשר לבקש אחד בדקה ועד 5 ביום.");
     }catch(err){
-      informePrueba.msg = t("No se pudo mandar ({m}).","Couldn't send it ({m}).","Não foi possível enviar ({m}).","({m}) לא ניתן היה לשלוח.",{ m: err.message });
+      informePrueba.msg = t("No se pudo mandar ({m}).","Couldn't send it ({m}).","Não foi possível enviar ({m}).","לא ניתן היה לשלוח ({m}).",{ m: err.message });
     }finally{ informePrueba.mandando = false; render(); }
   },
     "correos-elegir": async (el, e, action, postId) => {
@@ -26633,7 +26634,7 @@ document.addEventListener("click", async e=>{
       "¿El {d} no se hace? Queda fuera del Calendario (también del compartido), pero los comentarios de ese día no se borran.",
       "Not happening on {d}? It comes off the Calendar (the shared one too), but that day's comments aren't deleted.",
       "No dia {d} não acontece? Sai do Calendário (também do compartilhado), mas os comentários desse dia não são apagados.",
-      ".לא מתקיים ב-{d}? יורד מהיומן (גם מהמשותף), אך התגובות של אותו יום לא נמחקות",
+      "לא מתקיים ב-{d}? יורד מהיומן (גם מהמשותף), אך התגובות של אותו יום לא נמחקות.",
       { d: fmtDate(occurrenceDateOf(post, iso)) }));
     if(!ok) return;
     closeOccPops();
@@ -26927,7 +26928,7 @@ document.addEventListener("click", async e=>{
       showCalendarNotice(res.ok
         ? { ok:true, message: t("Se reenvió la invitación del Calendar a {email}.","The Calendar invite was resent to {email}.","O convite do Calendar foi reenviado para {email}.","הזמנת היומן נשלחה מחדש אל {email}.",{email}) }
         : { ok:false, message: t("No se pudo reenviar la invitación a {email} ({reason}).","Couldn't resend the invite to {email} ({reason}).","Não foi possível reenviar o convite para {email} ({reason}).","לא ניתן היה לשלוח מחדש את ההזמנה אל {email} ({reason}).",{email,reason:res.reason}) });
-    }).catch(err=>{ console.error(err); appAlert(t("No se pudo reenviar la invitación: {msg}","Couldn't resend the invite: {msg}","Não foi possível reenviar o convite: {msg}","{msg} :לא ניתן היה לשלוח מחדש את ההזמנה",{msg:err.message})); });
+    }).catch(err=>{ console.error(err); appAlert(t("No se pudo reenviar la invitación: {msg}","Couldn't resend the invite: {msg}","Não foi possível reenviar o convite: {msg}","לא ניתן היה לשלוח מחדש את ההזמנה: {msg}",{msg:err.message})); });
   },
     "sign-out": async (el, e, action, postId) => {
     userMenuOpen = false;
@@ -26954,7 +26955,7 @@ document.addEventListener("click", async e=>{
             `{email} já pode usar o app. Para compartilhar também o Calendar, use "Compartilhar Calendar" na ficha em Usuários.`,
             `{email} יכול/ה כעת להשתמש באפליקציה. כדי לשתף גם את היומן, השתמש/י ב"שיתוף היומן" בכרטיס שלו/ה במשתמשים.`,
             { email }) });
-    }).catch(err=>{ console.error(err); appAlert(t("No se pudo aprobar: {msg}","Couldn't approve: {msg}","Não foi possível aprovar: {msg}","{msg} :האישור נכשל",{msg:err.message})); }));
+    }).catch(err=>{ console.error(err); appAlert(t("No se pudo aprobar: {msg}","Couldn't approve: {msg}","Não foi possível aprovar: {msg}","האישור נכשל: {msg}",{msg:err.message})); }));
   },
     "unshare-calendar": async (el, e, action, postId) => {
     const email = el.dataset.email;
@@ -26962,7 +26963,7 @@ document.addEventListener("click", async e=>{
       showCalendarNotice(res.ok
         ? { ok:true, message: t("Se sacó a {email} del Calendar compartido.","{email} was removed from the shared Calendar.","{email} foi tirado do Calendar compartilhado.","{email} הוסר/ה מהיומן המשותף.",{email}) }
         : { ok:false, message: t("No se pudo sacar a {email} del Calendar ({reason}).","Couldn't remove {email} from the Calendar ({reason}).","Não foi possível tirar {email} do Calendar ({reason}).","לא ניתן היה להסיר את {email} מהיומן ({reason}).",{email,reason:res.reason}) });
-    }).catch(err=>{ console.error(err); appAlert(t("No se pudo sacar del Calendar: {msg}","Couldn't remove from the Calendar: {msg}","Não foi possível tirar do Calendar: {msg}","{msg} :ההסרה מהיומן נכשלה",{msg:err.message})); });
+    }).catch(err=>{ console.error(err); appAlert(t("No se pudo sacar del Calendar: {msg}","Couldn't remove from the Calendar: {msg}","Não foi possível tirar do Calendar: {msg}","ההסרה מהיומן נכשלה: {msg}",{msg:err.message})); });
   },
     "share-calendar": async (el, e, action, postId) => {
     const email = el.dataset.email;
@@ -26970,12 +26971,12 @@ document.addEventListener("click", async e=>{
       showCalendarNotice(res.ok
         ? { ok:true, message: t("Se compartió el Calendar con {email}.","The Calendar was shared with {email}.","O Calendar foi compartilhado com {email}.","היומן שותף עם {email}.",{email}) }
         : { ok:false, message: t("No se pudo compartir el Calendar con {email} ({reason}).","Couldn't share the Calendar with {email} ({reason}).","Não foi possível compartilhar o Calendar com {email} ({reason}).","לא ניתן היה לשתף את היומן עם {email} ({reason}).",{email,reason:res.reason}) });
-    }).catch(err=>{ console.error(err); appAlert(t("No se pudo compartir: {msg}","Couldn't share: {msg}","Não foi possível compartilhar: {msg}","{msg} :השיתוף נכשל",{msg:err.message})); });
+    }).catch(err=>{ console.error(err); appAlert(t("No se pudo compartir: {msg}","Couldn't share: {msg}","Não foi possível compartilhar: {msg}","השיתוף נכשל: {msg}",{msg:err.message})); });
   },
     "reject-request": async (el, e, action, postId) => {
     const email = el.dataset.email;
     await withRosterGuard(email, ()=>
-    rejectRequest(email).catch(err=>{ console.error(err); appAlert(t("No se pudo rechazar: {msg}","Couldn't reject: {msg}","Não foi possível rejeitar: {msg}","{msg} :הדחייה נכשלה",{msg:err.message})); }));
+    rejectRequest(email).catch(err=>{ console.error(err); appAlert(t("No se pudo rechazar: {msg}","Couldn't reject: {msg}","Não foi possível rejeitar: {msg}","הדחייה נכשלה: {msg}",{msg:err.message})); }));
   },
     // Borra una solicitud RECHAZADA de la lista. Lo importante, y por eso
     // se avisa: la solicitud es lo que hace que esa persona vea "tu acceso
@@ -26991,7 +26992,7 @@ document.addEventListener("click", async e=>{
       t("¿Borrar el pedido de {email}? Va a poder pedir acceso de nuevo, en vez de ver que se lo rechazaste.",
         "Delete {email}'s request? They'll be able to request access again, instead of seeing it was rejected.",
         "Apagar o pedido de {email}? Vai poder pedir acesso de novo, em vez de ver que foi recusado.",
-        "?{email} למחוק את הבקשה של. הוא/היא יוכל/תוכל לבקש גישה שוב, במקום לראות שנדחתה",
+        "למחוק את הבקשה של {email}? הוא/היא יוכל/תוכל לבקש גישה שוב, במקום לראות שנדחתה.",
         { email }),
       { danger:true, okLabel: t("Borrar","Delete","Apagar","מחיקה") });
     if(!ok) return;
@@ -27000,7 +27001,7 @@ document.addEventListener("click", async e=>{
         await store.accessRequests.remove(email);
       }catch(err){
         console.error(err);
-        await appAlert(t("No se pudo borrar: {msg}","Couldn't delete: {msg}","Não foi possível apagar: {msg}","{msg} :המחיקה נכשלה",{msg:err.message}));
+        await appAlert(t("No se pudo borrar: {msg}","Couldn't delete: {msg}","Não foi possível apagar: {msg}","המחיקה נכשלה: {msg}",{msg:err.message}));
       }
     });
   },
@@ -27019,19 +27020,19 @@ document.addEventListener("click", async e=>{
           "Dejó 1 posteo: va a quedar firmado con su nombre de Google, sin @{nick} ni perfil.",
           "They left 1 post: it will be signed with their Google name, without @{nick} or a profile.",
           "Deixou 1 postagem: vai ficar assinada com o nome do Google, sem @{nick} nem perfil.",
-          ".פוסט אחד שהשאיר/ה ייחתם בשם מ-Google, בלי @{nick} ובלי פרופיל", { n:posteos, nick:String(u.nickname||"").toLowerCase() }
+          "פוסט אחד שהשאיר/ה ייחתם בשם מ-Google, בלי @{nick} ובלי פרופיל.", { n:posteos, nick:String(u.nickname||"").toLowerCase() }
         ) : t(
           "Dejó {n} posteos: van a quedar firmados con su nombre de Google, sin @{nick} ni perfil.",
           "They left {n} posts: those will be signed with their Google name, without @{nick} or a profile.",
           "Deixou {n} postagens: vão ficar assinadas com o nome do Google, sem @{nick} nem perfil.",
-          ".{n} פוסטים שהשאיר/ה ייחתמו בשם מ-Google, בלי @{nick} ובלי פרופיל", { n:posteos, nick:String(u.nickname||"").toLowerCase() }
+          "{n} פוסטים שהשאיר/ה ייחתמו בשם מ-Google, בלי @{nick} ובלי פרופיל.", { n:posteos, nick:String(u.nickname||"").toLowerCase() }
         ))
-      : t("No dejó posteos.","They left no posts.","Não deixou postagens.",".לא השאיר/ה פוסטים");
+      : t("No dejó posteos.","They left no posts.","Não deixou postagens.","לא השאיר/ה פוסטים.");
     const ok = await appConfirm(
       t("¿Borrar a {email} de la lista de ex integrantes? Es para siempre. {aviso}",
         "Remove {email} from the former members list? This is permanent. {aviso}",
         "Apagar {email} da lista de ex-integrantes? É para sempre. {aviso}",
-        "?{email} למחוק את מהרשימה של חברים לשעבר. זה לתמיד. {aviso}",
+        "למחוק את {email} מהרשימה של חברים לשעבר? זה לתמיד. {aviso}",
         { email, aviso }),
       { danger:true, okLabel: t("Borrar","Remove","Apagar","מחיקה") });
     if(!ok) return;
@@ -27040,7 +27041,7 @@ document.addEventListener("click", async e=>{
         await store.formerMembers.remove(email);
       }catch(err){
         console.error(err);
-        await appAlert(t("No se pudo borrar: {msg}","Couldn't remove: {msg}","Não foi possível apagar: {msg}","{msg} :המחיקה נכשלה",{msg:err.message}));
+        await appAlert(t("No se pudo borrar: {msg}","Couldn't remove: {msg}","Não foi possível apagar: {msg}","המחיקה נכשלה: {msg}",{msg:err.message}));
       }
     });
   },
@@ -27084,7 +27085,7 @@ document.addEventListener("click", async e=>{
       `¿Revocar el acceso de {email}? Va a dejar de poder ver y cargar posteos, y se le saca el acceso al Calendar compartido de LatAm.`,
       `Revoke {email}'s access? They'll no longer be able to see or post, and their access to LatAm's shared Calendar will be removed.`,
       `Revogar o acesso de {email}? Vai deixar de poder ver e postar, e o acesso ao Calendar compartilhado da LatAm será removido.`,
-      `?{email} לבטל את הגישה של. הוא/היא לא יוכלו יותר לראות או לפרסם, והגישה ליומן המשותף של LatAm תוסר`,
+      `לבטל את הגישה של {email}? הוא/היא לא יוכלו יותר לראות או לפרסם, והגישה ליומן המשותף של LatAm תוסר.`,
       { email }
     ), { danger:true, okLabel: t("Revocar acceso","Revoke access","Revogar acesso","ביטול הגישה") })){
       await withRosterGuard(email, ()=>
@@ -27097,21 +27098,21 @@ document.addEventListener("click", async e=>{
               `O acesso de {email} ao app foi revogado, mas o Calendar segue compartilhado: termine com "Tirar do Calendar", em Solicitações > Ex-integrantes.`,
               `הגישה של {email} לאפליקציה בוטלה, אך היומן עדיין משותף: סיים/י עם "הסרה מהיומן", בבקשות > חברים לשעבר.`,
               { email }) });
-      }).catch(err=>{ console.error(err); appAlert(t("No se pudo revocar: {msg}","Couldn't revoke: {msg}","Não foi possível revogar: {msg}","{msg} :הביטול נכשל",{msg:err.message})); }));
+      }).catch(err=>{ console.error(err); appAlert(t("No se pudo revocar: {msg}","Couldn't revoke: {msg}","Não foi possível revogar: {msg}","הביטול נכשל: {msg}",{msg:err.message})); }));
     }
   },
     "zonas-remove-zone": async (el, e, action, postId) => {
     const d = getZonasDraft();
     const key = el.dataset.key;
     const inUse = Object.values(d.countryZones).some(z=>z===key);
-    if(inUse){ d.error = t("Reasigná primero los países que están en esta zona.","First reassign the countries in this zone.","Reatribua primeiro os países desta zona.",".קודם הקצה/י מחדש את המדינות באזור הזה"); render(); return; }
+    if(inUse){ d.error = t("Reasigná primero los países que están en esta zona.","First reassign the countries in this zone.","Reatribua primeiro os países desta zona.","קודם הקצה/י מחדש את המדינות באזור הזה."); render(); return; }
     // Aunque no le queden países, puede haber posteos/respuestas con
     // alcance "Región X" apuntando a esta zona: sin la zona, ese alcance
     // quedaría mostrando la key cruda para siempre.
     const usedByPosts = state.posts.some(p =>
       (p.scopes||[]).some(sc=>sc.type==="region" && sc.region===key) ||
       (state.repliesByPost[p.id]||[]).some(r=>(r.scopes||[]).some(sc=>sc.type==="region" && sc.region===key)));
-    if(usedByPosts){ d.error = t("Hay posteos con alcance en esta zona; no se puede borrar.","There are posts scoped to this zone; it can't be deleted.","Há postagens com alcance nesta zona; não dá para excluí-la.",".יש פוסטים שמשויכים לאזור הזה; אי אפשר למחוק אותו"); render(); return; }
+    if(usedByPosts){ d.error = t("Hay posteos con alcance en esta zona; no se puede borrar.","There are posts scoped to this zone; it can't be deleted.","Há postagens com alcance nesta zona; não dá para excluí-la.","יש פוסטים שמשויכים לאזור הזה; אי אפשר למחוק אותו."); render(); return; }
     delete d.zones[key];
     d.zoneOrder = d.zoneOrder.filter(k=>k!==key);
     d.error = "";
@@ -27120,7 +27121,7 @@ document.addEventListener("click", async e=>{
     "zonas-add-zone": async (el, e, action, postId) => {
     const d = getZonasDraft();
     const label = d.newZoneLabel.trim();
-    if(!label){ d.error = t("Escribí un nombre para la zona nueva.","Type a name for the new zone.","Escreva um nome para a zona nova.",".הקלד/י שם לאזור החדש"); render(); return; }
+    if(!label){ d.error = t("Escribí un nombre para la zona nueva.","Type a name for the new zone.","Escreva um nome para a zona nova.","הקלד/י שם לאזור החדש."); render(); return; }
     // Mismo control que en Tipos de actividad: sin esto se podían crear dos
     // zonas "Norte" (con claves distintas, norte y norte2, pero idénticas en
     // pantalla) y no había forma de distinguirlas después.
@@ -27174,7 +27175,7 @@ document.addEventListener("click", async e=>{
     const d = getZonasDraft();
     // Mismos controles que tipos-save, que acá no existían: se podía dejar
     // una zona sin nombre, o renombrar dos con el mismo, y se guardaba.
-    if(!d.zoneOrder.length){ d.error = t("Tiene que quedar al menos una zona.","At least one zone has to remain.","Tem que sobrar pelo menos uma zona.",".חייב להישאר לפחות אזור אחד"); render(); return; }
+    if(!d.zoneOrder.length){ d.error = t("Tiene que quedar al menos una zona.","At least one zone has to remain.","Tem que sobrar pelo menos uma zona.","חייב להישאר לפחות אזור אחד."); render(); return; }
     const seenZones = new Set();
     for(const k of d.zoneOrder){
       const z = d.zones[k]; if(!z) continue;
@@ -27188,7 +27189,7 @@ document.addEventListener("click", async e=>{
       d.saving = false; render();
     }).catch(err=>{
       console.error(err);
-      d.saving = false; d.error = t("No se pudo guardar: {msg}","Couldn't save: {msg}","Não foi possível salvar: {msg}","{msg} :השמירה נכשלה",{msg:err.message}); render();
+      d.saving = false; d.error = t("No se pudo guardar: {msg}","Couldn't save: {msg}","Não foi possível salvar: {msg}","השמירה נכשלה: {msg}",{msg:err.message}); render();
     });
   },
     "tipos-remove": async (el, e, action, postId) => {
@@ -27203,7 +27204,7 @@ document.addEventListener("click", async e=>{
     "tipos-add": async (el, e, action, postId) => {
     const d = getTiposDraft();
     const label = d.newLabel.trim();
-    if(!label){ d.error = t("Escribí un nombre para el tipo nuevo.","Type a name for the new type.","Escreva um nome para o tipo novo.",".הקלד/י שם לסוג החדש"); render(); return; }
+    if(!label){ d.error = t("Escribí un nombre para el tipo nuevo.","Type a name for the new type.","Escreva um nome para o tipo novo.","הקלד/י שם לסוג החדש."); render(); return; }
     // Ni un tipo que ya existe (mismo nombre, sin importar mayúsculas ni
     // acentos) ni "Rutina", que es aparte y no se edita acá.
     const norm = normalize(label);
@@ -27297,7 +27298,7 @@ document.addEventListener("click", async e=>{
 
     "tipos-save": async (el, e, action, postId) => {
     const d = getTiposDraft();
-    if(!d.types.length){ d.error = t("Tiene que quedar al menos un tipo de actividad.","At least one activity type has to remain.","Tem que sobrar pelo menos um tipo de atividade.",".חייב להישאר לפחות סוג פעילות אחד"); render(); return; }
+    if(!d.types.length){ d.error = t("Tiene que quedar al menos un tipo de actividad.","At least one activity type has to remain.","Tem que sobrar pelo menos um tipo de atividade.","חייב להישאר לפחות סוג פעילות אחד."); render(); return; }
     if(!d.types.some(ty => !ty.archived)){ d.error = t("Tiene que quedar al menos un tipo sin archivar, para poder cargar eventos.","At least one type has to stay unarchived, to be able to log events.","Tem que sobrar pelo menos um tipo sem arquivar, para poder criar eventos.","חייב להישאר לפחות סוג אחד שלא בארכיון, כדי שאפשר יהיה לרשום אירועים."); render(); return; }
     // Mismo control que al agregar, pero sobre los renombres: dos tipos
     // con el mismo nombre, o uno llamado "Rutina", no se guardan.
@@ -27317,12 +27318,12 @@ document.addEventListener("click", async e=>{
       d.saving = false; d.original = JSON.stringify(d.types); render();
     }).catch(err=>{
       console.error(err);
-      d.saving = false; d.error = t("No se pudo guardar: {msg}","Couldn't save: {msg}","Não foi possível salvar: {msg}","{msg} :השמירה נכשלה",{msg:err.message}); render();
+      d.saving = false; d.error = t("No se pudo guardar: {msg}","Couldn't save: {msg}","Não foi possível salvar: {msg}","השמירה נכשלה: {msg}",{msg:err.message}); render();
     });
   },
     "lugares-promote": async (el, e, action, postId) => {
     promoteCustomCity(el.dataset.country, el.dataset.city).then(render).catch(err=>{
-      console.error(err); appAlert(t("No se pudo sumar el lugar: {msg}","Couldn't add the place: {msg}","Não foi possível somar o lugar: {msg}","{msg} :לא ניתן היה להוסיף את המקום",{msg:err.message}));
+      console.error(err); appAlert(t("No se pudo sumar el lugar: {msg}","Couldn't add the place: {msg}","Não foi possível somar o lugar: {msg}","לא ניתן היה להוסיף את המקום: {msg}",{msg:err.message}));
     });
   },
     "color-open": async (el, e, action, postId) => {
@@ -27363,7 +27364,7 @@ document.addEventListener("click", async e=>{
     store.config.merge("preferences", { calendarImportFrom: v || null }).then(()=>{
       d.importSaving = false; render();
       showCalendarNotice({ ok:true, message: v ? t("Se importa desde el {d}. Para traer lo anterior que falte, usá «Reimportar historial».","Importing from {d}. To bring in anything missing before that, use “Reimport history”.","Importa-se desde {d}. Para trazer o que falte de antes, use «Reimportar histórico».","מייבאים מ-{d}. כדי להביא מה שחסר, השתמש/י ב«ייבוא מחדש של ההיסטוריה».",{d:fmtDate(v)}) : t("Se importa todo el historial. Para traer lo que falte, usá «Reimportar historial».","Importing the whole history. To bring in what's missing, use “Reimport history”.","Importa-se todo o histórico. Para trazer o que falte, use «Reimportar histórico».","מייבאים את כל ההיסטוריה. כדי להביא מה שחסר, השתמש/י ב«ייבוא מחדש של ההיסטוריה».") });
-    }).catch(err=>{ d.importSaving = false; d.error = t("No se pudo guardar: {msg}","Couldn't save: {msg}","Não foi possível salvar: {msg}","{msg} :השמירה נכשלה",{msg:err.message}); render(); });
+    }).catch(err=>{ d.importSaving = false; d.error = t("No se pudo guardar: {msg}","Couldn't save: {msg}","Não foi possível salvar: {msg}","השמירה נכשלה: {msg}",{msg:err.message}); render(); });
   },
     "calendar-reimport-cancel": async (el, e, action, postId) => {
     const d = getCalendarDraft(); d.confirmWord = null; d.confirmMode = null; d.typed = ""; render();
@@ -27382,13 +27383,13 @@ document.addEventListener("click", async e=>{
     // Sin token, la próxima lectura es completa desde CALENDAR_IMPORT_FROM.
     setSyncMeta({ syncToken: null }).then(()=> syncFromCalendar({ silent:false })).then(()=>{
       d.reimporting = false; render();
-    }).catch(err=>{ d.reimporting = false; d.error = t("No se pudo reimportar: {msg}","Couldn't reimport: {msg}","Não foi possível reimportar: {msg}","{msg} :הייבוא מחדש נכשל",{msg:err.message}); render(); });
+    }).catch(err=>{ d.reimporting = false; d.error = t("No se pudo reimportar: {msg}","Couldn't reimport: {msg}","Não foi possível reimportar: {msg}","הייבוא מחדש נכשל: {msg}",{msg:err.message}); render(); });
   },
     "calendar-save": async (el, e, action, postId) => {
     const d = getCalendarDraft();
     if(d.confirmMode === "reimport"){ d.confirmWord = null; d.confirmMode = null; d.typed = ""; }
     const id = d.calendarId.trim();
-    if(!id){ d.error = t("Escribí el ID del calendario.","Type the calendar ID.","Escreva o ID do calendário.",".הקלד/י את מזהה היומן"); render(); return; }
+    if(!id){ d.error = t("Escribí el ID del calendario.","Type the calendar ID.","Escreva o ID do calendário.","הקלד/י את מזהה היומן."); render(); return; }
     // Sin cambio real no hay nada que confirmar: se vuelve a bloquear.
     if(id === CALENDAR_ID){ calendarDraft = null; render(); return; }
     // Primer click: se pide la palabra. Segundo click (con la palabra
@@ -27413,7 +27414,7 @@ document.addEventListener("click", async e=>{
       showCalendarNotice({ ok:true, message: t("Calendario cambiado. Los eventos nuevos van a ir ahí.","Calendar changed. New events will go there.","Calendário trocado. Os eventos novos vão para lá.","היומן הוחלף. אירועים חדשים יעברו לשם.") });
     }).catch(err=>{
       console.error(err);
-      d.saving = false; d.error = t("No se pudo guardar: {msg}","Couldn't save: {msg}","Não foi possível salvar: {msg}","{msg} :השמירה נכשלה",{msg:err.message}); render();
+      d.saving = false; d.error = t("No se pudo guardar: {msg}","Couldn't save: {msg}","Não foi possível salvar: {msg}","השמירה נכשלה: {msg}",{msg:err.message}); render();
     });
   },
     "adjuntos-reset": async (el, e, action, postId) => {
@@ -27431,7 +27432,7 @@ document.addEventListener("click", async e=>{
       d.saving = false; render();
     }).catch(err=>{
       console.error(err);
-      d.saving = false; d.error = t("No se pudo guardar: {msg}","Couldn't save: {msg}","Não foi possível salvar: {msg}","{msg} :השמירה נכשלה",{msg:err.message}); render();
+      d.saving = false; d.error = t("No se pudo guardar: {msg}","Couldn't save: {msg}","Não foi possível salvar: {msg}","השמירה נכשלה: {msg}",{msg:err.message}); render();
     });
   },
   };
@@ -27606,7 +27607,7 @@ document.addEventListener("change", e=>{
       el.value = x.email || ""; return;
     }
     store.personas.update(id, { [campo]: valor.slice(0, campo === "note" ? 300 : campo === "email" ? 200 : 120) || null })
-      .catch(err => { console.error("No se pudo guardar la ficha:", err); appAlert(t("No se pudo guardar: {m}","Couldn't save: {m}","Não foi possível salvar: {m}","{m} :לא ניתן היה לשמור",{m: err.message})); });
+      .catch(err => { console.error("No se pudo guardar la ficha:", err); appAlert(t("No se pudo guardar: {m}","Couldn't save: {m}","Não foi possível salvar: {m}","לא ניתן היה לשמור: {m}",{m: err.message})); });
     return;
   }
   if(el.classList.contains("sc-unir")){ personaUnirCon = el.value; render(); return; }
@@ -27729,16 +27730,16 @@ postForm.addEventListener("submit", async e=>{
   d.error = "";
   const title = d.title.trim();
   const content = d.content.trim();
-  if(!title){ d.error = t("Escribí un título.","Type a title.","Escreva um título.",".הקלד/י כותרת"); render(); return; }
+  if(!title){ d.error = t("Escribí un título.","Type a title.","Escreva um título.","הקלד/י כותרת."); render(); return; }
   // Comentarios es opcional (pedido del usuario el 4/10/2026): un evento
   // con título, fecha y lugar ya dice lo que pasó. La base acepta el
   // contenido vacío desde el 3/10 (03-validacion.sql).
-  if(!d.scopes.length){ d.error = t("Agregá al menos un lugar (país, ciudad, región o toda LatAm).","Add at least one place (country, city, region or all of LatAm).","Adicione pelo menos um lugar (país, cidade, região ou toda a LatAm).",".הוסף/הוסיפי לפחות מקום אחד (מדינה, עיר, אזור או כל LatAm)"); render(); return; }
-  if(!d.startDate){ d.error = t("Elegí una fecha de inicio.","Choose a start date.","Escolha uma data de início.",".בחר/י תאריך התחלה"); render(); return; }
-  if(d.endDate < d.startDate){ d.error = t("La fecha de fin no puede ser anterior a la de inicio.","The end date can't be before the start date.","A data de término não pode ser anterior à de início.",".תאריך הסיום לא יכול להיות לפני תאריך ההתחלה"); render(); return; }
+  if(!d.scopes.length){ d.error = t("Agregá al menos un lugar (país, ciudad, región o toda LatAm).","Add at least one place (country, city, region or all of LatAm).","Adicione pelo menos um lugar (país, cidade, região ou toda a LatAm).","הוסף/הוסיפי לפחות מקום אחד (מדינה, עיר, אזור או כל LatAm)."); render(); return; }
+  if(!d.startDate){ d.error = t("Elegí una fecha de inicio.","Choose a start date.","Escolha uma data de início.","בחר/י תאריך התחלה."); render(); return; }
+  if(d.endDate < d.startDate){ d.error = t("La fecha de fin no puede ser anterior a la de inicio.","The end date can't be before the start date.","A data de término não pode ser anterior à de início.","תאריך הסיום לא יכול להיות לפני תאריך ההתחלה."); render(); return; }
   if(!d.allDay){
-    if(!d.startTime || !d.endTime){ d.error = t('Elegí hora de inicio y de fin, o marcá "Todo el día".','Choose a start and end time, or check "All day".','Escolha hora de início e término, ou marque "O dia todo".','.בחר/י שעת התחלה וסיום, או סמן/י "כל היום"'); render(); return; }
-    if(d.startDate === d.endDate && d.endTime <= d.startTime){ d.error = t("La hora de fin tiene que ser posterior a la de inicio.","The end time has to be after the start time.","A hora de término tem que ser depois da de início.",".שעת הסיום חייבת להיות אחרי שעת ההתחלה"); render(); return; }
+    if(!d.startTime || !d.endTime){ d.error = t('Elegí hora de inicio y de fin, o marcá "Todo el día".','Choose a start and end time, or check "All day".','Escolha hora de início e término, ou marque "O dia todo".','בחר/י שעת התחלה וסיום, או סמן/י "כל היום".'); render(); return; }
+    if(d.startDate === d.endDate && d.endTime <= d.startTime){ d.error = t("La hora de fin tiene que ser posterior a la de inicio.","The end time has to be after the start time.","A hora de término tem que ser depois da de início.","שעת הסיום חייבת להיות אחרי שעת ההתחלה."); render(); return; }
   }
   const links = d.links.filter(l=>safeUrl(l.url));
   const mentions = extractMentionsFromContent(content);
@@ -27769,11 +27770,11 @@ postForm.addEventListener("submit", async e=>{
       updatePostAndSync(postId, original, postData).then(res=>{
         if(fuentes.length) actualizarResumen(postId, fuentes).catch(err => console.warn("No se pudo leer el resumen:", err));
         showCalendarNotice(res.ok
-          ? { ok:true, message:t("Se guardaron los cambios (y el Calendar, si correspondía).","Changes were saved (and the Calendar, if applicable).","As alterações foram salvas (e o Calendar, se aplicável).","(השינויים נשמרו (והיומן, אם רלוונטי).") }
+          ? { ok:true, message:t("Se guardaron los cambios (y el Calendar, si correspondía).","Changes were saved (and the Calendar, if applicable).","As alterações foram salvas (e o Calendar, se aplicável).","השינויים נשמרו (והיומן, אם רלוונטי).") }
           : { ok:false, message:t("Se guardaron los cambios, pero no se pudo actualizar el Calendar ({reason}).","Changes were saved, but the Calendar couldn't be updated ({reason}).","As alterações foram salvas, mas não foi possível atualizar o Calendar ({reason}).","השינויים נשמרו, אך לא ניתן היה לעדכן את היומן ({reason}).",{reason:res.reason}) });
       }).catch(err=>{
         console.error("Error guardando la edición:", err);
-        showCalendarNotice({ ok:false, message:t("No se pudo guardar la edición: {msg}","Couldn't save the edit: {msg}","Não foi possível salvar a edição: {msg}","{msg} :לא ניתן היה לשמור את העריכה",{msg:err.message}) });
+        showCalendarNotice({ ok:false, message:t("No se pudo guardar la edición: {msg}","Couldn't save the edit: {msg}","Não foi possível salvar a edição: {msg}","לא ניתן היה לשמור את העריכה: {msg}",{msg:err.message}) });
       });
     } else {
       const postId = await createPost(postData);
@@ -27798,7 +27799,7 @@ postForm.addEventListener("submit", async e=>{
   }catch(err){
     console.error(err);
     d.submitting = false;
-    d.error = t("No se pudo publicar: {msg}","Couldn't publish: {msg}","Não foi possível publicar: {msg}","{msg} :הפרסום נכשל",{msg:err.message});
+    d.error = t("No se pudo publicar: {msg}","Couldn't publish: {msg}","Não foi possível publicar: {msg}","הפרסום נכשל: {msg}",{msg:err.message});
     render();
   }
 });
@@ -27807,7 +27808,7 @@ async function submitReply(postId){
   const d = getReplyDraft(postId);
   if(d.submitting) return;
   const content = d.content.trim();
-  if(!content){ d.scopeError = t("Escribí una respuesta antes de publicar.","Write a reply before posting.","Escreva uma resposta antes de publicar.",".כתוב/כתבי תגובה לפני הפרסום"); render(); return; }
+  if(!content){ d.scopeError = t("Escribí una respuesta antes de publicar.","Write a reply before posting.","Escreva uma resposta antes de publicar.","כתוב/כתבי תגובה לפני הפרסום."); render(); return; }
   const links = d.links.filter(l=>safeUrl(l.url));
   const mentions = extractMentionsFromContent(content);
   if(mentions.length > MAX_MENTIONS){ d.scopeError = tooManyMentionsMsg(); render(); return; }
@@ -27830,7 +27831,7 @@ async function submitReply(postId){
   }catch(err){
     console.error(err);
     d.submitting = false;
-    d.scopeError = t("No se pudo publicar la respuesta: {msg}","Couldn't post the reply: {msg}","Não foi possível publicar a resposta: {msg}","{msg} :פרסום התגובה נכשל",{msg:err.message});
+    d.scopeError = t("No se pudo publicar la respuesta: {msg}","Couldn't post the reply: {msg}","Não foi possível publicar a resposta: {msg}","פרסום התגובה נכשל: {msg}",{msg:err.message});
     render();
   }
 }
@@ -27845,7 +27846,7 @@ async function submitNestedReply(postId, replyId){
   // Con aviso, como en la respuesta de primer nivel: antes era un `return`
   // pelado y tocar "Responder" con el campo vacío no hacía absolutamente
   // nada (ni error ni envío), sin forma de saber qué había pasado.
-  if(!content){ d.scopeError = t("Escribí una respuesta antes de publicar.","Write a reply before posting.","Escreva uma resposta antes de publicar.",".כתוב/כתבי תגובה לפני הפרסום"); render(); return; }
+  if(!content){ d.scopeError = t("Escribí una respuesta antes de publicar.","Write a reply before posting.","Escreva uma resposta antes de publicar.","כתוב/כתבי תגובה לפני הפרסום."); render(); return; }
   const parent = (state.repliesByPost[postId]||[]).find(r=>r.id===replyId);
   const replyToId = parent?.replyToId || replyId;
   // Una respuesta anidada hereda la fecha de aquella a la que le contesta
@@ -27868,7 +27869,7 @@ async function submitNestedReply(postId, replyId){
   }catch(err){
     console.error(err);
     d.submitting = false; render();
-    await appAlert(t("No se pudo publicar la respuesta: {msg}","Couldn't post the reply: {msg}","Não foi possível publicar a resposta: {msg}","{msg} :פרסום התגובה נכשל",{msg:err.message}));
+    await appAlert(t("No se pudo publicar la respuesta: {msg}","Couldn't post the reply: {msg}","Não foi possível publicar a resposta: {msg}","פרסום התגובה נכשל: {msg}",{msg:err.message}));
   }
 }
 
