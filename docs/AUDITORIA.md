@@ -1,169 +1,155 @@
-# Auditoría completa, con énfasis en seguridad — 24 de octubre de 2026
+# Auditoría completa — 28 de octubre de 2026
 
-> Las anteriores están en `docs/informes/historial/`: la completa del
-> 10/10/2026 (códigos R y D1–D9), la del 6/10 (U, I, M, B, O), la de lo
-> nuevo del 7/10 (C, E, P, G) y la de la Agenda del 9/10 (A). Los de esta
-> van con **S**, y sus decisiones siguen la numeración: D10 en adelante. El
-> método: `herramientas/auditoria/METODO.md`.
+> Las anteriores están en `docs/informes/historial/`: la completa con
+> énfasis en seguridad del 24/10/2026 (códigos S y D10–D13), la completa del
+> 10/10 (R y D1–D9), la del 6/10 (U, I, M, B, O), la de lo nuevo del 7/10
+> (C, E, P, G) y la de la Agenda del 9/10 (A). Los de esta van con **T**, y
+> sus decisiones siguen la numeración: D14 en adelante. El método:
+> `herramientas/auditoria/METODO.md`.
 
-Pedido del usuario: «una auditoría completa de mi sistema, haciendo especial
-énfasis en todo lo que tiene que ver con seguridad», y entender si se pueden
-reducir los tokens de cada cambio, que hoy «hace una revisión completa y
-todas las comprobaciones, cuando quizás pueden ser menos».
+Pedido del usuario: una **review de todo el sistema** (empezó como una crítica
+de diseño; se arreglaron la legibilidad, el celular y el Inicio en las tandas 103
+y 104), y después **la auditoría completa**, sumando todo lo que no se había
+revisado: la crítica del uso, el recorrido de bienvenida, el teclado y el lector
+de pantalla, los flujos de borrar, de error y de carga, los cuatro idiomas, los
+datos variados, el rendimiento, la seguridad, los permisos de la base, los
+workflows, las copias, las integraciones, la privacidad y la operación.
 
-El detalle de cada hallazgo (dónde, cómo se verificó, qué se hizo) está en
-`docs/informes/2026-10-24-seguridad-y-costo.md`. La página para el usuario,
-en palabras simples: https://claude.ai/artifact/1tSArcG1rHue5DaCvRuKhi (privada).
+El detalle de cada hallazgo (dónde, cómo se verificó) está en
+`docs/informes/2026-10-28-completa.md`. La página para el usuario, en palabras
+simples y con capturas: https://claude.ai/artifact/X2pEJqknBxPwLTSwDrWAzp (privada).
 
-**Cómo se hizo.** Sobre `1ccc721` de `main`. Las herramientas completas:
-**3.697 comprobaciones de la app en 112 archivos, en verde**; Calendar y las
-**990 de la base**, en verde; **las de las copias, en rojo** (S5, una falla
-de verdad que nadie había visto); las pantallas en 13 combinaciones de
-tamaño, idioma, oscuro y letra ancha, y datos variados con dos semillas.
-A mano, la seguridad de todo lo que entró después del 10/10 (los SQL 21 a
-26, las dos funciones de Supabase y sus correos, los 14 workflows, la CSP,
-cada librería de afuera, el visor de archivos, las planillas que se bajan,
-«Algo no anda», el enlace del informe mensual, el historial de git de esas
-dos semanas) y el costo de cada cambio (las corridas de Actions de la
-semana, lo que se lee y lo que se corre).
+**Cómo se hizo.** Sobre `ed42ad9` de `main`. Las herramientas completas:
+**3.969 comprobaciones de la app en 119 archivos, en verde**; Calendar, copias
+y las **990 de la base**, en verde; las pantallas, 578 vistas en 13
+combinaciones de tamaño, idioma, oscuro y letra ancha; datos variados con dos
+semillas (800 y 1.500 posteos). A mano: el uso por tareas (compu y celular,
+integrante y observador), el recorrido de bienvenida paso por paso (cinco
+cuentas), el teclado y el árbol de accesibilidad de Chrome (3.307 controles en
+45 vistas), los flujos de error con un Supabase de mentira al que se le pide
+que rechace, que no conteste o que tarde, la velocidad con el procesador 4 y 6
+veces más lento, las 45 pantallas en inglés, portugués y hebreo, una matriz de
+permisos de las funciones de la base por rol en un Postgres local (persona de
+afuera, observador, integrante, admin), y los 14 workflows con sus corridas de
+las últimas semanas.
 
 ---
 
 ## En una página
 
-**La base y la app están bien cerradas.** Las funciones nuevas controlan
-quién llama y tienen topes; lo escrito por alguien va escapado en la app y
-en los correos; nadie de afuera ve nada. Lo que apareció está en el borde:
-lo que se publica en el repositorio, lo que se carga de afuera y cómo se
-protege la página si algún día algo fallara.
+**Nada urgente.** La base, la app y las copias están bien. No hay datos de
+personas nuevos en el repositorio. Lo que apareció está en el borde de lo que
+se ve al usar la app y en cómo se arma la copia del domingo.
 
 **Lo que más pesa:**
 
-1. **Datos de personas en el repositorio público** (urgente). Al contar en
-   `docs/REDISENO.md` cómo se corrigió el Excel del Mapeo (17/10) se copió
-   entero el teléfono de una persona; y las pruebas de la Agenda usaban
-   **ocho nombres con su teléfono, su ciudad y su cargo** que tienen toda la
-   pinta de ser del Mapeo y del directorio (uno, de seguridad de una
-   comunidad). Es la tercera vez del mismo error. Ya no están en los
-   archivos; **siguen en el historial**: hace falta reescribirlo (D10).
-2. **La librería de las planillas entraba sin verificar** (importante). Si
-   su servidor sirviera otra cosa, correría con la sesión de quien abre un
-   Excel, y con la del admin al traer una lista a la Agenda. Ahora va con
-   huella, como las demás.
-3. **«Algo no anda» no entraba en la copia del domingo** (importante), y la
-   prueba que lo vigila estaba en rojo desde el 13/10 sin que GitHub la
-   corriera. Arreglado las dos cosas.
-4. **La página se defiende mejor** (medio): la política de contenido ya no
-   deja correr un script colado, y otra página ya no puede mostrar la app
-   dentro de la suya para hacerte tocar algo sin que lo veas.
-5. **Las llaves de GitHub se pueden leer desde cualquier rama** (medio): la
-   traba es un «entorno» que solo entrega las llaves a `main` (D11).
-
-**El costo de cada cambio:** las pruebas tardaban 20 minutos y se corrían
-tres veces por tanda (en la sesión, en la rama y en `main`), más una vez
-entera por cada prueba nueva para ver que falla contra lo roto. Ahora corren
-de a cuatro, se pueden correr de a una por nombre, muestran solo lo que
-falla, y no se repiten en la rama. Cuántas correr antes de cada cambio lo
-decidís vos (D12); la red que protege a la gente no cambia: **GitHub corre
-siempre todas antes de publicar y, si algo falla, no publica**.
+1. **La copia del domingo se salta si su propia prueba está en rojo** (T1,
+   importante). El 18/10 la prueba estaba en rojo (la tabla `problemas`, S5 de la
+   anterior) y el trabajo «Copiar» figura como omitido: esa semana no hubo copia
+   y nada lo avisó más que el tilde rojo. Lo decide el usuario (D14).
+2. **Hebreo** (T2, medio): 105 de los 1.672 textos tienen el signo de
+   puntuación del lado equivocado; lo primero que se ve, «?מה עשית היום», lo
+   muestra a la derecha.
+3. **Errores** (T3, T5, T6, medio): el aviso de un formulario no se anuncia ni
+   lleva el foco; cuando algo falla se muestra el mensaje de la base en inglés;
+   y en el celular los avisos tapan la barra de abajo.
+4. **El recorrido de bienvenida no cuenta el buscador** (T4, medio): la lupa del
+   celular entró el 28/10 sin su paso.
 
 ---
 
 ## La lista, por prioridad
 
-**Quién**: Claude lo hace solo, o el **usuario** decide. Las cuatro decisiones (D10 a D13) las tomó el 24/10, en la misma sesión.
+**Quién**: Claude lo hace solo, o el **usuario** decide.
 
 ### Urgente
 
-| # | Qué | Por qué | Quién |
-|---|---|---|---|
-| S4 | Datos de personas con toda la pinta de reales en el repo público: un teléfono del Mapeo («+1 (929) …») escrito entero en `docs/REDISENO.md` (17/10), y **en las pruebas de la Agenda y de la base, ocho nombres con su teléfono, su ciudad y su cargo** (de Córdoba, Rosario, Buenos Aires y Brasil; uno con el cargo «Seguridad · Kabat Kehila»), desde el 8/10 (cuando nació la Agenda) y la mayoría del 16 y 17/10, cuando se probó «Traer una lista» con filas como las del Mapeo. ~~En los archivos~~ ✅ 24/10 (cambiados por nombres y teléfonos inventados, con 555, en las 11 partes donde estaban; las pruebas, en verde; `seguridad` ahora ve el «9» de los celulares, que antes se le escapaba, informa todo recortado y en nivel «importante»). ~~Queda en el historial~~ ✅ 24/10: historial reescrito (D10) | el repo es público; datos privados del Mapeo y de una persona de seguridad; tercera vez (RECURRENTES) | Claude + **usuario** (D10) |
+Nada.
 
 ### Importante
 
 | # | Qué | Por qué | Quién |
 |---|---|---|---|
-| S1 | ~~SheetJS (la librería de las planillas) se cargaba sin huella (SRI): el visor de un .xlsx (cualquiera) y «Traer una lista» (el admin, con su sesión)~~ ✅ 24/10 (`SHEETJS_SRI`, calculada en GitHub del archivo de su servidor; `sheetjs_integridad_test`; «¿Está arriba?» la verifica cada día) | si su servidor sirviera otra cosa, correría con la sesión del admin | Claude |
-| S5 | ~~La tabla de «Algo no anda» (`problemas`, 13/10) no estaba en la copia del domingo ni en el botón de la app; la prueba que lo exige estaba en rojo y GitHub no la corría (solo si cambia `supabase/respaldo/`)~~ ✅ 24/10 (en la copia, en la restauración y en el botón; la prueba corre también cuando cambia un `.sql` o la app; y como eso la hace correr seguido, la fila que comparte con la limpieza y la restauración pasó a ser la del trabajo que copia, no la del workflow entero: si no, GitHub podía cancelar la copia del domingo, como canceló una corrida de prueba ese mismo día; `workflows_test` lo exige) | una restauración la perdía; la próxima tabla podía ser una que importe | Claude |
+| T1 | La copia del domingo (`respaldo.yml`: `copiar` con `needs: probar`) no arranca si la prueba de la copia falla. El 18/10 (corrida 39125062263) la prueba falló en 1 segundo, «Copiar» quedó omitido, no hubo copia ese domingo. El 11/10 y el 25/10 sí. | Una copia incompleta sirve más que ninguna; una semana sin copia sin enterarse | **usuario** (D14) |
 
 ### Medio
 
 | # | Qué | Por qué | Quién |
 |---|---|---|---|
-| S2 | ~~La CSP decía `'unsafe-inline'` (corre cualquier script escrito en la página) y nombraba jsDelivr y unpkg enteros~~ ✅ 24/10 (al publicar, la CSP lleva la huella de los dos scripts de la página, `herramientas/publicar/csp.mjs`; en el fuente, cada CDN nombra el archivo exacto; `csp_publicada_test`: arranca, no frena nada propio, y un script colado no corre) | la segunda llave, por si un día un dato sin escapar se cuela: detrás están la sesión y el permiso de Calendar de cada uno | Claude |
-| S3 | ~~Otra página podía mostrar la app adentro de un marco invisible (*clickjacking*): GitHub Pages no manda el encabezado que lo impide~~ ✅ 24/10 (adentro de un marco de otro sitio, la página no se muestra; `marco_test`) | hacer tocar «Aprobar» o «Borrar» a alguien con la sesión abierta | Claude |
-| S9 | Los secretos de GitHub (la llave de servicio, la de la base, Resend, Google, los tokens) están en el repositorio: un workflow empujado en cualquier rama los puede leer, diga lo que diga la línea «solo desde main». La traba es un entorno con la regla «solo `main`» (D11). Mientras tanto, regla nueva en `CLAUDE.md` | las sesiones de Claude empujan ramas y leen contenido de afuera | **usuario** (D11) |
-| S10 | ~~El costo de cada cambio: la suite tardaba ~20 minutos, se corría tres veces por tanda y entera para ver que una prueba nueva falla; imprimía ~115 líneas verdes; el trabajo de GitHub tenía tope de 30 minutos y ya tardaba 24~~ ✅ 24/10 (de a cuatro, por nombre, solo lo que falla; no corre en las ramas `claude/…`; tope de 40). Cuántas correr en la sesión: D12 | cada paso de una sesión vuelve a pagar todo lo que tiene a la vista; y a poco del tope, «Publicar el sitio» iba a dejar de publicar | Claude + **usuario** (D12) |
+| T2 | En hebreo, 105 de 1.672 textos con el signo al principio («?מה עשית היום», «.לא ניתן…», «…הוספת עורך/ת») o con `{dato} :texto` (31, los errores) y paréntesis invertidos (2). Un signo guardado primero se pinta en el borde derecho. | Es lo primero que ve quien usa la app en hebreo | Claude |
+| T3 | El aviso de un formulario («Escribí un título.») no es `role="alert"`, el campo no lleva `aria-invalid` ni el foco, y está abajo de todo, chico | Con lector de pantalla no se oye; en el celular se pierde | Claude |
+| T4 | El recorrido (`tourSteps()`) no menciona el buscador (la barra en la compu; la lupa del celular, de la tanda 104) | CLAUDE.md: lo nuevo que ve el equipo entra al recorrido en la misma tanda. Un olvido de la tanda 104 | Claude |
+| T5 | Los errores muestran el mensaje de la base sin traducir: «Failed to fetch», «new row violates row-level security policy for table "posts"». La carga inicial fallida muestra el cartel con «(Failed to fetch)» y el reloj de arena girando, sin botón de reintentar. Sin conexión, la app no avisa hasta que algo falla | Alguien que no es técnico no sabe qué hacer | Claude |
+| T6 | En el celular `.calendar-notice` (fijo, `bottom:24px`) cae sobre la barra de abajo y tapa el «+»; los de error no se van solos | Se pierden los botones mientras dura | Claude |
 
 ### Bajo
 
 | # | Qué | Quién |
 |---|---|---|
-| S6 | ~~Un paso de «Lo que sigue» con una fecha que no existe (solo por la API) tiraba la función de avisos y el aviso se perdía~~ ✅ 24/10 (sale sin fecha; `supabase/functions/_pruebas/avisos.mjs`) | Claude |
-| S7 | ~~«¿Está arriba?» dio rojo (y mail) el 23/10 por una sola demora de Supabase~~ ✅ 24/10 (repite una vez antes de dar rojo) | Claude |
-| S8 | ~~En hebreo, «N cerradas» de la vista previa de «Traer una lista» quedaba siempre en plural~~ ✅ 24/10 | Claude |
-| S11 | El visor deja `<style>` y los `<animate>` de SVG (hoy inalcanzable; sacar `<style>` rompería los Word). Código sin usar: `diasEntre` y `csvDeTabla` (solo las usan las pruebas). Se miran cuando se toque esa parte | Claude, cuando se toque |
-| S12 | ~~`seguridad` no veía la CSP floja, el marco ni un teléfono con paréntesis entre los inventados; `pantallas` podía dar «0 hallazgos» sin haber medido nada; dos falsos positivos y siete correos inventados~~ ✅ 24/10 (las herramientas los ven; `conocidos.json`; el correo de prueba que tenía nombre de persona real posible pasó a `@x.com`) | Claude |
-
-### Opcional
-
-| # | Qué | Quién |
-|---|---|---|
-| S13 | Cifrar las copias de seguridad (hoy van a un repo privado, sin cifrar). Obliga a guardar una llave más: si se pierde, la copia no sirve. Recomendación: todavía no | **usuario** |
+| T7 | Nueve campos sin nombre accesible (los 3 topes de «Adjuntos», los nombres de zonas, nombre e ícono de un tipo, el nombre de un hito, un selector y una casilla de «Mis preferencias»); los títulos saltan de h1 a h3 | Claude |
+| T8 | Al cancelar el cartel de «¿Borrar…?» (Cancelar o Escape) el foco queda en el cuerpo de la página: el menú «⋯» se cerró y el botón que tenía el foco ya no existe | Claude |
+| T9 | Crear un evento tocando una casilla del calendario no se alcanza con el teclado (`cal-new` en `div`); el botón «+» hace lo mismo | Se deja anotado |
 
 ### Para el usuario
 
 | # | Qué | Recomendación |
 |---|---|---|
-| D10 | ~~**Reescribir el historial** para sacar esos datos (S4)~~ ✅ 24/10: el usuario destildó «Block force pushes» y borró la rama vieja; Claude reescribió los 641 commits de `main` y de la rama de la sesión con `git filter-repo --replace-text` (`main` pasó de `c95dc52` a `8f9ef36`; la versión de hoy quedó idéntica). Revisado en una copia nueva bajada de GitHub: ninguna versión de ninguna rama conserva los nombres ni los teléfonos (los dos pull requests viejos, de septiembre, tampoco los tenían). «Block force pushes» volvió a estar tildado (comprobado por la API). El pedido a GitHub de borrar las copias sueltas salió el 24/10 (ticket 4899727, «Repositorios › Funciones del repositorio › Datos»; ojo: la opción «Eliminaciones» de ese formulario es para borrar el repositorio entero). Falta la respuesta de GitHub | Sí |
-| D11 | ~~**Las llaves de GitHub en un entorno que solo las da a `main`** (S9)~~ ✅ 24/10 (A): los 11 trabajos que usan la llave de servicio o la de la base piden el entorno `produccion` (`workflows_test` lo exige); el usuario armó el entorno con la regla «solo `main`» y cargó las dos llaves (la de servicio es la `githubcalendar`; la de la base, con contraseña nueva). Comprobado: la limpieza en seco y «Verificar los permisos» en verde con las del entorno (las 12 comprobaciones bien; admin y member ven lo esperado). «Verificar los permisos» ahora dice cómo está escrita la dirección, sin mostrar la contraseña. El usuario borró las dos del repositorio; después, la limpieza en seco y «Verificar los permisos» siguieron en verde (04:59 UTC). Las demás llaves, al renovar los tokens en 2027 | A |
-| D12 | ~~**Cuántas pruebas antes de cada cambio** (S10)~~ **Elegido el 24/10: todas, siempre** (B): con el corredor nuevo son 6 minutos y una línea; lo que ahorraba de verdad ya está (no se repiten, la prueba contra lo roto es solo la nueva, no imprimen de más). En `CLAUDE.md` | B |
-| D13 | ~~**Un `CLAUDE.md` más corto** y **auditorías por nivel**~~ ✅ 24/10: `CLAUDE.md` de 13,3 a 9,5 KB (el estado y la historia, sin cambios, en `docs/ESTADO.md`); METODO.md y la skill con los dos niveles («de lo nuevo» y «completa») | Sí |
+| D14 | **¿Que la copia del domingo se haga igual si su prueba falla?** (T1) A: que copie igual y que la prueba en rojo deje la corrida en rojo para avisar. B: dejarlo como está | A |
+| D15 | **¿En qué orden seguir?** Los arreglos T2 a T8 primero, o el logo propio (pendiente del repaso de diseño) | Arreglos primero |
 
 ---
 
+## Lo que ya estaba anotado (no son hallazgos nuevos)
+
+`diasEntre` y `csvDeTabla` sin usar (S11); 12 anchos de pantalla distintos en el
+CSS; funciones largas (`crearSupabaseStore`, `renderFichaLugar`); el peso:
+**581 KB comprimidos** de los 600 en los que D1 dijo volver a mirarlo.
+Decidido y no se vuelve a proponer: cifrar las copias (S13), la traducción
+automática con MyMemory.
+
 ## Operación (para tenerlo a la vista)
 
-- **El peso del archivo**: 576 KB comprimidos (514 el 10/10). D1 dijo
-  «se vuelve a mirar al pasar los 600»: está a 24 KB.
+- **El peso del archivo**: 581 KB comprimidos (576 el 24/10). Faltan 19 KB
+  para los 600. Cargar la página en un celular 6 veces más lento: el primer
+  posteo a los 2,9 s; 4 veces más lento, 1,8 s; la compu, 0,4 s. Con 4G lento,
+  la página baja en 3 s; con 3G, en 12 s la primera vez.
 - **Vence**: `RESPALDOS_TOKEN` 5/10/2027; `SUPABASE_ACCESS_TOKEN` 30/9/2027.
-- **Workflows de la semana**: todo en verde salvo la falsa alarma del 23/10
-  (S7). «Publicar el sitio» tardó 21 minutos en cada push.
-- **Ramas**: `main` y `claude/bold-thompson-ebt8tz` (de la sesión del 22/10,
-  igual a `main`: se puede borrar). Ningún pull request.
+- **Workflows**: los programados de la semana, en verde. Las copias:
+  11/10 ✓, 18/10 ✗ omitida (T1), 25/10 ✓.
+- **Ramas**: `main` y la de esta sesión.
 
 ## Lo que sigue abierto de las anteriores
 
-De la del 10/10: **R12** (el ensayo completo de restauración, cuando haya un
-proyecto de prueba), **R18/D1** (el peso, arriba), **D4** (el pedido a GitHub
-de borrar las copias sueltas, si no se hizo: va junto con D10), **D8**
-(probar en el teléfono la Agenda, «+ Sumar» y una foto desde la cámara).
-De las anteriores, lo mismo que listaba la del 10/10. Decidido y no se
-vuelve a proponer: lo de esa lista.
+**R12** (el ensayo completo de restauración, cuando haya un proyecto de
+prueba), **D8** (probar en el teléfono la Agenda, «+ Sumar» y una foto desde la
+cámara), el pedido a GitHub de borrar las copias sueltas del 24/10 (ticket
+4899727, falta su respuesta). Del repaso de diseño: **el logo propio**, con
+opciones y capturas antes de cambiar nada.
 
 ## Lo que está bien y conviene no tocar
 
-- **La base**: las 7 funciones nuevas con `security definer`, `search_path`
-  fijo, cerradas a `anon`, cada una controla quién llama y tiene topes;
-  `problemas` solo la ve un admin y nadie escribe directo.
-- **Los correos**: a quién y si corresponde lo decide la base; la función
-  solo recibe un turno; todo lo escrito por alguien va escapado.
-- **«Algo no anda»** no manda textos, correos ni direcciones; **el informe
-  mensual** no lleva números en el correo y el enlace lo valida la base.
-- **Las planillas que se bajan** no ejecutan fórmulas; **el visor** limpia lo
-  que muestra; **los workflows** no pegan entradas en un `run:`.
-- **Ningún XSS**: con HTML metido en cada campo y miles de posteos, no corre
-  nada.
+- **Los permisos de la base**: probados por rol, función por función y en las
+  tablas sensibles; las 990 pruebas de la base, en verde.
+- **Usar la app**: una rutina, 3 pasos; un evento con lugar, 6; el observador
+  ve que solo mira; un integrante no ve el menú de borrar en un posteo ajeno.
+- **Borrar**: confirma con el nombre y la cantidad de respuestas, «Cancelar»
+  viene marcado, «Borrar» es rojo; una escritura rechazada deja el texto en el
+  cuadro y nada a medias; la sesión vencida vuelve a la entrada.
+- **Las ventanas**: «Nuevo evento» atrapa el foco, se cierra con Escape y
+  devuelve el foco al botón que la abrió.
+- **Cuatro idiomas y celular**: 578 vistas en 13 combinaciones sin textos
+  cortados ni desbordes; el hebreo se espeja bien (salvo T2).
+- **Datos de personas**: ninguno nuevo en el repositorio (la herramienta marcó
+  un correo de prueba con pinta de real, que se cambió el mismo día por uno
+  inventado con `@x.com`).
 
 ## Cómo seguir
 
-Todo lo de Claude está en `main` y publicado (24/10, «Publicar el sitio» en
-7 minutos; «¿Está arriba?» confirmó desde afuera que la página sale con las
-huellas en la CSP y que las 9 librerías llegan con la suya).
-
-1. **Vos** (una sola visita a GitHub, con los pasos que te dio Claude):
-   destildar «Block force pushes» para D10, y armar el entorno `produccion`
-   con las dos llaves de Supabase para D11.
-2. **Claude**: reescribir el historial (D10), revisar que no quede nada,
-   comprobar que los trabajos lean las llaves del entorno, y avisarte para
-   volver a tildar la protección y borrar las dos llaves viejas.
+1. **Usuario**: contestar D14 y D15.
+2. **Claude**: T1 según D14; T2 a T8 uno por uno (cada uno con una prueba que
+   falla contra el código roto, la suite completa en verde, y —lo que depende
+   del ancho— verificado con letra ancha antes de empujar), push a `main`,
+   mirar que «Publicar el sitio» salga en verde y tachar acá y en la página.
+3. **Al terminar**: sumar lo nuevo a `herramientas/auditoria/RECURRENTES.md` y a
+   las herramientas (que `textos` vea el signo mal puesto en hebreo; que la
+   prueba de accesibilidad vea un aviso sin rol).
