@@ -63,7 +63,10 @@ const leer = async r => [r.status, await r.json()];
 {
   const m = mundo({ datos: { para: ["benny@team-latam.com"], nombre: '<img src=x onerror=alert(1)>', correo: "malo@x.com" } });
   await atenderAviso(pedir(), { env: entorno(), fetch: m.traer, esperar: m.esperar });
-  eq("un nombre con HTML llega escapado (no es código en el correo del admin)", /<img/.test(m.reg.correos[0].html), false);
+  eq("un nombre con HTML llega escapado (no es código en el correo del admin)", /<img src=x/.test(m.reg.correos[0].html), false);
+  // El encabezado lleva la marca de Toldot (un <img> propio, publicado con el sitio) y el nombre; el emoji 🗺️ ya no hace de logo (14/11/2026).
+  const h = m.reg.correos[0].html;
+  eq("el encabezado del correo lleva la marca de Toldot y no el emoji del mapa", [h.includes(`<img src="${APP}marca/toldot-correo.png"`), h.includes("🗺"), h.includes(">Toldot</div>"), h.includes("Registro de Acciones · Team LatAm")], [true, false, true, true]);
 }
 {
   const m = mundo({ datos: null });
@@ -103,7 +106,7 @@ const leer = async r => [r.status, await r.json()];
   const m = mundo();
   await atenderAviso(pedir(), { env: entorno(), fetch: m.traer, esperar: m.esperar });
   eq("sale de info@team-latam.com, y las respuestas van al admin",
-     [m.reg.correos[0].from, m.reg.correos[0].reply_to], ["Registro de Acciones <info@team-latam.com>", "benny@team-latam.com"]);
+     [m.reg.correos[0].from, m.reg.correos[0].reply_to], ["Toldot <info@team-latam.com>", "benny@team-latam.com"]);
   const v = mundo({ dominioSinVerificar: true });
   const r = await leer(await atenderAviso(pedir(), { env: entorno(), fetch: v.traer, esperar: v.esperar }));
   eq("con el dominio todavía sin verificar, sale igual desde la dirección de prueba de Resend",

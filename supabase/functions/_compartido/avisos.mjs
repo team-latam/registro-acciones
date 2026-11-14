@@ -28,8 +28,8 @@ export { APP } from "./correos.mjs";
 // tarda, o un día se cae— el aviso sale igual desde la dirección de
 // prueba de Resend, que solo entrega a la cuenta de Resend: mejor eso que
 // ningún aviso. Las respuestas van al admin: info@ no es una casilla.
-export const DESDE = "Registro de Acciones <info@team-latam.com>";
-export const DESDE_DE_PRUEBA = "Registro de Acciones <onboarding@resend.dev>";
+export const DESDE = "Toldot <info@team-latam.com>";
+export const DESDE_DE_PRUEBA = "Toldot <onboarding@resend.dev>";
 export const RESPONDER_A = "benny@team-latam.com";
 
 // Lo que arma cada tipo de aviso. El cuerpo del pedido dice cuál:

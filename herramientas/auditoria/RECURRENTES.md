@@ -570,3 +570,21 @@ función ya extraída se suma a la lista de cada armador; la suite entera lo
 dice. Y **antes de crear un archivo de prueba, `ls`**: un `Write` sobre un
 nombre que ya existe lo pisa sin preguntar (pasó con `nombres_accesibles_test`;
 se recuperó de git).
+
+## Agregado al ponerle Toldot al sistema (14/11/2026)
+
+**Tocar el árbol de trabajo mientras corre la suite.** Las pruebas leen `index.html`
+(y los armadores, el resto) **en vivo, en cada archivo**: un `git stash` de dos
+segundos para «probar contra lo de antes» hizo que algunas leyeran la app vieja y
+hubo que tirar la corrida entera. *Regla:* mientras corre `correr.sh` no se hace
+`stash`, `checkout` ni se edita nada que ella lea; la prueba contra lo roto se hace
+con `INDEX=` o con una copia aparte (para lo que no tiene `INDEX`, un directorio
+de la copia vieja con `git show HEAD:…`).
+
+**Un nombre que vive en muchos lugares.** Renombrar el sistema tocó la pestaña, el
+encabezado, la portada, el pie, los informes impresos, «Presentar», «Mi año», la
+planilla, los correos (remitente, encabezado y prosa), «¿Está arriba?», las pruebas
+y los documentos. *Regla:* el nombre y dónde está puesto quedan en una lista
+(`herramientas/publicar/marca/README.md`, «Dónde está puesta»), y lo que no se
+cambió se anota con el motivo (el video, el nombre del repositorio, el marcador
+interno `app` de la copia de seguridad).

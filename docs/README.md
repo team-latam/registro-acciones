@@ -11,7 +11,7 @@ junto con el código.
 | [`PROPUESTAS.md`](./PROPUESTAS.md) | Las 16 propuestas de mejoras (13/10/2026), lo que el usuario eligió y el orden en que se hacen. |
 | [`AUDITORIA.md`](./AUDITORIA.md) | La última auditoría (28/10/2026, completa: crítica del uso, teclado y lector de pantalla, errores, idiomas, rendimiento, permisos y copias), con la lista por prioridad. |
 | [`informes/`](./informes/) | El detalle de las auditorías (por área y por fecha) y, en `historial/`, las anteriores. |
-| [`DISENO-LOGO.md`](./DISENO-LOGO.md) | La ficha de diseño para crear el logo (5/11/2026): colores, letra, formas, dónde va el logo y qué tiene que cumplir; pensada para pasársela a otra IA o a un diseñador. |
+| [`DISENO-LOGO.md`](./DISENO-LOGO.md) | La ficha de diseño que se le pasó a otra IA para crear el logo (5/11/2026): colores, letra, formas, dónde va el logo y qué tiene que cumplir. El logo elegido es el de Toldot (`herramientas/publicar/marca/`). |
 | [`QUE-GUARDAR.md`](./QUE-GUARDAR.md) | Qué tener a mano (cuentas, llaves, copias) para reconstruir todo si hiciera falta. |
 | [`RESTAURAR.md`](./RESTAURAR.md) | Cómo volver atrás con una copia de seguridad. |
 | [`DOMINIO.md`](./DOMINIO.md) | El plan, no ejecutado, de mudar el sitio a un dominio propio si `*.github.io` vuelve a bloquearse. |

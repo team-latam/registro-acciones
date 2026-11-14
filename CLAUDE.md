@@ -1,4 +1,9 @@
-# Registro de Acciones — Team LatAm
+# Toldot — Team LatAm
+
+> Desde el 14/11/2026 el sistema se llama **Toldot** (en hebreo, תולדות); antes y
+> todavía como descripción: «Registro de Acciones». La marca, sus reglas y dónde
+> está puesta: `herramientas/publicar/marca/README.md`. El repo sigue siendo
+> `registro-acciones`.
 
 SPA de una sola página (`index.html`) sin backend propio ni build step:
 HTML + CSS + JS (`<script type="module">` inline) que se edita y publica tal

@@ -14,3 +14,10 @@ blanco para todos) y que un script colado no corre. «¿Está arriba la
 página?» avisa si lo publicado deja de traer las huellas.
 
 Se sumó en la auditoría del 24/10/2026 (`docs/AUDITORIA.md`, S2).
+
+## `marca/` — la marca de Toldot
+
+Los archivos del logo (SVG y PNG), sus reglas de uso y dónde está puesto en el
+sistema: [`marca/README.md`](./marca/README.md). El workflow «Publicar el sitio»
+copia `marca/png/toldot-correo.png` al sitio (`marca/toldot-correo.png`): los
+correos lo piden por esa dirección.

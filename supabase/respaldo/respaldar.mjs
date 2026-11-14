@@ -116,7 +116,7 @@ async function bajarArchivo(ruta){
   return Buffer.from(await res.arrayBuffer());
 }
 
-const LEEME = `# Copias de seguridad del Registro de Acciones
+const LEEME = `# Copias de seguridad de Toldot (Registro de Acciones)
 
 Repo **privado**. Lo llena solo, cada domingo, el trabajo «Copia de
 seguridad» del repo team-latam/registro-acciones (\`supabase/respaldo/\`).

@@ -29,8 +29,8 @@ const eq = (n, g, w) => { const a = JSON.stringify(g), x = JSON.stringify(w); if
 const OBS = "obs@team-latam.com";
 const anio = new Date().toISOString().slice(0, 4);
 const hoy = new Date().toISOString().slice(0, 10);
-// Así se llama SIEMPRE el archivo (14/10/2026): «Registro - día-mes-año», con o sin filtros.
-const NOMBRE = `Registro - ${hoy.slice(8)}-${hoy.slice(5, 7)}-${hoy.slice(0, 4)}.xlsx`;
+// Así se llama SIEMPRE el archivo (14/10/2026): «Toldot - día-mes-año» (desde el 14/11/2026; antes «Registro - …»), con o sin filtros.
+const NOMBRE = `Toldot - ${hoy.slice(8)}-${hoy.slice(5, 7)}-${hoy.slice(0, 4)}.xlsx`;
 // Los datos de siempre más un observador y un título que Excel tomaría por fórmula.
 const datos = () => {
   const base = BASE();
@@ -210,14 +210,14 @@ for(const [quien, nombre, espera] of [[OBS, "Olga Observa", 0], [PERS[1].email, 
 {
   const [a, m, d] = [hoy.slice(0, 4), hoy.slice(5, 7), hoy.slice(8)];
   const casos = [
-    ["es", null, `Registro - ${d}-${m}-${a}.xlsx`],
-    ["pt", null, `Registro - ${d}-${m}-${a}.xlsx`],
-    ["he", null, `יומן - ${d}-${m}-${a}.xlsx`],
-    ["en", null, `Log - ${m}-${d}-${a}.xlsx`],
+    ["es", null, `Toldot - ${d}-${m}-${a}.xlsx`],
+    ["pt", null, `Toldot - ${d}-${m}-${a}.xlsx`],
+    ["he", null, `תולדות - ${d}-${m}-${a}.xlsx`],
+    ["en", null, `Toldot - ${m}-${d}-${a}.xlsx`],
     // Lo que cada uno eligió en Configuración › Calendario manda sobre el idioma.
-    ["es", "mdy", `Registro - ${m}-${d}-${a}.xlsx`],
-    ["en", "dmy", `Log - ${d}-${m}-${a}.xlsx`],
-    ["es", "ymd", `Registro - ${a}-${m}-${d}.xlsx`]
+    ["es", "mdy", `Toldot - ${m}-${d}-${a}.xlsx`],
+    ["en", "dmy", `Toldot - ${d}-${m}-${a}.xlsx`],
+    ["es", "ymd", `Toldot - ${a}-${m}-${d}.xlsx`]
   ];
   for(const [lang, formato, esperado] of casos){
     const base = datos();

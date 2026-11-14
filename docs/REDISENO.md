@@ -2626,3 +2626,40 @@ de alto al soltar el foco del título; en un celular de pantalla corta, el
 botón «Publicar» se corre bajo el dedo y el toque puede no llegar. No se probó
 en un teléfono de verdad (va junto con D8).
 Pendiente de la crítica de diseño: el logo propio.
+
+### Tanda 106 — Toldot: el nombre y la marca nuevos (14/11/2026)
+
+Después de la ficha de diseño (`docs/DISENO-LOGO.md`) el usuario pasó el logo que
+eligió, creado por otra IA: **Toldot** (תולדות, «generaciones»), un árbol
+genealógico mínimo de cuatro aros unidos por tres líneas. Antes de tocar nada se
+le mostró una vista previa con capturas (copia de la app, sin publicar) y se le
+preguntó si el sistema pasaba a llamarse así: dijo que sí. «Registro de
+Acciones» es «el concepto, lo que hace el sistema» y queda como la línea de abajo;
+«Memoria histórica» deja de usarse. Para el hebreo se adoptó «יומן פעולות»
+(פעולות = acciones), a confirmar con alguien que lea hebreo.
+
+- **La app:** el título y un ícono propio en la pestaña (incrustado, `data:`); en el
+  encabezado, la marca normal (28 px) en la compu y la chica (22 px, puntos llenos)
+  en el celular, «Toldot» y debajo «Registro de Acciones · Team LatAm» (en el
+  celular, sin «· Team LatAm»: no entraba al lado de la lupa, la campana y la cuenta
+  y se cortaba); la pantalla de entrada con la marca de 48 px en su cuadrado de
+  68 px, el nombre y la línea; el pie; los informes impresos y las fichas (marca de
+  14 px y «Toldot · Registro de Acciones · Team LatAm»); «Presentar» y «Mi año»
+  (solo el texto); y la planilla, que se baja como «Toldot - día-mes-año.xlsx».
+  `marcaToldot()` dibuja la marca; el hueco de cada aro es una variable
+  (`--tm-hueco`) del color exacto del fondo, también en oscuro. En hebreo la marca
+  no se espeja. `toldot_test` (65 comprobaciones, con letra ancha).
+- **Los correos:** el remitente pasa a «Toldot <info@…>», el encabezado lleva la
+  marca (`marca/toldot-correo.png`, que «Publicar el sitio» copia al sitio) y el
+  nombre y «Registro de Acciones · Team LatAm» debajo; los textos que nombraban al
+  sistema dicen Toldot (y en hebreo, «תולדות»).
+- **«¿Está arriba la página?»** busca «Toldot» y avisa si falta el logo de los correos.
+- **Los archivos de la marca** (SVG, PNG y reglas de uso) están en
+  `herramientas/publicar/marca/`.
+- Los armadores de pruebas que sacan funciones de `index.html` suman `marcaToldot`
+  (`armar_puerta.py`, `armar_reportes.py`); `planillas_test`, `informe_mensual_test`
+  y `mi_anio_test` cambian el nombre que esperan.
+
+Falta (ver `docs/ESTADO.md`): el video, dibujar la marca en «Mi año» y «Presentar»,
+confirmar el hebreo, y el ícono para instalar en el celular si algún día se habilita.
+El repositorio y las direcciones del sitio no cambian.

@@ -26,8 +26,8 @@ const LOCALE = { es:"es-AR", en:"en-GB", pt:"pt-BR", he:"he-IL" };
 export const zonaValida = z => { try{ new Intl.DateTimeFormat("en", { timeZone: z }); return !!z; }catch(e){ return false; } };
 const conVars = (s, v = {}) => String(s).replace(/\{(\w+)\}/g, (m, k) => v[k] ?? m);
 const TX = {
-  es: { marca:"Registro de Acciones", prefs:"Para cambiar qué te llega y cuándo: <b>Mis preferencias → Notificaciones</b>.",
-    pedAsunto:"Nuevo pedido de acceso: {q}", pedTexto:"{q} ({c}) pidió entrar al Registro de Acciones.\n\nMientras no lo apruebes, no ve nada del Registro. Para aprobarlo o rechazarlo: entrá a la app → Administración → Solicitudes.",
+  es: { marca:"Toldot", desc:"Registro de Acciones", prefs:"Para cambiar qué te llega y cuándo: <b>Mis preferencias → Notificaciones</b>.",
+    pedAsunto:"Nuevo pedido de acceso: {q}", pedTexto:"{q} ({c}) pidió entrar a Toldot.\n\nMientras no lo apruebes, no ve nada de Toldot. Para aprobarlo o rechazarlo: entrá a la app → Administración → Solicitudes.",
     pedPre:"{q} pidió entrar al Registro.", pedEtiqueta:"Pedido de acceso", pedTitulo:"Alguien quiere sumarse al Registro",
     pedParrafo:"Mientras no lo apruebes, no ve nada del Registro. Podés aprobarlo, con el rol que corresponda, o rechazarlo.",
     pedBoton:"Revisar el pedido", pedDonde:"En la app: Administración → Solicitudes.", pedPie:"Te llega porque sos administrador del Registro.",
@@ -44,8 +44,8 @@ const TX = {
     yMas:"y {n} más", respEn:"{n} {r} en «{t}»", rango:"{a} al {b}", rePieSem:"Te llega porque elegiste un resumen semanal. Si no pasó nada, no llega.", rePieDia:"Te llega porque elegiste un resumen diario. Si no pasó nada, no llega.",
     pasAsunto:"{a} te asignó un pendiente en «{t}»", pasEtiqueta:"Pendiente asignado", pasTitulo:"{a} te asignó un pendiente", pasPara:"Para el {f}", pasBoton:"Ver el pendiente",
     pasPie:"Te llega porque alguien te asignó un paso de «Lo que sigue».", venAsunto:"Hoy vence: {p}", venEtiqueta:"Vence hoy", venTitulo:"Un pendiente tuyo vence hoy", venPie:"Te llega porque tenés un pendiente con fecha de hoy.", cadaPaso:"Lo que sigue" },
-  en: { marca:"Action Log", prefs:"To change what you get and when: <b>My preferences → Notifications</b>.",
-    pedAsunto:"New access request: {q}", pedTexto:"{q} ({c}) asked to join the Action Log.\n\nUntil you approve them, they can't see anything in the Log. To approve or reject: open the app → Administration → Requests.",
+  en: { marca:"Toldot", desc:"Action Log", prefs:"To change what you get and when: <b>My preferences → Notifications</b>.",
+    pedAsunto:"New access request: {q}", pedTexto:"{q} ({c}) asked to join Toldot.\n\nUntil you approve them, they can't see anything in Toldot. To approve or reject: open the app → Administration → Requests.",
     pedPre:"{q} asked to join the Log.", pedEtiqueta:"Access request", pedTitulo:"Someone wants to join the Log",
     pedParrafo:"Until you approve them, they can't see anything in the Log. You can approve them, with the right role, or reject them.",
     pedBoton:"Review the request", pedDonde:"In the app: Administration → Requests.", pedPie:"You're getting this because you're an administrator of the Log.",
@@ -62,8 +62,8 @@ const TX = {
     yMas:"and {n} more", respEn:"{n} {r} on “{t}”", rango:"{a} to {b}", rePieSem:"You're getting this because you chose a weekly summary. If nothing happened, none is sent.", rePieDia:"You're getting this because you chose a daily summary. If nothing happened, none is sent.",
     pasAsunto:"{a} assigned you a to-do on “{t}”", pasEtiqueta:"Assigned to-do", pasTitulo:"{a} assigned you a to-do", pasPara:"Due {f}", pasBoton:"View the to-do",
     pasPie:"You're getting this because someone assigned you a step from “What's next”.", venAsunto:"Due today: {p}", venEtiqueta:"Due today", venTitulo:"One of your to-dos is due today", venPie:"You're getting this because you have a to-do dated today.", cadaPaso:"What's next" },
-  pt: { marca:"Registro de Ações", prefs:"Para mudar o que chega e quando: <b>Minhas preferências → Notificações</b>.",
-    pedAsunto:"Novo pedido de acesso: {q}", pedTexto:"{q} ({c}) pediu para entrar no Registro de Ações.\n\nEnquanto você não aprovar, não vê nada do Registro. Para aprovar ou rejeitar: entre no app → Administração → Solicitações.",
+  pt: { marca:"Toldot", desc:"Registro de Ações", prefs:"Para mudar o que chega e quando: <b>Minhas preferências → Notificações</b>.",
+    pedAsunto:"Novo pedido de acesso: {q}", pedTexto:"{q} ({c}) pediu para entrar no Toldot.\n\nEnquanto você não aprovar, não vê nada do Toldot. Para aprovar ou rejeitar: entre no app → Administração → Solicitações.",
     pedPre:"{q} pediu para entrar no Registro.", pedEtiqueta:"Pedido de acesso", pedTitulo:"Alguém quer entrar no Registro",
     pedParrafo:"Enquanto você não aprovar, não vê nada do Registro. Você pode aprovar, com o papel que corresponder, ou rejeitar.",
     pedBoton:"Revisar o pedido", pedDonde:"No app: Administração → Solicitações.", pedPie:"Chega porque você é administrador do Registro.",
@@ -80,10 +80,10 @@ const TX = {
     yMas:"e mais {n}", respEn:"{n} {r} em «{t}»", rango:"{a} a {b}", rePieSem:"Chega porque você escolheu um resumo semanal. Se nada aconteceu, não chega.", rePieDia:"Chega porque você escolheu um resumo diário. Se nada aconteceu, não chega.",
     pasAsunto:"{a} atribuiu uma pendência a você em «{t}»", pasEtiqueta:"Pendência atribuída", pasTitulo:"{a} atribuiu uma pendência a você", pasPara:"Para {f}", pasBoton:"Ver a pendência",
     pasPie:"Chega porque alguém atribuiu a você um passo de «O que segue».", venAsunto:"Vence hoje: {p}", venEtiqueta:"Vence hoje", venTitulo:"Uma pendência sua vence hoje", venPie:"Chega porque você tem uma pendência com data de hoje.", cadaPaso:"O que segue" },
-  he: { marca:"יומן הפעילויות", prefs:"כדי לשנות מה מגיע ומתי: <b>ההעדפות שלי ← התראות</b>.",
-    pedAsunto:"בקשת גישה חדשה: {q}", pedTexto:"{q} ({c}) ביקש/ה להצטרף ליומן הפעילויות.\n\nכל עוד לא תאשר/י, אין לו/ה גישה לשום דבר ביומן. לאישור או לדחייה: באפליקציה ← ניהול ← בקשות.",
-    pedPre:"{q} ביקש/ה להצטרף ליומן.", pedEtiqueta:"בקשת גישה", pedTitulo:"מישהו/י רוצה להצטרף ליומן",
-    pedParrafo:"כל עוד לא תאשר/י, אין לו/ה גישה לשום דבר ביומן. אפשר לאשר, עם התפקיד המתאים, או לדחות.",
+  he: { marca:"תולדות", desc:"יומן פעולות", prefs:"כדי לשנות מה מגיע ומתי: <b>ההעדפות שלי ← התראות</b>.",
+    pedAsunto:"בקשת גישה חדשה: {q}", pedTexto:"{q} ({c}) ביקש/ה להצטרף לתולדות.\n\nכל עוד לא תאשר/י, אין לו/ה גישה לשום דבר בתולדות. לאישור או לדחייה: באפליקציה ← ניהול ← בקשות.",
+    pedPre:"{q} ביקש/ה להצטרף לתולדות.", pedEtiqueta:"בקשת גישה", pedTitulo:"מישהו/י רוצה להצטרף לתולדות",
+    pedParrafo:"כל עוד לא תאשר/י, אין לו/ה גישה לשום דבר בתולדות. אפשר לאשר, עם התפקיד המתאים, או לדחות.",
     pedBoton:"לבדיקת הבקשה", pedDonde:"באפליקציה: ניהול ← בקשות.", pedPie:"זה מגיע אליך כי את/ה מנהל/ת ביומן.",
     avComento:"{a} הגיב/ה לפוסט שלך", avNombro:"{a} הזכיר/ה אותך ב{d}", unComentario:"תגובה", unPosteo:"פוסט",
     avAsuntoResp:"{a} הגיב/ה על «{t}»", avAsuntoMenc:"{a} הזכיר/ה אותך ב«{t}»", avEtqResp:"תגובה לפוסט שלך", avEtqMenc:"הזכירו אותך",
@@ -130,9 +130,9 @@ function marco({ lang, pre, etiqueta, titulo, cuerpo, pie }){
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" dir="${x.dir}" style="background:${C.fondo};"><tr><td align="center" style="padding:28px 12px;">
  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" dir="${x.dir}" style="max-width:560px;font-family:${FUENTE};color:${C.texto};text-align:${x.ini};">
   <tr><td style="background:${C.petroleo};border-radius:18px 18px 0 0;padding:22px 28px;">
-    <table role="presentation" cellpadding="0" cellspacing="0" dir="${x.dir}"><tr><td style="font-size:26px;padding-${x.fin}:12px;">🗺️</td>
+    <table role="presentation" cellpadding="0" cellspacing="0" dir="${x.dir}"><tr><td style="padding-${x.fin}:12px;line-height:0;"><img src="${APP}marca/toldot-correo.png" width="36" height="36" alt="" style="display:block;border:0;"></td>
       <td><div style="font-size:17px;font-weight:800;color:#fff;">${T.marca}</div>
-          <div style="font-size:11px;font-weight:700;color:${C.celeste};letter-spacing:2.5px;text-transform:uppercase;margin-top:2px;">Team LatAm</div></td></tr></table>
+          <div style="font-size:11px;font-weight:700;color:${C.celeste};letter-spacing:${L === "he" ? "0.5px" : "2.5px"};text-transform:uppercase;margin-top:2px;">${T.desc} · Team LatAm</div></td></tr></table>
   </td></tr>
   <tr><td style="background:#fff;padding:30px 28px 26px;border-left:1px solid ${C.borde};border-right:1px solid ${C.borde};">
     <div style="font-size:12px;font-weight:700;color:${C.celesteOsc};letter-spacing:${L === "he" ? "0" : "1.5px"};text-transform:uppercase;">${etiqueta}</div>
@@ -308,19 +308,19 @@ export function correoLugares({ lugares, meses, lang, url = `${APP}?ir=reportes`
 // y el enlace vence a las 48 horas (23-informe-mensual.sql). Lo que queda en la casilla es el aviso.
 const INF = {
   es: { asunto:"Ya está el informe de {m}", etiqueta:"Informe mensual", titulo:"El informe de {m} ya está listo",
-    parrafo:"Se abre dentro del Registro de Acciones: hace falta entrar con tu cuenta del equipo. Desde ahí lo podés ver como presentación, imprimir, guardar como PDF o bajar la planilla.",
+    parrafo:"Se abre dentro de Toldot: hace falta entrar con tu cuenta del equipo. Desde ahí lo podés ver como presentación, imprimir, guardar como PDF o bajar la planilla.",
     vence:"Este enlace deja de funcionar el {f} (48 horas después de enviado este correo).", despues:"Después de ese momento el correo ya no abre el informe: por seguridad, los números no viajan dentro del correo.",
     prueba:"Es un correo de prueba, para que veas cómo llega.", boton:"Abrir el informe", pie:"Te llega porque un administrador te sumó al informe mensual. Si no querés recibirlo, pedile que te saque de la lista." },
   en: { asunto:"The {m} report is ready", etiqueta:"Monthly report", titulo:"The {m} report is ready",
-    parrafo:"It opens inside the Action Log: you need to sign in with your team account. From there you can view it as a presentation, print it, save it as a PDF or download the spreadsheet.",
+    parrafo:"It opens inside Toldot: you need to sign in with your team account. From there you can view it as a presentation, print it, save it as a PDF or download the spreadsheet.",
     vence:"This link stops working on {f} (48 hours after this email was sent).", despues:"After that, this email no longer opens the report: for security, the numbers don't travel inside the email.",
     prueba:"This is a test email, so you can see how it arrives.", boton:"Open the report", pie:"You're getting this because an administrator added you to the monthly report. If you don't want it, ask them to take you off the list." },
   pt: { asunto:"O relatório de {m} está pronto", etiqueta:"Relatório mensal", titulo:"O relatório de {m} está pronto",
-    parrafo:"Abre dentro do Registro de Ações: é preciso entrar com a sua conta da equipe. De lá você pode ver como apresentação, imprimir, salvar como PDF ou baixar a planilha.",
+    parrafo:"Abre dentro do Toldot: é preciso entrar com a sua conta da equipe. De lá você pode ver como apresentação, imprimir, salvar como PDF ou baixar a planilha.",
     vence:"Este link deixa de funcionar em {f} (48 horas depois do envio deste e-mail).", despues:"Depois disso, o e-mail não abre mais o relatório: por segurança, os números não viajam dentro do e-mail.",
     prueba:"É um e-mail de teste, para você ver como chega.", boton:"Abrir o relatório", pie:"Chega porque um administrador incluiu você no relatório mensal. Se não quiser recebê-lo, peça para ele tirar você da lista." },
   he: { asunto:"הדוח של {m} מוכן", etiqueta:"דוח חודשי", titulo:"הדוח של {m} מוכן",
-    parrafo:"הוא נפתח בתוך יומן הפעולות: צריך להתחבר עם חשבון הצוות. משם אפשר לראות אותו כמצגת, להדפיס, לשמור כ-PDF או להוריד את הגיליון.",
+    parrafo:"הוא נפתח בתוך תולדות: צריך להתחבר עם חשבון הצוות. משם אפשר לראות אותו כמצגת, להדפיס, לשמור כ-PDF או להוריד את הגיליון.",
     vence:"הקישור הזה יפסיק לעבוד ב{f} (48 שעות אחרי שליחת המייל).", despues:"אחרי הזמן הזה המייל כבר לא פותח את הדוח: מטעמי אבטחה, המספרים לא מועברים בתוך המייל.",
     prueba:"זה מייל ניסיון, כדי שתראו איך זה מגיע.", boton:"פתיחת הדוח", pie:"זה מגיע אליך כי מנהל/ת הוסיף/ה אותך לדוח החודשי. אם את/ה לא רוצה לקבל אותו, בקשו להוריד אתכם מהרשימה." },
 };

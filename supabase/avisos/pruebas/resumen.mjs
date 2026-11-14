@@ -85,7 +85,7 @@ eq("desde el último que salió, pero no más atrás que su período más una se
   const reg = mundo();
   const r = await callado(() => main(AHORA));
   const c = reg.correos[0] || {};
-  eq("a Benny, a las 9, su resumen del día", [r.enviados, c.to, c.from, c.reply_to], [1, [BENNY], "Registro de Acciones <info@team-latam.com>", BENNY]);
+  eq("a Benny, a las 9, su resumen del día", [r.enviados, c.to, c.from, c.reply_to], [1, [BENNY], "Toldot <info@team-latam.com>", BENNY]);
   eq("con la mención de las últimas 24 horas y la respuesta a su posteo (no la vieja, no la del sistema)",
      [c.subject, c.html.includes("Visita a Rosario"), c.html.includes("Viejo"), c.html.replace(/<[^>]+>/g, "").includes("1 respuesta en «Programa de becas»"), c.html.includes("Google Calendar")],
      ["Tu resumen del día: 1 mención, 1 respuesta", true, false, true, false]);

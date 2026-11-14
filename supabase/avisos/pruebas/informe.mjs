@@ -95,7 +95,7 @@ const callado = async fn => { const l = console.log, e = console.error; console.
   eq("anotado como enviado, una marca por persona, del mes que terminó", reg.marcas.map(m => [m.tipo, m.objeto, m.email]).sort(), [["informe", "2026-10", "ana@x.com"], ["informe", "2026-10", "jefe@x.com"]]);
   const c = reg.correos[0];
   eq("el correo trae el enlace al informe y vence 48 horas después de la marca (martes 3/11, 9:30)",
-    [c.subject, c.text.includes("?informe=2026-10"), c.text.includes("el martes, 3 de noviembre, 09:30"), /^Registro de Acciones/.test(c.from)],
+    [c.subject, c.text.includes("?informe=2026-10"), c.text.includes("el martes, 3 de noviembre, 09:30"), /^Toldot/.test(c.from)],
     ["Ya está el informe de octubre de 2026", true, true, true]);
   const r2 = await callado(() => main(DIA1 + 3600000));
   eq("la corrida de la hora siguiente no lo repite", [r2.enviados, reg.correos.length], [0, 2]);

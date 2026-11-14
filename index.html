@@ -17,7 +17,9 @@
      (herramientas/publicar/csp.mjs), y ahí no corre ningún otro. -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js https://cdn.jsdelivr.net/npm/jszip@3.10.2/dist/jszip.min.js https://cdn.jsdelivr.net/npm/docx-preview@0.4.1/dist/docx-preview.min.js https://unpkg.com/leaflet@1.9.4/dist/leaflet.js https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js https://accounts.google.com/gsi/client; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com https://accounts.google.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://benonmzlgdjkhzauamrz.supabase.co https://*.googleusercontent.com https://*.tile.openstreetmap.org https://unpkg.com; media-src 'self' data: blob: https://benonmzlgdjkhzauamrz.supabase.co; connect-src 'self' data: blob: https://benonmzlgdjkhzauamrz.supabase.co wss://benonmzlgdjkhzauamrz.supabase.co https://www.googleapis.com https://accounts.google.com https://nominatim.openstreetmap.org https://api.mymemory.translated.net; frame-src 'self' data: blob: https://benonmzlgdjkhzauamrz.supabase.co https://accounts.google.com; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
-<title>Registro de Acciones — Team LatAm</title>
+<title>Toldot · Team LatAm</title>
+<!-- El ícono de la pestaña: la marca de Toldot sobre un cuadrado petróleo, incrustada (la página es un solo archivo y la CSP ya permite data:). -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' role='img' aria-label='Toldot'%3E%3Crect width='64' height='64' rx='14' fill='%230d3b3e'/%3E%3Cg transform='translate(7 7) scale(0.78)'%3E%3Cpath d='M11 13C20 13 26 16 32 24' fill='none' stroke='%232fb3c9' stroke-width='7' stroke-linecap='round'/%3E%3Cpath d='M32 24C27 33 26 42 30 52' fill='none' stroke='%232fb3c9' stroke-width='7' stroke-linecap='round'/%3E%3Cpath d='M32 24C37 20 44 15 53 13' fill='none' stroke='%238fe0ef' stroke-width='7' stroke-linecap='round'/%3E%3Ccircle cx='11' cy='13' r='8' fill='%23ffffff'/%3E%3Ccircle cx='53' cy='13' r='8' fill='%23ffffff'/%3E%3Ccircle cx='32' cy='24' r='8' fill='%23ffffff'/%3E%3Ccircle cx='30' cy='52' r='8' fill='%23ffffff'/%3E%3C/g%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -331,12 +333,22 @@
   }
   .topbar-inner{ display:flex; align-items:center; justify-content:space-between; gap:12px; max-width:1200px; margin:0 auto; }
   .brand{ display:flex; align-items:center; gap:10px; }
-  .brand .logo{ font-size:26px; }
+  /* La marca de Toldot (paquete de marca del 14/11/2026, herramientas/publicar/marca/README.md): cuatro aros unidos por tres líneas, un árbol
+     genealógico mínimo. Los colores salen de estas variables; el hueco de cada aro (--tm-hueco) tiene que ser el color EXACTO del fondo donde va
+     la marca, porque el aro tapa la punta de la línea. Sobre petróleo (encabezado, portada) lleva .sobre-oscuro; sobre blanco (informes), nada. */
+  .toldot-marca{ --tm-nodo:#0d3b3e; --tm-hueco:#ffffff; --tm-historia:#1a9fb8; --tm-reciente:#4fc7e0; display:inline-block; flex:none; }
+  .toldot-marca.sobre-oscuro{ --tm-nodo:#ffffff; --tm-hueco:var(--petroleo); --tm-historia:#2fb3c9; --tm-reciente:#8fe0ef; }
+  /* En el encabezado van las dos versiones y se muestra una: la normal (28 px) en compu, la chica (22 px, puntos llenos) en el celular. */
+  .brand .logo{ display:flex; align-items:center; }
+  .brand .logo .toldot-marca.chica{ display:none; }
   .brand h1{ font-size:17px; margin:0; font-weight:800; letter-spacing:0.2px; }
   .brand .sub{ font-size:12px; color:#bfe9ef; font-weight:500; }
   @media (max-width:520px){
-    .brand .logo{ font-size:22px; }
+    .brand .logo .toldot-marca.normal{ display:none; }
+    .brand .logo .toldot-marca.chica{ display:inline-block; }
     .brand h1{ font-size:15.5px; }
+    /* «Registro de Acciones · Team LatAm» no entra al lado de la lupa, la campana y la cuenta: en el celular queda «Registro de Acciones». */
+    .brand .sub .sub-eq{ display:none; }
   }
   .btn-new{
     background:var(--celeste); color:var(--petroleo-dark); border:none;
@@ -830,6 +842,7 @@
   }
   .gate-centro{ position:relative; width:100%; max-width:400px; display:flex; flex-direction:column; align-items:center; gap:22px; }
   .gate-marca{ text-align:center; color:#fff; }
+  .gate-logo .toldot-marca{ --tm-hueco:color-mix(in srgb, var(--petroleo) 92%, #fff); }   /* el cuadrado es blanco al 8 % sobre el petróleo */
   .gate-logo{
     width:68px; height:68px; border-radius:20px; margin:0 auto 18px; font-size:36px;
     display:flex; align-items:center; justify-content:center;
@@ -4473,7 +4486,7 @@
     .scroll-top{ inset-block-end:calc(86px + env(safe-area-inset-bottom)); inset-inline-end:14px; }
     /* Abajo del todo solo hace falta pasar la barra (62px, flotando a 10px del borde) y un respiro:
        con 96px más el pie de página quedaba un hueco de media pantalla
-       después de la última tarjeta. El pie ("Registro de Acciones · Team
+       después de la última tarjeta. El pie ("Toldot · Team
        LatAm") en celular queda tapado por la barra, así que no se dibuja. */
     main{ padding-bottom:calc(90px + env(safe-area-inset-bottom)); }
     footer.appfoot{ display:none; }
@@ -4536,10 +4549,10 @@
   <header class="topbar">
     <div class="topbar-inner">
       <div class="brand">
-        <span class="logo">🗺️</span>
+        <span class="logo"><svg class="toldot-marca sobre-oscuro normal" dir="ltr" width="28" height="28" viewBox="0 0 64 64" role="img" aria-label="Toldot"><path d="M11 13C20 13 26 16 32 24" fill="none" stroke="var(--tm-historia)" stroke-width="3.6" stroke-linecap="round"/><path d="M32 24C27 33 26 42 30 52" fill="none" stroke="var(--tm-historia)" stroke-width="3.6" stroke-linecap="round"/><path d="M32 24C37 20 44 15 53 13" fill="none" stroke="var(--tm-reciente)" stroke-width="3.6" stroke-linecap="round"/><circle cx="11" cy="13" r="5.2" fill="var(--tm-hueco)" stroke="var(--tm-nodo)" stroke-width="3.6"/><circle cx="53" cy="13" r="5.2" fill="var(--tm-hueco)" stroke="var(--tm-nodo)" stroke-width="3.6"/><circle cx="32" cy="24" r="5.2" fill="var(--tm-hueco)" stroke="var(--tm-nodo)" stroke-width="3.6"/><circle cx="30" cy="52" r="5.2" fill="var(--tm-hueco)" stroke="var(--tm-nodo)" stroke-width="3.6"/></svg><svg class="toldot-marca sobre-oscuro chica" dir="ltr" width="22" height="22" viewBox="0 0 64 64" role="img" aria-label="Toldot"><path d="M11 13C20 13 26 16 32 24" fill="none" stroke="var(--tm-historia)" stroke-width="7" stroke-linecap="round"/><path d="M32 24C27 33 26 42 30 52" fill="none" stroke="var(--tm-historia)" stroke-width="7" stroke-linecap="round"/><path d="M32 24C37 20 44 15 53 13" fill="none" stroke="var(--tm-reciente)" stroke-width="7" stroke-linecap="round"/><circle cx="11" cy="13" r="8" fill="var(--tm-nodo)"/><circle cx="53" cy="13" r="8" fill="var(--tm-nodo)"/><circle cx="32" cy="24" r="8" fill="var(--tm-nodo)"/><circle cx="30" cy="52" r="8" fill="var(--tm-nodo)"/></svg></span>
         <div>
-          <h1>Registro de Acciones</h1>
-          <div class="sub">Memoria histórica · Team LatAm</div>
+          <h1>Toldot</h1>
+          <div class="sub"><span class="sub-nom">Registro de Acciones</span><span class="sub-eq"> · Team LatAm</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -4572,7 +4585,7 @@
        arriba no entraban y había que descubrir que se deslizaban. El +
        flotante queda en el medio de la barra. -->
   <nav class="bottom-nav" id="bottomNav" hidden></nav>
-  <footer class="appfoot">Registro de Acciones · Team LatAm</footer>
+  <footer class="appfoot">Toldot · Team LatAm</footer>
   <!-- Botón flotante para crear, disponible en TODAS las solapas (antes
        "+ Nuevo evento" vivía en el header y solo creaba eventos, sin
        atajo a la Rutina fuera del Feed). Se despliega en las dos formas
@@ -11988,13 +12001,13 @@ function etiquetaDeVista(view){
 }
 function applyStaticI18n(){
   document.title = t(
-    "Registro de Acciones — Team LatAm", "Action Log — Team LatAm",
-    "Registro de Ações — Team LatAm", "יומן הפעילויות — Team LatAm"
+    "Toldot · Team LatAm", "Toldot · Team LatAm",
+    "Toldot · Team LatAm", "תולדות · Team LatAm"
   );
   const skip = document.getElementById("skipLink");
   if(skip) skip.textContent = t("Saltar al contenido","Skip to content","Pular para o conteúdo","דילוג לתוכן");
   const brandH1 = document.querySelector(".brand h1");
-  if(brandH1) brandH1.textContent = t("Registro de Acciones", "Action Log", "Registro de Ações", "יומן הפעילויות");
+  if(brandH1) brandH1.textContent = t("Toldot", "Toldot", "Toldot", "תולדות");
   const gsInput = document.getElementById("globalSearchInput");
   if(gsInput){
     const l = t("Buscar en todo…","Search everything…","Buscar em tudo…","חיפוש בהכול…");
@@ -12007,10 +12020,9 @@ function applyStaticI18n(){
   const gsLista = document.getElementById("globalResults");
   if(gsLista) gsLista.setAttribute("aria-label", t("Resultados de la búsqueda","Search results","Resultados da busca","תוצאות החיפוש"));
   const brandSub = document.querySelector(".brand .sub");
-  if(brandSub) brandSub.textContent = t(
-    "Memoria histórica · Team LatAm", "Historical record · Team LatAm",
-    "Memória histórica · Team LatAm", "זיכרון היסטורי · Team LatAm"
-  );
+  // Debajo del nombre, qué es: «Registro de Acciones» (en hebreo, «יומן פעולות»: unificado el 14/11/2026, a confirmar con alguien que lea hebreo).
+  // «· Team LatAm» va aparte: en el celular no entra y se esconde (ver .sub-eq).
+  if(brandSub) brandSub.innerHTML = `<span class="sub-nom">${t("Registro de Acciones","Action Log","Registro de Ações","יומן פעולות")}</span><span class="sub-eq"> · Team LatAm</span>`;
 
   const tabLabels = etiquetasDeVistas();
   document.querySelectorAll("#tabs button[data-view]").forEach(btn=>{
@@ -12032,8 +12044,8 @@ function applyStaticI18n(){
 
   const footer = document.querySelector("footer.appfoot");
   if(footer) footer.textContent = t(
-    "Registro de Acciones · Team LatAm", "Action Log · Team LatAm",
-    "Registro de Ações · Team LatAm", "יומן הפעילויות · Team LatAm"
+    "Toldot · Team LatAm", "Toldot · Team LatAm",
+    "Toldot · Team LatAm", "תולדות · Team LatAm"
   );
 
   const closeToastBtn = document.querySelector('#calendarToast [data-action="dismiss-calendar-notice"]');
@@ -12585,6 +12597,17 @@ function renderObserverBanner(){
     "Você entra como observador: vê todo o Registro, mas não pode publicar, responder nem editar.",
     "נכנסת כמשקיף/ה: רואים את כל היומן, אך לא ניתן לפרסם, להגיב או לערוך.")}</div>`;
 }
+// La marca de Toldot como texto SVG (cuatro aros unidos por tres líneas). Las variables de color son las de .toldot-marca (ver el CSS). Con menos de
+// 24 px va la versión chica (puntos llenos, sin hueco). dir="ltr": en hebreo la marca NO se espeja. `decorativa` = va junto al nombre escrito, así que
+// el lector de pantalla no la repite.
+function marcaToldot(px, { chica = false, clase = "", decorativa = false } = {}){
+  const g = chica ? 7 : 3.6;
+  const lineas = `<path d="M11 13C20 13 26 16 32 24" fill="none" stroke="var(--tm-historia)" stroke-width="${g}" stroke-linecap="round"/><path d="M32 24C27 33 26 42 30 52" fill="none" stroke="var(--tm-historia)" stroke-width="${g}" stroke-linecap="round"/><path d="M32 24C37 20 44 15 53 13" fill="none" stroke="var(--tm-reciente)" stroke-width="${g}" stroke-linecap="round"/>`;
+  const aros = [[11,13],[53,13],[32,24],[30,52]].map(([x,y]) => chica
+    ? `<circle cx="${x}" cy="${y}" r="8" fill="var(--tm-nodo)"/>`
+    : `<circle cx="${x}" cy="${y}" r="5.2" fill="var(--tm-hueco)" stroke="var(--tm-nodo)" stroke-width="3.6"/>`).join("");
+  return `<svg class="toldot-marca${clase ? " " + clase : ""}" dir="ltr" width="${px}" height="${px}" viewBox="0 0 64 64" ${decorativa ? 'aria-hidden="true"' : 'role="img" aria-label="Toldot"'}>${lineas}${aros}</svg>`;
+}
 function renderAuthGate(){
   const s = state.auth.status;
   if(s === "loading"){
@@ -12626,9 +12649,9 @@ function renderAuthGate(){
     return `<div class="gate-portada">
       <div class="gate-centro">
         <div class="gate-marca">
-          <div class="gate-logo" aria-hidden="true">🗺️</div>
-          <h1>Registro de Acciones</h1>
-          <div class="gate-equipo">Team LatAm</div>
+          <div class="gate-logo" aria-hidden="true">${marcaToldot(48, { clase: "sobre-oscuro", decorativa: true })}</div>
+          <h1>${t("Toldot","Toldot","Toldot","תולדות")}</h1>
+          <div class="gate-equipo">${t("Registro de Acciones","Action Log","Registro de Ações","יומן פעולות")} · Team LatAm</div>
         </div>
         <p class="gate-frase">${t("Lo que hacemos, <em>en un solo lugar.</em>","What we do, <em>all in one place.</em>","O que fazemos, <em>num só lugar.</em>","מה שאנחנו עושים, <em>במקום אחד.</em>")}</p>
         <div class="gate-tarjeta auth-gate">
@@ -12645,7 +12668,7 @@ function renderAuthGate(){
           </div>
         </div>
       </div>
-      <div class="gate-pie">Registro de Acciones · Team LatAm</div>
+      <div class="gate-pie">${t("Toldot","Toldot","Toldot","תולדות")} · Team LatAm</div>
     </div>`;
   }
   if(s === "pending"){
@@ -13367,7 +13390,7 @@ function adminSeccionTextos(key){
         `Rutina es aparte y no se edita acá. Los que tienen prendido "Calendar" se suman solos al Calendar compartido de LatAm; los que no, quedan solo en el Registro.<br><br>Los <b>documentos esperados</b> de cada tipo aparecen en la tarjeta de cada evento de ese tipo, con lo que ya está adjuntado y lo que falta — por ejemplo, una Visita con "Plan de viaje" y "Reporte". Es una lista de lo que se espera, no una obligación: nada bloquea publicar sin ellos.`,
         `Routine is separate and isn't edited here. The ones with "Calendar" on sync automatically to the shared LatAm Calendar; the rest stay only in the Log.<br><br>The <b>expected documents</b> of each type show up on every event card of that type, with what's attached and what's missing — for example, a Visit with "Travel plan" and "Report". It's a list of what's expected, not a requirement: nothing blocks publishing without them.`,
         `Rotina é separado e não se edita aqui. Os que têm "Calendar" ligado são somados sozinhos ao Calendar compartilhado da LatAm; os que não, ficam só no Registro.<br><br>Os <b>documentos esperados</b> de cada tipo aparecem no cartão de cada evento desse tipo, com o que já está anexado e o que falta — por exemplo, uma Visita com "Plano de viagem" e "Relatório". É uma lista do que se espera, não uma obrigação: nada bloqueia publicar sem eles.`,
-        `שגרה נפרדת ולא נערכת כאן. אלה ש"Calendar" דולק אצלם מתווספים לבד ליומן המשותף של LatAm; השאר נשארים רק ביומן הפעילויות.<br><br><b>המסמכים הצפויים</b> של כל סוג מופיעים בכרטיס של כל אירוע מאותו סוג, עם מה שכבר צורף ומה שחסר — למשל, ביקור עם "תוכנית נסיעה" ו"דוח". זו רשימה של מה שמצופה, לא חובה: דבר אינו חוסם פרסום בלעדיהם.`),
+        `שגרה נפרדת ולא נערכת כאן. אלה ש"Calendar" דולק אצלם מתווספים לבד ליומן המשותף של LatAm; השאר נשארים רק ביומן הפעולות.<br><br><b>המסמכים הצפויים</b> של כל סוג מופיעים בכרטיס של כל אירוע מאותו סוג, עם מה שכבר צורף ומה שחסר — למשל, ביקור עם "תוכנית נסיעה" ו"דוח". זו רשימה של מה שמצופה, לא חובה: דבר אינו חוסם פרסום בלעדיהם.`),
     },
     lugares: {
       lead: t("Ciudades que el equipo escribió a mano y todavía no están en la lista oficial.","Cities the team typed by hand that aren't in the official list yet.","Cidades que a equipe digitou à mão e ainda não estão na lista oficial.","ערים שהצוות הקליד ידנית ושעדיין לא ברשימה הרשמית."),
@@ -14114,7 +14137,7 @@ function renderCalendarFaltantes(){
           ? " " + (f.fallados.length === 1 ? t("No se pudo pasar 1 ({m}).","1 couldn't be added ({m}).","Não foi possível passar 1 ({m}).","אחד לא נוסף ({m}).", {n:f.fallados.length, m:esc(f.fallados[0].motivo)}) : t("No se pudieron pasar {n} ({m}).","{n} couldn't be added ({m}).","Não foi possível passar {n} ({m}).","{n} לא נוספו ({m}).", {n:f.fallados.length, m:esc(f.fallados[0].motivo)})) : ""}</div>` : "";
   return `
       <div class="field cal-faltantes" style="margin-top:22px;">
-        <label>${t("En el Registro pero no en el Calendar","In the Registro but not in the Calendar","No Registro mas não no Calendar","ביומן הפעילויות אבל לא ביומן")}</label>
+        <label>${t("En el Registro pero no en el Calendar","In the Registro but not in the Calendar","No Registro mas não no Calendar","ביומן הפעולות אבל לא ביומן")}</label>
         ${lista.length ? `
         <ul class="cal-faltantes-lista">${lista.slice(0, 50).map(p => `<li><b dir="auto">${esc(p.title)}</b> · ${esc(fecha(p))}</li>`).join("")}${lista.length > 50 ? `<li>${t("y {n} más","and {n} more","e mais {n}","ועוד {n}",{n:lista.length - 50})}</li>` : ""}</ul>
         <button type="button" class="btn-secondary" data-action="calendar-faltantes" ${f.trabajando || state.calendarSyncing ? "disabled" : ""}>📅 ${f.trabajando
@@ -17472,7 +17495,7 @@ function cabezaDelReporte(titulo, subtitulo, f){
   if(f.pais) chips.push(["pais", countryLabel(f.pais)]);
   if(f.tipo) chips.push(["tipo", (ACTIVITY_BY_KEY[f.tipo] || {}).label || f.tipo]);
   if(f.persona) chips.push(["persona", nombreEnReporte(f.persona)]);
-  return `<div class="rep-print-title"><span>Team LatAm · ${t("Registro de Acciones","Activity Log","Registro de Ações","יומן פעולות")}</span><span>${esc(t("Impreso el {d}","Printed on {d}","Impresso em {d}","הודפס ב-{d}",{d:fmtDate(todayISO())}))}</span></div>
+  return `<div class="rep-print-title"><span>${marcaToldot(14, { decorativa: true })} ${t("Toldot","Toldot","Toldot","תולדות")} · ${t("Registro de Acciones","Action Log","Registro de Ações","יומן פעולות")} · Team LatAm</span><span>${esc(t("Impreso el {d}","Printed on {d}","Impresso em {d}","הודפס ב-{d}",{d:fmtDate(todayISO())}))}</span></div>
     <div class="rep-cabeza">
       <h2 class="rep-titulo">${titulo}</h2>
       <div class="rep-subtitulo">${subtitulo}${chips.length ? ` · ${t("Solo:","Only:","Só:","רק:")} ${chips.map(([k, txt]) =>
@@ -23183,7 +23206,7 @@ function diapositivasDelReporte(r = reporteEnPantalla, { equipo = presEquipo } =
   const pr = r && r.presentacion;
   if(!r || !pr) return [];
   const sec = id => ((r.secciones || []).find(x => x.id === id) || {}).filas || [];
-  const marca = `<div class="ps-cap">Team LatAm · ${esc(t("Registro de Acciones","Activity Log","Registro de Ações","יומן פעולות"))}</div>`;
+  const marca = `<div class="ps-cap">${esc(t("Toldot","Toldot","Toldot","תולדות"))} · ${esc(t("Registro de Acciones","Action Log","Registro de Ações","יומן פעולות"))} · Team LatAm</div>`;
   const out = [];
   out.push({ id: "numeros", titulo: pr.titulo, html: `<section class="ps-slide">${marca}<h2 class="ps-tit">${pr.titulo}</h2><div class="ps-sub">${pr.subtitulo}</div>
     <div class="ps-nums">${pr.numeros.map(([n, txt]) => `<div><b>${n}</b><span>${txt}</span></div>`).join("")}</div>
@@ -23445,7 +23468,7 @@ function textosDeLaTarjeta(d){
     numero: String(d.total),
     unidad: n(d.total, t("actividad","activity","atividade","פעילות"), t("actividades","activities","atividades","פעילויות")),
     lugares: lineas[0] || "", resto: resto.join(" · "),
-    pie: t("Registro de Acciones","Activity Log","Registro de Ações","יומן פעולות"),
+    pie: t("Toldot · Registro de Acciones","Toldot · Action Log","Toldot · Registro de Ações","תולדות · יומן פעולות"),
   };
 }
 function renderMiAnioView(){
@@ -23721,7 +23744,7 @@ function nombreDePlanilla(){
   const f = dateFormatPref(), orden = f === "auto" ? (currentLang() === "en" ? "mdy" : "dmy") : f;
   const [a, m, d] = todayISO().split("-");
   const fecha = orden === "ymd" ? `${a}-${m}-${d}` : orden === "mdy" ? `${m}-${d}-${a}` : `${d}-${m}-${a}`;
-  return `${t("Registro","Log","Registro","יומן")} - ${fecha}.xlsx`;
+  return `${t("Toldot","Toldot","Toldot","תולדות")} - ${fecha}.xlsx`;
 }
 // Baja la planilla y devuelve cómo se llamó el archivo.
 async function bajarPlanilla(posts){
@@ -24264,7 +24287,7 @@ function renderFichaLugar(L){
   const proyPrint = elegido ? ` · ${esc(t("solo los hitos de «{p}»","only the milestones of “{p}”","só os marcos de «{p}»","רק אבני הדרך של «{p}»",{ p: nombreDeProyecto(getPostById(elegido)) }))}`
     : fichaProyecto === "ninguno" && D.hitos.length ? ` · ${esc(t("sin los hitos de los proyectos","without the projects' milestones","sem os marcos dos projetos","ללא אבני הדרך של הפרויקטים"))}` : "";
   const incluyePrint = `<div class="fl-incluye-print">${esc(t("Incluye","Includes","Inclui","כולל"))}: ${esc(D.niveles.slice(0, incluye + 1).map(n => etiquetas[n].replace(/^\+ /, "")).join(" + "))}${ocultosTxt.length ? ` · ${esc(t("sin","without","sem","ללא"))} ${esc(ocultosTxt.join(", "))}` : ""}${proyPrint}</div>`;
-  const tituloPrint = `<div class="rep-print-title"><span>Team LatAm · ${t("Registro de Acciones","Activity Log","Registro de Ações","יומן פעולות")} · ${esc(t("Ficha de {l}","{l} page","Ficha de {l}","כרטיס {l}",{ l: nombre }))}</span><span>${esc(t("Impreso el {d}","Printed on {d}","Impresso em {d}","הודפס ב-{d}",{ d: fmtDate(todayISO()) }))}</span></div>`;
+  const tituloPrint = `<div class="rep-print-title"><span>${marcaToldot(14, { decorativa: true })} ${t("Toldot","Toldot","Toldot","תולדות")} · ${t("Registro de Acciones","Action Log","Registro de Ações","יומן פעולות")} · Team LatAm · ${esc(t("Ficha de {l}","{l} page","Ficha de {l}","כרטיס {l}",{ l: nombre }))}</span><span>${esc(t("Impreso el {d}","Printed on {d}","Impresso em {d}","הודפס ב-{d}",{ d: fmtDate(todayISO()) }))}</span></div>`;
   const lectura = lecturaDeFicha(D, L);
   const ultima = D.visitas[0];
   const primera = D.visitas[D.visitas.length - 1];

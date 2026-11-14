@@ -1,6 +1,6 @@
 ---
 name: auditoria
-description: Auditoría del Registro de Acciones (bugs, código muerto, seguridad, diseño en escritorio y celular, sobrecarga, estética, idiomas y RTL, ventanas, datos variados, rendimiento, almacenamiento, copias, integraciones, privacidad, accesibilidad, uso y crítica del uso). Usar SIEMPRE que el usuario pida una auditoría, una revisión general, «revisá todo», «qué hay que mejorar», o revisar un área entera de la app; también antes de cerrar una tanda grande de cambios.
+description: Auditoría de Toldot, el Registro de Acciones (bugs, código muerto, seguridad, diseño en escritorio y celular, sobrecarga, estética, idiomas y RTL, ventanas, datos variados, rendimiento, almacenamiento, copias, integraciones, privacidad, accesibilidad, uso y crítica del uso). Usar SIEMPRE que el usuario pida una auditoría, una revisión general, «revisá todo», «qué hay que mejorar», o revisar un área entera de la app; también antes de cerrar una tanda grande de cambios.
 ---
 
 # Auditoría del Registro

@@ -81,9 +81,9 @@ const b = await abrirNavegador();
   const zip = abrirZip((await import("node:fs")).readFileSync(await d.path()));
   const filas = leerHoja(zip).slice(1), titulos = filas.map(f => f[5]);
   const estado = f => f[16];
-  eq("la planilla es un .xlsx llamado «Registro - día-mes-año» como todas, y trae las del mes (la cancelada marcada) y nada de otros meses",
+  eq("la planilla es un .xlsx llamado «Toldot - día-mes-año» como todas, y trae las del mes (la cancelada marcada) y nada de otros meses",
      [d.suggestedFilename(), ["Reunión en Santiago", "Charla en Chile", "Visita a Rosario"].every(t => titulos.includes(t)), estado(filas[titulos.indexOf("Cancelada del mes")]), titulos.includes("Cosa del mes de antes"), titulos.includes("Algo de este mes")],
-     [`Registro - ${HOY.slice(8)}-${HOY.slice(5, 7)}-${HOY.slice(0, 4)}.xlsx`, true, "Cancelada", false, false]);
+     [`Toldot - ${HOY.slice(8)}-${HOY.slice(5, 7)}-${HOY.slice(0, 4)}.xlsx`, true, "Cancelada", false, false]);
   await p.keyboard.press("Escape"); await p.waitForTimeout(300);
   eq("Escape cierra el informe y queda la app", [await abierto(p), await p.$('[data-action="toggle-user-menu"]').then(x => !!x)], [false, true]);
   eq("sin errores en la consola", errores, []);

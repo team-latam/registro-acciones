@@ -105,6 +105,10 @@ jobs:
           mkdir -p _sitio
           node herramientas/publicar/csp.mjs index.html > _sitio/index.html
           grep -q "'sha256-" _sitio/index.html || { echo "✗ La CSP salió sin huellas: no se publica."; exit 1; }
+          # El logo de los correos: los programas de correo piden la imagen por una dirección, no la
+          # traen adentro (herramientas/publicar/marca/README.md).
+          mkdir -p _sitio/marca
+          cp herramientas/publicar/marca/png/toldot-correo.png _sitio/marca/toldot-correo.png
           touch _sitio/.nojekyll
 
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0

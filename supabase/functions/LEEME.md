@@ -185,7 +185,7 @@ no acepta el remitente (dominio sin verificar), el aviso sale igual desde
 Antes de eso: para mandarle también a otros admins, hacía falta verificar un dominio en
 Resend (Domains → Add domain, con registros en el DNS) y cargar el
 remitente en el secreto de Supabase `AVISOS_DESDE`
-(por ejemplo `Registro de Acciones <avisos@ese-dominio>`).
+(por ejemplo `Toldot <avisos@ese-dominio>`).
 
 ---
 

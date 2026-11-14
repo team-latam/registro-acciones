@@ -24,6 +24,32 @@ En `docs/` (el índice, `docs/README.md`):
   copia», `supabase/respaldo/restaurar.mjs`).
 - `PROPUESTAS.md`: las 16 propuestas (abajo).
 
+## La marca: Toldot (14/11/2026)
+
+El sistema se llama **Toldot** (תולדות, «generaciones») y estrena logo: cuatro
+aros unidos por tres líneas, un árbol genealógico mínimo. «Registro de Acciones»
+sigue siendo lo que hace y queda como la línea de abajo. El usuario eligió el
+logo y el nombre el 14/11/2026 después de ver una vista previa
+(`docs/DISENO-LOGO.md` es la ficha de diseño que se le pasó a otra IA para
+crearlo). Los archivos, las reglas de uso y dónde está puesto cada versión:
+`herramientas/publicar/marca/README.md` (tanda 106 en `docs/REDISENO.md`).
+
+Lo que **falta** de ese cambio:
+- **El video** (`herramientas/video/`): sus títulos y el cierre todavía no
+  llevan la marca (`png/toldot-logo-completo-*.png`).
+- **Dibujar la marca** en la tarjeta «Mi año» (un PNG) y en las diapositivas de
+  «Presentar»: hoy llevan solo el texto «Toldot · Registro de Acciones».
+- **El hebreo:** «יומן פעולות» (la línea de abajo) lo propuso el diseño y se
+  adoptó sin que lo confirmara alguien que lea hebreo: conviene que lo mire una
+  persona.
+- **Instalar en el celular** (`apple-touch-icon` y manifiesto): solo si algún día
+  se habilita; los PNG ya están.
+- El **remitente de los correos** pasó a «Toldot <info@…>»: se ve recién al
+  llegar el próximo aviso; el logo de sus encabezados aparece cuando el sitio se
+  publica con `marca/toldot-correo.png` (lo revisa «¿Está arriba la página?»).
+- El nombre del repositorio (`registro-acciones`) y las direcciones del sitio no
+  cambian.
+
 ## Las 16 propuestas de mejoras (13/10/2026)
 
 `docs/PROPUESTAS.md`: qué eligió el usuario (en dos vueltas), cómo se leyó

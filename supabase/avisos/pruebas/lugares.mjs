@@ -150,7 +150,7 @@ const callado = async fn => { const l = console.log, e = console.error; console.
   const c = reg.correos[0];
   eq("en español, con la lista y el plazo de 6 meses", [c.subject, /lang="es"/.test(c.html), c.text.includes("• Paraguay"), c.text.includes("• Chile"), c.text.includes("• Argentina")],
     ["Lugares sin actividad: 6 países llevan 6 meses o más sin nada hecho", true, true, true, false]);
-  eq("sale de info@, con el botón a la app", [/^Registro de Acciones/.test(c.from), c.html.includes("https://team-latam.github.io/registro-acciones/")], [true, true]);
+  eq("sale de info@, con el botón a la app", [/^Toldot/.test(c.from), c.html.includes("https://team-latam.github.io/registro-acciones/")], [true, true]);
   const r2 = await callado(() => main(LUNES + 3600000));
   eq("la corrida de la hora siguiente no lo repite", [r2.enviados, reg.correos.length], [0, 2]);
   const r3 = await callado(() => main(LUNES + 3 * 86400000));

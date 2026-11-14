@@ -1,5 +1,10 @@
 # Ficha de diseño para crear el logo del Registro de Acciones
 
+> **Resuelto el 14/11/2026:** el usuario eligió el logo de **Toldot** (cuatro aros
+> unidos por tres líneas) y con él el nombre nuevo del sistema. Esta ficha queda como
+> registro de lo que se le pasó a la otra IA; la marca de verdad, sus reglas y dónde
+> está puesta: `herramientas/publicar/marca/README.md`.
+
 Para pasársela a otra IA (o a un diseñador). Reúne todo lo que la app ya
 decidió en diseño y color, lo que hay hoy en lugar de un logo, dónde va a vivir
 el logo y qué tiene que cumplir. Armada el 5/11/2026 sobre el `index.html` de

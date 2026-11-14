@@ -58,7 +58,7 @@ jobs:
           # Que haya contestado 200 no alcanza: GitHub sirve una página de
           # error con 200 si el sitio no existe. Esto comprueba que lo que
           # volvió es la app de verdad.
-          if ! grep -q "Registro de Acciones" pagina.html; then
+          if ! grep -q "Toldot" pagina.html; then
             echo "✗ Contestó 200 pero lo que vino no es la app."
             exit 1
           fi
@@ -71,6 +71,14 @@ jobs:
             echo "✓ Y es la que publicó «Publicar el sitio»: la CSP trae las huellas de sus scripts."
           else
             echo "::warning::La página publicada no trae las huellas en la CSP: ¿Settings → Pages volvió a «Deploy from a branch»? (docs/AUDITORIA.md, S2)"
+          fi
+
+          # El logo de los correos (marca/toldot-correo.png) se publica con el sitio:
+          # si no está, los correos salen con un cuadrito vacío en el encabezado.
+          if curl -sSf --max-time 30 -o /dev/null "${URL}marca/toldot-correo.png"; then
+            echo "✓ El logo de los correos está publicado."
+          else
+            echo "::warning::No se encuentra ${URL}marca/toldot-correo.png: los correos salen sin el logo (herramientas/publicar/marca/README.md)."
           fi
 
       # Un navegador NO pide la página como curl: pide la versión
@@ -231,7 +239,7 @@ jobs:
             echo "✗ El espejo no contestó."; exit 1; }
           bytes=$(wc -c < espejo.html)
           echo "HTTP $codigo · $bytes bytes"
-          if [ "$codigo" = "200" ] && grep -q "Registro de Acciones" espejo.html; then
+          if [ "$codigo" = "200" ] && grep -q "Toldot" espejo.html; then
             echo "✓ El espejo sirve la app. Como PRUEBA sirve: si desde ahí la ve,"
             echo "  lo que falla es github.io y no la página."
           else

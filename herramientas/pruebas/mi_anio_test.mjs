@@ -71,7 +71,7 @@ const anio = async (p, a) => { await p.click(`[data-action="mianio-anio"][data-y
   eq("el gráfico por mes: enero 1, marzo 1, junio 2, y el resto en cero", await p.$$eval(".mia-view .rep-col .rep-num", l => l.map(x => x.textContent.trim())), ["1", "0", "1", "0", "0", "2", "0", "0", "0", "0", "0", "0"]);
   eq("las columnas del gráfico son para mirar: no llevan al Reportes", await p.$$('.mia-view [data-action="reporte-mes"]').then(l => l.length), 0);
   const tarjeta = await p.$eval("#miaTarjeta", e => e.textContent.replace(/\s+/g, " ").trim());
-  eq("la tarjeta de la pantalla: el año, el número, los países, los días y las personas", tarjeta, "Mi 2025 en Team LatAm4actividadesen 3 países9 días viajando · 2 personasRegistro de Acciones");
+  eq("la tarjeta de la pantalla: el año, el número, los países, los días y las personas", tarjeta, "Mi 2025 en Team LatAm4actividadesen 3 países9 días viajando · 2 personasToldot · Registro de Acciones");
   eq("y no lleva el nombre de nadie más", [/Diego|Guypo|Lucía|Martínez/.test(tarjeta), /Diego|Guypo/.test(await p.$eval("#miaTarjeta", e => e.getAttribute("aria-label")))], [false, false]);
   // La imagen.
   const bajada = p.waitForEvent("download", { timeout: 8000 });

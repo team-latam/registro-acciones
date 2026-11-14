@@ -1,4 +1,10 @@
-# Registro de Acciones — Team LatAm
+# Toldot — Team LatAm
+
+> **Toldot** (תולדות, «generaciones») es el nombre del sistema desde el 14/11/2026;
+> hasta entonces se llamó **Registro de Acciones**, que es lo que hace y sigue
+> siendo su línea de abajo. La marca y sus reglas están en
+> [`herramientas/publicar/marca/`](./herramientas/publicar/marca/). El repositorio
+> conserva su nombre (`registro-acciones`) para no romper enlaces.
 
 Herramienta web de un solo archivo (`index.html`) para llevar la memoria
 histórica de las acciones del equipo (rutinas, visitas, cursos, seminarios,
