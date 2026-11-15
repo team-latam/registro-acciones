@@ -242,6 +242,61 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   await p.close();
 }
 
+/* ---------------- Revisar en lista: confirmar varios juntos ---------------- */
+{
+  const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: vp, base: datos({ prendido: true }) });
+  await irGastos(p);
+  const antes = (await tabla(p, "gastos")).length;
+  await elegir(p, '.admin-cab-acc [data-action="gastos-subir"]', [
+    { name: "12-11-2026 - Almuerzo - Lima.png", mimeType: "image/png", buffer: PNG },
+    { name: "factura.pdf", mimeType: "application/pdf", buffer: PDF },
+    { name: "foto.png", mimeType: "image/png", buffer: Buffer.concat([PNG, Buffer.from([0])]) }]);
+  await hasta(p, n => (window.__sb.tablas.gastos || []).filter(g => g.archivo).length >= n + 3, antes);
+  await p.click('[data-action="gastos-abrir-rendicion"][data-id="sin"]'); await p.waitForTimeout(150);
+  const nuevos = (await tabla(p, "gastos")).slice(antes);
+  const id = nombre => (nuevos.find(g => g.archivo_nombre === nombre) || {}).id;
+  eq("con varios por confirmar aparece «Revisar en lista», con cuántos son", await textos(p, ".gx-lboton .setting-sub"), ["4 por confirmar: corregilos y confirmalos juntos, sin abrir uno por uno."]);
+  await p.click('[data-action="gastos-lista-abrir"]'); await p.waitForTimeout(150);
+  eq("la lista: una fila por gasto, ninguna marcada (a ninguno le está todo)", await p.$$eval(".gx-lfila", l => l.map(e => e.querySelector("[data-glista-marca]").checked)), [false, false, false, false]);
+  eq("cada fila trae lo que sugirió el nombre del archivo", await p.$eval(`#gxL_${id("12-11-2026 - Almuerzo - Lima.png")}_concepto`, e => [e.value, e.dataset.sug]), ["Almuerzo", "1"]);
+  // El almuerzo: tipo y monto. Al quedar completo se marca solo.
+  const a = id("12-11-2026 - Almuerzo - Lima.png"), f = id("factura.pdf"), c = id("foto.png");
+  await p.selectOption(`#gxL_${a}_tipo`, "comida"); await p.fill(`#gxL_${a}_monto`, "20"); await p.press(`#gxL_${a}_monto`, "Tab"); await p.waitForTimeout(100);
+  eq("completa, la fila se marca sola", await p.$eval(`#gxL_${a}_marca`, e => e.checked), true);
+  // La factura, en pesos: aparece el monto en dólares.
+  await p.fill(`#gxL_${f}_fecha`, "2026-11-10"); await p.fill(`#gxL_${f}_concepto`, "Fotocopias"); await p.selectOption(`#gxL_${f}_tipo`, "material");
+  await p.fill(`#gxL_${f}_monto`, "3000"); await p.fill(`#gxL_${f}_moneda`, "ars"); await p.press(`#gxL_${f}_moneda`, "Tab"); await p.waitForTimeout(100);
+  eq("en otra moneda aparece «En USD», con la moneda en mayúsculas", await p.evaluate(f => [document.getElementById(`gxL_${f}_moneda`).value, !!document.getElementById(`gxL_${f}_rendidoMonto`)], f), ["ARS", true]);
+  await p.fill(`#gxL_${f}_rendidoMonto`, "3");
+  // La foto sin datos: marcada a mano, para ver que no se confirma incompleta.
+  await p.check(`#gxL_${c}_marca`);
+  // gx8: se le escribe el concepto y se deja sin marcar.
+  await p.fill("#gxL_gx8_concepto", "Remís");
+  await p.uncheck("#gxL_gx8_marca").catch(() => {});
+  eq("el botón dice cuántos va a confirmar", await p.$eval('[data-action="gastos-lista-guardar"]', e => e.textContent.trim()), "Confirmar los 3 marcados");
+  await p.selectOption("#gxListaDestino", "post:p9");
+  await p.click('[data-action="gastos-lista-guardar"]');
+  eq("confirmar: los completos quedan confirmados y en la actividad elegida", await hasta(p, ([a, f]) => { const g = id => window.__sb.tablas.gastos.find(x => x.id === id);
+    return g(a).estado === "confirmado" && g(a).rendicion_id === "ren_mvd" && g(a).tipo === "comida" && g(a).monto === 20
+      && g(f).estado === "confirmado" && g(f).moneda === "ARS" && g(f).monto === 3000 && g(f).rendido_monto === 3 && g(f).concepto === "Fotocopias"; }, [a, f]), true);
+  eq("lo editado sin marcar se guarda sin confirmar, sin moverlo", await hasta(p, () => { const g = window.__sb.tablas.gastos.find(x => x.id === "gx8"); return g.estado === "borrador" && g.concepto === "Remís" && !g.rendicion_id; }), true);
+  eq("el incompleto no se confirma: queda en la lista con lo que falta", await p.evaluate(c => [window.__sb.tablas.gastos.find(x => x.id === c).estado,
+    (document.querySelector(`#gxL_${c}_marca`) || {}).closest ? document.getElementById(`gxL_${c}_marca`).closest(".gx-lfila").querySelector(".gx-lerror").textContent : "",
+    document.getElementById(`gxL_${c}_tipo`).getAttribute("aria-invalid")], c), ["borrador", "Falta la fecha, el concepto, el tipo, el monto.", "true"]);
+  eq("y el aviso cuenta lo que pasó", await textos(p, ".gx-lista-rev .gx-alerta"), ["Se confirmaron 2 gastos. 1 quedó guardado sin confirmar. 1 no se pudo confirmar: mirá lo marcado en su fila."]);
+  eq("en la lista quedan los dos que faltan", await p.$$eval(".gx-lfila", l => l.length), 2);
+  await p.click('[data-action="gastos-lista-cerrar"]'); await p.waitForTimeout(150);
+  eq("«Volver a la vista de siempre» sin cambios nuevos no pregunta", await p.evaluate(() => [!document.querySelector(".gx-lista-rev"), document.getElementById("confirmOverlay").hidden]), [true, true]);
+  await p.click('[data-action="gastos-lista-abrir"]'); await p.waitForTimeout(150);
+  await p.fill("#gxL_gx8_monto", "15");
+  await p.click('[data-action="gastos-lista-cerrar"]');
+  eq("con cambios sin guardar, pregunta antes de volver", await p.evaluate(() => !document.getElementById("confirmOverlay").hidden), true);
+  await p.click("#confirmCancel"); await p.waitForTimeout(100);
+  eq("…y si no, sigue en la lista con lo escrito", await p.$eval("#gxL_gx8_monto", e => e.value), "15");
+  eq("sin errores de página", errores, []);
+  await p.close();
+}
+
 /* ---------------- Administración → Gastos ---------------- */
 {
   const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: vp, base: datos({ prendido: true }) });

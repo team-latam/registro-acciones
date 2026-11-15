@@ -120,6 +120,12 @@ tocan eventos, comentarios ni la Agenda); se hace por etapas chicas; Drive y el 
   dice qué completó, marca lo sugerido y lo dudoso, y tiene «Leer el comprobante» para uno subido antes. El
   lector nunca confirma. Lo prueban `lector_texto_test.mjs` (tickets inventados de seis países),
   `lector_test.mjs` (leyendo de verdad) y `lector_integridad_test.mjs`. La primera vez baja unos 6 MB.
+- [x] **Revisar en lista** (15/11, sin publicar; lo pidió el usuario, opción B): en una rendición o en «Sin
+  vincular», todos los gastos por confirmar en filas editables (con la foto chica del comprobante, fecha,
+  concepto, tipo, monto, moneda, el monto en dólares y quién pagó) y una casilla por fila; vienen marcados los
+  completos y sin dudas del lector. «Confirmar los marcados» confirma los que tienen todo, guarda sin confirmar
+  lo editado sin marcar y deja en la lista, con lo que falta, los incompletos. En «Sin vincular», a dónde
+  llevar los marcados. Lo prueba `gastos_test.mjs`.
 - [ ] Los avisos de «te observaron un gasto» (campanita y correo).
 
 **Visto al armar las pantallas (15/11), para decidir más adelante:** si la rutina de un mes ya se aprobó, un

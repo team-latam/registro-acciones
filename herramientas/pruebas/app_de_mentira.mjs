@@ -407,7 +407,8 @@ export async function recorrerApp(p, paso){
   if(await p.evaluate(() => { const b = document.querySelector('.user-menu [data-view="gastos"]'); if(b) b.click(); return !!b; })){
     await p.waitForTimeout(400); await paso(p, ("Gastos"));
     if(await click(p, '[data-action="gastos-abrir-rendicion"][data-id="ren_mvd"]')){ await p.waitForTimeout(300); await paso(p, ("Gastos: rendición"));
-      if(await click(p, '[data-action="gasto-abrir"][data-id="gx2"]')){ await p.waitForTimeout(300); await paso(p, ("Gastos: un gasto")); await cerrar(p); } }
+      if(await click(p, '[data-action="gasto-abrir"][data-id="gx2"]')){ await p.waitForTimeout(300); await paso(p, ("Gastos: un gasto")); await cerrar(p); }
+      if(await click(p, '[data-action="gastos-lista-abrir"]')){ await p.waitForTimeout(300); await paso(p, ("Gastos: revisar en lista")); await click(p, '[data-action="gastos-lista-cerrar"]'); await p.waitForTimeout(200); } }
     await p.evaluate(() => { const b = document.querySelector('[data-action="gastos-seccion"][data-key="cuenta"]'); b && b.click(); }); await p.waitForTimeout(300); await paso(p, ("Gastos: cuenta"));
     await p.evaluate(() => { const b = document.querySelector('[data-action="gastos-seccion"][data-key="aprobar"]'); b && b.click(); }); await p.waitForTimeout(300); await paso(p, ("Gastos: para aprobar"));
   }
