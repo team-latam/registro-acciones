@@ -1,8 +1,8 @@
 -- ============================================================
 -- Gastos y rendiciones: la etapa de prueba (15/11/2026)
 -- ============================================================
--- Lo que se acordó con el usuario, pregunta por pregunta (docs/REDISENO.md,
--- la tanda del módulo de gastos): cada persona carga sus gastos —una foto o
+-- Lo que se acordó con el usuario, pregunta por pregunta
+-- (docs/rendicion-gastos/README.md): cada persona carga sus gastos —una foto o
 -- un PDF del comprobante y sus datos— en una actividad en la que participó o
 -- en «la rutina del mes»; manda la rendición entera; un admin la revisa, puede
 -- OBSERVAR un gasto con un comentario (la persona corrige y la vuelve a
@@ -659,6 +659,55 @@ drop policy if exists gastos_archivos_subir on storage.objects;
 create policy gastos_archivos_subir on storage.objects for insert
   with check (bucket_id = 'adjuntos' and public.gastos_archivo_subible(name));
 
+
+-- ============================================================
+-- La configuración del módulo: preferences → gastos
+-- ============================================================
+-- La escribe un admin desde Administración → Gastos (las políticas de
+-- app_config, 02-politicas.sql) y la lee todo el equipo:
+--   prendido  si la app muestra el módulo (en la prueba, solo a los admins).
+--             Apagarlo esconde las pantallas; lo cargado queda guardado.
+--   abierto   si el resto del equipo puede usarlo (gastos_habilitado). La
+--             app todavía no lo ofrece: es la etapa 5.
+--   tipos     los tipos de gasto: [{key, label?, oculto?}]. Los siete de
+--             fábrica traen su nombre en los cuatro idiomas y `label` lo
+--             reemplaza; uno `oculto` ya no se ofrece pero sigue nombrando a
+--             los gastos que lo usan.
+-- Como el resto de preferences, se controla la forma: es lo que lee cada
+-- pantalla y no puede romperlas.
+create or replace function public.gastos_config_ok(v jsonb) returns boolean
+  language sql immutable as $$
+  select jsonb_typeof(v) = 'object'
+     and not exists (select 1 from jsonb_object_keys(v) k where k not in ('prendido', 'abierto', 'tipos'))
+     and coalesce(jsonb_typeof(v -> 'prendido'), 'boolean') = 'boolean'
+     and coalesce(jsonb_typeof(v -> 'abierto'), 'boolean') = 'boolean'
+     and coalesce(jsonb_typeof(v -> 'tipos'), 'array') = 'array'
+     and jsonb_array_length(coalesce(v -> 'tipos', '[]')) <= 40
+     and not exists (
+       select 1 from jsonb_array_elements(coalesce(v -> 'tipos', '[]')) e
+        where jsonb_typeof(e) <> 'object'
+           or exists (select 1 from jsonb_object_keys(e) k where k not in ('key', 'label', 'oculto'))
+           or coalesce(e ->> 'key', '') !~ '^[a-z0-9_]{1,40}$'
+           or coalesce(jsonb_typeof(e -> 'label'), 'string') <> 'string'
+           or length(coalesce(e ->> 'label', '')) > 60
+           or coalesce(jsonb_typeof(e -> 'oculto'), 'boolean') <> 'boolean')
+     and (select count(distinct e ->> 'key') = count(*) from jsonb_array_elements(coalesce(v -> 'tipos', '[]')) e)
+$$;
+
+create or replace function public.gastos_config_controlar() returns trigger
+  language plpgsql set search_path = '' as $$
+begin
+  if public.sin_sesion_de_persona() or new.key <> 'preferences' then return new; end if;
+  if (new.value -> 'gastos') is distinct from (case when tg_op = 'UPDATE' then old.value -> 'gastos' end)
+     and new.value ? 'gastos' and not public.gastos_config_ok(new.value -> 'gastos') then
+    raise exception 'La configuración de los gastos no tiene la forma esperada (prendido, abierto y hasta 40 tipos con clave y nombre)'
+      using errcode = 'check_violation';
+  end if;
+  return new;
+end $$;
+drop trigger if exists gastos_config_controlar on public.app_config;
+create trigger gastos_config_controlar before insert or update on public.app_config
+  for each row execute function public.gastos_config_controlar();
 
 -- En vivo, como las demás (supabase/pruebas/88-tiempo-real.sql las cuenta).
 -- Cada uno recibe solo los cambios de lo que puede ver.

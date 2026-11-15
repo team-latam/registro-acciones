@@ -58,6 +58,9 @@ function armar(){
     // La Agenda (8/10/2026): la ventana y una lista a medio traer se olvidan al salir.
     const agendaOverlay = { hidden:true };
     let agendaPila = [], agendaImport = null;
+    // Los gastos (15/11/2026): lo de una cuenta no pasa a la siguiente.
+    let gastosConfig = {}, gastosSeccion = "rendiciones";
+    const cortarGastos = () => { reg.cortesDeGastos = (reg.cortesDeGastos || 0) + 1; };
     const state = { auth:{ status:"loading", user:null }, posts:[], repliesByPost:{}, loaded:false,
       accessRequests:[], auditLog:[], roster:[], formerMembers:[], personas:[], prefs:{}, filters:null,
       preferenciasSection:"zonas", view:"feed" };
@@ -289,6 +292,7 @@ for(const [role, esperado] of [[undefined,"approved"],["member","approved"],["ob
   eq("al cerrar sesión se cortan las dos suscripciones",
      [a.reg.cortoPadron, a.reg.cortoSolicitud], [true, true]);
   eq("y queda afuera", a.state.auth.status, "signedOut");
+  eq("y lo de gastos de esa cuenta se corta y se olvida (al entrar y al salir)", a.reg.cortesDeGastos, 2);
 }
 
 /* ------------------------------------------------------------------

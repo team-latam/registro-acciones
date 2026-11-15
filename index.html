@@ -817,6 +817,152 @@
     .admin-item.hijo{ padding-inline-start:12px; min-height:36px; font-size:12.5px; }
   }
 
+  /* ---------- Gastos y rendiciones (en prueba; ver renderGastosView) ---------- */
+  .gx-prueba{ display:inline-block; vertical-align:middle; margin-inline-start:6px; padding:2px 8px; border-radius:999px; background:var(--warn-bg); border:1px solid var(--warn-border); color:var(--warn-text); font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; }
+  .gx-lista{ display:flex; flex-direction:column; gap:8px; margin-bottom:6px; }
+  .gx-tarjeta{ display:flex; align-items:center; gap:12px; width:100%; text-align:start; padding:12px 14px; border-radius:var(--radius-md);
+    border:1px solid var(--border); background:var(--card); box-shadow:var(--shadow); color:var(--ink); font-family:inherit; cursor:pointer; }
+  .gx-tarjeta:hover{ border-color:var(--celeste); }
+  .gx-sin{ border-style:dashed; }
+  .gx-t-ico{ flex:none; width:38px; height:38px; border-radius:50%; background:var(--surface-alt); display:flex; align-items:center; justify-content:center; font-size:18px; }
+  .gx-t-txt{ flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:2px; }
+  .gx-t-txt b{ font-size:14.5px; overflow-wrap:anywhere; }
+  .gx-t-txt small, .gx-f-txt small, .gx-mov-txt small{ font-size:12.5px; color:var(--text-muted); overflow-wrap:anywhere; }
+  .gx-t-der, .gx-f-der{ flex:none; display:flex; flex-direction:column; align-items:flex-end; gap:4px; text-align:end; }
+  .gx-t-total{ font-size:13px; font-weight:700; color:var(--ink-strong); white-space:nowrap; }
+  .gx-avisos{ display:flex; flex-wrap:wrap; gap:6px; margin-top:3px; }
+  .gx-aviso{ font-size:12px; font-weight:700; color:var(--warn-text); }
+  .gx-aviso-mal{ color:var(--danger-text); }
+  .gx-chip{ display:inline-block; padding:2px 9px; border-radius:999px; font-size:11.5px; font-weight:800; white-space:nowrap; border:1px solid var(--border); background:var(--surface-alt); color:var(--text); }
+  .gx-bien{ background:var(--ok-bg); border-color:var(--ok-border); color:var(--ok-text); }
+  .gx-aviso.gx-chip, .gx-chip.gx-aviso{ background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn-text); }
+  .gx-mal{ background:var(--danger-soft); border-color:var(--danger-fg); color:var(--danger-fg); }
+  .gx-vacio p{ margin:6px 0; }
+  .gx-volver{ display:inline-block; margin-bottom:12px; }
+  .gx-cab{ display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+  .gx-cab-txt{ flex:1; min-width:0; }
+  .gx-h3{ margin:0; font-size:17px; color:var(--ink-strong); overflow-wrap:anywhere; }
+  .gx-cab .setting-sub{ margin:2px 0 0; }
+  .gx-alerta{ background:var(--warn-bg); border:1px solid var(--warn-border); color:var(--warn-text); border-radius:var(--radius-md); padding:10px 14px; margin:0 0 12px; font-size:13.5px; font-weight:600; }
+  .gx-info{ background:var(--surface-alt); border-radius:var(--radius-md); padding:10px 14px; margin:0 0 12px; font-size:13.5px; }
+  .gx-filas{ display:flex; flex-direction:column; border:1px solid var(--border); border-radius:var(--radius-md); background:var(--card); overflow:hidden; margin-bottom:10px; }
+  .gx-fila{ display:flex; align-items:center; gap:12px; width:100%; text-align:start; padding:10px 14px; border:none; background:none; color:var(--ink); font-family:inherit; cursor:pointer; }
+  .gx-fila + .gx-fila{ border-top:1px solid var(--border); }
+  .gx-fila:hover{ background:var(--surface-alt); }
+  .gx-mini{ flex:none; width:44px; height:44px; border-radius:8px; object-fit:cover; background:var(--surface-alt); display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; color:var(--text-muted); border:1px solid var(--border); }
+  .gx-mini-pdf{ color:var(--danger-fg); }
+  .gx-f-txt{ flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:2px; }
+  .gx-f-txt b{ font-size:14px; overflow-wrap:anywhere; }
+  .gx-f-der b{ font-size:13.5px; white-space:nowrap; }
+  .gx-f-der small{ font-size:12px; color:var(--text-muted); white-space:nowrap; }
+  .gx-nada{ margin:8px 0 12px; }
+  .gx-subir-aca{ margin:2px 0 12px; }
+  .gx-total{ display:flex; justify-content:space-between; align-items:baseline; gap:10px; flex-wrap:wrap; padding:10px 14px; border-radius:var(--radius-md); background:var(--surface-alt); margin-bottom:10px; font-size:13.5px; }
+  .gx-total b{ font-size:15px; color:var(--ink-strong); }
+  .gx-rapido{ border:1px solid var(--border); border-radius:var(--radius-md); background:var(--card); padding:10px 14px; margin-bottom:12px; }
+  .gx-rapido summary{ cursor:pointer; font-weight:700; font-size:13.5px; color:var(--link); }
+  .gx-otra .gx-link{ font-size:13.5px; }
+  .gx-rapido > .setting-sub{ margin:8px 0; }
+  .gx-rap-fila{ display:flex; gap:8px; align-items:center; margin-bottom:8px; }
+  .gx-rap-fila input, .gx-otra select, .gx-cuenta-de select, .gx-anotar-grid input, .gx-anotar-grid select, .gx-tipos input[type=text], .gx-campo input, .gx-campo select, .gx-campo textarea{
+    border:1.5px solid var(--border); border-radius:var(--radius-sm); padding:9px 11px; font:inherit; font-size:14px; background:var(--surface-soft, var(--card)); color:var(--text); min-width:0; box-sizing:border-box; }
+  .gx-rap-fila input[type=number]{ flex:1 1 140px; max-width:220px; }
+  input.gx-moneda{ width:84px; flex:none; text-transform:uppercase; }
+  .gx-link{ background:none; border:none; padding:4px 0; color:var(--link); font:inherit; font-size:13px; font-weight:700; cursor:pointer; }
+  .gx-check{ display:flex; align-items:center; gap:8px; font-size:13.5px; margin-top:8px; }
+  .gx-acciones{ display:flex; align-items:center; justify-content:flex-end; gap:10px 14px; flex-wrap:wrap; margin:14px 0 6px; }
+  .gx-acciones .setting-sub{ margin:0; flex:1 1 220px; }
+  .gx-acciones-chicas{ margin-top:10px; }
+  .gx-otra{ margin-top:22px; }
+  .gx-otra-fila{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  .gx-otra select{ flex:1 1 260px; max-width:100%; }
+  .gx-subida{ background:var(--ok-bg); border:1px solid var(--ok-border); color:var(--ok-text); border-radius:var(--radius-md); padding:10px 14px; margin-bottom:12px; font-size:13.5px; font-weight:600; }
+  .gx-subida-mal{ background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn-text); }
+  .gx-sub-det{ font-weight:400; font-size:12.5px; margin-top:4px; overflow-wrap:anywhere; }
+  /* La cuenta corriente: una tarjeta por moneda. */
+  .gx-cuenta-de{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px; font-size:13.5px; font-weight:700; }
+  .gx-cuenta-de select{ flex:1 1 220px; max-width:360px; }
+  .gx-cuenta{ display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:12px; margin-bottom:8px; }
+  .gx-cuenta-mon{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md); box-shadow:var(--shadow); padding:12px 16px; }
+  .gx-cm-cab{ display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
+  .gx-cm-cab b{ font-size:13px; color:var(--text-muted); letter-spacing:.04em; }
+  .gx-saldo{ font-size:20px; font-weight:800; color:var(--ink-strong); }
+  .gx-saldo.gx-pos{ color:var(--ok-text); }
+  .gx-saldo.gx-neg{ color:var(--danger-text); }
+  .gx-cm-sub{ font-size:12.5px; color:var(--text-muted); text-align:end; margin-bottom:8px; }
+  .gx-cm-filas{ display:grid; grid-template-columns:1fr auto; gap:4px 12px; margin:0; font-size:13px; border-top:1px solid var(--border); padding-top:8px; }
+  .gx-cm-filas dt{ color:var(--text); }
+  .gx-cm-filas dd{ margin:0; text-align:end; font-weight:700; white-space:nowrap; }
+  .gx-cm-filas .gx-suave{ color:var(--text-muted); font-weight:400; }
+  .gx-movs{ display:flex; flex-direction:column; border:1px solid var(--border); border-radius:var(--radius-md); background:var(--card); overflow:hidden; margin-bottom:12px; }
+  .gx-mov{ display:flex; align-items:center; gap:10px 12px; padding:10px 14px; flex-wrap:wrap; }
+  .gx-mov + .gx-mov{ border-top:1px solid var(--border); }
+  .gx-mov-txt{ flex:1 1 200px; min-width:0; display:flex; flex-direction:column; gap:2px; }
+  .gx-mov-txt b{ font-size:13.5px; }
+  .gx-mov-der{ display:flex; align-items:center; gap:8px; white-space:nowrap; }
+  .gx-mov-der b{ font-size:13.5px; }
+  .gx-mov-acc{ display:flex; align-items:center; gap:6px; }
+  .gx-anotar{ padding:12px 16px; margin-top:14px; }
+  .gx-anotar-tit{ margin:2px 0 10px; }
+  .gx-anotar-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:10px; }
+  .gx-anotar-grid label{ display:flex; flex-direction:column; gap:4px; font-size:12px; font-weight:700; color:var(--text-muted); }
+  .gx-anotar-grid input.gx-moneda{ width:100%; }
+  .gx-anotar-grid .gx-ancho{ grid-column:1 / -1; }
+  .gx-anotar .setting-sub{ margin:8px 0 0; }
+  /* Administración → Gastos: los tipos. */
+  .gx-tipos .setting-row{ padding:10px 14px; gap:10px; }
+  .gx-tipos input[type=text]{ flex:1 1 200px; }
+  .gx-tipo-oculto{ text-decoration:line-through; color:var(--text-muted) !important; }
+  .gx-nota{ margin:8px 4px 0; }
+  /* La ventana de un gasto: el comprobante a un costado y los datos al otro. */
+  .gx-modal{ max-width:820px; }
+  .gx-body{ display:flex; flex-direction:column; min-height:0; }
+  .gx-tit{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding-inline-end:36px; }
+  .gx-ventana{ display:flex; gap:18px; overflow-y:auto; min-height:0; padding:2px; }
+  .gx-v-comp{ flex:0 0 220px; display:flex; flex-direction:column; gap:6px; }
+  .gx-v-comp small{ font-size:12px; color:var(--text-muted); overflow-wrap:anywhere; }
+  .gx-comp{ display:flex; align-items:center; justify-content:center; width:100%; aspect-ratio:3 / 4; border-radius:var(--radius-md); border:1px solid var(--border); background:var(--surface-alt); overflow:hidden; padding:0; cursor:pointer; font:inherit; color:var(--text); }
+  .gx-comp img{ width:100%; height:100%; object-fit:contain; background:#fff; }
+  .gx-comp-vacio{ cursor:default; font-size:13px; color:var(--text-muted); text-align:center; padding:10px; }
+  .gx-comp-pdf{ flex-direction:column; gap:10px; font-weight:700; font-size:13.5px; color:var(--link); }
+  .gx-pdf-ico{ width:58px; height:72px; border-radius:6px; background:var(--card); border:2px solid var(--danger-fg); color:var(--danger-fg); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px; }
+  .gx-v-form{ flex:1 1 auto; min-width:0; }
+  .gx-campos{ display:grid; grid-template-columns:1fr 1fr; gap:10px 12px; }
+  .gx-campo{ display:flex; flex-direction:column; gap:5px; min-width:0; margin:0; border:none; padding:0; }
+  .gx-et{ font-size:12px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.04em; padding:0; }
+  .gx-campo input, .gx-campo select, .gx-campo textarea{ width:100%; }
+  .gx-campo [aria-invalid="true"]{ border-color:var(--danger-fg); }
+  .gx-campo input:disabled, .gx-campo select:disabled, .gx-campo textarea:disabled{ opacity:.85; cursor:default; }
+  .gx-ancho{ grid-column:1 / -1; }
+  .gx-pago label{ display:flex; align-items:center; gap:8px; font-size:13.5px; padding:3px 0; color:var(--text); }
+  .gx-campo .gx-pago input, .gx-pago input[type=radio]{ width:auto; flex:none; margin:0; }
+  .gx-campos{ align-items:start; }
+  .gx-pista{ font-size:12px; color:var(--text-muted); }
+  .gx-sugerido{ margin:0 0 10px; font-size:13px; background:var(--celeste-soft, var(--surface-alt)); border-radius:var(--radius-sm); padding:8px 12px; }
+  .gx-hilo{ display:flex; flex-direction:column; gap:8px; margin-bottom:12px; }
+  .gx-com{ border-radius:var(--radius-sm); padding:8px 12px; background:var(--surface-alt); font-size:13.5px; }
+  .gx-com-admin{ background:var(--warn-bg); border:1px solid var(--warn-border); }
+  .gx-com small{ color:var(--text-muted); font-size:12px; }
+  .gx-com div{ margin-top:3px; white-space:pre-wrap; overflow-wrap:anywhere; }
+  .gx-observar{ margin:0 0 14px; padding:12px 14px; border-radius:var(--radius-md); background:var(--warn-bg); border:1px solid var(--warn-border); display:flex; flex-direction:column; gap:8px; align-items:flex-start; }
+  .gx-observar .gx-campo{ width:100%; }
+  .gx-botones{ align-items:center; flex-wrap:wrap; margin-top:14px; flex:none; }
+  .gx-espacio{ flex:1; }
+  .gx-borrar{ color:var(--danger-fg); }
+  @media (max-width:640px){
+    .gx-ventana{ flex-direction:column; gap:12px; }
+    .gx-v-comp{ flex:none; flex-direction:row; align-items:center; gap:12px; }
+    .gx-comp{ width:96px; flex:none; }
+    .gx-campos{ grid-template-columns:1fr; }
+    .gx-tarjeta{ flex-wrap:wrap; }
+    .gx-t-der{ flex-direction:row; align-items:center; flex-wrap:wrap; justify-content:flex-start; width:100%; padding-inline-start:50px; }
+    .gx-botones .gx-espacio{ display:none; }
+    /* «Subir comprobantes» va abajo del título, no a su lado: «Mis rendiciones» no entra en un renglón. */
+    .gastos-view .admin-cabecera{ grid-template-columns:minmax(0,1fr); }
+    .gastos-view .admin-cab-acc{ grid-column:1; grid-row:auto; margin-top:8px; }
+    .gx-botones button{ flex:1 1 auto; }
+  }
+
   /* ---------- Auth gate (login / pendiente / rechazado) ---------- */
   .auth-gate{ max-width:440px; margin:60px auto; text-align:center; }
   /* La portada de entrada (ver renderAuthGate): el lado petróleo con qué
@@ -4689,6 +4835,22 @@
   </div>
 </div>
 
+<!-- Un gasto (27-gastos.sql): el comprobante y sus datos para confirmar o corregir. -->
+<div class="modal-overlay" id="gastoOverlay" hidden>
+  <div class="modal modal-wrap gx-modal" role="dialog" aria-modal="true" aria-labelledby="gastoTitle">
+    <div id="gastoBody" class="gx-body"></div>
+  </div>
+</div>
+<!-- Fuera de la vista a propósito: la vista se vuelve a dibujar con cada aviso
+     en vivo, y un selector de archivos abierto quedaría huérfano. -->
+<input type="file" id="gastosArchivos" multiple accept="image/*,application/pdf" hidden>
+<datalist id="gxMonedas">
+  <option value="USD"></option><option value="EUR"></option><option value="ILS"></option><option value="ARS"></option><option value="BOB"></option><option value="BRL"></option>
+  <option value="BZD"></option><option value="CLP"></option><option value="COP"></option><option value="CRC"></option><option value="CUP"></option><option value="DOP"></option>
+  <option value="GTQ"></option><option value="HNL"></option><option value="HTG"></option><option value="JMD"></option><option value="MXN"></option><option value="NIO"></option>
+  <option value="PAB"></option><option value="PEN"></option><option value="PYG"></option><option value="TTD"></option><option value="UYU"></option><option value="VES"></option>
+</datalist>
+
 <div class="modal-overlay" id="cumpleOverlay" hidden>
   <div class="modal modal-wrap" style="max-width:460px;" role="dialog" aria-modal="true" aria-labelledby="cumpleTitle">
     <button class="close" id="cumpleClose" aria-label="Cerrar">✕</button>
@@ -8542,6 +8704,8 @@ async function onAuthChanged(user){
   postModalOverlay.hidden = true;
   // La Agenda abierta y una lista a medio traer no pasan a la sesión siguiente.
   agendaOverlay.hidden = true; agendaPila = []; agendaImport = null;
+  // Los gastos de una cuenta no pasan a la siguiente.
+  cortarGastos(); gastosConfig = {}; gastosSeccion = "rendiciones";
   state.filters = filtrosVacios(); filtroOrigen = null; fp.abierto = false; fp.b = null;
 
   if(!user){
@@ -8934,6 +9098,12 @@ function crearSupabaseStore(sb, opciones = {}){
       if(!sinMiniatura(rutaMiniatura(v))) r.push(rutaMiniatura(v));
     });
     if(Array.isArray(fila.files)) fila.files.forEach(a => { if(a && esRuta(a.path)) r.push(a.path); });
+    // El comprobante de un gasto (27-gastos.sql): uno por fila, y si es una
+    // foto, con su miniatura al lado, como las de los posteos.
+    if(typeof fila.archivo === "string" && fila.archivo.startsWith("gastos/")){
+      r.push(fila.archivo);
+      if(/\.(jpe?g|png|webp|gif)$/i.test(fila.archivo) && !sinMiniatura(rutaMiniatura(fila.archivo))) r.push(rutaMiniatura(fila.archivo));
+    }
     return r;
   }
   const tieneFirma = ruta => {
@@ -9013,6 +9183,9 @@ function crearSupabaseStore(sb, opciones = {}){
     if(Array.isArray(o.images)) o.images = o.images.map(v => esRuta(v) ? conFirma(v) : v);
     if(Array.isArray(o.files)) o.files = o.files.map(a =>
       a && esRuta(a.path) ? { ...a, dataUrl: conFirma(a.path) } : a);
+    // La ruta del comprobante se queda en `archivo` (es lo que se guarda);
+    // la dirección para mostrarlo va aparte.
+    if(typeof o.archivo === "string" && esRuta(o.archivo)) o.archivoUrl = conFirma(o.archivo);
     return o;
   }
   // Algo ya traducido, de vuelta a sus rutas: para volver a firmarlo sin
@@ -9154,6 +9327,15 @@ function crearSupabaseStore(sb, opciones = {}){
   const ALFABETO = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
   const nuevoId = () => Array.from(crypto.getRandomValues(new Uint8Array(20)),
     b => ALFABETO[b % ALFABETO.length]).join("");
+  // Los gastos (27-gastos.sql) usan uuid: también lo pone la app, porque el
+  // comprobante va en la carpeta de su gasto antes de que la fila vuelva.
+  const nuevoUuid = () => {
+    if(crypto.randomUUID) return crypto.randomUUID();
+    const b = crypto.getRandomValues(new Uint8Array(16));
+    b[6] = (b[6] & 0x0f) | 0x40; b[8] = (b[8] & 0x3f) | 0x80;
+    const h = [...b].map(x => x.toString(16).padStart(2, "0")).join("");
+    return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+  };
 
   /* --- Quién está mirando cada tabla ------------------------------
      Para poder refrescar sus listas apenas se escribe algo, sin esperar a
@@ -9669,6 +9851,86 @@ function crearSupabaseStore(sb, opciones = {}){
       },
     },
 
+    // ---- Gastos y rendiciones (27-gastos.sql) ----
+    // Las cuatro tablas en vivo: la base le deja ver a cada uno solo lo suyo
+    // (a un admin, todo). Una rendición se abre y cambia de estado con las
+    // funciones de la base; de una rendición, la persona toca directo solo
+    // su total rápido.
+    gastos: {
+      subscribe(alCambiar, alFallar){
+        const tablas = ["gastos_rendiciones", "gastos", "gastos_comentarios", "gastos_movimientos"];
+        const datos = {};
+        const bajas = tablas.map(tabla => enVivo({ tabla, clave: "id", alFallar,
+          ...(tabla === "gastos" ? { firmaAdjuntos: true, afinar: f => resolverAdjuntos(aObjeto(f)) } : {}),
+          alCambiar: lista => { datos[tabla] = lista; if(tablas.every(x => datos[x])) alCambiar({ ...datos }); } }));
+        return () => bajas.forEach(f => f && f());
+      },
+      // Devuelve el id: el comprobante va en la carpeta de ese gasto.
+      async crear(datos){
+        const id = nuevoUuid();
+        revienta(await sb.from("gastos").insert({ ...aFila(datos), id }));
+        await refrescar("gastos", id);
+        return id;
+      },
+      async cambiar(id, patch){
+        revienta(await sb.from("gastos").update(aFila(patch)).eq("id", id));
+        await refrescar("gastos", id);
+      },
+      async borrar(id){
+        revienta(await sb.from("gastos").delete().eq("id", id));
+        await Promise.all([refrescar("gastos", id), recargarTabla("gastos_comentarios")]);
+      },
+      // Primero la fila (la base deja subir solo a la carpeta de un gasto
+      // propio que se puede corregir), después el archivo y al final su ruta.
+      async subirComprobante(id, dataUrl, nombre){
+        const base = `gastos/${id}/comprobante`;
+        const ruta = String(dataUrl).startsWith("data:image/") ? await subirFoto(base, dataUrl) : await subirUno(base, dataUrl, nombre);
+        revienta(await sb.from("gastos").update({ archivo: ruta }).eq("id", id));
+        await refrescar("gastos", id);
+        return ruta;
+      },
+      async abrirRendicion({ post, mes }){
+        const { data, error } = await sb.rpc("gastos_rendicion_abrir", { p_post: post || null, p_mes: mes || null });
+        if(error) throw error;
+        await refrescar("gastos_rendiciones", data);
+        return data;
+      },
+      async enviar(id){
+        revienta(await sb.rpc("gastos_rendicion_enviar", { p_id: id }));
+        await Promise.all([refrescar("gastos_rendiciones", id), recargarTabla("gastos")]);
+      },
+      async aprobar(id){
+        revienta(await sb.rpc("gastos_rendicion_aprobar", { p_id: id }));
+        await Promise.all([refrescar("gastos_rendiciones", id), recargarTabla("gastos")]);
+      },
+      async observar(gastoId, texto){
+        revienta(await sb.rpc("gastos_observar", { p_gasto: gastoId, p_texto: texto }));
+        await Promise.all([refrescar("gastos", gastoId), recargarTabla("gastos_rendiciones"), recargarTabla("gastos_comentarios")]);
+      },
+      async comentar(gastoId, texto){
+        const { data, error } = await sb.rpc("gastos_comentar", { p_gasto: gastoId, p_texto: texto });
+        if(error) throw error;
+        await refrescar("gastos_comentarios", data);
+      },
+      async totalRapido(id, total, confirmado){
+        revienta(await sb.from("gastos_rendiciones").update({ total_manual: total, total_manual_confirmado: !!confirmado }).eq("id", id));
+        await refrescar("gastos_rendiciones", id);
+      },
+      async anotarMovimiento(datos){
+        const id = nuevoUuid();
+        revienta(await sb.from("gastos_movimientos").insert({ ...aFila(datos), id }));
+        await refrescar("gastos_movimientos", id);
+      },
+      async borrarMovimiento(id){
+        revienta(await sb.from("gastos_movimientos").delete().eq("id", id));
+        await refrescar("gastos_movimientos", id);
+      },
+      async confirmarMovimiento(id){
+        revienta(await sb.rpc("gastos_movimiento_confirmar", { p_id: id }));
+        await refrescar("gastos_movimientos", id);
+      },
+    },
+
     // ---- Solicitudes de acceso ----
     // El id de una solicitud ES el correo: la app las mira por `id`, así
     // que se lo agrega al entregarlas.
@@ -10166,6 +10428,7 @@ function applyPreferencesConfig(cfg){
   applyCalendarIdConfig(cfg && cfg.calendarId);
   applyCalendarImportFromConfig(cfg && cfg.calendarImportFrom);
   applyAttachmentLimitsConfig(cfg);
+  applyGastosConfig(cfg && cfg.gastos);
 }
 // Se mutan EVENTO_TYPES/ACTIVITY_TYPES/ACTIVITY_BY_KEY/CALENDAR_SYNC_TYPES
 // en el lugar (mismo motivo que ZONES/COUNTRIES): todo el resto del
@@ -11990,6 +12253,7 @@ function etiquetasDeVistas(){
     proyectos: t("Proyectos", "Projects", "Projetos", "פרויקטים"),
     reportes: t("Reportes", "Reports", "Relatórios", "דוחות"),
     configuracion: t("Configuración", "Settings", "Configurações", "הגדרות"),
+    gastos: t("Gastos", "Expenses", "Despesas", "הוצאות"),
     auditoria: t("Actividad", "Activity", "Atividade", "פעילות"),
     solicitudes: t("Usuarios", "Users", "Usuários", "משתמשים"),
     preferencias: t("Administrar", "Manage", "Administrar", "ניהול"),
@@ -12305,6 +12569,7 @@ function renderUserBadge(){
   const links = isAuthorized() ? `
         <div class="um-links">
           <button type="button" class="um-link" data-action="goto-view" data-view="configuracion">⚙️ ${t("Mis preferencias","My preferences","Minhas preferências","ההעדפות שלי")}</button>
+          ${gastosVisible() ? `<button type="button" class="um-link" data-action="goto-view" data-view="gastos">🧾 ${t("Gastos","Expenses","Despesas","הוצאות")}${gastosPendientes() ? `<span class="pending-count">${gastosPendientes()}</span>` : ""}</button>` : ""}
           <button type="button" class="um-link" data-action="problema-abrir">🛟 ${t("Algo no anda","Something's wrong","Algo não está funcionando","משהו לא עובד")}</button>
           ${isAdmin() ? `<button type="button" class="um-link" data-action="goto-view" data-view="admin">🛠️ ${t("Administración","Administration","Administração","ניהול")}${pend ? `<span class="pending-count">${pend}</span>` : ""}</button>` : ""}
         </div>` : "";
@@ -12510,6 +12775,7 @@ function doRender(){
   // por dentro.
   document.body.classList.toggle("en-portada", !state.auth.user);
   if(!isAuthorized()){
+    if(unsubGastos) cortarGastos();
     tabsNav.classList.add("tabs-hidden"); closeFab(); fabEl.hidden = true;
     html += renderAuthGate();
     viewRoot.innerHTML = html;
@@ -12520,6 +12786,9 @@ function doRender(){
   fabEl.hidden = !canWrite(); // el observador no crea nada
   if(isObserver()) html += renderObserverBanner();
   if(!isAdmin() && ADMIN_VIEWS.has(state.view)) state.view = "feed";
+  // Gastos (en prueba): se escucha solo mientras el módulo se ve.
+  sincronizarGastos();
+  if(state.view === "gastos" && !gastosVisible()) state.view = "feed";
 
   if(!fatalError && !state.loaded){
     html += `<div class="empty-state"><div class="big">⏳</div>${t("Cargando registro compartido…","Loading shared log…","Carregando registro compartilhado…","טוען יומן משותף...")}</div>`;
@@ -12534,6 +12803,7 @@ function doRender(){
   else if(state.view === "reportes") html += renderReportesView();
   else if(state.view === "configuracion") html += renderConfiguracionView();
   else if(state.view === "mianio") html += renderMiAnioView();
+  else if(state.view === "gastos") html += renderGastosView();
   // Las tres vistas de admin siguen siendo las de siempre (así cada
   // atajo que llega a ellas sigue andando); el cascarón de Administración
   // las envuelve con el menú al costado.
@@ -13329,6 +13599,8 @@ function adminMenuItems(){
     { grupo:t("Cómo se carga","How things are logged","Como se carrega","איך רושמים"), items:[
       { key:"tipos", view:"preferencias", sub:"tipos", label:t("Tipos de actividad","Activity types","Tipos de atividade","סוגי פעילות") },
       { key:"agenda", view:"preferencias", sub:"agenda", label:t("Agenda","Directory","Agenda","ספר טלפונים") },
+      // El módulo de gastos, en prueba (27-gastos.sql): el interruptor y los tipos.
+      { key:"gastos", view:"preferencias", sub:"gastos", label:t("Gastos","Expenses","Despesas","הוצאות") },
       // Zonas, Lugares y Adjuntos se tocan una vez al año: juntas en
       // «Avanzado», que se despliega solo estando adentro (AUDITORIA M12).
       // Las ciudades por sumar se cuentan igual, en «Avanzado».
@@ -13403,6 +13675,13 @@ function adminSeccionTextos(key){
     temas: {
       lead: t("Los temas que cuenta «Tendencias»: de qué se habló más o menos que antes.","The topics «Trends» counts: what was talked about more or less than before.","Os temas que «Tendências» conta: do que se falou mais ou menos que antes.","הנושאים ש«מגמות» סופר: על מה דובר יותר או פחות מקודם."),
       ayuda: t("Cada tema es una idea y las palabras con que se la nombra: «Seguridad» puede incluir «cámaras» y «alarma». «Tendencias» cuenta, por tema, cuántas actividades lo mencionan (en el título o en el texto) ahora contra antes. Se buscan palabras enteras, sin importar tildes, mayúsculas ni plural; el nombre del tema ya cuenta como una de sus palabras. Los nombres de personas no son temas: solo cuenta lo que se escribe acá. Abajo aparecen las palabras que se repiten en los textos y todavía no están en ningún tema.","Each topic is an idea and the words that name it: “Security” can include “cameras” and “alarm”. “Trends” counts, per topic, how many activities mention it (in the title or the text) now against before. Whole words are searched, regardless of accents, capitals or plural; the topic's name already counts as one of its words. People's names aren't topics: only what's written here counts. Below you'll see the words that keep coming up in the texts and aren't in any topic yet.","Cada tema é uma ideia e as palavras que a nomeiam: «Segurança» pode incluir «câmeras» e «alarme». «Tendências» conta, por tema, quantas atividades o mencionam (no título ou no texto) agora contra antes. Buscam-se palavras inteiras, sem importar acentos, maiúsculas nem plural; o nome do tema já conta como uma de suas palavras. Nomes de pessoas não são temas: só conta o que se escreve aqui. Abaixo aparecem as palavras que se repetem nos textos e ainda não estão em nenhum tema.","כל נושא הוא רעיון והמילים שמכנות אותו: «ביטחון» יכול לכלול «מצלמות» ו«אזעקה». «מגמות» סופר, לכל נושא, כמה פעילויות מזכירות אותו (בכותרת או בטקסט) עכשיו מול קודם. מחפשים מילים שלמות, בלי קשר לניקוד, לאותיות גדולות או לרבים; שם הנושא כבר נחשב כאחת ממילותיו. שמות של אנשים אינם נושאים: נספר רק מה שנכתב כאן. למטה מופיעות המילים שחוזרות בטקסטים ועדיין אינן באף נושא."),
+    },
+    gastos: {
+      lead: t("El módulo para rendir gastos con sus comprobantes. Está en prueba: por ahora lo ven solo los administradores.","The module for reporting expenses with their receipts. It's in testing: for now only admins see it.","O módulo para prestar contas das despesas com os comprovantes. Está em teste: por enquanto só os administradores veem.","המודול לדיווח הוצאות עם הקבלות. הוא בניסוי: בינתיים רק מנהלים רואים אותו."),
+      ayuda: t("Con el interruptor prendido aparece «Gastos» en el menú de tu foto (y en «Más», en el celular). Ahí se suben los comprobantes, se arma la rendición de cada actividad o de la rutina del mes, se aprueba y se lleva la cuenta corriente de cada persona.<br><br>Los <b>tipos de gasto</b> son los que se ofrecen al cargar uno. Cambiar el nombre de un tipo lo cambia en todos los gastos que ya lo usan.",
+        "With the switch on, “Expenses” shows up in your photo's menu (and under “More”, on a phone). That's where receipts are uploaded, each activity's or month's report is put together and approved, and each person's running balance is kept.<br><br>The <b>expense types</b> are the ones offered when logging an expense. Renaming a type renames it on every expense that already uses it.",
+        "Com o interruptor ligado aparece «Despesas» no menu da sua foto (e em «Mais», no celular). Ali se enviam os comprovantes, se monta a prestação de cada atividade ou da rotina do mês, se aprova e se leva a conta corrente de cada pessoa.<br><br>Os <b>tipos de despesa</b> são os oferecidos ao carregar uma. Mudar o nome de um tipo muda em todas as despesas que já o usam.",
+        "כשהמתג דולק, «הוצאות» מופיע בתפריט של התמונה שלך (וב«עוד», בטלפון). שם מעלים קבלות, מרכיבים את הדוח של כל פעילות או של שגרת החודש, מאשרים, ומנהלים את החשבון השוטף של כל אחד.<br><br><b>סוגי ההוצאות</b> הם אלה שמוצעים ברישום הוצאה. שינוי שם של סוג משנה אותו בכל ההוצאות שכבר משתמשות בו."),
     },
     avanzado: { lead: t("Lo que se configura una vez y casi no se toca: las zonas, las ciudades escritas a mano y los adjuntos.","What's set up once and rarely touched: zones, hand-typed cities and attachments.","O que se configura uma vez e quase não se mexe: as zonas, as cidades digitadas à mão e os anexos.","מה שמגדירים פעם אחת וכמעט לא נוגעים: האזורים, הערים שהוקלדו ידנית והקבצים המצורפים.") },
     adjuntos: { lead: t("Cuántos archivos, y de qué tamaño, se pueden adjuntar a un posteo (evento, rutina o respuesta).","How many files, and how big, can be attached to a post (event, routine or reply).","Quantos arquivos, e de que tamanho, podem ser anexados a uma postagem (evento, rotina ou resposta).","כמה קבצים, ובאיזה גודל, אפשר לצרף לפוסט (אירוע, שגרה או תגובה).") },
@@ -13508,7 +13787,7 @@ function renderBottomNav(){
   if(!isAuthorized()){ bottomNavEl.hidden = true; moreMenuOpen = false; return; }
   bottomNavEl.hidden = false;
   const item = (view, icon, label) => `<button type="button" class="bn-item${state.view===view?" active":""}" data-action="goto-view" data-view="${view}"${state.view===view ? ' aria-current="page"' : ""}><span class="bn-ico" aria-hidden="true">${icon}</span><span class="bn-txt">${label}</span></button>`;
-  const enMas = ["proyectos","reportes","configuracion", ...ADMIN_VIEWS];
+  const enMas = ["proyectos","reportes","configuracion","gastos", ...ADMIN_VIEWS];
   const pend = isAdmin() ? solicitudesPendientes().length : 0;
   const hoja = (view, icon, label, extra) => `<button type="button" class="bn-sheet-item${state.view===view?" active":""}" data-action="goto-view" data-view="${view}">${icon} ${label}${extra || ""}</button>`;
   bottomNavEl.innerHTML = `
@@ -13523,6 +13802,7 @@ function renderBottomNav(){
         ${hoja("proyectos", "📋", t("Proyectos","Projects","Projetos","פרויקטים"))}
         ${hoja("reportes", "📊", t("Reportes","Reports","Relatórios","דוחות"))}
         ${hoja("configuracion", "⚙️", t("Mis preferencias","My preferences","Minhas preferências","ההעדפות שלי"))}
+        ${gastosVisible() ? hoja("gastos", "🧾", t("Gastos","Expenses","Despesas","הוצאות"), gastosPendientes() ? `<span class="pending-count">${gastosPendientes()}</span>` : "") : ""}
         ${isAdmin() ? hoja("admin", "🛠️", t("Administración","Administration","Administração","ניהול"), pend ? `<span class="pending-count">${pend}</span>` : "") : ""}
       </div>` : ""}`;
 }
@@ -14497,6 +14777,7 @@ function renderPreferenciasView(){
     : sec==="problemas" ? renderProblemasSection()
     : sec==="avanzado" ? renderAvanzadoSection()
     : sec==="agenda" ? renderAgendaAdminSection()
+    : sec==="gastos" ? renderGastosAdminSection()
     : renderZonasSection();
   // Sin la fila de chips de antes: el menú de Administración (ver
   // renderAdminShell) ya dice en qué sección se está.
@@ -20973,6 +21254,7 @@ const TOUR_FALLBACK_KEY = "ra_tour_seen";
 // acá (y al revés: si algo no necesita paso, se anota en TOUR_SIN_PASO con el porqué). Ver CLAUDE.md.
 const TOUR_SIN_PASO = {
   admin: "Administración es solo de admins y tiene su propio menú con una línea de ayuda en cada sección; el recorrido es para todo el equipo.",
+  gastos: "Gastos está en prueba y lo ven solo los administradores (con el interruptor de Administración → Gastos); cuando se abra al equipo, se le suma su paso.",
 };
 // El control que lleva a una pantalla: la solapa de arriba en la compu, la barra de abajo en el celular. Lo que en
 // el celular vive dentro de «Más» (Proyectos, Reportes) se señala con ese botón y el texto lo avisa.
@@ -23859,7 +24141,7 @@ window.addEventListener("unhandledrejection", e => {
 const NOMBRE_DE_PANTALLA = () => ({ feed: t("Inicio","Home","Início","בית"), calendario: t("Calendario","Calendar","Calendário","יומן"), paises: t("Países","Countries","Países","מדינות"),
   proyectos: t("Proyectos","Projects","Projetos","פרויקטים"), reportes: t("Reportes","Reports","Relatórios","דוחות"), configuracion: t("Mis preferencias","My preferences","Minhas preferências","ההעדפות שלי"),
   preferencias: t("Administración","Administration","Administração","ניהול"), solicitudes: t("Administración","Administration","Administração","ניהול"), auditoria: t("Administración","Administration","Administração","ניהול"),
-  admin: t("Administración","Administration","Administração","ניהול") });
+  admin: t("Administración","Administration","Administração","ניהול"), gastos: t("Gastos","Expenses","Despesas","הוצאות") });
 const nombreDePantalla = k => (NOMBRE_DE_PANTALLA()[k] || String(k || ""));
 
 function abrirProblema(){
@@ -23924,6 +24206,1102 @@ async function enviarProblema(){
 }
 document.getElementById("problemaClose").addEventListener("click", cerrarProblema);
 problemaOverlay.addEventListener("click", e=>{ if(e.target === problemaOverlay) cerrarProblema(); });
+
+/* ======================================================================
+   GASTOS Y RENDICIONES (27-gastos.sql; lo decidido, en docs/rendicion-gastos/)
+   Cada persona sube las fotos o los PDF de sus comprobantes, confirma o
+   corrige los datos de cada gasto, lo ata a una actividad en la que
+   participó o a «la rutina del mes», y manda la rendición entera; un admin
+   la revisa, puede observar un gasto con un comentario y la aprueba toda
+   junta. Aparte, la cuenta corriente: lo gastado de su bolsillo, lo que
+   recibió y lo que devolvió, por moneda.
+
+   Está en PRUEBA: lo ven solo los admins, y solo con el interruptor de
+   Administración → Gastos prendido (preferences → gastos.prendido). Quién
+   ve qué lo decide la base; acá solo se esconde lo que no corresponde.
+   ====================================================================== */
+let gastosConfig = {};                  // preferences → gastos: { prendido, abierto, tipos }
+let gastosDatos = null;                 // las cuatro tablas, ya armadas (armarGastos)
+let gastosError = "";
+let unsubGastos = null;
+let gastosSeccion = "rendiciones";      // rendiciones | cuenta | aprobar
+let gastosAbierta = null;               // la rendición que se mira (su id, o "sin" = los sin vincular)
+let gastoEdit = null;                   // la ventana de un gasto: { id, d, guardando, error, faltan, comentario }
+let gastoReturnFocus = null;
+let gastosSubida = null;                // la subida en curso: { total, hechos, repetidos, fallas, corriendo }
+let gastosSubidaDestino = null;         // a qué rendición van los que se están subiendo
+let gastosCuentaDe = "";                // un admin puede mirar la cuenta de otra persona
+let gastosMov = null;                   // el formulario de «Anotar plata recibida o devuelta»
+let gastosTotal = null;                 // el borrador del total rápido de la rendición abierta
+let gastosAdmin = null;                 // el borrador de los tipos (Administración → Gastos)
+let gastosActividad = "";               // «Una actividad sin comprobantes»: la elegida
+let gastosOtraAbierta = false;          // …y si esa parte está desplegada
+let gastosOcupado = false;              // mandando o aprobando
+const gastoOverlay = document.getElementById("gastoOverlay");
+const gastosArchivosInput = document.getElementById("gastosArchivos");
+
+// Los siete tipos de hoy (los de la planilla de rendición). Un admin los
+// renombra, oculta o suma otros; la clave queda fija en cada gasto.
+const GASTO_TIPOS_FABRICA = ["reunion", "comida", "pasaje", "alojamiento", "transporte", "material", "suscripcion"];
+function etiquetaTipoFabrica(k){
+  return ({
+    reunion: t("Reunión","Meeting","Reunião","פגישה"),
+    comida: t("Comida","Meal","Refeição","ארוחה"),
+    pasaje: t("Pasaje","Ticket","Passagem","כרטיס נסיעה"),
+    alojamiento: t("Alojamiento","Lodging","Hospedagem","לינה"),
+    transporte: t("Transporte","Transport","Transporte","תחבורה"),
+    material: t("Compra de material","Supplies","Compra de material","רכישת ציוד"),
+    suscripcion: t("Suscripción","Subscription","Assinatura","מנוי"),
+  })[k] || "";
+}
+// Las monedas que más se usan (el dólar, el euro, el shekel y las de la
+// región); se puede escribir cualquier otra con su código de tres letras.
+const GASTO_MONEDAS = ["USD","EUR","ILS","ARS","BOB","BRL","BZD","CLP","COP","CRC","CUP","DOP","GTQ","HNL","HTG","JMD","MXN","NIO","PAB","PEN","PYG","TTD","UYU","VES"];
+const GASTO_TOPE_BYTES = 25 * 1024 * 1024;   // el del bucket (01-tablas.sql)
+
+function gastosPrendido(){ return gastosConfig.prendido === true; }
+// En la prueba, solo un admin. Abrirlo al equipo (la etapa 5) es prender
+// `abierto`, que la base ya respeta (gastos_habilitado).
+function gastosVisible(){
+  if(!isAuthorized() || !gastosPrendido()) return false;
+  return isAdmin() || (gastosConfig.abierto === true && canWrite());
+}
+function miCorreo(){ return String((state.auth.user && state.auth.user.email) || "").toLowerCase(); }
+function applyGastosConfig(cfg){
+  gastosConfig = cfg && typeof cfg === "object" ? cfg : {};
+  // Lo que llega de la base pisa el borrador de los tipos, salvo que el
+  // admin esté escribiendo uno.
+  if(gastosAdmin && !gastosAdmin.cambiado && !gastosAdmin.guardando){
+    const ok = gastosAdmin.ok; gastosAdmin = null;
+    if(ok) borradorTiposDeGasto().ok = true;
+  }
+}
+
+// Se escucha solo mientras el módulo se ve: apagarlo corta todo.
+function sincronizarGastos(){
+  const quiero = !!(store && store.gastos) && gastosVisible();
+  if(quiero && !unsubGastos){
+    gastosError = "";
+    unsubGastos = store.gastos.subscribe(d => { gastosDatos = armarGastos(d); gastosError = ""; scheduleRender(); },
+      err => { console.error("Error leyendo los gastos:", err); gastosError = detalleDeError(err); scheduleRender(); });
+  } else if(!quiero && unsubGastos) cortarGastos();
+}
+function cortarGastos(){
+  if(unsubGastos){ unsubGastos(); unsubGastos = null; }
+  gastosDatos = null; gastosError = ""; gastosAbierta = null; gastosSubida = null; gastosTotal = null;
+  gastosMov = null; gastosCuentaDe = ""; gastosAdmin = null; gastosActividad = ""; gastosOtraAbierta = false; gastosOcupado = false;
+  if(gastoOverlay && !gastoOverlay.hidden) cerrarGasto(true);
+}
+const gxNum = v => v === null || v === undefined || v === "" ? null : Number(v);
+function armarGastos(d){
+  return {
+    rendiciones: d.gastos_rendiciones.map(r => ({ ...r, autor: String(r.autor || "").toLowerCase(),
+      totalManual: r.totalManual && typeof r.totalManual === "object" ? r.totalManual : {} })),
+    gastos: d.gastos.map(g => ({ ...g, autor: String(g.autor || "").toLowerCase(), monto: gxNum(g.monto), rendidoMonto: gxNum(g.rendidoMonto) }))
+      .sort((a, b) => String(a.fecha || "9999").localeCompare(String(b.fecha || "9999")) || tsToMillis(a.creadoEl) - tsToMillis(b.creadoEl)),
+    comentarios: [...d.gastos_comentarios].sort((a, b) => tsToMillis(a.creadoEl) - tsToMillis(b.creadoEl)),
+    movimientos: d.gastos_movimientos.map(m => ({ ...m, persona: String(m.persona || "").toLowerCase(), monto: gxNum(m.monto) }))
+      .sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)) || tsToMillis(b.creadoEl) - tsToMillis(a.creadoEl)),
+  };
+}
+const rendicionPorId = id => gastosDatos ? gastosDatos.rendiciones.find(r => r.id === id) || null : null;
+const gastoPorId = id => gastosDatos ? gastosDatos.gastos.find(g => g.id === id) || null : null;
+const gastosDe = rid => gastosDatos ? gastosDatos.gastos.filter(g => g.rendicionId === rid) : [];
+const misRendiciones = () => gastosDatos ? gastosDatos.rendiciones.filter(r => r.autor === miCorreo()) : [];
+const misSinVincular = () => gastosDatos ? gastosDatos.gastos.filter(g => !g.rendicionId && g.autor === miCorreo()) : [];
+const comentariosDe = gid => gastosDatos ? gastosDatos.comentarios.filter(c => c.gastoId === gid) : [];
+const rendicionEditable = r => !!r && ["abierta", "observada"].includes(r.estado);
+const gastoEditable = g => !!g && g.autor === miCorreo() && ["borrador", "confirmado", "observado"].includes(g.estado);
+// Lo que se ve en el menú: lo que espera a la persona (gastos observados) y,
+// para un admin, lo que espera su revisión.
+function gastosPendientes(){
+  if(!gastosDatos) return 0;
+  const yo = miCorreo();
+  let n = gastosDatos.gastos.filter(g => g.autor === yo && g.estado === "observado").length;
+  if(isAdmin()) n += gastosDatos.rendiciones.filter(r => r.estado === "enviada").length
+    + gastosDatos.movimientos.filter(m => m.estado === "pendiente").length;
+  return n;
+}
+
+// ---- Cómo se nombra cada cosa ----
+function nombreDeMes(iso){
+  try{ return new Date(String(iso).slice(0, 7) + "-01T00:00:00").toLocaleDateString(dateLocale(), { month:"long", year:"numeric" }); }
+  catch(e){ return String(iso).slice(0, 7); }
+}
+function tituloRendicion(r){
+  if(!r) return "";
+  if(r.rutinaMes) return t("Rutina de {m}","Routine for {m}","Rotina de {m}","שגרה של {m}",{ m: nombreDeMes(r.rutinaMes) });
+  const p = r.postId && getPostById(r.postId);
+  return (p && p.title) || r.titulo || t("Actividad borrada","Deleted activity","Atividade apagada","פעילות שנמחקה");
+}
+function fechaDeRendicion(r){
+  const p = r && r.postId && getPostById(r.postId);
+  return p ? fmtDate(p.startDate || p.date) : "";
+}
+function iconoDeRendicion(r){
+  if(!r) return "🧾";
+  if(r.rutinaMes) return "🔁";
+  const p = r.postId && getPostById(r.postId);
+  const ty = p && ACTIVITY_BY_KEY[p.activityType];
+  return (ty && ty.icon) || "🧳";
+}
+function gastoTipos(){
+  const cfg = Array.isArray(gastosConfig.tipos) && gastosConfig.tipos.length ? gastosConfig.tipos : GASTO_TIPOS_FABRICA.map(key => ({ key }));
+  return cfg.filter(x => x && typeof x.key === "string").map(x => ({ key: x.key,
+    label: String(x.label || "").trim() || etiquetaTipoFabrica(x.key) || x.key, oculto: x.oculto === true }));
+}
+function nombreTipoGasto(k){
+  if(!k) return "";
+  const x = gastoTipos().find(y => y.key === k);
+  return x ? x.label : (etiquetaTipoFabrica(k) || k);
+}
+function fmtMonto(moneda, n){
+  if(n === null || n === undefined || isNaN(n)) return "";
+  try{ return new Intl.NumberFormat(dateLocale(), { style:"currency", currency: moneda, currencyDisplay:"code", minimumFractionDigits:2, maximumFractionDigits:2 }).format(n); }
+  catch(e){ return `${moneda} ${Number(n).toFixed(2)}`; }
+}
+// Lo que se rinde de un gasto: el monto en dólares (o la moneda en que se
+// rinde) si lo tiene; si no, el del comprobante. Igual que gastos_cuenta.
+function rendidoDe(g){
+  if(g.rendidoMonto != null) return { moneda: g.rendidoMoneda, monto: g.rendidoMonto };
+  if(g.monto != null) return { moneda: g.moneda, monto: g.monto };
+  return null;
+}
+const redondo = n => Math.round(n * 100) / 100;
+function sumarPorMoneda(lista){
+  const s = {};
+  lista.forEach(x => { if(x && x.monto != null && x.moneda) s[x.moneda] = redondo((s[x.moneda] || 0) + Number(x.monto)); });
+  return s;
+}
+const totalDelDetalle = rid => sumarPorMoneda(gastosDe(rid).map(rendidoDe));
+function fmtTotales(s){
+  const k = Object.keys(s || {}).sort((a, b) => a === "USD" ? -1 : b === "USD" ? 1 : a.localeCompare(b));
+  return k.map(m => fmtMonto(m, s[m])).join(" · ");
+}
+function totalesIguales(a, b){
+  return [...new Set([...Object.keys(a || {}), ...Object.keys(b || {})])].every(k => Math.abs((a[k] || 0) - (b[k] || 0)) < 0.005);
+}
+function estadoDeGasto(e){
+  return ({
+    borrador: [t("Falta confirmar","Not confirmed yet","Falta confirmar","טרם אושר"), "aviso"],
+    confirmado: [t("Listo","Ready","Pronto","מוכן"), "bien"],
+    enviado: [t("Mandado","Sent","Enviado","נשלח"), "neutro"],
+    observado: [t("Observado","Flagged","Com observação","יש הערה"), "mal"],
+    aprobado: [t("Aprobado","Approved","Aprovado","אושר"), "bien"],
+  })[e] || [e, "neutro"];
+}
+function estadoDeRendicion(e){
+  return ({
+    abierta: [t("Abierta","Open","Aberta","פתוחה"), "neutro"],
+    enviada: [t("En revisión","In review","Em revisão","בבדיקה"), "aviso"],
+    observada: [t("Con observaciones","With notes","Com observações","עם הערות"), "mal"],
+    aprobada: [t("Aprobada","Approved","Aprovada","אושרה"), "bien"],
+  })[e] || [e, "neutro"];
+}
+const gxChip = ([txt, cls]) => `<span class="gx-chip gx-${cls}">${esc(txt)}</span>`;
+const nombreDePersona = email => nombreDe(memberByEmail(email), email);
+const esUrlFirmada = v => typeof v === "string" && /^(https?:|blob:|data:)/.test(v);
+const fechaDeMarca = ts => { const ms = tsToMillis(ts); return ms ? fmtDate(isoLocalDe(ms)) : ""; };
+const esPdfGasto = g => /pdf/i.test(g.archivoTipo || "") || /\.pdf$/i.test(g.archivo || "");
+
+// ---- Las actividades a las que se puede atar un gasto ----
+// Las que la persona cargó o en las que figura; a un admin la base le deja
+// cualquiera (en la prueba, el que carga es el admin, y muchas actividades
+// vienen de Calendar sin participantes). Las más cercanas a la fecha primero.
+function participoEn(p, yo){
+  if(String(p.authorEmail || "").toLowerCase() === yo) return true;
+  return (p.participants || []).some(x => x && String(x.email || "").toLowerCase() === yo);
+}
+function actividadesParaGastos(cerca){
+  const yo = miCorreo(), ref = Date.parse((cerca || todayISO()) + "T00:00:00");
+  return state.posts.filter(p => p.activityType !== "rutina" && !p.cancelled && (isAdmin() || participoEn(p, yo)))
+    .map(p => ({ p, d: Math.abs(Date.parse((p.startDate || p.date) + "T00:00:00") - ref) || 0 }))
+    .sort((a, b) => a.d - b.d).slice(0, 40).map(x => x.p);
+}
+function mesAnteriorDe(ym){
+  const [y, m] = ym.split("-").map(Number);
+  return m === 1 ? `${y - 1}-12` : `${y}-${pad2(m - 1)}`;
+}
+// El valor del «Va en» de un gasto: "" (sin vincular), "post:<id>",
+// "mes:AAAA-MM" o "ren:<id>" (una rendición cuya actividad ya no está).
+function vinculoDe(g){
+  const r = g.rendicionId && rendicionPorId(g.rendicionId);
+  if(!r) return g.rendicionId ? "ren:" + g.rendicionId : "";
+  return r.postId ? "post:" + r.postId : r.rutinaMes ? "mes:" + String(r.rutinaMes).slice(0, 7) : "ren:" + r.id;
+}
+function rendicionDeVinculo(v){
+  if(!v) return null;
+  if(v.startsWith("ren:")) return rendicionPorId(v.slice(4));
+  return misRendiciones().find(r => v.startsWith("post:") ? r.postId === v.slice(5) : String(r.rutinaMes || "").slice(0, 7) === v.slice(4)) || null;
+}
+// La rendición de ese vínculo: la que ya existe, o se abre (la base la crea
+// y controla que la persona haya participado).
+async function rendicionPara(v){
+  if(!v) return null;
+  const ya = rendicionDeVinculo(v);
+  if(ya) return ya.id;
+  if(v.startsWith("ren:")) return v.slice(4);
+  return v.startsWith("post:") ? store.gastos.abrirRendicion({ post: v.slice(5) }) : store.gastos.abrirRendicion({ mes: v.slice(4) + "-01" });
+}
+function opcionesDeVinculo(g, actual){
+  const yaMandada = r => r && !rendicionEditable(r);
+  const op = (v, txt) => {
+    const r = rendicionDeVinculo(v), cerrada = yaMandada(r) && v !== actual;
+    return `<option value="${esc(v)}"${v === actual ? " selected" : ""}${cerrada ? " disabled" : ""}>${esc(txt)}${cerrada ? " — " + esc(t("ya se mandó","already sent","já foi enviada","כבר נשלחה")) : ""}</option>`;
+  };
+  const hoy = todayISO().slice(0, 7);
+  const meses = [...new Set([g.fecha && g.fecha.slice(0, 7), hoy, mesAnteriorDe(hoy), actual.startsWith("mes:") ? actual.slice(4) : ""].filter(Boolean))].sort().reverse();
+  const acts = actividadesParaGastos(g.fecha);
+  if(actual.startsWith("post:") && !acts.some(p => "post:" + p.id === actual)){ const p = getPostById(actual.slice(5)); if(p) acts.unshift(p); }
+  const huerfana = actual.startsWith("ren:") ? rendicionPorId(actual.slice(4)) : null;
+  return `<option value=""${!actual ? " selected" : ""}>${esc(t("Sin vincular (la asigno después)","Not linked yet (I'll assign it later)","Sem vínculo (atribuo depois)","לא משויך (אשייך אחר כך)"))}</option>
+    <optgroup label="${esc(t("La rutina del mes","The month's routine","A rotina do mês","השגרה של החודש"))}">${meses.map(m => op("mes:" + m, t("Rutina de {m}","Routine for {m}","Rotina de {m}","שגרה של {m}",{ m: nombreDeMes(m) }))).join("")}</optgroup>
+    ${acts.length || huerfana ? `<optgroup label="${esc(t("Una actividad","An activity","Uma atividade","פעילות"))}">${huerfana ? op(actual, tituloRendicion(huerfana)) : ""}${acts.map(p => op("post:" + p.id, `${p.title || t("Sin título","Untitled","Sem título","ללא כותרת")} · ${fmtDate(p.startDate || p.date)}`)).join("")}</optgroup>` : ""}`;
+}
+
+// ---- Subir comprobantes ----
+// El nombre del archivo puede traer la fecha y el concepto: así nombra hoy
+// el usuario los suyos («15-11-2026 - Taxi al aeropuerto - Visita.pdf»), y
+// así salen los de la cámara del celular («IMG_20261115_103210.jpg»). Es
+// solo una sugerencia: la persona confirma o corrige.
+function sugerirDeNombre(nombre){
+  const base = String(nombre || "").replace(/\.[A-Za-z0-9]{2,5}$/, "").trim();
+  const ok = (y, m, d) => { const iso = `${y}-${pad2(m)}-${pad2(d)}`; const x = new Date(iso + "T00:00:00");
+    return !isNaN(x) && x.getMonth() + 1 === Number(m) && Number(y) >= 2000 && Number(y) <= 2100 ? iso : null; };
+  let fecha = null, concepto = "";
+  let m = /^(\d{1,2})[-_.](\d{1,2})[-_.](\d{4})\s*-\s*(.+)$/.exec(base);
+  if(m){
+    fecha = ok(m[3], m[2], m[1]);
+    concepto = m[4].split(/\s+-\s+/)[0].trim().slice(0, 140);
+  } else if((m = /(?:^|[^0-9])(20\d{2})(\d{2})(\d{2})(?:[^0-9]|$)/.exec(base))) fecha = ok(m[1], m[2], m[3]);
+  return fecha || concepto ? { fecha, concepto, lectura: { fuente: "nombre", fecha, concepto } } : { fecha: null, concepto: "", lectura: null };
+}
+async function huellaDe(buf){
+  const h = await crypto.subtle.digest("SHA-256", buf);
+  return [...new Uint8Array(h)].map(b => b.toString(16).padStart(2, "0")).join("");
+}
+function elegirComprobantes(destino){
+  if(gastosSubida && gastosSubida.corriendo) return;
+  gastosSubidaDestino = destino || null;
+  gastosArchivosInput.value = "";
+  gastosArchivosInput.click();
+}
+// Uno por uno: primero la fila (la base deja subir a la carpeta de un gasto
+// que ya es tuyo), después el archivo y al final su ruta. Si el archivo no
+// sube, la fila se borra: no queda un gasto sin comprobante a medias.
+async function subirComprobantes(files, destino){
+  if(gastosSubida && gastosSubida.corriendo) return;
+  const lista = [...files];
+  const sirve = f => /^image\//.test(f.type) || f.type === "application/pdf" || /\.pdf$/i.test(f.name);
+  const s = gastosSubida = { total: lista.length, hechos: 0, repetidos: [], fallas: [], corriendo: true };
+  render();
+  const huellas = new Set((gastosDatos ? gastosDatos.gastos : []).filter(g => g.autor === miCorreo()).map(g => g.archivoHash).filter(Boolean));
+  for(const f of lista){
+    // Lo que no se puede subir se avisa, sin anotarlo como un error de la app.
+    const noSirve = !sirve(f) ? t("no es una foto ni un PDF","isn't a photo or a PDF","não é uma foto nem um PDF","אינו תמונה או PDF")
+      : f.size > GASTO_TOPE_BYTES ? t("pesa más de 25 MB","is larger than 25 MB","pesa mais de 25 MB","גדול מ-25MB") : "";
+    if(noSirve){ s.fallas.push({ nombre: f.name, error: noSirve }); render(); continue; }
+    try{
+      const hash = await huellaDe(await f.arrayBuffer());
+      if(huellas.has(hash)){ s.repetidos.push(f.name); continue; }
+      const esPdf = f.type === "application/pdf" || /\.pdf$/i.test(f.name);
+      let dataUrl = await readFileAsDataUrl(f);
+      if(esPdf) dataUrl = "data:application/pdf;base64," + String(dataUrl).split(",")[1];
+      else dataUrl = await achicarDataUrl(dataUrl, LIMITES_DE_LA_BASE.ladoMaximo, LIMITES_DE_LA_BASE.calidadImagen);
+      const sug = sugerirDeNombre(f.name);
+      let id;
+      try{
+        id = await store.gastos.crear({ rendicionId: destino || null, estado: "borrador", fecha: sug.fecha, concepto: sug.concepto,
+          moneda: "USD", rendidoMoneda: "USD", pago: "persona", archivoNombre: String(f.name).slice(0, 200),
+          archivoTipo: esPdf ? "application/pdf" : "image/jpeg", archivoHash: hash, lectura: sug.lectura });
+      }catch(err){
+        if(err && err.code === "23505"){ s.repetidos.push(f.name); continue; }
+        throw err;
+      }
+      huellas.add(hash);
+      try{ await store.gastos.subirComprobante(id, dataUrl, f.name); }
+      catch(err){ await store.gastos.borrar(id).catch(() => {}); huellas.delete(hash); throw err; }
+      s.hechos++;
+    }catch(err){
+      console.error("No se pudo subir un comprobante:", err);
+      s.fallas.push({ nombre: f.name, error: detalleDeError(err) });
+    }
+    render();
+  }
+  s.corriendo = false;
+  render();
+}
+function renderSubida(){
+  const s = gastosSubida;
+  if(!s) return "";
+  const listos = s.hechos, rep = s.repetidos.length, mal = s.fallas.length;
+  const linea = s.corriendo
+    ? `⏳ ${t("Subiendo {a} de {b}…","Uploading {a} of {b}…","Enviando {a} de {b}…","מעלה {a} מתוך {b}…",{ a: Math.min(listos + rep + mal + 1, s.total), b: s.total })}`
+    : `${mal ? "⚠️" : "✅"} ${listos === 1 ? t("Se subió 1 comprobante.","1 receipt uploaded.","1 comprovante enviado.","קבלה אחת הועלתה.") : t("Se subieron {n} comprobantes.","{n} receipts uploaded.","{n} comprovantes enviados.","{n} קבלות הועלו.",{ n: listos })}`
+      + (listos ? " " + t("Revisá los datos de cada uno y confirmalos.","Check each one's details and confirm them.","Revise os dados de cada um e confirme.","בדקו את הפרטים של כל אחת ואשרו.") : "");
+  return `<div class="gx-subida${mal ? " gx-subida-mal" : ""}" role="status">
+      <div>${linea}</div>
+      ${rep ? `<div class="gx-sub-det">${esc(t("Ya estaban cargados (no se repiten): {l}","Already uploaded (not repeated): {l}","Já estavam carregados (não se repetem): {l}","כבר הועלו (לא חוזרים): {l}",{ l: s.repetidos.join(", ") }))}</div>` : ""}
+      ${s.fallas.map(x => `<div class="gx-sub-det">${esc(x.nombre)}: ${esc(x.error)}</div>`).join("")}
+      ${s.corriendo ? "" : `<button type="button" class="gx-link" data-action="gastos-subida-cerrar">${t("Listo","Done","Pronto","סיום")}</button>`}
+    </div>`;
+}
+
+// ---- La pantalla ----
+function gastosSecciones(){
+  const s = [
+    { key: "rendiciones", label: t("Mis rendiciones","My expense reports","Minhas prestações","הדוחות שלי"),
+      badge: gastosDatos ? gastosDatos.gastos.filter(g => g.autor === miCorreo() && g.estado === "observado").length : 0 },
+    { key: "cuenta", label: t("Cuenta corriente","Running balance","Conta corrente","חשבון שוטף") },
+  ];
+  if(isAdmin()) s.push({ key: "aprobar", label: t("Para aprobar","To approve","Para aprovar","לאישור"),
+    badge: gastosDatos ? gastosDatos.rendiciones.filter(r => r.estado === "enviada").length + gastosDatos.movimientos.filter(m => m.estado === "pendiente").length : 0 });
+  return s;
+}
+function gastosTextos(key){
+  return ({
+    rendiciones: {
+      lead: t("Subí las fotos o los PDF de tus comprobantes, revisá los datos y mandá la rendición de cada actividad o de la rutina del mes.",
+        "Upload the photos or PDFs of your receipts, check the details and send the report for each activity or for the month's routine.",
+        "Envie as fotos ou os PDF dos seus comprovantes, revise os dados e mande a prestação de cada atividade ou da rotina do mês.",
+        "העלו את התמונות או קובצי ה-PDF של הקבלות, בדקו את הפרטים ושלחו את הדוח של כל פעילות או של שגרת החודש."),
+      ayuda: t(
+        "Podés subir muchos comprobantes juntos, desde el celular o la compu. Cada uno queda como un gasto <b>por confirmar</b>: lo abrís, completás o corregís la fecha, el concepto, el tipo y el monto, y lo confirmás. Si el monto está en otra moneda, anotá también cuánto te cobró el banco en dólares: el sistema nunca convierte solo.<br><br>Cada gasto va en una <b>actividad</b> en la que participaste o en <b>la rutina del mes</b>. Si la actividad todavía no está cargada, dejalo <b>sin vincular</b> y asignalo después.<br><br>Cuando están todos confirmados, <b>mandás la rendición</b>. Un administrador la revisa: si algo no está bien, lo <b>observa</b> con un comentario, lo corregís y la volvés a mandar.",
+        "You can upload many receipts at once, from your phone or computer. Each one becomes an expense <b>to confirm</b>: open it, fill in or fix the date, description, type and amount, and confirm it. If the amount is in another currency, also enter what your bank charged you in dollars: the system never converts on its own.<br><br>Each expense goes in an <b>activity</b> you took part in or in <b>the month's routine</b>. If the activity isn't logged yet, leave it <b>not linked</b> and assign it later.<br><br>When they're all confirmed, you <b>send the report</b>. An admin reviews it: if something's off, they <b>flag</b> it with a comment, you fix it and send it again.",
+        "Você pode enviar muitos comprovantes juntos, do celular ou do computador. Cada um vira uma despesa <b>por confirmar</b>: você abre, completa ou corrige a data, o conceito, o tipo e o valor, e confirma. Se o valor estiver em outra moeda, anote também quanto o banco cobrou em dólares: o sistema nunca converte sozinho.<br><br>Cada despesa vai numa <b>atividade</b> da qual você participou ou na <b>rotina do mês</b>. Se a atividade ainda não estiver carregada, deixe <b>sem vínculo</b> e atribua depois.<br><br>Quando todas estiverem confirmadas, você <b>manda a prestação</b>. Um administrador revisa: se algo não estiver certo, ele <b>observa</b> com um comentário, você corrige e manda de novo.",
+        "אפשר להעלות הרבה קבלות יחד, מהטלפון או מהמחשב. כל אחת הופכת להוצאה <b>שממתינה לאישור</b>: פותחים, משלימים או מתקנים את התאריך, התיאור, הסוג והסכום, ומאשרים. אם הסכום במטבע אחר, רשמו גם כמה הבנק חייב אתכם בדולרים: המערכת אף פעם לא ממירה לבד.<br><br>כל הוצאה שייכת ל<b>פעילות</b> שהשתתפתם בה או ל<b>שגרת החודש</b>. אם הפעילות עוד לא נרשמה, השאירו אותה <b>לא משויכת</b> ושייכו אחר כך.<br><br>כשכולן מאושרות, <b>שולחים את הדוח</b>. מנהל/ת בודק/ת אותו: אם משהו לא בסדר, הוא/היא <b>מעיר/ה</b> עם הערה, אתם מתקנים ושולחים שוב."),
+    },
+    cuenta: {
+      lead: t("Lo que gastaste de tu bolsillo, lo que recibiste y lo que devolviste, por moneda.",
+        "What you spent out of pocket, what you received and what you returned, by currency.",
+        "O que você gastou do próprio bolso, o que recebeu e o que devolveu, por moeda.",
+        "מה שהוצאתם מהכיס, מה שקיבלתם ומה שהחזרתם, לפי מטבע."),
+      ayuda: t(
+        "<b>Gastado</b> suma tus gastos pagados por vos en rendiciones ya aprobadas; los que están en revisión se muestran aparte. <b>Recibido</b> es la plata que te dio la organización (un adelanto o un reintegro) y <b>devuelto</b>, la que le devolviste. El <b>saldo</b> positivo es lo que la organización te debe; negativo, lo que debés vos.<br><br>Lo que anotás como recibido o devuelto queda <b>pendiente</b> hasta que un administrador lo confirma. El total rápido de una actividad no cambia la cuenta.",
+        "<b>Spent</b> adds up the expenses you paid yourself in reports already approved; the ones in review are shown apart. <b>Received</b> is the money the organization gave you (an advance or a refund) and <b>returned</b>, what you gave back. A positive <b>balance</b> is what the organization owes you; negative, what you owe.<br><br>What you enter as received or returned stays <b>pending</b> until an admin confirms it. An activity's quick total doesn't change the balance.",
+        "<b>Gasto</b> soma as despesas pagas por você em prestações já aprovadas; as que estão em revisão aparecem à parte. <b>Recebido</b> é o dinheiro que a organização te deu (um adiantamento ou um reembolso) e <b>devolvido</b>, o que você devolveu. O <b>saldo</b> positivo é o que a organização te deve; negativo, o que você deve.<br><br>O que você anota como recebido ou devolvido fica <b>pendente</b> até um administrador confirmar. O total rápido de uma atividade não muda a conta.",
+        "<b>הוצאות</b> סוכם את ההוצאות ששילמתם בעצמכם בדוחות שכבר אושרו; אלה שבבדיקה מוצגות בנפרד. <b>התקבל</b> הוא הכסף שהארגון נתן לכם (מקדמה או החזר), ו<b>הוחזר</b> — מה שהחזרתם. <b>יתרה</b> חיובית היא מה שהארגון חייב לכם; שלילית — מה שאתם חייבים.<br><br>מה שרושמים כהתקבל או הוחזר נשאר <b>ממתין</b> עד שמנהל/ת מאשר/ת. הסכום המהיר של פעילות לא משנה את החשבון."),
+    },
+    aprobar: {
+      lead: t("Las rendiciones que mandó el equipo y la plata anotada que falta confirmar.",
+        "The reports the team sent and the money entries waiting to be confirmed.",
+        "As prestações que a equipe mandou e o dinheiro anotado que falta confirmar.",
+        "הדוחות שהצוות שלח והרישומים הכספיים שממתינים לאישור."),
+    },
+  })[key] || {};
+}
+function renderGastosView(){
+  const secs = gastosSecciones();
+  const sec = secs.some(s => s.key === gastosSeccion) ? gastosSeccion : "rendiciones";
+  const actual = secs.find(s => s.key === sec);
+  const tx = gastosTextos(sec);
+  const titulo = t("Gastos","Expenses","Despesas","הוצאות");
+  const menu = secs.map(s => `<button type="button" class="admin-item${sec === s.key ? " active" : ""}" data-action="gastos-seccion" data-key="${s.key}"${sec === s.key ? ' aria-current="page"' : ""}><span>${esc(s.label)}</span>${s.badge ? `<span class="pending-count">${s.badge}</span>` : ""}</button>`).join("");
+  const subir = sec === "rendiciones" && !gastosAbierta && gastosDatos
+    ? `<div class="admin-cab-acc"><button type="button" class="btn-primary" data-action="gastos-subir">📎 ${t("Subir comprobantes","Upload receipts","Enviar comprovantes","העלאת קבלות")}</button></div>` : "";
+  let body;
+  if(gastosError && !gastosDatos) body = `<div class="setup-banner">⚠️ ${esc(t("No se pudieron leer los gastos ({m}).","Couldn't load the expenses ({m}).","Não foi possível ler as despesas ({m}).","לא ניתן היה לטעון את ההוצאות ({m}).",{ m: gastosError }))}</div>`;
+  else if(!gastosDatos) body = `<div class="empty-state"><div class="big">⏳</div>${t("Cargando…","Loading…","Carregando…","טוען...")}</div>`;
+  else if(gastosAbierta && (sec === "rendiciones" || sec === "aprobar")) body = renderRendicionAbierta(sec === "aprobar");
+  else body = sec === "cuenta" ? renderGastosCuenta() : sec === "aprobar" ? renderParaAprobar() : renderMisRendiciones();
+  return `<div class="admin-view gastos-view">
+      <aside class="admin-menu" aria-label="${esc(titulo)}">
+        <div class="admin-titulo">🧾 ${titulo} <span class="gx-prueba">${t("en prueba","in testing","em teste","בניסוי")}</span></div>${menu}
+      </aside>
+      <div class="admin-body">
+        <header class="admin-cabecera">
+          <div class="admin-cab-txt">
+            <h2 class="admin-h2">${esc(actual.label)}</h2>
+            ${tx.lead && !gastosAbierta ? `<p class="admin-lead">${tx.lead}</p>` : ""}
+            ${tx.ayuda && !gastosAbierta ? `<details class="admin-ayuda"><summary>${t("¿Cómo funciona?","How does it work?","Como funciona?","איך זה עובד?")}</summary><div>${tx.ayuda}</div></details>` : ""}
+          </div>
+          ${subir}
+        </header>
+        ${body}
+      </div>
+    </div>`;
+}
+// Una tarjeta de rendición: qué actividad, en qué estado, cuánto suma y qué falta.
+function renderTarjetaRendicion(r, conPersona){
+  const gs = gastosDe(r.id);
+  const faltan = gs.filter(g => g.estado === "borrador").length, obs = gs.filter(g => g.estado === "observado").length;
+  const total = fmtTotales(totalDelDetalle(r.id)) || fmtTotales(r.totalManual);
+  const fecha = fechaDeRendicion(r);
+  const avisos = [
+    faltan ? `<span class="gx-aviso">${esc(faltan === 1 ? t("1 por confirmar","1 to confirm","1 por confirmar","1 לאישור") : t("{n} por confirmar","{n} to confirm","{n} por confirmar","{n} לאישור",{ n: faltan }))}</span>` : "",
+    obs ? `<span class="gx-aviso gx-aviso-mal">${esc(obs === 1 ? t("1 observado","1 flagged","1 com observação","1 עם הערה") : t("{n} observados","{n} flagged","{n} com observação","{n} עם הערות",{ n: obs }))}</span>` : "",
+  ].join("");
+  return `<button type="button" class="gx-tarjeta" data-action="gastos-abrir-rendicion" data-id="${esc(r.id)}">
+      <span class="gx-t-ico" aria-hidden="true">${iconoDeRendicion(r)}</span>
+      <span class="gx-t-txt">
+        <b>${esc(tituloRendicion(r))}</b>
+        <small>${[conPersona ? esc(nombreDePersona(r.autor)) : "", fecha ? esc(fecha) : "",
+          esc(gs.length === 1 ? t("1 gasto","1 expense","1 despesa","הוצאה אחת") : t("{n} gastos","{n} expenses","{n} despesas","{n} הוצאות",{ n: gs.length }))].filter(Boolean).join(" · ")}</small>
+        ${avisos ? `<span class="gx-avisos">${avisos}</span>` : ""}
+      </span>
+      <span class="gx-t-der">${gxChip(estadoDeRendicion(r.estado))}${total ? `<span class="gx-t-total">${esc(total)}</span>` : ""}</span>
+    </button>`;
+}
+function renderMisRendiciones(){
+  const mias = misRendiciones(), sin = misSinVincular();
+  // La más reciente arriba: por la fecha de la actividad o el mes de la rutina.
+  const clave = r => { const p = r.postId && getPostById(r.postId); return (p && (p.startDate || p.date)) || String(r.rutinaMes || r.creadaEl || ""); };
+  const orden = (a, b) => clave(b).localeCompare(clave(a));
+  const grupo = (titulo, lista) => lista.length ? `<h3 class="admin-h3">${titulo}</h3><div class="gx-lista">${lista.sort(orden).map(r => renderTarjetaRendicion(r)).join("")}</div>` : "";
+  const sinCard = sin.length ? `<button type="button" class="gx-tarjeta gx-sin" data-action="gastos-abrir-rendicion" data-id="sin">
+      <span class="gx-t-ico" aria-hidden="true">📥</span>
+      <span class="gx-t-txt"><b>${t("Sin vincular","Not linked","Sem vínculo","לא משויכות")}</b>
+        <small>${esc(sin.length === 1 ? t("1 gasto que todavía no está en ninguna actividad","1 expense not in any activity yet","1 despesa que ainda não está em nenhuma atividade","הוצאה אחת שעדיין לא שויכה לפעילות") : t("{n} gastos que todavía no están en ninguna actividad","{n} expenses not in any activity yet","{n} despesas que ainda não estão em nenhuma atividade","{n} הוצאות שעדיין לא שויכו לפעילות",{ n: sin.length }))}</small></span>
+      <span class="gx-t-der"><span class="gx-t-total">${esc(fmtTotales(sumarPorMoneda(sin.map(rendidoDe))))}</span></span>
+    </button>` : "";
+  const vacio = !mias.length && !sin.length ? `<div class="empty-state gx-vacio"><div class="big">🧾</div>
+      <p>${t("Todavía no cargaste gastos.","You haven't logged any expenses yet.","Você ainda não carregou despesas.","עדיין לא רשמתם הוצאות.")}</p>
+      <p class="setting-sub">${t("Tocá «Subir comprobantes» y elegí las fotos o los PDF: podés subir muchos juntos.","Tap “Upload receipts” and pick the photos or PDFs: you can upload many at once.","Toque em «Enviar comprovantes» e escolha as fotos ou os PDF: dá para enviar muitos juntos.","לחצו על «העלאת קבלות» ובחרו את התמונות או קובצי ה-PDF: אפשר להעלות הרבה יחד.")}</p></div>` : "";
+  const acts = actividadesParaGastos();
+  const sinComprobantes = `<div class="gx-otra">
+      <button type="button" class="gx-link" data-action="gastos-otra" aria-expanded="${gastosOtraAbierta}">${gastosOtraAbierta ? "▾" : isRTL() ? "◂" : "▸"} ${t("Anotar el total de una actividad, sin comprobantes","Enter an activity's total, without receipts","Anotar o total de uma atividade, sem comprovantes","רישום הסכום של פעילות, בלי קבלות")}</button>
+      ${gastosOtraAbierta ? `<div class="gx-otra-fila">
+        <select id="gxActividad" aria-label="${esc(t("Actividad","Activity","Atividade","פעילות"))}">
+          <option value="">${esc(t("Elegí una actividad…","Pick an activity…","Escolha uma atividade…","בחרו פעילות…"))}</option>
+          ${acts.map(p => `<option value="${esc(p.id)}"${gastosActividad === p.id ? " selected" : ""}>${esc((p.title || "") + " · " + fmtDate(p.startDate || p.date))}</option>`).join("")}
+        </select>
+        <button type="button" class="btn-secondary" data-action="gastos-abrir-actividad" ${gastosActividad ? "" : "disabled"}>${t("Abrir su rendición","Open its report","Abrir a prestação","פתיחת הדוח")}</button>
+      </div>` : ""}
+    </div>`;
+  return `${renderSubida()}${vacio}${sinCard ? `<div class="gx-lista">${sinCard}</div>` : ""}
+    ${grupo(t("Para completar y mandar","To complete and send","Para completar e mandar","להשלמה ולשליחה"), mias.filter(r => rendicionEditable(r)))}
+    ${grupo(t("En revisión","In review","Em revisão","בבדיקה"), mias.filter(r => r.estado === "enviada"))}
+    ${grupo(t("Aprobadas","Approved","Aprovadas","אושרו"), mias.filter(r => r.estado === "aprobada"))}
+    ${sinComprobantes}`;
+}
+// Una fila de gasto (en la rendición abierta).
+function renderFilaGasto(g){
+  const r = rendidoDe(g);
+  const vista = !g.archivo ? `<span class="gx-mini gx-mini-vacia" aria-hidden="true">—</span>`
+    : esPdfGasto(g) ? `<span class="gx-mini gx-mini-pdf" aria-hidden="true">PDF</span>`
+    : esUrlFirmada(g.archivoUrl) ? `<img class="gx-mini" src="${esc(store.miniaturaDe(g.archivoUrl))}" alt="" loading="lazy">`
+    : `<span class="gx-mini gx-mini-vacia" aria-hidden="true">🖼️</span>`;
+  const local = g.monto != null ? fmtMonto(g.moneda, g.monto) : "";
+  const rend = g.rendidoMonto != null && g.rendidoMoneda !== g.moneda ? fmtMonto(g.rendidoMoneda, g.rendidoMonto) : "";
+  return `<button type="button" class="gx-fila" data-action="gasto-abrir" data-id="${esc(g.id)}">
+      ${vista}
+      <span class="gx-f-txt">
+        <b>${g.concepto ? esc(g.concepto) : `<i>${t("Sin concepto","No description","Sem conceito","ללא תיאור")}</i>`}</b>
+        <small>${[g.fecha ? esc(fmtDate(g.fecha)) : esc(t("Sin fecha","No date","Sem data","ללא תאריך")), g.tipo ? esc(nombreTipoGasto(g.tipo)) : "",
+          g.pago === "organizacion" ? esc(t("pagó la organización","paid by the organization","pagou a organização","שולם ע״י הארגון")) : ""].filter(Boolean).join(" · ")}</small>
+      </span>
+      <span class="gx-f-der">
+        <b>${esc(local || (r ? fmtMonto(r.moneda, r.monto) : t("Sin monto","No amount","Sem valor","ללא סכום")))}</b>
+        ${rend ? `<small>${esc(rend)}</small>` : ""}
+        ${gxChip(estadoDeGasto(g.estado))}
+      </span>
+    </button>`;
+}
+function renderRendicionAbierta(comoAdmin){
+  const volver = `<button type="button" class="rs-link gx-volver" data-action="gastos-volver">${isRTL() ? "→" : "←"} ${comoAdmin ? t("Para aprobar","To approve","Para aprovar","לאישור") : t("Mis rendiciones","My expense reports","Minhas prestações","הדוחות שלי")}</button>`;
+  if(gastosAbierta === "sin"){
+    const sin = misSinVincular();
+    return `${volver}
+      <div class="gx-cab"><div><h3 class="gx-h3">📥 ${t("Sin vincular","Not linked","Sem vínculo","לא משויכות")}</h3>
+        <p class="setting-sub">${t("Abrí cada uno y elegí en «Va en» la actividad o la rutina del mes.","Open each one and pick the activity or the month's routine under “Goes in”.","Abra cada uma e escolha em «Vai em» a atividade ou a rotina do mês.","פתחו כל אחת ובחרו תחת «שייך ל» את הפעילות או את שגרת החודש.")}</p></div></div>
+      ${renderSubida()}
+      ${sin.length ? `<div class="gx-filas">${sin.map(renderFilaGasto).join("")}</div>` : `<div class="admin-ok">✅ ${t("No queda ninguno sin vincular.","None left unlinked.","Não sobrou nenhuma sem vínculo.","לא נשארו הוצאות לא משויכות.")}</div>`}`;
+  }
+  const r = rendicionPorId(gastosAbierta);
+  if(!r) return `${volver}<div class="empty-state">${t("Esa rendición ya no está.","That report is no longer there.","Essa prestação não está mais aqui.","הדוח הזה כבר לא קיים.")}</div>`;
+  const mia = r.autor === miCorreo(), editable = mia && rendicionEditable(r);
+  const gs = gastosDe(r.id);
+  const faltan = gs.filter(g => g.estado === "borrador").length, obs = gs.filter(g => g.estado === "observado").length;
+  const detalle = totalDelDetalle(r.id);
+  const p = r.postId && getPostById(r.postId);
+  const aviso = r.estado === "observada" && mia
+    ? `<div class="gx-alerta">⚠️ ${esc(t("Un administrador observó {n}. Corregí lo que dice el comentario y volvé a mandar la rendición.","An admin flagged {n}. Fix what the comment says and send the report again.","Um administrador observou {n}. Corrija o que diz o comentário e mande a prestação de novo.","מנהל/ת העיר/ה על {n}. תקנו לפי ההערה ושלחו שוב את הדוח.",{ n: obs === 1 ? t("un gasto","one expense","uma despesa","הוצאה אחת") : t("{n} gastos","{n} expenses","{n} despesas","{n} הוצאות",{ n: obs }) }))}</div>`
+    : r.estado === "enviada" && mia ? `<div class="gx-info">⏳ ${t("La mandaste el {f}. Un administrador la está revisando.","You sent it on {f}. An admin is reviewing it.","Você mandou em {f}. Um administrador está revisando.","שלחתם ב-{f}. מנהל/ת בודק/ת אותו.",{ f: esc(fechaDeMarca(r.enviadaEl)) })}</div>`
+    : r.estado === "aprobada" ? `<div class="admin-ok">✅ ${t("Aprobada el {f} por {n}.","Approved on {f} by {n}.","Aprovada em {f} por {n}.","אושר ב-{f} ע״י {n}.",{ f: esc(fechaDeMarca(r.aprobadaEl)), n: esc(nombreDePersona(r.aprobadaPor)) })}</div>` : "";
+  const enviar = editable ? (() => {
+    const nada = !gs.length && !Object.keys(r.totalManual || {}).length;
+    const motivo = nada ? t("Primero subí un comprobante o anotá el total.","First upload a receipt or enter the total.","Primeiro envie um comprovante ou anote o total.","קודם העלו קבלה או רשמו את הסכום.")
+      : faltan ? (faltan === 1 ? t("Falta confirmar 1 gasto.","1 expense still needs confirming.","Falta confirmar 1 despesa.","הוצאה אחת עוד לא אושרה.") : t("Faltan confirmar {n} gastos.","{n} expenses still need confirming.","Faltam confirmar {n} despesas.","{n} הוצאות עוד לא אושרו.",{ n: faltan }))
+      : obs ? t("Corregí los gastos observados antes de volver a mandarla.","Fix the flagged expenses before sending it again.","Corrija as despesas observadas antes de mandar de novo.","תקנו את ההוצאות עם ההערות לפני ששולחים שוב.") : "";
+    return `<div class="gx-acciones">
+        ${motivo ? `<span class="setting-sub">${esc(motivo)}</span>` : ""}
+        <button type="button" class="btn-primary" data-action="gastos-enviar" data-id="${esc(r.id)}" ${motivo || gastosOcupado ? "disabled" : ""}>${gastosOcupado ? t("Mandando…","Sending…","Enviando…","שולח…") : r.estado === "observada" ? t("Volver a mandar la rendición","Send the report again","Mandar a prestação de novo","שליחה חוזרת של הדוח") : t("Mandar la rendición","Send the report","Mandar a prestação","שליחת הדוח")}</button>
+      </div>`;
+  })() : "";
+  const aprobar = comoAdmin && isAdmin() && r.estado === "enviada" ? `<div class="gx-acciones">
+      <span class="setting-sub">${t("Para pedir una corrección, abrí el gasto y usá «Observar».","To ask for a correction, open the expense and use “Flag”.","Para pedir uma correção, abra a despesa e use «Observar».","כדי לבקש תיקון, פתחו את ההוצאה והשתמשו ב«הערה».")}</span>
+      <button type="button" class="btn-primary" data-action="gastos-aprobar" data-id="${esc(r.id)}" ${gastosOcupado ? "disabled" : ""}>${gastosOcupado ? t("Aprobando…","Approving…","Aprovando…","מאשר…") : t("Aprobar la rendición","Approve the report","Aprovar a prestação","אישור הדוח")}</button>
+    </div>` : "";
+  return `${volver}
+    <div class="gx-cab">
+      <span class="gx-t-ico" aria-hidden="true">${iconoDeRendicion(r)}</span>
+      <div class="gx-cab-txt">
+        <h3 class="gx-h3">${esc(tituloRendicion(r))}</h3>
+        <p class="setting-sub">${[!mia ? esc(nombreDePersona(r.autor)) : "", p ? esc(fmtDate(p.startDate || p.date)) : ""].filter(Boolean).join(" · ")}</p>
+      </div>
+      ${gxChip(estadoDeRendicion(r.estado))}
+    </div>
+    ${aviso}
+    ${mia && editable ? renderSubida() : ""}
+    ${gs.length ? `<div class="gx-filas">${gs.map(renderFilaGasto).join("")}</div>` : `<p class="setting-sub gx-nada">${t("Todavía no hay gastos en esta rendición.","There are no expenses in this report yet.","Ainda não há despesas nesta prestação.","עדיין אין הוצאות בדוח הזה.")}</p>`}
+    ${editable ? `<button type="button" class="btn-secondary gx-subir-aca" data-action="gastos-subir" data-id="${esc(r.id)}">📎 ${t("Subir comprobantes a esta rendición","Upload receipts to this report","Enviar comprovantes para esta prestação","העלאת קבלות לדוח הזה")}</button>` : ""}
+    ${Object.keys(detalle).length ? `<div class="gx-total"><span>${t("Total del detalle","Itemized total","Total do detalhe","סך הפירוט")}</span><b>${esc(fmtTotales(detalle))}</b></div>` : ""}
+    ${renderTotalRapido(r, editable, detalle)}
+    ${enviar}${aprobar}`;
+}
+// El total rápido: cuánto se gastó en la actividad, sin el detalle. Vale el
+// detalle; si no coinciden se avisa, y la persona puede confirmar el suyo.
+function renderTotalRapido(r, editable, detalle){
+  const tm = r.totalManual || {};
+  const hay = Object.keys(tm).length;
+  const difiere = hay && Object.keys(detalle).length && !totalesIguales(tm, detalle);
+  if(!editable){
+    return hay ? `<div class="gx-total gx-total-manual"><span>${t("Total anotado a mano","Total entered by hand","Total anotado à mão","סכום שנרשם ידנית")}${r.totalManualConfirmado ? " · " + t("vale este","this one counts","vale este","זה התקף") : ""}</span><b>${esc(fmtTotales(tm))}</b></div>` : "";
+  }
+  if(!gastosTotal || gastosTotal.rid !== r.id){
+    const filas = Object.entries(tm).map(([moneda, monto]) => ({ moneda, monto: String(monto) }));
+    gastosTotal = { rid: r.id, filas: filas.length ? filas : [{ moneda: "USD", monto: "" }], confirmado: !!r.totalManualConfirmado, guardando: false, error: "" };
+  }
+  const d = gastosTotal;
+  return `<details class="gx-rapido"${hay ? " open" : ""}>
+      <summary>${t("Total rápido (sin cargar el detalle)","Quick total (without the itemized list)","Total rápido (sem carregar o detalhe)","סכום מהיר (בלי פירוט)")}${hay ? ": " + esc(fmtTotales(tm)) : ""}</summary>
+      <p class="setting-sub">${t("Si no tenés los comprobantes a mano, anotá cuánto se gastó en total, por moneda. Si después cargás el detalle, vale el detalle.","If you don't have the receipts at hand, enter the total spent, by currency. If you add the itemized list later, the list counts.","Se não tiver os comprovantes à mão, anote quanto se gastou no total, por moeda. Se depois carregar o detalhe, vale o detalhe.","אם הקבלות לא בהישג יד, רשמו כמה הוצא בסך הכול, לפי מטבע. אם תוסיפו אחר כך את הפירוט, הפירוט קובע.")}</p>
+      ${d.filas.map((f, i) => `<div class="gx-rap-fila">
+          <input type="text" class="gx-moneda" id="gxTotal_${i}_moneda" list="gxMonedas" maxlength="3" data-gtotal="${i}:moneda" value="${esc(f.moneda)}" aria-label="${esc(t("Moneda","Currency","Moeda","מטבע"))}">
+          <input type="number" id="gxTotal_${i}_monto" step="0.01" inputmode="decimal" data-gtotal="${i}:monto" value="${esc(f.monto)}" aria-label="${esc(t("Monto","Amount","Valor","סכום"))}">
+          ${d.filas.length > 1 ? `<button type="button" class="zone-rm" data-action="gastos-total-sacar" data-i="${i}" aria-label="${esc(t("Sacar esta moneda","Remove this currency","Tirar esta moeda","הסרת המטבע"))}">✕</button>` : ""}
+        </div>`).join("")}
+      ${d.filas.length < 4 ? `<button type="button" class="gx-link" data-action="gastos-total-otra">+ ${t("Otra moneda","Another currency","Outra moeda","מטבע נוסף")}</button>` : ""}
+      ${difiere ? `<div class="gx-alerta">⚠️ ${esc(t("El total anotado ({a}) no coincide con el detalle ({b}). Vale el detalle, salvo que confirmes el tuyo.","The entered total ({a}) doesn't match the itemized list ({b}). The list counts, unless you confirm yours.","O total anotado ({a}) não coincide com o detalhe ({b}). Vale o detalhe, a menos que você confirme o seu.","הסכום שנרשם ({a}) לא תואם את הפירוט ({b}). הפירוט קובע, אלא אם תאשרו את שלכם.",{ a: fmtTotales(tm), b: fmtTotales(detalle) }))}
+          <label class="gx-check"><input type="checkbox" id="gxTotalConfirmado" ${d.confirmado ? "checked" : ""}> ${t("Vale el total anotado a mano","The hand-entered total counts","Vale o total anotado à mão","הסכום שנרשם ידנית קובע")}</label></div>` : ""}
+      ${d.error ? `<div class="form-error" role="alert">${esc(d.error)}</div>` : ""}
+      <div class="gx-acciones gx-acciones-chicas">
+        ${hay ? `<button type="button" class="btn-secondary" data-action="gastos-total-borrar" ${d.guardando ? "disabled" : ""}>${t("Borrar el total","Clear the total","Apagar o total","מחיקת הסכום")}</button>` : ""}
+        <button type="button" class="btn-primary" data-action="gastos-total-guardar" ${d.guardando ? "disabled" : ""}>${d.guardando ? t("Guardando…","Saving…","Salvando…","שומר…") : t("Guardar el total","Save the total","Salvar o total","שמירת הסכום")}</button>
+      </div>
+    </details>`;
+}
+async function guardarTotalRapido(borrar){
+  const d = gastosTotal, r = d && rendicionPorId(d.rid);
+  if(!d || !r || d.guardando) return;
+  const total = {};
+  if(!borrar){
+    for(const f of d.filas){
+      const moneda = String(f.moneda || "").trim().toUpperCase(), monto = String(f.monto || "").trim();
+      if(!monto && !moneda) continue;
+      const n = Number(monto);
+      if(!/^[A-Z]{3}$/.test(moneda)){ d.error = t("La moneda va con su código de tres letras (USD, EUR, MXN…).","The currency goes with its three-letter code (USD, EUR, MXN…).","A moeda vai com seu código de três letras (USD, EUR, MXN…).","המטבע נכתב בקוד של שלוש אותיות (USD, EUR, MXN…)."); render(); return; }
+      if(!monto || !isFinite(n) || Math.abs(n) >= 1e10){ d.error = t("Falta el monto de {m}.","The amount for {m} is missing.","Falta o valor de {m}.","חסר הסכום של {m}.",{ m: moneda }); render(); return; }
+      total[moneda] = redondo((total[moneda] || 0) + n);
+    }
+  }
+  d.guardando = true; d.error = ""; render();
+  try{
+    await store.gastos.totalRapido(r.id, total, !borrar && !!d.confirmado);
+    gastosTotal = null;
+  }catch(err){
+    console.error("No se pudo guardar el total:", err);
+    d.guardando = false; d.error = t("No se pudo guardar: {m}","Couldn't save: {m}","Não foi possível salvar: {m}","לא ניתן היה לשמור: {m}",{ m: detalleDeError(err) });
+  }
+  render();
+}
+async function enviarRendicion(id){
+  if(gastosOcupado) return;
+  if(!await appConfirm(t("¿Mandar la rendición para que la revise un administrador? Mientras la revisa, no se puede cambiar.","Send the report for an admin to review? While it's in review, it can't be changed.","Mandar a prestação para um administrador revisar? Enquanto estiver em revisão, não dá para mudar.","לשלוח את הדוח לבדיקה של מנהל/ת? בזמן הבדיקה אי אפשר לשנות אותו."), { okLabel: t("Mandar","Send","Mandar","שליחה") })) return;
+  gastosOcupado = true; render();
+  try{ await store.gastos.enviar(id); }
+  catch(err){ console.error("No se pudo mandar la rendición:", err); appAlert(t("No se pudo mandar: {m}","Couldn't send it: {m}","Não foi possível mandar: {m}","השליחה נכשלה: {m}",{ m: detalleDeError(err) })); }
+  gastosOcupado = false; render();
+}
+async function aprobarRendicion(id){
+  if(gastosOcupado) return;
+  const r = rendicionPorId(id);
+  if(!r || !await appConfirm(t("¿Aprobar la rendición «{n}» entera?","Approve the whole report “{n}”?","Aprovar a prestação «{n}» inteira?","לאשר את כל הדוח «{n}»?",{ n: tituloRendicion(r) }), { okLabel: t("Aprobar","Approve","Aprovar","אישור") })) return;
+  gastosOcupado = true; render();
+  try{ await store.gastos.aprobar(id); }
+  catch(err){ console.error("No se pudo aprobar la rendición:", err); appAlert(t("No se pudo aprobar: {m}","Couldn't approve it: {m}","Não foi possível aprovar: {m}","האישור נכשל: {m}",{ m: detalleDeError(err) })); }
+  gastosOcupado = false; render();
+}
+async function abrirRendicionDeActividad(){
+  if(!gastosActividad || gastosOcupado) return;
+  gastosOcupado = true; render();
+  try{
+    const id = await rendicionPara("post:" + gastosActividad);
+    gastosActividad = ""; gastosOtraAbierta = false; gastosAbierta = id; gastosTotal = null;
+  }catch(err){ console.error("No se pudo abrir la rendición:", err); appAlert(t("No se pudo abrir: {m}","Couldn't open it: {m}","Não foi possível abrir: {m}","הפתיחה נכשלה: {m}",{ m: detalleDeError(err) })); }
+  gastosOcupado = false; render(); scrollToTop();
+}
+
+// ---- Para aprobar (admins) ----
+function renderParaAprobar(){
+  const D = gastosDatos;
+  const enviadas = D.rendiciones.filter(r => r.estado === "enviada").sort((a, b) => tsToMillis(a.enviadaEl) - tsToMillis(b.enviadaEl));
+  const observadas = D.rendiciones.filter(r => r.estado === "observada");
+  const movs = D.movimientos.filter(m => m.estado === "pendiente");
+  if(!enviadas.length && !observadas.length && !movs.length)
+    return `<div class="admin-ok">✅ ${t("Nada para aprobar: no hay rendiciones mandadas ni plata anotada por confirmar.","Nothing to approve: no reports sent and no money entries to confirm.","Nada para aprovar: não há prestações enviadas nem dinheiro anotado por confirmar.","אין מה לאשר: אין דוחות שנשלחו ואין רישומים כספיים לאישור.")}</div>`;
+  return `${enviadas.length ? `<h3 class="admin-h3">${t("Para revisar","To review","Para revisar","לבדיקה")}</h3><div class="gx-lista">${enviadas.map(r => renderTarjetaRendicion(r, true)).join("")}</div>` : ""}
+    ${movs.length ? `<h3 class="admin-h3">${t("Plata anotada por confirmar","Money entries to confirm","Dinheiro anotado por confirmar","רישומים כספיים לאישור")}</h3><div class="gx-movs">${movs.map(m => renderMovimiento(m, true)).join("")}</div>` : ""}
+    ${observadas.length ? `<h3 class="admin-h3">${t("Esperando la corrección","Waiting for the correction","Esperando a correção","ממתינים לתיקון")}</h3><div class="gx-lista">${observadas.map(r => renderTarjetaRendicion(r, true)).join("")}</div>` : ""}`;
+}
+
+// ---- La cuenta corriente ----
+// La misma cuenta que gastos_cuenta (27-gastos.sql), con lo que ya está en
+// pantalla: así se mueve en vivo. Saldo = gastado + devuelto + ajustes − recibido.
+function cuentaDe(persona){
+  const p = String(persona || "").toLowerCase(), por = {};
+  const fila = m => (por[m] = por[m] || { gastado: 0, enRevision: 0, recibido: 0, devuelto: 0, ajuste: 0, pendiente: 0 });
+  const rs = new Map(gastosDatos.rendiciones.map(r => [r.id, r]));
+  gastosDatos.gastos.forEach(g => {
+    if(g.autor !== p || g.pago !== "persona") return;
+    const r = rs.get(g.rendicionId), x = rendidoDe(g);
+    if(!r || !x) return;
+    if(r.estado === "aprobada") fila(x.moneda).gastado += x.monto;
+    else if(r.estado === "enviada" || r.estado === "observada") fila(x.moneda).enRevision += x.monto;
+  });
+  gastosDatos.movimientos.forEach(m => {
+    if(m.persona !== p || m.monto == null) return;
+    const f = fila(m.moneda);
+    if(m.estado === "confirmado") f[m.tipo === "recibido" ? "recibido" : m.tipo === "devuelto" ? "devuelto" : "ajuste"] += m.monto;
+    else f.pendiente += m.tipo === "recibido" ? -m.monto : m.monto;
+  });
+  Object.values(por).forEach(f => { Object.keys(f).forEach(k => { f[k] = redondo(f[k]); }); f.saldo = redondo(f.gastado + f.devuelto + f.ajuste - f.recibido); });
+  return por;
+}
+const tipoDeMovimiento = k => ({ recibido: t("Recibido","Received","Recebido","התקבל"), devuelto: t("Devuelto","Returned","Devolvido","הוחזר"), ajuste: t("Ajuste","Adjustment","Ajuste","התאמה") })[k] || k;
+function renderMovimiento(m, conPersona){
+  const puedeBorrar = isAdmin() || (m.persona === miCorreo() && m.estado === "pendiente");
+  const signo = m.tipo === "recibido" ? "−" : m.tipo === "devuelto" || m.monto > 0 ? "+" : "";
+  return `<div class="gx-mov">
+      <span class="gx-mov-txt"><b>${esc(tipoDeMovimiento(m.tipo))}${conPersona ? " · " + esc(nombreDePersona(m.persona)) : ""}</b>
+        <small>${[esc(fmtDate(m.fecha)), m.descripcion ? esc(m.descripcion) : ""].filter(Boolean).join(" · ")}</small></span>
+      <span class="gx-mov-der"><b>${esc(signo + fmtMonto(m.moneda, Math.abs(m.monto)))}</b>
+        ${m.estado === "pendiente" ? gxChip([t("Pendiente","Pending","Pendente","ממתין"), "aviso"]) : gxChip([t("Confirmado","Confirmed","Confirmado","אושר"), "bien"])}</span>
+      <span class="gx-mov-acc">
+        ${isAdmin() && m.estado === "pendiente" ? `<button type="button" class="btn-mini" data-action="gastos-mov-confirmar" data-id="${esc(m.id)}">${t("Confirmar","Confirm","Confirmar","אישור")}</button>` : ""}
+        ${puedeBorrar ? `<button type="button" class="zone-rm" data-action="gastos-mov-borrar" data-id="${esc(m.id)}" aria-label="${esc(t("Borrar este movimiento","Delete this entry","Apagar este lançamento","מחיקת הרישום"))}">✕</button>` : ""}
+      </span>
+    </div>`;
+}
+function renderGastosCuenta(){
+  const yo = miCorreo();
+  const de = isAdmin() && gastosCuentaDe ? gastosCuentaDe : yo;
+  const cuenta = cuentaDe(de);
+  const monedas = Object.keys(cuenta).sort((a, b) => a === "USD" ? -1 : b === "USD" ? 1 : a.localeCompare(b));
+  const propia = de === yo;
+  const selector = isAdmin() ? (() => {
+    const gente = [...new Set([yo, ...gastosDatos.rendiciones.map(r => r.autor), ...gastosDatos.movimientos.map(m => m.persona), ...state.roster.filter(m => m.role !== "observer").map(m => String(m.email).toLowerCase())])];
+    return `<div class="gx-cuenta-de"><label for="gxCuentaDe">${t("La cuenta de","The balance of","A conta de","החשבון של")}</label>
+      <select id="gxCuentaDe">${gente.map(e => `<option value="${esc(e)}"${e === de ? " selected" : ""}>${esc(e === yo ? t("{n} (vos)","{n} (you)","{n} (você)","{n} (את/ה)",{ n: nombreDePersona(e) }) : nombreDePersona(e))}</option>`).join("")}</select></div>`;
+  })() : "";
+  const saldoTxt = s => s > 0 ? (propia ? t("la organización te debe","the organization owes you","a organização te deve","הארגון חייב לך") : t("la organización le debe","the organization owes them","a organização deve a essa pessoa","הארגון חייב לו/לה"))
+    : s < 0 ? (propia ? t("le debés a la organización","you owe the organization","você deve à organização","את/ה חייב/ת לארגון") : t("le debe a la organización","they owe the organization","essa pessoa deve à organização","הוא/היא חייב/ת לארגון")) : t("en cero","even","zerado","מאוזן");
+  const tabla = monedas.length ? `<div class="gx-cuenta">${monedas.map(m => { const f = cuenta[m]; return `<div class="gx-cuenta-mon">
+        <div class="gx-cm-cab"><b>${esc(m)}</b><span class="gx-saldo${f.saldo < 0 ? " gx-neg" : f.saldo > 0 ? " gx-pos" : ""}">${esc(fmtMonto(m, f.saldo))}</span></div>
+        <div class="gx-cm-sub">${esc(saldoTxt(f.saldo))}</div>
+        <dl class="gx-cm-filas">
+          <dt>${t("Gastado (aprobado)","Spent (approved)","Gasto (aprovado)","הוצאות (מאושרות)")}</dt><dd>${esc(fmtMonto(m, f.gastado))}</dd>
+          <dt>${t("Recibido","Received","Recebido","התקבל")}</dt><dd>${esc(fmtMonto(m, f.recibido))}</dd>
+          <dt>${t("Devuelto","Returned","Devolvido","הוחזר")}</dt><dd>${esc(fmtMonto(m, f.devuelto))}</dd>
+          ${f.ajuste ? `<dt>${t("Ajustes","Adjustments","Ajustes","התאמות")}</dt><dd>${esc(fmtMonto(m, f.ajuste))}</dd>` : ""}
+          ${f.enRevision ? `<dt class="gx-suave">${t("En revisión (todavía no cuenta)","In review (doesn't count yet)","Em revisão (ainda não conta)","בבדיקה (עוד לא נספר)")}</dt><dd class="gx-suave">${esc(fmtMonto(m, f.enRevision))}</dd>` : ""}
+          ${f.pendiente ? `<dt class="gx-suave">${t("Anotado, falta confirmar","Entered, not confirmed yet","Anotado, falta confirmar","נרשם, ממתין לאישור")}</dt><dd class="gx-suave">${esc(fmtMonto(m, f.pendiente))}</dd>` : ""}
+        </dl></div>`; }).join("")}</div>`
+    : `<p class="setting-sub gx-nada">${propia ? t("Todavía no hay nada en tu cuenta: aparece cuando se aprueba una rendición tuya o anotás plata recibida.","There's nothing in your balance yet: it shows up when one of your reports is approved or you enter money received.","Ainda não há nada na sua conta: aparece quando uma prestação sua é aprovada ou você anota dinheiro recebido.","עדיין אין כלום בחשבון שלך: זה מופיע כשדוח שלך מאושר או כשרושמים כסף שהתקבל.") : t("Todavía no hay nada en esta cuenta.","There's nothing in this balance yet.","Ainda não há nada nesta conta.","עדיין אין כלום בחשבון הזה.")}</p>`;
+  const movs = gastosDatos.movimientos.filter(m => m.persona === de);
+  if(!gastosMov) gastosMov = { tipo: "recibido", fecha: todayISO(), moneda: "USD", monto: "", descripcion: "", guardando: false, error: "" };
+  const f = gastosMov;
+  const tipos = ["recibido", "devuelto", ...(isAdmin() ? ["ajuste"] : [])];
+  const form = `<div class="settings-card gx-anotar">
+      <div class="settings-card-title gx-anotar-tit">${propia ? t("Anotar plata recibida o devuelta","Enter money received or returned","Anotar dinheiro recebido ou devolvido","רישום כסף שהתקבל או הוחזר") : t("Anotar un movimiento de {n}","Enter an entry for {n}","Anotar um lançamento de {n}","רישום תנועה של {n}",{ n: esc(nombreDePersona(de)) })}</div>
+      <div class="gx-anotar-grid">
+        <label>${t("Qué","What","O quê","מה")}<select id="gxMov_tipo" data-gmov="tipo">${tipos.map(k => `<option value="${k}"${f.tipo === k ? " selected" : ""}>${esc(tipoDeMovimiento(k))}</option>`).join("")}</select></label>
+        <label>${t("Fecha","Date","Data","תאריך")}<input type="date" id="gxMov_fecha" data-gmov="fecha" value="${esc(f.fecha)}"></label>
+        <label>${t("Moneda","Currency","Moeda","מטבע")}<input type="text" class="gx-moneda" list="gxMonedas" maxlength="3" id="gxMov_moneda" data-gmov="moneda" value="${esc(f.moneda)}"></label>
+        <label>${t("Monto","Amount","Valor","סכום")}<input type="number" step="0.01" inputmode="decimal" id="gxMov_monto" data-gmov="monto" value="${esc(f.monto)}"></label>
+        <label class="gx-ancho">${t("Detalle (opcional)","Details (optional)","Detalhe (opcional)","פירוט (לא חובה)")}<input type="text" maxlength="300" id="gxMov_descripcion" data-gmov="descripcion" value="${esc(f.descripcion)}" placeholder="${esc(t("Por ejemplo: adelanto para la visita a Lima","For example: advance for the Lima visit","Por exemplo: adiantamento para a visita a Lima","למשל: מקדמה לביקור בלימה"))}"></label>
+      </div>
+      ${f.tipo === "ajuste" ? `<p class="setting-sub">${t("Un ajuste es un saldo inicial o una corrección: positivo, a favor de la persona; negativo, en contra.","An adjustment is an opening balance or a correction: positive, in the person's favor; negative, against.","Um ajuste é um saldo inicial ou uma correção: positivo, a favor da pessoa; negativo, contra.","התאמה היא יתרת פתיחה או תיקון: חיובית לטובת האדם; שלילית — לחובתו.")}</p>` : ""}
+      ${!isAdmin() ? `<p class="setting-sub">${t("Queda pendiente hasta que un administrador lo confirme.","It stays pending until an admin confirms it.","Fica pendente até um administrador confirmar.","זה נשאר ממתין עד שמנהל/ת יאשר/תאשר.")}</p>` : ""}
+      ${f.error ? `<div class="form-error" role="alert">${esc(f.error)}</div>` : ""}
+      <div class="gx-acciones gx-acciones-chicas"><button type="button" class="btn-primary" data-action="gastos-mov-anotar" ${f.guardando ? "disabled" : ""}>${f.guardando ? t("Guardando…","Saving…","Salvando…","שומר…") : t("Anotar","Save","Anotar","רישום")}</button></div>
+    </div>`;
+  return `${selector}${tabla}
+    ${movs.length ? `<h3 class="admin-h3">${t("Movimientos","Entries","Lançamentos","תנועות")}</h3><div class="gx-movs">${movs.map(m => renderMovimiento(m, false)).join("")}</div>` : ""}
+    ${form}`;
+}
+async function anotarMovimiento(){
+  const f = gastosMov;
+  if(!f || f.guardando) return;
+  const de = isAdmin() && gastosCuentaDe ? gastosCuentaDe : miCorreo();
+  const moneda = String(f.moneda || "").trim().toUpperCase(), n = Number(String(f.monto || "").trim());
+  const mal = !/^[A-Z]{3}$/.test(moneda) ? t("La moneda va con su código de tres letras (USD, EUR, MXN…).","The currency goes with its three-letter code (USD, EUR, MXN…).","A moeda vai com seu código de três letras (USD, EUR, MXN…).","המטבע נכתב בקוד של שלוש אותיות (USD, EUR, MXN…).")
+    : !String(f.monto || "").trim() || !isFinite(n) || n === 0 || Math.abs(n) >= 1e10 ? t("Falta el monto.","The amount is missing.","Falta o valor.","חסר הסכום.")
+    : f.tipo !== "ajuste" && n < 0 ? t("El monto va en positivo: «Devuelto» ya dice para qué lado.","The amount is positive: “Returned” already says which way.","O valor vai em positivo: «Devolvido» já diz para que lado.","הסכום נכתב בחיובי: «הוחזר» כבר אומר לאיזה כיוון.")
+    : !/^\d{4}-\d{2}-\d{2}$/.test(f.fecha || "") ? t("Falta la fecha.","The date is missing.","Falta a data.","חסר התאריך.") : "";
+  if(mal){ f.error = mal; render(); return; }
+  f.guardando = true; f.error = ""; render();
+  try{
+    await store.gastos.anotarMovimiento({ persona: de, tipo: f.tipo, fecha: f.fecha, moneda, monto: redondo(n),
+      descripcion: String(f.descripcion || "").trim().slice(0, 300), estado: isAdmin() ? "confirmado" : "pendiente" });
+    gastosMov = null;
+  }catch(err){
+    console.error("No se pudo anotar el movimiento:", err);
+    f.guardando = false; f.error = t("No se pudo guardar: {m}","Couldn't save: {m}","Não foi possível salvar: {m}","לא ניתן היה לשמור: {m}",{ m: detalleDeError(err) });
+  }
+  render();
+}
+
+// ---- La ventana de un gasto ----
+function abrirGasto(id, desde){
+  const g = gastoPorId(id);
+  if(!g) return;
+  gastoEdit = { id, guardando: false, error: "", faltan: [], comentario: "", observacion: "",
+    d: { fecha: g.fecha || "", concepto: g.concepto || "", tipo: g.tipo || "", moneda: g.moneda || "USD", monto: g.monto ?? "",
+      rendidoMoneda: g.rendidoMoneda || "USD", rendidoMonto: g.rendidoMonto ?? "", pago: g.pago || "persona", formaPago: g.formaPago || "",
+      tarjeta: g.tarjeta || "", factura: g.factura !== false, observaciones: g.observaciones || "", vinculo: vinculoDe(g) } };
+  gastoReturnFocus = desde || document.activeElement;
+  renderGasto();
+  gastoOverlay.hidden = false;
+  enfocarComo(gastoOverlay.querySelector("#gxFecha:not([disabled])") || gastoOverlay.querySelector(".close"), gastoReturnFocus);
+}
+function cerrarGasto(sinFoco){
+  const id = gastoEdit && gastoEdit.id;
+  gastoOverlay.hidden = true;
+  gastoEdit = null;
+  const rf = gastoReturnFocus; gastoReturnFocus = null;
+  if(sinFoco) return;
+  // El foco vuelve a la fila del gasto, buscada de nuevo (la lista se vuelve
+  // a dibujar con lo guardado); si el gasto pasó a otra rendición o se
+  // borró, a la lista, para que no se pierda en la página.
+  const volver = () => {
+    const fila = id && document.querySelector(`[data-action="gasto-abrir"][data-id="${CSS.escape(id)}"]`);
+    const x = fila || (rf && rf.isConnected ? rf : null) || document.querySelector('.gastos-view [data-action="gasto-abrir"], .gastos-view .gx-volver');
+    if(x && typeof x.focus === "function") x.focus();
+  };
+  volver();
+  requestAnimationFrame(() => setTimeout(() => { if(!document.activeElement || document.activeElement === document.body) volver(); }, 0));
+}
+function renderGasto(){
+  const e = gastoEdit, g = e && gastoPorId(e.id);
+  if(!e || !g){ if(e) cerrarGasto(); return; }
+  const act = document.activeElement, idFoco = act && gastoOverlay.contains(act) && act.id;
+  const editable = gastoEditable(g), dis = editable ? "" : " disabled";
+  const r = g.rendicionId && rendicionPorId(g.rendicionId);
+  const d = e.d, mal = k => e.faltan.includes(k) ? ' aria-invalid="true"' : "";
+  const campo = (et, control, ancho) => `<label class="gx-campo${ancho ? " gx-ancho" : ""}"><span class="gx-et">${et}</span>${control}</label>`;
+  const tipos = gastoTipos().filter(x => !x.oculto || x.key === d.tipo);
+  if(d.tipo && !tipos.some(x => x.key === d.tipo)) tipos.push({ key: d.tipo, label: nombreTipoGasto(d.tipo) });
+  const otraMoneda = d.moneda && d.moneda !== d.rendidoMoneda;
+  const vista = !g.archivo ? `<div class="gx-comp gx-comp-vacio">${t("Sin comprobante","No receipt","Sem comprovante","ללא קבלה")}</div>`
+    : !esUrlFirmada(g.archivoUrl) ? `<div class="gx-comp gx-comp-vacio">${t("Cargando el comprobante…","Loading the receipt…","Carregando o comprovante…","טוען את הקבלה…")}</div>`
+    : esPdfGasto(g) ? `<button type="button" class="gx-comp gx-comp-pdf" data-action="gasto-ver-comprobante" data-id="${esc(g.id)}"><span class="gx-pdf-ico" aria-hidden="true">PDF</span><span>${t("Abrir el PDF","Open the PDF","Abrir o PDF","פתיחת ה-PDF")}</span></button>`
+    : `<button type="button" class="gx-comp" data-action="gasto-ver-comprobante" data-id="${esc(g.id)}" aria-label="${esc(t("Ver el comprobante entero","See the whole receipt","Ver o comprovante inteiro","הצגת הקבלה המלאה"))}"><img src="${esc(store.miniaturaDe(g.archivoUrl))}" alt=""></button>`;
+  const sugerido = g.lectura && g.lectura.fuente === "nombre" && g.estado === "borrador"
+    ? `<p class="gx-sugerido">💡 ${t("La fecha y el concepto salieron del nombre del archivo: revisalos.","The date and description came from the file name: check them.","A data e o conceito saíram do nome do arquivo: revise.","התאריך והתיאור נלקחו משם הקובץ: בדקו אותם.")}</p>` : "";
+  const coms = comentariosDe(g.id);
+  const hilo = coms.length ? `<div class="gx-hilo">${coms.map(c => `<div class="gx-com${c.autor && String(c.autor).toLowerCase() === g.autor ? "" : " gx-com-admin"}">
+      <b>${esc(nombreDePersona(c.autor))}</b> <small>${esc(fmtDateTime(c.creadoEl))}</small><div>${esc(c.texto)}</div></div>`).join("")}</div>` : "";
+  const puedeObservar = isAdmin() && r && ["enviada", "observada"].includes(r.estado) && ["enviado", "observado"].includes(g.estado);
+  const botones = editable ? `
+      <button type="button" class="btn-secondary gx-borrar" data-action="gasto-borrar" ${e.guardando ? "disabled" : ""}>🗑️ ${t("Borrar","Delete","Apagar","מחיקה")}</button>
+      <span class="gx-espacio"></span>
+      ${g.estado === "borrador" ? `<button type="button" class="btn-secondary" data-action="gasto-guardar" data-confirmar="0" ${e.guardando ? "disabled" : ""}>${t("Guardar sin confirmar","Save without confirming","Salvar sem confirmar","שמירה בלי אישור")}</button>` : ""}
+      <button type="button" class="btn-primary" data-action="gasto-guardar" data-confirmar="1" ${e.guardando ? "disabled" : ""}>${e.guardando ? t("Guardando…","Saving…","Salvando…","שומר…") : g.estado === "observado" ? t("Guardar la corrección","Save the correction","Salvar a correção","שמירת התיקון") : g.estado === "confirmado" ? t("Guardar","Save","Salvar","שמירה") : t("Confirmar","Confirm","Confirmar","אישור")}</button>`
+    : `<span class="gx-espacio"></span><button type="button" class="btn-secondary" data-action="gasto-cerrar">${t("Cerrar","Close","Fechar","סגירה")}</button>`;
+  document.getElementById("gastoBody").innerHTML = `
+    <button type="button" class="close" data-action="gasto-cerrar" aria-label="${esc(t("Cerrar","Close","Fechar","סגירה"))}">✕</button>
+    <h2 id="gastoTitle" class="gx-tit">🧾 ${editable ? t("Revisar el gasto","Check the expense","Revisar a despesa","בדיקת ההוצאה") : t("El gasto","The expense","A despesa","ההוצאה")} ${gxChip(estadoDeGasto(g.estado))}</h2>
+    <div class="gx-ventana">
+      <div class="gx-v-comp">${vista}<small class="gx-arch">${esc(g.archivoNombre || "")}</small>${!editable && g.autor !== miCorreo() ? `<small>${esc(t("De {n}","By {n}","De {n}","של {n}",{ n: nombreDePersona(g.autor) }))}</small>` : ""}</div>
+      <div class="gx-v-form">
+        ${sugerido}${hilo}
+        ${puedeObservar ? `<div class="gx-observar">
+            ${campo(t("Observar este gasto","Flag this expense","Observar esta despesa","הערה על ההוצאה"), `<textarea id="gxObs" maxlength="1000" rows="2" data-gcampo-extra="observacion" placeholder="${esc(t("Qué hay que corregir","What needs fixing","O que precisa ser corrigido","מה צריך לתקן"))}">${esc(e.observacion)}</textarea>`, true)}
+            <button type="button" class="btn-secondary" data-action="gasto-observar" ${e.guardando ? "disabled" : ""}>⚠️ ${t("Observar","Flag","Observar","הערה")}</button>
+          </div>` : ""}
+        <div class="gx-campos">
+          ${campo(t("Fecha","Date","Data","תאריך"), `<input type="date" id="gxFecha" data-gcampo="fecha" value="${esc(d.fecha)}"${mal("fecha")}${dis}>`)}
+          ${campo(t("Tipo","Type","Tipo","סוג"), `<select id="gxTipo" data-gcampo="tipo"${mal("tipo")}${dis}><option value="">${esc(t("Elegí…","Pick…","Escolha…","בחרו…"))}</option>${tipos.map(x => `<option value="${esc(x.key)}"${x.key === d.tipo ? " selected" : ""}>${esc(x.label)}</option>`).join("")}</select>`)}
+          ${campo(t("Concepto","Description","Conceito","תיאור"), `<input type="text" id="gxConcepto" maxlength="140" data-gcampo="concepto" value="${esc(d.concepto)}" placeholder="${esc(t("Por ejemplo: Taxi al aeropuerto","For example: Taxi to the airport","Por exemplo: Táxi para o aeroporto","למשל: מונית לשדה התעופה"))}"${mal("concepto")}${dis}>`, true)}
+          ${campo(t("Monto","Amount","Valor","סכום"), `<input type="number" id="gxMonto" step="0.01" inputmode="decimal" data-gcampo="monto" value="${esc(d.monto)}"${mal("monto")}${dis}>`)}
+          ${campo(t("Moneda","Currency","Moeda","מטבע"), `<input type="text" id="gxMoneda" class="gx-moneda" list="gxMonedas" maxlength="3" data-gcampo="moneda" value="${esc(d.moneda)}"${mal("moneda")}${dis}>`)}
+          ${otraMoneda ? campo(t("Monto en {m}","Amount in {m}","Valor em {m}","סכום ב-{m}",{ m: esc(d.rendidoMoneda) }), `<input type="number" id="gxRendido" step="0.01" inputmode="decimal" data-gcampo="rendidoMonto" value="${esc(d.rendidoMonto)}"${dis}><small class="gx-pista">${t("Lo que te cobró el banco.","What your bank charged you.","O que o banco te cobrou.","מה שהבנק חייב אתכם.")}</small>`)
+            + campo(t("Se rinde en","Reported in","Presta-se em","מדווח ב"), `<input type="text" id="gxRendidoMoneda" class="gx-moneda" list="gxMonedas" maxlength="3" data-gcampo="rendidoMoneda" value="${esc(d.rendidoMoneda)}"${mal("rendidoMoneda")}${dis}>`) : ""}
+          <fieldset class="gx-campo gx-ancho gx-pago"${dis}><legend class="gx-et">${t("¿Quién puso la plata?","Who paid?","Quem pagou?","מי שילם?")}</legend>
+            <label><input type="radio" name="gxPago" id="gxPagoPersona" data-gcampo="pago" value="persona"${d.pago === "persona" ? " checked" : ""}> ${t("Yo (de mi bolsillo o de un adelanto)","Me (out of pocket or from an advance)","Eu (do meu bolso ou de um adiantamento)","אני (מהכיס או ממקדמה)")}</label>
+            <label><input type="radio" name="gxPago" id="gxPagoOrg" data-gcampo="pago" value="organizacion"${d.pago === "organizacion" ? " checked" : ""}> ${t("La organización (su tarjeta o su cuenta)","The organization (its card or account)","A organização (o cartão ou a conta dela)","הארגון (הכרטיס או החשבון שלו)")}</label>
+          </fieldset>
+          ${campo(t("Forma de pago","Payment method","Forma de pagamento","אמצעי תשלום"), `<select id="gxForma" data-gcampo="formaPago"${dis}>
+            <option value="">—</option>
+            <option value="tarjeta"${d.formaPago === "tarjeta" ? " selected" : ""}>${t("Tarjeta","Card","Cartão","כרטיס")}</option>
+            <option value="efectivo"${d.formaPago === "efectivo" ? " selected" : ""}>${t("Efectivo","Cash","Dinheiro","מזומן")}</option>
+            <option value="transferencia"${d.formaPago === "transferencia" ? " selected" : ""}>${t("Transferencia","Transfer","Transferência","העברה")}</option></select>`)}
+          ${d.formaPago === "tarjeta" ? campo(t("Tarjeta terminada en","Card ending in","Cartão terminado em","כרטיס שמסתיים ב"), `<input type="text" id="gxTarjeta" inputmode="numeric" maxlength="4" data-gcampo="tarjeta" value="${esc(d.tarjeta)}" placeholder="1234"${mal("tarjeta")}${dis}>`) : ""}
+          <label class="gx-check gx-ancho"><input type="checkbox" id="gxFactura" data-gcampo="factura"${d.factura ? " checked" : ""}${dis}> ${t("Tiene factura o comprobante válido","Has a valid invoice or receipt","Tem nota fiscal ou comprovante válido","יש חשבונית או קבלה תקפה")}</label>
+          ${campo(t("Observaciones (opcional)","Notes (optional)","Observações (opcional)","הערות (לא חובה)"), `<textarea id="gxObservaciones" maxlength="500" rows="2" data-gcampo="observaciones"${dis}>${esc(d.observaciones)}</textarea>`, true)}
+          ${campo(t("Va en","Goes in","Vai em","שייך ל"), `<select id="gxVinculo" data-gcampo="vinculo"${dis}>${opcionesDeVinculo(g, d.vinculo)}</select>`, true)}
+          ${editable && g.estado === "observado" ? campo(t("Tu respuesta (opcional)","Your reply (optional)","Sua resposta (opcional)","התשובה שלך (לא חובה)"), `<textarea id="gxRespuesta" maxlength="1000" rows="2" data-gcampo-extra="comentario">${esc(e.comentario)}</textarea>`, true) : ""}
+        </div>
+        ${e.error ? `<div class="form-error" role="alert">${esc(e.error)}</div>` : ""}
+      </div>
+    </div>
+    <div class="modal-actions gx-botones">${botones}</div>`;
+  if(idFoco){ const x = document.getElementById(idFoco); if(x) x.focus(); }
+}
+function nombreDeCampoGasto(k){
+  return ({ fecha: t("la fecha","the date","a data","התאריך"), concepto: t("el concepto","the description","o conceito","התיאור"), tipo: t("el tipo","the type","o tipo","הסוג"),
+    monto: t("el monto","the amount","o valor","הסכום"), moneda: t("la moneda (tres letras)","the currency (three letters)","a moeda (três letras)","המטבע (שלוש אותיות)"),
+    rendidoMoneda: t("la moneda en que se rinde","the reporting currency","a moeda da prestação","מטבע הדיווח"), tarjeta: t("los 4 números de la tarjeta","the card's 4 digits","os 4 números do cartão","4 הספרות של הכרטיס") })[k] || k;
+}
+async function guardarGasto(confirmar){
+  const e = gastoEdit, g = e && gastoPorId(e.id);
+  if(!e || !g || e.guardando) return;
+  const d = e.d;
+  const moneda = String(d.moneda || "").trim().toUpperCase(), rendidoMoneda = String(d.rendidoMoneda || "USD").trim().toUpperCase();
+  const monto = String(d.monto).trim() === "" ? null : Number(d.monto);
+  const rendido = moneda === rendidoMoneda || String(d.rendidoMonto).trim() === "" ? null : Number(d.rendidoMonto);
+  const faltan = [];
+  if(confirmar){
+    if(!d.fecha) faltan.push("fecha");
+    if(!String(d.concepto).trim()) faltan.push("concepto");
+    if(!d.tipo) faltan.push("tipo");
+    if(monto === null) faltan.push("monto");
+  }
+  if(!/^[A-Z]{3}$/.test(moneda)) faltan.push("moneda");
+  if(!/^[A-Z]{3}$/.test(rendidoMoneda)) faltan.push("rendidoMoneda");
+  if(d.formaPago === "tarjeta" && d.tarjeta && !/^\d{4}$/.test(d.tarjeta)) faltan.push("tarjeta");
+  if((monto !== null && (!isFinite(monto) || Math.abs(monto) >= 1e10)) || (rendido !== null && (!isFinite(rendido) || Math.abs(rendido) >= 1e10))) faltan.push("monto");
+  if(faltan.length){
+    e.faltan = [...new Set(faltan)];
+    e.error = (confirmar ? t("Para confirmarlo falta {f}.","To confirm it, {f} is missing.","Para confirmar falta {f}.","כדי לאשר חסר/ה {f}.",{ f: e.faltan.map(nombreDeCampoGasto).join(", ") }) : t("Revisá {f}.","Check {f}.","Revise {f}.","בדקו את {f}.",{ f: e.faltan.map(nombreDeCampoGasto).join(", ") }));
+    renderGasto();
+    const primero = { fecha: "gxFecha", concepto: "gxConcepto", tipo: "gxTipo", monto: "gxMonto", moneda: "gxMoneda", rendidoMoneda: "gxRendidoMoneda", tarjeta: "gxTarjeta" }[e.faltan[0]];
+    const x = primero && document.getElementById(primero); if(x) x.focus();
+    return;
+  }
+  e.faltan = []; e.error = ""; e.guardando = true; renderGasto();
+  try{
+    const rid = await rendicionPara(d.vinculo);
+    await store.gastos.cambiar(g.id, {
+      fecha: d.fecha || null, concepto: String(d.concepto).trim().slice(0, 140), tipo: d.tipo || null,
+      moneda, monto: monto === null ? null : redondo(monto), rendidoMoneda, rendidoMonto: rendido === null ? null : redondo(rendido),
+      pago: d.pago === "organizacion" ? "organizacion" : "persona", formaPago: d.formaPago || null,
+      tarjeta: d.formaPago === "tarjeta" && d.tarjeta ? d.tarjeta : null, factura: !!d.factura,
+      observaciones: String(d.observaciones).trim().slice(0, 500), rendicionId: rid,
+      estado: confirmar ? "confirmado" : "borrador" });
+    if(String(e.comentario).trim()) await store.gastos.comentar(g.id, String(e.comentario).trim().slice(0, 1000));
+    cerrarGasto();
+  }catch(err){
+    console.error("No se pudo guardar el gasto:", err);
+    if(!gastoEdit) return;
+    e.guardando = false; e.error = t("No se pudo guardar: {m}","Couldn't save: {m}","Não foi possível salvar: {m}","לא ניתן היה לשמור: {m}",{ m: detalleDeError(err) });
+    renderGasto();
+  }
+}
+async function borrarGasto(){
+  const e = gastoEdit;
+  if(!e || e.guardando) return;
+  if(!await appConfirm(t("¿Borrar este gasto y su comprobante?","Delete this expense and its receipt?","Apagar esta despesa e o comprovante?","למחוק את ההוצאה ואת הקבלה שלה?"), { danger: true, okLabel: t("Borrar","Delete","Apagar","מחיקה") })) return;
+  if(gastoEdit !== e) return;
+  e.guardando = true; renderGasto();
+  try{ await store.gastos.borrar(e.id); cerrarGasto(); }
+  catch(err){
+    console.error("No se pudo borrar el gasto:", err);
+    if(gastoEdit !== e) return;
+    e.guardando = false; e.error = t("No se pudo borrar: {m}","Couldn't delete it: {m}","Não foi possível apagar: {m}","המחיקה נכשלה: {m}",{ m: detalleDeError(err) }); renderGasto();
+  }
+}
+async function observarGasto(){
+  const e = gastoEdit;
+  if(!e || e.guardando) return;
+  const txt = String(e.observacion || "").trim();
+  if(!txt){ e.error = t("Escribí qué hay que corregir: le llega a la persona.","Write what needs fixing: the person gets it.","Escreva o que precisa ser corrigido: chega para a pessoa.","כתבו מה צריך לתקן: זה מגיע לאדם."); renderGasto(); const x = document.getElementById("gxObs"); if(x) x.focus(); return; }
+  e.guardando = true; e.error = ""; renderGasto();
+  try{ await store.gastos.observar(e.id, txt.slice(0, 1000)); cerrarGasto(); }
+  catch(err){
+    console.error("No se pudo observar el gasto:", err);
+    if(gastoEdit !== e) return;
+    e.guardando = false; e.error = t("No se pudo guardar: {m}","Couldn't save: {m}","Não foi possível salvar: {m}","לא ניתן היה לשמור: {m}",{ m: detalleDeError(err) }); renderGasto();
+  }
+}
+// Lo que se escribe en la ventana va al borrador; lo que cambia qué se ve
+// (otra moneda, la tarjeta) vuelve a dibujarla.
+function gastoAlEscribir(el, alCambiar){
+  const e = gastoEdit;
+  if(!e) return false;
+  if(el.dataset.gcampoExtra){ e[el.dataset.gcampoExtra] = el.value; return true; }
+  const k = el.dataset.gcampo;
+  if(!k) return false;
+  let v = el.type === "checkbox" ? el.checked : el.value;
+  if(["moneda", "rendidoMoneda"].includes(k) && alCambiar) v = String(v).trim().toUpperCase().slice(0, 3);
+  if(k === "tarjeta") v = String(v).replace(/\D/g, "").slice(0, 4);
+  e.d[k] = v;
+  if(e.faltan.includes(k)) e.faltan = e.faltan.filter(x => x !== k);
+  if(alCambiar && ["moneda", "rendidoMoneda", "formaPago"].includes(k)) renderGasto();
+  return true;
+}
+function verComprobante(id){
+  const g = gastoPorId(id);
+  if(!g || !esUrlFirmada(g.archivoUrl)) return;
+  const nombre = String(g.archivoNombre || g.concepto || t("Comprobante","Receipt","Comprovante","קבלה")).replace(/\.[A-Za-z0-9]{2,5}$/, "");
+  if(esPdfGasto(g)) openFilePreview([{ name: nombre + ".pdf", dataUrl: g.archivoUrl }], 0);
+  else openLightbox([g.archivoUrl], 0, nombre);
+}
+
+// ---- Administración → Gastos: el interruptor y los tipos ----
+function borradorTiposDeGasto(){
+  if(!gastosAdmin){
+    const cfg = Array.isArray(gastosConfig.tipos) && gastosConfig.tipos.length ? gastosConfig.tipos : GASTO_TIPOS_FABRICA.map(key => ({ key }));
+    // El nombre de fábrica se muestra en el idioma de quien mira; se guarda solo si se cambió.
+    gastosAdmin = { tipos: cfg.map(x => ({ key: x.key, label: String(x.label || "") || etiquetaTipoFabrica(x.key), oculto: x.oculto === true })), nuevo: "", guardando: false, error: "", ok: false, cambiado: false };
+  }
+  return gastosAdmin;
+}
+function renderGastosAdminSection(){
+  const a = borradorTiposDeGasto();
+  const enUso = new Set(gastosDatos ? gastosDatos.gastos.map(g => g.tipo).filter(Boolean) : []);
+  return `<div class="settings-card">
+      <div class="setting-row">
+        <span class="setting-icon" aria-hidden="true">🧾</span>
+        <div class="setting-text"><div class="setting-label" id="gxPrendidoLbl">${t("Mostrar el módulo de gastos","Show the expenses module","Mostrar o módulo de despesas","הצגת מודול ההוצאות")}</div>
+          <div class="setting-sub">${t("En esta etapa de prueba lo ven solo los administradores, desde el menú de su foto. Apagarlo esconde las pantallas: lo cargado queda guardado.","In this testing stage only admins see it, from their photo's menu. Turning it off hides the screens: what was logged stays saved.","Nesta etapa de teste só os administradores veem, pelo menu da foto. Desligar esconde as telas: o que foi carregado continua salvo.","בשלב הניסוי רק מנהלים רואים אותו, מהתפריט של התמונה. כיבוי מסתיר את המסכים: מה שנרשם נשמר.")}</div></div>
+        <label class="pref-switch"><input type="checkbox" data-action="gastos-prender" aria-labelledby="gxPrendidoLbl" ${gastosPrendido() ? "checked" : ""}><span class="pref-slider"></span></label>
+      </div>
+    </div>
+    <div class="settings-card-title">${t("Tipos de gasto","Expense types","Tipos de despesa","סוגי הוצאות")}</div>
+    <div class="settings-card gx-tipos">
+      ${a.tipos.map((x, i) => `<div class="setting-row">
+          <input type="text" class="gx-tipo-nombre${x.oculto ? " gx-tipo-oculto" : ""}" id="gxTipo_${i}" maxlength="60" data-gtipo="${i}" value="${esc(x.label || etiquetaTipoFabrica(x.key))}" placeholder="${esc(etiquetaTipoFabrica(x.key) || x.key)}" aria-label="${esc(t("Nombre del tipo","Type name","Nome do tipo","שם הסוג"))}">
+          ${enUso.has(x.key) ? `<span class="zone-count">${t("en uso","in use","em uso","בשימוש")}</span>` : ""}
+          <button type="button" class="btn-mini" data-action="gastos-tipo-ocultar" data-i="${i}">${x.oculto ? t("Volver a ofrecer","Offer again","Voltar a oferecer","להציע שוב") : t("Dejar de ofrecer","Stop offering","Deixar de oferecer","להפסיק להציע")}</button>
+        </div>`).join("")}
+      <div class="setting-row gx-tipo-nuevo">
+        <input type="text" maxlength="60" id="gxTipoNuevo" value="${esc(a.nuevo)}" placeholder="${esc(t("Un tipo nuevo, por ejemplo: Peajes","A new type, for example: Tolls","Um tipo novo, por exemplo: Pedágios","סוג חדש, למשל: אגרות כביש"))}" aria-label="${esc(t("Tipo nuevo","New type","Tipo novo","סוג חדש"))}">
+        <button type="button" class="btn-mini" data-action="gastos-tipo-sumar">+ ${t("Agregar","Add","Adicionar","הוספה")}</button>
+      </div>
+    </div>
+    <p class="setting-sub gx-nota">${t("Un tipo que se deja de ofrecer no se borra: sigue nombrando a los gastos que ya lo usan. Los siete de siempre, sin cambiarles el nombre, se ven en el idioma de cada uno.","A type that's no longer offered isn't deleted: it keeps naming the expenses that already use it. The usual seven, if not renamed, show in each person's language.","Um tipo que deixa de ser oferecido não é apagado: continua nomeando as despesas que já o usam. Os sete de sempre, sem trocar o nome, aparecem no idioma de cada um.","סוג שמפסיקים להציע לא נמחק: הוא ממשיך לתת שם להוצאות שכבר משתמשות בו. שבעת הסוגים הרגילים, אם לא שינו את שמם, מופיעים בשפה של כל אחד.")}</p>
+    ${a.error ? `<div class="form-error" role="alert">${esc(a.error)}</div>` : ""}
+    ${a.ok && !a.cambiado ? `<p class="preaprobar-ok" role="status">✅ ${t("Guardado.","Saved.","Salvo.","נשמר.")}</p>` : ""}
+    <div class="gx-acciones gx-acciones-chicas"><button type="button" class="btn-primary" data-action="gastos-tipos-guardar" ${a.guardando || !a.cambiado ? "disabled" : ""}>${a.guardando ? t("Guardando…","Saving…","Salvando…","שומר…") : t("Guardar los tipos","Save the types","Salvar os tipos","שמירת הסוגים")}</button></div>`;
+}
+function claveDeTipoNuevo(nombre, usadas){
+  let base = String(nombre).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 30) || "tipo";
+  let k = base, i = 2;
+  while(usadas.has(k)) k = `${base}_${i++}`;
+  return k;
+}
+// Guardar va por guardar_config (un parche sobre preferences): solo se
+// manda `gastos`, entero, y la base controla su forma (gastos_config_ok).
+async function guardarGastosConfig(parche){
+  await store.config.merge("preferences", { gastos: { ...gastosConfig, ...parche } });
+}
+async function guardarTiposDeGasto(){
+  const a = borradorTiposDeGasto();
+  if(a.guardando) return;
+  a.guardando = true; a.error = ""; render();
+  try{
+    await guardarGastosConfig({ tipos: a.tipos.map(x => {
+      const o = { key: x.key };
+      const label = String(x.label || "").trim().slice(0, 60);
+      if(label && label !== etiquetaTipoFabrica(x.key)) o.label = label;
+      if(x.oculto) o.oculto = true;
+      return o;
+    }) });
+    a.guardando = false; a.ok = true; a.cambiado = false;
+  }catch(err){
+    console.error("No se pudieron guardar los tipos de gasto:", err);
+    a.guardando = false; a.error = t("No se pudo guardar: {m}","Couldn't save: {m}","Não foi possível salvar: {m}","לא ניתן היה לשמור: {m}",{ m: detalleDeError(err) });
+  }
+  render();
+}
+async function prenderGastos(prendido){
+  try{ await guardarGastosConfig({ prendido }); }
+  catch(err){
+    console.error("No se pudo cambiar el interruptor de gastos:", err);
+    appAlert(t("No se pudo guardar: {m}","Couldn't save: {m}","Não foi possível salvar: {m}","לא ניתן היה לשמור: {m}",{ m: detalleDeError(err) }));
+  }
+  render();
+}
+
+// ---- Los clics ----
+const GASTOS_ACCIONES = {
+  "gastos-seccion": async el => { gastosSeccion = el.dataset.key; gastosAbierta = null; gastosTotal = null; render(); scrollToTop(); },
+  "gastos-subir": async el => { elegirComprobantes(el.dataset.id || (gastosAbierta && gastosAbierta !== "sin" ? gastosAbierta : null)); },
+  "gastos-subida-cerrar": async () => { gastosSubida = null; render(); },
+  "gastos-abrir-rendicion": async el => { gastosAbierta = el.dataset.id; gastosTotal = null; render(); scrollToTop(); },
+  "gastos-volver": async () => { const id = gastosAbierta; gastosAbierta = null; gastosTotal = null; render();
+    const x = id && document.querySelector(`[data-action="gastos-abrir-rendicion"][data-id="${CSS.escape(id)}"]`); if(x) x.focus(); },
+  "gastos-abrir-actividad": async () => abrirRendicionDeActividad(),
+  "gastos-otra": async () => { gastosOtraAbierta = !gastosOtraAbierta; render(); },
+  "gastos-enviar": async el => enviarRendicion(el.dataset.id),
+  "gastos-aprobar": async el => aprobarRendicion(el.dataset.id),
+  "gastos-total-otra": async () => { if(gastosTotal && gastosTotal.filas.length < 4){ gastosTotal.filas.push({ moneda: "", monto: "" }); render(); } },
+  "gastos-total-sacar": async el => { if(gastosTotal){ gastosTotal.filas.splice(Number(el.dataset.i), 1); render(); } },
+  "gastos-total-guardar": async () => guardarTotalRapido(false),
+  "gastos-total-borrar": async () => guardarTotalRapido(true),
+  "gastos-mov-anotar": async () => anotarMovimiento(),
+  "gastos-mov-confirmar": async el => {
+    try{ await store.gastos.confirmarMovimiento(el.dataset.id); }
+    catch(err){ appAlert(t("No se pudo confirmar: {m}","Couldn't confirm: {m}","Não foi possível confirmar: {m}","האישור נכשל: {m}",{ m: detalleDeError(err) })); }
+  },
+  "gastos-mov-borrar": async el => {
+    if(!await appConfirm(t("¿Borrar este movimiento?","Delete this entry?","Apagar este lançamento?","למחוק את הרישום?"), { danger: true, okLabel: t("Borrar","Delete","Apagar","מחיקה") })) return;
+    try{ await store.gastos.borrarMovimiento(el.dataset.id); }
+    catch(err){ appAlert(t("No se pudo borrar: {m}","Couldn't delete it: {m}","Não foi possível apagar: {m}","המחיקה נכשלה: {m}",{ m: detalleDeError(err) })); }
+  },
+  "gasto-abrir": async el => abrirGasto(el.dataset.id, el),
+  "gasto-cerrar": async () => cerrarGasto(),
+  "gasto-guardar": async el => guardarGasto(el.dataset.confirmar === "1"),
+  "gasto-borrar": async () => borrarGasto(),
+  "gasto-observar": async () => observarGasto(),
+  "gasto-ver-comprobante": async el => verComprobante(el.dataset.id),
+  "gastos-prender": async el => prenderGastos(!!el.checked),
+  "gastos-tipo-ocultar": async el => { const a = borradorTiposDeGasto(), x = a.tipos[Number(el.dataset.i)]; if(x){ x.oculto = !x.oculto; a.cambiado = true; a.ok = false; render(); } },
+  "gastos-tipo-sumar": async () => {
+    const a = borradorTiposDeGasto(), nombre = String(a.nuevo || "").trim().slice(0, 60);
+    if(!nombre){ const x = document.getElementById("gxTipoNuevo"); if(x) x.focus(); return; }
+    if(a.tipos.length >= 40){ a.error = t("Hasta 40 tipos.","Up to 40 types.","Até 40 tipos.","עד 40 סוגים."); render(); return; }
+    a.tipos.push({ key: claveDeTipoNuevo(nombre, new Set(a.tipos.map(x => x.key))), label: nombre, oculto: false });
+    a.nuevo = ""; a.cambiado = true; a.ok = false; a.error = ""; render();
+    const x = document.getElementById("gxTipoNuevo"); if(x) x.focus();
+  },
+  "gastos-tipos-guardar": async () => guardarTiposDeGasto(),
+};
+// Lo que se escribe en las pantallas de gastos (no en la ventana): el total
+// rápido, el formulario de plata y los tipos. Devuelve true si era de acá.
+function gastosAlEscribir(el){
+  if(el.dataset.gtotal && gastosTotal){
+    const [i, campo] = el.dataset.gtotal.split(":");
+    const f = gastosTotal.filas[Number(i)];
+    if(f) f[campo] = el.value;
+    return true;
+  }
+  if(el.id === "gxTotalConfirmado" && gastosTotal){ gastosTotal.confirmado = el.checked; return true; }
+  if(el.dataset.gmov && gastosMov){
+    gastosMov[el.dataset.gmov] = el.value;
+    if(el.dataset.gmov === "tipo") render();
+    return true;
+  }
+  if(el.dataset.gtipo){
+    const a = borradorTiposDeGasto(), x = a.tipos[Number(el.dataset.gtipo)];
+    if(x){ x.label = el.value; if(!a.cambiado){ a.cambiado = true; a.ok = false; render(); } }
+    return true;
+  }
+  if(el.id === "gxTipoNuevo"){ borradorTiposDeGasto().nuevo = el.value; return true; }
+  if(el.id === "gxActividad"){ gastosActividad = el.value; render(); return true; }
+  if(el.id === "gxCuentaDe"){ gastosCuentaDe = el.value; gastosMov = null; render(); return true; }
+  return false;
+}
+document.getElementById("gastoOverlay").addEventListener("input", e => { if(gastoAlEscribir(e.target, false)) e.stopPropagation(); });
+document.getElementById("gastoOverlay").addEventListener("change", e => { if(gastoAlEscribir(e.target, true)) e.stopPropagation(); });
+gastoOverlay.addEventListener("click", e => { if(e.target === gastoOverlay) cerrarGasto(); });
+gastosArchivosInput.addEventListener("change", () => {
+  const files = [...(gastosArchivosInput.files || [])];
+  gastosArchivosInput.value = "";
+  if(files.length) subirComprobantes(files, gastosSubidaDestino);
+});
 
 // Administración → Problemas: lo que contó la gente y los errores anotados solos.
 async function cargarProblemas(){
@@ -24881,6 +26259,7 @@ document.addEventListener("keydown", e=>{
   if(!agendaOverlay.hidden){ agendaVolver(); return; }
   if(!presOverlay.hidden){ cerrarPresentacion(); return; }
   if(!problemaOverlay.hidden){ cerrarProblema(); return; }
+  if(!gastoOverlay.hidden){ cerrarGasto(); return; }
   if(!cumpleOverlay.hidden){ closeCumple(); return; }
   if(!fichaPostOverlay.hidden){ closeFichaPost(); return; }
   if(!eventCardOverlay.hidden){
@@ -25011,6 +26390,7 @@ trapTabWithin(likesOverlay);
 trapTabWithin(agendaOverlay);
 trapTabWithin(cumpleOverlay);
 trapTabWithin(problemaOverlay);
+trapTabWithin(gastoOverlay);
 trapTabWithin(presOverlay);
 trapTabWithin(fichaPostOverlay);
 trapTabWithin(confirmOverlay);
@@ -27581,7 +28961,7 @@ document.addEventListener("click", async e=>{
     getDraftFor(scope, ownerId).scopes.splice(idx,1); render();
     return;
   }
-  const handler = CLICK_ACTIONS[action] || AGENDA_ACCIONES[action];
+  const handler = CLICK_ACTIONS[action] || AGENDA_ACCIONES[action] || GASTOS_ACCIONES[action];
   if (handler) await handler(el, e, action, postId);
 });
 
@@ -27604,6 +28984,7 @@ document.addEventListener("focusin", e=>{
 });
 document.addEventListener("input", e=>{
   const el = e.target;
+  if(gastosAlEscribir(el)) return;
   if(el.id === "respBuscar"){ filtrarRespPop(); return; }
   if(el.dataset.mentionScope) syncMentionBackdrop(el);
   if(el.id === "feedSearch" || el.id === "memoriaSearch"){
@@ -27730,6 +29111,7 @@ document.addEventListener("input", e=>{
 
 document.addEventListener("change", e=>{
   const el = e.target;
+  if(gastosAlEscribir(el)) return;
   // Administración › Agenda: el archivo de la lista por traer.
   if(el.id === "agendaArchivo"){ leerArchivoAgenda(el.files && el.files[0]); el.value = ""; return; }
   // La ficha de una persona sin cuenta: cada campo se guarda al salir de él.

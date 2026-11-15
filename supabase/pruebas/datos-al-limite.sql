@@ -108,7 +108,11 @@ insert into public.app_config (key, value) values
        from generate_series(1, 30) g),
      'extraCities', jsonb_build_object('Argentina', jsonb_build_array('Ushuaia', 'Tandil')),
      'calendarId', 'equipo@group.calendar.google.com', 'calendarImportFrom', '2024-01-01',
-     'maxImages', 20, 'maxAttachmentFiles', 10, 'maxAttachmentFileBytes', 26214400)),
+     'maxImages', 20, 'maxAttachmentFiles', 10, 'maxAttachmentFileBytes', 26214400,
+     -- Los gastos (27-gastos.sql): prendidos, abiertos y con 40 tipos al tope.
+     'gastos', jsonb_build_object('prendido', true, 'abierto', true,
+       'tipos', (select jsonb_agg(jsonb_build_object('key', rpad('tipo_' || g, 40, 'x'), 'label', rpad('Gasto ' || g, 60, 'g'), 'oculto', g % 3 = 0))
+                   from generate_series(1, 40) g)))),
   ('territoryConfig', jsonb_build_object(
      'zones', (select jsonb_object_agg('zona' || g, jsonb_build_object('label', rpad('Zona ' || g, 60, 'z'), 'color', '#2563eb'))
                  from generate_series(1, 20) g),

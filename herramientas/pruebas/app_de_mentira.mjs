@@ -99,6 +99,52 @@ const REPLIES = [
   { id: "r5", post_id: "p2", content: "Benny Rosenthal cambió la fecha de fin.", author_name: "Sistema", author_email: ADMIN, created_at: hace(2), system: true },
 ].map(r => ({ scopes: [], links: [], images: [], files: [], mentions: [], liked_by: [], system: false, ...r }));
 
+// Los gastos de ejemplo: el admin con una rendición abierta (un gasto por
+// confirmar, uno con PDF en otra moneda y uno que pagó la organización), su
+// rutina del mes aprobada y uno sin vincular; Ana con una rendición mandada y
+// plata anotada por confirmar; Diego con un gasto observado.
+const GASTOS = () => {
+  const g = (o) => ({ autor: ADMIN, rendicion_id: null, fecha: null, concepto: "", tipo: null, moneda: "USD", monto: null, rendido_moneda: "USD", rendido_monto: null,
+    pago: "persona", forma_pago: null, tarjeta: null, factura: true, observaciones: "", estado: "borrador", archivo: null, archivo_nombre: null,
+    archivo_tipo: "image/jpeg", archivo_hash: null, lectura: null, creado_el: hace(3), tocado_el: hace(3), ...o });
+  const r = (o) => ({ autor: ADMIN, post_id: null, rutina_mes: null, titulo: "", estado: "abierta", enviada_el: null, aprobada_el: null, aprobada_por: null,
+    total_manual: {}, total_manual_confirmado: false, total_manual_por: null, total_manual_el: null, creada_el: hace(5), tocada_el: hace(5), ...o });
+  const mes = dia(0).slice(0, 7) + "-01";
+  return {
+    gastos_rendiciones: [
+      r({ id: "ren_mvd", post_id: "p9", titulo: "Visita a Montevideo" }),
+      r({ id: "ren_rutina", rutina_mes: mes, estado: "aprobada", enviada_el: hace(2), aprobada_el: hace(1), aprobada_por: ADMIN }),
+      r({ id: "ren_ana", autor: PERS[1].email, post_id: "p1", titulo: "Visita a la comunidad de Rosario", estado: "enviada", enviada_el: hace(1) }),
+      r({ id: "ren_diego", autor: PERS[2].email, post_id: "p1", titulo: "Visita a la comunidad de Rosario", estado: "observada", enviada_el: hace(2) }),
+    ],
+    gastos: [
+      g({ id: "gx1", rendicion_id: "ren_mvd", fecha: dia(130), concepto: "Taxi al aeropuerto", archivo: "gastos/gx1/comprobante_1.jpg", archivo_nombre: "IMG_20260705_101500.jpg",
+        archivo_hash: "a".repeat(64), lectura: { fuente: "nombre", fecha: dia(130), concepto: "" } }),
+      g({ id: "gx2", rendicion_id: "ren_mvd", fecha: dia(129), concepto: "Hotel Rambla, dos noches", tipo: "alojamiento", moneda: "UYU", monto: 12000, rendido_monto: 300,
+        forma_pago: "tarjeta", tarjeta: "5555", estado: "confirmado", archivo: "gastos/gx2/comprobante_2.pdf", archivo_nombre: "Factura hotel.pdf", archivo_tipo: "application/pdf", archivo_hash: "b".repeat(64) }),
+      g({ id: "gx3", rendicion_id: "ren_mvd", fecha: dia(129), concepto: "Cena con los directores", tipo: "comida", monto: 45.5, pago: "organizacion", forma_pago: "tarjeta",
+        estado: "confirmado", archivo: "gastos/gx3/comprobante_3.jpg", archivo_nombre: "cena.jpg", archivo_hash: "c".repeat(64) }),
+      g({ id: "gx4", rendicion_id: "ren_rutina", fecha: dia(4), concepto: "Remís a la reunión de equipo", tipo: "transporte", monto: 20, forma_pago: "efectivo",
+        estado: "aprobado", archivo: "gastos/gx4/comprobante_4.jpg", archivo_nombre: "remis.jpg", archivo_hash: "d".repeat(64) }),
+      g({ id: "gx5", autor: PERS[1].email, rendicion_id: "ren_ana", fecha: dia(3), concepto: "Micro a Rosario", tipo: "pasaje", moneda: "ARS", monto: 150000, rendido_monto: 150,
+        forma_pago: "tarjeta", tarjeta: "5556", estado: "enviado", archivo: "gastos/gx5/comprobante_5.jpg", archivo_nombre: "micro.jpg", archivo_hash: "e".repeat(64) }),
+      g({ id: "gx6", autor: PERS[1].email, rendicion_id: "ren_ana", fecha: dia(2), concepto: "Almuerzo en la sede", tipo: "comida", moneda: "ARS", monto: 20000, rendido_monto: 20,
+        forma_pago: "efectivo", estado: "enviado", archivo: "gastos/gx6/comprobante_6.jpg", archivo_nombre: "almuerzo.jpg", archivo_hash: "f".repeat(64) }),
+      g({ id: "gx7", autor: PERS[2].email, rendicion_id: "ren_diego", fecha: dia(2), concepto: "Cena", tipo: "comida", moneda: "ARS", monto: 30000, rendido_monto: 30,
+        estado: "observado", archivo: "gastos/gx7/comprobante_7.jpg", archivo_nombre: "cena.jpg", archivo_hash: "1".repeat(64) }),
+      g({ id: "gx8", fecha: dia(1), archivo: "gastos/gx8/comprobante_8.jpg", archivo_nombre: "foto.jpg", archivo_hash: "2".repeat(64) }),
+    ],
+    gastos_comentarios: [
+      { id: "gc1", gasto_id: "gx7", autor: ADMIN, texto: "Falta la factura: ¿la podés subir de nuevo?", creado_el: hace(1) },
+    ],
+    gastos_movimientos: [
+      { id: "mv1", persona: ADMIN, tipo: "recibido", fecha: dia(135), moneda: "USD", monto: 500, descripcion: "Adelanto para la visita a Montevideo", estado: "confirmado",
+        cargado_por: ADMIN, confirmado_por: ADMIN, confirmado_el: hace(135), creado_el: hace(135) },
+      { id: "mv2", persona: PERS[1].email, tipo: "recibido", fecha: dia(5), moneda: "USD", monto: 200, descripcion: "Adelanto para Rosario", estado: "pendiente",
+        cargado_por: PERS[1].email, confirmado_por: null, confirmado_el: null, creado_el: hace(5) },
+    ],
+  };
+};
 export const BASE = () => ({
   members: PERS.map((p, i) => ({ ...p, approved_at: "2025-01-10T12:00:00Z", calendar_shared: i < 3, last_seen_at: hace(i * 9) })),
   posts: POSTS, replies: REPLIES,
@@ -118,8 +164,10 @@ export const BASE = () => ({
     { key: "congreso", label: "Congreso", icon: "🏛️", calendarSync: true, docs: [] },
     { key: "virtual", label: "Virtual", icon: "💻", calendarSync: true, docs: [] },
     { key: "otro", label: "Otro", icon: "✨", calendarSync: true, docs: [] },
-  ] } }],
+  ], gastos: { prendido: true } } }],
   user_prefs: [],
+  // Gastos y rendiciones (27-gastos.sql), prendidos para los admins. Todo inventado.
+  ...GASTOS(),
   // Personas sin cuenta (18-personas.sql): una en un evento y una sola.
   personas: [{ id: "per_guypo", name: "Guypo", email: null, note: "Coordinador local en Santiago", created_by: ADMIN, created_at: hace(30) },
     { id: "per_dario", name: "Darío", email: "dario@x.com", note: null, created_by: PERS[1].email, created_at: hace(8) },
@@ -334,7 +382,7 @@ export async function recorrerApp(p, paso){
   if(await click(p, '[data-action="reporte-filtros"]')){ await p.waitForTimeout(200); await paso(p, ("Reportes filtros")); await cerrar(p); }
   if(await click(p, '[data-action="reporte-modo"][data-key="comparar"]')){ await p.waitForTimeout(300); await paso(p, ("Reportes comparar")); }
   await irAdmin(p);
-  for(const [v, k] of [["admin"], ["solicitudes", "usuarios"], ["auditoria"], ["preferencias", "tipos"], ["preferencias", "avanzado"], ["preferencias", "zonas"], ["preferencias", "lugares"], ["preferencias", "adjuntos"], ["preferencias", "calendar"], ["preferencias", "copia"], ["preferencias", "correos"], ["preferencias", "agenda"]]){
+  for(const [v, k] of [["admin"], ["solicitudes", "usuarios"], ["auditoria"], ["preferencias", "tipos"], ["preferencias", "avanzado"], ["preferencias", "zonas"], ["preferencias", "lugares"], ["preferencias", "adjuntos"], ["preferencias", "calendar"], ["preferencias", "copia"], ["preferencias", "correos"], ["preferencias", "agenda"], ["preferencias", "gastos"]]){
     await p.evaluate(([v, k]) => { const b = document.querySelector(`[data-action="admin-go"][data-view="${v}"]${k ? `[data-key="${k}"]` : ""}`); b && b.click(); }, [v, k || ""]);
     await p.waitForTimeout(350); await paso(p, ("Admin " + (k || v)));
   }
@@ -350,4 +398,13 @@ export async function recorrerApp(p, paso){
   await p.evaluate(() => { const b = document.querySelector('[data-action="tipo-abrir"], .lp-row'); b && b.click(); }); await p.waitForTimeout(300); await paso(p, ("Admin ficha tipo"));
   await p.evaluate(() => { const b = document.querySelector('.user-menu [data-action="goto-view"][data-view="configuracion"], [data-action="goto-view"][data-view="configuracion"]'); b && b.click(); });
   await click(p, '[data-action="toggle-user-menu"]'); await p.evaluate(() => { const b = document.querySelector('.user-menu [data-view="configuracion"]'); b && b.click(); }); await p.waitForTimeout(400); await paso(p, ("Mis preferencias"));
+  // Gastos (en prueba, solo admins): las rendiciones, una abierta con la ventana de un gasto, la cuenta y lo que hay para aprobar.
+  await click(p, '[data-action="toggle-user-menu"]');
+  if(await p.evaluate(() => { const b = document.querySelector('.user-menu [data-view="gastos"]'); if(b) b.click(); return !!b; })){
+    await p.waitForTimeout(400); await paso(p, ("Gastos"));
+    if(await click(p, '[data-action="gastos-abrir-rendicion"][data-id="ren_mvd"]')){ await p.waitForTimeout(300); await paso(p, ("Gastos: rendición"));
+      if(await click(p, '[data-action="gasto-abrir"][data-id="gx2"]')){ await p.waitForTimeout(300); await paso(p, ("Gastos: un gasto")); await cerrar(p); } }
+    await p.evaluate(() => { const b = document.querySelector('[data-action="gastos-seccion"][data-key="cuenta"]'); b && b.click(); }); await p.waitForTimeout(300); await paso(p, ("Gastos: cuenta"));
+    await p.evaluate(() => { const b = document.querySelector('[data-action="gastos-seccion"][data-key="aprobar"]'); b && b.click(); }); await p.waitForTimeout(300); await paso(p, ("Gastos: para aprobar"));
+  }
 }

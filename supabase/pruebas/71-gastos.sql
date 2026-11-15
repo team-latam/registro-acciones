@@ -321,6 +321,33 @@ select lab.probar_valor_servicio('una copia restaurada trae los gastos con su es
   $q$insert into public.gastos(id, autor, concepto, estado, fecha, tipo, creado_el) values ('00000000-0000-0000-0000-000000000001', 'ana@x.com', 'Restaurado', 'aprobado', '2026-01-01', 'comida', '2026-01-02')$q$,
   $q$select estado || '/' || autor || '/' || creado_el::date from public.gastos where id = '00000000-0000-0000-0000-000000000001'$q$, 'aprobado/ana@x.com/2026-01-02');
 
+-- ---------- La configuración del módulo (Administración → Gastos) ----------
+-- Un admin prende el módulo y arma los tipos; la forma la controla la base.
+select lab.comprobar('un admin guarda el interruptor y los tipos',
+  $q$select lab.rechaza(lab.como('benny@team-latam.com'), $x$select public.guardar_config('preferences', '{"gastos": {"prendido": true, "abierto": false, "tipos": [{"key": "comida"}, {"key": "peajes", "label": "Peajes"}, {"key": "reunion", "oculto": true}]}}')::text$x$)$q$, 'false');
+select lab.comprobar('…y queda guardado tal cual',
+  $q$select jsonb_array_length(value -> 'gastos' -> 'tipos')::text || '/' || (value -> 'gastos' ->> 'prendido') from public.app_config where key = 'preferences'$q$, '3/true');
+select lab.comprobar('cambiar otra preferencia no tropieza con la de gastos',
+  $q$select lab.rechaza(lab.como('benny@team-latam.com'), $x$select public.guardar_config('preferences', '{"extraCities": {}}')::text$x$)$q$, 'false');
+select lab.comprobar('una clave que no existe, no',
+  $q$select lab.rechaza(lab.como('benny@team-latam.com'), $x$select public.guardar_config('preferences', '{"gastos": {"color": "rojo"}}')::text$x$)$q$, 'true');
+select lab.comprobar('el interruptor es sí o no, no un texto',
+  $q$select lab.rechaza(lab.como('benny@team-latam.com'), $x$select public.guardar_config('preferences', '{"gastos": {"prendido": "si"}}')::text$x$)$q$, 'true');
+select lab.comprobar('los tipos son una lista',
+  $q$select lab.rechaza(lab.como('benny@team-latam.com'), $x$select public.guardar_config('preferences', '{"gastos": {"tipos": {"key": "comida"}}}')::text$x$)$q$, 'true');
+select lab.comprobar('la clave de un tipo, en minúscula y sin espacios',
+  $q$select lab.rechaza(lab.como('benny@team-latam.com'), $x$select public.guardar_config('preferences', '{"gastos": {"tipos": [{"key": "Comida rica"}]}}')::text$x$)$q$, 'true');
+select lab.comprobar('dos tipos con la misma clave, no',
+  $q$select lab.rechaza(lab.como('benny@team-latam.com'), $x$select public.guardar_config('preferences', '{"gastos": {"tipos": [{"key": "comida"}, {"key": "comida", "label": "Otra"}]}}')::text$x$)$q$, 'true');
+select lab.comprobar('un nombre de más de 60 letras, no',
+  $q$select lab.rechaza(lab.como('benny@team-latam.com'), $x$select public.guardar_config('preferences', jsonb_build_object('gastos', jsonb_build_object('tipos', jsonb_build_array(jsonb_build_object('key', 'largo', 'label', repeat('x', 61))))))::text$x$)$q$, 'true');
+select lab.comprobar('más de 40 tipos, no',
+  $q$select lab.rechaza(lab.como('benny@team-latam.com'), $x$select public.guardar_config('preferences', jsonb_build_object('gastos', jsonb_build_object('tipos', (select jsonb_agg(jsonb_build_object('key', 't' || i)) from generate_series(1, 41) i))))::text$x$)$q$, 'true');
+select lab.comprobar('una integrante no abre los gastos para sí misma',
+  $q$select lab.rechaza(lab.como('ana@x.com'), $x$select public.guardar_config('preferences', '{"gastos": {"abierto": true}}')::text$x$)$q$, 'true');
+select lab.comprobar('lo rechazado no cambió nada',
+  $q$select jsonb_array_length(value -> 'gastos' -> 'tipos')::text || '/' || coalesce(value -> 'gastos' ->> 'abierto', '-') from public.app_config where key = 'preferences'$q$, '3/false');
+
 -- ---------- Cerrados de nuevo para el equipo ----------
 update public.app_config set value = '{"gastos": {"abierto": false}}' where key = 'preferences';
 select lab.comprobar('cerrados, la integrante deja de ver hasta lo suyo', $q$select lab.hacer(lab.como('ana@x.com'), $x$select count(*)::text from public.gastos$x$)$q$, '0');

@@ -1,10 +1,10 @@
 # Gastos y rendiciones — el módulo nuevo (en construcción)
 
-> **Estado (15/11/2026):** la base de datos de la **etapa de prueba** está escrita y probada
-> (`supabase/27-gastos.sql`, 125 comprobaciones en `supabase/pruebas/71-gastos.sql`), **en la rama de trabajo,
-> sin publicar**. Falta la parte de la app (las pantallas). **Nada de esto va a `main` sin el OK explícito del
-> usuario**, parte por parte y con capturas: es lo que se acordó, y es una excepción a la regla general de
-> «pushear a `main` de una» de `CLAUDE.md` (al llegar a `main`, la base real se actualiza sola).
+> **Estado (15/11/2026):** la **etapa de prueba** tiene la base (`supabase/27-gastos.sql`, 137 comprobaciones en
+> `supabase/pruebas/71-gastos.sql`) y las pantallas (`herramientas/pruebas/gastos_test.mjs`), **en la rama de
+> trabajo, sin publicar**. Faltan el lector de comprobantes y los avisos. **Nada de esto va a `main` sin el OK
+> explícito del usuario**, parte por parte y con capturas: es lo que se acordó, y es una excepción a la regla
+> general de «pushear a `main` de una» de `CLAUDE.md` (al llegar a `main`, la base real se actualiza sola).
 
 El usuario rinde hoy sus gastos de viaje y de rutina con una skill de Claude que lee los comprobantes de su
 Drive, los carga en un Google Sheet y arma los PDF de entrega. Quiere que **el sistema** haga eso y quede todo
@@ -92,17 +92,34 @@ tocan eventos, comentarios ni la Agenda); se hace por etapas chicas; Drive y el 
   el bucket (`gastos/<id del gasto>/…`). La limpieza semanal del bucket sabe que se usan; la copia de
   seguridad y la restauración las incluyen; van en vivo. Pruebas: `supabase/pruebas/71-gastos.sql` (y se cae si
   se rompe la privacidad, los estados, los comprobantes o la cuenta).
-- [ ] La app: Administración → Gastos (el interruptor y los tipos), subir y revisar, la rendición, la bandeja
-  para aprobar, la cuenta corriente y el total rápido.
+- [x] **Las pantallas** (15/11, sin publicar): con el interruptor de **Administración → Gastos** prendido
+  (`preferences → gastos.prendido`, cuya forma controla `gastos_config_ok`), un admin ve **«🧾 Gastos»** en el
+  menú de su foto (en el celular, en «Más»):
+  - *Mis rendiciones*: subir muchos comprobantes juntos (fotos o PDF; el mismo dos veces no se repite; la fecha
+    y el concepto salen del nombre del archivo cuando lo traen), los «sin vincular», cada rendición con sus
+    gastos, el total del detalle, el total rápido y «Mandar la rendición».
+  - La ventana de un gasto: el comprobante y sus datos para confirmar o corregir, a qué actividad o rutina va, y
+    para un admin, «Observar» con un comentario.
+  - *Cuenta corriente*: el saldo por moneda, los movimientos y «Anotar plata recibida o devuelta» (un admin
+    mira la de cualquiera y anota ajustes).
+  - *Para aprobar* (admins): lo mandado, la plata por confirmar y lo que espera corrección.
+  - En Administración → Gastos, también los tipos: renombrar, dejar de ofrecer y sumar.
+  Lo prueba `herramientas/pruebas/gastos_test.mjs`; el recorrido de bienvenida lo anota en `TOUR_SIN_PASO`
+  (solo lo ven los admins) hasta que se abra al equipo.
 - [ ] El lector de comprobantes en el dispositivo, con sus controles.
 - [ ] Los avisos de «te observaron un gasto» (campanita y correo).
 
+**Visto al armar las pantallas (15/11), para decidir más adelante:** si la rutina de un mes ya se aprobó, un
+gasto nuevo de ese mes no tiene dónde ir (queda sin vincular), porque hay una rendición por persona y por mes.
+Y el total general de una actividad que corrige un admin (la «C» del total rápido) todavía no está: hoy cada
+uno anota el suyo; va con las estadísticas (etapa 5).
+
+**Decidido después (15/11):** un admin **puede aprobar su propia** rendición (en la prueba el único que carga
+es el admin; al abrirlo al equipo se puede revisar que la apruebe otro). El **total rápido no mueve la cuenta
+corriente**: es para los números grandes, porque no dice quién puso la plata.
+
 ## Lo que quedó para decidir más adelante (no frena la etapa 1)
 
-- Si un admin puede aprobar **su propia** rendición. Hoy sí (en la prueba el único que carga es el admin);
-  cuando se abra al equipo conviene que la apruebe otro.
-- Si el **total rápido** mueve la cuenta corriente. Hoy no: es para los números grandes, porque no dice quién
-  puso la plata.
 - El código del peso mexicano (el proceso usa «MX» y «MEX»; el estándar es MXN), a qué «Actividad» del Sheet
   van Congreso, Virtual y Otro, un gasto que sirve a dos actividades, el mes de un viaje que cruza dos meses, y
   si cada persona tiene su Sheet o van todos al mismo.

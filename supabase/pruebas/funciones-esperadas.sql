@@ -53,6 +53,7 @@ insert into esperadas values
   ('tipo_ok(jsonb)',                        true, true),
   ('tipos_ok(jsonb)',                       true, true),
   ('gastos_totales_ok(jsonb)',              true, true),   -- pura: un total por moneda bien formado (27-gastos.sql)
+  ('gastos_config_ok(jsonb)',               true, true),   -- pura: la forma de preferences → gastos (27-gastos.sql)
   -- security invoker: pasan por las políticas de quien llama. anon las
   -- ejecuta pero no tiene permiso sobre ninguna tabla, así que no logra nada.
   ('guardar_config(text, jsonb)',           true, true),

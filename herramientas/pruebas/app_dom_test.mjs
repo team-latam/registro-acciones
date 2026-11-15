@@ -50,6 +50,15 @@ const conHora = (tabla, f, nueva) => {
   // Quién tocó por última vez una ficha de la Agenda (personas_controlar
   // y agenda_controlar, 18-personas.sql y 19-agenda.sql).
   if(!nueva && ["personas", "instituciones"].includes(tabla)){ o.tocado_por = quien(); o.tocado_el = new Date().toISOString(); }
+  // Los gastos (27-gastos.sql): el autor y la hora los pone la base, con sus valores de fábrica.
+  if(nueva && tabla === "gastos") Object.assign(o, { autor: quien(), creado_el: new Date().toISOString(),
+    factura: o.factura ?? true, observaciones: o.observaciones ?? "", estado: o.estado || "borrador", pago: o.pago || "persona",
+    moneda: o.moneda || "USD", rendido_moneda: o.rendido_moneda || "USD", concepto: o.concepto ?? "" });
+  if(nueva && tabla === "gastos_movimientos"){
+    const yo = (estado.tablas.members || []).find(m => m.email === quien());
+    Object.assign(o, { cargado_por: quien(), creado_el: new Date().toISOString(), descripcion: o.descripcion ?? "",
+      estado: yo && yo.role === "admin" ? (o.estado || "pendiente") : "pendiente" });
+  }
   return o;
 };
 function ejecutar(q){
@@ -74,6 +83,9 @@ function ejecutar(q){
   estado.escrituras.push([q.op, q.tabla, copia(q.datos), copia(q.filtros)]);
   if(q.op === "insert"){
     for(const f of [].concat(q.datos)){
+      // El mismo comprobante dos veces, de la misma persona (gastos_comprobante_unico).
+      if(q.tabla === "gastos" && f.archivo_hash && t.some(x => x.autor === quien() && x.archivo_hash === f.archivo_hash))
+        return { data: null, error: { code: "23505", message: "duplicate key value violates unique constraint" } };
       if(t.some(x => String(x[k]) === String(f[k])))
         return { data: null, error: { code: "23505", message: "duplicate key value violates unique constraint" } };
       t.push(conHora(q.tabla, f, true));
@@ -191,6 +203,72 @@ export function createClient(url, clave){
                         tecnico: args.p_tecnico, estado: "nuevo", huella: args.p_huella, veces: 1, personas: [yo] });
         }
         return { data: true, error: null };
+      }
+      // Gastos y rendiciones (27-gastos.sql): lo mismo que la base, sin los controles de forma.
+      if(nombre.startsWith("gastos_")){
+        const T = n => (estado.tablas[n] = estado.tablas[n] || []);
+        const yo = quien(), ahora = new Date().toISOString();
+        const esAdmin = (estado.tablas.members || []).some(m => m.email === yo && m.role === "admin");
+        const mal = (code, message) => ({ data: null, error: { code, message } });
+        if(estado.falloGastos) return mal("23514", estado.falloGastos);
+        if(nombre === "gastos_rendicion_abrir"){
+          if((args.p_post == null) === (args.p_mes == null)) return mal("22023", "Una actividad o un mes, uno de los dos");
+          if(args.p_post){
+            const post = T("posts").find(x => x.id === args.p_post);
+            if(!post) return mal("P0002", "Esa actividad no existe");
+            if(post.activity_type === "rutina") return mal("22023", "Los gastos de rutina van a la rutina del mes");
+            let r = T("gastos_rendiciones").find(x => x.autor === yo && x.post_id === args.p_post);
+            if(!r) T("gastos_rendiciones").push(r = { id: "ren_" + Math.random().toString(36).slice(2, 10), autor: yo, post_id: args.p_post, rutina_mes: null,
+              titulo: post.title || "", estado: "abierta", total_manual: {}, total_manual_confirmado: false, creada_el: ahora, tocada_el: ahora });
+            return { data: r.id, error: null };
+          }
+          const mes = String(args.p_mes).slice(0, 7) + "-01";
+          let r = T("gastos_rendiciones").find(x => x.autor === yo && x.rutina_mes === mes);
+          if(!r) T("gastos_rendiciones").push(r = { id: "ren_" + Math.random().toString(36).slice(2, 10), autor: yo, post_id: null, rutina_mes: mes,
+            titulo: "", estado: "abierta", total_manual: {}, total_manual_confirmado: false, creada_el: ahora, tocada_el: ahora });
+          return { data: r.id, error: null };
+        }
+        if(nombre === "gastos_rendicion_enviar"){
+          const r = T("gastos_rendiciones").find(x => x.id === args.p_id);
+          if(!r || r.autor !== yo) return mal("42501", "Esa rendición no es tuya");
+          if(!["abierta", "observada"].includes(r.estado)) return mal("23514", "Esa rendición ya se mandó");
+          const gs = T("gastos").filter(g => g.rendicion_id === r.id);
+          if(!gs.length && !Object.keys(r.total_manual || {}).length) return mal("23514", "No hay nada para mandar");
+          const faltan = gs.filter(g => !["confirmado", "enviado"].includes(g.estado)).length;
+          if(faltan) return mal("23514", "Faltan confirmar " + faltan + " gasto(s)");
+          gs.forEach(g => { g.estado = "enviado"; });
+          r.estado = "enviada"; r.enviada_el = ahora;
+          return { data: true, error: null };
+        }
+        if(nombre === "gastos_observar" || nombre === "gastos_comentar"){
+          const g = T("gastos").find(x => x.id === args.p_gasto);
+          const texto = String(args.p_texto || "").trim();
+          if(!g) return mal("P0002", "Ese gasto no existe");
+          if(nombre === "gastos_observar"){
+            if(!esAdmin) return mal("42501", "Observa un admin");
+            const r = T("gastos_rendiciones").find(x => x.id === g.rendicion_id);
+            if(!r || !["enviada", "observada"].includes(r.estado)) return mal("23514", "Se observa una rendición mandada");
+            g.estado = "observado"; r.estado = "observada";
+          } else if(g.autor !== yo && !esAdmin) return mal("42501", "Ese gasto no es tuyo");
+          if(!texto) return mal("23514", "Hace falta un comentario");
+          const id = "com_" + Math.random().toString(36).slice(2, 10);
+          T("gastos_comentarios").push({ id, gasto_id: g.id, autor: yo, texto, creado_el: ahora });
+          return { data: nombre === "gastos_comentar" ? id : true, error: null };
+        }
+        if(nombre === "gastos_rendicion_aprobar"){
+          if(!esAdmin) return mal("42501", "Aprueba un admin");
+          const r = T("gastos_rendiciones").find(x => x.id === args.p_id);
+          if(!r || r.estado !== "enviada") return mal("23514", "Se aprueba una rendición mandada y sin observaciones pendientes");
+          T("gastos").filter(g => g.rendicion_id === r.id).forEach(g => { g.estado = "aprobado"; });
+          r.estado = "aprobada"; r.aprobada_el = ahora; r.aprobada_por = yo;
+          return { data: true, error: null };
+        }
+        if(nombre === "gastos_movimiento_confirmar"){
+          if(!esAdmin) return mal("42501", "Confirma un admin");
+          const m = T("gastos_movimientos").find(x => x.id === args.p_id && x.estado === "pendiente");
+          if(m){ m.estado = "confirmado"; m.confirmado_por = yo; m.confirmado_el = ahora; }
+          return { data: !!m, error: null };
+        }
       }
       // El enlace del informe mensual (23-informe-mensual.sql): vale 48 horas desde la marca de ESA persona.
       if(nombre === "informe_vigente"){
@@ -608,7 +686,7 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   eq("admin: el Resumen de Administración muestra el pedido pendiente", await esperarTexto(p, "Nueva Persona", 3000), true);
   const secciones = await p.$$eval('.admin-menu [data-action="admin-go"]', bs => bs.map(b => b.dataset.view + (b.dataset.key ? ":" + b.dataset.key : "")));
   eq("admin: el menú de Administración tiene todas las secciones", secciones,
-     ["admin","solicitudes:usuarios","auditoria","preferencias:tipos","preferencias:agenda","preferencias:avanzado","preferencias:calendar","preferencias:copia","preferencias:correos","preferencias:problemas"]);
+     ["admin","solicitudes:usuarios","auditoria","preferencias:tipos","preferencias:agenda","preferencias:gastos","preferencias:avanzado","preferencias:calendar","preferencias:copia","preferencias:correos","preferencias:problemas"]);
   for(const s of secciones){
     const [v, k] = s.split(":");
     await p.click(`.admin-menu [data-action="admin-go"][data-view="${v}"]${k ? `[data-key="${k}"]` : ""}`);

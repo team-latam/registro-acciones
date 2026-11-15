@@ -22,8 +22,9 @@ Los archivos:
   equipo una integrante no pueda nada ni llamando a la base por su cuenta, que
   una rendición pase por sus estados como se acordó (confirmar, mandar,
   observar, corregir, volver a mandar, aprobar), y la cuenta corriente con
-  números a mano. Se cae si se rompe la privacidad, los estados, los
-  comprobantes o la cuenta (comprobado rompiendo cada cosa).
+  números a mano, y la forma de la configuración del módulo (el interruptor y
+  los tipos). Se cae si se rompe la privacidad, los estados, los
+  comprobantes, la cuenta o ese control (comprobado rompiendo cada cosa).
 - `72-informe-mensual.sql` — el informe mensual con enlace que vence a las 48
   horas (`23-informe-mensual.sql`): quién ve «vigente», que a las 48 horas
   deje de valer, que sea solo de quien lo recibió, y el correo de prueba del admin
