@@ -4,7 +4,8 @@
 > `supabase/pruebas/71-gastos.sql`) y las pantallas (`herramientas/pruebas/gastos_test.mjs`), **publicadas en
 > `main` el 15/11 con el OK del usuario y apagadas**: nadie las ve hasta que un admin prende el interruptor de
 > Administración → Gastos. El **lector de comprobantes** se publicó el 15/11, también con el OK del usuario.
-> Faltan los avisos. **Cada parte que sigue va a `main` recién
+> Los arreglos de la revisión de diseño (la lista nueva, borrar, el lector de PDF con texto) se publicaron el 15/11,
+> también con su OK. Faltan los avisos. **Cada parte que sigue va a `main` recién
 > con el OK explícito del usuario**, con capturas: es lo que se acordó, y es una excepción a la regla general de
 > «pushear a `main` de una» de `CLAUDE.md` (al llegar a `main`, la base real se actualiza sola).
 
@@ -126,7 +127,7 @@ tocan eventos, comentarios ni la Agenda); se hace por etapas chicas; Drive y el 
   completos y sin dudas del lector. «Confirmar los marcados» confirma los que tienen todo, guarda sin confirmar
   lo editado sin marcar y deja en la lista, con lo que falta, los incompletos. En «Sin vincular», a dónde
   llevar los marcados. Lo prueba `gastos_test.mjs`.
-- [x] **Arreglos de la revisión de diseño** (15/11, en la rama, esperando el OK del usuario): el usuario vio un
+- [x] **Arreglos de la revisión de diseño** (publicados el 15/11 con el OK del usuario): el usuario vio un
   PDF abierto como texto crudo y no encontraba cómo quitar un comprobante mal subido, y pidió revisar el diseño
   (la crítica dio 23/40). Eligió arreglar los tres urgentes y ver la lista con la foto grande:
   - **El PDF** se abre como documento en el visor (en el celular, en una pestaña aparte); el visor ya no
