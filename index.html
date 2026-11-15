@@ -24524,6 +24524,8 @@ function numeroEscrito(v){
 }
 // Lo que muestra un campo de monto: acomodado si se entiende; si no, tal cual (para corregirlo).
 const montoEnCampo = v => { const n = numeroEscrito(v); return n === null ? "" : isNaN(n) ? String(v) : numContable(n); };
+// Al salir de un campo de monto, se acomoda (antes de que lo lea quien lo guarda).
+function acomodarMonto(el){ if(el && el.classList && el.classList.contains("gx-monto")) el.value = montoEnCampo(el.value); }
 // Lo que se rinde de un gasto: el monto en dólares (o la moneda en que se
 // rinde) si lo tiene; si no, el del comprobante. Igual que gastos_cuenta.
 function rendidoDe(g){
@@ -26676,7 +26678,8 @@ function gastosAlEscribir(el, evento){
   return false;
 }
 document.getElementById("gastoOverlay").addEventListener("input", e => { if(gastoAlEscribir(e.target, false)) e.stopPropagation(); });
-document.getElementById("gastoOverlay").addEventListener("change", e => { if(gastoAlEscribir(e.target, true)) e.stopPropagation(); });
+// La ventana corta el aviso acá: el monto se acomoda antes, como en el resto de la pantalla.
+document.getElementById("gastoOverlay").addEventListener("change", e => { acomodarMonto(e.target); if(gastoAlEscribir(e.target, true)) e.stopPropagation(); });
 gastoOverlay.addEventListener("click", e => { if(e.target === gastoOverlay) pedirCerrarGasto(); });
 gastosArchivosInput.addEventListener("change", () => {
   const files = [...(gastosArchivosInput.files || [])];
@@ -30492,7 +30495,7 @@ document.addEventListener("input", e=>{
 
 document.addEventListener("change", e=>{
   const el = e.target;
-  if(el.classList && el.classList.contains("gx-monto")) el.value = montoEnCampo(el.value);
+  acomodarMonto(el);
   if(gastosAlEscribir(el, "change")) return;
   // Administración › Agenda: el archivo de la lista por traer.
   if(el.id === "agendaArchivo"){ leerArchivoAgenda(el.files && el.files[0]); el.value = ""; return; }

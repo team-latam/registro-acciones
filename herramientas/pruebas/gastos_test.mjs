@@ -160,7 +160,8 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   await p.fill("#gxConcepto", "Taxi al aeropuerto de Lima");
   eq("con el tipo vacío, escribir el concepto lo vuelve a sugerir", await p.evaluate(() => [document.getElementById("gxTipo").value, document.getElementById("gxTipo").dataset.sug]), ["transporte", "1"]);
   await p.selectOption("#gxTipo", "transporte");
-  await p.fill("#gxMonto", "12.5");
+  await p.fill("#gxMonto", "12,5"); await p.press("#gxMonto", "Tab");
+  eq("en la ventana, el monto también se acomoda al salir del campo («12,5» → «12.50»)", await p.$eval("#gxMonto", e => e.value), "12.50");
   await p.fill("#gxMoneda", "ars"); await p.press("#gxMoneda", "Tab");
   eq("en otra moneda aparece el monto en dólares, con la moneda en mayúsculas", await p.evaluate(() => [document.getElementById("gxMoneda").value, !!document.getElementById("gxRendido")]), ["ARS", true]);
   await p.fill("#gxRendido", "8");
