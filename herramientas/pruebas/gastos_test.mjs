@@ -311,6 +311,26 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   await p.close();
 }
 
+/* ---------------- Un PDF con texto de verdad se lee sin el lector de fotos ---------------- */
+// Como el recibo de Uber que trajo el usuario el 15/11 (inventado): el texto está adentro del PDF,
+// así que se lee directo, aun desde un archivo local, donde el lector de fotos no corre.
+{
+  const contenido = "BT /F1 11 Tf 14 TL 50 760 Td (Mar 4, 2026) Tj T* (Thanks for riding, Ana) Tj T* (Total USD 8.75) Tj T* (Visa \\225\\225\\225\\2254242) Tj T* (UberX) Tj ET";
+  const objs = ["<< /Type /Catalog /Pages 2 0 R >>", "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>", "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"];
+  const RECIBO = Buffer.from(`%PDF-1.4\n${objs.map((o, k) => `${k + 1} 0 obj\n${o}\nendobj\n`).join("")}5 0 obj\n<< /Length ${contenido.length} >>\nstream\n${contenido}\nendstream\nendobj\ntrailer\n<< /Root 1 0 R >>\n%%EOF\n`, "latin1");
+  const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: vp, base: datos({ prendido: true }) });
+  await irGastos(p);
+  const antes = (await tabla(p, "gastos")).length;
+  await subirDesdeCabecera(p, "", [{ name: "recibo-viaje.pdf", mimeType: "application/pdf", buffer: RECIBO }]);
+  eq("un PDF con texto se lee aunque no haya lector de fotos: fecha, total, moneda, tarjeta, la app y el tipo", await hasta(p, n => {
+    const g = (window.__sb.tablas.gastos || []).slice(n)[0];
+    return !!g && g.lectura && g.lectura.fuente === "lector" && g.estado === "borrador" && JSON.stringify([g.fecha, g.monto, g.moneda, g.tarjeta, g.concepto, g.tipo]) === JSON.stringify(["2026-03-04", 8.75, "USD", "4242", "Uber", "transporte"]); }, antes), true);
+  eq("…y el aviso dice que lo leyó, sin fallas", await hasta(p, () => /El lector completó lo que pudo leer/.test((document.querySelector(".gx-subida") || {}).textContent || "") && !document.querySelector(".gx-subida-mal")), true);
+  eq("sin errores de página", errores, []);
+  await p.close();
+}
+
 /* ---------------- Revisar en lista: confirmar varios juntos ---------------- */
 {
   const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: vp, base: datos({ prendido: true }) });

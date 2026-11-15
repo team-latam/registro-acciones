@@ -24614,14 +24614,19 @@ const MONEDAS_EN_TEXTO = [
   ["JMD", /\bJMD\b|J\$/i],
   ["TTD", /\bTTD\b|TT\$/i],
 ];
+// Panamá: el «$» es el dólar (el balboa va a la par y casi no circula en billetes).
 const MONEDA_DEL_PAIS = { "Argentina":"ARS", "México":"MXN", "Chile":"CLP", "Colombia":"COP", "Uruguay":"UYU", "Brasil":"BRL", "Perú":"PEN",
-  "Bolivia":"BOB", "Paraguay":"PYG", "Costa Rica":"CRC", "República Dominicana":"DOP", "Panamá":"PAB", "Nicaragua":"NIO", "Guatemala":"GTQ",
+  "Bolivia":"BOB", "Paraguay":"PYG", "Costa Rica":"CRC", "República Dominicana":"DOP", "Panamá":"USD", "Nicaragua":"NIO", "Guatemala":"GTQ",
   "Belice":"BZD", "Jamaica":"JMD", "Trinidad y Tobago":"TTD", "Cuba":"CUP", "Haití":"HTG", "Honduras":"HNL", "Venezuela":"VES",
   "Ecuador":"USD", "El Salvador":"USD", "Puerto Rico":"USD", "Estados Unidos":"USD", "Israel":"ILS" };
 // El tipo por las palabras del ticket. El primero que aparece manda: un hotel
 // tiene «desayuno» y un taxi al aeropuerto dice «aeropuerto».
+// Las aplicaciones de viaje: su recibo no trae el nombre arriba (va en el logo) y habla de
+// «booking fee» o del hotel de destino; si aparecen, mandan (el recibo de Uber del usuario, 15/11).
+const APPS_EN_TEXTO = [["Uber Eats", /\buber\s*eats\b/i, "comida"], ["Uber", /\buber(?:x\b|\b)/i, "transporte"], ["Cabify", /\bcabify\b/i, "transporte"],
+  ["DiDi", /\bdidi\b/i, "transporte"], ["Lyft", /\blyft\b/i, "transporte"], ["inDrive", /\bindrive\b/i, "transporte"]];
 const TIPOS_EN_TEXTO = [
-  ["alojamiento", /(?<!\p{L})(?:hotel|hostel|hostal|airbnb|booking|apart(?:hotel)?|posada|alojamiento|hospedaje|check-?in|habitaci[oó]n)(?!\p{L})/iu],
+  ["alojamiento", /(?<!\p{L})(?:hotel|hostel|hostal|airbnb|booking|apart(?:hotel)?|posada|alojamiento|hospedaje|check-?in|habitaci[oó]n|guest folio|room type|arrival)(?!\p{L})/iu],
   ["pasaje", /(?<!\p{L})(?:aerol[ií]neas?|airlines?|vuelo|flight|boarding|tarjeta de embarque|pasaje|[oó]mnibus|micro|bus|latam|avianca|copa air|jetsmart|flybondi|el al)(?!\p{L})/iu],
   ["transporte", /(?<!\p{L})(?:taxi|remis(?:es)?|remise|uber|cabify|didi|peaje|estacionamiento|parking|combustible|nafta|gasolina|subte|metro|tren)(?!\p{L})/iu],
   ["comida", /(?<!\p{L})(?:restaurante?|resto|parrilla|pizzer[ií]a|caf[eé]|bar|confiter[ií]a|comida|almuerzo|cena|desayuno|men[uú]|panader[ií]a|burger|delivery|pedidosya|rappi|ifood)(?!\p{L})/iu],
@@ -24696,6 +24701,12 @@ function fechaDeTicket(linea, hoy, mesPrimero){
     const mes = MESES_ESCRITOS[m[2].slice(0, 3).toLowerCase().replace("é", "e")];
     if(mes){ const r = ok(+m[3], mes, +m[1]); if(r) return { iso: r, dudosa: false }; }
   }
+  // En inglés, el mes primero: «Feb 3, 2026».
+  m = /\b([a-zA-Z]{3,9})\.?\s+(\d{1,2}),?\s+(\d{4})\b/.exec(linea);
+  if(m){
+    const mes = MESES_ESCRITOS[m[1].slice(0, 3).toLowerCase()];
+    if(mes){ const r = ok(+m[3], mes, +m[2]); if(r) return { iso: r, dudosa: false }; }
+  }
   return null;
 }
 const tituloDeComercio = s => String(s).toLowerCase().replace(/(^|[\s\-'(])([a-záéíóúñü])/g, (x, a, b) => a + b.toUpperCase());
@@ -24705,8 +24716,10 @@ function leerTextoDeComprobante(texto, { hoy, pais } = {}){
   const todo = lineas.join("\n");
   const r = { fecha: null, monto: null, moneda: null, tarjeta: null, formaPago: null, comercio: "", tipo: null, dudas: [] };
   // La fecha: la de un renglón que dice «fecha» (o «date», «data», «emisión»); si no, la primera que se pueda leer.
-  const enIngles = /\b(?:thank you|receipt|tax|tip|cashier|change due|amount due)\b/i.test(todo);
-  const conFecha = lineas.filter(l => /\b(?:fecha|date|data|emisi[oó]n|emitid)/i.test(l));
+  const enIngles = /\b(?:thank you|thanks|receipt|tax|tip|cashier|change due|amount due|fare|trip|approved)\b/i.test(todo);
+  // En un hotel vale la llegada, no el día en que se imprimió la cuenta.
+  const conFecha = lineas.filter(l => /\b(?:fecha|date|data|emisi[oó]n|emitid|arrival|llegada|check-?in)/i.test(l))
+    .sort((a, b) => /\b(?:arrival|llegada|check-?in)/i.test(b) - /\b(?:arrival|llegada|check-?in)/i.test(a));
   for(const l of [...conFecha, ...lineas]){ const f = fechaDeTicket(l, hoy, enIngles); if(f){ r.fecha = f.iso; if(f.dudosa) r.dudas.push("fecha"); break; } }
   // El total: los renglones que dicen «total» (o «importe», «a pagar»), sin los subtotales ni los impuestos.
   // Si un renglón dice «total» y no trae el número, se mira el de abajo.
@@ -24736,7 +24749,8 @@ function leerTextoDeComprobante(texto, { hoy, pais } = {}){
   const monedaEn = s => { const m = MONEDAS_EN_TEXTO.find(([, re]) => re.test(s)); return m ? m[0] : null; };
   r.moneda = monedaEn(lineaTotal) || monedaEn(todo);
   if(!r.moneda && /\$/.test(todo) && pais && MONEDA_DEL_PAIS[pais] && MONEDA_DEL_PAIS[pais] !== "USD"){ r.moneda = MONEDA_DEL_PAIS[pais]; r.dudas.push("moneda"); }
-  else if(!r.moneda && /\$/.test(todo) && !(pais && MONEDA_DEL_PAIS[pais] === "USD")) r.dudas.push("moneda");
+  else if(!r.moneda && /\$/.test(todo) && pais && MONEDA_DEL_PAIS[pais] === "USD") r.moneda = "USD";
+  else if(!r.moneda && /\$/.test(todo)) r.dudas.push("moneda");
   // La tarjeta: los cuatro últimos números («****1234», «XXXX 1234», «terminada en 1234»). El lector
   // suele confundir algún asterisco con «+», «#», «%» o «¥»: también valen.
   const t4 = /(?:[*xX×•·+#%¥]{2,}[\s\-]*|termina(?:da)? en\s*|ending in\s*|final\s*)(\d{4})\b/i.exec(todo);
@@ -24745,18 +24759,19 @@ function leerTextoDeComprobante(texto, { hoy, pais } = {}){
     : /\b(?:efectivo|cash|contado|dinheiro)\b/i.test(todo) ? "efectivo"
     : /\b(?:transferencia|transfer|pix)\b/i.test(todo) ? "transferencia" : null;
   // El comercio: el primer renglón con nombre (no «factura», ni un CUIT, ni una dirección web).
-  const comercio = lineas.find(l => /\p{L}{3,}/u.test(l) && !/\b(?:factura|ticket|recibo|comprobante|cupom|original|duplicado|copia|fecha|data|cuit|rut|rfc|nit|cnpj|tel|www|http|direcci[oó]n|iva|caja|cajero)\b|חשבונית/i.test(l)
-    && (l.match(/\p{L}/gu) || []).length >= l.replace(/\s/g, "").length / 2);
+  const comercio = lineas.find(l => /\p{L}{3,}/u.test(l) && !/\b(?:factura|ticket|recibo|comprobante|cupom|original|duplicado|copia|fecha|data|cuit|rut|rfc|nit|cnpj|tel|www|http|direcci[oó]n|iva|caja|cajero|thanks?|gracias|obrigad[oa]|welcome|bienvenid[oa]s?|folio|guest|invoice|statement|reservation)\b|חשבונית/i.test(l)
+    && (l.match(/\p{L}/gu) || []).length >= l.replace(/\s/g, "").length * 0.6);
   if(comercio) r.comercio = tituloDeComercio(comercio.replace(/[^\p{L}\p{N}\s.&'\-]/gu, "").replace(/\s+/g, " ").trim()).slice(0, 60);
   // El tipo: primero por el nombre del comercio (un taxi «al Hotel Centro» es transporte), después por el resto.
   const tipo = TIPOS_EN_TEXTO.find(([, re]) => comercio && re.test(comercio)) || TIPOS_EN_TEXTO.find(([, re]) => re.test(todo));
   if(tipo) r.tipo = tipo[0];
+  const app = APPS_EN_TEXTO.find(([, re]) => re.test(todo));
+  if(app){ r.comercio = app[0]; r.tipo = app[2]; }
   return r;
 }
 // Un PDF escaneado (CamScanner, el escáner del celular) guarda cada página
 // como una foto JPEG adentro: se saca la más grande, para leerla como foto.
-// Un PDF con texto de verdad (una factura electrónica) no trae fotos: ese,
-// por ahora, se completa a mano.
+// Un PDF con texto de verdad (una factura electrónica) se lee con textoDelPdf.
 function fotoDentroDelPdf(bytes){
   const b = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
   let txt = "";
@@ -24776,6 +24791,328 @@ function fotoDentroDelPdf(bytes){
     if(!mejor || f - ini > mejor.fin - mejor.ini) mejor = { ini, fin: f };
   }
   return mejor ? b.slice(mejor.ini, mejor.fin) : null;
+}
+// Un PDF con texto de verdad (una factura electrónica, el recibo de Uber o del
+// hotel): su texto, renglón por renglón, de arriba abajo. Sin bibliotecas: se
+// recorren sus objetos, se descomprimen las páginas (FlateDecode, con
+// DecompressionStream del navegador), se siguen las posiciones del texto y se
+// traducen las letras con el mapa de cada fuente (ToUnicode) o, si no tiene,
+// como WinAnsi. Lo que no entiende (cifrado, objetos comprimidos, otros
+// filtros) devuelve "" y el comprobante se lee como foto o a mano.
+async function textoDelPdf(bytes){
+  const b = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  let s = "";
+  for(let i = 0; i < b.length; i += 65536) s += String.fromCharCode.apply(null, b.subarray(i, i + 65536));
+  if(!/^%PDF/.test(s.slice(0, 1024).trimStart()) || /\/Encrypt\b/.test(s)) return "";
+  const BL = " \t\r\n\f\0", DEL = "()<>[]{}/%";
+  // Un valor del PDF desde la posición i: números, nombres, textos, listas, diccionarios y operadores.
+  function token(s, i){
+    for(;;){
+      while(i < s.length && BL.includes(s[i])) i++;
+      if(s[i] === "%"){ while(i < s.length && s[i] !== "\n" && s[i] !== "\r") i++; continue; }
+      break;
+    }
+    if(i >= s.length) return null;
+    const c = s[i];
+    if(c === "<" && s[i + 1] === "<") return { t: "<<", i: i + 2 };
+    if(c === ">" && s[i + 1] === ">") return { t: ">>", i: i + 2 };
+    if(c === "[" || c === "]" || c === "{" || c === "}") return { t: c, i: i + 1 };
+    if(c === "<"){
+      const f = s.indexOf(">", i);
+      let h = s.slice(i + 1, f < 0 ? s.length : f).replace(/[^0-9a-fA-F]/g, "");
+      if(h.length % 2) h += "0";
+      let v = "";
+      for(let k = 0; k < h.length; k += 2) v += String.fromCharCode(parseInt(h.slice(k, k + 2), 16));
+      return { t: "str", v, i: f < 0 ? s.length : f + 1 };
+    }
+    if(c === "("){
+      let v = "", n = 1, j = i + 1;
+      while(j < s.length){
+        const x = s[j];
+        if(x === "\\"){
+          const y = s[j + 1];
+          const esc = { n: "\n", r: "\r", t: "\t", b: "\b", f: "\f", "(": "(", ")": ")", "\\": "\\" };
+          if(y in esc){ v += esc[y]; j += 2; }
+          else if(/[0-7]/.test(y)){ const m = /^[0-7]{1,3}/.exec(s.slice(j + 1, j + 4))[0]; v += String.fromCharCode(parseInt(m, 8) & 255); j += 1 + m.length; }
+          else if(y === "\r"){ j += s[j + 2] === "\n" ? 3 : 2; }
+          else if(y === "\n"){ j += 2; }
+          else { j += 1; }
+          continue;
+        }
+        if(x === "(") n++;
+        else if(x === ")" && --n === 0) break;
+        v += x; j++;
+      }
+      return { t: "str", v, i: j + 1 };
+    }
+    if(c === "/"){
+      let j = i + 1;
+      while(j < s.length && !BL.includes(s[j]) && !DEL.includes(s[j])) j++;
+      return { t: "name", v: s.slice(i + 1, j).replace(/#([0-9a-fA-F]{2})/g, (x, h) => String.fromCharCode(parseInt(h, 16))), i: j };
+    }
+    let j = i;
+    while(j < s.length && !BL.includes(s[j]) && !DEL.includes(s[j])) j++;
+    if(j === i) return { t: "op", v: c, i: i + 1 };
+    const w = s.slice(i, j);
+    if(/^[+\-]?(?:\d+\.?\d*|\.\d+)$/.test(w)) return { t: "num", v: Number(w), i: j };
+    return { t: "op", v: w, i: j };
+  }
+  // Un objeto entero (con las referencias «12 0 R» como { ref: 12 }).
+  function valor(s, i){
+    const x = token(s, i);
+    if(!x) return null;
+    if(x.t === "<<"){
+      const d = {}; let j = x.i;
+      for(;;){
+        const k = token(s, j);
+        if(!k || k.t === ">>"){ j = k ? k.i : s.length; break; }
+        if(k.t !== "name"){ j = k.i; continue; }
+        const v = valor(s, k.i);
+        if(!v) break;
+        d[k.v] = v.v; j = v.i;
+      }
+      return { v: d, i: j };
+    }
+    if(x.t === "["){
+      const a = []; let j = x.i;
+      for(;;){
+        const k = token(s, j);
+        if(!k || k.t === "]"){ j = k ? k.i : s.length; break; }
+        const v = valor(s, j);
+        if(!v) break;
+        a.push(v.v); j = v.i;
+      }
+      return { v: a, i: j };
+    }
+    if(x.t === "num"){
+      // «12 0 R»: una referencia.
+      const y = token(s, x.i), z = y && y.t === "num" && token(s, y.i);
+      if(z && z.t === "op" && z.v === "R" && Number.isInteger(x.v)) return { v: { ref: x.v }, i: z.i };
+      return { v: x.v, i: x.i };
+    }
+    if(x.t === "name") return { v: { name: x.v }, i: x.i };
+    if(x.t === "str") return { v: { str: x.v }, i: x.i };
+    return { v: x.t === "op" ? { op: x.v } : null, i: x.i };
+  }
+  // Los objetos: dónde empieza cada uno (el último gana, como en una actualización).
+  const donde = new Map();
+  for(const m of s.matchAll(/(?:^|[\r\n\s])(\d+)\s+(\d+)\s+obj\b/g)) donde.set(Number(m[1]), m.index + m[0].length);
+  const cache = new Map();
+  const obj = n => {
+    if(cache.has(n)) return cache.get(n);
+    const i = donde.get(n);
+    const r = i == null ? null : valor(s, i);
+    const o = r ? { v: r.v, fin: r.i } : null;
+    cache.set(n, o);
+    return o;
+  };
+  const res = v => { let k = 0; while(v && typeof v === "object" && "ref" in v && k++ < 20){ const o = obj(v.ref); v = o ? o.v : null; } return v; };
+  const nom = v => (v = res(v)) && v.name || null;
+  // Los bytes de un stream, descomprimidos si hace falta.
+  async function inflar(datos){
+    try{
+      const lector = new Blob([datos]).stream().pipeThrough(new DecompressionStream("deflate")).getReader();
+      const partes = []; let total = 0;
+      try{ for(;;){ const { done, value } = await lector.read(); if(done) break; partes.push(value); total += value.length; } }
+      catch(e){ /* basura al final del stream: vale lo que salió */ }
+      const out = new Uint8Array(total); let k = 0;
+      for(const p of partes){ out.set(p, k); k += p.length; }
+      return out;
+    }catch(e){ return null; }
+  }
+  async function stream(ref){
+    const n = ref && ref.ref;
+    const o = n != null && obj(n);
+    if(!o || !o.v || typeof o.v !== "object") return null;
+    let i = s.indexOf("stream", o.fin);
+    if(i < 0 || i - o.fin > 20) return null;
+    i += 6;
+    if(s[i] === "\r") i++;
+    if(s[i] === "\n") i++;
+    let largo = res(o.v.Length);
+    if(typeof largo !== "number" || i + largo > s.length || !/^\s*endstream/.test(s.slice(i + largo, i + largo + 20))){
+      const f = s.indexOf("endstream", i);
+      if(f < 0) return null;
+      largo = f - i;
+    }
+    let datos = b.subarray(i, i + largo);
+    let filtros = res(o.v.Filter);
+    filtros = filtros == null ? [] : Array.isArray(filtros) ? filtros.map(nom) : [nom(filtros)];
+    for(const f of filtros){
+      if(f === "FlateDecode" || f === "Fl"){ datos = await inflar(datos); if(!datos) return null; }
+      else return null;
+    }
+    let txt = "";
+    for(let k = 0; k < datos.length; k += 65536) txt += String.fromCharCode.apply(null, datos.subarray(k, k + 65536));
+    return txt;
+  }
+  // Las fuentes: cómo se traduce cada código a letras, y cuánto avanza.
+  const WIN = { 128: "€", 130: "‚", 131: "ƒ", 132: "„", 133: "…", 134: "†", 135: "‡", 136: "ˆ", 137: "‰", 138: "Š", 139: "‹", 140: "Œ", 142: "Ž",
+    145: "‘", 146: "’", 147: "“", 148: "”", 149: "•", 150: "–", 151: "—", 152: "˜", 153: "™", 154: "š", 155: "›", 156: "œ", 158: "ž", 159: "Ÿ" };
+  const fuentes = new Map();
+  async function fuente(ref){
+    const clave = ref && ref.ref != null ? ref.ref : ref;
+    if(fuentes.has(clave)) return fuentes.get(clave);
+    const f = res(ref) || {};
+    const compuesta = nom(f.Subtype) === "Type0";
+    const F = { bytes: compuesta ? 2 : 1, mapa: null, anchos: new Map(), ancho: compuesta ? 1000 : 0 };
+    if(f.ToUnicode){
+      const cm = await stream(f.ToUnicode);
+      if(cm){
+        F.mapa = new Map();
+        const u16 = h => { let v = ""; for(let k = 0; k + 4 <= h.length; k += 4) v += String.fromCharCode(parseInt(h.slice(k, k + 4), 16)); return v; };
+        const cs = /begincodespacerange\s*<([0-9a-fA-F]+)>/.exec(cm);
+        if(cs) F.bytes = Math.max(1, cs[1].length / 2);
+        for(const blq of cm.matchAll(/beginbfchar([\s\S]*?)endbfchar/g))
+          for(const m of blq[1].matchAll(/<([0-9a-fA-F]+)>\s*<([0-9a-fA-F]*)>/g)) F.mapa.set(parseInt(m[1], 16), u16(m[2]));
+        for(const blq of cm.matchAll(/beginbfrange([\s\S]*?)endbfrange/g))
+          for(const m of blq[1].matchAll(/<([0-9a-fA-F]+)>\s*<([0-9a-fA-F]+)>\s*(?:<([0-9a-fA-F]*)>|\[([^\]]*)\])/g)){
+            const lo = parseInt(m[1], 16), hi = Math.min(parseInt(m[2], 16), lo + 65535);
+            if(m[3] != null){
+              const base = u16(m[3]), ult = base.charCodeAt(base.length - 1);
+              for(let c = lo; c <= hi; c++) F.mapa.set(c, base.slice(0, -1) + String.fromCharCode(ult + c - lo));
+            } else {
+              const lista = [...m[4].matchAll(/<([0-9a-fA-F]*)>/g)].map(x => u16(x[1]));
+              lista.forEach((v, k) => F.mapa.set(lo + k, v));
+            }
+          }
+      }
+    }
+    if(compuesta){
+      const d = res((res(f.DescendantFonts) || [])[0]) || {};
+      if(typeof res(d.DW) === "number") F.ancho = res(d.DW);
+      const W = res(d.W) || [];
+      for(let k = 0; k < W.length;){
+        const c0 = res(W[k]), x = res(W[k + 1]);
+        if(Array.isArray(x)){ x.forEach((w, j) => F.anchos.set(c0 + j, res(w))); k += 2; }
+        else { const c1 = x, w = res(W[k + 2]); for(let c = c0; c <= c1 && c - c0 < 65536; c++) F.anchos.set(c, w); k += 3; }
+      }
+    } else {
+      const primero = res(f.FirstChar) || 0;
+      (res(f.Widths) || []).forEach((w, j) => F.anchos.set(primero + j, res(w)));
+      if(!F.anchos.size) F.ancho = 500;
+    }
+    fuentes.set(clave, F);
+    return F;
+  }
+  const mul = (m, n) => [m[0] * n[0] + m[1] * n[2], m[0] * n[1] + m[1] * n[3], m[2] * n[0] + m[3] * n[2], m[2] * n[1] + m[3] * n[3],
+    m[4] * n[0] + m[5] * n[2] + n[4], m[4] * n[1] + m[5] * n[3] + n[5]];
+  // Recorre el contenido de una página (o de un formulario adentro) y junta los pedazos de texto con su lugar.
+  async function contenido(txt, recursos, ctm0, piezas, hondo){
+    const fuentesDe = res((res(recursos) || {}).Font) || {}, xobjs = res((res(recursos) || {}).XObject) || {};
+    const pila = [];
+    let ctm = ctm0, tm = [1, 0, 0, 1, 0, 0], tlm = tm, F = null, tam = 0, tl = 0, tc = 0, tw = 0, th = 1;
+    let ops = [];
+    const mostrar = str => {
+      if(!F) return;
+      const m = mul(tm, ctm), escala = Math.hypot(m[2], m[3]) || 1;
+      let v = "", ancho = 0;
+      for(let k = 0; k + F.bytes <= str.length; k += F.bytes){
+        let c = 0;
+        for(let j = 0; j < F.bytes; j++) c = c * 256 + str.charCodeAt(k + j);
+        const u = F.mapa ? F.mapa.get(c) : F.bytes === 1 ? (WIN[c] || String.fromCharCode(c)) : null;
+        if(u != null) v += u;
+        const w = (F.anchos.has(c) ? F.anchos.get(c) : F.ancho) / 1000;
+        ancho += (w * tam + tc + (F.bytes === 1 && c === 32 ? tw : 0)) * th;
+      }
+      if(v) piezas.push({ x: m[4], y: m[5], fin: m[4] + ancho * Math.hypot(m[0], m[1]), tam: Math.abs(tam) * escala, v });
+      tm = mul([1, 0, 0, 1, ancho, 0], tm);
+    };
+    for(let i = 0; ;){
+      const x = token(txt, i);
+      if(!x) break;
+      if(x.t === "op"){
+        const o = x.v, a = ops; ops = [];
+        i = x.i;
+        if(o === "BI"){ const f = txt.indexOf("EI", i); i = f < 0 ? txt.length : f + 2; continue; }
+        if(o === "q") pila.push(ctm);
+        else if(o === "Q"){ if(pila.length) ctm = pila.pop(); }
+        else if(o === "cm" && a.length >= 6) ctm = mul(a.slice(-6), ctm);
+        else if(o === "BT"){ tm = tlm = [1, 0, 0, 1, 0, 0]; }
+        else if(o === "Tf"){ const n = a[a.length - 2]; tam = a[a.length - 1] || 0; F = n && n.name && fuentesDe[n.name] ? await fuente(fuentesDe[n.name]) : null; }
+        else if(o === "TL") tl = a[0] || 0;
+        else if(o === "Tc") tc = a[0] || 0;
+        else if(o === "Tw") tw = a[0] || 0;
+        else if(o === "Tz") th = (a[0] == null ? 100 : a[0]) / 100;
+        else if(o === "Td" || o === "TD"){ if(o === "TD") tl = -(a[1] || 0); tm = tlm = mul([1, 0, 0, 1, a[0] || 0, a[1] || 0], tlm); }
+        else if(o === "Tm" && a.length >= 6) tm = tlm = a.slice(-6);
+        else if(o === "T*") tm = tlm = mul([1, 0, 0, 1, 0, -tl], tlm);
+        else if(o === "Tj" && a.length && a[a.length - 1] && a[a.length - 1].str != null) mostrar(a[a.length - 1].str);
+        else if(o === "'" || o === '"'){
+          if(o === '"'){ tw = a[0] || 0; tc = a[1] || 0; }
+          tm = tlm = mul([1, 0, 0, 1, 0, -tl], tlm);
+          const t0 = a[a.length - 1]; if(t0 && t0.str != null) mostrar(t0.str);
+        }
+        else if(o === "TJ" && Array.isArray(a[a.length - 1])){
+          for(const e of a[a.length - 1]){
+            if(e && e.str != null) mostrar(e.str);
+            else if(typeof e === "number"){
+              const dx = -e / 1000 * tam * th;
+              // Un hueco grande en el medio de un TJ es un espacio entre palabras.
+              if(e < -250 && piezas.length) piezas[piezas.length - 1].v += " ";
+              tm = mul([1, 0, 0, 1, dx, 0], tm);
+            }
+          }
+        }
+        else if(o === "Do" && hondo < 4){
+          const n = a[a.length - 1], xo = n && n.name && xobjs[n.name];
+          const d = res(xo);
+          if(d && nom(d.Subtype) === "Form"){
+            const t2 = await stream(xo);
+            if(t2){
+              const mat = Array.isArray(res(d.Matrix)) ? res(d.Matrix).map(res) : [1, 0, 0, 1, 0, 0];
+              await contenido(t2, d.Resources || recursos, mul(mat, ctm), piezas, hondo + 1);
+            }
+          }
+        }
+        continue;
+      }
+      const v = valor(txt, i);
+      if(!v) break;
+      ops.push(v.v);
+      i = v.i;
+    }
+  }
+  // Las páginas, en orden (desde el catálogo; si no, como vienen).
+  const paginas = [];
+  const recorrer = (ref, heredado, k) => {
+    const n = res(ref);
+    if(!n || k > 30) return;
+    const rec = n.Resources || heredado;
+    if(nom(n.Type) === "Pages" || Array.isArray(res(n.Kids))) (res(n.Kids) || []).forEach(h => recorrer(h, rec, k + 1));
+    else paginas.push({ n, rec });
+  };
+  const cat = [...donde.keys()].map(k => obj(k)).find(o => o && o.v && nom(o.v.Type) === "Catalog");
+  if(cat) recorrer(cat.v.Pages, null, 0);
+  if(!paginas.length) [...donde.keys()].sort((a, c) => a - c).forEach(k => { const o = obj(k); if(o && o.v && nom(o.v.Type) === "Page") paginas.push({ n: o.v, rec: o.v.Resources }); });
+  const renglones = [];
+  for(const { n, rec } of paginas.slice(0, 10)){
+    const cv = res(n.Contents), cs = Array.isArray(cv) ? cv : n.Contents ? [n.Contents] : [];
+    let txt = "";
+    for(const c of cs){ const t2 = await stream(c); if(t2) txt += t2 + "\n"; }
+    if(!txt) continue;
+    const piezas = [];
+    await contenido(txt, rec, [1, 0, 0, 1, 0, 0], piezas, 0);
+    // Los renglones: los pedazos a la misma altura, de izquierda a derecha.
+    piezas.sort((p, q) => q.y - p.y || p.x - q.x);
+    const lineas = [];
+    for(const p of piezas){
+      const l = lineas.find(r => Math.abs(r.y - p.y) <= Math.max(2, Math.min(r.tam, p.tam) * 0.45));
+      if(l) l.p.push(p); else lineas.push({ y: p.y, tam: p.tam, p: [p] });
+    }
+    lineas.sort((p, q) => q.y - p.y);
+    for(const l of lineas){
+      l.p.sort((p, q) => p.x - q.x);
+      let r = "", fin = null;
+      for(const p of l.p){
+        if(fin != null && p.x - fin > p.tam * 0.25 && !/\s$/.test(r) && !/^\s/.test(p.v)) r += p.x - fin > p.tam * 3 ? "   " : " ";
+        r += p.v; fin = Math.max(fin == null ? -Infinity : fin, p.fin);
+      }
+      r = r.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "").replace(/\s+$/, "");
+      if(r.trim()) renglones.push(r);
+    }
+  }
+  return renglones.join("\n");
 }
 
 // ---- Leer los comprobantes (el lector, en el aparato) ----
@@ -24802,17 +25139,43 @@ function armarLector(){
   }
   return lectorListo;
 }
-// Una foto (data URL o Blob) o un PDF escaneado (sus bytes): el texto y qué tan seguro está.
+// Una foto (data URL o Blob) o un PDF (sus bytes): el texto y qué tan seguro está.
+// Un PDF con texto de verdad (el recibo de Uber, la factura del hotel: lo trajo
+// el usuario el 15/11) se lee directo, sin el lector de fotos ni bajar nada; uno
+// escaneado, por la foto de adentro.
+const SIN_LECTOR = "sin lector";
 async function leerComprobante(cosa){
   let imagen = cosa.imagen;
   if(!imagen && cosa.pdf){
+    const texto = await textoDelPdf(cosa.pdf).catch(() => "");
+    if((texto.match(/\p{L}/gu) || []).length >= 20) return { texto, confianza: 100 };
+    if(!lectorDisponible()) throw new Error(SIN_LECTOR);
     const foto = fotoDentroDelPdf(cosa.pdf);
-    if(!foto) throw new Error(t("es un PDF sin foto adentro (con texto de verdad): por ahora se completa a mano","it's a PDF with no photo inside (real text): for now it's filled in by hand","é um PDF sem foto dentro (com texto de verdade): por enquanto se completa à mão","זה PDF בלי תמונה בפנים (עם טקסט אמיתי): בינתיים ממלאים ידנית"));
+    if(!foto) throw new Error(t("es un PDF sin texto ni foto que se puedan leer: completalo a mano","it's a PDF with no text or photo that can be read: fill it in by hand","é um PDF sem texto nem foto que dê para ler: complete à mão","זה PDF בלי טקסט או תמונה שאפשר לקרוא: מלאו ידנית"));
     imagen = new Blob([foto], { type: "image/jpeg" });
   }
+  if(!lectorDisponible()) throw new Error(SIN_LECTOR);
   const w = await armarLector();
   const { data } = await w.recognize(imagen, { rotateAuto: true });
-  return { texto: String((data && data.text) || ""), confianza: Math.round((data && data.confidence) || 0) };
+  let texto = String((data && data.text) || "");
+  // Un ticket largo con el total en letras grandes (el escaneo del iPhone de una cena, 15/11): leído
+  // entero, el lector se saltea las letras grandes; más chico (900 de alto anduvo con ese y con uno
+  // inventado igual; 1100 o más, no), las lee. Si no apareció un total, otra pasada, y el monto que
+  // salga de ahí queda para revisar: con letras tan grandes, un 5 puede salir 9.
+  let dudas = [];
+  if(faltaElTotal(texto)){
+    const chica = await fotoMasChica(imagen).catch(() => null);
+    if(chica){ const r = await w.recognize(chica, { rotateAuto: true }); texto += "\n" + String((r.data && r.data.text) || ""); dudas = ["monto"]; }
+  }
+  return { texto, confianza: Math.round((data && data.confidence) || 0), dudas };
+}
+// Si lo leído no tiene un renglón con «total» y un número: ahí se intenta la segunda pasada.
+const faltaElTotal = texto => !/total[^\n]*\d/i.test(String(texto || ""));
+// La misma foto con el lado mayor en 900 (o null si ya es así de chica): para la segunda pasada.
+async function fotoMasChica(imagen, lado = 900){
+  const du = typeof imagen === "string" ? imagen : await readFileAsDataUrl(imagen);
+  const img = await new Promise((ok, mal) => { const x = new Image(); x.onload = () => ok(x); x.onerror = () => mal(new Error("Imagen inválida")); x.src = du; });
+  return Math.max(img.width, img.height) <= lado * 1.1 ? null : achicarDataUrl(du, lado, 0.9);
 }
 // El país de la actividad del gasto: dice qué moneda es un «$» solo.
 function paisDeGasto(g){
@@ -24853,12 +25216,13 @@ function lecturaDelLector(anterior, campos, dudas, confianza){
 }
 // Después de subir: completa el gasto en la base. Si la persona lo tiene
 // abierto en la ventana, completa el borrador (guardar es suyo).
-async function aplicarLectura(id, texto, confianza){
+async function aplicarLectura(id, texto, confianza, dudas = []){
   const g = gastoPorId(id);
   if(!g || g.estado !== "borrador") return 0;
-  const s = leerTextoDeComprobante(texto, { hoy: todayISO(), pais: paisDeGasto(g) });
+  const conDudas = x => { if(x.monto != null) dudas.forEach(k => { if(!x.dudas.includes(k)) x.dudas.push(k); }); return x; };
+  const s = conDudas(leerTextoDeComprobante(texto, { hoy: todayISO(), pais: paisDeGasto(g) }));
   if(gastoEdit && gastoEdit.id === id){
-    const s2 = leerTextoDeComprobante(texto, { hoy: todayISO(), pais: paisDeVinculo(gastoEdit.d.vinculo) || paisDeGasto(g) });
+    const s2 = conDudas(leerTextoDeComprobante(texto, { hoy: todayISO(), pais: paisDeVinculo(gastoEdit.d.vinculo) || paisDeGasto(g) }));
     const p = sugerenciasDelLector(gastoEdit.d, s2);
     Object.assign(gastoEdit.d, p);
     gastoEdit.leido = { campos: Object.keys(p), dudas: s2.dudas };
@@ -24870,7 +25234,7 @@ async function aplicarLectura(id, texto, confianza){
   return Object.keys(p).length;
 }
 function encolarLectura(x){
-  if(!lectorDisponible()) return;
+  if(!lectorDisponible() && !x.pdf) return;
   lectorCola.push(x);
   if(!lectorEstado || !lectorEstado.corriendo) lectorEstado = { total: 0, hechos: 0, fallas: [], corriendo: false, preparando: false };
   lectorEstado.total++;
@@ -24884,15 +25248,19 @@ async function correrLector(){
   while(lectorCola.length && lectorEstado === e){
     const x = lectorCola.shift();
     try{
-      e.preparando = !lectorListo; render();
-      const { texto, confianza } = await leerComprobante(x);
+      e.preparando = !lectorListo && !x.pdf; render();
+      const { texto, confianza, dudas } = await leerComprobante(x);
       e.preparando = false;
-      await aplicarLectura(x.id, texto, confianza);
+      await aplicarLectura(x.id, texto, confianza, dudas);
       e.hechos++;
     }catch(err){
-      console.warn("El lector no pudo leer un comprobante:", err && err.message);
       e.preparando = false;
-      e.fallas.push({ nombre: x.nombre, error: detalleDeError(err) });
+      // Un PDF escaneado sin lector de fotos a mano: no es una falla, es que acá no se puede.
+      if(err && err.message === SIN_LECTOR) e.total--;
+      else {
+        console.warn("El lector no pudo leer un comprobante:", err && err.message);
+        e.fallas.push({ nombre: x.nombre, error: detalleDeError(err) });
+      }
     }
     render();
   }
@@ -24909,9 +25277,10 @@ async function leerGastoAbierto(){
     const res = await fetch(g.archivoUrl);
     if(!res.ok) throw new Error(String(res.status));
     const cosa = esPdfGasto(g) ? { pdf: new Uint8Array(await res.arrayBuffer()) } : { imagen: await res.blob() };
-    const { texto } = await leerComprobante(cosa);
+    const { texto, dudas } = await leerComprobante(cosa);
     if(gastoEdit !== e) return;
     const s = leerTextoDeComprobante(texto, { hoy: todayISO(), pais: paisDeVinculo(e.d.vinculo) || paisDeGasto(g) });
+    if(s.monto != null) (dudas || []).forEach(k => { if(!s.dudas.includes(k)) s.dudas.push(k); });
     const p = sugerenciasDelLector(e.d, s);
     Object.assign(e.d, p);
     e.leido = { campos: Object.keys(p), dudas: s.dudas };
@@ -25779,7 +26148,7 @@ function renderGasto(){
         : t("El lector completó: {c}. Revisalo con el comprobante.","The reader filled in: {c}. Check it against the receipt.","O leitor completou: {c}. Revise com o comprovante.","הקורא מילא: {c}. בדקו מול הקבלה.",{ c: leido.campos.map(k => nombreDeCampoGasto(k, true)).join(", ") })}
         ${dudasVistas.length ? `<b>${t("Sobre todo: {c}.","Especially: {c}.","Sobretudo: {c}.","בעיקר: {c}.",{ c: dudasVistas.map(k => nombreDeCampoGasto(k, true)).join(", ") })}</b>` : ""}</p>`;
   const marca = k => !leido || !editable ? "" : dudasVistas.includes(k) ? ' data-duda="1"' : leido.campos.includes(k) ? ' data-sug="1"' : "";
-  const leer = editable && g.archivo && esUrlFirmada(g.archivoUrl) && lectorDisponible()
+  const leer = editable && g.archivo && esUrlFirmada(g.archivoUrl) && (lectorDisponible() || esPdfGasto(g))
     ? `<button type="button" class="btn-secondary gx-leer" data-action="gasto-leer" ${e.leyendo ? "disabled" : ""}>📖 ${e.leyendo ? t("Leyendo…","Reading…","Lendo…","קורא…") : t("Leer el comprobante","Read the receipt","Ler o comprovante","קריאת הקבלה")}</button>` : "";
   const coms = comentariosDe(g.id);
   const hilo = coms.length ? `<div class="gx-hilo">${coms.map(c => `<div class="gx-com${c.autor && String(c.autor).toLowerCase() === g.autor ? "" : " gx-com-admin"}">

@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import zlib from "node:zlib";
 import { fileURLToPath as __aRuta } from "node:url";
 import { hacerGrab } from "./grab.mjs";
 process.chdir(__aRuta(new URL(".", import.meta.url)));
@@ -10,7 +11,10 @@ process.chdir(__aRuta(new URL(".", import.meta.url)));
    tarjeta, cómo se pagó, el comercio y el tipo, y anota lo dudoso. Estos
    tickets son INVENTADOS (el repo es público), con los errores típicos del
    lector: renglones de ruido, «N%» por «Nº», un título que no es el
-   comercio. fotoDentroDelPdf saca la foto de un PDF escaneado.
+   comercio. fotoDentroDelPdf saca la foto de un PDF escaneado, y
+   textoDelPdf el texto de un PDF con texto de verdad (como el recibo de Uber
+   o la cuenta del hotel que trajo el usuario el 15/11): los PDF se arman acá,
+   con datos inventados.
    Corre el código del index.html de verdad.
    ====================================================================== */
 let pass = 0, fail = 0;
@@ -23,9 +27,9 @@ const grab = n => { try{ return g(n); }catch(e){ return ""; } };
 
 let L = { leer: () => "no se pudo armar", numero: () => null, foto: () => null };
 try{
-  L = new Function(`${["MESES_ESCRITOS", "MONEDAS_EN_TEXTO", "MONEDA_DEL_PAIS", "TIPOS_EN_TEXTO", "numeroDeTicket", "numerosDeLinea",
-    "fechaDeTicket", "tituloDeComercio", "leerTextoDeComprobante", "fotoDentroDelPdf"].map(grab).join("\n")}
-    return { leer: leerTextoDeComprobante, numero: numeroDeTicket, foto: fotoDentroDelPdf };`)();
+  L = new Function(`${["MESES_ESCRITOS", "MONEDAS_EN_TEXTO", "MONEDA_DEL_PAIS", "APPS_EN_TEXTO", "TIPOS_EN_TEXTO", "numeroDeTicket", "numerosDeLinea",
+    "fechaDeTicket", "tituloDeComercio", "leerTextoDeComprobante", "fotoDentroDelPdf", "textoDelPdf", "faltaElTotal"].map(grab).join("\n")}
+    return { leer: leerTextoDeComprobante, numero: numeroDeTicket, foto: fotoDentroDelPdf, pdf: textoDelPdf, faltaTotal: faltaElTotal };`)();
 }catch(e){ console.log("no se pudo armar:", e.message); }
 const HOY = "2026-11-15";
 const leer = (texto, pais) => { try{ return L.leer(texto, { hoy: HOY, pais }); }catch(e){ return "error: " + e.message; } };
@@ -162,6 +166,128 @@ CUIT 30-71234567-8
 Tel 4555-1234
 14:30`).monto, null);
 eq("un texto vacío no rompe", campos(leer(""), "fecha", "monto", "moneda", "tarjeta", "formaPago", "comercio", "tipo", "dudas"), [null, null, null, null, null, "", null, []]);
+
+/* ---- Los recibos que trajo el usuario el 15/11, inventados con la misma forma ---- */
+const app = `Mar 4, 2026
+9:12 AM
+Thanks for riding, Ana
+We hope you enjoyed your ride this morning.
+Total $8.75
+Trip fare $8.10
+Booking Fee $0.65
+Payments
+Visa ••••4242 $8.75
+3/4/26 9:30 AM
+Trip details
+UberX
+6.20 kilometers, 14 minutes
+Hotel Central 555, Ciudad de Panamá`;
+r = leer(app, "Panamá");
+eq("recibo de una app de viajes: la fecha en inglés («Mar 4, 2026»), el total, el «$» de Panamá es dólar, Uber y transporte (no el «booking» ni el hotel)",
+  campos(r, "fecha", "monto", "moneda", "tarjeta", "formaPago", "comercio", "tipo", "dudas"), ["2026-03-04", 8.75, "USD", "4242", "tarjeta", "Uber", "transporte", []]);
+eq("«Uber Eats» es comida", campos(leer("Your order from Uber Eats\nTotal USD 21.40"), "comercio", "tipo"), ["Uber Eats", "comida"]);
+eq("Uberlândia no es Uber", leer("PADARIA DE UBERLÂNDIA\nTOTAL R$ 12,00").comercio, "Padaria De Uberlândia");
+const folio = `Print date: 30.01.2026
+21:05
+2104 Guest Folio
+Hotel Mar Azul Ejemplo
+Reservation Information
+Agency : Booking.com Room Type : DBL
+Arrival/Departure : 27.01.2026 / 29.01.2026
+Date Department Check / Doc No Remarks USD Net
+27.01.2026 15:42 Visa/ Mastercard - -310.50
+Taken Payments
+310.50 USD 0.00 0.00
+Balance : -310.50`;
+r = leer(folio);
+eq("cuenta de hotel: la fecha de llegada (no la de impresión), el nombre del hotel (no «Guest Folio»), alojamiento; el monto sin «total», para revisar",
+  campos(r, "fecha", "monto", "moneda", "formaPago", "comercio", "tipo", "dudas"), ["2026-01-27", 310.5, "USD", "tarjeta", "Hotel Mar Azul Ejemplo", "alojamiento", ["monto"]]);
+
+// El escaneo largo del iPhone (una cena, 15/11): el lector suele traer ruido arriba y saltearse el total en
+// letras grandes. El ruido no es el comercio; sin un «total» con número, se lee de nuevo la foto más chica
+// (eso se probó a mano con el comprobante real: con tickets dibujados acá el lector no se equivoca igual).
+r = leer(`— — —r Sie —
+CASA DEL TE EJEMPLO
+RESTAURANTE
+DATE (MM/DD/YY) 01/27/26
+APPROVED - THANK YOU`);
+eq("el ruido de arriba no es el comercio; la fecha en inglés con el mes primero", campos(r, "comercio", "fecha", "tipo"), ["Casa Del Te Ejemplo", "2026-01-27", "comida"]);
+eq("cuándo se lee de nuevo más chico: sin un renglón con «total» y un número", [L.faltaTotal("CASA\nTOTAL\nAPPROVED"), L.faltaTotal("TOTAL 52.00"), L.faltaTotal("Total   $8.75"), L.faltaTotal("TOTAL\n52.00"), L.faltaTotal("")],
+  [true, false, false, true, true]);
+
+/* ---- El texto de un PDF con texto de verdad ---- */
+// Un PDF chico armado acá: objetos numerados desde 1, con streams (comprimidos o no).
+function armarPdf(objs, cola = "trailer\n<< /Root 1 0 R >>\n"){
+  const partes = [Buffer.from("%PDF-1.4\n%\xe2\xe3\xcf\xd3\n", "latin1")];
+  objs.forEach((o, k) => {
+    if(o.stream == null){ partes.push(Buffer.from(`${k + 1} 0 obj\n${o.dict}\nendobj\n`, "latin1")); return; }
+    let data = Buffer.isBuffer(o.stream) ? o.stream : Buffer.from(o.stream, "latin1");
+    if(o.flate) data = zlib.deflateSync(data);
+    const d = o.dict.replace(/>>\s*$/, ` /Length ${data.length}${o.flate ? " /Filter /FlateDecode" : ""} >>`);
+    partes.push(Buffer.from(`${k + 1} 0 obj\n${d}\nstream\n`, "latin1"), data, Buffer.from("\nendstream\nendobj\n", "latin1"));
+  });
+  partes.push(Buffer.from(cola + "%%EOF\n", "latin1"));
+  return Buffer.concat(partes);
+}
+const lineas = t0 => String(t0).split("\n").map(l => l.replace(/\s+/g, " ").trim());
+const pdfTexto = async b => { try{ return await L.pdf(b); }catch(e){ return "error: " + e.message; } };
+// 1) Como lo arma Chrome (el recibo de Uber): fuente compuesta con códigos de dos bytes y su mapa
+//    (ToUnicode con bfchar y bfrange), comprimido, el eje y dado vuelta, dos columnas y dos páginas.
+{
+  const letras = [...new Set("Mar 4, 2026Thanks for riding, AnaTotal$8.75Trip fare 8.10Visa ••••4242Payments".replace(/[0-9]/g, ""))];
+  const cid = ch => /[0-9]/.test(ch) ? 0x10 + Number(ch) : 0x40 + letras.indexOf(ch);
+  const hex = str => "<" + [...str].map(ch => cid(ch).toString(16).padStart(4, "0")).join("") + ">";
+  const u16 = ch => ch.charCodeAt(0).toString(16).padStart(4, "0");
+  const cmap = `/CIDInit /ProcSet findresource begin 12 dict begin begincmap
+1 begincodespacerange <0000> <FFFF> endcodespacerange
+1 beginbfrange <0010> <0019> <0030> endbfrange
+${letras.length} beginbfchar
+${letras.map(ch => `<${cid(ch).toString(16).padStart(4, "0")}> <${u16(ch)}>`).join("\n")}
+endbfchar
+endcmap CMapName currentdict /CMap defineresource pop end end`;
+  const linea = (x, y, str) => `BT /F1 12 Tf 1 0 0 -1 ${x} ${y} Tm ${hex(str)} Tj ET`;
+  const pag1 = `q 1 0 0 -1 0 792 cm\n${[linea(40, 50, "Mar 4, 2026"), linea(40, 90, "Thanks for riding, Ana"), linea(40, 130, "Total"), linea(480, 130, "$8.75"),
+    linea(40, 150, "Trip fare"), linea(480, 150, "$8.10")].join("\n")}\nQ`;
+  const pag2 = `q 1 0 0 -1 0 792 cm\n${[linea(40, 50, "Payments"), linea(60, 70, "Visa ••••4242"), linea(480, 70, "$8.75")].join("\n")}\nQ`;
+  const pdf = armarPdf([
+    { dict: "<< /Type /Catalog /Pages 2 0 R >>" },
+    { dict: "<< /Type /Pages /Kids [3 0 R 9 0 R] /Count 2 /Resources << /Font << /F1 5 0 R >> >> >>" },
+    { dict: "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >>" },
+    { dict: "<< >>", stream: pag1, flate: true },
+    { dict: "<< /Type /Font /Subtype /Type0 /BaseFont /AAAAAA+Inter /Encoding /Identity-H /DescendantFonts [6 0 R] /ToUnicode 7 0 R >>" },
+    { dict: "<< /Type /Font /Subtype /CIDFontType2 /BaseFont /AAAAAA+Inter /DW 600 /W [16 [560 560]] >>" },
+    { dict: "<< >>", stream: cmap, flate: true },
+    { dict: "<< /Producer (Skia/PDF) >>" },
+    { dict: "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents [10 0 R] >>" },
+    { dict: "<< >>", stream: pag2, flate: true },
+  ]);
+  const tx = await pdfTexto(pdf);
+  eq("PDF como el de Chrome: el texto, renglón por renglón y de arriba abajo, con las dos columnas juntas y las dos páginas", lineas(tx),
+    ["Mar 4, 2026", "Thanks for riding, Ana", "Total $8.75", "Trip fare $8.10", "Payments", "Visa ••••4242 $8.75"]);
+  eq("…y de ahí, el gasto", campos(leer(tx, "Panamá"), "fecha", "monto", "moneda", "tarjeta", "formaPago"), ["2026-03-04", 8.75, "USD", "4242", "tarjeta"]);
+}
+// 2) Una factura electrónica sencilla: Helvetica sin mapa (WinAnsi), textos con escapes, TJ con huecos,
+//    renglones con Td, T* y «'», sin comprimir; y un pedazo dentro de un formulario (Do).
+{
+  const pag = `BT /F1 11 Tf 14 TL 50 760 Td (Caf\\351 Central \\(Sucursal 2\\)) Tj T* [(Fe) 20 (cha: 05/11/2026)] TJ
+(TOTAL) ' T* [(T) -30 (OTAL) -3000 (ARS 1.250,00)] TJ ET
+q 1 0 0 1 50 600 cm /Fx1 Do Q`;
+  const forma = `BT /F1 11 Tf 0 0 Td (Gracias por su visita) Tj ET`;
+  const pdf = armarPdf([
+    { dict: "<< /Type /Catalog /Pages 2 0 R >>" },
+    { dict: "<< /Type /Pages /Kids [3 0 R] /Count 1 >>" },
+    { dict: "<< /Type /Page /Parent 2 0 R /Resources << /Font << /F1 5 0 R >> /XObject << /Fx1 6 0 R >> >> /Contents 4 0 R >>" },
+    { dict: "<< >>", stream: pag },
+    { dict: "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>" },
+    { dict: "<< /Type /XObject /Subtype /Form /BBox [0 0 300 50] /Resources << /Font << /F1 5 0 R >> >> >>", stream: forma, flate: true },
+  ]);
+  const tx = await pdfTexto(pdf);
+  eq("factura sencilla: acentos (WinAnsi), paréntesis escapados, huecos de TJ como espacios, Td/T*/«'» y el texto de un formulario", lineas(tx),
+    ["Café Central (Sucursal 2)", "Fecha: 05/11/2026", "TOTAL", "TOTAL ARS 1.250,00", "Gracias por su visita"]);
+  eq("…y de ahí, el gasto", campos(leer(tx), "fecha", "monto", "moneda", "comercio", "tipo"), ["2026-11-05", 1250, "ARS", "Café Central Sucursal 2", "comida"]);
+}
+eq("un PDF cifrado o algo que no es un PDF: nada (se lee como foto o a mano)", [await pdfTexto(armarPdf([{ dict: "<< /Type /Catalog >>" }], "trailer\n<< /Root 1 0 R /Encrypt 2 0 R >>\n")),
+  await pdfTexto(Buffer.from("hola, no soy un PDF")), await pdfTexto(Buffer.from("%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n"))], ["", "", ""]);
 
 /* ---- La foto adentro de un PDF escaneado ---- */
 {

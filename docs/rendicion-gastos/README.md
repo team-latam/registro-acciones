@@ -114,8 +114,8 @@ tocan eventos, comentarios ni la Agenda); se hace por etapas chicas; Drive y el 
   Lo prueba `herramientas/pruebas/gastos_test.mjs`; el recorrido de bienvenida lo anota en `TOUR_SIN_PASO`
   (solo lo ven los admins) hasta que se abra al equipo.
 - [x] **El lector de comprobantes** (publicado el 15/11): al subir, lee cada comprobante en el fondo (las
-  fotos, y los PDF escaneados con una foto adentro, como los de CamScanner; un PDF con texto de verdad, por
-  ahora, a mano) y completa **solo lo vacío**: fecha, monto, moneda, tarjeta, forma de pago, comercio (como
+  fotos, los PDF escaneados con una foto adentro, como los de CamScanner, y —desde los arreglos de la revisión—
+  los PDF con texto de verdad) y completa **solo lo vacío**: fecha, monto, moneda, tarjeta, forma de pago, comercio (como
   concepto) y tipo. Un «$» solo se toma como la moneda del país de la actividad, para revisar. La ventana
   dice qué completó, marca lo sugerido y lo dudoso, y tiene «Leer el comprobante» para uno subido antes. El
   lector nunca confirma. Lo prueban `lector_texto_test.mjs` (tickets inventados de seis países),
@@ -147,7 +147,17 @@ tocan eventos, comentarios ni la Agenda); se hace por etapas chicas; Drive y el 
     navegador recuerda la elegida— y los botones flotando abajo mientras se recorre. Revisando en lista no se ven
     el total, el total rápido ni «Mandar»: vuelven al salir. En la rendición, «Revisar en lista» y «Subir
     comprobantes» van juntos arriba de los gastos.
-  Lo prueban `gastos_test.mjs` y `lector_test.mjs`. Quedan de la crítica, para más adelante: el comprobante dentro
+  - **El lector, con tres PDF reales del usuario** (15/11; se usaron solo en la sesión, no están en el repo):
+    el de Uber y la cuenta del hotel son PDF con texto adentro, que el lector salteaba: ahora se lee ese texto
+    directo (sin el lector de fotos ni bajar nada, `textoDelPdf`), y se aprendió de ellos la fecha en inglés
+    («Feb 3, 2026»), que en un recibo de Uber el comercio es Uber y el tipo transporte, que en Panamá el «$»
+    es dólar, que en un hotel vale la llegada y que «Guest Folio» o «Thanks for riding» no son el comercio. El
+    de la cena es un escaneo del iPhone largo y angosto con el total en letras grandes, que el lector se
+    salteaba: si no aparece un renglón con «total» y un número, lee la foto de nuevo más chica, y ese monto
+    queda para revisar. Con los tres: fechas, montos y comercios bien. Lo de la foto larga se comprobó a mano
+    con el comprobante real (con tickets dibujados el lector no se equivoca igual); lo demás lo prueba
+    `lector_texto_test.mjs` con PDF y recibos inventados con la misma forma.
+  Lo prueban `gastos_test.mjs`, `lector_test.mjs` y `lector_texto_test.mjs`. Quedan de la crítica, para más adelante: el comprobante dentro
   de la ventana en el celular y que la cuenta corriente se entienda mejor.
 - [ ] Los avisos de «te observaron un gasto» (campanita y correo).
 
