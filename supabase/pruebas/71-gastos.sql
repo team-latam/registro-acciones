@@ -98,6 +98,16 @@ select id as ra from public.gastos_rendiciones where autor = 'ana@x.com' and pos
 select id as ra_mes from public.gastos_rendiciones where autor = 'ana@x.com' and rutina_mes = '2026-09-01' \gset
 select id as rd from public.gastos_rendiciones where autor = 'diego@x.com' and post_id = 'p4' \gset
 
+-- ---------- Borrar una rendición vacía ----------
+select lab.probar('una integrante borra una rendición suya, abierta y vacía', lab.como('ana@x.com'),
+  format($x$delete from public.gastos_rendiciones where id = %L$x$, :'ra'), true);
+select lab.probar('…no la de otra persona', lab.como('ana@x.com'), format($x$delete from public.gastos_rendiciones where id = %L$x$, :'rd'), false);
+select lab.hacer(lab.como('ana@x.com'), $x$select public.gastos_rendicion_abrir(null, '2026-08-05')::text$x$) as ra_ago \gset
+update public.gastos_rendiciones set estado = 'enviada' where id = :'ra_ago';
+select lab.probar('…ni una suya que ya mandó', lab.como('ana@x.com'), format($x$delete from public.gastos_rendiciones where id = %L$x$, :'ra_ago'), false);
+select lab.probar('el admin fijo borra cualquiera vacía', lab.como('benny@team-latam.com'), format($x$delete from public.gastos_rendiciones where id = %L$x$, :'ra_ago'), true);
+delete from public.gastos_rendiciones where id = :'ra_ago';
+
 -- ---------- Cargar gastos ----------
 select lab.hacer(lab.como('ana@x.com'), format($x$insert into public.gastos(rendicion_id, fecha, concepto, tipo, moneda, monto, pago, forma_pago, tarjeta, archivo_hash, estado)
   values (%L, '2026-09-10', 'Hotel x 2 noches', 'alojamiento', 'USD', 100, 'persona', 'tarjeta', '1234', repeat('a', 64), 'confirmado') returning id::text$x$, :'ra')) as g1 \gset
@@ -108,6 +118,7 @@ select lab.hacer(lab.como('ana@x.com'), format($x$insert into public.gastos(rend
 select lab.hacer(lab.como('ana@x.com'), format($x$insert into public.gastos(rendicion_id, fecha, concepto, tipo, moneda, monto, pago, estado)
   values (%L, '2026-09-12', 'Pasaje', 'pasaje', 'USD', 50, 'organizacion', 'borrador') returning id::text$x$, :'ra')) as g4 \gset
 select lab.comprobar('una integrante carga sus gastos (cuatro, en su rendición)', $q$select count(*)::text from public.gastos where autor = 'ana@x.com'$q$, '4');
+select lab.probar('una rendición con gastos no se borra', lab.como('ana@x.com'), format($x$delete from public.gastos_rendiciones where id = %L$x$, :'ra'), false);
 select lab.comprobar('la moneda se guarda en mayúsculas', $q$select moneda from public.gastos where concepto = 'Taxi'$q$, 'MXN');
 select lab.comprobar('el gasto queda a nombre de quien lo carga aunque diga otra persona',
   $q$select lab.hacer(lab.como('ana@x.com'), $x$insert into public.gastos(autor, concepto) values ('diego@x.com', 'a nombre de otro') returning autor$x$)$q$, 'ana@x.com');

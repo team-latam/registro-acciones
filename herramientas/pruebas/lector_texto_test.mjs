@@ -28,8 +28,9 @@ const grab = n => { try{ return g(n); }catch(e){ return ""; } };
 let L = { leer: () => "no se pudo armar", numero: () => null, foto: () => null };
 try{
   L = new Function(`${["MESES_ESCRITOS", "MONEDAS_EN_TEXTO", "MONEDA_DEL_PAIS", "APPS_EN_TEXTO", "TIPOS_EN_TEXTO", "numeroDeTicket", "numerosDeLinea",
-    "fechaDeTicket", "tituloDeComercio", "leerTextoDeComprobante", "fotoDentroDelPdf", "textoDelPdf", "faltaElTotal"].map(grab).join("\n")}
-    return { leer: leerTextoDeComprobante, numero: numeroDeTicket, foto: fotoDentroDelPdf, pdf: textoDelPdf, faltaTotal: faltaElTotal };`)();
+    "fechaDeTicket", "tituloDeComercio", "leerTextoDeComprobante", "fotoDentroDelPdf", "textoDelPdf", "faltaElTotal",
+    "normalTexto", "PALABRAS_VACIAS", "primeraPalabra", "tipoPorPalabras", "predecirTipo"].map(grab).join("\n")}
+    return { leer: leerTextoDeComprobante, numero: numeroDeTicket, foto: fotoDentroDelPdf, pdf: textoDelPdf, faltaTotal: faltaElTotal, tipo: predecirTipo };`)();
 }catch(e){ console.log("no se pudo armar:", e.message); }
 const HOY = "2026-11-15";
 const leer = (texto, pais) => { try{ return L.leer(texto, { hoy: HOY, pais }); }catch(e){ return "error: " + e.message; } };
@@ -214,6 +215,19 @@ APPROVED - THANK YOU`);
 eq("el ruido de arriba no es el comercio; la fecha en inglés con el mes primero", campos(r, "comercio", "fecha", "tipo"), ["Casa Del Te Ejemplo", "2026-01-27", "comida"]);
 eq("cuándo se lee de nuevo más chico: sin un renglón con «total» y un número", [L.faltaTotal("CASA\nTOTAL\nAPPROVED"), L.faltaTotal("TOTAL 52.00"), L.faltaTotal("Total   $8.75"), L.faltaTotal("TOTAL\n52.00"), L.faltaTotal("")],
   [true, false, false, true, true]);
+
+/* ---- El tipo, predicho por el concepto (o el título del archivo) y por lo ya cargado ---- */
+{
+  const tipo = (c, h) => { try{ return L.tipo(c, h); }catch(e){ return "error: " + e.message; } };
+  eq("por las palabras del concepto, la que aparece primero; las apps de viaje mandan; «reunión» solo si no hay otra cosa",
+    ["Hotel en Curazao x 2 noches", "Cena x 2 personas", "Uber a Hotel2", "Taxi al hotel", "Almuerzo de reunión", "Reunión con directores", "Pasaje Lima - Panamá", "Xyz 123", ""].map(c => tipo(c, [])),
+    ["alojamiento", "comida", "transporte", "transporte", "comida", "reunion", "pasaje", null, null]);
+  const historia = [{ concepto: "Cena con directores", tipo: "reunion" }, { concepto: "Cena con directores", tipo: "reunion" }, { concepto: "Cena con directores", tipo: "comida" },
+    { concepto: "Fotocopiadora del barrio", tipo: "material" }, { concepto: "Hotel Sol", tipo: null }];
+  eq("lo ya cargado con el mismo concepto manda (lo más usado), sin importar mayúsculas ni acentos", [tipo("cena con DIRECTORES", historia), tipo("Cena con directores.", historia)], ["reunion", "reunion"]);
+  eq("si no, la primera palabra en lo ya cargado («Fotocopiadora Gómez» como «Fotocopiadora del barrio»)", tipo("Fotocopiadora Gómez", historia), "material");
+  eq("…pero antes, las palabras del concepto («Cena en el hotel» es comida, aunque haya cenas de reunión)", tipo("Cena en el hotel", historia), "comida");
+}
 
 /* ---- El texto de un PDF con texto de verdad ---- */
 // Un PDF chico armado acá: objetos numerados desde 1, con streams (comprimidos o no).

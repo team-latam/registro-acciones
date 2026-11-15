@@ -232,11 +232,14 @@ drop policy if exists rendiciones_total on public.gastos_rendiciones;
 create policy rendiciones_total on public.gastos_rendiciones for update
   using (autor = (select public.mi_correo()) and (select public.gastos_habilitado()) and estado in ('abierta', 'observada'))
   with check (autor = (select public.mi_correo()));
--- Borrar una rendición, solo el admin fijo (y solo vacía: los gastos la
--- sostienen, `on delete restrict`).
+-- Borrar una rendición: la persona, la suya mientras está abierta (una que
+-- quedó vacía al elegir una actividad o en una subida: lo pidió el usuario el
+-- 15/11); el admin fijo, cualquiera. Siempre vacía: los gastos la sostienen
+-- (`on delete restrict`).
 drop policy if exists rendiciones_borrar on public.gastos_rendiciones;
 create policy rendiciones_borrar on public.gastos_rendiciones for delete
-  using ((select public.es_admin_fijo()));
+  using ((select public.es_admin_fijo())
+         or (autor = (select public.mi_correo()) and (select public.gastos_habilitado()) and estado = 'abierta'));
 
 -- Gastos: cada uno carga y corrige los suyos mientras no los mandó; un admin
 -- los ve todos (los observa y aprueba con las funciones).

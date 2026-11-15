@@ -823,6 +823,11 @@
   .gx-tarjeta{ display:flex; align-items:center; gap:12px; width:100%; text-align:start; padding:12px 14px; border-radius:var(--radius-md);
     border:1px solid var(--border); background:var(--card); box-shadow:var(--shadow); color:var(--ink); font-family:inherit; cursor:pointer; }
   .gx-tarjeta:hover{ border-color:var(--celeste); }
+  .gx-tarjeta-env{ position:relative; }
+  .gx-tarjeta-env .gx-tarjeta{ padding-inline-end:58px; }
+  .gx-t-quitar{ position:absolute; inset-inline-end:8px; top:50%; translate:0 -50%; width:40px; height:40px; border:none; border-radius:50%; background:none;
+    color:var(--text-muted); font:inherit; font-size:16px; font-weight:700; cursor:pointer; }
+  .gx-t-quitar:hover{ background:var(--danger-soft); color:var(--danger-fg); }
   .gx-sin{ border-style:dashed; }
   .gx-t-ico{ flex:none; width:38px; height:38px; border-radius:50%; background:var(--surface-alt); display:flex; align-items:center; justify-content:center; font-size:18px; }
   .gx-t-txt{ flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:2px; }
@@ -1061,6 +1066,7 @@
     .gx-comp{ width:96px; flex:none; }
     .gx-campos{ grid-template-columns:1fr; }
     .gx-tarjeta{ flex-wrap:wrap; }
+    .gx-t-quitar{ top:8px; translate:none; }
     .gx-t-der{ flex-direction:row; align-items:center; flex-wrap:wrap; justify-content:flex-start; width:100%; padding-inline-start:50px; }
     .gx-botones .gx-espacio{ display:none; }
     /* «Subir comprobantes» va abajo del título, no a su lado: «Mis rendiciones» no entra en un renglón. */
@@ -9986,6 +9992,11 @@ function crearSupabaseStore(sb, opciones = {}){
       async borrar(id){
         revienta(await sb.from("gastos").delete().eq("id", id));
         await Promise.all([refrescar("gastos", id), recargarTabla("gastos_comentarios")]);
+      },
+      // Una rendición vacía (la base deja solo la propia, abierta y sin gastos; el admin fijo, cualquiera vacía).
+      async borrarRendicion(id){
+        revienta(await sb.from("gastos_rendiciones").delete().eq("id", id));
+        await refrescar("gastos_rendiciones", id);
       },
       // Primero la fila (la base deja subir solo a la carpeta de un gasto
       // propio que se puede corregir), después el archivo y al final su ruta.
@@ -24776,6 +24787,40 @@ function leerTextoDeComprobante(texto, { hoy, pais } = {}){
   if(app){ r.comercio = app[0]; r.tipo = app[2]; }
   return r;
 }
+// ---- El tipo, predicho (lo pidió el usuario el 15/11) ----
+// Lo que la persona ya cargó con ese mismo concepto manda (si a sus «Cena con directores» les pone
+// «Reunión», eso). Después, las palabras del concepto o del título: la que aparece primero («Taxi al
+// hotel» es transporte; «Almuerzo de reunión», comida) y las apps de viaje. Al final, la primera palabra
+// del concepto en lo que ya cargó («Fotocopiadora Gómez» como su «Fotocopiadora del barrio»). Puras:
+// las prueba lector_texto_test.mjs.
+const normalTexto = s => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+const PALABRAS_VACIAS = new Set(["el", "la", "los", "las", "de", "del", "a", "al", "en", "con", "para", "por", "un", "una", "y", "x", "the", "to", "from", "and"]);
+const primeraPalabra = s => normalTexto(s).split(" ").find(w => w.length >= 3 && !PALABRAS_VACIAS.has(w) && !/^\d+$/.test(w)) || "";
+function tipoPorPalabras(texto){
+  const app = APPS_EN_TEXTO.find(([, re]) => re.test(texto));
+  if(app) return app[2];
+  let mejor = null;
+  for(const [tipo, re] of TIPOS_EN_TEXTO){
+    const m = re.exec(texto);
+    if(m && (!mejor || m.index < mejor.i)) mejor = { tipo, i: m.index };
+  }
+  if(mejor) return mejor.tipo;
+  // «Reunión» solo si no hay otra cosa: un almuerzo de reunión se rinde como comida (así lo hace la skill del usuario).
+  return /(?<!\p{L})(?:reuni[oó]n|meeting)(?!\p{L})/iu.test(texto) ? "reunion" : null;
+}
+function predecirTipo(concepto, historia){
+  const c = normalTexto(concepto);
+  if(!c) return null;
+  const exactos = new Map(), porPalabra = new Map();
+  const sumar = (m, k, tipo) => { const x = m.get(k) || {}; x[tipo] = (x[tipo] || 0) + 1; m.set(k, x); };
+  for(const h of historia || []){
+    if(!h || !h.tipo || !normalTexto(h.concepto)) continue;
+    sumar(exactos, normalTexto(h.concepto), h.tipo);
+    const w = primeraPalabra(h.concepto); if(w) sumar(porPalabra, w, h.tipo);
+  }
+  const masVotado = x => x ? Object.entries(x).sort((a, b) => b[1] - a[1])[0][0] : null;
+  return masVotado(exactos.get(c)) || tipoPorPalabras(concepto) || masVotado(porPalabra.get(primeraPalabra(concepto)));
+}
 // Un PDF escaneado (CamScanner, el escáner del celular) guarda cada página
 // como una foto JPEG adentro: se saca la más grande, para leerla como foto.
 // Un PDF con texto de verdad (una factura electrónica) se lee con textoDelPdf.
@@ -25184,6 +25229,14 @@ async function fotoMasChica(imagen, lado = 900){
   const img = await new Promise((ok, mal) => { const x = new Image(); x.onload = () => ok(x); x.onerror = () => mal(new Error("Imagen inválida")); x.src = du; });
   return Math.max(img.width, img.height) <= lado * 1.1 ? null : achicarDataUrl(du, lado, 0.9);
 }
+// El tipo que sugiere un concepto, con lo que la persona ya cargó (confirmado o más) como historia.
+function tipoDeConcepto(concepto){
+  const mio = miCorreo();
+  const historia = gastosDatos ? gastosDatos.gastos.filter(g => g.autor === mio && g.tipo && ["confirmado", "enviado", "aprobado"].includes(g.estado))
+    .map(g => ({ concepto: g.concepto, tipo: g.tipo })) : [];
+  const tp = predecirTipo(concepto, historia);
+  return tp && gastoTipos().some(x => x.key === tp && !x.oculto) ? tp : null;
+}
 // El país de la actividad del gasto: dice qué moneda es un «$» solo.
 function paisDeGasto(g){
   const r = g && g.rendicionId && rendicionPorId(g.rendicionId);
@@ -25212,7 +25265,10 @@ function sugerenciasDelLector(d, s){
   if(!d.formaPago && s.formaPago) p.formaPago = s.formaPago;
   if(!d.tarjeta && s.tarjeta && (p.formaPago || d.formaPago) === "tarjeta") p.tarjeta = s.tarjeta;
   if(!String(d.concepto || "").trim() && s.comercio) p.concepto = s.comercio.slice(0, 140);
-  if(!d.tipo && s.tipo && gastoTipos().some(x => x.key === s.tipo && !x.oculto)) p.tipo = s.tipo;
+  if(!d.tipo){
+    const tp = tipoDeConcepto(p.concepto || d.concepto) || (s.tipo && gastoTipos().some(x => x.key === s.tipo && !x.oculto) ? s.tipo : null);
+    if(tp) p.tipo = tp;
+  }
   return p;
 }
 function lecturaDelLector(anterior, campos, dudas, confianza){
@@ -25336,8 +25392,10 @@ function elegirComprobantes(destino){
 async function subirComprobantes(files, destino){
   if(gastosSubida && gastosSubida.corriendo) return;
   // Elegido el viaje o el mes en «¿De qué son…?»: su rendición (se abre si no existe), y se va a verla.
+  let abiertaRecien = null;
   if(destino && typeof destino === "object"){
-    try{ destino = await rendicionPara(destino.vinculo); }
+    const yaEstaba = !!rendicionDeVinculo(destino.vinculo);
+    try{ destino = await rendicionPara(destino.vinculo); if(!yaEstaba) abiertaRecien = destino; }
     catch(err){
       console.error("No se pudo abrir la rendición para subir:", err);
       appAlert(t("No se pudo abrir esa rendición: {m}","Couldn't open that report: {m}","Não foi possível abrir essa prestação: {m}","לא ניתן היה לפתוח את הדוח: {m}",{ m: detalleDeError(err) }));
@@ -25369,9 +25427,11 @@ async function subirComprobantes(files, destino){
       }
       else dataUrl = await achicarDataUrl(dataUrl, LIMITES_DE_LA_BASE.ladoMaximo, LIMITES_DE_LA_BASE.calidadImagen);
       const sug = sugerirDeNombre(f.name);
+      const tipo = sug.concepto ? tipoDeConcepto(sug.concepto) : null;
+      if(tipo && sug.lectura) sug.lectura.campos.push("tipo");
       let id;
       try{
-        id = await store.gastos.crear({ rendicionId: destino || null, estado: "borrador", fecha: sug.fecha, concepto: sug.concepto,
+        id = await store.gastos.crear({ rendicionId: destino || null, estado: "borrador", fecha: sug.fecha, concepto: sug.concepto, tipo,
           moneda: "USD", rendidoMoneda: "USD", pago: "persona", archivoNombre: String(f.name).slice(0, 200),
           archivoTipo: esPdf ? "application/pdf" : "image/jpeg", archivoHash: hash, lectura: sug.lectura });
       }catch(err){
@@ -25390,6 +25450,10 @@ async function subirComprobantes(files, destino){
     render();
   }
   s.corriendo = false;
+  if(abiertaRecien && !s.hechos && rendicionVacia(rendicionPorId(abiertaRecien))){
+    try{ await store.gastos.borrarRendicion(abiertaRecien); if(gastosAbierta === abiertaRecien) gastosAbierta = null; }
+    catch(err){ console.warn("No se pudo borrar la rendición que quedó vacía:", err); }
+  }
   render();
 }
 function renderEstadoDelLector(){
@@ -25502,7 +25566,9 @@ function renderTarjetaRendicion(r, conPersona){
     faltan ? `<span class="gx-aviso">${esc(faltan === 1 ? t("1 por confirmar","1 to confirm","1 por confirmar","1 לאישור") : t("{n} por confirmar","{n} to confirm","{n} por confirmar","{n} לאישור",{ n: faltan }))}</span>` : "",
     obs ? `<span class="gx-aviso gx-aviso-mal">${esc(obs === 1 ? t("1 observado","1 flagged","1 com observação","1 עם הערה") : t("{n} observados","{n} flagged","{n} com observação","{n} עם הערות",{ n: obs }))}</span>` : "",
   ].join("");
-  return `<button type="button" class="gx-tarjeta" data-action="gastos-abrir-rendicion" data-id="${esc(r.id)}">
+  // Vacía (quedó de elegir una actividad o de una subida): se puede borrar (lo pidió el usuario el 15/11).
+  const vacia = rendicionVacia(r);
+  const boton = `<button type="button" class="gx-tarjeta" data-action="gastos-abrir-rendicion" data-id="${esc(r.id)}">
       <span class="gx-t-ico" aria-hidden="true">${iconoDeRendicion(r)}</span>
       <span class="gx-t-txt">
         <b>${esc(tituloRendicion(r))}</b>
@@ -25512,6 +25578,25 @@ function renderTarjetaRendicion(r, conPersona){
       </span>
       <span class="gx-t-der">${gxChip(estadoDeRendicion(r.estado))}${total ? `<span class="gx-t-total">${esc(total)}</span>` : ""}</span>
     </button>`;
+  return vacia ? `<div class="gx-tarjeta-env">${boton}<button type="button" class="gx-t-quitar" data-action="gastos-rendicion-quitar" data-id="${esc(r.id)}" title="${esc(t("Borrar","Delete","Apagar","מחיקה"))}"
+      aria-label="${esc(t("Borrar la rendición vacía «{n}»","Delete the empty report “{n}”","Apagar a prestação vazia «{n}»","מחיקת הדוח הריק «{n}»",{ n: tituloRendicion(r) }))}">✕</button></div>` : boton;
+}
+const rendicionVacia = r => !!r && r.autor === miCorreo() && r.estado === "abierta" && !gastosDe(r.id).length && !Object.keys(r.totalManual || {}).length;
+async function quitarRendicion(id){
+  const r = rendicionPorId(id);
+  if(!rendicionVacia(r)) return;
+  if(!await appConfirm(t("¿Borrar la rendición vacía «{n}»? Si después subís un comprobante de ahí, se crea de nuevo.","Delete the empty report “{n}”? If you upload a receipt for it later, it's created again.","Apagar a prestação vazia «{n}»? Se depois você enviar um comprovante dela, é criada de novo.","למחוק את הדוח הריק «{n}»? אם תעלו אחר כך קבלה שלו, הוא ייווצר מחדש.",{ n: tituloRendicion(r) }), { okLabel: t("Borrar","Delete","Apagar","מחיקה") })) return;
+  const tarjetas = [...document.querySelectorAll('.gastos-view [data-action="gastos-abrir-rendicion"]')].map(x => x.dataset.id);
+  const siguiente = tarjetas[tarjetas.indexOf(id) + 1] || tarjetas[tarjetas.indexOf(id) - 1] || null;
+  try{ await store.gastos.borrarRendicion(id); }
+  catch(err){
+    console.error("No se pudo borrar la rendición:", err);
+    appAlert(t("No se pudo borrar: {m}","Couldn't delete it: {m}","Não foi possível apagar: {m}","המחיקה נכשלה: {m}",{ m: detalleDeError(err) }));
+    return;
+  }
+  render();
+  const x = (siguiente && document.querySelector(`[data-action="gastos-abrir-rendicion"][data-id="${CSS.escape(siguiente)}"]`)) || document.querySelector('[data-action="gastos-destino-abrir"]');
+  if(x) x.focus();
 }
 // Antes de elegir los archivos: de qué viaje o mes son. Así quedan juntos en su rendición y el
 // lector sabe en qué moneda leer un «$» (lo decidió el usuario el 15/11).
@@ -25578,7 +25663,7 @@ function renderFilaGasto(g){
       <span class="gx-f-txt">
         <b>${g.concepto ? esc(g.concepto) : `<i>${t("Sin concepto","No description","Sem conceito","ללא תיאור")}</i>`}</b>
         <small>${[g.fecha ? esc(fmtDate(g.fecha)) : esc(t("Sin fecha","No date","Sem data","ללא תאריך")), g.tipo ? esc(nombreTipoGasto(g.tipo)) : "",
-          g.pago === "organizacion" ? esc(t("pagó la organización","paid by the organization","pagou a organização","שולם ע״י הארגון")) : ""].filter(Boolean).join(" · ")}</small>
+          g.pago === "organizacion" ? esc(t("pagó: Organización","paid by: Organization","pagou: Organização","שילם/ה: הארגון")) : ""].filter(Boolean).join(" · ")}</small>
       </span>
       <span class="gx-f-der">
         <b>${esc(local || (r ? fmtMonto(r.moneda, r.monto) : t("Sin monto","No amount","Sem valor","ללא סכום")))}</b>
@@ -25735,7 +25820,7 @@ function renderListaDeGastos(rid){
           ${campo("tipo", t("Tipo","Type","Tipo","סוג"), `<select id="gxL_${esc(id)}_tipo" data-glista="${esc(id)}:tipo"${at("tipo")}><option value="">${esc(t("Elegí…","Pick…","Escolha…","בחרו…"))}</option>${tipos.concat(d.tipo && !tipos.some(x => x.key === d.tipo) ? [{ key: d.tipo, label: nombreTipoGasto(d.tipo) }] : []).map(x => `<option value="${esc(x.key)}"${x.key === d.tipo ? " selected" : ""}>${esc(x.label)}</option>`).join("")}</select>`)}
           ${campo("monto", t("Monto","Amount","Valor","סכום"), `<input type="number" step="0.01" inputmode="decimal" id="gxL_${esc(id)}_monto" data-glista="${esc(id)}:monto" value="${esc(d.monto)}"${at("monto")}>`)}
           ${campo("moneda", t("Moneda","Currency","Moeda","מטבע"), `<input type="text" class="gx-moneda" list="gxMonedas" maxlength="3" id="gxL_${esc(id)}_moneda" data-glista="${esc(id)}:moneda" value="${esc(d.moneda)}"${at("moneda")}>`)}
-          ${campo("pago", t("Pagó","Paid by","Pagou","שילם/ה"), `<select id="gxL_${esc(id)}_pago" data-glista="${esc(id)}:pago"><option value="persona"${d.pago === "persona" ? " selected" : ""}>${esc(t("Yo","Me","Eu","אני"))}</option><option value="organizacion"${d.pago === "organizacion" ? " selected" : ""}>${esc(t("La organización","The organization","A organização","הארגון"))}</option></select>`)}
+          ${campo("pago", t("Quién pagó","Who paid","Quem pagou","מי שילם/ה"), `<select id="gxL_${esc(id)}_pago" data-glista="${esc(id)}:pago"><option value="persona"${d.pago === "persona" ? " selected" : ""}>${esc(t("Yo","Me","Eu","אני"))}</option><option value="organizacion"${d.pago === "organizacion" ? " selected" : ""}>${esc(t("Organización","Organization","Organização","הארגון"))}</option></select>`)}
           ${otraMoneda ? campo("rendidoMonto", t("En {m}","In {m}","Em {m}","ב-{m}",{ m: esc(d.rendidoMoneda) }), `<input type="number" step="0.01" inputmode="decimal" id="gxL_${esc(id)}_rendidoMonto" data-glista="${esc(id)}:rendidoMonto" value="${esc(d.rendidoMonto)}">`, "usd") : ""}
         </div>
         ${campo("obs", t("Observaciones","Notes","Observações","הערות"), `<input type="text" id="gxL_${esc(id)}_observaciones" maxlength="500" data-glista="${esc(id)}:observaciones" value="${esc(d.observaciones)}" placeholder="${esc(t("Opcional: con quién, para qué, una aclaración…","Optional: with whom, what for, a clarification…","Opcional: com quem, para quê, um esclarecimento…","לא חובה: עם מי, בשביל מה, הבהרה…"))}">`)}
@@ -26192,9 +26277,9 @@ function renderGasto(){
           ${campo(t("Moneda","Currency","Moeda","מטבע"), `<input type="text" id="gxMoneda" class="gx-moneda" list="gxMonedas" maxlength="3" data-gcampo="moneda" value="${esc(d.moneda)}"${mal("moneda")}${marca("moneda")}${dis}>`)}
           ${otraMoneda ? campo(t("Monto en {m}","Amount in {m}","Valor em {m}","סכום ב-{m}",{ m: esc(d.rendidoMoneda) }), `<input type="number" id="gxRendido" step="0.01" inputmode="decimal" data-gcampo="rendidoMonto" value="${esc(d.rendidoMonto)}"${dis}><small class="gx-pista">${t("Lo que te cobró el banco.","What your bank charged you.","O que o banco te cobrou.","מה שהבנק חייב אתכם.")}</small>`)
             + campo(t("Se rinde en","Reported in","Presta-se em","מדווח ב"), `<input type="text" id="gxRendidoMoneda" class="gx-moneda" list="gxMonedas" maxlength="3" data-gcampo="rendidoMoneda" value="${esc(d.rendidoMoneda)}"${mal("rendidoMoneda")}${dis}>`) : ""}
-          <fieldset class="gx-campo gx-ancho gx-pago"${dis}><legend class="gx-et">${t("¿Quién puso la plata?","Who paid?","Quem pagou?","מי שילם?")}</legend>
+          <fieldset class="gx-campo gx-ancho gx-pago"${dis}><legend class="gx-et">${t("¿Quién pagó?","Who paid?","Quem pagou?","מי שילם?")}</legend>
             <label><input type="radio" name="gxPago" id="gxPagoPersona" data-gcampo="pago" value="persona"${d.pago === "persona" ? " checked" : ""}> ${t("Yo (de mi bolsillo o de un adelanto)","Me (out of pocket or from an advance)","Eu (do meu bolso ou de um adiantamento)","אני (מהכיס או ממקדמה)")}</label>
-            <label><input type="radio" name="gxPago" id="gxPagoOrg" data-gcampo="pago" value="organizacion"${d.pago === "organizacion" ? " checked" : ""}> ${t("La organización (su tarjeta o su cuenta)","The organization (its card or account)","A organização (o cartão ou a conta dela)","הארגון (הכרטיס או החשבון שלו)")}</label>
+            <label><input type="radio" name="gxPago" id="gxPagoOrg" data-gcampo="pago" value="organizacion"${d.pago === "organizacion" ? " checked" : ""}> ${t("Organización (su tarjeta o su cuenta)","Organization (its card or account)","Organização (o cartão ou a conta dela)","הארגון (הכרטיס או החשבון שלו)")}</label>
           </fieldset>
           ${campo(t("Forma de pago","Payment method","Forma de pagamento","אמצעי תשלום"), `<select id="gxForma" data-gcampo="formaPago"${marca("formaPago")}${dis}>
             <option value="">—</option>
@@ -26307,6 +26392,15 @@ function gastoAlEscribir(el, alCambiar){
   if(k === "tarjeta") v = String(v).replace(/\D/g, "").slice(0, 4);
   e.d[k] = v;
   if(e.faltan.includes(k)) e.faltan = e.faltan.filter(x => x !== k);
+  if(k === "tipo") e.tipoAuto = false;
+  if(k === "concepto" && (!e.d.tipo || e.tipoAuto)){
+    const tp = tipoDeConcepto(v) || "", sel = document.getElementById("gxTipo");
+    if(tp !== e.d.tipo){
+      e.d.tipo = tp; e.tipoAuto = !!tp;
+      if(tp) e.faltan = e.faltan.filter(x => x !== "tipo");
+      if(sel){ sel.value = tp; if(tp){ sel.setAttribute("data-sug", "1"); sel.removeAttribute("aria-invalid"); } else sel.removeAttribute("data-sug"); }
+    }
+  }
   if(alCambiar){ el.removeAttribute("data-sug"); el.removeAttribute("data-duda"); }
   if(alCambiar && ["moneda", "rendidoMoneda", "formaPago"].includes(k)) renderGasto();
   return true;
@@ -26404,6 +26498,7 @@ async function prenderGastos(prendido){
 const GASTOS_ACCIONES = {
   "gastos-seccion": async el => { if(!await soltarLista()) return; gastosSeccion = el.dataset.key; gastosAbierta = null; gastosTotal = null; gastosLista = null; gastosListaAviso = ""; render(); scrollToTop(); },
   "gastos-subir": async el => { elegirComprobantes(el.dataset.id || (gastosAbierta && gastosAbierta !== "sin" ? gastosAbierta : null)); },
+  "gastos-rendicion-quitar": async el => quitarRendicion(el.dataset.id),
   "gastos-destino-abrir": async () => { gastosDestino = { vinculo: "-" }; render(); const x = document.getElementById("gxDestino"); if(x) x.focus(); },
   "gastos-destino-cancelar": async () => { gastosDestino = null; render(); const x = document.querySelector('[data-action="gastos-destino-abrir"]'); if(x) x.focus(); },
   // El selector de archivos se abre en el mismo toque (si no, el navegador lo frena); la rendición se abre al subir.
@@ -26491,6 +26586,15 @@ function gastosAlEscribir(el, evento){
     if(campo === "moneda" && evento === "change") v = String(v).trim().toUpperCase().slice(0, 3);
     const antes = f.d[campo];
     f.d[campo] = v; f.tocado = true; f.faltan = f.faltan.filter(x => x !== campo); f.dudas = (f.dudas || []).filter(x => x !== campo);
+    if(campo === "tipo") f.tipoAuto = false;
+    if(campo === "concepto" && (!f.d.tipo || f.tipoAuto)){
+      const tp = tipoDeConcepto(v) || "", sel = document.getElementById(`gxL_${id}_tipo`);
+      if(tp !== f.d.tipo){
+        f.d.tipo = tp; f.tipoAuto = !!tp;
+        if(tp) f.faltan = f.faltan.filter(x => x !== "tipo");
+        if(sel){ sel.value = tp; if(tp){ sel.setAttribute("data-sug", "1"); sel.removeAttribute("aria-invalid"); } else sel.removeAttribute("data-sug"); }
+      }
+    }
     el.removeAttribute("data-sug"); el.removeAttribute("data-duda"); el.removeAttribute("aria-invalid");
     // Con todo completo se marca sola (si la persona no la tocó). No se vuelve a dibujar la
     // lista mientras se escribe ni al pasar de un campo a otro (en el celular cerraría el

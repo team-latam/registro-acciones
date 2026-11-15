@@ -149,11 +149,16 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   eq("la ventana: accesible, con el foco en la fecha y los datos sugeridos a la vista", await p.evaluate(() => [document.querySelector("#gastoOverlay .modal").getAttribute("role"),
     document.querySelector("#gastoOverlay .modal").getAttribute("aria-modal"), document.activeElement.id, document.getElementById("gxFecha").value, document.getElementById("gxConcepto").value,
     !!document.querySelector(".gx-sugerido")]), ["dialog", "true", "gxFecha", "2026-11-15", "Taxi al aeropuerto", true]);
+  eq("el tipo vino sugerido por el título del archivo («Taxi al aeropuerto»: transporte), marcado para revisar",
+    await p.evaluate(() => [document.getElementById("gxTipo").value, document.getElementById("gxTipo").dataset.sug]), ["transporte", "1"]);
+  await p.selectOption("#gxTipo", "");
   await p.click('[data-action="gasto-guardar"][data-confirmar="1"]');
   eq("confirmar sin tipo ni monto: lo dice, marca los dos campos y lleva el foco al primero", await p.evaluate(() => [document.querySelector("#gastoBody .form-error").textContent.trim(),
     document.getElementById("gxTipo").getAttribute("aria-invalid"), document.getElementById("gxMonto").getAttribute("aria-invalid"), document.activeElement.id]),
     ["Para confirmarlo falta el tipo, el monto.", "true", "true", "gxTipo"]);
   eq("y no escribe nada", (await tabla(p, "gastos")).find(g => g.id === foto.id).estado, "borrador");
+  await p.fill("#gxConcepto", "Taxi al aeropuerto de Lima");
+  eq("con el tipo vacío, escribir el concepto lo vuelve a sugerir", await p.evaluate(() => [document.getElementById("gxTipo").value, document.getElementById("gxTipo").dataset.sug]), ["transporte", "1"]);
   await p.selectOption("#gxTipo", "transporte");
   await p.fill("#gxMonto", "12.5");
   await p.fill("#gxMoneda", "ars"); await p.press("#gxMoneda", "Tab");
@@ -311,6 +316,33 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   await p.close();
 }
 
+/* ---------------- Una rendición vacía se borra (lo pidió el usuario el 15/11) ---------------- */
+{
+  const base = datos({ prendido: true });
+  base.gastos_rendiciones.push({ ...base.gastos_rendiciones.find(r => r.id === "ren_mvd"), id: "ren_vacia", post_id: "p1", titulo: "Viaje sin gastos" });
+  const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: vp, base });
+  await irGastos(p);
+  eq("una rendición propia, abierta y vacía tiene su ✕; una con gastos, no", await p.evaluate(() => [!!document.querySelector('[data-action="gastos-rendicion-quitar"][data-id="ren_vacia"]'),
+    !!document.querySelector('[data-action="gastos-rendicion-quitar"][data-id="ren_mvd"]')]), [true, false]);
+  const titulo = await p.$eval('[data-action="gastos-abrir-rendicion"][data-id="ren_vacia"] .gx-t-txt b', e => e.textContent);
+  await p.click('[data-action="gastos-rendicion-quitar"][data-id="ren_vacia"]');
+  await p.waitForSelector("#confirmOverlay:not([hidden])");
+  eq("pregunta antes, con el nombre", await p.$eval("#confirmMessage", (e, t0) => e.textContent.includes(`¿Borrar la rendición vacía «${t0}»?`), titulo), true);
+  await p.click("#confirmOk");
+  eq("…la borra, y el foco no se pierde", await hasta(p, () => !window.__sb.tablas.gastos_rendiciones.some(r => r.id === "ren_vacia")
+    && !document.querySelector('[data-id="ren_vacia"]') && !!document.activeElement.closest(".gastos-view")), true);
+  // Una subida a un mes sin rendición que no deja ningún comprobante: la rendición que se abrió no queda vacía.
+  const antes = (await tabla(p, "gastos_rendiciones")).length;
+  await p.click('[data-action="gastos-destino-abrir"]');
+  const mes = await p.$eval("#gxDestino", s => ([...s.options].find(o => o.value.startsWith("mes:") && !o.disabled) || {}).value);
+  await p.selectOption("#gxDestino", mes);
+  await elegir(p, '[data-action="gastos-destino-elegir"]', [{ name: "notas.txt", mimeType: "text/plain", buffer: Buffer.from("hola") }]);
+  eq("una subida que no dejó ningún comprobante no deja una rendición vacía, y vuelve a la lista", await hasta(p, n => window.__sb.tablas.gastos_rendiciones.length === n
+    && /no es una foto ni un PDF/.test((document.querySelector(".gx-subida") || {}).textContent || "") && !!document.querySelector('[data-action="gastos-destino-abrir"]'), antes), true);
+  eq("sin errores de página", errores, []);
+  await p.close();
+}
+
 /* ---------------- Un PDF con texto de verdad se lee sin el lector de fotos ---------------- */
 // Como el recibo de Uber que trajo el usuario el 15/11 (inventado): el texto está adentro del PDF,
 // así que se lee directo, aun desde un archivo local, donde el lector de fotos no corre.
@@ -354,7 +386,7 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
     document.querySelectorAll(".gx-lfila .gx-lcuerpo").length, [...document.querySelectorAll(".gx-lresumen")].every(e => e.getAttribute("aria-expanded") === "false")]), ["lista", 0, true]);
   eq("la casilla va sin la palabra (se entiende), con su nombre para los lectores de pantalla", await p.evaluate(a => [document.getElementById(`gxL_${a}_marca`).closest("label").textContent.trim(),
     document.getElementById(`gxL_${a}_marca`).getAttribute("aria-label")], a), ["", "Confirmar «Almuerzo»"]);
-  eq("la fila chica dice qué es, cuánto y qué le falta", await p.$eval(`#gxLR_${a}`, e => e.innerText.replace(/\s+/g, " ").trim()), "Almuerzo 12 de nov de 2026 Sin monto Falta: tipo, monto");
+  eq("la fila chica dice qué es, cuánto y qué le falta", await p.$eval(`#gxLR_${a}`, e => e.innerText.replace(/\s+/g, " ").trim()), "Almuerzo 12 de nov de 2026 · Comida Sin monto Falta: monto");
   await p.click(`#gxLR_${a}`);
   eq("tocarla la despliega, con el comprobante y los campos, y el foco sigue ahí", await p.evaluate(a => [document.getElementById(`gxLR_${a}`).getAttribute("aria-expanded"),
     !!document.querySelector(`#gxLB_${a} .gx-lfoto`), !!document.getElementById(`gxL_${a}_monto`), document.activeElement.id], a), ["true", true, true, `gxLR_${a}`]);
@@ -375,7 +407,9 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   eq("…y lo escrito sigue ahí", await p.$eval(`#gxL_${a}_monto`, e => e.value), "20");
   eq("la vista elegida queda guardada en este navegador", await p.evaluate(() => localStorage.getItem("ra_gastos_vista")), "foto");
   // La factura, en pesos: aparece el monto en dólares.
-  await p.fill(`#gxL_${f}_fecha`, "2026-11-10"); await p.fill(`#gxL_${f}_concepto`, "Fotocopias"); await p.selectOption(`#gxL_${f}_tipo`, "material");
+  await p.fill(`#gxL_${f}_fecha`, "2026-11-10"); await p.fill(`#gxL_${f}_concepto`, "Fotocopias");
+  eq("en la lista, escribir el concepto sugiere el tipo", await p.$eval(`#gxL_${f}_tipo`, e => [e.value, e.dataset.sug]), ["material", "1"]);
+  await p.selectOption(`#gxL_${f}_tipo`, "material");
   await p.fill(`#gxL_${f}_monto`, "3000"); await p.fill(`#gxL_${f}_moneda`, "ars"); await p.press(`#gxL_${f}_moneda`, "Tab"); await p.waitForTimeout(100);
   eq("en otra moneda aparece «En USD», con la moneda en mayúsculas", await p.evaluate(f => [document.getElementById(`gxL_${f}_moneda`).value, !!document.getElementById(`gxL_${f}_rendidoMonto`)], f), ["ARS", true]);
   await p.fill(`#gxL_${f}_rendidoMonto`, "3");
@@ -467,7 +501,7 @@ for(const lang of ["en", "pt", "he"]){
   await p.click('[data-action="gastos-abrir-rendicion"][data-id="ren_mvd"]'); await p.waitForTimeout(150);
   eq(`${lang}: la flecha de volver apunta hacia atrás`, await p.$eval(".gx-volver", e => e.textContent.trim()[0]), lang === "he" ? "→" : "←");
   await p.click('[data-action="gasto-abrir"][data-id="gx2"]'); await p.waitForSelector("#gastoOverlay:not([hidden])");
-  eq(`${lang}: la ventana de un gasto también`, /Revisar el gasto|Concepto|Quién puso la plata|Forma de pago|Va en/.test(await p.$eval("#gastoBody", e => e.innerText)), false);
+  eq(`${lang}: la ventana de un gasto también`, /Revisar el gasto|Concepto|Quién pagó|Forma de pago|Va en/.test(await p.$eval("#gastoBody", e => e.innerText)), false);
   await p.keyboard.press("Escape");
   for(const k of ["cuenta", "aprobar"]){ await p.click(`[data-action="gastos-seccion"][data-key="${k}"]`); await p.waitForTimeout(120); }
   eq(`${lang}: sin errores de página`, errores, []);
