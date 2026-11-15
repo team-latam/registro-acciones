@@ -892,16 +892,15 @@
   .gx-lcabeza{ margin:0 0 10px; }
   .gx-lcabeza .setting-sub{ margin:0; max-width:75ch; }
   .gx-lbarra{ display:flex; align-items:flex-end; justify-content:space-between; gap:10px 20px; flex-wrap:wrap; padding:10px 0; margin:0 0 12px; border-block:1px solid var(--border); }
-  .gx-lacc{ display:flex; align-items:center; gap:18px; min-height:40px; }
   /* Dos vistas: «Lista» (filas chicas que se despliegan) y «Con foto» (todas abiertas, el comprobante mediano). */
   .gx-lvista{ display:inline-flex; padding:3px; border-radius:999px; background:var(--surface-alt); border:1px solid var(--border); }
   .gx-lvista button{ border:none; background:none; padding:6px 14px; border-radius:999px; font:inherit; font-size:13px; font-weight:700; color:var(--text-muted); cursor:pointer; min-height:32px; }
   .gx-lvista button[aria-pressed="true"]{ background:var(--card); color:var(--ink); box-shadow:0 1px 3px rgba(8,42,44,.14); }
   .gx-lfila{ border:1px solid var(--border); border-radius:var(--radius-md); background:var(--card); margin-bottom:8px; }
   .gx-lfila.gx-marcada{ border-color:var(--celeste-dark, var(--celeste)); background:var(--celeste-soft, var(--card)); }
-  .gx-lcuerpo{ display:grid; grid-template-columns:184px minmax(0, 1fr); gap:16px; padding:4px 12px 12px; }
+  .gx-lcuerpo{ display:grid; grid-template-columns:184px minmax(0, 1fr); gap:16px; padding:4px 12px 14px 46px; }
   .gx-v-foto .gx-lcuerpo{ grid-template-columns:132px minmax(0, 1fr); }
-  .gx-lcampos-env{ min-width:0; display:flex; flex-direction:column; gap:10px; container-type:inline-size; }
+  .gx-lcampos-env{ min-width:0; display:grid; grid-template-columns:minmax(0, 1fr); gap:10px; align-content:start; container-type:inline-size; }
   .gx-lmas{ display:flex; justify-content:flex-end; }
   .gx-lresumen{ flex:1 1 auto; min-width:0; display:flex; align-items:center; gap:12px; padding:6px 8px; border:none; border-radius:var(--radius-sm); background:none;
     font:inherit; color:var(--ink); text-align:start; cursor:pointer; }
@@ -937,10 +936,16 @@
   .gx-destino{ padding:14px 16px; margin-bottom:14px; }
   .gx-destino .setting-sub{ margin:4px 0 10px; }
   .gx-destino .gx-campo{ max-width:520px; }
-  .gx-lcab{ display:flex; align-items:center; gap:10px; min-height:52px; padding:6px 6px 6px 14px; }
-  .gx-v-foto .gx-lcab{ padding:8px 12px 4px 14px; min-height:44px; }
-  .gx-lmarca{ display:flex; align-items:center; gap:6px; font-size:13.5px; font-weight:700; cursor:pointer; }
-  .gx-lmarca input{ width:18px; height:18px; margin:0; }
+  /* La casilla, en su columna a la izquierda (sin la palabra: se entiende); lo abierto queda debajo, alineado
+     con el resumen (lo pidió el usuario el 15/11). «Marcar todos», arriba, en la misma columna. */
+  .gx-lcab{ display:flex; align-items:center; gap:4px; min-height:60px; padding:6px 6px 6px 0; }
+  .gx-lmarca{ flex:none; display:flex; align-items:center; justify-content:center; width:46px; align-self:stretch; cursor:pointer; }
+  .gx-lmarca input, .gx-ltodos input{ width:20px; height:20px; margin:0; accent-color:var(--celeste-dark, var(--celeste)); cursor:pointer; }
+  .gx-ltodos{ display:flex; align-items:center; gap:13px; padding-inline-start:14px; font-size:13.5px; font-weight:700; color:var(--ink); cursor:pointer; min-height:40px; }
+  .gx-lresumen-fijo{ cursor:default; padding-inline-start:0; }
+  .gx-lresumen-fijo:hover{ background:none; }
+  .gx-lr-obs{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-style:italic; }
+  .gx-l-obs{ grid-column:1 / -1; }
   /* Cuatro columnas iguales: fecha · concepto (dos) · tipo, y abajo monto · moneda · quién pagó · en dólares. */
   .gx-lcampos{ display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:10px 12px; }
   .gx-l-concepto{ grid-column:span 2; }
@@ -958,8 +963,9 @@
     .gx-lcuerpo, .gx-v-foto .gx-lcuerpo{ grid-template-columns:minmax(0, 1fr); }
     .gx-lfoto{ min-height:240px; }
     .gx-v-foto .gx-lfoto{ min-height:170px; }
-    .gx-lcab{ padding-inline-start:10px; gap:6px; }
-    .gx-v-lista .gx-lmarca-txt{ position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+    .gx-lmarca{ width:40px; }
+    .gx-ltodos{ padding-inline-start:11px; gap:10px; }
+    .gx-lcuerpo{ padding-inline-start:12px; }
     /* En el celular, la fila chica en dos renglones: qué es y cuándo; abajo, cuánto y qué le falta. */
     .gx-lresumen{ display:grid; grid-template-columns:44px minmax(0, 1fr); column-gap:10px; row-gap:6px; padding-inline:4px; }
     .gx-lresumen .gx-mini{ grid-row:1 / span 2; align-self:start; }
@@ -12926,6 +12932,7 @@ function doRender(){
 
   viewRoot.innerHTML = html;
   afterRenderView();
+  if(gastosLista) casillaDeTodos();
 
   // Recién acá, con la vista ya dibujada: la primera parada del
   // tutorial señala el composer de Rutina, que hasta esta línea no
@@ -25611,7 +25618,7 @@ async function quitarGasto(id){
 // guardado sin confirmar. Lo demás (tarjeta, observaciones) sigue en la ventana.
 const gastosParaLista = rid => (rid === "sin" ? misSinVincular() : gastosDe(rid)).filter(g => gastoEditable(g) && g.estado !== "confirmado");
 const borradorDeFila = g => ({ fecha: g.fecha || "", concepto: g.concepto || "", tipo: g.tipo || "", monto: g.monto ?? "", moneda: g.moneda || "USD",
-  rendidoMoneda: g.rendidoMoneda || "USD", rendidoMonto: g.rendidoMonto ?? "", pago: g.pago || "persona" });
+  rendidoMoneda: g.rendidoMoneda || "USD", rendidoMonto: g.rendidoMonto ?? "", pago: g.pago || "persona", observaciones: g.observaciones || "" });
 const filaCompleta = d => !!(d.fecha && String(d.concepto).trim() && d.tipo && String(d.monto).trim() !== "" && /^[A-Z]{3}$/.test(String(d.moneda).trim().toUpperCase()));
 const dudasDelLector = g => (g.lectura && Array.isArray(g.lectura.dudas) ? g.lectura.dudas : []).filter(k => (g.lectura.campos || []).includes(k) || k === "moneda");
 // Lo que todavía no tocó la persona se sigue actualizando (el lector puede estar leyendo).
@@ -25641,6 +25648,7 @@ const nombreDeCampoDeGasto = k => ({ fecha: t("fecha","date","data","תאריך"
   monto: t("monto","amount","valor","סכום"), moneda: t("moneda","currency","moeda","מטבע") })[k] || k;
 // La fila cerrada: la miniatura, qué es, cuánto, y si le falta algo o hay que revisar algo.
 function resumenDeFila(g, f){
+  const conFoto = !!(gastosLista && gastosLista.vista === "foto");
   const d = f.d, miniPdf = esPdfGasto(g) && esUrlFirmada(g.archivoUrl) ? store.miniaturaSiHay(g.archivoUrl) : null;
   const mini = !g.archivo ? `<span class="gx-mini gx-mini-vacia" aria-hidden="true">—</span>`
     : miniPdf ? `<img class="gx-mini" src="${esc(miniPdf)}" alt="" loading="lazy">`
@@ -25655,8 +25663,9 @@ function resumenDeFila(g, f){
     : dudas.length ? gxChip([t("Revisar: {l}","Check: {l}","Revisar: {l}","לבדוק: {l}",{ l: dudas.map(nombreDeCampoDeGasto).join(", ") }), "aviso"])
     : gxChip([t("Completo","Complete","Completo","מלא"), "bien"]);
   const sub = [d.fecha ? fmtDate(d.fecha) : "", d.tipo ? nombreTipoGasto(d.tipo) : ""].filter(Boolean).join(" · ");
-  return `${mini}<span class="gx-lr-txt"><b>${d.concepto ? esc(d.concepto) : `<i>${esc(g.archivoNombre || t("Sin concepto","No description","Sem conceito","ללא תיאור"))}</i>`}</b>${sub ? `<small>${esc(sub)}</small>` : ""}</span>
-    <span class="gx-lr-der">${monto}${estado}</span><span class="gx-lr-chev" aria-hidden="true"></span>`;
+  const obs = String(d.observaciones || "").trim();
+  return `${conFoto ? "" : mini}<span class="gx-lr-txt"><b>${d.concepto ? esc(d.concepto) : `<i>${esc(g.archivoNombre || t("Sin concepto","No description","Sem conceito","ללא תיאור"))}</i>`}</b>${sub ? `<small>${esc(sub)}</small>` : ""}${obs && !conFoto ? `<small class="gx-lr-obs">💬 ${esc(obs)}</small>` : ""}</span>
+    <span class="gx-lr-der">${monto}${estado}</span>${conFoto ? "" : `<span class="gx-lr-chev" aria-hidden="true"></span>`}`;
 }
 const vistaDeListaGuardada = () => { try{ return localStorage.getItem("ra_gastos_vista") === "foto" ? "foto" : "lista"; }catch(e){ return "lista"; } };
 const cuentaDeLista = (n, de) => t("{n} de {de} marcados","{n} of {de} checked","{n} de {de} marcados","{n} מתוך {de} מסומנים",{ n, de });
@@ -25670,7 +25679,15 @@ function marcarFilaDeLista(id, marcado){
     b.textContent = textoConfirmarLista(n);
     b.disabled = !n && !Object.values(L.filas).some(f => f.tocado);
     const c = document.getElementById("gxListaCuenta"); if(c) c.textContent = cuentaDeLista(n, gastosParaLista(L.rid).length);
+    casillaDeTodos();
   }
+}
+// «Marcar todos»: marcada si están todas, a medias si algunas (eso no se puede escribir en el HTML).
+function casillaDeTodos(){
+  const L = gastosLista, x = document.getElementById("gxListaTodos");
+  if(!L || !x) return;
+  const lista = gastosParaLista(L.rid), n = lista.filter(g => (L.filas[g.id] || {}).marcado).length;
+  x.checked = !!n && n === lista.length; x.indeterminate = n > 0 && n < lista.length;
 }
 // «Revisar en lista»: solo si hay al menos uno por confirmar.
 function botonDeLista(rid){
@@ -25700,15 +25717,13 @@ function renderListaDeGastos(rid){
       : esPdfGasto(g) ? `<button type="button" class="gx-lfoto${miniPdf ? "" : " gx-lfoto-pdf"}" data-action="gasto-ver-comprobante" data-id="${esc(id)}" aria-label="${verLo}">${miniPdf ? `<img src="${esc(miniPdf)}" alt="" loading="lazy"><span class="gx-comp-marca">PDF</span>` : `<span class="gx-pdf-ico" aria-hidden="true">PDF</span><span>${t("Abrir el PDF","Open the PDF","Abrir o PDF","פתיחת ה-PDF")}</span>`}</button>`
       : `<button type="button" class="gx-lfoto" data-action="gasto-ver-comprobante" data-id="${esc(id)}" aria-label="${verLo}"><img src="${esc(g.archivoUrl)}" alt="" loading="lazy"></button>`;
     const nombre = d.concepto || g.archivoNombre || t("este gasto","this expense","esta despesa","ההוצאה הזו");
-    const marca = `<label class="gx-lmarca"><input type="checkbox" id="gxL_${esc(id)}_marca" data-glista-marca="${esc(id)}"${f.marcado ? " checked" : ""}> <span class="gx-lmarca-txt">${t("Confirmar","Confirm","Confirmar","אישור")}</span></label>`;
-    const abrir = `<button type="button" class="gx-link" data-action="gasto-abrir" data-id="${esc(id)}">${conFoto ? t("Abrir","Open","Abrir","פתיחה") : t("Abrir el gasto completo","Open the whole expense","Abrir a despesa completa","פתיחת ההוצאה המלאה")}</button>`;
+    const marca = `<label class="gx-lmarca"><input type="checkbox" id="gxL_${esc(id)}_marca" data-glista-marca="${esc(id)}"${f.marcado ? " checked" : ""} aria-label="${esc(t("Confirmar «{c}»","Confirm “{c}”","Confirmar «{c}»","אישור «{c}»",{ c: nombre }))}"></label>`;
+    const abrir = `<button type="button" class="gx-link" data-action="gasto-abrir" data-id="${esc(id)}">${t("Abrir el gasto completo","Open the whole expense","Abrir a despesa completa","פתיחת ההוצאה המלאה")}</button>`;
     const borrarTxt = esc(t("Borrar «{c}»","Delete “{c}”","Apagar «{c}»","מחיקת «{c}»",{ c: nombre }));
-    const cab = conFoto
-      ? `<div class="gx-lcab">${marca}${g.estado === "observado" ? gxChip(estadoDeGasto("observado")) : ""}
-          <span class="gx-lcab-acc">${abrir}<button type="button" class="gx-link gx-lquitar" data-action="gastos-lista-quitar" data-id="${esc(id)}" aria-label="${borrarTxt}">${t("Borrar","Delete","Apagar","מחיקה")}</button></span></div>`
-      : `<div class="gx-lcab">${marca}
-          <button type="button" class="gx-lresumen" id="gxLR_${esc(id)}" data-action="gastos-lista-ver" data-id="${esc(id)}" aria-expanded="${abierta}" aria-controls="gxLB_${esc(id)}">${resumenDeFila(g, f)}</button>
-          <button type="button" class="gx-lquitar-ico" data-action="gastos-lista-quitar" data-id="${esc(id)}" title="${esc(t("Borrar","Delete","Apagar","מחיקה"))}" aria-label="${borrarTxt}">🗑️</button></div>`;
+    const quitar = `<button type="button" class="gx-lquitar-ico" data-action="gastos-lista-quitar" data-id="${esc(id)}" title="${esc(t("Borrar","Delete","Apagar","מחיקה"))}" aria-label="${borrarTxt}">🗑️</button>`;
+    const cab = `<div class="gx-lcab">${marca}${conFoto
+      ? `<div class="gx-lresumen gx-lresumen-fijo" id="gxLR_${esc(id)}">${resumenDeFila(g, f)}</div>`
+      : `<button type="button" class="gx-lresumen" id="gxLR_${esc(id)}" data-action="gastos-lista-ver" data-id="${esc(id)}" aria-expanded="${abierta}" aria-controls="gxLB_${esc(id)}">${resumenDeFila(g, f)}</button>`}${quitar}</div>`;
     return `<div class="gx-lfila ${conFoto ? "gx-v-foto" : "gx-v-lista"}${abierta ? " gx-abierta" : ""}${f.marcado ? " gx-marcada" : ""}" role="group" aria-label="${esc(t("Gasto {n}","Expense {n}","Despesa {n}","הוצאה {n}",{ n: i + 1 }) + (d.concepto ? ": " + d.concepto : ""))}">
         ${cab}
         ${abierta ? `<div class="gx-lcuerpo" id="gxLB_${esc(id)}">
@@ -25723,8 +25738,9 @@ function renderListaDeGastos(rid){
           ${campo("pago", t("Pagó","Paid by","Pagou","שילם/ה"), `<select id="gxL_${esc(id)}_pago" data-glista="${esc(id)}:pago"><option value="persona"${d.pago === "persona" ? " selected" : ""}>${esc(t("Yo","Me","Eu","אני"))}</option><option value="organizacion"${d.pago === "organizacion" ? " selected" : ""}>${esc(t("La organización","The organization","A organização","הארגון"))}</option></select>`)}
           ${otraMoneda ? campo("rendidoMonto", t("En {m}","In {m}","Em {m}","ב-{m}",{ m: esc(d.rendidoMoneda) }), `<input type="number" step="0.01" inputmode="decimal" id="gxL_${esc(id)}_rendidoMonto" data-glista="${esc(id)}:rendidoMonto" value="${esc(d.rendidoMonto)}">`, "usd") : ""}
         </div>
+        ${campo("obs", t("Observaciones","Notes","Observações","הערות"), `<input type="text" id="gxL_${esc(id)}_observaciones" maxlength="500" data-glista="${esc(id)}:observaciones" value="${esc(d.observaciones)}" placeholder="${esc(t("Opcional: con quién, para qué, una aclaración…","Optional: with whom, what for, a clarification…","Opcional: com quem, para quê, um esclarecimento…","לא חובה: עם מי, בשביל מה, הבהרה…"))}">`)}
         ${f.error ? `<div class="gx-lerror" role="alert">${esc(f.error)}</div>` : ""}
-        ${conFoto ? "" : `<div class="gx-lmas">${abrir}</div>`}
+        <div class="gx-lmas">${abrir}</div>
         </div>
         </div>` : ""}
       </div>`;
@@ -25734,17 +25750,14 @@ function renderListaDeGastos(rid){
       <select id="gxListaDestino">${opcionesDeVinculo({ fecha: (lista[0] || {}).fecha || null }, L.destino || "")}</select></label>` : "";
   return `<div class="gx-lista-rev">
       <div class="gx-lcabeza">
-        <p class="setting-sub">${t("Corregí lo que haga falta en cada fila, con el comprobante a la vista (tocalo para verlo grande). Vienen marcados los completos y sin dudas; lo demás (la tarjeta, las observaciones), en «Abrir».","Fix whatever is needed in each row, with the receipt in view (tap it to see it large). Complete rows with no doubts come checked; the rest (card, notes) is under “Open”.","Corrija o que for preciso em cada linha, com o comprovante à vista (toque nele para ver grande). Vêm marcados os completos e sem dúvidas; o resto (cartão, observações), em «Abrir».","תקנו מה שצריך בכל שורה, עם הקבלה מול העיניים (געו בה כדי להגדיל). שורות מלאות ובלי ספקות מגיעות מסומנות; השאר (כרטיס, הערות) ב«פתיחה».")}</p>
+        <p class="setting-sub">${t("Revisá cada gasto con su comprobante y marcá los que estén bien: se confirman juntos. Vienen marcados los completos y sin dudas. La tarjeta y la forma de pago, en «Abrir el gasto completo».","Check each expense against its receipt and tick the ones that are right: they're confirmed together. Complete ones with no doubts come ticked. Card and payment method are under “Open the whole expense”.","Revise cada despesa com o comprovante e marque as que estão certas: são confirmadas juntas. Vêm marcadas as completas e sem dúvidas. O cartão e a forma de pagamento, em «Abrir a despesa completa».","בדקו כל הוצאה מול הקבלה וסמנו את אלה שתקינות: הן מאושרות יחד. הוצאות מלאות ובלי ספקות מגיעות מסומנות. הכרטיס ואמצעי התשלום ב«פתיחת ההוצאה המלאה».")}</p>
       </div>
       ${lista.length ? `<div class="gx-lbarra">
         <div class="gx-lbarra-izq">
+        <label class="gx-ltodos"><input type="checkbox" id="gxListaTodos"${marcados && marcados === lista.length ? " checked" : ""}> ${t("Marcar todos","Check all","Marcar todos","סימון הכול")}</label>
         <div class="gx-lvista" role="group" aria-label="${esc(t("Cómo ver la lista","How to show the list","Como ver a lista","איך להציג את הרשימה"))}">
           <button type="button" data-action="gastos-lista-vista" data-vista="lista" aria-pressed="${L.vista !== "foto"}">${t("Lista","List","Lista","רשימה")}</button>
           <button type="button" data-action="gastos-lista-vista" data-vista="foto" aria-pressed="${L.vista === "foto"}">${t("Con foto","With photo","Com foto","עם תמונה")}</button>
-        </div>
-        <div class="gx-lacc">
-          <button type="button" class="gx-link" data-action="gastos-lista-todos" data-si="1">${t("Marcar todos","Check all","Marcar todos","סימון הכול")}</button>
-          <button type="button" class="gx-link" data-action="gastos-lista-todos" data-si="0">${t("Desmarcar todos","Uncheck all","Desmarcar todos","ביטול הסימון")}</button>
         </div>
         </div>
         ${lista.length > 1 ? `<div class="gx-ltodas">
@@ -25799,7 +25812,7 @@ async function guardarListaDeGastos(){
     try{
       await store.gastos.cambiar(g.id, { fecha: d.fecha || null, concepto: String(d.concepto).trim().slice(0, 140), tipo: d.tipo || null,
         moneda, monto: monto === null ? null : redondo(monto), rendidoMoneda, rendidoMonto: rendido === null ? null : redondo(rendido),
-        pago: d.pago === "organizacion" ? "organizacion" : "persona",
+        pago: d.pago === "organizacion" ? "organizacion" : "persona", observaciones: String(d.observaciones || "").trim().slice(0, 500),
         ...(f.marcado && rid ? { rendicionId: rid } : {}),
         estado: f.marcado ? "confirmado" : g.estado === "observado" ? "observado" : "borrador" });
       if(f.marcado) confirmados++; else guardados++;
@@ -26422,7 +26435,6 @@ const GASTOS_ACCIONES = {
     render();
     const x = document.getElementById(`gxLR_${id}`); if(x) x.focus();
   },
-  "gastos-lista-todos": async el => { const L = gastosLista; if(!L) return; gastosParaLista(L.rid).forEach(g => { const f = filaDeLista(g); f.marcado = el.dataset.si === "1"; f.marcadoAMano = true; }); render(); },
   "gastos-lista-guardar": async () => guardarListaDeGastos(),
   "gastos-lista-moneda": async () => {
     const L = gastosLista, x = document.getElementById("gxListaMoneda");
@@ -26486,8 +26498,10 @@ function gastosAlEscribir(el, evento){
     // mostrar (o sacar) el monto en dólares.
     if(!f.marcadoAMano) f.marcado = filaCompleta(f.d) && !f.dudas.length;
     marcarFilaDeLista(id, f.marcado);
-    const r = document.getElementById(`gxLR_${id}`), g = gastoPorId(id);
-    if(r && g) r.innerHTML = resumenDeFila(g, f);
+    // El resumen, solo si cambió: redibujarlo justo cuando se lo toca (el «change» al salir del campo)
+    // se comía el toque, y la fila no se cerraba.
+    const r = document.getElementById(`gxLR_${id}`), g = gastoPorId(id), html = g ? resumenDeFila(g, f) : "";
+    if(r && g && f.resumen !== html){ r.innerHTML = html; f.resumen = html; }
     if(evento === "change" && campo === "moneda" && antes !== v){
       const otra = v !== String(f.d.rendidoMoneda).toUpperCase();
       if(otra !== !!document.getElementById(`gxL_${id}_rendidoMonto`)) render(); else el.value = v;
@@ -26497,6 +26511,12 @@ function gastosAlEscribir(el, evento){
   if(el.dataset.glistaMarca && gastosLista){
     const f = gastosLista.filas[el.dataset.glistaMarca];
     if(f){ f.marcado = el.checked; f.marcadoAMano = true; marcarFilaDeLista(el.dataset.glistaMarca, f.marcado); }
+    return true;
+  }
+  if(el.id === "gxListaTodos" && gastosLista){
+    // Lo elegido, antes de recorrer: cada fila marcada pone al día esta misma casilla (a medias, mientras tanto).
+    const L = gastosLista, si = el.checked;
+    gastosParaLista(L.rid).forEach(g => { const f = filaDeLista(g); f.marcado = si; f.marcadoAMano = true; marcarFilaDeLista(g.id, si); });
     return true;
   }
   if(el.id === "gxListaDestino" && gastosLista){ gastosLista.destino = el.value; return true; }

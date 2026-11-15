@@ -146,7 +146,12 @@ tocan eventos, comentarios ni la Agenda); se hace por etapas chicas; Drive y el 
     revisar) que se despliega al tocarla, y **«Con foto»**, todas abiertas con el comprobante mediano; cada
     navegador recuerda la elegida— y los botones flotando abajo mientras se recorre. Revisando en lista no se ven
     el total, el total rápido ni «Mandar»: vuelven al salir. En la rendición, «Revisar en lista» y «Subir
-    comprobantes» van juntos arriba de los gastos.
+    comprobantes» van juntos arriba de los gastos. Después, también a pedido suyo: la casilla de cada fila va
+    sin la palabra «Confirmar», en su columna a la izquierda (lo abierto queda debajo, alineado), con «Marcar
+    todos» arriba en la misma columna; y cada fila tiene sus **observaciones**, como la columna de su skill
+    (se ven en el resumen de la fila cerrada). En la skill, las observaciones llevan además la tarjeta y el
+    monto en moneda local («VISA 1234. Gasto por UYU 1.250.-»): eso el sistema ya lo tiene en sus campos, así
+    que al cargar el Sheet (etapa 3) se puede armar solo, sin escribirlo a mano.
   - **El lector, con tres PDF reales del usuario** (15/11; se usaron solo en la sesión, no están en el repo):
     el de Uber y la cuenta del hotel son PDF con texto adentro, que el lector salteaba: ahora se lee ese texto
     directo (sin el lector de fotos ni bajar nada, `textoDelPdf`), y se aprendió de ellos la fecha en inglés

@@ -352,6 +352,8 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   // «Lista» (la de entrada): filas chicas, cerradas, que dicen qué es, cuánto y qué les falta (lo propuso el usuario el 15/11).
   eq("de entrada, la vista «Lista»: cada gasto en una fila chica, cerrada", await p.evaluate(() => [document.querySelector('[data-action="gastos-lista-vista"][aria-pressed="true"]').dataset.vista,
     document.querySelectorAll(".gx-lfila .gx-lcuerpo").length, [...document.querySelectorAll(".gx-lresumen")].every(e => e.getAttribute("aria-expanded") === "false")]), ["lista", 0, true]);
+  eq("la casilla va sin la palabra (se entiende), con su nombre para los lectores de pantalla", await p.evaluate(a => [document.getElementById(`gxL_${a}_marca`).closest("label").textContent.trim(),
+    document.getElementById(`gxL_${a}_marca`).getAttribute("aria-label")], a), ["", "Confirmar «Almuerzo»"]);
   eq("la fila chica dice qué es, cuánto y qué le falta", await p.$eval(`#gxLR_${a}`, e => e.innerText.replace(/\s+/g, " ").trim()), "Almuerzo 12 de nov de 2026 Sin monto Falta: tipo, monto");
   await p.click(`#gxLR_${a}`);
   eq("tocarla la despliega, con el comprobante y los campos, y el foco sigue ahí", await p.evaluate(a => [document.getElementById(`gxLR_${a}`).getAttribute("aria-expanded"),
@@ -360,7 +362,10 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   // El almuerzo: tipo y monto. Al quedar completo se marca solo, y la fila chica lo dice.
   await p.selectOption(`#gxL_${a}_tipo`, "comida"); await p.fill(`#gxL_${a}_monto`, "20"); await p.press(`#gxL_${a}_monto`, "Tab"); await p.waitForTimeout(100);
   eq("completa, la fila se marca sola", await p.$eval(`#gxL_${a}_marca`, e => e.checked), true);
-  eq("…y su resumen se pone al día mientras se escribe", await p.$eval(`#gxLR_${a}`, e => e.innerText.replace(/\s+/g, " ").trim()), "Almuerzo 12 de nov de 2026 · Comida USD 20,00 Completo");
+  eq("…y «Marcar todos» queda a medias (una de cuatro)", await p.$eval("#gxListaTodos", e => [e.checked, e.indeterminate]), [false, true]);
+  // Las observaciones, como la columna de la skill del usuario: en la fila, y se ven en el resumen.
+  await p.fill(`#gxL_${a}_observaciones`, "Con el equipo de Lima");
+  eq("…y su resumen se pone al día mientras se escribe, con las observaciones", await p.$eval(`#gxLR_${a}`, e => e.innerText.replace(/\s+/g, " ").trim()), "Almuerzo 12 de nov de 2026 · Comida 💬 Con el equipo de Lima USD 20,00 Completo");
   eq("…y la cuenta de abajo también", await p.$eval("#gxListaCuenta", e => e.textContent), "1 de 4 marcados");
   await p.click(`#gxLR_${a}`);
   eq("tocarla de nuevo la cierra, sin perder lo escrito", await p.evaluate(a => [!document.getElementById(`gxL_${a}_monto`), document.getElementById(`gxL_${a}_marca`).checked], a), [true, true]);
@@ -384,7 +389,7 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   await p.selectOption("#gxListaDestino", "post:p9");
   await p.click('[data-action="gastos-lista-guardar"]');
   eq("confirmar: los completos quedan confirmados y en la actividad elegida", await hasta(p, ([a, f]) => { const g = id => window.__sb.tablas.gastos.find(x => x.id === id);
-    return g(a).estado === "confirmado" && g(a).rendicion_id === "ren_mvd" && g(a).tipo === "comida" && g(a).monto === 20
+    return g(a).estado === "confirmado" && g(a).rendicion_id === "ren_mvd" && g(a).tipo === "comida" && g(a).monto === 20 && g(a).observaciones === "Con el equipo de Lima"
       && g(f).estado === "confirmado" && g(f).moneda === "ARS" && g(f).monto === 3000 && g(f).rendido_monto === 3 && g(f).concepto === "Fotocopias"; }, [a, f]), true);
   eq("lo editado sin marcar se guarda sin confirmar, sin moverlo", await hasta(p, () => { const g = window.__sb.tablas.gastos.find(x => x.id === "gx8"); return g.estado === "borrador" && g.concepto === "Remís" && !g.rendicion_id; }), true);
   eq("el incompleto no se confirma: queda en la lista con lo que falta", await p.evaluate(c => [window.__sb.tablas.gastos.find(x => x.id === c).estado,
@@ -408,6 +413,13 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   await p.fill("#gxListaMoneda", "brl"); await p.click('[data-action="gastos-lista-moneda"]'); await p.waitForTimeout(100);
   await p.click('[data-action="gastos-lista-vista"][data-vista="foto"]');
   eq("«La misma moneda a todos» la pone en cada fila", await p.$$eval('.gx-lfila input[data-glista$=":moneda"]', l => l.map(e => e.value)), ["BRL", "BRL"]);
+  // «Marcar todos»: una casilla en la misma columna que las de las filas.
+  await p.check("#gxListaTodos");
+  eq("«Marcar todos» marca todas", await p.evaluate(() => [[...document.querySelectorAll("[data-glista-marca]")].every(e => e.checked), document.getElementById("gxListaCuenta").textContent]), [true, "2 de 2 marcados"]);
+  await p.uncheck("#gxListaTodos");
+  eq("…y las desmarca", await p.evaluate(() => [[...document.querySelectorAll("[data-glista-marca]")].some(e => e.checked), document.getElementById("gxListaTodos").indeterminate]), [false, false]);
+  eq("está en la misma columna que las casillas de las filas", await p.evaluate(() => { const x = r => r.getBoundingClientRect(), t = x(document.getElementById("gxListaTodos")), f = x(document.querySelector("[data-glista-marca]"));
+    return Math.abs((t.left + t.right) / 2 - (f.left + f.right) / 2) <= 2; }), true);
   // Borrar desde la lista.
   await p.click(`[data-action="gastos-lista-quitar"][data-id="${c}"]`); await aceptar(p);
   eq("«Borrar» en una fila de la lista la borra (preguntando)", await hasta(p, c => !window.__sb.tablas.gastos.some(g => g.id === c) && document.querySelectorAll(".gx-lfila").length === 1, c), true);
