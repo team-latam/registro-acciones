@@ -263,6 +263,9 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   // gx1 confirmado en pesos uruguayos, sin el monto en dólares: «Mandar» avisa.
   const base = datos({ prendido: true });
   Object.assign(base.gastos.find(g => g.id === "gx1"), { estado: "confirmado", tipo: "transporte", monto: 1250, moneda: "UYU" });
+  // Un borrador con un monto mal leído: no entra en el total hasta que se confirma.
+  base.gastos.push({ ...base.gastos.find(g => g.id === "gx3"), id: "gx9", concepto: "Peaje leído mal", monto: 72570, estado: "borrador",
+    archivo: "gastos/gx9/comprobante_9.jpg", archivo_nombre: "peaje-viejo.jpg", archivo_hash: "9".repeat(64) });
   const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: vp, base });
   await irGastos(p);
   // Subir: primero «¿De qué son?».
@@ -277,13 +280,16 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
     return !!g && g.rendicion_id === "ren_mvd" && !!g.archivo && /Visita a Montevideo/.test((document.querySelector(".gx-cab .gx-h3") || {}).textContent || ""); }, antes), true);
   const nuevo = (await tabla(p, "gastos")).slice(antes)[0];
   // Los totales: solo lo confirmado.
-  eq("el total de la rendición cuenta solo lo confirmado, y dice cuántos quedan afuera", await textos(p, ".gx-total span"), ["Total confirmado (sin contar 1 por confirmar)"]);
+  eq("el total de la rendición cuenta solo lo confirmado, y dice cuántos quedan afuera", await textos(p, ".gx-total span"), ["Total confirmado (sin contar 2 por confirmar)"]);
+  eq("…sin el monto del borrador (lo que asustó al usuario: «USD 72.570» que eran pesos)", await p.$eval(".gx-total b", e => [/72[.,]?570/.test(e.textContent), /345,50/.test(e.textContent)]), [false, true]);
   // Borrar desde la fila, sin abrir la ventana.
-  eq("cada fila que se puede tocar tiene su «Borrar»", await p.$$eval('[data-action="gasto-quitar"]', l => l.map(e => e.dataset.id).sort()), ["gx1", "gx2", "gx3", nuevo.id].sort());
+  eq("cada fila que se puede tocar tiene su «Borrar»", await p.$$eval('[data-action="gasto-quitar"]', l => l.map(e => e.dataset.id).sort()), ["gx1", "gx2", "gx3", "gx9", nuevo.id].sort());
   await p.click(`[data-action="gasto-quitar"][data-id="${nuevo.id}"]`);
   eq("borrar pregunta, con el nombre", await p.$eval("#confirmMessage", e => /¿Borrar «peaje\.png» y su comprobante\?/.test(e.textContent)).catch(() => false), true);
   await p.click("#confirmOk");
   eq("…lo borra y el foco no se pierde", await hasta(p, id => !window.__sb.tablas.gastos.some(g => g.id === id) && !!document.activeElement.closest(".gastos-view"), nuevo.id), true);
+  await p.click('[data-action="gasto-quitar"][data-id="gx9"]'); await aceptar(p);
+  await hasta(p, () => !window.__sb.tablas.gastos.some(g => g.id === "gx9"));
   // Cerrar la ventana con cambios: pregunta.
   await p.click('[data-action="gasto-abrir"][data-id="gx3"]'); await p.waitForSelector("#gastoOverlay:not([hidden]) #gxConcepto");
   await p.fill("#gxConcepto", "Cena con los directores y el rabino");
