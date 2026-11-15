@@ -3,7 +3,7 @@
 > **Estado (15/11/2026):** la **etapa de prueba** tiene la base (`supabase/27-gastos.sql`, 137 comprobaciones en
 > `supabase/pruebas/71-gastos.sql`) y las pantallas (`herramientas/pruebas/gastos_test.mjs`), **publicadas en
 > `main` el 15/11 con el OK del usuario y apagadas**: nadie las ve hasta que un admin prende el interruptor de
-> Administración → Gastos. El **lector de comprobantes** está hecho en la rama de trabajo, **sin publicar**.
+> Administración → Gastos. El **lector de comprobantes** se publicó el 15/11, también con el OK del usuario.
 > Faltan los avisos. **Cada parte que sigue va a `main` recién
 > con el OK explícito del usuario**, con capturas: es lo que se acordó, y es una excepción a la regla general de
 > «pushear a `main` de una» de `CLAUDE.md` (al llegar a `main`, la base real se actualiza sola).
@@ -113,7 +113,7 @@ tocan eventos, comentarios ni la Agenda); se hace por etapas chicas; Drive y el 
   - En Administración → Gastos, también los tipos: renombrar, dejar de ofrecer y sumar.
   Lo prueba `herramientas/pruebas/gastos_test.mjs`; el recorrido de bienvenida lo anota en `TOUR_SIN_PASO`
   (solo lo ven los admins) hasta que se abra al equipo.
-- [x] **El lector de comprobantes** (15/11, sin publicar): al subir, lee cada comprobante en el fondo (las
+- [x] **El lector de comprobantes** (publicado el 15/11): al subir, lee cada comprobante en el fondo (las
   fotos, y los PDF escaneados con una foto adentro, como los de CamScanner; un PDF con texto de verdad, por
   ahora, a mano) y completa **solo lo vacío**: fecha, monto, moneda, tarjeta, forma de pago, comercio (como
   concepto) y tipo. Un «$» solo se toma como la moneda del país de la actividad, para revisar. La ventana
