@@ -137,3 +137,37 @@ insert into public.personas (id, name, email, note, telefonos, idiomas, lista, c
 on conflict (id) do nothing;
 insert into public.calendar_sugerencias (evento, grupo) values (repeat('e', 1024), 'actividad')
 on conflict (evento) do nothing;
+
+-- Los gastos (27-gastos.sql, 15/11/2026), al tope de cada campo: una
+-- rendición de una rutina del mes ya aprobada, con el total rápido en diez
+-- monedas; otra que quedó sin actividad (el admin borró el posteo); un
+-- gasto aprobado con el concepto, las observaciones, la ruta del comprobante
+-- y lo leído al máximo; un comentario de 1000 letras; y un ajuste negativo.
+insert into public.gastos_rendiciones (id, autor, rutina_mes, titulo, estado, enviada_el, aprobada_el, aprobada_por,
+                                       total_manual, total_manual_confirmado, total_manual_por, total_manual_el) values
+  ('00000000-0000-0000-0000-00000000a001', repeat('a', 189) || '@limite.com', '2100-12-01', repeat('T', 200), 'aprobada',
+   now(), now(), repeat('b', 200),
+   (select jsonb_object_agg(m, 9999999999.99) from unnest(array['USD','ARS','MXN','EUR','ILS','BRL','CLP','PEN','COP','BZD']) m),
+   true, repeat('c', 200), now()),
+  ('00000000-0000-0000-0000-00000000a002', 'quedo@sin-actividad.com', null, 'Una visita que se borró', 'abierta',
+   null, null, null, '{}', false, null, null)
+on conflict (id) do nothing;
+insert into public.gastos (id, autor, rendicion_id, fecha, concepto, tipo, moneda, monto, rendido_moneda, rendido_monto,
+                           pago, forma_pago, tarjeta, factura, observaciones, estado, archivo, archivo_nombre, archivo_tipo,
+                           archivo_hash, lectura) values
+  ('00000000-0000-0000-0000-00000000b001', repeat('a', 189) || '@limite.com', '00000000-0000-0000-0000-00000000a001',
+   '2100-12-31', repeat('C', 140), repeat('t', 40), 'MXN', -9999999999.99, 'USD', 9999999999.99,
+   'organizacion', 'transferencia', '0000', false, repeat('o', 500), 'aprobado',
+   'gastos/00000000-0000-0000-0000-00000000b001/' || repeat('x', 300 - length('gastos/00000000-0000-0000-0000-00000000b001/')),
+   repeat('n', 200), repeat('m', 100), repeat('f', 64),
+   jsonb_build_object('texto', repeat('l', 7900))),
+  ('00000000-0000-0000-0000-00000000b002', 'quedo@sin-actividad.com', null, null, '', null, 'USD', null, 'USD', null,
+   'persona', null, null, true, '', 'borrador', null, null, null, null, null)
+on conflict (id) do nothing;
+insert into public.gastos_comentarios (id, gasto_id, autor, texto) values
+  ('00000000-0000-0000-0000-00000000c001', '00000000-0000-0000-0000-00000000b001', repeat('a', 200), repeat('k', 1000))
+on conflict (id) do nothing;
+insert into public.gastos_movimientos (id, persona, tipo, fecha, moneda, monto, descripcion, estado, cargado_por, confirmado_por, confirmado_el) values
+  ('00000000-0000-0000-0000-00000000d001', repeat('p', 200), 'ajuste', '2000-01-01', 'USD', -9999999999.99, repeat('d', 300),
+   'confirmado', repeat('q', 200), repeat('r', 200), now())
+on conflict (id) do nothing;

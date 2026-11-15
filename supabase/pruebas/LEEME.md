@@ -16,6 +16,14 @@ Los archivos:
   `auth.jwt()`, su bucket, y que una función nueva se pueda llamar desde
   el navegador si no se le saca el permiso). En Supabase esto ya existe;
   acá hay que fabricarlo.
+- `71-gastos.sql` — los gastos y rendiciones (`27-gastos.sql`): que cada
+  persona vea y toque solo lo suyo (gastos, rendiciones, comentarios,
+  movimientos y comprobantes del bucket), que mientras no se abren para el
+  equipo una integrante no pueda nada ni llamando a la base por su cuenta, que
+  una rendición pase por sus estados como se acordó (confirmar, mandar,
+  observar, corregir, volver a mandar, aprobar), y la cuenta corriente con
+  números a mano. Se cae si se rompe la privacidad, los estados, los
+  comprobantes o la cuenta (comprobado rompiendo cada cosa).
 - `72-informe-mensual.sql` — el informe mensual con enlace que vence a las 48
   horas (`23-informe-mensual.sql`): quién ve «vigente», que a las 48 horas
   deje de valer, que sea solo de quien lo recibió, y el correo de prueba del admin
@@ -44,7 +52,7 @@ Los archivos:
 - `78-admin-rol-y-fijo.sql` — un admin por rol contra el admin fijo: quién
   borra comentarios, una ficha que se hace pasar por la del fijo con otras
   mayúsculas, y sus preferencias, que solo él borra.
-- `88-tiempo-real.sql` — que las doce tablas estén habilitadas para mandar
+- `88-tiempo-real.sql` — que las dieciséis tablas estén habilitadas para mandar
   sus cambios en vivo (viene apagado de fábrica y es fácil no enterarse:
   todo anda, uno escribe algo, y a los demás no les aparece hasta recargar),
   y que las de los avisos, los resúmenes y Calendar NO lo estén.

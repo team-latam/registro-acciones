@@ -22,6 +22,12 @@ const SECRETO = "dato-privado-que-no-va-al-registro";
 
 eq("restaura todas las tablas que copia la copia", [...ORDEN].sort(), Object.keys(TABLAS).sort());
 eq("los comentarios, después de sus posteos", ORDEN.indexOf("posts") < ORDEN.indexOf("replies"), true);
+// Los gastos (27-gastos.sql): una rendición apunta a su posteo, un gasto a su
+// rendición y un comentario a su gasto. Al revés, la restauración se cae a
+// mitad de camino por una clave que todavía no existe.
+eq("las rendiciones de gastos, después de los posteos", ORDEN.indexOf("posts") < ORDEN.indexOf("gastos_rendiciones"), true);
+eq("los gastos, después de sus rendiciones", ORDEN.indexOf("gastos_rendiciones") < ORDEN.indexOf("gastos"), true);
+eq("los comentarios de un gasto, después del gasto", ORDEN.indexOf("gastos") < ORDEN.indexOf("gastos_comentarios"), true);
 
 // Una copia en disco: { "datos/posts.json": [...], "archivos/x": Buffer }
 function copia(contenido){

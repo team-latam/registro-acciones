@@ -1,0 +1,108 @@
+# Gastos y rendiciones — el módulo nuevo (en construcción)
+
+> **Estado (15/11/2026):** la base de datos de la **etapa de prueba** está escrita y probada
+> (`supabase/27-gastos.sql`, 125 comprobaciones en `supabase/pruebas/71-gastos.sql`), **en la rama de trabajo,
+> sin publicar**. Falta la parte de la app (las pantallas). **Nada de esto va a `main` sin el OK explícito del
+> usuario**, parte por parte y con capturas: es lo que se acordó, y es una excepción a la regla general de
+> «pushear a `main` de una» de `CLAUDE.md` (al llegar a `main`, la base real se actualiza sola).
+
+El usuario rinde hoy sus gastos de viaje y de rutina con una skill de Claude que lee los comprobantes de su
+Drive, los carga en un Google Sheet y arma los PDF de entrega. Quiere que **el sistema** haga eso y quede todo
+conectado con las actividades, sin depender de Claude ni de la skill. Lo que se acordó salió de una
+conversación pregunta por pregunta (15/11/2026); acá está entero.
+
+**Sin datos sensibles.** El proceso de la skill tiene el ID del Sheet, el enlace de la carpeta de Drive, la
+cuenta de Gmail y las terminaciones de las tarjetas: **nada de eso va a este repo, que es público** (está en la
+skill del usuario y, cuando haga falta, en secretos o en configuración). Por eso las notas del proceso y del
+diseño que trajo el usuario no están acá: solo esta y la revisión del proyecto
+([`03_revision_del_proyecto.md`](./03_revision_del_proyecto.md), del 17/10, parte de la cual quedó superada
+por lo de abajo).
+
+## Lo que se decidió
+
+**Cargar**
+- Se suben fotos o PDF de cada gasto, **uno o muchos juntos**, desde el celular o la compu (las dos pantallas
+  importan). Agregar desde un enlace, más adelante.
+- El sistema **lee** el comprobante y **sugiere** fecha, concepto, tipo, monto, moneda, forma de pago y
+  tarjeta; quien carga **confirma o cambia**. Nunca decide solo. Lo dudoso se marca para revisar.
+- La lectura es la **simple y sin costo**, en el propio dispositivo (no se mandan las imágenes a ningún
+  servicio). Se probó con 19 comprobantes reales del usuario (15/11): fechas 16 de 19, montos 14 de 19 bien
+  tratados; los 3 montos mal leídos se detectan con reglas (tres decimales, la suma que no cierra). El lector
+  se arma de forma que se pueda cambiar después (por el de Google, si hace falta) sin rehacer nada.
+- **El nombre del archivo** en Drive lo arma el sistema con el concepto confirmado: `D-M-AAAA - Concepto - Actividad.pdf`.
+  Los datos del gasto viven en sus campos; el nombre no es de donde salen.
+
+**A dónde va cada gasto**
+- A un **evento** en el que la persona **participó** (figura como participante o lo cargó); si falta, un admin
+  la suma. O a **«la Rutina del mes»** de esa persona (un grupo por mes y por persona, como las carpetas
+  «Rutina» de hoy).
+- Si el evento todavía no está cargado, el gasto se sube **«sin vincular»** y se asigna después.
+- No hay gastos personales puros: todo termina en una rendición.
+
+**La plata**
+- Cada gasto dice **quién puso la plata**: la organización (a la persona no se le debe nada) o la persona (de
+  su bolsillo o de un adelanto: entra en su cuenta corriente).
+- **Monedas:** cada gasto guarda la del comprobante. El monto en dólares **lo escribe la persona** con lo que
+  le cobró su banco; **nunca** una cotización de afuera. Una actividad suele rendirse en dólares más una moneda
+  local; los totales van por moneda. Las más comunes: las latinoamericanas, dólar, euro y shekel.
+- **Tipos de gasto:** arrancan los siete de hoy (Reunión, Comida, Pasaje, Alojamiento, Transporte, Compra de
+  material, Suscripción); un admin los suma, saca o cambia.
+- **Cuenta corriente** por persona y por moneda: lo gastado, lo recibido (adelantos y reintegros), lo devuelto
+  y el saldo. La persona puede anotar lo que recibió; un admin lo confirma.
+- **Total rápido:** se puede anotar cuánto se gastó en una actividad sin cargar el detalle. Vale el detalle;
+  si no coinciden, el sistema avisa y la persona puede confirmar que vale el total a mano. Cada uno anota lo
+  suyo; un admin puede anotar o corregir el total general de la actividad.
+
+**Quién ve y quién aprueba**
+- **Cada persona ve solo lo suyo** (gastos, comentarios, cuenta). Los admins ven todo. Más adelante podría
+  haber otro nivel de permiso para aprobar.
+- La persona **manda la rendición** de una actividad entera; un admin la revisa, puede **observar** un gasto
+  con un comentario (le llega un aviso **por la campanita y por correo**), la persona corrige y la vuelve a
+  mandar, y el admin **aprueba todo junto**.
+- **Estadísticas:** todo el equipo ve los números grandes **agrupados** (por país, mes, tipo de actividad,
+  año), nunca el total de una actividad suelta; el admin ve también el total por actividad.
+
+**Google**
+- Los comprobantes quedan guardados **en el sistema y en Drive** (los dos frentes): primero en el sistema, y
+  la copia a Drive se hace sola después (si Google falla, el comprobante no se pierde). Una subcarpeta por
+  persona dentro de cada actividad. La conexión con Google será con **un permiso que se da una sola vez**.
+- El objetivo final es que el sistema también **cargue el Sheet** (mostrando antes las filas exactas y con
+  aprobación) y **arme los PDF** de entrega.
+- Lo cargado en 2026 **no se importa** por ahora: se arranca de cero.
+
+**Poder volver atrás:** un interruptor en Administración prende o apaga el módulo; las tablas son aparte (no
+tocan eventos, comentarios ni la Agenda); se hace por etapas chicas; Drive y el Sheet no se tocan sin el OK.
+
+## Las etapas
+
+1. **Prueba** (en curso): solo admins, apagable. Comprobantes y gastos, confirmación, mandar, observar y
+   aprobar, cuenta corriente y total rápido. Sin Drive ni Sheet. Las reglas de privacidad ya quedan armadas:
+   abrirlo al equipo es prender `app_config 'preferences' → gastos.abierto`.
+2. Copia a Drive.
+3. Carga al Sheet, con aprobación.
+4. PDF de entrega.
+5. Abrirlo a más personas, y las estadísticas.
+
+### Etapa 1, por partes
+
+- [x] **Base de datos** (15/11, sin publicar): `supabase/27-gastos.sql` — cuatro tablas (`gastos_rendiciones`,
+  `gastos`, `gastos_comentarios`, `gastos_movimientos`), las reglas de quién ve y toca qué, los pasos de una
+  rendición (`gastos_rendicion_abrir`, `_enviar`, `gastos_observar`, `gastos_comentar`,
+  `gastos_rendicion_aprobar`), la cuenta (`gastos_cuenta`, `gastos_movimiento_confirmar`) y los comprobantes en
+  el bucket (`gastos/<id del gasto>/…`). La limpieza semanal del bucket sabe que se usan; la copia de
+  seguridad y la restauración las incluyen; van en vivo. Pruebas: `supabase/pruebas/71-gastos.sql` (y se cae si
+  se rompe la privacidad, los estados, los comprobantes o la cuenta).
+- [ ] La app: Administración → Gastos (el interruptor y los tipos), subir y revisar, la rendición, la bandeja
+  para aprobar, la cuenta corriente y el total rápido.
+- [ ] El lector de comprobantes en el dispositivo, con sus controles.
+- [ ] Los avisos de «te observaron un gasto» (campanita y correo).
+
+## Lo que quedó para decidir más adelante (no frena la etapa 1)
+
+- Si un admin puede aprobar **su propia** rendición. Hoy sí (en la prueba el único que carga es el admin);
+  cuando se abra al equipo conviene que la apruebe otro.
+- Si el **total rápido** mueve la cuenta corriente. Hoy no: es para los números grandes, porque no dice quién
+  puso la plata.
+- El código del peso mexicano (el proceso usa «MX» y «MEX»; el estándar es MXN), a qué «Actividad» del Sheet
+  van Congreso, Virtual y Otro, un gasto que sirve a dos actividades, el mes de un viaje que cruza dos meses, y
+  si cada persona tiene su Sheet o van todos al mismo.

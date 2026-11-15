@@ -14,4 +14,5 @@ junto con el código.
 | [`DISENO-LOGO.md`](./DISENO-LOGO.md) | La ficha de diseño que se le pasó a otra IA para crear el logo (5/11/2026): colores, letra, formas, dónde va el logo y qué tiene que cumplir. El logo elegido es el de Toldot (`herramientas/publicar/marca/`). |
 | [`QUE-GUARDAR.md`](./QUE-GUARDAR.md) | Qué tener a mano (cuentas, llaves, copias) para reconstruir todo si hiciera falta. |
 | [`RESTAURAR.md`](./RESTAURAR.md) | Cómo volver atrás con una copia de seguridad. |
+| [`rendicion-gastos/`](./rendicion-gastos/) | **El módulo de gastos y rendiciones, en construcción** (desde el 15/11/2026): todo lo que decidió el usuario, las etapas y en qué parte va. Nada de esto se publica sin su OK. |
 | [`DOMINIO.md`](./DOMINIO.md) | El plan, no ejecutado, de mudar el sitio a un dominio propio si `*.github.io` vuelve a bloquearse. |

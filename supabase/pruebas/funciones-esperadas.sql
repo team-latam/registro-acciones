@@ -26,6 +26,11 @@ insert into esperadas values
   ('sin_sesion_de_persona()',               true, true),
   ('puede_editar_posteo(text, text, text[])', true, true), -- puro: compara los argumentos con su correo
   ('datos_del_pedido()',                    true, true),   -- navegador e IP de SU propio pedido
+  -- Gastos (27-gastos.sql): dicen algo de QUIEN LLAMA y nada de los demás.
+  -- Las usan las políticas; sin sesión contestan «no».
+  ('gastos_habilitado()',                   true, true),   -- security definer: ¿los gastos están abiertos para mí?
+  ('gastos_archivo_visible(text)',          true, true),   -- security definer: ¿puedo ver ESTE comprobante? (sí solo si es mío o soy admin)
+  ('gastos_archivo_subible(text)',          true, true),   -- security definer: ¿puedo subir a ESTA ruta? (solo a un gasto mío que se puede corregir)
   -- Puras: solo miran lo que se les pasa (validaciones y comparaciones).
   ('archivos_ok(jsonb)',                    true, true),
   ('campos_cambiados(jsonb, jsonb)',        true, true),
@@ -47,6 +52,7 @@ insert into esperadas values
   ('textos_ok(text[], integer, integer)',   true, true),
   ('tipo_ok(jsonb)',                        true, true),
   ('tipos_ok(jsonb)',                       true, true),
+  ('gastos_totales_ok(jsonb)',              true, true),   -- pura: un total por moneda bien formado (27-gastos.sql)
   -- security invoker: pasan por las políticas de quien llama. anon las
   -- ejecuta pero no tiene permiso sobre ninguna tabla, así que no logra nada.
   ('guardar_config(text, jsonb)',           true, true),
@@ -75,5 +81,13 @@ insert into esperadas values
   ('tamano_del_bucket()',                   false, true),  -- admin
   ('unificar_cuentas(text, text)',          false, true),  -- admin
   ('unir_personas(text, text)',             false, true),  -- admin
-  ('vincular_persona(text, text)',          false, true);  -- admin
+  ('vincular_persona(text, text)',          false, true),  -- admin
+  -- Gastos (27-gastos.sql): cortan adentro si no es tuyo o no sos admin.
+  ('gastos_comentar(uuid, text)',           false, true),  -- solo en un gasto propio (o un admin); con el correo de quien llama
+  ('gastos_cuenta(text)',                   false, true),  -- la cuenta corriente propia; la de otra persona, solo un admin
+  ('gastos_movimiento_confirmar(uuid)',     false, true),  -- admin
+  ('gastos_observar(uuid, text)',           false, true),  -- admin
+  ('gastos_rendicion_abrir(text, date)',    false, true),  -- solo para quien llama, en una actividad donde participó (o un admin)
+  ('gastos_rendicion_aprobar(uuid)',        false, true),  -- admin
+  ('gastos_rendicion_enviar(uuid)',         false, true);  -- solo la rendición propia
 

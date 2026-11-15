@@ -17,6 +17,7 @@ select (:'uid' <> '') as hay \gset
   set local role authenticated;
   do $$
   declare rol text := current_setting('verificar.rol', true); posteos int; auditoria int; sugerencias int; sacados int; pedidos int; ajenos int;
+          gastos_ajenos int; movimientos_ajenos int;
   begin
     select count(*) into posteos from public.posts;
     select count(*) into auditoria from public.audit_log;
@@ -41,6 +42,11 @@ select (:'uid' <> '') as hay \gset
     -- Los pedidos de acceso: un admin los ve todos; el resto, solo el suyo (policy solicitudes_leer: el suyo queda
     -- aunque ya lo hayan aprobado). Ver el de otra persona es la falla.
     if rol <> 'admin' and ajenos > 0 then raise exception 'FALLÓ: quien no es admin ve % pedidos de acceso de otras personas', ajenos; end if;
+    -- Los gastos y la cuenta corriente: cada uno ve lo suyo; ver lo de otra persona es la falla (27-gastos.sql).
+    select count(*) into gastos_ajenos from public.gastos where lower(autor) <> lower(current_setting('verificar.correo'));
+    select count(*) into movimientos_ajenos from public.gastos_movimientos where lower(persona) <> lower(current_setting('verificar.correo'));
+    if rol <> 'admin' and (gastos_ajenos > 0 or movimientos_ajenos > 0) then
+      raise exception 'FALLÓ: quien no es admin ve % gastos y % movimientos de otras personas', gastos_ajenos, movimientos_ajenos; end if;
   end $$;
   reset role;
 \else

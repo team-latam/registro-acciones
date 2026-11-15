@@ -2,7 +2,7 @@
 truncate lab.resultados;
 \set QUIET off
 insert into lab.resultados(nombre, esperado, obtenido, detalle)
-  select 'las doce tablas mandan sus cambios en vivo (las ocho de siempre, personas y las tres de la Agenda)', true, count(*) = 12,
+  select 'las dieciséis tablas mandan sus cambios en vivo (las ocho de siempre, personas, las tres de la Agenda y las cuatro de los gastos)', true, count(*) = 16,
          'son ' || count(*)
   from pg_publication_tables where pubname='supabase_realtime' and schemaname='public';
 insert into lab.resultados(nombre, esperado, obtenido, detalle)
@@ -33,9 +33,12 @@ select lab.comprobar('ni lo que se sacó del Registro (lleva una copia entera de
 -- de arriba pasarían en verde sin mirar nada.
 select lab.comprobar('las cinco tablas de arriba existen (si no, esa prueba no miraba nada)', $q$select count(*)::text from pg_tables
   where schemaname='public' and tablename in ('avisos_enviados','avisos_listos','resumenes_enviados','calendar_sugerencias','calendar_sacados')$q$, '5');
-select lab.comprobar('y las únicas publicadas son las doce de siempre', $q$select string_agg(tablename, ',' order by tablename) from pg_publication_tables
+-- Las de los gastos (27-gastos.sql) van a propósito: cada uno recibe solo
+-- los cambios de lo que puede ver (lo suyo; un admin, todo), y la persona se
+-- entera en el momento de que le observaron un gasto.
+select lab.comprobar('y las únicas publicadas son las dieciséis de siempre', $q$select string_agg(tablename, ',' order by tablename) from pg_publication_tables
   where pubname='supabase_realtime' and schemaname='public'$q$,
-  'access_requests,agenda_listas,app_config,audit_log,contactos,former_members,instituciones,members,personas,posts,replies,user_prefs');
+  'access_requests,agenda_listas,app_config,audit_log,contactos,former_members,gastos,gastos_comentarios,gastos_movimientos,gastos_rendiciones,instituciones,members,personas,posts,replies,user_prefs');
 select n, '  FALLA  ' || nombre || ' — ' || detalle as falla from lab.resultados where esperado <> obtenido order by n;
 select count(*) filter (where esperado=obtenido) || ' pasaron, ' ||
        count(*) filter (where esperado<>obtenido) || ' fallaron  (de ' || count(*) || ')' as resultado from lab.resultados;

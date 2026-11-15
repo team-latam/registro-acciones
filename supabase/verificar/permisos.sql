@@ -12,7 +12,7 @@
 --   1. Todas las tablas de `public` tienen las políticas por fila (RLS) prendidas.
 --   2. Quien no inició sesión (anon) no tiene permiso sobre ninguna tabla.
 --   3. Las tablas internas (avisos, resúmenes) no las toca ninguna sesión de persona.
---   4. En vivo (Realtime) solo van las doce tablas de siempre.
+--   4. En vivo (Realtime) solo van las dieciséis tablas de siempre.
 --   5. Las funciones que se pueden llamar desde el navegador son exactamente las
 --      de la lista (supabase/pruebas/funciones-esperadas.sql), ni una más.
 --   6. Las funciones con permisos de dueño llevan el camino de búsqueda fijo.
@@ -65,10 +65,10 @@ insert into res(nombre, esperado, obtenido)
          (select count(*) from pg_class c join pg_namespace n on n.oid = c.relnamespace
            where n.nspname = 'public' and c.relname in ('avisos_enviados', 'avisos_listos', 'resumenes_enviados'))::text;
 
--- 4. Realtime: las doce de siempre y ninguna de las internas
+-- 4. Realtime: las dieciséis de siempre y ninguna de las internas
 insert into res(nombre, esperado, obtenido)
-  select 'en vivo (Realtime) van solo las doce tablas de siempre',
-         'access_requests,agenda_listas,app_config,audit_log,contactos,former_members,instituciones,members,personas,posts,replies,user_prefs',
+  select 'en vivo (Realtime) van solo las dieciséis tablas de siempre',
+         'access_requests,agenda_listas,app_config,audit_log,contactos,former_members,gastos,gastos_comentarios,gastos_movimientos,gastos_rendiciones,instituciones,members,personas,posts,replies,user_prefs',
          coalesce((select string_agg(tablename, ',' order by tablename) from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public'), '(ninguna)');
 
 -- 5. Las funciones que el navegador puede llamar
