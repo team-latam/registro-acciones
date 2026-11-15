@@ -130,6 +130,8 @@ eq("Israel: shekels, el total en hebreo, la tarjeta y el comercio", campos(leer(
   ["2026-11-05", 48, "ILS", "1111", "tarjeta", "קפה ירושלים", []]);
 
 /* ---- Casos que confunden ---- */
+eq("la tarjeta, aunque el lector confunda un asterisco con «+», «#» o «%»", ["Pago: tarjeta ***+1234", "VISA **%*5678", "Tarjeta ##9012", "Débito terminada en 3456"].map(x => leer(x).tarjeta),
+  ["1234", "5678", "9012", "3456"]);
 eq("con «total» y «total a pagar», vale el de pagar aunque sea menor", leer(`TIENDA
 TOTAL 1.000,00
 DESCUENTO 100,00

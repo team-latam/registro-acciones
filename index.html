@@ -24624,8 +24624,9 @@ function leerTextoDeComprobante(texto, { hoy, pais } = {}){
   r.moneda = monedaEn(lineaTotal) || monedaEn(todo);
   if(!r.moneda && /\$/.test(todo) && pais && MONEDA_DEL_PAIS[pais] && MONEDA_DEL_PAIS[pais] !== "USD"){ r.moneda = MONEDA_DEL_PAIS[pais]; r.dudas.push("moneda"); }
   else if(!r.moneda && /\$/.test(todo)) r.dudas.push("moneda");
-  // La tarjeta: los cuatro últimos números («****1234», «XXXX 1234», «terminada en 1234»).
-  const t4 = /(?:[*xX•·]{2,}[\s\-]*|termina(?:da)? en\s*|ending in\s*|final\s*)(\d{4})\b/i.exec(todo);
+  // La tarjeta: los cuatro últimos números («****1234», «XXXX 1234», «terminada en 1234»). El lector
+  // suele confundir algún asterisco con «+», «#», «%» o «¥»: también valen.
+  const t4 = /(?:[*xX×•·+#%¥]{2,}[\s\-]*|termina(?:da)? en\s*|ending in\s*|final\s*)(\d{4})\b/i.exec(todo);
   if(t4) r.tarjeta = t4[1];
   r.formaPago = r.tarjeta || /\b(?:tarjeta|visa|master(?:card)?|amex|d[eé]bito|cr[eé]dito|card|cart[aã]o)\b/i.test(todo) ? "tarjeta"
     : /\b(?:efectivo|cash|contado|dinheiro)\b/i.test(todo) ? "efectivo"
@@ -25365,9 +25366,9 @@ function renderGasto(){
   const sugerido = !editable || !leido ? "" : !leido.campos.length
     ? (e.leido ? `<p class="gx-sugerido">📖 ${t("El lector no encontró nada claro: completalo a mano.","The reader didn't find anything clear: fill it in by hand.","O leitor não encontrou nada claro: complete à mão.","הקורא לא מצא משהו ברור: מלאו ידנית.")}</p>` : "")
     : `<p class="gx-sugerido">${delNombre ? "💡" : "📖"} ${delNombre
-        ? t("Del nombre del archivo salió: {c}. Revisalo.","From the file name: {c}. Check it.","Do nome do arquivo saiu: {c}. Revise.","משם הקובץ נלקח: {c}. בדקו.",{ c: leido.campos.map(nombreDeCampoGasto).join(", ") })
-        : t("El lector completó: {c}. Revisalo con el comprobante.","The reader filled in: {c}. Check it against the receipt.","O leitor completou: {c}. Revise com o comprovante.","הקורא מילא: {c}. בדקו מול הקבלה.",{ c: leido.campos.map(nombreDeCampoGasto).join(", ") })}
-        ${leido.dudas.some(k => leido.campos.includes(k)) ? `<b>${t("Sobre todo: {c}.","Especially: {c}.","Sobretudo: {c}.","בעיקר: {c}.",{ c: leido.dudas.filter(k => leido.campos.includes(k)).map(nombreDeCampoGasto).join(", ") })}</b>` : ""}</p>`;
+        ? t("Del nombre del archivo salió: {c}. Revisalo.","From the file name: {c}. Check it.","Do nome do arquivo saiu: {c}. Revise.","משם הקובץ נלקח: {c}. בדקו.",{ c: leido.campos.map(k => nombreDeCampoGasto(k, true)).join(", ") })
+        : t("El lector completó: {c}. Revisalo con el comprobante.","The reader filled in: {c}. Check it against the receipt.","O leitor completou: {c}. Revise com o comprovante.","הקורא מילא: {c}. בדקו מול הקבלה.",{ c: leido.campos.map(k => nombreDeCampoGasto(k, true)).join(", ") })}
+        ${leido.dudas.some(k => leido.campos.includes(k)) ? `<b>${t("Sobre todo: {c}.","Especially: {c}.","Sobretudo: {c}.","בעיקר: {c}.",{ c: leido.dudas.filter(k => leido.campos.includes(k)).map(k => nombreDeCampoGasto(k, true)).join(", ") })}</b>` : ""}</p>`;
   const marca = k => !leido || !editable ? "" : leido.dudas.includes(k) && leido.campos.includes(k) ? ' data-duda="1"' : leido.campos.includes(k) ? ' data-sug="1"' : "";
   const leer = editable && g.archivo && esUrlFirmada(g.archivoUrl) && lectorDisponible()
     ? `<button type="button" class="btn-secondary gx-leer" data-action="gasto-leer" ${e.leyendo ? "disabled" : ""}>📖 ${e.leyendo ? t("Leyendo…","Reading…","Lendo…","קורא…") : t("Leer el comprobante","Read the receipt","Ler o comprovante","קריאת הקבלה")}</button>` : "";
@@ -25409,7 +25410,7 @@ function renderGasto(){
             <option value="tarjeta"${d.formaPago === "tarjeta" ? " selected" : ""}>${t("Tarjeta","Card","Cartão","כרטיס")}</option>
             <option value="efectivo"${d.formaPago === "efectivo" ? " selected" : ""}>${t("Efectivo","Cash","Dinheiro","מזומן")}</option>
             <option value="transferencia"${d.formaPago === "transferencia" ? " selected" : ""}>${t("Transferencia","Transfer","Transferência","העברה")}</option></select>`)}
-          ${d.formaPago === "tarjeta" ? campo(t("Tarjeta terminada en","Card ending in","Cartão terminado em","כרטיס שמסתיים ב"), `<input type="text" id="gxTarjeta" inputmode="numeric" maxlength="4" data-gcampo="tarjeta" value="${esc(d.tarjeta)}"${marca("tarjeta")} placeholder="1234"${mal("tarjeta")}${dis}>`) : ""}
+          ${d.formaPago === "tarjeta" ? campo(t("Tarjeta terminada en","Card ending in","Cartão terminado em","כרטיס שמסתיים ב"), `<input type="text" id="gxTarjeta" inputmode="numeric" maxlength="4" data-gcampo="tarjeta" value="${esc(d.tarjeta)}"${marca("tarjeta")}${mal("tarjeta")}${dis}>`) : ""}
           <label class="gx-check gx-ancho"><input type="checkbox" id="gxFactura" data-gcampo="factura"${d.factura ? " checked" : ""}${dis}> ${t("Tiene factura o comprobante válido","Has a valid invoice or receipt","Tem nota fiscal ou comprovante válido","יש חשבונית או קבלה תקפה")}</label>
           ${campo(t("Observaciones (opcional)","Notes (optional)","Observações (opcional)","הערות (לא חובה)"), `<textarea id="gxObservaciones" maxlength="500" rows="2" data-gcampo="observaciones"${dis}>${esc(d.observaciones)}</textarea>`, true)}
           ${campo(t("Va en","Goes in","Vai em","שייך ל"), `<select id="gxVinculo" data-gcampo="vinculo"${dis}>${opcionesDeVinculo(g, d.vinculo)}</select>`, true)}
@@ -25421,7 +25422,9 @@ function renderGasto(){
     <div class="modal-actions gx-botones">${botones}</div>`;
   if(idFoco){ const x = document.getElementById(idFoco); if(x) x.focus(); }
 }
-function nombreDeCampoGasto(k){
+// `corto`: sin la aclaración de cómo se escribe (para el aviso de lo que completó el lector).
+function nombreDeCampoGasto(k, corto){
+  if(corto && k === "moneda") return t("la moneda","the currency","a moeda","המטבע");
   return ({ fecha: t("la fecha","the date","a data","התאריך"), concepto: t("el concepto","the description","o conceito","התיאור"), tipo: t("el tipo","the type","o tipo","הסוג"),
     monto: t("el monto","the amount","o valor","הסכום"), moneda: t("la moneda (tres letras)","the currency (three letters)","a moeda (três letras)","המטבע (שלוש אותיות)"),
     rendidoMoneda: t("la moneda en que se rinde","the reporting currency","a moeda da prestação","מטבע הדיווח"), tarjeta: t("los 4 números de la tarjeta","the card's 4 digits","os 4 números do cartão","4 הספרות של הכרטיס"),
