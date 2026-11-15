@@ -211,16 +211,20 @@ export const abrirNavegador = ({ utf8 = false } = {}) =>
   chromium.launch(utf8 ? { env: { ...process.env, LANG: "C.UTF-8", LC_ALL: "C.UTF-8" } } : {});
 // Entra a la app con quien se le diga. `base` reemplaza los datos (por
 // ejemplo, los variados de herramientas/auditoria/herramientas/datos.mjs).
-// Opciones: `cpu` = cuántas veces más lento el procesador (4 = un celular medio; la auditoría mide la carga así) y
-// `iniciar` = un texto de JS que corre en la página ANTES de que cargue (para medir desde el primer instante).
-export async function entrar(b, email, nombre, { viewport, dark, lang, sinSesion, base: otra, query = "", falla, cpu, iniciar } = {}) {
+// Opciones: `cpu` = cuántas veces más lento el procesador (4 = un celular medio; la auditoría mide la carga así),
+// `iniciar` = un texto de JS que corre en la página ANTES de que cargue (para medir desde el primer instante) y
+// `pagina` = otra dirección para la página (por ejemplo, servida por http: desde un archivo local un navegador
+// no deja crear trabajadores, y el lector de comprobantes corre en uno; ver lector_test.mjs).
+export async function entrar(b, email, nombre, { viewport, dark, lang, sinSesion, base: otra, query = "", falla, cpu, iniciar, pagina } = {}) {
   const base = otra || BASE();
   const p = await b.newPage({ viewport: viewport || { width: 1440, height: 900 }, colorScheme: dark ? "dark" : "light", deviceScaleFactor: 1, hasTouch: !!(viewport && viewport.width < 800), isMobile: !!(viewport && viewport.width < 800) });
   const errores = [];
   p.on("pageerror", e => errores.push(String(e)));
   p.on("console", m => { if(m.type() === "error" && !/ERR_|Failed to load resource|Failed to fetch/.test(m.text())) errores.push(m.text()); });
+  const local = pagina ? new URL(pagina).origin : null;
   await p.route(/^https?:\/\//, ruta => {
     const u = ruta.request().url();
+    if (local && u.startsWith(local + "/")) return ruta.continue();
     if (u === CDN) return ruta.fulfill({ contentType: "application/javascript", body: FALSO_UMD() });
     if (/\/storage\/v1\/object\/sign\//.test(u)) return ruta.fulfill({ contentType: "image/png", body: PNG });
     if (u.includes("/functions/v1/calendario")) return ruta.fulfill({ contentType: "application/json", body: JSON.stringify({ estado: 200, cuerpo: { items: [] } }) });
@@ -235,7 +239,7 @@ export async function entrar(b, email, nombre, { viewport, dark, lang, sinSesion
   }, [base, sinSesion ? null : { user: { id: "uuid-" + email, email, user_metadata: { full_name: nombre } } }, lang || "", !!dark, falla || ""]);
   if(cpu && cpu > 1){ const cdp = await p.context().newCDPSession(p); await cdp.send("Emulation.setCPUThrottlingRate", { rate: cpu }); }
   if(iniciar) await p.addInitScript(iniciar);
-  await p.goto(PAGINA + query);
+  await p.goto((pagina || PAGINA) + query);
   await p.waitForTimeout(1200);
   return { p, errores };
 }

@@ -879,6 +879,11 @@
   .gx-subida{ background:var(--ok-bg); border:1px solid var(--ok-border); color:var(--ok-text); border-radius:var(--radius-md); padding:10px 14px; margin-bottom:12px; font-size:13.5px; font-weight:600; }
   .gx-subida-mal{ background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn-text); }
   .gx-sub-det{ font-weight:400; font-size:12.5px; margin-top:4px; overflow-wrap:anywhere; }
+  .gx-sub-lector{ margin-top:6px; }
+  .gx-campo [data-sug]{ border-color:var(--celeste-dark, var(--celeste)); background:var(--celeste-soft, var(--surface-alt)); }
+  .gx-campo [data-duda]{ border-color:var(--warn-border); background:var(--warn-bg); }
+  .gx-leer{ margin-top:4px; align-self:flex-start; }
+  .gx-sugerido b{ display:block; margin-top:2px; }
   /* La cuenta corriente: una tarjeta por moneda. */
   .gx-cuenta-de{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px; font-size:13.5px; font-weight:700; }
   .gx-cuenta-de select{ flex:1 1 220px; max-width:360px; }
@@ -24237,6 +24242,9 @@ let gastosAdmin = null;                 // el borrador de los tipos (Administrac
 let gastosActividad = "";               // «Una actividad sin comprobantes»: la elegida
 let gastosOtraAbierta = false;          // …y si esa parte está desplegada
 let gastosOcupado = false;              // mandando o aprobando
+let lectorListo = null;                 // el lector armado (una promesa): se arma la primera vez que hace falta
+let lectorCola = [];                    // los comprobantes por leer: { id, nombre, imagen | pdf }
+let lectorEstado = null;                // lo que se está leyendo: { total, hechos, fallas, corriendo, preparando }
 const gastoOverlay = document.getElementById("gastoOverlay");
 const gastosArchivosInput = document.getElementById("gastosArchivos");
 
@@ -24290,6 +24298,7 @@ function cortarGastos(){
   if(unsubGastos){ unsubGastos(); unsubGastos = null; }
   gastosDatos = null; gastosError = ""; gastosAbierta = null; gastosSubida = null; gastosTotal = null;
   gastosMov = null; gastosCuentaDe = ""; gastosAdmin = null; gastosActividad = ""; gastosOtraAbierta = false; gastosOcupado = false;
+  lectorCola = []; lectorEstado = null;
   if(gastoOverlay && !gastoOverlay.hidden) cerrarGasto(true);
 }
 const gxNum = v => v === null || v === undefined || v === "" ? null : Number(v);
@@ -24459,6 +24468,346 @@ function opcionesDeVinculo(g, actual){
     ${acts.length || huerfana ? `<optgroup label="${esc(t("Una actividad","An activity","Uma atividade","פעילות"))}">${huerfana ? op(actual, tituloRendicion(huerfana)) : ""}${acts.map(p => op("post:" + p.id, `${p.title || t("Sin título","Untitled","Sem título","ללא כותרת")} · ${fmtDate(p.startDate || p.date)}`)).join("")}</optgroup>` : ""}`;
 }
 
+/* ---- El lector de comprobantes: qué dice el texto ----
+   El lector (Tesseract, en el aparato: ver «Leer los comprobantes» más
+   abajo) devuelve el texto del ticket tal como lo vio. Esto saca de ahí lo
+   que sirve para el gasto: la fecha, el total, la moneda, la tarjeta, cómo
+   se pagó, el comercio y el tipo. Es solo una SUGERENCIA (lo decidió el
+   usuario): lo que no está claro va en `dudas` y la ventana lo marca para
+   revisar. Funciones puras, sin la página: las prueba lector_texto_test.mjs. */
+const MESES_ESCRITOS = { ene:1, jan:1, feb:2, fev:2, mar:3, abr:4, apr:4, may:5, mai:5, jun:6, jul:7, ago:8, aug:8,
+  sep:9, set:9, oct:10, out:10, nov:11, dic:12, dec:12, dez:12 };
+// La moneda por cómo aparece escrita. Los símbolos que comparten varias
+// monedas ($ solo) no dicen nada: para esos está el país de la actividad.
+const MONEDAS_EN_TEXTO = [
+  ["USD", /\b(?:USD|U\$S|US\$|U\$D|D[OÓ]LAR(?:ES)?|DOLLARS?)\b|US\$/i],
+  ["EUR", /\bEUR(?:OS?)?\b|€/i],
+  ["ILS", /\b(?:ILS|NIS)\b|₪|ש.?ח/i],
+  ["BRL", /\bBRL\b|R\$/i],
+  ["UYU", /\$U\b|\bUYU\b|\bPESOS? URUGUAYOS?\b/i],
+  ["ARS", /\bARS\b|\bPESOS? ARGENTINOS?\b/i],
+  ["MXN", /\bMXN\b|\bM\.N\./i],
+  ["CLP", /\bCLP\b/i],
+  ["COP", /\bCOP\b/i],
+  ["PEN", /\bPEN\b|\bS\/\.?\s?\d/i],
+  ["BOB", /\bBOB\b|\bBS\.?\s?\d/i],
+  ["PYG", /\bPYG\b|₲|\bGS\.?\s?\d/i],
+  ["CRC", /\bCRC\b|₡/i],
+  ["DOP", /\bDOP\b|RD\$/i],
+  ["PAB", /\bPAB\b|\bB\/\.\s?\d/i],
+  ["NIO", /\bNIO\b|\bC\$/i],
+  ["GTQ", /\bGTQ\b/i],
+  ["BZD", /\bBZD\b|BZ\$/i],
+  ["JMD", /\bJMD\b|J\$/i],
+  ["TTD", /\bTTD\b|TT\$/i],
+];
+const MONEDA_DEL_PAIS = { "Argentina":"ARS", "México":"MXN", "Chile":"CLP", "Colombia":"COP", "Uruguay":"UYU", "Brasil":"BRL", "Perú":"PEN",
+  "Bolivia":"BOB", "Paraguay":"PYG", "Costa Rica":"CRC", "República Dominicana":"DOP", "Panamá":"PAB", "Nicaragua":"NIO", "Guatemala":"GTQ",
+  "Belice":"BZD", "Jamaica":"JMD", "Trinidad y Tobago":"TTD", "Cuba":"CUP", "Haití":"HTG", "Honduras":"HNL", "Venezuela":"VES",
+  "Ecuador":"USD", "El Salvador":"USD", "Puerto Rico":"USD", "Estados Unidos":"USD", "Israel":"ILS" };
+// El tipo por las palabras del ticket. El primero que aparece manda: un hotel
+// tiene «desayuno» y un taxi al aeropuerto dice «aeropuerto».
+const TIPOS_EN_TEXTO = [
+  ["alojamiento", /(?<!\p{L})(?:hotel|hostel|hostal|airbnb|booking|apart(?:hotel)?|posada|alojamiento|hospedaje|check-?in|habitaci[oó]n)(?!\p{L})/iu],
+  ["pasaje", /(?<!\p{L})(?:aerol[ií]neas?|airlines?|vuelo|flight|boarding|tarjeta de embarque|pasaje|[oó]mnibus|micro|bus|latam|avianca|copa air|jetsmart|flybondi|el al)(?!\p{L})/iu],
+  ["transporte", /(?<!\p{L})(?:taxi|remis(?:es)?|remise|uber|cabify|didi|peaje|estacionamiento|parking|combustible|nafta|gasolina|subte|metro|tren)(?!\p{L})/iu],
+  ["comida", /(?<!\p{L})(?:restaurante?|resto|parrilla|pizzer[ií]a|caf[eé]|bar|confiter[ií]a|comida|almuerzo|cena|desayuno|men[uú]|panader[ií]a|burger|delivery|pedidosya|rappi|ifood)(?!\p{L})/iu],
+  ["material", /(?<!\p{L})(?:librer[ií]a|ferreter[ií]a|fotocopias?|impresi[oó]n|papeler[ií]a|materiales|insumos)(?!\p{L})/iu],
+  ["suscripcion", /(?<!\p{L})(?:suscripci[oó]n|subscription|zoom|microsoft|adobe|spotify|netflix|canva|dropbox|licencia)(?!\p{L})/iu],
+];
+// Un número de plata como lo escribe un ticket: «12.500,00», «12,500.00»,
+// «1 234,5», «45.50», «$12500». Con los dos separadores, el último es el de
+// los decimales; con uno solo, tres cifras detrás son miles (así escribe la
+// región). Devuelve también si es dudoso (tres decimales donde no deberían) y
+// si venía escrito con centavos (`dec`): así se escribe la plata en un ticket.
+function numeroDeTicket(s){
+  let x = String(s || "").replace(/[\s ]/g, "");
+  if(!/^\d[\d.,]*$/.test(x)) return null;
+  const ultPunto = x.lastIndexOf("."), ultComa = x.lastIndexOf(",");
+  let dudoso = false, centavos = false;
+  if(ultPunto >= 0 && ultComa >= 0){
+    const dec = ultPunto > ultComa ? "." : ",", mil = dec === "." ? "," : ".";
+    x = x.split(mil).join("");
+    const partes = x.split(dec);
+    if(partes.length !== 2) return null;
+    if(partes[1].length > 2) dudoso = true;
+    centavos = true;
+    x = partes[0] + "." + partes[1];
+  } else if(ultPunto >= 0 || ultComa >= 0){
+    const sep = ultPunto >= 0 ? "." : ",", partes = x.split(sep);
+    const ult = partes[partes.length - 1];
+    if(partes.length > 2 || ult.length === 3) x = partes.join("");          // miles
+    else { if(ult.length > 2) dudoso = true; centavos = true; x = partes[0] + "." + ult; }
+  }
+  const n = Number(x);
+  return isFinite(n) ? { n: Math.round(n * 100) / 100, dudoso, dec: centavos } : null;
+}
+function numerosDeLinea(linea){
+  const out = [];
+  const re = /\d{1,3}(?:[.,\s]\d{3})+(?:[.,]\d{1,3})?|\d+(?:[.,]\d{1,3})?/g;
+  let m;
+  while((m = re.exec(linea))){
+    // Que no sea parte de una fecha, una hora, un número de documento o de tarjeta.
+    const antes = linea.slice(Math.max(0, m.index - 1), m.index), despues = linea.slice(m.index + m[0].length, m.index + m[0].length + 1);
+    if(/[\/:\-*#]/.test(antes) || /[\/:\-]/.test(despues) || /%/.test(despues)) continue;
+    const x = numeroDeTicket(m[0]);
+    if(x) out.push(x);
+  }
+  return out;
+}
+function fechaDeTicket(linea, hoy, mesPrimero){
+  const [hy, hm, hd] = hoy.split("-").map(Number);
+  // Las cuentas de días, en UTC y escritas a mano: nada depende del huso de quien carga.
+  const isoDe = x => `${x.getUTCFullYear()}-${String(x.getUTCMonth() + 1).padStart(2, "0")}-${String(x.getUTCDate()).padStart(2, "0")}`;
+  const ok = (y, m, d) => {
+    if(y < 100) y += 2000;
+    if(!(m >= 1 && m <= 12 && d >= 1 && d <= 31 && y >= 2000 && y <= hy)) return null;
+    const x = new Date(Date.UTC(y, m - 1, d));
+    if(x.getUTCMonth() !== m - 1) return null;
+    const iso = isoDe(x);
+    // Un comprobante no es del futuro (con un día de margen por los husos).
+    return iso <= isoDe(new Date(Date.UTC(hy, hm - 1, hd + 1))) ? iso : null;
+  };
+  let m = /\b(20\d{2})[\/.\-](\d{1,2})[\/.\-](\d{1,2})\b/.exec(linea);
+  if(m){ const r = ok(+m[1], +m[2], +m[3]); if(r) return { iso: r, dudosa: false }; }
+  m = /\b(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4}|\d{2})\b/.exec(linea);
+  if(m){
+    const a = +m[1], b = +m[2], y = +m[3];
+    // Día primero, como en la región; un ticket en inglés, mes primero. Si uno de los
+    // dos no puede ser mes, no hay duda; si los dos pueden, en inglés queda para revisar.
+    const r = mesPrimero ? (ok(y, a, b) || ok(y, b, a)) : (ok(y, b, a) || ok(y, a, b));
+    if(r) return { iso: r, dudosa: !!mesPrimero && a <= 12 && b <= 12 && a !== b };
+  }
+  m = /\b(\d{1,2})[\s\-]*(?:de\s+)?([a-zA-Zé]{3,})\.?[\s\-]*(?:de\s+|del\s+)?(\d{4}|\d{2})\b/.exec(linea);
+  if(m){
+    const mes = MESES_ESCRITOS[m[2].slice(0, 3).toLowerCase().replace("é", "e")];
+    if(mes){ const r = ok(+m[3], mes, +m[1]); if(r) return { iso: r, dudosa: false }; }
+  }
+  return null;
+}
+const tituloDeComercio = s => String(s).toLowerCase().replace(/(^|[\s\-'(])([a-záéíóúñü])/g, (x, a, b) => a + b.toUpperCase());
+function leerTextoDeComprobante(texto, { hoy, pais } = {}){
+  hoy = hoy || todayISO();
+  const lineas = String(texto || "").split(/\r?\n/).map(l => l.replace(/\s+/g, " ").trim()).filter(Boolean);
+  const todo = lineas.join("\n");
+  const r = { fecha: null, monto: null, moneda: null, tarjeta: null, formaPago: null, comercio: "", tipo: null, dudas: [] };
+  // La fecha: la de un renglón que dice «fecha» (o «date», «data», «emisión»); si no, la primera que se pueda leer.
+  const enIngles = /\b(?:thank you|receipt|tax|tip|cashier|change due|amount due)\b/i.test(todo);
+  const conFecha = lineas.filter(l => /\b(?:fecha|date|data|emisi[oó]n|emitid)/i.test(l));
+  for(const l of [...conFecha, ...lineas]){ const f = fechaDeTicket(l, hoy, enIngles); if(f){ r.fecha = f.iso; if(f.dudosa) r.dudas.push("fecha"); break; } }
+  // El total: los renglones que dicen «total» (o «importe», «a pagar»), sin los subtotales ni los impuestos.
+  // Si un renglón dice «total» y no trae el número, se mira el de abajo.
+  const esTotal = l => /\b(?:total|importe|a pagar|monto|amount due|grand total|valor a pagar|tot\.)|סה.?כ|לתשלום/i.test(l)
+    && !/sub\s*-?\s*total|\b(?:iva|tax|impuestos?|vuelto|cambio|change|descuentos?|propina|ahorro|art[ií]culos|items?|unidades|cant)\b/i.test(l);
+  const candidatos = [];
+  lineas.forEach((l, i) => {
+    if(!esTotal(l)) return;
+    let ns = numerosDeLinea(l);
+    if(!ns.length && lineas[i + 1]) ns = numerosDeLinea(lineas[i + 1]);
+    if(ns.length) candidatos.push({ ...ns[ns.length - 1], l, fuerte: /total a pagar|importe total|total final|grand total|a pagar|total\s*(?:\$|usd|ars|uyu|mxn|brl|clp|eur|€|r\$)/i.test(l) });
+  });
+  const fuertes = candidatos.filter(c => c.fuerte);
+  const elegido = (fuertes.length ? fuertes : candidatos).reduce((a, c) => !a || c.n > a.n ? c : a, null);
+  let lineaTotal = "";
+  if(elegido && elegido.n > 0){
+    r.monto = elegido.n; lineaTotal = elegido.l;
+    if(elegido.dudoso) r.dudas.push("monto");
+  } else {
+    // Sin «total»: el número con decimales más grande del ticket, para revisar.
+    const todos = lineas.filter(l => !/\b(?:cuit|rut|rfc|nit|cnpj|cuil|tel|cel|nro|n[º°o]\.?|factura|ticket|recibo|comprobante|cae|cp|c\.p\.)\b/i.test(l))
+      .flatMap(l => numerosDeLinea(l).filter(x => x.dec || /[$€₪]/.test(l)).map(x => ({ ...x, l })));
+    const max = todos.reduce((a, c) => !a || c.n > a.n ? c : a, null);
+    if(max){ r.monto = max.n; lineaTotal = max.l; r.dudas.push("monto"); }
+  }
+  // La moneda: primero la del renglón del total, después la de cualquier parte.
+  const monedaEn = s => { const m = MONEDAS_EN_TEXTO.find(([, re]) => re.test(s)); return m ? m[0] : null; };
+  r.moneda = monedaEn(lineaTotal) || monedaEn(todo);
+  if(!r.moneda && /\$/.test(todo) && pais && MONEDA_DEL_PAIS[pais] && MONEDA_DEL_PAIS[pais] !== "USD"){ r.moneda = MONEDA_DEL_PAIS[pais]; r.dudas.push("moneda"); }
+  else if(!r.moneda && /\$/.test(todo)) r.dudas.push("moneda");
+  // La tarjeta: los cuatro últimos números («****1234», «XXXX 1234», «terminada en 1234»).
+  const t4 = /(?:[*xX•·]{2,}[\s\-]*|termina(?:da)? en\s*|ending in\s*|final\s*)(\d{4})\b/i.exec(todo);
+  if(t4) r.tarjeta = t4[1];
+  r.formaPago = r.tarjeta || /\b(?:tarjeta|visa|master(?:card)?|amex|d[eé]bito|cr[eé]dito|card|cart[aã]o)\b/i.test(todo) ? "tarjeta"
+    : /\b(?:efectivo|cash|contado|dinheiro)\b/i.test(todo) ? "efectivo"
+    : /\b(?:transferencia|transfer|pix)\b/i.test(todo) ? "transferencia" : null;
+  // El comercio: el primer renglón con nombre (no «factura», ni un CUIT, ni una dirección web).
+  const comercio = lineas.find(l => /\p{L}{3,}/u.test(l) && !/\b(?:factura|ticket|recibo|comprobante|cupom|original|duplicado|copia|fecha|data|cuit|rut|rfc|nit|cnpj|tel|www|http|direcci[oó]n|iva|caja|cajero)\b|חשבונית/i.test(l)
+    && (l.match(/\p{L}/gu) || []).length >= l.replace(/\s/g, "").length / 2);
+  if(comercio) r.comercio = tituloDeComercio(comercio.replace(/[^\p{L}\p{N}\s.&'\-]/gu, "").replace(/\s+/g, " ").trim()).slice(0, 60);
+  // El tipo: primero por el nombre del comercio (un taxi «al Hotel Centro» es transporte), después por el resto.
+  const tipo = TIPOS_EN_TEXTO.find(([, re]) => comercio && re.test(comercio)) || TIPOS_EN_TEXTO.find(([, re]) => re.test(todo));
+  if(tipo) r.tipo = tipo[0];
+  return r;
+}
+// Un PDF escaneado (CamScanner, el escáner del celular) guarda cada página
+// como una foto JPEG adentro: se saca la más grande, para leerla como foto.
+// Un PDF con texto de verdad (una factura electrónica) no trae fotos: ese,
+// por ahora, se completa a mano.
+function fotoDentroDelPdf(bytes){
+  const b = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  let txt = "";
+  for(let i = 0; i < b.length; i += 65536) txt += String.fromCharCode.apply(null, b.subarray(i, i + 65536));
+  let mejor = null;
+  for(let i = txt.indexOf("/DCTDecode"); i >= 0; i = txt.indexOf("/DCTDecode", i + 10)){
+    const s = txt.indexOf("stream", i);
+    if(s < 0) break;
+    let ini = s + 6;
+    if(txt[ini] === "\r") ini++;
+    if(txt[ini] === "\n") ini++;
+    const fin = txt.indexOf("endstream", ini);
+    if(fin < 0) break;
+    if(b[ini] !== 0xFF || b[ini + 1] !== 0xD8) continue;
+    let f = fin;
+    while(f > ini && (b[f - 1] === 0x0A || b[f - 1] === 0x0D)) f--;
+    if(!mejor || f - ini > mejor.fin - mejor.ini) mejor = { ini, fin: f };
+  }
+  return mejor ? b.slice(mejor.ini, mejor.fin) : null;
+}
+
+// ---- Leer los comprobantes (el lector, en el aparato) ----
+// Tesseract, guardado en el sitio (herramientas/publicar/lector/, que «Publicar
+// el sitio» copia a lector/ al lado de la página): nada se trae de afuera y el
+// comprobante no sale del aparato. Corre en un trabajador aparte, así la página
+// no necesita permisos nuevos. Desde un archivo local (file://) un trabajador no
+// se puede crear: ahí no hay lector y el gasto se completa a mano.
+const LECTOR = { carpeta: "lector/", programa: "tesseract.min.js", trabajador: "worker.min.js", motor: "tesseract-core-simd-lstm.wasm.js" };
+function lectorDisponible(){
+  return location.protocol !== "file:" && typeof Worker === "function" && typeof WebAssembly === "object";
+}
+function armarLector(){
+  if(!lectorListo){
+    const url = n => new URL(LECTOR.carpeta + n, location.href).href;
+    lectorListo = (async () => {
+      if(!window.Tesseract) await cargarScript(url(LECTOR.programa));
+      const w = await window.Tesseract.createWorker("spa", 1, { workerPath: url(LECTOR.trabajador), corePath: url(LECTOR.motor), langPath: url(""), workerBlobURL: false, gzip: true });
+      // El motor escribe avisos («Estimating resolution…») como si fueran errores: van a ningún lado.
+      await w.setParameters({ debug_file: "/dev/null" });
+      return w;
+    })();
+    lectorListo.catch(() => { lectorListo = null; });
+  }
+  return lectorListo;
+}
+// Una foto (data URL o Blob) o un PDF escaneado (sus bytes): el texto y qué tan seguro está.
+async function leerComprobante(cosa){
+  let imagen = cosa.imagen;
+  if(!imagen && cosa.pdf){
+    const foto = fotoDentroDelPdf(cosa.pdf);
+    if(!foto) throw new Error(t("es un PDF sin foto adentro (con texto de verdad): por ahora se completa a mano","it's a PDF with no photo inside (real text): for now it's filled in by hand","é um PDF sem foto dentro (com texto de verdade): por enquanto se completa à mão","זה PDF בלי תמונה בפנים (עם טקסט אמיתי): בינתיים ממלאים ידנית"));
+    imagen = new Blob([foto], { type: "image/jpeg" });
+  }
+  const w = await armarLector();
+  const { data } = await w.recognize(imagen, { rotateAuto: true });
+  return { texto: String((data && data.text) || ""), confianza: Math.round((data && data.confidence) || 0) };
+}
+// El país de la actividad del gasto: dice qué moneda es un «$» solo.
+function paisDeGasto(g){
+  const r = g && g.rendicionId && rendicionPorId(g.rendicionId);
+  return paisDePosteo(r && r.postId);
+}
+function paisDePosteo(id){
+  const p = id && getPostById(id);
+  const sc = p && (p.scopes || []).find(x => x && x.country);
+  return sc ? sc.country : null;
+}
+// En la ventana vale lo elegido en «Va en», aunque todavía no se haya guardado.
+function paisDeVinculo(v){
+  if(!v) return null;
+  if(v.startsWith("post:")) return paisDePosteo(v.slice(5));
+  const r = v.startsWith("ren:") ? rendicionPorId(v.slice(4)) : null;
+  return paisDePosteo(r && r.postId);
+}
+// Lo que sugiere el lector, solo para lo que está vacío: lo que la persona ya
+// escribió no se toca. `d` es el gasto (o el borrador de la ventana).
+function sugerenciasDelLector(d, s){
+  const p = {};
+  if(!d.fecha && s.fecha) p.fecha = s.fecha;
+  const sinMonto = d.monto === null || d.monto === undefined || String(d.monto).trim() === "";
+  if(sinMonto && s.monto != null) p.monto = s.monto;
+  if(sinMonto && s.moneda && s.moneda !== d.moneda && (!d.moneda || d.moneda === "USD")) p.moneda = s.moneda;
+  if(!d.formaPago && s.formaPago) p.formaPago = s.formaPago;
+  if(!d.tarjeta && s.tarjeta && (p.formaPago || d.formaPago) === "tarjeta") p.tarjeta = s.tarjeta;
+  if(!String(d.concepto || "").trim() && s.comercio) p.concepto = s.comercio.slice(0, 140);
+  if(!d.tipo && s.tipo && gastoTipos().some(x => x.key === s.tipo && !x.oculto)) p.tipo = s.tipo;
+  return p;
+}
+function lecturaDelLector(anterior, campos, dudas, confianza){
+  return { fuente: "lector", campos: [...new Set([...((anterior && anterior.fuente === "nombre" && anterior.campos) || []), ...campos])],
+    dudas: dudas.filter(k => campos.includes(k)), confianza, leido: new Date().toISOString() };
+}
+// Después de subir: completa el gasto en la base. Si la persona lo tiene
+// abierto en la ventana, completa el borrador (guardar es suyo).
+async function aplicarLectura(id, texto, confianza){
+  const g = gastoPorId(id);
+  if(!g || g.estado !== "borrador") return 0;
+  const s = leerTextoDeComprobante(texto, { hoy: todayISO(), pais: paisDeGasto(g) });
+  if(gastoEdit && gastoEdit.id === id){
+    const s2 = leerTextoDeComprobante(texto, { hoy: todayISO(), pais: paisDeVinculo(gastoEdit.d.vinculo) || paisDeGasto(g) });
+    const p = sugerenciasDelLector(gastoEdit.d, s2);
+    Object.assign(gastoEdit.d, p);
+    gastoEdit.leido = { campos: Object.keys(p), dudas: s2.dudas };
+    renderGasto();
+    return Object.keys(p).length;
+  }
+  const p = sugerenciasDelLector(g, s);
+  await store.gastos.cambiar(id, { ...p, lectura: lecturaDelLector(g.lectura, Object.keys(p), s.dudas, confianza) });
+  return Object.keys(p).length;
+}
+function encolarLectura(x){
+  if(!lectorDisponible()) return;
+  lectorCola.push(x);
+  if(!lectorEstado || !lectorEstado.corriendo) lectorEstado = { total: 0, hechos: 0, fallas: [], corriendo: false, preparando: false };
+  lectorEstado.total++;
+  correrLector();
+}
+// De a uno, en el fondo: la persona puede seguir usando la app mientras tanto.
+async function correrLector(){
+  const e = lectorEstado;
+  if(!e || e.corriendo) return;
+  e.corriendo = true;
+  while(lectorCola.length && lectorEstado === e){
+    const x = lectorCola.shift();
+    try{
+      e.preparando = !lectorListo; render();
+      const { texto, confianza } = await leerComprobante(x);
+      e.preparando = false;
+      await aplicarLectura(x.id, texto, confianza);
+      e.hechos++;
+    }catch(err){
+      console.warn("El lector no pudo leer un comprobante:", err && err.message);
+      e.preparando = false;
+      e.fallas.push({ nombre: x.nombre, error: detalleDeError(err) });
+    }
+    render();
+  }
+  e.corriendo = false;
+  render();
+}
+// La ventana de un gasto: «Leer el comprobante», cuando hace falta (uno que se
+// subió antes, o si el de fondo no pudo). Completa el borrador, no la base.
+async function leerGastoAbierto(){
+  const e = gastoEdit, g = e && gastoPorId(e.id);
+  if(!e || !g || e.leyendo || !esUrlFirmada(g.archivoUrl)) return;
+  e.leyendo = true; e.error = ""; renderGasto();
+  try{
+    const res = await fetch(g.archivoUrl);
+    if(!res.ok) throw new Error(String(res.status));
+    const cosa = esPdfGasto(g) ? { pdf: new Uint8Array(await res.arrayBuffer()) } : { imagen: await res.blob() };
+    const { texto } = await leerComprobante(cosa);
+    if(gastoEdit !== e) return;
+    const s = leerTextoDeComprobante(texto, { hoy: todayISO(), pais: paisDeVinculo(e.d.vinculo) || paisDeGasto(g) });
+    const p = sugerenciasDelLector(e.d, s);
+    Object.assign(e.d, p);
+    e.leido = { campos: Object.keys(p), dudas: s.dudas };
+  }catch(err){
+    console.warn("El lector no pudo leer el comprobante:", err && err.message);
+    if(gastoEdit !== e) return;
+    e.error = t("No se pudo leer: {m}. Completalo a mano.","Couldn't read it: {m}. Fill it in by hand.","Não foi possível ler: {m}. Complete à mão.","לא ניתן היה לקרוא: {m}. מלאו ידנית.",{ m: detalleDeError(err) });
+  }
+  e.leyendo = false;
+  renderGasto();
+}
+
 // ---- Subir comprobantes ----
 // El nombre del archivo puede traer la fecha y el concepto: así nombra hoy
 // el usuario los suyos («15-11-2026 - Taxi al aeropuerto - Visita.pdf»), y
@@ -24474,7 +24823,8 @@ function sugerirDeNombre(nombre){
     fecha = ok(m[3], m[2], m[1]);
     concepto = m[4].split(/\s+-\s+/)[0].trim().slice(0, 140);
   } else if((m = /(?:^|[^0-9])(20\d{2})(\d{2})(\d{2})(?:[^0-9]|$)/.exec(base))) fecha = ok(m[1], m[2], m[3]);
-  return fecha || concepto ? { fecha, concepto, lectura: { fuente: "nombre", fecha, concepto } } : { fecha: null, concepto: "", lectura: null };
+  return fecha || concepto ? { fecha, concepto, lectura: { fuente: "nombre", campos: [fecha ? "fecha" : "", concepto ? "concepto" : ""].filter(Boolean) } }
+    : { fecha: null, concepto: "", lectura: null };
 }
 async function huellaDe(buf){
   const h = await crypto.subtle.digest("SHA-256", buf);
@@ -24502,7 +24852,8 @@ async function subirComprobantes(files, destino){
       : f.size > GASTO_TOPE_BYTES ? t("pesa más de 25 MB","is larger than 25 MB","pesa mais de 25 MB","גדול מ-25MB") : "";
     if(noSirve){ s.fallas.push({ nombre: f.name, error: noSirve }); render(); continue; }
     try{
-      const hash = await huellaDe(await f.arrayBuffer());
+      const buf = await f.arrayBuffer();
+      const hash = await huellaDe(buf);
       if(huellas.has(hash)){ s.repetidos.push(f.name); continue; }
       const esPdf = f.type === "application/pdf" || /\.pdf$/i.test(f.name);
       let dataUrl = await readFileAsDataUrl(f);
@@ -24522,6 +24873,7 @@ async function subirComprobantes(files, destino){
       try{ await store.gastos.subirComprobante(id, dataUrl, f.name); }
       catch(err){ await store.gastos.borrar(id).catch(() => {}); huellas.delete(hash); throw err; }
       s.hechos++;
+      encolarLectura(esPdf ? { id, nombre: f.name, pdf: new Uint8Array(buf) } : { id, nombre: f.name, imagen: dataUrl });
     }catch(err){
       console.error("No se pudo subir un comprobante:", err);
       s.fallas.push({ nombre: f.name, error: detalleDeError(err) });
@@ -24530,6 +24882,15 @@ async function subirComprobantes(files, destino){
   }
   s.corriendo = false;
   render();
+}
+function renderEstadoDelLector(){
+  const e = lectorEstado;
+  if(!e || !e.total) return "";
+  const linea = e.corriendo
+    ? `📖 ${t("Leyendo los comprobantes: {a} de {b}…","Reading the receipts: {a} of {b}…","Lendo os comprovantes: {a} de {b}…","קורא את הקבלות: {a} מתוך {b}…",{ a: Math.min(e.hechos + e.fallas.length + 1, e.total), b: e.total })}`
+      + (e.preparando ? " " + t("La primera vez tarda un poco más: se baja el lector.","The first time takes a bit longer: the reader is downloading.","Na primeira vez demora um pouco mais: o leitor está sendo baixado.","בפעם הראשונה זה לוקח קצת יותר: הקורא יורד.") : "")
+    : e.hechos ? `📖 ${t("El lector completó lo que pudo leer: revisá cada gasto con su comprobante antes de confirmarlo.","The reader filled in what it could read: check each expense against its receipt before confirming it.","O leitor completou o que conseguiu ler: revise cada despesa com o comprovante antes de confirmar.","הקורא מילא את מה שהצליח לקרוא: בדקו כל הוצאה מול הקבלה לפני האישור.")}` : "";
+  return `${linea ? `<div class="gx-sub-lector">${linea}</div>` : ""}${e.fallas.map(x => `<div class="gx-sub-det">${esc(x.nombre)}: ${esc(x.error)}</div>`).join("")}`;
 }
 function renderSubida(){
   const s = gastosSubida;
@@ -24543,7 +24904,8 @@ function renderSubida(){
       <div>${linea}</div>
       ${rep ? `<div class="gx-sub-det">${esc(t("Ya estaban cargados (no se repiten): {l}","Already uploaded (not repeated): {l}","Já estavam carregados (não se repetem): {l}","כבר הועלו (לא חוזרים): {l}",{ l: s.repetidos.join(", ") }))}</div>` : ""}
       ${s.fallas.map(x => `<div class="gx-sub-det">${esc(x.nombre)}: ${esc(x.error)}</div>`).join("")}
-      ${s.corriendo ? "" : `<button type="button" class="gx-link" data-action="gastos-subida-cerrar">${t("Listo","Done","Pronto","סיום")}</button>`}
+      ${renderEstadoDelLector()}
+      ${s.corriendo || (lectorEstado && lectorEstado.corriendo) ? "" : `<button type="button" class="gx-link" data-action="gastos-subida-cerrar">${t("Listo","Done","Pronto","סיום")}</button>`}
     </div>`;
 }
 
@@ -24997,8 +25359,18 @@ function renderGasto(){
     : !esUrlFirmada(g.archivoUrl) ? `<div class="gx-comp gx-comp-vacio">${t("Cargando el comprobante…","Loading the receipt…","Carregando o comprovante…","טוען את הקבלה…")}</div>`
     : esPdfGasto(g) ? `<button type="button" class="gx-comp gx-comp-pdf" data-action="gasto-ver-comprobante" data-id="${esc(g.id)}"><span class="gx-pdf-ico" aria-hidden="true">PDF</span><span>${t("Abrir el PDF","Open the PDF","Abrir o PDF","פתיחת ה-PDF")}</span></button>`
     : `<button type="button" class="gx-comp" data-action="gasto-ver-comprobante" data-id="${esc(g.id)}" aria-label="${esc(t("Ver el comprobante entero","See the whole receipt","Ver o comprovante inteiro","הצגת הקבלה המלאה"))}"><img src="${esc(store.miniaturaDe(g.archivoUrl))}" alt=""></button>`;
-  const sugerido = g.lectura && g.lectura.fuente === "nombre" && g.estado === "borrador"
-    ? `<p class="gx-sugerido">💡 ${t("La fecha y el concepto salieron del nombre del archivo: revisalos.","The date and description came from the file name: check them.","A data e o conceito saíram do nome do arquivo: revise.","התאריך והתיאור נלקחו משם הקובץ: בדקו אותם.")}</p>` : "";
+  // Lo que completó el lector (o el nombre del archivo), para revisar con el comprobante a la vista.
+  const leido = e.leido || (g.estado === "borrador" && g.lectura && Array.isArray(g.lectura.campos) ? { campos: g.lectura.campos, dudas: g.lectura.dudas || [], fuente: g.lectura.fuente } : null);
+  const delNombre = leido && leido.fuente === "nombre";
+  const sugerido = !editable || !leido ? "" : !leido.campos.length
+    ? (e.leido ? `<p class="gx-sugerido">📖 ${t("El lector no encontró nada claro: completalo a mano.","The reader didn't find anything clear: fill it in by hand.","O leitor não encontrou nada claro: complete à mão.","הקורא לא מצא משהו ברור: מלאו ידנית.")}</p>` : "")
+    : `<p class="gx-sugerido">${delNombre ? "💡" : "📖"} ${delNombre
+        ? t("Del nombre del archivo salió: {c}. Revisalo.","From the file name: {c}. Check it.","Do nome do arquivo saiu: {c}. Revise.","משם הקובץ נלקח: {c}. בדקו.",{ c: leido.campos.map(nombreDeCampoGasto).join(", ") })
+        : t("El lector completó: {c}. Revisalo con el comprobante.","The reader filled in: {c}. Check it against the receipt.","O leitor completou: {c}. Revise com o comprovante.","הקורא מילא: {c}. בדקו מול הקבלה.",{ c: leido.campos.map(nombreDeCampoGasto).join(", ") })}
+        ${leido.dudas.some(k => leido.campos.includes(k)) ? `<b>${t("Sobre todo: {c}.","Especially: {c}.","Sobretudo: {c}.","בעיקר: {c}.",{ c: leido.dudas.filter(k => leido.campos.includes(k)).map(nombreDeCampoGasto).join(", ") })}</b>` : ""}</p>`;
+  const marca = k => !leido || !editable ? "" : leido.dudas.includes(k) && leido.campos.includes(k) ? ' data-duda="1"' : leido.campos.includes(k) ? ' data-sug="1"' : "";
+  const leer = editable && g.archivo && esUrlFirmada(g.archivoUrl) && lectorDisponible()
+    ? `<button type="button" class="btn-secondary gx-leer" data-action="gasto-leer" ${e.leyendo ? "disabled" : ""}>📖 ${e.leyendo ? t("Leyendo…","Reading…","Lendo…","קורא…") : t("Leer el comprobante","Read the receipt","Ler o comprovante","קריאת הקבלה")}</button>` : "";
   const coms = comentariosDe(g.id);
   const hilo = coms.length ? `<div class="gx-hilo">${coms.map(c => `<div class="gx-com${c.autor && String(c.autor).toLowerCase() === g.autor ? "" : " gx-com-admin"}">
       <b>${esc(nombreDePersona(c.autor))}</b> <small>${esc(fmtDateTime(c.creadoEl))}</small><div>${esc(c.texto)}</div></div>`).join("")}</div>` : "";
@@ -25013,7 +25385,7 @@ function renderGasto(){
     <button type="button" class="close" data-action="gasto-cerrar" aria-label="${esc(t("Cerrar","Close","Fechar","סגירה"))}">✕</button>
     <h2 id="gastoTitle" class="gx-tit">🧾 ${editable ? t("Revisar el gasto","Check the expense","Revisar a despesa","בדיקת ההוצאה") : t("El gasto","The expense","A despesa","ההוצאה")} ${gxChip(estadoDeGasto(g.estado))}</h2>
     <div class="gx-ventana">
-      <div class="gx-v-comp">${vista}<small class="gx-arch">${esc(g.archivoNombre || "")}</small>${!editable && g.autor !== miCorreo() ? `<small>${esc(t("De {n}","By {n}","De {n}","של {n}",{ n: nombreDePersona(g.autor) }))}</small>` : ""}</div>
+      <div class="gx-v-comp">${vista}<small class="gx-arch">${esc(g.archivoNombre || "")}</small>${leer}${!editable && g.autor !== miCorreo() ? `<small>${esc(t("De {n}","By {n}","De {n}","של {n}",{ n: nombreDePersona(g.autor) }))}</small>` : ""}</div>
       <div class="gx-v-form">
         ${sugerido}${hilo}
         ${puedeObservar ? `<div class="gx-observar">
@@ -25021,23 +25393,23 @@ function renderGasto(){
             <button type="button" class="btn-secondary" data-action="gasto-observar" ${e.guardando ? "disabled" : ""}>⚠️ ${t("Observar","Flag","Observar","הערה")}</button>
           </div>` : ""}
         <div class="gx-campos">
-          ${campo(t("Fecha","Date","Data","תאריך"), `<input type="date" id="gxFecha" data-gcampo="fecha" value="${esc(d.fecha)}"${mal("fecha")}${dis}>`)}
-          ${campo(t("Tipo","Type","Tipo","סוג"), `<select id="gxTipo" data-gcampo="tipo"${mal("tipo")}${dis}><option value="">${esc(t("Elegí…","Pick…","Escolha…","בחרו…"))}</option>${tipos.map(x => `<option value="${esc(x.key)}"${x.key === d.tipo ? " selected" : ""}>${esc(x.label)}</option>`).join("")}</select>`)}
-          ${campo(t("Concepto","Description","Conceito","תיאור"), `<input type="text" id="gxConcepto" maxlength="140" data-gcampo="concepto" value="${esc(d.concepto)}" placeholder="${esc(t("Por ejemplo: Taxi al aeropuerto","For example: Taxi to the airport","Por exemplo: Táxi para o aeroporto","למשל: מונית לשדה התעופה"))}"${mal("concepto")}${dis}>`, true)}
-          ${campo(t("Monto","Amount","Valor","סכום"), `<input type="number" id="gxMonto" step="0.01" inputmode="decimal" data-gcampo="monto" value="${esc(d.monto)}"${mal("monto")}${dis}>`)}
-          ${campo(t("Moneda","Currency","Moeda","מטבע"), `<input type="text" id="gxMoneda" class="gx-moneda" list="gxMonedas" maxlength="3" data-gcampo="moneda" value="${esc(d.moneda)}"${mal("moneda")}${dis}>`)}
+          ${campo(t("Fecha","Date","Data","תאריך"), `<input type="date" id="gxFecha" data-gcampo="fecha" value="${esc(d.fecha)}"${mal("fecha")}${marca("fecha")}${dis}>`)}
+          ${campo(t("Tipo","Type","Tipo","סוג"), `<select id="gxTipo" data-gcampo="tipo"${mal("tipo")}${marca("tipo")}${dis}><option value="">${esc(t("Elegí…","Pick…","Escolha…","בחרו…"))}</option>${tipos.map(x => `<option value="${esc(x.key)}"${x.key === d.tipo ? " selected" : ""}>${esc(x.label)}</option>`).join("")}</select>`)}
+          ${campo(t("Concepto","Description","Conceito","תיאור"), `<input type="text" id="gxConcepto" maxlength="140" data-gcampo="concepto" value="${esc(d.concepto)}"${marca("concepto")} placeholder="${esc(t("Por ejemplo: Taxi al aeropuerto","For example: Taxi to the airport","Por exemplo: Táxi para o aeroporto","למשל: מונית לשדה התעופה"))}"${mal("concepto")}${dis}>`, true)}
+          ${campo(t("Monto","Amount","Valor","סכום"), `<input type="number" id="gxMonto" step="0.01" inputmode="decimal" data-gcampo="monto" value="${esc(d.monto)}"${mal("monto")}${marca("monto")}${dis}>`)}
+          ${campo(t("Moneda","Currency","Moeda","מטבע"), `<input type="text" id="gxMoneda" class="gx-moneda" list="gxMonedas" maxlength="3" data-gcampo="moneda" value="${esc(d.moneda)}"${mal("moneda")}${marca("moneda")}${dis}>`)}
           ${otraMoneda ? campo(t("Monto en {m}","Amount in {m}","Valor em {m}","סכום ב-{m}",{ m: esc(d.rendidoMoneda) }), `<input type="number" id="gxRendido" step="0.01" inputmode="decimal" data-gcampo="rendidoMonto" value="${esc(d.rendidoMonto)}"${dis}><small class="gx-pista">${t("Lo que te cobró el banco.","What your bank charged you.","O que o banco te cobrou.","מה שהבנק חייב אתכם.")}</small>`)
             + campo(t("Se rinde en","Reported in","Presta-se em","מדווח ב"), `<input type="text" id="gxRendidoMoneda" class="gx-moneda" list="gxMonedas" maxlength="3" data-gcampo="rendidoMoneda" value="${esc(d.rendidoMoneda)}"${mal("rendidoMoneda")}${dis}>`) : ""}
           <fieldset class="gx-campo gx-ancho gx-pago"${dis}><legend class="gx-et">${t("¿Quién puso la plata?","Who paid?","Quem pagou?","מי שילם?")}</legend>
             <label><input type="radio" name="gxPago" id="gxPagoPersona" data-gcampo="pago" value="persona"${d.pago === "persona" ? " checked" : ""}> ${t("Yo (de mi bolsillo o de un adelanto)","Me (out of pocket or from an advance)","Eu (do meu bolso ou de um adiantamento)","אני (מהכיס או ממקדמה)")}</label>
             <label><input type="radio" name="gxPago" id="gxPagoOrg" data-gcampo="pago" value="organizacion"${d.pago === "organizacion" ? " checked" : ""}> ${t("La organización (su tarjeta o su cuenta)","The organization (its card or account)","A organização (o cartão ou a conta dela)","הארגון (הכרטיס או החשבון שלו)")}</label>
           </fieldset>
-          ${campo(t("Forma de pago","Payment method","Forma de pagamento","אמצעי תשלום"), `<select id="gxForma" data-gcampo="formaPago"${dis}>
+          ${campo(t("Forma de pago","Payment method","Forma de pagamento","אמצעי תשלום"), `<select id="gxForma" data-gcampo="formaPago"${marca("formaPago")}${dis}>
             <option value="">—</option>
             <option value="tarjeta"${d.formaPago === "tarjeta" ? " selected" : ""}>${t("Tarjeta","Card","Cartão","כרטיס")}</option>
             <option value="efectivo"${d.formaPago === "efectivo" ? " selected" : ""}>${t("Efectivo","Cash","Dinheiro","מזומן")}</option>
             <option value="transferencia"${d.formaPago === "transferencia" ? " selected" : ""}>${t("Transferencia","Transfer","Transferência","העברה")}</option></select>`)}
-          ${d.formaPago === "tarjeta" ? campo(t("Tarjeta terminada en","Card ending in","Cartão terminado em","כרטיס שמסתיים ב"), `<input type="text" id="gxTarjeta" inputmode="numeric" maxlength="4" data-gcampo="tarjeta" value="${esc(d.tarjeta)}" placeholder="1234"${mal("tarjeta")}${dis}>`) : ""}
+          ${d.formaPago === "tarjeta" ? campo(t("Tarjeta terminada en","Card ending in","Cartão terminado em","כרטיס שמסתיים ב"), `<input type="text" id="gxTarjeta" inputmode="numeric" maxlength="4" data-gcampo="tarjeta" value="${esc(d.tarjeta)}"${marca("tarjeta")} placeholder="1234"${mal("tarjeta")}${dis}>`) : ""}
           <label class="gx-check gx-ancho"><input type="checkbox" id="gxFactura" data-gcampo="factura"${d.factura ? " checked" : ""}${dis}> ${t("Tiene factura o comprobante válido","Has a valid invoice or receipt","Tem nota fiscal ou comprovante válido","יש חשבונית או קבלה תקפה")}</label>
           ${campo(t("Observaciones (opcional)","Notes (optional)","Observações (opcional)","הערות (לא חובה)"), `<textarea id="gxObservaciones" maxlength="500" rows="2" data-gcampo="observaciones"${dis}>${esc(d.observaciones)}</textarea>`, true)}
           ${campo(t("Va en","Goes in","Vai em","שייך ל"), `<select id="gxVinculo" data-gcampo="vinculo"${dis}>${opcionesDeVinculo(g, d.vinculo)}</select>`, true)}
@@ -25052,7 +25424,8 @@ function renderGasto(){
 function nombreDeCampoGasto(k){
   return ({ fecha: t("la fecha","the date","a data","התאריך"), concepto: t("el concepto","the description","o conceito","התיאור"), tipo: t("el tipo","the type","o tipo","הסוג"),
     monto: t("el monto","the amount","o valor","הסכום"), moneda: t("la moneda (tres letras)","the currency (three letters)","a moeda (três letras)","המטבע (שלוש אותיות)"),
-    rendidoMoneda: t("la moneda en que se rinde","the reporting currency","a moeda da prestação","מטבע הדיווח"), tarjeta: t("los 4 números de la tarjeta","the card's 4 digits","os 4 números do cartão","4 הספרות של הכרטיס") })[k] || k;
+    rendidoMoneda: t("la moneda en que se rinde","the reporting currency","a moeda da prestação","מטבע הדיווח"), tarjeta: t("los 4 números de la tarjeta","the card's 4 digits","os 4 números do cartão","4 הספרות של הכרטיס"),
+    formaPago: t("la forma de pago","the payment method","a forma de pagamento","אמצעי התשלום") })[k] || k;
 }
 async function guardarGasto(confirmar){
   const e = gastoEdit, g = e && gastoPorId(e.id);
@@ -25089,7 +25462,8 @@ async function guardarGasto(confirmar){
       pago: d.pago === "organizacion" ? "organizacion" : "persona", formaPago: d.formaPago || null,
       tarjeta: d.formaPago === "tarjeta" && d.tarjeta ? d.tarjeta : null, factura: !!d.factura,
       observaciones: String(d.observaciones).trim().slice(0, 500), rendicionId: rid,
-      estado: confirmar ? "confirmado" : "borrador" });
+      estado: confirmar ? "confirmado" : "borrador",
+      ...(e.leido && e.leido.campos.length ? { lectura: lecturaDelLector(g.lectura, e.leido.campos, e.leido.dudas, null) } : {}) });
     if(String(e.comentario).trim()) await store.gastos.comentar(g.id, String(e.comentario).trim().slice(0, 1000));
     cerrarGasto();
   }catch(err){
@@ -25138,6 +25512,7 @@ function gastoAlEscribir(el, alCambiar){
   if(k === "tarjeta") v = String(v).replace(/\D/g, "").slice(0, 4);
   e.d[k] = v;
   if(e.faltan.includes(k)) e.faltan = e.faltan.filter(x => x !== k);
+  if(alCambiar){ el.removeAttribute("data-sug"); el.removeAttribute("data-duda"); }
   if(alCambiar && ["moneda", "rendidoMoneda", "formaPago"].includes(k)) renderGasto();
   return true;
 }
@@ -25229,7 +25604,7 @@ async function prenderGastos(prendido){
 const GASTOS_ACCIONES = {
   "gastos-seccion": async el => { gastosSeccion = el.dataset.key; gastosAbierta = null; gastosTotal = null; render(); scrollToTop(); },
   "gastos-subir": async el => { elegirComprobantes(el.dataset.id || (gastosAbierta && gastosAbierta !== "sin" ? gastosAbierta : null)); },
-  "gastos-subida-cerrar": async () => { gastosSubida = null; render(); },
+  "gastos-subida-cerrar": async () => { gastosSubida = null; if(lectorEstado && !lectorEstado.corriendo) lectorEstado = null; render(); },
   "gastos-abrir-rendicion": async el => { gastosAbierta = el.dataset.id; gastosTotal = null; render(); scrollToTop(); },
   "gastos-volver": async () => { const id = gastosAbierta; gastosAbierta = null; gastosTotal = null; render();
     const x = id && document.querySelector(`[data-action="gastos-abrir-rendicion"][data-id="${CSS.escape(id)}"]`); if(x) x.focus(); },
@@ -25257,6 +25632,7 @@ const GASTOS_ACCIONES = {
   "gasto-borrar": async () => borrarGasto(),
   "gasto-observar": async () => observarGasto(),
   "gasto-ver-comprobante": async el => verComprobante(el.dataset.id),
+  "gasto-leer": async () => leerGastoAbierto(),
   "gastos-prender": async el => prenderGastos(!!el.checked),
   "gastos-tipo-ocultar": async el => { const a = borradorTiposDeGasto(), x = a.tipos[Number(el.dataset.i)]; if(x){ x.oculto = !x.oculto; a.cambiado = true; a.ok = false; render(); } },
   "gastos-tipo-sumar": async () => {

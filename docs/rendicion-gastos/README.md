@@ -3,7 +3,8 @@
 > **Estado (15/11/2026):** la **etapa de prueba** tiene la base (`supabase/27-gastos.sql`, 137 comprobaciones en
 > `supabase/pruebas/71-gastos.sql`) y las pantallas (`herramientas/pruebas/gastos_test.mjs`), **publicadas en
 > `main` el 15/11 con el OK del usuario y apagadas**: nadie las ve hasta que un admin prende el interruptor de
-> Administración → Gastos. Faltan el lector de comprobantes y los avisos. **Cada parte que sigue va a `main` recién
+> Administración → Gastos. El **lector de comprobantes** está hecho en la rama de trabajo, **sin publicar**.
+> Faltan los avisos. **Cada parte que sigue va a `main` recién
 > con el OK explícito del usuario**, con capturas: es lo que se acordó, y es una excepción a la regla general de
 > «pushear a `main` de una» de `CLAUDE.md` (al llegar a `main`, la base real se actualiza sola).
 
@@ -30,6 +31,11 @@ por lo de abajo).
   servicio). Se probó con 19 comprobantes reales del usuario (15/11): fechas 16 de 19, montos 14 de 19 bien
   tratados; los 3 montos mal leídos se detectan con reglas (tres decimales, la suma que no cierra). El lector
   se arma de forma que se pueda cambiar después (por el de Google, si hace falta) sin rehacer nada.
+- **Cómo se carga el lector** (decidido el 15/11, «opción 1» de tres): sus piezas se guardan en el sitio
+  (`herramientas/publicar/lector/`) y no se traen de afuera; corre en un trabajador aparte del navegador, así
+  que la página no necesitó permisos nuevos. Las otras dos opciones eran traerlo de un servidor de afuera (dos
+  piezas sin control de huella: descartada) o el lector de Google Drive (mejor lectura, pero necesita antes la
+  conexión con Google de la etapa 2): se puede comparar cuando esté esa conexión.
 - **El nombre del archivo** en Drive lo arma el sistema con el concepto confirmado: `D-M-AAAA - Concepto - Actividad.pdf`.
   Los datos del gasto viven en sus campos; el nombre no es de donde salen.
 
@@ -107,7 +113,13 @@ tocan eventos, comentarios ni la Agenda); se hace por etapas chicas; Drive y el 
   - En Administración → Gastos, también los tipos: renombrar, dejar de ofrecer y sumar.
   Lo prueba `herramientas/pruebas/gastos_test.mjs`; el recorrido de bienvenida lo anota en `TOUR_SIN_PASO`
   (solo lo ven los admins) hasta que se abra al equipo.
-- [ ] El lector de comprobantes en el dispositivo, con sus controles.
+- [x] **El lector de comprobantes** (15/11, sin publicar): al subir, lee cada comprobante en el fondo (las
+  fotos, y los PDF escaneados con una foto adentro, como los de CamScanner; un PDF con texto de verdad, por
+  ahora, a mano) y completa **solo lo vacío**: fecha, monto, moneda, tarjeta, forma de pago, comercio (como
+  concepto) y tipo. Un «$» solo se toma como la moneda del país de la actividad, para revisar. La ventana
+  dice qué completó, marca lo sugerido y lo dudoso, y tiene «Leer el comprobante» para uno subido antes. El
+  lector nunca confirma. Lo prueban `lector_texto_test.mjs` (tickets inventados de seis países),
+  `lector_test.mjs` (leyendo de verdad) y `lector_integridad_test.mjs`. La primera vez baja unos 6 MB.
 - [ ] Los avisos de «te observaron un gasto» (campanita y correo).
 
 **Visto al armar las pantallas (15/11), para decidir más adelante:** si la rutina de un mes ya se aprobó, un

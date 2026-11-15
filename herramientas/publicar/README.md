@@ -21,3 +21,10 @@ Los archivos del logo (SVG y PNG), sus reglas de uso y dónde está puesto en el
 sistema: [`marca/README.md`](./marca/README.md). El workflow «Publicar el sitio»
 copia `marca/png/toldot-correo.png` al sitio (`marca/toldot-correo.png`): los
 correos lo piden por esa dirección.
+
+## `lector/` — el lector de comprobantes de Gastos
+
+Las piezas de Tesseract (el programa libre que lee los tickets en el aparato de quien carga) y el español:
+[`lector/README.md`](./lector/README.md). «Publicar el sitio» copia la carpeta entera al sitio (`lector/`): la
+app las pide de ahí y no de un servidor de afuera. `herramientas/pruebas/lector_integridad_test.mjs` controla
+que sean exactamente las de su versión.

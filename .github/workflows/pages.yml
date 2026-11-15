@@ -91,7 +91,7 @@ jobs:
         if: steps.modo.outputs.listo == 'si'
         with: { persist-credentials: false }
 
-      # El sitio es index.html y nada más. Con la publicación desde la
+      # El sitio es index.html, el logo de los correos y el lector de comprobantes. Con la publicación desde la
       # rama, GitHub servía también README, docs/, supabase/ y herramientas/pruebas/
       # pasados por Jekyll; nadie los abría desde ahí (se leen en el repo).
       # Y sale con la CSP endurecida: en vez de dejar correr cualquier script
@@ -109,6 +109,11 @@ jobs:
           # traen adentro (herramientas/publicar/marca/README.md).
           mkdir -p _sitio/marca
           cp herramientas/publicar/marca/png/toldot-correo.png _sitio/marca/toldot-correo.png
+          # El lector de comprobantes de Gastos (15/11/2026): sus piezas se sirven desde el mismo sitio,
+          # nunca de afuera, y la prueba de integridad ya controló que sean las de su versión
+          # (herramientas/publicar/lector/README.md).
+          mkdir -p _sitio/lector
+          cp herramientas/publicar/lector/* _sitio/lector/
           touch _sitio/.nojekyll
 
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
