@@ -126,6 +126,23 @@ tocan eventos, comentarios ni la Agenda); se hace por etapas chicas; Drive y el 
   completos y sin dudas del lector. «Confirmar los marcados» confirma los que tienen todo, guarda sin confirmar
   lo editado sin marcar y deja en la lista, con lo que falta, los incompletos. En «Sin vincular», a dónde
   llevar los marcados. Lo prueba `gastos_test.mjs`.
+- [x] **Arreglos de la revisión de diseño** (15/11, en la rama, esperando el OK del usuario): el usuario vio un
+  PDF abierto como texto crudo y no encontraba cómo quitar un comprobante mal subido, y pidió revisar el diseño
+  (la crítica dio 23/40). Eligió arreglar los tres urgentes y ver la lista con la foto grande:
+  - **El PDF** se abre como documento en el visor (en el celular, en una pestaña aparte); el visor ya no
+    intenta leer como planilla un archivo de tipo desconocido. Al subir un PDF escaneado se guarda también la
+    foto de adentro, que se ve en la lista y en la ventana.
+  - **Borrar**: cada gasto que todavía se puede tocar tiene su 🗑️ en la fila de la rendición y «Borrar» en la
+    lista, siempre preguntando. Cerrar la ventana o irse de la lista con cambios sin guardar también pregunta.
+  - **La moneda**: «Subir comprobantes» pregunta antes **de qué son** (una actividad, la rutina de un mes o
+    «todavía no sé»), así el lector sabe el país y la moneda; después se ve esa rendición. La moneda que salió
+    de un «$» queda dudosa y la fila no viene marcada en la lista hasta revisarla. En la lista, «La misma moneda
+    a todos». Al mandar, avisa (y deja mandar igual, lo eligió el usuario) los gastos en otra moneda sin el monto
+    en dólares. El total de una rendición cuenta solo lo confirmado y dice cuántos quedan afuera.
+  - **La lista** muestra el comprobante grande al lado de cada fila; sin nada marcado, el botón dice «Guardar sin
+    confirmar» y espera a que haya algo.
+  Lo prueban `gastos_test.mjs` y `lector_test.mjs`. Quedan de la crítica, para más adelante: el comprobante dentro
+  de la ventana en el celular y que la cuenta corriente se entienda mejor.
 - [ ] Los avisos de «te observaron un gasto» (campanita y correo).
 
 **Visto al armar las pantallas (15/11), para decidir más adelante:** si la rutina de un mes ya se aprobó, un

@@ -93,6 +93,15 @@ eq("la ventana dice qué completó el lector y qué revisar sobre todo", await p
 eq("los campos completados se ven marcados, y la moneda como dudosa", await p.evaluate(() => [document.getElementById("gxMonto").dataset.sug, document.getElementById("gxMoneda").dataset.duda]), ["1", "1"]);
 await p.keyboard.press("Escape");
 
+// «Revisar en lista»: lo que el lector dejó dudoso no viene marcado; al corregirlo, sí.
+await p.click('[data-action="gastos-lista-abrir"][data-id="ren_mvd"]'); await p.waitForSelector(".gx-lista-rev");
+const marca = n => p.$eval(`#gxL_${de(n).id}_marca`, e => e.checked);
+eq("en la lista, el taxi (la moneda salió de un «$») viene sin marcar; la cena y el hotel, marcados", [await marca("foto1.jpg"), await marca("foto2.jpg"), await marca("escaneo.pdf")], [false, true, true]);
+eq("…y su moneda se ve como dudosa", await p.$eval(`#gxL_${de("foto1.jpg").id}_moneda`, e => e.dataset.duda), "1");
+await p.fill(`#gxL_${de("foto1.jpg").id}_moneda`, "UYU"); await p.press(`#gxL_${de("foto1.jpg").id}_moneda`, "Tab"); await p.waitForTimeout(150);
+eq("revisada la moneda, se marca sola", await marca("foto1.jpg"), true);
+await p.click('[data-action="gastos-lista-cerrar"]'); await p.click("#confirmOk"); await p.waitForSelector(".gx-lista-rev", { state: "detached" });
+
 // «Leer el comprobante» en uno subido antes (gx8, sin datos): completa la ventana, no la base.
 await p.click('[data-action="gastos-volver"]'); await p.waitForTimeout(150);
 await p.click('[data-action="gastos-abrir-rendicion"][data-id="sin"]'); await p.waitForTimeout(150);

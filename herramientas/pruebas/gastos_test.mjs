@@ -52,6 +52,17 @@ const elegir = async (p, sel, files) => {
   await ch.setFiles(files);
 };
 const aceptar = async p => { await p.waitForSelector("#confirmOverlay:not([hidden])"); await p.click("#confirmOk"); };
+// «Subir comprobantes» pregunta antes de qué son (vinculo: "" = todavía no sé, "post:<id>", "mes:AAAA-MM").
+async function subirDesdeCabecera(p, vinculo, files){
+  if(!(await p.$('[data-action="gastos-destino-abrir"]'))){
+    if(await p.$('[data-action="gastos-volver"]')) await p.click('[data-action="gastos-volver"]');
+    else await p.evaluate(() => document.querySelector('[data-action="gastos-seccion"][data-key="rendiciones"]').click());
+    await p.waitForTimeout(150);
+  }
+  await p.click('[data-action="gastos-destino-abrir"]');
+  await p.selectOption("#gxDestino", vinculo);
+  await elegir(p, '[data-action="gastos-destino-elegir"]', files);
+}
 
 const b = await abrirNavegador();
 const vp = { width: 1280, height: 900 }, celu = { width: 390, height: 844 };
@@ -106,7 +117,7 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
 
   // Subir dos juntos: una foto con la fecha y el concepto en el nombre, y un PDF.
   const antes = (await tabla(p, "gastos")).length;
-  await elegir(p, '.admin-cab-acc [data-action="gastos-subir"]', [
+  await subirDesdeCabecera(p, "", [
     { name: "15-11-2026 - Taxi al aeropuerto - Visita a Lima.png", mimeType: "image/png", buffer: PNG },
     { name: "factura.pdf", mimeType: "application/pdf", buffer: PDF }]);
   eq("subir dos: quedan dos gastos nuevos, con su comprobante", await hasta(p, n => (window.__sb.tablas.gastos || []).filter(g => g.archivo).length === n + 2, antes), true);
@@ -123,15 +134,15 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   eq("el aviso dice cuántos subieron", await hasta(p, () => /Se subieron 2 comprobantes/.test((document.querySelector(".gx-subida") || {}).textContent || "")), true);
 
   // El mismo otra vez, y algo que no es ni foto ni PDF.
-  await elegir(p, '.admin-cab-acc [data-action="gastos-subir"]', [
+  await subirDesdeCabecera(p, "", [
     { name: "otra-vez.png", mimeType: "image/png", buffer: PNG }, { name: "notas.txt", mimeType: "text/plain", buffer: Buffer.from("hola") }]);
   await hasta(p, () => { const s = document.querySelector(".gx-subida"); return s && !/Subiendo/.test(s.textContent); });
   eq("el mismo comprobante no se repite, y lo que no es foto ni PDF se avisa", [(await tabla(p, "gastos")).length - antes,
     await p.$eval(".gx-subida", e => /Ya estaban cargados.*otra-vez\.png/.test(e.textContent) && /notas\.txt: no es una foto ni un PDF/.test(e.textContent))], [2, true]);
   await p.click('[data-action="gastos-subida-cerrar"]');
 
-  // Revisar la foto: la ventana pide lo que falta.
-  await p.click('[data-action="gastos-abrir-rendicion"][data-id="sin"]'); await p.waitForTimeout(150);
+  // Revisar la foto: la ventana pide lo que falta. Después de subir «todavía no sé», se ve dónde quedaron.
+  eq("después de subir, se ve dónde quedaron: en «Sin vincular»", await p.$eval(".gx-cab .gx-h3", e => e.textContent.includes("Sin vincular")), true);
   eq("«Sin vincular» lista los tres", await p.$$eval('.gx-fila[data-action="gasto-abrir"]', l => l.length), 3);
   await p.click(`[data-action="gasto-abrir"][data-id="${foto.id}"]`);
   await p.waitForSelector("#gastoOverlay:not([hidden]) #gxFecha");
@@ -161,7 +172,12 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   // El PDF, a la rutina del mes anterior: la rendición se abre en la base.
   const mesAnt = await p.evaluate(() => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1); return d.toISOString().slice(0, 7); });
   await p.click(`[data-action="gasto-abrir"][data-id="${pdf.id}"]`); await p.waitForSelector("#gastoOverlay:not([hidden]) #gxFecha");
-  eq("el PDF se abre con «Abrir el PDF»", await p.$$eval('#gastoBody [data-action="gasto-ver-comprobante"]', l => l.map(e => e.textContent.trim())), ["PDFAbrir el PDF"]);
+  eq("el PDF se abre con «Abrir el PDF»", await p.$$eval('#gastoBody [data-action="gasto-ver-comprobante"]', l => l.map(e => e.getAttribute("aria-label") || e.textContent.replace(/\s+/g, " ").trim())), ["Abrir el PDF"]);
+  await p.click('#gastoBody [data-action="gasto-ver-comprobante"]');
+  eq("…y el visor lo muestra como documento, no como una planilla de bytes (lo vio el usuario el 15/11)", await hasta(p, () => !document.getElementById("filePreviewOverlay").hidden
+    && !document.getElementById("filePreviewFrame").hidden && /gastos\//.test(document.getElementById("filePreviewFrame").src) && !document.querySelector(".visor-planilla")), true);
+  await p.keyboard.press("Escape");
+  eq("Escape cierra el visor y la ventana del gasto sigue abierta", await hasta(p, () => document.getElementById("filePreviewOverlay").hidden && !document.getElementById("gastoOverlay").hidden), true);
   eq("la rutina de un mes ya aprobado no se ofrece", await p.$eval(`#gxVinculo option[value="mes:${new Date().toISOString().slice(0, 7)}"]`, o => o.disabled), true);
   await p.fill("#gxFecha", mesAnt + "-03"); await p.fill("#gxConcepto", "Fotocopias"); await p.selectOption("#gxTipo", "material"); await p.fill("#gxMonto", "3");
   await p.selectOption("#gxVinculo", "mes:" + mesAnt);
@@ -178,7 +194,7 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   await p.click('[data-action="gasto-abrir"][data-id="gx1"]'); await p.waitForSelector("#gastoOverlay:not([hidden])");
   await p.click('[data-action="gasto-borrar"]'); await aceptar(p);
   eq("borrar un gasto pregunta y lo borra", await hasta(p, () => !window.__sb.tablas.gastos.some(g => g.id === "gx1")), true);
-  eq("el total del detalle suma lo que se rinde (en dólares cuando lo tiene)", await textos(p, ".gx-total b"), ["USD 353,50"]);
+  eq("el total confirmado suma lo que se rinde (en dólares cuando lo tiene)", await textos(p, ".gx-total b"), ["USD 353,50"]);
   await p.click('[data-action="gastos-enviar"]'); await aceptar(p);
   eq("mandar: pregunta y la manda con la función de la base", await hasta(p, () => window.__sb.tablas.gastos_rendiciones.find(r => r.id === "ren_mvd").estado === "enviada"), true);
   eq("…una vez", (await rpcs(p, "gastos_rendicion_enviar")), [{ p_id: "ren_mvd" }]);
@@ -242,22 +258,71 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   await p.close();
 }
 
+/* ---------------- Los arreglos de la crítica del 15/11 ---------------- */
+{
+  // gx1 confirmado en pesos uruguayos, sin el monto en dólares: «Mandar» avisa.
+  const base = datos({ prendido: true });
+  Object.assign(base.gastos.find(g => g.id === "gx1"), { estado: "confirmado", tipo: "transporte", monto: 1250, moneda: "UYU" });
+  const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: vp, base });
+  await irGastos(p);
+  // Subir: primero «¿De qué son?».
+  await p.click('[data-action="gastos-destino-abrir"]');
+  eq("«Subir comprobantes» pregunta antes de qué son, y no deja elegir archivos sin decirlo", await p.evaluate(() => [!!document.getElementById("gxDestino"),
+    document.activeElement.id, document.querySelector('[data-action="gastos-destino-elegir"]').disabled]), [true, "gxDestino", true]);
+  eq("las opciones: «todavía no sé», la rutina del mes y las actividades", await p.$$eval("#gxDestino option", l => [l[1].textContent, l.some(o => o.value === "post:p9")]), ["Todavía no sé (quedan sin vincular)", true]);
+  const antes = (await tabla(p, "gastos")).length;
+  await p.selectOption("#gxDestino", "post:p9");
+  await elegir(p, '[data-action="gastos-destino-elegir"]', [{ name: "peaje.png", mimeType: "image/png", buffer: Buffer.concat([PNG, Buffer.from([1])]) }]);
+  eq("subido a un viaje: queda en su rendición, y se ve esa rendición", await hasta(p, n => { const g = (window.__sb.tablas.gastos || []).slice(n)[0];
+    return !!g && g.rendicion_id === "ren_mvd" && !!g.archivo && /Visita a Montevideo/.test((document.querySelector(".gx-cab .gx-h3") || {}).textContent || ""); }, antes), true);
+  const nuevo = (await tabla(p, "gastos")).slice(antes)[0];
+  // Los totales: solo lo confirmado.
+  eq("el total de la rendición cuenta solo lo confirmado, y dice cuántos quedan afuera", await textos(p, ".gx-total span"), ["Total confirmado (sin contar 1 por confirmar)"]);
+  // Borrar desde la fila, sin abrir la ventana.
+  eq("cada fila que se puede tocar tiene su «Borrar»", await p.$$eval('[data-action="gasto-quitar"]', l => l.map(e => e.dataset.id).sort()), ["gx1", "gx2", "gx3", nuevo.id].sort());
+  await p.click(`[data-action="gasto-quitar"][data-id="${nuevo.id}"]`);
+  eq("borrar pregunta, con el nombre", await p.$eval("#confirmMessage", e => /¿Borrar «peaje\.png» y su comprobante\?/.test(e.textContent)).catch(() => false), true);
+  await p.click("#confirmOk");
+  eq("…lo borra y el foco no se pierde", await hasta(p, id => !window.__sb.tablas.gastos.some(g => g.id === id) && !!document.activeElement.closest(".gastos-view"), nuevo.id), true);
+  // Cerrar la ventana con cambios: pregunta.
+  await p.click('[data-action="gasto-abrir"][data-id="gx3"]'); await p.waitForSelector("#gastoOverlay:not([hidden]) #gxConcepto");
+  await p.fill("#gxConcepto", "Cena con los directores y el rabino");
+  await p.keyboard.press("Escape");
+  eq("con algo escrito, Escape pregunta antes de cerrar", await p.evaluate(() => [!document.getElementById("confirmOverlay").hidden, !document.getElementById("gastoOverlay").hidden]), [true, true]);
+  await p.click("#confirmCancel");
+  eq("…y si no, sigue abierta con lo escrito", await p.evaluate(() => [!document.getElementById("gastoOverlay").hidden, document.getElementById("gxConcepto").value]), [true, "Cena con los directores y el rabino"]);
+  await p.click('#gastoBody [data-action="gasto-cerrar"]'); await aceptar(p);
+  eq("«Cerrar sin guardar» cierra sin escribir nada", await hasta(p, () => document.getElementById("gastoOverlay").hidden && window.__sb.tablas.gastos.find(g => g.id === "gx3").concepto === "Cena con los directores"), true);
+  eq("el «Borrar» de la ventana se ve rojo", await p.evaluate(() => { const d = document.createElement("div"); d.className = "btn-secondary gx-borrar"; document.body.appendChild(d);
+    const c = getComputedStyle(d).color; d.remove(); const x = document.createElement("div"); x.style.color = "var(--danger-fg)"; document.body.appendChild(x); const r = getComputedStyle(x).color; x.remove(); return c === r; }), true);
+  // Mandar: avisa lo que está en otra moneda sin el monto en dólares, y deja mandar igual.
+  await p.click('[data-action="gastos-enviar"]');
+  eq("«Mandar» avisa que un gasto en otra moneda no tiene el monto en dólares", await p.$eval("#confirmMessage", e => e.textContent.includes("Ojo: «Taxi al aeropuerto» está en UYU y no tiene el monto en USD")).catch(() => false), true);
+  eq("…y deja mandar igual", await p.$eval("#confirmOk", e => e.textContent.trim()), "Mandar igual");
+  await p.click("#confirmOk");
+  eq("mandada igual", await hasta(p, () => window.__sb.tablas.gastos_rendiciones.find(r => r.id === "ren_mvd").estado === "enviada"), true);
+  eq("sin errores de página", errores, []);
+  await p.close();
+}
+
 /* ---------------- Revisar en lista: confirmar varios juntos ---------------- */
 {
   const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: vp, base: datos({ prendido: true }) });
   await irGastos(p);
   const antes = (await tabla(p, "gastos")).length;
-  await elegir(p, '.admin-cab-acc [data-action="gastos-subir"]', [
+  await subirDesdeCabecera(p, "", [
     { name: "12-11-2026 - Almuerzo - Lima.png", mimeType: "image/png", buffer: PNG },
     { name: "factura.pdf", mimeType: "application/pdf", buffer: PDF },
     { name: "foto.png", mimeType: "image/png", buffer: Buffer.concat([PNG, Buffer.from([0])]) }]);
   await hasta(p, n => (window.__sb.tablas.gastos || []).filter(g => g.archivo).length >= n + 3, antes);
-  await p.click('[data-action="gastos-abrir-rendicion"][data-id="sin"]'); await p.waitForTimeout(150);
+  await p.waitForTimeout(150);
   const nuevos = (await tabla(p, "gastos")).slice(antes);
   const id = nombre => (nuevos.find(g => g.archivo_nombre === nombre) || {}).id;
   eq("con varios por confirmar aparece «Revisar en lista», con cuántos son", await textos(p, ".gx-lboton .setting-sub"), ["4 por confirmar: corregilos y confirmalos juntos, sin abrir uno por uno."]);
   await p.click('[data-action="gastos-lista-abrir"]'); await p.waitForTimeout(150);
   eq("la lista: una fila por gasto, ninguna marcada (a ninguno le está todo)", await p.$$eval(".gx-lfila", l => l.map(e => e.querySelector("[data-glista-marca]").checked)), [false, false, false, false]);
+  eq("cada fila con su comprobante grande al lado, que se abre", await p.$$eval(".gx-lfila", l => l.map(e => { const f = e.querySelector(".gx-lfoto"); return !!f && f.getBoundingClientRect().height >= 200; })), [true, true, true, true]);
+  eq("sin nada marcado ni cambiado, el botón dice lo que haría y espera", await p.$eval('[data-action="gastos-lista-guardar"]', e => [e.textContent.trim(), e.disabled]), ["Guardar sin confirmar", true]);
   eq("cada fila trae lo que sugirió el nombre del archivo", await p.$eval(`#gxL_${id("12-11-2026 - Almuerzo - Lima.png")}_concepto`, e => [e.value, e.dataset.sug]), ["Almuerzo", "1"]);
   // El almuerzo: tipo y monto. Al quedar completo se marca solo.
   const a = id("12-11-2026 - Almuerzo - Lima.png"), f = id("factura.pdf"), c = id("foto.png");
@@ -270,6 +335,7 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   await p.fill(`#gxL_${f}_rendidoMonto`, "3");
   // La foto sin datos: marcada a mano, para ver que no se confirma incompleta.
   await p.check(`#gxL_${c}_marca`);
+  // «La misma moneda a todos»: se prueba y se vuelve (la factura queda en ARS, el resto en USD).
   // gx8: se le escribe el concepto y se deja sin marcar.
   await p.fill("#gxL_gx8_concepto", "Remís");
   await p.uncheck("#gxL_gx8_marca").catch(() => {});
@@ -293,6 +359,12 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   eq("con cambios sin guardar, pregunta antes de volver", await p.evaluate(() => !document.getElementById("confirmOverlay").hidden), true);
   await p.click("#confirmCancel"); await p.waitForTimeout(100);
   eq("…y si no, sigue en la lista con lo escrito", await p.$eval("#gxL_gx8_monto", e => e.value), "15");
+  // «La misma moneda a todos».
+  await p.fill("#gxListaMoneda", "brl"); await p.click('[data-action="gastos-lista-moneda"]'); await p.waitForTimeout(100);
+  eq("«La misma moneda a todos» la pone en cada fila", await p.$$eval('.gx-lfila input[data-glista$=":moneda"]', l => l.map(e => e.value)), ["BRL", "BRL"]);
+  // Borrar desde la lista.
+  await p.click(`[data-action="gastos-lista-quitar"][data-id="${c}"]`); await aceptar(p);
+  eq("«Borrar» en una fila de la lista la borra (preguntando)", await hasta(p, c => !window.__sb.tablas.gastos.some(g => g.id === c) && document.querySelectorAll(".gx-lfila").length === 1, c), true);
   eq("sin errores de página", errores, []);
   await p.close();
 }
