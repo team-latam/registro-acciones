@@ -327,13 +327,28 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   eq("con varios por confirmar aparece «Revisar en lista», con cuántos son", await textos(p, ".gx-lboton .setting-sub"), ["4 por confirmar: corregilos y confirmalos juntos, sin abrir uno por uno."]);
   await p.click('[data-action="gastos-lista-abrir"]'); await p.waitForTimeout(150);
   eq("la lista: una fila por gasto, ninguna marcada (a ninguno le está todo)", await p.$$eval(".gx-lfila", l => l.map(e => e.querySelector("[data-glista-marca]").checked)), [false, false, false, false]);
-  eq("cada fila con su comprobante grande al lado, que se abre", await p.$$eval(".gx-lfila", l => l.map(e => { const f = e.querySelector(".gx-lfoto"); return !!f && f.getBoundingClientRect().height >= 200; })), [true, true, true, true]);
   eq("sin nada marcado ni cambiado, el botón dice lo que haría y espera", await p.$eval('[data-action="gastos-lista-guardar"]', e => [e.textContent.trim(), e.disabled]), ["Guardar sin confirmar", true]);
-  eq("cada fila trae lo que sugirió el nombre del archivo", await p.$eval(`#gxL_${id("12-11-2026 - Almuerzo - Lima.png")}_concepto`, e => [e.value, e.dataset.sug]), ["Almuerzo", "1"]);
-  // El almuerzo: tipo y monto. Al quedar completo se marca solo.
   const a = id("12-11-2026 - Almuerzo - Lima.png"), f = id("factura.pdf"), c = id("foto.png");
+  // «Lista» (la de entrada): filas chicas, cerradas, que dicen qué es, cuánto y qué les falta (lo propuso el usuario el 15/11).
+  eq("de entrada, la vista «Lista»: cada gasto en una fila chica, cerrada", await p.evaluate(() => [document.querySelector('[data-action="gastos-lista-vista"][aria-pressed="true"]').dataset.vista,
+    document.querySelectorAll(".gx-lfila .gx-lcuerpo").length, [...document.querySelectorAll(".gx-lresumen")].every(e => e.getAttribute("aria-expanded") === "false")]), ["lista", 0, true]);
+  eq("la fila chica dice qué es, cuánto y qué le falta", await p.$eval(`#gxLR_${a}`, e => e.innerText.replace(/\s+/g, " ").trim()), "Almuerzo 12 de nov de 2026 Sin monto Falta: tipo, monto");
+  await p.click(`#gxLR_${a}`);
+  eq("tocarla la despliega, con el comprobante y los campos, y el foco sigue ahí", await p.evaluate(a => [document.getElementById(`gxLR_${a}`).getAttribute("aria-expanded"),
+    !!document.querySelector(`#gxLB_${a} .gx-lfoto`), !!document.getElementById(`gxL_${a}_monto`), document.activeElement.id], a), ["true", true, true, `gxLR_${a}`]);
+  eq("cada fila trae lo que sugirió el nombre del archivo", await p.$eval(`#gxL_${a}_concepto`, e => [e.value, e.dataset.sug]), ["Almuerzo", "1"]);
+  // El almuerzo: tipo y monto. Al quedar completo se marca solo, y la fila chica lo dice.
   await p.selectOption(`#gxL_${a}_tipo`, "comida"); await p.fill(`#gxL_${a}_monto`, "20"); await p.press(`#gxL_${a}_monto`, "Tab"); await p.waitForTimeout(100);
   eq("completa, la fila se marca sola", await p.$eval(`#gxL_${a}_marca`, e => e.checked), true);
+  eq("…y su resumen se pone al día mientras se escribe", await p.$eval(`#gxLR_${a}`, e => e.innerText.replace(/\s+/g, " ").trim()), "Almuerzo 12 de nov de 2026 · Comida USD 20,00 Completo");
+  eq("…y la cuenta de abajo también", await p.$eval("#gxListaCuenta", e => e.textContent), "1 de 4 marcados");
+  await p.click(`#gxLR_${a}`);
+  eq("tocarla de nuevo la cierra, sin perder lo escrito", await p.evaluate(a => [!document.getElementById(`gxL_${a}_monto`), document.getElementById(`gxL_${a}_marca`).checked], a), [true, true]);
+  // «Con foto»: todas abiertas, con el comprobante mediano; se recuerda.
+  await p.click('[data-action="gastos-lista-vista"][data-vista="foto"]');
+  eq("«Con foto» abre todas, con el comprobante al lado", await p.$$eval(".gx-lfila", l => l.map(e => { const x = e.querySelector(".gx-lfoto"); return !!x && x.getBoundingClientRect().height >= 140; })), [true, true, true, true]);
+  eq("…y lo escrito sigue ahí", await p.$eval(`#gxL_${a}_monto`, e => e.value), "20");
+  eq("la vista elegida queda guardada en este navegador", await p.evaluate(() => localStorage.getItem("ra_gastos_vista")), "foto");
   // La factura, en pesos: aparece el monto en dólares.
   await p.fill(`#gxL_${f}_fecha`, "2026-11-10"); await p.fill(`#gxL_${f}_concepto`, "Fotocopias"); await p.selectOption(`#gxL_${f}_tipo`, "material");
   await p.fill(`#gxL_${f}_monto`, "3000"); await p.fill(`#gxL_${f}_moneda`, "ars"); await p.press(`#gxL_${f}_moneda`, "Tab"); await p.waitForTimeout(100);
@@ -357,9 +372,13 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
     document.getElementById(`gxL_${c}_tipo`).getAttribute("aria-invalid")], c), ["borrador", "Falta la fecha, el concepto, el tipo, el monto.", "true"]);
   eq("y el aviso cuenta lo que pasó", await textos(p, ".gx-lista-rev .gx-alerta"), ["Se confirmaron 2 gastos. 1 quedó guardado sin confirmar. 1 no se pudo confirmar: mirá lo marcado en su fila."]);
   eq("en la lista quedan los dos que faltan", await p.$$eval(".gx-lfila", l => l.length), 2);
+  await p.click('[data-action="gastos-lista-vista"][data-vista="lista"]');
+  eq("en «Lista», el que no se pudo confirmar se ve abierto, con lo que falta; el otro, cerrado", await p.evaluate(c => [!!document.getElementById(`gxLB_${c}`), !!document.getElementById("gxLB_gx8")], c), [true, false]);
   await p.click('[data-action="gastos-lista-cerrar"]'); await p.waitForTimeout(150);
-  eq("«Volver a la vista de siempre» sin cambios nuevos no pregunta", await p.evaluate(() => [!document.querySelector(".gx-lista-rev"), document.getElementById("confirmOverlay").hidden]), [true, true]);
+  eq("«Salir de la lista» sin cambios nuevos no pregunta", await p.evaluate(() => [!document.querySelector(".gx-lista-rev"), document.getElementById("confirmOverlay").hidden]), [true, true]);
   await p.click('[data-action="gastos-lista-abrir"]'); await p.waitForTimeout(150);
+  eq("al volver a entrar, sigue en la vista elegida", await p.$eval('[data-action="gastos-lista-vista"][aria-pressed="true"]', e => e.dataset.vista), "lista");
+  await p.click('[data-action="gastos-lista-ver"][data-id="gx8"]');
   await p.fill("#gxL_gx8_monto", "15");
   await p.click('[data-action="gastos-lista-cerrar"]');
   eq("con cambios sin guardar, pregunta antes de volver", await p.evaluate(() => !document.getElementById("confirmOverlay").hidden), true);
@@ -367,6 +386,7 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   eq("…y si no, sigue en la lista con lo escrito", await p.$eval("#gxL_gx8_monto", e => e.value), "15");
   // «La misma moneda a todos».
   await p.fill("#gxListaMoneda", "brl"); await p.click('[data-action="gastos-lista-moneda"]'); await p.waitForTimeout(100);
+  await p.click('[data-action="gastos-lista-vista"][data-vista="foto"]');
   eq("«La misma moneda a todos» la pone en cada fila", await p.$$eval('.gx-lfila input[data-glista$=":moneda"]', l => l.map(e => e.value)), ["BRL", "BRL"]);
   // Borrar desde la lista.
   await p.click(`[data-action="gastos-lista-quitar"][data-id="${c}"]`); await aceptar(p);

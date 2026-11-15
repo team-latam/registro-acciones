@@ -883,49 +883,97 @@
   .gx-subida-mal{ background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn-text); }
   .gx-sub-det{ font-weight:400; font-size:12.5px; margin-top:4px; overflow-wrap:anywhere; }
   .gx-sub-lector{ margin-top:6px; }
-  /* «Revisar en lista»: una tarjeta por gasto, con sus campos en renglones que se acomodan. */
-  .gx-lboton{ display:flex; align-items:center; gap:8px 12px; flex-wrap:wrap; margin:0 0 10px; }
+  /* Las herramientas de una rendición, juntas arriba de sus gastos: revisar en lista y subir más. */
+  .gx-herr{ display:flex; align-items:center; gap:8px 12px; flex-wrap:wrap; margin:0 0 12px; }
+  .gx-herr .gx-subir-aca{ margin:0; margin-inline-start:auto; }
+  .gx-lboton{ display:flex; align-items:center; gap:8px 12px; flex-wrap:wrap; }
   .gx-lboton .setting-sub{ margin:0; }
-  .gx-lcabeza{ display:flex; align-items:flex-start; justify-content:space-between; gap:8px 16px; flex-wrap:wrap; margin-bottom:10px; }
-  .gx-lcabeza .setting-sub{ margin:0; flex:1 1 320px; }
-  .gx-lacc{ display:flex; gap:14px; }
-  .gx-lfila{ display:grid; grid-template-columns:168px minmax(0, 1fr); gap:14px; border:1px solid var(--border); border-radius:var(--radius-md); background:var(--card); padding:12px; margin-bottom:10px; }
+  /* «Revisar en lista»: una tarjeta por gasto, el comprobante a un lado y sus campos en una grilla pareja. */
+  .gx-lcabeza{ margin:0 0 10px; }
+  .gx-lcabeza .setting-sub{ margin:0; max-width:75ch; }
+  .gx-lbarra{ display:flex; align-items:flex-end; justify-content:space-between; gap:10px 20px; flex-wrap:wrap; padding:10px 0; margin:0 0 12px; border-block:1px solid var(--border); }
+  .gx-lacc{ display:flex; align-items:center; gap:18px; min-height:40px; }
+  /* Dos vistas: «Lista» (filas chicas que se despliegan) y «Con foto» (todas abiertas, el comprobante mediano). */
+  .gx-lvista{ display:inline-flex; padding:3px; border-radius:999px; background:var(--surface-alt); border:1px solid var(--border); }
+  .gx-lvista button{ border:none; background:none; padding:6px 14px; border-radius:999px; font:inherit; font-size:13px; font-weight:700; color:var(--text-muted); cursor:pointer; min-height:32px; }
+  .gx-lvista button[aria-pressed="true"]{ background:var(--card); color:var(--ink); box-shadow:0 1px 3px rgba(8,42,44,.14); }
+  .gx-lfila{ border:1px solid var(--border); border-radius:var(--radius-md); background:var(--card); margin-bottom:8px; }
   .gx-lfila.gx-marcada{ border-color:var(--celeste-dark, var(--celeste)); background:var(--celeste-soft, var(--card)); }
-  .gx-lcuerpo{ min-width:0; }
-  /* El comprobante, grande: se compara con los datos sin abrir nada. */
-  .gx-lfoto{ position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; width:100%; height:212px; padding:0; overflow:hidden;
-    border:1px solid var(--border); border-radius:var(--radius-sm); background:#fff; cursor:pointer; font:inherit; font-size:13px; font-weight:700; color:var(--link); }
-  .gx-lfoto img{ width:100%; height:100%; object-fit:contain; }
+  .gx-lcuerpo{ display:grid; grid-template-columns:184px minmax(0, 1fr); gap:16px; padding:4px 12px 12px; }
+  .gx-v-foto .gx-lcuerpo{ grid-template-columns:132px minmax(0, 1fr); }
+  .gx-lcampos-env{ min-width:0; display:flex; flex-direction:column; gap:10px; container-type:inline-size; }
+  .gx-lmas{ display:flex; justify-content:flex-end; }
+  .gx-lresumen{ flex:1 1 auto; min-width:0; display:flex; align-items:center; gap:12px; padding:6px 8px; border:none; border-radius:var(--radius-sm); background:none;
+    font:inherit; color:var(--ink); text-align:start; cursor:pointer; }
+  .gx-lresumen:hover{ background:var(--surface-alt); }
+  .gx-lr-txt{ flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:2px; }
+  .gx-lr-txt b, .gx-lr-txt i{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .gx-lr-txt i{ font-weight:700; color:var(--text-muted); }
+  .gx-lr-txt small{ font-size:12.5px; color:var(--text-muted); }
+  .gx-lr-der{ flex:none; display:flex; flex-direction:column; align-items:flex-end; gap:4px; }
+  .gx-lr-monto{ font-variant-numeric:tabular-nums; }
+  .gx-lr-sin{ font-size:13px; color:var(--text-muted); }
+  .gx-lr-chev{ flex:none; width:8px; height:8px; margin:0 6px 4px; border-inline-end:2px solid var(--text-muted); border-block-end:2px solid var(--text-muted); transform:rotate(45deg); transition:transform .18s ease-out; }
+  .gx-abierta .gx-lr-chev{ transform:rotate(-135deg); margin-block:4px 0; }
+  .gx-lquitar-ico{ flex:none; width:40px; height:40px; border:none; border-radius:var(--radius-sm); background:none; font-size:16px; cursor:pointer; }
+  .gx-lquitar-ico:hover{ background:var(--danger-soft); }
+  /* El comprobante, grande y del alto de la tarjeta: se compara con los datos sin abrir nada. */
+  .gx-lfoto{ position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; width:100%; min-height:220px; padding:0; overflow:hidden;
+    border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--surface-alt); cursor:pointer; font:inherit; font-size:13px; font-weight:700; color:var(--link); }
+  .gx-lfoto img{ position:absolute; inset:0; width:100%; height:100%; object-fit:contain; }
+  .gx-v-foto .gx-lfoto{ min-height:150px; }
   .gx-lfoto-vacia{ cursor:default; color:var(--text-muted); font-weight:400; background:var(--surface-alt); }
   .gx-lfoto-pdf{ background:var(--surface-alt); }
   .gx-comp-marca{ position:absolute; inset-block-start:6px; inset-inline-end:6px; padding:1px 7px; border-radius:999px; background:var(--danger-fg); color:#fff; font-size:11px; font-weight:800; }
   .gx-comp-conpdf{ position:relative; }
   .gx-comp-conpdf img{ width:100%; height:100%; object-fit:contain; background:#fff; }
-  .gx-lcab-acc{ margin-inline-start:auto; display:flex; gap:14px; }
+  .gx-lcab-acc{ margin-inline-start:auto; display:flex; gap:18px; }
   .gx-lquitar{ color:var(--danger-fg); }
-  .gx-ltodas{ display:flex; align-items:flex-end; gap:10px; flex-wrap:wrap; margin:0 0 12px; }
-  .gx-ltodas .gx-campo{ width:190px; }
+  .gx-ltodas{ display:flex; align-items:flex-end; gap:8px; }
+  .gx-ltodas .gx-campo{ width:210px; }
+  .gx-ltodas .gx-et, .gx-ltodas .btn-secondary{ white-space:nowrap; }
+  .gx-lbarra-izq{ display:flex; align-items:center; gap:10px 20px; flex-wrap:wrap; }
+  .gx-ldestino-env{ display:flex; margin:14px 0 0; }
   .gx-destino{ padding:14px 16px; margin-bottom:14px; }
   .gx-destino .setting-sub{ margin:4px 0 10px; }
   .gx-destino .gx-campo{ max-width:520px; }
-  .gx-lcab{ display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .gx-lcab{ display:flex; align-items:center; gap:10px; min-height:52px; padding:6px 6px 6px 14px; }
+  .gx-v-foto .gx-lcab{ padding:8px 12px 4px 14px; min-height:44px; }
   .gx-lmarca{ display:flex; align-items:center; gap:6px; font-size:13.5px; font-weight:700; cursor:pointer; }
   .gx-lmarca input{ width:18px; height:18px; margin:0; }
-  .gx-lcampos{ display:flex; flex-wrap:wrap; gap:8px 10px; }
-  .gx-lcampos .gx-campo{ flex:0 0 auto; }
-  .gx-l-fecha{ width:150px; } .gx-l-concepto{ flex:1 1 220px !important; } .gx-l-tipo{ width:170px; }
-  .gx-l-monto, .gx-l-usd{ width:120px; } .gx-l-moneda{ width:84px; } .gx-l-pago{ width:150px; }
-  .gx-l-moneda input.gx-moneda{ width:100%; }
-  .gx-lerror{ margin-top:8px; color:var(--danger-fg); font-size:12.5px; font-weight:700; }
-  .gx-lpie{ justify-content:flex-end; align-items:flex-end; }
+  /* Cuatro columnas iguales: fecha · concepto (dos) · tipo, y abajo monto · moneda · quién pagó · en dólares. */
+  .gx-lcampos{ display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:10px 12px; }
+  .gx-l-concepto{ grid-column:span 2; }
+  .gx-lcampos .gx-campo input, .gx-lcampos .gx-campo select, .gx-lcampos input.gx-moneda{ width:100%; }
+  @container (max-width:540px){ .gx-lcampos{ grid-template-columns:repeat(2, minmax(0, 1fr)); grid-auto-flow:row dense; } }
+  .gx-lerror{ color:var(--danger-fg); font-size:12.5px; font-weight:700; }
+  /* Los botones de la lista flotan abajo mientras se recorre: con diez comprobantes, no hay que ir a buscarlos al final. */
+  .gx-lpie{ position:sticky; bottom:12px; z-index:4; display:flex; align-items:center; justify-content:flex-end; gap:10px 12px; flex-wrap:wrap;
+    margin:14px 0 0; padding:10px 12px; background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md); box-shadow:0 8px 24px rgba(8,42,44,.14); }
+  html[data-theme="dark"] .gx-lpie{ box-shadow:0 8px 24px rgba(0,0,0,.45); }
+  .gx-lcuenta{ margin-inline-end:auto; font-size:13.5px; font-weight:700; color:var(--text-muted); }
   .gx-ldestino{ flex:1 1 260px; max-width:420px; }
+  body:has(.gx-lista-rev) .fab-wrap, body:has(.gx-lista-rev) .scroll-top{ display:none; }
   @media (max-width:640px){
-    .gx-lfila{ grid-template-columns:minmax(0, 1fr); }
-    .gx-lfoto{ height:240px; }
-    .gx-l-fecha, .gx-l-tipo, .gx-l-pago{ width:calc(50% - 5px); }
-    .gx-l-monto, .gx-l-usd{ width:calc(50% - 5px); }
-    .gx-l-moneda{ width:calc(50% - 5px); }
-    .gx-lpie button{ flex:1 1 auto; }
+    .gx-lcuerpo, .gx-v-foto .gx-lcuerpo{ grid-template-columns:minmax(0, 1fr); }
+    .gx-lfoto{ min-height:240px; }
+    .gx-v-foto .gx-lfoto{ min-height:170px; }
+    .gx-lcab{ padding-inline-start:10px; gap:6px; }
+    .gx-v-lista .gx-lmarca-txt{ position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+    /* En el celular, la fila chica en dos renglones: qué es y cuándo; abajo, cuánto y qué le falta. */
+    .gx-lresumen{ display:grid; grid-template-columns:44px minmax(0, 1fr); column-gap:10px; row-gap:6px; padding-inline:4px; }
+    .gx-lresumen .gx-mini{ grid-row:1 / span 2; align-self:start; }
+    .gx-lr-der{ grid-column:2; flex-direction:row; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:4px 8px; }
+    .gx-lr-der .gx-chip{ white-space:normal; }
+    .gx-lr-chev{ display:none; }
+    .gx-lbarra{ align-items:stretch; }
+    .gx-ltodas{ flex:1 1 100%; }
+    .gx-ltodas .gx-campo{ flex:1 1 auto; width:auto; }
+    .gx-lpie{ bottom:calc(84px + env(safe-area-inset-bottom)); flex-wrap:nowrap; padding:8px; gap:8px; }
+    .gx-lpie button{ flex:0 0 auto; padding-inline:12px; font-size:13.5px; }
+    .gx-lpie .btn-primary{ flex:1 1 auto; }
+    .gx-lcuenta{ display:none; }
+    .gx-ldestino{ max-width:none; }
   }
   .gx-campo [data-sug]{ border-color:var(--celeste-dark, var(--celeste)); background:var(--celeste-soft, var(--surface-alt)); }
   .gx-campo [data-duda]{ border-color:var(--warn-border); background:var(--warn-bg); }
@@ -25217,6 +25265,32 @@ async function soltarLista(){
 // Sin ninguno marcado, el botón guarda lo cambiado sin confirmar: lo dice (antes decía «Confirmar los 0 marcados»).
 const textoConfirmarLista = n => !n ? t("Guardar sin confirmar","Save without confirming","Salvar sem confirmar","שמירה בלי אישור")
   : n === 1 ? t("Confirmar 1 marcado","Confirm 1 checked","Confirmar 1 marcado","אישור מסומן אחד") : t("Confirmar los {n} marcados","Confirm the {n} checked","Confirmar os {n} marcados","אישור {n} המסומנים",{ n });
+// Lo que le falta a una fila para poder confirmarla.
+const faltanDeFila = d => [!d.fecha && "fecha", !String(d.concepto).trim() && "concepto", !d.tipo && "tipo", String(d.monto).trim() === "" && "monto",
+  !/^[A-Z]{3}$/.test(String(d.moneda).trim().toUpperCase()) && "moneda"].filter(Boolean);
+const nombreDeCampoDeGasto = k => ({ fecha: t("fecha","date","data","תאריך"), concepto: t("concepto","description","conceito","תיאור"), tipo: t("tipo","type","tipo","סוג"),
+  monto: t("monto","amount","valor","סכום"), moneda: t("moneda","currency","moeda","מטבע") })[k] || k;
+// La fila cerrada: la miniatura, qué es, cuánto, y si le falta algo o hay que revisar algo.
+function resumenDeFila(g, f){
+  const d = f.d, miniPdf = esPdfGasto(g) && esUrlFirmada(g.archivoUrl) ? store.miniaturaSiHay(g.archivoUrl) : null;
+  const mini = !g.archivo ? `<span class="gx-mini gx-mini-vacia" aria-hidden="true">—</span>`
+    : miniPdf ? `<img class="gx-mini" src="${esc(miniPdf)}" alt="" loading="lazy">`
+    : esPdfGasto(g) ? `<span class="gx-mini gx-mini-pdf" aria-hidden="true">PDF</span>`
+    : esUrlFirmada(g.archivoUrl) ? `<img class="gx-mini" src="${esc(store.miniaturaDe(g.archivoUrl))}" alt="" loading="lazy">`
+    : `<span class="gx-mini gx-mini-vacia" aria-hidden="true">🖼️</span>`;
+  const monto = String(d.monto).trim() !== "" && Number.isFinite(Number(d.monto)) && /^[A-Z]{3}$/.test(String(d.moneda).toUpperCase())
+    ? `<b class="gx-lr-monto">${esc(fmtMonto(String(d.moneda).toUpperCase(), Number(d.monto)))}</b>` : `<span class="gx-lr-monto gx-lr-sin">${t("Sin monto","No amount","Sem valor","ללא סכום")}</span>`;
+  const faltan = faltanDeFila(d), dudas = (f.dudas || []).filter(k => !faltan.includes(k));
+  const estado = g.estado === "observado" ? gxChip(estadoDeGasto("observado"))
+    : faltan.length ? gxChip([t("Falta: {l}","Missing: {l}","Falta: {l}","חסר: {l}",{ l: faltan.map(nombreDeCampoDeGasto).join(", ") }), "aviso"])
+    : dudas.length ? gxChip([t("Revisar: {l}","Check: {l}","Revisar: {l}","לבדוק: {l}",{ l: dudas.map(nombreDeCampoDeGasto).join(", ") }), "aviso"])
+    : gxChip([t("Completo","Complete","Completo","מלא"), "bien"]);
+  const sub = [d.fecha ? fmtDate(d.fecha) : "", d.tipo ? nombreTipoGasto(d.tipo) : ""].filter(Boolean).join(" · ");
+  return `${mini}<span class="gx-lr-txt"><b>${d.concepto ? esc(d.concepto) : `<i>${esc(g.archivoNombre || t("Sin concepto","No description","Sem conceito","ללא תיאור"))}</i>`}</b>${sub ? `<small>${esc(sub)}</small>` : ""}</span>
+    <span class="gx-lr-der">${monto}${estado}</span><span class="gx-lr-chev" aria-hidden="true"></span>`;
+}
+const vistaDeListaGuardada = () => { try{ return localStorage.getItem("ra_gastos_vista") === "foto" ? "foto" : "lista"; }catch(e){ return "lista"; } };
+const cuentaDeLista = (n, de) => t("{n} de {de} marcados","{n} of {de} checked","{n} de {de} marcados","{n} מתוך {de} מסומנים",{ n, de });
 // La casilla, el borde de la fila y la cuenta del botón, sin redibujar la lista.
 function marcarFilaDeLista(id, marcado){
   const caja = document.getElementById(`gxL_${id}_marca`);
@@ -25226,6 +25300,7 @@ function marcarFilaDeLista(id, marcado){
     const n = gastosParaLista(L.rid).filter(g => (L.filas[g.id] || {}).marcado).length;
     b.textContent = textoConfirmarLista(n);
     b.disabled = !n && !Object.values(L.filas).some(f => f.tocado);
+    const c = document.getElementById("gxListaCuenta"); if(c) c.textContent = cuentaDeLista(n, gastosParaLista(L.rid).length);
   }
 }
 // «Revisar en lista»: solo si hay al menos uno por confirmar.
@@ -25246,36 +25321,43 @@ function renderListaDeGastos(rid){
     const at = k => `${f.faltan.includes(k) ? ' aria-invalid="true"' : ""}${(f.dudas || []).includes(k) ? ' data-duda="1"' : leido && leido.campos.includes(k) && !f.tocado ? ' data-sug="1"' : ""}`;
     const campo = (k, et, control, clase) => `<label class="gx-campo gx-l-${clase || k}"><span class="gx-et">${et}</span>${control}</label>`;
     const otraMoneda = String(d.moneda).toUpperCase() !== String(d.rendidoMoneda).toUpperCase();
-    // El comprobante grande al lado de sus datos: es lo que se compara (lo pidió el usuario el 15/11).
-    // Una foto va entera (se baja recién al llegar a ella); un PDF, por la foto que trae adentro.
+    // «Lista»: una fila chica que se despliega al tocarla (lo propuso el usuario el 15/11); se abre sola si
+    // le falta algo al guardar. «Con foto»: todas abiertas, con el comprobante mediano.
+    const conFoto = L.vista === "foto", abierta = conFoto || !!L.abiertas[id] || f.faltan.length > 0 || !!f.error;
     const verLo = esc(t("Ver el comprobante entero","See the whole receipt","Ver o comprovante inteiro","הצגת הקבלה המלאה"));
     const miniPdf = esPdfGasto(g) && esUrlFirmada(g.archivoUrl) ? store.miniaturaSiHay(g.archivoUrl) : null;
     const foto = !g.archivo ? `<div class="gx-lfoto gx-lfoto-vacia">${t("Sin comprobante","No receipt","Sem comprovante","ללא קבלה")}</div>`
       : !esUrlFirmada(g.archivoUrl) ? `<div class="gx-lfoto gx-lfoto-vacia">${t("Cargando…","Loading…","Carregando…","טוען...")}</div>`
       : esPdfGasto(g) ? `<button type="button" class="gx-lfoto${miniPdf ? "" : " gx-lfoto-pdf"}" data-action="gasto-ver-comprobante" data-id="${esc(id)}" aria-label="${verLo}">${miniPdf ? `<img src="${esc(miniPdf)}" alt="" loading="lazy"><span class="gx-comp-marca">PDF</span>` : `<span class="gx-pdf-ico" aria-hidden="true">PDF</span><span>${t("Abrir el PDF","Open the PDF","Abrir o PDF","פתיחת ה-PDF")}</span>`}</button>`
       : `<button type="button" class="gx-lfoto" data-action="gasto-ver-comprobante" data-id="${esc(id)}" aria-label="${verLo}"><img src="${esc(g.archivoUrl)}" alt="" loading="lazy"></button>`;
-    return `<div class="gx-lfila${f.marcado ? " gx-marcada" : ""}" role="group" aria-label="${esc(t("Gasto {n}","Expense {n}","Despesa {n}","הוצאה {n}",{ n: i + 1 }) + (d.concepto ? ": " + d.concepto : ""))}">
+    const nombre = d.concepto || g.archivoNombre || t("este gasto","this expense","esta despesa","ההוצאה הזו");
+    const marca = `<label class="gx-lmarca"><input type="checkbox" id="gxL_${esc(id)}_marca" data-glista-marca="${esc(id)}"${f.marcado ? " checked" : ""}> <span class="gx-lmarca-txt">${t("Confirmar","Confirm","Confirmar","אישור")}</span></label>`;
+    const abrir = `<button type="button" class="gx-link" data-action="gasto-abrir" data-id="${esc(id)}">${conFoto ? t("Abrir","Open","Abrir","פתיחה") : t("Abrir el gasto completo","Open the whole expense","Abrir a despesa completa","פתיחת ההוצאה המלאה")}</button>`;
+    const borrarTxt = esc(t("Borrar «{c}»","Delete “{c}”","Apagar «{c}»","מחיקת «{c}»",{ c: nombre }));
+    const cab = conFoto
+      ? `<div class="gx-lcab">${marca}${g.estado === "observado" ? gxChip(estadoDeGasto("observado")) : ""}
+          <span class="gx-lcab-acc">${abrir}<button type="button" class="gx-link gx-lquitar" data-action="gastos-lista-quitar" data-id="${esc(id)}" aria-label="${borrarTxt}">${t("Borrar","Delete","Apagar","מחיקה")}</button></span></div>`
+      : `<div class="gx-lcab">${marca}
+          <button type="button" class="gx-lresumen" id="gxLR_${esc(id)}" data-action="gastos-lista-ver" data-id="${esc(id)}" aria-expanded="${abierta}" aria-controls="gxLB_${esc(id)}">${resumenDeFila(g, f)}</button>
+          <button type="button" class="gx-lquitar-ico" data-action="gastos-lista-quitar" data-id="${esc(id)}" title="${esc(t("Borrar","Delete","Apagar","מחיקה"))}" aria-label="${borrarTxt}">🗑️</button></div>`;
+    return `<div class="gx-lfila ${conFoto ? "gx-v-foto" : "gx-v-lista"}${abierta ? " gx-abierta" : ""}${f.marcado ? " gx-marcada" : ""}" role="group" aria-label="${esc(t("Gasto {n}","Expense {n}","Despesa {n}","הוצאה {n}",{ n: i + 1 }) + (d.concepto ? ": " + d.concepto : ""))}">
+        ${cab}
+        ${abierta ? `<div class="gx-lcuerpo" id="gxLB_${esc(id)}">
         ${foto}
-        <div class="gx-lcuerpo">
-        <div class="gx-lcab">
-          <label class="gx-lmarca"><input type="checkbox" id="gxL_${esc(id)}_marca" data-glista-marca="${esc(id)}"${f.marcado ? " checked" : ""}> ${t("Confirmar","Confirm","Confirmar","אישור")}</label>
-          ${g.estado === "observado" ? gxChip(estadoDeGasto("observado")) : ""}
-          <span class="gx-lcab-acc">
-            <button type="button" class="gx-link" data-action="gasto-abrir" data-id="${esc(id)}">${t("Abrir","Open","Abrir","פתיחה")}</button>
-            <button type="button" class="gx-link gx-lquitar" data-action="gastos-lista-quitar" data-id="${esc(id)}" aria-label="${esc(t("Borrar «{c}»","Delete “{c}”","Apagar «{c}»","מחיקת «{c}»",{ c: d.concepto || g.archivoNombre || t("este gasto","this expense","esta despesa","ההוצאה הזו") }))}">${t("Borrar","Delete","Apagar","מחיקה")}</button>
-          </span>
-        </div>
+        <div class="gx-lcampos-env">
         <div class="gx-lcampos">
           ${campo("fecha", t("Fecha","Date","Data","תאריך"), `<input type="date" id="gxL_${esc(id)}_fecha" data-glista="${esc(id)}:fecha" value="${esc(d.fecha)}"${at("fecha")}>`)}
           ${campo("concepto", t("Concepto","Description","Conceito","תיאור"), `<input type="text" id="gxL_${esc(id)}_concepto" maxlength="140" data-glista="${esc(id)}:concepto" value="${esc(d.concepto)}"${at("concepto")}>`)}
           ${campo("tipo", t("Tipo","Type","Tipo","סוג"), `<select id="gxL_${esc(id)}_tipo" data-glista="${esc(id)}:tipo"${at("tipo")}><option value="">${esc(t("Elegí…","Pick…","Escolha…","בחרו…"))}</option>${tipos.concat(d.tipo && !tipos.some(x => x.key === d.tipo) ? [{ key: d.tipo, label: nombreTipoGasto(d.tipo) }] : []).map(x => `<option value="${esc(x.key)}"${x.key === d.tipo ? " selected" : ""}>${esc(x.label)}</option>`).join("")}</select>`)}
           ${campo("monto", t("Monto","Amount","Valor","סכום"), `<input type="number" step="0.01" inputmode="decimal" id="gxL_${esc(id)}_monto" data-glista="${esc(id)}:monto" value="${esc(d.monto)}"${at("monto")}>`)}
           ${campo("moneda", t("Moneda","Currency","Moeda","מטבע"), `<input type="text" class="gx-moneda" list="gxMonedas" maxlength="3" id="gxL_${esc(id)}_moneda" data-glista="${esc(id)}:moneda" value="${esc(d.moneda)}"${at("moneda")}>`)}
-          ${otraMoneda ? campo("rendidoMonto", t("En {m}","In {m}","Em {m}","ב-{m}",{ m: esc(d.rendidoMoneda) }), `<input type="number" step="0.01" inputmode="decimal" id="gxL_${esc(id)}_rendidoMonto" data-glista="${esc(id)}:rendidoMonto" value="${esc(d.rendidoMonto)}">`, "usd") : ""}
           ${campo("pago", t("Pagó","Paid by","Pagou","שילם/ה"), `<select id="gxL_${esc(id)}_pago" data-glista="${esc(id)}:pago"><option value="persona"${d.pago === "persona" ? " selected" : ""}>${esc(t("Yo","Me","Eu","אני"))}</option><option value="organizacion"${d.pago === "organizacion" ? " selected" : ""}>${esc(t("La organización","The organization","A organização","הארגון"))}</option></select>`)}
+          ${otraMoneda ? campo("rendidoMonto", t("En {m}","In {m}","Em {m}","ב-{m}",{ m: esc(d.rendidoMoneda) }), `<input type="number" step="0.01" inputmode="decimal" id="gxL_${esc(id)}_rendidoMonto" data-glista="${esc(id)}:rendidoMonto" value="${esc(d.rendidoMonto)}">`, "usd") : ""}
         </div>
         ${f.error ? `<div class="gx-lerror" role="alert">${esc(f.error)}</div>` : ""}
+        ${conFoto ? "" : `<div class="gx-lmas">${abrir}</div>`}
         </div>
+        </div>` : ""}
       </div>`;
   }).join("");
   const marcados = lista.filter(g => (L.filas[g.id] || {}).marcado).length;
@@ -25284,21 +25366,30 @@ function renderListaDeGastos(rid){
   return `<div class="gx-lista-rev">
       <div class="gx-lcabeza">
         <p class="setting-sub">${t("Corregí lo que haga falta en cada fila, con el comprobante a la vista (tocalo para verlo grande). Vienen marcados los completos y sin dudas; lo demás (la tarjeta, las observaciones), en «Abrir».","Fix whatever is needed in each row, with the receipt in view (tap it to see it large). Complete rows with no doubts come checked; the rest (card, notes) is under “Open”.","Corrija o que for preciso em cada linha, com o comprovante à vista (toque nele para ver grande). Vêm marcados os completos e sem dúvidas; o resto (cartão, observações), em «Abrir».","תקנו מה שצריך בכל שורה, עם הקבלה מול העיניים (געו בה כדי להגדיל). שורות מלאות ובלי ספקות מגיעות מסומנות; השאר (כרטיס, הערות) ב«פתיחה».")}</p>
+      </div>
+      ${lista.length ? `<div class="gx-lbarra">
+        <div class="gx-lbarra-izq">
+        <div class="gx-lvista" role="group" aria-label="${esc(t("Cómo ver la lista","How to show the list","Como ver a lista","איך להציג את הרשימה"))}">
+          <button type="button" data-action="gastos-lista-vista" data-vista="lista" aria-pressed="${L.vista !== "foto"}">${t("Lista","List","Lista","רשימה")}</button>
+          <button type="button" data-action="gastos-lista-vista" data-vista="foto" aria-pressed="${L.vista === "foto"}">${t("Con foto","With photo","Com foto","עם תמונה")}</button>
+        </div>
         <div class="gx-lacc">
           <button type="button" class="gx-link" data-action="gastos-lista-todos" data-si="1">${t("Marcar todos","Check all","Marcar todos","סימון הכול")}</button>
           <button type="button" class="gx-link" data-action="gastos-lista-todos" data-si="0">${t("Desmarcar todos","Uncheck all","Desmarcar todos","ביטול הסימון")}</button>
         </div>
-      </div>
-      ${lista.length > 1 ? `<div class="gx-ltodas">
-        <label class="gx-campo"><span class="gx-et">${t("La misma moneda a todos","The same currency for all","A mesma moeda para todos","אותו מטבע לכולן")}</span>
-          <input type="text" class="gx-moneda" id="gxListaMoneda" list="gxMonedas" maxlength="3" placeholder="ARS"></label>
-        <button type="button" class="btn-secondary" data-action="gastos-lista-moneda">${t("Poner a todos","Apply to all","Aplicar a todos","להחיל על כולן")}</button>
+        </div>
+        ${lista.length > 1 ? `<div class="gx-ltodas">
+          <label class="gx-campo"><span class="gx-et">${t("La misma moneda a todos","The same currency for all","A mesma moeda para todos","אותו מטבע לכולן")}</span>
+            <input type="text" class="gx-moneda" id="gxListaMoneda" list="gxMonedas" maxlength="3" placeholder="ARS"></label>
+          <button type="button" class="btn-secondary" data-action="gastos-lista-moneda">${t("Poner a todos","Apply to all","Aplicar a todos","להחיל על כולן")}</button>
+        </div>` : ""}
       </div>` : ""}
       ${filas || `<div class="admin-ok">✅ ${t("No queda nada por confirmar.","Nothing left to confirm.","Não sobrou nada para confirmar.","לא נשאר מה לאשר.")}</div>`}
       ${L.aviso ? `<div class="gx-alerta" role="status">${esc(L.aviso)}</div>` : ""}
-      <div class="gx-acciones gx-lpie">
-        ${destino}
-        <button type="button" class="btn-secondary" data-action="gastos-lista-cerrar">${t("Volver a la vista de siempre","Back to the usual view","Voltar à vista de sempre","חזרה לתצוגה הרגילה")}</button>
+      ${lista.length && destino ? `<div class="gx-ldestino-env">${destino}</div>` : ""}
+      <div class="gx-lpie">
+        ${lista.length ? `<span class="gx-lcuenta" id="gxListaCuenta" aria-live="polite">${esc(cuentaDeLista(marcados, lista.length))}</span>` : ""}
+        <button type="button" class="btn-secondary" data-action="gastos-lista-cerrar">${t("Salir de la lista","Leave the list","Sair da lista","יציאה מהרשימה")}</button>
         <button type="button" class="btn-primary" data-action="gastos-lista-guardar" ${L.guardando || !lista.length || (!marcados && !Object.values(L.filas).some(f => f.tocado)) ? "disabled" : ""}>${L.guardando ? t("Guardando…","Saving…","Salvando…","שומר…")
           : textoConfirmarLista(marcados)}</button>
       </div>
@@ -25375,6 +25466,9 @@ function renderRendicionAbierta(comoAdmin){
   const r = rendicionPorId(gastosAbierta);
   if(!r) return `${volver}<div class="empty-state">${t("Esa rendición ya no está.","That report is no longer there.","Essa prestação não está mais aqui.","הדוח הזה כבר לא קיים.")}</div>`;
   const mia = r.autor === miCorreo(), editable = mia && rendicionEditable(r);
+  // Revisando en lista, solo la lista y sus botones: el total, el total rápido y «Mandar» vuelven al salir.
+  const enLista = !!(editable && gastosLista && gastosLista.rid === r.id);
+  const subirAca = editable ? `<button type="button" class="btn-secondary gx-subir-aca" data-action="gastos-subir" data-id="${esc(r.id)}">📎 ${t("Subir comprobantes a esta rendición","Upload receipts to this report","Enviar comprovantes para esta prestação","העלאת קבלות לדוח הזה")}</button>` : "";
   const gs = gastosDe(r.id);
   const faltan = gs.filter(g => g.estado === "borrador").length, obs = gs.filter(g => g.estado === "observado").length;
   const detalle = totalDelDetalle(r.id);
@@ -25408,12 +25502,10 @@ function renderRendicionAbierta(comoAdmin){
     </div>
     ${aviso}
     ${mia && editable ? renderSubida() + renderAvisoDeLista() : ""}
-    ${editable && gastosLista && gastosLista.rid === r.id ? renderListaDeGastos(r.id)
-      : `${editable ? botonDeLista(r.id) : ""}${gs.length ? `<div class="gx-filas">${gs.map(renderFilaGasto).join("")}</div>` : `<p class="setting-sub gx-nada">${t("Todavía no hay gastos en esta rendición.","There are no expenses in this report yet.","Ainda não há despesas nesta prestação.","עדיין אין הוצאות בדוח הזה.")}</p>`}`}
-    ${editable ? `<button type="button" class="btn-secondary gx-subir-aca" data-action="gastos-subir" data-id="${esc(r.id)}">📎 ${t("Subir comprobantes a esta rendición","Upload receipts to this report","Enviar comprovantes para esta prestação","העלאת קבלות לדוח הזה")}</button>` : ""}
-    ${Object.keys(detalle).length ? `<div class="gx-total"><span>${t("Total confirmado","Confirmed total","Total confirmado","סך המאושר")}${faltan ? ` <small>${esc(faltan === 1 ? t("(sin contar 1 por confirmar)","(not counting 1 to confirm)","(sem contar 1 por confirmar)","(בלי 1 שממתינה לאישור)") : t("(sin contar {n} por confirmar)","(not counting {n} to confirm)","(sem contar {n} por confirmar)","(בלי {n} שממתינות לאישור)",{ n: faltan }))}</small>` : ""}</span><b>${esc(fmtTotales(detalle))}</b></div>` : ""}
-    ${renderTotalRapido(r, editable, detalle)}
-    ${enviar}${aprobar}`;
+    ${enLista ? renderListaDeGastos(r.id)
+      : `${editable ? `<div class="gx-herr">${botonDeLista(r.id)}${subirAca}</div>` : ""}${gs.length ? `<div class="gx-filas">${gs.map(renderFilaGasto).join("")}</div>` : `<p class="setting-sub gx-nada">${t("Todavía no hay gastos en esta rendición.","There are no expenses in this report yet.","Ainda não há despesas nesta prestação.","עדיין אין הוצאות בדוח הזה.")}</p>`}`}
+    ${!enLista && Object.keys(detalle).length ? `<div class="gx-total"><span>${t("Total confirmado","Confirmed total","Total confirmado","סך המאושר")}${faltan ? ` <small>${esc(faltan === 1 ? t("(sin contar 1 por confirmar)","(not counting 1 to confirm)","(sem contar 1 por confirmar)","(בלי 1 שממתינה לאישור)") : t("(sin contar {n} por confirmar)","(not counting {n} to confirm)","(sem contar {n} por confirmar)","(בלי {n} שממתינות לאישור)",{ n: faltan }))}</small>` : ""}</span><b>${esc(fmtTotales(detalle))}</b></div>` : ""}
+    ${enLista ? "" : renderTotalRapido(r, editable, detalle) + enviar + aprobar}`;
 }
 // El total rápido: cuánto se gastó en la actividad, sin el detalle. Vale el
 // detalle; si no coinciden se avisa, y la persona puede confirmar el suyo.
@@ -25940,13 +26032,26 @@ const GASTOS_ACCIONES = {
     const x = id && document.querySelector(`[data-action="gastos-abrir-rendicion"][data-id="${CSS.escape(id)}"]`); if(x) x.focus(); },
   "gastos-abrir-actividad": async () => abrirRendicionDeActividad(),
   "gastos-otra": async () => { gastosOtraAbierta = !gastosOtraAbierta; render(); },
-  "gastos-lista-abrir": async el => { gastosLista = { rid: el.dataset.id, filas: {}, destino: "", guardando: false, aviso: "" }; gastosListaAviso = ""; render();
+  "gastos-lista-abrir": async el => { gastosLista = { rid: el.dataset.id, filas: {}, destino: "", guardando: false, aviso: "", vista: vistaDeListaGuardada(), abiertas: {} }; gastosListaAviso = ""; render();
     const x = document.querySelector('[data-glista-marca], [data-action="gastos-lista-cerrar"]'); if(x) x.focus(); },
   "gastos-lista-cerrar": async () => {
     const L = gastosLista;
     if(L && Object.values(L.filas).some(f => f.tocado) && !await appConfirm(t("¿Volver sin guardar lo que cambiaste en la lista?","Go back without saving what you changed in the list?","Voltar sem salvar o que você mudou na lista?","לחזור בלי לשמור את מה ששיניתם ברשימה?"), { okLabel: t("Volver sin guardar","Go back without saving","Voltar sem salvar","חזרה בלי שמירה") })) return;
     const rid = L && L.rid; gastosLista = null; render();
     const x = rid && document.querySelector(`[data-action="gastos-lista-abrir"][data-id="${CSS.escape(rid)}"]`); if(x) x.focus();
+  },
+  "gastos-lista-vista": async el => {
+    const L = gastosLista; if(!L) return;
+    L.vista = el.dataset.vista === "foto" ? "foto" : "lista";
+    try{ localStorage.setItem("ra_gastos_vista", L.vista); }catch(e){}
+    render();
+    const x = document.querySelector(`[data-action="gastos-lista-vista"][data-vista="${L.vista}"]`); if(x) x.focus();
+  },
+  "gastos-lista-ver": async el => {
+    const L = gastosLista, id = el.dataset.id; if(!L || !id) return;
+    if(L.abiertas[id]) delete L.abiertas[id]; else L.abiertas[id] = true;
+    render();
+    const x = document.getElementById(`gxLR_${id}`); if(x) x.focus();
   },
   "gastos-lista-todos": async el => { const L = gastosLista; if(!L) return; gastosParaLista(L.rid).forEach(g => { const f = filaDeLista(g); f.marcado = el.dataset.si === "1"; f.marcadoAMano = true; }); render(); },
   "gastos-lista-guardar": async () => guardarListaDeGastos(),
@@ -26012,6 +26117,8 @@ function gastosAlEscribir(el, evento){
     // mostrar (o sacar) el monto en dólares.
     if(!f.marcadoAMano) f.marcado = filaCompleta(f.d) && !f.dudas.length;
     marcarFilaDeLista(id, f.marcado);
+    const r = document.getElementById(`gxLR_${id}`), g = gastoPorId(id);
+    if(r && g) r.innerHTML = resumenDeFila(g, f);
     if(evento === "change" && campo === "moneda" && antes !== v){
       const otra = v !== String(f.d.rendidoMoneda).toUpperCase();
       if(otra !== !!document.getElementById(`gxL_${id}_rendidoMonto`)) render(); else el.value = v;

@@ -141,6 +141,12 @@ tocan eventos, comentarios ni la Agenda); se hace por etapas chicas; Drive y el 
     en dólares. El total de una rendición cuenta solo lo confirmado y dice cuántos quedan afuera.
   - **La lista** muestra el comprobante grande al lado de cada fila; sin nada marcado, el botón dice «Guardar sin
     confirmar» y espera a que haya algo.
+  - **La lista, más ordenada** (lo pidió el usuario después, mirando la captura): los campos en una grilla pareja,
+    dos vistas para elegir —**«Lista»**, una fila chica por gasto (miniatura, qué es, cuánto y qué le falta o qué
+    revisar) que se despliega al tocarla, y **«Con foto»**, todas abiertas con el comprobante mediano; cada
+    navegador recuerda la elegida— y los botones flotando abajo mientras se recorre. Revisando en lista no se ven
+    el total, el total rápido ni «Mandar»: vuelven al salir. En la rendición, «Revisar en lista» y «Subir
+    comprobantes» van juntos arriba de los gastos.
   Lo prueban `gastos_test.mjs` y `lector_test.mjs`. Quedan de la crítica, para más adelante: el comprobante dentro
   de la ventana en el celular y que la cuenta corriente se entienda mejor.
 - [ ] Los avisos de «te observaron un gasto» (campanita y correo).

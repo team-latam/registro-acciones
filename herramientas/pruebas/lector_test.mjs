@@ -97,9 +97,12 @@ await p.keyboard.press("Escape");
 await p.click('[data-action="gastos-lista-abrir"][data-id="ren_mvd"]'); await p.waitForSelector(".gx-lista-rev");
 const marca = n => p.$eval(`#gxL_${de(n).id}_marca`, e => e.checked);
 eq("en la lista, el taxi (la moneda salió de un «$») viene sin marcar; la cena y el hotel, marcados", [await marca("foto1.jpg"), await marca("foto2.jpg"), await marca("escaneo.pdf")], [false, true, true]);
-eq("…y su moneda se ve como dudosa", await p.$eval(`#gxL_${de("foto1.jpg").id}_moneda`, e => e.dataset.duda), "1");
+eq("…la fila chica dice qué revisar", await p.$eval(`#gxLR_${de("foto1.jpg").id}`, e => /Revisar: moneda/.test(e.textContent)), true);
+await p.click(`#gxLR_${de("foto1.jpg").id}`);
+eq("…y abierta, la moneda se ve como dudosa", await p.$eval(`#gxL_${de("foto1.jpg").id}_moneda`, e => e.dataset.duda), "1");
 await p.fill(`#gxL_${de("foto1.jpg").id}_moneda`, "UYU"); await p.press(`#gxL_${de("foto1.jpg").id}_moneda`, "Tab"); await p.waitForTimeout(150);
 eq("revisada la moneda, se marca sola", await marca("foto1.jpg"), true);
+eq("…y la fila chica dice que está completa", await p.$eval(`#gxLR_${de("foto1.jpg").id}`, e => /Completo/.test(e.textContent) && !/Revisar/.test(e.textContent)), true);
 await p.click('[data-action="gastos-lista-cerrar"]'); await p.click("#confirmOk"); await p.waitForSelector(".gx-lista-rev", { state: "detached" });
 
 // «Leer el comprobante» en uno subido antes (gx8, sin datos): completa la ventana, no la base.
