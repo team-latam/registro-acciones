@@ -1,10 +1,11 @@
 # Gastos y rendiciones — el módulo nuevo (en construcción)
 
 > **Estado (15/11/2026):** la **etapa de prueba** tiene la base (`supabase/27-gastos.sql`, 137 comprobaciones en
-> `supabase/pruebas/71-gastos.sql`) y las pantallas (`herramientas/pruebas/gastos_test.mjs`), **en la rama de
-> trabajo, sin publicar**. Faltan el lector de comprobantes y los avisos. **Nada de esto va a `main` sin el OK
-> explícito del usuario**, parte por parte y con capturas: es lo que se acordó, y es una excepción a la regla
-> general de «pushear a `main` de una» de `CLAUDE.md` (al llegar a `main`, la base real se actualiza sola).
+> `supabase/pruebas/71-gastos.sql`) y las pantallas (`herramientas/pruebas/gastos_test.mjs`), **publicadas en
+> `main` el 15/11 con el OK del usuario y apagadas**: nadie las ve hasta que un admin prende el interruptor de
+> Administración → Gastos. Faltan el lector de comprobantes y los avisos. **Cada parte que sigue va a `main` recién
+> con el OK explícito del usuario**, con capturas: es lo que se acordó, y es una excepción a la regla general de
+> «pushear a `main` de una» de `CLAUDE.md` (al llegar a `main`, la base real se actualiza sola).
 
 El usuario rinde hoy sus gastos de viaje y de rutina con una skill de Claude que lee los comprobantes de su
 Drive, los carga en un Google Sheet y arma los PDF de entrega. Quiere que **el sistema** haga eso y quede todo
@@ -85,14 +86,14 @@ tocan eventos, comentarios ni la Agenda); se hace por etapas chicas; Drive y el 
 
 ### Etapa 1, por partes
 
-- [x] **Base de datos** (15/11, sin publicar): `supabase/27-gastos.sql` — cuatro tablas (`gastos_rendiciones`,
+- [x] **Base de datos** (publicada el 15/11): `supabase/27-gastos.sql` — cuatro tablas (`gastos_rendiciones`,
   `gastos`, `gastos_comentarios`, `gastos_movimientos`), las reglas de quién ve y toca qué, los pasos de una
   rendición (`gastos_rendicion_abrir`, `_enviar`, `gastos_observar`, `gastos_comentar`,
   `gastos_rendicion_aprobar`), la cuenta (`gastos_cuenta`, `gastos_movimiento_confirmar`) y los comprobantes en
   el bucket (`gastos/<id del gasto>/…`). La limpieza semanal del bucket sabe que se usan; la copia de
   seguridad y la restauración las incluyen; van en vivo. Pruebas: `supabase/pruebas/71-gastos.sql` (y se cae si
   se rompe la privacidad, los estados, los comprobantes o la cuenta).
-- [x] **Las pantallas** (15/11, sin publicar): con el interruptor de **Administración → Gastos** prendido
+- [x] **Las pantallas** (publicadas el 15/11, apagadas): con el interruptor de **Administración → Gastos** prendido
   (`preferences → gastos.prendido`, cuya forma controla `gastos_config_ok`), un admin ve **«🧾 Gastos»** en el
   menú de su foto (en el celular, en «Más»):
   - *Mis rendiciones*: subir muchos comprobantes juntos (fotos o PDF; el mismo dos veces no se repite; la fecha
