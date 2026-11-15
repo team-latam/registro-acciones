@@ -165,6 +165,21 @@ tocan eventos, comentarios ni la Agenda); se hace por etapas chicas; Drive y el 
     `lector_texto_test.mjs` con PDF y recibos inventados con la misma forma.
   Lo prueban `gastos_test.mjs`, `lector_test.mjs` y `lector_texto_test.mjs`. Quedan de la crítica, para más adelante: el comprobante dentro
   de la ventana en el celular y que la cuenta corriente se entienda mejor.
+- [x] **Más pedidos del usuario mirando la pantalla** (15/11, en la rama; van a `main` con su OK):
+  - **Borrar una rendición vacía**: una ✕ en la tarjeta de una rendición propia, abierta y sin gastos ni total
+    rápido (quedó de elegir una actividad o de una subida), preguntando; y una subida que no deja ningún
+    comprobante no deja la rendición que abrió. En la base (`27-gastos.sql`), cada persona puede borrar la suya
+    mientras está abierta (antes, solo el admin fijo); vacía siempre, porque los gastos la sostienen.
+  - **Los montos, contables como en su Sheet** («"$"#,##0.00»; lo eligió entre esto y el estilo de acá): coma para
+    los miles, punto para los centavos, siempre dos decimales, con la moneda chica al lado y alineados a la
+    derecha (los decimales quedan uno abajo del otro), en las filas, los totales y la cuenta corriente. En los
+    campos se escribe como uno quiera («1250», «1.250,50», «1,250.50») y al salir se acomoda.
+  - **«Organización»** en «¿Quién pagó?» (en vez de «la organización»).
+  - **El tipo, predicho**: primero por lo que la persona ya cargó con ese mismo concepto; después por las
+    palabras del concepto o del título del archivo (la que aparece primero: «Taxi al hotel» es transporte; un
+    almuerzo de reunión, comida, como en su skill; las apps de viaje); al final, por la primera palabra en lo
+    ya cargado. Al subir, cuando el lector completa el concepto y mientras se escribe (si el tipo está vacío o
+    lo había puesto la sugerencia), y queda marcado para revisar.
 - [ ] Los avisos de «te observaron un gasto» (campanita y correo).
 
 **Visto al armar las pantallas (15/11), para decidir más adelante:** si la rutina de un mes ya se aprobó, un

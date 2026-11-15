@@ -112,7 +112,7 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: vp, base: datos({ prendido: true }) });
   await irGastos(p);
   eq("las rendiciones: sin vincular, para completar y aprobadas", await textos(p, ".gx-tarjeta b"), ["Sin vincular", "Visita a Montevideo", await p.evaluate(() => "Rutina de " + new Date().toLocaleDateString("es-AR", { month: "long", year: "numeric" }))]);
-  eq("cada una dice qué falta y cuánto suma", await textos(p, '[data-id="ren_mvd"] .gx-aviso, [data-id="ren_mvd"] .gx-t-total'), ["1 por confirmar", "USD 345,50"]);
+  eq("cada una dice qué falta y cuánto suma", await textos(p, '[data-id="ren_mvd"] .gx-aviso, [data-id="ren_mvd"] .gx-t-total'), ["1 por confirmar", "USD 345.50"]);
   eq("no ve las rendiciones de otros en «Mis rendiciones»", (await textos(p, ".gx-tarjeta b")).includes("Visita a la comunidad de Rosario"), false);
 
   // Subir dos juntos: una foto con la fecha y el concepto en el nombre, y un PDF.
@@ -199,7 +199,7 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   await p.click('[data-action="gasto-abrir"][data-id="gx1"]'); await p.waitForSelector("#gastoOverlay:not([hidden])");
   await p.click('[data-action="gasto-borrar"]'); await aceptar(p);
   eq("borrar un gasto pregunta y lo borra", await hasta(p, () => !window.__sb.tablas.gastos.some(g => g.id === "gx1")), true);
-  eq("el total confirmado suma lo que se rinde (en dólares cuando lo tiene)", await textos(p, ".gx-total b"), ["USD 353,50"]);
+  eq("el total confirmado suma lo que se rinde (en dólares cuando lo tiene)", await textos(p, ".gx-total b"), ["USD 353.50"]);
   await p.click('[data-action="gastos-enviar"]'); await aceptar(p);
   eq("mandar: pregunta y la manda con la función de la base", await hasta(p, () => window.__sb.tablas.gastos_rendiciones.find(r => r.id === "ren_mvd").estado === "enviada"), true);
   eq("…una vez", (await rpcs(p, "gastos_rendicion_enviar")), [{ p_id: "ren_mvd" }]);
@@ -248,17 +248,17 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   await p.click('[data-action="gastos-seccion"][data-key="cuenta"]'); await p.waitForTimeout(150);
   // Gastado: el remís (20) + el hotel (300 en dólares) + el taxi (8); la cena la pagó la organización. Recibido: 500.
   eq("la cuenta: lo gastado de su bolsillo en rendiciones aprobadas, menos lo recibido", await textos(p, ".gx-cuenta-mon .gx-saldo, .gx-cuenta-mon .gx-cm-sub, .gx-cm-filas dd"),
-    ["-USD 172,00", "le debés a la organización", "USD 328,00", "USD 500,00", "USD 0,00"]);
+    ["USD -172.00", "le debés a la organización", "USD 328.00", "USD 500.00", "USD 0.00"]);
   await p.selectOption("#gxMov_tipo", "ajuste"); await p.waitForTimeout(100);
   await p.fill("#gxMov_monto", "50"); await p.fill("#gxMov_descripcion", "Saldo inicial");
   await p.click('[data-action="gastos-mov-anotar"]');
-  eq("un admin anota un ajuste, que ya cuenta", await hasta(p, () => /-USD\s122,00/.test(document.querySelector(".gx-saldo").textContent)), true);
+  eq("un admin anota un ajuste, que ya cuenta", await hasta(p, () => /USD\s-122\.00/.test(document.querySelector(".gx-saldo").textContent)), true);
   eq("…a nombre de la persona, confirmado", (await tabla(p, "gastos_movimientos")).filter(m => m.tipo === "ajuste").map(m => [m.persona, m.monto, m.moneda, m.estado, m.descripcion]), [[ADMIN, 50, "USD", "confirmado", "Saldo inicial"]]);
   await p.fill("#gxMov_monto", ""); await p.click('[data-action="gastos-mov-anotar"]');
   eq("sin monto, avisa", await p.$eval(".gx-anotar .form-error", e => e.textContent.trim()), "Falta el monto.");
   await p.selectOption("#gxCuentaDe", ANA.email); await p.waitForTimeout(150);
   eq("la cuenta de otra persona: lo recibido ya confirmado y lo que está en revisión aparte", await textos(p, ".gx-cuenta-mon .gx-saldo, .gx-cuenta-mon .gx-cm-sub, .gx-cm-filas dd"),
-    ["-USD 200,00", "le debe a la organización", "USD 0,00", "USD 200,00", "USD 0,00", "USD 170,00"]);
+    ["USD -200.00", "le debe a la organización", "USD 0.00", "USD 200.00", "USD 0.00", "USD 170.00"]);
   eq("sin errores de página en todo el camino", errores, []);
   await p.close();
 }
@@ -285,8 +285,8 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
     return !!g && g.rendicion_id === "ren_mvd" && !!g.archivo && /Visita a Montevideo/.test((document.querySelector(".gx-cab .gx-h3") || {}).textContent || ""); }, antes), true);
   const nuevo = (await tabla(p, "gastos")).slice(antes)[0];
   // Los totales: solo lo confirmado.
-  eq("el total de la rendición cuenta solo lo confirmado, y dice cuántos quedan afuera", await textos(p, ".gx-total span"), ["Total confirmado (sin contar 2 por confirmar)"]);
-  eq("…sin el monto del borrador (lo que asustó al usuario: «USD 72.570» que eran pesos)", await p.$eval(".gx-total b", e => [/72[.,]?570/.test(e.textContent), /345,50/.test(e.textContent)]), [false, true]);
+  eq("el total de la rendición cuenta solo lo confirmado, y dice cuántos quedan afuera", await textos(p, ".gx-total > span"), ["Total confirmado (sin contar 2 por confirmar)"]);
+  eq("…sin el monto del borrador (lo que asustó al usuario: «USD 72.570» que eran pesos)", await p.$eval(".gx-total b", e => [/72[.,]?570/.test(e.textContent), /345\.50/.test(e.textContent)]), [false, true]);
   // Borrar desde la fila, sin abrir la ventana.
   eq("cada fila que se puede tocar tiene su «Borrar»", await p.$$eval('[data-action="gasto-quitar"]', l => l.map(e => e.dataset.id).sort()), ["gx1", "gx2", "gx3", "gx9", nuevo.id].sort());
   await p.click(`[data-action="gasto-quitar"][data-id="${nuevo.id}"]`);
@@ -397,14 +397,14 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   eq("…y «Marcar todos» queda a medias (una de cuatro)", await p.$eval("#gxListaTodos", e => [e.checked, e.indeterminate]), [false, true]);
   // Las observaciones, como la columna de la skill del usuario: en la fila, y se ven en el resumen.
   await p.fill(`#gxL_${a}_observaciones`, "Con el equipo de Lima");
-  eq("…y su resumen se pone al día mientras se escribe, con las observaciones", await p.$eval(`#gxLR_${a}`, e => e.innerText.replace(/\s+/g, " ").trim()), "Almuerzo 12 de nov de 2026 · Comida 💬 Con el equipo de Lima USD 20,00 Completo");
+  eq("…y su resumen se pone al día mientras se escribe, con las observaciones", await p.$eval(`#gxLR_${a}`, e => e.innerText.replace(/\s+/g, " ").trim()), "Almuerzo 12 de nov de 2026 · Comida 💬 Con el equipo de Lima USD 20.00 Completo");
   eq("…y la cuenta de abajo también", await p.$eval("#gxListaCuenta", e => e.textContent), "1 de 4 marcados");
   await p.click(`#gxLR_${a}`);
   eq("tocarla de nuevo la cierra, sin perder lo escrito", await p.evaluate(a => [!document.getElementById(`gxL_${a}_monto`), document.getElementById(`gxL_${a}_marca`).checked], a), [true, true]);
   // «Con foto»: todas abiertas, con el comprobante mediano; se recuerda.
   await p.click('[data-action="gastos-lista-vista"][data-vista="foto"]');
   eq("«Con foto» abre todas, con el comprobante al lado", await p.$$eval(".gx-lfila", l => l.map(e => { const x = e.querySelector(".gx-lfoto"); return !!x && x.getBoundingClientRect().height >= 140; })), [true, true, true, true]);
-  eq("…y lo escrito sigue ahí", await p.$eval(`#gxL_${a}_monto`, e => e.value), "20");
+  eq("…y lo escrito sigue ahí", await p.$eval(`#gxL_${a}_monto`, e => e.value), "20.00");
   eq("la vista elegida queda guardada en este navegador", await p.evaluate(() => localStorage.getItem("ra_gastos_vista")), "foto");
   // La factura, en pesos: aparece el monto en dólares.
   await p.fill(`#gxL_${f}_fecha`, "2026-11-10"); await p.fill(`#gxL_${f}_concepto`, "Fotocopias");
@@ -412,6 +412,10 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   await p.selectOption(`#gxL_${f}_tipo`, "material");
   await p.fill(`#gxL_${f}_monto`, "3000"); await p.fill(`#gxL_${f}_moneda`, "ars"); await p.press(`#gxL_${f}_moneda`, "Tab"); await p.waitForTimeout(100);
   eq("en otra moneda aparece «En USD», con la moneda en mayúsculas", await p.evaluate(f => [document.getElementById(`gxL_${f}_moneda`).value, !!document.getElementById(`gxL_${f}_rendidoMonto`)], f), ["ARS", true]);
+  eq("el monto, contable como el Sheet: se acomoda al salir del campo", await p.$eval(`#gxL_${f}_monto`, e => e.value), "3,000.00");
+  await p.fill(`#gxL_${f}_monto`, "2.999,50"); await p.press(`#gxL_${f}_monto`, "Tab");
+  eq("…y se puede escribir a la manera de acá («2.999,50»)", await p.$eval(`#gxL_${f}_monto`, e => e.value), "2,999.50");
+  await p.fill(`#gxL_${f}_monto`, "3000"); await p.press(`#gxL_${f}_monto`, "Tab");
   await p.fill(`#gxL_${f}_rendidoMonto`, "3");
   // La foto sin datos: marcada a mano, para ver que no se confirma incompleta.
   await p.check(`#gxL_${c}_marca`);
@@ -442,7 +446,7 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   await p.click('[data-action="gastos-lista-cerrar"]');
   eq("con cambios sin guardar, pregunta antes de volver", await p.evaluate(() => !document.getElementById("confirmOverlay").hidden), true);
   await p.click("#confirmCancel"); await p.waitForTimeout(100);
-  eq("…y si no, sigue en la lista con lo escrito", await p.$eval("#gxL_gx8_monto", e => e.value), "15");
+  eq("…y si no, sigue en la lista con lo escrito", await p.$eval("#gxL_gx8_monto", e => e.value), "15.00");
   // «La misma moneda a todos».
   await p.fill("#gxListaMoneda", "brl"); await p.click('[data-action="gastos-lista-moneda"]'); await p.waitForTimeout(100);
   await p.click('[data-action="gastos-lista-vista"][data-vista="foto"]');

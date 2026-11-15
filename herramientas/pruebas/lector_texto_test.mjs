@@ -29,8 +29,9 @@ let L = { leer: () => "no se pudo armar", numero: () => null, foto: () => null }
 try{
   L = new Function(`${["MESES_ESCRITOS", "MONEDAS_EN_TEXTO", "MONEDA_DEL_PAIS", "APPS_EN_TEXTO", "TIPOS_EN_TEXTO", "numeroDeTicket", "numerosDeLinea",
     "fechaDeTicket", "tituloDeComercio", "leerTextoDeComprobante", "fotoDentroDelPdf", "textoDelPdf", "faltaElTotal",
-    "normalTexto", "PALABRAS_VACIAS", "primeraPalabra", "tipoPorPalabras", "predecirTipo"].map(grab).join("\n")}
-    return { leer: leerTextoDeComprobante, numero: numeroDeTicket, foto: fotoDentroDelPdf, pdf: textoDelPdf, faltaTotal: faltaElTotal, tipo: predecirTipo };`)();
+    "normalTexto", "PALABRAS_VACIAS", "primeraPalabra", "tipoPorPalabras", "predecirTipo", "NUM_CONTABLE", "numContable", "numeroEscrito", "montoEnCampo"].map(grab).join("\n")}
+    return { leer: leerTextoDeComprobante, numero: numeroDeTicket, foto: fotoDentroDelPdf, pdf: textoDelPdf, faltaTotal: faltaElTotal, tipo: predecirTipo,
+      escrito: numeroEscrito, enCampo: montoEnCampo };`)();
 }catch(e){ console.log("no se pudo armar:", e.message); }
 const HOY = "2026-11-15";
 const leer = (texto, pais) => { try{ return L.leer(texto, { hoy: HOY, pais }); }catch(e){ return "error: " + e.message; } };
@@ -133,6 +134,13 @@ const israel = `קפה ירושלים
 אשראי ****1111`;
 eq("Israel: shekels, el total en hebreo, la tarjeta y el comercio", campos(leer(israel), "fecha", "monto", "moneda", "tarjeta", "formaPago", "comercio", "dudas"),
   ["2026-11-05", 48, "ILS", "1111", "tarjeta", "קפה ירושלים", []]);
+
+/* ---- Los montos que se escriben en un campo, y cómo se muestran (contables, como el Sheet del usuario) ---- */
+eq("un monto escrito: con coma o punto, con «$», negativo (un ajuste); vacío es nada; lo que no se entiende, no",
+  ["1250", "1,250.50", "1.250,50", "12,5", "$ 40", "-30", "abc", "", "1.234,567"].map(x => { const n = L.escrito(x); return n === null ? "vacío" : Number.isNaN(n) ? "no" : n; }),
+  [1250, 1250.5, 1250.5, 12.5, 40, -30, "no", "vacío", "no"]);
+eq("en el campo se ve contable: coma para los miles, punto para los centavos, siempre dos decimales (un punto con tres cifras detrás son miles, como se escribe acá)",
+  ["1250", "2.999,5", "0", "-30", "12.345", "abc", ""].map(L.enCampo), ["1,250.00", "2,999.50", "0.00", "-30.00", "12,345.00", "abc", ""]);
 
 /* ---- Casos que confunden ---- */
 eq("la tarjeta, aunque el lector confunda un asterisco con «+», «#» o «%»", ["Pago: tarjeta ***+1234", "VISA **%*5678", "Tarjeta ##9012", "Débito terminada en 3456"].map(x => leer(x).tarjeta),

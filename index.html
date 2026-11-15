@@ -862,6 +862,12 @@
   .gx-f-txt{ flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:2px; }
   .gx-f-txt b{ font-size:14px; overflow-wrap:anywhere; }
   .gx-f-der b{ font-size:13.5px; white-space:nowrap; }
+  /* Los montos, contables: la moneda chica al lado y el número a la derecha, con los decimales alineados. */
+  .gx-num{ display:inline-flex; align-items:baseline; justify-content:flex-end; gap:.45em; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .gx-cur{ font-size:max(11px, .78em); font-weight:700; letter-spacing:.03em; color:var(--text-muted); }
+  .gx-val{ min-width:8.5ch; text-align:end; }
+  .gx-totales{ display:inline-flex; flex-direction:column; align-items:flex-end; gap:2px; }
+  input.gx-monto{ text-align:end; font-variant-numeric:tabular-nums; }
   .gx-f-der small{ font-size:12px; color:var(--text-muted); white-space:nowrap; }
   .gx-nada{ margin:8px 0 12px; }
   .gx-subir-aca{ margin:2px 0 12px; }
@@ -24493,11 +24499,31 @@ function nombreTipoGasto(k){
   const x = gastoTipos().find(y => y.key === k);
   return x ? x.label : (etiquetaTipoFabrica(k) || k);
 }
+// Los montos, contables como en el Sheet del usuario («"$"#,##0.00», lo eligió el 15/11): coma para los
+// miles, punto para los centavos, siempre dos decimales, en cualquier idioma de la app.
+const NUM_CONTABLE = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const numContable = n => (n < 0 ? "-" : "") + NUM_CONTABLE.format(Math.abs(n));
 function fmtMonto(moneda, n){
   if(n === null || n === undefined || isNaN(n)) return "";
-  try{ return new Intl.NumberFormat(dateLocale(), { style:"currency", currency: moneda, currencyDisplay:"code", minimumFractionDigits:2, maximumFractionDigits:2 }).format(n); }
-  catch(e){ return `${moneda} ${Number(n).toFixed(2)}`; }
+  return `${moneda} ${numContable(Number(n))}`;
 }
+// Para ver en columna: la moneda chica al lado y el número alineado a la derecha (los decimales quedan uno
+// abajo del otro). `signo` va pegado al número (los movimientos de la cuenta).
+function montoHtml(moneda, n, signo = ""){
+  if(n === null || n === undefined || isNaN(n)) return "";
+  return `<span class="gx-num"><span class="gx-cur">${esc(moneda)}</span> <span class="gx-val">${esc(signo + numContable(Number(n)))}</span></span>`;
+}
+// Un monto escrito en un campo: «1250», «1,250.50», «1.250,50», «12,5», «$ 40», «-30» (un ajuste).
+// null si está vacío; NaN si no se entiende.
+function numeroEscrito(v){
+  if(typeof v === "number") return isFinite(v) ? v : NaN;
+  const x = String(v ?? "").replace(/[\s$]/g, "");
+  if(!x) return null;
+  const neg = /^-/.test(x), r = numeroDeTicket(x.replace(/^[-+]/, ""));
+  return r && !r.dudoso ? (neg ? -r.n : r.n) : NaN;
+}
+// Lo que muestra un campo de monto: acomodado si se entiende; si no, tal cual (para corregirlo).
+const montoEnCampo = v => { const n = numeroEscrito(v); return n === null ? "" : isNaN(n) ? String(v) : numContable(n); };
 // Lo que se rinde de un gasto: el monto en dólares (o la moneda en que se
 // rinde) si lo tiene; si no, el del comprobante. Igual que gastos_cuenta.
 function rendidoDe(g){
@@ -24514,10 +24540,12 @@ function sumarPorMoneda(lista){
 // Solo lo confirmado (o ya mandado): un borrador puede tener la moneda o el monto mal leídos, y un
 // total con eso adentro asusta o engaña (la crítica del 15/11: «USD 72.570» que eran pesos).
 const totalDelDetalle = rid => sumarPorMoneda(gastosDe(rid).filter(g => g.estado !== "borrador").map(rendidoDe));
+const monedasEnOrden = s => Object.keys(s || {}).sort((a, b) => a === "USD" ? -1 : b === "USD" ? 1 : a.localeCompare(b));
 function fmtTotales(s){
-  const k = Object.keys(s || {}).sort((a, b) => a === "USD" ? -1 : b === "USD" ? 1 : a.localeCompare(b));
-  return k.map(m => fmtMonto(m, s[m])).join(" · ");
+  return monedasEnOrden(s).map(m => fmtMonto(m, s[m])).join(" · ");
 }
+// Los totales en columna, una moneda abajo de la otra.
+const totalesHtml = s => `<span class="gx-totales">${monedasEnOrden(s).map(m => montoHtml(m, s[m])).join("")}</span>`;
 function totalesIguales(a, b){
   return [...new Set([...Object.keys(a || {}), ...Object.keys(b || {})])].every(k => Math.abs((a[k] || 0) - (b[k] || 0)) < 0.005);
 }
@@ -25654,7 +25682,6 @@ function renderFilaGasto(g){
     : esPdfGasto(g) ? `<span class="gx-mini gx-mini-pdf" aria-hidden="true">PDF</span>`
     : esUrlFirmada(g.archivoUrl) ? `<img class="gx-mini" src="${esc(store.miniaturaDe(g.archivoUrl))}" alt="" loading="lazy">`
     : `<span class="gx-mini gx-mini-vacia" aria-hidden="true">🖼️</span>`;
-  const local = g.monto != null ? fmtMonto(g.moneda, g.monto) : "";
   const rend = g.rendidoMonto != null && g.rendidoMoneda !== g.moneda ? fmtMonto(g.rendidoMoneda, g.rendidoMonto) : "";
   // Borrar, a la vista en cada fila que se puede tocar (antes estaba solo adentro de la ventana y el usuario no lo encontró).
   const borrar = gastoEditable(g) ? `<button type="button" class="gx-fila-borrar" data-action="gasto-quitar" data-id="${esc(g.id)}" title="${esc(t("Borrar","Delete","Apagar","מחיקה"))}" aria-label="${esc(t("Borrar «{c}»","Delete “{c}”","Apagar «{c}»","מחיקת «{c}»",{ c: g.concepto || g.archivoNombre || t("este gasto","this expense","esta despesa","ההוצאה הזו") }))}">🗑️</button>` : "";
@@ -25666,8 +25693,8 @@ function renderFilaGasto(g){
           g.pago === "organizacion" ? esc(t("pagó: Organización","paid by: Organization","pagou: Organização","שילם/ה: הארגון")) : ""].filter(Boolean).join(" · ")}</small>
       </span>
       <span class="gx-f-der">
-        <b>${esc(local || (r ? fmtMonto(r.moneda, r.monto) : t("Sin monto","No amount","Sem valor","ללא סכום")))}</b>
-        ${rend ? `<small>${esc(rend)}</small>` : ""}
+        <b>${g.monto != null ? montoHtml(g.moneda, g.monto) : r ? montoHtml(r.moneda, r.monto) : esc(t("Sin monto","No amount","Sem valor","ללא סכום"))}</b>
+        ${rend ? `<small>${montoHtml(g.rendidoMoneda, g.rendidoMonto)}</small>` : ""}
         ${gxChip(estadoDeGasto(g.estado))}
       </span>
     </button>${borrar}</div>`;
@@ -25740,8 +25767,9 @@ function resumenDeFila(g, f){
     : esPdfGasto(g) ? `<span class="gx-mini gx-mini-pdf" aria-hidden="true">PDF</span>`
     : esUrlFirmada(g.archivoUrl) ? `<img class="gx-mini" src="${esc(store.miniaturaDe(g.archivoUrl))}" alt="" loading="lazy">`
     : `<span class="gx-mini gx-mini-vacia" aria-hidden="true">🖼️</span>`;
-  const monto = String(d.monto).trim() !== "" && Number.isFinite(Number(d.monto)) && /^[A-Z]{3}$/.test(String(d.moneda).toUpperCase())
-    ? `<b class="gx-lr-monto">${esc(fmtMonto(String(d.moneda).toUpperCase(), Number(d.monto)))}</b>` : `<span class="gx-lr-monto gx-lr-sin">${t("Sin monto","No amount","Sem valor","ללא סכום")}</span>`;
+  const nMonto = numeroEscrito(d.monto);
+  const monto = nMonto !== null && Number.isFinite(nMonto) && /^[A-Z]{3}$/.test(String(d.moneda).toUpperCase())
+    ? `<b class="gx-lr-monto">${montoHtml(String(d.moneda).toUpperCase(), nMonto)}</b>` : `<span class="gx-lr-monto gx-lr-sin">${t("Sin monto","No amount","Sem valor","ללא סכום")}</span>`;
   const faltan = faltanDeFila(d), dudas = (f.dudas || []).filter(k => !faltan.includes(k));
   const estado = g.estado === "observado" ? gxChip(estadoDeGasto("observado"))
     : faltan.length ? gxChip([t("Falta: {l}","Missing: {l}","Falta: {l}","חסר: {l}",{ l: faltan.map(nombreDeCampoDeGasto).join(", ") }), "aviso"])
@@ -25818,10 +25846,10 @@ function renderListaDeGastos(rid){
           ${campo("fecha", t("Fecha","Date","Data","תאריך"), `<input type="date" id="gxL_${esc(id)}_fecha" data-glista="${esc(id)}:fecha" value="${esc(d.fecha)}"${at("fecha")}>`)}
           ${campo("concepto", t("Concepto","Description","Conceito","תיאור"), `<input type="text" id="gxL_${esc(id)}_concepto" maxlength="140" data-glista="${esc(id)}:concepto" value="${esc(d.concepto)}"${at("concepto")}>`)}
           ${campo("tipo", t("Tipo","Type","Tipo","סוג"), `<select id="gxL_${esc(id)}_tipo" data-glista="${esc(id)}:tipo"${at("tipo")}><option value="">${esc(t("Elegí…","Pick…","Escolha…","בחרו…"))}</option>${tipos.concat(d.tipo && !tipos.some(x => x.key === d.tipo) ? [{ key: d.tipo, label: nombreTipoGasto(d.tipo) }] : []).map(x => `<option value="${esc(x.key)}"${x.key === d.tipo ? " selected" : ""}>${esc(x.label)}</option>`).join("")}</select>`)}
-          ${campo("monto", t("Monto","Amount","Valor","סכום"), `<input type="number" step="0.01" inputmode="decimal" id="gxL_${esc(id)}_monto" data-glista="${esc(id)}:monto" value="${esc(d.monto)}"${at("monto")}>`)}
+          ${campo("monto", t("Monto","Amount","Valor","סכום"), `<input type="text" inputmode="decimal" class="gx-monto" id="gxL_${esc(id)}_monto" data-glista="${esc(id)}:monto" value="${esc(montoEnCampo(d.monto))}"${at("monto")}>`)}
           ${campo("moneda", t("Moneda","Currency","Moeda","מטבע"), `<input type="text" class="gx-moneda" list="gxMonedas" maxlength="3" id="gxL_${esc(id)}_moneda" data-glista="${esc(id)}:moneda" value="${esc(d.moneda)}"${at("moneda")}>`)}
           ${campo("pago", t("Quién pagó","Who paid","Quem pagou","מי שילם/ה"), `<select id="gxL_${esc(id)}_pago" data-glista="${esc(id)}:pago"><option value="persona"${d.pago === "persona" ? " selected" : ""}>${esc(t("Yo","Me","Eu","אני"))}</option><option value="organizacion"${d.pago === "organizacion" ? " selected" : ""}>${esc(t("Organización","Organization","Organização","הארגון"))}</option></select>`)}
-          ${otraMoneda ? campo("rendidoMonto", t("En {m}","In {m}","Em {m}","ב-{m}",{ m: esc(d.rendidoMoneda) }), `<input type="number" step="0.01" inputmode="decimal" id="gxL_${esc(id)}_rendidoMonto" data-glista="${esc(id)}:rendidoMonto" value="${esc(d.rendidoMonto)}">`, "usd") : ""}
+          ${otraMoneda ? campo("rendidoMonto", t("En {m}","In {m}","Em {m}","ב-{m}",{ m: esc(d.rendidoMoneda) }), `<input type="text" inputmode="decimal" class="gx-monto" id="gxL_${esc(id)}_rendidoMonto" data-glista="${esc(id)}:rendidoMonto" value="${esc(montoEnCampo(d.rendidoMonto))}">`, "usd") : ""}
         </div>
         ${campo("obs", t("Observaciones","Notes","Observações","הערות"), `<input type="text" id="gxL_${esc(id)}_observaciones" maxlength="500" data-glista="${esc(id)}:observaciones" value="${esc(d.observaciones)}" placeholder="${esc(t("Opcional: con quién, para qué, una aclaración…","Optional: with whom, what for, a clarification…","Opcional: com quem, para quê, um esclarecimento…","לא חובה: עם מי, בשביל מה, הבהרה…"))}">`)}
         ${f.error ? `<div class="gx-lerror" role="alert">${esc(f.error)}</div>` : ""}
@@ -25878,8 +25906,8 @@ async function guardarListaDeGastos(){
     if(!f || (!f.marcado && !f.tocado)) continue;
     const d = f.d;
     const moneda = String(d.moneda || "").trim().toUpperCase(), rendidoMoneda = String(d.rendidoMoneda || "USD").trim().toUpperCase();
-    const monto = String(d.monto).trim() === "" ? null : Number(d.monto);
-    const rendido = moneda === rendidoMoneda || String(d.rendidoMonto).trim() === "" ? null : Number(d.rendidoMonto);
+    const monto = numeroEscrito(d.monto);
+    const rendido = moneda === rendidoMoneda ? null : numeroEscrito(d.rendidoMonto);
     const faltan = [];
     if(f.marcado){
       if(!d.fecha) faltan.push("fecha");
@@ -25971,7 +25999,7 @@ function renderRendicionAbierta(comoAdmin){
     ${mia && editable ? renderSubida() + renderAvisoDeLista() : ""}
     ${enLista ? renderListaDeGastos(r.id)
       : `${editable ? `<div class="gx-herr">${botonDeLista(r.id)}${subirAca}</div>` : ""}${gs.length ? `<div class="gx-filas">${gs.map(renderFilaGasto).join("")}</div>` : `<p class="setting-sub gx-nada">${t("Todavía no hay gastos en esta rendición.","There are no expenses in this report yet.","Ainda não há despesas nesta prestação.","עדיין אין הוצאות בדוח הזה.")}</p>`}`}
-    ${!enLista && Object.keys(detalle).length ? `<div class="gx-total"><span>${t("Total confirmado","Confirmed total","Total confirmado","סך המאושר")}${faltan ? ` <small>${esc(faltan === 1 ? t("(sin contar 1 por confirmar)","(not counting 1 to confirm)","(sem contar 1 por confirmar)","(בלי 1 שממתינה לאישור)") : t("(sin contar {n} por confirmar)","(not counting {n} to confirm)","(sem contar {n} por confirmar)","(בלי {n} שממתינות לאישור)",{ n: faltan }))}</small>` : ""}</span><b>${esc(fmtTotales(detalle))}</b></div>` : ""}
+    ${!enLista && Object.keys(detalle).length ? `<div class="gx-total"><span>${t("Total confirmado","Confirmed total","Total confirmado","סך המאושר")}${faltan ? ` <small>${esc(faltan === 1 ? t("(sin contar 1 por confirmar)","(not counting 1 to confirm)","(sem contar 1 por confirmar)","(בלי 1 שממתינה לאישור)") : t("(sin contar {n} por confirmar)","(not counting {n} to confirm)","(sem contar {n} por confirmar)","(בלי {n} שממתינות לאישור)",{ n: faltan }))}</small>` : ""}</span><b>${totalesHtml(detalle)}</b></div>` : ""}
     ${enLista ? "" : renderTotalRapido(r, editable, detalle) + enviar + aprobar}`;
 }
 // El total rápido: cuánto se gastó en la actividad, sin el detalle. Vale el
@@ -25981,7 +26009,7 @@ function renderTotalRapido(r, editable, detalle){
   const hay = Object.keys(tm).length;
   const difiere = hay && Object.keys(detalle).length && !totalesIguales(tm, detalle);
   if(!editable){
-    return hay ? `<div class="gx-total gx-total-manual"><span>${t("Total anotado a mano","Total entered by hand","Total anotado à mão","סכום שנרשם ידנית")}${r.totalManualConfirmado ? " · " + t("vale este","this one counts","vale este","זה התקף") : ""}</span><b>${esc(fmtTotales(tm))}</b></div>` : "";
+    return hay ? `<div class="gx-total gx-total-manual"><span>${t("Total anotado a mano","Total entered by hand","Total anotado à mão","סכום שנרשם ידנית")}${r.totalManualConfirmado ? " · " + t("vale este","this one counts","vale este","זה התקף") : ""}</span><b>${totalesHtml(tm)}</b></div>` : "";
   }
   if(!gastosTotal || gastosTotal.rid !== r.id){
     const filas = Object.entries(tm).map(([moneda, monto]) => ({ moneda, monto: String(monto) }));
@@ -25993,7 +26021,7 @@ function renderTotalRapido(r, editable, detalle){
       <p class="setting-sub">${t("Si no tenés los comprobantes a mano, anotá cuánto se gastó en total, por moneda. Si después cargás el detalle, vale el detalle.","If you don't have the receipts at hand, enter the total spent, by currency. If you add the itemized list later, the list counts.","Se não tiver os comprovantes à mão, anote quanto se gastou no total, por moeda. Se depois carregar o detalhe, vale o detalhe.","אם הקבלות לא בהישג יד, רשמו כמה הוצא בסך הכול, לפי מטבע. אם תוסיפו אחר כך את הפירוט, הפירוט קובע.")}</p>
       ${d.filas.map((f, i) => `<div class="gx-rap-fila">
           <input type="text" class="gx-moneda" id="gxTotal_${i}_moneda" list="gxMonedas" maxlength="3" data-gtotal="${i}:moneda" value="${esc(f.moneda)}" aria-label="${esc(t("Moneda","Currency","Moeda","מטבע"))}">
-          <input type="number" id="gxTotal_${i}_monto" step="0.01" inputmode="decimal" data-gtotal="${i}:monto" value="${esc(f.monto)}" aria-label="${esc(t("Monto","Amount","Valor","סכום"))}">
+          <input type="text" id="gxTotal_${i}_monto" inputmode="decimal" class="gx-monto" data-gtotal="${i}:monto" value="${esc(montoEnCampo(f.monto))}" aria-label="${esc(t("Monto","Amount","Valor","סכום"))}">
           ${d.filas.length > 1 ? `<button type="button" class="zone-rm" data-action="gastos-total-sacar" data-i="${i}" aria-label="${esc(t("Sacar esta moneda","Remove this currency","Tirar esta moeda","הסרת המטבע"))}">✕</button>` : ""}
         </div>`).join("")}
       ${d.filas.length < 4 ? `<button type="button" class="gx-link" data-action="gastos-total-otra">+ ${t("Otra moneda","Another currency","Outra moeda","מטבע נוסף")}</button>` : ""}
@@ -26014,7 +26042,7 @@ async function guardarTotalRapido(borrar){
     for(const f of d.filas){
       const moneda = String(f.moneda || "").trim().toUpperCase(), monto = String(f.monto || "").trim();
       if(!monto && !moneda) continue;
-      const n = Number(monto);
+      const n = numeroEscrito(monto);
       if(!/^[A-Z]{3}$/.test(moneda)){ d.error = t("La moneda va con su código de tres letras (USD, EUR, MXN…).","The currency goes with its three-letter code (USD, EUR, MXN…).","A moeda vai com seu código de três letras (USD, EUR, MXN…).","המטבע נכתב בקוד של שלוש אותיות (USD, EUR, MXN…)."); render(); return; }
       if(!monto || !isFinite(n) || Math.abs(n) >= 1e10){ d.error = t("Falta el monto de {m}.","The amount for {m} is missing.","Falta o valor de {m}.","חסר הסכום של {m}.",{ m: moneda }); render(); return; }
       total[moneda] = redondo((total[moneda] || 0) + n);
@@ -26106,7 +26134,7 @@ function renderMovimiento(m, conPersona){
   return `<div class="gx-mov">
       <span class="gx-mov-txt"><b>${esc(tipoDeMovimiento(m.tipo))}${conPersona ? " · " + esc(nombreDePersona(m.persona)) : ""}</b>
         <small>${[esc(fmtDate(m.fecha)), m.descripcion ? esc(m.descripcion) : ""].filter(Boolean).join(" · ")}</small></span>
-      <span class="gx-mov-der"><b>${esc(signo + fmtMonto(m.moneda, Math.abs(m.monto)))}</b>
+      <span class="gx-mov-der"><b>${montoHtml(m.moneda, Math.abs(m.monto), signo)}</b>
         ${m.estado === "pendiente" ? gxChip([t("Pendiente","Pending","Pendente","ממתין"), "aviso"]) : gxChip([t("Confirmado","Confirmed","Confirmado","אושר"), "bien"])}</span>
       <span class="gx-mov-acc">
         ${isAdmin() && m.estado === "pendiente" ? `<button type="button" class="btn-mini" data-action="gastos-mov-confirmar" data-id="${esc(m.id)}">${t("Confirmar","Confirm","Confirmar","אישור")}</button>` : ""}
@@ -26128,15 +26156,15 @@ function renderGastosCuenta(){
   const saldoTxt = s => s > 0 ? (propia ? t("la organización te debe","the organization owes you","a organização te deve","הארגון חייב לך") : t("la organización le debe","the organization owes them","a organização deve a essa pessoa","הארגון חייב לו/לה"))
     : s < 0 ? (propia ? t("le debés a la organización","you owe the organization","você deve à organização","את/ה חייב/ת לארגון") : t("le debe a la organización","they owe the organization","essa pessoa deve à organização","הוא/היא חייב/ת לארגון")) : t("en cero","even","zerado","מאוזן");
   const tabla = monedas.length ? `<div class="gx-cuenta">${monedas.map(m => { const f = cuenta[m]; return `<div class="gx-cuenta-mon">
-        <div class="gx-cm-cab"><b>${esc(m)}</b><span class="gx-saldo${f.saldo < 0 ? " gx-neg" : f.saldo > 0 ? " gx-pos" : ""}">${esc(fmtMonto(m, f.saldo))}</span></div>
+        <div class="gx-cm-cab"><b>${esc(m)}</b><span class="gx-saldo${f.saldo < 0 ? " gx-neg" : f.saldo > 0 ? " gx-pos" : ""}">${montoHtml(m, f.saldo)}</span></div>
         <div class="gx-cm-sub">${esc(saldoTxt(f.saldo))}</div>
         <dl class="gx-cm-filas">
-          <dt>${t("Gastado (aprobado)","Spent (approved)","Gasto (aprovado)","הוצאות (מאושרות)")}</dt><dd>${esc(fmtMonto(m, f.gastado))}</dd>
-          <dt>${t("Recibido","Received","Recebido","התקבל")}</dt><dd>${esc(fmtMonto(m, f.recibido))}</dd>
-          <dt>${t("Devuelto","Returned","Devolvido","הוחזר")}</dt><dd>${esc(fmtMonto(m, f.devuelto))}</dd>
-          ${f.ajuste ? `<dt>${t("Ajustes","Adjustments","Ajustes","התאמות")}</dt><dd>${esc(fmtMonto(m, f.ajuste))}</dd>` : ""}
-          ${f.enRevision ? `<dt class="gx-suave">${t("En revisión (todavía no cuenta)","In review (doesn't count yet)","Em revisão (ainda não conta)","בבדיקה (עוד לא נספר)")}</dt><dd class="gx-suave">${esc(fmtMonto(m, f.enRevision))}</dd>` : ""}
-          ${f.pendiente ? `<dt class="gx-suave">${t("Anotado, falta confirmar","Entered, not confirmed yet","Anotado, falta confirmar","נרשם, ממתין לאישור")}</dt><dd class="gx-suave">${esc(fmtMonto(m, f.pendiente))}</dd>` : ""}
+          <dt>${t("Gastado (aprobado)","Spent (approved)","Gasto (aprovado)","הוצאות (מאושרות)")}</dt><dd>${montoHtml(m, f.gastado)}</dd>
+          <dt>${t("Recibido","Received","Recebido","התקבל")}</dt><dd>${montoHtml(m, f.recibido)}</dd>
+          <dt>${t("Devuelto","Returned","Devolvido","הוחזר")}</dt><dd>${montoHtml(m, f.devuelto)}</dd>
+          ${f.ajuste ? `<dt>${t("Ajustes","Adjustments","Ajustes","התאמות")}</dt><dd>${montoHtml(m, f.ajuste)}</dd>` : ""}
+          ${f.enRevision ? `<dt class="gx-suave">${t("En revisión (todavía no cuenta)","In review (doesn't count yet)","Em revisão (ainda não conta)","בבדיקה (עוד לא נספר)")}</dt><dd class="gx-suave">${montoHtml(m, f.enRevision)}</dd>` : ""}
+          ${f.pendiente ? `<dt class="gx-suave">${t("Anotado, falta confirmar","Entered, not confirmed yet","Anotado, falta confirmar","נרשם, ממתין לאישור")}</dt><dd class="gx-suave">${montoHtml(m, f.pendiente)}</dd>` : ""}
         </dl></div>`; }).join("")}</div>`
     : `<p class="setting-sub gx-nada">${propia ? t("Todavía no hay nada en tu cuenta: aparece cuando se aprueba una rendición tuya o anotás plata recibida.","There's nothing in your balance yet: it shows up when one of your reports is approved or you enter money received.","Ainda não há nada na sua conta: aparece quando uma prestação sua é aprovada ou você anota dinheiro recebido.","עדיין אין כלום בחשבון שלך: זה מופיע כשדוח שלך מאושר או כשרושמים כסף שהתקבל.") : t("Todavía no hay nada en esta cuenta.","There's nothing in this balance yet.","Ainda não há nada nesta conta.","עדיין אין כלום בחשבון הזה.")}</p>`;
   const movs = gastosDatos.movimientos.filter(m => m.persona === de);
@@ -26149,7 +26177,7 @@ function renderGastosCuenta(){
         <label>${t("Qué","What","O quê","מה")}<select id="gxMov_tipo" data-gmov="tipo">${tipos.map(k => `<option value="${k}"${f.tipo === k ? " selected" : ""}>${esc(tipoDeMovimiento(k))}</option>`).join("")}</select></label>
         <label>${t("Fecha","Date","Data","תאריך")}<input type="date" id="gxMov_fecha" data-gmov="fecha" value="${esc(f.fecha)}"></label>
         <label>${t("Moneda","Currency","Moeda","מטבע")}<input type="text" class="gx-moneda" list="gxMonedas" maxlength="3" id="gxMov_moneda" data-gmov="moneda" value="${esc(f.moneda)}"></label>
-        <label>${t("Monto","Amount","Valor","סכום")}<input type="number" step="0.01" inputmode="decimal" id="gxMov_monto" data-gmov="monto" value="${esc(f.monto)}"></label>
+        <label>${t("Monto","Amount","Valor","סכום")}<input type="text" inputmode="decimal" class="gx-monto" id="gxMov_monto" data-gmov="monto" value="${esc(montoEnCampo(f.monto))}"></label>
         <label class="gx-ancho">${t("Detalle (opcional)","Details (optional)","Detalhe (opcional)","פירוט (לא חובה)")}<input type="text" maxlength="300" id="gxMov_descripcion" data-gmov="descripcion" value="${esc(f.descripcion)}" placeholder="${esc(t("Por ejemplo: adelanto para la visita a Lima","For example: advance for the Lima visit","Por exemplo: adiantamento para a visita a Lima","למשל: מקדמה לביקור בלימה"))}"></label>
       </div>
       ${f.tipo === "ajuste" ? `<p class="setting-sub">${t("Un ajuste es un saldo inicial o una corrección: positivo, a favor de la persona; negativo, en contra.","An adjustment is an opening balance or a correction: positive, in the person's favor; negative, against.","Um ajuste é um saldo inicial ou uma correção: positivo, a favor da pessoa; negativo, contra.","התאמה היא יתרת פתיחה או תיקון: חיובית לטובת האדם; שלילית — לחובתו.")}</p>` : ""}
@@ -26165,7 +26193,7 @@ async function anotarMovimiento(){
   const f = gastosMov;
   if(!f || f.guardando) return;
   const de = isAdmin() && gastosCuentaDe ? gastosCuentaDe : miCorreo();
-  const moneda = String(f.moneda || "").trim().toUpperCase(), n = Number(String(f.monto || "").trim());
+  const moneda = String(f.moneda || "").trim().toUpperCase(), n = numeroEscrito(f.monto);
   const mal = !/^[A-Z]{3}$/.test(moneda) ? t("La moneda va con su código de tres letras (USD, EUR, MXN…).","The currency goes with its three-letter code (USD, EUR, MXN…).","A moeda vai com seu código de três letras (USD, EUR, MXN…).","המטבע נכתב בקוד של שלוש אותיות (USD, EUR, MXN…).")
     : !String(f.monto || "").trim() || !isFinite(n) || n === 0 || Math.abs(n) >= 1e10 ? t("Falta el monto.","The amount is missing.","Falta o valor.","חסר הסכום.")
     : f.tipo !== "ajuste" && n < 0 ? t("El monto va en positivo: «Devuelto» ya dice para qué lado.","The amount is positive: “Returned” already says which way.","O valor vai em positivo: «Devolvido» já diz para que lado.","הסכום נכתב בחיובי: «הוחזר» כבר אומר לאיזה כיוון.")
@@ -26273,9 +26301,9 @@ function renderGasto(){
           ${campo(t("Fecha","Date","Data","תאריך"), `<input type="date" id="gxFecha" data-gcampo="fecha" value="${esc(d.fecha)}"${mal("fecha")}${marca("fecha")}${dis}>`)}
           ${campo(t("Tipo","Type","Tipo","סוג"), `<select id="gxTipo" data-gcampo="tipo"${mal("tipo")}${marca("tipo")}${dis}><option value="">${esc(t("Elegí…","Pick…","Escolha…","בחרו…"))}</option>${tipos.map(x => `<option value="${esc(x.key)}"${x.key === d.tipo ? " selected" : ""}>${esc(x.label)}</option>`).join("")}</select>`)}
           ${campo(t("Concepto","Description","Conceito","תיאור"), `<input type="text" id="gxConcepto" maxlength="140" data-gcampo="concepto" value="${esc(d.concepto)}"${marca("concepto")} placeholder="${esc(t("Por ejemplo: Taxi al aeropuerto","For example: Taxi to the airport","Por exemplo: Táxi para o aeroporto","למשל: מונית לשדה התעופה"))}"${mal("concepto")}${dis}>`, true)}
-          ${campo(t("Monto","Amount","Valor","סכום"), `<input type="number" id="gxMonto" step="0.01" inputmode="decimal" data-gcampo="monto" value="${esc(d.monto)}"${mal("monto")}${marca("monto")}${dis}>`)}
+          ${campo(t("Monto","Amount","Valor","סכום"), `<input type="text" id="gxMonto" inputmode="decimal" class="gx-monto" data-gcampo="monto" value="${esc(montoEnCampo(d.monto))}"${mal("monto")}${marca("monto")}${dis}>`)}
           ${campo(t("Moneda","Currency","Moeda","מטבע"), `<input type="text" id="gxMoneda" class="gx-moneda" list="gxMonedas" maxlength="3" data-gcampo="moneda" value="${esc(d.moneda)}"${mal("moneda")}${marca("moneda")}${dis}>`)}
-          ${otraMoneda ? campo(t("Monto en {m}","Amount in {m}","Valor em {m}","סכום ב-{m}",{ m: esc(d.rendidoMoneda) }), `<input type="number" id="gxRendido" step="0.01" inputmode="decimal" data-gcampo="rendidoMonto" value="${esc(d.rendidoMonto)}"${dis}><small class="gx-pista">${t("Lo que te cobró el banco.","What your bank charged you.","O que o banco te cobrou.","מה שהבנק חייב אתכם.")}</small>`)
+          ${otraMoneda ? campo(t("Monto en {m}","Amount in {m}","Valor em {m}","סכום ב-{m}",{ m: esc(d.rendidoMoneda) }), `<input type="text" id="gxRendido" inputmode="decimal" class="gx-monto" data-gcampo="rendidoMonto" value="${esc(montoEnCampo(d.rendidoMonto))}"${dis}><small class="gx-pista">${t("Lo que te cobró el banco.","What your bank charged you.","O que o banco te cobrou.","מה שהבנק חייב אתכם.")}</small>`)
             + campo(t("Se rinde en","Reported in","Presta-se em","מדווח ב"), `<input type="text" id="gxRendidoMoneda" class="gx-moneda" list="gxMonedas" maxlength="3" data-gcampo="rendidoMoneda" value="${esc(d.rendidoMoneda)}"${mal("rendidoMoneda")}${dis}>`) : ""}
           <fieldset class="gx-campo gx-ancho gx-pago"${dis}><legend class="gx-et">${t("¿Quién pagó?","Who paid?","Quem pagou?","מי שילם?")}</legend>
             <label><input type="radio" name="gxPago" id="gxPagoPersona" data-gcampo="pago" value="persona"${d.pago === "persona" ? " checked" : ""}> ${t("Yo (de mi bolsillo o de un adelanto)","Me (out of pocket or from an advance)","Eu (do meu bolso ou de um adiantamento)","אני (מהכיס או ממקדמה)")}</label>
@@ -26311,8 +26339,8 @@ async function guardarGasto(confirmar){
   if(!e || !g || e.guardando) return;
   const d = e.d;
   const moneda = String(d.moneda || "").trim().toUpperCase(), rendidoMoneda = String(d.rendidoMoneda || "USD").trim().toUpperCase();
-  const monto = String(d.monto).trim() === "" ? null : Number(d.monto);
-  const rendido = moneda === rendidoMoneda || String(d.rendidoMonto).trim() === "" ? null : Number(d.rendidoMonto);
+  const monto = numeroEscrito(d.monto);
+  const rendido = moneda === rendidoMoneda ? null : numeroEscrito(d.rendidoMonto);
   const faltan = [];
   if(confirmar){
     if(!d.fecha) faltan.push("fecha");
@@ -30464,6 +30492,7 @@ document.addEventListener("input", e=>{
 
 document.addEventListener("change", e=>{
   const el = e.target;
+  if(el.classList && el.classList.contains("gx-monto")) el.value = montoEnCampo(el.value);
   if(gastosAlEscribir(el, "change")) return;
   // Administración › Agenda: el archivo de la lista por traer.
   if(el.id === "agendaArchivo"){ leerArchivoAgenda(el.files && el.files[0]); el.value = ""; return; }

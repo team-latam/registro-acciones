@@ -113,7 +113,7 @@ await p.fill("#gxConcepto", "Viaje al aeropuerto");
 // Va en la visita a Montevideo: el «$» del ticket se lee como pesos uruguayos aunque todavía no se haya guardado.
 await p.selectOption("#gxVinculo", "post:p9");
 await p.click('[data-action="gasto-leer"]');
-eq("«Leer el comprobante» completa lo vacío de la ventana", await hasta(p, () => document.getElementById("gxMonto") && document.getElementById("gxMonto").value === "1250", null, 200), true);
+eq("«Leer el comprobante» completa lo vacío de la ventana", await hasta(p, () => document.getElementById("gxMonto") && document.getElementById("gxMonto").value === "1,250.00", null, 200), true);
 eq("…sin pisar lo que la persona ya escribió", await p.$eval("#gxConcepto", e => e.value), "Viaje al aeropuerto");
 eq("…y sin tocar la base hasta que se guarda", ((await tabla(p, "gastos")).find(g => g.id === "gx8") || {}).monto, null);
 eq("…con la moneda del país de la actividad elegida, para revisar", await p.evaluate(() => [document.getElementById("gxMoneda").value, document.getElementById("gxMoneda").dataset.duda]), ["UYU", "1"]);
