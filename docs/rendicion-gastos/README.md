@@ -5,7 +5,8 @@
 > `main` el 15/11 con el OK del usuario y apagadas**: nadie las ve hasta que un admin prende el interruptor de
 > Administración → Gastos. El **lector de comprobantes** se publicó el 15/11, también con el OK del usuario.
 > Los arreglos de la revisión de diseño (la lista nueva, borrar, el lector de PDF con texto) se publicaron el 15/11,
-> también con su OK. Faltan los avisos. **Cada parte que sigue va a `main` recién
+> también con su OK, y el 16/11 los montos contables, el tipo predicho y borrar una rendición vacía (con una regla
+> nueva en la base). Faltan los avisos. **Cada parte que sigue va a `main` recién
 > con el OK explícito del usuario**, con capturas: es lo que se acordó, y es una excepción a la regla general de
 > «pushear a `main` de una» de `CLAUDE.md` (al llegar a `main`, la base real se actualiza sola).
 
@@ -165,7 +166,7 @@ tocan eventos, comentarios ni la Agenda); se hace por etapas chicas; Drive y el 
     `lector_texto_test.mjs` con PDF y recibos inventados con la misma forma.
   Lo prueban `gastos_test.mjs`, `lector_test.mjs` y `lector_texto_test.mjs`. Quedan de la crítica, para más adelante: el comprobante dentro
   de la ventana en el celular y que la cuenta corriente se entienda mejor.
-- [x] **Más pedidos del usuario mirando la pantalla** (15/11, en la rama; van a `main` con su OK):
+- [x] **Más pedidos del usuario mirando la pantalla** (publicados el 16/11 con su OK):
   - **Borrar una rendición vacía**: una ✕ en la tarjeta de una rendición propia, abierta y sin gastos ni total
     rápido (quedó de elegir una actividad o de una subida), preguntando; y una subida que no deja ningún
     comprobante no deja la rendición que abrió. En la base (`27-gastos.sql`), cada persona puede borrar la suya
