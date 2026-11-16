@@ -7,7 +7,8 @@
 > Los arreglos de la revisión de diseño (la lista nueva, borrar, el lector de PDF con texto) se publicaron el 15/11,
 > también con su OK, y el 16/11 los montos contables, el tipo predicho y borrar una rendición vacía (con una regla
 > nueva en la base); después, borrar una rendición entera o varios gastos juntos y la ventana del gasto rediseñada.
-> Faltan los avisos. **Cada parte que sigue va a `main` recién
+> El 16/11 también: la ventana sin el cartel del lector y más compacta, las flechas para pasar de un gasto a otro y
+> la nota de la moneda local. Faltan los avisos. **Cada parte que sigue va a `main` recién
 > con el OK explícito del usuario**, con capturas: es lo que se acordó, y es una excepción a la regla general de
 > «pushear a `main` de una» de `CLAUDE.md` (al llegar a `main`, la base real se actualiza sola).
 
@@ -193,18 +194,18 @@ tocan eventos, comentarios ni la Agenda); se hace por etapas chicas; Drive y el 
     comprobante grande a la izquierda y los datos a la derecha; el concepto primero, el monto destacado con su moneda
     (y el monto en dólares abajo, si es otra), fecha y «Va en» juntos, y el tipo, quién pagó y la forma de pago con
     botones a la vista. En el celular, todo en una columna con el comprobante arriba.
-- [x] **La ventana de un gasto, sin carteles y más compacta** (16/11, en la rama; va a `main` con el OK del usuario):
+- [x] **La ventana de un gasto, sin carteles y más compacta** (publicado el 16/11 con el OK del usuario):
   sacó el cartel «📖 El lector completó: …» (y el de «Del nombre del archivo salió…»): lo completado se ve en las
   marcas de cada campo (celeste, sugerido; amarillo, para revisar); si «Leer el comprobante» no encuentra nada, lo
   dice una línea chica bajo el comprobante. Para que entre todo sin bajar, aun en una laptop: el concepto arriba, al
   lado del estado, como un título que se escribe ahí mismo; el monto en dólares en la misma fila que el del
   comprobante; quién pagó y la forma de pago lado a lado; «Tiene factura» bajo el comprobante (es sobre el papel).
-- [x] **Pasar de un gasto al de al lado sin cerrar** (16/11, en la rama; lo pidió el usuario, como en el visor de
+- [x] **Pasar de un gasto al de al lado sin cerrar** (publicado el 16/11; lo pidió el usuario, como en el visor de
   fotos y PDF): en la compu, flechas a los costados de la ventana (las mismas del visor) y las flechas del teclado
   fuera de los campos, con «2 de 3» arriba; recorren la lista que se está mirando (la rendición, «Sin vincular» o
   «Revisar en lista»), en el mismo orden. Con algo escrito sin guardar, pregunta antes de pasar. En el celular no
   hay flechas (la ventana ocupa la pantalla).
-- [x] **La nota de la moneda local en «Observaciones»** (16/11, en la rama; lo pidió el usuario): si el gasto fue en
+- [x] **La nota de la moneda local en «Observaciones»** (publicado el 16/11; lo pidió el usuario): si el gasto fue en
   otra moneda y también tiene el monto en dólares, arriba de sus observaciones dice «Gasto en MX $ 642.-», como la
   escribe él en su Sheet (sin centavos, «.-»; los pesos con su país: MX $, AR $, UY $…; las demás, su símbolo o su
   código). Sale sola de los montos y no se guarda escrita, así que nunca queda vieja si se corrige un monto; al cargar
