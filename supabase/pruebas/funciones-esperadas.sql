@@ -90,5 +90,6 @@ insert into esperadas values
   ('gastos_observar(uuid, text)',           false, true),  -- admin
   ('gastos_rendicion_abrir(text, date)',    false, true),  -- solo para quien llama, en una actividad donde participó (o un admin)
   ('gastos_rendicion_aprobar(uuid)',        false, true),  -- admin
+  ('gastos_rendicion_borrar(uuid)',         false, true),  -- solo la rendición propia mientras se puede corregir (o el admin fijo)
   ('gastos_rendicion_enviar(uuid)',         false, true);  -- solo la rendición propia
 

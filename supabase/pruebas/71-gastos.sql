@@ -158,6 +158,19 @@ select lab.probar('no se lo aprueba sola', lab.como('ana@x.com'), format($x$upda
 select lab.probar('ni se lo «observa»', lab.como('ana@x.com'), format($x$update public.gastos set estado = 'observado' where id = %L$x$, :'g1'), false);
 select lab.probar('ni se lo pasa a otra persona', lab.como('ana@x.com'), format($x$update public.gastos set autor = 'diego@x.com' where id = %L$x$, :'g1'), false);
 
+-- ---------- Borrar una rendición entera, con sus gastos ----------
+select lab.probar_valor('una integrante borra su rendición entera, con sus gastos', lab.como('ana@x.com'),
+  format($x$select public.gastos_rendicion_borrar(%L)$x$, :'ra'),
+  format($x$select (select count(*) from public.gastos where rendicion_id = %L) || '/' || (select count(*) from public.gastos_rendiciones where id = %L)$x$, :'ra', :'ra'), '0/0');
+select lab.comprobar('…no la de otra persona',
+  $q$select lab.rechaza(lab.como('diego@x.com'), format($x$select public.gastos_rendicion_borrar(%L)::text$x$, '$q$ || :'ra' || $q$'))$q$, 'true');
+select lab.comprobar('…ni un admin por rol',
+  $q$select lab.rechaza(lab.como('otra.admin@x.com'), format($x$select public.gastos_rendicion_borrar(%L)::text$x$, '$q$ || :'ra' || $q$'))$q$, 'true');
+select lab.probar_valor('el admin fijo, sí (y dice cuántos gastos se fueron)', lab.como('benny@team-latam.com'),
+  format($x$create temp table if not exists borrados(n int) on commit drop; insert into borrados select public.gastos_rendicion_borrar(%L)$x$, :'ra'),
+  $x$select n::text from borrados$x$, '4');
+select lab.comprobar('lo de arriba no quedó: los cuatro gastos siguen', $q$select count(*)::text from public.gastos where rendicion_id = '$q$ || :'ra' || $q$'$q$, '4');
+
 -- ---------- Mandar la rendición ----------
 select lab.comprobar('con un borrador adentro, la rendición no se manda',
   $q$select lab.hacer(lab.como('ana@x.com'), format($x$select public.gastos_rendicion_enviar(%L)::text$x$, '$q$ || :'ra' || $q$'))$q$,
@@ -176,6 +189,8 @@ select lab.comprobar('…ni se le suma otro gasto a esa rendición',
   $q$select lab.rechaza(lab.como('ana@x.com'), format($x$insert into public.gastos(rendicion_id, concepto) values (%L, 'otro') returning id::text$x$, '$q$ || :'ra' || $q$'))$q$, 'true');
 select lab.probar('…ni se cambia su total rápido', lab.como('ana@x.com'),
   format($x$update public.gastos_rendiciones set total_manual = '{"USD": 1}' where id = %L$x$, :'ra'), false);
+select lab.comprobar('…ni se borra entera (ni el admin fijo)', $q$select lab.rechaza(lab.como('ana@x.com'), format($x$select public.gastos_rendicion_borrar(%L)::text$x$, '$q$ || :'ra' || $q$'))
+  || '/' || lab.rechaza(lab.como('benny@team-latam.com'), format($x$select public.gastos_rendicion_borrar(%L)::text$x$, '$q$ || :'ra' || $q$'))$q$, 'true/true');
 
 -- ---------- Observar y corregir ----------
 select lab.comprobar('una integrante no observa nada',

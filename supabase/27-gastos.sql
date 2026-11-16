@@ -482,6 +482,29 @@ begin
   return true;
 end $$;
 
+-- Borrar una rendición entera, con sus gastos y sus comentarios, de una vez
+-- (lo pidió el usuario el 16/11: una actividad cargada por error, aunque ya
+-- tenga comprobantes). La persona, la suya; el admin fijo, cualquiera. Solo
+-- mientras es de la persona para corregir (abierta u observada): una mandada
+-- o aprobada no se borra (lo aprobado ya cuenta en la cuenta corriente). Los
+-- archivos quedan sin fila y los saca la limpieza semanal del bucket.
+create or replace function public.gastos_rendicion_borrar(p_id uuid)
+returns integer language plpgsql security definer set search_path = '' as $$
+declare yo text := public.mi_correo(); r record; n integer;
+begin
+  select * into r from public.gastos_rendiciones x where x.id = p_id for update;
+  if not found or (not public.es_admin_fijo() and (r.autor is distinct from yo or not public.gastos_habilitado())) then
+    raise exception 'Esa rendición no es tuya' using errcode = 'insufficient_privilege';
+  end if;
+  if r.estado not in ('abierta', 'observada') then
+    raise exception 'Una rendición mandada o aprobada no se borra' using errcode = 'check_violation';
+  end if;
+  delete from public.gastos where rendicion_id = p_id;
+  get diagnostics n = row_count;
+  delete from public.gastos_rendiciones where id = p_id;
+  return n;
+end $$;
+
 -- Un admin observa un gasto de una rendición mandada: queda «observado»
 -- (la persona lo puede corregir), la rendición vuelve a la persona y el
 -- comentario queda guardado.
@@ -613,6 +636,7 @@ end $$;
 -- funciones-esperadas.sql tiene la lista).
 revoke execute on function public.gastos_rendicion_abrir(text, date) from public, anon;
 revoke execute on function public.gastos_rendicion_enviar(uuid) from public, anon;
+revoke execute on function public.gastos_rendicion_borrar(uuid) from public, anon;
 revoke execute on function public.gastos_observar(uuid, text) from public, anon;
 revoke execute on function public.gastos_comentar(uuid, text) from public, anon;
 revoke execute on function public.gastos_rendicion_aprobar(uuid) from public, anon;
@@ -620,6 +644,7 @@ revoke execute on function public.gastos_movimiento_confirmar(uuid) from public,
 revoke execute on function public.gastos_cuenta(text) from public, anon;
 grant execute on function public.gastos_rendicion_abrir(text, date) to authenticated;
 grant execute on function public.gastos_rendicion_enviar(uuid) to authenticated;
+grant execute on function public.gastos_rendicion_borrar(uuid) to authenticated;
 grant execute on function public.gastos_observar(uuid, text) to authenticated;
 grant execute on function public.gastos_comentar(uuid, text) to authenticated;
 grant execute on function public.gastos_rendicion_aprobar(uuid) to authenticated;

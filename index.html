@@ -824,6 +824,12 @@
     border:1px solid var(--border); background:var(--card); box-shadow:var(--shadow); color:var(--ink); font-family:inherit; cursor:pointer; }
   .gx-tarjeta:hover{ border-color:var(--celeste); }
   .gx-tarjeta-env{ position:relative; }
+  .gx-btn-peligro{ background:var(--danger-fg); border-color:var(--danger-fg); color:#fff; }
+  .gx-btn-peligro:hover:not(:disabled){ filter:brightness(1.08); }
+  .gx-en-sel .gx-lmarca{ width:46px; align-self:stretch; }
+  .gx-fila-env.gx-marcada{ background:var(--celeste-soft, var(--surface-alt)); }
+  .gx-selpie .gx-ltodos{ padding-inline-start:2px; }
+  .gx-borrar-ren{ display:flex; justify-content:flex-end; margin-top:18px; padding-top:12px; border-top:1px dashed var(--border); }
   .gx-tarjeta-env .gx-tarjeta{ padding-inline-end:58px; }
   .gx-t-quitar{ position:absolute; inset-inline-end:8px; top:50%; translate:0 -50%; width:40px; height:40px; border:none; border-radius:50%; background:none;
     color:var(--text-muted); font:inherit; font-size:16px; font-weight:700; cursor:pointer; }
@@ -10003,6 +10009,13 @@ function crearSupabaseStore(sb, opciones = {}){
       async borrarRendicion(id){
         revienta(await sb.from("gastos_rendiciones").delete().eq("id", id));
         await refrescar("gastos_rendiciones", id);
+      },
+      // Una rendición entera, con sus gastos, de una vez (la base controla que sea propia y no mandada).
+      async borrarRendicionEntera(id){
+        const { data, error } = await sb.rpc("gastos_rendicion_borrar", { p_id: id });
+        if(error) throw error;
+        await Promise.all([recargarTabla("gastos"), recargarTabla("gastos_rendiciones"), recargarTabla("gastos_comentarios")]);
+        return data;
       },
       // Primero la fila (la base deja subir solo a la carpeta de un gasto
       // propio que se puede corregir), después el archivo y al final su ruta.
@@ -24380,6 +24393,7 @@ let lectorEstado = null;                // lo que se está leyendo: { total, hec
 let gastosLista = null;                 // «Revisar en lista»: { rid, filas: { id: { d, tocado, marcado, marcadoAMano, faltan, error } }, destino, guardando }
 let gastosListaAviso = "";              // lo que pasó al confirmar desde la lista, si la lista quedó vacía
 let gastosDestino = null;               // «¿De qué son estos comprobantes?», antes de subir: { vinculo }
+let gastosSel = null;                   // «Seleccionar» en una rendición (o «Sin vincular»): { rid, ids: Set, borrando }
 const gastoOverlay = document.getElementById("gastoOverlay");
 const gastosArchivosInput = document.getElementById("gastosArchivos");
 
@@ -24433,7 +24447,7 @@ function cortarGastos(){
   if(unsubGastos){ unsubGastos(); unsubGastos = null; }
   gastosDatos = null; gastosError = ""; gastosAbierta = null; gastosSubida = null; gastosTotal = null;
   gastosMov = null; gastosCuentaDe = ""; gastosAdmin = null; gastosActividad = ""; gastosOtraAbierta = false; gastosOcupado = false;
-  lectorCola = []; lectorEstado = null; gastosLista = null; gastosListaAviso = ""; gastosDestino = null;
+  lectorCola = []; lectorEstado = null; gastosLista = null; gastosListaAviso = ""; gastosDestino = null; gastosSel = null;
   if(gastoOverlay && !gastoOverlay.hidden) cerrarGasto(true);
 }
 const gxNum = v => v === null || v === undefined || v === "" ? null : Number(v);
@@ -25618,7 +25632,7 @@ async function quitarRendicion(id){
   if(!await appConfirm(t("¿Borrar la rendición vacía «{n}»? Si después subís un comprobante de ahí, se crea de nuevo.","Delete the empty report “{n}”? If you upload a receipt for it later, it's created again.","Apagar a prestação vazia «{n}»? Se depois você enviar um comprovante dela, é criada de novo.","למחוק את הדוח הריק «{n}»? אם תעלו אחר כך קבלה שלו, הוא ייווצר מחדש.",{ n: tituloRendicion(r) }), { okLabel: t("Borrar","Delete","Apagar","מחיקה") })) return;
   const tarjetas = [...document.querySelectorAll('.gastos-view [data-action="gastos-abrir-rendicion"]')].map(x => x.dataset.id);
   const siguiente = tarjetas[tarjetas.indexOf(id) + 1] || tarjetas[tarjetas.indexOf(id) - 1] || null;
-  try{ await store.gastos.borrarRendicion(id); }
+  try{ await store.gastos.borrarRendicionEntera(id); }
   catch(err){
     console.error("No se pudo borrar la rendición:", err);
     appAlert(t("No se pudo borrar: {m}","Couldn't delete it: {m}","Não foi possível apagar: {m}","המחיקה נכשלה: {m}",{ m: detalleDeError(err) }));
@@ -25685,9 +25699,13 @@ function renderFilaGasto(g){
     : esUrlFirmada(g.archivoUrl) ? `<img class="gx-mini" src="${esc(store.miniaturaDe(g.archivoUrl))}" alt="" loading="lazy">`
     : `<span class="gx-mini gx-mini-vacia" aria-hidden="true">🖼️</span>`;
   const rend = g.rendidoMonto != null && g.rendidoMoneda !== g.moneda ? fmtMonto(g.rendidoMoneda, g.rendidoMonto) : "";
+  const enSel = !!(gastosSel && gastosSel.rid === gastosAbierta), puede = gastoEditable(g), elegido = enSel && gastosSel.ids.has(g.id);
   // Borrar, a la vista en cada fila que se puede tocar (antes estaba solo adentro de la ventana y el usuario no lo encontró).
   const borrar = gastoEditable(g) ? `<button type="button" class="gx-fila-borrar" data-action="gasto-quitar" data-id="${esc(g.id)}" title="${esc(t("Borrar","Delete","Apagar","מחיקה"))}" aria-label="${esc(t("Borrar «{c}»","Delete “{c}”","Apagar «{c}»","מחיקת «{c}»",{ c: g.concepto || g.archivoNombre || t("este gasto","this expense","esta despesa","ההוצאה הזו") }))}">🗑️</button>` : "";
-  return `<div class="gx-fila-env"><button type="button" class="gx-fila" data-action="gasto-abrir" data-id="${esc(g.id)}">
+  const casilla = enSel ? `<label class="gx-lmarca"><input type="checkbox" id="gxS_${esc(g.id)}" data-gsel="${esc(g.id)}"${elegido ? " checked" : ""}${puede ? "" : " disabled"}
+      aria-label="${esc(t("Seleccionar «{c}»","Select “{c}”","Selecionar «{c}»","בחירת «{c}»",{ c: g.concepto || g.archivoNombre || t("este gasto","this expense","esta despesa","ההוצאה הזו") }))}"></label>` : "";
+  const accion = enSel && puede ? "gastos-sel-tocar" : "gasto-abrir";
+  return `<div class="gx-fila-env${enSel ? " gx-en-sel" : ""}${elegido ? " gx-marcada" : ""}">${casilla}<button type="button" class="gx-fila" data-action="${accion}" data-id="${esc(g.id)}">
       ${vista}
       <span class="gx-f-txt">
         <b>${g.concepto ? esc(g.concepto) : `<i>${t("Sin concepto","No description","Sem conceito","ללא תיאור")}</i>`}</b>
@@ -25699,7 +25717,7 @@ function renderFilaGasto(g){
         ${rend ? `<small>${montoHtml(g.rendidoMoneda, g.rendidoMonto)}</small>` : ""}
         ${gxChip(estadoDeGasto(g.estado))}
       </span>
-    </button>${borrar}</div>`;
+    </button>${enSel ? "" : borrar}</div>`;
 }
 // Borrar un gasto desde una fila (de la rendición o de «Revisar en lista»): pregunta, borra, y el
 // foco queda en la fila siguiente (o en la lista).
@@ -25796,6 +25814,59 @@ function marcarFilaDeLista(id, marcado){
     const c = document.getElementById("gxListaCuenta"); if(c) c.textContent = cuentaDeLista(n, gastosParaLista(L.rid).length);
     casillaDeTodos();
   }
+}
+// «Seleccionar»: el botón para entrar, y la barra de abajo mientras se elige (lo pidió el usuario el 16/11:
+// borrar varios de una vez dentro de una actividad).
+const seleccionables = rid => (rid === "sin" ? misSinVincular() : gastosDe(rid)).filter(gastoEditable);
+const botonSeleccionar = rid => seleccionables(rid).length > 1
+  ? `<button type="button" class="btn-secondary gx-sel-abrir" data-action="gastos-sel-abrir" data-id="${esc(rid)}">☑️ ${t("Seleccionar","Select","Selecionar","בחירה")}</button>` : "";
+function renderBarraDeSeleccion(rid){
+  const S = gastosSel, lista = seleccionables(rid), n = lista.filter(g => S.ids.has(g.id)).length;
+  return `<div class="gx-lpie gx-selpie">
+      <label class="gx-ltodos"><input type="checkbox" id="gxSelTodos"${n && n === lista.length ? " checked" : ""}> ${t("Todos","All","Todos","הכול")}</label>
+      <span class="gx-lcuenta" aria-live="polite">${esc(n === 1 ? t("1 seleccionado","1 selected","1 selecionado","נבחר 1") : t("{n} seleccionados","{n} selected","{n} selecionados","{n} נבחרו",{ n }))}</span>
+      <button type="button" class="btn-secondary" data-action="gastos-sel-cancelar">${t("Cancelar","Cancel","Cancelar","ביטול")}</button>
+      <button type="button" class="btn-primary gx-btn-peligro" data-action="gastos-sel-borrar" ${!n || S.borrando ? "disabled" : ""}>🗑️ ${S.borrando ? t("Borrando…","Deleting…","Apagando…","מוחק…") : n ? t("Borrar {n}","Delete {n}","Apagar {n}","מחיקת {n}",{ n }) : t("Borrar","Delete","Apagar","מחיקה")}</button>
+    </div>`;
+}
+async function borrarSeleccionados(){
+  const S = gastosSel;
+  if(!S || S.borrando) return;
+  const ids = seleccionables(S.rid).filter(g => S.ids.has(g.id)).map(g => g.id);
+  if(!ids.length) return;
+  if(!await appConfirm(ids.length === 1 ? t("¿Borrar el gasto seleccionado y su comprobante? No se puede deshacer.","Delete the selected expense and its receipt? This can't be undone.","Apagar a despesa selecionada e o comprovante? Não dá para desfazer.","למחוק את ההוצאה שנבחרה ואת הקבלה? אי אפשר לבטל.")
+    : t("¿Borrar los {n} gastos seleccionados y sus comprobantes? No se puede deshacer.","Delete the {n} selected expenses and their receipts? This can't be undone.","Apagar as {n} despesas selecionadas e os comprovantes? Não dá para desfazer.","למחוק את {n} ההוצאות שנבחרו ואת הקבלות? אי אפשר לבטל.",{ n: ids.length }),
+    { okLabel: ids.length === 1 ? t("Borrar","Delete","Apagar","מחיקה") : t("Borrar {n}","Delete {n}","Apagar {n}","מחיקת {n}",{ n: ids.length }) })) return;
+  S.borrando = true; render();
+  let mal = 0;
+  for(const id of ids){
+    try{ await store.gastos.borrar(id); S.ids.delete(id); }
+    catch(err){ console.error("No se pudo borrar un gasto:", err); mal++; }
+  }
+  S.borrando = false;
+  if(!mal) gastosSel = null;
+  render();
+  if(mal) appAlert(t("No se pudieron borrar {n}: probá de nuevo.","{n} couldn't be deleted: try again.","Não foi possível apagar {n}: tente de novo.","לא ניתן היה למחוק {n}: נסו שוב.",{ n: mal }));
+  const x = document.querySelector('.gastos-view [data-action="gastos-sel-abrir"], .gastos-view .gx-subir-aca, .gastos-view .gx-volver'); if(x) x.focus();
+}
+// Borrar una rendición entera, con sus gastos (la base no deja si ya se mandó).
+async function borrarRendicionEntera(id){
+  const r = rendicionPorId(id);
+  if(!r || r.autor !== miCorreo() || !rendicionEditable(r)) return;
+  const n = gastosDe(id).length;
+  if(!await appConfirm(n ? (n === 1 ? t("¿Borrar la rendición «{r}» con su gasto y su comprobante? No se puede deshacer.","Delete the report “{r}” with its expense and receipt? This can't be undone.","Apagar a prestação «{r}» com a despesa e o comprovante? Não dá para desfazer.","למחוק את הדוח «{r}» עם ההוצאה והקבלה? אי אפשר לבטל.",{ r: tituloRendicion(r) })
+      : t("¿Borrar la rendición «{r}» con sus {n} gastos y sus comprobantes? No se puede deshacer.","Delete the report “{r}” with its {n} expenses and receipts? This can't be undone.","Apagar a prestação «{r}» com as {n} despesas e os comprovantes? Não dá para desfazer.","למחוק את הדוח «{r}» עם {n} ההוצאות והקבלות? אי אפשר לבטל.",{ r: tituloRendicion(r), n }))
+    : t("¿Borrar la rendición vacía «{n}»? Si después subís un comprobante de ahí, se crea de nuevo.","Delete the empty report “{n}”? If you upload a receipt for it later, it's created again.","Apagar a prestação vazia «{n}»? Se depois você enviar um comprovante dela, é criada de novo.","למחוק את הדוח הריק «{n}»? אם תעלו אחר כך קבלה שלו, הוא ייווצר מחדש.",{ n: tituloRendicion(r) }),
+    { okLabel: n ? t("Borrar todo","Delete everything","Apagar tudo","מחיקת הכול") : t("Borrar","Delete","Apagar","מחיקה") })) return;
+  try{ await store.gastos.borrarRendicionEntera(id); }
+  catch(err){
+    console.error("No se pudo borrar la rendición:", err);
+    appAlert(t("No se pudo borrar: {m}","Couldn't delete it: {m}","Não foi possível apagar: {m}","המחיקה נכשלה: {m}",{ m: detalleDeError(err) }));
+    return;
+  }
+  if(gastosAbierta === id){ gastosAbierta = null; gastosLista = null; gastosSel = null; }
+  render();
+  const x = document.querySelector('[data-action="gastos-destino-abrir"]'); if(x) x.focus();
 }
 // «Marcar todos»: marcada si están todas, a medias si algunas (eso no se puede escribir en el HTML).
 function casillaDeTodos(){
@@ -25958,7 +26029,7 @@ function renderRendicionAbierta(comoAdmin){
         <p class="setting-sub">${t("Abrí cada uno y elegí en «Va en» la actividad o la rutina del mes.","Open each one and pick the activity or the month's routine under “Goes in”.","Abra cada uma e escolha em «Vai em» a atividade ou a rotina do mês.","פתחו כל אחת ובחרו תחת «שייך ל» את הפעילות או את שגרת החודש.")}</p></div></div>
       ${renderSubida()}${renderAvisoDeLista()}
       ${gastosLista && gastosLista.rid === "sin" ? renderListaDeGastos("sin")
-        : `${botonDeLista("sin")}${sin.length ? `<div class="gx-filas">${sin.map(renderFilaGasto).join("")}</div>` : `<div class="admin-ok">✅ ${t("No queda ninguno sin vincular.","None left unlinked.","Não sobrou nenhuma sem vínculo.","לא נשארו הוצאות לא משויכות.")}</div>`}`}`;
+        : `${gastosSel && gastosSel.rid === "sin" ? "" : `<div class="gx-herr">${botonDeLista("sin")}${botonSeleccionar("sin")}</div>`}${sin.length ? `<div class="gx-filas">${sin.map(renderFilaGasto).join("")}</div>${gastosSel && gastosSel.rid === "sin" ? renderBarraDeSeleccion("sin") : ""}` : `<div class="admin-ok">✅ ${t("No queda ninguno sin vincular.","None left unlinked.","Não sobrou nenhuma sem vínculo.","לא נשארו הוצאות לא משויכות.")}</div>`}`}`;
   }
   const r = rendicionPorId(gastosAbierta);
   if(!r) return `${volver}<div class="empty-state">${t("Esa rendición ya no está.","That report is no longer there.","Essa prestação não está mais aqui.","הדוח הזה כבר לא קיים.")}</div>`;
@@ -26000,9 +26071,10 @@ function renderRendicionAbierta(comoAdmin){
     ${aviso}
     ${mia && editable ? renderSubida() + renderAvisoDeLista() : ""}
     ${enLista ? renderListaDeGastos(r.id)
-      : `${editable ? `<div class="gx-herr">${botonDeLista(r.id)}${subirAca}</div>` : ""}${gs.length ? `<div class="gx-filas">${gs.map(renderFilaGasto).join("")}</div>` : `<p class="setting-sub gx-nada">${t("Todavía no hay gastos en esta rendición.","There are no expenses in this report yet.","Ainda não há despesas nesta prestação.","עדיין אין הוצאות בדוח הזה.")}</p>`}`}
+      : `${editable && !(gastosSel && gastosSel.rid === r.id) ? `<div class="gx-herr">${botonDeLista(r.id)}${botonSeleccionar(r.id)}${subirAca}</div>` : ""}${gs.length ? `<div class="gx-filas">${gs.map(renderFilaGasto).join("")}</div>` : `<p class="setting-sub gx-nada">${t("Todavía no hay gastos en esta rendición.","There are no expenses in this report yet.","Ainda não há despesas nesta prestação.","עדיין אין הוצאות בדוח הזה.")}</p>`}`}
     ${!enLista && Object.keys(detalle).length ? `<div class="gx-total"><span>${t("Total confirmado","Confirmed total","Total confirmado","סך המאושר")}${faltan ? ` <small>${esc(faltan === 1 ? t("(sin contar 1 por confirmar)","(not counting 1 to confirm)","(sem contar 1 por confirmar)","(בלי 1 שממתינה לאישור)") : t("(sin contar {n} por confirmar)","(not counting {n} to confirm)","(sem contar {n} por confirmar)","(בלי {n} שממתינות לאישור)",{ n: faltan }))}</small>` : ""}</span><b>${totalesHtml(detalle)}</b></div>` : ""}
-    ${enLista ? "" : renderTotalRapido(r, editable, detalle) + enviar + aprobar}`;
+    ${gastosSel && gastosSel.rid === r.id ? renderBarraDeSeleccion(r.id) : enLista ? "" : renderTotalRapido(r, editable, detalle) + enviar + aprobar}
+    ${mia && editable && !enLista && !(gastosSel && gastosSel.rid === r.id) ? `<div class="gx-borrar-ren"><button type="button" class="gx-link gx-lquitar" data-action="gastos-rendicion-borrar" data-id="${esc(r.id)}">🗑️ ${t("Borrar esta rendición","Delete this report","Apagar esta prestação","מחיקת הדוח הזה")}${gs.length ? " " + esc(gs.length === 1 ? t("(con su gasto)","(with its expense)","(com a despesa)","(עם ההוצאה)") : t("(con sus {n} gastos)","(with its {n} expenses)","(com as {n} despesas)","(עם {n} ההוצאות)",{ n: gs.length })) : ""}</button></div>` : ""}`;
 }
 // El total rápido: cuánto se gastó en la actividad, sin el detalle. Vale el
 // detalle; si no coinciden se avisa, y la persona puede confirmar el suyo.
@@ -26529,17 +26601,25 @@ const GASTOS_ACCIONES = {
   "gastos-seccion": async el => { if(!await soltarLista()) return; gastosSeccion = el.dataset.key; gastosAbierta = null; gastosTotal = null; gastosLista = null; gastosListaAviso = ""; render(); scrollToTop(); },
   "gastos-subir": async el => { elegirComprobantes(el.dataset.id || (gastosAbierta && gastosAbierta !== "sin" ? gastosAbierta : null)); },
   "gastos-rendicion-quitar": async el => quitarRendicion(el.dataset.id),
+  "gastos-rendicion-borrar": async el => borrarRendicionEntera(el.dataset.id),
+  "gastos-sel-abrir": async el => { gastosSel = { rid: el.dataset.id, ids: new Set(), borrando: false }; gastosLista = null; render();
+    const x = document.querySelector("[data-gsel]:not([disabled])"); if(x) x.focus(); },
+  "gastos-sel-cancelar": async () => { const rid = gastosSel && gastosSel.rid; gastosSel = null; render();
+    const x = rid && document.querySelector(`[data-action="gastos-sel-abrir"][data-id="${CSS.escape(rid)}"]`); if(x) x.focus(); },
+  "gastos-sel-tocar": async el => { const S = gastosSel; if(!S) return; if(S.ids.has(el.dataset.id)) S.ids.delete(el.dataset.id); else S.ids.add(el.dataset.id); render();
+    const x = document.querySelector(`[data-action="gastos-sel-tocar"][data-id="${CSS.escape(el.dataset.id)}"]`); if(x) x.focus(); },
+  "gastos-sel-borrar": async () => borrarSeleccionados(),
   "gastos-destino-abrir": async () => { gastosDestino = { vinculo: "-" }; render(); const x = document.getElementById("gxDestino"); if(x) x.focus(); },
   "gastos-destino-cancelar": async () => { gastosDestino = null; render(); const x = document.querySelector('[data-action="gastos-destino-abrir"]'); if(x) x.focus(); },
   // El selector de archivos se abre en el mismo toque (si no, el navegador lo frena); la rendición se abre al subir.
   "gastos-destino-elegir": async () => { const D = gastosDestino; if(!D || D.vinculo === "-") return; elegirComprobantes({ vinculo: D.vinculo }); gastosDestino = null; render(); },
   "gastos-subida-cerrar": async () => { gastosSubida = null; if(lectorEstado && !lectorEstado.corriendo) lectorEstado = null; render(); },
   "gastos-abrir-rendicion": async el => { gastosAbierta = el.dataset.id; gastosTotal = null; gastosLista = null; gastosListaAviso = ""; render(); scrollToTop(); },
-  "gastos-volver": async () => { if(!await soltarLista()) return; const id = gastosAbierta; gastosAbierta = null; gastosTotal = null; gastosLista = null; gastosListaAviso = ""; render();
+  "gastos-volver": async () => { if(!await soltarLista()) return; const id = gastosAbierta; gastosAbierta = null; gastosTotal = null; gastosLista = null; gastosListaAviso = ""; gastosSel = null; render();
     const x = id && document.querySelector(`[data-action="gastos-abrir-rendicion"][data-id="${CSS.escape(id)}"]`); if(x) x.focus(); },
   "gastos-abrir-actividad": async () => abrirRendicionDeActividad(),
   "gastos-otra": async () => { gastosOtraAbierta = !gastosOtraAbierta; render(); },
-  "gastos-lista-abrir": async el => { gastosLista = { rid: el.dataset.id, filas: {}, destino: "", guardando: false, aviso: "", vista: vistaDeListaGuardada(), abiertas: {} }; gastosListaAviso = ""; render();
+  "gastos-lista-abrir": async el => { gastosSel = null; gastosLista = { rid: el.dataset.id, filas: {}, destino: "", guardando: false, aviso: "", vista: vistaDeListaGuardada(), abiertas: {} }; gastosListaAviso = ""; render();
     const x = document.querySelector('[data-glista-marca], [data-action="gastos-lista-cerrar"]'); if(x) x.focus(); },
   "gastos-lista-cerrar": async () => {
     const L = gastosLista;
@@ -26646,6 +26726,15 @@ function gastosAlEscribir(el, evento){
     const f = gastosLista.filas[el.dataset.glistaMarca];
     if(f){ f.marcado = el.checked; f.marcadoAMano = true; marcarFilaDeLista(el.dataset.glistaMarca, f.marcado); }
     return true;
+  }
+  if(el.dataset.gsel && gastosSel){
+    if(el.checked) gastosSel.ids.add(el.dataset.gsel); else gastosSel.ids.delete(el.dataset.gsel);
+    render(); return true;
+  }
+  if(el.id === "gxSelTodos" && gastosSel){
+    const si = el.checked;
+    seleccionables(gastosSel.rid).forEach(g => { if(si) gastosSel.ids.add(g.id); else gastosSel.ids.delete(g.id); });
+    render(); return true;
   }
   if(el.id === "gxListaTodos" && gastosLista){
     // Lo elegido, antes de recorrer: cada fila marcada pone al día esta misma casilla (a medias, mientras tanto).

@@ -228,6 +228,16 @@ export function createClient(url, clave){
             titulo: "", estado: "abierta", total_manual: {}, total_manual_confirmado: false, creada_el: ahora, tocada_el: ahora });
           return { data: r.id, error: null };
         }
+        if(nombre === "gastos_rendicion_borrar"){
+          const r = T("gastos_rendiciones").find(x => x.id === args.p_id);
+          if(!r || (r.autor !== yo && !esAdmin)) return mal("42501", "Esa rendición no es tuya");
+          if(!["abierta", "observada"].includes(r.estado)) return mal("23514", "Una rendición mandada o aprobada no se borra");
+          const antes = T("gastos").length;
+          estado.tablas.gastos = T("gastos").filter(g => g.rendicion_id !== r.id);
+          estado.tablas.gastos_comentarios = T("gastos_comentarios").filter(c => estado.tablas.gastos.some(g => g.id === c.gasto_id));
+          estado.tablas.gastos_rendiciones = T("gastos_rendiciones").filter(x => x.id !== r.id);
+          return { data: antes - estado.tablas.gastos.length, error: null };
+        }
         if(nombre === "gastos_rendicion_enviar"){
           const r = T("gastos_rendiciones").find(x => x.id === args.p_id);
           if(!r || r.autor !== yo) return mal("42501", "Esa rendición no es tuya");

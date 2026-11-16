@@ -344,6 +344,43 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   await p.close();
 }
 
+/* ---------------- Borrar varios gastos juntos, y una rendición entera (lo pidió el usuario el 16/11) ---------------- */
+{
+  const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: vp, base: datos({ prendido: true }) });
+  await irGastos(p);
+  await p.click('[data-action="gastos-abrir-rendicion"][data-id="ren_mvd"]'); await p.waitForTimeout(150);
+  await p.click('[data-action="gastos-sel-abrir"][data-id="ren_mvd"]');
+  eq("«Seleccionar»: una casilla por gasto, sin las papeleras de cada fila, y la barra con «Borrar» esperando", await p.evaluate(() => [document.querySelectorAll("[data-gsel]").length,
+    document.querySelectorAll('[data-action="gasto-quitar"]').length, document.querySelector('[data-action="gastos-sel-borrar"]').disabled, document.activeElement.dataset.gsel || ""]), [3, 0, true, "gx1"]);
+  await p.click('[data-action="gastos-sel-tocar"][data-id="gx1"]');
+  await p.check("#gxS_gx3");
+  eq("tocar la fila o la casilla la elige; la barra cuenta", await p.evaluate(() => [document.getElementById("gxS_gx1").checked, document.getElementById("gxS_gx3").checked,
+    document.querySelector(".gx-selpie .gx-lcuenta").textContent, document.querySelector('[data-action="gastos-sel-borrar"]').textContent.trim()]), [true, true, "2 seleccionados", "🗑️ Borrar 2"]);
+  await p.check("#gxSelTodos");
+  eq("«Todos» elige todos", await p.$eval(".gx-selpie .gx-lcuenta", e => e.textContent), "3 seleccionados");
+  await p.uncheck("#gxSelTodos"); await p.check("#gxS_gx1"); await p.check("#gxS_gx3");
+  await p.click('[data-action="gastos-sel-borrar"]');
+  eq("borrar pregunta, con cuántos", await p.$eval("#confirmMessage", e => e.textContent).catch(() => ""), "¿Borrar los 2 gastos seleccionados y sus comprobantes? No se puede deshacer.");
+  await p.click("#confirmOk");
+  eq("…borra los elegidos, deja el resto y sale de «Seleccionar»", await hasta(p, () => { const ids = window.__sb.tablas.gastos.map(g => g.id);
+    return !ids.includes("gx1") && !ids.includes("gx3") && ids.includes("gx2") && !document.querySelector("[data-gsel]"); }), true);
+  await p.click('[data-action="gastos-sel-abrir"]').catch(() => {});
+  eq("con un solo gasto que se puede tocar, «Seleccionar» no aparece", await p.$('[data-action="gastos-sel-abrir"]'), null);
+  // La rendición entera, con lo que tiene adentro.
+  eq("«Borrar esta rendición» dice con cuántos gastos", await p.$eval('[data-action="gastos-rendicion-borrar"]', e => e.textContent.trim()), "🗑️ Borrar esta rendición (con su gasto)");
+  await p.click('[data-action="gastos-rendicion-borrar"]');
+  eq("pregunta, con el nombre", await p.$eval("#confirmMessage", e => /¿Borrar la rendición «.+» con su gasto y su comprobante\? No se puede deshacer\./.test(e.textContent)).catch(() => false), true);
+  eq("…y el botón dice «Borrar todo»", await p.$eval("#confirmOk", e => e.textContent.trim()), "Borrar todo");
+  await p.click("#confirmOk");
+  eq("…la borra con sus gastos, y vuelve a «Mis rendiciones»", await hasta(p, () => !window.__sb.tablas.gastos_rendiciones.some(r => r.id === "ren_mvd")
+    && !window.__sb.tablas.gastos.some(g => g.rendicion_id === "ren_mvd") && !!document.querySelector('[data-action="gastos-destino-abrir"]') && !document.querySelector('[data-id="ren_mvd"]')), true);
+  // Una aprobada no se borra.
+  await p.click('[data-action="gastos-abrir-rendicion"][data-id="ren_rutina"]'); await p.waitForTimeout(150);
+  eq("una rendición aprobada no tiene «Borrar» ni «Seleccionar»", await p.evaluate(() => [!!document.querySelector('[data-action="gastos-rendicion-borrar"]'), !!document.querySelector('[data-action="gastos-sel-abrir"]')]), [false, false]);
+  eq("sin errores de página", errores, []);
+  await p.close();
+}
+
 /* ---------------- Un PDF con texto de verdad se lee sin el lector de fotos ---------------- */
 // Como el recibo de Uber que trajo el usuario el 15/11 (inventado): el texto está adentro del PDF,
 // así que se lee directo, aun desde un archivo local, donde el lector de fotos no corre.
