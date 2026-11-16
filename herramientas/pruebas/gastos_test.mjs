@@ -148,9 +148,12 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   await p.waitForSelector("#gastoOverlay:not([hidden]) #gxFecha");
   eq("la ventana: accesible, con el foco en el concepto (lo primero) y los datos sugeridos a la vista", await p.evaluate(() => [document.querySelector("#gastoOverlay .modal").getAttribute("role"),
     document.querySelector("#gastoOverlay .modal").getAttribute("aria-modal"), document.activeElement.id, document.getElementById("gxFecha").value, document.getElementById("gxConcepto").value,
-    !!document.querySelector(".gx-sugerido")]), ["dialog", "true", "gxConcepto", "2026-11-15", "Taxi al aeropuerto", true]);
+    document.getElementById("gxFecha").dataset.sug]), ["dialog", "true", "gxConcepto", "2026-11-15", "Taxi al aeropuerto", "1"]);
+  eq("sin cartel de lo que se completó (lo pidió el usuario el 16/11): lo dicen las marcas de cada campo", await p.evaluate(() => !document.querySelector(".gx-sugerido") && !/completó|salió/.test(document.getElementById("gastoBody").innerText)), true);
   eq("la ventana es ancha, con el comprobante grande al lado de los datos", await p.evaluate(() => { const m = document.querySelector("#gastoOverlay .modal").getBoundingClientRect(),
-    c = document.querySelector("#gastoBody .gx-comp").getBoundingClientRect(); return [m.width >= 1000, c.height >= 400, c.right < document.getElementById("gxConcepto").getBoundingClientRect().left]; }), [true, true, true]);
+    c = document.querySelector("#gastoBody .gx-comp").getBoundingClientRect(); return [m.width >= 1000, c.height >= 400, c.right < document.getElementById("gxMonto").getBoundingClientRect().left]; }), [true, true, true]);
+  eq("arriba, el estado y el concepto en la misma fila", await p.evaluate(() => { const a = document.querySelector(".gx-cabecera .gx-chip").getBoundingClientRect(), b = document.getElementById("gxConcepto").getBoundingClientRect();
+    return Math.abs((a.top + a.bottom) / 2 - (b.top + b.bottom) / 2) < 6 && b.left > a.right; }), true);
   eq("el tipo vino sugerido por el título del archivo («Taxi al aeropuerto»: transporte), marcado para revisar",
     await p.evaluate(() => [(document.querySelector('#gxTipo [aria-pressed="true"]') || {}).dataset?.tipo || "", document.getElementById("gxTipo").dataset.sug]), ["transporte", "1"]);
   eq("el tipo se elige con botones, a la vista", await p.$$eval("#gxTipo [data-tipo]", l => l.map(b => b.textContent.trim())), ["Reunión", "Comida", "Pasaje", "Alojamiento", "Transporte", "Compra de material", "Suscripción"]);

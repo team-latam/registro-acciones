@@ -88,8 +88,7 @@ eq("el aviso dice que completó lo que pudo", await hasta(p, () => /El lector co
 
 // La ventana: qué completó y las marcas.
 await p.click(`[data-action="gasto-abrir"][data-id="${de("foto1.jpg").id}"]`); await p.waitForSelector("#gastoOverlay:not([hidden])");
-eq("la ventana dice qué completó el lector y qué revisar sobre todo", await p.$eval("#gastoBody .gx-sugerido", e => e.textContent.replace(/\s+/g, " ").trim()),
-  "📖 El lector completó: la fecha, el monto, la moneda, la forma de pago, los 4 números de la tarjeta, el concepto, el tipo. Revisalo con el comprobante. Sobre todo: la moneda.");
+eq("la ventana no tiene cartel de lo que completó el lector: lo dicen las marcas", await p.evaluate(() => !document.querySelector(".gx-sugerido") && !/completó/.test(document.getElementById("gastoBody").innerText)), true);
 eq("los campos completados se ven marcados, y la moneda como dudosa", await p.evaluate(() => [document.getElementById("gxMonto").dataset.sug, document.getElementById("gxMoneda").dataset.duda]), ["1", "1"]);
 await p.keyboard.press("Escape");
 

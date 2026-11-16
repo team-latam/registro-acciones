@@ -193,6 +193,12 @@ tocan eventos, comentarios ni la Agenda); se hace por etapas chicas; Drive y el 
     comprobante grande a la izquierda y los datos a la derecha; el concepto primero, el monto destacado con su moneda
     (y el monto en dólares abajo, si es otra), fecha y «Va en» juntos, y el tipo, quién pagó y la forma de pago con
     botones a la vista. En el celular, todo en una columna con el comprobante arriba.
+- [x] **La ventana de un gasto, sin carteles y más compacta** (16/11, en la rama; va a `main` con el OK del usuario):
+  sacó el cartel «📖 El lector completó: …» (y el de «Del nombre del archivo salió…»): lo completado se ve en las
+  marcas de cada campo (celeste, sugerido; amarillo, para revisar); si «Leer el comprobante» no encuentra nada, lo
+  dice una línea chica bajo el comprobante. Para que entre todo sin bajar, aun en una laptop: el concepto arriba, al
+  lado del estado, como un título que se escribe ahí mismo; el monto en dólares en la misma fila que el del
+  comprobante; quién pagó y la forma de pago lado a lado; «Tiene factura» bajo el comprobante (es sobre el papel).
 - [ ] Los avisos de «te observaron un gasto» (campanita y correo).
 
 **Visto al armar las pantallas (15/11), para decidir más adelante:** si la rutina de un mes ya se aprobó, un
