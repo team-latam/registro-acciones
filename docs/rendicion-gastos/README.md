@@ -181,6 +181,17 @@ tocan eventos, comentarios ni la Agenda); se hace por etapas chicas; Drive y el 
     almuerzo de reunión, comida, como en su skill; las apps de viaje); al final, por la primera palabra en lo
     ya cargado. Al subir, cuando el lector completa el concepto y mientras se escribe (si el tipo está vacío o
     lo había puesto la sugerencia), y queda marcado para revisar.
+- [x] **Borrar más y la ventana nueva** (16/11, en la rama; van a `main` con el OK del usuario):
+  - **Borrar una rendición entera**, aunque tenga comprobantes: «Borrar esta rendición (con sus N gastos)» al pie de
+    una rendición propia que todavía se puede corregir, preguntando. Lo hace de una vez una función nueva de la base,
+    `gastos_rendicion_borrar`: la persona, la suya abierta u observada; el admin fijo, cualquiera en esos estados;
+    una mandada o aprobada, nunca. Los archivos quedan sin fila y los saca la limpieza semanal.
+  - **Borrar varios gastos juntos**: «Seleccionar» en una rendición o en «Sin vincular» (con dos o más que se puedan
+    tocar), una casilla por fila, «Todos», y «Borrar N» abajo, preguntando.
+  - **La ventana de un gasto, rediseñada** (lo pidió para aprovechar el espacio y mostrar distinto): ancha, con el
+    comprobante grande a la izquierda y los datos a la derecha; el concepto primero, el monto destacado con su moneda
+    (y el monto en dólares abajo, si es otra), fecha y «Va en» juntos, y el tipo, quién pagó y la forma de pago con
+    botones a la vista. En el celular, todo en una columna con el comprobante arriba.
 - [ ] Los avisos de «te observaron un gasto» (campanita y correo).
 
 **Visto al armar las pantallas (15/11), para decidir más adelante:** si la rutina de un mes ya se aprobó, un
