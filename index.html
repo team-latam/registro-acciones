@@ -824,8 +824,6 @@
     border:1px solid var(--border); background:var(--card); box-shadow:var(--shadow); color:var(--ink); font-family:inherit; cursor:pointer; }
   .gx-tarjeta:hover{ border-color:var(--celeste); }
   .gx-tarjeta-env{ position:relative; }
-  .gx-btn-peligro{ background:var(--danger-fg); border-color:var(--danger-fg); color:#fff; }
-  .gx-btn-peligro:hover:not(:disabled){ filter:brightness(1.08); }
   .gx-en-sel .gx-lmarca{ width:46px; align-self:stretch; }
   .gx-fila-env.gx-marcada{ background:var(--celeste-soft, var(--surface-alt)); }
   .gx-selpie .gx-ltodos{ padding-inline-start:2px; }
@@ -1037,28 +1035,58 @@
   .gx-tipos input[type=text]{ flex:1 1 200px; }
   .gx-tipo-oculto{ text-decoration:line-through; color:var(--text-muted) !important; }
   .gx-nota{ margin:8px 4px 0; }
-  /* La ventana de un gasto: el comprobante a un costado y los datos al otro. */
-  .gx-modal{ max-width:820px; }
+  /* La ventana de un gasto: el comprobante grande a un costado, de todo el alto, y los datos al otro
+     (rediseñada el 16/11: más ancha, el monto destacado, y lo que se elige con botones). `.modal.gx-modal`:
+     la regla general de las ventanas (más abajo) la dejaba en 640 px. */
+  .modal.gx-modal{ max-width:1080px; width:min(1080px, calc(100vw - 32px)); height:min(860px, calc(100vh - 32px)); }
   .gx-body{ display:flex; flex-direction:column; min-height:0; }
   .gx-tit{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding-inline-end:36px; }
-  .gx-ventana{ display:flex; gap:18px; overflow-y:auto; min-height:0; padding:2px; }
-  .gx-v-comp{ flex:0 0 220px; display:flex; flex-direction:column; gap:6px; }
+  .gx-ventana{ display:grid; grid-template-columns:minmax(0, 42fr) minmax(0, 58fr); gap:24px; flex:1 1 auto; min-height:0; padding:2px; }
+  .gx-v-comp{ display:flex; flex-direction:column; gap:8px; min-height:0; }
+  .gx-v-comp-pie{ display:flex; align-items:center; gap:8px 12px; flex-wrap:wrap; }
   .gx-v-comp small{ font-size:12px; color:var(--text-muted); overflow-wrap:anywhere; }
-  .gx-comp{ display:flex; align-items:center; justify-content:center; width:100%; aspect-ratio:3 / 4; border-radius:var(--radius-md); border:1px solid var(--border); background:var(--surface-alt); overflow:hidden; padding:0; cursor:pointer; font:inherit; color:var(--text); }
+  .gx-v-comp-pie .gx-arch{ flex:1 1 140px; }
+  .gx-comp{ display:flex; align-items:center; justify-content:center; width:100%; flex:1 1 auto; min-height:220px; border-radius:var(--radius-md); border:1px solid var(--border); background:var(--surface-alt); overflow:hidden; padding:0; cursor:zoom-in; font:inherit; color:var(--text); }
+  .gx-comp-vacio{ cursor:default; }
   .gx-comp img{ width:100%; height:100%; object-fit:contain; background:#fff; }
   .gx-comp-vacio{ cursor:default; font-size:13px; color:var(--text-muted); text-align:center; padding:10px; }
   .gx-comp-pdf{ flex-direction:column; gap:10px; font-weight:700; font-size:13.5px; color:var(--link); }
   .gx-pdf-ico{ width:58px; height:72px; border-radius:6px; background:var(--card); border:2px solid var(--danger-fg); color:var(--danger-fg); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px; }
-  .gx-v-form{ flex:1 1 auto; min-width:0; }
-  .gx-campos{ display:grid; grid-template-columns:1fr 1fr; gap:10px 12px; }
+  .gx-v-form{ min-width:0; min-height:0; overflow-y:auto; padding:2px 8px 8px 2px; }
+  .gx-campos{ display:grid; grid-template-columns:1fr 1fr; gap:16px 14px; }
+  input.gx-concepto{ font-size:16.5px; font-weight:700; padding:11px 13px; }
+  /* El monto, destacado: es lo que más se revisa contra el comprobante. Con otra moneda, el monto en
+     dólares abajo, del mismo tamaño. */
+  .gx-plata{ display:grid; grid-template-columns:minmax(0, 1fr) 96px; gap:10px 12px; align-items:end; padding:12px 14px; border-radius:var(--radius-md); background:var(--surface-alt); border:1px solid var(--border); }
+  .gx-plata input{ height:46px; }
+  .gx-plata input.gx-monto{ font-size:20px; font-weight:800; padding:9px 12px; }
+  .gx-plata input.gx-monto-2{ font-size:17px; font-weight:700; }
+  .gx-plata input.gx-moneda{ width:100%; font-weight:700; text-align:center; }
+  .gx-plata .gx-pista{ grid-column:1 / -1; margin-top:-4px; }
+  /* Lo que se elige con un toque. */
+  .gx-opciones{ display:flex; flex-wrap:wrap; gap:6px; border-radius:var(--radius-sm); }
+  .gx-opciones:focus-visible{ outline:2px solid var(--celeste-dark, var(--celeste)); outline-offset:3px; }
+  .gx-opc{ min-height:38px; padding:6px 14px; border-radius:999px; border:1.5px solid var(--border); background:var(--card); color:var(--text); font:inherit; font-size:13.5px; font-weight:600; cursor:pointer; }
+  .gx-opc:hover:not(:disabled){ border-color:var(--celeste-dark, var(--celeste)); }
+  .gx-opc[aria-pressed="true"]{ background:var(--petroleo); border-color:var(--petroleo); color:#fff; }
+  .gx-opc:disabled{ cursor:default; opacity:.75; }
+  .gx-opciones[data-sug] .gx-opc[aria-pressed="true"]{ background:var(--celeste-soft, var(--surface-alt)); border-color:var(--celeste-dark, var(--celeste)); color:var(--ink); }
+  .gx-opciones[data-duda] .gx-opc[aria-pressed="true"]{ background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn-text); }
+  .gx-opciones[aria-invalid="true"]{ outline:2px solid var(--danger-fg); outline-offset:3px; }
+  .gx-seg{ flex-wrap:nowrap; gap:0; }
+  .gx-seg .gx-opc{ border-radius:0; margin-inline-start:-1.5px; }
+  .gx-seg .gx-opc:first-child{ border-start-start-radius:999px; border-end-start-radius:999px; margin-inline-start:0; }
+  .gx-seg .gx-opc:last-child{ border-start-end-radius:999px; border-end-end-radius:999px; }
+  .gx-fila-opc{ display:flex; align-items:center; gap:8px 14px; flex-wrap:wrap; }
+  .gx-fila-opc .gx-pista{ flex:1 1 200px; }
+  .gx-tarj{ display:flex; align-items:center; gap:8px; font-size:13.5px; color:var(--text-muted); }
+  .gx-tarj input{ width:80px; text-align:center; letter-spacing:.12em; }
   .gx-campo{ display:flex; flex-direction:column; gap:5px; min-width:0; margin:0; border:none; padding:0; }
   .gx-et{ font-size:12px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.04em; padding:0; }
   .gx-campo input, .gx-campo select, .gx-campo textarea{ width:100%; }
   .gx-campo [aria-invalid="true"]{ border-color:var(--danger-fg); }
   .gx-campo input:disabled, .gx-campo select:disabled, .gx-campo textarea:disabled{ opacity:.85; cursor:default; }
   .gx-ancho{ grid-column:1 / -1; }
-  .gx-pago label{ display:flex; align-items:center; gap:8px; font-size:13.5px; padding:3px 0; color:var(--text); }
-  .gx-campo .gx-pago input, .gx-pago input[type=radio]{ width:auto; flex:none; margin:0; }
   .gx-campos{ align-items:start; }
   .gx-pista{ font-size:12px; color:var(--text-muted); }
   .gx-sugerido{ margin:0 0 10px; font-size:13px; background:var(--celeste-soft, var(--surface-alt)); border-radius:var(--radius-sm); padding:8px 12px; }
@@ -1069,14 +1097,19 @@
   .gx-com div{ margin-top:3px; white-space:pre-wrap; overflow-wrap:anywhere; }
   .gx-observar{ margin:0 0 14px; padding:12px 14px; border-radius:var(--radius-md); background:var(--warn-bg); border:1px solid var(--warn-border); display:flex; flex-direction:column; gap:8px; align-items:flex-start; }
   .gx-observar .gx-campo{ width:100%; }
-  .gx-botones{ align-items:center; flex-wrap:wrap; margin-top:14px; flex:none; }
+  .gx-botones{ align-items:center; flex-wrap:wrap; margin-top:14px; padding-top:12px; border-top:1px solid var(--border); flex:none; }
   .gx-espacio{ flex:1; }
   .btn-secondary.gx-borrar{ color:var(--danger-fg); }
   @media (max-width:640px){
-    .gx-ventana{ flex-direction:column; gap:12px; }
-    .gx-v-comp{ flex:none; flex-direction:row; align-items:center; gap:12px; }
-    .gx-comp{ width:96px; flex:none; }
+    .modal.gx-modal{ height:calc(100vh - 16px); width:calc(100vw - 16px); }
+    .gx-ventana{ display:flex; flex-direction:column; gap:12px; overflow-y:auto; }
+    .gx-v-form{ overflow:visible; padding:0; }
+    .gx-v-comp{ flex:none; }
+    .gx-comp{ flex:none; height:200px; min-height:0; }
     .gx-campos{ grid-template-columns:1fr; }
+    .gx-plata{ grid-template-columns:minmax(0, 1fr) 84px; }
+    .gx-seg{ width:100%; }
+    .gx-seg .gx-opc{ flex:1 1 auto; }
     .gx-tarjeta{ flex-wrap:wrap; }
     .gx-t-quitar{ top:8px; translate:none; }
     .gx-t-der{ flex-direction:row; align-items:center; flex-wrap:wrap; justify-content:flex-start; width:100%; padding-inline-start:50px; }
@@ -25826,7 +25859,7 @@ function renderBarraDeSeleccion(rid){
       <label class="gx-ltodos"><input type="checkbox" id="gxSelTodos"${n && n === lista.length ? " checked" : ""}> ${t("Todos","All","Todos","הכול")}</label>
       <span class="gx-lcuenta" aria-live="polite">${esc(n === 1 ? t("1 seleccionado","1 selected","1 selecionado","נבחר 1") : t("{n} seleccionados","{n} selected","{n} selecionados","{n} נבחרו",{ n }))}</span>
       <button type="button" class="btn-secondary" data-action="gastos-sel-cancelar">${t("Cancelar","Cancel","Cancelar","ביטול")}</button>
-      <button type="button" class="btn-primary gx-btn-peligro" data-action="gastos-sel-borrar" ${!n || S.borrando ? "disabled" : ""}>🗑️ ${S.borrando ? t("Borrando…","Deleting…","Apagando…","מוחק…") : n ? t("Borrar {n}","Delete {n}","Apagar {n}","מחיקת {n}",{ n }) : t("Borrar","Delete","Apagar","מחיקה")}</button>
+      <button type="button" class="btn-primary danger" data-action="gastos-sel-borrar" ${!n || S.borrando ? "disabled" : ""}>🗑️ ${S.borrando ? t("Borrando…","Deleting…","Apagando…","מוחק…") : n ? t("Borrar {n}","Delete {n}","Apagar {n}","מחיקת {n}",{ n }) : t("Borrar","Delete","Apagar","מחיקה")}</button>
     </div>`;
 }
 async function borrarSeleccionados(){
@@ -26296,7 +26329,10 @@ function abrirGasto(id, desde){
   gastoReturnFocus = desde || document.activeElement;
   renderGasto();
   gastoOverlay.hidden = false;
-  enfocarComo(gastoOverlay.querySelector("#gxFecha:not([disabled])") || gastoOverlay.querySelector(".close"), gastoReturnFocus);
+  // El foco, en lo primero que se revisa: el concepto. En una pantalla táctil, en la ✕: si no, el teclado
+  // del celular se abre solo y tapa el comprobante.
+  const tactil = !!(window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
+  enfocarComo((!tactil && gastoOverlay.querySelector("#gxConcepto:not([disabled])")) || gastoOverlay.querySelector(".close"), gastoReturnFocus);
 }
 // Cerrar con lo escrito sin guardar (la ✕, Escape, tocar afuera): pregunta antes de perderlo.
 async function pedirCerrarGasto(){
@@ -26347,7 +26383,9 @@ function renderGasto(){
         ? t("Del nombre del archivo salió: {c}. Revisalo.","From the file name: {c}. Check it.","Do nome do arquivo saiu: {c}. Revise.","משם הקובץ נלקח: {c}. בדקו.",{ c: leido.campos.map(k => nombreDeCampoGasto(k, true)).join(", ") })
         : t("El lector completó: {c}. Revisalo con el comprobante.","The reader filled in: {c}. Check it against the receipt.","O leitor completou: {c}. Revise com o comprovante.","הקורא מילא: {c}. בדקו מול הקבלה.",{ c: leido.campos.map(k => nombreDeCampoGasto(k, true)).join(", ") })}
         ${dudasVistas.length ? `<b>${t("Sobre todo: {c}.","Especially: {c}.","Sobretudo: {c}.","בעיקר: {c}.",{ c: dudasVistas.map(k => nombreDeCampoGasto(k, true)).join(", ") })}</b>` : ""}</p>`;
-  const marca = k => !leido || !editable ? "" : dudasVistas.includes(k) ? ' data-duda="1"' : leido.campos.includes(k) ? ' data-sug="1"' : "";
+  // Lo que la persona ya tocó deja de verse como sugerido; el tipo que puso la predicción, sí se ve.
+  const marca = k => !editable || (e.tocados && e.tocados.has(k)) ? "" : k === "tipo" && e.tipoAuto ? ' data-sug="1"'
+    : !leido ? "" : dudasVistas.includes(k) ? ' data-duda="1"' : leido.campos.includes(k) ? ' data-sug="1"' : "";
   const leer = editable && g.archivo && esUrlFirmada(g.archivoUrl) && (lectorDisponible() || esPdfGasto(g))
     ? `<button type="button" class="btn-secondary gx-leer" data-action="gasto-leer" ${e.leyendo ? "disabled" : ""}>📖 ${e.leyendo ? t("Leyendo…","Reading…","Lendo…","קורא…") : t("Leer el comprobante","Read the receipt","Ler o comprovante","קריאת הקבלה")}</button>` : "";
   const coms = comentariosDe(g.id);
@@ -26360,11 +26398,20 @@ function renderGasto(){
       ${g.estado === "borrador" ? `<button type="button" class="btn-secondary" data-action="gasto-guardar" data-confirmar="0" ${e.guardando ? "disabled" : ""}>${t("Guardar sin confirmar","Save without confirming","Salvar sem confirmar","שמירה בלי אישור")}</button>` : ""}
       <button type="button" class="btn-primary" data-action="gasto-guardar" data-confirmar="1" ${e.guardando ? "disabled" : ""}>${e.guardando ? t("Guardando…","Saving…","Salvando…","שומר…") : g.estado === "observado" ? t("Guardar la corrección","Save the correction","Salvar a correção","שמירת התיקון") : g.estado === "confirmado" ? t("Guardar","Save","Salvar","שמירה") : t("Confirmar","Confirm","Confirmar","אישור")}</button>`
     : `<span class="gx-espacio"></span><button type="button" class="btn-secondary" data-action="gasto-cerrar">${t("Cerrar","Close","Fechar","סגירה")}</button>`;
+  // Los botones de elegir (tipo, quién pagó, forma de pago): un toque, y se ve todo a la vez (lo pidió el usuario
+  // el 16/11: «mostrar de otra forma»). Con muchos tipos (los suma un admin), el tipo vuelve a ser una lista.
+  const opciones = (accion, dato, lista, actual) => lista.map(([v, txt, id]) => `<button type="button" class="gx-opc" data-action="${accion}" data-${dato}="${esc(v)}"${id ? ` id="${id}"` : ""}
+      aria-pressed="${v === actual}"${dis}>${esc(txt)}</button>`).join("");
+  const tipoCampo = tipos.length <= 12
+    ? `<div class="gx-campo gx-ancho"><span class="gx-et" id="gxTipoEt">${t("Tipo","Type","Tipo","סוג")}</span>
+        <div class="gx-opciones" id="gxTipo" role="group" tabindex="-1" aria-labelledby="gxTipoEt"${mal("tipo")}${marca("tipo")}>${opciones("gasto-tipo", "tipo", tipos.map(x => [x.key, x.label]), d.tipo)}</div></div>`
+    : campo(t("Tipo","Type","Tipo","סוג"), `<select id="gxTipo" data-gcampo="tipo"${mal("tipo")}${marca("tipo")}${dis}><option value="">${esc(t("Elegí…","Pick…","Escolha…","בחרו…"))}</option>${tipos.map(x => `<option value="${esc(x.key)}"${x.key === d.tipo ? " selected" : ""}>${esc(x.label)}</option>`).join("")}</select>`, true);
   document.getElementById("gastoBody").innerHTML = `
     <button type="button" class="close" data-action="gasto-cerrar" aria-label="${esc(t("Cerrar","Close","Fechar","סגירה"))}">✕</button>
     <h2 id="gastoTitle" class="gx-tit">🧾 ${editable ? t("Revisar el gasto","Check the expense","Revisar a despesa","בדיקת ההוצאה") : t("El gasto","The expense","A despesa","ההוצאה")} ${gxChip(estadoDeGasto(g.estado))}</h2>
     <div class="gx-ventana">
-      <div class="gx-v-comp">${vista}<small class="gx-arch">${esc(g.archivoNombre || "")}</small>${leer}${!editable && g.autor !== miCorreo() ? `<small>${esc(t("De {n}","By {n}","De {n}","של {n}",{ n: nombreDePersona(g.autor) }))}</small>` : ""}</div>
+      <div class="gx-v-comp">${vista}
+        <div class="gx-v-comp-pie"><small class="gx-arch">${esc(g.archivoNombre || "")}</small>${leer}${!editable && g.autor !== miCorreo() ? `<small>${esc(t("De {n}","By {n}","De {n}","של {n}",{ n: nombreDePersona(g.autor) }))}</small>` : ""}</div></div>
       <div class="gx-v-form">
         ${sugerido}${hilo}
         ${puedeObservar ? `<div class="gx-observar">
@@ -26372,26 +26419,25 @@ function renderGasto(){
             <button type="button" class="btn-secondary" data-action="gasto-observar" ${e.guardando ? "disabled" : ""}>⚠️ ${t("Observar","Flag","Observar","הערה")}</button>
           </div>` : ""}
         <div class="gx-campos">
+          ${campo(t("Concepto","Description","Conceito","תיאור"), `<input type="text" id="gxConcepto" class="gx-concepto" maxlength="140" data-gcampo="concepto" value="${esc(d.concepto)}"${marca("concepto")} placeholder="${esc(t("Por ejemplo: Taxi al aeropuerto","For example: Taxi to the airport","Por exemplo: Táxi para o aeroporto","למשל: מונית לשדה התעופה"))}"${mal("concepto")}${dis}>`, true)}
+          <div class="gx-plata gx-ancho">
+            ${campo(t("Monto","Amount","Valor","סכום"), `<input type="text" id="gxMonto" inputmode="decimal" class="gx-monto" data-gcampo="monto" value="${esc(montoEnCampo(d.monto))}"${mal("monto")}${marca("monto")}${dis}>`)}
+            ${campo(t("Moneda","Currency","Moeda","מטבע"), `<input type="text" id="gxMoneda" class="gx-moneda" list="gxMonedas" maxlength="3" data-gcampo="moneda" value="${esc(d.moneda)}"${mal("moneda")}${marca("moneda")}${dis}>`)}
+            ${otraMoneda ? campo(t("Monto en {m}","Amount in {m}","Valor em {m}","סכום ב-{m}",{ m: esc(d.rendidoMoneda) }), `<input type="text" id="gxRendido" inputmode="decimal" class="gx-monto gx-monto-2" data-gcampo="rendidoMonto" value="${esc(montoEnCampo(d.rendidoMonto))}"${dis}>`)
+              + campo(t("Se rinde en","Reported in","Presta-se em","מדווח ב"), `<input type="text" id="gxRendidoMoneda" class="gx-moneda" list="gxMonedas" maxlength="3" data-gcampo="rendidoMoneda" value="${esc(d.rendidoMoneda)}"${mal("rendidoMoneda")}${dis}>`)
+              + `<small class="gx-pista">${t("En {m}: lo que te cobró el banco.","In {m}: what your bank charged you.","Em {m}: o que o banco te cobrou.","ב-{m}: מה שהבנק חייב אתכם.",{ m: esc(d.rendidoMoneda) })}</small>` : ""}
+          </div>
           ${campo(t("Fecha","Date","Data","תאריך"), `<input type="date" id="gxFecha" data-gcampo="fecha" value="${esc(d.fecha)}"${mal("fecha")}${marca("fecha")}${dis}>`)}
-          ${campo(t("Tipo","Type","Tipo","סוג"), `<select id="gxTipo" data-gcampo="tipo"${mal("tipo")}${marca("tipo")}${dis}><option value="">${esc(t("Elegí…","Pick…","Escolha…","בחרו…"))}</option>${tipos.map(x => `<option value="${esc(x.key)}"${x.key === d.tipo ? " selected" : ""}>${esc(x.label)}</option>`).join("")}</select>`)}
-          ${campo(t("Concepto","Description","Conceito","תיאור"), `<input type="text" id="gxConcepto" maxlength="140" data-gcampo="concepto" value="${esc(d.concepto)}"${marca("concepto")} placeholder="${esc(t("Por ejemplo: Taxi al aeropuerto","For example: Taxi to the airport","Por exemplo: Táxi para o aeroporto","למשל: מונית לשדה התעופה"))}"${mal("concepto")}${dis}>`, true)}
-          ${campo(t("Monto","Amount","Valor","סכום"), `<input type="text" id="gxMonto" inputmode="decimal" class="gx-monto" data-gcampo="monto" value="${esc(montoEnCampo(d.monto))}"${mal("monto")}${marca("monto")}${dis}>`)}
-          ${campo(t("Moneda","Currency","Moeda","מטבע"), `<input type="text" id="gxMoneda" class="gx-moneda" list="gxMonedas" maxlength="3" data-gcampo="moneda" value="${esc(d.moneda)}"${mal("moneda")}${marca("moneda")}${dis}>`)}
-          ${otraMoneda ? campo(t("Monto en {m}","Amount in {m}","Valor em {m}","סכום ב-{m}",{ m: esc(d.rendidoMoneda) }), `<input type="text" id="gxRendido" inputmode="decimal" class="gx-monto" data-gcampo="rendidoMonto" value="${esc(montoEnCampo(d.rendidoMonto))}"${dis}><small class="gx-pista">${t("Lo que te cobró el banco.","What your bank charged you.","O que o banco te cobrou.","מה שהבנק חייב אתכם.")}</small>`)
-            + campo(t("Se rinde en","Reported in","Presta-se em","מדווח ב"), `<input type="text" id="gxRendidoMoneda" class="gx-moneda" list="gxMonedas" maxlength="3" data-gcampo="rendidoMoneda" value="${esc(d.rendidoMoneda)}"${mal("rendidoMoneda")}${dis}>`) : ""}
-          <fieldset class="gx-campo gx-ancho gx-pago"${dis}><legend class="gx-et">${t("¿Quién pagó?","Who paid?","Quem pagou?","מי שילם?")}</legend>
-            <label><input type="radio" name="gxPago" id="gxPagoPersona" data-gcampo="pago" value="persona"${d.pago === "persona" ? " checked" : ""}> ${t("Yo (de mi bolsillo o de un adelanto)","Me (out of pocket or from an advance)","Eu (do meu bolso ou de um adiantamento)","אני (מהכיס או ממקדמה)")}</label>
-            <label><input type="radio" name="gxPago" id="gxPagoOrg" data-gcampo="pago" value="organizacion"${d.pago === "organizacion" ? " checked" : ""}> ${t("Organización (su tarjeta o su cuenta)","Organization (its card or account)","Organização (o cartão ou a conta dela)","הארגון (הכרטיס או החשבון שלו)")}</label>
-          </fieldset>
-          ${campo(t("Forma de pago","Payment method","Forma de pagamento","אמצעי תשלום"), `<select id="gxForma" data-gcampo="formaPago"${marca("formaPago")}${dis}>
-            <option value="">—</option>
-            <option value="tarjeta"${d.formaPago === "tarjeta" ? " selected" : ""}>${t("Tarjeta","Card","Cartão","כרטיס")}</option>
-            <option value="efectivo"${d.formaPago === "efectivo" ? " selected" : ""}>${t("Efectivo","Cash","Dinheiro","מזומן")}</option>
-            <option value="transferencia"${d.formaPago === "transferencia" ? " selected" : ""}>${t("Transferencia","Transfer","Transferência","העברה")}</option></select>`)}
-          ${d.formaPago === "tarjeta" ? campo(t("Tarjeta terminada en","Card ending in","Cartão terminado em","כרטיס שמסתיים ב"), `<input type="text" id="gxTarjeta" inputmode="numeric" maxlength="4" data-gcampo="tarjeta" value="${esc(d.tarjeta)}"${marca("tarjeta")}${mal("tarjeta")}${dis}>`) : ""}
+          ${campo(t("Va en","Goes in","Vai em","שייך ל"), `<select id="gxVinculo" data-gcampo="vinculo"${dis}>${opcionesDeVinculo(g, d.vinculo)}</select>`)}
+          ${tipoCampo}
+          <div class="gx-campo gx-ancho"><span class="gx-et" id="gxPagoEt">${t("¿Quién pagó?","Who paid?","Quem pagou?","מי שילם?")}</span>
+            <div class="gx-fila-opc"><div class="gx-opciones gx-seg" id="gxPago" role="group" aria-labelledby="gxPagoEt">${opciones("gasto-pago", "pago", [["persona", t("Yo","Me","Eu","אני"), "gxPagoPersona"], ["organizacion", t("Organización","Organization","Organização","הארגון"), "gxPagoOrg"]], d.pago)}</div>
+            <small class="gx-pista">${d.pago === "organizacion" ? t("Con su tarjeta o su cuenta: no entra en tu cuenta corriente.","With its card or account: it doesn't go into your balance.","Com o cartão ou a conta dela: não entra na sua conta corrente.","בכרטיס או בחשבון שלו: לא נכנס לחשבון השוטף שלך.") : t("De tu bolsillo o de un adelanto: entra en tu cuenta corriente.","Out of pocket or from an advance: it goes into your balance.","Do seu bolso ou de um adiantamento: entra na sua conta corrente.","מהכיס או ממקדמה: נכנס לחשבון השוטף שלך.")}</small></div></div>
+          <div class="gx-campo gx-ancho"><span class="gx-et" id="gxFormaEt">${t("Forma de pago","Payment method","Forma de pagamento","אמצעי תשלום")}</span>
+            <div class="gx-fila-opc"><div class="gx-opciones gx-seg" id="gxForma" role="group" tabindex="-1" aria-labelledby="gxFormaEt"${marca("formaPago")}>${opciones("gasto-forma", "forma", [["tarjeta", t("Tarjeta","Card","Cartão","כרטיס")], ["efectivo", t("Efectivo","Cash","Dinheiro","מזומן")], ["transferencia", t("Transferencia","Transfer","Transferência","העברה")]], d.formaPago)}</div>
+            ${d.formaPago === "tarjeta" ? `<label class="gx-tarj"><span>${t("terminada en","ending in","terminado em","מסתיים ב")}</span><input type="text" id="gxTarjeta" inputmode="numeric" maxlength="4" data-gcampo="tarjeta" value="${esc(d.tarjeta)}"${marca("tarjeta")}${mal("tarjeta")}${dis} aria-label="${esc(t("Tarjeta terminada en","Card ending in","Cartão terminado em","כרטיס שמסתיים ב"))}" placeholder="1234"></label>` : ""}</div></div>
           <label class="gx-check gx-ancho"><input type="checkbox" id="gxFactura" data-gcampo="factura"${d.factura ? " checked" : ""}${dis}> ${t("Tiene factura o comprobante válido","Has a valid invoice or receipt","Tem nota fiscal ou comprovante válido","יש חשבונית או קבלה תקפה")}</label>
           ${campo(t("Observaciones (opcional)","Notes (optional)","Observações (opcional)","הערות (לא חובה)"), `<textarea id="gxObservaciones" maxlength="500" rows="2" data-gcampo="observaciones"${dis}>${esc(d.observaciones)}</textarea>`, true)}
-          ${campo(t("Va en","Goes in","Vai em","שייך ל"), `<select id="gxVinculo" data-gcampo="vinculo"${dis}>${opcionesDeVinculo(g, d.vinculo)}</select>`, true)}
           ${editable && g.estado === "observado" ? campo(t("Tu respuesta (opcional)","Your reply (optional)","Sua resposta (opcional)","התשובה שלך (לא חובה)"), `<textarea id="gxRespuesta" maxlength="1000" rows="2" data-gcampo-extra="comentario">${esc(e.comentario)}</textarea>`, true) : ""}
         </div>
         ${e.error ? `<div class="form-error" role="alert">${esc(e.error)}</div>` : ""}
@@ -26399,6 +26445,27 @@ function renderGasto(){
     </div>
     <div class="modal-actions gx-botones">${botones}</div>`;
   if(idFoco){ const x = document.getElementById(idFoco); if(x) x.focus(); }
+}
+// Pone el tipo en la ventana sin redibujarla (mientras se escribe el concepto): los botones o la lista.
+function pintarTipoEnVentana(tp, sugerido){
+  const caja = document.getElementById("gxTipo");
+  if(!caja) return;
+  if(caja.tagName === "SELECT") caja.value = tp || "";
+  else caja.querySelectorAll("[data-tipo]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.tipo === tp)));
+  if(tp && sugerido){ caja.setAttribute("data-sug", "1"); caja.removeAttribute("aria-invalid"); } else caja.removeAttribute("data-sug");
+}
+// Un botón de elegir de la ventana: el tipo y la forma de pago (tocar el elegido lo deja vacío) y quién pagó.
+function elegirEnVentana(campo, valor){
+  const e = gastoEdit;
+  if(!e || e.guardando) return;
+  const v = campo === "pago" ? valor : e.d[campo] === valor ? "" : valor;
+  e.d[campo] = v; e.cambiado = true;
+  if(campo === "tipo") e.tipoAuto = false;
+  e.faltan = e.faltan.filter(k => k !== campo);
+  (e.tocados = e.tocados || new Set()).add(campo);
+  renderGasto();
+  const sel = { tipo: "data-tipo", pago: "data-pago", formaPago: "data-forma" }[campo];
+  const x = document.querySelector(`#gastoBody [${sel}="${CSS.escape(valor)}"]`); if(x) x.focus();
 }
 // `corto`: sin la aclaración de cómo se escribe (para el aviso de lo que completó el lector).
 function nombreDeCampoGasto(k, corto){
@@ -26496,14 +26563,14 @@ function gastoAlEscribir(el, alCambiar){
   if(e.faltan.includes(k)) e.faltan = e.faltan.filter(x => x !== k);
   if(k === "tipo") e.tipoAuto = false;
   if(k === "concepto" && (!e.d.tipo || e.tipoAuto)){
-    const tp = tipoDeConcepto(v) || "", sel = document.getElementById("gxTipo");
+    const tp = tipoDeConcepto(v) || "";
     if(tp !== e.d.tipo){
       e.d.tipo = tp; e.tipoAuto = !!tp;
       if(tp) e.faltan = e.faltan.filter(x => x !== "tipo");
-      if(sel){ sel.value = tp; if(tp){ sel.setAttribute("data-sug", "1"); sel.removeAttribute("aria-invalid"); } else sel.removeAttribute("data-sug"); }
+      pintarTipoEnVentana(tp, true);
     }
   }
-  if(alCambiar){ el.removeAttribute("data-sug"); el.removeAttribute("data-duda"); }
+  if(alCambiar){ el.removeAttribute("data-sug"); el.removeAttribute("data-duda"); (e.tocados = e.tocados || new Set()).add(k); }
   if(alCambiar && ["moneda", "rendidoMoneda", "formaPago"].includes(k)) renderGasto();
   return true;
 }
@@ -26674,6 +26741,9 @@ const GASTOS_ACCIONES = {
   "gasto-observar": async () => observarGasto(),
   "gasto-ver-comprobante": async el => verComprobante(el.dataset.id),
   "gasto-leer": async () => leerGastoAbierto(),
+  "gasto-tipo": async el => elegirEnVentana("tipo", el.dataset.tipo),
+  "gasto-pago": async el => elegirEnVentana("pago", el.dataset.pago),
+  "gasto-forma": async el => elegirEnVentana("formaPago", el.dataset.forma),
   "gastos-prender": async el => prenderGastos(!!el.checked),
   "gastos-tipo-ocultar": async el => { const a = borradorTiposDeGasto(), x = a.tipos[Number(el.dataset.i)]; if(x){ x.oculto = !x.oculto; a.cambiado = true; a.ok = false; render(); } },
   "gastos-tipo-sumar": async () => {

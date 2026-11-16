@@ -146,26 +146,33 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   eq("«Sin vincular» lista los tres", await p.$$eval('.gx-fila[data-action="gasto-abrir"]', l => l.length), 3);
   await p.click(`[data-action="gasto-abrir"][data-id="${foto.id}"]`);
   await p.waitForSelector("#gastoOverlay:not([hidden]) #gxFecha");
-  eq("la ventana: accesible, con el foco en la fecha y los datos sugeridos a la vista", await p.evaluate(() => [document.querySelector("#gastoOverlay .modal").getAttribute("role"),
+  eq("la ventana: accesible, con el foco en el concepto (lo primero) y los datos sugeridos a la vista", await p.evaluate(() => [document.querySelector("#gastoOverlay .modal").getAttribute("role"),
     document.querySelector("#gastoOverlay .modal").getAttribute("aria-modal"), document.activeElement.id, document.getElementById("gxFecha").value, document.getElementById("gxConcepto").value,
-    !!document.querySelector(".gx-sugerido")]), ["dialog", "true", "gxFecha", "2026-11-15", "Taxi al aeropuerto", true]);
+    !!document.querySelector(".gx-sugerido")]), ["dialog", "true", "gxConcepto", "2026-11-15", "Taxi al aeropuerto", true]);
+  eq("la ventana es ancha, con el comprobante grande al lado de los datos", await p.evaluate(() => { const m = document.querySelector("#gastoOverlay .modal").getBoundingClientRect(),
+    c = document.querySelector("#gastoBody .gx-comp").getBoundingClientRect(); return [m.width >= 1000, c.height >= 400, c.right < document.getElementById("gxConcepto").getBoundingClientRect().left]; }), [true, true, true]);
   eq("el tipo vino sugerido por el título del archivo («Taxi al aeropuerto»: transporte), marcado para revisar",
-    await p.evaluate(() => [document.getElementById("gxTipo").value, document.getElementById("gxTipo").dataset.sug]), ["transporte", "1"]);
-  await p.selectOption("#gxTipo", "");
+    await p.evaluate(() => [(document.querySelector('#gxTipo [aria-pressed="true"]') || {}).dataset?.tipo || "", document.getElementById("gxTipo").dataset.sug]), ["transporte", "1"]);
+  eq("el tipo se elige con botones, a la vista", await p.$$eval("#gxTipo [data-tipo]", l => l.map(b => b.textContent.trim())), ["Reunión", "Comida", "Pasaje", "Alojamiento", "Transporte", "Compra de material", "Suscripción"]);
+  await p.click('#gxTipo [data-tipo="transporte"]');
+  eq("tocar el elegido lo deja vacío", await p.evaluate(() => [(document.querySelector('#gxTipo [aria-pressed="true"]') || {}).dataset?.tipo || "", document.activeElement.dataset.tipo]), ["", "transporte"]);
   await p.click('[data-action="gasto-guardar"][data-confirmar="1"]');
   eq("confirmar sin tipo ni monto: lo dice, marca los dos campos y lleva el foco al primero", await p.evaluate(() => [document.querySelector("#gastoBody .form-error").textContent.trim(),
     document.getElementById("gxTipo").getAttribute("aria-invalid"), document.getElementById("gxMonto").getAttribute("aria-invalid"), document.activeElement.id]),
     ["Para confirmarlo falta el tipo, el monto.", "true", "true", "gxTipo"]);
   eq("y no escribe nada", (await tabla(p, "gastos")).find(g => g.id === foto.id).estado, "borrador");
   await p.fill("#gxConcepto", "Taxi al aeropuerto de Lima");
-  eq("con el tipo vacío, escribir el concepto lo vuelve a sugerir", await p.evaluate(() => [document.getElementById("gxTipo").value, document.getElementById("gxTipo").dataset.sug]), ["transporte", "1"]);
-  await p.selectOption("#gxTipo", "transporte");
+  eq("con el tipo vacío, escribir el concepto lo vuelve a sugerir", await p.evaluate(() => [(document.querySelector('#gxTipo [aria-pressed="true"]') || {}).dataset?.tipo || "", document.getElementById("gxTipo").dataset.sug]), ["transporte", "1"]);
+  await p.click('#gxTipo [data-tipo="comida"]'); await p.click('#gxTipo [data-tipo="transporte"]');
+  eq("elegido a mano, deja de verse como sugerido", await p.evaluate(() => [(document.querySelector('#gxTipo [aria-pressed="true"]') || {}).dataset?.tipo || "", document.getElementById("gxTipo").hasAttribute("data-sug")]), ["transporte", false]);
   await p.fill("#gxMonto", "12,5"); await p.press("#gxMonto", "Tab");
   eq("en la ventana, el monto también se acomoda al salir del campo («12,5» → «12.50»)", await p.$eval("#gxMonto", e => e.value), "12.50");
   await p.fill("#gxMoneda", "ars"); await p.press("#gxMoneda", "Tab");
   eq("en otra moneda aparece el monto en dólares, con la moneda en mayúsculas", await p.evaluate(() => [document.getElementById("gxMoneda").value, !!document.getElementById("gxRendido")]), ["ARS", true]);
   await p.fill("#gxRendido", "8");
-  await p.selectOption("#gxForma", "tarjeta");
+  await p.click('#gxForma [data-forma="tarjeta"]');
+  eq("quién pagó y la forma de pago, también con botones", await p.evaluate(() => [document.getElementById("gxPagoPersona").getAttribute("aria-pressed"),
+    document.querySelector('#gxForma [data-forma="tarjeta"]').getAttribute("aria-pressed"), !!document.getElementById("gxTarjeta")]), ["true", "true", true]);
   await p.fill("#gxTarjeta", "43a21");
   eq("la tarjeta: solo los cuatro números", await p.$eval("#gxTarjeta", e => e.value.length <= 5), true);
   await p.fill("#gxTarjeta", "4321");
@@ -185,7 +192,7 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   await p.keyboard.press("Escape");
   eq("Escape cierra el visor y la ventana del gasto sigue abierta", await hasta(p, () => document.getElementById("filePreviewOverlay").hidden && !document.getElementById("gastoOverlay").hidden), true);
   eq("la rutina de un mes ya aprobado no se ofrece", await p.$eval(`#gxVinculo option[value="mes:${new Date().toISOString().slice(0, 7)}"]`, o => o.disabled), true);
-  await p.fill("#gxFecha", mesAnt + "-03"); await p.fill("#gxConcepto", "Fotocopias"); await p.selectOption("#gxTipo", "material"); await p.fill("#gxMonto", "3");
+  await p.fill("#gxFecha", mesAnt + "-03"); await p.fill("#gxConcepto", "Fotocopias"); if(!(await p.$('#gxTipo [data-tipo="material"][aria-pressed="true"]'))) await p.click('#gxTipo [data-tipo="material"]'); await p.fill("#gxMonto", "3");
   await p.selectOption("#gxVinculo", "mes:" + mesAnt);
   await p.click('[data-action="gasto-guardar"][data-confirmar="1"]');
   eq("abre la rendición de la rutina de ese mes", await hasta(p, () => document.getElementById("gastoOverlay").hidden), true);
@@ -521,7 +528,7 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   eq("…por guardar_config, sin tocar el resto de las preferencias", (await rpcs(p, "guardar_config")).slice(-1).map(a => [a.p_clave, Object.keys(a.p_parche)]), [["preferences", ["gastos"]]]);
   await irGastos(p);
   await p.click('[data-action="gastos-abrir-rendicion"][data-id="sin"]'); await p.click('[data-action="gasto-abrir"][data-id="gx8"]'); await p.waitForSelector("#gastoOverlay:not([hidden])");
-  eq("en un gasto se ofrecen los tipos nuevos, sin el oculto", await p.$$eval("#gxTipo option", l => l.map(o => o.textContent).slice(1)),
+  eq("en un gasto se ofrecen los tipos nuevos, sin el oculto", await p.$$eval("#gxTipo [data-tipo]", l => l.map(o => o.textContent.trim())),
     ["Reunión", "Comidas y cafés", "Pasaje", "Alojamiento", "Transporte", "Compra de material", "Peajes y estacionamiento"]);
   await p.keyboard.press("Escape");
   await irAdmin(p); await admin(p, "preferencias", "gastos");
