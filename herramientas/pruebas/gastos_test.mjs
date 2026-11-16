@@ -417,7 +417,11 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   await p.click("#gastoAnt"); await p.click("#confirmOk");
   eq("…o pasa sin guardar", await hasta(p, () => document.getElementById("gxConcepto").value === "Hotel Rambla, dos noches"), true);
   eq("y no guardó lo escrito", (await tabla(p, "gastos")).find(g => g.id === "gx3").concepto, "Cena con los directores");
-  await p.keyboard.press("Escape");
+  eq("en otra moneda y con el monto en dólares, «Observaciones» trae la nota de la moneda local (como en el Sheet del usuario)",
+    await p.$eval("#gxObsAuto", e => [e.hidden, e.textContent.replace(/\s+/g, " ").trim()]), [false, "Gasto en UY $ 12,000.- (se escribe sola)"]);
+  await p.fill("#gxMonto", "11.500,50");
+  eq("…y se pone al día mientras se escribe el monto", await p.$eval("#gxObsAuto .gx-obs-auto-txt", e => e.textContent), "Gasto en UY $ 11,500.50");
+  await p.keyboard.press("Escape"); await p.click("#confirmOk");
   eq("al cerrar, el foco vuelve a la fila del último que se vio", await hasta(p, () => document.getElementById("gastoOverlay").hidden && document.activeElement.dataset.id === "gx2"), true);
   eq("sin errores de página", errores, []);
   await p.close();
@@ -505,6 +509,7 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   eq("…y se puede escribir a la manera de acá («2.999,50»)", await p.$eval(`#gxL_${f}_monto`, e => e.value), "2,999.50");
   await p.fill(`#gxL_${f}_monto`, "3000"); await p.press(`#gxL_${f}_monto`, "Tab");
   await p.fill(`#gxL_${f}_rendidoMonto`, "3");
+  eq("en la lista, la fila en otra moneda trae la nota de la moneda local en sus observaciones", await p.$eval(`#gxL_${f}_obsAuto .gx-obs-auto-txt`, e => e.textContent), "Gasto en AR $ 3,000.-");
   // La foto sin datos: marcada a mano, para ver que no se confirma incompleta.
   await p.check(`#gxL_${c}_marca`);
   // «La misma moneda a todos»: se prueba y se vuelve (la factura queda en ARS, el resto en USD).

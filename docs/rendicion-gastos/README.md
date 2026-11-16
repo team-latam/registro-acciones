@@ -204,6 +204,11 @@ tocan eventos, comentarios ni la Agenda); se hace por etapas chicas; Drive y el 
   fuera de los campos, con «2 de 3» arriba; recorren la lista que se está mirando (la rendición, «Sin vincular» o
   «Revisar en lista»), en el mismo orden. Con algo escrito sin guardar, pregunta antes de pasar. En el celular no
   hay flechas (la ventana ocupa la pantalla).
+- [x] **La nota de la moneda local en «Observaciones»** (16/11, en la rama; lo pidió el usuario): si el gasto fue en
+  otra moneda y también tiene el monto en dólares, arriba de sus observaciones dice «Gasto en MX $ 642.-», como la
+  escribe él en su Sheet (sin centavos, «.-»; los pesos con su país: MX $, AR $, UY $…; las demás, su símbolo o su
+  código). Sale sola de los montos y no se guarda escrita, así que nunca queda vieja si se corrige un monto; al cargar
+  el Sheet (etapa 3) va adelante de lo que escribió la persona. Se ve en la ventana, en la lista y en el resumen.
 - [ ] Los avisos de «te observaron un gasto» (campanita y correo).
 
 **Visto al armar las pantallas (15/11), para decidir más adelante:** si la rutina de un mes ya se aprobó, un

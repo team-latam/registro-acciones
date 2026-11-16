@@ -26,12 +26,14 @@ const g = hacerGrab(src);
 const grab = n => { try{ return g(n); }catch(e){ return ""; } };
 
 let L = { leer: () => "no se pudo armar", numero: () => null, foto: () => null };
+globalThis.t = (es, en, pt, he, v) => String(es).replace(/\{(\w+)\}/g, (x, k) => v && k in v ? v[k] : x);
 try{
   L = new Function(`${["MESES_ESCRITOS", "MONEDAS_EN_TEXTO", "MONEDA_DEL_PAIS", "APPS_EN_TEXTO", "TIPOS_EN_TEXTO", "numeroDeTicket", "numerosDeLinea",
     "fechaDeTicket", "tituloDeComercio", "leerTextoDeComprobante", "fotoDentroDelPdf", "textoDelPdf", "faltaElTotal",
-    "normalTexto", "PALABRAS_VACIAS", "primeraPalabra", "tipoPorPalabras", "predecirTipo", "NUM_CONTABLE", "numContable", "numeroEscrito", "montoEnCampo"].map(grab).join("\n")}
+    "normalTexto", "PALABRAS_VACIAS", "primeraPalabra", "tipoPorPalabras", "predecirTipo", "NUM_CONTABLE", "numContable", "numeroEscrito", "montoEnCampo",
+    "MONEDA_LOCAL_ETIQUETA", "notaDeMoneda"].map(grab).join("\n")}
     return { leer: leerTextoDeComprobante, numero: numeroDeTicket, foto: fotoDentroDelPdf, pdf: textoDelPdf, faltaTotal: faltaElTotal, tipo: predecirTipo,
-      escrito: numeroEscrito, enCampo: montoEnCampo };`)();
+      escrito: numeroEscrito, enCampo: montoEnCampo, nota: notaDeMoneda };`)();
 }catch(e){ console.log("no se pudo armar:", e.message); }
 const HOY = "2026-11-15";
 const leer = (texto, pais) => { try{ return L.leer(texto, { hoy: HOY, pais }); }catch(e){ return "error: " + e.message; } };
@@ -141,6 +143,12 @@ eq("un monto escrito: con coma o punto, con «$», negativo (un ajuste); vacío 
   [1250, 1250.5, 1250.5, 12.5, 40, -30, "no", "vacío", "no"]);
 eq("en el campo se ve contable: coma para los miles, punto para los centavos, siempre dos decimales (un punto con tres cifras detrás son miles, como se escribe acá)",
   ["1250", "2.999,5", "0", "-30", "12.345", "abc", ""].map(L.enCampo), ["1,250.00", "2,999.50", "0.00", "-30.00", "12,345.00", "abc", ""]);
+
+/* ---- La nota de la moneda local en «Observaciones» (como la escribe el usuario en su Sheet) ---- */
+eq("«Gasto en MX $ 642.-»: en otra moneda y con el monto en dólares; sin centavos, «.-»; si no, con los centavos",
+  [L.nota("MXN", 642, "USD", 35.2), L.nota("UYU", 1250.5, "USD", 30), L.nota("ARS", "12.000", "USD", "12"), L.nota("XCG", 162, "USD", 100), L.nota("EUR", 40, "USD", "43,10")],
+  ["Gasto en MX $ 642.-", "Gasto en UY $ 1,250.50", "Gasto en AR $ 12,000.-", "Gasto en XCG 162.-", "Gasto en € 40.-"]);
+eq("en dólares, o todavía sin el monto en dólares: sin nota", [L.nota("USD", 50, "USD", null), L.nota("MXN", 642, "USD", ""), L.nota("MXN", "", "USD", 35)], ["", "", ""]);
 
 /* ---- Casos que confunden ---- */
 eq("la tarjeta, aunque el lector confunda un asterisco con «+», «#» o «%»", ["Pago: tarjeta ***+1234", "VISA **%*5678", "Tarjeta ##9012", "Débito terminada en 3456"].map(x => leer(x).tarjeta),

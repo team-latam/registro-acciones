@@ -1097,6 +1097,9 @@
   .gx-tarj{ display:flex; align-items:center; gap:8px; font-size:13.5px; color:var(--text-muted); white-space:nowrap; }
   .gx-campo .gx-tarj input{ width:84px; flex:none; text-align:center; letter-spacing:.12em; }
   .gx-check.gx-factura{ margin:0; flex:1 1 100%; }
+  .gx-obs-auto{ display:block; font-size:13.5px; font-weight:700; color:var(--ink); padding:2px 0 4px; }
+  .gx-obs-auto[hidden]{ display:none; }
+  .gx-obs-auto small{ font-weight:400; color:var(--text-muted); font-size:12px; }
   /* El grupo de botones sugerido no se pinta entero: alcanza con el botón elegido. */
   .gx-campo .gx-opciones[data-sug], .gx-campo .gx-opciones[data-duda]{ background:none; border-color:transparent; }
   .gx-campo{ display:flex; flex-direction:column; gap:5px; min-width:0; margin:0; border:none; padding:0; }
@@ -24591,6 +24594,18 @@ function numeroEscrito(v){
   const neg = /^-/.test(x), r = numeroDeTicket(x.replace(/^[-+]/, ""));
   return r && !r.dudoso ? (neg ? -r.n : r.n) : NaN;
 }
+// La nota de la moneda local, como la escribe el usuario en las «Observaciones» de su Sheet: «Gasto en MX $ 642.-»
+// (lo pidió el 16/11). Sale sola de los montos cuando el gasto fue en otra moneda y también tiene el monto en
+// dólares: no se guarda escrita, así que nunca queda vieja si se corrige un monto. Sin centavos, «.-».
+const MONEDA_LOCAL_ETIQUETA = { MXN: "MX $", ARS: "AR $", UYU: "UY $", CLP: "CL $", COP: "COL $", DOP: "RD $", BRL: "R$", PEN: "S/",
+  EUR: "€", ILS: "₪", GBP: "£", JMD: "J$", TTD: "TT$", BZD: "BZ$" };
+function notaDeMoneda(moneda, monto, rendidoMoneda, rendidoMonto){
+  const m = String(moneda || "").trim().toUpperCase(), r = String(rendidoMoneda || "USD").trim().toUpperCase();
+  const n = numeroEscrito(monto), u = numeroEscrito(rendidoMonto);
+  if(!/^[A-Z]{3}$/.test(m) || m === r || n === null || isNaN(n) || u === null || isNaN(u)) return "";
+  const cifra = Math.round(n * 100) % 100 === 0 ? NUM_CONTABLE.format(n).replace(/\.00$/, "") + ".-" : numContable(n);
+  return t("Gasto en {m} {n}","Spent in {m} {n}","Gasto em {m} {n}","הוצאה ב-{m} {n}",{ m: MONEDA_LOCAL_ETIQUETA[m] || m, n: cifra });
+}
 // Lo que muestra un campo de monto: acomodado si se entiende; si no, tal cual (para corregirlo).
 const montoEnCampo = v => { const n = numeroEscrito(v); return n === null ? "" : isNaN(n) ? String(v) : numContable(n); };
 // Al salir de un campo de monto, se acomoda (antes de que lo lea quien lo guarda).
@@ -25851,7 +25866,7 @@ function resumenDeFila(g, f){
     : dudas.length ? gxChip([t("Revisar: {l}","Check: {l}","Revisar: {l}","לבדוק: {l}",{ l: dudas.map(nombreDeCampoDeGasto).join(", ") }), "aviso"])
     : gxChip([t("Completo","Complete","Completo","מלא"), "bien"]);
   const sub = [d.fecha ? fmtDate(d.fecha) : "", d.tipo ? nombreTipoGasto(d.tipo) : ""].filter(Boolean).join(" · ");
-  const obs = String(d.observaciones || "").trim();
+  const obs = [notaDeMoneda(d.moneda, d.monto, d.rendidoMoneda, d.rendidoMonto), String(d.observaciones || "").trim()].filter(Boolean).join(" · ");
   return `${conFoto ? "" : mini}<span class="gx-lr-txt"><b>${d.concepto ? esc(d.concepto) : `<i>${esc(g.archivoNombre || t("Sin concepto","No description","Sem conceito","ללא תיאור"))}</i>`}</b>${sub ? `<small>${esc(sub)}</small>` : ""}${obs && !conFoto ? `<small class="gx-lr-obs">💬 ${esc(obs)}</small>` : ""}</span>
     <span class="gx-lr-der">${monto}${estado}</span>${conFoto ? "" : `<span class="gx-lr-chev" aria-hidden="true"></span>`}`;
 }
@@ -25979,7 +25994,7 @@ function renderListaDeGastos(rid){
           ${campo("pago", t("Quién pagó","Who paid","Quem pagou","מי שילם/ה"), `<select id="gxL_${esc(id)}_pago" data-glista="${esc(id)}:pago"><option value="persona"${d.pago === "persona" ? " selected" : ""}>${esc(t("Yo","Me","Eu","אני"))}</option><option value="organizacion"${d.pago === "organizacion" ? " selected" : ""}>${esc(t("Organización","Organization","Organização","הארגון"))}</option></select>`)}
           ${otraMoneda ? campo("rendidoMonto", t("En {m}","In {m}","Em {m}","ב-{m}",{ m: esc(d.rendidoMoneda) }), `<input type="text" inputmode="decimal" class="gx-monto" id="gxL_${esc(id)}_rendidoMonto" data-glista="${esc(id)}:rendidoMonto" value="${esc(montoEnCampo(d.rendidoMonto))}">`, "usd") : ""}
         </div>
-        ${campo("obs", t("Observaciones","Notes","Observações","הערות"), `<input type="text" id="gxL_${esc(id)}_observaciones" maxlength="500" data-glista="${esc(id)}:observaciones" value="${esc(d.observaciones)}" placeholder="${esc(t("Opcional: con quién, para qué, una aclaración…","Optional: with whom, what for, a clarification…","Opcional: com quem, para quê, um esclarecimento…","לא חובה: עם מי, בשביל מה, הבהרה…"))}">`)}
+        ${campo("obs", t("Observaciones","Notes","Observações","הערות"), `${notaEnCampo(`gxL_${esc(id)}_obsAuto`, notaDeMoneda(d.moneda, d.monto, d.rendidoMoneda, d.rendidoMonto))}<input type="text" id="gxL_${esc(id)}_observaciones" maxlength="500" data-glista="${esc(id)}:observaciones" value="${esc(d.observaciones)}" placeholder="${esc(t("Opcional: con quién, para qué, una aclaración…","Optional: with whom, what for, a clarification…","Opcional: com quem, para quê, um esclarecimento…","לא חובה: עם מי, בשביל מה, הבהרה…"))}">`)}
         ${f.error ? `<div class="gx-lerror" role="alert">${esc(f.error)}</div>` : ""}
         <div class="gx-lmas">${abrir}</div>
         </div>
@@ -26460,7 +26475,7 @@ function renderGasto(){
           <div class="gx-campo"><span class="gx-et" id="gxFormaEt">${t("Forma de pago","Payment method","Forma de pagamento","אמצעי תשלום")}</span>
             <div class="gx-fila-opc"><div class="gx-opciones gx-seg" id="gxForma" role="group" tabindex="-1" aria-labelledby="gxFormaEt"${marca("formaPago")}>${opciones("gasto-forma", "forma", [["tarjeta", t("Tarjeta","Card","Cartão","כרטיס")], ["efectivo", t("Efectivo","Cash","Dinheiro","מזומן")], ["transferencia", t("Transferencia","Transfer","Transferência","העברה")]], d.formaPago)}</div>
             ${d.formaPago === "tarjeta" ? `<label class="gx-tarj"><span>${t("terminada en","ending in","terminado em","מסתיים ב")}</span><input type="text" id="gxTarjeta" inputmode="numeric" maxlength="4" data-gcampo="tarjeta" value="${esc(d.tarjeta)}"${marca("tarjeta")}${mal("tarjeta")}${dis} aria-label="${esc(t("Tarjeta terminada en","Card ending in","Cartão terminado em","כרטיס שמסתיים ב"))}" placeholder="1234"></label>` : ""}</div></div>
-          ${campo(t("Observaciones (opcional)","Notes (optional)","Observações (opcional)","הערות (לא חובה)"), `<textarea id="gxObservaciones" maxlength="500" rows="2" data-gcampo="observaciones"${dis}>${esc(d.observaciones)}</textarea>`, true)}
+          ${campo(t("Observaciones (opcional)","Notes (optional)","Observações (opcional)","הערות (לא חובה)"), `${notaEnCampo("gxObsAuto", notaDeMoneda(d.moneda, d.monto, d.rendidoMoneda, d.rendidoMonto))}<textarea id="gxObservaciones" maxlength="500" rows="2" data-gcampo="observaciones"${dis}>${esc(d.observaciones)}</textarea>`, true)}
           ${editable && g.estado === "observado" ? campo(t("Tu respuesta (opcional)","Your reply (optional)","Sua resposta (opcional)","התשובה שלך (לא חובה)"), `<textarea id="gxRespuesta" maxlength="1000" rows="2" data-gcampo-extra="comentario">${esc(e.comentario)}</textarea>`, true) : ""}
         </div>
         ${e.error ? `<div class="form-error" role="alert">${esc(e.error)}</div>` : ""}
@@ -26508,6 +26523,13 @@ async function irAGastoVecino(dir){
   // El foco queda en la flecha (para seguir pasando con Enter); si ya no hay más, en el concepto.
   const b = document.getElementById(dir < 0 ? "gastoAnt" : "gastoSig");
   if(b && !b.hidden && !b.disabled) b.focus();
+}
+// La nota de la moneda en un campo de observaciones: siempre está (oculta si no hay), para ponerla al día sin redibujar.
+const notaEnCampo = (id, nota) => `<span class="gx-obs-auto" id="${id}"${nota ? "" : " hidden"}><span class="gx-obs-auto-txt">${esc(nota)}</span> <small>${t("(se escribe sola)","(written automatically)","(escrita sozinha)","(נכתב אוטומטית)")}</small></span>`;
+function pintarNota(id, nota){
+  const x = document.getElementById(id);
+  if(!x) return;
+  x.hidden = !nota; x.querySelector(".gx-obs-auto-txt").textContent = nota;
 }
 // Pone el tipo en la ventana sin redibujarla (mientras se escribe el concepto): los botones o la lista.
 function pintarTipoEnVentana(tp, sugerido){
@@ -26625,6 +26647,7 @@ function gastoAlEscribir(el, alCambiar){
   e.d[k] = v;
   if(e.faltan.includes(k)) e.faltan = e.faltan.filter(x => x !== k);
   if(k === "tipo") e.tipoAuto = false;
+  if(["monto", "moneda", "rendidoMonto", "rendidoMoneda"].includes(k)) pintarNota("gxObsAuto", notaDeMoneda(e.d.moneda, e.d.monto, e.d.rendidoMoneda, e.d.rendidoMonto));
   if(k === "concepto" && (!e.d.tipo || e.tipoAuto)){
     const tp = tipoDeConcepto(v) || "";
     if(tp !== e.d.tipo){
@@ -26831,6 +26854,7 @@ function gastosAlEscribir(el, evento){
     const antes = f.d[campo];
     f.d[campo] = v; f.tocado = true; f.faltan = f.faltan.filter(x => x !== campo); f.dudas = (f.dudas || []).filter(x => x !== campo);
     if(campo === "tipo") f.tipoAuto = false;
+    if(["monto", "moneda", "rendidoMonto", "rendidoMoneda"].includes(campo)) pintarNota(`gxL_${id}_obsAuto`, notaDeMoneda(f.d.moneda, f.d.monto, f.d.rendidoMoneda, f.d.rendidoMonto));
     if(campo === "concepto" && (!f.d.tipo || f.tipoAuto)){
       const tp = tipoDeConcepto(v) || "", sel = document.getElementById(`gxL_${id}_tipo`);
       if(tp !== f.d.tipo){
