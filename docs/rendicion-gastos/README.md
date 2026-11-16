@@ -6,7 +6,8 @@
 > Administración → Gastos. El **lector de comprobantes** se publicó el 15/11, también con el OK del usuario.
 > Los arreglos de la revisión de diseño (la lista nueva, borrar, el lector de PDF con texto) se publicaron el 15/11,
 > también con su OK, y el 16/11 los montos contables, el tipo predicho y borrar una rendición vacía (con una regla
-> nueva en la base). Faltan los avisos. **Cada parte que sigue va a `main` recién
+> nueva en la base); después, borrar una rendición entera o varios gastos juntos y la ventana del gasto rediseñada.
+> Faltan los avisos. **Cada parte que sigue va a `main` recién
 > con el OK explícito del usuario**, con capturas: es lo que se acordó, y es una excepción a la regla general de
 > «pushear a `main` de una» de `CLAUDE.md` (al llegar a `main`, la base real se actualiza sola).
 
@@ -181,7 +182,7 @@ tocan eventos, comentarios ni la Agenda); se hace por etapas chicas; Drive y el 
     almuerzo de reunión, comida, como en su skill; las apps de viaje); al final, por la primera palabra en lo
     ya cargado. Al subir, cuando el lector completa el concepto y mientras se escribe (si el tipo está vacío o
     lo había puesto la sugerencia), y queda marcado para revisar.
-- [x] **Borrar más y la ventana nueva** (16/11, en la rama; van a `main` con el OK del usuario):
+- [x] **Borrar más y la ventana nueva** (publicados el 16/11 con el OK del usuario):
   - **Borrar una rendición entera**, aunque tenga comprobantes: «Borrar esta rendición (con sus N gastos)» al pie de
     una rendición propia que todavía se puede corregir, preguntando. Lo hace de una vez una función nueva de la base,
     `gastos_rendicion_borrar`: la persona, la suya abierta u observada; el admin fijo, cualquiera en esos estados;
