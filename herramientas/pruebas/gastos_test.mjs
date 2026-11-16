@@ -391,6 +391,46 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   await p.close();
 }
 
+/* ---------------- Pasar de un gasto al de al lado sin cerrar (lo pidió el usuario el 16/11) ---------------- */
+{
+  const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: vp, base: datos({ prendido: true }) });
+  await irGastos(p);
+  await p.click('[data-action="gastos-abrir-rendicion"][data-id="ren_mvd"]'); await p.waitForTimeout(150);
+  await p.click('[data-action="gasto-abrir"][data-id="gx1"]'); await p.waitForSelector("#gastoOverlay:not([hidden])");
+  const estado = () => p.evaluate(() => [document.getElementById("gxConcepto").value, document.querySelector(".gx-contador").textContent,
+    document.getElementById("gastoAnt").disabled, document.getElementById("gastoSig").disabled]);
+  eq("con varios gastos, flechas a los costados y cuál es («1 de 3»); en el primero, la de atrás no anda", await estado(), ["Taxi al aeropuerto", "1 de 3", true, false]);
+  eq("las flechas quedan afuera de la caja, sin taparla", await p.evaluate(() => { const m = document.querySelector("#gastoOverlay .modal").getBoundingClientRect(),
+    a = document.getElementById("gastoAnt").getBoundingClientRect(), z = document.getElementById("gastoSig").getBoundingClientRect(); return a.right <= m.left && z.left >= m.right; }), true);
+  eq("cada flecha dice a cuál lleva", await p.$eval("#gastoSig", e => e.getAttribute("aria-label")), "Gasto siguiente: Hotel Rambla, dos noches");
+  await p.click("#gastoSig");
+  eq("la flecha pasa al siguiente sin cerrar, y el foco sigue en ella", [...await estado(), await p.evaluate(() => document.activeElement.id)], ["Hotel Rambla, dos noches", "2 de 3", false, false, "gastoSig"]);
+  await p.keyboard.press("ArrowRight");
+  eq("con la flecha del teclado, también", await estado(), ["Cena con los directores", "3 de 3", false, true]);
+  await p.fill("#gxConcepto", "Cena con los directores y el rabino");
+  await p.keyboard.press("ArrowLeft");
+  eq("escribiendo en un campo, las flechas del teclado mueven el cursor, no el gasto", await p.$eval(".gx-contador", e => e.textContent), "3 de 3");
+  await p.click("#gastoAnt");
+  eq("con algo escrito, pregunta antes de pasar", await p.$eval("#confirmMessage", e => e.textContent).catch(() => ""), "¿Pasar al gasto anterior sin guardar lo que cambiaste?");
+  await p.click("#confirmCancel");
+  eq("…y si no, se queda con lo escrito", await p.$eval("#gxConcepto", e => e.value), "Cena con los directores y el rabino");
+  await p.click("#gastoAnt"); await p.click("#confirmOk");
+  eq("…o pasa sin guardar", await hasta(p, () => document.getElementById("gxConcepto").value === "Hotel Rambla, dos noches"), true);
+  eq("y no guardó lo escrito", (await tabla(p, "gastos")).find(g => g.id === "gx3").concepto, "Cena con los directores");
+  await p.keyboard.press("Escape");
+  eq("al cerrar, el foco vuelve a la fila del último que se vio", await hasta(p, () => document.getElementById("gastoOverlay").hidden && document.activeElement.dataset.id === "gx2"), true);
+  eq("sin errores de página", errores, []);
+  await p.close();
+}
+{
+  const { p } = await entrar(b, ADMIN, PERS[0].name, { viewport: celu, base: datos({ prendido: true }) });
+  await irGastos(p);
+  await p.click('[data-action="gastos-abrir-rendicion"][data-id="ren_mvd"]'); await p.waitForTimeout(150);
+  await p.click('[data-action="gasto-abrir"][data-id="gx1"]'); await p.waitForSelector("#gastoOverlay:not([hidden])");
+  eq("en el celular no hay flechas a los costados (la ventana ocupa la pantalla)", await p.$eval("#gastoSig", e => getComputedStyle(e).display), "none");
+  await p.close();
+}
+
 /* ---------------- Un PDF con texto de verdad se lee sin el lector de fotos ---------------- */
 // Como el recibo de Uber que trajo el usuario el 15/11 (inventado): el texto está adentro del PDF,
 // así que se lee directo, aun desde un archivo local, donde el lector de fotos no corre.

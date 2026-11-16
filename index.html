@@ -1038,6 +1038,10 @@
      (rediseñada el 16/11: más ancha, el monto destacado, y lo que se elige con botones). `.modal.gx-modal`:
      la regla general de las ventanas (más abajo) la dejaba en 640 px. */
   .modal.gx-modal{ max-width:1080px; width:min(1080px, calc(100vw - 32px)); height:min(860px, calc(100vh - 32px)); }
+  /* Con flechas a los costados, la caja deja lugar para ellas. */
+  .modal.gx-modal.gx-con-flechas{ width:min(1080px, calc(100vw - 152px)); }
+  .gx-nav:disabled{ opacity:.35; cursor:default; box-shadow:none; }
+  .gx-contador{ flex:none; font-size:12.5px; font-weight:700; color:var(--text-muted); white-space:nowrap; }
   .gx-body{ display:flex; flex-direction:column; min-height:0; }
   .gx-tit{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding-inline-end:36px; }
   .gx-oculto{ position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
@@ -1114,7 +1118,8 @@
   .gx-espacio{ flex:1; }
   .btn-secondary.gx-borrar{ color:var(--danger-fg); }
   @media (max-width:640px){
-    .modal.gx-modal{ height:calc(100vh - 16px); width:calc(100vw - 16px); }
+    .modal.gx-modal, .modal.gx-modal.gx-con-flechas{ height:calc(100vh - 16px); width:calc(100vw - 16px); }
+    .gx-nav{ display:none !important; }
     .gx-ventana{ display:flex; flex-direction:column; gap:12px; overflow-y:auto; }
     .gx-v-form{ overflow:visible; padding:0; }
     .gx-v-comp{ flex:none; }
@@ -5012,6 +5017,8 @@
   <div class="modal modal-wrap gx-modal" role="dialog" aria-modal="true" aria-labelledby="gastoTitle">
     <div id="gastoBody" class="gx-body"></div>
   </div>
+  <button type="button" id="gastoAnt" class="lightbox-nav lightbox-prev gx-nav" data-action="gasto-vecino" data-dir="-1" hidden></button>
+  <button type="button" id="gastoSig" class="lightbox-nav lightbox-next gx-nav" data-action="gasto-vecino" data-dir="1" hidden></button>
 </div>
 <!-- Fuera de la vista a propósito: la vista se vuelve a dibujar con cada aviso
      en vivo, y un selector de archivos abierto quedaría huérfano. -->
@@ -26395,6 +26402,7 @@ function renderGasto(){
   // marcas de cada campo (celeste, sugerido; amarillo, para revisar). Solo si «Leer» no encontró nada, una
   // línea chica bajo el comprobante.
   const nadaLeido = editable && e.leido && !leido.campos.length && !dudasVistas.length;
+  const vecinos = vecinosDeGasto(g.id);
   // Lo que la persona ya tocó deja de verse como sugerido; el tipo que puso la predicción, sí se ve.
   const marca = k => !editable || (e.tocados && e.tocados.has(k)) ? "" : k === "tipo" && e.tipoAuto ? ' data-sug="1"'
     : !leido ? "" : dudasVistas.includes(k) ? ' data-duda="1"' : leido.campos.includes(k) ? ' data-sug="1"' : "";
@@ -26423,7 +26431,8 @@ function renderGasto(){
     <h2 id="gastoTitle" class="gx-oculto">${editable ? t("Revisar el gasto","Check the expense","Revisar a despesa","בדיקת ההוצאה") : t("El gasto","The expense","A despesa","ההוצאה")}</h2>
     <div class="gx-cabecera">${gxChip(estadoDeGasto(g.estado))}
       <input type="text" id="gxConcepto" class="gx-concepto" maxlength="140" data-gcampo="concepto" value="${esc(d.concepto)}"${marca("concepto")} aria-label="${esc(t("Concepto","Description","Conceito","תיאור"))}"
-        placeholder="${esc(t("Concepto: por ejemplo, Taxi al aeropuerto","Description: for example, Taxi to the airport","Conceito: por exemplo, Táxi para o aeroporto","תיאור: למשל, מונית לשדה התעופה"))}"${mal("concepto")}${dis}></div>
+        placeholder="${esc(t("Concepto: por ejemplo, Taxi al aeropuerto","Description: for example, Taxi to the airport","Conceito: por exemplo, Táxi para o aeroporto","תיאור: למשל, מונית לשדה התעופה"))}"${mal("concepto")}${dis}>
+      ${vecinos && vecinos.ids.length > 1 ? `<span class="gx-contador" aria-live="polite">${esc(t("{a} de {b}","{a} of {b}","{a} de {b}","{a} מתוך {b}",{ a: vecinos.i + 1, b: vecinos.ids.length }))}</span>` : ""}</div>
     <div class="gx-ventana">
       <div class="gx-v-comp">${vista}
         <div class="gx-v-comp-pie"><small class="gx-arch">${esc(g.archivoNombre || "")}</small>
@@ -26458,7 +26467,47 @@ function renderGasto(){
       </div>
     </div>
     <div class="modal-actions gx-botones">${botones}</div>`;
+  pintarFlechasDeGasto(vecinos);
   if(idFoco){ const x = document.getElementById(idFoco); if(x) x.focus(); }
+}
+// ---- Pasar al gasto de al lado sin cerrar (lo pidió el usuario el 16/11) ----
+// Los de la misma lista que se está mirando, en el mismo orden: «Revisar en lista», «Sin vincular» o la rendición.
+function vecinosDeGasto(id){
+  const lista = gastosLista ? gastosParaLista(gastosLista.rid) : gastosAbierta === "sin" ? misSinVincular() : gastosAbierta ? gastosDe(gastosAbierta) : [];
+  const ids = lista.map(g => g.id), i = ids.indexOf(id);
+  return i < 0 ? null : { ids, i };
+}
+function pintarFlechasDeGasto(v){
+  const hay = !!(v && v.ids.length > 1);
+  gastoOverlay.querySelector(".gx-modal").classList.toggle("gx-con-flechas", hay);
+  [["gastoAnt", -1, "prev"], ["gastoSig", 1, "next"]].forEach(([id, dir, lado]) => {
+    const b = document.getElementById(id);
+    if(!b) return;
+    b.hidden = !hay;
+    if(!hay) return;
+    const otro = gastoPorId(v.ids[v.i + dir]);
+    b.disabled = !otro;
+    b.innerHTML = chevronHtml(lado);
+    const nombre = otro ? (otro.concepto || otro.archivoNombre || "") : "";
+    b.setAttribute("aria-label", dir < 0 ? t("Gasto anterior","Previous expense","Despesa anterior","ההוצאה הקודמת") + (nombre ? `: ${nombre}` : "")
+      : t("Gasto siguiente","Next expense","Próxima despesa","ההוצאה הבאה") + (nombre ? `: ${nombre}` : ""));
+    b.title = b.getAttribute("aria-label");
+  });
+}
+async function irAGastoVecino(dir){
+  const e = gastoEdit;
+  if(!e || e.guardando) return;
+  const v = vecinosDeGasto(e.id), id = v && v.ids[v.i + dir];
+  if(!id) return;
+  if(e.cambiado && !await appConfirm(dir < 0 ? t("¿Pasar al gasto anterior sin guardar lo que cambiaste?","Go to the previous expense without saving your changes?","Ir para a despesa anterior sem salvar o que você mudou?","לעבור להוצאה הקודמת בלי לשמור את השינויים?")
+      : t("¿Pasar al gasto siguiente sin guardar lo que cambiaste?","Go to the next expense without saving your changes?","Ir para a próxima despesa sem salvar o que você mudou?","לעבור להוצאה הבאה בלי לשמור את השינויים?"),
+    { okLabel: t("Pasar sin guardar","Go without saving","Ir sem salvar","לעבור בלי לשמור") })) return;
+  if(gastoEdit !== e) return;
+  const volver = gastoReturnFocus;
+  abrirGasto(id, volver);
+  // El foco queda en la flecha (para seguir pasando con Enter); si ya no hay más, en el concepto.
+  const b = document.getElementById(dir < 0 ? "gastoAnt" : "gastoSig");
+  if(b && !b.hidden && !b.disabled) b.focus();
 }
 // Pone el tipo en la ventana sin redibujarla (mientras se escribe el concepto): los botones o la lista.
 function pintarTipoEnVentana(tp, sugerido){
@@ -26755,6 +26804,7 @@ const GASTOS_ACCIONES = {
   "gasto-observar": async () => observarGasto(),
   "gasto-ver-comprobante": async el => verComprobante(el.dataset.id),
   "gasto-leer": async () => leerGastoAbierto(),
+  "gasto-vecino": async el => irAGastoVecino(Number(el.dataset.dir) || 0),
   "gasto-tipo": async el => elegirEnVentana("tipo", el.dataset.tipo),
   "gasto-pago": async el => elegirEnVentana("pago", el.dataset.pago),
   "gasto-forma": async el => elegirEnVentana("formaPago", el.dataset.forma),
@@ -26854,6 +26904,15 @@ document.getElementById("gastoOverlay").addEventListener("input", e => { if(gast
 // La ventana corta el aviso acá: el monto se acomoda antes, como en el resto de la pantalla.
 document.getElementById("gastoOverlay").addEventListener("change", e => { acomodarMonto(e.target); if(gastoAlEscribir(e.target, true)) e.stopPropagation(); });
 gastoOverlay.addEventListener("click", e => { if(e.target === gastoOverlay) pedirCerrarGasto(); });
+gastoOverlay.addEventListener("keydown", e => {
+  if(e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+  if(e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+  const el = e.target;
+  if(el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))) return;
+  if(!document.getElementById("confirmOverlay").hidden) return;
+  e.preventDefault();
+  irAGastoVecino((e.key === "ArrowRight") !== isRTL() ? 1 : -1);
+});
 gastosArchivosInput.addEventListener("change", () => {
   const files = [...(gastosArchivosInput.files || [])];
   gastosArchivosInput.value = "";

@@ -199,6 +199,11 @@ tocan eventos, comentarios ni la Agenda); se hace por etapas chicas; Drive y el 
   dice una línea chica bajo el comprobante. Para que entre todo sin bajar, aun en una laptop: el concepto arriba, al
   lado del estado, como un título que se escribe ahí mismo; el monto en dólares en la misma fila que el del
   comprobante; quién pagó y la forma de pago lado a lado; «Tiene factura» bajo el comprobante (es sobre el papel).
+- [x] **Pasar de un gasto al de al lado sin cerrar** (16/11, en la rama; lo pidió el usuario, como en el visor de
+  fotos y PDF): en la compu, flechas a los costados de la ventana (las mismas del visor) y las flechas del teclado
+  fuera de los campos, con «2 de 3» arriba; recorren la lista que se está mirando (la rendición, «Sin vincular» o
+  «Revisar en lista»), en el mismo orden. Con algo escrito sin guardar, pregunta antes de pasar. En el celular no
+  hay flechas (la ventana ocupa la pantalla).
 - [ ] Los avisos de «te observaron un gasto» (campanita y correo).
 
 **Visto al armar las pantallas (15/11), para decidir más adelante:** si la rutina de un mes ya se aprobó, un
