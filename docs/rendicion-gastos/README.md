@@ -8,7 +8,8 @@
 > también con su OK, y el 16/11 los montos contables, el tipo predicho y borrar una rendición vacía (con una regla
 > nueva en la base); después, borrar una rendición entera o varios gastos juntos y la ventana del gasto rediseñada.
 > El 16/11 también: la ventana sin el cartel del lector y más compacta, las flechas para pasar de un gasto a otro y
-> la nota de la moneda local. Faltan los avisos. **Cada parte que sigue va a `main` recién
+> la nota de la moneda local; el 17/11, elegir la moneda y las listas largas con una ventanita que busca.
+> Faltan los avisos. **Cada parte que sigue va a `main` recién
 > con el OK explícito del usuario**, con capturas: es lo que se acordó, y es una excepción a la regla general de
 > «pushear a `main` de una» de `CLAUDE.md` (al llegar a `main`, la base real se actualiza sola).
 
@@ -210,7 +211,7 @@ tocan eventos, comentarios ni la Agenda); se hace por etapas chicas; Drive y el 
   escribe él en su Sheet (sin centavos, «.-»; los pesos con su país: MX $, AR $, UY $…; las demás, su símbolo o su
   código). Sale sola de los montos y no se guarda escrita, así que nunca queda vieja si se corrige un monto; al cargar
   el Sheet (etapa 3) va adelante de lo que escribió la persona. Se ve en la ventana, en la lista y en el resumen.
-- [x] **Elegir la moneda y las listas largas** (17/11, en la rama; lo pidió el usuario: las listas eran interminables
+- [x] **Elegir la moneda y las listas largas** (publicado el 17/11; lo pidió el usuario: las listas eran interminables
   y, con una moneda ya puesta, la lista del navegador mostraba solo esa): la misma ventanita que la de «Responsable».
   En la moneda, tocar el campo la abre entera aunque ya tenga una: arriba «Las que más usás» (por sus gastos, con el
   dólar siempre) y abajo todas, con su nombre; escribir busca por código o nombre, Enter o tocarla elige, Escape deja
