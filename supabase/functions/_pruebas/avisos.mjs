@@ -192,6 +192,35 @@ eq("el correo sin nombre usa la dirección", armarCorreo({ nombre: "", correo: "
     eq(`un paso con la fecha «${cuando}»: el correo sale igual, sin fecha`, [rf[0], f.reg.correos.length, (f.reg.correos[0] || {}).text && f.reg.correos[0].text.includes("Para ")], [200, 1, false]);
   }
 }
+/* ---------- Un gasto observado (17/11/2026, 27-gastos.sql) ---------- */
+{
+  const aviso = { para: [{ email: "ana@x.com", nombre: "Ana", lang: "es" }], autor: "Benny", concepto: "Taxi al aeropuerto", texto: "Falta la factura: <b>¿la subís?</b>",
+                  moneda: "MXN", monto: 1642.5, fecha: "2026-11-13", actividad: "Visita a Lima", mes: null, gasto: "g-123", en: "gasto" };
+  const m = mundo({ otros: { preparar_aviso_de_gasto: aviso } });
+  const r = await leer(await atenderAviso(pedir({ cuerpo: { tipo: "gasto", id: "g-123" } }), { env: entorno(), fetch: m.traer, esperar: m.esperar }));
+  eq("un gasto observado: se le pregunta a la base con la sesión de quien lo observó, por el gasto", [r, m.reg.rpc.map(x => x.nombre), m.reg.rpc[0].auth, m.reg.cuerpos[0]],
+     [[200, { enviado: true, enviados: 1 }], ["preparar_aviso_de_gasto", "tomar_aviso"], "Bearer sesion-de-ana", { p_gasto: "g-123" }]);
+  const c = m.reg.correos[0];
+  eq("el correo: a la persona, con el asunto, el comentario, el gasto (monto contable y fecha), dónde va y el enlace al gasto",
+     [c.to, c.subject, c.text.includes("Falta la factura"), c.text.includes("Taxi al aeropuerto · MXN 1,642.50 · 13 nov"), c.text.includes("en Visita a Lima"), c.text.includes(`${APP}?gasto=g-123`)],
+     [["ana@x.com"], "Benny observó un gasto tuyo: «Taxi al aeropuerto»", true, true, true, true]);
+  eq("el comentario del admin va escapado: no se cuela HTML", [c.html.includes("<b>¿la subís?</b>"), c.html.includes("&lt;b&gt;¿la subís?&lt;/b&gt;")], [false, true]);
+  // La rutina del mes, en cada idioma; y en hebreo, de derecha a izquierda.
+  for(const [lang, asunto, rutina] of [["en", "Benny flagged one of your expenses: “Taxi al aeropuerto”", "Routine for November 2026"],
+      ["pt", "Benny observou uma despesa sua: «Taxi al aeropuerto»", "Rotina de novembro de 2026"], ["he", "Benny העיר/ה על הוצאה שלך: «Taxi al aeropuerto»", "שגרה של נובמבר 2026"]]){
+    const k = mundo({ otros: { preparar_aviso_de_gasto: { ...aviso, para: [{ ...aviso.para[0], lang }], actividad: null, mes: "2026-11-01" } } });
+    await atenderAviso(pedir({ cuerpo: { tipo: "gasto", id: "g-123" } }), { env: entorno(), fetch: k.traer, esperar: k.esperar });
+    const ck = k.reg.correos[0];
+    eq(`${lang}: el asunto y la rutina del mes en su idioma`, [ck.subject, ck.text.includes(rutina), lang === "he" ? ck.html.includes('dir="rtl"') : true], [asunto, true, true]);
+  }
+  // Sin concepto ni monto (un gasto a medio cargar): el correo sale igual.
+  const v = mundo({ otros: { preparar_aviso_de_gasto: { ...aviso, concepto: "", monto: null, fecha: "nunca" } } });
+  await atenderAviso(pedir({ cuerpo: { tipo: "gasto", id: "g-123" } }), { env: entorno(), fetch: v.traer, esperar: v.esperar });
+  eq("sin concepto, monto ni fecha válida: sale igual, con «un gasto sin concepto»", [v.reg.correos.length, v.reg.correos[0].subject], [1, "Benny observó un gasto tuyo: «un gasto sin concepto»"]);
+  const n = mundo({ otros: { preparar_aviso_de_gasto: null } });
+  const rn = await leer(await atenderAviso(pedir({ cuerpo: { tipo: "gasto", id: "g-123" } }), { env: entorno(), fetch: n.traer, esperar: n.esperar }));
+  eq("si a la base no le corresponde (no es admin, ya salió, lo apagó), no sale nada", [rn[1], n.reg.correos.length], [{ enviado: false, motivo: "no-corresponde" }, 0]);
+}
 {
   // «Mandarme un informe de prueba» (propuesta 3-A): lo pide un admin, la base le contesta un turno.
   const aviso = { para: [{ email: "benny@team-latam.com", nombre: "Benny", lang: "en", tz: "Asia/Jerusalem" }], mes: "2026-10", vence: "2026-11-03T12:30:00Z" };

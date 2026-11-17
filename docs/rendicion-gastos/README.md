@@ -235,7 +235,19 @@ tocan eventos, comentarios ni la Agenda); se hace por etapas chicas; Drive y el 
     transferencia o el recibo, al anotarlo o después («📎 Adjuntar comprobante»), y se ve con «📎 Ver el
     comprobante». Va en `gastos/mov-<id>/`; lo sube quien puede corregir el movimiento (la persona mientras está
     pendiente; un admin, siempre) y lo ven ella y los admins. La limpieza semanal del bucket lo cuenta como usado.
-- [ ] Los avisos de «te observaron un gasto» (campanita y correo).
+- [ ] **Los avisos de «te observaron un gasto»** (en la rama, esperando el OK del usuario; el 17/11 eligió
+  terminar la etapa 1 con esto y después cargar un viaje real entero en paralelo con la skill):
+  - **La campanita**: «Gastos para corregir», arriba de todo, con quién lo observó, en qué rendición y qué pidió;
+    cuenta en el globito mientras no se abre, tiene su filtro «Gastos» y tocarlo abre el gasto en su rendición. Se
+    va solo cuando se corrige y confirma. Sale de los datos que la app ya tiene (no hay nada guardado aparte).
+  - **El correo**: al observar, la app del admin le pide a la función `avisar` el aviso; la base
+    (`preparar_aviso_de_gasto`, 27-gastos.sql) decide si corresponde: un admin, sobre un gasto observado que no
+    es suyo y con su comentario de recién; la persona tiene que poder ver sus gastos y recibir correos, y no
+    haber apagado «Gastos que me observan» (Mis preferencias → Notificaciones, `emailGastos`). Una vez por
+    comentario, al momento aunque haya elegido el resumen. El correo (`correoGasto`, en los cuatro idiomas) dice
+    el concepto, el monto, la fecha, la actividad o la rutina del mes, y lo que hay que corregir.
+  - **Su botón** «Ver el gasto» lleva a `?gasto=<id>`: la app abre ese gasto apenas llegan los datos (a un admin,
+    desde «Para aprobar») y limpia la dirección.
 
 **Visto al armar las pantallas (15/11), para decidir más adelante:** si la rutina de un mes ya se aprobó, un
 gasto nuevo de ese mes no tiene dónde ir (queda sin vincular), porque hay una rendición por persona y por mes.
@@ -248,6 +260,8 @@ corriente**: es para los números grandes, porque no dice quién puso la plata.
 
 ## Lo que quedó para decidir más adelante (no frena la etapa 1)
 
-- El código del peso mexicano (el proceso usa «MX» y «MEX»; el estándar es MXN), a qué «Actividad» del Sheet
+- ~~El código del peso mexicano~~ — **decidido el 17/11: va «MX»**, como en su Sheet. El sistema lo guarda como
+  MXN (el código de tres letras que pide la base) y lo escribe «MX» al cargar el Sheet (etapa 3); la nota de la
+  moneda ya dice «MX $». Sigue por decidir a qué «Actividad» del Sheet
   van Congreso, Virtual y Otro, un gasto que sirve a dos actividades, el mes de un viaje que cruza dos meses, y
   si cada persona tiene su Sheet o van todos al mismo.

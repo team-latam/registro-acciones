@@ -253,12 +253,16 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   await p.click('[data-action="gastos-abrir-rendicion"][data-id="ren_ana"]'); await p.waitForTimeout(150);
   eq("la rendición de otra persona: con su nombre y «Aprobar»", await p.evaluate(() => [document.querySelector(".gx-cab .setting-sub").textContent.includes("Ana Pérez"), !!document.querySelector('[data-action="gastos-aprobar"]')]), [true, true]);
   await p.click('[data-action="gasto-abrir"][data-id="gx5"]'); await p.waitForSelector("#gastoOverlay:not([hidden]) #gxObs");
+  // El correo de «te observaron un gasto» (17/11): la app lo pide; a quién y si corresponde lo decide la base.
+  const avisos = [];
+  await p.route(/\/functions\/v1\/avisar/, r => { avisos.push(JSON.parse(r.request().postData() || "{}")); return r.fulfill({ contentType: "application/json", body: '{"enviado":true}' }); });
   await p.click('[data-action="gasto-observar"]');
   eq("observar sin comentario no se puede", await p.evaluate(() => [document.querySelector("#gastoBody .form-error").textContent.trim(), document.activeElement.id]), ["Escribí qué hay que corregir: le llega a la persona.", "gxObs"]);
   await p.fill("#gxObs", "Falta el ticket del micro");
   await p.click('[data-action="gasto-observar"]');
   eq("observar: con la función de la base y el comentario", await hasta(p, () => document.getElementById("gastoOverlay").hidden), true);
   eq("…lo que se mandó", (await rpcs(p, "gastos_observar")), [{ p_gasto: "gx5", p_texto: "Falta el ticket del micro" }]);
+  eq("…y pide el aviso por correo para la persona, por ese gasto (una vez)", await hasta(p, () => true).then(() => avisos), [{ tipo: "gasto", id: "gx5" }]);
   eq("la rendición vuelve a la persona y ya no se aprueba", await hasta(p, () => !document.querySelector('[data-action="gastos-aprobar"]') && window.__sb.tablas.gastos_rendiciones.find(r => r.id === "ren_ana").estado === "observada"), true);
   await p.click('[data-action="gastos-volver"]'); await p.waitForTimeout(150);
   await p.click('[data-action="gastos-abrir-rendicion"][data-id="ren_mvd"]'); await p.waitForTimeout(150);
@@ -736,6 +740,71 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   eq("…y el foco queda en «Ver el comprobante»", await hasta(p, () => document.activeElement.dataset.action === "gastos-mov-ver" && document.activeElement.dataset.id === "mv1"), true);
   eq("sin errores de página", errores, []);
   await p.close();
+}
+
+/* ---------------- «Te observaron un gasto»: la campanita, el correo y su enlace (17/11/2026; lo acordado el 15/11) ---------------- */
+{
+  // Diego (integrante, con el módulo abierto al equipo) tiene la cena observada por Benny (gx7, con su comentario).
+  const conDiego = (cambiar) => { const base = datos({ prendido: true, abierto: true }); base.app_config.find(c => c.key === "preferences").value.correos = { quienes: "todos" };
+    if(cambiar) cambiar(base); return base; };
+  const globito = p => p.$eval(".mention-dot", e => Number(e.textContent)).catch(() => 0);
+  let sinObservar;
+  {
+    const { p } = await entrar(b, PERS[2].email, PERS[2].name, { viewport: vp, base: conDiego(base => { base.gastos.find(g => g.id === "gx7").estado = "confirmado"; }) });
+    sinObservar = await globito(p);
+    await p.close();
+  }
+  const { p, errores } = await entrar(b, PERS[2].email, PERS[2].name, { viewport: vp, base: conDiego() });
+  eq("el globito de la campanita cuenta el gasto observado", await globito(p), sinObservar + 1);
+  await p.click('[data-action="toggle-mentions-menu"]'); await p.waitForTimeout(150);
+  eq("la campanita: «Gastos para corregir» arriba de todo, con quién lo observó y qué pidió", await p.evaluate(() => {
+    const sec = [...document.querySelectorAll(".mentions-menu .bell-section")].map(e => e.textContent.trim());
+    const it = document.querySelector('.mentions-menu [data-action="goto-gasto"]');
+    return it && [sec[0], it.dataset.id, /@benny/.test(it.querySelector(".mi-author").textContent), it.classList.contains("nuevo"),
+      /^⚠️ Observó «Cena» · .+: Falta la factura: ¿la podés subir de nuevo\?$/.test(it.querySelector(".mi-content").textContent.trim())];
+  }), ["Gastos para corregir", "gx7", true, true, true]);
+  eq("abrirla lo marca visto: el globito se va", await p.evaluate(() => !document.querySelector(".mention-dot")), true);
+  await tocar(p, '[data-action="bell-filtro"][data-key="gastos"]');
+  eq("el filtro «Gastos» deja solo eso", await p.$$eval(".mentions-menu .bell-section", l => l.map(e => e.textContent.trim())), ["Gastos para corregir"]);
+  await tocar(p, '.mentions-menu [data-action="goto-gasto"][data-id="gx7"]');
+  eq("tocarlo abre el gasto en su rendición, con el comentario a la vista", await hasta(p, () => !document.getElementById("gastoOverlay").hidden
+    && /Falta la factura/.test(document.querySelector("#gastoBody .gx-hilo").textContent) && !!document.querySelector(".gastos-view .gx-volver")), true);
+  await tocar(p, '#gastoBody [data-action="gasto-guardar"][data-confirmar="1"]');
+  await hasta(p, () => document.getElementById("gastoOverlay").hidden);
+  if(!(await p.$(".mentions-menu"))){ await p.click('[data-action="toggle-mentions-menu"]'); await p.waitForTimeout(150); }
+  eq("corregido, sale de la campanita", await p.$$eval('.mentions-menu [data-action="goto-gasto"]', l => l.length), 0);
+  if(await p.$(".mentions-menu")) await p.click('[data-action="toggle-mentions-menu"]');
+  if(!(await p.evaluate(() => document.getElementById("gastoOverlay").hidden))) await p.keyboard.press("Escape");
+  // La preferencia del correo, en Mis preferencias → Notificaciones.
+  await p.click('[data-action="toggle-user-menu"]');
+  await p.click('.user-menu [data-action="goto-view"][data-view="configuracion"]');
+  await p.click('[data-action="config-section"][data-key="notificaciones"]'); await p.waitForTimeout(200);
+  eq("en las notificaciones: «Gastos que me observan», prendido de fábrica", await p.$$eval('.avisos-correo input[data-pref="emailGastos"]', l => l.map(x => x.checked)), [true]);
+  await tocar(p, '.avisos-correo input[data-pref="emailGastos"] + .pref-slider');
+  eq("apagarlo lo guarda", await hasta(p, e => (((window.__sb.tablas.user_prefs || []).find(f => f.email === e) || {}).prefs || {}).emailGastos === false, PERS[2].email), true);
+  eq("sin errores de página", errores, []);
+  await p.close();
+}
+{
+  // El botón del correo: ?gasto=<id>. Abre el gasto apenas llegan los gastos, y limpia la dirección.
+  const base = datos({ prendido: true, abierto: true });
+  const { p, errores } = await entrar(b, PERS[2].email, PERS[2].name, { viewport: vp, base, query: "?gasto=gx7" });
+  eq("el enlace del correo abre ese gasto", await hasta(p, () => !document.getElementById("gastoOverlay").hidden && document.getElementById("gxConcepto").value === "Cena"), true);
+  eq("…y se limpia la dirección (recargar no vuelve a saltar ahí)", await p.evaluate(() => location.search), "");
+  eq("sin errores de página", errores, []);
+  await p.close();
+  // Un admin que abre el enlace de un gasto de otra persona: lo ve desde «Para aprobar».
+  const { p: q, errores: e2 } = await entrar(b, ADMIN, PERS[0].name, { viewport: vp, base: datos({ prendido: true }), query: "?gasto=gx5" });
+  eq("un admin con el enlace de un gasto ajeno: lo abre, desde «Para aprobar»", await hasta(q, () => !document.getElementById("gastoOverlay").hidden
+    && /Para aprobar/.test((document.querySelector(".gastos-view .gx-volver") || {}).textContent || "")), true);
+  eq("sin errores de página", e2, []);
+  await q.close();
+  // Alguien que no tiene ese gasto (o uno que ya no está): no pasa nada.
+  const { p: r, errores: e3 } = await entrar(b, ADMIN, PERS[0].name, { viewport: vp, base: datos({ prendido: true }), query: "?gasto=no-existe" });
+  await r.waitForTimeout(500);
+  eq("un enlace a un gasto que no está: no abre nada ni se rompe", await r.evaluate(() => [document.getElementById("gastoOverlay").hidden, location.search]), [true, ""]);
+  eq("sin errores de página", e3, []);
+  await r.close();
 }
 
 /* ---------------- Administración → Gastos ---------------- */

@@ -6443,6 +6443,17 @@ const CHANGES_SEEN_KEY = "changesSeenAt";
 function getMentionsSeenAt(){ return getPerUserTs(MENTIONS_SEEN_KEY); }
 function getRepliesSeenAt(){ return getPerUserTs(REPLIES_SEEN_KEY); }
 function getChangesSeenAt(){ return getPerUserTs(CHANGES_SEEN_KEY); }
+// Los gastos que un admin le observó (17/11/2026): misma marca, con la hora del comentario más nuevo.
+const GASTOS_SEEN_KEY = "gastosSeenAt";
+function getGastosSeenAt(){ return getPerUserTs(GASTOS_SEEN_KEY); }
+function markGastosSeen(){
+  const latest = gastosObservadosMios().reduce((max, o) => Math.max(max, tsToMillis(o.at)), 0);
+  markPerUserTs(GASTOS_SEEN_KEY, latest || Date.now());
+}
+function getUnseenGastosCount(){
+  const seenAt = getGastosSeenAt();
+  return gastosObservadosMios().filter(o => tsToMillis(o.at) > seenAt).length;
+}
 function markChangesSeen(){
   const latest = getRecentChanges(1).reduce((max,c)=> Math.max(max, tsToMillis(c.at)), 0);
   markPerUserTs(CHANGES_SEEN_KEY, latest || Date.now());
@@ -12873,7 +12884,7 @@ function renderMentionsBell(){
   // sigue mostrando todo. Antes "lo que se viene" sumaba siempre, así que
   // el número no bajaba a cero por más que se abriera la campanita.
   const count = getUnseenMentionCount() + getUnseenReplyCount() + getUnseenChangesCount()
-    + getUnseenUpcomingCount() + (hasUnseenCalendarInvite() ? 1 : 0);
+    + getUnseenUpcomingCount() + getUnseenGastosCount() + (hasUnseenCalendarInvite() ? 1 : 0);
   const countLabel = count === 1
     ? t("1 novedad", "1 update", "1 novidade", "עדכון אחד")
     : t("{n} novedades", "{n} updates", "{n} novidades", "{n} עדכונים", { n: count });
@@ -12901,7 +12912,18 @@ function renderMentionsMenuItems(hasInvite, upcoming){
       ["todo", t("Todo","All","Tudo","הכול")], ["menciones", t("Menciones","Mentions","Menções","אזכורים")],
       ["respuestas", t("Respuestas","Replies","Respostas","תגובות")], ["cambios", t("Cambios","Changes","Mudanças","שינויים")],
       ["eventos", t("Eventos","Events","Eventos","אירועים")],
+      ...(gastosVisible() ? [["gastos", t("Gastos","Expenses","Despesas","הוצאות")]] : []),
     ].map(([k,l])=>`<button type="button" class="${f===k?"active":""}" data-action="bell-filtro" data-key="${k}">${l}</button>`).join("")}</div>`;
+  // Los gastos que un admin observó y todavía no se corrigieron (17/11/2026): es lo que hay que hacer, va arriba.
+  const observados = ver("gastos") ? gastosObservadosMios() : [];
+  const gastoItems = observados.length ? `
+    <div class="bell-section">${t("Gastos para corregir","Expenses to fix","Despesas para corrigir","הוצאות לתיקון")}</div>
+    ${observados.slice(0, 4).map(o => `
+      <button type="button" class="mention-item${esNuevo(o.at, "g") ? " nuevo" : ""}" data-action="goto-gasto" data-id="${esc(o.id)}">
+        <span class="mi-author">${o.por ? (authorLabelHtml(o.por) || esc(nombreDePersona(o.por))) : esc(t("Un administrador","An admin","Um administrador","מנהל/ת"))}${esNuevo(o.at, "g") ? nuevo : ""}</span>
+        <span class="mi-content" dir="auto">⚠️ ${esc(t("Observó «{c}»","Flagged “{c}”","Observou «{c}»","העיר/ה על «{c}»",{ c: o.concepto || t("un gasto","an expense","uma despesa","הוצאה") }))}${o.donde ? ` · ${esc(o.donde)}` : ""}${o.texto ? `: ${esc(String(o.texto).slice(0, 90))}` : ""}</span>
+        <span class="mi-date">${fmtDateTime(o.at)}</span>
+      </button>`).join("")}` : "";
   // Lo que se viene va primero: es lo único con fecha de vencimiento. Y
   // si al evento le falta documentación, lo dice acá, que es cuando
   // todavía hay tiempo de subirla.
@@ -12955,7 +12977,7 @@ function renderMentionsMenuItems(hasInvite, upcoming){
       <button type="button" class="ci-dismiss" data-action="dismiss-calendar-invite-notice">${t("Ya la acepté ✕","Already accepted ✕","Já aceitei ✕","כבר אישרתי ✕")}</button>
     </div>` : "";
   const menciones = ver("menciones") ? recent : [];
-  if(!menciones.length && !inviteItem && !upcomingItems && !changeItems && !replyItems){
+  if(!menciones.length && !inviteItem && !gastoItems && !upcomingItems && !changeItems && !replyItems){
     const vacio = f === "todo"
       ? t("Todavía no hay novedades: ni menciones, ni respuestas, ni eventos cerca.","Nothing new yet: no mentions, replies or events coming up.","Ainda não há novidades: nem menções, nem respostas, nem eventos próximos.","עדיין אין חדש: לא אזכורים, לא תגובות ולא אירועים קרובים.")
       : t("Nada por acá.","Nothing here.","Nada por aqui.","אין כאן כלום.");
@@ -12963,7 +12985,7 @@ function renderMentionsMenuItems(hasInvite, upcoming){
   }
   const mentionItems = menciones.length ? `
     <div class="bell-section">${t("Menciones","Mentions","Menções","אזכורים")}</div>` : "";
-  return filtros + inviteItem + upcomingItems + changeItems + replyItems + mentionItems + menciones.map(m=>`
+  return filtros + inviteItem + gastoItems + upcomingItems + changeItems + replyItems + mentionItems + menciones.map(m=>`
     <button type="button" class="mention-item${esNuevo(m.createdAt, "m") ? " nuevo" : ""}" data-action="goto-mention" data-post-id="${esc(m.postId)}" ${m.replyId ? `data-reply-id="${esc(m.replyId)}"` : ""}>
       <span class="mi-author">${authorLabelHtml(m.authorEmail, m.authorName) || t("Alguien","Someone","Alguém","מישהו/י")}${esNuevo(m.createdAt, "m") ? nuevo : ""}</span>
       <span class="mi-content" dir="auto">${esc((m.content||"").slice(0,80))}</span>
@@ -17594,7 +17616,21 @@ let enlaceDeCorreo = (()=>{
     return /^\d{4}-(0[1-9]|1[0-2])$/.test(q.get("informe") || "") ? { informe: q.get("informe") } : null;
   }catch(e){ return null; }
 })();
+// «Ver el gasto» del correo de «te observaron un gasto» (17/11/2026): ?gasto=<id>. Los gastos llegan después
+// que los posteos: se abre recién cuando están (si es de quien abre o lo puede ver un admin); si no, no pasa nada.
+let gastoDeCorreo = (()=>{
+  try{ const g = new URLSearchParams(location.search).get("gasto"); return g && /^[0-9A-Za-z_-]{1,64}$/.test(g) ? g : null; }
+  catch(e){ return null; }
+})();
+function abrirGastoDeCorreo(){
+  if(!gastoDeCorreo || !state.loaded || !state.auth.allowlisted || !gastosDatos) return;
+  const id = gastoDeCorreo;
+  gastoDeCorreo = null;
+  try{ history.replaceState(null, "", location.pathname + location.hash); }catch(e){}
+  if(gastoPorId(id)) setTimeout(() => irAGasto(id), 0);
+}
 function abrirEnlaceDeCorreo(){
+  abrirGastoDeCorreo();
   if(!enlaceDeCorreo || !state.loaded || !state.auth.allowlisted) return;
   const { post, r, ir, informe } = enlaceDeCorreo;
   enlaceDeCorreo = null;
@@ -20096,6 +20132,9 @@ function renderAvisosPorCorreo(p){
       ${prefRow("📅", t("El día que vence","The day it's due","No dia em que vence","ביום שבו זה מסתיים"),
         t("Otro aviso, a primera hora de ese día, por cada pendiente tuyo que tenga fecha.","Another notice, first thing that day, for each of your to-dos with a date.","Outro aviso, logo cedo nesse dia, para cada pendência sua com data.","עוד התראה, בבוקר אותו יום, על כל משימה שלך עם תאריך."),
         prefSwitch("emailVence", p.emailVence !== false))}
+      ${gastosVisible() ? prefRow("🧾", t("Gastos que me observan","Expenses flagged for me","Despesas que me observam","הוצאות שקיבלו הערה"),
+        t("Te avisamos al momento cuando un administrador te pide corregir un gasto.","We let you know right away when an admin asks you to fix an expense.","Avisamos na hora quando um administrador pede que você corrija uma despesa.","נעדכן אותך מיד כשמנהל/ת מבקש/ת לתקן הוצאה."),
+        prefSwitch("emailGastos", p.emailGastos !== false)) : ""}
       ${isAdmin() ? prefRow("🌎", t("Lugares sin actividad","Places with no activity","Lugares sem atividade","מקומות ללא פעילות"),
         t("El primer lunes de cada mes, los países donde hace tiempo no se hizo nada. El plazo lo elige quien administra, en Administración → Correos.","On the first Monday of each month, the countries where nothing has been done for a while. The period is set by the admin, in Administration → Emails.","Na primeira segunda-feira de cada mês, os países onde faz tempo que nada é feito. O prazo é escolhido por quem administra, em Administração → E-mails.","ביום שני הראשון בכל חודש, המדינות שבהן לא נעשה דבר כבר זמן. את התקופה קובע/ת המנהל/ת, בניהול → מיילים."),
         prefSwitch("emailLugares", p.emailLugares !== false)) : ""}
@@ -26704,6 +26743,33 @@ async function anotarMovimiento(){
   render();
 }
 
+// Lo que un admin le observó a quien mira y todavía no corrigió, lo más nuevo primero: para la campanita
+// (17/11/2026; lo acordado el 15/11: el aviso llega por la campanita y por correo). Al corregirlo, sale.
+function gastosObservadosMios(){
+  if(!gastosDatos || !gastosVisible()) return [];
+  const yo = miCorreo();
+  return gastosDatos.gastos.filter(g => g.autor === yo && g.estado === "observado").map(g => {
+    const cs = comentariosDe(g.id), c = cs.filter(x => String(x.autor || "").toLowerCase() !== yo).pop() || cs[cs.length - 1];
+    const r = g.rendicionId && rendicionPorId(g.rendicionId);
+    return { id: g.id, concepto: g.concepto || g.archivoNombre || "", donde: r ? tituloRendicion(r) : "",
+      por: c ? String(c.autor || "").toLowerCase() : "", texto: c ? c.texto : "", at: c ? c.creadoEl : g.tocadoEl };
+  }).sort((a, b) => tsToMillis(b.at) - tsToMillis(a.at));
+}
+// Desde la campanita o el correo: la pantalla de gastos, su rendición, y el gasto abierto.
+function irAGasto(id){
+  const g = gastoPorId(id);
+  if(!g || !gastosVisible()) return;
+  state.view = "gastos"; state.countryDrill = null; state.zonaDrill = null;
+  userMenuOpen = false; moreMenuOpen = false;
+  const mio = g.autor === miCorreo();
+  gastosSeccion = mio ? "rendiciones" : "aprobar";
+  gastosAbierta = g.rendicionId || (mio ? "sin" : null);
+  gastosLista = null; gastosSel = null; gastosTotal = null; gastosDestino = null;
+  render();
+  const fila = document.querySelector(`.gastos-view [data-action="gasto-abrir"][data-id="${CSS.escape(id)}"]`);
+  abrirGasto(id, fila || document.querySelector(".gastos-view .gx-volver"));
+}
+
 // ---- La ventana de un gasto ----
 function abrirGasto(id, desde){
   const g = gastoPorId(id);
@@ -27008,7 +27074,7 @@ async function observarGasto(){
   const txt = String(e.observacion || "").trim();
   if(!txt){ e.error = t("Escribí qué hay que corregir: le llega a la persona.","Write what needs fixing: the person gets it.","Escreva o que precisa ser corrigido: chega para a pessoa.","כתבו מה צריך לתקן: זה מגיע לאדם."); renderGasto(); const x = document.getElementById("gxObs"); if(x) x.focus(); return; }
   e.guardando = true; e.error = ""; renderGasto();
-  try{ await store.gastos.observar(e.id, txt.slice(0, 1000)); cerrarGasto(); }
+  try{ await store.gastos.observar(e.id, txt.slice(0, 1000)); avisarPorCorreo("gasto", e.id); cerrarGasto(); }
   catch(err){
     console.error("No se pudo observar el gasto:", err);
     if(gastoEdit !== e) return;
@@ -30487,13 +30553,17 @@ document.addEventListener("click", async e=>{
     if(mentionsMenuOpen){
       // Qué era nuevo al abrir, ANTES de marcarlo visto: así el panel lo
       // resalta esta vez, y la próxima ya no.
-      bellVistoAlAbrir = { m: getMentionsSeenAt(), r: getRepliesSeenAt(), c: getChangesSeenAt() };
-      markMentionsSeen(); markRepliesSeen(); markChangesSeen(); markUpcomingSeen(); markCalendarInviteSeen();
+      bellVistoAlAbrir = { m: getMentionsSeenAt(), r: getRepliesSeenAt(), c: getChangesSeenAt(), g: getGastosSeenAt() };
+      markMentionsSeen(); markRepliesSeen(); markChangesSeen(); markUpcomingSeen(); markCalendarInviteSeen(); markGastosSeen();
     }
     render();
   },
     "bell-filtro": async (el, e, action, postId) => {
     bellFiltro = el.dataset.key; render();
+  },
+    "goto-gasto": async (el, e, action, postId) => {
+    mentionsMenuOpen = false;
+    irAGasto(el.dataset.id);
   },
     "goto-mention": async (el, e, action, postId) => {
     mentionsMenuOpen = false;

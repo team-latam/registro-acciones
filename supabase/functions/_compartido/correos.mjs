@@ -42,6 +42,8 @@ const TX = {
     reTituloSem:"Lo que pasó del {a} al {b}", reTituloDia:"Lo que pasó desde ayer", reSem:"Tu resumen de la semana", reDia:"Tu resumen del día",
     reMenc:"Te mencionaron", reResp:"Respuestas a tus posteos", reNuevo:"Nuevo en el Registro", reProx:"Empiezan pronto",
     yMas:"y {n} más", respEn:"{n} {r} en «{t}»", rango:"{a} al {b}", rePieSem:"Te llega porque elegiste un resumen semanal. Si no pasó nada, no llega.", rePieDia:"Te llega porque elegiste un resumen diario. Si no pasó nada, no llega.",
+    gasAsunto:"{a} observó un gasto tuyo: «{c}»", gasEtiqueta:"Gasto observado", gasTitulo:"{a} te pide corregir un gasto", gasDice:"Lo que hay que corregir", gasBoton:"Ver el gasto",
+    gasPie:"Te llega porque un administrador observó un gasto tuyo.", gasRutina:"Rutina de {m}", gasSinConcepto:"un gasto sin concepto",
     pasAsunto:"{a} te asignó un pendiente en «{t}»", pasEtiqueta:"Pendiente asignado", pasTitulo:"{a} te asignó un pendiente", pasPara:"Para el {f}", pasBoton:"Ver el pendiente",
     pasPie:"Te llega porque alguien te asignó un paso de «Lo que sigue».", venAsunto:"Hoy vence: {p}", venEtiqueta:"Vence hoy", venTitulo:"Un pendiente tuyo vence hoy", venPie:"Te llega porque tenés un pendiente con fecha de hoy.", cadaPaso:"Lo que sigue" },
   en: { marca:"Toldot", desc:"Action Log", prefs:"To change what you get and when: <b>My preferences → Notifications</b>.",
@@ -60,6 +62,8 @@ const TX = {
     reTituloSem:"What happened from {a} to {b}", reTituloDia:"What happened since yesterday", reSem:"Your weekly summary", reDia:"Your daily summary",
     reMenc:"You were mentioned", reResp:"Replies to your posts", reNuevo:"New in the Log", reProx:"Starting soon",
     yMas:"and {n} more", respEn:"{n} {r} on “{t}”", rango:"{a} to {b}", rePieSem:"You're getting this because you chose a weekly summary. If nothing happened, none is sent.", rePieDia:"You're getting this because you chose a daily summary. If nothing happened, none is sent.",
+    gasAsunto:"{a} flagged one of your expenses: “{c}”", gasEtiqueta:"Expense flagged", gasTitulo:"{a} asks you to fix an expense", gasDice:"What needs fixing", gasBoton:"See the expense",
+    gasPie:"You're getting this because an admin flagged one of your expenses.", gasRutina:"Routine for {m}", gasSinConcepto:"an expense with no description",
     pasAsunto:"{a} assigned you a to-do on “{t}”", pasEtiqueta:"Assigned to-do", pasTitulo:"{a} assigned you a to-do", pasPara:"Due {f}", pasBoton:"View the to-do",
     pasPie:"You're getting this because someone assigned you a step from “What's next”.", venAsunto:"Due today: {p}", venEtiqueta:"Due today", venTitulo:"One of your to-dos is due today", venPie:"You're getting this because you have a to-do dated today.", cadaPaso:"What's next" },
   pt: { marca:"Toldot", desc:"Registro de Ações", prefs:"Para mudar o que chega e quando: <b>Minhas preferências → Notificações</b>.",
@@ -78,6 +82,8 @@ const TX = {
     reTituloSem:"O que aconteceu de {a} a {b}", reTituloDia:"O que aconteceu desde ontem", reSem:"Seu resumo da semana", reDia:"Seu resumo do dia",
     reMenc:"Mencionaram você", reResp:"Respostas às suas postagens", reNuevo:"Novo no Registro", reProx:"Começam em breve",
     yMas:"e mais {n}", respEn:"{n} {r} em «{t}»", rango:"{a} a {b}", rePieSem:"Chega porque você escolheu um resumo semanal. Se nada aconteceu, não chega.", rePieDia:"Chega porque você escolheu um resumo diário. Se nada aconteceu, não chega.",
+    gasAsunto:"{a} observou uma despesa sua: «{c}»", gasEtiqueta:"Despesa observada", gasTitulo:"{a} pede que você corrija uma despesa", gasDice:"O que precisa ser corrigido", gasBoton:"Ver a despesa",
+    gasPie:"Chega porque um administrador observou uma despesa sua.", gasRutina:"Rotina de {m}", gasSinConcepto:"uma despesa sem conceito",
     pasAsunto:"{a} atribuiu uma pendência a você em «{t}»", pasEtiqueta:"Pendência atribuída", pasTitulo:"{a} atribuiu uma pendência a você", pasPara:"Para {f}", pasBoton:"Ver a pendência",
     pasPie:"Chega porque alguém atribuiu a você um passo de «O que segue».", venAsunto:"Vence hoje: {p}", venEtiqueta:"Vence hoje", venTitulo:"Uma pendência sua vence hoje", venPie:"Chega porque você tem uma pendência com data de hoje.", cadaPaso:"O que segue" },
   he: { marca:"תולדות", desc:"יומן פעולות", prefs:"כדי לשנות מה מגיע ומתי: <b>ההעדפות שלי ← התראות</b>.",
@@ -96,6 +102,8 @@ const TX = {
     reTituloSem:"מה קרה בין {a} ל־{b}", reTituloDia:"מה קרה מאתמול", reSem:"הסיכום השבועי שלך", reDia:"הסיכום היומי שלך",
     reMenc:"הזכירו אותך", reResp:"תגובות לפוסטים שלך", reNuevo:"חדש ביומן", reProx:"מתחילים בקרוב",
     yMas:"ועוד {n}", respEn:"{n} {r} ב«{t}»", rango:"{a} עד {b}", rePieSem:"זה מגיע אליך כי בחרת בסיכום שבועי. אם לא קרה כלום, לא נשלח מייל.", rePieDia:"זה מגיע אליך כי בחרת בסיכום יומי. אם לא קרה כלום, לא נשלח מייל.",
+    gasAsunto:"{a} העיר/ה על הוצאה שלך: «{c}»", gasEtiqueta:"הוצאה עם הערה", gasTitulo:"{a} מבקש/ת לתקן הוצאה שלך", gasDice:"מה צריך לתקן", gasBoton:"לצפייה בהוצאה",
+    gasPie:"זה מגיע אליך כי מנהל/ת העיר/ה על הוצאה שלך.", gasRutina:"שגרה של {m}", gasSinConcepto:"הוצאה ללא תיאור",
     pasAsunto:"{a} שייך/ת לך משימה ב«{t}»", pasEtiqueta:"משימה שהוקצתה", pasTitulo:"{a} שייך/ת לך משימה", pasPara:"עד {f}", pasBoton:"לצפייה במשימה",
     pasPie:"זה מגיע אליך כי מישהו/י שייך/ת לך שלב מתוך «מה הלאה».", venAsunto:"מועד היעד היום: {p}", venEtiqueta:"מסתיים היום", venTitulo:"משימה שלך מסתיימת היום", venPie:"זה מגיע אליך כי יש לך משימה עם תאריך של היום.", cadaPaso:"מה הלאה" },
 };
@@ -247,6 +255,43 @@ export function correoVence({ titulo, tipo, texto, post, cuando: pedida, lang })
       cuerpo: `${tarjetaDePaso({ L, x, autor: "", titulo, tipo, texto, cuando, vence: true })}
       ${boton(T.pasBoton, url, L)}`,
       pie: `${T.venPie} ${T.prefs}`,
+    }),
+  };
+}
+
+/* ---------- Un gasto observado (17/11/2026; Gastos y rendiciones, 27-gastos.sql) ---------- */
+// datos: { autor (el admin que lo observó), concepto, texto (su comentario), moneda, monto, fecha (AAAA-MM-DD),
+//          actividad (el título) o mes (AAAA-MM-01, si es la rutina del mes), gasto (su id), lang }
+export const enlaceAGasto = id => `${APP}?gasto=${encodeURIComponent(id)}`;
+// Los montos como en la app y en el Sheet del usuario: coma para los miles, punto para los centavos.
+const NUM_CONTABLE = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const montoContable = (moneda, n) => n === null || n === undefined || n === "" || !isFinite(Number(n)) ? ""
+  : `${String(moneda || "").slice(0, 3)} ${NUM_CONTABLE.format(Number(n))}`.trim();
+const nombreDelMes = (mes, L) => /^\d{4}-(0[1-9]|1[0-2])/.test(String(mes || ""))
+  ? new Intl.DateTimeFormat(LOCALE[L], { timeZone: "UTC", month: "long", year: "numeric" }).format(new Date(`${String(mes).slice(0, 7)}-15T12:00:00Z`)) : "";
+export function correoGasto({ autor, concepto, texto, moneda, monto, fecha, actividad, mes, gasto, lang }){
+  const L = idioma(lang), T = TX[L], x = lado(L);
+  const que = recortar(concepto, 80) || T.gasSinConcepto;
+  const donde = mes && nombreDelMes(mes, L) ? conVars(T.gasRutina, { m: nombreDelMes(mes, L) }) : recortar(actividad, 120);
+  const detalle = [montoContable(moneda, monto), fechaDePaso(fecha) ? fechaCorta(fecha, L) : ""].filter(Boolean).join(" · ");
+  const linea = asunto(conVars(T.gasAsunto, { a: autor, c: que }));
+  const url = enlaceAGasto(gasto);
+  return {
+    subject: linea,
+    text: `${linea}:\n\n${recortar(texto, 600)}\n\n${que}${detalle ? ` · ${detalle}` : ""}${donde ? `\n${T.en} ${donde}` : ""}\n\n${T.gasBoton}: ${url}\n`,
+    html: marco({ lang: L,
+      pre: `${linea}.`, etiqueta: T.gasEtiqueta, titulo: conVars(T.gasTitulo, { a: suyo(esc(autor)) }),
+      cuerpo: `<table role="presentation" cellpadding="0" cellspacing="0" width="100%" dir="${x.dir}" style="background:${C.suave};border-radius:14px;"><tr><td style="padding:14px 18px;">
+        <div style="font-size:16px;font-weight:700;">🧾 ${suyo(esc(que))}</div>
+        ${detalle ? `<div dir="auto" style="font-size:13px;color:${C.gris};margin-top:4px;">${esc(detalle)}</div>` : ""}
+        ${donde ? `<div style="font-size:12px;color:${C.gris};margin-top:4px;">${T.en} <b style="color:${C.texto};">${suyo(esc(donde))}</b></div>` : ""}
+      </td></tr></table>
+      <table role="presentation" cellpadding="0" cellspacing="0" width="100%" dir="${x.dir}" style="margin:18px 0 0;"><tr>${avatar(autor)}
+        <td style="padding-${x.ini}:14px;"><div style="font-size:15px;font-weight:700;">${suyo(esc(autor))}</div>
+        <div style="font-size:12px;color:${C.gris};margin-top:2px;">${T.gasDice}</div></td></tr></table>
+      <div dir="auto" style="margin:10px 0 0;padding:14px 18px;border-${x.ini}:4px solid ${C.celeste};background:${C.suave};border-radius:${x.dir === "rtl" ? "12px 0 0 12px" : "0 12px 12px 0"};font-size:15px;line-height:1.6;">${suyo(esc(recortar(texto, 600)))}</div>
+      ${boton(T.gasBoton, url, L)}`,
+      pie: `${T.gasPie} ${T.prefs}`,
     }),
   };
 }

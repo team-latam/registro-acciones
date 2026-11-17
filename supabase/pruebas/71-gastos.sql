@@ -207,6 +207,44 @@ select lab.comprobar('…los demás gastos siguen mandados', $q$select string_ag
 select lab.comprobar('…y la persona ve el comentario', $q$select lab.hacer(lab.como('ana@x.com'), $x$select string_agg(texto, '|') from public.gastos_comentarios$x$)$q$, 'Falta la factura del hotel');
 select lab.comprobar('otra persona no lo ve', $q$select lab.hacer(lab.como('diego@x.com'), $x$select count(*)::text from public.gastos_comentarios$x$)$q$, '0');
 select lab.comprobar('otro admin, sí', $q$select lab.hacer(lab.como('otra.admin@x.com'), $x$select count(*)::text from public.gastos_comentarios$x$)$q$, '1');
+-- El aviso por correo (17/11): Ana puede recibir correos y los tiene prendidos.
+truncate public.avisos_enviados, public.avisos_listos;
+update public.app_config set value = value || '{"correos": {"quienes": "todos"}}' where key = 'preferences';
+select lab.probar_valor('el aviso de «te observaron un gasto» le llega a la persona, con el comentario, el gasto y quién lo observó',
+  lab.como('benny@team-latam.com'), $q$select 1$q$,
+  format($q$select (select x -> 'para' -> 0 ->> 'email' || '|' || (x ->> 'autor') || '|' || (x ->> 'texto') || '|' || (x ->> 'concepto') || '|' || (x ->> 'actividad') || '|' || (x ->> 'monto') || '|' || (x ->> 'gasto')
+       from (select lab.aviso(public.preparar_aviso_de_gasto(%L)) x) y)$q$, :'g1'),
+  'ana@x.com|Benny|Falta la factura del hotel|Hotel x 2 noches|Visita a Lima|100.00|' || :'g1');
+select lab.probar_valor('quien lo pide recibe solo un turno: no ve a quién le llega',
+  lab.como('benny@team-latam.com'), $q$select 1$q$,
+  format($q$select string_agg(k, ',') from jsonb_object_keys(public.preparar_aviso_de_gasto(%L)) k$q$, :'g1'), 'ticket');
+select lab.probar_valor('sale una sola vez por comentario',
+  lab.como('benny@team-latam.com'), format($q$select public.preparar_aviso_de_gasto(%L)$q$, :'g1'),
+  format($q$select coalesce(public.preparar_aviso_de_gasto(%L)::text, 'nada')$q$, :'g1'), 'nada');
+select lab.probar_valor('otro admin que no lo observó no lo puede pedir',
+  lab.como('otra.admin@x.com'), $q$select 1$q$, format($q$select coalesce(public.preparar_aviso_de_gasto(%L)::text, 'nada')$q$, :'g1'), 'nada');
+select lab.probar_valor('una integrante tampoco',
+  lab.como('ana@x.com'), $q$select 1$q$, format($q$select coalesce(public.preparar_aviso_de_gasto(%L)::text, 'nada')$q$, :'g1'), 'nada');
+update public.gastos_comentarios set creado_el = creado_el - interval '20 minutes' where gasto_id = :'g1';
+select lab.probar_valor('si el comentario es de hace más de 15 minutos, no',
+  lab.como('benny@team-latam.com'), $q$select 1$q$, format($q$select coalesce(public.preparar_aviso_de_gasto(%L)::text, 'nada')$q$, :'g1'), 'nada');
+update public.gastos_comentarios set creado_el = creado_el + interval '20 minutes' where gasto_id = :'g1';
+insert into public.user_prefs(email, prefs) values ('ana@x.com', '{"emailGastos": false}')
+  on conflict (email) do update set prefs = excluded.prefs;
+select lab.probar_valor('si la persona apagó «gastos» en Tu cuenta, no',
+  lab.como('benny@team-latam.com'), $q$select 1$q$, format($q$select coalesce(public.preparar_aviso_de_gasto(%L)::text, 'nada')$q$, :'g1'), 'nada');
+update public.user_prefs set prefs = '{"emailOn": false}' where email = 'ana@x.com';
+select lab.probar_valor('ni si apagó todos los correos',
+  lab.como('benny@team-latam.com'), $q$select 1$q$, format($q$select coalesce(public.preparar_aviso_de_gasto(%L)::text, 'nada')$q$, :'g1'), 'nada');
+update public.user_prefs set prefs = '{"emailWhen": "weekly"}' where email = 'ana@x.com';
+select lab.probar_valor('…pero llega al momento aunque haya elegido el resumen semanal',
+  lab.como('benny@team-latam.com'), $q$select 1$q$, format($q$select (public.preparar_aviso_de_gasto(%L) ? 'ticket')::text$q$, :'g1'), 'true');
+delete from public.user_prefs where email = 'ana@x.com';
+update public.app_config set value = value - 'correos' where key = 'preferences';
+select lab.probar_valor('si la persona no puede recibir correos (Administración → Correos), no',
+  lab.como('benny@team-latam.com'), $q$select 1$q$, format($q$select coalesce(public.preparar_aviso_de_gasto(%L)::text, 'nada')$q$, :'g1'), 'nada');
+select lab.comprobar('«gastos» viene prendido de fábrica en las preferencias de correo',
+  $q$select (public.prefs_de_correo('diego@x.com') ->> 'gastos')$q$, 'true');
 select lab.comprobar('un comentario no se escribe directo (solo con las funciones)',
   $q$select lab.rechaza(lab.como('ana@x.com'), format($x$insert into public.gastos_comentarios(gasto_id, autor, texto) values (%L, 'ana@x.com', 'hola') returning id::text$x$, '$q$ || :'g1' || $q$'))$q$, 'true');
 select lab.probar('la persona corrige el gasto observado', lab.como('ana@x.com'),
@@ -220,6 +258,10 @@ select lab.comprobar('otra persona no puede comentar ese gasto',
 select lab.comprobar('un admin no aprueba una rendición con una observación pendiente',
   $q$select lab.rechaza(lab.como('benny@team-latam.com'), format($x$select public.gastos_rendicion_aprobar(%L)::text$x$, '$q$ || :'ra' || $q$'))$q$, 'true');
 select lab.hacer(lab.como('ana@x.com'), format($x$update public.gastos set estado = 'confirmado' where id = %L returning estado$x$, :'g1'));
+update public.app_config set value = value || '{"correos": {"quienes": "todos"}}' where key = 'preferences';
+select lab.probar_valor('ya corregido, el aviso de la observación no sale (el gasto ya no está observado)',
+  lab.como('benny@team-latam.com'), $q$select 1$q$, format($q$select coalesce(public.preparar_aviso_de_gasto(%L)::text, 'nada')$q$, :'g1'), 'nada');
+update public.app_config set value = value - 'correos' where key = 'preferences';
 select lab.comprobar('corregido y confirmado, se vuelve a mandar',
   $q$select lab.hacer(lab.como('ana@x.com'), format($x$select public.gastos_rendicion_enviar(%L)::text$x$, '$q$ || :'ra' || $q$'))$q$, 'true');
 

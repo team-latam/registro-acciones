@@ -521,6 +521,57 @@ begin
   return n;
 end $$;
 
+-- El aviso por correo de «te observaron un gasto» (17/11/2026; lo acordado el
+-- 15/11: le llega a la persona por la campanita y por correo). Va como los
+-- demás avisos al momento (17-avisos-por-correo.sql): la app del admin que
+-- observó llama a la función `avisar`, que le pregunta a la base con SU
+-- sesión; la base decide si corresponde y a quién, y devuelve solo un turno.
+-- Reglas:
+--   - lo pide un admin, sobre un gasto observado que no es suyo, con un
+--     comentario suyo en ese gasto de los últimos 15 minutos (el que deja
+--     gastos_observar);
+--   - la persona tiene que poder ver sus gastos (admin, o integrante con el
+--     módulo abierto), poder recibir correos (Administración → Correos),
+--     tenerlos prendidos y no haber apagado «gastos» (emailGastos);
+--   - sale una vez por comentario (avisos_enviados) y cuenta para el tope de
+--     30 avisos por hora de quien observa;
+--   - llega al momento aunque la persona haya elegido el resumen diario o
+--     semanal: es algo que tiene que corregir, y lo apaga en Tu cuenta.
+create or replace function public.preparar_aviso_de_gasto(p_gasto uuid) returns jsonb
+  language plpgsql security definer set search_path = '' as $$
+declare yo text := public.mi_correo(); g record; c record; r record; pr jsonb; ya integer;
+begin
+  if yo is null or not (public.es_admin_fijo() or public.es_admin_rol()) then return null; end if;
+  select x.id, x.autor, x.concepto, x.estado, x.moneda, x.monto, x.fecha, x.rendicion_id into g
+    from public.gastos x where x.id = p_gasto;
+  if not found or g.estado <> 'observado' or g.autor = yo then return null; end if;
+  select k.id, k.texto into c from public.gastos_comentarios k
+   where k.gasto_id = g.id and k.autor = yo and k.creado_el > now() - interval '15 minutes'
+   order by k.creado_el desc limit 1;
+  if not found then return null; end if;
+  select count(*) into ya from public.avisos_enviados a where a.autor = yo and a.enviado_el > now() - interval '1 hour';
+  if ya >= 30 then return null; end if;
+  if not exists (select 1 from public.members m where m.email = g.autor
+                   and (m.role = 'admin' or m.email = public.admin_fijo()
+                        or (m.role = 'member' and coalesce((select (k.value -> 'gastos' ->> 'abierto') = 'true'
+                                                              from public.app_config k where k.key = 'preferences'), false))))
+     or not public.puede_recibir_correos(g.autor) then
+    return null;
+  end if;
+  pr := public.prefs_de_correo(g.autor);
+  if not (pr ->> 'on')::boolean or not (pr ->> 'gastos')::boolean then return null; end if;
+  insert into public.avisos_enviados(tipo, objeto, email, autor) values ('gasto', c.id::text, g.autor, yo)
+    on conflict do nothing;
+  if not found then return null; end if;
+  select x.titulo, x.rutina_mes, p.title as post_titulo into r
+    from public.gastos_rendiciones x left join public.posts p on p.id = x.post_id where x.id = g.rendicion_id;
+  return public.guardar_aviso(jsonb_build_object(
+    'para', jsonb_build_array(jsonb_build_object('email', g.autor, 'nombre', (select m.name from public.members m where m.email = g.autor), 'lang', pr ->> 'lang')),
+    'autor', coalesce((select nullif(m.name, '') from public.members m where m.email = yo), yo),
+    'concepto', g.concepto, 'texto', left(c.texto, 600), 'moneda', g.moneda, 'monto', g.monto, 'fecha', g.fecha,
+    'actividad', coalesce(nullif(r.post_titulo, ''), nullif(r.titulo, '')), 'mes', r.rutina_mes, 'gasto', g.id, 'en', 'gasto'));
+end $$;
+
 -- Un admin observa un gasto de una rendición mandada: queda «observado»
 -- (la persona lo puede corregir), la rendición vuelve a la persona y el
 -- comentario queda guardado.
@@ -654,6 +705,7 @@ revoke execute on function public.gastos_rendicion_abrir(text, date) from public
 revoke execute on function public.gastos_rendicion_enviar(uuid) from public, anon;
 revoke execute on function public.gastos_rendicion_borrar(uuid) from public, anon;
 revoke execute on function public.gastos_observar(uuid, text) from public, anon;
+revoke execute on function public.preparar_aviso_de_gasto(uuid) from public, anon;
 revoke execute on function public.gastos_comentar(uuid, text) from public, anon;
 revoke execute on function public.gastos_rendicion_aprobar(uuid) from public, anon;
 revoke execute on function public.gastos_movimiento_confirmar(uuid) from public, anon;
@@ -662,6 +714,7 @@ grant execute on function public.gastos_rendicion_abrir(text, date) to authentic
 grant execute on function public.gastos_rendicion_enviar(uuid) to authenticated;
 grant execute on function public.gastos_rendicion_borrar(uuid) to authenticated;
 grant execute on function public.gastos_observar(uuid, text) to authenticated;
+grant execute on function public.preparar_aviso_de_gasto(uuid) to authenticated;
 grant execute on function public.gastos_comentar(uuid, text) to authenticated;
 grant execute on function public.gastos_rendicion_aprobar(uuid) to authenticated;
 grant execute on function public.gastos_movimiento_confirmar(uuid) to authenticated;
