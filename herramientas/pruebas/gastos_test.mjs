@@ -761,8 +761,9 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
     const sec = [...document.querySelectorAll(".mentions-menu .bell-section")].map(e => e.textContent.trim());
     const it = document.querySelector('.mentions-menu [data-action="goto-gasto"]');
     return it && [sec[0], it.dataset.id, /@benny/.test(it.querySelector(".mi-author").textContent), it.classList.contains("nuevo"),
-      /^⚠️ Observó «Cena» · .+: Falta la factura: ¿la podés subir de nuevo\?$/.test(it.querySelector(".mi-content").textContent.trim())];
-  }), ["Gastos para corregir", "gx7", true, true, true]);
+      it.querySelector(".mi-content").textContent.trim() === "⚠️ «Cena»: Falta la factura: ¿la podés subir de nuevo?",
+      /^Visita a la comunidad de Rosario · /.test(it.querySelector(".mi-date").textContent.trim())];
+  }), ["Gastos para corregir", "gx7", true, true, true, true]);
   eq("abrirla lo marca visto: el globito se va", await p.evaluate(() => !document.querySelector(".mention-dot")), true);
   await tocar(p, '[data-action="bell-filtro"][data-key="gastos"]');
   eq("el filtro «Gastos» deja solo eso", await p.$$eval(".mentions-menu .bell-section", l => l.map(e => e.textContent.trim())), ["Gastos para corregir"]);

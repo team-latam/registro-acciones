@@ -12921,8 +12921,8 @@ function renderMentionsMenuItems(hasInvite, upcoming){
     ${observados.slice(0, 4).map(o => `
       <button type="button" class="mention-item${esNuevo(o.at, "g") ? " nuevo" : ""}" data-action="goto-gasto" data-id="${esc(o.id)}">
         <span class="mi-author">${o.por ? (authorLabelHtml(o.por) || esc(nombreDePersona(o.por))) : esc(t("Un administrador","An admin","Um administrador","מנהל/ת"))}${esNuevo(o.at, "g") ? nuevo : ""}</span>
-        <span class="mi-content" dir="auto">⚠️ ${esc(t("Observó «{c}»","Flagged “{c}”","Observou «{c}»","העיר/ה על «{c}»",{ c: o.concepto || t("un gasto","an expense","uma despesa","הוצאה") }))}${o.donde ? ` · ${esc(o.donde)}` : ""}${o.texto ? `: ${esc(String(o.texto).slice(0, 90))}` : ""}</span>
-        <span class="mi-date">${fmtDateTime(o.at)}</span>
+        <span class="mi-content" dir="auto">⚠️ «${esc(o.concepto || t("Sin concepto","No description","Sem conceito","ללא תיאור"))}»${o.texto ? `: ${esc(String(o.texto).slice(0, 90))}` : ""}</span>
+        <span class="mi-date">${o.donde ? `${esc(o.donde)} · ` : ""}${fmtDateTime(o.at)}</span>
       </button>`).join("")}` : "";
   // Lo que se viene va primero: es lo único con fecha de vencimiento. Y
   // si al evento le falta documentación, lo dice acá, que es cuando
