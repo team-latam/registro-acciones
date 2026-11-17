@@ -17123,7 +17123,7 @@ function abrirSelectorDeMoneda(inp, filtrar){
   el.setAttribute("role", "listbox");
   el.setAttribute("aria-label", t("Monedas","Currencies","Moedas","מטבעות"));
   el.innerHTML = `<div class="rp-lista" id="selLista">
-      <div class="sel-grupo" data-grupo="1">${esc(t("Las que más usás","Your most used","As que você mais usa","הנפוצים אצלך"))}</div>${usadas.map(fila).join("")}
+      <div class="sel-grupo" data-grupo="1">${esc(t("Las que más usás","Your most used","As que você mais usa","הנפוצים אצלך"))}</div>${usadas.map(fila).join("").replace(/<button /g, '<button data-grupo="1" ')}
       <div class="sel-grupo" data-grupo="2">${esc(t("Todas","All","Todas","כולם"))}</div>${todas.map(fila).join("")}
     </div>
     <p class="rp-vacio" hidden>${esc(t("No está en la lista: queda como la escribiste.","Not on the list: it stays as you typed it.","Não está na lista: fica como você escreveu.","לא ברשימה: נשאר כפי שכתבתם."))}</p>`;
@@ -17189,17 +17189,16 @@ function filtrarSelector(texto){
   const el = selPopEl; if(!el) return;
   const q = normalize(String(texto || "")).replace(/\s+/g, " ").trim();
   let vistas = 0;
-  const vistos = new Set();
+  // Buscando una moneda, solo en «Todas» (en orden, sin repetir las de arriba).
+  const soloTodas = !!q && !!selEstado && selEstado.modo === "moneda";
   el.querySelectorAll(".rp-op").forEach(b => {
-    // En la moneda, con algo escrito la misma no se repite en «Las que más usás» y «Todas».
-    const dup = q && selEstado && selEstado.modo === "moneda" && vistos.has(b.dataset.selValor);
-    const ok = (!q || b.dataset.buscar.includes(q)) && !dup;
-    b.hidden = !ok; if(ok){ vistas++; vistos.add(b.dataset.selValor); }
+    const ok = (!q || b.dataset.buscar.includes(q)) && !(soloTodas && b.dataset.grupo === "1");
+    b.hidden = !ok; if(ok) vistas++;
   });
   el.querySelectorAll(".sel-grupo").forEach(g => {
     let x = g.nextElementSibling, alguna = false;
     while(x && !x.classList.contains("sel-grupo")){ if(!x.hidden) alguna = true; x = x.nextElementSibling; }
-    g.hidden = !alguna || (q && selEstado && selEstado.modo === "moneda" && g.dataset.grupo === "1");
+    g.hidden = !alguna;
   });
   el.querySelector(".rp-vacio").hidden = vistas > 0 || !q;
   resaltarEnSelector(vistas ? [...el.querySelectorAll(".rp-op")].find(b => !b.hidden && !b.disabled) : null, true);
