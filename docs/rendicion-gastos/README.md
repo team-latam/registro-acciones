@@ -8,7 +8,8 @@
 > también con su OK, y el 16/11 los montos contables, el tipo predicho y borrar una rendición vacía (con una regla
 > nueva en la base); después, borrar una rendición entera o varios gastos juntos y la ventana del gasto rediseñada.
 > El 16/11 también: la ventana sin el cartel del lector y más compacta, las flechas para pasar de un gasto a otro y
-> la nota de la moneda local; el 17/11, elegir la moneda y las listas largas con una ventanita que busca.
+> la nota de la moneda local; el 17/11, elegir la moneda y las listas largas con una ventanita que busca, y lo
+> aprobado como texto, que el admin fijo lo pueda borrar y el comprobante opcional en la cuenta corriente.
 > Faltan los avisos. **Cada parte que sigue va a `main` recién
 > con el OK explícito del usuario**, con capturas: es lo que se acordó, y es una excepción a la regla general de
 > «pushear a `main` de una» de `CLAUDE.md` (al llegar a `main`, la base real se actualiza sola).
@@ -218,8 +219,8 @@ tocan eventos, comentarios ni la Agenda); se hace por etapas chicas; Drive y el 
   la que había, y salir con Tab después de buscar toma la resaltada. «Va en», «Llevar los marcados a» y «La cuenta
   de», en la compu, con un buscador arriba; en una pantalla táctil, el selector del teléfono. Lo prueban
   `gastos_test.mjs` y `selectores_test.mjs`.
-- [ ] **Lo aprobado, más claro y borrable; el comprobante de la cuenta corriente** (en la rama, esperando el OK
-  del usuario; lo pidió el 17/11 mirando un gasto aprobado):
+- [x] **Lo aprobado, más claro y borrable; el comprobante de la cuenta corriente** (publicado el 17/11 con el OK
+  del usuario; lo pidió ese día mirando un gasto aprobado):
   - Un gasto que ya no se corrige (mandado, aprobado o de otra persona) se ve como texto: el monto grande, cada
     dato con su nombre y las observaciones solo si hay, en vez de los campos y botones apagados. Arriba dice por
     qué no se cambia («Aprobado el 16 de nov…: ya no se cambia»).
