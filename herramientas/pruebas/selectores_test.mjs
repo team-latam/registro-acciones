@@ -53,6 +53,25 @@ for(const [tam, ancho, alto, oscuro] of [["compu", 1280, 900, false], ["celular"
       if(antes.tapado){ problemas.push(`${donde}: lo tapa ${antes.por}`); continue; }
       await p.mouse.click(antes.x, antes.y);
       await p.waitForTimeout(200);
+      // Las listas largas de Gastos (select.gx-elige, 17/11/2026), en la compu, se abren en la ventanita con buscador
+      // de la app (en una pantalla táctil, la del teléfono, como las demás): lo mismo se pide de ella (que se abra
+      // entera en la pantalla, con la elegida a la vista, y que Escape la cierre y deje el foco en el selector).
+      if(await p.evaluate(sel => !!document.querySelector(sel)?.classList.contains("gx-elige") && !matchMedia("(pointer: coarse)").matches, sel)){
+        const pop = await p.evaluate(() => { const el = document.getElementById("selPop"); if(!el || !el.matches(":popover-open")) return null;
+          const b = el.getBoundingClientRect(), o = el.querySelector(".rp-op.actual") || el.querySelector(".rp-op"), r = o.getBoundingClientRect();
+          const e = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+          return { dentro: b.top >= 0 && b.bottom <= innerHeight && b.left >= 0 && b.right <= innerWidth, visible: e === o || o.contains(e) }; });
+        probados++;
+        if(!pop){ problemas.push(`${donde}: no se abrió`); continue; }
+        if(!pop.dentro) problemas.push(`${donde}: la lista abierta no entra en la pantalla`);
+        if(!pop.visible) problemas.push(`${donde}: la opción elegida queda tapada`);
+        await p.keyboard.press("Escape");
+        await p.waitForTimeout(150);
+        const cerrado = await p.evaluate(sel => ({ open: document.getElementById("selPop").matches(":popover-open"), foco: document.activeElement === document.querySelector(sel) }), sel);
+        if(cerrado.open) problemas.push(`${donde}: Escape no la cerró`);
+        if(!cerrado.foco) problemas.push(`${donde}: al cerrar, el foco no quedó en el selector`);
+        continue;
+      }
       const abierto = await p.evaluate(sel => { const s = document.querySelector(sel); if(!s) return null;
         const o = s.selectedOptions[0] || s.options[0], r = o.getBoundingClientRect();
         const e = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);

@@ -210,6 +210,13 @@ tocan eventos, comentarios ni la Agenda); se hace por etapas chicas; Drive y el 
   escribe él en su Sheet (sin centavos, «.-»; los pesos con su país: MX $, AR $, UY $…; las demás, su símbolo o su
   código). Sale sola de los montos y no se guarda escrita, así que nunca queda vieja si se corrige un monto; al cargar
   el Sheet (etapa 3) va adelante de lo que escribió la persona. Se ve en la ventana, en la lista y en el resumen.
+- [x] **Elegir la moneda y las listas largas** (17/11, en la rama; lo pidió el usuario: las listas eran interminables
+  y, con una moneda ya puesta, la lista del navegador mostraba solo esa): la misma ventanita que la de «Responsable».
+  En la moneda, tocar el campo la abre entera aunque ya tenga una: arriba «Las que más usás» (por sus gastos, con el
+  dólar siempre) y abajo todas, con su nombre; escribir busca por código o nombre, Enter o tocarla elige, Escape deja
+  la que había, y salir con Tab después de buscar toma la resaltada. «Va en», «Llevar los marcados a» y «La cuenta
+  de», en la compu, con un buscador arriba; en una pantalla táctil, el selector del teléfono. Lo prueban
+  `gastos_test.mjs` y `selectores_test.mjs`.
 - [ ] Los avisos de «te observaron un gasto» (campanita y correo).
 
 **Visto al armar las pantallas (15/11), para decidir más adelante:** si la rutina de un mes ya se aprobó, un

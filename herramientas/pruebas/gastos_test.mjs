@@ -435,6 +435,55 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   await p.close();
 }
 
+/* ---------------- Elegir la moneda y las listas largas (lo pidió el usuario el 17/11) ---------------- */
+// Antes: la lista del navegador, con todas las monedas, que con una ya puesta mostraba solo esa.
+{
+  const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: vp, base: datos({ prendido: true }) });
+  await irGastos(p);
+  const abierta = () => p.evaluate(() => { const el = document.getElementById("selPop"); return !!el && el.matches(":popover-open"); });
+  await p.click('[data-action="gastos-abrir-rendicion"][data-id="ren_mvd"]'); await p.waitForTimeout(150);
+  await p.click('[data-action="gasto-abrir"][data-id="gx2"]'); await p.waitForSelector("#gastoOverlay:not([hidden])");
+  eq("sin la lista del navegador en los campos de moneda", await p.evaluate(() => [!!document.getElementById("gxMonedas"), document.querySelectorAll("input.gx-moneda[list]").length]), [false, 0]);
+  await p.click("#gxMoneda");
+  eq("con una moneda ya puesta, tocar el campo abre la lista entera", await hasta(p, () => document.getElementById("selPop") && document.getElementById("selPop").matches(":popover-open")
+    && document.querySelectorAll("#selPop .rp-op:not([hidden])").length >= 26), true);
+  eq("arriba, las que más usa la persona, empezando por el dólar; la puesta, marcada", await p.evaluate(() => [document.querySelector("#selPop .sel-grupo").textContent,
+    document.querySelector("#selPop .rp-op").dataset.selValor, document.querySelector('#selPop .rp-op[aria-selected="true"]').dataset.selValor]), ["Las que más usás", "USD", "UYU"]);
+  eq("cada una con su nombre", await p.$eval('#selPop [data-sel-valor="MXN"] .sel-sub', e => e.textContent), "Peso mexicano");
+  await p.keyboard.type("mex");
+  eq("escribir busca por el código o por el nombre", await p.$$eval("#selPop .rp-op:not([hidden])", l => l.map(x => x.dataset.selValor)), ["MXN"]);
+  await p.keyboard.press("Enter");
+  eq("Enter la elige y la ventana la toma (la nota de la moneda local cambia)", await hasta(p, () => document.getElementById("gxMoneda").value === "MXN"
+    && !document.getElementById("selPop").matches(":popover-open") && /MX \$/.test(document.getElementById("gxObsAuto").textContent)), true);
+  await p.click("#gxMoneda"); await hasta(p, () => document.getElementById("selPop").matches(":popover-open"));
+  await p.keyboard.type("eu"); await p.keyboard.press("Escape");
+  eq("Escape la cierra y deja la que había, sin cerrar la ventana del gasto", await p.evaluate(() => [document.getElementById("gxMoneda").value,
+    document.getElementById("selPop").matches(":popover-open"), document.getElementById("gastoOverlay").hidden]), ["MXN", false, false]);
+  await p.click("#gxMoneda"); await hasta(p, () => document.getElementById("selPop").matches(":popover-open"));
+  await p.click('#selPop [data-sel-valor="EUR"]');
+  eq("también se elige tocándola", await hasta(p, () => document.getElementById("gxMoneda").value === "EUR"), true);
+  await p.click("#gxMoneda"); await hasta(p, () => document.getElementById("selPop").matches(":popover-open"));
+  await p.keyboard.type("ars"); await p.keyboard.press("Tab");
+  eq("escribir un código y salir con Tab lo deja", await p.$eval("#gxMoneda", e => e.value), "ARS");
+  // «Va en», con buscador.
+  await p.click("#gxVinculo");
+  eq("«Va en» se abre en la misma ventanita, con un buscador", await p.evaluate(() => [document.getElementById("selPop").matches(":popover-open"), document.activeElement.id]), [true, "selBuscar"]);
+  await p.keyboard.type("sin vinc");
+  eq("…que filtra", await p.$$eval("#selPop .rp-op:not([hidden])", l => l.map(x => x.dataset.selValor)), [""]);
+  await p.keyboard.press("Enter");
+  eq("Enter la elige: la lista queda con eso y el foco vuelve a ella", await p.evaluate(() => [document.getElementById("gxVinculo").value, document.activeElement.id,
+    document.getElementById("selPop").matches(":popover-open")]), ["", "gxVinculo", false]);
+  await p.keyboard.press("Escape"); await p.click("#confirmOk").catch(() => {});
+  // La cuenta corriente: la moneda de «Anotar plata recibida» (la de la captura del usuario).
+  await p.evaluate(() => document.querySelector('[data-action="gastos-seccion"][data-key="cuenta"]').click()); await p.waitForSelector("#gxMov_moneda");
+  await p.click("#gxMov_moneda");
+  eq("en la cuenta corriente, la misma lista entera", await hasta(p, () => document.getElementById("selPop").matches(":popover-open") && document.querySelectorAll("#selPop .rp-op:not([hidden])").length >= 26), true);
+  await p.click('#selPop [data-sel-valor="ILS"]');
+  eq("…y se elige", await hasta(p, () => document.getElementById("gxMov_moneda").value === "ILS"), true);
+  eq("sin errores de página", errores, []);
+  await p.close();
+}
+
 /* ---------------- Un PDF con texto de verdad se lee sin el lector de fotos ---------------- */
 // Como el recibo de Uber que trajo el usuario el 15/11 (inventado): el texto está adentro del PDF,
 // así que se lee directo, aun desde un archivo local, donde el lector de fotos no corre.

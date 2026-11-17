@@ -885,7 +885,21 @@
   .gx-rap-fila input, .gx-otra select, .gx-cuenta-de select, .gx-anotar-grid input, .gx-anotar-grid select, .gx-tipos input[type=text], .gx-campo input, .gx-campo select, .gx-campo textarea{
     border:1.5px solid var(--border); border-radius:var(--radius-sm); padding:9px 11px; font:inherit; font-size:14px; background:var(--surface-soft, var(--card)); color:var(--text); min-width:0; box-sizing:border-box; }
   .gx-rap-fila input[type=number]{ flex:1 1 140px; max-width:220px; }
-  input.gx-moneda{ width:84px; flex:none; text-transform:uppercase; }
+  input.gx-moneda{ width:84px; flex:none; text-transform:uppercase; cursor:pointer; padding-inline-end:24px;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23558' stroke-width='1.6'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:right 9px center; }
+  html[dir="rtl"] input.gx-moneda{ background-position:left 9px center; }
+  /* La ventanita de elegir (la de «Responsable», ver «Elegir de una lista larga»). */
+  .sel-pop{ flex-direction:column; gap:6px; }
+  .sel-pop .rp-lista{ gap:1px; grid-template-columns:minmax(0, 1fr); }
+  .sel-pop .rp-op{ min-width:0; }
+  .sel-grupo{ padding:8px 12px 4px; font-size:11.5px; font-weight:800; color:var(--text-muted); text-transform:uppercase; letter-spacing:.04em; }
+  .sel-grupo[hidden]{ display:none; }
+  .sel-pop .rp-op{ padding:8px 12px; }
+  .sel-pop .rp-op:disabled{ cursor:default; opacity:.5; }
+  .sel-txt{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .sel-txt b{ display:inline-block; min-width:3.4em; }
+  .sel-sub{ font-weight:500; color:var(--text-muted); }
   .gx-link{ background:none; border:none; padding:4px 0; color:var(--link); font:inherit; font-size:13px; font-weight:700; cursor:pointer; }
   .gx-check{ display:flex; align-items:center; gap:8px; font-size:13.5px; margin-top:8px; }
   .gx-acciones{ display:flex; align-items:center; justify-content:flex-end; gap:10px 14px; flex-wrap:wrap; margin:14px 0 6px; }
@@ -5026,12 +5040,6 @@
 <!-- Fuera de la vista a propósito: la vista se vuelve a dibujar con cada aviso
      en vivo, y un selector de archivos abierto quedaría huérfano. -->
 <input type="file" id="gastosArchivos" multiple accept="image/*,application/pdf" hidden>
-<datalist id="gxMonedas">
-  <option value="USD"></option><option value="EUR"></option><option value="ILS"></option><option value="ARS"></option><option value="BOB"></option><option value="BRL"></option>
-  <option value="BZD"></option><option value="CLP"></option><option value="COP"></option><option value="CRC"></option><option value="CUP"></option><option value="DOP"></option>
-  <option value="GTQ"></option><option value="HNL"></option><option value="HTG"></option><option value="JMD"></option><option value="MXN"></option><option value="NIO"></option>
-  <option value="PAB"></option><option value="PEN"></option><option value="PYG"></option><option value="TTD"></option><option value="UYU"></option><option value="VES"></option>
-</datalist>
 
 <div class="modal-overlay" id="cumpleOverlay" hidden>
   <div class="modal modal-wrap" style="max-width:460px;" role="dialog" aria-modal="true" aria-labelledby="cumpleTitle">
@@ -17067,6 +17075,241 @@ const reubicarRespPop = () => {
 };
 window.addEventListener("resize", reubicarRespPop);
 if(window.visualViewport) window.visualViewport.addEventListener("resize", reubicarRespPop);
+// ---- Elegir de una lista larga: la moneda y las listas de Gastos (17/11/2026) ----
+// El usuario vio que las listas eran interminables (la de monedas, la del navegador, con todas) y que con algo ya
+// elegido no se podía cambiar (esa lista se filtra por lo escrito y mostraba solo «USD»). Ahora es la misma
+// ventanita que la de «Responsable»:
+// - la moneda: al tocar el campo se abre entera, aunque ya tenga una; arriba las que más usa la persona y abajo
+//   todas, con su nombre; escribir filtra (y se puede escribir cualquier código de tres letras);
+// - las listas largas (`select.gx-elige`: «Va en», a dónde llevar, de quién es la cuenta): en la compu, con un
+//   buscador arriba; en el celular queda el selector del teléfono, que ya es cómodo.
+const MONEDAS = ["USD", "EUR", "ILS", "GBP", "ARS", "BOB", "BRL", "BZD", "CLP", "COP", "CRC", "CUP", "DOP", "GTQ", "HNL", "HTG", "JMD", "MXN", "NIO", "PAB",
+  "PEN", "PYG", "TTD", "UYU", "VES", "XCG"];
+const MONEDAS_SIN_NOMBRE = { XCG: ["Florín del Caribe", "Caribbean guilder", "Florim do Caribe", "גילדר קריבי"] };
+function nombreDeMoneda(m){
+  const fijo = MONEDAS_SIN_NOMBRE[m];
+  if(fijo) return t(...fijo);
+  try{
+    const n = new Intl.DisplayNames([currentLang()], { type: "currency" }).of(m);
+    return n && n !== m ? n.charAt(0).toUpperCase() + n.slice(1) : "";
+  }catch(e){ return ""; }
+}
+// Las que más usa la persona (en sus gastos), con el dólar siempre; si todavía no hay, las de siempre.
+function monedasMasUsadas(){
+  const cuenta = {};
+  (gastosDatos ? gastosDatos.gastos : []).filter(g => g.autor === miCorreo() && g.moneda).forEach(g => { cuenta[g.moneda] = (cuenta[g.moneda] || 0) + 1; });
+  const usadas = Object.keys(cuenta).sort((a, b) => cuenta[b] - cuenta[a]);
+  return [...new Set(["USD", ...usadas, ...(usadas.length ? [] : ["EUR", "ILS"])])].slice(0, 5);
+}
+const pintarEnTactil = () => !!(window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
+let selPopEl = null, selEstado = null;
+function selPop(){
+  if(selPopEl) return selPopEl;
+  const el = document.createElement("div");
+  el.id = "selPop"; el.className = "resp-pop sel-pop"; el.setAttribute("popover", "manual");
+  document.body.appendChild(el);
+  selPopEl = el;
+  return el;
+}
+const selAbierto = () => !!selPopEl && selPopEl.matches(":popover-open");
+const opcionDeSelector = (valor, html, { actual, desactivada, buscar } = {}) => `<button type="button" role="option" class="rp-op${actual ? " actual" : ""}" data-sel-valor="${esc(valor)}"
+    data-buscar="${esc(buscar || "")}" aria-selected="${!!actual}"${desactivada ? " disabled" : ""}><span class="rp-ok" aria-hidden="true">${actual ? "✓" : ""}</span><span class="sel-txt">${html}</span></button>`;
+// La moneda: el campo mismo es el buscador; la lista va abajo.
+function abrirSelectorDeMoneda(inp, filtrar){
+  if(inp.disabled || inp.readOnly) return;
+  const el = selPop(), actual = String(inp.value || "").trim().toUpperCase();
+  const fila = m => opcionDeSelector(m, `<b>${esc(m)}</b> <span class="sel-sub">${esc(nombreDeMoneda(m))}</span>`, { actual: m === actual, buscar: normalize(m + " " + nombreDeMoneda(m)) });
+  const usadas = monedasMasUsadas(), todas = [...new Set([...MONEDAS, ...usadas])].sort();
+  el.setAttribute("role", "listbox");
+  el.setAttribute("aria-label", t("Monedas","Currencies","Moedas","מטבעות"));
+  el.innerHTML = `<div class="rp-lista" id="selLista">
+      <div class="sel-grupo" data-grupo="1">${esc(t("Las que más usás","Your most used","As que você mais usa","הנפוצים אצלך"))}</div>${usadas.map(fila).join("")}
+      <div class="sel-grupo" data-grupo="2">${esc(t("Todas","All","Todas","כולם"))}</div>${todas.map(fila).join("")}
+    </div>
+    <p class="rp-vacio" hidden>${esc(t("No está en la lista: queda como la escribiste.","Not on the list: it stays as you typed it.","Não está na lista: fica como você escreveu.","לא ברשימה: נשאר כפי שכתבתם."))}</p>`;
+  selEstado = { el: inp, modo: "moneda", valorAlAbrir: inp.value, abiertoEn: Date.now() };
+  inp.setAttribute("aria-expanded", "true"); inp.setAttribute("aria-controls", "selLista");
+  if(!el.matches(":popover-open")) el.showPopover();
+  ubicarSelector(inp, Math.max(inp.getBoundingClientRect().width, 280));
+  if(filtrar) filtrarSelector(inp.value);
+  else {
+    resaltarEnSelector(el.querySelector(".rp-op.actual") || el.querySelector(".rp-op"), true);
+    // Lo que ya tiene queda seleccionado: escribir lo reemplaza y busca (el campo es de tres letras).
+    try{ inp.select(); }catch(e){}
+  }
+}
+// Una lista del navegador (<select>): las mismas opciones, con un buscador arriba.
+function abrirSelectorDeLista(sel){
+  if(sel.disabled) return;
+  const el = selPop();
+  let html = "";
+  [...sel.children].forEach(n => {
+    const op = o => opcionDeSelector(o.value, esc(o.textContent), { actual: o.value === sel.value, desactivada: o.disabled, buscar: normalize(o.textContent) });
+    if(n.tagName === "OPTGROUP") html += `<div class="sel-grupo">${esc(n.label)}</div>${[...n.children].map(op).join("")}`;
+    else if(n.tagName === "OPTION" && !(n.disabled && n.value === "-")) html += op(n);
+  });
+  const etiqueta = (sel.closest("label") && sel.closest("label").querySelector(".gx-et")) ? sel.closest("label").querySelector(".gx-et").textContent : "";
+  el.setAttribute("role", "dialog");
+  el.setAttribute("aria-label", etiqueta || t("Elegir","Choose","Escolher","בחירה"));
+  el.innerHTML = `<div class="rp-buscar"><input type="search" id="selBuscar" class="rp-input" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="true" aria-controls="selLista"
+      placeholder="${esc(t("Buscar…","Search…","Buscar…","חיפוש…"))}"></div>
+    <div class="rp-lista" id="selLista" role="listbox">${html}</div>
+    <p class="rp-vacio" hidden>${esc(t("No hay nada con eso.","Nothing matches.","Nada com isso.","אין תוצאות."))}</p>`;
+  selEstado = { el: sel, modo: "lista", abiertoEn: Date.now() };
+  sel.setAttribute("aria-expanded", "true");
+  if(!el.matches(":popover-open")) el.showPopover();
+  ubicarSelector(sel, Math.max(sel.getBoundingClientRect().width, 320));
+  resaltarEnSelector(el.querySelector(".rp-op.actual") || el.querySelector(".rp-op:not([disabled])"), true);
+  el.querySelector("#selBuscar").focus({ preventScroll: true });
+}
+// Pegada al campo: abajo (o arriba si abajo no entra), del ancho del campo (o más, para que se lea).
+function ubicarSelector(anchor, anchoMin){
+  const el = selPopEl, r = anchor.getBoundingClientRect(), vv = window.visualViewport;
+  const visArriba = vv ? vv.offsetTop : 0, visAbajo = vv ? vv.offsetTop + vv.height : window.innerHeight;
+  const ancho = Math.min(Math.max(anchoMin, 220), 420, window.innerWidth - 24);
+  let izq = isRTL() ? r.right - ancho : r.left;
+  izq = Math.max(12, Math.min(izq, window.innerWidth - ancho - 12));
+  el.style.left = izq + "px"; el.style.right = ""; el.style.width = ancho + "px";
+  const abajo = visAbajo - r.bottom - 14, arriba = r.top - visArriba - 14;
+  if(abajo >= 230 || abajo >= arriba){ el.style.top = (r.bottom + 4) + "px"; el.style.bottom = ""; el.style.maxHeight = Math.max(150, Math.min(340, abajo - 4)) + "px"; }
+  else { el.style.top = ""; el.style.bottom = (window.innerHeight - r.top + 4) + "px"; el.style.maxHeight = Math.max(150, Math.min(340, arriba - 4)) + "px"; }
+}
+function cerrarSelector(devolverFoco){
+  if(!selAbierto()) return;
+  const S = selEstado;
+  selPopEl.hidePopover();
+  selEstado = null;
+  if(S && S.el && S.el.isConnected){
+    S.el.setAttribute("aria-expanded", "false"); S.el.removeAttribute("aria-activedescendant");
+    if(devolverFoco) S.el.focus();
+  }
+}
+// Con lo escrito: las que lo tienen en el código o en el nombre (sin tildes); los títulos de grupo, solo si queda algo abajo.
+function filtrarSelector(texto){
+  const el = selPopEl; if(!el) return;
+  const q = normalize(String(texto || "")).replace(/\s+/g, " ").trim();
+  let vistas = 0;
+  const vistos = new Set();
+  el.querySelectorAll(".rp-op").forEach(b => {
+    // En la moneda, con algo escrito la misma no se repite en «Las que más usás» y «Todas».
+    const dup = q && selEstado && selEstado.modo === "moneda" && vistos.has(b.dataset.selValor);
+    const ok = (!q || b.dataset.buscar.includes(q)) && !dup;
+    b.hidden = !ok; if(ok){ vistas++; vistos.add(b.dataset.selValor); }
+  });
+  el.querySelectorAll(".sel-grupo").forEach(g => {
+    let x = g.nextElementSibling, alguna = false;
+    while(x && !x.classList.contains("sel-grupo")){ if(!x.hidden) alguna = true; x = x.nextElementSibling; }
+    g.hidden = !alguna || (q && selEstado && selEstado.modo === "moneda" && g.dataset.grupo === "1");
+  });
+  el.querySelector(".rp-vacio").hidden = vistas > 0 || !q;
+  resaltarEnSelector(vistas ? [...el.querySelectorAll(".rp-op")].find(b => !b.hidden && !b.disabled) : null, true);
+}
+function resaltarEnSelector(b, desplazar){
+  const el = selPopEl; if(!el) return;
+  el.querySelectorAll(".rp-op.on").forEach(x => x.classList.remove("on"));
+  const due = selEstado && (selEstado.modo === "moneda" ? selEstado.el : el.querySelector("#selBuscar"));
+  if(!b){ if(due) due.removeAttribute("aria-activedescendant"); return; }
+  b.classList.add("on");
+  if(!b.id) b.id = "sel-" + Math.random().toString(36).slice(2, 8);
+  if(due) due.setAttribute("aria-activedescendant", b.id);
+  if(desplazar) b.scrollIntoView({ block: "nearest" });
+}
+// Elegir: se escribe en el campo (o la lista) y se avisa como si la persona lo hubiera hecho, así lo toma quien lo escucha.
+function elegirEnSelector(valor, conFoco = true){
+  const S = selEstado;
+  if(!S) return;
+  cerrarSelector(false);
+  const el = S.el;
+  if(!el.isConnected) return;
+  el.value = valor;
+  el.dispatchEvent(new Event("input", { bubbles: true }));
+  el.dispatchEvent(new Event("change", { bubbles: true }));
+  if(!conFoco) return;
+  // Si el cambio volvió a dibujar la pantalla, el foco va al campo nuevo.
+  const x = (el.isConnected ? el : el.id && document.getElementById(el.id));
+  if(x){ x.focus(); if(x.tagName === "INPUT"){ try{ x.setSelectionRange(x.value.length, x.value.length); }catch(e){} } }
+}
+// El campo de ahora (si la pantalla se volvió a dibujar, el nuevo con el mismo id).
+const vigente = el => el && (el.isConnected ? el : el.id ? document.getElementById(el.id) : null);
+// Tocar un campo de moneda la abre entera; escribir filtra. Al apoyar el dedo o el mouse (no al soltar): en el
+// celular, al tomar el foco la pantalla se reacomoda por el teclado y el «click» cae en otro lado. Se ubica dos
+// cuadros después, con la pantalla ya acomodada.
+document.addEventListener("pointerdown", e => {
+  const inp = e.target.closest && e.target.closest("input.gx-moneda");
+  if(!inp || e.button !== 0 || (selAbierto() && selEstado && selEstado.el === inp)) return;
+  requestAnimationFrame(() => requestAnimationFrame(() => { const x = vigente(inp); if(x && document.activeElement === x) abrirSelectorDeMoneda(x, false); }));
+});
+// En la fase de captura: la ventana del gasto corta el aviso de lo que se escribe en ella.
+document.addEventListener("input", e => {
+  const inp = e.target;
+  if(!inp.classList || !inp.classList.contains("gx-moneda") || !e.isTrusted) return;
+  if(selAbierto() && selEstado && selEstado.el === inp) filtrarSelector(inp.value);
+  else abrirSelectorDeMoneda(inp, true);
+}, true);
+// Una lista larga, en la compu: en vez de la del navegador, la ventanita con buscador.
+document.addEventListener("mousedown", e => {
+  const sel = e.target.closest && e.target.closest("select.gx-elige");
+  if(!sel || sel.disabled || e.button !== 0 || pintarEnTactil()) return;
+  e.preventDefault();
+  if(selAbierto() && selEstado && selEstado.el === sel){ cerrarSelector(true); return; }
+  sel.focus();
+  const ahora = vigente(sel);
+  if(ahora){ ahora.focus(); abrirSelectorDeLista(ahora); }
+}, true);
+document.addEventListener("click", e => {
+  const b = e.target.closest && e.target.closest("#selPop [data-sel-valor]");
+  if(b && !b.disabled) elegirEnSelector(b.dataset.selValor);
+});
+// Que tocar una opción no le saque el foco al campo de moneda.
+document.addEventListener("pointerdown", e => {
+  if(!selAbierto()) return;
+  if(selPopEl.contains(e.target)){ if(selEstado && selEstado.modo === "moneda") e.preventDefault(); return; }
+  if(selEstado && e.target === selEstado.el) return;
+  cerrarSelector(false);
+}, true);
+document.addEventListener("input", e => { if(e.target && e.target.id === "selBuscar") filtrarSelector(e.target.value); });
+// Teclas: flechas, Enter, Escape (antes que cualquier otro: no cierra la ventana del gasto) y Tab.
+document.addEventListener("keydown", e => {
+  const t0 = e.target;
+  const esMoneda = t0 && t0.classList && t0.classList.contains("gx-moneda");
+  const esLista = t0 && t0.tagName === "SELECT" && t0.classList.contains("gx-elige");
+  if(!selAbierto()){
+    if(esMoneda && (e.key === "ArrowDown" || (e.altKey && e.key === "ArrowDown"))){ e.preventDefault(); abrirSelectorDeMoneda(t0, false); }
+    else if(esLista && !pintarEnTactil() && (e.key === "Enter" || e.key === " " || e.key === "F4" || (e.altKey && e.key === "ArrowDown"))){ e.preventDefault(); abrirSelectorDeLista(t0); }
+    return;
+  }
+  if(e.key === "Escape"){
+    e.preventDefault(); e.stopPropagation();
+    const S = selEstado;
+    cerrarSelector(true);
+    if(S && S.modo === "moneda" && S.el.isConnected && S.el.value !== S.valorAlAbrir){ S.el.value = S.valorAlAbrir; S.el.dispatchEvent(new Event("input", { bubbles: true })); }
+    return;
+  }
+  const dentro = selPopEl.contains(t0) || (selEstado && t0 === selEstado.el);
+  if(!dentro) return;
+  // Tab: en la moneda, sigue al campo de al lado; desde el buscador de una lista, vuelve a la lista.
+  if(e.key === "Tab"){
+    const enPop = selPopEl.contains(t0);
+    if(!enPop && selEstado && selEstado.modo === "moneda"){
+      const v = String(t0.value || "").trim().toUpperCase(), b = selPopEl.querySelector(".rp-op.on:not([hidden])");
+      if(v && !MONEDAS.includes(v) && b){ elegirEnSelector(b.dataset.selValor, false); return; }
+    }
+    cerrarSelector(enPop); if(enPop) e.preventDefault(); return;
+  }
+  const vistas = () => [...selPopEl.querySelectorAll(".rp-op")].filter(b => !b.hidden && !b.disabled);
+  if(e.key === "ArrowDown" || e.key === "ArrowUp"){
+    e.preventDefault();
+    const l = vistas(); if(!l.length) return;
+    const i = l.findIndex(b => b.classList.contains("on"));
+    resaltarEnSelector(l[e.key === "ArrowDown" ? Math.min(l.length - 1, i + 1) : Math.max(0, i - 1)], true);
+  } else if(e.key === "Enter"){
+    const b = selPopEl.querySelector(".rp-op.on:not([hidden]):not([disabled])");
+    if(b){ e.preventDefault(); e.stopPropagation(); elegirEnSelector(b.dataset.selValor); }
+  }
+}, true);
+window.addEventListener("scroll", e => { if(selAbierto() && !selPopEl.contains(e.target) && Date.now() - selEstado.abiertoEn > 400) cerrarSelector(false); }, true);
+window.addEventListener("resize", () => { if(selAbierto() && selEstado && selEstado.el.isConnected) ubicarSelector(selEstado.el, Math.max(selEstado.el.getBoundingClientRect().width, selEstado.modo === "moneda" ? 280 : 320)); });
+
 // Marca un paso (hecho / no es tarea / de nuevo pendiente). Va solo el
 // resumen: no cuenta como edición del evento.
 async function marcarPaso(postId, pasoId, estado, extra){
@@ -25721,7 +25964,7 @@ function renderDestinoDeSubida(){
       <h3 class="gx-h3" id="gxDestinoTit">${t("¿De qué son estos comprobantes?","What are these receipts for?","De que são estes comprovantes?","למה שייכות הקבלות האלה?")}</h3>
       <p class="setting-sub">${t("Elegí el viaje o la rutina del mes: quedan todos juntos ahí, y el lector sabe en qué moneda leer un «$».","Pick the trip or the month's routine: they all go there together, and the reader knows which currency a “$” is.","Escolha a viagem ou a rotina do mês: ficam todos juntos ali, e o leitor sabe em que moeda ler um «$».","בחרו את הנסיעה או את שגרת החודש: כולן נכנסות לשם יחד, והקורא יודע באיזה מטבע לקרוא «$».")}</p>
       <label class="gx-campo"><span class="gx-et">${t("Van en","They go in","Vão em","שייכות ל")}</span>
-        <select id="gxDestino"><option value="-"${D.vinculo === "-" ? " selected" : ""} disabled>${esc(t("Elegí…","Pick…","Escolha…","בחרו…"))}</option>${opcionesDeVinculo({ fecha: todayISO() }, D.vinculo === "-" ? "-" : D.vinculo).replace(esc(t("Sin vincular (la asigno después)","Not linked yet (I'll assign it later)","Sem vínculo (atribuo depois)","לא משויך (אשייך אחר כך)")), esc(t("Todavía no sé (quedan sin vincular)","I don't know yet (they stay unlinked)","Ainda não sei (ficam sem vínculo)","עוד לא יודע/ת (יישארו לא משויכות)")))}</select></label>
+        <select id="gxDestino" class="gx-elige"><option value="-"${D.vinculo === "-" ? " selected" : ""} disabled>${esc(t("Elegí…","Pick…","Escolha…","בחרו…"))}</option>${opcionesDeVinculo({ fecha: todayISO() }, D.vinculo === "-" ? "-" : D.vinculo).replace(esc(t("Sin vincular (la asigno después)","Not linked yet (I'll assign it later)","Sem vínculo (atribuo depois)","לא משויך (אשייך אחר כך)")), esc(t("Todavía no sé (quedan sin vincular)","I don't know yet (they stay unlinked)","Ainda não sei (ficam sem vínculo)","עוד לא יודע/ת (יישארו לא משויכות)")))}</select></label>
       <div class="gx-acciones gx-acciones-chicas">
         <button type="button" class="btn-secondary" data-action="gastos-destino-cancelar">${t("Cancelar","Cancel","Cancelar","ביטול")}</button>
         <button type="button" class="btn-primary" data-action="gastos-destino-elegir" ${D.vinculo === "-" ? "disabled" : ""}>📎 ${t("Elegir los archivos","Choose the files","Escolher os arquivos","בחירת הקבצים")}</button>
@@ -25990,7 +26233,7 @@ function renderListaDeGastos(rid){
           ${campo("concepto", t("Concepto","Description","Conceito","תיאור"), `<input type="text" id="gxL_${esc(id)}_concepto" maxlength="140" data-glista="${esc(id)}:concepto" value="${esc(d.concepto)}"${at("concepto")}>`)}
           ${campo("tipo", t("Tipo","Type","Tipo","סוג"), `<select id="gxL_${esc(id)}_tipo" data-glista="${esc(id)}:tipo"${at("tipo")}><option value="">${esc(t("Elegí…","Pick…","Escolha…","בחרו…"))}</option>${tipos.concat(d.tipo && !tipos.some(x => x.key === d.tipo) ? [{ key: d.tipo, label: nombreTipoGasto(d.tipo) }] : []).map(x => `<option value="${esc(x.key)}"${x.key === d.tipo ? " selected" : ""}>${esc(x.label)}</option>`).join("")}</select>`)}
           ${campo("monto", t("Monto","Amount","Valor","סכום"), `<input type="text" inputmode="decimal" class="gx-monto" id="gxL_${esc(id)}_monto" data-glista="${esc(id)}:monto" value="${esc(montoEnCampo(d.monto))}"${at("monto")}>`)}
-          ${campo("moneda", t("Moneda","Currency","Moeda","מטבע"), `<input type="text" class="gx-moneda" list="gxMonedas" maxlength="3" id="gxL_${esc(id)}_moneda" data-glista="${esc(id)}:moneda" value="${esc(d.moneda)}"${at("moneda")}>`)}
+          ${campo("moneda", t("Moneda","Currency","Moeda","מטבע"), `<input type="text" class="gx-moneda" autocomplete="off" aria-autocomplete="list" aria-haspopup="listbox" maxlength="3" id="gxL_${esc(id)}_moneda" data-glista="${esc(id)}:moneda" value="${esc(d.moneda)}"${at("moneda")}>`)}
           ${campo("pago", t("Quién pagó","Who paid","Quem pagou","מי שילם/ה"), `<select id="gxL_${esc(id)}_pago" data-glista="${esc(id)}:pago"><option value="persona"${d.pago === "persona" ? " selected" : ""}>${esc(t("Yo","Me","Eu","אני"))}</option><option value="organizacion"${d.pago === "organizacion" ? " selected" : ""}>${esc(t("Organización","Organization","Organização","הארגון"))}</option></select>`)}
           ${otraMoneda ? campo("rendidoMonto", t("En {m}","In {m}","Em {m}","ב-{m}",{ m: esc(d.rendidoMoneda) }), `<input type="text" inputmode="decimal" class="gx-monto" id="gxL_${esc(id)}_rendidoMonto" data-glista="${esc(id)}:rendidoMonto" value="${esc(montoEnCampo(d.rendidoMonto))}">`, "usd") : ""}
         </div>
@@ -26003,7 +26246,7 @@ function renderListaDeGastos(rid){
   }).join("");
   const marcados = lista.filter(g => (L.filas[g.id] || {}).marcado).length;
   const destino = rid === "sin" ? `<label class="gx-campo gx-ldestino"><span class="gx-et">${t("Llevar los marcados a","Move the checked ones to","Levar os marcados para","להעביר את המסומנים אל")}</span>
-      <select id="gxListaDestino">${opcionesDeVinculo({ fecha: (lista[0] || {}).fecha || null }, L.destino || "")}</select></label>` : "";
+      <select id="gxListaDestino" class="gx-elige">${opcionesDeVinculo({ fecha: (lista[0] || {}).fecha || null }, L.destino || "")}</select></label>` : "";
   return `<div class="gx-lista-rev">
       <div class="gx-lcabeza">
         <p class="setting-sub">${t("Revisá cada gasto con su comprobante y marcá los que estén bien: se confirman juntos. Vienen marcados los completos y sin dudas. La tarjeta y la forma de pago, en «Abrir el gasto completo».","Check each expense against its receipt and tick the ones that are right: they're confirmed together. Complete ones with no doubts come ticked. Card and payment method are under “Open the whole expense”.","Revise cada despesa com o comprovante e marque as que estão certas: são confirmadas juntas. Vêm marcadas as completas e sem dúvidas. O cartão e a forma de pagamento, em «Abrir a despesa completa».","בדקו כל הוצאה מול הקבלה וסמנו את אלה שתקינות: הן מאושרות יחד. הוצאות מלאות ובלי ספקות מגיעות מסומנות. הכרטיס ואמצעי התשלום ב«פתיחת ההוצאה המלאה».")}</p>
@@ -26018,7 +26261,7 @@ function renderListaDeGastos(rid){
         </div>
         ${lista.length > 1 ? `<div class="gx-ltodas">
           <label class="gx-campo"><span class="gx-et">${t("La misma moneda a todos","The same currency for all","A mesma moeda para todos","אותו מטבע לכולן")}</span>
-            <input type="text" class="gx-moneda" id="gxListaMoneda" list="gxMonedas" maxlength="3" placeholder="ARS"></label>
+            <input type="text" class="gx-moneda" id="gxListaMoneda" autocomplete="off" aria-autocomplete="list" aria-haspopup="listbox" maxlength="3" placeholder="ARS"></label>
           <button type="button" class="btn-secondary" data-action="gastos-lista-moneda">${t("Poner a todos","Apply to all","Aplicar a todos","להחיל על כולן")}</button>
         </div>` : ""}
       </div>` : ""}
@@ -26164,7 +26407,7 @@ function renderTotalRapido(r, editable, detalle){
       <summary>${t("Total rápido (sin cargar el detalle)","Quick total (without the itemized list)","Total rápido (sem carregar o detalhe)","סכום מהיר (בלי פירוט)")}${hay ? ": " + esc(fmtTotales(tm)) : ""}</summary>
       <p class="setting-sub">${t("Si no tenés los comprobantes a mano, anotá cuánto se gastó en total, por moneda. Si después cargás el detalle, vale el detalle.","If you don't have the receipts at hand, enter the total spent, by currency. If you add the itemized list later, the list counts.","Se não tiver os comprovantes à mão, anote quanto se gastou no total, por moeda. Se depois carregar o detalhe, vale o detalhe.","אם הקבלות לא בהישג יד, רשמו כמה הוצא בסך הכול, לפי מטבע. אם תוסיפו אחר כך את הפירוט, הפירוט קובע.")}</p>
       ${d.filas.map((f, i) => `<div class="gx-rap-fila">
-          <input type="text" class="gx-moneda" id="gxTotal_${i}_moneda" list="gxMonedas" maxlength="3" data-gtotal="${i}:moneda" value="${esc(f.moneda)}" aria-label="${esc(t("Moneda","Currency","Moeda","מטבע"))}">
+          <input type="text" class="gx-moneda" id="gxTotal_${i}_moneda" autocomplete="off" aria-autocomplete="list" aria-haspopup="listbox" maxlength="3" data-gtotal="${i}:moneda" value="${esc(f.moneda)}" aria-label="${esc(t("Moneda","Currency","Moeda","מטבע"))}">
           <input type="text" id="gxTotal_${i}_monto" inputmode="decimal" class="gx-monto" data-gtotal="${i}:monto" value="${esc(montoEnCampo(f.monto))}" aria-label="${esc(t("Monto","Amount","Valor","סכום"))}">
           ${d.filas.length > 1 ? `<button type="button" class="zone-rm" data-action="gastos-total-sacar" data-i="${i}" aria-label="${esc(t("Sacar esta moneda","Remove this currency","Tirar esta moeda","הסרת המטבע"))}">✕</button>` : ""}
         </div>`).join("")}
@@ -26295,7 +26538,7 @@ function renderGastosCuenta(){
   const selector = isAdmin() ? (() => {
     const gente = [...new Set([yo, ...gastosDatos.rendiciones.map(r => r.autor), ...gastosDatos.movimientos.map(m => m.persona), ...state.roster.filter(m => m.role !== "observer").map(m => String(m.email).toLowerCase())])];
     return `<div class="gx-cuenta-de"><label for="gxCuentaDe">${t("La cuenta de","The balance of","A conta de","החשבון של")}</label>
-      <select id="gxCuentaDe">${gente.map(e => `<option value="${esc(e)}"${e === de ? " selected" : ""}>${esc(e === yo ? t("{n} (vos)","{n} (you)","{n} (você)","{n} (את/ה)",{ n: nombreDePersona(e) }) : nombreDePersona(e))}</option>`).join("")}</select></div>`;
+      <select id="gxCuentaDe" class="gx-elige">${gente.map(e => `<option value="${esc(e)}"${e === de ? " selected" : ""}>${esc(e === yo ? t("{n} (vos)","{n} (you)","{n} (você)","{n} (את/ה)",{ n: nombreDePersona(e) }) : nombreDePersona(e))}</option>`).join("")}</select></div>`;
   })() : "";
   const saldoTxt = s => s > 0 ? (propia ? t("la organización te debe","the organization owes you","a organização te deve","הארגון חייב לך") : t("la organización le debe","the organization owes them","a organização deve a essa pessoa","הארגון חייב לו/לה"))
     : s < 0 ? (propia ? t("le debés a la organización","you owe the organization","você deve à organização","את/ה חייב/ת לארגון") : t("le debe a la organización","they owe the organization","essa pessoa deve à organização","הוא/היא חייב/ת לארגון")) : t("en cero","even","zerado","מאוזן");
@@ -26320,7 +26563,7 @@ function renderGastosCuenta(){
       <div class="gx-anotar-grid">
         <label>${t("Qué","What","O quê","מה")}<select id="gxMov_tipo" data-gmov="tipo">${tipos.map(k => `<option value="${k}"${f.tipo === k ? " selected" : ""}>${esc(tipoDeMovimiento(k))}</option>`).join("")}</select></label>
         <label>${t("Fecha","Date","Data","תאריך")}<input type="date" id="gxMov_fecha" data-gmov="fecha" value="${esc(f.fecha)}"></label>
-        <label>${t("Moneda","Currency","Moeda","מטבע")}<input type="text" class="gx-moneda" list="gxMonedas" maxlength="3" id="gxMov_moneda" data-gmov="moneda" value="${esc(f.moneda)}"></label>
+        <label>${t("Moneda","Currency","Moeda","מטבע")}<input type="text" class="gx-moneda" autocomplete="off" aria-autocomplete="list" aria-haspopup="listbox" maxlength="3" id="gxMov_moneda" data-gmov="moneda" value="${esc(f.moneda)}"></label>
         <label>${t("Monto","Amount","Valor","סכום")}<input type="text" inputmode="decimal" class="gx-monto" id="gxMov_monto" data-gmov="monto" value="${esc(montoEnCampo(f.monto))}"></label>
         <label class="gx-ancho">${t("Detalle (opcional)","Details (optional)","Detalhe (opcional)","פירוט (לא חובה)")}<input type="text" maxlength="300" id="gxMov_descripcion" data-gmov="descripcion" value="${esc(f.descripcion)}" placeholder="${esc(t("Por ejemplo: adelanto para la visita a Lima","For example: advance for the Lima visit","Por exemplo: adiantamento para a visita a Lima","למשל: מקדמה לביקור בלימה"))}"></label>
       </div>
@@ -26461,13 +26704,13 @@ function renderGasto(){
         <div class="gx-campos">
           <div class="gx-plata gx-ancho">
             ${campo(t("Monto","Amount","Valor","סכום"), `<input type="text" id="gxMonto" inputmode="decimal" class="gx-monto" data-gcampo="monto" value="${esc(montoEnCampo(d.monto))}"${mal("monto")}${marca("monto")}${dis}>`)}
-            ${campo(t("Moneda","Currency","Moeda","מטבע"), `<input type="text" id="gxMoneda" class="gx-moneda" list="gxMonedas" maxlength="3" data-gcampo="moneda" value="${esc(d.moneda)}"${mal("moneda")}${marca("moneda")}${dis}>`)}
+            ${campo(t("Moneda","Currency","Moeda","מטבע"), `<input type="text" id="gxMoneda" class="gx-moneda" autocomplete="off" aria-autocomplete="list" aria-haspopup="listbox" maxlength="3" data-gcampo="moneda" value="${esc(d.moneda)}"${mal("moneda")}${marca("moneda")}${dis}>`)}
             ${otraMoneda ? campo(t("Monto en {m}","Amount in {m}","Valor em {m}","סכום ב-{m}",{ m: esc(d.rendidoMoneda) }), `<input type="text" id="gxRendido" inputmode="decimal" class="gx-monto gx-monto-2" data-gcampo="rendidoMonto" value="${esc(montoEnCampo(d.rendidoMonto))}"${dis}>`)
-              + campo(t("Se rinde en","Reported in","Presta-se em","מדווח ב"), `<input type="text" id="gxRendidoMoneda" class="gx-moneda" list="gxMonedas" maxlength="3" data-gcampo="rendidoMoneda" value="${esc(d.rendidoMoneda)}"${mal("rendidoMoneda")}${dis}>`)
+              + campo(t("Se rinde en","Reported in","Presta-se em","מדווח ב"), `<input type="text" id="gxRendidoMoneda" class="gx-moneda" autocomplete="off" aria-autocomplete="list" aria-haspopup="listbox" maxlength="3" data-gcampo="rendidoMoneda" value="${esc(d.rendidoMoneda)}"${mal("rendidoMoneda")}${dis}>`)
               + `<small class="gx-pista">${t("En {m}: lo que te cobró el banco.","In {m}: what your bank charged you.","Em {m}: o que o banco te cobrou.","ב-{m}: מה שהבנק חייב אתכם.",{ m: esc(d.rendidoMoneda) })}</small>` : ""}
           </div>
           ${campo(t("Fecha","Date","Data","תאריך"), `<input type="date" id="gxFecha" data-gcampo="fecha" value="${esc(d.fecha)}"${mal("fecha")}${marca("fecha")}${dis}>`)}
-          ${campo(t("Va en","Goes in","Vai em","שייך ל"), `<select id="gxVinculo" data-gcampo="vinculo"${dis}>${opcionesDeVinculo(g, d.vinculo)}</select>`)}
+          ${campo(t("Va en","Goes in","Vai em","שייך ל"), `<select id="gxVinculo" class="gx-elige" data-gcampo="vinculo"${dis}>${opcionesDeVinculo(g, d.vinculo)}</select>`)}
           ${tipoCampo}
           <div class="gx-campo"><span class="gx-et" id="gxPagoEt">${t("¿Quién pagó?","Who paid?","Quem pagou?","מי שילם?")}</span>
             <div class="gx-fila-opc"><div class="gx-opciones gx-seg" id="gxPago" role="group" aria-labelledby="gxPagoEt">${opciones("gasto-pago", "pago", [["persona", t("Yo","Me","Eu","אני"), "gxPagoPersona"], ["organizacion", t("Organización","Organization","Organização","הארגון"), "gxPagoOrg"]], d.pago)}</div>
