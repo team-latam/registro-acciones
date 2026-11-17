@@ -9,8 +9,10 @@
 > nueva en la base); después, borrar una rendición entera o varios gastos juntos y la ventana del gasto rediseñada.
 > El 16/11 también: la ventana sin el cartel del lector y más compacta, las flechas para pasar de un gasto a otro y
 > la nota de la moneda local; el 17/11, elegir la moneda y las listas largas con una ventanita que busca, y lo
-> aprobado como texto, que el admin fijo lo pueda borrar y el comprobante opcional en la cuenta corriente.
-> Faltan los avisos. **Cada parte que sigue va a `main` recién
+> aprobado como texto, que el admin fijo lo pueda borrar, el comprobante opcional en la cuenta corriente y los
+> avisos de «te observaron un gasto» (campanita y correo): **con eso la etapa 1 está completa**. Lo que sigue
+> (elegido por el usuario el 17/11): cargar un viaje real entero en el sistema, en paralelo con la skill, para ver
+> si falta algo antes de la etapa 2 (Drive). **Cada parte que sigue va a `main` recién
 > con el OK explícito del usuario**, con capturas: es lo que se acordó, y es una excepción a la regla general de
 > «pushear a `main` de una» de `CLAUDE.md` (al llegar a `main`, la base real se actualiza sola).
 
@@ -235,7 +237,7 @@ tocan eventos, comentarios ni la Agenda); se hace por etapas chicas; Drive y el 
     transferencia o el recibo, al anotarlo o después («📎 Adjuntar comprobante»), y se ve con «📎 Ver el
     comprobante». Va en `gastos/mov-<id>/`; lo sube quien puede corregir el movimiento (la persona mientras está
     pendiente; un admin, siempre) y lo ven ella y los admins. La limpieza semanal del bucket lo cuenta como usado.
-- [ ] **Los avisos de «te observaron un gasto»** (en la rama, esperando el OK del usuario; el 17/11 eligió
+- [x] **Los avisos de «te observaron un gasto»** (publicado el 17/11 con el OK del usuario; ese día eligió
   terminar la etapa 1 con esto y después cargar un viaje real entero en paralelo con la skill):
   - **La campanita**: «Gastos para corregir», arriba de todo, con quién lo observó, en qué rendición y qué pidió;
     cuenta en el globito mientras no se abre, tiene su filtro «Gastos» y tocarlo abre el gasto en su rendición. Se
