@@ -218,6 +218,22 @@ tocan eventos, comentarios ni la Agenda); se hace por etapas chicas; Drive y el 
   la que había, y salir con Tab después de buscar toma la resaltada. «Va en», «Llevar los marcados a» y «La cuenta
   de», en la compu, con un buscador arriba; en una pantalla táctil, el selector del teléfono. Lo prueban
   `gastos_test.mjs` y `selectores_test.mjs`.
+- [ ] **Lo aprobado, más claro y borrable; el comprobante de la cuenta corriente** (en la rama, esperando el OK
+  del usuario; lo pidió el 17/11 mirando un gasto aprobado):
+  - Un gasto que ya no se corrige (mandado, aprobado o de otra persona) se ve como texto: el monto grande, cada
+    dato con su nombre y las observaciones solo si hay, en vez de los campos y botones apagados. Arriba dice por
+    qué no se cambia («Aprobado el 16 de nov…: ya no se cambia»).
+  - Con la ventana angosta (una laptop con las flechas, 1024 px) «¿Quién pagó?» y «Forma de pago» no entraban de a
+    dos y aparecía una barra para correr de costado: ahora cada uno va en su renglón, y el monto en dólares baja
+    abajo del otro.
+  - El **admin fijo** puede borrar lo ya mandado o aprobado: un gasto (desde su ventana), varios («Seleccionar») o
+    la rendición entera, también desde «Para aprobar». Antes de borrar avisa que sale de la cuenta corriente de
+    esa persona o que estaba en revisión. La base lo deja solo a él (`gastos_rendicion_borrar` y la regla
+    `gastos_borrar`); un admin por rol, no.
+  - En la **cuenta corriente**, cada movimiento puede llevar un comprobante (opcional): una foto o un PDF de la
+    transferencia o el recibo, al anotarlo o después («📎 Adjuntar comprobante»), y se ve con «📎 Ver el
+    comprobante». Va en `gastos/mov-<id>/`; lo sube quien puede corregir el movimiento (la persona mientras está
+    pendiente; un admin, siempre) y lo ven ella y los admins. La limpieza semanal del bucket lo cuenta como usado.
 - [ ] Los avisos de «te observaron un gasto» (campanita y correo).
 
 **Visto al armar las pantallas (15/11), para decidir más adelante:** si la rutina de un mes ya se aprobó, un

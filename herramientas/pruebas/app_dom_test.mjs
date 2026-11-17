@@ -230,8 +230,10 @@ export function createClient(url, clave){
         }
         if(nombre === "gastos_rendicion_borrar"){
           const r = T("gastos_rendiciones").find(x => x.id === args.p_id);
-          if(!r || (r.autor !== yo && !esAdmin)) return mal("42501", "Esa rendición no es tuya");
-          if(!["abierta", "observada"].includes(r.estado)) return mal("23514", "Una rendición mandada o aprobada no se borra");
+          // La persona, la suya mientras la puede corregir; el admin fijo, cualquiera (también aprobada, 17/11).
+          const fijo = yo === "benny@team-latam.com";
+          if(!r || (r.autor !== yo && !fijo)) return mal("42501", "Esa rendición no es tuya");
+          if(!["abierta", "observada"].includes(r.estado) && !fijo) return mal("23514", "Una rendición mandada o aprobada la borra solo el admin");
           const antes = T("gastos").length;
           estado.tablas.gastos = T("gastos").filter(g => g.rendicion_id !== r.id);
           estado.tablas.gastos_comentarios = T("gastos_comentarios").filter(c => estado.tablas.gastos.some(g => g.id === c.gasto_id));

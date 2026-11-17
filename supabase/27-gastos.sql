@@ -202,6 +202,17 @@ alter table public.gastos_movimientos add constraint movimientos_forma check (
   and length(persona) between 3 and 200 and length(cargado_por) between 3 and 200
 );
 create index if not exists movimientos_persona on public.gastos_movimientos (persona, fecha);
+-- Un comprobante, opcional, de lo recibido, devuelto o ajustado (lo pidió el
+-- usuario el 17/11: que quede registro). En `gastos/mov-<id>/<archivo>`, al
+-- lado de los de los gastos; el disparador cuida la carpeta.
+alter table public.gastos_movimientos add column if not exists archivo text;
+alter table public.gastos_movimientos add column if not exists archivo_nombre text;
+alter table public.gastos_movimientos add column if not exists archivo_tipo text;
+alter table public.gastos_movimientos drop constraint if exists movimientos_archivo;
+alter table public.gastos_movimientos add constraint movimientos_archivo check (
+  (archivo is null or (archivo like 'gastos/mov-%' and length(archivo) <= 300))
+  and length(coalesce(archivo_nombre, '')) <= 200 and length(coalesce(archivo_tipo, '')) <= 100
+);
 
 
 -- ============================================================
@@ -369,10 +380,14 @@ create trigger gastos_rendiciones_controlar before update on public.gastos_rendi
 create or replace function public.gastos_movimientos_controlar() returns trigger
   language plpgsql set search_path = '' as $$
 declare yo text := public.mi_correo(); admin boolean := public.es_admin_fijo() or public.es_admin_rol();
+  carpeta text := 'gastos/mov-' || new.id::text || '/';
 begin
   new.moneda := upper(btrim(coalesce(new.moneda, '')));
   new.descripcion := btrim(coalesce(new.descripcion, ''));
   if current_user not in ('authenticated', 'anon') then return new; end if;
+  if new.archivo is not null and left(new.archivo, length(carpeta)) <> carpeta then
+    raise exception 'El comprobante va en la carpeta de su movimiento' using errcode = 'check_violation';
+  end if;
   if tg_op = 'INSERT' then
     new.cargado_por := yo; new.creado_el := now();
     if not admin then
@@ -484,10 +499,11 @@ end $$;
 
 -- Borrar una rendición entera, con sus gastos y sus comentarios, de una vez
 -- (lo pidió el usuario el 16/11: una actividad cargada por error, aunque ya
--- tenga comprobantes). La persona, la suya; el admin fijo, cualquiera. Solo
--- mientras es de la persona para corregir (abierta u observada): una mandada
--- o aprobada no se borra (lo aprobado ya cuenta en la cuenta corriente). Los
--- archivos quedan sin fila y los saca la limpieza semanal del bucket.
+-- tenga comprobantes). La persona, la suya, mientras es suya para corregir
+-- (abierta u observada). El admin fijo, cualquiera, también mandada o
+-- aprobada (lo pidió el usuario el 17/11): lo aprobado sale de la cuenta
+-- corriente, y la app se lo advierte antes. Los archivos quedan sin fila y
+-- los saca la limpieza semanal del bucket.
 create or replace function public.gastos_rendicion_borrar(p_id uuid)
 returns integer language plpgsql security definer set search_path = '' as $$
 declare yo text := public.mi_correo(); r record; n integer;
@@ -496,8 +512,8 @@ begin
   if not found or (not public.es_admin_fijo() and (r.autor is distinct from yo or not public.gastos_habilitado())) then
     raise exception 'Esa rendición no es tuya' using errcode = 'insufficient_privilege';
   end if;
-  if r.estado not in ('abierta', 'observada') then
-    raise exception 'Una rendición mandada o aprobada no se borra' using errcode = 'check_violation';
+  if r.estado not in ('abierta', 'observada') and not public.es_admin_fijo() then
+    raise exception 'Una rendición mandada o aprobada la borra solo el admin' using errcode = 'check_violation';
   end if;
   delete from public.gastos where rendicion_id = p_id;
   get diagnostics n = row_count;
@@ -656,7 +672,10 @@ grant execute on function public.gastos_cuenta(text) to authenticated;
 -- Los comprobantes, en el bucket de siempre
 -- ============================================================
 -- En `gastos/<id del gasto>/<archivo>`. Los ve quien ve el gasto (su autor y
--- los admins); los sube el autor mientras el gasto se puede corregir. Las
+-- los admins); los sube el autor mientras el gasto se puede corregir. Los de
+-- la cuenta corriente, en `gastos/mov-<id del movimiento>/<archivo>`: los ve
+-- quien ve el movimiento y los sube quien lo puede corregir (la persona,
+-- mientras está pendiente; un admin, siempre). Las
 -- reglas del bucket de 02-politicas.sql (posts/ y replies/) no cambian: estas
 -- se suman a ellas. Borrar sigue siendo del admin fijo (02-politicas.sql) y
 -- de la limpieza semanal, que sabe que estos archivos se usan
@@ -666,19 +685,27 @@ grant execute on function public.gastos_cuenta(text) to authenticated;
 create or replace function public.gastos_archivo_visible(ruta text) returns boolean
   language sql stable security definer set search_path = '' as $$
   select split_part(ruta, '/', 1) = 'gastos'
-     and exists (select 1 from public.gastos g
-                  where g.id::text = split_part(ruta, '/', 2)
-                    and ((g.autor = public.mi_correo() and public.gastos_habilitado())
-                         or public.es_admin_fijo() or public.es_admin_rol()))
+     and (exists (select 1 from public.gastos g
+                   where g.id::text = split_part(ruta, '/', 2)
+                     and ((g.autor = public.mi_correo() and public.gastos_habilitado())
+                          or public.es_admin_fijo() or public.es_admin_rol()))
+          or exists (select 1 from public.gastos_movimientos m
+                      where 'mov-' || m.id::text = split_part(ruta, '/', 2)
+                        and ((m.persona = public.mi_correo() and public.gastos_habilitado())
+                             or public.es_admin_fijo() or public.es_admin_rol())))
 $$;
 create or replace function public.gastos_archivo_subible(ruta text) returns boolean
   language sql stable security definer set search_path = '' as $$
   select split_part(ruta, '/', 1) = 'gastos' and split_part(ruta, '/', 3) <> '' and split_part(ruta, '/', 4) = ''
      and public.gastos_habilitado()
-     and exists (select 1 from public.gastos g
-                  where g.id::text = split_part(ruta, '/', 2)
-                    and g.autor = public.mi_correo()
-                    and g.estado in ('borrador', 'confirmado', 'observado'))
+     and (exists (select 1 from public.gastos g
+                   where g.id::text = split_part(ruta, '/', 2)
+                     and g.autor = public.mi_correo()
+                     and g.estado in ('borrador', 'confirmado', 'observado'))
+          or exists (select 1 from public.gastos_movimientos m
+                      where 'mov-' || m.id::text = split_part(ruta, '/', 2)
+                        and ((m.persona = public.mi_correo() and m.estado = 'pendiente')
+                             or public.es_admin_fijo() or public.es_admin_rol())))
 $$;
 drop policy if exists gastos_archivos_leer on storage.objects;
 create policy gastos_archivos_leer on storage.objects for select

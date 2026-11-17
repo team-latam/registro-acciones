@@ -1036,6 +1036,13 @@
   .gx-mov-der{ display:flex; align-items:center; gap:8px; white-space:nowrap; }
   .gx-mov-der b{ font-size:13.5px; }
   .gx-mov-acc{ display:flex; align-items:center; gap:6px; }
+  .gx-mov-txt .gx-mov-comp{ align-self:flex-start; font-size:12.5px; padding:2px 0; }
+  .gx-mov-txt .gx-mov-adj-link{ color:var(--text-muted); font-weight:600; }
+  .gx-mov-txt span.gx-mov-comp{ color:var(--text-muted); }
+  .gx-mov-txt .gx-mov-adj-link:hover{ color:var(--link); }
+  .gx-mov-adj{ display:flex; align-items:center; flex-wrap:wrap; gap:6px 12px; }
+  .gx-mov-adj .gx-pista{ flex:1 1 100%; }
+  .gx-mov-arch{ font-size:13.5px; font-weight:600; color:var(--ink); overflow-wrap:anywhere; min-width:0; }
   .gx-anotar{ padding:12px 16px; margin-top:14px; }
   .gx-anotar-tit{ margin:2px 0 10px; }
   .gx-anotar-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:10px; }
@@ -1074,8 +1081,40 @@
   .gx-comp-vacio{ cursor:default; font-size:13px; color:var(--text-muted); text-align:center; padding:10px; }
   .gx-comp-pdf{ flex-direction:column; gap:10px; font-weight:700; font-size:13.5px; color:var(--link); }
   .gx-pdf-ico{ width:58px; height:72px; border-radius:6px; background:var(--card); border:2px solid var(--danger-fg); color:var(--danger-fg); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px; }
-  .gx-v-form{ min-width:0; min-height:0; overflow-y:auto; padding:2px 8px 8px 2px; }
+  .gx-v-form{ min-width:0; min-height:0; overflow-y:auto; padding:2px 8px 8px 2px; container:gxform / inline-size; }
   .gx-campos{ display:grid; grid-template-columns:1fr 1fr; gap:12px 14px; }
+  /* Un gasto que ya no se corrige: los datos como texto (17/11), con el mismo orden que al corregirlo. */
+  .gx-cabecera .gx-concepto-fijo{ flex:1 1 auto; min-width:0; font-size:19px; font-weight:800; color:var(--ink-strong, var(--ink)); padding:9px 0; overflow-wrap:anywhere; }
+  .gx-res-estado{ margin:0 0 12px; font-size:13.5px; color:var(--text-muted); }
+  .gx-res-plata{ display:flex; align-items:baseline; flex-wrap:wrap; gap:6px 18px; padding:12px 14px; margin-bottom:16px; border-radius:var(--radius-md); background:var(--surface-alt); border:1px solid var(--border); }
+  .gx-res-monto{ font-size:24px; font-weight:800; color:var(--ink-strong, var(--ink)); }
+  .gx-res-monto .gx-cur{ font-size:.6em; }
+  .gx-res-rendido{ font-size:15px; font-weight:700; color:var(--text-muted); }
+  .gx-res-rendido .gx-num{ color:var(--ink); }
+  .gx-res{ display:grid; grid-template-columns:1fr 1fr; gap:16px 18px; margin:0; }
+  .gx-res-fila{ display:flex; flex-direction:column; gap:4px; min-width:0; }
+  .gx-res dt{ font-size:12px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.04em; }
+  .gx-res dd{ margin:0; font-size:15px; color:var(--ink); overflow-wrap:anywhere; }
+  .gx-res dd small{ display:block; margin-top:2px; font-size:12.5px; color:var(--text-muted); }
+  .gx-res-obs{ white-space:pre-line; line-height:1.5; }
+  .gx-res-nada{ color:var(--text-muted); }
+  .gx-res-plata .gx-val{ min-width:0; }
+  /* Con la columna angosta (una laptop, con las flechas a los costados), «¿Quién pagó?» y «Forma de
+     pago» no entraban de a dos y aparecía una barra para correr de costado (lo vio el usuario el 17/11):
+     ahí van cada uno en su renglón. */
+  @container gxform (max-width: 600px){
+    .gx-campos > .gx-campo:has(.gx-seg){ grid-column:1 / -1; }
+  }
+  /* El monto y el monto rendido, de a dos por renglón cuando no entran los cuatro. */
+  @container gxform (max-width: 500px){
+    .gx-campos .gx-plata:has(#gxRendido){ grid-template-columns:minmax(0, 1fr) 84px; }
+  }
+  /* En el celular, cada dato en su renglón: el nombre a un lado y el valor al otro. */
+  @container gxform (max-width: 420px){
+    .gx-res{ grid-template-columns:minmax(0, 1fr); gap:10px; }
+    .gx-res-fila{ display:grid; grid-template-columns:minmax(88px, 38%) minmax(0, 1fr); gap:10px; align-items:baseline; }
+    .gx-res-fila.gx-ancho{ display:flex; }
+  }
   .gx-cabecera input.gx-concepto{ flex:1 1 auto; min-width:0; font-size:19px; font-weight:800; color:var(--ink-strong, var(--ink)); padding:9px 12px;
     border:1.5px solid transparent; border-radius:var(--radius-sm); background:var(--surface-soft, var(--card)); }
   .gx-cabecera input.gx-concepto:hover:not(:disabled){ border-color:var(--border); }
@@ -5040,6 +5079,7 @@
 <!-- Fuera de la vista a propósito: la vista se vuelve a dibujar con cada aviso
      en vivo, y un selector de archivos abierto quedaría huérfano. -->
 <input type="file" id="gastosArchivos" multiple accept="image/*,application/pdf" hidden>
+<input type="file" id="gastosMovArchivo" accept="image/*,application/pdf" hidden>
 
 <div class="modal-overlay" id="cumpleOverlay" hidden>
   <div class="modal modal-wrap" style="max-width:460px;" role="dialog" aria-modal="true" aria-labelledby="cumpleTitle">
@@ -10052,7 +10092,7 @@ function crearSupabaseStore(sb, opciones = {}){
         const tablas = ["gastos_rendiciones", "gastos", "gastos_comentarios", "gastos_movimientos"];
         const datos = {};
         const bajas = tablas.map(tabla => enVivo({ tabla, clave: "id", alFallar,
-          ...(tabla === "gastos" ? { firmaAdjuntos: true, afinar: f => resolverAdjuntos(aObjeto(f)) } : {}),
+          ...(tabla === "gastos" || tabla === "gastos_movimientos" ? { firmaAdjuntos: true, afinar: f => resolverAdjuntos(aObjeto(f)) } : {}),
           alCambiar: lista => { datos[tabla] = lista; if(tablas.every(x => datos[x])) alCambiar({ ...datos }); } }));
         return () => bajas.forEach(f => f && f());
       },
@@ -10129,6 +10169,15 @@ function crearSupabaseStore(sb, opciones = {}){
         const id = nuevoUuid();
         revienta(await sb.from("gastos_movimientos").insert({ ...aFila(datos), id }));
         await refrescar("gastos_movimientos", id);
+        return id;
+      },
+      // El comprobante de un movimiento (opcional, 17/11): en la carpeta del movimiento, después su ruta.
+      async subirComprobanteMov(id, dataUrl, nombre, tipo){
+        const base = `gastos/mov-${id}/comprobante`;
+        const ruta = String(dataUrl).startsWith("data:image/") ? await subirFoto(base, dataUrl) : await subirUno(base, dataUrl, nombre);
+        revienta(await sb.from("gastos_movimientos").update({ archivo: ruta, archivo_nombre: String(nombre || "").slice(0, 200), archivo_tipo: tipo }).eq("id", id));
+        await refrescar("gastos_movimientos", id);
+        return ruta;
       },
       async borrarMovimiento(id){
         revienta(await sb.from("gastos_movimientos").delete().eq("id", id));
@@ -24682,6 +24731,8 @@ let gastosSubida = null;                // la subida en curso: { total, hechos, 
 let gastosSubidaDestino = null;         // a qué rendición van los que se están subiendo
 let gastosCuentaDe = "";                // un admin puede mirar la cuenta de otra persona
 let gastosMov = null;                   // el formulario de «Anotar plata recibida o devuelta»
+let gastosMovPara = null;               // a qué va el comprobante que se está eligiendo: "form" o el id de un movimiento
+let gastosMovSubiendo = null;           // el movimiento al que se le está subiendo un comprobante
 let gastosTotal = null;                 // el borrador del total rápido de la rendición abierta
 let gastosAdmin = null;                 // el borrador de los tipos (Administración → Gastos)
 let gastosActividad = "";               // «Una actividad sin comprobantes»: la elegida
@@ -24696,6 +24747,7 @@ let gastosDestino = null;               // «¿De qué son estos comprobantes?»
 let gastosSel = null;                   // «Seleccionar» en una rendición (o «Sin vincular»): { rid, ids: Set, borrando }
 const gastoOverlay = document.getElementById("gastoOverlay");
 const gastosArchivosInput = document.getElementById("gastosArchivos");
+const gastosMovArchivoInput = document.getElementById("gastosMovArchivo");
 
 // Los siete tipos de hoy (los de la planilla de rendición). Un admin los
 // renombra, oculta o suma otros; la clave queda fija en cada gasto.
@@ -24746,7 +24798,7 @@ function sincronizarGastos(){
 function cortarGastos(){
   if(unsubGastos){ unsubGastos(); unsubGastos = null; }
   gastosDatos = null; gastosError = ""; gastosAbierta = null; gastosSubida = null; gastosTotal = null;
-  gastosMov = null; gastosCuentaDe = ""; gastosAdmin = null; gastosActividad = ""; gastosOtraAbierta = false; gastosOcupado = false;
+  gastosMov = null; gastosMovPara = null; gastosCuentaDe = ""; gastosAdmin = null; gastosActividad = ""; gastosOtraAbierta = false; gastosOcupado = false;
   lectorCola = []; lectorEstado = null; gastosLista = null; gastosListaAviso = ""; gastosDestino = null; gastosSel = null;
   if(gastoOverlay && !gastoOverlay.hidden) cerrarGasto(true);
 }
@@ -26011,7 +26063,7 @@ function renderFilaGasto(g){
     : esUrlFirmada(g.archivoUrl) ? `<img class="gx-mini" src="${esc(store.miniaturaDe(g.archivoUrl))}" alt="" loading="lazy">`
     : `<span class="gx-mini gx-mini-vacia" aria-hidden="true">🖼️</span>`;
   const rend = g.rendidoMonto != null && g.rendidoMoneda !== g.moneda ? fmtMonto(g.rendidoMoneda, g.rendidoMonto) : "";
-  const enSel = !!(gastosSel && gastosSel.rid === gastosAbierta), puede = gastoEditable(g), elegido = enSel && gastosSel.ids.has(g.id);
+  const enSel = !!(gastosSel && gastosSel.rid === gastosAbierta), puede = gastoBorrable(g), elegido = enSel && gastosSel.ids.has(g.id);
   // Borrar, a la vista en cada fila que se puede tocar (antes estaba solo adentro de la ventana y el usuario no lo encontró).
   const borrar = gastoEditable(g) ? `<button type="button" class="gx-fila-borrar" data-action="gasto-quitar" data-id="${esc(g.id)}" title="${esc(t("Borrar","Delete","Apagar","מחיקה"))}" aria-label="${esc(t("Borrar «{c}»","Delete “{c}”","Apagar «{c}»","מחיקת «{c}»",{ c: g.concepto || g.archivoNombre || t("este gasto","this expense","esta despesa","ההוצאה הזו") }))}">🗑️</button>` : "";
   const casilla = enSel ? `<label class="gx-lmarca"><input type="checkbox" id="gxS_${esc(g.id)}" data-gsel="${esc(g.id)}"${elegido ? " checked" : ""}${puede ? "" : " disabled"}
@@ -26129,7 +26181,28 @@ function marcarFilaDeLista(id, marcado){
 }
 // «Seleccionar»: el botón para entrar, y la barra de abajo mientras se elige (lo pidió el usuario el 16/11:
 // borrar varios de una vez dentro de una actividad).
-const seleccionables = rid => (rid === "sin" ? misSinVincular() : gastosDe(rid)).filter(gastoEditable);
+// El admin fijo, también los ya mandados o aprobados (lo pidió el usuario el 17/11; la base lo deja solo a él).
+const gastoBorrable = g => gastoEditable(g) || (!!g && isFixedAdmin());
+const seleccionables = rid => (rid === "sin" ? misSinVincular() : gastosDe(rid)).filter(gastoBorrable);
+// De qué cuenta corriente sale lo aprobado que se borra.
+function cuentaDeQuienes(gs){
+  const de = [...new Set(gs.map(g => g.autor))];
+  return de.length > 1 ? t("las cuentas corrientes de esas personas","those people's balances","as contas correntes dessas pessoas","החשבונות השוטפים של האנשים האלה")
+    : de[0] === miCorreo() ? t("tu cuenta corriente","your balance","sua conta corrente","החשבון השוטף שלך")
+    : t("la cuenta corriente de {n}","{n}'s balance","a conta corrente de {n}","החשבון השוטף של {n}",{ n: nombreDePersona(de[0]) });
+}
+// Lo que se advierte antes de borrar algo ya mandado o aprobado: sale de una revisión o de la cuenta corriente.
+function avisoDeBorrarMandados(gs){
+  const aprobados = gs.filter(g => g.estado === "aprobado"), mandados = gs.filter(g => !gastoEditable(g) && g.estado !== "aprobado");
+  if(aprobados.length){
+    const cuenta = cuentaDeQuienes(aprobados);
+    return gs.length === 1 ? t("Ya está aprobado: sale también de {c}.","It's already approved: it also comes out of {c}.","Já está aprovada: sai também de {c}.","היא כבר אושרה: היא יוצאת גם מ{c}.",{ c: cuenta })
+      : t("{n} ya están aprobados: salen también de {c}.","{n} are already approved: they also come out of {c}.","{n} já estão aprovadas: saem também de {c}.","{n} כבר אושרו: הן יוצאות גם מ{c}.",{ n: aprobados.length, c: cuenta });
+  }
+  if(mandados.length) return gs.length === 1 ? t("Ya se mandó: sale de la rendición que se está revisando.","It was already sent: it comes out of the report under review.","Já foi enviada: sai da prestação em revisão.","היא כבר נשלחה: היא יוצאת מהדוח שבבדיקה.")
+    : t("{n} ya se mandaron: salen de la rendición que se está revisando.","{n} were already sent: they come out of the report under review.","{n} já foram enviadas: saem da prestação em revisão.","{n} כבר נשלחו: הן יוצאות מהדוח שבבדיקה.",{ n: mandados.length });
+  return "";
+}
 const botonSeleccionar = rid => seleccionables(rid).length > 1
   ? `<button type="button" class="btn-secondary gx-sel-abrir" data-action="gastos-sel-abrir" data-id="${esc(rid)}">☑️ ${t("Seleccionar","Select","Selecionar","בחירה")}</button>` : "";
 function renderBarraDeSeleccion(rid){
@@ -26146,9 +26219,10 @@ async function borrarSeleccionados(){
   if(!S || S.borrando) return;
   const ids = seleccionables(S.rid).filter(g => S.ids.has(g.id)).map(g => g.id);
   if(!ids.length) return;
-  if(!await appConfirm(ids.length === 1 ? t("¿Borrar el gasto seleccionado y su comprobante? No se puede deshacer.","Delete the selected expense and its receipt? This can't be undone.","Apagar a despesa selecionada e o comprovante? Não dá para desfazer.","למחוק את ההוצאה שנבחרה ואת הקבלה? אי אפשר לבטל.")
-    : t("¿Borrar los {n} gastos seleccionados y sus comprobantes? No se puede deshacer.","Delete the {n} selected expenses and their receipts? This can't be undone.","Apagar as {n} despesas selecionadas e os comprovantes? Não dá para desfazer.","למחוק את {n} ההוצאות שנבחרו ואת הקבלות? אי אפשר לבטל.",{ n: ids.length }),
-    { okLabel: ids.length === 1 ? t("Borrar","Delete","Apagar","מחיקה") : t("Borrar {n}","Delete {n}","Apagar {n}","מחיקת {n}",{ n: ids.length }) })) return;
+  const extra = avisoDeBorrarMandados(ids.map(gastoPorId));
+  if(!await appConfirm((ids.length === 1 ? t("¿Borrar el gasto seleccionado y su comprobante? No se puede deshacer.","Delete the selected expense and its receipt? This can't be undone.","Apagar a despesa selecionada e o comprovante? Não dá para desfazer.","למחוק את ההוצאה שנבחרה ואת הקבלה? אי אפשר לבטל.")
+    : t("¿Borrar los {n} gastos seleccionados y sus comprobantes? No se puede deshacer.","Delete the {n} selected expenses and their receipts? This can't be undone.","Apagar as {n} despesas selecionadas e os comprovantes? Não dá para desfazer.","למחוק את {n} ההוצאות שנבחרו ואת הקבלות? אי אפשר לבטל.",{ n: ids.length })
+    ) + (extra ? " " + extra : ""), { danger: true, okLabel: ids.length === 1 ? t("Borrar","Delete","Apagar","מחיקה") : t("Borrar {n}","Delete {n}","Apagar {n}","מחיקת {n}",{ n: ids.length }) })) return;
   S.borrando = true; render();
   let mal = 0;
   for(const id of ids){
@@ -26161,15 +26235,24 @@ async function borrarSeleccionados(){
   if(mal) appAlert(t("No se pudieron borrar {n}: probá de nuevo.","{n} couldn't be deleted: try again.","Não foi possível apagar {n}: tente de novo.","לא ניתן היה למחוק {n}: נסו שוב.",{ n: mal }));
   const x = document.querySelector('.gastos-view [data-action="gastos-sel-abrir"], .gastos-view .gx-subir-aca, .gastos-view .gx-volver'); if(x) x.focus();
 }
-// Borrar una rendición entera, con sus gastos (la base no deja si ya se mandó).
+// Lo que se advierte antes de borrar una rendición entera ya mandada o aprobada (solo el admin fijo).
+function avisoDeBorrarRendicion(r){
+  const aprobados = gastosDe(r.id).filter(g => g.estado === "aprobado");
+  if(r.estado === "aprobada") return aprobados.length ? t("Ya está aprobada: sus gastos salen también de {c}.","It's already approved: its expenses also come out of {c}.","Já está aprovada: as despesas saem também de {c}.","הדוח כבר אושר: ההוצאות שלו יוצאות גם מ{c}.",{ c: cuentaDeQuienes(aprobados) }) : "";
+  if(r.estado === "enviada") return r.autor === miCorreo() ? t("Ya la mandaste: está en revisión.","You already sent it: it's under review.","Você já a mandou: está em revisão.","כבר שלחת אותו: הוא בבדיקה.")
+    : t("{n} ya la mandó: está en revisión.","{n} already sent it: it's under review.","{n} já a mandou: está em revisão.","{n} כבר שלח/ה אותו: הוא בבדיקה.",{ n: nombreDePersona(r.autor) });
+  return "";
+}
+// Borrar una rendición entera, con sus gastos (la base deja a la persona mientras es suya para corregir;
+// al admin fijo, siempre).
 async function borrarRendicionEntera(id){
   const r = rendicionPorId(id);
-  if(!r || r.autor !== miCorreo() || !rendicionEditable(r)) return;
-  const n = gastosDe(id).length;
-  if(!await appConfirm(n ? (n === 1 ? t("¿Borrar la rendición «{r}» con su gasto y su comprobante? No se puede deshacer.","Delete the report “{r}” with its expense and receipt? This can't be undone.","Apagar a prestação «{r}» com a despesa e o comprovante? Não dá para desfazer.","למחוק את הדוח «{r}» עם ההוצאה והקבלה? אי אפשר לבטל.",{ r: tituloRendicion(r) })
+  if(!r || !((r.autor === miCorreo() && rendicionEditable(r)) || isFixedAdmin())) return;
+  const n = gastosDe(id).length, extra = avisoDeBorrarRendicion(r);
+  if(!await appConfirm((n ? (n === 1 ? t("¿Borrar la rendición «{r}» con su gasto y su comprobante? No se puede deshacer.","Delete the report “{r}” with its expense and receipt? This can't be undone.","Apagar a prestação «{r}» com a despesa e o comprovante? Não dá para desfazer.","למחוק את הדוח «{r}» עם ההוצאה והקבלה? אי אפשר לבטל.",{ r: tituloRendicion(r) })
       : t("¿Borrar la rendición «{r}» con sus {n} gastos y sus comprobantes? No se puede deshacer.","Delete the report “{r}” with its {n} expenses and receipts? This can't be undone.","Apagar a prestação «{r}» com as {n} despesas e os comprovantes? Não dá para desfazer.","למחוק את הדוח «{r}» עם {n} ההוצאות והקבלות? אי אפשר לבטל.",{ r: tituloRendicion(r), n }))
-    : t("¿Borrar la rendición vacía «{n}»? Si después subís un comprobante de ahí, se crea de nuevo.","Delete the empty report “{n}”? If you upload a receipt for it later, it's created again.","Apagar a prestação vazia «{n}»? Se depois você enviar um comprovante dela, é criada de novo.","למחוק את הדוח הריק «{n}»? אם תעלו אחר כך קבלה שלו, הוא ייווצר מחדש.",{ n: tituloRendicion(r) }),
-    { okLabel: n ? t("Borrar todo","Delete everything","Apagar tudo","מחיקת הכול") : t("Borrar","Delete","Apagar","מחיקה") })) return;
+    : t("¿Borrar la rendición vacía «{n}»? Si después subís un comprobante de ahí, se crea de nuevo.","Delete the empty report “{n}”? If you upload a receipt for it later, it's created again.","Apagar a prestação vazia «{n}»? Se depois você enviar um comprovante dela, é criada de novo.","למחוק את הדוח הריק «{n}»? אם תעלו אחר כך קבלה שלו, הוא ייווצר מחדש.",{ n: tituloRendicion(r) })) + (extra ? " " + extra : ""),
+    { danger: true, okLabel: n ? t("Borrar todo","Delete everything","Apagar tudo","מחיקת הכול") : t("Borrar","Delete","Apagar","מחיקה") })) return;
   try{ await store.gastos.borrarRendicionEntera(id); }
   catch(err){
     console.error("No se pudo borrar la rendición:", err);
@@ -26178,7 +26261,9 @@ async function borrarRendicionEntera(id){
   }
   if(gastosAbierta === id){ gastosAbierta = null; gastosLista = null; gastosSel = null; }
   render();
-  const x = document.querySelector('[data-action="gastos-destino-abrir"]'); if(x) x.focus();
+  // En «Para aprobar» (el admin fijo) no está el botón de subir: el foco va a la primera rendición de la lista.
+  const x = document.querySelector('.gastos-view [data-action="gastos-destino-abrir"]') || document.querySelector('.gastos-view [data-action="gastos-abrir-rendicion"]');
+  if(x) x.focus();
 }
 // «Marcar todos»: marcada si están todas, a medias si algunas (eso no se puede escribir en el HTML).
 function casillaDeTodos(){
@@ -26383,10 +26468,11 @@ function renderRendicionAbierta(comoAdmin){
     ${aviso}
     ${mia && editable ? renderSubida() + renderAvisoDeLista() : ""}
     ${enLista ? renderListaDeGastos(r.id)
-      : `${editable && !(gastosSel && gastosSel.rid === r.id) ? `<div class="gx-herr">${botonDeLista(r.id)}${botonSeleccionar(r.id)}${subirAca}</div>` : ""}${gs.length ? `<div class="gx-filas">${gs.map(renderFilaGasto).join("")}</div>` : `<p class="setting-sub gx-nada">${t("Todavía no hay gastos en esta rendición.","There are no expenses in this report yet.","Ainda não há despesas nesta prestação.","עדיין אין הוצאות בדוח הזה.")}</p>`}`}
+      : `${editable && !(gastosSel && gastosSel.rid === r.id) ? `<div class="gx-herr">${botonDeLista(r.id)}${botonSeleccionar(r.id)}${subirAca}</div>`
+        : isFixedAdmin() && botonSeleccionar(r.id) && !(gastosSel && gastosSel.rid === r.id) ? `<div class="gx-herr">${botonSeleccionar(r.id)}</div>` : ""}${gs.length ? `<div class="gx-filas">${gs.map(renderFilaGasto).join("")}</div>` : `<p class="setting-sub gx-nada">${t("Todavía no hay gastos en esta rendición.","There are no expenses in this report yet.","Ainda não há despesas nesta prestação.","עדיין אין הוצאות בדוח הזה.")}</p>`}`}
     ${!enLista && Object.keys(detalle).length ? `<div class="gx-total"><span>${t("Total confirmado","Confirmed total","Total confirmado","סך המאושר")}${faltan ? ` <small>${esc(faltan === 1 ? t("(sin contar 1 por confirmar)","(not counting 1 to confirm)","(sem contar 1 por confirmar)","(בלי 1 שממתינה לאישור)") : t("(sin contar {n} por confirmar)","(not counting {n} to confirm)","(sem contar {n} por confirmar)","(בלי {n} שממתינות לאישור)",{ n: faltan }))}</small>` : ""}</span><b>${totalesHtml(detalle)}</b></div>` : ""}
     ${gastosSel && gastosSel.rid === r.id ? renderBarraDeSeleccion(r.id) : enLista ? "" : renderTotalRapido(r, editable, detalle) + enviar + aprobar}
-    ${mia && editable && !enLista && !(gastosSel && gastosSel.rid === r.id) ? `<div class="gx-borrar-ren"><button type="button" class="gx-link gx-lquitar" data-action="gastos-rendicion-borrar" data-id="${esc(r.id)}">🗑️ ${t("Borrar esta rendición","Delete this report","Apagar esta prestação","מחיקת הדוח הזה")}${gs.length ? " " + esc(gs.length === 1 ? t("(con su gasto)","(with its expense)","(com a despesa)","(עם ההוצאה)") : t("(con sus {n} gastos)","(with its {n} expenses)","(com as {n} despesas)","(עם {n} ההוצאות)",{ n: gs.length })) : ""}</button></div>` : ""}`;
+    ${(editable || isFixedAdmin()) && !enLista && !(gastosSel && gastosSel.rid === r.id) ? `<div class="gx-borrar-ren"><button type="button" class="gx-link gx-lquitar" data-action="gastos-rendicion-borrar" data-id="${esc(r.id)}">🗑️ ${t("Borrar esta rendición","Delete this report","Apagar esta prestação","מחיקת הדוח הזה")}${gs.length ? " " + esc(gs.length === 1 ? t("(con su gasto)","(with its expense)","(com a despesa)","(עם ההוצאה)") : t("(con sus {n} gastos)","(with its {n} expenses)","(com as {n} despesas)","(עם {n} ההוצאות)",{ n: gs.length })) : ""}</button></div>` : ""}`;
 }
 // El total rápido: cuánto se gastó en la actividad, sin el detalle. Vale el
 // detalle; si no coinciden se avisa, y la persona puede confirmar el suyo.
@@ -26515,11 +26601,16 @@ function cuentaDe(persona){
 }
 const tipoDeMovimiento = k => ({ recibido: t("Recibido","Received","Recebido","התקבל"), devuelto: t("Devuelto","Returned","Devolvido","הוחזר"), ajuste: t("Ajuste","Adjustment","Ajuste","התאמה") })[k] || k;
 function renderMovimiento(m, conPersona){
+  // Quien lo puede corregir (la persona mientras está pendiente; un admin, siempre) lo puede borrar y adjuntarle el comprobante.
   const puedeBorrar = isAdmin() || (m.persona === miCorreo() && m.estado === "pendiente");
   const signo = m.tipo === "recibido" ? "−" : m.tipo === "devuelto" || m.monto > 0 ? "+" : "";
+  // El comprobante, opcional (lo pidió el usuario el 17/11): para que quede registro de lo recibido, devuelto o ajustado.
+  const comp = m.archivo ? `<button type="button" class="gx-link gx-mov-comp" data-action="gastos-mov-ver" data-id="${esc(m.id)}"${esUrlFirmada(m.archivoUrl) ? "" : " disabled"}>📎 ${t("Ver el comprobante","See the receipt","Ver o comprovante","הצגת הקבלה")}</button>`
+    : gastosMovSubiendo === m.id ? `<span class="gx-mov-comp gx-suave" role="status">⏳ ${t("Subiendo el comprobante…","Uploading the receipt…","Enviando o comprovante…","מעלה את הקבלה…")}</span>`
+    : puedeBorrar ? `<button type="button" class="gx-link gx-mov-comp gx-mov-adj-link" data-action="gastos-mov-adjuntar" data-id="${esc(m.id)}">📎 ${t("Adjuntar comprobante","Attach a receipt","Anexar comprovante","צירוף קבלה")}</button>` : "";
   return `<div class="gx-mov">
       <span class="gx-mov-txt"><b>${esc(tipoDeMovimiento(m.tipo))}${conPersona ? " · " + esc(nombreDePersona(m.persona)) : ""}</b>
-        <small>${[esc(fmtDate(m.fecha)), m.descripcion ? esc(m.descripcion) : ""].filter(Boolean).join(" · ")}</small></span>
+        <small>${[esc(fmtDate(m.fecha)), m.descripcion ? esc(m.descripcion) : ""].filter(Boolean).join(" · ")}</small>${comp}</span>
       <span class="gx-mov-der"><b>${montoHtml(m.moneda, Math.abs(m.monto), signo)}</b>
         ${m.estado === "pendiente" ? gxChip([t("Pendiente","Pending","Pendente","ממתין"), "aviso"]) : gxChip([t("Confirmado","Confirmed","Confirmado","אושר"), "bien"])}</span>
       <span class="gx-mov-acc">
@@ -26554,7 +26645,7 @@ function renderGastosCuenta(){
         </dl></div>`; }).join("")}</div>`
     : `<p class="setting-sub gx-nada">${propia ? t("Todavía no hay nada en tu cuenta: aparece cuando se aprueba una rendición tuya o anotás plata recibida.","There's nothing in your balance yet: it shows up when one of your reports is approved or you enter money received.","Ainda não há nada na sua conta: aparece quando uma prestação sua é aprovada ou você anota dinheiro recebido.","עדיין אין כלום בחשבון שלך: זה מופיע כשדוח שלך מאושר או כשרושמים כסף שהתקבל.") : t("Todavía no hay nada en esta cuenta.","There's nothing in this balance yet.","Ainda não há nada nesta conta.","עדיין אין כלום בחשבון הזה.")}</p>`;
   const movs = gastosDatos.movimientos.filter(m => m.persona === de);
-  if(!gastosMov) gastosMov = { tipo: "recibido", fecha: todayISO(), moneda: "USD", monto: "", descripcion: "", guardando: false, error: "" };
+  if(!gastosMov) gastosMov = { tipo: "recibido", fecha: todayISO(), moneda: "USD", monto: "", descripcion: "", archivo: null, guardando: false, error: "" };
   const f = gastosMov;
   const tipos = ["recibido", "devuelto", ...(isAdmin() ? ["ajuste"] : [])];
   const form = `<div class="settings-card gx-anotar">
@@ -26565,6 +26656,12 @@ function renderGastosCuenta(){
         <label>${t("Moneda","Currency","Moeda","מטבע")}<input type="text" class="gx-moneda" autocomplete="off" aria-autocomplete="list" aria-haspopup="listbox" maxlength="3" id="gxMov_moneda" data-gmov="moneda" value="${esc(f.moneda)}"></label>
         <label>${t("Monto","Amount","Valor","סכום")}<input type="text" inputmode="decimal" class="gx-monto" id="gxMov_monto" data-gmov="monto" value="${esc(montoEnCampo(f.monto))}"></label>
         <label class="gx-ancho">${t("Detalle (opcional)","Details (optional)","Detalhe (opcional)","פירוט (לא חובה)")}<input type="text" maxlength="300" id="gxMov_descripcion" data-gmov="descripcion" value="${esc(f.descripcion)}" placeholder="${esc(t("Por ejemplo: adelanto para la visita a Lima","For example: advance for the Lima visit","Por exemplo: adiantamento para a visita a Lima","למשל: מקדמה לביקור בלימה"))}"></label>
+        <div class="gx-ancho gx-mov-adj">
+          ${f.archivo ? `<span class="gx-mov-arch">📎 ${esc(f.archivo.nombre)}</span>
+            <button type="button" class="gx-link gx-lquitar" data-action="gastos-mov-adj-quitar" aria-label="${esc(t("Quitar el comprobante «{n}»","Remove the receipt “{n}”","Tirar o comprovante «{n}»","הסרת הקבלה «{n}»",{ n: f.archivo.nombre }))}">✕ ${t("Quitar","Remove","Tirar","הסרה")}</button>`
+            : `<button type="button" class="btn-secondary gx-mov-adj-btn" data-action="gastos-mov-adjuntar" data-id="">📎 ${t("Adjuntar comprobante","Attach a receipt","Anexar comprovante","צירוף קבלה")}</button>`}
+          <small class="gx-pista">${t("Opcional: la foto o el PDF de la transferencia o del recibo, para que quede registro.","Optional: a photo or PDF of the transfer or receipt, so there's a record.","Opcional: a foto ou o PDF da transferência ou do recibo, para ficar registrado.","לא חובה: תמונה או PDF של ההעברה או הקבלה, כדי שיישאר תיעוד.")}</small>
+        </div>
       </div>
       ${f.tipo === "ajuste" ? `<p class="setting-sub">${t("Un ajuste es un saldo inicial o una corrección: positivo, a favor de la persona; negativo, en contra.","An adjustment is an opening balance or a correction: positive, in the person's favor; negative, against.","Um ajuste é um saldo inicial ou uma correção: positivo, a favor da pessoa; negativo, contra.","התאמה היא יתרת פתיחה או תיקון: חיובית לטובת האדם; שלילית — לחובתו.")}</p>` : ""}
       ${!isAdmin() ? `<p class="setting-sub">${t("Queda pendiente hasta que un administrador lo confirme.","It stays pending until an admin confirms it.","Fica pendente até um administrador confirmar.","זה נשאר ממתין עד שמנהל/ת יאשר/תאשר.")}</p>` : ""}
@@ -26587,9 +26684,19 @@ async function anotarMovimiento(){
   if(mal){ f.error = mal; render(); return; }
   f.guardando = true; f.error = ""; render();
   try{
-    await store.gastos.anotarMovimiento({ persona: de, tipo: f.tipo, fecha: f.fecha, moneda, monto: redondo(n),
+    const id = await store.gastos.anotarMovimiento({ persona: de, tipo: f.tipo, fecha: f.fecha, moneda, monto: redondo(n),
       descripcion: String(f.descripcion || "").trim().slice(0, 300), estado: isAdmin() ? "confirmado" : "pendiente" });
     gastosMov = null;
+    // El comprobante va después de la fila (la base deja subirlo a la carpeta de un movimiento que existe).
+    if(f.archivo){
+      gastosMovSubiendo = id; render();
+      try{ await store.gastos.subirComprobanteMov(id, f.archivo.dataUrl, f.archivo.nombre, f.archivo.tipo); }
+      catch(err){
+        console.error("No se pudo subir el comprobante del movimiento:", err);
+        appAlert(t("Se anotó, pero no se pudo subir el comprobante: {m}. Probá de nuevo con «Adjuntar comprobante» en el movimiento.","It was saved, but the receipt couldn't be uploaded: {m}. Try again with “Attach a receipt” on the entry.","Foi anotado, mas não foi possível enviar o comprovante: {m}. Tente de novo com «Anexar comprovante» no lançamento.","נרשם, אבל לא ניתן היה להעלות את הקבלה: {m}. נסו שוב עם «צירוף קבלה» ברישום.",{ m: detalleDeError(err) }));
+      }
+      gastosMovSubiendo = null;
+    }
   }catch(err){
     console.error("No se pudo anotar el movimiento:", err);
     f.guardando = false; f.error = t("No se pudo guardar: {m}","Couldn't save: {m}","Não foi possível salvar: {m}","לא ניתן היה לשמור: {m}",{ m: detalleDeError(err) });
@@ -26636,11 +26743,42 @@ function cerrarGasto(sinFoco){
   volver();
   requestAnimationFrame(() => setTimeout(() => { if(!document.activeElement || document.activeElement === document.body) volver(); }, 0));
 }
+// Un gasto que ya no se corrige (mandado, aprobado, o de otra persona): sus datos como texto, sin
+// controles apagados (lo pidió el usuario el 17/11: «mirá cómo queda cuando es aprobado»).
+function resumenDeGasto(g){
+  const mio = g.autor === miCorreo(), r = g.rendicionId && rendicionPorId(g.rendicionId);
+  const nada = `<span class="gx-res-nada">—</span>`;
+  const fila = (et, valor, sub) => `<div class="gx-res-fila"><dt>${et}</dt><dd>${valor}${sub ? `<small>${sub}</small>` : ""}</dd></div>`;
+  const forma = g.formaPago === "tarjeta" ? t("Tarjeta","Card","Cartão","כרטיס") + (g.tarjeta ? " " + t("terminada en {n}","ending in {n}","terminado em {n}","מסתיים ב-{n}",{ n: g.tarjeta }) : "")
+    : g.formaPago === "efectivo" ? t("Efectivo","Cash","Dinheiro","מזומן") : g.formaPago === "transferencia" ? t("Transferencia","Transfer","Transferência","העברה") : "";
+  const quien = g.pago === "organizacion" ? t("Organización","Organization","Organização","הארגון") : mio ? t("Yo","Me","Eu","אני") : nombreDePersona(g.autor);
+  const cuenta = g.pago === "organizacion" ? t("No entra en la cuenta corriente.","Doesn't go into the balance.","Não entra na conta corrente.","לא נכנס לחשבון השוטף.")
+    : mio ? t("Entra en tu cuenta corriente.","Goes into your balance.","Entra na sua conta corrente.","נכנס לחשבון השוטף שלך.") : t("Entra en su cuenta corriente.","Goes into their balance.","Entra na conta corrente dessa pessoa.","נכנס לחשבון השוטף שלו/ה.");
+  const nota = notaDeMoneda(g.moneda, g.monto, g.rendidoMoneda, g.rendidoMonto);
+  const obs = [nota ? `<b>${esc(nota)}</b>` : "", g.observaciones ? esc(g.observaciones) : ""].filter(Boolean).join("<br>");
+  const estado = g.estado === "aprobado" && r && r.aprobadaEl ? t("Aprobado el {f}: ya no se cambia.","Approved on {f}: it can't be changed anymore.","Aprovado em {f}: não se altera mais.","אושר ב-{f}: כבר לא משתנה.",{ f: fechaDeMarca(r.aprobadaEl) })
+    : g.estado === "aprobado" ? t("Aprobado: ya no se cambia.","Approved: it can't be changed anymore.","Aprovado: não se altera mais.","אושר: כבר לא משתנה.")
+    : mio && g.estado === "enviado" ? t("Mandado: un administrador lo está revisando.","Sent: an admin is reviewing it.","Enviado: um administrador está revisando.","נשלח: מנהל/ת בודק/ת אותו.") : "";
+  return `${estado ? `<p class="gx-res-estado">${esc(estado)}</p>` : ""}
+    <div class="gx-res-plata">
+      <span class="gx-res-monto">${g.monto != null ? montoHtml(g.moneda, g.monto) : nada}</span>
+      ${g.rendidoMonto != null && g.moneda !== g.rendidoMoneda ? `<span class="gx-res-rendido">${esc(t("Rendido:","Reported:","Prestado:","דווח:"))} ${montoHtml(g.rendidoMoneda, g.rendidoMonto)}</span>` : ""}
+    </div>
+    <dl class="gx-res">
+      ${fila(t("Fecha","Date","Data","תאריך"), g.fecha ? esc(fmtDate(g.fecha)) : nada)}
+      ${fila(t("Va en","Goes in","Vai em","שייך ל"), r ? esc(tituloRendicion(r)) : esc(t("Sin vincular","Not linked","Sem vínculo","לא משויך")))}
+      ${fila(t("Tipo","Type","Tipo","סוג"), g.tipo ? esc(nombreTipoGasto(g.tipo)) : nada)}
+      ${fila(t("Forma de pago","Payment method","Forma de pagamento","אמצעי תשלום"), forma ? esc(forma) : nada)}
+      ${fila(t("¿Quién pagó?","Who paid?","Quem pagou?","מי שילם?"), esc(quien), esc(cuenta))}
+      ${fila(t("Factura","Invoice","Nota fiscal","חשבונית"), g.factura !== false ? `✓ ${esc(t("Tiene factura o comprobante válido","Has a valid invoice or receipt","Tem nota fiscal ou comprovante válido","יש חשבונית או קבלה תקפה"))}` : esc(t("Sin factura","No invoice","Sem nota fiscal","ללא חשבונית")))}
+      ${obs ? `<div class="gx-res-fila gx-ancho"><dt>${t("Observaciones","Notes","Observações","הערות")}</dt><dd class="gx-res-obs">${obs}</dd></div>` : ""}
+    </dl>`;
+}
 function renderGasto(){
   const e = gastoEdit, g = e && gastoPorId(e.id);
   if(!e || !g){ if(e) cerrarGasto(); return; }
   const act = document.activeElement, idFoco = act && gastoOverlay.contains(act) && act.id;
-  const editable = gastoEditable(g), dis = editable ? "" : " disabled";
+  const editable = gastoEditable(g);
   const r = g.rendicionId && rendicionPorId(g.rendicionId);
   const d = e.d, mal = k => e.faltan.includes(k) ? ' aria-invalid="true"' : "";
   const campo = (et, control, ancho) => `<label class="gx-campo${ancho ? " gx-ancho" : ""}"><span class="gx-et">${et}</span>${control}</label>`;
@@ -26674,52 +26812,54 @@ function renderGasto(){
       <span class="gx-espacio"></span>
       ${g.estado === "borrador" ? `<button type="button" class="btn-secondary" data-action="gasto-guardar" data-confirmar="0" ${e.guardando ? "disabled" : ""}>${t("Guardar sin confirmar","Save without confirming","Salvar sem confirmar","שמירה בלי אישור")}</button>` : ""}
       <button type="button" class="btn-primary" data-action="gasto-guardar" data-confirmar="1" ${e.guardando ? "disabled" : ""}>${e.guardando ? t("Guardando…","Saving…","Salvando…","שומר…") : g.estado === "observado" ? t("Guardar la corrección","Save the correction","Salvar a correção","שמירת התיקון") : g.estado === "confirmado" ? t("Guardar","Save","Salvar","שמירה") : t("Confirmar","Confirm","Confirmar","אישור")}</button>`
-    : `<span class="gx-espacio"></span><button type="button" class="btn-secondary" data-action="gasto-cerrar">${t("Cerrar","Close","Fechar","סגירה")}</button>`;
+    : `${isFixedAdmin() ? `<button type="button" class="btn-secondary gx-borrar" data-action="gasto-borrar" ${e.guardando ? "disabled" : ""}>🗑️ ${t("Borrar","Delete","Apagar","מחיקה")}</button>` : ""}
+      <span class="gx-espacio"></span><button type="button" class="btn-secondary" data-action="gasto-cerrar">${t("Cerrar","Close","Fechar","סגירה")}</button>`;
   // Los botones de elegir (tipo, quién pagó, forma de pago): un toque, y se ve todo a la vez (lo pidió el usuario
   // el 16/11: «mostrar de otra forma»). Con muchos tipos (los suma un admin), el tipo vuelve a ser una lista.
   const opciones = (accion, dato, lista, actual) => lista.map(([v, txt, id]) => `<button type="button" class="gx-opc" data-action="${accion}" data-${dato}="${esc(v)}"${id ? ` id="${id}"` : ""}
-      aria-pressed="${v === actual}"${dis}>${esc(txt)}</button>`).join("");
+      aria-pressed="${v === actual}">${esc(txt)}</button>`).join("");
   const tipoCampo = tipos.length <= 12
     ? `<div class="gx-campo gx-ancho"><span class="gx-et" id="gxTipoEt">${t("Tipo","Type","Tipo","סוג")}</span>
         <div class="gx-opciones" id="gxTipo" role="group" tabindex="-1" aria-labelledby="gxTipoEt"${mal("tipo")}${marca("tipo")}>${opciones("gasto-tipo", "tipo", tipos.map(x => [x.key, x.label]), d.tipo)}</div></div>`
-    : campo(t("Tipo","Type","Tipo","סוג"), `<select id="gxTipo" data-gcampo="tipo"${mal("tipo")}${marca("tipo")}${dis}><option value="">${esc(t("Elegí…","Pick…","Escolha…","בחרו…"))}</option>${tipos.map(x => `<option value="${esc(x.key)}"${x.key === d.tipo ? " selected" : ""}>${esc(x.label)}</option>`).join("")}</select>`, true);
+    : campo(t("Tipo","Type","Tipo","סוג"), `<select id="gxTipo" data-gcampo="tipo"${mal("tipo")}${marca("tipo")}><option value="">${esc(t("Elegí…","Pick…","Escolha…","בחרו…"))}</option>${tipos.map(x => `<option value="${esc(x.key)}"${x.key === d.tipo ? " selected" : ""}>${esc(x.label)}</option>`).join("")}</select>`, true);
   document.getElementById("gastoBody").innerHTML = `
     <button type="button" class="close" data-action="gasto-cerrar" aria-label="${esc(t("Cerrar","Close","Fechar","סגירה"))}">✕</button>
     <h2 id="gastoTitle" class="gx-oculto">${editable ? t("Revisar el gasto","Check the expense","Revisar a despesa","בדיקת ההוצאה") : t("El gasto","The expense","A despesa","ההוצאה")}</h2>
     <div class="gx-cabecera">${gxChip(estadoDeGasto(g.estado))}
-      <input type="text" id="gxConcepto" class="gx-concepto" maxlength="140" data-gcampo="concepto" value="${esc(d.concepto)}"${marca("concepto")} aria-label="${esc(t("Concepto","Description","Conceito","תיאור"))}"
-        placeholder="${esc(t("Concepto: por ejemplo, Taxi al aeropuerto","Description: for example, Taxi to the airport","Conceito: por exemplo, Táxi para o aeroporto","תיאור: למשל, מונית לשדה התעופה"))}"${mal("concepto")}${dis}>
+      ${editable ? `<input type="text" id="gxConcepto" class="gx-concepto" maxlength="140" data-gcampo="concepto" value="${esc(d.concepto)}"${marca("concepto")} aria-label="${esc(t("Concepto","Description","Conceito","תיאור"))}"
+        placeholder="${esc(t("Concepto: por ejemplo, Taxi al aeropuerto","Description: for example, Taxi to the airport","Conceito: por exemplo, Táxi para o aeroporto","תיאור: למשל, מונית לשדה התעופה"))}"${mal("concepto")}>`
+        : `<span class="gx-concepto gx-concepto-fijo" id="gxConcepto">${esc(d.concepto || g.archivoNombre || t("Sin concepto","No description","Sem conceito","ללא תיאור"))}</span>`}
       ${vecinos && vecinos.ids.length > 1 ? `<span class="gx-contador" aria-live="polite">${esc(t("{a} de {b}","{a} of {b}","{a} de {b}","{a} מתוך {b}",{ a: vecinos.i + 1, b: vecinos.ids.length }))}</span>` : ""}</div>
     <div class="gx-ventana">
       <div class="gx-v-comp">${vista}
         <div class="gx-v-comp-pie"><small class="gx-arch">${esc(g.archivoNombre || "")}</small>
-          <label class="gx-check gx-factura"><input type="checkbox" id="gxFactura" data-gcampo="factura"${d.factura ? " checked" : ""}${dis}> ${t("Tiene factura o comprobante válido","Has a valid invoice or receipt","Tem nota fiscal ou comprovante válido","יש חשבונית או קבלה תקפה")}</label>${leer}${nadaLeido ? `<small class="gx-nada-leido" role="status">${t("El lector no encontró nada claro: completalo a mano.","The reader didn't find anything clear: fill it in by hand.","O leitor não encontrou nada claro: complete à mão.","הקורא לא מצא משהו ברור: מלאו ידנית.")}</small>` : ""}${!editable && g.autor !== miCorreo() ? `<small>${esc(t("De {n}","By {n}","De {n}","של {n}",{ n: nombreDePersona(g.autor) }))}</small>` : ""}</div></div>
+          ${editable ? `<label class="gx-check gx-factura"><input type="checkbox" id="gxFactura" data-gcampo="factura"${d.factura ? " checked" : ""}> ${t("Tiene factura o comprobante válido","Has a valid invoice or receipt","Tem nota fiscal ou comprovante válido","יש חשבונית או קבלה תקפה")}</label>` : ""}${leer}${nadaLeido ? `<small class="gx-nada-leido" role="status">${t("El lector no encontró nada claro: completalo a mano.","The reader didn't find anything clear: fill it in by hand.","O leitor não encontrou nada claro: complete à mão.","הקורא לא מצא משהו ברור: מלאו ידנית.")}</small>` : ""}${!editable && g.autor !== miCorreo() ? `<small>${esc(t("De {n}","By {n}","De {n}","של {n}",{ n: nombreDePersona(g.autor) }))}</small>` : ""}</div></div>
       <div class="gx-v-form">
         ${hilo}
         ${puedeObservar ? `<div class="gx-observar">
             ${campo(t("Observar este gasto","Flag this expense","Observar esta despesa","הערה על ההוצאה"), `<textarea id="gxObs" maxlength="1000" rows="2" data-gcampo-extra="observacion" placeholder="${esc(t("Qué hay que corregir","What needs fixing","O que precisa ser corrigido","מה צריך לתקן"))}">${esc(e.observacion)}</textarea>`, true)}
             <button type="button" class="btn-secondary" data-action="gasto-observar" ${e.guardando ? "disabled" : ""}>⚠️ ${t("Observar","Flag","Observar","הערה")}</button>
           </div>` : ""}
-        <div class="gx-campos">
+        ${!editable ? resumenDeGasto(g) : `<div class="gx-campos">
           <div class="gx-plata gx-ancho">
-            ${campo(t("Monto","Amount","Valor","סכום"), `<input type="text" id="gxMonto" inputmode="decimal" class="gx-monto" data-gcampo="monto" value="${esc(montoEnCampo(d.monto))}"${mal("monto")}${marca("monto")}${dis}>`)}
-            ${campo(t("Moneda","Currency","Moeda","מטבע"), `<input type="text" id="gxMoneda" class="gx-moneda" autocomplete="off" aria-autocomplete="list" aria-haspopup="listbox" maxlength="3" data-gcampo="moneda" value="${esc(d.moneda)}"${mal("moneda")}${marca("moneda")}${dis}>`)}
-            ${otraMoneda ? campo(t("Monto en {m}","Amount in {m}","Valor em {m}","סכום ב-{m}",{ m: esc(d.rendidoMoneda) }), `<input type="text" id="gxRendido" inputmode="decimal" class="gx-monto gx-monto-2" data-gcampo="rendidoMonto" value="${esc(montoEnCampo(d.rendidoMonto))}"${dis}>`)
-              + campo(t("Se rinde en","Reported in","Presta-se em","מדווח ב"), `<input type="text" id="gxRendidoMoneda" class="gx-moneda" autocomplete="off" aria-autocomplete="list" aria-haspopup="listbox" maxlength="3" data-gcampo="rendidoMoneda" value="${esc(d.rendidoMoneda)}"${mal("rendidoMoneda")}${dis}>`)
+            ${campo(t("Monto","Amount","Valor","סכום"), `<input type="text" id="gxMonto" inputmode="decimal" class="gx-monto" data-gcampo="monto" value="${esc(montoEnCampo(d.monto))}"${mal("monto")}${marca("monto")}>`)}
+            ${campo(t("Moneda","Currency","Moeda","מטבע"), `<input type="text" id="gxMoneda" class="gx-moneda" autocomplete="off" aria-autocomplete="list" aria-haspopup="listbox" maxlength="3" data-gcampo="moneda" value="${esc(d.moneda)}"${mal("moneda")}${marca("moneda")}>`)}
+            ${otraMoneda ? campo(t("Monto en {m}","Amount in {m}","Valor em {m}","סכום ב-{m}",{ m: esc(d.rendidoMoneda) }), `<input type="text" id="gxRendido" inputmode="decimal" class="gx-monto gx-monto-2" data-gcampo="rendidoMonto" value="${esc(montoEnCampo(d.rendidoMonto))}">`)
+              + campo(t("Se rinde en","Reported in","Presta-se em","מדווח ב"), `<input type="text" id="gxRendidoMoneda" class="gx-moneda" autocomplete="off" aria-autocomplete="list" aria-haspopup="listbox" maxlength="3" data-gcampo="rendidoMoneda" value="${esc(d.rendidoMoneda)}"${mal("rendidoMoneda")}>`)
               + `<small class="gx-pista">${t("En {m}: lo que te cobró el banco.","In {m}: what your bank charged you.","Em {m}: o que o banco te cobrou.","ב-{m}: מה שהבנק חייב אתכם.",{ m: esc(d.rendidoMoneda) })}</small>` : ""}
           </div>
-          ${campo(t("Fecha","Date","Data","תאריך"), `<input type="date" id="gxFecha" data-gcampo="fecha" value="${esc(d.fecha)}"${mal("fecha")}${marca("fecha")}${dis}>`)}
-          ${campo(t("Va en","Goes in","Vai em","שייך ל"), `<select id="gxVinculo" class="gx-elige" data-gcampo="vinculo"${dis}>${opcionesDeVinculo(g, d.vinculo)}</select>`)}
+          ${campo(t("Fecha","Date","Data","תאריך"), `<input type="date" id="gxFecha" data-gcampo="fecha" value="${esc(d.fecha)}"${mal("fecha")}${marca("fecha")}>`)}
+          ${campo(t("Va en","Goes in","Vai em","שייך ל"), `<select id="gxVinculo" class="gx-elige" data-gcampo="vinculo">${opcionesDeVinculo(g, d.vinculo)}</select>`)}
           ${tipoCampo}
           <div class="gx-campo"><span class="gx-et" id="gxPagoEt">${t("¿Quién pagó?","Who paid?","Quem pagou?","מי שילם?")}</span>
             <div class="gx-fila-opc"><div class="gx-opciones gx-seg" id="gxPago" role="group" aria-labelledby="gxPagoEt">${opciones("gasto-pago", "pago", [["persona", t("Yo","Me","Eu","אני"), "gxPagoPersona"], ["organizacion", t("Organización","Organization","Organização","הארגון"), "gxPagoOrg"]], d.pago)}</div>
             <small class="gx-pista">${d.pago === "organizacion" ? t("No entra en tu cuenta corriente.","Doesn't go into your balance.","Não entra na sua conta corrente.","לא נכנס לחשבון השוטף שלך.") : t("Entra en tu cuenta corriente.","Goes into your balance.","Entra na sua conta corrente.","נכנס לחשבון השוטף שלך.")}</small></div></div>
           <div class="gx-campo"><span class="gx-et" id="gxFormaEt">${t("Forma de pago","Payment method","Forma de pagamento","אמצעי תשלום")}</span>
             <div class="gx-fila-opc"><div class="gx-opciones gx-seg" id="gxForma" role="group" tabindex="-1" aria-labelledby="gxFormaEt"${marca("formaPago")}>${opciones("gasto-forma", "forma", [["tarjeta", t("Tarjeta","Card","Cartão","כרטיס")], ["efectivo", t("Efectivo","Cash","Dinheiro","מזומן")], ["transferencia", t("Transferencia","Transfer","Transferência","העברה")]], d.formaPago)}</div>
-            ${d.formaPago === "tarjeta" ? `<label class="gx-tarj"><span>${t("terminada en","ending in","terminado em","מסתיים ב")}</span><input type="text" id="gxTarjeta" inputmode="numeric" maxlength="4" data-gcampo="tarjeta" value="${esc(d.tarjeta)}"${marca("tarjeta")}${mal("tarjeta")}${dis} aria-label="${esc(t("Tarjeta terminada en","Card ending in","Cartão terminado em","כרטיס שמסתיים ב"))}" placeholder="1234"></label>` : ""}</div></div>
-          ${campo(t("Observaciones (opcional)","Notes (optional)","Observações (opcional)","הערות (לא חובה)"), `${notaEnCampo("gxObsAuto", notaDeMoneda(d.moneda, d.monto, d.rendidoMoneda, d.rendidoMonto))}<textarea id="gxObservaciones" maxlength="500" rows="2" data-gcampo="observaciones"${dis}>${esc(d.observaciones)}</textarea>`, true)}
+            ${d.formaPago === "tarjeta" ? `<label class="gx-tarj"><span>${t("terminada en","ending in","terminado em","מסתיים ב")}</span><input type="text" id="gxTarjeta" inputmode="numeric" maxlength="4" data-gcampo="tarjeta" value="${esc(d.tarjeta)}"${marca("tarjeta")}${mal("tarjeta")} aria-label="${esc(t("Tarjeta terminada en","Card ending in","Cartão terminado em","כרטיס שמסתיים ב"))}" placeholder="1234"></label>` : ""}</div></div>
+          ${campo(t("Observaciones (opcional)","Notes (optional)","Observações (opcional)","הערות (לא חובה)"), `${notaEnCampo("gxObsAuto", notaDeMoneda(d.moneda, d.monto, d.rendidoMoneda, d.rendidoMonto))}<textarea id="gxObservaciones" maxlength="500" rows="2" data-gcampo="observaciones">${esc(d.observaciones)}</textarea>`, true)}
           ${editable && g.estado === "observado" ? campo(t("Tu respuesta (opcional)","Your reply (optional)","Sua resposta (opcional)","התשובה שלך (לא חובה)"), `<textarea id="gxRespuesta" maxlength="1000" rows="2" data-gcampo-extra="comentario">${esc(e.comentario)}</textarea>`, true) : ""}
-        </div>
+        </div>`}
         ${e.error ? `<div class="form-error" role="alert">${esc(e.error)}</div>` : ""}
       </div>
     </div>
@@ -26849,9 +26989,10 @@ async function guardarGasto(confirmar){
   }
 }
 async function borrarGasto(){
-  const e = gastoEdit;
-  if(!e || e.guardando) return;
-  if(!await appConfirm(t("¿Borrar este gasto y su comprobante?","Delete this expense and its receipt?","Apagar esta despesa e o comprovante?","למחוק את ההוצאה ואת הקבלה שלה?"), { danger: true, okLabel: t("Borrar","Delete","Apagar","מחיקה") })) return;
+  const e = gastoEdit, g = e && gastoPorId(e.id);
+  if(!e || !g || e.guardando || !gastoBorrable(g)) return;
+  const extra = avisoDeBorrarMandados([g]);
+  if(!await appConfirm(t("¿Borrar este gasto y su comprobante?","Delete this expense and its receipt?","Apagar esta despesa e o comprovante?","למחוק את ההוצאה ואת הקבלה שלה?") + (extra ? " " + extra : ""), { danger: true, okLabel: t("Borrar","Delete","Apagar","מחיקה") })) return;
   if(gastoEdit !== e) return;
   e.guardando = true; renderGasto();
   try{ await store.gastos.borrar(e.id); cerrarGasto(); }
@@ -26905,7 +27046,16 @@ function gastoAlEscribir(el, alCambiar){
 function verComprobante(id){
   const g = gastoPorId(id);
   if(!g || !esUrlFirmada(g.archivoUrl)) return;
-  const nombre = String(g.archivoNombre || g.concepto || t("Comprobante","Receipt","Comprovante","קבלה")).replace(/\.[A-Za-z0-9]{2,5}$/, "");
+  abrirComprobante(g, g.archivoNombre || g.concepto);
+}
+function verComprobanteMov(id){
+  const m = gastosDatos && gastosDatos.movimientos.find(x => x.id === id);
+  if(!m || !esUrlFirmada(m.archivoUrl)) return;
+  abrirComprobante(m, m.archivoNombre || tipoDeMovimiento(m.tipo));
+}
+// `g`: un gasto o un movimiento (los dos guardan el comprobante igual: archivo, archivoTipo, archivoUrl).
+function abrirComprobante(g, titulo){
+  const nombre = String(titulo || t("Comprobante","Receipt","Comprovante","קבלה")).replace(/\.[A-Za-z0-9]{2,5}$/, "");
   if(esPdfGasto(g)){
     // En el celular, un PDF adentro de la página suele verse en blanco: se abre aparte, con el visor del teléfono.
     if(window.matchMedia && window.matchMedia("(max-width: 760px)").matches){ window.open(g.archivoUrl, "_blank", "noopener"); return; }
@@ -27051,6 +27201,14 @@ const GASTOS_ACCIONES = {
   "gastos-total-guardar": async () => guardarTotalRapido(false),
   "gastos-total-borrar": async () => guardarTotalRapido(true),
   "gastos-mov-anotar": async () => anotarMovimiento(),
+  "gastos-mov-ver": async el => verComprobanteMov(el.dataset.id),
+  // Elegir el comprobante: para el formulario de anotar (sin id) o para un movimiento ya anotado.
+  "gastos-mov-adjuntar": async el => { gastosMovPara = el.dataset.id || "form"; gastosMovArchivoInput.value = ""; gastosMovArchivoInput.click(); },
+  "gastos-mov-adj-quitar": async () => {
+    if(!gastosMov) return;
+    gastosMov.archivo = null; render();
+    const x = document.querySelector('.gastos-view [data-action="gastos-mov-adjuntar"][data-id=""]'); if(x) x.focus();
+  },
   "gastos-mov-confirmar": async el => {
     try{ await store.gastos.confirmarMovimiento(el.dataset.id); }
     catch(err){ appAlert(t("No se pudo confirmar: {m}","Couldn't confirm: {m}","Não foi possível confirmar: {m}","האישור נכשל: {m}",{ m: detalleDeError(err) })); }
@@ -27183,6 +27341,43 @@ gastosArchivosInput.addEventListener("change", () => {
   const files = [...(gastosArchivosInput.files || [])];
   gastosArchivosInput.value = "";
   if(files.length) subirComprobantes(files, gastosSubidaDestino);
+});
+// El comprobante de la cuenta corriente: la foto achicada como la de un gasto, o el PDF tal cual.
+async function prepararComprobanteMov(f){
+  const esPdf = f.type === "application/pdf" || /\.pdf$/i.test(f.name);
+  if(!esPdf && !/^image\//.test(f.type)) throw new Error(t("«{n}» no es una foto ni un PDF.","“{n}” isn't a photo or a PDF.","«{n}» não é uma foto nem um PDF.","«{n}» אינו תמונה או PDF.",{ n: f.name }));
+  if(f.size > GASTO_TOPE_BYTES) throw new Error(t("«{n}» pesa más de 25 MB.","“{n}” is larger than 25 MB.","«{n}» pesa mais de 25 MB.","«{n}» גדול מ-25MB.",{ n: f.name }));
+  let dataUrl = await readFileAsDataUrl(f);
+  if(esPdf) dataUrl = "data:application/pdf;base64," + String(dataUrl).split(",")[1];
+  else dataUrl = await achicarDataUrl(dataUrl, LIMITES_DE_LA_BASE.ladoMaximo, LIMITES_DE_LA_BASE.calidadImagen);
+  return { dataUrl, nombre: String(f.name).slice(0, 200), tipo: esPdf ? "application/pdf" : "image/jpeg" };
+}
+gastosMovArchivoInput.addEventListener("change", async () => {
+  const f = (gastosMovArchivoInput.files || [])[0], para = gastosMovPara;
+  gastosMovArchivoInput.value = ""; gastosMovPara = null;
+  if(!f || !para) return;
+  let a;
+  try{ a = await prepararComprobanteMov(f); }
+  catch(err){
+    if(para === "form" && gastosMov){ gastosMov.error = err.message; render(); }
+    else appAlert(err.message);
+    return;
+  }
+  if(para === "form"){
+    if(!gastosMov) return;
+    gastosMov.archivo = a; gastosMov.error = ""; render();
+    const x = document.querySelector('.gastos-view [data-action="gastos-mov-adj-quitar"]'); if(x) x.focus();
+    return;
+  }
+  gastosMovSubiendo = para; render();
+  try{ await store.gastos.subirComprobanteMov(para, a.dataUrl, a.nombre, a.tipo); }
+  catch(err){
+    console.error("No se pudo subir el comprobante del movimiento:", err);
+    appAlert(t("No se pudo subir el comprobante: {m}","Couldn't upload the receipt: {m}","Não foi possível enviar o comprovante: {m}","לא ניתן היה להעלות את הקבלה: {m}",{ m: detalleDeError(err) }));
+  }
+  gastosMovSubiendo = null; render();
+  const x = document.querySelector(`.gastos-view [data-action="gastos-mov-ver"][data-id="${CSS.escape(para)}"], .gastos-view [data-action="gastos-mov-adjuntar"][data-id="${CSS.escape(para)}"]`);
+  if(x) x.focus();
 });
 
 // Administración → Problemas: lo que contó la gente y los errores anotados solos.

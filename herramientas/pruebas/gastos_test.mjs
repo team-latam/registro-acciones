@@ -52,6 +52,15 @@ const elegir = async (p, sel, files) => {
   await ch.setFiles(files);
 };
 const aceptar = async p => { await p.waitForSelector("#confirmOverlay:not([hidden])"); await p.click("#confirmOk"); };
+// Sin cortar la prueba si lo que se busca no está: la comprobación que sigue anota la falla.
+const tocar = (p, sel) => p.click(sel, { timeout: 3000 }).then(() => true, () => false);
+const leer = (p, sel, f) => p.$eval(sel, f).catch(() => null);
+const elegirSiHay = async (p, sel, files) => {
+  if(!(await p.$(sel))) return false;
+  const [ch] = await Promise.all([p.waitForEvent("filechooser", { timeout: 3000 }), p.click(sel, { timeout: 3000 })]).catch(() => []);
+  if(ch) await ch.setFiles(files);
+  return !!ch;
+};
 // «Subir comprobantes» pregunta antes de qué son (vinculo: "" = todavía no sé, "post:<id>", "mes:AAAA-MM").
 async function subirDesdeCabecera(p, vinculo, files){
   if(!(await p.$('[data-action="gastos-destino-abrir"]'))){
@@ -216,7 +225,9 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   eq("…una vez", (await rpcs(p, "gastos_rendicion_enviar")), [{ p_id: "ren_mvd" }]);
   eq("mandada, dice que la está revisando un admin y no se puede tocar", await p.evaluate(() => [!!document.querySelector(".gx-info"), !document.querySelector('[data-action="gastos-subir"]'), !document.querySelector('[data-action="gastos-enviar"]')]), [true, true, true]);
   await p.click('[data-action="gasto-abrir"][data-id="gx2"]'); await p.waitForSelector("#gastoOverlay:not([hidden])");
-  eq("un gasto mandado se ve pero no se cambia", await p.evaluate(() => [document.getElementById("gxConcepto").disabled, !document.querySelector('[data-action="gasto-guardar"]')]), [true, true]);
+  eq("un gasto mandado se ve como texto, sin campos apagados, y no se cambia", await p.evaluate(() => [document.getElementById("gxConcepto").tagName,
+    document.querySelectorAll("#gastoBody .gx-v-form > :not(.gx-observar) :is(input, select, textarea, .gx-opc)").length, !!document.querySelector("#gastoBody .gx-res"),
+    !document.querySelector('[data-action="gasto-guardar"]'), (document.querySelector("#gastoBody .gx-res-estado") || {}).textContent]), ["SPAN", 0, true, true, "Mandado: un administrador lo está revisando."]);
   await p.keyboard.press("Escape");
   eq("Escape cierra la ventana y el foco vuelve a su fila", await hasta(p, () => document.getElementById("gastoOverlay").hidden && document.activeElement.dataset.id === "gx2"), true);
 
@@ -384,9 +395,9 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   await p.click("#confirmOk");
   eq("…la borra con sus gastos, y vuelve a «Mis rendiciones»", await hasta(p, () => !window.__sb.tablas.gastos_rendiciones.some(r => r.id === "ren_mvd")
     && !window.__sb.tablas.gastos.some(g => g.rendicion_id === "ren_mvd") && !!document.querySelector('[data-action="gastos-destino-abrir"]') && !document.querySelector('[data-id="ren_mvd"]')), true);
-  // Una aprobada no se borra.
+  // Una aprobada la borra solo el admin fijo (lo pidió el usuario el 17/11): ver «Lo ya aprobado», más abajo.
   await p.click('[data-action="gastos-abrir-rendicion"][data-id="ren_rutina"]'); await p.waitForTimeout(150);
-  eq("una rendición aprobada no tiene «Borrar» ni «Seleccionar»", await p.evaluate(() => [!!document.querySelector('[data-action="gastos-rendicion-borrar"]'), !!document.querySelector('[data-action="gastos-sel-abrir"]')]), [false, false]);
+  eq("una rendición aprobada: el admin fijo tiene «Borrar»; «Seleccionar», no con un solo gasto", await p.evaluate(() => [!!document.querySelector('[data-action="gastos-rendicion-borrar"]'), !!document.querySelector('[data-action="gastos-sel-abrir"]')]), [true, false]);
   eq("sin errores de página", errores, []);
   await p.close();
 }
@@ -603,6 +614,126 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   // Borrar desde la lista.
   await p.click(`[data-action="gastos-lista-quitar"][data-id="${c}"]`); await aceptar(p);
   eq("«Borrar» en una fila de la lista la borra (preguntando)", await hasta(p, c => !window.__sb.tablas.gastos.some(g => g.id === c) && document.querySelectorAll(".gx-lfila").length === 1, c), true);
+  eq("sin errores de página", errores, []);
+  await p.close();
+}
+
+/* ---------------- Lo ya aprobado: se ve como texto y el admin fijo lo puede borrar (lo pidió el usuario el 17/11) ---------------- */
+{
+  const ROL = "rita@team-latam.com";
+  const base = datos({ prendido: true });
+  base.members = base.members.concat([{ email: ROL, name: "Rita Rol", nickname: "rita", role: "admin", approved_at: "2025-01-10T12:00:00Z" }]);
+  const gx4 = base.gastos.find(g => g.id === "gx4");
+  Object.assign(gx4, { moneda: "MXN", monto: 642, rendido_monto: 35.2, forma_pago: "tarjeta", tarjeta: "5555", observaciones: "Ida y vuelta" });
+  // Dos más en la misma rutina aprobada, para «Seleccionar».
+  base.gastos.push({ ...gx4, id: "gx9", concepto: "Café con el equipo", tipo: "comida", moneda: "USD", monto: 6, rendido_monto: null, forma_pago: "efectivo", tarjeta: null, observaciones: "",
+    archivo: "gastos/gx9/c.jpg", archivo_hash: "9".repeat(64) });
+  base.gastos.push({ ...gx4, id: "gx10", concepto: "Estacionamiento", tipo: "transporte", moneda: "USD", monto: 4, rendido_monto: null, forma_pago: "efectivo", tarjeta: null, observaciones: "",
+    archivo: "gastos/gx10/c.jpg", archivo_hash: "8".repeat(64) });
+
+  // Un admin por rol: ve lo mandado por otra persona, pero no lo borra.
+  {
+    const { p, errores } = await entrar(b, ROL, "Rita Rol", { viewport: vp, base: structuredClone(base) });
+    await irGastos(p);
+    await p.click('[data-action="gastos-seccion"][data-key="aprobar"]'); await p.waitForTimeout(150);
+    await tocar(p, '[data-action="gastos-abrir-rendicion"][data-id="ren_ana"]'); await p.waitForTimeout(150);
+    eq("un admin por rol no tiene «Borrar esta rendición» ni «Seleccionar» en una mandada", await p.evaluate(() => [!!document.querySelector('[data-action="gastos-rendicion-borrar"]'), !!document.querySelector('[data-action="gastos-sel-abrir"]')]), [false, false]);
+    await tocar(p, '[data-action="gasto-abrir"][data-id="gx5"]'); await p.waitForTimeout(200);
+    eq("…ni «Borrar» en el gasto (sí «Observar»)", await p.evaluate(() => [!!document.querySelector('#gastoBody [data-action="gasto-borrar"]'), !!document.querySelector("#gxObs")]), [false, true]);
+    eq("sin errores de página (admin por rol)", errores, []);
+    await p.close();
+  }
+
+  const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: vp, base });
+  await irGastos(p);
+  await p.click('[data-action="gastos-abrir-rendicion"][data-id="ren_rutina"]'); await p.waitForTimeout(150);
+  await p.click('[data-action="gasto-abrir"][data-id="gx4"]'); await p.waitForSelector("#gastoOverlay:not([hidden])");
+  eq("un gasto aprobado se ve como texto: sin campos ni botones apagados, sin «Guardar»", await p.evaluate(() => [document.getElementById("gxConcepto").tagName, document.getElementById("gxConcepto").textContent,
+    document.querySelectorAll("#gastoBody input, #gastoBody select, #gastoBody textarea, #gastoBody .gx-opc").length, !!document.querySelector('[data-action="gasto-guardar"]')]),
+    ["SPAN", "Remís a la reunión de equipo", 0, false]);
+  eq("…dice que está aprobado", await leer(p, "#gastoBody .gx-res-estado", e => /^Aprobado el .+: ya no se cambia\.$/.test(e.textContent)), true);
+  eq("…el monto, y lo rendido en dólares", await leer(p, "#gastoBody .gx-res-plata", e => e.innerText.replace(/\s+/g, " ").trim()), "MXN 642.00 Rendido: USD 35.20");
+  eq("…y cada dato con su nombre", await p.$$eval("#gastoBody .gx-res-fila", l => l.map(f => [f.querySelector("dt").textContent, f.querySelector("dd").innerText.replace(/\s+/g, " ").trim()])
+    .filter(([k]) => !["Fecha", "Va en"].includes(k))),
+    [["Tipo", "Transporte"], ["Forma de pago", "Tarjeta terminada en 5555"], ["¿Quién pagó?", "Yo Entra en tu cuenta corriente."], ["Factura", "✓ Tiene factura o comprobante válido"],
+     ["Observaciones", "Gasto en MX $ 642.- Ida y vuelta"]]);
+  eq("el admin fijo lo puede borrar igual", !!(await p.$('#gastoBody [data-action="gasto-borrar"]')), true);
+  await tocar(p, '#gastoBody [data-action="gasto-borrar"]');
+  eq("…y antes avisa que sale de la cuenta corriente", await leer(p, "#confirmOverlay:not([hidden]) #confirmMessage", e => e.textContent.trim()), "¿Borrar este gasto y su comprobante? Ya está aprobado: sale también de tu cuenta corriente.");
+  await tocar(p, "#confirmOk");
+  eq("…lo borra y cierra la ventana", await hasta(p, () => !window.__sb.tablas.gastos.some(g => g.id === "gx4") && document.getElementById("gastoOverlay").hidden), true);
+
+  // Varios de una rendición aprobada.
+  if(!(await p.evaluate(() => document.getElementById("gastoOverlay").hidden))) await p.keyboard.press("Escape");
+  await tocar(p, '[data-action="gastos-sel-abrir"]'); await p.waitForTimeout(100);
+  eq("«Seleccionar» en una aprobada: cada fila tiene su casilla, prendida", await p.evaluate(() => [...document.querySelectorAll("[data-gsel]")].map(x => !x.disabled)), [true, true]);
+  await tocar(p, '[data-action="gastos-sel-tocar"][data-id="gx9"]');
+  eq("…y tocar la fila la marca (no la abre)", await p.evaluate(() => [document.getElementById("gastoOverlay").hidden, document.getElementById("gxS_gx9").checked]), [true, true]);
+  await p.check("#gxSelTodos", { timeout: 3000 }).catch(() => {});
+  await tocar(p, '[data-action="gastos-sel-borrar"]');
+  eq("«Seleccionar» en una aprobada: avisa cuántos ya están aprobados", await leer(p, "#confirmOverlay:not([hidden]) #confirmMessage", e => e.textContent.trim()),
+    "¿Borrar los 2 gastos seleccionados y sus comprobantes? No se puede deshacer. 2 ya están aprobados: salen también de tu cuenta corriente.");
+  await tocar(p, "#confirmOk");
+  eq("…y los borra", await hasta(p, () => !window.__sb.tablas.gastos.some(g => g.rendicion_id === "ren_rutina")), true);
+
+  // Una rendición de otra persona, ya mandada (desde «Para aprobar»).
+  if(await p.$("#confirmOverlay:not([hidden])")) await p.keyboard.press("Escape");
+  await p.click('[data-action="gastos-seccion"][data-key="aprobar"]'); await p.waitForTimeout(150);
+  await tocar(p, '[data-action="gastos-abrir-rendicion"][data-id="ren_ana"]'); await p.waitForTimeout(150);
+  eq("una mandada de otra persona: el admin fijo tiene «Borrar esta rendición» y «Seleccionar»", await p.evaluate(() => [!!document.querySelector('[data-action="gastos-rendicion-borrar"]'), !!document.querySelector('[data-action="gastos-sel-abrir"]')]), [true, true]);
+  await tocar(p, '[data-action="gastos-rendicion-borrar"]');
+  eq("…avisa que está en revisión", await leer(p, "#confirmOverlay:not([hidden]) #confirmMessage", e => / Ana Pérez ya la mandó: está en revisión\.$/.test(e.textContent.trim())), true);
+  await tocar(p, "#confirmOk");
+  eq("…la borra entera con la función de la base", await hasta(p, () => !window.__sb.tablas.gastos_rendiciones.some(r => r.id === "ren_ana") && !window.__sb.tablas.gastos.some(g => g.rendicion_id === "ren_ana")), true);
+  eq("…y el foco no se pierde", await p.evaluate(() => document.activeElement && document.activeElement !== document.body), true);
+  eq("sin errores de página", errores, []);
+  await p.close();
+}
+
+/* ---------------- Sin barra para correr de costado con la ventana angosta (lo vio el usuario el 17/11) ---------------- */
+{
+  const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: { width: 1024, height: 768 }, base: datos({ prendido: true }) });
+  await irGastos(p);
+  await p.click('[data-action="gastos-abrir-rendicion"][data-id="ren_mvd"]'); await p.waitForTimeout(150);
+  await p.click('[data-action="gasto-abrir"][data-id="gx2"]'); await p.waitForSelector("#gastoOverlay:not([hidden])");
+  eq("a 1024 px, los datos del gasto entran a lo ancho", await p.$eval(".gx-v-form", f => f.scrollWidth <= f.clientWidth), true);
+  eq("…y el monto se lee entero", await p.$eval("#gxMonto", x => x.scrollWidth <= x.clientWidth), true);
+  eq("sin errores de página", errores, []);
+  await p.close();
+}
+
+/* ---------------- El comprobante de la cuenta corriente, opcional (lo pidió el usuario el 17/11) ---------------- */
+{
+  const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: vp, base: datos({ prendido: true }) });
+  await irGastos(p);
+  await p.click('[data-action="gastos-seccion"][data-key="cuenta"]'); await p.waitForTimeout(150);
+  await elegirSiHay(p, '[data-action="gastos-mov-adjuntar"][data-id=""]', { name: "notas.txt", mimeType: "text/plain", buffer: Buffer.from("hola") });
+  eq("un archivo que no es foto ni PDF se avisa en el formulario", await hasta(p, () => /«notas\.txt» no es una foto ni un PDF\./.test((document.querySelector(".gx-anotar .form-error") || {}).textContent || "")), true);
+  await elegirSiHay(p, '[data-action="gastos-mov-adjuntar"][data-id=""]', { name: "transferencia.png", mimeType: "image/png", buffer: PNG });
+  eq("elegido, se ve su nombre y se puede quitar (el foco va a «Quitar»)", await hasta(p, () => /transferencia\.png/.test((document.querySelector(".gx-mov-arch") || {}).textContent || "")
+    && document.activeElement.dataset.action === "gastos-mov-adj-quitar"), true);
+  await tocar(p, '[data-action="gastos-mov-adj-quitar"]');
+  eq("quitarlo vuelve a ofrecer «Adjuntar comprobante»", await p.evaluate(() => [!document.querySelector(".gx-mov-arch"), document.activeElement.dataset.action || ""]), [true, "gastos-mov-adjuntar"]);
+  await elegirSiHay(p, '[data-action="gastos-mov-adjuntar"][data-id=""]', { name: "transferencia.png", mimeType: "image/png", buffer: PNG });
+  await hasta(p, () => !!document.querySelector(".gx-mov-arch"));
+  await p.fill("#gxMov_monto", "250"); await p.fill("#gxMov_descripcion", "Adelanto para Lima");
+  await p.click('[data-action="gastos-mov-anotar"]');
+  eq("anotar con comprobante: queda en la carpeta del movimiento, con su nombre y su tipo", await hasta(p, () => {
+    const m = window.__sb.tablas.gastos_movimientos.find(x => x.descripcion === "Adelanto para Lima");
+    return !!m && String(m.archivo).startsWith(`gastos/mov-${m.id}/comprobante_`) && m.archivo_nombre === "transferencia.png" && m.archivo_tipo === "image/jpeg"; }), true);
+  eq("…el archivo se subió ahí", await p.evaluate(() => { const m = window.__sb.tablas.gastos_movimientos.find(x => x.descripcion === "Adelanto para Lima");
+    return !!m && window.__sb.subidas.some(([r]) => r === m.archivo); }), true);
+  eq("…y el formulario queda limpio", await hasta(p, () => !document.querySelector(".gx-mov-arch") && document.getElementById("gxMov_monto").value === ""), true);
+  const nuevo = await p.evaluate(() => (window.__sb.tablas.gastos_movimientos.find(x => x.descripcion === "Adelanto para Lima") || {}).id || "");
+  eq("en la lista: «Ver el comprobante»", await hasta(p, id => !!document.querySelector(`[data-action="gastos-mov-ver"][data-id="${id}"]:not([disabled])`), nuevo), true);
+  await tocar(p, `[data-action="gastos-mov-ver"][data-id="${nuevo}"]`);
+  eq("…lo abre en el visor", await hasta(p, () => document.getElementById("lightbox").classList.contains("show")), true);
+  await p.keyboard.press("Escape");
+  // Adjuntarlo después a uno ya anotado (el admin, aunque esté confirmado).
+  await elegirSiHay(p, '[data-action="gastos-mov-adjuntar"][data-id="mv1"]', { name: "recibo.pdf", mimeType: "application/pdf", buffer: PDF });
+  eq("adjuntar después a un movimiento ya anotado (un PDF)", await hasta(p, () => { const m = window.__sb.tablas.gastos_movimientos.find(x => x.id === "mv1");
+    return String(m.archivo).startsWith("gastos/mov-mv1/comprobante_") && m.archivo.endsWith(".pdf") && m.archivo_tipo === "application/pdf"; }), true);
+  eq("…y el foco queda en «Ver el comprobante»", await hasta(p, () => document.activeElement.dataset.action === "gastos-mov-ver" && document.activeElement.dataset.id === "mv1"), true);
   eq("sin errores de página", errores, []);
   await p.close();
 }

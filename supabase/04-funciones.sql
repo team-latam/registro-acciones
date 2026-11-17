@@ -235,8 +235,10 @@ returns jsonb language sql stable security definer set search_path = '' as $$
       jsonb_array_elements_text(case when jsonb_typeof(s.fila -> 'images') = 'array' then s.fila -> 'images' else '[]'::jsonb end) x
     union all select a ->> 'path' from public.calendar_sacados s,
       jsonb_array_elements(case when jsonb_typeof(s.fila -> 'files') = 'array' then s.fila -> 'files' else '[]'::jsonb end) a
-    -- Los comprobantes de los gastos (27-gastos.sql, 15/11/2026).
+    -- Los comprobantes de los gastos (27-gastos.sql, 15/11/2026) y los de la
+    -- cuenta corriente (17/11/2026).
     union all select g.archivo from public.gastos g
+    union all select m.archivo from public.gastos_movimientos m
   ), usados as (
     select ruta from nombrados where ruta is not null
     union
