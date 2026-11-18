@@ -438,6 +438,24 @@ los 45 textos largos del módulo (18/11), la propuesta:
    planilla → anexo), los idiomas como el selector de la app, «Cerrar» y la nota solo cuando hace falta. Lo mismo para
    el **resumen por mes** de *Mis rendiciones* (mismo panel, con «Desde» y «Hasta»). Antes y después en capturas,
    compu y celular.
+6. **Reabrir: que se revise solo lo que cambió** (18/11: «el único que debería quedar para revisar tiene que ser el
+   que tuvo cambio/s, no todos nuevamente»). Hoy `gastos_rendicion_reabrir` (`supabase/27-gastos.sql`) pasa todos
+   los gastos de «aprobado» a «confirmado»: al mandarla de nuevo, el admin vuelve a ver todo como si fuera nuevo, y
+   mientras está reabierta nada cuenta en la cuenta corriente. El flujo que confirmó (reabrir → abierta → sumar →
+   mandar → «En revisión» → aprobar) queda igual; cambia qué se revisa:
+   - **Base**: al reabrir, los gastos aprobados **siguen aprobados** (y bloqueados: la persona no los puede tocar).
+     Al mandar, solo los nuevos o corregidos pasan a «enviado»; al aprobar, esos. La cuenta corriente cuenta cada
+     gasto aprobado aunque su rendición esté reabierta (hoy mira el estado de la rendición, no el del gasto).
+   - **Corregir uno ya aprobado**: que el admin lo pueda «Observar» en la rendición reabierta (vuelve a ser
+     editable, con su comentario) y entra en la revisión siguiente junto con los nuevos. Así lo que se revisa es
+     exactamente lo que cambió.
+   - **Pantalla del admin**: arriba, «Nuevos o corregidos (N)» para revisar; abajo, «Ya aprobados (M)», plegados.
+     El aviso de «Reabrir» se acorta y deja de decir que los gastos dejan de estar aprobados.
+   - **Para decidir con el usuario**: en el PDF, un comprobante que llegó tarde con fecha anterior hoy toma su lugar
+     por fecha y corre los números de los demás (el PDF entregado antes ya no coincidiría). Opción: que los que se
+     suman después de una aprobación vayan al final, con los números que siguen.
+   - Pruebas: en `supabase/pruebas/71-gastos.sql` (lo aprobado no se toca ni vuelve a revisión; la cuenta con la
+     rendición reabierta) y en `gastos_test.mjs`.
 
 ## Lo que quedó para decidir más adelante (no frena la etapa 1)
 
