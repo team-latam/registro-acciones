@@ -354,6 +354,31 @@ módulo.
    salió como «un PDF sin texto ni foto que se puedan leer». Otros PDF de Uber sí se leen desde el 15/11 (tienen
    el texto adentro): este quizás trae las letras dibujadas o de otra forma. Hace falta ver el archivo (en la sesión,
    sin subirlo al repo) para saber si el lector puede aprender a leerlo.
+3. **El formulario de «Cambios de moneda» (UX y diseño)** (18/11: «UX de esto. Mirá cómo está armado y el
+   diseño»). Mirado en la compu y en el celular (`renderCambios()` en `index.html`; reusa las clases de «Anotar
+   plata» de la cuenta corriente). Lo que no anda:
+   - **Dos campos «Moneda» iguales**, cada uno lejos de su monto: en la compu son cinco columnas (fecha, monto,
+     moneda, monto, moneda) y en el celular cinco renglones; no se ve qué moneda va con qué monto. Propuesta: dos
+     grupos, «Entregaste» y «Recibiste», cada uno con la moneda y el monto juntos en un renglón (como se lee después
+     en la fila: «USD 200.00 → UYU 7,800.00»), con la flecha entre los dos.
+   - **«Recibiste (ya sin la comisión)»** ocupa dos renglones en la compu y baja su campo (queda desalineado de los
+     otros). La aclaración va mejor como ayuda chica debajo del campo: «lo que te dieron en la mano, con la comisión
+     ya descontada».
+   - **La tasa** («Tasa: 1 USD = 39 UYU»), que es la cuenta que importa, sale abajo de todo, después del comprobante.
+     Va pegada a los montos, como resultado de lo que se escribe.
+   - **Tarjeta adentro de tarjeta**: el formulario es una tarjeta dentro del desplegable, con su propio título en
+     mayúsculas chicas («ANOTAR UN CAMBIO DE MONEDA») que repite lo que ya dice el botón. Que el formulario quede
+     dentro del desplegable, sin el segundo recuadro ni ese título.
+   - **«Adjuntar comprobante»** es un botón grande en el formulario y un link en la fila ya anotada: el mismo link en
+     los dos lados, con «(opcional)», y la ayuda de abajo más corta.
+   - **Los valores de entrada**: la fecha sale en hoy (para un viaje de julio hay que cambiarla siempre) y la moneda
+     recibida, vacía. Proponer la fecha de comienzo de la actividad y la moneda del país del viaje (la app ya la
+     conoce para el lector) o la de los gastos en efectivo de esa rendición.
+   - **Los textos**: la explicación de arriba es larga y su ejemplo («dólares por florines») es de Curazao; uno de
+     la región se entiende más rápido («dólares por pesos uruguayos»). El ejemplo de «Detalle» («con comisión de XCG
+     15») se corta en el celular y suena a que hay que restar la comisión otra vez.
+   - Antes de cambiarlo, mostrarle al usuario el antes y el después (compu y celular), como en la revisión de UX
+     del 18/11.
 
 ## Lo que quedó para decidir más adelante (no frena la etapa 1)
 
