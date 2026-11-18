@@ -287,4 +287,9 @@ corriente**: es para los números grandes, porque no dice quién puso la plata.
   - «¿Quién pagó?»: «Yo» es quien hace la rendición; «Organización» queda así, a secas (puede ser DAIA u otra);
     «Otra persona» (en el Sheet, «Otro») es alguien que participó de la actividad y puso la plata: se anota quién
     y no entra en ninguna cuenta corriente (ya está en la app desde el 18/11).
-- Sigue por decidir: un gasto que sirve a dos actividades, y si cada persona tiene su Sheet o van todos al mismo.
+  - **Un gasto, una actividad** (decidido el 18/11): no se reparte un gasto entre dos. Es como ya funciona el
+    sistema (cada gasto va en una sola rendición).
+  - **Todo junto, y sobre eso filtrar** (decidido el 18/11): el usuario hoy lleva su Sheet por separado, pero
+    prefiere que esté todo junto, como una base, y filtrar. En el sistema ya es así; al cargar el Sheet (etapa 3)
+    la idea es lo mismo: todos juntos, con una columna de quién rindió, para filtrar por persona, mes o
+    actividad. El formato exacto se ve al llegar ahí, con capturas.
