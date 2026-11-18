@@ -1116,12 +1116,17 @@
   .gx-ya{ margin:10px 0 0; }
   .gx-ya > summary{ cursor:pointer; font-weight:700; font-size:13px; color:var(--text-muted); padding:6px 0; }
   .gx-ya > .gx-filas{ margin-top:6px; }
-  .gx-idiomas{ display:inline-flex; border:1.5px solid var(--border); border-radius:999px; padding:2px; background:var(--card); }
-  .gx-idioma{ border:0; background:none; font:inherit; font-size:12.5px; font-weight:700; letter-spacing:.02em; color:var(--text-muted);
-    min-width:36px; min-height:32px; padding:0 8px; border-radius:999px; cursor:pointer; }
-  .gx-idioma[aria-pressed="true"]{ background:var(--petroleo); color:#fff; }
-  .gx-idioma:disabled{ opacity:.6; cursor:default; }
-  .gx-idioma:focus-visible{ outline:2px solid var(--celeste); outline-offset:1px; }
+  /* El botón con flecha: una sola pieza, en un renglón; la flecha abre el menú de idiomas. */
+  .gx-split{ position:relative; display:inline-flex; max-width:100%; }
+  .gx-split .gx-pdf-bajar{ border-start-end-radius:0; border-end-end-radius:0; white-space:nowrap; }
+  .gx-split .gx-split-flecha{ border-start-start-radius:0; border-end-start-radius:0; border-inline-start:1px solid rgba(255,255,255,.28);
+    padding-inline:12px; white-space:nowrap; font-size:13px; }
+  .gx-split-menu{ position:absolute; top:calc(100% + 6px); inset-inline-end:0; z-index:30; background:var(--card); border:1px solid var(--border);
+    border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,.14); padding:10px 14px; display:flex; flex-direction:column; gap:4px; min-width:190px; }
+  .gx-split-menu b{ font-size:12.5px; color:var(--text-muted); margin-bottom:2px; }
+  .gx-split-menu label{ display:flex; align-items:center; gap:10px; font-size:14px; min-height:32px; cursor:pointer; color:var(--text); }
+  .gx-split-menu input:disabled + span{ opacity:.75; }
+  @media (max-width:640px){ .gx-split{ display:flex; width:100%; } .gx-split .gx-pdf-bajar{ flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; } }
   .gx-resumen-fila{ display:flex; flex-wrap:wrap; align-items:flex-end; gap:10px 14px; margin-top:8px; }
   .gx-resumen-fila .gx-campo{ flex:1 1 150px; max-width:220px; }
   .gx-pdf-nota{ margin:6px 0 0; }
@@ -27496,21 +27501,55 @@ function idiomasDePdfGuardados(){
 let idiomasPdf = null;
 const idiomasDelPdf = () => idiomasPdf || (idiomasPdf = idiomasDePdfGuardados());
 let gastosResumen = null;   // el resumen por mes: { desde, hasta, abierto }
-function chipsDeIdioma(apagados){
-  const nombres = Object.fromEntries(LANGS.map(l => [l.key, l.name])), sel = idiomasDelPdf();
-  return `<div class="gx-idiomas" role="group" aria-label="${esc(t("Idiomas de la planilla","Languages of the sheet","Idiomas da planilha","שפות הטבלה"))}">${IDIOMAS_PDF.map(l =>
-    `<button type="button" class="gx-idioma" data-action="gastos-pdf-idioma" data-l="${l}" aria-pressed="${sel.includes(l)}" title="${esc(nombres[l])}" aria-label="${esc(nombres[l])}"${apagados ? " disabled" : ""}>${l.toUpperCase()}</button>`).join("")}</div>`;
-}
+// El botón con flecha (lo eligió el usuario el 18/11): la flecha dice los idiomas —las siglas hasta dos; con más,
+// cuántos, así el botón no engorda— y abre un menú para marcarlos.
+let gastosPdfMenu = null;   // dónde está abierto el menú de idiomas: id de la rendición o "resumen"
+const etiquetaDeIdiomas = () => { const l = idiomasDelPdf(); return l.length <= 2 ? l.map(x => x.toUpperCase()).join(" · ") : t("{n} idiomas","{n} languages","{n} idiomas","{n} שפות",{ n: l.length }); };
 function botonPdf(para, texto){
   const P = gastosPdf && gastosPdf.para === para && gastosPdf.armando ? gastosPdf : null;
-  return `<button type="button" class="btn-primary gx-pdf-bajar" data-action="gastos-pdf-bajar" data-id="${esc(para)}"${P ? " disabled" : ""}>${esc(P ? P.avance : texto)}</button>`;
+  const abierto = gastosPdfMenu === para && !P, sel = idiomasDelPdf(), nombres = Object.fromEntries(LANGS.map(l => [l.key, l.name]));
+  return `<div class="gx-split">
+      <button type="button" class="btn-primary gx-pdf-bajar" data-action="gastos-pdf-bajar" data-id="${esc(para)}"${P ? " disabled" : ""}>${esc(P ? P.avance : texto)}</button>
+      <button type="button" class="btn-primary gx-split-flecha" data-action="gastos-pdf-menu" data-id="${esc(para)}" aria-haspopup="true" aria-expanded="${abierto}"
+        aria-label="${esc(t("Idiomas de la planilla: {l}","Languages of the sheet: {l}","Idiomas da planilha: {l}","שפות הטבלה: {l}",{ l: sel.map(l => nombres[l]).join(", ") }))}"${P ? " disabled" : ""}>${esc(etiquetaDeIdiomas())} <span aria-hidden="true">▾</span></button>
+      ${abierto ? `<div class="gx-split-menu" role="group" aria-labelledby="gxPdfMenuTit"><b id="gxPdfMenuTit">${t("Planilla en","Sheet in","Planilha em","הטבלה ב")}</b>
+        ${IDIOMAS_PDF.map(l => `<label><input type="checkbox" data-gpdf-l="${l}"${sel.includes(l) ? " checked" : ""}${sel.length === 1 && sel.includes(l) ? " disabled" : ""}> <span lang="${l}" dir="auto">${esc(nombres[l])}</span></label>`).join("")}
+      </div>` : ""}
+    </div>`;
+}
+// Cerrar el menú sin volver a dibujar (un clic afuera tiene que llegar a lo que se tocó).
+function cerrarMenuPdf(enfocar){
+  if(!gastosPdfMenu) return;
+  const para = gastosPdfMenu; gastosPdfMenu = null;
+  document.querySelectorAll(".gx-split-menu").forEach(m => m.remove());
+  document.querySelectorAll('.gx-split-flecha[aria-expanded="true"]').forEach(b => b.setAttribute("aria-expanded", "false"));
+  if(enfocar){ const x = document.querySelector(`.gx-split-flecha[data-id="${CSS.escape(para)}"]`); if(x) x.focus(); }
+}
+document.addEventListener("pointerdown", e => { if(gastosPdfMenu && !(e.target.closest && e.target.closest(".gx-split"))) cerrarMenuPdf(false); }, true);
+document.addEventListener("keydown", e => { if(gastosPdfMenu && e.key === "Escape"){ e.preventDefault(); e.stopPropagation(); cerrarMenuPdf(true); } }, true);
+function tocarMenuPdf(el){
+  const para = el.dataset.id;
+  if(gastosPdfMenu === para){ cerrarMenuPdf(true); return; }
+  gastosPdfMenu = para;
+  if(para === "resumen" && gastosResumen) gastosResumen.abierto = true;
+  render();
+  const x = document.querySelector(".gx-split-menu input:not(:disabled)"); if(x) x.focus();
+}
+function marcarIdiomaPdf(el){
+  const l = el.dataset.gpdfL, sel = idiomasDelPdf();
+  const nuevos = IDIOMAS_PDF.filter(x => x === l ? el.checked : sel.includes(x));
+  if(!nuevos.length) return;   // siempre queda al menos uno
+  idiomasPdf = nuevos;
+  try{ localStorage.setItem("ra_pdf_idiomas", JSON.stringify(nuevos)); }catch(e){}
+  render();
+  const x = document.querySelector(`.gx-split-menu [data-gpdf-l="${l}"]`); if(x) x.focus();
 }
 // Solo si hace falta: sin traductor, elegir otro idioma que el castellano deja los textos como se escribieron.
 const notaSinTraductor = () => !hayTraductor() && idiomasDelPdf().some(l => l !== "es")
   ? t("Este navegador no traduce: los conceptos van como se escribieron.","This browser doesn't translate: descriptions go as written.","Este navegador não traduz: as descrições vão como foram escritas.","הדפדפן הזה לא מתרגם: התיאורים מופיעים כפי שנכתבו.") : "";
 function accionesPdfDeRendicion(r){
   const armando = !!(gastosPdf && gastosPdf.armando);
-  return `<div class="gx-pdf-acc">${botonPdf(r.id, t("Descargar el PDF de entrega","Download the delivery PDF","Baixar o PDF de entrega","הורדת ה-PDF למסירה"))}${chipsDeIdioma(armando)}</div>`;
+  return `<div class="gx-pdf-acc">${botonPdf(r.id, t("Descargar el PDF de entrega","Download the delivery PDF","Baixar o PDF de entrega","הורדת ה-PDF למסירה"))}</div>`;
 }
 function renderResumenPdf(){
   const meses = mesesParaResumen();
@@ -27527,20 +27566,10 @@ function renderResumenPdf(){
       <div class="gx-resumen-fila">
         <label class="gx-campo"><span class="gx-et">${t("Desde","From","De","מ-")}</span><select id="gxPdfDesde" class="gx-elige"${armando ? " disabled" : ""}>${opciones(R.desde)}</select></label>
         <label class="gx-campo"><span class="gx-et">${t("Hasta","To","Até","עד")}</span><select id="gxPdfHasta" class="gx-elige"${armando ? " disabled" : ""}>${opciones(R.hasta)}</select></label>
-        <div class="gx-pdf-acc">${botonPdf("resumen", t("Descargar el resumen","Download the summary","Baixar o resumo","הורדת הסיכום"))}${chipsDeIdioma(armando)}</div>
+        <div class="gx-pdf-acc">${botonPdf("resumen", t("Descargar el resumen","Download the summary","Baixar o resumo","הורדת הסיכום"))}</div>
       </div>
       ${nota ? `<p class="setting-sub gx-pdf-nota">${esc(nota)}</p>` : ""}
     </details>`;
-}
-function tocarIdiomaPdf(el){
-  const l = el.dataset.l, sel = idiomasDelPdf();
-  const nuevos = IDIOMAS_PDF.filter(x => x === l ? !sel.includes(l) : sel.includes(x));
-  if(!nuevos.length) return;   // siempre queda al menos uno
-  idiomasPdf = nuevos;
-  try{ localStorage.setItem("ra_pdf_idiomas", JSON.stringify(nuevos)); }catch(e){}
-  if(gastosResumen && el.closest(".gx-resumen")) gastosResumen.abierto = true;
-  render();
-  const x = document.querySelector(`${el.closest(".gx-resumen") ? ".gx-resumen " : ".gx-paso "}[data-action="gastos-pdf-idioma"][data-l="${l}"]`); if(x) x.focus();
 }
 async function bajarPdf(para){
   if(gastosPdf && gastosPdf.armando) return;
@@ -27551,6 +27580,7 @@ async function bajarPdf(para){
     showCalendarNotice({ ok: false, icono: "⚠️", message: t("«Desde» tiene que ser antes que «Hasta».","“From” has to be before “To”.","«De» tem que ser antes de «Até».","«מ-» צריך להיות לפני «עד».") });
     return;
   }
+  gastosPdfMenu = null;
   const P = gastosPdf = { para, armando: true, avance: t("Preparando…","Getting ready…","Preparando…","מכין…") };
   render();
   const avance = s => { P.avance = s; const el = document.querySelector(`.gx-pdf-bajar[data-id="${CSS.escape(para)}"]`); if(el) el.textContent = s; };
@@ -28304,7 +28334,7 @@ const GASTOS_ACCIONES = {
   "gastos-cambio-anotar": async () => anotarCambio(),
   "gastos-total-abrir": async el => { gastosTotalAbierto = el.dataset.id; render(); const x = document.getElementById("gxTotal_0_monto"); if(x){ x.scrollIntoView({ block: "center" }); x.focus(); } },
   "gastos-pdf-bajar": async el => bajarPdf(el.dataset.id),
-  "gastos-pdf-idioma": async el => tocarIdiomaPdf(el),
+  "gastos-pdf-menu": async el => tocarMenuPdf(el),
   "gastos-cambio-adjuntar": async el => { gastosMovPara = el.dataset.id ? "c:" + el.dataset.id : "cform"; gastosMovArchivoInput.value = ""; gastosMovArchivoInput.click(); },
   "gastos-cambio-adj-quitar": async () => { if(!gastosCambio) return; gastosCambio.archivo = null; render(); const x = document.querySelector('.gastos-view [data-action="gastos-cambio-adjuntar"][data-id=""]'); if(x) x.focus(); },
   "gastos-cambio-ver": async el => verComprobanteCambio(el.dataset.id),
@@ -28432,6 +28462,7 @@ function gastosAlEscribir(el, evento){
     return true;
   }
   if(el.id === "gxTotalConfirmado" && gastosTotal){ gastosTotal.confirmado = el.checked; return true; }
+  if(el.dataset.gpdfL){ if(evento === "change") marcarIdiomaPdf(el); return true; }
   if((el.id === "gxPdfDesde" || el.id === "gxPdfHasta") && gastosResumen){ gastosResumen[el.id === "gxPdfDesde" ? "desde" : "hasta"] = el.value; gastosResumen.abierto = true; return true; }
   if(el.dataset.gmov && gastosMov){
     gastosMov[el.dataset.gmov] = el.value;

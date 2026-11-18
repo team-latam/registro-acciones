@@ -104,7 +104,12 @@ const examinar = (p, bytes) => p.evaluate(async b64 => {
 
 // El aviso pasajero de la app (el mismo del Calendar): ahí dice «se bajó» y lo que haya que avisar.
 const aviso = async p => { let x = ""; for(let i = 0; i < 40 && !x; i++){ x = await p.evaluate(() => { const t = document.getElementById("calendarToast"); return t && !t.hidden ? document.getElementById("calendarToastText").textContent : ""; }); if(!x) await p.waitForTimeout(100); } return x; };
-const idiomas = p => p.$$eval('.gx-paso [data-action="gastos-pdf-idioma"], .gx-resumen [data-action="gastos-pdf-idioma"]', l => l.filter(b => b.getAttribute("aria-pressed") === "true").map(b => b.dataset.l));
+// El botón con flecha (lo eligió el usuario el 18/11): lo que dice la flecha, y marcar un idioma en su menú.
+const flecha = (p, donde = ".gx-paso") => p.$eval(`${donde} .gx-split-flecha`, e => e.textContent.replace(/\s+/g, " ").trim()).catch(() => null);
+const marcar = async (p, l, donde = ".gx-paso") => {
+  if(!(await p.$(`${donde} .gx-split-menu`))) await tocar(p, `${donde} [data-action="gastos-pdf-menu"]`);
+  await tocar(p, `${donde} .gx-split-menu [data-gpdf-l="${l}"]`);
+};
 
 // ---------- 1. Una rendición aprobada: de una, sin panel (lo eligió el usuario el 18/11) ----------
 {
@@ -112,14 +117,27 @@ const idiomas = p => p.$$eval('.gx-paso [data-action="gastos-pdf-idioma"], .gx-r
   await sirvo(p);
   await irGastos(p);
   await abrir(p, "ren_mvd");
-  eq("la barra de la aprobada: «Descargar el PDF de entrega» y, al lado, los idiomas", await p.evaluate(() => [(document.querySelector('.gx-paso [data-action="gastos-pdf-bajar"][data-id="ren_mvd"]') || {}).textContent,
-    [...document.querySelectorAll('.gx-paso [data-action="gastos-pdf-idioma"]')].map(b => b.textContent)]), ["Descargar el PDF de entrega", ["ES", "EN", "PT", "HE"]]);
-  eq("sin panel ni explicaciones", await p.evaluate(() => !document.querySelector(".gx-pdf") && !/se traducen|Adentro van/.test(document.querySelector(".gastos-view").textContent)), true);
-  eq("de entrada, el idioma de la app", await idiomas(p), ["es"]);
-  await tocar(p, '.gx-paso [data-action="gastos-pdf-idioma"][data-l="es"]');
-  eq("el último no se apaga: siempre queda uno", await idiomas(p), ["es"]);
-  await tocar(p, '.gx-paso [data-action="gastos-pdf-idioma"][data-l="he"]');
-  eq("se suma el hebreo, con el foco en ese botón, y se recuerdan para la próxima", await p.evaluate(() => [document.activeElement.dataset.l, localStorage.getItem("ra_pdf_idiomas")]), ["he", '["es","he"]']);
+  eq("la barra de la aprobada: «Descargar el PDF de entrega» con una flecha que dice el idioma, y «Reabrir» al lado", await p.evaluate(() => [(document.querySelector('.gx-paso [data-action="gastos-pdf-bajar"][data-id="ren_mvd"]') || {}).textContent,
+    (document.querySelector(".gx-paso .gx-split-flecha") || {}).getAttribute && document.querySelector(".gx-paso .gx-split-flecha").getAttribute("aria-expanded"), !!document.querySelector('.gx-paso [data-action="gastos-reabrir"]')]), ["Descargar el PDF de entrega", "false", true]);
+  eq("sin panel ni explicaciones", await p.evaluate(() => !document.querySelector(".gx-pdf, .gx-split-menu") && !/se traducen|Adentro van/.test(document.querySelector(".gastos-view").textContent)), true);
+  eq("de entrada, el idioma de la app", await flecha(p), "ES ▾");
+  await tocar(p, '.gx-paso [data-action="gastos-pdf-menu"]');
+  eq("la flecha abre el menú, con el foco adentro; el único marcado no se puede desmarcar (siempre queda uno)", await p.evaluate(() => [
+    document.querySelector(".gx-paso .gx-split-flecha").getAttribute("aria-expanded"), [...document.querySelectorAll(".gx-split-menu input")].map(i => [i.dataset.gpdfL, i.checked, i.disabled]),
+    document.activeElement.closest(".gx-split-menu") !== null]), ["true", [["es", true, true], ["en", false, false], ["pt", false, false], ["he", false, false]], true]);
+  await marcar(p, "he");
+  eq("se suma el hebreo: el menú sigue abierto con el foco ahí, la flecha lo dice y se recuerdan para la próxima", await p.evaluate(() => [document.activeElement.dataset.gpdfL,
+    !!document.querySelector(".gx-split-menu"), localStorage.getItem("ra_pdf_idiomas")]), ["he", true, '["es","he"]']);
+  eq("…la flecha dice «ES · HE»", await flecha(p), "ES · HE ▾");
+  await marcar(p, "en"); await marcar(p, "pt");
+  const ancho = await p.$eval(".gx-paso .gx-split", e => [e.getBoundingClientRect().width, e.getBoundingClientRect().height]);
+  eq("con 3 o 4, la flecha dice cuántos, y el botón no engorda (un renglón)", [await flecha(p), ancho[1] < 50], ["4 idiomas ▾", true]);
+  await marcar(p, "en"); await marcar(p, "pt");
+  eq("…y volviendo a dos, las siglas", await flecha(p), "ES · HE ▾");
+  await p.keyboard.press("Escape");
+  eq("Escape cierra el menú y el foco vuelve a la flecha", await p.evaluate(() => [!document.querySelector(".gx-split-menu"), document.activeElement.classList.contains("gx-split-flecha")]), [true, true]);
+  await tocar(p, '.gx-paso [data-action="gastos-pdf-menu"]'); await p.mouse.click(5, 5);
+  eq("tocar afuera también lo cierra", await p.evaluate(() => !document.querySelector(".gx-split-menu")), true);
   eq("con traductor, no hace falta avisar nada", await p.evaluate(() => /no traduce/.test(document.querySelector(".gx-paso").textContent)), false);
 
   const { nombre, bytes } = await bajar(p);
@@ -160,9 +178,9 @@ const idiomas = p => p.$$eval('.gx-paso [data-action="gastos-pdf-idioma"], .gx-r
   await sirvo(p, { faltaGx3: true });
   await irGastos(p); await abrir(p, "ren_mvd");
   eq("sin traductor y solo en castellano, no avisa nada", await p.evaluate(() => /no traduce/.test(document.querySelector(".gx-paso").textContent)), false);
-  await tocar(p, '.gx-paso [data-action="gastos-pdf-idioma"][data-l="en"]');
+  await marcar(p, "en");
   eq("con otro idioma, una línea: los conceptos van como se escribieron", await p.evaluate(() => /Este navegador no traduce: los conceptos van como se escribieron/.test(document.querySelector(".gx-paso").textContent)), true);
-  await tocar(p, '.gx-paso [data-action="gastos-pdf-idioma"][data-l="en"]');
+  await marcar(p, "en"); await p.keyboard.press("Escape");
   const { bytes } = await bajar(p);
   const x = bytes ? await examinar(p, bytes) : { paginas: [] };
   eq("no se saltea su número: va una hoja que lo dice (siguen siendo 6 con un idioma)", x.paginas.length, 6);
@@ -209,7 +227,7 @@ const idiomas = p => p.$$eval('.gx-paso [data-action="gastos-pdf-idioma"], .gx-r
   const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: { width: 1280, height: 900 }, pagina: PAGINA, base: datos(), iniciar: TRABADO });
   await sirvo(p);
   await irGastos(p); await abrir(p, "ren_mvd");
-  await tocar(p, '.gx-paso [data-action="gastos-pdf-idioma"][data-l="en"]');
+  await marcar(p, "en"); await p.keyboard.press("Escape");
   const t0 = Date.now();
   const { bytes } = await bajar(p);
   const x = bytes ? await examinar(p, bytes) : { paginas: [] };
@@ -228,9 +246,12 @@ const idiomas = p => p.$$eval('.gx-paso [data-action="gastos-pdf-idioma"], .gx-r
   await p.evaluate(() => { const v = document.querySelector('[data-view="gastos"]'); if(v) v.click(); });
   await p.waitForSelector(".gastos-view").catch(() => {});
   await abrir(p, "ren_mvd");
-  eq("en 360 px, el botón y los idiomas no se salen de la pantalla", await p.evaluate(() => { const e = document.querySelector(".gx-paso .gx-pdf-acc"), w = document.documentElement.clientWidth;
-    return !!e && [...e.querySelectorAll("button")].every(b => b.getBoundingClientRect().right <= w + 1 && b.getBoundingClientRect().left >= -1) && document.documentElement.scrollWidth <= w + 1; }), true);
-  eq("…y cada idioma se toca con el dedo (32 px o más)", await p.$$eval('.gx-paso [data-action="gastos-pdf-idioma"]', l => l.every(b => b.getBoundingClientRect().height >= 32 && b.getBoundingClientRect().width >= 32)), true);
+  await marcar(p, "en"); await marcar(p, "pt"); await marcar(p, "he");   // los cuatro
+  eq("en 360 px, con los cuatro idiomas, el botón con flecha entra en un renglón y no se sale", await p.evaluate(() => { const e = document.querySelector(".gx-paso .gx-split"), w = document.documentElement.clientWidth;
+    return !!e && e.getBoundingClientRect().height < 50 && [...e.querySelectorAll("button")].every(b => b.getBoundingClientRect().right <= w + 1 && b.getBoundingClientRect().left >= -1) && document.documentElement.scrollWidth <= w + 1; }), true);
+  eq("…la flecha dice «4 idiomas» y el menú entra en la pantalla, con casillas que se tocan con el dedo", await p.evaluate(() => { const m = document.querySelector(".gx-split-menu"), w = document.documentElement.clientWidth;
+    return [(document.querySelector(".gx-paso .gx-split-flecha") || {}).textContent.replace(/\s+/g, " ").trim(), !!m && m.getBoundingClientRect().left >= -1 && m.getBoundingClientRect().right <= w + 1,
+      !!m && [...m.querySelectorAll("label")].every(l => l.getBoundingClientRect().height >= 32)]; }), ["4 idiomas ▾", true, true]);
   eq("sin errores", errores, []);
   await p.close();
 }

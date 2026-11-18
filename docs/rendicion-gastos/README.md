@@ -349,8 +349,11 @@ que llega tarde, al final del PDF con los números que siguen. Cómo quedó cada
   moneda de su país; sin la explicación de arriba.
 - **4** — «Anotar solo el total» en todos lados («Total anotado: …» después), debajo de los cambios, y en una
   rendición vacía la barra ofrece «Subir comprobantes» y, al lado, «o anotar solo el total».
-- **5** — «Descargar el PDF de entrega» en la barra de la aprobada, con ES · EN · PT · HE al lado; el avance en el
-  botón; la nota de la traducción solo si hace falta. El resumen por mes, en un desplegable de *Mis rendiciones*.
+- **5** — «Descargar el PDF de entrega» en la barra de la aprobada; el avance en el botón; la nota de la traducción
+  solo si hace falta. El resumen por mes, en un desplegable de *Mis rendiciones*. Los idiomas, primero como cuatro
+  botones al lado; al verlos («sigue sin gustarme»), eligió entre dos maquetas **un botón con flecha** que abre un
+  menú con los idiomas, y pidió que con 3 o 4 no engorde: la flecha dice las siglas hasta dos («ES · HE ▾») y, con
+  más, cuántos («4 idiomas ▾»). Una rendición reabierta sin nada nuevo se vuelve a mandar desde su barra.
 - **6** — reabrir: lo aprobado sigue aprobado (base: `aprobado_el`; al mandar y aprobar, solo lo nuevo o corregido);
   la lista muestra «Nuevos o corregidos» y abajo «Ya aprobados», plegados; un admin puede observar uno aprobado.
 - **7** — las observaciones al final de la ventana, la última a la vista y «Ver las anteriores»; «Observar» solo para
