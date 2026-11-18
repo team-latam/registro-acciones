@@ -390,10 +390,10 @@ select lab.comprobar('una integrante no reabre su rendición aprobada',
   $q$select lab.rechaza(lab.como('ana@x.com'), format($x$select public.gastos_rendicion_reabrir(%L)::text$x$, '$q$ || :'ra' || $q$'))$q$, 'true');
 select lab.comprobar('…ni una abierta se «reabre» (solo una aprobada)',
   $q$select lab.rechaza(lab.como('benny@team-latam.com'), format($x$select public.gastos_rendicion_reabrir(%L)::text$x$, '$q$ || :'ra_mes' || $q$'))$q$, 'true');
-select lab.probar_valor('un admin por rol la reabre: vuelve a abierta, sus gastos dejan de estar aprobados y salen de la cuenta',
+select lab.probar_valor('un admin por rol la reabre: vuelve a abierta, y lo aprobado sigue aprobado y en la cuenta',
   lab.como('otra.admin@x.com'), format($x$select public.gastos_rendicion_reabrir(%L)$x$, :'ra'),
   format($x$select r.estado || '/' || coalesce(r.aprobada_por, '-') || '/' || (select string_agg(distinct g.estado, ',' order by g.estado) from public.gastos g where g.rendicion_id = r.id)
-       || '/' || (public.gastos_cuenta('ana@x.com') -> 'USD' ->> 'gastado') from public.gastos_rendiciones r where r.id = %L$x$, :'ra'), 'abierta/-/confirmado/0');
+       || '/' || (public.gastos_cuenta('ana@x.com') -> 'USD' ->> 'gastado') from public.gastos_rendiciones r where r.id = %L$x$, :'ra'), 'abierta/-/aprobado/117.50');
 select lab.probar_valor('…y la persona le puede sumar el gasto que faltaba',
   lab.como('benny@team-latam.com'), format($x$select public.gastos_rendicion_reabrir(%L)$x$, :'ra'),
   format($q$select lab.hacer(lab.como('ana@x.com'), format($x$insert into public.gastos(rendicion_id, concepto) values (%%L, 'Ticket tardío') returning 'ok'$x$, %L))$q$, :'ra'), 'ok');
@@ -534,6 +534,56 @@ select lab.comprobar('una integrante no abre los gastos para sí misma',
   $q$select lab.rechaza(lab.como('ana@x.com'), $x$select public.guardar_config('preferences', '{"gastos": {"abierto": true}}')::text$x$)$q$, 'true');
 select lab.comprobar('lo rechazado no cambió nada',
   $q$select jsonb_array_length(value -> 'gastos' -> 'tipos')::text || '/' || coalesce(value -> 'gastos' ->> 'abierto', '-') from public.app_config where key = 'preferences'$q$, '3/false');
+
+-- ---------- Reabrir: se revisa solo lo nuevo o corregido (18/11) ----------
+-- «El único que debería quedar para revisar tiene que ser el que tuvo cambios, no todos nuevamente.»
+-- (Las pruebas de la configuración, justo arriba, lo dejaron cerrado para el equipo: se abre para Ana.)
+update public.app_config set value = jsonb_set(value, '{gastos,abierto}', 'true') where key = 'preferences';
+select lab.comprobar('cada gasto aprobado guarda cuándo se aprobó',
+  $q$select count(*) filter (where aprobado_el is null) || '/' || count(*) from public.gastos where rendicion_id = '$q$ || :'ra' || $q$' and estado = 'aprobado'$q$, '0/5');
+select aprobado_el::text as ap_hotel from public.gastos where id = :'g1' \gset
+select lab.hacer(lab.como('otra.admin@x.com'), format($x$select public.gastos_rendicion_reabrir(%L)::text$x$, :'ra'));
+select lab.comprobar('reabierta, lo aprobado sigue aprobado',
+  $q$select r.estado || '/' || (select string_agg(distinct g.estado, ',') from public.gastos g where g.rendicion_id = r.id) from public.gastos_rendiciones r where r.id = '$q$ || :'ra' || $q$'$q$, 'abierta/aprobado');
+select lab.probar('…y la persona no lo corrige', lab.como('ana@x.com'), format($x$update public.gastos set monto = 1 where id = %L$x$, :'g1'), false);
+select lab.probar('…ni lo borra', lab.como('ana@x.com'), format($x$delete from public.gastos where id = %L$x$, :'g1'), false);
+select lab.comprobar('…ni borra la rendición entera (tiene gastos aprobados)',
+  $q$select lab.rechaza(lab.como('ana@x.com'), format($x$select public.gastos_rendicion_borrar(%L)::text$x$, '$q$ || :'ra' || $q$'))$q$, 'true');
+select lab.hacer(lab.como('ana@x.com'), format($x$insert into public.gastos(rendicion_id, fecha, concepto, tipo, moneda, monto, pago, estado, aprobado_el)
+  values (%L, '2026-09-05', 'Ticket que llegó tarde', 'comida', 'USD', 12, 'persona', 'confirmado', now()) returning id::text$x$, :'ra')) as g_tarde \gset
+select lab.comprobar('suma el que llegó tarde, y no se puede dar por aprobado desde el navegador',
+  $q$select estado || '/' || coalesce(aprobado_el::text, '-') from public.gastos where id = '$q$ || :'g_tarde' || $q$'$q$, 'confirmado/-');
+select lab.comprobar('mientras está reabierta, lo aprobado sigue en la cuenta corriente',
+  $q$select lab.hacer(lab.como('ana@x.com'), $x$select public.gastos_cuenta('ana@x.com') -> 'USD' ->> 'gastado'$x$)$q$, '117.50');
+select lab.comprobar('se vuelve a mandar con lo aprobado adentro',
+  $q$select lab.hacer(lab.como('ana@x.com'), format($x$select public.gastos_rendicion_enviar(%L)::text$x$, '$q$ || :'ra' || $q$'))$q$, 'true');
+select lab.comprobar('…y queda en revisión solo el nuevo: lo aprobado no vuelve a revisarse',
+  $q$select string_agg(estado || ':' || concepto, ', ' order by concepto) filter (where estado <> 'aprobado') || ' / ' || count(*) filter (where estado = 'aprobado')
+     from public.gastos where rendicion_id = '$q$ || :'ra' || $q$'$q$, 'enviado:Ticket que llegó tarde / 5');
+select lab.comprobar('en la cuenta, lo aprobado gastado y lo nuevo en revisión',
+  $q$select lab.hacer(lab.como('ana@x.com'), $x$select (public.gastos_cuenta('ana@x.com') -> 'USD' ->> 'gastado') || '/' || (public.gastos_cuenta('ana@x.com') -> 'USD' ->> 'en_revision')$x$)$q$, '117.50/12.00');
+select lab.comprobar('para corregir uno aprobado, un admin lo observa',
+  $q$select lab.hacer(lab.como('benny@team-latam.com'), format($x$select public.gastos_observar(%L, 'Corregí la fecha del hotel')::text$x$, '$q$ || :'g1' || $q$'))$q$, 'true');
+select lab.probar('…y la persona lo puede corregir', lab.como('ana@x.com'), format($x$update public.gastos set fecha = '2026-09-09' where id = %L$x$, :'g1'), true);
+select lab.hacer(lab.como('ana@x.com'), format($x$update public.gastos set fecha = '2026-09-09', estado = 'confirmado' where id = %L returning estado$x$, :'g1'));
+select lab.comprobar('corregido, se manda de nuevo',
+  $q$select lab.hacer(lab.como('ana@x.com'), format($x$select public.gastos_rendicion_enviar(%L)::text$x$, '$q$ || :'ra' || $q$'))$q$, 'true');
+select lab.comprobar('…en revisión, el nuevo y el corregido; los demás siguen aprobados',
+  $q$select count(*) filter (where estado = 'enviado') || '+' || count(*) filter (where estado = 'aprobado') from public.gastos where rendicion_id = '$q$ || :'ra' || $q$'$q$, '2+4');
+select lab.comprobar('se aprueba de nuevo',
+  $q$select lab.hacer(lab.como('otra.admin@x.com'), format($x$select public.gastos_rendicion_aprobar(%L)::text$x$, '$q$ || :'ra' || $q$'))$q$, 'true');
+select lab.comprobar('el corregido conserva cuándo se aprobó la primera vez (su lugar en el PDF no cambia); el nuevo va después',
+  $q$select ((select aprobado_el::text from public.gastos where id = '$q$ || :'g1' || $q$') = '$q$ || :'ap_hotel' || $q$')::text || '/' ||
+     ((select aprobado_el from public.gastos where id = '$q$ || :'g_tarde' || $q$') > '$q$ || :'ap_hotel' || $q$'::timestamptz)::text$q$, 'true/true');
+select lab.comprobar('y en la cuenta suma el nuevo',
+  $q$select lab.hacer(lab.como('ana@x.com'), $x$select public.gastos_cuenta('ana@x.com') -> 'USD' ->> 'gastado'$x$)$q$, '129.50');
+select lab.probar_valor('reabierta otra vez, un admin observa uno aprobado aunque no la hayan mandado',
+  lab.como('otra.admin@x.com'), format($x$select public.gastos_rendicion_reabrir(%L)$x$, :'ra'),
+  format($q$select lab.hacer(lab.como('benny@team-latam.com'), format($x$select public.gastos_observar(%%L, 'Falta la factura')::text$x$, %L))
+     || '/' || lab.hacer(lab.como('benny@team-latam.com'), format($x$select g.estado || '/' || r.estado from public.gastos g join public.gastos_rendiciones r on r.id = g.rendicion_id where g.id = %%L$x$, %L))$q$,
+     :'g2', :'g2'), 'true/observado/observada');
+select lab.comprobar('aprobada, uno aprobado no se observa (hay que reabrirla)',
+  $q$select lab.rechaza(lab.como('benny@team-latam.com'), format($x$select public.gastos_observar(%L, 'otra cosa')::text$x$, '$q$ || :'g2' || $q$'))$q$, 'true');
 
 -- ---------- Cerrados de nuevo para el equipo ----------
 update public.app_config set value = '{"gastos": {"abierto": false}}' where key = 'preferences';

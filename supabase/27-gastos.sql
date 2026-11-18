@@ -137,6 +137,14 @@ create table if not exists public.gastos (
 -- corriente: ni en la de quien rinde ni en la suya (gastos_cuenta cuenta solo
 -- pago = 'persona').
 alter table public.gastos add column if not exists pago_quien text;
+-- Cuándo se aprobó cada gasto (18/11/2026). Al reabrir una rendición, lo ya
+-- aprobado queda aprobado y lo que se suma (o se corrige) se revisa aparte
+-- (lo pidió el usuario: «el único que debería quedar para revisar tiene que
+-- ser el que tuvo cambios»). Y el PDF de entrega numera primero lo aprobado
+-- antes y al final lo que llegó tarde, así los números de un PDF ya
+-- entregado no cambian (lo eligió el usuario). Lo pone la base al aprobar;
+-- nadie lo escribe desde el navegador.
+alter table public.gastos add column if not exists aprobado_el timestamptz;
 alter table public.gastos drop constraint if exists gastos_forma;
 alter table public.gastos add constraint gastos_forma check (
   estado in ('borrador', 'confirmado', 'enviado', 'observado', 'aprobado')
@@ -161,6 +169,10 @@ alter table public.gastos add constraint gastos_forma check (
 );
 -- El mismo comprobante dos veces, de la misma persona: no (es un repetido).
 create unique index if not exists gastos_comprobante_unico on public.gastos (autor, archivo_hash) where archivo_hash is not null;
+-- Los aprobados de antes del 18/11, con la fecha de aprobación de su rendición.
+update public.gastos g set aprobado_el = r.aprobada_el
+  from public.gastos_rendiciones r
+ where r.id = g.rendicion_id and g.estado = 'aprobado' and g.aprobado_el is null and r.aprobada_el is not null;
 create index if not exists gastos_rendicion on public.gastos (rendicion_id);
 create index if not exists gastos_autor on public.gastos (autor, estado);
 
@@ -390,6 +402,10 @@ begin
   new.moneda := upper(btrim(coalesce(new.moneda, '')));
   new.rendido_moneda := upper(btrim(coalesce(new.rendido_moneda, '')));
   if current_user not in ('authenticated', 'anon') then return new; end if;
+  -- Cuándo se aprobó lo pone la base; si el gasto se pasa a otra rendición, se aprueba de nuevo allá.
+  if tg_op = 'INSERT' then new.aprobado_el := null;
+  elsif new.rendicion_id is distinct from old.rendicion_id then new.aprobado_el := null;
+  else new.aprobado_el := old.aprobado_el; end if;
   if tg_op = 'INSERT' then
     new.autor := yo; new.creado_el := now();
     if new.estado not in ('borrador', 'confirmado') then
@@ -571,8 +587,10 @@ begin
 end $$;
 
 -- Mandar la rendición para que la revise un admin: todos sus gastos tienen
--- que estar confirmados (o seguir mandados, los que no se observaron), y
--- tiene que haber algo: un gasto o un total rápido.
+-- que estar confirmados (o seguir mandados, los que no se observaron, o
+-- aprobados, si la rendición se reabrió), y tiene que haber algo: un gasto o
+-- un total. Lo ya aprobado no vuelve a revisión: pasan a «enviado» solo los
+-- nuevos o corregidos.
 create or replace function public.gastos_rendicion_enviar(p_id uuid)
 returns boolean language plpgsql security definer set search_path = '' as $$
 declare yo text := public.mi_correo(); r record; v_total integer; v_faltan integer;
@@ -584,7 +602,7 @@ begin
   if r.estado not in ('abierta', 'observada') then
     raise exception 'Esa rendición ya se mandó' using errcode = 'check_violation';
   end if;
-  select count(*), count(*) filter (where g.estado not in ('confirmado', 'enviado'))
+  select count(*), count(*) filter (where g.estado not in ('confirmado', 'enviado', 'aprobado'))
     into v_total, v_faltan from public.gastos g where g.rendicion_id = p_id;
   if v_total = 0 and r.total_manual = '{}'::jsonb then
     raise exception 'No hay nada para mandar' using errcode = 'check_violation';
@@ -592,7 +610,7 @@ begin
   if v_faltan > 0 then
     raise exception 'Faltan confirmar % gasto(s)', v_faltan using errcode = 'check_violation';
   end if;
-  update public.gastos set estado = 'enviado', tocado_el = now() where rendicion_id = p_id;
+  update public.gastos set estado = 'enviado', tocado_el = now() where rendicion_id = p_id and estado <> 'aprobado';
   update public.gastos_rendiciones set estado = 'enviada', enviada_el = now(), tocada_el = now() where id = p_id;
   return true;
 end $$;
@@ -614,6 +632,9 @@ begin
   end if;
   if r.estado not in ('abierta', 'observada') and not public.es_admin_fijo() then
     raise exception 'Una rendición mandada o aprobada la borra solo el admin' using errcode = 'check_violation';
+  end if;
+  if not public.es_admin_fijo() and exists (select 1 from public.gastos g where g.rendicion_id = p_id and g.estado = 'aprobado') then
+    raise exception 'Tiene gastos aprobados (se reabrió): la borra solo el admin' using errcode = 'check_violation';
   end if;
   delete from public.gastos where rendicion_id = p_id;
   get diagnostics n = row_count;
@@ -674,7 +695,8 @@ end $$;
 
 -- Un admin observa un gasto de una rendición mandada: queda «observado»
 -- (la persona lo puede corregir), la rendición vuelve a la persona y el
--- comentario queda guardado.
+-- comentario queda guardado. Uno ya aprobado se observa solo si su rendición
+-- se reabrió (18/11): así se corrige uno aprobado sin volver a revisar todo.
 create or replace function public.gastos_observar(p_gasto uuid, p_texto text)
 returns boolean language plpgsql security definer set search_path = '' as $$
 declare yo text := public.mi_correo(); g record; v_texto text := btrim(coalesce(p_texto, ''));
@@ -685,14 +707,15 @@ begin
   if v_texto = '' or length(v_texto) > 1000 then
     raise exception 'Hace falta un comentario (hasta 1000 letras)' using errcode = 'check_violation';
   end if;
-  select x.id, x.rendicion_id, r.estado as r_estado into g
+  select x.id, x.rendicion_id, x.estado, r.estado as r_estado into g
     from public.gastos x join public.gastos_rendiciones r on r.id = x.rendicion_id
    where x.id = p_gasto for update of x;
   if not found then
     raise exception 'Ese gasto no está en una rendición' using errcode = 'no_data_found';
   end if;
-  if g.r_estado not in ('enviada', 'observada') then
-    raise exception 'Se observa una rendición mandada' using errcode = 'check_violation';
+  if not ((g.estado in ('enviado', 'observado') and g.r_estado in ('enviada', 'observada'))
+          or (g.estado = 'aprobado' and g.r_estado in ('abierta', 'enviada', 'observada'))) then
+    raise exception 'Se observa un gasto de una rendición mandada (o uno aprobado de una reabierta)' using errcode = 'check_violation';
   end if;
   update public.gastos set estado = 'observado', tocado_el = now() where id = p_gasto;
   update public.gastos_rendiciones set estado = 'observada', tocada_el = now() where id = g.rendicion_id;
@@ -716,7 +739,9 @@ begin
   return v_id;
 end $$;
 
--- Un admin aprueba la rendición entera (mandada y sin observaciones abiertas).
+-- Un admin aprueba la rendición entera (mandada y sin observaciones abiertas):
+-- lo que estaba en revisión pasa a aprobado, con la hora (un gasto corregido
+-- después de aprobado conserva la primera: su lugar en el PDF no cambia).
 create or replace function public.gastos_rendicion_aprobar(p_id uuid)
 returns boolean language plpgsql security definer set search_path = '' as $$
 declare yo text := public.mi_correo(); r record;
@@ -731,7 +756,8 @@ begin
   if r.estado <> 'enviada' then
     raise exception 'Se aprueba una rendición mandada y sin observaciones pendientes' using errcode = 'check_violation';
   end if;
-  update public.gastos set estado = 'aprobado', tocado_el = now() where rendicion_id = p_id;
+  update public.gastos set estado = 'aprobado', aprobado_el = coalesce(aprobado_el, now()), tocado_el = now()
+   where rendicion_id = p_id and estado <> 'aprobado';
   update public.gastos_rendiciones set estado = 'aprobada', aprobada_el = now(), aprobada_por = yo, tocada_el = now() where id = p_id;
   return true;
 end $$;
@@ -740,8 +766,9 @@ end $$;
 -- comprobante que llegó tarde a una rutina del mes ya aprobada; la otra
 -- salida, ponerlo en la rutina del mes siguiente, ya se puede desde «Va en»).
 -- Solo un admin. Vuelve a «abierta» para que la persona sume lo que falta y
--- la mande de nuevo; sus gastos dejan de estar aprobados (vuelven a
--- «confirmado») y salen de la cuenta corriente hasta que se apruebe otra vez.
+-- la mande de nuevo. Lo ya aprobado sigue aprobado (no se toca y sigue en la
+-- cuenta corriente): al mandarla, se revisa solo lo nuevo; y si hay que
+-- corregir uno aprobado, el admin lo observa (18/11).
 create or replace function public.gastos_rendicion_reabrir(p_id uuid)
 returns boolean language plpgsql security definer set search_path = '' as $$
 declare r record;
@@ -756,7 +783,6 @@ begin
   if r.estado <> 'aprobada' then
     raise exception 'Se reabre una rendición aprobada' using errcode = 'check_violation';
   end if;
-  update public.gastos set estado = 'confirmado', tocado_el = now() where rendicion_id = p_id and estado = 'aprobado';
   update public.gastos_rendiciones set estado = 'abierta', aprobada_el = null, aprobada_por = null, tocada_el = now() where id = p_id;
   return true;
 end $$;
@@ -775,10 +801,11 @@ begin
 end $$;
 
 -- La cuenta corriente de una persona, por moneda. Lo ve ella misma o un admin.
---   gastado      sus gastos de su bolsillo (pago = persona) en rendiciones
---                APROBADAS: el monto rendido en su moneda, o si no lo tiene,
---                el del comprobante en la suya. Un gasto sin monto no suma.
---   en_revision  lo mismo, de rendiciones mandadas que todavía no se aprobaron
+--   gastado      sus gastos APROBADOS de su bolsillo (pago = persona), aunque
+--                su rendición se haya reabierto: el monto rendido en su
+--                moneda, o si no lo tiene, el del comprobante en la suya. Un
+--                gasto sin monto no suma.
+--   en_revision  lo que todavía no se aprobó de rendiciones mandadas
 --   recibido, devuelto, ajuste   los movimientos confirmados
 --   pendiente    lo que anotó la persona y falta que un admin confirme
 --   saldo        gastado + devuelto + ajuste − recibido: positivo, la
@@ -793,13 +820,13 @@ begin
   end if;
   with gastos_persona as (
     select case when g.rendido_monto is not null then g.rendido_moneda else g.moneda end as moneda,
-           coalesce(g.rendido_monto, g.monto) as monto, r.estado
+           coalesce(g.rendido_monto, g.monto) as monto, g.estado = 'aprobado' as aprobado
       from public.gastos g join public.gastos_rendiciones r on r.id = g.rendicion_id
      where g.autor = p_persona and g.pago = 'persona' and coalesce(g.rendido_monto, g.monto) is not null
-       and r.estado in ('enviada', 'observada', 'aprobada')
+       and (g.estado = 'aprobado' or r.estado in ('enviada', 'observada'))
   ), filas as (
-    select moneda, sum(monto) filter (where estado = 'aprobada') as gastado,
-           sum(monto) filter (where estado in ('enviada', 'observada')) as en_revision,
+    select moneda, sum(monto) filter (where aprobado) as gastado,
+           sum(monto) filter (where not aprobado) as en_revision,
            0::numeric as recibido, 0::numeric as devuelto, 0::numeric as ajuste, 0::numeric as pendiente
       from gastos_persona group by moneda
     union all
