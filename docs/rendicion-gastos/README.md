@@ -251,8 +251,8 @@ tocan eventos, comentarios ni la Agenda); se hace por etapas chicas; Drive y el 
   - **Su botón** «Ver el gasto» lleva a `?gasto=<id>`: la app abre ese gasto apenas llegan los datos (a un admin,
     desde «Para aprobar») y limpia la dirección.
 
-- [ ] **«Otra persona» pagó, y reabrir una rendición aprobada** (en la rama, esperando el OK del usuario; lo
-  decidió el 18/11):
+- [x] **«Otra persona» pagó, y reabrir una rendición aprobada** (publicado el 18/11 con el OK del usuario; lo
+  decidió ese día):
   - En «¿Quién pagó?», además de «Yo» y «Organización», **«Otra persona»**: alguien que participó de la actividad
     (o, en la rutina del mes, alguien del equipo) puso la plata. Se elige quién (`gastos.pago = 'otro'` y
     `pago_quien`, su correo o su nombre); sin decir quién no se confirma. No entra en ninguna cuenta corriente
@@ -264,8 +264,8 @@ tocan eventos, comentarios ni la Agenda); se hace por etapas chicas; Drive y el 
     aprobar» muestra abajo las aprobadas de los últimos 60 días, para llegar a ellas. En un gasto de un mes cuya
     rutina ya se aprobó, «Va en» lo dice: un admin la puede reabrir, o va en la rutina de otro mes.
 
-- [ ] **Revisión de UX de todo el módulo** (18/11, en la rama, esperando el OK del usuario; pidió «UX de toda la
-  parte de gastos», la revisión dio 28/40 y eligió hacer las cinco prioridades y los detalles):
+- [x] **Revisión de UX de todo el módulo** (publicada el 18/11 con el OK del usuario; pidió «UX de toda la parte
+  de gastos», la revisión dio 28/40 y eligió hacer las cinco prioridades y los detalles):
   - **La rendición**: el título es el del viaje o la rutina (antes se repetía «Mis rendiciones»); debajo, su
     **camino en cuatro pasos** (Cargar → Confirmar → Mandar → Aprobada, lo eligió el usuario; «Corregir» si la
     observaron, «En revisión» mientras la miran) y **una barra con lo que sigue y un solo botón**: «Subir
