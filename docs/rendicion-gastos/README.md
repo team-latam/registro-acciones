@@ -372,6 +372,20 @@ que llega tarde, al final del PDF con los números que siguen. Cómo quedó cada
     actividades propias primero («Mis actividades») y después las demás; la búsqueda, sobre todas. Y, ya que los
     nombres de sus archivos traen la fecha y la actividad («14-9-2026 - Uber a Reunión - Rutina.pdf»), que al subir
     varios de meses distintos cada uno vaya solo a la rutina de su mes.
+- **9 — Que complete el final de la tarjeta** (18/11, con captura de un ticket de café de Ciudad de México pagado con
+  tarjeta de crédito, con el número enmascarado con asteriscos y los cuatro últimos a la vista). El lector leyó el
+  total pero no la tarjeta. La regla de hoy (`leerTextoDeComprobante()`: asteriscos, X o «terminada en» y cuatro
+  números) ya cubre esa forma, así que lo más probable es que el lector confundiera los asteriscos con otras letras o
+  algún número. Propuesta:
+  - una regla más amplia: cuatro números al final de una tira larga de signos o letras sueltas, sobre todo en el
+    renglón de «tarjeta», «crédito», «débito», AMEX, VISA o Mastercard (sin confundirla con los códigos de
+    autorización o de lote, que también son números);
+  - **recordar las tarjetas de cada persona**: si los cuatro números leídos se parecen a los de una que ya usó, poner
+    esa; y si eligió «Tarjeta» y no se leyó el número, ofrecerle las suyas para tocar en vez de escribirlas;
+  - probarlo con tickets inventados que imiten esa forma (nunca con números de tarjetas reales en el repo).
+  - Visto en la misma captura: la moneda quedó en USD aunque el ticket es en pesos mexicanos (una rutina no tiene país,
+    y el «$» solo no alcanza: se podría usar la moneda de sus rutinas anteriores), y el gasto, del 21/10, quedó en la
+    rutina de noviembre (se resuelve con el punto 8: cada comprobante a la rutina de su mes).
 
 **Para toda la tanda** (18/11: «Hay mucho texto, mucha explicación, podría ser más directo. No es difícil lo que
 tenemos que poner»): en todas las pantallas de Gastos, menos texto. Cada botón dice lo que hace; como mucho una
