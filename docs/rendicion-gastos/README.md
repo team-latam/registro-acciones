@@ -379,6 +379,22 @@ módulo.
      15») se corta en el celular y suena a que hay que restar la comisión otra vez.
    - Antes de cambiarlo, mostrarle al usuario el antes y el después (compu y celular), como en la revisión de UX
      del 18/11.
+4. **El final de la rendición: «Cambios de moneda» y «Total rápido»** (18/11: «es mejor que cambios de moneda esté
+   antes que total rápido»; «"Total rápido (sin cargar el detalle)" queda un poco tapado en esta sección. También se
+   le puede cambiar o poner otra denominación… Hay que revisar todo este punto»). Hoy son dos desplegables iguales,
+   uno abajo del otro, al final de la rendición, y el total rápido va primero. Lo que hay que hacer:
+   - **El orden**: «Cambios de moneda» antes que el total rápido (pedido).
+   - **El nombre**: la misma cosa se llama de cuatro maneras — «Total rápido (sin cargar el detalle)» (el
+     desplegable), «Anotar el total de una actividad, sin comprobantes» (el link de *Mis rendiciones*), «anotar
+     solo el total» (la barra de la rendición vacía) y «Total anotado a mano» (lo que se ve después). Elegir una sola
+     y usarla en todos lados. Propuesta para mostrarle con opciones: «Anotar solo el total» (es lo que ya dice la
+     barra, y dice qué hace sin explicar qué es «rápido»).
+   - **Que no quede tapado**: sirve sobre todo cuando no hay comprobantes, y es justo cuando la barra de arriba dice
+     «más abajo podés anotar solo el total» y hay que ir a buscarlo. Propuesta: en una rendición sin gastos, la barra
+     ofrece las dos cosas («Subir comprobantes» y, al lado, «o anotar solo el total», que abre el formulario ahí
+     mismo); con gastos ya cargados, queda abajo como algo secundario, después de los cambios.
+   - Revisar también cómo se ve después de anotado (para quien rinde y para el admin) y el aviso de «no coincide con
+     el detalle», con el mismo nombre. Antes y después en capturas, compu y celular.
 
 ## Lo que quedó para decidir más adelante (no frena la etapa 1)
 
