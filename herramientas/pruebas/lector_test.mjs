@@ -94,7 +94,7 @@ await p.route(/\/storage\/v1\/object\/sign\/adjuntos\/gastos\/gx8\//, r => r.ful
 eq("la página sale por http, con la CSP de siempre (sin permisos para correr WebAssembly en la página)",
   await p.evaluate(() => [location.protocol, /wasm-unsafe-eval/.test(document.querySelector('meta[http-equiv="Content-Security-Policy"]').content)]), ["http:", false]);
 await p.click('[data-action="toggle-user-menu"]'); await p.click('.user-menu [data-view="gastos"]'); await p.waitForSelector(".gastos-view");
-await p.click('[data-action="gastos-abrir-rendicion"][data-id="ren_mvd"]'); await p.waitForTimeout(200);
+await p.click('[data-action="gastos-grupo"][data-id="ren_mvd"]'); await p.click('[data-action="gastos-abrir-rendicion"][data-id="ren_mvd"]'); await p.waitForTimeout(200);
 const antes = (await tabla(p, "gastos")).length;
 await elegir(p, '[data-action="gastos-subir"][data-id="ren_mvd"]', [
   { name: "foto1.jpg", mimeType: "image/jpeg", buffer: TAXI }, { name: "foto2.jpg", mimeType: "image/jpeg", buffer: CENA },

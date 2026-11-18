@@ -193,7 +193,7 @@ tocan eventos, comentarios ni la Agenda); se hace por etapas chicas; Drive y el 
     una rendición propia que todavía se puede corregir, preguntando. Lo hace de una vez una función nueva de la base,
     `gastos_rendicion_borrar`: la persona, la suya abierta u observada; el admin fijo, cualquiera en esos estados;
     una mandada o aprobada, nunca. Los archivos quedan sin fila y los saca la limpieza semanal.
-  - **Borrar varios gastos juntos**: «Seleccionar» en una rendición o en «Sin vincular» (con dos o más que se puedan
+  - **Borrar varios gastos juntos** (desde el 18/11, con las casillas siempre a la vista: ver el punto 10 más abajo): «Seleccionar» en una rendición o en «Sin vincular» (con dos o más que se puedan
     tocar), una casilla por fila, «Todos», y «Borrar N» abajo, preguntando.
   - **La ventana de un gasto, rediseñada** (lo pidió para aprovechar el espacio y mostrar distinto): ancha, con el
     comprobante grande a la izquierda y los datos a la derecha; el concepto primero, el monto destacado con su moneda
@@ -399,6 +399,18 @@ que llega tarde, al final del PDF con los números que siguen. Cómo quedó cada
     del gasto); «Mis actividades», todas, primero; y al admin, aparte, «Otras actividades del equipo» (las 40 más
     cercanas). Subiendo a una rutina, **cada comprobante va a la rutina de su mes** (la fecha del nombre del
     archivo), si esa todavía no se mandó; el aviso dice cuántos fueron a cuál. Pruebas: `gastos_test.mjs`.
+  - **10** — las casillas, siempre: cada fila de gasto (en una rendición, en «Sin vincular» y en la lista agrupada)
+    tiene la suya, sin «Seleccionar» ni la papelera de cada fila; tocar la fila abre el gasto. Abajo, siempre que
+    haya gastos, la barra: «Todos», cuántos, **«Descargar Excel»** (una fila por gasto, con su rendición y de quién
+    es; con SheetJS, y si no carga, un .csv que Excel abre) y «Borrar» (si hay algo que la persona pueda borrar;
+    cuenta solo eso). En el celular la barra va arriba del menú de abajo y dice solo «Excel».
+  - **11** — «Mis rendiciones» es ahora la **lista agrupada** (para el admin se llama «Rendiciones» y trae las de todo
+    el equipo, con el nombre de quién es cada una): arriba «Sin vincular» y los filtros (desde y hasta qué mes,
+    estado y, para el admin, persona); un resumen (cuántas rendiciones y gastos, el total confirmado por moneda);
+    cada rendición cerrada, la más nueva primero, que al tocarla despliega sus gastos con casillas y «Abrir la
+    rendición →»; y la barra. Un admin que abre la de otra persona desde ahí la ve como en «Para aprobar» (con
+    «Aprobar la rendición»). «Todos» elige todo lo de la lista filtrada, también lo de las plegadas. Pruebas:
+    `gastos_test.mjs` (y las demás que abrían una rendición desde la lista).
 - **10 — La lista de gastos, siempre con las casillas** (18/11, con capturas): que se vea siempre como hoy al tocar
   «Seleccionar» (la casilla en cada fila) y que abajo esté siempre la barra («Todos», cuántos marcados y las acciones,
   apagadas mientras no haya nada marcado); «quizás no en el mismo diseño, pero similar».

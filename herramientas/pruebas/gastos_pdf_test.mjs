@@ -83,7 +83,9 @@ const sirvo = async (p, { faltaGx3 = false } = {}) => p.route(/\/storage\/v1\/ob
   return ruta.fallback();
 });
 const irGastos = async p => { await p.click('[data-action="toggle-user-menu"]'); await p.click('.user-menu [data-view="gastos"]'); await p.waitForSelector(".gastos-view"); await p.waitForTimeout(200); };
-const abrir = async (p, id) => { await p.click(`[data-action="gastos-abrir-rendicion"][data-id="${id}"]`); await p.waitForTimeout(250); };
+// En la lista agrupada (18/11), la tarjeta despliega la rendición y «Abrir la rendición →» la abre.
+const abrir = async (p, id) => { await p.evaluate(id => { if(!document.querySelector(`[data-action="gastos-abrir-rendicion"][data-id="${id}"]`)){ const g = document.querySelector(`[data-action="gastos-grupo"][data-id="${id}"]`); if(g) g.click(); } }, id);
+  await p.click(`[data-action="gastos-abrir-rendicion"][data-id="${id}"]`); await p.waitForTimeout(250); };
 const tocar = (p, sel) => p.click(sel, { timeout: 3000 }).then(() => true, () => false);
 const leer = (p, sel, f) => p.$eval(sel, f).catch(() => null);
 const bajar = async p => {
