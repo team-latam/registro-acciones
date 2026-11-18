@@ -12,7 +12,7 @@
 > aprobado como texto, que el admin fijo lo pueda borrar, el comprobante opcional en la cuenta corriente y los
 > avisos de «te observaron un gasto» (campanita y correo): **con eso la etapa 1 está completa**. Lo que sigue
 > (elegido por el usuario el 17/11): cargar un viaje real entero en el sistema, en paralelo con la skill, para ver
-> si falta algo antes de la etapa 2 (Drive). El 18/11 pidió adelantar la **etapa 4** (los PDF de entrega y el
+> si falta algo antes de la etapa 2 (Drive). El 18/11 pidió adelantar la **etapa 4** (publicada ese día: los PDF de entrega y el
 > cambio de moneda; ver «Etapa 4» más abajo) y después volver a la 2 y la 3. **Cada parte que sigue va a `main` recién
 > con el OK explícito del usuario**, con capturas: es lo que se acordó, y es una excepción a la regla general de
 > «pushear a `main` de una» de `CLAUDE.md` (al llegar a `main`, la base real se actualiza sola).
@@ -285,7 +285,7 @@ tocan eventos, comentarios ni la Agenda); se hace por etapas chicas; Drive y el 
     «Mandado» y «Listo»); el total dice «(no suma el que falta)»; la ayuda de «Revisar en lista» va en un
     renglón; «Sin vincular» ya no tiene el borde punteado (parecía una zona para soltar archivos).
 
-### Etapa 4, los PDF de entrega (18/11, en la rama; va a `main` con el OK del usuario)
+### Etapa 4, los PDF de entrega (publicada el 18/11 con el OK del usuario)
 
 El usuario pidió adelantarla antes de Drive y el Sheet («Se puede avanzar a la etapa 4 luego volver a las
 demás?») y eligió: **los dos documentos** (el PDF de cada actividad y el resumen por mes), **los idiomas se
@@ -309,9 +309,16 @@ ahora**, junto con los PDF. El formato es el de la rendición que arma hoy con s
 - **Cómo se llena la planilla**: «Actividad» con las cuatro del Sheet (Congreso → Seminario; Virtual y Otro →
   Rutina); el monto es el rendido (en dólares; si no lo tiene, el del comprobante en su moneda); el peso
   mexicano, «MX»; en «Observaciones», la tarjeta, «Gasto en UY $ 790.-» y lo que escribió la persona, cada uno
-  en su renglón. **Nunca el nombre de quien rinde** (regla de su skill): en «Quién pagó» dice «Quien rinde»,
-  «Organización» o el nombre de la otra persona. Los conceptos y las observaciones no se traducen (la pantalla lo
-  dice). El hebreo va de derecha a izquierda, con las columnas espejadas.
+  en su renglón. En «Quién pagó», **el nombre de quien rinde** (lo decidió el usuario al ver el ejemplo: «aquí no
+  hay problema que aparezca mi nombre»), «Organización» o el nombre de la otra persona; el nombre no va en el título,
+  en los sellos ni en los datos del PDF. El hebreo va de derecha a izquierda, con las columnas espejadas.
+- **Se traducen** (lo pidió el usuario al ver el ejemplo) los conceptos, las observaciones y el nombre de la
+  actividad, a cada idioma elegido, con **el traductor que trae el navegador** (Chrome en la compu, desde la
+  versión 138): corre en el aparato, así que los textos no salen de ahí, y la primera vez el navegador baja el idioma.
+  De qué idioma es cada texto lo dice el detector del navegador (si duda, castellano). Donde no hay traductor (el
+  celular, Safari, Firefox) van como se escribieron y el panel lo dice antes de bajar; si el traductor no contesta,
+  el PDF sale igual y la pantalla avisa qué no se tradujo. Otra opción, si hiciera falta traducir también desde el
+  celular, es el traductor de Google desde la base (con una llave que el usuario cargaría en Supabase).
 - **Cómo se arma**: en el aparato de quien lo baja, con pdf-lib (libre, guardada en
   `herramientas/publicar/pdf/` y servida desde el mismo sitio, como el lector; `pdf_integridad_test.mjs`). Las
   hojas las dibuja el navegador y van como imagen (así el hebreo sale bien). Si un comprobante no se puede leer,

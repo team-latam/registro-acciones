@@ -14,7 +14,11 @@ import { abrirNavegador, entrar, ADMIN, PERS, BASE } from "./app_de_mentira.mjs"
      el comprobante de cada cambio de moneda, como anexo.
    - Un comprobante que no se puede leer no saltea el número: va una hoja
      que lo dice, y la pantalla avisa.
-   - Nunca el nombre de quien rinde (ni en las hojas ni en los datos del PDF).
+   - El nombre de quien rinde, solo en «Quién pagó» (decidido el 18/11): ni
+     en el título ni en los datos del PDF.
+   - Los conceptos, las observaciones y la actividad, traducidos con el
+     traductor del navegador (uno de mentira acá: el Chromium de las pruebas
+     no lo trae); sin traductor van como se escribieron, y el panel lo dice.
    - El resumen por mes, desde «Mis rendiciones».
    - Si no carga el armador, lo dice.
    Con el sitio servido por http, como lo publica «Publicar el sitio»
@@ -51,6 +55,14 @@ const FACTURA = await (async () => {
 // Lo que dibuja la app en los lienzos (las hojas y los sellos), para leerlo.
 const ANOTAR = `(() => { window.__dibujado = []; const f = CanvasRenderingContext2D.prototype.fillText;
   CanvasRenderingContext2D.prototype.fillText = function(s, ...r){ window.__dibujado.push(String(s)); return f.call(this, s, ...r); }; })();`;
+// Un traductor de mentira, con la forma del de Chrome: «[he] Taxi al aeropuerto». El hebreo lo conoce como «iw»
+// (como algunas versiones de Chrome), y el detector dice que todo es castellano.
+// Sin traductor (el Chromium de las pruebas trae el de verdad, pero tendría que bajar los idiomas de internet).
+const SIN_TRADUCTOR = `(() => { for(const k of ["Translator", "LanguageDetector"]) try{ Object.defineProperty(window, k, { value: undefined, configurable: true, writable: true }); }catch(e){} })();`;
+const TRADUCTOR = `(() => { window.__traducidos = [];
+  window.LanguageDetector = { availability: async () => "available", create: async () => ({ detect: async s => [{ detectedLanguage: "es", confidence: 0.9 }], destroy(){} }) };
+  window.Translator = { availability: async o => o.targetLanguage === "he" ? "unavailable" : "available",
+    create: async o => ({ translate: async s => { window.__traducidos.push(o.sourceLanguage + ">" + o.targetLanguage); return "[" + o.targetLanguage + "] " + s; }, destroy(){} }) }; })();`;
 
 const datos = (aprobada = true) => {
   const base = BASE();
@@ -90,7 +102,7 @@ const examinar = (p, bytes) => p.evaluate(async b64 => {
 
 // ---------- 1. Una rendición aprobada: el panel ----------
 {
-  const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: { width: 1280, height: 900 }, pagina: PAGINA, base: datos(), iniciar: ANOTAR });
+  const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: { width: 1280, height: 900 }, pagina: PAGINA, base: datos(), iniciar: ANOTAR + TRADUCTOR });
   await sirvo(p);
   await irGastos(p);
   await abrir(p, "ren_mvd");
@@ -98,6 +110,7 @@ const examinar = (p, bytes) => p.evaluate(async b64 => {
   await tocar(p, '[data-action="gastos-pdf-abrir"]');
   eq("se abre el panel, con el foco en el primer idioma", await p.evaluate(() => [!!document.querySelector(".gx-pdf"), document.activeElement && document.activeElement.dataset.gpdfIdioma]), [true, "es"]);
   eq("de entrada, el idioma de la app", await p.$$eval("[data-gpdf-idioma]", l => l.filter(c => c.checked).map(c => c.dataset.gpdfIdioma)), ["es"]);
+  eq("dice que traduce en el aparato", await leer(p, ".gx-pdf-nota", e => /se traducen en este aparato/.test(e.textContent)), true);
   eq("cuenta qué va adentro (los 3 comprobantes, la planilla y el anexo del cambio)", await leer(p, ".gx-pdf > .setting-sub", e => /3 comprobantes/.test(e.textContent) && /anexo/.test(e.textContent)), true);
   await tocar(p, '[data-gpdf-idioma="es"]');
   eq("sin idiomas no se puede bajar, y lo dice", await p.evaluate(() => [document.querySelector('[data-action="gastos-pdf-bajar"]').disabled, /al menos un idioma/.test(document.querySelector(".gx-pdf").textContent)]), [true, true]);
@@ -122,23 +135,28 @@ const examinar = (p, bytes) => p.evaluate(async b64 => {
   // (un título largo se corta en renglones: «N°» / «comp.»)
   const junto = dib.join(" ");
   eq("con las columnas de la planilla del usuario", ["N° comp.", "Fecha", "Concepto", "Actividad", "Tipo", "Moneda", "Monto", "Pago", "Quién pagó", "Factura", "Observaciones"].filter(s => !junto.includes(s)), []);
-  eq("una visita va como «Visita»; quien puso la plata, «Quien rinde» u «Organización»", ["Visita", "Quien rinde", "Organización"].every(s => dib.includes(s)), true);
+  eq("una visita va como «Visita»; quien puso la plata, su nombre u «Organización»", ["Visita", PERS[0].name, "Organización"].every(s => dib.includes(s)), true);
   eq("en observaciones, la tarjeta y la moneda del comprobante, cada una en su renglón", ["Tarjeta terminada en 5555", "Gasto en UY $ 790.-", "Ida y vuelta"].every(s => dib.includes(s)), true);
   eq("el total y el cambio con su tasa", ["Total", "365.50", "1 USD = 39.5 UYU", "Comprobante en el anexo"].every(s => dib.includes(s)), true);
   eq("y en hebreo: su título y sus columnas", [dib.some(s => /^טבלת הוצאות — /.test(s.replace(/[⁦-⁩]/g, ""))), ["תאריך", "תיאור", "סכום", "הערות"].every(s => dib.includes(s))], [true, true]);
   eq("en hebreo, el tramo latino de un renglón mezclado va aislado (no se desordena)", dib.includes("הוצאה ב-⁦UY $ 790.-⁩"), true);
   eq("en hebreo, lo que es todo latino (la tasa) va tal cual", dib.filter(s => s === "1 USD = 39.5 UYU").length, 2);
-  eq("nunca el nombre de quien rinde", dib.some(s => s.includes(PERS[0].name)) || dib.some(s => s.includes("Benny")), false);
+  eq("el nombre de quien rinde, solo en «Quién pagó» (dos filas por idioma), no en títulos ni sellos", dib.filter(s => s.includes(PERS[0].name)).every(s => s === PERS[0].name) && dib.filter(s => s === PERS[0].name).length === 4, true);
+  eq("en la planilla en hebreo, el concepto, las observaciones y la actividad, traducidos", ["[iw] Taxi al aeropuerto", "[iw] Ida y vuelta", "[iw] Casa de cambio del aeropuerto"].map(s => dib.includes(s)), [true, true, true]);
+  eq("y el título de la hoja en hebreo también", dib.some(s => s.replace(/[\u2066-\u2069]/g, "").includes("[iw] Visita a Montevideo")), true);
+  eq("en la de castellano (el idioma en que se escribieron), tal cual", [dib.includes("Taxi al aeropuerto"), dib.some(s => /\[es\]/.test(s))], [true, false]);
+  eq("se tradujo con el detector: de castellano a hebreo (probando «he» y después «iw»)", [...new Set(await p.evaluate(() => window.__traducidos))], ["es>iw"]);
   eq("sin errores", errores, []);
   await p.close();
 }
 
 // ---------- 2. Un comprobante que no se puede leer ----------
 {
-  const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: { width: 1280, height: 900 }, pagina: PAGINA, base: datos() });
+  const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: { width: 1280, height: 900 }, pagina: PAGINA, base: datos(), iniciar: SIN_TRADUCTOR });
   await sirvo(p, { faltaGx3: true });
   await irGastos(p); await abrir(p, "ren_mvd");
   await tocar(p, '[data-action="gastos-pdf-abrir"]');
+  eq("sin traductor en el navegador, dice que van como se escribieron y dónde sí se traducen", await leer(p, ".gx-pdf-nota", e => /no sabe traducir/.test(e.textContent) && /Chrome en una computadora/.test(e.textContent)), true);
   const { bytes } = await bajar(p);
   const x = bytes ? await examinar(p, bytes) : { paginas: [] };
   eq("no se saltea su número: va una hoja que lo dice (siguen siendo 6 con un idioma)", x.paginas.length, 6);
@@ -149,7 +167,7 @@ const examinar = (p, bytes) => p.evaluate(async b64 => {
 
 // ---------- 3. Lo que no está aprobado no tiene PDF; el resumen por mes ----------
 {
-  const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: { width: 1280, height: 900 }, pagina: PAGINA, base: datos(false), iniciar: ANOTAR });
+  const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: { width: 1280, height: 900 }, pagina: PAGINA, base: datos(false), iniciar: ANOTAR + SIN_TRADUCTOR });
   await irGastos(p); await abrir(p, "ren_mvd");
   eq("una rendición abierta no ofrece el PDF", await p.$('[data-action="gastos-pdf-abrir"]'), null);
   await tocar(p, '[data-action="gastos-volver"]'); await p.waitForTimeout(200);
@@ -168,7 +186,7 @@ const examinar = (p, bytes) => p.evaluate(async b64 => {
 
 // ---------- 4. Si el armador no carga, lo dice ----------
 {
-  const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: { width: 1280, height: 900 }, pagina: PAGINA, base: datos() });
+  const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: { width: 1280, height: 900 }, pagina: PAGINA, base: datos(), iniciar: SIN_TRADUCTOR });
   await p.route(/\/pdf\/pdf-lib\.min\.js$/, ruta => ruta.fulfill({ status: 404, body: "" }));
   await irGastos(p); await abrir(p, "ren_mvd");
   await tocar(p, '[data-action="gastos-pdf-abrir"]');
@@ -180,9 +198,30 @@ const examinar = (p, bytes) => p.evaluate(async b64 => {
   await p.close();
 }
 
-// ---------- 5. En el celular, el panel entra ----------
+// ---------- 5. Un traductor que no contesta no traba el PDF ----------
 {
-  const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: { width: 360, height: 740 }, pagina: PAGINA, base: datos() });
+  const TRABADO = `(() => { Object.defineProperty(window, "LanguageDetector", { value: undefined, configurable: true, writable: true });
+    window.Translator = { availability: () => new Promise(() => {}), create: () => new Promise(() => {}) }; })();`;
+  const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: { width: 1280, height: 900 }, pagina: PAGINA, base: datos(), iniciar: TRABADO });
+  await sirvo(p);
+  await irGastos(p); await abrir(p, "ren_mvd");
+  await tocar(p, '[data-action="gastos-pdf-abrir"]');
+  await tocar(p, '[data-gpdf-idioma="en"]');
+  const t0 = Date.now();
+  const { bytes } = await bajar(p);
+  const x = bytes ? await examinar(p, bytes) : { paginas: [] };
+  eq("el PDF sale igual (con las dos planillas), sin esperar de más", [x.paginas.length, Date.now() - t0 < 40000], [7, true]);
+  let aviso = null;
+  for(let i = 0; i < 30 && !aviso; i++){ aviso = await leer(p, ".gx-pdf .gx-alerta", e => e.textContent); if(!aviso) await p.waitForTimeout(100); }
+  eq("y avisa que algunos textos van sin traducir", /no se pudieron traducir/.test(aviso || ""), true);
+  eq("la próxima vez ya no lo espera: dice que este navegador no traduce", await leer(p, ".gx-pdf-nota", e => /no sabe traducir/.test(e.textContent)), true);
+  eq("sin errores", errores, []);
+  await p.close();
+}
+
+// ---------- 6. En el celular, el panel entra ----------
+{
+  const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: { width: 360, height: 740 }, pagina: PAGINA, base: datos(), iniciar: SIN_TRADUCTOR });
   await p.evaluate(() => { const v = document.querySelector('.bn-item[data-action="toggle-more-menu"]'); if(v) v.click(); });
   await p.waitForTimeout(250);
   await p.evaluate(() => { const v = document.querySelector('[data-view="gastos"]'); if(v) v.click(); });

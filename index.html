@@ -26884,7 +26884,8 @@ async function abrirRendicionDeActividad(){
 // El de una actividad aprobada (lo eligió el usuario: solo aprobada): sus comprobantes en orden, cada página
 // con el sello «N° X» (el mismo número que su fila en la planilla), la planilla en los idiomas que se elijan, la
 // tabla de los cambios de moneda y, al final, el comprobante de cada cambio como anexo. Y el resumen por mes.
-// Como en la rendición que el usuario armaba a mano: nunca el nombre de quien rinde en el documento.
+// El nombre de quien rinde va solo en «Quién pagó» (lo decidió el usuario el 18/11): ni en el título ni en los datos
+// del PDF. Los conceptos, las observaciones y el nombre de la actividad, traducidos a cada idioma (también el 18/11).
 // Se arman en el aparato de quien descarga con pdf-lib, servida desde el mismo sitio (herramientas/publicar/pdf/).
 // Las letras las dibuja el navegador en un lienzo (el hebreo, de derecha a izquierda, con las letras del aparato)
 // y van al PDF como imagen: las letras de pdf-lib son solo latinas.
@@ -26938,6 +26939,77 @@ const tasaDePlanilla = c => `1 ${monedaDePlanilla(c.entregadoMoneda)} = ${NUM_TA
 function nombreDeArchivoPdf(texto){
   return String(texto).replace(/[\\/:*?"<>|\u0000-\u001f]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 150) + ".pdf";
 }
+// ---- Traducir los conceptos, las observaciones y el nombre de la actividad (lo pidió el usuario el 18/11) ----
+// Con el traductor que trae el navegador (Chrome en la compu, desde la versión 138): corre en el aparato y el
+// texto no sale de ahí; la primera vez el navegador baja el idioma. Donde no hay traductor van como se
+// escribieron, y el panel lo dice.
+let traductorTrabado = false;   // si una vez no contestó, en esta sesión no se lo espera más
+const hayTraductor = () => !traductorTrabado && !!(self.Translator && typeof self.Translator.create === "function");
+// Cada paso del traductor, con un tiempo máximo: si no contesta (pasó en un Chromium sin sus piezas), el PDF
+// sale igual, con los textos como se escribieron.
+const conTope = (promesa, ms, alCortar) => new Promise((ok, mal) => {
+  const reloj = setTimeout(() => { if(alCortar) alCortar(); mal(new Error("el traductor no contestó")); }, ms);
+  Promise.resolve(promesa).then(v => { clearTimeout(reloj); ok(v); }, e => { clearTimeout(reloj); mal(e); });
+});
+const CODIGOS_TRADUCTOR = { he: ["he", "iw"] };
+const memoriaDeTraducciones = new Map();   // «es>he>texto» → traducido, mientras dure la sesión
+let traduccionesPdf = null;                // { idioma: Map(original → traducido) }, mientras se arma un PDF
+const traducido = s => { const m = traduccionesPdf && traduccionesPdf[currentLang()]; return (m && m.get(String(s || "").trim())) || s; };
+const tituloTraducido = r => r.rutinaMes ? tituloRendicion(r) : traducido(tituloRendicion(r));
+async function crearTraductor(de, a, avance){
+  if(traductorTrabado) return null;
+  for(const sl of CODIGOS_TRADUCTOR[de] || [de]) for(const tl of CODIGOS_TRADUCTOR[a] || [a]){
+    try{
+      const disp = await conTope(self.Translator.availability({ sourceLanguage: sl, targetLanguage: tl }), 8000);
+      if(disp === "unavailable") continue;
+      // Si tiene que bajar el idioma, se le da más tiempo (la primera vez, unos minutos con una conexión lenta).
+      const corte = new AbortController();
+      return await conTope(self.Translator.create({ sourceLanguage: sl, targetLanguage: tl, signal: corte.signal, monitor(m){
+        m.addEventListener("downloadprogress", e => avance(t("Bajando el traductor (solo la primera vez)… {p}%","Downloading the translator (first time only)… {p}%","Baixando o tradutor (só na primeira vez)… {p}%","מוריד את המתרגם (רק בפעם הראשונה)… {p}%",{ p: Math.round((e.loaded || 0) * 100) })));
+      } }), disp === "available" ? 15000 : 180000, () => corte.abort());
+    }catch(err){
+      console.warn("No se pudo preparar el traductor:", sl, tl, err);
+      if(/no contestó/.test(String(err && err.message))){ traductorTrabado = true; return null; }
+    }
+  }
+  return null;
+}
+// Traduce de antemano (el dibujo de las hojas no puede esperar): de qué idioma es cada texto lo dice el
+// detector del navegador; si duda, castellano. Devuelve los textos que no se pudieron traducir (-1: no hay traductor).
+async function prepararTraducciones(textos, idiomas, avance){
+  traduccionesPdf = {};
+  const lista = [...new Set(textos.map(x => String(x || "").trim()).filter(x => /\p{L}/u.test(x)))];
+  if(!lista.length) return 0;
+  if(!hayTraductor()) return -1;
+  avance(t("Traduciendo…","Translating…","Traduzindo…","מתרגם…"));
+  let det = null;
+  try{ if(self.LanguageDetector && await conTope(self.LanguageDetector.availability(), 8000) !== "unavailable") det = await conTope(self.LanguageDetector.create(), 60000); }catch(e){ det = null; }
+  const origen = new Map();
+  for(const x of lista){
+    let l = "es";
+    if(det) try{ const [r] = await conTope(det.detect(x), 5000); const d = r && String(r.detectedLanguage || "").split("-")[0]; if(r && r.confidence >= 0.5 && d) l = d === "iw" ? "he" : d; }catch(e){ det = null; }
+    origen.set(x, IDIOMAS_PDF.includes(l) ? l : "es");
+  }
+  const traductores = new Map();
+  let fallaron = 0;
+  for(const destino of idiomas){
+    const m = traduccionesPdf[destino] = new Map();
+    for(const x of lista){
+      const de = origen.get(x);
+      if(de === destino) continue;
+      const clave = `${de}>${destino}>${x}`;
+      if(memoriaDeTraducciones.has(clave)){ m.set(x, memoriaDeTraducciones.get(clave)); continue; }
+      if(!traductores.has(de + ">" + destino)) traductores.set(de + ">" + destino, await crearTraductor(de, destino, avance));
+      const tr = traductores.get(de + ">" + destino);
+      if(!tr || traductorTrabado){ fallaron++; continue; }
+      try{ const y = String(await conTope(tr.translate(x), 15000) || "").trim(); if(y){ m.set(x, y); memoriaDeTraducciones.set(clave, y); } else fallaron++; }
+      catch(err){ console.warn("No se pudo traducir:", err); fallaron++; if(/no contestó/.test(String(err && err.message))) traductorTrabado = true; }
+    }
+  }
+  traductores.forEach(x => { try{ if(x && x.destroy) x.destroy(); }catch(e){} });
+  try{ if(det && det.destroy) det.destroy(); }catch(e){}
+  return fallaron;
+}
 // Una fila de la planilla, con las columnas de la del usuario.
 function filaDePlanilla(g, n, actividad){
   const ren = rendidoDe(g);
@@ -26945,10 +27017,10 @@ function filaDePlanilla(g, n, actividad){
     : g.formaPago === "transferencia" ? t("Transferencia","Transfer","Transferência","העברה") : "";
   const quien = g.pago === "organizacion" ? t("Organización","Organization","Organização","הארגון")
     : g.pago === "otro" ? (g.pagoQuien ? nombreQuePago(g.pagoQuien) : t("Otra persona","Someone else","Outra pessoa","אדם אחר"))
-    : t("Quien rinde","Submitter","Quem presta contas","מגיש/ת הדוח");
+    : nombreDePersona(g.autor);   // con su nombre: lo decidió el usuario el 18/11
   const obs = [g.formaPago === "tarjeta" && g.tarjeta ? t("Tarjeta terminada en {n}","Card ending in {n}","Cartão terminado em {n}","כרטיס המסתיים ב-{n}",{ n: g.tarjeta }) : "",
-    ren ? notaDeMoneda(g.moneda, g.monto, ren.moneda, ren.monto) : "", String(g.observaciones || "").trim()].filter(Boolean).join("\n");
-  return [String(n), fechaCorta(g.fecha), g.concepto || "", actividad, nombreTipoGasto(g.tipo), ren ? monedaDePlanilla(ren.moneda) : "",
+    ren ? notaDeMoneda(g.moneda, g.monto, ren.moneda, ren.monto) : "", traducido(String(g.observaciones || "").trim())].filter(Boolean).join("\n");
+  return [String(n), fechaCorta(g.fecha), traducido(g.concepto || ""), actividad, nombreTipoGasto(g.tipo), ren ? monedaDePlanilla(ren.moneda) : "",
     ren ? numContable(Number(ren.monto)) : "", forma, quien, g.factura === false ? t("No","No","Não","לא") : t("Sí","Yes","Sim","כן"), obs];
 }
 
@@ -27109,7 +27181,7 @@ function armadorDeHojas(apaisada){
 function hojasDePlanilla(r, gs, cs){
   const act = actividadDePlanilla(r);
   const A = armadorDeHojas(true);
-  A.titulo(t("Planilla de gastos — {a} · {m}","Expense sheet — {a} · {m}","Planilha de despesas — {a} · {m}","טבלת הוצאות — {a} · {m}",{ a: tituloRendicion(r), m: mesDeEntrega(r) }),
+  A.titulo(t("Planilla de gastos — {a} · {m}","Expense sheet — {a} · {m}","Planilha de despesas — {a} · {m}","טבלת הוצאות — {a} · {m}",{ a: tituloTraducido(r), m: mesDeEntrega(r) }),
     t("El N° de comprobante coincide con el sello de cada página de este documento.","The receipt number matches the stamp on each page of this document.","O N° do comprovante coincide com o carimbo de cada página deste documento.","מספר הקבלה תואם לחותמת שבכל עמוד במסמך הזה."));
   const cols = [
     { t: t("N° comp.","No.","N° comp.","מס׳"), w: 4.6, al: "centro" },
@@ -27138,7 +27210,7 @@ function hojasDePlanilla(r, gs, cs){
     cols: [{ t: t("Fecha","Date","Data","תאריך"), w: 1.3, al: "centro" }, { t: t("Entregado","Given","Entregue","נמסר"), w: 1.7, al: "fin" },
       { t: t("Recibido","Received","Recebido","התקבל"), w: 1.8, al: "fin" }, { t: t("Tasa","Rate","Taxa","שער"), w: 2 }, { t: t("Observaciones","Notes","Observações","הערות"), w: 2.6 }],
     filas: cs.map(c => ({ c: [fechaCorta(c.fecha), montoDePlanilla(c.entregadoMoneda, c.entregadoMonto), montoDePlanilla(c.recibidoMoneda, c.recibidoMonto), tasaDePlanilla(c),
-      [String(c.observaciones || "").trim(), c.archivo ? t("Comprobante en el anexo","Receipt in the annex","Comprovante no anexo","הקבלה בנספח") : ""].filter(Boolean).join("\n")] })) });
+      [traducido(String(c.observaciones || "").trim()), c.archivo ? t("Comprobante en el anexo","Receipt in the annex","Comprovante no anexo","הקבלה בנספח") : ""].filter(Boolean).join("\n")] })) });
   A.ladoALado(bloques);
   return A.hojas;
 }
@@ -27255,11 +27327,12 @@ async function agregarComprobante(L, doc, cosa, sellar, idioma){
 // El PDF de entrega de una rendición aprobada. `idiomas`: los de la planilla, en orden; el primero es el de los
 // sellos y el nombre del archivo. `avance(texto)` cuenta por dónde va.
 async function armarPdfDeRendicion(r, idiomas, avance){
+  const gs = gastosDe(r.id), cs = cambiosDe(r.id), primero = idiomas[0];
+  const sinTraducir = await prepararTraducciones([r.rutinaMes ? "" : tituloRendicion(r), ...gs.map(g => g.concepto), ...gs.map(g => g.observaciones), ...cs.map(c => c.observaciones)], idiomas, avance);
   const L = await cargarArmadorPdf();
   const doc = await L.PDFDocument.create();
-  const gs = gastosDe(r.id), cs = cambiosDe(r.id), primero = idiomas[0];
-  const { titulo, mes, sello, anexo } = enIdioma(primero, () => ({ titulo: tituloRendicion(r), mes: mesDeEntrega(r),
-    sello: (n, pag, de) => enIdioma(primero, () => lienzoDeSello(t("N° {n}","No. {n}","N° {n}","מס׳ {n}",{ n }), tituloRendicion(r) + " · " + mesDeEntrega(r),
+  const { titulo, mes, sello, anexo } = enIdioma(primero, () => ({ titulo: tituloTraducido(r), mes: mesDeEntrega(r),
+    sello: (n, pag, de) => enIdioma(primero, () => lienzoDeSello(t("N° {n}","No. {n}","N° {n}","מס׳ {n}",{ n }), tituloTraducido(r) + " · " + mesDeEntrega(r),
       de > 1 ? t("pág. {a}/{b}","p. {a}/{b}","pág. {a}/{b}","עמ׳ {a}/{b}",{ a: pag, b: de }) : "")),
     anexo: (pag, de) => enIdioma(primero, () => lienzoDeSello(t("ANEXO","ANNEX","ANEXO","נספח"), t("Cambio de moneda","Currency exchange","Câmbio","המרת מטבע") + " · " + mesDeEntrega(r),
       de > 1 ? t("pág. {a}/{b}","p. {a}/{b}","pág. {a}/{b}","עמ׳ {a}/{b}",{ a: pag, b: de }) : "")) }));
@@ -27276,7 +27349,7 @@ async function armarPdfDeRendicion(r, idiomas, avance){
   }
   const nombre = `${titulo} - ${mes}`;
   doc.setTitle(nombre); doc.setCreator("Toldot"); doc.setProducer("Toldot");
-  return { bytes: await doc.save(), nombre: nombreDeArchivoPdf(nombre), faltaron };
+  return { bytes: await doc.save(), nombre: nombreDeArchivoPdf(nombre), faltaron, sinTraducir };
 }
 
 // ---- El resumen de gastos por mes (como el que el usuario arma al cerrar: filas = actividades, columnas = tipos) ----
@@ -27314,7 +27387,7 @@ function hojasDeResumen(rs, desde, hasta){
   meses.forEach(m => {
     const delMes = rs.filter(r => mesDeRendicion(r) === m);
     delMes.forEach(r => { const gs = gsDe.get(r.id);
-      filas.push({ c: [`${tituloRendicion(r)} (${gs.length === 1 ? t("1 comprobante","1 receipt","1 comprovante","קבלה אחת") : t("{n} comprobantes","{n} receipts","{n} comprovantes","{n} קבלות",{ n: gs.length })})`, ...celdas(gs)] }); });
+      filas.push({ c: [`${tituloTraducido(r)} (${gs.length === 1 ? t("1 comprobante","1 receipt","1 comprovante","קבלה אחת") : t("{n} comprobantes","{n} receipts","{n} comprovantes","{n} קבלות",{ n: gs.length })})`, ...celdas(gs)] }); });
     if(meses.length > 1) filas.push({ total: true, c: [t("Subtotal {m}","Subtotal {m}","Subtotal {m}","סיכום ביניים {m}",{ m: mesYAnio(m) }), ...celdas(delMes.flatMap(r => gsDe.get(r.id)))] });
   });
   filas.push({ total: true, fuerte: true, c: [t("TOTAL FINAL","GRAND TOTAL","TOTAL FINAL","סה״כ כולל"), ...celdas(rs.flatMap(r => gsDe.get(r.id)))] });
@@ -27325,7 +27398,7 @@ function hojasDeResumen(rs, desde, hasta){
     A.subtitulo(t("Cambios de moneda","Currency exchanges","Câmbios","המרות מטבע")); A.y += 16;
     A.tabla([{ t: t("Actividad","Activity","Atividade","פעילות"), w: 3 }, { t: t("Fecha","Date","Data","תאריך"), w: 1.2, al: "centro" }, { t: t("Entregado","Given","Entregue","נמסר"), w: 1.6, al: "fin" },
       { t: t("Recibido","Received","Recebido","התקבל"), w: 1.7, al: "fin" }, { t: t("Tasa","Rate","Taxa","שער"), w: 2 }],
-      cs.map(({ c, r }) => ({ c: [tituloRendicion(r), fechaCorta(c.fecha), montoDePlanilla(c.entregadoMoneda, c.entregadoMonto), montoDePlanilla(c.recibidoMoneda, c.recibidoMonto), tasaDePlanilla(c)] })));
+      cs.map(({ c, r }) => ({ c: [tituloTraducido(r), fechaCorta(c.fecha), montoDePlanilla(c.entregadoMoneda, c.entregadoMonto), montoDePlanilla(c.recibidoMoneda, c.recibidoMonto), tasaDePlanilla(c)] })));
   }
   return A.hojas;
 }
@@ -27333,13 +27406,14 @@ async function armarResumenPdf(P, idiomas, avance){
   const rs = aprobadasParaResumen().filter(r => { const m = mesDeRendicion(r); return m >= P.desde && m <= P.hasta; })
     .sort((a, b) => mesDeRendicion(a).localeCompare(mesDeRendicion(b)) || tituloRendicion(a).localeCompare(tituloRendicion(b)));
   if(!rs.length) throw new Error(t("No hay rendiciones aprobadas entre esos meses.","There are no approved reports between those months.","Não há prestações aprovadas entre esses meses.","אין דוחות מאושרים בין החודשים האלה."));
+  const sinTraducir = await prepararTraducciones(rs.filter(r => !r.rutinaMes).map(tituloRendicion), idiomas, avance);
   const L = await cargarArmadorPdf();
   const doc = await L.PDFDocument.create();
   avance(t("El resumen…","The summary…","O resumo…","הסיכום…"));
   for(const l of idiomas) for(const hoja of enIdioma(l, () => hojasDeResumen(rs, P.desde, P.hasta))) await paginaDeHoja(doc, hoja);
   const nombre = enIdioma(idiomas[0], () => t("Resumen de gastos","Expense summary","Resumo de despesas","סיכום הוצאות") + " - " + rangoDeMeses(P.desde, P.hasta));
   doc.setTitle(nombre); doc.setCreator("Toldot"); doc.setProducer("Toldot");
-  return { bytes: await doc.save(), nombre: nombreDeArchivoPdf(nombre), faltaron: 0 };
+  return { bytes: await doc.save(), nombre: nombreDeArchivoPdf(nombre), faltaron: 0, sinTraducir };
 }
 
 // ---- En la pantalla: el panel para elegir los idiomas y bajarlo ----
@@ -27361,6 +27435,7 @@ function cerrarPanelPdf(){
 function panelPdf(P, titulo, que, extra){
   const nombres = Object.fromEntries(LANGS.map(l => [l.key, l.name]));
   const listo = P.listo ? `<div class="admin-ok" role="status">✅ ${esc(t("Listo: se bajó «{n}».","Done: “{n}” was downloaded.","Pronto: baixou «{n}».","מוכן: «{n}» ירד.",{ n: P.listo }))}</div>
+      ${P.sinTraducir > 0 ? `<div class="gx-alerta">⚠️ ${esc(t("Algunos textos no se pudieron traducir: van como se escribieron.","Some texts couldn't be translated: they go as they were written.","Alguns textos não puderam ser traduzidos: vão como foram escritos.","חלק מהטקסטים לא תורגמו: הם מופיעים כפי שנכתבו."))}</div>` : ""}
       ${P.faltaron ? `<div class="gx-alerta">⚠️ ${esc(P.faltaron === 1 ? t("Un comprobante no se pudo poner tal cual: en su lugar hay una hoja que lo dice. Se puede bajar desde el gasto y entregar aparte.","One receipt couldn't be included as is: there's a page saying so in its place. It can be downloaded from the expense and delivered separately.","Um comprovante não pôde ser incluído como está: no lugar há uma página avisando. Dá para baixar pela despesa e entregar à parte.","קבלה אחת לא צורפה כפי שהיא: במקומה יש עמוד שמציין זאת. אפשר להוריד אותה מההוצאה ולמסור בנפרד.")
         : t("{n} comprobantes no se pudieron poner tal cual: en su lugar hay una hoja que lo dice. Se pueden bajar desde cada gasto y entregar aparte.","{n} receipts couldn't be included as is: there's a page saying so in their place. They can be downloaded from each expense and delivered separately.","{n} comprovantes não puderam ser incluídos como estão: no lugar há uma página avisando. Dá para baixar por cada despesa e entregar à parte.","{n} קבלות לא צורפו כפי שהן: במקומן יש עמוד שמציין זאת. אפשר להוריד אותן מכל הוצאה ולמסור בנפרד.",{ n: P.faltaron }))}</div>` : ""}` : "";
   return `<section class="settings-card gx-pdf" aria-labelledby="gxPdfTit">
@@ -27370,7 +27445,9 @@ function panelPdf(P, titulo, que, extra){
       <fieldset class="gx-pdf-idiomas"${P.armando ? " disabled" : ""}><legend class="gx-et">${t("¿En qué idiomas?","In which languages?","Em quais idiomas?","באילו שפות?")}</legend>
         ${IDIOMAS_PDF.map(l => `<label class="gx-check"><input type="checkbox" data-gpdf-idioma="${l}"${P.idiomas.includes(l) ? " checked" : ""}> <span lang="${l}" dir="auto">${esc(nombres[l])}</span></label>`).join("")}
       </fieldset>
-      <p class="setting-sub gx-pdf-nota">${P.idiomas.length ? t("Los conceptos y las observaciones van como se escribieron: no se traducen.","Descriptions and notes go as they were written: they aren't translated.","As descrições e observações vão como foram escritas: não são traduzidas.","התיאורים וההערות מופיעים כפי שנכתבו: הם לא מתורגמים.")
+      <p class="setting-sub gx-pdf-nota">${P.idiomas.length ? (hayTraductor()
+          ? t("Los conceptos y las observaciones se traducen en este aparato, sin mandarlos a ningún lado. La primera vez tarda un poco más: el navegador baja el idioma.","Descriptions and notes are translated on this device, without sending them anywhere. The first time takes a bit longer: the browser downloads the language.","As descrições e observações são traduzidas neste aparelho, sem enviá-las a lugar nenhum. Na primeira vez demora um pouco mais: o navegador baixa o idioma.","התיאורים וההערות מתורגמים במכשיר הזה, בלי לשלוח אותם לשום מקום. בפעם הראשונה זה לוקח קצת יותר זמן: הדפדפן מוריד את השפה.")
+          : t("Este navegador no sabe traducir: los conceptos y las observaciones van como se escribieron. Para que salgan traducidos, armá el PDF desde Chrome en una computadora.","This browser can't translate: descriptions and notes go as they were written. To have them translated, build the PDF from Chrome on a computer.","Este navegador não sabe traduzir: as descrições e observações vão como foram escritas. Para saírem traduzidas, monte o PDF pelo Chrome num computador.","הדפדפן הזה לא יודע לתרגם: התיאורים וההערות מופיעים כפי שנכתבו. כדי שיתורגמו, בנו את ה-PDF מ-Chrome במחשב."))
         : `<span class="form-error">${t("Elegí al menos un idioma.","Pick at least one language.","Escolha pelo menos um idioma.","בחרו לפחות שפה אחת.")}</span>`}</p>
       ${P.armando ? `<p class="gx-pdf-avance" role="status">⏳ ${esc(P.avance)}</p>` : ""}
       ${P.error ? `<div class="form-error" role="alert">${esc(P.error)}</div>` : listo}
@@ -27408,20 +27485,20 @@ async function bajarPdf(){
   const r = P.para === "resumen" ? null : rendicionPorId(P.para);
   if(P.para !== "resumen" && (!r || r.estado !== "aprobada")) return;
   if(P.para === "resumen" && P.desde > P.hasta){ P.error = t("«Desde» tiene que ser antes que «Hasta».","“From” has to be before “To”.","«De» tem que ser antes de «Até».","«מ-» צריך להיות לפני «עד»."); render(); return; }
-  P.armando = true; P.error = ""; P.listo = ""; P.faltaron = 0; P.avance = t("Preparando…","Getting ready…","Preparando…","מכין…"); render();
+  P.armando = true; P.error = ""; P.listo = ""; P.faltaron = 0; P.sinTraducir = 0; P.avance = t("Preparando…","Getting ready…","Preparando…","מכין…"); render();
   const avance = s => { P.avance = s; const el = document.querySelector(".gx-pdf-avance"); if(el) el.textContent = "⏳ " + s; };
   // El idioma de la app va primero si está elegido (sellos y nombre del archivo); después, en el orden de siempre.
   const idiomas = [...P.idiomas].sort((a, b) => (a === currentLang() ? -1 : b === currentLang() ? 1 : IDIOMAS_PDF.indexOf(a) - IDIOMAS_PDF.indexOf(b)));
   try{
     const res = r ? await armarPdfDeRendicion(r, idiomas, avance) : await armarResumenPdf(P, idiomas, avance);
     descargarBlob(res.nombre, new Blob([res.bytes], { type: "application/pdf" }));
-    P.listo = res.nombre; P.faltaron = res.faltaron;
+    P.listo = res.nombre; P.faltaron = res.faltaron; P.sinTraducir = res.sinTraducir || 0;
   }catch(err){
     console.error("No se pudo armar el PDF:", err);
     P.error = !window.PDFLib ? t("No se pudo cargar lo que arma el PDF. Revisá la conexión y probá de nuevo.","The PDF builder couldn't load. Check the connection and try again.","Não foi possível carregar o montador do PDF. Verifique a conexão e tente de novo.","לא ניתן היה לטעון את בונה ה-PDF. בדקו את החיבור ונסו שוב.")
       : t("No se pudo armar el PDF: {m}","Couldn't build the PDF: {m}","Não foi possível montar o PDF: {m}","לא ניתן היה לבנות את ה-PDF: {m}",{ m: detalleDeError(err) });
   }
-  P.armando = false;
+  P.armando = false; traduccionesPdf = null;
   if(gastosPdf === P){ render(); const x = document.querySelector('.gx-pdf [data-action="gastos-pdf-cerrar"]'); if(x) x.focus(); }
 }
 
