@@ -2,7 +2,7 @@
 truncate lab.resultados;
 \set QUIET off
 insert into lab.resultados(nombre, esperado, obtenido, detalle)
-  select 'las dieciséis tablas mandan sus cambios en vivo (las ocho de siempre, personas, las tres de la Agenda y las cuatro de los gastos)', true, count(*) = 16,
+  select 'las diecisiete tablas mandan sus cambios en vivo (las ocho de siempre, personas, las tres de la Agenda y las cinco de los gastos)', true, count(*) = 17,
          'son ' || count(*)
   from pg_publication_tables where pubname='supabase_realtime' and schemaname='public';
 insert into lab.resultados(nombre, esperado, obtenido, detalle)
@@ -36,9 +36,9 @@ select lab.comprobar('las cinco tablas de arriba existen (si no, esa prueba no m
 -- Las de los gastos (27-gastos.sql) van a propósito: cada uno recibe solo
 -- los cambios de lo que puede ver (lo suyo; un admin, todo), y la persona se
 -- entera en el momento de que le observaron un gasto.
-select lab.comprobar('y las únicas publicadas son las dieciséis de siempre', $q$select string_agg(tablename, ',' order by tablename) from pg_publication_tables
+select lab.comprobar('y las únicas publicadas son las diecisiete de siempre', $q$select string_agg(tablename, ',' order by tablename) from pg_publication_tables
   where pubname='supabase_realtime' and schemaname='public'$q$,
-  'access_requests,agenda_listas,app_config,audit_log,contactos,former_members,gastos,gastos_comentarios,gastos_movimientos,gastos_rendiciones,instituciones,members,personas,posts,replies,user_prefs');
+  'access_requests,agenda_listas,app_config,audit_log,contactos,former_members,gastos,gastos_cambios,gastos_comentarios,gastos_movimientos,gastos_rendiciones,instituciones,members,personas,posts,replies,user_prefs');
 select n, '  FALLA  ' || nombre || ' — ' || detalle as falla from lab.resultados where esperado <> obtenido order by n;
 select count(*) filter (where esperado=obtenido) || ' pasaron, ' ||
        count(*) filter (where esperado<>obtenido) || ' fallaron  (de ' || count(*) || ')' as resultado from lab.resultados;

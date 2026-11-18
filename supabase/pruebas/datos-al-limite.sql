@@ -175,3 +175,9 @@ insert into public.gastos_movimientos (id, persona, tipo, fecha, moneda, monto, 
   ('00000000-0000-0000-0000-00000000d001', repeat('p', 200), 'ajuste', '2000-01-01', 'USD', -9999999999.99, repeat('d', 300),
    'confirmado', repeat('q', 200), repeat('r', 200), now())
 on conflict (id) do nothing;
+insert into public.gastos_cambios (id, rendicion_id, autor, fecha, entregado_moneda, entregado_monto, recibido_moneda, recibido_monto, observaciones, archivo, archivo_nombre, archivo_tipo)
+  select '00000000-0000-0000-0000-00000000e001', r.id, repeat('a', 200), '2100-12-31', 'USD', 9999999999.99, 'ZZZ', 0.01, repeat('o', 300),
+         'gastos/cambio-00000000-0000-0000-0000-00000000e001/' || repeat('x', 300 - length('gastos/cambio-00000000-0000-0000-0000-00000000e001/')),
+         repeat('n', 200), repeat('m', 100)
+  from public.gastos_rendiciones r order by r.id limit 1
+on conflict (id) do nothing;

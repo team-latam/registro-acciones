@@ -925,6 +925,55 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   await p.close();
 }
 
+/* ---------------- Los cambios de moneda de una rendición (etapa 4, lo eligió el usuario el 18/11) ---------------- */
+{
+  const base = datos({ prendido: true });
+  // gx1: un taxi en efectivo en pesos uruguayos, sin el monto en dólares; en la rendición está el cambio cb1 (USD 100 → UYU 3,950).
+  Object.assign(base.gastos.find(g => g.id === "gx1"), { monto: 790, moneda: "UYU", forma_pago: "efectivo" });
+  // Y uno en la rutina, ya aprobada.
+  base.gastos_cambios.push({ ...base.gastos_cambios[0], id: "cb2", rendicion_id: "ren_rutina", observaciones: "En la rutina" });
+  const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: vp, base });
+  await irGastos(p);
+  await p.click('[data-action="gastos-abrir-rendicion"][data-id="ren_mvd"]'); await p.waitForTimeout(150);
+  eq("la rendición muestra sus cambios de moneda, con la tasa", await leer(p, ".gx-cambios .gx-cambio", e => e.innerText.replace(/\s+/g, " ").trim()),
+    `USD 100.00 → UYU 3,950.00 ${await p.evaluate(() => document.querySelector(".gx-cambios .gx-cambio small").textContent.split(" · ")[0])} · 1 USD = 39.5 UYU · Casa de cambio del aeropuerto 📎 Adjuntar comprobante 🗑️`);
+  await tocar(p, '[data-action="gastos-cambio-abrir"]');
+  eq("«Anotar un cambio de moneda» abre el formulario y va a la fecha", await p.evaluate(() => document.activeElement.id), "gxCam_fecha");
+  await p.fill("#gxCam_entregadoMonto", "50").catch(() => {}); await p.fill("#gxCam_recibidoMonto", "50").catch(() => {});
+  await p.fill("#gxCam_recibidoMoneda", "USD").catch(() => {}); await p.click("#gxCam_observaciones").catch(() => {});
+  await tocar(p, '[data-action="gastos-cambio-anotar"]');
+  eq("la misma moneda de los dos lados: lo dice", await leer(p, ".gx-cambio-form .form-error", e => e.textContent.trim()), "Las dos monedas son la misma: un cambio es de una moneda a otra.");
+  await p.fill("#gxCam_recibidoMoneda", "UYU").catch(() => {}); await p.fill("#gxCam_recibidoMonto", "1980").catch(() => {}); await p.click("#gxCam_observaciones").catch(() => {});
+  eq("mientras se escribe, muestra la tasa", await hasta(p, () => (document.getElementById("gxCamTasa") || {}).textContent === "Tasa: 1 USD = 39.6 UYU"), true);
+  await p.fill("#gxCam_observaciones", "Segundo cambio").catch(() => {});
+  await elegirSiHay(p, '[data-action="gastos-cambio-adjuntar"][data-id=""]', { name: "casa-de-cambio.png", mimeType: "image/png", buffer: PNG });
+  await hasta(p, () => !!document.querySelector(".gx-cambio-form .gx-mov-arch"));
+  await tocar(p, '[data-action="gastos-cambio-anotar"]');
+  eq("anotado: en la base, con la rendición, las monedas, los montos y su comprobante en su carpeta", await hasta(p, () => {
+    const c = (window.__sb.tablas.gastos_cambios || []).find(x => x.observaciones === "Segundo cambio");
+    return !!c && c.rendicion_id === "ren_mvd" && c.entregado_moneda === "USD" && c.entregado_monto === 50 && c.recibido_moneda === "UYU" && c.recibido_monto === 1980
+      && String(c.archivo).startsWith(`gastos/cambio-${c.id}/comprobante_`) && c.archivo_nombre === "casa-de-cambio.png"; }), true);
+  eq("…y el formulario se cierra", await hasta(p, () => !document.querySelector(".gx-cambio-form") && document.querySelectorAll(".gx-cambios .gx-cambio").length === 2), true);
+  // En el gasto en efectivo, la cuenta en dólares con la tasa de cada cambio de esa moneda.
+  await p.click('[data-action="gasto-abrir"][data-id="gx1"]'); await p.waitForSelector("#gastoOverlay:not([hidden])");
+  eq("un gasto en efectivo en esa moneda: la cuenta en dólares con cada cambio", await p.$$eval("#gastoBody .gx-usar-cambio", l => l.map(e => /\((1 USD = [\d.]+ UYU)\): (USD [\d.,]+)/.exec(e.textContent).slice(1).join(" → "))),
+    ["1 USD = 39.5 UYU → USD 20.00", "1 USD = 39.6 UYU → USD 19.95"]);
+  await tocar(p, '#gastoBody [data-action="gasto-usar-cambio"]');
+  eq("«Usar» pone ese monto en dólares", await leer(p, "#gxRendido", e => e.value), "20.00");
+  await p.keyboard.press("Escape"); await p.waitForTimeout(150); if(await p.$("#confirmOverlay:not([hidden])")) await p.click("#confirmOk");
+  // Borrar un cambio, preguntando.
+  const segundo = await p.evaluate(() => ((window.__sb.tablas.gastos_cambios || []).find(x => x.observaciones === "Segundo cambio") || {}).id || "");
+  await tocar(p, `[data-action="gastos-cambio-borrar"][data-id="${segundo}"]`); await aceptar(p).catch(() => {});
+  eq("borrar un cambio pregunta y lo borra", await hasta(p, id => !(window.__sb.tablas.gastos_cambios || []).some(x => x.id === id), segundo), true);
+  // En una rendición que ya no se corrige, los cambios se ven pero no se tocan.
+  await p.click('[data-action="gastos-volver"]'); await p.waitForTimeout(150);
+  await p.click('[data-action="gastos-abrir-rendicion"][data-id="ren_rutina"]'); await p.waitForTimeout(150);
+  eq("aprobada: el cambio se ve, sin borrar ni anotar otro", await p.evaluate(() => [document.querySelectorAll(".gx-cambios .gx-cambio").length,
+    !document.querySelector('[data-action="gastos-cambio-borrar"]'), !document.querySelector('[data-action="gastos-cambio-abrir"]')]), [1, true, true]);
+  eq("sin errores de página", errores, []);
+  await p.close();
+}
+
 /* ---------------- Administración → Gastos ---------------- */
 {
   const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: vp, base: datos({ prendido: true }) });

@@ -170,6 +170,24 @@ select lab.probar('no se lo aprueba sola', lab.como('ana@x.com'), format($x$upda
 select lab.probar('ni se lo «observa»', lab.como('ana@x.com'), format($x$update public.gastos set estado = 'observado' where id = %L$x$, :'g1'), false);
 select lab.probar('ni se lo pasa a otra persona', lab.como('ana@x.com'), format($x$update public.gastos set autor = 'diego@x.com' where id = %L$x$, :'g1'), false);
 
+-- ---------- Los cambios de moneda (18/11, etapa 4) ----------
+-- Ana cambió USD 100 por PEN 362 en Lima (ya con la comisión): la tasa sale de ahí.
+select lab.hacer(lab.como('ana@x.com'), format($x$insert into public.gastos_cambios(rendicion_id, autor, fecha, entregado_moneda, entregado_monto, recibido_moneda, recibido_monto, observaciones)
+  values (%L, 'diego@x.com', '2026-09-10', 'usd', 100, 'pen', 362, ' Con comisión de PEN 8 ') returning id::text$x$, :'ra')) as c1 \gset
+select lab.comprobar('una persona anota un cambio de moneda en su rendición: a su nombre, en mayúsculas y sin espacios de más',
+  $q$select autor || '/' || entregado_moneda || '/' || recibido_moneda || '/' || observaciones from public.gastos_cambios where id = '$q$ || :'c1' || $q$'$q$, 'ana@x.com/USD/PEN/Con comisión de PEN 8');
+select lab.comprobar('no en la rendición de otra persona',
+  $q$select lab.rechaza(lab.como('diego@x.com'), format($x$insert into public.gastos_cambios(rendicion_id, fecha, entregado_monto, recibido_moneda, recibido_monto) values (%L, '2026-09-10', 1, 'PEN', 3) returning id::text$x$, '$q$ || :'ra' || $q$'))$q$, 'true');
+select lab.comprobar('la misma moneda de los dos lados, no',
+  $q$select lab.rechaza(lab.como('ana@x.com'), format($x$insert into public.gastos_cambios(rendicion_id, fecha, entregado_monto, recibido_moneda, recibido_monto) values (%L, '2026-09-10', 1, 'USD', 1) returning id::text$x$, '$q$ || :'ra' || $q$'))$q$, 'true');
+select lab.comprobar('sin lo que se recibió, no',
+  $q$select lab.rechaza(lab.como('ana@x.com'), format($x$insert into public.gastos_cambios(rendicion_id, fecha, entregado_monto, recibido_moneda, recibido_monto) values (%L, '2026-09-10', 1, 'PEN', 0) returning id::text$x$, '$q$ || :'ra' || $q$'))$q$, 'true');
+select lab.probar('lo corrige mientras la rendición está abierta', lab.como('ana@x.com'), format($x$update public.gastos_cambios set recibido_monto = 362 where id = %L$x$, :'c1'), true);
+select lab.probar('…pero no lo pasa a otra rendición', lab.como('ana@x.com'), format($x$update public.gastos_cambios set rendicion_id = %L where id = %L$x$, :'ra_mes', :'c1'), false);
+select lab.comprobar('otra persona no lo ve', $q$select lab.hacer(lab.como('diego@x.com'), $x$select count(*)::text from public.gastos_cambios$x$)$q$, '0');
+select lab.comprobar('un admin, sí', $q$select lab.hacer(lab.como('otra.admin@x.com'), $x$select count(*)::text from public.gastos_cambios$x$)$q$, '1');
+select lab.comprobar('no entra en la cuenta corriente (no es un gasto)', $q$select count(*)::text from public.gastos where rendicion_id = '$q$ || :'ra' || $q$' and concepto ilike '%cambio%'$q$, '0');
+
 -- ---------- Borrar una rendición entera, con sus gastos ----------
 select lab.probar_valor('una integrante borra su rendición entera, con sus gastos', lab.como('ana@x.com'),
   format($x$select public.gastos_rendicion_borrar(%L)$x$, :'ra'),
@@ -181,6 +199,9 @@ select lab.comprobar('…ni un admin por rol',
 select lab.probar_valor('el admin fijo, sí (y dice cuántos gastos se fueron)', lab.como('benny@team-latam.com'),
   format($x$create temp table if not exists borrados(n int) on commit drop; insert into borrados select public.gastos_rendicion_borrar(%L)$x$, :'ra'),
   $x$select n::text from borrados$x$, '5');
+select lab.probar_valor('…y se van con ella sus cambios de moneda', lab.como('ana@x.com'),
+  format($x$select public.gastos_rendicion_borrar(%L)$x$, :'ra'),
+  format($x$select count(*)::text from public.gastos_cambios where rendicion_id = %L$x$, :'ra'), '0');
 select lab.comprobar('lo de arriba no quedó: los cinco gastos siguen', $q$select count(*)::text from public.gastos where rendicion_id = '$q$ || :'ra' || $q$'$q$, '5');
 
 -- ---------- Mandar la rendición ----------
@@ -199,6 +220,10 @@ select lab.probar('mandado, un gasto ya no se corrige', lab.como('ana@x.com'), f
 select lab.probar('…ni se borra', lab.como('ana@x.com'), format($x$delete from public.gastos where id = %L$x$, :'g1'), false);
 select lab.comprobar('…ni se le suma otro gasto a esa rendición',
   $q$select lab.rechaza(lab.como('ana@x.com'), format($x$insert into public.gastos(rendicion_id, concepto) values (%L, 'otro') returning id::text$x$, '$q$ || :'ra' || $q$'))$q$, 'true');
+select lab.probar('…ni su cambio de moneda', lab.como('ana@x.com'), format($x$update public.gastos_cambios set observaciones = 'x' where id = %L$x$, :'c1'), false);
+select lab.probar('…que tampoco se borra', lab.como('ana@x.com'), format($x$delete from public.gastos_cambios where id = %L$x$, :'c1'), false);
+select lab.comprobar('…ni se le suma otro cambio',
+  $q$select lab.rechaza(lab.como('ana@x.com'), format($x$insert into public.gastos_cambios(rendicion_id, fecha, entregado_monto, recibido_moneda, recibido_monto) values (%L, '2026-09-10', 1, 'PEN', 3) returning id::text$x$, '$q$ || :'ra' || $q$'))$q$, 'true');
 select lab.probar('…ni se cambia su total rápido', lab.como('ana@x.com'),
   format($x$update public.gastos_rendiciones set total_manual = '{"USD": 1}' where id = %L$x$, :'ra'), false);
 select lab.comprobar('…ni se borra entera', $q$select lab.rechaza(lab.como('ana@x.com'), format($x$select public.gastos_rendicion_borrar(%L)::text$x$, '$q$ || :'ra' || $q$'))$q$, 'true');
@@ -423,6 +448,27 @@ select lab.probar_valor_servicio('la limpieza del bucket NO toma como sobrante u
   $q$select case when (public.limpieza_del_bucket() -> 'huerfanos') ? ('gastos/' || '$q$ || :'g5' || $q$' || '/ticket.pdf') then 'sobra' else 'no' end$q$, 'no');
 select lab.probar_valor_servicio('…pero sí uno que ningún gasto nombra', 'select 1',
   $q$select case when (public.limpieza_del_bucket() -> 'huerfanos') ? ('gastos/' || '$q$ || :'g5' || $q$' || '/viejo.pdf') then 'sobra' else 'no' end$q$, 'sobra');
+
+-- ---------- El comprobante de un cambio de moneda (18/11) ----------
+-- c1 está en la rendición aprobada; c2, en la de octubre, abierta.
+select lab.hacer(lab.como('ana@x.com'), format($x$insert into public.gastos_cambios(rendicion_id, fecha, entregado_monto, recibido_moneda, recibido_monto) values (%L, '2026-10-02', 50, 'PEN', 180) returning id::text$x$, :'ra_oct')) as c2 \gset
+select lab.probar('sube el comprobante de un cambio suyo, con la rendición abierta', lab.como('ana@x.com'),
+  format($x$insert into storage.objects(bucket_id, name) values ('adjuntos', 'gastos/cambio-%s/recibo.jpg')$x$, :'c2'), true);
+select lab.probar('…y lo anota en el cambio', lab.como('ana@x.com'),
+  format($x$update public.gastos_cambios set archivo = 'gastos/cambio-%s/recibo.jpg', archivo_nombre = 'recibo.jpg', archivo_tipo = 'image/jpeg' where id = %L$x$, :'c2', :'c2'), true);
+select lab.probar('…no con la carpeta de otro cambio', lab.como('ana@x.com'),
+  format($x$update public.gastos_cambios set archivo = 'gastos/cambio-%s/recibo.jpg' where id = %L$x$, :'c1', :'c2'), false);
+select lab.probar('no sube al de una rendición ya aprobada', lab.como('ana@x.com'),
+  format($x$insert into storage.objects(bucket_id, name) values ('adjuntos', 'gastos/cambio-%s/recibo.jpg')$x$, :'c1'), false);
+select lab.probar('…ni al de otra persona', lab.como('diego@x.com'),
+  format($x$insert into storage.objects(bucket_id, name) values ('adjuntos', 'gastos/cambio-%s/recibo.jpg')$x$, :'c2'), false);
+insert into storage.objects (bucket_id, name, created_at) values ('adjuntos', 'gastos/cambio-' || :'c2' || '/recibo.jpg', now() - interval '10 days');
+update public.gastos_cambios set archivo = 'gastos/cambio-' || id || '/recibo.jpg' where id = :'c2';
+select lab.comprobar('lo ve quien lo anotó', $q$select lab.hacer(lab.como('ana@x.com'), $x$select count(*)::text from storage.objects where name like 'gastos/cambio-%'$x$)$q$, '1');
+select lab.comprobar('otra persona, no', $q$select lab.hacer(lab.como('diego@x.com'), $x$select count(*)::text from storage.objects where name like 'gastos/cambio-%'$x$)$q$, '0');
+select lab.comprobar('un admin, sí', $q$select lab.hacer(lab.como('otra.admin@x.com'), $x$select count(*)::text from storage.objects where name like 'gastos/cambio-%'$x$)$q$, '1');
+select lab.probar_valor_servicio('la limpieza no toma como sobrante el comprobante de un cambio', 'select 1',
+  $q$select case when (public.limpieza_del_bucket() -> 'huerfanos') ? ('gastos/cambio-' || '$q$ || :'c2' || $q$' || '/recibo.jpg') then 'sobra' else 'no' end$q$, 'no');
 
 -- ---------- El comprobante de un movimiento de la cuenta corriente (17/11) ----------
 -- Opcional, en `gastos/mov-<id>/`. m3: pendiente, de Ana. m1: confirmado, de Ana.

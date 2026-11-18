@@ -137,6 +137,11 @@ const GASTOS = () => {
     gastos_comentarios: [
       { id: "gc1", gasto_id: "gx7", autor: ADMIN, texto: "Falta la factura: ¿la podés subir de nuevo?", creado_el: hace(1) },
     ],
+    // Un cambio de moneda en Montevideo (etapa 4): USD 100 por UYU 3,950, ya con la comisión.
+    gastos_cambios: [
+      { id: "cb1", rendicion_id: "ren_mvd", autor: ADMIN, fecha: dia(130), entregado_moneda: "USD", entregado_monto: 100, recibido_moneda: "UYU", recibido_monto: 3950,
+        observaciones: "Casa de cambio del aeropuerto", archivo: null, archivo_nombre: null, archivo_tipo: null, creado_el: hace(130), tocado_el: hace(130) },
+    ],
     gastos_movimientos: [
       { id: "mv1", persona: ADMIN, tipo: "recibido", fecha: dia(135), moneda: "USD", monto: 500, descripcion: "Adelanto para la visita a Montevideo", estado: "confirmado",
         cargado_por: ADMIN, confirmado_por: ADMIN, confirmado_el: hace(135), creado_el: hace(135) },

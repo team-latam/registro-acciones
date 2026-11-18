@@ -239,6 +239,7 @@ returns jsonb language sql stable security definer set search_path = '' as $$
     -- cuenta corriente (17/11/2026).
     union all select g.archivo from public.gastos g
     union all select m.archivo from public.gastos_movimientos m
+    union all select c.archivo from public.gastos_cambios c
   ), usados as (
     select ruta from nombrados where ruta is not null
     union

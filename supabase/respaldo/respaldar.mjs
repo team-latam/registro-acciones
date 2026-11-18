@@ -39,7 +39,7 @@ export const TABLAS = {
   problemas: "id",
   // Los gastos y la cuenta corriente (27-gastos.sql, 15/11/2026). Los
   // comprobantes van con los demás archivos del bucket (gastos/…).
-  gastos_rendiciones: "id", gastos: "id", gastos_comentarios: "id", gastos_movimientos: "id",
+  gastos_rendiciones: "id", gastos: "id", gastos_comentarios: "id", gastos_movimientos: "id", gastos_cambios: "id",
 };
 // Las que a propósito NO van en la copia: anotaciones de qué correo ya
 // salió (17-avisos-por-correo.sql), que solo lee la llave de servicio.

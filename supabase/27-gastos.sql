@@ -224,6 +224,42 @@ alter table public.gastos_movimientos add constraint movimientos_archivo check (
 );
 
 
+-- Los cambios de moneda de una rendición (18/11/2026, etapa 4: lo eligió el
+-- usuario junto con los PDF de entrega). Si en un viaje la persona cambió
+-- plata en efectivo (dólares por florines), anota qué entregó, qué recibió
+-- (ya con la comisión) y, si tiene, el comprobante. No es un gasto: no suma
+-- ni entra en la cuenta corriente. Da la tasa con que se pasan a dólares los
+-- gastos en efectivo de esa moneda, y va en el PDF de entrega (la tabla del
+-- cambio y su comprobante como anexo), como lo hacía la skill del usuario.
+create table if not exists public.gastos_cambios (
+  id               uuid primary key default gen_random_uuid(),
+  rendicion_id     uuid not null references public.gastos_rendiciones(id) on delete cascade,
+  autor            text not null,
+  fecha            date not null,
+  entregado_moneda text not null default 'USD',
+  entregado_monto  numeric(14, 2) not null,
+  recibido_moneda  text not null,
+  recibido_monto   numeric(14, 2) not null,
+  observaciones    text not null default '',
+  -- El comprobante (opcional), en el bucket: gastos/cambio-<id>/<archivo>.
+  archivo          text,
+  archivo_nombre   text,
+  archivo_tipo     text,
+  creado_el        timestamptz not null default now(),
+  tocado_el        timestamptz not null default now()
+);
+alter table public.gastos_cambios drop constraint if exists cambios_forma;
+alter table public.gastos_cambios add constraint cambios_forma check (
+  entregado_moneda ~ '^[A-Z]{3}$' and recibido_moneda ~ '^[A-Z]{3}$' and entregado_moneda <> recibido_moneda
+  and entregado_monto > 0 and entregado_monto < 10000000000 and recibido_monto > 0 and recibido_monto < 10000000000
+  and fecha between '2000-01-01' and '2100-12-31'
+  and length(observaciones) <= 300 and length(autor) between 3 and 200
+  and (archivo is null or (archivo like 'gastos/cambio-%' and length(archivo) <= 300))
+  and length(coalesce(archivo_nombre, '')) <= 200 and length(coalesce(archivo_tipo, '')) <= 100
+);
+create index if not exists cambios_rendicion on public.gastos_cambios (rendicion_id, fecha);
+
+
 -- ============================================================
 -- Quién puede qué
 -- ============================================================
@@ -231,17 +267,18 @@ alter table public.gastos_rendiciones enable row level security;
 alter table public.gastos             enable row level security;
 alter table public.gastos_comentarios enable row level security;
 alter table public.gastos_movimientos enable row level security;
+alter table public.gastos_cambios     enable row level security;
 
 -- 02-politicas.sql le da insert, update y delete sobre TODAS las tablas a
 -- `authenticated` cada vez que se aplica: acá se saca y se da solo lo justo.
 -- Rendiciones y comentarios se crean y cambian de estado con las funciones de
 -- abajo; de una rendición, la persona toca directo solo su «total rápido».
-revoke all on public.gastos_rendiciones, public.gastos, public.gastos_comentarios, public.gastos_movimientos from anon, authenticated;
-grant select, insert, update, delete on public.gastos, public.gastos_movimientos to authenticated;
+revoke all on public.gastos_rendiciones, public.gastos, public.gastos_comentarios, public.gastos_movimientos, public.gastos_cambios from anon, authenticated;
+grant select, insert, update, delete on public.gastos, public.gastos_movimientos, public.gastos_cambios to authenticated;
 grant select, delete on public.gastos_rendiciones to authenticated;
 grant update (total_manual, total_manual_confirmado) on public.gastos_rendiciones to authenticated;
 grant select, delete on public.gastos_comentarios to authenticated;
-grant all on public.gastos_rendiciones, public.gastos, public.gastos_comentarios, public.gastos_movimientos to service_role;
+grant all on public.gastos_rendiciones, public.gastos, public.gastos_comentarios, public.gastos_movimientos, public.gastos_cambios to service_role;
 
 -- Rendiciones: cada uno las suyas; un admin, todas.
 drop policy if exists rendiciones_leer on public.gastos_rendiciones;
@@ -310,6 +347,27 @@ drop policy if exists movimientos_borrar on public.gastos_movimientos;
 create policy movimientos_borrar on public.gastos_movimientos for delete
   using ((persona = (select public.mi_correo()) and (select public.gastos_habilitado()) and estado = 'pendiente')
          or (select public.es_admin_fijo()) or (select public.es_admin_rol()));
+
+-- Cambios de moneda: cada uno los suyos, y los toca mientras su rendición se
+-- puede corregir (abierta u observada); un admin los ve todos y el admin
+-- fijo los puede borrar. Que la rendición sea suya, en el disparador.
+drop policy if exists cambios_leer on public.gastos_cambios;
+create policy cambios_leer on public.gastos_cambios for select
+  using ((autor = (select public.mi_correo()) and (select public.gastos_habilitado()))
+         or (select public.es_admin_fijo()) or (select public.es_admin_rol()));
+drop policy if exists cambios_crear on public.gastos_cambios;
+create policy cambios_crear on public.gastos_cambios for insert
+  with check (autor = (select public.mi_correo()) and (select public.gastos_habilitado()));
+drop policy if exists cambios_editar on public.gastos_cambios;
+create policy cambios_editar on public.gastos_cambios for update
+  using (autor = (select public.mi_correo()) and (select public.gastos_habilitado())
+         and exists (select 1 from public.gastos_rendiciones r where r.id = rendicion_id and r.estado in ('abierta', 'observada')))
+  with check (autor = (select public.mi_correo()));
+drop policy if exists cambios_borrar on public.gastos_cambios;
+create policy cambios_borrar on public.gastos_cambios for delete
+  using ((autor = (select public.mi_correo()) and (select public.gastos_habilitado())
+          and exists (select 1 from public.gastos_rendiciones r where r.id = rendicion_id and r.estado in ('abierta', 'observada')))
+         or (select public.es_admin_fijo()));
 
 
 -- ============================================================
@@ -432,6 +490,39 @@ end $$;
 drop trigger if exists gastos_movimientos_controlar on public.gastos_movimientos;
 create trigger gastos_movimientos_controlar before insert or update on public.gastos_movimientos
   for each row execute function public.gastos_movimientos_controlar();
+
+-- Un cambio de moneda: de quien lo anota, en una rendición suya que todavía
+-- se corrige; no se pasa a otra rendición; el comprobante, en su carpeta.
+create or replace function public.gastos_cambios_controlar() returns trigger
+  language plpgsql set search_path = '' as $$
+declare yo text := public.mi_correo(); r record; carpeta text := 'gastos/cambio-' || new.id::text || '/';
+begin
+  new.entregado_moneda := upper(btrim(coalesce(new.entregado_moneda, '')));
+  new.recibido_moneda := upper(btrim(coalesce(new.recibido_moneda, '')));
+  new.observaciones := btrim(coalesce(new.observaciones, ''));
+  if current_user not in ('authenticated', 'anon') then return new; end if;
+  if tg_op = 'INSERT' then
+    new.autor := yo; new.creado_el := now();
+  elsif new.autor is distinct from old.autor or new.creado_el is distinct from old.creado_el
+        or new.rendicion_id is distinct from old.rendicion_id then
+    raise exception 'De quién es un cambio, y en qué rendición, no se cambia' using errcode = 'insufficient_privilege';
+  end if;
+  select x.autor, x.estado into r from public.gastos_rendiciones x where x.id = new.rendicion_id;
+  if not found or r.autor <> yo then
+    raise exception 'Esa rendición no es tuya' using errcode = 'insufficient_privilege';
+  end if;
+  if r.estado not in ('abierta', 'observada') then
+    raise exception 'Esa rendición ya se mandó' using errcode = 'check_violation';
+  end if;
+  if new.archivo is not null and left(new.archivo, length(carpeta)) <> carpeta then
+    raise exception 'El comprobante va en la carpeta de su cambio' using errcode = 'check_violation';
+  end if;
+  new.tocado_el := now();
+  return new;
+end $$;
+drop trigger if exists gastos_cambios_controlar on public.gastos_cambios;
+create trigger gastos_cambios_controlar before insert or update on public.gastos_cambios
+  for each row execute function public.gastos_cambios_controlar();
 
 
 -- ============================================================
@@ -781,6 +872,10 @@ create or replace function public.gastos_archivo_visible(ruta text) returns bool
           or exists (select 1 from public.gastos_movimientos m
                       where 'mov-' || m.id::text = split_part(ruta, '/', 2)
                         and ((m.persona = public.mi_correo() and public.gastos_habilitado())
+                             or public.es_admin_fijo() or public.es_admin_rol()))
+          or exists (select 1 from public.gastos_cambios c
+                      where 'cambio-' || c.id::text = split_part(ruta, '/', 2)
+                        and ((c.autor = public.mi_correo() and public.gastos_habilitado())
                              or public.es_admin_fijo() or public.es_admin_rol())))
 $$;
 create or replace function public.gastos_archivo_subible(ruta text) returns boolean
@@ -794,7 +889,10 @@ create or replace function public.gastos_archivo_subible(ruta text) returns bool
           or exists (select 1 from public.gastos_movimientos m
                       where 'mov-' || m.id::text = split_part(ruta, '/', 2)
                         and ((m.persona = public.mi_correo() and m.estado = 'pendiente')
-                             or public.es_admin_fijo() or public.es_admin_rol())))
+                             or public.es_admin_fijo() or public.es_admin_rol()))
+          or exists (select 1 from public.gastos_cambios c join public.gastos_rendiciones r on r.id = c.rendicion_id
+                      where 'cambio-' || c.id::text = split_part(ruta, '/', 2)
+                        and c.autor = public.mi_correo() and r.estado in ('abierta', 'observada')))
 $$;
 drop policy if exists gastos_archivos_leer on storage.objects;
 create policy gastos_archivos_leer on storage.objects for select
@@ -859,7 +957,7 @@ do $$
 declare t text;
 begin
   if exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
-    foreach t in array array['gastos_rendiciones', 'gastos', 'gastos_comentarios', 'gastos_movimientos'] loop
+    foreach t in array array['gastos_rendiciones', 'gastos', 'gastos_comentarios', 'gastos_movimientos', 'gastos_cambios'] loop
       if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t) then
         execute format('alter publication supabase_realtime add table public.%I', t);
       end if;

@@ -1097,6 +1097,10 @@
   .gx-mov-arch{ font-size:13.5px; font-weight:600; color:var(--ink); overflow-wrap:anywhere; min-width:0; }
   .gx-anotar{ padding:12px 16px; margin-top:14px; }
   .gx-anotar-abrir{ margin-top:14px; }
+  .gx-cambios .gx-movs{ margin:8px 0 10px; }
+  .gx-cambio-abrir{ margin-top:4px; }
+  .gx-cam-tasa{ font-weight:700; color:var(--ink); min-height:1.2em; }
+  .gx-plata .gx-usar-cambio{ grid-column:1 / -1; display:flex; align-items:center; gap:4px 10px; flex-wrap:wrap; font-size:13px; color:var(--ink); }
   .gx-tipos .gx-tipo-ofrecer{ flex:none; font-size:13px; white-space:nowrap; }
   .gx-anotar-tit{ margin:2px 0 10px; }
   .gx-anotar-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:10px; }
@@ -10155,10 +10159,10 @@ function crearSupabaseStore(sb, opciones = {}){
     // su total rápido.
     gastos: {
       subscribe(alCambiar, alFallar){
-        const tablas = ["gastos_rendiciones", "gastos", "gastos_comentarios", "gastos_movimientos"];
+        const tablas = ["gastos_rendiciones", "gastos", "gastos_comentarios", "gastos_movimientos", "gastos_cambios"];
         const datos = {};
         const bajas = tablas.map(tabla => enVivo({ tabla, clave: "id", alFallar,
-          ...(tabla === "gastos" || tabla === "gastos_movimientos" ? { firmaAdjuntos: true, afinar: f => resolverAdjuntos(aObjeto(f)) } : {}),
+          ...(tabla === "gastos" || tabla === "gastos_movimientos" || tabla === "gastos_cambios" ? { firmaAdjuntos: true, afinar: f => resolverAdjuntos(aObjeto(f)) } : {}),
           alCambiar: lista => { datos[tabla] = lista; if(tablas.every(x => datos[x])) alCambiar({ ...datos }); } }));
         return () => bajas.forEach(f => f && f());
       },
@@ -10186,7 +10190,7 @@ function crearSupabaseStore(sb, opciones = {}){
       async borrarRendicionEntera(id){
         const { data, error } = await sb.rpc("gastos_rendicion_borrar", { p_id: id });
         if(error) throw error;
-        await Promise.all([recargarTabla("gastos"), recargarTabla("gastos_rendiciones"), recargarTabla("gastos_comentarios")]);
+        await Promise.all([recargarTabla("gastos"), recargarTabla("gastos_rendiciones"), recargarTabla("gastos_comentarios"), recargarTabla("gastos_cambios")]);
         return data;
       },
       // Primero la fila (la base deja subir solo a la carpeta de un gasto
@@ -10248,6 +10252,24 @@ function crearSupabaseStore(sb, opciones = {}){
         const ruta = String(dataUrl).startsWith("data:image/") ? await subirFoto(base, dataUrl) : await subirUno(base, dataUrl, nombre);
         revienta(await sb.from("gastos_movimientos").update({ archivo: ruta, archivo_nombre: String(nombre || "").slice(0, 200), archivo_tipo: tipo }).eq("id", id));
         await refrescar("gastos_movimientos", id);
+        return ruta;
+      },
+      // Los cambios de moneda de una rendición (etapa 4, 18/11): como los movimientos, el comprobante va después de la fila.
+      async anotarCambio(datos){
+        const id = nuevoUuid();
+        revienta(await sb.from("gastos_cambios").insert({ ...aFila(datos), id }));
+        await refrescar("gastos_cambios", id);
+        return id;
+      },
+      async borrarCambio(id){
+        revienta(await sb.from("gastos_cambios").delete().eq("id", id));
+        await refrescar("gastos_cambios", id);
+      },
+      async subirComprobanteCambio(id, dataUrl, nombre, tipo){
+        const base = `gastos/cambio-${id}/comprobante`;
+        const ruta = String(dataUrl).startsWith("data:image/") ? await subirFoto(base, dataUrl) : await subirUno(base, dataUrl, nombre);
+        revienta(await sb.from("gastos_cambios").update({ archivo: ruta, archivo_nombre: String(nombre || "").slice(0, 200), archivo_tipo: tipo }).eq("id", id));
+        await refrescar("gastos_cambios", id);
         return ruta;
       },
       async borrarMovimiento(id){
@@ -14893,7 +14915,7 @@ const TABLAS_DE_LA_COPIA = {
   access_requests: "email", user_prefs: "email", app_config: "key", audit_log: "id",
   calendar_sugerencias: "evento", calendar_sacados: "evento", personas: "id",
   agenda_listas: "id", instituciones: "id", contactos: "id", problemas: "id",
-  gastos_rendiciones: "id", gastos: "id", gastos_comentarios: "id", gastos_movimientos: "id",
+  gastos_rendiciones: "id", gastos: "id", gastos_comentarios: "id", gastos_movimientos: "id", gastos_cambios: "id",
 };
 // Desde jsDelivr (el mismo archivo que publica npm) y con su huella:
 // si el CDN sirviera otra cosa, el navegador no la corre.
@@ -24831,7 +24853,8 @@ let gastosSubidaDestino = null;         // a qué rendición van los que se est�
 let gastosCuentaDe = "";                // un admin puede mirar la cuenta de otra persona
 let gastosMov = null;                   // el formulario de «Anotar plata recibida o devuelta»
 let gastosMovPara = null;               // a qué va el comprobante que se está eligiendo: "form" o el id de un movimiento
-let gastosMovSubiendo = null;           // el movimiento al que se le está subiendo un comprobante
+let gastosMovSubiendo = null;           // el movimiento (o el cambio de moneda) al que se le está subiendo un comprobante
+let gastosCambio = null;                // el formulario de «Anotar un cambio de moneda» de una rendición
 let gastosTotal = null;                 // el borrador del total rápido de la rendición abierta
 let gastosAdmin = null;                 // el borrador de los tipos (Administración → Gastos)
 let gastosActividad = "";               // «Una actividad sin comprobantes»: la elegida
@@ -24897,7 +24920,7 @@ function sincronizarGastos(){
 function cortarGastos(){
   if(unsubGastos){ unsubGastos(); unsubGastos = null; }
   gastosDatos = null; gastosError = ""; gastosAbierta = null; gastosSubida = null; gastosTotal = null;
-  gastosMov = null; gastosMovPara = null; gastosCuentaDe = ""; gastosAdmin = null; gastosActividad = ""; gastosOtraAbierta = false; gastosOcupado = false;
+  gastosMov = null; gastosMovPara = null; gastosCambio = null; gastosCuentaDe = ""; gastosAdmin = null; gastosActividad = ""; gastosOtraAbierta = false; gastosOcupado = false;
   lectorCola = []; lectorEstado = null; gastosLista = null; gastosListaAviso = ""; gastosDestino = null; gastosSel = null;
   if(gastoOverlay && !gastoOverlay.hidden) cerrarGasto(true);
 }
@@ -24911,6 +24934,8 @@ function armarGastos(d){
     comentarios: [...d.gastos_comentarios].sort((a, b) => tsToMillis(a.creadoEl) - tsToMillis(b.creadoEl)),
     movimientos: d.gastos_movimientos.map(m => ({ ...m, persona: String(m.persona || "").toLowerCase(), monto: gxNum(m.monto) }))
       .sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)) || tsToMillis(b.creadoEl) - tsToMillis(a.creadoEl)),
+    cambios: (d.gastos_cambios || []).map(c => ({ ...c, autor: String(c.autor || "").toLowerCase(), entregadoMonto: gxNum(c.entregadoMonto), recibidoMonto: gxNum(c.recibidoMonto) }))
+      .sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)) || tsToMillis(a.creadoEl) - tsToMillis(b.creadoEl)),
   };
 }
 const rendicionPorId = id => gastosDatos ? gastosDatos.rendiciones.find(r => r.id === id) || null : null;
@@ -26106,7 +26131,7 @@ function renderTarjetaRendicion(r, conPersona){
   return vacia ? `<div class="gx-tarjeta-env">${boton}<button type="button" class="gx-t-quitar" data-action="gastos-rendicion-quitar" data-id="${esc(r.id)}" title="${esc(t("Borrar","Delete","Apagar","מחיקה"))}"
       aria-label="${esc(t("Borrar la rendición vacía «{n}»","Delete the empty report “{n}”","Apagar a prestação vazia «{n}»","מחיקת הדוח הריק «{n}»",{ n: tituloRendicion(r) }))}">✕</button></div>` : boton;
 }
-const rendicionVacia = r => !!r && r.autor === miCorreo() && r.estado === "abierta" && !gastosDe(r.id).length && !Object.keys(r.totalManual || {}).length;
+const rendicionVacia = r => !!r && r.autor === miCorreo() && r.estado === "abierta" && !gastosDe(r.id).length && !Object.keys(r.totalManual || {}).length && !cambiosDe(r.id).length;
 async function quitarRendicion(id){
   const r = rendicionPorId(id);
   if(!rendicionVacia(r)) return;
@@ -26637,9 +26662,103 @@ function renderRendicionAbierta(comoAdmin){
     ${enLista ? renderListaDeGastos(r.id)
       : gs.length ? `${enSel ? "" : cabeceraDeFilas(r.id, gs.length, editable)}<div class="gx-filas">${gs.map(renderFilaGasto).join("")}</div>` : ""}
     ${!enLista && Object.keys(detalle).length ? `<div class="gx-total"><span>${t("Total confirmado","Confirmed total","Total confirmado","סך המאושר")}${faltan ? ` <small>${esc(faltan === 1 ? t("(no suma el que falta)","(not counting the one left)","(sem somar a que falta)","(בלי זו שחסרה)") : t("(no suma los {n} que faltan)","(not counting the {n} left)","(sem somar as {n} que faltam)","(בלי {n} שחסרות)",{ n: faltan }))}</small>` : ""}</span><b>${totalesHtml(detalle)}</b></div>` : ""}
-    ${enSel ? renderBarraDeSeleccion(r.id) : enLista ? "" : renderTotalRapido(r, editable, detalle)}
+    ${enSel ? renderBarraDeSeleccion(r.id) : enLista ? "" : renderTotalRapido(r, editable, detalle) + renderCambios(r, editable)}
     ${(editable || isFixedAdmin()) && !enLista && !enSel ? `<div class="gx-borrar-ren"><button type="button" class="gx-link gx-lquitar" data-action="gastos-rendicion-borrar" data-id="${esc(r.id)}">🗑️ ${t("Borrar esta rendición","Delete this report","Apagar esta prestação","מחיקת הדוח הזה")}${gs.length ? " " + esc(gs.length === 1 ? t("(con su gasto)","(with its expense)","(com a despesa)","(עם ההוצאה)") : t("(con sus {n} gastos)","(with its {n} expenses)","(com as {n} despesas)","(עם {n} ההוצאות)",{ n: gs.length })) : ""}</button></div>` : ""}`;
 }
+// ---- Los cambios de moneda de una rendición (etapa 4, 18/11: lo eligió el usuario junto con los PDF) ----
+// No son gastos: dan la tasa para pasar a dólares lo que se pagó en efectivo, y van en el PDF de entrega.
+const cambiosDe = rid => gastosDatos ? gastosDatos.cambios.filter(c => c.rendicionId === rid) : [];
+const NUM_TASA = new Intl.NumberFormat("en-US", { maximumFractionDigits: 4 });
+const textoDeTasa = c => `1 ${c.entregadoMoneda} = ${NUM_TASA.format(c.recibidoMonto / c.entregadoMonto)} ${c.recibidoMoneda}`;
+function renderCambios(r, editable){
+  const cs = cambiosDe(r.id), f = gastosCambio && gastosCambio.rid === r.id ? gastosCambio : null;
+  if(!cs.length && !editable) return "";
+  const flecha = isRTL() ? "←" : "→";
+  const filas = cs.map(c => {
+    const comp = c.archivo ? `<button type="button" class="gx-link gx-mov-comp" data-action="gastos-cambio-ver" data-id="${esc(c.id)}"${esUrlFirmada(c.archivoUrl) ? "" : " disabled"}>📎 ${t("Ver el comprobante","See the receipt","Ver o comprovante","הצגת הקבלה")}</button>`
+      : gastosMovSubiendo === c.id ? `<span class="gx-mov-comp gx-suave" role="status">⏳ ${t("Subiendo el comprobante…","Uploading the receipt…","Enviando o comprovante…","מעלה את הקבלה…")}</span>`
+      : editable ? `<button type="button" class="gx-link gx-mov-comp gx-mov-adj-link" data-action="gastos-cambio-adjuntar" data-id="${esc(c.id)}">📎 ${t("Adjuntar comprobante","Attach a receipt","Anexar comprovante","צירוף קבלה")}</button>` : "";
+    return `<div class="gx-mov gx-cambio">
+        <span class="gx-mov-txt"><b>${esc(fmtMonto(c.entregadoMoneda, c.entregadoMonto))} ${flecha} ${esc(fmtMonto(c.recibidoMoneda, c.recibidoMonto))}</b>
+          <small>${[esc(fmtDate(c.fecha)), esc(textoDeTasa(c)), c.observaciones ? esc(c.observaciones) : ""].filter(Boolean).join(" · ")}</small>${comp}</span>
+        ${editable ? `<span class="gx-mov-acc"><button type="button" class="gx-lquitar-ico" data-action="gastos-cambio-borrar" data-id="${esc(c.id)}" title="${esc(t("Borrar","Delete","Apagar","מחיקה"))}" aria-label="${esc(t("Borrar este cambio de moneda","Delete this currency exchange","Apagar este câmbio","מחיקת המרת המטבע"))}">🗑️</button></span>` : ""}
+      </div>`;
+  }).join("");
+  const form = f ? (() => {
+    const e = f, a = numeroEscrito(e.entregadoMonto), b = numeroEscrito(e.recibidoMonto);
+    const vista = a > 0 && b > 0 && /^[A-Z]{3}$/.test(String(e.entregadoMoneda).toUpperCase()) && /^[A-Z]{3}$/.test(String(e.recibidoMoneda).toUpperCase())
+      ? textoDeTasa({ entregadoMoneda: String(e.entregadoMoneda).toUpperCase(), entregadoMonto: a, recibidoMoneda: String(e.recibidoMoneda).toUpperCase(), recibidoMonto: b }) : "";
+    return `<div class="settings-card gx-anotar gx-cambio-form">
+      <div class="settings-card-title gx-anotar-tit">${t("Anotar un cambio de moneda","Enter a currency exchange","Anotar um câmbio","רישום המרת מטבע")}</div>
+      <div class="gx-anotar-grid">
+        <label>${t("Fecha","Date","Data","תאריך")}<input type="date" id="gxCam_fecha" data-gcam="fecha" value="${esc(e.fecha)}"></label>
+        <label>${t("Entregaste","You gave","Você entregou","נתתם")}<input type="text" inputmode="decimal" class="gx-monto" id="gxCam_entregadoMonto" data-gcam="entregadoMonto" value="${esc(montoEnCampo(e.entregadoMonto))}"></label>
+        <label>${t("Moneda","Currency","Moeda","מטבע")}<input type="text" class="gx-moneda" autocomplete="off" aria-autocomplete="list" aria-haspopup="listbox" maxlength="3" id="gxCam_entregadoMoneda" data-gcam="entregadoMoneda" value="${esc(e.entregadoMoneda)}"></label>
+        <label>${t("Recibiste (ya sin la comisión)","You received (after the fee)","Você recebeu (já sem a comissão)","קיבלתם (אחרי העמלה)")}<input type="text" inputmode="decimal" class="gx-monto" id="gxCam_recibidoMonto" data-gcam="recibidoMonto" value="${esc(montoEnCampo(e.recibidoMonto))}"></label>
+        <label>${t("Moneda","Currency","Moeda","מטבע")}<input type="text" class="gx-moneda" autocomplete="off" aria-autocomplete="list" aria-haspopup="listbox" maxlength="3" id="gxCam_recibidoMoneda" data-gcam="recibidoMoneda" value="${esc(e.recibidoMoneda)}"></label>
+        <label class="gx-ancho">${t("Detalle (opcional)","Details (optional)","Detalhe (opcional)","פירוט (לא חובה)")}<input type="text" maxlength="300" id="gxCam_observaciones" data-gcam="observaciones" value="${esc(e.observaciones)}" placeholder="${esc(t("Por ejemplo: con comisión de XCG 15","For example: with a XCG 15 fee","Por exemplo: com comissão de XCG 15","למשל: עם עמלה של XCG 15"))}"></label>
+        <div class="gx-ancho gx-mov-adj">
+          ${e.archivo ? `<span class="gx-mov-arch">📎 ${esc(e.archivo.nombre)}</span>
+            <button type="button" class="gx-link gx-lquitar" data-action="gastos-cambio-adj-quitar" aria-label="${esc(t("Quitar el comprobante «{n}»","Remove the receipt “{n}”","Tirar o comprovante «{n}»","הסרת הקבלה «{n}»",{ n: e.archivo.nombre }))}">✕ ${t("Quitar","Remove","Tirar","הסרה")}</button>`
+            : `<button type="button" class="btn-secondary gx-mov-adj-btn" data-action="gastos-cambio-adjuntar" data-id="">📎 ${t("Adjuntar comprobante","Attach a receipt","Anexar comprovante","צירוף קבלה")}</button>`}
+          <small class="gx-pista">${t("Opcional: el comprobante de la casa de cambio. Va como anexo en el PDF de entrega.","Optional: the exchange office's receipt. It goes as an annex in the delivery PDF.","Opcional: o comprovante da casa de câmbio. Vai como anexo no PDF de entrega.","לא חובה: הקבלה של חלפן הכספים. היא נכנסת כנספח ל-PDF.")}</small>
+        </div>
+      </div>
+      <p class="setting-sub gx-cam-tasa" id="gxCamTasa" aria-live="polite">${vista ? esc(t("Tasa: {t}","Rate: {t}","Taxa: {t}","שער: {t}",{ t: vista })) : ""}</p>
+      ${e.error ? `<div class="form-error" role="alert">${esc(e.error)}</div>` : ""}
+      <div class="gx-acciones gx-acciones-chicas"><button type="button" class="btn-secondary" data-action="gastos-cambio-cerrar" ${e.guardando ? "disabled" : ""}>${t("Cancelar","Cancel","Cancelar","ביטול")}</button><button type="button" class="btn-primary" data-action="gastos-cambio-anotar" ${e.guardando ? "disabled" : ""}>${e.guardando ? t("Guardando…","Saving…","Salvando…","שומר…") : t("Anotar","Save","Anotar","רישום")}</button></div>
+    </div>`;
+  })() : editable ? `<button type="button" class="btn-secondary gx-cambio-abrir" data-action="gastos-cambio-abrir" data-id="${esc(r.id)}">+ ${t("Anotar un cambio de moneda","Enter a currency exchange","Anotar um câmbio","רישום המרת מטבע")}</button>` : "";
+  return `<details class="gx-rapido gx-cambios"${cs.length || f ? " open" : ""}>
+      <summary>💱 ${t("Cambios de moneda","Currency exchanges","Câmbios de moeda","המרות מטבע")}${cs.length ? ` (${cs.length})` : ""}</summary>
+      <p class="setting-sub">${t("Si cambiaste plata en efectivo (por ejemplo, dólares por florines), anotalo: no es un gasto, pero da la tasa para pasar a dólares lo que pagaste en efectivo, y va en el PDF de entrega.","If you exchanged cash (for example, dollars for florins), enter it: it isn't an expense, but it gives the rate to convert what you paid in cash to dollars, and it goes in the delivery PDF.","Se você trocou dinheiro em espécie (por exemplo, dólares por florins), anote: não é uma despesa, mas dá a taxa para passar para dólares o que pagou em dinheiro, e vai no PDF de entrega.","אם המרתם מזומן (למשל דולרים לגילדנים), רשמו את זה: זו לא הוצאה, אבל זה נותן את השער להמרת מה ששילמתם במזומן לדולרים, וזה נכנס ל-PDF.")}</p>
+      ${cs.length ? `<div class="gx-movs">${filas}</div>` : ""}
+      ${form}
+    </details>`;
+}
+async function anotarCambio(){
+  const f = gastosCambio;
+  if(!f || f.guardando) return;
+  const em = String(f.entregadoMoneda || "").trim().toUpperCase(), rm = String(f.recibidoMoneda || "").trim().toUpperCase();
+  const a = numeroEscrito(f.entregadoMonto), b = numeroEscrito(f.recibidoMonto);
+  const mal = !/^\d{4}-\d{2}-\d{2}$/.test(f.fecha || "") ? t("Falta la fecha.","The date is missing.","Falta a data.","חסר התאריך.")
+    : !(a > 0) || a >= 1e10 ? t("Falta cuánto entregaste.","How much you gave is missing.","Falta quanto você entregou.","חסר כמה נתתם.")
+    : !(b > 0) || b >= 1e10 ? t("Falta cuánto recibiste.","How much you received is missing.","Falta quanto você recebeu.","חסר כמה קיבלתם.")
+    : !/^[A-Z]{3}$/.test(em) || !/^[A-Z]{3}$/.test(rm) ? t("Las monedas van con su código de tres letras (USD, EUR, MXN…).","Currencies go with their three-letter code (USD, EUR, MXN…).","As moedas vão com seu código de três letras (USD, EUR, MXN…).","המטבעות נכתבים בקוד של שלוש אותיות (USD, EUR, MXN…).")
+    : em === rm ? t("Las dos monedas son la misma: un cambio es de una moneda a otra.","Both currencies are the same: an exchange goes from one currency to another.","As duas moedas são a mesma: um câmbio é de uma moeda para outra.","שני המטבעות זהים: המרה היא ממטבע אחד לאחר.") : "";
+  if(mal){ f.error = mal; render(); return; }
+  f.guardando = true; f.error = ""; render();
+  try{
+    const id = await store.gastos.anotarCambio({ rendicionId: f.rid, fecha: f.fecha, entregadoMoneda: em, entregadoMonto: redondo(a), recibidoMoneda: rm, recibidoMonto: redondo(b),
+      observaciones: String(f.observaciones || "").trim().slice(0, 300) });
+    gastosCambio = null;
+    if(f.archivo){
+      gastosMovSubiendo = id; render();
+      try{ await store.gastos.subirComprobanteCambio(id, f.archivo.dataUrl, f.archivo.nombre, f.archivo.tipo); }
+      catch(err){
+        console.error("No se pudo subir el comprobante del cambio:", err);
+        appAlert(t("Se anotó, pero no se pudo subir el comprobante: {m}. Probá de nuevo con «Adjuntar comprobante» en el cambio.","It was saved, but the receipt couldn't be uploaded: {m}. Try again with “Attach a receipt” on the exchange.","Foi anotado, mas não foi possível enviar o comprovante: {m}. Tente de novo com «Anexar comprovante» no câmbio.","נרשם, אבל לא ניתן היה להעלות את הקבלה: {m}. נסו שוב עם «צירוף קבלה» בהמרה.",{ m: detalleDeError(err) }));
+      }
+      gastosMovSubiendo = null;
+    }
+  }catch(err){
+    console.error("No se pudo anotar el cambio:", err);
+    f.guardando = false; f.error = t("No se pudo guardar: {m}","Couldn't save: {m}","Não foi possível salvar: {m}","לא ניתן היה לשמור: {m}",{ m: detalleDeError(err) });
+  }
+  render();
+  const x = document.querySelector('.gastos-view [data-action="gastos-cambio-abrir"]'); if(x && !gastosCambio) x.focus();
+}
+function verComprobanteCambio(id){
+  const c = gastosDatos && gastosDatos.cambios.find(x => x.id === id);
+  if(!c || !esUrlFirmada(c.archivoUrl)) return;
+  abrirComprobante(c, c.archivoNombre || t("Cambio de moneda","Currency exchange","Câmbio","המרת מטבע"));
+}
+// Los cambios que sirven para pasar a dólares un gasto en efectivo: de su rendición, de la moneda del gasto a la que se rinde.
+function cambiosParaGasto(d){
+  const r = rendicionDeVinculo(d.vinculo), m = String(d.moneda || "").toUpperCase(), rm = String(d.rendidoMoneda || "").toUpperCase();
+  return r ? cambiosDe(r.id).filter(c => c.recibidoMoneda === m && c.entregadoMoneda === rm) : [];
+}
+
 // El total rápido: cuánto se gastó en la actividad, sin el detalle. Vale el
 // detalle; si no coinciden se avisa, y la persona puede confirmar el suyo.
 function renderTotalRapido(r, editable, detalle){
@@ -27002,6 +27121,13 @@ function renderGasto(){
   const tipos = gastoTipos().filter(x => !x.oculto || x.key === d.tipo);
   if(d.tipo && !tipos.some(x => x.key === d.tipo)) tipos.push({ key: d.tipo, label: nombreTipoGasto(d.tipo) });
   const otraMoneda = d.moneda && d.moneda !== d.rendidoMoneda;
+  // Pagado en efectivo en la moneda de un cambio anotado en su rendición: la cuenta en dólares, hecha con esa tasa (como la skill).
+  const montoG = numeroEscrito(d.monto);
+  const usarCambio = editable && otraMoneda && d.formaPago === "efectivo" && montoG > 0 ? cambiosParaGasto(d).map(c => {
+    const v = redondo(montoG * c.entregadoMonto / c.recibidoMonto);
+    return `<div class="gx-pista gx-usar-cambio">💱 ${esc(t("Con el cambio del {f} ({t}): {m}","With the exchange of {f} ({t}): {m}","Com o câmbio de {f} ({t}): {m}","לפי ההמרה מ-{f} ({t}): {m}",{ f: fmtDate(c.fecha), t: textoDeTasa(c), m: fmtMonto(c.entregadoMoneda, v) }))}
+      ${numeroEscrito(d.rendidoMonto) === v ? `<b>✓</b>` : `<button type="button" class="gx-link" data-action="gasto-usar-cambio" data-monto="${esc(String(v))}">${t("Usar","Use","Usar","להשתמש")}</button>`}</div>`;
+  }).join("") : "";
   // Un comprobante que llegó tarde a una rutina ya aprobada (18/11): la de su mes ya no se ofrece; se dice qué hacer.
   const mesG = String(d.fecha || "").slice(0, 7), rMes = editable && /^\d{4}-\d{2}$/.test(mesG) && rendicionDeVinculo("mes:" + mesG);
   const pistaVaEn = rMes && rMes.estado === "aprobada" && !String(d.vinculo).startsWith("post:") && d.vinculo !== "mes:" + mesG
@@ -27068,6 +27194,7 @@ function renderGasto(){
             ${otraMoneda ? campo(t("Monto en {m}","Amount in {m}","Valor em {m}","סכום ב-{m}",{ m: esc(d.rendidoMoneda) }), `<input type="text" id="gxRendido" inputmode="decimal" class="gx-monto gx-monto-2" data-gcampo="rendidoMonto" value="${esc(montoEnCampo(d.rendidoMonto))}">`)
               + campo(t("Se rinde en","Reported in","Presta-se em","מדווח ב"), `<input type="text" id="gxRendidoMoneda" class="gx-moneda" autocomplete="off" aria-autocomplete="list" aria-haspopup="listbox" maxlength="3" data-gcampo="rendidoMoneda" value="${esc(d.rendidoMoneda)}"${mal("rendidoMoneda")}>`)
               + `<small class="gx-pista">${t("En {m}: lo que te cobró el banco.","In {m}: what your bank charged you.","Em {m}: o que o banco te cobrou.","ב-{m}: מה שהבנק חייב אתכם.",{ m: esc(d.rendidoMoneda) })}</small>` : ""}
+            ${usarCambio}
           </div>
           ${campo(t("Fecha","Date","Data","תאריך"), `<input type="date" id="gxFecha" data-gcampo="fecha" value="${esc(d.fecha)}"${mal("fecha")}${marca("fecha")}>`)}
           ${campo(t("Va en","Goes in","Vai em","שייך ל"), `<select id="gxVinculo" class="gx-elige" data-gcampo="vinculo">${opcionesDeVinculo(g, d.vinculo)}</select>${pistaVaEn ? `<small class="gx-pista gx-pista-vaen">${esc(pistaVaEn)}</small>` : ""}`)}
@@ -27432,6 +27559,26 @@ const GASTOS_ACCIONES = {
   "gastos-mov-cerrar": async () => { gastosMov = null; render(); const x = document.querySelector('.gastos-view [data-action="gastos-mov-abrir"]'); if(x) x.focus(); },
   // Elegir el comprobante: para el formulario de anotar (sin id) o para un movimiento ya anotado.
   "gastos-mov-adjuntar": async el => { gastosMovPara = el.dataset.id || "form"; gastosMovArchivoInput.value = ""; gastosMovArchivoInput.click(); },
+  // Los cambios de moneda de una rendición.
+  "gastos-cambio-abrir": async el => {
+    gastosCambio = { rid: el.dataset.id, fecha: todayISO(), entregadoMoneda: "USD", entregadoMonto: "", recibidoMoneda: "", recibidoMonto: "", observaciones: "", archivo: null, guardando: false, error: "" };
+    render(); const x = document.getElementById("gxCam_fecha"); if(x) x.focus();
+  },
+  "gastos-cambio-cerrar": async () => { gastosCambio = null; render(); const x = document.querySelector('.gastos-view [data-action="gastos-cambio-abrir"]'); if(x) x.focus(); },
+  "gastos-cambio-anotar": async () => anotarCambio(),
+  "gastos-cambio-adjuntar": async el => { gastosMovPara = el.dataset.id ? "c:" + el.dataset.id : "cform"; gastosMovArchivoInput.value = ""; gastosMovArchivoInput.click(); },
+  "gastos-cambio-adj-quitar": async () => { if(!gastosCambio) return; gastosCambio.archivo = null; render(); const x = document.querySelector('.gastos-view [data-action="gastos-cambio-adjuntar"][data-id=""]'); if(x) x.focus(); },
+  "gastos-cambio-ver": async el => verComprobanteCambio(el.dataset.id),
+  "gastos-cambio-borrar": async el => {
+    if(!await appConfirm(t("¿Borrar este cambio de moneda?","Delete this currency exchange?","Apagar este câmbio?","למחוק את המרת המטבע?"), { danger: true, okLabel: t("Borrar","Delete","Apagar","מחיקה") })) return;
+    try{ await store.gastos.borrarCambio(el.dataset.id); }
+    catch(err){ appAlert(t("No se pudo borrar: {m}","Couldn't delete it: {m}","Não foi possível apagar: {m}","המחיקה נכשלה: {m}",{ m: detalleDeError(err) })); }
+  },
+  "gasto-usar-cambio": async el => {
+    const e = gastoEdit; if(!e) return;
+    e.d.rendidoMonto = el.dataset.monto; e.cambiado = true; (e.tocados = e.tocados || new Set()).add("rendidoMonto");
+    renderGasto(); const x = document.getElementById("gxRendido"); if(x) x.focus();
+  },
   "gastos-mov-adj-quitar": async () => {
     if(!gastosMov) return;
     gastosMov.archivo = null; render();
@@ -27549,6 +27696,15 @@ function gastosAlEscribir(el, evento){
     if(el.dataset.gmov === "tipo") render();
     return true;
   }
+  if(el.dataset.gcam && gastosCambio){
+    gastosCambio[el.dataset.gcam] = el.value;
+    // La tasa, a la vista mientras se escribe (sin volver a dibujar: no se pierde el foco).
+    const f = gastosCambio, a = numeroEscrito(f.entregadoMonto), b = numeroEscrito(f.recibidoMonto), em = String(f.entregadoMoneda).trim().toUpperCase(), rm = String(f.recibidoMoneda).trim().toUpperCase();
+    const x = document.getElementById("gxCamTasa");
+    if(x) x.textContent = a > 0 && b > 0 && /^[A-Z]{3}$/.test(em) && /^[A-Z]{3}$/.test(rm) && em !== rm
+      ? t("Tasa: {t}","Rate: {t}","Taxa: {t}","שער: {t}",{ t: textoDeTasa({ entregadoMoneda: em, entregadoMonto: a, recibidoMoneda: rm, recibidoMonto: b }) }) : "";
+    return true;
+  }
   if(el.dataset.gtipo){
     const a = borradorTiposDeGasto(), x = a.tipos[Number(el.dataset.gtipo)];
     if(x){ x.label = el.value; if(!a.cambiado){ a.cambiado = true; a.ok = false; render(); } }
@@ -27592,26 +27748,29 @@ gastosMovArchivoInput.addEventListener("change", async () => {
   gastosMovArchivoInput.value = ""; gastosMovPara = null;
   if(!f || !para) return;
   let a;
+  // «form»: el de anotar plata; «cform»: el de anotar un cambio; «c:<id>»: un cambio ya anotado; si no, un movimiento.
+  const F = para === "form" ? gastosMov : para === "cform" ? gastosCambio : null;
   try{ a = await prepararComprobanteMov(f); }
   catch(err){
-    if(para === "form" && gastosMov){ gastosMov.error = err.message; render(); }
+    if(F){ F.error = err.message; render(); }
     else appAlert(err.message);
     return;
   }
-  if(para === "form"){
-    if(!gastosMov) return;
-    gastosMov.archivo = a; gastosMov.error = ""; render();
-    const x = document.querySelector('.gastos-view [data-action="gastos-mov-adj-quitar"]'); if(x) x.focus();
+  if(para === "form" || para === "cform"){
+    if(!F) return;
+    F.archivo = a; F.error = ""; render();
+    const x = document.querySelector(`.gastos-view [data-action="${para === "form" ? "gastos-mov-adj-quitar" : "gastos-cambio-adj-quitar"}"]`); if(x) x.focus();
     return;
   }
-  gastosMovSubiendo = para; render();
-  try{ await store.gastos.subirComprobanteMov(para, a.dataUrl, a.nombre, a.tipo); }
+  const esCambio = para.startsWith("c:"), idDe = esCambio ? para.slice(2) : para;
+  gastosMovSubiendo = idDe; render();
+  try{ await (esCambio ? store.gastos.subirComprobanteCambio(idDe, a.dataUrl, a.nombre, a.tipo) : store.gastos.subirComprobanteMov(idDe, a.dataUrl, a.nombre, a.tipo)); }
   catch(err){
     console.error("No se pudo subir el comprobante del movimiento:", err);
     appAlert(t("No se pudo subir el comprobante: {m}","Couldn't upload the receipt: {m}","Não foi possível enviar o comprovante: {m}","לא ניתן היה להעלות את הקבלה: {m}",{ m: detalleDeError(err) }));
   }
   gastosMovSubiendo = null; render();
-  const x = document.querySelector(`.gastos-view [data-action="gastos-mov-ver"][data-id="${CSS.escape(para)}"], .gastos-view [data-action="gastos-mov-adjuntar"][data-id="${CSS.escape(para)}"]`);
+  const x = document.querySelector(`.gastos-view :is([data-action="gastos-mov-ver"], [data-action="gastos-mov-adjuntar"], [data-action="gastos-cambio-ver"], [data-action="gastos-cambio-adjuntar"])[data-id="${CSS.escape(idDe)}"]`);
   if(x) x.focus();
 });
 
