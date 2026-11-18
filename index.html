@@ -1100,6 +1100,16 @@
   .gx-cambios .gx-movs{ margin:8px 0 10px; }
   .gx-cambio-abrir{ margin-top:4px; }
   .gx-cam-tasa{ font-weight:700; color:var(--ink); min-height:1.2em; }
+  /* El PDF de entrega y el resumen por mes (etapa 4, 18/11). */
+  .gx-pdf{ padding:14px 16px; margin:0 0 14px; }
+  .gx-pdf .gx-h3{ margin:0 0 4px; }
+  .gx-pdf-idiomas{ border:0; padding:0; margin:12px 0 0; display:flex; flex-wrap:wrap; gap:6px 18px; min-width:0; }
+  .gx-pdf-idiomas legend{ padding:0; margin-bottom:6px; }
+  .gx-pdf-idiomas .gx-check{ margin-top:0; }
+  .gx-pdf-nota{ margin-top:6px; }
+  .gx-pdf-meses{ display:flex; flex-wrap:wrap; gap:10px 16px; margin-top:10px; }
+  .gx-pdf-meses .gx-campo{ flex:1 1 160px; max-width:240px; }
+  .gx-pdf-avance{ font-weight:600; color:var(--ink); margin:10px 0 0; }
   .gx-plata .gx-usar-cambio{ grid-column:1 / -1; display:flex; align-items:center; gap:4px 10px; flex-wrap:wrap; font-size:13px; color:var(--ink); }
   .gx-tipos .gx-tipo-ofrecer{ flex:none; font-size:13px; white-space:nowrap; }
   .gx-anotar-tit{ margin:2px 0 10px; }
@@ -5271,8 +5281,12 @@ const LANGS = [
   { key: "pt", label: "PT", name: "Português" },
   { key: "he", label: "HE", name: "עברית" },
 ];
+// El idioma de un PDF que se está armando (enIdioma, en Gastos): mientras dura, t() y las fechas hablan ese.
+// Va acá, junto a LANGS, por lo mismo que LANGS (ver arriba).
+let idiomaForzado = null;
 function currentLang(){
   try{
+    if(idiomaForzado) return idiomaForzado;
     const saved = localStorage.getItem("ra_lang");
     if(LANGS.some(l=>l.key===saved)) return saved;
   }catch(e){ /* sin localStorage, se queda en español */ }
@@ -24855,6 +24869,7 @@ let gastosMov = null;                   // el formulario de «Anotar plata recib
 let gastosMovPara = null;               // a qué va el comprobante que se está eligiendo: "form" o el id de un movimiento
 let gastosMovSubiendo = null;           // el movimiento (o el cambio de moneda) al que se le está subiendo un comprobante
 let gastosCambio = null;                // el formulario de «Anotar un cambio de moneda» de una rendición
+let gastosPdf = null;                   // el panel de un PDF de entrega (para: id de la rendición o "resumen")
 let gastosTotal = null;                 // el borrador del total rápido de la rendición abierta
 let gastosAdmin = null;                 // el borrador de los tipos (Administración → Gastos)
 let gastosActividad = "";               // «Una actividad sin comprobantes»: la elegida
@@ -24920,7 +24935,7 @@ function sincronizarGastos(){
 function cortarGastos(){
   if(unsubGastos){ unsubGastos(); unsubGastos = null; }
   gastosDatos = null; gastosError = ""; gastosAbierta = null; gastosSubida = null; gastosTotal = null;
-  gastosMov = null; gastosMovPara = null; gastosCambio = null; gastosCuentaDe = ""; gastosAdmin = null; gastosActividad = ""; gastosOtraAbierta = false; gastosOcupado = false;
+  gastosMov = null; gastosMovPara = null; gastosCambio = null; gastosPdf = null; gastosCuentaDe = ""; gastosAdmin = null; gastosActividad = ""; gastosOtraAbierta = false; gastosOcupado = false;
   lectorCola = []; lectorEstado = null; gastosLista = null; gastosListaAviso = ""; gastosDestino = null; gastosSel = null;
   if(gastoOverlay && !gastoOverlay.hidden) cerrarGasto(true);
 }
@@ -26193,6 +26208,7 @@ function renderMisRendiciones(){
     ${grupo(t("Para completar y mandar","To complete and send","Para completar e mandar","להשלמה ולשליחה"), mias.filter(r => rendicionEditable(r)))}
     ${grupo(t("En revisión","In review","Em revisão","בבדיקה"), mias.filter(r => r.estado === "enviada"))}
     ${grupo(t("Aprobadas","Approved","Aprovadas","אושרו"), mias.filter(r => r.estado === "aprobada"))}
+    ${renderResumenPdf()}
     ${sinComprobantes}`;
 }
 // Una fila de gasto (en la rendición abierta).
@@ -26591,9 +26607,10 @@ function barraDeRendicion(r, gs, comoAdmin){
   const quien = esc(nombreDePersona(r.autor));
   if(r.estado === "aprobada"){
     const reabrir = isAdmin() ? `<button type="button" class="btn-secondary" data-action="gastos-reabrir" data-id="${esc(r.id)}" ${gastosOcupado ? "disabled" : ""}>↩️ ${t("Reabrir","Reopen","Reabrir","פתיחה מחדש")}</button>` : "";
+    const pdf = gs.length && !(gastosPdf && gastosPdf.para === r.id) ? `<button type="button" class="btn-primary" data-action="gastos-pdf-abrir" data-id="${esc(r.id)}">📄 ${t("PDF de entrega","PDF to deliver","PDF de entrega","PDF למסירה")}</button>` : "";
     return barraDePaso("bien", t("Aprobada el {f} por {n}","Approved on {f} by {n}","Aprovada em {f} por {n}","אושר ב-{f} ע״י {n}",{ f: esc(fechaDeMarca(r.aprobadaEl)), n: esc(nombreDePersona(r.aprobadaPor)) }),
       t("Sus gastos ya cuentan en la cuenta corriente.","Its expenses already count in the balance.","As despesas já contam na conta corrente.","ההוצאות כבר נספרות בחשבון השוטף.")
-        + (isAdmin() ? " " + t("¿Llegó un comprobante tarde? Reabrila para sumarlo.","Did a receipt arrive late? Reopen it to add it.","Chegou um comprovante atrasado? Reabra para somá-lo.","הגיעה קבלה באיחור? פתחו מחדש כדי להוסיף אותה.") : ""), reabrir);
+        + (isAdmin() ? " " + t("¿Llegó un comprobante tarde? Reabrila para sumarlo.","Did a receipt arrive late? Reopen it to add it.","Chegou um comprovante atrasado? Reabra para somá-lo.","הגיעה קבלה באיחור? פתחו מחדש כדי להוסיף אותה.") : ""), pdf + reabrir);
   }
   if(comoAdmin && isAdmin()){
     if(r.estado === "enviada") return barraDePaso("aviso", t("Para revisar","To review","Para revisar","לבדיקה"),
@@ -26657,7 +26674,7 @@ function renderRendicionAbierta(comoAdmin){
       </div>
     </div>
     ${renderCamino(r, gs)}
-    ${enLista || enSel ? "" : barraDeRendicion(r, gs, comoAdmin)}
+    ${enLista || enSel ? "" : barraDeRendicion(r, gs, comoAdmin) + renderPdfDeRendicion(r)}
     ${mia && editable ? renderSubida() + renderAvisoDeLista() : ""}
     ${enLista ? renderListaDeGastos(r.id)
       : gs.length ? `${enSel ? "" : cabeceraDeFilas(r.id, gs.length, editable)}<div class="gx-filas">${gs.map(renderFilaGasto).join("")}</div>` : ""}
@@ -26861,6 +26878,551 @@ async function abrirRendicionDeActividad(){
     gastosActividad = ""; gastosOtraAbierta = false; gastosAbierta = id; gastosTotal = null;
   }catch(err){ console.error("No se pudo abrir la rendición:", err); appAlert(t("No se pudo abrir: {m}","Couldn't open it: {m}","Não foi possível abrir: {m}","הפתיחה נכשלה: {m}",{ m: detalleDeError(err) })); }
   gastosOcupado = false; render(); scrollToTop();
+}
+
+// ---- Los PDF de entrega (etapa 4, 18/11/2026; docs/rendicion-gastos/README.md) ----
+// El de una actividad aprobada (lo eligió el usuario: solo aprobada): sus comprobantes en orden, cada página
+// con el sello «N° X» (el mismo número que su fila en la planilla), la planilla en los idiomas que se elijan, la
+// tabla de los cambios de moneda y, al final, el comprobante de cada cambio como anexo. Y el resumen por mes.
+// Como en la rendición que el usuario armaba a mano: nunca el nombre de quien rinde en el documento.
+// Se arman en el aparato de quien descarga con pdf-lib, servida desde el mismo sitio (herramientas/publicar/pdf/).
+// Las letras las dibuja el navegador en un lienzo (el hebreo, de derecha a izquierda, con las letras del aparato)
+// y van al PDF como imagen: las letras de pdf-lib son solo latinas.
+const ARMADOR_PDF = { carpeta: "pdf/", programa: "pdf-lib.min.js" };
+async function cargarArmadorPdf(){
+  if(!window.PDFLib) await cargarScript(new URL(ARMADOR_PDF.carpeta + ARMADOR_PDF.programa, location.href).href);
+  if(!window.PDFLib || !window.PDFLib.PDFDocument) throw new Error("pdf-lib");
+  return window.PDFLib;
+}
+// Los textos en un idioma que no es el de la app: t() y las fechas leen este mientras dura fn. Siempre de un
+// tirón (sin esperar nada adentro): si no, la app se dibujaría en ese idioma.
+function enIdioma(l, fn){
+  const antes = idiomaForzado; idiomaForzado = l;
+  try{ return fn(); } finally{ idiomaForzado = antes; }
+}
+const IDIOMAS_PDF = ["es", "en", "pt", "he"];
+// «Octubre 2026», como nombra el usuario sus PDF.
+function mesYAnio(iso){
+  const s = nombreDeMes(iso).replace(/\s+de\s+/g, " ");
+  return s.charAt(0).toLocaleUpperCase(dateLocale()) + s.slice(1);
+}
+function fechaCorta(iso){
+  if(!iso) return "";
+  try{ return new Date(String(iso).slice(0, 10) + "T00:00:00").toLocaleDateString(dateLocale(), { day: "numeric", month: "numeric", year: "numeric" }); }
+  catch(e){ return String(iso); }
+}
+// El mes de la rendición: el de la rutina, o el de la actividad (si cruza de mes, los dos).
+function mesDeEntrega(r){
+  if(r.rutinaMes) return mesYAnio(r.rutinaMes);
+  const p = r.postId && getPostById(r.postId);
+  const fechas = gastosDe(r.id).map(g => g.fecha).filter(Boolean).sort();
+  const ini = String((p && (p.startDate || p.date)) || fechas[0] || todayISO());
+  const fin = String((p && (p.endDate || p.startDate || p.date)) || fechas[fechas.length - 1] || ini);
+  if(ini.slice(0, 7) >= fin.slice(0, 7)) return mesYAnio(ini);
+  const a = mesYAnio(ini), b = mesYAnio(fin);
+  return (ini.slice(0, 4) === fin.slice(0, 4) ? a.replace(/\s*\d{4}$/, "") : a) + " – " + b;
+}
+// La «Actividad» de la planilla del usuario: Rutina, Visita, Curso o Seminario (decidido el 18/11: Congreso va
+// como Seminario; Virtual y Otro, como Rutina).
+function actividadDePlanilla(r){
+  const p = !r.rutinaMes && r.postId && getPostById(r.postId), k = p && p.activityType;
+  const clave = k === "congreso" ? "seminario" : ["visita", "curso", "seminario"].includes(k) ? k : "rutina";
+  return ({ rutina: t("Rutina","Routine","Rotina","שגרה"), visita: t("Visita","Visit","Visita","ביקור"),
+    curso: t("Curso","Course","Curso","קורס"), seminario: t("Seminario","Seminar","Seminário","סמינר") })[clave];
+}
+// El peso mexicano va «MX», como en su Sheet (decidido el 17/11); el sistema lo guarda MXN.
+const monedaDePlanilla = m => m === "MXN" ? "MX" : String(m || "");
+const montoDePlanilla = (m, n) => `${monedaDePlanilla(m)} ${numContable(Number(n))}`;
+const totalesDePlanilla = s => monedasEnOrden(s).map(m => montoDePlanilla(m, s[m])).join("\n");
+const tasaDePlanilla = c => `1 ${monedaDePlanilla(c.entregadoMoneda)} = ${NUM_TASA.format(c.recibidoMonto / c.entregadoMonto)} ${monedaDePlanilla(c.recibidoMoneda)}`;
+function nombreDeArchivoPdf(texto){
+  return String(texto).replace(/[\\/:*?"<>|\u0000-\u001f]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 150) + ".pdf";
+}
+// Una fila de la planilla, con las columnas de la del usuario.
+function filaDePlanilla(g, n, actividad){
+  const ren = rendidoDe(g);
+  const forma = g.formaPago === "tarjeta" ? t("Tarjeta","Card","Cartão","אשראי") : g.formaPago === "efectivo" ? t("Efectivo","Cash","Dinheiro","מזומן")
+    : g.formaPago === "transferencia" ? t("Transferencia","Transfer","Transferência","העברה") : "";
+  const quien = g.pago === "organizacion" ? t("Organización","Organization","Organização","הארגון")
+    : g.pago === "otro" ? (g.pagoQuien ? nombreQuePago(g.pagoQuien) : t("Otra persona","Someone else","Outra pessoa","אדם אחר"))
+    : t("Quien rinde","Submitter","Quem presta contas","מגיש/ת הדוח");
+  const obs = [g.formaPago === "tarjeta" && g.tarjeta ? t("Tarjeta terminada en {n}","Card ending in {n}","Cartão terminado em {n}","כרטיס המסתיים ב-{n}",{ n: g.tarjeta }) : "",
+    ren ? notaDeMoneda(g.moneda, g.monto, ren.moneda, ren.monto) : "", String(g.observaciones || "").trim()].filter(Boolean).join("\n");
+  return [String(n), fechaCorta(g.fecha), g.concepto || "", actividad, nombreTipoGasto(g.tipo), ren ? monedaDePlanilla(ren.moneda) : "",
+    ren ? numContable(Number(ren.monto)) : "", forma, quien, g.factura === false ? t("No","No","Não","לא") : t("Sí","Yes","Sim","כן"), obs];
+}
+
+// ---- Las hojas que dibuja la app (planilla, resumen y avisos), en un lienzo ----
+const PDF_PX = 2.5;   // puntos de lienzo por punto del PDF: unos 180 por pulgada, nítido al imprimir
+const PDF_LETRA = 'Montserrat, system-ui, "Segoe UI", Roboto, Arial, "Noto Sans Hebrew", sans-serif';
+const PDF_COLOR = { tinta: "#1d2a2c", suave: "#5b6b6e", linea: "#c3d2d4", cab: "#0f4c55", cebra: "#f1f7f7", total: "#dcecee", fuerte: "#b8d9dd", sello: "#c62828" };
+const LETRAS_RTL = /[\u0590-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFF]/;
+// «הוצאה ב-UY $ 790.-»: el tramo latino, entre marcas de aislamiento (sin la puntuación del borde, que es del hebreo).
+const aislarLatino = s => s.replace(/[A-Za-z0-9\u00C0-\u024F$€£₪][^\u0590-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFF]*/g, m => {
+  const [, tramo, borde] = m.match(/^([\s\S]*?)([\s·—–:,;()]*)$/);
+  return "\u2066" + tramo + "\u2069" + borde;
+});
+// Corta un texto en renglones que entran en `ancho` (en orden de lectura: el navegador acomoda después cada
+// renglón de derecha a izquierda si hace falta). Una palabra que sola no entra se corta por letras.
+function renglones(ctx, texto, ancho){
+  const out = [];
+  String(texto ?? "").split("\n").forEach(par => {
+    let linea = "";
+    par.split(/\s+/).filter(Boolean).forEach(pal => {
+      const junto = linea ? linea + " " + pal : pal;
+      if(ctx.measureText(junto).width <= ancho){ linea = junto; return; }
+      if(linea) out.push(linea);
+      linea = "";
+      let resto = pal;
+      while(ctx.measureText(resto).width > ancho && resto.length > 1){
+        let i = resto.length - 1;
+        while(i > 1 && ctx.measureText(resto.slice(0, i)).width > ancho) i--;
+        out.push(resto.slice(0, i)); resto = resto.slice(i);
+      }
+      linea = resto;
+    });
+    if(linea || !par.trim()) out.push(linea);
+  });
+  return out.length ? out : [""];
+}
+function recortarTexto(ctx, s, ancho){
+  s = String(s || "");
+  if(ctx.measureText(s).width <= ancho) return s;
+  while(s.length > 1 && ctx.measureText(s + "…").width > ancho) s = s.slice(0, -1);
+  return s + "…";
+}
+// Un armador de hojas A4 (apaisadas o no) en el idioma del momento: lleva la altura por la que va y abre otra
+// hoja cuando no entra lo que sigue. Las posiciones son «desde el principio del renglón»: en hebreo, desde la
+// derecha (las columnas quedan espejadas).
+function armadorDeHojas(apaisada){
+  const W = apaisada ? 842 : 595, H = apaisada ? 595 : 842, M = 30, rtl = isRTL();
+  const pie = `Toldot · ${fechaCorta(todayISO())}`;
+  const A = { hojas: [], W, H, M, rtl, util: W - 2 * M, y: M, ctx: null };
+  A.nueva = () => {
+    const c = document.createElement("canvas");
+    c.width = Math.round(W * PDF_PX); c.height = Math.round(H * PDF_PX);
+    const ctx = c.getContext("2d");
+    ctx.scale(PDF_PX, PDF_PX);
+    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, W, H);
+    ctx.direction = rtl ? "rtl" : "ltr"; ctx.textBaseline = "alphabetic";
+    A.ctx = ctx; A.hojas.push(c); A.y = M;
+    A.letra(6.5); ctx.fillStyle = PDF_COLOR.suave;
+    A.escribir(pie, M, H - M / 2 - 2, A.util, "inicio");
+  };
+  A.letra = (tam, peso = 400) => { A.ctx.font = `${peso} ${tam}px ${PDF_LETRA}`; };
+  A.fondo = () => H - M - 8;
+  A.queda = () => A.fondo() - A.y;
+  // x lógico (desde el principio del renglón) → x en la hoja.
+  A.izq = (x, w) => rtl ? W - x - w : x;
+  A.escribir = (s, x, y, w, al = "inicio", pad = 0) => {
+    const ctx = A.ctx, izq = A.izq(x, w);
+    // En hebreo: lo que no tiene letras hebreas (un monto, una tasa, un concepto en castellano) va de izquierda
+    // a derecha; en un renglón mezclado, cada tramo latino queda aislado, para que no se desordene.
+    const mezcla = rtl && LETRAS_RTL.test(s);
+    ctx.direction = rtl && mezcla ? "rtl" : "ltr";
+    if(mezcla) s = aislarLatino(s);
+    const derecha = (al === "inicio") === rtl;
+    if(al === "centro"){ ctx.textAlign = "center"; ctx.fillText(s, izq + w / 2, y); }
+    else if(derecha){ ctx.textAlign = "right"; ctx.fillText(s, izq + w - pad, y); }
+    else { ctx.textAlign = "left"; ctx.fillText(s, izq + pad, y); }
+  };
+  A.titulo = (s, sub) => {
+    A.letra(14, 700); A.ctx.fillStyle = PDF_COLOR.tinta;
+    renglones(A.ctx, s, A.util).forEach(l => { A.y += 17; A.escribir(l, M, A.y, A.util); });
+    if(sub){ A.letra(8); A.ctx.fillStyle = PDF_COLOR.suave; renglones(A.ctx, sub, A.util).forEach(l => { A.y += 12; A.escribir(l, M, A.y, A.util); }); }
+    A.y += 12;
+  };
+  A.subtitulo = (s, x = M, w = A.util) => {
+    A.letra(9.5, 700); A.ctx.fillStyle = PDF_COLOR.tinta;
+    A.escribir(recortarTexto(A.ctx, s, w), x, A.y + 10, w);
+  };
+  // cols: [{ t: título, w: ancho relativo, al: "inicio" | "fin" | "centro" }]; filas: [{ c: [textos], total }]
+  A.medir = (cols, filas, ancho, tam = 7) => {
+    const suma = cols.reduce((s, c) => s + c.w, 0), anchos = cols.map(c => c.w / suma * ancho);
+    const pad = 4, linea = tam * 1.32;
+    A.letra(tam, 700);
+    const cab = cols.map((c, i) => renglones(A.ctx, c.t, anchos[i] - 2 * pad));
+    const altoCab = Math.max(...cab.map(l => l.length)) * linea + 2 * pad + 1;
+    const lineas = filas.map(f => { A.letra(tam, f.total ? 700 : 400); return f.c.map((s, i) => renglones(A.ctx, s, anchos[i] - 2 * pad)); });
+    const altos = lineas.map(ls => Math.max(1, ...ls.map(l => l.length)) * linea + 2 * pad);
+    return { cols, filas, anchos, cab, altoCab, lineas, altos, tam, pad, linea, alto: altoCab + altos.reduce((a, b) => a + b, 0) };
+  };
+  const celdas = (T, x0, y, alto, fn) => { let x = x0; T.anchos.forEach((w, i) => { fn(i, x, w); x += w; }); };
+  A.cabecera = (T, x0, y) => {
+    const ctx = A.ctx, total = T.anchos.reduce((a, b) => a + b, 0);
+    ctx.fillStyle = PDF_COLOR.cab; ctx.fillRect(A.izq(x0, total), y, total, T.altoCab);
+    A.letra(T.tam, 700); ctx.fillStyle = "#fff";
+    celdas(T, x0, y, T.altoCab, (i, x, w) => T.cab[i].forEach((l, k) => A.escribir(l, x, y + T.pad + T.tam + k * T.linea, w, T.cols[i].al || "inicio", T.pad)));
+  };
+  A.fila = (T, i, x0, y) => {
+    const ctx = A.ctx, f = T.filas[i], alto = T.altos[i], total = T.anchos.reduce((a, b) => a + b, 0);
+    if(f.total || i % 2){ ctx.fillStyle = f.fuerte ? PDF_COLOR.fuerte : f.total ? PDF_COLOR.total : PDF_COLOR.cebra; ctx.fillRect(A.izq(x0, total), y, total, alto); }
+    ctx.strokeStyle = PDF_COLOR.linea; ctx.lineWidth = 0.5;
+    A.letra(T.tam, f.total ? 700 : 400); ctx.fillStyle = PDF_COLOR.tinta;
+    celdas(T, x0, y, alto, (k, x, w) => {
+      ctx.strokeRect(A.izq(x, w), y, w, alto);
+      T.lineas[i][k].forEach((l, j) => A.escribir(l, x, y + T.pad + T.tam + j * T.linea, w, T.cols[k].al || "inicio", T.pad));
+    });
+  };
+  // Una tabla a lo ancho: si no entra, sigue en la hoja siguiente con los títulos de nuevo.
+  A.tabla = (cols, filas, { tam = 7, x0 = M, ancho = A.util } = {}) => {
+    const T = A.medir(cols, filas, ancho, tam);
+    if(A.queda() < T.altoCab + (T.altos[0] || 0)) A.nueva();
+    let y = A.y;
+    A.cabecera(T, x0, y); y += T.altoCab;
+    T.filas.forEach((f, i) => {
+      if(y + T.altos[i] > A.fondo()){ A.nueva(); y = A.y; A.cabecera(T, x0, y); y += T.altoCab; }
+      A.fila(T, i, x0, y); y += T.altos[i];
+    });
+    A.y = y + 16;
+  };
+  // Tablas chicas lado a lado (el subtotal por tipo y los cambios), cada una con su título. Si juntas no entran en
+  // una hoja, una abajo de la otra.
+  A.ladoALado = bloques => {
+    const gap = 18, anchos = bloques.length === 1 ? [bloques[0].w * A.util] : [bloques[0].w * A.util, A.util - bloques[0].w * A.util - gap];
+    const medidas = bloques.map((b, i) => A.medir(b.cols, b.filas, anchos[i], b.tam || 7));
+    const alto = 16 + Math.max(...medidas.map(T => T.alto));
+    if(alto > A.fondo() - A.M){ bloques.forEach(b => { if(A.queda() < 60) A.nueva(); A.subtitulo(b.titulo); A.y += 16; A.tabla(b.cols, b.filas, { tam: b.tam || 7 }); }); return; }
+    if(A.queda() < alto) A.nueva();
+    let x = M;
+    bloques.forEach((b, i) => {
+      const T = medidas[i];
+      A.subtitulo(b.titulo, x, anchos[i]);
+      let y = A.y + 16;
+      A.cabecera(T, x, y); y += T.altoCab;
+      T.filas.forEach((f, k) => { A.fila(T, k, x, y); y += T.altos[k]; });
+      x += anchos[i] + gap;
+    });
+    A.y += alto + 16;
+  };
+  A.parrafo = (s, tam = 8, color = PDF_COLOR.suave) => {
+    A.letra(tam); A.ctx.fillStyle = color;
+    renglones(A.ctx, s, A.util).forEach(l => { if(A.queda() < tam * 1.5) A.nueva(); A.y += tam * 1.4; A.escribir(l, M, A.y, A.util); });
+    A.y += 8;
+  };
+  A.nueva();
+  return A;
+}
+
+// La planilla de una rendición, en el idioma del momento: como la del usuario, con la fila del total, y debajo
+// el subtotal por tipo y los cambios de moneda.
+function hojasDePlanilla(r, gs, cs){
+  const act = actividadDePlanilla(r);
+  const A = armadorDeHojas(true);
+  A.titulo(t("Planilla de gastos — {a} · {m}","Expense sheet — {a} · {m}","Planilha de despesas — {a} · {m}","טבלת הוצאות — {a} · {m}",{ a: tituloRendicion(r), m: mesDeEntrega(r) }),
+    t("El N° de comprobante coincide con el sello de cada página de este documento.","The receipt number matches the stamp on each page of this document.","O N° do comprovante coincide com o carimbo de cada página deste documento.","מספר הקבלה תואם לחותמת שבכל עמוד במסמך הזה."));
+  const cols = [
+    { t: t("N° comp.","No.","N° comp.","מס׳"), w: 4.6, al: "centro" },
+    { t: t("Fecha","Date","Data","תאריך"), w: 7.4, al: "centro" },
+    { t: t("Concepto","Description","Descrição","תיאור"), w: 16.5 },
+    { t: t("Actividad","Activity","Atividade","פעילות"), w: 7.2 },
+    { t: t("Tipo","Type","Tipo","סוג"), w: 9.4 },
+    { t: t("Moneda","Currency","Moeda","מטבע"), w: 5.8, al: "centro" },
+    { t: t("Monto","Amount","Valor","סכום"), w: 8.4, al: "fin" },
+    { t: t("Pago","Payment","Pagamento","תשלום"), w: 8 },
+    { t: t("Quién pagó","Paid by","Quem pagou","מי שילם"), w: 9.6 },
+    { t: t("Factura","Invoice","Nota fiscal","חשבונית"), w: 5.6, al: "centro" },
+    { t: t("Observaciones","Notes","Observações","הערות"), w: 17.5 },
+  ];
+  const filas = gs.map((g, i) => ({ c: filaDePlanilla(g, i + 1, act) }));
+  const tot = sumarPorMoneda(gs.map(rendidoDe));
+  monedasEnOrden(tot).forEach((m, i) => filas.push({ total: true, c: ["", "", i ? "" : t("Total","Total","Total","סה״כ"), "", "", monedaDePlanilla(m), numContable(tot[m]), "", "", "", ""] }));
+  A.tabla(cols, filas);
+  const orden = gastoTipos().map(x => x.key), porTipo = new Map();
+  gs.forEach(g => { const k = g.tipo || ""; if(!porTipo.has(k)) porTipo.set(k, []); porTipo.get(k).push(g); });
+  const claves = [...porTipo.keys()].sort((a, b) => (orden.indexOf(a) + 1 || 99) - (orden.indexOf(b) + 1 || 99));
+  const bloques = [{ titulo: t("Subtotal por tipo","Subtotal by type","Subtotal por tipo","סיכום לפי סוג"), w: 0.34,
+    cols: [{ t: t("Tipo","Type","Tipo","סוג"), w: 3 }, { t: t("Ítems","Items","Itens","פריטים"), w: 1.1, al: "centro" }, { t: t("Monto","Amount","Valor","סכום"), w: 2.4, al: "fin" }],
+    filas: claves.map(k => ({ c: [nombreTipoGasto(k) || t("Sin tipo","No type","Sem tipo","ללא סוג"), String(porTipo.get(k).length), totalesDePlanilla(sumarPorMoneda(porTipo.get(k).map(rendidoDe)))] })) }];
+  if(cs.length) bloques.push({ titulo: t("Cambio de moneda","Currency exchange","Câmbio","המרת מטבע"),
+    cols: [{ t: t("Fecha","Date","Data","תאריך"), w: 1.3, al: "centro" }, { t: t("Entregado","Given","Entregue","נמסר"), w: 1.7, al: "fin" },
+      { t: t("Recibido","Received","Recebido","התקבל"), w: 1.8, al: "fin" }, { t: t("Tasa","Rate","Taxa","שער"), w: 2 }, { t: t("Observaciones","Notes","Observações","הערות"), w: 2.6 }],
+    filas: cs.map(c => ({ c: [fechaCorta(c.fecha), montoDePlanilla(c.entregadoMoneda, c.entregadoMonto), montoDePlanilla(c.recibidoMoneda, c.recibidoMonto), tasaDePlanilla(c),
+      [String(c.observaciones || "").trim(), c.archivo ? t("Comprobante en el anexo","Receipt in the annex","Comprovante no anexo","הקבלה בנספח") : ""].filter(Boolean).join("\n")] })) });
+  A.ladoALado(bloques);
+  return A.hojas;
+}
+// Una hoja que avisa (un comprobante que no se pudo sumar): con su sello, como las demás.
+function hojaDeAviso(titulo, texto){
+  const A = armadorDeHojas(false);
+  A.y = 140; A.titulo(titulo); A.parrafo(texto, 10);
+  return A.hojas[0];
+}
+
+// ---- El sello y las páginas de los comprobantes ----
+// Recuadro rojo arriba a la derecha: «N° X», debajo la actividad y el mes, y «pág. 1/2» si el comprobante tiene
+// varias (como el de la rendición del usuario). En el idioma del momento.
+function lienzoDeSello(arriba, abajo, extra){
+  const k = 4, rtl = isRTL(), c = document.createElement("canvas"), ctx = c.getContext("2d");
+  const f = (tam, peso) => `${peso} ${tam}px ${PDF_LETRA}`;
+  ctx.font = f(7, 600); const ab = recortarTexto(ctx, abajo, 200), wAb = ctx.measureText(ab).width;
+  ctx.font = f(15, 800); const wAr = ctx.measureText(arriba).width;
+  const w = Math.ceil(Math.max(96, wAr, wAb) + 16), h = extra ? 46 : 37;
+  c.width = w * k; c.height = h * k;
+  ctx.scale(k, k); ctx.direction = rtl ? "rtl" : "ltr";
+  ctx.fillStyle = "#fff"; ctx.strokeStyle = PDF_COLOR.sello; ctx.lineWidth = 1.6;
+  ctx.beginPath(); if(ctx.roundRect) ctx.roundRect(1, 1, w - 2, h - 2, 3); else ctx.rect(1, 1, w - 2, h - 2); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = PDF_COLOR.sello; ctx.textAlign = "center";
+  const poner = (s, y) => { const mezcla = rtl && LETRAS_RTL.test(s); ctx.direction = mezcla ? "rtl" : "ltr"; ctx.fillText(mezcla ? aislarLatino(s) : s, w / 2, y); };
+  ctx.font = f(15, 800); poner(arriba, 18);
+  ctx.font = f(7, 600); poner(ab, 29);
+  if(extra){ ctx.font = f(6.5, 500); poner(extra, 39); }
+  return { lienzo: c, w, h };
+}
+async function bytesDeLienzo(c, tipo = "image/png", calidad){
+  const b = await new Promise((ok, mal) => c.toBlob(x => x ? ok(x) : mal(new Error("lienzo")), tipo, calidad));
+  return new Uint8Array(await b.arrayBuffer());
+}
+const PDF_BANDA = 54;   // la franja de arriba de cada comprobante, donde va el sello: así no tapa nada
+// Una página A4 (de pie o acostada, según el comprobante) con el contenido debajo de la franja del sello.
+function encajar(w, h){
+  const P = h >= w ? [595.28, 841.89] : [841.89, 595.28];
+  const area = { x: 18, y: 18, w: P[0] - 36, h: P[1] - PDF_BANDA - 18 };
+  const k = Math.min(area.w / w, area.h / h, 2);
+  const dw = w * k, dh = h * k;
+  return { P, k, dw, dh, x: area.x + (area.w - dw) / 2, y: area.y + area.h - dh };
+}
+async function ponerSello(doc, page, sello){
+  const img = await doc.embedPng(await bytesDeLienzo(sello.lienzo));
+  const { width: W, height: H } = page.getSize();
+  page.drawImage(img, { x: W - 18 - sello.w, y: H - 10 - sello.h, width: sello.w, height: sello.h });
+}
+// Un PDF: cada página, entera y nítida (no como foto), achicada lo justo para dejar la franja del sello.
+async function paginasDePdf(L, doc, bytes, sellar){
+  const src = await L.PDFDocument.load(bytes, { ignoreEncryption: true, updateMetadata: false });
+  const n = src.getPageCount();
+  if(!n) throw new Error("PDF sin páginas");
+  const emb = await doc.embedPdf(src, src.getPageIndices());
+  for(let i = 0; i < n; i++){
+    const e = emb[i], ang = ((src.getPage(i).getRotation().angle % 360) + 360) % 360;
+    const vuelta = ang === 90 || ang === 270;
+    const E = encajar(vuelta ? e.height : e.width, vuelta ? e.width : e.height);
+    const page = doc.addPage(E.P);
+    // Una página girada (/Rotate) se dibuja girada, para que se lea derecha como en el visor.
+    const lugar = ang === 90 ? { x: E.x, y: E.y + E.dh } : ang === 180 ? { x: E.x + E.dw, y: E.y + E.dh } : ang === 270 ? { x: E.x + E.dw, y: E.y } : { x: E.x, y: E.y };
+    page.drawPage(e, { ...lugar, xScale: E.k, yScale: E.k, rotate: L.degrees(-ang) });
+    await ponerSello(doc, page, sellar(i + 1, n));
+  }
+}
+async function paginaDeImagen(L, doc, blob, sello){
+  const bmp = await createImageBitmap(blob);
+  const k0 = Math.min(1, 2200 / Math.max(bmp.width, bmp.height));
+  const c = document.createElement("canvas");
+  c.width = Math.max(1, Math.round(bmp.width * k0)); c.height = Math.max(1, Math.round(bmp.height * k0));
+  const ctx = c.getContext("2d");
+  ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, c.width, c.height); ctx.drawImage(bmp, 0, 0, c.width, c.height);
+  if(bmp.close) bmp.close();
+  const img = await doc.embedJpg(await bytesDeLienzo(c, "image/jpeg", 0.86));
+  const E = encajar(c.width / k0 * 0.75, c.height / k0 * 0.75);   // a 96 por pulgada, como se ve en pantalla
+  const page = doc.addPage(E.P);
+  page.drawImage(img, { x: E.x, y: E.y, width: E.dw, height: E.dh });
+  await ponerSello(doc, page, sello);
+}
+async function paginaDeHoja(doc, lienzo, sello){
+  const img = await doc.embedPng(await bytesDeLienzo(lienzo));
+  const W = lienzo.width / PDF_PX, H = lienzo.height / PDF_PX;
+  const page = doc.addPage([W, H]);
+  page.drawImage(img, { x: 0, y: 0, width: W, height: H });
+  if(sello) await ponerSello(doc, page, sello);
+}
+// El comprobante de un gasto o de un cambio, con su sello. Si el archivo no se puede leer, su foto (la de adentro
+// de un PDF escaneado) o una hoja que lo dice: el número no se saltea nunca.
+async function agregarComprobante(L, doc, cosa, sellar, idioma){
+  if(cosa.archivo && esUrlFirmada(cosa.archivoUrl)){
+    try{
+      const res = await fetch(cosa.archivoUrl);
+      if(!res.ok) throw new Error("HTTP " + res.status);
+      const buf = new Uint8Array(await res.arrayBuffer());
+      if(esPdfGasto(cosa)) await paginasDePdf(L, doc, buf, sellar);
+      else await paginaDeImagen(L, doc, new Blob([buf], { type: cosa.archivoTipo || "" }), sellar(1, 1));
+      return true;
+    }catch(err){ console.warn("Un comprobante no entró al PDF tal cual:", err); }
+    const mini = esPdfGasto(cosa) && store.miniaturaSiHay(cosa.archivoUrl);
+    if(mini){
+      try{ const res = await fetch(mini); if(res.ok){ await paginaDeImagen(L, doc, await res.blob(), sellar(1, 1)); return true; } }
+      catch(err){ console.warn("Tampoco su foto:", err); }
+    }
+  }
+  const nombre = cosa.archivoNombre || cosa.concepto || "";
+  const hoja = enIdioma(idioma, () => cosa.archivo
+    ? hojaDeAviso(t("No se pudo sumar este comprobante","This receipt couldn't be added","Não foi possível incluir este comprovante","לא ניתן היה לצרף את הקבלה הזו"),
+        t("«{n}» está guardado en el sistema, pero este aparato no lo pudo abrir para ponerlo acá. Se puede bajar desde el gasto y entregar aparte.","“{n}” is saved in the system, but this device couldn't open it to put it here. It can be downloaded from the expense and delivered separately.","«{n}» está guardado no sistema, mas este aparelho não conseguiu abri-lo para colocá-lo aqui. Dá para baixar pela despesa e entregar à parte.","«{n}» שמור במערכת, אבל המכשיר הזה לא הצליח לפתוח אותו כדי לצרף אותו כאן. אפשר להוריד אותו מההוצאה ולמסור בנפרד.",{ n: nombre }))
+    : hojaDeAviso(t("Gasto sin comprobante","Expense without a receipt","Despesa sem comprovante","הוצאה ללא קבלה"), nombre));
+  await paginaDeHoja(doc, hoja, sellar(1, 1));
+  return false;
+}
+
+// El PDF de entrega de una rendición aprobada. `idiomas`: los de la planilla, en orden; el primero es el de los
+// sellos y el nombre del archivo. `avance(texto)` cuenta por dónde va.
+async function armarPdfDeRendicion(r, idiomas, avance){
+  const L = await cargarArmadorPdf();
+  const doc = await L.PDFDocument.create();
+  const gs = gastosDe(r.id), cs = cambiosDe(r.id), primero = idiomas[0];
+  const { titulo, mes, sello, anexo } = enIdioma(primero, () => ({ titulo: tituloRendicion(r), mes: mesDeEntrega(r),
+    sello: (n, pag, de) => enIdioma(primero, () => lienzoDeSello(t("N° {n}","No. {n}","N° {n}","מס׳ {n}",{ n }), tituloRendicion(r) + " · " + mesDeEntrega(r),
+      de > 1 ? t("pág. {a}/{b}","p. {a}/{b}","pág. {a}/{b}","עמ׳ {a}/{b}",{ a: pag, b: de }) : "")),
+    anexo: (pag, de) => enIdioma(primero, () => lienzoDeSello(t("ANEXO","ANNEX","ANEXO","נספח"), t("Cambio de moneda","Currency exchange","Câmbio","המרת מטבע") + " · " + mesDeEntrega(r),
+      de > 1 ? t("pág. {a}/{b}","p. {a}/{b}","pág. {a}/{b}","עמ׳ {a}/{b}",{ a: pag, b: de }) : "")) }));
+  let faltaron = 0;
+  for(let i = 0; i < gs.length; i++){
+    avance(t("Comprobante {a} de {b}…","Receipt {a} of {b}…","Comprovante {a} de {b}…","קבלה {a} מתוך {b}…",{ a: i + 1, b: gs.length }));
+    if(!await agregarComprobante(L, doc, gs[i], (pag, de) => sello(i + 1, pag, de), primero) && gs[i].archivo) faltaron++;
+  }
+  avance(t("La planilla…","The expense sheet…","A planilha…","הטבלה…"));
+  for(const l of idiomas) for(const hoja of enIdioma(l, () => hojasDePlanilla(r, gs, cs))) await paginaDeHoja(doc, hoja);
+  for(const c of cs.filter(c => c.archivo)){
+    avance(t("El anexo…","The annex…","O anexo…","הנספח…"));
+    if(!await agregarComprobante(L, doc, c, anexo, primero)) faltaron++;
+  }
+  const nombre = `${titulo} - ${mes}`;
+  doc.setTitle(nombre); doc.setCreator("Toldot"); doc.setProducer("Toldot");
+  return { bytes: await doc.save(), nombre: nombreDeArchivoPdf(nombre), faltaron };
+}
+
+// ---- El resumen de gastos por mes (como el que el usuario arma al cerrar: filas = actividades, columnas = tipos) ----
+// El mes de una rendición: el de la rutina o el de la actividad (donde empieza).
+function mesDeRendicion(r){
+  if(r.rutinaMes) return String(r.rutinaMes).slice(0, 7);
+  const p = r.postId && getPostById(r.postId);
+  return String((p && (p.startDate || p.date)) || gastosDe(r.id).map(g => g.fecha).filter(Boolean).sort()[0] || r.aprobadaEl || r.creadaEl || "").slice(0, 7);
+}
+const aprobadasParaResumen = () => misRendiciones().filter(r => r.estado === "aprobada" && gastosDe(r.id).length);
+const mesesParaResumen = () => [...new Set(aprobadasParaResumen().map(mesDeRendicion).filter(m => /^\d{4}-\d{2}$/.test(m)))].sort();
+function rangoDeMeses(desde, hasta){
+  if(desde === hasta) return mesYAnio(desde);
+  return (desde.slice(0, 4) === hasta.slice(0, 4) ? mesYAnio(desde).replace(/\s*\d{4}$/, "") : mesYAnio(desde)) + " – " + mesYAnio(hasta);
+}
+function hojasDeResumen(rs, desde, hasta){
+  const A = armadorDeHojas(true);
+  A.titulo(t("Resumen de gastos — {r}","Expense summary — {r}","Resumo de despesas — {r}","סיכום הוצאות — {r}",{ r: rangoDeMeses(desde, hasta) }),
+    t("Lo aprobado de cada actividad, por tipo, en dólares. Lo rendido en otra moneda va en su columna.","What was approved for each activity, by type, in dollars. Anything reported in another currency goes in its own column.","O aprovado de cada atividade, por tipo, em dólares. O que foi prestado em outra moeda vai na sua coluna.","מה שאושר בכל פעילות, לפי סוג, בדולרים. מה שדווח במטבע אחר מופיע בעמודה משלו."));
+  const orden = gastoTipos().map(x => x.key);
+  const gsDe = new Map(rs.map(r => [r.id, gastosDe(r.id)]));
+  const tipos = [...new Set(rs.flatMap(r => gsDe.get(r.id).map(g => g.tipo || "")))].sort((a, b) => (orden.indexOf(a) + 1 || 99) - (orden.indexOf(b) + 1 || 99));
+  const otras = rs.some(r => gsDe.get(r.id).some(g => { const x = rendidoDe(g); return x && x.moneda !== "USD"; }));
+  const cols = [{ t: t("Actividad","Activity","Atividade","פעילות"), w: 24 },
+    ...tipos.map(k => ({ t: nombreTipoGasto(k) || t("Sin tipo","No type","Sem tipo","ללא סוג"), w: 9.5, al: "fin" })),
+    { t: t("TOTAL USD","TOTAL USD","TOTAL USD","סה״כ USD"), w: 10, al: "fin" },
+    ...(otras ? [{ t: t("Otras monedas","Other currencies","Outras moedas","מטבעות אחרים"), w: 12, al: "fin" }] : [])];
+  const celdas = gs => {
+    const s = sumarPorMoneda(gs.map(rendidoDe)), resto = { ...s };
+    delete resto.USD;
+    return [...tipos.map(k => { const x = sumarPorMoneda(gs.filter(g => (g.tipo || "") === k).map(rendidoDe)).USD; return x ? numContable(x) : ""; }),
+      numContable(s.USD || 0), ...(otras ? [totalesDePlanilla(resto)] : [])];
+  };
+  const filas = [], meses = [...new Set(rs.map(mesDeRendicion))].sort();
+  meses.forEach(m => {
+    const delMes = rs.filter(r => mesDeRendicion(r) === m);
+    delMes.forEach(r => { const gs = gsDe.get(r.id);
+      filas.push({ c: [`${tituloRendicion(r)} (${gs.length === 1 ? t("1 comprobante","1 receipt","1 comprovante","קבלה אחת") : t("{n} comprobantes","{n} receipts","{n} comprovantes","{n} קבלות",{ n: gs.length })})`, ...celdas(gs)] }); });
+    if(meses.length > 1) filas.push({ total: true, c: [t("Subtotal {m}","Subtotal {m}","Subtotal {m}","סיכום ביניים {m}",{ m: mesYAnio(m) }), ...celdas(delMes.flatMap(r => gsDe.get(r.id)))] });
+  });
+  filas.push({ total: true, fuerte: true, c: [t("TOTAL FINAL","GRAND TOTAL","TOTAL FINAL","סה״כ כולל"), ...celdas(rs.flatMap(r => gsDe.get(r.id)))] });
+  A.tabla(cols, filas, { tam: 7.5 });
+  const cs = rs.flatMap(r => cambiosDe(r.id).map(c => ({ c, r })));
+  if(cs.length){
+    if(A.queda() < 70) A.nueva();
+    A.subtitulo(t("Cambios de moneda","Currency exchanges","Câmbios","המרות מטבע")); A.y += 16;
+    A.tabla([{ t: t("Actividad","Activity","Atividade","פעילות"), w: 3 }, { t: t("Fecha","Date","Data","תאריך"), w: 1.2, al: "centro" }, { t: t("Entregado","Given","Entregue","נמסר"), w: 1.6, al: "fin" },
+      { t: t("Recibido","Received","Recebido","התקבל"), w: 1.7, al: "fin" }, { t: t("Tasa","Rate","Taxa","שער"), w: 2 }],
+      cs.map(({ c, r }) => ({ c: [tituloRendicion(r), fechaCorta(c.fecha), montoDePlanilla(c.entregadoMoneda, c.entregadoMonto), montoDePlanilla(c.recibidoMoneda, c.recibidoMonto), tasaDePlanilla(c)] })));
+  }
+  return A.hojas;
+}
+async function armarResumenPdf(P, idiomas, avance){
+  const rs = aprobadasParaResumen().filter(r => { const m = mesDeRendicion(r); return m >= P.desde && m <= P.hasta; })
+    .sort((a, b) => mesDeRendicion(a).localeCompare(mesDeRendicion(b)) || tituloRendicion(a).localeCompare(tituloRendicion(b)));
+  if(!rs.length) throw new Error(t("No hay rendiciones aprobadas entre esos meses.","There are no approved reports between those months.","Não há prestações aprovadas entre esses meses.","אין דוחות מאושרים בין החודשים האלה."));
+  const L = await cargarArmadorPdf();
+  const doc = await L.PDFDocument.create();
+  avance(t("El resumen…","The summary…","O resumo…","הסיכום…"));
+  for(const l of idiomas) for(const hoja of enIdioma(l, () => hojasDeResumen(rs, P.desde, P.hasta))) await paginaDeHoja(doc, hoja);
+  const nombre = enIdioma(idiomas[0], () => t("Resumen de gastos","Expense summary","Resumo de despesas","סיכום הוצאות") + " - " + rangoDeMeses(P.desde, P.hasta));
+  doc.setTitle(nombre); doc.setCreator("Toldot"); doc.setProducer("Toldot");
+  return { bytes: await doc.save(), nombre: nombreDeArchivoPdf(nombre), faltaron: 0 };
+}
+
+// ---- En la pantalla: el panel para elegir los idiomas y bajarlo ----
+function idiomasDePdfGuardados(){
+  try{ const v = JSON.parse(localStorage.getItem("ra_pdf_idiomas") || "null"); if(Array.isArray(v)){ const l = v.filter(x => IDIOMAS_PDF.includes(x)); if(l.length) return l; } }catch(e){}
+  return [currentLang()];
+}
+function abrirPanelPdf(para){
+  const meses = para === "resumen" ? mesesParaResumen() : [];
+  gastosPdf = { para, idiomas: idiomasDePdfGuardados(), desde: meses[0] || "", hasta: meses[meses.length - 1] || "", armando: false, avance: "", error: "", listo: "", faltaron: 0 };
+  render();
+  const x = document.querySelector(".gx-pdf input, .gx-pdf select"); if(x) x.focus();
+}
+function cerrarPanelPdf(){
+  const para = gastosPdf && gastosPdf.para;
+  gastosPdf = null; render();
+  const x = document.querySelector(`.gastos-view [data-action="gastos-pdf-abrir"][data-id="${CSS.escape(para || "")}"]`); if(x) x.focus();
+}
+function panelPdf(P, titulo, que, extra){
+  const nombres = Object.fromEntries(LANGS.map(l => [l.key, l.name]));
+  const listo = P.listo ? `<div class="admin-ok" role="status">✅ ${esc(t("Listo: se bajó «{n}».","Done: “{n}” was downloaded.","Pronto: baixou «{n}».","מוכן: «{n}» ירד.",{ n: P.listo }))}</div>
+      ${P.faltaron ? `<div class="gx-alerta">⚠️ ${esc(P.faltaron === 1 ? t("Un comprobante no se pudo poner tal cual: en su lugar hay una hoja que lo dice. Se puede bajar desde el gasto y entregar aparte.","One receipt couldn't be included as is: there's a page saying so in its place. It can be downloaded from the expense and delivered separately.","Um comprovante não pôde ser incluído como está: no lugar há uma página avisando. Dá para baixar pela despesa e entregar à parte.","קבלה אחת לא צורפה כפי שהיא: במקומה יש עמוד שמציין זאת. אפשר להוריד אותה מההוצאה ולמסור בנפרד.")
+        : t("{n} comprobantes no se pudieron poner tal cual: en su lugar hay una hoja que lo dice. Se pueden bajar desde cada gasto y entregar aparte.","{n} receipts couldn't be included as is: there's a page saying so in their place. They can be downloaded from each expense and delivered separately.","{n} comprovantes não puderam ser incluídos como estão: no lugar há uma página avisando. Dá para baixar por cada despesa e entregar à parte.","{n} קבלות לא צורפו כפי שהן: במקומן יש עמוד שמציין זאת. אפשר להוריד אותן מכל הוצאה ולמסור בנפרד.",{ n: P.faltaron }))}</div>` : ""}` : "";
+  return `<section class="settings-card gx-pdf" aria-labelledby="gxPdfTit">
+      <h3 class="gx-h3" id="gxPdfTit">📄 ${titulo}</h3>
+      <p class="setting-sub">${que}</p>
+      ${extra || ""}
+      <fieldset class="gx-pdf-idiomas"${P.armando ? " disabled" : ""}><legend class="gx-et">${t("¿En qué idiomas?","In which languages?","Em quais idiomas?","באילו שפות?")}</legend>
+        ${IDIOMAS_PDF.map(l => `<label class="gx-check"><input type="checkbox" data-gpdf-idioma="${l}"${P.idiomas.includes(l) ? " checked" : ""}> <span lang="${l}" dir="auto">${esc(nombres[l])}</span></label>`).join("")}
+      </fieldset>
+      <p class="setting-sub gx-pdf-nota">${P.idiomas.length ? t("Los conceptos y las observaciones van como se escribieron: no se traducen.","Descriptions and notes go as they were written: they aren't translated.","As descrições e observações vão como foram escritas: não são traduzidas.","התיאורים וההערות מופיעים כפי שנכתבו: הם לא מתורגמים.")
+        : `<span class="form-error">${t("Elegí al menos un idioma.","Pick at least one language.","Escolha pelo menos um idioma.","בחרו לפחות שפה אחת.")}</span>`}</p>
+      ${P.armando ? `<p class="gx-pdf-avance" role="status">⏳ ${esc(P.avance)}</p>` : ""}
+      ${P.error ? `<div class="form-error" role="alert">${esc(P.error)}</div>` : listo}
+      <div class="gx-acciones gx-acciones-chicas">
+        <button type="button" class="btn-secondary" data-action="gastos-pdf-cerrar" ${P.armando ? "disabled" : ""}>${P.listo ? t("Cerrar","Close","Fechar","סגירה") : t("Cancelar","Cancel","Cancelar","ביטול")}</button>
+        <button type="button" class="btn-primary" data-action="gastos-pdf-bajar" ${P.armando || !P.idiomas.length ? "disabled" : ""}>${P.armando ? t("Armando el PDF…","Building the PDF…","Montando o PDF…","בונה את ה-PDF…") : "⬇️ " + t("Descargar el PDF","Download the PDF","Baixar o PDF","הורדת ה-PDF")}</button>
+      </div>
+    </section>`;
+}
+function renderPdfDeRendicion(r){
+  const P = gastosPdf && gastosPdf.para === r.id && r.estado === "aprobada" ? gastosPdf : null;
+  if(!P) return "";
+  const n = gastosDe(r.id).length, cs = cambiosDe(r.id);
+  const que = (n === 1 ? t("Adentro va el comprobante con su sello (N° 1) y, al final, la planilla de gastos.","Inside: the receipt with its stamp (No. 1) and, at the end, the expense sheet.","Dentro vai o comprovante com seu carimbo (N° 1) e, no final, a planilha de despesas.","בפנים: הקבלה עם החותמת שלה (מס׳ 1) ובסוף טבלת ההוצאות.")
+    : t("Adentro van los {n} comprobantes en orden, cada uno con su sello (N° 1, N° 2…), y al final la planilla de gastos.","Inside: the {n} receipts in order, each with its stamp (No. 1, No. 2…), and at the end the expense sheet.","Dentro vão os {n} comprovantes em ordem, cada um com seu carimbo (N° 1, N° 2…), e no final a planilha de despesas.","בפנים: {n} הקבלות לפי הסדר, כל אחת עם החותמת שלה (מס׳ 1, מס׳ 2…), ובסוף טבלת ההוצאות.",{ n }))
+    + (cs.length ? " " + t("Debajo de la planilla, los cambios de moneda; sus comprobantes, como anexo.","Below the sheet, the currency exchanges; their receipts, as an annex.","Abaixo da planilha, os câmbios; os comprovantes, como anexo.","מתחת לטבלה, המרות המטבע; הקבלות שלהן, כנספח.") : "");
+  return panelPdf(P, t("PDF de entrega","PDF to deliver","PDF de entrega","PDF למסירה"), esc(que));
+}
+function renderResumenPdf(){
+  const meses = mesesParaResumen();
+  if(!meses.length) return "";
+  const P = gastosPdf && gastosPdf.para === "resumen" ? gastosPdf : null;
+  if(!P) return `<div class="gx-otra"><button type="button" class="gx-link" data-action="gastos-pdf-abrir" data-id="resumen">📄 ${t("Resumen de gastos por mes (PDF)","Monthly expense summary (PDF)","Resumo de despesas por mês (PDF)","סיכום הוצאות לפי חודש (PDF)")}</button></div>`;
+  const opciones = sel => meses.map(m => `<option value="${m}"${m === sel ? " selected" : ""}>${esc(mesYAnio(m))}</option>`).join("");
+  const meses2 = `<div class="gx-pdf-meses">
+      <label class="gx-campo"><span class="gx-et">${t("Desde","From","De","מ-")}</span><select id="gxPdfDesde" class="gx-elige"${P.armando ? " disabled" : ""}>${opciones(P.desde)}</select></label>
+      <label class="gx-campo"><span class="gx-et">${t("Hasta","To","Até","עד")}</span><select id="gxPdfHasta" class="gx-elige"${P.armando ? " disabled" : ""}>${opciones(P.hasta)}</select></label>
+    </div>`;
+  return panelPdf(P, t("Resumen de gastos por mes","Monthly expense summary","Resumo de despesas por mês","סיכום הוצאות לפי חודש"),
+    esc(t("Cada actividad aprobada en una fila, con lo gastado por tipo; el subtotal de cada mes y el total final.","Each approved activity in a row, with the spending by type; each month's subtotal and the grand total.","Cada atividade aprovada numa linha, com o gasto por tipo; o subtotal de cada mês e o total final.","כל פעילות שאושרה בשורה, עם ההוצאות לפי סוג; סיכום ביניים לכל חודש והסך הכולל.")), meses2);
+}
+async function bajarPdf(){
+  const P = gastosPdf;
+  if(!P || P.armando || !P.idiomas.length) return;
+  const r = P.para === "resumen" ? null : rendicionPorId(P.para);
+  if(P.para !== "resumen" && (!r || r.estado !== "aprobada")) return;
+  if(P.para === "resumen" && P.desde > P.hasta){ P.error = t("«Desde» tiene que ser antes que «Hasta».","“From” has to be before “To”.","«De» tem que ser antes de «Até».","«מ-» צריך להיות לפני «עד»."); render(); return; }
+  P.armando = true; P.error = ""; P.listo = ""; P.faltaron = 0; P.avance = t("Preparando…","Getting ready…","Preparando…","מכין…"); render();
+  const avance = s => { P.avance = s; const el = document.querySelector(".gx-pdf-avance"); if(el) el.textContent = "⏳ " + s; };
+  // El idioma de la app va primero si está elegido (sellos y nombre del archivo); después, en el orden de siempre.
+  const idiomas = [...P.idiomas].sort((a, b) => (a === currentLang() ? -1 : b === currentLang() ? 1 : IDIOMAS_PDF.indexOf(a) - IDIOMAS_PDF.indexOf(b)));
+  try{
+    const res = r ? await armarPdfDeRendicion(r, idiomas, avance) : await armarResumenPdf(P, idiomas, avance);
+    descargarBlob(res.nombre, new Blob([res.bytes], { type: "application/pdf" }));
+    P.listo = res.nombre; P.faltaron = res.faltaron;
+  }catch(err){
+    console.error("No se pudo armar el PDF:", err);
+    P.error = !window.PDFLib ? t("No se pudo cargar lo que arma el PDF. Revisá la conexión y probá de nuevo.","The PDF builder couldn't load. Check the connection and try again.","Não foi possível carregar o montador do PDF. Verifique a conexão e tente de novo.","לא ניתן היה לטעון את בונה ה-PDF. בדקו את החיבור ונסו שוב.")
+      : t("No se pudo armar el PDF: {m}","Couldn't build the PDF: {m}","Não foi possível montar o PDF: {m}","לא ניתן היה לבנות את ה-PDF: {m}",{ m: detalleDeError(err) });
+  }
+  P.armando = false;
+  if(gastosPdf === P){ render(); const x = document.querySelector('.gx-pdf [data-action="gastos-pdf-cerrar"]'); if(x) x.focus(); }
 }
 
 // ---- Para aprobar (admins) ----
@@ -27566,6 +28128,9 @@ const GASTOS_ACCIONES = {
   },
   "gastos-cambio-cerrar": async () => { gastosCambio = null; render(); const x = document.querySelector('.gastos-view [data-action="gastos-cambio-abrir"]'); if(x) x.focus(); },
   "gastos-cambio-anotar": async () => anotarCambio(),
+  "gastos-pdf-abrir": async el => abrirPanelPdf(el.dataset.id),
+  "gastos-pdf-cerrar": async () => cerrarPanelPdf(),
+  "gastos-pdf-bajar": async () => bajarPdf(),
   "gastos-cambio-adjuntar": async el => { gastosMovPara = el.dataset.id ? "c:" + el.dataset.id : "cform"; gastosMovArchivoInput.value = ""; gastosMovArchivoInput.click(); },
   "gastos-cambio-adj-quitar": async () => { if(!gastosCambio) return; gastosCambio.archivo = null; render(); const x = document.querySelector('.gastos-view [data-action="gastos-cambio-adjuntar"][data-id=""]'); if(x) x.focus(); },
   "gastos-cambio-ver": async el => verComprobanteCambio(el.dataset.id),
@@ -27691,6 +28256,15 @@ function gastosAlEscribir(el, evento){
     return true;
   }
   if(el.id === "gxTotalConfirmado" && gastosTotal){ gastosTotal.confirmado = el.checked; return true; }
+  if(el.dataset.gpdfIdioma && gastosPdf){
+    const l = el.dataset.gpdfIdioma;
+    gastosPdf.idiomas = IDIOMAS_PDF.filter(x => x === l ? el.checked : gastosPdf.idiomas.includes(x));
+    if(evento !== "change") return true;   // la casilla manda los dos: se dibuja una vez
+    if(gastosPdf.idiomas.length) try{ localStorage.setItem("ra_pdf_idiomas", JSON.stringify(gastosPdf.idiomas)); }catch(e){}
+    render(); const x = document.querySelector(`[data-gpdf-idioma="${l}"]`); if(x) x.focus();
+    return true;
+  }
+  if((el.id === "gxPdfDesde" || el.id === "gxPdfHasta") && gastosPdf){ gastosPdf[el.id === "gxPdfDesde" ? "desde" : "hasta"] = el.value; gastosPdf.error = ""; return true; }
   if(el.dataset.gmov && gastosMov){
     gastosMov[el.dataset.gmov] = el.value;
     if(el.dataset.gmov === "tipo") render();

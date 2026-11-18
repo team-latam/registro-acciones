@@ -91,7 +91,7 @@ jobs:
         if: steps.modo.outputs.listo == 'si'
         with: { persist-credentials: false }
 
-      # El sitio es index.html, el logo de los correos y el lector de comprobantes. Con la publicación desde la
+      # El sitio es index.html, el logo de los correos, el lector de comprobantes y el armador de PDF. Con la publicación desde la
       # rama, GitHub servía también README, docs/, supabase/ y herramientas/pruebas/
       # pasados por Jekyll; nadie los abría desde ahí (se leen en el repo).
       # Y sale con la CSP endurecida: en vez de dejar correr cualquier script
@@ -114,6 +114,10 @@ jobs:
           # (herramientas/publicar/lector/README.md).
           mkdir -p _sitio/lector
           cp herramientas/publicar/lector/* _sitio/lector/
+          # El armador de los PDF de Gastos (18/11/2026), igual: del mismo sitio y controlado
+          # (herramientas/publicar/pdf/README.md).
+          mkdir -p _sitio/pdf
+          cp herramientas/publicar/pdf/* _sitio/pdf/
           touch _sitio/.nojekyll
 
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0

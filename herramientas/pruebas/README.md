@@ -51,6 +51,7 @@ INDEX=/tmp/roto.html ./herramientas/pruebas/correr.sh
 | `app_dom_test.mjs` | la app entera con la sesión iniciada, en un Chromium de verdad, con un Supabase de mentira: el admin, un integrante y alguien nuevo la usan como de verdad. |
 | `workflows_test.mjs` | los workflows de GitHub, no la app: acciones fijadas por huella y en versiones vigentes, permisos, tiempo máximo, llaves solo desde main, nada que escribe una persona pegado en un `run:`. `WORKFLOWS=/otra/carpeta` la corre contra una copia. |
 | `lector_test.mjs` | el lector de comprobantes de Gastos leyendo tickets de verdad (dibujados en la prueba). La app se sirve por http, como en el sitio: desde un archivo local el navegador no deja crear el trabajador donde corre el lector. |
+| `gastos_pdf_test.mjs` | los PDF de entrega de Gastos armados de verdad (con pdf-lib, servida por http al lado de la página como en el sitio) y vueltos a leer: páginas, sellos, idiomas, el comprobante que no se puede leer y el resumen por mes. |
 | `miniatura_test.mjs` | la miniatura de una foto, armada en un Chromium de verdad: un canvas no existe fuera del navegador, y `sb_test.mjs` usa una de mentira. |
 
 ## Para correrlas

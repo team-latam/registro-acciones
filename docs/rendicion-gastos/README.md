@@ -12,7 +12,8 @@
 > aprobado como texto, que el admin fijo lo pueda borrar, el comprobante opcional en la cuenta corriente y los
 > avisos de «te observaron un gasto» (campanita y correo): **con eso la etapa 1 está completa**. Lo que sigue
 > (elegido por el usuario el 17/11): cargar un viaje real entero en el sistema, en paralelo con la skill, para ver
-> si falta algo antes de la etapa 2 (Drive). **Cada parte que sigue va a `main` recién
+> si falta algo antes de la etapa 2 (Drive). El 18/11 pidió adelantar la **etapa 4** (los PDF de entrega y el
+> cambio de moneda; ver «Etapa 4» más abajo) y después volver a la 2 y la 3. **Cada parte que sigue va a `main` recién
 > con el OK explícito del usuario**, con capturas: es lo que se acordó, y es una excepción a la regla general de
 > «pushear a `main` de una» de `CLAUDE.md` (al llegar a `main`, la base real se actualiza sola).
 
@@ -283,6 +284,40 @@ tocan eventos, comentarios ni la Agenda); se hace por etapas chicas; Drive y el 
   - **Detalles**: un gasto mandado dice «En revisión», como su rendición, y uno confirmado «Confirmado» (antes
     «Mandado» y «Listo»); el total dice «(no suma el que falta)»; la ayuda de «Revisar en lista» va en un
     renglón; «Sin vincular» ya no tiene el borde punteado (parecía una zona para soltar archivos).
+
+### Etapa 4, los PDF de entrega (18/11, en la rama; va a `main` con el OK del usuario)
+
+El usuario pidió adelantarla antes de Drive y el Sheet («Se puede avanzar a la etapa 4 luego volver a las
+demás?») y eligió: **los dos documentos** (el PDF de cada actividad y el resumen por mes), **los idiomas se
+eligen** (español, inglés, portugués y/o hebreo), **solo de una rendición aprobada**, y **el cambio de moneda
+ahora**, junto con los PDF. El formato es el de la rendición que arma hoy con su skill.
+
+- **El cambio de moneda** (parte A): «Anotar un cambio de moneda» en la rendición — cuánto entregó, cuánto
+  recibió (con la comisión adentro), la fecha y el comprobante. No es un gasto: va aparte
+  (`gastos_cambios`, en `supabase/27-gastos.sql`). En un gasto en efectivo en esa moneda, la ventana ofrece
+  pasarlo a dólares con cada cambio («Usar»); no elige sola cuál, como pide su rendición (no se promedia).
+- **El PDF de una actividad** (botón «📄 PDF de entrega» en la barra de la aprobada): sus comprobantes en el orden
+  de la lista, cada página con un **sello rojo** arriba a la derecha («N° 3», la actividad y el mes, y
+  «pág. 1/2» si el comprobante tiene varias). El sello va en una franja propia: **no tapa nada** del comprobante.
+  Un PDF entra entero (nítido, no como foto). Al final, **la planilla** en cada idioma elegido (A4 apaisada, las
+  columnas de la suya: N° comp. · Fecha · Concepto · Actividad · Tipo · Moneda · Monto · Pago · Quién pagó ·
+  Factura · Observaciones, con la fila del total), debajo el **subtotal por tipo** y la tabla de **los cambios**
+  (con su tasa), y como **anexo** el comprobante de cada cambio. Se baja como «<actividad> - <Mes Año>.pdf».
+- **El resumen por mes** («Resumen de gastos por mes (PDF)» en *Mis rendiciones*, debajo de las aprobadas):
+  desde y hasta; una fila por actividad aprobada (con cuántos comprobantes), una columna por tipo y el TOTAL
+  USD (y «Otras monedas» si algo se rindió en otra), el subtotal de cada mes y el TOTAL FINAL; debajo, los cambios.
+- **Cómo se llena la planilla**: «Actividad» con las cuatro del Sheet (Congreso → Seminario; Virtual y Otro →
+  Rutina); el monto es el rendido (en dólares; si no lo tiene, el del comprobante en su moneda); el peso
+  mexicano, «MX»; en «Observaciones», la tarjeta, «Gasto en UY $ 790.-» y lo que escribió la persona, cada uno
+  en su renglón. **Nunca el nombre de quien rinde** (regla de su skill): en «Quién pagó» dice «Quien rinde»,
+  «Organización» o el nombre de la otra persona. Los conceptos y las observaciones no se traducen (la pantalla lo
+  dice). El hebreo va de derecha a izquierda, con las columnas espejadas.
+- **Cómo se arma**: en el aparato de quien lo baja, con pdf-lib (libre, guardada en
+  `herramientas/publicar/pdf/` y servida desde el mismo sitio, como el lector; `pdf_integridad_test.mjs`). Las
+  hojas las dibuja el navegador y van como imagen (así el hebreo sale bien). Si un comprobante no se puede leer,
+  en su lugar va una hoja que lo dice (el número no se saltea) y la pantalla avisa.
+- Pruebas: `herramientas/pruebas/gastos_pdf_test.mjs` (arma PDF de verdad y los vuelve a leer) y, la del cambio,
+  `supabase/pruebas/71-gastos.sql` y `gastos_test.mjs`.
 
 **Visto al armar las pantallas (15/11), para decidir más adelante:** ~~si la rutina de un mes ya se aprobó, un
 gasto nuevo de ese mes no tiene dónde ir~~ — **decidido el 18/11**: lo decide la persona cada vez, con un

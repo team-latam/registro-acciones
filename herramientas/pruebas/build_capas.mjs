@@ -31,7 +31,7 @@ const css = src.slice(src.indexOf("<style>") + 7, src.indexOf("</style>"));
 const fns = ["MILESTONE_DUE_SOON_DAYS","MILESTONE_DUE_SOON_OPTIONS","milestoneDueSoonDays",
   "milestoneStatus","milestoneStatusLabel","addDaysISO","isoDate","todayISO","safeColor",
   "configSections","prefSwitch","prefRowSeq","prefRow","prefColorRow","prefChips","similarColorTo",
-  "usedColors","colorDistance","hexToRgb","colorControl","countryLabel","hasOwn","DEFAULT_COUNTRY_LABELS","currentLang","holidayCountryOptions","renderConfigCapasSection","prefsSeccionTextos"].map(grab).join("\n")
+  "usedColors","colorDistance","hexToRgb","colorControl","countryLabel","hasOwn","DEFAULT_COUNTRY_LABELS","idiomaForzado","currentLang","holidayCountryOptions","renderConfigCapasSection","prefsSeccionTextos"].map(grab).join("\n")
   .replace(/function todayISO\(\)\{[\s\S]*?\n\}/, 'function todayISO(){ return "2026-09-15"; }');
 
 const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><style>

@@ -28,3 +28,9 @@ Las piezas de Tesseract (el programa libre que lee los tickets en el aparato de 
 [`lector/README.md`](./lector/README.md). «Publicar el sitio» copia la carpeta entera al sitio (`lector/`): la
 app las pide de ahí y no de un servidor de afuera. `herramientas/pruebas/lector_integridad_test.mjs` controla
 que sean exactamente las de su versión.
+
+## `pdf/` — el armador de los PDF de Gastos
+
+pdf-lib, la librería libre que arma en el aparato de quien descarga el PDF de entrega de cada actividad y el
+resumen por mes: [`pdf/README.md`](./pdf/README.md). «Publicar el sitio» la copia al sitio (`pdf/`), igual
+que el lector, y `herramientas/pruebas/pdf_integridad_test.mjs` controla que sea exactamente la de su versión.
