@@ -336,6 +336,25 @@ uno anota el suyo; va con las estadísticas (etapa 5).
 es el admin; al abrirlo al equipo se puede revisar que la apruebe otro). El **total rápido no mueve la cuenta
 corriente**: es para los números grandes, porque no dice quién puso la plata.
 
+## Lo que anotó el usuario al probarlo (desde el 18/11), para hacer
+
+Lo va dejando mientras revisa la versión publicada; se hace en una tanda, con su OK y capturas, como el resto del
+módulo.
+
+1. **Los avisos de la subida tienen que irse solos después de un rato** (18/11: «Mensajes como estos deben
+   desaparecer después de un rato, para que la experiencia sea mejor»). Es el recuadro verde que queda arriba
+   después de subir comprobantes (`renderSubida()` y `renderEstadoDelLector()` en `index.html`): «✅ Se subieron 10
+   comprobantes. Revisá los datos de cada uno y confirmalos.», «📖 El lector completó lo que pudo leer…» y, debajo,
+   los que el lector no pudo leer; hoy solo se va con «Listo». La idea para proponerle: lo que es solo buena noticia
+   se va solo a los pocos segundos (y no mientras el mouse o el foco están encima, para que dé tiempo a leerlo); lo
+   que pide hacer algo (un archivo que no subió, uno que el lector no pudo leer) no se pierde: pasa a la fila de ese
+   gasto (por ejemplo, «completalo a mano») en vez de quedar en un cartel. Revisar si otros avisos de Gastos se
+   comportan igual (el de la lista, el del PDF listo) y darles el mismo trato.
+2. **Para mirar, visto en la misma captura**: un PDF de Uber (un viaje a una reunión de la rutina de septiembre)
+   salió como «un PDF sin texto ni foto que se puedan leer». Otros PDF de Uber sí se leen desde el 15/11 (tienen
+   el texto adentro): este quizás trae las letras dibujadas o de otra forma. Hace falta ver el archivo (en la sesión,
+   sin subirlo al repo) para saber si el lector puede aprender a leerlo.
+
 ## Lo que quedó para decidir más adelante (no frena la etapa 1)
 
 - ~~El código del peso mexicano~~ — **decidido el 17/11: va «MX»**, como en su Sheet. El sistema lo guarda como
