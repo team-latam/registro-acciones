@@ -246,9 +246,9 @@ export function createClient(url, clave){
           if(!["abierta", "observada"].includes(r.estado)) return mal("23514", "Esa rendición ya se mandó");
           const gs = T("gastos").filter(g => g.rendicion_id === r.id);
           if(!gs.length && !Object.keys(r.total_manual || {}).length) return mal("23514", "No hay nada para mandar");
-          const faltan = gs.filter(g => !["confirmado", "enviado"].includes(g.estado)).length;
+          const faltan = gs.filter(g => !["confirmado", "enviado", "aprobado"].includes(g.estado)).length;
           if(faltan) return mal("23514", "Faltan confirmar " + faltan + " gasto(s)");
-          gs.forEach(g => { g.estado = "enviado"; });
+          gs.filter(g => g.estado !== "aprobado").forEach(g => { g.estado = "enviado"; });   // lo aprobado no vuelve a revisión (18/11)
           r.estado = "enviada"; r.enviada_el = ahora;
           return { data: true, error: null };
         }
@@ -259,7 +259,9 @@ export function createClient(url, clave){
           if(nombre === "gastos_observar"){
             if(!esAdmin) return mal("42501", "Observa un admin");
             const r = T("gastos_rendiciones").find(x => x.id === g.rendicion_id);
-            if(!r || !["enviada", "observada"].includes(r.estado)) return mal("23514", "Se observa una rendición mandada");
+            const puede = r && ((["enviado", "observado"].includes(g.estado) && ["enviada", "observada"].includes(r.estado))
+              || (g.estado === "aprobado" && ["abierta", "enviada", "observada"].includes(r.estado)));
+            if(!puede) return mal("23514", "Se observa un gasto de una rendición mandada (o uno aprobado de una reabierta)");
             g.estado = "observado"; r.estado = "observada";
           } else if(g.autor !== yo && !esAdmin) return mal("42501", "Ese gasto no es tuyo");
           if(!texto) return mal("23514", "Hace falta un comentario");
@@ -271,7 +273,7 @@ export function createClient(url, clave){
           if(!esAdmin) return mal("42501", "Aprueba un admin");
           const r = T("gastos_rendiciones").find(x => x.id === args.p_id);
           if(!r || r.estado !== "enviada") return mal("23514", "Se aprueba una rendición mandada y sin observaciones pendientes");
-          T("gastos").filter(g => g.rendicion_id === r.id).forEach(g => { g.estado = "aprobado"; });
+          T("gastos").filter(g => g.rendicion_id === r.id && g.estado !== "aprobado").forEach(g => { g.estado = "aprobado"; g.aprobado_el = g.aprobado_el || ahora; });
           r.estado = "aprobada"; r.aprobada_el = ahora; r.aprobada_por = yo;
           return { data: true, error: null };
         }
@@ -279,8 +281,7 @@ export function createClient(url, clave){
           if(!esAdmin) return mal("42501", "Reabre un admin");
           const r = T("gastos_rendiciones").find(x => x.id === args.p_id);
           if(!r || r.estado !== "aprobada") return mal("23514", "Se reabre una rendición aprobada");
-          T("gastos").filter(g => g.rendicion_id === r.id && g.estado === "aprobado").forEach(g => { g.estado = "confirmado"; });
-          r.estado = "abierta"; r.aprobada_el = null; r.aprobada_por = null;
+          r.estado = "abierta"; r.aprobada_el = null; r.aprobada_por = null;   // lo aprobado sigue aprobado (18/11)
           return { data: true, error: null };
         }
         if(nombre === "gastos_movimiento_confirmar"){

@@ -140,14 +140,15 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   const subidas = await p.evaluate(() => window.__sb.subidas);
   eq("al bucket: la foto en JPEG, su miniatura al lado y el PDF", [subidas.some(s => s[0] === foto.archivo && s[1] === "image/jpeg"),
     subidas.some(s => s[0] === foto.archivo.replace(/\.jpg$/, ".min.jpg")), subidas.some(s => s[0] === pdf.archivo && s[1] === "application/pdf")], [true, true, true]);
-  eq("el aviso dice cuántos subieron", await hasta(p, () => /Se subieron 2 comprobantes/.test((document.querySelector(".gx-subida") || {}).textContent || "")), true);
+  eq("terminado, el cartel se va solo y un aviso pasajero dice cuántos subieron", await hasta(p, () => /Se subieron 2 comprobantes/.test(document.getElementById("calendarToastText").textContent)
+    && !document.getElementById("calendarToast").hidden && !document.querySelector(".gx-subida")), true);
 
   // El mismo otra vez, y algo que no es ni foto ni PDF.
   await subirDesdeCabecera(p, "", [
     { name: "otra-vez.png", mimeType: "image/png", buffer: PNG }, { name: "notas.txt", mimeType: "text/plain", buffer: Buffer.from("hola") }]);
   await hasta(p, () => { const s = document.querySelector(".gx-subida"); return s && !/Subiendo/.test(s.textContent); });
   eq("el mismo comprobante no se repite, y lo que no es foto ni PDF se avisa", [(await tabla(p, "gastos")).length - antes,
-    await p.$eval(".gx-subida", e => /Ya estaban cargados.*otra-vez\.png/.test(e.textContent) && /notas\.txt: no es una foto ni un PDF/.test(e.textContent))], [2, true]);
+    await p.$eval(".gx-subida", e => /Ya estaban cargados.*otra-vez\.png/.test(e.textContent) && /Uno no se pudo subir:/.test(e.textContent) && /notas\.txt: no es una foto ni un PDF/.test(e.textContent)).catch(() => false)], [2, true]);
   await p.click('[data-action="gastos-subida-cerrar"]');
 
   // Revisar la foto: la ventana pide lo que falta. Después de subir «todavía no sé», se ve dónde quedaron.
@@ -244,11 +245,14 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   // El total rápido de la rutina del mes anterior (tiene 3 USD de detalle).
   await p.click('[data-action="gastos-volver"]'); await p.waitForTimeout(150);
   await p.click(`[data-action="gastos-abrir-rendicion"][data-id="${rutAnt.id}"]`); await p.waitForTimeout(150);
-  await p.click(".gx-rapido summary");
+  eq("al final de la rendición: primero los cambios de moneda, después «Anotar solo el total»", await p.$$eval("details.gx-rapido > summary", l => l.map(e => e.textContent.replace(/\s+/g, " ").trim())),
+    ["💱 Cambios de moneda", "Anotar solo el total"]);
+  await p.click(".gx-solo-total summary");
   await p.fill("#gxTotal_0_monto", "10");
   await p.click('[data-action="gastos-total-guardar"]');
   eq("el total rápido se guarda por moneda", await hasta(p, id => { const r = window.__sb.tablas.gastos_rendiciones.find(x => x.id === id); return JSON.stringify(r.total_manual) === '{"USD":10}' && r.total_manual_confirmado === false; }, rutAnt.id), true);
-  eq("si no coincide con el detalle, avisa que vale el detalle", await hasta(p, () => /no coincide con el detalle/.test((document.querySelector(".gx-rapido .gx-alerta") || {}).textContent || "")), true);
+  eq("guardado, el desplegable dice el total con el mismo nombre", await hasta(p, () => /^Total anotado: USD 10\.00$/.test(((document.querySelector(".gx-solo-total summary") || {}).textContent || "").trim())), true);
+  eq("si no coincide con los comprobantes, avisa que valen los comprobantes", await hasta(p, () => /No coincide con los comprobantes \(USD 3\.00\): valen los comprobantes/.test((document.querySelector(".gx-solo-total .gx-alerta") || {}).textContent || "")), true);
   await p.check("#gxTotalConfirmado"); await p.click('[data-action="gastos-total-guardar"]');
   eq("y la persona puede confirmar que vale el suyo", await hasta(p, id => window.__sb.tablas.gastos_rendiciones.find(x => x.id === id).total_manual_confirmado === true, rutAnt.id), true);
 
@@ -353,7 +357,7 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
     const c = getComputedStyle(d).color; d.remove(); const x = document.createElement("div"); x.style.color = "var(--danger-fg)"; document.body.appendChild(x); const r = getComputedStyle(x).color; x.remove(); return c === r; }), true);
   // Mandar: avisa lo que está en otra moneda sin el monto en dólares, y deja mandar igual.
   await p.click('[data-action="gastos-enviar"]');
-  eq("«Mandar» avisa que un gasto en otra moneda no tiene el monto en dólares", await p.$eval("#confirmMessage", e => e.textContent.includes("Ojo: «Taxi al aeropuerto» está en UYU y no tiene el monto en USD")).catch(() => false), true);
+  eq("«Mandar» avisa que un gasto en otra moneda no tiene el monto en dólares", await p.$eval("#confirmMessage", e => e.textContent.includes("Ojo: «Taxi al aeropuerto» no tiene el monto en USD.")).catch(() => false), true);
   eq("…y deja mandar igual", await p.$eval("#confirmOk", e => e.textContent.trim()), "Mandar igual");
   await p.click("#confirmOk");
   eq("mandada igual", await hasta(p, () => window.__sb.tablas.gastos_rendiciones.find(r => r.id === "ren_mvd").estado === "enviada"), true);
@@ -368,9 +372,11 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: vp, base });
   await irGastos(p);
   await p.click('[data-action="gastos-abrir-rendicion"][data-id="ren_vacia"]'); await p.waitForTimeout(150);
-  eq("vacía: el camino en «Cargar» y la barra con un solo botón, «Subir comprobantes»", await p.evaluate(() => [(document.querySelector('.gx-camino [aria-current="step"]') || {}).textContent,
-    (document.querySelector(".gx-paso b") || {}).textContent, [...document.querySelectorAll(".gx-paso button")].map(b => b.dataset.action), !document.querySelector(".gx-filas-cab")]),
-    ["1Cargar", "Subí los comprobantes", ["gastos-subir"], true]);
+  eq("vacía: el camino en «Cargar» y la barra con «Subir comprobantes» y, al lado, «o anotar solo el total»", await p.evaluate(() => [(document.querySelector('.gx-camino [aria-current="step"]') || {}).textContent,
+    (document.querySelector(".gx-paso b") || {}).textContent, [...document.querySelectorAll(".gx-paso button")].map(b => [b.dataset.action, b.textContent.replace(/\s+/g, " ").trim()]), !document.querySelector(".gx-filas-cab")]),
+    ["1Cargar", "Subí los comprobantes", [["gastos-subir", "📎 Subir comprobantes"], ["gastos-total-abrir", "o anotar solo el total"]], true]);
+  await tocar(p, '.gx-paso [data-action="gastos-total-abrir"]');
+  eq("«o anotar solo el total» abre ese formulario ahí y va al monto", await p.evaluate(() => [(document.querySelector("details.gx-solo-total") || {}).open, document.activeElement.id]), [true, "gxTotal_0_monto"]);
   await p.click('[data-action="gastos-volver"]'); await p.waitForTimeout(150);
   eq("una rendición propia, abierta y vacía tiene su ✕; una con gastos, no", await p.evaluate(() => [!!document.querySelector('[data-action="gastos-rendicion-quitar"][data-id="ren_vacia"]'),
     !!document.querySelector('[data-action="gastos-rendicion-quitar"][data-id="ren_mvd"]')]), [true, false]);
@@ -548,7 +554,7 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   eq("un PDF con texto se lee aunque no haya lector de fotos: fecha, total, moneda, tarjeta, la app y el tipo", await hasta(p, n => {
     const g = (window.__sb.tablas.gastos || []).slice(n)[0];
     return !!g && g.lectura && g.lectura.fuente === "lector" && g.estado === "borrador" && JSON.stringify([g.fecha, g.monto, g.moneda, g.tarjeta, g.concepto, g.tipo]) === JSON.stringify(["2026-03-04", 8.75, "USD", "4242", "Uber", "transporte"]); }, antes), true);
-  eq("…y el aviso dice que lo leyó, sin fallas", await hasta(p, () => /El lector completó lo que pudo leer/.test((document.querySelector(".gx-subida") || {}).textContent || "") && !document.querySelector(".gx-subida-mal")), true);
+  eq("…y, leído, el cartel se va solo: queda el aviso pasajero", await hasta(p, () => /Se subió 1 comprobante/.test(document.getElementById("calendarToastText").textContent) && !document.querySelector(".gx-subida")), true);
   eq("sin errores de página", errores, []);
   await p.close();
 }
@@ -880,15 +886,17 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   eq("en un gasto aprobado que pagó otra persona: quién y que no entra en ninguna cuenta", await p.$$eval("#gastoBody .gx-res-fila", l => l.map(f => [f.querySelector("dt").textContent, f.querySelector("dd").innerText.replace(/\s+/g, " ").trim()])
     .filter(([k]) => k === "¿Quién pagó?")), [["¿Quién pagó?", "Ana Pérez No entra en ninguna cuenta corriente."]]);
   await p.keyboard.press("Escape"); await p.waitForTimeout(150);
-  eq("una rendición aprobada: un admin tiene «Reabrir», con lo que pasa", await p.evaluate(() => { const b = document.querySelector('[data-action="gastos-reabrir"]');
-    return b && [b.textContent.trim(), /Reabrila para sumarlo/.test(b.closest(".gx-paso").textContent)]; }), ["↩️ Reabrir", true]);
+  eq("una rendición aprobada: un admin tiene «Reabrir»", await p.evaluate(() => { const b = document.querySelector('[data-action="gastos-reabrir"]'); return b && b.textContent.trim(); }), "↩️ Reabrir");
   await tocar(p, '[data-action="gastos-reabrir"]');
-  eq("…pregunta antes, diciendo que sus gastos salen de la cuenta corriente", await leer(p, "#confirmOverlay:not([hidden]) #confirmMessage", e => e.textContent.trim()),
-    `¿Reabrir «Rutina de ${await p.evaluate(m => new Intl.DateTimeFormat("es-AR", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(m + "T12:00:00Z")), mes)}»? Sus gastos dejan de estar aprobados y salen de tu cuenta corriente hasta que la vuelvas a aprobar. Después sumás el gasto que faltaba y la mandás de nuevo.`);
+  eq("…pregunta antes, diciendo que lo aprobado queda aprobado", await leer(p, "#confirmOverlay:not([hidden]) #confirmMessage", e => e.textContent.trim()),
+    `¿Reabrir «Rutina de ${await p.evaluate(m => new Intl.DateTimeFormat("es-AR", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(m + "T12:00:00Z")), mes)}»? Lo aprobado queda aprobado: después se revisa solo lo que se sume o corrija.`);
   await tocar(p, "#confirmOk");
-  eq("…la reabre con la función de la base: vuelve a abierta y sus gastos, a confirmados", await hasta(p, () => {
+  eq("…la reabre con la función de la base: vuelve a abierta y lo aprobado sigue aprobado", await hasta(p, () => {
     const r = window.__sb.tablas.gastos_rendiciones.find(x => x.id === "ren_rutina"), g = window.__sb.tablas.gastos.find(x => x.id === "gx4");
-    return r.estado === "abierta" && g.estado === "confirmado" && !!document.querySelector('.gastos-view [data-action="gastos-subir"][data-id="ren_rutina"]'); }), true);
+    return r.estado === "abierta" && g.estado === "aprobado" && !!document.querySelector('.gastos-view [data-action="gastos-subir"][data-id="ren_rutina"]'); }), true);
+  eq("…la barra dice qué sigue: sumar lo que faltaba", await leer(p, ".gx-paso", e => [e.querySelector("b").textContent.trim(), e.querySelector(".btn-primary").dataset.action]), ["Reabierta: sumá lo que faltaba", "gastos-subir"]);
+  eq("…y lo aprobado va aparte, plegado, debajo de lo nuevo", await p.evaluate(() => [(document.querySelector(".gx-filas-tit") || {}).textContent,
+    (document.querySelector("details.gx-ya > summary") || {}).textContent, (document.querySelector("details.gx-ya") || {}).open]), ["Nuevos o corregidos (0)", "Ya aprobados (1)", false]);
   eq("…una vez", await rpcs(p, "gastos_rendicion_reabrir"), [{ p_id: "ren_rutina" }]);
   eq("sin errores de página", errores, []);
   await p.close();
@@ -938,7 +946,14 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   eq("la rendición muestra sus cambios de moneda, con la tasa", await leer(p, ".gx-cambios .gx-cambio", e => e.innerText.replace(/\s+/g, " ").trim()),
     `USD 100.00 → UYU 3,950.00 ${await p.evaluate(() => document.querySelector(".gx-cambios .gx-cambio small").textContent.split(" · ")[0])} · 1 USD = 39.5 UYU · Casa de cambio del aeropuerto 📎 Adjuntar comprobante 🗑️`);
   await tocar(p, '[data-action="gastos-cambio-abrir"]');
-  eq("«Anotar un cambio de moneda» abre el formulario y va a la fecha", await p.evaluate(() => document.activeElement.id), "gxCam_fecha");
+  eq("«Anotar un cambio de moneda» abre el formulario y va a lo que entregaste", await p.evaluate(() => document.activeElement.id), "gxCam_entregadoMonto");
+  eq("de entrada: dólares, la moneda del país de la actividad (Uruguay) y la fecha en que empieza", await p.evaluate(() => [document.getElementById("gxCam_entregadoMoneda").value,
+    document.getElementById("gxCam_recibidoMoneda").value, document.getElementById("gxCam_fecha").value === String((window.__sb.tablas.posts.find(x => x.id === "p9") || {}).start_date || "").slice(0, 10)]), ["USD", "UYU", true]);
+  eq("cada moneda va al lado de su monto, en dos grupos con su nombre; sin tarjeta adentro ni título repetido", await p.evaluate(() => [
+    [...document.querySelectorAll(".gx-cam-monto")].map(g => [...g.querySelectorAll("input")].map(i => i.id)), [...document.querySelectorAll(".gx-cam-lado > .gx-et")].map(e => e.textContent),
+    !!document.querySelector(".gx-cambios .settings-card, .gx-cambios .settings-card-title")]),
+    [[["gxCam_entregadoMoneda", "gxCam_entregadoMonto"], ["gxCam_recibidoMoneda", "gxCam_recibidoMonto"]], ["Entregaste", "Recibiste"], false]);
+  await p.fill("#gxCam_fecha", new Date().toISOString().slice(0, 10)).catch(() => {});
   await p.fill("#gxCam_entregadoMonto", "50").catch(() => {}); await p.fill("#gxCam_recibidoMonto", "50").catch(() => {});
   await p.fill("#gxCam_recibidoMoneda", "USD").catch(() => {}); await p.click("#gxCam_observaciones").catch(() => {});
   await tocar(p, '[data-action="gastos-cambio-anotar"]');
@@ -1018,6 +1033,69 @@ for(const lang of ["en", "pt", "he"]){
   await p.keyboard.press("Escape");
   for(const k of ["cuenta", "aprobar"]){ await p.click(`[data-action="gastos-seccion"][data-key="${k}"]`); await p.waitForTimeout(120); }
   eq(`${lang}: sin errores de página`, errores, []);
+  await p.close();
+}
+
+{
+  // Las observaciones en la ventana del gasto (18/11): al final y de a poco; «Observar», solo un admin que no cargó
+  // el gasto y no en uno ya observado (lo que quiera agregar, como respuesta).
+  const base = datos({ prendido: true });
+  base.gastos_comentarios.push({ id: "gc2", gasto_id: "gx7", autor: PERS[2].email, texto: "Era una cena de equipo", creado_el: new Date(Date.now() - 2 * 3600e3).toISOString() },
+    { id: "gc3", gasto_id: "gx7", autor: ADMIN, texto: "Entonces subí el ticket de los cuatro", creado_el: new Date(Date.now() - 3600e3).toISOString() });
+  Object.assign(base.gastos_rendiciones.find(r => r.id === "ren_mvd"), { estado: "enviada", enviada_el: "2026-11-01T10:00:00Z" });
+  base.gastos.filter(g => g.rendicion_id === "ren_mvd").forEach(g => Object.assign(g, { estado: "enviado", fecha: g.fecha || "2026-07-05", concepto: g.concepto || "Taxi", tipo: g.tipo || "transporte" }));
+  const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: vp, base });
+  await irGastos(p);
+  await p.click('[data-action="gastos-seccion"][data-key="aprobar"]'); await p.waitForTimeout(150);
+  await p.click('[data-action="gastos-abrir-rendicion"][data-id="ren_ana"]'); await p.waitForTimeout(150);
+  await p.click('[data-action="gasto-abrir"][data-id="gx5"]'); await p.waitForSelector("#gastoOverlay:not([hidden])");
+  eq("el gasto mandado de otra persona: «Observar» al final, después de los datos", await p.evaluate(() => {
+    const sec = document.querySelector("#gastoBody .gx-obs-sec"), datos = document.querySelector("#gastoBody .gx-res, #gastoBody .gx-campos");
+    return !!sec && !!datos && !!(datos.compareDocumentPosition(sec) & Node.DOCUMENT_POSITION_FOLLOWING) && !!sec.querySelector('[data-action="gasto-observar"]'); }), true);
+  await p.keyboard.press("Escape"); await p.waitForTimeout(150);
+  await tocar(p, '[data-action="gastos-volver"]'); await p.waitForTimeout(150);
+  await tocar(p, '[data-action="gastos-abrir-rendicion"][data-id="ren_diego"]'); await p.waitForTimeout(150);
+  await tocar(p, '[data-action="gasto-abrir"][data-id="gx7"]'); await p.waitForSelector("#gastoOverlay:not([hidden])");
+  eq("uno con tres comentarios: el título los cuenta y se ve solo el último", await p.evaluate(() => [(document.querySelector("#gxObsTit") || {}).textContent,
+    [...document.querySelectorAll("#gastoBody .gx-hilo .gx-com div")].map(d => d.textContent)]), ["Observaciones (3)", ["Entonces subí el ticket de los cuatro"]]);
+  eq("ya observado, no se ofrece «Observar» otra vez: se responde", await p.evaluate(() => [!!document.querySelector('#gastoBody [data-action="gasto-observar"]'), !!document.querySelector('#gastoBody [data-action="gasto-responder"]')]), [false, true]);
+  await tocar(p, '[data-action="gasto-hilo-ver"]');
+  eq("«Ver las 2 anteriores» abre el hilo entero, en orden", await p.$$eval("#gastoBody .gx-hilo .gx-com div", l => l.map(d => d.textContent)),
+    ["Falta la factura: ¿la podés subir de nuevo?", "Era una cena de equipo", "Entonces subí el ticket de los cuatro"]);
+  await p.fill("#gxResponder", "Gracias, lo veo"); await p.dispatchEvent("#gxResponder", "input");
+  await tocar(p, '[data-action="gasto-responder"]');
+  eq("la respuesta del admin va al hilo, sin cerrar la ventana", await hasta(p, () => window.__sb.rpc.some(r => r[0] === "gastos_comentar" && r[1].p_texto === "Gracias, lo veo")
+    && !document.getElementById("gastoOverlay").hidden && [...document.querySelectorAll("#gastoBody .gx-hilo .gx-com div")].some(d => d.textContent === "Gracias, lo veo")), true);
+  await p.keyboard.press("Escape"); await p.waitForTimeout(150);
+  // Un gasto propio, mandado: el admin que lo cargó no se lo observa a sí mismo.
+  await tocar(p, '[data-action="gastos-seccion"][data-key="mias"]'); await p.waitForTimeout(150);
+  await tocar(p, '[data-action="gastos-abrir-rendicion"][data-id="ren_mvd"]'); await p.waitForTimeout(150);
+  await tocar(p, '[data-action="gasto-abrir"][data-id="gx2"]'); await p.waitForSelector("#gastoOverlay:not([hidden])");
+  eq("un gasto propio no tiene «Observar», aunque quien lo mira sea admin", await p.evaluate(() => !!document.querySelector('#gastoBody [data-action="gasto-observar"]')), false);
+  eq("sin errores de página", errores, []);
+  await p.close();
+}
+{
+  // Reabierta una rendición de otra persona: un admin puede observar uno ya aprobado para que lo corrijan.
+  const base = datos({ prendido: true });
+  const ayer = new Date(Date.now() - 86400e3).toISOString();
+  Object.assign(base.gastos_rendiciones.find(r => r.id === "ren_ana"), { estado: "aprobada", aprobada_el: ayer, aprobada_por: ADMIN });
+  base.gastos.filter(g => g.rendicion_id === "ren_ana").forEach(g => Object.assign(g, { estado: "aprobado", aprobado_el: ayer }));
+  const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: vp, base });
+  await irGastos(p);
+  await p.click('[data-action="gastos-seccion"][data-key="aprobar"]'); await p.waitForTimeout(150);
+  await tocar(p, '[data-action="gastos-abrir-rendicion"][data-id="ren_ana"]'); await p.waitForTimeout(150);
+  await tocar(p, '[data-action="gastos-reabrir"]'); await tocar(p, "#confirmOk");
+  await hasta(p, () => !!document.querySelector("details.gx-ya"));
+  eq("reabierta la de otra persona, el admin la sigue viendo: lo aprobado, plegado", await p.evaluate(() => (document.querySelector("details.gx-ya > summary") || {}).textContent), "Ya aprobados (2)");
+  if(await p.$("details.gx-ya")) await p.click("details.gx-ya > summary");
+  await tocar(p, '[data-action="gasto-abrir"][data-id="gx5"]'); await p.waitForSelector("#gastoOverlay:not([hidden])").catch(() => {});
+  eq("en una reabierta, un admin que no la cargó puede observar uno aprobado", await p.evaluate(() => !!document.querySelector('#gastoBody [data-action="gasto-observar"]')), true);
+  await p.fill("#gxObs", "Corregí el monto en dólares").catch(() => {}); await p.dispatchEvent("#gxObs", "input").catch(() => {});
+  await tocar(p, '[data-action="gasto-observar"]');
+  eq("…y queda observado (la rendición vuelve a la persona)", await hasta(p, () => { const g = window.__sb.tablas.gastos.find(x => x.id === "gx5"), r = window.__sb.tablas.gastos_rendiciones.find(x => x.id === "ren_ana");
+    return g.estado === "observado" && r.estado === "observada"; }), true);
+  eq("sin errores de página", errores, []);
   await p.close();
 }
 

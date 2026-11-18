@@ -336,10 +336,29 @@ uno anota el suyo; va con las estadísticas (etapa 5).
 es el admin; al abrirlo al equipo se puede revisar que la apruebe otro). El **total rápido no mueve la cuenta
 corriente**: es para los números grandes, porque no dice quién puso la plata.
 
-## Lo que anotó el usuario al probarlo (desde el 18/11), para hacer
+## Lo que anotó el usuario al probarlo (desde el 18/11)
 
-Lo va dejando mientras revisa la versión publicada; se hace en una tanda, con su OK y capturas, como el resto del
-módulo.
+Lo fue dejando mientras revisaba la versión publicada. **Hecho el 18/11 en una tanda** (en la rama; va a `main` con su
+OK y capturas de antes y después). Eligió: el PDF de una, sin panel; «Anotar solo el total» como nombre único; y lo
+que llega tarde, al final del PDF con los números que siguen. Cómo quedó cada punto:
+- **1** — el cartel de la subida se va solo al terminar (subir y leer) y deja un aviso pasajero (el mismo de la app,
+  que ahora espera si el mouse está encima); queda solo si algo no subió. Lo que el lector no pudo leer lo dice su
+  fila («No se pudo leer: completalo a mano»). Lo mismo el aviso de «Revisar en lista» y el «listo» del PDF.
+- **3** — el cambio: «Entregaste» y «Recibiste», cada uno con su moneda al lado; la tasa justo debajo; sin tarjeta
+  adentro ni título; el comprobante como link «(opcional)»; de entrada, la fecha en que empieza la actividad y la
+  moneda de su país; sin la explicación de arriba.
+- **4** — «Anotar solo el total» en todos lados («Total anotado: …» después), debajo de los cambios, y en una
+  rendición vacía la barra ofrece «Subir comprobantes» y, al lado, «o anotar solo el total».
+- **5** — «Descargar el PDF de entrega» en la barra de la aprobada, con ES · EN · PT · HE al lado; el avance en el
+  botón; la nota de la traducción solo si hace falta. El resumen por mes, en un desplegable de *Mis rendiciones*.
+- **6** — reabrir: lo aprobado sigue aprobado (base: `aprobado_el`; al mandar y aprobar, solo lo nuevo o corregido);
+  la lista muestra «Nuevos o corregidos» y abajo «Ya aprobados», plegados; un admin puede observar uno aprobado.
+- **7** — las observaciones al final de la ventana, la última a la vista y «Ver las anteriores»; «Observar» solo para
+  un admin que no cargó el gasto y no en uno ya observado; si no, «Responder».
+- **Menos texto** — fuera las explicaciones de las tres secciones, de «¿De qué son…?», de «Revisar en lista», de
+  los tipos, los «Opcional:…» y las segundas frases de las barras; acortados los avisos al mandar, el del
+  comprobante que no subió, el del ajuste y «Nada para aprobar».
+- **2** (el PDF de Uber que el lector no leyó) sigue pendiente: hace falta el archivo.
 
 **Para toda la tanda** (18/11: «Hay mucho texto, mucha explicación, podría ser más directo. No es difícil lo que
 tenemos que poner»): en todas las pantallas de Gastos, menos texto. Cada botón dice lo que hace; como mucho una

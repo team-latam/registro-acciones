@@ -6,7 +6,9 @@ import { abrirNavegador, entrar, ADMIN, PERS, BASE } from "./app_de_mentira.mjs"
 /* ======================================================================
    Los PDF de entrega de Gastos (etapa 4, 18/11/2026; docs/rendicion-gastos/)
 
-   - Solo de una rendición aprobada, con sus gastos: «PDF de entrega».
+   - Solo de una rendición aprobada, con sus gastos: «Descargar el PDF de
+     entrega» en su barra, de una, con los idiomas al lado (sin panel: lo
+     eligió el usuario el 18/11); el «listo», en el aviso que se va solo.
    - Adentro: cada comprobante en orden, con su sello (N° 1, N° 2…, y
      «pág. 1/2» si tiene varias páginas; el PDF del comprobante entra
      entero, no como foto), la planilla en cada idioma elegido (el hebreo,
@@ -100,28 +102,30 @@ const examinar = (p, bytes) => p.evaluate(async b64 => {
       return { w: Math.round(width), h: Math.round(height), imagenes: xo ? xo.keys().length : 0 }; }) };
 }, Buffer.from(bytes).toString("base64"));
 
-// ---------- 1. Una rendición aprobada: el panel ----------
+// El aviso pasajero de la app (el mismo del Calendar): ahí dice «se bajó» y lo que haya que avisar.
+const aviso = async p => { let x = ""; for(let i = 0; i < 40 && !x; i++){ x = await p.evaluate(() => { const t = document.getElementById("calendarToast"); return t && !t.hidden ? document.getElementById("calendarToastText").textContent : ""; }); if(!x) await p.waitForTimeout(100); } return x; };
+const idiomas = p => p.$$eval('.gx-paso [data-action="gastos-pdf-idioma"], .gx-resumen [data-action="gastos-pdf-idioma"]', l => l.filter(b => b.getAttribute("aria-pressed") === "true").map(b => b.dataset.l));
+
+// ---------- 1. Una rendición aprobada: de una, sin panel (lo eligió el usuario el 18/11) ----------
 {
   const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: { width: 1280, height: 900 }, pagina: PAGINA, base: datos(), iniciar: ANOTAR + TRADUCTOR });
   await sirvo(p);
   await irGastos(p);
   await abrir(p, "ren_mvd");
-  eq("la aprobada ofrece «PDF de entrega»", await leer(p, '.gx-paso [data-action="gastos-pdf-abrir"]', e => e.textContent.trim()), "📄 PDF de entrega");
-  await tocar(p, '[data-action="gastos-pdf-abrir"]');
-  eq("se abre el panel, con el foco en el primer idioma", await p.evaluate(() => [!!document.querySelector(".gx-pdf"), document.activeElement && document.activeElement.dataset.gpdfIdioma]), [true, "es"]);
-  eq("de entrada, el idioma de la app", await p.$$eval("[data-gpdf-idioma]", l => l.filter(c => c.checked).map(c => c.dataset.gpdfIdioma)), ["es"]);
-  eq("dice que traduce en el aparato", await leer(p, ".gx-pdf-nota", e => /se traducen en este aparato/.test(e.textContent)), true);
-  eq("cuenta qué va adentro (los 3 comprobantes, la planilla y el anexo del cambio)", await leer(p, ".gx-pdf > .setting-sub", e => /3 comprobantes/.test(e.textContent) && /anexo/.test(e.textContent)), true);
-  await tocar(p, '[data-gpdf-idioma="es"]');
-  eq("sin idiomas no se puede bajar, y lo dice", await p.evaluate(() => [document.querySelector('[data-action="gastos-pdf-bajar"]').disabled, /al menos un idioma/.test(document.querySelector(".gx-pdf").textContent)]), [true, true]);
-  await tocar(p, '[data-gpdf-idioma="he"]'); await tocar(p, '[data-gpdf-idioma="es"]');
-  eq("con español y hebreo, sí; y se recuerdan para la próxima", await p.evaluate(() => [document.querySelector('[data-action="gastos-pdf-bajar"]').disabled, localStorage.getItem("ra_pdf_idiomas")]), [false, '["es","he"]']);
+  eq("la barra de la aprobada: «Descargar el PDF de entrega» y, al lado, los idiomas", await p.evaluate(() => [(document.querySelector('.gx-paso [data-action="gastos-pdf-bajar"][data-id="ren_mvd"]') || {}).textContent,
+    [...document.querySelectorAll('.gx-paso [data-action="gastos-pdf-idioma"]')].map(b => b.textContent)]), ["Descargar el PDF de entrega", ["ES", "EN", "PT", "HE"]]);
+  eq("sin panel ni explicaciones", await p.evaluate(() => !document.querySelector(".gx-pdf") && !/se traducen|Adentro van/.test(document.querySelector(".gastos-view").textContent)), true);
+  eq("de entrada, el idioma de la app", await idiomas(p), ["es"]);
+  await tocar(p, '.gx-paso [data-action="gastos-pdf-idioma"][data-l="es"]');
+  eq("el último no se apaga: siempre queda uno", await idiomas(p), ["es"]);
+  await tocar(p, '.gx-paso [data-action="gastos-pdf-idioma"][data-l="he"]');
+  eq("se suma el hebreo, con el foco en ese botón, y se recuerdan para la próxima", await p.evaluate(() => [document.activeElement.dataset.l, localStorage.getItem("ra_pdf_idiomas")]), ["he", '["es","he"]']);
+  eq("con traductor, no hace falta avisar nada", await p.evaluate(() => /no traduce/.test(document.querySelector(".gx-paso").textContent)), false);
 
   const { nombre, bytes } = await bajar(p);
   eq("se baja con el nombre de la actividad y el mes", /^Visita a Montevideo - [A-ZÁÉÍÓÚ][a-záéíóú]+ \d{4}\.pdf$/.test(nombre || ""), true);
-  let listo = null;
-  for(let i = 0; i < 30 && !listo; i++){ listo = await leer(p, ".gx-pdf .admin-ok", e => e.textContent); if(!listo) await p.waitForTimeout(100); }
-  eq("y la pantalla dice que está listo", !!nombre && (listo || "").includes(nombre), true);
+  const listo = await aviso(p);
+  eq("y un aviso pasajero dice que se bajó (y el botón vuelve a estar)", [!!nombre && listo.includes(nombre), await leer(p, '[data-action="gastos-pdf-bajar"]', e => [e.disabled, e.textContent])], [true, [false, "Descargar el PDF de entrega"]]);
   const x = bytes ? await examinar(p, bytes) : { paginas: [] };
   // 1 (taxi) + 2 (la factura en PDF) + 1 (cena) + planilla en español + en hebreo + el anexo del cambio
   eq("7 páginas: los comprobantes (la factura con sus dos), dos planillas y el anexo", x.paginas.length, 7);
@@ -155,12 +159,14 @@ const examinar = (p, bytes) => p.evaluate(async b64 => {
   const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: { width: 1280, height: 900 }, pagina: PAGINA, base: datos(), iniciar: SIN_TRADUCTOR });
   await sirvo(p, { faltaGx3: true });
   await irGastos(p); await abrir(p, "ren_mvd");
-  await tocar(p, '[data-action="gastos-pdf-abrir"]');
-  eq("sin traductor en el navegador, dice que van como se escribieron y dónde sí se traducen", await leer(p, ".gx-pdf-nota", e => /no sabe traducir/.test(e.textContent) && /Chrome en una computadora/.test(e.textContent)), true);
+  eq("sin traductor y solo en castellano, no avisa nada", await p.evaluate(() => /no traduce/.test(document.querySelector(".gx-paso").textContent)), false);
+  await tocar(p, '.gx-paso [data-action="gastos-pdf-idioma"][data-l="en"]');
+  eq("con otro idioma, una línea: los conceptos van como se escribieron", await p.evaluate(() => /Este navegador no traduce: los conceptos van como se escribieron/.test(document.querySelector(".gx-paso").textContent)), true);
+  await tocar(p, '.gx-paso [data-action="gastos-pdf-idioma"][data-l="en"]');
   const { bytes } = await bajar(p);
   const x = bytes ? await examinar(p, bytes) : { paginas: [] };
   eq("no se saltea su número: va una hoja que lo dice (siguen siendo 6 con un idioma)", x.paginas.length, 6);
-  eq("y la pantalla avisa cuál es el problema y qué hacer", await leer(p, ".gx-pdf .gx-alerta", e => /no se pudo poner tal cual/.test(e.textContent) && /bajar desde el gasto/.test(e.textContent)), true);
+  eq("y el aviso dice cuál es el problema, y no se va solo", [/no se pudo poner: en su lugar va una hoja que lo dice/.test(await aviso(p)), await p.waitForTimeout(5500).then(() => p.evaluate(() => !document.getElementById("calendarToast").hidden))], [true, true]);
   eq("sin errores (solo el aviso en la consola)", errores, []);
   await p.close();
 }
@@ -169,10 +175,10 @@ const examinar = (p, bytes) => p.evaluate(async b64 => {
 {
   const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: { width: 1280, height: 900 }, pagina: PAGINA, base: datos(false), iniciar: ANOTAR + SIN_TRADUCTOR });
   await irGastos(p); await abrir(p, "ren_mvd");
-  eq("una rendición abierta no ofrece el PDF", await p.$('[data-action="gastos-pdf-abrir"]'), null);
+  eq("una rendición abierta no ofrece el PDF", await p.$('[data-action="gastos-pdf-bajar"]'), null);
   await tocar(p, '[data-action="gastos-volver"]'); await p.waitForTimeout(200);
-  eq("en «Mis rendiciones», el resumen por mes (hay una aprobada)", await leer(p, '[data-action="gastos-pdf-abrir"][data-id="resumen"]', e => /Resumen de gastos por mes/.test(e.textContent)), true);
-  await tocar(p, '[data-action="gastos-pdf-abrir"][data-id="resumen"]');
+  eq("en «Mis rendiciones», el resumen por mes, plegado (hay una aprobada)", await leer(p, "details.gx-resumen", e => [e.querySelector("summary").textContent, e.open]), ["Resumen por mes (PDF)", false]);
+  await tocar(p, "details.gx-resumen > summary");
   eq("pide desde y hasta, con los meses que tienen algo aprobado", await p.$$eval("#gxPdfDesde option", l => l.length), 1);
   const { nombre, bytes } = await bajar(p);
   eq("se baja como «Resumen de gastos - <mes>»", /^Resumen de gastos - [A-Z][a-z]+ \d{4}\.pdf$/.test(nombre || ""), true);
@@ -189,10 +195,8 @@ const examinar = (p, bytes) => p.evaluate(async b64 => {
   const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: { width: 1280, height: 900 }, pagina: PAGINA, base: datos(), iniciar: SIN_TRADUCTOR });
   await p.route(/\/pdf\/pdf-lib\.min\.js$/, ruta => ruta.fulfill({ status: 404, body: "" }));
   await irGastos(p); await abrir(p, "ren_mvd");
-  await tocar(p, '[data-action="gastos-pdf-abrir"]');
   await tocar(p, '[data-action="gastos-pdf-bajar"]');
-  let msg = null;
-  for(let i = 0; i < 40 && !msg; i++){ msg = await leer(p, ".gx-pdf .form-error[role=alert]", e => e.textContent); await p.waitForTimeout(100); }
+  const msg = await aviso(p);
   eq("lo dice en palabras simples, y se puede volver a probar", [/No se pudo cargar lo que arma el PDF/.test(msg || ""), await leer(p, '[data-action="gastos-pdf-bajar"]', e => e.disabled)], [true, false]);
   eq("sin errores en la página (el que falta es el archivo)", errores.filter(e => !/pdf-lib/.test(e)), []);
   await p.close();
@@ -205,21 +209,18 @@ const examinar = (p, bytes) => p.evaluate(async b64 => {
   const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: { width: 1280, height: 900 }, pagina: PAGINA, base: datos(), iniciar: TRABADO });
   await sirvo(p);
   await irGastos(p); await abrir(p, "ren_mvd");
-  await tocar(p, '[data-action="gastos-pdf-abrir"]');
-  await tocar(p, '[data-gpdf-idioma="en"]');
+  await tocar(p, '.gx-paso [data-action="gastos-pdf-idioma"][data-l="en"]');
   const t0 = Date.now();
   const { bytes } = await bajar(p);
   const x = bytes ? await examinar(p, bytes) : { paginas: [] };
   eq("el PDF sale igual (con las dos planillas), sin esperar de más", [x.paginas.length, Date.now() - t0 < 40000], [7, true]);
-  let aviso = null;
-  for(let i = 0; i < 30 && !aviso; i++){ aviso = await leer(p, ".gx-pdf .gx-alerta", e => e.textContent); if(!aviso) await p.waitForTimeout(100); }
-  eq("y avisa que algunos textos van sin traducir", /no se pudieron traducir/.test(aviso || ""), true);
-  eq("la próxima vez ya no lo espera: dice que este navegador no traduce", await leer(p, ".gx-pdf-nota", e => /no sabe traducir/.test(e.textContent)), true);
+  eq("y avisa que algunos textos van sin traducir", /no se pudieron traducir/.test(await aviso(p)), true);
+  eq("la próxima vez ya no lo espera: dice que este navegador no traduce", await p.evaluate(() => /no traduce/.test(document.querySelector(".gx-paso").textContent)), true);
   eq("sin errores", errores, []);
   await p.close();
 }
 
-// ---------- 6. En el celular, el panel entra ----------
+// ---------- 6. En el celular, el botón y los idiomas entran ----------
 {
   const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: { width: 360, height: 740 }, pagina: PAGINA, base: datos(), iniciar: SIN_TRADUCTOR });
   await p.evaluate(() => { const v = document.querySelector('.bn-item[data-action="toggle-more-menu"]'); if(v) v.click(); });
@@ -227,8 +228,26 @@ const examinar = (p, bytes) => p.evaluate(async b64 => {
   await p.evaluate(() => { const v = document.querySelector('[data-view="gastos"]'); if(v) v.click(); });
   await p.waitForSelector(".gastos-view").catch(() => {});
   await abrir(p, "ren_mvd");
-  await tocar(p, '[data-action="gastos-pdf-abrir"]');
-  eq("en 360 px, el panel no se sale de la pantalla", await p.evaluate(() => { const e = document.querySelector(".gx-pdf"); return !!e && e.getBoundingClientRect().right <= document.documentElement.clientWidth + 1 && document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1; }), true);
+  eq("en 360 px, el botón y los idiomas no se salen de la pantalla", await p.evaluate(() => { const e = document.querySelector(".gx-paso .gx-pdf-acc"), w = document.documentElement.clientWidth;
+    return !!e && [...e.querySelectorAll("button")].every(b => b.getBoundingClientRect().right <= w + 1 && b.getBoundingClientRect().left >= -1) && document.documentElement.scrollWidth <= w + 1; }), true);
+  eq("…y cada idioma se toca con el dedo (32 px o más)", await p.$$eval('.gx-paso [data-action="gastos-pdf-idioma"]', l => l.every(b => b.getBoundingClientRect().height >= 32 && b.getBoundingClientRect().width >= 32)), true);
+  eq("sin errores", errores, []);
+  await p.close();
+}
+
+// ---------- 7. Lo que llegó tarde va al final (lo eligió el usuario el 18/11) ----------
+{
+  const base = datos();
+  // El taxi (el de fecha más vieja) se sumó después de la primera aprobación: va último, con el N° que sigue.
+  base.gastos.filter(g => g.rendicion_id === "ren_mvd").forEach(g => { g.aprobado_el = g.id === "gx1" ? "2026-08-01T12:00:00Z" : "2026-07-21T12:00:00Z"; });
+  const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: { width: 1280, height: 900 }, pagina: PAGINA, base, iniciar: ANOTAR + SIN_TRADUCTOR });
+  await sirvo(p);
+  await irGastos(p); await abrir(p, "ren_mvd");
+  const { bytes } = await bajar(p);
+  const dib = await p.evaluate(() => window.__dibujado);
+  const fila = c => dib.indexOf(c);
+  eq("en la planilla: primero lo aprobado antes (por fecha) y al final el que llegó tarde", bytes && [fila("Hotel Rambla, dos noches") < fila("Cena con los directores"), fila("Cena con los directores") < fila("Taxi al aeropuerto")], [true, true]);
+  eq("…y su sello es el N° 3, aunque su fecha sea la primera (el hotel, N° 1, tiene dos páginas)", dib.slice(0, dib.indexOf("N° 3") + 1).filter(s => /^N° \d$/.test(s)), ["N° 1", "N° 1", "N° 2", "N° 3"]);
   eq("sin errores", errores, []);
   await p.close();
 }
