@@ -128,6 +128,17 @@ eq("sin marcas en el ticket, la moneda en que la persona suele gastar en sus rut
 eq("…y sin eso, el «$» queda sin moneda (para revisar)", campos(leer(sinMarcas), "moneda", "dudas"), [null, ["moneda"]]);
 eq("el país de la actividad manda antes que la costumbre", campos(leer(sinMarcas, "Uruguay", "MXN"), "moneda"), ["UYU"]);
 eq("el CUIT argentino también dice la moneda", campos(leer("KIOSCO SOL\nC.U.I.T. 20-12345678-9\nTOTAL $ 1.500,00"), "moneda"), ["ARS"]);
+// La captura de una app de viajes (inventada, como la de Uber del usuario, 18/11): sin «total»; abajo, la tarjeta sin
+// los puntitos («•••• 4321») pegada al monto. El monto es el de los centavos, no los cuatro números de la tarjeta.
+const appViaje = `< Detalle del viaje
+USD$23.40
+Tarifa del viaje USD $19.90
+Cargo de reserva USD$3.50
+Est. 7 km 15 min
+Historial de pagos
+4321 USD$23.40
+03/11/2026,11:36`;
+eq("captura de una app de viajes: el monto con centavos, no la tarjeta de al lado, para revisar", campos(leer(appViaje), "fecha", "monto", "moneda", "dudas"), ["2026-11-03", 23.4, "USD", ["monto"]]);
 
 const brasil = `PADARIA BOM DIA LTDA
 CNPJ 12.345.678/0001-90

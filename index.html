@@ -25138,18 +25138,19 @@ const fechaDeMarca = ts => { const ms = tsToMillis(ts); return ms ? fmtDate(isoL
 const esPdfGasto = g => /pdf/i.test(g.archivoTipo || "") || /\.pdf$/i.test(g.archivo || "");
 
 // ---- Las actividades a las que se puede atar un gasto ----
-// Las que la persona cargó o en las que figura; a un admin la base le deja
-// cualquiera (en la prueba, el que carga es el admin, y muchas actividades
-// vienen de Calendar sin participantes). Las más cercanas a la fecha primero.
+// Las que la persona cargó o en las que figura, todas (`mias`); a un admin la
+// base le deja cualquiera: las del resto van aparte (`otras`), las 40 más
+// cercanas (lo pidió el usuario el 18/11: «por qué solo me permite estas»).
+// En cada grupo, las más cercanas a la fecha primero.
 function participoEn(p, yo){
   if(String(p.authorEmail || "").toLowerCase() === yo) return true;
   return (p.participants || []).some(x => x && String(x.email || "").toLowerCase() === yo);
 }
 function actividadesParaGastos(cerca){
   const yo = miCorreo(), ref = Date.parse((cerca || todayISO()) + "T00:00:00");
-  return state.posts.filter(p => p.activityType !== "rutina" && !p.cancelled && (isAdmin() || participoEn(p, yo)))
-    .map(p => ({ p, d: Math.abs(Date.parse((p.startDate || p.date) + "T00:00:00") - ref) || 0 }))
-    .sort((a, b) => a.d - b.d).slice(0, 40).map(x => x.p);
+  const porCercania = l => l.map(p => ({ p, d: Math.abs(Date.parse((p.startDate || p.date) + "T00:00:00") - ref) || 0 })).sort((a, b) => a.d - b.d).map(x => x.p);
+  const todas = state.posts.filter(p => p.activityType !== "rutina" && !p.cancelled);
+  return { mias: porCercania(todas.filter(p => participoEn(p, yo))), otras: isAdmin() ? porCercania(todas.filter(p => !participoEn(p, yo))).slice(0, 40) : [] };
 }
 function mesAnteriorDe(ym){
   const [y, m] = ym.split("-").map(Number);
@@ -25198,14 +25199,18 @@ function opcionesDeVinculo(g, actual){
     const r = rendicionDeVinculo(v), cerrada = yaMandada(r) && v !== actual;
     return `<option value="${esc(v)}"${v === actual ? " selected" : ""}${cerrada ? " disabled" : ""}>${esc(txt)}${cerrada ? " — " + esc(t("ya se mandó","already sent","já foi enviada","כבר נשלחה")) : ""}</option>`;
   };
-  const hoy = todayISO().slice(0, 7);
-  const meses = [...new Set([g.fecha && g.fecha.slice(0, 7), hoy, mesAnteriorDe(hoy), actual.startsWith("mes:") ? actual.slice(4) : ""].filter(Boolean))].sort().reverse();
-  const acts = actividadesParaGastos(g.fecha);
-  if(actual.startsWith("post:") && !acts.some(p => "post:" + p.id === actual)){ const p = getPostById(actual.slice(5)); if(p) acts.unshift(p); }
+  // Las rutinas: los últimos doce meses, las que la persona todavía tiene abiertas y el mes del gasto (18/11).
+  const hoy = todayISO().slice(0, 7), meses = new Set([g.fecha && g.fecha.slice(0, 7), actual.startsWith("mes:") ? actual.slice(4) : ""].filter(Boolean));
+  for(let i = 0, m = hoy; i < 12; i++, m = mesAnteriorDe(m)) meses.add(m);
+  misRendiciones().forEach(r => { if(r.rutinaMes && rendicionEditable(r)) meses.add(String(r.rutinaMes).slice(0, 7)); });
+  const { mias, otras } = actividadesParaGastos(g.fecha);
+  if(actual.startsWith("post:") && ![...mias, ...otras].some(p => "post:" + p.id === actual)){ const p = getPostById(actual.slice(5)); if(p) (participoEn(p, miCorreo()) ? mias : otras).unshift(p); }
   const huerfana = actual.startsWith("ren:") ? rendicionPorId(actual.slice(4)) : null;
+  const opAct = p => op("post:" + p.id, `${p.title || t("Sin título","Untitled","Sem título","ללא כותרת")} · ${fmtDate(p.startDate || p.date)}`);
   return `<option value=""${!actual ? " selected" : ""}>${esc(t("Sin vincular (la asigno después)","Not linked yet (I'll assign it later)","Sem vínculo (atribuo depois)","לא משויך (אשייך אחר כך)"))}</option>
-    <optgroup label="${esc(t("La rutina del mes","The month's routine","A rotina do mês","השגרה של החודש"))}">${meses.map(m => op("mes:" + m, t("Rutina de {m}","Routine for {m}","Rotina de {m}","שגרה של {m}",{ m: nombreDeMes(m) }))).join("")}</optgroup>
-    ${acts.length || huerfana ? `<optgroup label="${esc(t("Una actividad","An activity","Uma atividade","פעילות"))}">${huerfana ? op(actual, tituloRendicion(huerfana)) : ""}${acts.map(p => op("post:" + p.id, `${p.title || t("Sin título","Untitled","Sem título","ללא כותרת")} · ${fmtDate(p.startDate || p.date)}`)).join("")}</optgroup>` : ""}`;
+    <optgroup label="${esc(t("La rutina del mes","The month's routine","A rotina do mês","השגרה של החודש"))}">${[...meses].sort().reverse().map(m => op("mes:" + m, t("Rutina de {m}","Routine for {m}","Rotina de {m}","שגרה של {m}",{ m: nombreDeMes(m) }))).join("")}</optgroup>
+    ${mias.length || huerfana ? `<optgroup label="${esc(t("Mis actividades","My activities","Minhas atividades","הפעילויות שלי"))}">${huerfana ? op(actual, tituloRendicion(huerfana)) : ""}${mias.map(opAct).join("")}</optgroup>` : ""}
+    ${otras.length ? `<optgroup label="${esc(t("Otras actividades del equipo","Other team activities","Outras atividades da equipe","פעילויות אחרות של הצוות"))}">${otras.map(opAct).join("")}</optgroup>` : ""}`;
 }
 
 /* ---- El lector de comprobantes: qué dice el texto ----
@@ -25375,7 +25380,9 @@ function leerTextoDeComprobante(texto, { hoy, pais, monedaHabitual } = {}){
     // Sin «total»: el número con decimales más grande del ticket, para revisar.
     const todos = lineas.filter(l => !/\b(?:cuit|rut|rfc|nit|cnpj|cuil|tel|cel|nro|n[º°o]\.?|factura|ticket|recibo|comprobante|cae|cp|c\.p\.)\b/i.test(l))
       .flatMap(l => numerosDeLinea(l).filter(x => x.dec || /[$€₪]/.test(l)).map(x => ({ ...x, l })));
-    const max = todos.reduce((a, c) => !a || c.n > a.n ? c : a, null);
+    // Con decimales primero: en «•••• 4321 USD$23.40» (una app, sin los puntitos) el 4321 es la tarjeta, no el monto.
+    const conDec = todos.filter(x => x.dec);
+    const max = (conDec.length ? conDec : todos).reduce((a, c) => !a || c.n > a.n ? c : a, null);
     if(max){ r.monto = max.n; lineaTotal = max.l; r.dudas.push("monto"); }
   }
   // Consumo + propina (los tickets de tarjeta de un café o un restaurante): el total no puede ser menos que eso. Si el
@@ -25471,6 +25478,62 @@ function fotoDentroDelPdf(bytes){
     if(!mejor || f - ini > mejor.fin - mejor.ini) mejor = { ini, fin: f };
   }
   return mejor ? b.slice(mejor.ini, mejor.fin) : null;
+}
+// La imagen de adentro de un PDF, como foto (un Blob JPEG): la JPEG más grande (un escaneo) o, si no hay, una imagen
+// comprimida común (FlateDecode, de 8 bits en colores o en grises, sin predictor): así guarda el iPhone una captura de
+// pantalla «compartida como PDF» (el Uber del usuario que no se leía, 18/11). null si no hay ninguna que sirva.
+async function imagenDentroDelPdf(bytes){
+  const b = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  const jpg = fotoDentroDelPdf(b);
+  if(jpg) return new Blob([jpg], { type: "image/jpeg" });
+  if(typeof DecompressionStream !== "function" || typeof document === "undefined") return null;
+  let txt = "";
+  for(let i = 0; i < b.length; i += 65536) txt += String.fromCharCode.apply(null, b.subarray(i, i + 65536));
+  // Cuántos colores tiene un espacio de color: nombrado (/DeviceRGB) o un perfil ICC (con /N), que puede estar
+  // a una o dos referencias de distancia («6 0 R» → «[ /ICCBased 7 0 R ]» → «<< /N 3 … >>», como el del iPhone).
+  const colores = (cs, vueltas = 0) => {
+    if(/\/(?:Indexed|Separation|DeviceN|DeviceCMYK|Lab|Pattern)\b/.test(cs)) return 0;
+    const n = (/\/N\s+(\d+)/.exec(cs) || [])[1];
+    if(n) return n === "3" ? 3 : n === "1" ? 1 : 0;
+    if(/\/(?:DeviceRGB|CalRGB)\b/.test(cs)) return 3;
+    if(/\/(?:DeviceGray|CalGray)\b/.test(cs)) return 1;
+    const ref = /(\d+)\s+0\s+R/.exec(cs);
+    if(!ref || vueltas > 2) return 0;
+    const obj = new RegExp(`(?:^|[^0-9])${ref[1]}\\s+0\\s+obj([\\s\\S]{0,400})`).exec(txt);
+    return obj ? colores(obj[1].split(/stream|endobj/)[0], vueltas + 1) : 0;
+  };
+  let mejor = null;
+  for(const m of txt.matchAll(/<<((?:(?!<<|>>)[\s\S])*?\/Subtype\s*\/Image(?:(?!<<|>>)[\s\S])*?)>>\s*stream\r?\n/g)){
+    const d = m[1];
+    if(!/\/Filter\s*\/FlateDecode/.test(d) || /\/DecodeParms|\/ImageMask\s+true/.test(d) || !/\/BitsPerComponent\s+8\b/.test(d)) continue;
+    const w = +(/\/Width\s+(\d+)/.exec(d) || [])[1], h = +(/\/Height\s+(\d+)/.exec(d) || [])[1];
+    const n = colores((/\/ColorSpace\s*(\/\w+|\d+\s+0\s+R|\[[^\]]*\])/.exec(d) || [])[1] || "");
+    if(!w || !h || !n || w * h < 40000 || w * h > 40e6) continue;
+    // Dónde terminan los datos: lo que dice /Length si cuadra con «endstream»; si no, hasta ahí, sin el salto de
+    // línea de antes (un byte de más al final hace que el descompresor tire el último pedazo entero).
+    const ini = m.index + m[0].length, largo = +(/\/Length\s+(\d+)(?!\s+\d+\s+R)/.exec(d) || [])[1];
+    let fin = largo && /^\s*endstream/.test(txt.slice(ini + largo, ini + largo + 20)) ? ini + largo : txt.indexOf("endstream", ini);
+    if(fin < 0) continue;
+    if(!largo || fin !== ini + largo){ if(txt[fin - 1] === "\n") fin--; if(txt[fin - 1] === "\r") fin--; }
+    if(!mejor || w * h > mejor.w * mejor.h) mejor = { w, h, n, ini, fin };
+  }
+  if(!mejor) return null;
+  try{
+    // Se lee de a pedazos y se guarda lo que va saliendo.
+    const lector = new Blob([b.subarray(mejor.ini, mejor.fin)]).stream().pipeThrough(new DecompressionStream("deflate")).getReader();
+    const { w, h, n } = mejor, crudo = new Uint8Array(w * h * n);
+    let k = 0;
+    try{ for(;;){ const { done, value } = await lector.read(); if(done) break; crudo.set(value.subarray(0, crudo.length - k), k); k += Math.min(value.length, crudo.length - k); } }
+    catch(e){ /* basura al final del stream */ }
+    if(k < crudo.length) return null;
+    const c = document.createElement("canvas"); c.width = w; c.height = h;
+    const ctx = c.getContext("2d"), img = ctx.createImageData(w, h);
+    for(let i = 0, j = 0; i < w * h; i++, j += n){
+      img.data[i * 4] = crudo[j]; img.data[i * 4 + 1] = crudo[n === 3 ? j + 1 : j]; img.data[i * 4 + 2] = crudo[n === 3 ? j + 2 : j]; img.data[i * 4 + 3] = 255;
+    }
+    ctx.putImageData(img, 0, 0);
+    return await new Promise(ok => c.toBlob(x => ok(x), "image/jpeg", 0.92));
+  }catch(err){ console.warn("No se pudo sacar la imagen del PDF:", err); return null; }
 }
 // Un PDF con texto de verdad (una factura electrónica, el recibo de Uber o del
 // hotel): su texto, renglón por renglón, de arriba abajo. Sin bibliotecas: se
@@ -25830,9 +25893,9 @@ async function leerComprobante(cosa){
     const texto = await textoDelPdf(cosa.pdf).catch(() => "");
     if((texto.match(/\p{L}/gu) || []).length >= 20) return { texto, confianza: 100 };
     if(!lectorDisponible()) throw new Error(SIN_LECTOR);
-    const foto = fotoDentroDelPdf(cosa.pdf);
+    const foto = await imagenDentroDelPdf(cosa.pdf);
     if(!foto) throw new Error(t("es un PDF sin texto ni foto que se puedan leer: completalo a mano","it's a PDF with no text or photo that can be read: fill it in by hand","é um PDF sem texto nem foto que dê para ler: complete à mão","זה PDF בלי טקסט או תמונה שאפשר לקרוא: מלאו ידנית"));
-    imagen = new Blob([foto], { type: "image/jpeg" });
+    imagen = foto;
   }
   if(!lectorDisponible()) throw new Error(SIN_LECTOR);
   const w = await armarLector();
@@ -26058,7 +26121,23 @@ async function subirComprobantes(files, destino){
   }
   const lista = [...files];
   const sirve = f => /^image\//.test(f.type) || f.type === "application/pdf" || /\.pdf$/i.test(f.name);
-  const s = gastosSubida = { total: lista.length, hechos: 0, repetidos: [], fallas: [], corriendo: true };
+  const s = gastosSubida = { total: lista.length, hechos: 0, repetidos: [], fallas: [], movidos: {}, corriendo: true };
+  // Subiendo a una rutina mía, cada comprobante va a la rutina de su mes (la fecha del nombre del archivo), si
+  // esa no se mandó todavía: así se pueden subir los de varios meses juntos (lo pidió el usuario el 18/11).
+  const rd = destino && rendicionPorId(destino), mesDestino = rd && rd.rutinaMes && rd.autor === miCorreo() ? String(rd.rutinaMes).slice(0, 7) : null;
+  const abiertasDeMes = new Set();
+  async function destinoDe(fecha){
+    const mes = mesDestino && fecha && fecha.slice(0, 7);
+    if(!mes || mes === mesDestino) return destino || null;
+    const ya = rendicionDeVinculo("mes:" + mes);
+    if(ya && !rendicionEditable(ya)) return destino;
+    try{
+      const id = await rendicionPara("mes:" + mes);
+      if(!ya) abiertasDeMes.add(id);
+      s.movidos[mes] = (s.movidos[mes] || 0) + 1;
+      return id;
+    }catch(err){ console.warn("No se pudo abrir la rutina de " + mes + ":", err); return destino; }
+  }
   render();
   const huellas = new Set((gastosDatos ? gastosDatos.gastos : []).filter(g => g.autor === miCorreo()).map(g => g.archivoHash).filter(Boolean));
   for(const f of lista){
@@ -26075,25 +26154,27 @@ async function subirComprobantes(files, destino){
       let vistaPdf = null;
       if(esPdf){
         dataUrl = "data:application/pdf;base64," + String(dataUrl).split(",")[1];
-        const foto = fotoDentroDelPdf(new Uint8Array(buf));
-        if(foto){ try{ vistaPdf = await achicarDataUrl(await readFileAsDataUrl(new Blob([foto], { type: "image/jpeg" })), 1200, 0.8); }catch(e){ vistaPdf = null; } }
+        const foto = await imagenDentroDelPdf(new Uint8Array(buf)).catch(() => null);
+        if(foto){ try{ vistaPdf = await achicarDataUrl(await readFileAsDataUrl(foto), 1200, 0.8); }catch(e){ vistaPdf = null; } }
       }
       else dataUrl = await achicarDataUrl(dataUrl, LIMITES_DE_LA_BASE.ladoMaximo, LIMITES_DE_LA_BASE.calidadImagen);
       const sug = sugerirDeNombre(f.name);
       const tipo = sug.concepto ? tipoDeConcepto(sug.concepto) : null;
       if(tipo && sug.lectura) sug.lectura.campos.push("tipo");
       let id;
+      const rid = await destinoDe(sug.fecha);
       try{
-        id = await store.gastos.crear({ rendicionId: destino || null, estado: "borrador", fecha: sug.fecha, concepto: sug.concepto, tipo,
+        id = await store.gastos.crear({ rendicionId: rid, estado: "borrador", fecha: sug.fecha, concepto: sug.concepto, tipo,
           moneda: "USD", rendidoMoneda: "USD", pago: "persona", archivoNombre: String(f.name).slice(0, 200),
           archivoTipo: esPdf ? "application/pdf" : "image/jpeg", archivoHash: hash, lectura: sug.lectura });
       }catch(err){
+        if(rid !== (destino || null) && s.movidos[sug.fecha.slice(0, 7)]) s.movidos[sug.fecha.slice(0, 7)]--;
         if(err && err.code === "23505"){ s.repetidos.push(f.name); continue; }
         throw err;
       }
       huellas.add(hash);
       try{ await store.gastos.subirComprobante(id, dataUrl, f.name, vistaPdf); }
-      catch(err){ await store.gastos.borrar(id).catch(() => {}); huellas.delete(hash); throw err; }
+      catch(err){ await store.gastos.borrar(id).catch(() => {}); huellas.delete(hash); if(rid !== (destino || null) && s.movidos[sug.fecha.slice(0, 7)]) s.movidos[sug.fecha.slice(0, 7)]--; throw err; }
       s.hechos++;
       encolarLectura(esPdf ? { id, nombre: f.name, pdf: new Uint8Array(buf) } : { id, nombre: f.name, imagen: dataUrl });
     }catch(err){
@@ -26103,8 +26184,10 @@ async function subirComprobantes(files, destino){
     render();
   }
   s.corriendo = false;
-  if(abiertaRecien && !s.hechos && rendicionVacia(rendicionPorId(abiertaRecien))){
-    try{ await store.gastos.borrarRendicion(abiertaRecien); if(gastosAbierta === abiertaRecien) gastosAbierta = null; }
+  // Las rendiciones que se abrieron para esta subida y quedaron vacías (no subió nada a ellas) no quedan.
+  for(const id of [abiertaRecien, ...abiertasDeMes]){
+    if(!id || !rendicionVacia(rendicionPorId(id))) continue;
+    try{ await store.gastos.borrarRendicion(id); if(gastosAbierta === id) gastosAbierta = null; }
     catch(err){ console.warn("No se pudo borrar la rendición que quedó vacía:", err); }
   }
   terminarSubida();
@@ -26117,10 +26200,13 @@ function terminarSubida(){
   const s = gastosSubida;
   if(!s || s.corriendo || (lectorEstado && lectorEstado.corriendo) || s.fallas.length) return;
   const n = s.hechos, rep = s.repetidos.length;
+  const movidos = Object.entries(s.movidos || {}).filter(([, k]) => k > 0).sort().map(([m, k]) => k === 1
+    ? t("1 fue a la rutina de {m}.","1 went to the routine for {m}.","1 foi para a rotina de {m}.","אחת עברה לשגרה של {m}.",{ m: nombreDeMes(m) })
+    : t("{n} fueron a la rutina de {m}.","{n} went to the routine for {m}.","{n} foram para a rotina de {m}.","{n} עברו לשגרה של {m}.",{ n: k, m: nombreDeMes(m) }));
   gastosSubida = null; lectorEstado = null;
   if(!n && !rep) return;
   showCalendarNotice({ ok: true, icono: "✅", message: [n ? (n === 1 ? t("Se subió 1 comprobante.","1 receipt uploaded.","1 comprovante enviado.","קבלה אחת הועלתה.") : t("Se subieron {n} comprobantes.","{n} receipts uploaded.","{n} comprovantes enviados.","{n} קבלות הועלו.",{ n })) : "",
-    rep ? (rep === 1 ? t("1 ya estaba cargado.","1 was already uploaded.","1 já estava carregado.","אחת כבר הועלתה.") : t("{n} ya estaban cargados.","{n} were already uploaded.","{n} já estavam carregados.","{n} כבר הועלו.",{ n: rep })) : ""].filter(Boolean).join(" ") });
+    rep ? (rep === 1 ? t("1 ya estaba cargado.","1 was already uploaded.","1 já estava carregado.","אחת כבר הועלתה.") : t("{n} ya estaban cargados.","{n} were already uploaded.","{n} já estavam carregados.","{n} כבר הועלו.",{ n: rep })) : "", ...movidos].filter(Boolean).join(" ") });
 }
 function renderEstadoDelLector(){
   const e = lectorEstado;
@@ -26283,7 +26369,7 @@ function renderMisRendiciones(){
   const vacio = !mias.length && !sin.length ? `<div class="empty-state gx-vacio"><div class="big">🧾</div>
       <p>${t("Todavía no cargaste gastos.","You haven't logged any expenses yet.","Você ainda não carregou despesas.","עדיין לא רשמתם הוצאות.")}</p>
       <p class="setting-sub">${t("Tocá «Subir comprobantes» y elegí las fotos o los PDF: podés subir muchos juntos.","Tap “Upload receipts” and pick the photos or PDFs: you can upload many at once.","Toque em «Enviar comprovantes» e escolha as fotos ou os PDF: dá para enviar muitos juntos.","לחצו על «העלאת קבלות» ובחרו את התמונות או קובצי ה-PDF: אפשר להעלות הרבה יחד.")}</p></div>` : "";
-  const acts = actividadesParaGastos();
+  const conActs = actividadesParaGastos(), acts = [...conActs.mias, ...conActs.otras];
   const sinComprobantes = `<div class="gx-otra">
       <button type="button" class="gx-link" data-action="gastos-otra" aria-expanded="${gastosOtraAbierta}">${gastosOtraAbierta ? "▾" : isRTL() ? "◂" : "▸"} ${t("Anotar solo el total de una actividad","Enter just the total of an activity","Anotar só o total de uma atividade","רישום הסכום בלבד של פעילות")}</button>
       ${gastosOtraAbierta ? `<div class="gx-otra-fila">

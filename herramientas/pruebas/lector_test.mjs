@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import http from "node:http";
+import zlib from "node:zlib";
 import { fileURLToPath as __aRuta } from "node:url";
 process.chdir(__aRuta(new URL(".", import.meta.url)));
 import { abrirNavegador, entrar, ADMIN, PERS, BASE } from "./app_de_mentira.mjs";
@@ -9,7 +10,8 @@ import { abrirNavegador, entrar, ADMIN, PERS, BASE } from "./app_de_mentira.mjs"
    La app servida por http, como en el sitio (desde un archivo local el
    navegador no deja crear el trabajador donde corre el lector), con las
    piezas de herramientas/publicar/lector/ en lector/ y la CSP de siempre:
-   - subir tickets (fotos y un PDF escaneado) a la rendición de una
+   - subir tickets (fotos, un PDF escaneado y una captura de pantalla en
+     PDF) a la rendición de una
      actividad en Uruguay: el lector los lee en el fondo y completa SOLO lo
      vacío (fecha, monto, moneda, tarjeta, forma de pago, comercio, tipo);
      el «$» solo se toma como la moneda del país, para revisar;
@@ -59,6 +61,29 @@ const HOTEL = await ticket(["HOTEL EJEMPLO", "Factura A 0001-00009912", `Fecha: 
 const pdfCon = jpg => Buffer.concat([Buffer.from(`%PDF-1.4\n1 0 obj<</Type/XObject/Subtype/Image/Width 720/Height 960/ColorSpace/DeviceRGB/BitsPerComponent 8/Filter/DCTDecode/Length ${jpg.length}>>stream\n`, "latin1"),
   jpg, Buffer.from("\nendstream\nendobj\ntrailer<<>>\n%%EOF\n", "latin1")]);
 
+// Una captura de pantalla de una app de viajes «compartida como PDF» desde el iPhone (como el Uber del usuario, 18/11):
+// la imagen va comprimida común (FlateDecode, en colores, sin JPEG adentro) y su perfil de color está a dos referencias.
+async function captura(lineas){
+  const p = await b.newPage({ viewport: { width: 390, height: 640 }, deviceScaleFactor: 2 });
+  await p.setContent(`<body style="margin:0;background:#fff;font-family:'DejaVu Sans',sans-serif;color:#111;padding:28px 22px;font-size:17px;line-height:2">
+    ${lineas.map((x, i) => `<div style="${i === 1 ? "font-size:30px;font-weight:bold" : ""}">${x}</div>`).join("")}</body>`);
+  const png = await p.screenshot({ type: "png" });
+  const rgb = await p.evaluate(async b64 => {
+    const img = new Image(); img.src = "data:image/png;base64," + b64; await img.decode();
+    const c = document.createElement("canvas"); c.width = img.width; c.height = img.height;
+    const ctx = c.getContext("2d"); ctx.drawImage(img, 0, 0);
+    const d = ctx.getImageData(0, 0, c.width, c.height).data, out = new Uint8Array(c.width * c.height * 3);
+    for(let i = 0, j = 0; i < d.length; i += 4, j += 3){ out[j] = d[i]; out[j + 1] = d[i + 1]; out[j + 2] = d[i + 2]; }
+    let s = ""; for(let i = 0; i < out.length; i += 32768) s += String.fromCharCode.apply(null, out.subarray(i, i + 32768));
+    return { w: c.width, h: c.height, b64: btoa(s) };
+  }, png.toString("base64"));
+  await p.close();
+  const datos = zlib.deflateSync(Buffer.from(rgb.b64, "base64"));
+  return Buffer.concat([Buffer.from(`%PDF-1.3\n5 0 obj\n<< /Type /XObject /Subtype /Image /Width ${rgb.w} /Height ${rgb.h} /Interpolate true\n/ColorSpace 6 0 R /Intent /Perceptual /BitsPerComponent 8 /Length ${datos.length} /Filter\n/FlateDecode >>\nstream\n`, "latin1"),
+    datos, Buffer.from("\nendstream\nendobj\n7 0 obj\n<< /N 3 /Alternate /DeviceRGB /Length 4 >>\nstream\nICC!\nendstream\nendobj\n6 0 obj\n[ /ICCBased 7 0 R ]\nendobj\ntrailer<<>>\n%%EOF\n", "latin1")]);
+}
+const CAPTURA = await captura(["&lt; Detalle del viaje", "UYU$ 480.00", "Tarifa del viaje UYU$ 400.00", "Cargo de reserva UYU$ 80.00", "Historial de pagos", "4321 UYU$ 480.00", `${ayer}, 11:36`]);
+
 const tabla = (p, n) => p.evaluate(n => window.__sb.tablas[n] || [], n);
 const hasta = async (p, f, a, veces = 400) => { for(let i = 0; i < veces; i++){ if(await p.evaluate(f, a).catch(() => false)) return true; await p.waitForTimeout(150); } return false; };
 const elegir = async (p, sel, files) => { const [ch] = await Promise.all([p.waitForEvent("filechooser"), p.click(sel)]); await ch.setFiles(files); };
@@ -74,9 +99,10 @@ const antes = (await tabla(p, "gastos")).length;
 await elegir(p, '[data-action="gastos-subir"][data-id="ren_mvd"]', [
   { name: "foto1.jpg", mimeType: "image/jpeg", buffer: TAXI }, { name: "foto2.jpg", mimeType: "image/jpeg", buffer: CENA },
   { name: "escaneo.pdf", mimeType: "application/pdf", buffer: pdfCon(HOTEL) },
+  { name: "captura.pdf", mimeType: "application/pdf", buffer: CAPTURA },
   // Y uno que no se puede leer: un PDF sin texto ni foto adentro.
   { name: "vacio.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n") }]);
-eq("subidos los tres, el lector los lee en el fondo y anota que los leyó", await hasta(p, n => (window.__sb.tablas.gastos || []).slice(n).filter(g => g.lectura && g.lectura.fuente === "lector").length === 3, antes), true);
+eq("subidos los cuatro, el lector los lee en el fondo y anota que los leyó", await hasta(p, n => (window.__sb.tablas.gastos || []).slice(n).filter(g => g.lectura && g.lectura.fuente === "lector").length === 4, antes), true);
 const nuevos = (await tabla(p, "gastos")).slice(antes);
 const de = nombre => nuevos.find(g => g.archivo_nombre === nombre) || {};
 const campos = g => [g.fecha, g.monto, g.moneda, g.forma_pago, g.tarjeta, g.concepto, g.tipo, g.estado];
@@ -85,8 +111,10 @@ eq("el taxi: la fecha, el total, el «$» como pesos uruguayos (la actividad es 
 eq("…y la moneda queda marcada para revisar", (de("foto1.jpg").lectura || {}).dudas, ["moneda"]);
 eq("la cena: en dólares y en efectivo", campos(de("foto2.jpg")), [ayerISO, 45.5, "USD", "efectivo", null, "Restaurante La Esquina", "comida", "borrador"]);
 eq("el PDF escaneado: se lee la foto de adentro", campos(de("escaneo.pdf")), [ayerISO, 12000, "UYU", "tarjeta", "5555", "Hotel Ejemplo", "alojamiento", "borrador"]);
+eq("la captura de pantalla en PDF (una imagen comprimida común): se lee; el monto, el de los centavos, para revisar",
+  [...campos(de("captura.pdf")).slice(0, 3), (de("captura.pdf").lectura || {}).dudas], [ayerISO, 480, "UYU", ["monto"]]);
 eq("lo leído queda por confirmar: el lector no confirma nada", nuevos.every(g => g.estado === "borrador"), true);
-eq("terminado, el cartel se va solo y queda un aviso pasajero (18/11)", await hasta(p, () => /Se subieron 4 comprobantes/.test(document.getElementById("calendarToastText").textContent) && !document.querySelector(".gx-subida"), null, 40), true);
+eq("terminado, el cartel se va solo y queda un aviso pasajero (18/11)", await hasta(p, () => /Se subieron 5 comprobantes/.test(document.getElementById("calendarToastText").textContent) && !document.querySelector(".gx-subida"), null, 40), true);
 eq("el que no se pudo leer lo dice en su fila, sin cartel aparte", await p.evaluate(id => /No se pudo leer: completalo a mano/.test((document.querySelector(`[data-action="gasto-abrir"][data-id="${id}"]`) || {}).textContent || ""), de("vacio.pdf").id), true);
 
 // La ventana: qué completó y las marcas.

@@ -327,6 +327,12 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   eq("«Subir comprobantes» pregunta antes de qué son, y no deja elegir archivos sin decirlo", await p.evaluate(() => [!!document.getElementById("gxDestino"),
     document.activeElement.id, document.querySelector('[data-action="gastos-destino-elegir"]').disabled]), [true, "gxDestino", true]);
   eq("las opciones: «todavía no sé», la rutina del mes y las actividades", await p.$$eval("#gxDestino option", l => [l[1].textContent, l.some(o => o.value === "post:p9")]), ["Todavía no sé (quedan sin vincular)", true]);
+  // Lo pidió el usuario el 18/11 («por qué solo me permite estas rendiciones»): las rutinas de todo el año; las actividades propias primero y todas; las del resto, aparte.
+  eq("las rutinas de los últimos doce meses, de la más nueva a la más vieja", await p.$$eval('#gxDestino option[value^="mes:"]', l => {
+    const ms = l.map(o => o.value.slice(4)), d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 11);
+    return [ms.length >= 12, ms[0] === new Date().toISOString().slice(0, 7), ms.includes(d.toISOString().slice(0, 7)), ms.join() === [...ms].sort().reverse().join()]; }), [true, true, true, true]);
+  eq("las actividades: primero las mías (Montevideo, que cargué yo), después las del resto del equipo", await p.$$eval("#gxDestino optgroup", l => l.map(g => [g.label, [...g.querySelectorAll("option")].some(o => o.value === "post:p9")])),
+    [["La rutina del mes", false], ["Mis actividades", true], ["Otras actividades del equipo", false]]);
   const antes = (await tabla(p, "gastos")).length;
   await p.selectOption("#gxDestino", "post:p9");
   await elegir(p, '[data-action="gastos-destino-elegir"]', [{ name: "peaje.png", mimeType: "image/png", buffer: Buffer.concat([PNG, Buffer.from([1])]) }]);
@@ -361,6 +367,35 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   eq("…y deja mandar igual", await p.$eval("#confirmOk", e => e.textContent.trim()), "Mandar igual");
   await p.click("#confirmOk");
   eq("mandada igual", await hasta(p, () => window.__sb.tablas.gastos_rendiciones.find(r => r.id === "ren_mvd").estado === "enviada"), true);
+  eq("sin errores de página", errores, []);
+  await p.close();
+}
+
+/* ---------------- Subir a una rutina: cada comprobante va a la rutina de su mes (lo pidió el usuario el 18/11) ---------------- */
+{
+  const base = datos({ prendido: true });
+  Object.assign(base.gastos_rendiciones.find(r => r.id === "ren_rutina"), { estado: "abierta", enviada_el: null, aprobada_el: null, aprobada_por: null });
+  base.gastos.filter(g => g.rendicion_id === "ren_rutina").forEach(g => Object.assign(g, { estado: "confirmado" }));
+  const mesDe = atras => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - atras); return d.toISOString().slice(0, 7); };
+  const [hoyM, dos, tres] = [mesDe(0), mesDe(2), mesDe(3)];
+  // Hace tres meses: una rutina ya aprobada (lo de ese mes no puede ir ahí).
+  base.gastos_rendiciones.push({ ...base.gastos_rendiciones.find(r => r.id === "ren_rutina"), id: "ren_tres", rutina_mes: tres + "-01", estado: "aprobada", aprobada_el: "2026-01-01T00:00:00Z", aprobada_por: ADMIN });
+  const nombre = (ym, c) => `10-${ym.slice(5)}-${ym.slice(0, 4)} - ${c} - Rutina.png`;
+  const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: vp, base });
+  await irGastos(p);
+  const antes = (await tabla(p, "gastos")).length, rends = (await tabla(p, "gastos_rendiciones")).length;
+  await subirDesdeCabecera(p, "mes:" + hoyM, [
+    { name: nombre(hoyM, "Taxi de este mes"), mimeType: "image/png", buffer: Buffer.concat([PNG, Buffer.from([31])]) },
+    { name: nombre(dos, "Taxi de hace dos meses"), mimeType: "image/png", buffer: Buffer.concat([PNG, Buffer.from([32])]) },
+    { name: nombre(tres, "Taxi de hace tres meses"), mimeType: "image/png", buffer: Buffer.concat([PNG, Buffer.from([33])]) },
+    { name: "foto-sin-fecha.png", mimeType: "image/png", buffer: Buffer.concat([PNG, Buffer.from([34])]) }]);
+  eq("subidos los cuatro", await hasta(p, n => window.__sb.tablas.gastos.length === n + 4 && !document.querySelector(".gx-subida"), antes), true);
+  const g = await tabla(p, "gastos"), rs = await tabla(p, "gastos_rendiciones"), en = c => (g.find(x => (x.concepto || x.archivo_nombre) === c) || {}).rendicion_id;
+  const rDos = rs.find(r => r.rutina_mes === dos + "-01");
+  eq("el de este mes y el sin fecha, en la rutina elegida; el de hace dos meses, en la suya (se abrió); el de un mes ya aprobado, en la elegida",
+    [en("Taxi de este mes"), en("foto-sin-fecha.png"), en("Taxi de hace dos meses"), en("Taxi de hace tres meses")], ["ren_rutina", "ren_rutina", rDos && rDos.id, "ren_rutina"]);
+  eq("…se abrió una sola rendición nueva, con la función de la base", [rs.length - rends, (await rpcs(p, "gastos_rendicion_abrir")).map(x => x.p_mes)], [1, [dos + "-01"]]);
+  eq("…y el aviso dice adónde fue", await p.$eval("#calendarToastText", e => /Se subieron 4 comprobantes\. 1 fue a la rutina de /.test(e.textContent)), true);
   eq("sin errores de página", errores, []);
   await p.close();
 }

@@ -388,6 +388,17 @@ que llega tarde, al final del PDF con los números que siguen. Cómo quedó cada
   con FlateDecode (no JPEG): 1179×2192, RGB de 8 bits, sin predictor. `fotoDentroDelPdf()` solo saca JPEG
   (DCTDecode), así que no encontraba nada. Para hacer: que también saque esas imágenes (descomprimirlas con
   `DecompressionStream`, armar la imagen en un lienzo y leerla como foto). Probarlo con una captura inventada.
+- **Hecho el 18/11 (tanda 3, en la rama; va a `main` con su OK)**:
+  - **2** — el lector lee las capturas de pantalla guardadas como PDF: `imagenDentroDelPdf()` saca la JPEG de un
+    escaneo o, si no hay, la imagen comprimida común (FlateDecode, en colores o grises, con el perfil de color a una o
+    dos referencias, como el del iPhone), la arma en un lienzo y la lee como foto. Se usa al leer y para la vista
+    chica. Con el Uber «a Reunión» lee la fecha, el monto y la moneda. Y sin «total» en el ticket, el monto es el
+    número con centavos más grande (antes ganaban los cuatro números de la tarjeta, que la app pone pegados al monto).
+    Pruebas: una captura inventada en `lector_test.mjs` y el caso en `lector_texto_test.mjs`.
+  - **8** — «Van en» ofrece las rutinas de los últimos doce meses (más las que la persona tiene abiertas y el mes
+    del gasto); «Mis actividades», todas, primero; y al admin, aparte, «Otras actividades del equipo» (las 40 más
+    cercanas). Subiendo a una rutina, **cada comprobante va a la rutina de su mes** (la fecha del nombre del
+    archivo), si esa todavía no se mandó; el aviso dice cuántos fueron a cuál. Pruebas: `gastos_test.mjs`.
 - **10 — La lista de gastos, siempre con las casillas** (18/11, con capturas): que se vea siempre como hoy al tocar
   «Seleccionar» (la casilla en cada fila) y que abajo esté siempre la barra («Todos», cuántos marcados y las acciones,
   apagadas mientras no haya nada marcado); «quizás no en el mismo diseño, pero similar».
