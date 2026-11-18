@@ -88,6 +88,7 @@ insert into esperadas values
   ('gastos_cuenta(text)',                   false, true),  -- la cuenta corriente propia; la de otra persona, solo un admin
   ('gastos_movimiento_confirmar(uuid)',     false, true),  -- admin
   ('gastos_observar(uuid, text)',           false, true),  -- admin
+  ('gastos_rendicion_reabrir(uuid)',        false, true),  -- admin: una aprobada vuelve a abierta
   ('preparar_aviso_de_gasto(uuid)',         false, true),  -- admin, sobre el gasto que acaba de observar; devuelve un turno
   ('gastos_rendicion_abrir(text, date)',    false, true),  -- solo para quien llama, en una actividad donde participó (o un admin)
   ('gastos_rendicion_aprobar(uuid)',        false, true),  -- admin

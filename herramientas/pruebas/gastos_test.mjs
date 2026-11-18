@@ -244,8 +244,8 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
 
   /* ---------------- Para aprobar ---------------- */
   await p.click('[data-action="gastos-seccion"][data-key="aprobar"]'); await p.waitForTimeout(150);
-  eq("para aprobar: lo mandado (de cualquiera, también lo propio), la plata por confirmar y lo que espera corrección",
-    await textos(p, ".gastos-view .admin-h3"), ["Para revisar", "Plata anotada por confirmar", "Esperando la corrección"]);
+  eq("para aprobar: lo mandado (de cualquiera, también lo propio), la plata por confirmar, lo que espera corrección y abajo lo aprobado hace poco",
+    await textos(p, ".gastos-view .admin-h3"), ["Para revisar", "Plata anotada por confirmar", "Esperando la corrección", "Aprobadas hace poco"]);
   eq("las rendiciones mandadas, la más vieja primero y con de quién son", (await p.$$eval(".gastos-view .gx-lista", l => [...l[0].querySelectorAll(".gx-t-txt small")].map(e => e.textContent.split(" · ")[0]))),
     ["Ana Pérez", "Benny Rosenthal"]);
   await p.click('[data-action="gastos-mov-confirmar"][data-id="mv2"]');
@@ -806,6 +806,82 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   eq("un enlace a un gasto que no está: no abre nada ni se rompe", await r.evaluate(() => [document.getElementById("gastoOverlay").hidden, location.search]), [true, ""]);
   eq("sin errores de página", e3, []);
   await r.close();
+}
+
+/* ---------------- «Otra persona» pagó, y reabrir una aprobada (lo decidió el usuario el 18/11) ---------------- */
+{
+  const base = datos({ prendido: true });
+  const mes = base.gastos_rendiciones.find(r => r.id === "ren_rutina").rutina_mes;
+  // Un comprobante que llegó tarde: del mes de la rutina ya aprobada, sin vincular.
+  Object.assign(base.gastos.find(g => g.id === "gx8"), { fecha: mes });
+  // En la rutina aprobada, uno que pagó Ana.
+  Object.assign(base.gastos.find(g => g.id === "gx4"), { pago: "otro", pago_quien: ANA.email });
+  const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: vp, base });
+  await irGastos(p);
+  await p.click('[data-action="gastos-abrir-rendicion"][data-id="ren_mvd"]'); await p.waitForTimeout(150);
+  await p.click('[data-action="gasto-abrir"][data-id="gx3"]'); await p.waitForSelector("#gastoOverlay:not([hidden])");
+  eq("«¿Quién pagó?» tiene una tercera opción: «Otra persona»", await p.$$eval("#gxPago [data-pago]", l => l.map(b => b.textContent.trim())), ["Yo", "Organización", "Otra persona"]);
+  await tocar(p, "#gxPagoOtro");
+  eq("elegida, pide quién (los del equipo, sin quien rinde) y dice que no entra en ninguna cuenta", await p.evaluate(() => [
+    [...document.querySelectorAll("#gxPagoQuien option")].slice(1).map(o => o.textContent), (document.querySelector("#gxPago ~ .gx-pista, .gx-fila-opc:has(#gxPago) .gx-pista") || {}).textContent]),
+    [["Ana Pérez", "Diego Martínez", "Lucía Fernández Goldberg", "Moshe Levi"], "No entra en ninguna cuenta corriente."]);
+  await tocar(p, '#gastoBody [data-action="gasto-guardar"][data-confirmar="1"]');
+  eq("sin decir quién, no se confirma: lo pide y va a ese campo", await p.evaluate(() => [(document.querySelector("#gastoBody .form-error") || {}).textContent, document.activeElement.id]),
+    ["Para confirmarlo falta quién pagó.", "gxPagoQuien"]);
+  await p.selectOption("#gxPagoQuien", ANA.email).catch(() => {});
+  await tocar(p, '#gastoBody [data-action="gasto-guardar"][data-confirmar="1"]');
+  eq("…con quién, se guarda: «otro» y su correo", await hasta(p, e => { const g = window.__sb.tablas.gastos.find(x => x.id === "gx3"); return g.pago === "otro" && g.pago_quien === e && g.estado === "confirmado"; }, ANA.email), true);
+  eq("la fila lo dice", await hasta(p, () => /pagó: Ana Pérez/.test((document.querySelector('[data-action="gasto-abrir"][data-id="gx3"]') || {}).textContent || "")), true);
+  // La rutina aprobada: el gasto que pagó otra persona, como texto; y «Reabrir».
+  await p.click('[data-action="gastos-volver"]'); await p.waitForTimeout(150);
+  await p.click('[data-action="gastos-abrir-rendicion"][data-id="ren_rutina"]'); await p.waitForTimeout(150);
+  await tocar(p, '[data-action="gasto-abrir"][data-id="gx4"]'); await p.waitForTimeout(300);
+  eq("en un gasto aprobado que pagó otra persona: quién y que no entra en ninguna cuenta", await p.$$eval("#gastoBody .gx-res-fila", l => l.map(f => [f.querySelector("dt").textContent, f.querySelector("dd").innerText.replace(/\s+/g, " ").trim()])
+    .filter(([k]) => k === "¿Quién pagó?")), [["¿Quién pagó?", "Ana Pérez No entra en ninguna cuenta corriente."]]);
+  await p.keyboard.press("Escape"); await p.waitForTimeout(150);
+  eq("una rendición aprobada: un admin tiene «Reabrir», con lo que pasa", await p.evaluate(() => { const b = document.querySelector('[data-action="gastos-reabrir"]');
+    return b && [b.textContent.trim(), /Reabrila para sumarlo/.test(b.closest(".gx-reabrir").textContent)]; }), ["↩️ Reabrir", true]);
+  await tocar(p, '[data-action="gastos-reabrir"]');
+  eq("…pregunta antes, diciendo que sus gastos salen de la cuenta corriente", await leer(p, "#confirmOverlay:not([hidden]) #confirmMessage", e => e.textContent.trim()),
+    `¿Reabrir «Rutina de ${await p.evaluate(m => new Intl.DateTimeFormat("es-AR", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(m + "T12:00:00Z")), mes)}»? Sus gastos dejan de estar aprobados y salen de tu cuenta corriente hasta que la vuelvas a aprobar. Después sumás el gasto que faltaba y la mandás de nuevo.`);
+  await tocar(p, "#confirmOk");
+  eq("…la reabre con la función de la base: vuelve a abierta y sus gastos, a confirmados", await hasta(p, () => {
+    const r = window.__sb.tablas.gastos_rendiciones.find(x => x.id === "ren_rutina"), g = window.__sb.tablas.gastos.find(x => x.id === "gx4");
+    return r.estado === "abierta" && g.estado === "confirmado" && !!document.querySelector('.gastos-view [data-action="gastos-subir"][data-id="ren_rutina"]'); }), true);
+  eq("…una vez", await rpcs(p, "gastos_rendicion_reabrir"), [{ p_id: "ren_rutina" }]);
+  eq("sin errores de página", errores, []);
+  await p.close();
+}
+{
+  // El comprobante que llegó tarde: «Va en» dice qué hacer. Y «Para aprobar» muestra las aprobadas hace poco.
+  const base = datos({ prendido: true });
+  const mes = base.gastos_rendiciones.find(r => r.id === "ren_rutina").rutina_mes;
+  Object.assign(base.gastos.find(g => g.id === "gx8"), { fecha: mes });
+  const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: vp, base });
+  await irGastos(p);
+  await p.click('[data-action="gastos-abrir-rendicion"][data-id="sin"]'); await p.waitForTimeout(150);
+  await p.click('[data-action="gasto-abrir"][data-id="gx8"]'); await p.waitForSelector("#gastoOverlay:not([hidden])");
+  eq("un gasto de un mes con la rutina ya aprobada: «Va en» dice que se puede reabrir o ponerlo en otro mes", await leer(p, "#gastoBody .gx-pista-vaen", e => /^La rutina de .+ ya se aprobó: un administrador la puede reabrir, o ponelo en la de otro mes\.$/.test(e.textContent.trim())), true);
+  await p.keyboard.press("Escape"); await p.waitForTimeout(150);
+  // En la lista: «Otra persona» muestra el «¿Quién?» y lo cuenta como faltante hasta elegirlo.
+  await tocar(p, '[data-action="gastos-lista-abrir"]'); await p.waitForTimeout(150);
+  await tocar(p, '[data-action="gastos-lista-vista"][data-vista="foto"]');
+  await p.selectOption("#gxL_gx8_pago", "otro").catch(() => {}); await p.waitForTimeout(150);
+  eq("en «Revisar en lista», «Otra persona» agrega «¿Quién?» y va ahí", await p.evaluate(() => [!!document.getElementById("gxL_gx8_pagoQuien"), document.activeElement.id]), [true, "gxL_gx8_pagoQuien"]);
+  eq("…y mientras no se elige, falta", await leer(p, "#gxLR_gx8", e => /quién pagó/.test(e.textContent)), true);
+  await p.selectOption("#gxL_gx8_pagoQuien", ANA.email).catch(() => {}); await p.waitForTimeout(150);
+  eq("…elegido, ya no", await leer(p, "#gxLR_gx8", e => /quién pagó/.test(e.textContent)), false);
+  await p.fill("#gxL_gx8_concepto", "Taxi"); await p.selectOption("#gxL_gx8_tipo", "transporte").catch(() => {}); await p.fill("#gxL_gx8_monto", "12");
+  await p.check("#gxL_gx8_marca").catch(() => {});
+  await tocar(p, '[data-action="gastos-lista-guardar"]');
+  eq("…y se guarda con quién pagó", await hasta(p, e => { const g = window.__sb.tablas.gastos.find(x => x.id === "gx8"); return g.pago === "otro" && g.pago_quien === e && g.estado === "confirmado"; }, ANA.email), true);
+  await tocar(p, '[data-action="gastos-lista-cerrar"]');
+  if(await p.$("#confirmOverlay:not([hidden])")) await p.click("#confirmOk");
+  await p.click('[data-action="gastos-seccion"][data-key="aprobar"]'); await p.waitForTimeout(150);
+  eq("«Para aprobar»: abajo, las aprobadas hace poco (desde ahí se reabre una)", await p.evaluate(() => [[...document.querySelectorAll(".gastos-view .admin-h3")].map(e => e.textContent.trim()).pop(),
+    !!document.querySelector('.gastos-view [data-action="gastos-abrir-rendicion"][data-id="ren_rutina"]')]), ["Aprobadas hace poco", true]);
+  eq("sin errores de página", errores, []);
+  await p.close();
 }
 
 /* ---------------- Administración → Gastos ---------------- */

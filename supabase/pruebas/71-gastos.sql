@@ -117,7 +117,19 @@ select lab.hacer(lab.como('ana@x.com'), format($x$insert into public.gastos(rend
   values (%L, '2026-09-11', 'Almuerzo', 'comida', 'MXN', 200, 'persona', 'confirmado') returning id::text$x$, :'ra')) as g3 \gset
 select lab.hacer(lab.como('ana@x.com'), format($x$insert into public.gastos(rendicion_id, fecha, concepto, tipo, moneda, monto, pago, estado)
   values (%L, '2026-09-12', 'Pasaje', 'pasaje', 'USD', 50, 'organizacion', 'borrador') returning id::text$x$, :'ra')) as g4 \gset
-select lab.comprobar('una integrante carga sus gastos (cuatro, en su rendición)', $q$select count(*)::text from public.gastos where autor = 'ana@x.com'$q$, '4');
+-- La cena la pagó Diego, que también estuvo (18/11): va en la rendición de Ana, pero en ninguna cuenta.
+select lab.hacer(lab.como('ana@x.com'), format($x$insert into public.gastos(rendicion_id, fecha, concepto, tipo, moneda, monto, pago, pago_quien, estado)
+  values (%L, '2026-09-12', 'Cena del equipo', 'comida', 'USD', 40, 'otro', 'diego@x.com', 'confirmado') returning id::text$x$, :'ra')) as g_otro \gset
+select lab.comprobar('una integrante carga sus gastos (cinco, en su rendición)', $q$select count(*)::text from public.gastos where autor = 'ana@x.com'$q$, '5');
+select lab.comprobar('uno lo pagó otra persona de la actividad, y queda quién', $q$select pago || '/' || pago_quien from public.gastos where id = '$q$ || :'g_otro' || $q$'$q$, 'otro/diego@x.com');
+select lab.probar('«otra persona» sin decir quién no se confirma', lab.como('ana@x.com'),
+  format($x$insert into public.gastos(rendicion_id, fecha, concepto, tipo, moneda, monto, pago, estado) values (%L, '2026-09-12', 'X', 'comida', 'USD', 1, 'otro', 'confirmado')$x$, :'ra'), false);
+select lab.probar('…pero un borrador puede quedar a medias', lab.como('ana@x.com'),
+  format($x$insert into public.gastos(rendicion_id, concepto, pago) values (%L, 'X', 'otro')$x$, :'ra'), true);
+select lab.probar('«quién pagó» va solo con «otra persona»', lab.como('ana@x.com'),
+  format($x$insert into public.gastos(rendicion_id, concepto, pago, pago_quien) values (%L, 'X', 'persona', 'diego@x.com')$x$, :'ra'), false);
+select lab.probar('…y quién pagó, con un largo razonable', lab.como('ana@x.com'),
+  format($x$insert into public.gastos(rendicion_id, concepto, pago, pago_quien) values (%L, 'X', 'otro', repeat('x', 201))$x$, :'ra'), false);
 select lab.probar('una rendición con gastos no se borra', lab.como('ana@x.com'), format($x$delete from public.gastos_rendiciones where id = %L$x$, :'ra'), false);
 select lab.comprobar('la moneda se guarda en mayúsculas', $q$select moneda from public.gastos where concepto = 'Taxi'$q$, 'MXN');
 select lab.comprobar('el gasto queda a nombre de quien lo carga aunque diga otra persona',
@@ -144,7 +156,7 @@ select lab.hacer(lab.como('diego@x.com'), format($x$insert into public.gastos(re
 select lab.comprobar('una integrante NO ve los gastos de otra persona',
   $q$select lab.hacer(lab.como('ana@x.com'), $x$select count(*)::text from public.gastos where autor <> 'ana@x.com'$x$)$q$, '0');
 select lab.comprobar('…ni sus rendiciones', $q$select lab.hacer(lab.como('ana@x.com'), $x$select count(*)::text from public.gastos_rendiciones where autor <> 'ana@x.com'$x$)$q$, '0');
-select lab.comprobar('ve los suyos', $q$select lab.hacer(lab.como('ana@x.com'), $x$select count(*)::text from public.gastos$x$)$q$, '4');
+select lab.comprobar('ve los suyos', $q$select lab.hacer(lab.como('ana@x.com'), $x$select count(*)::text from public.gastos$x$)$q$, '5');
 select lab.comprobar('un admin ve los de todos', $q$select lab.hacer(lab.como('otra.admin@x.com'), $x$select count(distinct autor)::text from public.gastos$x$)$q$, '2');
 select lab.comprobar('una observadora no ve ninguno', $q$select lab.hacer(lab.como('olga@x.com'), $x$select count(*)::text from public.gastos$x$)$q$, '0');
 select lab.probar('una integrante no puede cambiar un gasto de otra persona', lab.como('ana@x.com'),
@@ -168,8 +180,8 @@ select lab.comprobar('…ni un admin por rol',
   $q$select lab.rechaza(lab.como('otra.admin@x.com'), format($x$select public.gastos_rendicion_borrar(%L)::text$x$, '$q$ || :'ra' || $q$'))$q$, 'true');
 select lab.probar_valor('el admin fijo, sí (y dice cuántos gastos se fueron)', lab.como('benny@team-latam.com'),
   format($x$create temp table if not exists borrados(n int) on commit drop; insert into borrados select public.gastos_rendicion_borrar(%L)$x$, :'ra'),
-  $x$select n::text from borrados$x$, '4');
-select lab.comprobar('lo de arriba no quedó: los cuatro gastos siguen', $q$select count(*)::text from public.gastos where rendicion_id = '$q$ || :'ra' || $q$'$q$, '4');
+  $x$select n::text from borrados$x$, '5');
+select lab.comprobar('lo de arriba no quedó: los cinco gastos siguen', $q$select count(*)::text from public.gastos where rendicion_id = '$q$ || :'ra' || $q$'$q$, '5');
 
 -- ---------- Mandar la rendición ----------
 select lab.comprobar('con un borrador adentro, la rendición no se manda',
@@ -337,14 +349,30 @@ select lab.comprobar('otra persona no ve los movimientos de Ana', $q$select lab.
 -- ---------- La cuenta corriente: los números ----------
 -- Ana: gastos aprobados de su bolsillo: USD 100 (hotel) + USD 17,50 (el taxi
 -- de MXN 350, rendido a mano en dólares) y MXN 200 (el almuerzo, sin
--- rendir en dólares). El pasaje de USD 50 lo pagó la organización: no entra.
+-- rendir en dólares). El pasaje de USD 50 lo pagó la organización y la cena
+-- de USD 40, Diego (otra persona de la actividad): no entran.
 -- Movimientos confirmados: recibió 500, devolvió 20, ajuste −50. El pedido
 -- de 1000 sigue pendiente. Saldo USD: 117,50 + 20 − 50 − 500 = −412,50 (Ana
 -- debe); MXN: 200 a su favor.
 select lab.comprobar('lo gastado en dólares: solo lo de su bolsillo, con el monto rendido',
   $q$select lab.hacer(lab.como('ana@x.com'), $x$select public.gastos_cuenta('ana@x.com') -> 'USD' ->> 'gastado'$x$)$q$, '117.50');
+select lab.comprobar('lo que pagó otra persona tampoco entra en la cuenta de esa persona',
+  $q$select lab.hacer(lab.como('otra.admin@x.com'), $x$select coalesce(public.gastos_cuenta('diego@x.com') -> 'USD' ->> 'gastado', '0')$x$)$q$, '0');
 select lab.comprobar('el saldo en dólares (gastado + devuelto + ajuste − recibido)',
   $q$select lab.hacer(lab.como('ana@x.com'), $x$select public.gastos_cuenta('ana@x.com') -> 'USD' ->> 'saldo'$x$)$q$, '-412.50');
+-- ---------- Reabrir una aprobada (18/11: un comprobante que llegó tarde) ----------
+select lab.comprobar('una integrante no reabre su rendición aprobada',
+  $q$select lab.rechaza(lab.como('ana@x.com'), format($x$select public.gastos_rendicion_reabrir(%L)::text$x$, '$q$ || :'ra' || $q$'))$q$, 'true');
+select lab.comprobar('…ni una abierta se «reabre» (solo una aprobada)',
+  $q$select lab.rechaza(lab.como('benny@team-latam.com'), format($x$select public.gastos_rendicion_reabrir(%L)::text$x$, '$q$ || :'ra_mes' || $q$'))$q$, 'true');
+select lab.probar_valor('un admin por rol la reabre: vuelve a abierta, sus gastos dejan de estar aprobados y salen de la cuenta',
+  lab.como('otra.admin@x.com'), format($x$select public.gastos_rendicion_reabrir(%L)$x$, :'ra'),
+  format($x$select r.estado || '/' || coalesce(r.aprobada_por, '-') || '/' || (select string_agg(distinct g.estado, ',' order by g.estado) from public.gastos g where g.rendicion_id = r.id)
+       || '/' || (public.gastos_cuenta('ana@x.com') -> 'USD' ->> 'gastado') from public.gastos_rendiciones r where r.id = %L$x$, :'ra'), 'abierta/-/confirmado/0');
+select lab.probar_valor('…y la persona le puede sumar el gasto que faltaba',
+  lab.como('benny@team-latam.com'), format($x$select public.gastos_rendicion_reabrir(%L)$x$, :'ra'),
+  format($q$select lab.hacer(lab.como('ana@x.com'), format($x$insert into public.gastos(rendicion_id, concepto) values (%%L, 'Ticket tardío') returning 'ok'$x$, %L))$q$, :'ra'), 'ok');
+select lab.comprobar('lo de arriba no quedó: la rendición sigue aprobada', $q$select estado from public.gastos_rendiciones where id = '$q$ || :'ra' || $q$'$q$, 'aprobada');
 select lab.comprobar('lo pendiente se muestra aparte y no cuenta',
   $q$select lab.hacer(lab.como('ana@x.com'), $x$select public.gastos_cuenta('ana@x.com') -> 'USD' ->> 'pendiente'$x$)$q$, '-1000.00');
 select lab.comprobar('lo que no se rindió en dólares queda en su moneda',

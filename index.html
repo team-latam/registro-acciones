@@ -1149,6 +1149,7 @@
   .gx-fila-opc .gx-pista{ flex:1 1 200px; }
   .gx-tarj{ display:flex; align-items:center; gap:8px; font-size:13.5px; color:var(--text-muted); white-space:nowrap; }
   .gx-campo .gx-tarj input{ width:84px; flex:none; text-align:center; letter-spacing:.12em; }
+  .gx-campo .gx-pago-quien select{ width:auto; min-width:170px; max-width:100%; }
   .gx-check.gx-factura{ margin:0; flex:1 1 100%; }
   .gx-obs-auto{ display:block; font-size:13.5px; font-weight:700; color:var(--ink); padding:2px 0 4px; }
   .gx-obs-auto[hidden]{ display:none; }
@@ -10161,6 +10162,11 @@ function crearSupabaseStore(sb, opciones = {}){
       },
       async aprobar(id){
         revienta(await sb.rpc("gastos_rendicion_aprobar", { p_id: id }));
+        await Promise.all([refrescar("gastos_rendiciones", id), recargarTabla("gastos")]);
+      },
+      // Una aprobada vuelve a abierta (un admin; 18/11): sus gastos dejan de estar aprobados.
+      async reabrir(id){
+        revienta(await sb.rpc("gastos_rendicion_reabrir", { p_id: id }));
         await Promise.all([refrescar("gastos_rendiciones", id), recargarTabla("gastos")]);
       },
       async observar(gastoId, texto){
@@ -25030,6 +25036,22 @@ async function rendicionPara(v){
   if(v.startsWith("ren:")) return v.slice(4);
   return v.startsWith("post:") ? store.gastos.abrirRendicion({ post: v.slice(5) }) : store.gastos.abrirRendicion({ mes: v.slice(4) + "-01" });
 }
+// «Otra persona» pagó (18/11): los de la actividad (quien la cargó y sus participantes) o, en la rutina del mes,
+// sin vincular o si no hay nadie más, el resto del equipo. El valor es el correo (o el nombre de alguien sin cuenta).
+const nombreQuePago = v => /@/.test(String(v || "")) ? nombreDePersona(String(v).toLowerCase()) : String(v || "");
+function quienesPudieronPagar(vinculo, actual){
+  const yo = miCorreo(), vistos = new Set(), lista = [];
+  const sumar = (v, nombre) => {
+    const k = String(v || "").trim(), clave = k.toLowerCase();
+    if(!k || clave === yo || vistos.has(clave)) return;
+    vistos.add(clave); lista.push([/@/.test(k) ? clave : k, String(nombre || nombreQuePago(k))]);
+  };
+  const p = String(vinculo || "").startsWith("post:") && getPostById(String(vinculo).slice(5));
+  if(p){ sumar(p.authorEmail, p.authorName); (p.participants || []).forEach(pa => pa && sumar(pa.email || pa.name, pa.name)); }
+  if(!lista.length) state.roster.filter(m => m.role !== "observer").forEach(m => sumar(m.email, m.name));
+  if(actual) sumar(actual);
+  return lista.sort((a, b) => a[1].localeCompare(b[1]));
+}
 function opcionesDeVinculo(g, actual){
   const yaMandada = r => r && !rendicionEditable(r);
   const op = (v, txt) => {
@@ -26113,7 +26135,8 @@ function renderFilaGasto(g){
       <span class="gx-f-txt">
         <b>${g.concepto ? esc(g.concepto) : `<i>${t("Sin concepto","No description","Sem conceito","ללא תיאור")}</i>`}</b>
         <small>${[g.fecha ? esc(fmtDate(g.fecha)) : esc(t("Sin fecha","No date","Sem data","ללא תאריך")), g.tipo ? esc(nombreTipoGasto(g.tipo)) : "",
-          g.pago === "organizacion" ? esc(t("pagó: Organización","paid by: Organization","pagou: Organização","שילם/ה: הארגון")) : ""].filter(Boolean).join(" · ")}</small>
+          g.pago === "organizacion" ? esc(t("pagó: Organización","paid by: Organization","pagou: Organização","שילם/ה: הארגון"))
+            : g.pago === "otro" ? esc(t("pagó: {n}","paid by: {n}","pagou: {n}","שילם/ה: {n}",{ n: g.pagoQuien ? nombreQuePago(g.pagoQuien) : t("otra persona","someone else","outra pessoa","מישהו/י אחר/ת") })) : ""].filter(Boolean).join(" · ")}</small>
       </span>
       <span class="gx-f-der">
         <b>${g.monto != null ? montoHtml(g.moneda, g.monto) : r ? montoHtml(r.moneda, r.monto) : esc(t("Sin monto","No amount","Sem valor","ללא סכום"))}</b>
@@ -26153,7 +26176,7 @@ async function quitarGasto(id){
 // guardado sin confirmar. Lo demás (tarjeta, observaciones) sigue en la ventana.
 const gastosParaLista = rid => (rid === "sin" ? misSinVincular() : gastosDe(rid)).filter(g => gastoEditable(g) && g.estado !== "confirmado");
 const borradorDeFila = g => ({ fecha: g.fecha || "", concepto: g.concepto || "", tipo: g.tipo || "", monto: g.monto ?? "", moneda: g.moneda || "USD",
-  rendidoMoneda: g.rendidoMoneda || "USD", rendidoMonto: g.rendidoMonto ?? "", pago: g.pago || "persona", observaciones: g.observaciones || "" });
+  rendidoMoneda: g.rendidoMoneda || "USD", rendidoMonto: g.rendidoMonto ?? "", pago: g.pago || "persona", pagoQuien: g.pagoQuien || "", observaciones: g.observaciones || "" });
 const filaCompleta = d => !!(d.fecha && String(d.concepto).trim() && d.tipo && String(d.monto).trim() !== "" && /^[A-Z]{3}$/.test(String(d.moneda).trim().toUpperCase()));
 const dudasDelLector = g => (g.lectura && Array.isArray(g.lectura.dudas) ? g.lectura.dudas : []).filter(k => (g.lectura.campos || []).includes(k) || k === "moneda");
 // Lo que todavía no tocó la persona se sigue actualizando (el lector puede estar leyendo).
@@ -26178,9 +26201,9 @@ const textoConfirmarLista = n => !n ? t("Guardar sin confirmar","Save without co
   : n === 1 ? t("Confirmar 1 marcado","Confirm 1 checked","Confirmar 1 marcado","אישור מסומן אחד") : t("Confirmar los {n} marcados","Confirm the {n} checked","Confirmar os {n} marcados","אישור {n} המסומנים",{ n });
 // Lo que le falta a una fila para poder confirmarla.
 const faltanDeFila = d => [!d.fecha && "fecha", !String(d.concepto).trim() && "concepto", !d.tipo && "tipo", String(d.monto).trim() === "" && "monto",
-  !/^[A-Z]{3}$/.test(String(d.moneda).trim().toUpperCase()) && "moneda"].filter(Boolean);
+  !/^[A-Z]{3}$/.test(String(d.moneda).trim().toUpperCase()) && "moneda", d.pago === "otro" && !d.pagoQuien && "pagoQuien"].filter(Boolean);
 const nombreDeCampoDeGasto = k => ({ fecha: t("fecha","date","data","תאריך"), concepto: t("concepto","description","conceito","תיאור"), tipo: t("tipo","type","tipo","סוג"),
-  monto: t("monto","amount","valor","סכום"), moneda: t("moneda","currency","moeda","מטבע") })[k] || k;
+  monto: t("monto","amount","valor","סכום"), moneda: t("moneda","currency","moeda","מטבע"), pagoQuien: t("quién pagó","who paid","quem pagou","מי שילם/ה") })[k] || k;
 // La fila cerrada: la miniatura, qué es, cuánto, y si le falta algo o hay que revisar algo.
 function resumenDeFila(g, f){
   const conFoto = !!(gastosLista && gastosLista.vista === "foto");
@@ -26357,7 +26380,8 @@ function renderListaDeGastos(rid){
           ${campo("tipo", t("Tipo","Type","Tipo","סוג"), `<select id="gxL_${esc(id)}_tipo" data-glista="${esc(id)}:tipo"${at("tipo")}><option value="">${esc(t("Elegí…","Pick…","Escolha…","בחרו…"))}</option>${tipos.concat(d.tipo && !tipos.some(x => x.key === d.tipo) ? [{ key: d.tipo, label: nombreTipoGasto(d.tipo) }] : []).map(x => `<option value="${esc(x.key)}"${x.key === d.tipo ? " selected" : ""}>${esc(x.label)}</option>`).join("")}</select>`)}
           ${campo("monto", t("Monto","Amount","Valor","סכום"), `<input type="text" inputmode="decimal" class="gx-monto" id="gxL_${esc(id)}_monto" data-glista="${esc(id)}:monto" value="${esc(montoEnCampo(d.monto))}"${at("monto")}>`)}
           ${campo("moneda", t("Moneda","Currency","Moeda","מטבע"), `<input type="text" class="gx-moneda" autocomplete="off" aria-autocomplete="list" aria-haspopup="listbox" maxlength="3" id="gxL_${esc(id)}_moneda" data-glista="${esc(id)}:moneda" value="${esc(d.moneda)}"${at("moneda")}>`)}
-          ${campo("pago", t("Quién pagó","Who paid","Quem pagou","מי שילם/ה"), `<select id="gxL_${esc(id)}_pago" data-glista="${esc(id)}:pago"><option value="persona"${d.pago === "persona" ? " selected" : ""}>${esc(t("Yo","Me","Eu","אני"))}</option><option value="organizacion"${d.pago === "organizacion" ? " selected" : ""}>${esc(t("Organización","Organization","Organização","הארגון"))}</option></select>`)}
+          ${campo("pago", t("Quién pagó","Who paid","Quem pagou","מי שילם/ה"), `<select id="gxL_${esc(id)}_pago" data-glista="${esc(id)}:pago"><option value="persona"${d.pago === "persona" ? " selected" : ""}>${esc(t("Yo","Me","Eu","אני"))}</option><option value="organizacion"${d.pago === "organizacion" ? " selected" : ""}>${esc(t("Organización","Organization","Organização","הארגון"))}</option><option value="otro"${d.pago === "otro" ? " selected" : ""}>${esc(t("Otra persona","Someone else","Outra pessoa","מישהו/י אחר/ת"))}</option></select>`)}
+          ${d.pago === "otro" ? campo("pagoQuien", t("¿Quién?","Who?","Quem?","מי?"), `<select id="gxL_${esc(id)}_pagoQuien" class="gx-elige" data-glista="${esc(id)}:pagoQuien"${at("pagoQuien")}><option value="">${esc(t("Elegí…","Pick…","Escolha…","בחרו…"))}</option>${quienesPudieronPagar(vinculoDe(g), d.pagoQuien).map(([v, n]) => `<option value="${esc(v)}"${v === d.pagoQuien ? " selected" : ""}>${esc(n)}</option>`).join("")}</select>`) : ""}
           ${otraMoneda ? campo("rendidoMonto", t("En {m}","In {m}","Em {m}","ב-{m}",{ m: esc(d.rendidoMoneda) }), `<input type="text" inputmode="decimal" class="gx-monto" id="gxL_${esc(id)}_rendidoMonto" data-glista="${esc(id)}:rendidoMonto" value="${esc(montoEnCampo(d.rendidoMonto))}">`, "usd") : ""}
         </div>
         ${campo("obs", t("Observaciones","Notes","Observações","הערות"), `${notaEnCampo(`gxL_${esc(id)}_obsAuto`, notaDeMoneda(d.moneda, d.monto, d.rendidoMoneda, d.rendidoMonto))}<input type="text" id="gxL_${esc(id)}_observaciones" maxlength="500" data-glista="${esc(id)}:observaciones" value="${esc(d.observaciones)}" placeholder="${esc(t("Opcional: con quién, para qué, una aclaración…","Optional: with whom, what for, a clarification…","Opcional: com quem, para quê, um esclarecimento…","לא חובה: עם מי, בשביל מה, הבהרה…"))}">`)}
@@ -26423,6 +26447,7 @@ async function guardarListaDeGastos(){
       if(!String(d.concepto).trim()) faltan.push("concepto");
       if(!d.tipo) faltan.push("tipo");
       if(monto === null) faltan.push("monto");
+      if(d.pago === "otro" && !d.pagoQuien) faltan.push("pagoQuien");
     }
     if(!/^[A-Z]{3}$/.test(moneda)) faltan.push("moneda");
     if((monto !== null && (!isFinite(monto) || Math.abs(monto) >= 1e10)) || (rendido !== null && (!isFinite(rendido) || Math.abs(rendido) >= 1e10))) faltan.push("monto");
@@ -26434,7 +26459,8 @@ async function guardarListaDeGastos(){
     try{
       await store.gastos.cambiar(g.id, { fecha: d.fecha || null, concepto: String(d.concepto).trim().slice(0, 140), tipo: d.tipo || null,
         moneda, monto: monto === null ? null : redondo(monto), rendidoMoneda, rendidoMonto: rendido === null ? null : redondo(rendido),
-        pago: d.pago === "organizacion" ? "organizacion" : "persona", observaciones: String(d.observaciones || "").trim().slice(0, 500),
+        pago: ["organizacion", "otro"].includes(d.pago) ? d.pago : "persona", pagoQuien: d.pago === "otro" && d.pagoQuien ? String(d.pagoQuien).slice(0, 200) : null,
+        observaciones: String(d.observaciones || "").trim().slice(0, 500),
         ...(f.marcado && rid ? { rendicionId: rid } : {}),
         estado: f.marcado ? "confirmado" : g.estado === "observado" ? "observado" : "borrador" });
       if(f.marcado) confirmados++; else guardados++;
@@ -26495,6 +26521,10 @@ function renderRendicionAbierta(comoAdmin){
       <span class="setting-sub">${t("Para pedir una corrección, abrí el gasto y usá «Observar».","To ask for a correction, open the expense and use “Flag”.","Para pedir uma correção, abra a despesa e use «Observar».","כדי לבקש תיקון, פתחו את ההוצאה והשתמשו ב«הערה».")}</span>
       <button type="button" class="btn-primary" data-action="gastos-aprobar" data-id="${esc(r.id)}" ${gastosOcupado ? "disabled" : ""}>${gastosOcupado ? t("Aprobando…","Approving…","Aprovando…","מאשר…") : t("Aprobar la rendición","Approve the report","Aprovar a prestação","אישור הדוח")}</button>
     </div>` : "";
+  const reabrir = isAdmin() && r.estado === "aprobada" ? `<div class="gx-acciones gx-reabrir">
+      <span class="setting-sub">${t("¿Llegó un comprobante tarde? Reabrila para sumarlo: sus gastos dejan de contar como aprobados hasta que la vuelvas a aprobar.","Did a receipt arrive late? Reopen it to add it: its expenses stop counting as approved until you approve it again.","Chegou um comprovante atrasado? Reabra para somá-lo: as despesas deixam de contar como aprovadas até você aprovar de novo.","הגיעה קבלה באיחור? פתחו מחדש כדי להוסיף אותה: ההוצאות לא ייחשבו מאושרות עד שתאשרו שוב.")}</span>
+      <button type="button" class="btn-secondary" data-action="gastos-reabrir" data-id="${esc(r.id)}" ${gastosOcupado ? "disabled" : ""}>↩️ ${t("Reabrir","Reopen","Reabrir","פתיחה מחדש")}</button>
+    </div>` : "";
   return `${volver}
     <div class="gx-cab">
       <span class="gx-t-ico" aria-hidden="true">${iconoDeRendicion(r)}</span>
@@ -26510,7 +26540,7 @@ function renderRendicionAbierta(comoAdmin){
       : `${editable && !(gastosSel && gastosSel.rid === r.id) ? `<div class="gx-herr">${botonDeLista(r.id)}${botonSeleccionar(r.id)}${subirAca}</div>`
         : isFixedAdmin() && botonSeleccionar(r.id) && !(gastosSel && gastosSel.rid === r.id) ? `<div class="gx-herr">${botonSeleccionar(r.id)}</div>` : ""}${gs.length ? `<div class="gx-filas">${gs.map(renderFilaGasto).join("")}</div>` : `<p class="setting-sub gx-nada">${t("Todavía no hay gastos en esta rendición.","There are no expenses in this report yet.","Ainda não há despesas nesta prestação.","עדיין אין הוצאות בדוח הזה.")}</p>`}`}
     ${!enLista && Object.keys(detalle).length ? `<div class="gx-total"><span>${t("Total confirmado","Confirmed total","Total confirmado","סך המאושר")}${faltan ? ` <small>${esc(faltan === 1 ? t("(sin contar 1 por confirmar)","(not counting 1 to confirm)","(sem contar 1 por confirmar)","(בלי 1 שממתינה לאישור)") : t("(sin contar {n} por confirmar)","(not counting {n} to confirm)","(sem contar {n} por confirmar)","(בלי {n} שממתינות לאישור)",{ n: faltan }))}</small>` : ""}</span><b>${totalesHtml(detalle)}</b></div>` : ""}
-    ${gastosSel && gastosSel.rid === r.id ? renderBarraDeSeleccion(r.id) : enLista ? "" : renderTotalRapido(r, editable, detalle) + enviar + aprobar}
+    ${gastosSel && gastosSel.rid === r.id ? renderBarraDeSeleccion(r.id) : enLista ? "" : renderTotalRapido(r, editable, detalle) + enviar + aprobar + reabrir}
     ${(editable || isFixedAdmin()) && !enLista && !(gastosSel && gastosSel.rid === r.id) ? `<div class="gx-borrar-ren"><button type="button" class="gx-link gx-lquitar" data-action="gastos-rendicion-borrar" data-id="${esc(r.id)}">🗑️ ${t("Borrar esta rendición","Delete this report","Apagar esta prestação","מחיקת הדוח הזה")}${gs.length ? " " + esc(gs.length === 1 ? t("(con su gasto)","(with its expense)","(com a despesa)","(עם ההוצאה)") : t("(con sus {n} gastos)","(with its {n} expenses)","(com as {n} despesas)","(עם {n} ההוצאות)",{ n: gs.length })) : ""}</button></div>` : ""}`;
 }
 // El total rápido: cuánto se gastó en la actividad, sin el detalle. Vale el
@@ -26592,6 +26622,21 @@ async function aprobarRendicion(id){
   catch(err){ console.error("No se pudo aprobar la rendición:", err); appAlert(t("No se pudo aprobar: {m}","Couldn't approve it: {m}","Não foi possível aprovar: {m}","האישור נכשל: {m}",{ m: detalleDeError(err) })); }
   gastosOcupado = false; render();
 }
+// Reabrir una aprobada (18/11: un comprobante que llegó tarde). Solo un admin; la base lo controla igual.
+async function reabrirRendicion(id){
+  const r = rendicionPorId(id);
+  if(gastosOcupado || !r || r.estado !== "aprobada" || !isAdmin()) return;
+  const mia = r.autor === miCorreo();
+  if(!await appConfirm(t("¿Reabrir «{r}»? Sus gastos dejan de estar aprobados y salen de {c} hasta que la vuelvas a aprobar.","Reopen “{r}”? Its expenses stop being approved and come out of {c} until you approve it again.","Reabrir «{r}»? As despesas deixam de estar aprovadas e saem de {c} até você aprovar de novo.","לפתוח מחדש את «{r}»? ההוצאות שלו כבר לא מאושרות ויוצאות מ{c} עד שתאשרו אותו שוב.",{ r: tituloRendicion(r), c: cuentaDeQuienes([{ autor: r.autor }]) })
+      + " " + (mia ? t("Después sumás el gasto que faltaba y la mandás de nuevo.","Then add the missing expense and send it again.","Depois você soma a despesa que faltava e manda de novo.","אחר כך מוסיפים את ההוצאה החסרה ושולחים שוב.")
+        : t("{n} puede sumar el gasto que faltaba y mandarla de nuevo.","{n} can add the missing expense and send it again.","{n} pode somar a despesa que faltava e mandar de novo.","{n} יכול/ה להוסיף את ההוצאה החסרה ולשלוח שוב.",{ n: nombreDePersona(r.autor) })),
+    { okLabel: t("Reabrir","Reopen","Reabrir","פתיחה מחדש") })) return;
+  gastosOcupado = true; render();
+  try{ await store.gastos.reabrir(id); }
+  catch(err){ console.error("No se pudo reabrir la rendición:", err); appAlert(t("No se pudo reabrir: {m}","Couldn't reopen it: {m}","Não foi possível reabrir: {m}","הפתיחה מחדש נכשלה: {m}",{ m: detalleDeError(err) })); }
+  gastosOcupado = false; render();
+  const x = document.querySelector('.gastos-view [data-action="gastos-subir"], .gastos-view .gx-volver'); if(x) x.focus();
+}
 async function abrirRendicionDeActividad(){
   if(!gastosActividad || gastosOcupado) return;
   gastosOcupado = true; render();
@@ -26608,11 +26653,16 @@ function renderParaAprobar(){
   const enviadas = D.rendiciones.filter(r => r.estado === "enviada").sort((a, b) => tsToMillis(a.enviadaEl) - tsToMillis(b.enviadaEl));
   const observadas = D.rendiciones.filter(r => r.estado === "observada");
   const movs = D.movimientos.filter(m => m.estado === "pendiente");
+  // Las aprobadas de los últimos 60 días, la más nueva primero: desde ahí se reabre una (18/11).
+  const desde = Date.now() - 60 * 86400000;
+  const aprobadas = D.rendiciones.filter(r => r.estado === "aprobada" && tsToMillis(r.aprobadaEl) > desde).sort((a, b) => tsToMillis(b.aprobadaEl) - tsToMillis(a.aprobadaEl)).slice(0, 8);
+  const lasAprobadas = aprobadas.length ? `<h3 class="admin-h3">${t("Aprobadas hace poco","Recently approved","Aprovadas recentemente","אושרו לאחרונה")}</h3><div class="gx-lista">${aprobadas.map(r => renderTarjetaRendicion(r, true)).join("")}</div>` : "";
   if(!enviadas.length && !observadas.length && !movs.length)
-    return `<div class="admin-ok">✅ ${t("Nada para aprobar: no hay rendiciones mandadas ni plata anotada por confirmar.","Nothing to approve: no reports sent and no money entries to confirm.","Nada para aprovar: não há prestações enviadas nem dinheiro anotado por confirmar.","אין מה לאשר: אין דוחות שנשלחו ואין רישומים כספיים לאישור.")}</div>`;
+    return `<div class="admin-ok">✅ ${t("Nada para aprobar: no hay rendiciones mandadas ni plata anotada por confirmar.","Nothing to approve: no reports sent and no money entries to confirm.","Nada para aprovar: não há prestações enviadas nem dinheiro anotado por confirmar.","אין מה לאשר: אין דוחות שנשלחו ואין רישומים כספיים לאישור.")}</div>` + lasAprobadas;
   return `${enviadas.length ? `<h3 class="admin-h3">${t("Para revisar","To review","Para revisar","לבדיקה")}</h3><div class="gx-lista">${enviadas.map(r => renderTarjetaRendicion(r, true)).join("")}</div>` : ""}
     ${movs.length ? `<h3 class="admin-h3">${t("Plata anotada por confirmar","Money entries to confirm","Dinheiro anotado por confirmar","רישומים כספיים לאישור")}</h3><div class="gx-movs">${movs.map(m => renderMovimiento(m, true)).join("")}</div>` : ""}
-    ${observadas.length ? `<h3 class="admin-h3">${t("Esperando la corrección","Waiting for the correction","Esperando a correção","ממתינים לתיקון")}</h3><div class="gx-lista">${observadas.map(r => renderTarjetaRendicion(r, true)).join("")}</div>` : ""}`;
+    ${observadas.length ? `<h3 class="admin-h3">${t("Esperando la corrección","Waiting for the correction","Esperando a correção","ממתינים לתיקון")}</h3><div class="gx-lista">${observadas.map(r => renderTarjetaRendicion(r, true)).join("")}</div>` : ""}
+    ${lasAprobadas}`;
 }
 
 // ---- La cuenta corriente ----
@@ -26776,7 +26826,7 @@ function abrirGasto(id, desde){
   if(!g) return;
   gastoEdit = { id, guardando: false, error: "", faltan: [], comentario: "", observacion: "",
     d: { fecha: g.fecha || "", concepto: g.concepto || "", tipo: g.tipo || "", moneda: g.moneda || "USD", monto: g.monto ?? "",
-      rendidoMoneda: g.rendidoMoneda || "USD", rendidoMonto: g.rendidoMonto ?? "", pago: g.pago || "persona", formaPago: g.formaPago || "",
+      rendidoMoneda: g.rendidoMoneda || "USD", rendidoMonto: g.rendidoMonto ?? "", pago: g.pago || "persona", pagoQuien: g.pagoQuien || "", formaPago: g.formaPago || "",
       tarjeta: g.tarjeta || "", factura: g.factura !== false, observaciones: g.observaciones || "", vinculo: vinculoDe(g) } };
   gastoReturnFocus = desde || document.activeElement;
   renderGasto();
@@ -26817,8 +26867,11 @@ function resumenDeGasto(g){
   const fila = (et, valor, sub) => `<div class="gx-res-fila"><dt>${et}</dt><dd>${valor}${sub ? `<small>${sub}</small>` : ""}</dd></div>`;
   const forma = g.formaPago === "tarjeta" ? t("Tarjeta","Card","Cartão","כרטיס") + (g.tarjeta ? " " + t("terminada en {n}","ending in {n}","terminado em {n}","מסתיים ב-{n}",{ n: g.tarjeta }) : "")
     : g.formaPago === "efectivo" ? t("Efectivo","Cash","Dinheiro","מזומן") : g.formaPago === "transferencia" ? t("Transferencia","Transfer","Transferência","העברה") : "";
-  const quien = g.pago === "organizacion" ? t("Organización","Organization","Organização","הארגון") : mio ? t("Yo","Me","Eu","אני") : nombreDePersona(g.autor);
-  const cuenta = g.pago === "organizacion" ? t("No entra en la cuenta corriente.","Doesn't go into the balance.","Não entra na conta corrente.","לא נכנס לחשבון השוטף.")
+  const quien = g.pago === "organizacion" ? t("Organización","Organization","Organização","הארגון")
+    : g.pago === "otro" ? (g.pagoQuien ? nombreQuePago(g.pagoQuien) : t("Otra persona","Someone else","Outra pessoa","מישהו/י אחר/ת"))
+    : mio ? t("Yo","Me","Eu","אני") : nombreDePersona(g.autor);
+  const cuenta = g.pago === "otro" ? t("No entra en ninguna cuenta corriente.","Doesn't go into anyone's balance.","Não entra em nenhuma conta corrente.","לא נכנס לאף חשבון שוטף.")
+    : g.pago === "organizacion" ? t("No entra en la cuenta corriente.","Doesn't go into the balance.","Não entra na conta corrente.","לא נכנס לחשבון השוטף.")
     : mio ? t("Entra en tu cuenta corriente.","Goes into your balance.","Entra na sua conta corrente.","נכנס לחשבון השוטף שלך.") : t("Entra en su cuenta corriente.","Goes into their balance.","Entra na conta corrente dessa pessoa.","נכנס לחשבון השוטף שלו/ה.");
   const nota = notaDeMoneda(g.moneda, g.monto, g.rendidoMoneda, g.rendidoMonto);
   const obs = [nota ? `<b>${esc(nota)}</b>` : "", g.observaciones ? esc(g.observaciones) : ""].filter(Boolean).join("<br>");
@@ -26851,6 +26904,10 @@ function renderGasto(){
   const tipos = gastoTipos().filter(x => !x.oculto || x.key === d.tipo);
   if(d.tipo && !tipos.some(x => x.key === d.tipo)) tipos.push({ key: d.tipo, label: nombreTipoGasto(d.tipo) });
   const otraMoneda = d.moneda && d.moneda !== d.rendidoMoneda;
+  // Un comprobante que llegó tarde a una rutina ya aprobada (18/11): la de su mes ya no se ofrece; se dice qué hacer.
+  const mesG = String(d.fecha || "").slice(0, 7), rMes = editable && /^\d{4}-\d{2}$/.test(mesG) && rendicionDeVinculo("mes:" + mesG);
+  const pistaVaEn = rMes && rMes.estado === "aprobada" && !String(d.vinculo).startsWith("post:") && d.vinculo !== "mes:" + mesG
+    ? t("La rutina de {m} ya se aprobó: un administrador la puede reabrir, o ponelo en la de otro mes.","The {m} routine was already approved: an admin can reopen it, or put it in another month's.","A rotina de {m} já foi aprovada: um administrador pode reabri-la, ou coloque na de outro mês.","השגרה של {m} כבר אושרה: מנהל/ת יכול/ה לפתוח אותה מחדש, או לשים בחודש אחר.",{ m: nombreDeMes(mesG) }) : "";
   const vista = !g.archivo ? `<div class="gx-comp gx-comp-vacio">${t("Sin comprobante","No receipt","Sem comprovante","ללא קבלה")}</div>`
     : !esUrlFirmada(g.archivoUrl) ? `<div class="gx-comp gx-comp-vacio">${t("Cargando el comprobante…","Loading the receipt…","Carregando o comprovante…","טוען את הקבלה…")}</div>`
     : esPdfGasto(g) && store.miniaturaSiHay(g.archivoUrl) ? `<button type="button" class="gx-comp gx-comp-conpdf" data-action="gasto-ver-comprobante" data-id="${esc(g.id)}" aria-label="${esc(t("Abrir el PDF","Open the PDF","Abrir o PDF","פתיחת ה-PDF"))}"><img src="${esc(store.miniaturaSiHay(g.archivoUrl))}" alt=""><span class="gx-comp-marca">PDF</span></button>`
@@ -26915,11 +26972,13 @@ function renderGasto(){
               + `<small class="gx-pista">${t("En {m}: lo que te cobró el banco.","In {m}: what your bank charged you.","Em {m}: o que o banco te cobrou.","ב-{m}: מה שהבנק חייב אתכם.",{ m: esc(d.rendidoMoneda) })}</small>` : ""}
           </div>
           ${campo(t("Fecha","Date","Data","תאריך"), `<input type="date" id="gxFecha" data-gcampo="fecha" value="${esc(d.fecha)}"${mal("fecha")}${marca("fecha")}>`)}
-          ${campo(t("Va en","Goes in","Vai em","שייך ל"), `<select id="gxVinculo" class="gx-elige" data-gcampo="vinculo">${opcionesDeVinculo(g, d.vinculo)}</select>`)}
+          ${campo(t("Va en","Goes in","Vai em","שייך ל"), `<select id="gxVinculo" class="gx-elige" data-gcampo="vinculo">${opcionesDeVinculo(g, d.vinculo)}</select>${pistaVaEn ? `<small class="gx-pista gx-pista-vaen">${esc(pistaVaEn)}</small>` : ""}`)}
           ${tipoCampo}
           <div class="gx-campo"><span class="gx-et" id="gxPagoEt">${t("¿Quién pagó?","Who paid?","Quem pagou?","מי שילם?")}</span>
-            <div class="gx-fila-opc"><div class="gx-opciones gx-seg" id="gxPago" role="group" aria-labelledby="gxPagoEt">${opciones("gasto-pago", "pago", [["persona", t("Yo","Me","Eu","אני"), "gxPagoPersona"], ["organizacion", t("Organización","Organization","Organização","הארגון"), "gxPagoOrg"]], d.pago)}</div>
-            <small class="gx-pista">${d.pago === "organizacion" ? t("No entra en tu cuenta corriente.","Doesn't go into your balance.","Não entra na sua conta corrente.","לא נכנס לחשבון השוטף שלך.") : t("Entra en tu cuenta corriente.","Goes into your balance.","Entra na sua conta corrente.","נכנס לחשבון השוטף שלך.")}</small></div></div>
+            <div class="gx-fila-opc"><div class="gx-opciones gx-seg" id="gxPago" role="group" aria-labelledby="gxPagoEt">${opciones("gasto-pago", "pago", [["persona", t("Yo","Me","Eu","אני"), "gxPagoPersona"], ["organizacion", t("Organización","Organization","Organização","הארגון"), "gxPagoOrg"], ["otro", t("Otra persona","Someone else","Outra pessoa","מישהו/י אחר/ת"), "gxPagoOtro"]], d.pago)}</div>
+            ${d.pago === "otro" ? `<label class="gx-tarj gx-pago-quien"><span>${t("¿Quién?","Who?","Quem?","מי?")}</span><select id="gxPagoQuien" class="gx-elige" data-gcampo="pagoQuien"${mal("pagoQuien")}><option value="">${esc(t("Elegí…","Pick…","Escolha…","בחרו…"))}</option>${quienesPudieronPagar(d.vinculo, d.pagoQuien).map(([v, n]) => `<option value="${esc(v)}"${v === d.pagoQuien ? " selected" : ""}>${esc(n)}</option>`).join("")}</select></label>` : ""}
+            <small class="gx-pista">${d.pago === "otro" ? t("No entra en ninguna cuenta corriente.","Doesn't go into anyone's balance.","Não entra em nenhuma conta corrente.","לא נכנס לאף חשבון שוטף.")
+              : d.pago === "organizacion" ? t("No entra en tu cuenta corriente.","Doesn't go into your balance.","Não entra na sua conta corrente.","לא נכנס לחשבון השוטף שלך.") : t("Entra en tu cuenta corriente.","Goes into your balance.","Entra na sua conta corrente.","נכנס לחשבון השוטף שלך.")}</small></div></div>
           <div class="gx-campo"><span class="gx-et" id="gxFormaEt">${t("Forma de pago","Payment method","Forma de pagamento","אמצעי תשלום")}</span>
             <div class="gx-fila-opc"><div class="gx-opciones gx-seg" id="gxForma" role="group" tabindex="-1" aria-labelledby="gxFormaEt"${marca("formaPago")}>${opciones("gasto-forma", "forma", [["tarjeta", t("Tarjeta","Card","Cartão","כרטיס")], ["efectivo", t("Efectivo","Cash","Dinheiro","מזומן")], ["transferencia", t("Transferencia","Transfer","Transferência","העברה")]], d.formaPago)}</div>
             ${d.formaPago === "tarjeta" ? `<label class="gx-tarj"><span>${t("terminada en","ending in","terminado em","מסתיים ב")}</span><input type="text" id="gxTarjeta" inputmode="numeric" maxlength="4" data-gcampo="tarjeta" value="${esc(d.tarjeta)}"${marca("tarjeta")}${mal("tarjeta")} aria-label="${esc(t("Tarjeta terminada en","Card ending in","Cartão terminado em","כרטיס שמסתיים ב"))}" placeholder="1234"></label>` : ""}</div></div>
@@ -26993,6 +27052,7 @@ function elegirEnVentana(campo, valor){
   if(!e || e.guardando) return;
   const v = campo === "pago" ? valor : e.d[campo] === valor ? "" : valor;
   e.d[campo] = v; e.cambiado = true;
+  if(campo === "pago" && v === "otro" && !e.d.pagoQuien){ const q = quienesPudieronPagar(e.d.vinculo); if(q.length === 1) e.d.pagoQuien = q[0][0]; }
   if(campo === "tipo") e.tipoAuto = false;
   e.faltan = e.faltan.filter(k => k !== campo);
   (e.tocados = e.tocados || new Set()).add(campo);
@@ -27006,7 +27066,7 @@ function nombreDeCampoGasto(k, corto){
   return ({ fecha: t("la fecha","the date","a data","התאריך"), concepto: t("el concepto","the description","o conceito","התיאור"), tipo: t("el tipo","the type","o tipo","הסוג"),
     monto: t("el monto","the amount","o valor","הסכום"), moneda: t("la moneda (tres letras)","the currency (three letters)","a moeda (três letras)","המטבע (שלוש אותיות)"),
     rendidoMoneda: t("la moneda en que se rinde","the reporting currency","a moeda da prestação","מטבע הדיווח"), tarjeta: t("los 4 números de la tarjeta","the card's 4 digits","os 4 números do cartão","4 הספרות של הכרטיס"),
-    formaPago: t("la forma de pago","the payment method","a forma de pagamento","אמצעי התשלום") })[k] || k;
+    formaPago: t("la forma de pago","the payment method","a forma de pagamento","אמצעי התשלום"), pagoQuien: t("quién pagó","who paid","quem pagou","מי שילם/ה") })[k] || k;
 }
 async function guardarGasto(confirmar){
   const e = gastoEdit, g = e && gastoPorId(e.id);
@@ -27021,6 +27081,7 @@ async function guardarGasto(confirmar){
     if(!String(d.concepto).trim()) faltan.push("concepto");
     if(!d.tipo) faltan.push("tipo");
     if(monto === null) faltan.push("monto");
+    if(d.pago === "otro" && !d.pagoQuien) faltan.push("pagoQuien");
   }
   if(!/^[A-Z]{3}$/.test(moneda)) faltan.push("moneda");
   if(!/^[A-Z]{3}$/.test(rendidoMoneda)) faltan.push("rendidoMoneda");
@@ -27030,7 +27091,7 @@ async function guardarGasto(confirmar){
     e.faltan = [...new Set(faltan)];
     e.error = (confirmar ? t("Para confirmarlo falta {f}.","To confirm it, {f} is missing.","Para confirmar falta {f}.","כדי לאשר חסר/ה {f}.",{ f: e.faltan.map(nombreDeCampoGasto).join(", ") }) : t("Revisá {f}.","Check {f}.","Revise {f}.","בדקו את {f}.",{ f: e.faltan.map(nombreDeCampoGasto).join(", ") }));
     renderGasto();
-    const primero = { fecha: "gxFecha", concepto: "gxConcepto", tipo: "gxTipo", monto: "gxMonto", moneda: "gxMoneda", rendidoMoneda: "gxRendidoMoneda", tarjeta: "gxTarjeta" }[e.faltan[0]];
+    const primero = { fecha: "gxFecha", concepto: "gxConcepto", tipo: "gxTipo", monto: "gxMonto", moneda: "gxMoneda", rendidoMoneda: "gxRendidoMoneda", tarjeta: "gxTarjeta", pagoQuien: "gxPagoQuien" }[e.faltan[0]];
     const x = primero && document.getElementById(primero); if(x) x.focus();
     return;
   }
@@ -27040,7 +27101,7 @@ async function guardarGasto(confirmar){
     await store.gastos.cambiar(g.id, {
       fecha: d.fecha || null, concepto: String(d.concepto).trim().slice(0, 140), tipo: d.tipo || null,
       moneda, monto: monto === null ? null : redondo(monto), rendidoMoneda, rendidoMonto: rendido === null ? null : redondo(rendido),
-      pago: d.pago === "organizacion" ? "organizacion" : "persona", formaPago: d.formaPago || null,
+      pago: ["organizacion", "otro"].includes(d.pago) ? d.pago : "persona", pagoQuien: d.pago === "otro" && d.pagoQuien ? String(d.pagoQuien).slice(0, 200) : null, formaPago: d.formaPago || null,
       tarjeta: d.formaPago === "tarjeta" && d.tarjeta ? d.tarjeta : null, factura: !!d.factura,
       observaciones: String(d.observaciones).trim().slice(0, 500), rendicionId: rid,
       estado: confirmar ? "confirmado" : "borrador",
@@ -27262,6 +27323,7 @@ const GASTOS_ACCIONES = {
   },
   "gastos-enviar": async el => enviarRendicion(el.dataset.id),
   "gastos-aprobar": async el => aprobarRendicion(el.dataset.id),
+  "gastos-reabrir": async el => reabrirRendicion(el.dataset.id),
   "gastos-total-otra": async () => { if(gastosTotal && gastosTotal.filas.length < 4){ gastosTotal.filas.push({ moneda: "", monto: "" }); render(); } },
   "gastos-total-sacar": async el => { if(gastosTotal){ gastosTotal.filas.splice(Number(el.dataset.i), 1); render(); } },
   "gastos-total-guardar": async () => guardarTotalRapido(false),
@@ -27340,6 +27402,13 @@ function gastosAlEscribir(el, evento){
     // se comía el toque, y la fila no se cerraba.
     const r = document.getElementById(`gxLR_${id}`), g = gastoPorId(id), html = g ? resumenDeFila(g, f) : "";
     if(r && g && f.resumen !== html){ r.innerHTML = html; f.resumen = html; }
+    // (Con la casilla de verdad del celular llegan «input» y «change» seguidos: se mira si el «¿Quién?» ya está.)
+    if(campo === "pago" && (v === "otro") !== !!document.getElementById(`gxL_${id}_pagoQuien`)){
+      if(v === "otro" && !f.d.pagoQuien){ const q = quienesPudieronPagar(vinculoDe(gastoPorId(id) || {}), ""); if(q.length === 1) f.d.pagoQuien = q[0][0]; }
+      render();
+      const x = document.getElementById(`gxL_${id}_${v === "otro" ? "pagoQuien" : "pago"}`); if(x) x.focus();
+      return true;
+    }
     if(evento === "change" && campo === "moneda" && antes !== v){
       const otra = v !== String(f.d.rendidoMoneda).toUpperCase();
       if(otra !== !!document.getElementById(`gxL_${id}_rendidoMonto`)) render(); else el.value = v;

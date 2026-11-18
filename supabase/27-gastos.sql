@@ -111,8 +111,9 @@ create table if not exists public.gastos (
   rendido_moneda text not null default 'USD',
   rendido_monto  numeric(14, 2),
   -- Quién puso la plata: la organización (tarjeta de la organización: a la
-  -- persona no se le debe nada) o la persona (de su bolsillo, o de un
-  -- adelanto que tiene: entra en su cuenta corriente).
+  -- persona no se le debe nada), la persona (de su bolsillo, o de un
+  -- adelanto que tiene: entra en su cuenta corriente) u otra persona de la
+  -- actividad ('otro', con pago_quien; más abajo).
   pago           text not null default 'persona',
   forma_pago     text,
   tarjeta        text,
@@ -130,11 +131,18 @@ create table if not exists public.gastos (
   creado_el      timestamptz not null default now(),
   tocado_el      timestamptz not null default now()
 );
+-- Otra persona que participó de la actividad también puede haber pagado un
+-- gasto (lo pidió el usuario el 18/11): pago = 'otro' y en pago_quien quién
+-- fue (su correo si tiene cuenta, o su nombre). No entra en ninguna cuenta
+-- corriente: ni en la de quien rinde ni en la suya (gastos_cuenta cuenta solo
+-- pago = 'persona').
+alter table public.gastos add column if not exists pago_quien text;
 alter table public.gastos drop constraint if exists gastos_forma;
 alter table public.gastos add constraint gastos_forma check (
   estado in ('borrador', 'confirmado', 'enviado', 'observado', 'aprobado')
   and length(autor) between 3 and 200
-  and pago in ('organizacion', 'persona')
+  and pago in ('organizacion', 'persona', 'otro')
+  and (pago = 'otro' or pago_quien is null) and length(coalesce(pago_quien, '')) <= 200
   and (forma_pago is null or forma_pago in ('tarjeta', 'efectivo', 'transferencia'))
   and (tarjeta is null or tarjeta ~ '^[0-9]{4}$')
   and moneda ~ '^[A-Z]{3}$' and rendido_moneda ~ '^[A-Z]{3}$'
@@ -148,7 +156,8 @@ alter table public.gastos add constraint gastos_forma check (
   and (archivo_hash is null or archivo_hash ~ '^[0-9a-f]{64}$')
   and (lectura is null or (jsonb_typeof(lectura) = 'object' and pg_column_size(lectura) <= 8000))
   -- Un borrador puede estar a medias; confirmado en adelante, no.
-  and (estado = 'borrador' or (fecha is not null and btrim(concepto) <> '' and tipo is not null))
+  and (estado = 'borrador' or (fecha is not null and btrim(concepto) <> '' and tipo is not null
+                               and (pago <> 'otro' or btrim(coalesce(pago_quien, '')) <> '')))
 );
 -- El mismo comprobante dos veces, de la misma persona: no (es un repetido).
 create unique index if not exists gastos_comprobante_unico on public.gastos (autor, archivo_hash) where archivo_hash is not null;
@@ -636,6 +645,31 @@ begin
   return true;
 end $$;
 
+-- Reabrir una rendición ya aprobada (lo pidió el usuario el 18/11: un
+-- comprobante que llegó tarde a una rutina del mes ya aprobada; la otra
+-- salida, ponerlo en la rutina del mes siguiente, ya se puede desde «Va en»).
+-- Solo un admin. Vuelve a «abierta» para que la persona sume lo que falta y
+-- la mande de nuevo; sus gastos dejan de estar aprobados (vuelven a
+-- «confirmado») y salen de la cuenta corriente hasta que se apruebe otra vez.
+create or replace function public.gastos_rendicion_reabrir(p_id uuid)
+returns boolean language plpgsql security definer set search_path = '' as $$
+declare r record;
+begin
+  if not (public.es_admin_fijo() or public.es_admin_rol()) then
+    raise exception 'Reabre un admin' using errcode = 'insufficient_privilege';
+  end if;
+  select * into r from public.gastos_rendiciones x where x.id = p_id for update;
+  if not found then
+    raise exception 'Esa rendición no existe' using errcode = 'no_data_found';
+  end if;
+  if r.estado <> 'aprobada' then
+    raise exception 'Se reabre una rendición aprobada' using errcode = 'check_violation';
+  end if;
+  update public.gastos set estado = 'confirmado', tocado_el = now() where rendicion_id = p_id and estado = 'aprobado';
+  update public.gastos_rendiciones set estado = 'abierta', aprobada_el = null, aprobada_por = null, tocada_el = now() where id = p_id;
+  return true;
+end $$;
+
 -- Un admin confirma un movimiento que anotó la persona.
 create or replace function public.gastos_movimiento_confirmar(p_id uuid)
 returns boolean language plpgsql security definer set search_path = '' as $$
@@ -708,6 +742,7 @@ revoke execute on function public.gastos_observar(uuid, text) from public, anon;
 revoke execute on function public.preparar_aviso_de_gasto(uuid) from public, anon;
 revoke execute on function public.gastos_comentar(uuid, text) from public, anon;
 revoke execute on function public.gastos_rendicion_aprobar(uuid) from public, anon;
+revoke execute on function public.gastos_rendicion_reabrir(uuid) from public, anon;
 revoke execute on function public.gastos_movimiento_confirmar(uuid) from public, anon;
 revoke execute on function public.gastos_cuenta(text) from public, anon;
 grant execute on function public.gastos_rendicion_abrir(text, date) to authenticated;
@@ -717,6 +752,7 @@ grant execute on function public.gastos_observar(uuid, text) to authenticated;
 grant execute on function public.preparar_aviso_de_gasto(uuid) to authenticated;
 grant execute on function public.gastos_comentar(uuid, text) to authenticated;
 grant execute on function public.gastos_rendicion_aprobar(uuid) to authenticated;
+grant execute on function public.gastos_rendicion_reabrir(uuid) to authenticated;
 grant execute on function public.gastos_movimiento_confirmar(uuid) to authenticated;
 grant execute on function public.gastos_cuenta(text) to authenticated;
 

@@ -251,9 +251,23 @@ tocan eventos, comentarios ni la Agenda); se hace por etapas chicas; Drive y el 
   - **Su botón** «Ver el gasto» lleva a `?gasto=<id>`: la app abre ese gasto apenas llegan los datos (a un admin,
     desde «Para aprobar») y limpia la dirección.
 
-**Visto al armar las pantallas (15/11), para decidir más adelante:** si la rutina de un mes ya se aprobó, un
-gasto nuevo de ese mes no tiene dónde ir (queda sin vincular), porque hay una rendición por persona y por mes.
-Y el total general de una actividad que corrige un admin (la «C» del total rápido) todavía no está: hoy cada
+- [ ] **«Otra persona» pagó, y reabrir una rendición aprobada** (en la rama, esperando el OK del usuario; lo
+  decidió el 18/11):
+  - En «¿Quién pagó?», además de «Yo» y «Organización», **«Otra persona»**: alguien que participó de la actividad
+    (o, en la rutina del mes, alguien del equipo) puso la plata. Se elige quién (`gastos.pago = 'otro'` y
+    `pago_quien`, su correo o su nombre); sin decir quién no se confirma. No entra en ninguna cuenta corriente
+    (`gastos_cuenta` cuenta solo `pago = 'persona'`). Está en la ventana, en «Revisar en lista», en la fila y en
+    el resumen de lo aprobado.
+  - **Reabrir una rendición aprobada**, para un comprobante que llegó tarde: solo un admin
+    (`gastos_rendicion_reabrir`), con «↩️ Reabrir» en la rendición aprobada y avisando que sus gastos salen de la
+    cuenta corriente hasta que se apruebe de nuevo. Vuelve a «abierta» y sus gastos a «confirmado». «Para
+    aprobar» muestra abajo las aprobadas de los últimos 60 días, para llegar a ellas. En un gasto de un mes cuya
+    rutina ya se aprobó, «Va en» lo dice: un admin la puede reabrir, o va en la rutina de otro mes.
+
+**Visto al armar las pantallas (15/11), para decidir más adelante:** ~~si la rutina de un mes ya se aprobó, un
+gasto nuevo de ese mes no tiene dónde ir~~ — **decidido el 18/11**: lo decide la persona cada vez, con un
+administrador: o un admin reabre la rutina aprobada y se suma ahí, o va en la rutina de otro mes (ver «Reabrir»
+más arriba). Y el total general de una actividad que corrige un admin (la «C» del total rápido) todavía no está: hoy cada
 uno anota el suyo; va con las estadísticas (etapa 5).
 
 **Decidido después (15/11):** un admin **puede aprobar su propia** rendición (en la prueba el único que carga
@@ -264,6 +278,13 @@ corriente**: es para los números grandes, porque no dice quién puso la plata.
 
 - ~~El código del peso mexicano~~ — **decidido el 17/11: va «MX»**, como en su Sheet. El sistema lo guarda como
   MXN (el código de tres letras que pide la base) y lo escribe «MX» al cargar el Sheet (etapa 3); la nota de la
-  moneda ya dice «MX $». Sigue por decidir a qué «Actividad» del Sheet
-  van Congreso, Virtual y Otro, un gasto que sirve a dos actividades, el mes de un viaje que cruza dos meses, y
-  si cada persona tiene su Sheet o van todos al mismo.
+  moneda ya dice «MX $».
+- **Decidido el 18/11, para cargar el Sheet (etapa 3):**
+  - «Actividad»: el Sheet tiene solo Rutina, Visita, Curso y Seminario. **Congreso va como Seminario; Virtual y
+    Otro, como Rutina.**
+  - Un viaje que cruza dos meses: **el sistema pregunta en cada viaje** si todo va en el mes en que termina o cada
+    gasto en su mes.
+  - «¿Quién pagó?»: «Yo» es quien hace la rendición; «Organización» queda así, a secas (puede ser DAIA u otra);
+    «Otra persona» (en el Sheet, «Otro») es alguien que participó de la actividad y puso la plata: se anota quién
+    y no entra en ninguna cuenta corriente (ya está en la app desde el 18/11).
+- Sigue por decidir: un gasto que sirve a dos actividades, y si cada persona tiene su Sheet o van todos al mismo.

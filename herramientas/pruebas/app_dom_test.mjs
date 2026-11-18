@@ -275,6 +275,14 @@ export function createClient(url, clave){
           r.estado = "aprobada"; r.aprobada_el = ahora; r.aprobada_por = yo;
           return { data: true, error: null };
         }
+        if(nombre === "gastos_rendicion_reabrir"){
+          if(!esAdmin) return mal("42501", "Reabre un admin");
+          const r = T("gastos_rendiciones").find(x => x.id === args.p_id);
+          if(!r || r.estado !== "aprobada") return mal("23514", "Se reabre una rendición aprobada");
+          T("gastos").filter(g => g.rendicion_id === r.id && g.estado === "aprobado").forEach(g => { g.estado = "confirmado"; });
+          r.estado = "abierta"; r.aprobada_el = null; r.aprobada_por = null;
+          return { data: true, error: null };
+        }
         if(nombre === "gastos_movimiento_confirmar"){
           if(!esAdmin) return mal("42501", "Confirma un admin");
           const m = T("gastos_movimientos").find(x => x.id === args.p_id && x.estado === "pendiente");
