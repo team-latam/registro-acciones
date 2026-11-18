@@ -456,6 +456,20 @@ los 45 textos largos del módulo (18/11), la propuesta:
      suman después de una aprobación vayan al final, con los números que siguen.
    - Pruebas: en `supabase/pruebas/71-gastos.sql` (lo aprobado no se toca ni vuelve a revisión; la cuenta con la
      rendición reabierta) y en `gastos_test.mjs`.
+7. **Las observaciones en la ventana del gasto** (18/11, con captura de un gasto observado tres veces: «Estéticamente
+   cuando hay observaciones no queda bien el formulario. Sería mejor que toda la observación quede abajo, de manera
+   progresiva. Tampoco tiene sentido que quien cargó el gasto y se lo observaron tenga la posibilidad de él mismo
+   observar el gasto, especialmente cuando ya fue observado»). En la ventana (`index.html`, donde se arman `hilo` y
+   `puedeObservar`):
+   - **Hoy**: el hilo de comentarios va arriba de todo en la columna del formulario, cada uno en su globo, y debajo el
+     cuadro amarillo «Observar este gasto»; el monto, la fecha y lo demás quedan empujados hacia abajo, fuera de la
+     vista.
+   - **Abajo y de a poco**: el formulario primero; las observaciones al final, en una sección «Observaciones (3)» que
+     muestra la última y abre las anteriores al tocar, con «Responder» ahí mismo (la base ya tiene
+     `gastos_comentar`). Arriba alcanza con el estado «Observado» que ya está junto al concepto.
+   - **Quién puede observar**: hoy lo ve cualquier admin si el gasto está mandado u observado, aunque sea suyo (en la
+     prueba, el admin carga y se aprueba a sí mismo). Que no lo vea quien cargó el gasto, y que en un gasto ya
+     observado no aparezca «Observar» otra vez: lo que quiera agregar el admin va como respuesta en el hilo.
 
 ## Lo que quedó para decidir más adelante (no frena la etapa 1)
 
