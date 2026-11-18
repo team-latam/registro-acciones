@@ -360,6 +360,19 @@ que llega tarde, al final del PDF con los números que siguen. Cómo quedó cada
   comprobante que no subió, el del ajuste y «Nada para aprobar».
 - **2** (el PDF de Uber que el lector no leyó) sigue pendiente: hace falta el archivo.
 
+**Anotado después (18/11), para hacer:**
+- **8 — «¿De qué son estos comprobantes?» ofrece pocas rendiciones** (con captura: «¿por qué solo me permite estas
+  rendiciones?»). Lo arman `opcionesDeVinculo()` y `actividadesParaGastos()` en `index.html`:
+  - **La rutina del mes**: solo el mes de la fecha del gasto, el mes actual y el anterior. Antes de subir todavía no
+    hay fecha, así que salen dos (noviembre y octubre): un comprobante de septiembre no tiene dónde ir.
+  - **Una actividad**: las 40 más cercanas a hoy (o a la fecha del gasto), pasadas o futuras, sin las de tipo Rutina
+    ni las canceladas. A un admin le salen **todas las del equipo**, no solo las suyas (por eso aparecen actividades
+    ajenas); a una integrante, solo aquellas en las que participó. La búsqueda de la ventanita busca entre esas 40.
+  - Propuesta para mostrarle: la rutina de cualquier mes (los últimos 12, y uno más viejo eligiendo el mes); las
+    actividades propias primero («Mis actividades») y después las demás; la búsqueda, sobre todas. Y, ya que los
+    nombres de sus archivos traen la fecha y la actividad («14-9-2026 - Uber a Reunión - Rutina.pdf»), que al subir
+    varios de meses distintos cada uno vaya solo a la rutina de su mes.
+
 **Para toda la tanda** (18/11: «Hay mucho texto, mucha explicación, podría ser más directo. No es difícil lo que
 tenemos que poner»): en todas las pantallas de Gastos, menos texto. Cada botón dice lo que hace; como mucho una
 línea corta de ayuda, y solo donde de verdad hay una duda; nada de párrafos que explican lo que la pantalla ya
