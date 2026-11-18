@@ -346,6 +346,22 @@ tenemos que poner»): en todas las pantallas de Gastos, menos texto. Cada botón
 línea corta de ayuda, y solo donde de verdad hay una duda; nada de párrafos que explican lo que la pantalla ya
 muestra. Repasar todos los textos del módulo con ese criterio, no solo los de los puntos de abajo.
 
+Lo volvió a decir enseguida: «ponemos muchos mensajes para explicar cosas pero al final no son relevantes». Revisados
+los 45 textos largos del módulo (18/11), la propuesta:
+- **Sacar** (explican lo que la pantalla ya muestra): el párrafo de *Mis rendiciones* («Subí las fotos o los PDF de
+  tus comprobantes, revisá los datos y mandá…»), el de «Cambios de moneda», el del total rápido, el de qué va
+  adentro del PDF y el del resumen por mes, el de «¿De qué son estos comprobantes?» (el lector y el «$»), el de
+  «Revisar en lista», el de la cuenta corriente («Lo que gastaste de tu bolsillo…»), el de «Para aprobar», la ayuda
+  de qué es un ajuste, la de los tipos que se dejan de ofrecer, las de «Opcional: …» debajo de cada comprobante
+  (alcanza con «(opcional)» en el botón), la nota de la traducción cuando no hay nada que traducir, y la segunda
+  frase de las barras de la rendición cuando el botón ya dice qué hacer («Mandala para que la revise…», «Revisalos
+  con su comprobante…», «Un administrador la está revisando. Si te observa algo…»).
+- **Acortar a una línea** (dicen algo que hace falta, pero largo): los avisos de gastos sin el monto en dólares al
+  mandar, el de un comprobante que no entró al PDF, el de «no se pudo subir el comprobante», el del navegador que no
+  traduce y el del total anotado que no coincide con el detalle.
+- **Dejar**: las preguntas antes de borrar, mandar o reabrir (avisan algo que no se puede deshacer), los errores, el
+  aviso del interruptor en Administración, y lo que va impreso en el PDF (es el formato de su rendición).
+
 1. **Los avisos de la subida tienen que irse solos después de un rato** (18/11: «Mensajes como estos deben
    desaparecer después de un rato, para que la experiencia sea mejor»). Es el recuadro verde que queda arriba
    después de subir comprobantes (`renderSubida()` y `renderEstadoDelLector()` en `index.html`): «✅ Se subieron 10
