@@ -395,6 +395,28 @@ módulo.
      mismo); con gastos ya cargados, queda abajo como algo secundario, después de los cambios.
    - Revisar también cómo se ve después de anotado (para quien rinde y para el admin) y el aviso de «no coincide con
      el detalle», con el mismo nombre. Antes y después en capturas, compu y celular.
+5. **El panel del «PDF de entrega»** (18/11: «Todo esto también se puede mejorar desde lo que es UX»). Hoy: el botón
+   de la barra de la aprobada abre una tarjeta grande con un título, un párrafo de qué va adentro, «¿EN QUÉ
+   IDIOMAS?» en mayúsculas chicas con cuatro casillas, una nota de dos renglones sobre la traducción y «Cancelar» /
+   «Descargar el PDF»; al terminar, un recuadro verde grande de «Listo». Lo que no anda:
+   - **Dos pasos para algo que casi siempre es igual**: abrir el panel y después descargar, aunque los idiomas sean
+     los de la vez anterior (ya se recuerdan).
+   - **Mucho texto para leer antes de actuar**: el párrafo de qué va adentro y la nota de la traducción, que aparece
+     aunque no haya nada que traducir (solo español, con todo escrito en español) y habla de bajar el idioma antes
+     de que haga falta.
+   - **«¿EN QUÉ IDIOMAS?»** en mayúsculas chicas, como etiqueta de arriba; las casillas no se parecen al selector de
+     idioma que ya tiene la app (ES · EN · PT · HE).
+   - **«Cancelar»** cuando no hay nada que cancelar (no se guarda nada): es «Cerrar».
+   - **El «Listo»** queda fijo, grande y verde (lo mismo que el punto 1: los avisos tienen que irse solos).
+   - Los emoji como íconos (📄, ⬇️) no combinan con el resto de los botones.
+   Propuesta para mostrarle con opciones: **(a, la recomendada)** sin panel: en la barra de la aprobada,
+   «Descargar el PDF de entrega» baja de una con los idiomas de la vez anterior, y al lado, chiquitos, los idiomas
+   para tocar (ES · EN · PT · HE, como el selector de la app); el avance se ve en el mismo botón («Armando… 3 de 5»)
+   y el «Listo» se va solo. La nota de la traducción, solo si se eligió un idioma que hace falta traducir, en una
+   línea. **(b)** el panel como está, pero más corto: qué va adentro en una línea (o un dibujito: comprobantes →
+   planilla → anexo), los idiomas como el selector de la app, «Cerrar» y la nota solo cuando hace falta. Lo mismo para
+   el **resumen por mes** de *Mis rendiciones* (mismo panel, con «Desde» y «Hasta»). Antes y después en capturas,
+   compu y celular.
 
 ## Lo que quedó para decidir más adelante (no frena la etapa 1)
 
