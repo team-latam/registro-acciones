@@ -239,20 +239,23 @@ const marcar = async (p, l, donde = ".gx-paso") => {
 }
 
 // ---------- 6. En el celular, el botón y los idiomas entran ----------
-{
-  const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: { width: 360, height: 740 }, pagina: PAGINA, base: datos(), iniciar: SIN_TRADUCTOR });
+// Con letras más anchas que las de acá (en GitHub el navegador usa otras, y en algunos teléfonos también): así falló
+// el 18/11 en «Publicar el sitio» y no acá.
+const LETRA_ANCHA = `document.addEventListener("DOMContentLoaded", () => { const s = document.createElement("style"); s.textContent = "*{ letter-spacing:.1em !important; }"; document.head.appendChild(s); });`;
+for(const ancho of [360, 320]){
+  const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: { width: ancho, height: 740 }, pagina: PAGINA, base: datos(), iniciar: SIN_TRADUCTOR + LETRA_ANCHA });
   await p.evaluate(() => { const v = document.querySelector('.bn-item[data-action="toggle-more-menu"]'); if(v) v.click(); });
   await p.waitForTimeout(250);
   await p.evaluate(() => { const v = document.querySelector('[data-view="gastos"]'); if(v) v.click(); });
   await p.waitForSelector(".gastos-view").catch(() => {});
   await abrir(p, "ren_mvd");
   await marcar(p, "en"); await marcar(p, "pt"); await marcar(p, "he");   // los cuatro
-  eq("en 360 px, con los cuatro idiomas, el botón con flecha entra en un renglón y no se sale", await p.evaluate(() => { const e = document.querySelector(".gx-paso .gx-split"), w = document.documentElement.clientWidth;
+  eq(`en ${ancho} px y con letra ancha, con los cuatro idiomas, el botón con flecha entra en un renglón y no se sale`, await p.evaluate(() => { const e = document.querySelector(".gx-paso .gx-split"), w = document.documentElement.clientWidth;
     return !!e && e.getBoundingClientRect().height < 50 && [...e.querySelectorAll("button")].every(b => b.getBoundingClientRect().right <= w + 1 && b.getBoundingClientRect().left >= -1) && document.documentElement.scrollWidth <= w + 1; }), true);
-  eq("…la flecha dice «4 idiomas» y el menú entra en la pantalla, con casillas que se tocan con el dedo", await p.evaluate(() => { const m = document.querySelector(".gx-split-menu"), w = document.documentElement.clientWidth;
+  eq(`…(${ancho} px) la flecha dice «4 idiomas» y el menú entra en la pantalla, con casillas que se tocan con el dedo`, await p.evaluate(() => { const m = document.querySelector(".gx-split-menu"), w = document.documentElement.clientWidth;
     return [(document.querySelector(".gx-paso .gx-split-flecha") || {}).textContent.replace(/\s+/g, " ").trim(), !!m && m.getBoundingClientRect().left >= -1 && m.getBoundingClientRect().right <= w + 1,
       !!m && [...m.querySelectorAll("label")].every(l => l.getBoundingClientRect().height >= 32)]; }), ["4 idiomas ▾", true, true]);
-  eq("sin errores", errores, []);
+  eq(`(${ancho} px) sin errores`, errores, []);
   await p.close();
 }
 
