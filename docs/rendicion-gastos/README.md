@@ -341,6 +341,11 @@ corriente**: es para los números grandes, porque no dice quién puso la plata.
 Lo va dejando mientras revisa la versión publicada; se hace en una tanda, con su OK y capturas, como el resto del
 módulo.
 
+**Para toda la tanda** (18/11: «Hay mucho texto, mucha explicación, podría ser más directo. No es difícil lo que
+tenemos que poner»): en todas las pantallas de Gastos, menos texto. Cada botón dice lo que hace; como mucho una
+línea corta de ayuda, y solo donde de verdad hay una duda; nada de párrafos que explican lo que la pantalla ya
+muestra. Repasar todos los textos del módulo con ese criterio, no solo los de los puntos de abajo.
+
 1. **Los avisos de la subida tienen que irse solos después de un rato** (18/11: «Mensajes como estos deben
    desaparecer después de un rato, para que la experiencia sea mejor»). Es el recuadro verde que queda arriba
    después de subir comprobantes (`renderSubida()` y `renderEstadoDelLector()` en `index.html`): «✅ Se subieron 10
