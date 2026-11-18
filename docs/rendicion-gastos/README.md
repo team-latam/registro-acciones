@@ -383,6 +383,21 @@ que llega tarde, al final del PDF con los números que siguen. Cómo quedó cada
   rutinas. Y si el total sale mal leído («$341. 008» salió 8), vale consumo + propina (para revisar). El Uber «a Casa» se
   leyó bien; el que había fallado («a Reunión») queda para ver cuando lo mande. Pruebas: `lector_texto_test.mjs` (con
   tickets inventados de la misma forma) y `gastos_test.mjs`.
+- **2 — El Uber «a Reunión», visto (18/11)**: no es el recibo de Uber sino una **captura de pantalla de la app de Uber
+  guardada como PDF desde el iPhone** (Creator «Screenshots»). Adentro tiene una sola imagen sin texto, comprimida
+  con FlateDecode (no JPEG): 1179×2192, RGB de 8 bits, sin predictor. `fotoDentroDelPdf()` solo saca JPEG
+  (DCTDecode), así que no encontraba nada. Para hacer: que también saque esas imágenes (descomprimirlas con
+  `DecompressionStream`, armar la imagen en un lienzo y leerla como foto). Probarlo con una captura inventada.
+- **10 — La lista de gastos, siempre con las casillas** (18/11, con capturas): que se vea siempre como hoy al tocar
+  «Seleccionar» (la casilla en cada fila) y que abajo esté siempre la barra («Todos», cuántos marcados y las acciones,
+  apagadas mientras no haya nada marcado); «quizás no en el mismo diseño, pero similar».
+- **11 — Ver los gastos viejos y hacer seguimiento** (18/11, con maquetas): «Mis rendiciones» se reemplaza por una
+  vista de **todas las rendiciones agrupadas** («Rutina de enero de 2026», «Visita a…»), cada una cerrada con su
+  cantidad de gastos, total y estado; al tocarla se abren sus gastos (con las casillas del punto 10) y un link para
+  abrir la rendición entera. Arriba, filtros (desde y hasta qué mes, estado) y un resumen (cuántas rendiciones y
+  gastos, el total por moneda). **El admin ve las de todos** (lo marcó como importante), con el filtro de persona
+  para ir llegando. Abajo, siempre, la barra: «Todos», cuántos marcados, «Descargar Excel» y «Borrar». «Subir
+  comprobantes» y mandar cada rendición siguen donde están.
 - **9 — Que complete el final de la tarjeta** (18/11, con captura de un ticket de café de Ciudad de México pagado con
   tarjeta de crédito, con el número enmascarado con asteriscos y los cuatro últimos a la vista). El lector leyó el
   total pero no la tarjeta. La regla de hoy (`leerTextoDeComprobante()`: asteriscos, X o «terminada en» y cuatro
