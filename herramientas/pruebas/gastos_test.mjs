@@ -1042,6 +1042,21 @@ for(const lang of ["en", "pt", "he"]){
 }
 
 {
+  // Las tarjetas que la persona ya usó, para tocar (18/11): el lector casi nunca lee el número enmascarado de un
+  // ticket térmico. La cena (gx3) se pagó con tarjeta y no tiene el número; el hotel (gx2) se pagó con la 5555.
+  const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: vp, base: datos({ prendido: true }) });
+  await irGastos(p);
+  await p.click('[data-action="gastos-abrir-rendicion"][data-id="ren_mvd"]'); await p.waitForTimeout(150);
+  await p.click('[data-action="gasto-abrir"][data-id="gx3"]'); await p.waitForSelector("#gastoOverlay:not([hidden])");
+  eq("con tarjeta y sin el número, ofrece las que ya usó, al lado del campo", await p.$$eval('#gastoBody [data-action="gasto-tarjeta"]', l => l.map(b => [b.textContent, b.getAttribute("aria-label")])),
+    [["5555", "Tarjeta terminada en 5555"]]);
+  await tocar(p, '#gastoBody [data-action="gasto-tarjeta"][data-t="5555"]');
+  eq("…tocarla la pone, con el foco en el campo, y ya no se ofrece", await p.evaluate(() => [document.getElementById("gxTarjeta").value, document.activeElement.id,
+    document.querySelectorAll('#gastoBody [data-action="gasto-tarjeta"]').length]), ["5555", "gxTarjeta", 0]);
+  eq("sin errores de página", errores, []);
+  await p.close();
+}
+{
   // Las observaciones en la ventana del gasto (18/11): al final y de a poco; «Observar», solo un admin que no cargó
   // el gasto y no en uno ya observado (lo que quiera agregar, como respuesta).
   const base = datos({ prendido: true });

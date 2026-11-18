@@ -375,6 +375,14 @@ que llega tarde, al final del PDF con los números que siguen. Cómo quedó cada
     actividades propias primero («Mis actividades») y después las demás; la búsqueda, sobre todas. Y, ya que los
     nombres de sus archivos traen la fecha y la actividad («14-9-2026 - Uber a Reunión - Rutina.pdf»), que al subir
     varios de meses distintos cada uno vaya solo a la rutina de su mes.
+- **Hecho el 18/11 con 5 comprobantes reales que mandó el usuario** (4 tickets de café escaneados con el iPhone y un
+  recibo de Uber; usados solo en la sesión, no están en el repo): el lector no lee el número enmascarado de ningún ticket
+  térmico (sale «Ke)» o números sueltos), así que la ventana del gasto **ofrece las tarjetas que la persona ya usó**
+  para tocar, y si usó una sola, la propone (para revisar). En una rutina, el «$» sin país se reconoce por las marcas
+  del ticket (RFC, Ciudad de México, «M.N.»; el CUIT argentino) o por la moneda en que la persona suele gastar en sus
+  rutinas. Y si el total sale mal leído («$341. 008» salió 8), vale consumo + propina (para revisar). El Uber «a Casa» se
+  leyó bien; el que había fallado («a Reunión») queda para ver cuando lo mande. Pruebas: `lector_texto_test.mjs` (con
+  tickets inventados de la misma forma) y `gastos_test.mjs`.
 - **9 — Que complete el final de la tarjeta** (18/11, con captura de un ticket de café de Ciudad de México pagado con
   tarjeta de crédito, con el número enmascarado con asteriscos y los cuatro últimos a la vista). El lector leyó el
   total pero no la tarjeta. La regla de hoy (`leerTextoDeComprobante()`: asteriscos, X o «terminada en» y cuatro

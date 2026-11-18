@@ -1112,6 +1112,8 @@
   @media (max-width:640px){ .gx-cam-flecha{ display:none; } }
   /* El PDF de entrega y el resumen por mes (etapa 4; sin panel desde el 18/11): el botón y, al lado, los idiomas. */
   .gx-pdf-acc{ display:flex; flex-wrap:wrap; align-items:center; gap:8px 10px; }
+  .gx-tarj-mias{ display:inline-flex; flex-wrap:wrap; gap:6px; }
+  .gx-opc.gx-opc-chica{ min-height:32px; padding:0 10px; font-size:13px; letter-spacing:.06em; }
   .gx-sin-leer{ color:var(--warn-text) !important; font-weight:600; }
   .gx-ya{ margin:10px 0 0; }
   .gx-ya > summary{ cursor:pointer; font-weight:700; font-size:13px; color:var(--text-muted); padding:6px 0; }
@@ -25213,6 +25215,12 @@ function opcionesDeVinculo(g, actual){
    se pagó, el comercio y el tipo. Es solo una SUGERENCIA (lo decidió el
    usuario): lo que no está claro va en `dudas` y la ventana lo marca para
    revisar. Funciones puras, sin la página: las prueba lector_texto_test.mjs. */
+// Lo que dice de qué país es un ticket con «$» solo.
+const MARCAS_DE_PAIS = [
+  ["MXN", /\b(?:R\.?F\.?C\.?\s*:|CDMX|CIUDAD DE M[EÉ]XICO|M[EÉ]XICO\b|M\.N\.|PESOS\s+\d{2}\/\d{2,4}\s+M\.?N)/i],
+  ["ARS", /\b(?:C\.?U\.?I\.?T\.?|IVA RESPONSABLE INSCRIPTO|CABA\b|CIUDAD AUT[OÓ]NOMA DE BUENOS AIRES)/i],
+];
+const marcaDeMoneda = texto => { const m = MARCAS_DE_PAIS.find(([, re]) => re.test(texto)); return m ? m[0] : null; };
 const MESES_ESCRITOS = { ene:1, jan:1, feb:2, fev:2, mar:3, abr:4, apr:4, may:5, mai:5, jun:6, jul:7, ago:8, aug:8,
   sep:9, set:9, oct:10, out:10, nov:11, dic:12, dec:12, dez:12 };
 // La moneda por cómo aparece escrita. Los símbolos que comparten varias
@@ -25335,7 +25343,7 @@ function fechaDeTicket(linea, hoy, mesPrimero){
   return null;
 }
 const tituloDeComercio = s => String(s).toLowerCase().replace(/(^|[\s\-'(])([a-záéíóúñü])/g, (x, a, b) => a + b.toUpperCase());
-function leerTextoDeComprobante(texto, { hoy, pais } = {}){
+function leerTextoDeComprobante(texto, { hoy, pais, monedaHabitual } = {}){
   hoy = hoy || todayISO();
   const lineas = String(texto || "").split(/\r?\n/).map(l => l.replace(/\s+/g, " ").trim()).filter(Boolean);
   const todo = lineas.join("\n");
@@ -25370,11 +25378,24 @@ function leerTextoDeComprobante(texto, { hoy, pais } = {}){
     const max = todos.reduce((a, c) => !a || c.n > a.n ? c : a, null);
     if(max){ r.monto = max.n; lineaTotal = max.l; r.dudas.push("monto"); }
   }
+  // Consumo + propina (los tickets de tarjeta de un café o un restaurante): el total no puede ser menos que eso. Si el
+  // lector lo leyó mal («TOTAL: $341. 008» salió 8, en un ticket real del usuario, 18/11), vale la suma, para revisar.
+  // (el número más grande del renglón: el lector a veces suma basura al final, «CONSUMO: $310.00 .00»)
+  const montoDe = re => { const l = lineas.find(x => re.test(x) && !/\btotal\b/i.test(x)); const ns = l ? numerosDeLinea(l) : []; return ns.length ? Math.max(...ns.map(x => x.n)) : null; };
+  const consumo = montoDe(/\b(?:consumo|subtotal|sub-total|importe)\b/i), propina = montoDe(/\b(?:propina|tip|gratuity)\b/i);
+  if(consumo > 0 && propina > 0 && (r.monto == null || r.monto < redondo(consumo + propina) - 0.005)){
+    r.monto = redondo(consumo + propina); lineaTotal = lineaTotal || "";
+    if(!r.dudas.includes("monto")) r.dudas.push("monto");
+  }
   // La moneda: primero la del renglón del total, después la de cualquier parte.
   const monedaEn = s => { const m = MONEDAS_EN_TEXTO.find(([, re]) => re.test(s)); return m ? m[0] : null; };
   r.moneda = monedaEn(lineaTotal) || monedaEn(todo);
   if(!r.moneda && /\$/.test(todo) && pais && MONEDA_DEL_PAIS[pais] && MONEDA_DEL_PAIS[pais] !== "USD"){ r.moneda = MONEDA_DEL_PAIS[pais]; r.dudas.push("moneda"); }
   else if(!r.moneda && /\$/.test(todo) && pais && MONEDA_DEL_PAIS[pais] === "USD") r.moneda = "USD";
+  // Sin país (una rutina): las marcas del ticket (RFC, «M.N.», Ciudad de México; el CUIT argentino) o, si no, la
+  // moneda en que la persona suele gastar en sus rutinas. Siempre para revisar (18/11, con tickets reales del usuario).
+  else if(!r.moneda && /\$/.test(todo) && marcaDeMoneda(todo)){ r.moneda = marcaDeMoneda(todo); r.dudas.push("moneda"); }
+  else if(!r.moneda && /\$/.test(todo) && monedaHabitual){ r.moneda = monedaHabitual; r.dudas.push("moneda"); }
   else if(!r.moneda && /\$/.test(todo)) r.dudas.push("moneda");
   // La tarjeta: los cuatro últimos números («****1234», «XXXX 1234», «terminada en 1234»). El lector
   // suele confundir algún asterisco con «+», «#», «%» o «¥»: también valen.
@@ -25861,6 +25882,25 @@ function paisDeVinculo(v){
   const r = v.startsWith("ren:") ? rendicionPorId(v.slice(4)) : null;
   return paisDePosteo(r && r.postId);
 }
+// La moneda en que la persona suele gastar en sus rutinas (sin contar dólares): para un «$» sin país ni marcas.
+function monedaHabitual(){
+  if(!gastosDatos) return null;
+  const yo = miCorreo(), c = {};
+  gastosDatos.gastos.forEach(g => {
+    const r = g.rendicionId && rendicionPorId(g.rendicionId);
+    if(g.autor === yo && g.estado !== "borrador" && r && r.rutinaMes && g.moneda && g.moneda !== "USD") c[g.moneda] = (c[g.moneda] || 0) + 1;
+  });
+  return Object.keys(c).sort((a, b) => c[b] - c[a])[0] || null;
+}
+// Las tarjetas que la persona ya usó (los cuatro últimos números), las más usadas primero. El lector casi nunca lee
+// el número enmascarado de un ticket térmico (pasó con todos los tickets reales del usuario, 18/11): se ofrecen para
+// tocar, y si usó una sola, se propone esa.
+function tarjetasMias(){
+  if(!gastosDatos) return [];
+  const yo = miCorreo(), c = {};
+  gastosDatos.gastos.forEach(g => { if(g.autor === yo && g.tarjeta && /^\d{4}$/.test(g.tarjeta)) c[g.tarjeta] = (c[g.tarjeta] || 0) + 1; });
+  return Object.keys(c).sort((a, b) => c[b] - c[a]).slice(0, 4);
+}
 // Lo que sugiere el lector, solo para lo que está vacío: lo que la persona ya
 // escribió no se toca. `d` es el gasto (o el borrador de la ventana).
 function sugerenciasDelLector(d, s){
@@ -25871,6 +25911,10 @@ function sugerenciasDelLector(d, s){
   if(sinMonto && s.moneda && s.moneda !== d.moneda && (!d.moneda || d.moneda === "USD")) p.moneda = s.moneda;
   if(!d.formaPago && s.formaPago) p.formaPago = s.formaPago;
   if(!d.tarjeta && s.tarjeta && (p.formaPago || d.formaPago) === "tarjeta") p.tarjeta = s.tarjeta;
+  else if(!d.tarjeta && !s.tarjeta && (p.formaPago || d.formaPago) === "tarjeta"){
+    const mias = tarjetasMias();
+    if(mias.length === 1){ p.tarjeta = mias[0]; if(Array.isArray(s.dudas) && !s.dudas.includes("tarjeta")) s.dudas.push("tarjeta"); }
+  }
   if(!String(d.concepto || "").trim() && s.comercio) p.concepto = s.comercio.slice(0, 140);
   if(!d.tipo){
     const tp = tipoDeConcepto(p.concepto || d.concepto) || (s.tipo && gastoTipos().some(x => x.key === s.tipo && !x.oculto) ? s.tipo : null);
@@ -25890,9 +25934,9 @@ async function aplicarLectura(id, texto, confianza, dudas = []){
   const g = gastoPorId(id);
   if(!g || g.estado !== "borrador") return 0;
   const conDudas = x => { if(x.monto != null) dudas.forEach(k => { if(!x.dudas.includes(k)) x.dudas.push(k); }); return x; };
-  const s = conDudas(leerTextoDeComprobante(texto, { hoy: todayISO(), pais: paisDeGasto(g) }));
+  const s = conDudas(leerTextoDeComprobante(texto, { hoy: todayISO(), pais: paisDeGasto(g), monedaHabitual: monedaHabitual() }));
   if(gastoEdit && gastoEdit.id === id){
-    const s2 = conDudas(leerTextoDeComprobante(texto, { hoy: todayISO(), pais: paisDeVinculo(gastoEdit.d.vinculo) || paisDeGasto(g) }));
+    const s2 = conDudas(leerTextoDeComprobante(texto, { hoy: todayISO(), pais: paisDeVinculo(gastoEdit.d.vinculo) || paisDeGasto(g), monedaHabitual: monedaHabitual() }));
     const p = sugerenciasDelLector(gastoEdit.d, s2);
     Object.assign(gastoEdit.d, p);
     gastoEdit.leido = { campos: Object.keys(p), dudas: s2.dudas };
@@ -25951,7 +25995,7 @@ async function leerGastoAbierto(){
     const cosa = esPdfGasto(g) ? { pdf: new Uint8Array(await res.arrayBuffer()) } : { imagen: await res.blob() };
     const { texto, dudas } = await leerComprobante(cosa);
     if(gastoEdit !== e) return;
-    const s = leerTextoDeComprobante(texto, { hoy: todayISO(), pais: paisDeVinculo(e.d.vinculo) || paisDeGasto(g) });
+    const s = leerTextoDeComprobante(texto, { hoy: todayISO(), pais: paisDeVinculo(e.d.vinculo) || paisDeGasto(g), monedaHabitual: monedaHabitual() });
     if(s.monto != null) (dudas || []).forEach(k => { if(!s.dudas.includes(k)) s.dudas.push(k); });
     const p = sugerenciasDelLector(e.d, s);
     Object.assign(e.d, p);
@@ -27969,7 +28013,9 @@ function renderGasto(){
               : d.pago === "organizacion" ? t("No entra en tu cuenta corriente.","Doesn't go into your balance.","Não entra na sua conta corrente.","לא נכנס לחשבון השוטף שלך.") : t("Entra en tu cuenta corriente.","Goes into your balance.","Entra na sua conta corrente.","נכנס לחשבון השוטף שלך.")}</small></div></div>
           <div class="gx-campo"><span class="gx-et" id="gxFormaEt">${t("Forma de pago","Payment method","Forma de pagamento","אמצעי תשלום")}</span>
             <div class="gx-fila-opc"><div class="gx-opciones gx-seg" id="gxForma" role="group" tabindex="-1" aria-labelledby="gxFormaEt"${marca("formaPago")}>${opciones("gasto-forma", "forma", [["tarjeta", t("Tarjeta","Card","Cartão","כרטיס")], ["efectivo", t("Efectivo","Cash","Dinheiro","מזומן")], ["transferencia", t("Transferencia","Transfer","Transferência","העברה")]], d.formaPago)}</div>
-            ${d.formaPago === "tarjeta" ? `<label class="gx-tarj"><span>${t("terminada en","ending in","terminado em","מסתיים ב")}</span><input type="text" id="gxTarjeta" inputmode="numeric" maxlength="4" data-gcampo="tarjeta" value="${esc(d.tarjeta)}"${marca("tarjeta")}${mal("tarjeta")} aria-label="${esc(t("Tarjeta terminada en","Card ending in","Cartão terminado em","כרטיס שמסתיים ב"))}" placeholder="1234"></label>` : ""}</div></div>
+            ${d.formaPago === "tarjeta" ? `<label class="gx-tarj"><span>${t("terminada en","ending in","terminado em","מסתיים ב")}</span><input type="text" id="gxTarjeta" inputmode="numeric" maxlength="4" data-gcampo="tarjeta" value="${esc(d.tarjeta)}"${marca("tarjeta")}${mal("tarjeta")} aria-label="${esc(t("Tarjeta terminada en","Card ending in","Cartão terminado em","כרטיס שמסתיים ב"))}" placeholder="1234"></label>
+              ${(() => { const mias = tarjetasMias().filter(x => x !== d.tarjeta); return editable && mias.length ? `<span class="gx-tarj-mias" role="group" aria-label="${esc(t("Tus tarjetas","Your cards","Seus cartões","הכרטיסים שלך"))}">${mias.map(x =>
+                `<button type="button" class="gx-opc gx-opc-chica" data-action="gasto-tarjeta" data-t="${esc(x)}" aria-label="${esc(t("Tarjeta terminada en {n}","Card ending in {n}","Cartão terminado em {n}","כרטיס המסתיים ב-{n}",{ n: x }))}">${esc(x)}</button>`).join("")}</span>` : ""; })()}` : ""}</div></div>
           ${campo(t("Observaciones (opcional)","Notes (optional)","Observações (opcional)","הערות (לא חובה)"), `${notaEnCampo("gxObsAuto", notaDeMoneda(d.moneda, d.monto, d.rendidoMoneda, d.rendidoMonto))}<textarea id="gxObservaciones" maxlength="500" rows="2" data-gcampo="observaciones">${esc(d.observaciones)}</textarea>`, true)}
         </div>`}
         ${observaciones}
@@ -28385,6 +28431,7 @@ const GASTOS_ACCIONES = {
   "gasto-tipo": async el => elegirEnVentana("tipo", el.dataset.tipo),
   "gasto-pago": async el => elegirEnVentana("pago", el.dataset.pago),
   "gasto-forma": async el => elegirEnVentana("formaPago", el.dataset.forma),
+  "gasto-tarjeta": async el => { const e = gastoEdit; if(!e || e.guardando) return; e.d.tarjeta = el.dataset.t; e.cambiado = true; (e.tocados = e.tocados || new Set()).add("tarjeta"); e.faltan = e.faltan.filter(k => k !== "tarjeta"); renderGasto(); const x = document.getElementById("gxTarjeta"); if(x) x.focus(); },
   "gastos-prender": async el => prenderGastos(!!el.checked),
   "gastos-tipo-ocultar": async el => { const a = borradorTiposDeGasto(), x = a.tipos[Number(el.dataset.i)]; if(x){ x.oculto = !x.oculto; a.cambiado = true; a.ok = false; render(); } },
   "gastos-tipo-sumar": async () => {

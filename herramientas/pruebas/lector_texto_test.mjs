@@ -31,12 +31,12 @@ try{
   L = new Function(`${["MESES_ESCRITOS", "MONEDAS_EN_TEXTO", "MONEDA_DEL_PAIS", "APPS_EN_TEXTO", "TIPOS_EN_TEXTO", "numeroDeTicket", "numerosDeLinea",
     "fechaDeTicket", "tituloDeComercio", "leerTextoDeComprobante", "fotoDentroDelPdf", "textoDelPdf", "faltaElTotal",
     "normalTexto", "PALABRAS_VACIAS", "primeraPalabra", "tipoPorPalabras", "predecirTipo", "NUM_CONTABLE", "numContable", "numeroEscrito", "montoEnCampo",
-    "MONEDA_LOCAL_ETIQUETA", "notaDeMoneda"].map(grab).join("\n")}
+    "MONEDA_LOCAL_ETIQUETA", "notaDeMoneda", "redondo", "MARCAS_DE_PAIS", "marcaDeMoneda"].map(grab).join("\n")}
     return { leer: leerTextoDeComprobante, numero: numeroDeTicket, foto: fotoDentroDelPdf, pdf: textoDelPdf, faltaTotal: faltaElTotal, tipo: predecirTipo,
       escrito: numeroEscrito, enCampo: montoEnCampo, nota: notaDeMoneda };`)();
 }catch(e){ console.log("no se pudo armar:", e.message); }
 const HOY = "2026-11-15";
-const leer = (texto, pais) => { try{ return L.leer(texto, { hoy: HOY, pais }); }catch(e){ return "error: " + e.message; } };
+const leer = (texto, pais, monedaHabitual) => { try{ return L.leer(texto, { hoy: HOY, pais, monedaHabitual }); }catch(e){ return "error: " + e.message; } };
 const campos = (r, ...k) => typeof r === "string" ? r : k.map(x => r[x]);
 
 /* ---- Los números como los escribe un ticket ---- */
@@ -104,6 +104,30 @@ TOTAL $125.00 M.N.
 PAGO CON TARJETA VISA ****9876`;
 eq("México: el total y no el subtotal ni el IVA; «M.N.» es peso mexicano", campos(leer(mexico, "México"), "fecha", "monto", "moneda", "tarjeta", "formaPago", "dudas"),
   ["2026-11-12", 125, "MXN", "9876", "tarjeta", []]);
+
+// Tickets de tarjeta de un café, como los que mandó el usuario el 18/11 (INVENTADOS: otros montos y otro comercio).
+// Una rutina no tiene país: el «$» solo no dice la moneda, pero el ticket sí (RFC, Ciudad de México).
+const cafe = `CAFETERIA LA TAZA
+RFC: CLT010203AB4
+AV. INSURGENTES 100, CIUDAD DE MEXICO
+FECHA 05/11/2026 10:15
+CREDITO/VISA
+CONSUMO $250.00
+PROPINA $25.00
+TOTAL: $275. 006
+APROBADA AUT.123456`;
+eq("un café de México sin «MXN»: las marcas del ticket (RFC, Ciudad de México) dicen peso mexicano, para revisar", campos(leer(cafe), "moneda", "formaPago"), ["MXN", "tarjeta"]);
+eq("…y el total mal leído («$275. 006») sale de consumo + propina, para revisar", campos(leer(cafe), "monto", "dudas"), [275, ["monto", "moneda"]]);
+eq("…aunque el lector agregue basura al final del consumo («$250.00 .00»)", campos(leer(cafe.replace("CONSUMO $250.00", "CONSUMO: $250.00 .00")), "monto"), [275]);
+eq("con el total bien leído, la suma no lo cambia ni lo marca", campos(leer(cafe.replace("TOTAL: $275. 006", "TOTAL: $275.00")), "monto", "dudas"), [275, ["moneda"]]);
+eq("un total más grande que consumo + propina (otro cargo) se respeta", campos(leer(cafe.replace("TOTAL: $275. 006", "TOTAL: $290.00")), "monto"), [290]);
+const sinMarcas = `CAFE DEL PARQUE
+FECHA 05/11/2026
+TOTAL $ 98.00`;
+eq("sin marcas en el ticket, la moneda en que la persona suele gastar en sus rutinas, para revisar", campos(leer(sinMarcas, undefined, "MXN"), "moneda", "dudas"), ["MXN", ["moneda"]]);
+eq("…y sin eso, el «$» queda sin moneda (para revisar)", campos(leer(sinMarcas), "moneda", "dudas"), [null, ["moneda"]]);
+eq("el país de la actividad manda antes que la costumbre", campos(leer(sinMarcas, "Uruguay", "MXN"), "moneda"), ["UYU"]);
+eq("el CUIT argentino también dice la moneda", campos(leer("KIOSCO SOL\nC.U.I.T. 20-12345678-9\nTOTAL $ 1.500,00"), "moneda"), ["ARS"]);
 
 const brasil = `PADARIA BOM DIA LTDA
 CNPJ 12.345.678/0001-90
