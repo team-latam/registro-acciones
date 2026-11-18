@@ -26664,9 +26664,11 @@ function barraDeRendicion(r, gs, comoAdmin){
   if(!gs.length && !Object.keys(r.totalManual || {}).length) return barraDePaso("neutro", t("Subí los comprobantes","Upload the receipts","Envie os comprovantes","העלו את הקבלות"), "",
     `<button type="button" class="btn-primary gx-subir-aca" data-action="gastos-subir" data-id="${esc(r.id)}">📎 ${t("Subir comprobantes","Upload receipts","Enviar comprovantes","העלאת קבלות")}</button>
      <button type="button" class="gx-link" data-action="gastos-total-abrir" data-id="${esc(r.id)}">${t("o anotar solo el total","or enter just the total","ou anotar só o total","או לרשום רק את הסכום")}</button>`);
-  // Recién reabierta: todo lo que tiene ya está aprobado; falta sumar lo que llegó tarde.
-  if(gs.length && gs.every(g => g.estado === "aprobado")) return barraDePaso("neutro", t("Reabierta: sumá lo que faltaba","Reopened: add what was missing","Reaberta: some o que faltava","נפתח מחדש: הוסיפו את מה שחסר"), "",
-    `<button type="button" class="btn-primary gx-subir-aca" data-action="gastos-subir" data-id="${esc(r.id)}">📎 ${t("Subir comprobantes","Upload receipts","Enviar comprovantes","העלאת קבלות")}</button>`);
+  // Recién reabierta: todo lo que tiene ya está aprobado. Si falta algo, se sube; si al final no había nada que
+  // sumar, se vuelve a mandar desde acá, con el mismo botón de siempre (lo pidió el usuario el 18/11).
+  if(gs.length && gs.every(g => g.estado === "aprobado")) return barraDePaso("neutro", t("Reabierta: sumá lo que faltaba o volvé a mandarla","Reopened: add what was missing or send it again","Reaberta: some o que faltava ou mande de novo","נפתח מחדש: הוסיפו את מה שחסר או שלחו שוב"), "",
+    `<button type="button" class="btn-secondary gx-subir-aca" data-action="gastos-subir" data-id="${esc(r.id)}">📎 ${t("Subir comprobantes","Upload receipts","Enviar comprovantes","העלאת קבלות")}</button>
+     <button type="button" class="btn-primary" data-action="gastos-enviar" data-id="${esc(r.id)}" ${gastosOcupado ? "disabled" : ""}>${gastosOcupado ? t("Mandando…","Sending…","Enviando…","שולח…") : t("Volver a mandar la rendición","Send the report again","Mandar a prestação de novo","שליחה חוזרת של הדוח")}</button>`);
   if(faltan) return barraDePaso("aviso", textoFaltan(faltan),
     "", botonRevisar(r.id));
   const otraVez = r.estado === "observada";

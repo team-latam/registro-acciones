@@ -894,7 +894,12 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   eq("…la reabre con la función de la base: vuelve a abierta y lo aprobado sigue aprobado", await hasta(p, () => {
     const r = window.__sb.tablas.gastos_rendiciones.find(x => x.id === "ren_rutina"), g = window.__sb.tablas.gastos.find(x => x.id === "gx4");
     return r.estado === "abierta" && g.estado === "aprobado" && !!document.querySelector('.gastos-view [data-action="gastos-subir"][data-id="ren_rutina"]'); }), true);
-  eq("…la barra dice qué sigue: sumar lo que faltaba", await leer(p, ".gx-paso", e => [e.querySelector("b").textContent.trim(), e.querySelector(".btn-primary").dataset.action]), ["Reabierta: sumá lo que faltaba", "gastos-subir"]);
+  eq("…la barra dice qué sigue: sumar lo que faltaba o, si no había nada, volver a mandarla con el botón de siempre", await leer(p, ".gx-paso", e => [e.querySelector("b").textContent.trim(),
+    [...e.querySelectorAll("button")].map(b => [b.dataset.action, b.textContent.replace(/\s+/g, " ").trim()])]),
+    ["Reabierta: sumá lo que faltaba o volvé a mandarla", [["gastos-subir", "📎 Subir comprobantes"], ["gastos-enviar", "Volver a mandar la rendición"]]]);
+  await tocar(p, '.gx-paso [data-action="gastos-enviar"]'); await aceptar(p).catch(() => {});
+  eq("…y mandada así, sin nada nuevo, queda en revisión con lo aprobado intacto", await hasta(p, () => { const r = window.__sb.tablas.gastos_rendiciones.find(x => x.id === "ren_rutina"), g = window.__sb.tablas.gastos.find(x => x.id === "gx4");
+    return r.estado === "enviada" && g.estado === "aprobado"; }), true);
   eq("…y lo aprobado va aparte, plegado, debajo de lo nuevo", await p.evaluate(() => [(document.querySelector(".gx-filas-tit") || {}).textContent,
     (document.querySelector("details.gx-ya > summary") || {}).textContent, (document.querySelector("details.gx-ya") || {}).open]), ["Nuevos o corregidos (0)", "Ya aprobados (1)", false]);
   eq("…una vez", await rpcs(p, "gastos_rendicion_reabrir"), [{ p_id: "ren_rutina" }]);
