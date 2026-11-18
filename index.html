@@ -832,7 +832,7 @@
   .gx-t-quitar{ position:absolute; inset-inline-end:8px; top:50%; translate:0 -50%; width:40px; height:40px; border:none; border-radius:50%; background:none;
     color:var(--text-muted); font:inherit; font-size:16px; font-weight:700; cursor:pointer; }
   .gx-t-quitar:hover{ background:var(--danger-soft); color:var(--danger-fg); }
-  .gx-sin{ border-style:dashed; }
+  .gx-sin{ border-color:var(--warn-border); }
   .gx-t-ico{ flex:none; width:38px; height:38px; border-radius:50%; background:var(--surface-alt); display:flex; align-items:center; justify-content:center; font-size:18px; }
   .gx-t-txt{ flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:2px; }
   .gx-t-txt b{ font-size:14.5px; overflow-wrap:anywhere; }
@@ -854,6 +854,56 @@
   .gx-cab .setting-sub{ margin:2px 0 0; }
   .gx-alerta{ background:var(--warn-bg); border:1px solid var(--warn-border); color:var(--warn-text); border-radius:var(--radius-md); padding:10px 14px; margin:0 0 12px; font-size:13.5px; font-weight:600; }
   .gx-info{ background:var(--surface-alt); border-radius:var(--radius-md); padding:10px 14px; margin:0 0 12px; font-size:13.5px; }
+  /* Una rendición (18/11): el título es el del viaje, debajo su camino en cuatro pasos y una barra con lo que sigue. */
+  .gx-cab .gx-ren-tit{ margin:0; overflow-wrap:anywhere; }
+  .gx-camino{ display:flex; list-style:none; margin:4px 0 16px; padding:0; }
+  .gx-camino li{ flex:1 1 0; min-width:0; position:relative; display:flex; flex-direction:column; align-items:center; gap:5px; text-align:center;
+    font-size:12.5px; font-weight:600; color:var(--text-muted); }
+  .gx-camino li + li::before{ content:""; position:absolute; top:11px; inset-inline-end:calc(50% + 15px); width:calc(100% - 30px); height:2px; border-radius:2px; background:var(--border); }
+  .gx-camino li.gx-cam-hecho + li::before{ background:var(--petroleo); }
+  .gx-cam-punto{ width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800;
+    background:var(--card); border:2px solid var(--border); color:var(--text-muted); font-variant-numeric:tabular-nums; }
+  .gx-cam-hecho{ color:var(--ink); }
+  .gx-cam-hecho .gx-cam-punto{ background:var(--petroleo); border-color:var(--petroleo); color:#fff; }
+  .gx-camino .gx-cam-actual{ color:var(--ink-strong, var(--ink)); font-weight:800; }
+  .gx-cam-actual .gx-cam-punto{ border-color:var(--petroleo); color:var(--petroleo); background:var(--celeste-soft, var(--surface-alt)); }
+  .gx-cam-actual.gx-cam-mal .gx-cam-punto{ border-color:var(--danger-fg); color:var(--danger-fg); background:var(--danger-soft, var(--surface-alt)); }
+  .gx-paso{ display:flex; align-items:center; gap:12px 18px; flex-wrap:wrap; padding:14px 16px; margin:0 0 18px; border-radius:var(--radius-md);
+    border:1px solid var(--border); background:var(--surface-alt); }
+  .gx-paso-txt{ flex:1 1 260px; min-width:0; display:flex; flex-direction:column; gap:3px; }
+  .gx-paso-txt b{ font-size:15.5px; color:var(--ink-strong, var(--ink)); }
+  .gx-paso-txt span{ font-size:13.5px; color:var(--text-muted); line-height:1.45; }
+  .gx-paso-acc{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .gx-paso-aviso{ background:var(--warn-bg); border-color:var(--warn-border); }
+  .gx-paso-aviso .gx-paso-txt b{ color:var(--warn-text); }
+  .gx-paso-mal{ background:var(--danger-soft, var(--warn-bg)); border-color:var(--danger-fg); }
+  .gx-paso-mal .gx-paso-txt b{ color:var(--danger-fg); }
+  .gx-paso-bien{ background:var(--ok-bg); border-color:var(--ok-border); }
+  .gx-paso-bien .gx-paso-txt b{ color:var(--ok-text); }
+  /* Arriba de la lista: cuántos son y, como links, lo de menos uso. */
+  .gx-filas-cab{ display:flex; align-items:center; gap:6px 16px; flex-wrap:wrap; margin:0 0 8px; }
+  .gx-filas-cab .gx-filas-tit{ margin:0; flex:1 1 auto; }
+  .gx-filas-acc{ display:flex; align-items:center; gap:4px 16px; flex-wrap:wrap; }
+  .gx-filas-acc .gx-link{ font-size:13.5px; }
+  .gx-filas-acc .gx-subir-aca, .gx-paso-acc .gx-subir-aca{ margin:0; }
+  @media (max-width:640px){
+    .gx-paso{ padding:12px 14px; }
+    .gx-paso-acc{ width:100%; }
+    .gx-paso-acc .btn-primary, .gx-paso-acc .btn-secondary{ flex:1 1 auto; }
+    .gx-camino li{ font-size:12px; }
+    /* Las filas de gastos (18/11): el monto y el estado bajan debajo del nombre, así el nombre entra en un renglón. */
+    .gx-fila-env > .gx-fila{ display:grid; grid-template-columns:44px minmax(0, 1fr); grid-template-areas:"mini txt" "mini der"; align-items:start; gap:4px 12px; }
+    .gx-fila > .gx-mini{ grid-area:mini; }
+    .gx-fila > .gx-f-txt{ grid-area:txt; }
+    .gx-fila > .gx-f-der{ grid-area:der; flex-direction:row; flex-wrap:wrap; align-items:center; justify-content:flex-start; gap:2px 10px; text-align:start; }
+    .gx-fila > .gx-f-der .gx-val{ min-width:0; }
+    .gx-fila-env > .gx-fila-borrar{ width:42px; }
+  }
+  /* Las tres secciones de gastos entran juntas en el celular, con su número a la vista (antes «Para aprobar» quedaba cortada). */
+  @media (max-width:760px){
+    .gastos-view .admin-menu{ display:grid; grid-auto-flow:column; grid-auto-columns:minmax(0, 1fr); overflow:visible; }
+    .gastos-view .admin-item{ justify-content:center; gap:6px; padding:6px 8px; text-align:center; line-height:1.2; white-space:normal; }
+  }
   .gx-filas{ display:flex; flex-direction:column; border:1px solid var(--border); border-radius:var(--radius-md); background:var(--card); overflow:hidden; margin-bottom:10px; }
   .gx-fila-env{ display:flex; align-items:stretch; }
   .gx-fila-env + .gx-fila-env{ border-top:1px solid var(--border); }
@@ -988,6 +1038,8 @@
   .gx-lcuenta{ margin-inline-end:auto; font-size:13.5px; font-weight:700; color:var(--text-muted); }
   .gx-ldestino{ flex:1 1 260px; max-width:420px; }
   body:has(.gx-lista-rev) .fab-wrap, body:has(.gx-lista-rev) .scroll-top{ display:none; }
+  @media (min-width:641px){ body:has(.gastos-view) .fab-wrap, body:has(.gx-tipos) .fab-wrap{ display:none; } }
+  .gx-btn-chico{ min-height:34px; padding:6px 14px; font-size:13px; }
   @media (max-width:640px){
     .gx-lcuerpo, .gx-v-foto .gx-lcuerpo{ grid-template-columns:minmax(0, 1fr); }
     .gx-lfoto{ min-height:240px; }
@@ -1044,6 +1096,8 @@
   .gx-mov-adj .gx-pista{ flex:1 1 100%; }
   .gx-mov-arch{ font-size:13.5px; font-weight:600; color:var(--ink); overflow-wrap:anywhere; min-width:0; }
   .gx-anotar{ padding:12px 16px; margin-top:14px; }
+  .gx-anotar-abrir{ margin-top:14px; }
+  .gx-tipos .gx-tipo-ofrecer{ flex:none; font-size:13px; white-space:nowrap; }
   .gx-anotar-tit{ margin:2px 0 10px; }
   .gx-anotar-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:10px; }
   .gx-anotar-grid label{ display:flex; flex-direction:column; gap:4px; font-size:12px; font-weight:700; color:var(--text-muted); }
@@ -24920,6 +24974,8 @@ function fmtMonto(moneda, n){
 }
 // Para ver en columna: la moneda chica al lado y el número alineado a la derecha (los decimales quedan uno
 // abajo del otro). `signo` va pegado al número (los movimientos de la cuenta).
+// Solo el número, alineado como en montoHtml (adentro de algo que ya dice la moneda).
+const numeroHtml = n => n === null || n === undefined || isNaN(n) ? "" : `<span class="gx-num"><span class="gx-val">${esc(numContable(Number(n)))}</span></span>`;
 function montoHtml(moneda, n, signo = ""){
   if(n === null || n === undefined || isNaN(n)) return "";
   return `<span class="gx-num"><span class="gx-cur">${esc(moneda)}</span> <span class="gx-val">${esc(signo + numContable(Number(n)))}</span></span>`;
@@ -24977,8 +25033,8 @@ function totalesIguales(a, b){
 function estadoDeGasto(e){
   return ({
     borrador: [t("Falta confirmar","Not confirmed yet","Falta confirmar","טרם אושר"), "aviso"],
-    confirmado: [t("Listo","Ready","Pronto","מוכן"), "bien"],
-    enviado: [t("Mandado","Sent","Enviado","נשלח"), "neutro"],
+    confirmado: [t("Confirmado","Confirmed","Confirmado","אושר"), "bien"],
+    enviado: [t("En revisión","In review","Em revisão","בבדיקה"), "neutro"],
     observado: [t("Observado","Flagged","Com observação","יש הערה"), "mal"],
     aprobado: [t("Aprobado","Approved","Aprovado","אושר"), "bien"],
   })[e] || [e, "neutro"];
@@ -26013,14 +26069,14 @@ function renderGastosView(){
         <div class="admin-titulo">🧾 ${titulo} <span class="gx-prueba">${t("en prueba","in testing","em teste","בניסוי")}</span></div>${menu}
       </aside>
       <div class="admin-body">
-        <header class="admin-cabecera">
+        ${gastosAbierta && gastosDatos && (sec === "rendiciones" || sec === "aprobar") ? "" : `<header class="admin-cabecera">
           <div class="admin-cab-txt">
             <h2 class="admin-h2">${esc(actual.label)}</h2>
             ${tx.lead && !gastosAbierta ? `<p class="admin-lead">${tx.lead}</p>` : ""}
             ${tx.ayuda && !gastosAbierta ? `<details class="admin-ayuda"><summary>${t("¿Cómo funciona?","How does it work?","Como funciona?","איך זה עובד?")}</summary><div>${tx.ayuda}</div></details>` : ""}
           </div>
           ${subir}
-        </header>
+        </header>`}
         ${body}
       </div>
     </div>`;
@@ -26266,7 +26322,7 @@ function avisoDeBorrarMandados(gs){
   return "";
 }
 const botonSeleccionar = rid => seleccionables(rid).length > 1
-  ? `<button type="button" class="btn-secondary gx-sel-abrir" data-action="gastos-sel-abrir" data-id="${esc(rid)}">☑️ ${t("Seleccionar","Select","Selecionar","בחירה")}</button>` : "";
+  ? `<button type="button" class="gx-link gx-sel-abrir" data-action="gastos-sel-abrir" data-id="${esc(rid)}">☑️ ${t("Seleccionar","Select","Selecionar","בחירה")}</button>` : "";
 function renderBarraDeSeleccion(rid){
   const S = gastosSel, lista = seleccionables(rid), n = lista.filter(g => S.ids.has(g.id)).length;
   return `<div class="gx-lpie gx-selpie">
@@ -26335,11 +26391,6 @@ function casillaDeTodos(){
   x.checked = !!n && n === lista.length; x.indeterminate = n > 0 && n < lista.length;
 }
 // «Revisar en lista»: solo si hay al menos uno por confirmar.
-function botonDeLista(rid){
-  const n = gastosParaLista(rid).length;
-  return n ? `<div class="gx-lboton"><button type="button" class="btn-secondary" data-action="gastos-lista-abrir" data-id="${esc(rid)}">✏️ ${t("Revisar en lista","Review as a list","Revisar em lista","בדיקה ברשימה")}</button>
-    <span class="setting-sub">${n === 1 ? t("1 por confirmar: corregilo y confirmalo sin abrirlo.","1 to confirm: fix it and confirm it without opening it.","1 por confirmar: corrija e confirme sem abrir.","1 לאישור: תקנו ואשרו בלי לפתוח.") : t("{n} por confirmar: corregilos y confirmalos juntos, sin abrir uno por uno.","{n} to confirm: fix them and confirm them together, without opening each one.","{n} por confirmar: corrija e confirme juntas, sem abrir uma por uma.","{n} לאישור: תקנו ואשרו יחד, בלי לפתוח אחת אחת.",{ n })}</span></div>` : "";
-}
 function renderAvisoDeLista(){
   return gastosListaAviso ? `<div class="${gastosListaAviso.startsWith("⚠️") ? "gx-alerta" : "admin-ok"}" role="status">${esc(gastosListaAviso)}</div>` : "";
 }
@@ -26396,7 +26447,7 @@ function renderListaDeGastos(rid){
       <select id="gxListaDestino" class="gx-elige">${opcionesDeVinculo({ fecha: (lista[0] || {}).fecha || null }, L.destino || "")}</select></label>` : "";
   return `<div class="gx-lista-rev">
       <div class="gx-lcabeza">
-        <p class="setting-sub">${t("Revisá cada gasto con su comprobante y marcá los que estén bien: se confirman juntos. Vienen marcados los completos y sin dudas. La tarjeta y la forma de pago, en «Abrir el gasto completo».","Check each expense against its receipt and tick the ones that are right: they're confirmed together. Complete ones with no doubts come ticked. Card and payment method are under “Open the whole expense”.","Revise cada despesa com o comprovante e marque as que estão certas: são confirmadas juntas. Vêm marcadas as completas e sem dúvidas. O cartão e a forma de pagamento, em «Abrir a despesa completa».","בדקו כל הוצאה מול הקבלה וסמנו את אלה שתקינות: הן מאושרות יחד. הוצאות מלאות ובלי ספקות מגיעות מסומנות. הכרטיס ואמצעי התשלום ב«פתיחת ההוצאה המלאה».")}</p>
+        <p class="setting-sub">${t("Revisá cada uno con su comprobante y marcá los que estén bien: se confirman juntos.","Check each one against its receipt and tick the ones that are right: they're confirmed together.","Revise cada uma com o comprovante e marque as que estão certas: são confirmadas juntas.","בדקו כל אחת מול הקבלה וסמנו את התקינות: הן מאושרות יחד.")}</p>
       </div>
       ${lista.length ? `<div class="gx-lbarra">
         <div class="gx-lbarra-izq">
@@ -26482,66 +26533,112 @@ async function guardarListaDeGastos(){
   render();
 }
 
+// ---- La pantalla de una rendición (rehecha el 18/11, tras la revisión de UX que pidió el usuario: «UX de toda la
+// parte de gastos») ----
+// Arriba, el nombre del viaje o de la rutina como título (antes se repetía «Mis rendiciones»); debajo, su camino en
+// cuatro pasos (lo eligió el usuario) y UNA barra con lo que sigue, con un solo botón. «Subir más» y «Seleccionar»
+// pasan a links chicos arriba de la lista: antes eran tres botones del mismo peso que el principal.
+function pasoDeRendicion(r, gs){
+  if(r.estado === "aprobada") return 5;
+  if(r.estado === "enviada") return 4;
+  if(gs.some(g => g.estado === "observado")) return 2;
+  if(!gs.length && !Object.keys(r.totalManual || {}).length) return 1;
+  return gs.some(g => g.estado === "borrador") ? 2 : 3;
+}
+function renderCamino(r, gs){
+  const paso = pasoDeRendicion(r, gs), corregir = paso === 2 && (r.estado === "observada" || gs.some(g => g.estado === "observado"));
+  const nombres = [t("Cargar","Upload","Carregar","העלאה"), corregir ? t("Corregir","Fix","Corrigir","תיקון") : t("Confirmar","Confirm","Confirmar","אישור"),
+    t("Mandar","Send","Enviar","שליחה"), r.estado === "enviada" ? t("En revisión","In review","Em revisão","בבדיקה") : t("Aprobada","Approved","Aprovada","אושר")];
+  return `<ol class="gx-camino" aria-label="${esc(t("En qué paso está","Which step it's at","Em que passo está","באיזה שלב זה נמצא"))}">${nombres.map((txt, i) => {
+    const n = i + 1, hecho = n < paso, actual = n === paso;
+    return `<li class="${hecho ? "gx-cam-hecho" : actual ? `gx-cam-actual${corregir && n === 2 ? " gx-cam-mal" : ""}` : ""}"${actual ? ' aria-current="step"' : ""}><span class="gx-cam-punto" aria-hidden="true">${hecho ? "✓" : n}</span><span class="gx-cam-txt">${esc(txt)}${hecho ? `<span class="gx-oculto"> (${esc(t("hecho","done","feito","הושלם"))})</span>` : ""}</span></li>`;
+  }).join("")}</ol>`;
+}
+// Lo que sigue: un texto corto, una línea de ayuda y, si hay algo para hacer, un solo botón.
+const barraDePaso = (tono, titulo, sub, boton) => `<div class="gx-paso gx-paso-${tono}">
+    <div class="gx-paso-txt"><b>${titulo}</b>${sub ? `<span>${sub}</span>` : ""}</div>${boton ? `<div class="gx-paso-acc">${boton}</div>` : ""}
+  </div>`;
+const botonRevisar = rid => `<button type="button" class="btn-primary" data-action="gastos-lista-abrir" data-id="${esc(rid)}">✏️ ${t("Revisar y confirmar","Review and confirm","Revisar e confirmar","בדיקה ואישור")}</button>`;
+const textoFaltan = n => n === 1 ? t("Falta confirmar 1 gasto","1 expense still needs confirming","Falta confirmar 1 despesa","הוצאה אחת עוד לא אושרה")
+  : t("Faltan confirmar {n} gastos","{n} expenses still need confirming","Faltam confirmar {n} despesas","{n} הוצאות עוד לא אושרו",{ n });
+function barraDeRendicion(r, gs, comoAdmin){
+  const mia = r.autor === miCorreo(), faltan = gs.filter(g => g.estado === "borrador").length, obs = gs.filter(g => g.estado === "observado");
+  const quien = esc(nombreDePersona(r.autor));
+  if(r.estado === "aprobada"){
+    const reabrir = isAdmin() ? `<button type="button" class="btn-secondary" data-action="gastos-reabrir" data-id="${esc(r.id)}" ${gastosOcupado ? "disabled" : ""}>↩️ ${t("Reabrir","Reopen","Reabrir","פתיחה מחדש")}</button>` : "";
+    return barraDePaso("bien", t("Aprobada el {f} por {n}","Approved on {f} by {n}","Aprovada em {f} por {n}","אושר ב-{f} ע״י {n}",{ f: esc(fechaDeMarca(r.aprobadaEl)), n: esc(nombreDePersona(r.aprobadaPor)) }),
+      t("Sus gastos ya cuentan en la cuenta corriente.","Its expenses already count in the balance.","As despesas já contam na conta corrente.","ההוצאות כבר נספרות בחשבון השוטף.")
+        + (isAdmin() ? " " + t("¿Llegó un comprobante tarde? Reabrila para sumarlo.","Did a receipt arrive late? Reopen it to add it.","Chegou um comprovante atrasado? Reabra para somá-lo.","הגיעה קבלה באיחור? פתחו מחדש כדי להוסיף אותה.") : ""), reabrir);
+  }
+  if(comoAdmin && isAdmin()){
+    if(r.estado === "enviada") return barraDePaso("aviso", t("Para revisar","To review","Para revisar","לבדיקה"),
+      t("La mandó {n} el {f}. Para pedir una corrección, abrí el gasto y usá «Observar».","{n} sent it on {f}. To ask for a correction, open the expense and use “Flag”.","{n} mandou em {f}. Para pedir uma correção, abra a despesa e use «Observar».","{n} שלח/ה ב-{f}. כדי לבקש תיקון, פתחו את ההוצאה והשתמשו ב«הערה».",{ n: quien, f: esc(fechaDeMarca(r.enviadaEl)) }),
+      `<button type="button" class="btn-primary" data-action="gastos-aprobar" data-id="${esc(r.id)}" ${gastosOcupado ? "disabled" : ""}>${gastosOcupado ? t("Aprobando…","Approving…","Aprovando…","מאשר…") : t("Aprobar la rendición","Approve the report","Aprovar a prestação","אישור הדוח")}</button>`);
+    if(!mia && r.estado === "observada") return barraDePaso("mal", t("Esperando la corrección de {n}","Waiting for {n}'s correction","Esperando a correção de {n}","ממתין לתיקון של {n}",{ n: quien }),
+      t("Cuando lo corrija y la vuelva a mandar, aparece en «Para revisar».","When they fix it and send it again, it shows up in “To review”.","Quando corrigir e mandar de novo, aparece em «Para revisar».","כשיתקנו וישלחו שוב, זה יופיע ב«לבדיקה».",{}), "");
+    if(!mia) return barraDePaso("neutro", t("{n} todavía la está cargando","{n} is still filling it in","{n} ainda está carregando","{n} עדיין ממלא/ת אותו",{ n: quien }), "", "");
+  }
+  if(r.estado === "enviada") return barraDePaso("neutro", t("La mandaste el {f}","You sent it on {f}","Você mandou em {f}","שלחתם ב-{f}",{ f: esc(fechaDeMarca(r.enviadaEl)) }),
+    t("Un administrador la está revisando. Si te observa algo, te avisa por la campanita y por correo.","An admin is reviewing it. If something is flagged, you'll be told by the bell and by email.","Um administrador está revisando. Se observar algo, avisa pelo sino e por e-mail.","מנהל/ת בודק/ת אותו. אם תהיה הערה, תקבלו התראה בפעמון ובמייל."), "");
+  if(!mia) return "";
+  if(obs.length) return barraDePaso("mal",
+    obs.length === 1 ? t("Te observaron un gasto","One of your expenses was flagged","Observaram uma despesa sua","הוערה הערה על הוצאה שלך") : t("Te observaron {n} gastos","{n} of your expenses were flagged","Observaram {n} despesas suas","הוערו הערות על {n} הוצאות שלך",{ n: obs.length }),
+    t("Corregí lo que dice el comentario y volvé a mandar la rendición.","Fix what the comment says and send the report again.","Corrija o que diz o comentário e mande a prestação de novo.","תקנו לפי ההערה ושלחו שוב את הדוח."),
+    `<button type="button" class="btn-primary" data-action="gasto-abrir" data-id="${esc(obs[0].id)}">${obs.length === 1 ? t("Ver el gasto observado","See the flagged expense","Ver a despesa observada","לצפייה בהוצאה עם ההערה") : t("Ver el primero","See the first one","Ver a primeira","לצפייה בראשונה")}</button>`);
+  if(!gs.length && !Object.keys(r.totalManual || {}).length) return barraDePaso("neutro", t("Subí los comprobantes","Upload the receipts","Envie os comprovantes","העלו את הקבלות"),
+    t("Fotos o PDF, varios juntos. Si no los tenés, más abajo podés anotar solo el total.","Photos or PDFs, several at once. If you don't have them, you can enter just the total below.","Fotos ou PDF, vários juntos. Se não os tiver, mais abaixo pode anotar só o total.","תמונות או PDF, כמה ביחד. אם אין לכם אותן, למטה אפשר לרשום רק את הסכום."),
+    `<button type="button" class="btn-primary gx-subir-aca" data-action="gastos-subir" data-id="${esc(r.id)}">📎 ${t("Subir comprobantes","Upload receipts","Enviar comprovantes","העלאת קבלות")}</button>`);
+  if(faltan) return barraDePaso("aviso", textoFaltan(faltan),
+    t("Revisalos con su comprobante; podés confirmar varios juntos.","Check them against their receipts; you can confirm several at once.","Revise com o comprovante; dá para confirmar várias juntas.","בדקו אותן מול הקבלה; אפשר לאשר כמה ביחד."), botonRevisar(r.id));
+  const otraVez = r.estado === "observada";
+  return barraDePaso("bien", otraVez ? t("Ya corregiste lo observado","You fixed what was flagged","Você corrigiu o que foi observado","תיקנתם את מה שהוער") : t("Todo confirmado","Everything is confirmed","Tudo confirmado","הכול אושר"),
+    t("Mandala para que la revise un administrador.","Send it so an admin can review it.","Mande para um administrador revisar.","שלחו אותו כדי שמנהל/ת יבדוק/תבדוק."),
+    `<button type="button" class="btn-primary" data-action="gastos-enviar" data-id="${esc(r.id)}" ${gastosOcupado ? "disabled" : ""}>${gastosOcupado ? t("Mandando…","Sending…","Enviando…","שולח…") : otraVez ? t("Volver a mandar la rendición","Send the report again","Mandar a prestação de novo","שליחה חוזרת של הדוח") : t("Mandar la rendición","Send the report","Mandar a prestação","שליחת הדוח")}</button>`);
+}
+// Arriba de la lista: cuántos gastos son, y lo de menos uso como links (subir más, seleccionar varios).
+function cabeceraDeFilas(rid, n, subir){
+  const links = [subir ? `<button type="button" class="gx-link gx-subir-aca" data-action="gastos-subir" data-id="${esc(rid)}">📎 ${t("Subir más","Upload more","Enviar mais","העלאת עוד")}</button>` : "", botonSeleccionar(rid)].filter(Boolean).join("");
+  return `<div class="gx-filas-cab"><h3 class="admin-h3 gx-filas-tit">${n === 1 ? t("1 gasto","1 expense","1 despesa","הוצאה אחת") : t("{n} gastos","{n} expenses","{n} despesas","{n} הוצאות",{ n })}</h3>${links ? `<div class="gx-filas-acc">${links}</div>` : ""}</div>`;
+}
 function renderRendicionAbierta(comoAdmin){
   const volver = `<button type="button" class="rs-link gx-volver" data-action="gastos-volver">${isRTL() ? "→" : "←"} ${comoAdmin ? t("Para aprobar","To approve","Para aprovar","לאישור") : t("Mis rendiciones","My expense reports","Minhas prestações","הדוחות שלי")}</button>`;
   if(gastosAbierta === "sin"){
-    const sin = misSinVincular();
+    const sin = misSinVincular(), n = gastosParaLista("sin").length, enSel = !!(gastosSel && gastosSel.rid === "sin");
     return `${volver}
-      <div class="gx-cab"><div><h3 class="gx-h3">📥 ${t("Sin vincular","Not linked","Sem vínculo","לא משויכות")}</h3>
-        <p class="setting-sub">${t("Abrí cada uno y elegí en «Va en» la actividad o la rutina del mes.","Open each one and pick the activity or the month's routine under “Goes in”.","Abra cada uma e escolha em «Vai em» a atividade ou a rotina do mês.","פתחו כל אחת ובחרו תחת «שייך ל» את הפעילות או את שגרת החודש.")}</p></div></div>
+      <div class="gx-cab"><span class="gx-t-ico" aria-hidden="true">📥</span><div class="gx-cab-txt"><h2 class="admin-h2 gx-ren-tit">${t("Sin vincular","Not linked","Sem vínculo","לא משויכות")}</h2></div></div>
+      ${sin.length && !enSel && !(gastosLista && gastosLista.rid === "sin") ? barraDePaso(n ? "aviso" : "neutro", n ? textoFaltan(n) : t("Elegí a dónde va cada uno","Pick where each one goes","Escolha para onde vai cada uma","בחרו לאן שייכת כל אחת"),
+        t("Abrí cada uno y elegí en «Va en» la actividad o la rutina del mes.","Open each one and pick the activity or the month's routine under “Goes in”.","Abra cada uma e escolha em «Vai em» a atividade ou a rotina do mês.","פתחו כל אחת ובחרו תחת «שייך ל» את הפעילות או את שגרת החודש."), n ? botonRevisar("sin") : "") : ""}
       ${renderSubida()}${renderAvisoDeLista()}
       ${gastosLista && gastosLista.rid === "sin" ? renderListaDeGastos("sin")
-        : `${gastosSel && gastosSel.rid === "sin" ? "" : `<div class="gx-herr">${botonDeLista("sin")}${botonSeleccionar("sin")}</div>`}${sin.length ? `<div class="gx-filas">${sin.map(renderFilaGasto).join("")}</div>${gastosSel && gastosSel.rid === "sin" ? renderBarraDeSeleccion("sin") : ""}` : `<div class="admin-ok">✅ ${t("No queda ninguno sin vincular.","None left unlinked.","Não sobrou nenhuma sem vínculo.","לא נשארו הוצאות לא משויכות.")}</div>`}`}`;
+        : sin.length ? `${enSel ? "" : cabeceraDeFilas("sin", sin.length, false)}<div class="gx-filas">${sin.map(renderFilaGasto).join("")}</div>${enSel ? renderBarraDeSeleccion("sin") : ""}`
+        : `<div class="admin-ok">✅ ${t("No queda ninguno sin vincular.","None left unlinked.","Não sobrou nenhuma sem vínculo.","לא נשארו הוצאות לא משויכות.")}</div>`}`;
   }
   const r = rendicionPorId(gastosAbierta);
   if(!r) return `${volver}<div class="empty-state">${t("Esa rendición ya no está.","That report is no longer there.","Essa prestação não está mais aqui.","הדוח הזה כבר לא קיים.")}</div>`;
   const mia = r.autor === miCorreo(), editable = mia && rendicionEditable(r);
-  // Revisando en lista, solo la lista y sus botones: el total, el total rápido y «Mandar» vuelven al salir.
-  const enLista = !!(editable && gastosLista && gastosLista.rid === r.id);
-  const subirAca = editable ? `<button type="button" class="btn-secondary gx-subir-aca" data-action="gastos-subir" data-id="${esc(r.id)}">📎 ${t("Subir comprobantes a esta rendición","Upload receipts to this report","Enviar comprovantes para esta prestação","העלאת קבלות לדוח הזה")}</button>` : "";
+  // Revisando en lista, solo la lista y sus botones: el total, el total rápido y lo que sigue vuelven al salir.
+  const enLista = !!(editable && gastosLista && gastosLista.rid === r.id), enSel = !!(gastosSel && gastosSel.rid === r.id);
   const gs = gastosDe(r.id);
-  const faltan = gs.filter(g => g.estado === "borrador").length, obs = gs.filter(g => g.estado === "observado").length;
+  const faltan = gs.filter(g => g.estado === "borrador").length;
   const detalle = totalDelDetalle(r.id);
   const p = r.postId && getPostById(r.postId);
-  const aviso = r.estado === "observada" && mia
-    ? `<div class="gx-alerta">⚠️ ${esc(t("Un administrador observó {n}. Corregí lo que dice el comentario y volvé a mandar la rendición.","An admin flagged {n}. Fix what the comment says and send the report again.","Um administrador observou {n}. Corrija o que diz o comentário e mande a prestação de novo.","מנהל/ת העיר/ה על {n}. תקנו לפי ההערה ושלחו שוב את הדוח.",{ n: obs === 1 ? t("un gasto","one expense","uma despesa","הוצאה אחת") : t("{n} gastos","{n} expenses","{n} despesas","{n} הוצאות",{ n: obs }) }))}</div>`
-    : r.estado === "enviada" && mia ? `<div class="gx-info">⏳ ${t("La mandaste el {f}. Un administrador la está revisando.","You sent it on {f}. An admin is reviewing it.","Você mandou em {f}. Um administrador está revisando.","שלחתם ב-{f}. מנהל/ת בודק/ת אותו.",{ f: esc(fechaDeMarca(r.enviadaEl)) })}</div>`
-    : r.estado === "aprobada" ? `<div class="admin-ok">✅ ${t("Aprobada el {f} por {n}.","Approved on {f} by {n}.","Aprovada em {f} por {n}.","אושר ב-{f} ע״י {n}.",{ f: esc(fechaDeMarca(r.aprobadaEl)), n: esc(nombreDePersona(r.aprobadaPor)) })}</div>` : "";
-  const enviar = editable ? (() => {
-    const nada = !gs.length && !Object.keys(r.totalManual || {}).length;
-    const motivo = nada ? t("Primero subí un comprobante o anotá el total.","First upload a receipt or enter the total.","Primeiro envie um comprovante ou anote o total.","קודם העלו קבלה או רשמו את הסכום.")
-      : faltan ? (faltan === 1 ? t("Falta confirmar 1 gasto.","1 expense still needs confirming.","Falta confirmar 1 despesa.","הוצאה אחת עוד לא אושרה.") : t("Faltan confirmar {n} gastos.","{n} expenses still need confirming.","Faltam confirmar {n} despesas.","{n} הוצאות עוד לא אושרו.",{ n: faltan }))
-      : obs ? t("Corregí los gastos observados antes de volver a mandarla.","Fix the flagged expenses before sending it again.","Corrija as despesas observadas antes de mandar de novo.","תקנו את ההוצאות עם ההערות לפני ששולחים שוב.") : "";
-    return `<div class="gx-acciones">
-        ${motivo ? `<span class="setting-sub">${esc(motivo)}</span>` : ""}
-        <button type="button" class="btn-primary" data-action="gastos-enviar" data-id="${esc(r.id)}" ${motivo || gastosOcupado ? "disabled" : ""}>${gastosOcupado ? t("Mandando…","Sending…","Enviando…","שולח…") : r.estado === "observada" ? t("Volver a mandar la rendición","Send the report again","Mandar a prestação de novo","שליחה חוזרת של הדוח") : t("Mandar la rendición","Send the report","Mandar a prestação","שליחת הדוח")}</button>
-      </div>`;
-  })() : "";
-  const aprobar = comoAdmin && isAdmin() && r.estado === "enviada" ? `<div class="gx-acciones">
-      <span class="setting-sub">${t("Para pedir una corrección, abrí el gasto y usá «Observar».","To ask for a correction, open the expense and use “Flag”.","Para pedir uma correção, abra a despesa e use «Observar».","כדי לבקש תיקון, פתחו את ההוצאה והשתמשו ב«הערה».")}</span>
-      <button type="button" class="btn-primary" data-action="gastos-aprobar" data-id="${esc(r.id)}" ${gastosOcupado ? "disabled" : ""}>${gastosOcupado ? t("Aprobando…","Approving…","Aprovando…","מאשר…") : t("Aprobar la rendición","Approve the report","Aprovar a prestação","אישור הדוח")}</button>
-    </div>` : "";
-  const reabrir = isAdmin() && r.estado === "aprobada" ? `<div class="gx-acciones gx-reabrir">
-      <span class="setting-sub">${t("¿Llegó un comprobante tarde? Reabrila para sumarlo: sus gastos dejan de contar como aprobados hasta que la vuelvas a aprobar.","Did a receipt arrive late? Reopen it to add it: its expenses stop counting as approved until you approve it again.","Chegou um comprovante atrasado? Reabra para somá-lo: as despesas deixam de contar como aprovadas até você aprovar de novo.","הגיעה קבלה באיחור? פתחו מחדש כדי להוסיף אותה: ההוצאות לא ייחשבו מאושרות עד שתאשרו שוב.")}</span>
-      <button type="button" class="btn-secondary" data-action="gastos-reabrir" data-id="${esc(r.id)}" ${gastosOcupado ? "disabled" : ""}>↩️ ${t("Reabrir","Reopen","Reabrir","פתיחה מחדש")}</button>
-    </div>` : "";
+  const sub = [!mia ? esc(nombreDePersona(r.autor)) : "", p ? esc(fmtDate(p.startDate || p.date)) : ""].filter(Boolean).join(" · ");
   return `${volver}
     <div class="gx-cab">
       <span class="gx-t-ico" aria-hidden="true">${iconoDeRendicion(r)}</span>
       <div class="gx-cab-txt">
-        <h3 class="gx-h3">${esc(tituloRendicion(r))}</h3>
-        <p class="setting-sub">${[!mia ? esc(nombreDePersona(r.autor)) : "", p ? esc(fmtDate(p.startDate || p.date)) : ""].filter(Boolean).join(" · ")}</p>
+        <h2 class="admin-h2 gx-ren-tit">${esc(tituloRendicion(r))}</h2>
+        ${sub ? `<p class="setting-sub">${sub}</p>` : ""}
       </div>
-      ${gxChip(estadoDeRendicion(r.estado))}
     </div>
-    ${aviso}
+    ${renderCamino(r, gs)}
+    ${enLista || enSel ? "" : barraDeRendicion(r, gs, comoAdmin)}
     ${mia && editable ? renderSubida() + renderAvisoDeLista() : ""}
     ${enLista ? renderListaDeGastos(r.id)
-      : `${editable && !(gastosSel && gastosSel.rid === r.id) ? `<div class="gx-herr">${botonDeLista(r.id)}${botonSeleccionar(r.id)}${subirAca}</div>`
-        : isFixedAdmin() && botonSeleccionar(r.id) && !(gastosSel && gastosSel.rid === r.id) ? `<div class="gx-herr">${botonSeleccionar(r.id)}</div>` : ""}${gs.length ? `<div class="gx-filas">${gs.map(renderFilaGasto).join("")}</div>` : `<p class="setting-sub gx-nada">${t("Todavía no hay gastos en esta rendición.","There are no expenses in this report yet.","Ainda não há despesas nesta prestação.","עדיין אין הוצאות בדוח הזה.")}</p>`}`}
-    ${!enLista && Object.keys(detalle).length ? `<div class="gx-total"><span>${t("Total confirmado","Confirmed total","Total confirmado","סך המאושר")}${faltan ? ` <small>${esc(faltan === 1 ? t("(sin contar 1 por confirmar)","(not counting 1 to confirm)","(sem contar 1 por confirmar)","(בלי 1 שממתינה לאישור)") : t("(sin contar {n} por confirmar)","(not counting {n} to confirm)","(sem contar {n} por confirmar)","(בלי {n} שממתינות לאישור)",{ n: faltan }))}</small>` : ""}</span><b>${totalesHtml(detalle)}</b></div>` : ""}
-    ${gastosSel && gastosSel.rid === r.id ? renderBarraDeSeleccion(r.id) : enLista ? "" : renderTotalRapido(r, editable, detalle) + enviar + aprobar + reabrir}
-    ${(editable || isFixedAdmin()) && !enLista && !(gastosSel && gastosSel.rid === r.id) ? `<div class="gx-borrar-ren"><button type="button" class="gx-link gx-lquitar" data-action="gastos-rendicion-borrar" data-id="${esc(r.id)}">🗑️ ${t("Borrar esta rendición","Delete this report","Apagar esta prestação","מחיקת הדוח הזה")}${gs.length ? " " + esc(gs.length === 1 ? t("(con su gasto)","(with its expense)","(com a despesa)","(עם ההוצאה)") : t("(con sus {n} gastos)","(with its {n} expenses)","(com as {n} despesas)","(עם {n} ההוצאות)",{ n: gs.length })) : ""}</button></div>` : ""}`;
+      : gs.length ? `${enSel ? "" : cabeceraDeFilas(r.id, gs.length, editable)}<div class="gx-filas">${gs.map(renderFilaGasto).join("")}</div>` : ""}
+    ${!enLista && Object.keys(detalle).length ? `<div class="gx-total"><span>${t("Total confirmado","Confirmed total","Total confirmado","סך המאושר")}${faltan ? ` <small>${esc(faltan === 1 ? t("(no suma el que falta)","(not counting the one left)","(sem somar a que falta)","(בלי זו שחסרה)") : t("(no suma los {n} que faltan)","(not counting the {n} left)","(sem somar as {n} que faltam)","(בלי {n} שחסרות)",{ n: faltan }))}</small>` : ""}</span><b>${totalesHtml(detalle)}</b></div>` : ""}
+    ${enSel ? renderBarraDeSeleccion(r.id) : enLista ? "" : renderTotalRapido(r, editable, detalle)}
+    ${(editable || isFixedAdmin()) && !enLista && !enSel ? `<div class="gx-borrar-ren"><button type="button" class="gx-link gx-lquitar" data-action="gastos-rendicion-borrar" data-id="${esc(r.id)}">🗑️ ${t("Borrar esta rendición","Delete this report","Apagar esta prestação","מחיקת הדוח הזה")}${gs.length ? " " + esc(gs.length === 1 ? t("(con su gasto)","(with its expense)","(com a despesa)","(עם ההוצאה)") : t("(con sus {n} gastos)","(with its {n} expenses)","(com as {n} despesas)","(עם {n} ההוצאות)",{ n: gs.length })) : ""}</button></div>` : ""}`;
 }
 // El total rápido: cuánto se gastó en la actividad, sin el detalle. Vale el
 // detalle; si no coinciden se avisa, y la persona puede confirmar el suyo.
@@ -26692,7 +26789,8 @@ const tipoDeMovimiento = k => ({ recibido: t("Recibido","Received","Recebido","�
 function renderMovimiento(m, conPersona){
   // Quien lo puede corregir (la persona mientras está pendiente; un admin, siempre) lo puede borrar y adjuntarle el comprobante.
   const puedeBorrar = isAdmin() || (m.persona === miCorreo() && m.estado === "pendiente");
-  const signo = m.tipo === "recibido" ? "−" : m.tipo === "devuelto" || m.monto > 0 ? "+" : "";
+  // Sin signo en lo recibido y lo devuelto (el «−500» confundía, 18/11): ya lo dice el tipo. Un ajuste sí: a favor o en contra.
+  const signo = m.tipo === "ajuste" ? (m.monto > 0 ? "+" : "−") : "";
   // El comprobante, opcional (lo pidió el usuario el 17/11): para que quede registro de lo recibido, devuelto o ajustado.
   const comp = m.archivo ? `<button type="button" class="gx-link gx-mov-comp" data-action="gastos-mov-ver" data-id="${esc(m.id)}"${esUrlFirmada(m.archivoUrl) ? "" : " disabled"}>📎 ${t("Ver el comprobante","See the receipt","Ver o comprovante","הצגת הקבלה")}</button>`
     : gastosMovSubiendo === m.id ? `<span class="gx-mov-comp gx-suave" role="status">⏳ ${t("Subiendo el comprobante…","Uploading the receipt…","Enviando o comprovante…","מעלה את הקבלה…")}</span>`
@@ -26703,8 +26801,8 @@ function renderMovimiento(m, conPersona){
       <span class="gx-mov-der"><b>${montoHtml(m.moneda, Math.abs(m.monto), signo)}</b>
         ${m.estado === "pendiente" ? gxChip([t("Pendiente","Pending","Pendente","ממתין"), "aviso"]) : gxChip([t("Confirmado","Confirmed","Confirmado","אושר"), "bien"])}</span>
       <span class="gx-mov-acc">
-        ${isAdmin() && m.estado === "pendiente" ? `<button type="button" class="btn-mini" data-action="gastos-mov-confirmar" data-id="${esc(m.id)}">${t("Confirmar","Confirm","Confirmar","אישור")}</button>` : ""}
-        ${puedeBorrar ? `<button type="button" class="zone-rm" data-action="gastos-mov-borrar" data-id="${esc(m.id)}" aria-label="${esc(t("Borrar este movimiento","Delete this entry","Apagar este lançamento","מחיקת הרישום"))}">✕</button>` : ""}
+        ${isAdmin() && m.estado === "pendiente" ? `<button type="button" class="btn-primary gx-btn-chico" data-action="gastos-mov-confirmar" data-id="${esc(m.id)}">${t("Confirmar","Confirm","Confirmar","אישור")}</button>` : ""}
+        ${puedeBorrar ? `<button type="button" class="gx-lquitar-ico" data-action="gastos-mov-borrar" data-id="${esc(m.id)}" title="${esc(t("Borrar","Delete","Apagar","מחיקה"))}" aria-label="${esc(t("Borrar este movimiento","Delete this entry","Apagar este lançamento","מחיקת הרישום"))}">🗑️</button>` : ""}
       </span>
     </div>`;
 }
@@ -26722,19 +26820,19 @@ function renderGastosCuenta(){
   const saldoTxt = s => s > 0 ? (propia ? t("la organización te debe","the organization owes you","a organização te deve","הארגון חייב לך") : t("la organización le debe","the organization owes them","a organização deve a essa pessoa","הארגון חייב לו/לה"))
     : s < 0 ? (propia ? t("le debés a la organización","you owe the organization","você deve à organização","את/ה חייב/ת לארגון") : t("le debe a la organización","they owe the organization","essa pessoa deve à organização","הוא/היא חייב/ת לארגון")) : t("en cero","even","zerado","מאוזן");
   const tabla = monedas.length ? `<div class="gx-cuenta">${monedas.map(m => { const f = cuenta[m]; return `<div class="gx-cuenta-mon">
-        <div class="gx-cm-cab"><b>${esc(m)}</b><span class="gx-saldo${f.saldo < 0 ? " gx-neg" : f.saldo > 0 ? " gx-pos" : ""}">${montoHtml(m, f.saldo)}</span></div>
+        <div class="gx-cm-cab"><b>${esc(m)}</b><span class="gx-saldo${f.saldo < 0 ? " gx-neg" : f.saldo > 0 ? " gx-pos" : ""}">${numeroHtml(f.saldo)}</span></div>
         <div class="gx-cm-sub">${esc(saldoTxt(f.saldo))}</div>
         <dl class="gx-cm-filas">
-          <dt>${t("Gastado (aprobado)","Spent (approved)","Gasto (aprovado)","הוצאות (מאושרות)")}</dt><dd>${montoHtml(m, f.gastado)}</dd>
-          <dt>${t("Recibido","Received","Recebido","התקבל")}</dt><dd>${montoHtml(m, f.recibido)}</dd>
-          <dt>${t("Devuelto","Returned","Devolvido","הוחזר")}</dt><dd>${montoHtml(m, f.devuelto)}</dd>
-          ${f.ajuste ? `<dt>${t("Ajustes","Adjustments","Ajustes","התאמות")}</dt><dd>${montoHtml(m, f.ajuste)}</dd>` : ""}
-          ${f.enRevision ? `<dt class="gx-suave">${t("En revisión (todavía no cuenta)","In review (doesn't count yet)","Em revisão (ainda não conta)","בבדיקה (עוד לא נספר)")}</dt><dd class="gx-suave">${montoHtml(m, f.enRevision)}</dd>` : ""}
-          ${f.pendiente ? `<dt class="gx-suave">${t("Anotado, falta confirmar","Entered, not confirmed yet","Anotado, falta confirmar","נרשם, ממתין לאישור")}</dt><dd class="gx-suave">${montoHtml(m, f.pendiente)}</dd>` : ""}
+          <dt>${t("Gastado (aprobado)","Spent (approved)","Gasto (aprovado)","הוצאות (מאושרות)")}</dt><dd>${numeroHtml(f.gastado)}</dd>
+          <dt>${t("Recibido","Received","Recebido","התקבל")}</dt><dd>${numeroHtml(f.recibido)}</dd>
+          <dt>${t("Devuelto","Returned","Devolvido","הוחזר")}</dt><dd>${numeroHtml(f.devuelto)}</dd>
+          ${f.ajuste ? `<dt>${t("Ajustes","Adjustments","Ajustes","התאמות")}</dt><dd>${numeroHtml(f.ajuste)}</dd>` : ""}
+          ${f.enRevision ? `<dt class="gx-suave">${t("En revisión (todavía no cuenta)","In review (doesn't count yet)","Em revisão (ainda não conta)","בבדיקה (עוד לא נספר)")}</dt><dd class="gx-suave">${numeroHtml(f.enRevision)}</dd>` : ""}
+          ${f.pendiente ? `<dt class="gx-suave">${t("Anotado, falta confirmar","Entered, not confirmed yet","Anotado, falta confirmar","נרשם, ממתין לאישור")}</dt><dd class="gx-suave">${numeroHtml(f.pendiente)}</dd>` : ""}
         </dl></div>`; }).join("")}</div>`
     : `<p class="setting-sub gx-nada">${propia ? t("Todavía no hay nada en tu cuenta: aparece cuando se aprueba una rendición tuya o anotás plata recibida.","There's nothing in your balance yet: it shows up when one of your reports is approved or you enter money received.","Ainda não há nada na sua conta: aparece quando uma prestação sua é aprovada ou você anota dinheiro recebido.","עדיין אין כלום בחשבון שלך: זה מופיע כשדוח שלך מאושר או כשרושמים כסף שהתקבל.") : t("Todavía no hay nada en esta cuenta.","There's nothing in this balance yet.","Ainda não há nada nesta conta.","עדיין אין כלום בחשבון הזה.")}</p>`;
   const movs = gastosDatos.movimientos.filter(m => m.persona === de);
-  if(!gastosMov) gastosMov = { tipo: "recibido", fecha: todayISO(), moneda: "USD", monto: "", descripcion: "", archivo: null, guardando: false, error: "" };
+  if(!gastosMov) gastosMov = { abierto: false, tipo: "recibido", fecha: todayISO(), moneda: "USD", monto: "", descripcion: "", archivo: null, guardando: false, error: "" };
   const f = gastosMov;
   const tipos = ["recibido", "devuelto", ...(isAdmin() ? ["ajuste"] : [])];
   const form = `<div class="settings-card gx-anotar">
@@ -26755,11 +26853,11 @@ function renderGastosCuenta(){
       ${f.tipo === "ajuste" ? `<p class="setting-sub">${t("Un ajuste es un saldo inicial o una corrección: positivo, a favor de la persona; negativo, en contra.","An adjustment is an opening balance or a correction: positive, in the person's favor; negative, against.","Um ajuste é um saldo inicial ou uma correção: positivo, a favor da pessoa; negativo, contra.","התאמה היא יתרת פתיחה או תיקון: חיובית לטובת האדם; שלילית — לחובתו.")}</p>` : ""}
       ${!isAdmin() ? `<p class="setting-sub">${t("Queda pendiente hasta que un administrador lo confirme.","It stays pending until an admin confirms it.","Fica pendente até um administrador confirmar.","זה נשאר ממתין עד שמנהל/ת יאשר/תאשר.")}</p>` : ""}
       ${f.error ? `<div class="form-error" role="alert">${esc(f.error)}</div>` : ""}
-      <div class="gx-acciones gx-acciones-chicas"><button type="button" class="btn-primary" data-action="gastos-mov-anotar" ${f.guardando ? "disabled" : ""}>${f.guardando ? t("Guardando…","Saving…","Salvando…","שומר…") : t("Anotar","Save","Anotar","רישום")}</button></div>
+      <div class="gx-acciones gx-acciones-chicas"><button type="button" class="btn-secondary" data-action="gastos-mov-cerrar" ${f.guardando ? "disabled" : ""}>${t("Cancelar","Cancel","Cancelar","ביטול")}</button><button type="button" class="btn-primary" data-action="gastos-mov-anotar" ${f.guardando ? "disabled" : ""}>${f.guardando ? t("Guardando…","Saving…","Salvando…","שומר…") : t("Anotar","Save","Anotar","רישום")}</button></div>
     </div>`;
   return `${selector}${tabla}
     ${movs.length ? `<h3 class="admin-h3">${t("Movimientos","Entries","Lançamentos","תנועות")}</h3><div class="gx-movs">${movs.map(m => renderMovimiento(m, false)).join("")}</div>` : ""}
-    ${form}`;
+    ${f.abierto ? form : `<div class="gx-anotar-abrir"><button type="button" class="btn-secondary" data-action="gastos-mov-abrir">+ ${propia ? t("Anotar plata recibida o devuelta","Enter money received or returned","Anotar dinheiro recebido ou devolvido","רישום כסף שהתקבל או הוחזר") : t("Anotar un movimiento de {n}","Enter an entry for {n}","Anotar um lançamento de {n}","רישום תנועה של {n}",{ n: nombreDePersona(de) })}</button></div>`}`;
 }
 async function anotarMovimiento(){
   const f = gastosMov;
@@ -27217,11 +27315,11 @@ function renderGastosAdminSection(){
       ${a.tipos.map((x, i) => `<div class="setting-row">
           <input type="text" class="gx-tipo-nombre${x.oculto ? " gx-tipo-oculto" : ""}" id="gxTipo_${i}" maxlength="60" data-gtipo="${i}" value="${esc(x.label || etiquetaTipoFabrica(x.key))}" placeholder="${esc(etiquetaTipoFabrica(x.key) || x.key)}" aria-label="${esc(t("Nombre del tipo","Type name","Nome do tipo","שם הסוג"))}">
           ${enUso.has(x.key) ? `<span class="zone-count">${t("en uso","in use","em uso","בשימוש")}</span>` : ""}
-          <button type="button" class="btn-mini" data-action="gastos-tipo-ocultar" data-i="${i}">${x.oculto ? t("Volver a ofrecer","Offer again","Voltar a oferecer","להציע שוב") : t("Dejar de ofrecer","Stop offering","Deixar de oferecer","להפסיק להציע")}</button>
+          <button type="button" class="gx-link gx-tipo-ofrecer" data-action="gastos-tipo-ocultar" data-i="${i}">${x.oculto ? t("Volver a ofrecer","Offer again","Voltar a oferecer","להציע שוב") : t("Dejar de ofrecer","Stop offering","Deixar de oferecer","להפסיק להציע")}</button>
         </div>`).join("")}
       <div class="setting-row gx-tipo-nuevo">
         <input type="text" maxlength="60" id="gxTipoNuevo" value="${esc(a.nuevo)}" placeholder="${esc(t("Un tipo nuevo, por ejemplo: Peajes","A new type, for example: Tolls","Um tipo novo, por exemplo: Pedágios","סוג חדש, למשל: אגרות כביש"))}" aria-label="${esc(t("Tipo nuevo","New type","Tipo novo","סוג חדש"))}">
-        <button type="button" class="btn-mini" data-action="gastos-tipo-sumar">+ ${t("Agregar","Add","Adicionar","הוספה")}</button>
+        <button type="button" class="btn-secondary gx-btn-chico" data-action="gastos-tipo-sumar">+ ${t("Agregar","Add","Adicionar","הוספה")}</button>
       </div>
     </div>
     <p class="setting-sub gx-nota">${t("Un tipo que se deja de ofrecer no se borra: sigue nombrando a los gastos que ya lo usan. Los siete de siempre, sin cambiarles el nombre, se ven en el idioma de cada uno.","A type that's no longer offered isn't deleted: it keeps naming the expenses that already use it. The usual seven, if not renamed, show in each person's language.","Um tipo que deixa de ser oferecido não é apagado: continua nomeando as despesas que já o usam. Os sete de sempre, sem trocar o nome, aparecem no idioma de cada um.","סוג שמפסיקים להציע לא נמחק: הוא ממשיך לתת שם להוצאות שכבר משתמשות בו. שבעת הסוגים הרגילים, אם לא שינו את שמם, מופיעים בשפה של כל אחד.")}</p>
@@ -27330,6 +27428,8 @@ const GASTOS_ACCIONES = {
   "gastos-total-borrar": async () => guardarTotalRapido(true),
   "gastos-mov-anotar": async () => anotarMovimiento(),
   "gastos-mov-ver": async el => verComprobanteMov(el.dataset.id),
+  "gastos-mov-abrir": async () => { if(!gastosMov) return; gastosMov.abierto = true; render(); const x = document.getElementById("gxMov_tipo"); if(x) x.focus(); },
+  "gastos-mov-cerrar": async () => { gastosMov = null; render(); const x = document.querySelector('.gastos-view [data-action="gastos-mov-abrir"]'); if(x) x.focus(); },
   // Elegir el comprobante: para el formulario de anotar (sin id) o para un movimiento ya anotado.
   "gastos-mov-adjuntar": async el => { gastosMovPara = el.dataset.id || "form"; gastosMovArchivoInput.value = ""; gastosMovArchivoInput.click(); },
   "gastos-mov-adj-quitar": async () => {

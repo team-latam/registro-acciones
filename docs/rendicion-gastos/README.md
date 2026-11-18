@@ -264,6 +264,26 @@ tocan eventos, comentarios ni la Agenda); se hace por etapas chicas; Drive y el 
     aprobar» muestra abajo las aprobadas de los últimos 60 días, para llegar a ellas. En un gasto de un mes cuya
     rutina ya se aprobó, «Va en» lo dice: un admin la puede reabrir, o va en la rutina de otro mes.
 
+- [ ] **Revisión de UX de todo el módulo** (18/11, en la rama, esperando el OK del usuario; pidió «UX de toda la
+  parte de gastos», la revisión dio 28/40 y eligió hacer las cinco prioridades y los detalles):
+  - **La rendición**: el título es el del viaje o la rutina (antes se repetía «Mis rendiciones»); debajo, su
+    **camino en cuatro pasos** (Cargar → Confirmar → Mandar → Aprobada, lo eligió el usuario; «Corregir» si la
+    observaron, «En revisión» mientras la miran) y **una barra con lo que sigue y un solo botón**: «Subir
+    comprobantes», «Revisar y confirmar», «Ver el gasto observado», «Mandar la rendición», «Aprobar la rendición»
+    o «Reabrir». «Subir más» y «Seleccionar» son links chicos arriba de la lista (antes eran tres botones del
+    mismo peso que el principal, y «Mandar» quedaba gris abajo de todo).
+  - **El celular**: en cada fila el monto y el estado van debajo del nombre (la 🗑️ queda, la había pedido el
+    usuario) y las tres secciones entran juntas, con su número.
+  - **Los botones**: «Confirmar» la plata es un botón como los demás principales; «Dejar de ofrecer» un tipo es un
+    link; borrar un movimiento es una 🗑️ con su nombre; el «+» de nuevo evento no aparece en gastos en la compu
+    (tapaba botones).
+  - **La cuenta corriente**: «Anotar plata recibida o devuelta» está detrás de un botón; en cada tarjeta la
+    moneda va una sola vez, arriba; lo recibido y lo devuelto van sin signo (el «−500.00» confundía); el ajuste
+    sí lo lleva.
+  - **Detalles**: un gasto mandado dice «En revisión», como su rendición, y uno confirmado «Confirmado» (antes
+    «Mandado» y «Listo»); el total dice «(no suma el que falta)»; la ayuda de «Revisar en lista» va en un
+    renglón; «Sin vincular» ya no tiene el borde punteado (parecía una zona para soltar archivos).
+
 **Visto al armar las pantallas (15/11), para decidir más adelante:** ~~si la rutina de un mes ya se aprobó, un
 gasto nuevo de ese mes no tiene dónde ir~~ — **decidido el 18/11**: lo decide la persona cada vez, con un
 administrador: o un admin reabre la rutina aprobada y se suma ahí, o va en la rutina de otro mes (ver «Reabrir»
