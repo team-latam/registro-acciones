@@ -819,6 +819,35 @@
 
   /* ---------- Gastos y rendiciones (ver renderGastosView) ---------- */
   .gx-lista{ display:flex; flex-direction:column; gap:8px; margin-bottom:6px; }
+  /* «Mis estadísticas» (19/11) */
+  .gxe-ctl{ display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; margin-bottom:10px; }
+  .gxe-et{ font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; }
+  .gxe-tiles{ display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px; margin:14px 0; }
+  .gxe-tile{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md); padding:14px 16px; min-width:0; }
+  .gxe-k{ font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; }
+  .gxe-v{ font-size:22px; font-weight:800; margin-top:4px; overflow-wrap:anywhere; }
+  .gxe-n{ font-size:12px; color:var(--text-muted); margin-top:5px; display:flex; flex-wrap:wrap; align-items:center; gap:4px 6px; }
+  .gxe-dos{ display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr)); gap:14px; margin-bottom:6px; }
+  .gxe-tarjeta{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md); padding:16px 18px; min-width:0; }
+  .gxe-tarjeta h3{ font-size:15px; font-weight:800; margin:0 0 2px; }
+  .gxe-sub{ font-size:12px; color:var(--text-muted); margin:0 0 12px; }
+  .gxe-fila{ display:grid; grid-template-columns:minmax(70px,130px) 1fr auto; gap:10px; align-items:center; font-size:13px; padding:4px 0; }
+  .gxe-l{ font-weight:600; overflow-wrap:anywhere; }
+  .gxe-t{ background:var(--surface-alt); border-radius:6px; height:14px; overflow:hidden; }
+  .gxe-f{ display:block; height:100%; background:var(--celeste-dark); border-radius:6px; }
+  .gxe-meses{ display:flex; align-items:flex-end; gap:4px; height:150px; }
+  .gxe-c{ flex:1; min-width:0; height:100%; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; font-size:10.5px; color:var(--text-muted); }
+  .gxe-c i{ display:block; width:100%; min-height:2px; background:var(--celeste-dark); border-radius:4px 4px 0 0; }
+  .gxe-c b{ font-size:9.5px; color:var(--text); font-weight:700; margin-bottom:2px; white-space:nowrap; }
+  .gxe-c.gxe-cero i{ opacity:.25; }
+  .gxe-gastos{ display:flex; flex-direction:column; margin-top:8px; }
+  .gxe-gasto{ display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; text-align:start; padding:9px 4px; border:0; border-top:1px solid var(--border); background:transparent; color:inherit; font:inherit; cursor:pointer; }
+  .gxe-gasto:hover{ background:var(--surface-hover); }
+  .gxe-gasto span{ min-width:0; }
+  .gxe-gasto b{ display:block; font-weight:600; overflow-wrap:anywhere; }
+  .gxe-gasto small{ color:var(--text-muted); font-size:12px; }
+  .gxe-lista-tit{ font-size:15px; font-weight:800; margin:18px 0 2px; }
+  @media (max-width:520px){ .gxe-c b{ display:none; } .gxe-fila{ grid-template-columns:90px 1fr auto; } }
   .gx-tarjeta{ display:flex; align-items:center; gap:12px; width:100%; text-align:start; padding:12px 14px; border-radius:var(--radius-md);
     border:1px solid var(--border); background:var(--card); box-shadow:var(--shadow); color:var(--ink); font-family:inherit; cursor:pointer; }
   .gx-tarjeta:hover{ border-color:var(--celeste); }
@@ -9091,7 +9120,7 @@ async function onAuthChanged(user){
   // La Agenda abierta y una lista a medio traer no pasan a la sesión siguiente.
   agendaOverlay.hidden = true; agendaPila = []; agendaImport = null;
   // Los gastos de una cuenta no pasan a la siguiente.
-  cortarGastos(); gastosConfig = {}; gastosSeccion = "rendir";
+  cortarGastos(); gastosConfig = {}; gastosSeccion = "rendir"; gastosEst = { anio: "", moneda: "", abiertas: new Set() };
   state.filters = filtrosVacios(); filtroOrigen = null; fp.abierto = false; fp.b = null;
 
   if(!user){
@@ -24959,6 +24988,7 @@ let gastosDatos = null;                 // las cuatro tablas, ya armadas (armarG
 let gastosError = "";
 let unsubGastos = null;
 let gastosConArchivos = false;          // ya se firmaron los comprobantes (se entró a Gastos)
+let gastosEst = { anio: "", moneda: "", abiertas: new Set() };   // «Mis estadísticas»: el año, la moneda y las actividades abiertas
 let gastosSeccion = "rendir";           // rendir | rendiciones | cuenta | aprobar (D16, 19/11: «Por rendir» y «Rendiciones», separadas)
 let gastosAbierta = null;               // la rendición que se mira (su id, o "sin" = los sin vincular)
 let gastoEdit = null;                   // la ventana de un gasto: { id, d, guardando, error, faltan, comentario }
@@ -26345,6 +26375,8 @@ function gastosSecciones(){
       badge: gastosDatos ? gastosDatos.gastos.filter(g => g.autor === miCorreo() && estadoVisible(g) === "observado").length : 0 },
     { key: "rendiciones", label: t("Rendiciones","Expense reports","Prestações","דוחות הוצאות") },
     { key: "cuenta", label: t("Cuenta corriente","Running balance","Conta corrente","חשבון שוטף") },
+    // «Mis estadísticas» (19/11): lo propio, con salida a cada gasto. Docs: «Estadísticas, rol Finanzas y análisis».
+    { key: "estadisticas", label: t("Mis estadísticas","My statistics","Minhas estatísticas","הסטטיסטיקות שלי") },
   ];
   if(isAdmin()) s.push({ key: "aprobar", label: t("Para aprobar","To approve","Para aprovar","לאישור"),
     badge: gastosDatos ? gastosDatos.rendiciones.filter(r => r.estado === "enviada" && (puedeAprobarRendicion(r) || gastosDe(r.id).some(g => g.estado === "observado"))).length + gastosDatos.movimientos.filter(m => m.estado === "pendiente").length : 0 });
@@ -26368,10 +26400,113 @@ function gastosTextos(key){
         "<b>Gasto</b> soma as despesas pagas por você em prestações já aprovadas; as que estão em revisão aparecem à parte. <b>Recebido</b> é o dinheiro que a organização te deu (um adiantamento ou um reembolso) e <b>devolvido</b>, o que você devolveu. O <b>saldo</b> positivo é o que a organização te deve; negativo, o que você deve.<br><br>O que você anota como recebido ou devolvido fica <b>pendente</b> até um administrador confirmar. O total rápido de uma atividade não muda a conta.",
         "<b>הוצאות</b> סוכם את ההוצאות ששילמתם בעצמכם בדוחות שכבר אושרו; אלה שבבדיקה מוצגות בנפרד. <b>התקבל</b> הוא הכסף שהארגון נתן לכם (מקדמה או החזר), ו<b>הוחזר</b> — מה שהחזרתם. <b>יתרה</b> חיובית היא מה שהארגון חייב לכם; שלילית — מה שאתם חייבים.<br><br>מה שרושמים כהתקבל או הוחזר נשאר <b>ממתין</b> עד שמנהל/ת מאשר/ת. הסכום המהיר של פעילות לא משנה את החשבון."),
     },
+    estadisticas: {
+      lead: t("Cuánto gastaste, en qué y en cada actividad. Solo se cuentan los gastos que ya confirmaste.",
+        "How much you spent, on what, and on each activity. Only expenses you've already confirmed are counted.",
+        "Quanto você gastou, em quê e em cada atividade. Só contam as despesas que você já confirmou.",
+        "כמה הוצאתם, על מה ובכל פעילות. נספרות רק הוצאות שכבר אישרתם."),
+      ayuda: t("Los números salen de lo que confirmaste en «Por rendir», con el monto que rendiste (casi siempre en dólares). Cada moneda va por separado: nunca se convierten ni se suman. El año se compara con el anterior hasta la misma fecha, para que un año a medias no parezca menos. Tocá una actividad para ver sus gastos y abrir cada uno.",
+        "The numbers come from what you confirmed in “To report”, using the amount you reported (almost always in dollars). Each currency is shown on its own: they are never converted or added together. The year is compared with the previous one up to the same date, so a year in progress doesn't look smaller. Tap an activity to see its expenses and open each one.",
+        "Os números vêm do que você confirmou em «A prestar», com o valor que você prestou (quase sempre em dólares). Cada moeda vai separada: nunca são convertidas nem somadas. O ano é comparado com o anterior até a mesma data, para que um ano pela metade não pareça menor. Toque em uma atividade para ver suas despesas e abrir cada uma.",
+        "המספרים מבוססים על מה שאישרתם ב״לדיווח״, עם הסכום שדיווחתם (כמעט תמיד בדולרים). כל מטבע מוצג בנפרד: אף פעם לא ממירים ולא מחברים. השנה מושווה לקודמת עד אותו תאריך, כדי ששנה באמצע לא תיראה קטנה יותר. לחצו על פעילות כדי לראות את ההוצאות שלה ולפתוח כל אחת."),
+    },
     aprobar: {
       
     },
   })[key] || {};
+}
+// ---- Mis estadísticas (19/11/2026) ----
+// Lo propio, solo lo confirmado (un borrador puede venir mal leído), con el monto que se rinde y cada moneda aparte:
+// nunca se convierte ni se suma una con otra. Todo sale de gastosDatos, que ya trae solo lo de la persona.
+function misGastosContados(){
+  const rs = new Map(gastosDatos.rendiciones.map(r => [r.id, r])), yo = miCorreo(), out = [];
+  gastosDatos.gastos.forEach(g => {
+    if(g.autor !== yo || g.estado === "borrador" || !g.rendicionId || !/^\d{4}-\d{2}-\d{2}/.test(g.fecha || "")) return;
+    const r = rs.get(g.rendicionId), x = rendidoDe(g);
+    if(r && x && x.monto != null && !isNaN(x.monto)) out.push({ g, r, moneda: x.moneda, monto: Number(x.monto), anio: String(g.fecha).slice(0, 4) });
+  });
+  return out;
+}
+function estadisticasMias(){
+  const todos = misGastosContados(), hoy = todayISO().slice(0, 4);
+  const anios = [...new Set([hoy, ...todos.map(x => x.anio)])].sort().reverse();
+  const conDatos = anios.filter(a => todos.some(x => x.anio === a));
+  const anio = anios.includes(gastosEst.anio) ? gastosEst.anio : conDatos.includes(hoy) ? hoy : (conDatos[0] || hoy);
+  const delAnio = todos.filter(x => x.anio === anio);
+  const monedas = monedasEnOrden(sumarPorMoneda(delAnio.map(x => ({ moneda: x.moneda, monto: x.monto }))));
+  const moneda = monedas.includes(gastosEst.moneda) ? gastosEst.moneda : (monedas[0] || "USD");
+  return { todos, anios, anio, monedas, moneda, sel: delAnio.filter(x => x.moneda === moneda) };
+}
+function diasDeActividad(p){
+  if(!p) return 0;
+  const a = p.startDate || p.date, b = p.endDate || a, x = Date.parse(a + "T00:00:00Z"), y = Date.parse(b + "T00:00:00Z");
+  return isFinite(x) && isFinite(y) && y >= x ? Math.round((y - x) / 864e5) + 1 : 0;
+}
+const sumaDe = l => redondo(l.reduce((a, x) => a + x.monto, 0));
+function barrasPorTipo(l){
+  const por = {};
+  l.forEach(x => { const k = x.g.tipo ? nombreTipoGasto(x.g.tipo) : t("Sin tipo","No type","Sem tipo","ללא סוג"); por[k] = redondo((por[k] || 0) + x.monto); });
+  const items = Object.entries(por).sort((a, b) => b[1] - a[1]), max = Math.max(1, ...items.map(i => i[1]));
+  return `<div>${items.map(([k, v]) => `<div class="gxe-fila"><span class="gxe-l">${esc(k)}</span><span class="gxe-t" aria-hidden="true"><span class="gxe-f" style="width:${(v / max * 100).toFixed(1)}%"></span></span>${numeroHtml(v)}</div>`).join("")}</div>`;
+}
+function renderGastosEstadisticas(){
+  const E = estadisticasMias(), { anio, moneda, sel } = E, yo = miCorreo();
+  const grupoCtl = (et, items) => `<div class="gxe-ctl"><span class="gxe-et">${et}</span><div class="pref-chips" role="group" aria-label="${esc(et)}">${items}</div></div>`;
+  const chipsAnio = grupoCtl(t("Año","Year","Ano","שנה"), E.anios.map(a => `<button type="button" class="chip-toggle${a === anio ? " active" : ""}" data-action="gastos-est-anio" data-year="${esc(a)}" aria-pressed="${a === anio}">${esc(a)}</button>`).join(""));
+  const chipsMon = E.monedas.length > 1 ? grupoCtl(t("Moneda","Currency","Moeda","מטבע"), E.monedas.map(m => `<button type="button" class="chip-toggle${m === moneda ? " active" : ""}" data-action="gastos-est-moneda" data-m="${esc(m)}" aria-pressed="${m === moneda}">${esc(m)}</button>`).join(""))
+    + `<p class="gxe-sub">${t("Cada moneda va por separado: no se convierten ni se suman.","Each currency is shown on its own: they are not converted or added together.","Cada moeda vai separada: não são convertidas nem somadas.","כל מטבע מוצג בנפרד: לא ממירים ולא מחברים.")}</p>` : "";
+  if(!sel.length) return `${chipsAnio}<p class="setting-sub gx-nada">${t("Todavía no hay gastos confirmados en {a}. Cuando confirmes comprobantes en «Por rendir», acá vas a ver en qué se fue la plata, mes a mes y por actividad.","There are no confirmed expenses in {a} yet. Once you confirm receipts in “To report”, you'll see here where the money went, month by month and by activity.","Ainda não há despesas confirmadas em {a}. Quando você confirmar comprovantes em «A prestar», aqui vai ver para onde foi o dinheiro, mês a mês e por atividade.","עדיין אין הוצאות מאושרות ב-{a}. אחרי שתאשרו קבלות ב״לדיווח״ תראו כאן לאן הלך הכסף, חודש אחר חודש ולפי פעילות.",{ a: anio })}</p>`;
+  const total = sumaDe(sel);
+  // Contra el año anterior hasta la misma fecha: un año a medias no tiene que parecer menos.
+  const hoyISO = todayISO(), corte = anio === hoyISO.slice(0, 4) ? hoyISO.slice(5) : "12-31", antes = String(Number(anio) - 1);
+  const prev = sumaDe(E.todos.filter(x => x.moneda === moneda && x.anio === antes && x.g.fecha.slice(5, 10) <= corte));
+  let vs = "";
+  if(prev > 0){
+    const r = total / prev - 1, txt = (r >= 0 ? "+" : "−") + Math.abs(Math.round(r * 100)) + "%";
+    vs = `${gxChip([txt, r > 0.1 ? "aviso" : r < -0.1 ? "bien" : "neutro"])} ${esc(anio === hoyISO.slice(0, 4)
+      ? t("frente al mismo período de {a}","vs the same period in {a}","frente ao mesmo período de {a}","לעומת אותה תקופה ב-{a}",{ a: antes })
+      : t("frente a {a}","vs {a}","frente a {a}","לעומת {a}",{ a: antes }))}`;
+  }
+  const rendiciones = [...new Set(sel.map(x => x.r.id))].map(id => sel.find(x => x.r.id === id).r);
+  const actividades = rendiciones.filter(r => r.postId), dias = actividades.reduce((a, r) => a + diasDeActividad(getPostById(r.postId)), 0);
+  const cuenta = (cuentaDe(yo) || {})[moneda], saldo = cuenta ? cuenta.saldo : 0;
+  const saldoTxt = saldo > 0 ? t("la organización te debe","the organization owes you","a organização te deve","הארגון חייב לך") : saldo < 0 ? t("le debés a la organización","you owe the organization","você deve à organização","את/ה חייב/ת לארגון") : t("estás al día","you're all square","você está em dia","אתם מאוזנים");
+  const revision = sumaDe(sel.filter(x => x.r.estado === "enviada" || x.r.estado === "observada"));
+  const tile = (k, v, n) => `<div class="gxe-tile"><div class="gxe-k">${k}</div><div class="gxe-v">${v}</div>${n ? `<div class="gxe-n">${n}</div>` : ""}</div>`;
+  const tiles = `<div class="gxe-tiles">
+    ${tile(t("Gastado","Spent","Gasto","הוצאות"), montoHtml(moneda, total), vs)}
+    ${tile(t("Actividades","Activities","Atividades","פעילויות"), actividades.length, dias ? (dias === 1 ? t("1 día","1 day","1 dia","יום אחד") : t("{n} días","{n} days","{n} dias","{n} ימים",{ n: dias })) : "")}
+    ${tile(t("En revisión","In review","Em revisão","בבדיקה"), montoHtml(moneda, revision), t("mandado, todavía sin aprobar","sent, not approved yet","enviado, ainda sem aprovar","נשלח, עדיין לא אושר"))}
+    ${tile(t("Tu saldo","Your balance","Seu saldo","היתרה שלך"), montoHtml(moneda, Math.abs(saldo)), `${esc(saldoTxt)} · <button type="button" class="gx-link" data-action="gastos-seccion" data-key="cuenta">${t("Ver mi cuenta","See my balance","Ver minha conta","לחשבון שלי")}</button>`)}
+  </div>`;
+  const porMes = Array(12).fill(0);
+  sel.forEach(x => { porMes[Number(x.g.fecha.slice(5, 7)) - 1] += x.monto; });
+  const maxMes = Math.max(1, ...porMes);
+  const meses = `<div class="gxe-meses" role="group" aria-label="${esc(t("Mes a mes","Month by month","Mês a mês","חודש אחר חודש"))}">${porMes.map((v, i) => {
+    const nom = new Date(Number(anio), i, 1).toLocaleDateString(dateLocale(), { month: "short" });
+    return `<div class="gxe-c${v ? "" : " gxe-cero"}" role="img" aria-label="${esc(nom + ": " + (v ? fmtMonto(moneda, v) : t("sin gastos","no expenses","sem despesas","ללא הוצאות")))}">${v ? `<b>${esc(Math.round(v).toLocaleString("en-US"))}</b>` : ""}<i style="height:${(v / maxMes * 100).toFixed(1)}%"></i><span>${esc(nom)}</span></div>`; }).join("")}</div>`;
+  const lista = rendiciones.sort((a, b) => claveDeRendicion(b).localeCompare(claveDeRendicion(a))).map(r => {
+    const mias = sel.filter(x => x.r.id === r.id).sort((a, b) => a.g.fecha.localeCompare(b.g.fecha)), sumR = sumaDe(mias), abierta = gastosEst.abiertas.has(r.id);
+    const d = r.postId ? diasDeActividad(getPostById(r.postId)) : 0, fecha = fechaDeRendicion(r);
+    const detalle = [fecha ? esc(fecha) : "", esc(mias.length === 1 ? t("1 gasto","1 expense","1 despesa","הוצאה אחת") : t("{n} gastos","{n} expenses","{n} despesas","{n} הוצאות",{ n: mias.length })),
+      d > 0 ? esc(t("{m} por día","{m} per day","{m} por dia","{m} ליום",{ m: fmtMonto(moneda, redondo(sumR / d)) })) : ""].filter(Boolean).join(" · ");
+    const cuerpo = abierta ? `<div class="gx-g-cuerpo">${barrasPorTipo(mias)}
+        <div class="gxe-gastos">${mias.map(x => `<button type="button" class="gxe-gasto" data-action="gasto-abrir" data-id="${esc(x.g.id)}"><span><b>${x.g.concepto ? esc(x.g.concepto) : `<i>${t("Sin concepto","No description","Sem conceito","ללא תיאור")}</i>`}</b><small>${[esc(fmtDate(x.g.fecha)), x.g.tipo ? esc(nombreTipoGasto(x.g.tipo)) : ""].filter(Boolean).join(" · ")}</small></span>${montoHtml(moneda, x.monto)}</button>`).join("")}</div>
+        <button type="button" class="gx-link gx-g-ir" data-action="gastos-est-abrir" data-id="${esc(r.id)}">${t("Abrir la rendición","Open the report","Abrir a prestação","פתיחת הדוח")} ${isRTL() ? "←" : "→"}</button>
+      </div>` : "";
+    return `<div class="gx-grupo${abierta ? " gx-g-abierta" : ""}"><button type="button" class="gx-tarjeta gx-g-boton" data-action="gastos-est-grupo" data-id="${esc(r.id)}" aria-expanded="${abierta}">
+        <span class="gx-g-flecha" aria-hidden="true">${abierta ? "▾" : isRTL() ? "◂" : "▸"}</span><span class="gx-t-ico" aria-hidden="true">${iconoDeRendicion(r)}</span>
+        <span class="gx-t-txt"><b>${esc(tituloRendicion(r))}</b><small>${detalle}</small></span>
+        <span class="gx-t-der">${gxChip(estadoDeRendicion(r.estado))}<span class="gx-t-total">${esc(fmtMonto(moneda, sumR))}</span></span></button>${cuerpo}</div>`;
+  }).join("");
+  return `${chipsAnio}${chipsMon}${tiles}
+    <div class="gxe-dos">
+      <section class="gxe-tarjeta"><h3>${t("En qué gastás","What you spend on","Em que você gasta","על מה אתם מוציאים")}</h3><p class="gxe-sub">${t("Por tipo de gasto","By type of expense","Por tipo de despesa","לפי סוג הוצאה")}</p>${barrasPorTipo(sel)}</section>
+      <section class="gxe-tarjeta"><h3>${t("Mes a mes","Month by month","Mês a mês","חודש אחר חודש")}</h3><p class="gxe-sub">${esc(moneda)}</p>${meses}</section>
+    </div>
+    <h3 class="gxe-lista-tit">${t("Mis actividades","My activities","Minhas atividades","הפעילויות שלי")}</h3>
+    <p class="gxe-sub">${t("Tocá una para ver sus gastos.","Tap one to see its expenses.","Toque em uma para ver suas despesas.","לחצו על אחת כדי לראות את ההוצאות שלה.")}</p>
+    <div class="gx-grupos">${lista}</div>`;
 }
 function renderGastosView(){
   const secs = gastosSecciones();
@@ -26392,7 +26527,7 @@ function renderGastosView(){
     const ra = rendicionPorId(gastosAbierta);
     body = renderRendicionAbierta(sec === "aprobar" || (isAdmin() && !!ra && ra.autor !== miCorreo()), sec === "aprobar");
   }
-  else body = sec === "cuenta" ? renderGastosCuenta() : sec === "aprobar" ? renderParaAprobar() : sec === "rendiciones" ? renderRendiciones() : renderPorRendir();
+  else body = sec === "estadisticas" ? renderGastosEstadisticas() : sec === "cuenta" ? renderGastosCuenta() : sec === "aprobar" ? renderParaAprobar() : sec === "rendiciones" ? renderRendiciones() : renderPorRendir();
   return `<div class="admin-view gastos-view">
       <aside class="admin-menu" aria-label="${esc(titulo)}">
         <div class="admin-titulo">🧾 ${titulo}</div>${menu}
@@ -28717,6 +28852,15 @@ const GASTOS_ACCIONES = {
   // Desplegar o plegar una rendición de la lista agrupada (el foco queda en su tarjeta).
   "gastos-grupo": async el => { const id = el.dataset.id, A = gastosHist.abiertas; if(A.has(id)) A.delete(id); else A.add(id); render();
     const x = document.querySelector(`[data-action="gastos-grupo"][data-id="${CSS.escape(id)}"]`); if(x) x.focus(); },
+  "gastos-est-anio": async el => { gastosEst.anio = el.dataset.year; gastosEst.abiertas = new Set(); render();
+    const x = document.querySelector(`[data-action="gastos-est-anio"][data-year="${CSS.escape(el.dataset.year)}"]`); if(x) x.focus(); },
+  "gastos-est-moneda": async el => { gastosEst.moneda = el.dataset.m; render();
+    const x = document.querySelector(`[data-action="gastos-est-moneda"][data-m="${CSS.escape(el.dataset.m)}"]`); if(x) x.focus(); },
+  // Desde «Mis estadísticas» se abre la rendición en la sección que le toca (esta pantalla no abre rendiciones).
+  "gastos-est-abrir": async el => { const r = rendicionPorId(el.dataset.id); gastosSeccion = r && rendicionEditable(r) ? "rendir" : "rendiciones";
+    gastosAbierta = el.dataset.id; gastosTotal = null; gastosLista = null; gastosListaAviso = ""; render(); scrollToTop(); },
+  "gastos-est-grupo": async el => { const id = el.dataset.id, A = gastosEst.abiertas; if(A.has(id)) A.delete(id); else A.add(id); render();
+    const x = document.querySelector(`[data-action="gastos-est-grupo"][data-id="${CSS.escape(id)}"]`); if(x) x.focus(); },
   "gastos-hist-limpiar": async () => { Object.assign(gastosHist, { desde: "", hasta: "", estado: "", persona: "" }); render(); const x = document.getElementById("gxHDesde"); if(x) x.focus(); },
   "gastos-sel-excel": async () => { const S = gastosSel; if(S) await bajarExcelDeGastos(seleccionables(S.rid).filter(g => S.ids.has(g.id))); },
   "gastos-sel-borrar": async () => borrarSeleccionados(),
