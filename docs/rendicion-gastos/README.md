@@ -454,6 +454,10 @@ que llega tarde, al final del PDF con los números que siguen. Cómo quedó cada
   dividir, por un lado poner para ver las rendiciones (Rendiciones) y por otro, donde vamos a realizar cada
   rendición». Es la decisión D16 de la prueba de Gastos (`docs/AUDITORIA.md`, sección X, con maqueta), junto con lo
   demás que encontró esa prueba (X1 a X18).
+  **Decidido el 19/11** (las cuatro recomendadas): D16 dos secciones, «Por rendir» y «Rendiciones»; D17 lo propio
+  de un admin lo aprueba otro (si no hay otro, el admin fijo, con un aviso); D18 las observaciones se anotan y se
+  devuelve una vez con «Devolver con N observaciones»; D19 «Confirmar» pregunta antes si quedó un dato dudoso del
+  lector. D17 y D18 tocan la base (`27-gastos.sql`): se aplican al llegar a `main`, con su OK.
 
 **Para toda la tanda** (18/11: «Hay mucho texto, mucha explicación, podría ser más directo. No es difícil lo que
 tenemos que poner»): en todas las pantallas de Gastos, menos texto. Cada botón dice lo que hace; como mucho una

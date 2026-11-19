@@ -211,10 +211,10 @@ sin mirarlo (X1), y tres decisiones de cómo se trabaja (X2, X3, X4).
 
 | # | Pregunta | Opciones (recomendada primero) |
 |---|---|---|
-| D16 | ¿Separar «Por rendir» (lo que hay que hacer) de «Rendiciones» (para ver y seguir)? | **A**: dos secciones del menú (la idea del usuario) · B: una pantalla con dos solapas · C: como está, con lo pendiente arriba |
-| D17 | ¿Un admin aprueba lo suyo? | **A**: no, lo aprueba otro admin (si no hay otro, el admin fijo, con aviso) · B: sí, como hoy, pero igual desde las dos pantallas |
-| D18 | Al observar: ¿se devuelve en el momento o al terminar de revisar? | **A**: se anotan y se devuelve con un botón «Devolver con N observaciones» · B: como hoy |
-| D19 | Confirmar con un dato dudoso del lector | **A**: pregunta («El lector no está seguro de la moneda: ¿es USD?») · B: no deja confirmar hasta tocarlo · C: como hoy |
+| D16 | ¿Separar «Por rendir» (lo que hay que hacer) de «Rendiciones» (para ver y seguir)? | ✅ 19/11: **A**, dos secciones del menú, como en la maqueta (la idea del usuario) |
+| D17 | ¿Un admin aprueba lo suyo? | ✅ 19/11: **A**, lo propio lo aprueba otro admin; si no hay otro, el admin fijo, con un aviso |
+| D18 | Al observar: ¿se devuelve en el momento o al terminar de revisar? | ✅ 19/11: **A**, se anotan y se devuelve con «Devolver con N observaciones» |
+| D19 | Confirmar con un dato dudoso del lector | ✅ 19/11: **A**, pregunta antes («El lector no está seguro de la moneda: ¿es USD?») |
 
 ### Herramientas
 
