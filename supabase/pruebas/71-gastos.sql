@@ -238,8 +238,15 @@ select lab.comprobar('un admin no observa sin un comentario',
   $q$select lab.rechaza(lab.como('benny@team-latam.com'), format($x$select public.gastos_observar(%L, '   ')::text$x$, '$q$ || :'g1' || $q$'))$q$, 'true');
 select lab.comprobar('un admin observa un gasto con un comentario',
   $q$select lab.hacer(lab.como('benny@team-latam.com'), format($x$select public.gastos_observar(%L, 'Falta la factura del hotel')::text$x$, '$q$ || :'g1' || $q$'))$q$, 'true');
-select lab.comprobar('…el gasto queda observado y la rendición vuelve a la persona',
-  $q$select g.estado || '/' || r.estado from public.gastos g join public.gastos_rendiciones r on r.id = g.rendicion_id where g.id = '$q$ || :'g1' || $q$'$q$, 'observado/observada');
+select lab.comprobar('…el gasto queda observado y la rendición sigue en revisión: se devuelve con todo junto (D18, 19/11)',
+  $q$select g.estado || '/' || r.estado from public.gastos g join public.gastos_rendiciones r on r.id = g.rendicion_id where g.id = '$q$ || :'g1' || $q$'$q$, 'observado/enviada');
+select lab.probar('…mientras sigue en revisión, la persona todavía no lo corrige', lab.como('ana@x.com'),
+  format($x$update public.gastos set observaciones = 'apurada' where id = %L$x$, :'g1'), false);
+select lab.probar('…ni lo borra', lab.como('ana@x.com'), format($x$delete from public.gastos where id = %L$x$, :'g1'), false);
+select lab.comprobar('…ni se aprueba con un gasto observado',
+  $q$select lab.rechaza(lab.como('otra.admin@x.com'), format($x$select public.gastos_rendicion_aprobar(%L)::text$x$, '$q$ || :'ra' || $q$'))$q$, 'true');
+select lab.comprobar('una integrante no devuelve una rendición',
+  $q$select lab.rechaza(lab.como('ana@x.com'), format($x$select public.gastos_rendicion_devolver(%L)::text$x$, '$q$ || :'ra' || $q$'))$q$, 'true');
 select lab.comprobar('…los demás gastos siguen mandados', $q$select string_agg(distinct estado, ',') from public.gastos where rendicion_id = '$q$ || :'ra' || $q$' and id <> '$q$ || :'g1' || $q$'$q$, 'enviado');
 select lab.comprobar('…y la persona ve el comentario', $q$select lab.hacer(lab.como('ana@x.com'), $x$select string_agg(texto, '|') from public.gastos_comentarios$x$)$q$, 'Falta la factura del hotel');
 select lab.comprobar('otra persona no lo ve', $q$select lab.hacer(lab.como('diego@x.com'), $x$select count(*)::text from public.gastos_comentarios$x$)$q$, '0');
@@ -247,6 +254,14 @@ select lab.comprobar('otro admin, sí', $q$select lab.hacer(lab.como('otra.admin
 -- El aviso por correo (17/11): Ana puede recibir correos y los tiene prendidos.
 truncate public.avisos_enviados, public.avisos_listos;
 update public.app_config set value = value || '{"correos": {"quienes": "todos"}}' where key = 'preferences';
+select lab.probar_valor('mientras la rendición sigue en revisión, el aviso no sale (sale al devolverla)',
+  lab.como('benny@team-latam.com'), $q$select 1$q$, format($q$select coalesce(public.preparar_aviso_de_gasto(%L)::text, 'nada')$q$, :'g1'), 'nada');
+select lab.comprobar('el admin la devuelve con lo observado: dice cuántos',
+  $q$select lab.hacer(lab.como('benny@team-latam.com'), format($x$select public.gastos_rendicion_devolver(%L)::text$x$, '$q$ || :'ra' || $q$'))$q$, '1');
+select lab.comprobar('…y la rendición vuelve a la persona',
+  $q$select estado from public.gastos_rendiciones where id = '$q$ || :'ra' || $q$'$q$, 'observada');
+select lab.comprobar('devuelta, no se devuelve otra vez',
+  $q$select lab.rechaza(lab.como('benny@team-latam.com'), format($x$select public.gastos_rendicion_devolver(%L)::text$x$, '$q$ || :'ra' || $q$'))$q$, 'true');
 select lab.probar_valor('el aviso de «te observaron un gasto» le llega a la persona, con el comentario, el gasto y quién lo observó',
   lab.como('benny@team-latam.com'), $q$select 1$q$,
   format($q$select (select x -> 'para' -> 0 ->> 'email' || '|' || (x ->> 'autor') || '|' || (x ->> 'texto') || '|' || (x ->> 'concepto') || '|' || (x ->> 'actividad') || '|' || (x ->> 'monto') || '|' || (x ->> 'gasto')
@@ -262,10 +277,10 @@ select lab.probar_valor('otro admin que no lo observó no lo puede pedir',
   lab.como('otra.admin@x.com'), $q$select 1$q$, format($q$select coalesce(public.preparar_aviso_de_gasto(%L)::text, 'nada')$q$, :'g1'), 'nada');
 select lab.probar_valor('una integrante tampoco',
   lab.como('ana@x.com'), $q$select 1$q$, format($q$select coalesce(public.preparar_aviso_de_gasto(%L)::text, 'nada')$q$, :'g1'), 'nada');
-update public.gastos_comentarios set creado_el = creado_el - interval '20 minutes' where gasto_id = :'g1';
-select lab.probar_valor('si el comentario es de hace más de 15 minutos, no',
+update public.gastos_comentarios set creado_el = creado_el - interval '8 days' where gasto_id = :'g1';
+select lab.probar_valor('si el comentario es de hace más de una semana (o de antes del último envío), no',
   lab.como('benny@team-latam.com'), $q$select 1$q$, format($q$select coalesce(public.preparar_aviso_de_gasto(%L)::text, 'nada')$q$, :'g1'), 'nada');
-update public.gastos_comentarios set creado_el = creado_el + interval '20 minutes' where gasto_id = :'g1';
+update public.gastos_comentarios set creado_el = creado_el + interval '8 days' where gasto_id = :'g1';
 insert into public.user_prefs(email, prefs) values ('ana@x.com', '{"emailGastos": false}')
   on conflict (email) do update set prefs = excluded.prefs;
 select lab.probar_valor('si la persona apagó «gastos» en Tu cuenta, no',
@@ -564,6 +579,8 @@ select lab.comprobar('en la cuenta, lo aprobado gastado y lo nuevo en revisión'
   $q$select lab.hacer(lab.como('ana@x.com'), $x$select (public.gastos_cuenta('ana@x.com') -> 'USD' ->> 'gastado') || '/' || (public.gastos_cuenta('ana@x.com') -> 'USD' ->> 'en_revision')$x$)$q$, '117.50/12.00');
 select lab.comprobar('para corregir uno aprobado, un admin lo observa',
   $q$select lab.hacer(lab.como('benny@team-latam.com'), format($x$select public.gastos_observar(%L, 'Corregí la fecha del hotel')::text$x$, '$q$ || :'g1' || $q$'))$q$, 'true');
+select lab.comprobar('…y la devuelve',
+  $q$select lab.hacer(lab.como('benny@team-latam.com'), format($x$select public.gastos_rendicion_devolver(%L)::text$x$, '$q$ || :'ra' || $q$'))$q$, '1');
 select lab.probar('…y la persona lo puede corregir', lab.como('ana@x.com'), format($x$update public.gastos set fecha = '2026-09-09' where id = %L$x$, :'g1'), true);
 select lab.hacer(lab.como('ana@x.com'), format($x$update public.gastos set fecha = '2026-09-09', estado = 'confirmado' where id = %L returning estado$x$, :'g1'));
 select lab.comprobar('corregido, se manda de nuevo',
@@ -584,6 +601,32 @@ select lab.probar_valor('reabierta otra vez, un admin observa uno aprobado aunqu
      :'g2', :'g2'), 'true/observado/observada');
 select lab.comprobar('aprobada, uno aprobado no se observa (hay que reabrirla)',
   $q$select lab.rechaza(lab.como('benny@team-latam.com'), format($x$select public.gastos_observar(%L, 'otra cosa')::text$x$, '$q$ || :'g2' || $q$'))$q$, 'true');
+
+-- ---------- Lo propio lo aprueba otro admin (D17, 19/11) ----------
+select lab.hacer(lab.como('benny@team-latam.com'), format($x$insert into public.gastos(rendicion_id, fecha, concepto, tipo, moneda, monto, pago, estado)
+  values (%L, '2026-09-17', 'Taxi a la oficina', 'transporte', 'USD', 9, 'persona', 'confirmado') returning id::text$x$, :'rb_mes')) as gb \gset
+select lab.comprobar('el admin fijo manda la suya',
+  format($q$select lab.hacer(lab.como('benny@team-latam.com'), format($x$select public.gastos_rendicion_enviar(%%L)::text$x$, %L))$q$, :'rb_mes'), 'true');
+select lab.comprobar('…y no la aprueba él: hay otro admin',
+  format($q$select lab.hacer(lab.como('benny@team-latam.com'), format($x$select public.gastos_rendicion_aprobar(%%L)::text$x$, %L))$q$, :'rb_mes'), 'error: La tuya la aprueba otro admin');
+select lab.comprobar('…la aprueba el otro admin',
+  format($q$select lab.hacer(lab.como('otra.admin@x.com'), format($x$select public.gastos_rendicion_aprobar(%%L)::text$x$, %L))$q$, :'rb_mes'), 'true');
+select lab.hacer(lab.como('otra.admin@x.com'), $x$select public.gastos_rendicion_abrir(null, '2026-09-18')::text$x$) as ro \gset
+select lab.hacer(lab.como('otra.admin@x.com'), format($x$insert into public.gastos(rendicion_id, fecha, concepto, tipo, moneda, monto, pago, estado)
+  values (%L, '2026-09-18', 'Café', 'comida', 'USD', 4, 'persona', 'confirmado') returning id::text$x$, :'ro')) as go \gset
+select lab.hacer(lab.como('otra.admin@x.com'), format($x$select public.gastos_rendicion_enviar(%L)::text$x$, :'ro'));
+select lab.comprobar('un admin por rol tampoco aprueba la suya',
+  format($q$select lab.hacer(lab.como('otra.admin@x.com'), format($x$select public.gastos_rendicion_aprobar(%%L)::text$x$, %L))$q$, :'ro'), 'error: La tuya la aprueba otro admin');
+select lab.comprobar('…la aprueba el admin fijo',
+  format($q$select lab.hacer(lab.como('benny@team-latam.com'), format($x$select public.gastos_rendicion_aprobar(%%L)::text$x$, %L))$q$, :'ro'), 'true');
+select lab.hacer(lab.como('benny@team-latam.com'), $x$select public.gastos_rendicion_abrir(null, '2026-10-02')::text$x$) as rb_oct \gset
+select lab.hacer(lab.como('benny@team-latam.com'), format($x$insert into public.gastos(rendicion_id, fecha, concepto, tipo, moneda, monto, pago, estado)
+  values (%L, '2026-10-02', 'Estacionamiento', 'transporte', 'USD', 3, 'persona', 'confirmado') returning id::text$x$, :'rb_oct')) as gb2 \gset
+select lab.hacer(lab.como('benny@team-latam.com'), format($x$select public.gastos_rendicion_enviar(%L)::text$x$, :'rb_oct'));
+update public.members set role = 'member' where email = 'otra.admin@x.com';
+select lab.comprobar('si no hay otro admin, el admin fijo aprueba la suya',
+  format($q$select lab.hacer(lab.como('benny@team-latam.com'), format($x$select public.gastos_rendicion_aprobar(%%L)::text$x$, %L))$q$, :'rb_oct'), 'true');
+update public.members set role = 'admin' where email = 'otra.admin@x.com';
 
 -- ---------- Cerrados de nuevo para el equipo ----------
 update public.app_config set value = '{"gastos": {"abierto": false}}' where key = 'preferences';

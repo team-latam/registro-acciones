@@ -92,6 +92,7 @@ insert into esperadas values
   ('preparar_aviso_de_gasto(uuid)',         false, true),  -- admin, sobre el gasto que acaba de observar; devuelve un turno
   ('gastos_rendicion_abrir(text, date)',    false, true),  -- solo para quien llama, en una actividad donde participó (o un admin)
   ('gastos_rendicion_aprobar(uuid)',        false, true),  -- admin
+  ('gastos_rendicion_devolver(uuid)',       false, true),  -- admin (D18, 19/11)
   ('gastos_rendicion_borrar(uuid)',         false, true),  -- solo la rendición propia mientras se puede corregir (o el admin fijo)
   ('gastos_rendicion_enviar(uuid)',         false, true);  -- solo la rendición propia
 

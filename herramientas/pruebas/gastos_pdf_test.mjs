@@ -21,7 +21,7 @@ import { abrirNavegador, entrar, ADMIN, PERS, BASE } from "./app_de_mentira.mjs"
    - Los conceptos, las observaciones y la actividad, traducidos con el
      traductor del navegador (uno de mentira acá: el Chromium de las pruebas
      no lo trae); sin traductor van como se escribieron, y el panel lo dice.
-   - El resumen por mes, desde «Mis rendiciones».
+   - El resumen por mes, desde «Rendiciones».
    - Si no carga el armador, lo dice.
    Con el sitio servido por http, como lo publica «Publicar el sitio»
    (la página y pdf/ al lado), y el Supabase de mentira.
@@ -84,8 +84,13 @@ const sirvo = async (p, { faltaGx3 = false } = {}) => p.route(/\/storage\/v1\/ob
 });
 const irGastos = async p => { await p.click('[data-action="toggle-user-menu"]'); await p.click('.user-menu [data-view="gastos"]'); await p.waitForSelector(".gastos-view"); await p.waitForTimeout(200); };
 // En la lista agrupada (18/11), la tarjeta despliega la rendición y «Abrir la rendición →» la abre.
-const abrir = async (p, id) => { await p.evaluate(id => { if(!document.querySelector(`[data-action="gastos-abrir-rendicion"][data-id="${id}"]`)){ const g = document.querySelector(`[data-action="gastos-grupo"][data-id="${id}"]`); if(g) g.click(); } }, id);
-  await p.click(`[data-action="gastos-abrir-rendicion"][data-id="${id}"]`); await p.waitForTimeout(250); };
+const abrir = async (p, id) => {
+  // En «Por rendir», las que están en manos de la persona; las demás, en «Rendiciones», agrupadas (D16, 19/11).
+  const hay = sel => p.evaluate(s => !!document.querySelector(s), sel);
+  const directo = `[data-action="gastos-abrir-rendicion"][data-id="${id}"]`, grupo = `[data-action="gastos-grupo"][data-id="${id}"]`;
+  if(!(await hay(directo)) && !(await hay(grupo))){ await p.evaluate(() => { const b = document.querySelector('[data-action="gastos-seccion"][data-key="rendiciones"]'); if(b) b.click(); }); await p.waitForTimeout(200); }
+  if(!(await hay(directo)) && await hay(grupo)){ await p.evaluate(s => document.querySelector(s).click(), grupo); await p.waitForTimeout(150); }
+  await p.click(directo); await p.waitForTimeout(250); };
 const tocar = (p, sel) => p.click(sel, { timeout: 3000 }).then(() => true, () => false);
 const leer = (p, sel, f) => p.$eval(sel, f).catch(() => null);
 const bajar = async p => {
@@ -160,7 +165,7 @@ const marcar = async (p, l, donde = ".gx-paso") => {
   const junto = dib.join(" ");
   eq("con las columnas de la planilla del usuario", ["N° comp.", "Fecha", "Concepto", "Actividad", "Tipo", "Moneda", "Monto", "Pago", "Quién pagó", "Factura", "Observaciones"].filter(s => !junto.includes(s)), []);
   eq("una visita va como «Visita»; quien puso la plata, su nombre u «Organización»", ["Visita", PERS[0].name, "Organización"].every(s => dib.includes(s)), true);
-  eq("en observaciones, la tarjeta y la moneda del comprobante, cada una en su renglón", ["Tarjeta terminada en 5555", "Gasto en UY $ 790.-", "Ida y vuelta"].every(s => dib.includes(s)), true);
+  eq("en observaciones, la tarjeta y la moneda del comprobante, cada una en su renglón", ["Tarjeta terminada en 5555", "Gasto en UY $ 790.-", "Ida y vuelta"].every(s => dib.map(x => x.replace(/[\u2066-\u2069]/g, "")).includes(s)), true);
   eq("el total y el cambio con su tasa", ["Total", "365.50", "1 USD = 39.5 UYU", "Comprobante en el anexo"].every(s => dib.includes(s)), true);
   eq("y en hebreo: su título y sus columnas", [dib.some(s => /^טבלת הוצאות — /.test(s.replace(/[⁦-⁩]/g, ""))), ["תאריך", "תיאור", "סכום", "הערות"].every(s => dib.includes(s))], [true, true]);
   eq("en hebreo, el tramo latino de un renglón mezclado va aislado (no se desordena)", dib.includes("הוצאה ב-⁦UY $ 790.-⁩"), true);
@@ -197,7 +202,8 @@ const marcar = async (p, l, donde = ".gx-paso") => {
   await irGastos(p); await abrir(p, "ren_mvd");
   eq("una rendición abierta no ofrece el PDF", await p.$('[data-action="gastos-pdf-bajar"]'), null);
   await tocar(p, '[data-action="gastos-volver"]'); await p.waitForTimeout(200);
-  eq("en «Mis rendiciones», el resumen por mes, plegado (hay una aprobada)", await leer(p, "details.gx-resumen", e => [e.querySelector("summary").textContent, e.open]), ["Resumen por mes (PDF)", false]);
+  await p.evaluate(() => document.querySelector('.admin-menu [data-action="gastos-seccion"][data-key="rendiciones"]').click()); await p.waitForTimeout(200);
+  eq("en «Rendiciones», el resumen por mes, plegado (hay una aprobada)", await leer(p, "details.gx-resumen", e => [e.querySelector("summary").textContent, e.open]), ["Resumen por mes (PDF)", false]);
   await tocar(p, "details.gx-resumen > summary");
   eq("pide desde y hasta, con los meses que tienen algo aprobado", await p.$$eval("#gxPdfDesde option", l => l.length), 1);
   const { nombre, bytes } = await bajar(p);

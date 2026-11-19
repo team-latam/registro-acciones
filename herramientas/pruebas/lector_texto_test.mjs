@@ -181,8 +181,9 @@ eq("en el campo se ve contable: coma para los miles, punto para los centavos, si
 
 /* ---- La nota de la moneda local en «Observaciones» (como la escribe el usuario en su Sheet) ---- */
 eq("«Gasto en MX $ 642.-»: en otra moneda y con el monto en dólares; sin centavos, «.-»; si no, con los centavos",
-  [L.nota("MXN", 642, "USD", 35.2), L.nota("UYU", 1250.5, "USD", 30), L.nota("ARS", "12.000", "USD", "12"), L.nota("XCG", 162, "USD", 100), L.nota("EUR", 40, "USD", "43,10")],
+  [L.nota("MXN", 642, "USD", 35.2), L.nota("UYU", 1250.5, "USD", 30), L.nota("ARS", "12.000", "USD", "12"), L.nota("XCG", 162, "USD", 100), L.nota("EUR", 40, "USD", "43,10")].map(x => x.replace(/[\u2066-\u2069]/g, "")),
   ["Gasto en MX $ 642.-", "Gasto en UY $ 1,250.50", "Gasto en AR $ 12,000.-", "Gasto en XCG 162.-", "Gasto en € 40.-"]);
+eq("…con la moneda y la cifra aisladas de izquierda a derecha: en hebreo, «.-» no se va al otro lado (X12, 19/11)", L.nota("UYU", 12000, "USD", 300), "Gasto en \u2066UY $ 12,000.-\u2069");
 eq("en dólares, o todavía sin el monto en dólares: sin nota", [L.nota("USD", 50, "USD", null), L.nota("MXN", 642, "USD", ""), L.nota("MXN", "", "USD", 35)], ["", "", ""]);
 
 /* ---- Casos que confunden ---- */

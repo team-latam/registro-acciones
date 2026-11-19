@@ -169,6 +169,8 @@ capturas: https://claude.ai/artifact/Wg8KRR6B5ZHDsR8F8y4NXc (privada). Las
 decisiones siguen desde **D16**. En Gastos, lo que se arregle va primero a la rama y
 sube a `main` con el OK del usuario (CLAUDE.md).
 
+**Cómo quedó (19/11):** todo arreglado y en `main` el mismo día (lo pidió el usuario: «avanzá y cuando lo tengas, cargalo directamente»), con su prueba cada uno; X17 no era del lector. Las pruebas: `gastos_test.mjs` (388), `lector_test`, `lector_texto_test` y las de la base (`71-gastos.sql`).
+
 **En una frase:** el recorrido completo anda (subir, leer, completar, mandar,
 observar, aprobar, reabrir, PDF, cuenta), con buenos avisos cuando la base falla.
 Lo que más pesa es que se puede confirmar un monto que el lector marcó como dudoso
@@ -178,34 +180,34 @@ sin mirarlo (X1), y tres decisiones de cómo se trabaja (X2, X3, X4).
 
 | # | Qué | Por qué | Quién |
 |---|---|---|---|
-| X1 | «Confirmar» en la ventana deja pasar lo que el lector marcó como dudoso (un «$ 96.00» quedó USD 96 confirmado) | Un gasto en pesos rendido como dólares: plata de más o de menos | **usuario** (D19) |
-| X2 | Una sola pantalla mezcla lo que hay que hacer con el historial; el usuario propone separar «Por rendir» y «Rendiciones» | Cada persona entra a hacer algo; hoy lo pendiente se pierde entre lo viejo y los filtros | **usuario** (D16) |
+| X1 | ~~«Confirmar» en la ventana deja pasar lo que el lector marcó como dudoso (un «$ 96.00» quedó USD 96 confirmado)~~ ✅ 19/11 (D19): «Confirmar» pregunta por lo dudoso que no se tocó («El lector no está seguro de la moneda: ¿es USD?», «Sí, confirmar» o «Cambiar») | Un gasto en pesos rendido como dólares: plata de más o de menos | **usuario** (D19) |
+| X2 | ~~Una sola pantalla mezcla lo que hay que hacer con el historial; el usuario propone separar «Por rendir» y «Rendiciones»~~ ✅ 19/11 (D16): «Por rendir» (subir, sin vincular, para completar y mandar) y «Rendiciones» (todas, agrupadas) | Cada persona entra a hacer algo; hoy lo pendiente se pierde entre lo viejo y los filtros | **usuario** (D16) |
 
 ### Medio
 
 | # | Qué | Por qué | Quién |
 |---|---|---|---|
-| X3 | Un admin puede aprobar sus propias rendiciones (desde «Para aprobar»; desde «Rendiciones», no) | Control: que otra persona mire lo de quien aprueba; y hoy depende de por dónde entre | **usuario** (D17) |
-| X4 | Observar un gasto devuelve la rendición en el momento | Quien revisa no puede juntar todo y devolverla una vez | **usuario** (D18) |
-| X5 | Cuenta corriente: «falta confirmar -200.00» para una plata recibida de 200; «0.00 en cero» | Confunde: parece una deuda o un error | Claude |
-| X6 | Reabierta sin nada nuevo: «Nuevos o corregidos (0)» vacío y la barra sola | Se ve roto | Claude |
-| X7 | Confirmar en la ventana («1 de 3») cierra en vez de pasar al siguiente | Con diez comprobantes, un clic de más cada vez | Claude |
-| X8 | El pie de la lista quedó pegado (punto 12 del usuario): un margen que otra regla pisa | Se ve como una sola cosa | Claude |
-| X9 | «Revisar en lista» usa las casillas para otra cosa y tiene papelera por fila | La misma lista con dos lógicas | Claude (con X2) |
-| X10 | Celular, «Revisar en lista»: la foto de una fila abierta tapa la pantalla | Hay que bajar mucho para completar | Claude |
-| X11 | Filtros, resumen y barra para una sola rendición | Sobrecarga para quien empieza | Claude (con X2) |
+| X3 | ~~Un admin puede aprobar sus propias rendiciones (desde «Para aprobar»; desde «Rendiciones», no)~~ ✅ 19/11 (D17): la base (`gastos_rendicion_aprobar`) y la app: la propia la aprueba otro admin; si no hay otro, el admin fijo, con aviso | Control: que otra persona mire lo de quien aprueba; y hoy depende de por dónde entre | **usuario** (D17) |
+| X4 | ~~Observar un gasto devuelve la rendición en el momento~~ ✅ 19/11 (D18): observar ya no la devuelve; `gastos_rendicion_devolver` y «Devolver con N observaciones»; el aviso por correo sale al devolver; la persona lo ve recién entonces | Quien revisa no puede juntar todo y devolverla una vez | **usuario** (D18) |
+| X5 | ~~Cuenta corriente: «falta confirmar -200.00» para una plata recibida de 200; «0.00 en cero»~~ ✅ 19/11: «Recibido, falta confirmar 200.00» (y devuelto o ajuste, cada uno aparte); «saldado» en vez de «en cero» | Confunde: parece una deuda o un error | Claude |
+| X6 | ~~Reabierta sin nada nuevo: «Nuevos o corregidos (0)» vacío y la barra sola~~ ✅ 19/11: «Todavía no hay nada nuevo.» y sin la barra sola | Se ve roto | Claude |
+| X7 | ~~Confirmar en la ventana («1 de 3») cierra en vez de pasar al siguiente~~ ✅ 19/11: confirmado, sigue con el próximo por confirmar de la lista; si no queda, cierra | Con diez comprobantes, un clic de más cada vez | Claude |
+| X8 | ~~El pie de la lista quedó pegado (punto 12 del usuario): un margen que otra regla pisa~~ ✅ 19/11: el margen va con las dos clases (`.gx-lpie.gx-selpie`), que pesan más | Se ve como una sola cosa | Claude |
+| X9 | ~~«Revisar en lista» usa las casillas para otra cosa y tiene papelera por fila~~ ✅ 19/11: en «Revisar en lista», «Borrar este gasto» va adentro de la fila abierta; cerrada, la fila se ve como en la rendición | La misma lista con dos lógicas | Claude (con X2) |
+| X10 | ~~Celular, «Revisar en lista»: la foto de una fila abierta tapa la pantalla~~ ✅ 19/11: la foto mide 150 px y se agranda al tocarla | Hay que bajar mucho para completar | Claude |
+| X11 | ~~Filtros, resumen y barra para una sola rendición~~ ✅ 19/11: los filtros aparecen con más de cinco rendiciones (o si hay uno puesto); el resumen, con más de una | Sobrecarga para quien empieza | Claude (con X2) |
 
 ### Bajo
 
 | # | Qué | Quién |
 |---|---|---|
-| X12 | Hebreo: la nota automática de la moneda se ve desordenada | Claude |
-| X13 | Si no se pueden leer los gastos, no hay «Probar de nuevo» | Claude |
-| X14 | «Borrar» muy a mano en la ventana del admin al revisar gastos de otros | Claude |
-| X15 | Confirmar la plata de alguien no da aviso | Claude |
-| X16 | «1 ya estaba cargado» no dice cuál | Claude |
-| X17 | El lector no tomó el comercio de un ticket de taxi (visto una vez) | Claude, con más tickets |
-| X18 | `GASTO_MONEDAS` sin uso | Claude |
+| X12 | ~~Hebreo: la nota automática de la moneda se ve desordenada~~ ✅ 19/11: la moneda y la cifra, en un aislamiento de izquierda a derecha | Claude |
+| X13 | ~~Si no se pueden leer los gastos, no hay «Probar de nuevo»~~ ✅ 19/11: «Probar de nuevo» en el cartel | Claude |
+| X14 | ~~«Borrar» muy a mano en la ventana del admin al revisar gastos de otros~~ ✅ 19/11: revisando lo de otra persona, sin «Borrar» en la ventana (el admin fijo lo borra desde la lista) | Claude |
+| X15 | ~~Confirmar la plata de alguien no da aviso~~ ✅ 19/11: «Confirmado: ya cuenta en su cuenta corriente.» | Claude |
+| X16 | ~~«1 ya estaba cargado» no dice cuál~~ ✅ 19/11: «“foto.jpg” ya estaba cargado.» (o hasta tres nombres) | Claude |
+| X17 | ~~El lector no tomó el comercio de un ticket de taxi (visto una vez)~~ Revisado 19/11: con el texto limpio el lector toma «Taxi Del Centro»; fue la lectura de esa imagen, no la regla. Sin cambios | Claude, con más tickets |
+| X18 | ~~`GASTO_MONEDAS` sin uso~~ ✅ 19/11: borrada | Claude |
 
 ### Decisiones del usuario
 

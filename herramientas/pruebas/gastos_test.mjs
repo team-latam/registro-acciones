@@ -58,10 +58,16 @@ const leer = (p, sel, f) => p.$eval(sel, f).catch(() => null);
 // La lista agrupada (18/11): la tarjeta despliega la rendición y «Abrir la rendición →» la abre. En «Para aprobar» y
 // «Sin vincular», la tarjeta la abre directo.
 const abrirRen = async (p, id) => {
-  await p.evaluate(id => { if(!document.querySelector(`[data-action="gastos-abrir-rendicion"][data-id="${id}"]`)){
-    const g = document.querySelector(`[data-action="gastos-grupo"][data-id="${id}"]`); if(g) g.click(); } }, id);
-  await p.click(`[data-action="gastos-abrir-rendicion"][data-id="${id}"]`, { timeout: 3000 }).catch(() => {});
+  const hay = sel => p.evaluate(s => !!document.querySelector(s), sel);
+  const directo = `[data-action="gastos-abrir-rendicion"][data-id="${id}"]`, grupo = `[data-action="gastos-grupo"][data-id="${id}"]`;
+  // Desde el 19/11 (D16): en «Por rendir» las que están en manos de la persona; las demás, en «Rendiciones».
+  if(!(await hay(directo)) && !(await hay(grupo)) && await hay('[data-action="gastos-seccion"][data-key="rendiciones"]')){
+    await p.evaluate(() => document.querySelector('[data-action="gastos-seccion"][data-key="rendiciones"]').click()); await p.waitForTimeout(150); }
+  if(!(await hay(directo)) && await hay(grupo)){ await p.evaluate(s => document.querySelector(s).click(), grupo); await p.waitForTimeout(100); }
+  await p.click(directo, { timeout: 3000 }).catch(() => {});
 };
+// «Rendiciones» (la lista agrupada, D16).
+const irRendiciones = async p => { await p.evaluate(() => document.querySelector('[data-action="gastos-seccion"][data-key="rendiciones"]').click()); await p.waitForTimeout(150); };
 const elegirSiHay = async (p, sel, files) => {
   if(!(await p.$(sel))) return false;
   const [ch] = await Promise.all([p.waitForEvent("filechooser", { timeout: 3000 }), p.click(sel, { timeout: 3000 })]).catch(() => []);
@@ -72,7 +78,7 @@ const elegirSiHay = async (p, sel, files) => {
 async function subirDesdeCabecera(p, vinculo, files){
   if(!(await p.$('[data-action="gastos-destino-abrir"]'))){
     if(await p.$('[data-action="gastos-volver"]')) await p.click('[data-action="gastos-volver"]');
-    else await p.evaluate(() => document.querySelector('[data-action="gastos-seccion"][data-key="rendiciones"]').click());
+    else await p.evaluate(() => document.querySelector('[data-action="gastos-seccion"][data-key="rendir"]').click());
     await p.waitForTimeout(150);
   }
   await p.click('[data-action="gastos-destino-abrir"]');
@@ -108,9 +114,13 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   await abrirMenu(p);
   eq("abierto al equipo, una integrante lo ve", await p.$$eval('.user-menu [data-view="gastos"]', l => l.length), 1);
   await p.click('.user-menu [data-view="gastos"]'); await p.waitForSelector(".gastos-view");
-  eq("y no tiene «Para aprobar» (es de los admins)", await p.$$eval('[data-action="gastos-seccion"]', l => l.map(e => e.dataset.key)), ["rendiciones", "cuenta"]);
-  eq("ve solo sus rendiciones", await textos(p, '.gx-tarjeta b'), ["Visita a la comunidad de Rosario"]);
-  eq("…sin el filtro de persona (es de los admins)", await p.evaluate(() => [!!document.getElementById("gxHDesde"), !!document.getElementById("gxHPersona")]), [true, false]);
+  eq("«Por rendir», «Rendiciones» y su cuenta; no «Para aprobar» (es de los admins)", await p.$$eval('.admin-menu [data-action="gastos-seccion"]', l => l.map(e => e.dataset.key)), ["rendir", "rendiciones", "cuenta"]);
+  // D16 (19/11): «Por rendir» es lo que tiene que hacer; lo ya mandado está en «Rendiciones».
+  eq("en «Por rendir», nada por hacer (la suya ya se mandó) y el camino a «Rendiciones»", await p.evaluate(() => [/No tenés nada por rendir/.test(document.querySelector(".gastos-view .admin-body").textContent),
+    !!document.querySelector('.gx-a-rendiciones [data-action="gastos-seccion"][data-key="rendiciones"]'), !!document.querySelector(".gx-grupos")]), [true, true, false]);
+  await irRendiciones(p);
+  eq("en «Rendiciones», solo las suyas", await textos(p, '.gx-tarjeta b'), ["Visita a la comunidad de Rosario"]);
+  eq("…con una sola, sin filtros ni resumen (X11: sobraban para quien empieza)", await p.evaluate(() => [!!document.getElementById("gxHDesde"), !!document.querySelector(".gx-hresumen")]), [false, false]);
   await p.click('[data-action="gastos-grupo"][data-id="ren_ana"]');
   eq("desplegada, sus gastos con casillas; ya mandada, la barra baja en Excel pero no tiene «Borrar»", await p.evaluate(() => [document.querySelectorAll(".gx-g-cuerpo [data-gsel]").length,
     [...document.querySelectorAll(".gx-selpie button")].map(b => b.dataset.action)]), [2, ["gastos-sel-excel"]]);
@@ -121,7 +131,7 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   await p.click('.bn-item[data-action="toggle-more-menu"]'); await p.waitForTimeout(150);
   eq("en el celular está en «Más»", await p.$$eval('.bn-sheet-item[data-view="gastos"]', l => l.length), 1);
   await p.click('.bn-sheet-item[data-view="gastos"]'); await p.waitForSelector(".gastos-view");
-  eq("y abre la pantalla de gastos (para el admin, «Rendiciones»: las de todo el equipo)", await p.$eval(".gastos-view .admin-h2", e => e.textContent.trim()), "Rendiciones");
+  eq("y abre la pantalla de gastos en «Por rendir» (D16, 19/11)", await p.$eval(".gastos-view .admin-h2", e => e.textContent.trim()), "Por rendir");
   eq("en el celular, la página no se corre de costado", await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true);
   eq("sin errores de página en el celular", errores, []);
   await p.close();
@@ -131,8 +141,8 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
 {
   const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: vp, base: datos({ prendido: true }) });
   await irGastos(p);
-  await p.selectOption("#gxHPersona", "yo");
-  eq("las suyas (persona: «Yo»): sin vincular arriba y después la más nueva primero", await textos(p, ".gx-tarjeta b"), ["Sin vincular", await p.evaluate(() => "Rutina de " + new Date().toLocaleDateString("es-AR", { month: "long", year: "numeric" })), "Visita a Montevideo"]);
+  eq("«Por rendir»: sin vincular arriba y lo que tiene para completar y mandar (la rutina aprobada, no)", await textos(p, ".gx-tarjeta b"), ["Sin vincular", "Visita a Montevideo"]);
+  eq("…y lo ya mandado, a un toque: «Rendiciones»", await p.evaluate(() => !!document.querySelector('.gx-a-rendiciones [data-key="rendiciones"]')), true);
   eq("cada una dice qué falta y cuánto suma", await textos(p, '[data-id="ren_mvd"] .gx-aviso, [data-id="ren_mvd"] .gx-t-total'), ["1 por confirmar", "USD 345.50"]);
 
   // Subir dos juntos: una foto con la fecha y el concepto en el nombre, y un PDF.
@@ -287,8 +297,17 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   await p.click('[data-action="gasto-observar"]');
   eq("observar: con la función de la base y el comentario", await hasta(p, () => document.getElementById("gastoOverlay").hidden), true);
   eq("…lo que se mandó", (await rpcs(p, "gastos_observar")), [{ p_gasto: "gx5", p_texto: "Falta el ticket del micro" }]);
-  eq("…y pide el aviso por correo para la persona, por ese gasto (una vez)", await hasta(p, () => true).then(() => avisos), [{ tipo: "gasto", id: "gx5" }]);
-  eq("la rendición vuelve a la persona y ya no se aprueba", await hasta(p, () => !document.querySelector('[data-action="gastos-aprobar"]') && window.__sb.tablas.gastos_rendiciones.find(r => r.id === "ren_ana").estado === "observada"), true);
+  // Desde el 19/11 (D18) la observación queda anotada y la rendición sigue en revisión: se devuelve todo junto.
+  eq("…la rendición sigue en revisión, sin «Aprobar», con «Devolver con la observación»", await hasta(p, () => !document.querySelector('[data-action="gastos-aprobar"]')
+    && window.__sb.tablas.gastos_rendiciones.find(r => r.id === "ren_ana").estado === "enviada"
+    && /1 gasto observado/.test((document.querySelector(".gx-paso b") || {}).textContent || "") && /Devolver con la observación/.test((document.querySelector('[data-action="gastos-devolver"]') || {}).textContent || "")), true);
+  eq("…y el aviso por correo todavía no sale", avisos, []);
+  await p.click('[data-action="gastos-devolver"]');
+  eq("devolver pregunta, con a quién", await p.$eval("#confirmMessage", e => e.textContent).catch(() => ""), "¿Devolverle «Visita a la comunidad de Rosario» a Ana Pérez con la observación?");
+  await p.click("#confirmOk");
+  eq("devuelta: la rendición vuelve a la persona, con la función de la base", await hasta(p, () => window.__sb.tablas.gastos_rendiciones.find(r => r.id === "ren_ana").estado === "observada"), true);
+  eq("…con la función de la base", await rpcs(p, "gastos_rendicion_devolver"), [{ p_id: "ren_ana" }]);
+  eq("…y ahí sale el aviso por correo de cada gasto observado (una vez)", await hasta(p, () => true).then(() => avisos), [{ tipo: "gasto", id: "gx5" }]);
   await p.click('[data-action="gastos-volver"]'); await p.waitForTimeout(150);
   await abrirRen(p, "ren_mvd"); await p.waitForTimeout(150);
   await p.click('[data-action="gastos-aprobar"]'); await aceptar(p);
@@ -400,14 +419,16 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
     { name: nombre(hoyM, "Taxi de este mes"), mimeType: "image/png", buffer: Buffer.concat([PNG, Buffer.from([31])]) },
     { name: nombre(dos, "Taxi de hace dos meses"), mimeType: "image/png", buffer: Buffer.concat([PNG, Buffer.from([32])]) },
     { name: nombre(tres, "Taxi de hace tres meses"), mimeType: "image/png", buffer: Buffer.concat([PNG, Buffer.from([33])]) },
-    { name: "foto-sin-fecha.png", mimeType: "image/png", buffer: Buffer.concat([PNG, Buffer.from([34])]) }]);
+    { name: "foto-sin-fecha.png", mimeType: "image/png", buffer: Buffer.concat([PNG, Buffer.from([34])]) },
+    { name: "otra-vez.png", mimeType: "image/png", buffer: Buffer.concat([PNG, Buffer.from([34])]) }]);
   eq("subidos los cuatro", await hasta(p, n => window.__sb.tablas.gastos.length === n + 4 && !document.querySelector(".gx-subida"), antes), true);
+  eq("X16: el repetido, el aviso dice cuál", await p.$eval("#calendarToastText", e => /«otra-vez\.png» ya estaba cargado\./.test(e.textContent)), true);
   const g = await tabla(p, "gastos"), rs = await tabla(p, "gastos_rendiciones"), en = c => (g.find(x => (x.concepto || x.archivo_nombre) === c) || {}).rendicion_id;
   const rDos = rs.find(r => r.rutina_mes === dos + "-01");
   eq("el de este mes y el sin fecha, en la rutina elegida; el de hace dos meses, en la suya (se abrió); el de un mes ya aprobado, en la elegida",
     [en("Taxi de este mes"), en("foto-sin-fecha.png"), en("Taxi de hace dos meses"), en("Taxi de hace tres meses")], ["ren_rutina", "ren_rutina", rDos && rDos.id, "ren_rutina"]);
   eq("…se abrió una sola rendición nueva, con la función de la base", [rs.length - rends, (await rpcs(p, "gastos_rendicion_abrir")).map(x => x.p_mes)], [1, [dos + "-01"]]);
-  eq("…y el aviso dice adónde fue", await p.$eval("#calendarToastText", e => /Se subieron 4 comprobantes\. 1 fue a la rutina de /.test(e.textContent)), true);
+  eq("…y el aviso dice adónde fue", await p.$eval("#calendarToastText", e => /Se subieron 4 comprobantes\. .*1 fue a la rutina de /.test(e.textContent)), true);
   eq("sin errores de página", errores, []);
   await p.close();
 }
@@ -427,7 +448,7 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   await p.click('[data-action="gastos-volver"]'); await p.waitForTimeout(150);
   eq("una rendición propia, abierta y vacía tiene su ✕; una con gastos, no", await p.evaluate(() => [!!document.querySelector('[data-action="gastos-rendicion-quitar"][data-id="ren_vacia"]'),
     !!document.querySelector('[data-action="gastos-rendicion-quitar"][data-id="ren_mvd"]')]), [true, false]);
-  const titulo = await p.$eval('[data-action="gastos-grupo"][data-id="ren_vacia"] .gx-t-txt b', e => e.textContent);
+  const titulo = await p.$eval('[data-action="gastos-abrir-rendicion"][data-id="ren_vacia"] .gx-t-txt b', e => e.textContent);
   await p.click('[data-action="gastos-rendicion-quitar"][data-id="ren_vacia"]');
   await p.waitForSelector("#confirmOverlay:not([hidden])");
   eq("pregunta antes, con el nombre", await p.$eval("#confirmMessage", (e, t0) => e.textContent.includes(`¿Borrar la rendición vacía «${t0}»?`), titulo), true);
@@ -490,21 +511,24 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   // SheetJS de mentira: se queda con lo que se pidió escribir.
   const XLSX_FALSO = `window.XLSX = { utils: { aoa_to_sheet: f => ({ f }), book_new: () => ({ hojas: [] }), book_append_sheet: (l, h, n) => l.hojas.push([n, h.f]) },
     writeFile: (l, nombre) => { window.__excel = { nombre, hojas: l.hojas }; } };`;
-  const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: vp, base: datos({ prendido: true }), iniciar: XLSX_FALSO });
-  await irGastos(p);
+  // Seis rendiciones: con más de cinco aparecen los filtros (X11). Dos rutinas viejas de Diego, aprobadas y sin gastos.
+  const base = datos({ prendido: true }), r0 = base.gastos_rendiciones.find(r => r.id === "ren_rutina");
+  base.gastos_rendiciones.push({ ...r0, id: "ren_x1", autor: PERS[2].email, rutina_mes: "2026-01-01" }, { ...r0, id: "ren_x2", autor: PERS[2].email, rutina_mes: "2026-02-01" });
+  const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: vp, base, iniciar: XLSX_FALSO });
+  await irGastos(p); await irRendiciones(p);
   const ids = () => p.$$eval(".gx-grupos .gx-tarjeta", l => l.map(e => e.dataset.id));
-  eq("el admin ve las rendiciones de todo el equipo, la más nueva primero", await ids(), ["ren_ana", "ren_diego", "ren_rutina", "ren_mvd"]);
+  eq("el admin ve las rendiciones de todo el equipo, la más nueva primero", await ids(), ["ren_ana", "ren_diego", "ren_rutina", "ren_mvd", "ren_x2", "ren_x1"]);
   eq("…las de otros, con de quién son; las suyas, sin el nombre", await p.$$eval(".gx-grupos .gx-tarjeta", (l, ns) => l.map(e => ns.find(n => e.querySelector(".gx-t-txt small").textContent.includes(n)) || ""),
-    PERS.slice(0, 3).map(x => x.name)), [PERS[1].name, PERS[2].name, "", ""]);
+    PERS.slice(0, 3).map(x => x.name)), [PERS[1].name, PERS[2].name, "", "", PERS[2].name, PERS[2].name]);
   eq("los filtros: desde, hasta, persona y estado", await p.$$eval(".gx-filtros .gx-et", l => l.map(e => e.textContent)), ["Desde", "Hasta", "Persona", "Estado"]);
   const nGastos = (await tabla(p, "gastos")).filter(g => ["ren_ana", "ren_diego", "ren_rutina", "ren_mvd"].includes(g.rendicion_id)).length;
-  eq("el resumen: cuántas rendiciones y gastos, y el total por moneda", await p.$eval(".gx-hresumen b", e => e.textContent), `4 rendiciones · ${nGastos} gastos`);
+  eq("el resumen: cuántas rendiciones y gastos, y el total por moneda", await p.$eval(".gx-hresumen b", e => e.textContent), `6 rendiciones · ${nGastos} gastos`);
   eq("…con el total en cada moneda", await p.$eval(".gx-hresumen span", e => /USD [\d,]+\.\d\d/.test(e.textContent)), true);
   await p.selectOption("#gxHPersona", PERS[1].email);
   eq("persona: Ana → solo la suya, y el foco sigue en el filtro", [await ids(), await p.evaluate(() => document.activeElement.id)], [["ren_ana"], "gxHPersona"]);
   await p.selectOption("#gxHPersona", "");
   await p.selectOption("#gxHEstado", "aprobada");
-  eq("estado: aprobadas", await ids(), ["ren_rutina"]);
+  eq("estado: aprobadas", await ids(), ["ren_rutina", "ren_x2", "ren_x1"]);
   await p.selectOption("#gxHEstado", "completar");
   eq("estado: para completar (abiertas u observadas)", await ids(), ["ren_diego", "ren_mvd"]);
   await p.selectOption("#gxHEstado", "");
@@ -516,7 +540,7 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   eq("desde después de hasta: ninguna, y lo dice con «Quitar los filtros»", await p.evaluate(() => [document.querySelectorAll(".gx-grupos").length, /Ninguna rendición con estos filtros/.test(document.querySelector(".gastos-view").textContent),
     !!document.querySelector('[data-action="gastos-hist-limpiar"]'), !!document.querySelector(".gx-selpie")]), [0, true, true, false]);
   await p.click('[data-action="gastos-hist-limpiar"]');
-  eq("«Quitar los filtros» las vuelve a mostrar todas", (await ids()).length, 4);
+  eq("«Quitar los filtros» las vuelve a mostrar todas", (await ids()).length, 6);
   // Desplegar: sus gastos, con casillas, y «Abrir la rendición».
   await p.click('[data-action="gastos-grupo"][data-id="ren_mvd"]');
   eq("al tocar una rendición se despliegan sus gastos con casillas, y «Abrir la rendición →»; el foco queda en la tarjeta", await p.evaluate(() => [
@@ -555,6 +579,7 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   await p.route(/cdn\.sheetjs\.com/, r => r.abort());
   await p.click('.bn-item[data-action="toggle-more-menu"]'); await p.waitForTimeout(150);
   await p.click('.bn-sheet-item[data-view="gastos"]'); await p.waitForSelector(".gastos-view");
+  await irRendiciones(p);
   await p.click('[data-action="gastos-grupo"][data-id="ren_mvd"]');
   await p.check("#gxS_gx1");
   eq("en el celular: la barra entra (sin «Descargar», solo «Excel») y la página no se corre de costado", await p.evaluate(() => {
@@ -564,6 +589,119 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   const texto = (await import("node:fs")).readFileSync(await descarga.path(), "utf8");
   eq("sin SheetJS baja un .csv, con punto y coma y coma decimal", [descarga.suggestedFilename().endsWith(".csv"), /^\uFEFF"Persona";"Rendición"/.test(texto), /"Taxi al aeropuerto"/.test(texto)], [true, true, true]);
   eq("sin errores de página", errores.filter(e => !/sheetjs|SheetJS|ERR_FAILED/.test(e)), []);
+  await p.close();
+}
+
+/* ---------------- Los arreglos de la prueba como tester (X5, X6, X8, X10, X13–X16), 19/11 ---------------- */
+{
+  // X13: los gastos no se pueden leer: el cartel trae «Probar de nuevo», y vuelve a leer.
+  const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: vp, base: datos({ prendido: true }), iniciar: `window.__sb && (window.__sb.falloLecturaDe = "gastos");` });
+  await p.evaluate(() => { window.__sb.falloLecturaDe = "gastos"; });
+  await irGastos(p); await p.waitForTimeout(300);
+  eq("X13: si no se pueden leer los gastos, el cartel trae «Probar de nuevo»", await p.evaluate(() => !!document.querySelector('.setup-banner [data-action="gastos-reintentar"]')), true);
+  await p.evaluate(() => { window.__sb.falloLecturaDe = null; });
+  await p.click('[data-action="gastos-reintentar"]');
+  eq("…y al tocarlo, vuelve a leer y aparece «Por rendir»", await hasta(p, () => !document.querySelector(".setup-banner") && !!document.querySelector('[data-action="gastos-destino-abrir"]')), true);
+  // X5: la cuenta corriente de Ana, con la plata que falta confirmar sin signo y con su nombre.
+  await p.click('[data-action="gastos-seccion"][data-key="cuenta"]'); await p.waitForTimeout(150);
+  await p.selectOption("#gxCuentaDe", ANA.email); await p.waitForTimeout(150);
+  eq("X5: lo recibido que falta confirmar se ve como «Recibido, falta confirmar 200.00», sin el menos", await p.$$eval(".gx-cm-filas dt", l => l.map(d => [d.textContent, d.nextElementSibling.textContent.trim()]).filter(([k]) => /falta confirmar/.test(k))),
+    [["Recibido, falta confirmar", "200.00"]]);
+  await p.click('[data-action="gastos-mov-confirmar"][data-id="mv2"]');
+  eq("X15: confirmar la plata de alguien avisa", await hasta(p, () => /Confirmado/.test(document.getElementById("calendarToastText").textContent)), true);
+  await p.selectOption("#gxCuentaDe", PERS[2].email).catch(() => {}); await p.waitForTimeout(150);
+  // X14: revisando el gasto de otra persona, la ventana no tiene «Borrar».
+  await p.click('[data-action="gastos-seccion"][data-key="aprobar"]'); await p.waitForTimeout(150);
+  await abrirRen(p, "ren_ana"); await p.waitForTimeout(150);
+  await p.click('[data-action="gasto-abrir"][data-id="gx5"]'); await p.waitForSelector("#gastoOverlay:not([hidden])");
+  eq("X14: revisando el gasto de otra persona, sin «Borrar» en la ventana", await p.evaluate(() => !!document.querySelector('#gastoBody [data-action="gasto-borrar"]')), false);
+  await p.keyboard.press("Escape");
+  eq("sin errores de página", errores.filter(e => !/Failed to fetch|leyendo los gastos/.test(e)), []);
+  await p.close();
+}
+{
+  // X6: reabierta y sin nada nuevo: sin «Nuevos o corregidos (0)» vacío ni la barra sola.
+  const base = datos({ prendido: true });
+  Object.assign(base.gastos_rendiciones.find(r => r.id === "ren_rutina"), { estado: "abierta", aprobada_el: null, aprobada_por: null });
+  const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: vp, base });
+  await irGastos(p); await abrirRen(p, "ren_rutina"); await p.waitForTimeout(150);
+  eq("X6: reabierta sin nada nuevo: dice «Todavía no hay nada nuevo.», sin «(0)» ni la barra sola", await p.evaluate(() => [(document.querySelector(".gx-nada-nuevo") || {}).textContent,
+    /\(0\)/.test(document.querySelector(".gastos-view").textContent), !!document.querySelector(".gx-selpie"), (document.querySelector("details.gx-ya > summary") || {}).textContent]),
+    ["Todavía no hay nada nuevo.", false, false, "Ya aprobados (1)"]);
+  eq("sin errores de página", errores, []);
+  await p.close();
+}
+{
+  // X10: en el celular, al abrir una fila de «Revisar en lista», la foto es chica.
+  const { p } = await entrar(b, ADMIN, PERS[0].name, { viewport: celu, base: datos({ prendido: true }) });
+  await p.click('.bn-item[data-action="toggle-more-menu"]'); await p.waitForTimeout(150);
+  await p.click('.bn-sheet-item[data-view="gastos"]'); await p.waitForSelector(".gastos-view");
+  // X8: en «Rendiciones», la barra no queda pegada al resumen por mes.
+  await irRendiciones(p);
+  eq("X8: entre la barra y el resumen por mes hay aire (antes, 2 px)", await p.evaluate(() => { const a = document.querySelector(".gx-selpie"), r = document.querySelector("details.gx-resumen");
+    if(!a || !r) return "falta " + (!a ? "la barra" : "el resumen"); a.style.position = "static"; const d = r.getBoundingClientRect().top - a.getBoundingClientRect().bottom; a.style.position = ""; return d >= 14; }), true);
+  await abrirRen(p, "ren_mvd"); await p.waitForTimeout(150);
+  await p.evaluate(() => document.querySelector('[data-action="gastos-lista-abrir"]').click()); await p.waitForTimeout(200);
+  await p.evaluate(() => document.getElementById("gxLR_gx1").click()); await p.waitForTimeout(200);
+  eq("X10: en el celular, la foto de la fila abierta mide como mucho 160 px de alto", await p.evaluate(() => { const f = document.querySelector(".gx-lfila.gx-abierta .gx-lfoto"); return !!f && f.getBoundingClientRect().height <= 160; }), true);
+  eq("X9: la papelera de la fila, adentro de la fila abierta (cerrada, la fila no la muestra)", await p.evaluate(() => [!!document.querySelector(".gx-lfila.gx-abierta .gx-lmas [data-action=\"gastos-lista-quitar\"]"),
+    [...document.querySelectorAll(".gx-lfila:not(.gx-abierta) [data-action=\"gastos-lista-quitar\"]")].length]), [true, 0]);
+  await p.close();
+}
+
+/* ---------------- Confirmar con un dato dudoso del lector pregunta (D19) y sigue con el próximo (X7), 19/11 ---------------- */
+{
+  const base = datos({ prendido: true });
+  const g1 = base.gastos.find(g => g.id === "gx1");
+  // Dos por confirmar en Montevideo: el café que el lector leyó con la moneda dudosa y un taxi completo.
+  Object.assign(g1, { concepto: "Café", tipo: "comida", monto: 96, moneda: "USD", lectura: { fuente: "lector", campos: ["monto", "moneda"], dudas: ["moneda"] } });
+  base.gastos.push({ ...g1, id: "gx10", concepto: "Taxi al hotel", tipo: "transporte", monto: 300, moneda: "UYU", rendido_monto: 7.5, fecha: g1.fecha, lectura: null, archivo_hash: "0".repeat(64) });
+  const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: vp, base });
+  await irGastos(p); await abrirRen(p, "ren_mvd"); await p.waitForTimeout(150);
+  await p.click('[data-action="gasto-abrir"][data-id="gx1"]'); await p.waitForSelector("#gastoOverlay:not([hidden])");
+  await p.click('[data-action="gasto-guardar"][data-confirmar="1"]');
+  eq("confirmar con la moneda dudosa pregunta antes, con «Sí, confirmar» y «Cambiar»", await p.evaluate(() => [!document.getElementById("confirmOverlay").hidden && document.getElementById("confirmMessage").textContent,
+    document.getElementById("confirmOk").textContent, document.getElementById("confirmCancel").textContent]), ["El lector no está seguro de la moneda: ¿es USD?", "Sí, confirmar", "Cambiar"]);
+  await p.click("#confirmCancel");
+  eq("«Cambiar» vuelve a la moneda, sin confirmar", await hasta(p, () => document.getElementById("confirmOverlay").hidden && document.activeElement.id === "gxMoneda"
+    && window.__sb.tablas.gastos.find(g => g.id === "gx1").estado === "borrador"), true);
+  await p.fill("#gxMoneda", "UYU"); await p.press("#gxMoneda", "Tab");
+  await p.click('[data-action="gasto-guardar"][data-confirmar="1"]');
+  eq("tocada la moneda, confirma sin preguntar", await hasta(p, () => document.getElementById("confirmOverlay").hidden && window.__sb.tablas.gastos.find(g => g.id === "gx1").estado === "confirmado"), true);
+  eq("…y la ventana sigue con el próximo por confirmar (X7)", await hasta(p, () => !document.getElementById("gastoOverlay").hidden && document.getElementById("gxConcepto") && document.getElementById("gxConcepto").value === "Taxi al hotel"), true);
+  await p.click('[data-action="gasto-guardar"][data-confirmar="1"]');
+  eq("confirmado el último, se cierra", await hasta(p, () => document.getElementById("gastoOverlay").hidden && window.__sb.tablas.gastos.find(g => g.id === "gx10").estado === "confirmado"), true);
+  eq("sin errores de página", errores, []);
+  await p.close();
+}
+
+/* ---------------- Lo propio lo aprueba otro admin (D17) y lo observado se ve al devolver (D18), 19/11 ---------------- */
+{
+  const base = datos({ prendido: true });
+  base.members.push({ email: "otra.admin@x.com", name: "Otra Admin", nickname: "otra", role: "admin", approved_at: "2025-01-10T12:00:00Z" });
+  Object.assign(base.gastos_rendiciones.find(r => r.id === "ren_mvd"), { estado: "enviada", enviada_el: new Date().toISOString() });
+  base.gastos.filter(g => g.rendicion_id === "ren_mvd").forEach(g => Object.assign(g, { estado: "enviado", monto: g.monto == null ? 10 : g.monto, tipo: g.tipo || "transporte" }));
+  const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: vp, base });
+  await irGastos(p);
+  await p.click('[data-action="gastos-seccion"][data-key="aprobar"]'); await p.waitForTimeout(150);
+  eq("con otro admin, la propia no cuenta en el número de «Para aprobar» (solo la de Ana y la plata)", await p.$eval('[data-action="gastos-seccion"][data-key="aprobar"] .pending-count', e => e.textContent).catch(() => ""), "2");
+  await abrirRen(p, "ren_mvd"); await p.waitForTimeout(150);
+  eq("…y abierta, dice que la aprueba otro admin, sin «Aprobar»", await p.evaluate(() => [!!document.querySelector('[data-action="gastos-aprobar"]'), (document.querySelector(".gx-paso b") || {}).textContent]), [false, "La aprueba otro admin"]);
+  eq("sin errores de página", errores, []);
+  await p.close();
+}
+{
+  // Ana: en su rendición en revisión, un gasto observado que todavía no le devolvieron.
+  const base = datos({ prendido: true, abierto: true });
+  base.gastos.find(g => g.id === "gx5").estado = "observado";
+  base.gastos_comentarios.push({ id: "gc9", gasto_id: "gx5", autor: ADMIN, texto: "Falta el ticket del micro", creado_el: new Date().toISOString() });
+  const { p, errores } = await entrar(b, ANA.email, ANA.name, { viewport: vp, base });
+  await irGastos(p);
+  await abrirRen(p, "ren_ana"); await p.waitForTimeout(150);
+  eq("lo observado que todavía no le devolvieron, la persona lo ve «En revisión»", await p.$eval('[data-action="gasto-abrir"][data-id="gx5"] .gx-chip', e => e.textContent).catch(() => ""), "En revisión");
+  await p.click('[data-action="gasto-abrir"][data-id="gx5"]'); await p.waitForSelector("#gastoOverlay:not([hidden])");
+  eq("…y en la ventana, sin la observación hasta que se la devuelvan", await p.evaluate(() => [!!document.getElementById("gxObsTit"), /Falta el ticket/.test(document.getElementById("gastoBody").textContent)]), [false, false]);
+  eq("sin errores de página", errores, []);
   await p.close();
 }
 
@@ -594,9 +732,9 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   eq("…o pasa sin guardar", await hasta(p, () => document.getElementById("gxConcepto").value === "Hotel Rambla, dos noches"), true);
   eq("y no guardó lo escrito", (await tabla(p, "gastos")).find(g => g.id === "gx3").concepto, "Cena con los directores");
   eq("en otra moneda y con el monto en dólares, «Observaciones» trae la nota de la moneda local (como en el Sheet del usuario)",
-    await p.$eval("#gxObsAuto", e => [e.hidden, e.textContent.replace(/\s+/g, " ").trim()]), [false, "Gasto en UY $ 12,000.- (se escribe sola)"]);
+    await p.$eval("#gxObsAuto", e => [e.hidden, e.textContent.replace(/[\u2066-\u2069]/g, "").replace(/\s+/g, " ").trim()]), [false, "Gasto en UY $ 12,000.- (se escribe sola)"]);
   await p.fill("#gxMonto", "11.500,50");
-  eq("…y se pone al día mientras se escribe el monto", await p.$eval("#gxObsAuto .gx-obs-auto-txt", e => e.textContent), "Gasto en UY $ 11,500.50");
+  eq("…y se pone al día mientras se escribe el monto", await p.$eval("#gxObsAuto .gx-obs-auto-txt", e => e.textContent.replace(/[\u2066-\u2069]/g, "")), "Gasto en UY $ 11,500.50");
   await p.keyboard.press("Escape"); await p.click("#confirmOk");
   eq("al cerrar, el foco vuelve a la fila del último que se vio", await hasta(p, () => document.getElementById("gastoOverlay").hidden && document.activeElement.dataset.id === "gx2"), true);
   eq("sin errores de página", errores, []);
@@ -745,7 +883,7 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   eq("…y se puede escribir a la manera de acá («2.999,50»)", await p.$eval(`#gxL_${f}_monto`, e => e.value), "2,999.50");
   await p.fill(`#gxL_${f}_monto`, "3000"); await p.press(`#gxL_${f}_monto`, "Tab");
   await p.fill(`#gxL_${f}_rendidoMonto`, "3");
-  eq("en la lista, la fila en otra moneda trae la nota de la moneda local en sus observaciones", await p.$eval(`#gxL_${f}_obsAuto .gx-obs-auto-txt`, e => e.textContent), "Gasto en AR $ 3,000.-");
+  eq("en la lista, la fila en otra moneda trae la nota de la moneda local en sus observaciones", await p.$eval(`#gxL_${f}_obsAuto .gx-obs-auto-txt`, e => e.textContent.replace(/[\u2066-\u2069]/g, "")), "Gasto en AR $ 3,000.-");
   // La foto sin datos: marcada a mano, para ver que no se confirma incompleta.
   await p.check(`#gxL_${c}_marca`);
   // «La misma moneda a todos»: se prueba y se vuelve (la factura queda en ARS, el resto en USD).
@@ -829,7 +967,7 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
     ["SPAN", "Remís a la reunión de equipo", 0, false]);
   eq("…dice que está aprobado", await leer(p, "#gastoBody .gx-res-estado", e => /^Aprobado el .+: ya no se cambia\.$/.test(e.textContent)), true);
   eq("…el monto, y lo rendido en dólares", await leer(p, "#gastoBody .gx-res-plata", e => e.innerText.replace(/\s+/g, " ").trim()), "MXN 642.00 Rendido: USD 35.20");
-  eq("…y cada dato con su nombre", await p.$$eval("#gastoBody .gx-res-fila", l => l.map(f => [f.querySelector("dt").textContent, f.querySelector("dd").innerText.replace(/\s+/g, " ").trim()])
+  eq("…y cada dato con su nombre", await p.$$eval("#gastoBody .gx-res-fila", l => l.map(f => [f.querySelector("dt").textContent, f.querySelector("dd").innerText.replace(/[\u2066-\u2069]/g, "").replace(/\s+/g, " ").trim()])
     .filter(([k]) => !["Fecha", "Va en"].includes(k))),
     [["Tipo", "Transporte"], ["Forma de pago", "Tarjeta terminada en 5555"], ["¿Quién pagó?", "Yo Entra en tu cuenta corriente."], ["Factura", "✓ Tiene factura o comprobante válido"],
      ["Observaciones", "Gasto en MX $ 642.- Ida y vuelta"]]);
@@ -841,6 +979,7 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
 
   // Varios de una rendición aprobada.
   if(!(await p.evaluate(() => document.getElementById("gastoOverlay").hidden))) await p.keyboard.press("Escape");
+  await hasta(p, () => document.querySelectorAll("[data-gsel]").length === 2);   // con la máquina cargada, la lista se redibuja un poco después
   eq("en una aprobada, cada fila tiene su casilla, prendida", await p.evaluate(() => [...document.querySelectorAll("[data-gsel]")].map(x => !x.disabled)), [true, true]);
   await p.check("#gxSelTodos", { timeout: 3000 }).catch(() => {});
   await tocar(p, '[data-action="gastos-sel-borrar"]');
@@ -1007,11 +1146,13 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   await tocar(p, '#gastoBody [data-action="gasto-guardar"][data-confirmar="1"]');
   eq("…con quién, se guarda: «otro» y su correo", await hasta(p, e => { const g = window.__sb.tablas.gastos.find(x => x.id === "gx3"); return g.pago === "otro" && g.pago_quien === e && g.estado === "confirmado"; }, ANA.email), true);
   eq("la fila lo dice", await hasta(p, () => /pagó: Ana Pérez/.test((document.querySelector('[data-action="gasto-abrir"][data-id="gx3"]') || {}).textContent || "")), true);
+  eq("…y la ventana sigue con el que falta confirmar (X7)", await p.evaluate(() => !document.getElementById("gastoOverlay").hidden && document.getElementById("gxConcepto").value), "Taxi al aeropuerto");
+  await p.keyboard.press("Escape"); await hasta(p, () => document.getElementById("gastoOverlay").hidden);
   // La rutina aprobada: el gasto que pagó otra persona, como texto; y «Reabrir».
   await p.click('[data-action="gastos-volver"]'); await p.waitForTimeout(150);
   await abrirRen(p, "ren_rutina"); await p.waitForTimeout(150);
   await tocar(p, '[data-action="gasto-abrir"][data-id="gx4"]'); await p.waitForTimeout(300);
-  eq("en un gasto aprobado que pagó otra persona: quién y que no entra en ninguna cuenta", await p.$$eval("#gastoBody .gx-res-fila", l => l.map(f => [f.querySelector("dt").textContent, f.querySelector("dd").innerText.replace(/\s+/g, " ").trim()])
+  eq("en un gasto aprobado que pagó otra persona: quién y que no entra en ninguna cuenta", await p.$$eval("#gastoBody .gx-res-fila", l => l.map(f => [f.querySelector("dt").textContent, f.querySelector("dd").innerText.replace(/[\u2066-\u2069]/g, "").replace(/\s+/g, " ").trim()])
     .filter(([k]) => k === "¿Quién pagó?")), [["¿Quién pagó?", "Ana Pérez No entra en ninguna cuenta corriente."]]);
   await p.keyboard.press("Escape"); await p.waitForTimeout(150);
   eq("una rendición aprobada: un admin tiene «Reabrir»", await p.evaluate(() => { const b = document.querySelector('[data-action="gastos-reabrir"]'); return b && b.textContent.trim(); }), "↩️ Reabrir");
@@ -1028,8 +1169,8 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   await tocar(p, '.gx-paso [data-action="gastos-enviar"]'); await aceptar(p).catch(() => {});
   eq("…y mandada así, sin nada nuevo, queda en revisión con lo aprobado intacto", await hasta(p, () => { const r = window.__sb.tablas.gastos_rendiciones.find(x => x.id === "ren_rutina"), g = window.__sb.tablas.gastos.find(x => x.id === "gx4");
     return r.estado === "enviada" && g.estado === "aprobado"; }), true);
-  eq("…y lo aprobado va aparte, plegado, debajo de lo nuevo", await p.evaluate(() => [(document.querySelector(".gx-filas-tit") || {}).textContent,
-    (document.querySelector("details.gx-ya > summary") || {}).textContent, (document.querySelector("details.gx-ya") || {}).open]), ["Nuevos o corregidos (0)", "Ya aprobados (1)", false]);
+  eq("…y lo aprobado va aparte, plegado, debajo de lo nuevo (sin nada nuevo todavía, lo dice: X6)", await p.evaluate(() => [(document.querySelector(".gx-nada-nuevo") || {}).textContent,
+    (document.querySelector("details.gx-ya > summary") || {}).textContent, (document.querySelector("details.gx-ya") || {}).open]), ["Todavía no hay nada nuevo.", "Ya aprobados (1)", false]);
   eq("…una vez", await rpcs(p, "gastos_rendicion_reabrir"), [{ p_id: "ren_rutina" }]);
   eq("sin errores de página", errores, []);
   await p.close();

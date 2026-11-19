@@ -458,6 +458,23 @@ que llega tarde, al final del PDF con los números que siguen. Cómo quedó cada
   de un admin lo aprueba otro (si no hay otro, el admin fijo, con un aviso); D18 las observaciones se anotan y se
   devuelve una vez con «Devolver con N observaciones»; D19 «Confirmar» pregunta antes si quedó un dato dudoso del
   lector. D17 y D18 tocan la base (`27-gastos.sql`): se aplican al llegar a `main`, con su OK.
+  **Hecho el 19/11 y subido a `main`** (el usuario: «avanzá y cuando lo tengas, cargalo directamente»): las cuatro
+  decisiones y los arreglos X5 a X18 (`docs/AUDITORIA.md`, sección X). Lo que cambia para quien usa Gastos:
+  - El menú tiene **«Por rendir»** (subir, sin vincular, lo que está en sus manos para completar y mandar, y «Anotar
+    solo el total») y **«Rendiciones»** (todas, agrupadas; el admin, las del equipo). Los filtros aparecen con más de
+    cinco rendiciones; el resumen, con más de una.
+  - **Observar no devuelve la rendición**: quien revisa anota lo que encuentra y la devuelve una vez con «Devolver con N
+    observaciones» (base: `gastos_rendicion_devolver`). El aviso por correo sale al devolverla, y la persona ve lo
+    observado recién entonces (mientras tanto, «En revisión»). Uno observado de una rendición en revisión no se toca
+    hasta que vuelve.
+  - **Lo propio lo aprueba otro admin** (base: `gastos_rendicion_aprobar`); si no hay otro, el admin fijo, que ve un
+    aviso al aprobar. Con otro admin, su rendición dice «La aprueba otro admin» y no cuenta en el número de «Para aprobar».
+  - **«Confirmar» pregunta** si queda un dato que el lector dejó dudoso sin tocar, y después **sigue con el próximo**
+    por confirmar.
+  - Los arreglos chicos: la cuenta corriente sin el «-200.00»; la reabierta sin nada nuevo; el pie de la lista con aire;
+    «Borrar este gasto» adentro de la fila abierta de «Revisar en lista»; la foto chica en el celular; la nota de la
+    moneda en hebreo; «Probar de nuevo»; sin «Borrar» al revisar lo de otros; el aviso al confirmar plata; cuál ya
+    estaba cargado.
 
 **Para toda la tanda** (18/11: «Hay mucho texto, mucha explicación, podría ser más directo. No es difícil lo que
 tenemos que poner»): en todas las pantallas de Gastos, menos texto. Cada botón dice lo que hace; como mucho una

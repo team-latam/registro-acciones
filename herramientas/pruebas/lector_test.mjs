@@ -94,7 +94,8 @@ await p.route(/\/storage\/v1\/object\/sign\/adjuntos\/gastos\/gx8\//, r => r.ful
 eq("la página sale por http, con la CSP de siempre (sin permisos para correr WebAssembly en la página)",
   await p.evaluate(() => [location.protocol, /wasm-unsafe-eval/.test(document.querySelector('meta[http-equiv="Content-Security-Policy"]').content)]), ["http:", false]);
 await p.click('[data-action="toggle-user-menu"]'); await p.click('.user-menu [data-view="gastos"]'); await p.waitForSelector(".gastos-view");
-await p.click('[data-action="gastos-grupo"][data-id="ren_mvd"]'); await p.click('[data-action="gastos-abrir-rendicion"][data-id="ren_mvd"]'); await p.waitForTimeout(200);
+// Montevideo está abierta: en «Por rendir», directo (D16, 19/11).
+await p.click('[data-action="gastos-abrir-rendicion"][data-id="ren_mvd"]'); await p.waitForTimeout(200);
 const antes = (await tabla(p, "gastos")).length;
 await elegir(p, '[data-action="gastos-subir"][data-id="ren_mvd"]', [
   { name: "foto1.jpg", mimeType: "image/jpeg", buffer: TAXI }, { name: "foto2.jpg", mimeType: "image/jpeg", buffer: CENA },
@@ -148,6 +149,9 @@ eq("…sin pisar lo que la persona ya escribió", await p.$eval("#gxConcepto", e
 eq("…y sin tocar la base hasta que se guarda", ((await tabla(p, "gastos")).find(g => g.id === "gx8") || {}).monto, null);
 eq("…con la moneda del país de la actividad elegida, para revisar", await p.evaluate(() => [document.getElementById("gxMoneda").value, document.getElementById("gxMoneda").dataset.duda]), ["UYU", "1"]);
 await p.click('[data-action="gasto-guardar"][data-confirmar="1"]');
+// La moneda la dejó dudosa el lector: antes de confirmar, pregunta (D19, 19/11).
+eq("…y como la moneda quedó dudosa, pregunta antes de confirmar", await p.waitForSelector("#confirmOverlay:not([hidden])").then(() => p.$eval("#confirmMessage", e => e.textContent)).catch(() => ""), "El lector no está seguro de la moneda: ¿es UYU?");
+await p.click("#confirmOk");
 eq("al confirmar se guarda lo leído, con lo que completó el lector anotado (lo que escribió la persona, no)", await hasta(p, () => { const g = window.__sb.tablas.gastos.find(x => x.id === "gx8"); return g.estado === "confirmado" && g.monto === 1250 && g.moneda === "UYU" && g.tarjeta === "1234" && g.concepto === "Viaje al aeropuerto"
   && g.lectura && g.lectura.fuente === "lector" && g.lectura.campos.includes("monto") && !g.lectura.campos.includes("concepto"); }, null, 60), true);
 

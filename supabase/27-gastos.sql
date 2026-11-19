@@ -320,14 +320,20 @@ drop policy if exists gastos_crear on public.gastos;
 create policy gastos_crear on public.gastos for insert
   with check (autor = (select public.mi_correo()) and (select public.gastos_habilitado()));
 drop policy if exists gastos_editar on public.gastos;
+-- Uno observado de una rendición que sigue en revisión (D18, 19/11: se devuelve
+-- con todo junto) no se toca hasta que vuelva a la persona.
 create policy gastos_editar on public.gastos for update
   using (autor = (select public.mi_correo()) and (select public.gastos_habilitado())
-         and estado in ('borrador', 'confirmado', 'observado'))
+         and estado in ('borrador', 'confirmado', 'observado')
+         and (rendicion_id is null or exists (select 1 from public.gastos_rendiciones r
+                                               where r.id = rendicion_id and r.estado in ('abierta', 'observada'))))
   with check (autor = (select public.mi_correo()));
 drop policy if exists gastos_borrar on public.gastos;
 create policy gastos_borrar on public.gastos for delete
   using ((autor = (select public.mi_correo()) and (select public.gastos_habilitado())
-          and estado in ('borrador', 'confirmado', 'observado'))
+          and estado in ('borrador', 'confirmado', 'observado')
+          and (rendicion_id is null or exists (select 1 from public.gastos_rendiciones r
+                                                where r.id = rendicion_id and r.estado in ('abierta', 'observada'))))
          or (select public.es_admin_fijo()));
 
 -- Comentarios: los de los gastos que uno ve. Se escriben con gastos_observar
@@ -648,9 +654,11 @@ end $$;
 -- observó llama a la función `avisar`, que le pregunta a la base con SU
 -- sesión; la base decide si corresponde y a quién, y devuelve solo un turno.
 -- Reglas:
---   - lo pide un admin, sobre un gasto observado que no es suyo, con un
---     comentario suyo en ese gasto de los últimos 15 minutos (el que deja
---     gastos_observar);
+--   - lo pide un admin, sobre un gasto observado que no es suyo, de una
+--     rendición que ya volvió a la persona (desde el 19/11, D18: las
+--     observaciones salen al devolverla, no mientras sigue en revisión), con
+--     un comentario suyo en ese gasto de esta vuelta (posterior al último
+--     envío) y de la última semana (el que deja gastos_observar);
 --   - la persona tiene que poder ver sus gastos (admin, o integrante con el
 --     módulo abierto), poder recibir correos (Administración → Correos),
 --     tenerlos prendidos y no haber apagado «gastos» (emailGastos);
@@ -663,11 +671,12 @@ create or replace function public.preparar_aviso_de_gasto(p_gasto uuid) returns 
 declare yo text := public.mi_correo(); g record; c record; r record; pr jsonb; ya integer;
 begin
   if yo is null or not (public.es_admin_fijo() or public.es_admin_rol()) then return null; end if;
-  select x.id, x.autor, x.concepto, x.estado, x.moneda, x.monto, x.fecha, x.rendicion_id into g
-    from public.gastos x where x.id = p_gasto;
-  if not found or g.estado <> 'observado' or g.autor = yo then return null; end if;
+  select x.id, x.autor, x.concepto, x.estado, x.moneda, x.monto, x.fecha, x.rendicion_id, y.estado as r_estado, y.enviada_el into g
+    from public.gastos x join public.gastos_rendiciones y on y.id = x.rendicion_id where x.id = p_gasto;
+  if not found or g.estado <> 'observado' or g.autor = yo or g.r_estado = 'enviada' then return null; end if;
   select k.id, k.texto into c from public.gastos_comentarios k
-   where k.gasto_id = g.id and k.autor = yo and k.creado_el > now() - interval '15 minutes'
+   where k.gasto_id = g.id and k.autor = yo and k.creado_el > now() - interval '7 days'
+     and k.creado_el > coalesce(g.enviada_el, '-infinity'::timestamptz)
    order by k.creado_el desc limit 1;
   if not found then return null; end if;
   select count(*) into ya from public.avisos_enviados a where a.autor = yo and a.enviado_el > now() - interval '1 hour';
@@ -693,10 +702,13 @@ begin
     'actividad', coalesce(nullif(r.post_titulo, ''), nullif(r.titulo, '')), 'mes', r.rutina_mes, 'gasto', g.id, 'en', 'gasto'));
 end $$;
 
--- Un admin observa un gasto de una rendición mandada: queda «observado»
--- (la persona lo puede corregir), la rendición vuelve a la persona y el
--- comentario queda guardado. Uno ya aprobado se observa solo si su rendición
--- se reabrió (18/11): así se corrige uno aprobado sin volver a revisar todo.
+-- Un admin observa un gasto de una rendición mandada: queda «observado» y el
+-- comentario queda guardado. La rendición sigue en revisión hasta que el
+-- admin la devuelve con todo lo que encontró (gastos_rendicion_devolver; lo
+-- decidió el usuario el 19/11, D18: antes volvía a la persona con la primera
+-- observación). Si ya está en manos de la persona (reabierta u observada),
+-- vuelve en el momento. Uno ya aprobado se observa solo si su rendición se
+-- reabrió (18/11): así se corrige uno aprobado sin volver a revisar todo.
 create or replace function public.gastos_observar(p_gasto uuid, p_texto text)
 returns boolean language plpgsql security definer set search_path = '' as $$
 declare yo text := public.mi_correo(); g record; v_texto text := btrim(coalesce(p_texto, ''));
@@ -718,9 +730,36 @@ begin
     raise exception 'Se observa un gasto de una rendición mandada (o uno aprobado de una reabierta)' using errcode = 'check_violation';
   end if;
   update public.gastos set estado = 'observado', tocado_el = now() where id = p_gasto;
-  update public.gastos_rendiciones set estado = 'observada', tocada_el = now() where id = g.rendicion_id;
+  if g.r_estado <> 'enviada' then
+    update public.gastos_rendiciones set estado = 'observada', tocada_el = now() where id = g.rendicion_id;
+  end if;
   insert into public.gastos_comentarios (gasto_id, autor, texto) values (p_gasto, yo, v_texto);
   return true;
+end $$;
+
+-- Devolver una rendición en revisión con lo observado (D18, 19/11): vuelve a
+-- la persona para que corrija; devuelve cuántos gastos tiene observados. Sin
+-- ninguno observado no hay nada que devolver.
+create or replace function public.gastos_rendicion_devolver(p_id uuid)
+returns integer language plpgsql security definer set search_path = '' as $$
+declare r record; n integer;
+begin
+  if not (public.es_admin_fijo() or public.es_admin_rol()) then
+    raise exception 'Devuelve un admin' using errcode = 'insufficient_privilege';
+  end if;
+  select * into r from public.gastos_rendiciones x where x.id = p_id for update;
+  if not found then
+    raise exception 'Esa rendición no existe' using errcode = 'no_data_found';
+  end if;
+  if r.estado <> 'enviada' then
+    raise exception 'Se devuelve una rendición que está en revisión' using errcode = 'check_violation';
+  end if;
+  select count(*) into n from public.gastos where rendicion_id = p_id and estado = 'observado';
+  if n = 0 then
+    raise exception 'Para devolverla, observá al menos un gasto' using errcode = 'check_violation';
+  end if;
+  update public.gastos_rendiciones set estado = 'observada', tocada_el = now() where id = p_id;
+  return n;
 end $$;
 
 -- Comentar un gasto (la respuesta de la persona, o un admin que agrega algo).
@@ -742,6 +781,8 @@ end $$;
 -- Un admin aprueba la rendición entera (mandada y sin observaciones abiertas):
 -- lo que estaba en revisión pasa a aprobado, con la hora (un gasto corregido
 -- después de aprobado conserva la primera: su lugar en el PDF no cambia).
+-- La suya la aprueba otro admin (D17, 19/11); si no hay otro, el admin fijo
+-- aprueba la suya (la app se lo avisa).
 create or replace function public.gastos_rendicion_aprobar(p_id uuid)
 returns boolean language plpgsql security definer set search_path = '' as $$
 declare yo text := public.mi_correo(); r record;
@@ -753,8 +794,12 @@ begin
   if not found then
     raise exception 'Esa rendición no existe' using errcode = 'no_data_found';
   end if;
-  if r.estado <> 'enviada' then
+  if r.estado <> 'enviada' or exists (select 1 from public.gastos x where x.rendicion_id = p_id and x.estado = 'observado') then
     raise exception 'Se aprueba una rendición mandada y sin observaciones pendientes' using errcode = 'check_violation';
+  end if;
+  if r.autor = yo and not (public.es_admin_fijo()
+       and not exists (select 1 from public.members m where m.role = 'admin' and m.email <> yo)) then
+    raise exception 'La tuya la aprueba otro admin' using errcode = 'insufficient_privilege';
   end if;
   update public.gastos set estado = 'aprobado', aprobado_el = coalesce(aprobado_el, now()), tocado_el = now()
    where rendicion_id = p_id and estado <> 'aprobado';
@@ -860,6 +905,7 @@ revoke execute on function public.gastos_observar(uuid, text) from public, anon;
 revoke execute on function public.preparar_aviso_de_gasto(uuid) from public, anon;
 revoke execute on function public.gastos_comentar(uuid, text) from public, anon;
 revoke execute on function public.gastos_rendicion_aprobar(uuid) from public, anon;
+revoke execute on function public.gastos_rendicion_devolver(uuid) from public, anon;
 revoke execute on function public.gastos_rendicion_reabrir(uuid) from public, anon;
 revoke execute on function public.gastos_movimiento_confirmar(uuid) from public, anon;
 revoke execute on function public.gastos_cuenta(text) from public, anon;
@@ -870,6 +916,7 @@ grant execute on function public.gastos_observar(uuid, text) to authenticated;
 grant execute on function public.preparar_aviso_de_gasto(uuid) to authenticated;
 grant execute on function public.gastos_comentar(uuid, text) to authenticated;
 grant execute on function public.gastos_rendicion_aprobar(uuid) to authenticated;
+grant execute on function public.gastos_rendicion_devolver(uuid) to authenticated;
 grant execute on function public.gastos_rendicion_reabrir(uuid) to authenticated;
 grant execute on function public.gastos_movimiento_confirmar(uuid) to authenticated;
 grant execute on function public.gastos_cuenta(text) to authenticated;

@@ -143,6 +143,8 @@ function consulta(tabla){
         if(estado.fallo && q.op !== "select") return { data: null, error: { code: estado.fallo === true ? "42501" : String(estado.fallo),
           message: estado.mensajeFallo || (estado.fallo === true || estado.fallo === "42501" ? 'new row violates row-level security policy for table "' + q.tabla + '"' : "error de la base") } };
         if(estado.falloLectura && q.op === "select") return { data: null, error: { code: "", message: "TypeError: Failed to fetch" } };
+        //   falloLecturaDe  solo fallan las lecturas de las tablas que empiezan así (por ejemplo "gastos")
+        if(estado.falloLecturaDe && q.op === "select" && String(q.tabla).startsWith(estado.falloLecturaDe)) return { data: null, error: { code: "", message: "TypeError: Failed to fetch" } };
         return ejecutar(q); }).then(ok, mal); },
   };
   return b;
@@ -262,7 +264,7 @@ export function createClient(url, clave){
             const puede = r && ((["enviado", "observado"].includes(g.estado) && ["enviada", "observada"].includes(r.estado))
               || (g.estado === "aprobado" && ["abierta", "enviada", "observada"].includes(r.estado)));
             if(!puede) return mal("23514", "Se observa un gasto de una rendición mandada (o uno aprobado de una reabierta)");
-            g.estado = "observado"; r.estado = "observada";
+            g.estado = "observado"; if(r.estado !== "enviada") r.estado = "observada";   // en revisión se devuelve todo junto (D18, 19/11)
           } else if(g.autor !== yo && !esAdmin) return mal("42501", "Ese gasto no es tuyo");
           if(!texto) return mal("23514", "Hace falta un comentario");
           const id = "com_" + Math.random().toString(36).slice(2, 10);
@@ -272,10 +274,22 @@ export function createClient(url, clave){
         if(nombre === "gastos_rendicion_aprobar"){
           if(!esAdmin) return mal("42501", "Aprueba un admin");
           const r = T("gastos_rendiciones").find(x => x.id === args.p_id);
-          if(!r || r.estado !== "enviada") return mal("23514", "Se aprueba una rendición mandada y sin observaciones pendientes");
+          if(!r || r.estado !== "enviada" || T("gastos").some(g => g.rendicion_id === r.id && g.estado === "observado")) return mal("23514", "Se aprueba una rendición mandada y sin observaciones pendientes");
+          // La propia la aprueba otro admin; si no hay otro, el admin fijo (D17, 19/11).
+          const otroAdmin = (estado.tablas.members || []).some(m => m.role === "admin" && m.email !== yo);
+          if(r.autor === yo && !(yo === "benny@team-latam.com" && !otroAdmin)) return mal("42501", "La tuya la aprueba otro admin");
           T("gastos").filter(g => g.rendicion_id === r.id && g.estado !== "aprobado").forEach(g => { g.estado = "aprobado"; g.aprobado_el = g.aprobado_el || ahora; });
           r.estado = "aprobada"; r.aprobada_el = ahora; r.aprobada_por = yo;
           return { data: true, error: null };
+        }
+        if(nombre === "gastos_rendicion_devolver"){
+          if(!esAdmin) return mal("42501", "Devuelve un admin");
+          const r = T("gastos_rendiciones").find(x => x.id === args.p_id);
+          if(!r || r.estado !== "enviada") return mal("23514", "Se devuelve una rendición que está en revisión");
+          const n = T("gastos").filter(g => g.rendicion_id === r.id && g.estado === "observado").length;
+          if(!n) return mal("23514", "Para devolverla, observá al menos un gasto");
+          r.estado = "observada";
+          return { data: n, error: null };
         }
         if(nombre === "gastos_rendicion_reabrir"){
           if(!esAdmin) return mal("42501", "Reabre un admin");
