@@ -192,6 +192,35 @@ eq("el correo sin nombre usa la dirección", armarCorreo({ nombre: "", correo: "
     eq(`un paso con la fecha «${cuando}»: el correo sale igual, sin fecha`, [rf[0], f.reg.correos.length, (f.reg.correos[0] || {}).text && f.reg.correos[0].text.includes("Para ")], [200, 1, false]);
   }
 }
+/* ---------- Una rendición mandada, para admins y Finanzas (19/11/2026, 27-gastos.sql) ---------- */
+{
+  const aviso = { para: [{ email: "benny@x.com", nombre: "Benny", lang: "es" }, { email: "fabi@x.com", nombre: "Fabi", lang: "es" }], autor: "Ana", actividad: "Visita a Lima", mes: null,
+                  gastos: 3, totales: { ARS: 150000, USD: 120.5 }, rendicion: "r-123", en: "rendicion" };
+  const m = mundo({ otros: { preparar_aviso_de_rendicion: aviso } });
+  const r = await leer(await atenderAviso(pedir({ cuerpo: { tipo: "rendicion", id: "r-123" } }), { env: entorno(), fetch: m.traer, esperar: m.esperar }));
+  eq("una rendición mandada: se le pregunta a la base con la sesión de quien la mandó, y sale un correo a cada uno", [r, m.reg.rpc.map(x => x.nombre), m.reg.rpc[0].auth, m.reg.cuerpos[0], m.reg.correos.map(c => c.to)],
+     [[200, { enviado: true, enviados: 2 }], ["preparar_aviso_de_rendicion", "tomar_aviso"], "Bearer sesion-de-ana", { p_rendicion: "r-123" }, [["benny@x.com"], ["fabi@x.com"]]]);
+  const c = m.reg.correos[0];
+  eq("el correo: asunto, dónde va, cuántos gastos, el total por moneda (dólares primero) y el enlace a la rendición",
+     [c.subject, c.text.includes("Visita a Lima"), c.text.includes("3 gastos · USD 120.50 · ARS 150,000.00"), c.text.includes(`${APP}?rendicion=r-123`)],
+     ["Ana mandó una rendición para revisar: «Visita a Lima»", true, true, true]);
+  for(const [lang, asunto, extra] of [["en", "Ana sent an expense report for review: “Routine for November 2026”", "3 expenses"], ["pt", "Ana enviou uma prestação de contas para revisar: «Rotina de novembro de 2026»", "3 despesas"],
+      ["he", "Ana שלח/ה דוח הוצאות לבדיקה: «שגרה של נובמבר 2026»", "{n} הוצאות".replace("{n}", "3")]]){
+    const k = mundo({ otros: { preparar_aviso_de_rendicion: { ...aviso, para: [{ ...aviso.para[0], lang }], actividad: null, mes: "2026-11-01" } } });
+    await atenderAviso(pedir({ cuerpo: { tipo: "rendicion", id: "r-123" } }), { env: entorno(), fetch: k.traer, esperar: k.esperar });
+    const ck = k.reg.correos[0];
+    eq(`${lang}: el asunto con la rutina del mes y los gastos en su idioma`, [ck.subject, ck.text.includes(extra), lang === "he" ? ck.html.includes('dir="rtl"') : true], [asunto, true, true]);
+  }
+  const u = mundo({ otros: { preparar_aviso_de_rendicion: { ...aviso, gastos: 1, totales: {} } } });
+  await atenderAviso(pedir({ cuerpo: { tipo: "rendicion", id: "r-123" } }), { env: entorno(), fetch: u.traer, esperar: u.esperar });
+  eq("con un solo gasto y sin totales: «1 gasto», sin plata", [u.reg.correos[0].text.includes("\n1 gasto\n"), u.reg.correos[0].text.includes("USD")], [true, false]);
+  const e = mundo({ otros: { preparar_aviso_de_rendicion: { ...aviso, autor: "<b>Ana</b>", actividad: "<script>x</script>" } } });
+  await atenderAviso(pedir({ cuerpo: { tipo: "rendicion", id: "r-123" } }), { env: entorno(), fetch: e.traer, esperar: e.esperar });
+  eq("lo que viene de la base va escapado: no se cuela HTML", [e.reg.correos[0].html.includes("<script>x</script>"), e.reg.correos[0].html.includes("<b>Ana</b>")], [false, false]);
+  const n = mundo({ otros: { preparar_aviso_de_rendicion: null } });
+  const rn = await leer(await atenderAviso(pedir({ cuerpo: { tipo: "rendicion", id: "r-123" } }), { env: entorno(), fetch: n.traer, esperar: n.esperar }));
+  eq("si a la base no le corresponde (no la mandó, ya salió, nadie lo tiene prendido), no sale nada", [rn[1], n.reg.correos.length], [{ enviado: false, motivo: "no-corresponde" }, 0]);
+}
 /* ---------- Un gasto observado (17/11/2026, 27-gastos.sql) ---------- */
 {
   const aviso = { para: [{ email: "ana@x.com", nombre: "Ana", lang: "es" }], autor: "Benny", concepto: "Taxi al aeropuerto", texto: "Falta la factura: <b>¿la subís?</b>",

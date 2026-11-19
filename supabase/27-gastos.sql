@@ -715,6 +715,49 @@ begin
     'actividad', coalesce(nullif(r.post_titulo, ''), nullif(r.titulo, '')), 'mes', r.rutina_mes, 'gasto', g.id, 'en', 'gasto'));
 end $$;
 
+-- Alguien manda una rendición: le avisa por correo a quien la tiene que revisar
+-- (admins y Finanzas; 19/11/2026, lo pidió el usuario: hasta entonces solo salía la
+-- campanita). La llama quien la mandó, recién mandada; la base decide a quién:
+-- admin fijo, admins y Finanzas, menos él mismo, que puedan recibir correos y tengan
+-- prendido el aviso de gastos. Una vez por rendición y por vez que se manda (si la
+-- devuelven y la vuelve a mandar, avisa de nuevo) y con el mismo tope por hora que los
+-- demás avisos. Devuelve solo un turno: nadie ve a quién le llega.
+create or replace function public.preparar_aviso_de_rendicion(p_rendicion uuid) returns jsonb
+  language plpgsql security definer set search_path = '' as $$
+declare yo text := public.mi_correo(); r record; ya integer; para jsonb; n integer; tot jsonb;
+begin
+  if yo is null then return null; end if;
+  select x.id, x.autor, x.estado, x.enviada_el, x.titulo, x.rutina_mes, p.title as post_titulo into r
+    from public.gastos_rendiciones x left join public.posts p on p.id = x.post_id where x.id = p_rendicion;
+  if not found or r.autor <> yo or r.estado <> 'enviada' or r.enviada_el is null
+     or r.enviada_el < now() - interval '1 hour' or not public.gastos_habilitado() then
+    return null;
+  end if;
+  select count(*) into ya from public.avisos_enviados a where a.autor = yo and a.enviado_el > now() - interval '1 hour';
+  if ya >= 30 then return null; end if;
+  with dest as (
+    select distinct z.e from (select public.admin_fijo() as e union select m.email from public.members m where m.role in ('admin', 'finance')) z
+     where z.e is not null and z.e <> yo and public.puede_recibir_correos(z.e)
+       and (public.prefs_de_correo(z.e) ->> 'on')::boolean and (public.prefs_de_correo(z.e) ->> 'gastos')::boolean
+  ), ins as (
+    insert into public.avisos_enviados(tipo, objeto, email, autor)
+    select 'rendicion', r.id::text || '@' || r.enviada_el::text, d.e, yo from dest d
+    on conflict do nothing returning email
+  )
+  select coalesce(jsonb_agg(jsonb_build_object('email', i.email, 'nombre', (select m.name from public.members m where m.email = i.email),
+                                               'lang', public.prefs_de_correo(i.email) ->> 'lang')), '[]'::jsonb)
+    into para from ins i;
+  if jsonb_array_length(para) = 0 then return null; end if;
+  select count(*) into n from public.gastos g where g.rendicion_id = r.id and g.estado <> 'borrador';
+  select coalesce(jsonb_object_agg(q.moneda, q.total), '{}'::jsonb) into tot from (
+    select case when g.rendido_monto is not null then g.rendido_moneda else g.moneda end as moneda, sum(coalesce(g.rendido_monto, g.monto)) as total
+      from public.gastos g where g.rendicion_id = r.id and g.estado <> 'borrador' and coalesce(g.rendido_monto, g.monto) is not null group by 1) q;
+  return public.guardar_aviso(jsonb_build_object(
+    'para', para, 'autor', coalesce((select nullif(m.name, '') from public.members m where m.email = yo), yo),
+    'actividad', coalesce(nullif(r.post_titulo, ''), nullif(r.titulo, '')), 'mes', r.rutina_mes,
+    'gastos', n, 'totales', tot, 'rendicion', r.id, 'en', 'rendicion'));
+end $$;
+
 -- Un admin observa un gasto de una rendición mandada: queda «observado» y el
 -- comentario queda guardado. La rendición sigue en revisión hasta que el
 -- admin la devuelve con todo lo que encontró (gastos_rendicion_devolver; lo
@@ -916,6 +959,7 @@ revoke execute on function public.gastos_rendicion_enviar(uuid) from public, ano
 revoke execute on function public.gastos_rendicion_borrar(uuid) from public, anon;
 revoke execute on function public.gastos_observar(uuid, text) from public, anon;
 revoke execute on function public.preparar_aviso_de_gasto(uuid) from public, anon;
+revoke execute on function public.preparar_aviso_de_rendicion(uuid) from public, anon;
 revoke execute on function public.gastos_comentar(uuid, text) from public, anon;
 revoke execute on function public.gastos_rendicion_aprobar(uuid) from public, anon;
 revoke execute on function public.gastos_rendicion_devolver(uuid) from public, anon;

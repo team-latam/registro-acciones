@@ -693,6 +693,37 @@ update public.members set role = 'admin' where email = 'otra.admin@x.com';
 select lab.comprobar('el rol «finance» es un valor permitido y cualquier otro no', $q$select (select count(*) from pg_constraint where conname = 'members_role_check' and pg_get_constraintdef(oid) like '%finance%')::text$q$, '1');
 select lab.probar('Finanzas no se cambia el rol a admin', lab.como('fin@x.com'), $x$update public.members set role = 'admin' where email = 'fin@x.com'$x$, false);
 
+-- ---------- El aviso por correo de una rendición mandada (19/11/2026) ----------
+truncate public.avisos_enviados, public.avisos_listos;
+update public.app_config set value = value || '{"correos": {"quienes": "todos"}}' where key = 'preferences';
+select lab.hacer(lab.como('diego@x.com'), $x$select public.gastos_rendicion_abrir(null, '2026-12-02')::text$x$) as rav \gset
+select lab.hacer(lab.como('diego@x.com'), format($x$insert into public.gastos(rendicion_id, fecha, concepto, tipo, moneda, monto, pago, estado)
+  values (%L, '2026-12-02', 'Taxi', 'transporte', 'USD', 33, 'persona', 'confirmado') returning id::text$x$, :'rav'));
+select lab.probar_valor('abierta, la rendición no avisa a nadie', lab.como('diego@x.com'), $q$select 1$q$,
+  format($q$select coalesce(public.preparar_aviso_de_rendicion(%L)::text, 'nada')$q$, :'rav'), 'nada');
+select lab.hacer(lab.como('diego@x.com'), format($x$select public.gastos_rendicion_enviar(%L)::text$x$, :'rav'));
+select lab.probar_valor('otra persona no puede pedir el aviso de una rendición ajena', lab.como('ana@x.com'), $q$select 1$q$,
+  format($q$select coalesce(public.preparar_aviso_de_rendicion(%L)::text, 'nada')$q$, :'rav'), 'nada');
+select lab.probar_valor('ni un admin: lo pide quien la mandó', lab.como('benny@team-latam.com'), $q$select 1$q$,
+  format($q$select coalesce(public.preparar_aviso_de_rendicion(%L)::text, 'nada')$q$, :'rav'), 'nada');
+select lab.hacer(lab.como('diego@x.com'), format($x$select coalesce(public.preparar_aviso_de_rendicion(%L)::text, 'nada')$x$, :'rav')) as t1 \gset
+select lab.comprobar('quien la mandó recibe solo un turno: no ve a quién le llega', format($q$select string_agg(k, ',') from jsonb_object_keys(%L::jsonb) k$q$, :'t1'), 'ticket');
+select lab.comprobar('le llega a los admins y a Finanzas, no a quien la mandó: el admin fijo, el otro admin y Finanzas',
+  $q$select string_agg(email, ',' order by email) from public.avisos_enviados where tipo = 'rendicion'$q$, 'benny@team-latam.com,fin@x.com,otra.admin@x.com');
+select lab.comprobar('lo que se arma: quién la mandó, dónde va, cuántos gastos y el total por moneda',
+  format($q$select (x ->> 'autor') || '|' || (x ->> 'mes') || '|' || (x ->> 'gastos') || '|' || (x -> 'totales' ->> 'USD') || '|' || (x ->> 'rendicion') from (select lab.aviso(%L::jsonb) x) y$q$, :'t1'),
+  'Diego|2026-12-01|1|33.00|' || :'rav');
+select lab.comprobar('sale una sola vez por cada vez que se manda',
+  format($q$select lab.hacer(lab.como('diego@x.com'), format($x$select coalesce(public.preparar_aviso_de_rendicion(%%L)::text, 'nada')$x$, %L))$q$, :'rav'), 'nada');
+-- Quien lo apagó (el aviso de gastos de «Mis preferencias») no lo recibe.
+truncate public.avisos_enviados, public.avisos_listos;
+insert into public.user_prefs(email, prefs) values ('fin@x.com', '{"emailGastos": false}') on conflict (email) do update set prefs = excluded.prefs;
+select lab.hacer(lab.como('diego@x.com'), format($x$select coalesce(public.preparar_aviso_de_rendicion(%L)::text, 'nada')$x$, :'rav'));
+select lab.comprobar('si Finanzas lo apagó, no le llega (a los otros dos sí)',
+  $q$select string_agg(email, ',' order by email) from public.avisos_enviados where tipo = 'rendicion'$q$, 'benny@team-latam.com,otra.admin@x.com');
+delete from public.user_prefs where email = 'fin@x.com';
+truncate public.avisos_enviados, public.avisos_listos;
+
 -- ---------- Cerrados de nuevo para el equipo ----------
 update public.app_config set value = '{"gastos": {"abierto": false}}' where key = 'preferences';
 select lab.comprobar('cerrados, la integrante deja de ver hasta lo suyo', $q$select lab.hacer(lab.como('ana@x.com'), $x$select count(*)::text from public.gastos$x$)$q$, '0');

@@ -32,7 +32,7 @@ const g = (o) => ({ autor: ADMIN, rendicion_id: null, fecha: null, concepto: "",
   archivo_tipo: "image/jpeg", archivo_hash: null, lectura: null, creado_el: hace(3), tocado_el: hace(3), ...o });
 const r = (o) => ({ autor: ADMIN, post_id: null, rutina_mes: null, titulo: "", estado: "aprobada", enviada_el: null, aprobada_el: hace(1), aprobada_por: ADMIN,
   total_manual: {}, total_manual_confirmado: false, total_manual_por: null, total_manual_el: null, creada_el: hace(5), tocada_el: hace(5), ...o });
-const datos = () => {
+const datos = ({ conAbierta } = {}) => {
   const b = BASE();
   b.members = b.members.concat([{ ...FIN, approved_at: "2025-01-10T12:00:00Z" }]);
   const pref = b.app_config.find(c => c.key === "preferences");
@@ -55,6 +55,10 @@ const datos = () => {
     ],
     gastos_comentarios: [], gastos_cambios: [], gastos_movimientos: [],
   });
+  if(conAbierta){
+    b.gastos_rendiciones.push(r({ id: "re_ab", autor: ANA.email, rutina_mes: `${Y}-05-01`, estado: "abierta", aprobada_el: null, aprobada_por: null }));
+    b.gastos.push(g({ id: "x7", autor: ANA.email, rendicion_id: "re_ab", fecha: `${Y}-05-04`, concepto: "Taxi", tipo: "transporte", monto: 20, estado: "confirmado" }));
+  }
   return b;
 };
 
@@ -117,6 +121,31 @@ eq("gastado, se debe, por aprobar y pagado por la organización", await textos(p
   eq("…y en «Rendiciones» solo ve las suyas", await p.evaluate(() => document.querySelectorAll(".gx-grupo").length), 1);
   eq("sin errores de página", errores, []);
   await p.close();
+}
+
+/* ---------------- El correo de «te mandaron una rendición» (19/11) ---------------- */
+{
+  const { p, errores } = await entrar(b, ANA.email, ANA.name, { viewport: vp, base: datos({ conAbierta: true }) });
+  const avisos = [];
+  await p.route(/\/functions\/v1\/avisar/, ruta => { avisos.push(JSON.parse(ruta.request().postData() || "{}")); return ruta.fulfill({ contentType: "application/json", body: '{"enviado":true}' }); });
+  await irGastos(p);
+  await p.click('[data-action="gastos-abrir-rendicion"][data-id="re_ab"]'); await p.waitForTimeout(250);
+  await p.click('[data-action="gastos-enviar"]'); await p.waitForSelector("#confirmOverlay:not([hidden])"); await p.click("#confirmOk");
+  eq("mandar la rendición pide el correo para quien la revisa (a quién le llega lo decide la base)", await hasta(p, () => true).then(() => p.waitForTimeout(400)).then(() => avisos), [{ tipo: "rendicion", id: "re_ab" }]);
+  eq("…y la manda con la función de la base", await rpcs(p, "gastos_rendicion_enviar"), [{ p_id: "re_ab" }]);
+  eq("sin errores de página", errores, []);
+  await p.close();
+  // «Revisar la rendición» del correo: ?rendicion=<id> la abre en «Para aprobar» para quien la gestiona.
+  const { p: q, errores: e2 } = await entrar(b, FIN.email, FIN.name, { viewport: vp, base: datos(), query: "?rendicion=re_a" });
+  await q.waitForSelector(".gastos-view .gx-volver", { timeout: 4000 }).catch(() => {});
+  eq("el enlace del correo abre la rendición, en «Para aprobar», con «Aprobar»", await q.evaluate(() => [(document.querySelector(".gx-volver") || {}).textContent, !!document.querySelector('[data-action="gastos-aprobar"][data-id="re_a"]')]), ["← Para aprobar", true]);
+  eq("…y limpia la dirección", await q.evaluate(() => location.search), "");
+  await q.close();
+  const { p: z, errores: e3 } = await entrar(b, ANA.email, ANA.name, { viewport: vp, base: datos(), query: "?rendicion=re_a" });
+  await z.waitForTimeout(800);
+  eq("una integrante común con ese enlace: no pasa nada (no abre rendiciones ajenas)", await z.evaluate(() => !document.querySelector(".gastos-view")), true);
+  eq("sin errores de página", [...e2, ...e3], []);
+  await z.close();
 }
 
 /* ---------------- Un admin le da el rol ---------------- */

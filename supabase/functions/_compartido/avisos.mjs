@@ -19,7 +19,7 @@
    de espera.
    ====================================================================== */
 import { encabezados } from "./web.mjs";
-import { correoPedido, correoAviso, correoPaso, correoPrueba, correoInforme, correoGasto } from "./correos.mjs";
+import { correoPedido, correoAviso, correoPaso, correoPrueba, correoInforme, correoGasto, correoRendicion } from "./correos.mjs";
 export { APP } from "./correos.mjs";
 
 // El remitente: info@team-latam.com (pedido del usuario el 7/10/2026),
@@ -37,6 +37,7 @@ export const RESPONDER_A = "benny@team-latam.com";
 //   {tipo:"posteo"|"respuesta", id}       menciones y respuestas, al momento
 //   {tipo:"paso", id: "<posteo>#<paso>"}  un paso de «Lo que sigue» que le asignaron a alguien
 //   {tipo:"gasto", id: "<gasto>"}         un gasto que un admin acaba de observar (27-gastos.sql)
+//   {tipo:"rendicion", id: "<rendición>"} una rendición que alguien acaba de mandar, para admins y Finanzas (27-gastos.sql)
 //   {tipo:"prueba"}                       «Mandarme un correo de prueba»
 //   {tipo:"informe", mes:"2026-10"}       «Mandarme un informe de prueba» (solo un admin)
 // A quién y si corresponde lo decide SIEMPRE la base (16 y 17-*.sql).
@@ -50,6 +51,7 @@ const TIPOS = {
   respuesta: { rpc: "preparar_aviso", cuerpo: p => ({ p_tipo: "respuesta", p_id: String(p.id || "") }), para: d => d.para.map(x => x.email), correo: (d, para) => correoAviso({ ...d, motivo: de(d, para).motivo, lang: de(d, para).lang }) },
   paso:      { rpc: "preparar_aviso_de_paso", cuerpo: p => ({ p_id: String(p.id || "") }), para: d => d.para.map(x => x.email), correo: (d, para) => correoPaso({ ...d, lang: de(d, para).lang }) },
   gasto:     { rpc: "preparar_aviso_de_gasto", cuerpo: p => ({ p_gasto: String(p.id || "") }), para: d => d.para.map(x => x.email), correo: (d, para) => correoGasto({ ...d, lang: de(d, para).lang }) },
+  rendicion: { rpc: "preparar_aviso_de_rendicion", cuerpo: p => ({ p_rendicion: String(p.id || "") }), para: d => d.para.map(x => x.email), correo: (d, para) => correoRendicion({ ...d, lang: de(d, para).lang }) },
   informe:   { rpc: "preparar_informe_de_prueba", cuerpo: p => ({ p_mes: String(p.mes || "") }), para: d => d.para.map(x => x.email), correo: d => correoInforme({ mes: d.mes, vence: d.vence, lang: d.para[0].lang, zona: d.para[0].tz, prueba: true }) },
   prueba:    { rpc: "preparar_prueba", cuerpo: () => ({}), para: d => d.para.map(x => x.email), correo: d => correoPrueba({ nombre: d.para[0].nombre, lang: d.para[0].lang }) },
 };
