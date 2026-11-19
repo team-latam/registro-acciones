@@ -826,6 +826,8 @@
   .gxe-tile{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md); padding:14px 16px; min-width:0; }
   .gxe-k{ font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; }
   .gxe-v{ font-size:22px; font-weight:800; margin-top:4px; overflow-wrap:anywhere; }
+  .gxe-v .gx-num{ justify-content:flex-start; flex-wrap:wrap; max-width:100%; }
+  .gxe-v .gx-val{ min-width:0; text-align:start; }
   .gxe-n{ font-size:12px; color:var(--text-muted); margin-top:5px; display:flex; flex-wrap:wrap; align-items:center; gap:4px 6px; }
   .gxe-dos{ display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr)); gap:14px; margin-bottom:6px; }
   .gxe-tarjeta{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md); padding:16px 18px; min-width:0; }
@@ -836,12 +838,12 @@
   .gxe-t{ background:var(--surface-alt); border-radius:6px; height:14px; overflow:hidden; }
   .gxe-f{ display:block; height:100%; background:var(--celeste-dark); border-radius:6px; }
   .gxe-meses{ display:flex; align-items:flex-end; gap:4px; height:150px; }
-  .gxe-c{ flex:1; min-width:0; height:100%; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; font-size:10.5px; color:var(--text-muted); }
+  .gxe-c{ flex:1; min-width:0; height:100%; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; font-size:12px; color:var(--text-muted); }
   .gxe-c i{ display:block; width:100%; min-height:2px; background:var(--celeste-dark); border-radius:4px 4px 0 0; }
-  .gxe-c b{ font-size:9.5px; color:var(--text); font-weight:700; margin-bottom:2px; white-space:nowrap; }
+  .gxe-c b{ font-size:12px; color:var(--text); font-weight:700; margin-bottom:2px; white-space:nowrap; }
   .gxe-c.gxe-cero i{ opacity:.25; }
   .gxe-gastos{ display:flex; flex-direction:column; margin-top:8px; }
-  .gxe-gasto{ display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; text-align:start; padding:9px 4px; border:0; border-top:1px solid var(--border); background:transparent; color:inherit; font:inherit; cursor:pointer; }
+  .gxe-gasto{ font-size:13.5px; display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; text-align:start; padding:9px 4px; border:0; border-top:1px solid var(--border); background:transparent; color:inherit; font:inherit; cursor:pointer; }
   .gxe-gasto:hover{ background:var(--surface-hover); }
   .gxe-gasto span{ min-width:0; }
   .gxe-gasto b{ display:block; font-weight:600; overflow-wrap:anywhere; }
@@ -942,9 +944,10 @@
     .gx-fila > .gx-f-der .gx-val{ min-width:0; }
     .gx-fila-env > .gx-fila-borrar{ width:42px; }
   }
-  /* Las tres secciones de gastos entran juntas en el celular, con su número a la vista (antes «Para aprobar» quedaba cortada). */
+  /* Las secciones de gastos (hoy cuatro) entran juntas en el celular, con su número a la vista (antes «Para aprobar» quedaba cortada). */
   @media (max-width:760px){
-    .gastos-view .admin-menu{ display:grid; grid-auto-flow:column; grid-auto-columns:minmax(0, 1fr); overflow:visible; }
+    /* Pasan a una segunda fila si no entran: hoy hay hasta cinco (con «Mis estadísticas») y vendrán más (Resumen, Análisis). */
+    .gastos-view .admin-menu{ display:grid; grid-template-columns:repeat(auto-fit, minmax(104px, 1fr)); overflow:visible; }
     .gastos-view .admin-item{ justify-content:center; gap:6px; padding:6px 8px; text-align:center; line-height:1.2; white-space:normal; }
   }
   .gx-filas{ display:flex; flex-direction:column; border:1px solid var(--border); border-radius:var(--radius-md); background:var(--card); overflow:hidden; margin-bottom:10px; }
@@ -22045,10 +22048,10 @@ function tourSteps(){
       textoMas: true },
     ...(gastosVisible() ? [{ id:"gastos", cubre:["gastos"], target: [...tourNav("gastos"), TOUR_MAS],
       title: t("Gastos","Expenses","Despesas","הוצאות"),
-      text: t("Subí las fotos o los PDF de tus comprobantes: el sistema los lee y vos confirmás. En «Por rendir» está lo que tenés que completar y mandar; en «Rendiciones», todo lo que ya mandaste, y en «Cuenta corriente», lo que te deben o debés.",
-        "Upload photos or PDFs of your receipts: the system reads them and you confirm. “To report” has what you need to complete and send; “Expense reports”, everything you've sent; and “Running balance”, what you're owed or owe.",
-        "Envie as fotos ou os PDF dos seus comprovantes: o sistema lê e você confirma. Em «A prestar» está o que você precisa completar e mandar; em «Prestações», tudo o que já mandou; e em «Conta corrente», o que te devem ou você deve.",
-        "העלו תמונות או קובצי PDF של הקבלות: המערכת קוראת אותן ואתם מאשרים. ב«לדיווח» יש את מה שצריך להשלים ולשלוח; ב«דוחות הוצאות» — כל מה ששלחתם; וב«חשבון שוטף» — מה שחייבים לכם או שאתם חייבים."),
+      text: t("Subí las fotos o los PDF de tus comprobantes: el sistema los lee y vos confirmás. En «Por rendir» está lo que tenés que completar y mandar; en «Rendiciones», todo lo que ya mandaste, en «Cuenta corriente», lo que te deben o debés, y en «Mis estadísticas», en qué gastaste, mes a mes y por actividad.",
+        "Upload photos or PDFs of your receipts: the system reads them and you confirm. “To report” has what you need to complete and send; “Expense reports”, everything you've sent; “Running balance”, what you're owed or owe; and “My statistics”, what you spent on, month by month and by activity.",
+        "Envie as fotos ou os PDF dos seus comprovantes: o sistema lê e você confirma. Em «A prestar» está o que você precisa completar e mandar; em «Prestações», tudo o que já mandou; em «Conta corrente», o que te devem ou você deve; e em «Minhas estatísticas», em que você gastou, mês a mês e por atividade.",
+        "העלו תמונות או קובצי PDF של הקבלות: המערכת קוראת אותן ואתם מאשרים. ב«לדיווח» יש את מה שצריך להשלים ולשלוח; ב«דוחות הוצאות» — כל מה ששלחתם; ב«חשבון שוטף» — מה שחייבים לכם או שאתם חייבים; וב«הסטטיסטיקות שלי» — על מה הוצאתם, חודש אחר חודש ולפי פעילות."),
       textoMas: true }] : []),
     { id:"reportes", cubre:["reportes"], target: [...tourNav("reportes"), TOUR_MAS],
       title: t("Reportes","Reports","Relatórios","דוחות"),
@@ -26477,7 +26480,7 @@ function renderGastosEstadisticas(){
     ${tile(t("Gastado","Spent","Gasto","הוצאות"), montoHtml(moneda, total), vs)}
     ${tile(t("Actividades","Activities","Atividades","פעילויות"), actividades.length, dias ? (dias === 1 ? t("1 día","1 day","1 dia","יום אחד") : t("{n} días","{n} days","{n} dias","{n} ימים",{ n: dias })) : "")}
     ${tile(t("En revisión","In review","Em revisão","בבדיקה"), montoHtml(moneda, revision), t("mandado, todavía sin aprobar","sent, not approved yet","enviado, ainda sem aprovar","נשלח, עדיין לא אושר"))}
-    ${tile(t("Tu saldo","Your balance","Seu saldo","היתרה שלך"), montoHtml(moneda, Math.abs(saldo)), `${esc(saldoTxt)} · <button type="button" class="gx-link" data-action="gastos-seccion" data-key="cuenta">${t("Ver mi cuenta","See my balance","Ver minha conta","לחשבון שלי")}</button>`)}
+    ${tile(t("Tu saldo","Your balance","Seu saldo","היתרה שלך"), montoHtml(moneda, Math.abs(saldo)), `<span>${esc(saldoTxt)}</span><button type="button" class="gx-link" data-action="gastos-seccion" data-key="cuenta">${t("Ver mi cuenta","See my balance","Ver minha conta","לחשבון שלי")}</button>`)}
   </div>`;
   const porMes = Array(12).fill(0);
   sel.forEach(x => { porMes[Number(x.g.fecha.slice(5, 7)) - 1] += x.monto; });

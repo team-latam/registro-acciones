@@ -121,7 +121,7 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   eq("abierto al equipo de fábrica: una integrante lo ve en el menú de arriba", (await pestanas(p)).includes("gastos"), true);
   await irGastos(p);
   eq("…sin «en prueba»", await p.$eval(".gastos-view .admin-titulo", e => e.textContent.trim()), "🧾 Gastos");
-  eq("«Por rendir», «Rendiciones» y su cuenta; no «Para aprobar» (es de los admins)", await p.$$eval('.admin-menu [data-action="gastos-seccion"]', l => l.map(e => e.dataset.key)), ["rendir", "rendiciones", "cuenta"]);
+  eq("«Por rendir», «Rendiciones», su cuenta y sus estadísticas; no «Para aprobar» (es de los admins)", await p.$$eval('.admin-menu [data-action="gastos-seccion"]', l => l.map(e => e.dataset.key)), ["rendir", "rendiciones", "cuenta", "estadisticas"]);
   // D16 (19/11): «Por rendir» es lo que tiene que hacer; lo ya mandado está en «Rendiciones».
   eq("en «Por rendir», nada por hacer (la suya ya se mandó) y el camino a «Rendiciones»", await p.evaluate(() => [/No tenés nada por rendir/.test(document.querySelector(".gastos-view .admin-body").textContent),
     !!document.querySelector('.gx-a-rendiciones [data-action="gastos-seccion"][data-key="rendiciones"]'), !!document.querySelector(".gx-grupos")]), [true, true, false]);
@@ -846,7 +846,7 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   await p.keyboard.press("Escape"); await p.waitForTimeout(150);
   if(await p.$("#confirmOverlay:not([hidden])")) await p.click("#confirmOk");
   // Revisión de UX del 18/11.
-  eq("en el celular, las tres secciones entran juntas (sin correr de costado), con su número", await p.evaluate(() => { const m = document.querySelector(".gastos-view .admin-menu");
+  eq("en el celular, todas las secciones entran (si no caben en una fila, pasan a otra: sin correr de costado), con su número", await p.evaluate(() => { const m = document.querySelector(".gastos-view .admin-menu");
     return [m.scrollWidth <= m.clientWidth + 1, [...m.querySelectorAll(".admin-item")].every(b => { const r = b.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth; })]; }), [true, true]);
   eq("en el celular, el monto y el estado van debajo del nombre del gasto", await p.evaluate(() => { const f = document.querySelector('[data-action="gasto-abrir"][data-id="gx2"]');
     const t = f.querySelector(".gx-f-txt").getBoundingClientRect(), d = f.querySelector(".gx-f-der").getBoundingClientRect(); return d.top >= t.bottom - 1; }), true);

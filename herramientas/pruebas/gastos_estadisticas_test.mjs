@@ -120,6 +120,7 @@ const gastos = [
   const { p: q, errores: e2 } = await entrar(b, ADMIN, PERS[0].name, { viewport: celu, base: base(rendiciones, gastos) });
   await irEstadisticas(q);
   await q.click('[data-action="gastos-est-grupo"][data-id="re_x"]'); await q.waitForTimeout(150);
+  eq("en el celular, el número de cada recuadro entra en su recuadro (no se corta)", await q.evaluate(() => [...document.querySelectorAll(".gxe-tile")].every(t => { const v = t.querySelector(".gxe-v"), r = t.getBoundingClientRect(); return v.scrollWidth <= v.clientWidth + 1 && [...v.querySelectorAll("span")].every(x => x.getBoundingClientRect().right <= r.right + 1); })), true);
   eq("en el celular no hay desborde horizontal", await q.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), true);
   eq("sin errores de página", [...errores, ...e2], []);
   await q.close();

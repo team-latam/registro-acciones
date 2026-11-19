@@ -403,7 +403,7 @@ Cada una lleva sus pruebas, los textos en cuatro idiomas y el recorrido de bienv
 `TOUR_SIN_PASO`) revisado.
 
 1. ~~Cerrar decisiones y probar el piloto~~ (decisiones cerradas; falta que el usuario y dos personas del equipo hagan las pruebas de uso del plano).
-2. **Mis estadísticas:** solo pantallas, sin permisos nuevos ni cambios en la base.
+2. **Mis estadísticas:** solo pantallas, sin permisos nuevos ni cambios en la base. **Construida el 19/11 en la rama, sin subir a `main`** (falta el OK del usuario con capturas): `herramientas/pruebas/gastos_estadisticas_test.mjs`, 24 comprobaciones. Menú del celular: las secciones de Gastos pasan a una segunda fila si no entran (hoy hasta cinco, con Finanzas serán siete). Pendiente de esta parte: el gráfico por tipo en anillo (el piloto lo ofrecía; por ahora solo barras) y la tarjeta «Mis actividades» agrupada por mes si se vuelve larga.
 3. **Rol Finanzas y Resumen**, con las funciones de totales y sus pruebas de privacidad (`supabase/pruebas/`).
 4. **Importar los años anteriores.**
 5. **Análisis.**
