@@ -588,3 +588,18 @@ y los documentos. *Regla:* el nombre y dónde está puesto quedan en una lista
 (`herramientas/publicar/marca/README.md`, «Dónde está puesta»), y lo que no se
 cambió se anota con el motivo (el video, el nombre del repositorio, el marcador
 interno `app` de la copia de seguridad).
+
+## Agregado al probar Gastos como tester (19/11/2026)
+
+**Un despachador nuevo que la herramienta no ve.** Pasó con la Agenda (8/10) y otra
+vez con Gastos: `codigo.mjs` busca las ramas con una forma fija y `GASTOS_ACCIONES`
+las escribe `"x": async el => …` (sin paréntesis): salieron 34 botones «sin quién los
+atienda». *Regla:* una tabla de acciones nueva se suma a la búsqueda de `codigo.mjs`
+en la misma tanda, y su prueba es correr `node herramientas/auditoria/herramientas/codigo.mjs`
+y ver que no aparezcan sus botones.
+
+**Un estilo que otro pisa.** `.gx-selpie{ margin-bottom:14px }` no hizo nada porque
+`.gx-lpie{ margin:14px 0 0 }` (el mismo peso) viene después en la hoja. *Regla:* un
+ajuste a algo que ya tiene clase propia va junto a esa regla, o con un selector más
+fuerte; y se mira en una captura (o se mide) que el cambio se vea.
+

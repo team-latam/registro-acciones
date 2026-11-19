@@ -450,6 +450,11 @@ que llega tarde, al final del PDF con los números que siguen. Cómo quedó cada
     de los filtros o en la barra) y sacar el desplegable. Es una decisión del usuario: mostrarle opciones con capturas;
   - una prueba que mida los espacios entre la barra y lo que sigue (que no queden pegados).
 
+- **13 — Separar «Por rendir» de «Rendiciones»** (19/11, mientras se probaba Gastos como tester): «Quizás deberíamos
+  dividir, por un lado poner para ver las rendiciones (Rendiciones) y por otro, donde vamos a realizar cada
+  rendición». Es la decisión D16 de la prueba de Gastos (`docs/AUDITORIA.md`, sección X, con maqueta), junto con lo
+  demás que encontró esa prueba (X1 a X18).
+
 **Para toda la tanda** (18/11: «Hay mucho texto, mucha explicación, podría ser más directo. No es difícil lo que
 tenemos que poner»): en todas las pantallas de Gastos, menos texto. Cada botón dice lo que hace; como mucho una
 línea corta de ayuda, y solo donde de verdad hay una duda; nada de párrafos que explican lo que la pantalla ya

@@ -68,5 +68,25 @@
     "que": "Parece un teléfono",
     "contiene": "supabase/pruebas/datos-al-limite.sql",
     "porque": "Número inventado (011 4444-…) de los datos al límite de la base. Revisado el 24/10/2026."
+  },
+  {
+    "que": "Un dato escrito por alguien entra al HTML sin esc()",
+    "contiene": "esc(gastosSecciones()[0].label)",
+    "porque": "El «volver» de una rendición: t() con texto fijo o el nombre de la sección, ya escapado con esc(). Revisado el 19/11/2026 (prueba de Gastos)."
+  },
+  {
+    "que": "Un dato escrito por alguien entra al HTML sin esc()",
+    "contiene": "opciones(\"gasto-tipo\", \"tipo\"",
+    "porque": "Los tipos de gasto los nombra un admin, pero opciones() (en renderGasto) escapa cada nombre con esc() al armar el botón. Revisado el 19/11/2026."
+  },
+  {
+    "que": "Parece un teléfono",
+    "contiene": "supabase/pruebas/71-gastos.sql",
+    "porque": "Son identificadores inventados de la prueba de Gastos (00000000-0000-…), no teléfonos. Revisado el 19/11/2026."
+  },
+  {
+    "que": "Un correo en el repo público",
+    "contiene": "rita@team-latam.com",
+    "porque": "Persona inventada de gastos_test.mjs (un admin por rol), como las demás de las pruebas. Revisado el 19/11/2026."
   }
 ]
