@@ -114,6 +114,13 @@ $$;
 create or replace function public.es_admin_rol() returns boolean
   language sql stable as $$ select public.esta_aprobado() and public.mi_rol() = 'admin' $$;
 
+-- Finanzas (19/11/2026): aprobada y con el rol `finance`. Carga y escribe como un
+-- integrante (puede_escribir() la deja pasar: no es observadora) y, en Gastos,
+-- ve y gestiona lo de todos (es_gestor_gastos(), en 27-gastos.sql). No es admin:
+-- no entra a Administración ni a nada que sea solo del admin.
+create or replace function public.es_finanzas() returns boolean
+  language sql stable as $$ select public.esta_aprobado() and public.mi_rol() = 'finance' $$;
+
 -- Aprobado que NO es observador: lo que puede crear posteos, comentar y
 -- dar me gusta. El observador ve todo y no escribe nada (salvo sus
 -- propias preferencias).

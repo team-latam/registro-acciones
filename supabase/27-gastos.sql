@@ -31,13 +31,25 @@
 -- Se puede correr más de una vez sin romper nada.
 -- ============================================================
 
+-- ---------- ¿Quién gestiona los gastos de todos? ----------
+-- El admin fijo, un admin por rol y Finanzas (19/11/2026): ven las rendiciones, los
+-- gastos, los movimientos y las cuentas de todo el equipo, observan, aprueban,
+-- confirman la plata y anotan ajustes. Lo que sigue siendo SOLO del admin (borrar
+-- lo ya mandado o aprobado, los tipos, el interruptor) no pasa por acá.
+-- Es_finanzas() ya devuelve false (no null) sin sesión: el coalesce de es_admin_fijo()
+-- cubre el otro lado.
+create or replace function public.es_gestor_gastos() returns boolean
+  language sql stable as $$
+  select coalesce(public.es_admin_fijo() or public.es_admin_rol() or public.es_finanzas(), false)
+$$;
+
 -- ---------- ¿Los gastos están abiertos para quien llama? ----------
 -- Un admin, siempre. El resto, si puede cargar (un observador, nunca) y el
 -- módulo está abierto al equipo: desde el 19/11/2026 lo está salvo que un
 -- admin lo cierre (`gastos.abierto = false`): dejó de ser una prueba.
 create or replace function public.gastos_habilitado() returns boolean
   language sql stable security definer set search_path = '' as $$
-  select public.es_admin_fijo() or public.es_admin_rol()
+  select public.es_gestor_gastos()
       or (public.puede_escribir()
           and coalesce((select (c.value -> 'gastos' ->> 'abierto') is distinct from 'false'
                           from public.app_config c where c.key = 'preferences'), true))
@@ -297,7 +309,7 @@ grant all on public.gastos_rendiciones, public.gastos, public.gastos_comentarios
 drop policy if exists rendiciones_leer on public.gastos_rendiciones;
 create policy rendiciones_leer on public.gastos_rendiciones for select
   using ((autor = (select public.mi_correo()) and (select public.gastos_habilitado()))
-         or (select public.es_admin_fijo()) or (select public.es_admin_rol()));
+         or (select public.es_gestor_gastos()));
 drop policy if exists rendiciones_total on public.gastos_rendiciones;
 create policy rendiciones_total on public.gastos_rendiciones for update
   using (autor = (select public.mi_correo()) and (select public.gastos_habilitado()) and estado in ('abierta', 'observada'))
@@ -316,7 +328,7 @@ create policy rendiciones_borrar on public.gastos_rendiciones for delete
 drop policy if exists gastos_leer on public.gastos;
 create policy gastos_leer on public.gastos for select
   using ((autor = (select public.mi_correo()) and (select public.gastos_habilitado()))
-         or (select public.es_admin_fijo()) or (select public.es_admin_rol()));
+         or (select public.es_gestor_gastos()));
 drop policy if exists gastos_crear on public.gastos;
 create policy gastos_crear on public.gastos for insert
   with check (autor = (select public.mi_correo()) and (select public.gastos_habilitado()));
@@ -351,21 +363,21 @@ create policy comentarios_borrar on public.gastos_comentarios for delete
 drop policy if exists movimientos_leer on public.gastos_movimientos;
 create policy movimientos_leer on public.gastos_movimientos for select
   using ((persona = (select public.mi_correo()) and (select public.gastos_habilitado()))
-         or (select public.es_admin_fijo()) or (select public.es_admin_rol()));
+         or (select public.es_gestor_gastos()));
 drop policy if exists movimientos_crear on public.gastos_movimientos;
 create policy movimientos_crear on public.gastos_movimientos for insert
   with check ((select public.gastos_habilitado())
-              and (persona = (select public.mi_correo()) or (select public.es_admin_fijo()) or (select public.es_admin_rol())));
+              and (persona = (select public.mi_correo()) or (select public.es_gestor_gastos())));
 drop policy if exists movimientos_editar on public.gastos_movimientos;
 create policy movimientos_editar on public.gastos_movimientos for update
   using ((persona = (select public.mi_correo()) and (select public.gastos_habilitado()) and estado = 'pendiente')
-         or (select public.es_admin_fijo()) or (select public.es_admin_rol()))
+         or (select public.es_gestor_gastos()))
   with check ((select public.gastos_habilitado())
-              and (persona = (select public.mi_correo()) or (select public.es_admin_fijo()) or (select public.es_admin_rol())));
+              and (persona = (select public.mi_correo()) or (select public.es_gestor_gastos())));
 drop policy if exists movimientos_borrar on public.gastos_movimientos;
 create policy movimientos_borrar on public.gastos_movimientos for delete
   using ((persona = (select public.mi_correo()) and (select public.gastos_habilitado()) and estado = 'pendiente')
-         or (select public.es_admin_fijo()) or (select public.es_admin_rol()));
+         or (select public.es_gestor_gastos()));
 
 -- Cambios de moneda: cada uno los suyos, y los toca mientras su rendición se
 -- puede corregir (abierta u observada); un admin los ve todos y el admin
@@ -373,7 +385,7 @@ create policy movimientos_borrar on public.gastos_movimientos for delete
 drop policy if exists cambios_leer on public.gastos_cambios;
 create policy cambios_leer on public.gastos_cambios for select
   using ((autor = (select public.mi_correo()) and (select public.gastos_habilitado()))
-         or (select public.es_admin_fijo()) or (select public.es_admin_rol()));
+         or (select public.es_gestor_gastos()));
 drop policy if exists cambios_crear on public.gastos_cambios;
 create policy cambios_crear on public.gastos_cambios for insert
   with check (autor = (select public.mi_correo()) and (select public.gastos_habilitado()));
@@ -469,7 +481,7 @@ create trigger gastos_rendiciones_controlar before update on public.gastos_rendi
 
 create or replace function public.gastos_movimientos_controlar() returns trigger
   language plpgsql set search_path = '' as $$
-declare yo text := public.mi_correo(); admin boolean := public.es_admin_fijo() or public.es_admin_rol();
+declare yo text := public.mi_correo(); admin boolean := public.es_gestor_gastos();
   carpeta text := 'gastos/mov-' || new.id::text || '/';
 begin
   new.moneda := upper(btrim(coalesce(new.moneda, '')));
@@ -671,7 +683,7 @@ create or replace function public.preparar_aviso_de_gasto(p_gasto uuid) returns 
   language plpgsql security definer set search_path = '' as $$
 declare yo text := public.mi_correo(); g record; c record; r record; pr jsonb; ya integer;
 begin
-  if yo is null or not (public.es_admin_fijo() or public.es_admin_rol()) then return null; end if;
+  if yo is null or not (public.es_gestor_gastos()) then return null; end if;
   select x.id, x.autor, x.concepto, x.estado, x.moneda, x.monto, x.fecha, x.rendicion_id, y.estado as r_estado, y.enviada_el into g
     from public.gastos x join public.gastos_rendiciones y on y.id = x.rendicion_id where x.id = p_gasto;
   if not found or g.estado <> 'observado' or g.autor = yo or g.r_estado = 'enviada' then return null; end if;
@@ -683,7 +695,7 @@ begin
   select count(*) into ya from public.avisos_enviados a where a.autor = yo and a.enviado_el > now() - interval '1 hour';
   if ya >= 30 then return null; end if;
   if not exists (select 1 from public.members m where m.email = g.autor
-                   and (m.role = 'admin' or m.email = public.admin_fijo()
+                   and (m.role in ('admin', 'finance') or m.email = public.admin_fijo()
                         or (m.role = 'member' and coalesce((select (k.value -> 'gastos' ->> 'abierto') is distinct from 'false'
                                                               from public.app_config k where k.key = 'preferences'), true))))
      or not public.puede_recibir_correos(g.autor) then
@@ -714,7 +726,7 @@ create or replace function public.gastos_observar(p_gasto uuid, p_texto text)
 returns boolean language plpgsql security definer set search_path = '' as $$
 declare yo text := public.mi_correo(); g record; v_texto text := btrim(coalesce(p_texto, ''));
 begin
-  if not (public.es_admin_fijo() or public.es_admin_rol()) then
+  if not (public.es_gestor_gastos()) then
     raise exception 'Observa un admin' using errcode = 'insufficient_privilege';
   end if;
   if v_texto = '' or length(v_texto) > 1000 then
@@ -745,7 +757,7 @@ create or replace function public.gastos_rendicion_devolver(p_id uuid)
 returns integer language plpgsql security definer set search_path = '' as $$
 declare r record; n integer;
 begin
-  if not (public.es_admin_fijo() or public.es_admin_rol()) then
+  if not (public.es_gestor_gastos()) then
     raise exception 'Devuelve un admin' using errcode = 'insufficient_privilege';
   end if;
   select * into r from public.gastos_rendiciones x where x.id = p_id for update;
@@ -769,7 +781,7 @@ returns uuid language plpgsql security definer set search_path = '' as $$
 declare yo text := public.mi_correo(); v_autor text; v_id uuid; v_texto text := btrim(coalesce(p_texto, ''));
 begin
   select x.autor into v_autor from public.gastos x where x.id = p_gasto;
-  if not found or not ((v_autor = yo and public.gastos_habilitado()) or public.es_admin_fijo() or public.es_admin_rol()) then
+  if not found or not ((v_autor = yo and public.gastos_habilitado()) or public.es_gestor_gastos()) then
     raise exception 'Ese gasto no es tuyo' using errcode = 'insufficient_privilege';
   end if;
   if v_texto = '' or length(v_texto) > 1000 then
@@ -788,7 +800,7 @@ create or replace function public.gastos_rendicion_aprobar(p_id uuid)
 returns boolean language plpgsql security definer set search_path = '' as $$
 declare yo text := public.mi_correo(); r record;
 begin
-  if not (public.es_admin_fijo() or public.es_admin_rol()) then
+  if not (public.es_gestor_gastos()) then
     raise exception 'Aprueba un admin' using errcode = 'insufficient_privilege';
   end if;
   select * into r from public.gastos_rendiciones x where x.id = p_id for update;
@@ -799,8 +811,8 @@ begin
     raise exception 'Se aprueba una rendición mandada y sin observaciones pendientes' using errcode = 'check_violation';
   end if;
   if r.autor = yo and not (public.es_admin_fijo()
-       and not exists (select 1 from public.members m where m.role = 'admin' and m.email <> yo)) then
-    raise exception 'La tuya la aprueba otro admin' using errcode = 'insufficient_privilege';
+       and not exists (select 1 from public.members m where m.role in ('admin', 'finance') and m.email <> yo)) then
+    raise exception 'La tuya la aprueba otro admin o Finanzas' using errcode = 'insufficient_privilege';
   end if;
   update public.gastos set estado = 'aprobado', aprobado_el = coalesce(aprobado_el, now()), tocado_el = now()
    where rendicion_id = p_id and estado <> 'aprobado';
@@ -819,7 +831,7 @@ create or replace function public.gastos_rendicion_reabrir(p_id uuid)
 returns boolean language plpgsql security definer set search_path = '' as $$
 declare r record;
 begin
-  if not (public.es_admin_fijo() or public.es_admin_rol()) then
+  if not (public.es_gestor_gastos()) then
     raise exception 'Reabre un admin' using errcode = 'insufficient_privilege';
   end if;
   select * into r from public.gastos_rendiciones x where x.id = p_id for update;
@@ -838,7 +850,7 @@ create or replace function public.gastos_movimiento_confirmar(p_id uuid)
 returns boolean language plpgsql security definer set search_path = '' as $$
 declare yo text := public.mi_correo();
 begin
-  if not (public.es_admin_fijo() or public.es_admin_rol()) then
+  if not (public.es_gestor_gastos()) then
     raise exception 'Confirma un admin' using errcode = 'insufficient_privilege';
   end if;
   update public.gastos_movimientos set estado = 'confirmado', confirmado_por = yo, confirmado_el = now()
@@ -861,7 +873,7 @@ create or replace function public.gastos_cuenta(p_persona text)
 returns jsonb language plpgsql stable security definer set search_path = '' as $$
 declare yo text := public.mi_correo(); v jsonb;
 begin
-  if not ((p_persona = yo and public.gastos_habilitado()) or public.es_admin_fijo() or public.es_admin_rol()) then
+  if not ((p_persona = yo and public.gastos_habilitado()) or public.es_gestor_gastos()) then
     raise exception 'Esa cuenta no es tuya' using errcode = 'insufficient_privilege';
   end if;
   with gastos_persona as (
@@ -943,15 +955,15 @@ create or replace function public.gastos_archivo_visible(ruta text) returns bool
      and (exists (select 1 from public.gastos g
                    where g.id::text = split_part(ruta, '/', 2)
                      and ((g.autor = public.mi_correo() and public.gastos_habilitado())
-                          or public.es_admin_fijo() or public.es_admin_rol()))
+                          or public.es_gestor_gastos()))
           or exists (select 1 from public.gastos_movimientos m
                       where 'mov-' || m.id::text = split_part(ruta, '/', 2)
                         and ((m.persona = public.mi_correo() and public.gastos_habilitado())
-                             or public.es_admin_fijo() or public.es_admin_rol()))
+                             or public.es_gestor_gastos()))
           or exists (select 1 from public.gastos_cambios c
                       where 'cambio-' || c.id::text = split_part(ruta, '/', 2)
                         and ((c.autor = public.mi_correo() and public.gastos_habilitado())
-                             or public.es_admin_fijo() or public.es_admin_rol())))
+                             or public.es_gestor_gastos())))
 $$;
 create or replace function public.gastos_archivo_subible(ruta text) returns boolean
   language sql stable security definer set search_path = '' as $$
@@ -964,7 +976,7 @@ create or replace function public.gastos_archivo_subible(ruta text) returns bool
           or exists (select 1 from public.gastos_movimientos m
                       where 'mov-' || m.id::text = split_part(ruta, '/', 2)
                         and ((m.persona = public.mi_correo() and m.estado = 'pendiente')
-                             or public.es_admin_fijo() or public.es_admin_rol()))
+                             or public.es_gestor_gastos()))
           or exists (select 1 from public.gastos_cambios c join public.gastos_rendiciones r on r.id = c.rendicion_id
                       where 'cambio-' || c.id::text = split_part(ruta, '/', 2)
                         and c.autor = public.mi_correo() and r.estado in ('abierta', 'observada')))

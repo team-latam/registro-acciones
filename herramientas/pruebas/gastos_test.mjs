@@ -266,7 +266,7 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   await p.click('[data-action="gasto-abrir"][data-id="gx2"]'); await p.waitForSelector("#gastoOverlay:not([hidden])");
   eq("un gasto mandado se ve como texto, sin campos apagados, y no se cambia", await p.evaluate(() => [document.getElementById("gxConcepto").tagName,
     document.querySelectorAll("#gastoBody .gx-v-form > :not(.gx-observar) :is(input, select, textarea, .gx-opc)").length, !!document.querySelector("#gastoBody .gx-res"),
-    !document.querySelector('[data-action="gasto-guardar"]'), (document.querySelector("#gastoBody .gx-res-estado") || {}).textContent]), ["SPAN", 0, true, true, "Mandado: un administrador lo está revisando."]);
+    !document.querySelector('[data-action="gasto-guardar"]'), (document.querySelector("#gastoBody .gx-res-estado") || {}).textContent]), ["SPAN", 0, true, true, "Mandado: lo está revisando un administrador o Finanzas."]);
   await p.keyboard.press("Escape");
   eq("Escape cierra la ventana y el foco vuelve a su fila", await hasta(p, () => document.getElementById("gastoOverlay").hidden && document.activeElement.dataset.id === "gx2"), true);
 
@@ -783,7 +783,7 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   await p.click('[data-action="gastos-seccion"][data-key="aprobar"]'); await p.waitForTimeout(150);
   eq("con otro admin, la propia no cuenta en el número de «Para aprobar» (solo la de Ana y la plata)", await p.$eval('[data-action="gastos-seccion"][data-key="aprobar"] .pending-count', e => e.textContent).catch(() => ""), "2");
   await abrirRen(p, "ren_mvd"); await p.waitForTimeout(150);
-  eq("…y abierta, dice que la aprueba otro admin, sin «Aprobar»", await p.evaluate(() => [!!document.querySelector('[data-action="gastos-aprobar"]'), (document.querySelector(".gx-paso b") || {}).textContent]), [false, "La aprueba otro admin"]);
+  eq("…y abierta, dice que la aprueba otro admin, sin «Aprobar»", await p.evaluate(() => [!!document.querySelector('[data-action="gastos-aprobar"]'), (document.querySelector(".gx-paso b") || {}).textContent]), [false, "La aprueba otro admin o Finanzas"]);
   eq("sin errores de página", errores, []);
   await p.close();
 }
@@ -1281,7 +1281,7 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   await irGastos(p);
   await abrirRen(p, "sin"); await p.waitForTimeout(150);
   await p.click('[data-action="gasto-abrir"][data-id="gx8"]'); await p.waitForSelector("#gastoOverlay:not([hidden])");
-  eq("un gasto de un mes con la rutina ya aprobada: «Va en» dice que se puede reabrir o ponerlo en otro mes", await leer(p, "#gastoBody .gx-pista-vaen", e => /^La rutina de .+ ya se aprobó: un administrador la puede reabrir, o ponelo en la de otro mes\.$/.test(e.textContent.trim())), true);
+  eq("un gasto de un mes con la rutina ya aprobada: «Va en» dice que se puede reabrir o ponerlo en otro mes", await leer(p, "#gastoBody .gx-pista-vaen", e => /^La rutina de .+ ya se aprobó: un administrador o Finanzas la puede reabrir, o ponelo en la de otro mes\.$/.test(e.textContent.trim())), true);
   await p.keyboard.press("Escape"); await p.waitForTimeout(150);
   // En la lista: «Otra persona» muestra el «¿Quién?» y lo cuenta como faltante hasta elegirlo.
   await tocar(p, '[data-action="gastos-lista-abrir"]'); await p.waitForTimeout(150);

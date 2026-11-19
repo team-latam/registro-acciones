@@ -59,8 +59,9 @@ function armar(){
     const agendaOverlay = { hidden:true };
     let agendaPila = [], agendaImport = null;
     // Los gastos (15/11/2026): lo de una cuenta no pasa a la siguiente.
-    let gastosConfig = {}, gastosSeccion = "rendiciones", gastosEst = { anio: "2025", moneda: "ARS", abiertas: new Set(["x"]) };
+    let gastosConfig = {}, gastosSeccion = "rendiciones", gastosEst = { anio: "2025", moneda: "ARS", abiertas: new Set(["x"]) }; let gastosRes = { anio: "2025", moneda: "ARS" };
     reg.estadisticas = () => gastosEst;
+    reg.resumen = () => gastosRes;
     const cortarGastos = () => { reg.cortesDeGastos = (reg.cortesDeGastos || 0) + 1; };
     const state = { auth:{ status:"loading", user:null }, posts:[], repliesByPost:{}, loaded:false,
       accessRequests:[], auditLog:[], roster:[], formerMembers:[], personas:[], prefs:{}, filters:null,
@@ -294,6 +295,7 @@ for(const [role, esperado] of [[undefined,"approved"],["member","approved"],["ob
      [a.reg.cortoPadron, a.reg.cortoSolicitud], [true, true]);
   eq("y queda afuera", a.state.auth.status, "signedOut");
   eq("y lo de gastos de esa cuenta se corta y se olvida (al entrar y al salir)", a.reg.cortesDeGastos, 2);
+  eq("y el «Resumen» también (el año y la moneda no pasan a la cuenta siguiente)", [a.reg.resumen().anio, a.reg.resumen().moneda], ["", ""]);
   eq("y «Mis estadísticas» vuelve a empezar (el año, la moneda y lo abierto no pasan a la cuenta siguiente)", [a.reg.estadisticas().anio, a.reg.estadisticas().moneda, a.reg.estadisticas().abiertas.size], ["", "", 0]);
 }
 

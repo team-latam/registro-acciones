@@ -149,6 +149,23 @@ create table if not exists public.members (
   tour_seen_at              timestamptz
 );
 
+-- Finanzas (19/11/2026): un cuarto rol, entre integrante y administrador, para
+-- quien revisa y aprueba los gastos y mira los números (docs/rendicion-gastos/
+-- README.md, «El rol nuevo: Finanzas»). La tabla ya existe en las bases que están
+-- andando: el rol se suma cambiando la regla (se puede correr más de una vez).
+-- Se saca cualquier regla vieja sobre `role` (por su contenido, no por su nombre: si en
+-- alguna base se llamó distinto, la vieja seguiría rechazando «finance»).
+do $$
+declare c record;
+begin
+  for c in select conname from pg_constraint
+            where conrelid = 'public.members'::regclass and contype = 'c' and pg_get_constraintdef(oid) like '%role%' loop
+    execute format('alter table public.members drop constraint %I', c.conname);
+  end loop;
+end $$;
+alter table public.members add constraint members_role_check
+  check (role in ('admin','member','observer','finance'));
+
 -- El @nickname tiene que ser único: es con lo que se etiqueta a la
 -- gente. Hoy eso lo controla el navegador antes de escribir, porque las
 -- reglas de Firestore no saben mirar el resto de la colección. Acá lo

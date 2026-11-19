@@ -210,7 +210,8 @@ export function createClient(url, clave){
       if(nombre.startsWith("gastos_")){
         const T = n => (estado.tablas[n] = estado.tablas[n] || []);
         const yo = quien(), ahora = new Date().toISOString();
-        const esAdmin = (estado.tablas.members || []).some(m => m.email === yo && m.role === "admin");
+        // Admin o Finanzas (19/11/2026, es_gestor_gastos() de la base): lo mismo en las reglas de Gastos.
+        const esAdmin = (estado.tablas.members || []).some(m => m.email === yo && (m.role === "admin" || m.role === "finance"));
         const mal = (code, message) => ({ data: null, error: { code, message } });
         if(estado.falloGastos) return mal("23514", estado.falloGastos);
         if(nombre === "gastos_rendicion_abrir"){
@@ -276,8 +277,8 @@ export function createClient(url, clave){
           const r = T("gastos_rendiciones").find(x => x.id === args.p_id);
           if(!r || r.estado !== "enviada" || T("gastos").some(g => g.rendicion_id === r.id && g.estado === "observado")) return mal("23514", "Se aprueba una rendición mandada y sin observaciones pendientes");
           // La propia la aprueba otro admin; si no hay otro, el admin fijo (D17, 19/11).
-          const otroAdmin = (estado.tablas.members || []).some(m => m.role === "admin" && m.email !== yo);
-          if(r.autor === yo && !(yo === "benny@team-latam.com" && !otroAdmin)) return mal("42501", "La tuya la aprueba otro admin");
+          const otroAdmin = (estado.tablas.members || []).some(m => (m.role === "admin" || m.role === "finance") && m.email !== yo);
+          if(r.autor === yo && !(yo === "benny@team-latam.com" && !otroAdmin)) return mal("42501", "La tuya la aprueba otro admin o Finanzas");
           T("gastos").filter(g => g.rendicion_id === r.id && g.estado !== "aprobado").forEach(g => { g.estado = "aprobado"; g.aprobado_el = g.aprobado_el || ahora; });
           r.estado = "aprobada"; r.aprobada_el = ahora; r.aprobada_por = yo;
           return { data: true, error: null };

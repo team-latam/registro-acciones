@@ -1109,13 +1109,14 @@ traería de vuelta como posteo nuevo.
 
 ### Roles
 
-Tres roles, guardados en la columna `role` de `members` (por defecto
+Cuatro roles, guardados en la columna `role` de `members` (por defecto
 `member`, que es lo que tienen todos los aprobados de antes de que
 existiera el campo):
 
 | Rol | Ve | Escribe | Administra |
 |---|---|---|---|
 | `admin` | todo | todo | sí: Usuarios, Actividad, Administrar |
+| `finance` (Finanzas, desde el 19/11/2026) | todo | lo mismo que un integrante | **solo Gastos**: ve y gestiona los de todos (observa, aprueba —no lo suyo—, confirma la plata, anota ajustes) y tiene «Resumen». No entra a Administración |
 | `member` | todo | posteos, respuestas, me gusta, sus preferencias | no |
 | `observer` (Observador) | todo | **solo sus preferencias** | no |
 

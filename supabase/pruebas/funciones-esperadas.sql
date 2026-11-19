@@ -20,6 +20,8 @@ insert into esperadas values
   ('esta_aprobado()',                       true, true),   -- security definer: ¿está en el equipo?
   ('es_admin_fijo()',                       true, true),
   ('es_admin_rol()',                        true, true),
+  ('es_finanzas()',                         true, true),   -- Finanzas (19/11/2026): solo devuelve si quien llama tiene ese rol
+  ('es_gestor_gastos()',                    true, true),   -- admin fijo, admin por rol o Finanzas: solo un sí o un no
   ('puede_escribir()',                      true, true),
   ('sesion_valida()',                       true, true),
   ('correo_de_su_google()',                 true, true),   -- security definer: solo mira SU identidad

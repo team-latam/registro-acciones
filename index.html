@@ -842,6 +842,15 @@
   .gxe-c i{ display:block; width:100%; min-height:2px; background:var(--celeste-dark); border-radius:4px 4px 0 0; }
   .gxe-c b{ font-size:12px; color:var(--text); font-weight:700; margin-bottom:2px; white-space:nowrap; }
   .gxe-c.gxe-cero i{ opacity:.25; }
+  .gxe-grandes .gxe-v{ font-size:30px; }
+  .gxe-tile.gxe-aviso .gxe-v{ color:var(--warn-text); }
+  .gxe-tarjeta + .gxe-tarjeta{ margin-top:14px; }
+  .gxe-edades{ display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:10px; }
+  .gxe-edades > div{ background:var(--surface-alt); border-radius:var(--radius-md); padding:10px 12px; min-width:0; }
+  .gxe-edades b{ display:block; font-size:19px; font-weight:800; overflow-wrap:anywhere; }
+  .gxe-edades span{ font-size:12px; color:var(--text-muted); }
+  .gxe-edades .gxe-vieja b{ color:var(--danger-fg); }
+  .gxe-franja{ margin-bottom:14px; }
   .gxe-gastos{ display:flex; flex-direction:column; margin-top:8px; }
   .gxe-gasto{ font-size:13.5px; display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; text-align:start; padding:9px 4px; border:0; border-top:1px solid var(--border); background:transparent; color:inherit; font:inherit; cursor:pointer; }
   .gxe-gasto:hover{ background:var(--surface-hover); }
@@ -7383,7 +7392,7 @@ const DEFAULT_PREFS = {
 state.prefs = { ...DEFAULT_PREFS };
 function prefs(){ return state.prefs || DEFAULT_PREFS; }
 
-// Tres roles con acceso (README, "Roles"): admin, integrante ("approved")
+// Cuatro roles con acceso (README, "Roles"): admin, Finanzas (19/11/2026, `finance`, entra como «approved»), integrante ("approved")
 // y observador. isAuthorized() = puede ENTRAR y ver; canWrite() = puede
 // publicar, responder, dar me gusta y editar. El observador entra, ve
 // todo y no toca nada. El admin es ADMIN_EMAIL (fijo en el código y en
@@ -7396,9 +7405,16 @@ function isAdmin(){ return state.auth.status === "admin"; }
 function isFixedAdmin(){ return !!(state.auth.user && state.auth.user.email === ADMIN_EMAIL); }
 function isObserver(){ return state.auth.status === "observer"; }
 function canWrite(){ return state.auth.status === "approved" || state.auth.status === "admin"; }
-const ROLES = ["member", "admin", "observer"];
+const ROLES = ["member", "finance", "admin", "observer"];
+// Finanzas (19/11/2026): un integrante que además gestiona los gastos de todos (ve, observa, aprueba, confirma la plata)
+// y mira los números. Entra y escribe como un integrante («approved»): no es admin y no toca Administración.
+function esFinanzas(){ return !!state.auth.allowlisted && state.auth.role === "finance" && state.auth.status === "approved"; }
+// Quien gestiona los gastos de todos: un admin o Finanzas. Lo que sigue siendo solo del admin (los tipos, el interruptor,
+// anotar una actividad en la que no participó) sigue preguntando isAdmin().
+function esGestor(){ return isAdmin() || esFinanzas(); }
 function roleLabel(role){
   return role === "admin" ? t("Administrador","Administrator","Administrador","מנהל/ת")
+    : role === "finance" ? t("Finanzas","Finance","Finanças","כספים")
     : role === "observer" ? t("Observador","Observer","Observador","משקיף/ה")
     : t("Integrante","Member","Integrante","חבר/ה");
 }
@@ -9123,7 +9139,7 @@ async function onAuthChanged(user){
   // La Agenda abierta y una lista a medio traer no pasan a la sesión siguiente.
   agendaOverlay.hidden = true; agendaPila = []; agendaImport = null;
   // Los gastos de una cuenta no pasan a la siguiente.
-  cortarGastos(); gastosConfig = {}; gastosSeccion = "rendir"; gastosEst = { anio: "", moneda: "", abiertas: new Set() };
+  cortarGastos(); gastosConfig = {}; gastosSeccion = "rendir"; gastosEst = { anio: "", moneda: "", abiertas: new Set() }; gastosRes = { anio: "", moneda: "" };
   state.filters = filtrosVacios(); filtroOrigen = null; fp.abierto = false; fp.b = null;
 
   if(!user){
@@ -13719,6 +13735,7 @@ function ultimaVezDe(u){
 }
 function rolPill(role){
   return role === "admin" ? `<span class="status-pill approved">${esc(t("Admin","Admin","Admin","מנהל/ת"))}</span>`
+    : role === "finance" ? `<span class="status-pill approved">${esc(t("Finanzas","Finance","Finanças","כספים"))}</span>`
     : role === "observer" ? `<span class="status-pill observer">${esc(t("Observador","Observer","Observador","משקיף/ה"))}</span>`
     : `<span class="status-pill integrante">${esc(t("Integrante","Member","Integrante","חבר/ת צוות"))}</span>`;
 }
@@ -22051,7 +22068,9 @@ function tourSteps(){
       text: t("Subí las fotos o los PDF de tus comprobantes: el sistema los lee y vos confirmás. En «Por rendir» está lo que tenés que completar y mandar; en «Rendiciones», todo lo que ya mandaste, en «Cuenta corriente», lo que te deben o debés, y en «Mis estadísticas», en qué gastaste, mes a mes y por actividad.",
         "Upload photos or PDFs of your receipts: the system reads them and you confirm. “To report” has what you need to complete and send; “Expense reports”, everything you've sent; “Running balance”, what you're owed or owe; and “My statistics”, what you spent on, month by month and by activity.",
         "Envie as fotos ou os PDF dos seus comprovantes: o sistema lê e você confirma. Em «A prestar» está o que você precisa completar e mandar; em «Prestações», tudo o que já mandou; em «Conta corrente», o que te devem ou você deve; e em «Minhas estatísticas», em que você gastou, mês a mês e por atividade.",
-        "העלו תמונות או קובצי PDF של הקבלות: המערכת קוראת אותן ואתם מאשרים. ב«לדיווח» יש את מה שצריך להשלים ולשלוח; ב«דוחות הוצאות» — כל מה ששלחתם; ב«חשבון שוטף» — מה שחייבים לכם או שאתם חייבים; וב«הסטטיסטיקות שלי» — על מה הוצאתם, חודש אחר חודש ולפי פעילות."),
+        "העלו תמונות או קובצי PDF של הקבלות: המערכת קוראת אותן ואתם מאשרים. ב«לדיווח» יש את מה שצריך להשלים ולשלוח; ב«דוחות הוצאות» — כל מה ששלחתם; ב«חשבון שוטף» — מה שחייבים לכם או שאתם חייבים; וב«הסטטיסטיקות שלי» — על מה הוצאתם, חודש אחר חודש ולפי פעילות.")
+        // Quien gestiona los gastos de todos (un admin o Finanzas) tiene dos secciones más.
+        + (esGestor() ? " " + t("Como te toca revisar, también tenés «Para aprobar» y «Resumen».","Since you review expenses, you also have “To approve” and “Summary”.","Como você revisa as despesas, também tem «Para aprovar» e «Resumo».","מאחר שאתם בודקים הוצאות, יש לכם גם «לאישור» ו«סיכום».") : ""),
       textoMas: true }] : []),
     { id:"reportes", cubre:["reportes"], target: [...tourNav("reportes"), TOUR_MAS],
       title: t("Reportes","Reports","Relatórios","דוחות"),
@@ -25050,7 +25069,7 @@ const gastosAbiertoAlEquipo = () => gastosConfig.abierto !== false;
 let gastosConfigLeida = false;
 function gastosVisible(){
   if(!isAuthorized() || !gastosConfigLeida || !gastosPrendido()) return false;
-  return isAdmin() || (gastosAbiertoAlEquipo() && canWrite());
+  return esGestor() || (gastosAbiertoAlEquipo() && canWrite());
 }
 function miCorreo(){ return String((state.auth.user && state.auth.user.email) || "").toLowerCase(); }
 function applyGastosConfig(cfg){
@@ -25115,7 +25134,7 @@ function gastosPendientes(){
   if(!gastosDatos) return 0;
   const yo = miCorreo();
   let n = gastosDatos.gastos.filter(g => g.autor === yo && estadoVisible(g) === "observado").length;
-  if(isAdmin()) n += gastosDatos.rendiciones.filter(r => r.estado === "enviada" && (puedeAprobarRendicion(r) || gastosDe(r.id).some(g => g.estado === "observado"))).length
+  if(esGestor()) n += gastosDatos.rendiciones.filter(r => r.estado === "enviada" && (puedeAprobarRendicion(r) || gastosDe(r.id).some(g => g.estado === "observado"))).length
     + gastosDatos.movimientos.filter(m => m.estado === "pendiente").length;
   return n;
 }
@@ -26381,8 +26400,10 @@ function gastosSecciones(){
     // «Mis estadísticas» (19/11): lo propio, con salida a cada gasto. Docs: «Estadísticas, rol Finanzas y análisis».
     { key: "estadisticas", label: t("Mis estadísticas","My statistics","Minhas estatísticas","הסטטיסטיקות שלי") },
   ];
-  if(isAdmin()) s.push({ key: "aprobar", label: t("Para aprobar","To approve","Para aprovar","לאישור"),
+  if(esGestor()) s.push({ key: "aprobar", label: t("Para aprobar","To approve","Para aprovar","לאישור"),
     badge: gastosDatos ? gastosDatos.rendiciones.filter(r => r.estado === "enviada" && (puedeAprobarRendicion(r) || gastosDe(r.id).some(g => g.estado === "observado"))).length + gastosDatos.movimientos.filter(m => m.estado === "pendiente").length : 0 });
+  // «Resumen» (19/11): los números del equipo, sin nombres, para quien gestiona los gastos (admins y Finanzas).
+  if(esGestor()) s.push({ key: "resumen", label: t("Resumen","Summary","Resumo","סיכום") });
   return s;
 }
 function gastosTextos(key){
@@ -26403,6 +26424,16 @@ function gastosTextos(key){
         "<b>Gasto</b> soma as despesas pagas por você em prestações já aprovadas; as que estão em revisão aparecem à parte. <b>Recebido</b> é o dinheiro que a organização te deu (um adiantamento ou um reembolso) e <b>devolvido</b>, o que você devolveu. O <b>saldo</b> positivo é o que a organização te deve; negativo, o que você deve.<br><br>O que você anota como recebido ou devolvido fica <b>pendente</b> até um administrador confirmar. O total rápido de uma atividade não muda a conta.",
         "<b>הוצאות</b> סוכם את ההוצאות ששילמתם בעצמכם בדוחות שכבר אושרו; אלה שבבדיקה מוצגות בנפרד. <b>התקבל</b> הוא הכסף שהארגון נתן לכם (מקדמה או החזר), ו<b>הוחזר</b> — מה שהחזרתם. <b>יתרה</b> חיובית היא מה שהארגון חייב לכם; שלילית — מה שאתם חייבים.<br><br>מה שרושמים כהתקבל או הוחזר נשאר <b>ממתין</b> עד שמנהל/ת מאשר/ת. הסכום המהיר של פעילות לא משנה את החשבון."),
     },
+    resumen: {
+      lead: t("Los números grandes de todo el equipo, sin nombres de personas. Solo los ven los administradores y Finanzas.",
+        "The whole team's big numbers, without people's names. Only admins and Finance see them.",
+        "Os números grandes de toda a equipe, sem nomes de pessoas. Só administradores e as Finanças veem.",
+        "המספרים הגדולים של כל הצוות, בלי שמות. רק מנהלים וכספים רואים אותם."),
+      ayuda: t("Sale de las rendiciones confirmadas del año que elijas. <b>Se debe a personas</b> suma lo que la organización le debe a cada una según su cuenta corriente de hoy (no del año). <b>Por aprobar</b> es lo que está mandado o con observaciones, aparte, por cuánto hace que se mandó. Cada moneda va por separado: nunca se convierten ni se suman. Para ver quién gastó qué, están «Rendiciones» y «Cuenta corriente».",
+        "It comes from the confirmed reports of the year you pick. <b>Owed to people</b> adds up what the organization owes each person according to today's running balance (not the year's). <b>To approve</b> is what has been sent or flagged, split by how long ago it was sent. Each currency is shown on its own: they are never converted or added together. To see who spent what, there are “Expense reports” and “Running balance”.",
+        "Vem das prestações confirmadas do ano que você escolher. <b>Devido às pessoas</b> soma o que a organização deve a cada uma segundo a conta corrente de hoje (não a do ano). <b>Para aprovar</b> é o que está enviado ou com observações, separado por há quanto tempo foi enviado. Cada moeda vai separada: nunca são convertidas nem somadas. Para ver quem gastou o quê, há «Prestações» e «Conta corrente».",
+        "המספרים מבוססים על הדוחות המאושרים בשנה שבחרתם. <b>חייבים לאנשים</b> מסכם מה הארגון חייב לכל אחד לפי החשבון השוטף של היום (לא של השנה). <b>לאישור</b> הוא מה ששלחו או שיש בו הערות, לפי כמה זמן עבר מאז השליחה. כל מטבע מוצג בנפרד: אף פעם לא ממירים ולא מחברים. כדי לראות מי הוציא מה יש את «דוחות הוצאות» ו«חשבון שוטף»."),
+    },
     estadisticas: {
       lead: t("Cuánto gastaste, en qué y en cada actividad. Solo se cuentan los gastos que ya confirmaste.",
         "How much you spent, on what, and on each activity. Only expenses you've already confirmed are counted.",
@@ -26421,23 +26452,23 @@ function gastosTextos(key){
 // ---- Mis estadísticas (19/11/2026) ----
 // Lo propio, solo lo confirmado (un borrador puede venir mal leído), con el monto que se rinde y cada moneda aparte:
 // nunca se convierte ni se suma una con otra. Todo sale de gastosDatos, que ya trae solo lo de la persona.
-function misGastosContados(){
+function misGastosContados(varios){
   const rs = new Map(gastosDatos.rendiciones.map(r => [r.id, r])), yo = miCorreo(), out = [];
   gastosDatos.gastos.forEach(g => {
-    if(g.autor !== yo || g.estado === "borrador" || !g.rendicionId || !/^\d{4}-\d{2}-\d{2}/.test(g.fecha || "")) return;
+    if((!varios && g.autor !== yo) || g.estado === "borrador" || !g.rendicionId || !/^\d{4}-\d{2}-\d{2}/.test(g.fecha || "")) return;
     const r = rs.get(g.rendicionId), x = rendidoDe(g);
     if(r && x && x.monto != null && !isNaN(x.monto)) out.push({ g, r, moneda: x.moneda, monto: Number(x.monto), anio: String(g.fecha).slice(0, 4) });
   });
   return out;
 }
-function estadisticasMias(){
-  const todos = misGastosContados(), hoy = todayISO().slice(0, 4);
+function estadisticasMias(est = gastosEst, varios = false){
+  const todos = misGastosContados(varios), hoy = todayISO().slice(0, 4);
   const anios = [...new Set([hoy, ...todos.map(x => x.anio)])].sort().reverse();
   const conDatos = anios.filter(a => todos.some(x => x.anio === a));
-  const anio = anios.includes(gastosEst.anio) ? gastosEst.anio : conDatos.includes(hoy) ? hoy : (conDatos[0] || hoy);
+  const anio = anios.includes(est.anio) ? est.anio : conDatos.includes(hoy) ? hoy : (conDatos[0] || hoy);
   const delAnio = todos.filter(x => x.anio === anio);
   const monedas = monedasEnOrden(sumarPorMoneda(delAnio.map(x => ({ moneda: x.moneda, monto: x.monto }))));
-  const moneda = monedas.includes(gastosEst.moneda) ? gastosEst.moneda : (monedas[0] || "USD");
+  const moneda = monedas.includes(est.moneda) ? est.moneda : (monedas[0] || "USD");
   return { todos, anios, anio, monedas, moneda, sel: delAnio.filter(x => x.moneda === moneda) };
 }
 function diasDeActividad(p){
@@ -26454,40 +26485,23 @@ function barrasPorTipo(l){
 }
 function renderGastosEstadisticas(){
   const E = estadisticasMias(), { anio, moneda, sel } = E, yo = miCorreo();
-  const grupoCtl = (et, items) => `<div class="gxe-ctl"><span class="gxe-et">${et}</span><div class="pref-chips" role="group" aria-label="${esc(et)}">${items}</div></div>`;
-  const chipsAnio = grupoCtl(t("Año","Year","Ano","שנה"), E.anios.map(a => `<button type="button" class="chip-toggle${a === anio ? " active" : ""}" data-action="gastos-est-anio" data-year="${esc(a)}" aria-pressed="${a === anio}">${esc(a)}</button>`).join(""));
-  const chipsMon = E.monedas.length > 1 ? grupoCtl(t("Moneda","Currency","Moeda","מטבע"), E.monedas.map(m => `<button type="button" class="chip-toggle${m === moneda ? " active" : ""}" data-action="gastos-est-moneda" data-m="${esc(m)}" aria-pressed="${m === moneda}">${esc(m)}</button>`).join(""))
-    + `<p class="gxe-sub">${t("Cada moneda va por separado: no se convierten ni se suman.","Each currency is shown on its own: they are not converted or added together.","Cada moeda vai separada: não são convertidas nem somadas.","כל מטבע מוצג בנפרד: לא ממירים ולא מחברים.")}</p>` : "";
+  const { chipsAnio, chipsMon } = chipsDeEstadisticas(E, "gastos-est-anio", "gastos-est-moneda");
   if(!sel.length) return `${chipsAnio}<p class="setting-sub gx-nada">${t("Todavía no hay gastos confirmados en {a}. Cuando confirmes comprobantes en «Por rendir», acá vas a ver en qué se fue la plata, mes a mes y por actividad.","There are no confirmed expenses in {a} yet. Once you confirm receipts in “To report”, you'll see here where the money went, month by month and by activity.","Ainda não há despesas confirmadas em {a}. Quando você confirmar comprovantes em «A prestar», aqui vai ver para onde foi o dinheiro, mês a mês e por atividade.","עדיין אין הוצאות מאושרות ב-{a}. אחרי שתאשרו קבלות ב״לדיווח״ תראו כאן לאן הלך הכסף, חודש אחר חודש ולפי פעילות.",{ a: anio })}</p>`;
   const total = sumaDe(sel);
-  // Contra el año anterior hasta la misma fecha: un año a medias no tiene que parecer menos.
-  const hoyISO = todayISO(), corte = anio === hoyISO.slice(0, 4) ? hoyISO.slice(5) : "12-31", antes = String(Number(anio) - 1);
-  const prev = sumaDe(E.todos.filter(x => x.moneda === moneda && x.anio === antes && x.g.fecha.slice(5, 10) <= corte));
-  let vs = "";
-  if(prev > 0){
-    const r = total / prev - 1, txt = (r >= 0 ? "+" : "−") + Math.abs(Math.round(r * 100)) + "%";
-    vs = `${gxChip([txt, r > 0.1 ? "aviso" : r < -0.1 ? "bien" : "neutro"])} ${esc(anio === hoyISO.slice(0, 4)
-      ? t("frente al mismo período de {a}","vs the same period in {a}","frente ao mesmo período de {a}","לעומת אותה תקופה ב-{a}",{ a: antes })
-      : t("frente a {a}","vs {a}","frente a {a}","לעומת {a}",{ a: antes }))}`;
-  }
+  const vs = comparadoConAnterior(E, total);
   const rendiciones = [...new Set(sel.map(x => x.r.id))].map(id => sel.find(x => x.r.id === id).r);
   const actividades = rendiciones.filter(r => r.postId), dias = actividades.reduce((a, r) => a + diasDeActividad(getPostById(r.postId)), 0);
   const cuenta = (cuentaDe(yo) || {})[moneda], saldo = cuenta ? cuenta.saldo : 0;
   const saldoTxt = saldo > 0 ? t("la organización te debe","the organization owes you","a organização te deve","הארגון חייב לך") : saldo < 0 ? t("le debés a la organización","you owe the organization","você deve à organização","את/ה חייב/ת לארגון") : t("estás al día","you're all square","você está em dia","אתם מאוזנים");
   const revision = sumaDe(sel.filter(x => x.r.estado === "enviada" || x.r.estado === "observada"));
-  const tile = (k, v, n) => `<div class="gxe-tile"><div class="gxe-k">${k}</div><div class="gxe-v">${v}</div>${n ? `<div class="gxe-n">${n}</div>` : ""}</div>`;
+  const tile = gxeTile;
   const tiles = `<div class="gxe-tiles">
     ${tile(t("Gastado","Spent","Gasto","הוצאות"), montoHtml(moneda, total), vs)}
     ${tile(t("Actividades","Activities","Atividades","פעילויות"), actividades.length, dias ? (dias === 1 ? t("1 día","1 day","1 dia","יום אחד") : t("{n} días","{n} days","{n} dias","{n} ימים",{ n: dias })) : "")}
     ${tile(t("En revisión","In review","Em revisão","בבדיקה"), montoHtml(moneda, revision), t("mandado, todavía sin aprobar","sent, not approved yet","enviado, ainda sem aprovar","נשלח, עדיין לא אושר"))}
     ${tile(t("Tu saldo","Your balance","Seu saldo","היתרה שלך"), montoHtml(moneda, Math.abs(saldo)), `<span>${esc(saldoTxt)}</span><button type="button" class="gx-link" data-action="gastos-seccion" data-key="cuenta">${t("Ver mi cuenta","See my balance","Ver minha conta","לחשבון שלי")}</button>`)}
   </div>`;
-  const porMes = Array(12).fill(0);
-  sel.forEach(x => { porMes[Number(x.g.fecha.slice(5, 7)) - 1] += x.monto; });
-  const maxMes = Math.max(1, ...porMes);
-  const meses = `<div class="gxe-meses" role="group" aria-label="${esc(t("Mes a mes","Month by month","Mês a mês","חודש אחר חודש"))}">${porMes.map((v, i) => {
-    const nom = new Date(Number(anio), i, 1).toLocaleDateString(dateLocale(), { month: "short" });
-    return `<div class="gxe-c${v ? "" : " gxe-cero"}" role="img" aria-label="${esc(nom + ": " + (v ? fmtMonto(moneda, v) : t("sin gastos","no expenses","sem despesas","ללא הוצאות")))}">${v ? `<b>${esc(Math.round(v).toLocaleString("en-US"))}</b>` : ""}<i style="height:${(v / maxMes * 100).toFixed(1)}%"></i><span>${esc(nom)}</span></div>`; }).join("")}</div>`;
+  const meses = htmlMeses(sel, anio, moneda);
   const lista = rendiciones.sort((a, b) => claveDeRendicion(b).localeCompare(claveDeRendicion(a))).map(r => {
     const mias = sel.filter(x => x.r.id === r.id).sort((a, b) => a.g.fecha.localeCompare(b.g.fecha)), sumR = sumaDe(mias), abierta = gastosEst.abiertas.has(r.id);
     const d = r.postId ? diasDeActividad(getPostById(r.postId)) : 0, fecha = fechaDeRendicion(r);
@@ -26511,6 +26525,93 @@ function renderGastosEstadisticas(){
     <p class="gxe-sub">${t("Tocá una para ver sus gastos.","Tap one to see its expenses.","Toque em uma para ver suas despesas.","לחצו על אחת כדי לראות את ההוצאות שלה.")}</p>
     <div class="gx-grupos">${lista}</div>`;
 }
+const gxeTile = (k, v, n, extra = "") => `<div class="gxe-tile${extra}"><div class="gxe-k">${k}</div><div class="gxe-v">${v}</div>${n ? `<div class="gxe-n">${n}</div>` : ""}</div>`;
+// Las fichas de año y de moneda (cada una con su acción, porque «Mis estadísticas» y «Resumen» guardan su propio año).
+function chipsDeEstadisticas(E, aAnio, aMon){
+  const { anio, moneda } = E;
+  const grupoCtl = (et, items) => `<div class="gxe-ctl"><span class="gxe-et">${et}</span><div class="pref-chips" role="group" aria-label="${esc(et)}">${items}</div></div>`;
+  const chipsAnio = grupoCtl(t("Año","Year","Ano","שנה"), E.anios.map(a => `<button type="button" class="chip-toggle${a === anio ? " active" : ""}" data-action="${aAnio}" data-year="${esc(a)}" aria-pressed="${a === anio}">${esc(a)}</button>`).join(""));
+  const chipsMon = E.monedas.length > 1 ? grupoCtl(t("Moneda","Currency","Moeda","מטבע"), E.monedas.map(m => `<button type="button" class="chip-toggle${m === moneda ? " active" : ""}" data-action="${aMon}" data-m="${esc(m)}" aria-pressed="${m === moneda}">${esc(m)}</button>`).join(""))
+    + `<p class="gxe-sub">${t("Cada moneda va por separado: no se convierten ni se suman.","Each currency is shown on its own: they are not converted or added together.","Cada moeda vai separada: não são convertidas nem somadas.","כל מטבע מוצג בנפרד: לא ממירים ולא מחברים.")}</p>` : "";
+  return { chipsAnio, chipsMon };
+}
+// Contra el año anterior hasta la misma fecha: un año a medias no tiene que parecer menos.
+function comparadoConAnterior(E, total){
+  const { anio, moneda } = E, hoyISO = todayISO(), corte = anio === hoyISO.slice(0, 4) ? hoyISO.slice(5) : "12-31", antes = String(Number(anio) - 1);
+  const prev = sumaDe(E.todos.filter(x => x.moneda === moneda && x.anio === antes && x.g.fecha.slice(5, 10) <= corte));
+  if(!(prev > 0)) return "";
+  const r = total / prev - 1, txt = (r >= 0 ? "+" : "−") + Math.abs(Math.round(r * 100)) + "%";
+  return `${gxChip([txt, r > 0.1 ? "aviso" : r < -0.1 ? "bien" : "neutro"])} ${esc(anio === hoyISO.slice(0, 4)
+    ? t("frente al mismo período de {a}","vs the same period in {a}","frente ao mesmo período de {a}","לעומת אותה תקופה ב-{a}",{ a: antes })
+    : t("frente a {a}","vs {a}","frente a {a}","לעומת {a}",{ a: antes }))}`;
+}
+function htmlMeses(sel, anio, moneda){
+  const porMes = Array(12).fill(0);
+  sel.forEach(x => { porMes[Number(x.g.fecha.slice(5, 7)) - 1] += x.monto; });
+  const maxMes = Math.max(1, ...porMes);
+  return `<div class="gxe-meses" role="group" aria-label="${esc(t("Mes a mes","Month by month","Mês a mês","חודש אחר חודש"))}">${porMes.map((v, i) => {
+    const nom = new Date(Number(anio), i, 1).toLocaleDateString(dateLocale(), { month: "short" });
+    return `<div class="gxe-c${v ? "" : " gxe-cero"}" role="img" aria-label="${esc(nom + ": " + (v ? fmtMonto(moneda, v) : t("sin gastos","no expenses","sem despesas","ללא הוצאות")))}">${v ? `<b>${esc(Math.round(v).toLocaleString("en-US"))}</b>` : ""}<i style="height:${(v / maxMes * 100).toFixed(1)}%"></i><span>${esc(nom)}</span></div>`; }).join("")}</div>`;
+}
+// Cuánto hace que esperan las rendiciones mandadas (la fecha en que se mandaron): hasta 7 días, de 8 a 30, más de 30.
+function edadesDeEnviadas(){
+  const out = [[], [], []];
+  gastosDatos.rendiciones.filter(r => r.estado === "enviada").forEach(r => {
+    const ms = tsToMillis(r.enviadaEl), d = ms ? Math.floor((Date.now() - ms) / 86400000) : 0;
+    out[d <= 7 ? 0 : d <= 30 ? 1 : 2].push(r);
+  });
+  return out;
+}
+const nombresDeEdades = () => [t("hasta 7 días","up to 7 days","até 7 dias","עד 7 ימים"), t("8 a 30 días","8 to 30 days","8 a 30 dias","8 עד 30 ימים"), t("más de 30 días","over 30 days","mais de 30 dias","מעל 30 ימים")];
+
+// ---- Resumen (19/11/2026): lo del equipo, en números grandes y SIN nombres. Solo para admins y Finanzas ----
+// Se calcula en el navegador con lo que ya trae la base (un gestor lee todo): como Reportes, sin funciones nuevas.
+let gastosRes = { anio: "", moneda: "" };
+function renderGastosResumen(){
+  const E = estadisticasMias(gastosRes, true), { anio, moneda, sel } = E;
+  const { chipsAnio, chipsMon } = chipsDeEstadisticas(E, "gastos-res-anio", "gastos-res-moneda");
+  if(!sel.length) return `${chipsAnio}<p class="setting-sub gx-nada">${t("Todavía no hay gastos confirmados en {a} en todo el equipo.","There are no confirmed expenses in {a} across the team yet.","Ainda não há despesas confirmadas em {a} em toda a equipe.","עדיין אין הוצאות מאושרות ב-{a} בכל הצוות.",{ a: anio })}</p>`;
+  const total = sumaDe(sel), org = sumaDe(sel.filter(x => x.g.pago === "organizacion"));
+  // Lo que se debe, de las cuentas corrientes de hoy (no del año): lo que la organización debe a personas y al revés.
+  const gente = [...new Set([...gastosDatos.rendiciones.map(r => r.autor), ...gastosDatos.movimientos.map(m => m.persona)])];
+  let debe = 0, deben = 0;
+  gente.forEach(pe => { const f = (cuentaDe(pe) || {})[moneda]; if(f){ if(f.saldo > 0) debe += f.saldo; else deben -= f.saldo; } });
+  debe = redondo(debe); deben = redondo(deben);
+  const esperan = gastosDatos.rendiciones.filter(r => r.estado === "enviada" || r.estado === "observada");
+  const ids = new Set(esperan.map(r => r.id));
+  const porAprobar = sumaDe(misGastosContados(true).filter(x => x.moneda === moneda && ids.has(x.r.id)));
+  const [e7, e30, eMas] = edadesDeEnviadas().map(l => { const ii = new Set(l.map(r => r.id)); return sumaDe(misGastosContados(true).filter(x => x.moneda === moneda && ii.has(x.r.id))); });
+  const acts = new Set(sel.filter(x => x.r.postId).map(x => x.r.postId)), gentes = new Set(sel.map(x => x.g.autor));
+  const deActs = sumaDe(sel.filter(x => x.r.postId)), rutina = sumaDe(sel.filter(x => x.r.rutinaMes));
+  const n = k => (k === 1 ? t("1 rendición esperando","1 report waiting","1 prestação esperando","דוח אחד ממתין") : t("{n} rendiciones esperando","{n} reports waiting","{n} prestações esperando","{n} דוחות ממתינים",{ n: k }));
+  const grandes = `<div class="gxe-tiles gxe-grandes">
+    ${gxeTile(t("Gastado","Spent","Gasto","הוצאות"), montoHtml(moneda, total), t("todo el equipo","the whole team","toda a equipe","כל הצוות") + " · " + comparadoConAnterior(E, total))}
+    ${gxeTile(t("Se debe a personas","Owed to people","Devido às pessoas","חייבים לאנשים"), montoHtml(moneda, debe), t("hoy, según las cuentas corrientes","today, from the running balances","hoje, segundo as contas correntes","היום, לפי החשבונות השוטפים") + (deben ? ` · ${esc(t("y las personas le deben {x} a la organización","and people owe the organization {x}","e as pessoas devem {x} à organização","ואנשים חייבים {x} לארגון",{ x: fmtMonto(moneda, deben) }))}` : ""), debe ? " gxe-aviso" : "")}
+    ${gxeTile(t("Por aprobar","To approve","Para aprovar","לאישור"), montoHtml(moneda, porAprobar), esperan.length ? n(esperan.length) : t("nada esperando","nothing waiting","nada esperando","אין ממתינים"))}
+    ${gxeTile(t("Pagado por la organización","Paid by the organization","Pago pela organização","שולם על ידי הארגון"), montoHtml(moneda, org), t("{p}% del gasto","{p}% of the spending","{p}% do gasto","{p}% מההוצאות",{ p: Math.round(org / (total || 1) * 100) }))}
+  </div>`;
+  const chicos = `<div class="gxe-tiles">
+    ${gxeTile(t("Actividades","Activities","Atividades","פעילויות"), acts.size, "")}
+    ${gxeTile(t("Costo promedio de una actividad","Average cost of an activity","Custo médio de uma atividade","עלות ממוצעת של פעילות"), acts.size ? montoHtml(moneda, redondo(deActs / acts.size)) : "—", t("todo el equipo junto","the whole team together","toda a equipe junta","כל הצוות יחד"))}
+    ${gxeTile(t("Personas que rindieron","People who reported","Pessoas que prestaram contas","אנשים שדיווחו"), gentes.size, "")}
+    ${gxeTile(t("Rutina del mes","Monthly routine","Rotina do mês","שגרה חודשית"), montoHtml(moneda, rutina), t("fuera de las actividades","outside the activities","fora das atividades","מחוץ לפעילויות"))}
+  </div>`;
+  const nm = nombresDeEdades();
+  const edades = `<div class="gxe-edades">${[e7, e30, eMas].map((v, i) => `<div class="${i === 2 && v ? "gxe-vieja" : ""}"><b>${montoHtml(moneda, v)}</b><span>${esc(nm[i])}</span></div>`).join("")}</div>`;
+  return `${chipsAnio}${chipsMon}${grandes}${chicos}
+    <div class="gxe-dos">
+      <section class="gxe-tarjeta"><h3>${t("Por tipo de gasto","By type of expense","Por tipo de despesa","לפי סוג הוצאה")}</h3><p class="gxe-sub">${t("Dónde se va la plata","Where the money goes","Para onde vai o dinheiro","לאן הולך הכסף")}</p>${barrasPorTipo(sel)}</section>
+      <section class="gxe-tarjeta"><h3>${t("Mes a mes","Month by month","Mês a mês","חודש אחר חודש")}</h3><p class="gxe-sub">${esc(moneda)}</p>${htmlMeses(sel, anio, moneda)}</section>
+    </div>
+    <section class="gxe-tarjeta"><h3>${t("Lo que espera aprobación","Waiting for approval","O que espera aprovação","מה שממתין לאישור")}</h3><p class="gxe-sub">${t("Por cuánto hace que se mandó","By how long ago it was sent","Há quanto tempo foi enviado","לפי כמה זמן עבר מאז השליחה")}</p>${edades}
+      <p class="gxe-sub" style="margin-top:12px">${t("Sin nombres de personas: el detalle de cada una está en «Rendiciones» y «Cuenta corriente».","No people's names: each person's detail is in “Expense reports” and “Running balance”.","Sem nomes de pessoas: o detalhe de cada uma está em «Prestações» e «Conta corrente».","בלי שמות: הפירוט של כל אחד נמצא ב«דוחות הוצאות» וב«חשבון שוטף».")}</p></section>`;
+}
+// La franja de arriba de «Para aprobar»: cuántas esperan y hace cuánto (sin plata: acá solo se cuenta).
+function franjaDeEspera(){
+  const ed = edadesDeEnviadas(), nm = nombresDeEdades();
+  if(!ed.some(l => l.length)) return "";
+  return `<div class="gxe-edades gxe-franja" role="group" aria-label="${esc(t("Hace cuánto esperan","How long they've been waiting","Há quanto tempo esperam","כמה זמן הם ממתינים"))}">${ed.map((l, i) => `<div class="${i === 2 && l.length ? "gxe-vieja" : ""}"><b>${l.length}</b><span>${esc(nm[i])}</span></div>`).join("")}</div>`;
+}
 function renderGastosView(){
   const secs = gastosSecciones();
   const sec = secs.some(s => s.key === gastosSeccion) ? gastosSeccion : "rendir";
@@ -26528,9 +26629,9 @@ function renderGastosView(){
   else if(gastosAbierta && conRendicion){
     // Un admin que abre la de otra persona desde la lista agrupada la ve como en «Para aprobar» (con «Aprobar»).
     const ra = rendicionPorId(gastosAbierta);
-    body = renderRendicionAbierta(sec === "aprobar" || (isAdmin() && !!ra && ra.autor !== miCorreo()), sec === "aprobar");
+    body = renderRendicionAbierta(sec === "aprobar" || (esGestor() && !!ra && ra.autor !== miCorreo()), sec === "aprobar");
   }
-  else body = sec === "estadisticas" ? renderGastosEstadisticas() : sec === "cuenta" ? renderGastosCuenta() : sec === "aprobar" ? renderParaAprobar() : sec === "rendiciones" ? renderRendiciones() : renderPorRendir();
+  else body = sec === "resumen" ? renderGastosResumen() : sec === "estadisticas" ? renderGastosEstadisticas() : sec === "cuenta" ? renderGastosCuenta() : sec === "aprobar" ? renderParaAprobar() : sec === "rendiciones" ? renderRendiciones() : renderPorRendir();
   return `<div class="admin-view gastos-view">
       <aside class="admin-menu" aria-label="${esc(titulo)}">
         <div class="admin-titulo">🧾 ${titulo}</div>${menu}
@@ -26617,7 +26718,7 @@ function claveDeRendicion(r){
   const p = r.postId && getPostById(r.postId);
   return String((p && (p.startDate || p.date)) || r.rutinaMes || mesDeRendicion(r));
 }
-const rendicionesDelEquipo = () => !gastosDatos ? [] : isAdmin() ? gastosDatos.rendiciones : misRendiciones();
+const rendicionesDelEquipo = () => !gastosDatos ? [] : esGestor() ? gastosDatos.rendiciones : misRendiciones();
 function rendicionesDeLaVista(sinFiltros){
   const H = sinFiltros === true ? { desde: "", hasta: "", estado: "", persona: "" } : gastosHist, yo = miCorreo();
   return rendicionesDelEquipo().filter(r => {
@@ -26625,7 +26726,7 @@ function rendicionesDeLaVista(sinFiltros){
     if(H.desde && m < H.desde) return false;
     if(H.hasta && m > H.hasta) return false;
     if(H.estado === "completar" ? !rendicionEditable(r) : H.estado && r.estado !== H.estado) return false;
-    if(isAdmin() && H.persona && r.autor !== (H.persona === "yo" ? yo : H.persona)) return false;
+    if(esGestor() && H.persona && r.autor !== (H.persona === "yo" ? yo : H.persona)) return false;
     return true;
   }).sort((a, b) => claveDeRendicion(b).localeCompare(claveDeRendicion(a)));
 }
@@ -26635,11 +26736,11 @@ function renderFiltrosDeRendiciones(todas){
   const op = (v, txt, actual) => `<option value="${esc(v)}"${v === actual ? " selected" : ""}>${esc(txt)}</option>`;
   const opMes = (vacio, actual) => op("", vacio, actual) + meses.map(m => op(m, nombreDeMes(m), actual)).join("");
   const sel = (id, k, et, ops) => `<label class="gx-campo"><span class="gx-et">${et}</span><select id="${id}" class="gx-elige" data-ghist="${k}">${ops}</select></label>`;
-  const personas = isAdmin() ? [...new Set(todas.map(r => r.autor))].filter(e => e && e !== miCorreo()).map(e => [e, nombreDePersona(e)]).sort((a, b) => a[1].localeCompare(b[1])) : [];
+  const personas = esGestor() ? [...new Set(todas.map(r => r.autor))].filter(e => e && e !== miCorreo()).map(e => [e, nombreDePersona(e)]).sort((a, b) => a[1].localeCompare(b[1])) : [];
   return `<div class="gx-filtros" role="group" aria-label="${esc(t("Filtros","Filters","Filtros","מסננים"))}">
       ${sel("gxHDesde", "desde", t("Desde","From","De","מ-"), opMes(t("El principio","The beginning","O início","ההתחלה"), H.desde))}
       ${sel("gxHHasta", "hasta", t("Hasta","To","Até","עד"), opMes(t("Hoy","Today","Hoje","היום"), H.hasta))}
-      ${isAdmin() ? sel("gxHPersona", "persona", t("Persona","Person","Pessoa","אדם"), op("", t("Todas","Everyone","Todas","כולם"), H.persona) + op("yo", t("Yo","Me","Eu","אני"), H.persona) + personas.map(([e, n]) => op(e, n, H.persona)).join("")) : ""}
+      ${esGestor() ? sel("gxHPersona", "persona", t("Persona","Person","Pessoa","אדם"), op("", t("Todas","Everyone","Todas","כולם"), H.persona) + op("yo", t("Yo","Me","Eu","אני"), H.persona) + personas.map(([e, n]) => op(e, n, H.persona)).join("")) : ""}
       ${sel("gxHEstado", "estado", t("Estado","Status","Situação","מצב"), [["", t("Todos","All","Todos","הכול")], ["completar", t("Para completar","To complete","Para completar","להשלמה")],
         ["enviada", t("En revisión","In review","Em revisão","בבדיקה")], ["aprobada", t("Aprobadas","Approved","Aprovadas","אושרו")]].map(([v, x]) => op(v, x, H.estado)).join(""))}
     </div>`;
@@ -26658,7 +26759,7 @@ function renderGrupoRendicion(r){
       ${gs.length ? `<div class="gx-filas">${gs.map(g => renderFilaGasto(g, "todas")).join("")}</div>` : `<p class="setting-sub gx-g-vacia">${t("Todavía no tiene gastos.","It has no expenses yet.","Ainda não tem despesas.","עדיין אין בו הוצאות.")}</p>`}
       <button type="button" class="gx-link gx-g-ir" data-action="gastos-abrir-rendicion" data-id="${esc(r.id)}">${t("Abrir la rendición","Open the report","Abrir a prestação","פתיחת הדוח")} ${isRTL() ? "←" : "→"}</button>
     </div>` : "";
-  return `<div class="gx-grupo${abierta ? " gx-g-abierta" : ""}">${renderTarjetaRendicion(r, isAdmin() && r.autor !== miCorreo(), true)}${cuerpo}</div>`;
+  return `<div class="gx-grupo${abierta ? " gx-g-abierta" : ""}">${renderTarjetaRendicion(r, esGestor() && r.autor !== miCorreo(), true)}${cuerpo}</div>`;
 }
 // «Por rendir» (D16, 19/11): lo que la persona tiene que hacer. Subir, lo sin vincular y sus rendiciones que todavía
 // están en sus manos (abiertas u observadas), cada una directo a su pantalla. Lo mandado y lo aprobado, en «Rendiciones».
@@ -27150,25 +27251,26 @@ const botonRevisar = rid => `<button type="button" class="btn-primary" data-acti
 const textoFaltan = n => n === 1 ? t("Falta confirmar 1 gasto","1 expense still needs confirming","Falta confirmar 1 despesa","הוצאה אחת עוד לא אושרה")
   : t("Faltan confirmar {n} gastos","{n} expenses still need confirming","Faltam confirmar {n} despesas","{n} הוצאות עוד לא אושרו",{ n });
 // La propia la aprueba otro admin; si no hay otro, el admin fijo (D17, 19/11; la base lo controla igual).
-const hayOtroAdmin = () => (state.roster || []).some(m => m && m.role === "admin" && String(m.email || "").toLowerCase() !== miCorreo());
-const puedeAprobarRendicion = r => !!r && isAdmin() && (r.autor !== miCorreo() || (isFixedAdmin() && !hayOtroAdmin()));
+// Otro admin o Finanzas que pueda aprobarla (el admin fijo solo aprueba la suya si no hay nadie más).
+const hayOtroAdmin = () => (state.roster || []).some(m => m && (m.role === "admin" || m.role === "finance") && String(m.email || "").toLowerCase() !== miCorreo());
+const puedeAprobarRendicion = r => !!r && esGestor() && (r.autor !== miCorreo() || (isFixedAdmin() && !hayOtroAdmin()));
 function barraDeRendicion(r, gs, comoAdmin){
   const mia = r.autor === miCorreo(), faltan = gs.filter(g => g.estado === "borrador").length, obs = gs.filter(g => g.estado === "observado");
   const quien = esc(nombreDePersona(r.autor));
   if(r.estado === "aprobada"){
-    const reabrir = isAdmin() ? `<button type="button" class="btn-secondary" data-action="gastos-reabrir" data-id="${esc(r.id)}" ${gastosOcupado ? "disabled" : ""}>↩️ ${t("Reabrir","Reopen","Reabrir","פתיחה מחדש")}</button>` : "";
+    const reabrir = esGestor() ? `<button type="button" class="btn-secondary" data-action="gastos-reabrir" data-id="${esc(r.id)}" ${gastosOcupado ? "disabled" : ""}>↩️ ${t("Reabrir","Reopen","Reabrir","פתיחה מחדש")}</button>` : "";
     const pdf = gs.length ? accionesPdfDeRendicion(r) : "";
     return barraDePaso("bien", t("Aprobada el {f} por {n}","Approved on {f} by {n}","Aprovada em {f} por {n}","אושר ב-{f} ע״י {n}",{ f: esc(fechaDeMarca(r.aprobadaEl)), n: esc(nombreDePersona(r.aprobadaPor)) }),
       gs.length ? esc(notaSinTraductor()) : "", pdf + reabrir);
   }
-  if(comoAdmin && isAdmin()){
+  if(comoAdmin && esGestor()){
     // Con algo observado, se devuelve todo junto (D18); sin nada, se aprueba (la propia, solo si no hay otro admin: D17).
     if(r.estado === "enviada" && obs.length) return barraDePaso("mal",
       obs.length === 1 ? t("1 gasto observado","1 expense flagged","1 despesa observada","הוצאה אחת עם הערה") : t("{n} gastos observados","{n} expenses flagged","{n} despesas observadas","{n} הוצאות עם הערות",{ n: obs.length }),
       mia ? "" : t("Cuando termines de revisar, devolvésela a {n} con todo junto.","When you're done reviewing, send it back to {n} with everything.","Quando terminar de revisar, devolva para {n} com tudo junto.","כשתסיימו לבדוק, החזירו ל{n} עם הכול יחד.",{ n: quien }),
       `<button type="button" class="btn-primary" data-action="gastos-devolver" data-id="${esc(r.id)}" ${gastosOcupado ? "disabled" : ""}>${gastosOcupado ? t("Devolviendo…","Sending back…","Devolvendo…","מחזיר…")
         : obs.length === 1 ? t("Devolver con la observación","Send back with the note","Devolver com a observação","החזרה עם ההערה") : t("Devolver con {n} observaciones","Send back with {n} notes","Devolver com {n} observações","החזרה עם {n} הערות",{ n: obs.length })}</button>`);
-    if(r.estado === "enviada" && !puedeAprobarRendicion(r)) return barraDePaso("neutro", t("La aprueba otro admin","Another admin approves it","Outro admin aprova","מנהל/ת אחר/ת מאשר/ת"),
+    if(r.estado === "enviada" && !puedeAprobarRendicion(r)) return barraDePaso("neutro", t("La aprueba otro admin o Finanzas","Another admin or Finance approves it","Outro admin ou as Finanças aprovam","מנהל/ת אחר/ת או כספים מאשרים"),
       t("La mandaste el {f}.","You sent it on {f}.","Você mandou em {f}.","שלחתם ב-{f}.",{ f: esc(fechaDeMarca(r.enviadaEl)) }), "");
     if(r.estado === "enviada") return barraDePaso("aviso", t("Para revisar","To review","Para revisar","לבדיקה"),
       t("La mandó {n} el {f}.","{n} sent it on {f}.","{n} mandou em {f}.","{n} שלח/ה ב-{f}.",{ n: quien, f: esc(fechaDeMarca(r.enviadaEl)) }),
@@ -27432,7 +27534,7 @@ async function enviarRendicion(id){
   const aviso = !sinRendido.length ? "" : " " + (sinRendido.length === 1
     ? t("Ojo: «{c}» no tiene el monto en {r}.","Note: “{c}” has no amount in {r}.","Atenção: «{c}» não tem o valor em {r}.","שימו לב: ל«{c}» אין סכום ב-{r}.",{ c: sinRendido[0].concepto || t("un gasto","an expense","uma despesa","הוצאה"), m: sinRendido[0].moneda, r: sinRendido[0].rendidoMoneda })
     : t("Ojo: {n} gastos no tienen el monto en dólares: {l}.","Note: {n} expenses have no amount in dollars: {l}.","Atenção: {n} despesas não têm o valor em dólares: {l}.","שימו לב: ל-{n} הוצאות אין סכום בדולרים: {l}.",{ n: sinRendido.length, l: sinRendido.map(g => g.concepto || "—").join(", ") }));
-  if(!await appConfirm(t("¿Mandar la rendición para que la revise un administrador? Mientras la revisa, no se puede cambiar.","Send the report for an admin to review? While it's in review, it can't be changed.","Mandar a prestação para um administrador revisar? Enquanto estiver em revisão, não dá para mudar.","לשלוח את הדוח לבדיקה של מנהל/ת? בזמן הבדיקה אי אפשר לשנות אותו.") + aviso, { okLabel: sinRendido.length ? t("Mandar igual","Send anyway","Mandar mesmo assim","לשלוח בכל זאת") : t("Mandar","Send","Mandar","שליחה") })) return;
+  if(!await appConfirm(t("¿Mandar la rendición para que la revise un administrador o Finanzas? Mientras la revisan, no se puede cambiar.","Send the report for an admin or Finance to review? While it's in review, it can't be changed.","Mandar a prestação para um administrador ou as Finanças revisarem? Enquanto estiver em revisão, não dá para mudar.","לשלוח את הדוח לבדיקה של מנהל/ת או של כספים? בזמן הבדיקה אי אפשר לשנות אותו.") + aviso, { okLabel: sinRendido.length ? t("Mandar igual","Send anyway","Mandar mesmo assim","לשלוח בכל זאת") : t("Mandar","Send","Mandar","שליחה") })) return;
   gastosOcupado = true; render();
   try{ await store.gastos.enviar(id); }
   catch(err){ console.error("No se pudo mandar la rendición:", err); appAlert(t("No se pudo mandar: {m}","Couldn't send it: {m}","Não foi possível mandar: {m}","השליחה נכשלה: {m}",{ m: detalleDeError(err) })); }
@@ -27442,7 +27544,7 @@ async function aprobarRendicion(id){
   if(gastosOcupado) return;
   const r = rendicionPorId(id);
   if(!r || !await appConfirm(t("¿Aprobar la rendición «{n}» entera?","Approve the whole report “{n}”?","Aprovar a prestação «{n}» inteira?","לאשר את כל הדוח «{n}»?",{ n: tituloRendicion(r) })
-      + (r.autor === miCorreo() ? " " + t("Es tuya: la aprobás vos porque no hay otro admin.","It's yours: you approve it because there's no other admin.","É sua: você aprova porque não há outro admin.","הדוח שלך: את/ה מאשר/ת אותו כי אין מנהל/ת אחר/ת.") : ""),
+      + (r.autor === miCorreo() ? " " + t("Es tuya: la aprobás vos porque no hay otro admin ni Finanzas.","It's yours: you approve it because there's no other admin or Finance.","É sua: você aprova porque não há outro admin nem as Finanças.","הדוח שלך: את/ה מאשר/ת אותו כי אין מנהל/ת אחר/ת.") : ""),
     { okLabel: t("Aprobar","Approve","Aprovar","אישור") })) return;
   gastosOcupado = true; render();
   try{ await store.gastos.aprobar(id); }
@@ -27469,7 +27571,7 @@ async function devolverRendicion(id){
 // Reabrir una aprobada (18/11: un comprobante que llegó tarde). Solo un admin; la base lo controla igual.
 async function reabrirRendicion(id){
   const r = rendicionPorId(id);
-  if(gastosOcupado || !r || r.estado !== "aprobada" || !isAdmin()) return;
+  if(gastosOcupado || !r || r.estado !== "aprobada" || !esGestor()) return;
   const mia = r.autor === miCorreo();
   // Lo aprobado queda aprobado; al mandarla de nuevo se revisa solo lo nuevo o corregido (18/11).
   if(!await appConfirm(t("¿Reabrir «{r}»? Lo aprobado queda aprobado: después se revisa solo lo que se sume o corrija.","Reopen “{r}”? What's approved stays approved: afterwards only what's added or fixed gets reviewed.","Reabrir «{r}»? O aprovado continua aprovado: depois só se revisa o que for somado ou corrigido.","לפתוח מחדש את «{r}»? מה שאושר נשאר מאושר: אחר כך נבדק רק מה שנוסף או תוקן.",{ r: tituloRendicion(r) })
@@ -28156,7 +28258,7 @@ function renderParaAprobar(){
   const lasAprobadas = aprobadas.length ? `<h3 class="admin-h3">${t("Aprobadas hace poco","Recently approved","Aprovadas recentemente","אושרו לאחרונה")}</h3><div class="gx-lista">${aprobadas.map(r => renderTarjetaRendicion(r, true)).join("")}</div>` : "";
   if(!enviadas.length && !observadas.length && !movs.length)
     return `<div class="admin-ok">✅ ${t("Nada para aprobar.","Nothing to approve.","Nada para aprovar.","אין מה לאשר.")}</div>` + lasAprobadas;
-  return `${enviadas.length ? `<h3 class="admin-h3">${t("Para revisar","To review","Para revisar","לבדיקה")}</h3><div class="gx-lista">${enviadas.map(r => renderTarjetaRendicion(r, true)).join("")}</div>` : ""}
+  return `${franjaDeEspera()}${enviadas.length ? `<h3 class="admin-h3">${t("Para revisar","To review","Para revisar","לבדיקה")}</h3><div class="gx-lista">${enviadas.map(r => renderTarjetaRendicion(r, true)).join("")}</div>` : ""}
     ${movs.length ? `<h3 class="admin-h3">${t("Plata anotada por confirmar","Money entries to confirm","Dinheiro anotado por confirmar","רישומים כספיים לאישור")}</h3><div class="gx-movs">${movs.map(m => renderMovimiento(m, true)).join("")}</div>` : ""}
     ${observadas.length ? `<h3 class="admin-h3">${t("Esperando la corrección","Waiting for the correction","Esperando a correção","ממתינים לתיקון")}</h3><div class="gx-lista">${observadas.map(r => renderTarjetaRendicion(r, true)).join("")}</div>` : ""}
     ${lasAprobadas}`;
@@ -28188,7 +28290,7 @@ function cuentaDe(persona){
 const tipoDeMovimiento = k => ({ recibido: t("Recibido","Received","Recebido","התקבל"), devuelto: t("Devuelto","Returned","Devolvido","הוחזר"), ajuste: t("Ajuste","Adjustment","Ajuste","התאמה") })[k] || k;
 function renderMovimiento(m, conPersona){
   // Quien lo puede corregir (la persona mientras está pendiente; un admin, siempre) lo puede borrar y adjuntarle el comprobante.
-  const puedeBorrar = isAdmin() || (m.persona === miCorreo() && m.estado === "pendiente");
+  const puedeBorrar = esGestor() || (m.persona === miCorreo() && m.estado === "pendiente");
   // Sin signo en lo recibido y lo devuelto (el «−500» confundía, 18/11): ya lo dice el tipo. Un ajuste sí: a favor o en contra.
   const signo = m.tipo === "ajuste" ? (m.monto > 0 ? "+" : "−") : "";
   // El comprobante, opcional (lo pidió el usuario el 17/11): para que quede registro de lo recibido, devuelto o ajustado.
@@ -28201,18 +28303,18 @@ function renderMovimiento(m, conPersona){
       <span class="gx-mov-der"><b>${montoHtml(m.moneda, Math.abs(m.monto), signo)}</b>
         ${m.estado === "pendiente" ? gxChip([t("Pendiente","Pending","Pendente","ממתין"), "aviso"]) : gxChip([t("Confirmado","Confirmed","Confirmado","אושר"), "bien"])}</span>
       <span class="gx-mov-acc">
-        ${isAdmin() && m.estado === "pendiente" ? `<button type="button" class="btn-primary gx-btn-chico" data-action="gastos-mov-confirmar" data-id="${esc(m.id)}">${t("Confirmar","Confirm","Confirmar","אישור")}</button>` : ""}
+        ${esGestor() && m.estado === "pendiente" ? `<button type="button" class="btn-primary gx-btn-chico" data-action="gastos-mov-confirmar" data-id="${esc(m.id)}">${t("Confirmar","Confirm","Confirmar","אישור")}</button>` : ""}
         ${puedeBorrar ? `<button type="button" class="gx-lquitar-ico" data-action="gastos-mov-borrar" data-id="${esc(m.id)}" title="${esc(t("Borrar","Delete","Apagar","מחיקה"))}" aria-label="${esc(t("Borrar este movimiento","Delete this entry","Apagar este lançamento","מחיקת הרישום"))}">🗑️</button>` : ""}
       </span>
     </div>`;
 }
 function renderGastosCuenta(){
   const yo = miCorreo();
-  const de = isAdmin() && gastosCuentaDe ? gastosCuentaDe : yo;
+  const de = esGestor() && gastosCuentaDe ? gastosCuentaDe : yo;
   const cuenta = cuentaDe(de);
   const monedas = Object.keys(cuenta).sort((a, b) => a === "USD" ? -1 : b === "USD" ? 1 : a.localeCompare(b));
   const propia = de === yo;
-  const selector = isAdmin() ? (() => {
+  const selector = esGestor() ? (() => {
     const gente = [...new Set([yo, ...gastosDatos.rendiciones.map(r => r.autor), ...gastosDatos.movimientos.map(m => m.persona), ...state.roster.filter(m => m.role !== "observer").map(m => String(m.email).toLowerCase())])];
     return `<div class="gx-cuenta-de"><label for="gxCuentaDe">${t("La cuenta de","The balance of","A conta de","החשבון של")}</label>
       <select id="gxCuentaDe" class="gx-elige">${gente.map(e => `<option value="${esc(e)}"${e === de ? " selected" : ""}>${esc(e === yo ? t("{n} (vos)","{n} (you)","{n} (você)","{n} (את/ה)",{ n: nombreDePersona(e) }) : nombreDePersona(e))}</option>`).join("")}</select></div>`;
@@ -28237,7 +28339,7 @@ function renderGastosCuenta(){
   const movs = gastosDatos.movimientos.filter(m => m.persona === de);
   if(!gastosMov) gastosMov = { abierto: false, tipo: "recibido", fecha: todayISO(), moneda: "USD", monto: "", descripcion: "", archivo: null, guardando: false, error: "" };
   const f = gastosMov;
-  const tipos = ["recibido", "devuelto", ...(isAdmin() ? ["ajuste"] : [])];
+  const tipos = ["recibido", "devuelto", ...(esGestor() ? ["ajuste"] : [])];
   const form = `<div class="settings-card gx-anotar">
       <div class="settings-card-title gx-anotar-tit">${propia ? t("Anotar plata recibida o devuelta","Enter money received or returned","Anotar dinheiro recebido ou devolvido","רישום כסף שהתקבל או הוחזר") : t("Anotar un movimiento de {n}","Enter an entry for {n}","Anotar um lançamento de {n}","רישום תנועה של {n}",{ n: esc(nombreDePersona(de)) })}</div>
       <div class="gx-anotar-grid">
@@ -28254,7 +28356,7 @@ function renderGastosCuenta(){
         </div>
       </div>
       ${f.tipo === "ajuste" ? `<p class="setting-sub">${t("Positivo, a favor de la persona; negativo, en contra.","Positive, in the person's favor; negative, against.","Positivo, a favor da pessoa; negativo, contra.","חיובי, לטובת האדם; שלילי, לחובתו.")}</p>` : ""}
-      ${!isAdmin() ? `<p class="setting-sub">${t("Queda pendiente hasta que un administrador lo confirme.","It stays pending until an admin confirms it.","Fica pendente até um administrador confirmar.","זה נשאר ממתין עד שמנהל/ת יאשר/תאשר.")}</p>` : ""}
+      ${!esGestor() ? `<p class="setting-sub">${t("Queda pendiente hasta que lo confirme un administrador o Finanzas.","It stays pending until an admin or Finance confirms it.","Fica pendente até um administrador ou as Finanças confirmarem.","זה נשאר ממתין עד שמנהל/ת או כספים יאשרו.")}</p>` : ""}
       ${f.error ? `<div class="form-error" role="alert">${esc(f.error)}</div>` : ""}
       <div class="gx-acciones gx-acciones-chicas"><button type="button" class="btn-secondary" data-action="gastos-mov-cerrar" ${f.guardando ? "disabled" : ""}>${t("Cancelar","Cancel","Cancelar","ביטול")}</button><button type="button" class="btn-primary" data-action="gastos-mov-anotar" ${f.guardando ? "disabled" : ""}>${f.guardando ? t("Guardando…","Saving…","Salvando…","שומר…") : t("Anotar","Save","Anotar","רישום")}</button></div>
     </div>`;
@@ -28265,7 +28367,7 @@ function renderGastosCuenta(){
 async function anotarMovimiento(){
   const f = gastosMov;
   if(!f || f.guardando) return;
-  const de = isAdmin() && gastosCuentaDe ? gastosCuentaDe : miCorreo();
+  const de = esGestor() && gastosCuentaDe ? gastosCuentaDe : miCorreo();
   const moneda = String(f.moneda || "").trim().toUpperCase(), n = numeroEscrito(f.monto);
   const mal = !/^[A-Z]{3}$/.test(moneda) ? t("La moneda va con su código de tres letras (USD, EUR, MXN…).","The currency goes with its three-letter code (USD, EUR, MXN…).","A moeda vai com seu código de três letras (USD, EUR, MXN…).","המטבע נכתב בקוד של שלוש אותיות (USD, EUR, MXN…).")
     : !String(f.monto || "").trim() || !isFinite(n) || n === 0 || Math.abs(n) >= 1e10 ? t("Falta el monto.","The amount is missing.","Falta o valor.","חסר הסכום.")
@@ -28275,7 +28377,7 @@ async function anotarMovimiento(){
   f.guardando = true; f.error = ""; render();
   try{
     const id = await store.gastos.anotarMovimiento({ persona: de, tipo: f.tipo, fecha: f.fecha, moneda, monto: redondo(n),
-      descripcion: String(f.descripcion || "").trim().slice(0, 300), estado: isAdmin() ? "confirmado" : "pendiente" });
+      descripcion: String(f.descripcion || "").trim().slice(0, 300), estado: esGestor() ? "confirmado" : "pendiente" });
     gastosMov = null;
     // El comprobante va después de la fila (la base deja subirlo a la carpeta de un movimiento que existe).
     if(f.archivo){
@@ -28379,7 +28481,7 @@ function resumenDeGasto(g){
   const obs = [nota ? `<b>${esc(nota)}</b>` : "", g.observaciones ? esc(g.observaciones) : ""].filter(Boolean).join("<br>");
   const estado = g.estado === "aprobado" && r && r.aprobadaEl ? t("Aprobado el {f}: ya no se cambia.","Approved on {f}: it can't be changed anymore.","Aprovado em {f}: não se altera mais.","אושר ב-{f}: כבר לא משתנה.",{ f: fechaDeMarca(r.aprobadaEl) })
     : g.estado === "aprobado" ? t("Aprobado: ya no se cambia.","Approved: it can't be changed anymore.","Aprovado: não se altera mais.","אושר: כבר לא משתנה.")
-    : mio && g.estado === "enviado" ? t("Mandado: un administrador lo está revisando.","Sent: an admin is reviewing it.","Enviado: um administrador está revisando.","נשלח: מנהל/ת בודק/ת אותו.") : "";
+    : mio && g.estado === "enviado" ? t("Mandado: lo está revisando un administrador o Finanzas.","Sent: an admin or Finance is reviewing it.","Enviado: um administrador ou as Finanças estão revisando.","נשלח: מנהל/ת או כספים בודקים אותו.") : "";
   return `${estado ? `<p class="gx-res-estado">${esc(estado)}</p>` : ""}
     <div class="gx-res-plata">
       <span class="gx-res-monto">${g.monto != null ? montoHtml(g.moneda, g.monto) : nada}</span>
@@ -28416,7 +28518,7 @@ function renderGasto(){
   // Un comprobante que llegó tarde a una rutina ya aprobada (18/11): la de su mes ya no se ofrece; se dice qué hacer.
   const mesG = String(d.fecha || "").slice(0, 7), rMes = editable && /^\d{4}-\d{2}$/.test(mesG) && rendicionDeVinculo("mes:" + mesG);
   const pistaVaEn = rMes && rMes.estado === "aprobada" && !String(d.vinculo).startsWith("post:") && d.vinculo !== "mes:" + mesG
-    ? t("La rutina de {m} ya se aprobó: un administrador la puede reabrir, o ponelo en la de otro mes.","The {m} routine was already approved: an admin can reopen it, or put it in another month's.","A rotina de {m} já foi aprovada: um administrador pode reabri-la, ou coloque na de outro mês.","השגרה של {m} כבר אושרה: מנהל/ת יכול/ה לפתוח אותה מחדש, או לשים בחודש אחר.",{ m: nombreDeMes(mesG) }) : "";
+    ? t("La rutina de {m} ya se aprobó: un administrador o Finanzas la puede reabrir, o ponelo en la de otro mes.","The {m} routine was already approved: an admin or Finance can reopen it, or put it in another month's.","A rotina de {m} já foi aprovada: um administrador ou as Finanças podem reabri-la, ou coloque na de outro mês.","השגרה של {m} כבר אושרה: מנהל/ת או כספים יכולים לפתוח אותה מחדש, או לשים בחודש אחר.",{ m: nombreDeMes(mesG) }) : "";
   const vista = !g.archivo ? `<div class="gx-comp gx-comp-vacio">${t("Sin comprobante","No receipt","Sem comprovante","ללא קבלה")}</div>`
     : !esUrlFirmada(g.archivoUrl) ? `<div class="gx-comp gx-comp-vacio">${t("Cargando el comprobante…","Loading the receipt…","Carregando o comprovante…","טוען את הקבלה…")}</div>`
     : esPdfGasto(g) && store.miniaturaSiHay(g.archivoUrl) ? `<button type="button" class="gx-comp gx-comp-conpdf" data-action="gasto-ver-comprobante" data-id="${esc(g.id)}" aria-label="${esc(t("Abrir el PDF","Open the PDF","Abrir o PDF","פתיחת ה-PDF"))}"><img src="${esc(store.miniaturaSiHay(g.archivoUrl))}" alt=""><span class="gx-comp-marca">PDF</span></button>`
@@ -28443,9 +28545,9 @@ function renderGasto(){
   const coms = comentariosDe(g.id), yo = miCorreo(), mio = g.autor === yo;
   const verCom = c => `<div class="gx-com${c.autor && String(c.autor).toLowerCase() === g.autor ? "" : " gx-com-admin"}">
       <b>${esc(nombreDePersona(c.autor))}</b> <small>${esc(fmtDateTime(c.creadoEl))}</small><div>${esc(c.texto)}</div></div>`;
-  const puedeObservar = isAdmin() && !mio && r && g.estado !== "observado"
+  const puedeObservar = esGestor() && !mio && r && g.estado !== "observado"
     && ((g.estado === "enviado" && ["enviada", "observada"].includes(r.estado)) || (g.estado === "aprobado" && ["abierta", "enviada", "observada"].includes(r.estado)));
-  const puedeResponderAdmin = isAdmin() && !mio && coms.length > 0 && !puedeObservar;
+  const puedeResponderAdmin = esGestor() && !mio && coms.length > 0 && !puedeObservar;
   const respuestaPropia = editable && g.estado === "observado";
   const observaciones = (coms.length || puedeObservar) && !(mio && enRevisionParaMi(g)) ? `<section class="gx-obs-sec" aria-labelledby="gxObsTit">
       <h3 class="gx-obs-tit" id="gxObsTit">${coms.length ? esc(t("Observaciones ({n})","Comments ({n})","Observações ({n})","הערות ({n})",{ n: coms.length })) : t("Observar","Flag","Observar","הערה")}</h3>
@@ -28786,7 +28888,7 @@ function renderGastosAdminSection(){
       <div class="setting-row">
         <span class="setting-icon" aria-hidden="true">👥</span>
         <div class="setting-text"><div class="setting-label" id="gxAbiertoLbl">${t("Abierto al equipo","Open to the team","Aberto para a equipe","פתוח לצוות")}</div>
-          <div class="setting-sub">${t("Lo usan todos los que cargan (los observadores, no). Cerrado, solo los admins.","Everyone who logs uses it (observers don't). Closed, only admins.","Todos os que carregam usam (os observadores, não). Fechado, só os admins.","כל מי שמתעד משתמש בו (משקיפים לא). סגור — רק מנהלים.")}</div></div>
+          <div class="setting-sub">${t("Lo usan todos los que cargan (los observadores, no). Cerrado, solo los admins y Finanzas.","Everyone who logs uses it (observers don't). Closed, only admins and Finance.","Todos os que carregam usam (os observadores, não). Fechado, só os admins e as Finanças.","כל מי שמתעד משתמש בו (משקיפים לא). סגור — רק מנהלים וכספים.")}</div></div>
         <label class="pref-switch"><input type="checkbox" data-action="gastos-abrir-equipo" aria-labelledby="gxAbiertoLbl" ${gastosAbiertoAlEquipo() ? "checked" : ""}${gastosPrendido() ? "" : " disabled"}><span class="pref-slider"></span></label>
       </div>
     </div>
@@ -28862,6 +28964,10 @@ const GASTOS_ACCIONES = {
   // Desde «Mis estadísticas» se abre la rendición en la sección que le toca (esta pantalla no abre rendiciones).
   "gastos-est-abrir": async el => { const r = rendicionPorId(el.dataset.id); gastosSeccion = r && rendicionEditable(r) ? "rendir" : "rendiciones";
     gastosAbierta = el.dataset.id; gastosTotal = null; gastosLista = null; gastosListaAviso = ""; render(); scrollToTop(); },
+  "gastos-res-anio": async el => { gastosRes.anio = el.dataset.year; render();
+    const x = document.querySelector(`[data-action="gastos-res-anio"][data-year="${CSS.escape(el.dataset.year)}"]`); if(x) x.focus(); },
+  "gastos-res-moneda": async el => { gastosRes.moneda = el.dataset.m; render();
+    const x = document.querySelector(`[data-action="gastos-res-moneda"][data-m="${CSS.escape(el.dataset.m)}"]`); if(x) x.focus(); },
   "gastos-est-grupo": async el => { const id = el.dataset.id, A = gastosEst.abiertas; if(A.has(id)) A.delete(id); else A.add(id); render();
     const x = document.querySelector(`[data-action="gastos-est-grupo"][data-id="${CSS.escape(id)}"]`); if(x) x.focus(); },
   "gastos-hist-limpiar": async () => { Object.assign(gastosHist, { desde: "", hasta: "", estado: "", persona: "" }); render(); const x = document.getElementById("gxHDesde"); if(x) x.focus(); },
