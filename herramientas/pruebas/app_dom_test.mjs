@@ -447,7 +447,7 @@ export function createClient(url, clave){
       return { data: null, error: { code: "PGRST202", message: "no existe la función " + nombre } };
     },
     storage: { from(){ return {
-      createSignedUrls: async rutas => ({ error: null, data: rutas.map(r => ({ path: r, error: null,
+      createSignedUrls: async rutas => ({ error: null, data: ((estado.firmadas = estado.firmadas || []).push(...rutas), rutas).map(r => ({ path: r, error: null,
         signedUrl: url + "/storage/v1/object/sign/adjuntos/" + r + "?token=prueba" })) }),
       upload: async (ruta, blob) => { estado.subidas.push([ruta, blob.type]); return { error: null }; },
       remove: async rutas => { estado.borradas.push(...rutas); return { error: null }; },

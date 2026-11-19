@@ -10244,11 +10244,13 @@ function crearSupabaseStore(sb, opciones = {}){
     // funciones de la base; de una rendición, la persona toca directo solo
     // su total rápido.
     gastos: {
-      subscribe(alCambiar, alFallar){
+      // `conArchivos`: firmar las direcciones de los comprobantes (cientos de pedidos a Storage para un admin). Solo
+      // hace falta cuando se ve la pantalla de Gastos; antes se hacía al abrir la app, en la de todos (20/11).
+      subscribe(alCambiar, alFallar, conArchivos){
         const tablas = ["gastos_rendiciones", "gastos", "gastos_comentarios", "gastos_movimientos", "gastos_cambios"];
         const datos = {};
         const bajas = tablas.map(tabla => enVivo({ tabla, clave: "id", alFallar,
-          ...(tabla === "gastos" || tabla === "gastos_movimientos" || tabla === "gastos_cambios" ? { firmaAdjuntos: true, afinar: f => resolverAdjuntos(aObjeto(f)) } : {}),
+          ...(tabla === "gastos" || tabla === "gastos_movimientos" || tabla === "gastos_cambios" ? { firmaAdjuntos: !!conArchivos, afinar: f => resolverAdjuntos(aObjeto(f)) } : {}),
           alCambiar: lista => { datos[tabla] = lista; if(tablas.every(x => datos[x])) alCambiar({ ...datos }); } }));
         return () => bajas.forEach(f => f && f());
       },
@@ -24956,6 +24958,7 @@ let gastosConfig = {};                  // preferences → gastos: { prendido, a
 let gastosDatos = null;                 // las cuatro tablas, ya armadas (armarGastos)
 let gastosError = "";
 let unsubGastos = null;
+let gastosConArchivos = false;          // ya se firmaron los comprobantes (se entró a Gastos)
 let gastosSeccion = "rendir";           // rendir | rendiciones | cuenta | aprobar (D16, 19/11: «Por rendir» y «Rendiciones», separadas)
 let gastosAbierta = null;               // la rendición que se mira (su id, o "sin" = los sin vincular)
 let gastoEdit = null;                   // la ventana de un gasto: { id, d, guardando, error, faltan, comentario }
@@ -25031,14 +25034,20 @@ function applyGastosConfig(cfg){
 // Se escucha solo mientras el módulo se ve: apagarlo corta todo.
 function sincronizarGastos(){
   const quiero = !!(store && store.gastos) && gastosVisible();
+  // Los datos se leen siempre (la solapa, el ⋯ de las actividades y la campanita los usan); los comprobantes se
+  // firman recién cuando se entra a Gastos, y una vez firmados quedan (no se vuelve atrás hasta cortar).
+  const conArchivos = state.view === "gastos" || gastosConArchivos;
+  if(quiero && unsubGastos && conArchivos && !gastosConArchivos){ unsubGastos(); unsubGastos = null; }
   if(quiero && !unsubGastos){
     gastosError = "";
+    gastosConArchivos = conArchivos;
     unsubGastos = store.gastos.subscribe(d => { gastosDatos = armarGastos(d); gastosError = ""; scheduleRender(); },
-      err => { console.error("Error leyendo los gastos:", err); gastosError = detalleDeError(err); scheduleRender(); });
+      err => { console.error("Error leyendo los gastos:", err); gastosError = detalleDeError(err); scheduleRender(); }, conArchivos);
   } else if(!quiero && unsubGastos) cortarGastos();
 }
 function cortarGastos(){
   if(unsubGastos){ unsubGastos(); unsubGastos = null; }
+  gastosConArchivos = false;
   gastosDatos = null; gastosError = ""; gastosAbierta = null; gastosSubida = null; gastosTotal = null;
   gastosMov = null; gastosMovPara = null; gastosCambio = null; gastosPdf = null; gastosCuentaDe = ""; gastosAdmin = null; gastosActividad = ""; gastosOtraAbierta = false; gastosOcupado = false;
   lectorCola = []; lectorEstado = null; gastosLista = null; gastosListaAviso = ""; gastosDestino = null; gastosSel = null;

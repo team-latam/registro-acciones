@@ -741,6 +741,21 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   await p.close();
 }
 
+/* ---------------- Gastos no firma los comprobantes al abrir la app, solo al entrar a Gastos (20/11, la app tardaba) ---------------- */
+{
+  const base = datos({ prendido: true });
+  const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: vp, base });
+  await p.waitForTimeout(800);
+  const deGastos = () => p.evaluate(() => (window.__sb.firmadas || []).filter(r => String(r).startsWith("gastos/")).length);
+  eq("al abrir la app (sin entrar a Gastos) no se firma ningún comprobante de gastos", await deGastos(), 0);
+  eq("…pero los datos ya están (la solapa cuenta lo que hay)", await p.evaluate(() => !!document.querySelector('.tab[data-view="gastos"], [data-view="gastos"]')), true);
+  await irGastos(p); await abrirRen(p, "ren_mvd"); await p.waitForTimeout(400);
+  eq("al entrar a Gastos sí se firman, y el comprobante se ve", await p.evaluate(() => [(window.__sb.firmadas || []).filter(r => String(r).startsWith("gastos/")).length > 0,
+    !!document.querySelector(".gx-mini")]), [true, true]);
+  eq("sin errores de página", errores, []);
+  await p.close();
+}
+
 /* ---------------- Pasar por un campo dudoso sin cambiarlo lo da por bueno (19/11) ---------------- */
 {
   const base = datos({ prendido: true });
