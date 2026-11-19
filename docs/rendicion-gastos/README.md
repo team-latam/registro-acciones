@@ -435,6 +435,20 @@ que llega tarde, al final del PDF con los números que siguen. Cómo quedó cada
   - Visto en la misma captura: la moneda quedó en USD aunque el ticket es en pesos mexicanos (una rutina no tiene país,
     y el «$» solo no alcanza: se podría usar la moneda de sus rutinas anteriores), y el gasto, del 21/10, quedó en la
     rutina de noviembre (se resuelve con el punto 8: cada comprobante a la rutina de su mes).
+- **12 — El final de la lista quedó todo pegado** (19/11, con captura de la versión publicada, en la compu: la última
+  rendición, la barra de las casillas, «Resumen por mes (PDF)» abierto y «Anotar solo el total de una actividad»):
+  «Pienso que resumen por PDF quedó pegado con lo anterior. Hay que revisar bien todas estas cosas». Para hacer:
+  - **la causa de lo pegado**: el margen de abajo que se le puso a la barra (`.gx-selpie{ margin-bottom:14px }`) no
+    vale, porque `.gx-lpie{ margin:14px 0 0 }` viene después en los estilos y lo pisa; quedan unos 2 px entre la barra
+    y el resumen;
+  - **revisar todo el pie de la pantalla, no solo ese espacio**: la barra, cuando no está flotando, se ve como una
+    tarjeta más, igual que el resumen de abajo (mismo ancho, borde y sombra), y parecen una sola cosa; el resumen
+    abierto no tiene título ni separación propia; «Anotar solo el total de una actividad» queda suelto al final. Ver
+    el ritmo entre las secciones (lista, barra, resumen, total), en compu y celular, abierto y cerrado;
+  - **pensar si el resumen por mes sigue haciendo falta ahí**: la lista agrupada ya tiene «Desde» y «Hasta», y el
+    resumen tiene otros «Desde» y «Hasta» propios. Se podría bajar el resumen de lo que está filtrado (un botón al lado
+    de los filtros o en la barra) y sacar el desplegable. Es una decisión del usuario: mostrarle opciones con capturas;
+  - una prueba que mida los espacios entre la barra y lo que sigue (que no queden pegados).
 
 **Para toda la tanda** (18/11: «Hay mucho texto, mucha explicación, podría ser más directo. No es difícil lo que
 tenemos que poner»): en todas las pantallas de Gastos, menos texto. Cada botón dice lo que hace; como mucho una
