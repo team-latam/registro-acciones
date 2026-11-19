@@ -732,7 +732,7 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   await irGastos(p); await abrirRen(p, "ren_mvd"); await p.waitForTimeout(150);
   await p.click('[data-action="gasto-abrir"][data-id="gx1"]'); await p.waitForSelector("#gastoOverlay:not([hidden])");
   eq("el monto dudoso se ve en amarillo y dice cuál es, con «Está bien»", await p.evaluate(() => [!!document.querySelector("#gxMonto[data-duda]"), !!document.querySelector('[data-action="gasto-duda-ok"]'),
-    (document.querySelector(".gx-duda-ok span") || {}).textContent]), [true, true, "⚠️ El lector no está seguro de: el monto."]);
+    (document.querySelector(".gx-duda-ok span") || {}).textContent]), [true, true, "⚠️ Revisá el monto"]);
   await p.click('[data-action="gasto-duda-ok"]'); await p.waitForTimeout(150);
   eq("tocar «Está bien» saca la marca y el aviso, y deja el monto como estaba", await p.evaluate(() => [!!document.querySelector("#gxMonto[data-duda]"), !!document.querySelector(".gx-duda-ok"), document.getElementById("gxMonto").value]), [false, false, "51.13"]);
   await p.click('[data-action="gasto-guardar"][data-confirmar="1"]');
