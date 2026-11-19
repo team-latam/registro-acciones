@@ -817,8 +817,7 @@
     .admin-item.hijo{ padding-inline-start:12px; min-height:36px; font-size:12.5px; }
   }
 
-  /* ---------- Gastos y rendiciones (en prueba; ver renderGastosView) ---------- */
-  .gx-prueba{ display:inline-block; vertical-align:middle; margin-inline-start:6px; padding:2px 8px; border-radius:999px; background:var(--warn-bg); border:1px solid var(--warn-border); color:var(--warn-text); font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; }
+  /* ---------- Gastos y rendiciones (ver renderGastosView) ---------- */
   .gx-lista{ display:flex; flex-direction:column; gap:8px; margin-bottom:6px; }
   .gx-tarjeta{ display:flex; align-items:center; gap:12px; width:100%; text-align:start; padding:12px 14px; border-radius:var(--radius-md);
     border:1px solid var(--border); background:var(--card); box-shadow:var(--shadow); color:var(--ink); font-family:inherit; cursor:pointer; }
@@ -1842,6 +1841,8 @@
     border-radius:8px 8px 0 0; flex:none; white-space:nowrap;
   }
   nav.tabs button.active{ color:#fff; border-bottom-color:var(--celeste); background:rgba(255,255,255,0.06); }
+  /* La de Gastos se esconde con [hidden] (un observador, o con el módulo cerrado): el display de arriba la mostraba igual. */
+  nav.tabs button[hidden]{ display:none; }
 
   /* El padding de abajo es el AIRE para el botón flotante (+): el FAB
      ocupa 80px desde el borde inferior en escritorio (56 de botón + 24 de
@@ -5082,6 +5083,7 @@
       <button data-view="calendario">Calendario</button>
       <button data-view="paises">Países</button>
       <button data-view="proyectos">Proyectos</button>
+      <button data-view="gastos" hidden>Gastos</button>
       <button data-view="reportes">Reportes</button>
     </nav>
   </header>
@@ -5112,6 +5114,9 @@
       </button>
       <button type="button" class="fab-action" data-action="new-evento">
         <span class="fab-ico" aria-hidden="true">📅</span><span class="fab-label" id="fabEventoLabel">Nuevo evento</span>
+      </button>
+      <button type="button" class="fab-action" data-action="fab-gastos" id="fabGastos" hidden>
+        <span class="fab-ico" aria-hidden="true">🧾</span><span class="fab-label" id="fabGastosLabel">Subir comprobantes</span>
       </button>
     </div>
     <button type="button" class="fab-main" id="fabMain" data-action="toggle-fab" aria-haspopup="true" aria-expanded="false" aria-label="Crear"><span aria-hidden="true">+</span></button>
@@ -12741,6 +12746,8 @@ function applyStaticI18n(){
   if(fabEvento) fabEvento.textContent = t("Nuevo evento", "New event", "Novo evento", "אירוע חדש");
   const fabRutina = document.getElementById("fabRutinaLabel");
   if(fabRutina) fabRutina.textContent = t("Nuevo posteo", "New post", "Nova postagem", "פוסט חדש");
+  const fabGastos = document.getElementById("fabGastosLabel");
+  if(fabGastos) fabGastos.textContent = t("Subir comprobantes", "Upload receipts", "Enviar comprovantes", "העלאת קבלות");
   if(fabMainEl) fabMainEl.setAttribute("aria-label", t("Crear", "Create", "Criar", "יצירה"));
   const scrollTopBtn = document.getElementById("scrollTop");
   if(scrollTopBtn){
@@ -13011,7 +13018,6 @@ function renderUserBadge(){
   const links = isAuthorized() ? `
         <div class="um-links">
           <button type="button" class="um-link" data-action="goto-view" data-view="configuracion">⚙️ ${t("Mis preferencias","My preferences","Minhas preferências","ההעדפות שלי")}</button>
-          ${gastosVisible() ? `<button type="button" class="um-link" data-action="goto-view" data-view="gastos">🧾 ${t("Gastos","Expenses","Despesas","הוצאות")}${gastosPendientes() ? `<span class="pending-count">${gastosPendientes()}</span>` : ""}</button>` : ""}
           <button type="button" class="um-link" data-action="problema-abrir">🛟 ${t("Algo no anda","Something's wrong","Algo não está funcionando","משהו לא עובד")}</button>
           ${isAdmin() ? `<button type="button" class="um-link" data-action="goto-view" data-view="admin">🛠️ ${t("Administración","Administration","Administração","ניהול")}${pend ? `<span class="pending-count">${pend}</span>` : ""}</button>` : ""}
         </div>` : "";
@@ -13194,6 +13200,13 @@ function doRender(){
   if(fp.abierto && (state.view !== "feed" || !isAuthorized())){ fp.abierto = false; fp.b = null; fp.cat = null; }
   // En angosto el panel de filtros tapa todo: la página de atrás no se mueve.
   document.documentElement.classList.toggle("fp-abierto", fp.abierto);
+  // Gastos, entre Proyectos y Reportes (19/11: dejó de ser una prueba y salió del menú de la foto), con lo que espera.
+  const tabGastos = document.querySelector('#tabs button[data-view="gastos"]');
+  if(tabGastos){
+    tabGastos.hidden = !gastosVisible();
+    const n = tabGastos.hidden ? 0 : gastosPendientes();
+    tabGastos.innerHTML = esc(t("Gastos","Expenses","Despesas","הוצאות")) + (n ? ` <span class="pending-count">${n}</span>` : "");
+  }
   document.querySelectorAll("#tabs button[data-view]").forEach(b=>{
     // «Mi año» vive adentro de Reportes (botón al lado de «Presentar»): mientras se mira, Reportes sigue marcado.
     const activa = b.dataset.view === state.view || (b.dataset.view === "reportes" && state.view === "mianio");
@@ -13237,9 +13250,10 @@ function doRender(){
 
   tabsNav.classList.remove("tabs-hidden");
   fabEl.hidden = !canWrite(); // el observador no crea nada
+  pintarFabGastos();
   if(isObserver()) html += renderObserverBanner();
   if(!isAdmin() && ADMIN_VIEWS.has(state.view)) state.view = "feed";
-  // Gastos (en prueba): se escucha solo mientras el módulo se ve.
+  // Gastos: se escucha solo mientras el módulo se ve.
   sincronizarGastos();
   if(state.view === "gastos" && !gastosVisible()) state.view = "feed";
 
@@ -14053,7 +14067,7 @@ function adminMenuItems(){
     { grupo:t("Cómo se carga","How things are logged","Como se carrega","איך רושמים"), items:[
       { key:"tipos", view:"preferencias", sub:"tipos", label:t("Tipos de actividad","Activity types","Tipos de atividade","סוגי פעילות") },
       { key:"agenda", view:"preferencias", sub:"agenda", label:t("Agenda","Directory","Agenda","ספר טלפונים") },
-      // El módulo de gastos, en prueba (27-gastos.sql): el interruptor y los tipos.
+      // El módulo de gastos (27-gastos.sql): los interruptores y los tipos.
       { key:"gastos", view:"preferencias", sub:"gastos", label:t("Gastos","Expenses","Despesas","הוצאות") },
       // Zonas, Lugares y Adjuntos se tocan una vez al año: juntas en
       // «Avanzado», que se despliega solo estando adentro (AUDITORIA M12).
@@ -14131,11 +14145,11 @@ function adminSeccionTextos(key){
       ayuda: t("Cada tema es una idea y las palabras con que se la nombra: «Seguridad» puede incluir «cámaras» y «alarma». «Tendencias» cuenta, por tema, cuántas actividades lo mencionan (en el título o en el texto) ahora contra antes. Se buscan palabras enteras, sin importar tildes, mayúsculas ni plural; el nombre del tema ya cuenta como una de sus palabras. Los nombres de personas no son temas: solo cuenta lo que se escribe acá. Abajo aparecen las palabras que se repiten en los textos y todavía no están en ningún tema.","Each topic is an idea and the words that name it: “Security” can include “cameras” and “alarm”. “Trends” counts, per topic, how many activities mention it (in the title or the text) now against before. Whole words are searched, regardless of accents, capitals or plural; the topic's name already counts as one of its words. People's names aren't topics: only what's written here counts. Below you'll see the words that keep coming up in the texts and aren't in any topic yet.","Cada tema é uma ideia e as palavras que a nomeiam: «Segurança» pode incluir «câmeras» e «alarme». «Tendências» conta, por tema, quantas atividades o mencionam (no título ou no texto) agora contra antes. Buscam-se palavras inteiras, sem importar acentos, maiúsculas nem plural; o nome do tema já conta como uma de suas palavras. Nomes de pessoas não são temas: só conta o que se escreve aqui. Abaixo aparecem as palavras que se repetem nos textos e ainda não estão em nenhum tema.","כל נושא הוא רעיון והמילים שמכנות אותו: «ביטחון» יכול לכלול «מצלמות» ו«אזעקה». «מגמות» סופר, לכל נושא, כמה פעילויות מזכירות אותו (בכותרת או בטקסט) עכשיו מול קודם. מחפשים מילים שלמות, בלי קשר לניקוד, לאותיות גדולות או לרבים; שם הנושא כבר נחשב כאחת ממילותיו. שמות של אנשים אינם נושאים: נספר רק מה שנכתב כאן. למטה מופיעות המילים שחוזרות בטקסטים ועדיין אינן באף נושא."),
     },
     gastos: {
-      lead: t("El módulo para rendir gastos con sus comprobantes. Está en prueba: por ahora lo ven solo los administradores.","The module for reporting expenses with their receipts. It's in testing: for now only admins see it.","O módulo para prestar contas das despesas com os comprovantes. Está em teste: por enquanto só os administradores veem.","המודול לדיווח הוצאות עם הקבלות. הוא בניסוי: בינתיים רק מנהלים רואים אותו."),
-      ayuda: t("Con el interruptor prendido aparece «Gastos» en el menú de tu foto (y en «Más», en el celular). Ahí se suben los comprobantes, se arma la rendición de cada actividad o de la rutina del mes, se aprueba y se lleva la cuenta corriente de cada persona.<br><br>Los <b>tipos de gasto</b> son los que se ofrecen al cargar uno. Cambiar el nombre de un tipo lo cambia en todos los gastos que ya lo usan.",
-        "With the switch on, “Expenses” shows up in your photo's menu (and under “More”, on a phone). That's where receipts are uploaded, each activity's or month's report is put together and approved, and each person's running balance is kept.<br><br>The <b>expense types</b> are the ones offered when logging an expense. Renaming a type renames it on every expense that already uses it.",
-        "Com o interruptor ligado aparece «Despesas» no menu da sua foto (e em «Mais», no celular). Ali se enviam os comprovantes, se monta a prestação de cada atividade ou da rotina do mês, se aprova e se leva a conta corrente de cada pessoa.<br><br>Os <b>tipos de despesa</b> são os oferecidos ao carregar uma. Mudar o nome de um tipo muda em todas as despesas que já o usam.",
-        "כשהמתג דולק, «הוצאות» מופיע בתפריט של התמונה שלך (וב«עוד», בטלפון). שם מעלים קבלות, מרכיבים את הדוח של כל פעילות או של שגרת החודש, מאשרים, ומנהלים את החשבון השוטף של כל אחד.<br><br><b>סוגי ההוצאות</b> הם אלה שמוצעים ברישום הוצאה. שינוי שם של סוג משנה אותו בכל ההוצאות שכבר משתמשות בו."),
+      lead: t("El módulo para rendir gastos con sus comprobantes.","The module for reporting expenses with their receipts.","O módulo para prestar contas das despesas com os comprovantes.","המודול לדיווח הוצאות עם הקבלות."),
+      ayuda: t("«Gastos» está en el menú de arriba, entre Proyectos y Reportes (en el celular, en «Más»), en el + y en el ⋯ de cada actividad. Ahí se suben los comprobantes, se arma la rendición de cada actividad o de la rutina del mes, se aprueba y se lleva la cuenta corriente de cada persona.<br><br>Los <b>tipos de gasto</b> son los que se ofrecen al cargar uno. Cambiar el nombre de un tipo lo cambia en todos los gastos que ya lo usan.",
+        "“Expenses” is in the top menu, between Projects and Reports (on a phone, under “More”), in the + and in each activity's ⋯. That's where receipts are uploaded, each activity's or month's report is put together and approved, and each person's running balance is kept.<br><br>The <b>expense types</b> are the ones offered when logging an expense. Renaming a type renames it on every expense that already uses it.",
+        "«Despesas» está no menu de cima, entre Projetos e Relatórios (no celular, em «Mais»), no + e no ⋯ de cada atividade. Ali se enviam os comprovantes, se monta a prestação de cada atividade ou da rotina do mês, se aprova e se leva a conta corrente de cada pessoa.<br><br>Os <b>tipos de despesa</b> são os oferecidos ao carregar uma. Mudar o nome de um tipo muda em todas as despesas que já o usam.",
+        "«הוצאות» נמצא בתפריט העליון, בין פרויקטים לדוחות (בטלפון, ב«עוד»), ב-+ וב-⋯ של כל פעילות. שם מעלים קבלות, מרכיבים את הדוח של כל פעילות או של שגרת החודש, מאשרים, ומנהלים את החשבון השוטף של כל אחד.<br><br><b>סוגי ההוצאות</b> הם אלה שמוצעים ברישום הוצאה. שינוי שם של סוג משנה אותו בכל ההוצאות שכבר משתמשות בו."),
     },
     avanzado: { lead: t("Lo que se configura una vez y casi no se toca: las zonas, las ciudades escritas a mano y los adjuntos.","What's set up once and rarely touched: zones, hand-typed cities and attachments.","O que se configura uma vez e quase não se mexe: as zonas, as cidades digitadas à mão e os anexos.","מה שמגדירים פעם אחת וכמעט לא נוגעים: האזורים, הערים שהוקלדו ידנית והקבצים המצורפים.") },
     adjuntos: { lead: t("Cuántos archivos, y de qué tamaño, se pueden adjuntar a un posteo (evento, rutina o respuesta).","How many files, and how big, can be attached to a post (event, routine or reply).","Quantos arquivos, e de que tamanho, podem ser anexados a uma postagem (evento, rotina ou resposta).","כמה קבצים, ובאיזה גודל, אפשר לצרף לפוסט (אירוע, שגרה או תגובה).") },
@@ -14254,9 +14268,9 @@ function renderBottomNav(){
     </button>
     ${moreMenuOpen ? `<div class="bn-sheet" role="menu">
         ${hoja("proyectos", "📋", t("Proyectos","Projects","Projetos","פרויקטים"))}
+        ${gastosVisible() ? hoja("gastos", "🧾", t("Gastos","Expenses","Despesas","הוצאות"), gastosPendientes() ? `<span class="pending-count">${gastosPendientes()}</span>` : "") : ""}
         ${hoja("reportes", "📊", t("Reportes","Reports","Relatórios","דוחות"))}
         ${hoja("configuracion", "⚙️", t("Mis preferencias","My preferences","Minhas preferências","ההעדפות שלי"))}
-        ${gastosVisible() ? hoja("gastos", "🧾", t("Gastos","Expenses","Despesas","הוצאות"), gastosPendientes() ? `<span class="pending-count">${gastosPendientes()}</span>` : "") : ""}
         ${isAdmin() ? hoja("admin", "🛠️", t("Administración","Administration","Administração","ניהול"), pend ? `<span class="pending-count">${pend}</span>` : "") : ""}
       </div>` : ""}`;
 }
@@ -17628,6 +17642,7 @@ function renderPostMenu(post, { editable, canCancel }){
   // Para los posteos de antes de que la app leyera los formularios: leer
   // ahora los Word que ya tiene.
   if(editable && post.activityType !== "rutina" && (post.files || []).some(esWordDeViaje)) items.push(`<button type="button" class="post-menu-item" role="menuitem" data-action="leer-resumen" data-post-id="${esc(post.id)}">📋 ${t("Leer el resumen de los documentos","Read the summary from the documents","Ler o resumo dos documentos","קריאת הסיכום מהמסמכים")}</button>`);
+  if(puedeRendirActividad(post)) items.push(`<button type="button" class="post-menu-item" role="menuitem" data-action="post-gastos" data-post-id="${esc(post.id)}">🧾 ${t("Rendición de gastos","Expense report","Prestação de contas","דוח הוצאות")}</button>`);
   if(canCancel) items.push(`<button type="button" class="post-menu-item" role="menuitem" data-action="cancel-post" data-post-id="${esc(post.id)}">🚫 ${t("Cancelar evento","Cancel event","Cancelar evento","ביטול האירוע")}</button>`);
   if(isFixedAdmin()) items.push(`<div class="post-menu-sep" role="separator"></div><button type="button" class="post-menu-item danger" role="menuitem" data-action="delete-post" data-post-id="${esc(post.id)}">🗑️ ${t("Borrar…","Delete…","Apagar…","מחיקה…")}</button>`);
   if(!items.length) return "";
@@ -21959,7 +21974,6 @@ const TOUR_FALLBACK_KEY = "ra_tour_seen";
 // acá (y al revés: si algo no necesita paso, se anota en TOUR_SIN_PASO con el porqué). Ver CLAUDE.md.
 const TOUR_SIN_PASO = {
   admin: "Administración es solo de admins y tiene su propio menú con una línea de ayuda en cada sección; el recorrido es para todo el equipo.",
-  gastos: "Gastos está en prueba y lo ven solo los administradores (con el interruptor de Administración → Gastos); cuando se abra al equipo, se le suma su paso.",
 };
 // El control que lleva a una pantalla: la solapa de arriba en la compu, la barra de abajo en el celular. Lo que en
 // el celular vive dentro de «Más» (Proyectos, Reportes) se señala con ese botón y el texto lo avisa.
@@ -21995,6 +22009,13 @@ function tourSteps(){
         "Qualquer Evento pode virar um projeto, com marcos e data de cada um — esta aba reúne todos os que você tem em andamento.",
         "כל אירוע יכול להפוך לפרויקט, עם אבני דרך ותאריך לכל אחת — הלשונית הזו מרכזת את כל אלה שבתהליך אצלך."),
       textoMas: true },
+    ...(gastosVisible() ? [{ id:"gastos", cubre:["gastos"], target: [...tourNav("gastos"), TOUR_MAS],
+      title: t("Gastos","Expenses","Despesas","הוצאות"),
+      text: t("Subí las fotos o los PDF de tus comprobantes: el sistema los lee y vos confirmás. En «Por rendir» está lo que tenés que completar y mandar; en «Rendiciones», todo lo que ya mandaste, y en «Cuenta corriente», lo que te deben o debés.",
+        "Upload photos or PDFs of your receipts: the system reads them and you confirm. “To report” has what you need to complete and send; “Expense reports”, everything you've sent; and “Running balance”, what you're owed or owe.",
+        "Envie as fotos ou os PDF dos seus comprovantes: o sistema lê e você confirma. Em «A prestar» está o que você precisa completar e mandar; em «Prestações», tudo o que já mandou; e em «Conta corrente», o que te devem ou você deve.",
+        "העלו תמונות או קובצי PDF של הקבלות: המערכת קוראת אותן ואתם מאשרים. ב«לדיווח» יש את מה שצריך להשלים ולשלוח; ב«דוחות הוצאות» — כל מה ששלחתם; וב«חשבון שוטף» — מה שחייבים לכם או שאתם חייבים."),
+      textoMas: true }] : []),
     { id:"reportes", cubre:["reportes"], target: [...tourNav("reportes"), TOUR_MAS],
       title: t("Reportes","Reports","Relatórios","דוחות"),
       text: t("Cuántas actividades hubo por mes, país, tipo y persona, contra el período anterior, y en «Tendencias» qué lugares, tipos y temas subieron o bajaron en los últimos 90 días. Tocá un mes del gráfico para ver su ficha, «✨ Mi año» para tu resumen personal con una tarjeta para compartir, o «Presentar» para mostrar el reporte en pantalla completa, como diapositivas, o imprimirlo.",
@@ -22259,6 +22280,8 @@ function jumpToNewPosts(){
 }
 window.addEventListener("scroll", updateNewPostsPill, { passive:true });
 function closeFab(){ setFab(false); }
+// «Subir comprobantes» en el + (19/11), si Gastos está a la vista.
+function pintarFabGastos(){ const b = document.getElementById("fabGastos"); if(b) b.hidden = !gastosVisible(); }
 // La Rutina no tiene modal propio: su composer es la primera cosa del
 // Feed, así que desde otra solapa hay que ir al Feed antes de enfocarlo.
 function startRutina(){
@@ -24979,16 +25002,21 @@ function etiquetaTipoFabrica(k){
 // región); se puede escribir cualquier otra con su código de tres letras.
 const GASTO_TOPE_BYTES = 25 * 1024 * 1024;   // el del bucket (01-tablas.sql)
 
-function gastosPrendido(){ return gastosConfig.prendido === true; }
-// En la prueba, solo un admin. Abrirlo al equipo (la etapa 5) es prender
-// `abierto`, que la base ya respeta (gastos_habilitado).
+// Desde el 19/11/2026 Gastos dejó de ser una prueba: prendido y abierto al equipo (los que cargan; un observador,
+// no), salvo que un admin lo apague o lo cierre desde Administración → Gastos. La base respeta lo mismo
+// (gastos_habilitado).
+function gastosPrendido(){ return gastosConfig.prendido !== false; }
+const gastosAbiertoAlEquipo = () => gastosConfig.abierto !== false;
+// Hasta leer la configuración no se muestra ni se pide nada: apagado o cerrado, ni se lee de la base.
+let gastosConfigLeida = false;
 function gastosVisible(){
-  if(!isAuthorized() || !gastosPrendido()) return false;
-  return isAdmin() || (gastosConfig.abierto === true && canWrite());
+  if(!isAuthorized() || !gastosConfigLeida || !gastosPrendido()) return false;
+  return isAdmin() || (gastosAbiertoAlEquipo() && canWrite());
 }
 function miCorreo(){ return String((state.auth.user && state.auth.user.email) || "").toLowerCase(); }
 function applyGastosConfig(cfg){
   gastosConfig = cfg && typeof cfg === "object" ? cfg : {};
+  gastosConfigLeida = true;
   // Lo que llega de la base pisa el borrador de los tipos, salvo que el
   // admin esté escribiendo uno.
   if(gastosAdmin && !gastosAdmin.cambiado && !gastosAdmin.guardando){
@@ -25187,6 +25215,33 @@ function actividadesParaGastos(cerca){
   const porCercania = l => l.map(p => ({ p, d: Math.abs(Date.parse((p.startDate || p.date) + "T00:00:00") - ref) || 0 })).sort((a, b) => a.d - b.d).map(x => x.p);
   const todas = state.posts.filter(p => p.activityType !== "rutina" && !p.cancelled);
   return { mias: porCercania(todas.filter(p => participoEn(p, yo))), otras: isAdmin() ? porCercania(todas.filter(p => !participoEn(p, yo))).slice(0, 40) : [] };
+}
+// «Rendición de gastos» en el ⋯ de una actividad (19/11): la ve quien ya tiene su rendición o quien la puede hacer
+// (participó, o es admin), en las actividades que no son Rutina ni están canceladas. Lleva a su rendición o, si
+// todavía no hay, a subir comprobantes con esa actividad ya elegida (sin crear una rendición vacía).
+const miRendicionDeActividad = id => misRendiciones().find(r => r.postId === id) || null;
+function puedeRendirActividad(p){
+  if(!p || !gastosVisible() || !gastosDatos || p.activityType === "rutina") return false;
+  if(miRendicionDeActividad(p.id)) return true;
+  return canWrite() && !p.cancelled && (isAdmin() || participoEn(p, miCorreo()));
+}
+function irASubirComprobantes(vinculo){
+  state.view = "gastos"; state.countryDrill = null; state.zonaDrill = null; userMenuOpen = false; moreMenuOpen = false;
+  gastosSeccion = "rendir"; gastosAbierta = null; gastosLista = null; gastosSel = null; gastosTotal = null;
+  gastosDestino = { vinculo: vinculo || "-" };
+  render(); scrollToTop();
+  const x = document.querySelector(vinculo ? '[data-action="gastos-destino-elegir"]' : "#gxDestino"); if(x) x.focus();
+}
+function irAGastosDeActividad(id){
+  const p = getPostById(id);
+  if(!puedeRendirActividad(p)) return;
+  const r = miRendicionDeActividad(id);
+  if(!r) return irASubirComprobantes("post:" + id);
+  state.view = "gastos"; state.countryDrill = null; state.zonaDrill = null; userMenuOpen = false; moreMenuOpen = false;
+  gastosSeccion = rendicionEditable(r) ? "rendir" : "rendiciones"; gastosAbierta = r.id;
+  gastosLista = null; gastosSel = null; gastosTotal = null; gastosDestino = null;
+  render(); scrollToTop();
+  const x = document.querySelector(".gastos-view .gx-volver"); if(x) x.focus();
 }
 function mesAnteriorDe(ym){
   const [y, m] = ym.split("-").map(Number);
@@ -26276,7 +26331,7 @@ function gastosSecciones(){
     // «Rendiciones», donde se ven y se siguen todas (el admin, las de todo el equipo).
     { key: "rendir", label: t("Por rendir","To report","A prestar","לדיווח"),
       badge: gastosDatos ? gastosDatos.gastos.filter(g => g.autor === miCorreo() && estadoVisible(g) === "observado").length : 0 },
-    { key: "rendiciones", label: t("Rendiciones","Expense reports","Prestações","דוחות") },
+    { key: "rendiciones", label: t("Rendiciones","Expense reports","Prestações","דוחות הוצאות") },
     { key: "cuenta", label: t("Cuenta corriente","Running balance","Conta corrente","חשבון שוטף") },
   ];
   if(isAdmin()) s.push({ key: "aprobar", label: t("Para aprobar","To approve","Para aprovar","לאישור"),
@@ -26328,7 +26383,7 @@ function renderGastosView(){
   else body = sec === "cuenta" ? renderGastosCuenta() : sec === "aprobar" ? renderParaAprobar() : sec === "rendiciones" ? renderRendiciones() : renderPorRendir();
   return `<div class="admin-view gastos-view">
       <aside class="admin-menu" aria-label="${esc(titulo)}">
-        <div class="admin-titulo">🧾 ${titulo} <span class="gx-prueba">${t("en prueba","in testing","em teste","בניסוי")}</span></div>${menu}
+        <div class="admin-titulo">🧾 ${titulo}</div>${menu}
       </aside>
       <div class="admin-body">
         ${gastosAbierta && gastosDatos && conRendicion ? "" : `<header class="admin-cabecera">
@@ -26474,7 +26529,7 @@ function renderPorRendir(){
       <div class="gx-lista">${abiertas.map(r => renderTarjetaRendicion(r)).join("")}</div>`
     : mias.length && !sin.length ? `<div class="admin-ok">✅ ${t("No tenés nada por rendir.","You have nothing to report.","Você não tem nada a prestar.","אין לכם מה לדווח.")}</div>` : "";
   const aLas = mias.some(r => !rendicionEditable(r)) ? `<p class="setting-sub gx-a-rendiciones">${t("Lo que ya mandaste está en","What you've sent is in","O que você já mandou está em","מה ששלחתם נמצא ב")}
-      <button type="button" class="gx-link" data-action="gastos-seccion" data-key="rendiciones">${t("Rendiciones","Expense reports","Prestações","דוחות")} ${isRTL() ? "←" : "→"}</button></p>` : "";
+      <button type="button" class="gx-link" data-action="gastos-seccion" data-key="rendiciones">${t("Rendiciones","Expense reports","Prestações","דוחות הוצאות")} ${isRTL() ? "←" : "→"}</button></p>` : "";
   const conActs = actividadesParaGastos(), acts = [...conActs.mias, ...conActs.otras];
   const sinComprobantes = `<div class="gx-otra">
       <button type="button" class="gx-link" data-action="gastos-otra" aria-expanded="${gastosOtraAbierta}">${gastosOtraAbierta ? "▾" : isRTL() ? "◂" : "▸"} ${t("Anotar solo el total de una actividad","Enter just the total of an activity","Anotar só o total de uma atividade","רישום הסכום בלבד של פעילות")}</button>
@@ -28572,8 +28627,14 @@ function renderGastosAdminSection(){
       <div class="setting-row">
         <span class="setting-icon" aria-hidden="true">🧾</span>
         <div class="setting-text"><div class="setting-label" id="gxPrendidoLbl">${t("Mostrar el módulo de gastos","Show the expenses module","Mostrar o módulo de despesas","הצגת מודול ההוצאות")}</div>
-          <div class="setting-sub">${t("En esta etapa de prueba lo ven solo los administradores, desde el menú de su foto. Apagarlo esconde las pantallas: lo cargado queda guardado.","In this testing stage only admins see it, from their photo's menu. Turning it off hides the screens: what was logged stays saved.","Nesta etapa de teste só os administradores veem, pelo menu da foto. Desligar esconde as telas: o que foi carregado continua salvo.","בשלב הניסוי רק מנהלים רואים אותו, מהתפריט של התמונה. כיבוי מסתיר את המסכים: מה שנרשם נשמר.")}</div></div>
+          <div class="setting-sub">${t("Apagarlo esconde Gastos a todos: lo cargado queda guardado.","Turning it off hides Expenses from everyone: what's been entered stays saved.","Desligar esconde Despesas de todos: o que foi carregado fica guardado.","כיבוי מסתיר את ההוצאות מכולם: מה שנרשם נשמר.")}</div></div>
         <label class="pref-switch"><input type="checkbox" data-action="gastos-prender" aria-labelledby="gxPrendidoLbl" ${gastosPrendido() ? "checked" : ""}><span class="pref-slider"></span></label>
+      </div>
+      <div class="setting-row">
+        <span class="setting-icon" aria-hidden="true">👥</span>
+        <div class="setting-text"><div class="setting-label" id="gxAbiertoLbl">${t("Abierto al equipo","Open to the team","Aberto para a equipe","פתוח לצוות")}</div>
+          <div class="setting-sub">${t("Lo usan todos los que cargan (los observadores, no). Cerrado, solo los admins.","Everyone who logs uses it (observers don't). Closed, only admins.","Todos os que carregam usam (os observadores, não). Fechado, só os admins.","כל מי שמתעד משתמש בו (משקיפים לא). סגור — רק מנהלים.")}</div></div>
+        <label class="pref-switch"><input type="checkbox" data-action="gastos-abrir-equipo" aria-labelledby="gxAbiertoLbl" ${gastosAbiertoAlEquipo() ? "checked" : ""}${gastosPrendido() ? "" : " disabled"}><span class="pref-slider"></span></label>
       </div>
     </div>
     <div class="settings-card-title">${t("Tipos de gasto","Expense types","Tipos de despesa","סוגי הוצאות")}</div>
@@ -28754,6 +28815,11 @@ const GASTOS_ACCIONES = {
   "gasto-forma": async el => elegirEnVentana("formaPago", el.dataset.forma),
   "gasto-tarjeta": async el => { const e = gastoEdit; if(!e || e.guardando) return; e.d.tarjeta = el.dataset.t; e.cambiado = true; (e.tocados = e.tocados || new Set()).add("tarjeta"); e.faltan = e.faltan.filter(k => k !== "tarjeta"); renderGasto(); const x = document.getElementById("gxTarjeta"); if(x) x.focus(); },
   "gastos-prender": async el => prenderGastos(!!el.checked),
+  "gastos-abrir-equipo": async el => {
+    try{ await guardarGastosConfig({ abierto: !!el.checked }); }
+    catch(err){ console.error("No se pudo abrir o cerrar Gastos:", err); appAlert(t("No se pudo guardar: {m}","Couldn't save: {m}","Não foi possível salvar: {m}","לא ניתן היה לשמור: {m}",{ m: detalleDeError(err) })); }
+    render();
+  },
   "gastos-tipo-ocultar": async el => { const a = borradorTiposDeGasto(), x = a.tipos[Number(el.dataset.i)]; if(x){ x.oculto = !x.oculto; a.cambiado = true; a.ok = false; render(); } },
   "gastos-tipo-sumar": async () => {
     const a = borradorTiposDeGasto(), nombre = String(a.nuevo || "").trim().slice(0, 60);
@@ -29729,6 +29795,7 @@ function accionesDeProximo(post){
   if(canWrite() && post.activityType !== "rutina") mas.push(`<button type="button" class="post-menu-item" role="menuitem" data-action="event-card-repetir" data-post-id="${id}">🔁 ${t("Repetir este evento","Repeat this event","Repetir este evento","לחזור על האירוע הזה")}</button>`);
   if(post.isProject) mas.push(`<button type="button" class="post-menu-item" role="menuitem" data-action="event-card-project" data-post-id="${id}">📋 ${t("Ver proyecto","View project","Ver projeto","הצגת פרויקט")}</button>`);
   else if(post.activityType !== "rutina" && canManageProject(post)) mas.push(`<button type="button" class="post-menu-item" role="menuitem" data-action="event-card-project" data-post-id="${id}">📋 ${t("Convertir en proyecto","Turn into a project","Converter em projeto","להפוך לפרויקט")}</button>`);
+  if(puedeRendirActividad(post)) mas.push(`<button type="button" class="post-menu-item" role="menuitem" data-action="post-gastos" data-post-id="${id}">🧾 ${t("Rendición de gastos","Expense report","Prestação de contas","דוח הוצאות")}</button>`);
   if(canCancelPost(post)) mas.push(`<button type="button" class="post-menu-item" role="menuitem" data-action="event-card-cancelar" data-post-id="${id}">🚫 ${t("Cancelar evento","Cancel event","Cancelar evento","ביטול האירוע")}</button>`);
   if(isFixedAdmin()) mas.push(`<div class="post-menu-sep" role="separator"></div><button type="button" class="post-menu-item danger" role="menuitem" data-action="event-card-borrar" data-post-id="${id}">🗑️ ${t("Borrar…","Delete…","Apagar…","מחיקה…")}</button>`);
   return `<div class="ev-actions ev-actions-proximo">
@@ -31656,6 +31723,10 @@ document.addEventListener("click", async e=>{
     "new-rutina": async (el, e, action, postId) => {
     startRutina();
   },
+    // Desde el + (19/11): Gastos, «Por rendir», con «¿De qué son estos comprobantes?» abierto.
+    "fab-gastos": async () => { closeFab(); irASubirComprobantes(""); },
+    // Desde el ⋯ de una actividad (19/11): su rendición si la hay; si no, subir con la actividad elegida.
+    "post-gastos": async (el, e, action, postId) => { if(typeof closeEventCard === "function") closeEventCard(); irAGastosDeActividad(postId || el.dataset.postId); },
     "toggle-cal-milestones": async (el, e, action, postId) => {
     savePrefs({ calendarShowMilestones: prefs().calendarShowMilestones === false });
   },

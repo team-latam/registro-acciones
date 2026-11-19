@@ -42,11 +42,19 @@ create or replace function lab.rechaza(quien jsonb, sentencia text) returns text
 $$;
 
 -- ---------- ¿Para quién están abiertos? ----------
-select lab.comprobar('el admin fijo tiene los gastos abiertos (la etapa de prueba es suya)',
+-- Desde el 19/11 Gastos dejó de ser una prueba: sin nada guardado, está abierto
+-- para quien escribe en el sistema. El admin lo puede cerrar al equipo.
+select lab.comprobar('sin nada guardado, una integrante los tiene (están abiertos al equipo)',
+  $q$select lab.hacer(lab.como('ana@x.com'), $x$select public.gastos_habilitado()::text$x$)$q$, 'true');
+insert into public.app_config(key, value) values ('preferences', '{"gastos": {"prendido": true, "tipos": []}}');
+select lab.comprobar('…y con preferencias de gastos guardadas que no dicen nada de «abierto», también',
+  $q$select lab.hacer(lab.como('ana@x.com'), $x$select public.gastos_habilitado()::text$x$)$q$, 'true');
+update public.app_config set value = '{"gastos": {"abierto": false}}' where key = 'preferences';
+select lab.comprobar('el admin fijo los tiene aunque estén cerrados al equipo',
   $q$select lab.hacer(lab.como('benny@team-latam.com'), $x$select public.gastos_habilitado()::text$x$)$q$, 'true');
 select lab.comprobar('un admin por rol, también',
   $q$select lab.hacer(lab.como('otra.admin@x.com'), $x$select public.gastos_habilitado()::text$x$)$q$, 'true');
-select lab.comprobar('una integrante, no: todavía no se abrieron para el equipo',
+select lab.comprobar('cerrados al equipo, una integrante no',
   $q$select lab.hacer(lab.como('ana@x.com'), $x$select public.gastos_habilitado()::text$x$)$q$, 'false');
 select lab.comprobar('una observadora, no',
   $q$select lab.hacer(lab.como('olga@x.com'), $x$select public.gastos_habilitado()::text$x$)$q$, 'false');
@@ -59,7 +67,7 @@ select lab.comprobar('…ni cargar un gasto directo',
 select lab.comprobar('…ni anotar un movimiento',
   $q$select lab.rechaza(lab.como('ana@x.com'), $x$insert into public.gastos_movimientos(persona, tipo, fecha, moneda, monto) values ('ana@x.com', 'recibido', '2026-09-01', 'USD', 10) returning id::text$x$)$q$, 'true');
 
--- ---------- El admin, en la etapa de prueba ----------
+-- ---------- El admin, con Gastos cerrado al equipo ----------
 select lab.comprobar('el admin abre su rendición en cualquier actividad, aunque no figure como participante',
   $q$select (lab.hacer(lab.como('benny@team-latam.com'), $x$select public.gastos_rendicion_abrir('p2', null)::text$x$) ~ '^[0-9a-f-]{36}$')::text$q$, 'true');
 select lab.comprobar('…y abrirla de nuevo da la misma (no se duplica)',
@@ -72,7 +80,7 @@ select lab.comprobar('la rutina de un mes: con cualquier día del mes queda el p
   $q$select rutina_mes::text from public.gastos_rendiciones where id = '$q$ || :'rb_mes' || $q$'$q$, '2026-09-01');
 
 -- ---------- Se abren para el equipo ----------
-insert into public.app_config(key, value) values ('preferences', '{"gastos": {"abierto": true}}');
+update public.app_config set value = '{"gastos": {"abierto": true}}' where key = 'preferences';
 select lab.comprobar('abiertos: una integrante los tiene', $q$select lab.hacer(lab.como('ana@x.com'), $x$select public.gastos_habilitado()::text$x$)$q$, 'true');
 select lab.comprobar('una observadora sigue sin tenerlos (no carga nada)', $q$select lab.hacer(lab.como('olga@x.com'), $x$select public.gastos_habilitado()::text$x$)$q$, 'false');
 select lab.comprobar('una integrante abre su rendición en una actividad donde figura como participante',

@@ -16,6 +16,10 @@
 > cambio de moneda; ver «Etapa 4» más abajo) y después volver a la 2 y la 3. **Cada parte que sigue va a `main` recién
 > con el OK explícito del usuario**, con capturas: es lo que se acordó, y es una excepción a la regla general de
 > «pushear a `main` de una» de `CLAUDE.md` (al llegar a `main`, la base real se actualiza sola).
+>
+> **19/11: Gastos deja de ser una prueba** (punto 14 de «Lo que anotó el usuario»): abierto a todo el equipo que
+> escribe en el sistema (no a los observadores), con su solapa en el menú principal entre Proyectos y Reportes, en el
+> «+» y en el menú «⋯» de cada actividad. Administración → Gastos lo puede cerrar al equipo o apagar entero.
 
 El usuario rinde hoy sus gastos de viaje y de rutina con una skill de Claude que lee los comprobantes de su
 Drive, los carga en un Google Sheet y arma los PDF de entrega. Quiere que **el sistema** haga eso y quede todo
@@ -91,13 +95,13 @@ tocan eventos, comentarios ni la Agenda); se hace por etapas chicas; Drive y el 
 
 ## Las etapas
 
-1. **Prueba** (en curso): solo admins, apagable. Comprobantes y gastos, confirmación, mandar, observar y
-   aprobar, cuenta corriente y total rápido. Sin Drive ni Sheet. Las reglas de privacidad ya quedan armadas:
-   abrirlo al equipo es prender `app_config 'preferences' → gastos.abierto`.
+1. **Prueba** (del 15/11 al 19/11): solo admins, apagable. Comprobantes y gastos, confirmación, mandar, observar y
+   aprobar, cuenta corriente y total rápido. Sin Drive ni Sheet. Las reglas de privacidad ya quedaban armadas:
+   abrirlo al equipo era prender `app_config 'preferences' → gastos.abierto`.
 2. Copia a Drive.
 3. Carga al Sheet, con aprobación.
 4. PDF de entrega.
-5. Abrirlo a más personas, y las estadísticas.
+5. Abrirlo a más personas (**hecho el 19/11**: abierto a todo el equipo, punto 14), y las estadísticas.
 
 ### Etapa 1, por partes
 
@@ -475,6 +479,26 @@ que llega tarde, al final del PDF con los números que siguen. Cómo quedó cada
     «Borrar este gasto» adentro de la fila abierta de «Revisar en lista»; la foto chica en el celular; la nota de la
     moneda en hebreo; «Probar de nuevo»; sin «Borrar» al revisar lo de otros; el aviso al confirmar plata; cuál ya
     estaba cargado.
+
+- **14 — Gastos deja de ser una prueba** (19/11): «Es momento que Gastos deje de ser una prueba… quiero que lo saquemos
+  del acceso directo que tiene y lo pongamos en el menú principal, entre Proyectos y Reportes. También quiero que
+  aparezca dentro de las opciones de la actividad, sea porque ya tiene una rendición hecha o porque se puede hacer la
+  rendición. El título debe decir lo mismo, pero te lleva a una u otra parte de Gastos… Publicaciones que son de
+  rutina… no llevan este acceso.» Eligió **abrirlo al equipo** (la recomendada) y pidió sumarlo también al «+».
+  **Hecho el 19/11:**
+  - **Quién lo ve:** todo el que escribe en el sistema (integrantes y admins); un observador, no. En la base,
+    `gastos_habilitado()` lo da por abierto si `gastos.abierto` no está en `false` (antes hacía falta un `true`).
+    En Administración → Gastos hay dos interruptores: «Gastos» (apaga todo) y «Abierto al equipo» (si se apaga,
+    queda solo para los admins).
+  - **Dónde está:** la solapa **«Gastos»** entre Proyectos y Reportes (en el celular, en «Más»), con el número de lo
+    que hay para aprobar; ya no está en el menú de la foto.
+  - **En el «+»:** «🧾 Subir comprobantes», que abre «Por rendir» en «¿De qué son estos comprobantes?».
+  - **En el «⋯» de cada actividad:** «🧾 Rendición de gastos». Si la persona ya tiene una rendición de esa actividad,
+    la abre (en «Por rendir» si todavía está en sus manos; si ya la mandó, en «Rendiciones»); si no, abre «Por
+    rendir» con esa actividad ya elegida para subir los comprobantes, sin crear una rendición vacía. No aparece en
+    las de rutina ni en las canceladas, ni a un integrante en una actividad donde no participó.
+  - **El recorrido de bienvenida** tiene un paso de Gastos (cuatro idiomas), entre Proyectos y Reportes.
+  - Sin la etiqueta «en prueba» en la pantalla ni en Administración.
 
 **Para toda la tanda** (18/11: «Hay mucho texto, mucha explicación, podría ser más directo. No es difícil lo que
 tenemos que poner»): en todas las pantallas de Gastos, menos texto. Cada botón dice lo que hace; como mucho una

@@ -635,8 +635,8 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   await p.click('[data-action="toggle-user-menu"]');
 
   // Todas las solapas, una por una: cada una se dibuja y ninguna rompe.
-  const vistas = await p.$$eval("nav.tabs button[data-view]", bs => bs.filter(x => !x.hidden).map(x => x.dataset.view));
-  eq("admin: están las cinco solapas", vistas, ["feed","calendario","paises","proyectos","reportes"]);
+  const vistas = await p.$$eval("nav.tabs button[data-view]", bs => bs.filter(x => !x.hidden && x.offsetParent).map(x => x.dataset.view));
+  eq("admin: están las seis solapas (Gastos, entre Proyectos y Reportes, desde el 19/11)", vistas, ["feed","calendario","paises","proyectos","gastos","reportes"]);
   const vacias = [];
   for(const v of vistas){
     await p.click(`nav.tabs button[data-view="${v}"]`);
@@ -987,9 +987,9 @@ const hasta = async (p, fn, arg, ms = 5000) => {
   eq("integrante: el menú del avatar no ofrece Administración", !!(await p.$('.user-menu [data-action="goto-view"][data-view="admin"]')), false);
   await p.click('.user-menu [data-action="goto-view"][data-view="configuracion"]');
   eq("integrante: llega a Mis preferencias", await hasta(p, () => !!document.querySelector('select[data-pref="weekStart"]')), true);
-  const vistas = await p.$$eval("nav.tabs button[data-view]", bs => bs.filter(x => !x.hidden).map(x => x.dataset.view));
+  const vistas = await p.$$eval("nav.tabs button[data-view]", bs => bs.filter(x => !x.hidden && x.offsetParent).map(x => x.dataset.view));
   for(const v of vistas){ await p.click(`nav.tabs button[data-view="${v}"]`); await p.waitForTimeout(200); }
-  eq("integrante: recorre sus solapas", vistas, ["feed","calendario","paises","proyectos","reportes"]);
+  eq("integrante: recorre sus solapas (con Gastos, abierto al equipo desde el 19/11)", vistas, ["feed","calendario","paises","proyectos","gastos","reportes"]);
   eq("integrante: sin un solo error", errores, []);
   await p.close();
 }

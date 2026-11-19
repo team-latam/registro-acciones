@@ -32,14 +32,15 @@
 -- ============================================================
 
 -- ---------- ¿Los gastos están abiertos para quien llama? ----------
--- Un admin, siempre (la etapa de prueba es suya). El resto, solo cuando el
--- admin los abre para el equipo, y si puede cargar (un observador, nunca).
+-- Un admin, siempre. El resto, si puede cargar (un observador, nunca) y el
+-- módulo está abierto al equipo: desde el 19/11/2026 lo está salvo que un
+-- admin lo cierre (`gastos.abierto = false`): dejó de ser una prueba.
 create or replace function public.gastos_habilitado() returns boolean
   language sql stable security definer set search_path = '' as $$
   select public.es_admin_fijo() or public.es_admin_rol()
       or (public.puede_escribir()
-          and coalesce((select (c.value -> 'gastos' ->> 'abierto') = 'true'
-                          from public.app_config c where c.key = 'preferences'), false))
+          and coalesce((select (c.value -> 'gastos' ->> 'abierto') is distinct from 'false'
+                          from public.app_config c where c.key = 'preferences'), true))
 $$;
 
 -- Un total por moneda: {"USD": 1910.67, "BZD": 300}. Códigos de tres letras
@@ -683,8 +684,8 @@ begin
   if ya >= 30 then return null; end if;
   if not exists (select 1 from public.members m where m.email = g.autor
                    and (m.role = 'admin' or m.email = public.admin_fijo()
-                        or (m.role = 'member' and coalesce((select (k.value -> 'gastos' ->> 'abierto') = 'true'
-                                                              from public.app_config k where k.key = 'preferences'), false))))
+                        or (m.role = 'member' and coalesce((select (k.value -> 'gastos' ->> 'abierto') is distinct from 'false'
+                                                              from public.app_config k where k.key = 'preferences'), true))))
      or not public.puede_recibir_correos(g.autor) then
     return null;
   end if;
@@ -981,10 +982,11 @@ create policy gastos_archivos_subir on storage.objects for insert
 -- ============================================================
 -- La escribe un admin desde Administración → Gastos (las políticas de
 -- app_config, 02-politicas.sql) y la lee todo el equipo:
---   prendido  si la app muestra el módulo (en la prueba, solo a los admins).
---             Apagarlo esconde las pantallas; lo cargado queda guardado.
---   abierto   si el resto del equipo puede usarlo (gastos_habilitado). La
---             app todavía no lo ofrece: es la etapa 5.
+--   prendido  si la app muestra el módulo. Apagarlo esconde las pantallas
+--             (a todos); lo cargado queda guardado.
+--   abierto   si el resto del equipo puede usarlo (gastos_habilitado). Sin
+--             nada guardado, sí (desde el 19/11/2026); `false` lo cierra y
+--             queda solo para los admins.
 --   tipos     los tipos de gasto: [{key, label?, oculto?}]. Los siete de
 --             fábrica traen su nombre en los cuatro idiomas y `label` lo
 --             reemplaza; uno `oculto` ya no se ofrece pero sigue nombrando a

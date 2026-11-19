@@ -407,9 +407,8 @@ export async function recorrerApp(p, paso){
   await p.evaluate(() => { const b = document.querySelector('[data-action="tipo-abrir"], .lp-row'); b && b.click(); }); await p.waitForTimeout(300); await paso(p, ("Admin ficha tipo"));
   await p.evaluate(() => { const b = document.querySelector('.user-menu [data-action="goto-view"][data-view="configuracion"], [data-action="goto-view"][data-view="configuracion"]'); b && b.click(); });
   await click(p, '[data-action="toggle-user-menu"]'); await p.evaluate(() => { const b = document.querySelector('.user-menu [data-view="configuracion"]'); b && b.click(); }); await p.waitForTimeout(400); await paso(p, ("Mis preferencias"));
-  // Gastos (en prueba, solo admins): las rendiciones, una abierta con la ventana de un gasto, la cuenta y lo que hay para aprobar.
-  await click(p, '[data-action="toggle-user-menu"]');
-  if(await p.evaluate(() => { const b = document.querySelector('.user-menu [data-view="gastos"]'); if(b) b.click(); return !!b; })){
+  // Gastos (en el menú de arriba desde el 19/11): las rendiciones, una abierta con la ventana de un gasto, la cuenta y lo que hay para aprobar.
+  if(await p.evaluate(() => { const b = document.querySelector('#tabs button[data-view="gastos"]:not([hidden])'); if(b) b.click(); return !!b; })){
     await p.waitForTimeout(400); await paso(p, ("Gastos"));
     await click(p, '[data-action="gastos-grupo"][data-id="ren_mvd"]');
     if(await click(p, '[data-action="gastos-abrir-rendicion"][data-id="ren_mvd"]')){ await p.waitForTimeout(300); await paso(p, ("Gastos: rendición"));

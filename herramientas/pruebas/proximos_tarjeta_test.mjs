@@ -55,8 +55,9 @@ const b = await abrirNavegador();
 
   await p.click('#eventCardBody [data-action="event-card-mas"]');
   await p.waitForTimeout(350);
-  eq("el ⋯ trae Repetir, Convertir en proyecto, Cancelar y Borrar (admin)", await opciones(p),
-     ["event-card-repetir", "event-card-project", "event-card-cancelar", "event-card-borrar"]);
+  // Desde el 19/11 también «Rendición de gastos» (Gastos dejó de ser una prueba).
+  eq("el ⋯ trae Repetir, Convertir en proyecto, Rendición de gastos, Cancelar y Borrar (admin)", await opciones(p),
+     ["event-card-repetir", "event-card-project", "post-gastos", "event-card-cancelar", "event-card-borrar"]);
   eq("el foco pasa a la primera opción", await enfocado(p), "event-card-repetir");
   eq("el menú entra en la tarjeta (se abre hacia arriba)", await menuAdentro(p), true);
   eq("las opciones del ⋯ no son píldoras con borde", await p.$eval("#eventCardBody .ev-mas .post-menu-item", e => getComputedStyle(e).borderTopWidth), "0px");
@@ -97,6 +98,16 @@ const b = await abrirNavegador();
   await p.keyboard.press("Escape");
   await p.waitForTimeout(300);
   if(await p.$eval("#postModalOverlay", e => !e.hidden)){ await p.click('[data-action="confirm-ok"]').catch(() => {}); await p.waitForTimeout(300); }
+
+  // «Rendición de gastos»: la tarjeta se cierra y va a Gastos, con el curso elegido para subir los comprobantes.
+  await abrir(p, CURSO);
+  await p.click('#eventCardBody [data-action="event-card-mas"]');
+  await p.click('#eventCardBody [data-action="post-gastos"]');
+  await p.waitForTimeout(500);
+  eq("Rendición de gastos: la tarjeta se cierra y abre Gastos con el curso elegido",
+     [await abierta(p), await vista(p), await p.$eval("#gxDestino", e => e.value).catch(() => "")], [false, "gastos", "post:" + curso.id]);
+  await p.click('nav.tabs button[data-view="feed"]');
+  await p.waitForTimeout(400);
 
   // Un evento que se repite: la tarjeta y el Calendario van a la repetición
   // que se veía en la lista, no al primer día de la serie.

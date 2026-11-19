@@ -82,7 +82,7 @@ const sirvo = async (p, { faltaGx3 = false } = {}) => p.route(/\/storage\/v1\/ob
   if(faltaGx3 && /gastos\/gx3\//.test(u)) return ruta.fulfill({ status: 404, body: "" });
   return ruta.fallback();
 });
-const irGastos = async p => { await p.click('[data-action="toggle-user-menu"]'); await p.click('.user-menu [data-view="gastos"]'); await p.waitForSelector(".gastos-view"); await p.waitForTimeout(200); };
+const irGastos = async p => { await p.click('#tabs button[data-view="gastos"]'); await p.waitForSelector(".gastos-view"); await p.waitForTimeout(200); };
 // En la lista agrupada (18/11), la tarjeta despliega la rendición y «Abrir la rendición →» la abre.
 const abrir = async (p, id) => {
   // En «Por rendir», las que están en manos de la persona; las demás, en «Rendiciones», agrupadas (D16, 19/11).

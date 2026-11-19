@@ -84,7 +84,8 @@ async function pantallasReales(p){
   await p.click('#tourLayer [data-action="close-tour"]').catch(() => {});
   await p.waitForTimeout(150);
   const vistas = new Set();
-  const leer = async sel => (await p.$$eval(sel, l => l.map(e => e.dataset.view).filter(Boolean))).forEach(v => vistas.add(v));
+  // Sin las ocultas con [hidden] (la solapa de Gastos, para quien no lo ve).
+  const leer = async sel => (await p.$$eval(sel, l => l.filter(e => !e.hidden).map(e => e.dataset.view).filter(Boolean))).forEach(v => vistas.add(v));
   await leer("nav.tabs button[data-view]");
   await leer(".bn-item[data-view]");
   if(await click(p, '.bn-item[data-action="toggle-more-menu"]')){ await p.waitForTimeout(150); await leer(".bn-sheet-item[data-view]"); await click(p, '.bn-item[data-action="toggle-more-menu"]'); }
@@ -92,7 +93,8 @@ async function pantallasReales(p){
   return [...vistas];
 }
 
-const ESPERADO_INTEGRANTE = ["inicio", "composer", "crear", "paises", "calendario", "proyectos", "reportes", "buscar", "novedades", "cuenta"];
+// Gastos (19/11: dejó de ser una prueba), entre Proyectos y Reportes, para quien carga; el observador no lo ve.
+const ESPERADO_INTEGRANTE = ["inicio", "composer", "crear", "paises", "calendario", "proyectos", "gastos", "reportes", "buscar", "novedades", "cuenta"];
 const ESPERADO_OBSERVADOR = ["observador", "paises", "calendario", "proyectos", "reportes", "buscar", "novedades", "cuenta"];
 const todasLasPantallas = new Set();
 const cubiertasPorCombo = [];
@@ -108,12 +110,12 @@ for(const [rol, viewport, nombre] of [["member", COMPU, "integrante en la compu"
   eq(`${nombre}: ningún paso sin título ni texto`, pasos.filter(x => !x.titulo || x.texto.length < 20).map(x => x.paso), []);
 
   const mas = pasos.filter(x => /^En «Más»: /.test(x.texto)).map(x => x.paso);
-  eq(`${nombre}: ${viewport === CELU ? "Proyectos y Reportes avisan que están en «Más»" : "en la compu nada habla de «Más»"}`, mas, viewport === CELU ? ["proyectos", "reportes"] : []);
+  eq(`${nombre}: ${viewport === CELU ? "Proyectos, Gastos y Reportes avisan que están en «Más»" : "en la compu nada habla de «Más»"}`, mas, viewport === CELU ? (nombre.startsWith("observador") ? ["proyectos", "reportes"] : ["proyectos", "gastos", "reportes"]) : []);
   if(viewport === CELU){
     // Esos dos pasos señalan el botón «Más» (el agujero cae sobre él), no una solapa que en el celular no existe.
     const centroMas = await p.$eval('.bn-item[data-action="toggle-more-menu"]', e => { const r = e.getBoundingClientRect(); return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) }; });
-    const sobreMas = pasos.filter(x => ["proyectos", "reportes"].includes(x.paso)).map(x => Math.abs(x.agujero.x - centroMas.x) < 6 && Math.abs(x.agujero.y - centroMas.y) < 6);
-    eq(`${nombre}: el agujero de Proyectos y Reportes está sobre «Más»`, sobreMas, [true, true]);
+    const sobreMas = pasos.filter(x => ["proyectos", "gastos", "reportes"].includes(x.paso)).map(x => Math.abs(x.agujero.x - centroMas.x) < 6 && Math.abs(x.agujero.y - centroMas.y) < 6);
+    eq(`${nombre}: el agujero de Proyectos${nombre.startsWith("observador") ? "" : ", Gastos"} y Reportes está sobre «Más»`, sobreMas, nombre.startsWith("observador") ? [true, true] : [true, true, true]);
   }
 
   // El paso del buscador señala el buscador de verdad: la barra en la compu, la lupa en el celular (T4 de la auditoría del 28/10/2026).

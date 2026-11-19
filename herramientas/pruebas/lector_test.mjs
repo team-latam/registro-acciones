@@ -93,7 +93,7 @@ const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: { width:
 await p.route(/\/storage\/v1\/object\/sign\/adjuntos\/gastos\/gx8\//, r => r.fulfill({ contentType: "image/jpeg", body: TAXI }));
 eq("la página sale por http, con la CSP de siempre (sin permisos para correr WebAssembly en la página)",
   await p.evaluate(() => [location.protocol, /wasm-unsafe-eval/.test(document.querySelector('meta[http-equiv="Content-Security-Policy"]').content)]), ["http:", false]);
-await p.click('[data-action="toggle-user-menu"]'); await p.click('.user-menu [data-view="gastos"]'); await p.waitForSelector(".gastos-view");
+await p.click('#tabs button[data-view="gastos"]'); await p.waitForSelector(".gastos-view");
 // Montevideo está abierta: en «Por rendir», directo (D16, 19/11).
 await p.click('[data-action="gastos-abrir-rendicion"][data-id="ren_mvd"]'); await p.waitForTimeout(200);
 const antes = (await tabla(p, "gastos")).length;

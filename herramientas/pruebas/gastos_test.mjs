@@ -1,12 +1,11 @@
 /* ======================================================================
-   Gastos y rendiciones, la etapa de prueba (15/11/2026; 27-gastos.sql y
-   docs/rendicion-gastos/)
+   Gastos y rendiciones (15/11/2026; 27-gastos.sql y docs/rendicion-gastos/)
 
-   - Quién lo ve: con el interruptor de Administración → Gastos prendido,
-     solo los admins (desde el menú de su foto y, en el celular, desde
-     «Más»). Una integrante, un observador o un admin con el módulo apagado
-     no lo ven ni lo leen de la base. Abierto al equipo (la etapa 5), lo ve
-     quien puede cargar.
+   - Quién lo ve: desde el 19/11 dejó de ser una prueba: está en el menú de
+     arriba, entre Proyectos y Reportes (en el celular, en «Más»), en el + y
+     en el ⋯ de cada actividad, para todos los que cargan. Un observador, una
+     integrante con el módulo cerrado al equipo o cualquiera con el módulo
+     apagado no lo ven ni lo leen de la base.
    - Subir: muchos comprobantes juntos; cada uno queda como un gasto por
      confirmar, con la fecha y el concepto sacados del nombre del archivo,
      su huella (el mismo comprobante dos veces no se repite) y el archivo en
@@ -41,7 +40,14 @@ const datos = (gastos, extra = {}) => {
 const tabla = (p, n) => p.evaluate(n => window.__sb.tablas[n] || [], n);
 const hasta = async (p, f, ...a) => { for(let i = 0; i < 50; i++){ if(await p.evaluate(f, ...a).catch(() => false)) return true; await p.waitForTimeout(100); } return false; };
 const abrirMenu = async p => { await p.click('[data-action="toggle-user-menu"]'); await p.waitForSelector(".user-menu"); };
-const irGastos = async p => { await abrirMenu(p); await p.click('.user-menu [data-view="gastos"]'); await p.waitForSelector(".gastos-view"); await p.waitForTimeout(150); };
+// Gastos, en el menú de arriba, entre Proyectos y Reportes (19/11).
+// (En el celular, en «Más», entre Proyectos y Reportes.)
+const irGastos = async p => {
+  if(await p.evaluate(() => { const b = document.querySelector('#tabs button[data-view="gastos"]'); return !!(b && b.offsetParent); })) await p.click('#tabs button[data-view="gastos"]');
+  else { await p.evaluate(() => document.querySelector('.bn-item[data-action="toggle-more-menu"]').click()); await p.waitForTimeout(150); await p.evaluate(() => document.querySelector('.bn-sheet-item[data-view="gastos"]').click()); }
+  await p.waitForSelector(".gastos-view"); await p.waitForTimeout(150);
+};
+const pestanas = p => p.$$eval("#tabs button[data-view]", l => l.filter(b => !b.hidden && b.offsetParent).map(b => b.dataset.view));   // las que se ven de verdad
 const textos = (p, sel) => p.$$eval(sel, l => l.map(e => e.textContent.replace(/\s+/g, " ").trim()));
 const rpcs = (p, nombre) => p.evaluate(n => window.__sb.rpc.filter(r => r[0] === n).map(r => r[1]), nombre);
 const leyoGastos = p => p.evaluate(() => (window.__sb.consultas || []).some(t => String(t).startsWith("gastos")));
@@ -92,28 +98,29 @@ const vp = { width: 1280, height: 900 }, celu = { width: 390, height: 844 };
 /* ---------------- Quién lo ve ---------------- */
 {
   const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: vp, base: datos({ prendido: true }) });
+  // 19/11: dejó de ser una prueba: en el menú de arriba, entre Proyectos y Reportes, y no en el de la foto.
+  eq("el admin lo tiene en el menú de arriba, entre Proyectos y Reportes", await pestanas(p), ["feed", "calendario", "paises", "proyectos", "gastos", "reportes"]);
+  eq("…con lo que espera su revisión (una rendición mandada y plata por confirmar)", await textos(p, '#tabs button[data-view="gastos"]'), ["Gastos 2"]);
   await abrirMenu(p);
-  eq("prendido: el admin lo tiene en el menú de su foto, con lo que espera su revisión (una rendición mandada y plata por confirmar)",
-    await textos(p, '.user-menu [data-view="gastos"]'), ["🧾 Gastos2"]);
+  eq("…y ya no en el menú de su foto", await p.$$eval('.user-menu [data-view="gastos"]', l => l.length), 0);
   eq("y lo lee de la base", await leyoGastos(p), true);
   eq("sin errores de página", errores, []);
   await p.close();
 }
-for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: true }, "una integrante, con el módulo en prueba"],
-  [OBS, "Olga Observa", { prendido: true, abierto: true }, "un observador, aunque esté abierto al equipo"],
-  [ADMIN, PERS[0].name, { prendido: false }, "el admin, con el módulo apagado"], [ADMIN, PERS[0].name, null, "el admin, si nunca se prendió"]]){
+for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: true, abierto: false }, "una integrante, con el módulo cerrado al equipo"],
+  [OBS, "Olga Observa", { prendido: true }, "un observador, aunque esté abierto al equipo"],
+  [ADMIN, PERS[0].name, { prendido: false }, "el admin, con el módulo apagado"]]){
   const { p } = await entrar(b, quien, nombre, { viewport: vp, base: datos(gastos) });
-  await abrirMenu(p);
-  eq(`${rotulo}: no lo ve`, await p.$$eval('.user-menu [data-view="gastos"]', l => l.length), 0);
+  eq(`${rotulo}: no lo ve`, [(await pestanas(p)).includes("gastos"), await p.evaluate(() => !!document.querySelector('#fabGastos:not([hidden])'))], [false, false]);
   eq(`${rotulo}: ni lo pide a la base`, await leyoGastos(p), false);
   await p.close();
 }
 {
-  // La etapa 5: abierto al equipo, lo ve quien puede cargar (la base ya lo permite: gastos_habilitado).
-  const { p } = await entrar(b, ANA.email, ANA.name, { viewport: vp, base: datos({ prendido: true, abierto: true }) });
-  await abrirMenu(p);
-  eq("abierto al equipo, una integrante lo ve", await p.$$eval('.user-menu [data-view="gastos"]', l => l.length), 1);
-  await p.click('.user-menu [data-view="gastos"]'); await p.waitForSelector(".gastos-view");
+  // Desde el 19/11, abierto al equipo de fábrica (si nunca se tocó la configuración): lo ve quien puede cargar.
+  const { p } = await entrar(b, ANA.email, ANA.name, { viewport: vp, base: datos(null) });
+  eq("abierto al equipo de fábrica: una integrante lo ve en el menú de arriba", (await pestanas(p)).includes("gastos"), true);
+  await irGastos(p);
+  eq("…sin «en prueba»", await p.$eval(".gastos-view .admin-titulo", e => e.textContent.trim()), "🧾 Gastos");
   eq("«Por rendir», «Rendiciones» y su cuenta; no «Para aprobar» (es de los admins)", await p.$$eval('.admin-menu [data-action="gastos-seccion"]', l => l.map(e => e.dataset.key)), ["rendir", "rendiciones", "cuenta"]);
   // D16 (19/11): «Por rendir» es lo que tiene que hacer; lo ya mandado está en «Rendiciones».
   eq("en «Por rendir», nada por hacer (la suya ya se mandó) y el camino a «Rendiciones»", await p.evaluate(() => [/No tenés nada por rendir/.test(document.querySelector(".gastos-view .admin-body").textContent),
@@ -589,6 +596,47 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
   const texto = (await import("node:fs")).readFileSync(await descarga.path(), "utf8");
   eq("sin SheetJS baja un .csv, con punto y coma y coma decimal", [descarga.suggestedFilename().endsWith(".csv"), /^\uFEFF"Persona";"Rendición"/.test(texto), /"Taxi al aeropuerto"/.test(texto)], [true, true, true]);
   eq("sin errores de página", errores.filter(e => !/sheetjs|SheetJS|ERR_FAILED/.test(e)), []);
+  await p.close();
+}
+
+/* ---------------- Gastos desde el + y desde el ⋯ de cada actividad (19/11: dejó de ser una prueba) ---------------- */
+{
+  const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: vp, base: datos({ prendido: true }) });
+  const idDe = titulo => p.evaluate(t0 => (window.__sb.tablas.posts.find(x => x.title === t0) || {}).id, titulo);
+  const menuDe = async id => { await p.click(`[data-action="toggle-post-menu"][data-post-id="${id}"]`); await p.waitForTimeout(150);
+    return p.$$eval(".post-menu-item", l => l.filter(e => e.offsetParent).map(e => e.dataset.action)); };
+  // El +: «Subir comprobantes».
+  await p.click("#fabMain"); await p.waitForTimeout(150);
+  eq("el + tiene «Subir comprobantes», debajo de «Nuevo posteo» y «Nuevo evento»", await p.$$eval(".fab-action", l => l.filter(b => !b.hidden).map(b => b.textContent.trim())),
+    ["📝Nuevo posteo", "📅Nuevo evento", "🧾Subir comprobantes"]);
+  await p.click("#fabGastos");
+  eq("…lleva a «Por rendir», con «¿De qué son estos comprobantes?» abierto y el foco ahí", await hasta(p, () => !!document.querySelector(".gastos-view") && document.activeElement.id === "gxDestino"
+    && document.querySelector('.admin-menu [data-key="rendir"]').classList.contains("active")), true);
+  // El ⋯ de una actividad: «Rendición de gastos».
+  await p.click('#tabs button[data-view="feed"]'); await p.waitForTimeout(250);
+  const rosario = await idDe("Visita a la comunidad de Rosario"), rutina = await idDe("Reunión de equipo");
+  eq("en el ⋯ de una actividad (Rosario: el admin la puede rendir, todavía sin rendición), «Rendición de gastos»", (await menuDe(rosario)).includes("post-gastos"), true);
+  await p.click(`.post-menu-item[data-action="post-gastos"][data-post-id="${rosario}"]`);
+  eq("…sin rendición, lleva a subir comprobantes con esa actividad ya elegida (sin crear una rendición vacía)", await hasta(p, (r0) => {
+    const s0 = document.getElementById("gxDestino"); return !!s0 && s0.value === "post:" + r0 && !window.__sb.rpc.some(x => x[0] === "gastos_rendicion_abrir"); }, rosario), true);
+  await p.click('#tabs button[data-view="feed"]'); await p.waitForTimeout(250);
+  eq("una Rutina no tiene «Rendición de gastos»", (await menuDe(rutina)).includes("post-gastos"), false);
+  eq("sin errores de página", errores, []);
+  await p.close();
+}
+{
+  // Ana: en su actividad con rendición (Rosario, ya mandada), la lleva a esa rendición; en una ajena, no aparece.
+  const { p, errores } = await entrar(b, ANA.email, ANA.name, { viewport: vp, base: datos({ prendido: true }) });
+  const idDe = titulo => p.evaluate(t0 => (window.__sb.tablas.posts.find(x => x.title === t0) || {}).id, titulo);
+  const rosario = await idDe("Visita a la comunidad de Rosario"), ajena = await idDe("Charla en Bariloche");
+  await p.click(`[data-action="toggle-post-menu"][data-post-id="${ajena}"]`).catch(() => {}); await p.waitForTimeout(150);
+  eq("en una actividad donde no participó, no aparece", await p.$$eval(`.post-menu-item[data-action="post-gastos"]`, l => l.filter(e => e.offsetParent).length), 0);
+  await p.keyboard.press("Escape");
+  await p.click(`[data-action="toggle-post-menu"][data-post-id="${rosario}"]`); await p.waitForTimeout(150);
+  await p.click(`.post-menu-item[data-action="post-gastos"][data-post-id="${rosario}"]`);
+  eq("en la suya, con rendición, la lleva a esa rendición (mandada: en «Rendiciones»)", await hasta(p, () => /Visita a la comunidad de Rosario/.test((document.querySelector(".gx-ren-tit") || {}).textContent || "")
+    && document.querySelector('.admin-menu [data-key="rendiciones"]').classList.contains("active")), true);
+  eq("sin errores de página", errores, []);
   await p.close();
 }
 
@@ -1267,9 +1315,14 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
 {
   const { p, errores } = await entrar(b, ADMIN, PERS[0].name, { viewport: vp, base: datos({ prendido: true }) });
   await irAdmin(p); await admin(p, "preferencias", "gastos");
-  eq("la sección: el interruptor prendido y los siete tipos de siempre", await p.evaluate(() => [document.querySelector('[data-action="gastos-prender"]').checked,
-    [...document.querySelectorAll(".gx-tipo-nombre")].map(e => e.value || e.placeholder)]),
-    [true, ["Reunión", "Comida", "Pasaje", "Alojamiento", "Transporte", "Compra de material", "Suscripción"]]);
+  eq("la sección: prendido, abierto al equipo y los siete tipos de siempre", await p.evaluate(() => [document.querySelector('[data-action="gastos-prender"]').checked,
+    document.querySelector('[data-action="gastos-abrir-equipo"]').checked, [...document.querySelectorAll(".gx-tipo-nombre")].map(e => e.value || e.placeholder)]),
+    [true, true, ["Reunión", "Comida", "Pasaje", "Alojamiento", "Transporte", "Compra de material", "Suscripción"]]);
+  eq("…sin «en prueba»", await p.evaluate(() => /en prueba|etapa de prueba/i.test(document.querySelector(".admin-body").textContent)), false);
+  await p.click('[data-action="gastos-abrir-equipo"] + .pref-slider');
+  eq("cerrarlo al equipo: se guarda («abierto: false»)", await hasta(p, () => (window.__sb.tablas.app_config.find(c => c.key === "preferences").value.gastos || {}).abierto === false), true);
+  await p.click('[data-action="gastos-abrir-equipo"] + .pref-slider');
+  eq("…y abrirlo de nuevo", await hasta(p, () => (window.__sb.tablas.app_config.find(c => c.key === "preferences").value.gastos || {}).abierto === true), true);
   eq("guardar arranca apagado (no hay nada que guardar)", await p.$eval('[data-action="gastos-tipos-guardar"]', e => e.disabled), true);
   await p.fill("#gxTipo_1", "Comidas y cafés");
   await p.click('[data-action="gastos-tipo-ocultar"][data-i="6"]');
@@ -1285,10 +1338,9 @@ for(const [quien, nombre, gastos, rotulo] of [[ANA.email, ANA.name, { prendido: 
     ["Reunión", "Comidas y cafés", "Pasaje", "Alojamiento", "Transporte", "Compra de material", "Peajes y estacionamiento"]);
   await p.keyboard.press("Escape");
   await irAdmin(p); await admin(p, "preferencias", "gastos");
-  await p.click(".settings-card .pref-switch .pref-slider");
+  await p.click('[data-action="gastos-prender"] + .pref-slider');
   eq("apagarlo: se guarda y el módulo desaparece del menú", await hasta(p, () => (window.__sb.tablas.app_config.find(c => c.key === "preferences").value.gastos || {}).prendido === false), true);
-  await abrirMenu(p);
-  eq("…ya no está", await p.$$eval('.user-menu [data-view="gastos"]', l => l.length), 0);
+  eq("…ya no está", (await pestanas(p)).includes("gastos"), false);
   eq("…y lo cargado sigue en la base", (await tabla(p, "gastos")).length > 0, true);
   eq("sin errores de página", errores, []);
   await p.close();
